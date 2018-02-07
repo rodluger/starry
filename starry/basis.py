@@ -49,7 +49,7 @@ def Lijk(l, m, i, j, k):
         return 0
 
 
-def L(l, m):
+def Y(l, m):
     """Return a vector of polynomial coefficients corresponding to a Ylm."""
     # Initialize the contracted polynomial tensor
     Ylm = np.zeros((l + 1, l + 1, 2))
@@ -57,25 +57,47 @@ def L(l, m):
         for i in range(k, l + 1):
             for j in range(0, i - k + 1):
                 coeff = Lijk(l, m, i, j, k)
-                # 1 or z
-                if (k == 0) or (k == 1):
-                    Ylm[i, j, k] = coeff
-                # Even power of z
-                elif (k % 2) == 0:
-                    for p in range(0, k + 1, 2):
-                        for q in range(0, p + 1, 2):
-                            Ylm[i + p - q, j + q, 0] = (-1) ** (p / 2) * \
-                                                       C(p, q, k) * coeff
-                # Odd power of z
-                else:
-                    for p in range(0, k, 2):
-                        for q in range(0, p + 1, 2):
-                            Ylm[i + p - q, j + q, 1] = (-1) ** (p / 2) * \
-                                                       C(p, q, k - 1) * coeff
+                if coeff:
+                    # 1 or z
+                    if (k == 0) or (k == 1):
+                        Ylm[i, j, k] += coeff
+                    # Even power of z
+                    elif (k % 2) == 0:
+                        for p in range(0, k + 1, 2):
+                            for q in range(0, p + 1, 2):
+                                ip = i - k + p
+                                jp = j + q
+                                Ylm[ip, jp, 0] += (-1) ** (p / 2) * \
+                                    C(p, q, k) * coeff
+                    # Odd power of z
+                    else:
+                        for p in range(0, k, 2):
+                            for q in range(0, p + 1, 2):
+                                ip = i - k + p + 1
+                                jp = j + q
+                                Ylm[ip, jp, 1] += (-1) ** (p / 2) * \
+                                    C(p, q, k - 1) * coeff
 
-    return Ylm
+    # Now we contract the tensor down to a vector
+    vec = np.zeros((l + 1) ** 2, dtype=float)
+    n = 0
+    for i in range(l + 1):
+        for j in range(i + 1):
+            vec[n] = Ylm[i, j, 0]
+            n += 1
+            if (j < i):
+                vec[n] = Ylm[i, j, 1]
+                n += 1
+
+    return vec
 
 
 def A(lmax):
     """Return the basis change matrix."""
-    pass
+    mat = np.zeros(((lmax + 1) ** 2, (lmax + 1) ** 2), dtype=float)
+    n = 0
+    for l in range(lmax + 1):
+        for m in range(-l, l + 1):
+            mat[:(l + 1) ** 2, n] = Y(l, m)
+            n += 1
+    return mat

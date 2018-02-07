@@ -17,3 +17,4 @@ if not __STARRY_SETUP__:
     # This is a regular starry run
     from rotation import R
     from basis import A
+    from integrals import S
