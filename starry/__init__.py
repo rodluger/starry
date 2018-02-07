@@ -15,4 +15,5 @@ except NameError:
 
 if not __STARRY_SETUP__:
     # This is a regular starry run
-    pass
+    from rotation import R
+    from basis import A
