@@ -15,16 +15,16 @@ builtins.__STARRY_SETUP__ = True
 import starry
 
 long_description = \
-    """STARRY."""
+    """Analytic occultation light curves for astronomy."""
 
 # Setup!
 setup(name='starry',
       version=starry.__version__,
-      description='STARRY',
+      description='Analytic occultation light curves for astronomy.',
       long_description=long_description,
       classifiers=[
-          'Development Status :: 5 - Production/Stable',
-          'License :: OSI Approved :: MIT License',
+          'Development Status :: 3 - Alpha',
+          'License :: OSI Approved :: GNU General Public License (GPL)',
           'Programming Language :: Python',
           'Programming Language :: Python :: 3',
           'Topic :: Scientific/Engineering :: Astronomy',
