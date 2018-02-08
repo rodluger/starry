@@ -1,4 +1,5 @@
-"""Change of basis from spherical harmonics to Cartesian coordinates."""
+"""Change of basis from spherical harmonics to polynomials."""
+from .gmatrix import G
 import numpy as np
 from scipy.special import gamma
 
@@ -93,11 +94,16 @@ def Y(l, m):
 
 
 def A(lmax):
-    """Return the basis change matrix."""
-    mat = np.zeros(((lmax + 1) ** 2, (lmax + 1) ** 2), dtype=float)
+    """Return the complete basis change matrix."""
+    # Spherical harmonics to polynomials
+    A1 = np.zeros(((lmax + 1) ** 2, (lmax + 1) ** 2), dtype=float)
     n = 0
     for l in range(lmax + 1):
         for m in range(-l, l + 1):
-            mat[:(l + 1) ** 2, n] = Y(l, m)
+            A1[:(l + 1) ** 2, n] = Y(l, m)
             n += 1
-    return mat
+
+    # Polynomials to the Greens basis
+    A2 = G(lmax)
+
+    return np.dot(A2, A1)
