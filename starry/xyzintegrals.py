@@ -54,8 +54,8 @@ def E2(b, r):
                                      (1 - s) / (1 + s) * ellipk(2 / (1 + s)))
 
 
-def HOdd(b, r, p, q):
-    """Return the `H` function for 'odd' polynomial terms."""
+def H(b, r, p, q):
+    """Return the `H` function."""
     # Trivial case
     if (p % 2) == 1 or (q % 2) == 1:
         return 0
@@ -80,9 +80,9 @@ def HOdd(b, r, p, q):
     gamma = 2 * p + q - (p + q - 2) * (1 - u) / 2
     delta = (3 - p) + (p - 3) * (1 - u) / 2
     if (q >= 4):
-        return alpha * HOdd(b, r, p, q - 2) + beta * HOdd(b, r, p, q - 4)
+        return alpha * H(b, r, p, q - 2) + beta * H(b, r, p, q - 4)
     elif (p >= 4):
-        return gamma * HOdd(b, r, p - 2, q) + delta * HOdd(b, r, p - 4, q)
+        return gamma * H(b, r, p - 2, q) + delta * H(b, r, p - 4, q)
     else:
         # DEBUG
         raise Exception("This shouldn't happen!")
@@ -95,26 +95,12 @@ def I(b, r, mu, nu):
         c = binom(nu, n) * (b / r) ** (nu - n)
         for m in range(n + 1):
             res += c * binom(n, m) * (-1) ** (m - n - mu) * \
-                   HOdd(b, r, mu + 2 * m, mu + 2 * n - 2 * m)
+                   H(b, r, mu + 2 * m, mu + 2 * n - 2 * m)
     return res * 2 ** (mu + 1)
 
 
-def POdd(b, r, i, j):
-    """Return the primitive integral for an 'odd' term."""
-    if (i == 0) and (j == 0):
-        return MandelAgolFlux(b, r)
-    elif (j < i):
-        return -r ** i * I(b, r, i - j, j)
-    elif (j % 2) == 0 and (i % 2) == 0:
-        return r ** i * I(b, r, i - 2, 2) \
-               - b * r ** (i - 1) * I(b, r, i - 2, 1)
-    else:
-        return r ** i * I(b, r, i - 1, 1) \
-               - b * r ** (i - 1) * I(b, r, i - 1, 0)
-
-
 def Sxyz(b, r, i, j):
-    """Return the element of `s` for an 'odd' polynomial term."""
+    """Return an element of `S` corresponding to an `xyz` polynomial."""
     # Check for complete occultation
     if b <= r - 1:
         return 0
@@ -133,7 +119,13 @@ def Sxyz(b, r, i, j):
         return MandelAgolFlux(b, r)
 
     # General term
-    # TODO
-    res = 0
-
-    return res
+    # DEBUG! There's an offset in my notation...
+    i -= 1
+    if (j < i):
+        return -r ** i * I(b, r, i - j, j)
+    elif (j % 2) == 0 and (i % 2) == 0:
+        return r ** i * I(b, r, i - 2, 2) \
+               - b * r ** (i - 1) * I(b, r, i - 2, 1)
+    else:
+        return r ** i * I(b, r, i - 1, 1) \
+               - b * r ** (i - 1) * I(b, r, i - 1, 0)
