@@ -1,11 +1,12 @@
 """Compute the polynomial integral matrix `S`."""
 from .utils import Phi, Lam, E1, E2, factorial
 from .zintegral import MandelAgolFlux
+from .basis import Y, polybasis
 import numpy as np
 from scipy.special import binom
 
 
-__all__ = ["S"]
+__all__ = ["S", "brute"]
 
 
 def I(u, v, nu, phi, b, r):
@@ -189,3 +190,25 @@ def S(lmax, b, r):
             vec[n] = slm(l, m, b, r)
             n += 1
     return vec
+
+
+def brute(ylm, x0, y0, r, res=100):
+    """Compute the occultation flux for a Ylm the brute-force way."""
+    lmax = int(np.sqrt(len(ylm)) - 1)
+
+    def func(x, y):
+        return np.dot(ylm, polybasis(x, y, lmax))
+
+    # TODO: Compute total flux somehow...
+    tot = 0
+
+    dA = (2 * r / res) ** 2
+    for x in np.linspace(x0 - r, x0 + r, res):
+        for y in np.linspace(y0 - r, y0 + r, res):
+            # If inside the occultor
+            if (x - x0) ** 2 + (y - y0) ** 2 < r ** 2:
+                # If inside the occulted
+                if (x ** 2 + y ** 2 < 1):
+                    tot -= func(x, y) * dA
+
+    return tot

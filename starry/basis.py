@@ -3,7 +3,22 @@ from .utils import factorial
 import numpy as np
 
 
-__all__ = ["A"]
+__all__ = ["A", "Y"]
+
+
+def polybasis(x, y, lmax):
+    """Return a vector corresponding to the polynomial basis."""
+    z = np.sqrt(1 - x ** 2 - y ** 2)
+    res = []
+    for l in range(lmax + 1):
+        for m in range(-l, l + 1):
+            mu = l - m
+            nu = l + m
+            if (nu % 2) == 0:
+                res.append(x ** (mu / 2) * y ** (nu / 2))
+            else:
+                res.append(x ** ((mu - 1) / 2) * y ** ((nu - 1) / 2) * z)
+    return np.array(res)
 
 
 def C(p, q, k):
