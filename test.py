@@ -26,7 +26,7 @@ ST = np.array([S(lmax, b[i], r).T for i, _ in enumerate(b)])
 F = np.dot(ST, ARRy)
 
 # Compute the brute flux
-FBrute = [brute(y, 0, bbrute[i], r) for i, _ in enumerate(bbrute)]
+FBrute = [brute(y, 0, bbrute[i], r, res=300) for i, _ in enumerate(bbrute)]
 
 # Plot
 pl.plot(b, F)

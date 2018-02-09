@@ -1,12 +1,59 @@
 """Compute the polynomial integral matrix `S`."""
 from .utils import Phi, Lam, E1, E2, factorial
 from .zintegral import MandelAgolFlux
-from .basis import Y, polybasis
+from .basis import evaluate_poly, y2p
 import numpy as np
 from scipy.special import binom
+from scipy.integrate import dblquad
 
 
 __all__ = ["S", "brute"]
+
+
+def polynomial_flux(i, j, k):
+    """Return the total flux from the polynomial term x^i y^j z^k."""
+    if (i % 2) == 1 or (j % 2) == 1:
+        return 0
+    elif k == 0:
+        return factorial(0.5 * (i - 1)) * factorial(0.5 * (j - 1)) / \
+               factorial(0.5 * (i + j + 2))
+    elif k == 1:
+        return 0.5 * np.sqrt(np.pi) * polynomial_flux(i, j, 0)
+    else:
+        raise ValueError("The z power `k` must be 0 or 1.")
+
+
+def greens_flux(l, m):
+    """Return the total flux from the (l, m) term in the Greens basis."""
+    mu = l - m
+    nu = l + m
+
+    # Case A
+    if (nu % 2) == 0:
+        return (2 / (mu + 2)) * polynomial_flux(mu / 2, nu / 2, 0)
+    # Case B
+    elif (nu == 1) and (mu == 1):
+        return polynomial_flux(0, 0, 1)
+    # Case C
+    elif (mu > 1):
+        res = 0
+        res += (mu - 3) / 2 * polynomial_flux((mu - 5) / 2, (nu - 1) / 2, 1)
+        res -= (mu - 3) / 2 * polynomial_flux((mu - 5) / 2, (nu + 3) / 2, 1)
+        res -= (mu + 3) / 2 * polynomial_flux((mu - 1) / 2, (nu - 1) / 2, 1)
+        return res
+    # Case D
+    elif (l % 2) == 1:
+        res = 0
+        res -= polynomial_flux(l - 3, 0, 1)
+        res += polynomial_flux(l - 1, 0, 1)
+        res += 4 * polynomial_flux(l - 3, 2, 1)
+        return res
+    # Case E
+    elif (l % 2) == 0:
+        return 3 * polynomial_flux(l - 2, 1, 1)
+    # Should never reach here
+    else:
+        raise Exception("Undefined case!")
 
 
 def I(u, v, nu, phi, b, r):
@@ -143,33 +190,7 @@ def slm(l, m, b, r):
     # Is there no occultation happening?
     # If that's the case, the solutions are easy
     elif b >= 1 + r:
-
-        # TODO: DEBUG:
-        # I need to compute these in the Greens basis!
-        return np.nan
-
-        # Is this a term that's independent of z?
-        if ((l + m) % 2) == 0:
-            j = int((m + l) / 2)
-            i = int(l)
-            if (i % 2) == 0 and (j % 2) == 0:
-                return factorial(0.5 * (i - j - 1)) * \
-                       factorial(0.5 * (j - 1)) / \
-                       factorial(0.5 * (i + 2))
-            else:
-                return 0
-
-        # Or is it a term that's linear in z?
-        else:
-            j = int((m + l - 1) / 2)
-            i = int(l)
-            if (i % 2) == 1 and (j % 2) == 0:
-                return 0.5 * np.sqrt(np.pi) * \
-                             factorial(0.5 * (i - j - 2)) * \
-                             factorial(0.5 * (j - 1)) / \
-                             factorial(0.5 * (i + 2))
-            else:
-                return 0
+        return greens_flux(l, m)
 
     # TODO: Pre-compute E1 and E2 here
 
@@ -194,14 +215,25 @@ def S(lmax, b, r):
 
 def brute(ylm, x0, y0, r, res=100):
     """Compute the occultation flux for a Ylm the brute-force way."""
-    lmax = int(np.sqrt(len(ylm)) - 1)
+    # Convert the Ylm vector to a polynomial vector
+    p = y2p(ylm)
 
-    def func(x, y):
-        return np.dot(ylm, polybasis(x, y, lmax))
+    # Define our map
+    def func(y, x):
+        return evaluate_poly(p, x, y)
 
-    # TODO: Compute total flux somehow...
-    tot = 0
+    # Lower integration limit for total flux
+    def y1(x):
+        return -np.sqrt(1 - x ** 2)
 
+    # Upper integration limit for total flux
+    def y2(x):
+        return np.sqrt(1 - x ** 2)
+
+    # Compute the total flux
+    flux, _ = dblquad(func, -1, 1, y1, y2)
+
+    # Now subtract off the occulted flux
     dA = (2 * r / res) ** 2
     for x in np.linspace(x0 - r, x0 + r, res):
         for y in np.linspace(y0 - r, y0 + r, res):
@@ -209,6 +241,6 @@ def brute(ylm, x0, y0, r, res=100):
             if (x - x0) ** 2 + (y - y0) ** 2 < r ** 2:
                 # If inside the occulted
                 if (x ** 2 + y ** 2 < 1):
-                    tot -= func(x, y) * dA
+                    flux -= func(y, x) * dA
 
-    return tot
+    return flux

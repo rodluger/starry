@@ -3,7 +3,7 @@ from .utils import factorial
 import numpy as np
 
 
-__all__ = ["A", "Y"]
+__all__ = ["A"]
 
 
 def polybasis(x, y, lmax):
@@ -19,6 +19,12 @@ def polybasis(x, y, lmax):
             else:
                 res.append(x ** ((mu - 1) / 2) * y ** ((nu - 1) / 2) * z)
     return np.array(res)
+
+
+def evaluate_poly(p, x, y):
+    """Evaluate a polynomial vector at a given (x, y) coordinate."""
+    lmax = int(np.sqrt(len(p)) - 1)
+    return np.dot(p, polybasis(x, y, lmax))
 
 
 def C(p, q, k):
@@ -168,8 +174,36 @@ def Gz(lmax, tol=1e-10):
     return mat
 
 
-def G(lmax):
-    """Return the full Greens polynomial matrix."""
+def Y2P(lmax):
+    """
+    Return the polynomial matrix.
+
+    This matrix performs a change of basis from spherical harmonics (Y) to
+    polynomials (P) of the form x^i y^j z^k.
+    """
+    # Spherical harmonics to polynomials
+    p = np.zeros(((lmax + 1) ** 2, (lmax + 1) ** 2), dtype=float)
+    n = 0
+    for l in range(lmax + 1):
+        for m in range(-l, l + 1):
+            p[:(l + 1) ** 2, n] = Y(l, m)
+            n += 1
+    return p
+
+
+def y2p(y):
+    """Rotate the Ylm vector `y` into the polynomial basis."""
+    lmax = int(np.sqrt(len(y)) - 1)
+    return np.dot(Y2P(lmax), y)
+
+
+def P2G(lmax):
+    """
+    Return the Greens matrix.
+
+    This matrix performs a change of basis from polynomials (P) to
+    normalized Greens polynomials (G) used to solve the primitive integrals.
+    """
     # Compute the z terms matrix
     g = Gz(lmax)
 
@@ -191,17 +225,17 @@ def G(lmax):
     return g
 
 
+def p2g(p):
+    """Rotate the polynomial vector `p` into the Greens basis."""
+    lmax = int(np.sqrt(len(p)) - 1)
+    return np.dot(P2G(lmax), p)
+
+
 def A(lmax):
-    """Return the complete basis change matrix."""
-    # Spherical harmonics to polynomials
-    A1 = np.zeros(((lmax + 1) ** 2, (lmax + 1) ** 2), dtype=float)
-    n = 0
-    for l in range(lmax + 1):
-        for m in range(-l, l + 1):
-            A1[:(l + 1) ** 2, n] = Y(l, m)
-            n += 1
+    """
+    Return the complete basis change matrix `A`.
 
-    # Polynomials to the Greens basis
-    A2 = G(lmax)
-
-    return np.dot(A2, A1)
+    This matrix performs a change of basis from spherical harmonics
+    to normalized Greens polynomials.
+    """
+    return np.dot(P2G(lmax), Y2P(lmax))
