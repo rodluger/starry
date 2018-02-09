@@ -220,7 +220,9 @@ def P2G(lmax):
     for l in range(lmax + 1):
         for m in range(-l, l + 1):
             if (l + m) % 2 == 0:
-                g[n, n] = 1
+                # The coefficient of this term is (mu + 2) / 2
+                # So its inverse is
+                g[n, n] = 2 / (l - m + 2)
             n += 1
     return g
 

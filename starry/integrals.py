@@ -18,7 +18,9 @@ def polynomial_flux(i, j, k):
         return factorial(0.5 * (i - 1)) * factorial(0.5 * (j - 1)) / \
                factorial(0.5 * (i + j + 2))
     elif k == 1:
-        return 0.5 * np.sqrt(np.pi) * polynomial_flux(i, j, 0)
+        return 0.5 * np.sqrt(np.pi) * \
+                     factorial(0.5 * (i - 1)) * factorial(0.5 * (j - 1)) / \
+                     factorial(0.5 * (i + j + 3))
     else:
         raise ValueError("The z power `k` must be 0 or 1.")
 
@@ -30,7 +32,7 @@ def greens_flux(l, m):
 
     # Case A
     if (nu % 2) == 0:
-        return (2 / (mu + 2)) * polynomial_flux(mu / 2, nu / 2, 0)
+        return 0.5 * (mu + 2) * polynomial_flux(mu / 2, nu / 2, 0)
     # Case B
     elif (nu == 1) and (mu == 1):
         return polynomial_flux(0, 0, 1)
@@ -126,9 +128,11 @@ def J(p, q, b, r):
     gamma = 2 * p + q - (p + q - 2) * (1 - u) / 2
     delta = (3 - p) + (p - 3) * (1 - u) / 2
     if (q >= 4):
-        return alpha * J(p, q - 2, b, r) + beta * J(p, q - 4, b, r)
+        return (alpha * J(p, q - 2, b, r) + beta * J(p, q - 4, b, r)) / \
+               (p + q + 3)
     elif (p >= 4):
-        return gamma * J(p - 2, q, b, r) + delta * J(p - 4, q, b, r)
+        return (gamma * J(p - 2, q, b, r) + delta * J(p - 4, q, b, r)) / \
+               (p + q + 3)
     # Should never reach here
     else:
         raise Exception("Undefined case!")
@@ -214,7 +218,7 @@ def S(lmax, b, r):
 
 
 def brute(ylm, x0, y0, r, res=100):
-    """Compute the occultation flux for a Ylm the brute-force way."""
+    """Compute the occultation flux for a Ylm vector the brute-force way."""
     # Convert the Ylm vector to a polynomial vector
     p = y2p(ylm)
 
