@@ -1,21 +1,41 @@
 from starry import R, A, S
 import numpy as np
 import matplotlib.pyplot as pl
+from starry.integrals import slm
 
+
+# Occultation parameters
+r = 0.3
+b = np.linspace(0, 2, 500)
+
+# Construct a vector of Ylm coefficients
 lmax = 3
-y = np.ones((lmax + 1) ** 2, dtype=float)
+y = np.zeros((lmax + 1) ** 2, dtype=float)
+y[8] = 1
 
-# The polynomial term we're integrating
-print(np.dot(A(lmax), y))
+# Rotate it (null rotation for now)
+RRy = y
 
-print(S(lmax, 0.001, 0.5))
+# Convert to the Greens basis
+ARRy = np.dot(A(lmax), RRy)
+
+
+# DEBUG
+# Let's compute the light curves for each of the Greens basis terms
+for l in range(lmax):
+    for m in range(-l, l + 1):
+        F = np.array([slm(l, m, b[i], r) for i, _ in enumerate(b)])
+        pl.plot(b, F - np.nanmean(F))
+pl.show()
 quit()
 
 
-r = 0.5
-b = np.linspace(0, 2, 500)
+# Compute the integrals
+ST = np.array([S(lmax, b[i], r).T for i, _ in enumerate(b)])
 
-F = [np.dot(np.dot(S(lmax, bi, r).T, A(lmax)), y) for bi in b]
+# Magic!
+F = np.dot(ST, ARRy)
 
+# Plot
 pl.plot(b, F)
 pl.show()

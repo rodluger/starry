@@ -55,4 +55,4 @@ def MandelAgolFlux(b, r):
 
     # Normalized flux during occultation
     F = 1 - 1.5 * lam - step(r - b)
-    return tot * F
+    return float(tot * F)
