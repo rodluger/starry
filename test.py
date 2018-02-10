@@ -14,28 +14,6 @@ res = 30
 bvec = np.linspace(0, 2, npts)
 bbrt = np.linspace(0, 2, nbrt)
 
-'''
-# DEBUG
-N = (lmax + 1) ** 2
-F = np.zeros(npts, dtype=float)
-Fbrt = np.zeros(nbrt, dtype=float)
-y = np.zeros(N, dtype=float)
-y[12] = 1
-RRy = y
-ARRy = np.dot(A(lmax), RRy)
-
-for i, b in enumerate(bvec):
-    sT = S(lmax, b, r)
-    F[i] = np.dot(sT, ARRy)
-for i, b in enumerate(bbrt):
-    Fbrt[i] = brute(y, 0, b, r, res=res)
-pl.plot(bvec, F, '-', lw=1)
-pl.plot(bbrt, Fbrt, '.', ms=2)
-pl.show()
-quit()
-# /DEBUG
-'''
-
 # The flux arrays
 N = (lmax + 1) ** 2
 F = np.zeros((N, npts), dtype=float)

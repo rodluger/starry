@@ -226,13 +226,64 @@ def dlmn(L, s1, c1, c2, TGBET2, s3, c3, DL, RL):
         COSMAL = AUX
 
 
-def R(lmax, alpha, beta, gamma):
+def R(lmax, u, theta):
     """Return the full rotation matrix for a given spherical harmonic order."""
-    c1 = np.cos(alpha)
-    s1 = np.sin(alpha)
-    c2 = np.cos(beta)
-    s2 = np.sin(beta)
-    c3 = np.cos(gamma)
-    s3 = np.sin(gamma)
-    mat = rotar(lmax, c1, s1, c2, s2, c3, s3)
+    # Construct the axis-angle rotation matrix R_A
+    ux, uy, uz = u
+    costheta = np.cos(theta)
+    sintheta = np.sin(theta)
+    RA = np.zeros((3, 3))
+    RA[0, 0] = costheta + ux ** 2 * (1 - costheta)
+    RA[0, 1] = ux * uy * (1 - costheta) - uz * sintheta
+    RA[0, 2] = ux * uz * (1 - costheta) + uy * sintheta
+    RA[1, 0] = uy * ux * (1 - costheta) + uz * sintheta
+    RA[1, 1] = costheta + uy ** 2 * (1 - costheta)
+    RA[1, 2] = uy * uz * (1 - costheta) - ux * sintheta
+    RA[2, 0] = uz * ux * (1 - costheta) - uy * sintheta
+    RA[2, 1] = uz * uy * (1 - costheta) + ux * sintheta
+    RA[2, 2] = costheta + uz ** 2 * (1 - costheta)
+
+    # Determine the Euler angles
+    if RA[2, 2] == -1:
+        cosbeta = -1
+        sinbeta = 0
+        cosgamma = RA[1, 1]
+        singamma = RA[0, 1]
+        cosalpha = 1
+        sinalpha = 0
+    elif RA[2, 2] == 1:
+        cosbeta = 1
+        sinbeta = 0
+        cosgamma = RA[1, 1]
+        singamma = -RA[0, 1]
+        cosalpha = 1
+        sinalpha = 0
+    else:
+        cosbeta = RA[2, 2]
+        sinbeta = np.sqrt(1 - cosbeta ** 2)
+        cosgamma = -RA[2, 0] / np.sqrt(RA[2, 0] ** 2 + RA[2, 1] ** 2)
+        singamma = RA[2, 1] / np.sqrt(RA[2, 0] ** 2 + RA[2, 1] ** 2)
+        cosalpha = RA[0, 2] / np.sqrt(RA[0, 2] ** 2 + RA[1, 2] ** 2)
+        sinalpha = RA[1, 2] / np.sqrt(RA[0, 2] ** 2 + RA[1, 2] ** 2)
+
+    '''
+    # We can verify that the rotation matrix for the Euler
+    # angles,
+    #
+    # R_E = R_alpha . R_beta . R_gamma
+    #
+    # is identical:
+    RE = np.zeros((3, 3))
+    RE[0, 0] = cosalpha * cosbeta * cosgamma - sinalpha * singamma
+    RE[0, 1] = -cosgamma * sinalpha - cosalpha * cosbeta * singamma
+    RE[0, 2] = cosalpha * sinbeta
+    RE[1, 0] = cosbeta * cosgamma * sinalpha + cosalpha * singamma
+    RE[1, 1] = cosalpha * cosgamma - cosbeta * sinalpha * singamma
+    RE[1, 2] = sinalpha * sinbeta
+    RE[2, 0] = -cosgamma * sinbeta
+    RE[2, 1] = sinbeta * singamma
+    RE[2, 2] = cosbeta
+    '''
+
+    mat = rotar(lmax, cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma)
     return mat.matrix
