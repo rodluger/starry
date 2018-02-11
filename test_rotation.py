@@ -12,15 +12,18 @@ y = [0, 1, 0, 0]
 class animated():
     """Plot an animated GIF showing the rotation of a Ylm."""
 
-    def __init__(self, y=[0, 1, 0, 0], res=300, dpi=100, fps=10, frames=50):
+    def __init__(self, l=3, m=-2, res=300, dpi=100, fps=10, frames=100):
         """Initialize."""
-        self.y = y
+        self.l = l
+        self.m = m
+        self.y = np.zeros((self.l + 1) ** 2, dtype=float)
+        self.y[self.l ** 2 + l + m] = 1
         self.res = res
         self.frames = frames
         self.u = np.array([[[1, 0, 0],
                             [0, 1, 0]],
                            [[0, 0, 1],
-                            [1, 0, 0]]])
+                            [3 ** -0.5, 3 ** -0.5, 3 ** -0.5]]])
         self.img = np.array([[None, None], [None, None]])
 
         # Set up the plot
@@ -56,17 +59,16 @@ class animated():
                                                  repeat=True, blit=True)
 
         # Save
-        # self.animation.save('ylms.gif', writer='imagemagick',
-        #                    fps=fps, dpi=dpi)
-        # pl.close()
-        pl.show()
+        self.animation.save('test_rotation.gif', writer='imagemagick',
+                            fps=fps, dpi=dpi)
+        pl.close()
 
     def animate(self, k):
         """Run the animation."""
-        # print("Rendering frame %d/%d..." % (j + 1, self.frames))
+        print("Rendering frame %d/%d..." % (k + 1, self.frames))
         for p in range(2):
             for q in range(2):
-                Ry = np.dot(R(2, self.u[p, q], self.theta[k]), self.y)
+                Ry = np.dot(R(self.l, self.u[p, q], self.theta[k]), self.y)
                 poly = y2p(Ry)
                 flux = np.zeros((100, 100)) * np.nan
                 for i, x in enumerate(np.linspace(-1, 1, 100)):
@@ -76,6 +78,5 @@ class animated():
                             flux[j][i] = evaluate_poly(poly, x, y)
                 self.img[p, q].set_data(flux)
         return self.img[0, 0], self.img[0, 1], self.img[1, 0], self.img[1, 1]
-
 
 animated()

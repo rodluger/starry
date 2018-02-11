@@ -29,7 +29,7 @@ class MATRIX(object):
     def matrix(self):
         """Return the full block diagonal matrix."""
         R = []
-        for order in range(self.lmax):
+        for order in range(self.lmax + 1):
             offset = self.lmax - order
             if offset > 0:
                 R.append(self._matrix[offset:-offset, offset:-offset, order])
@@ -226,7 +226,7 @@ def dlmn(L, s1, c1, c2, TGBET2, s3, c3, DL, RL):
         COSMAL = AUX
 
 
-def R(lmax, u, theta):
+def R(lmax, u, theta, tol=1e-15):
     """Return the full rotation matrix for a given spherical harmonic order."""
     # Construct the axis-angle rotation matrix R_A
     ux, uy, uz = u
@@ -244,14 +244,14 @@ def R(lmax, u, theta):
     RA[2, 2] = costheta + uz ** 2 * (1 - costheta)
 
     # Determine the Euler angles
-    if RA[2, 2] == -1:
+    if (RA[2, 2] < -1 + tol) and (RA[2, 2] > -1 - tol):
         cosbeta = -1
         sinbeta = 0
         cosgamma = RA[1, 1]
         singamma = RA[0, 1]
         cosalpha = 1
         sinalpha = 0
-    elif RA[2, 2] == 1:
+    elif (RA[2, 2] < 1 + tol) and (RA[2, 2] > 1 - tol):
         cosbeta = 1
         sinbeta = 0
         cosgamma = RA[1, 1]
