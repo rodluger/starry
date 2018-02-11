@@ -1,18 +1,20 @@
 """Test the STARRY integration routines."""
-from starry import A, S
+import sys; sys.path.insert(1, "../")
+from starry import R, A, S
 from starry.integrals import brute
 import numpy as np
 import matplotlib.pyplot as pl
 
 
 # Occultation parameters
-npts = 500
+npts = 100
 nbrt = 50
 lmax = 3
 r = 0.3
 res = 30
-bvec = np.linspace(0, 2, npts)
-bbrt = np.linspace(0, 2, nbrt)
+y0 = 0.5
+x0hires = np.linspace(-2, 2, npts)
+x0lores = np.linspace(-2, 2, nbrt)
 
 # The flux arrays
 N = (lmax + 1) ** 2
@@ -24,24 +26,32 @@ n = 0
 for l in range(lmax + 1):
     for m in range(-l, l + 1):
 
+        print(l, m)
+
         # Construct the vector for this Ylm
         y = np.zeros(N, dtype=float)
         y[n] = 1
 
-        # Rotate it (null rotation for now)
-        RRy = y
+        # Loop through the timeseries
+        for i, x0 in enumerate(x0hires):
 
-        # Convert to the Greens basis
-        ARRy = np.dot(A(lmax), RRy)
+            # Rotate the map about z to align the occultor with the y axis
+            b = np.sqrt(x0 ** 2 + y0 ** 2)
+            sintheta = x0 / b
+            costheta = y0 / b
+            u = [0., 0., 1.]
+            RRy = np.dot(R(lmax, u, costheta, sintheta), y)
 
-        # Compute the integrals and solve for the flux array
-        for i, b in enumerate(bvec):
+            # Convert to the Greens basis
+            ARRy = np.dot(A(lmax), RRy)
+
+            # Compute the integrals and solve for the flux array
             sT = S(lmax, b, r)
             F[n, i] = np.dot(sT, ARRy)
 
         # Compute the brute force flux
-        for i, b in enumerate(bbrt):
-            Fbrt[n, i] = brute(y, 0, b, r, res=res)
+        for i, x0 in enumerate(x0lores):
+            Fbrt[n, i] = brute(y, x0, y0, r, res=res)
 
         n += 1
 
@@ -76,8 +86,8 @@ for i, l in enumerate(range(lmax + 1)):
         j += lmax - l
 
         # Plot the fluxes
-        ax[i, j].plot(bvec, F[n], '-', lw=1)
-        ax[i, j].plot(bbrt, Fbrt[n], '.', ms=2)
+        ax[i, j].plot(x0hires, F[n], '-', lw=1)
+        ax[i, j].plot(x0lores, Fbrt[n], '.', ms=2)
 
         # Fix the y limits
         baseline = F[n, -1]

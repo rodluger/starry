@@ -1,4 +1,5 @@
 """Test the STARRY rotation routines."""
+import sys; sys.path.insert(1, "../")
 from starry import R
 from starry.basis import evaluate_poly, y2p
 import numpy as np
@@ -68,7 +69,9 @@ class animated():
         print("Rendering frame %d/%d..." % (k + 1, self.frames))
         for p in range(2):
             for q in range(2):
-                Ry = np.dot(R(self.l, self.u[p, q], self.theta[k]), self.y)
+                Ry = np.dot(R(self.l, self.u[p, q],
+                              np.cos(self.theta[k]),
+                              np.sin(self.theta[k])), self.y)
                 poly = y2p(Ry)
                 flux = np.zeros((100, 100)) * np.nan
                 for i, x in enumerate(np.linspace(-1, 1, 100)):
@@ -78,5 +81,6 @@ class animated():
                             flux[j][i] = evaluate_poly(poly, x, y)
                 self.img[p, q].set_data(flux)
         return self.img[0, 0], self.img[0, 1], self.img[1, 0], self.img[1, 1]
+
 
 animated()

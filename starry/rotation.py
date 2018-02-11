@@ -226,12 +226,10 @@ def dlmn(L, s1, c1, c2, TGBET2, s3, c3, DL, RL):
         COSMAL = AUX
 
 
-def R(lmax, u, theta, tol=1e-15):
+def R(lmax, u, costheta, sintheta, tol=1e-15):
     """Return the full rotation matrix for a given spherical harmonic order."""
     # Construct the axis-angle rotation matrix R_A
     ux, uy, uz = u
-    costheta = np.cos(theta)
-    sintheta = np.sin(theta)
     RA = np.zeros((3, 3))
     RA[0, 0] = costheta + ux ** 2 * (1 - costheta)
     RA[0, 1] = ux * uy * (1 - costheta) - uz * sintheta
