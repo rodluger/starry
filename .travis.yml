@@ -1,7 +1,7 @@
 # Adapted from http://dfm.io/posts/travis-latex/
 sudo: false
 
-language: generic
+language: python
 
 matrix:
     include:

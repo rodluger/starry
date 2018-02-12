@@ -7,6 +7,21 @@ from .integrals import S, brute
 __all__ = ["starry", "ylm"]
 
 
+class YlmVector(np.ndarray):
+    """A spherical harmonic vector class."""
+    def __new__(subtype, shape, dtype=float, buffer=None, offset=0,
+                strides=None, order=None, info=None):
+        obj = super(YlmVector, subtype).__new__(subtype, shape, dtype,
+                                                buffer, offset, strides,
+                                                order)
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None: 
+            return
+        self.info = getattr(obj, 'info', None)
+
+
 def ylm(l, m):
     """Return a Ylm vector corresponding to the spherical harmonic Y_{l,m}."""
     assert (l >= 0), "Order `l` must be greater than or equal to zero."
