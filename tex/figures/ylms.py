@@ -1,6 +1,6 @@
 """Plot the Ylms on the surface of the sphere."""
 import sys; sys.path.insert(1, '../../')
-from starry import starry, ylm
+from starry import starry
 import matplotlib.pyplot as pl
 import matplotlib.animation as animation
 import numpy as np
@@ -13,6 +13,7 @@ class animated():
                  u=[0., 1., 0.]):
         """Initialize."""
         self.lmax = lmax
+        self.s = starry(lmax)
         self.res = res
         self.u = np.array(u)
         self.frames = frames
@@ -48,8 +49,9 @@ class animated():
                 j += self.lmax - l
 
                 # Compute the spherical harmonic
-                s = starry(ylm(l, m))
-                self.flux = s.render(self.u, 0, res=self.res)
+                self.s[:] = 0
+                self.s[l, m] = 1
+                self.flux = self.s.render(self.u, 0, res=self.res)
 
                 # Plot the spherical harmonic
                 img = self.ax[i, j].imshow(self.flux, cmap='plasma',
@@ -77,8 +79,9 @@ class animated():
         theta = self.theta[j]
         for i, l in enumerate(range(self.lmax + 1)):
             for j, m in enumerate(range(-l, l + 1)):
-                s = starry(ylm(l, m))
-                self.flux = s.render(self.u, theta, res=self.res)
+                self.s[:] = 0
+                self.s[l, m] = 1
+                self.flux = self.s.render(self.u, theta, res=self.res)
                 self.img[n].set_data(self.flux)
                 n += 1
         return self.img
@@ -110,6 +113,7 @@ def static(lmax=5, res=300):
 
     # Plot it
     flux = np.empty((res, res), dtype=float)
+    s = starry(lmax)
 
     # Loop over the orders and degrees
     for i, l in enumerate(range(lmax + 1)):
@@ -122,7 +126,8 @@ def static(lmax=5, res=300):
             # with no rotation
             u = np.array([1., 0., 0.])
             theta = 0.
-            s = starry(ylm(l, m))
+            s[:] = 0
+            s[l, m] = 1
             flux = s.render(u, theta, res=res)
 
             # Plot the spherical harmonic

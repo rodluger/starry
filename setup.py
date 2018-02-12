@@ -38,7 +38,5 @@ setup(name='starry',
       dependency_links=[],
       scripts=[],
       include_package_data=True,
-      zip_safe=False,
-      test_suite='nose.collector',
-      tests_require=['nose']
+      zip_safe=False
       )
