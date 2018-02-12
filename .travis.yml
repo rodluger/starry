@@ -16,7 +16,7 @@ before_install:
 install:
   - conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
   - source activate test
-  - conda install --yes numpy scipy matplotlib nose
+  - conda install --yes numpy scipy matplotlib nose sympy
   - ln -sf $(which gcc) x86_64-conda_cos6-linux-gnu-gcc
   - python setup.py develop
 
