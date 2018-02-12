@@ -9,7 +9,9 @@ then
 
     # Generate the figures
     cd tex/figures
-    python *.py
+    for f in *.py; do
+        python "$f"
+    done
 
     # Build the paper using tectonic
     cd ../
@@ -17,7 +19,7 @@ then
 
     # Force push the paper to GitHub
     cd $TRAVIS_BUILD_DIR
-    git checkout --orphan $TRAVIS_BRANCH-pdf
+    git checkout --orphan pdf
     git rm -rf .
     git add -f tex/starry.pdf
     git -c user.name='travis' -c user.email='travis' commit -m "building the paper"
