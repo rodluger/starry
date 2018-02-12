@@ -3,7 +3,7 @@ import numpy as np
 from scipy.linalg import block_diag
 
 
-__all__ = ["R"]
+__all__ = ["R", "Rz"]
 
 
 class MATRIX(object):
@@ -48,7 +48,7 @@ def rooti(x):
     return 1 / np.sqrt(x)
 
 
-def rotar(lmax, c1, s1, c2, s2, c3, s3):
+def rotar(lmax, c1, s1, c2, s2, c3, s3, tol=1e-15):
     """
     Return the rotation matrix.
 
@@ -68,7 +68,6 @@ def rotar(lmax, c1, s1, c2, s2, c3, s3):
     RECIPROCALS.
     """
     # Initialize the matrices
-    assert lmax > 0, "Parameter lmax must be greater than zero."
     RL = MATRIX(lmax)
     DL = MATRIX(lmax)
 
@@ -100,7 +99,7 @@ def rotar(lmax, c1, s1, c2, s2, c3, s3):
 
     # THE REMAINING MATRICES ARE CALCULATED USING SYMMETRY AND
     # RECURRENCE RELATIONS BY MEANS OF THE SUBROUTINE DLMN.
-    if np.abs(s2) < 1.e-15:
+    if np.abs(s2) < tol:
         TGBET2 = 0.
     else:
         TGBET2 = (1. - c2) / s2
@@ -228,6 +227,10 @@ def dlmn(L, s1, c1, c2, TGBET2, s3, c3, DL, RL):
 
 def R(lmax, u, costheta, sintheta, tol=1e-15):
     """Return the full rotation matrix for a given spherical harmonic order."""
+    # Check for the trivial case
+    if lmax == 0:
+        return np.ones((1, 1), dtype=float)
+
     # Construct the axis-angle rotation matrix R_A
     ux, uy, uz = u
     RA = np.zeros((3, 3))
@@ -265,12 +268,13 @@ def R(lmax, u, costheta, sintheta, tol=1e-15):
         sinalpha = RA[1, 2] / np.sqrt(RA[0, 2] ** 2 + RA[1, 2] ** 2)
 
     '''
-    # We can verify that the rotation matrix for the Euler
+    # We could at this point verify that the rotation matrix for the Euler
     # angles,
     #
     # R_E = R_alpha . R_beta . R_gamma
     #
-    # is identical:
+    # is identical to R_A:
+    #
     RE = np.zeros((3, 3))
     RE[0, 0] = cosalpha * cosbeta * cosgamma - sinalpha * singamma
     RE[0, 1] = -cosgamma * sinalpha - cosalpha * cosbeta * singamma
@@ -283,5 +287,25 @@ def R(lmax, u, costheta, sintheta, tol=1e-15):
     RE[2, 2] = cosbeta
     '''
 
-    mat = rotar(lmax, cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma)
+    mat = rotar(lmax, cosalpha, sinalpha, cosbeta, sinbeta,
+                cosgamma, singamma, tol=tol)
+    return mat.matrix
+
+
+def Rz(lmax, costheta, sintheta, tol=1e-15):
+    """Return the rotation matrix for rotation about z."""
+    # Check for the trivial case
+    if lmax == 0:
+        return np.ones((1, 1), dtype=float)
+
+    # Determine the Euler angles
+    cosbeta = 1
+    sinbeta = 0
+    cosgamma = costheta
+    singamma = sintheta
+    cosalpha = 1
+    sinalpha = 0
+
+    mat = rotar(lmax, cosalpha, sinalpha, cosbeta,
+                sinbeta, cosgamma, singamma, tol=tol)
     return mat.matrix
