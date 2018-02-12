@@ -1,0 +1,137 @@
+% All the packages
+\usepackage{microtype}
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{esint}
+\usepackage{amssymb}
+\usepackage{natbib}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{scalerel}
+\usepackage{tikz}
+\usepackage{calc}
+\usepackage{etoolbox}
+\usepackage{marginnote}
+\usepackage{nicefrac}
+\usepackage{tabstackengine}
+\usepackage{diagbox}
+\usepackage{xcolor}
+\usepackage[makeroom]{cancel}
+\stackMath
+
+% Bibliography stuff
+\bibliographystyle{aasjournal}
+
+% Shorthand for this paper
+\newcommand{\starry}{\textsc{starry}}
+
+% References to text content
+\newcommand{\documentname}{\textsl{article}}
+\newcommand{\figureref}[1]{\ref{fig:#1}}
+\newcommand{\Figure}[1]{Figure~\figureref{#1}}
+\newcommand{\figurelabel}[1]{\label{fig:#1}}
+\renewcommand{\eqref}[1]{\ref{eq:#1}}
+\newcommand{\Eq}[1]{Equation~(\eqref{#1})}
+\newcommand{\eq}[1]{\Eq{#1}}
+\newcommand{\eqalt}[1]{Equation~\eqref{#1}}
+\newcommand{\eqlabel}[1]{\label{eq:#1}}
+
+% Add script hyperlinks as margin notes
+\definecolor{proofcolor}{rgb}{0.1216,0.4667,0.7059}
+\newcommand{\script}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.py}{\color{proofcolor}\scriptsize\textbf{[script]}}}}
+\newcommand{\todo}[1]{\marginnote{\color{red}\textbf{todo:}\\\scriptsize\textbf{#1}}}
+
+% Force margin notes to always be on the right side
+% https://tex.stackexchange.com/a/69624
+\makeatletter
+\long\def\@mn@@@marginnote[#1]#2[#3]{%
+  \begingroup
+    \ifmmode\mn@strut\let\@tempa\mn@vadjust\else
+      \if@inlabel\leavevmode\fi
+      \ifhmode\mn@strut\let\@tempa\mn@vadjust\else\let\@tempa\mn@vlap\fi
+    \fi
+    \@tempa{%
+      \vbox to\z@{%
+        \vss
+        \@mn@margintest
+        \if@reversemargin\if@tempswa
+            \@tempswafalse
+          \else
+            \@tempswatrue
+        \fi\fi
+          \rlap{%
+            \ifx\@mn@currxpos\relax
+              \kern\marginnoterightadjust
+              \if@mn@verbose
+                \PackageInfo{marginnote}{%
+                  xpos not known,\MessageBreak
+                  using \string\marginnoterightadjust}%
+              \fi
+            \else\ifx\@mn@currxpos\@empty
+                \kern\marginnoterightadjust
+                \if@mn@verbose
+                  \PackageInfo{marginnote}{%
+                    xpos not known,\MessageBreak
+                    using \string\marginnoterightadjust}%
+                \fi
+              \else
+                \if@mn@verbose
+                  \PackageInfo{marginnote}{%
+                    xpos seems to be \@mn@currxpos,\MessageBreak
+                    \string\marginnoterightadjust
+                    \space ignored}%
+                \fi
+                \begingroup
+                  \setlength{\@tempdima}{\@mn@currxpos}%
+                  \kern-\@tempdima
+                  \if@twoside\ifodd\@mn@currpage\relax
+                      \kern\oddsidemargin
+                    \else
+                      \kern\evensidemargin
+                    \fi
+                  \else
+                    \kern\oddsidemargin
+                  \fi
+                  \kern 1in
+                \endgroup
+              \fi
+            \fi
+            \kern\marginnotetextwidth\kern\marginparsep
+            \vbox to\z@{\kern\marginnotevadjust\kern #3
+              \vbox to\z@{%
+                \hsize\marginparwidth
+                \linewidth\hsize
+                \kern-\parskip
+                \marginfont\raggedrightmarginnote\strut\hspace{\z@}%
+                \ignorespaces#2\endgraf
+                \vss}%
+              \vss}%
+          }%
+      }%
+    }%
+  \endgroup
+}
+\makeatother
+
+% Math stuff
+\newcommand{\T}{\ensuremath{\mathrm{T}}}
+\newcommand{\dd}{\ensuremath{ \mathrm{d}}}
+\newcommand{\unit}[1]{{\ensuremath{\mathrm{#1}}}}
+\newcommand{\bvec}[1]{{\ensuremath{\mathbf{#1}}}}
+\newcommand{\avec}[1]{{\ensuremath{\vec{\mathbf{#1}}}}}
+\newcommand{\x}{\ensuremath{\mbox{\boldmath$x$}}}
+\newcommand{\y}{\ensuremath{\mbox{\boldmath$y$}}}
+\newcommand{\z}{\ensuremath{\mbox{\boldmath$z$}}}
+\newcommand{\xhat}{\ensuremath{\mathbf{\hat{x}}}}
+\newcommand{\yhat}{\ensuremath{\mathbf{\hat{y}}}}
+\newcommand{\zhat}{\ensuremath{\mathbf{\hat{z}}}}
+\DeclareMathAlphabet\mathbfcal{OMS}{cmsy}{b}{n}
+\DeclareMathOperator{\Tr}{Tr}
+\definecolor{dim}{rgb}{0.8,0.8,0.8}
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\setcounter{MaxMatrixCols}{20}
+
+% Typography obsessions
+\setlength{\parindent}{3.0ex}
+\renewcommand\quad{\hskip\fontdimen3\font}
