@@ -2,7 +2,7 @@
   <img width = "350" src="https://github.com/rodluger/starry/blob/master/starry.png?raw=true"/>
   <br>
   Analytic occultation light curves for astronomy.
-  <br>
+  <hr style="height:30pt; visibility:hidden;" />
   <a href="https://travis-ci.org/rodluger/starry/"><img src="https://travis-ci.org/rodluger/starry.svg?branch=master"/></a>
   <a href="https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/pdf/starry.pdf"><img src="https://img.shields.io/badge/read-the_paper-brightgreen.svg?style=flat"/></a>
 </p>
