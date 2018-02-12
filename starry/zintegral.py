@@ -1,7 +1,7 @@
 """Compute the z term of the polynomial integral matrix `S`."""
 import numpy as np
 from scipy.special import ellipe, ellipk
-from sympy.mpmath import ellippi
+from mpmath import ellippi
 
 
 __all__ = ["MandelAgolFlux"]
