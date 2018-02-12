@@ -2,20 +2,17 @@
 
 if git diff --name-only $TRAVIS_COMMIT_RANGE | grep 'tex/'
 then
-    # Install tectonic using conda
-    wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-    bash miniconda.sh -b -p $HOME/miniconda
-    export PATH="$HOME/miniconda/bin:$PATH"
-    hash -r
-    conda config --set always_yes yes --set changeps1 no
-    conda update -q conda
-    conda info -a
+    # Conda env
     conda create --yes -n paper
     source activate paper
     conda install -c conda-forge -c pkgw-forge tectonic
 
+    # Generate the figures
+    cd tex/figures
+    python *.py
+
     # Build the paper using tectonic
-    cd tex
+    cd ../
     tectonic starry.tex --print
 
     # Force push the paper to GitHub

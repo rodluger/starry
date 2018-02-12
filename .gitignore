@@ -16,7 +16,7 @@ starry.egg-info/
 *.blg
 tex/*.pdf
 tex/figures/*.pdf
-cartograpyNotes.bib
+starryNotes.bib
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

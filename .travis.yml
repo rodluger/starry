@@ -14,4 +14,3 @@ install:
 script: |
     py.test -v --cov starry
     source .ci/build-paper.sh
-      

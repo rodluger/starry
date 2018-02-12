@@ -1,14 +1,14 @@
 """Test the main STARRY code."""
 import sys; sys.path.insert(1, "../")
-from starry import starry, ylm
+from starry import starry
 import numpy as np
 
 
 def test_occultation():
     """Test an occultation calculation."""
     # Let's do Y_{3,2}
-    y = ylm(3, 2)
-    s = starry(y)
+    s = starry(3)
+    s[3, 2] = 1
 
     # Occultation params
     npts = 25
