@@ -313,17 +313,16 @@ coefficients such that the observed flux originating from the point
 $(\x, \y)$ may be written
 %
 \begin{align}
-    f(\x, \y) = \bvec{b_y}^\mathsf{T} \bvec{y}
+    f(\x, \y) = \ybasis^\mathsf{T} \bvec{y}
     \quad,
 \end{align}
 %
-where $\bvec{b_y} = \bvec{b_y}(\x, \y)$ is the basis of spherical harmonics,
-arranged in increasing
-degree and order:
+where $\ybasis = \ybasis(\x, \y)$ is the basis of spherical harmonics,
+arranged in increasing degree and order:
 %
 \begin{align}
     \label{eq:by}
-    \bvec{b_y} =
+    \ybasis =
     \begin{pmatrix}
         Y_{0, 0} &
         Y_{1, -1} & Y_{1, 0} & Y_{1, 1} &
@@ -572,18 +571,18 @@ those to construct the spherical harmonic rotation matrix
 In order to compute the occultation light curve for a body with a given surface
 map $\bvec{y}$, it is convenient to first find its polynomial representation
 $\bvec{p}$, which we express as a vector of coefficients in the
-polynomial basis $\bvec{b_p}$:
+polynomial basis $\pbasis$:
 %
 \begin{align}
     \label{eq:bp}
-    \bvec{b_p}_n &=
+    \pbasis_n &=
     \begin{dcases}
         \x^\frac{l-m}{2} \y^\frac{l+m}{2} & \qquad l+m \, \mathrm{even}
         \\
         \x^\frac{l-m-1}{2} \y^\frac{l+m-1}{2} \z & \qquad l+m \, \mathrm{odd}
     \end{dcases}
     \nonumber\\[0.5em]
-    \bvec{b_p} &=
+    \pbasis &=
     \begin{pmatrix}
         1 &
         \x & \z & \y &
@@ -600,20 +599,21 @@ As before, given $\bvec{p}$, the flux emitted from the point $(\x, \y)$
 may be computed as
 %
 \begin{align}
-    f(\x, \y) = \bvec{b_p}^\mathsf{T} \bvec{p}
+    f(\x, \y) = \pbasis^\mathsf{T} \bvec{p}
     \quad.
 \end{align}
 %
 To find $\bvec{p}$ given $\bvec{y}$, we
-introduce the change of basis matrix $\bvec{A_1}$, which transforms
-a vector in the spherical harmonic basis $\bvec{b_y}$ to the
-polynomial basis $\bvec{b_p}$:
+introduce the change of basis matrix $\AOne$,
+which transforms
+a vector in the spherical harmonic basis $\ybasis$ to the
+polynomial basis $\pbasis$:
 %
 \begin{align}
-    \bvec{p} = \bvec{A_1} \bvec{y}
+    \bvec{p} = \AOne \bvec{y}
 \end{align}
 %
-The columns of $\bvec{A_1}$ are simply the polynomial vectors
+The columns of $\AOne$ are simply the polynomial vectors
 corresponding to each of the spherical harmonics in \eq{by}. From
 Equations (\ref{eq:ylmxy}) and (\ref{eq:bp}), we can calculate
 the first few spherical harmonics and their corresponding polynomial vectors:
@@ -666,13 +666,13 @@ the first few spherical harmonics and their corresponding polynomial vectors:
 \end{array}
 \end{equation}
 %
-From these we can construct $\bvec{A_1}$. As an example, for spherical
+From these we can construct $\AOne$. As an example, for spherical
 harmonics up to order $l_\mathrm{max} = 3$, this is
 %
 \begin{equation}
     \setstackgap{L}{1.25\baselineskip}
     \fixTABwidth{T}
-    \bvec{A_1} =
+    \AOne =
     \frac{1}{2 \sqrt{\pi }}
         \parenMatrixstack{
             1 & 0 & 0 & 0 & 0 & 0 & \sqrt{5} & 0 & 0 \\
@@ -696,11 +696,11 @@ harmonics up to order $l_\mathrm{max} = 3$, this is
 
 As we will see in the next section, integrating the surface map over the disk of
 the body is easier if we apply one final transformation to our input vector,
-rotating it into what we will refer to as the \emph{Greens basis}, $\bvec{b_g}$:
+rotating it into what we will refer to as the \emph{Greens basis}, $\gbasis$:
 %
 \begin{align}
     \label{eq:bg}
-    \bvec{b_g}_n &=
+    \gbasis_n &=
     \begin{dcases}
         %
         \frac{\mu+2}{2}\x^\frac{\mu}{2} \y^\frac{\nu}{2}
@@ -737,7 +737,7 @@ rotating it into what we will refer to as the \emph{Greens basis}, $\bvec{b_g}$:
             & \qquad \mathrm{otherwise}
     \end{dcases}
     \nonumber\\[1.5em]
-    \bvec{b_g} &=
+    \gbasis &=
     \begin{pmatrix}
         1 &
         2\x & \z & \y &
@@ -761,21 +761,21 @@ the Greens basis, $\bvec{g}$, can be found by performing another
 change of basis operation:
 %
 \begin{align}
-    \bvec{g} = \bvec{A_2} \bvec{p}
+    \bvec{g} = \bvec{\ATwo} \bvec{p}
 \end{align}
 %
-where the columns of the matrix $\bvec{A_2}$ are the Greens vectors
+where the columns of the matrix $\ATwo$ are the Greens vectors
 corresponding to each of the polynomial terms in \eq{bp}. In practice,
-it is easier to express the elements of $\bvec{b_g}$ in terms
-of the elements of $\bvec{b_p}$ and use those to populate the
-columns of the matrix $\bvec{A_2}^{-1}$. Continuing our example
+it is easier to express the elements of $\gbasis$ in terms
+of the elements of $\pbasis$ and use those to populate the
+columns of the matrix $\ATwo^{-1}$. Continuing our example
 for $l_\mathrm{max} = 3$, our second change of basis matrix
 is
 %
 \begin{equation}
     \setstackgap{L}{1.25\baselineskip}
     \fixTABwidth{T}
-    \bvec{A_2} =
+    \ATwo =
         \parenMatrixstack{
             \quad\quad\, 1\, \quad\quad\quad\quad & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
             0 & \frac{1}{2} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
@@ -790,15 +790,15 @@ is
     \notebook{A2}
 \end{equation}
 %
-Given $\bvec{A_1}$ and $\bvec{A_2}$, we can easily transform a spherical harmonic
+Given $\AOne$ and $\ATwo$, we can easily transform a spherical harmonic
 vector $\bvec{y}$ to a Greens vector $\bvec{g}$:
 %
 \begin{align}
-    \bvec{g} &= \bvec{A_2} \bvec{A_1} \bvec{y} \nonumber \\
+    \bvec{g} &= \ATwo \AOne \bvec{y} \nonumber \\
              &= \bvec{A} \, \bvec{y}
 \end{align}
 %
-where $\bvec{A} = \bvec{A_2} \bvec{A_1}$ is the full change of basis matrix. For
+where $\bvec{A} = \ATwo \AOne$ is the full change of basis matrix. For
 $l_\mathrm{max} = 3$,
 %
 \begin{equation}
@@ -824,7 +824,7 @@ described by the spherical harmonic vector $\bvec{y}$ is
 %
 \begin{align}
     \label{eq:fluxpoint}
-    f(\x, \y) = \bvec{b_g}^\mathsf{T} \bvec{A} \, \bvec{y}
+    f(\x, \y) = \gbasis^\mathsf{T} \bvec{A} \, \bvec{y}
     \quad.
 \end{align}
 %
@@ -852,7 +852,7 @@ map over the visible portion of the occulted body's disk:
     \oiint f(\x, \y) \, \dd \bvec{S}
     \nonumber \\
     &=
-    \oiint \bvec{b_g}^\mathsf{T} (\x, \y) \bvec{A} \, \bvec{y} \, \dd \bvec{S}
+    \oiint \gbasis^\mathsf{T} (\x, \y) \bvec{A} \, \bvec{y} \, \dd \bvec{S}
     \nonumber \\
     &= \bvec{s}^\mathsf{T} \bvec{A} \, \bvec{y} \,
       \quad,
@@ -864,7 +864,7 @@ whose $n^\mathrm{th}$ component is given by
 %
 \begin{align}
     \bvec{s}_n &\equiv
-      \oiint \bvec{b_g}_n (\x, \y)  \, \dd \bvec{S}
+      \oiint \gbasis_n (\x, \y)  \, \dd \bvec{S}
     \quad.
 \end{align}
 %
@@ -874,23 +874,23 @@ difficult (and often impossible) to compute directly.
 %
 A clever workaround, introduced by \citet{Pal2012},
 is to use Green's theorem to express this surface integral as the line integral
-of a vector function $\avec{G}$ along the boundary of the same surface:
+of a vector function $\bvec{G}_n$ along the boundary of the same surface:
 %
 \begin{align}
     \label{eq:greens}
     \bvec{s}_n &=
-    \oiint \bvec{b_g}_n (\x, \y) \, \dd \bvec{S}
+    \oiint \gbasis_n (\x, \y) \, \dd \bvec{S}
     =
-    \oint \bvec{G} (\x, \y) \cdot \dd \avec{r}
+    \oint \bvec{G}_n (\x, \y) \cdot \dd \avec{r}
     \quad
 \end{align}
 %
-where $\bvec{G} (\x, \y) = G_x (\x, \y) \, \xhat + G_y (\x, \y) \, \yhat$ is
+where $\bvec{G}_n (\x, \y) = {G_n}_x (\x, \y) \, \xhat + {G_n}_y (\x, \y) \, \yhat$ is
 chosen such that
 %
 \begin{align}
     \label{eq:DGL}
-    \bvec{G} \wedge \bvec{F} = \bvec{b_g}_n(\x, \y)
+    \bvec{G} \wedge \bvec{F} = \gbasis_n(\x, \y)
     \quad.
 \end{align}
 %
@@ -900,8 +900,8 @@ coordinates, it is given by
 %
 \begin{align}
     \label{eq:extderiv}
-    \bvec{D} \wedge \bvec{G} &\equiv \frac{\dd G_y}{\dd \x}
-                                   - \frac{\dd G_x}{\dd \y} \quad.
+    \bvec{D} \wedge \bvec{G} &\equiv \frac{\dd {G_n}_y}{\dd \x}
+                                   - \frac{\dd {G_n}_x}{\dd \y} \quad.
 \end{align}
 %
 
