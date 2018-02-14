@@ -313,7 +313,7 @@ coefficients such that the observed flux originating from the point
 $(\x, \y)$ may be written
 %
 \begin{align}
-    F(\x, \y) = \bvec{b_y}^\mathsf{T} \bvec{y}
+    f(\x, \y) = \bvec{b_y}^\mathsf{T} \bvec{y}
     \quad,
 \end{align}
 %
@@ -600,7 +600,7 @@ As before, given $\bvec{p}$, the flux emitted from the point $(\x, \y)$
 may be computed as
 %
 \begin{align}
-    F(\x, \y) = \bvec{b_p}^\mathsf{T} \bvec{p}
+    f(\x, \y) = \bvec{b_p}^\mathsf{T} \bvec{p}
     \quad.
 \end{align}
 %
@@ -823,7 +823,8 @@ For completeness, we note that the flux emitted from a given point on a map
 described by the spherical harmonic vector $\bvec{y}$ is
 %
 \begin{align}
-    F(\x, \y) = \bvec{b_g}^\mathsf{T} \bvec{A} \bvec{y}
+    \label{eq:fluxpoint}
+    f(\x, \y) = \bvec{b_g}^\mathsf{T} \bvec{A} \, \bvec{y}
     \quad.
 \end{align}
 %
@@ -839,7 +840,7 @@ described by the spherical harmonic vector $\bvec{y}$ is
 % ==============================================================================
 
 Consider a body of unit radius centered at the origin, with a surface map
-given by the function $M(\x, \y)$,
+given by the spherical harmonic vector $\bvec{y}$,
 being occulted by a body of radius $r$ centered at the point $(x_0, y_0)$.
 The total flux radiated
 in the direction of the observer is obtained by integrating the surface
@@ -848,17 +849,64 @@ map over the visible portion of the occulted body's disk:
 \begin{align}
     \label{eq:occint}
     F &=
-    \oiint M (\x, \y) \, \dd \bvec{A}
-    = \int_{x_1}^{x_2}
-      \int_{y_1}^{y_2}
-      M (\x, \y) \, \dd \y \, \dd \x
+    \oiint f(\x, \y) \, \dd \bvec{S}
+    \nonumber \\
+    &=
+    \oiint \bvec{b_g}^\mathsf{T} (\x, \y) \bvec{A} \, \bvec{y} \, \dd \bvec{S}
+    \nonumber \\
+    &= \bvec{s}^\mathsf{T} \bvec{A} \, \bvec{y} \,
       \quad,
 \end{align}
 %
-where $x_1$ and $x_2$ are functions of $r$, $x_0$, and $y_0$, while
-$y_1$ and $y_2$ are functions of $r$, $x_0$, $y_0$, and $\x$.
-In general, this integral is
+where we used \eq{fluxpoint} to express the flux in terms of our
+map vector $\bvec{y}$ and we defined $\bvec{s}$ to be the column vector
+whose $n^\mathrm{th}$ component is given by
+%
+\begin{align}
+    \bvec{s}_n &\equiv
+      \oiint \bvec{b_g}_n (\x, \y)  \, \dd \bvec{S}
+    \quad.
+\end{align}
+%
+In the equation above, the surface \bvec{S} over which the integral is taken
+is a function of $r$, $x_0$, and $y_0$. In general, this integral is
 difficult (and often impossible) to compute directly.
+%
+A clever workaround, introduced by \citet{Pal2012},
+is to use Green's theorem to express this surface integral as the line integral
+of a vector function $\avec{G}$ along the boundary of the same surface:
+%
+\begin{align}
+    \label{eq:greens}
+    \bvec{s}_n &=
+    \oiint \bvec{b_g}_n (\x, \y) \, \dd \bvec{S}
+    =
+    \oint \bvec{G} (\x, \y) \cdot \dd \avec{r}
+    \quad
+\end{align}
+%
+where $\bvec{G} (\x, \y) = G_x (\x, \y) \, \xhat + G_y (\x, \y) \, \yhat$ is
+chosen such that
+%
+\begin{align}
+    \label{eq:DGL}
+    \bvec{G} \wedge \bvec{F} = \bvec{b_g}_n(\x, \y)
+    \quad.
+\end{align}
+%
+The operation $\bvec{D} \wedge \bvec{G}$ denotes the
+\emph{exterior derivative} of $\bvec{G}$. In two-dimensional Cartesian
+coordinates, it is given by
+%
+\begin{align}
+    \label{eq:extderiv}
+    \bvec{D} \wedge \bvec{G} &\equiv \frac{\dd G_y}{\dd \x}
+                                   - \frac{\dd G_x}{\dd \y} \quad.
+\end{align}
+%
+
+
+
 
 %
 %
@@ -896,13 +944,67 @@ difficult (and often impossible) to compute directly.
 %
 %
 
-One way to simplify the problem is to perform a
-rotation through an angle $\theta = \nicefrac{\pi}{2} - \mathrm{arctan2}(y, x)$
-about the $z$-axis so that the occultor lies along the $+y$-axis,
-with its center located a distance $b = \sqrt{x_0^2 + y_0^2}$ from the origin
-(see Figure~\ref{fig:geometry}).
-
-\citet{MandelAgol2002}
+We simplify the problem by performing a
+rotation through an angle
+$\theta = \nicefrac{\pi}{2} - \mathrm{arctan2}(y_0, x_0)$
+about the $z$-axis ($\bvec{u} = \left[0, 0, 1\right]$)
+so that the occultor lies along the
+$+y$-axis, with its center located a distance $b = \sqrt{x_0^2 + y_0^2}$
+from the origin (see Figure~\ref{fig:geometry}).
+%
+In this rotated frame, the limits of integration (the two points of intersection
+between the occultor and the occulted body, should they exist)
+are symmetric about the $y$-axis.
+If we define $\phi \in [-\nicefrac{\pi}{2}, \, \nicefrac{\pi}{2}]$
+as the angular position of the right hand side intersection point
+relative to the occultor center, measured counter-clockwise
+from the $+x$ direction, the arc of the occultor that overlaps the occulted
+body extends from $\pi - \phi$ to $2\pi + \phi$ (see the Figure).
+Similarly, defining $\lambda \in [-\nicefrac{\pi}{2}, \, \nicefrac{\pi}{2}]$
+as the angular position of the same point relative to the origin, the
+arc of the portion of the occulted body that is visible during the occultation
+extends from $\pi - \lambda$ to $2\pi + \lambda$ (see the Figure).
+%
+With a little trig, it can be shown that
+%
+\begin{align}
+    \label{eq:philam}
+    \phi &=
+    \begin{dcases}
+        \arcsin{(\sinphi)}      & \qquad |1 - r| < b < 1 + r \\
+        \frac{\pi}{2}           & \qquad b \le 1 - r
+    \end{dcases}
+    \nonumber \\
+\intertext{and}
+    \lambda &=
+    \begin{dcases}
+        \arcsin{(\sinlambda)}      & \qquad |1 - r| < b < 1 + r \\
+        \frac{\pi}{2}              & \qquad b \le 1 - r
+    \end{dcases}
+\quad,
+\end{align}
+%
+where we define
+\begin{align}
+    \begin{split}
+        \sinphi &\equiv \frac{1 - r^2 - b^2}{2br}
+    \end{split}
+    \begin{split}
+        \sinlambda &\equiv b + r \sinphi
+    \end{split}
+    \quad.
+\end{align}
+%
+The case $b \le 1 - r$ corresponds to an occultation during which the occultor
+is fully within the planet disk, so no points of intersection exist.
+In this case,
+we define $\phi$ such that the arc from $\pi - \phi$ to $2\pi + \phi$ spans the
+entire circumference of the occultor, and $\lambda$ such that the arc
+from $\pi - \lambda$ to $2\pi + \lambda$ spans the
+entire circumference of the occulted body.
+Note that if $b \ge 1 + r$, no occultation occurs, while
+if $b \le r - 1$, the entire disk of the body is occulted and the total flux
+is zero.
 
 \bibliography{starry}
 
