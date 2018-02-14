@@ -1,0 +1,76 @@
+\begin{align}
+    \label{eq:pn}
+    v(l, m) &=
+    \begin{dcases}
+        \!\begin{aligned}%[b]
+            &
+                \sum_{j\, \mathrm{even}}^m
+                \sum_{k\, \mathrm{even}}^{l-m}
+                \sum_{p\,\mathrm{even}}^{k}
+                \sum_{q\,\mathrm{even}}^p
+                \left(-1\right)^{\frac{j+p}{2}}
+                A_{lm}
+                B_{lm}^{jk}
+                C_{pq}^{k}
+                \delta_{\mu, u} \, \delta_{\nu, v}
+            \, + \\
+            &
+                \sum_{j\, \mathrm{even}}^m
+                \sum_{k\, \mathrm{odd}}^{l-m}
+                \sum_{p\,\mathrm{even}}^{k - 1}
+                \sum_{q\,\mathrm{even}}^p
+                \left(-1\right)^{\frac{j+p}{2}}
+                A_{lm}
+                B_{lm}^{jk}
+                C_{pq}^{k - 1}
+                \delta_{\mu-1, u} \, \delta_{\nu-1, v}
+       \end{aligned}
+       &
+       \quad m \ge 0 \\
+       %
+       %
+       \\
+       %
+       %
+       \!\begin{aligned}%[b]
+           &
+               \sum_{j\, \mathrm{odd}}^{|m|}
+               \sum_{k\, \mathrm{even}}^{l-|m|}
+               \sum_{p\,\mathrm{even}}^{k}
+               \sum_{q\,\mathrm{even}}^p
+               \left(-1\right)^{\frac{j+p-1}{2}}
+               A_{l|m|}
+               B_{l|m|}^{jk}
+               C_{pq}^{k}
+               \delta_{\mu, u} \, \delta_{\nu, v}
+           \, + \\
+           &
+               \sum_{j\, \mathrm{odd}}^{|m|}
+               \sum_{k\, \mathrm{odd}}^{l-|m|}
+               \sum_{p\,\mathrm{even}}^{k - 1}
+               \sum_{q\,\mathrm{even}}^p
+               \left(-1\right)^{\frac{j+p-1}{2}}
+               A_{l|m|}
+               B_{l|m|}^{jk}
+               C_{pq}^{k - 1}
+               \delta_{\mu-1, u} \, \delta_{\nu-1, v}
+      \end{aligned}
+      &
+      \quad m < 0
+   \end{dcases}
+    %
+\end{align}
+%
+where
+%
+\begin{align}
+    l &= \floor*{\sqrt{n}} \nonumber \\
+    m &= n - \floor*{\sqrt{n}}^2 - \floor*{\sqrt{n}} \nonumber \\
+    \mu &= l - m \nonumber \\
+    \nu &= l + m \nonumber \\
+    u &= 2(m - j + p - q) \nonumber \\
+    v &= 2(j + q)
+\end{align}
+%
+and $\delta_{{\scaleto{\cdot}{6pt},\scaleto{\cdot}{6pt}}}$ is the Kronecker
+delta.

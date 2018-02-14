@@ -30,30 +30,24 @@
     to any of these cases.
 \end{abstract}
 
-
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 %
 \section{Introduction}
 \label{sec:intro}
-%
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 % ==============================================================================
 
 Write a kick-ass intro here! \todo{write intro}
-\pagebreak
-
-
-
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
+\pagebreak
 \section{Spherical Harmonics}
 \label{sec:spharm}
-%
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 % ==============================================================================
@@ -304,7 +298,535 @@ as a function of $\x$ and $\y$ only:
 %
 where $\z = \z(\x, \y) = \sqrt{1 - \x^2 - \y^2}$.
 
+% ==============================================================================
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+\pagebreak
+\section{Surface Map Vectors}
+\label{sec:vectors}
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+% ==============================================================================
 
+We represent a surface map as a vector $\bvec{y}$ of spherical harmonic
+coefficients such that the observed flux originating from the point
+$(\x, \y)$ may be written
+%
+\begin{align}
+    F(\x, \y) = \bvec{b_y}^\mathsf{T} \bvec{y}
+    \quad,
+\end{align}
+%
+where $\bvec{b_y} = \bvec{b_y}(\x, \y)$ is the basis of spherical harmonics,
+arranged in increasing
+degree and order:
+%
+\begin{align}
+    \label{eq:by}
+    \bvec{b_y} =
+    \begin{pmatrix}
+        Y_{0, 0} &
+        Y_{1, -1} & Y_{1, 0} & Y_{1, 1} &
+        Y_{2, -2} & Y_{2, -1} & Y_{2, 0} & Y_{2, 1} & Y_{2, 2} &
+        \cdot\cdot\cdot
+    \end{pmatrix}^\mathsf{T}
+    \quad,
+\end{align}
+%
+where $Y_{l, m} = Y_{l, m}(\x, \y)$ are given by \eq{ylmxy}.
+For reference, in this basis the coefficient of the spherical harmonic
+$Y_{l, m}$ is located at the index
+%
+\begin{align}
+    n = l^2 + l + m
+\end{align}
+%
+of the vector $\bvec{y}$. Conversely, the coefficient at index $n$
+of $\bvec{y}$ corresponds
+to the spherical harmonic of order and degree given by
+%
+\begin{align}
+    \label{eq:lm}
+    l &= \floor*{\sqrt{n}} \nonumber \\
+    m &= n - \floor*{\sqrt{n}}^2 - \floor*{\sqrt{n}}
+    \quad.
+\end{align}
+%
+
+% ==============================================================================
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+\pagebreak
+\section{Rotation}
+\label{sec:rotation}
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+% ==============================================================================
+
+% ------------------------------------------------------------------------------
+\subsection{Euler Angles}
+\label{sec:euler}
+% ------------------------------------------------------------------------------
+
+Defining a map as a vector of spherical harmonic coefficients makes it
+straightforward to compute the projection of the map under arbitrary rotations
+of the body via a rotation matrix $\bvec{R}$:
+%
+\begin{align}
+    \label{eq:rotation}
+    \bvec{y'} = \bvec{R} \, \bvec{y}
+\end{align}
+%
+where $\bvec{y'}$ are the spherical harmonic coefficients of the rotated map.
+\citet{AlvarezCollado1989} derived expressions for the rotation matrices for
+the real spherical harmonics of a given order $l$ from the corresponding
+complex rotation matrices \citep{Steinborn1973}:
+%
+\begin{align}
+    \bvec{R}^l = \bvec{U}^{-1} \bvec{D}^l \bvec{U}
+\end{align}
+%
+where
+%
+\begin{align}
+    \label{eq:dl}
+    \bvec{D}^l_{m,m'} &= \mathrm{e}^{-\ii (\alpha m' + \gamma m)}
+                       (-1)^{m' + m}
+                       \sqrt{
+                            (l - m)! (l + m)! (l - m')! (l + m')!
+                       }
+                       \nonumber \\
+                       & \phantom{=}
+                       \times
+                       \sum_k (-1)^k
+                              \frac{
+                                \cos\left(\frac{\beta}{2}\right)^{2l + m - m' - 2k}
+                                \sin\left(\frac{\beta}{2}\right)^{-m + m' + 2k}
+                              }{
+                                k! (l + m - k)! (l - m' - k)! (m' - m + k)!
+                              }
+\end{align}
+%
+is the rotation matrix for the complex spherical harmonics of order $l$ and
+%
+\begin{equation}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \bvec{U} =
+    \frac{1}{\sqrt{2}}
+        \parenMatrixstack{
+            \quad\quad\, \ddots \, \quad\quad\quad\quad
+                   &     &     &     &          &     &     &     & \Ddots \\
+                   & \ii &     &     &          &     &     &  1  &        \\
+                   &     & \ii &     &          &     &  1  &     &        \\
+                   &     &     & \ii &          &  1  &     &     &        \\
+                   &     &     &     & \sqrt{2} &     &     &     &        \\
+                   &     &     & \ii &          &  1  &     &     &        \\
+                   &     & \ii &     &          &     &  1  &     &        \\
+                   & \ii &     &     &          &     &     &  1  &        \\
+            \Ddots &     &     &     &          &     &     &     & \ddots
+        }\quad.
+\end{equation}
+%
+describes the transformation from complex to real spherical harmonics. In
+\eq{dl} above, $\alpha$, $\beta$, and $\gamma$ are the (proper) Euler angles
+for rotation in the $z-y-z$ convention.
+%
+To obtain a rotation matrix for an arbitrary vector $\bvec{y}$ with spherical
+harmonics of different orders up to $l = l_\mathrm{max}$, we define the
+block-diagonal matrix $\bvec{R}$:
+%
+\begin{equation}
+    \label{eq:rblockdiag}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \bvec{R} =
+        \parenMatrixstack{
+            \quad\quad \, \bvec{R}^0 \, \quad\quad
+                       &            &            &            &  \\
+                       & \bvec{R}^1 &            &            &  \\
+                       &            & \bvec{R}^2 &            &  \\
+                       &            &            & \bvec{R}^3 &  \\
+                       &            &            &            & \ddots
+        }\quad.
+\end{equation}
+%
+Rotation of $\bvec{y}$ by the Euler angles $\alpha$, $\beta$, and $\gamma$
+is performed via \eq{rotation} with $\bvec{R}$ given by \eq{rblockdiag}.
+
+% ------------------------------------------------------------------------------
+\subsection{Axis-angle}
+\label{sec:axisangle}
+% ------------------------------------------------------------------------------
+
+It is often more convenient to define a rotation by an axis $\bvec{u}$
+and an angle $\theta$ of rotation about that axis. Given a unit vector
+$\bvec{u}$ and an angle $\theta$, we can find the corresponding Euler
+angles by comparing the 3-dimensional Cartesian rotation matrices for
+both systems,
+%
+\begin{equation}
+    \label{eq:rotP}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \mathbf{P} =
+        \parenMatrixstack{
+        c_\theta + u_x^2 \left(1 - c_\theta\right)
+        &
+        u_x u_y \left(1 - c_\theta\right) - u_z s_\theta
+        &
+        u_x u_z \left(1 - c_\theta\right) + u_y s_\theta
+        \\
+        u_y u_x \left(1 - c_\theta\right) + u_z s_\theta
+        &
+        % Add a little padding
+        \makebox[1.5em]{}
+        c_\theta + u_y^2\left(1 - c_\theta\right)
+        \makebox[1.5em]{}
+        &
+        u_y u_z \left(1 - c_\theta\right) - u_x s_\theta
+        \\
+        u_z u_x \left(1 - c_\theta\right) - u_y s_\theta
+        &
+        u_z u_y \left(1 - c_\theta\right) + u_x s_\theta
+        &
+        c_\theta + u_z^2\left(1 - c_\theta\right)
+        }
+\end{equation}
+%
+for axis-angle rotations and
+%
+\begin{equation}
+    \label{rotQ}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \mathbf{Q} =
+        \parenMatrixstack{
+        c_\alpha c_\beta c_\gamma - s_\alpha s_\gamma
+        &
+        -c_\gamma s_\alpha - c_\alpha c_\beta s_\gamma
+        &
+        c_\alpha s_\beta
+        \\
+        c_\alpha s_\gamma + c_\beta c_\gamma s_\alpha
+        &
+        c_\alpha c_\gamma - c_\beta s_\alpha s_\gamma
+        &
+        s_\alpha s_\beta
+        \\
+        -c_\gamma s_\beta
+        &
+        s_\beta s_\gamma
+        &
+        \makebox[4.2em]{}
+        c_\beta
+        \makebox[4.2em]{}
+        }\quad,
+\end{equation}
+%
+for Euler rotations,
+where $c_{\scaleto{\cdot}{6pt}} \equiv \cos(\cdot)$
+and $s_{\scaleto{\cdot}{6pt}} \equiv \sin(\cdot)$.
+Comparison of the two matrices gives us expressions for the Euler
+angles in terms of $\bvec{u}$ and $\theta$:
+%
+\begin{align}
+    \label{eq:eulerangles}
+    \begin{matrix}
+        \cos\alpha = \frac{P_{0,2}}{\sqrt{P_{0,2}^2 + P_{1,2}^2}}
+        & & & &
+        \cos\beta = P_{3,3}
+        & & & &
+        \cos\gamma = -\frac{P_{2,0}}{\sqrt{P_{2,0}^2 + P_{2,1}^2}}
+        \\
+        \sin\alpha = \frac{P_{1,2}}{\sqrt{P_{0,2}^2 + P_{1,2}^2}}
+        & & & &
+        \sin\beta = \sqrt{1 - P_{3,3}^2}
+        & & & &
+        \sin\gamma = \frac{P_{2,1}}{\sqrt{P_{2,0}^2 + P_{2,1}^2}}
+    \end{matrix}
+    \quad.
+\end{align}
+%
+Thus, given a spherical harmonic vector $\bvec{y}$, we can calculate
+how it transforms under rotation by an angle $\theta$ about an axis $\bvec{u}$
+by first computing the Euler angles (Equation~\ref{eq:eulerangles}) and using
+those to construct the spherical harmonic rotation matrix
+(Equation~\ref{eq:rblockdiag}).
+
+% ==============================================================================
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+\pagebreak
+\section{Change of Basis}
+\label{sec:basis}
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+% ==============================================================================
+
+% ------------------------------------------------------------------------------
+\subsection{Polynomial Basis}
+\label{sec:polybasis}
+% ------------------------------------------------------------------------------
+
+In order to compute the occultation light curve for a body with a given surface
+map $\bvec{y}$, it is convenient to first find its polynomial representation
+$\bvec{p}$, which we express as a vector of coefficients in the
+polynomial basis $\bvec{b_p}$:
+%
+\begin{align}
+    \label{eq:bp}
+    \bvec{b_p}_n &=
+    \begin{dcases}
+        \x^\frac{l-m}{2} \y^\frac{l+m}{2} & \qquad l+m \, \mathrm{even}
+        \\
+        \x^\frac{l-m-1}{2} \y^\frac{l+m-1}{2} \z & \qquad l+m \, \mathrm{odd}
+    \end{dcases}
+    \nonumber\\[0.5em]
+    \bvec{b_p} &=
+    \begin{pmatrix}
+        1 &
+        \x & \z & \y &
+        \x^2 & \x\z & \x\y & \y\z & \y^2 &
+        \cdot\cdot\cdot
+    \end{pmatrix}^\mathsf{T}
+    \quad,
+\end{align}
+%
+with $l$ and $m$ given by \eq{lm}.
+%
+%
+As before, given $\bvec{p}$, the flux emitted from the point $(\x, \y)$
+may be computed as
+%
+\begin{align}
+    F(\x, \y) = \bvec{b_p}^\mathsf{T} \bvec{p}
+    \quad.
+\end{align}
+%
+To find $\bvec{p}$ given $\bvec{y}$, we
+introduce the change of basis matrix $\bvec{A_1}$, which transforms
+a vector in the spherical harmonic basis $\bvec{b_y}$ to the
+polynomial basis $\bvec{b_p}$:
+%
+\begin{align}
+    \bvec{p} = \bvec{A_1} \bvec{y}
+\end{align}
+%
+The columns of $\bvec{A_1}$ are simply the polynomial vectors
+corresponding to each of the spherical harmonics in \eq{by}. From
+Equations (\ref{eq:ylmxy}) and (\ref{eq:bp}), we can calculate
+the first few spherical harmonics and their corresponding polynomial vectors:
+%
+\begin{equation}
+\def\arraystretch{1.3}
+\begin{array}{@{}lcccccccl@{}}
+    \phantom{..}
+    Y_{0,0} = \frac{1}{2\sqrt{\pi}}
+    & & & & & & & &
+    \bvec{p}_0 = \frac{1}{2\sqrt{\pi}}
+                  \begin{pmatrix}
+                        1 & 0 & 0 & 0 & \cdot\cdot\cdot
+                  \end{pmatrix}^\mathsf{T}
+    %
+    \\
+    %
+    Y_{1,-1} = \frac{\sqrt{3}}{2\sqrt{\pi}}\y
+    & & & & & & & &
+    \bvec{p}_1 = \frac{1}{2\sqrt{\pi}}
+                  \begin{pmatrix}
+                        0 & 0 & 0 & \sqrt{3} & \cdot\cdot\cdot
+                  \end{pmatrix}^\mathsf{T}
+    %
+    \\
+    %
+    \phantom{..}
+    Y_{1,0} = \frac{\sqrt{3}}{2\sqrt{\pi}}\z
+    & & & & & & & &
+    \bvec{p}_2 = \frac{1}{2\sqrt{\pi}}
+                \begin{pmatrix}
+                      0 & 0 & \sqrt{3} & 0 & \cdot\cdot\cdot
+                \end{pmatrix}^\mathsf{T}
+    %
+    \\
+    %
+    \phantom{..}
+    Y_{1,1} = \frac{\sqrt{3}}{2\sqrt{\pi}}\x
+    & & & & & & & &
+    \bvec{p}_3 = \frac{1}{2\sqrt{\pi}}
+                  \begin{pmatrix}
+                        0 & \sqrt{3} & 0 & 0 & \cdot\cdot\cdot
+                  \end{pmatrix}^\mathsf{T}
+    %
+    \\
+    %
+    Y_{2,-2} = \cdot\cdot\cdot
+    & & & & & & & &
+    \bvec{p}_4 = \cdot\cdot\cdot
+\end{array}
+\end{equation}
+%
+From these we can construct $\bvec{A_1}$. As an example, for spherical
+harmonics up to order $l_\mathrm{max} = 3$, this is
+%
+\begin{equation}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \bvec{A_1} =
+    \frac{1}{2 \sqrt{\pi }}
+        \parenMatrixstack{
+            1 & 0 & 0 & 0 & 0 & 0 & \sqrt{5} & 0 & 0 \\
+            0 & 0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 \\
+            0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 & 0 \\
+            0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+            0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{2} & 0 & \frac{\sqrt{15}}{2} \\
+            0 & 0 & 0 & 0 & 0 & 0 & 0 & \sqrt{15} & 0 \\
+            0 & 0 & 0 & 0 & \sqrt{15} & 0 & 0 & 0 & 0 \\
+            0 & 0 & 0 & 0 & 0 & \sqrt{15} & 0 & 0 & 0 \\
+            0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{2} & 0 & -\frac{\sqrt{15}}{2}
+        }\quad.
+    \notebook{A1}
+\end{equation}
+%
+
+% ------------------------------------------------------------------------------
+\subsection{Greens Basis}
+\label{sec:greensbasis}
+% ------------------------------------------------------------------------------
+
+As we will see in the next section, integrating the surface map over the disk of
+the body is easier if we apply one final transformation to our input vector,
+rotating it into what we will refer to as the \emph{Greens basis}, $\bvec{b_g}$:
+%
+\begin{align}
+    \label{eq:bg}
+    \bvec{b_g}_n &=
+    \begin{dcases}
+        %
+        \frac{\mu+2}{2}\x^\frac{\mu}{2} \y^\frac{\nu}{2}
+            & \qquad \nu \, \mathrm{even}
+        \\[1em]
+        %
+        \z
+            & \qquad \nu = \mu = 1
+        \\[1em]
+        %
+        3\x^{l-2}\y\z
+            & \qquad \nu \, \mathrm{odd}, \,
+                     \mu = 1, \,
+                     l \, \mathrm{even}
+        \\[1em]
+        %
+        \z
+        \bigg(
+         -\x^{l-3} + \x^{l-1} + 4\x^{l-3}\y^2
+        \bigg)
+         & \qquad \nu \, \mathrm{odd}, \,
+                  \mu = 1, \,
+                  l \, \mathrm{odd}
+        \\[1em]
+        %
+        \z
+        \bigg(
+            \frac{\mu-3}{2} \x^\frac{\mu-5}{2} \y^\frac{\nu-1}{2}
+            -
+            \frac{\mu-3}{2} \x^\frac{\mu-5}{2} \y^\frac{\nu+3}{2}
+            -
+            \frac{\mu+3}{2} \x^\frac{\mu-1}{2} \y^\frac{\nu-1}{2}
+        \bigg)
+            & \qquad \mathrm{otherwise}
+    \end{dcases}
+    \nonumber\\[1.5em]
+    \bvec{b_g} &=
+    \begin{pmatrix}
+        1 &
+        2\x & \z & \y &
+        3\x^2 & -3\x\z & 2\x\y & 3\y\z & \y^2 &
+        \cdot\cdot\cdot
+    \end{pmatrix}^\mathsf{T}
+    \quad,
+\end{align}
+%
+where for convenience we define
+%
+\begin{align}
+    \mu &= l - m \nonumber \\
+    \nu &= l + m
+    \quad
+\end{align}
+%
+and the values of $l$ and $m$ are again given by \eq{lm}. Given
+a polynomial vector $\bvec{p}$, the corresponding vector in
+the Greens basis, $\bvec{g}$, can be found by performing another
+change of basis operation:
+%
+\begin{align}
+    \bvec{g} = \bvec{A_2} \bvec{p}
+\end{align}
+%
+where the columns of the matrix $\bvec{A_2}$ are the Greens vectors
+corresponding to each of the polynomial terms in \eq{bp}. In practice,
+it is easier to express the elements of $\bvec{b_g}$ in terms
+of the elements of $\bvec{b_p}$ and use those to populate the
+columns of the matrix $\bvec{A_2}^{-1}$. Continuing our example
+for $l_\mathrm{max} = 3$, our second change of basis matrix
+is
+%
+\begin{equation}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \bvec{A_2} =
+        \parenMatrixstack{
+            \quad\quad\, 1\, \quad\quad\quad\quad & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+            0 & \frac{1}{2} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+            0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+            0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
+            0 & 0 & 0 & 0 & \frac{1}{3} & 0 & 0 & 0 & 0 \\
+            0 & 0 & 0 & 0 & 0 & -\frac{1}{3} & 0 & 0 & 0 \\
+            0 & 0 & 0 & 0 & 0 & 0 & \frac{1}{2} & 0 & 0 \\
+            0 & 0 & 0 & 0 & 0 & 0 & 0 & \frac{1}{3} & 0 \\
+            0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
+        }\quad.
+    \notebook{A2}
+\end{equation}
+%
+Given $\bvec{A_1}$ and $\bvec{A_2}$, we can easily transform a spherical harmonic
+vector $\bvec{y}$ to a Greens vector $\bvec{g}$:
+%
+\begin{align}
+    \bvec{g} &= \bvec{A_2} \bvec{A_1} \bvec{y} \nonumber \\
+             &= \bvec{A} \, \bvec{y}
+\end{align}
+%
+where $\bvec{A} = \bvec{A_2} \bvec{A_1}$ is the full change of basis matrix. For
+$l_\mathrm{max} = 3$,
+%
+\begin{equation}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \bvec{A} =
+        \frac{1}{2\sqrt{\pi}}
+        \parenMatrixstack{
+         1 & 0 & 0 & 0 & 0 & 0 & \frac{\sqrt{5}}{2} & 0 & 0 \\
+         0 & 0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 \\
+         0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 & 0 \\
+         0 & \frac{\sqrt{3}}{2} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+         0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{4} & 0 & \frac{\sqrt{15}}{2} \\
+         0 & 0 & 0 & 0 & 0 & 0 & 0 & \sqrt{\frac{5}{3}} & 0 \\
+         0 & 0 & 0 & 0 & \sqrt{\frac{5}{3}} & 0 & 0 & 0 & 0 \\
+         0 & 0 & 0 & 0 & 0 & -\sqrt{\frac{5}{3}} & 0 & 0 & 0 \\
+         0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{4} & 0 & -\frac{\sqrt{15}}{2}
+        }\quad.
+\end{equation}
+%
+For completeness, we note that the flux emitted from a given point on a map
+described by the spherical harmonic vector $\bvec{y}$ is
+%
+\begin{align}
+    F(\x, \y) = \bvec{b_g}^\mathsf{T} \bvec{A} \bvec{y}
+    \quad.
+\end{align}
+%
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -337,7 +859,6 @@ where $x_1$ and $x_2$ are functions of $r$, $x_0$, and $y_0$, while
 $y_1$ and $y_2$ are functions of $r$, $x_0$, $y_0$, and $\x$.
 In general, this integral is
 difficult (and often impossible) to compute directly.
-
 
 %
 %
@@ -374,7 +895,6 @@ difficult (and often impossible) to compute directly.
 \end{figure}
 %
 %
-
 
 One way to simplify the problem is to perform a
 rotation through an angle $\theta = \nicefrac{\pi}{2} - \mathrm{arctan2}(y, x)$

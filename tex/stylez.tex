@@ -18,6 +18,7 @@
 \usepackage{diagbox}
 \usepackage{xcolor}
 \usepackage[makeroom]{cancel}
+\usepackage{mathdots}
 \stackMath
 
 % Bibliography stuff
@@ -40,6 +41,7 @@
 % Add script hyperlinks as margin notes
 \definecolor{proofcolor}{rgb}{0.1216,0.4667,0.7059}
 \newcommand{\script}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.py}{\color{proofcolor}\scriptsize\textbf{[script]}}}}
+\newcommand{\notebook}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/notebooks/#1.nb}{\color{proofcolor}\scriptsize\textbf{[notebook]}}}}
 \newcommand{\todo}[1]{\marginnote{\color{red}\textbf{todo:}\\\scriptsize\textbf{#1}}}
 
 % Force margin notes to always be on the right side
@@ -115,6 +117,7 @@
 \makeatother
 
 % Math stuff
+\newcommand{\ii}{\ensuremath{\mathbf{i}}}
 \newcommand{\T}{\ensuremath{\mathrm{T}}}
 \newcommand{\dd}{\ensuremath{ \mathrm{d}}}
 \newcommand{\unit}[1]{{\ensuremath{\mathrm{#1}}}}
@@ -128,9 +131,18 @@
 \newcommand{\zhat}{\ensuremath{\mathbf{\hat{z}}}}
 \DeclareMathAlphabet\mathbfcal{OMS}{cmsy}{b}{n}
 \DeclareMathOperator{\Tr}{Tr}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
 \definecolor{dim}{rgb}{0.8,0.8,0.8}
 \newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 \setcounter{MaxMatrixCols}{20}
+
+% Inverse diagonal dots
+\makeatletter
+\def\Ddots{\mathinner{\mkern1mu\raise\p@
+\vbox{\kern7\p@\hbox{.}}\mkern2mu
+\raise4\p@\hbox{.}\mkern2mu\raise7\p@\hbox{.}\mkern1mu}}
+\makeatother
 
 % Typography obsessions
 \setlength{\parindent}{3.0ex}
