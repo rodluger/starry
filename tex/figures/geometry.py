@@ -123,7 +123,7 @@ ax.annotate(r"$\mathrm{(rotated\ frame)}$", xy=(0, -1.25),
             fontsize=10, color="k")
 
 # Occultor (original location)
-# Theta is about 124 degrees
+# Omega is about 124 degrees
 r = 0.75
 y0 = -0.7
 x0 = np.sqrt(b ** 2 - y0 ** 2)
@@ -144,7 +144,7 @@ ax.plot(x, y, 'r-', lw=0.5, zorder=1)
 x = np.linspace(0.075, 0.063, 1000)
 y = -np.sqrt(0.075 ** 2 - x ** 2)
 ax.plot(x, y, 'r-', lw=0.5, zorder=1)
-ax.annotate(r"$\theta$", xy=(0, -0.05), xycoords="data", xytext=(0, 0),
+ax.annotate(r"$\omega$", xy=(0, -0.05), xycoords="data", xytext=(0, 0),
             textcoords="offset points", ha="center", va="top",
             fontsize=10, color="r")
 ax.plot([x0], [y0 - r - 0.3], '.', ms=0)

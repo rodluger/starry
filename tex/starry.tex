@@ -575,7 +575,7 @@ polynomial basis $\pbasis$:
 %
 \begin{align}
     \label{eq:bp}
-    \pbasis_n &=
+    \pbasisn &=
     \begin{dcases}
         \x^\frac{l-m}{2} \y^\frac{l+m}{2} & \qquad l+m \, \mathrm{even}
         \\
@@ -624,7 +624,7 @@ the first few spherical harmonics and their corresponding polynomial vectors:
     \phantom{..}
     Y_{0,0} = \frac{1}{2\sqrt{\pi}}
     & & & & & & & &
-    \bvec{p}_0 = \frac{1}{2\sqrt{\pi}}
+    \bvec{p} = \frac{1}{2\sqrt{\pi}}
                   \begin{pmatrix}
                         1 & 0 & 0 & 0 & \cdot\cdot\cdot
                   \end{pmatrix}^\mathsf{T}
@@ -633,7 +633,7 @@ the first few spherical harmonics and their corresponding polynomial vectors:
     %
     Y_{1,-1} = \frac{\sqrt{3}}{2\sqrt{\pi}}\y
     & & & & & & & &
-    \bvec{p}_1 = \frac{1}{2\sqrt{\pi}}
+    \bvec{p} = \frac{1}{2\sqrt{\pi}}
                   \begin{pmatrix}
                         0 & 0 & 0 & \sqrt{3} & \cdot\cdot\cdot
                   \end{pmatrix}^\mathsf{T}
@@ -643,7 +643,7 @@ the first few spherical harmonics and their corresponding polynomial vectors:
     \phantom{..}
     Y_{1,0} = \frac{\sqrt{3}}{2\sqrt{\pi}}\z
     & & & & & & & &
-    \bvec{p}_2 = \frac{1}{2\sqrt{\pi}}
+    \bvec{p} = \frac{1}{2\sqrt{\pi}}
                 \begin{pmatrix}
                       0 & 0 & \sqrt{3} & 0 & \cdot\cdot\cdot
                 \end{pmatrix}^\mathsf{T}
@@ -653,7 +653,7 @@ the first few spherical harmonics and their corresponding polynomial vectors:
     \phantom{..}
     Y_{1,1} = \frac{\sqrt{3}}{2\sqrt{\pi}}\x
     & & & & & & & &
-    \bvec{p}_3 = \frac{1}{2\sqrt{\pi}}
+    \bvec{p} = \frac{1}{2\sqrt{\pi}}
                   \begin{pmatrix}
                         0 & \sqrt{3} & 0 & 0 & \cdot\cdot\cdot
                   \end{pmatrix}^\mathsf{T}
@@ -662,7 +662,7 @@ the first few spherical harmonics and their corresponding polynomial vectors:
     %
     Y_{2,-2} = \cdot\cdot\cdot
     & & & & & & & &
-    \bvec{p}_4 = \cdot\cdot\cdot
+    \bvec{p} = \cdot\cdot\cdot
 \end{array}
 \end{equation}
 %
@@ -690,17 +690,17 @@ harmonics up to order $l_\mathrm{max} = 3$, this is
 %
 
 % ------------------------------------------------------------------------------
-\subsection{Greens Basis}
+\subsection{Green's Basis}
 \label{sec:greensbasis}
 % ------------------------------------------------------------------------------
 
 As we will see in the next section, integrating the surface map over the disk of
 the body is easier if we apply one final transformation to our input vector,
-rotating it into what we will refer to as the \emph{Greens basis}, $\gbasis$:
+rotating it into what we will refer to as the \emph{Green's basis}, $\gbasis$:
 %
 \begin{align}
     \label{eq:bg}
-    \gbasis_n &=
+    \gbasisn &=
     \begin{dcases}
         %
         \frac{\mu+2}{2}\x^\frac{\mu}{2} \y^\frac{\nu}{2}
@@ -750,6 +750,7 @@ rotating it into what we will refer to as the \emph{Greens basis}, $\gbasis$:
 where for convenience we define
 %
 \begin{align}
+    \label{eq:munu}
     \mu &= l - m \nonumber \\
     \nu &= l + m
     \quad
@@ -757,14 +758,14 @@ where for convenience we define
 %
 and the values of $l$ and $m$ are again given by \eq{lm}. Given
 a polynomial vector $\bvec{p}$, the corresponding vector in
-the Greens basis, $\bvec{g}$, can be found by performing another
+the Green's basis, $\bvec{g}$, can be found by performing another
 change of basis operation:
 %
 \begin{align}
     \bvec{g} = \bvec{\ATwo} \bvec{p}
 \end{align}
 %
-where the columns of the matrix $\ATwo$ are the Greens vectors
+where the columns of the matrix $\ATwo$ are the Green's vectors
 corresponding to each of the polynomial terms in \eq{bp}. In practice,
 it is easier to express the elements of $\gbasis$ in terms
 of the elements of $\pbasis$ and use those to populate the
@@ -791,7 +792,7 @@ is
 \end{equation}
 %
 Given $\AOne$ and $\ATwo$, we can easily transform a spherical harmonic
-vector $\bvec{y}$ to a Greens vector $\bvec{g}$:
+vector $\bvec{y}$ to a Green's vector $\bvec{g}$:
 %
 \begin{align}
     \bvec{g} &= \ATwo \AOne \bvec{y} \nonumber \\
@@ -839,6 +840,11 @@ described by the spherical harmonic vector $\bvec{y}$ is
 % ------------------------------------------------------------------------------
 % ==============================================================================
 
+% ------------------------------------------------------------------------------
+\subsection{Setup}
+\label{sec:setup}
+% ------------------------------------------------------------------------------
+
 Consider a body of unit radius centered at the origin, with a surface map
 given by the spherical harmonic vector $\bvec{y}$,
 being occulted by a body of radius $r$ centered at the point $(x_0, y_0)$.
@@ -849,104 +855,40 @@ map over the visible portion of the occulted body's disk:
 \begin{align}
     \label{eq:occint}
     F &=
-    \oiint f(\x, \y) \, \dd \bvec{S}
+    \oiint f(\x, \y) \, \dd S
     \nonumber \\
     &=
-    \oiint \gbasis^\mathsf{T} (\x, \y) \bvec{A} \, \bvec{y} \, \dd \bvec{S}
+    \oiint \gbasis^\mathsf{T} (\x, \y) \bvec{A} \, \bvec{y} \, \dd S
     \nonumber \\
     &= \bvec{s}^\mathsf{T} \bvec{A} \, \bvec{y} \,
       \quad,
 \end{align}
 %
-where we used \eq{fluxpoint} to express the flux in terms of our
-map vector $\bvec{y}$ and we defined $\bvec{s}$ to be the column vector
+where the surface $S$ over which the integral is taken
+is a function of $r$, $x_0$, and $y_0$. In the expression above,
+we used \eq{fluxpoint} to express the flux in terms of our
+map vector $\bvec{y}$ and introduced the quantity $\bvec{s}$, a column vector
 whose $n^\mathrm{th}$ component is given by
 %
 \begin{align}
-    \bvec{s}_n &\equiv
-      \oiint \gbasis_n (\x, \y)  \, \dd \bvec{S}
+    \label{eq:sn}
+    s_n &\equiv
+      \oiint \gbasisn (\x, \y)  \, \dd S
     \quad.
 \end{align}
 %
-In the equation above, the surface \bvec{S} over which the integral is taken
-is a function of $r$, $x_0$, and $y_0$. In general, this integral is
+Computing the total flux during an occultation is therefore
+a matter of solving the integral in \eq{sn} for each value of $n$.
+In general, these integrals are
 difficult (and often impossible) to compute directly.
 %
-A clever workaround, introduced by \citet{Pal2012},
-is to use Green's theorem to express this surface integral as the line integral
-of a vector function $\bvec{G}_n$ along the boundary of the same surface:
+One way to simplify the problem is to first perform a rotation through an angle
 %
 \begin{align}
-    \label{eq:greens}
-    \bvec{s}_n &=
-    \oiint \gbasis_n (\x, \y) \, \dd \bvec{S}
-    =
-    \oint \bvec{G}_n (\x, \y) \cdot \dd \avec{r}
-    \quad
+    \label{eq:zrot}
+    \omega = \frac{\pi}{2} - \mathrm{arctan2}(y_0, x_0)
 \end{align}
 %
-where $\bvec{G}_n (\x, \y) = {G_n}_x (\x, \y) \, \xhat + {G_n}_y (\x, \y) \, \yhat$ is
-chosen such that
-%
-\begin{align}
-    \label{eq:DGL}
-    \bvec{G} \wedge \bvec{F} = \gbasis_n(\x, \y)
-    \quad.
-\end{align}
-%
-The operation $\bvec{D} \wedge \bvec{G}$ denotes the
-\emph{exterior derivative} of $\bvec{G}$. In two-dimensional Cartesian
-coordinates, it is given by
-%
-\begin{align}
-    \label{eq:extderiv}
-    \bvec{D} \wedge \bvec{G} &\equiv \frac{\dd {G_n}_y}{\dd \x}
-                                   - \frac{\dd {G_n}_x}{\dd \y} \quad.
-\end{align}
-%
-
-
-
-
-%
-%
-\begin{figure}[p!]
-    \begin{centering}
-    \includegraphics[width=\linewidth]{figures/geometry.pdf}
-    \caption{\label{fig:geometry}
-             \script{geometry}
-             Geometry of the occultation problem.
-             The occulted body is centered
-             at the origin and has unit radius, while the occultor
-             is centered at $(x_0, y_0)$ and has radius $r$. We first rotate
-             the two bodies about the origin through an angle
-             $\theta = \nicefrac{\pi}{2} - \mathrm{arctan2}(y_0, x_0)$
-             so the problem is symmetric about the $y$-axis. In this frame,
-             the occultor is located at $(0, b)$, where
-             $b = \sqrt{x_0^2 + y_0^2}$ is the impact parameter.
-             The arc of the occultor
-             that overlaps the occulted body (thick red curve) now extends from
-             $\pi - \phi$ to $2\pi + \phi$, measured from the center of the
-             occultor.
-             The arc of the occulted body that is visible during
-             the occultation (thick black curve) extends from
-             $\pi - \lambda$ to $2\pi + \lambda$, measured from the origin.
-             These are the curves along which the primitive integral
-             (Equation~\ref{eq:primitive}) is evaluated.
-             The angles $\phi$ and $\lambda$ are given by
-             Equation~(\ref{eq:sinphi})
-             and extend from $-\nicefrac{\pi}{2}$ to $\nicefrac{\pi}{2}$. When
-             the occultor is completely within the disk of the occulted body,
-             we define $\phi = \lambda = \nicefrac{\pi}{2}$.
-             }
-    \end{centering}
-\end{figure}
-%
-%
-
-We simplify the problem by performing a
-rotation through an angle
-$\theta = \nicefrac{\pi}{2} - \mathrm{arctan2}(y_0, x_0)$
 about the $z$-axis ($\bvec{u} = \left[0, 0, 1\right]$)
 so that the occultor lies along the
 $+y$-axis, with its center located a distance $b = \sqrt{x_0^2 + y_0^2}$
@@ -965,7 +907,7 @@ as the angular position of the same point relative to the origin, the
 arc of the portion of the occulted body that is visible during the occultation
 extends from $\pi - \lambda$ to $2\pi + \lambda$ (see the Figure).
 %
-With a little trig, it can be shown that
+For future reference, it can be shown that
 %
 \begin{align}
     \label{eq:philam}
@@ -1005,6 +947,326 @@ entire circumference of the occulted body.
 Note that if $b \ge 1 + r$, no occultation occurs, while
 if $b \le r - 1$, the entire disk of the body is occulted and the total flux
 is zero.
+
+%
+
+The second trick we employ to solve \eq{sn} is to use
+Green's theorem to express the surface integral of $\gbasis_n$ as the
+line integral of a vector function $\bvec{G}_n$ along the boundary of
+the same surface \citep{Pal2012}:
+%
+\begin{align}
+    \label{eq:greens}
+    s_n &=
+    \oiint \gbasisn (\x, \y) \, \dd S
+    =
+    \oint \bvec{G}_n (\x, \y) \cdot \dd \bvec{r}
+    \quad
+\end{align}
+%
+where $\bvec{G}_n (\x, \y) = {G_n}_x (\x, \y) \, \xhat + {G_n}_y (\x, \y) \, \yhat$ is
+chosen such that
+%
+\begin{align}
+    \label{eq:DGg}
+    \bvec{D} \wedge \bvec{G}_n = \gbasisn(\x, \y)
+    \quad.
+\end{align}
+%
+The operation $\bvec{D} \wedge \bvec{G}_n$ denotes the
+\emph{exterior derivative} of $\bvec{G}_n$. In two-dimensional Cartesian
+coordinates, it is given by
+%
+\begin{align}
+    \label{eq:extderiv}
+    \bvec{D} \wedge \bvec{G} &\equiv \frac{\dd {G_n}_y}{\dd \x}
+                                   - \frac{\dd {G_n}_x}{\dd \y} \quad.
+\end{align}
+%
+%
+Thus, in order to compute $s_n$ in \eq{greens}, we must (1) apply a rotation
+to our map $\bvec{y}$ to align the occultor with the $+y$-axis;
+(2) find a vector function
+$\bvec{G}_n$ whose exterior derivative is the $n^\mathrm{th}$ component of the
+vector basis $\gbasis$ (Equation~\ref{eq:bg}); and
+(3) integrate it along the boundary of the visible portion of the occulted
+body's surface. In general, for an occultation involving two bodies,
+this boundary consists of two arcs: a segment of the circle bounding the
+occultor (thick red curve in Figure~\ref{fig:geometry}),
+and a segment of the circle bounding the occulted body (thick black curve
+in Figure~\ref{fig:geometry}).
+%
+If we happen to know $\bvec{G}_n$, the integral in \eq{greens} is just
+%
+\begin{align}
+    s_n &= \mathcal{P}(\bvec{G}_n) - \mathcal{Q}(\bvec{G}_n)
+    \quad,
+\end{align}
+%
+where, as in \citet{Pal2012}, we define the \emph{primitive integrals}
+%
+\begin{align}
+    \label{eq:primitive}
+    \mathcal{P}(\bvec{G}_n) &=
+    \int_{\pi-\phi}^{2\pi + \phi}
+        \big[ {G_n}_y(r c_\varphi, b + r s_\varphi) c_\varphi -
+              {G_n}_x(r c_\varphi, b + r s_\varphi) s_\varphi \big] r \dd \varphi
+    \nonumber \\
+    %
+\intertext{and}
+    %
+    \mathcal{Q}(\bvec{G}_n) &=
+    \int_{\pi-\lambda}^{2\pi + \lambda}
+        \big[ {G_n}_y(c_\varphi, s_\varphi) c_\varphi -
+              {G_n}_x(c_\varphi, s_\varphi) s_\varphi \big] \dd \varphi
+    \quad,
+\end{align}
+%
+%
+where, as before,
+$c_\varphi \equiv \cos \varphi$
+and
+$s_\varphi \equiv \sin \varphi$ 
+and we used the fact that along the arc of a circle,
+%
+\begin{align}
+    \label{eq:dr}
+    \dd \bvec{r} &= -r s_\varphi \, \dd \varphi \, \xhat +
+                     r c_\varphi \, \dd \varphi \, \yhat
+    \quad.
+\end{align}
+%
+In Equation~(\ref{eq:primitive}), $\mathcal{P}(\bvec{G}_n)$
+is the line integral along the arc of the occultor
+and $\mathcal{Q}(\bvec{G}_n)$ is the line integral along the arc of the occulted
+body.
+
+%
+%
+\begin{figure}[p!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/geometry.pdf}
+    \caption{\label{fig:geometry}
+             \script{geometry}
+             Geometry of the occultation problem.
+             The occulted body is centered
+             at the origin and has unit radius, while the occultor
+             is centered at $(x_0, y_0)$ and has radius $r$. We first rotate
+             the two bodies about the origin through an angle
+             $\theta = \nicefrac{\pi}{2} - \mathrm{arctan2}(y_0, x_0)$
+             so the problem is symmetric about the $y$-axis. In this frame,
+             the occultor is located at $(0, b)$, where
+             $b = \sqrt{x_0^2 + y_0^2}$ is the impact parameter.
+             The arc of the occultor
+             that overlaps the occulted body (thick red curve) now extends from
+             $\pi - \phi$ to $2\pi + \phi$, measured from the center of the
+             occultor.
+             The arc of the occulted body that is visible during
+             the occultation (thick black curve) extends from
+             $\pi - \lambda$ to $2\pi + \lambda$, measured from the origin.
+             These are the curves along which the primitive integral
+             (Equation~\ref{eq:primitive}) is evaluated.
+             The angles $\phi$ and $\lambda$ are given by
+             Equation~(\ref{eq:philam})
+             and extend from $-\nicefrac{\pi}{2}$ to $\nicefrac{\pi}{2}$. When
+             the occultor is completely within the disk of the occulted body,
+             we define $\phi = \lambda = \nicefrac{\pi}{2}$.
+             }
+    \end{centering}
+\end{figure}
+%
+%
+
+% ------------------------------------------------------------------------------
+\subsection{Computing The Primitive Integrals}
+\label{sec:primitive}
+% ------------------------------------------------------------------------------
+
+As cumbersome as the Green's basis (Equation~\ref{eq:bg}) may appear, the reason
+we introduced it is that its anti-exterior derivatives are conveniently simple.
+It can be easily shown that one possible solution to \eq{DGg} is
+%
+\begin{align}
+    \label{eq:Gn}
+    \bvec{G}_n &=
+    \begin{dcases}
+        %
+        \x^{\frac{\mu + 2}{2}}
+        \y^{\frac{\nu}{2}}
+        \,\yhat
+            & \qquad \nu \, \mathrm{even}
+        \\[1em]
+        %
+        \mathbfcal{Z}
+            & \qquad \nu = \mu = 1
+        \\[1em]
+        %
+        \x^{l-2}
+        \z^3
+        \,\xhat
+            & \qquad \nu \, \mathrm{odd}, \,
+                     \mu = 1, \,
+                     l \, \mathrm{even}
+        \\[1em]
+        %
+        \x^{l-3}
+        \y
+        \z^3
+        \,\xhat
+         & \qquad \nu \, \mathrm{odd}, \,
+                  \mu = 1, \,
+                  l \, \mathrm{odd}
+        \\[1em]
+        %
+        \x^{\frac{\mu-3}{2}}
+        \y^{\frac{\nu-1}{2}}
+        \z^3
+        \,\yhat
+            & \qquad \mathrm{otherwise}
+    \end{dcases}
+    \quad,
+\end{align}
+%
+where $l$ and $m$ are given by \eq{lm} and $\mu$ and $\nu$ are given by
+\eq{munu}. The vector function $\mathbfcal{Z}$ cannot be expressed as a
+simple polynomial in $x$, $y$, and $z$ and is therefore harder to
+integrate than any of the other terms. Fortunately, this case, which
+corresponds to the surface map
+%
+$f(\x, \y) = \z = \sqrt{1 - \x^2 - \y^2}$,
+%
+is the case of linear limb darkening, which has been studied extensively
+for stellar light curves \citep{MandelAgol2002, Pal2012}. We therefore treat
+this case separately, and return to it in \S\ref{sec:linearld}.
+
+Setting aside the $\mu = \nu = 1$ case for now, we may compute the primitive
+integrals for the terms in \eq{Gn}:
+%
+\begin{align}
+    \label{eq:PGn}
+    \mathcal{P}(\bvec{G}_n) &=
+    \begin{dcases}
+        %
+        +\int_{\pi - \phi}^{2\pi + \phi}
+            (r c_\varphi)^{\frac{\mu+2}{2}}
+            (b + r s_\varphi)^{\frac{\nu}{2}}
+            r c_\varphi
+            \, \dd\varphi
+            %
+            & \qquad \nu \, \mathrm{even}
+        \\[1em]
+        %
+        -\int_{\pi - \phi}^{2\pi + \phi}
+            (r c_\varphi)^{l-2}
+            (1 - r^2 - b^2 - 2 b r s_\varphi)^{\frac{3}{2}}
+            r s_\varphi
+            \, \dd\varphi
+            %
+            & \qquad \nu \, \mathrm{odd}, \,
+                     \mu = 1, \,
+                     l \, \mathrm{even}
+        \\[1em]
+        %
+        -\int_{\pi - \phi}^{2\pi + \phi}
+            (r c_\varphi)^{l-3}
+            (b + r s_\varphi)
+            (1 - r^2 - b^2 - 2 b r s_\varphi)^{\frac{3}{2}}
+            r s_\varphi
+            \, \dd\varphi
+            %
+            & \qquad \nu \, \mathrm{odd}, \,
+                     \mu = 1, \,
+                     l \, \mathrm{odd}
+        \\[1em]
+        %
+        +\int_{\pi - \phi}^{2\pi + \phi}
+            (r c_\varphi)^{\frac{\mu-3}{2}}
+            (b + r s_\varphi)^{\frac{\nu-1}{2}}
+            (1 - r^2 - b^2 - 2 b r s_\varphi)^{\frac{3}{2}}
+            r c_\varphi
+            \, \dd\varphi
+            & \qquad \mathrm{otherwise}
+    \end{dcases}
+    \quad
+\end{align}
+%
+and
+%
+%
+\begin{align}
+    \label{eq:QGn}
+    \mathcal{Q}(\bvec{G}_n) &=
+    \begin{dcases}
+        %
+        A
+            & \qquad \nu \, \mathrm{even}
+        \\[1em]
+        %
+        E
+            & \qquad \nu \, \mathrm{odd}, \,
+                     \mu = 1, \,
+                     l \, \mathrm{even}
+        \\[1em]
+        %
+        D
+         & \qquad \nu \, \mathrm{odd}, \,
+                  \mu = 1, \,
+                  l \, \mathrm{odd}
+        \\[1em]
+        %
+        C
+            & \qquad \mathrm{otherwise}
+    \end{dcases}
+    \quad.
+\end{align}
+
+% ------------------------------------------------------------------------------
+\pagebreak
+\section{Conclusions}
+\label{sec:conclusions}
+% ------------------------------------------------------------------------------
+
+Write an awesome conclusions section.\todo{write conclusions}
+
+%
+
+% TODO
+\begin{table}[p]
+\centering
+\caption{Symbols used in this paper}
+\label{tab:symbols}
+    \begin{tabular}{@{}cll@{}}
+    %
+    \toprule
+    %
+    Symbol          & Definition  & Reference\\
+    %
+    \midrule
+    %
+    $\gbasis$       & Green's basis                         & \eq{bg} \\
+    $\bvec{g}$      & Vector in the basis $\gbasis$         & \\
+    $\bar{P}$       & Normalized associated Legendre
+                      function                              & \eq{plm} \\
+    $\pbasis$       & Polynomial basis                      & \eq{bp} \\
+    $\bvec{p}$      & Vector in the basis $\pbasis$         & \\
+    $\x$            & Cartesian coordinate                  & \\
+    $\y$            & Cartesian coordinate                  & \\
+    $Y_{l,m}$       & Spherical harmonic of order $l$
+                      and degree $m$                        & \eq{ylm0} \\
+    $\ybasis$       & Spherical harmonic basis              & \eq{by} \\
+    $\bvec{y}$      & Vector in the basis $\ybasis$         & \\
+    $\z$            & Cartesian coordinate;
+                      $z = \sqrt{1 - \x^2 - \y^2}$          & \\
+    %
+    \bottomrule
+    %
+\end{tabular}
+\end{table}
+
+
+
+
+
 
 \bibliography{starry}
 
