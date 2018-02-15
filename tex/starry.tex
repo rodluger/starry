@@ -1008,7 +1008,7 @@ where, as in \citet{Pal2012}, we define the \emph{primitive integrals}
 \begin{align}
     \label{eq:primitive}
     \mathcal{P}(\bvec{G}_n) &=
-    \int_{\pi-\phi}^{2\pi + \phi}
+    \int\displaylimits_{\pi-\phi}^{2\pi + \phi}
         \big[ {G_n}_y(r c_\varphi, b + r s_\varphi) c_\varphi -
               {G_n}_x(r c_\varphi, b + r s_\varphi) s_\varphi \big] r \dd \varphi
     \nonumber \\
@@ -1016,7 +1016,7 @@ where, as in \citet{Pal2012}, we define the \emph{primitive integrals}
 \intertext{and}
     %
     \mathcal{Q}(\bvec{G}_n) &=
-    \int_{\pi-\lambda}^{2\pi + \lambda}
+    \int\displaylimits_{\pi-\lambda}^{2\pi + \lambda}
         \big[ {G_n}_y(c_\varphi, s_\varphi) c_\varphi -
               {G_n}_x(c_\varphi, s_\varphi) s_\varphi \big] \dd \varphi
     \quad,
@@ -1026,7 +1026,7 @@ where, as in \citet{Pal2012}, we define the \emph{primitive integrals}
 where, as before,
 $c_\varphi \equiv \cos \varphi$
 and
-$s_\varphi \equiv \sin \varphi$ 
+$s_\varphi \equiv \sin \varphi$
 and we used the fact that along the arc of a circle,
 %
 \begin{align}
@@ -1122,9 +1122,8 @@ It can be easily shown that one possible solution to \eq{DGg} is
         \y^{\frac{\nu-1}{2}}
         \z^3
         \,\yhat
-            & \qquad \mathrm{otherwise}
+            & \qquad \mathrm{otherwise,}
     \end{dcases}
-    \quad,
 \end{align}
 %
 where $l$ and $m$ are given by \eq{lm} and $\mu$ and $\nu$ are given by
@@ -1143,11 +1142,11 @@ Setting aside the $\mu = \nu = 1$ case for now, we may compute the primitive
 integrals for the terms in \eq{Gn}:
 %
 \begin{align}
-    \label{eq:PGn}
+    \label{eq:PGnQGn}
     \mathcal{P}(\bvec{G}_n) &=
     \begin{dcases}
         %
-        +\int_{\pi - \phi}^{2\pi + \phi}
+        +\int\displaylimits_{\pi - \phi}^{2\pi + \phi}
             (r c_\varphi)^{\frac{\mu+2}{2}}
             (b + r s_\varphi)^{\frac{\nu}{2}}
             r c_\varphi
@@ -1156,9 +1155,13 @@ integrals for the terms in \eq{Gn}:
             & \qquad \nu \, \mathrm{even}
         \\[1em]
         %
-        -\int_{\pi - \phi}^{2\pi + \phi}
+        \phantom{XXXXXXXXX}\text{---}
+            & \qquad \nu = \mu = 1
+        \\[1em]
+        %
+        -\int\displaylimits_{\pi - \phi}^{2\pi + \phi}
             (r c_\varphi)^{l-2}
-            (1 - r^2 - b^2 - 2 b r s_\varphi)^{\frac{3}{2}}
+            (1 {-} r^2 {-} b^2 {-} 2 b r s_\varphi)^{\frac{3}{2}}
             r s_\varphi
             \, \dd\varphi
             %
@@ -1167,10 +1170,10 @@ integrals for the terms in \eq{Gn}:
                      l \, \mathrm{even}
         \\[1em]
         %
-        -\int_{\pi - \phi}^{2\pi + \phi}
+        -\int\displaylimits_{\pi - \phi}^{2\pi + \phi}
             (r c_\varphi)^{l-3}
             (b + r s_\varphi)
-            (1 - r^2 - b^2 - 2 b r s_\varphi)^{\frac{3}{2}}
+            (1 {-} r^2 {-} b^2 {-} 2 b r s_\varphi)^{\frac{3}{2}}
             r s_\varphi
             \, \dd\varphi
             %
@@ -1179,45 +1182,129 @@ integrals for the terms in \eq{Gn}:
                      l \, \mathrm{odd}
         \\[1em]
         %
-        +\int_{\pi - \phi}^{2\pi + \phi}
+        +\int\displaylimits_{\pi - \phi}^{2\pi + \phi}
             (r c_\varphi)^{\frac{\mu-3}{2}}
             (b + r s_\varphi)^{\frac{\nu-1}{2}}
-            (1 - r^2 - b^2 - 2 b r s_\varphi)^{\frac{3}{2}}
+            (1 {-} r^2 {-} b^2 {-} 2 b r s_\varphi)^{\frac{3}{2}}
             r c_\varphi
             \, \dd\varphi
             & \qquad \mathrm{otherwise}
     \end{dcases}
-    \quad
-\end{align}
+    \nonumber \\
 %
-and
+\intertext{and}
 %
-%
-\begin{align}
-    \label{eq:QGn}
+    \nonumber \\
     \mathcal{Q}(\bvec{G}_n) &=
     \begin{dcases}
         %
-        A
+        +\int\displaylimits_{\pi - \lambda}^{2\pi + \lambda}
+            c_\varphi^{\frac{\mu+2}{2}}
+            s_\varphi^{\frac{\nu}{2}}
+            c_\varphi
+            \, \dd\varphi
+            %
+            & \qquad\qquad \nu \, \mathrm{even}
+        \\[1em]
+        %
+        \phantom{XXXXx}\text{---}
+            & \qquad\qquad \nu = \mu = 1
+        \\[1em]
+        %
+        \phantom{XXXXX}0
+            & \qquad\qquad \mathrm{otherwise.}
+    \end{dcases}
+\end{align}
+%
+%
+where we have used the fact that the line integral of any function
+proportional to $\z$ taken along the limb of the occulted planet
+(where $\z = \sqrt{1-\x^2-\y^2} = 0$) is zero.
+%
+For convenience, let us introduce the expressions
+%
+\begin{align}
+    \mathcal{H}_{u,v}^\nu(\xi) &=
+    \begin{dcases}
+        \int\displaylimits_{\pi - \xi}^{2\pi + \xi}
+            c_\varphi^u
+            s_\varphi^v
+            \, \dd\varphi
+            & \qquad \nu \, \mathrm{even}
+        \\[1em]
+        \int\displaylimits_{\pi - \xi}^{2\pi + \xi}
+            c_\varphi^u
+            s_\varphi^v
+            (1 - \rho^2 - \beta^2 - 2 \beta \rho s_\varphi)^{\frac{3}{2}}
+            \, \dd\varphi
+            & \qquad \nu \, \mathrm{odd}
+    \end{dcases}
+\nonumber \\
+\intertext{and}
+\nonumber \\
+    \mathcal{I}_{u,v}^\nu(\xi, \beta, \rho) &=
+        \sum\displaylimits_{n=0}^{v}
+        {v \choose n}
+        \left(\frac{\beta}{\rho}\right)^{v-n}
+        \mathcal{H}_{u, n}^\nu
+        \quad.
+\end{align}
+%
+With some algebra, we may therefore write
+%
+\begin{align}
+    \label{eq:PGnQGnI}
+    \mathcal{P}(\bvec{G}_n) &=
+    \begin{dcases}
+        %
+        r^{l+2} \mathcal{I}_{\frac{\mu+4}{2}, \frac{\nu}{2}}^\nu (\phi, b, r)
+            %
             & \qquad \nu \, \mathrm{even}
         \\[1em]
         %
-        E
+        \phantom{XXXX}\text{---}
+            & \qquad \nu = \mu = 1
+        \\[1em]
+        %
+        b r^{l-2} \mathcal{I}_{l-2, 0}^\nu (\phi, b, r)
+        - r^{l-1} \mathcal{I}_{l-2,1}^\nu (\phi, b, r)
+            %
             & \qquad \nu \, \mathrm{odd}, \,
                      \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
-        D
-         & \qquad \nu \, \mathrm{odd}, \,
-                  \mu = 1, \,
-                  l \, \mathrm{odd}
+        b r^{l-2} \mathcal{I}_{l-3, 1}^\nu (\phi, b, r)
+        - r^{l-1} \mathcal{I}_{l-3,2}^\nu (\phi, b, r)
+            %
+            & \qquad \nu \, \mathrm{odd}, \,
+                     \mu = 1, \,
+                     l \, \mathrm{odd}
         \\[1em]
         %
-        C
+        r^{l-1} \mathcal{I}_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}^\nu (\phi, b, r)
             & \qquad \mathrm{otherwise}
     \end{dcases}
-    \quad.
+    \nonumber \\
+%
+\intertext{and}
+%
+    \nonumber \\
+    \mathcal{Q}(\bvec{G}_n) &=
+    \begin{dcases}
+        %
+        \mathcal{I}_{\frac{\mu+4}{2}, \frac{\nu}{2}}^\nu (\lambda, 0, 1)
+            %
+            & \qquad\qquad \nu \, \mathrm{even}
+        \\[1em]
+        %
+        \phantom{XXx}\text{---}
+            & \qquad\qquad \nu = \mu = 1
+        \\[1em]
+        %
+        \phantom{XXX}0
+            & \qquad\qquad \mathrm{otherwise.}
+    \end{dcases}
 \end{align}
 
 % ------------------------------------------------------------------------------
