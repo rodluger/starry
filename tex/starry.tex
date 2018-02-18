@@ -309,11 +309,11 @@ where $\z = \z(\x, \y) = \sqrt{1 - \x^2 - \y^2}$.
 % ==============================================================================
 
 We represent a surface map as a vector $\bvec{y}$ of spherical harmonic
-coefficients such that the observed flux originating from the point
+coefficients such that the specific intensity at the point
 $(\x, \y)$ may be written
 %
 \begin{align}
-    f(\x, \y) = \ybasis^\mathsf{T} \bvec{y}
+    I(\x, \y) = \ybasis^\mathsf{T} \bvec{y}
     \quad,
 \end{align}
 %
@@ -595,11 +595,11 @@ polynomial basis $\pbasis$:
 with $l$ and $m$ given by \eq{lm}.
 %
 %
-As before, given $\bvec{p}$, the flux emitted from the point $(\x, \y)$
+As before, given $\bvec{p}$, the specific intensity at the point $(\x, \y)$
 may be computed as
 %
 \begin{align}
-    f(\x, \y) = \pbasis^\mathsf{T} \bvec{p}
+    I(\x, \y) = \pbasis^\mathsf{T} \bvec{p}
     \quad.
 \end{align}
 %
@@ -820,12 +820,12 @@ $l_\mathrm{max} = 3$,
         }\quad.
 \end{equation}
 %
-For completeness, we note that the flux emitted from a given point on a map
+For completeness, we note that the specific intensity at a point on a map
 described by the spherical harmonic vector $\bvec{y}$ is
 %
 \begin{align}
     \label{eq:fluxpoint}
-    f(\x, \y) = \gbasis^\mathsf{T} \bvec{A} \, \bvec{y}
+    I(\x, \y) = \gbasis^\mathsf{T} \bvec{A} \, \bvec{y}
     \quad.
 \end{align}
 %
@@ -841,33 +841,43 @@ described by the spherical harmonic vector $\bvec{y}$ is
 % ==============================================================================
 
 % ------------------------------------------------------------------------------
-\subsection{Setup}
-\label{sec:setup}
+\subsection{Computing the flux}
+\label{sec:computingflux}
 % ------------------------------------------------------------------------------
 
 Consider a body of unit radius centered at the origin, with a surface map
-given by the spherical harmonic vector $\bvec{y}$,
-being occulted by a body of radius $r$ centered at the point $(x_0, y_0)$.
+given by the spherical harmonic vector $\bvec{y}$ viewed at an orientation
+specified by the rotation matrix $\bvec{R}$, such that
+the specific intensity at a point $(\x, \y)$ on the surface is\
+%
+\begin{align}
+    I(\x, \y) &= \ybasis^\mathsf{T} (\x, \y) \bvec{R} \, \bvec{y}
+    \nonumber \\
+              &= \gbasis^\mathsf{T} (\x, \y) \bvec{A} \, \bvec{R} \, \bvec{y}
+    \quad.
+\end{align}
+%
+Suppose now that the body is
+occulted by another body of radius $r$ centered at the point $(x_0, y_0)$.
 The total flux radiated
-in the direction of the observer is obtained by integrating the surface
-map over the visible portion of the occulted body's disk:
+in the direction of the observer is obtained by integrating the specific
+intensity over the visible portion of the occulted body's disk:
 %
 \begin{align}
     \label{eq:occint}
     F &=
-    \oiint f(\x, \y) \, \dd S
+    \oiint I(\x, \y) \, \dd S
     \nonumber \\
     &=
-    \oiint \gbasis^\mathsf{T} (\x, \y) \bvec{A} \, \bvec{y} \, \dd S
+    \oiint \gbasis^\mathsf{T} (\x, \y) \bvec{A} \, \bvec{R} \, \bvec{y} \, \dd S
     \nonumber \\
-    &= \bvec{s}^\mathsf{T} \bvec{A} \, \bvec{y} \,
+    &= \bvec{s}^\mathsf{T} \bvec{A} \, \bvec{R} \, \bvec{y} \,
       \quad,
 \end{align}
 %
 where the surface $S$ over which the integral is taken
-is a function of $r$, $x_0$, and $y_0$. In the expression above,
-we used \eq{fluxpoint} to express the flux in terms of our
-map vector $\bvec{y}$ and introduced the quantity $\bvec{s}$, a column vector
+is a function of $r$, $x_0$, and $y_0$. In the expression above, we
+introduced the quantity $\bvec{s}$, a column vector
 whose $n^\mathrm{th}$ component is given by
 %
 \begin{align}
@@ -1116,14 +1126,83 @@ It can be easily shown that one possible solution to \eq{DGg} is
 where $l$ and $m$ are given by \eq{lm} and $\mu$ and $\nu$ are given by
 \eq{munu}. Solving the occultation problem is therefore a matter of
 evaluating the primitive integrals of $\bvec{G}_n$
-(Equation~\ref{eq:primitive}). The solutions are in general tedious but
-analytic, and involve sines, cosines, and complete elliptic integrals of
-the first, second, and third kind. In the Appendix we derive recurrence
+(Equation~\ref{eq:primitive}). The solutions are in general tedious, but
+they are all analytic, involving sines, cosines, and complete elliptic integrals.
+In the Appendix we derive recurrence
 relations to quickly compute these. We note, in particular, that all
 solutions involve complete elliptic integrals of the \emph{same} argument,
 so that the elliptic integrals need only be evaluated once for a map
 of arbitrary order, greatly improving the evaluation speed and the
 scalability of the problem to high order.
+
+% ------------------------------------------------------------------------------
+\subsection{Summary}
+\label{sec:summary}
+% ------------------------------------------------------------------------------
+
+Here we briefly summarize how to analytically compute the flux during
+an occultation of a body whose specific intensity profile is described
+by a sum of spherical harmonics. Given a body of unit radius with a
+surface map described by the vector of spherical harmonic coefficients
+$\mathbf{y}$ (Equation~\ref{eq:by}), occulted by another body of radius $r$
+centered at the point $(x_0, y_0)$, we must:
+%
+\begin{enumerate}
+    \item Compute the rotation matrix $\bvec{R}$ to rotate the map to the correct
+          viewing orientation, which may be
+          specified by the Euler angles $\alpha$, $\beta$, and $\gamma$
+          (\S\ref{sec:euler}) or by an axis $\bvec{u}$ and an angle $\theta$
+          (\S\ref{sec:axisangle}).
+    \item Compute the rotation matrix $\bvec{R'}$ to rotate the map
+          by an angle $\omega$ about the $+z$-axis
+          (Equation~\ref{eq:zrot}) so the center of the occultor is a
+          distance $b = \sqrt{x_0^2 + y_0^2}$ along the $+y$-axis
+          from the center of the occulted body.
+    \item Compute the change-of-basis matrix $\bvec{A}$ (\S\ref{sec:basis}) to
+          convert our vector of spherical harmonic coefficients to a vector
+          of polynomial coefficients in the Green's basis
+          (Equation~\ref{eq:bg}). Since $\bvec{A}$ is the same for all
+          occultations, this matrix may be pre-computed to improve
+          computational speed.
+    \item Compute the solution vector $\bvec{s}$ (Equation~\ref{eq:sn}), with
+          $\mathcal{P}(\bvec{G}_n)$ and $\mathcal{Q}(\bvec{G}_n)$ given by
+          Equations~(\ref{eq:PGnI}) and (\ref{eq:QGnI}). Note that $s_2$
+          is special and must be computed separately (Equation~\ref{eq:s2}).
+\end{enumerate}
+%
+Given these quantities, the total flux during an occultation is then just
+%
+\begin{equation}
+    \label{eq:starry}
+    \boxed{
+        \Large
+        F = \bvec{s}^{\boldsymbol{\mathsf{T}}} \bvec{A} \, \bvec{R'} \, \bvec{R} \, \bvec{y}
+        }
+    \quad.
+\end{equation}
+
+
+% ------------------------------------------------------------------------------
+\pagebreak
+\section{The \textbf{STARRY} code package}
+\label{sec:starrycode}
+% ------------------------------------------------------------------------------
+
+Write an awesome section on how to use the code.\todo{write code section}
+
+%
+
+
+% ------------------------------------------------------------------------------
+\pagebreak
+\section{Conclusions}
+\label{sec:conclusions}
+% ------------------------------------------------------------------------------
+
+Write an awesome conclusions section.\todo{write conclusions}
+
+%
+
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -1158,9 +1237,10 @@ the general term in Appendix~\ref{sec:generalterm}.
 % ------------------------------------------------------------------------------
 
 From \citet{MandelAgol2002}, the total flux visible during the occultation of a
-body whose surface map is given by $f(x, y) = \sqrt{1 - \x^2 -\y^2}$ is
+body whose surface map is given by $I(x, y) = \sqrt{1 - \x^2 -\y^2}$ is
 %
 \begin{align}
+    \label{eq:s2}
     s_2 = \frac{2}{3\pi} \left(1 - \frac{3\Lambda}{2} - \Theta(r - b) \right)
 \end{align}
 %
@@ -1228,7 +1308,7 @@ We evaluate all other terms in $s_n$ by integrating the primitive integrals of
 $\bvec{G}_n$. These are given by
 %
 \begin{align}
-    \label{eq:PGnQGn}
+    \label{eq:PGn}
     \mathcal{P}(\bvec{G}_n) &=
     \begin{dcases}
         %
@@ -1272,11 +1352,11 @@ $\bvec{G}_n$. These are given by
             \, \dd\varphi
             & \qquad \mathrm{otherwise}
     \end{dcases}
-    \nonumber \\
 %
 \intertext{and}
 %
     \nonumber \\
+    \label{eq:QGn}
     \mathcal{Q}(\bvec{G}_n) &=
     \begin{dcases}
         %
@@ -1334,7 +1414,7 @@ and
 With some algebra, we may therefore write
 %
 \begin{align}
-    \label{eq:PGnQGnI}
+    \label{eq:PGnI}
     \mathcal{P}(\bvec{G}_n) &=
     \begin{dcases}
         %
@@ -1362,11 +1442,11 @@ With some algebra, we may therefore write
         r^{l-1} \mathcal{I}_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}^\nu (\phi, b, r)
             & \qquad \mathrm{otherwise}
     \end{dcases}
-    \nonumber \\
 %
 \intertext{and}
 %
     \nonumber \\
+    \label{eq:QGnI}
     \mathcal{Q}(\bvec{G}_n) &=
     \begin{dcases}
         %
@@ -1521,15 +1601,6 @@ In this case, the integral in \eq{Hun} simplifies:
 %
 with $\mathcal{H}_{u,n}^{\nu + 1}$ given by \eq{Huneven}.
 
-% ------------------------------------------------------------------------------
-\pagebreak
-\section{Conclusions}
-\label{sec:conclusions}
-% ------------------------------------------------------------------------------
-
-Write an awesome conclusions section.\todo{write conclusions}
-
-%
 
 % TODO
 \begin{table}[p]
