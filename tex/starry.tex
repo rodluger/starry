@@ -990,6 +990,7 @@ in Figure~\ref{fig:geometry}).
 If we happen to know $\bvec{G}_n$, the integral in \eq{greens} is just
 %
 \begin{align}
+    \label{eq:sn}
     s_n &= \mathcal{P}(\bvec{G}_n) - \mathcal{Q}(\bvec{G}_n)
     \quad,
 \end{align}
@@ -1068,11 +1069,6 @@ body.
 %
 %
 
-% ------------------------------------------------------------------------------
-\subsection{Computing The Primitive Integrals}
-\label{sec:primitive}
-% ------------------------------------------------------------------------------
-
 As cumbersome as the Green's basis (Equation~\ref{eq:bg}) may appear, the reason
 we introduced it is that its anti-exterior derivatives are conveniently simple.
 It can be easily shown that one possible solution to \eq{DGg} is
@@ -1088,7 +1084,7 @@ It can be easily shown that one possible solution to \eq{DGg} is
             & \qquad \nu \, \mathrm{even}
         \\[1em]
         %
-        \mathbfcal{Z}
+        \frac{1-z^3}{3(1-z)}(-\y \, \xhat + \x \, \yhat)
             & \qquad \nu = \mu = 1
         \\[1em]
         %
@@ -1118,19 +1114,118 @@ It can be easily shown that one possible solution to \eq{DGg} is
 \end{align}
 %
 where $l$ and $m$ are given by \eq{lm} and $\mu$ and $\nu$ are given by
-\eq{munu}. The vector function $\mathbfcal{Z}$ cannot be expressed as a
-simple polynomial in $x$, $y$, and $z$ and is therefore harder to
-integrate than any of the other terms. Fortunately, this case, which
-corresponds to the surface map
-%
-$f(\x, \y) = \z = \sqrt{1 - \x^2 - \y^2}$,
-%
-is the case of linear limb darkening, which has been studied extensively
-for stellar light curves \citep{MandelAgol2002, Pal2012}. We therefore treat
-this case separately, and return to it in \S\ref{sec:linearld}.
+\eq{munu}. Solving the occultation problem is therefore a matter of
+evaluating the primitive integrals of $\bvec{G}_n$
+(Equation~\ref{eq:primitive}). The solutions are in general tedious but
+analytic, and involve sines, cosines, and complete elliptic integrals of
+the first, second, and third kind. In the Appendix we derive recurrence
+relations to quickly compute these. We note, in particular, that all
+solutions involve complete elliptic integrals of the \emph{same} argument,
+so that the elliptic integrals need only be evaluated once for a map
+of arbitrary order, greatly improving the evaluation speed and the
+scalability of the problem to high order.
 
-Setting aside the $\mu = \nu = 1$ case for now, we may compute the primitive
-integrals for the terms in \eq{Gn}:
+% ==============================================================================
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+\pagebreak
+\appendix
+\section{Computing the solution vector $\MakeLowercase{s_n}$}
+\label{sec:solutionvector}
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+% ==============================================================================
+
+Here we seek a solution to \eq{sn}, which gives the total flux
+during an occultation of the $n^\mathrm{th}$ term in the Green's basis
+(Equation~\ref{eq:bg}). The primitive integrals $\mathcal{P}$ and
+$\mathcal{G}$ in that equation are given by \eq{primitive}, with
+$\bvec{G}_n$ defined in \eq{Gn}. Note that all of the terms in \eq{Gn},
+with the exception of the $\mu = \nu = 1$ case, are simple polynomials
+in $\x$, $\y$, and $\z$, which facilitates their integration.
+The $\mu = \nu = 1$ term (corresponding to the $n = 2$ term in the Green's basis)
+is more difficult to integrate, but an analytic
+solution exists \citep{Pal2012}. It is, however, more convenient
+to note that this term corresponds to a surface map given by the polynomial
+$f(x, y) = \tilde{g}_2(x, y) = \sqrt{1 - x^2 - y^2}$, which is the same function used
+to model linear limb darkening in stars \citep{MandelAgol2002}. We therefore
+evaluate this term separately in Appendix~\ref{sec:linearld} below, followed by
+the general term in Appendix~\ref{sec:generalterm}.
+
+% ------------------------------------------------------------------------------
+\subsection{Linear limb darkening ($n = 2$)}
+\label{sec:linearld}
+% ------------------------------------------------------------------------------
+
+From \citet{MandelAgol2002}, the total flux visible during the occultation of a
+body whose surface map is given by $f(x, y) = \sqrt{1 - \x^2 -\y^2}$ is
+%
+\begin{align}
+    s_2 = \frac{2}{3\pi} \left(1 - \frac{3\Lambda}{2} - \Theta(r - b) \right)
+\end{align}
+%
+where $\Theta(\bigdot)$ is the Heaviside step function and
+%
+\begin{align}
+    \label{eq:biglam}
+    \Lambda &=
+    \begin{dcases}
+          \frac{1}{9 \pi \sqrt{b r}} \bigg[
+                (-3 + 12 r^2 - 10 b^2 r^2 - 6 r^4 + \xi) K(k^2)
+                &\\
+                \phantom{XXXX}
+                - 2 \xi E (k^2)
+                + 3 \left(\frac{b + r}{b - r}\right) \Pi\left(1-\frac{1}{(b-r)^2}, k^2\right)
+                \bigg]
+          & \qquad k^2 < 1
+          %
+          \\[1.5em]
+          %
+          \frac{1}{9 \pi \sqrt{(1{-}b{+}r)(1{+}b{-}r)}} \bigg[
+                2 \left(1 - 5 b^2 + r^2 + (r^2 - b^2)^2\right) K \left(\frac{1}{k^2}\right)
+                &\\
+                \phantom{XXXXXXXXXXX}
+                - 2 \xi k^2 E \left(\frac{1}{k^2}\right)
+                &\\
+                \phantom{XXXXXXXXXXX}
+                + 3 \left(\frac{b + r}{b - r}\right) \Pi\left(\frac{1}{k^2 - \frac{1}{4 b r}}, \frac{1}{k^2}\right)
+                \bigg]
+          & \qquad k^2 \ge 1
+    \end{dcases}
+\end{align}
+%
+with
+%
+\begin{align}
+    \label{eq:k2}
+    \xi &= 2 b r (4 - 7 r^2 - b^2) \nonumber \\
+    k^2 &= \frac{1 - r^2 - b^2}{4 b r}
+    \quad.
+\end{align}
+%
+In the expressions above, $K(\bigdot)$, $E(\bigdot)$, and $\Pi(\bigdot)$
+are the complete elliptic integrals of the first, second kind, and third kind,
+respectively, defined as
+\todo{case when $b = 0$}
+%
+\begin{align}
+    \label{eq:elliptic}
+    K(k^2) &\equiv \int_0^{\frac{\pi}{2}} \frac{\dd \varphi}{\sqrt{1 - k^2 \sin^2 \varphi}}
+    \nonumber \\[0.5em]
+    E(k^2) &\equiv \int_0^{\frac{\pi}{2}} \sqrt{1 - k^2 \sin^2 \varphi} \, \dd \varphi
+    \nonumber \\[0.5em]
+    \Pi(n^2, k^2) &\equiv \int_0^{\frac{\pi}{2}} \frac{\dd \varphi}{(1 - n^2 \sin^2 \varphi)\sqrt{1 - k^2 \sin^2 \varphi}}
+    \quad.
+\end{align}
+
+
+% ------------------------------------------------------------------------------
+\section{All other terms}
+\label{sec:generalterm}
+% ------------------------------------------------------------------------------
+
+We evaluate all other terms in $s_n$ by integrating the primitive integrals of
+$\bvec{G}_n$. These are given by
 %
 \begin{align}
     \label{eq:PGnQGn}
@@ -1144,10 +1239,6 @@ integrals for the terms in \eq{Gn}:
             \, \dd\varphi
             %
             & \qquad \nu \, \mathrm{even}
-        \\[1em]
-        %
-        \phantom{XXXXXXXXX}\text{---}
-            & \qquad \nu = \mu = 1
         \\[1em]
         %
         -\int\displaylimits_{\pi - \phi}^{2\pi + \phi}
@@ -1198,12 +1289,8 @@ integrals for the terms in \eq{Gn}:
             & \qquad\qquad \nu \, \mathrm{even}
         \\[1em]
         %
-        \phantom{XXXXx}\text{---}
-            & \qquad\qquad \nu = \mu = 1
-        \\[1em]
-        %
         \phantom{XXXXX}0
-            & \qquad\qquad \mathrm{otherwise.}
+            & \qquad\qquad \mathrm{otherwise,}
     \end{dcases}
 \end{align}
 %
@@ -1256,10 +1343,6 @@ With some algebra, we may therefore write
             & \qquad \nu \, \mathrm{even}
         \\[1em]
         %
-        \phantom{XXXX}\text{---}
-            & \qquad \nu = \mu = 1
-        \\[1em]
-        %
         b r^{l-2} \mathcal{I}_{l-2, 0}^\nu (\phi, b, r)
         - r^{l-1} \mathcal{I}_{l-2,1}^\nu (\phi, b, r)
             %
@@ -1292,10 +1375,6 @@ With some algebra, we may therefore write
             & \qquad\qquad \nu \, \mathrm{even}
         \\[1em]
         %
-        \phantom{XXx}\text{---}
-            & \qquad\qquad \nu = \mu = 1
-        \\[1em]
-        %
         \phantom{XXX}0
             & \qquad\qquad \mathrm{otherwise.}
     \end{dcases}
@@ -1308,7 +1387,7 @@ expressions for $\mathcal{H}_{u, n}^{\nu}$ (Equation~\ref{eq:Hun}):
 \noindent \textbf{\underline{Case 1: $\nu$ even}}\\
 
 \noindent For even $\nu$, $\mathcal{H}_{u, n}^{\nu}$ evaluates to terms containing
-only sines and cosines of $\xi$. \citet{Pal2012} derived simple recursion relations
+only sines and cosines of $\xi$. \citet{Pal2012} derived simple recurrence relations
 for these terms:
 %
 \begin{align}\
@@ -1349,17 +1428,20 @@ for these terms:
 
 \noindent \textbf{\underline{Case 2: $\nu$ odd}}\\
 
-\noindent Because of the term raised to the $\nicefrac{3}{2}$ power in
+\noindent When $\nu$ is odd, $\mathcal{Q}(\bvec{G}_n) = 0$ and
+we need only compute $\mathcal{P}(\bvec{G}_n)$, for which
+$\xi = \phi$, $\beta = b$, and $\rho = r$. However,
+because of the term raised to the $\nicefrac{3}{2}$ power in
 \eq{Hun} for odd $\nu$, the integral becomes significantly more
 difficult to compute. With some algebraic manipulation, and using
-recursion relations for expressions with integrands
+recurrence relations for expressions with integrands
 of the form $\cos^p\varphi\sin^q\varphi (1 - \kappa^2 \sin^2 \varphi)^\frac{3}{2}$
 \citep{Gradshteyn1994}, we may write
 %
 \begin{align}
     \label{eq:Hunodd}
-    \mathcal{H}_{u,n}^{\nu}(\xi, \beta, \rho) &=
-        2^{u+3} (\beta \rho)^\frac{3}{2}
+    \mathcal{H}_{u,n}^{\nu}(\phi, b, r) &=
+        2^{u+3} (b r)^\frac{3}{2}
         \sum\displaylimits_{m=0}^n
             {n \choose m}\left(-1\right)^{m-n-u}\mathcal{J}_{u + 2m, u + 2n - 2m}(k^2)
 \end{align}
@@ -1391,15 +1473,9 @@ with
     d_4 &= (3 - p) + (p - 3)(1 - k^2)
 \end{align}
 %
-and
+and $k^2$ defined as in \eq{k2}.
 %
-\begin{align}
-    \label{eq:k2}
-    k^2 \equiv \frac{1 - (\beta - \rho)^2}{4 \beta \rho}
-    \quad.
-\end{align}
-%
-These recursion relations require four initial conditions:
+These recurrence relations require four initial conditions:
 %
 \begin{align}
     \mathcal{J}_{0,0}(k^2) &= \frac{8-12k^2}{3}\mathcal{E}_1(k^2) + \frac{-8 + 16k^2}{3}\mathcal{E}_2(k^2) \nonumber \\[1em]
@@ -1429,73 +1505,21 @@ where
     \end{dcases}
 \end{align}
 %
-In the expressions above, $K(\bigdot)$ and $E(\bigdot)$ are the complete
-elliptic integrals of the first and second kind, respectively, defined as
-%
-\begin{align}
-    \label{eq:elliptic}
-    K(k^2) \equiv \int_0^{\frac{\pi}{2}} \frac{\dd \varphi}{\sqrt{1 - k^2 \sin^2 \varphi}}
-    \nonumber \\[0.5em]
-    E(k^2) \equiv \int_0^{\frac{\pi}{2}} \sqrt{1 - k^2 \sin^2 \varphi} \, \dd \varphi
-    \quad.
-\end{align}
-%
-Note that these expressions diverge when $\beta = 0$, since $k \rightarrow \infty$.
+Interestingly, the elliptic integrals in the expressions above are exactly
+the same as the ones used to evaluate the $s_2$ term (Equation~\ref{eq:biglam}),
+so these need only be evaluated \emph{once} when computing the occultation flux of
+a map of arbitrary order. Thanks to the recurrence relations, all other operations
+required to evaluate the integrals for odd $\mu$ are elementary, making the
+computation of $s_n$ fast.
+
+Note, finally, that the expressions above diverge when $b = 0$, since $k \rightarrow \infty$.
 In this case, the integral in \eq{Hun} simplifies:
 %
 \begin{align}
-    \mathcal{H}_{u,n}^{\nu}(\xi, 0, \rho) = (1 - \rho^2)^\frac{3}{2} \mathcal{H}_{u,n}^{\nu + 1}(\xi, 0, \rho)
+    \mathcal{H}_{u,n}^{\nu}(\phi, 0, r) = (1 - r^2)^\frac{3}{2} \mathcal{H}_{u,n}^{\nu + 1}(\phi, 0, r)
 \end{align}
 %
 with $\mathcal{H}_{u,n}^{\nu + 1}$ given by \eq{Huneven}.
-
-% ------------------------------------------------------------------------------
-\subsection{Linear limb darkening}
-\label{sec:linearld}
-% ------------------------------------------------------------------------------
-
-
-\begin{align}
-    s_2 = \frac{2}{3\pi} \left(1 - \frac{3\lambda}{2} - \Theta(r - b) \right)
-\end{align}
-%
-where
-%
-\begin{align}
-    \lambda &=
-    \begin{dcases}
-          \frac{1}{9 \pi \sqrt{b r}} \bigg[
-                (-3 + 12 r^2 - 10 b^2 r^2 - 6 r^4 + \xi) K(k^2)
-                \\
-                \phantom{XXXX}
-                - 2 \xi E (k^2)
-                + 3 \left(\frac{b + r}{b - r}\right) \Pi\left(1-\frac{1}{(b-r)^2}, k^2\right)
-                \bigg]
-          & \qquad k^2 < 1
-          %
-          \nonumber \\[1.5em]
-          %
-          \frac{1}{9 \pi \sqrt{(1{-}b{+}r)(1{+}b{-}r)}} \bigg[
-                2 \left(1 - 5 b^2 + r^2 + (r^2 - b^2)^2\right) K \left(\frac{1}{k^2}\right)
-                \\
-                \phantom{XXXXXXXXXXX}
-                - 2 \xi k^2 E \left(\frac{1}{k^2}\right)
-                \\
-                \phantom{XXXXXXXXXXX}
-                + 3 \left(\frac{b + r}{b - r}\right) \Pi\left(\frac{1}{k^2 - \frac{1}{4 b r}}, \frac{1}{k^2}\right)
-                \bigg]
-          & \qquad k^2 \ge 1
-    \end{dcases}
-\end{align}
-%
-and
-%
-\begin{align}
-    \xi &= 2 b r (4 - 7 r^2 - b^2)
-\end{align}
-%
-and $\Theta(\bigdot)$ is the Heaviside step function.
-
 
 % ------------------------------------------------------------------------------
 \pagebreak
@@ -1510,7 +1534,7 @@ Write an awesome conclusions section.\todo{write conclusions}
 % TODO
 \begin{table}[p]
 \centering
-\caption{Symbols used in this paper}
+\caption{Symbols used in this paper}\todo{finish this}
 \label{tab:symbols}
     \begin{tabular}{@{}cll@{}}
     %
