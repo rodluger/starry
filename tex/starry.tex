@@ -104,7 +104,7 @@ where
                  \label{eq:ylmcs}
 \end{align}
 %
-and $\binom{\scaleto{\cdot}{6pt}}{\scaleto{\cdot}{6pt}}$ is the binomial
+and $\binom{\bigdot}{\bigdot}$ is the binomial
 coefficient. The normalized associated Legendre function is defined as
 %
 \begin{align}
@@ -524,8 +524,8 @@ for axis-angle rotations and
 \end{equation}
 %
 for Euler rotations,
-where $c_{\scaleto{\cdot}{6pt}} \equiv \cos(\cdot)$
-and $s_{\scaleto{\cdot}{6pt}} \equiv \sin(\cdot)$.
+where $c_{\bigdot} \equiv \cos(\cdot)$
+and $s_{\bigdot} \equiv \sin(\cdot)$.
 Comparison of the two matrices gives us expressions for the Euler
 angles in terms of $\bvec{u}$ and $\theta$:
 %
@@ -913,28 +913,19 @@ For future reference, it can be shown that
     \label{eq:philam}
     \phi &=
     \begin{dcases}
-        \arcsin{(\sinphi)}      & \qquad |1 - r| < b < 1 + r \\
-        \frac{\pi}{2}           & \qquad b \le 1 - r
+        \arcsin\left({\frac{1 - r^2 - b^2}{2br}}\right)
+                                                & \qquad |1 - r| < b < 1 + r \\
+        \frac{\pi}{2}                           & \qquad b \le 1 - r
     \end{dcases}
     \nonumber \\
 \intertext{and}
     \lambda &=
     \begin{dcases}
-        \arcsin{(\sinlambda)}      & \qquad |1 - r| < b < 1 + r \\
-        \frac{\pi}{2}              & \qquad b \le 1 - r
+        \arcsin\left(\frac{1 - r^2 + b^2}{2b}\right)
+                                                & \qquad |1 - r| < b < 1 + r \\
+        \frac{\pi}{2}                           & \qquad b \le 1 - r
+        \quad,
     \end{dcases}
-\quad,
-\end{align}
-%
-where we define
-\begin{align}
-    \begin{split}
-        \sinphi &\equiv \frac{1 - r^2 - b^2}{2br}
-    \end{split}
-    \begin{split}
-        \sinlambda &\equiv b + r \sinphi
-    \end{split}
-    \quad.
 \end{align}
 %
 The case $b \le 1 - r$ corresponds to an occultation during which the occultor
@@ -1224,29 +1215,32 @@ proportional to $\z$ taken along the limb of the occulted planet
 For convenience, let us introduce the expressions
 %
 \begin{align}
-    \mathcal{H}_{u,v}^\nu(\xi) &=
+    \label{eq:Hun}
+    \mathcal{H}_{u,n}^\nu(\xi, \beta, \rho) &=
     \begin{dcases}
         \int\displaylimits_{\pi - \xi}^{2\pi + \xi}
             c_\varphi^u
-            s_\varphi^v
+            s_\varphi^n
             \, \dd\varphi
             & \qquad \nu \, \mathrm{even}
         \\[1em]
         \int\displaylimits_{\pi - \xi}^{2\pi + \xi}
             c_\varphi^u
-            s_\varphi^v
+            s_\varphi^n
             (1 - \rho^2 - \beta^2 - 2 \beta \rho s_\varphi)^{\frac{3}{2}}
             \, \dd\varphi
             & \qquad \nu \, \mathrm{odd}
     \end{dcases}
-\nonumber \\
-\intertext{and}
-\nonumber \\
+\end{align}
+%
+and
+%
+\begin{align}
     \mathcal{I}_{u,v}^\nu(\xi, \beta, \rho) &=
         \sum\displaylimits_{n=0}^{v}
         {v \choose n}
         \left(\frac{\beta}{\rho}\right)^{v-n}
-        \mathcal{H}_{u, n}^\nu
+        \mathcal{H}_{u, n}^\nu (\xi, \beta, \rho)
         \quad.
 \end{align}
 %
@@ -1306,6 +1300,202 @@ With some algebra, we may therefore write
             & \qquad\qquad \mathrm{otherwise.}
     \end{dcases}
 \end{align}
+%
+The solution to the occultation problem is therefore a matter of finding
+expressions for $\mathcal{H}_{u, n}^{\nu}$ (Equation~\ref{eq:Hun}):
+\\
+
+\noindent \textbf{\underline{Case 1: $\nu$ even}}\\
+
+\noindent For even $\nu$, $\mathcal{H}_{u, n}^{\nu}$ evaluates to terms containing
+only sines and cosines of $\xi$. \citet{Pal2012} derived simple recursion relations
+for these terms:
+%
+\begin{align}\
+    \label{eq:Huneven}
+    \mathcal{H}_{u,n}^{\nu}(\xi, \beta, \rho) &=
+    \begin{dcases}
+        0
+        & \qquad u \ \mathrm{odd}
+        %
+        \\[0.5em]
+        %
+        2\xi + \pi
+        & \qquad u = n = 0
+        %
+        \\[0.5em]
+        %
+        -2\cos\xi
+        & \qquad u = 0, n = 1
+        %
+        \\[0.5em]
+        %
+        \frac{2}{u + n}
+        (\cos\xi)^{u-1} (\sin\xi)^{n+1} +
+        \frac{u-1}{u+n} \mathcal{H}_{u-2,n}^{\nu}(\xi, \beta, \rho)
+        & \qquad u \ge 2
+        %
+        \\[0.5em]
+        %
+        -\frac{2}{u + n}
+        (\cos\xi)^{u+1} (\sin\xi)^{n-1} +
+        \frac{n-1}{u+n} \mathcal{H}_{u,n-2}^{\nu}(\xi, \beta, \rho)
+        & \qquad n \ge 2
+        \quad.
+        %
+    \end{dcases}
+\end{align}
+\\
+
+\noindent \textbf{\underline{Case 2: $\nu$ odd}}\\
+
+\noindent Because of the term raised to the $\nicefrac{3}{2}$ power in
+\eq{Hun} for odd $\nu$, the integral becomes significantly more
+difficult to compute. With some algebraic manipulation, and using
+recursion relations for expressions with integrands
+of the form $\cos^p\varphi\sin^q\varphi (1 - \kappa^2 \sin^2 \varphi)^\frac{3}{2}$
+\citep{Gradshteyn1994}, we may write
+%
+\begin{align}
+    \label{eq:Hunodd}
+    \mathcal{H}_{u,n}^{\nu}(\xi, \beta, \rho) &=
+        2^{u+3} (\beta \rho)^\frac{3}{2}
+        \sum\displaylimits_{m=0}^n
+            {n \choose m}\left(-1\right)^{m-n-u}\mathcal{J}_{u + 2m, u + 2n - 2m}(k^2)
+\end{align}
+%
+where
+%
+\begin{align}
+    \mathcal{J}_{p, q} (k^2) &=
+    \begin{dcases}
+        %
+        0 & \qquad p\ \mathrm{odd} \ \mathrm{or} \ q\ \mathrm{odd}\\[0.5em]
+        %
+        \frac{d_1 \mathcal{J}_{p,q-2}(k^2) + d_2 \mathcal{J}_{p,q-4}(k^2)}
+             {p + q + 3}
+        & \qquad q \ge 4 \\[0.5em]
+        %
+        \frac{d_3 \mathcal{J}_{p-2,q}(k^2) + d_4 \mathcal{J}_{p-4,q}(k^2)}
+             {p + q + 3}
+         & \qquad p \ge 4
+    \end{dcases}
+\end{align}
+%
+with
+%
+\begin{align}
+    d_1 &= q + 2 + (p + q - 2)(1 - k^2) \nonumber \\
+    d_2 &= (3 - q)(1 - k^2) \nonumber \\
+    d_3 &= 2 p + q - (p + q - 2)(1 - k^2) \nonumber \\
+    d_4 &= (3 - p) + (p - 3)(1 - k^2)
+\end{align}
+%
+and
+%
+\begin{align}
+    \label{eq:k2}
+    k^2 \equiv \frac{1 - (\beta - \rho)^2}{4 \beta \rho}
+    \quad.
+\end{align}
+%
+These recursion relations require four initial conditions:
+%
+\begin{align}
+    \mathcal{J}_{0,0}(k^2) &= \frac{8-12k^2}{3}\mathcal{E}_1(k^2) + \frac{-8 + 16k^2}{3}\mathcal{E}_2(k^2) \nonumber \\[1em]
+    \mathcal{J}_{0,2}(k^2) &= \frac{8-24k^2}{15}\mathcal{E}_1(k^2) + \frac{-8 + 28k^2 + 12k^4}{15}\mathcal{E}_2(k^2) \nonumber \\[1em]
+    \mathcal{J}_{2,0}(k^2) &= \frac{32 - 36k^2}{15}\mathcal{E}_1(k^2) + \frac{-32 + 52k^2 - 12k^4}{15}\mathcal{E}_2(k^2) \nonumber \\[1em]
+    \mathcal{J}_{2,2}(k^2) &= \frac{32-60k^2+12k^4}{105}\mathcal{E}_1(k^2) + \frac{-32 + 76 k^2 - 36 k^4 + 24 k^6}{105}\mathcal{E}_2(k^2)
+    \quad,
+\end{align}
+%
+where
+%
+\begin{align}
+    \mathcal{E}_1(k^2) &=
+    \begin{dcases}
+        (1-k^2) K \left(k^2\right) & \qquad k^2 < 1 \\[0.5em]
+        \frac{1-k^2}{\sqrt{k^2}} K \left(\frac{1}{k^2}\right) & \qquad k^2 \ge 1
+    \end{dcases}
+    \nonumber \\[0.5em]
+\intertext{and}
+    \mathcal{E}_2(k^2) &=
+    \begin{dcases}
+        E \left(k^2\right) & \qquad k^2 < 1 \\[0.5em]
+        k E \left(\frac{1}{k^2}\right)
+            + \frac{1-k^2}{\sqrt{k^2}} K \left(\frac{1}{k^2}\right)
+          & \qquad k^2 \ge 1
+          \quad.
+    \end{dcases}
+\end{align}
+%
+In the expressions above, $K(\bigdot)$ and $E(\bigdot)$ are the complete
+elliptic integrals of the first and second kind, respectively, defined as
+%
+\begin{align}
+    \label{eq:elliptic}
+    K(k^2) \equiv \int_0^{\frac{\pi}{2}} \frac{\dd \varphi}{\sqrt{1 - k^2 \sin^2 \varphi}}
+    \nonumber \\[0.5em]
+    E(k^2) \equiv \int_0^{\frac{\pi}{2}} \sqrt{1 - k^2 \sin^2 \varphi} \, \dd \varphi
+    \quad.
+\end{align}
+%
+Note that these expressions diverge when $\beta = 0$, since $k \rightarrow \infty$.
+In this case, the integral in \eq{Hun} simplifies:
+%
+\begin{align}
+    \mathcal{H}_{u,n}^{\nu}(\xi, 0, \rho) = (1 - \rho^2)^\frac{3}{2} \mathcal{H}_{u,n}^{\nu + 1}(\xi, 0, \rho)
+\end{align}
+%
+with $\mathcal{H}_{u,n}^{\nu + 1}$ given by \eq{Huneven}.
+
+% ------------------------------------------------------------------------------
+\subsection{Linear limb darkening}
+\label{sec:linearld}
+% ------------------------------------------------------------------------------
+
+
+\begin{align}
+    s_2 = \frac{2}{3\pi} \left(1 - \frac{3\lambda}{2} - \Theta(r - b) \right)
+\end{align}
+%
+where
+%
+\begin{align}
+    \lambda &=
+    \begin{dcases}
+          \frac{1}{9 \pi \sqrt{b r}} \bigg[
+                (-3 + 12 r^2 - 10 b^2 r^2 - 6 r^4 + \xi) K(k^2)
+                \\
+                \phantom{XXXX}
+                - 2 \xi E (k^2)
+                + 3 \left(\frac{b + r}{b - r}\right) \Pi\left(1-\frac{1}{(b-r)^2}, k^2\right)
+                \bigg]
+          & \qquad k^2 < 1
+          %
+          \nonumber \\[1.5em]
+          %
+          \frac{1}{9 \pi \sqrt{(1{-}b{+}r)(1{+}b{-}r)}} \bigg[
+                2 \left(1 - 5 b^2 + r^2 + (r^2 - b^2)^2\right) K \left(\frac{1}{k^2}\right)
+                \\
+                \phantom{XXXXXXXXXXX}
+                - 2 \xi k^2 E \left(\frac{1}{k^2}\right)
+                \\
+                \phantom{XXXXXXXXXXX}
+                + 3 \left(\frac{b + r}{b - r}\right) \Pi\left(\frac{1}{k^2 - \frac{1}{4 b r}}, \frac{1}{k^2}\right)
+                \bigg]
+          & \qquad k^2 \ge 1
+    \end{dcases}
+\end{align}
+%
+and
+%
+\begin{align}
+    \xi &= 2 b r (4 - 7 r^2 - b^2)
+\end{align}
+%
+and $\Theta(\bigdot)$ is the Heaviside step function.
+
 
 % ------------------------------------------------------------------------------
 \pagebreak
@@ -1330,12 +1520,14 @@ Write an awesome conclusions section.\todo{write conclusions}
     %
     \midrule
     %
+    $c_{\bigdot}$   & $\cos(\bigdot)$                       & \\
     $\gbasis$       & Green's basis                         & \eq{bg} \\
     $\bvec{g}$      & Vector in the basis $\gbasis$         & \\
     $\bar{P}$       & Normalized associated Legendre
                       function                              & \eq{plm} \\
     $\pbasis$       & Polynomial basis                      & \eq{bp} \\
     $\bvec{p}$      & Vector in the basis $\pbasis$         & \\
+    $s_{\bigdot}$   & $\sin(\bigdot)$                       & \\
     $\x$            & Cartesian coordinate                  & \\
     $\y$            & Cartesian coordinate                  & \\
     $Y_{l,m}$       & Spherical harmonic of order $l$
