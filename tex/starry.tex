@@ -889,7 +889,7 @@ intensity over a region $S$ of the projected disk of the body:
 where $\bvec{r}$ is a column vector whose $n^\mathrm{th}$ component is given by
 %
 \begin{align}
-    \label{eq:sn}
+    \label{eq:rn}
     r_n &\equiv
       \oiint \pbasisn (\x, \y)  \, \dd S
     \quad.
@@ -1007,15 +1007,15 @@ extends from $\pi - \lambda$ to $2\pi + \lambda$ (see the Figure).
 For future reference, it can be shown that
 %
 \begin{align}
-    \label{eq:philam}
+    \label{eq:phi}
     \phi &=
     \begin{dcases}
         \arcsin\left({\frac{1 - r^2 - b^2}{2br}}\right)
                                                 & \qquad |1 - r| < b < 1 + r \\
         \frac{\pi}{2}                           & \qquad b \le 1 - r
-    \end{dcases}
-    \nonumber \\
+    \end{dcases} \\
 \intertext{and}
+    \label{eq:lambda}
     \lambda &=
     \begin{dcases}
         \arcsin\left(\frac{1 - r^2 + b^2}{2b}\right)
@@ -1096,15 +1096,16 @@ If we happen to know $\bvec{G}_n$, the integral in \eq{greens} is just
 where, as in \citet{Pal2012}, we define the \emph{primitive integrals}
 %
 \begin{align}
-    \label{eq:primitive}
+    \label{eq:primitiveP}
     \mathcal{P}(\bvec{G}_n) &=
     \int\displaylimits_{\pi-\phi}^{2\pi + \phi}
         \big[ {G_n}_y(r c_\varphi, b + r s_\varphi) c_\varphi -
               {G_n}_x(r c_\varphi, b + r s_\varphi) s_\varphi \big] r \dd \varphi
-    \nonumber \\
+    \\
     %
 \intertext{and}
     %
+    \label{eq:primitiveQ}
     \mathcal{Q}(\bvec{G}_n) &=
     \int\displaylimits_{\pi-\lambda}^{2\pi + \lambda}
         \big[ {G_n}_y(c_\varphi, s_\varphi) c_\varphi -
@@ -1126,7 +1127,7 @@ and we used the fact that along the arc of a circle,
     \quad.
 \end{align}
 %
-In Equation~(\ref{eq:primitive}), $\mathcal{P}(\bvec{G}_n)$
+In Equations~(\ref{eq:primitiveP}) and (\ref{eq:primitiveQ}), $\mathcal{P}(\bvec{G}_n)$
 is the line integral along the arc of the occultor
 and $\mathcal{Q}(\bvec{G}_n)$ is the line integral along the arc of the occulted
 body.
@@ -1154,10 +1155,10 @@ body.
              The arc of the occulted body that is visible during
              the occultation (thick black curve) extends from
              $\pi - \lambda$ to $2\pi + \lambda$, measured from the origin.
-             These are the curves along which the primitive integral
-             (Equation~\ref{eq:primitive}) is evaluated.
+             These are the curves along which the primitive integrals
+             (Equations~\ref{eq:primitiveP} and \ref{eq:primitiveQ}) are evaluated.
              The angles $\phi$ and $\lambda$ are given by
-             Equation~(\ref{eq:philam})
+             Equations~(\ref{eq:phi}) and (\ref{eq:lambda})
              and extend from $-\nicefrac{\pi}{2}$ to $\nicefrac{\pi}{2}$. When
              the occultor is completely within the disk of the occulted body,
              we define $\phi = \lambda = \nicefrac{\pi}{2}$.
@@ -1214,7 +1215,8 @@ It can be easily shown that one possible solution to \eq{DGg} is
 where $l$ and $m$ are given by \eq{lm} and $\mu$ and $\nu$ are given by
 \eq{munu}. Solving the occultation problem is therefore a matter of
 evaluating the primitive integrals of $\bvec{G}_n$
-(Equation~\ref{eq:primitive}). The solutions are in general tedious, but
+(Equations~\ref{eq:primitiveP} and \ref{eq:primitiveQ}).
+The solutions are in general tedious, but
 they are all analytic, involving sines, cosines, and complete elliptic integrals.
 In the Appendix we derive recurrence
 relations to quickly compute these. We note, in particular, that all
@@ -1306,7 +1308,8 @@ Write an awesome conclusions section.\todo{write conclusions}
 Here we seek a solution to \eq{sn}, which gives the total flux
 during an occultation of the $n^\mathrm{th}$ term in the Green's basis
 (Equation~\ref{eq:bg}). The primitive integrals $\mathcal{P}$ and
-$\mathcal{G}$ in that equation are given by \eq{primitive}, with
+$\mathcal{G}$ in that equation are given by Equations~(\ref{eq:primitiveP})
+and (\ref{eq:primitiveQ}), with
 $\bvec{G}_n$ defined in \eq{Gn}. Note that all of the terms in \eq{Gn},
 with the exception of the $\mu = \nu = 1$ case, are simple polynomials
 in $\x$, $\y$, and $\z$, which facilitates their integration.
@@ -1314,7 +1317,7 @@ The $\mu = \nu = 1$ term (corresponding to the $n = 2$ term in the Green's basis
 is more difficult to integrate, but an analytic
 solution exists \citep{Pal2012}. It is, however, more convenient
 to note that this term corresponds to a surface map given by the polynomial
-$f(x, y) = \tilde{g}_2(x, y) = \sqrt{1 - x^2 - y^2}$, which is the same function used
+$I(x, y) = \tilde{g}_2(x, y) = \sqrt{1 - x^2 - y^2}$, which is the same function used
 to model linear limb darkening in stars \citep{MandelAgol2002}. We therefore
 evaluate this term separately in Appendix~\ref{sec:linearld} below, followed by
 the general term in Appendix~\ref{sec:generalterm}.
@@ -1493,6 +1496,7 @@ For convenience, let us introduce the expressions
 and
 %
 \begin{align}
+    \label{eq:Iuv}
     \mathcal{I}_{u,v}^\nu(\xi, \beta, \rho) &=
         \sum\displaylimits_{n=0}^{v}
         {v \choose n}
@@ -1619,6 +1623,7 @@ of the form $\cos^p\varphi\sin^q\varphi (1 - \kappa^2 \sin^2 \varphi)^\frac{3}{2
 where
 %
 \begin{align}
+    \label{eq:Jpq}
     \mathcal{J}_{p, q} (k^2) &=
     \begin{dcases}
         %
@@ -1658,13 +1663,15 @@ These recurrence relations require four initial conditions:
 where
 %
 \begin{align}
+    \label{eq:E1}
     \mathcal{E}_1(k^2) &=
     \begin{dcases}
         (1-k^2) K \left(k^2\right) & \qquad k^2 < 1 \\[0.5em]
         \frac{1-k^2}{\sqrt{k^2}} K \left(\frac{1}{k^2}\right) & \qquad k^2 \ge 1
     \end{dcases}
-    \nonumber \\[0.5em]
+    \\[0.5em]
 \intertext{and}
+    \label{eq:E2}
     \mathcal{E}_2(k^2) &=
     \begin{dcases}
         E \left(k^2\right) & \qquad k^2 < 1 \\[0.5em]
@@ -1682,7 +1689,8 @@ a map of arbitrary order. Thanks to the recurrence relations, all other operatio
 required to evaluate the integrals for odd $\mu$ are elementary, making the
 computation of $s_n$ fast.
 
-Note, finally, that the expressions above diverge when $b = 0$, since $k \rightarrow \infty$.
+Note, finally, that the expressions above diverge when $b = 0$,
+since $k^2 \rightarrow \infty$.
 In this case, the integral in \eq{Hun} simplifies:
 %
 \begin{align}
@@ -1691,86 +1699,138 @@ In this case, the integral in \eq{Hun} simplifies:
 %
 with $\mathcal{H}_{u,n}^{\nu + 1}$ given by \eq{Huneven}.
 
+%
 
-% TODO
-\begin{table}[p]
-\centering
-\caption{Symbols used in this paper}\todo{finish this}
-\label{tab:symbols}
-    \begin{tabular}{@{}cll@{}}
-    %
-    \toprule
-    %
-    Symbol          & Definition  & Reference\\
-    %
-    \midrule
-    %
-    $A_{lm}$        & Legendre function normalization       & \eq{alm} \\
-    $\bvec{A}$      & Change of basis matrix:
-                      spherical harmonics to Greens
-                      polynomials                           & \eq{A} \\
-    $B_{lm}^{jk}$   & Spherical harmonic normalization      & \eq{blmjk} \\
-    $\AOne$         & Change of basis matrix:
-                      spherical harmonics to polynomials    & \S\ref{sec:polybasis} \\
-    $c_{\bigdot}$   & $\cos(\bigdot)$                       & \\
-    $C_{pq}^k$      & Expansion coefficient for
-                      $\z(\x, \y)$                          & \eq{ckpq} \\
-    $\ATwo$         & Change of basis matrix:
-                    polynomials to Greens polynomials       & \S\ref{sec:greensbasis} \\
-    $\bvec{D}^l$    & Rotation matrix for the
-                      complex spherical harmonics
-                      of order $l$                          & \eq{dl} \\
-    $F$             & Total flux seen by observer           & \eq{starry} \\
-    $\gbasis$       & Green's basis                         & \eq{bg} \\
-    $\bvec{g}$      & Vector in the basis $\gbasis$         & \\
-    $I$             & Specific intensity, $I(\x, \y)$       & \eq{I} \\
-    $j$             & Dummy index                           & \\
-    $k$             & Dummy index                           & \\
-    $l$             & Spherical harmonic order              & \eq{lm} \\
-    $m$             & Spherical harmonic degree             & \eq{lm} \\
-    $n$             & Surface map vector index              & \eq{n} \\
-    $p$             & Dummy index                           & \\
-    $\bar{P}$       & Normalized associated Legendre
-                      function                              & \eq{plm} \\
-    $\pbasis$       & Polynomial basis                      & \eq{bp} \\
-    $\bvec{p}$      & Vector in the basis $\pbasis$         & \\
-    $\bvec{P}$      & Cartesian axis-angle rotation matrix  & \eq{rotP} \\
-    $q$             & Dummy index                           & \\
-    $\bvec{Q}$      & Cartesian Euler angle rotation matrix & \eq{rotQ} \\
-    $\bvec{R}$      & Rotation matrix for the real
-                      spherical harmonics                   & \eq{rblockdiag} \\
-    $\bvec{R}^l$    & Rotation matrix for the real
-                      spherical harmonics of order $l$      & \eq{rl} \\
-    $s_{\bigdot}$   & $\sin(\bigdot)$                       & \\
-    $\bvec{u}$      & Unit vector corresponding to the
-                      axis of rotation                      & \S\ref{sec:axisangle} \\
-    $\bvec{U}$      & Complex to real spherical harmonics
-                      transform matrix                      & \eq{U} \\
-    $\x$            & Cartesian coordinate                  & \eq{xyz} \\
-    $\y$            & Cartesian coordinate                  & \eq{xyz} \\
-    $Y_{l,m}$       & Spherical harmonic of order $l$
-                      and degree $m$                        & \eq{ylm0} \\
-    $\ybasis$       & Spherical harmonic basis              & \eq{by} \\
-    $\bvec{y}$      & Vector in the basis $\ybasis$         & \\
-    $\z$            & Cartesian coordinate,
-                      $z = \sqrt{1 - \x^2 - \y^2}$          & \eq{xyz} \\
-    %
-    $\alpha$        & Euler angle                           & \S\ref{sec:euler} \\
-    $\beta$         & Euler angle                           & \S\ref{sec:euler} \\
-    $\gamma$        & Euler angle                           & \S\ref{sec:euler} \\
-    $\mu$           & $l - m$                               & \eq{munu} \\
-    $\nu$           & $l + m$                               & \eq{munu} \\
-    $\phi$          & Azimuthal angle                       & \eq{ylmtp} \\
-    $\theta$        & Polar angle                           & \eq{ylmtp} \\
-                    & Rotation angle                        & \S\ref{sec:axisangle} \\
-    \bottomrule
-    %
-\end{tabular}
-\end{table}
+\begin{center}
+\begin{longtable}{cll}
+\caption{Symbols used in this paper} \label{tab:symbols} \\
+%
+\toprule
+\multicolumn{1}{c}{\textbf{Symbol}} &
+\multicolumn{1}{c}{\textbf{Definition}} &
+\multicolumn{1}{c}{\textbf{Reference}} \\
+\midrule
+\endfirsthead
+%
+\multicolumn{3}{c}%
+{{\bfseries \tablename\ \thetable{} --} continued from previous page} \\
+\toprule
+\multicolumn{1}{c}{\textbf{Symbol}} &
+\multicolumn{1}{c}{\textbf{Definition}} &
+\multicolumn{1}{c}{\textbf{Reference}} \\
+\midrule
+\endhead
+\bottomrule
+%
+\endfoot
+%
+\bottomrule
+\endlastfoot
+%
+$A_{lm}$        & Legendre function normalization       & \eq{alm} \\
+$\bvec{A}$      & Change of basis matrix:
+                  spherical harmonics to Greens
+                  polynomials                           & \eq{A} \\
+$\AOne$         & Change of basis matrix:
+                  spherical harmonics to polynomials    & \S\ref{sec:polybasis} \\
+$\ATwo$         & Change of basis matrix:
+                  polynomials to Greens polynomials     & \S\ref{sec:greensbasis} \\
+$b$             & Impact parameter in units of occulted
+                  body's radius                         & \S\ref{sec:occultations} \\
+$B_{lm}^{jk}$   & Spherical harmonic normalization      & \eq{blmjk} \\
 
-
-
-
+$c_{\bigdot}$   & $\cos(\bigdot)$                       & \\
+$C_{pq}^k$      & Expansion coefficient for
+                  $\z(\x, \y)$                          & \eq{ckpq} \\
+$\bvec{D}^l$    & Rotation matrix for the
+                  complex spherical harmonics
+                  of order $l$                          & \eq{dl} \\
+$\bvec{D}\,\wedge$
+                & Exterior derivative                   & \eq{extderiv} \\
+$E(\bigdot)$    & Complete elliptic integral of the
+                  second kind                           & \eq{elliptic} \\
+$\mathcal{E}_1$ & First elliptic function               & \eq{E1} \\
+$\mathcal{E}_2$ & Second elliptic function              & \eq{E2} \\
+$F$             & Total flux seen by observer           & \eq{starry} \\
+$\gbasis$       & Green's basis                         & \eq{bg} \\
+$\bvec{g}$      & Vector in the basis $\gbasis$         & \\
+$\bvec{G}_n$    & Anti-exterior derivative of the
+                  $n^\mathrm{th}$
+                  term in the Green's basis             & \eq{Gn} \\
+$\mathcal{H}_{u,n}^{\nu}$
+                & Occultation integral                  & \eq{Hun} \\
+$I$             & Specific intensity, $I(\x, \y)$       & \eq{I} \\
+$\mathcal{I}_{u,v}^{\nu}$
+                & Occultation integral                  & \eq{Iuv} \\
+$j$             & Dummy index                           & \\
+$\mathcal{J}_{p,q}$
+                & Occultation integral                  & \eq{Jpq} \\
+$k$             & Dummy index                           & \\
+$k^2$           & Elliptic parameter                    & \eq{k2} \\
+$K(\bigdot)$    & Complete Elliptic integral of the
+                  first kind                            & \eq{elliptic} \\
+$l$             & Spherical harmonic order              & \eq{lm} \\
+$m$             & Spherical harmonic degree             & \eq{lm} \\
+$n$             & Surface map vector index,
+                  $n = l^2 + l + m$                     & \eq{n} \\
+$p$             & Dummy index                           & \\
+$\bar{P}$       & Normalized associated Legendre
+                  function                              & \eq{plm} \\
+$\pbasis$       & Polynomial basis                      & \eq{bp} \\
+$\bvec{p}$      & Vector in the basis $\pbasis$         & \\
+$\bvec{P}$      & Cartesian axis-angle rotation matrix  & \eq{rotP} \\
+$\mathcal{P}$   & Primitive integral along perimiter
+                  of occultor                           & \eq{primitiveP} \\
+$q$             & Dummy index                           & \\
+$\bvec{Q}$      & Cartesian Euler angle rotation matrix & \eq{rotQ} \\
+$\mathcal{Q}$   & Primitive integral along perimiter
+                  of occulted body                      & \eq{primitiveQ} \\
+$r$             & Occultor radius in units of occulted
+                  body's radius                         & \S\ref{sec:occultations} \\
+$\bvec{r}$      & Phase curve solution vector           & \eq{rn} \\
+$\bvec{R}$      & Rotation matrix for the real
+                  spherical harmonics                   & \eq{rblockdiag} \\
+$\bvec{R}^l$    & Rotation matrix for the real
+                  spherical harmonics of order $l$      & \eq{rl} \\
+$s_{\bigdot}$   & $\sin(\bigdot)$                       & \\
+$\bvec{s}$      & Occultation light curve solution
+                  vector                                & \eq{rn} \\
+$\bvec{u}$      & Unit vector corresponding to the
+                  axis of rotation                      & \S\ref{sec:axisangle} \\
+$\bvec{U}$      & Complex to real spherical harmonics
+                  transform matrix                      & \eq{U} \\
+$\x$            & Cartesian coordinate                  & \eq{xyz} \\
+$\y$            & Cartesian coordinate                  & \eq{xyz} \\
+$Y_{l,m}$       & Spherical harmonic of order $l$
+                  and degree $m$                        & \eq{ylm0} \\
+$\ybasis$       & Spherical harmonic basis              & \eq{by} \\
+$\bvec{y}$      & Vector in the basis $\ybasis$         & \\
+$\z$            & Cartesian coordinate,
+                  $z = \sqrt{1 - \x^2 - \y^2}$          & \eq{xyz} \\
+%
+$\alpha$        & Euler angle ($\zhat$ rotation)        & \S\ref{sec:euler} \\
+$\beta$         & Euler angle ($\yhat$ rotation)        & \S\ref{sec:euler} \\
+$\gamma$        & Euler angle ($\zhat$ rotation)        & \S\ref{sec:euler} \\
+$\theta$        & Polar angle                           & \eq{ylmtp} \\
+                & Spherical harmonic rotation angle     & \S\ref{sec:axisangle} \\
+$\Theta$        & Heaviside step function               & \eq{biglam} \\
+$\lambda$       & Angular position of intersection point
+                  between occulted and occultor         & \eq{lambda} \\
+$\Lambda$       & \citet{MandelAgol2002} function       & \eq{biglam} \\
+$\mu$           & $l - m$                               & \eq{munu} \\
+$\nu$           & $l + m$                               & \eq{munu} \\
+$\xi$           & Function of $b$ and $r$               & \ref{eq:k2} \\
+$\Pi(\bigdot,\bigdot)$
+                & Complete elliptic integral of the
+                  third kind                            & \eq{elliptic} \\
+$\phi$          & Spherical harmonic azimuthal angle    & \eq{ylmtp} \\
+                & Angular position of intersection point
+                  between occulted and occultor         & \eq{phi} \\
+$\varphi$       & Dummy integration variable            & \\
+$\omega$        & Angular position of occultor          & \eq{zrot}
+%
+\end{longtable}
+\end{center}
 
 
 \bibliography{starry}
