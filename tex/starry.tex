@@ -46,7 +46,7 @@ Write a kick-ass intro here! \todo{write intro}
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 \pagebreak
-\section{Spherical Harmonics}
+\section{Spherical harmonics}
 \label{sec:spharm}
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
@@ -79,32 +79,29 @@ Expanding Equation~(\ref{eq:ylmtp}) using the multiple angle formula, we obtain
 \begin{align}
     \label{eq:ylm0}
     Y_{lm}(\x, \y , \z) =
-    \begin{cases}
-        \bar{P}_{lm}(\z) C_m(\x, \y, \z) & m \geq 0 \\
-        \bar{P}_{l|m|}(\z) S_{|m|}(\x, \y, \z) & m < 0 \quad ,
-    \end{cases}
+    \left(\frac{1}{\sqrt{1 - \z^2}}\right)^m
+    \begin{dcases}
+        \bar{P}_{lm}(\z)
+        \sum_{j\, \mathrm{even}}^{m}
+        \left(-1\right)^\frac{j}{2}
+        \binom{m}{j}
+        \x^{m - j}
+        \y^j
+         & \qquad m \geq 0
+         %
+         \\[1em]
+         %
+        \bar{P}_{l|m|}(\z)
+        \sum_{j\, \mathrm{odd}}^{m}
+        \left(-1\right)^\frac{j-1}{2}
+        \binom{m}{j}
+        \x^{m - j}
+        \y^j
+        & \qquad m < 0 \quad ,
+    \end{dcases}
 \end{align}
 %
-where
-%
-\begin{align}
-    C_m(\x, \y, \z) &= \left(\frac{1}{\sqrt{1 - \z^2}}\right)^m
-                 \sum_{j\, \mathrm{even}}^{m}
-                 \left(-1\right)^\frac{j}{2}
-                 \binom{m}{j}
-                 \x^{m - j}
-                 \y^j \nonumber \\
-                 %
-    S_m(\x, \y, \z) &= \left(\frac{1}{\sqrt{1 - \z^2}}\right)^m
-                 \sum_{j\, \mathrm{odd}}^{m}
-                 \left(-1\right)^\frac{j-1}{2}
-                 \binom{m}{j}
-                 \x^{m - j}
-                 \y^j \quad,
-                 \label{eq:ylmcs}
-\end{align}
-%
-and $\binom{\bigdot}{\bigdot}$ is the binomial
+where $\binom{\bigdot}{\bigdot}$ is the binomial
 coefficient. The normalized associated Legendre function is defined as
 %
 \begin{align}
@@ -169,7 +166,7 @@ which we combine with the previous results to write
 where
 %
 \begin{align}
-    \label{blmnk}
+    \label{eq:blmjk}
     B_{lm}^{jk} =
     \frac{2^l m! \left(\frac{l + m + k - 1}{2}\right)!}
          {j! k! (m - j)! (l - m - k)!
@@ -302,7 +299,7 @@ where $\z = \z(\x, \y) = \sqrt{1 - \x^2 - \y^2}$.
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 \pagebreak
-\section{Surface Map Vectors}
+\section{Surface map vectors}
 \label{sec:vectors}
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
@@ -313,11 +310,12 @@ coefficients such that the specific intensity at the point
 $(\x, \y)$ may be written
 %
 \begin{align}
-    I(\x, \y) = \ybasis^\mathsf{T} \bvec{y}
+    \label{eq:I}
+    I(\x, \y) = \ybasis^\mathsf{T} (\x, \y) \, \bvec{y}
     \quad,
 \end{align}
 %
-where $\ybasis = \ybasis(\x, \y)$ is the basis of spherical harmonics,
+where $\ybasis$ is the basis of spherical harmonics,
 arranged in increasing degree and order:
 %
 \begin{align}
@@ -337,6 +335,7 @@ For reference, in this basis the coefficient of the spherical harmonic
 $Y_{l, m}$ is located at the index
 %
 \begin{align}
+    \label{eq:n}
     n = l^2 + l + m
 \end{align}
 %
@@ -363,7 +362,7 @@ to the spherical harmonic of order and degree given by
 % ==============================================================================
 
 % ------------------------------------------------------------------------------
-\subsection{Euler Angles}
+\subsection{Euler angles}
 \label{sec:euler}
 % ------------------------------------------------------------------------------
 
@@ -382,6 +381,7 @@ the real spherical harmonics of a given order $l$ from the corresponding
 complex rotation matrices \citep{Steinborn1973}:
 %
 \begin{align}
+    \label{eq:rl}
     \bvec{R}^l = \bvec{U}^{-1} \bvec{D}^l \bvec{U}
 \end{align}
 %
@@ -409,6 +409,7 @@ where
 is the rotation matrix for the complex spherical harmonics of order $l$ and
 %
 \begin{equation}
+    \label{eq:U}
     \setstackgap{L}{1.25\baselineskip}
     \fixTABwidth{T}
     \bvec{U} =
@@ -496,7 +497,7 @@ both systems,
 for axis-angle rotations and
 %
 \begin{equation}
-    \label{rotQ}
+    \label{eq:rotQ}
     \setstackgap{L}{1.25\baselineskip}
     \fixTABwidth{T}
     \mathbf{Q} =
@@ -557,14 +558,14 @@ those to construct the spherical harmonic rotation matrix
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 \pagebreak
-\section{Change of Basis}
+\section{Change of basis}
 \label{sec:basis}
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 % ==============================================================================
 
 % ------------------------------------------------------------------------------
-\subsection{Polynomial Basis}
+\subsection{Polynomial basis}
 \label{sec:polybasis}
 % ------------------------------------------------------------------------------
 
@@ -577,9 +578,9 @@ polynomial basis $\pbasis$:
     \label{eq:bp}
     \pbasisn &=
     \begin{dcases}
-        \x^\frac{l-m}{2} \y^\frac{l+m}{2} & \qquad l+m \, \mathrm{even}
+        \x^\frac{\mu}{2} \y^\frac{\nu}{2} & \qquad \nu \, \mathrm{even}
         \\
-        \x^\frac{l-m-1}{2} \y^\frac{l+m-1}{2} \z & \qquad l+m \, \mathrm{odd}
+        \x^\frac{\mu-1}{2} \y^\frac{\nu-1}{2} \z & \qquad \nu \, \mathrm{odd}
     \end{dcases}
     \nonumber\\[0.5em]
     \pbasis &=
@@ -592,16 +593,17 @@ polynomial basis $\pbasis$:
     \quad,
 \end{align}
 %
-with $l$ and $m$ given by \eq{lm}.
-%
-%
-As before, given $\bvec{p}$, the specific intensity at the point $(\x, \y)$
-may be computed as
+where
 %
 \begin{align}
-    I(\x, \y) = \pbasis^\mathsf{T} \bvec{p}
-    \quad.
+    \label{eq:munu}
+    \mu &= l - m \nonumber \\
+    \nu &= l + m
+    \quad
 \end{align}
+%
+with $l$ and $m$ given by \eq{lm}.
+%
 %
 To find $\bvec{p}$ given $\bvec{y}$, we
 introduce the change of basis matrix $\AOne$,
@@ -610,7 +612,7 @@ a vector in the spherical harmonic basis $\ybasis$ to the
 polynomial basis $\pbasis$:
 %
 \begin{align}
-    \bvec{p} = \AOne \bvec{y}
+    \bvec{p} = \AOne \, \bvec{y}
 \end{align}
 %
 The columns of $\AOne$ are simply the polynomial vectors
@@ -688,9 +690,17 @@ harmonics up to order $l_\mathrm{max} = 3$, this is
     \notebook{A1}
 \end{equation}
 %
+As before, the specific intensity at the point $(\x, \y)$
+may be computed as
+%
+\begin{align}
+    I(\x, \y) &= \pbasis^\mathsf{T} \bvec{p} \nonumber \\
+              &= \pbasis^\mathsf{T} \AOne \, \bvec{y}
+    \quad.
+\end{align}
 
 % ------------------------------------------------------------------------------
-\subsection{Green's Basis}
+\subsection{Green's basis}
 \label{sec:greensbasis}
 % ------------------------------------------------------------------------------
 
@@ -747,22 +757,14 @@ rotating it into what we will refer to as the \emph{Green's basis}, $\gbasis$:
     \quad,
 \end{align}
 %
-where for convenience we define
-%
-\begin{align}
-    \label{eq:munu}
-    \mu &= l - m \nonumber \\
-    \nu &= l + m
-    \quad
-\end{align}
-%
-and the values of $l$ and $m$ are again given by \eq{lm}. Given
+where the values of $l$, $m$, $\mu$, and $\nu$ are given by
+Equations~(\ref{eq:lm}) and (\ref{eq:munu}). Given
 a polynomial vector $\bvec{p}$, the corresponding vector in
 the Green's basis, $\bvec{g}$, can be found by performing another
 change of basis operation:
 %
 \begin{align}
-    \bvec{g} = \bvec{\ATwo} \bvec{p}
+    \bvec{g} = \bvec{\ATwo} \, \bvec{p}
 \end{align}
 %
 where the columns of the matrix $\ATwo$ are the Green's vectors
@@ -795,11 +797,18 @@ Given $\AOne$ and $\ATwo$, we can easily transform a spherical harmonic
 vector $\bvec{y}$ to a Green's vector $\bvec{g}$:
 %
 \begin{align}
-    \bvec{g} &= \ATwo \AOne \bvec{y} \nonumber \\
+    \bvec{g} &= \ATwo \, \AOne \, \bvec{y} \nonumber \\
              &= \bvec{A} \, \bvec{y}
 \end{align}
 %
-where $\bvec{A} = \ATwo \AOne$ is the full change of basis matrix. For
+where
+%
+\begin{align}
+    \label{eq:A}
+    \bvec{A} \equiv \ATwo \, \AOne
+\end{align}
+%
+is the full change of basis matrix. For
 $l_\mathrm{max} = 3$,
 %
 \begin{equation}
@@ -825,7 +834,8 @@ described by the spherical harmonic vector $\bvec{y}$ is
 %
 \begin{align}
     \label{eq:fluxpoint}
-    I(\x, \y) = \gbasis^\mathsf{T} \bvec{A} \, \bvec{y}
+    I(\x, \y) &= \gbasis^\mathsf{T}(\x, \y) \bvec{g} \nonumber \\
+              &= \gbasis^\mathsf{T}(\x, \y) \bvec{A} \, \bvec{y}
     \quad.
 \end{align}
 %
@@ -834,34 +844,112 @@ described by the spherical harmonic vector $\bvec{y}$ is
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 \pagebreak
-\section{Occultation Light Curves}
+\section{Light curves}
 \label{sec:occultations}
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 % ==============================================================================
 
 % ------------------------------------------------------------------------------
-\subsection{Computing the flux}
-\label{sec:computingflux}
+\subsection{Phase curves}
+\label{sec:phasecurves}
 % ------------------------------------------------------------------------------
 
 Consider a body of unit radius centered at the origin, with a surface map
 given by the spherical harmonic vector $\bvec{y}$ viewed at an orientation
 specified by the rotation matrix $\bvec{R}$, such that
-the specific intensity at a point $(\x, \y)$ on the surface is\
+the specific intensity at a point $(\x, \y)$ on the surface is
+%
+\begin{align}
+    I(\x, \y) &= \ybasis^\mathsf{T} (\x, \y) \bvec{R} \, \bvec{y}
+    \nonumber \\
+              &= \pbasis^\mathsf{T} (\x, \y) \AOne \, \bvec{R} \, \bvec{y}
+    \quad
+\end{align}
+%
+where $\pbasis$ is the polynomial basis and $\AOne$ is the corresponding
+change-of-basis matrix (\S\ref{sec:polybasis}).
+The total flux radiated
+in the direction of the observer is obtained by integrating the specific
+intensity over a region $S$ of the projected disk of the body:
+%
+\begin{align}
+    \label{eq:phaseint}
+    F &=
+    \oiint I(\x, \y) \, \dd S
+    \nonumber \\
+    &=
+    \oiint \pbasis^\mathsf{T} (\x, \y) \AOne \, \bvec{R} \, \bvec{y} \, \dd S
+    \nonumber \\
+    &=
+    \bvec{r}^\mathsf{T} \AOne \, \bvec{R} \, \bvec{y}
+    \quad,
+\end{align}
+%
+where $\bvec{r}$ is a column vector whose $n^\mathrm{th}$ component is given by
+%
+\begin{align}
+    \label{eq:sn}
+    r_n &\equiv
+      \oiint \pbasisn (\x, \y)  \, \dd S
+    \quad.
+\end{align}
+%
+When the entire disk of the body is visible (i.e., when no occultation is
+occurring), this may be written
+%
+\begin{align}
+    r_n &=
+              \int_{-1}^{1}
+              \int_{-\sqrt{1-\x^2}}^{\sqrt{1+\x^2}}
+              \tilde{p}_n (\x, \y)
+              \,
+              \dd \y \, \dd \x
+        \nonumber \\[1em]
+        &=
+        \begin{dcases}
+            \frac{(\frac{\mu}{4} - \frac{1}{2})!(\frac{\nu}{4} - \frac{1}{2})!}{(\frac{l}{2} - 1)!}
+            & \qquad \mu \, \mathrm{even}, \, \nu \, \mathrm{even}
+            %
+            \\[1em]
+            %
+            \frac{\sqrt{\pi}}{2}
+            \frac{(\frac{\mu-1}{4} - \frac{1}{2})!(\frac{\nu-1}{4} - \frac{1}{2})!}{(\frac{l}{2} + 1)!}
+            & \qquad \mu \, \mathrm{odd}, \, \nu \, \mathrm{odd}
+            %
+            \\[1em]
+            %
+            0
+            & \qquad \mathrm{otherwise.}
+        \end{dcases}
+\end{align}
+%
+\eq{phaseint} may be used to analytically compute the phase curve of a body
+with an arbitrary surface map. Since $\bvec{r}$ and $\bvec{B}$ are independent
+of the map coefficients or its orientation, these may be pre-computed for
+computational efficiency.
+
+% ------------------------------------------------------------------------------
+\subsection{Occultation light curves}
+\label{sec:occultationflux}
+% ------------------------------------------------------------------------------
+
+Note that the specific intensity
+at a point $(\x, \y)$ on the surface of a body described by the map $\bvec{y}$
+may also be written as
 %
 \begin{align}
     I(\x, \y) &= \ybasis^\mathsf{T} (\x, \y) \bvec{R} \, \bvec{y}
     \nonumber \\
               &= \gbasis^\mathsf{T} (\x, \y) \bvec{A} \, \bvec{R} \, \bvec{y}
-    \quad.
+    \quad,
 \end{align}
 %
-Suppose now that the body is
-occulted by another body of radius $r$ centered at the point $(x_0, y_0)$.
-The total flux radiated
+where $\gbasis$ is the Greens basis and $\bvec{A}$ is the full change of basis
+matrix (\S\ref{sec:greensbasis}).
+As before, the total flux radiated
 in the direction of the observer is obtained by integrating the specific
-intensity over the visible portion of the occulted body's disk:
+intensity over a region $S$ of the projected disk of the body:
 %
 \begin{align}
     \label{eq:occint}
@@ -875,10 +963,7 @@ intensity over the visible portion of the occulted body's disk:
       \quad,
 \end{align}
 %
-where the surface $S$ over which the integral is taken
-is a function of $r$, $x_0$, and $y_0$. In the expression above, we
-introduced the quantity $\bvec{s}$, a column vector
-whose $n^\mathrm{th}$ component is given by
+where $\bvec{s}$ is a column vector whose $n^\mathrm{th}$ component is given by
 %
 \begin{align}
     \label{eq:sn}
@@ -887,9 +972,11 @@ whose $n^\mathrm{th}$ component is given by
     \quad.
 \end{align}
 %
-Computing the total flux during an occultation is therefore
-a matter of solving the integral in \eq{sn} for each value of $n$.
-In general, these integrals are
+This time, suppose the body is
+occulted by another body of radius $r$ centered at the point $(x_0, y_0)$,
+so that the surface $S$ over which the integral is taken
+is a function of $r$, $x_0$, and $y_0$.
+In general, the integrals in \eq{sn} are
 difficult (and often impossible) to compute directly.
 %
 One way to simplify the problem is to first perform a rotation through an angle
@@ -945,7 +1032,8 @@ we define $\phi$ such that the arc from $\pi - \phi$ to $2\pi + \phi$ spans the
 entire circumference of the occultor, and $\lambda$ such that the arc
 from $\pi - \lambda$ to $2\pi + \lambda$ spans the
 entire circumference of the occulted body.
-Note that if $b \ge 1 + r$, no occultation occurs, while
+Note that if $b \ge 1 + r$, no occultation occurs and the flux may
+be computed as in \S\ref{sec:phasecurves}, while
 if $b \le r - 1$, the entire disk of the body is occulted and the total flux
 is zero.
 
@@ -1250,18 +1338,22 @@ where $\Theta(\bigdot)$ is the Heaviside step function and
     \label{eq:biglam}
     \Lambda &=
     \begin{dcases}
-          \frac{1}{9 \pi \sqrt{b r}} \bigg[
+          -\frac{2}{3}\left(1 - r^2\right)^\frac{3}{2}
+          & \qquad b = 0
+          %
+          \\[1.5em]
+          \frac{1}{9 \pi \sqrt{b r}} \Bigg[
                 (-3 + 12 r^2 - 10 b^2 r^2 - 6 r^4 + \xi) K(k^2)
                 &\\
                 \phantom{XXXX}
                 - 2 \xi E (k^2)
                 + 3 \left(\frac{b + r}{b - r}\right) \Pi\left(1-\frac{1}{(b-r)^2}, k^2\right)
-                \bigg]
+                \Bigg]
           & \qquad k^2 < 1
           %
           \\[1.5em]
           %
-          \frac{1}{9 \pi \sqrt{(1{-}b{+}r)(1{+}b{-}r)}} \bigg[
+          \frac{1}{9 \pi \sqrt{(1{-}b{+}r)(1{+}b{-}r)}} \Bigg[
                 2 \left(1 - 5 b^2 + r^2 + (r^2 - b^2)^2\right) K \left(\frac{1}{k^2}\right)
                 &\\
                 \phantom{XXXXXXXXXXX}
@@ -1269,7 +1361,7 @@ where $\Theta(\bigdot)$ is the Heaviside step function and
                 &\\
                 \phantom{XXXXXXXXXXX}
                 + 3 \left(\frac{b + r}{b - r}\right) \Pi\left(\frac{1}{k^2 - \frac{1}{4 b r}}, \frac{1}{k^2}\right)
-                \bigg]
+                \Bigg]
           & \qquad k^2 \ge 1
     \end{dcases}
 \end{align}
@@ -1286,7 +1378,6 @@ with
 In the expressions above, $K(\bigdot)$, $E(\bigdot)$, and $\Pi(\bigdot)$
 are the complete elliptic integrals of the first, second kind, and third kind,
 respectively, defined as
-\todo{case when $b = 0$}
 %
 \begin{align}
     \label{eq:elliptic}
@@ -1298,9 +1389,8 @@ respectively, defined as
     \quad.
 \end{align}
 
-
 % ------------------------------------------------------------------------------
-\section{All other terms}
+\subsection{All other terms}
 \label{sec:generalterm}
 % ------------------------------------------------------------------------------
 
@@ -1615,23 +1705,64 @@ with $\mathcal{H}_{u,n}^{\nu + 1}$ given by \eq{Huneven}.
     %
     \midrule
     %
+    $A_{lm}$        & Legendre function normalization       & \eq{alm} \\
+    $\bvec{A}$      & Change of basis matrix:
+                      spherical harmonics to Greens
+                      polynomials                           & \eq{A} \\
+    $B_{lm}^{jk}$   & Spherical harmonic normalization      & \eq{blmjk} \\
+    $\AOne$         & Change of basis matrix:
+                      spherical harmonics to polynomials    & \S\ref{sec:polybasis} \\
     $c_{\bigdot}$   & $\cos(\bigdot)$                       & \\
+    $C_{pq}^k$      & Expansion coefficient for
+                      $\z(\x, \y)$                          & \eq{ckpq} \\
+    $\ATwo$         & Change of basis matrix:
+                    polynomials to Greens polynomials       & \S\ref{sec:greensbasis} \\
+    $\bvec{D}^l$    & Rotation matrix for the
+                      complex spherical harmonics
+                      of order $l$                          & \eq{dl} \\
+    $F$             & Total flux seen by observer           & \eq{starry} \\
     $\gbasis$       & Green's basis                         & \eq{bg} \\
     $\bvec{g}$      & Vector in the basis $\gbasis$         & \\
+    $I$             & Specific intensity, $I(\x, \y)$       & \eq{I} \\
+    $j$             & Dummy index                           & \\
+    $k$             & Dummy index                           & \\
+    $l$             & Spherical harmonic order              & \eq{lm} \\
+    $m$             & Spherical harmonic degree             & \eq{lm} \\
+    $n$             & Surface map vector index              & \eq{n} \\
+    $p$             & Dummy index                           & \\
     $\bar{P}$       & Normalized associated Legendre
                       function                              & \eq{plm} \\
     $\pbasis$       & Polynomial basis                      & \eq{bp} \\
     $\bvec{p}$      & Vector in the basis $\pbasis$         & \\
+    $\bvec{P}$      & Cartesian axis-angle rotation matrix  & \eq{rotP} \\
+    $q$             & Dummy index                           & \\
+    $\bvec{Q}$      & Cartesian Euler angle rotation matrix & \eq{rotQ} \\
+    $\bvec{R}$      & Rotation matrix for the real
+                      spherical harmonics                   & \eq{rblockdiag} \\
+    $\bvec{R}^l$    & Rotation matrix for the real
+                      spherical harmonics of order $l$      & \eq{rl} \\
     $s_{\bigdot}$   & $\sin(\bigdot)$                       & \\
-    $\x$            & Cartesian coordinate                  & \\
-    $\y$            & Cartesian coordinate                  & \\
+    $\bvec{u}$      & Unit vector corresponding to the
+                      axis of rotation                      & \S\ref{sec:axisangle} \\
+    $\bvec{U}$      & Complex to real spherical harmonics
+                      transform matrix                      & \eq{U} \\
+    $\x$            & Cartesian coordinate                  & \eq{xyz} \\
+    $\y$            & Cartesian coordinate                  & \eq{xyz} \\
     $Y_{l,m}$       & Spherical harmonic of order $l$
                       and degree $m$                        & \eq{ylm0} \\
     $\ybasis$       & Spherical harmonic basis              & \eq{by} \\
     $\bvec{y}$      & Vector in the basis $\ybasis$         & \\
-    $\z$            & Cartesian coordinate;
-                      $z = \sqrt{1 - \x^2 - \y^2}$          & \\
+    $\z$            & Cartesian coordinate,
+                      $z = \sqrt{1 - \x^2 - \y^2}$          & \eq{xyz} \\
     %
+    $\alpha$        & Euler angle                           & \S\ref{sec:euler} \\
+    $\beta$         & Euler angle                           & \S\ref{sec:euler} \\
+    $\gamma$        & Euler angle                           & \S\ref{sec:euler} \\
+    $\mu$           & $l - m$                               & \eq{munu} \\
+    $\nu$           & $l + m$                               & \eq{munu} \\
+    $\phi$          & Azimuthal angle                       & \eq{ylmtp} \\
+    $\theta$        & Polar angle                           & \eq{ylmtp} \\
+                    & Rotation angle                        & \S\ref{sec:axisangle} \\
     \bottomrule
     %
 \end{tabular}
