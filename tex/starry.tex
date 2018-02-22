@@ -1310,7 +1310,7 @@ A \starry map is a vector of spherical harmonic coefficients, indexed by
 increasing order and degree, as in \eq{by}. We can create a map of
 spherical harmonics up to order $l_\mathrm{max} = 5$ by typing
 %
-\begin{lstlisting}[language=Python]
+\begin{lstlisting}[language=Python,firstnumber=last]
 y = starry(5)
 \end{lstlisting}
 %
@@ -1325,7 +1325,7 @@ by default. Say our surface map is given by the function
 %
 To instantiate this map, we set the corresponding coefficients in \textsf{y}:
 %
-\begin{lstlisting}[language=Python]
+\begin{lstlisting}[language=Python,firstnumber=last]
 y[5, -3] = -2
 y[5, 0] = 2
 y[5, 4] = 1
@@ -1333,7 +1333,7 @@ y[5, 4] = 1
 %
 The map may be visualized by rendering it on a grid:
 %
-\begin{lstlisting}[language=Python]
+\begin{lstlisting}[language=Python,firstnumber=last]
 I = y.render(u=None, theta=None)
 \end{lstlisting}
 %
@@ -1351,7 +1351,7 @@ Alternatively, users may provide the path to an image file of the
 surface map on a rectangular latitude-longitude grid or a ring-ordered
 \textsf{Healpix} map array:
 %
-\begin{lstlisting}[language=Python]
+\begin{lstlisting}[language=Python,firstnumber=last]
 y = starry(10, image=None)
 \end{lstlisting}
 %
@@ -1379,10 +1379,23 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
 \subsection{Computing phase curves}
 \label{sec:starryphasecurves}
 % ------------------------------------------------------------------------------
-
+%
+\begin{figure}[p!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/phasecurves.pdf}
+    \caption{\label{fig:phasecurves}
+             \python{phasecurves}
+             Phase curves for the first several spherical harmonics with
+             degree $m \ge 0$ rotated about the $x$-axis (blue) and about
+             the $y$-axis (orange).
+             Odd harmonics with $l > 1$ and harmonics with $m < 0$ are
+             in the phase curve null space \citep{CowanFuentesHaggard2013}.}
+    \end{centering}
+\end{figure}
+%
 Once a map is instantiated, it is easy to compute its phase curve, \textsf{F}:
 %
-\begin{lstlisting}[language=Python]
+\begin{lstlisting}[language=Python,firstnumber=last]
 F = y.flux(u=u, theta=theta)
 \end{lstlisting}
 %
@@ -1403,29 +1416,15 @@ As a second example, we can compute the phase curve of the simplified Earth mode
 (Figure~\ref{fig:earth}) for rotation about $\yhat$ (its actual spin axis)
 by executing
 %
-\begin{lstlisting}[language=Python]
+\begin{lstlisting}[language=Python,firstnumber=last]
 theta = np.linspace(0, 2 * np.pi, 100)
 F = y.flux(u=[0, 1, 0], theta=theta)
-\end{lstlisting} 
+\end{lstlisting}
 %
 assuming the \textsf{numpy} package is imported. The variable $\textsf{F}$ is
 an array of flux values computed from \eq{phaseint}; we plot this in
-Figure~\ref{fig:earthphasecurve}.
-%
-\begin{figure}[p!]
-    \begin{centering}
-    \includegraphics[width=\linewidth]{figures/phasecurves.pdf}
-    \caption{\label{fig:phasecurves}
-             \python{phasecurves}
-             Phase curves for the first several spherical harmonics with
-             degree $m \ge 0$ rotated about the $x$-axis (blue) and about
-             the $y$-axis (orange).
-             Odd harmonics with $l > 1$ and harmonics with $m < 0$ are
-             in the phase curve null space \citep{CowanFuentesHaggard2013}.}
-    \end{centering}
-\end{figure}
-%
-
+Figure~\ref{fig:earthphasecurve}, alongside the phase curves due to each of
+the seven individual continents.
 %
 \begin{figure}[ht!]
     \begin{centering}
