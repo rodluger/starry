@@ -1393,7 +1393,9 @@ relative to the original, unrotated map frame.
 %
 In Figure~\ref{fig:phasecurves} we plot phasecurves for all spherical harmonics
 up to $l_\mathrm{max} = 8$ for rotation about $\xhat$ (blue) and $\yhat$
-(orange).
+(orange). As discussed by \citet{CowanFuentesHaggard2013}, harmonics with
+odd $l > 1$ and those with $m < 0$ (not plotted) are in the null space and
+therefore do not exhibit phase variations.
 
 Taking the surface map \textsf{y} of the Earth from Figure~\ref{fig:earth},
 we can compute its phase curve for rotation about $\yhat$ (its actual spin axis)
@@ -1404,9 +1406,9 @@ theta = np.linspace(0, 2 * np.pi, 100)
 F = y.flux(u=[0, 1, 0], theta=theta)
 \end{lstlisting}
 %
-assuming the \textsc{numpy} package is imported. The variable $\textsf{F}$ is
+assuming the \textsf{numpy} package is imported. The variable $\textsf{F}$ is
 an array of flux values computed from \eq{phaseint}; we plot this in
-Figure~\ref{fig:earthphasecurve}. 
+Figure~\ref{fig:earthphasecurve}.
 %
 \begin{figure}[p!]
     \begin{centering}
@@ -1425,7 +1427,7 @@ Figure~\ref{fig:earthphasecurve}.
 %
 \begin{figure}[ht!]
     \begin{centering}
-    \includegraphics[width=0.75\linewidth]{figures/earthphasecurve.pdf}
+    \includegraphics[width=0.85\linewidth]{figures/earthphasecurve.pdf}
     \caption{\label{fig:earthphasecurve}
              \python{earthphasecurve}
              Phase curve for the Earth rotating about its axis, computed
