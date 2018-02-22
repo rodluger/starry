@@ -177,7 +177,7 @@ where
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/ylms.pdf}
     \caption{\label{fig:ylms}
-             \script{ylms}
+             \python{ylms}
              The real spherical harmonics up to order $l = 5$ computed from
              Equation~(\ref{eq:ylmxy}). In these plots, the $x$-axis points
              to the right, the $y$-axis points up, and the $z$-axis points
@@ -687,7 +687,7 @@ harmonics up to order $l_\mathrm{max} = 3$, this is
             0 & 0 & 0 & 0 & 0 & \sqrt{15} & 0 & 0 & 0 \\
             0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{2} & 0 & -\frac{\sqrt{15}}{2}
         }\quad.
-    \notebook{A1}
+    \mathematica{A1}
 \end{equation}
 %
 As before, the specific intensity at the point $(\x, \y)$
@@ -790,7 +790,7 @@ is
             0 & 0 & 0 & 0 & 0 & 0 & 0 & \frac{1}{3} & 0 \\
             0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
         }\quad.
-    \notebook{A2}
+    \mathematica{A2}
 \end{equation}
 %
 Given $\AOne$ and $\ATwo$, we can easily transform a spherical harmonic
@@ -1138,7 +1138,7 @@ body.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/geometry.pdf}
     \caption{\label{fig:geometry}
-             \script{geometry}
+             \python{geometry}
              Geometry of the occultation problem.
              The occulted body is centered
              at the origin and has unit radius, while the occultor
@@ -1343,7 +1343,7 @@ specify the orientation of the map. Plotting this map with successive rotations
 about $\xhat$ yields
 %
 \begin{center}
-    \includegraphics[width=0.85\linewidth]{figures/smiley.pdf}\script{smiley}
+    \includegraphics[width=0.85\linewidth]{figures/smiley.pdf}\python{smiley}
 \end{center}
 %
 
@@ -1367,7 +1367,7 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
     \\[1em]
     \includegraphics[width=0.85\linewidth]{figures/earth.pdf}
     \caption{\label{fig:earth}
-             \script{earth}
+             \python{earth}
              A simple two-color map of the Earth (top) and the
              corresponding tenth-order spherical harmonic expansion,
              rotated about $\xhat$ (bottom).}
@@ -1381,6 +1381,21 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
 % ------------------------------------------------------------------------------
 
 Phase curves.\todo{RL}{todo}
+
+%
+\begin{figure}[p!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/phasecurves.pdf}
+    \caption{\label{fig:phasecurves}
+             \python{phasecurves}
+             Phase curves for the first several spherical harmonics with
+             degree $m \ge 0$ rotated about the $x$-axis (blue) and about
+             the $y$-axis (orange).
+             Odd harmonics with $l > 1$ and harmonics with $m < 0$ are
+             in the phase curve null space \citep{CowanFuentesHaggard2013}.}
+    \end{centering}
+\end{figure}
+%
 
 % ------------------------------------------------------------------------------
 \subsection{Computing occultation light curves}
