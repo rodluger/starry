@@ -1358,7 +1358,7 @@ y = starry(10, image=None)
 \starry uses the \textsf{map2alm()} function
 of the \textsf{healpy} package to find the expansion of the map in
 terms of spherical harmonics. In Figure~\ref{fig:earth} we show a
-simple two-color map of the Earth and its corresponding \starry instance for
+simplified two-color map of the Earth and its corresponding \starry instance for
 $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
 %
 \begin{figure}[ht!]
@@ -1397,8 +1397,10 @@ up to $l_\mathrm{max} = 8$ for rotation about $\xhat$ (blue) and $\yhat$
 odd $l > 1$ and those with $m < 0$ (not plotted) are in the null space and
 therefore do not exhibit phase variations.
 
-Taking the surface map \textsf{y} of the Earth from Figure~\ref{fig:earth},
-we can compute its phase curve for rotation about $\yhat$ (its actual spin axis)
+%
+
+As a second example, we can compute the phase curve of the simplified Earth model
+(Figure~\ref{fig:earth}) for rotation about $\yhat$ (its actual spin axis)
 by executing
 %
 \begin{lstlisting}[language=Python]
