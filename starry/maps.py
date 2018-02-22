@@ -46,7 +46,7 @@ def image2map(image, lmax=10):
         image = os.path.join(dn(dn(os.path.abspath(__file__))),
                              "maps", image + ".jpg")
         if not os.path.exists(image):
-            raise ValueError("Image file not found.")
+            raise ValueError("File not found: %s." % image)
 
     # Get the image array
     grayscale_pil_image = Image.open(image).convert("L")

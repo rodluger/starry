@@ -1,4 +1,5 @@
 #!/bin/bash -x
+set -e
 
 if git diff --name-only $TRAVIS_COMMIT_RANGE | grep 'tex/'
 then

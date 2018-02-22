@@ -1,5 +1,4 @@
 """Plot the Ylms on the surface of the sphere."""
-import sys; sys.path.insert(1, '../../')
 from starry import starry
 import matplotlib.pyplot as pl
 import matplotlib.animation as animation
