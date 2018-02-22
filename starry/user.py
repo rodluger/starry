@@ -258,7 +258,7 @@ class starry(np.ndarray):
 
     def animate(self, u=[0, 1, 0],
                 theta=np.linspace(0, 2 * np.pi, 30, endpoint=False),
-                x0=None, y0=None, r=None, res=100,
+                x0=None, y0=None, r=None, res=50,
                 cmap='plasma', interval=50, gif=None,
                 fps=10, dpi=100, vmin=None, vmax=None, **kwargs):
         """Show an animation of the rendered map."""

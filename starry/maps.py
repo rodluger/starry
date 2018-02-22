@@ -7,7 +7,35 @@ from matplotlib.image import pil_to_array
 import os
 
 
-__all__ = ["image2map"]
+__all__ = ["image2map", "healpix2map"]
+
+
+def healpix2map(healpix_map, lmax=10):
+    """Return a map vector corresponding to a healpix array."""
+    # Get the complex spherical harmonic coefficients
+    alm = hp.sphtfunc.map2alm(healpix_map, lmax=lmax)
+
+    # Convert them to real coefficients
+    ylm = np.zeros(lmax ** 2 + 2 * lmax + 1, dtype='float')
+    i = 0
+    for l in range(0, lmax + 1):
+        for m in range(-l, l + 1):
+            j = hp.sphtfunc.Alm.getidx(lmax, l, np.abs(m))
+            if m < 0:
+                ylm[i] = np.sqrt(2) * (-1) ** m * alm[j].imag
+            elif m == 0:
+                ylm[i] = alm[j].real
+            else:
+                ylm[i] = np.sqrt(2) * (-1) ** m * alm[j].real
+            i += 1
+
+    # We need to apply some rotations to return
+    # to the original orientation
+    ylm = np.dot(R(lmax, [1, 0, 0], 0, 1), ylm)
+    ylm = np.dot(R(lmax, [0, 0, 1], -1, 0), ylm)
+    ylm = np.dot(R(lmax, [0, 1, 0], 0, 1), ylm)
+
+    return ylm
 
 
 def image2map(image, lmax=10):
@@ -38,27 +66,5 @@ def image2map(image, lmax=10):
     healpix_map = np.zeros(hp.nside2npix(nside), dtype=np.double)
     healpix_map[pix] = image_array
 
-    # Get the complex spherical harmonic coefficients
-    alm = hp.sphtfunc.map2alm(healpix_map, lmax=lmax)
-
-    # Convert them to real coefficients
-    ylm = np.zeros(lmax ** 2 + 2 * lmax + 1, dtype='float')
-    i = 0
-    for l in range(0, lmax + 1):
-        for m in range(-l, l + 1):
-            j = hp.sphtfunc.Alm.getidx(lmax, l, np.abs(m))
-            if m < 0:
-                ylm[i] = np.sqrt(2) * (-1) ** m * alm[j].imag
-            elif m == 0:
-                ylm[i] = alm[j].real
-            else:
-                ylm[i] = np.sqrt(2) * (-1) ** m * alm[j].real
-            i += 1
-
-    # We need to apply some rotations to return
-    # to the original orientation
-    ylm = np.dot(R(lmax, [1, 0, 0], 0, 1), ylm)
-    ylm = np.dot(R(lmax, [0, 0, 1], -1, 0), ylm)
-    ylm = np.dot(R(lmax, [0, 1, 0], 0, 1), ylm)
-
-    return ylm
+    # Now convert it to a spherical harmonic map
+    return healpix2map(healpix_map, lmax=lmax)
