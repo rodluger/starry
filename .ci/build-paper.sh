@@ -4,6 +4,9 @@ set -e
 if git diff --name-only $TRAVIS_COMMIT_RANGE | grep 'tex/'
 then
 
+    # Activate the test environment
+    source activate test
+
     # Generate the figures
     cd tex/figures
     for f in *.py; do
