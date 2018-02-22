@@ -35,7 +35,7 @@ ax.plot(theta * 180 / np.pi - 180, total, 'k-', label='Total')
 
 # Appearance
 ax.set_xlim(-180, 180)
-ax.set_ylim(-0.01, 1.1)
+ax.set_ylim(-0.03, 1.1)
 ax.set_xticks([-180, -135, -90, -45, 0, 45, 90, 135, 180])
 ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
 ax.legend(loc='best', fontsize=14, ncol=2)

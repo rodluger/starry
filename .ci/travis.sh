@@ -14,3 +14,9 @@ conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib sympy mpmath 
 
 # Build the code
 python setup.py install
+
+# Generate the figures
+cd tex/figures
+for f in *.py; do
+    python "$f"
+done

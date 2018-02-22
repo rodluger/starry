@@ -4,17 +4,8 @@ set -e
 if git diff --name-only $TRAVIS_COMMIT_RANGE | grep 'tex/'
 then
 
-    # Activate the test environment
-    source activate test
-
-    # Generate the figures
-    cd tex/figures
-    for f in *.py; do
-        python "$f"
-    done
-
     # Build the paper using tectonic
-    cd ../
+    cd tex/
     tectonic starry.tex --print
 
     # Force push the paper to GitHub
