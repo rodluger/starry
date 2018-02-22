@@ -1387,7 +1387,13 @@ F = y.flux(u=u, theta=theta)
 \end{lstlisting}
 %
 where \textsf{u} is the axis of rotation and \textsf{theta} is an array of
-angles
+angles at which to compute the flux. Note that rotations performed
+by \textsf{flux()} are not cumulative; instead, all angles should be specified
+relative to the original, unrotated map frame.
+%
+In Figure~\ref{fig:phasecurves} we plot phasecurves for all spherical harmonics
+up to $l_\mathrm{max} = 8$ for rotation about $\xhat$ (blue) and $\yhat$
+(orange).
 
 Taking the surface map \textsf{y} of the Earth from Figure~\ref{fig:earth},
 we can compute its phase curve for rotation about $\yhat$ (its actual spin axis)
@@ -1398,7 +1404,7 @@ theta = np.linspace(0, 2 * np.pi, 100)
 F = y.flux(u=[0, 1, 0], theta=theta)
 \end{lstlisting}
 %
-assuming the \textsc{numpy} package is imported. The variable $\texsf{F}$ is
+assuming the \textsc{numpy} package is imported. The variable $\textsf{F}$ is
 an array of flux values computed from \eq{phaseint}; we plot this in
 Figure~\ref{fig:earthphasecurve}.
 %

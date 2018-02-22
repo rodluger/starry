@@ -1,8 +1,6 @@
 """Earth phase curve example."""
 from starry import starry
 import matplotlib.pyplot as pl
-import matplotlib
-matplotlib.rc('text', usetex=True)
 import numpy as np
 
 # Set up the plot
@@ -17,9 +15,10 @@ norm = 180
 continents = ['asia', 'africa',
               'southamerica', 'northamerica', 'oceania',
               'europe', 'antarctica']
-labels = [r'Asia', r'Africa', r'S. America',
-          r'N. America', r'Oceania', r'Europe',
-          r'Antactica']
+labels = [r'$\mathrm{Asia}$', r'$\mathrm{Africa}$', r'$\mathrm{S. America}$',
+          r'$\mathrm{N. America}$', r'$\mathrm{Oceania}$',
+          r'$\mathrm{Europe}$',
+          r'$\mathrm{Antarctica}$']
 for continent, label in zip(continents, labels):
     y = starry(10, continent)
     y.rotate([0, 1, 0], -np.pi)
@@ -29,15 +28,20 @@ for continent, label in zip(continents, labels):
     ax.plot(theta * 180 / np.pi - 180, F, label=label)
 
 # Plot the total phase curve
-ax.plot(theta * 180 / np.pi - 180, total, 'k-', label='Total')
+ax.plot(theta * 180 / np.pi - 180, total, 'k-', label=r'$\mathrm{Total}$')
 
 # Appearance
 ax.set_xlim(-180, 180)
 ax.set_ylim(-0.01, 1.1)
 ax.set_xticks([-180, -135, -90, -45, 0, 45, 90, 135, 180])
+ax.set_xticklabels([r'$-180$', r'$-135$', r'$-90$', r'$-45$',
+                    r'$0$', r'$45$', r'$90$', r'$135$', r'$180$'])
+ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+ax.set_yticklabels([r'$0.0$', r'$0.2$', r'$0.4$', r'$0.6$', r'$0.8$', r'$1.0$'])
 ax.legend(loc='best', fontsize=14, ncol=2)
-ax.set_xlabel(r'Sub-observer longitude (deg)', fontsize=24)
-ax.set_ylabel(r'Normalized flux', fontsize=24)
+ax.set_xlabel(r'$\mathrm{Sub}-\mathrm{observer\ longitude\ (deg)}$',
+              fontsize=24)
+ax.set_ylabel(r'$\mathrm{Normalized\ flux}$', fontsize=24)
 for tick in ax.get_xticklabels() + ax.get_yticklabels():
     tick.set_fontsize(22)
 
