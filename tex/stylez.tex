@@ -1,4 +1,5 @@
 % All the packages
+%\usepackage[letterpaper]{geometry}
 \usepackage{microtype}
 \usepackage{url}
 \usepackage{amsmath}
@@ -44,81 +45,12 @@
 
 % Add script hyperlinks as margin notes
 \definecolor{proofcolor}{rgb}{0.1216,0.4667,0.7059}
-\newcommand{\script}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.py}{\color{proofcolor}\scriptsize\textbf{[script]}}}}
-\newcommand{\notebook}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/notebooks/#1.nb}{\color{proofcolor}\scriptsize\textbf{[notebook]}}}}
-\newcommand{\todo}[1]{\marginnote{\color{red}\textbf{todo:}\\\scriptsize\textbf{#1}}}
+\newcommand{\script}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.py}{\includegraphics[width=0.9cm]{figures/python.png}}}}
+\newcommand{\notebook}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/notebooks/#1.nb}{\includegraphics[width=0.6cm]{figures/mathematica.png}}}}
+\newcommand{\todo}[2]{\marginnote{\color{red}\textbf{#1:}\\\scriptsize\textbf{#2}}}
 
 % Force margin notes to always be on the right side
 % https://tex.stackexchange.com/a/69624
-\makeatletter
-\long\def\@mn@@@marginnote[#1]#2[#3]{%
-  \begingroup
-    \ifmmode\mn@strut\let\@tempa\mn@vadjust\else
-      \if@inlabel\leavevmode\fi
-      \ifhmode\mn@strut\let\@tempa\mn@vadjust\else\let\@tempa\mn@vlap\fi
-    \fi
-    \@tempa{%
-      \vbox to\z@{%
-        \vss
-        \@mn@margintest
-        \if@reversemargin\if@tempswa
-            \@tempswafalse
-          \else
-            \@tempswatrue
-        \fi\fi
-          \rlap{%
-            \ifx\@mn@currxpos\relax
-              \kern\marginnoterightadjust
-              \if@mn@verbose
-                \PackageInfo{marginnote}{%
-                  xpos not known,\MessageBreak
-                  using \string\marginnoterightadjust}%
-              \fi
-            \else\ifx\@mn@currxpos\@empty
-                \kern\marginnoterightadjust
-                \if@mn@verbose
-                  \PackageInfo{marginnote}{%
-                    xpos not known,\MessageBreak
-                    using \string\marginnoterightadjust}%
-                \fi
-              \else
-                \if@mn@verbose
-                  \PackageInfo{marginnote}{%
-                    xpos seems to be \@mn@currxpos,\MessageBreak
-                    \string\marginnoterightadjust
-                    \space ignored}%
-                \fi
-                \begingroup
-                  \setlength{\@tempdima}{\@mn@currxpos}%
-                  \kern-\@tempdima
-                  \if@twoside\ifodd\@mn@currpage\relax
-                      \kern\oddsidemargin
-                    \else
-                      \kern\evensidemargin
-                    \fi
-                  \else
-                    \kern\oddsidemargin
-                  \fi
-                  \kern 1in
-                \endgroup
-              \fi
-            \fi
-            \kern\marginnotetextwidth\kern\marginparsep
-            \vbox to\z@{\kern\marginnotevadjust\kern #3
-              \vbox to\z@{%
-                \hsize\marginparwidth
-                \linewidth\hsize
-                \kern-\parskip
-                \marginfont\raggedrightmarginnote\strut\hspace{\z@}%
-                \ignorespaces#2\endgraf
-                \vss}%
-              \vss}%
-          }%
-      }%
-    }%
-  \endgroup
-}
-\makeatother
 
 % Math stuff
 \newcommand{\ii}{\ensuremath{\mathbf{i}}}
