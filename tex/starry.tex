@@ -26,7 +26,7 @@
     exoplanets, as well as to occultation light curves, including transits of
     planets across their host stars, occultations of planets by the star
     (secondary eclipses), and planet-planet and planet-moon occultations.
-    We develop fast code in \textsc{C} that can be generally applied
+    We develop fast code in \textsf{C} that can be generally applied
     to any of these cases.
 \end{abstract}
 
@@ -1272,22 +1272,57 @@ Given these quantities, the total flux during an occultation is then just
 \end{equation}
 
 
+% ==============================================================================
+% ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 \pagebreak
 \section{The \textbf{STARRY} code package}
 \label{sec:starrycode}
 % ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+% ==============================================================================
 
-Write an awesome section on how to use the code.\todo{write code section}
-
+The \starry code package provides code to analytically
+compute light curves for celestial bodies using the formalism developed
+in this paper. \starry is coded in \textsf{C} for speed and wrapped
+in \textsf{Python} for quick and easy light curve calculations. The
+code may be installed by running the following in a terminal:
+%
+\begin{lstlisting}[language=bash]
+git clone https://github.com/rodluger/starry.git
+cd starry
+python setup.py develop
+\end{lstlisting}
+%
+To begin using \starry, execute the following in a \textsc{Python} environment:
+%
+\begin{lstlisting}[language=Python]
+from starry import starry
+\end{lstlisting}
 %
 
+% ------------------------------------------------------------------------------
+\section{Creating a map}
+\label{sec:starrymap}
+% ------------------------------------------------------------------------------
 
+A \starry map is a vector of spherical harmonic coefficients, indexed by
+increasing order and degree, as in \eq{by}. We can create one by typing
+%
+\begin{lstlisting}[language=Python]
+y = starry(5)
+\end{lstlisting}
+%
+
+% ==============================================================================
+% ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 \pagebreak
 \section{Conclusions}
 \label{sec:conclusions}
 % ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+% ==============================================================================
 
 Write an awesome conclusions section.\todo{write conclusions}
 

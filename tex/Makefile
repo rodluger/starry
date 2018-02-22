@@ -11,7 +11,7 @@ SOURCES     = $(wildcard ../src/*.[ch])
 
 default: starry.pdf
 
-starry.pdf: starry.tex $(FIGURES) $(SOURCES)
+starry.pdf: starry.tex stylez.tex $(FIGURES) $(SOURCES)
 	${LATEX} starry.tex
 	bibtex starry
 	( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done."
