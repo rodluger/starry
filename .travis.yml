@@ -16,6 +16,8 @@ before_install:
 install:
     - source .ci/travis.sh
 
-script: |
-    py.test -v starry
-    source .ci/build-paper.sh
+script:
+    - py.test -v starry
+
+after_success:
+    - source .ci/build-paper.sh

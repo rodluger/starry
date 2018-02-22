@@ -6,9 +6,12 @@ exit()
 if git diff --name-only $TRAVIS_COMMIT_RANGE | grep 'tex/'
 then
 
-    # Build the paper using tectonic
+    # Build the paper
     cd tex/
-    tectonic starry.tex --print
+    pdflatex -interaction=nonstopmode -halt-on-error starry.tex
+    bibtex starry
+    pdflatex -interaction=nonstopmode -halt-on-error starry.tex
+    pdflatex -interaction=nonstopmode -halt-on-error starry.tex
 
     # Force push the paper to GitHub
     cd $TRAVIS_BUILD_DIR
