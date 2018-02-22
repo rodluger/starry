@@ -1,5 +1,7 @@
 # Adapted from http://dfm.io/posts/travis-latex/
-sudo: false
+sudo: required
+
+dist: trusty
 
 language: python
 
@@ -7,6 +9,9 @@ matrix:
     include:
         - os: linux
           env: PYTHON_VERSION=3.4 NUMPY_VERSION=1.11
+
+before_install:
+    - sudo apt-get -qq update && sudo apt-get install -y --no-install-recommends texlive-fonts-recommended texlive-latex-extra texlive-fonts-extra dvipng texlive-latex-recommended
 
 install:
     - source .ci/travis.sh

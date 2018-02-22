@@ -9,7 +9,6 @@ conda config --set always_yes yes --set changeps1 no
 conda update -q conda
 conda info -a
 conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib sympy mpmath setuptools pytest pytest-cov pip healpy
-conda install -c conda-forge -c pkgw-forge tectonic
 pip install Pillow
 
 # Build the code
