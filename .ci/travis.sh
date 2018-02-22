@@ -8,9 +8,9 @@ hash -r
 conda config --set always_yes yes --set changeps1 no
 conda update --all
 conda info -a
-#conda create --yes -n test python=$PYTHON_VERSION
-#source activate test
-conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib sympy mpmath setuptools pytest pytest-cov pip healpy PIL
+conda create --yes -n test python=$PYTHON_VERSION
+source activate test
+conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib sympy mpmath setuptools pytest pytest-cov pip healpy PIL pkgw-forge tectonic
 
 # Build the code
 python setup.py install
