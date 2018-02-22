@@ -6,7 +6,7 @@ export PATH="$HOME/miniconda/bin:$PATH"
 # Conda Python
 hash -r
 conda config --set always_yes yes --set changeps1 no
-conda update --all
+conda update -q conda
 conda info -a
 conda create --yes -n test python=$PYTHON_VERSION
 source activate test
@@ -16,6 +16,7 @@ conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib sympy mpmath 
 python setup.py install
 
 # Generate the figures
+echo "Generating figures..."
 cd tex/figures
 for f in *.py; do
     python "$f"

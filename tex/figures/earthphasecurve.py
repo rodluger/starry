@@ -1,10 +1,9 @@
 """Earth phase curve example."""
-from starry import starry
 import matplotlib.pyplot as pl
 import numpy as np
 import matplotlib
 matplotlib.rc('text', usetex=True)
-
+from starry import starry
 
 # Set up the plot
 npts = 100
