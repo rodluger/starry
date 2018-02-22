@@ -1265,7 +1265,7 @@ Given these quantities, the total flux during an occultation is then just
 \begin{equation}
     \label{eq:starry}
     \boxed{
-        \Large
+        \large
         F = \bvec{s}^{\boldsymbol{\mathsf{T}}} \bvec{A} \, \bvec{R'} \, \bvec{R} \, \bvec{y}
         }
     \quad.
@@ -1294,7 +1294,7 @@ cd starry
 python setup.py develop
 \end{lstlisting}
 %
-To begin using \starry, execute the following in a \textsc{Python} environment:
+To begin using \starry, execute the following in a \textsf{Python} environment:
 %
 \begin{lstlisting}[language=Python]
 from starry import starry
@@ -1302,17 +1302,79 @@ from starry import starry
 %
 
 % ------------------------------------------------------------------------------
-\section{Creating a map}
+\subsection{Creating a map}
 \label{sec:starrymap}
 % ------------------------------------------------------------------------------
 
 A \starry map is a vector of spherical harmonic coefficients, indexed by
-increasing order and degree, as in \eq{by}. We can create one by typing
+increasing order and degree, as in \eq{by}. We can create a map of
+spherical harmonics up to order $l_\mathrm{max} = 5$ by typing
 %
 \begin{lstlisting}[language=Python]
 y = starry(5)
 \end{lstlisting}
 %
+The result is an array of spherical harmonics coefficients, set to zero
+by default. Say our surface map is given by the function
+%
+\begin{align}
+    \label{eq:ylm_code_example}
+    I(\x, \y) &= -2 Y_{5,-3}(\x, \y) + 2 Y_{5,0}(\x, \y) + Y_{5,4}(\x, \y)
+    \quad.
+\end{align}
+%
+To instantiate this map, we set the corresponding coefficients in \textsf{y}:
+%
+\begin{lstlisting}[language=Python]
+y[5, -3] = -2
+y[5, 0] = 2
+y[5, 4] = 1
+\end{lstlisting}
+%
+The map may be visualized by rendering it on a grid:
+%
+\begin{lstlisting}[language=Python]
+I = y.render(u=None, theta=None)
+\end{lstlisting}
+%
+where $I$ is a 2-dimensional array of specific intensity values. Optionally,
+the user may provide an axis array \textsf{u} and an angle \textsf{theta} to
+specify the orientation of the map. Plotting this map with successive rotations
+about $\xhat$ yields \script{smiley}
+%
+\begin{center}
+    \includegraphics[width=0.85\linewidth]{figures/smiley.pdf}
+\end{center}
+%
+
+Alternatively, users may provide the path to an image file of the
+surface map on a rectangular latitude-longitude grid or a ring-ordered
+\textsf{Healpix} map array:
+%
+\begin{lstlisting}[language=Python]
+y = starry(10, image=None)
+\end{lstlisting}
+%
+\starry uses the \textsf{map2alm()} function
+of the \textsf{healpy} package to find the expansion of the map in
+terms of spherical harmonics. In Figure~\ref{fig:earth} we show a
+simple two-color map of the Earth and its corresponding \starry instance for
+$l_\mathrm{max} = 10$, rotated successively about $\xhat$.
+%
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=0.8\linewidth]{../maps/earth.jpg}
+    \\[1em]
+    \includegraphics[width=0.85\linewidth]{figures/earth.pdf}
+    \caption{\label{fig:earth}
+             \script{earth}
+             A simple two-color map of the Earth (top) and the
+             corresponding tenth-order spherical harmonic expansion,
+             rotated about $\xhat$ (bottom).}
+    \end{centering}
+\end{figure}
+%
+Hello.
 
 % ==============================================================================
 % ------------------------------------------------------------------------------

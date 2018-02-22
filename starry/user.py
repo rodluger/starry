@@ -3,7 +3,7 @@ import numpy as np
 from .rotation import R, Rz
 from .basis import A, evaluate_poly, y2p
 from .integrals import S, brute
-from .maps import image2map
+from .maps import image2map, healpix2map
 import matplotlib.pyplot as pl
 from matplotlib.animation import FuncAnimation
 
@@ -36,8 +36,14 @@ class starry(np.ndarray):
 
         # Did the user specify an image map?
         if image is not None:
-            obj[:] = image2map(image, lmax=lmax)
-
+            # Is this a string?
+            if type(image) is str:
+                obj[:] = image2map(image, lmax=lmax)
+            # Or is this a healpix array?
+            elif type(image) is np.ndarray:
+                obj[:] = healpix2map(image, lmax=lmax)
+            else:
+                raise ValueError("Invalid `image` value.")
         return obj
 
     @property
