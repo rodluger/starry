@@ -4,8 +4,8 @@ set -e
 if git diff --name-only $TRAVIS_COMMIT_RANGE | grep 'tex/'
 then
     # Conda env
-    conda create --yes -n paper
-    source activate paper
+    #conda create --yes -n paper
+    #source activate paper
     conda install -c conda-forge -c pkgw-forge tectonic
 
     # Generate the figures
