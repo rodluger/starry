@@ -1386,13 +1386,18 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
     \includegraphics[width=\linewidth]{figures/ylmphasecurves.pdf}
     \\[1em]
     \includegraphics[width=\linewidth]{figures/ylmlightcurves.pdf}
-    \caption{\label{fig:ylmphasecurves}
+    \caption{\label{fig:ylmlightcurves}
              \python{ylmphasecurves}
-             Phase curves for the first several spherical harmonics with
-             degree $m \ge 0$ rotated about the $x$-axis (blue) and about
-             the $y$-axis (orange).
+             \emph{Top:} Phase curves for the first several spherical
+             harmonics with degree $m \ge 0$ rotated about the $x$-axis
+             (blue) and about the $y$-axis (orange).
              Odd harmonics with $l > 1$ and harmonics with $m < 0$ are
-             in the phase curve null space \citep{CowanFuentesHaggard2013}.}
+             \python{ylmlightcurves}
+             in the phase curve null space \citep{CowanFuentesHaggard2013}.
+             \emph{Bottom:} Occultation light curves for the same
+             set of spherical harmonics. An occultor of radius $r=0.3$
+             transits the body along the $+\x$ direction at $y_0 = 0.25$
+             (blue) and $y_0 = 0.75$ (orange). }
     \end{centering}
 \end{figure}
 %
@@ -1407,8 +1412,9 @@ angles at which to compute the flux. Note that rotations performed
 by \textsf{flux()} are not cumulative; instead, all angles should be specified
 relative to the original, unrotated map frame.
 %
-In Figure~\ref{fig:ylmphasecurves} we plot phase curves for all spherical harmonics
-up to $l_\mathrm{max} = 8$ for rotation about $\xhat$ (blue) and $\yhat$
+In the top panel of Figure~\ref{fig:ylmlightcurves} we plot phase curves
+for all spherical harmonics
+up to $l_\mathrm{max} = 6$ for rotation about $\xhat$ (blue) and $\yhat$
 (orange). As discussed by \citet{CowanFuentesHaggard2013}, harmonics with
 odd $l > 1$ and those with $m < 0$ (not plotted) are in the null space and
 therefore do not exhibit phase variations.
@@ -1459,6 +1465,11 @@ where \textsf{u} and \textsf{theta} are the same as above, and
 ($\x$ position, $\y$ position, and radius, all in units of the
 occulted body's radius), which may be either constants
 or arrays.
+
+%
+
+In the bottom panel of Figure~\ref{fig:ylmlightcurves}...
+
 Figure~\ref{fig:earthoccultation} shows an occultation light curve
 computed for a hypothetical transit of the Earth by the Moon.
 %

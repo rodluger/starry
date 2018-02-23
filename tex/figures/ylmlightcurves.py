@@ -43,7 +43,8 @@ axleg = pl.axes([0.7, 0.7, 0.15, 0.15])
 axleg.plot([0, 0], [1, 1], label=r'$y_0 = 0.25$')
 axleg.plot([0, 0], [1, 1], label=r'$y_0 = 0.75$')
 axleg.axis('off')
-leg = axleg.legend(fontsize=16)
+leg = axleg.legend(title=r'$\mathrm{Occultations}$', fontsize=18)
+leg.get_title().set_fontsize('20')
 leg.get_frame().set_linewidth(0.0)
 
 # Save!

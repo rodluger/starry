@@ -31,7 +31,7 @@ for j, m in enumerate(range(lmax + 1)):
 ux = np.array([1., 0., 0.])
 uy = np.array([0., 1., 0.])
 theta = np.linspace(0, 2 * np.pi, nt, endpoint=False)
-for u, zorder, label in zip([ux, uy], [1, 0], ['x', 'y']):
+for u, zorder in zip([ux, uy], [1, 0]):
     for i, l in enumerate(range(lmax + 1)):
         for j, m in enumerate(range(l + 1)):
             y = starry(lmax)
@@ -46,7 +46,8 @@ axleg = pl.axes([0.7, 0.7, 0.15, 0.15])
 axleg.plot([0, 0], [1, 1], label=r'$\vec{u} = \hat{x}$')
 axleg.plot([0, 0], [1, 1], label=r'$\vec{u} = \hat{y}$')
 axleg.axis('off')
-leg = axleg.legend(fontsize=16)
+leg = axleg.legend(title=r'$\mathrm{Phase\ curves}$', fontsize=18)
+leg.get_title().set_fontsize('20')
 leg.get_frame().set_linewidth(0.0)
 
 # Save!
