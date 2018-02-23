@@ -1383,9 +1383,11 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
 %
 \begin{figure}[p!]
     \begin{centering}
-    \includegraphics[width=\linewidth]{figures/phasecurves.pdf}
-    \caption{\label{fig:phasecurves}
-             \python{phasecurves}
+    \includegraphics[width=\linewidth]{figures/ylmphasecurves.pdf}
+    \\[1em]
+    \includegraphics[width=\linewidth]{figures/ylmlightcurves.pdf}
+    \caption{\label{fig:ylmphasecurves}
+             \python{ylmphasecurves}
              Phase curves for the first several spherical harmonics with
              degree $m \ge 0$ rotated about the $x$-axis (blue) and about
              the $y$-axis (orange).
@@ -1405,7 +1407,7 @@ angles at which to compute the flux. Note that rotations performed
 by \textsf{flux()} are not cumulative; instead, all angles should be specified
 relative to the original, unrotated map frame.
 %
-In Figure~\ref{fig:phasecurves} we plot phasecurves for all spherical harmonics
+In Figure~\ref{fig:ylmphasecurves} we plot phase curves for all spherical harmonics
 up to $l_\mathrm{max} = 8$ for rotation about $\xhat$ (blue) and $\yhat$
 (orange). As discussed by \citet{CowanFuentesHaggard2013}, harmonics with
 odd $l > 1$ and those with $m < 0$ (not plotted) are in the null space and

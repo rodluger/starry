@@ -20,6 +20,7 @@ python setup.py install
 echo "Generating figures..."
 cd tex/figures
 for f in *.py; do
+    echo "Running $f..."
     python "$f"
 done
 cd ../../
