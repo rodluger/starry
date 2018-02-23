@@ -2,7 +2,7 @@
 
 \input{stylez}
 
-\begin{document}\raggedbottom\sloppy\sloppypar\frenchspacing
+\begin{document}%\raggedbottom\sloppy\sloppypar\frenchspacing
 
 \setlength{\abovedisplayskip}{1.5em}
 \setlength{\belowdisplayskip}{1.5em}
@@ -45,7 +45,7 @@ Write a kick-ass intro here! \todo{RL}{write intro}
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
-\pagebreak
+%\pagebreak
 \section{Spherical harmonics}
 \label{sec:spharm}
 % ------------------------------------------------------------------------------
@@ -298,7 +298,7 @@ where $\z = \z(\x, \y) = \sqrt{1 - \x^2 - \y^2}$.
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
-\pagebreak
+%\pagebreak
 \section{Surface map vectors}
 \label{sec:vectors}
 % ------------------------------------------------------------------------------
@@ -354,7 +354,7 @@ to the spherical harmonic of order and degree given by
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
-\pagebreak
+%\pagebreak
 \section{Rotation}
 \label{sec:rotation}
 % ------------------------------------------------------------------------------
@@ -557,7 +557,7 @@ those to construct the spherical harmonic rotation matrix
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
-\pagebreak
+%\pagebreak
 \section{Change of basis}
 \label{sec:basis}
 % ------------------------------------------------------------------------------
@@ -700,10 +700,10 @@ may be computed as
 \end{align}
 
 % ------------------------------------------------------------------------------
+\pagebreak
 \subsection{Green's basis}
 \label{sec:greensbasis}
 % ------------------------------------------------------------------------------
-
 As we will see in the next section, integrating the surface map over the disk of
 the body is easier if we apply one final transformation to our input vector,
 rotating it into what we will refer to as the \emph{Green's basis}, $\gbasis$:
@@ -776,7 +776,7 @@ for $l_\mathrm{max} = 3$, our second change of basis matrix
 is
 %
 \begin{equation}
-    \setstackgap{L}{1.25\baselineskip}
+    \setstackgap{L}{1.1\baselineskip}
     \fixTABwidth{T}
     \ATwo =
         \parenMatrixstack{
@@ -843,7 +843,7 @@ described by the spherical harmonic vector $\bvec{y}$ is
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
-\pagebreak
+%\pagebreak
 \section{Light curves}
 \label{sec:occultations}
 % ------------------------------------------------------------------------------
@@ -1265,7 +1265,7 @@ Given these quantities, the total flux during an occultation is then just
 \begin{equation}
     \label{eq:starry}
     \boxed{
-        \large
+        %\large
         F = \bvec{s}^{\boldsymbol{\mathsf{T}}} \bvec{A} \, \bvec{R'} \, \bvec{R} \, \bvec{y}
         }
     \quad.
@@ -1275,7 +1275,7 @@ Given these quantities, the total flux during an occultation is then just
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
-\pagebreak
+%\pagebreak
 \section{The \textbf{STARRY} code package}
 \label{sec:starrycode}
 % ------------------------------------------------------------------------------
@@ -1358,7 +1358,8 @@ y = starry(10, image=None)
 \starry uses the \textsf{map2alm()} function
 of the \textsf{healpy} package to find the expansion of the map in
 terms of spherical harmonics. In Figure~\ref{fig:earth} we show a
-simplified two-color map of the Earth and its corresponding \starry instance for
+simplified two-color map of the cloudless Earth and its corresponding
+\starry instance for
 $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
 %
 \begin{figure}[ht!]
@@ -1368,7 +1369,7 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
     \includegraphics[width=0.85\linewidth]{figures/earth.pdf}
     \caption{\label{fig:earth}
              \python{earth}
-             A simple two-color map of the Earth (top) and the
+             A simplified two-color map of the cloudless Earth (top) and the
              corresponding tenth-order spherical harmonic expansion,
              rotated about $\xhat$ (bottom).}
     \end{centering}
@@ -1453,34 +1454,42 @@ F = y.flux(u=u, theta=theta, x0=x0, y0=y0, r=r)
 %
 where \textsf{u} and \textsf{theta} are the same as above, and
 \textsf{x0}, \textsf{y0}, and \textsf{r} are the occultor parameters
-($\x$ position, $\y$ position, and radius), which may be either constants
-or arrays. All dimensions are in units of the occulted body's radius.
-
+($\x$ position, $\y$ position, and radius, all in units of the
+occulted body's radius), which may be either constants
+or arrays.
+Figure~\ref{fig:earthoccultation} shows an occultation light curve
+computed for a hypothetical transit of the Earth by the Moon.
+%
 \begin{figure}[ht!]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/earthoccultation.pdf}
     \caption{\label{fig:earthoccultation}
              \python{earthoccultation}
-             Occultation light curve for the Moon transiting the Earth,
+             Occultation light curve for the Moon transiting the
+             rotating Earth,
              computed from the $l_\mathrm{max} = 10$ expansion from
-             Figure~\ref{fig:earth}.}
+             Figure~\ref{fig:earth}. The two largest dips are due
+             to the occultations of South America (left) and Africa
+             (right). Note that the total flux declines as the Pacific Ocean
+             rotates into view.}
     \end{centering}
 \end{figure}
 %
 
 % ------------------------------------------------------------------------------
+\pagebreak
 \subsection{Benchmarks}
 \label{sec:starrybenchmarks}
 % ------------------------------------------------------------------------------
 
-Benchmarks.\todo{RL}{todo}
+Add benchmarks here.\todo{RL}{todo}
 
 % ------------------------------------------------------------------------------
 \subsection{Speed tests}
 \label{sec:starryspeed}
 % ------------------------------------------------------------------------------
 
-Speed tests.\todo{RL}{todo}
+Discuss speed tests here.\todo{RL}{todo}
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
