@@ -1424,7 +1424,7 @@ F = y.flux(u=[0, 1, 0], theta=theta)
 assuming the \textsf{numpy} package is imported. The variable $\textsf{F}$ is
 an array of flux values computed from \eq{phaseint}; we plot this in
 Figure~\ref{fig:earthphasecurve}, alongside the phase curves due to each of
-the seven individual continents. 
+the seven individual continents.
 %
 \begin{figure}[ht!]
     \begin{centering}
@@ -1445,7 +1445,28 @@ the seven individual continents.
 \label{sec:starryoccultation}
 % ------------------------------------------------------------------------------
 
-Occultation light curves.\todo{RL}{todo}
+Occultation light curves are similarly easy to compute:
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+F = y.flux(u=u, theta=theta, x0=x0, y0=y0, r=r)
+\end{lstlisting}
+%
+where \textsf{u} and \textsf{theta} are the same as above, and
+\textsf{x0}, \textsf{y0}, and \textsf{r} are the occultor parameters
+($\x$ position, $\y$ position, and radius), which may be either constants
+or arrays. All dimensions are in units of the occulted body's radius.
+
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/earthoccultation.pdf}
+    \caption{\label{fig:earthoccultation}
+             \python{earthoccultation}
+             Occultation light curve for the Moon transiting the Earth,
+             computed from the $l_\mathrm{max} = 10$ expansion from
+             Figure~\ref{fig:earth}.}
+    \end{centering}
+\end{figure}
+%
 
 % ------------------------------------------------------------------------------
 \subsection{Benchmarks}
