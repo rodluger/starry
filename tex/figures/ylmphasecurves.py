@@ -3,7 +3,6 @@ import matplotlib.pyplot as pl
 import numpy as np
 from starry import starry
 
-
 # Compute and plot up to this order
 lmax = 6
 
@@ -11,7 +10,7 @@ lmax = 6
 nt = 100
 
 # Set up the plot
-fig, ax = pl.subplots(lmax + 1, lmax + 1, figsize=(9, 6))
+fig, ax = pl.subplots(lmax + 1, lmax + 1, figsize=(9, 5.5))
 for axis in ax.flatten():
     axis.set_xticks([])
     axis.set_yticks([])
@@ -46,7 +45,7 @@ axleg = pl.axes([0.7, 0.7, 0.15, 0.15])
 axleg.plot([0, 0], [1, 1], label=r'$\vec{u} = \hat{x}$')
 axleg.plot([0, 0], [1, 1], label=r'$\vec{u} = \hat{y}$')
 axleg.axis('off')
-leg = axleg.legend(title=r'$\mathrm{Phase\ curves}$', fontsize=18)
+leg = axleg.legend(title=r'Phase curves', fontsize=18)
 leg.get_title().set_fontsize('20')
 leg.get_frame().set_linewidth(0.0)
 

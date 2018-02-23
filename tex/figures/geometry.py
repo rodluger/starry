@@ -65,7 +65,7 @@ ax.annotate(r"$b$", xy=(-0.13, 0.6), xycoords="data", xytext=(0, 0),
 # Label the angles
 x = np.linspace(0.15, 0.1875, 1000)
 y = b - np.sqrt(0.1875 ** 2 - x ** 2)
-ax.plot(x, y, 'r-', lw=0.5, zorder=-1)
+ax.plot(x, y, 'r-', lw=0.5, zorder=10)
 ax.annotate(r"-$\phi$", xy=(0.2, 1.16), xycoords="data", xytext=(0, 0),
             textcoords="offset points", ha="left", va="center",
             fontsize=12, color="r")
@@ -102,21 +102,21 @@ ax.plot(-sinphi, cosphi, 'ro', ms=3)
 ax.plot(sinphi, cosphi, 'ro', ms=3)
 
 # Label the bodies
-ax.annotate(r"$\mathrm{occultor}$", xy=(0, b + r + 0.25), xycoords="data",
+ax.annotate(r"occultor", xy=(0, b + r + 0.25), xycoords="data",
             xytext=(0, 0),
             textcoords="offset points", ha="center", va="bottom",
             fontsize=10, color="r")
-ax.annotate(r"$\mathrm{(rotated\ frame)}$", xy=(0, b + r + 0.1),
+ax.annotate(r"(rotated frame)", xy=(0, b + r + 0.1),
             xycoords="data",
             xytext=(0, 0),
             textcoords="offset points", ha="center", va="bottom",
             fontsize=10, color="r")
 ax.plot([0], [b+r+0.3], '.', ms=0)
-ax.annotate(r"$\mathrm{occulted}$", xy=(0, -1.1), xycoords="data",
+ax.annotate(r"occulted", xy=(0, -1.1), xycoords="data",
             xytext=(0, 0),
             textcoords="offset points", ha="center", va="top",
             fontsize=10, color="k")
-ax.annotate(r"$\mathrm{(rotated\ frame)}$", xy=(0, -1.25),
+ax.annotate(r"(rotated frame)", xy=(0, -1.25),
             xycoords="data",
             xytext=(0, 0),
             textcoords="offset points", ha="center", va="top",
@@ -148,11 +148,11 @@ ax.annotate(r"$\omega$", xy=(0, -0.05), xycoords="data", xytext=(0, 0),
             textcoords="offset points", ha="center", va="top",
             fontsize=10, color="r")
 ax.plot([x0], [y0 - r - 0.3], '.', ms=0)
-ax.annotate(r"$\mathrm{occultor}$", xy=(x0, y0 - r - 0.1), xycoords="data",
+ax.annotate(r"occultor", xy=(x0, y0 - r - 0.1), xycoords="data",
             xytext=(0, 0),
             textcoords="offset points", ha="center", va="top",
             fontsize=10, color="r", alpha=0.5)
-ax.annotate(r"$\mathrm{(original\ frame)}$", xy=(x0, y0 - r - 0.25),
+ax.annotate(r"(original frame)", xy=(x0, y0 - r - 0.25),
             xycoords="data",
             xytext=(0, 0),
             textcoords="offset points", ha="center", va="top",

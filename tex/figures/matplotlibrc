@@ -1,2 +1,3 @@
 backend: agg
+text.usetex: True
 mathtext.fontset: stix

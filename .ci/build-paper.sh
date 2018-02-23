@@ -6,10 +6,10 @@ then
 
     # Build the paper
     cd tex/
-    pdflatex -interaction=nonstopmode -halt-on-error starry.tex
-    bibtex starry
-    pdflatex -interaction=nonstopmode -halt-on-error starry.tex
-    pdflatex -interaction=nonstopmode -halt-on-error starry.tex
+	pdflatex -interaction=nonstopmode -halt-on-error starry.tex
+	bibtex starry
+	( grep Rerun starry.log && pdflatex -interaction=nonstopmode -halt-on-error starry.tex ) || echo "Done."
+	( grep Rerun starry.log && pdflatex -interaction=nonstopmode -halt-on-error starry.tex ) || echo "Done."
 
     # Force push the paper to GitHub
     cd $TRAVIS_BUILD_DIR

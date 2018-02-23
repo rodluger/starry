@@ -1437,7 +1437,7 @@ the seven individual continents.
 %
 \begin{figure}[ht!]
     \begin{centering}
-    \includegraphics[width=0.85\linewidth]{figures/earthphasecurve.pdf}
+    \includegraphics[width=\linewidth]{figures/earthphasecurve.pdf}
     \caption{\label{fig:earthphasecurve}
              \python{earthphasecurve}
              Phase curve for the Earth rotating about its axis, computed
@@ -1597,8 +1597,10 @@ where $\Theta(\bigdot)$ is the Heaviside step function and
 with
 %
 \begin{align}
+    \label{eq:xi}
+    \xi &= 2 b r (4 - 7 r^2 - b^2)\\
+\intertext{and}\\
     \label{eq:k2}
-    \xi &= 2 b r (4 - 7 r^2 - b^2) \nonumber \\
     k^2 &= \frac{1 - r^2 - b^2}{4 b r}
     \quad.
 \end{align}
@@ -1954,12 +1956,12 @@ with $\mathcal{H}_{u,n}^{\nu + 1}$ given by \eq{Huneven}.
 %
 $A_{lm}$        & Legendre function normalization       & \eq{alm} \\
 $\bvec{A}$      & Change of basis matrix:
-                  spherical harmonics to Greens
+                  $Y_{lm}$s to Green's
                   polynomials                           & \eq{A} \\
 $\AOne$         & Change of basis matrix:
-                  spherical harmonics to polynomials    & \S\ref{sec:polybasis} \\
+                  $Y_{lm}$s to polynomials              & \S\ref{sec:polybasis} \\
 $\ATwo$         & Change of basis matrix:
-                  polynomials to Greens polynomials     & \S\ref{sec:greensbasis} \\
+                  polynomials to Green's polynomials    & \S\ref{sec:greensbasis} \\
 $b$             & Impact parameter in units of occulted
                   body's radius                         & \S\ref{sec:occultations} \\
 $B_{lm}^{jk}$   & Spherical harmonic normalization      & \eq{blmjk} \\
@@ -2039,8 +2041,8 @@ $\gamma$        & Euler angle ($\zhat$ rotation)        & \S\ref{sec:euler} \\
 $\theta$        & Polar angle                           & \eq{ylmtp} \\
                 & Spherical harmonic rotation angle     & \S\ref{sec:axisangle} \\
 $\Theta$        & Heaviside step function               & \eq{biglam} \\
-$\lambda$       & Angular position of intersection point
-                  between occulted and occultor         & \eq{lambda} \\
+$\lambda$       & Angular position of
+                  occultor/occulted intersection point  & \eq{lambda} \\
 $\Lambda$       & \citet{MandelAgol2002} function       & \eq{biglam} \\
 $\mu$           & $l - m$                               & \eq{munu} \\
 $\nu$           & $l + m$                               & \eq{munu} \\
@@ -2049,8 +2051,8 @@ $\Pi(\bigdot,\bigdot)$
                 & Complete elliptic integral of the
                   third kind                            & \eq{elliptic} \\
 $\phi$          & Spherical harmonic azimuthal angle    & \eq{ylmtp} \\
-                & Angular position of intersection point
-                  between occulted and occultor         & \eq{phi} \\
+                & Angular position of
+                  occultor/occulted intersection point  & \eq{phi} \\
 $\varphi$       & Dummy integration variable            & \\
 $\omega$        & Angular position of occultor          & \eq{zrot}
 %
