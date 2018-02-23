@@ -12,13 +12,14 @@ matrix:
 
 before_install:
     #- sudo apt-get -qq update && sudo apt-get install -y --no-install-recommends texlive-fonts-recommended texlive-latex-extra texlive-fonts-extra dvipng texlive-latex-recommended texlive-generic-recommended texlive-publishers
-    - wget https://github.com/scottkosty/install-tl-ubuntu/raw/master/install-tl-ubuntu && chmod +x ./install-tl-ubuntu
-    - sudo ./install-tl-ubuntu
-    - sudo /opt/texbin/tlmgr init-usertree
-    - sudo /opt/texbin/tlmgr update --all
-    - sudo /opt/texbin/tlmgr update unicode-math
-    - sudo /opt/texbin/tlmgr update xetex
-    - "export PATH=$PATH:/opt/texbin"
+    #- wget https://github.com/scottkosty/install-tl-ubuntu/raw/master/install-tl-ubuntu && chmod +x ./install-tl-ubuntu
+    #- sudo ./install-tl-ubuntu
+    #- sudo /opt/texbin/tlmgr init-usertree
+    #- sudo /opt/texbin/tlmgr update --all
+    #- sudo /opt/texbin/tlmgr update unicode-math
+    #- sudo /opt/texbin/tlmgr update xetex
+    #- "export PATH=$PATH:/opt/texbin"
+    - sudo apt-get -qq update && sudo apt-get install -y --no-install-recommends texlive-full
 
 install:
     - source .ci/travis.sh
