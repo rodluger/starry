@@ -1,0 +1,209 @@
+%% mathdots.sty
+%% Copyright 2001--2004 by Daniel H. Luecking
+%% This file may be distributed and/or modified under the conditions
+%% of the LaTeX Project Public License, either version 1.2 of this
+%% license or (at your option) any later version. The latest version
+%% of this license is in http://www.latex-project.org/lppl.txt and
+%% version 1.2 or later is part of all distributions of LaTeX version
+%% 1999/12/01 or later.
+%%
+%% This style file provides vertical dots and diagonal dots slanting
+%% in either direction. Unlike the commands \vdots and \ddots provided
+%% by LaTeX, these commands change size with LaTeX size changing
+%% commands, as well as in {sub[sub]|super[super]}scripts.
+%%
+%% It also supplies a fix to the amsmath  \dddot  and  \ddddot
+%% commands which don't change size in scripts and suffer from a
+%% vertical placement bug.
+%%
+%% Documentation after \endinput
+%%
+\def\mathdotsfiledate{2004/07/02}%
+\def\mathdotsfileversion{0.6}%
+\expandafter\ifx\csname MathDots\mathdotsfileversion\endcsname\relax
+\else\immediate\write\sixt@@n{Mathdots already loaded.}\expandafter\endinput\fi
+
+\newif\ifMDlatex
+%
+%
+\begingroup
+\expandafter\ifx\csname ProvidesPackage\endcsname\relax
+  % not latex2e
+  \global\MDlatexfalse
+  \def\ProvidesPackage#1[#2]{%
+  \immediate\write16{Package #1, #2}}%
+\else
+  \global\MDlatextrue
+\fi
+\expandafter
+\endgroup
+\ProvidesPackage{mathdots}[\mathdotsfiledate\space version \mathdotsfileversion.]%
+%
+\expandafter\edef\csname MathDots\mathdotsfileversion\endcsname{%
+    \catcode`\noexpand\@=\the\catcode`@}%
+\catcode`\@=11
+%
+\def\MD@us#1{\csname#1style\endcsname}% e.g., \MD@us{text} -> \textstyle
+\def\MD@uf#1{\csname#1font\endcsname}%        \MD@uf{text} -> \textfont
+\def\MD@t{text}%                              \MD@uf{\MD@t} -> \textfont
+\def\MD@s{script}%
+\def\MD@ss{scriptscript}%
+\newdimen\MD@unit
+\MD@unit\p@ % old value, just in case.
+\def\MD@changestyle#1{%
+% 0.1em of family 0 in the current size replaces \p@ in the old
+% definition:
+  \relax\MD@unit0.1\fontdimen6\MD@uf{#1}0
+% The current math dot replaces text font dot. We pass along the current
+% style via \everymath:
+  \everymath\expandafter{\the\everymath\MD@us{#1}}%
+}%
+\def\MD@dot{$\m@th\ldotp$}%
+%
+% #1 is a command which we feed the current style name
+% (not distinguishing display from text)
+\def\MD@palette#1{\mathchoice{#1\MD@t}{#1\MD@t}{#1\MD@s}{#1\MD@ss}}%
+%
+% Save version at load time so user can use them.
+\let\originalddots=\ddots
+\let\originalvdots=\vdots
+%
+% Include current (2002/02/28) LaTeX/plainTeX definitions
+% so user can opt for them. LaTeX/plainTeX don't have the other diagonal,
+% so we provide a \fixediddots which is just \fixedddots with the boxes
+% reversed.
+\ifMDlatex
+  \DeclareRobustCommand
+    \fixedvdots{\vbox{\baselineskip4\p@ \lineskiplimit\z@
+      \kern6\p@\hbox{.}\hbox{.}\hbox{.}}}
+  \DeclareRobustCommand
+    \fixedddots{\mathinner{\mkern1mu\raise7\p@
+      \vbox{\kern7\p@\hbox{.}}\mkern2mu
+      \raise4\p@\hbox{.}\mkern2mu\raise\p@\hbox{.}\mkern1mu}}
+  \DeclareRobustCommand
+    \fixediddots{\mathinner{\mkern1mu\raise\p@
+      \hbox{.}\mkern2mu\raise4\p@\hbox{.}\mkern2mu
+      \raise7\p@\vbox{\kern7\p@\hbox{.}}\mkern1mu}}%
+\else
+  \def\fixedvdots{\vbox{\baselineskip4\p@ \lineskiplimit\z@
+    \kern6\p@\hbox{.}\hbox{.}\hbox{.}}}%
+  \def\fixedddots{\mathinner{\mkern1mu\raise7\p@
+    \vbox{\kern7\p@\hbox{.}}\mkern2mu
+    \raise4\p@\hbox{.}\mkern2mu\raise\p@\hbox{.}\mkern1mu}}%
+  \def\fixediddots{\mathinner{\mkern1mu\raise\p@
+    \hbox{.}\mkern2mu\raise4\p@\hbox{.}\mkern2mu
+    \raise7\p@\vbox{\kern7\p@\hbox{.}}\mkern1mu}}%
+\fi
+%
+% #1 is the current style (supplied via \MD@palette).
+% Except for the change in the unit used and the dot used,
+% the definition is the same as plain \ddots:
+\def\MD@ddots#1{{\MD@changestyle{#1}%
+  \mkern1mu\raise7\MD@unit\vbox{\kern7\MD@unit\hbox{\MD@dot}}%
+  \mkern2mu\raise4\MD@unit\hbox{\MD@dot}%
+  \mkern2mu\raise \MD@unit\hbox{\MD@dot}\mkern1mu}}%
+%
+% \iddots is same as \ddots but with the box order reversed:
+\def\MD@iddots#1{{\MD@changestyle{#1}%
+  \mkern1mu\raise \MD@unit\hbox{\MD@dot}%
+  \mkern2mu\raise4\MD@unit\hbox{\MD@dot}%
+  \mkern2mu\raise7\MD@unit\vbox{\kern7\MD@unit\hbox{\MD@dot}}}}%
+%
+%
+% We transform \vdots in the same fashion as \ddots and \iddots:
+\def\MD@vdots#1{\vbox{\MD@changestyle{#1}%
+    \baselineskip4\MD@unit\lineskiplimit\z@
+    \kern6\MD@unit\hbox{\MD@dot}\hbox{\MD@dot}\hbox{\MD@dot}}}%
+%
+%
+\ifMDlatex
+  \DeclareRobustCommand\ddots{\mathinner{\MD@palette\MD@ddots}}%
+  \DeclareRobustCommand\iddots{\mathinner{\MD@palette\MD@iddots}}%
+  \DeclareRobustCommand\vdots{\mathinner{\MD@palette\MD@vdots}}%
+\else
+  \def\ddots{\mathinner{\MD@palette\MD@ddots}}%
+  \def\iddots{\mathinner{\MD@palette\MD@iddots}}%
+  \def\vdots{\mathinner{\MD@palette\MD@vdots}}%
+\fi
+%
+% Try to get AMS \dddot and \ddddot to behave:
+\def\MD@dotsaccent#1#2{%
+      {\mathop{#2\kern\z@}\limits^{\text{\vbox to-1.4\ex@{\kern-\tw@\ex@
+       \hbox{#1}\vss}}}}}
+\let\originaldddot \dddot
+\let\originalddddot\ddddot
+\ifMDlatex
+  \@ifpackageloaded{amsmath}{%
+    \PackageWarningNoLine{Mathdots}{Redefining amsmath commands
+      \string\dddot\space and \string\ddddot}%
+%
+% The \kern\z@ prevents TeX from vertically centering #1. The \text
+% command invokes size changing (i.e., \normalfont changes meaning).
+% Text dots match accent dots better than math dots do.
+    \DeclareRobustCommand\dddot {\MD@dotsaccent{\normalfont ...}}%
+    \DeclareRobustCommand\ddddot{\MD@dotsaccent{\normalfont....}}%
+  }{}%
+\else
+%
+% Not LaTeX, but we'll redefine only if AMSTeX is used.
+  \def\amstexfmtname{AmS-TeX}
+  \ifx\amstexfmtname\fmtname
+    \immediate\write16{Mathdots: Redefining AmS-TeX commands
+      \string\dddot\space and \string\ddddot}%
+    \def\dddot {\MD@dotsaccent{\rm ...}}%
+    \def\ddddot{\MD@dotsaccent{\rm....}}%
+  \fi
+\fi
+
+\csname MathDots\mathdotsfileversion\endcsname
+\endinput
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\texttt{mathdots.sty} provides \verb"\ddots", \verb"\vdots", and
+\verb"\iddots". If \LaTeX{} and \texttt{amsmath.sty} are detected (or
+AMS-\TeX), the math accent commands \verb"\dddot" and \verb"\ddddot" are
+modified.
+
+\verb"\ddots" (the same command as LaTeX provides) gives three dots on a
+diagonal from upper left to lower right. It differs from LaTeX's command
+in that it will change size within the scope of LaTeX size changing
+commands. That is, {\verb"\Large$\ddots$"} will be larger and
+{\verb"\small$\ddots$"} will be smaller than \verb"$\ddots$".
+
+LaTeX's definition would change the size of the dots, and the horizontal
+dimensions, but not the vertical dimensions. The command from the
+mathdots package also changes size in sub/superscripts. LaTeX's would
+not change at all in those cases. Finally, LaTeX would take the dots
+from the current text font, where the mathdots package takes them from
+the current math symbol font, so they should match other dots in math
+mode. This is only really a concern in 17pt sizes or larger where cmr17
+is scaled to get text dots, but cmsy12 is scaled to get math dots.
+
+\verb"\iddots" is similar, except it produces the other diagonal.
+
+\verb"\vdots" produces vertical dots (as in standard TeX or LaTeX), but
+again, it will change size with size changing commands.
+
+The old behavior is stored in \verb"\fixedddots" and \verb"\fixedvdots".
+If you wish \verb"\iddots" to behave similarly then use \fixediddots.
+
+On the off chance that some other package changes LaTeX's behavior
+before this file is loaded, use \verb"\originalddots" and
+\verb"\originalvdots" to obtain the versions in force when the mathdots
+package is loaded.
+
+Note: The \fixed... versions try to maintain LaTeX's (awful) behavior,
+which is to let the horizontal dimensions change size, as well as the
+dots themselves, but hard code unchanging vertical dimensions.
+
+If the \LaTeX{} and the \textsf{amsmath} package are detected, the
+commands \verb"\dddot" and \verb"\ddddot" are modified to get the same
+size changing behavior in 'scripts. They also correct a positioning bug
+in the \textsf{amsmath} code. The correction requires the command
+\verb"\text", and so is only applied if \textsf{amsmath} has been loaded
+\emph{before} \texttt{mathdots.sty}. The old amsmath commands are saved
+in \verb"\originaldddot" and \verb"\originalddddot".
+
+In \LaTeX, all these commands have been made robust as of version 0.6.
+
+\end{document}

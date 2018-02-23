@@ -16,6 +16,11 @@ pip install Pillow
 # Build the code
 python setup.py install
 
+# TEST DEBUG
+cd tex
+pdflatex -interaction=nonstopmode -halt-on-error test.tex
+cd ..
+
 # Generate the figures
 echo "Generating figures..."
 cd tex/figures
