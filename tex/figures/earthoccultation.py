@@ -34,8 +34,11 @@ ax_lc.plot(time, F, 'k-', label='Total')
 for n in range(nim):
     i = int(np.linspace(0, npts - 1, nim)[n])
     I = y.render(res=res, u=[0, 1, 0], theta=theta[i], x0=x0[i], y0=y0[i], r=r)
-    ax_im[n].imshow(I, origin="lower", interpolation="none", cmap='plasma')
+    ax_im[n].imshow(I, origin="lower", interpolation="none", cmap='plasma',
+                    extent=(-1,1,-1,1))
     ax_im[n].axis('off')
+    ax_im[n].set_xlim(-1.05, 1.05)
+    ax_im[n].set_ylim(-1.05, 1.05)
 
 # Appearance
 ax_lc.set_xlabel('Time [hours]', fontsize=24)

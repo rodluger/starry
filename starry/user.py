@@ -4,6 +4,7 @@ from .rotation import R, Rz
 from .basis import A, evaluate_poly, y2p
 from .integrals import S, brute
 from .maps import image2map, healpix2map
+from .utils import prange
 import matplotlib.pyplot as pl
 from matplotlib.animation import FuncAnimation
 
@@ -14,7 +15,7 @@ __all__ = ["starry"]
 class starry(np.ndarray):
     """The main STARRY interface. This is a subclass of numpy.ndarray."""
 
-    def __new__(subtype, lmax, image=None, tol=1e-15):
+    def __new__(subtype, lmax, image=None, tol=1e-15, u1=None, u2=None):
         """Create a new `starry` instance by subclassing ndarray."""
         # Check that lmax is a nonnegative integer
         assert type(lmax) is int, "Argument `lmax` must be an integer."
@@ -33,6 +34,21 @@ class starry(np.ndarray):
 
         # Pre-compute the basis change matrix
         obj.A = A(obj.lmax)
+
+        # Did the user set the limb darkening coefficients?
+        if (u1 is not None) or (u2 is not None):
+            # Check that lmax is correct
+            assert lmax == 2, "Parameter lmax must be 2 " + \
+                              "for quadratic limb darkening."
+            assert image is None, "Cannot set both limb darkening " + \
+                                  "parameters and a map image."
+            if u1 is None:
+                u1 = 0
+            elif u2 is None:
+                u2 = 0
+            obj[0] = 2 * np.sqrt(np.pi) / 3. * (3 - 3 * u1 - 4 * u2)
+            obj[2] = 2 * np.sqrt(np.pi / 3.) * (u1 + 2 * u2)
+            obj[6] = -4. / 3. * np.sqrt(np.pi / 5) * u2
 
         # Did the user specify an image map?
         if image is not None:
@@ -118,7 +134,7 @@ class starry(np.ndarray):
         return z
 
     def flux(self, u=[0, 1, 0], theta=0, x0=None, y0=None, r=None, debug=False,
-             res=100):
+             res=100, quiet=False):
         """Return the flux visible from the map."""
         # Is this an occultation?
         if (x0 is None) or (y0 is None) or (r is None):
@@ -163,7 +179,7 @@ class starry(np.ndarray):
 
         # Iterate through the timeseries
         F = np.zeros(npts, dtype=float)
-        for n in range(npts):
+        for n in prange(npts, quiet=(quiet or npts == 1)):
 
             # Compute the impact parameter
             if occultation:

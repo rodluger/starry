@@ -12,6 +12,7 @@ conda create --yes -n test python=$PYTHON_VERSION
 conda activate test
 conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib sympy mpmath setuptools pytest pytest-cov pip healpy
 pip install Pillow
+pip install batman-package
 
 # Build the code
 python setup.py install

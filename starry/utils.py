@@ -2,6 +2,10 @@
 import numpy as np
 from scipy.special import gamma
 from scipy.special import ellipe, ellipk
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
 
 
 def factorial(n):
@@ -46,3 +50,11 @@ def E2(b, r):
     else:
         return A * np.sqrt(1 + s) * (ellipe(2 / (1 + s)) +
                                      (1 - s) / (1 + s) * ellipk(2 / (1 + s)))
+
+
+def prange(*x, quiet=False):
+    """Generate a simple progress bar range with `tqdm`."""
+    if tqdm and not quiet:
+        return tqdm(range(*x))
+    else:
+        return range(*x)

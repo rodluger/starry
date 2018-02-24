@@ -1,5 +1,5 @@
 """Compute the polynomial integral matrix `S`."""
-from .utils import Phi, Lam, E1, E2, factorial
+from .utils import Phi, Lam, E1, E2, factorial, prange
 from .zintegral import MandelAgolFlux
 from .basis import evaluate_poly, y2p
 import numpy as np
@@ -237,14 +237,34 @@ def brute(ylm, x0, y0, r, res=100):
     # Compute the total flux
     flux, _ = dblquad(func, -1, 1, y1, y2)
 
-    # Now subtract off the occulted flux
-    dA = (2 * r / res) ** 2
-    for x in np.linspace(x0 - r, x0 + r, res):
-        for y in np.linspace(y0 - r, y0 + r, res):
-            # If inside the occultor
-            if (x - x0) ** 2 + (y - y0) ** 2 < r ** 2:
+    # Occultor is smaller than occulted
+    if r < 1:
+
+        # Subtract off the occulted flux
+        dA = (2 * r / res) ** 2
+        x = np.linspace(x0 - r, x0 + r, res)
+        y = np.linspace(y0 - r, y0 + r, res)
+        for i in range(res):
+            for j in range(res):
+                # If inside the occultor
+                if (x[i] - x0) ** 2 + (y[j] - y0) ** 2 < r ** 2:
+                    # If inside the occulted
+                    if (x[i] ** 2 + y[j] ** 2 < 1):
+                        flux -= func(y[j], x[i]) * dA
+
+    # Occultor is larger than occulted
+    else:
+
+        # Subtract off the occulted flux
+        dA = (2 / res) ** 2
+        x = np.linspace(-1, 1, res)
+        y = np.linspace(-1, 1, res)
+        for i in range(res):
+            for j in range(res):
                 # If inside the occulted
-                if (x ** 2 + y ** 2 < 1):
-                    flux -= func(y, x) * dA
+                if (x[i] ** 2 + y[j] ** 2 < 1):
+                    # If inside the occultor
+                    if (x[i] - x0) ** 2 + (y[j] - y0) ** 2 < r ** 2:
+                        flux -= func(y[j], x[i]) * dA
 
     return flux

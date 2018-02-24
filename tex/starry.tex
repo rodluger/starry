@@ -161,6 +161,7 @@ which we combine with the previous results to write
         \z^k
         \qquad & m < 0
     \end{dcases}
+    \mathematica{Y}
 \end{align}
 %
 where
@@ -226,6 +227,7 @@ as a function of $\x$ and $\y$ only:
 %
 \begin{align}
     \label{eq:ylmxy}
+    \mathematica{Y}
     Y_{lm}(\x, \y) &=
     \begin{dcases}
         \!\begin{aligned}%[b]
@@ -449,6 +451,7 @@ block-diagonal matrix $\bvec{R}$:
                        &            &            & \bvec{R}^3 &  \\
                        &            &            &            & \ddots
         }\quad.
+    \todoproof
 \end{equation}
 %
 Rotation of $\bvec{y}$ by the Euler angles $\alpha$, $\beta$, and $\gamma$
@@ -586,6 +589,7 @@ polynomial basis $\pbasis$:
         \cdot\cdot\cdot
     \end{pmatrix}^\mathsf{T}
     \quad,
+    \mathematica{A1}
 \end{align}
 %
 where
@@ -664,9 +668,10 @@ the first few spherical harmonics and their corresponding polynomial vectors:
 \end{equation}
 %
 From these we can construct $\AOne$. As an example, for spherical
-harmonics up to order $l_\mathrm{max} = 3$, this is
+harmonics up to order $l_\mathrm{max} = 2$, this is
 %
 \begin{equation}
+    \label{eq:AOne}
     \setstackgap{L}{1.25\baselineskip}
     \fixTABwidth{T}
     \AOne =
@@ -750,6 +755,7 @@ rotating it into what we will refer to as the \emph{Green's basis}, $\gbasis$:
         \cdot\cdot\cdot
     \end{pmatrix}^\mathsf{T}
     \quad,
+    \mathematica{A2}
 \end{align}
 %
 where the values of $l$, $m$, $\mu$, and $\nu$ are given by
@@ -767,7 +773,7 @@ corresponding to each of the polynomial terms in \eq{bp}. In practice,
 it is easier to express the elements of $\gbasis$ in terms
 of the elements of $\pbasis$ and use those to populate the
 columns of the matrix $\ATwo^{-1}$. Continuing our example
-for $l_\mathrm{max} = 3$, our second change of basis matrix
+for $l_\mathrm{max} = 2$, our second change of basis matrix
 is
 %
 \begin{equation}
@@ -804,9 +810,10 @@ where
 \end{align}
 %
 is the full change of basis matrix. For
-$l_\mathrm{max} = 3$,
+$l_\mathrm{max} = 2$,
 %
 \begin{equation}
+    \mathematica{A}
     \setstackgap{L}{1.25\baselineskip}
     \fixTABwidth{T}
     \bvec{A} =
@@ -903,21 +910,34 @@ occurring), this may be written
         \nonumber \\[1em]
         &=
         \begin{dcases}
-            \frac{(\frac{\mu}{4} - \frac{1}{2})!(\frac{\nu}{4} - \frac{1}{2})!}{(\frac{l}{2} - 1)!}
-            & \qquad \mu \, \mathrm{even}, \, \nu \, \mathrm{even}
+            \frac{
+                    \Gamma\left(\frac{\mu}{4} + \frac{1}{2}\right)
+                    \Gamma\left(\frac{\nu}{4} + \frac{1}{2}\right)
+                }{
+                    \Gamma\left(\frac{\mu + \nu}{4} + 2\right)
+                }
+            & \qquad \frac{\mu}{2} \, \mathrm{even}, \, \frac{\nu}{2} \, \mathrm{even}
             %
             \\[1em]
             %
             \frac{\sqrt{\pi}}{2}
-            \frac{(\frac{\mu-1}{4} - \frac{1}{2})!(\frac{\nu-1}{4} - \frac{1}{2})!}{(\frac{l}{2} + 1)!}
-            & \qquad \mu \, \mathrm{odd}, \, \nu \, \mathrm{odd}
+            \frac{
+                    \Gamma\left(\frac{\mu}{4} + \frac{1}{4}\right)
+                    \Gamma\left(\frac{\nu}{4} + \frac{1}{4}\right)
+                }{
+                    \Gamma\left(\frac{\mu + \nu}{4} + 2\right)
+                }
+            & \qquad \frac{\mu-1}{2} \, \mathrm{even}, \, \frac{\nu-1}{2} \, \mathrm{even}
             %
             \\[1em]
             %
             0
             & \qquad \mathrm{otherwise.}
         \end{dcases}
+    \mathematica{rn}
 \end{align}
+%
+where $\Gamma(\bigdot)$ is the gamma function.
 %
 \eq{phaseint} may be used to analytically compute the phase curve of a body
 with an arbitrary surface map. Since $\bvec{r}$ and $\bvec{B}$ are independent
@@ -1008,7 +1028,8 @@ For future reference, it can be shown that
         \arcsin\left({\frac{1 - r^2 - b^2}{2br}}\right)
                                                 & \qquad |1 - r| < b < 1 + r \\
         \frac{\pi}{2}                           & \qquad b \le 1 - r
-    \end{dcases} \\
+    \end{dcases}
+    \mathematica{philam} \\
 \intertext{and}
     \label{eq:lambda}
     \lambda &=
@@ -1018,6 +1039,7 @@ For future reference, it can be shown that
         \frac{\pi}{2}                           & \qquad b \le 1 - r
         \quad,
     \end{dcases}
+    \mathematica{philam}
 \end{align}
 %
 The case $b \le 1 - r$ corresponds to an occultation during which the occultor
@@ -1178,7 +1200,7 @@ It can be easily shown that one possible solution to \eq{DGg} is
             & \qquad \nu \, \mathrm{even}
         \\[1em]
         %
-        \frac{1-z^3}{3(1-z)}(-\y \, \xhat + \x \, \yhat)
+        \frac{1-z^3}{3(1-z^2)}(-\y \, \xhat + \x \, \yhat)
             & \qquad \nu = \mu = 1
         \\[1em]
         %
@@ -1205,6 +1227,7 @@ It can be easily shown that one possible solution to \eq{DGg} is
         \,\yhat
             & \qquad \mathrm{otherwise,}
     \end{dcases}
+    \mathematica{G}
 \end{align}
 %
 where $l$ and $m$ are given by \eq{lm} and $\mu$ and $\nu$ are given by
@@ -1485,6 +1508,50 @@ computed for a hypothetical transit of the Earth by the Moon.
 %
 
 % ------------------------------------------------------------------------------
+\subsection{Computing transit light curves}
+\label{sec:starrytransits}
+% ------------------------------------------------------------------------------
+
+The specific intensity of a quadratically limb-darkened star may be written
+%
+\begin{align}
+    I(\mu) &= 1 - u_1 (1 - \mu) - u_2 (1 - \mu)^2 \nonumber \\
+           &= (1 - u_1 - 2u_2) + (u_1 + 2u_2) \z + u_2 \x^2 + u_2 \y^2
+           \quad,
+\end{align}
+%
+where we used the fact that $\mu = \z = \sqrt{1 - \x^2 - \y^2}$.
+Inverting \eq{AOne} to express this polynomial in the basis of spherical harmonics,
+we have
+%
+\begin{align}
+I(\x, \y) =
+            \left( \frac{2\sqrt{\pi}}{3} (3 - 3u_1 + 4u_2) \right) \, Y_{0,0}
+          + \left( \frac{2\sqrt{\pi}}{\sqrt{3}} (u_1 + 2u_2) \right) \, Y_{1,0}
+          - \left( \frac{4\sqrt{\pi}}{3\sqrt{5}} u_2 \right) \, Y_{2,0}
+      \quad.
+\mathematica{limbdark}
+\end{align}
+%
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/transit.pdf}
+    \caption{\label{fig:transit}
+             \python{transit}
+             Sample transit light curve for a planet ($r = 0.1$) transiting a
+             quadratically limb-darkened star ($u_1 = 0.4, u_2 = 0.26$). The
+             top panel shows the \starry (blue curve) and \textsf{batman}
+             (orange dots) light curves, as well as a light curve generated
+             by a high precision direct numerical integration of the surface
+             integral (purple dots). The bottom panel shows the fractional
+             error on the transit depth in parts per million relative to the
+             numerical solution for \starry (blue) and \textsf{batman} (orange).}
+    \end{centering}
+\end{figure}
+%
+
+
+% ------------------------------------------------------------------------------
 \pagebreak
 \subsection{Benchmarks}
 \label{sec:starrybenchmarks}
@@ -1758,6 +1825,7 @@ With some algebra, we may therefore write
         r^{l-1} \mathcal{I}_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}^\nu (\phi, b, r)
             & \qquad \mathrm{otherwise}
     \end{dcases}
+    \todoproof
 %
 \intertext{and}
 %
@@ -1774,6 +1842,7 @@ With some algebra, we may therefore write
         \phantom{XXX}0
             & \qquad\qquad \mathrm{otherwise.}
     \end{dcases}
+    \todoproof
 \end{align}
 %
 The solution to the occultation problem is therefore a matter of finding
@@ -1819,6 +1888,7 @@ for these terms:
         \quad.
         %
     \end{dcases}
+    \todoproof
 \end{align}
 \\
 
@@ -1838,8 +1908,9 @@ of the form $\cos^p\varphi\sin^q\varphi (1 - \kappa^2 \sin^2 \varphi)^\frac{3}{2
     \label{eq:Hunodd}
     \mathcal{H}_{u,n}^{\nu}(\phi, b, r) &=
         2^{u+3} (b r)^\frac{3}{2}
-        \sum\displaylimits_{m=0}^n
-            {n \choose m}\left(-1\right)^{m-n-u}\mathcal{J}_{u + 2m, u + 2n - 2m}(k^2)
+        \sum\displaylimits_{i=0}^n
+            {n \choose i}\left(-1\right)^{i-n-u}\mathcal{J}_{u + 2i, u + 2n - 2i}(k^2)
+    \todoproof
 \end{align}
 %
 where
@@ -1917,6 +1988,7 @@ In this case, the integral in \eq{Hun} simplifies:
 %
 \begin{align}
     \mathcal{H}_{u,n}^{\nu}(\phi, 0, r) = (1 - r^2)^\frac{3}{2} \mathcal{H}_{u,n}^{\nu + 1}(\phi, 0, r)
+    \todoproof
 \end{align}
 %
 with $\mathcal{H}_{u,n}^{\nu + 1}$ given by \eq{Huneven}.
@@ -2033,6 +2105,7 @@ $\z$            & Cartesian coordinate,
 $\alpha$        & Euler angle ($\zhat$ rotation)        & \S\ref{sec:euler} \\
 $\beta$         & Euler angle ($\yhat$ rotation)        & \S\ref{sec:euler} \\
 $\gamma$        & Euler angle ($\zhat$ rotation)        & \S\ref{sec:euler} \\
+$\Gamma$        & Gamma function                        & \\
 $\theta$        & Polar angle                           & \eq{ylmtp} \\
                 & Spherical harmonic rotation angle     & \S\ref{sec:axisangle} \\
 $\Theta$        & Heaviside step function               & \eq{biglam} \\

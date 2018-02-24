@@ -1,0 +1,140 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 11.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      3890,        130]
+NotebookOptionsPosition[      3401,        109]
+NotebookOutlinePosition[      3761,        125]
+CellTagsIndexPosition[      3718,        122]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[TextData[StyleBox["Definitions", "Subchapter"]], "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
+  3.728393711812155*^9}}],
+
+Cell[CellGroupData[{
+
+Cell["\<\
+The proof is mostly in \
+http://mathworld.wolfram.com/Circle-CircleIntersection.html\
+\>", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.72839545547931*^9, 
+  3.7283954571178617`*^9}, {3.728400375273076*^9, 3.7284004363956823`*^9}, {
+  3.728400469245819*^9, 3.728400474973239*^9}}],
+
+Cell[TextData[{
+ "We take ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    SubscriptBox["R", "1"], "=", 
+    RowBox[{
+     RowBox[{"1", " ", "and", " ", "d"}], " ", "=", " ", 
+     RowBox[{"b", "."}]}]}], TraditionalForm]],
+  FormatType->"TraditionalForm"],
+ " The sine of the angle \[Lambda] is therefore just ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    FractionBox["x", 
+     SubscriptBox["R", "1"]], "=", 
+    RowBox[{"x", "=", 
+     FractionBox[
+      RowBox[{"1", "-", 
+       SuperscriptBox["r", "2"], "+", 
+       SuperscriptBox["b", "2"]}], 
+      RowBox[{"2", "b"}]]}]}], TraditionalForm]],
+  FormatType->"TraditionalForm"],
+ ", so"
+}], "Text",
+ CellChangeTimes->{{3.728400476735427*^9, 3.7284005739627542`*^9}}],
+
+Cell[BoxData[
+ RowBox[{"\[Lambda]", "=", 
+  RowBox[{"ArcSin", "[", 
+   FractionBox[
+    RowBox[{"1", "-", 
+     SuperscriptBox["r", "2"], "+", 
+     SuperscriptBox["b", "2"]}], 
+    RowBox[{"2", "b"}]], "]"}]}]], "Input",
+ CellChangeTimes->{{3.727532607159235*^9, 3.7275326796623774`*^9}, {
+   3.727532724892008*^9, 3.72753276954182*^9}, {3.727533350948818*^9, 
+   3.727533351580966*^9}, {3.7275335665073023`*^9, 3.727533568314823*^9}, {
+   3.728394915724524*^9, 3.7283949281393967`*^9}, 3.728400319329709*^9, {
+   3.728400438126277*^9, 3.728400455814242*^9}, {3.728400576347612*^9, 
+   3.728400579475477*^9}}],
+
+Cell[TextData[{
+ "The sine of the angle -\[Phi] is then ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    FractionBox[
+     RowBox[{"b", "-", "x"}], "r"], "=", 
+    RowBox[{"-", 
+     FractionBox[
+      RowBox[{"1", "-", 
+       SuperscriptBox["r", "2"], "-", 
+       SuperscriptBox["b", "2"]}], 
+      RowBox[{"2", "b", " ", "r"}]]}]}], TraditionalForm]],
+  FormatType->"TraditionalForm"],
+ ", so"
+}], "Text",
+ CellChangeTimes->{{3.728400476735427*^9, 3.7284006468593616`*^9}, {
+  3.7284006821087933`*^9, 3.728400684144129*^9}}],
+
+Cell[BoxData[
+ RowBox[{"\[Phi]", "=", 
+  RowBox[{
+   RowBox[{"ArcSin", "[", 
+    FractionBox[
+     RowBox[{"1", "-", 
+      SuperscriptBox["r", "2"], "-", 
+      SuperscriptBox["b", "2"]}], 
+     RowBox[{"2", "b", " ", "r"}]], "]"}], "."}]}]], "Input",
+ CellChangeTimes->{{3.728400654023225*^9, 3.72840069464867*^9}}]
+}, Open  ]]
+},
+WindowSize->{808, 751},
+WindowMargins->{{268, Automatic}, {46, Automatic}},
+FrontEndVersion->"11.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (September \
+21, 2016)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 240, 3, 45, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[823, 27, 381, 7, 29, "Subsubsection"],
+Cell[1207, 36, 718, 25, 47, "Text"],
+Cell[1928, 63, 610, 13, 53, "Input"],
+Cell[2541, 78, 524, 17, 44, "Text"],
+Cell[3068, 97, 317, 9, 53, "Input"]
+}, Open  ]]
+}
+]
+*)
+
+(* End of internal cache information *)
+

@@ -1,0 +1,240 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 11.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      7119,        232]
+NotebookOptionsPosition[      6440,        203]
+NotebookOutlinePosition[      6799,        219]
+CellTagsIndexPosition[      6756,        216]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[TextData[StyleBox["Definitions", "Subchapter"]], "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
+  3.728393711812155*^9}}],
+
+Cell[CellGroupData[{
+
+Cell["Import the change of basis matrix", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.72841383998947*^9, 
+  3.7284138421159286`*^9}}],
+
+Cell[BoxData[
+ RowBox[{"Get", "[", 
+  RowBox[{"FileNameJoin", "[", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"NotebookDirectory", "[", "]"}], ",", "\"\<starry.wl\>\""}], 
+    "}"}], "]"}], "]"}]], "Input",
+ CellChangeTimes->{{3.727532607159235*^9, 3.7275326796623774`*^9}, {
+  3.727532724892008*^9, 3.72753276954182*^9}, {3.727533350948818*^9, 
+  3.727533351580966*^9}, {3.7275335665073023`*^9, 3.727533568314823*^9}, {
+  3.728394915724524*^9, 3.7283949281393967`*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Convert our polynomial to spherical harmonics", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.72841383998947*^9, 
+  3.7284138421159286`*^9}, {3.728414985708181*^9, 3.7284149908989*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"pvec", "=", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"1", "-", "u1", "-", 
+      RowBox[{"2", "u2"}]}], ",", "0", ",", 
+     RowBox[{"u1", "+", 
+      RowBox[{"2", "u2"}]}], ",", "0", ",", "u2", ",", "0", ",", "0", ",", 
+     "0", ",", "u2"}], "}"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"yvec", "=", 
+   RowBox[{"Dot", "[", 
+    RowBox[{
+     RowBox[{"Inverse", "[", 
+      RowBox[{"A1", "[", "2", "]"}], "]"}], ",", "pvec"}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{"FullSimplify", "[", 
+  RowBox[{"Dot", "[", 
+   RowBox[{"yvec", ",", 
+    RowBox[{"{", 
+     RowBox[{
+      StyleBox[
+       SubscriptBox["Y", 
+        RowBox[{"0", ",", "0"}]],
+       FontWeight->"Plain"], ",", 
+      SubscriptBox["Y", 
+       RowBox[{"1", ",", 
+        RowBox[{"-", "1"}]}]], ",", 
+      SubscriptBox["Y", 
+       RowBox[{"1", ",", "0"}]], ",", 
+      SubscriptBox["Y", 
+       RowBox[{"1", ",", "1"}]], ",", 
+      SubscriptBox["Y", 
+       RowBox[{"2", ",", 
+        RowBox[{"-", "2"}]}]], ",", 
+      SubscriptBox["Y", 
+       RowBox[{"2", ",", 
+        RowBox[{"-", "1"}]}]], ",", 
+      SubscriptBox["Y", 
+       RowBox[{"2", ",", "0"}]], ",", 
+      SubscriptBox["Y", 
+       RowBox[{"2", ",", "1"}]], ",", 
+      SubscriptBox["Y", 
+       RowBox[{"2", ",", "2"}]]}], "}"}]}], "]"}], "]"}]}], "Input",
+ CellChangeTimes->{{3.728413851564251*^9, 3.728413865467876*^9}, {
+  3.728413973803988*^9, 3.728413990162006*^9}, {3.7284140592319307`*^9, 
+  3.728414078775882*^9}, {3.728414118641045*^9, 3.7284143179719067`*^9}, {
+  3.728414914999893*^9, 3.728414931308762*^9}, {3.728415883866117*^9, 
+  3.728415888113452*^9}, {3.7284166970264673`*^9, 3.7284167053914347`*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox["2", "15"], " ", 
+  SqrtBox["\[Pi]"], " ", 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"-", "5"}], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"-", "3"}], "+", 
+       RowBox[{"3", " ", "u1"}], "+", 
+       RowBox[{"4", " ", "u2"}]}], ")"}], " ", 
+     SubscriptBox["Y", 
+      RowBox[{"0", ",", "0"}]]}], "+", 
+    RowBox[{"5", " ", 
+     SqrtBox["3"], " ", 
+     RowBox[{"(", 
+      RowBox[{"u1", "+", 
+       RowBox[{"2", " ", "u2"}]}], ")"}], " ", 
+     SubscriptBox["Y", 
+      RowBox[{"1", ",", "0"}]]}], "-", 
+    RowBox[{"2", " ", 
+     SqrtBox["5"], " ", "u2", " ", 
+     SubscriptBox["Y", 
+      RowBox[{"2", ",", "0"}]]}]}], ")"}]}]], "Output",
+ CellChangeTimes->{{3.728414158777236*^9, 3.728414228851465*^9}, {
+   3.728414286928665*^9, 3.728414318337253*^9}, {3.728414917977086*^9, 
+   3.728414931788796*^9}, 3.728415888663557*^9, 3.728416026852459*^9, 
+   3.7284167060349483`*^9, 3.728417328103683*^9, 3.728417853605538*^9}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Collect", "[", 
+  RowBox[{"%", ",", 
+   RowBox[{"{", 
+    RowBox[{
+     StyleBox[
+      SubscriptBox["Y", 
+       RowBox[{"0", ",", "0"}]],
+      FontWeight->"Plain"], ",", 
+     SubscriptBox["Y", 
+      RowBox[{"1", ",", 
+       RowBox[{"-", "1"}]}]], ",", 
+     SubscriptBox["Y", 
+      RowBox[{"1", ",", "0"}]], ",", 
+     SubscriptBox["Y", 
+      RowBox[{"1", ",", "1"}]], ",", 
+     SubscriptBox["Y", 
+      RowBox[{"2", ",", 
+       RowBox[{"-", "2"}]}]], ",", 
+     SubscriptBox["Y", 
+      RowBox[{"2", ",", 
+       RowBox[{"-", "1"}]}]], ",", 
+     SubscriptBox["Y", 
+      RowBox[{"2", ",", "0"}]], ",", 
+     SubscriptBox["Y", 
+      RowBox[{"2", ",", "1"}]], ",", 
+     SubscriptBox["Y", 
+      RowBox[{"2", ",", "2"}]]}], "}"}], ",", "Simplify"}], "]"}]], "Input",
+ CellChangeTimes->{{3.728415893193575*^9, 3.728415900300284*^9}, {
+  3.728415995478856*^9, 3.728415996383252*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"-", 
+    FractionBox["2", "3"]}], " ", 
+   SqrtBox["\[Pi]"], " ", 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"-", "3"}], "+", 
+     RowBox[{"3", " ", "u1"}], "+", 
+     RowBox[{"4", " ", "u2"}]}], ")"}], " ", 
+   SubscriptBox["Y", 
+    RowBox[{"0", ",", "0"}]]}], "+", 
+  RowBox[{"2", " ", 
+   SqrtBox[
+    FractionBox["\[Pi]", "3"]], " ", 
+   RowBox[{"(", 
+    RowBox[{"u1", "+", 
+     RowBox[{"2", " ", "u2"}]}], ")"}], " ", 
+   SubscriptBox["Y", 
+    RowBox[{"1", ",", "0"}]]}], "-", 
+  RowBox[{
+   FractionBox["4", "3"], " ", 
+   SqrtBox[
+    FractionBox["\[Pi]", "5"]], " ", "u2", " ", 
+   SubscriptBox["Y", 
+    RowBox[{"2", ",", "0"}]]}]}]], "Output",
+ CellChangeTimes->{3.728415900723328*^9, 3.728415996804566*^9, 
+  3.7284160280459003`*^9, 3.7284167092038527`*^9, 3.728417329482155*^9, 
+  3.728417856421823*^9}]
+}, Open  ]]
+}, Open  ]]
+},
+WindowSize->{808, 751},
+WindowMargins->{{Automatic, 16}, {Automatic, 43}},
+FrontEndVersion->"11.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (September \
+21, 2016)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 240, 3, 45, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[823, 27, 225, 3, 29, "Subsubsection"],
+Cell[1051, 32, 471, 10, 32, "Input"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[1559, 47, 281, 3, 35, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[1865, 54, 1723, 49, 77, "Input"],
+Cell[3591, 105, 997, 29, 45, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[4625, 139, 916, 29, 35, "Input"],
+Cell[5544, 170, 868, 29, 55, "Output"]
+}, Open  ]]
+}, Open  ]]
+}
+]
+*)
+

@@ -1,0 +1,467 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 11.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[     14628,        459]
+NotebookOptionsPosition[     13072,        400]
+NotebookOutlinePosition[     13432,        416]
+CellTagsIndexPosition[     13389,        413]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[TextData[StyleBox["Definitions", "Subchapter"]], "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
+  3.728393711812155*^9}}],
+
+Cell[CellGroupData[{
+
+Cell["Exterior Derivative", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.728400852373919*^9, 
+  3.72840085380438*^9}, {3.728400928922473*^9, 3.728400929738679*^9}, {
+  3.728400979810849*^9, 3.7284009833374662`*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"ExtDeriv", "[", "F_", "]"}], ":=", 
+   RowBox[{
+    RowBox[{"FullSimplify", "[", 
+     RowBox[{
+      RowBox[{"D", "[", 
+       RowBox[{
+        RowBox[{"F", "[", 
+         RowBox[{"[", "2", "]"}], "]"}], ",", "x"}], "]"}], "-", 
+      RowBox[{"D", "[", 
+       RowBox[{
+        RowBox[{"F", "[", 
+         RowBox[{"[", "1", "]"}], "]"}], ",", "y"}], "]"}]}], "]"}], "/.", 
+    RowBox[{
+     SqrtBox[
+      RowBox[{"1", "-", 
+       SuperscriptBox["x", "2"], "-", 
+       SuperscriptBox["y", "2"]}]], "\[Rule]", "z"}]}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.728400984824185*^9, 3.728401014872799*^9}, {
+  3.7284010964316683`*^9, 3.7284010991189117`*^9}, {3.7284020457404547`*^9, 
+  3.728402062144677*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["\[Nu] even", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.728400852373919*^9, 
+  3.72840085380438*^9}, {3.728400928922473*^9, 3.728400929738679*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"ExtDeriv", "[", 
+  RowBox[{"{", 
+   RowBox[{"0", ",", 
+    RowBox[{
+     SuperscriptBox["x", 
+      FractionBox[
+       RowBox[{"\[Mu]", "+", "2"}], "2"]], 
+     SuperscriptBox["y", 
+      FractionBox["\[Nu]", "2"]]}]}], "}"}], "]"}]], "Input",
+ CellChangeTimes->{{3.728400908477461*^9, 3.7284009480030537`*^9}, {
+  3.7284010172087193`*^9, 3.7284010486019793`*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox["1", "2"], " ", 
+  SuperscriptBox["x", 
+   RowBox[{"\[Mu]", "/", "2"}]], " ", 
+  SuperscriptBox["y", 
+   RowBox[{"\[Nu]", "/", "2"}]], " ", 
+  RowBox[{"(", 
+   RowBox[{"2", "+", "\[Mu]"}], ")"}]}]], "Output",
+ CellChangeTimes->{{3.7284010212381783`*^9, 3.7284010493197327`*^9}, 
+   3.728401101134614*^9, 3.7284020535870533`*^9}]
+}, Open  ]],
+
+Cell[TextData[{
+ "As expected, this is the first term in ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    OverscriptBox["g", "~"], "."}], TraditionalForm]],
+  FormatType->"TraditionalForm"]
+}], "Text",
+ CellChangeTimes->{{3.7284021290625467`*^9, 3.728402179489848*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["\[Nu] = \[Mu] =1", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.728400852373919*^9, 
+  3.72840085380438*^9}, {3.728400928922473*^9, 3.728400929738679*^9}, {
+  3.728401055304734*^9, 3.728401061278954*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"ExtDeriv", "[", 
+  RowBox[{
+   FractionBox[
+    RowBox[{"1", "-", 
+     SuperscriptBox[
+      RowBox[{"(", 
+       SqrtBox[
+        RowBox[{"1", "-", 
+         SuperscriptBox["x", "2"], "-", 
+         SuperscriptBox["y", "2"]}]], ")"}], "3"]}], 
+    RowBox[{"3", 
+     RowBox[{"(", 
+      RowBox[{"1", "-", 
+       SuperscriptBox[
+        RowBox[{"(", 
+         SqrtBox[
+          RowBox[{"1", "-", 
+           SuperscriptBox["x", "2"], "-", 
+           SuperscriptBox["y", "2"]}]], ")"}], "2"]}], ")"}]}]], 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"-", "y"}], ",", "x"}], "}"}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.728400908477461*^9, 3.7284009480030537`*^9}, {
+  3.7284010172087193`*^9, 3.728401089849472*^9}, {3.728401976879312*^9, 
+  3.728401984162469*^9}, {3.72840203964212*^9, 3.728402042482332*^9}}],
+
+Cell[BoxData["z"], "Output",
+ CellChangeTimes->{{3.7284010212381783`*^9, 3.7284010493197327`*^9}, {
+  3.728401092006811*^9, 3.728401104386591*^9}, {3.7284019807363987`*^9, 
+  3.7284019849307632`*^9}, {3.728402054713934*^9, 3.72840206436674*^9}}]
+}, Open  ]],
+
+Cell[TextData[{
+ "As expected, this is the second term in ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    OverscriptBox["g", "~"], "."}], TraditionalForm]],
+  FormatType->"TraditionalForm"]
+}], "Text",
+ CellChangeTimes->{{3.7284021290625467`*^9, 3.72840218190547*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["\[Nu] odd, \[Mu] =1, l even", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.728400852373919*^9, 
+  3.72840085380438*^9}, {3.728400928922473*^9, 3.728400929738679*^9}, {
+  3.728401055304734*^9, 3.728401061278954*^9}, {3.728402008393877*^9, 
+  3.728402013096977*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"ExtDeriv", "[", 
+  RowBox[{"{", 
+   RowBox[{
+    RowBox[{
+     SuperscriptBox["x", 
+      RowBox[{"l", "-", "2"}]], 
+     SuperscriptBox[
+      SqrtBox[
+       RowBox[{"1", "-", 
+        SuperscriptBox["x", "2"], "-", 
+        SuperscriptBox["y", "2"]}]], "3"]}], ",", "0"}], "}"}], 
+  "]"}]], "Input",
+ CellChangeTimes->{{3.728400908477461*^9, 3.7284009480030537`*^9}, {
+  3.7284010172087193`*^9, 3.728401089849472*^9}, {3.728401976879312*^9, 
+  3.728401984162469*^9}, {3.7284020189216223`*^9, 3.728402034721218*^9}}],
+
+Cell[BoxData[
+ RowBox[{"3", " ", 
+  SuperscriptBox["x", 
+   RowBox[{
+    RowBox[{"-", "2"}], "+", "l"}]], " ", "y", " ", "z"}]], "Output",
+ CellChangeTimes->{{3.7284010212381783`*^9, 3.7284010493197327`*^9}, {
+   3.728401092006811*^9, 3.728401104386591*^9}, {3.7284019807363987`*^9, 
+   3.7284019849307632`*^9}, {3.7284020257596827`*^9, 3.728402035100109*^9}, 
+   3.728402065584247*^9}]
+}, Open  ]],
+
+Cell[TextData[{
+ "As expected, this is the third term in ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    OverscriptBox["g", "~"], "."}], TraditionalForm]],
+  FormatType->"TraditionalForm"]
+}], "Text",
+ CellChangeTimes->{{3.7284021290625467`*^9, 3.728402189781415*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["\[Nu] odd, \[Mu] =1, l odd", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.728400852373919*^9, 
+  3.72840085380438*^9}, {3.728400928922473*^9, 3.728400929738679*^9}, {
+  3.728401055304734*^9, 3.728401061278954*^9}, {3.728402008393877*^9, 
+  3.728402013096977*^9}, {3.728402070465173*^9, 3.7284020708720007`*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"ExtDeriv", "[", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{
+      SuperscriptBox["x", 
+       RowBox[{"l", "-", "3"}]], "y", 
+      SuperscriptBox[
+       SqrtBox[
+        RowBox[{"1", "-", 
+         SuperscriptBox["x", "2"], "-", 
+         SuperscriptBox["y", "2"]}]], "3"]}], ",", "0"}], "}"}], "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{"Collect", "[", 
+  RowBox[{
+   RowBox[{"Expand", "[", "%", "]"}], ",", "z"}], "]"}]}], "Input",
+ CellChangeTimes->{{3.728400908477461*^9, 3.7284009480030537`*^9}, {
+  3.7284010172087193`*^9, 3.728401089849472*^9}, {3.728401976879312*^9, 
+  3.728401984162469*^9}, {3.7284020189216223`*^9, 3.728402034721218*^9}, {
+  3.728402075344488*^9, 3.728402077960471*^9}, {3.7284022631666403`*^9, 
+  3.728402265414366*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{"-", 
+     SuperscriptBox["x", 
+      RowBox[{
+       RowBox[{"-", "3"}], "+", "l"}]]}], "+", 
+    SuperscriptBox["x", 
+     RowBox[{
+      RowBox[{"-", "1"}], "+", "l"}]], "+", 
+    RowBox[{"4", " ", 
+     SuperscriptBox["x", 
+      RowBox[{
+       RowBox[{"-", "3"}], "+", "l"}]], " ", 
+     SuperscriptBox["y", "2"]}]}], ")"}], " ", "z"}]], "Output",
+ CellChangeTimes->{{3.7284010212381783`*^9, 3.7284010493197327`*^9}, {
+   3.728401092006811*^9, 3.728401104386591*^9}, {3.7284019807363987`*^9, 
+   3.7284019849307632`*^9}, {3.7284020257596827`*^9, 3.728402035100109*^9}, {
+   3.728402065584247*^9, 3.728402080038631*^9}, {3.7284022165093412`*^9, 
+   3.728402230860158*^9}, 3.728402265833447*^9}]
+}, Open  ]],
+
+Cell[TextData[{
+ "As expected, this is the fourth term in ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    OverscriptBox["g", "~"], "."}], TraditionalForm]],
+  FormatType->"TraditionalForm"]
+}], "Text",
+ CellChangeTimes->{{3.7284021290625467`*^9, 3.728402201460828*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["\[Nu] odd, \[Mu] =1, l odd", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.728400852373919*^9, 
+  3.72840085380438*^9}, {3.728400928922473*^9, 3.728400929738679*^9}, {
+  3.728401055304734*^9, 3.728401061278954*^9}, {3.728402008393877*^9, 
+  3.728402013096977*^9}, {3.728402070465173*^9, 3.7284020708720007`*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{"ExtDeriv", "[", 
+  RowBox[{"{", 
+   RowBox[{"0", ",", 
+    RowBox[{
+     SuperscriptBox["x", 
+      FractionBox[
+       RowBox[{"\[Mu]", "-", "3"}], "2"]], 
+     SuperscriptBox["y", 
+      FractionBox[
+       RowBox[{"\[Nu]", "-", "1"}], "2"]], 
+     SuperscriptBox[
+      SqrtBox[
+       RowBox[{"1", "-", 
+        SuperscriptBox["x", "2"], "-", 
+        SuperscriptBox["y", "2"]}]], "3"]}]}], "}"}], 
+  "]"}], "\[IndentingNewLine]", 
+ RowBox[{"FullSimplify", "[", 
+  RowBox[{"%", "\[Equal]", 
+   RowBox[{"z", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{
+       FractionBox[
+        RowBox[{"\[Mu]", "-", "3"}], "2"], 
+       SuperscriptBox["x", 
+        FractionBox[
+         RowBox[{"\[Mu]", "-", "5"}], "2"]], 
+       SuperscriptBox["y", 
+        FractionBox[
+         RowBox[{"\[Nu]", "-", "1"}], "2"]]}], "-", 
+      RowBox[{
+       FractionBox[
+        RowBox[{"\[Mu]", "-", "3"}], "2"], 
+       SuperscriptBox["x", 
+        FractionBox[
+         RowBox[{"\[Mu]", "-", "5"}], "2"]], 
+       SuperscriptBox["y", 
+        FractionBox[
+         RowBox[{"\[Nu]", "+", "3"}], "2"]]}], "-", 
+      RowBox[{
+       FractionBox[
+        RowBox[{"\[Mu]", "+", "3"}], "2"], 
+       SuperscriptBox["x", 
+        FractionBox[
+         RowBox[{"\[Mu]", "-", "1"}], "2"]], 
+       SuperscriptBox["y", 
+        FractionBox[
+         RowBox[{"\[Nu]", "-", "1"}], "2"]]}]}], ")"}]}]}], "]"}]}], "Input",
+ CellChangeTimes->{{3.728400908477461*^9, 3.7284009480030537`*^9}, {
+  3.7284010172087193`*^9, 3.728401089849472*^9}, {3.728401976879312*^9, 
+  3.728401984162469*^9}, {3.7284020189216223`*^9, 3.728402034721218*^9}, {
+  3.728402075344488*^9, 3.728402116127769*^9}, {3.728402269485921*^9, 
+  3.728402384706056*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"-", 
+   FractionBox["1", "2"]}], " ", 
+  SuperscriptBox["x", 
+   RowBox[{
+    FractionBox["1", "2"], " ", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"-", "5"}], "+", "\[Mu]"}], ")"}]}]], " ", 
+  SuperscriptBox["y", 
+   RowBox[{
+    FractionBox["1", "2"], " ", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"-", "1"}], "+", "\[Nu]"}], ")"}]}]], " ", "z", " ", 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"-", "1"}], "+", 
+       SuperscriptBox["y", "2"]}], ")"}], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"-", "3"}], "+", "\[Mu]"}], ")"}]}], "+", 
+    RowBox[{
+     SuperscriptBox["x", "2"], " ", 
+     RowBox[{"(", 
+      RowBox[{"3", "+", "\[Mu]"}], ")"}]}]}], ")"}]}]], "Output",
+ CellChangeTimes->{{3.7284010212381783`*^9, 3.7284010493197327`*^9}, {
+   3.728401092006811*^9, 3.728401104386591*^9}, {3.7284019807363987`*^9, 
+   3.7284019849307632`*^9}, {3.7284020257596827`*^9, 3.728402035100109*^9}, {
+   3.728402065584247*^9, 3.728402080038631*^9}, 3.72840211775487*^9, {
+   3.7284022533336077`*^9, 3.728402330515979*^9}, {3.728402379128899*^9, 
+   3.7284023850304327`*^9}}],
+
+Cell[BoxData["True"], "Output",
+ CellChangeTimes->{{3.7284010212381783`*^9, 3.7284010493197327`*^9}, {
+   3.728401092006811*^9, 3.728401104386591*^9}, {3.7284019807363987`*^9, 
+   3.7284019849307632`*^9}, {3.7284020257596827`*^9, 3.728402035100109*^9}, {
+   3.728402065584247*^9, 3.728402080038631*^9}, 3.72840211775487*^9, {
+   3.7284022533336077`*^9, 3.728402330515979*^9}, {3.728402379128899*^9, 
+   3.7284023850409727`*^9}}]
+}, Open  ]],
+
+Cell[TextData[{
+ "As expected, this is the fifth term in ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    OverscriptBox["g", "~"], "."}], TraditionalForm]],
+  FormatType->"TraditionalForm"]
+}], "Text",
+ CellChangeTimes->{{3.7284021290625467`*^9, 3.728402201460828*^9}, {
+  3.728402250261009*^9, 3.728402250723959*^9}}]
+}, Open  ]]
+},
+WindowSize->{808, 751},
+WindowMargins->{{259, Automatic}, {Automatic, 31}},
+FrontEndVersion->"11.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (September \
+21, 2016)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 240, 3, 45, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[823, 27, 306, 4, 29, "Subsubsection"],
+Cell[1132, 33, 756, 22, 41, "Input"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[1925, 60, 246, 3, 35, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[2196, 67, 389, 11, 45, "Input"],
+Cell[2588, 80, 366, 10, 44, "Output"]
+}, Open  ]],
+Cell[2969, 93, 265, 8, 32, "Text"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[3271, 106, 301, 4, 35, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[3597, 114, 838, 25, 85, "Input"],
+Cell[4438, 141, 245, 3, 32, "Output"]
+}, Open  ]],
+Cell[4698, 147, 265, 8, 32, "Text"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[5000, 160, 361, 5, 35, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[5386, 169, 542, 15, 45, "Input"],
+Cell[5931, 186, 386, 8, 33, "Output"]
+}, Open  ]],
+Cell[6332, 197, 265, 8, 32, "Text"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[6634, 210, 408, 5, 35, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[7067, 219, 795, 21, 67, "Input"],
+Cell[7865, 242, 763, 20, 36, "Output"]
+}, Open  ]],
+Cell[8643, 265, 266, 8, 32, "Text"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[8946, 278, 408, 5, 35, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[9379, 287, 1735, 53, 83, "Input"],
+Cell[11117, 342, 1179, 35, 43, "Output"],
+Cell[12299, 379, 428, 6, 32, "Output"]
+}, Open  ]],
+Cell[12742, 388, 314, 9, 32, "Text"]
+}, Open  ]]
+}
+]
+*)
+

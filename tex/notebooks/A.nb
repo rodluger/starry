@@ -1,0 +1,347 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 11.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[     10509,        339]
+NotebookOptionsPosition[      9665,        305]
+NotebookOutlinePosition[     10025,        321]
+CellTagsIndexPosition[      9982,        318]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[TextData[StyleBox["Definitions", "Subchapter"]], "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
+  3.728393711812155*^9}}],
+
+Cell[CellGroupData[{
+
+Cell["Import A1 and A2", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.72839545547931*^9, 
+  3.7283954571178617`*^9}}],
+
+Cell[BoxData[
+ RowBox[{"Get", "[", 
+  RowBox[{"FileNameJoin", "[", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"NotebookDirectory", "[", "]"}], ",", "\"\<starry.wl\>\""}], 
+    "}"}], "]"}], "]"}]], "Input",
+ CellChangeTimes->{{3.727532607159235*^9, 3.7275326796623774`*^9}, {
+  3.727532724892008*^9, 3.72753276954182*^9}, {3.727533350948818*^9, 
+  3.727533351580966*^9}, {3.7275335665073023`*^9, 3.727533568314823*^9}, {
+  3.728394915724524*^9, 3.7283949281393967`*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["A is just their dot product", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.72839545547931*^9, 
+  3.7283954571178617`*^9}, {3.7283954872855597`*^9, 3.728395490532528*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"A", "[", "lmax_", "]"}], ":=", 
+   RowBox[{"Dot", "[", 
+    RowBox[{
+     RowBox[{"A1", "[", "lmax", "]"}], ",", 
+     RowBox[{"A2", "[", "lmax", "]"}]}], "]"}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.728395460148765*^9, 3.728395500286215*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Save it", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.72839545547931*^9, 
+  3.7283954571178617`*^9}, {3.7283954872855597`*^9, 3.728395505316599*^9}}],
+
+Cell[BoxData[
+ RowBox[{"Save", "[", 
+  RowBox[{
+   RowBox[{"FileNameJoin", "[", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"NotebookDirectory", "[", "]"}], ",", "\"\<starry.wl\>\""}], 
+     "}"}], "]"}], ",", "A"}], "]"}]], "Input",
+ CellChangeTimes->{3.728395511662455*^9}]
+}, Open  ]],
+
+Cell[TextData[StyleBox["Examples", "Subchapter"]], "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
+  3.728393711812155*^9}, {3.728395517429511*^9, 3.7283955184043818`*^9}}],
+
+Cell[CellGroupData[{
+
+Cell["Print A for lmax=3", "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.7283949108597*^9, 3.7283949113066587`*^9}, {3.72839545547931*^9, 
+  3.7283954571178617`*^9}, {3.7283954872855597`*^9, 3.728395490532528*^9}, {
+  3.728395521741835*^9, 3.728395526668249*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"A", "[", "3", "]"}], "//", "MatrixForm"}]], "Input",
+ CellChangeTimes->{{3.728395529180365*^9, 3.72839553194979*^9}}],
+
+Cell[BoxData[
+ TagBox[
+  RowBox[{"(", "\[NoBreak]", GridBox[{
+     {
+      FractionBox["1", 
+       RowBox[{"2", " ", 
+        SqrtBox["\[Pi]"]}]], "0", 
+      FractionBox[
+       SqrtBox[
+        FractionBox["3", "\[Pi]"]], "2"], "0", "0", "0", 
+      FractionBox[
+       SqrtBox[
+        FractionBox["5", "\[Pi]"]], "4"], "0", "0", "0", 
+      FractionBox[
+       SqrtBox[
+        FractionBox["3", "\[Pi]"]], "10"], "0", 
+      RowBox[{"-", 
+       FractionBox[
+        SqrtBox[
+         FractionBox["7", "\[Pi]"]], "6"]}], "0", 
+      FractionBox[
+       SqrtBox[
+        FractionBox["3", "\[Pi]"]], "10"], "0"},
+     {"0", "0", "0", 
+      FractionBox[
+       SqrtBox[
+        FractionBox["3", "\[Pi]"]], "2"], "0", "0", "0", "0", "0", "0", "0", 
+      "0", "0", 
+      RowBox[{
+       FractionBox["1", "2"], " ", 
+       SqrtBox[
+        FractionBox["21", 
+         RowBox[{"2", " ", "\[Pi]"}]]]}], "0", "0"},
+     {"0", "0", 
+      FractionBox[
+       SqrtBox[
+        FractionBox["3", "\[Pi]"]], "2"], "0", "0", "0", "0", "0", "0", "0", 
+      FractionBox[
+       SqrtBox[
+        FractionBox["3", "\[Pi]"]], "10"], "0", 
+      RowBox[{"-", 
+       FractionBox[
+        SqrtBox[
+         FractionBox["7", "\[Pi]"]], "6"]}], "0", 
+      FractionBox[
+       SqrtBox[
+        FractionBox["3", "\[Pi]"]], "10"], "0"},
+     {"0", 
+      FractionBox[
+       SqrtBox[
+        FractionBox["3", "\[Pi]"]], "4"], "0", "0", "0", "0", "0", "0", "0", 
+      "0", "0", 
+      SqrtBox[
+       FractionBox["7", 
+        RowBox[{"6", " ", "\[Pi]"}]]], "0", "0", "0", "0"},
+     {"0", "0", "0", "0", "0", "0", 
+      RowBox[{"-", 
+       FractionBox[
+        RowBox[{"3", " ", 
+         SqrtBox[
+          FractionBox["5", "\[Pi]"]]}], "8"]}], "0", 
+      FractionBox[
+       SqrtBox[
+        FractionBox["15", "\[Pi]"]], "4"], "0", "0", "0", "0", "0", "0", 
+      "0"},
+     {"0", "0", "0", "0", "0", "0", "0", 
+      RowBox[{
+       FractionBox["1", "2"], " ", 
+       SqrtBox[
+        FractionBox["5", 
+         RowBox[{"3", " ", "\[Pi]"}]]]}], "0", "0", "0", "0", "0", "0", "0", 
+      "0"},
+     {"0", "0", "0", "0", 
+      RowBox[{
+       FractionBox["1", "2"], " ", 
+       SqrtBox[
+        FractionBox["5", 
+         RowBox[{"3", " ", "\[Pi]"}]]]}], "0", "0", "0", "0", "0", "0", "0", 
+      "0", "0", "0", "0"},
+     {"0", "0", "0", "0", "0", 
+      RowBox[{
+       RowBox[{"-", 
+        FractionBox["1", "2"]}], " ", 
+       SqrtBox[
+        FractionBox["5", 
+         RowBox[{"3", " ", "\[Pi]"}]]]}], "0", "0", "0", "0", "0", "0", "0", 
+      "0", "0", "0"},
+     {"0", "0", "0", "0", "0", "0", 
+      RowBox[{"-", 
+       FractionBox[
+        RowBox[{"3", " ", 
+         SqrtBox[
+          FractionBox["5", "\[Pi]"]]}], "8"]}], "0", 
+      RowBox[{"-", 
+       FractionBox[
+        SqrtBox[
+         FractionBox["15", "\[Pi]"]], "4"]}], "0", "0", "0", "0", "0", "0", 
+      "0"},
+     {"0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", 
+      RowBox[{
+       RowBox[{"-", 
+        FractionBox["5", "8"]}], " ", 
+       SqrtBox[
+        FractionBox["21", 
+         RowBox[{"2", " ", "\[Pi]"}]]]}], "0", 
+      RowBox[{
+       FractionBox["1", "4"], " ", 
+       SqrtBox[
+        FractionBox["35", 
+         RowBox[{"2", " ", "\[Pi]"}]]]}]},
+     {"0", "0", "0", "0", "0", "0", "0", "0", "0", "0", 
+      RowBox[{
+       RowBox[{"-", 
+        FractionBox["1", "4"]}], " ", 
+       SqrtBox[
+        FractionBox["7", 
+         RowBox[{"15", " ", "\[Pi]"}]]]}], "0", 
+      FractionBox[
+       RowBox[{"5", " ", 
+        SqrtBox[
+         FractionBox["7", "\[Pi]"]]}], "12"], "0", 
+      SqrtBox[
+       FractionBox["7", 
+        RowBox[{"15", " ", "\[Pi]"}]]], "0"},
+     {"0", "0", "0", "0", "0", "0", "0", "0", "0", 
+      RowBox[{
+       FractionBox["3", "16"], " ", 
+       SqrtBox[
+        FractionBox["35", 
+         RowBox[{"2", " ", "\[Pi]"}]]]}], "0", 
+      RowBox[{
+       RowBox[{"-", 
+        FractionBox["5", "4"]}], " ", 
+       SqrtBox[
+        FractionBox["7", 
+         RowBox[{"6", " ", "\[Pi]"}]]]}], "0", "0", "0", "0"},
+     {"0", "0", "0", "0", "0", "0", "0", "0", "0", "0", 
+      RowBox[{
+       RowBox[{"-", "2"}], " ", 
+       SqrtBox[
+        FractionBox["7", 
+         RowBox[{"15", " ", "\[Pi]"}]]]}], "0", "0", "0", 
+      RowBox[{
+       FractionBox["1", "2"], " ", 
+       SqrtBox[
+        FractionBox["7", 
+         RowBox[{"15", " ", "\[Pi]"}]]]}], "0"},
+     {"0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", 
+      RowBox[{
+       RowBox[{"-", 
+        FractionBox["5", "8"]}], " ", 
+       SqrtBox[
+        FractionBox["21", 
+         RowBox[{"2", " ", "\[Pi]"}]]]}], "0", 
+      RowBox[{
+       RowBox[{"-", 
+        FractionBox["3", "4"]}], " ", 
+       SqrtBox[
+        FractionBox["35", 
+         RowBox[{"2", " ", "\[Pi]"}]]]}]},
+     {"0", "0", "0", "0", "0", "0", "0", "0", "0", "0", 
+      RowBox[{
+       FractionBox["1", "4"], " ", 
+       SqrtBox[
+        FractionBox["7", 
+         RowBox[{"15", " ", "\[Pi]"}]]]}], "0", 
+      FractionBox[
+       RowBox[{"5", " ", 
+        SqrtBox[
+         FractionBox["7", "\[Pi]"]]}], "12"], "0", 
+      RowBox[{"-", 
+       SqrtBox[
+        FractionBox["7", 
+         RowBox[{"15", " ", "\[Pi]"}]]]}], "0"},
+     {"0", "0", "0", "0", "0", "0", "0", "0", "0", 
+      RowBox[{
+       RowBox[{"-", 
+        FractionBox["1", "16"]}], " ", 
+       SqrtBox[
+        FractionBox["35", 
+         RowBox[{"2", " ", "\[Pi]"}]]]}], "0", 
+      RowBox[{
+       RowBox[{"-", 
+        FractionBox["5", "4"]}], " ", 
+       SqrtBox[
+        FractionBox["7", 
+         RowBox[{"6", " ", "\[Pi]"}]]]}], "0", "0", "0", "0"}
+    },
+    GridBoxAlignment->{
+     "Columns" -> {{Center}}, "ColumnsIndexed" -> {}, "Rows" -> {{Baseline}}, 
+      "RowsIndexed" -> {}},
+    GridBoxSpacings->{"Columns" -> {
+        Offset[0.27999999999999997`], {
+         Offset[0.7]}, 
+        Offset[0.27999999999999997`]}, "ColumnsIndexed" -> {}, "Rows" -> {
+        Offset[0.2], {
+         Offset[0.4]}, 
+        Offset[0.2]}, "RowsIndexed" -> {}}], "\[NoBreak]", ")"}],
+  Function[BoxForm`e$, 
+   MatrixForm[BoxForm`e$]]]], "Output",
+ CellChangeTimes->{3.728395532366066*^9}]
+}, Open  ]]
+}, Open  ]]
+},
+WindowSize->{808, 751},
+WindowMargins->{{198, Automatic}, {48, Automatic}},
+FrontEndVersion->"11.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (September \
+21, 2016)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 240, 3, 45, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[823, 27, 208, 3, 29, "Subsubsection"],
+Cell[1034, 32, 471, 10, 32, "Input"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[1542, 47, 267, 3, 35, "Subsubsection"],
+Cell[1812, 52, 293, 8, 32, "Input"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[2142, 65, 247, 3, 35, "Subsubsection"],
+Cell[2392, 70, 278, 8, 32, "Input"]
+}, Open  ]],
+Cell[2685, 81, 285, 3, 45, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[2995, 88, 307, 4, 29, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[3327, 96, 152, 3, 32, "Input"],
+Cell[3482, 101, 6155, 200, 758, "Output"]
+}, Open  ]]
+}, Open  ]]
+}
+]
+*)
+
