@@ -19,15 +19,20 @@
 
 \begin{abstract}
     We derive analytical, closed form solutions for the total flux
-    emitted or reflected from a celestial body in the direction of
-    an observer when the surface brightness map of the body is expressed
-    as a sum of spherical harmonics.
-    Our expressions apply to the computation of phase curves of stars and
-    exoplanets, as well as to occultation light curves, including transits of
-    planets across their host stars, occultations of planets by the star
-    (secondary eclipses), and planet-planet and planet-moon occultations.
-    We develop fast code in \C that can be generally applied
-    to any of these cases.
+    received from a planet, moon or star during an occultation
+    if the specific intensity map of the body is expressed as a
+    sum of spherical harmonics. Our expressions are valid to arbitrary order
+    and may be computed recursively for speed. The formalism we develop
+    here applies to the computation of stellar transit light curves,
+    planetary secondary eclipse light curves, and planet-planet/planet-moon
+    occultation light curves, as well as rotational phase curves.
+    We present \starry, a full photodynamical code written in \C
+    and wrapped in \Python that computes these light curves. \starry also
+    computes analytic derivatives of the light curves with respect to all input
+    parameters for use in gradient-based inference schemes such as
+    Hamiltonian monte carlo (HMC), allowing users to quickly and efficiently
+    regress on observed light curves to infer properties of a celestial body's
+    surface map.
 \end{abstract}
 
 % NOTE:
@@ -48,10 +53,13 @@
 % ------------------------------------------------------------------------------
 % ==============================================================================
 
-Write a kick-ass intro here! \todo{RL}{write intro}
+\todo{todo}
 We provide links to \Python code (\pythonlogo{}) to reproduce all
 figures in this paper, as well as links to \Mathematica scripts
-(\mathematicalogo{}) containing proofs and derivations of the principal equations.
+(\mathematicalogo{}) containing proofs and derivations of the principal
+equations. For convenience, Table~\ref{tab:symbols} at the end lists
+all the symbols used
+in the paper, with references to the equations defining them.
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -311,7 +319,7 @@ where $\z = \z(\x, \y) = \sqrt{1 - \x^2 - \y^2}$.
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
-%\pagebreak
+\pagebreak
 \section{Surface map vectors}
 \label{sec:vectors}
 % ------------------------------------------------------------------------------
@@ -434,9 +442,9 @@ is the rotation matrix for the complex spherical harmonics of order $l$ and
                    &     & \ii &     &          &     &  1  &     &        \\
                    &     &     & \ii &          &  1  &     &     &        \\
                    &     &     &     & \sqrt{2} &     &     &     &        \\
-                   &     &     & \ii &          &  1  &     &     &        \\
-                   &     & \ii &     &          &     &  1  &     &        \\
-                   & \ii &     &     &          &     &     &  1  &        \\
+                   &     &     & \ii &          & -1  &     &     &        \\
+                   &     & -\ii&     &          &     &  1  &     &        \\
+                   & \ii &     &     &          &     &     & -1  &        \\
             \Ddots &     &     &     &          &     &     &     & \ddots
         }\quad.
 \end{equation}
@@ -462,7 +470,7 @@ block-diagonal matrix $\bvec{R}$:
                        &            &            & \bvec{R}^3 &  \\
                        &            &            &            & \ddots
         }\quad.
-    \todoproof
+    \mathematica{R}
 \end{equation}
 %
 Rotation of $\bvec{y}$ by the Euler angles $\alpha$, $\beta$, and $\gamma$
@@ -544,17 +552,18 @@ angles in terms of $\bvec{u}$ and $\theta$:
     \begin{matrix}
         \cos\alpha = \frac{P_{0,2}}{\sqrt{P_{0,2}^2 + P_{1,2}^2}}
         & & & &
-        \cos\beta = P_{3,3}
+        \cos\beta = P_{2,2}
         & & & &
         \cos\gamma = -\frac{P_{2,0}}{\sqrt{P_{2,0}^2 + P_{2,1}^2}}
         \\
         \sin\alpha = \frac{P_{1,2}}{\sqrt{P_{0,2}^2 + P_{1,2}^2}}
         & & & &
-        \sin\beta = \sqrt{1 - P_{3,3}^2}
+        \sin\beta = \sqrt{1 - P_{2,2}^2}
         & & & &
         \sin\gamma = \frac{P_{2,1}}{\sqrt{P_{2,0}^2 + P_{2,1}^2}}
     \end{matrix}
     \quad.
+    \mathematica{R}
 \end{align}
 %
 Thus, given a spherical harmonic vector $\bvec{y}$, we can calculate
@@ -1400,7 +1409,7 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
              \python{earth}
              A simplified two-color map of the cloudless Earth (top) and the
              corresponding tenth-order spherical harmonic expansion,
-             rotated about $\xhat$ (bottom).}
+             rotated about $\yhat$ (bottom).}
     \end{centering}
 \end{figure}
 %
@@ -1587,7 +1596,8 @@ three $m = 0$ spherical harmonics. For convenience, this is implemented in
 y = starry(2, u1=u1, u2=u2)
 \end{lstlisting}
 %
-although users may also specify the coefficients in \eq{qldylm} directly.
+although users may also specify the coefficients in \eq{qldylm} as in
+\S\ref{sec:starrymap}.
 Figure~\ref{fig:transit} shows a transit light curve computed with \starry
 for $u_1 = 0.4, u_2 = 0.26$. The planet/star radius ratio is $r = 0.1$ and
 the planet transits at impact parameter $b = 0.5$. For comparison, we also
@@ -1613,33 +1623,38 @@ than $10^{-5}$ parts per million everywhere in the light curve.
 \end{figure}
 %
 
+% ------------------------------------------------------------------------------
+\subsection{Photodynamics}
+\label{sec:starrybenchmarks}
+% ------------------------------------------------------------------------------
+
+Integrate with \textsf{planetplanet} for easy photodynamics.\todo{todo}
+
 
 % ------------------------------------------------------------------------------
-\pagebreak
 \subsection{Benchmarks}
 \label{sec:starrybenchmarks}
 % ------------------------------------------------------------------------------
 
-Add benchmarks here.\todo{RL}{todo}
+Add benchmarks here. Discuss \Python tests. \todo{todo}
 
 % ------------------------------------------------------------------------------
 \subsection{Speed tests}
 \label{sec:starryspeed}
 % ------------------------------------------------------------------------------
 
-Discuss speed tests here.\todo{RL}{todo}
+Discuss speed tests here once I code everything up in \C.\todo{todo}
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
-\pagebreak
 \section{Conclusions}
 \label{sec:conclusions}
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 % ==============================================================================
 
-Write an awesome conclusions section.\todo{RL}{write conclusions}
+Write an awesome conclusions section.\todo{todo}
 
 %
 
@@ -1647,7 +1662,6 @@ Write an awesome conclusions section.\todo{RL}{write conclusions}
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
-\pagebreak
 \appendix
 \section{Computing the solution vector $\MakeLowercase{s_n}$}
 \label{sec:solutionvector}
@@ -1726,7 +1740,7 @@ with
     \xi &= 2 b r (4 - 7 r^2 - b^2)\\
 \intertext{and}
     \label{eq:k2}
-    k^2 &= \frac{1 - r^2 - b^2}{4 b r}
+    k^2 &= \frac{1 - r^2 - b^2 + 2 b r}{4 b r}
     \quad.
 \end{align}
 %
@@ -1888,7 +1902,7 @@ With some algebra, we may therefore write
         r^{l-1} \mathcal{I}_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}^\nu (\phi, b, r)
             & \qquad \mathrm{otherwise}
     \end{dcases}
-    \todoproof
+    \todo{proof}
 %
 \intertext{and}
 %
@@ -1905,13 +1919,14 @@ With some algebra, we may therefore write
         \phantom{XXX}0
             & \qquad\qquad \mathrm{otherwise.}
     \end{dcases}
-    \todoproof
+    \todo{proof}
 \end{align}
 %
 The solution to the occultation problem is therefore a matter of finding
 expressions for $\mathcal{H}_{u, n}^{\nu}$ (Equation~\ref{eq:Hun}):
 \\
 
+\pagebreak
 \noindent \textbf{\underline{Case 1: $\nu$ even}}\\
 
 \noindent For even $\nu$, $\mathcal{H}_{u, n}^{\nu}$ evaluates to terms containing
@@ -1951,7 +1966,7 @@ for these terms:
         \quad.
         %
     \end{dcases}
-    \todoproof
+    \todo{proof}
 \end{align}
 \\
 
@@ -1962,9 +1977,9 @@ we need only compute $\mathcal{P}(\bvec{G}_n)$, for which
 $\xi = \phi$, $\beta = b$, and $\rho = r$. However,
 because of the term raised to the $\nicefrac{3}{2}$ power in
 \eq{Hun} for odd $\nu$, the integral becomes significantly more
-difficult to compute. With some algebraic manipulation, and using
+difficult to compute. With some tedious algebraic manipulation, and using
 recurrence relations for expressions with integrands
-of the form $\cos^p\varphi\sin^q\varphi (1 - \kappa^2 \sin^2 \varphi)^\frac{3}{2}$
+of the form $\cos^p\varphi\sin^q\varphi (1 - \chi^2 \sin^2 \varphi)^\frac{3}{2}$
 \citep{Gradshteyn1994}, we may write
 %
 \begin{align}
@@ -1973,7 +1988,7 @@ of the form $\cos^p\varphi\sin^q\varphi (1 - \kappa^2 \sin^2 \varphi)^\frac{3}{2
         2^{u+3} (b r)^\frac{3}{2}
         \sum\displaylimits_{i=0}^n
             {n \choose i}\left(-1\right)^{i-n-u}\mathcal{J}_{u + 2i, u + 2n - 2i}(k^2)
-    \todoproof
+    \mathematica{case2}
 \end{align}
 %
 where
@@ -1993,6 +2008,7 @@ where
              {p + q + 3}
          & \qquad p \ge 4
     \end{dcases}
+    \mathematica{case2}
 \end{align}
 %
 with
@@ -2014,6 +2030,7 @@ These recurrence relations require four initial conditions:
     \mathcal{J}_{2,0}(k^2) &= \frac{32 - 36k^2}{15}\mathcal{E}_1(k^2) + \frac{-32 + 52k^2 - 12k^4}{15}\mathcal{E}_2(k^2) \nonumber \\[1em]
     \mathcal{J}_{2,2}(k^2) &= \frac{32-60k^2+12k^4}{105}\mathcal{E}_1(k^2) + \frac{-32 + 76 k^2 - 36 k^4 + 24 k^6}{105}\mathcal{E}_2(k^2)
     \quad,
+    \mathematica{case2}
 \end{align}
 %
 where
@@ -2031,11 +2048,12 @@ where
     \mathcal{E}_2(k^2) &=
     \begin{dcases}
         E \left(k^2\right) & \qquad k^2 < 1 \\[0.5em]
-        k E \left(\frac{1}{k^2}\right)
+        \sqrt{k^2} E \left(\frac{1}{k^2}\right)
             + \frac{1-k^2}{\sqrt{k^2}} K \left(\frac{1}{k^2}\right)
           & \qquad k^2 \ge 1
           \quad.
     \end{dcases}
+    \mathematica{case2}
 \end{align}
 %
 Interestingly, the elliptic integrals in the expressions above are exactly
@@ -2051,13 +2069,18 @@ In this case, the integral in \eq{Hun} simplifies:
 %
 \begin{align}
     \mathcal{H}_{u,n}^{\nu}(\phi, 0, r) = (1 - r^2)^\frac{3}{2} \mathcal{H}_{u,n}^{\nu + 1}(\phi, 0, r)
-    \todoproof
+    \mathematica{case2}
 \end{align}
 %
 with $\mathcal{H}_{u,n}^{\nu + 1}$ given by \eq{Huneven}.
 
 %
 
+\bibliography{starry}
+
+%
+
+\clearpage
 \begin{center}
 \begin{longtable}{cll}
 \caption{Symbols used in this paper} \label{tab:symbols} \\
@@ -2190,8 +2213,5 @@ $\omega$        & Angular position of occultor          & \eq{zrot}
 %
 \end{longtable}
 \end{center}
-
-
-\bibliography{starry}
 
 \end{document}
