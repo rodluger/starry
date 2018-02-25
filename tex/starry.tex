@@ -26,7 +26,7 @@
     exoplanets, as well as to occultation light curves, including transits of
     planets across their host stars, occultations of planets by the star
     (secondary eclipses), and planet-planet and planet-moon occultations.
-    We develop fast code in \textsf{C} that can be generally applied
+    We develop fast code in \C that can be generally applied
     to any of these cases.
 \end{abstract}
 
@@ -49,6 +49,9 @@
 % ==============================================================================
 
 Write a kick-ass intro here! \todo{RL}{write intro}
+We provide links to \Python code (\pythonlogo{}) to reproduce all
+figures in this paper, as well as links to \Mathematica scripts
+(\mathematicalogo{}) containing proofs and derivations of the principal equations.
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -1310,8 +1313,8 @@ Given these quantities, the total flux during an occultation is then just
 
 The \starry code package provides code to analytically
 compute light curves for celestial bodies using the formalism developed
-in this paper. \starry is coded in \textsf{C} for speed and wrapped
-in \textsf{Python} for quick and easy light curve calculations. The
+in this paper. \starry is coded in \C for speed and wrapped
+in \Python for quick and easy light curve calculations. The
 code may be installed by running the following in a terminal:
 %
 \begin{lstlisting}[language=bash]
@@ -1320,7 +1323,7 @@ cd starry
 python setup.py develop
 \end{lstlisting}
 %
-To begin using \starry, execute the following in a \textsf{Python} environment:
+To begin using \starry, execute the following in a \Python environment:
 %
 \begin{lstlisting}[language=Python]
 from starry import starry
@@ -1588,7 +1591,7 @@ although users may also specify the coefficients in \eq{qldylm} directly.
 Figure~\ref{fig:transit} shows a transit light curve computed with \starry
 for $u_1 = 0.4, u_2 = 0.26$. The planet/star radius ratio is $r = 0.1$ and
 the planet transits at impact parameter $b = 0.5$. For comparison, we also
-compute the flux with \textsf{batman} \citep{Kreidberg2015} and by a
+compute the flux with \batman \citep{Kreidberg2015} and by a
 high precision numerical integration of the surface integral of
 \eq{quadraticld}. The error on the transit depth for \starry flux is less
 than $10^{-5}$ parts per million everywhere in the light curve.
@@ -1600,12 +1603,12 @@ than $10^{-5}$ parts per million everywhere in the light curve.
              \python{transit}
              Sample transit light curve for a planet ($r = 0.1$) transiting a
              quadratically limb-darkened star ($u_1 = 0.4, u_2 = 0.26$). The
-             top panel shows the \starry (blue curve) and \textsf{batman}
+             top panel shows the \starry (blue curve) and \batman
              (orange dots) light curves, as well as a light curve generated
              by a high precision direct numerical integration of the surface
              integral (purple dots). The bottom panel shows the fractional
              error on the transit depth in parts per million relative to the
-             numerical solution for \starry (blue) and \textsf{batman} (orange).}
+             numerical solution for \starry (blue) and \batman (orange).}
     \end{centering}
 \end{figure}
 %
