@@ -30,6 +30,14 @@
     to any of these cases.
 \end{abstract}
 
+% NOTE:
+% Use of the Python logo permitted under the PSF Trademark Usage Policy:
+%   https://www.python.org/psf/trademarks/
+%
+% The Mathematica logo is in the public domain:
+%   https://commons.wikimedia.org/wiki/File:Mathematica_Logo.svg
+
+
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
@@ -1486,10 +1494,21 @@ or arrays.
 
 %
 
-In the bottom panel of Figure~\ref{fig:ylmlightcurves}...
+In the bottom panel of Figure~\ref{fig:ylmlightcurves} we plot
+occultation light curves for the spherical harmonics with $m \ge 0$
+up to $l_\mathrm{max} = 6$. The occultor has radius $r = 0.3$ and
+moves at a constant speed along the $\x$ direction at $y_0 = 0.25$
+(blue curves) and $y_0 = 0.75$ (orange curves). The light curve of
+any body undergoing such an occultation can be expressed as a weighted
+sum of these light curves. Note that because the value of individual
+spherical harmonics can be negative, an increase in the flux is visible
+at certain points during the occultation; however, this would of course not
+occur for any physical map constructed from a linear combination of
+the spherical harmonics. Note also that unlike in the case of phase curves,
+there is no null space for occultations, as all spherical harmonics (including
+those with $m < 0$, which are not shown) produce a flux signal during
+occultation.
 
-Figure~\ref{fig:earthoccultation} shows an occultation light curve
-computed for a hypothetical transit of the Earth by the Moon.
 %
 \begin{figure}[ht!]
     \begin{centering}
@@ -1501,37 +1520,78 @@ computed for a hypothetical transit of the Earth by the Moon.
              computed from the $l_\mathrm{max} = 10$ expansion from
              Figure~\ref{fig:earth}. The two largest dips are due
              to the occultations of South America (left) and Africa
-             (right). Note that the total flux declines as the Pacific Ocean
-             rotates into view.}
+             (right).}
     \end{centering}
 \end{figure}
 %
+
+To further illustrate the code, we return to our spherical harmonic
+expansion of the Earth.
+Figure~\ref{fig:earthoccultation} shows an occultation light curve
+computed for a hypothetical transit of the Earth by the Moon. The
+occultation lasts about four hours, during which time
+the sub-observer point rotates from Africa to South America, causing a
+steady flux decrease as the Pacific Ocean rotates into view. The
+occultation is double-dipped: one dip due to the occultation of South
+America, and one dip due to the occultation of Africa.
 
 % ------------------------------------------------------------------------------
 \subsection{Computing transit light curves}
 \label{sec:starrytransits}
 % ------------------------------------------------------------------------------
 
-The specific intensity of a quadratically limb-darkened star may be written
+The formalism developed in this paper can easily be extended to the case
+of occultations (transits) of limb-darkened stars by noting that any
+radially symmetric specific intensity profile can be expressed as a sum
+over the $m = 0$ spherical harmonics (see Figure~\ref{fig:ylms}).
+%
+In particular, the radial intensity profile of a quadratically
+limb-darkened star,
 %
 \begin{align}
-    I(\mu) &= 1 - u_1 (1 - \mu) - u_2 (1 - \mu)^2 \nonumber \\
-           &= (1 - u_1 - 2u_2) + (u_1 + 2u_2) \z + u_2 \x^2 + u_2 \y^2
-           \quad,
+    \label{eq:quadraticld}
+    I(\mu) &= 1 - u_1 (1 - \mu) - u_2 (1 - \mu)^2
+    \quad,
 \end{align}
 %
-where we used the fact that $\mu = \z = \sqrt{1 - \x^2 - \y^2}$.
+where $\mu = \z = \sqrt{1 - \x^2 - \y^2}$ and $u_1$ and $u_2$ are the
+limb darkening coefficients, can be written in terms of spherical harmonics
+by re-writing \eq{quadraticld} as
+%
+\begin{align}
+    I(\mu) = (1 - u_1 - 2u_2) + (u_1 + 2u_2) \z + u_2 \x^2 + u_2 \y^2
+           \quad.
+\end{align}
+%
 Inverting \eq{AOne} to express this polynomial in the basis of spherical harmonics,
 we have
 %
 \begin{align}
-I(\x, \y) =
-            \left( \frac{2\sqrt{\pi}}{3} (3 - 3u_1 + 4u_2) \right) \, Y_{0,0}
-          + \left( \frac{2\sqrt{\pi}}{\sqrt{3}} (u_1 + 2u_2) \right) \, Y_{1,0}
-          - \left( \frac{4\sqrt{\pi}}{3\sqrt{5}} u_2 \right) \, Y_{2,0}
+    \label{eq:qldylm}
+    I(\x, \y) =
+            \frac{2\sqrt{\pi}}{3} (3 - 3u_1 + 4u_2) \, Y_{0,0}
+          + \frac{2\sqrt{\pi}}{\sqrt{3}} (u_1 + 2u_2) \, Y_{1,0}
+          - \frac{4\sqrt{\pi}}{3\sqrt{5}} u_2 \, Y_{2,0}
       \quad.
 \mathematica{limbdark}
 \end{align}
+%
+Thus, quadratic limb darkening can be expressed exactly as the sum of the first
+three $m = 0$ spherical harmonics. For convenience, this is implemented in
+\starry:
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+y = starry(2, u1=u1, u2=u2)
+\end{lstlisting}
+%
+although users may also specify the coefficients in \eq{qldylm} directly.
+Figure~\ref{fig:transit} shows a transit light curve computed with \starry
+for $u_1 = 0.4, u_2 = 0.26$. The planet/star radius ratio is $r = 0.1$ and
+the planet transits at impact parameter $b = 0.5$. For comparison, we also
+compute the flux with \textsf{batman} \citep{Kreidberg2015} and by a
+high precision numerical integration of the surface integral of
+\eq{quadraticld}. The error on the transit depth for \starry flux is less
+than $10^{-5}$ parts per million everywhere in the light curve.
 %
 \begin{figure}[ht!]
     \begin{centering}
@@ -2089,6 +2149,7 @@ $\bvec{R}^l$    & Rotation matrix for the real
 $s_{\bigdot}$   & $\sin(\bigdot)$                       & \\
 $\bvec{s}$      & Occultation light curve solution
                   vector                                & \eq{rn} \\
+$u_1, u_2$      & Quadratic limb darkening coefficients & \eq{quadraticld} \\
 $\bvec{u}$      & Unit vector corresponding to the
                   axis of rotation                      & \S\ref{sec:axisangle} \\
 $\bvec{U}$      & Complex to real spherical harmonics
