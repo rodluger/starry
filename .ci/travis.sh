@@ -16,12 +16,3 @@ pip install batman-package
 
 # Build the code
 python setup.py install
-
-# Generate the figures
-echo "Generating figures..."
-cd tex/figures
-for f in *.py; do
-    echo "Running $f..."
-    python "$f"
-done
-cd ../../

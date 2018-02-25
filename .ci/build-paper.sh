@@ -8,6 +8,15 @@ then
     # Install texlive
     sudo apt-get -qq update && sudo apt-get install -y --no-install-recommends texlive-full
 
+    # Generate the figures
+    echo "Generating figures..."
+    cd tex/figures
+    for f in *.py; do
+        echo "Running $f..."
+        python "$f"
+    done
+    cd ../../
+
     # Build the paper
     cd tex/
 	pdflatex -interaction=nonstopmode -halt-on-error starry.tex
