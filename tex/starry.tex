@@ -19,7 +19,7 @@
 
 \begin{abstract}
     We derive analytical, closed form solutions for the total flux
-    received from a planet, moon or star during an occultation
+    received from a spherical planet, moon or star during an occultation
     if the specific intensity map of the body is expressed as a
     sum of spherical harmonics. Our expressions are valid to arbitrary order
     and may be computed recursively for speed. The formalism we develop
@@ -49,6 +49,29 @@
 %
 \section{Introduction}
 \label{sec:intro}
+
+Our understanding of the surface of Earth and the other planets in our Solar 
+System starts with the creation of maps.  Mapping the colors, compositions, and
+surface features give us an understanding of the geological, hydrological,
+and meteorological processes occurring that are the basis of planetary science,
+including comparative planetology.  With the discovery of planets orbiting other
+stars, map-making becomes a formidable task:  these planets are too distant to
+facilitate high-resolution maps as we do for our own planetary suite.  One way
+to overcome this drawback is to utilize the time-dependence of unresolved,
+disk-integrated light from planetary bodies:  both rotational variability and 
+occultations yield the opportunity to constrain the presence of static variations 
+in the surface features of exoplanets.
+
+The first application of time-dependent mapping to exoplanets was carried out in the 
+infrared with HD 189733b using both phase-variations and secondary eclipse of the 
+exoplanet (Knutson et al. 2007, Majeau et al. 2012, de Wit et al. 2012).  These
+yielded crude constraints on the monopole and dipole components of the thermal
+emission from the thick, windy atmosphere of this giant planet.  With the subsequent 
+discovery of smaller planets that are perhaps rocky, opened the possibility of
+applying the mapping technique to exoplanets with solid or liquid surfaces, and 
+perhaps long-lived surface features [Cowan et al. application to Earth as an exoplanet;
+TRAPPIST-1 PPOs; Fujita et al.]
+
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 % ==============================================================================
@@ -93,6 +116,7 @@ surface of the unit sphere, we have
     \z &= \cos\theta \quad.
 \end{align}
 %
+{\color{red}  How are the coordinates oriented with respect to the observer?}
 Expanding Equation~(\ref{eq:ylmtp}) using the multiple angle formula, we obtain
 %
 \begin{align}
@@ -1011,7 +1035,7 @@ This time, suppose the body is
 occulted by another body of radius $r$ centered at the point $(x_0, y_0)$,
 so that the surface $S$ over which the integral is taken
 is a function of $r$, $x_0$, and $y_0$.
-In general, the integrals in \eq{sn} are
+In general, the integrals in \eq{sndef} are
 difficult (and often impossible) to compute directly.
 %
 One way to simplify the problem is to first perform a rotation through an angle
@@ -1307,7 +1331,8 @@ Given these quantities, the total flux during an occultation is then just
         F = \bvec{s}^{\boldsymbol{\mathsf{T}}} \bvec{A} \, \bvec{R'} \, \bvec{R} \, \bvec{y}
         }
     \quad.
-\end{equation}
+\end{equation}   % This is about the nerdiest pun I've ever seen
+% (with the exception "It's amazing that 230-220 x 1/2 = 5!")
 
 
 % ==============================================================================
@@ -1604,7 +1629,11 @@ the planet transits at impact parameter $b = 0.5$. For comparison, we also
 compute the flux with \batman \citep{Kreidberg2015} and by a
 high precision numerical integration of the surface integral of
 \eq{quadraticld}. The error on the transit depth for \starry flux is less
-than $10^{-5}$ parts per million everywhere in the light curve.
+than $10^{-5}$ parts per million everywhere in the light curve. 
+% I'm surprised the batman computation (which is based on Mandel & Agol)
+% has such a poor precision.  Perhaps the tolerance of the elliptic
+% integral in the batman code can be reduced to give better precision?
+% Or perhaps this is an error due to transferring numbers in single-precision?
 %
 \begin{figure}[ht!]
     \begin{centering}
