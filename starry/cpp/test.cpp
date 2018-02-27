@@ -156,11 +156,74 @@ int test_A() {
 }
 
 /**
+Benchmark test for R()
+
+*/
+int test_R() {
+    int i, j;
+    double** matrix;
+    int lmax = 5;
+    int diff = 0;
+    int N = (lmax + 1) * (lmax + 1);
+
+    // Log it
+    cout << "Testing rotation matrix R... ";
+
+    // Initialize an empty matrix
+    matrix = new double*[N];
+    for (i=0; i<N; i++) {
+        matrix[i] = new double[N];
+        for (j=0; j<N; j++)
+            matrix[i][j] = 0;
+    }
+
+    // Let's do some basic rotations
+    double u[3];
+    double theta = M_PI / 2.;
+
+    // Rotate by PI/2 about x
+    u[0] = 1; u[1] = 0; u[2] = 0;
+    R(lmax, u, theta, matrix);
+    for (i=0; i<N; i++) {
+        diff += mapdiff(N, matrix[i], TEST_RX[i]);
+    }
+
+    // Rotate by PI/2 about y
+    u[0] = 0; u[1] = 1; u[2] = 0;
+    R(lmax, u, theta, matrix);
+    for (i=0; i<N; i++) {
+        diff += mapdiff(N, matrix[i], TEST_RY[i]);
+    }
+
+    // Rotate by PI/2 about z
+    u[0] = 0; u[1] = 0; u[2] = 1;
+    R(lmax, u, theta, matrix);
+    for (i=0; i<N; i++) {
+        diff += mapdiff(N, matrix[i], TEST_RZ[i]);
+    }
+
+    // Log it
+    if (diff == 0)
+        cout << "OK" << endl;
+    else
+        cout << "ERROR" << endl;
+
+    // Free
+    for(i = 0; i<N; i++)
+        delete [] matrix[i];
+    delete [] matrix;
+
+    // Return zero if we're all good
+    return diff;
+
+}
+
+/**
 Run all tests.
 
 */
 int main(){
-    int diff = test_A1() || test_A2() || test_A();
+    int diff = test_A1() || test_A2() || test_A() || test_R();
     if (diff == 0)
         cout << "All tests passed." << endl;
     else
