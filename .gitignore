@@ -9,6 +9,7 @@ mathematica
 build/
 dist/
 starry.egg-info/
+starry/cpp/test
 
 # Latex
 *.aux
