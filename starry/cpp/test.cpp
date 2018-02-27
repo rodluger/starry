@@ -219,11 +219,47 @@ int test_R() {
 }
 
 /**
+Benchmark test for r()
+
+*/
+int test_r() {
+    double* vector;
+    int lmax = 5;
+    int diff = 0;
+    int N = (lmax + 1) * (lmax + 1);
+
+    // Log it
+    cout << "Testing phase curve solution vector r... ";
+
+    // Initialize an empty vector
+    vector = new double[N];
+
+    // Compute the phase curve solution vector
+    r(lmax, vector);
+
+    // Compare to benchmark
+    diff = mapdiff(N, vector, TEST_LITTLER);
+
+    // Log it
+    if (diff == 0)
+        cout << "OK" << endl;
+    else
+        cout << "ERROR" << endl;
+
+    // Free
+    delete [] vector;
+
+    // Return zero if we're all good
+    return diff;
+
+}
+
+/**
 Run all tests.
 
 */
 int main(){
-    int diff = test_A1() || test_A2() || test_A() || test_R();
+    int diff = test_A1() || test_A2() || test_A() || test_R() || test_r();
     if (diff == 0)
         cout << "All tests passed." << endl;
     else

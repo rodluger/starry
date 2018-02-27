@@ -23,6 +23,41 @@ double factorial(double n) {
 }
 
 /**
+Heaviside step function.
+
+*/
+double step(double x) {
+    if (x < 0)
+        return 0;
+    else
+        return 1;
+}
+
+/**
+Complete elliptic integral of the first kind.
+
+*/
+double ellipK(double ksq, gsl_mode_t mode) {
+    return gsl_sf_ellint_Kcomp(sqrt(ksq), mode);
+}
+
+/**
+Complete elliptic integral of the second kind.
+
+*/
+double ellipE(double ksq, gsl_mode_t mode) {
+    return gsl_sf_ellint_Ecomp(sqrt(ksq), mode);
+}
+
+/**
+Complete elliptic integral of the third kind.
+
+*/
+double ellipPI(double nsq, double ksq, gsl_mode_t mode) {
+    return gsl_sf_ellint_Pcomp(sqrt(ksq), -sqrt(nsq), mode);
+}
+
+/**
 Compute the inverse of a matrix.
 
 TODO: Our matrix is sparse and *rational*, so LU decomposition is
