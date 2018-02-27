@@ -159,3 +159,155 @@ void A1(int lmax, double** matrix) {
 
     return;
 }
+
+/**
+Compute the inverse of a matrix.
+
+TODO: Our matrix is sparse and *rational*, so LU decomposition is
+      not the most efficient way to compute the inverse!
+*/
+void invert(int N, double** invmat, double **matrix, double tol=1.e-10) {
+    int i, j, signum;
+    gsl_permutation* p = gsl_permutation_calloc(N);
+    gsl_matrix* gsl_mat = gsl_matrix_calloc(N, N);
+    gsl_matrix* gsl_invmat = gsl_matrix_alloc(N, N);
+
+    // Copy the inverse over
+    for (i=0; i<N; i++) {
+        for (j=0; j<N; j++) {
+            gsl_matrix_set(gsl_invmat, i, j, invmat[i][j]);
+        }
+    }
+
+    // LU decomposition
+    gsl_linalg_LU_decomp(gsl_invmat, p, &signum);
+    gsl_linalg_LU_invert(gsl_invmat, p, gsl_mat);
+
+    // Copy the matrix over
+    for (i=0; i<N; i++) {
+        for (j=0; j<N; j++) {
+            if (abs(gsl_matrix_get(gsl_mat, i, j)) > tol)
+                matrix[i][j] = gsl_matrix_get(gsl_mat, i, j);
+            else
+                matrix[i][j] = 0.;
+        }
+    }
+
+    // Free
+    gsl_matrix_free(gsl_invmat);
+    gsl_matrix_free(gsl_mat);
+    gsl_permutation_free(p);
+
+    return;
+}
+
+/**
+Compute the second change of basis matrix, A_2.
+
+*/
+void A2(int lmax, double **matrix) {
+    int i, j, n, l, m, mu, nu;
+    int N = (lmax + 1) * (lmax + 1);
+
+    // Let's compute the inverse of the matrix, since it's easier
+    double **invmat = new double*[N];
+    for (i=0; i<N; i++) {
+        invmat[i] = new double[N];
+        for (j=0; j<N; j++)
+            invmat[i][j] = 0;
+    }
+
+    // Loop over the columns
+    n = 0;
+    for (l=0; l<lmax+1; l++) {
+        for (m=-l; m<l+1; m++){
+            mu = l - m;
+            nu = l + m;
+            if (nu % 2 == 0) {
+                // x^(mu/2) y^(nu/2)
+                invmat[n][n] = (mu + 2) / 2;
+            } else if ((l == 1) && (m == 0)) {
+                // z
+                invmat[n][n] = 1;
+            } else if ((mu == 1) && (l % 2 == 0)) {
+                // x^(l-2) y z
+                i = l * l + 3;
+                invmat[i][n] = 3;
+            } else if ((mu == 1) && (l % 2 == 1)) {
+                // x^(l-3) z
+                i = 1 + (l - 2) * (l - 2);
+                invmat[i][n] = -1;
+                // x^(l-1) z
+                i = l * l + 1;
+                invmat[i][n] = 1;
+                // x^(l-3) y^2 z
+                i = l * l + 5;
+                invmat[i][n] = 4;
+            } else {
+                if (mu != 3) {
+                    // x^((mu - 5)/2) y^((nu - 1)/2)
+                    i = nu + ((mu - 4 + nu) * (mu - 4 + nu)) / 4;
+                    invmat[i][n] = (mu - 3) / 2;
+                    // x^((mu - 5)/2) y^((nu + 3)/2)
+                    i = nu + 4 + ((mu + nu) * (mu + nu)) / 4;
+                    invmat[i][n] = -(mu - 3) / 2;
+                }
+                // x^((mu - 1)/2) y^((nu - 1)/2)
+                i = nu + (mu + nu) * (mu + nu) / 4;
+                invmat[i][n] = -(mu + 3) / 2;
+            }
+            n++;
+        }
+    }
+
+    // Compute the inverse
+    invert(N, invmat, matrix);
+
+    // Free
+    for(i = 0; i<N; i++)
+        delete [] invmat[i];
+    delete [] invmat;
+
+    return;
+}
+
+/**
+Compute the full change of basis matrix, A.
+
+*/
+void A(int lmax, double **matrix) {
+    int i, j, k;
+    int N = (lmax + 1) * (lmax + 1);
+
+    // Initialize an empty matrix
+    double **a1 = new double*[N];
+    double **a2 = new double*[N];
+    for (i=0; i<N; i++) {
+        a1[i] = new double[N];
+        a2[i] = new double[N];
+    }
+
+    // Compute A1 and A2
+    A1(lmax, a1);
+    A2(lmax, a2);
+
+    // Dot them
+    for (i=0; i<N; i++){
+        for (j=0; j<N; j++){
+            matrix[i][j] = 0;
+            for (k=0; k<N; k++) {
+                matrix[i][j] += a2[i][k] * a1[k][j];
+            }
+        }
+    }
+
+    // Free
+    for (i=0; i<N; i++) {
+        delete [] a1[i];
+        delete [] a2[i];
+    }
+    delete [] a1;
+    delete [] a2;
+
+    return;
+}

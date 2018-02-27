@@ -32,7 +32,7 @@
     parameters for use in gradient-based inference schemes such as
     Hamiltonian monte carlo (HMC), allowing users to quickly and efficiently
     regress on observed light curves to infer properties of a celestial body's
-    surface map. 
+    surface map.
 \end{abstract}
 
 % NOTE:
@@ -50,7 +50,7 @@
 \section{Introduction}
 \label{sec:intro}
 
-Our understanding of the surface of Earth and the other planets in our Solar 
+Our understanding of the surface of Earth and the other planets in our Solar
 System starts with the creation of maps.  Mapping the colors, compositions, and
 surface features give us an understanding of the geological, hydrological,
 and meteorological processes occurring that are the basis of planetary science,
@@ -58,17 +58,17 @@ including comparative planetology.  With the discovery of planets orbiting other
 stars, map-making becomes a formidable task:  these planets are too distant to
 facilitate high-resolution maps as we do for our own planetary suite.  One way
 to overcome this drawback is to utilize the time-dependence of unresolved,
-disk-integrated light from planetary bodies:  both rotational variability and 
-occultations yield the opportunity to constrain the presence of static variations 
+disk-integrated light from planetary bodies:  both rotational variability and
+occultations yield the opportunity to constrain the presence of static variations
 in the surface features of exoplanets.
 
-The first application of time-dependent mapping to exoplanets was carried out in the 
-infrared with HD 189733b using both phase-variations and secondary eclipse of the 
+The first application of time-dependent mapping to exoplanets was carried out in the
+infrared with HD 189733b using both phase-variations and secondary eclipse of the
 exoplanet (Knutson et al. 2007, Majeau et al. 2012, de Wit et al. 2012).  These
 yielded crude constraints on the monopole and dipole components of the thermal
-emission from the thick, windy atmosphere of this giant planet.  With the subsequent 
+emission from the thick, windy atmosphere of this giant planet.  With the subsequent
 discovery of smaller planets that are perhaps rocky, opened the possibility of
-applying the mapping technique to exoplanets with solid or liquid surfaces, and 
+applying the mapping technique to exoplanets with solid or liquid surfaces, and
 perhaps long-lived surface features [Cowan et al. application to Earth as an exoplanet;
 TRAPPIST-1 PPOs; Fujita et al.]
 
@@ -762,7 +762,7 @@ rotating it into what we will refer to as the \emph{Green's basis}, $\gbasis$:
         \\[1em]
         %
         \z
-            & \qquad \nu = \mu = 1
+            & \qquad l = 1, \, m = 0
         \\[1em]
         %
         3\x^{l-2}\y\z
@@ -1245,7 +1245,7 @@ It can be easily shown that one possible solution to \eq{DGg} is
         \\[1em]
         %
         \frac{1-z^3}{3(1-z^2)}(-\y \, \xhat + \x \, \yhat)
-            & \qquad \nu = \mu = 1
+            & \qquad l = 1, \, m = 0
         \\[1em]
         %
         \x^{l-2}
@@ -1629,7 +1629,7 @@ the planet transits at impact parameter $b = 0.5$. For comparison, we also
 compute the flux with \batman \citep{Kreidberg2015} and by a
 high precision numerical integration of the surface integral of
 \eq{quadraticld}. The error on the transit depth for \starry flux is less
-than $10^{-5}$ parts per million everywhere in the light curve. 
+than $10^{-5}$ parts per million everywhere in the light curve.
 % I'm surprised the batman computation (which is based on Mandel & Agol)
 % has such a poor precision.  Perhaps the tolerance of the elliptic
 % integral in the batman code can be reduced to give better precision?
@@ -1704,9 +1704,9 @@ during an occultation of the $n^\mathrm{th}$ term in the Green's basis
 $\mathcal{G}$ in that equation are given by Equations~(\ref{eq:primitiveP})
 and (\ref{eq:primitiveQ}), with
 $\bvec{G}_n$ defined in \eq{Gn}. Note that all of the terms in \eq{Gn},
-with the exception of the $\mu = \nu = 1$ case, are simple polynomials
+with the exception of the $l = 1, m = 0$ case, are simple polynomials
 in $\x$, $\y$, and $\z$, which facilitates their integration.
-The $\mu = \nu = 1$ term (corresponding to the $n = 2$ term in the Green's basis)
+The $l = 1, m = 0$ term (corresponding to the $n = 2$ term in the Green's basis)
 is more difficult to integrate, but an analytic
 solution exists \citep{Pal2012}. It is, however, more convenient
 to note that this term corresponds to a surface map given by the polynomial
