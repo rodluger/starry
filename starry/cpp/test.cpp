@@ -266,7 +266,6 @@ int test_sT() {
     int lmax = 5;
     int diff = 0;
     int N = (lmax + 1) * (lmax + 1);
-    double b, r;
 
     // Log it
     cout << "Testing occultation solution vector s... ";
@@ -275,19 +274,16 @@ int test_sT() {
     vector = new double[N];
 
     // Compute the phase curve solution vector
-    b = 0.5;
-    r = 0.3;
-    sT(lmax, b, r, vector);
+    // and compare to benchmark for a few different
+    // occultation parameters
+    sT(lmax, 0.5, 0.3, vector);
+    diff += mapdiff(N, vector, TEST_ST53);
+    sT(lmax, 0.9, 1.5, vector);
+    diff += mapdiff(N, vector, TEST_ST915);
+    sT(lmax, 0, 0.5, vector);
+    diff += mapdiff(N, vector, TEST_ST05);
 
-    // Compare to benchmark
-    diff = mapdiff(N, vector, TEST_ST);
-
-    /*
-    cout << endl;
-    for (int n=0; n<N; n++)
-        cout << vector[n] << ", ";
-    cout << endl;
-    */
+    // TODO: TEST the case where k = 1, say b = r = 0.5.
 
     // Log it
     if (diff == 0)

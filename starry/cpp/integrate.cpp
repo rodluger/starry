@@ -81,11 +81,10 @@ This is the Mandel & Agol solution for linear limb darkening.
 double s2(GREENS* G) {
     double Lambda;
     double xi = 2 * G->br * (4 - 7 * G->r[2] - G->b2);
-
     if (G->b == 0) {
         Lambda = -(2. / 3.) * pow(1 - G->r[2], 1.5);
     } else if (G->ksq < 1) {
-        Lambda = (1. / (8 * M_PI * sqrt(G->br))) *
+        Lambda = (1. / (9 * M_PI * sqrt(G->br))) *
                  ((-3 + 12 * G->r[2] - 10 * G->b2 * G->r[2] - 6 * G->r[4] + xi) * G->K -
                   2 * xi * G->E +
                   3 * (G->b + G->r[1]) / (G->b - G->r[1]) * G->PI);
@@ -191,12 +190,17 @@ double J(int u, int v, GREENS* G) {
     if (!G->bJ[u][v]) {
         G->bJ[u][v] = true;
         G->J[u][v] = 0;
-        for (int i=0; i<v+1; i++)
-            if ((i - v - u) % 2 == 0)
-                G->J[u][v] += gsl_sf_choose(v, i) * M(u + 2 * i, u + 2 * v - 2 * i, G);
-            else
-                G->J[u][v] -= gsl_sf_choose(v, i) * M(u + 2 * i, u + 2 * v - 2 * i, G);
-        G->J[u][v] *= pow(2, u + 3) * (G->br32);
+        // Check if b = 0 (special case)
+        if (G->b == 0) {
+            G->J[u][v] = pow(1 - G->r[2], 1.5) * I(u, v, G);
+        } else {
+            for (int i=0; i<v+1; i++)
+                if ((i - v - u) % 2 == 0)
+                    G->J[u][v] += gsl_sf_choose(v, i) * M(u + 2 * i, u + 2 * v - 2 * i, G);
+                else
+                    G->J[u][v] -= gsl_sf_choose(v, i) * M(u + 2 * i, u + 2 * v - 2 * i, G);
+            G->J[u][v] *= pow(2, u + 3) * (G->br32);
+        }
     }
     return G->J[u][v];
 }
@@ -269,8 +273,6 @@ void sT(int lmax, double b, double r, double* vector) {
         exit(1);
     }
 
-    // TODO: Check if b = 0 (special case)
-
     // Instantiate a GREENS struct to hold useful quantities
     GREENS G;
     G.lmax = lmax;
@@ -293,8 +295,8 @@ void sT(int lmax, double b, double r, double* vector) {
 
     // Compute the sine and cosine of the angles
     if ((abs(1 - r) < b) && (b < 1 + r)) {
-        // sin(arcsin(x)) = x
-        // cos(arcsin(x)) = sqrt(1 - x * x)
+        // Note that sin(arcsin(x)) = x
+        // and cos(arcsin(x)) = sqrt(1 - x * x)
         sinphi = (1 - G.r[2] - G.b2) / (2 * G.br);
         cosphi = sqrt(1 - sinphi * sinphi);
         sinlam = (1 - G.r[2] + G.b2) / (2 * G.b);
@@ -325,18 +327,27 @@ void sT(int lmax, double b, double r, double* vector) {
     // Compute the elliptic integrals
     G.ksq = (1 - G.r[2] - G.b * G.b + 2 * G.br) / (4 * G.br);
     G.k = sqrt(G.ksq);
-    if (G.ksq < 1) {
-        G.K = ellipK(G.ksq);
-        G.E = ellipE(G.ksq);
-        G.PI = ellipPI(1 - 1. / ((G.b - G.r[1]) * (G.b - G.r[1])), G.ksq);
-        G.E1 = (1 - G.ksq) * G.K;
-        G.E2 = G.E;
+    if (G.b == 0) {
+        // We don't need elliptic integrals in this case!
+        G.K = 0;
+        G.E = 0;
+        G.PI = 0;
+        G.E1 = 0;
+        G.E2 = 0;
     } else {
-        G.K = ellipK(1. / G.ksq);
-        G.E = ellipE(1. / G.ksq);
-        G.PI = ellipPI(1. / (G.ksq - 1. / (4 * G.br)), 1. / G.ksq);
-        G.E1 = (1 - G.ksq) / G.k * G.K;
-        G.E2 = G.k * G.E + (1 - G.ksq) / G.k * G.K;
+        if (G.ksq < 1) {
+            G.K = ellipK(G.ksq);
+            G.E = ellipE(G.ksq);
+            G.PI = ellipPI(1 - 1. / ((G.b - G.r[1]) * (G.b - G.r[1])), G.ksq);
+            G.E1 = (1 - G.ksq) * G.K;
+            G.E2 = G.E;
+        } else {
+            G.K = ellipK(1. / G.ksq);
+            G.E = ellipE(1. / G.ksq);
+            G.PI = ellipPI(1. / (G.ksq - 1. / (4 * G.br)), 1. / G.ksq);
+            G.E1 = (1 - G.ksq) / G.k * G.K;
+            G.E2 = G.k * G.E + (1 - G.ksq) / G.k * G.K;
+        }
     }
 
     // Allocate the integral matrices
