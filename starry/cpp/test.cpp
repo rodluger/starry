@@ -10,6 +10,9 @@ int mapdiff(int N, double y1[N], double y2[N], double tol=1e-8) {
     int i;
     for (i = 0; i < N; i++) {
         if (abs(y1[i] - y2[i]) > tol) {
+            if (diff == 0)
+                cout << endl;
+            cout << "Error at index " << i << ":  " << y1[i] << "   " << y2[i] << endl;
             diff++;
         }
     }
@@ -277,7 +280,14 @@ int test_sT() {
     sT(lmax, b, r, vector);
 
     // Compare to benchmark
-    // TODO!
+    diff = mapdiff(N, vector, TEST_ST);
+
+    /*
+    cout << endl;
+    for (int n=0; n<N; n++)
+        cout << vector[n] << ", ";
+    cout << endl;
+    */
 
     // Log it
     if (diff == 0)

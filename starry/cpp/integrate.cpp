@@ -12,6 +12,7 @@ typedef struct {
     double b;
     double b2;
     double br;
+    double br32;
     double* r;
     double* b_r;
     double* cosphi;
@@ -25,10 +26,14 @@ typedef struct {
     double PI;
     double E1;
     double E2;
-    double** HPHI;
-    bool** HPHISET;
-    double** HLAM;
-    bool** HLAMSET;
+    double** H;
+    bool** bH;
+    double** I;
+    bool** bI;
+    double** J;
+    bool** bJ;
+    double** M;
+    bool** bM;
 } GREENS;
 
 /**
@@ -91,123 +96,157 @@ double s2(GREENS* G) {
                   3 * (G->b + G->r[1]) / (G->b - G->r[1]) * G->PI);
     }
 
-    return (2. / (3. * M_PI)) * (1 - 1.5 * Lambda - step(G->r[1] - G->b));
+    return (2. * M_PI / 3.) * (1 - 1.5 * Lambda - step(G->r[1] - G->b));
 }
 
-/**
-The helper primitive integral H(phi) for odd nu.
-
-    TODO!
-
-*/
-double HODDPHI(int u, int n, GREENS* G) {
-    if (!G->HPHISET[u][n]) {
-        G->HPHISET[u][n] = true;
-        if (1) {
-            G->HPHI[u][n] = 0;
-        } else if (0) {
-
-        } else if (0) {
-
-        } else if (0) {
-
-        } else if (0) {
-
-        } else {
-
-        }
-
-    }
-    return G->HPHI[u][n];
-}
 
 /**
-The helper primitive integral H(phi) for even nu.
+The helper primitive integral H_{u,v}
 
 */
-double HEVENPHI(int u, int n, GREENS* G) {
-    if (!G->HPHISET[u][n]) {
-        G->HPHISET[u][n] = true;
+double H(int u, int v, GREENS* G) {
+    if (!G->bH[u][v]) {
+        G->bH[u][v] = true;
         if (u % 2 == 1) {
-            G->HPHI[u][n] = 0;
-        } else if ((u == 0) && (n == 0)) {
-            G->HPHI[u][n] = 2 * asin(G->sinphi[1]) + M_PI;
-        } else if ((u == 0) && (n == 1)) {
-            G->HPHI[u][n] = -2 * G->cosphi[1];
+            G->H[u][v] = 0;
+        } else if ((u == 0) && (v == 0)) {
+            G->H[u][v] = 2 * asin(G->sinlam[1]) + M_PI;
+        } else if ((u == 0) && (v == 1)) {
+            G->H[u][v] = -2 * G->coslam[1];
         } else if (u >= 2) {
-            G->HPHI[u][n] = (2 * G->cosphi[u - 1] * G->sinphi[n + 1] +
-                            (u - 1) * HEVENPHI(u - 2, n, G)) / (u + n);
+            G->H[u][v] = (2 * G->coslam[u - 1] * G->sinlam[v + 1] +
+                            (u - 1) * H(u - 2, v, G)) / (u + v);
         } else {
-            G->HPHI[u][n] = (-2 * G->cosphi[u + 1] * G->sinphi[n - 1] +
-                            (n - 1) * HEVENPHI(u, n - 2, G)) / (u + n);
+            G->H[u][v] = (-2 * G->coslam[u + 1] * G->sinlam[v - 1] +
+                            (v - 1) * H(u, v - 2, G)) / (u + v);
         }
     }
-    return G->HPHI[u][n];
+    return G->H[u][v];
 }
 
 /**
-The helper primitive integral H(lambda) for even nu.
+The helper primitive integral I_{u,v}
 
 */
-double HEVENLAM(int u, int n, GREENS* G) {
-    if (!G->HLAMSET[u][n]) {
-        G->HLAMSET[u][n] = true;
+double I(int u, int v, GREENS* G) {
+    if (!G->bI[u][v]) {
+        G->bI[u][v] = true;
         if (u % 2 == 1) {
-            G->HLAM[u][n] = 0;
-        } else if ((u == 0) && (n == 0)) {
-            G->HLAM[u][n] = 2 * asin(G->sinlam[1]) + M_PI;
-        } else if ((u == 0) && (n == 1)) {
-            G->HLAM[u][n] = -2 * G->coslam[1];
+            G->I[u][v] = 0;
+        } else if ((u == 0) && (v == 0)) {
+            G->I[u][v] = 2 * asin(G->sinphi[1]) + M_PI;
+        } else if ((u == 0) && (v == 1)) {
+            G->I[u][v] = -2 * G->cosphi[1];
         } else if (u >= 2) {
-            G->HLAM[u][n] = (2 * G->coslam[u - 1] * G->sinlam[n + 1] +
-                            (u - 1) * HEVENLAM(u - 2, n, G)) / (u + n);
+            G->I[u][v] = (2 * G->cosphi[u - 1] * G->sinphi[v + 1] +
+                            (u - 1) * I(u - 2, v, G)) / (u + v);
         } else {
-            G->HLAM[u][n] = (-2 * G->coslam[u + 1] * G->sinlam[n - 1] +
-                            (n - 1) * HEVENLAM(u, n - 2, G)) / (u + n);
+            G->I[u][v] = (-2 * G->cosphi[u + 1] * G->sinphi[v - 1] +
+                            (v - 1) * I(u, v - 2, G)) / (u + v);
         }
     }
-    return G->HLAM[u][n];
+    return G->I[u][v];
 }
 
 /**
-The helper primitive integral I(phi).
+The helper primitive integral M_{p,q}
 
 */
-double IPHI(int u, int v, GREENS* G) {
+double M(int p, int q, GREENS* G) {
+    if (!G->bM[p][q]) {
+        G->bM[p][q] = true;
+        if ((p % 2 == 1) || (q % 2 == 1)) {
+            G->M[p][q] = 0;
+        } else if ((p == 0) && (q == 0)) {
+            G->M[p][q] = ((8 - 12 * G->ksq) * G->E1 + (-8 + 16 * G->ksq) * G->E2) / 3.;
+        } else if ((p == 0) && (q == 2)) {
+            G->M[p][q] = ((8 - 24 * G->ksq) * G->E1 + (-8 + 28 * G->ksq + 12 * G->ksq * G->ksq) * G->E2) / 15.;
+        } else if ((p == 2) && (q == 0)) {
+            G->M[p][q] = ((32 - 36 * G->ksq) * G->E1 + (-32 + 52 * G->ksq - 12 * G->ksq * G->ksq) * G->E2) / 15.;
+        } else if ((p == 2) && (q == 2)) {
+            G->M[p][q] = ((32 - 60 * G->ksq + 12 * G->ksq * G->ksq) * G->E1 + (-32 + 76 * G->ksq - 36 * G->ksq * G->ksq + 24 * G->ksq * G->ksq * G->ksq) * G->E2) / 105.;
+        } else if (q >= 4) {
+            double d1, d2;
+            d1 = q + 2 + (p + q - 2) * (1 - G->ksq);
+            d2 = (3 - q) * (1 - G->ksq);
+            G->M[p][q] = (d1 * M(p, q - 2, G) + d2 * M(p, q - 4, G)) / (p + q + 3);
+        } else if (p >= 4) {
+            double d3, d4;
+            d3 = 2 * p + q - (p + q - 2) * (1 - G->ksq);
+            d4 = (3 - p) + (p - 3) * (1 - G->ksq);
+            G->M[p][q] = (d3 * M(p - 2, q, G) + d4 * M(p - 4, q, G)) / (p + q + 3);
+        } else {
+            cout << "ERROR: Domain error in function M()." << endl;
+            exit(1);
+        }
+    }
+    return G->M[p][q];
+}
+
+/**
+The helper primitive integral J_{u,v}
+
+*/
+double J(int u, int v, GREENS* G) {
+    if (!G->bJ[u][v]) {
+        G->bJ[u][v] = true;
+        G->J[u][v] = 0;
+        for (int i=0; i<v+1; i++)
+            if ((i - v - u) % 2 == 0)
+                G->J[u][v] += gsl_sf_choose(v, i) * M(u + 2 * i, u + 2 * v - 2 * i, G);
+            else
+                G->J[u][v] -= gsl_sf_choose(v, i) * M(u + 2 * i, u + 2 * v - 2 * i, G);
+        G->J[u][v] *= pow(2, u + 3) * (G->br32);
+    }
+    return G->J[u][v];
+}
+
+/**
+The helper primitive integral K_{u,v}.
+
+*/
+double K(int u, int v, GREENS* G) {
     double res = 0;
-    for (int n=0; n<v+1; n++) {
-        if (G->nu % 2 == 0)
-            res += gsl_sf_choose(v, n) * G->b_r[v - n] * HEVENPHI(u, n, G);
-        else
-            res += gsl_sf_choose(v, n) * G->b_r[v - n] * HODDPHI(u, n, G);
-    }
+    for (int i=0; i<v+1; i++)
+        res += gsl_sf_choose(v, i) * G->b_r[v - i] * I(u, i, G);
     return res;
 }
 
 /**
-The primitive integral P.
+The helper primitive integral L_{u,v}.
+
+*/
+double L(int u, int v, GREENS* G) {
+    double res = 0;
+    for (int i=0; i<v+1; i++)
+        res += gsl_sf_choose(v, i) * G->b_r[v - i] * J(u, i, G);
+    return res;
+}
+
+/**
+The primitive integral P(G_n).
 
 */
 double P(GREENS* G){
     if (G->nu % 2 == 0)
-        return G->r[G->l + 2] * IPHI((G->mu + 4) / 2, G->nu / 2, G);
+        return G->r[G->l + 2] * K((G->mu + 4) / 2, G->nu / 2, G);
     else if ((G->mu == 1) && (G->l % 2 == 0))
-        return G->b * G->r[G->l - 2] * IPHI(G->l - 2, 0, G) -
-               G->r[G->l - 1] * IPHI(G->l - 2, 1, G);
-    else if ((G->mu == 1) && (G->l % 2 == 0))
-        return G->b * G->r[G->l - 2] * IPHI(G->l - 3, 1, G) -
-               G->r[G->l - 1] * IPHI(G->l - 3, 2, G);
+        return G->b * G->r[G->l - 2] * L(G->l - 2, 0, G) -
+               G->r[G->l - 1] * L(G->l - 2, 1, G);
+    else if ((G->mu == 1) && (G->l % 2 == 1))
+        return G->b * G->r[G->l - 2] * L(G->l - 3, 1, G) -
+               G->r[G->l - 1] * L(G->l - 3, 2, G);
     else
-        return G->r[G->l - 1] * IPHI((G->mu - 1) / 2, (G->nu - 1) / 2, G);
+        return G->r[G->l - 1] * L((G->mu - 1) / 2, (G->nu - 1) / 2, G);
 }
 
 /**
-The primitive integral Q.
+The primitive integral Q(G_n).
 
 */
 double Q(GREENS* G){
     if (G->nu % 2 == 0)
-        return HEVENLAM((G->mu + 4) / 2, G->nu / 2, G);
+        return H((G->mu + 4) / 2, G->nu / 2, G);
     else
         return 0;
 }
@@ -219,7 +258,8 @@ Compute the *s* occultation solution vector.
 void sT(int lmax, double b, double r, double* vector) {
     int l, m;
     int n = 0;
-    int N = lmax + 3;
+    int N = 2 * lmax + 1;
+    if (N < 2) N = 2;
     double b_r = b / r;
     double cosphi, sinphi, coslam, sinlam;
 
@@ -237,6 +277,7 @@ void sT(int lmax, double b, double r, double* vector) {
     G.b = b;
     G.b2 = b * b;
     G.br = b * r;
+    G.br32 = pow(G.br, 1.5);
 
     // Compute the powers of r
     G.r = new double[N];
@@ -266,15 +307,15 @@ void sT(int lmax, double b, double r, double* vector) {
     }
 
     // Compute the sine and cosine powers
-    G.cosphi = new double[N + 1];
-    G.sinphi = new double[N + 1];
-    G.coslam = new double[N + 1];
-    G.sinlam = new double[N + 1];
+    G.cosphi = new double[N];
+    G.sinphi = new double[N];
+    G.coslam = new double[N];
+    G.sinlam = new double[N];
     G.cosphi[0] = 1;
     G.sinphi[0] = 1;
     G.coslam[0] = 1;
     G.sinlam[0] = 1;
-    for (l=1; l<N+1; l++) {
+    for (l=1; l<N; l++) {
         G.cosphi[l] = cosphi * G.cosphi[l - 1];
         G.sinphi[l] = sinphi * G.sinphi[l - 1];
         G.coslam[l] = coslam * G.coslam[l - 1];
@@ -298,19 +339,29 @@ void sT(int lmax, double b, double r, double* vector) {
         G.E2 = G.k * G.E + (1 - G.ksq) / G.k * G.K;
     }
 
-    // Allocate the H integrals
-    G.HPHI = new double*[N];
-    G.HLAM = new double*[N];
-    G.HPHISET = new bool*[N];
-    G.HLAMSET = new bool*[N];
+    // Allocate the integral matrices
+    G.H = new double*[N];
+    G.I = new double*[N];
+    G.J = new double*[N];
+    G.M = new double*[N];
+    G.bH = new bool*[N];
+    G.bI = new bool*[N];
+    G.bJ = new bool*[N];
+    G.bM = new bool*[N];
     for (l=0; l<N; l++) {
-        G.HPHI[l] = new double[N];
-        G.HLAM[l] = new double[N];
-        G.HPHISET[l] = new bool[N];
-        G.HLAMSET[l] = new bool[N];
+        G.H[l] = new double[N];
+        G.I[l] = new double[N];
+        G.J[l] = new double[N];
+        G.M[l] = new double[N];
+        G.bH[l] = new bool[N];
+        G.bI[l] = new bool[N];
+        G.bJ[l] = new bool[N];
+        G.bM[l] = new bool[N];
         for (m=0; m<N; m++) {
-            G.HPHISET[l][m] = false;
-            G.HLAMSET[l][m] = false;
+            G.bH[l][m] = false;
+            G.bI[l][m] = false;
+            G.bJ[l][m] = false;
+            G.bM[l][m] = false;
         }
     }
 
@@ -337,15 +388,23 @@ void sT(int lmax, double b, double r, double* vector) {
     delete [] G.coslam;
     delete [] G.sinlam;
     for (l=0; l<N; l++) {
-        delete [] G.HPHI[l];
-        delete [] G.HLAM[l];
-        delete [] G.HPHISET[l];
-        delete [] G.HLAMSET[l];
+        delete [] G.H[l];
+        delete [] G.I[l];
+        delete [] G.J[l];
+        delete [] G.M[l];
+        delete [] G.bH[l];
+        delete [] G.bI[l];
+        delete [] G.bJ[l];
+        delete [] G.bM[l];
     }
-    delete [] G.HPHI;
-    delete [] G.HLAM;
-    delete [] G.HPHISET;
-    delete [] G.HLAMSET;
+    delete [] G.H;
+    delete [] G.I;
+    delete [] G.J;
+    delete [] G.M;
+    delete [] G.bH;
+    delete [] G.bI;
+    delete [] G.bJ;
+    delete [] G.bM;
 
     return;
 }
