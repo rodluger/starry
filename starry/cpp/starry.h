@@ -13,7 +13,7 @@ double factorial(double n);
 double step(double x);
 double ellipK(double ksq, gsl_mode_t mode=GSL_PREC_DOUBLE);
 double ellipE(double ksq, gsl_mode_t mode=GSL_PREC_DOUBLE);
-double ellipPI(double nsq, double ksq, gsl_mode_t mode=GSL_PREC_DOUBLE);
+double ellipPI(double n, double ksq, gsl_mode_t mode=GSL_PREC_DOUBLE);
 void invert(int N, double** invmat, double **matrix, double tol=1e-10);
 
 // basis.cpp
@@ -25,5 +25,5 @@ void A(int lmax, double** matrix);
 void R(int lmax, double u[3], double theta, double** matrix, double tol=1e-15);
 
 // integrate.cpp
-void r(int lmax, double* vector);
-void s(int lmax, double b, double r, double* vector);
+void rT(int lmax, double* vector);
+void sT(int lmax, double b, double r, double* vector);

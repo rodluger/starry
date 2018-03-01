@@ -1793,6 +1793,11 @@ respectively, defined as
 \label{sec:generalterm}
 % ------------------------------------------------------------------------------
 
+% ------------------------------------------------------------------------------
+\subsubsection{Setting up the equations}
+\label{sec:generaltermsetup}
+% ------------------------------------------------------------------------------
+
 We evaluate all other terms in $s_n$ by integrating the primitive integrals of
 $\bvec{G}_n$. These are given by
 %
@@ -1868,36 +1873,55 @@ where we have used the fact that the line integral of any function
 proportional to $\z$ taken along the limb of the occulted planet
 (where $\z = \sqrt{1-\x^2-\y^2} = 0$) is zero.
 %
-For convenience, let us introduce the expressions
+For convenience, let us introduce the integrals
 %
 \begin{align}
-    \label{eq:Hun}
-    \mathcal{H}_{u,n}^\nu(\xi, \beta, \rho) &=
-    \begin{dcases}
-        \int\displaylimits_{\pi - \xi}^{2\pi + \xi}
+    \label{eq:Huv}
+    \mathcal{H}_{u,v} &=
+    \int\displaylimits_{\pi - \lambda}^{2\pi + \lambda}
             c_\varphi^u
-            s_\varphi^n
+            s_\varphi^v
             \, \dd\varphi
-            & \qquad \nu \, \mathrm{even}
-        \\[1em]
-        \int\displaylimits_{\pi - \xi}^{2\pi + \xi}
+%
+\\[1.5em]
+%
+    \label{eq:Iuv}
+    \mathcal{I}_{u,v} &=
+    \int\displaylimits_{\pi - \phi}^{2\pi + \phi}
             c_\varphi^u
-            s_\varphi^n
-            (1 - \rho^2 - \beta^2 - 2 \beta \rho s_\varphi)^{\frac{3}{2}}
+            s_\varphi^v
             \, \dd\varphi
-            & \qquad \nu \, \mathrm{odd}
-    \end{dcases}
+%
+\\[1.5em]
+%
+    \label{eq:Juv}
+    \mathcal{J}_{u,v} &=
+    \int\displaylimits_{\pi - \phi}^{2\pi + \phi}
+        c_\varphi^u
+        s_\varphi^v
+        (1 - r^2 - b^2 - 2 b r s_\varphi)^{\frac{3}{2}}
+        \, \dd\varphi \quad,
 \end{align}
 %
-and
+along with the expressions
 %
 \begin{align}
-    \label{eq:Iuv}
-    \mathcal{I}_{u,v}^\nu(\xi, \beta, \rho) &=
-        \sum\displaylimits_{n=0}^{v}
-        {v \choose n}
-        \left(\frac{\beta}{\rho}\right)^{v-n}
-        \mathcal{H}_{u, n}^\nu (\xi, \beta, \rho)
+    \label{eq:Kuv}
+    \mathcal{K}_{u,v} &=
+        \sum\displaylimits_{i=0}^{v}
+        {v \choose i}
+        \left(\frac{b}{r}\right)^{v-i}
+        \mathcal{I}_{u, i}
+        \quad.
+%
+\\[1.5em]
+%
+    \label{eq:Luv}
+    \mathcal{L}_{u,v} &=
+        \sum\displaylimits_{i=0}^{v}
+        {v \choose i}
+        \left(\frac{b}{r}\right)^{v-i}
+        \mathcal{J}_{u, i}
         \quad.
 \end{align}
 %
@@ -1908,28 +1932,28 @@ With some algebra, we may therefore write
     \mathcal{P}(\bvec{G}_n) &=
     \begin{dcases}
         %
-        r^{l+2} \mathcal{I}_{\frac{\mu+4}{2}, \frac{\nu}{2}}^\nu (\phi, b, r)
+        r^{l+2} \mathcal{K}_{\frac{\mu+4}{2}, \frac{\nu}{2}}
             %
             & \qquad \nu \, \mathrm{even}
         \\[1em]
         %
-        b r^{l-2} \mathcal{I}_{l-2, 0}^\nu (\phi, b, r)
-        - r^{l-1} \mathcal{I}_{l-2,1}^\nu (\phi, b, r)
+        b r^{l-2} \mathcal{L}_{l-2, 0}
+        - r^{l-1} \mathcal{L}_{l-2,1}
             %
             & \qquad \nu \, \mathrm{odd}, \,
                      \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
-        b r^{l-2} \mathcal{I}_{l-3, 1}^\nu (\phi, b, r)
-        - r^{l-1} \mathcal{I}_{l-3,2}^\nu (\phi, b, r)
+        b r^{l-2} \mathcal{L}_{l-3, 1}
+        - r^{l-1} \mathcal{L}_{l-3,2}
             %
             & \qquad \nu \, \mathrm{odd}, \,
                      \mu = 1, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
-        r^{l-1} \mathcal{I}_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}^\nu (\phi, b, r)
+        r^{l-1} \mathcal{L}_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}
             & \qquad \mathrm{otherwise}
     \end{dcases}
     \todo{proof}
@@ -1940,73 +1964,108 @@ With some algebra, we may therefore write
     \label{eq:QGnI}
     \mathcal{Q}(\bvec{G}_n) &=
     \begin{dcases}
-        %
-        \mathcal{I}_{\frac{\mu+4}{2}, \frac{\nu}{2}}^\nu (\lambda, 0, 1)
-            %
-            & \qquad\qquad \nu \, \mathrm{even}
+        \mathcal{H}_{\frac{\mu+4}{2}, \frac{\nu}{2}}
+        & \qquad \qquad \qquad \qquad \quad \quad \quad \quad \nu \, \mathrm{even}
         \\[1em]
         %
-        \phantom{XXX}0
-            & \qquad\qquad \mathrm{otherwise.}
+        0
+        & \qquad \qquad \qquad \qquad \quad \quad \quad \quad \nu \, \mathrm{odd} \quad.
     \end{dcases}
     \todo{proof}
 \end{align}
 %
 The solution to the occultation problem is therefore a matter of finding
-expressions for $\mathcal{H}_{u, n}^{\nu}$ (Equation~\ref{eq:Hun}):
-\\
+expressions for the integrals $\mathcal{H}_{u, v}$,
+$\mathcal{I}_{u, v}$, and $\mathcal{J}_{u, v}$.
 
-\pagebreak
-\noindent \textbf{\underline{Case 1: $\nu$ even}}\\
+% ------------------------------------------------------------------------------
+\subsubsection{Solving the integrals}
+\label{sec:generaltermsol}
+% ------------------------------------------------------------------------------
 
-\noindent For even $\nu$, $\mathcal{H}_{u, n}^{\nu}$ evaluates to terms containing
-only sines and cosines of $\xi$. \citet{Pal2012} derived simple recurrence relations
+Fortunately, $\mathcal{H}_{u, v}$ and $\mathcal{I}_{u, v}$
+evaluate to terms containing
+only sines and cosines of $\lambda$ and $\phi$, respectively.
+\citet{Pal2012} derived simple recurrence relations
 for these terms:
 %
-\begin{align}\
-    \label{eq:Huneven}
-    \mathcal{H}_{u,n}^{\nu}(\xi, \beta, \rho) &=
+\begin{align}
+    \label{eq:Huvsol}
+    \mathcal{H}_{u,v} &=
     \begin{dcases}
         0
         & \qquad u \ \mathrm{odd}
         %
         \\[0.5em]
         %
-        2\xi + \pi
-        & \qquad u = n = 0
+        2\lambda + \pi
+        & \qquad u = v = 0
         %
         \\[0.5em]
         %
-        -2\cos\xi
-        & \qquad u = 0, n = 1
+        -2\cos\lambda
+        & \qquad u = 0, v = 1
         %
         \\[0.5em]
         %
-        \frac{2}{u + n}
-        (\cos\xi)^{u-1} (\sin\xi)^{n+1} +
-        \frac{u-1}{u+n} \mathcal{H}_{u-2,n}^{\nu}(\xi, \beta, \rho)
+        \frac{2}{u + v}
+        (\cos\lambda)^{u - 1} (\sin\lambda)^{v + 1} +
+        \frac{u - 1}{u + v} \mathcal{H}_{u-2,v}
         & \qquad u \ge 2
         %
         \\[0.5em]
         %
-        -\frac{2}{u + n}
-        (\cos\xi)^{u+1} (\sin\xi)^{n-1} +
-        \frac{n-1}{u+n} \mathcal{H}_{u,n-2}^{\nu}(\xi, \beta, \rho)
+        -\frac{2}{u + v}
+        (\cos\lambda)^{u + 1} (\sin\lambda)^{v - 1} +
+        \frac{v - 1}{u + v} \mathcal{H}_{u,v-2}
+        & \qquad n \ge 2
+        \quad
+        %
+    \end{dcases}
+    \todo{proof}
+\end{align}
+%
+and
+%
+\begin{align}
+    \label{eq:Iuvsol}
+    \mathcal{I}_{u,v} &=
+    \begin{dcases}
+        0
+        & \qquad u \ \mathrm{odd}
+        %
+        \\[0.5em]
+        %
+        2\phi + \pi
+        & \qquad u = v = 0
+        %
+        \\[0.5em]
+        %
+        -2\cos\phi
+        & \qquad u = 0, v = 1
+        %
+        \\[0.5em]
+        %
+        \frac{2}{u + v}
+        (\cos\phi)^{u - 1} (\sin\phi)^{v + 1} +
+        \frac{u - 1}{u + v} \mathcal{I}_{u-2,v}
+        & \qquad u \ge 2
+        %
+        \\[0.5em]
+        %
+        -\frac{2}{u + v}
+        (\cos\phi)^{u + 1} (\sin\phi)^{v - 1} +
+        \frac{v - 1}{u + v} \mathcal{I}_{u,v-2}
         & \qquad n \ge 2
         \quad.
         %
     \end{dcases}
     \todo{proof}
 \end{align}
-\\
+%
 
-\noindent \textbf{\underline{Case 2: $\nu$ odd}}\\
-
-\noindent When $\nu$ is odd, $\mathcal{Q}(\bvec{G}_n) = 0$ and
-we need only compute $\mathcal{P}(\bvec{G}_n)$, for which
-$\xi = \phi$, $\beta = b$, and $\rho = r$. However,
-because of the term raised to the $\nicefrac{3}{2}$ power in
-\eq{Hun} for odd $\nu$, the integral becomes significantly more
+Conversely, because of the term raised to the $\nicefrac{3}{2}$ power in
+\eq{Juv}, $\mathcal{J}_{u,v}$ is significantly more
 difficult to compute. With some tedious algebraic manipulation, and using
 recurrence relations for expressions with integrands
 of the form $\cos^p\varphi\sin^q\varphi (1 - \chi^2 \sin^2 \varphi)^\frac{3}{2}$
@@ -2014,27 +2073,27 @@ of the form $\cos^p\varphi\sin^q\varphi (1 - \chi^2 \sin^2 \varphi)^\frac{3}{2}$
 %
 \begin{align}
     \label{eq:Hunodd}
-    \mathcal{H}_{u,n}^{\nu}(\phi, b, r) &=
-        2^{u+3} (b r)^\frac{3}{2}
-        \sum\displaylimits_{i=0}^n
-            {n \choose i}\left(-1\right)^{i-n-u}\mathcal{J}_{u + 2i, u + 2n - 2i}(k^2)
+    \mathcal{J}_{u,v} &=
+        2^{u + 3} (b r)^\frac{3}{2}
+        \sum\displaylimits_{i=0}^v
+            {v \choose i}\left(-1\right)^{i-v-u}\mathcal{M}_{u + 2i, u + 2v - 2i}
     \mathematica{case2}
 \end{align}
 %
 where
 %
 \begin{align}
-    \label{eq:Jpq}
-    \mathcal{J}_{p, q} (k^2) &=
+    \label{eq:Mpq}
+    \mathcal{M}_{p, q}  &=
     \begin{dcases}
         %
         0 & \qquad p\ \mathrm{odd} \ \mathrm{or} \ q\ \mathrm{odd}\\[0.5em]
         %
-        \frac{d_1 \mathcal{J}_{p,q-2}(k^2) + d_2 \mathcal{J}_{p,q-4}(k^2)}
+        \frac{d_1 \mathcal{M}_{p,q-2} + d_2 \mathcal{M}_{p,q-4}}
              {p + q + 3}
         & \qquad q \ge 4 \\[0.5em]
         %
-        \frac{d_3 \mathcal{J}_{p-2,q}(k^2) + d_4 \mathcal{J}_{p-4,q}(k^2)}
+        \frac{d_3 \mathcal{M}_{p-2,q} + d_4 \mathcal{M}_{p-4,q}}
              {p + q + 3}
          & \qquad p \ge 4
     \end{dcases}
@@ -2055,19 +2114,19 @@ and $k^2$ defined as in \eq{k2}.
 These recurrence relations require four initial conditions:
 %
 \begin{align}
-    \mathcal{J}_{0,0}(k^2) &= \frac{8-12k^2}{3}\mathcal{E}_1(k^2) + \frac{-8 + 16k^2}{3}\mathcal{E}_2(k^2) \nonumber \\[1em]
-    \mathcal{J}_{0,2}(k^2) &= \frac{8-24k^2}{15}\mathcal{E}_1(k^2) + \frac{-8 + 28k^2 + 12k^4}{15}\mathcal{E}_2(k^2) \nonumber \\[1em]
-    \mathcal{J}_{2,0}(k^2) &= \frac{32 - 36k^2}{15}\mathcal{E}_1(k^2) + \frac{-32 + 52k^2 - 12k^4}{15}\mathcal{E}_2(k^2) \nonumber \\[1em]
-    \mathcal{J}_{2,2}(k^2) &= \frac{32-60k^2+12k^4}{105}\mathcal{E}_1(k^2) + \frac{-32 + 76 k^2 - 36 k^4 + 24 k^6}{105}\mathcal{E}_2(k^2)
+    \mathcal{M}_{0,0} &= \frac{8-12k^2}{3}\mathcal{E}_1 + \frac{-8 + 16k^2}{3}\mathcal{E}_2 \nonumber \\[1em]
+    \mathcal{M}_{0,2} &= \frac{8-24k^2}{15}\mathcal{E}_1 + \frac{-8 + 28k^2 + 12k^4}{15}\mathcal{E}_2 \nonumber \\[1em]
+    \mathcal{M}_{2,0} &= \frac{32 - 36k^2}{15}\mathcal{E}_1 + \frac{-32 + 52k^2 - 12k^4}{15}\mathcal{E}_2 \nonumber \\[1em]
+    \mathcal{M}_{2,2} &= \frac{32-60k^2+12k^4}{105}\mathcal{E}_1 + \frac{-32 + 76 k^2 - 36 k^4 + 24 k^6}{105}\mathcal{E}_2
     \quad,
     \mathematica{case2}
 \end{align}
 %
-where
+where we defined the elliptic functions
 %
 \begin{align}
     \label{eq:E1}
-    \mathcal{E}_1(k^2) &=
+    \mathcal{E}_1 &=
     \begin{dcases}
         (1-k^2) K \left(k^2\right) & \qquad k^2 < 1 \\[0.5em]
         \frac{1-k^2}{\sqrt{k^2}} K \left(\frac{1}{k^2}\right) & \qquad k^2 \ge 1
@@ -2075,7 +2134,7 @@ where
     \\[0.5em]
 \intertext{and}
     \label{eq:E2}
-    \mathcal{E}_2(k^2) &=
+    \mathcal{E}_2 &=
     \begin{dcases}
         E \left(k^2\right) & \qquad k^2 < 1 \\[0.5em]
         \sqrt{k^2} E \left(\frac{1}{k^2}\right)
@@ -2090,19 +2149,17 @@ Interestingly, the elliptic integrals in the expressions above are exactly
 the same as the ones used to evaluate the $s_2$ term (Equation~\ref{eq:biglam}),
 so these need only be evaluated \emph{once} when computing the occultation flux of
 a map of arbitrary order. Thanks to the recurrence relations, all other operations
-required to evaluate the integrals for odd $\mu$ are elementary, making the
+required to evaluate $\mathcal{J}_{u,v}$ are elementary, making the
 computation of $s_n$ fast.
 
 Note, finally, that the expressions above diverge when $b = 0$,
 since $k^2 \rightarrow \infty$.
-In this case, the integral in \eq{Hun} simplifies:
+In this case, the integral in \eq{Juv} simplifies:
 %
 \begin{align}
-    \mathcal{H}_{u,n}^{\nu}(\phi, 0, r) = (1 - r^2)^\frac{3}{2} \mathcal{H}_{u,n}^{\nu + 1}(\phi, 0, r)
+    \mathcal{J}_{u,v} = (1 - r^2)^\frac{3}{2} \mathcal{I}_{u,v} \quad.
     \mathematica{case2}
 \end{align}
-%
-with $\mathcal{H}_{u,n}^{\nu + 1}$ given by \eq{Huneven}.
 
 %
 
@@ -2173,8 +2230,8 @@ $I$             & Specific intensity, $I(\x, \y)$       & \eq{I} \\
 $\mathcal{I}_{u,v}^{\nu}$
                 & Occultation integral                  & \eq{Iuv} \\
 $j$             & Dummy index                           & \\
-$\mathcal{J}_{p,q}$
-                & Occultation integral                  & \eq{Jpq} \\
+$\mathcal{L}_{p,q}$
+                & Occultation integral                  & \eq{Lpq} \\
 $k$             & Dummy index                           & \\
 $k^2$           & Elliptic parameter                    & \eq{k2} \\
 $K(\bigdot)$    & Complete Elliptic integral of the

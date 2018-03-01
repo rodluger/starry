@@ -219,10 +219,10 @@ int test_R() {
 }
 
 /**
-Benchmark test for r()
+Benchmark test for rT()
 
 */
-int test_r() {
+int test_rT() {
     double* vector;
     int lmax = 5;
     int diff = 0;
@@ -235,10 +235,49 @@ int test_r() {
     vector = new double[N];
 
     // Compute the phase curve solution vector
-    r(lmax, vector);
+    rT(lmax, vector);
 
     // Compare to benchmark
-    diff = mapdiff(N, vector, TEST_LITTLER);
+    diff = mapdiff(N, vector, TEST_RT);
+
+    // Log it
+    if (diff == 0)
+        cout << "OK" << endl;
+    else
+        cout << "ERROR" << endl;
+
+    // Free
+    delete [] vector;
+
+    // Return zero if we're all good
+    return diff;
+
+}
+
+/**
+Benchmark test for sT()
+
+*/
+int test_sT() {
+    double* vector;
+    int lmax = 5;
+    int diff = 0;
+    int N = (lmax + 1) * (lmax + 1);
+    double b, r;
+
+    // Log it
+    cout << "Testing occultation solution vector s... ";
+
+    // Initialize an empty vector
+    vector = new double[N];
+
+    // Compute the phase curve solution vector
+    b = 0.5;
+    r = 0.3;
+    sT(lmax, b, r, vector);
+
+    // Compare to benchmark
+    // TODO!
 
     // Log it
     if (diff == 0)
@@ -259,7 +298,7 @@ Run all tests.
 
 */
 int main(){
-    int diff = test_A1() || test_A2() || test_A() || test_R() || test_r();
+    int diff = test_A1() || test_A2() || test_A() || test_R() || test_rT() || test_sT();
     if (diff == 0)
         cout << "All tests passed." << endl;
     else

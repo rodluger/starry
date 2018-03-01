@@ -35,6 +35,7 @@ double step(double x) {
 
 /**
 Complete elliptic integral of the first kind.
+TODO: Taking the sqrt here is slow
 
 */
 double ellipK(double ksq, gsl_mode_t mode) {
@@ -43,6 +44,7 @@ double ellipK(double ksq, gsl_mode_t mode) {
 
 /**
 Complete elliptic integral of the second kind.
+TODO: Taking the sqrt here is slow
 
 */
 double ellipE(double ksq, gsl_mode_t mode) {
@@ -51,10 +53,11 @@ double ellipE(double ksq, gsl_mode_t mode) {
 
 /**
 Complete elliptic integral of the third kind.
+TODO: Taking the sqrts here is slow
 
 */
-double ellipPI(double nsq, double ksq, gsl_mode_t mode) {
-    return gsl_sf_ellint_Pcomp(sqrt(ksq), -sqrt(nsq), mode);
+double ellipPI(double n, double ksq, gsl_mode_t mode) {
+    return gsl_sf_ellint_Pcomp(sqrt(ksq), -n, mode);
 }
 
 /**
