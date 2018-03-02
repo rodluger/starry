@@ -133,7 +133,7 @@ int test_A() {
             matrix[i][j] = 0;
     }
 
-    // Compute A2
+    // Compute A
     A(lmax, matrix);
 
     // Compare to the benchmark
@@ -163,7 +163,7 @@ Benchmark test for R()
 
 */
 int test_R() {
-    int i, j;
+    int i;
     double** matrix;
     int lmax = 5;
     int diff = 0;
@@ -174,33 +174,31 @@ int test_R() {
 
     // Initialize an empty matrix
     matrix = new double*[N];
-    for (i=0; i<N; i++) {
+    for (i=0; i<N; i++)
         matrix[i] = new double[N];
-        for (j=0; j<N; j++)
-            matrix[i][j] = 0;
-    }
 
     // Let's do some basic rotations
     double u[3];
-    double theta = M_PI / 2.;
+    double costheta = 0;
+    double sintheta = 1;
 
     // Rotate by PI/2 about x
     u[0] = 1; u[1] = 0; u[2] = 0;
-    R(lmax, u, theta, matrix);
+    R(lmax, u, costheta, sintheta, matrix);
     for (i=0; i<N; i++) {
         diff += mapdiff(N, matrix[i], TEST_RX[i]);
     }
 
     // Rotate by PI/2 about y
     u[0] = 0; u[1] = 1; u[2] = 0;
-    R(lmax, u, theta, matrix);
+    R(lmax, u, costheta, sintheta, matrix);
     for (i=0; i<N; i++) {
         diff += mapdiff(N, matrix[i], TEST_RY[i]);
     }
 
     // Rotate by PI/2 about z
     u[0] = 0; u[1] = 0; u[2] = 1;
-    R(lmax, u, theta, matrix);
+    R(lmax, u, costheta, sintheta, matrix);
     for (i=0; i<N; i++) {
         diff += mapdiff(N, matrix[i], TEST_RZ[i]);
     }
@@ -276,14 +274,22 @@ int test_sT() {
     // Compute the phase curve solution vector
     // and compare to benchmark for a few different
     // occultation parameters
+
+    // 1. Small occultor
     sT(lmax, 0.5, 0.3, vector);
     diff += mapdiff(N, vector, TEST_ST53);
+    // 2. Large occultor
     sT(lmax, 0.9, 1.5, vector);
     diff += mapdiff(N, vector, TEST_ST915);
+    // 3. Zero impact parameter
     sT(lmax, 0, 0.5, vector);
     diff += mapdiff(N, vector, TEST_ST05);
-
-    // TODO: TEST the case where k = 1, say b = r = 0.5.
+    // 4. Singular k = 1 case
+    sT(lmax, 0.5, 0.5, vector);
+    diff += mapdiff(N, vector, TEST_ST55);
+    // 5. Test code as k --> 1. Currently numerically unstable (TODO)
+    // 6. Test code as k --> inf. Currently numerically unstable (TODO)
+    // 7. Test other k = 1 cases (r < 0.5, r > 0.5) (TODO)
 
     // Log it
     if (diff == 0)
@@ -300,11 +306,74 @@ int test_sT() {
 }
 
 /**
+Benchmark test for main starry routines
+
+Y_{0,0} + Y_{1,1} + Y_{2,-2} + Y_{3,-1} + Y_{4,-3} + Y_{5,0}
+
+*/
+int test_starry() {
+    int diff = 0;
+    int lmax = 5;
+    int NT = 50;
+    CONSTANTS C;
+    init_constants(lmax, &C);
+    double yhat[3] = {0., 1., 0.};
+    double* y = new double[C.N];
+    for (int i=0; i<C.N; i++) y[i] = 0;
+    double r;
+    double* theta = new double[NT];
+    double* x0 = new double[NT];
+    double* y0 = new double[NT];
+    double* result = new double[NT];
+
+    // Log it
+    cout << "Testing main starry routine... ";
+
+    // Benchmarked occultation params
+    y[0] = 1;
+    y[3] = 1;
+    y[4] = 1;
+    y[11] = 1;
+    y[17] = 1;
+    y[30] = 1;
+    r = 0.3;
+    for (int i=0; i<NT; i++) {
+        x0[i] = 2. * i / (NT - 1.) - 1;
+        y0[i] = 4. * i / (NT - 1.) - 2;
+        theta[i] = 0.5 * M_PI * i / (NT - 1.);
+    }
+
+    // Compute the light curve
+    flux(NT, y, yhat, theta, x0, y0, r, &C, result);
+
+    // Compare to benchmark
+    diff += mapdiff(NT, result, TEST_LC1);
+
+    // Log it
+    if (diff == 0)
+        cout << "OK" << endl;
+    else
+        cout << "ERROR" << endl;
+
+    // Free
+    free_constants(lmax, &C);
+    delete [] y;
+    delete [] theta;
+    delete [] x0;
+    delete [] y0;
+    delete [] result;
+
+    return diff;
+}
+
+/**
 Run all tests.
 
 */
 int main(){
-    int diff = test_A1() || test_A2() || test_A() || test_R() || test_rT() || test_sT();
+    int diff = test_A1() || test_A2() || test_A() ||
+               test_R() || test_rT() || test_sT() ||
+               test_starry();
     if (diff == 0)
         cout << "All tests passed." << endl;
     else

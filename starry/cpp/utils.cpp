@@ -27,10 +27,51 @@ Heaviside step function.
 
 */
 double step(double x) {
-    if (x < 0)
+    if (x <= 0)
         return 0;
     else
         return 1;
+}
+
+/**
+Dot two square matrices.
+
+*/
+void dot(int N, double** A, double** B, double** AB) {
+    int i, j, k;
+    for (i=0; i<N; i++){
+        for (j=0; j<N; j++){
+            AB[i][j] = 0;
+            for (k=0; k<N; k++) {
+                AB[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+}
+
+/**
+Dot a matrix and a vector.
+
+*/
+void dot(int N, double** A, double* b, double* Ab) {
+    int i, j;
+    for (i=0; i<N; i++){
+        Ab[i] = 0;
+        for (j=0; j<N; j++){
+            Ab[i] += A[i][j] * b[j];
+        }
+    }
+}
+
+/**
+Dot two vectors.
+
+*/
+double dot(int N, double* a, double* b) {
+    double res = 0;
+    for (int i=0; i<N; i++)
+        res += a[i] * b[i];
+    return res;
 }
 
 /**

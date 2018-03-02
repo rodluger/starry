@@ -35,7 +35,9 @@ def E1(b, r):
     """Return the first elliptic function."""
     s = (1 - r ** 2 - b ** 2) / (2 * b * r)
     A = (2 * b * r) ** 1.5
-    if s < 1:
+    if s == 1:
+        return 0
+    elif s < 1:
         return A * (1 - s) / np.sqrt(2) * ellipk(0.5 * (1 + s))
     else:
         return A * (1 - s) / np.sqrt(1 + s) * ellipk(2 / (1 + s))
@@ -45,7 +47,9 @@ def E2(b, r):
     """Return the second elliptic function."""
     s = (1 - r ** 2 - b ** 2) / (2 * b * r)
     A = (2 * b * r) ** 1.5
-    if s < 1:
+    if s == 1:
+        return 0
+    elif s < 1:
         return A * np.sqrt(2) * ellipe(0.5 * (1 + s))
     else:
         return A * np.sqrt(1 + s) * (ellipe(2 / (1 + s)) +

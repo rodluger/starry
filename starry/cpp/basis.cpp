@@ -235,7 +235,7 @@ Compute the full change of basis matrix, A.
 
 */
 void A(int lmax, double **matrix) {
-    int i, j, k;
+    int i;
     int N = (lmax + 1) * (lmax + 1);
 
     // Initialize an empty matrix
@@ -251,14 +251,7 @@ void A(int lmax, double **matrix) {
     A2(lmax, a2);
 
     // Dot them
-    for (i=0; i<N; i++){
-        for (j=0; j<N; j++){
-            matrix[i][j] = 0;
-            for (k=0; k<N; k++) {
-                matrix[i][j] += a2[i][k] * a1[k][j];
-            }
-        }
-    }
+    dot(N, a2, a1, matrix);
 
     // Free
     for (i=0; i<N; i++) {

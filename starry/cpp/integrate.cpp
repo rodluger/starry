@@ -1,42 +1,6 @@
 #include "starry.h"
 
 /**
-
-*/
-typedef struct {
-    int l;
-    int m;
-    int mu;
-    int nu;
-    int lmax;
-    double b;
-    double b2;
-    double br;
-    double br32;
-    double* r;
-    double* b_r;
-    double* cosphi;
-    double* sinphi;
-    double* coslam;
-    double* sinlam;
-    double ksq;
-    double k;
-    double E;
-    double K;
-    double PI;
-    double E1;
-    double E2;
-    double** H;
-    bool** bH;
-    double** I;
-    bool** bI;
-    double** J;
-    bool** bJ;
-    double** M;
-    bool** bM;
-} GREENS;
-
-/**
 Return the n^th term of the *r* phase curve solution vector.
 
 */
@@ -77,24 +41,39 @@ void rT(int lmax, double* vector) {
 Compute the n=2 term of the *s* occultation solution vector.
 This is the Mandel & Agol solution for linear limb darkening.
 
+TODO: Code up re-parametrized version
+
 */
 double s2(GREENS* G) {
     double Lambda;
     double xi = 2 * G->br * (4 - 7 * G->r[2] - G->b2);
     if (G->b == 0) {
-        Lambda = -(2. / 3.) * pow(1 - G->r[2], 1.5);
-    } else if (G->ksq < 1) {
-        Lambda = (1. / (9 * M_PI * sqrt(G->br))) *
-                 ((-3 + 12 * G->r[2] - 10 * G->b2 * G->r[2] - 6 * G->r[4] + xi) * G->K -
-                  2 * xi * G->E +
-                  3 * (G->b + G->r[1]) / (G->b - G->r[1]) * G->PI);
+        Lambda = -2. / 3. * pow(1. - G->r[2], 1.5);
     } else {
-        Lambda = (2. / (9 * M_PI * sqrt((1 - G->b + G->r[1]) * (1 + G->b - G->r[1])))) *
-                 ((1 - 5 * G->b2 + G->r[2] + (G->r[2] - G->b2) * (G->r[2] - G->b2)) * G->K -
-                  2 * xi * G->ksq * G->E +
-                  3 * (G->b + G->r[1]) / (G->b - G->r[1]) * G->PI);
+        if (G->ksq == 1) {
+            if (G->r[1] == 0.5) {
+                Lambda = 1. / 3. - 4. / (9. * M_PI);
+            } else if (G->r[1] < 0.5) {
+                double E = ellipE(4 * G->r[2]);
+                double K = ellipK(4 * G->r[2]);
+                Lambda = 1. / 3. + 2. / (9. * M_PI) * (4. * (2 * G->r[2] - 1) * E + (1 - 4. * G->r[2]) * K);
+            } else {
+                double E = ellipE(1. / (4 * G->r[2]));
+                double K = ellipK(1. / (4 * G->r[2]));
+                Lambda = 1. / 3. + 16. * G->r[1] / (9. * M_PI) * (2 * G->r[2] - 1) * E - (1 - 4 * G->r[2]) * (3. - 8. * G->r[2]) / (9. * M_PI * G->r[1]) * K;
+            }
+        } else if (G->ksq < 1) {
+            Lambda = (1. / (9 * M_PI * sqrt(G->br))) *
+                     ((-3 + 12 * G->r[2] - 10 * G->b2 * G->r[2] - 6 * G->r[4] + xi) * G->K -
+                      2 * xi * G->E +
+                      3 * (G->b + G->r[1]) / (G->b - G->r[1]) * G->PI);
+        } else {
+            Lambda = (2. / (9 * M_PI * sqrt((1 - G->b + G->r[1]) * (1 + G->b - G->r[1])))) *
+                     ((1 - 5 * G->b2 + G->r[2] + (G->r[2] - G->b2) * (G->r[2] - G->b2)) * G->K -
+                      2 * xi * G->ksq * G->E +
+                      3 * (G->b + G->r[1]) / (G->b - G->r[1]) * G->PI);
+        }
     }
-
     return (2. * M_PI / 3.) * (1 - 1.5 * Lambda - step(G->r[1] - G->b));
 }
 
@@ -334,6 +313,13 @@ void sT(int lmax, double b, double r, double* vector) {
         G.PI = 0;
         G.E1 = 0;
         G.E2 = 0;
+    } else if (G.ksq == 1) {
+        // Special case
+        G.K = 0;
+        G.E = 1;
+        G.PI = 0;
+        G.E1 = 0;
+        G.E2 = 1;
     } else {
         if (G.ksq < 1) {
             G.K = ellipK(G.ksq);

@@ -247,16 +247,21 @@ Compute the axis-angle rotation matrix for real spherical
 harmonics up to order lmax.
 
 */
-void R(int lmax, double u[3], double theta, double** matrix, double tol) {
+void R(int lmax, double u[3], double costheta, double sintheta, double** matrix, double tol) {
     // Trivial case
     if (lmax == 0) {
         matrix[0][0] = 1;
         return;
     }
 
+    // Zero out the matrix
+    int N = (lmax + 1) * (lmax + 1);
+    for (int i=0; i<N; i++) {
+        for (int j=0; j<N; j++)
+            matrix[i][j] = 0;
+    }
+
     // Construct the axis-angle rotation matrix R_A
-    double costheta = cos(theta);
-    double sintheta = sin(theta);
     double ux = u[0];
     double uy = u[1];
     double uz = u[2];
