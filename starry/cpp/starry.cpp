@@ -50,14 +50,18 @@ void init_constants(int lmax, CONSTANTS* C) {
 Compute the flux from a STARRY map.
 
 */
-void flux(int NT, double* y, double u[3], double* theta, double* x0, double* y0, double r, CONSTANTS* C, double* result) {
+void flux(int NT, double* y, double u[3], double* theta, double* x0,
+          double* y0, double r, CONSTANTS* C, double* result) {
     int i;
     double b;
     double zhat[3] = {0., 0., 1.};
-    double** ROT;
-    ROT = new double*[C->N];
+    double** ROT1;
+    double** ROT2;
+    ROT1 = new double*[C->N];
+    ROT2 = new double*[C->N];
     for (i=0; i<C->N; i++) {
-        ROT[i] = new double[C->N];
+        ROT1[i] = new double[C->N];
+        ROT2[i] = new double[C->N];
     }
     double* tmp1 = new double[C->N];
     double* tmp2 = new double[C->N];
@@ -75,11 +79,21 @@ void flux(int NT, double* y, double u[3], double* theta, double* x0, double* y0,
         }
 
         // Rotate the map into view
-        costheta = cos(theta[t]);
-        sintheta = sin(theta[t]);
-
-        R(C->lmax, u, costheta, sintheta, ROT);
-        dot(C->N, ROT, y, tmp1);
+        if (theta[t] == 0) {
+            // No need to rotate the map
+            for(i = 0; i<C->N; i++)
+                tmp1[i] = y[i];
+        } else if ((t > 0) && (theta[t] == theta[t - 1])) {
+            // We just computed this last step,
+            // so we can re-use it!
+            dot(C->N, ROT1, y, tmp1);
+        } else {
+            // Rotate the map
+            costheta = cos(theta[t]);
+            sintheta = sin(theta[t]);
+            R(C->lmax, u, costheta, sintheta, ROT1);
+            dot(C->N, ROT1, y, tmp1);
+        }
 
         // No occultation
         if (b >= 1 + r) {
@@ -97,8 +111,8 @@ void flux(int NT, double* y, double u[3], double* theta, double* x0, double* y0,
                 // Align occultor with the +y axis
                 sinomega = x0[t] / b;
                 cosomega = y0[t] / b;
-                R(C->lmax, zhat, cosomega, sinomega, ROT);
-                dot(C->N, ROT, tmp1, tmp2);
+                R(C->lmax, zhat, cosomega, sinomega, ROT2);
+                dot(C->N, ROT2, tmp1, tmp2);
             } else {
                 for(i = 0; i<C->N; i++)
                     tmp2[i] = tmp1[i];
@@ -117,9 +131,11 @@ void flux(int NT, double* y, double u[3], double* theta, double* x0, double* y0,
 
     // Free the memory
     for(i = 0; i<C->N; i++) {
-        delete [] ROT[i];
+        delete [] ROT1[i];
+        delete [] ROT2[i];
     }
-    delete [] ROT;
+    delete [] ROT1;
+    delete [] ROT2;
     delete [] tmp1;
     delete [] tmp2;
 

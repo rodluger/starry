@@ -308,8 +308,6 @@ int test_sT() {
 /**
 Benchmark test for main starry routines
 
-Y_{0,0} + Y_{1,1} + Y_{2,-2} + Y_{3,-1} + Y_{4,-3} + Y_{5,0}
-
 */
 int test_starry() {
     int diff = 0;
@@ -330,6 +328,7 @@ int test_starry() {
     cout << "Testing main starry routine... ";
 
     // Benchmarked occultation params
+    // y = Y_{0,0} + Y_{1,1} + Y_{2,-2} + Y_{3,-1} + Y_{4,-3} + Y_{5,0}
     y[0] = 1;
     y[3] = 1;
     y[4] = 1;
