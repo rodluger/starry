@@ -109,14 +109,14 @@ class build_ext(_build_ext):
             # Mac specific flags and libraries
             if sys.platform == "darwin":
                 flags += ["-march=native", "-mmacosx-version-min=10.9"]
-                for lib in ["m", "c++"]:
+                for lib in ["m", "c++", "gsl", "gslcblas"]:
                     for ext in self.extensions:
                         ext.libraries.append(lib)
                 for ext in self.extensions:
                     ext.extra_link_args += ["-mmacosx-version-min=10.9",
                                             "-march=native"]
             else:
-                libraries = ["m", "stdc++", "c++"]
+                libraries = ["m", "stdc++", "c++", "gsl", "gslcblas"]
                 for lib in libraries:
                     if not has_library(self.compiler, lib):
                         continue

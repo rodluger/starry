@@ -17,7 +17,14 @@ import starry
 from starry.build import build_ext  # NOQA
 
 ext = Extension("starry.interface",
-                sources=[os.path.join("starry", "interface.cpp")],
+                sources=[
+                    os.path.join("starry", "interface.cpp"),
+                    os.path.join("starry", "cpp", "basis.cpp"),
+                    os.path.join("starry", "cpp", "integrate.cpp"),
+                    os.path.join("starry", "cpp", "rotate.cpp"),
+                    os.path.join("starry", "cpp", "starry.cpp"),
+                    os.path.join("starry", "cpp", "utils.cpp"),
+                ],
                 language="c++")
 
 long_description = \
