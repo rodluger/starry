@@ -62,6 +62,7 @@ typedef struct {
 void init_constants(int lmax, CONSTANTS* C);
 void free_constants(int lmax, CONSTANTS* C);
 void flux(int NT, double* y, double u[3], double* theta, double* x0, double* y0, double r, CONSTANTS* C, double* result);
+void render(double* y, double u[3], double theta, CONSTANTS* C, int res, double** result);
 
 // utils.cpp
 double factorial(int n);
@@ -76,6 +77,7 @@ double ellipPI(double n, double ksq, gsl_mode_t mode=GSL_PREC_DOUBLE);
 void invert(int N, double** invmat, double **matrix, double tol=1e-10);
 
 // basis.cpp
+double poly(int lmax, double* p, double x, double y);
 void A1(int lmax, double** matrix);
 void A2(int lmax, double** matrix);
 void A(int lmax, double** matrix);

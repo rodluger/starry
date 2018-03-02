@@ -141,6 +141,56 @@ void flux(int NT, double* y, double u[3], double* theta, double* x0,
 
 }
 
+/**
+Render a STARRY map on a grid.
+*/
+void render(double* y, double u[3], double theta,
+            CONSTANTS* C, int res, double** result) {
+    int i, j;
+    double* x = new double[res];
+    double* tmp = new double[C->N];
+    double* p = new double[C->N];
+    double** ROT1;
+    ROT1 = new double*[C->N];
+    for (i=0; i<C->N; i++)
+        ROT1[i] = new double[C->N];
+
+    // Rotate the map into view
+    if (theta == 0) {
+        for(i = 0; i<C->N; i++)
+            tmp[i] = y[i];
+    } else {
+        R(C->lmax, u, cos(theta), sin(theta), ROT1);
+        dot(C->N, ROT1, y, tmp);
+    }
+
+    // Convert it to a polynomial
+    dot(C->N, C->A1, tmp, p);
+
+    // Render it
+    for (i=0; i<res; i++) {
+        x[i] = -1. + 2. * i / (res - 1.);
+    }
+    for (i=0; i<res; i++) {
+        for (j=0; j<res; j++) {
+            // Are we inside the body?
+            if (x[i] * x[i] + x[j] * x[j] < 1) {
+                result[j][i] = poly(C->lmax, p, x[i], x[j]);
+            } else {
+                result[j][i] = NAN;
+            }
+        }
+    }
+
+    // Free
+    for(i = 0; i<C->N; i++)
+        delete [] ROT1[i];
+    delete [] ROT1;
+    delete [] tmp;
+    delete [] p;
+    delete [] x;
+
+}
 
 /**
 Free the arrays in a CONSTANTS struct.

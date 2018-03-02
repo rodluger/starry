@@ -1,6 +1,37 @@
 #include "starry.h"
 
 /**
+Evaluate a polynomial vector at a given (x, y) coordinate.
+*/
+double poly(int lmax, double* p, double x, double y) {
+    int N = (lmax + 1) * (lmax + 1);
+    double z = sqrt(1 - x * x - y * y);
+    double* basis = new double[N];
+    int l, m, mu, nu;
+    int n = 0;
+    double res;
+
+    // Compute the basis
+    for (l=0; l<lmax+1; l++) {
+        for (m=-l; m<l+1; m++) {
+            mu = l - m;
+            nu = l + m;
+            if ((nu % 2) == 0)
+                basis[n] = pow(x, mu / 2) * pow(y, nu / 2);
+            else
+                basis[n] = pow(x, (mu - 1) / 2) * pow(y, (nu - 1) / 2) * z;
+            n++;
+        }
+    }
+
+    // Dot the coefficients in
+    res = dot(N, p, basis);
+    delete [] basis;
+
+    return res;
+}
+
+/**
 Contraction coefficient for the Ylms (Equation 10)
 
 */

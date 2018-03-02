@@ -311,7 +311,7 @@ Benchmark test for main starry routines
 */
 int test_starry() {
     int diff = 0;
-    int lmax = 25;
+    int lmax = 5;
     int NT = 50;
     CONSTANTS C;
     init_constants(lmax, &C);
@@ -366,13 +366,76 @@ int test_starry() {
 }
 
 /**
+Benchmark test for render()
+Let's render the Y_{1,-1} = sqrt(3/(4pi)) * y spherical harmonic.
+
+*/
+int test_render() {
+    int lmax = 1;
+    int diff = 0;
+    int res = 10;
+    double yhat[3] = {0., 1., 0.};
+    double* x = new double[res];
+    double norm = sqrt(3 / (4 * M_PI));
+    double theta = 0;
+    int i, j;
+    CONSTANTS C;
+    init_constants(lmax, &C);
+    double* y = new double[C.N];
+    y[0] = 0;
+    y[1] = 1;
+    y[2] = 0;
+    y[3] = 0;
+    double** map = new double*[res];
+    for (i=0; i<res; i++)
+        map[i] = new double[res];
+
+    // Log it
+    cout << "Testing the map rendering function... ";
+
+    // Render the map
+    render(y, yhat, theta, &C, res, map);
+
+    // Check it
+    for (i=0; i<res; i++)
+        x[i] = -1. + 2. * i / (res - 1.);
+    for (i=0; i<res; i++) {
+        for (j=0; j<res; j++) {
+            if (x[i] * x[i] + x[j] * x[j] < 1) {
+                if (abs(map[j][i] - norm * x[j]) > 1e-8) {
+                    diff++;
+                }
+            }
+        }
+    }
+
+    // Log it
+    if (diff == 0)
+        cout << "OK" << endl;
+    else
+        cout << "ERROR" << endl;
+
+    // Free
+    free_constants(lmax, &C);
+    for (i=0; i<res; i++)
+        delete [] map[i];
+    delete [] map;
+    delete [] x;
+    delete [] y;
+
+    return diff;
+
+}
+
+
+/**
 Run all tests.
 
 */
 int main(){
     int diff = test_A1() || test_A2() || test_A() ||
                test_R() || test_rT() || test_sT() ||
-               test_starry();
+               test_starry() || test_render();
     if (diff == 0)
         cout << "All tests passed." << endl;
     else
