@@ -5,9 +5,9 @@
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_sf_ellint.h>
 #include <cmath>
-#include <pybind11/pybind11.h>
 using namespace std;
-namespace py = pybind11;
+//#include <pybind11/pybind11.h>
+//namespace py = pybind11;
 
 /**
 The GREENS recurrence struct.

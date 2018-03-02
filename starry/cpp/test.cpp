@@ -311,7 +311,7 @@ Benchmark test for main starry routines
 */
 int test_starry() {
     int diff = 0;
-    int lmax = 5;
+    int lmax = 25;
     int NT = 50;
     CONSTANTS C;
     init_constants(lmax, &C);
