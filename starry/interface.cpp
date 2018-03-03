@@ -62,7 +62,7 @@ PYBIND11_MODULE(interface, m) {
       // Clean up
       free_constants(lmax, &C);
 
-      return result;
+      return result_out;
     }, doc
   );
 
