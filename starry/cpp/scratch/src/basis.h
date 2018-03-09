@@ -19,11 +19,11 @@ using std::abs;
 
     // Evaluate a polynomial vector at a given (x, y) coordinate
     template <typename T>
-    T poly (int lmax, const Eigen::VectorXd& p, const T& x, const T&y) {
+    T poly (const int lmax, const Eigen::Matrix<T, Eigen::Dynamic, 1>& p, const T& x, const T&y) {
         int N = (lmax + 1) * (lmax + 1);
         int l, m, mu, nu, n = 0;
         T z = sqrt(1.0 - x * x - y * y);
-        Eigen::VectorXd& basis(T);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> basis(N);
 
         // Compute the basis
         for (l=0; l<lmax+1; l++) {

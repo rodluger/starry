@@ -22,6 +22,7 @@ PYBIND11_MODULE(starry, m) {
            K
            E
            PI
+           poly
 
     )pbdoc";
 
@@ -39,6 +40,14 @@ PYBIND11_MODULE(starry, m) {
     R"pbdoc(
         Complete elliptic integral of the third kind.
     )pbdoc", "n"_a, "ksq"_a);
+
+    m.def("poly", [] (int lmax,
+                      const Eigen::Matrix<double, Eigen::Dynamic, 1>& p,
+                      const double& x, const double& y)
+                     { return basis::poly(lmax, p, x, y); },
+    R"pbdoc(
+        Evaluate a polynomial vector at a given (x, y) coordinate.
+    )pbdoc");
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
