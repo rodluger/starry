@@ -10,6 +10,9 @@ build/
 dist/
 starry.egg-info/
 starry/cpp/test
+starry/cpp/scratch/docs/_build
+starry/cpp/scratch/docs/_generate
+starry/cpp/scratch/test
 
 # Latex
 *.aux

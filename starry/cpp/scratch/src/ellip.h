@@ -1,18 +1,20 @@
+/**
+Elliptic integrals computed following:
+
+      Bulirsch 1965, Numerische Mathematik, 7, 78
+      Bulirsch 1965, Numerische Mathematik, 7, 353
+
+and the implementation by E. Agol (private communication).
+Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
+*/
+
 #ifndef _STARRY_ELLIP_H_
 #define _STARRY_ELLIP_H_
-
-// Elliptic integrals computed following:
-//
-//      Bulirsch 1965, Numerische Mathematik, 7, 78
-//      Bulirsch 1965, Numerische Mathematik, 7, 353
-//
-// and the implementation by E. Agol (private communication).
-// Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
 
 #include <cmath>
 #include "AutoDiffScalar.h"
 
-namespace starry {
+namespace ellip {
 
 using std::abs;
 
@@ -117,6 +119,6 @@ using std::abs;
     );
   }
 
-}; // namespace starry
+}; // namespace ellip
 
 #endif
