@@ -20,6 +20,8 @@ using std::abs;
     // Evaluate a polynomial vector at a given (x, y) coordinate
     template <typename T>
     T poly (const int lmax, const Eigen::Matrix<T, Eigen::Dynamic, 1>& p, const T& x, const T&y) {
+        // Check if outside the sphere
+        if (x * x + y * y > 1) return NAN;
         int N = (lmax + 1) * (lmax + 1);
         int l, m, mu, nu, n = 0;
         T z = sqrt(1.0 - x * x - y * y);
