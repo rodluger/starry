@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include <iostream>
 #include "ellip.h"
+#include "maps.h"
 #include "basis.h"
 #include "fact.h"
 
@@ -50,7 +51,6 @@ PYBIND11_MODULE(starry, m) {
     )pbdoc", "n"_a);
 
     // Elliptic functions
-
     m.def("K", [] (double ksq) { return ellip::K(ksq); },
     R"pbdoc(
         Complete elliptic integral of the first kind.
@@ -66,12 +66,11 @@ PYBIND11_MODULE(starry, m) {
         Complete elliptic integral of the third kind.
     )pbdoc", "n"_a, "ksq"_a);
 
-    // Basis functions
-
-    py::class_<basis::Map<double>>(m, "Map")
+    // Maps
+    py::class_<maps::Map<double>>(m, "Map")
         .def(py::init<Eigen::Matrix<double, Eigen::Dynamic, 1>&>())
         .def(py::init<int>())
-        .def("evaluate", &basis::Map<double>::evaluate);
+        .def("evaluate", &maps::Map<double>::evaluate);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
