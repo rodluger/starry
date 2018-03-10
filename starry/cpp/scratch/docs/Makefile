@@ -6,6 +6,7 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
+GENDIR        = _generate
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
@@ -50,6 +51,7 @@ help:
 .PHONY: clean
 clean:
 	rm -rf $(BUILDDIR)/*
+	rm -rf $(GENDIR)/*
 
 .PHONY: html
 html:

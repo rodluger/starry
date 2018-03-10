@@ -2,7 +2,6 @@
 #include <pybind11/eigen.h>
 #include <Eigen/Core>
 #include <iostream>
-#include <iomanip>
 #include "ellip.h"
 #include "basis.h"
 
@@ -23,8 +22,8 @@ struct ndarray {
 
 PYBIND11_MODULE(starry, m) {
     m.doc() = R"pbdoc(
-        elliptic functions
-        ------------------
+        starry
+        ------
 
         .. currentmodule:: starry
 
@@ -53,17 +52,10 @@ PYBIND11_MODULE(starry, m) {
         Complete elliptic integral of the third kind.
     )pbdoc", "n"_a, "ksq"_a);
 
-    m.def("poly",
-        [] (
-            const Eigen::Matrix<double, Eigen::Dynamic, 1>& p,
-            const double& x, const double& y
-        ) {
-            int lmax = floor(sqrt((double)p.size()) - 1);
-            return basis::poly(lmax, p, x, y);
-        },
-    R"pbdoc(
-        Evaluate a polynomial vector `p` at a given (x, y) coordinate.
-    )pbdoc");
+    py::class_<basis::Map<double>>(m, "Map")
+        .def(py::init<Eigen::Matrix<double, Eigen::Dynamic, 1>&>())
+        .def(py::init<int>())
+        .def("evaluate", &basis::Map<double>::evaluate);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
