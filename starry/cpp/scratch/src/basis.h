@@ -9,6 +9,7 @@ Spherical harmonic, polynomial, and Green's basis utilities.
 #include <cmath>
 #include <Eigen/Core>
 #include <pybind11/eigen.h>
+#include "fact.h"
 
 namespace basis {
 
@@ -64,22 +65,18 @@ using std::abs;
 
     }
 
-    // Factorial function (TODO!!!)
-    template <typename T>
-    double factorial(T n) {
-        return 0;
-    }
-
     // Contraction coefficient for the Ylms (Equation 10)
     double C(int p, int q, int k) {
-        if ((p > k) && ((p - k) % 2 == 0))
+        if ((p > k) && ((p - k) % 2 == 0)) {
             return 0;
-        else if ((q > p) && ((q - p) % 2 == 0))
+        } else if ((q > p) && ((q - p) % 2 == 0)) {
             return 0;
-        else
-            return factorial(0.5 * k) / (factorial(0.5 * q) *
-                                         factorial(0.5 * (k - p)) *
-                                         factorial(0.5 * (p - q)));
+        } else {
+            return fact::half_factorial(k) /
+                        (fact::half_factorial(q) *
+                         fact::half_factorial(k - p) *
+                         fact::half_factorial(p - q));
+        }
     }
 
 

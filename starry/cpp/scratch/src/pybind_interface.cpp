@@ -4,6 +4,7 @@
 #include <iostream>
 #include "ellip.h"
 #include "basis.h"
+#include "fact.h"
 
 using namespace std;
 using namespace pybind11::literals;
@@ -37,6 +38,19 @@ PYBIND11_MODULE(starry, m) {
 
     )pbdoc";
 
+    // Utilities
+    m.def("factorial", [] (int n) { return fact::factorial(n); },
+    R"pbdoc(
+        Factorial of a non-negative integer.
+    )pbdoc", "n"_a);
+
+    m.def("half_factorial", [] (int n) { return fact::half_factorial(n); },
+    R"pbdoc(
+        Factorial of `n` / 2.
+    )pbdoc", "n"_a);
+
+    // Elliptic functions
+
     m.def("K", [] (double ksq) { return ellip::K(ksq); },
     R"pbdoc(
         Complete elliptic integral of the first kind.
@@ -51,6 +65,8 @@ PYBIND11_MODULE(starry, m) {
     R"pbdoc(
         Complete elliptic integral of the third kind.
     )pbdoc", "n"_a, "ksq"_a);
+
+    // Basis functions
 
     py::class_<basis::Map<double>>(m, "Map")
         .def(py::init<Eigen::Matrix<double, Eigen::Dynamic, 1>&>())
