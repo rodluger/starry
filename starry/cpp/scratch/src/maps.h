@@ -35,7 +35,7 @@ namespace maps {
 
     // Evaluate a polynomial vector at a given (x, y) coordinate
     template <class T>
-    T Map<T>::evaluate (const T& x, const T&y) {
+    T Map<T>::evaluate (const T& x, const T& y) {
 
         // Check if outside the sphere
         if (x * x + y * y > 1.0) return NAN;

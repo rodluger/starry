@@ -8,6 +8,7 @@ Spherical harmonic, polynomial, and Green's basis utilities.
 
 #include <cmath>
 #include "fact.h"
+#include "sqrtint.h"
 
 namespace basis {
 
