@@ -11,12 +11,15 @@ Defines the surface map class.
 #include <Eigen/Core>
 #include "rotation.h"
 #include "basis.h"
+#include "solver.h"
 
 // Rotation matrix type
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 template <typename T>
 using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
+template <typename T>
+using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
 template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
 
@@ -62,11 +65,13 @@ namespace maps {
 
         Eigen::SparseMatrix<double> A1;
         Eigen::SparseMatrix<double> A;
+        VectorT<double> rT;
 
         // Constructor: compute the matrices
         Constants(int lmax) : lmax(lmax) {
             basis::computeA1(lmax, A1);
             basis::computeA(lmax, A1, A);
+            solver::computerT(lmax, rT);
         }
 
         // Destructor
@@ -89,7 +94,7 @@ namespace maps {
         // The map vectors
         Vector<T> y;
         Vector<T> p;
-        //Vector<T> g;
+        Vector<T> g;
 
         // Map order
         int lmax;
@@ -105,6 +110,7 @@ namespace maps {
             N = (lmax + 1) * (lmax + 1);
             y = Vector<T>::Zero(N);
             p = Vector<T>::Zero(N);
+            g = Vector<T>::Zero(N);
             basis.resize(N, 1);
             update(true);
         }
@@ -128,6 +134,7 @@ namespace maps {
     void Map<T>::update(bool force) {
         if (force || needs_update) {
             p = C.A1 * y;
+            g = C.A * y;
             needs_update = false;
         }
     }

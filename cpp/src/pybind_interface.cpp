@@ -8,6 +8,7 @@
 #include "fact.h"
 #include "sqrtint.h"
 #include "rotation.h"
+#include "solver.h"
 
 using namespace std;
 using namespace pybind11::literals;
@@ -26,6 +27,7 @@ PYBIND11_MODULE(starry, m) {
         .def("rotate", &maps::Map<double>::rotate)
         .def_property_readonly("y", [](const maps::Map<double> &map){return map.y;})
         .def_property_readonly("p", [](maps::Map<double> &map){map.update(); return map.p;})
+        .def_property_readonly("g", [](maps::Map<double> &map){map.update(); return map.g;})
         .def("__repr__", [](maps::Map<double> &map) -> string {return map.repr();});
 
     // Utilities

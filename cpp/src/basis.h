@@ -227,13 +227,6 @@ namespace basis {
             }
         }
 
-        // Dot A2 into A1 (slow)
-        /*
-        Matrix<double> A1Dense = Matrix<double>(A1);
-        Matrix<double> ADense = A2InvDense.colPivHouseholderQr().solve(A1Dense);
-        A = ADense.sparseView();
-        */
-
         // Sparse dot A2 into A1
         Eigen::SparseMatrix<double> A2Inv = A2InvDense.sparseView();
         Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;

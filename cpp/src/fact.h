@@ -562,6 +562,7 @@ namespace fact {
     double half_factorial(int n) {
         if ((n < -STARRY_MAX_HALF_FACT) || (n > STARRY_MAX_HALF_FACT)) {
             // TODO: Better error handling
+            std::cout << "ERROR: Half factorial argument out of bounds." << std::endl;
             return NAN;
         } else if (n % 2 == 0) {
             if (n < 0)
@@ -572,6 +573,12 @@ namespace fact {
             return half_fact_table[(n + STARRY_MAX_HALF_FACT) / 2].f;
         }
     }
+
+    // Gamma function
+    #define gamma(n)           factorial(n - 1)
+
+    // Gamma of n + 1/2
+    #define gamma_sup(n)       half_factorial(2 * (n) - 1)
 
 }; // namespace fact
 
