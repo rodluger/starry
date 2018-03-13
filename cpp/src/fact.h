@@ -574,6 +574,12 @@ namespace fact {
         }
     }
 
+    // Binomial coefficient
+    // TODO: TABULATE THESE!!!
+    double choose(int n, int k) {
+        return factorial(n) / (factorial(k) * factorial(n - k));
+    }
+
     // Gamma function
     #define gamma(n)           factorial(n - 1)
 

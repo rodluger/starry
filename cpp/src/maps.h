@@ -13,7 +13,7 @@ Defines the surface map class.
 #include "basis.h"
 #include "solver.h"
 
-// Rotation matrix type
+// Shorthand
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 template <typename T>
@@ -25,51 +25,12 @@ using UnitVector = Eigen::Matrix<T, 3, 1>;
 
 namespace maps {
 
-    // Forward declare our main classes
-    class Constants;
-    template <class T>
-    class Wigner;
-    template <class T>
-    class Map;
-
-    // Rotation matrices
-    template <class T>
-    class Wigner {
-
-        int lmax;
-
-    public:
-
-        Matrix<T>* Complex;
-        Matrix<T>* Real;
-
-        // Constructor: allocate the matrices
-        Wigner(int lmax) : lmax(lmax) {
-
-            Complex = new Matrix<T>[lmax + 1];
-            Real = new Matrix<T>[lmax + 1];
-            for (int l = 0; l < lmax + 1; l++) {
-                Complex[l].resize(2 * l + 1, 2 * l + 1);
-                Real[l].resize(2 * l + 1, 2 * l + 1);
-            }
-
-        }
-
-        // Destructor: free the matrices
-        ~Wigner() {
-            delete [] Complex;
-            delete [] Real;
-        }
-
-    };
-
-    // Constant matrices
+    // Constant matrices/vectors
     class Constants {
 
-        int lmax;
-
     public:
 
+        int lmax;
         Eigen::SparseMatrix<double> A1;
         Eigen::SparseMatrix<double> A;
         VectorT<double> rT;
@@ -108,7 +69,7 @@ namespace maps {
         int lmax;
 
         // Rotation matrices
-        Wigner<T> R;
+        rotation::Wigner<T> R;
 
         // Constant matrices
         Constants C;
@@ -264,7 +225,7 @@ namespace maps {
             }
 
             // Compute the sT vector
-            solver::computesT<T>(G);
+            solver::computesT<T>(G, b, r);
 
             // Dot the result in and we're done
             return G.sT * C.A * (*ptry);

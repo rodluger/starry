@@ -17,6 +17,16 @@ from the Wigner-D matrices for complex spherical harmonics.
 #include <Eigen/Core>
 #include "sqrtint.h"
 
+// Shorthand
+template <typename T>
+using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+template <typename T>
+using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
+template <typename T>
+using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
+template <typename T>
+using UnitVector = Eigen::Matrix<T, 3, 1>;
+
 namespace rotation {
 
     using sqrtint::sqrt_int;
@@ -257,6 +267,37 @@ namespace rotation {
         return;
 
     }
+
+    // Rotation matrix class
+    template <class T>
+    class Wigner {
+
+        int lmax;
+
+    public:
+
+        Matrix<T>* Complex;
+        Matrix<T>* Real;
+
+        // Constructor: allocate the matrices
+        Wigner(int lmax) : lmax(lmax) {
+
+            Complex = new Matrix<T>[lmax + 1];
+            Real = new Matrix<T>[lmax + 1];
+            for (int l = 0; l < lmax + 1; l++) {
+                Complex[l].resize(2 * l + 1, 2 * l + 1);
+                Real[l].resize(2 * l + 1, 2 * l + 1);
+            }
+
+        }
+
+        // Destructor: free the matrices
+        ~Wigner() {
+            delete [] Complex;
+            delete [] Real;
+        }
+
+    };
 
 }; // namespace rotation
 
