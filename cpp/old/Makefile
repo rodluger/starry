@@ -5,9 +5,9 @@ HEADERS = $(wildcard *.h)
 default: test
 
 test: $(SOURCES) $(HEADERS)
-	@g++ -std=c++11 -Wall -I/usr/local/include -c *.cpp
-	@g++ -std=c++11 -L/usr/local/lib *.o -lgsl -lgslcblas -lm -o test
-	@./test
+	@g++ -std=c++11 -Wall -I/usr/local/include -g -c *.cpp
+	@g++ -std=c++11 -L/usr/local/lib *.o -lgsl -g -lgslcblas -lm -o test
+	./test
 
 profile: $(SOURCES) $(HEADERS)
 	@g++ -std=c++11 -Wall -I/usr/local/include -c *.cpp

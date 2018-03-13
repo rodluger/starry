@@ -18,5 +18,15 @@ assert np.allclose(utils.sqrt_int(25), 5.)
 assert np.allclose(utils.invsqrt_int(25), 0.2)
 
 # Check the Map class
-y = Map([0, 1, 0, 0])
-assert y.evaluate(0.3, 0.5) == 0.3
+m = Map([0, 0, 1, 0])
+assert np.allclose(m.y, np.array([0, 0, 1, 0]))
+
+# Rotations
+m.rotate([1, 0, 0], -np.pi / 2)
+assert np.allclose(m.y, np.array([0, 1, 0, 0]))
+m.rotate([0, 0, 1], -np.pi / 2)
+assert np.allclose(m.y, np.array([0, 0, 0, 1]))
+m.rotate([0, 1, 0], -np.pi / 2)
+assert np.allclose(m.y, np.array([0, 0, 1, 0]))
+
+# Evaluation

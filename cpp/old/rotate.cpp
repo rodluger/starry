@@ -22,117 +22,118 @@ double rooti(int i){
 Compute the Wigner D matrices.
 
 */
-void dlmn(int L, double s1, double c1, double c2, double TGBET2, double s3, double c3, double*** DL, double*** RL) {
-    int IINF = 1 - L;
-    int ISUP = -IINF;
-    int M, MP;
-    int AL, AL1, TAL1, AMP, LAUX, LBUX, AM, LAUZ, LBUZ;
-    int SIGN;
-    double ALI, AUZ, AUX, CUX, FACT, TERM, CUZ;
-    double COSAUX, COSMAL, SINMAL, COSAG, SINAG, COSAGM, SINAGM, COSMGA, SINMGA;
+void dlmn(int l, double s1, double c1, double c2, double tgbet2, double s3,
+          double c3, double*** DL, double*** RL) {
+    int iinf = 1 - l;
+    int isup = -iinf;
+    int m, mp;
+    int al, al1, tal1, amp, laux, lbux, am, lauz, lbuz;
+    int sign;
+    double ali, auz, aux, cux, fact, term, cuz;
+    double cosaux, cosmal, sinmal, cosag, sinag, cosagm, sinagm, cosmga, sinmga;
     double D1, D2;
 
-    // COMPUTATION OF THE DL[L;M',M) MATRIX, MP IS M' AND M IS M.
-    // FIRST ROW BY RECURRENCE (SEE EQUATIONS 19 AND 20)
-    DL[L][L][L] = DL[ISUP][ISUP][L - 1] * (1. + c2) / 2.;
-    DL[L][-L][L] = DL[ISUP][-ISUP][L - 1] * (1. - c2) / 2.;
-    for (M=ISUP; M>IINF-1; M--)
-        DL[L][M][L] = -TGBET2 * root(L + M + 1) * rooti(L - M) * DL[L][M + 1][L];
+    // Compute the DL[l;m',m) matrix.
+    // First row by recurrence (Eq. 19 and 20 in Alvarez Collado et al.)
+    DL[2 * l][2 * l][l] = DL[isup + l - 1][isup + l - 1][l - 1] * (1. + c2) / 2.;
+    DL[2 * l][0][l] = DL[isup + l - 1][-isup + l - 1][l - 1] * (1. - c2) / 2.;
+    for (m=isup; m>iinf-1; m--)
+        DL[2 * l][m + l][l] = -tgbet2 * root(l + m + 1) *
+                              rooti(l - m) * DL[2 * l][m + 1 + l][l];
 
-    // THE ROWS OF THE UPPER QUARTER TRIANGLE OF THE DL[L;M',M) MATRIX
-    // (SEE EQUATION 21)
-    AL = L;
-    AL1 = AL - 1;
-    TAL1 = AL + AL1;
-    ALI = (1. / (double) AL1);
-    COSAUX = c2 * AL * AL1;
-    for (MP=L-1; MP>-1; MP--) {
-        AMP = MP;
-        LAUX = L + MP;
-        LBUX = L - MP;
-        AUX = rooti(LAUX) * rooti(LBUX) * ALI;
-        CUX = root(LAUX - 1) * root(LBUX - 1) * AL;
-        for (M=ISUP; M>IINF-1; M--) {
-            AM = M;
-            LAUZ = L + M;
-            LBUZ = L - M;
-            AUZ = rooti(LAUZ) * rooti(LBUZ);
-            FACT = AUX * AUZ;
-            TERM = TAL1 * (COSAUX - AM * AMP) * DL[MP][M][L - 1];
-            if ((LBUZ != 1) && (LBUX != 1)) {
-                CUZ = root(LAUZ - 1) * root(LBUZ - 1);
-                TERM = TERM - DL[MP][M][L - 2] * CUX * CUZ;
+    // The rows of the upper quarter triangle of the DL[l;m',m) matrix
+    // (Eq. 21 in Alvarez Collado et al.)
+    al = l;
+    al1 = al - 1;
+    tal1 = al + al1;
+    ali = (1. / (double) al1);
+    cosaux = c2 * al * al1;
+    for (mp=l-1; mp>-1; mp--) {
+        amp = mp;
+        laux = l + mp;
+        lbux = l - mp;
+        aux = rooti(laux) * rooti(lbux) * ali;
+        cux = root(laux - 1) * root(lbux - 1) * al;
+        for (m=isup; m>iinf-1; m--) {
+            am = m;
+            lauz = l + m;
+            lbuz = l - m;
+            auz = rooti(lauz) * rooti(lbuz);
+            fact = aux * auz;
+            term = tal1 * (cosaux - am * amp) * DL[mp + l - 1][m + l - 1][l - 1];
+            if ((lbuz != 1) && (lbux != 1)) {
+                cuz = root(lauz - 1) * root(lbuz - 1);
+                term = term - DL[mp + l - 2][m + l - 2][l - 2] * cux * cuz;
             }
-            DL[MP][M][L] = FACT * TERM;
+            DL[mp + l][m + l][l] = fact * term;
         }
-        IINF = IINF + 1;
-        ISUP = ISUP - 1;
+        iinf = iinf + 1;
+        isup = isup - 1;
     }
 
-    // THE REMAINING ELEMENTS OF THE DL[L;M',M) MATRIX ARE CALCULATED
-    // USING THE CORRESPONDING SYMMETRY RELATIONS:
-    // REFLEXION ---> ((-1)**(M-M')) DL[L;M,M') = DL[L;M',M), M'<=M
-    // INVERSION ---> ((-1)**(M-M')) DL[L;-M',-M) = DL[L;M',M)
+    // The remaining elements of the DL[l;m',m) matrix are calculated
+    // using the corresponding symmetry relations:
+    // reflection ---> ((-1)**(m-m')) DL[l;m,m') = DL[l;m',m), m'<=m
+    // inversion ---> ((-1)**(m-m')) DL[l;-m',-m) = DL[l;m',m)
 
-    // REFLEXION
-    SIGN = 1;
-    IINF = -L;
-    ISUP = L - 1;
-    for (M=L; M>0; M--) {
-        for (MP=IINF; MP<ISUP+1; MP++) {
-            DL[MP][M][L] = SIGN * DL[M][MP][L];
-            SIGN = -SIGN;
+    // Reflection
+    sign = 1;
+    iinf = -l;
+    isup = l - 1;
+    for (m=l; m>0; m--) {
+        for (mp=iinf; mp<isup+1; mp++) {
+            DL[mp + l][m + l][l] = sign * DL[m + l][mp + l][l];
+            sign = -sign;
         }
-        IINF = IINF + 1;
-        ISUP = ISUP - 1;
-    }
-    // INVERSION
-    IINF = -L;
-    ISUP = IINF;
-    for (M=L-1; M>-(L+1); M--) {
-        SIGN = -1;
-        for (MP=ISUP; MP>IINF-1; MP--) {
-            DL[MP][M][L] = SIGN * DL[-MP][-M][L];
-            SIGN = -SIGN;
-        }
-        ISUP = ISUP + 1;
+        iinf = iinf + 1;
+        isup = isup - 1;
     }
 
-    // COMPUTATION OF THE ROTATION MATRICES RL[L;M',M) FOR REAL SPHERICAL
-    // HARMONICS USING THE MATRICES DL[L;M',M) FOR COMPLEX SPHERICAL
-    // HARMONICS (SEE EQUATIONS 10 TO 18)
-    RL[0][0][L] = DL[0][0][L];
-    COSMAL = c1;
-    SINMAL = s1;
-    SIGN = -1;
-    for (MP=1; MP<L+1; MP++) {
-        COSMGA = c3;
-        SINMGA = s3;
-        AUX = root(2) * DL[0][MP][L];
-        RL[MP][0][L] = AUX * COSMAL;
-        RL[-MP][0][L] = AUX * SINMAL;
-        for (M=1; M<L+1; M++) {
-            AUX = root(2) * DL[M][0][L];
-            RL[0][M][L] = AUX * COSMGA;
-            RL[0][-M][L] = -AUX * SINMGA;
-            D1 = DL[-MP][-M][L];
-            D2 = SIGN * DL[MP][-M][L];
-            COSAG = COSMAL * COSMGA - SINMAL * SINMGA;
-            COSAGM = COSMAL * COSMGA + SINMAL * SINMGA;
-            SINAG = SINMAL * COSMGA + COSMAL * SINMGA;
-            SINAGM = SINMAL * COSMGA - COSMAL * SINMGA;
-            RL[MP][M][L] = D1 * COSAG + D2 * COSAGM;
-            RL[MP][-M][L] = -D1 * SINAG + D2 * SINAGM;
-            RL[-MP][M][L] = D1 * SINAG + D2 * SINAGM;
-            RL[-MP][-M][L] = D1 * COSAG - D2 * COSAGM;
-            AUX = COSMGA * c3 - SINMGA * s3;
-            SINMGA = SINMGA * c3 + COSMGA * s3;
-            COSMGA = AUX;
+    // Inversion
+    iinf = -l;
+    isup = iinf;
+    for (m=l-1; m>-(l+1); m--) {
+        sign = -1;
+        for (mp=isup; mp>iinf-1; mp--) {
+            DL[mp + l][m + l][l] = sign * DL[-mp + l][-m + l][l];
+            sign = -sign;
         }
-        SIGN = -SIGN;
-        AUX = COSMAL * c1 - SINMAL * s1;
-        SINMAL = SINMAL * c1 + COSMAL * s1;
-        COSMAL = AUX;
+        isup = isup + 1;
+    }
+
+    // Compute the real rotation matrices RL from the complex ones DL
+    RL[0 + l][0 + l][l] = DL[0 + l][0 + l][l];
+    cosmal = c1;
+    sinmal = s1;
+    sign = -1;
+    for (mp=1; mp<l+1; mp++) {
+        cosmga = c3;
+        sinmga = s3;
+        aux = root(2) * DL[0 + l][mp + l][l];
+        RL[mp + l][0 + l][l] = aux * cosmal;
+        RL[-mp + l][0 + l][l] = aux * sinmal;
+        for (m=1; m<l+1; m++) {
+            aux = root(2) * DL[m + l][0 + l][l];
+            RL[l][m + l][l] = aux * cosmga;
+            RL[l][-m + l][l] = -aux * sinmga;
+            D1 = DL[-mp + l][-m + l][l];
+            D2 = sign * DL[mp + l][-m + l][l];
+            cosag = cosmal * cosmga - sinmal * sinmga;
+            cosagm = cosmal * cosmga + sinmal * sinmga;
+            sinag = sinmal * cosmga + cosmal * sinmga;
+            sinagm = sinmal * cosmga - cosmal * sinmga;
+            RL[mp + l][m + l][l] = D1 * cosag + D2 * cosagm;
+            RL[mp + l][-m + l][l] = -D1 * sinag + D2 * sinagm;
+            RL[-mp + l][m + l][l] = D1 * sinag + D2 * sinagm;
+            RL[-mp + l][-m + l][l] = D1 * cosag - D2 * cosagm;
+            aux = cosmga * c3 - sinmga * s3;
+            sinmga = sinmga * c3 + cosmga * s3;
+            cosmga = aux;
+        }
+        sign = -sign;
+        aux = cosmal * c1 - sinmal * s1;
+        sinmal = sinmal * c1 + cosmal * s1;
+        cosmal = aux;
     }
 
     return;
@@ -143,8 +144,9 @@ Compute the eulerian rotation matrix for real spherical
 harmonics up to order lmax.
 
 */
-void rotar(int lmax, double c1, double s1, double c2, double s2, double c3, double s3, double** matrix, double tol) {
-    double COSAG, COSAMG, SINAG, SINAMG, TGBET2;
+void rotar(int lmax, double c1, double s1, double c2, double s2,
+           double c3, double s3, double** matrix, double tol) {
+    double cosag, COSAMG, sinag, SINAMG, tgbet2;
     int i, j, k, l, n;
 
     // Declare our RL and DL matrices
@@ -163,49 +165,41 @@ void rotar(int lmax, double c1, double s1, double c2, double s2, double c3, doub
         }
     }
 
-    // Shift the pointers so the indices range from [-l, l][-l, l][0, l]
-    RL = RL + lmax;
-    DL = DL + lmax;
-    for (i=-lmax; i<lmax+1; i++) {
-        RL[i] = RL[i] + lmax;
-        DL[i] = DL[i] + lmax;
-    }
-
-    // COMPUTATION OF THE INITIAL MATRICES D0, R0, D1 AND R1
+    // Compute the initial matrices D0, R0, D1 and R1
     DL[0][0][0] = 1.;
     RL[0][0][0] = 1.;
-    DL[1][1][1] = (1. + c2) / 2.;
-    DL[1][0][1] = -s2 / root(2);
-    DL[1][-1][1] = (1. - c2) / 2.;
-    DL[0][1][1] = -DL[1][0][1];
-    DL[0][0][1] = DL[1][1][1] - DL[1][-1][1];
-    DL[0][-1][1] = DL[1][0][1];
-    DL[-1][1][1] = DL[1][-1][1];
-    DL[-1][0][1] = DL[0][1][1];
-    DL[-1][-1][1] = DL[1][1][1];
-    COSAG = c1 * c3 - s1 * s3;
+    DL[2][2][1] = (1. + c2) / 2.;
+    DL[2][1][1] = -s2 / root(2);
+    DL[2][0][1] = (1. - c2) / 2.;
+    DL[1][2][1] = -DL[2][1][1];
+    DL[1][1][1] = DL[2][2][1] - DL[2][0][1];
+    DL[1][0][1] = DL[2][1][1];
+    DL[0][2][1] = DL[2][0][1];
+    DL[0][1][1] = DL[1][2][1];
+    DL[0][0][1] = DL[2][2][1];
+    cosag = c1 * c3 - s1 * s3;
     COSAMG = c1 * c3 + s1 * s3;
-    SINAG = s1 * c3 + c1 * s3;
+    sinag = s1 * c3 + c1 * s3;
     SINAMG = s1 * c3 - c1 * s3;
-    RL[0][0][1] = DL[0][0][1];
-    RL[1][0][1] = root(2) * DL[0][1][1] * c1;
-    RL[-1][0][1] = root(2) * DL[0][1][1] * s1;
-    RL[0][1][1] = root(2) * DL[1][0][1] * c3;
-    RL[0][-1][1] = -root(2) * DL[1][0][1] * s3;
-    RL[1][1][1] = DL[1][1][1] * COSAG - DL[1][-1][1] * COSAMG;
-    RL[1][-1][1] = -DL[1][1][1] * SINAG - DL[1][-1][1] * SINAMG;
-    RL[-1][1][1] = DL[1][1][1] * SINAG - DL[1][-1][1] * SINAMG;
-    RL[-1][-1][1] = DL[1][1][1] * COSAG + DL[1][-1][1] * COSAMG;
+    RL[1][1][1] = DL[1][1][1];
+    RL[2][1][1] = root(2) * DL[1][2][1] * c1;
+    RL[0][1][1] = root(2) * DL[1][2][1] * s1;
+    RL[1][2][1] = root(2) * DL[2][1][1] * c3;
+    RL[1][0][1] = -root(2) * DL[2][1][1] * s3;
+    RL[2][2][1] = DL[2][2][1] * cosag - DL[2][0][1] * COSAMG;
+    RL[2][0][1] = -DL[2][2][1] * sinag - DL[2][0][1] * SINAMG;
+    RL[0][2][1] = DL[2][2][1] * sinag - DL[2][0][1] * SINAMG;
+    RL[0][0][1] = DL[2][2][1] * cosag + DL[2][0][1] * COSAMG;
 
-    // THE REMAINING MATRICES ARE CALCULATED USING SYMMETRY AND
-    // RECURRENCE RELATIONS BY MEANS OF THE SUBROUTINE DLMN.
+    // The remaining matrices are calculated using symmetry and
+    // and recurrence relations
     if (abs(s2) < tol)
-        TGBET2 = 0.;
+        tgbet2 = 0.;
     else
-        TGBET2 = (1. - c2) / s2;
+        tgbet2 = (1. - c2) / s2;
 
     for (l=2; l<lmax+1; l++)
-        dlmn(l, s1, c1, c2, TGBET2, s3, c3, DL, RL);
+        dlmn(l, s1, c1, c2, tgbet2, s3, c3, DL, RL);
 
     // Flatten RL into a block-diagonal matrix, matrix
     // matrix has dimensions [(lmax + 1)^2, (lmax + 1)^2]
@@ -213,18 +207,10 @@ void rotar(int lmax, double c1, double s1, double c2, double s2, double c3, doub
         n = l * l;
         for (i=0; i<2*l + 1; i++) {
             for (j=0; j<2*l + 1; j++) {
-                matrix[i + n][j + n] = RL[i - l][j - l][l];
+                matrix[i + n][j + n] = RL[i][j][l];
             }
         }
     }
-
-    // Unshift the matrix pointers
-    for (i=-lmax; i<lmax+1; i++) {
-        RL[i] = RL[i] - lmax;
-        DL[i] = DL[i] - lmax;
-    }
-    RL = RL - lmax;
-    DL = DL - lmax;
 
     // Free the matrices
     for(i=0; i<2*lmax+1; i++){

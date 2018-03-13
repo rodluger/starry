@@ -1,3 +1,4 @@
+#include <iostream>
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
 #include <Eigen/Core>
@@ -6,6 +7,7 @@
 #include "basis.h"
 #include "fact.h"
 #include "sqrtint.h"
+#include "rotation.h"
 
 using namespace std;
 using namespace pybind11::literals;
@@ -20,7 +22,11 @@ PYBIND11_MODULE(starry, m) {
     py::class_<maps::Map<double>>(m, "Map")
         .def(py::init<Eigen::Matrix<double, Eigen::Dynamic, 1>&>())
         .def(py::init<int>())
-        .def("evaluate", &maps::Map<double>::evaluate);
+        .def("evaluate", &maps::Map<double>::evaluate)
+        .def("rotate", &maps::Map<double>::rotate)
+        .def_property_readonly("y", [](const maps::Map<double> &map){return map.y;})
+        .def_property_readonly("p", [](maps::Map<double> &map){map.update(); return map.p;})
+        .def("__repr__", [](maps::Map<double> &map) -> string {return map.repr();});
 
     // Utilities
     py::module m_utils = m.def_submodule("utils");
@@ -62,6 +68,7 @@ PYBIND11_MODULE(starry, m) {
         R"pbdoc(
             Complete elliptic integral of the third kind.
         )pbdoc", "n"_a, "ksq"_a);
+
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
