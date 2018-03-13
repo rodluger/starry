@@ -28,11 +28,7 @@ namespace maps {
     // Forward declare our main classes
     class Constants;
     template <class T>
-    class Greens;
-    template <class T>
     class Wigner;
-    template <class T>
-    class Primitive;
     template <class T>
     class Map;
 
@@ -87,124 +83,6 @@ namespace maps {
 
     };
 
-    // Primitive integral helper matrices
-    template <class T>
-    class Primitive {
-
-        int lmax;
-        int N;
-        Matrix<bool> set;
-        Matrix<T> matrix;
-        T (*setter)(Greens<T>&, int, int);
-        Greens<T>& G;
-
-    public:
-
-        // Constructor
-        Primitive(Greens<T>& G, int lmax, T (*setter)(Greens<T>&, int, int)) : lmax(lmax), setter(setter), G(G) {
-            N = 2 * lmax + 1;
-            set = Matrix<bool>::Zero(N, N);
-            matrix.resize(N, N);
-        }
-
-        // Getter function. G is a pointer to the current Greens struct, and setter
-        // is a pointer to the function that computes the (i, j) element
-        // of this primitive matrix
-        T value(int i, int j) {
-            if (!set(i, j)) {
-                matrix(i, j) = (*setter)(G, i, j);
-                set(i, j) = true;
-            }
-            return matrix(i, j);
-        }
-
-    };
-
-    // Compute the primitive integral helper matrix H
-    template <typename T>
-    T computeH(Greens<T>& G, int i, int j) {
-        return 0; // TODO
-    }
-
-    // Compute the primitive integral helper matrix I
-    template <typename T>
-    T computeI(Greens<T>& G, int i, int j) {
-        return 0; // TODO
-    }
-
-    // Compute the primitive integral helper matrix J
-    template <typename T>
-    T computeJ(Greens<T>& G, int i, int j) {
-        return 0; // TODO
-    }
-
-    // Compute the primitive integral helper matrix M
-    template <typename T>
-    T computeM(Greens<T>& G, int i, int j) {
-        return 0; // TODO
-    }
-
-    // Greens integration housekeeping data
-    template <class T>
-    class Greens {
-
-        int lmax;
-        int N;
-
-    public:
-
-        int l;
-        int m;
-        int mu;
-        int nu;
-
-        T b;
-        T b2;
-        T br;
-        T br32;
-        T ksq;
-        T k;
-        T E;
-        T K;
-        T PI;
-        T E1;
-        T E2;
-
-        Vector<T> r;
-        Vector<T> b_r;
-        Vector<T> cosphi;
-        Vector<T> sinphi;
-        Vector<T> coslam;
-        Vector<T> sinlam;
-
-        Primitive<T> H;
-        Primitive<T> I;
-        Primitive<T> J;
-        Primitive<T> M;
-
-        Vector<T> sT;
-
-        // Constructor
-        Greens(int lmax) : lmax(lmax), H(*this, lmax, computeH),
-                           I(*this, lmax, computeI), J(*this, lmax, computeJ),
-                           M(*this, lmax, computeM) {
-
-            // Initialize some stuff
-            N = 2 * lmax + 1;
-            if (N < 2) N = 2;
-            r.resize(N);
-            b_r.resize(N);
-            cosphi.resize(N);
-            sinphi.resize(N);
-            coslam.resize(N);
-            sinlam.resize(N);
-            sT.resize((lmax + 1) * (lmax + 1));
-
-        }
-
-    };
-
-
     // The surface map vector class
     template <class T>
     class Map {
@@ -236,7 +114,7 @@ namespace maps {
         Constants C;
 
         // Greens data
-        Greens<T> G;
+        solver::Greens<T> G;
 
         // Constructor: initialize map to zeros
         Map(int lmax) : lmax(lmax), R(lmax), C(lmax), G(lmax) {
@@ -385,7 +263,8 @@ namespace maps {
                 ptry = &tmpvec;
             }
 
-            // Compute the sT vector (TODO)
+            // Compute the sT vector
+            solver::computesT<T>(G);
 
             // Dot the result in and we're done
             return G.sT * C.A * (*ptry);
