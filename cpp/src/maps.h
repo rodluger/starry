@@ -60,18 +60,16 @@ namespace maps {
 
     public:
 
-        Matrix<double> A1;
+        Eigen::SparseMatrix<double> A1;
+        Eigen::SparseMatrix<double> A;
 
-        // Constructor: allocate the matrices
+        // Constructor: compute the matrices
         Constants(int lmax) : lmax(lmax) {
-
-            int N = (lmax + 1) * (lmax + 1);
-            A1.resize(N, N);
             basis::computeA1(lmax, A1);
-
+            basis::computeA(lmax, A1, A);
         }
 
-        // Destructor: free the matrices
+        // Destructor
         ~Constants() {
             // Nothing for now
         }
@@ -165,7 +163,6 @@ namespace maps {
         return p.dot(basis);
 
     }
-
 
     // Rotate the map in-place
     template <class T>

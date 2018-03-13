@@ -6,10 +6,15 @@ Spherical harmonic, polynomial, and Green's basis utilities.
 #ifndef _STARRY_BASIS_H_
 #define _STARRY_BASIS_H_
 
+#include <iostream>
 #include <cmath>
 #include <Eigen/Core>
+#include <Eigen/SparseLU>
 #include "fact.h"
 #include "sqrtint.h"
+
+template <typename T>
+using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 
 namespace basis {
 
@@ -83,12 +88,20 @@ namespace basis {
     }
 
     // Compute the first change of basis matrix, A_1
-    void computeA1(int lmax, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& A1) {
+    // NOTE: This routine is **not optimized**. We could compute the
+    // elements of the sparse matrix A1 directly, but instead we compute
+    // the elements of the tensors Ylm, contract these tensors to column vectors
+    // in the dense version of A1, then convert it to sparse form.
+    // Fortunately, this routine is only run **once** when a Map class is
+    // instantiated.
+    void computeA1(int lmax, Eigen::SparseMatrix<double>& A1, double tol=1e-15) {
         int l, m;
         int n = 0;
         int i, j, k, p, q, v;
+        int N = (lmax + 1) * (lmax + 1);
         double coeff;
         double Ylm[lmax + 1][lmax + 1][2];
+        Matrix<double> A1Dense = Matrix<double>::Zero(N, N);
 
         // Iterate over the spherical harmonic orders and degrees
         for (l=0; l<lmax+1; l++) {
@@ -139,26 +152,105 @@ namespace basis {
                     }
                 }
 
-                // Now contract the tensor down to a vector
+                // Now contract the tensor down to a column vector in A1Dense
                 v = 0;
                 for (i=0; i<l+1; i++) {
                     for (j=0; j<i+1; j++) {
-                        A1(v, n) = Ylm[i][j][0];
+                        if (std::abs(Ylm[i][j][0]) > tol)
+                            A1Dense(v, n) = Ylm[i][j][0];
                         v++;
                         if (j < i) {
-                            A1(v, n) = Ylm[i][j][1];
+                            if (std::abs(Ylm[i][j][1]) > tol)
+                                A1Dense(v, n) = Ylm[i][j][1];
                             v++;
                         }
                     }
                 }
 
-                // Next term in the vector
+                // Next term
                 n++;
             }
         }
 
+        // Make sparse
+        A1 = A1Dense.sparseView();
+
         return;
     }
+
+    // Compute the full change of basis matrix, A
+    void computeA(int lmax, Eigen::SparseMatrix<double>& A1, Eigen::SparseMatrix<double>& A, double tol=1e-15) {
+        int i, n, l, m, mu, nu;
+        int N = (lmax + 1) * (lmax + 1);
+
+        // Let's compute the inverse of A2, since it's easier
+        Matrix<double> A2InvDense = Matrix<double>::Zero(N, N);
+        n = 0;
+        for (l=0; l<lmax+1; l++) {
+            for (m=-l; m<l+1; m++){
+                mu = l - m;
+                nu = l + m;
+                if (nu % 2 == 0) {
+                    // x^(mu/2) y^(nu/2)
+                    A2InvDense(n, n) = (mu + 2) / 2;
+                } else if ((l == 1) && (m == 0)) {
+                    // z
+                    A2InvDense(n, n) = 1;
+                } else if ((mu == 1) && (l % 2 == 0)) {
+                    // x^(l-2) y z
+                    i = l * l + 3;
+                    A2InvDense(i, n) = 3;
+                } else if ((mu == 1) && (l % 2 == 1)) {
+                    // x^(l-3) z
+                    i = 1 + (l - 2) * (l - 2);
+                    A2InvDense(i, n) = -1;
+                    // x^(l-1) z
+                    i = l * l + 1;
+                    A2InvDense(i, n) = 1;
+                    // x^(l-3) y^2 z
+                    i = l * l + 5;
+                    A2InvDense(i, n) = 4;
+                } else {
+                    if (mu != 3) {
+                        // x^((mu - 5)/2) y^((nu - 1)/2)
+                        i = nu + ((mu - 4 + nu) * (mu - 4 + nu)) / 4;
+                        A2InvDense(i, n) = (mu - 3) / 2;
+                        // x^((mu - 5)/2) y^((nu + 3)/2)
+                        i = nu + 4 + ((mu + nu) * (mu + nu)) / 4;
+                        A2InvDense(i, n) = -(mu - 3) / 2;
+                    }
+                    // x^((mu - 1)/2) y^((nu - 1)/2)
+                    i = nu + (mu + nu) * (mu + nu) / 4;
+                    A2InvDense(i, n) = -(mu + 3) / 2;
+                }
+                n++;
+            }
+        }
+
+        // Dot A2 into A1 (slow)
+        /*
+        Matrix<double> A1Dense = Matrix<double>(A1);
+        Matrix<double> ADense = A2InvDense.colPivHouseholderQr().solve(A1Dense);
+        A = ADense.sparseView();
+        */
+
+        // Sparse dot A2 into A1
+        Eigen::SparseMatrix<double> A2Inv = A2InvDense.sparseView();
+        Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+        solver.compute(A2Inv);
+        if (solver.info() != Eigen::Success) {
+            std::cout << "ERROR: Sparse solve failed for matrix `A`." << std::endl;
+            exit(1);
+        }
+        A = solver.solve(A1);
+        if (solver.info() != Eigen::Success) {
+            std::cout << "ERROR: Sparse solve failed for matrix `A`." << std::endl;
+            exit(1);
+        }
+
+        return;
+    }
+
 
 }; // namespace basis
 
