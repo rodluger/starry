@@ -1,5 +1,3 @@
-#define STARRY_DEBUG 1
-
 #include <iostream>
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
@@ -10,12 +8,7 @@
 #include "fact.h"
 #include "sqrtint.h"
 #include "rotation.h"
-
-#ifndef STARRY_DEBUG
 #include "solver.h"
-#else
-#include "solver_debug.h"
-#endif
 
 using namespace std;
 using namespace pybind11::literals;

@@ -1,5 +1,4 @@
 #define STARRY_NO_AUTODIFF 1
-#define STARRY_DEBUG 1
 #include <iostream>
 #include <Eigen/Core>
 #include "ellip.h"
@@ -8,11 +7,7 @@
 #include "fact.h"
 #include "sqrtint.h"
 #include "rotation.h"
-#ifndef STARRY_DEBUG
 #include "solver.h"
-#else
-#include "solver_debug.h"
-#endif
 
 using namespace std;
 

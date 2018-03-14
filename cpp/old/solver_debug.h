@@ -46,7 +46,7 @@ namespace solver {
     // Check if number is even (or doubly, triply, quadruply... even)
     bool is_even(int n, int ntimes=1) {
         for (int i = 0; i < ntimes; i++) {
-            if ((n % 2) == 1) return false;
+            if ((n % 2) != 0) return false;
             n /= 2;
         }
         return true;
@@ -175,7 +175,8 @@ namespace solver {
     double H(int u, int v, GREENS* G) {
         if (!G->bH(u, v)) {
             G->bH(u, v) = true;
-            if (u % 2 == 1) {
+            //if (u % 2 == 1) {
+            if (!is_even(u)) {
                 G->H(u, v) = 0;
             } else if ((u == 0) && (v == 0)) {
                 G->H(u, v) = 2 * asin(G->sinlam[1]) + M_PI;
@@ -199,7 +200,8 @@ namespace solver {
     double I(int u, int v, GREENS* G) {
         if (!G->bI(u, v)) {
             G->bI(u, v) = true;
-            if (u % 2 == 1) {
+            //if (u % 2 == 1) {
+            if (!is_even(u)) {
                 G->I(u, v) = 0;
             } else if ((u == 0) && (v == 0)) {
                 G->I(u, v) = 2 * asin(G->sinphi[1]) + M_PI;
@@ -223,7 +225,8 @@ namespace solver {
     double M(int p, int q, GREENS* G) {
         if (!G->bM(p, q)) {
             G->bM(p, q) = true;
-            if ((p % 2 == 1) || (q % 2 == 1)) {
+            //if ((p % 2 == 1) || (q % 2 == 1)) {
+            if (!is_even(p) || !is_even(q)) {
                 G->M(p, q) = 0;
             } else if ((p == 0) && (q == 0)) {
                 G->M(p, q) = ((8 - 12 * G->ksq) * G->E1 + (-8 + 16 * G->ksq) * G->E2) / 3.;
@@ -264,7 +267,8 @@ namespace solver {
                 G->J(u, v) = pow(1 - G->r[2], 1.5) * I(u, v, G);
             } else {
                 for (int i=0; i<v+1; i++)
-                    if ((i - v - u) % 2 == 0)
+                    //if ((i - v - u) % 2 == 0)
+                    if (is_even(i - v - u))
                         G->J(u, v) += fact::choose(v, i) * M(u + 2 * i, u + 2 * v - 2 * i, G);
                     else
                         G->J(u, v) -= fact::choose(v, i) * M(u + 2 * i, u + 2 * v - 2 * i, G);
@@ -301,7 +305,8 @@ namespace solver {
 
     */
     double P(GREENS* G){
-        if (G->nu % 2 == 0)
+        //if (G->nu % 2 == 0)
+        if (is_even(G->nu))
             return G->r[G->l + 2] * K((G->mu + 4) / 2, G->nu / 2, G);
         else if ((G->mu == 1) && (G->l % 2 == 0))
             return G->b * G->r[G->l - 2] * L(G->l - 2, 0, G) -
@@ -318,7 +323,8 @@ namespace solver {
 
     */
     double Q(GREENS* G){
-        if (G->nu % 2 == 0)
+        //if (G->nu % 2 == 0)
+        if (is_even(G->nu))
             return H((G->mu + 4) / 2, G->nu / 2, G);
         else
             return 0;

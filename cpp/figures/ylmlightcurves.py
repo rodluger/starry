@@ -38,12 +38,6 @@ for y0, zorder in zip([0.25, 0.75], [1, 0]):
             flux = y.flux(u=[1, 0, 0], theta=0, x0=x0, y0=y0, r=r)
             ax[i, j].plot(flux, lw=1, zorder=zorder)
 
-            # debug
-            mu = l - m
-            if (mu % 2 == 1):
-                if not (l == 1 and m == 0):
-                    ax[i, j].set_facecolor((1, 0.9, 0.9))
-
 # Hack a legend
 axleg = pl.axes([0.7, 0.7, 0.15, 0.15])
 axleg.plot([0, 0], [1, 1], label=r'$y_0 = 0.25$')

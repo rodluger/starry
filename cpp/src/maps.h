@@ -11,12 +11,7 @@ Defines the surface map class.
 #include <Eigen/Core>
 #include "rotation.h"
 #include "basis.h"
-
-#ifndef STARRY_DEBUG
 #include "solver.h"
-#else
-#include "solver_debug.h"
-#endif
 
 // Shorthand
 template <typename T>
