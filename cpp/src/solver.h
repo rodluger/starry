@@ -10,6 +10,7 @@ Spherical harmonic integration utilities.
 #include <cmath>
 #include <Eigen/Core>
 #include "ellip.h"
+#include "fact.h"
 
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
