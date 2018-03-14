@@ -62,12 +62,14 @@ namespace solver {
         double b2;
         double br;
         double br32;
-        double* r;
-        double* b_r;
-        double* cosphi;
-        double* sinphi;
-        double* coslam;
-        double* sinlam;
+
+        Vector<double> r;
+        Vector<double> b_r;
+        Vector<double> cosphi;
+        Vector<double> sinphi;
+        Vector<double> coslam;
+        Vector<double> sinlam;
+
         double ksq;
         double k;
         double E;
@@ -75,14 +77,16 @@ namespace solver {
         double PI;
         double E1;
         double E2;
-        double** H;
-        bool** bH;
-        double** I;
-        bool** bI;
-        double** J;
-        bool** bJ;
-        double** M;
-        bool** bM;
+
+        Matrix<bool> bH;
+        Matrix<double> H;
+        Matrix<bool> bI;
+        Matrix<double> I;
+        Matrix<bool> bJ;
+        Matrix<double> J;
+        Matrix<bool> bM;
+        Matrix<double> M;
+
     } GREENS;
 
     /**
@@ -169,23 +173,23 @@ namespace solver {
 
     */
     double H(int u, int v, GREENS* G) {
-        if (!G->bH[u][v]) {
-            G->bH[u][v] = true;
+        if (!G->bH(u, v)) {
+            G->bH(u, v) = true;
             if (u % 2 == 1) {
-                G->H[u][v] = 0;
+                G->H(u, v) = 0;
             } else if ((u == 0) && (v == 0)) {
-                G->H[u][v] = 2 * asin(G->sinlam[1]) + M_PI;
+                G->H(u, v) = 2 * asin(G->sinlam[1]) + M_PI;
             } else if ((u == 0) && (v == 1)) {
-                G->H[u][v] = -2 * G->coslam[1];
+                G->H(u, v) = -2 * G->coslam[1];
             } else if (u >= 2) {
-                G->H[u][v] = (2 * G->coslam[u - 1] * G->sinlam[v + 1] +
+                G->H(u, v) = (2 * G->coslam[u - 1] * G->sinlam[v + 1] +
                                 (u - 1) * H(u - 2, v, G)) / (u + v);
             } else {
-                G->H[u][v] = (-2 * G->coslam[u + 1] * G->sinlam[v - 1] +
+                G->H(u, v) = (-2 * G->coslam[u + 1] * G->sinlam[v - 1] +
                                 (v - 1) * H(u, v - 2, G)) / (u + v);
             }
         }
-        return G->H[u][v];
+        return G->H(u, v);
     }
 
     /**
@@ -193,23 +197,23 @@ namespace solver {
 
     */
     double I(int u, int v, GREENS* G) {
-        if (!G->bI[u][v]) {
-            G->bI[u][v] = true;
+        if (!G->bI(u, v)) {
+            G->bI(u, v) = true;
             if (u % 2 == 1) {
-                G->I[u][v] = 0;
+                G->I(u, v) = 0;
             } else if ((u == 0) && (v == 0)) {
-                G->I[u][v] = 2 * asin(G->sinphi[1]) + M_PI;
+                G->I(u, v) = 2 * asin(G->sinphi[1]) + M_PI;
             } else if ((u == 0) && (v == 1)) {
-                G->I[u][v] = -2 * G->cosphi[1];
+                G->I(u, v) = -2 * G->cosphi[1];
             } else if (u >= 2) {
-                G->I[u][v] = (2 * G->cosphi[u - 1] * G->sinphi[v + 1] +
+                G->I(u, v) = (2 * G->cosphi[u - 1] * G->sinphi[v + 1] +
                                 (u - 1) * I(u - 2, v, G)) / (u + v);
             } else {
-                G->I[u][v] = (-2 * G->cosphi[u + 1] * G->sinphi[v - 1] +
+                G->I(u, v) = (-2 * G->cosphi[u + 1] * G->sinphi[v - 1] +
                                 (v - 1) * I(u, v - 2, G)) / (u + v);
             }
         }
-        return G->I[u][v];
+        return G->I(u, v);
     }
 
     /**
@@ -217,34 +221,34 @@ namespace solver {
 
     */
     double M(int p, int q, GREENS* G) {
-        if (!G->bM[p][q]) {
-            G->bM[p][q] = true;
+        if (!G->bM(p, q)) {
+            G->bM(p, q) = true;
             if ((p % 2 == 1) || (q % 2 == 1)) {
-                G->M[p][q] = 0;
+                G->M(p, q) = 0;
             } else if ((p == 0) && (q == 0)) {
-                G->M[p][q] = ((8 - 12 * G->ksq) * G->E1 + (-8 + 16 * G->ksq) * G->E2) / 3.;
+                G->M(p, q) = ((8 - 12 * G->ksq) * G->E1 + (-8 + 16 * G->ksq) * G->E2) / 3.;
             } else if ((p == 0) && (q == 2)) {
-                G->M[p][q] = ((8 - 24 * G->ksq) * G->E1 + (-8 + 28 * G->ksq + 12 * G->ksq * G->ksq) * G->E2) / 15.;
+                G->M(p, q) = ((8 - 24 * G->ksq) * G->E1 + (-8 + 28 * G->ksq + 12 * G->ksq * G->ksq) * G->E2) / 15.;
             } else if ((p == 2) && (q == 0)) {
-                G->M[p][q] = ((32 - 36 * G->ksq) * G->E1 + (-32 + 52 * G->ksq - 12 * G->ksq * G->ksq) * G->E2) / 15.;
+                G->M(p, q) = ((32 - 36 * G->ksq) * G->E1 + (-32 + 52 * G->ksq - 12 * G->ksq * G->ksq) * G->E2) / 15.;
             } else if ((p == 2) && (q == 2)) {
-                G->M[p][q] = ((32 - 60 * G->ksq + 12 * G->ksq * G->ksq) * G->E1 + (-32 + 76 * G->ksq - 36 * G->ksq * G->ksq + 24 * G->ksq * G->ksq * G->ksq) * G->E2) / 105.;
+                G->M(p, q) = ((32 - 60 * G->ksq + 12 * G->ksq * G->ksq) * G->E1 + (-32 + 76 * G->ksq - 36 * G->ksq * G->ksq + 24 * G->ksq * G->ksq * G->ksq) * G->E2) / 105.;
             } else if (q >= 4) {
                 double d1, d2;
                 d1 = q + 2 + (p + q - 2) * (1 - G->ksq);
                 d2 = (3 - q) * (1 - G->ksq);
-                G->M[p][q] = (d1 * M(p, q - 2, G) + d2 * M(p, q - 4, G)) / (p + q + 3);
+                G->M(p, q) = (d1 * M(p, q - 2, G) + d2 * M(p, q - 4, G)) / (p + q + 3);
             } else if (p >= 4) {
                 double d3, d4;
                 d3 = 2 * p + q - (p + q - 2) * (1 - G->ksq);
                 d4 = (3 - p) + (p - 3) * (1 - G->ksq);
-                G->M[p][q] = (d3 * M(p - 2, q, G) + d4 * M(p - 4, q, G)) / (p + q + 3);
+                G->M(p, q) = (d3 * M(p - 2, q, G) + d4 * M(p - 4, q, G)) / (p + q + 3);
             } else {
                 cout << "ERROR: Domain error in function M()." << endl;
                 exit(1);
             }
         }
-        return G->M[p][q];
+        return G->M(p, q);
     }
 
     /**
@@ -252,22 +256,22 @@ namespace solver {
 
     */
     double J(int u, int v, GREENS* G) {
-        if (!G->bJ[u][v]) {
-            G->bJ[u][v] = true;
-            G->J[u][v] = 0;
+        if (!G->bJ(u, v)) {
+            G->bJ(u, v) = true;
+            G->J(u, v) = 0;
             // Check if b = 0 (special case)
             if (G->b == 0) {
-                G->J[u][v] = pow(1 - G->r[2], 1.5) * I(u, v, G);
+                G->J(u, v) = pow(1 - G->r[2], 1.5) * I(u, v, G);
             } else {
                 for (int i=0; i<v+1; i++)
                     if ((i - v - u) % 2 == 0)
-                        G->J[u][v] += fact::choose(v, i) * M(u + 2 * i, u + 2 * v - 2 * i, G);
+                        G->J(u, v) += fact::choose(v, i) * M(u + 2 * i, u + 2 * v - 2 * i, G);
                     else
-                        G->J[u][v] -= fact::choose(v, i) * M(u + 2 * i, u + 2 * v - 2 * i, G);
-                G->J[u][v] *= pow(2, u + 3) * (G->br32);
+                        G->J(u, v) -= fact::choose(v, i) * M(u + 2 * i, u + 2 * v - 2 * i, G);
+                G->J(u, v) *= pow(2, u + 3) * (G->br32);
             }
         }
-        return G->J[u][v];
+        return G->J(u, v);
     }
 
     /**
@@ -346,25 +350,13 @@ namespace solver {
         G.br = b * r;
         G.br32 = pow(G.br, 1.5);
 
-        // Compute the powers of r
-        G.r = new double[N];
-        G.r[0] = 1;
-        for (l=1; l<N; l++)
-            G.r[l] = r * G.r[l - 1];
-
-        // Compute the powers of (b / r)
-        G.b_r = new double[N];
-        G.b_r[0] = 1;
-        for (l=1; l<N; l++)
-            G.b_r[l] = b_r * G.b_r[l - 1];
-
         // Compute the sine and cosine of the angles
         if ((abs(1 - r) < b) && (b < 1 + r)) {
             // Note that sin(arcsin(x)) = x
             // and cos(arcsin(x)) = sqrt(1 - x * x)
-            sinphi = (1 - G.r[2] - G.b2) / (2 * G.br);
+            sinphi = (1 - r * r - G.b2) / (2 * G.br);
             cosphi = sqrt(1 - sinphi * sinphi);
-            sinlam = (1 - G.r[2] + G.b2) / (2 * G.b);
+            sinlam = (1 - r * r + G.b2) / (2 * G.b);
             coslam = sqrt(1 - sinlam * sinlam);
         } else {
             sinphi = 1;
@@ -373,16 +365,22 @@ namespace solver {
             coslam = 0;
         }
 
-        // Compute the sine and cosine powers
-        G.cosphi = new double[N];
-        G.sinphi = new double[N];
-        G.coslam = new double[N];
-        G.sinlam = new double[N];
+        // Compute our power arrays
+        G.r = Vector<T>::Zero(N);
+        G.b_r = Vector<T>::Zero(N);
+        G.cosphi = Vector<T>::Zero(N);
+        G.sinphi = Vector<T>::Zero(N);
+        G.coslam = Vector<T>::Zero(N);
+        G.sinlam = Vector<T>::Zero(N);
+        G.r[0] = 1;
+        G.b_r[0] = 1;
         G.cosphi[0] = 1;
         G.sinphi[0] = 1;
         G.coslam[0] = 1;
         G.sinlam[0] = 1;
         for (l=1; l<N; l++) {
+            G.r[l] = r * G.r[l - 1];
+            G.b_r[l] = b_r * G.b_r[l - 1];
             G.cosphi[l] = cosphi * G.cosphi[l - 1];
             G.sinphi[l] = sinphi * G.sinphi[l - 1];
             G.coslam[l] = coslam * G.coslam[l - 1];
@@ -422,31 +420,15 @@ namespace solver {
             }
         }
 
-        // Allocate the integral matrices
-        G.H = new double*[N];
-        G.I = new double*[N];
-        G.J = new double*[N];
-        G.M = new double*[N];
-        G.bH = new bool*[N];
-        G.bI = new bool*[N];
-        G.bJ = new bool*[N];
-        G.bM = new bool*[N];
-        for (l=0; l<N; l++) {
-            G.H[l] = new double[N];
-            G.I[l] = new double[N];
-            G.J[l] = new double[N];
-            G.M[l] = new double[N];
-            G.bH[l] = new bool[N];
-            G.bI[l] = new bool[N];
-            G.bJ[l] = new bool[N];
-            G.bM[l] = new bool[N];
-            for (m=0; m<N; m++) {
-                G.bH[l][m] = false;
-                G.bI[l][m] = false;
-                G.bJ[l][m] = false;
-                G.bM[l][m] = false;
-            }
-        }
+        // Reset the flags
+        G.bH = Matrix<bool>::Zero(N, N);
+        G.bI = Matrix<bool>::Zero(N, N);
+        G.bJ = Matrix<bool>::Zero(N, N);
+        G.bM = Matrix<bool>::Zero(N, N);
+        G.H.resize(N, N);
+        G.I.resize(N, N);
+        G.J.resize(N, N);
+        G.M.resize(N, N);
 
         // Populate the vector
         for (l = 0; l < lmax + 1; l++) {
@@ -462,32 +444,6 @@ namespace solver {
                 n++;
             }
         }
-
-        // Free the memory
-        delete [] G.r;
-        delete [] G.b_r;
-        delete [] G.cosphi;
-        delete [] G.sinphi;
-        delete [] G.coslam;
-        delete [] G.sinlam;
-        for (l=0; l<N; l++) {
-            delete [] G.H[l];
-            delete [] G.I[l];
-            delete [] G.J[l];
-            delete [] G.M[l];
-            delete [] G.bH[l];
-            delete [] G.bI[l];
-            delete [] G.bJ[l];
-            delete [] G.bM[l];
-        }
-        delete [] G.H;
-        delete [] G.I;
-        delete [] G.J;
-        delete [] G.M;
-        delete [] G.bH;
-        delete [] G.bI;
-        delete [] G.bJ;
-        delete [] G.bM;
 
     }
 
