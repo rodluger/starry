@@ -13,6 +13,7 @@ starry/cpp/test
 starry/cpp/scratch/docs/_build
 starry/cpp/scratch/docs/_generate
 starry/cpp/scratch/test
+cpp/figures/*.pdf
 
 # Latex
 *.aux

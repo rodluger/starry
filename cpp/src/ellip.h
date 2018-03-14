@@ -12,7 +12,10 @@ Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
 #define _STARRY_ELLIP_H_
 
 #include <cmath>
+
+#ifndef STARRY_NO_AUTODIFF
 #include "AutoDiffScalar.h"
+#endif
 
 namespace ellip {
 
@@ -73,6 +76,7 @@ using std::abs;
 #undef ELLINT_CONV_TOL
 #undef ELLINT_MAX_ITER
 
+#ifndef STARRY_NO_AUTODIFF
   // Gradient of K
   template <typename T>
   Eigen::AutoDiffScalar<T> K (const Eigen::AutoDiffScalar<T>& z)
@@ -118,6 +122,8 @@ using std::abs;
       (ksq - n_value)
     );
   }
+
+#endif
 
 }; // namespace ellip
 

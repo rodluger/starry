@@ -219,6 +219,7 @@ namespace solver {
         // Constructor
         Primitive(Greens<T>& G, int lmax, T (*setter)(Greens<T>&, int, int)) : lmax(lmax), setter(setter), G(G) {
             N = 2 * lmax + 1;
+            if (N < 2) N = 2;
             set = Matrix<bool>::Zero(N, N);
             matrix.resize(N, N);
         }
@@ -227,6 +228,10 @@ namespace solver {
         // is a pointer to the function that computes the (i, j) element
         // of this primitive matrix
         T value(int i, int j) {
+            if ((i < 0) || (j < 0) || (i > N - 1) || (j > N - 1)) {
+                std::cout << "ERROR: Invalid index in primitive matrix." << std::endl;
+                exit(1);
+            }
             if (!set(i, j)) {
                 matrix(i, j) = (*setter)(G, i, j);
                 set(i, j) = true;
@@ -353,7 +358,10 @@ namespace solver {
         G.I.reset();
         G.J.reset();
         G.M.reset();
-        T sinphi, cosphi, sinlam, coslam;
+        T sinphi;
+        T cosphi;
+        T sinlam;
+        T coslam;
         T b_r = b / r;
         G.b = b;
         G.b2 = b * b;
