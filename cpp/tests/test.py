@@ -37,9 +37,10 @@ assert np.allclose(m.p, np.array([0, 0, np.sqrt(3 / (4 * np.pi)), 0]))
 # Flux (debug)
 import matplotlib.pyplot as pl
 m = Map(2)
-m.set_coeff(1, 1, 1)
-npts = 1000
+m.set_coeff(1, 0, 1)
+npts = 100000
 x0 = np.linspace(-1.5, 1.5, npts)
+pl.plot(x0, m.flux([1, 0, 0], 0, x0, 0.25, 0.01))
 pl.plot(x0, m.flux([1, 0, 0], 0, x0, 0.25, 0.25))
 pl.plot(x0, m.flux([1, 0, 0], 0, x0, 0.75, 0.25))
 pl.show()

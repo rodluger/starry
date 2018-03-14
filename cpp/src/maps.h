@@ -110,6 +110,7 @@ namespace maps {
         void update(bool force=false);
         void set_coeff(int l, int m, T coeff);
         T get_coeff(int l, int m);
+        void reset();
         T flux(UnitVector<T>& u, T theta, T x0, T y0, T r);
         T flux_no_occultation(UnitVector<T>& u, T theta);
         T flux_no_rotation(T x0, T y0, T r);
@@ -257,9 +258,10 @@ namespace maps {
 
     template <class T>
     void Map<T>::set_coeff(int l, int m, T coeff) {
-        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
+        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             y(l * l + l + m) = coeff;
-        else
+            needs_update = true;
+        } else
             std::cout << "ERROR: Invalid value for `l` and/or `m`." << std::endl;
     }
 
@@ -271,6 +273,12 @@ namespace maps {
             std::cout << "ERROR: Invalid value for `l` and/or `m`." << std::endl;
             return 0;
         }
+    }
+
+    template <class T>
+    void Map<T>::reset() {
+        y.setZero(N);
+        needs_update = true;
     }
 
     // Human-readable map string

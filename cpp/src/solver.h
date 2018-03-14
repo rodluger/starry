@@ -47,12 +47,11 @@ namespace solver {
     // Compute the n=2 term of the *s^T* occultation solution vector.
     // This is the Mandel & Agol solution for linear limb darkening,
     // reparametrized for speed
+    // TODO: EDGE CASES HAVE NOT BEEN TESTED
     template <typename T>
     T s2(Greens<T>& G) {
         T Lambda;
         T xi = 2 * G.br * (4 - 7 * G.r(2) - G.b2);
-        T rpb = G.r(1) + G.b;
-        T rmb = G.r(1) - G.b;
         if (G.b == 0) {
             Lambda = -2. / 3. * pow(1. - G.r(2), 1.5);
         } else if (G.b == G.r(1)) {
@@ -68,11 +67,15 @@ namespace solver {
                          (1 - 4 * G.r(2)) * (3 - 8 * G.r(2)) / (9 * M_PI * G.r(1)) * ellip::K(1. / (4 * G.r(2)));
         } else {
             if (G.ksq < 1)
-                Lambda = ((rpb * rpb - 1.) / rpb * (-2 * G.r(1) * (2 * rpb * rpb + rpb * rmb - 3.) * G.K -
-                         3. * rmb * G.PI) - 2. * xi * G.E) / (9. * M_PI * sqrt(G.br));
+                Lambda = (1. / (9 * M_PI * sqrt(G.br))) *
+                         ((-3 + 12 * G.r(2) - 10 * G.b2 * G.r(2) - 6 * G.r(4) + xi) * G.K -
+                         2 * xi * G.E +
+                         3 * (G.b + G.r(1)) / (G.b - G.r(1)) * G.PI);
             else if (G.ksq > 1)
-                Lambda = 2. * ((1 - rpb * rpb) * (sqrt(1. - rmb * rmb) * G.K - 3 * rmb / rpb * G.PI) -
-                         sqrt(1. - rmb * rmb) * (4 - 7 * G.r(2) - G.b2) * G.E) / (9. * M_PI);
+                Lambda = (2. / (9 * M_PI * sqrt((1 - G.b + G.r(1)) * (1 + G.b - G.r(1))))) *
+                         ((1 - 5 * G.b2 + G.r(2) + (G.r(2) - G.b2) * (G.r(2) - G.b2)) * G.K -
+                         2 * xi * G.ksq * G.E +
+                         3 * (G.b + G.r(1)) / (G.b - G.r(1)) * G.PI);
             else
                 Lambda = 2. / (3. * M_PI) * acos(1. - 2 * G.r(1)) -
                          4 / (9 * M_PI) * (3 + 2 * G.r(1) - 8 * G.r(2)) * sqrt(G.br) -
@@ -120,11 +123,12 @@ namespace solver {
         if (G.b == 0) {
             return pow(1 - G.r(2), 1.5) * G.I.value(u, v);
         } else {
-            for (int i = 0; i < v + 1; i++)
+            for (int i = 0; i < v + 1; i++) {
                 if (is_even(i - v - u))
                     res += fact::choose(v, i) * G.M.value(u + 2 * i, u + 2 * v - 2 * i);
                 else
                     res -= fact::choose(v, i) * G.M.value(u + 2 * i, u + 2 * v - 2 * i);
+            }
             res *= pow(2, u + 3) * (G.br32);
         }
         return res;
@@ -144,17 +148,17 @@ namespace solver {
         } else if ((p == 2) && (q == 2)) {
             return ((32 - 60 * G.ksq + 12 * G.ksq * G.ksq) * G.E1 + (-32 + 76 * G.ksq - 36 * G.ksq * G.ksq + 24 * G.ksq * G.ksq * G.ksq) * G.E2) / 105.;
         } else if (q >= 4) {
-            double d1, d2;
+            T d1, d2;
             d1 = q + 2 + (p + q - 2) * (1 - G.ksq);
             d2 = (3 - q) * (1 - G.ksq);
             return (d1 * G.M.value(p, q - 2) + d2 * G.M.value(p, q - 4)) / (p + q + 3);
         } else if (p >= 4) {
-            double d3, d4;
+            T d3, d4;
             d3 = 2 * p + q - (p + q - 2) * (1 - G.ksq);
             d4 = (3 - p) + (p - 3) * (1 - G.ksq);
             return (d3 * G.M.value(p - 2, q) + d4 * G.M.value(p - 4, q)) / (p + q + 3);
         } else {
-            std::cout << "ERROR: Domain error in function M()." << std::endl;
+            std::cout << "ERROR: Domain error in function computeM()." << std::endl;
             exit(1);
         }
     }
