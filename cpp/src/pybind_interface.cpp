@@ -26,9 +26,11 @@ PYBIND11_MODULE(starry, m) {
         .def("evaluate", &maps::Map<double>::evaluate)
         .def("rotate", [](maps::Map<double> &map, Eigen::Matrix<double, 3, 1>& u, double theta){return map.rotate(u, theta);})
         .def("flux", py::vectorize(&maps::Map<double>::flux))
+        .def("get_coeff", &maps::Map<double>::get_coeff)
+        .def("set_coeff", &maps::Map<double>::set_coeff)
         .def_property_readonly("y", [](const maps::Map<double> &map){return map.y;})
-        .def_property_readonly("p", [](maps::Map<double> &map){map.update(); return map.p;})
-        .def_property_readonly("g", [](maps::Map<double> &map){map.update(); return map.g;})
+        .def_property_readonly("p", [](maps::Map<double> &map){map.update(true); return map.p;})
+        .def_property_readonly("g", [](maps::Map<double> &map){map.update(true); return map.g;})
         .def("__repr__", [](maps::Map<double> &map) -> string {return map.repr();});
 
     // Utilities

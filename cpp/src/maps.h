@@ -52,8 +52,9 @@ namespace maps {
         Vector<T> basis;
         bool needs_update;
 
-        // Temporary map vector
+        // Temporary map vectors
         Vector<T> tmpvec;
+        UnitVector<T> zhat;
 
         // Private methods
         void apply_rotation(UnitVector<T>& u, T costheta, T sintheta, Vector<T>& yin, Vector<T>& yout);
@@ -84,6 +85,8 @@ namespace maps {
             p = Vector<T>::Zero(N);
             g = Vector<T>::Zero(N);
             tmpvec = Vector<T>::Zero(N);
+            zhat = UnitVector<T>::Zero(3);
+            zhat(2) = 1;
             basis.resize(N, 1);
             update(true);
         }
@@ -93,6 +96,8 @@ namespace maps {
             N = (lmax + 1) * (lmax + 1);
             tmpvec = Vector<T>::Zero(N);
             basis.resize(N, 1);
+            zhat = UnitVector<T>::Zero(3);
+            zhat(2) = 1;
             update(true);
         }
 
@@ -103,7 +108,11 @@ namespace maps {
         void rotate(UnitVector<T>& u, T theta);
         void rotate(UnitVector<T>& u, T costheta, T sintheta);
         void update(bool force=false);
+        void set_coeff(int l, int m, T coeff);
+        T get_coeff(int l, int m);
         T flux(UnitVector<T>& u, T theta, T x0, T y0, T r);
+        T flux_no_occultation(UnitVector<T>& u, T theta);
+        T flux_no_rotation(T x0, T y0, T r);
         std::string repr(const double tol=1e-15);
 
     };
@@ -219,8 +228,8 @@ namespace maps {
         } else {
 
             // Align occultor with the +y axis if necessary
-            if (b > 0) {
-                rotate(u, y0 / b, x0 / b, (*ptry), tmpvec);
+            if ((b > 0) && (x0 != 0)) {
+                rotate(zhat, y0 / b, x0 / b, (*ptry), tmpvec);
                 ptry = &tmpvec;
             }
 
@@ -232,6 +241,36 @@ namespace maps {
 
         }
 
+    }
+
+    // Compute the total flux outside of an occultation
+    template <class T>
+    T Map<T>::flux_no_occultation(UnitVector<T>& u, T theta) {
+        return flux(u, theta, -99, -99, 1);
+    }
+
+    // Compute the total flux during occultation assuming no rotation
+    template <class T>
+    T Map<T>::flux_no_rotation(T x0, T y0, T r) {
+        return flux(zhat, 0, x0, y0, r);
+    }
+
+    template <class T>
+    void Map<T>::set_coeff(int l, int m, T coeff) {
+        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
+            y(l * l + l + m) = coeff;
+        else
+            std::cout << "ERROR: Invalid value for `l` and/or `m`." << std::endl;
+    }
+
+    template <class T>
+    T Map<T>::get_coeff(int l, int m) {
+        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
+            return y(l * l + l + m);
+        else {
+            std::cout << "ERROR: Invalid value for `l` and/or `m`." << std::endl;
+            return 0;
+        }
     }
 
     // Human-readable map string

@@ -230,6 +230,11 @@ namespace solver {
             return matrix(i, j);
         }
 
+        // Resetter
+        void reset() {
+            set.setZero(N, N);
+        }
+
     };
 
     // Greens integration housekeeping data
@@ -340,6 +345,10 @@ namespace solver {
         // Initialize the housekeeping variables
         int l, m;
         int n = 0;
+        G.H.reset();
+        G.I.reset();
+        G.J.reset();
+        G.M.reset();
         T sinphi, cosphi, sinlam, coslam;
         T b_r = b / r;
         G.b = b;
