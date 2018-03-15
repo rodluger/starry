@@ -12,6 +12,7 @@ Defines the surface map class.
 #include "rotation.h"
 #include "basis.h"
 #include "solver.h"
+#include "numeric.h"
 
 // Shorthand
 template <typename T>
@@ -25,22 +26,30 @@ using UnitVector = Eigen::Matrix<T, 3, 1>;
 
 namespace maps {
 
+    // Map coefficient tolerance
+    #define MAP_TOLERANCE                   1e-14
+
+    // Some default unit vectors
+    UnitVector<double> xhat({1, 0, 0});
+    UnitVector<double> yhat({0, 1, 0});
+    UnitVector<double> zhat({0, 0, 1});
+
     // Constant matrices/vectors
     class Constants {
 
-    public:
+        public:
 
-        int lmax;
-        Eigen::SparseMatrix<double> A1;
-        Eigen::SparseMatrix<double> A;
-        VectorT<double> rT;
+            int lmax;
+            Eigen::SparseMatrix<double> A1;
+            Eigen::SparseMatrix<double> A;
+            VectorT<double> rT;
 
-        // Constructor: compute the matrices
-        Constants(int lmax) : lmax(lmax) {
-            basis::computeA1(lmax, A1);
-            basis::computeA(lmax, A1, A);
-            solver::computerT(lmax, rT);
-        }
+            // Constructor: compute the matrices
+            Constants(int lmax) : lmax(lmax) {
+                basis::computeA1(lmax, A1);
+                basis::computeA(lmax, A1, A);
+                solver::computerT(lmax, rT);
+            }
 
     };
 
@@ -48,75 +57,91 @@ namespace maps {
     template <class T>
     class Map {
 
-        int N;
-        Vector<T> basis;
-        bool needs_update;
+            int N;
+            Vector<T> basis;
+            bool needs_update;
 
-        // Temporary map vectors
-        Vector<T> tmpvec;
-        UnitVector<T> zhat;
+            // Temporary variables
+            Vector<T> tmpvec;
+            T tmpscalar;
 
-        // Private methods
-        void apply_rotation(UnitVector<T>& u, T costheta, T sintheta, Vector<T>& yin, Vector<T>& yout);
+            // Private methods
+            void apply_rotation(UnitVector<T>& u, T costheta, T sintheta,
+                                Vector<T>& yin, Vector<T>& yout);
 
-    public:
+        public:
 
-        // The map vectors
-        Vector<T> y;
-        Vector<T> p;
-        Vector<T> g;
+            // The map vectors
+            Vector<T> y;
+            Vector<T> p;
+            Vector<T> g;
 
-        // Map order
-        int lmax;
+            // Map order
+            int lmax;
 
-        // Rotation matrices
-        rotation::Wigner<T> R;
+            // Rotation matrices
+            rotation::Wigner<T> R;
 
-        // Constant matrices
-        Constants C;
+            // Constant matrices
+            Constants C;
 
-        // Greens data
-        solver::Greens<T> G;
+            // Greens data
+            solver::Greens<T> G;
 
-        // Constructor: initialize map to zeros
-        Map(int lmax) : lmax(lmax), R(lmax), C(lmax), G(lmax) {
-            N = (lmax + 1) * (lmax + 1);
-            y = Vector<T>::Zero(N);
-            p = Vector<T>::Zero(N);
-            g = Vector<T>::Zero(N);
-            tmpvec = Vector<T>::Zero(N);
-            zhat = UnitVector<T>::Zero(3);
-            zhat(2) = 1;
-            basis.resize(N, 1);
-            update(true);
-        }
+            // Constructor: initialize map to zeros
+            Map(int lmax) : lmax(lmax), R(lmax), C(lmax), G(lmax) {
+                N = (lmax + 1) * (lmax + 1);
+                y = Vector<T>::Zero(N);
+                p = Vector<T>::Zero(N);
+                g = Vector<T>::Zero(N);
+                tmpvec = Vector<T>::Zero(N);
+                basis.resize(N, 1);
+                update(true);
+            }
 
-        // Constructor: initialize map to array
-        Map(Vector<T>& y) : y(y), lmax(floor(sqrt((double)y.size()) - 1)), R(lmax), C(lmax), G(lmax) {
-            N = (lmax + 1) * (lmax + 1);
-            tmpvec = Vector<T>::Zero(N);
-            basis.resize(N, 1);
-            zhat = UnitVector<T>::Zero(3);
-            zhat(2) = 1;
-            update(true);
-        }
-
-        // Public methods
-        T evaluate(const T& x0, const T& y0);
-        void rotate(UnitVector<T>& u, T theta, Vector<T>& yin, Vector<T>& yout);
-        void rotate(UnitVector<T>& u, T costheta, T sintheta, Vector<T>& yin, Vector<T>& yout);
-        void rotate(UnitVector<T>& u, T theta);
-        void rotate(UnitVector<T>& u, T costheta, T sintheta);
-        void update(bool force=false);
-        void set_coeff(int l, int m, T coeff);
-        T get_coeff(int l, int m);
-        void reset();
-        T flux(UnitVector<T>& u, T theta, T x0, T y0, T r);
-        T flux_no_occultation(UnitVector<T>& u, T theta);
-        T flux_no_rotation(T x0, T y0, T r);
-        std::string repr(const double tol=1e-15);
+            // Public methods
+            T evaluate(const T& x0, const T& y0);
+            void rotate(UnitVector<T>& u, T theta, Vector<T>& yin,
+                        Vector<T>& yout);
+            void rotate(UnitVector<T>& u, T costheta, T sintheta,
+                        Vector<T>& yin, Vector<T>& yout);
+            void rotate(UnitVector<T>& u, T theta);
+            void rotate(UnitVector<T>& u, T costheta, T sintheta);
+            void update(bool force=false);
+            void set_coeff(int l, int m, T coeff);
+            T get_coeff(int l, int m);
+            void reset();
+            T flux(UnitVector<T>& u=yhat, T theta=0,
+                   T x0=-INFINITY, T y0=-INFINITY, T r=1,
+                   bool numerical=false, double tol=1e-4);
+            std::string repr(const double tol=1e-15);
 
     };
+
+    //
+    // * -- Private methods -- *
+    //
+
+    // Rotate a map `yin` and store the result in `yout`
+    template <class T>
+    void Map<T>::apply_rotation(UnitVector<T>& u, T costheta, T sintheta,
+                                Vector<T>& yin, Vector<T>& yout) {
+
+        // Compute the rotation matrix R
+        rotation::computeR(lmax, u, costheta, sintheta, R.Complex, R.Real);
+
+        // Dot R in, order by order
+        for (int l = 0; l < lmax + 1; l++) {
+            yout.segment(l * l, 2 * l + 1) = R.Real[l] *
+                                             yin.segment(l * l, 2 * l + 1);
+        }
+
+        return;
+    }
+
+    //
+    // * -- Public methods -- *
+    //
 
     // Update the maps
     template <class T>
@@ -142,15 +167,20 @@ namespace maps {
         int l, m, mu, nu, n = 0;
         T z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
 
-        // Compute the polynomial basis
+        // Compute the polynomial basis where it is needed
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
-                mu = l - m;
-                nu = l + m;
-                if ((nu % 2) == 0)
-                    basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
-                else
-                    basis(n) = pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
+                if (std::abs(p(n)) < MAP_TOLERANCE) {
+                    basis(n) = 0;
+                } else {
+                    mu = l - m;
+                    nu = l + m;
+                    if ((nu % 2) == 0)
+                        basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
+                    else
+                        basis(n) = pow(x0, (mu - 1) / 2) *
+                                   pow(y0, (nu - 1) / 2) * z0;
+                }
                 n++;
             }
         }
@@ -158,21 +188,6 @@ namespace maps {
         // Dot the coefficients in to our polynomial map
         return p.dot(basis);
 
-    }
-
-    // Rotate a map `yin` and store the result in `yout`
-    template <class T>
-    void Map<T>::apply_rotation(UnitVector<T>& u, T costheta, T sintheta, Vector<T>& yin, Vector<T>& yout) {
-
-        // Compute the rotation matrix R
-        rotation::computeR(lmax, u, costheta, sintheta, R.Complex, R.Real);
-
-        // Dot R in, order by order
-        for (int l = 0; l < lmax + 1; l++) {
-            yout.segment(l * l, 2 * l + 1) = R.Real[l] * yin.segment(l * l, 2 * l + 1);
-        }
-
-        return;
     }
 
     // Shortcut to rotate the base map in-place given `theta`
@@ -191,19 +206,22 @@ namespace maps {
 
     // Shortcut to rotate an arbitrary map given `theta`
     template <class T>
-    void Map<T>::rotate(UnitVector<T>& u, T theta, Vector<T>& yin, Vector<T>& yout) {
+    void Map<T>::rotate(UnitVector<T>& u, T theta,
+                        Vector<T>& yin, Vector<T>& yout) {
         apply_rotation(u, cos(theta), sin(theta), yin, yout);
     }
 
     // Shortcut to rotate an arbitrary map given `costheta` and `sintheta`
     template <class T>
-    void Map<T>::rotate(UnitVector<T>& u, T costheta, T sintheta, Vector<T>& yin, Vector<T>& yout) {
+    void Map<T>::rotate(UnitVector<T>& u, T costheta, T sintheta,
+                        Vector<T>& yin, Vector<T>& yout) {
         apply_rotation(u, costheta, sintheta, yin, yout);
     }
 
     // Compute the total flux during or outside of an occultation
     template <class T>
-    T Map<T>::flux(UnitVector<T>& u, T theta, T x0, T y0, T r) {
+    T Map<T>::flux(UnitVector<T>& u, T theta, T x0, T y0, T r,
+                   bool numerical, double tol) {
 
         // Pointer to the map we're integrating
         // (defaults to the base map)
@@ -221,8 +239,16 @@ namespace maps {
             ptry = &tmpvec;
         }
 
+        // Compute it numerically?
+
+        if (numerical) {
+            tmpvec = C.A1 * (*ptry);
+            return numeric::flux(x0, y0, r, lmax, tmpvec, tol);
+        }
+        
         // No occultation: cake
         if (b >= 1 + r) {
+
             return C.rT * C.A1 * (*ptry);
 
         // Occultation
@@ -244,18 +270,7 @@ namespace maps {
 
     }
 
-    // Compute the total flux outside of an occultation
-    template <class T>
-    T Map<T>::flux_no_occultation(UnitVector<T>& u, T theta) {
-        return flux(u, theta, -99, -99, 1);
-    }
-
-    // Compute the total flux during occultation assuming no rotation
-    template <class T>
-    T Map<T>::flux_no_rotation(T x0, T y0, T r) {
-        return flux(zhat, 0, x0, y0, r);
-    }
-
+    // Set the (l, m) coefficient
     template <class T>
     void Map<T>::set_coeff(int l, int m, T coeff) {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
@@ -265,6 +280,7 @@ namespace maps {
             std::cout << "ERROR: Invalid value for `l` and/or `m`." << std::endl;
     }
 
+    // Get the (l, m) coefficient
     template <class T>
     T Map<T>::get_coeff(int l, int m) {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
@@ -275,13 +291,14 @@ namespace maps {
         }
     }
 
+    // Reset the map
     template <class T>
     void Map<T>::reset() {
         y.setZero(N);
         needs_update = true;
     }
 
-    // Human-readable map string
+    // Return a human-readable map string
     template <class T>
     std::string Map<T>::repr(const double TOL) {
         int n = 0;

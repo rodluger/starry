@@ -21,14 +21,15 @@ PYBIND11_MODULE(starry, m) {
 
     // Core Map class
     py::class_<maps::Map<double>>(m, "Map")
-        .def(py::init<Eigen::Matrix<double, Eigen::Dynamic, 1>&>())
         .def(py::init<int>())
-        .def("evaluate", &maps::Map<double>::evaluate)
+        .def("evaluate", py::vectorize(&maps::Map<double>::evaluate))
         .def("rotate", [](maps::Map<double> &map, Eigen::Matrix<double, 3, 1>& u, double theta){return map.rotate(u, theta);})
         .def("flux", py::vectorize(&maps::Map<double>::flux),
             R"pbdoc(
                 Return the total flux received by the observer.
-            )pbdoc", "u"_a, "theta"_a, "x0"_a, "y0"_a, "r"_a)
+            )pbdoc", "u"_a=maps::yhat, "theta"_a=0, "x0"_a=-INFINITY,
+                     "y0"_a=-INFINITY, "r"_a=1, "numerical"_a=false,
+                     "tol"_a=1e-4)
         .def("get_coeff", &maps::Map<double>::get_coeff)
         .def("set_coeff", &maps::Map<double>::set_coeff)
         .def("reset", &maps::Map<double>::reset)

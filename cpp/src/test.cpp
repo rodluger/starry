@@ -26,7 +26,7 @@ int main() {
     Eigen::VectorXd flux = Eigen::VectorXd::Zero(npts);
 
     for (int i = 0; i < npts; i ++) {
-        flux(i) = y.flux_no_rotation(x0(i), y0, r);
+        flux(i) = y.flux(maps::yhat, 0, x0(i), y0, r);
     }
 
     cout << flux << endl;

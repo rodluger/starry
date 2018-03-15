@@ -18,7 +18,8 @@ assert np.allclose(utils.sqrt_int(25), 5.)
 assert np.allclose(utils.invsqrt_int(25), 0.2)
 
 # Check the Map class
-m = Map([0, 0, 1, 0])
+m = Map(1)
+m.set_coeff(1, 0, 1)
 assert np.allclose(m.y, np.array([0, 0, 1, 0]))
 
 # Rotations and evaluations

@@ -95,9 +95,9 @@ namespace solver {
         } else if ((u == 0) && (v == 1)) {
             return -2 * G.coslam(1);
         } else if (u >= 2) {
-            return (2 * G.coslam(u - 1) * G.sinlam(v + 1) + (u - 1) * G.H.value(u - 2, v)) / (u + v);
+            return (2 * G.coslam(u - 1) * G.sinlam(v + 1) + (u - 1) * G.H(u - 2, v)) / (u + v);
         } else {
-            return (-2 * G.coslam(u + 1) * G.sinlam(v - 1) + (v - 1) * G.H.value(u, v - 2)) / (u + v);
+            return (-2 * G.coslam(u + 1) * G.sinlam(v - 1) + (v - 1) * G.H(u, v - 2)) / (u + v);
         }
     }
 
@@ -111,9 +111,9 @@ namespace solver {
         } else if ((u == 0) && (v == 1)) {
             return -2 * G.cosphi(1);
         } else if (u >= 2) {
-            return (2 * G.cosphi(u - 1) * G.sinphi(v + 1) + (u - 1) * G.I.value(u - 2, v)) / (u + v);
+            return (2 * G.cosphi(u - 1) * G.sinphi(v + 1) + (u - 1) * G.I(u - 2, v)) / (u + v);
         } else {
-            return (-2 * G.cosphi(u + 1) * G.sinphi(v - 1) + (v - 1) * G.I.value(u, v - 2)) / (u + v);
+            return (-2 * G.cosphi(u + 1) * G.sinphi(v - 1) + (v - 1) * G.I(u, v - 2)) / (u + v);
         }
     }
 
@@ -122,13 +122,13 @@ namespace solver {
     T computeJ(Greens<T>& G, int u, int v) {
         T res = 0;
         if (G.b == 0) {
-            return pow(1 - G.r(2), 1.5) * G.I.value(u, v);
+            return pow(1 - G.r(2), 1.5) * G.I(u, v);
         } else {
             for (int i = 0; i < v + 1; i++) {
                 if (is_even(i - v - u))
-                    res += fact::choose(v, i) * G.M.value(u + 2 * i, u + 2 * v - 2 * i);
+                    res += fact::choose(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
                 else
-                    res -= fact::choose(v, i) * G.M.value(u + 2 * i, u + 2 * v - 2 * i);
+                    res -= fact::choose(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
             }
             res *= pow(2, u + 3) * (G.br32);
         }
@@ -152,12 +152,12 @@ namespace solver {
             T d1, d2;
             d1 = q + 2 + (p + q - 2) * (1 - G.ksq);
             d2 = (3 - q) * (1 - G.ksq);
-            return (d1 * G.M.value(p, q - 2) + d2 * G.M.value(p, q - 4)) / (p + q + 3);
+            return (d1 * G.M(p, q - 2) + d2 * G.M(p, q - 4)) / (p + q + 3);
         } else if (p >= 4) {
             T d3, d4;
             d3 = 2 * p + q - (p + q - 2) * (1 - G.ksq);
             d4 = (3 - p) + (p - 3) * (1 - G.ksq);
-            return (d3 * G.M.value(p - 2, q) + d4 * G.M.value(p - 4, q)) / (p + q + 3);
+            return (d3 * G.M(p - 2, q) + d4 * G.M(p - 4, q)) / (p + q + 3);
         } else {
             std::cout << "ERROR: Domain error in function computeM()." << std::endl;
             exit(1);
@@ -169,7 +169,7 @@ namespace solver {
     T K(Greens<T>& G, int u, int v) {
         T res = 0;
         for (int i = 0; i < v + 1; i++)
-            res += fact::choose(v, i) * G.b_r(v - i) * G.I.value(u, i);
+            res += fact::choose(v, i) * G.b_r(v - i) * G.I(u, i);
         return res;
     }
 
@@ -178,7 +178,7 @@ namespace solver {
     T L(Greens<T>& G, int u, int v) {
         T res = 0;
         for (int i = 0; i < v + 1; i++)
-            res += fact::choose(v, i) * G.b_r(v - i) * G.J.value(u, i);
+            res += fact::choose(v, i) * G.b_r(v - i) * G.J(u, i);
         return res;
     }
 
@@ -199,7 +199,7 @@ namespace solver {
     template <typename T>
     T Q(Greens<T>& G){
         if (is_even(G.nu))
-            return G.H.value((G.mu + 4) / 2, G.nu / 2);
+            return G.H((G.mu + 4) / 2, G.nu / 2);
         else
             return 0;
     }
@@ -208,42 +208,46 @@ namespace solver {
     template <class T>
     class Primitive {
 
-        int lmax;
-        int N;
-        Matrix<bool> set;
-        Matrix<T> matrix;
-        T (*setter)(Greens<T>&, int, int);
-        Greens<T>& G;
+            int lmax;
+            int N;
+            Matrix<bool> set;
+            Matrix<T> matrix;
+            T (*setter)(Greens<T>&, int, int);
+            Greens<T>& G;
 
-    public:
+        public:
 
-        // Constructor
-        Primitive(Greens<T>& G, int lmax, T (*setter)(Greens<T>&, int, int)) : lmax(lmax), setter(setter), G(G) {
-            N = 2 * lmax + 1;
-            if (N < 2) N = 2;
-            set = Matrix<bool>::Zero(N, N);
-            matrix.resize(N, N);
-        }
-
-        // Getter function. G is a pointer to the current Greens struct, and setter
-        // is a pointer to the function that computes the (i, j) element
-        // of this primitive matrix
-        T value(int i, int j) {
-            if ((i < 0) || (j < 0) || (i > N - 1) || (j > N - 1)) {
-                std::cout << "ERROR: Invalid index in primitive matrix." << std::endl;
-                exit(1);
+            // Constructor
+            Primitive(Greens<T>& G, int lmax,
+                      T (*setter)(Greens<T>&, int, int)) : lmax(lmax), setter(setter), G(G) {
+                N = 2 * lmax + 1;
+                if (N < 2) N = 2;
+                set = Matrix<bool>::Zero(N, N);
+                matrix.resize(N, N);
             }
-            if (!set(i, j)) {
-                matrix(i, j) = (*setter)(G, i, j);
-                set(i, j) = true;
-            }
-            return matrix(i, j);
-        }
 
-        // Resetter
-        void reset() {
-            set.setZero(N, N);
-        }
+            // Getter function. G is a pointer to the current Greens struct,
+            // and setter is a pointer to the function that computes the
+            // (i, j) element of this primitive matrix
+            T value(int i, int j) {
+                if ((i < 0) || (j < 0) || (i > N - 1) || (j > N - 1)) {
+                    std::cout << "ERROR: Invalid index in primitive matrix." << std::endl;
+                    exit(1);
+                }
+                if (!set(i, j)) {
+                    matrix(i, j) = (*setter)(G, i, j);
+                    set(i, j) = true;
+                }
+                return matrix(i, j);
+            }
+
+            // Overload () to get the function value without calling value()
+            T operator() (int i, int j) { return value(i, j); }
+
+            // Resetter
+            void reset() {
+                set.setZero(N, N);
+            }
 
     };
 
@@ -251,66 +255,66 @@ namespace solver {
     template <class T>
     class Greens {
 
-    public:
+        public:
 
-        int lmax;
-        int N;
-        int l;
-        int m;
-        int mu;
-        int nu;
+            int lmax;
+            int N;
+            int l;
+            int m;
+            int mu;
+            int nu;
 
-        T b;
-        T b2;
-        T br;
-        T br32;
-        T ksq;
-        T k;
-        T E;
-        T K;
-        T PI;
-        T E1;
-        T E2;
+            T b;
+            T b2;
+            T br;
+            T br32;
+            T ksq;
+            T k;
+            T E;
+            T K;
+            T PI;
+            T E1;
+            T E2;
 
-        Vector<T> r;
-        Vector<T> b_r;
-        Vector<T> cosphi;
-        Vector<T> sinphi;
-        Vector<T> coslam;
-        Vector<T> sinlam;
+            Vector<T> r;
+            Vector<T> b_r;
+            Vector<T> cosphi;
+            Vector<T> sinphi;
+            Vector<T> coslam;
+            Vector<T> sinlam;
 
-        Primitive<T> H;
-        Primitive<T> I;
-        Primitive<T> J;
-        Primitive<T> M;
+            Primitive<T> H;
+            Primitive<T> I;
+            Primitive<T> J;
+            Primitive<T> M;
 
-        VectorT<T> sT;
+            VectorT<T> sT;
 
-        // Constructor
-        Greens(int lmax) : lmax(lmax),
-                           H(*this, lmax, computeH),
-                           I(*this, lmax, computeI),
-                           J(*this, lmax, computeJ),
-                           M(*this, lmax, computeM) {
+            // Constructor
+            Greens(int lmax) : lmax(lmax),
+                               H(*this, lmax, computeH),
+                               I(*this, lmax, computeI),
+                               J(*this, lmax, computeJ),
+                               M(*this, lmax, computeM) {
 
-            // Initialize some stuff
-            N = 2 * lmax + 1;
-            if (N < 2) N = 2;
-            r.resize(N);
-            r(0) = 1;
-            b_r.resize(N);
-            b_r(0) = 1;
-            cosphi.resize(N);
-            cosphi(0) = 1;
-            sinphi.resize(N);
-            sinphi(0) = 1;
-            coslam.resize(N);
-            coslam(0) = 1;
-            sinlam.resize(N);
-            sinlam(0) = 1;
-            sT.resize((lmax + 1) * (lmax + 1));
+                // Initialize some stuff
+                N = 2 * lmax + 1;
+                if (N < 2) N = 2;
+                r.resize(N);
+                r(0) = 1;
+                b_r.resize(N);
+                b_r(0) = 1;
+                cosphi.resize(N);
+                cosphi(0) = 1;
+                sinphi.resize(N);
+                sinphi(0) = 1;
+                coslam.resize(N);
+                coslam(0) = 1;
+                sinlam.resize(N);
+                sinlam(0) = 1;
+                sT.resize((lmax + 1) * (lmax + 1));
 
-        }
+            }
 
     };
 
