@@ -10,7 +10,7 @@ conda update -q conda
 conda info -a
 conda create --yes -n test python=$PYTHON_VERSION
 conda activate test
-conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib setuptools pytest pytest-cov pip healpy
+conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib setuptools pybind11 pytest pytest-cov pip healpy
 pip install Pillow
 pip install batman-package
 
