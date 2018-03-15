@@ -1,49 +1,116 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-from __future__ import division, print_function, absolute_import
-from setuptools import setup
-
-# Hackishly inject a constant into builtins to enable importing of the
-# module in "setup" mode. Stolen from `kplr`
+"""starry install script."""
+from setuptools import setup, Extension
+from setuptools.command.build_ext import build_ext
 import sys
-if sys.version_info[0] < 3:
-    import __builtin__ as builtins
-else:
-    import builtins
-builtins.__STARRY_SETUP__ = True
-import starry
+import setuptools
 
-long_description = \
-    """Analytic occultation light curves for astronomy."""
+__version__ = '0.0.2'
 
-# Setup!
-setup(name='starry',
-      version=starry.__version__,
-      description='Analytic occultation light curves for astronomy.',
-      long_description=long_description,
-      classifiers=[
-          'Development Status :: 3 - Alpha',
-          'License :: OSI Approved :: GNU General Public License (GPL)',
-          'Programming Language :: Python',
-          'Programming Language :: Python :: 3',
-          'Topic :: Scientific/Engineering :: Astronomy',
-      ],
-      url='http://github.com/rodluger/starry',
-      author='Rodrigo Luger',
-      author_email='rodluger@uw.edu',
-      license='GPL',
-      packages=['starry'],
-      install_requires=[
-                        'numpy',
-                        'scipy',
-                        'matplotlib',
-                        'tqdm',
-                        'sympy',
-                        'mpmath',
-                        'healpy'],
-      dependency_links=[],
-      scripts=[],
-      include_package_data=True,
-      zip_safe=False
-      )
+
+class get_pybind_include(object):
+    """
+    Helper class to determine the pybind11 include path.
+
+    The purpose of this class is to postpone importing pybind11
+    until it is actually installed, so that the ``get_include()``
+    method can be invoked.
+    """
+
+    def __init__(self, user=False):
+        """Init."""
+        self.user = user
+
+    def __str__(self):
+        """Str."""
+        import pybind11
+        return pybind11.get_include(self.user)
+
+
+ext_modules = [
+    Extension(
+        '_starry',
+        ['cpp/pybind_interface.cpp'],
+        include_dirs=[
+            # Path to pybind11 headers
+            get_pybind_include(),
+            get_pybind_include(user=True),
+            "cpp",
+            # TODO: Ship with eigen included?
+            "/usr/local/include/eigen3"
+        ],
+        language='c++'
+    ),
+]
+
+
+# As of Python 3.6, CCompiler has a `has_flag` method.
+# cf http://bugs.python.org/issue26689
+def has_flag(compiler, flagname):
+    """
+    Check if flag name is supported.
+
+    Return a boolean indicating whether a flag name is supported on
+    the specified compiler.
+    """
+    import tempfile
+    with tempfile.NamedTemporaryFile('w', suffix='.cpp') as f:
+        f.write('int main (int argc, char **argv) { return 0; }')
+        try:
+            compiler.compile([f.name], extra_postargs=[flagname])
+        except setuptools.distutils.errors.CompileError:
+            return False
+    return True
+
+
+class BuildExt(build_ext):
+    """A custom build extension for adding compiler-specific options."""
+
+    c_opts = {
+        'msvc': ['/EHsc'],
+        'unix': [],
+    }
+
+    if sys.platform == 'darwin':
+        c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+
+    def build_extensions(self):
+        """Build the extensions."""
+        ct = self.compiler.compiler_type
+        opts = self.c_opts.get(ct, [])
+        if ct == 'unix':
+            opts.append('-DVERSION_INFO="%s"' %
+                        self.distribution.get_version())
+            opts.append('-std=c++11')
+            if has_flag(self.compiler, '-fvisibility=hidden'):
+                opts.append('-fvisibility=hidden')
+        elif ct == 'msvc':
+            opts.append('/DVERSION_INFO=\\"%s\\"' %
+                        self.distribution.get_version())
+        for ext in self.extensions:
+            ext.extra_compile_args = opts
+            if sys.platform == "darwin":
+                ext.extra_compile_args += ["-march=native",
+                                           "-mmacosx-version-min=10.9"]
+                ext.extra_link_args += ["-march=native",
+                                        "-mmacosx-version-min=10.9"]
+        build_ext.build_extensions(self)
+
+
+setup(
+    name='starry',
+    version=__version__,
+    author='Rodrigo Luger',
+    author_email='rodluger@gmail.com',
+    url='https://github.com/rodluger/starry',
+    description='Analytic occultation light curves for astronomy.',
+    long_description='',
+    license='GPL',
+    packages=['starry'],
+    ext_modules=ext_modules,
+    install_requires=['numpy',
+                      'matplotlib',
+                      'pybind11>=2.2',
+                      'healpy'],
+    cmdclass={'build_ext': BuildExt},
+    zip_safe=False,
+)

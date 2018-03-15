@@ -1,5 +1,5 @@
 """Earth phase curve example."""
-from starry import starry
+from starry import Map
 import matplotlib.pyplot as pl
 import numpy as np
 
@@ -20,9 +20,9 @@ labels = ['Asia', 'Africa', 'S. America',
           'Europe',
           'Antarctica']
 for continent, label in zip(continents, labels):
-    y = starry(10, continent)
-    y.rotate([0, 1, 0], -np.pi)
-    F = y.flux(res=300, u=[0, 1, 0], theta=theta)
+    m = Map(10, image=continent)
+    m.rotate([0, 1, 0], -np.pi)
+    F = m.flux(u=[0, 1, 0], theta=theta)
     F = (F - base) / norm
     total += F
     ax.plot(theta * 180 / np.pi - 180, F, label=label)

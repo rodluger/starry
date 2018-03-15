@@ -1,5 +1,4 @@
-"""Map fitting utilities for STARRY."""
-from .rotation import R
+"""Map fitting utilities for starry."""
 import numpy as np
 import healpy as hp
 from PIL import Image
@@ -28,12 +27,6 @@ def healpix2map(healpix_map, lmax=10):
             else:
                 ylm[i] = np.sqrt(2) * (-1) ** m * alm[j].real
             i += 1
-
-    # We need to apply some rotations to return
-    # to the original orientation
-    ylm = np.dot(R(lmax, [1, 0, 0], 0, 1), ylm)
-    ylm = np.dot(R(lmax, [0, 0, 1], -1, 0), ylm)
-    ylm = np.dot(R(lmax, [0, 1, 0], 0, 1), ylm)
 
     return ylm
 

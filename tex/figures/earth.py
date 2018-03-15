@@ -1,20 +1,22 @@
 """Earth spherical harmonic example."""
-from starry import starry
+from starry import Map
 import matplotlib.pyplot as pl
 import numpy as np
 
 # Generate a sample starry map
-y = starry(10, 'earth')
+m = Map(10, image='earth')
 
 # Start centered at longitude 180 W
-y.rotate([0, 1, 0], -np.pi)
+m.rotate([0, 1, 0], -np.pi)
 
 # Render it under consecutive rotations
 nax = 8
+res = 300
 fig, ax = pl.subplots(1, nax, figsize=(3 * nax, 3))
 theta = np.linspace(0, 2 * np.pi, nax, endpoint=False)
+x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 for i in range(nax):
-    I = y.render(res=300, u=[0, 1, 0], theta=-theta[i])
+    I = m.evaluate(u=[0, 1, 0], theta=-theta[i], x=x, y=y)
     ax[i].imshow(I, origin="lower", interpolation="none", cmap='plasma')
     ax[i].axis('off')
 

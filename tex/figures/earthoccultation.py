@@ -1,5 +1,5 @@
 """Earth occultation example."""
-from starry import starry
+from starry import Map
 import matplotlib.pyplot as pl
 import numpy as np
 
@@ -12,12 +12,12 @@ ax_im = [pl.subplot2grid((4, nim), (0, n)) for n in range(nim)]
 ax_lc = pl.subplot2grid((4, nim), (1, 0), colspan=nim, rowspan=3)
 
 # Instantiate the earth
-y = starry(10, 'earth')
+m = Map(10, image='earth')
 
 # Moon params
-r = 0.273
-y0 = np.linspace(-0.5, 0.5, npts)
-x0 = np.linspace(-1.5, 1.5, npts)
+ro = 0.273
+yo = np.linspace(-0.5, 0.5, npts)
+xo = np.linspace(-1.5, 1.5, npts)
 
 # Say the occultation occurs over ~1 radian of the Earth's rotation
 # That's equal to 24 / (2*pi) hours
@@ -26,16 +26,21 @@ theta0 = 0
 theta = np.linspace(theta0, theta0 + 1., npts, endpoint=True)
 
 # Compute and plot the flux
-F = y.flux(u=[0, 1, 0], theta=theta, x0=x0, y0=y0, r=r)
+F = m.flux(u=[0, 1, 0], theta=theta, xo=xo, yo=yo, ro=ro)
 F /= np.max(F)
 ax_lc.plot(time, F, 'k-', label='Total')
 
 # Plot the earth images
+x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 for n in range(nim):
     i = int(np.linspace(0, npts - 1, nim)[n])
-    I = y.render(res=res, u=[0, 1, 0], theta=theta[i], x0=x0[i], y0=y0[i], r=r)
+    I = m.evaluate(u=[0, 1, 0], theta=theta[i], x=x, y=y)
     ax_im[n].imshow(I, origin="lower", interpolation="none", cmap='plasma',
-                    extent=(-1,1,-1,1))
+                    extent=(-1, 1, -1, 1))
+    xm = np.linspace(xo[i] - ro + 1e-5, xo[i] + ro - 1e-5, res)
+    ax_im[n].fill_between(xm, yo[i] - np.sqrt(ro ** 2 - (xm - xo[i]) ** 2),
+                          yo[i] + np.sqrt(ro ** 2 - (xm - xo[i]) ** 2),
+                          color='w')
     ax_im[n].axis('off')
     ax_im[n].set_xlim(-1.05, 1.05)
     ax_im[n].set_ylim(-1.05, 1.05)
