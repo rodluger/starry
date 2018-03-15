@@ -6,8 +6,11 @@ from starry import Map
 # Compute and plot up to this order
 lmax = 6
 
-# Number of points in the phase curve
+# Number of points in the light curve
 nt = 100
+
+# Number of points in the numerical light curve
+nn = 10
 
 # Set up the plot
 fig, ax = pl.subplots(lmax + 1, lmax + 1, figsize=(9, 5.5))
@@ -30,13 +33,17 @@ for j, m in enumerate(range(lmax + 1)):
 y = Map(lmax)
 r = 0.25
 x0 = np.linspace(-1.5, 1.5, nt)
-for y0, zorder in zip([0.25, 0.75], [1, 0]):
+x0n = np.linspace(-1.5, 1.5, nn)
+for y0, zorder, color in zip([0.25, 0.75], [1, 0], ['C0', 'C1']):
     for i, l in enumerate(range(lmax + 1)):
         for j, m in enumerate(range(l + 1)):
             y.reset()
             y.set_coeff(l, m, 1)
             flux = y.flux(u=[1, 0, 0], theta=0, x0=x0, y0=y0, r=r)
-            ax[i, j].plot(flux, lw=1, zorder=zorder)
+            ax[i, j].plot(x0, flux, lw=1, zorder=zorder, color=color)
+            fluxn = y.flux(u=[1, 0, 0], theta=0, x0=x0n, y0=y0, r=r,
+                           numerical=True, tol=1e-5)
+            ax[i, j].plot(x0n, fluxn, '.', ms=2, zorder=zorder, color=color)
 
 # Hack a legend
 axleg = pl.axes([0.7, 0.7, 0.15, 0.15])

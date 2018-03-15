@@ -115,8 +115,11 @@ namespace numeric {
             theta = atan2(yo, xo);
         }
         tol /= M_PI;
-        if (b > 1) {
+        if (b > 1 + ro) {
             fnum<T>(0, 1, theta, theta + 2 * M_PI, xo, yo, ro, tol, lmax, p, &f);
+        } else if (b > 1) {
+            fnum<T>(0, (1 + b - ro) / 2., theta, theta + 2 * M_PI, xo, yo, ro, tol, lmax, p, &f);
+            fnum<T>((1 + b - ro) / 2., 1, theta, theta + 2 * M_PI, xo, yo, ro, tol, lmax, p, &f);
         } else {
             fnum<T>(0, b, theta, theta + 2 * M_PI, xo, yo, ro, tol, lmax, p, &f);
             fnum<T>(b, 1, theta, theta + 2 * M_PI, xo, yo, ro, tol, lmax, p, &f);
