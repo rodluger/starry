@@ -3,7 +3,13 @@ sudo: required
 
 dist: trusty
 
-language: python
+language: c
+
+addons:
+    apt:
+        packages:
+            - gcc-4.8
+            - g++-4.8
 
 matrix:
     include:

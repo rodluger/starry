@@ -10,9 +10,14 @@ conda update -q conda
 conda info -a
 conda create --yes -n test python=$PYTHON_VERSION
 conda activate test
-conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib sympy mpmath setuptools pytest pytest-cov pip healpy
+conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib setuptools pytest pytest-cov pip healpy
 pip install Pillow
 pip install batman-package
 
 # Build the code
-python setup.py install
+# Build the extension
+if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+    python setup.py develop
+else
+    CXX=g++-4.8 CC=gcc-4.8 python setup.py develop
+fi
