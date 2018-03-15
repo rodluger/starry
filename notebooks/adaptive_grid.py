@@ -104,9 +104,14 @@ def compute(I=lambda x, y: x ** 3 + y ** 2, tol=1e-4):
         flux = Flux()
         b = np.sqrt(sx0.val ** 2 + sy0.val ** 2)
         theta = np.arctan2(sy0.val, sx0.val)
-        if b > 1:
+        if b > 1 + sr0.val:
             fnum(0, 1, theta, theta + 2 * np.pi, sx0.val, sy0.val,
                  sr0.val, I, tol / np.pi, flux)
+        elif b > 1:
+            fnum(0, (1 + b - sr0.val) / 2., theta, theta + 2 * np.pi,
+                 sx0.val, sy0.val, sr0.val, I, tol / np.pi, flux)
+            fnum((1 + b - sr0.val) / 2., 1, theta, theta + 2 * np.pi,
+                 sx0.val, sy0.val, sr0.val, I, tol / np.pi, flux)
         else:
             fnum(0, b, theta, theta + 2 * np.pi, sx0.val, sy0.val,
                  sr0.val, I, tol / np.pi, flux)

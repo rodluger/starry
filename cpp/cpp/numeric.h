@@ -24,8 +24,7 @@ namespace numeric {
 
     // Evaluate a map `p` at a given (x, y) coordinate during an occultation
     template <typename T>
-    T evaluate(const T& x, const T& y, const T& xo, const T& yo,
-               const T& ro, int lmax, Vector<T>& p) {
+    T evaluate(T x, T y, T xo, T yo, T ro, int lmax, Vector<T>& p) {
 
         // Basis
         Vector<T> basis;

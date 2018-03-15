@@ -14,7 +14,10 @@ starry/cpp/scratch/docs/_build
 starry/cpp/scratch/docs/_generate
 starry/cpp/scratch/test
 cpp/figures/*.pdf
-cpp/src/test
+cpp/cpp/test
+cpp/cpp/Makefile
+cpp/cpp/test.cpp
+
 
 # Latex
 *.aux

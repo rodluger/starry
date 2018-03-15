@@ -1,6 +1,6 @@
 """Stellar transit example."""
-from starry import starry
-from starry.utils import prange
+from starry import Map
+from tqdm import tqdm
 import matplotlib.pyplot as pl
 import numpy as np
 import batman
@@ -77,10 +77,13 @@ def NumericalFlux(b, r, u1, u2):
 # Instantiate the star
 u1 = 0.4
 u2 = 0.26
-y = starry(2, u1=u1, u2=u2)
+m = Map(2)
+m.set_coeff(0, 0, 2 * np.sqrt(np.pi) / 3. * (3 - 3 * u1 - 4 * u2))
+m.set_coeff(1, 0, 2 * np.sqrt(np.pi / 3.) * (u1 + 2 * u2))
+m.set_coeff(2, 0, -4. / 3. * np.sqrt(np.pi / 5) * u2)
 
-# Planet params
-r = 0.1
+# Occultor (planet) params
+ro = 0.1
 npts = 500
 time = np.linspace(-1, 1, npts)
 b0 = 0.5
@@ -90,32 +93,35 @@ a = 15.
 # Orbital solution for zero eccentricity
 inc = np.arccos(b0 / a)
 f = 2 * np.pi / P * time
-x0 = a * np.cos(np.pi / 2. + f)
+xo = a * np.cos(np.pi / 2. + f)
 b = a * np.sqrt(1 - np.sin(np.pi / 2. + f) ** 2 * np.sin(inc) ** 2)
-y0 = np.sqrt(b ** 2 - x0 ** 2)
+yo = np.sqrt(b ** 2 - xo ** 2)
 
 # Compute and plot the starry flux
+print("Computing starry flux...")
 fig, ax = pl.subplots(2, sharex=True)
 fig.subplots_adjust(hspace=0.05)
-sF = y.flux(x0=x0, y0=y0, r=r)
+sF = m.flux(xo=xo, yo=yo, ro=ro)
 sF /= np.max(sF)
 ax[0].plot(time, sF, '-', color='C0', label='starry')
 
 # Compute and plot the flux from numerical integration
+print("Computing numerical flux...")
 nF = np.zeros_like(time)
-for i in prange(npts):
-    nF[i] = NumericalFlux(b[i], r, u1, u2)
+for i in tqdm(range(npts)):
+    nF[i] = NumericalFlux(b[i], ro, u1, u2)
 nF /= np.nanmax(nF)
 ax[0].plot(time[::20], nF[::20], 'o', color='C4', label='numerical')
 
 # Compute and plot the batman flux
+print("Computing batman flux...")
 params = batman.TransitParams()
 params.limb_dark = "quadratic"
 params.u = [u1, u2]
 params.t0 = 0.
 params.ecc = 0.
 params.w = 90.
-params.rp = r
+params.rp = ro
 params.a = a
 params.per = P
 params.inc = inc * 180 / np.pi

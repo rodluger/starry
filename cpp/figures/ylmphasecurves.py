@@ -9,6 +9,9 @@ lmax = 6
 # Number of points in the phase curve
 nt = 100
 
+# Number of points in the numerical light curve
+nn = 10
+
 # Set up the plot
 fig, ax = pl.subplots(lmax + 1, lmax + 1, figsize=(9, 5.5))
 for axis in ax.flatten():
@@ -31,15 +34,25 @@ ux = np.array([1., 0., 0.])
 uy = np.array([0., 1., 0.])
 y = Map(lmax)
 theta = np.linspace(0, 2 * np.pi, nt, endpoint=False)
-for u, zorder in zip([ux, uy], [1, 0]):
-    for i, l in enumerate(range(lmax + 1)):
-        for j, m in enumerate(range(l + 1)):
+thetan = np.linspace(0, 2 * np.pi, nn, endpoint=False)
+for i, l in enumerate(range(lmax + 1)):
+    for j, m in enumerate(range(l + 1)):
+        nnull = 0
+        for u, zorder, color in zip([ux, uy], [1, 0], ['C0', 'C1']):
             y.reset()
             y.set_coeff(l, m, 1)
-            flux = y.flux(u=u, theta=theta, x0=-9, y0=-9, r=1)
+            flux = y.flux(u=u, theta=theta)
+            ax[i, j].plot(theta, flux, lw=1, zorder=zorder, color=color)
+            fluxn = y.flux(u=u, theta=thetan, numerical=True, tol=1e-5)
+            ax[i, j].plot(thetan, fluxn, '.', ms=2, zorder=zorder, color=color)
             if np.max(np.abs(flux)) < 1e-10:
-                flux *= 0
-            ax[i, j].plot(flux, lw=1, zorder=zorder)
+                nnull += 1
+        # If there's no light curve, make sure our plot range
+        # isn't too tight, as it will zoom in on floating point error
+        if nnull == 2:
+            ax[i, j].set_ylim(-1, 1)
+# Force the scale for the constant map
+ax[0, 0].set_ylim(0.886 + 1, 0.886 - 1)
 
 # Hack a legend
 axleg = pl.axes([0.7, 0.7, 0.15, 0.15])

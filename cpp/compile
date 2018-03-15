@@ -1,1 +1,0 @@
-rm -rf build && python setup.py develop && python tests/test.py

@@ -64,6 +64,7 @@ namespace maps {
             // Temporary variables
             Vector<T> tmpvec;
             T tmpscalar;
+            T tmpu1, tmpu2, tmpu3;
 
             // Private methods
             void apply_rotation(UnitVector<T>& u, T costheta, T sintheta,
@@ -95,12 +96,16 @@ namespace maps {
                 p = Vector<T>::Zero(N);
                 g = Vector<T>::Zero(N);
                 tmpvec = Vector<T>::Zero(N);
+                tmpscalar = NAN;
+                tmpu1 = 0;
+                tmpu2 = 0;
+                tmpu3 = 0;
                 basis.resize(N, 1);
                 update(true);
             }
 
             // Public methods
-            T evaluate(const T& x0, const T& y0);
+            T evaluate(UnitVector<T>& u=yhat, T theta=0, T x0=0, T y0=0);
             void rotate(UnitVector<T>& u, T theta, Vector<T>& yin,
                         Vector<T>& yout);
             void rotate(UnitVector<T>& u, T costheta, T sintheta,
@@ -112,9 +117,9 @@ namespace maps {
             T get_coeff(int l, int m);
             void reset();
             T flux(UnitVector<T>& u=yhat, T theta=0,
-                   T x0=-INFINITY, T y0=-INFINITY, T r=1,
+                   T xo=-INFINITY, T yo=-INFINITY, T ro=1,
                    bool numerical=false, double tol=1e-4);
-            std::string repr(const double tol=1e-15);
+            std::string repr();
 
     };
 
@@ -143,23 +148,53 @@ namespace maps {
     // * -- Public methods -- *
     //
 
-    // Update the maps
+    // Update the maps after the coefficients changed
+    // or after a base rotation was applied
     template <class T>
     void Map<T>::update(bool force) {
         if (force || needs_update) {
             p = C.A1 * y;
             g = C.A * y;
+            tmpscalar = NAN;
+            tmpu1 = 0;
+            tmpu2 = 0;
+            tmpu3 = 0;
+            tmpvec = Vector<T>::Zero(N);
             needs_update = false;
         }
     }
 
 
-    // Evaluate our map at a given (x, y) coordinate
+    // Evaluate our map at a given (x0, y0) coordinate
     template <class T>
-    T Map<T>::evaluate(const T& x0, const T& y0) {
+    T Map<T>::evaluate(UnitVector<T>& u, T theta, T x0, T y0) {
 
-        // Update maps if necessary
+        // Update the maps if necessary
         update();
+
+        // Get the polynomial map
+        Vector<T>* ptrmap;
+
+        if (theta == 0) {
+            // We will use this.p
+            ptrmap = &p;
+        } else if ((theta == tmpscalar) && (u(0) == tmpu1) && (u(1) == tmpu2) && (u(2) == tmpu3)) {
+            // We will use this.tmpvec, which we computed last time around
+            ptrmap = &tmpvec;
+        } else {
+            // Rotate the map into view
+            rotate(u, theta, y, tmpvec);
+            tmpvec = C.A1 * tmpvec;
+            ptrmap = &tmpvec;
+        }
+
+        // Save this value of theta so we don't have
+        // to keep rotating the map when we vectorize
+        // this function!
+        tmpscalar = theta;
+        tmpu1 = u(0);
+        tmpu2 = u(1);
+        tmpu3 = u(2);
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) return NAN;
@@ -170,7 +205,7 @@ namespace maps {
         // Compute the polynomial basis where it is needed
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
-                if (std::abs(p(n)) < MAP_TOLERANCE) {
+                if (std::abs((*ptrmap)(n)) < MAP_TOLERANCE) {
                     basis(n) = 0;
                 } else {
                     mu = l - m;
@@ -186,7 +221,7 @@ namespace maps {
         }
 
         // Dot the coefficients in to our polynomial map
-        return p.dot(basis);
+        return (*ptrmap).dot(basis);
 
     }
 
@@ -220,7 +255,7 @@ namespace maps {
 
     // Compute the total flux during or outside of an occultation
     template <class T>
-    T Map<T>::flux(UnitVector<T>& u, T theta, T x0, T y0, T r,
+    T Map<T>::flux(UnitVector<T>& u, T theta, T xo, T yo, T ro,
                    bool numerical, double tol) {
 
         // Pointer to the map we're integrating
@@ -228,10 +263,10 @@ namespace maps {
         Vector<T>* ptry = &y;
 
         // Impact parameter
-        T b = sqrt(x0 * x0 + y0 * y0);
+        T b = sqrt(xo * xo + yo * yo);
 
         // Check for complete occultation
-        if (b <= r - 1) return 0;
+        if (b <= ro - 1) return 0;
 
         // Rotate the map into view if necessary and update our pointer
         if (theta != 0) {
@@ -240,14 +275,13 @@ namespace maps {
         }
 
         // Compute it numerically?
-
         if (numerical) {
             tmpvec = C.A1 * (*ptry);
-            return numeric::flux(x0, y0, r, lmax, tmpvec, tol);
+            return numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
         }
-        
+
         // No occultation: cake
-        if (b >= 1 + r) {
+        if (b >= 1 + ro) {
 
             return C.rT * C.A1 * (*ptry);
 
@@ -255,13 +289,13 @@ namespace maps {
         } else {
 
             // Align occultor with the +y axis if necessary
-            if ((b > 0) && (x0 != 0)) {
-                rotate(zhat, y0 / b, x0 / b, (*ptry), tmpvec);
+            if ((b > 0) && (xo != 0)) {
+                rotate(zhat, yo / b, xo / b, (*ptry), tmpvec);
                 ptry = &tmpvec;
             }
 
             // Compute the sT vector
-            solver::computesT<T>(G, b, r);
+            solver::computesT<T>(G, b, ro);
 
             // Dot the result in and we're done
             return G.sT * C.A * (*ptry);
@@ -300,7 +334,7 @@ namespace maps {
 
     // Return a human-readable map string
     template <class T>
-    std::string Map<T>::repr(const double TOL) {
+    std::string Map<T>::repr() {
         int n = 0;
         int nterms = 0;
         char buf[30];
@@ -308,7 +342,7 @@ namespace maps {
         os << "<STARRY Map: ";
         for (int l = 0; l < lmax + 1; l++) {
             for (int m = -l; m < l + 1; m++) {
-                if (std::abs(y(n)) > TOL){
+                if (std::abs(y(n)) > MAP_TOLERANCE){
                     // Separator
                     if ((nterms > 0) && (y(n) > 0)) {
                         os << " + ";
@@ -319,7 +353,7 @@ namespace maps {
                     if ((y(n) == 1) || (y(n) == -1)) {
                         sprintf(buf, "Y_{%d,%d}", l, m);
                         os << buf;
-                    } else if (fmod(std::abs(y(n)), 1) < TOL) {
+                    } else if (fmod(std::abs(y(n)), 1) < MAP_TOLERANCE) {
                         sprintf(buf, "%d Y_{%d,%d}", (int)std::abs(y(n)), l, m);
                         os << buf;
                     } else if (fmod(std::abs(y(n)), 1) >= 0.01) {
