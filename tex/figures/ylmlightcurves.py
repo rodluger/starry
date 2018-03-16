@@ -31,19 +31,19 @@ for j, m in enumerate(range(lmax + 1)):
 
 # Occultation params
 y = Map(lmax)
-r = 0.25
-x0 = np.linspace(-1.5, 1.5, nt)
-x0n = np.linspace(-1.5, 1.5, nn)
-for y0, zorder, color in zip([0.25, 0.75], [1, 0], ['C0', 'C1']):
+ro = 0.25
+xo = np.linspace(-1.5, 1.5, nt)
+xon = np.linspace(-1.5, 1.5, nn)
+for yo, zorder, color in zip([0.25, 0.75], [1, 0], ['C0', 'C1']):
     for i, l in enumerate(range(lmax + 1)):
         for j, m in enumerate(range(l + 1)):
             y.reset()
             y.set_coeff(l, m, 1)
-            flux = y.flux(u=[1, 0, 0], theta=0, x0=x0, y0=y0, r=r)
-            ax[i, j].plot(x0, flux, lw=1, zorder=zorder, color=color)
-            fluxn = y.flux(u=[1, 0, 0], theta=0, x0=x0n, y0=y0, r=r,
+            flux = y.flux(u=[1, 0, 0], theta=0, xo=xo, yo=yo, ro=ro)
+            ax[i, j].plot(xo, flux, lw=1, zorder=zorder, color=color)
+            fluxn = y.flux(u=[1, 0, 0], theta=0, xo=xon, yo=yo, ro=ro,
                            numerical=True, tol=1e-5)
-            ax[i, j].plot(x0n, fluxn, '.', ms=2, zorder=zorder, color=color)
+            ax[i, j].plot(xon, fluxn, '.', ms=2, zorder=zorder, color=color)
 
 # Hack a legend
 axleg = pl.axes([0.7, 0.7, 0.15, 0.15])
