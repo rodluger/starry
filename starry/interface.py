@@ -1,13 +1,13 @@
 """Python interface to the C++ starry code."""
-import _starry as cpp
+import _starry
 from .maps import image2map, healpix2map
 import numpy as np
 import matplotlib.pyplot as pl
-__version__ = cpp.__version__
+__version__ = _starry.__version__
 
 
-class Map(cpp.Map):
-    """The main STARRY interface."""
+class Map(_starry.Map):
+    """The main starry Python interface."""
 
     def __init__(self, *args, **kwargs):
         """Initialize a starry Map."""
@@ -37,6 +37,14 @@ class Map(cpp.Map):
             self.rotate([1, 0, 0], np.pi / 2)
             self.rotate([0, 0, 1], np.pi)
             self.rotate([0, 1, 0], np.pi / 2)
+
+    def __getitem__(self, lm):
+        """Allow users to access elements using their `l` and `m` indices."""
+        return self.get_coeff(lm[0], lm[1])
+
+    def __setitem__(self, lm, val):
+        """Allow users to set elements using their `l` and `m` indices."""
+        self.set_coeff(lm[0], lm[1], val)
 
     def show(self, cmap='plasma', u=[0, 1, 0], theta=0, res=300):
         """Show the rendered map using `imshow`."""

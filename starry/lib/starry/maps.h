@@ -57,7 +57,6 @@ namespace maps {
     template <class T>
     class Map {
 
-            int N;
             Vector<T> basis;
             bool needs_update;
 
@@ -78,6 +77,7 @@ namespace maps {
             Vector<T> g;
 
             // Map order
+            int N;
             int lmax;
 
             // Rotation matrices
@@ -114,6 +114,7 @@ namespace maps {
             void rotate(UnitVector<T>& u, T costheta, T sintheta);
             void update(bool force=false);
             void set_coeff(int l, int m, T coeff);
+            void limbdark(T u1=0, T u2=0);
             T get_coeff(int l, int m);
             void reset();
             T flux(UnitVector<T>& u=yhat, T theta=0,
@@ -325,6 +326,15 @@ namespace maps {
         }
     }
 
+    // Set the linear/quadratic limb darkening coefficients
+    template <class T>
+    void Map<T>::limbdark(T u1, T u2) {
+        reset();
+        set_coeff(0, 0, 2 * sqrt(M_PI) / 3. * (3 - 3 * u1 - 4 * u2));
+        set_coeff(1, 0, 2 * sqrt(M_PI / 3.) * (u1 + 2 * u2));
+        set_coeff(2, 0, -4. / 3. * sqrt(M_PI / 5) * u2);
+    }
+
     // Reset the map
     template <class T>
     void Map<T>::reset() {
@@ -368,7 +378,7 @@ namespace maps {
                 n++;
             }
         }
-        if (n == 0) {
+        if (nterms == 0) {
             os << "Null map>";
             return std::string(os.str());
         } else {

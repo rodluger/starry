@@ -78,9 +78,7 @@ def NumericalFlux(b, r, u1, u2):
 u1 = 0.4
 u2 = 0.26
 m = Map(2)
-m.set_coeff(0, 0, 2 * np.sqrt(np.pi) / 3. * (3 - 3 * u1 - 4 * u2))
-m.set_coeff(1, 0, 2 * np.sqrt(np.pi / 3.) * (u1 + 2 * u2))
-m.set_coeff(2, 0, -4. / 3. * np.sqrt(np.pi / 5) * u2)
+m.limbdark(u1, u2)
 
 # Occultor (planet) params
 ro = 0.1
