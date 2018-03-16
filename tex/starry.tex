@@ -1151,9 +1151,8 @@ If we happen to know $\bvec{G}_n$, the integral in \eq{greens} is just
 %
 \begin{align}
     \label{eq:sn}
-    s_n &= \mathcal{P}(\bvec{G}_n) - \mathcal{Q}(\bvec{G}_n)
+    s_n &= \mathcal{Q}(\bvec{G}_n) - \mathcal{P}(\bvec{G}_n)
     \quad,
-    \todo{check sign}
 \end{align}
 %
 where, as in \citet{Pal2012}, we define the \emph{primitive integrals}
@@ -1400,7 +1399,9 @@ The map may be visualized by rendering it on a grid:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 import numpy as np
-x, y = np.meshgrid(np.linspace(-1, 1, 100), np.linspace(-1, 1, 100))
+x = np.linspace(-1, 1, 100)
+y = np.linspace(-1, 1, 100)
+x, y = np.meshgrid(x, y)
 I = m.evaluate(u=None, theta=None, x=x, y=y)
 \end{lstlisting}
 %

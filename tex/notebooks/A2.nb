@@ -10,14 +10,37 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[     23368,        695]
-NotebookOptionsPosition[     21598,        630]
-NotebookOutlinePosition[     21958,        646]
-CellTagsIndexPosition[     21915,        643]
+NotebookDataLength[     24068,        711]
+NotebookOptionsPosition[     22247,        644]
+NotebookOutlinePosition[     22663,        662]
+CellTagsIndexPosition[     22620,        659]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
 Notebook[{
+Cell[TextData[{
+ StyleBox[ButtonBox["Link to Mathematica .nb file",
+  BaseStyle->"Hyperlink",
+  ButtonData->{
+    URL["https://github.com/rodluger/starry/blob/master/tex/notebooks/A2.nb"],
+     None},
+  ButtonNote->
+   "https://github.com/rodluger/starry/blob/master/tex/notebooks/A2.nb"],
+  FontWeight->"Bold"],
+ ButtonBox[" ",
+  BaseStyle->"Hyperlink",
+  ButtonData->{
+    URL["https://github.com/rodluger/starry/blob/master/tex/notebooks/A2.nb"],
+     None},
+  ButtonNote->
+   "https://github.com/rodluger/starry/blob/master/tex/notebooks/A2.nb"]
+}], "Text",
+ CellChangeTimes->{{3.730206014046989*^9, 3.730206031935463*^9}, {
+  3.730206132517593*^9, 3.730206159524222*^9}, {3.7302063051649837`*^9, 
+  3.7302063051731358`*^9}, {3.730206767257217*^9, 3.730206804162838*^9}},
+ TextAlignment->Center,
+ Background->RGBColor[1, 0.85, 0.85]],
+
 Cell[TextData[StyleBox["Definitions", "Subchapter"]], "Subsubsection",
  CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
   3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
@@ -342,35 +365,6 @@ Cell[BoxData[
   3.727555124457282*^9, 3.727555137870825*^9}}]
 }, Open  ]],
 
-Cell[CellGroupData[{
-
-Cell["Save A2 and bg to library", "Subsubsection",
- CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
-   3.728393485338278*^9, 3.728393502112381*^9}, {3.728393634141376*^9, 
-   3.728393634469572*^9}, {3.728394879869817*^9, 3.728394879979101*^9}, {
-   3.7283950284416857`*^9, 3.72839502867197*^9}, 3.728395265508502*^9, {
-   3.728400835327014*^9, 3.728400835853155*^9}}],
-
-Cell[BoxData[{
- RowBox[{"Save", "[", 
-  RowBox[{
-   RowBox[{"FileNameJoin", "[", 
-    RowBox[{"{", 
-     RowBox[{
-      RowBox[{"NotebookDirectory", "[", "]"}], ",", "\"\<starry.wl\>\""}], 
-     "}"}], "]"}], ",", "A2"}], "]"}], "\[IndentingNewLine]", 
- RowBox[{"Save", "[", 
-  RowBox[{
-   RowBox[{"FileNameJoin", "[", 
-    RowBox[{"{", 
-     RowBox[{
-      RowBox[{"NotebookDirectory", "[", "]"}], ",", "\"\<starry.wl\>\""}], 
-     "}"}], "]"}], ",", "bg"}], "]"}]}], "Input",
- CellChangeTimes->{
-  3.728394990521926*^9, {3.72839503168939*^9, 3.728395032083294*^9}, 
-   3.728395266570875*^9, {3.7284008387264023`*^9, 3.728400840317589*^9}}]
-}, Open  ]],
-
 Cell[TextData[StyleBox["\nExamples", "Subchapter"]], "Subsubsection",
  CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
    3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
@@ -454,7 +448,7 @@ Cell[BoxData[
   Function[BoxForm`e$, 
    TableForm[BoxForm`e$]]]], "Output",
  CellChangeTimes->{{3.728395216870508*^9, 3.728395229175867*^9}, 
-   3.728687306488085*^9}]
+   3.728687306488085*^9, 3.730206744291836*^9}]
 }, Open  ]]
 }, Open  ]],
 
@@ -521,8 +515,11 @@ Cell[BoxData[
    MatrixForm[BoxForm`e$]]]], "Output",
  CellChangeTimes->{{3.727538387903014*^9, 3.727538394736404*^9}, 
    3.727555166305394*^9, 3.727555391192361*^9, 3.727556439833414*^9, 
-   3.72839519062573*^9, 3.728687215840046*^9, 3.728687303106637*^9}]
+   3.72839519062573*^9, 3.728687215840046*^9, 3.728687303106637*^9, 
+   3.730206744320403*^9}]
 }, Open  ]],
+
+Cell[CellGroupData[{
 
 Cell[BoxData[
  RowBox[{"\[IndentingNewLine]", Cell[TextData[StyleBox[
@@ -531,7 +528,24 @@ Cell[BoxData[
      3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
      3.728393711812155*^9}, {3.728393874169753*^9, 3.7283938750003366`*^9}, 
      3.728394586944203*^9}]}]], "Input",
- CellChangeTimes->{{3.728395060221962*^9, 3.7283950645717278`*^9}}]
+ CellChangeTimes->{{3.728395060221962*^9, 3.7283950645717278`*^9}}],
+
+Cell[BoxData[
+ InterpretationBox[Cell[BoxData[
+   StyleBox["\<\"LaTeXify\"\>", "Subchapter",
+    StripOnInput->False]], "Subsubsection",
+   CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+     3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
+     3.728393711812155*^9}, {3.728393874169753*^9, 3.7283938750003366`*^9}, 
+     3.728394586944203*^9}],
+  TextCell[
+   Style["LaTeXify", "Subchapter"], "Subsubsection", 
+   CellChangeTimes -> {{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+     3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
+     3.728393711812155*^9}, {3.728393874169753*^9, 3.7283938750003366`*^9}, 
+     3.728394586944203*^9}]]], "Output",
+ CellChangeTimes->{3.7302067443606863`*^9}]
+}, Open  ]]
 }, Open  ]],
 
 Cell[CellGroupData[{
@@ -624,12 +638,14 @@ Cell["\<\
 \>", "Output",
  CellChangeTimes->{3.727535184147171*^9, 3.7275352603324957`*^9, 
   3.7275353055023746`*^9, 3.727538398488011*^9, 3.727555195760848*^9, 
-  3.728395195429583*^9, 3.728687321305936*^9}]
+  3.728395195429583*^9, 3.728687321305936*^9, 3.730206744442069*^9}]
 }, Open  ]]
 }, Open  ]]
 },
 WindowSize->{957, 725},
-WindowMargins->{{191, Automatic}, {Automatic, 10}},
+WindowMargins->{{Automatic, 198}, {-107, Automatic}},
+PrintingCopies->1,
+PrintingPageRange->{1, Automatic},
 FrontEndVersion->"11.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (September \
 21, 2016)",
 StyleDefinitions->"Default.nb"
@@ -645,56 +661,56 @@ CellTagsIndex->{}
 *)
 (*NotebookFileOutline
 Notebook[{
-Cell[558, 20, 240, 3, 45, "Subsubsection"],
+Cell[558, 20, 837, 21, 46, "Text"],
+Cell[1398, 43, 240, 3, 45, "Subsubsection"],
 Cell[CellGroupData[{
-Cell[823, 27, 223, 6, 29, "Subsubsection"],
-Cell[1049, 35, 1545, 43, 163, "Input"]
+Cell[1663, 50, 223, 6, 29, "Subsubsection"],
+Cell[1889, 58, 1545, 43, 163, "Input"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[2631, 83, 316, 7, 35, "Subsubsection"],
-Cell[2950, 92, 3837, 103, 351, "Input"]
+Cell[3471, 106, 316, 7, 35, "Subsubsection"],
+Cell[3790, 115, 3837, 103, 351, "Input"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[6824, 200, 372, 8, 35, "Subsubsection"],
-Cell[7199, 210, 2450, 60, 128, "Input"]
+Cell[7664, 223, 372, 8, 35, "Subsubsection"],
+Cell[8039, 233, 2450, 60, 128, "Input"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[9686, 275, 681, 22, 36, "Subsubsection"],
-Cell[10370, 299, 812, 22, 35, "Input"]
+Cell[10526, 298, 681, 22, 36, "Subsubsection"],
+Cell[11210, 322, 812, 22, 35, "Input"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[11219, 326, 399, 6, 35, "Subsubsection"],
-Cell[11621, 334, 291, 7, 32, "Input"]
+Cell[12059, 349, 399, 6, 35, "Subsubsection"],
+Cell[12461, 357, 291, 7, 32, "Input"]
 }, Open  ]],
+Cell[12767, 367, 337, 4, 79, "Subsubsection"],
 Cell[CellGroupData[{
-Cell[11949, 346, 387, 5, 35, "Subsubsection"],
-Cell[12339, 353, 641, 17, 54, "Input"]
-}, Open  ]],
-Cell[12995, 373, 337, 4, 79, "Subsubsection"],
+Cell[13129, 375, 411, 5, 29, "Subsubsection"],
 Cell[CellGroupData[{
-Cell[13357, 381, 411, 5, 29, "Subsubsection"],
-Cell[CellGroupData[{
-Cell[13793, 390, 571, 17, 44, "Input"],
-Cell[14367, 409, 1580, 47, 46, "Output"]
+Cell[13565, 384, 571, 17, 44, "Input"],
+Cell[14139, 403, 1602, 47, 46, "Output"]
 }, Open  ]]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[15996, 462, 487, 17, 36, "Subsubsection"],
+Cell[15790, 456, 487, 17, 36, "Subsubsection"],
 Cell[CellGroupData[{
-Cell[16508, 483, 280, 5, 32, "Input"],
-Cell[16791, 490, 1372, 33, 212, "Output"]
-}, Open  ]],
-Cell[18178, 526, 451, 7, 74, "Input"]
+Cell[16302, 477, 280, 5, 32, "Input"],
+Cell[16585, 484, 1398, 34, 212, "Output"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[18666, 538, 880, 28, 36, "Subsubsection"],
-Cell[19549, 568, 384, 8, 32, "Input"]
+Cell[18020, 523, 451, 7, 74, "Input"],
+Cell[18474, 532, 770, 14, 52, "Output"]
+}, Open  ]]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[19970, 581, 693, 19, 36, "Subsubsection"],
+Cell[19293, 552, 880, 28, 36, "Subsubsection"],
+Cell[20176, 582, 384, 8, 32, "Input"]
+}, Open  ]],
 Cell[CellGroupData[{
-Cell[20688, 604, 198, 3, 32, "Input"],
-Cell[20889, 609, 681, 17, 259, "Output"]
+Cell[20597, 595, 693, 19, 36, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[21315, 618, 198, 3, 32, "Input"],
+Cell[21516, 623, 703, 17, 259, "Output"]
 }, Open  ]]
 }, Open  ]]
 }

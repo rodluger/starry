@@ -10,14 +10,35 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[    314448,       6110]
-NotebookOptionsPosition[    312975,       6060]
-NotebookOutlinePosition[    313335,       6076]
-CellTagsIndexPosition[    313292,       6073]
+NotebookDataLength[    315175,       6128]
+NotebookOptionsPosition[    313663,       6077]
+NotebookOutlinePosition[    314024,       6093]
+CellTagsIndexPosition[    313981,       6090]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
 Notebook[{
+Cell[TextData[Cell[BoxData[
+ FormBox[
+  ButtonBox[
+   RowBox[{"Link", " ", "to", " ", 
+    RowBox[{"Mathematica", " ", ".", "nb"}], " ", "file", " "}],
+   BaseStyle->"Hyperlink",
+   ButtonData->{
+     URL["https://github.com/rodluger/starry/blob/master/tex/notebooks/case2.\
+nb"], None},
+   ButtonNote->
+    "https://github.com/rodluger/starry/blob/master/tex/notebooks/case2.nb"], 
+  TraditionalForm]],
+ FormatType->"TraditionalForm",
+ FontWeight->"Bold"]], "Text",
+ CellChangeTimes->{{3.730206014046989*^9, 3.730206031935463*^9}, {
+  3.730206132517593*^9, 3.730206159524222*^9}, {3.7302063051649837`*^9, 
+  3.7302063051731358`*^9}, {3.730206767257217*^9, 3.730206804162838*^9}, {
+  3.730207538691786*^9, 3.730207538698325*^9}},
+ TextAlignment->Center,
+ Background->RGBColor[1, 0.85, 0.85]],
+
 Cell[TextData[StyleBox["Case 2 (\[Nu] odd)", "Subchapter"]], "Subsubsection",
  CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
   3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
@@ -112,22 +133,19 @@ Cell[TextData[{
      RowBox[{"1", "-", 
       SuperscriptBox["r", "2"], "-", 
       SuperscriptBox["b", "2"]}], 
-     RowBox[{"2", "br"}]]}], TraditionalForm]],
-  FormatType->"TraditionalForm"],
+     RowBox[{"2", "br"}]]}], TraditionalForm]]],
  " = ",
  Cell[BoxData[
   FormBox[
    RowBox[{
     RowBox[{"2", 
-     SuperscriptBox["k", "2"]}], "-", "1"}], TraditionalForm]],
-  FormatType->"TraditionalForm"],
+     SuperscriptBox["k", "2"]}], "-", "1"}], TraditionalForm]]],
  ", with ",
  Cell[BoxData[
   FormBox[
    RowBox[{
     SuperscriptBox["k", "2"], " ", "defined", " ", "in", " ", "Appendix", " ", 
-    RowBox[{"A1", "."}]}], TraditionalForm]],
-  FormatType->"TraditionalForm"],
+    RowBox[{"A1", "."}]}], TraditionalForm]]],
  " \n\nNext, with some algebraic sleight of hand we can express the term in \
 parentheses as\n\n\t(s - sin ",
  Cell[BoxData[
@@ -163,8 +181,7 @@ parentheses as\n\n\t(s - sin ",
   FormBox[
    FractionBox["1", 
     RowBox[{"1", "-", 
-     SuperscriptBox["k", "2"]}]], TraditionalForm]],
-  FormatType->"TraditionalForm"],
+     SuperscriptBox["k", "2"]}]], TraditionalForm]]],
  "\n\nand\n\n\tx = ",
  Cell[BoxData[
   FormBox[
@@ -250,7 +267,7 @@ Cell[BoxData["7.105427357601002`*^-15"], "Output",
 }, Open  ]],
 
 Cell[TextData[{
- "There are two caveats: \n\t",
+ "There are two caveats: \n\n\t",
  StyleBox["(1)",
   FontWeight->"Bold"],
  " our expression diverges when b = 0 (s = 1) \n\t",
@@ -278,7 +295,7 @@ imaginary parts will always cancel."
    3.728569317878738*^9, 3.728569335700962*^9}, {3.7285694672162123`*^9, 
    3.728569467758679*^9}, {3.728569729171962*^9, 3.728569775362212*^9}, {
    3.728569894467608*^9, 3.728569898531425*^9}, {3.728569996930541*^9, 
-   3.728570269257917*^9}}],
+   3.728570269257917*^9}, 3.7302075731671457`*^9}],
 
 Cell[BoxData[""], "Input",
  CellChangeTimes->{{3.728570276977195*^9, 3.728570278121531*^9}}],
@@ -6059,7 +6076,7 @@ Cell["Woot.", "Subsubsection",
   3.7285773372587557`*^9}}]
 },
 WindowSize->{1134, 751},
-WindowMargins->{{82, Automatic}, {Automatic, 17}},
+WindowMargins->{{151, Automatic}, {36, Automatic}},
 FrontEndVersion->"11.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (September \
 21, 2016)",
 StyleDefinitions->"Default.nb"
@@ -6075,43 +6092,44 @@ CellTagsIndex->{}
 *)
 (*NotebookFileOutline
 Notebook[{
-Cell[558, 20, 346, 4, 45, "Subsubsection"],
+Cell[558, 20, 791, 19, 48, "Text"],
+Cell[1352, 41, 346, 4, 45, "Subsubsection"],
 Cell[CellGroupData[{
-Cell[929, 28, 205, 3, 29, "Subsubsection"],
-Cell[1137, 33, 1415, 34, 135, "Text"]
+Cell[1723, 49, 205, 3, 29, "Subsubsection"],
+Cell[1931, 54, 1415, 34, 135, "Text"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[2589, 72, 251, 3, 35, "Subsubsection"],
-Cell[2843, 77, 3756, 116, 546, "Text"],
+Cell[3383, 93, 251, 3, 35, "Subsubsection"],
+Cell[3637, 98, 3624, 112, 546, "Text"],
 Cell[CellGroupData[{
-Cell[6624, 197, 1627, 44, 150, "Input"],
-Cell[8254, 243, 384, 5, 32, "Output"]
+Cell[7286, 214, 1627, 44, 150, "Input"],
+Cell[8916, 260, 384, 5, 32, "Output"]
 }, Open  ]],
-Cell[8653, 251, 1410, 29, 125, "Text"],
-Cell[10066, 282, 92, 1, 32, "Input"],
-Cell[10161, 285, 12027, 388, 799, "Text"]
+Cell[9315, 268, 1436, 29, 144, "Text"],
+Cell[10754, 299, 92, 1, 32, "Input"],
+Cell[10849, 302, 12027, 388, 799, "Text"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[22225, 678, 303, 4, 35, "Subsubsection"],
-Cell[22531, 684, 1924, 39, 165, "Text"],
-Cell[24458, 725, 1702, 44, 222, "Input"],
-Cell[26163, 771, 437, 11, 69, "Text"],
-Cell[26603, 784, 2329, 80, 191, "Input"],
-Cell[28935, 866, 685, 16, 69, "Text"],
-Cell[29623, 884, 2042, 59, 90, "Input"],
+Cell[22913, 695, 303, 4, 35, "Subsubsection"],
+Cell[23219, 701, 1924, 39, 165, "Text"],
+Cell[25146, 742, 1702, 44, 222, "Input"],
+Cell[26851, 788, 437, 11, 69, "Text"],
+Cell[27291, 801, 2329, 80, 191, "Input"],
+Cell[29623, 883, 685, 16, 69, "Text"],
+Cell[30311, 901, 2042, 59, 90, "Input"],
 Cell[CellGroupData[{
-Cell[31690, 947, 3196, 90, 117, "Input"],
-Cell[34889, 1039, 43546, 786, 268, "Output"]
+Cell[32378, 964, 3196, 90, 117, "Input"],
+Cell[35577, 1056, 43546, 786, 257, "Output"]
 }, Open  ]],
-Cell[78450, 1828, 977, 15, 30, "Text"],
-Cell[79430, 1845, 3707, 98, 477, "Input"],
-Cell[83140, 1945, 1016, 14, 30, "Text"],
+Cell[79138, 1845, 977, 15, 30, "Text"],
+Cell[80118, 1862, 3707, 98, 477, "Input"],
+Cell[83828, 1962, 1016, 14, 30, "Text"],
 Cell[CellGroupData[{
-Cell[84181, 1963, 1577, 38, 117, "Input"],
-Cell[85761, 2003, 226834, 4046, 444, "Output"]
+Cell[84869, 1980, 1577, 38, 117, "Input"],
+Cell[86449, 2020, 226834, 4046, 433, "Output"]
 }, Open  ]]
 }, Open  ]],
-Cell[312622, 6053, 349, 5, 35, "Subsubsection"]
+Cell[313310, 6070, 349, 5, 35, "Subsubsection"]
 }
 ]
 *)

@@ -10,14 +10,27 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[     36831,       1075]
-NotebookOptionsPosition[     35407,       1023]
-NotebookOutlinePosition[     35772,       1039]
-CellTagsIndexPosition[     35729,       1036]
+NotebookDataLength[     37968,       1095]
+NotebookOptionsPosition[     36647,       1046]
+NotebookOutlinePosition[     37063,       1064]
+CellTagsIndexPosition[     37020,       1061]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
 Notebook[{
+Cell[TextData[StyleBox[ButtonBox["Link to Mathematica .nb file",
+ BaseStyle->"Hyperlink",
+ ButtonData->{
+   URL["https://github.com/rodluger/starry/blob/master/tex/notebooks/Y.nb"], 
+   None},
+ ButtonNote->
+  "https://github.com/rodluger/starry/blob/master/tex/notebooks/Y.nb"],
+ FontWeight->"Bold"]], "Text",
+ CellChangeTimes->{{3.730206014046989*^9, 3.730206031935463*^9}, {
+  3.730206132517593*^9, 3.730206159524222*^9}},
+ TextAlignment->Center,
+ Background->RGBColor[1, 0.85, 0.85]],
+
 Cell[TextData[StyleBox["Definitions", "Subchapter"]], "Subsubsection",
  CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
   3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
@@ -93,8 +106,7 @@ Cell[TextData[{
    RowBox[{
     SuperscriptBox["x", "i"], 
     SuperscriptBox["y", "j"], 
-    SuperscriptBox["z", "k"]}], TraditionalForm]],
-  FormatType->"TraditionalForm"],
+    SuperscriptBox["z", "k"]}], TraditionalForm]]],
  " form"
 }], "Subsubsection",
  CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
@@ -295,27 +307,6 @@ Cell[BoxData[
   3.728394470565279*^9}}]
 }, Open  ]],
 
-Cell[CellGroupData[{
-
-Cell["Save Y to library", "Subsubsection",
- CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
-  3.728393485338278*^9, 3.728393502112381*^9}, {3.728393634141376*^9, 
-  3.728393634469572*^9}, {3.728394879869817*^9, 3.728394879979101*^9}}],
-
-Cell[BoxData[
- RowBox[{"Save", "[", 
-  RowBox[{
-   RowBox[{"FileNameJoin", "[", 
-    RowBox[{"{", 
-     RowBox[{
-      RowBox[{"NotebookDirectory", "[", "]"}], ",", "\"\<starry.wl\>\""}], 
-     "}"}], "]"}], ",", "Y"}], "]"}]], "Input",
- CellChangeTimes->{3.728394990521926*^9}],
-
-Cell[BoxData["\[IndentingNewLine]"], "Input",
- CellChangeTimes->{3.7283943892255373`*^9}]
-}, Open  ]],
-
 Cell[TextData[StyleBox["Benchmarks", "Subchapter"]], "Subsubsection",
  CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
   3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
@@ -379,11 +370,8 @@ Cell[BoxData[
 
 Cell[BoxData["True"], "Output",
  CellChangeTimes->{{3.728394491383193*^9, 3.7283945079043303`*^9}, {
-  3.728394810580659*^9, 3.728394855995091*^9}}]
-}, Open  ]],
-
-Cell[BoxData["\[IndentingNewLine]"], "Input",
- CellChangeTimes->{3.728394858701066*^9}]
+   3.728394810580659*^9, 3.728394855995091*^9}, 3.730206543642424*^9}]
+}, Open  ]]
 }, Open  ]],
 
 Cell[TextData[StyleBox["Examples", "Subchapter"]], "Subsubsection",
@@ -566,13 +554,15 @@ Cell[BoxData[
          RowBox[{
           RowBox[{
            FractionBox["1", "4"], " ", 
-           SqrtBox[
-            FractionBox["15", "\[Pi]"]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["15", "\[Pi]"], ")"}]}], " ", 
            SuperscriptBox["x", "2"]}], "-", 
           RowBox[{
            FractionBox["1", "4"], " ", 
-           SqrtBox[
-            FractionBox["15", "\[Pi]"]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["15", "\[Pi]"], ")"}]}], " ", 
            SuperscriptBox["y", "2"]}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
@@ -588,15 +578,17 @@ Cell[BoxData[
          RowBox[{
           RowBox[{
            FractionBox["3", "4"], " ", 
-           SqrtBox[
-            FractionBox["35", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", 
            SuperscriptBox["x", "2"], " ", "y"}], "-", 
           RowBox[{
            FractionBox["1", "4"], " ", 
-           SqrtBox[
-            FractionBox["35", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", 
            SuperscriptBox["y", "3"]}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
@@ -630,15 +622,17 @@ Cell[BoxData[
              RowBox[{"2", " ", "\[Pi]"}]]], " ", "y"}], "-", 
           RowBox[{
            FractionBox["5", "4"], " ", 
-           SqrtBox[
-            FractionBox["21", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["21", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", 
            SuperscriptBox["x", "2"], " ", "y"}], "-", 
           RowBox[{
            FractionBox["5", "4"], " ", 
-           SqrtBox[
-            FractionBox["21", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["21", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", 
            SuperscriptBox["y", "3"]}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
@@ -684,15 +678,17 @@ Cell[BoxData[
              RowBox[{"2", " ", "\[Pi]"}]]], " ", "x"}], "-", 
           RowBox[{
            FractionBox["5", "4"], " ", 
-           SqrtBox[
-            FractionBox["21", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["21", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", 
            SuperscriptBox["x", "3"]}], "-", 
           RowBox[{
            FractionBox["5", "4"], " ", 
-           SqrtBox[
-            FractionBox["21", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", "x", " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["21", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", "x", " ", 
            SuperscriptBox["y", "2"]}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
@@ -707,13 +703,15 @@ Cell[BoxData[
          RowBox[{
           RowBox[{
            FractionBox["1", "4"], " ", 
-           SqrtBox[
-            FractionBox["105", "\[Pi]"]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["105", "\[Pi]"], ")"}]}], " ", 
            SuperscriptBox["x", "2"], " ", "z"}], "-", 
           RowBox[{
            FractionBox["1", "4"], " ", 
-           SqrtBox[
-            FractionBox["105", "\[Pi]"]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["105", "\[Pi]"], ")"}]}], " ", 
            SuperscriptBox["y", "2"], " ", "z"}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
@@ -728,15 +726,17 @@ Cell[BoxData[
          RowBox[{
           RowBox[{
            FractionBox["1", "4"], " ", 
-           SqrtBox[
-            FractionBox["35", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", 
            SuperscriptBox["x", "3"]}], "-", 
           RowBox[{
            FractionBox["3", "4"], " ", 
-           SqrtBox[
-            FractionBox["35", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", "x", " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", "x", " ", 
            SuperscriptBox["y", "2"]}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
@@ -753,13 +753,15 @@ Cell[BoxData[
          RowBox[{
           RowBox[{
            FractionBox["3", "4"], " ", 
-           SqrtBox[
-            FractionBox["35", "\[Pi]"]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", "\[Pi]"], ")"}]}], " ", 
            SuperscriptBox["x", "3"], " ", "y"}], "-", 
           RowBox[{
            FractionBox["3", "4"], " ", 
-           SqrtBox[
-            FractionBox["35", "\[Pi]"]], " ", "x", " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", "\[Pi]"], ")"}]}], " ", "x", " ", 
            SuperscriptBox["y", "3"]}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
@@ -774,15 +776,17 @@ Cell[BoxData[
          RowBox[{
           RowBox[{
            FractionBox["9", "4"], " ", 
-           SqrtBox[
-            FractionBox["35", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", 
            SuperscriptBox["x", "2"], " ", "y", " ", "z"}], "-", 
           RowBox[{
            FractionBox["3", "4"], " ", 
-           SqrtBox[
-            FractionBox["35", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", 
            SuperscriptBox["y", "3"], " ", "z"}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
@@ -824,20 +828,24 @@ Cell[BoxData[
         StyleBox[
          RowBox[{
           RowBox[{"3", " ", 
-           SqrtBox[
-            FractionBox["5", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", "y", " ", "z"}], "-", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["5", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", "y", " ", "z"}], 
+          "-", 
           RowBox[{
            FractionBox["21", "4"], " ", 
-           SqrtBox[
-            FractionBox["5", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["5", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", 
            SuperscriptBox["x", "2"], " ", "y", " ", "z"}], "-", 
           RowBox[{
            FractionBox["21", "4"], " ", 
-           SqrtBox[
-            FractionBox["5", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["5", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", 
            SuperscriptBox["y", "3"], " ", "z"}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
@@ -860,27 +868,33 @@ Cell[BoxData[
             SuperscriptBox["x", "2"]}], 
            RowBox[{"2", " ", 
             SqrtBox["\[Pi]"]}]], "+", 
-          FractionBox[
-           RowBox[{"105", " ", 
-            SuperscriptBox["x", "4"]}], 
-           RowBox[{"16", " ", 
-            SqrtBox["\[Pi]"]}]], "-", 
+          RowBox[{
+           RowBox[{"(", 
+            RowBox[{"105", " ", 
+             SuperscriptBox["x", "4"]}], ")"}], "/", 
+           RowBox[{"(", 
+            RowBox[{"16", " ", 
+             SqrtBox["\[Pi]"]}], ")"}]}], "-", 
           FractionBox[
            RowBox[{"15", " ", 
             SuperscriptBox["y", "2"]}], 
            RowBox[{"2", " ", 
             SqrtBox["\[Pi]"]}]], "+", 
-          FractionBox[
-           RowBox[{"105", " ", 
-            SuperscriptBox["x", "2"], " ", 
-            SuperscriptBox["y", "2"]}], 
-           RowBox[{"8", " ", 
-            SqrtBox["\[Pi]"]}]], "+", 
-          FractionBox[
-           RowBox[{"105", " ", 
-            SuperscriptBox["y", "4"]}], 
-           RowBox[{"16", " ", 
-            SqrtBox["\[Pi]"]}]]}],
+          RowBox[{
+           RowBox[{"(", 
+            RowBox[{"105", " ", 
+             SuperscriptBox["x", "2"], " ", 
+             SuperscriptBox["y", "2"]}], ")"}], "/", 
+           RowBox[{"(", 
+            RowBox[{"8", " ", 
+             SqrtBox["\[Pi]"]}], ")"}]}], "+", 
+          RowBox[{
+           RowBox[{"(", 
+            RowBox[{"105", " ", 
+             SuperscriptBox["y", "4"]}], ")"}], "/", 
+           RowBox[{"(", 
+            RowBox[{"16", " ", 
+             SqrtBox["\[Pi]"]}], ")"}]}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
       Text[
@@ -897,20 +911,24 @@ Cell[BoxData[
         StyleBox[
          RowBox[{
           RowBox[{"3", " ", 
-           SqrtBox[
-            FractionBox["5", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", "x", " ", "z"}], "-", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["5", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", "x", " ", "z"}], 
+          "-", 
           RowBox[{
            FractionBox["21", "4"], " ", 
-           SqrtBox[
-            FractionBox["5", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["5", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", 
            SuperscriptBox["x", "3"], " ", "z"}], "-", 
           RowBox[{
            FractionBox["21", "4"], " ", 
-           SqrtBox[
-            FractionBox["5", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", "x", " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["5", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", "x", " ", 
            SuperscriptBox["y", "2"], " ", "z"}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
@@ -961,15 +979,17 @@ Cell[BoxData[
          RowBox[{
           RowBox[{
            FractionBox["3", "4"], " ", 
-           SqrtBox[
-            FractionBox["35", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", 
            SuperscriptBox["x", "3"], " ", "z"}], "-", 
           RowBox[{
            FractionBox["9", "4"], " ", 
-           SqrtBox[
-            FractionBox["35", 
-             RowBox[{"2", " ", "\[Pi]"}]]], " ", "x", " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", 
+              RowBox[{"2", " ", "\[Pi]"}]], ")"}]}], " ", "x", " ", 
            SuperscriptBox["y", "2"], " ", "z"}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
@@ -986,19 +1006,22 @@ Cell[BoxData[
          RowBox[{
           RowBox[{
            FractionBox["3", "16"], " ", 
-           SqrtBox[
-            FractionBox["35", "\[Pi]"]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", "\[Pi]"], ")"}]}], " ", 
            SuperscriptBox["x", "4"]}], "-", 
           RowBox[{
            FractionBox["9", "8"], " ", 
-           SqrtBox[
-            FractionBox["35", "\[Pi]"]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", "\[Pi]"], ")"}]}], " ", 
            SuperscriptBox["x", "2"], " ", 
            SuperscriptBox["y", "2"]}], "+", 
           RowBox[{
            FractionBox["3", "16"], " ", 
-           SqrtBox[
-            FractionBox["35", "\[Pi]"]], " ", 
+           RowBox[{"\[Sqrt]", 
+            RowBox[{"(", 
+             FractionBox["35", "\[Pi]"], ")"}]}], " ", 
            SuperscriptBox["y", "4"]}]}],
          StripOnInput->False,
          FontSize->7], TextForm]], "InlineText"],
@@ -1017,12 +1040,14 @@ Cell[BoxData[
  CellChangeTimes->{{3.728393888289912*^9, 3.728394064511601*^9}, {
    3.7283941341782722`*^9, 3.728394156657576*^9}, {3.728394208465047*^9, 
    3.72839425331423*^9}, {3.728394317920947*^9, 3.728394376787072*^9}, 
-   3.72839486591054*^9}]
+   3.72839486591054*^9, 3.730206544347413*^9}]
 }, Open  ]]
 }, Open  ]]
 },
-WindowSize->{1134, 751},
-WindowMargins->{{-1332, Automatic}, {Automatic, -384}},
+WindowSize->{1213, 751},
+WindowMargins->{{59, Automatic}, {-141, Automatic}},
+PrintingCopies->1,
+PrintingPageRange->{1, Automatic},
 FrontEndVersion->"11.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (September \
 21, 2016)",
 StyleDefinitions->"Default.nb"
@@ -1038,43 +1063,38 @@ CellTagsIndex->{}
 *)
 (*NotebookFileOutline
 Notebook[{
-Cell[558, 20, 240, 3, 45, "Subsubsection"],
+Cell[558, 20, 486, 11, 46, "Text"],
+Cell[1047, 33, 240, 3, 45, "Subsubsection"],
 Cell[CellGroupData[{
-Cell[823, 27, 167, 2, 29, "Subsubsection"],
-Cell[993, 31, 1514, 52, 132, "Input"]
+Cell[1312, 40, 167, 2, 29, "Subsubsection"],
+Cell[1482, 44, 1514, 52, 132, "Input"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[2544, 88, 450, 13, 37, "Subsubsection"],
-Cell[2997, 103, 3758, 99, 81, "Input"]
+Cell[3033, 101, 417, 12, 37, "Subsubsection"],
+Cell[3453, 115, 3758, 99, 81, "Input"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[6792, 207, 233, 3, 35, "Subsubsection"],
-Cell[7028, 212, 670, 19, 44, "Input"]
+Cell[7248, 219, 233, 3, 35, "Subsubsection"],
+Cell[7484, 224, 670, 19, 44, "Input"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[7735, 236, 346, 6, 35, "Subsubsection"],
-Cell[8084, 244, 1860, 50, 184, "Input"]
+Cell[8191, 248, 346, 6, 35, "Subsubsection"],
+Cell[8540, 256, 1860, 50, 184, "Input"]
 }, Open  ]],
+Cell[10415, 309, 336, 4, 45, "Subsubsection"],
 Cell[CellGroupData[{
-Cell[9981, 299, 254, 3, 35, "Subsubsection"],
-Cell[10238, 304, 278, 8, 32, "Input"],
-Cell[10519, 314, 89, 1, 54, "Input"]
+Cell[10776, 317, 442, 10, 29, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[11243, 331, 1440, 37, 54, "Input"],
+Cell[12686, 370, 171, 2, 32, "Output"]
+}, Open  ]]
 }, Open  ]],
-Cell[10623, 318, 336, 4, 45, "Subsubsection"],
+Cell[12884, 376, 313, 4, 45, "Subsubsection"],
 Cell[CellGroupData[{
-Cell[10984, 326, 442, 10, 29, "Subsubsection"],
+Cell[13222, 384, 468, 11, 29, "Subsubsection"],
 Cell[CellGroupData[{
-Cell[11451, 340, 1440, 37, 54, "Input"],
-Cell[12894, 379, 148, 2, 32, "Output"]
-}, Open  ]],
-Cell[13057, 384, 87, 1, 54, "Input"]
-}, Open  ]],
-Cell[13159, 388, 313, 4, 45, "Subsubsection"],
-Cell[CellGroupData[{
-Cell[13497, 396, 468, 11, 29, "Subsubsection"],
-Cell[CellGroupData[{
-Cell[13990, 411, 1162, 29, 54, "Input"],
-Cell[15155, 442, 20224, 577, 289, "Output"]
+Cell[13715, 399, 1162, 29, 32, "Input"],
+Cell[14880, 430, 21739, 612, 263, "Output"]
 }, Open  ]]
 }, Open  ]]
 }

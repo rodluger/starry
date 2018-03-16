@@ -63,7 +63,7 @@ def fnum(r1, r2, t1, t2, x0, y0, r0, I, tol, flux):
         return
 
 
-def compute(I=lambda x, y: x ** 3 + y ** 2, tol=1e-4):
+def compute(I=lambda x, y: x ** 2 + y ** 2, tol=1e-4):
     """Compute and plot the result."""
     # Plot
     pl.figure(figsize=(5, 6))
@@ -89,16 +89,20 @@ def compute(I=lambda x, y: x ** 3 + y ** 2, tol=1e-4):
 
     ax.imshow(Icirc(X, Y), extent=(-1, 1, -1, 1), cmap='plasma', alpha=0.5)
 
-    x = np.linspace(-0.5 + 1e-5, 0.5 - 1e-5, 1000)
-    ohi, = ax.plot(x, - np.sqrt(0.5 ** 2 - x ** 2), 'r-')
-    olo, = ax.plot(x, + np.sqrt(0.5 ** 2 - x ** 2), 'r-')
+    # Initial occultor position
+    x0 = 0.
+    y0 = 0.25
+    r0 = 0.25
+    x = np.linspace(x0 - r0 + 1e-5, x0 + r0 - 1e-5, 1000)
+    ohi, = ax.plot(x, y0 - np.sqrt(r0 ** 2 - (x - x0) ** 2), 'r-')
+    olo, = ax.plot(x, y0 + np.sqrt(r0 ** 2 - (x - x0) ** 2), 'r-')
 
     axx0 = pl.axes([0.2, 0.15, 0.65, 0.03])
     axy0 = pl.axes([0.2, 0.10, 0.65, 0.03])
     axr0 = pl.axes([0.2, 0.05, 0.65, 0.03])
-    sx0 = Slider(axx0, 'x0', -1.0, 1.0, valinit=0.0)
-    sy0 = Slider(axy0, 'y0', -1.0, 1.0, valinit=0.0)
-    sr0 = Slider(axr0, 'r0', 0.01, 1.0, valinit=0.5)
+    sx0 = Slider(axx0, 'x0', -1.0, 1.0, valinit=x0)
+    sy0 = Slider(axy0, 'y0', -1.0, 1.0, valinit=y0)
+    sr0 = Slider(axr0, 'r0', 0.01, 1.0, valinit=r0)
 
     def update(val=None):
         flux = Flux()
