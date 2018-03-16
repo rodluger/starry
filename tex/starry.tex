@@ -116,7 +116,10 @@ surface of the unit sphere, we have
     \z &= \cos\theta \quad.
 \end{align}
 %
-{\color{red}  How are the coordinates oriented with respect to the observer?}
+The observer is located along the $z$-axis at $z = -\infty$ such
+that the projected disk of the body sits at the origin on the $xy$-plane with $\xhat$ to
+the right and $\yhat$ up.
+%
 Expanding Equation~(\ref{eq:ylmtp}) using the multiple angle formula, we obtain
 %
 \begin{align}
@@ -985,7 +988,7 @@ occurring), this may be written
 where $\Gamma(\bigdot)$ is the gamma function.
 %
 \eq{phaseint} may be used to analytically compute the phase curve of a body
-with an arbitrary surface map. Since $\bvec{r}$ and $\bvec{B}$ are independent
+with an arbitrary surface map. Since $\bvec{r}$ and $\bvec{A_1}$ are independent
 of the map coefficients or its orientation, these may be pre-computed for
 computational efficiency.
 
@@ -1033,9 +1036,9 @@ where $\bvec{s}$ is a column vector whose $n^\mathrm{th}$ component is given by
 \end{align}
 %
 This time, suppose the body is
-occulted by another body of radius $r$ centered at the point $(x_0, y_0)$,
+occulted by another body of radius $r$ centered at the point $(x_o, y_o)$,
 so that the surface $S$ over which the integral is taken
-is a function of $r$, $x_0$, and $y_0$.
+is a function of $r$, $x_o$, and $y_o$.
 In general, the integrals in \eq{sndef} are
 difficult (and often impossible) to compute directly.
 %
@@ -1043,12 +1046,12 @@ One way to simplify the problem is to first perform a rotation through an angle
 %
 \begin{align}
     \label{eq:zrot}
-    \omega = \frac{\pi}{2} - \mathrm{arctan2}(y_0, x_0)
+    \omega = \frac{\pi}{2} - \mathrm{arctan2}(y_o, x_o)
 \end{align}
 %
 about the $z$-axis ($\bvec{u} = \left[0, 0, 1\right]$)
 so that the occultor lies along the
-$+y$-axis, with its center located a distance $b = \sqrt{x_0^2 + y_0^2}$
+$+y$-axis, with its center located a distance $b = \sqrt{x_o^2 + y_o^2}$
 from the origin (see Figure~\ref{fig:geometry}).
 %
 In this rotated frame, the limits of integration (the two points of intersection
@@ -1130,7 +1133,7 @@ coordinates, it is given by
 %
 \begin{align}
     \label{eq:extderiv}
-    \bvec{D} \wedge \bvec{G} &\equiv \frac{\dd {G_n}_y}{\dd \x}
+    \bvec{D} \wedge \bvec{G}_n &\equiv \frac{\dd {G_n}_y}{\dd \x}
                                    - \frac{\dd {G_n}_x}{\dd \y} \quad.
 \end{align}
 %
@@ -1204,12 +1207,12 @@ body.
              Geometry of the occultation problem.
              The occulted body is centered
              at the origin and has unit radius, while the occultor
-             is centered at $(x_0, y_0)$ and has radius $r$. We first rotate
+             is centered at $(x_o, y_o)$ and has radius $r$. We first rotate
              the two bodies about the origin through an angle
-             $\theta = \nicefrac{\pi}{2} - \mathrm{arctan2}(y_0, x_0)$
+             $\theta = \nicefrac{\pi}{2} - \mathrm{arctan2}(y_o, x_o)$
              so the problem is symmetric about the $y$-axis. In this frame,
              the occultor is located at $(0, b)$, where
-             $b = \sqrt{x_0^2 + y_0^2}$ is the impact parameter.
+             $b = \sqrt{x_o^2 + y_o^2}$ is the impact parameter.
              The arc of the occultor
              that overlaps the occulted body (thick red curve) now extends from
              $\pi - \phi$ to $2\pi + \phi$, measured from the center of the
@@ -1236,7 +1239,7 @@ It can be easily shown that one possible solution to \eq{DGg} is
 %
 \begin{align}
     \label{eq:Gn}
-    \bvec{G}_n &=
+    \bvec{G}_n (\x, \y) &=
     \begin{dcases}
         %
         \x^{\frac{\mu + 2}{2}}
@@ -1298,7 +1301,7 @@ an occultation of a body whose specific intensity profile is described
 by a sum of spherical harmonics. Given a body of unit radius with a
 surface map described by the vector of spherical harmonic coefficients
 $\mathbf{y}$ (Equation~\ref{eq:by}), occulted by another body of radius $r$
-centered at the point $(x_0, y_0)$, we must:
+centered at the point $(x_o, y_o)$, we must:
 %
 \begin{enumerate}
     \item Compute the rotation matrix $\bvec{R}$ to rotate the map to the correct
@@ -1309,7 +1312,7 @@ centered at the point $(x_0, y_0)$, we must:
     \item Compute the rotation matrix $\bvec{R'}$ to rotate the map
           by an angle $\omega$ about the $+z$-axis
           (Equation~\ref{eq:zrot}) so the center of the occultor is a
-          distance $b = \sqrt{x_0^2 + y_0^2}$ along the $+y$-axis
+          distance $b = \sqrt{x_o^2 + y_o^2}$ along the $+y$-axis
           from the center of the occulted body.
     \item Compute the change-of-basis matrix $\bvec{A}$ (\S\ref{sec:basis}) to
           convert our vector of spherical harmonic coefficients to a vector
@@ -1408,10 +1411,10 @@ I = m.evaluate(u=None, theta=None, x=x, y=y)
 where $I$ is a 2-dimensional array of specific intensity values at the coordinates
 $x, y$. Optionally, the user may provide an axis array \textsf{u} and an angle
 \textsf{theta} to specify the orientation of the map. Plotting this map with
-successive rotations about $\xhat$ yields
+successive rotations about $\xhat$ yields\python{smiley}
 %
 \begin{center}
-    \includegraphics[width=0.85\linewidth]{figures/smiley.pdf}\python{smiley}
+    \includegraphics[width=0.85\linewidth]{figures/smiley.pdf}
 \end{center}
 %
 
@@ -1464,8 +1467,8 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
              in the phase curve null space \citep{CowanFuentesHaggard2013}.
              \emph{Bottom:} Occultation light curves for the same
              set of spherical harmonics. An occultor of radius $r=0.3$
-             transits the body along the $+\x$ direction at $y_0 = 0.25$
-             (blue) and $y_0 = 0.75$ (orange). }
+             transits the body along the $+\x$ direction at $y_o = 0.25$
+             (blue) and $y_o = 0.75$ (orange). }
     \end{centering}
 \end{figure}
 %
@@ -1540,7 +1543,7 @@ or arrays.
 
 In the bottom panel of Figure~\ref{fig:ylmlightcurves} we plot
 occultation light curves for the spherical harmonics with $m \ge 0$
-up to $l_\mathrm{max} = 6$. The occultor has radius $r_o = 0.3$ and
+up to $l_\mathrm{max} = 6$. The occultor has radius $r = 0.3$ and
 moves at a constant speed along the $\x$ direction at $y_o = 0.25$
 (blue curves) and $y_o = 0.75$ (orange curves). The light curve of
 any body undergoing such an occultation can be expressed as a weighted
@@ -1594,16 +1597,16 @@ limb-darkened star,
 %
 \begin{align}
     \label{eq:quadraticld}
-    I(\mu) &= 1 - u_1 (1 - \mu) - u_2 (1 - \mu)^2
+    I(\upmu) &= 1 - u_1 (1 - \upmu) - u_2 (1 - \upmu)^2
     \quad,
 \end{align}
 %
-where $\mu = \z = \sqrt{1 - \x^2 - \y^2}$ and $u_1$ and $u_2$ are the
+where $\upmu = \z = \sqrt{1 - \x^2 - \y^2}$ and $u_1$ and $u_2$ are the
 limb darkening coefficients, can be written in terms of spherical harmonics
 by re-writing \eq{quadraticld} as
 %
 \begin{align}
-    I(\mu) = (1 - u_1 - 2u_2) + (u_1 + 2u_2) \z + u_2 \x^2 + u_2 \y^2
+    I(\x, \y) = (1 - u_1 - 2u_2) + (u_1 + 2u_2) \z + u_2 \x^2 + u_2 \y^2
            \quad.
 \end{align}
 %
@@ -1791,7 +1794,7 @@ respectively, defined as
     \nonumber \\[0.5em]
     E(k^2) &\equiv \int_0^{\frac{\pi}{2}} \sqrt{1 - k^2 \sin^2 \varphi} \, \dd \varphi
     \nonumber \\[0.5em]
-    \Pi(n^2, k^2) &\equiv \int_0^{\frac{\pi}{2}} \frac{\dd \varphi}{(1 - n^2 \sin^2 \varphi)\sqrt{1 - k^2 \sin^2 \varphi}}
+    \Pi(n, k^2) &\equiv \int_0^{\frac{\pi}{2}} \frac{\dd \varphi}{(1 - n \sin^2 \varphi)\sqrt{1 - k^2 \sin^2 \varphi}}
     \quad.
 \end{align}
 
@@ -1944,16 +1947,18 @@ With some algebra, we may therefore write
             & \qquad \nu \, \mathrm{even}
         \\[1em]
         %
-        b r^{l-2} \mathcal{L}_{l-2, 0}
-        - r^{l-1} \mathcal{L}_{l-2,1}
+        %b r^{l-2} \mathcal{L}_{l-2, 0}
+        %- r^{l-1} \mathcal{L}_{l-2,1}
+        -r^{l-1} \mathcal{J}_{l-2, 1}
             %
             & \qquad \nu \, \mathrm{odd}, \,
                      \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
-        b r^{l-2} \mathcal{L}_{l-3, 1}
-        - r^{l-1} \mathcal{L}_{l-3,2}
+        -r^{l-2} \left( b \mathcal{J}_{l-3,1} + r \mathcal{J}_{l-3,2} \right)
+        %b r^{l-2} \mathcal{L}_{l-3, 1}
+        %- r^{l-1} \mathcal{L}_{l-3,2}
             %
             & \qquad \nu \, \mathrm{odd}, \,
                      \mu = 1, \,
@@ -1963,7 +1968,7 @@ With some algebra, we may therefore write
         r^{l-1} \mathcal{L}_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}
             & \qquad \mathrm{otherwise}
     \end{dcases}
-    \todo{proof}
+    \pdf{PGn}
 %
 \intertext{and}
 %
@@ -1978,7 +1983,6 @@ With some algebra, we may therefore write
         0
         & \qquad \qquad \qquad \qquad \quad \quad \quad \quad \nu \, \mathrm{odd} \quad.
     \end{dcases}
-    \todo{proof}
 \end{align}
 %
 The solution to the occultation problem is therefore a matter of finding
@@ -2233,20 +2237,26 @@ $\bvec{g}$      & Vector in the basis $\gbasis$         & \\
 $\bvec{G}_n$    & Anti-exterior derivative of the
                   $n^\mathrm{th}$
                   term in the Green's basis             & \eq{Gn} \\
-$\mathcal{H}_{u,n}^{\nu}$
-                & Occultation integral                  & \eq{Hun} \\
+$\mathcal{H}_{u,v}$
+                & Occultation integral                  & \eq{Huv} \\
 $I$             & Specific intensity, $I(\x, \y)$       & \eq{I} \\
-$\mathcal{I}_{u,v}^{\nu}$
+$\mathcal{I}_{u,v}$
                 & Occultation integral                  & \eq{Iuv} \\
 $j$             & Dummy index                           & \\
-$\mathcal{L}_{p,q}$
-                & Occultation integral                  & \eq{Lpq} \\
+$\mathcal{J}_{u,v}$
+                & Occultation integral                  & \eq{Juv} \\
 $k$             & Dummy index                           & \\
 $k^2$           & Elliptic parameter                    & \eq{k2} \\
 $K(\bigdot)$    & Complete Elliptic integral of the
                   first kind                            & \eq{elliptic} \\
+$\mathcal{K}_{u,v}$
+                & Occultation integral                  & \eq{Kuv} \\
 $l$             & Spherical harmonic order              & \eq{lm} \\
+$\mathcal{L}_{u,v}$
+                & Occultation integral                  & \eq{Luv} \\
 $m$             & Spherical harmonic degree             & \eq{lm} \\
+$\mathcal{M}_{p,q}$
+                & Occultation integral                  & \eq{Mpq} \\
 $n$             & Surface map vector index,
                   $n = l^2 + l + m$                     & \eq{n} \\
 $p$             & Dummy index                           & \\
@@ -2296,6 +2306,7 @@ $\lambda$       & Angular position of
                   occultor/occulted intersection point  & \eq{lambda} \\
 $\Lambda$       & \citet{MandelAgol2002} function       & \eq{biglam} \\
 $\mu$           & $l - m$                               & \eq{munu} \\
+$\upmu$         & Limb darkening radial parameter       & \eq{quadraticld} \\
 $\nu$           & $l + m$                               & \eq{munu} \\
 $\xi$           & Function of $b$ and $r$               & \ref{eq:k2} \\
 $\Pi(\bigdot,\bigdot)$
