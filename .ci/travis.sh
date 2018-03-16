@@ -13,6 +13,7 @@ conda activate test
 conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib setuptools pybind11 pytest pytest-cov pip healpy
 pip install Pillow
 pip install batman-package
+pip install tqdm
 
 # Build the code
 # Build the extension
