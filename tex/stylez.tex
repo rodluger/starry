@@ -49,7 +49,7 @@
 \definecolor{proofcolor}{rgb}{0.1216,0.4667,0.7059}
 \newcommand{\python}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.py}{\includegraphics[width=0.9cm]{figures/python.png}}}}
 \newcommand{\mathematica}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.6cm]{figures/mathematica.png}}}}
-\newcommand{\pdf}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\color{black}\LaTeX}}}
+\newcommand{\pdf}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.6cm]{figures/pdf.png}}}}
 \newcommand{\animation}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.gif}{\,\,\includegraphics[width=0.6cm]{figures/play.png}}}}
 \newcommand{\todo}[1]{\marginnote{\includegraphics[width=0.6cm]{figures/todo.png}\\[-1ex]{\color{red}\scriptsize#1}}}
 \newcommand{\pythonlogo}{%
@@ -57,6 +57,9 @@
 }
 \newcommand{\mathematicalogo}{%
   \hspace*{0.2em}\scalerel*{\includegraphics[trim={0.cm, 0.cm, 0.cm, 0.cm},clip]{figures/mathematica.png}}{B}\hspace*{-0.1em}
+}
+\newcommand{\pdflogo}{%
+  \scalerel*{\,\,\,\includegraphics[trim={0.cm, 0.cm, 0.cm, 0.cm},clip]{figures/pdf.png}}{B}\hspace*{-0.05em}
 }
 
 % Force margin notes to always be on the right side

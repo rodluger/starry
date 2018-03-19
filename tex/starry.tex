@@ -25,7 +25,7 @@
     and may be computed recursively for speed. The formalism we develop
     here applies to the computation of stellar transit light curves,
     planetary secondary eclipse light curves, and planet-planet/planet-moon
-    occultation light curves, as well as rotational phase curves.
+    occultation light curves, as well as thermal (rotational) phase curves.
     We present \starry, a full photodynamical code written in \C
     and wrapped in \Python that computes these light curves. \starry also
     computes analytic derivatives of the light curves with respect to all input
@@ -70,7 +70,10 @@ emission from the thick, windy atmosphere of this giant planet.  With the subseq
 discovery of smaller planets that are perhaps rocky, opened the possibility of
 applying the mapping technique to exoplanets with solid or liquid surfaces, and
 perhaps long-lived surface features [Cowan et al. application to Earth as an exoplanet;
-TRAPPIST-1 PPOs; Fujita et al.] \todo{intro}
+TRAPPIST-1 PPOs; Fujita et al.]
+
+Phase curves are a subset of rotational light curves when a planet is tidally locked.
+\todo{intro}
 
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
@@ -78,7 +81,7 @@ TRAPPIST-1 PPOs; Fujita et al.] \todo{intro}
 
 We provide links to \Python code (\pythonlogo{}) to reproduce all
 figures in this paper, as well as links to \Mathematica scripts
-(\mathematicalogo{}) and PDFs (\LaTeX) containing proofs and derivations
+(\mathematicalogo{}) and PDFs (\pdflogo{}) containing proofs and derivations
 of the principal
 equations. For convenience, Table~\ref{tab:symbols} at the end lists
 all the symbols used
@@ -94,8 +97,9 @@ in the paper, with references to the equations defining them.
 % ------------------------------------------------------------------------------
 % ==============================================================================
 
-The real spherical harmonic $Y_{lm}(\theta,\phi)$ of order $l$ and degree $m$
-is defined in spherical coordinates as
+The orthonormalized real spherical harmonics $Y_{lm}(\theta,\phi)$ of order $l$
+and degree $m$ with the Condon-Shortley phase factor \citep[e.g.][]{Varshalovich1988}
+are defined in spherical coordinates as
 %
 \begin{align}
     \label{eq:ylmtp}
@@ -106,7 +110,8 @@ is defined in spherical coordinates as
     \end{cases}
 \end{align}
 %
-where $\bar{P}_{lm}$ is the normalized associated Legendre function. On the
+where $\bar{P}_{lm}$ are the normalized associated Legendre functions.
+On the
 surface of the unit sphere, we have
 %
 \begin{align}
@@ -148,7 +153,7 @@ Expanding Equation~(\ref{eq:ylmtp}) using the multiple angle formula, we obtain
 \end{align}
 %
 where $\binom{\bigdot}{\bigdot}$ is the binomial
-coefficient. The normalized associated Legendre function is defined as
+coefficient. The normalized associated Legendre functions are defined as
 %
 \begin{align}
     \label{eq:plm}
@@ -269,7 +274,7 @@ where
     \left(\frac{k-p}{2}\right)! \left(\frac{p-q}{2}\right)!} \quad.
 \end{align}
 %
-This gives us an expression for the spherical harmonic $Y_{lm}$
+This gives us an expression for the spherical harmonics $Y_{lm}$
 as a function of $\x$ and $\y$ only:
 %
 \begin{align}
@@ -347,7 +352,7 @@ where $\z = \z(\x, \y) = \sqrt{1 - \x^2 - \y^2}$.
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
-\pagebreak
+%\pagebreak
 \section{Surface map vectors}
 \label{sec:vectors}
 % ------------------------------------------------------------------------------
@@ -748,7 +753,7 @@ may be computed as
 \end{align}
 
 % ------------------------------------------------------------------------------
-\pagebreak
+%\pagebreak
 \subsection{Green's basis}
 \label{sec:greensbasis}
 % ------------------------------------------------------------------------------
@@ -901,7 +906,7 @@ described by the spherical harmonic vector $\bvec{y}$ is
 % ==============================================================================
 
 % ------------------------------------------------------------------------------
-\subsection{Phase curves}
+\subsection{Rotational phase curves}
 \label{sec:phasecurves}
 % ------------------------------------------------------------------------------
 
@@ -987,7 +992,7 @@ occurring), this may be written
 %
 where $\Gamma(\bigdot)$ is the gamma function.
 %
-\eq{phaseint} may be used to analytically compute the phase curve of a body
+\eq{phaseint} may be used to analytically compute the rotational phase curve of a body
 with an arbitrary surface map. Since $\bvec{r}$ and $\bvec{A_1}$ are independent
 of the map coefficients or its orientation, these may be pre-computed for
 computational efficiency.
@@ -1448,7 +1453,7 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
 %
 
 % ------------------------------------------------------------------------------
-\subsection{Computing phase curves}
+\subsection{Computing rotational phase curves}
 \label{sec:starryphasecurves}
 % ------------------------------------------------------------------------------
 %
@@ -1472,7 +1477,8 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
     \end{centering}
 \end{figure}
 %
-Once a map is instantiated, it is easy to compute its phase curve, \textsf{F}:
+Once a map is instantiated, it is easy to compute its rotational
+phase curve, \textsf{F}:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 F = m.flux(u=u, theta=theta)
@@ -1483,18 +1489,18 @@ angles at which to compute the flux. Note that rotations performed
 by \textsf{flux()} are not cumulative; instead, all angles should be specified
 relative to the original, unrotated map frame.
 %
-In the top panel of Figure~\ref{fig:ylmlightcurves} we plot phase curves
+In the top panel of Figure~\ref{fig:ylmlightcurves} we plot rotational phase curves
 for all spherical harmonics
 up to $l_\mathrm{max} = 6$ for rotation about $\xhat$ (blue curves) and $\yhat$
 (orange curves). The small dots correspond to phase curves computed by numerical
 evaluation of the flux on an adaptive radial mesh (see \S\ref{sec:starrybenchmarks}).
 As discussed by \citet{CowanFuentesHaggard2013}, harmonics with
 odd $l > 1$ and those with $m < 0$ (not plotted) are in the null space and
-therefore do not exhibit phase variations.
+therefore do not exhibit rotational phase variations.
 
 %
 
-As a second example, we can compute the phase curve of the simplified Earth model
+As a second example, we can compute the rotational phase curve of the simplified Earth model
 (Figure~\ref{fig:earth}) for rotation about $\yhat$ (its actual spin axis)
 by executing
 %
@@ -1505,7 +1511,7 @@ F = m.flux(u=[0, 1, 0], theta=theta)
 %
 The variable $\textsf{F}$ is
 an array of flux values computed from \eq{phaseint}; we plot this in
-Figure~\ref{fig:earthphasecurve}, alongside the phase curves due to each of
+Figure~\ref{fig:earthphasecurve}, alongside the rotational phase curves due to each of
 the seven individual continents.
 %
 \begin{figure}[ht!]
@@ -1515,7 +1521,7 @@ the seven individual continents.
              \python{earthphasecurve}
              Phase curve for the Earth rotating about its axis, computed
              from the $l_\mathrm{max} = 10$ expansion from
-             Figure~\ref{fig:earth}. The full phase curve is shown in black,
+             Figure~\ref{fig:earth}. The full rotational phase curve is shown in black,
              and the flux due to each of the seven continents is shown as
              the colored curves (see legend).}
     \end{centering}
@@ -1551,7 +1557,7 @@ sum of these light curves. Note that because the value of individual
 spherical harmonics can be negative, an increase in the flux is visible
 at certain points during the occultation; however, this would of course not
 occur for any physical map constructed from a linear combination of
-the spherical harmonics. Note also that unlike in the case of phase curves,
+the spherical harmonics. Note also that unlike in the case of rotational phase curves,
 there is no null space for occultations, as all spherical harmonics (including
 those with $m < 0$, which are not shown) produce a flux signal during
 occultation. As before, the numerical solutions are shown as the small dots.
@@ -1665,7 +1671,7 @@ than $10^{-5}$ parts per million everywhere in the light curve.
 
 % ------------------------------------------------------------------------------
 \subsection{Photodynamics}
-\label{sec:starrybenchmarks}
+\label{sec:starryphotodynamics}
 % ------------------------------------------------------------------------------
 
 Integrate with \textsf{planetplanet} for easy photodynamics.\todo{todo}
@@ -1676,7 +1682,32 @@ Integrate with \textsf{planetplanet} for easy photodynamics.\todo{todo}
 \label{sec:starrybenchmarks}
 % ------------------------------------------------------------------------------
 
-Add benchmarks here. Discuss \Python tests. \todo{todo}
+We validate all our calculations of rotational phase curves and occultation
+light curves by comparing them to numerical solutions of the corresponding
+surface integrals. We integrate the specific intensity of the body by
+discretely summing over its surface map on an adaptive radial mesh whose
+resolution is iteratively increased wherever the spatial gradient of the
+specific intensity is large and in the vicinity of the limb of the occultor.
+\animation{adaptive.gif} Click on the link at right for an animation of our
+adaptive mesh scheme.
+
+In \starry, users can request numerical solutions to the flux by typing
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+F = m.flux(u=u, theta=theta, xo=xo, yo=yo, ro=ro,
+           numerical=True, tol=1.e-4)
+\end{lstlisting}
+%
+where \textsf{tol} is the error tolerance, the maximum absolute value of the
+difference between the
+specific intensity at the center of a grid cell to the average of the specific
+intensity at the four vertices of the same cell. The mesh is locally
+refined until the requested tolerance is met in all cells.
+
+All light curves in Figure~\ref{fig:ylmlightcurves} show the flux computed
+in this way as the small points along each of the curves. We find that our
+analytic light curves agree with the numerical solutions to within the error
+of the latter.
 
 % ------------------------------------------------------------------------------
 \subsection{Speed tests}
@@ -2196,7 +2227,6 @@ In the vicinity of $b = 0$, we can instead Taylor expand the integrand in
 \begin{align}
     \lim_{b\rightarrow 0}\mathcal{J}_{u,v} = \sum\displaylimits_{n = 0} d_n b^n
     \quad,
-    \mathematica{taylorb}
 \end{align}
 %
 where to fifth order we have
@@ -2214,6 +2244,7 @@ where to fifth order we have
            + \frac{3}{4}r^3(1 - r^2)^{-\frac{5}{2}} \mathcal{I}_{u, v+3}
            + \frac{3}{8}r^5(1 - r^2)^{-\frac{7}{2}} \mathcal{I}_{u, v+5}
     \quad.
+    \mathematica{taylorb}
 \end{align}
 %
 In \starry, we evaluate $\mathcal{J}_{u,v}$ using this Taylor expansion when $b < 0.1$.
