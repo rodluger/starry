@@ -40,4 +40,4 @@ def mandelagol1():
 
 
 if __name__ == "__main__":
-    smallb1()
+    mandelagol1()

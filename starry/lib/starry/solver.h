@@ -260,8 +260,10 @@ namespace solver {
             // Constructor
             Primitive(Greens<T>& G, int lmax,
                       T (*setter)(Greens<T>&, int, int)) : lmax(lmax), setter(setter), G(G) {
-                N = 2 * lmax + 1;
-                if (N < 2) N = 2;
+                // TODO: CHECK that N is sufficiently large
+                // in all cases.
+                if (lmax < 5) N = lmax + 5;
+                else N = 2 * lmax + 1;
                 set = Matrix<bool>::Zero(N, N);
                 matrix.resize(N, N);
             }
@@ -338,8 +340,10 @@ namespace solver {
                                M(*this, lmax, computeM) {
 
                 // Initialize some stuff
-                N = 2 * lmax + 1;
-                if (N < 2) N = 2;
+                // TODO: CHECK that N is sufficiently large
+                // in all cases.
+                if (lmax < 5) N = lmax + 5;
+                else N = 2 * lmax + 1;
                 r.resize(N);
                 r(0) = 1;
                 b_r.resize(N);
