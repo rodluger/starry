@@ -73,16 +73,7 @@ PYBIND11_MODULE(_starry, m) {
                 The highest spherical harmonic order of the map.
             )pbdoc")
 
-        .def_property("y",
-            [](maps::Map<double> &map){return map.y;},
-            [](maps::Map<double> &map, Vector<double> &ynew){
-                if (ynew.size() == map.N) {
-                    map.y = ynew;
-                } else {
-                    cout << "ERROR: Invalid dimensions for `y` vector." << endl;
-                }
-                return;
-            },
+        .def_property_readonly("y", [](maps::Map<double> &map){map.update(true); return map.y;},
             R"pbdoc(
                 The spherical harmonic map vector.
             )pbdoc")

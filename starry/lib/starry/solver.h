@@ -21,6 +21,10 @@ using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
 
 namespace solver {
 
+    // For impact parameters below this value,
+    // we Taylor expand the J primitive integral
+    #define STARRY_BMIN                   1e-1
+
     // Forward declarations
     template <class T>
     class Primitive;
@@ -122,7 +126,21 @@ namespace solver {
     T computeJ(Greens<T>& G, int u, int v) {
         T res = 0;
         if (G.b == 0) {
+            // Special case
             return pow(1 - G.r(2), 1.5) * G.I(u, v);
+        } else if ((G.r(1) <= 1) && (G.b < STARRY_BMIN)) {
+            // Taylor expand about b = 0 to 5th order
+            T r1 = 1 - G.r(2);
+            T r12 = sqrt(r1);
+            T r32 = r1 * r12;
+            T r52 = r1 * r32;
+            T r72 = r1 * r52;
+            return (r32 * G.I(u, v)) +
+                   (-3 * G.r(1) * r12 * G.I(u, v + 1)) * G.b +
+                   (-1.5 * r12 * G.I(u, v) + 1.5 * G.r(2) / r12 * G.I(u, v + 2)) * G.b2 +
+                   (1.5 * G.r(1) / r12 * G.I(u, v + 1) + 0.5 * G.r(3) / r32 * G.I(u, v + 3)) * G.b * G.b2 +
+                   (0.375 / r12 * G.I(u, v) + 0.75 * G.r(2) / r32 * G.I(u, v + 2) + 0.375 * G.r(4) / r52 * G.I(u, v + 4)) * G.b2 * G.b2 +
+                   (0.375 * G.r(1) / r32 * G.I(u, v + 1) + 0.75 * G.r(3) / r52 * G.I(u, v + 3) + 0.375 * G.r(5) / r72 * G.I(u, v + 5)) * G.b2 * G.b2 * G.b;
         } else {
             for (int i = 0; i < v + 1; i++) {
                 if (is_even(i - v - u))
@@ -130,34 +148,56 @@ namespace solver {
                 else
                     res -= fact::choose(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
             }
-            res *= pow(2, u + 3) * (G.br32);
+            // NOTE: Unlike in the paper, we multiply by the factor of
+            // br^1.5 **inside** computeM() for numerical stability.
+            res *= pow(2, u + 3);
         }
         return res;
     }
 
     // Compute the primitive integral helper matrix M
+    // NOTE: We multiply all the terms here by br^1.5 instead
+    // of in the J matrix for numerical stability.
     template <typename T>
     T computeM(Greens<T>& G, int p, int q) {
         if (!is_even(p) || !is_even(q)) {
             return 0;
         } else if ((p == 0) && (q == 0)) {
-            return ((8 - 12 * G.ksq) * G.E1 + (-8 + 16 * G.ksq) * G.E2) / 3.;
+            return G.br32 * ((8 - 12 * G.ksq) * G.E1 + (-8 + 16 * G.ksq) * G.E2) / 3.;
         } else if ((p == 0) && (q == 2)) {
-            return ((8 - 24 * G.ksq) * G.E1 + (-8 + 28 * G.ksq + 12 * G.ksq * G.ksq) * G.E2) / 15.;
+            return G.br32 * ((8 - 24 * G.ksq) * G.E1 + (-8 + 28 * G.ksq + 12 * G.ksq * G.ksq) * G.E2) / 15.;
         } else if ((p == 2) && (q == 0)) {
-            return ((32 - 36 * G.ksq) * G.E1 + (-32 + 52 * G.ksq - 12 * G.ksq * G.ksq) * G.E2) / 15.;
+            return G.br32 * ((32 - 36 * G.ksq) * G.E1 + (-32 + 52 * G.ksq - 12 * G.ksq * G.ksq) * G.E2) / 15.;
         } else if ((p == 2) && (q == 2)) {
-            return ((32 - 60 * G.ksq + 12 * G.ksq * G.ksq) * G.E1 + (-32 + 76 * G.ksq - 36 * G.ksq * G.ksq + 24 * G.ksq * G.ksq * G.ksq) * G.E2) / 105.;
+            return G.br32 * ((32 - 60 * G.ksq + 12 * G.ksq * G.ksq) * G.E1 + (-32 + 76 * G.ksq - 36 * G.ksq * G.ksq + 24 * G.ksq * G.ksq * G.ksq) * G.E2) / 105.;
         } else if (q >= 4) {
             T d1, d2;
-            d1 = q + 2 + (p + q - 2) * (1 - G.ksq);
-            d2 = (3 - q) * (1 - G.ksq);
-            return (d1 * G.M(p, q - 2) + d2 * G.M(p, q - 4)) / (p + q + 3);
+            T res1, res2;
+            // Terms independent of ksq
+            d1 = q + 2 + (p + q - 2);
+            d2 = (3 - q);
+            res1 = (d1 * G.M(p, q - 2) + d2 * G.M(p, q - 4)) / (p + q + 3);
+            // Terms proportional to ksq
+            d1 = (p + q - 2);
+            d2 = (3 - q);
+            res2 = (d1 * G.M(p, q - 2) + d2 * G.M(p, q - 4)) / (p + q + 3);
+            res2 *= -G.ksq;
+            // Add them
+            return res1 + res2;
         } else if (p >= 4) {
             T d3, d4;
-            d3 = 2 * p + q - (p + q - 2) * (1 - G.ksq);
-            d4 = (3 - p) + (p - 3) * (1 - G.ksq);
-            return (d3 * G.M(p - 2, q) + d4 * G.M(p - 4, q)) / (p + q + 3);
+            T res1, res2;
+            // Terms independent of ksq
+            d3 = 2 * p + q - (p + q - 2);
+            d4 = (3 - p) + (p - 3);
+            res1 = (d3 * G.M(p - 2, q) + d4 * G.M(p - 4, q)) / (p + q + 3);
+            // Terms proportional to ksq
+            d3 = -(p + q - 2);
+            d4 = (p - 3);
+            res2 = (d3 * G.M(p - 2, q) + d4 * G.M(p - 4, q)) / (p + q + 3);
+            res2 *= -G.ksq;
+            // Add them
+            return res1 + res2;
         } else {
             std::cout << "ERROR: Domain error in function computeM()." << std::endl;
             exit(1);
@@ -188,9 +228,9 @@ namespace solver {
         if (is_even(G.nu))
             return G.r(G.l + 2) * K(G, (G.mu + 4) / 2, G.nu / 2);
         else if ((G.mu == 1) && is_even(G.l))
-            return G.b * G.r(G.l - 2) * L(G, G.l - 2, 0) - G.r(G.l - 1) * L(G, G.l - 2, 1);
+            return -G.r(G.l - 1) * G.J(G.l - 2, 1);
         else if ((G.mu == 1) && !is_even(G.l))
-            return G.b * G.r(G.l - 2) * L(G, G.l - 3, 1) - G.r(G.l - 1) * L(G, G.l - 3, 2);
+            return -G.r(G.l - 2) * (G.b * G.J(G.l - 3, 1) + G.r(1) * G.J(G.l - 3, 2));
         else
             return G.r(G.l - 1) * L(G, (G.mu - 1) / 2, (G.nu - 1) / 2);
     }
