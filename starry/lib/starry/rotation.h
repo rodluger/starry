@@ -15,6 +15,7 @@ from the Wigner-D matrices for complex spherical harmonics.
 
 #include <cmath>
 #include <Eigen/Core>
+#include "constants.h"
 #include "sqrtint.h"
 
 // Shorthand

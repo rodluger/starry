@@ -8,10 +8,9 @@ Tabulated square roots for integers.
 
 #include <cmath>
 #include <iostream>
+#include "constants.h"
 
 namespace sqrtint {
-
-#define STARRY_MAX_SQRT 201
 
     // Table of sqrt(n) for nonnegative integer n
     //

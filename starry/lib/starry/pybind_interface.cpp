@@ -2,6 +2,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
 #include <Eigen/Core>
+#include "constants.h"
 #include "ellip.h"
 #include "maps.h"
 #include "basis.h"

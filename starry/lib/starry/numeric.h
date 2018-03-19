@@ -9,6 +9,7 @@ Numerical integration by adaptive mesh refinement.
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
+#include "constants.h"
 
 // Shorthand
 template <typename T>

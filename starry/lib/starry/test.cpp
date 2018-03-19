@@ -1,7 +1,7 @@
-#define STARRY_NO_AUTODIFF 1
 #include <iostream>
 #include <iomanip>
 #include <Eigen/Core>
+#include "constants.h"
 #include "ellip.h"
 #include "maps.h"
 #include "basis.h"
@@ -9,6 +9,11 @@
 #include "sqrtint.h"
 #include "rotation.h"
 #include "solver.h"
+
+// Disable autodiff for these tests
+#ifndef STARRY_NO_AUTODIFF
+#define STARRY_NO_AUTODIFF                      1
+#endif
 
 using namespace std;
 

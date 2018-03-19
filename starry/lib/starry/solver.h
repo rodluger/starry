@@ -9,6 +9,7 @@ Spherical harmonic integration utilities.
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
+#include "constants.h"
 #include "ellip.h"
 #include "fact.h"
 
@@ -20,10 +21,6 @@ template <typename T>
 using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
 
 namespace solver {
-
-    // For impact parameters below this value,
-    // we Taylor expand the J primitive integral
-    #define STARRY_BMIN                   1e-1
 
     // Forward declarations
     template <class T>
@@ -128,7 +125,7 @@ namespace solver {
         if (G.b == 0) {
             // Special case
             return pow(1 - G.r(2), 1.5) * G.I(u, v);
-        } else if ((G.r(1) <= 1) && (G.b < STARRY_BMIN)) {
+        } else if ((G.r(1) < 1) && (G.b < STARRY_BMIN)) {
             // Taylor expand about b = 0 to 5th order
             T r1 = 1 - G.r(2);
             T r12 = sqrt(r1);

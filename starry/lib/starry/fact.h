@@ -8,11 +8,9 @@ Tabulated factorials for integers and half-integers.
 
 #include <cmath>
 #include <iostream>
+#include "constants.h"
 
 namespace fact {
-
-#define STARRY_MAX_FACT 170
-#define STARRY_MAX_HALF_FACT 341
 
     // Table of n! for nonnegative integer n
     //

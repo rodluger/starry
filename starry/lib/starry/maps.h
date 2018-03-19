@@ -9,6 +9,7 @@ Defines the surface map class.
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
+#include "constants.h"
 #include "rotation.h"
 #include "basis.h"
 #include "solver.h"
@@ -25,9 +26,6 @@ template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
 
 namespace maps {
-
-    // Map coefficient tolerance
-    #define MAP_TOLERANCE                   1e-14
 
     // Some default unit vectors
     UnitVector<double> xhat({1, 0, 0});
@@ -206,7 +204,7 @@ namespace maps {
         // Compute the polynomial basis where it is needed
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
-                if (std::abs((*ptrmap)(n)) < MAP_TOLERANCE) {
+                if (std::abs((*ptrmap)(n)) < STARRY_MAP_TOLERANCE) {
                     basis(n) = 0;
                 } else {
                     mu = l - m;
@@ -352,7 +350,7 @@ namespace maps {
         os << "<STARRY Map: ";
         for (int l = 0; l < lmax + 1; l++) {
             for (int m = -l; m < l + 1; m++) {
-                if (std::abs(y(n)) > MAP_TOLERANCE){
+                if (std::abs(y(n)) > STARRY_MAP_TOLERANCE){
                     // Separator
                     if ((nterms > 0) && (y(n) > 0)) {
                         os << " + ";
@@ -363,7 +361,7 @@ namespace maps {
                     if ((y(n) == 1) || (y(n) == -1)) {
                         sprintf(buf, "Y_{%d,%d}", l, m);
                         os << buf;
-                    } else if (fmod(std::abs(y(n)), 1) < MAP_TOLERANCE) {
+                    } else if (fmod(std::abs(y(n)), 1) < STARRY_MAP_TOLERANCE) {
                         sprintf(buf, "%d Y_{%d,%d}", (int)std::abs(y(n)), l, m);
                         os << buf;
                     } else if (fmod(std::abs(y(n)), 1) >= 0.01) {
