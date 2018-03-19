@@ -10,23 +10,45 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[     16845,        579]
-NotebookOptionsPosition[     15532,        530]
-NotebookOutlinePosition[     15892,        546]
-CellTagsIndexPosition[     15849,        543]
+NotebookDataLength[     17551,        588]
+NotebookOptionsPosition[     16171,        537]
+NotebookOutlinePosition[     16588,        555]
+CellTagsIndexPosition[     16545,        552]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
 Notebook[{
+Cell[TextData[StyleBox[ButtonBox["Link to the Mathematica .nb file",
+ BaseStyle->"Hyperlink",
+ ButtonData->{
+   URL["https://github.com/rodluger/starry/blob/master/tex/notebooks/taylorb.\
+nb"], None},
+ ButtonNote->
+  "https://github.com/rodluger/starry/blob/master/tex/notebooks/taylorb.nb"],
+ FontWeight->"Bold"]], "Text",
+ CellChangeTimes->{{3.730206014046989*^9, 3.730206031935463*^9}, {
+  3.730206132517593*^9, 3.730206159524222*^9}, {3.7302063051649837`*^9, 
+  3.7302063051731358`*^9}, {3.730206767257217*^9, 3.730206804162838*^9}, {
+  3.730207034680917*^9, 3.730207034687676*^9}, {3.7304683498198957`*^9, 
+  3.730468366920896*^9}},
+ TextAlignment->Center,
+ Background->RGBColor[1, 0.85, 0.85]],
+
+Cell[TextData[StyleBox["The problem", "Subchapter"]], "Subsubsection",
+ CellChangeTimes->{{3.727533051340085*^9, 3.7275330627130423`*^9}, {
+  3.728393520393208*^9, 3.7283935233520412`*^9}, {3.7283937107258673`*^9, 
+  3.728393711812155*^9}, {3.730468372444539*^9, 3.730468381505106*^9}}],
 
 Cell[CellGroupData[{
+
 Cell[BoxData[
  RowBox[{
   RowBox[{"Taylor", " ", "expanding", " ", 
    SubscriptBox["J", 
     RowBox[{"u", ",", "v"}]], " ", "about", " ", "b"}], " ", "=", " ", 
   "0"}]], "Subsubsection",
- CellChangeTimes->{{3.73040873458244*^9, 3.7304087713114843`*^9}}],
+ CellChangeTimes->{{3.73040873458244*^9, 3.7304087713114843`*^9}, 
+   3.73046837183991*^9}],
 
 Cell[BoxData[{
  RowBox[{
@@ -179,22 +201,19 @@ Cell[BoxData[
      RowBox[{"{", 
       RowBox[{"b", ",", "0", ",", "2"}], "}"}]}], "]"}], ",", 
    RowBox[{"{", 
-    RowBox[{"c", ",", "s"}], "}"}]}], "]"}]], "Input",
+    RowBox[{"c", ",", "s"}], "}"}], ",", "FullSimplify"}], "]"}]], "Input",
  CellChangeTimes->{{3.730408537711412*^9, 3.73040853779135*^9}, {
-  3.730408586952033*^9, 3.730408609933125*^9}}],
+  3.730408586952033*^9, 3.730408609933125*^9}, {3.7304694140324802`*^9, 
+  3.730469416374003*^9}}],
 
 Cell[BoxData[
  RowBox[{
-  FractionBox[
-   RowBox[{"3", " ", 
-    RowBox[{"(", 
-     RowBox[{
-      RowBox[{"-", "1"}], "+", 
-      SuperscriptBox["r", "2"]}], ")"}]}], 
-   RowBox[{"2", " ", 
-    SqrtBox[
-     RowBox[{"1", "-", 
-      SuperscriptBox["r", "2"]}]]}]], "+", 
+  RowBox[{
+   RowBox[{"-", 
+    FractionBox["3", "2"]}], " ", 
+   SqrtBox[
+    RowBox[{"1", "-", 
+     SuperscriptBox["r", "2"]}]]}], "+", 
   FractionBox[
    RowBox[{"3", " ", 
     SuperscriptBox["r", "2"], " ", 
@@ -204,7 +223,8 @@ Cell[BoxData[
      RowBox[{"1", "-", 
       SuperscriptBox["r", "2"]}]]}]]}]], "Output",
  CellChangeTimes->{
-  3.7304085380717583`*^9, {3.73040858737709*^9, 3.730408610232944*^9}}]
+  3.7304085380717583`*^9, {3.73040858737709*^9, 3.730408610232944*^9}, 
+   3.730469417189212*^9}]
 }, Open  ]],
 
 Cell[BoxData[
@@ -213,15 +233,10 @@ Cell[BoxData[
   RowBox[{
    RowBox[{
     RowBox[{"-", 
-     FractionBox[
-      RowBox[{"3", " ", 
-       RowBox[{"(", 
-        RowBox[{"1", "-", 
-         SuperscriptBox["r", "2"]}], ")"}]}], 
-      RowBox[{"2", " ", 
-       SqrtBox[
-        RowBox[{"1", "-", 
-         SuperscriptBox["r", "2"]}]]}]]}], 
+     FractionBox["3", "2"]}], " ", 
+    SqrtBox[
+     RowBox[{"1", "-", 
+      SuperscriptBox["r", "2"]}]], 
     SubscriptBox["I", 
      RowBox[{"u", ",", "v"}]]}], "+", 
    RowBox[{
@@ -237,7 +252,8 @@ Cell[BoxData[
       RowBox[{"v", "+", "2"}]}]]}]}]}]], "Text",
  CellChangeTimes->{{3.730408469324244*^9, 3.73040858127812*^9}, {
    3.7304086206312857`*^9, 3.730408635868238*^9}, {3.7304087021793747`*^9, 
-   3.730408718990608*^9}, 3.730408873071026*^9},
+   3.730408718990608*^9}, 3.730408873071026*^9, {3.730469426232161*^9, 
+   3.730469427765872*^9}},
  Background->RGBColor[0.87, 0.94, 1]],
 
 Cell[CellGroupData[{
@@ -472,7 +488,7 @@ Cell[BoxData[
 
 Cell[BoxData[
  RowBox[{
-  SubscriptBox["d", "4"], "=", 
+  SubscriptBox["d", "5"], "=", 
   RowBox[{
    RowBox[{
     FractionBox[
@@ -515,21 +531,14 @@ Cell[BoxData[
  CellChangeTimes->{{3.730408469324244*^9, 3.73040858127812*^9}, {
    3.7304086206312857`*^9, 3.7304087037127953`*^9}, 3.730408875030951*^9, {
    3.730409930978485*^9, 3.7304099739615927`*^9}, {3.730410209777605*^9, 
-   3.730410241601424*^9}},
- Background->RGBColor[0.87, 0.94, 1]],
-
-Cell[BoxData["\[IndentingNewLine]"], "Input",
- CellChangeTimes->{3.7304106617485247`*^9}],
-
-Cell["\<\
-By symmetry, the expansion about r = 0 is identical, but we replace r with b \
-in each of the coefficients above.\
-\>", "Text",
- CellChangeTimes->{{3.730410638070517*^9, 3.730410656900741*^9}}]
+   3.730410241601424*^9}, 3.730469736300682*^9},
+ Background->RGBColor[0.87, 0.94, 1]]
 }, Open  ]]
 },
-WindowSize->{1152, 751},
-WindowMargins->{{Automatic, 51}, {Automatic, 29}},
+WindowSize->{806, 920},
+WindowMargins->{{-1735, Automatic}, {400, Automatic}},
+PrintingCopies->1,
+PrintingPageRange->{1, Automatic},
 FrontEndVersion->"11.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (September \
 21, 2016)",
 StyleDefinitions->"Default.nb"
@@ -545,41 +554,41 @@ CellTagsIndex->{}
 *)
 (*NotebookFileOutline
 Notebook[{
+Cell[558, 20, 699, 14, 46, "Text"],
+Cell[1260, 36, 286, 3, 45, "Subsubsection"],
 Cell[CellGroupData[{
-Cell[580, 22, 255, 6, 40, "Subsubsection"],
-Cell[838, 30, 1399, 43, 254, "Text"],
+Cell[1571, 43, 280, 7, 34, "Subsubsection"],
+Cell[1854, 52, 1399, 43, 254, "Text"],
 Cell[CellGroupData[{
-Cell[2262, 77, 707, 16, 44, "Input"],
-Cell[2972, 95, 459, 10, 36, "Output"]
+Cell[3278, 99, 707, 16, 44, "Input"],
+Cell[3988, 117, 459, 10, 36, "Output"]
 }, Open  ]],
-Cell[3446, 108, 397, 13, 53, "Text"],
+Cell[4462, 130, 397, 13, 53, "Text"],
 Cell[CellGroupData[{
-Cell[3868, 125, 483, 13, 44, "Input"],
-Cell[4354, 140, 194, 6, 40, "Output"]
+Cell[4884, 147, 483, 13, 44, "Input"],
+Cell[5370, 162, 194, 6, 40, "Output"]
 }, Open  ]],
-Cell[4563, 149, 397, 13, 57, "Text"],
+Cell[5579, 171, 397, 13, 57, "Text"],
 Cell[CellGroupData[{
-Cell[4985, 166, 610, 17, 44, "Input"],
-Cell[5598, 185, 579, 21, 60, "Output"]
+Cell[6001, 188, 682, 18, 44, "Input"],
+Cell[6686, 208, 497, 18, 58, "Output"]
 }, Open  ]],
-Cell[6192, 209, 927, 31, 79, "Text"],
+Cell[7198, 229, 836, 27, 76, "Text"],
 Cell[CellGroupData[{
-Cell[7144, 244, 635, 17, 44, "Input"],
-Cell[7782, 263, 570, 20, 58, "Output"]
+Cell[8059, 260, 635, 17, 44, "Input"],
+Cell[8697, 279, 570, 20, 58, "Output"]
 }, Open  ]],
-Cell[8367, 286, 833, 28, 76, "Text"],
+Cell[9282, 302, 833, 28, 76, "Text"],
 Cell[CellGroupData[{
-Cell[9225, 318, 706, 18, 44, "Input"],
-Cell[9934, 338, 869, 29, 58, "Output"]
+Cell[10140, 334, 706, 18, 44, "Input"],
+Cell[10849, 354, 869, 29, 58, "Output"]
 }, Open  ]],
-Cell[10818, 370, 1212, 41, 76, "Text"],
+Cell[11733, 386, 1212, 41, 76, "Text"],
 Cell[CellGroupData[{
-Cell[12055, 415, 758, 19, 44, "Input"],
-Cell[12816, 436, 997, 33, 54, "Output"]
+Cell[12970, 431, 758, 19, 44, "Input"],
+Cell[13731, 452, 997, 33, 54, "Output"]
 }, Open  ]],
-Cell[13828, 472, 1390, 46, 73, "Text"],
-Cell[15221, 520, 89, 1, 54, "Input"],
-Cell[15313, 523, 203, 4, 30, "Text"]
+Cell[14743, 488, 1412, 46, 73, "Text"]
 }, Open  ]]
 }
 ]

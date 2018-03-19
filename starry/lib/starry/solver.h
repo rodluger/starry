@@ -49,7 +49,6 @@ namespace solver {
     // Compute the n=2 term of the *s^T* occultation solution vector.
     // This is the Mandel & Agol solution for linear limb darkening,
     // reparametrized for speed
-    // TODO: EDGE CASES HAVE NOT BEEN TESTED
     template <typename T>
     T s2(Greens<T>& G) {
         T Lambda;
@@ -68,20 +67,20 @@ namespace solver {
                          16. * G.r(1) / (9. * M_PI) * (2. * G.r(2) - 1.) * ellip::E(1. / (4 * G.r(2))) -
                          (1 - 4 * G.r(2)) * (3 - 8 * G.r(2)) / (9 * M_PI * G.r(1)) * ellip::K(1. / (4 * G.r(2)));
         } else {
-            if (G.ksq < 1)
-                Lambda = (1. / (9 * M_PI * sqrt(G.br))) *
-                         ((-3 + 12 * G.r(2) - 10 * G.b2 * G.r(2) - 6 * G.r(4) + xi) * G.K -
-                         2 * xi * G.E +
-                         3 * (G.b + G.r(1)) / (G.b - G.r(1)) * G.PI);
-            else if (G.ksq > 1)
-                Lambda = (2. / (9 * M_PI * sqrt((1 - G.b + G.r(1)) * (1 + G.b - G.r(1))))) *
-                         ((1 - 5 * G.b2 + G.r(2) + (G.r(2) - G.b2) * (G.r(2) - G.b2)) * G.K -
-                         2 * xi * G.ksq * G.E +
-                         3 * (G.b + G.r(1)) / (G.b - G.r(1)) * G.PI);
-            else
+            if (G.ksq < 1) {
+                // Note: Using Eric Agol's reparametrized solution
+                Lambda = (((G.r(1) + G.b) * (G.r(1) + G.b) - 1) /
+                           (G.r(1) + G.b) * (-2 * G.r(1) * (2 * (G.r(1) + G.b) * (G.r(1) + G.b) + (G.r(1) + G.b) * (G.r(1) - G.b) - 3) * G.K + G.PI)
+                         - 2 * xi * G.E) / (9 * M_PI * sqrt(G.br));
+            } else if (G.ksq > 1) {
+                // Note: Using Eric Agol's reparametrized solution
+                Lambda = 2 * ((1 - (G.r(1) + G.b) * (G.r(1) + G.b)) * (sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1))) * G.K + G.PI)
+                         - sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1))) * (4 - 7 * G.r(2) - G.b2) * G.E) / (9 * M_PI);
+            } else {
                 Lambda = 2. / (3. * M_PI) * acos(1. - 2 * G.r(1)) -
                          4 / (9 * M_PI) * (3 + 2 * G.r(1) - 8 * G.r(2)) * sqrt(G.br) -
                          2. / 3. * step(G.r(1) - 0.5);
+            }
         }
         return (2. * M_PI / 3.) * (1 - 1.5 * Lambda - step(G.r(1) - G.b));
     }
@@ -456,13 +455,20 @@ namespace solver {
             if (G.ksq < 1) {
                 G.K = ellip::K(G.ksq);
                 G.E = ellip::E(G.ksq);
-                G.PI = ellip::PI(1 - 1. / ((G.b - G.r(1)) * (G.b - G.r(1))), G.ksq);
+                // NOTE: Using Eric Agol's reparametrized version of PI
+                G.PI = 3 * (G.b - G.r(1)) * ellip::PI(G.ksq * (G.b + G.r(1)) * (G.b + G.r(1)), G.ksq);
                 G.E1 = (1 - G.ksq) * G.K;
                 G.E2 = G.E;
             } else {
                 G.K = ellip::K(1. / G.ksq);
                 G.E = ellip::E(1. / G.ksq);
-                G.PI = ellip::PI(1. / (G.ksq - 1. / (4 * G.br)), 1. / G.ksq);
+                // NOTE: Using Eric Agol's reparametrized version of PI
+                if (std::abs(G.b - G.r(1)) != 1.0)
+                    G.PI = 3 * (G.b - G.r(1)) / (G.b + G.r(1)) *
+                           ellip::PI(1. / (G.ksq * (G.b + G.r(1)) * (G.b + G.r(1))), 1. / G.ksq)
+                           / sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1)));
+                else
+                    G.PI = 0.0;
                 G.E1 = (1 - G.ksq) / G.k * G.K;
                 G.E2 = G.k * G.E + (1 - G.ksq) / G.k * G.K;
             }

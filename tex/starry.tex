@@ -1740,6 +1740,7 @@ body whose surface map is given by $I(x, y) = \sqrt{1 - \x^2 -\y^2}$ is
 \end{align}
 %
 where $\Theta(\bigdot)$ is the Heaviside step function and
+\todo{rewrite}
 %
 \begin{align}
     \label{eq:biglam}
@@ -2083,7 +2084,7 @@ of the form $\cos^p\varphi\sin^q\varphi (1 - \chi^2 \sin^2 \varphi)^\frac{3}{2}$
 \citep{Gradshteyn1994}, we may write
 %
 \begin{align}
-    \label{eq:Hunodd}
+    \label{eq:Juvsol}
     \mathcal{J}_{u,v} &=
         2^{u + 3} (b r)^\frac{3}{2}
         \sum\displaylimits_{i=0}^v
@@ -2165,16 +2166,58 @@ a map of arbitrary order. Thanks to the recurrence relations, all other operatio
 required to evaluate $\mathcal{J}_{u,v}$ are elementary, making the
 computation of $s_n$ fast.
 
-Note, finally, that the expressions above diverge when $b = 0$,
-since $k^2 \rightarrow \infty$.
-In this case, the integral in \eq{Juv} simplifies:
+% ------------------------------------------------------------------------------
+\subsubsection{Numerical stability}
+\label{sec:numericalstability}
+% ------------------------------------------------------------------------------
+
+A few remarks are in order regarding the numerical stability of these solutions.
+First, the solution for $s_2$ (Equation~\ref{eq:s2}) is unstable when $b = r$ because
+the elliptic integral $\Pi$ diverges. Elaborate... \todo{todo}
+
+Second, the expression for $k^2$ (Equation~\ref{eq:k2}) diverges when either $b = 0$
+or $r = 0$. Our tests show that the latter case does not introduce significant numerical
+error when computing the solution vector $\mathbf{s}$ because of the factors of $r$
+multiplying the integrals in \eq{PGnI}. However, in the limit $b \rightarrow 0$,
+we find that the expressions for $\mathcal{M}_{p,q}$ (Equation~\ref{eq:Mpq}) are unstable,
+leading to large errors in the evaluation of $\mathcal{J}_{u,v}$ (Equation~\ref{eq:Juvsol})
+and thus also in $\mathcal{P}(\mathbf{G}_n)$ (Equation~\ref{eq:PGnI}). When $b = 0$, the term in
+parentheses in (Equation~\ref{eq:Juv}) vanishes, and we may compute $\mathcal{J}_{u,v}$
+directly as
 %
 \begin{align}
-    \mathcal{J}_{u,v} = (1 - r^2)^\frac{3}{2} \mathcal{I}_{u,v} \quad.
-    \mathematica{case2}
+    \mathcal{J}_{u,v}(b = 0) = (1 - r^2)^\frac{3}{2} \mathcal{I}_{u,v} \quad.
+    \mathematica{taylorb}
 \end{align}
-
 %
+In the vicinity of $b = 0$, we can instead Taylor expand the integrand in
+\eq{Juv}, obtaining
+%
+\begin{align}
+    \lim_{b\rightarrow 0}\mathcal{J}_{u,v} = \sum\displaylimits_{n = 0} d_n b^n
+    \quad,
+    \mathematica{taylorb}
+\end{align}
+%
+where to fifth order we have
+\begin{align}
+    d_0 &= (1 - r^2)^\frac{3}{2} \mathcal{I}_{u, v} \nonumber \\[0.5em]
+    d_1 &= -3r(1 - r^2)^\frac{1}{2} \mathcal{I}_{u, v + 1} \nonumber \\[0.5em]
+    d_2 &= -\frac{3}{2}(1 - r^2)^\frac{1}{2} \mathcal{I}_{u, v}
+           + \frac{3}{2}r^2(1 - r^2)^{-\frac{1}{2}} \mathcal{I}_{u, v+2} \nonumber \\[0.5em]
+    d_3 &= \frac{3}{2}r(1 - r^2)^{-\frac{1}{2}} \mathcal{I}_{u, v+1}
+           + \frac{1}{2}r^3(1 - r^2)^\frac{-3}{2} \mathcal{I}_{u, v+3} \nonumber \\[0.5em]
+    d_4 &= \frac{3}{8}(1 - r^2)^{-\frac{1}{2}} \mathcal{I}_{u, v}
+           + \frac{3}{4}r^2(1 - r^2)^{-\frac{3}{2}} \mathcal{I}_{u, v+2}
+           + \frac{3}{8}r^4(1 - r^2)^{-\frac{5}{2}} \mathcal{I}_{u, v+4} \nonumber \\[0.5em]
+    d_5 &= \frac{3}{8}r(1 - r^2)^{-\frac{3}{2}} \mathcal{I}_{u, v + 1}
+           + \frac{3}{4}r^3(1 - r^2)^{-\frac{5}{2}} \mathcal{I}_{u, v+3}
+           + \frac{3}{8}r^5(1 - r^2)^{-\frac{7}{2}} \mathcal{I}_{u, v+5}
+    \quad.
+\end{align}
+%
+In \starry, we evaluate $\mathcal{J}_{u,v}$ using this Taylor expansion when $b < 0.1$.
+
 
 \bibliography{starry}
 
@@ -2222,6 +2265,7 @@ $B_{lm}^{jk}$   & Spherical harmonic normalization      & \eq{blmjk} \\
 $c_{\bigdot}$   & $\cos(\bigdot)$                       & \\
 $C_{pq}^k$      & Expansion coefficient for
                   $\z(\x, \y)$                          & \eq{ckpq} \\
+$d$             & Dummy coefficient                     & \\
 $\bvec{D}^l$    & Rotation matrix for the
                   complex spherical harmonics
                   of order $l$                          & \eq{dl} \\

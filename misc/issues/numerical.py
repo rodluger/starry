@@ -66,13 +66,15 @@ def smallb():
 
 def mandelagol():
     """[BROKEN] Numerical error as b --> r."""
+    b = 0.4
     ylm = starry.Map(2)
     ylm[1, 0] = 1
-    xo = np.linspace(0.5 - 1e-5, 0.5 + 1e-5, 1000)
-    flux = ylm.flux(xo=xo, yo=0, ro=0.5)
+    xo = np.linspace(b - 1e-5, b + 1e-5, 1000)
+    flux = ylm.flux(xo=xo, yo=0, ro=b)
     pl.plot(xo, flux)
+    pl.plot(b, ylm.flux(xo=b, yo=0, ro=b), 'ro')
     pl.show()
 
 
 if __name__ == "__main__":
-    smallb()
+    mandelagol()
