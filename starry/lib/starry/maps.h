@@ -57,6 +57,7 @@ namespace maps {
 
             Vector<T> basis;
             bool needs_update;
+            bool radial_symmetry;
 
             // Temporary variables
             Vector<T> tmpvec;
@@ -99,6 +100,7 @@ namespace maps {
                 tmpu2 = 0;
                 tmpu3 = 0;
                 basis.resize(N, 1);
+                radial_symmetry = true;
                 update(true);
             }
 
@@ -257,6 +259,9 @@ namespace maps {
     T Map<T>::flux(UnitVector<T>& u, T theta, T xo, T yo, T ro,
                    bool numerical, double tol) {
 
+        // Is the map currently radially symmetric?
+        bool symm = radial_symmetry;
+
         // Pointer to the map we're integrating
         // (defaults to the base map)
         Vector<T>* ptry = &y;
@@ -271,6 +276,7 @@ namespace maps {
         if (theta != 0) {
             rotate(u, theta, (*ptry), tmpvec);
             ptry = &tmpvec;
+            symm = false;
         }
 
         // Compute it numerically?
@@ -288,7 +294,7 @@ namespace maps {
         } else {
 
             // Align occultor with the +y axis if necessary
-            if ((b > 0) && (xo != 0)) {
+            if ((b > 0) && (xo != 0) && (!symm)) {
                 rotate(zhat, yo / b, xo / b, (*ptry), tmpvec);
                 ptry = &tmpvec;
             }
@@ -309,6 +315,7 @@ namespace maps {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             y(l * l + l + m) = coeff;
             needs_update = true;
+            if (m != 0) radial_symmetry = false;
         } else
             std::cout << "ERROR: Invalid value for `l` and/or `m`." << std::endl;
     }
@@ -338,6 +345,7 @@ namespace maps {
     void Map<T>::reset() {
         y.setZero(N);
         needs_update = true;
+        radial_symmetry = true;
     }
 
     // Return a human-readable map string

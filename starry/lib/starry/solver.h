@@ -488,7 +488,6 @@ namespace solver {
                 n++;
             }
         }
-
     }
 
 }; // namespace solver
