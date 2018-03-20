@@ -30,7 +30,7 @@ namespace solver {
 
     // Heaviside step function
     template <typename T>
-    T step(T x) {
+    inline T step(T x) {
         if (x <= 0)
             return 0;
         else
@@ -38,7 +38,7 @@ namespace solver {
     }
 
     // Check if number is even (or doubly, triply, quadruply... even)
-    bool is_even(int n, int ntimes=1) {
+    inline bool is_even(int n, int ntimes=1) {
         for (int i = 0; i < ntimes; i++) {
             if ((n % 2) != 0) return false;
             n /= 2;
@@ -70,12 +70,12 @@ namespace solver {
             if (G.ksq < 1) {
                 // Note: Using Eric Agol's reparametrized solution
                 Lambda = (((G.r(1) + G.b) * (G.r(1) + G.b) - 1) /
-                           (G.r(1) + G.b) * (-2 * G.r(1) * (2 * (G.r(1) + G.b) * (G.r(1) + G.b) + (G.r(1) + G.b) * (G.r(1) - G.b) - 3) * G.K + G.PI)
-                         - 2 * xi * G.E) / (9 * M_PI * sqrt(G.br));
+                           (G.r(1) + G.b) * (-2 * G.r(1) * (2 * (G.r(1) + G.b) * (G.r(1) + G.b) + (G.r(1) + G.b) * (G.r(1) - G.b) - 3) * G.ELL.K() + G.ELL.PI())
+                         - 2 * xi * G.ELL.E()) / (9 * M_PI * sqrt(G.br));
             } else if (G.ksq > 1) {
                 // Note: Using Eric Agol's reparametrized solution
-                Lambda = 2 * ((1 - (G.r(1) + G.b) * (G.r(1) + G.b)) * (sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1))) * G.K + G.PI)
-                         - sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1))) * (4 - 7 * G.r(2) - G.b2) * G.E) / (9 * M_PI);
+                Lambda = 2 * ((1 - (G.r(1) + G.b) * (G.r(1) + G.b)) * (sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1))) * G.ELL.K() + G.ELL.PI())
+                         - sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1))) * (4 - 7 * G.r(2) - G.b2) * G.ELL.E()) / (9 * M_PI);
             } else {
                 Lambda = 2. / (3. * M_PI) * acos(1. - 2 * G.r(1)) -
                          4 / (9 * M_PI) * (3 + 2 * G.r(1) - 8 * G.r(2)) * sqrt(G.br) -
@@ -87,7 +87,7 @@ namespace solver {
 
     // Compute the primitive integral helper matrix H
     template <typename T>
-    T computeH(Greens<T>& G, int u, int v) {
+    inline T computeH(Greens<T>& G, int u, int v) {
         if (!is_even(u)) {
             return 0;
         } else if ((u == 0) && (v == 0)) {
@@ -103,7 +103,7 @@ namespace solver {
 
     // Compute the primitive integral helper matrix I
     template <typename T>
-    T computeI(Greens<T>& G, int u, int v) {
+    inline T computeI(Greens<T>& G, int u, int v) {
         if (!is_even(u)) {
             return 0;
         } else if ((u == 0) && (v == 0)) {
@@ -119,7 +119,7 @@ namespace solver {
 
     // Compute the primitive integral helper matrix J
     template <typename T>
-    T computeJ(Greens<T>& G, int u, int v) {
+    inline T computeJ(Greens<T>& G, int u, int v) {
         T res = 0;
         if (G.b == 0) {
             // Special case
@@ -155,17 +155,17 @@ namespace solver {
     // NOTE: We multiply all the terms here by br^1.5 instead
     // of in the J matrix for numerical stability.
     template <typename T>
-    T computeM(Greens<T>& G, int p, int q) {
+    inline T computeM(Greens<T>& G, int p, int q) {
         if (!is_even(p) || !is_even(q)) {
             return 0;
         } else if ((p == 0) && (q == 0)) {
-            return G.br32 * ((8 - 12 * G.ksq) * G.E1 + (-8 + 16 * G.ksq) * G.E2) / 3.;
+            return G.br32 * ((8 - 12 * G.ksq) * G.ELL.E1() + (-8 + 16 * G.ksq) * G.ELL.E2()) / 3.;
         } else if ((p == 0) && (q == 2)) {
-            return G.br32 * ((8 - 24 * G.ksq) * G.E1 + (-8 + 28 * G.ksq + 12 * G.ksq * G.ksq) * G.E2) / 15.;
+            return G.br32 * ((8 - 24 * G.ksq) * G.ELL.E1() + (-8 + 28 * G.ksq + 12 * G.ksq * G.ksq) * G.ELL.E2()) / 15.;
         } else if ((p == 2) && (q == 0)) {
-            return G.br32 * ((32 - 36 * G.ksq) * G.E1 + (-32 + 52 * G.ksq - 12 * G.ksq * G.ksq) * G.E2) / 15.;
+            return G.br32 * ((32 - 36 * G.ksq) * G.ELL.E1() + (-32 + 52 * G.ksq - 12 * G.ksq * G.ksq) * G.ELL.E2()) / 15.;
         } else if ((p == 2) && (q == 2)) {
-            return G.br32 * ((32 - 60 * G.ksq + 12 * G.ksq * G.ksq) * G.E1 + (-32 + 76 * G.ksq - 36 * G.ksq * G.ksq + 24 * G.ksq * G.ksq * G.ksq) * G.E2) / 105.;
+            return G.br32 * ((32 - 60 * G.ksq + 12 * G.ksq * G.ksq) * G.ELL.E1() + (-32 + 76 * G.ksq - 36 * G.ksq * G.ksq + 24 * G.ksq * G.ksq * G.ksq) * G.ELL.E2()) / 105.;
         } else if (q >= 4) {
             T d1, d2;
             T res1, res2;
@@ -202,7 +202,7 @@ namespace solver {
 
     // The helper primitive integral K_{u,v}
     template <typename T>
-    T K(Greens<T>& G, int u, int v) {
+    inline T K(Greens<T>& G, int u, int v) {
         T res = 0;
         for (int i = 0; i < v + 1; i++)
             res += fact::choose(v, i) * G.b_r(v - i) * G.I(u, i);
@@ -211,7 +211,7 @@ namespace solver {
 
     // The helper primitive integral L_{u,v}
     template <typename T>
-    T L(Greens<T>& G, int u, int v) {
+    inline T L(Greens<T>& G, int u, int v) {
         T res = 0;
         for (int i = 0; i < v + 1; i++)
             res += fact::choose(v, i) * G.b_r(v - i) * G.J(u, i);
@@ -220,7 +220,7 @@ namespace solver {
 
     // The primitive integral P(G_n)
     template <typename T>
-    T P(Greens<T>& G){
+    inline T P(Greens<T>& G){
         if (is_even(G.nu))
             return G.r(G.l + 2) * K(G, (G.mu + 4) / 2, G.nu / 2);
         else if ((G.mu == 1) && is_even(G.l))
@@ -233,19 +233,137 @@ namespace solver {
 
     // The primitive integral Q(G_n)
     template <typename T>
-    T Q(Greens<T>& G){
+    inline T Q(Greens<T>& G){
         if (is_even(G.nu))
             return G.H((G.mu + 4) / 2, G.nu / 2);
         else
             return 0;
     }
 
-    // Primitive integral helper matrices
+    // Elliptic integral storage class
+    template <class T>
+    class Elliptic {
+
+            T vK;
+            T vE;
+            T vPI;
+            T vE1;
+            T vE2;
+            bool bK;
+            bool bE;
+            bool bPI;
+            bool bE1;
+            bool bE2;
+            Greens<T>& G;
+
+        public:
+
+            // Constructor
+            Elliptic(Greens<T>& G) : G(G) {
+                reset();
+            }
+
+            // Elliptic integral of the first kind
+            inline T K() {
+                if (!bK) {
+                    if ((G.b == 0) || (G.ksq == 1))
+                        vK = 0;
+                    else if (G.ksq < 1)
+                        vK = ellip::K(G.ksq);
+                    else
+                        vK = ellip::K(1. / G.ksq);
+                    bK = true;
+                }
+                return vK;
+            }
+
+            // Elliptic integral of the second kind
+            inline T E() {
+                if (!bE) {
+                    if (G.b == 0)
+                        vE = 0;
+                    else if (G.ksq == 1)
+                        vE = 1;
+                    else if (G.ksq < 1)
+                        vE = ellip::E(G.ksq);
+                    else
+                        vE = ellip::E(1. / G.ksq);
+                    bE = true;
+                }
+                return vE;
+            }
+
+            // Elliptic integral of the third kind
+            // NOTE: Using Eric Agol's reparametrized version of PI
+            inline T PI() {
+                if (!bPI) {
+                    if ((G.b == 0) || (G.ksq == 1))
+                        vPI = 0;
+                    else if (G.ksq < 1)
+                        vPI = 3 * (G.b - G.r(1)) * ellip::PI(G.ksq *
+                                 (G.b + G.r(1)) * (G.b + G.r(1)), G.ksq);
+                    else {
+                        // TODO: Small numerical issue here. As b - r --> 1,
+                        // the denominator diverges. Should re-parametrize.
+                        if (std::abs(G.b - G.r(1)) != 1.0)
+                            vPI = 3 * (G.b - G.r(1)) / (G.b + G.r(1)) *
+                                   ellip::PI(1. / (G.ksq * (G.b + G.r(1)) *
+                                   (G.b + G.r(1))), 1. / G.ksq) /
+                                   sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1)));
+                        else
+                            vPI = 0;
+
+                    }
+                    bPI = true;
+                }
+                return vPI;
+            }
+
+            // First elliptic function
+            inline T E1() {
+                if (!bE1) {
+                    if ((G.b == 0) || (G.ksq == 1))
+                        vE1 = 0;
+                    else if (G.ksq < 1)
+                        vE1 = (1 - G.ksq) * K();
+                    else
+                        vE1 = (1 - G.ksq) / G.k * K();
+                    bE1 = true;
+                }
+                return vE1;
+            }
+
+            // Second elliptic function
+            inline T E2() {
+                if (!bE2) {
+                    if (G.b == 0)
+                        vE2 = 0;
+                    else if (G.ksq == 1)
+                        vE2 = 1;
+                    else if (G.ksq < 1)
+                        vE2 = E();
+                    else
+                        vE2 = G.k * E() + (1 - G.ksq) / G.k * K();
+                    bE2 = true;
+                }
+                return vE2;
+            }
+
+            // Resetter
+            void reset() {
+                bK = false;
+                bE = false;
+                bPI = false;
+                bE1 = false;
+                bE2 = false;
+            }
+
+    };
+
+    // Primitive integral storage class
     template <class T>
     class Primitive {
 
-            int lmax;
-            int N;
             Matrix<bool> set;
             Matrix<T> matrix;
             T (*setter)(Greens<T>&, int, int);
@@ -254,21 +372,16 @@ namespace solver {
         public:
 
             // Constructor
-            Primitive(Greens<T>& G, int lmax,
-                      T (*setter)(Greens<T>&, int, int)) : lmax(lmax), setter(setter), G(G) {
-                // TODO: CHECK that N is sufficiently large
-                // in all cases.
-                if (lmax < 5) N = lmax + 5;
-                else N = 2 * lmax + 1;
-                set = Matrix<bool>::Zero(N, N);
-                matrix.resize(N, N);
+            Primitive(Greens<T>& G, T (*setter)(Greens<T>&, int, int)) : setter(setter), G(G) {
+                set = Matrix<bool>::Zero(G.N, G.N);
+                matrix.resize(G.N, G.N);
             }
 
             // Getter function. G is a pointer to the current Greens struct,
             // and setter is a pointer to the function that computes the
             // (i, j) element of this primitive matrix
-            T value(int i, int j) {
-                if ((i < 0) || (j < 0) || (i > N - 1) || (j > N - 1)) {
+            inline T value(int i, int j) {
+                if ((i < 0) || (j < 0) || (i > G.N - 1) || (j > G.N - 1)) {
                     std::cout << "ERROR: Invalid index in primitive matrix." << std::endl;
                     exit(1);
                 }
@@ -280,11 +393,11 @@ namespace solver {
             }
 
             // Overload () to get the function value without calling value()
-            T operator() (int i, int j) { return value(i, j); }
+            inline T operator() (int i, int j) { return value(i, j); }
 
             // Resetter
             void reset() {
-                set.setZero(N, N);
+                set.setZero(G.N, G.N);
             }
 
     };
@@ -295,6 +408,7 @@ namespace solver {
 
         public:
 
+            // Indices
             int lmax;
             int N;
             int l;
@@ -302,18 +416,15 @@ namespace solver {
             int mu;
             int nu;
 
+            // Basic variables
             T b;
             T b2;
             T br;
             T br32;
             T ksq;
             T k;
-            T E;
-            T K;
-            T PI;
-            T E1;
-            T E2;
 
+            // Powers of basic variables
             Vector<T> r;
             Vector<T> b_r;
             Vector<T> cosphi;
@@ -321,25 +432,29 @@ namespace solver {
             Vector<T> coslam;
             Vector<T> sinlam;
 
+            // Elliptic integrals
+            Elliptic<T> ELL;
+
+            // Primitive matrices
             Primitive<T> H;
             Primitive<T> I;
             Primitive<T> J;
             Primitive<T> M;
 
+            // The solution vector
             VectorT<T> sT;
 
             // Constructor
             Greens(int lmax) : lmax(lmax),
-                               H(*this, lmax, computeH),
-                               I(*this, lmax, computeI),
-                               J(*this, lmax, computeJ),
-                               M(*this, lmax, computeM) {
+                               // TODO: CHECK that N is sufficiently large in all cases.
+                               N(std::max(lmax + 5, 2 * lmax + 1)),
+                               ELL(*this),
+                               H(*this, computeH),
+                               I(*this, computeI),
+                               J(*this, computeJ),
+                               M(*this, computeM) {
 
-                // Initialize some stuff
-                // TODO: CHECK that N is sufficiently large
-                // in all cases.
-                if (lmax < 5) N = lmax + 5;
-                else N = 2 * lmax + 1;
+                // Initialize the powers
                 r.resize(N);
                 r(0) = 1;
                 b_r.resize(N);
@@ -352,6 +467,8 @@ namespace solver {
                 coslam(0) = 1;
                 sinlam.resize(N);
                 sinlam(0) = 1;
+
+                // Initialize the solution vector
                 sT.resize((lmax + 1) * (lmax + 1));
 
             }
@@ -394,24 +511,24 @@ namespace solver {
 
     // Compute the *s^T* occultation solution vector
     template <typename T>
-    void computesT(Greens<T>& G, T b, T r) {
+    void computesT(Greens<T>& G, T b, T r, Vector<T>& y) {
 
-        // Initialize the housekeeping variables
+        // Initialize the basic variables
         int l, m;
         int n = 0;
-        G.H.reset();
-        G.I.reset();
-        G.J.reset();
-        G.M.reset();
+        G.b = b;
+        G.b2 = b * b;
+        G.br = b * r;
+        G.br32 = pow(G.br, 1.5);
+        G.ksq = (1 - r * r - G.b * G.b + 2 * G.br) / (4 * G.br);
+        G.k = sqrt(G.ksq);
+
+        // Initialize the powers of the variables
         T sinphi;
         T cosphi;
         T sinlam;
         T coslam;
         T b_r = b / r;
-        G.b = b;
-        G.b2 = b * b;
-        G.br = b * r;
-        G.br32 = pow(G.br, 1.5);
         if ((std::abs(1 - r) < b) && (b < 1 + r)) {
             // sin(arcsin(x)) = x
             // cos(arcsin(x)) = sqrt(1 - x * x)
@@ -434,57 +551,28 @@ namespace solver {
             G.sinlam(l) = sinlam * G.sinlam(l - 1);
         }
 
-        // Compute the elliptic integrals
-        G.ksq = (1 - G.r(2) - G.b * G.b + 2 * G.br) / (4 * G.br);
-        G.k = sqrt(G.ksq);
-        if (G.b == 0) {
-            // We don't need elliptic integrals in this case!
-            G.K = 0;
-            G.E = 0;
-            G.PI = 0;
-            G.E1 = 0;
-            G.E2 = 0;
-        } else if (G.ksq == 1) {
-            // Special case
-            G.K = 0;
-            G.E = 1;
-            G.PI = 0;
-            G.E1 = 0;
-            G.E2 = 1;
-        } else {
-            if (G.ksq < 1) {
-                G.K = ellip::K(G.ksq);
-                G.E = ellip::E(G.ksq);
-                // NOTE: Using Eric Agol's reparametrized version of PI
-                G.PI = 3 * (G.b - G.r(1)) * ellip::PI(G.ksq * (G.b + G.r(1)) * (G.b + G.r(1)), G.ksq);
-                G.E1 = (1 - G.ksq) * G.K;
-                G.E2 = G.E;
-            } else {
-                G.K = ellip::K(1. / G.ksq);
-                G.E = ellip::E(1. / G.ksq);
-                // NOTE: Using Eric Agol's reparametrized version of PI
-                if (std::abs(G.b - G.r(1)) != 1.0)
-                    G.PI = 3 * (G.b - G.r(1)) / (G.b + G.r(1)) *
-                           ellip::PI(1. / (G.ksq * (G.b + G.r(1)) * (G.b + G.r(1))), 1. / G.ksq)
-                           / sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1)));
-                else
-                    G.PI = 0.0;
-                G.E1 = (1 - G.ksq) / G.k * G.K;
-                G.E2 = G.k * G.E + (1 - G.ksq) / G.k * G.K;
-            }
-        }
+        // Initialize our storage classes
+        G.H.reset();
+        G.I.reset();
+        G.J.reset();
+        G.M.reset();
+        G.ELL.reset();
 
-        // Populate the vector
+        // Populate the solution vector
         for (l = 0; l < G.lmax + 1; l++) {
             G.l = l;
             for (m = -l; m < l + 1; m++) {
                 G.m = m;
                 G.mu = l - m;
                 G.nu = l + m;
-                if ((l == 1) && (m == 0))
-                    G.sT(n) = s2(G);
-                else
-                    G.sT(n) = Q(G) - P(G);
+                if (std::abs(y(n)) > STARRY_MAP_TOLERANCE) {
+                    if ((l == 1) && (m == 0))
+                        G.sT(n) = s2(G);
+                    else
+                        G.sT(n) = Q(G) - P(G);
+                } else {
+                    G.sT(n) = 0;
+                }
                 n++;
             }
         }

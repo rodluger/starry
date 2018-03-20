@@ -21,7 +21,7 @@
     We derive analytical, closed form solutions for the total flux
     received from a spherical planet, moon or star during an occultation
     if the specific intensity map of the body is expressed as a
-    sum of spherical harmonics. Our expressions are valid to arbitrary order
+    sum of spherical harmonics. Our expressions are valid to arbitrary degree
     and may be computed recursively for speed. The formalism we develop
     here applies to the computation of stellar transit light curves,
     planetary secondary eclipse light curves, and planet-planet/planet-moon
@@ -97,8 +97,8 @@ in the paper, with references to the equations defining them.
 % ------------------------------------------------------------------------------
 % ==============================================================================
 
-The orthonormalized real spherical harmonics $Y_{lm}(\theta,\phi)$ of order $l$
-and degree $m$ with the Condon-Shortley phase factor \citep[e.g.][]{Varshalovich1988}
+The orthonormalized real spherical harmonics $Y_{lm}(\theta,\phi)$ of degree $l$
+and order $m$ with the Condon-Shortley phase factor \citep[e.g.][]{Varshalovich1988}
 are defined in spherical coordinates as
 %
 \begin{align}
@@ -130,7 +130,7 @@ Expanding Equation~(\ref{eq:ylmtp}) using the multiple angle formula, we obtain
 \begin{align}
     \label{eq:ylm0}
     Y_{lm}(\x, \y , \z) =
-    \left(\frac{1}{\sqrt{1 - \z^2}}\right)^m
+    \left(\frac{1}{\sqrt{1 - \z^2}}\right)^{|m|}
     \begin{dcases}
         \bar{P}_{lm}(\z)
         \sum_{j\, \mathrm{even}}^{m}
@@ -143,10 +143,10 @@ Expanding Equation~(\ref{eq:ylmtp}) using the multiple angle formula, we obtain
          \\[1em]
          %
         \bar{P}_{l|m|}(\z)
-        \sum_{j\, \mathrm{odd}}^{m}
+        \sum_{j\, \mathrm{odd}}^{|m|}
         \left(-1\right)^\frac{j-1}{2}
-        \binom{m}{j}
-        \x^{m - j}
+        \binom{|m|}{j}
+        \x^{|m| - j}
         \y^j
         & \qquad m < 0 \quad ,
     \end{dcases}
@@ -230,7 +230,7 @@ where
     \includegraphics[width=\linewidth]{figures/ylms.pdf}
     \caption{\label{fig:ylms}
              \animation{ylms}
-             The real spherical harmonics up to order $l = 5$ computed from
+             The real spherical harmonics up to degree $l = 5$ computed from
              Equation~(\ref{eq:ylmxy}). In these plots, the $x$-axis points
              to the right,
              \python{ylms}
@@ -395,7 +395,7 @@ $Y_{l, m}$ is located at the index
 %
 of the vector $\bvec{y}$. Conversely, the coefficient at index $n$
 of $\bvec{y}$ corresponds
-to the spherical harmonic of order and degree given by
+to the spherical harmonic of degree and order given by
 %
 \begin{align}
     \label{eq:lm}
@@ -431,7 +431,7 @@ of the body via a rotation matrix $\bvec{R}$:
 %
 where $\bvec{y'}$ are the spherical harmonic coefficients of the rotated map.
 \citet{AlvarezCollado1989} derived expressions for the rotation matrices for
-the real spherical harmonics of a given order $l$ from the corresponding
+the real spherical harmonics of a given degree $l$ from the corresponding
 complex rotation matrices \citep{Steinborn1973}:
 %
 \begin{align}
@@ -460,7 +460,7 @@ where
                               }
 \end{align}
 %
-is the rotation matrix for the complex spherical harmonics of order $l$ and
+is the rotation matrix for the complex spherical harmonics of degree $l$ and
 %
 \begin{equation}
     \label{eq:U}
@@ -721,7 +721,7 @@ the first few spherical harmonics and their corresponding polynomial vectors:
 \end{equation}
 %
 From these we can construct $\AOne$. As an example, for spherical
-harmonics up to order $l_\mathrm{max} = 2$, this is
+harmonics up to degree $l_\mathrm{max} = 2$, this is
 %
 \begin{equation}
     \label{eq:AOne}
@@ -1293,7 +1293,7 @@ In the Appendix we derive recurrence
 relations to quickly compute these. We note, in particular, that all
 solutions involve complete elliptic integrals of the \emph{same} argument,
 so that the elliptic integrals need only be evaluated once for a map
-of arbitrary order, greatly improving the evaluation speed and the
+of arbitrary degree, greatly improving the evaluation speed and the
 scalability of the problem to high order.
 
 % ------------------------------------------------------------------------------
@@ -1379,8 +1379,8 @@ from starry import Map
 % ------------------------------------------------------------------------------
 
 A \starry map is a vector of spherical harmonic coefficients, indexed by
-increasing order and degree, as in \eq{by}. We can create a map of
-spherical harmonics up to order $l_\mathrm{max} = 5$ by typing
+increasing degree and order, as in \eq{by}. We can create a map of
+spherical harmonics up to degree $l_\mathrm{max} = 5$ by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 m = Map(5)
@@ -1446,7 +1446,7 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
     \caption{\label{fig:earth}
              \python{earth}
              A simplified two-color map of the cloudless Earth (top) and the
-             corresponding tenth-order spherical harmonic expansion,
+             corresponding tenth-degree spherical harmonic expansion,
              rotated about $\yhat$ (bottom).}
     \end{centering}
 \end{figure}
@@ -1465,7 +1465,7 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
     \caption{\label{fig:ylmlightcurves}
              \python{ylmphasecurves}
              \emph{Top:} Phase curves for the first several spherical
-             harmonics with degree $m \ge 0$ rotated about the $x$-axis
+             harmonics with order $m \ge 0$ rotated about the $x$-axis
              (blue) and about the $y$-axis (orange).
              Odd harmonics with $l > 1$ and harmonics with $m < 0$ are
              \python{ylmlightcurves}
@@ -1647,10 +1647,6 @@ compute the flux with \batman \citep{Kreidberg2015} and by a
 high precision numerical integration of the surface integral of
 \eq{quadraticld}. The error on the transit depth for \starry flux is less
 than $10^{-5}$ parts per million everywhere in the light curve.
-% I'm surprised the batman computation (which is based on Mandel & Agol)
-% has such a poor precision.  Perhaps the tolerance of the elliptic
-% integral in the batman code can be reduced to give better precision?
-% Or perhaps this is an error due to transferring numbers in single-precision?
 %
 \begin{figure}[ht!]
     \begin{centering}
@@ -1714,7 +1710,36 @@ of the latter.
 \label{sec:starryspeed}
 % ------------------------------------------------------------------------------
 
-Discuss speed tests here once I code everything up in \C.\todo{todo}
+Discuss the speed tests here (Figures~\ref{fig:speed} and \ref{fig:speed_batman}).
+\todo{todo}
+
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/speed.pdf}
+    \caption{\label{fig:speed}
+             \python{speed}
+             Speed tests for \starry, showing the light curve evaluation time
+             as a function of number of light curve points for rotational
+             phase curves (left) and occultation light curves (right) of individual
+             spherical harmonics. The top
+             panels show the evaluation time for spherical harmonics of different
+             degrees $l$, averaged over all orders $m$. The bottom panels
+             show the evaluation time for each of the positive orders
+             of the $l = 5$ spherical harmonics.
+             }
+    \end{centering}
+\end{figure}
+
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=0.65\linewidth]{figures/speed_batman.pdf}
+    \caption{\label{fig:speed_batman}
+             \python{speed}
+             Speed comparison to the \batman transit modeling package
+             \citep{Kreidberg2015} for a quadratically limb-darkened star.
+             }
+    \end{centering}
+\end{figure}
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -2193,7 +2218,7 @@ where we defined the elliptic functions
 Interestingly, the elliptic integrals in the expressions above are exactly
 the same as the ones used to evaluate the $s_2$ term (Equation~\ref{eq:biglam}),
 so these need only be evaluated \emph{once} when computing the occultation flux of
-a map of arbitrary order. Thanks to the recurrence relations, all other operations
+a map of arbitrary degree. Thanks to the recurrence relations, all other operations
 required to evaluate $\mathcal{J}_{u,v}$ are elementary, making the
 computation of $s_n$ fast.
 
@@ -2299,7 +2324,7 @@ $C_{pq}^k$      & Expansion coefficient for
 $d$             & Dummy coefficient                     & \\
 $\bvec{D}^l$    & Rotation matrix for the
                   complex spherical harmonics
-                  of order $l$                          & \eq{dl} \\
+                  of degree $l$                         & \eq{dl} \\
 $\bvec{D}\,\wedge$
                 & Exterior derivative                   & \eq{extderiv} \\
 $E(\bigdot)$    & Complete elliptic integral of the
@@ -2326,10 +2351,10 @@ $K(\bigdot)$    & Complete Elliptic integral of the
                   first kind                            & \eq{elliptic} \\
 $\mathcal{K}_{u,v}$
                 & Occultation integral                  & \eq{Kuv} \\
-$l$             & Spherical harmonic order              & \eq{lm} \\
+$l$             & Spherical harmonic degree             & \eq{lm} \\
 $\mathcal{L}_{u,v}$
                 & Occultation integral                  & \eq{Luv} \\
-$m$             & Spherical harmonic degree             & \eq{lm} \\
+$m$             & Spherical harmonic order              & \eq{lm} \\
 $\mathcal{M}_{p,q}$
                 & Occultation integral                  & \eq{Mpq} \\
 $n$             & Surface map vector index,
@@ -2352,7 +2377,7 @@ $\bvec{r}$      & Phase curve solution vector           & \eq{rn} \\
 $\bvec{R}$      & Rotation matrix for the real
                   spherical harmonics                   & \eq{rblockdiag} \\
 $\bvec{R}^l$    & Rotation matrix for the real
-                  spherical harmonics of order $l$      & \eq{rl} \\
+                  spherical harmonics of degree $l$     & \eq{rl} \\
 $s_{\bigdot}$   & $\sin(\bigdot)$                       & \\
 $\bvec{s}$      & Occultation light curve solution
                   vector                                & \eq{rn} \\
@@ -2363,8 +2388,8 @@ $\bvec{U}$      & Complex to real spherical harmonics
                   transform matrix                      & \eq{U} \\
 $\x$            & Cartesian coordinate                  & \eq{xyz} \\
 $\y$            & Cartesian coordinate                  & \eq{xyz} \\
-$Y_{l,m}$       & Spherical harmonic of order $l$
-                  and degree $m$                        & \eq{ylm0} \\
+$Y_{l,m}$       & Spherical harmonic of degree $l$
+                  and order $m$                         & \eq{ylm0} \\
 $\ybasis$       & Spherical harmonic basis              & \eq{by} \\
 $\bvec{y}$      & Vector in the basis $\ybasis$         & \\
 $\z$            & Cartesian coordinate,

@@ -40,6 +40,7 @@ namespace maps {
             int lmax;
             Eigen::SparseMatrix<double> A1;
             Eigen::SparseMatrix<double> A;
+            VectorT<double> rTA1;
             VectorT<double> rT;
 
             // Constructor: compute the matrices
@@ -47,6 +48,7 @@ namespace maps {
                 basis::computeA1(lmax, A1);
                 basis::computeA(lmax, A1, A);
                 solver::computerT(lmax, rT);
+                rTA1 = rT * A1;
             }
 
     };
@@ -63,6 +65,7 @@ namespace maps {
             Vector<T> tmpvec;
             T tmpscalar;
             T tmpu1, tmpu2, tmpu3;
+            Vector<T> ARRy;
 
             // Private methods
             void apply_rotation(UnitVector<T>& u, T costheta, T sintheta,
@@ -95,6 +98,7 @@ namespace maps {
                 p = Vector<T>::Zero(N);
                 g = Vector<T>::Zero(N);
                 tmpvec = Vector<T>::Zero(N);
+                ARRy = Vector<T>::Zero(N);
                 tmpscalar = NAN;
                 tmpu1 = 0;
                 tmpu2 = 0;
@@ -288,7 +292,7 @@ namespace maps {
         // No occultation: cake
         if (b >= 1 + ro) {
 
-            return C.rT * C.A1 * (*ptry);
+            return C.rTA1 * (*ptry);
 
         // Occultation
         } else {
@@ -299,11 +303,14 @@ namespace maps {
                 ptry = &tmpvec;
             }
 
+            // Perform the rotation + change of basis
+            ARRy = C.A * (*ptry);
+
             // Compute the sT vector
-            solver::computesT<T>(G, b, ro);
+            solver::computesT<T>(G, b, ro, ARRy);
 
             // Dot the result in and we're done
-            return G.sT * C.A * (*ptry);
+            return G.sT * ARRy;
 
         }
 
