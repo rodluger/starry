@@ -10,6 +10,7 @@
 #include "sqrtint.h"
 #include "rotation.h"
 #include "solver.h"
+#include "celestial.h"
 
 using namespace std;
 using namespace pybind11::literals;
@@ -21,6 +22,9 @@ PYBIND11_MODULE(_starry, m) {
     m.doc() = R"pbdoc(
         The starry C++ library.
     )pbdoc";
+
+    // DEBUG: Testing orbital module
+    m.def("test", &celestial::test);
 
     // Core Map class
     py::class_<maps::Map<double>>(m, "Map")
