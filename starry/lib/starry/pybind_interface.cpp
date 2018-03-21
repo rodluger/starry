@@ -48,8 +48,8 @@ PYBIND11_MODULE(_starry, m) {
         .def("flux", py::vectorize(&maps::Map<double>::flux),
             R"pbdoc(
                 Return the total flux received by the observer.
-            )pbdoc", "u"_a=maps::yhat, "theta"_a=0, "xo"_a=-INFINITY,
-                     "yo"_a=-INFINITY, "ro"_a=1, "numerical"_a=false,
+            )pbdoc", "u"_a=maps::yhat, "theta"_a=0, "xo"_a=0,
+                     "yo"_a=0, "ro"_a=0, "numerical"_a=false,
                      "tol"_a=1e-4)
 
         .def("get_coeff", &maps::Map<double>::get_coeff,

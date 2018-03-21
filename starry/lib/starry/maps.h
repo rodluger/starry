@@ -122,7 +122,7 @@ namespace maps {
             T get_coeff(int l, int m);
             void reset();
             T flux(UnitVector<T>& u=yhat, T theta=0,
-                   T xo=-INFINITY, T yo=-INFINITY, T ro=1,
+                   T xo=0, T yo=0, T ro=0,
                    bool numerical=false, double tol=1e-4);
             std::string repr();
 
@@ -290,7 +290,7 @@ namespace maps {
         }
 
         // No occultation: cake
-        if (b >= 1 + ro) {
+        if ((b >= 1 + ro) || (ro == 0)) {
 
             return C.rTA1 * (*ptry);
 
