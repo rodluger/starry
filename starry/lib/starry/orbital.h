@@ -1,10 +1,10 @@
 /**
-Celestial star/planet/moon system class.
+Orbital star/planet/moon system class.
 
 */
 
-#ifndef _STARRY_CELESTIAL_H_
-#define _STARRY_CELESTIAL_H_
+#ifndef _STARRY_ORBITAL_H_
+#define _STARRY_ORBITAL_H_
 
 #include <iostream>
 #include <cmath>
@@ -21,10 +21,12 @@ using maps::Map;
 using maps::yhat;
 using std::vector;
 
-namespace celestial {
+namespace orbital {
 
     template <class T> class Body;
     template <class T> class System;
+    template <class T> class Star;
+    template <class T> class Planet;
 
     // System class
     template <class T>
@@ -50,11 +52,11 @@ namespace celestial {
                 // Set the flag for the primary
                 bodies[0]->is_primary = true;
 
-                // Compute the semi-major axes of each planet
+                // Compute the semi-major axes of each planet/satellite
                 for (int i = 1; i < bodies.size(); i++) {
                     bodies[i]->is_primary = false;
-                    bodies[i]->a = pow((bodies[i]->per * bodies[i]->per) *
-                                       (BIGG * bodies[0]->mass) /
+                    bodies[i]->a = pow((bodies[i]->porb * bodies[i]->porb) *
+                                       (BIGG * bodies[0]->m) /
                                        (4 * M_PI * M_PI), (1. / 3.));
                 }
 
@@ -102,9 +104,9 @@ namespace celestial {
                         o = i;
                         p = j;
                     }
-                    xo = (bodies[o]->x(t) - bodies[p]->x(t)) / bodies[p]->radius;
-                    yo = (bodies[o]->y(t) - bodies[p]->y(t)) / bodies[p]->radius;
-                    ro = bodies[o]->radius / bodies[p]->radius;
+                    xo = (bodies[o]->x(t) - bodies[p]->x(t)) / bodies[p]->r;
+                    yo = (bodies[o]->y(t) - bodies[p]->y(t)) / bodies[p]->r;
+                    ro = bodies[o]->r / bodies[p]->r;
                     // Compute the flux in occultation
                     if (sqrt(xo * xo + yo * yo) < 1 + ro) {
                         bodies[p]->getflux(time(t), t, xo, yo, ro);
@@ -131,15 +133,11 @@ namespace celestial {
 
     }
 
-    // Default theta function
-    template <typename T>
-    T NO_ROTATION(T theta) {
-        return 0;
-    }
-
     // Body class
     template <class T>
     class Body {
+
+        protected:
 
             // Orbital solution variables
             T M;
@@ -173,15 +171,18 @@ namespace celestial {
             bool computed;
 
             // Map stuff
-            Map<T>& map;
+            int lmax;
             UnitVector<T>& u;
-            T (*theta)(T);
-            T radius;
+            T prot;
+            T theta0;
+            T r;
+            T L;
+            Map<T> map;
 
             // Orbital elements
             T a;
-            T mass;
-            T per;
+            T m;
+            T porb;
             T inc;
             T ecc;
             T w;
@@ -203,23 +204,40 @@ namespace celestial {
             Vector<T> flux;
 
             // Constructor
-            Body(Map<T>& map,
-                 UnitVector<T>& u=yhat,
-                 T (*theta)(T)=NO_ROTATION,
-                 const T& radius=REARTH,
-                 const T& mass=MEARTH,
-                 const T& per=DAYSEC,
-                 const T& inc=0.5 * M_PI,
-                 const T& ecc=0,
-                 const T& w=0,
-                 const T& Omega=0,
-                 const T& lambda0=0,
-                 const T& tref=0) :
-                 map(map), u(u), theta(theta), radius(radius), mass(mass),
-                 per(per), inc(inc), ecc(ecc), w(w), Omega(Omega),
-                 lambda0(lambda0), tref(tref) {
+            Body(// Map stuff
+                 int lmax,
+                 const T& r,
+                 const T& L,
+                 UnitVector<T>& u,
+                 const T& prot,
+                 const T& theta0,
+                 // Orbital stuff
+                 const T& m,
+                 const T& porb,
+                 const T& inc,
+                 const T& ecc,
+                 const T& w,
+                 const T& Omega,
+                 const T& lambda0,
+                 const T& tref) :
+                 lmax(lmax),
+                 u(u),
+                 prot(prot),
+                 theta0(theta0),
+                 r(r),
+                 L(L),
+                 map{Map<T>(lmax, L, r)},
+                 m(m),
+                 porb(porb),
+                 inc(inc),
+                 ecc(ecc),
+                 w(w),
+                 Omega(Omega),
+                 lambda0(lambda0),
+                 tref(tref) { init(); }
 
-                // Initialize variables
+            // Initialize orbital variables
+            void init() {
                 M0 = lambda0 - Omega - w;
                 cosi = cos(inc);
                 sini = sin(inc);
@@ -230,14 +248,23 @@ namespace celestial {
                 sqrtonepluse = sqrt(1 + ecc);
                 sqrtoneminuse = sqrt(1 - ecc);
                 ecc2 = ecc * ecc;
+            };
 
-            }
-
-            // Methods
+            // Public methods
+            T theta(const T& time);
             void step(const T& time, const int& t);
             void getflux(const T& time, const int& t, const T& xo=0, const T& yo=0, const T& ro=0);
 
     };
+
+    // Rotation angle as a function of time
+    template <class T>
+    T Body<T>::theta(const T& time) {
+        if ((prot == 0) || isinf(prot))
+            return theta0;
+        else
+            return fmod(theta0 + 2 * M_PI / prot * (time - tref), 2 * M_PI);
+    }
 
     // Compute the visible flux
     template <class T>
@@ -248,8 +275,7 @@ namespace celestial {
     // Compute the mean anomaly
     template <class T>
     void Body<T>::computeM(const T& time) {
-        M = M0 + 2 * M_PI / per * (time - tref);
-        M = fmod(M, 2 * M_PI);
+        M = fmod(M0 + 2 * M_PI / porb * (time - tref), 2 * M_PI);
     }
 
     // Compute the eccentric anomaly. Adapted from
@@ -317,43 +343,68 @@ namespace celestial {
 
     }
 
+    // Star, Body subclass
+    template <class T>
+    class Star : public Body<T> {
+        public:
+            Star(const T& r=RSUN,
+                 const T& L=LSUN,
+                 const T& m=MSUN) :
+                 Body<T>(2, r, L, yhat, INFINITY, 0,
+                         m, INFINITY, 0, 0, 0, 0, 0, 0) {}
+    };
+
+    // Planet, Body subclass
+    template <class T>
+    class Planet : public Body<T> {
+        public:
+            Planet(int lmax=2,
+                   const T& r=RJUP,
+                   const T& L=1e-5 * LSUN,
+                   UnitVector<T>& u=yhat,
+                   const T& prot=DAY,
+                   const T& theta0=0,
+                   const T& porb=DAY,
+                   const T& inc=M_PI / 2.,
+                   const T& ecc=0,
+                   const T& w=0,
+                   const T& Omega=0,
+                   const T& lambda0=0,
+                   const T& tref=0) :
+                   Body<T>(lmax, r, L, u, prot, theta0, 0, porb, inc,
+                           ecc, w, Omega, lambda0, tref) {}
+
+    };
+
     // DEBUG! Let's test this thing.
     Vector<double> test(){
 
-        // M dwarf
-        Map<double> map1(2);
-        map1.limbdark(0.40, 0.26);
-        Body<double> star(map1, yhat, NO_ROTATION, 0.1 * RSUN, 0.1 * MSUN, 0);
+        // Sun-like star
+        Star<double> star;
+        star.map.limbdark(0.40, 0.26);
 
-        // Hot Jupiter, 1 day period
-        Map<double> map2(2);
-        map2.set_coeff(0, 0, 1e-1);
-        map2.set_coeff(1, 0, 1e-1);
-        Body<double> hot_jupiter(map2, yhat, NO_ROTATION, 12 * REARTH, 0, DAYSEC);
-
-        // Hot Saturn, 2 day period
-        Map<double> map3(2);
-        map3.set_coeff(0, 0, 1e-2);
-        map3.set_coeff(1, 0, 1e-2);
-        Body<double> hot_saturn(map3, yhat, NO_ROTATION, 8 * REARTH, 0, 2 * DAYSEC);
+        // Hot Jupiter, 1 day orbit, tidally locked
+        Planet<double> hot_jupiter;
+        hot_jupiter.map.set_coeff(0, 0, 3);
+        hot_jupiter.map.set_coeff(1, 1, 1);
 
         // The vector of body pointers
         vector<Body<double>*> bodies;
         bodies.push_back(&star);
         bodies.push_back(&hot_jupiter);
-        bodies.push_back(&hot_saturn);
 
         // The system
         System<double> system(bodies);
 
         // The time array
-        Vector<double> time = Vector<double>::LinSpaced(10000, 0., 5. * DAYSEC);
+        Vector<double> time = Vector<double>::LinSpaced(10000, 0., 5. * DAY);
         system.compute(time);
 
-        return system.flux;
+        // Normalized flux
+        return system.flux / system.flux.mean();
 
     }
 
-}; // namespace celestial
+}; // namespace orbital
 
 #endif

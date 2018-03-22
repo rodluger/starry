@@ -61,6 +61,11 @@ namespace maps {
             bool needs_update;
             bool radial_symmetry;
 
+            // Body luminosity, radius, and map normalization
+            T L;
+            T r;
+            T norm;
+
             // Temporary variables
             Vector<T> tmpvec;
             T tmpscalar;
@@ -92,7 +97,7 @@ namespace maps {
             solver::Greens<T> G;
 
             // Constructor: initialize map to zeros
-            Map(int lmax) : lmax(lmax), R(lmax), C(lmax), G(lmax) {
+            Map(int lmax=2, T L=1., T r=1.) : L(L), r(r), lmax(lmax), R(lmax), C(lmax), G(lmax) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);
@@ -105,6 +110,7 @@ namespace maps {
                 tmpu3 = 0;
                 basis.resize(N, 1);
                 radial_symmetry = true;
+                norm = L / (r * r * 2 * sqrt(M_PI));
                 update(true);
             }
 
@@ -226,7 +232,7 @@ namespace maps {
         }
 
         // Dot the coefficients in to our polynomial map
-        return (*ptrmap).dot(basis);
+        return norm * (*ptrmap).dot(basis);
 
     }
 
@@ -286,13 +292,13 @@ namespace maps {
         // Compute it numerically?
         if (numerical) {
             tmpvec = C.A1 * (*ptry);
-            return numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
+            return norm * numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
         }
 
         // No occultation: cake
         if ((b >= 1 + ro) || (ro == 0)) {
 
-            return C.rTA1 * (*ptry);
+            return norm * C.rTA1 * (*ptry);
 
         // Occultation
         } else {
@@ -310,7 +316,7 @@ namespace maps {
             solver::computesT<T>(G, b, ro, ARRy);
 
             // Dot the result in and we're done
-            return G.sT * ARRy;
+            return norm * G.sT * ARRy;
 
         }
 
