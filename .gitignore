@@ -12,6 +12,7 @@ starry.egg-info/
 old
 docs/_build
 docs/_generate
+.pytest_cache/
 
 # Latex
 *.aux
