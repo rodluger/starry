@@ -100,6 +100,7 @@ namespace maps {
             Map(int lmax=2, T L=1., T r=1.) : L(L), r(r), lmax(lmax), R(lmax), C(lmax), G(lmax) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
+                y(0) = 1;
                 p = Vector<T>::Zero(N);
                 g = Vector<T>::Zero(N);
                 tmpvec = Vector<T>::Zero(N);
@@ -325,10 +326,12 @@ namespace maps {
     // Set the (l, m) coefficient
     template <class T>
     void Map<T>::set_coeff(int l, int m, T coeff) {
-        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
+        if ((0 < l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             y(l * l + l + m) = coeff;
             needs_update = true;
             if (m != 0) radial_symmetry = false;
+        } else if ((l == 0) && (m == 0)) {
+            std::cout << "ERROR: Cannot set Y_{0,0} (it's always unity)!" << std::endl;
         } else
             std::cout << "ERROR: Invalid value for `l` and/or `m`." << std::endl;
     }
@@ -348,15 +351,16 @@ namespace maps {
     template <class T>
     void Map<T>::limbdark(T u1, T u2) {
         reset();
-        set_coeff(0, 0, 2 * sqrt(M_PI) / 3. * (3 - 3 * u1 - 4 * u2));
-        set_coeff(1, 0, 2 * sqrt(M_PI / 3.) * (u1 + 2 * u2));
-        set_coeff(2, 0, -4. / 3. * sqrt(M_PI / 5) * u2);
+        T coeff00 = 2 * sqrt(M_PI) / 3. * (3 - 3 * u1 - 4 * u2);
+        set_coeff(1, 0, 2 * sqrt(M_PI / 3.) * (u1 + 2 * u2) / coeff00);
+        set_coeff(2, 0, -4. / 3. * sqrt(M_PI / 5) * u2 / coeff00);
     }
 
     // Reset the map
     template <class T>
     void Map<T>::reset() {
         y.setZero(N);
+        y(0) = 1;
         needs_update = true;
         radial_symmetry = true;
     }
@@ -397,13 +401,8 @@ namespace maps {
                 n++;
             }
         }
-        if (nterms == 0) {
-            os << "Null map>";
-            return std::string(os.str());
-        } else {
-            os << ">";
-            return std::string(os.str());
-        }
+        os << ">";
+        return std::string(os.str());
     }
 
 }; // namespace maps

@@ -61,6 +61,7 @@ Defines constants used throughout the code.
 #define RSUN                                    6.957e8                         // Radius of the Sun in m
 #define LSUN                                    3.828e26                        // Solar luminosity in W/m^2
 #define RJUP                                    7.1492e7                        // Radius of Jupiter in m
+#define DEGREE                                  (M_PI / 180.)                   // One degree in radians
 #endif
 
 // Error codes

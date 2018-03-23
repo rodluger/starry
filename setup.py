@@ -28,16 +28,16 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        '_starry',
-        ['starry/lib/starry/pybind_interface.cpp'],
+        'starry',
+        ['starry/pybind_interface.cpp'],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
             get_pybind_include(user=True),
             # Path to starry headers
-            "starry/lib/starry",
+            "starry",
             # Path to eigen headers
-            "starry/lib/eigen_3.3.3"
+            "lib/eigen_3.3.3"
         ],
         language='c++'
     ),
@@ -108,11 +108,9 @@ setup(
     license='GPL',
     packages=['starry'],
     ext_modules=ext_modules,
-    install_requires=['numpy',
-                      'matplotlib',
-                      'pybind11>=2.2',
-                      'healpy',
-                      'Pillow'],
+    install_requires=['matplotlib',
+                      'starry_maps',
+                      'pybind11>=2.2'],
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,
 )

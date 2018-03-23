@@ -72,7 +72,8 @@ namespace orbital {
     void System<T>::compute(const Vector<T>& time) {
 
         int i, j, t;
-        double xo, yo, ro;
+        T xo, yo, ro;
+        T tsec;
         int p, o;
         int NT = time.size();
 
@@ -87,9 +88,12 @@ namespace orbital {
         // Loop through the timeseries
         for (t = 0; t < NT; t++){
 
+            // Time in seconds
+            tsec = time(t) * DAY;
+
             // Take an orbital step
             for (i = 0; i < bodies.size(); i++) {
-                bodies[i]->step(time(t), t);
+                bodies[i]->step(tsec, t);
                 bodies[i]->computed = false;
             }
 
@@ -109,7 +113,7 @@ namespace orbital {
                     ro = bodies[o]->r / bodies[p]->r;
                     // Compute the flux in occultation
                     if (sqrt(xo * xo + yo * yo) < 1 + ro) {
-                        bodies[p]->getflux(time(t), t, xo, yo, ro);
+                        bodies[p]->getflux(tsec, t, xo, yo, ro);
                         bodies[p]->computed = true;
                     }
                 }
@@ -118,7 +122,7 @@ namespace orbital {
             // Compute the total flux for the remaining bodies
             for (i = 0; i < bodies.size(); i++) {
                 if (!bodies[i]->computed) {
-                    bodies[i]->getflux(time(t), t);
+                    bodies[i]->getflux(tsec, t);
                     bodies[i]->computed = true;
                 }
             }
@@ -166,13 +170,18 @@ namespace orbital {
 
         public:
 
+            // Unit conversions for I/O
+            T UNIT_RADIUS;
+            T UNIT_MASS;
+            T UNIT_LUMINOSITY;
+
             // Flag
             bool is_primary;
             bool computed;
 
             // Map stuff
             int lmax;
-            UnitVector<T>& u;
+            UnitVector<T> u;
             T prot;
             T theta0;
             T r;
@@ -208,7 +217,7 @@ namespace orbital {
                  int lmax,
                  const T& r,
                  const T& L,
-                 UnitVector<T>& u,
+                 const UnitVector<T>& u,
                  const T& prot,
                  const T& theta0,
                  // Orbital stuff
@@ -219,25 +228,32 @@ namespace orbital {
                  const T& w,
                  const T& Omega,
                  const T& lambda0,
-                 const T& tref) :
+                 const T& tref,
+                 const T& UNIT_RADIUS,
+                 const T& UNIT_MASS,
+                 const T& UNIT_LUMINOSITY) :
+                 UNIT_RADIUS(UNIT_RADIUS),
+                 UNIT_MASS(UNIT_MASS),
+                 UNIT_LUMINOSITY(UNIT_LUMINOSITY),
                  lmax(lmax),
                  u(u),
-                 prot(prot),
-                 theta0(theta0),
-                 r(r),
-                 L(L),
-                 map{Map<T>(lmax, L, r)},
-                 m(m),
-                 porb(porb),
-                 inc(inc),
+                 prot(prot * DAY),
+                 theta0(theta0 * DEGREE),
+                 r(r * UNIT_RADIUS),
+                 L(L * UNIT_LUMINOSITY),
+                 map{Map<T>(lmax, L * UNIT_LUMINOSITY, r * UNIT_RADIUS)},
+                 m(m * UNIT_MASS),
+                 porb(porb * DAY),
+                 inc(inc * DEGREE),
                  ecc(ecc),
-                 w(w),
-                 Omega(Omega),
-                 lambda0(lambda0),
-                 tref(tref) { init(); }
+                 w(w * DEGREE),
+                 Omega(Omega * DEGREE),
+                 lambda0(lambda0 * DEGREE),
+                 tref(tref * DAY)
+                 { reset(); }
 
             // Initialize orbital variables
-            void init() {
+            void reset() {
                 M0 = lambda0 - Omega - w;
                 cosi = cos(inc);
                 sini = sin(inc);
@@ -254,7 +270,7 @@ namespace orbital {
             T theta(const T& time);
             void step(const T& time, const int& t);
             void getflux(const T& time, const int& t, const T& xo=0, const T& yo=0, const T& ro=0);
-
+            std::string repr();
     };
 
     // Rotation angle as a function of time
@@ -343,66 +359,66 @@ namespace orbital {
 
     }
 
+    // Return a human-readable string
+    template <class T>
+    std::string Body<T>::repr() {
+        std::ostringstream os;
+        os << "<STARRY Body>";
+        return std::string(os.str());
+    }
+
     // Star, Body subclass
     template <class T>
     class Star : public Body<T> {
         public:
-            Star(const T& r=RSUN,
-                 const T& L=LSUN,
-                 const T& m=MSUN) :
+            Star(const T& r=1.,
+                 const T& L=1.,
+                 const T& m=1.) :
                  Body<T>(2, r, L, yhat, INFINITY, 0,
-                         m, INFINITY, 0, 0, 0, 0, 0, 0) {}
+                         m, INFINITY, 0, 0, 0, 0, 0, 0,
+                         RSUN, MSUN, LSUN) {
+            }
+        std::string repr();
     };
+
+    // Return a human-readable string
+    template <class T>
+    std::string Star<T>::repr() {
+        std::ostringstream os;
+        os << "<STARRY Star>";
+        return std::string(os.str());
+    }
 
     // Planet, Body subclass
     template <class T>
     class Planet : public Body<T> {
         public:
             Planet(int lmax=2,
-                   const T& r=RJUP,
-                   const T& L=1e-5 * LSUN,
-                   UnitVector<T>& u=yhat,
-                   const T& prot=DAY,
+                   const T& r=1.,
+                   const T& L=1.e-9,
+                   const UnitVector<T>& u=yhat,
+                   const T& prot=1.,
                    const T& theta0=0,
-                   const T& porb=DAY,
-                   const T& inc=M_PI / 2.,
-                   const T& ecc=0,
-                   const T& w=0,
-                   const T& Omega=0,
-                   const T& lambda0=0,
-                   const T& tref=0) :
+                   const T& porb=1.,
+                   const T& inc=90.,
+                   const T& ecc=0.,
+                   const T& w=0.,
+                   const T& Omega=0.,
+                   const T& lambda0=0.,
+                   const T& tref=0.) :
                    Body<T>(lmax, r, L, u, prot, theta0, 0, porb, inc,
-                           ecc, w, Omega, lambda0, tref) {}
-
+                           ecc, w, Omega, lambda0, tref,
+                           REARTH, MEARTH, LSUN) {
+            }
+            std::string repr();
     };
 
-    // DEBUG! Let's test this thing.
-    Vector<double> test(){
-
-        // Sun-like star
-        Star<double> star;
-        star.map.limbdark(0.40, 0.26);
-
-        // Hot Jupiter, 1 day orbit, tidally locked
-        Planet<double> hot_jupiter;
-        hot_jupiter.map.set_coeff(0, 0, 3);
-        hot_jupiter.map.set_coeff(1, 1, 1);
-
-        // The vector of body pointers
-        vector<Body<double>*> bodies;
-        bodies.push_back(&star);
-        bodies.push_back(&hot_jupiter);
-
-        // The system
-        System<double> system(bodies);
-
-        // The time array
-        Vector<double> time = Vector<double>::LinSpaced(10000, 0., 5. * DAY);
-        system.compute(time);
-
-        // Normalized flux
-        return system.flux / system.flux.mean();
-
+    // Return a human-readable string
+    template <class T>
+    std::string Planet<T>::repr() {
+        std::ostringstream os;
+        os << "<STARRY Planet>";
+        return std::string(os.str());
     }
 
 }; // namespace orbital
