@@ -91,9 +91,9 @@ PYBIND11_MODULE(starry, m) {
                 The z position of the body.
             )pbdoc")
         .def_property("r", [](orbital::Body<double> &body){return body.r / body.UNIT_RADIUS;},
-                           [](orbital::Body<double> &body, double r){body.r = r * body.UNIT_RADIUS;})
+                           [](orbital::Body<double> &body, double r){body.r = r * body.UNIT_RADIUS; body.reset();})
         .def_property("L", [](orbital::Body<double> &body){return body.L / body.UNIT_LUMINOSITY;},
-                           [](orbital::Body<double> &body, double L){body.L = L * body.UNIT_LUMINOSITY;})
+                           [](orbital::Body<double> &body, double L){body.L = L * body.UNIT_LUMINOSITY; body.reset();})
         .def_property("u", [](orbital::Body<double> &body){return body.u;},
                            [](orbital::Body<double> &body, UnitVector<double> u){body.u = u;})
         .def_property("prot", [](orbital::Body<double> &body){return body.prot / DAY;},
@@ -145,10 +145,10 @@ PYBIND11_MODULE(starry, m) {
 
     // Surface map class
     py::class_<maps::Map<double>>(m, "Map")
-        .def(py::init<int, double, double>(),
+        .def(py::init<int>(),
             R"pbdoc(
                 Instantiate a starry map.
-            )pbdoc", "lmax"_a=2, "L"_a=1., "r"_a=1.)
+            )pbdoc", "lmax"_a=2)
         .def("evaluate", py::vectorize(&maps::Map<double>::evaluate),
             R"pbdoc(
                 Return the specific intensity at a point on the map.
@@ -224,7 +224,7 @@ PYBIND11_MODULE(starry, m) {
         //
         // This is where things go nuts: Let's call Python from C++
         //
-        .def("load", [](maps::Map<double> &map, string& image) {
+        .def("load_image", [](maps::Map<double> &map, string& image) {
             py::object load_map = py::module::import("starry_maps").attr("load_map");
             Vector<double> y = load_map(image).cast<Vector<double>>();
             int n = 1;
@@ -240,26 +240,52 @@ PYBIND11_MODULE(starry, m) {
             map.rotate(maps::zhat, M_PI);
             map.rotate(maps::yhat, M_PI / 2);
         })
-        .def("show", [](maps::Map<double> &map, string cmap,
-                        UnitVector<double>& u, double theta, int res) {
-            py::object plt = py::module::import("matplotlib.pyplot");
+        .def("load_healpix", [](maps::Map<double> &map, Matrix<double>& image) {
+            py::object load_map = py::module::import("starry_maps").attr("load_map");
+            Vector<double> y = load_map(image).cast<Vector<double>>();
+            int n = 1;
+            for (int l = 1; l < map.lmax + 1; l++) {
+                for (int m = -l; m < l + 1; m++) {
+                    map.set_coeff(l, m, y(n));
+                    n++;
+                }
+            }
+            // We need to apply some rotations to get
+            // to the desired orientation
+            map.rotate(maps::xhat, M_PI / 2.);
+            map.rotate(maps::zhat, M_PI);
+            map.rotate(maps::yhat, M_PI / 2);
+        })
+        .def("show", [](maps::Map<double> &map, string cmap, int res) {
+            py::object show = py::module::import("starry_maps").attr("show");
             Matrix<double> I;
-            I.resize(300, 300);
+            I.resize(res, res);
             Vector<double> x;
-            x = Vector<double>::LinSpaced(300, -1, 1);
-            for (int i = 0; i < 300; i++){
-                for (int j = 0; j < 300; j++){
+            x = Vector<double>::LinSpaced(res, -1, 1);
+            for (int i = 0; i < res; i++){
+                for (int j = 0; j < res; j++){
                     I(j, i) = map.evaluate(maps::yhat, 0, x(i), x(j));
                 }
             }
-            vector<double> figsize;
-            figsize.push_back(3);
-            figsize.push_back(3);
-            plt.attr("figure")("figsize"_a=figsize);
-            plt.attr("imshow")(I, "origin"_a="lower", "interpolation"_a="none", "cmap"_a=cmap);
-            plt.attr("gca")().attr("axis")("off");
-            plt.attr("show")();
-        }, "cmap"_a="plasma", "u"_a=maps::yhat, "theta"_a=0, "res"_a=300);
+            show(I, "cmap"_a=cmap, "res"_a=res);
+        }, "cmap"_a="plasma", "res"_a=300)
+        .def("animate", [](maps::Map<double> &map, UnitVector<double>& u, string cmap, int res, int frames) {
+            std::cout << "Rendering animation..." << std::endl;
+            py::object animate = py::module::import("starry_maps").attr("animate");
+            vector<Matrix<double>> I;
+            Vector<double> x, theta;
+            x = Vector<double>::LinSpaced(res, -1, 1);
+            theta = Vector<double>::LinSpaced(frames, 0, 2 * M_PI);
+            for (int t = 0; t < frames; t++){
+                I.push_back(Matrix<double>::Zero(res, res));
+                for (int i = 0; i < res; i++){
+                    for (int j = 0; j < res; j++){
+                        I[t](j, i) = map.evaluate(u, theta(t), x(i), x(j));
+                    }
+                }
+            }
+            animate(I, u, "cmap"_a=cmap, "res"_a=res);
+        }, "u"_a=maps::yhat, "cmap"_a="plasma", "res"_a=150, "frames"_a=50);
 
 
 #ifdef VERSION_INFO

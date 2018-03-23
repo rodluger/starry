@@ -77,12 +77,17 @@ namespace orbital {
         int p, o;
         int NT = time.size();
 
-        // Allocate arrays
+        // Allocate arrays and check that the maps are physical
         for (i = 0; i < bodies.size(); i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
+            if (bodies[i]->map.get_coeff(0, 0) <= 0) {
+                std::cout << "ERROR: The coefficient of Y_{0,0} "
+                          << "must be positive for all bodies." << std::endl;
+                exit(1);
+            }
         }
 
         // Loop through the timeseries
@@ -187,6 +192,7 @@ namespace orbital {
             T r;
             T L;
             Map<T> map;
+            T norm;
 
             // Orbital elements
             T a;
@@ -241,7 +247,7 @@ namespace orbital {
                  theta0(theta0 * DEGREE),
                  r(r * UNIT_RADIUS),
                  L(L * UNIT_LUMINOSITY),
-                 map{Map<T>(lmax, L * UNIT_LUMINOSITY, r * UNIT_RADIUS)},
+                 map{Map<T>(lmax)},
                  m(m * UNIT_MASS),
                  porb(porb * DAY),
                  inc(inc * DEGREE),
@@ -250,9 +256,15 @@ namespace orbital {
                  Omega(Omega * DEGREE),
                  lambda0(lambda0 * DEGREE),
                  tref(tref * DAY)
-                 { reset(); }
+                 {
+                     // Initialize the map to constant surface brightness
+                     // And reset all variables
+                     map.set_coeff(0, 0, 1);
+                     reset();
+                 }
 
-            // Initialize orbital variables
+            // Reset orbital variables and map normalization
+            // whenever the corresponding body parameters change
             void reset() {
                 M0 = lambda0 - Omega - w;
                 cosi = cos(inc);
@@ -264,6 +276,7 @@ namespace orbital {
                 sqrtonepluse = sqrt(1 + ecc);
                 sqrtoneminuse = sqrt(1 - ecc);
                 ecc2 = ecc * ecc;
+                norm = L / (r * r * 2 * sqrt(M_PI));
             };
 
             // Public methods
@@ -285,7 +298,7 @@ namespace orbital {
     // Compute the visible flux
     template <class T>
     void Body<T>::getflux(const T& time, const int& t, const T& xo, const T& yo, const T& ro){
-        flux(t) = map.flux(u, theta(time), xo, yo, ro);
+        flux(t) = (norm / map.get_coeff(0, 0)) * map.flux(u, theta(time), xo, yo, ro);
     }
 
     // Compute the mean anomaly

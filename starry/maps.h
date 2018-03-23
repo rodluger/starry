@@ -61,11 +61,6 @@ namespace maps {
             bool needs_update;
             bool radial_symmetry;
 
-            // Body luminosity, radius, and map normalization
-            T L;
-            T r;
-            T norm;
-
             // Temporary variables
             Vector<T> tmpvec;
             T tmpscalar;
@@ -97,10 +92,9 @@ namespace maps {
             solver::Greens<T> G;
 
             // Constructor: initialize map to zeros
-            Map(int lmax=2, T L=1., T r=1.) : L(L), r(r), lmax(lmax), R(lmax), C(lmax), G(lmax) {
+            Map(int lmax=2) : lmax(lmax), R(lmax), C(lmax), G(lmax) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
-                y(0) = 1;
                 p = Vector<T>::Zero(N);
                 g = Vector<T>::Zero(N);
                 tmpvec = Vector<T>::Zero(N);
@@ -111,7 +105,6 @@ namespace maps {
                 tmpu3 = 0;
                 basis.resize(N, 1);
                 radial_symmetry = true;
-                norm = L / (r * r * 2 * sqrt(M_PI));
                 update(true);
             }
 
@@ -233,7 +226,7 @@ namespace maps {
         }
 
         // Dot the coefficients in to our polynomial map
-        return norm * (*ptrmap).dot(basis);
+        return (*ptrmap).dot(basis);
 
     }
 
@@ -293,13 +286,13 @@ namespace maps {
         // Compute it numerically?
         if (numerical) {
             tmpvec = C.A1 * (*ptry);
-            return norm * numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
+            return numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
         }
 
         // No occultation: cake
         if ((b >= 1 + ro) || (ro == 0)) {
 
-            return norm * C.rTA1 * (*ptry);
+            return C.rTA1 * (*ptry);
 
         // Occultation
         } else {
@@ -317,7 +310,7 @@ namespace maps {
             solver::computesT<T>(G, b, ro, ARRy);
 
             // Dot the result in and we're done
-            return norm * G.sT * ARRy;
+            return G.sT * ARRy;
 
         }
 
@@ -326,12 +319,10 @@ namespace maps {
     // Set the (l, m) coefficient
     template <class T>
     void Map<T>::set_coeff(int l, int m, T coeff) {
-        if ((0 < l) && (l <= lmax) && (-l <= m) && (m <= l)) {
+        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             y(l * l + l + m) = coeff;
             needs_update = true;
             if (m != 0) radial_symmetry = false;
-        } else if ((l == 0) && (m == 0)) {
-            std::cout << "ERROR: Cannot set Y_{0,0} (it's always unity)!" << std::endl;
         } else
             std::cout << "ERROR: Invalid value for `l` and/or `m`." << std::endl;
     }
@@ -351,16 +342,15 @@ namespace maps {
     template <class T>
     void Map<T>::limbdark(T u1, T u2) {
         reset();
-        T coeff00 = 2 * sqrt(M_PI) / 3. * (3 - 3 * u1 - 4 * u2);
-        set_coeff(1, 0, 2 * sqrt(M_PI / 3.) * (u1 + 2 * u2) / coeff00);
-        set_coeff(2, 0, -4. / 3. * sqrt(M_PI / 5) * u2 / coeff00);
+        set_coeff(0, 0, 2 * sqrt(M_PI) / 3. * (3 - 3 * u1 - 4 * u2));
+        set_coeff(1, 0, 2 * sqrt(M_PI / 3.) * (u1 + 2 * u2));
+        set_coeff(2, 0, -4. / 3. * sqrt(M_PI / 5) * u2);
     }
 
     // Reset the map
     template <class T>
     void Map<T>::reset() {
         y.setZero(N);
-        y(0) = 1;
         needs_update = true;
         radial_symmetry = true;
     }
