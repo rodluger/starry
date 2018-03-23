@@ -1386,12 +1386,13 @@ spherical harmonics up to degree $l_\mathrm{max} = 5$ by typing
 m = Map(5)
 \end{lstlisting}
 %
-The result is an array of spherical harmonics coefficients, set to zero
-by default. Say our surface map is given by the function
+By default, all coefficients but the first are set to zero. The coefficient
+for the $l=0, m=0$ spherical harmonic is fixed at unity. \todo{revise}
+Say our surface map is given by the function
 %
 \begin{align}
     \label{eq:ylm_code_example}
-    I(\x, \y) &= -2 Y_{5,-3}(\x, \y) + 2 Y_{5,0}(\x, \y) + Y_{5,4}(\x, \y)
+    I(\x, \y) &= Y_{0,0}(\x, \y) - 2 Y_{5,-3}(\x, \y) + 2 Y_{5,0}(\x, \y) + Y_{5,4}(\x, \y)
     \quad.
 \end{align}
 %
@@ -1440,7 +1441,7 @@ $l_\mathrm{max} = 10$, rotated successively about $\xhat$.
 %
 \begin{figure}[ht!]
     \begin{centering}
-    \includegraphics[width=0.8\linewidth]{../starry/maps/earth.jpg}
+    \includegraphics[width=0.8\linewidth]{figures/earth.jpg}
     \\[1em]
     \includegraphics[width=0.85\linewidth]{figures/earth.pdf}
     \caption{\label{fig:earth}
