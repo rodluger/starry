@@ -226,9 +226,9 @@ PYBIND11_MODULE(starry, m) {
         //
         .def("load_image", [](maps::Map<double> &map, string& image) {
             py::object load_map = py::module::import("starry_maps").attr("load_map");
-            Vector<double> y = load_map(image).cast<Vector<double>>();
-            int n = 1;
-            for (int l = 1; l < map.lmax + 1; l++) {
+            Vector<double> y = load_map(image, map.lmax).cast<Vector<double>>();
+            int n = 0;
+            for (int l = 0; l < map.lmax + 1; l++) {
                 for (int m = -l; m < l + 1; m++) {
                     map.set_coeff(l, m, y(n));
                     n++;
@@ -242,9 +242,9 @@ PYBIND11_MODULE(starry, m) {
         })
         .def("load_healpix", [](maps::Map<double> &map, Matrix<double>& image) {
             py::object load_map = py::module::import("starry_maps").attr("load_map");
-            Vector<double> y = load_map(image).cast<Vector<double>>();
-            int n = 1;
-            for (int l = 1; l < map.lmax + 1; l++) {
+            Vector<double> y = load_map(image, map.lmax).cast<Vector<double>>();
+            int n = 0;
+            for (int l = 0; l < map.lmax + 1; l++) {
                 for (int m = -l; m < l + 1; m++) {
                     map.set_coeff(l, m, y(n));
                     n++;

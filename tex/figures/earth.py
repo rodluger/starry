@@ -4,7 +4,8 @@ import matplotlib.pyplot as pl
 import numpy as np
 
 # Generate a sample starry map
-m = Map(10, image='earth')
+m = Map(10)
+m.load_image('earth')
 
 # Start centered at longitude 180 W
 m.rotate([0, 1, 0], -np.pi)

@@ -1386,13 +1386,12 @@ spherical harmonics up to degree $l_\mathrm{max} = 5$ by typing
 m = Map(5)
 \end{lstlisting}
 %
-By default, all coefficients but the first are set to zero. The coefficient
-for the $l=0, m=0$ spherical harmonic is fixed at unity. \todo{revise}
+By default, all coefficients are set to zero.
 Say our surface map is given by the function
 %
 \begin{align}
     \label{eq:ylm_code_example}
-    I(\x, \y) &= Y_{0,0}(\x, \y) - 2 Y_{5,-3}(\x, \y) + 2 Y_{5,0}(\x, \y) + Y_{5,4}(\x, \y)
+    I(\x, \y) &= -2 Y_{5,-3}(\x, \y) + 2 Y_{5,0}(\x, \y) + Y_{5,4}(\x, \y)
     \quad.
 \end{align}
 %
@@ -1404,20 +1403,20 @@ m[5, 0] = 2
 m[5, 4] = 1
 \end{lstlisting}
 %
-The map may be visualized by rendering it on a grid:
+The map may be quickly visualized by calling
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-import numpy as np
-x = np.linspace(-1, 1, 100)
-y = np.linspace(-1, 1, 100)
-x, y = np.meshgrid(x, y)
-I = m.evaluate(u=None, theta=None, x=x, y=y)
+m.show()
 \end{lstlisting}
 %
-where $I$ is a 2-dimensional array of specific intensity values at the coordinates
-$x, y$. Optionally, the user may provide an axis array \textsf{u} and an angle
-\textsf{theta} to specify the orientation of the map. Plotting this map with
-successive rotations about $\xhat$ yields\python{smiley}
+or
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+m.animate(u=[0, 1, 0])
+\end{lstlisting}
+%
+where \textsf{u} defines the axis of rotation for the animation.
+Rotation of this map about $\xhat$ yields\python{smiley}
 %
 \begin{center}
     \includegraphics[width=0.85\linewidth]{figures/smiley.pdf}
@@ -1429,15 +1428,26 @@ surface map on a rectangular latitude-longitude grid or a ring-ordered
 \textsf{Healpix} map array:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m = Map(10, image=None)
+m.load_image("/path/to/image.jpg")
 \end{lstlisting}
 %
-\starry uses the \textsf{map2alm()} function
+or
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+m.load_healpix(array)
+\end{lstlisting}
+%
+In both cases, \starry uses the \textsf{map2alm()} function
 of the \textsf{healpy} package to find the expansion of the map in
-terms of spherical harmonics. In Figure~\ref{fig:earth} we show a
+terms of spherical harmonics. Keep in mind that if the image contains very dark
+pixels (with \textsf{RGB} values close to zero), its spherical harmonic
+expansion may lead to regions with \emph{negative} specific intensity, which
+is of course unphysical.
+
+In Figure~\ref{fig:earth} we show a
 simplified two-color map of the cloudless Earth and its corresponding
 \starry instance for
-$l_\mathrm{max} = 10$, rotated successively about $\xhat$.
+$l_\mathrm{max} = 10$, rotated successively about $\yhat$.
 %
 \begin{figure}[ht!]
     \begin{centering}
@@ -1524,7 +1534,8 @@ the seven individual continents.
              from the $l_\mathrm{max} = 10$ expansion from
              Figure~\ref{fig:earth}. The full rotational phase curve is shown in black,
              and the flux due to each of the seven continents is shown as
-             the colored curves (see legend).}
+             the colored curves (see legend). The black dots correspond to the
+             numerical solution.}
     \end{centering}
 \end{figure}
 %
@@ -1574,7 +1585,8 @@ occultation. As before, the numerical solutions are shown as the small dots.
              computed from the $l_\mathrm{max} = 10$ expansion from
              Figure~\ref{fig:earth}. The two largest dips are due
              to the occultations of South America (left) and Africa
-             (right).}
+             (right). Once again, the black dots correspond to the
+             numerical solution.}
     \end{centering}
 \end{figure}
 %
