@@ -520,7 +520,12 @@ namespace solver {
         G.b2 = b * b;
         G.br = b * r;
         G.br32 = pow(G.br, 1.5);
-        G.ksq = (1 - r * r - G.b * G.b + 2 * G.br) / (4 * G.br);
+        // Attempt at numerical stability, though I don't
+        // think this matters much.
+        if (r <= 1)
+            G.ksq = (1 - r * r - G.b2 + 2 * G.br) / (4 * G.br);
+        else
+            G.ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * G.br);
         G.k = sqrt(G.ksq);
 
         // Initialize the powers of the variables
@@ -536,6 +541,21 @@ namespace solver {
             cosphi = sqrt(1 - sinphi * sinphi);
             sinlam = (1 - r * r + G.b2) / (2 * G.b);
             coslam = sqrt(1 - sinlam * sinlam);
+
+            // TODO: SEVERE NUMERICAL INSTABILITY FOR LAGE R HERE
+            // For large r and b,
+            // sinphi --> -1
+            // sinlam --> b - r
+
+            // DEBUG!!! Find a stable Taylor expansion for this.
+            if (r > 50) {
+                sinphi = -1;
+                cosphi = 0;
+                sinlam = b - r;
+                coslam = sqrt(1 - sinlam * sinlam);
+            }
+            // DEBUG!!!
+
         } else {
             sinphi = 1;
             cosphi = 0;
