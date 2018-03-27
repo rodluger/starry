@@ -1,14 +1,10 @@
-"""Test various numerical issues."""
+"""Test numerical issues for large occultors."""
 import numpy as np
 import matplotlib.pyplot as pl
 import starry
-import timeit
 
-# NOTE: When I run these with multiprecision, there's a small offset
-# in the flux right before and after first contact for Y_{40} and Y_{42}
-# when the occultor is larger than the occulted. INVESTIGATE!
 
-def Earth():
+def Earth(use_mp=False):
     """
     For Earth in secondary eclipse behind the Sun, the instability
     begins at l ~ 4.
@@ -16,6 +12,7 @@ def Earth():
     # Instantiate a system
     lmax = 4
     planet = starry.Planet(lmax, prot=0)
+    planet.map.use_mp = use_mp
     star = starry.Star()
     system = starry.System([star, planet])
 
@@ -23,22 +20,17 @@ def Earth():
     time = np.linspace(0.7114, 0.7122, 10000)
     fig, ax = pl.subplots(1, figsize=(8, 7))
     for m in range(-lmax, lmax + 1):
-        if m == 3 or m == 1:
-            # These I haven't fixed yet
-            alpha = 0.25
-        else:
-            alpha = 1
         planet.map.reset()
         planet.map[0, 0] = 1
         planet.map[lmax, m] = 1
         system.compute(time)
-        ax.plot(time, planet.flux, label="m = %d" % m, alpha=alpha)
+        ax.plot(time, planet.flux, label="m = %d" % m, alpha=0.75)
     pl.legend(ncol=9, fontsize=6)
     pl.title("Secondary eclipse ingress for l = %d" % lmax)
     pl.show()
 
 
-def EarthManual():
+def EarthManual(use_mp=False):
     """
     Emulate `Earth()` without the orbital module. Same thing!
     """
@@ -48,21 +40,14 @@ def EarthManual():
     time = np.linspace(0, 1, 10000)
     xo = np.linspace((ro + 1) + 0.2, (ro - 1) - 0.2, 10000)
     ylm = starry.Map(lmax)
-    ylm.use_mp = True
+    ylm.use_mp = use_mp
     fig, ax = pl.subplots(1, figsize=(8, 7))
-    tstart = timeit.time.time()
     for m in range(-lmax, lmax + 1):
-        if m == 3 or m == 1:
-            # These I haven't fixed yet
-            alpha = 0.25
-        else:
-            alpha = 1
         ylm.reset()
         ylm[0, 0] = 1
         ylm[lmax, m] = 1
         flux = ylm.flux(xo=xo, yo=yo, ro=ro) / (2 * np.sqrt(np.pi))
-        ax.plot(time, flux, label="m = %d" % m, alpha=alpha)
-    print("Elapsed: %.3f" % (timeit.time.time() - tstart))
+        ax.plot(time, flux, label="m = %d" % m, alpha=0.75)
     pl.legend(ncol=9, fontsize=6)
     pl.title("Secondary eclipse ingress for l = %d" % lmax)
     pl.show()

@@ -2287,6 +2287,12 @@ where to fifth order we have
 %
 In \starry, we evaluate $\mathcal{J}_{u,v}$ using this Taylor expansion when $b < 0.1$.
 
+More things: \todo{todo}
+\begin{itemize}
+    \item Numerically unstable for very large occultors. Set usemp flag.
+    \item Earth secondary eclipse by Sun, $lmax = 2$.
+    \item Figure out the occultor radius at which things go unstable for each order.
+\end{itemize}
 
 \bibliography{starry}
 

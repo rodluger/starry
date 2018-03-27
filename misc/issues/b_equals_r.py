@@ -1,4 +1,4 @@
-"""[BROKEN] Numerical error as b --> r."""
+"""[BROKEN] Numerical error as b --> r in the s2 term."""
 import numpy as np
 import matplotlib.pyplot as pl
 import starry

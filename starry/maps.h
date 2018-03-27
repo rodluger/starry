@@ -326,6 +326,7 @@ namespace maps {
 
                 // Compute sT using Boost multiprecision
                 // This is *much* slower (~20x) than using doubles.
+                // TODO: Investigate how to get this to work with autodiff!
                 mpVec = ARRy.template cast<bigdouble>();
                 solver::computesT<bigdouble>(mpG, (bigdouble)b, (bigdouble)ro, mpVec);
 
