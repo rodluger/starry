@@ -27,7 +27,6 @@ template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
 using std::vector;
 
-
 // TODO: Ensure we are passing the flux back to Python by reference!
 //PYBIND11_MAKE_OPAQUE(vector<orbital::Body<double>*>);
 
@@ -217,7 +216,7 @@ PYBIND11_MODULE(starry, m) {
                 return map.get_coeff(lm[0], lm[1]);
             } else {
                 std::cout << "ERROR: Invalid spherical harmonic index." << std::endl;
-                return 0.;
+                return double(0.);
             }
         })
         .def("__repr__", [](maps::Map<double> &map) -> string {return map.repr();})

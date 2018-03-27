@@ -306,6 +306,16 @@ namespace maps {
             // Perform the rotation + change of basis
             ARRy = C.A * (*ptry);
 
+
+            // DEBUG: Compute the solution vector using long double
+            /*
+            solver::Greens<long double> G_(lmax);
+            Vector<long double> ARRy_ = ARRy.template cast<long double>();
+            solver::computesT<long double>(G_, (long double)b, (long double)ro, ARRy_);
+            VectorT<double> sT = G_.sT.cast<double>();
+            return sT * ARRy;
+            */
+
             // Compute the sT vector
             solver::computesT<T>(G, b, ro, ARRy);
 

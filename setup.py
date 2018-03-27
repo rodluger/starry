@@ -37,7 +37,9 @@ ext_modules = [
             # Path to starry headers
             "starry",
             # Path to eigen headers
-            "lib/eigen_3.3.3"
+            "lib/eigen_3.3.3",
+            # Path to boost headers (DEBUG)
+            "/Users/rodrigo/src/boost_1_66_0"
         ],
         language='c++'
     ),

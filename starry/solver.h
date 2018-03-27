@@ -542,19 +542,22 @@ namespace solver {
             sinlam = (1 - r * r + G.b2) / (2 * G.b);
             coslam = sqrt(1 - sinlam * sinlam);
 
-            // TODO: SEVERE NUMERICAL INSTABILITY FOR LAGE R HERE
-            // For large r and b,
-            // sinphi --> -1
-            // sinlam --> b - r
-
-            // DEBUG!!! Find a stable Taylor expansion for this.
-            if (r > 50) {
-                sinphi = -1;
-                cosphi = 0;
-                sinlam = b - r;
+            /*
+            TODO: Reparametrize for numerical stability.
+            BUG: For some reason this is currently NOT WORKING AT ALL.
+            if (r <= 1) {
+                sinphi = (1 - r * r - G.b2) / (2 * G.br);
+                cosphi = sqrt(1 - sinphi * sinphi);
+                sinlam = (1 - r * r + G.b2) / (2 * G.b);
+                coslam = sqrt(1 - sinlam * sinlam);
+            } else {
+                sinphi = (1 - r * r - G.b2) / (2 * G.br);
+                T eps = (1 - (b - r)) * (1 + (b - r)) / (2 * G.br);
+                cosphi = sqrt(2 * eps - eps * eps);
+                sinlam = (1 + (b + r) * (b - r)) / (2 * b);
                 coslam = sqrt(1 - sinlam * sinlam);
             }
-            // DEBUG!!!
+            */
 
         } else {
             sinphi = 1;

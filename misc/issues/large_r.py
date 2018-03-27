@@ -31,6 +31,7 @@ def Earth():
         ax.plot(time, planet.flux, label="m = %d" % m, alpha=alpha)
     pl.legend(ncol=9, fontsize=6)
     pl.title("Secondary eclipse ingress for l = %d" % lmax)
+    pl.show()
 
 
 def EarthManual():
@@ -59,19 +60,4 @@ def EarthManual():
     pl.title("Secondary eclipse ingress for l = %d" % lmax)
 
 
-def Stability():
-    """Test the stability of different expressions for phi and lambda."""
-    sinphi = lambda b, r: (1 - r ** 2 - b ** 2) / (2 * b * r)
-    sinlam = lambda b, r: (1 - r ** 2 + b ** 2) / (2 * b)
-    r = 1e10
-    b = np.linspace(r - 1, r + 1, 10000)
-    fig, ax = pl.subplots(1, 2, figsize=(8, 4))
-    ax[0].plot(b, sinphi(b, r))
-    ax[0].plot(b, -1)
-    ax[1].plot(b, sinlam(b, r))
-    ax[1].plot(b, b - r)
-    pl.show()
-
-
 Earth()
-pl.show()
