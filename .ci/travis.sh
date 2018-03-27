@@ -14,6 +14,7 @@ conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib setuptools py
 pip install Pillow
 pip install batman-package
 pip install tqdm
+pip install starry_maps
 
 # Build the code
 # Build the extension
