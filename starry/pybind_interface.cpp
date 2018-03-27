@@ -27,6 +27,7 @@ template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
 using std::vector;
 
+
 // TODO: Ensure we are passing the flux back to Python by reference!
 //PYBIND11_MAKE_OPAQUE(vector<orbital::Body<double>*>);
 
@@ -148,6 +149,8 @@ PYBIND11_MODULE(starry, m) {
             R"pbdoc(
                 Instantiate a starry map.
             )pbdoc", "lmax"_a=2)
+        .def_property("use_mp", [](maps::Map<double> &map){return map.use_mp;},
+                                [](maps::Map<double> &map, bool use_mp){map.use_mp = use_mp;})
         .def("evaluate", py::vectorize(&maps::Map<double>::evaluate),
             R"pbdoc(
                 Return the specific intensity at a point on the map.

@@ -15,6 +15,15 @@ Defines the surface map class.
 #include "solver.h"
 #include "numeric.h"
 
+// Multiprecision
+#include <boost/multiprecision/cpp_dec_float.hpp>
+#ifndef STARRY_MP_DIGITS
+typedef boost::multiprecision::cpp_dec_float<24> mp_backend;
+#else
+typedef boost::multiprecision::cpp_dec_float<STARRY_MP_DIGITS> mp_backend;
+#endif
+typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off> bigdouble;
+
 // Shorthand
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
@@ -89,22 +98,29 @@ namespace maps {
             Constants C;
 
             // Greens data
+            Vector<bigdouble> mpVec;
+            solver::Greens<bigdouble> mpG;
             solver::Greens<T> G;
 
+            // Multiprecision flag
+            bool use_mp;
+
             // Constructor: initialize map to zeros
-            Map(int lmax=2) : lmax(lmax), R(lmax), C(lmax), G(lmax) {
+            Map(int lmax=2) : lmax(lmax), R(lmax), C(lmax), mpG(lmax), G(lmax) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);
                 g = Vector<T>::Zero(N);
                 tmpvec = Vector<T>::Zero(N);
                 ARRy = Vector<T>::Zero(N);
+                mpVec = Vector<bigdouble>::Zero(N);
                 tmpscalar = NAN;
                 tmpu1 = 0;
                 tmpu2 = 0;
                 tmpu3 = 0;
                 basis.resize(N, 1);
                 radial_symmetry = true;
+                use_mp = false;
                 update(true);
             }
 
@@ -306,21 +322,25 @@ namespace maps {
             // Perform the rotation + change of basis
             ARRy = C.A * (*ptry);
 
+            if (use_mp) {
 
-            // DEBUG: Compute the solution vector using long double
-            /*
-            solver::Greens<long double> G_(lmax);
-            Vector<long double> ARRy_ = ARRy.template cast<long double>();
-            solver::computesT<long double>(G_, (long double)b, (long double)ro, ARRy_);
-            VectorT<double> sT = G_.sT.cast<double>();
-            return sT * ARRy;
-            */
+                // Compute sT using Boost multiprecision
+                // This is *much* slower (~20x) than using doubles.
+                mpVec = ARRy.template cast<bigdouble>();
+                solver::computesT<bigdouble>(mpG, (bigdouble)b, (bigdouble)ro, mpVec);
 
-            // Compute the sT vector
-            solver::computesT<T>(G, b, ro, ARRy);
+                // Dot the result in
+                bigdouble tmp = mpG.sT * mpVec;
+                return (T) tmp;
 
-            // Dot the result in and we're done
-            return G.sT * ARRy;
+            } else {
+
+                // Compute the sT vector
+                solver::computesT<T>(G, b, ro, ARRy);
+
+                // Dot the result in and we're done
+                return G.sT * ARRy;
+            }
 
         }
 

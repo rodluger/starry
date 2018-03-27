@@ -19,6 +19,7 @@ template <typename T>
 using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 template <typename T>
 using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
+using std::abs;
 
 namespace solver {
 
@@ -305,7 +306,7 @@ namespace solver {
                     else {
                         // TODO: Small numerical issue here. As b - r --> 1,
                         // the denominator diverges. Should re-parametrize.
-                        if (std::abs(G.b - G.r(1)) != 1.0)
+                        if (abs(G.b - G.r(1)) != 1.0)
                             vPI = 3 * (G.b - G.r(1)) / (G.b + G.r(1)) *
                                    ellip::PI(1. / (G.ksq * (G.b + G.r(1)) *
                                    (G.b + G.r(1))), 1. / G.ksq) /
@@ -534,7 +535,7 @@ namespace solver {
         T sinlam;
         T coslam;
         T b_r = b / r;
-        if ((std::abs(1 - r) < b) && (b < 1 + r)) {
+        if ((abs(1 - r) < b) && (b < 1 + r)) {
             // sin(arcsin(x)) = x
             // cos(arcsin(x)) = sqrt(1 - x * x)
             sinphi = (1 - r * r - G.b2) / (2 * G.br);
@@ -588,7 +589,7 @@ namespace solver {
                 G.m = m;
                 G.mu = l - m;
                 G.nu = l + m;
-                if (std::abs(y(n)) > STARRY_MAP_TOLERANCE) {
+                if (abs(y(n)) > STARRY_MAP_TOLERANCE) {
                     if ((l == 1) && (m == 0))
                         G.sT(n) = s2(G);
                     else

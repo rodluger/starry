@@ -2,7 +2,11 @@
 import numpy as np
 import matplotlib.pyplot as pl
 import starry
+import timeit
 
+# NOTE: When I run these with multiprecision, there's a small offset
+# in the flux right before and after first contact for Y_{40} and Y_{42}
+# when the occultor is larger than the occulted. INVESTIGATE!
 
 def Earth():
     """
@@ -44,7 +48,9 @@ def EarthManual():
     time = np.linspace(0, 1, 10000)
     xo = np.linspace((ro + 1) + 0.2, (ro - 1) - 0.2, 10000)
     ylm = starry.Map(lmax)
+    ylm.use_mp = True
     fig, ax = pl.subplots(1, figsize=(8, 7))
+    tstart = timeit.time.time()
     for m in range(-lmax, lmax + 1):
         if m == 3 or m == 1:
             # These I haven't fixed yet
@@ -56,8 +62,10 @@ def EarthManual():
         ylm[lmax, m] = 1
         flux = ylm.flux(xo=xo, yo=yo, ro=ro) / (2 * np.sqrt(np.pi))
         ax.plot(time, flux, label="m = %d" % m, alpha=alpha)
+    print("Elapsed: %.3f" % (timeit.time.time() - tstart))
     pl.legend(ncol=9, fontsize=6)
     pl.title("Secondary eclipse ingress for l = %d" % lmax)
+    pl.show()
 
 
-Earth()
+EarthManual()
