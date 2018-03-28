@@ -10,6 +10,7 @@ Orbital star/planet/moon system class.
 #include <cmath>
 #include <Eigen/Core>
 #include "constants.h"
+#include "errors.h"
 #include "maps.h"
 
 // Shorthand
@@ -84,9 +85,7 @@ namespace orbital {
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
             if (bodies[i]->map.get_coeff(0, 0) <= 0) {
-                std::cout << "ERROR: The coefficient of Y_{0,0} "
-                          << "must be positive for all bodies." << std::endl;
-                exit(1);
+                throw errors::BadY00();
             }
         }
 
@@ -206,7 +205,6 @@ namespace orbital {
             T tref;
 
             // Settings
-            int iErr;
             double eps;
             int maxiter;
 
@@ -323,9 +321,9 @@ namespace orbital {
             if (fabs(E - ecc * sin(E) - M) <= eps) return;
         }
 
-        // Didn't converge: set the flag
-        iErr = STARRY_ERR_KEPLER_MAXITER;
-        return;
+        // Didn't converge!
+        throw errors::Kepler();
+
     }
 
     // Compute the true anomaly

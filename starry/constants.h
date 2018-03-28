@@ -63,10 +63,3 @@ Defines constants used throughout the code.
 #define RJUP                                    7.1492e7                        // Radius of Jupiter in m
 #define DEGREE                                  (M_PI / 180.)                   // One degree in radians
 #endif
-
-// Error codes
-#ifndef STARRY_ERR_CODES
-#define STARRY_ERR_CODES
-#define STARRY_ERR_NONE                         0
-#define STARRY_ERR_KEPLER_MAXITER               1
-#endif
