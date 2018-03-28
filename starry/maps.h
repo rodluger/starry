@@ -16,13 +16,15 @@ Defines the surface map class.
 #include "numeric.h"
 
 // Multiprecision
-#include <boost/multiprecision/cpp_dec_float.hpp>
 #ifndef STARRY_MP_DIGITS
+#include <boost/multiprecision/cpp_dec_float.hpp>
 typedef boost::multiprecision::cpp_dec_float<24> mp_backend;
-#else
-typedef boost::multiprecision::cpp_dec_float<STARRY_MP_DIGITS> mp_backend;
-#endif
 typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off> bigdouble;
+#else
+#include <boost/multiprecision/float128.hpp>
+typedef boost::multiprecision::cpp_dec_float<STARRY_MP_DIGITS> mp_backend;
+typedef boost::multiprecision::float128 bigdouble;
+#endif
 
 // Shorthand
 template <typename T>

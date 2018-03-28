@@ -2291,8 +2291,17 @@ More things: \todo{todo}
 \begin{itemize}
     \item Numerically unstable for very large occultors. Set usemp flag.
     \item Earth secondary eclipse by Sun, $lmax = 2$.
-    \item Figure out the occultor radius at which things go unstable for each order.
+    \item Discuss occultor radius at which things go unstable (Figure~\ref{fig:stability}).
 \end{itemize}
+
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/stability.pdf}
+    \caption{\label{fig:stability}
+             \python{stability}
+             Numerical stability calculations.}
+    \end{centering}
+\end{figure}
 
 \bibliography{starry}
 

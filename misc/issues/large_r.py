@@ -42,15 +42,22 @@ def EarthManual(use_mp=False):
     ylm = starry.Map(lmax)
     ylm.use_mp = use_mp
     fig, ax = pl.subplots(1, figsize=(8, 7))
+
+    import timeit;
+    tstart = timeit.time.time()
+
     for m in range(-lmax, lmax + 1):
         ylm.reset()
         ylm[0, 0] = 1
         ylm[lmax, m] = 1
         flux = ylm.flux(xo=xo, yo=yo, ro=ro) / (2 * np.sqrt(np.pi))
         ax.plot(time, flux, label="m = %d" % m, alpha=0.75)
+
+    print(timeit.time.time() - tstart)
+
     pl.legend(ncol=9, fontsize=6)
     pl.title("Secondary eclipse ingress for l = %d" % lmax)
     pl.show()
 
 
-EarthManual()
+EarthManual(True)
