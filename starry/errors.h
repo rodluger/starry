@@ -25,6 +25,12 @@ namespace errors {
         }
     };
 
+    struct Elliptic : public exception {
+    	const char * what () const throw (){
+        	return "Elliptic integral did not converge.";
+        }
+    };
+
 }; // namespace errors
 
 #endif

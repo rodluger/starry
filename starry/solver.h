@@ -512,7 +512,7 @@ namespace solver {
 
     // Compute the *s^T* occultation solution vector
     template <typename T>
-    void computesT(Greens<T>& G, T b, T r, Vector<T>& y) {
+    void computesT(Greens<T>& G, T& b, T& r, Vector<T>& y) {
 
         // Initialize the basic variables
         int l, m;

@@ -13,6 +13,7 @@ Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
 
 #include <cmath>
 #include "constants.h"
+#include "errors.h"
 
 #ifndef STARRY_NO_AUTODIFF
 #include "AutoDiffScalar.h"
@@ -31,11 +32,11 @@ using std::abs;
     for (int i = 0; i < STARRY_ELLIP_MAX_ITER; ++i) {
       h = m;
       m += kc;
-      if (abs(h - kc) / h <= STARRY_ELLIP_CONV_TOL) break;
+      if (abs(h - kc) / h <= STARRY_ELLIP_CONV_TOL) return M_PI / m;
       kc = sqrt(h * kc);
       m *= 0.5;
     }
-    return M_PI / m;
+    throw errors::Elliptic();
   }
 
   // Complete elliptic integral of the second kind
@@ -48,10 +49,10 @@ using std::abs;
       m0 = m;
       m += kc;
       a += b / m;
-      if (abs(m0 - kc) / m0 <= STARRY_ELLIP_CONV_TOL) break;
+      if (abs(m0 - kc) / m0 <= STARRY_ELLIP_CONV_TOL) return M_PI_4 * a / m;
       kc = 2.0 * sqrt(kc * m0);
     }
-    return M_PI_4 * a / m;
+    throw errors::Elliptic();
   }
 
   // Complete elliptic integral of the third kind
@@ -66,11 +67,11 @@ using std::abs;
       p = g + p;
       g = m0;
       m0 = kc + m0;
-      if (abs(1.0 - kc / g) <= STARRY_ELLIP_CONV_TOL) break;
+      if (abs(1.0 - kc / g) <= STARRY_ELLIP_CONV_TOL) return M_PI_2 * (c * m0 + d) / (m0 * (m0 + p));
       kc = 2.0 * sqrt(e);
       e = kc * m0;
     }
-    return M_PI_2 * (c * m0 + d) / (m0 * (m0 + p));
+    throw errors::Elliptic();
   }
 
 

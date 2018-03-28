@@ -330,7 +330,9 @@ namespace maps {
                 // This is *much* slower (~20x) than using doubles.
                 // TODO: Investigate how to get this to work with autodiff!
                 mpVec = ARRy.template cast<bigdouble>();
-                solver::computesT<bigdouble>(mpG, (bigdouble)b, (bigdouble)ro, mpVec);
+                bigdouble mpb = b;
+                bigdouble mpro = ro;
+                solver::computesT<bigdouble>(mpG, mpb, mpro, mpVec);
 
                 // Dot the result in
                 bigdouble tmp = mpG.sT * mpVec;

@@ -34,7 +34,18 @@ using std::vector;
 
 PYBIND11_MODULE(starry, m) {
     m.doc() = R"pbdoc(
-        The starry C++ library.
+        API
+        ---
+        .. currentmodule:: starry
+
+        .. autosummary::
+            :toctree: _generate
+
+            Body
+            Star
+            Planet
+            Map
+
     )pbdoc";
 
     // Orbital system class

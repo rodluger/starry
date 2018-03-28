@@ -42,7 +42,7 @@ namespace rotation {
 
     */
     template <typename T>
-    void dlmn(int l, T s1, T c1, T c2, T tgbet2, T s3, T c3, Matrix<T>* D, Matrix<T>* R) {
+    void dlmn(int l, T& s1, T& c1, T& c2, T& tgbet2, T& s3, T& c3, Matrix<T>* D, Matrix<T>* R) {
         int iinf = 1 - l;
         int isup = -iinf;
         int m, mp;
@@ -164,7 +164,7 @@ namespace rotation {
 
     */
     template <typename T>
-    void rotar(int lmax, T c1, T s1, T c2, T s2, T c3, T s3, Matrix<T>* D, Matrix<T>* R, double tol) {
+    void rotar(int lmax, T& c1, T& s1, T& c2, T& s2, T& c3, T& s3, Matrix<T>* D, Matrix<T>* R, double tol) {
         T cosag, COSAMG, sinag, SINAMG, tgbet2;
 
         // Compute the initial matrices D0, R0, D1 and R1
@@ -213,7 +213,7 @@ namespace rotation {
 
     */
     template <typename T>
-    void computeR(int lmax, Eigen::Matrix<T, 3, 1>& u, T costheta, T sintheta, Matrix<T>* D, Matrix<T>* R, double tol=1e-15) {
+    void computeR(int lmax, Eigen::Matrix<T, 3, 1>& u, T& costheta, T& sintheta, Matrix<T>* D, Matrix<T>* R, double tol=1e-15) {
 
         // Trivial case
         if (lmax == 0) {
