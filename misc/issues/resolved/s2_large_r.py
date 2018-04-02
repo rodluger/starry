@@ -10,15 +10,18 @@ cmap = pl.get_cmap('plasma')
 eps = 1e-6
 tol = 1e-6
 yo = 0
-npts = 50
+npts = 200
 rarr = (np.logspace(-3, 3, npts))
 
 # Standard map
 ylm = Map(1)
 ylm[1, 0] = 1
-ylm.taylor_r = np.inf
-ylm.quad_r = np.inf
-ylm.taylor_b = 0
+ylm._s2 = False
+
+# Taylor expand s2 term for r >= 1
+ylmt = Map(1)
+ylmt[1, 0] = 1
+ylmt._s2 = True
 
 # Multiprecision (~exact)
 ylm128 = Map(1)
@@ -32,10 +35,13 @@ fig.suptitle("s2 term", fontsize=14)
 # Occultor radius loop
 noise = np.zeros(npts)
 error = np.zeros(npts)
+noiset = np.zeros(npts)
+errort = np.zeros(npts)
 for i, ro in enumerate(rarr):
     xo0 = 0.5 * ((ro + 1) + np.abs(ro - 1))
     xo = np.linspace(xo0 - 25 * eps, xo0 + 25 * eps, 50)
     flux = ylm.flux(xo=xo, yo=yo, ro=ro) / (2 * np.sqrt(np.pi))
+    fluxt = ylmt.flux(xo=xo, yo=yo, ro=ro) / (2 * np.sqrt(np.pi))
     flux128 = np.array(ylm128.flux(xo=xo, yo=yo, ro=ro) /
                        (2 * np.sqrt(np.pi)))
     if np.any(flux128):
@@ -43,10 +49,16 @@ for i, ro in enumerate(rarr):
         noise[i] = np.std(flux - (xo - xo[0]) * slope) / \
                    np.nanmedian(np.abs(flux128))
         error[i] = np.max(np.abs((flux / flux128 - 1)))
+        slope = (fluxt[-1] - fluxt[0]) / (xo[-1] - xo[0])
+        noiset[i] = np.std(fluxt - (xo - xo[0]) * slope) / \
+                   np.nanmedian(np.abs(flux128))
+        errort[i] = np.max(np.abs((fluxt / flux128 - 1)))
 
 # Standard
 ax[0].plot(rarr, noise, '-', lw=1, color="C0")
 ax[1].plot(rarr, error, '-', lw=1, color="C0")
+ax[0].plot(rarr, noiset, '-', lw=1, color="C1")
+ax[1].plot(rarr, errort, '-', lw=1, color="C1")
 
 # Appearance
 for axis in ax.flatten():

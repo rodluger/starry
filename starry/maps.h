@@ -105,10 +105,10 @@ namespace maps {
             bool use_mp;
 
             // Constructor: initialize map to zeros
-            Map(int lmax=2, double taylor_b=1e-3, double taylor_r=1, double quad_r=100) :
+            Map(int lmax=2) :
                   lmax(lmax), R(lmax), C(lmax),
-                  mpG(lmax, 0, INFINITY, INFINITY),
-                  G(lmax, taylor_b, taylor_r, quad_r) {
+                  mpG(lmax, true),
+                  G(lmax, false) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);

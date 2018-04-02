@@ -54,6 +54,11 @@ namespace solver {
     // reparametrized for speed
     template <typename T>
     T s2(Greens<T>& G) {
+
+        // Taylor expand for r > 1?
+        if ((!G.taylor.mp) && (G.r(1) >= 1) && (G.taylor.s2))
+            return taylor::s2(G);
+
         T Lambda;
         T xi = 2 * G.br * (4 - 7 * G.r(2) - G.b2);
         if (G.b == 0) {
@@ -127,7 +132,7 @@ namespace solver {
         if (G.b == 0) {
             // Special case
             return pow(1 - G.r(2), 1.5) * G.I(u, v);
-        } else if ((G.r(1) < 1) && (G.b < G.taylor_b)) {
+        } else if ((!G.taylor.mp) && (G.r(1) < 1) && (G.b < G.taylor.b_J)) {
             return taylor::computeJ(G, u, v);
         } else {
             for (int i = 0; i < v + 1; i++) {
@@ -148,7 +153,7 @@ namespace solver {
     inline T computeM(Greens<T>& G, int p, int q) {
         if (!is_even(p) || !is_even(q)) {
             return 0;
-        } else if (G.r(1) > G.taylor_r) {
+        } else if ((!G.taylor.mp) && (G.r(1) > G.taylor.r_M)) {
             // Taylor expansion for large occultor
             return taylor::computeM(G, p, q);
         } else if ((p == 0) && (q == 0)) {
@@ -217,12 +222,12 @@ namespace solver {
     template <typename T>
     inline T P(Greens<T>& G){
         T factor;
-        if (G.r(1) > G.taylor_r)
+        if ((!G.taylor.mp) && (G.r(1) > G.taylor.r_M))
             factor = G.br32;
         else
             factor = 1;
         if (is_even(G.nu)) {
-            if (G.r(1) > G.quad_r) {
+            if ((!G.taylor.mp) && (G.r(1) > G.taylor.r_quartic(G.l))) {
                 return taylor::P(G);
             } else {
                 return G.r(G.l + 2) * K(G, (G.mu + 4) / 2, G.nu / 2);
@@ -407,6 +412,32 @@ namespace solver {
 
     };
 
+    // Taylor expansion thresholds
+    class Taylor {
+
+        public:
+
+            // Is multiprecision enabled?
+            bool mp;
+            // Taylor expand J() below this value of b
+            double b_J;
+            // Taylor expand M() above this value of r
+            double r_M;
+            // Approximate occultor limb as quartic above this value of r
+            Vector<double> r_quartic;
+            // Taylor expand s2() for r >= 1
+            bool s2;
+
+            Taylor(bool mp) : mp(mp) {
+                // These values have been benchmarked
+                r_quartic.resize(STARRY_LMAX_LARGE_OCC + 1);
+                r_quartic << 100, 30, 30, 20, 15, 10, 8, 6, 5, 4, 3.5;
+                b_J = 0; // TODO
+                r_M = 2;
+                s2 = true;
+            }
+    };
+
     // Greens integration housekeeping data
     template <class T>
     class Greens {
@@ -421,10 +452,8 @@ namespace solver {
             int mu;
             int nu;
 
-            // Taylor expansion thresholds
-            double taylor_b;
-            double taylor_r;
-            double quad_r;
+            // Numerical stability
+            Taylor taylor;
 
             // Basic variables
             T b;
@@ -461,11 +490,11 @@ namespace solver {
             T pi;
 
             // Constructor
-            Greens(int lmax, double taylor_b=1.e-3, double taylor_r=1., double quad_r=100.) :
+            Greens(int lmax, bool mp=false) :
                    lmax(lmax),
                    // TODO: CHECK that N is sufficiently large in all cases.
                    N(std::max(lmax + 5, 2 * lmax + 1)),
-                   taylor_b(taylor_b), taylor_r(taylor_r), quad_r(quad_r),
+                   taylor(mp),
                    ELL(*this),
                    H(*this, computeH),
                    I(*this, computeI),
@@ -533,6 +562,10 @@ namespace solver {
     // Compute the *s^T* occultation solution vector
     template <typename T>
     void computesT(Greens<T>& G, T& b, T& r, Vector<T>& y) {
+
+        // Check for likely instability
+        if ((!G.taylor.mp) && (r >= 1) && (G.l > STARRY_LMAX_LARGE_OCC))
+            throw errors::LargeOccultorsUnstable();
 
         // Initialize the basic variables
         int l, m;

@@ -9,6 +9,12 @@ Defines constants used throughout the code.
 #define STARRY_MAP_TOLERANCE                    1.0e-14
 #endif
 
+// Largest value of l for large occultors
+// (very numerically unstable above this)
+#ifndef STARRY_LMAX_LARGE_OCC
+#define STARRY_LMAX_LARGE_OCC                   10
+#endif
+
 // Largest tabulated integer square root
 #ifndef STARRY_MAX_SQRT
 #define STARRY_MAX_SQRT                         201

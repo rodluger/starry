@@ -37,6 +37,12 @@ namespace errors {
         }
     };
 
+    struct LargeOccultorsUnstable : public exception {
+        const char * what () const throw (){
+            return "Expressions for large occultors are numerically unstable for l > 10. Please enable multi-precision.";
+        }
+    };
+
 
 }; // namespace errors
 

@@ -10,16 +10,59 @@ Taylor expansions for the solver module.
 #include <cmath>
 #include "errors.h"
 #include "fact.h"
+#include "ellip.h"
 
 namespace solver
 {
     template <class T>
     class Greens;
     bool is_even(int n, int ntimes);
+    template <typename T>
+    inline T step(T x);
 };
 
 namespace taylor {
 
+
+    /*
+    template <typename T>
+    inline T s2_b_equLS_R(solver::Greens<T>& G, int u, int v) {
+    // Use transformation of 17.7.14 in Abramowitz & Stegun:
+    one_minus_n = (b-r).^2.*(1.0-(b+r).^2)./(1.0-(b-r).^2)./(b+r).^2
+    kofk = ellk_bulirsch.(1./k2); eofk = ellec_bulirsch.(1./k2)
+    phi= asin.(sqrt.(one_minus_n./(1.-1./k2)))
+    mc = 1.-1./k2
+    // Compute Heuman's Lambda Function via A&S 17.4.40:
+    lam = 2./pi*(kofk.*Elliptic.E.(phi,mc)-(kofk-eofk).*Elliptic.F.(phi,mc))
+    d2 = sqrt.((1.0./one_minus_n-1.0)./(1.0-one_minus_n-1./k2))
+    # Equation 17.7.14 in A&S:
+    pi2 = 3.0*(b-r).*(b+r-1./(b+r)).*(kofk+pi/2.*d2.*(1.-lam))
+    # Overplot for comparison:
+    plot(b,pi2,linewidth=3,label="Transformed expression")
+    xlabel("b"); ylabel(L"$3(b-r)(b+r-(b+r)^{-1}) \Pi(k^{-2}(b+r)^{-2},k)$")
+    legend(loc="lower left")
+    }
+    */
+
+    // Taylor expand the difference between the elliptic integrals
+    // for the s2 term when r >= 1; much more numerically stable!
+    template <typename T>
+    inline T s2(solver::Greens<T>& G) {
+        T x = 1. / G.b_r(1);
+        T eps = x - 1;
+        T EP = ellip::PI(1 - 1. / ((G.b - G.r(1)) * (G.b - G.r(1))), G.ksq);
+        T EminusK = -G.pi * (0.25 * G.ksq + 0.09375 * pow(G.ksq, 2) + 0.05859375 * pow(G.ksq, 3) + 0.042724609375 * pow(G.ksq, 4) +
+                     0.0336456298828125 * pow(G.ksq, 5) + 0.027757644653320312 * pow(G.ksq, 6) + 0.023627042770385742 * pow(G.ksq, 7) +
+                     0.020568184554576874 * pow(G.ksq, 8) + 0.018211413407698274 * pow(G.ksq, 9) + 0.016339684807462618 * pow(G.ksq, 10) +
+                     0.01481712326858542 * pow(G.ksq, 11) + 0.013554300262740071 * pow(G.ksq, 12));
+        T taylor = 2 * G.b * G.b * G.b * sqrt(x) * (EminusK * (16 + 28 * eps + 14 * eps * eps) - eps * eps * (2 + 3 * eps) * G.ELL.K());
+        T badterm = taylor + sqrt(G.br) * ((8 - 3 / G.br + 12 / G.b_r(1)) * G.ELL.K() - 16 * G.ELL.E());
+        T goodterm = (3 * (G.b + G.r(1)) / (G.b - G.r(1)) * EP) / sqrt(G.br);
+        T Lambda = (badterm + goodterm) / (9 * G.pi);
+        return (2. * G.pi / 3.) * (1 - 1.5 * Lambda - solver::step(G.r(1) - G.b));
+    }
+
+    // Taylor expansion about b = 0
     template <typename T>
     inline T computeJ(solver::Greens<T>& G, int u, int v) {
         T r1 = 1 - G.r(2);
@@ -41,7 +84,7 @@ namespace taylor {
         if (!solver::is_even(G.mu / 2, 1))
             return 0;
 
-        // Old quadratic approximation
+        // This is our old quadratic approximation; quartic is better
         /*
         T amp = 4 * pow(G.b - G.r(1), G.nu / 2) / G.r(1);
         T res = 0;
@@ -70,6 +113,7 @@ namespace taylor {
 
     }
 
+    // Taylor expand M() at large k^2
     template <typename T>
     inline T computeM(solver::Greens<T>& G, int p, int q) {
         if (p == 0){
