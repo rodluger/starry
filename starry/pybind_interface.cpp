@@ -162,6 +162,12 @@ PYBIND11_MODULE(starry, m) {
             )pbdoc", "lmax"_a=2)
         .def_property("use_mp", [](maps::Map<double> &map){return map.use_mp;},
                                 [](maps::Map<double> &map, bool use_mp){map.use_mp = use_mp;})
+        .def_property("taylor_b", [](maps::Map<double> &map){return map.G.taylor_b;},
+                                  [](maps::Map<double> &map, double taylor_b){map.G.taylor_b = taylor_b;})
+        .def_property("taylor_r", [](maps::Map<double> &map){return map.G.taylor_r;},
+                                  [](maps::Map<double> &map, double taylor_r){map.G.taylor_r = taylor_r;})
+        .def_property("quad_r", [](maps::Map<double> &map){return map.G.quad_r;},
+                                [](maps::Map<double> &map, double quad_r){map.G.quad_r = quad_r;})
         .def("evaluate", py::vectorize(&maps::Map<double>::evaluate),
             R"pbdoc(
                 Return the specific intensity at a point on the map.

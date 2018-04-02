@@ -12,6 +12,8 @@ Spherical harmonic integration utilities.
 #include "constants.h"
 #include "ellip.h"
 #include "fact.h"
+#include "errors.h"
+#include "taylor.h"
 
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
@@ -58,32 +60,32 @@ namespace solver {
             Lambda = -2. / 3. * pow(1. - G.r(2), 1.5);
         } else if (G.b == G.r(1)) {
             if (G.r(1) == 0.5)
-                Lambda = (1. / 3.) - 4. / (9. * M_PI);
+                Lambda = (1. / 3.) - 4. / (9. * G.pi);
             else if (G.r(1) < 0.5)
                 Lambda = (1. / 3.) +
-                         2. / (9. * M_PI) * (4. * (2. * G.r(2) - 1.) * ellip::E(4 * G.r(2)) +
+                         2. / (9. * G.pi) * (4. * (2. * G.r(2) - 1.) * ellip::E(4 * G.r(2)) +
                          (1 - 4 * G.r(2)) * ellip::K(4 * G.r(2)));
             else
                 Lambda = (1. / 3.) +
-                         16. * G.r(1) / (9. * M_PI) * (2. * G.r(2) - 1.) * ellip::E(1. / (4 * G.r(2))) -
-                         (1 - 4 * G.r(2)) * (3 - 8 * G.r(2)) / (9 * M_PI * G.r(1)) * ellip::K(1. / (4 * G.r(2)));
+                         16. * G.r(1) / (9. * G.pi) * (2. * G.r(2) - 1.) * ellip::E(1. / (4 * G.r(2))) -
+                         (1 - 4 * G.r(2)) * (3 - 8 * G.r(2)) / (9 * G.pi * G.r(1)) * ellip::K(1. / (4 * G.r(2)));
         } else {
             if (G.ksq < 1) {
                 // Note: Using Eric Agol's reparametrized solution
                 Lambda = (((G.r(1) + G.b) * (G.r(1) + G.b) - 1) /
                            (G.r(1) + G.b) * (-2 * G.r(1) * (2 * (G.r(1) + G.b) * (G.r(1) + G.b) + (G.r(1) + G.b) * (G.r(1) - G.b) - 3) * G.ELL.K() + G.ELL.PI())
-                         - 2 * xi * G.ELL.E()) / (9 * M_PI * sqrt(G.br));
+                         - 2 * xi * G.ELL.E()) / (9 * G.pi * sqrt(G.br));
             } else if (G.ksq > 1) {
                 // Note: Using Eric Agol's reparametrized solution
                 Lambda = 2 * ((1 - (G.r(1) + G.b) * (G.r(1) + G.b)) * (sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1))) * G.ELL.K() + G.ELL.PI())
-                         - sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1))) * (4 - 7 * G.r(2) - G.b2) * G.ELL.E()) / (9 * M_PI);
+                         - sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1))) * (4 - 7 * G.r(2) - G.b2) * G.ELL.E()) / (9 * G.pi);
             } else {
-                Lambda = 2. / (3. * M_PI) * acos(1. - 2 * G.r(1)) -
-                         4 / (9 * M_PI) * (3 + 2 * G.r(1) - 8 * G.r(2)) * sqrt(G.br) -
+                Lambda = 2. / (3. * G.pi) * acos(1. - 2 * G.r(1)) -
+                         4 / (9 * G.pi) * (3 + 2 * G.r(1) - 8 * G.r(2)) * sqrt(G.br) -
                          2. / 3. * step(G.r(1) - 0.5);
             }
         }
-        return (2. * M_PI / 3.) * (1 - 1.5 * Lambda - step(G.r(1) - G.b));
+        return (2. * G.pi / 3.) * (1 - 1.5 * Lambda - step(G.r(1) - G.b));
     }
 
     // Compute the primitive integral helper matrix H
@@ -92,7 +94,7 @@ namespace solver {
         if (!is_even(u)) {
             return 0;
         } else if ((u == 0) && (v == 0)) {
-            return 2 * asin(G.sinlam(1)) + M_PI;
+            return 2 * G.lam + G.pi;
         } else if ((u == 0) && (v == 1)) {
             return -2 * G.coslam(1);
         } else if (u >= 2) {
@@ -108,7 +110,7 @@ namespace solver {
         if (!is_even(u)) {
             return 0;
         } else if ((u == 0) && (v == 0)) {
-            return 2 * asin(G.sinphi(1)) + M_PI;
+            return 2 * G.phi + G.pi;
         } else if ((u == 0) && (v == 1)) {
             return -2 * G.cosphi(1);
         } else if (u >= 2) {
@@ -125,19 +127,8 @@ namespace solver {
         if (G.b == 0) {
             // Special case
             return pow(1 - G.r(2), 1.5) * G.I(u, v);
-        } else if ((G.r(1) < 1) && (G.b < STARRY_BMIN)) {
-            // Taylor expand about b = 0 to 5th order
-            T r1 = 1 - G.r(2);
-            T r12 = sqrt(r1);
-            T r32 = r1 * r12;
-            T r52 = r1 * r32;
-            T r72 = r1 * r52;
-            return (r32 * G.I(u, v)) +
-                   (-3 * G.r(1) * r12 * G.I(u, v + 1)) * G.b +
-                   (-1.5 * r12 * G.I(u, v) + 1.5 * G.r(2) / r12 * G.I(u, v + 2)) * G.b2 +
-                   (1.5 * G.r(1) / r12 * G.I(u, v + 1) + 0.5 * G.r(3) / r32 * G.I(u, v + 3)) * G.b * G.b2 +
-                   (0.375 / r12 * G.I(u, v) + 0.75 * G.r(2) / r32 * G.I(u, v + 2) + 0.375 * G.r(4) / r52 * G.I(u, v + 4)) * G.b2 * G.b2 +
-                   (0.375 * G.r(1) / r32 * G.I(u, v + 1) + 0.75 * G.r(3) / r52 * G.I(u, v + 3) + 0.375 * G.r(5) / r72 * G.I(u, v + 5)) * G.b2 * G.b2 * G.b;
+        } else if ((G.r(1) < 1) && (G.b < G.taylor_b)) {
+            return taylor::computeJ(G, u, v);
         } else {
             for (int i = 0; i < v + 1; i++) {
                 if (is_even(i - v - u))
@@ -145,20 +136,21 @@ namespace solver {
                 else
                     res -= fact::choose(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
             }
-            // NOTE: Unlike in the paper, we multiply by the factor of
-            // br^1.5 **inside** computeM() for numerical stability.
+            // Note that we multiply by the factor of (br)^1.5 inside computeM()
+            // for small occultors and inside P() for large occultors.
             res *= pow(2, u + 3);
         }
         return res;
     }
 
     // Compute the primitive integral helper matrix M
-    // NOTE: We multiply all the terms here by br^1.5 instead
-    // of in the J matrix for numerical stability.
     template <typename T>
     inline T computeM(Greens<T>& G, int p, int q) {
         if (!is_even(p) || !is_even(q)) {
             return 0;
+        } else if (G.r(1) > G.taylor_r) {
+            // Taylor expansion for large occultor
+            return taylor::computeM(G, p, q);
         } else if ((p == 0) && (q == 0)) {
             return G.br32 * ((8 - 12 * G.ksq) * G.ELL.E1() + (-8 + 16 * G.ksq) * G.ELL.E2()) / 3.;
         } else if ((p == 0) && (q == 2)) {
@@ -220,16 +212,28 @@ namespace solver {
     }
 
     // The primitive integral P(G_n)
+    // Note that for large occultors, we multiply all the
+    // terms here by (br)^1.5 instead of in the J matrix.
     template <typename T>
     inline T P(Greens<T>& G){
-        if (is_even(G.nu))
-            return G.r(G.l + 2) * K(G, (G.mu + 4) / 2, G.nu / 2);
-        else if ((G.mu == 1) && is_even(G.l))
-            return -G.r(G.l - 1) * G.J(G.l - 2, 1);
-        else if ((G.mu == 1) && !is_even(G.l))
-            return -G.r(G.l - 2) * (G.b * G.J(G.l - 3, 1) + G.r(1) * G.J(G.l - 3, 2));
+        T factor;
+        if (G.r(1) > G.taylor_r)
+            factor = G.br32;
         else
-            return G.r(G.l - 1) * L(G, (G.mu - 1) / 2, (G.nu - 1) / 2);
+            factor = 1;
+        if (is_even(G.nu)) {
+            if (G.r(1) > G.quad_r) {
+                return taylor::P(G);
+            } else {
+                return G.r(G.l + 2) * K(G, (G.mu + 4) / 2, G.nu / 2);
+            }
+        } else if ((G.mu == 1) && is_even(G.l))
+            return factor * -G.r(G.l - 1) * G.J(G.l - 2, 1);
+        else if ((G.mu == 1) && !is_even(G.l))
+            return factor * -G.r(G.l - 2) * (G.b * G.J(G.l - 3, 1) + G.r(1) * G.J(G.l - 3, 2));
+        else {
+            return factor * G.r(G.l - 1) * L(G, (G.mu - 1) / 2, (G.nu - 1) / 2);
+        }
     }
 
     // The primitive integral Q(G_n)
@@ -417,6 +421,11 @@ namespace solver {
             int mu;
             int nu;
 
+            // Taylor expansion thresholds
+            double taylor_b;
+            double taylor_r;
+            double quad_r;
+
             // Basic variables
             T b;
             T b2;
@@ -424,6 +433,8 @@ namespace solver {
             T br32;
             T ksq;
             T k;
+            T phi;
+            T lam;
 
             // Powers of basic variables
             Vector<T> r;
@@ -445,15 +456,21 @@ namespace solver {
             // The solution vector
             VectorT<T> sT;
 
+            // The value of pi, computed at
+            // the user-requested precision
+            T pi;
+
             // Constructor
-            Greens(int lmax) : lmax(lmax),
-                               // TODO: CHECK that N is sufficiently large in all cases.
-                               N(std::max(lmax + 5, 2 * lmax + 1)),
-                               ELL(*this),
-                               H(*this, computeH),
-                               I(*this, computeI),
-                               J(*this, computeJ),
-                               M(*this, computeM) {
+            Greens(int lmax, double taylor_b=1.e-3, double taylor_r=1., double quad_r=100.) :
+                   lmax(lmax),
+                   // TODO: CHECK that N is sufficiently large in all cases.
+                   N(std::max(lmax + 5, 2 * lmax + 1)),
+                   taylor_b(taylor_b), taylor_r(taylor_r), quad_r(quad_r),
+                   ELL(*this),
+                   H(*this, computeH),
+                   I(*this, computeI),
+                   J(*this, computeJ),
+                   M(*this, computeM) {
 
                 // Initialize the powers
                 r.resize(N);
@@ -471,6 +488,9 @@ namespace solver {
 
                 // Initialize the solution vector
                 sT.resize((lmax + 1) * (lmax + 1));
+
+                // Compute pi at the actual precision of the T type
+                pi = acos((T)(-1.));
 
             }
 
@@ -536,30 +556,22 @@ namespace solver {
         T coslam;
         T b_r = b / r;
         if ((abs(1 - r) < b) && (b < 1 + r)) {
-            // sin(arcsin(x)) = x
-            // cos(arcsin(x)) = sqrt(1 - x * x)
-            sinphi = (1 - r * r - G.b2) / (2 * G.br);
-            cosphi = sqrt(1 - sinphi * sinphi);
-            sinlam = (1 - r * r + G.b2) / (2 * G.b);
-            coslam = sqrt(1 - sinlam * sinlam);
-
-            /*
-            TODO: Reparametrize for numerical stability.
-            BUG: For some reason this is currently NOT WORKING AT ALL.
+            // Reparametrizing for numerical stability.
             if (r <= 1) {
                 sinphi = (1 - r * r - G.b2) / (2 * G.br);
                 cosphi = sqrt(1 - sinphi * sinphi);
                 sinlam = (1 - r * r + G.b2) / (2 * G.b);
                 coslam = sqrt(1 - sinlam * sinlam);
+                G.phi = asin(sinphi);
+                G.lam = asin(sinlam);
             } else {
-                sinphi = (1 - r * r - G.b2) / (2 * G.br);
-                T eps = (1 - (b - r)) * (1 + (b - r)) / (2 * G.br);
-                cosphi = sqrt(2 * eps - eps * eps);
-                sinlam = (1 + (b + r) * (b - r)) / (2 * b);
+                sinphi = 2 * (G.ksq - 0.5);
+                cosphi = 2 * G.k * sqrt(1 - G.ksq);
+                sinlam = 0.5 * ((1. / b) + (b - r) * (1. + r / b));
                 coslam = sqrt(1 - sinlam * sinlam);
+                G.phi = asin(sinphi);
+                G.lam = asin(sinlam);
             }
-            */
-
         } else {
             sinphi = 1;
             cosphi = 0;

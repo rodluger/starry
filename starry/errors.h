@@ -31,6 +31,13 @@ namespace errors {
         }
     };
 
+    struct BadTaylor : public exception {
+        const char * what () const throw (){
+            return "Expression order exceeds the order of the tabulated Taylor expansions.";
+        }
+    };
+
+
 }; // namespace errors
 
 #endif

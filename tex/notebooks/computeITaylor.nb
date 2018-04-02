@@ -1,0 +1,777 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 11.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[     31022,        767]
+NotebookOptionsPosition[     29151,        710]
+NotebookOutlinePosition[     29514,        726]
+CellTagsIndexPosition[     29471,        723]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"Iofphi", "[", 
+    RowBox[{"u_", ",", "v_", ",", "k2_"}], "]"}], ":=", 
+   RowBox[{"Module", "[", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"s", ",", "c"}], "}"}], ",", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"s", "=", 
+       RowBox[{"2", 
+        RowBox[{"(", 
+         RowBox[{"k2", "-", 
+          FractionBox["1", "2"]}], ")"}]}]}], ";", "\[IndentingNewLine]", 
+      RowBox[{"c", "=", 
+       SqrtBox[
+        RowBox[{"1", "-", 
+         SuperscriptBox["s", "2"]}]]}], ";", "\[IndentingNewLine]", 
+      RowBox[{"Which", "[", "\[IndentingNewLine]", 
+       RowBox[{
+        RowBox[{"OddQ", "[", "u", "]"}], ",", "0", ",", "\[IndentingNewLine]", 
+        RowBox[{
+         RowBox[{"(", 
+          RowBox[{"u", "\[Equal]", "v"}], ")"}], " ", "&&", " ", 
+         RowBox[{"(", 
+          RowBox[{"u", "\[Equal]", "0"}], ")"}]}], ",", 
+        RowBox[{
+         RowBox[{"2", 
+          RowBox[{"ArcSin", "[", "s", "]"}]}], "+", "\[Pi]"}], ",", 
+        "\[IndentingNewLine]", 
+        RowBox[{
+         RowBox[{"(", 
+          RowBox[{"u", "\[Equal]", "0"}], ")"}], " ", "&&", " ", 
+         RowBox[{"(", 
+          RowBox[{"v", "\[Equal]", "1"}], ")"}]}], ",", 
+        RowBox[{
+         RowBox[{"-", "2"}], "c"}], ",", "\[IndentingNewLine]", 
+        RowBox[{"u", "\[GreaterEqual]", "2"}], ",", 
+        RowBox[{
+         RowBox[{
+          FractionBox["2", 
+           RowBox[{"u", "+", "v"}]], 
+          SuperscriptBox["c", 
+           RowBox[{"u", "-", "1"}]], 
+          SuperscriptBox["s", 
+           RowBox[{"v", "+", "1"}]]}], "+", 
+         RowBox[{
+          FractionBox[
+           RowBox[{"u", "-", "1"}], 
+           RowBox[{"u", "+", "v"}]], 
+          RowBox[{"H", "[", 
+           RowBox[{
+            RowBox[{"u", "-", "2"}], ",", "v", ",", "k2"}], "]"}]}]}], ",", 
+        "\[IndentingNewLine]", 
+        RowBox[{"v", "\[GreaterEqual]", "2"}], ",", 
+        RowBox[{
+         RowBox[{
+          RowBox[{"-", 
+           FractionBox["2", 
+            RowBox[{"u", "+", "v"}]]}], 
+          SuperscriptBox["c", 
+           RowBox[{"u", "+", "1"}]], 
+          SuperscriptBox["s", 
+           RowBox[{"v", "-", "1"}]]}], "+", 
+         RowBox[{
+          FractionBox[
+           RowBox[{"v", "-", "1"}], 
+           RowBox[{"u", "+", "v"}]], 
+          RowBox[{"H", "[", 
+           RowBox[{"u", ",", 
+            RowBox[{"v", "-", "2"}], ",", "k2"}], "]"}]}]}]}], 
+       "\[IndentingNewLine]", "]"}]}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"TaylorI", "[", 
+    RowBox[{"u_", ",", "v_", ",", "k2_", ",", "n_"}], "]"}], ":=", 
+   RowBox[{"Module", "[", 
+    RowBox[{
+     RowBox[{"{", "res", "}"}], ",", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"res", "=", 
+       RowBox[{"N", "[", 
+        RowBox[{"FullSimplify", "[", 
+         RowBox[{"Normal", "[", 
+          RowBox[{"Series", "[", 
+           RowBox[{
+            RowBox[{"Iofphi", "[", 
+             RowBox[{"u", ",", "v", ",", "k2"}], "]"}], ",", 
+            RowBox[{"{", 
+             RowBox[{"k2", ",", "0", ",", "n"}], "}"}]}], "]"}], "]"}], "]"}],
+         "]"}]}], ";", "\[IndentingNewLine]", 
+      RowBox[{"res", " ", "=", 
+       RowBox[{"ToString", "[", 
+        RowBox[{"CForm", "[", "res", "]"}], "]"}]}], ";", 
+      "\[IndentingNewLine]", 
+      RowBox[{"StringReplace", "[", 
+       RowBox[{"res", ",", 
+        RowBox[{"{", 
+         RowBox[{
+          RowBox[{"\"\<Power(k2,2)\>\"", "\[Rule]", "\"\<G.ksq*G.ksq\>\""}], 
+          ",", "\[IndentingNewLine]", 
+          RowBox[{
+          "\"\<Power(k2,3)\>\"", "\[Rule]", "\"\<G.ksq*G.ksq*G.ksq\>\""}], 
+          ",", "\[IndentingNewLine]", 
+          RowBox[{
+          "\"\<Power(k2,4)\>\"", "\[Rule]", 
+           "\"\<G.ksq*G.ksq*G.ksq*G.ksq\>\""}], ",", "\[IndentingNewLine]", 
+          RowBox[{"\"\<Power\>\"", "\[Rule]", "\"\<pow\>\""}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"\"\<k2\>\"", "\[Rule]", "\"\<G.ksq\>\""}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"\"\<Sqrt(k2)\>\"", "\[Rule]", "\"\<G.k\>\""}]}], "}"}]}], 
+       "]"}]}]}], "\[IndentingNewLine]", "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"computeITaylor", "[", 
+    RowBox[{"uvmax_", ",", "order_"}], "]"}], ":=", "\[IndentingNewLine]", 
+   RowBox[{"Module", "[", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"u", ",", "v"}], "}"}], ",", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"Print", "[", "\"\<template <typename T>\>\"", "]"}], ";", "\n",
+       "    ", 
+      RowBox[{
+      "Print", "[", 
+       "\"\<inline T computeITaylor(Greens<T>& G, int u, int v) {\>\"", "]"}],
+       ";", "\[IndentingNewLine]", 
+      RowBox[{
+       RowBox[{"For", "[", 
+        RowBox[{
+         RowBox[{"u", "=", "0"}], ",", 
+         RowBox[{"u", "\[LessEqual]", "uvmax"}], ",", 
+         RowBox[{"u", "+=", "2"}], ",", "\[IndentingNewLine]", 
+         RowBox[{
+          RowBox[{"If", "[", 
+           RowBox[{
+            RowBox[{"u", "\[Equal]", "0"}], ",", "\[IndentingNewLine]", 
+            RowBox[{"Print", "[", 
+             RowBox[{
+             "\"\<    if (u == \>\"", ",", " ", "u", ",", " ", "\"\<){\>\""}],
+              "]"}], ",", "\[IndentingNewLine]", 
+            RowBox[{"Print", "[", 
+             RowBox[{
+             "\"\<    } else if (u == \>\"", ",", " ", "u", ",", " ", 
+              "\"\<){\>\""}], "]"}]}], "]"}], ";", "\[IndentingNewLine]", 
+          RowBox[{"Print", "[", 
+           RowBox[{
+           "\"\<        if (v == \>\"", ",", " ", "0", ",", " ", 
+            "\"\<) return \>\"", ",", 
+            RowBox[{"TaylorI", "[", 
+             RowBox[{"u", ",", "0", ",", "k2", ",", "order"}], "]"}], ",", 
+            " ", "\"\<;\>\""}], "]"}], ";", "\[IndentingNewLine]", 
+          RowBox[{"For", "[", 
+           RowBox[{
+            RowBox[{"v", "=", "1"}], ",", 
+            RowBox[{"v", "\[LessEqual]", "uvmax"}], ",", 
+            RowBox[{"v", "+=", "1"}], ",", "\[IndentingNewLine]", 
+            RowBox[{
+             RowBox[{"Print", "[", 
+              RowBox[{
+              "\"\<        else if (v == \>\"", ",", " ", "v", ",", " ", 
+               "\"\<) return \>\"", ",", 
+               RowBox[{"TaylorI", "[", 
+                RowBox[{"u", ",", "v", ",", "k2", ",", "order"}], "]"}], ",", 
+               " ", "\"\<;\>\""}], "]"}], ";"}]}], "\[IndentingNewLine]", 
+           "]"}]}]}], "\[IndentingNewLine]", "]"}], "\[IndentingNewLine]", 
+       RowBox[{"Print", "[", "\"\<    }\>\"", "]"}]}], ";", 
+      "\[IndentingNewLine]", 
+      RowBox[{"Print", "[", "\"\<    throw errors::BadTaylor();\>\"", "]"}], 
+      ";", "\[IndentingNewLine]", 
+      RowBox[{"Print", "[", "\"\<    return 0;\>\"", "]"}], ";", 
+      "\[IndentingNewLine]", 
+      RowBox[{"Print", "[", "\"\<}\>\"", "]"}], ";"}]}], 
+    "\[IndentingNewLine]", "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{"computeITaylor", "[", 
+  RowBox[{"6", ",", "5"}], "]"}]}], "Input",
+ CellChangeTimes->{{3.7313527156232758`*^9, 3.7313528375169077`*^9}, {
+  3.731352906866213*^9, 3.731352936048373*^9}, {3.7313529953090763`*^9, 
+  3.7313530153440723`*^9}, {3.731353185317124*^9, 3.731353187728046*^9}, {
+  3.73135561383216*^9, 3.7313556143316917`*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData["\<\"template <typename T>\"\>"], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619730311*^9}],
+
+Cell[BoxData["\<\"inline T computeITaylor(Greens<T>& G, int u, int v) \
+{\"\>"], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.73135561973566*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"    if (u == \"\>", "\[InvisibleSpace]", "0", 
+   "\[InvisibleSpace]", "\<\"){\"\>"}],
+  SequenceForm["    if (u == ", 0, "){"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619741571*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        if (v == \"\>", "\[InvisibleSpace]", "0", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.0000992063492063492*G.k*(40320. + G.ksq*(6720. \
++ G.ksq*(3024. + 25.*G.ksq*(72. + 49.*G.ksq))))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        if (v == ", 0, ") return ", 
+   "0.0000992063492063492*G.k*(40320. + G.ksq*(6720. + G.ksq*(3024. + \
+25.*G.ksq*(72. + 49.*G.ksq))))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619765819*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "1", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.03125*G.k*(-128. + G.ksq*(64. + G.ksq*(16. + \
+G.ksq*(8. + 5.*G.ksq))))\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 1, ") return ", 
+   "0.03125*G.k*(-128. + G.ksq*(64. + G.ksq*(16. + G.ksq*(8. + 5.*G.ksq))))", 
+   ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619798971*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "2", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.0000992063492063492*G.k*(40320. + \
+G.ksq*(-47040. + G.ksq*(19152. + 5.*G.ksq*(936. + 469.*G.ksq))))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 2, ") return ", 
+   "0.0000992063492063492*G.k*(40320. + G.ksq*(-47040. + G.ksq*(19152. + \
+5.*G.ksq*(936. + 469.*G.ksq))))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556198049498`*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "3", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.010416666666666666*G.k*(-384. + G.ksq*(704. + \
+G.ksq*(-720. + G.ksq*(216. + 47.*G.ksq))))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 3, ") return ", 
+   "0.010416666666666666*G.k*(-384. + G.ksq*(704. + G.ksq*(-720. + \
+G.ksq*(216. + 47.*G.ksq))))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556198106937`*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "4", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.00029761904761904765*G.k*(13440. + \
+G.ksq*(-33600. + G.ksq*(54768. + 5.*G.ksq*(-8712. + 2023.*G.ksq))))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 4, ") return ", 
+   "0.00029761904761904765*G.k*(13440. + G.ksq*(-33600. + G.ksq*(54768. + \
+5.*G.ksq*(-8712. + 2023.*G.ksq))))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556198162727`*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "5", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"-0.0020833333333333333*G.k*(1920. + \
+G.ksq*(-6080. + G.ksq*(13584. + 25.*G.ksq*(-696. + 445.*G.ksq))))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 5, ") return ", 
+   "-0.0020833333333333333*G.k*(1920. + G.ksq*(-6080. + G.ksq*(13584. + \
+25.*G.ksq*(-696. + 445.*G.ksq))))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619821869*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "6", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.000496031746031746*G.k*(8064. + G.ksq*(-30912. \
++ G.ksq*(87696. + G.ksq*(-154584. + 160405.*G.ksq))))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 6, ") return ", 
+   "0.000496031746031746*G.k*(8064. + G.ksq*(-30912. + G.ksq*(87696. + \
+G.ksq*(-154584. + 160405.*G.ksq))))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556198280563`*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"    } else if (u == \"\>", "\[InvisibleSpace]", "2", 
+   "\[InvisibleSpace]", "\<\"){\"\>"}],
+  SequenceForm["    } else if (u == ", 2, "){"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619833871*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        if (v == \"\>", "\[InvisibleSpace]", "0", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"-0.0031746031746031746*pow(G.ksq,1.5)*(-1680. + \
+G.ksq*(504. + 5.*G.ksq*(18. + 7.*G.ksq)))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        if (v == ", 0, ") return ", 
+   "-0.0031746031746031746*pow(G.ksq,1.5)*(-1680. + G.ksq*(504. + \
+5.*G.ksq*(18. + 7.*G.ksq)))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619839724*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "1", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"-0.3333333333333333*(-2. + \
+G.ksq)*pow(G.ksq,1.5)*(-8. + G.ksq*(8. + G.ksq))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 1, ") return ", 
+   "-0.3333333333333333*(-2. + G.ksq)*pow(G.ksq,1.5)*(-8. + G.ksq*(8. + \
+G.ksq))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619845489*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "2", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.0031746031746031746*pow(G.ksq,1.5)*(1680. + \
+G.ksq*(-4536. + 5.*(846. - 175.*G.ksq)*G.ksq))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 2, ") return ", 
+   "0.0031746031746031746*pow(G.ksq,1.5)*(1680. + G.ksq*(-4536. + 5.*(846. - \
+175.*G.ksq)*G.ksq))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556198514233`*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "3", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.06666666666666667*pow(G.ksq,1.5)*(-80. + \
+G.ksq*(312. + 5.*G.ksq*(-102. + 71.*G.ksq)))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 3, ") return ", 
+   "0.06666666666666667*pow(G.ksq,1.5)*(-80. + G.ksq*(312. + 5.*G.ksq*(-102. \
++ 71.*G.ksq)))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619857503*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "4", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.0031746031746031746*pow(G.ksq,1.5)*(1680. + \
+G.ksq*(-8568. + 5.*(4014. - 4823.*G.ksq)*G.ksq))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 4, ") return ", 
+   "0.0031746031746031746*pow(G.ksq,1.5)*(1680. + G.ksq*(-8568. + 5.*(4014. - \
+4823.*G.ksq)*G.ksq))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619863546*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "5", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.009523809523809525*pow(G.ksq,1.5)*(-560. + \
+G.ksq*(3528. + 5.*G.ksq*(-2154. + 3689.*G.ksq)))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 5, ") return ", 
+   "0.009523809523809525*pow(G.ksq,1.5)*(-560. + G.ksq*(3528. + \
+5.*G.ksq*(-2154. + 3689.*G.ksq)))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556198696012`*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "6", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.015873015873015872*pow(G.ksq,1.5)*(336. + \
+G.ksq*(-2520. + (9486. - 21119.*G.ksq)*G.ksq))\"\>", 
+   "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 6, ") return ", 
+   "0.015873015873015872*pow(G.ksq,1.5)*(336. + G.ksq*(-2520. + (9486. - \
+21119.*G.ksq)*G.ksq))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.73135561987573*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"    } else if (u == \"\>", "\[InvisibleSpace]", "4", 
+   "\[InvisibleSpace]", "\<\"){\"\>"}],
+  SequenceForm["    } else if (u == ", 4, "){"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619881755*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        if (v == \"\>", "\[InvisibleSpace]", "0", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.0761904761904762*pow(G.ksq,2.5)*(168. + \
+5.*G.ksq*(-36. + 7.*G.ksq))\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        if (v == ", 0, ") return ", 
+   "0.0761904761904762*pow(G.ksq,2.5)*(168. + 5.*G.ksq*(-36. + 7.*G.ksq))", 
+   ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619887659*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "1", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"-1.6*pow(G.ksq,2.5)*(8. + 5.*G.ksq*(-4. + \
+3.*G.ksq))\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 1, ") return ", 
+   "-1.6*pow(G.ksq,2.5)*(8. + 5.*G.ksq*(-4. + 3.*G.ksq))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619893392*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "2", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.025396825396825397*pow(G.ksq,2.5)*(504. + \
+5.*G.ksq*(-396. + 581.*G.ksq))\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 2, ") return ", 
+   "0.025396825396825397*pow(G.ksq,2.5)*(504. + 5.*G.ksq*(-396. + \
+581.*G.ksq))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619899291*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "3", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"-0.22857142857142856*pow(G.ksq,2.5)*(56. + \
+5.*G.ksq*(-60. + 133.*G.ksq))\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 3, ") return ", 
+   "-0.22857142857142856*pow(G.ksq,2.5)*(56. + 5.*G.ksq*(-60. + 133.*G.ksq))",
+    ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556199049673`*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "4", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.0761904761904762*pow(G.ksq,2.5)*(168. + \
+5.*G.ksq*(-228. + 679.*G.ksq))\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 4, ") return ", 
+   "0.0761904761904762*pow(G.ksq,2.5)*(168. + 5.*G.ksq*(-228. + 679.*G.ksq))",
+    ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556199104548`*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "5", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"-0.025396825396825397*pow(G.ksq,2.5)*(504. + \
+5.*G.ksq*(-828. + 3101.*G.ksq))\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 5, ") return ", 
+   "-0.025396825396825397*pow(G.ksq,2.5)*(504. + 5.*G.ksq*(-828. + \
+3101.*G.ksq))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556199163094`*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "6", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"0.0761904761904762*pow(G.ksq,2.5)*(168. + \
+5.*G.ksq*(-324. + 1463.*G.ksq))\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 6, ") return ", 
+   "0.0761904761904762*pow(G.ksq,2.5)*(168. + 5.*G.ksq*(-324. + \
+1463.*G.ksq))", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.73135561992216*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"    } else if (u == \"\>", "\[InvisibleSpace]", "6", 
+   "\[InvisibleSpace]", "\<\"){\"\>"}],
+  SequenceForm["    } else if (u == ", 6, "){"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619928759*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        if (v == \"\>", "\[InvisibleSpace]", "0", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"2.0317460317460316*(18. - \
+35.*G.ksq)*pow(G.ksq,3.5)\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        if (v == ", 0, ") return ", 
+   "2.0317460317460316*(18. - 35.*G.ksq)*pow(G.ksq,3.5)", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556199370403`*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "1", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"18.285714285714285*pow(G.ksq,3.5)*(-2. + \
+7.*G.ksq)\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 1, ") return ", 
+   "18.285714285714285*pow(G.ksq,3.5)*(-2. + 7.*G.ksq)", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619943409*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "2", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"2.0317460317460316*(18. - \
+91.*G.ksq)*pow(G.ksq,3.5)\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 2, ") return ", 
+   "2.0317460317460316*(18. - 91.*G.ksq)*pow(G.ksq,3.5)", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556199479523`*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "3", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"2.0317460317460316*pow(G.ksq,3.5)*(-18. + \
+119.*G.ksq)\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 3, ") return ", 
+   "2.0317460317460316*pow(G.ksq,3.5)*(-18. + 119.*G.ksq)", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619952784*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "4", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"6.095238095238095*(6. - \
+49.*G.ksq)*pow(G.ksq,3.5)\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 4, ") return ", 
+   "6.095238095238095*(6. - 49.*G.ksq)*pow(G.ksq,3.5)", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556199575577`*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "5", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"2.0317460317460316*pow(G.ksq,3.5)*(-18. + \
+175.*G.ksq)\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 5, ") return ", 
+   "2.0317460317460316*pow(G.ksq,3.5)*(-18. + 175.*G.ksq)", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619962387*^9}],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{"\<\"        else if (v == \"\>", "\[InvisibleSpace]", "6", 
+   "\[InvisibleSpace]", "\<\") return \"\>", 
+   "\[InvisibleSpace]", "\<\"2.0317460317460316*(18. - \
+203.*G.ksq)*pow(G.ksq,3.5)\"\>", "\[InvisibleSpace]", "\<\";\"\>"}],
+  SequenceForm[
+  "        else if (v == ", 6, ") return ", 
+   "2.0317460317460316*(18. - 203.*G.ksq)*pow(G.ksq,3.5)", ";"],
+  Editable->False]], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619967334*^9}],
+
+Cell[BoxData["\<\"    }\"\>"], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619971993*^9}],
+
+Cell[BoxData["\<\"    throw errors::BadTaylor();\"\>"], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619976748*^9}],
+
+Cell[BoxData["\<\"    return 0;\"\>"], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.731355619981637*^9}],
+
+Cell[BoxData["\<\"}\"\>"], "Print",
+ CellChangeTimes->{{3.731352925901991*^9, 3.731352936335236*^9}, {
+   3.731353002597481*^9, 3.731353015744556*^9}, 3.7313531883261843`*^9, 
+   3.7313556199863377`*^9}]
+}, Open  ]]
+}, Open  ]],
+
+Cell[BoxData[""], "Input",
+ CellChangeTimes->{{3.731352854676674*^9, 3.7313529062298098`*^9}}]
+},
+WindowSize->{1368, 706},
+WindowMargins->{{Automatic, 211}, {-755, Automatic}},
+FrontEndVersion->"11.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (September \
+21, 2016)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 7274, 183, 915, "Input"],
+Cell[CellGroupData[{
+Cell[7879, 209, 221, 3, 24, "Print"],
+Cell[8103, 214, 254, 4, 24, "Print"],
+Cell[8360, 220, 373, 8, 24, "Print"],
+Cell[8736, 230, 682, 14, 24, "Print"],
+Cell[9421, 246, 640, 13, 24, "Print"],
+Cell[10064, 261, 702, 14, 24, "Print"],
+Cell[10769, 277, 682, 14, 24, "Print"],
+Cell[11454, 293, 710, 14, 24, "Print"],
+Cell[12167, 309, 702, 14, 24, "Print"],
+Cell[12872, 325, 706, 14, 24, "Print"],
+Cell[13581, 341, 387, 8, 24, "Print"],
+Cell[13971, 351, 668, 14, 24, "Print"],
+Cell[14642, 367, 650, 14, 24, "Print"],
+Cell[15295, 383, 686, 14, 24, "Print"],
+Cell[15984, 399, 674, 14, 24, "Print"],
+Cell[16661, 415, 688, 14, 24, "Print"],
+Cell[17352, 431, 688, 14, 24, "Print"],
+Cell[18043, 447, 679, 14, 24, "Print"],
+Cell[18725, 463, 387, 8, 24, "Print"],
+Cell[19115, 473, 626, 13, 24, "Print"],
+Cell[19744, 488, 598, 12, 24, "Print"],
+Cell[20345, 502, 644, 13, 24, "Print"],
+Cell[20992, 517, 644, 13, 24, "Print"],
+Cell[21639, 532, 644, 13, 24, "Print"],
+Cell[22286, 547, 650, 13, 24, "Print"],
+Cell[22939, 562, 641, 13, 24, "Print"],
+Cell[23583, 577, 387, 8, 24, "Print"],
+Cell[23973, 587, 588, 12, 24, "Print"],
+Cell[24564, 601, 594, 12, 24, "Print"],
+Cell[25161, 615, 598, 12, 24, "Print"],
+Cell[25762, 629, 600, 12, 24, "Print"],
+Cell[26365, 643, 594, 12, 24, "Print"],
+Cell[26962, 657, 600, 12, 24, "Print"],
+Cell[27565, 671, 598, 12, 24, "Print"],
+Cell[28166, 685, 205, 3, 24, "Print"],
+Cell[28374, 690, 230, 3, 24, "Print"],
+Cell[28607, 695, 213, 3, 24, "Print"],
+Cell[28823, 700, 203, 3, 24, "Print"]
+}, Open  ]]
+}, Open  ]],
+Cell[29053, 707, 94, 1, 32, "Input"]
+}
+]
+*)
+
+(* End of internal cache information *)
+

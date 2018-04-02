@@ -9,12 +9,6 @@ Defines constants used throughout the code.
 #define STARRY_MAP_TOLERANCE                    1.0e-14
 #endif
 
-// For impact parameters below this value,
-// we Taylor expand the J primitive integral
-#ifndef STARRY_BMIN
-#define STARRY_BMIN                             1.0e-1
-#endif
-
 // Largest tabulated integer square root
 #ifndef STARRY_MAX_SQRT
 #define STARRY_MAX_SQRT                         201
