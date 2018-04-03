@@ -1,3 +1,8 @@
+// Disable autodiff for these tests
+#ifndef STARRY_NO_AUTODIFF
+#define STARRY_NO_AUTODIFF                      1
+#endif
+
 #include <iostream>
 #include <iomanip>
 #include <Eigen/Core>
@@ -10,18 +15,13 @@
 #include "rotation.h"
 #include "solver.h"
 
-// Disable autodiff for these tests
-#ifndef STARRY_NO_AUTODIFF
-#define STARRY_NO_AUTODIFF                      1
-#endif
-
 using namespace std;
 
 int main() {
 
     // Generate a map
-    maps::Map<double> y = maps::Map<double>(2);
-    y.set_coeff(1, -1, 1);
+    maps::Map<double> y = maps::Map<double>(8);
+    y.set_coeff(2, 0, 1);
     cout << y.repr() << endl;
 
     // Compute the occultation flux

@@ -28,8 +28,8 @@ def impact_param():
     ylm128.use_mp = True
 
     # Set
-    ylm[2, 0] = 1
-    ylm128[2, 0] = 1
+    ylm[2, 1] = 1
+    ylm128[2, 1] = 1
 
     # Compute
     flux = np.array(ylm.flux(xo=xo, yo=yo, ro=ro))
@@ -41,6 +41,7 @@ def impact_param():
     pl.xscale('log')
     pl.yscale('log')
     pl.show()
+    quit()
 
 
 def occultor_radius():

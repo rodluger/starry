@@ -563,7 +563,7 @@ namespace solver {
     void computesT(Greens<T>& G, T& b, T& r, Vector<T>& y) {
 
         // Check for likely instability
-        if ((G.taylor) && (r >= 1) && (G.l > STARRY_LMAX_LARGE_OCC))
+        if ((G.taylor) && (r >= 1) && (G.lmax > STARRY_LMAX_LARGE_OCC))
             throw errors::LargeOccultorsUnstable();
 
         // Initialize the basic variables
@@ -609,6 +609,8 @@ namespace solver {
             cosphi = 0;
             sinlam = 1;
             coslam = 0;
+            G.phi = G.pi / 2;
+            G.lam = G.pi / 2;
         }
         for (l = 1; l < G.N; l++) {
             G.r(l) = r * G.r(l - 1);

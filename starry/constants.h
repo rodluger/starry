@@ -2,6 +2,7 @@
 Defines constants used throughout the code.
 
 */
+#include <vector>
 using std::vector;
 
 // Smallest allowable map coefficient
