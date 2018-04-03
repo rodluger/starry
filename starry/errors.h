@@ -43,6 +43,11 @@ namespace errors {
         }
     };
 
+    struct BadIndex : public exception {
+        const char * what () const throw (){
+            return "Invalid index.";
+        }
+    };
 
 }; // namespace errors
 
