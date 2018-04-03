@@ -1801,7 +1801,8 @@ the general term in Appendix~\ref{sec:generalterm}.
 % ------------------------------------------------------------------------------
 
 From \citet{MandelAgol2002}, the total flux visible during the occultation of a
-body whose surface map is given by $I(x, y) = \sqrt{1 - \x^2 -\y^2}$ is
+body whose surface map is given by $I(x, y) = \sqrt{1 - \x^2 -\y^2}$ may be computed
+as
 %
 \begin{align}
     \label{eq:s2}
@@ -1809,7 +1810,6 @@ body whose surface map is given by $I(x, y) = \sqrt{1 - \x^2 -\y^2}$ is
 \end{align}
 %
 where $\Theta(\bigdot)$ is the Heaviside step function and
-\todo{rewrite}
 %
 \begin{align}
     \label{eq:biglam}
@@ -1819,26 +1819,42 @@ where $\Theta(\bigdot)$ is the Heaviside step function and
           & \qquad b = 0
           %
           \\[1.5em]
+          %
           \frac{1}{9 \pi \sqrt{b r}} \Bigg[
-                (-3 + 12 r^2 - 10 b^2 r^2 - 6 r^4 + \xi) K(k^2)
-                &\\
-                \phantom{XXXX}
-                - 2 \xi E (k^2)
-                + 3 \left(\frac{b + r}{b - r}\right) \Pi\left(1-\frac{1}{(b-r)^2}, k^2\right)
-                \Bigg]
+                \frac{(r + b)^2 - 1}{r + b}
+                \Big(
+                    -2r \,
+                    \big(
+                        2 (r + b)^2 + (r + b)(r - b) - 3
+                    \big)
+                    K(k^2)
+                    &\\ \phantom{XXXXXXXXXXx}
+                    + 3 (b - r) \, \Pi\big(k^2 (b + r)^2, \, k^2\big)
+                \Big)
+                &\\ \phantom{XXXX}
+                - 4 b r (4 - 7 r^2 - b^2) E(k^2)
+          \Bigg]
+          %
           & \qquad k^2 < 1
           %
           \\[1.5em]
           %
-          \frac{2}{9 \pi \sqrt{(1{-}b{+}r)(1{+}b{-}r)}} \Bigg[
-                \left(1 - 5 b^2 + r^2 + (r^2 - b^2)^2\right) K \left(\frac{1}{k^2}\right)
-                &\\
-                \phantom{XXXXXXXXXXX}
-                - 2 \xi k^2 E \left(\frac{1}{k^2}\right)
-                &\\
-                \phantom{XXXXXXXXXXX}
-                + 3 \left(\frac{b + r}{b - r}\right) \Pi\left(\frac{1}{k^2 - \frac{1}{4 b r}}, \frac{1}{k^2}\right)
-                \Bigg]
+          \frac{2}{9 \pi} \Bigg[
+                \big(1 - (r + b)^2\big)
+                \Bigg(
+                    \sqrt{1 - (b - r)^2} \,
+                    K\left(\frac{1}{k^2}\right)
+                    &\\ \phantom{XXXXXXXXxx}
+                    + 3 \left(\frac{b-r}{(b+r)\sqrt{1 - (b - r)^2}}\right)
+                    &\\ \phantom{XXXXXXXXxx....}
+                    \Pi\left(\frac{1}{k^2(b+r)^2}, \, \frac{1}{k^2}\right)
+                \Bigg)
+                &\\ \phantom{Xx}
+                - \sqrt{1 - (b - r)^2}
+                (4 - 7 r^2 - b^2)
+                E\left(\frac{1}{k^2}\right)
+          \Bigg]
+          %
           & \qquad k^2 \ge 1
     \end{dcases}
 \end{align}
@@ -1846,9 +1862,6 @@ where $\Theta(\bigdot)$ is the Heaviside step function and
 with
 %
 \begin{align}
-    \label{eq:xi}
-    \xi &= 2 b r (4 - 7 r^2 - b^2)\\
-\intertext{and}
     \label{eq:k2}
     k^2 &= \frac{1 - r^2 - b^2 + 2 b r}{4 b r}
     \quad.
@@ -2240,9 +2253,13 @@ computation of $s_n$ fast.
 \label{sec:numericalstability}
 % ------------------------------------------------------------------------------
 
-A few remarks are in order regarding the numerical stability of these solutions.
+A few remarks are in order regarding the numerical stability of the solutions
+presented above.
+%
 First, the solution for $s_2$ (Equation~\ref{eq:s2}) is unstable when $b = r$ because
-the elliptic integral $\Pi$ diverges. Elaborate... \todo{todo}
+the elliptic integral $\Pi$ diverges. In the vicinity of
+$b = r$ we use Equation (17.7.14) in \citet{Abramowitz1970} to express $\Pi(n, k^2)$
+in terms of Heuman's Lambda function.
 
 Second, the expression for $k^2$ (Equation~\ref{eq:k2}) diverges when either $b = 0$
 or $r = 0$. Our tests show that the latter case does not introduce significant numerical
@@ -2267,23 +2284,8 @@ In the vicinity of $b = 0$, we can instead Taylor expand the integrand in
     \quad,
 \end{align}
 %
-where to fifth order we have
-\begin{align}
-    d_0 &= (1 - r^2)^\frac{3}{2} \mathcal{I}_{u, v} \nonumber \\[0.5em]
-    d_1 &= -3r(1 - r^2)^\frac{1}{2} \mathcal{I}_{u, v + 1} \nonumber \\[0.5em]
-    d_2 &= -\frac{3}{2}(1 - r^2)^\frac{1}{2} \mathcal{I}_{u, v}
-           + \frac{3}{2}r^2(1 - r^2)^{-\frac{1}{2}} \mathcal{I}_{u, v+2} \nonumber \\[0.5em]
-    d_3 &= \frac{3}{2}r(1 - r^2)^{-\frac{1}{2}} \mathcal{I}_{u, v+1}
-           + \frac{1}{2}r^3(1 - r^2)^\frac{-3}{2} \mathcal{I}_{u, v+3} \nonumber \\[0.5em]
-    d_4 &= \frac{3}{8}(1 - r^2)^{-\frac{1}{2}} \mathcal{I}_{u, v}
-           + \frac{3}{4}r^2(1 - r^2)^{-\frac{3}{2}} \mathcal{I}_{u, v+2}
-           + \frac{3}{8}r^4(1 - r^2)^{-\frac{5}{2}} \mathcal{I}_{u, v+4} \nonumber \\[0.5em]
-    d_5 &= \frac{3}{8}r(1 - r^2)^{-\frac{3}{2}} \mathcal{I}_{u, v + 1}
-           + \frac{3}{4}r^3(1 - r^2)^{-\frac{5}{2}} \mathcal{I}_{u, v+3}
-           + \frac{3}{8}r^5(1 - r^2)^{-\frac{7}{2}} \mathcal{I}_{u, v+5}
-    \quad.
-    \mathematica{taylorb}
-\end{align}
+\mathematica{taylorb}
+
 %
 In \starry, we evaluate $\mathcal{J}_{u,v}$ using this Taylor expansion when $b < 0.1$.
 
@@ -2436,7 +2438,6 @@ $\Lambda$       & \citet{MandelAgol2002} function       & \eq{biglam} \\
 $\mu$           & $l - m$                               & \eq{munu} \\
 $\upmu$         & Limb darkening radial parameter       & \eq{quadraticld} \\
 $\nu$           & $l + m$                               & \eq{munu} \\
-$\xi$           & Function of $b$ and $r$               & \ref{eq:k2} \\
 $\Pi(\bigdot,\bigdot)$
                 & Complete elliptic integral of the
                   third kind                            & \eq{elliptic} \\

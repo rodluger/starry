@@ -31,6 +31,24 @@ namespace errors {
         }
     };
 
+    struct BadTaylor : public exception {
+        const char * what () const throw (){
+            return "Expression order exceeds the order of the tabulated Taylor expansions.";
+        }
+    };
+
+    struct LargeOccultorsUnstable : public exception {
+        const char * what () const throw (){
+            return "Expressions for large occultors are numerically unstable for l > 8. Please enable multi-precision.";
+        }
+    };
+
+    struct BadIndex : public exception {
+        const char * what () const throw (){
+            return "Invalid index.";
+        }
+    };
+
 }; // namespace errors
 
 #endif
