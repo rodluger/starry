@@ -134,7 +134,7 @@ namespace solver {
         if (G.b == 0) {
             // Special case
             return pow(1 - G.r(2), 1.5) * G.I(u, v);
-        } else if ((G.taylor) && (G.r(1) < 1) && (G.b < STARRY_B_THRESH_J)) {
+        } else if ((G.taylor) && (G.r(1) < 1) && (G.b < STARRY_B_THRESH_J<T>(G.l, G.r(1)))) {
             return taylor::computeJ(G, u, v);
         } else {
             for (int i = 0; i < v + 1; i++) {
@@ -229,7 +229,7 @@ namespace solver {
         else
             factor = 1;
         if (is_even(G.nu)) {
-            if ((G.taylor) && (G.r(1) > STARRY_RADIUS_THRESH_QUARTIC[G.l])) {
+            if ((G.taylor) && (G.r(1) > 1) && (G.r(1) > STARRY_RADIUS_THRESH_QUARTIC<T>(G.l))) {
                 return taylor::P(G);
             } else {
                 return G.r(G.l + 2) * K(G, (G.mu + 4) / 2, G.nu / 2);
