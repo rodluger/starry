@@ -14,6 +14,8 @@ Spherical harmonic integration utilities.
 #include "fact.h"
 #include "errors.h"
 #include "taylor.h"
+#include <boost/math/special_functions/ellint_1.hpp>
+#include <boost/math/special_functions/ellint_2.hpp>
 
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
@@ -56,7 +58,7 @@ namespace solver {
     T s2(Greens<T>& G) {
 
         // Taylor expand for r > 1?
-        if ((!G.taylor.mp) && (G.r(1) >= 1) && (G.taylor.s2))
+        if ((G.taylor) && (G.r(1) >= 1))
             return taylor::s2(G);
 
         T Lambda;
@@ -132,7 +134,7 @@ namespace solver {
         if (G.b == 0) {
             // Special case
             return pow(1 - G.r(2), 1.5) * G.I(u, v);
-        } else if ((!G.taylor.mp) && (G.r(1) < 1) && (G.b < G.taylor.b_J)) {
+        } else if ((G.taylor) && (G.r(1) < 1) && (G.b < STARRY_B_THRESH_J)) {
             return taylor::computeJ(G, u, v);
         } else {
             for (int i = 0; i < v + 1; i++) {
@@ -153,7 +155,7 @@ namespace solver {
     inline T computeM(Greens<T>& G, int p, int q) {
         if (!is_even(p) || !is_even(q)) {
             return 0;
-        } else if ((!G.taylor.mp) && (G.r(1) > G.taylor.r_M)) {
+        } else if ((G.taylor) && (G.r(1) > STARRY_RADIUS_THRESH_M)) {
             // Taylor expansion for large occultor
             return taylor::computeM(G, p, q);
         } else if ((p == 0) && (q == 0)) {
@@ -222,12 +224,12 @@ namespace solver {
     template <typename T>
     inline T P(Greens<T>& G){
         T factor;
-        if ((!G.taylor.mp) && (G.r(1) > G.taylor.r_M))
+        if ((G.taylor) && (G.r(1) > STARRY_RADIUS_THRESH_M))
             factor = G.br32;
         else
             factor = 1;
         if (is_even(G.nu)) {
-            if ((!G.taylor.mp) && (G.r(1) > G.taylor.r_quartic(G.l))) {
+            if ((G.taylor) && (G.r(1) > STARRY_RADIUS_THRESH_QUARTIC[G.l])) {
                 return taylor::P(G);
             } else {
                 return G.r(G.l + 2) * K(G, (G.mu + 4) / 2, G.nu / 2);
@@ -310,19 +312,42 @@ namespace solver {
                     if ((G.b == 0) || (G.ksq == 1))
                         vPI = 0;
                     else if (G.ksq < 1)
-                        vPI = 3 * (G.b - G.r(1)) * ellip::PI(G.ksq *
-                                 (G.b + G.r(1)) * (G.b + G.r(1)), G.ksq);
+                        vPI = 3 * (G.b - G.r(1)) * ellip::PI(G.ksq * (G.b + G.r(1)) * (G.b + G.r(1)), G.ksq);
                     else {
-                        // TODO: Small numerical issue here. As b - r --> 1,
+                        T EPI;
+                        if ((G.taylor) && (abs(G.b - G.r(1)) < STARRY_BMINUSR_THRESH_S2)) {
+                            // This is a reparameterization of the complete elliptic integral
+                            // of the third kind, necessary to suppress numerical instabilities when b ~ r.
+                            // It relies on expressing PI in terms of the incomplete elliptic integrals
+                            // of the first and second kind. I haven't done speed tests, but I suspect
+                            // it has to be slower, so we only do this when b is really close to r.
+                            // Use transformation of 17.7.14 in Abramowitz & Stegun:
+                            T one_minus_n = (G.b - G.r(1)) * (G.b - G.r(1)) *
+                                            (1. - (G.b + G.r(1)) * (G.b + G.r(1))) /
+                                            (1. - (G.b - G.r(1)) * (G.b - G.r(1))) /
+                                            ((G.b + G.r(1)) * (G.b + G.r(1)));
+                            T EK = ellip::K(1. / G.ksq);
+                            T EE = ellip::E(1. / G.ksq);
+                            T psi = asin(sqrt(one_minus_n / (1. - 1. / G.ksq)));
+                            T mc = 1. - 1. / G.ksq;
+                            // Compute Heuman's Lambda Function via A&S 17.4.40:
+                            T EEI = boost::math::ellint_2(sqrt(mc), psi);
+                            T EFI = boost::math::ellint_1(sqrt(mc), psi);
+                            T HLam = 2. / G.pi * (EK * EEI - (EK - EE) * EFI);
+                            T d2 = sqrt((1. / one_minus_n - 1.) / (1. - one_minus_n - 1. / G.ksq));
+                            // Equation 17.7.14 in A&S:
+                            EPI = EK + 0.5 * G.pi * d2 * (1. - HLam);
+                        } else {
+                            // Compute the elliptic integral directly
+                            EPI = ellip::PI(1. / (G.ksq * (G.b + G.r(1)) * (G.b + G.r(1))), 1. / G.ksq);
+                        }
+                        // TODO: There may be small numerical issue here. As b - r --> 1,
                         // the denominator diverges. Should re-parametrize.
                         if (abs(G.b - G.r(1)) != 1.0)
-                            vPI = 3 * (G.b - G.r(1)) / (G.b + G.r(1)) *
-                                   ellip::PI(1. / (G.ksq * (G.b + G.r(1)) *
-                                   (G.b + G.r(1))), 1. / G.ksq) /
+                            vPI = 3 * (G.b - G.r(1)) / (G.b + G.r(1)) * EPI /
                                    sqrt(1 - (G.b - G.r(1)) * (G.b - G.r(1)));
                         else
                             vPI = 0;
-
                     }
                     bPI = true;
                 }
@@ -412,32 +437,6 @@ namespace solver {
 
     };
 
-    // Taylor expansion thresholds
-    class Taylor {
-
-        public:
-
-            // Is multiprecision enabled?
-            bool mp;
-            // Taylor expand J() below this value of b
-            double b_J;
-            // Taylor expand M() above this value of r
-            double r_M;
-            // Approximate occultor limb as quartic above this value of r
-            Vector<double> r_quartic;
-            // Taylor expand s2() for r >= 1
-            bool s2;
-
-            Taylor(bool mp) : mp(mp) {
-                // These values have been benchmarked
-                r_quartic.resize(STARRY_LMAX_LARGE_OCC + 1);
-                r_quartic << 100, 30, 30, 20, 15, 10, 8, 6, 5, 4, 3.5;
-                b_J = 0; // TODO
-                r_M = 2;
-                s2 = true;
-            }
-    };
-
     // Greens integration housekeeping data
     template <class T>
     class Greens {
@@ -452,8 +451,8 @@ namespace solver {
             int mu;
             int nu;
 
-            // Numerical stability
-            Taylor taylor;
+            // Taylor expand stuff?
+            bool taylor;
 
             // Basic variables
             T b;
@@ -490,11 +489,11 @@ namespace solver {
             T pi;
 
             // Constructor
-            Greens(int lmax, bool mp=false) :
+            Greens(int lmax, bool taylor=true) :
                    lmax(lmax),
                    // TODO: CHECK that N is sufficiently large in all cases.
                    N(std::max(lmax + 5, 2 * lmax + 1)),
-                   taylor(mp),
+                   taylor(taylor),
                    ELL(*this),
                    H(*this, computeH),
                    I(*this, computeI),
@@ -564,7 +563,7 @@ namespace solver {
     void computesT(Greens<T>& G, T& b, T& r, Vector<T>& y) {
 
         // Check for likely instability
-        if ((!G.taylor.mp) && (r >= 1) && (G.l > STARRY_LMAX_LARGE_OCC))
+        if ((G.taylor) && (r >= 1) && (G.l > STARRY_LMAX_LARGE_OCC))
             throw errors::LargeOccultorsUnstable();
 
         // Initialize the basic variables

@@ -160,14 +160,6 @@ PYBIND11_MODULE(starry, m) {
             R"pbdoc(
                 Instantiate a starry map.
             )pbdoc", "lmax"_a=2)
-
-        // -- DEBUGGING --
-        .def_property("_b_J", [](maps::Map<double> &map){return map.G.taylor.b_J;}, [](maps::Map<double> &map, double val){map.G.taylor.b_J = val;})
-        .def_property("_r_M", [](maps::Map<double> &map){return map.G.taylor.r_M;}, [](maps::Map<double> &map, double val){map.G.taylor.r_M = val;})
-        .def_property("_r_quartic", [](maps::Map<double> &map){return map.G.taylor.r_quartic;}, [](maps::Map<double> &map, Vector<double> val){map.G.taylor.r_quartic = val;})
-        .def_property("_s2", [](maps::Map<double> &map){return map.G.taylor.s2;}, [](maps::Map<double> &map, double val){map.G.taylor.s2 = val;})
-        // -- DEBUGGING --
-
         .def_property("use_mp", [](maps::Map<double> &map){return map.use_mp;},
                                 [](maps::Map<double> &map, bool use_mp){map.use_mp = use_mp;})
         .def("evaluate", py::vectorize(&maps::Map<double>::evaluate),

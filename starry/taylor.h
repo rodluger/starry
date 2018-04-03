@@ -23,27 +23,6 @@ namespace solver
 
 namespace taylor {
 
-
-    /*
-    template <typename T>
-    inline T s2_b_equLS_R(solver::Greens<T>& G, int u, int v) {
-    // Use transformation of 17.7.14 in Abramowitz & Stegun:
-    one_minus_n = (b-r).^2.*(1.0-(b+r).^2)./(1.0-(b-r).^2)./(b+r).^2
-    kofk = ellk_bulirsch.(1./k2); eofk = ellec_bulirsch.(1./k2)
-    phi= asin.(sqrt.(one_minus_n./(1.-1./k2)))
-    mc = 1.-1./k2
-    // Compute Heuman's Lambda Function via A&S 17.4.40:
-    lam = 2./pi*(kofk.*Elliptic.E.(phi,mc)-(kofk-eofk).*Elliptic.F.(phi,mc))
-    d2 = sqrt.((1.0./one_minus_n-1.0)./(1.0-one_minus_n-1./k2))
-    # Equation 17.7.14 in A&S:
-    pi2 = 3.0*(b-r).*(b+r-1./(b+r)).*(kofk+pi/2.*d2.*(1.-lam))
-    # Overplot for comparison:
-    plot(b,pi2,linewidth=3,label="Transformed expression")
-    xlabel("b"); ylabel(L"$3(b-r)(b+r-(b+r)^{-1}) \Pi(k^{-2}(b+r)^{-2},k)$")
-    legend(loc="lower left")
-    }
-    */
-
     // Taylor expand the difference between the elliptic integrals
     // for the s2 term when r >= 1; much more numerically stable!
     template <typename T>

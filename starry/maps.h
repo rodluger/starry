@@ -107,8 +107,8 @@ namespace maps {
             // Constructor: initialize map to zeros
             Map(int lmax=2) :
                   lmax(lmax), R(lmax), C(lmax),
-                  mpG(lmax, true),
-                  G(lmax, false) {
+                  mpG(lmax, false),
+                  G(lmax, true) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);

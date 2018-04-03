@@ -2,7 +2,7 @@
 Defines constants used throughout the code.
 
 */
-
+using std::vector;
 
 // Smallest allowable map coefficient
 #ifndef STARRY_MAP_TOLERANCE
@@ -11,21 +11,48 @@ Defines constants used throughout the code.
 
 // Largest value of l for large occultors
 // (very numerically unstable above this)
+// DO NOT CHANGE THIS
 #ifndef STARRY_LMAX_LARGE_OCC
-#define STARRY_LMAX_LARGE_OCC                   10
+#define STARRY_LMAX_LARGE_OCC                   8
+#endif
+
+// Default value of the radius threshold for
+// Taylor expansion of the M integral
+#ifndef STARRY_RADIUS_THRESH_M
+#define STARRY_RADIUS_THRESH_M                  2.0
+#endif
+
+// Re-parametrize s2() when |b-r| < this value
+#ifndef STARRY_BMINUSR_THRESH_S2
+#define STARRY_BMINUSR_THRESH_S2                1.e-2
+#endif
+
+// Taylor expand J() when b is smaller than this (TODO)
+#ifndef STARRY_B_THRESH_J
+#define STARRY_B_THRESH_J                       0.0
+#endif
+
+// Default value of the radius threshold for
+// quartic expansion of the occultor limb
+#ifndef _STARRY_QUARTIC_
+#define _STARRY_QUARTIC_
+const vector<double> STARRY_RADIUS_THRESH_QUARTIC({100, 30, 30, 20, 15, 10, 8, 6, 5});
 #endif
 
 // Largest tabulated integer square root
+// DO NOT CHANGE THIS
 #ifndef STARRY_MAX_SQRT
 #define STARRY_MAX_SQRT                         201
 #endif
 
 // Largest tabulated factorial
+// DO NOT CHANGE THIS
 #ifndef STARRY_MAX_FACT
 #define STARRY_MAX_FACT                         170
 #endif
 
 // Largest tabulated half factorial
+// DO NOT CHANGE THIS
 #ifndef STARRY_MAX_HALF_FACT
 #define STARRY_MAX_HALF_FACT                    341
 #endif
