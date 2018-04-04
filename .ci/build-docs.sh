@@ -37,7 +37,8 @@ set -o errexit -o nounset
 
 # Make the docs
 pip install sphinx sphinx_rtd_theme
-make -C ../docs
+cd $TRAVIS_BUILD_DIR/docs
+make html
 
 # Ensure we're good to publish docs
 require_clean_work_tree "publish docs"
@@ -52,7 +53,7 @@ rev=$(git rev-parse --short HEAD)
 # Copy the html folder to a temporary location, initialize
 # a new git repo there, add the necessary files, and force-push
 # to starry/gh-pages
-cd ../docs/_build
+cd $TRAVIS_BUILD_DIR/docs/_build
 cp -r html tmp_html
 cd tmp_html
 git init
