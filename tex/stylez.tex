@@ -24,6 +24,9 @@
 \usepackage{upgreek}
 \stackMath
 
+% Page breaks in long equations
+\allowdisplaybreaks
+
 % Bibliography stuff
 \bibliographystyle{aasjournal}
 
@@ -47,6 +50,7 @@
 
 % Add script hyperlinks as margin notes
 \definecolor{proofcolor}{rgb}{0.1216,0.4667,0.7059}
+\newcommand{\code}[4]{\marginnote{\href{https://github.com/rodluger/starry/blob/#1/starry/#2\#L#3-L#4}{\includegraphics[width=0.9cm]{figures/python.png}}}}
 \newcommand{\python}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.py}{\includegraphics[width=0.9cm]{figures/python.png}}}}
 \newcommand{\mathematica}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.6cm]{figures/mathematica.png}}}}
 \newcommand{\pdf}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.6cm]{figures/pdf.png}}}}

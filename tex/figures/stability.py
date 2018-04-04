@@ -140,6 +140,6 @@ if __name__ == "__main__":
 
     # Set up
     fig, ax = pl.subplots(2, figsize=(9, 8))
-    impact_param(ax[1])
-    occultor_radius(ax[0])
+    impact_param(ax[0])
+    occultor_radius(ax[1])
     fig.savefig("stability.pdf", bbox_inches='tight')
