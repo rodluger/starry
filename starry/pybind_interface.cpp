@@ -33,34 +33,48 @@ using std::vector;
 
 
 PYBIND11_MODULE(starry, m) {
+
+    // Disable auto signatures
+    py::options options;
+    options.disable_function_signatures();
+
     m.doc() = R"pbdoc(
         API
         ---
-        .. currentmodule:: starry
 
-        .. autosummary::
-            :toctree: _generate
-
-            Body
-            Star
-            Planet
-            Map
+        .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
 
     )pbdoc";
 
     // Orbital system class
-    py::class_<orbital::System<double>>(m, "System")
+    py::class_<orbital::System<double>>(m, "System", R"pbdoc(
+            Instantiate an orbital system.
+
+            Args:
+                bodies (list): List of bodies in the system, with the primary (usually the star) listed first.
+                kepler_tol (float): Kepler solver tolerance.
+                kepler_max_iter (int): Maximum number of iterations in the Kepler solver.
+
+            .. automethod:: compute(time)
+            .. autoattribute:: flux
+        )pbdoc")
         .def(py::init<vector<orbital::Body<double>*>, double, int>(),
-            R"pbdoc(
-                Instantiate an orbital system.
-            )pbdoc", "bodies"_a, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100)
+            "bodies"_a, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100)
         .def("compute", &orbital::System<double>::compute,
             R"pbdoc(
-                Compute the light curve.
+                Compute the system light curve analytically.
+
+                Compute the full system light curve at the times
+                given by the :py:obj:`time <>` array and store the result
+                in :py:attr:`flux`. The light curve for each body in the
+                system is stored in the body's :py:attr:`flux` attribute.
+
+                Args:
+                    time (ndarray): Time array, measured in days.
             )pbdoc", "time"_a)
         .def_property_readonly("flux", [](orbital::System<double> &system){return system.flux;},
             R"pbdoc(
-                The computed light curve.
+                The computed system light curve. Must run :py:meth:`compute` first.
             )pbdoc");
 
      // Body class
