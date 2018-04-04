@@ -26,7 +26,7 @@
     here applies to the computation of stellar transit light curves,
     planetary secondary eclipse light curves, and planet-planet/planet-moon
     occultation light curves, as well as thermal (rotational) phase curves.
-    We present \starry, a full photodynamical code written in \C
+    We present \starry, a full photodynamical code written in \cpp
     and wrapped in \Python that computes these light curves. \starry also
     computes analytic derivatives of the light curves with respect to all input
     parameters for use in gradient-based inference schemes such as
@@ -1358,8 +1358,9 @@ Given these quantities, the total flux during an occultation is then just
 
 The \starry code package provides code to analytically
 compute light curves for celestial bodies using the formalism developed
-in this paper. \starry is coded in \C for speed and wrapped
-in \Python for quick and easy light curve calculations. The
+in this paper. \starry is coded entirely in \cpp for speed and wrapped
+in \Python using \textsf{pybind11} \citep{pybind11} for quick and easy
+light curve calculations. The
 code may be installed by running the following in a terminal:
 %
 \begin{lstlisting}[language=bash]
@@ -1368,6 +1369,11 @@ cd starry
 python setup.py develop
 \end{lstlisting}
 %
+There are two primary ways of interfacing with \starry: via the surface
+map class \textsf{starry.Map} and via the celestial body system class
+\textsf{starry.System}. The former gives users the most flexibility to
+create and manipulate surface maps
+
 To begin using \starry, execute the following in a \Python environment:
 %
 \begin{lstlisting}[language=Python]
@@ -2343,7 +2349,7 @@ m.use_mp = True
 %
 for a \textsf{starry.Map} instance \textsf{m}, which by default computes the occultation solution
 vector $\bvec{s}$ using a 128-bit (quadruple) precision type implemented with the \textsf{boost}
-\C libraries \citep[e.g.,][]{Schaling2014}.
+\cpp libraries \citep[e.g.,][]{Schaling2014}.
 
 \begin{figure}[ht!]
     \begin{centering}
@@ -2381,7 +2387,7 @@ vector $\bvec{s}$ using a 128-bit (quadruple) precision type implemented with th
 
 \clearpage
 \begin{center}
-%\renewcommand*{\arraystretch}{1.1}
+\renewcommand*{\arraystretch}{1.1}
 \begin{longtable}{cll}
 \caption{Symbols used in this paper} \label{tab:symbols} \\
 %

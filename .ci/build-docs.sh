@@ -2,7 +2,7 @@
 # Update documentation on gh-pages branch.
 
 # Exit on errors
-set -o errexit -o nounset
+# set -o errexit -o nounset
 
 # Ensure we are on master
 if [ "$TRAVIS_BRANCH" = "master" ]; then
