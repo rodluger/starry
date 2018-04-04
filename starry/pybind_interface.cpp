@@ -53,7 +53,7 @@ PYBIND11_MODULE(starry, m) {
         of a :py:class:`Map` class, which houses all of the surface map photometry
         stuff, and the :py:class:`Star`, :py:class:`Planet`, and :py:class:`System`
         classes, which facilitate the generation of light curves for actual
-        stellar and planetary systems. 
+        stellar and planetary systems.
 
         There are two broad ways in which users can access the core :py:mod:`starry`
         functionality:
