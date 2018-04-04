@@ -24,3 +24,4 @@ script:
 
 after_success:
     - source .ci/build-paper.sh
+    - source .ci/build-docs.sh
