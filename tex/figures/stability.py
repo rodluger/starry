@@ -11,6 +11,51 @@ def color(l, lmax=8):
     return cmap(0.1 + 0.8 * l / lmax)
 
 
+def earth_eclipse(lmax=8):
+    """Compute the error on the secondary eclipse of the Earth."""
+    npts = 1000
+
+    # Double precision
+    m = Map(lmax)
+    m.load_image('earth')
+
+    # Quadruple precision
+    m128 = Map(lmax)
+    m128.use_mp = True
+    m128.load_image('earth')
+
+    # Compute. Ingress duration is
+    # dt = (2 REARTH) / (2 PI * 1 AU / 1 year) ~ 7 minutes
+    yo = 0
+    ro = 6.957e8 / 6.3781e6
+    time = np.linspace(0, 7 * 1.5, npts)
+    xo = np.linspace(ro + 1.5, ro - 1.5, npts, -1)
+    flux = np.array(m.flux(xo=xo, yo=yo, ro=ro))
+    flux128 = np.array(m128.flux(xo=xo, yo=yo, ro=ro))
+
+    # Show
+    fig, ax = pl.subplots(2, figsize=(5, 6), sharex=True)
+    fig.subplots_adjust(hspace=0.1)
+    ax[0].plot(time, flux / flux[0])
+    ax[1].plot(time, np.abs(flux / flux128 - 1))
+    ax[1].set_yscale('log')
+    ax[1].axhline(1e-3, color='k', ls='--', alpha=0.75, lw=0.5)
+    ax[1].axhline(1e-6, color='k', ls='--', alpha=0.75, lw=0.5)
+    ax[1].axhline(1e-9, color='k', ls='--', alpha=0.75, lw=0.5)
+    ax[1].annotate("ppt", xy=(1e-3, 1e-3), xycoords="data", xytext=(3, -3),
+                   textcoords="offset points", ha="left", va="top", alpha=0.75)
+    ax[1].annotate("ppm", xy=(1e-3, 1e-6), xycoords="data", xytext=(3, -3),
+                   textcoords="offset points", ha="left", va="top", alpha=0.75)
+    ax[1].annotate("ppb", xy=(1e-3, 1e-9), xycoords="data", xytext=(3, -3),
+                   textcoords="offset points", ha="left", va="top", alpha=0.75)
+    ax[1].set_ylim(5e-17, 20.)
+    ax[1].set_xlim(0, 10)
+    ax[1].set_xlabel("Time [minutes]", fontsize=16)
+    ax[0].set_ylabel("Normalized flux", fontsize=16, labelpad=15)
+    ax[1].set_ylabel("Fractional error", fontsize=16)
+    fig.savefig("stability_earth.pdf", bbox_inches='tight')
+
+
 def impact_param(ax, lmax=8):
     """Test the stability as a function of b."""
     npts = 200
@@ -102,6 +147,13 @@ def occultor_radius(ax, lmax=8):
     for l in tqdm(range(lmax + 1)):
         ylm.reset()
         ylm128.reset()
+
+        # Set the constant term
+        # so we don't divide by zero when
+        # computing the fractional error below
+        ylm[0, 0] = 1
+        ylm128[0, 0] = 1
+
         # Set the coefficients for all orders
         for m in range(-l, l + 1):
             ylm[l, m] = 1
@@ -135,10 +187,12 @@ def occultor_radius(ax, lmax=8):
     ax.set_ylabel("Fractional error", fontsize=16)
 
 
-
 if __name__ == "__main__":
 
-    # Set up
+    # Earth stability
+    earth_eclipse()
+
+    # Ylm stability
     fig, ax = pl.subplots(2, figsize=(9, 8))
     impact_param(ax[0])
     occultor_radius(ax[1])

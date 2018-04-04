@@ -11,8 +11,7 @@ using std::vector;
 #endif
 
 // Largest value of l for large occultors
-// (very numerically unstable above this)
-// DO NOT CHANGE THIS
+// (analytic expressions are numerically unstable above this)
 #ifndef STARRY_LMAX_LARGE_OCC
 #define STARRY_LMAX_LARGE_OCC                   8
 #endif
@@ -36,8 +35,6 @@ template <typename T>
 T STARRY_B_THRESH_J(int l, T r) {
     if (r > 0.5)
         return 0.1 * (1 - r);
-    //else if (r > 0.5)
-    //    return 0.1625 - 0.125 * r;
     else if (l <= STARRY_B_MAXL)
         return STARRY_B_THRESH_J_VEC[l];
     else
@@ -60,19 +57,16 @@ T STARRY_RADIUS_THRESH_QUARTIC(int l) {
 #endif
 
 // Largest tabulated integer square root
-// DO NOT CHANGE THIS
 #ifndef STARRY_MAX_SQRT
 #define STARRY_MAX_SQRT                         201
 #endif
 
 // Largest tabulated factorial
-// DO NOT CHANGE THIS
 #ifndef STARRY_MAX_FACT
 #define STARRY_MAX_FACT                         170
 #endif
 
 // Largest tabulated half factorial
-// DO NOT CHANGE THIS
 #ifndef STARRY_MAX_HALF_FACT
 #define STARRY_MAX_HALF_FACT                    341
 #endif
