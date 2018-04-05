@@ -32,7 +32,7 @@
     parameters for use in gradient-based inference schemes such as
     Hamiltonian monte carlo (HMC), allowing users to quickly and efficiently
     regress on observed light curves to infer properties of a celestial body's
-    surface map. 
+    surface map.
 \end{abstract}
 
 % NOTE:
@@ -1374,7 +1374,7 @@ map class \textsf{starry.Map} and via the celestial body system class
 \textsf{starry.System}. The former gives users the most flexibility to
 create and manipulate surface maps and compute their fluxes for a variety
 of applications, while the latter provides a quick and easy (but limited)
-way to generate complete light curves for exoplanet systems. Let us
+way to generate light curves for exoplanet systems. Let us
 discuss the map class first.
 
 % ------------------------------------------------------------------------------
@@ -1506,7 +1506,7 @@ F = m.flux(u=u, theta=theta)
 \end{lstlisting}
 %
 where \textsf{u} is the axis of rotation and \textsf{theta} is an array of
-angles at which to compute the flux. Note that rotations performed
+angles (in radians) for which to compute the flux. Note that rotations performed
 by \textsf{flux()} are not cumulative; instead, all angles should be specified
 relative to the original, unrotated map frame.
 %

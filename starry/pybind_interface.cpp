@@ -87,8 +87,7 @@ PYBIND11_MODULE(starry, m) {
         .. autoclass:: Star(r=1, L=1, m=1)
         .. autoclass:: Planet(lmax=2, r=1, L=1.e-9, u=(0, 1, 0), prot=1, theta0=0, porb=1, inc=90, ecc=0, w=0, Omega=0, lambda0=0, tref=0)
         .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
-        .. autoclass:: Body(lmax, r, L, u, prot, theta0, m, porb, inc, ecc, w, Omega, lambda0, tref, UNIT_RADIUS, UNIT_MASS, UNIT_LUMINOSITY)
-
+        
     )pbdoc";
 
     // Orbital system class
@@ -296,17 +295,25 @@ PYBIND11_MODULE(starry, m) {
     py::class_<orbital::Star<double>>(m, "Star", PyBody, R"pbdoc(
             Instantiate a stellar :py:class:`Body` object.
 
-            Convenience subclass to instantiate a star by only specifying its
+            Instantiate a star by specifying its
             radius, mass, and luminosity, which default to solar values. The
             degree of the surface map is fixed at `l = 2` to allow for
-            quadratic limb-darkending.
+            quadratic limb-darkending. This class has the following units:
 
-            Refer to :py:class:`Body` for inherited attributes and methods.
+                - :py:attr:`UNIT_RADIUS`: Solar radius
+                - :py:attr:`UNIT_MASS`: Solar mass
+                - :py:attr:`UNIT_LUMINOSITY`: Solar luminosity
 
             Args:
                 r (float): Stellar radius in solar radii. Default 1.
                 L (float): Stellar luminosity in units of LSUN. Default 1.
                 m (float): Stellar mass in solar masses. Default 1.
+
+            .. autoattribute:: map
+            .. autoattribute:: flux
+            .. autoattribute:: r
+            .. autoattribute:: L
+            .. autoattribute:: m
         )pbdoc")
 
         .def(py::init<const double&, const double&, const double&>(),
@@ -318,11 +325,13 @@ PYBIND11_MODULE(starry, m) {
     py::class_<orbital::Planet<double>>(m, "Planet", PyBody, R"pbdoc(
             Instantiate a planetary :py:class:`Body` object.
 
-            Convenience subclass to instantiate a planet with lots
-            of default options. At present, :py:mod:`starry` computes orbits with a simple
+            Instantiate a planet. At present, :py:mod:`starry` computes orbits with a simple
             Keplerian solver, so the planet is assumed to be massless.
+            This class has the following units:
 
-            Refer to :py:class:`Body` for inherited attributes and methods.
+                - :py:attr:`UNIT_RADIUS`: Earth radius
+                - :py:attr:`UNIT_MASS`: Earth mass
+                - :py:attr:`UNIT_LUMINOSITY`: 1.e-9 solar luminosity
 
             Args:
                 lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
@@ -338,6 +347,24 @@ PYBIND11_MODULE(starry, m) {
                 Omega (float): Longitude of ascending node in degrees. Default 0.
                 lambda0 (float): Mean longitude at time :py:obj:`tref` in degrees. Default 0.
                 tref (float): Reference time in days. Default 0.
+
+            .. autoattribute:: map
+            .. autoattribute:: flux
+            .. autoattribute:: x
+            .. autoattribute:: y
+            .. autoattribute:: z
+            .. autoattribute:: r
+            .. autoattribute:: L
+            .. autoattribute:: u
+            .. autoattribute:: prot
+            .. autoattribute:: theta0
+            .. autoattribute:: porb
+            .. autoattribute:: inc
+            .. autoattribute:: ecc
+            .. autoattribute:: w
+            .. autoattribute:: Omega
+            .. autoattribute:: lambda0
+            .. autoattribute:: tref
         )pbdoc")
 
         .def(py::init<int, const double&, const double&,
@@ -411,7 +438,7 @@ PYBIND11_MODULE(starry, m) {
 
                 Args:
                     u (ndarray): Unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
-                    theta (float or ndarray): Angle of rotation. Default 0.
+                    theta (float or ndarray): Angle of rotation in radians. Default 0.
                     x (float or ndarray): Position scalar, vector, or matrix.
                     y (float or ndarray): Position scalar, vector, or matrix.
 
@@ -430,7 +457,7 @@ PYBIND11_MODULE(starry, m) {
 
                 Args:
                     u (ndarray): Unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
-                    theta (float or ndarray): Angle of rotation. Default 0.
+                    theta (float or ndarray): Angle of rotation in radians. Default 0.
 
             )pbdoc", "u"_a=maps::yhat, "theta"_a=0)
 
