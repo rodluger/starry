@@ -2,10 +2,7 @@
 # Update documentation on gh-pages branch.
 
 # Exit on errors
-# set -o errexit -o nounset
-
-# Ensure we are on master
-#if [ "$TRAVIS_BRANCH" = "master" ]; then
+set -o errexit -o nounset
 
 # Make the docs
 pip install sphinx sphinx_rtd_theme
@@ -39,5 +36,3 @@ git push -q -f https://$GITHUB_USER:$GITHUB_API_KEY@github.com/$TRAVIS_REPO_SLUG
 # Remove the temporary directory
 cd ..
 rm -rf tmp_html
-
-#fi
