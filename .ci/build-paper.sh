@@ -21,13 +21,13 @@ then
     cd tex/
 	pdflatex -interaction=nonstopmode -halt-on-error starry.tex
 	bibtex starry
-	( grep Rerun starry.log && pdflatex -interaction=nonstopmode -halt-on-error starry.tex ) || echo "Done."
-	( grep Rerun starry.log && pdflatex -interaction=nonstopmode -halt-on-error starry.tex ) || echo "Done."
+	pdflatex -interaction=nonstopmode -halt-on-error starry.tex
+	pdflatex -interaction=nonstopmode -halt-on-error starry.tex
 
     # Force push the paper to GitHub
     cd $TRAVIS_BUILD_DIR
     git checkout --orphan $TRAVIS_BRANCH-pdf
-    git rm -rf .
+    git rm -rf . > /dev/null 2>&1
     git add -f tex/starry.pdf
     git -c user.name='travis' -c user.email='travis' commit -m "building the paper"
     git push -q -f https://$GITHUB_USER:$GITHUB_API_KEY@github.com/$TRAVIS_REPO_SLUG $TRAVIS_BRANCH-pdf

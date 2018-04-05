@@ -87,7 +87,7 @@ PYBIND11_MODULE(starry, m) {
         .. autoclass:: Star(r=1, L=1, m=1)
         .. autoclass:: Planet(lmax=2, r=1, L=1.e-9, u=(0, 1, 0), prot=1, theta0=0, porb=1, inc=90, ecc=0, w=0, Omega=0, lambda0=0, tref=0)
         .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
-        
+
     )pbdoc";
 
     // Orbital system class

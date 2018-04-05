@@ -1693,8 +1693,21 @@ than $10^{-5}$ parts per million everywhere in the light curve.
 \label{sec:starryphotodynamics}
 % ------------------------------------------------------------------------------
 
-Integrate with \textsf{planetplanet} for easy photodynamics.\todo{todo}
-
+The \textsf{starry.Map} class discussed above is convenient when the rotational
+state of the body in question and/or the position of the occultor is known,
+or when these can easily be computed by some other means. For convenience,
+\starry implements a simple Keplerian solver to compute stellar and
+planetary light curves for exoplanet systems given the orbital parameters as
+input. Users can access this functionality by instantiating a
+\textsf{starry.Star} and any number of \textsf{starry.Planet} objects:
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+from starry import Star, Planet, System
+star = Star()
+planet = Planet()
+system = System()
+\end{lstlisting}
+%
 
 % ------------------------------------------------------------------------------
 \subsection{Benchmarks}
