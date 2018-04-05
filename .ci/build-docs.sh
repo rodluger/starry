@@ -1,6 +1,4 @@
 #!/bin/bash
-set -e
-
 # Make the docs
 pip install sphinx sphinx_rtd_theme
 cd $TRAVIS_BUILD_DIR/docs
@@ -29,7 +27,3 @@ git add -f _static
 #git add -f _images
 git -c user.name='sphinx' -c user.email='sphinx' commit -m "rebuild gh-pages at ${rev}"
 git push -q -f https://$GITHUB_USER:$GITHUB_API_KEY@github.com/$TRAVIS_REPO_SLUG HEAD:gh-pages
-
-# Remove the temporary directory
-cd ..
-rm -rf tmp_html
