@@ -23,5 +23,5 @@ script:
     - py.test -v
 
 after_success:
-    - source .ci/build-paper.sh
     - if [ "$TRAVIS_BRANCH" = "master" ]; then source .ci/build-docs.sh; fi
+    - source .ci/build-paper.sh

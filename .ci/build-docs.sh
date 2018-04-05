@@ -1,8 +1,5 @@
 #!/bin/bash
-# Update documentation on gh-pages branch.
-
-# Exit on errors
-set -o errexit -o nounset
+set -e
 
 # Make the docs
 pip install sphinx sphinx_rtd_theme
