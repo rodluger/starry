@@ -85,7 +85,7 @@ PYBIND11_MODULE(starry, m) {
         The orbital classes
         ===================
         .. autoclass:: Star(r=1, L=1, m=1)
-        .. autoclass:: Planet(lmax=2, r=1, L=1.e-9, u=(0, 1, 0), prot=1, theta0=0, porb=1, inc=90, ecc=0, w=0, Omega=0, lambda0=0, tref=0)
+        .. autoclass:: Planet(lmax=2, r=1, L=1.e-9, u=(0, 1, 0), prot=1, theta0=0, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
         .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
 
     )pbdoc";
@@ -212,7 +212,7 @@ PYBIND11_MODULE(starry, m) {
             )pbdoc")
 
         .def_property("r", [](orbital::Body<double> &body){return body.r / body.UNIT_RADIUS;},
-                           [](orbital::Body<double> &body, double r){body.r = r * body.UNIT_RADIUS; body.reset();},
+                           [](orbital::Body<double> &body, double r){body.r = r * body.UNIT_RADIUS;},
             R"pbdoc(
                 Body radius in units of :py:obj:`UNIT_RADIUS`.
             )pbdoc")
@@ -343,9 +343,9 @@ PYBIND11_MODULE(starry, m) {
                 porb (float): Orbital period in days. Default 1.
                 inc (float): Orbital inclination in degrees. Default 90.
                 ecc (float): Orbital eccentricity. Default 0.
-                w (float): Longitude of pericenter in degrees. Default 0.
+                w (float): Longitude of pericenter in degrees. Default 90.
                 Omega (float): Longitude of ascending node in degrees. Default 0.
-                lambda0 (float): Mean longitude at time :py:obj:`tref` in degrees. Default 0.
+                lambda0 (float): Mean longitude at time :py:obj:`tref` in degrees. Default 90.
                 tref (float): Reference time in days. Default 0.
 
             .. autoattribute:: map
@@ -376,8 +376,8 @@ PYBIND11_MODULE(starry, m) {
                       const double&>(),
                       "lmax"_a=2, "r"_a=1, "L"_a=1.e-9, "u"_a=maps::yhat,
                       "prot"_a=1, "theta0"_a=0, "porb"_a=1,
-                      "inc"_a=90., "ecc"_a=0, "w"_a=0, "Omega"_a=0,
-                      "lambda0"_a=0, "tref"_a=0)
+                      "inc"_a=90., "ecc"_a=0, "w"_a=90, "Omega"_a=0,
+                      "lambda0"_a=90, "tref"_a=0)
 
         .def("__repr__", [](orbital::Planet<double> &planet) -> string {return planet.repr();});
 

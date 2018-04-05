@@ -274,7 +274,7 @@ namespace orbital {
                 sqrtonepluse = sqrt(1 + ecc);
                 sqrtoneminuse = sqrt(1 - ecc);
                 ecc2 = ecc * ecc;
-                norm = L / (r * r * 2 * sqrt(M_PI));
+                norm = L / (2 * sqrt(M_PI));
             };
 
             // Public methods
@@ -413,9 +413,9 @@ namespace orbital {
                    const T& porb=1.,
                    const T& inc=90.,
                    const T& ecc=0.,
-                   const T& w=0.,
+                   const T& w=90.,
                    const T& Omega=0.,
-                   const T& lambda0=0.,
+                   const T& lambda0=90.,
                    const T& tref=0.) :
                    Body<T>(lmax, r, L, u, prot, theta0, 0, porb, inc,
                            ecc, w, Omega, lambda0, tref,

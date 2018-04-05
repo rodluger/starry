@@ -1413,7 +1413,33 @@ m[5, 0] = 2
 m[5, 4] = 1
 \end{lstlisting}
 %
-The map may be quickly visualized by calling
+Printing the map to screen yields
+%
+\begin{lstlisting}[language=Python,numbers=none]
+<STARRY Map: -2 Y_{5,-3} + 2 Y_{5,0} + Y_{5,4}>
+\end{lstlisting}
+%
+Users can also directly access the spherical harmonic vector $\bvec{y}$,
+polynomial vector $\bvec{p}$, and Green's polynomial vector $\bvec{g}$
+via the attributes \textsf{m.y}, \textsf{m.p}, and \textsf{m.g}, respectively:
+%
+\begin{lstlisting}[language=Python,numbers=none]
+# m.y
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 0, 2, 0, 0, 0, 1, 0]
+
+# m.p
+[0, 0, 1.87, 0, 0, 0, 0, 0, 0, 0, -13.10, -23.48, 0, 0,
+ -13.10, 7.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16.81, 26.42,
+ 0, 0, 17.02, 17.61, 0, 0, 16.81, -8.81]
+
+# m.g
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3.73, -7.83, 0, 0, 1.86,
+ 7.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5.59, 5.28, 0, 0,
+ -16.81, 5.87, 0, 0, -16.75, -8.81])
+\end{lstlisting}
+%
+Once a map is instantiated, users may quickly visualize it by calling
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 m.show()
@@ -1699,15 +1725,61 @@ or when these can easily be computed by some other means. For convenience,
 \starry implements a simple Keplerian solver to compute stellar and
 planetary light curves for exoplanet systems given the orbital parameters as
 input. Users can access this functionality by instantiating a
-\textsf{starry.Star} and any number of \textsf{starry.Planet} objects:
+\textsf{starry.Star} and any number of \textsf{starry.Planet} objects, then
+passing them to a \textsf{starry.System} instance. Let us begin by
+creating a star:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-from starry import Star, Planet, System
-star = Star()
-planet = Planet()
-system = System()
+from starry import Star
+star = Star(r=r, m=m, L=L)
 \end{lstlisting}
 %
+where \textsf{r} is the radius, \textsf{m} is the mass, and \textsf{L} is
+the luminosity, all in solar units. By default, the body's map is set to
+the constant ($Y_{0,0}$) term, corresponding to uniform surface brightness.
+We can add quadratic limb darkening as before by editing the body's \textsf{map}
+attribute:
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+star.map.limbdark(u1, u2)
+\end{lstlisting}
+%
+Next, we can instantiate a planet by typing
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+from starry import Planet
+planet = Planet(lmax=lmax, r=r, porb=porb, ...)
+\end{lstlisting}
+%
+where \textsf{lmax} is the highest degree of the planet map, \textsf{r} is the
+planet radius in Earth radii, and \textsf{porb} is the orbital period in days.
+Several other keyword arguments may be provided; these are detailed in full
+in the \docs. As with \textsf{starry.Star}, the planet's map can be accessed
+via the \textsf{map} property. To load the Earth's map, for instance, type
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+planet.map.load_image("earth")
+\end{lstlisting}
+%
+Finally, we instantiate the planetary system, with the star always listed first:
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+from starry import System
+system = System([star, planet])
+\end{lstlisting}
+%
+We are now ready to compute the system light curve:
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+system.compute(time)
+\end{lstlisting}
+%
+where \textsf{time} is the array of times (in days) at which to compute the
+light curve. This command internally calls the \textsf{flux()} method of each
+of the surface maps, populating the \textsf{flux} attribute of each body
+with its respective light curve. The total light curve --- the sum of the
+light curves of each of the bodies in the system, including the star --- is
+stored in \textsf{system.flux}. Figure... \todo{more}
 
 % ------------------------------------------------------------------------------
 \subsection{Benchmarks}

@@ -406,6 +406,8 @@ namespace maps {
                         os << " + ";
                     } else if ((nterms > 0) && (y(n) < 0)){
                         os << " - ";
+                    } else if ((nterms == 0) && (y(n) < 0)){
+                        os << "-";
                     }
                     // Term
                     if ((y(n) == 1) || (y(n) == -1)) {
@@ -426,6 +428,8 @@ namespace maps {
                 n++;
             }
         }
+        if (nterms == 0)
+            os << "Null";
         os << ">";
         return std::string(os.str());
     }
