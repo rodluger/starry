@@ -1372,7 +1372,15 @@ python setup.py develop
 There are two primary ways of interfacing with \starry: via the surface
 map class \textsf{starry.Map} and via the celestial body system class
 \textsf{starry.System}. The former gives users the most flexibility to
-create and manipulate surface maps
+create and manipulate surface maps and compute their fluxes for a variety
+of applications, while the latter provides a quick and easy (but limited)
+way to generate complete light curves for exoplanet systems. Let us
+discuss the map class first.
+
+% ------------------------------------------------------------------------------
+\subsection{Creating a map}
+\label{sec:starrymap}
+% ------------------------------------------------------------------------------
 
 To begin using \starry, execute the following in a \Python environment:
 %
@@ -1380,13 +1388,7 @@ To begin using \starry, execute the following in a \Python environment:
 from starry import Map
 \end{lstlisting}
 %
-
-% ------------------------------------------------------------------------------
-\subsection{Creating a map}
-\label{sec:starrymap}
-% ------------------------------------------------------------------------------
-
-A \starry map is a vector of spherical harmonic coefficients, indexed by
+A \starry \textsf{Map} is a vector of spherical harmonic coefficients, indexed by
 increasing degree and order, as in \eq{by}. We can create a map of
 spherical harmonics up to degree $l_\mathrm{max} = 5$ by typing
 %
@@ -1403,7 +1405,7 @@ Say our surface map is given by the function
     \quad.
 \end{align}
 %
-To instantiate this map, we set the corresponding coefficients in \textsf{y}:
+To instantiate this map, we set the corresponding coefficients in \textsf{m}:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 m[5, -3] = -2
@@ -1420,7 +1422,7 @@ m.show()
 or
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m.animate(u=[0, 1, 0])
+m.animate(u=u)
 \end{lstlisting}
 %
 where \textsf{u} defines the axis of rotation for the animation.
@@ -1433,7 +1435,7 @@ Rotation of this map about $\xhat$ yields\python{smiley}
 
 Alternatively, users may provide the path to an image file of the
 surface map on a rectangular latitude-longitude grid or a ring-ordered
-\textsf{Healpix} map array:
+\textsf{Healpix}\footnote{\url{http://healpix.sf.net}} map array:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 m.load_image("/path/to/image.jpg")
@@ -1664,7 +1666,7 @@ although users may also specify the coefficients in \eq{qldylm} as in
 Figure~\ref{fig:transit} shows a transit light curve computed with \starry
 for $u_1 = 0.4, u_2 = 0.26$. The planet/star radius ratio is $r = 0.1$ and
 the planet transits at impact parameter $b = 0.5$. For comparison, we also
-compute the flux with \batman \citep{Kreidberg2015} and by a
+compute the flux with \batman \citep{Kreidberg2015} and with a
 high precision numerical integration of the surface integral of
 \eq{quadraticld}. The error on the transit depth for \starry flux is less
 than $10^{-5}$ parts per million everywhere in the light curve.
@@ -1773,6 +1775,10 @@ Discuss the speed tests here (Figures~\ref{fig:speed} and \ref{fig:speed_batman}
 
 Write an awesome conclusions section.\todo{todo}
 
+
+\acknowledgments
+Some of the results in this paper have been derived using the HEALPix
+\citep{Gorski2005} package.
 
 %
 \bibliography{starry}

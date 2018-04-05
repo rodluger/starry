@@ -1,5 +1,5 @@
 """Stellar transit example."""
-from starry import Map
+from starry import Map, Star, Planet, System
 from tqdm import tqdm
 import matplotlib.pyplot as pl
 import numpy as np
@@ -74,40 +74,49 @@ def NumericalFlux(b, r, u1, u2):
     return total - flux
 
 
-# Instantiate the star
-u1 = 0.4
-u2 = 0.26
-m = Map(2)
-m.limbdark(u1, u2)
-
-# Occultor (planet) params
-ro = 0.1
-npts = 500
-time = np.linspace(-1, 1, npts)
-b0 = 0.5
-P = 50.
-a = 15.
-
-# Orbital solution for zero eccentricity
-inc = np.arccos(b0 / a)
-f = 2 * np.pi / P * time
-xo = a * np.cos(np.pi / 2. + f)
-b = a * np.sqrt(1 - np.sin(np.pi / 2. + f) ** 2 * np.sin(inc) ** 2)
-yo = np.sqrt(b ** 2 - xo ** 2)
-
-# Compute and plot the starry flux
-print("Computing starry flux...")
+# Setup
 fig, ax = pl.subplots(2, sharex=True)
 fig.subplots_adjust(hspace=0.05)
-sF = m.flux(xo=xo, yo=yo, ro=ro)
-sF /= np.max(sF)
+
+# Input params
+u1 = 0.4
+u2 = 0.26
+mstar = 1       # solar masses
+rstar = 1       # solar radii
+rplanet = 0.1   # fraction of stellar radius
+b0 = 0.5        # impact parameter
+P = 50          # orbital period in days
+npts = 500
+time = np.linspace(-0.25, 0.25, npts)
+
+# Compute the semi-major axis from Kepler's third law in units of rstar
+a = ((P * 86400) ** 2 * (1.32712440018e20 * mstar) /
+     (4 * np.pi ** 2)) ** (1. / 3.) / (6.957e8 * rstar)
+
+# Get the inclination in degrees
+inc = np.arccos(b0 / a) * 180 / np.pi
+
+# Note that starry expects the planet radius in units of REARTH
+r = rplanet * 6.957e8 * rstar / 6.3781e6
+
+# Compute and plot the starry flux
+star = Star(m=mstar, r=rstar)
+star.map.limbdark(u1, u2)
+planet = Planet(r=r, inc=inc, porb=P, lambda0=90)
+system = System([star, planet])
+system.compute(time)
+sF = np.array(star.flux)
+sF /= sF[0]
 ax[0].plot(time, sF, '-', color='C0', label='starry')
 
 # Compute and plot the flux from numerical integration
 print("Computing numerical flux...")
+f = 2 * np.pi / P * time
+b = a * np.sqrt(1 - np.sin(np.pi / 2. + f) ** 2
+                * np.sin(inc * np.pi / 180) ** 2)
 nF = np.zeros_like(time)
 for i in tqdm(range(npts)):
-    nF[i] = NumericalFlux(b[i], ro, u1, u2)
+    nF[i] = NumericalFlux(b[i], rplanet, u1, u2)
 nF /= np.nanmax(nF)
 ax[0].plot(time[::20], nF[::20], 'o', color='C4', label='numerical')
 
@@ -119,10 +128,10 @@ params.u = [u1, u2]
 params.t0 = 0.
 params.ecc = 0.
 params.w = 90.
-params.rp = ro
+params.rp = rplanet
 params.a = a
 params.per = P
-params.inc = inc * 180 / np.pi
+params.inc = inc
 m = batman.TransitModel(params, time)
 bF = m.light_curve(params)
 ax[0].plot(time[::20], bF[::20], '.', color='C1', label='batman')
@@ -137,7 +146,7 @@ ax[1].set_yscale('log')
 # Appearance
 ax[0].legend(loc='lower right')
 ax[1].legend(loc='lower right')
-ax[0].set_xlim(-1, 1)
+ax[0].set_xlim(-0.25, 0.25)
 ax[0].set_ylabel('Normalized flux', fontsize=16)
 ax[1].set_ylabel('Depth error [ppm]', fontsize=16, labelpad=10)
 ax[1].set_xlabel('Time [arbitrary units]', fontsize=16)
