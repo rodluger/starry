@@ -1731,7 +1731,7 @@ creating a star:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 from starry import Star
-star = Star(r=r, m=m, L=L)
+star = Star(r=1, m=1, L=1)
 \end{lstlisting}
 %
 where \textsf{r} is the radius, \textsf{m} is the mass, and \textsf{L} is
@@ -1741,34 +1741,59 @@ We can add quadratic limb darkening as before by editing the body's \textsf{map}
 attribute:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-star.map.limbdark(u1, u2)
+star.map.limbdark(0.40, 0.26)
 \end{lstlisting}
 %
+where we arbitrarily set $u_1 = 0.40$ and $u_2 = 0.26$.
 Next, we can instantiate a planet by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 from starry import Planet
-planet = Planet(lmax=lmax, r=r, porb=porb, ...)
+planet = Planet(lmax=1, r=10, L=5.e-3, porb=4.3, prot=4.3)
 \end{lstlisting}
 %
 where \textsf{lmax} is the highest degree of the planet map, \textsf{r} is the
-planet radius in Earth radii, and \textsf{porb} is the orbital period in days.
+planet radius in Earth radii, \textsf{L} is the total planet luminosity in $L_\odot$,
+\textsf{porb} is the orbital period and \textsf{prot} is the rotational
+period, both in days.
 Several other keyword arguments may be provided; these are detailed in full
 in the \docs. As with \textsf{starry.Star}, the planet's map can be accessed
-via the \textsf{map} property. To load the Earth's map, for instance, type
+via the \textsf{map} property. Suppose we wish to give the planet a simple
+dipole map ($Y_{1,0}$) with peak brightness at the sub-stellar point.
+By default, the planet is instantiated at a transiting configuration (new phase),
+with mean longitude \textsf{lambda0} $= 90^\circ$, so we must actually set
+the corresponding coefficient in the map to be \emph{negative}:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-planet.map.load_image("earth")
+planet.map[1, 0] = -1
 \end{lstlisting}
 %
-Finally, we instantiate the planetary system, with the star always listed first:
+This ensures that the hot spot is on the side of the planet facing the star
+(away from the observer when the planet is transiting).
+\footnote{Alternatively, users may specify the map as seen from full phase and
+set \textsf{planet.lambda0 = 270}.}
+%
+
+Finally, care must always be taken to ensure the map is positive everywhere.
+In our case, this requires that the coefficient of the $Y_{0,0}$ term be at least
+$\sqrt{3}$:
+\footnote{In Cartesian coordinates, we have $Y_{0,0} = \sqrt{\frac{1}{4\pi}}$ and
+$Y_{1,0} = \sqrt{\frac{3}{4\pi}}z$. At the anti-stellar point ($z = 1$), the ratio
+of these two terms is $\sqrt{3}$, so the coefficient of $Y_{0,0}$ must be at least
+this value to ensure the anti-stellar point has a nonnegative surface intensity.}
+\begin{lstlisting}[language=Python,firstnumber=last]
+planet.map[0, 0] = 1.75
+\end{lstlisting}
+
+We are now ready to instantiate the planetary system:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 from starry import System
 system = System([star, planet])
 \end{lstlisting}
 %
-We are now ready to compute the system light curve:
+(note that the star must always be listed first).
+We can now compute the full light curve:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 system.compute(time)
@@ -1779,10 +1804,15 @@ light curve. This command internally calls the \textsf{flux()} method of each
 of the surface maps, populating the \textsf{flux} attribute of each body
 with its respective light curve. The total light curve (the sum of the
 light curves of each of the bodies in the system, including the star) is
-stored in \textsf{system.flux}. Figure~\ref{fig:system} shows... \todo{more}
+stored in \textsf{system.flux}. The top panel of Figure~\ref{fig:system} shows
+the light curve for the system we instantiated above: both the transits
+and secondary eclipses of the planet are clearly visible. For flair, we added
+a hotspot offset of $15^\circ$ to simulate advection of heat by a
+westward wind, causing the peak of the planet's phase curve to occur slightly
+before secondary eclipse (refer to the \Python script for details).
 
 %
-\begin{figure}[ht!]
+\begin{figure}[ht]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/system.pdf}
     \caption{\label{fig:system}
@@ -1799,6 +1829,11 @@ stored in \textsf{system.flux}. Figure~\ref{fig:system} shows... \todo{more}
     \end{centering}
 \end{figure}
 %
+
+The bottom panel of the figure shows a two-planet system with more elaborate
+surface maps. In addition to the transits, eclipses, and complex phase curve
+morphology, several planet-planet occultations are also visible in the
+light curve.
 
 % ------------------------------------------------------------------------------
 \subsection{Benchmarks}
@@ -1867,6 +1902,17 @@ Discuss the speed tests here (Figures~\ref{fig:speed} and \ref{fig:speed_batman}
              }
     \end{centering}
 \end{figure}
+
+% ==============================================================================
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+\section{Caveats}
+\label{sec:caveats}
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+% ==============================================================================
+
+Important caveats.\todo{todo}
 
 % ==============================================================================
 % ------------------------------------------------------------------------------

@@ -25,7 +25,7 @@ star = Star(m=1, r=1, L=1)
 # Give the star a quadratic limb darkening profile
 star.map.limbdark(0.4, 0.26)
 
-# Instantiate planet c
+# Instantiate planet b
 b = Planet(r=10,
            L=5e-3,
            inc=90,
@@ -35,7 +35,7 @@ b = Planet(r=10,
            tref=2)
 
 # Give the planet a simple dipole map
-b.map[0, 0] = 2
+b.map[0, 0] = 1.75
 b.map[1, 0] = -1
 
 # Rotate the planet map to produce a hotspot offset of 15 degrees
