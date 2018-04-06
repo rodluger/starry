@@ -57,7 +57,7 @@ namespace solver {
     // This is the Mandel & Agol solution for linear limb darkening,
     // reparametrized for speed
     template <typename T>
-    T s2(Greens<T>& G) {
+    inline T s2(Greens<T>& G) {
 
         // Taylor expand for r > 1?
         if ((G.taylor) && (G.r() >= 1))
@@ -95,6 +95,18 @@ namespace solver {
             }
         }
         return (2. * G.pi / 3.) * (1 - 1.5 * Lambda - step(G.r() - G.b()));
+    }
+
+    // Compute the n=0 term of the *s^T* occultation solution vector.
+    template <typename T>
+    inline T s0(Greens<T>& G) {
+        return G.lam + G.pi_over_2 + G.sinlam() * G.coslam() - G.r(2) * (G.phi + G.pi_over_2 + G.sinphi() * G.cosphi());
+    }
+
+    // Compute the n=6 term of the *s^T* occultation solution vector.
+    template <typename T>
+    inline T s6(Greens<T>& G) {
+        return 0.4 * G.coslam(5) - G.r(4) * (-0.4 * G.r() * G.cosphi(5) + G.b() * (0.75 * G.phi + 0.25 * G.sinphi() * G.cosphi(3) - 0.25 * G.sinphi(3) * G.cosphi() + G.sinphi() * G.cosphi() + 0.375 * G.pi));
     }
 
     // Compute the primitive integral helper matrix H
@@ -523,6 +535,7 @@ namespace solver {
             // The value of pi, computed at
             // the user-requested precision
             T pi;
+            T pi_over_2;
 
             // Constructor
             Greens(int lmax, bool taylor=true) :
@@ -548,6 +561,7 @@ namespace solver {
 
                 // Compute pi at the actual precision of the T type
                 pi = acos((T)(-1.));
+                pi_over_2 = 0.5 * pi;
 
             }
 

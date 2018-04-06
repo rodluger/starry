@@ -163,6 +163,9 @@ def compare_to_batman():
     ax.set_xscale('log')
     ax.set_yscale('log')
 
+    # Print average ratio
+    print(np.nanmedian(starry_time / batman_time))
+
     fig.savefig("speed_batman.pdf", bbox_inches='tight')
 
 
