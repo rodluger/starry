@@ -96,12 +96,10 @@ namespace orbital {
             tsec = time(t) * DAY;
 
             // Take an orbital step
-            for (i = 0; i < bodies.size(); i++) {
+            for (i = 0; i < bodies.size(); i++)
                 bodies[i]->step(tsec, t);
-                bodies[i]->computed = false;
-            }
 
-            // Find occultations and compute the flux
+            // Compute any occultations
             for (i = 0; i < bodies.size(); i++) {
                 for (j = i + 1; j < bodies.size(); j++) {
                     // Determine the relative positions of the two bodies
@@ -118,19 +116,9 @@ namespace orbital {
                     // Compute the flux in occultation
                     if (sqrt(xo * xo + yo * yo) < 1 + ro) {
                         bodies[p]->getflux(tsec, t, xo, yo, ro);
-                        bodies[p]->computed = true;
                     }
                 }
             }
-
-            // Compute the total flux for the remaining bodies
-            for (i = 0; i < bodies.size(); i++) {
-                if (!bodies[i]->computed) {
-                    bodies[i]->getflux(tsec, t);
-                    bodies[i]->computed = true;
-                }
-            }
-
         }
 
         // Add up all the fluxes
@@ -166,6 +154,9 @@ namespace orbital {
             T ecc2;
             T cosOcosi;
             T sinOcosi;
+
+            // Total flux at current timestep
+            T totalflux;
 
             // Methods
             void computeM(const T& time);
@@ -293,10 +284,10 @@ namespace orbital {
             return fmod(theta0 + 2 * M_PI / prot * (time - tref), 2 * M_PI);
     }
 
-    // Compute the visible flux
+    // Compute the flux in occultation
     template <class T>
     void Body<T>::getflux(const T& time, const int& t, const T& xo, const T& yo, const T& ro){
-        flux(t) = (norm / map.get_coeff(0, 0)) * map.flux(u, theta(time), xo, yo, ro);
+        flux(t) += (norm / map.get_coeff(0, 0)) * map.flux(u, theta(time), xo, yo, ro) - totalflux;
     }
 
     // Compute the mean anomaly
@@ -344,27 +335,32 @@ namespace orbital {
             x(t) = 0;
             y(t) = 0;
             z(t) = 0;
-            return;
+        } else {
+
+            // Mean anomaly
+            computeM(time);
+
+            // Eccentric anomaly
+            computeE();
+
+            // True anomaly
+            computef();
+
+            // Orbital radius
+            rorb = a * (1 - ecc2) / (1. + ecc * cos(f));
+
+            // Murray and Dermott p. 51
+            cwf = cos(w + f);
+            swf = sin(w + f);
+            x(t) = rorb * (cosO * cwf - sinOcosi * swf);
+            y(t) = rorb * (sinO * cwf + cosOcosi * swf);
+            z(t) = rorb * swf * sini;
+            
         }
 
-        // Mean anomaly
-        computeM(time);
-
-        // Eccentric anomaly
-        computeE();
-
-        // True anomaly
-        computef();
-
-        // Orbital radius
-        rorb = a * (1 - ecc2) / (1. + ecc * cos(f));
-
-        // Murray and Dermott p. 51
-        cwf = cos(w + f);
-        swf = sin(w + f);
-        x(t) = rorb * (cosO * cwf - sinOcosi * swf);
-        y(t) = rorb * (sinO * cwf + cosOcosi * swf);
-        z(t) = rorb * swf * sini;
+        // Compute total flux this timestep
+        totalflux = (norm / map.get_coeff(0, 0)) * map.flux(u, theta(time));
+        flux(t) = totalflux;
 
         return;
 
