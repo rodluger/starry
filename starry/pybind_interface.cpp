@@ -85,7 +85,7 @@ PYBIND11_MODULE(starry, m) {
         The orbital classes
         ===================
         .. autoclass:: Star(r=1, L=1, m=1)
-        .. autoclass:: Planet(lmax=2, r=1, L=1.e-9, u=(0, 1, 0), prot=1, theta0=0, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
+        .. autoclass:: Planet(lmax=2, r=1, L=0, u=(0, 1, 0), prot=0, theta0=0, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
         .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
 
     )pbdoc";
@@ -230,7 +230,7 @@ PYBIND11_MODULE(starry, m) {
             )pbdoc")
 
         .def_property("prot", [](orbital::Body<double> &body){return body.prot / DAY;},
-                              [](orbital::Body<double> &body, double prot){body.prot = prot * DAY;},
+                              [](orbital::Body<double> &body, double prot){body.prot = prot * DAY; body.reset();},
             R"pbdoc(
                 Rotation period in days.
             )pbdoc")
@@ -248,7 +248,7 @@ PYBIND11_MODULE(starry, m) {
             )pbdoc")
 
         .def_property("porb", [](orbital::Body<double> &body){return body.porb / DAY;},
-                              [](orbital::Body<double> &body, double porb){body.porb = porb * DAY;},
+                              [](orbital::Body<double> &body, double porb){body.porb = porb * DAY; body.reset();},
             R"pbdoc(
                 Orbital period in days.
             )pbdoc")
@@ -336,9 +336,9 @@ PYBIND11_MODULE(starry, m) {
             Args:
                 lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
                 r (float): Body radius in Earth radii. Default 1.
-                L (float): Body luminosity in units of LSUN. Default 1.e-9.
+                L (float): Body luminosity in units of LSUN. Default 0.
                 u (ndarray): A unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
-                prot (float): Rotation period in days. Default 1.
+                prot (float): Rotation period in days. Default no rotation.
                 theta0 (float): Rotation phase at time :py:obj:`tref` in degrees. Default 0.
                 porb (float): Orbital period in days. Default 1.
                 inc (float): Orbital inclination in degrees. Default 90.
@@ -374,8 +374,8 @@ PYBIND11_MODULE(starry, m) {
                       const double&, const double&,
                       const double&, const double&,
                       const double&>(),
-                      "lmax"_a=2, "r"_a=1, "L"_a=1.e-9, "u"_a=maps::yhat,
-                      "prot"_a=1, "theta0"_a=0, "porb"_a=1,
+                      "lmax"_a=2, "r"_a=1, "L"_a=0., "u"_a=maps::yhat,
+                      "prot"_a=0, "theta0"_a=0, "porb"_a=1,
                       "inc"_a=90., "ecc"_a=0, "w"_a=90, "Omega"_a=0,
                       "lambda0"_a=90, "tref"_a=0)
 

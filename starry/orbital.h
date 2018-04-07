@@ -119,6 +119,7 @@ namespace orbital {
                     }
                 }
             }
+
         }
 
         // Add up all the fluxes
@@ -154,6 +155,8 @@ namespace orbital {
             T ecc2;
             T cosOcosi;
             T sinOcosi;
+            T angvelorb;
+            T angvelrot;
 
             // Total flux at current timestep
             T totalflux;
@@ -266,6 +269,8 @@ namespace orbital {
                 sqrtoneminuse = sqrt(1 - ecc);
                 ecc2 = ecc * ecc;
                 norm = L / (2 * sqrt(M_PI));
+                angvelorb = 2 * M_PI / porb;
+                angvelrot = 2 * M_PI / prot;
             };
 
             // Public methods
@@ -277,50 +282,51 @@ namespace orbital {
 
     // Rotation angle as a function of time
     template <class T>
-    T Body<T>::theta(const T& time) {
+    inline T Body<T>::theta(const T& time) {
         if ((prot == 0) || isinf(prot))
             return theta0;
         else
-            return fmod(theta0 + 2 * M_PI / prot * (time - tref), 2 * M_PI);
+            return fmod(theta0 + angvelrot * (time - tref), 2 * M_PI);
     }
 
     // Compute the flux in occultation
     template <class T>
-    void Body<T>::getflux(const T& time, const int& t, const T& xo, const T& yo, const T& ro){
-        flux(t) += (norm / map.get_coeff(0, 0)) * map.flux(u, theta(time), xo, yo, ro) - totalflux;
+    inline void Body<T>::getflux(const T& time, const int& t, const T& xo, const T& yo, const T& ro){
+        if (L != 0)
+            flux(t) += (norm / map.get_coeff(0, 0)) * map.flux(u, theta(time), xo, yo, ro) - totalflux;
     }
 
     // Compute the mean anomaly
     template <class T>
-    void Body<T>::computeM(const T& time) {
-        M = fmod(M0 + 2 * M_PI / porb * (time - tref), 2 * M_PI);
+    inline void Body<T>::computeM(const T& time) {
+        M = fmod(M0 + angvelorb * (time - tref), 2 * M_PI);
     }
 
     // Compute the eccentric anomaly. Adapted from
     // https://github.com/lkreidberg/batman/blob/master/c_src/_rsky.c
     template <class T>
-    void Body<T>::computeE() {
+    inline void Body<T>::computeE() {
         // Initial condition
         E = M;
+        if (ecc > 0) {
 
-        // The trivial circular case
-        if (ecc == 0.) return;
+            // Iterate
+            for (int iter = 0; iter <= maxiter; iter++) {
+                E = E - (E - ecc * sin(E) - M) / (1. - ecc * cos(E));
+                if (fabs(E - ecc * sin(E) - M) <= eps) return;
+            }
 
-        // Iterate
-        for (int iter = 0; iter <= maxiter; iter++) {
-            E = E - (E - ecc * sin(E) - M) / (1. - ecc * cos(E));
-            if (fabs(E - ecc * sin(E) - M) <= eps) return;
+            // Didn't converge!
+            throw errors::Kepler();
+
         }
-
-        // Didn't converge!
-        throw errors::Kepler();
 
     }
 
     // Compute the true anomaly
     template <class T>
-    void Body<T>::computef() {
-        if (ecc == 0.) f = E;
+    inline void Body<T>::computef() {
+        if (ecc == 0) f = E;
         else f = 2. * atan2(sqrtonepluse * sin(E / 2.),
                             sqrtoneminuse * cos(E / 2.));
     }
@@ -328,7 +334,7 @@ namespace orbital {
     // Compute the instantaneous x, y, and z positions of the
     // body with a simple Keplerian solver.
     template <class T>
-    void Body<T>::step(const T& time, const int& t){
+    inline void Body<T>::step(const T& time, const int& t){
 
         // Primary is fixed at the origin in the Keplerian solver
         if (is_primary) {
@@ -347,7 +353,10 @@ namespace orbital {
             computef();
 
             // Orbital radius
-            rorb = a * (1 - ecc2) / (1. + ecc * cos(f));
+            if (ecc > 0)
+                rorb = a * (1 - ecc2) / (1. + ecc * cos(f));
+            else
+                rorb = a;
 
             // Murray and Dermott p. 51
             cwf = cos(w + f);
@@ -355,11 +364,14 @@ namespace orbital {
             x(t) = rorb * (cosO * cwf - sinOcosi * swf);
             y(t) = rorb * (sinO * cwf + cosOcosi * swf);
             z(t) = rorb * swf * sini;
-            
+
         }
 
         // Compute total flux this timestep
-        totalflux = (norm / map.get_coeff(0, 0)) * map.flux(u, theta(time));
+        if (L != 0)
+            totalflux = 0;
+        else
+            totalflux = (norm / map.get_coeff(0, 0)) * map.flux(u, theta(time));
         flux(t) = totalflux;
 
         return;
@@ -402,9 +414,9 @@ namespace orbital {
         public:
             Planet(int lmax=2,
                    const T& r=1.,
-                   const T& L=1.e-9,
+                   const T& L=0.,
                    const UnitVector<T>& u=yhat,
-                   const T& prot=1.,
+                   const T& prot=0.,
                    const T& theta0=0,
                    const T& porb=1.,
                    const T& inc=90.,

@@ -8,7 +8,6 @@ except ImportError:
 import matplotlib.pyplot as pl
 from tqdm import tqdm
 import numpy as np
-import batman
 
 
 def speed():
@@ -95,80 +94,5 @@ def speed():
     fig.savefig("speed.pdf", bbox_inches='tight')
 
 
-def compare_to_batman():
-    """Compare to batman for a quadratically limb-darkened star."""
-    # Params
-    u1 = 0.4
-    u2 = 0.26
-    ro = 0.1
-    b0 = 0.5
-    P = 50.
-    a = 15.
-    number = 10
-    nN = 8
-    Nmax = 5
-    Narr = np.logspace(1, Nmax, nN)
-    starry_time = np.zeros(nN)
-    batman_time = np.zeros(nN)
-
-    # Loop over number of cadences
-    for i, N in enumerate(Narr):
-        # Time array
-        time = np.linspace(-1, 1, N)
-
-        # Compute starry flux
-        ylm = starry.Map(2)
-        ylm.limbdark(u1, u2)
-        inc = np.arccos(b0 / a)
-        f = 2 * np.pi / P * time
-        xo = a * np.cos(np.pi / 2. + f)
-        b = a * np.sqrt(1 - np.sin(np.pi / 2. + f) ** 2 * np.sin(inc) ** 2)
-        yo = np.sqrt(b ** 2 - xo ** 2)
-
-        # Time it!
-        builtins.__dict__.update(locals())
-        starry_time[i] = timeit.timeit(
-            "ylm.flux(xo=xo, yo=yo, ro=ro)", number=number) / number
-
-        # Compute batman flux
-        params = batman.TransitParams()
-        params.limb_dark = "quadratic"
-        params.u = [u1, u2]
-        params.t0 = 0.
-        params.ecc = 0.
-        params.w = 90.
-        params.rp = ro
-        params.a = a
-        params.per = P
-        params.inc = inc * 180 / np.pi
-        m = batman.TransitModel(params, time, nthreads=1)
-
-        # Time it!
-        builtins.__dict__.update(locals())
-        builtins.__dict__.update(globals())
-        batman_time[i] = timeit.timeit(
-            "m.light_curve(params)", number=number) / number
-
-    # Plot
-    fig, ax = pl.subplots(1, figsize=(4, 3))
-    ax.plot(Narr, starry_time, 'o', ms=2, color='C0')
-    ax.plot(Narr, starry_time, '-', lw=0.5, color='C0', label='starry')
-    ax.plot(Narr, batman_time, 'o', ms=2, color='C1')
-    ax.plot(Narr, batman_time, '-', lw=0.5, color='C1', label='batman')
-
-    # Tweak and save
-    ax.legend(fontsize=9, loc='upper left')
-    ax.set_ylabel("Time [s]", fontsize=10)
-    ax.set_xlabel("Number of points", fontsize=10)
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-
-    # Print average ratio
-    print(np.nanmedian(starry_time / batman_time))
-
-    fig.savefig("speed_batman.pdf", bbox_inches='tight')
-
-
 if __name__ == "__main__":
     speed()
-    compare_to_batman()
