@@ -368,7 +368,7 @@ namespace orbital {
         }
 
         // Compute total flux this timestep
-        if (L != 0)
+        if (L == 0)
             totalflux = 0;
         else
             totalflux = (norm / map.get_coeff(0, 0)) * map.flux(u, theta(time));
