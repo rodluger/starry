@@ -67,7 +67,12 @@ namespace maps {
 
             Vector<T> basis;
             bool needs_update;
+
+            // Keep track of whether the user has set
+            // any non-limb darkening coefficients.
             bool radial_symmetry;
+            bool is_limbdark;
+            T limbdark_total_flux;
 
             // Temporary variables
             Vector<T> tmpvec;
@@ -122,6 +127,8 @@ namespace maps {
                 tmpu3 = 0;
                 basis.resize(N, 1);
                 radial_symmetry = true;
+                is_limbdark = false;
+                limbdark_total_flux = 0;
                 use_mp = false;
                 update(true);
             }
@@ -253,6 +260,8 @@ namespace maps {
     void Map<T>::rotate(UnitVector<T>& u, T theta) {
         apply_rotation(u, cos(theta), sin(theta), y, y);
         needs_update = true;
+        radial_symmetry = false;
+        is_limbdark = false;
     }
 
     // Shortcut to rotate the base map in-place given `costheta` and `sintheta`
@@ -260,6 +269,8 @@ namespace maps {
     void Map<T>::rotate(UnitVector<T>& u, T costheta, T sintheta) {
         apply_rotation(u, costheta, sintheta, y, y);
         needs_update = true;
+        radial_symmetry = false;
+        is_limbdark = false;
     }
 
     // Shortcut to rotate an arbitrary map given `theta`
@@ -281,18 +292,27 @@ namespace maps {
     T Map<T>::flux(UnitVector<T>& u, T theta, T xo, T yo, T ro,
                    bool numerical, double tol) {
 
+        // Impact parameter
+        T b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) return 0;
+
+        // If we're doing quadratic limb darkening,
+        // let's skip all the overhead
+        if ((is_limbdark) && (ro < 1) && (!numerical) && (!use_mp)) {
+            if ((b >= 1 + ro) || (ro == 0))
+                return limbdark_total_flux;
+            else
+                return solver::QuadLimbDark(G, b, ro, g(0), g(2), g(8));
+        }
+
         // Is the map currently radially symmetric?
         bool symm = radial_symmetry;
 
         // Pointer to the map we're integrating
         // (defaults to the base map)
         Vector<T>* ptry = &y;
-
-        // Impact parameter
-        T b = sqrt(xo * xo + yo * yo);
-
-        // Check for complete occultation
-        if (b <= ro - 1) return 0;
 
         // Rotate the map into view if necessary and update our pointer
         if (theta != 0) {
@@ -355,9 +375,11 @@ namespace maps {
     template <class T>
     void Map<T>::set_coeff(int l, int m, T coeff) {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
-            y(l * l + l + m) = coeff;
+            int n = l * l + l + m;
+            y(n) = coeff;
             needs_update = true;
             if (m != 0) radial_symmetry = false;
+            is_limbdark = false;
         } else
             std::cout << "ERROR: Invalid value for `l` and/or `m`." << std::endl;
     }
@@ -380,6 +402,12 @@ namespace maps {
         set_coeff(0, 0, 2 * sqrt(M_PI) / 3. * (3 - 3 * u1 - 4 * u2));
         set_coeff(1, 0, 2 * sqrt(M_PI / 3.) * (u1 + 2 * u2));
         set_coeff(2, 0, -4. / 3. * sqrt(M_PI / 5) * u2);
+        radial_symmetry = true;
+        // Pre-compute the greens polynomials so we can
+        // breeze through the flux calculation
+        g = C.A * y;
+        limbdark_total_flux = G.pi * g(0) + 2. * G.pi / 3. * g(2) + G.pi_over_2 * g(8);
+        is_limbdark = true;
     }
 
     // Reset the map

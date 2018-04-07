@@ -1,5 +1,5 @@
 """Stellar transit example."""
-from starry import Map, Star, Planet, System
+from starry import Star, Planet, System
 from tqdm import tqdm
 import matplotlib.pyplot as pl
 import numpy as np
@@ -102,6 +102,7 @@ r = rplanet * 6.957e8 * rstar / 6.3781e6
 # Compute and plot the starry flux
 star = Star(m=mstar, r=rstar)
 star.map.limbdark(u1, u2)
+
 planet = Planet(r=r, inc=inc, porb=P, lambda0=90)
 system = System([star, planet])
 system.compute(time)

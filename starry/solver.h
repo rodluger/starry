@@ -65,6 +65,9 @@ namespace solver {
 
         T Lambda;
         T xi = 2 * G.br * (4 - 7 * G.r(2) - G.b(2));
+        T bpr = G.b() + G.r();
+        T bpr2 = bpr * bpr;
+        T bmr = G.b() - G.r();
         if (G.b() == 0) {
             Lambda = -2. / 3. * pow(1. - G.r(2), 1.5);
         } else if (G.b() == G.r()) {
@@ -81,32 +84,70 @@ namespace solver {
         } else {
             if (G.ksq() < 1) {
                 // Note: Using Eric Agol's reparametrized solution
-                Lambda = (((G.r() + G.b()) * (G.r() + G.b()) - 1) /
-                           (G.r() + G.b()) * (-2 * G.r() * (2 * (G.r() + G.b()) * (G.r() + G.b()) + (G.r() + G.b()) * (G.r() - G.b()) - 3) * G.ELL.K() + G.ELL.PI())
+                Lambda = ((bpr2 - 1) / bpr * (-2 * G.r() * (2 * bpr2 - bpr * bmr - 3) * G.ELL.K() + G.ELL.PI())
                          - 2 * xi * G.ELL.E()) / (9 * G.pi * sqrt(G.br));
             } else if (G.ksq() > 1) {
                 // Note: Using Eric Agol's reparametrized solution
-                Lambda = 2 * ((1 - (G.r() + G.b()) * (G.r() + G.b())) * (sqrt(1 - (G.b() - G.r()) * (G.b() - G.r())) * G.ELL.K() + G.ELL.PI())
-                         - sqrt(1 - (G.b() - G.r()) * (G.b() - G.r())) * (4 - 7 * G.r(2) - G.b(2)) * G.ELL.E()) / (9 * G.pi);
+                T bmr2 = bmr * bmr;
+                Lambda = 2 * ((1 - bpr2) * (sqrt(1 - bmr2) * G.ELL.K() + G.ELL.PI())
+                         - sqrt(1 - bmr2) * (4 - 7 * G.r(2) - G.b(2)) * G.ELL.E()) / (9 * G.pi);
             } else {
                 Lambda = 2. / (3. * G.pi) * acos(1. - 2 * G.r()) -
                          4 / (9 * G.pi) * (3 + 2 * G.r() - 8 * G.r(2)) * sqrt(G.br) -
                          2. / 3. * step(G.r() - 0.5);
             }
         }
-        return (2. * G.pi / 3.) * (1 - 1.5 * Lambda - step(G.r() - G.b()));
+        return (2. * G.pi / 3.) * (1 - 1.5 * Lambda - step(-bmr));
     }
 
-    // Compute the n=0 term of the *s^T* occultation solution vector.
+    // Compute the flux for a transit of a quadratically limb-darkened star
+    // This code has been stripped of a lot of the overhead for speed, so
+    // it may be a bit opaque. Basically, for a quadratically limb-darkened star,
+    // the only terms that matter in the Greens polynomial basis are those at
+    // indices n = 0, 2, 4, and 8. We therefore only compute those indices of the
+    // solution vector -- we do it directly, without any recurrence relations.
+    // Note, importantly, that the term g(4) is *always* 1/3 * g(8), so we fold
+    // that into `s8` below.
     template <typename T>
-    inline T s0(Greens<T>& G) {
-        return G.lam + G.pi_over_2 + G.sinlam() * G.coslam() - G.r(2) * (G.phi + G.pi_over_2 + G.sinphi() * G.cosphi());
-    }
+    inline T QuadLimbDark(Greens<T>& G, T& b, T& r, T& g0, T& g2, T& g8) {
 
-    // Compute the n=6 term of the *s^T* occultation solution vector.
-    template <typename T>
-    inline T s6(Greens<T>& G) {
-        return 0.4 * G.coslam(5) - G.r(4) * (-0.4 * G.r() * G.cosphi(5) + G.b() * (0.75 * G.phi + 0.25 * G.sinphi() * G.cosphi(3) - 0.25 * G.sinphi(3) * G.cosphi() + G.sinphi() * G.cosphi() + 0.375 * G.pi));
+        // Initialize only the necessary variables
+        T s0, s8;
+        G.br = b * r;
+        G.b.reset(b);
+        G.r.reset(r);
+        G.ksq.reset((1 - G.r(2) - G.b(2) + 2 * G.br) / (4 * G.br));
+        G.k = sqrt(G.ksq());
+        G.ELL.reset();
+
+        if ((abs(1 - r) < b) && (b < 1 + r)) {
+            G.sinphi.reset((1 - G.r(2) - G.b(2)) / (2 * G.br));
+            G.cosphi.reset(sqrt(1 - G.sinphi() * G.sinphi()));
+            G.sinlam.reset((1 - G.r(2) + G.b(2)) / (2 * G.b()));
+            G.coslam.reset(sqrt(1 - G.sinlam() * G.sinlam()));
+            G.phi = asin(G.sinphi());
+            G.lam = asin(G.sinlam());
+            s0 = G.lam + G.pi_over_2 + G.sinlam() * G.coslam() -
+                 G.r(2) * (G.phi + G.pi_over_2 + G.sinphi() * G.cosphi());
+            s8 = 0.5 * (G.pi_over_2 + G.lam) + (1. / 3.) * G.coslam() * G.sinlam() -
+                 (1. / 6.) * G.coslam(3) * G.sinlam() + (1. / 6.) * G.coslam() * G.sinlam(3) -
+                 (G.r(2) * G.b(2) * (G.pi_over_2 + G.phi + G.cosphi() * G.sinphi()) -
+                  G.r(3) * G.b() * G.cosphi() * (1. + (1. / 3.) * G.cosphi(2) - G.sinphi(2)) +
+                  G.r(4) * (0.5 * (G.pi_over_2 + G.phi) + (1. / 3.) * G.cosphi() * G.sinphi() -
+                            (1. / 6.) * G.cosphi(3) * G.sinphi() + (1. / 6.) * G.cosphi() * G.sinphi(3)));
+        } else {
+            G.sinphi.reset(1);
+            G.cosphi.reset(0);
+            G.sinlam.reset(1);
+            G.coslam.reset(0);
+            G.phi = 0.5 * G.pi;
+            G.lam = 0.5 * G.pi;
+            s0 = G.pi * (1 - G.r(2));
+            s8 = G.pi_over_2 - G.pi * G.r(2) * (0.5 * G.r(2) + G.b(2));
+        }
+
+        return s0 * g0 + s2(G) * g2 + s8 * g8;
+
     }
 
     // Compute the primitive integral helper matrix H
