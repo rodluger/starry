@@ -4,6 +4,7 @@
 #include <pybind11/stl.h>
 #include <Eigen/Core>
 #include <cmath>
+#include <stdlib.h>
 #include "constants.h"
 #include "ellip.h"
 #include "maps.h"
@@ -401,6 +402,7 @@ PYBIND11_MODULE(starry, m) {
             .. autoattribute:: y
             .. autoattribute:: p
             .. autoattribute:: g
+            .. automethod:: minimum()
             .. automethod:: load_image(image)
             .. automethod:: load_healpix(image)
             .. automethod:: show(cmap='plasma', res=300)
@@ -529,22 +531,22 @@ PYBIND11_MODULE(starry, m) {
 
         .def_property_readonly("lmax", [](maps::Map<double> &map){return map.lmax;},
             R"pbdoc(
-                The highest spherical harmonic order of the map.
+                The highest spherical harmonic order of the map. *Read-only.*
             )pbdoc")
 
         .def_property_readonly("y", [](maps::Map<double> &map){map.update(true); return map.y;},
             R"pbdoc(
-                The spherical harmonic map vector.
+                The spherical harmonic map vector. *Read-only.*
             )pbdoc")
 
         .def_property_readonly("p", [](maps::Map<double> &map){map.update(true); return map.p;},
             R"pbdoc(
-                The polynomial map vector.
+                The polynomial map vector. *Read-only.*
             )pbdoc")
 
         .def_property_readonly("g", [](maps::Map<double> &map){map.update(true); return map.g;},
             R"pbdoc(
-                The Green's polynomial map vector.
+                The Green's polynomial map vector. *Read-only.*
             )pbdoc")
 
         .def("__setitem__", [](maps::Map<double>& map, vector<int> lm, double coeff){

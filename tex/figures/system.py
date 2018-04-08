@@ -98,4 +98,6 @@ sF /= sF[0]
 ax[1].plot(time, sF, '-', color='C0')
 
 # Save
+for tick in ax[0].get_xticklabels() + ax[1].get_xticklabels():
+    tick.set_fontsize(14)
 pl.savefig('system.pdf', bbox_inches='tight')
