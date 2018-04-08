@@ -578,6 +578,26 @@ PYBIND11_MODULE(starry, m) {
         // This is where things go nuts: Let's call Python from C++
         //
 
+        .def("minimum", [](maps::Map<double> &map) -> double {
+            map.update();
+            py::object minimize = py::module::import("starry_maps").attr("minimize");
+            return minimize(map.p).cast<double>();
+        },
+        R"pbdoc(
+            Find the global minimum of the map.
+
+            This routine wraps :py:class:`scipy.optimize.minimize` to find
+            the global minimum of the surface map. This is useful for ensuring
+            that the surface map is nonnegative everywhere. If a negative value
+            is returned, add this value to the `l = 0, m = 0` coefficient of the
+            map to force the map to not go negative.
+
+            .. note:: Because this routine wraps a Python wrapper of a C function \
+                      to perform a non-linear optimization in three dimensions, it is \
+                      **slow** and should probably not be used repeatedly when fitting \
+                      a map to data!
+        )pbdoc")
+
         .def("load_image", [](maps::Map<double> &map, string& image) {
             py::object load_map = py::module::import("starry_maps").attr("load_map");
             Vector<double> y = load_map(image, map.lmax).cast<Vector<double>>();
