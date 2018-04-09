@@ -98,6 +98,7 @@ def compare_to_numerical():
     lmax = 6
     number = 1
     res = 300
+    nstarry = 1000
     ylm = starry.Map(lmax)
     X, Y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 
@@ -108,7 +109,7 @@ def compare_to_numerical():
                                         ylm.evaluate(x=x, y=y), b, r)
 
         def fstar(self):
-            self.vstar = ylm.flux(yo=b, ro=r)
+            self.vstar = ylm.flux(xo=np.zeros(nstarry), yo=b, ro=r)[0]
 
         def fmesh(self):
             self.vmesh = ylm.flux(yo=b, ro=r, numerical=True)
@@ -133,7 +134,7 @@ def compare_to_numerical():
             ylm[l, m] = np.random.random()
         # Time the runs
         builtins.__dict__.update(locals())
-        time_starry[l] = timeit.timeit('funcs.fstar()', number=1)
+        time_starry[l] = timeit.timeit('funcs.fstar()', number=1) / nstarry
         time_numer[l] = timeit.timeit('funcs.fnumer()', number=1)
         time_mesh[l] = timeit.timeit('funcs.fmesh()', number=1)
         time_grid[l] = timeit.timeit('funcs.fgrid()', number=1)

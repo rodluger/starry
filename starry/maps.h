@@ -142,6 +142,7 @@ namespace maps {
             void rotate(UnitVector<T>& u, T theta);
             void rotate(UnitVector<T>& u, T costheta, T sintheta);
             void update(bool force=false);
+            void random(double beta=0);
             void set_coeff(int l, int m, T coeff);
             void limbdark(T u1=0, T u2=0);
             T get_coeff(int l, int m);
@@ -416,6 +417,24 @@ namespace maps {
         y.setZero(N);
         needs_update = true;
         radial_symmetry = true;
+    }
+
+    // Generate a random map with a given power spectrum power index `beta`
+    template <class T>
+    void Map<T>::random(double beta) {
+        int l, m, n;
+        double norm;
+        Vector<double> coeffs;
+        set_coeff(0, 0, 1.);
+        for (l = 1; l < lmax + 1; l++) {
+            coeffs = Vector<double>::Random(2 * l + 1);
+            norm = pow(l, beta) / coeffs.squaredNorm();
+            n = 0;
+            for (m = -l; m < l + 1; m++) {
+                set_coeff(l, m, coeffs(n) * norm);
+                n++;
+            }
+        }
     }
 
     // Return a human-readable map string
