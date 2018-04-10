@@ -17,8 +17,8 @@
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
 \author{Javid Lustig-Fleming}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
-\author{Russel Deitrick}
-\affil{Somewhere in Switzerland}
+\author{Russell Deitrick}
+\affil{Center~for~Space~and~Habitability, University~of~Bern, Bern, Switzerland}
 \author{Daniel Foreman-Mackey}
 \affil{Center~for~Computational~Astrophysics, Flatiron~Institute, New~York, NY}
 
@@ -33,7 +33,7 @@
     here applies to the computation of stellar transit light curves,
     planetary secondary eclipse light curves, and planet-planet/planet-moon
     occultation light curves, as well as thermal (rotational) phase curves.
-    We present \starry, a photodynamical code written in \cpp
+    We present \starry, an open-source photodynamical code written in \cpp
     and wrapped in \Python that computes these light curves. \starry also
     computes analytical derivatives of the light curves with respect to all input
     parameters for use in gradient-based inference schemes such as
@@ -48,6 +48,9 @@
 %
 \section{Introduction}
 \label{sec:intro}
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+% ==============================================================================
 
 Our understanding of the surface of Earth and the other planets in our solar
 system starts with the creation of maps.  Mapping the colors, compositions, and
@@ -73,33 +76,57 @@ opened the possibility of applying the mapping technique to exoplanets with
 solid or liquid surfaces
 \citep[e.g.,][]{Cowan2012,CowanFuentesHaggard2013,CowanFujii2017,Fujii2017,LugerLustigYaegerAgol2017}.
 
-
 %
-% NOTE: Phase curves are a subset of rotational light curves when a planet is tidally locked.
 %
-\todo{more}
+%
+\noindent
+\begin{itemize}
+    \item Phase curves are a subset of rotational light curves
+          when a planet is tidally locked.\todo{todo}
+    \item Cite \citet{Pal2012} and mention Green's theorem.
+    \item Discuss JWST and prospects for exocartography.
+    \item Mention other relevant papers.
+    \item ...
+\end{itemize}
+%
+%
+%
 
-
-We provide links to \Python code (\pythonlogo{}) to reproduce all
-figures in this paper, as well as links to \Mathematica \citep{Mathematica}
+This paper is organized as follows: in \S\ref{sec:surfacemaps} we discuss the
+real spherical harmonics and introduce our mathematical formalism for
+dealing with spherical harmonic surface maps. In \S\ref{sec:lightcurves} we
+discuss how to compute analytical phase curves and occultation light curves
+for these surface maps. In \S\ref{sec:starrycode} we introduce our
+photodynamical code, \starry, and discuss how to use it to compute full
+light curves for systems of exoplanets and other celestial bodies. We
+present important caveats in \S\ref{sec:caveats} and conclude in \S\ref{sec:conclusions}.
+Most of the math, including the derivations of the analytic expressions for the
+light curves, is folded into the Appendix. For convenience, throughout
+the paper we provide links
+to \Python code (\pythonlogo{}) to reproduce all of the
+figures, as well as links to \Mathematica \citep{Mathematica}
 scripts and PDFs (\penlogo{}) containing proofs and derivations
 of the principal
-equations. For convenience, Table~\ref{tab:symbols} at the end lists
+equations. Finally, Table~\ref{tab:symbols} at the end lists
 all the symbols used
 in the paper, with references to the equations defining them.
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
-%\pagebreak
-\section{Spherical harmonics}
-\label{sec:spharm}
+\section{Surface Maps}
+\label{sec:surfacemaps}
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 % ==============================================================================
 
-The orthonormalized real spherical harmonics $Y_{lm}(\theta,\phi)$ of degree $l$
-and order $m$ with the Condon-Shortley phase factor \citep[e.g.][]{Varshalovich1988}
+% ------------------------------------------------------------------------------
+\subsection{Spherical harmonics}
+\label{sec:spharm}
+% ------------------------------------------------------------------------------
+
+The orthonormalized real spherical harmonics $Y_{lm}(\theta,\phi)$ of degree $l \ge 0$
+and order $m \in [-l,\, l]$ with the Condon-Shortley phase factor \citep[e.g.][]{Varshalovich1988}
 are defined in spherical coordinates as
 %
 \begin{align}
@@ -111,8 +138,8 @@ are defined in spherical coordinates as
     \end{cases}
 \end{align}
 %
-where $\bar{P}_{lm}$ are the normalized associated Legendre functions.
-On the
+where $\bar{P}_{lm}$ are the normalized associated Legendre functions
+(Equation~\ref{eq:plm}). On the
 surface of the unit sphere, we have
 %
 \begin{align}
@@ -126,113 +153,13 @@ The observer is located along the $z$-axis at $z = -\infty$ such
 that the projected disk of the body sits at the origin on the $xy$-plane with $\xhat$ to
 the right and $\yhat$ up.
 %
-Expanding Equation~(\ref{eq:ylmtp}) using the multiple angle formula, we obtain
-%
-\begin{align}
-    \label{eq:ylm0}
-    Y_{lm}(\x, \y , \z) =
-    \left(\frac{1}{\sqrt{1 - \z^2}}\right)^{|m|}
-    \begin{dcases}
-        \bar{P}_{lm}(\z)
-        \sum_{j\, \mathrm{even}}^{m}
-        \left(-1\right)^\frac{j}{2}
-        \binom{m}{j}
-        \x^{m - j}
-        \y^j
-         & \qquad m \geq 0
-         %
-         \\[1em]
-         %
-        \bar{P}_{l|m|}(\z)
-        \sum_{j\, \mathrm{odd}}^{|m|}
-        \left(-1\right)^\frac{j-1}{2}
-        \binom{|m|}{j}
-        \x^{|m| - j}
-        \y^j
-        & \qquad m < 0 \quad ,
-    \end{dcases}
-\end{align}
-%
-where $\binom{\bigdot}{\bigdot}$ is the binomial
-coefficient. The normalized associated Legendre functions are defined as
-%
-\begin{align}
-    \label{eq:plm}
-    \bar{P}_{lm}(\z) &= A_{lm} \left(\sqrt{1-\z^2}\right)^m
-                       \frac{\dd^m}{\dd \z^m}
-                       \left[
-                       \frac{1}{2^l l!}
-                       \frac{\dd^l}{\dd \z^l}
-                       \left(
-                       \z^2 - 1
-                       \right)^l
-                       \right] \quad,
-\end{align}
-%
-where
-%
-\begin{align}
-    \label{eq:alm}
-    A_{lm} = \sqrt{\frac{(2 - \delta_{m0})(2l + 1)(l - m)!}{4\pi(l + m)!}}
-             \quad.
-\end{align}
-%
-Expanding out the $\z$ derivatives, we obtain
-%
-\begin{align}
-    \label{eq:plm_exp}
-    \bar{P}_{lm}(\z) &= A_{lm} \left(\sqrt{1-\z^2}\right)^m\sum_{k=0}^{l-m}
-                       \frac{2^l \left(\frac{l + m + k - 1}{2}\right)!}
-                            {k!(l-m-k)!
-                             \left(\frac{-l + m + k - 1}{2}\right)!}
-                       \z^k
-                       \quad,
-\end{align}
-%
-which we combine with the previous results to write
-%
-\begin{align}
-    \label{eq:ylmxyz}
-    Y_{lm}(\x, \y , \z) &=
-    \begin{dcases}
-        \sum_{j\, \mathrm{even}}^m\sum_{k=0}^{l-m}
-        \left(-1\right)^{\frac{j}{2}}
-        A_{lm}
-        B_{lm}^{jk}
-        \x^{m - j}
-        \y^j
-        \z^k
-        \qquad & m \ge 0 \\
-        %
-        \sum_{j\, \mathrm{odd}}^{|m|}\sum_{k=0}^{l-|m|}
-        \left(-1\right)^{\frac{j-1}{2}}
-        A_{l|m|}
-        B_{l|m|}^{jk}
-        \x^{|m| - j}
-        \y^j
-        \z^k
-        \qquad & m < 0
-    \end{dcases}
-    \mathematica{Y}
-\end{align}
-%
-where
-%
-\begin{align}
-    \label{eq:blmjk}
-    B_{lm}^{jk} =
-    \frac{2^l m! \left(\frac{l + m + k - 1}{2}\right)!}
-         {j! k! (m - j)! (l - m - k)!
-          \left(\frac{-l + m + k - 1}{2}\right)!} \quad.
-\end{align}
-%
 \begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/ylms.pdf}
     \caption{\label{fig:ylms}
              \animation{ylms}
              The real spherical harmonics up to degree $l = 5$ computed from
-             Equation~(\ref{eq:ylmxy}). In these plots, the $x$-axis points
+             Equation~(\ref{eq:ylmtp}). In these plots, the $x$-axis points
              to the right,
              the $y$-axis points up, and the $z$-axis points
              out of the page.
@@ -241,126 +168,22 @@ where
     \end{centering}
 \end{figure}
 %
-Since we are confined to the surface of the unit sphere, we have
-$\z = \sqrt{1 - \x^2 - \y^2}$ and we may expand $\z^k$ using
-the binomial theorem:
-%
-\begin{align}
-    \z^{k} &= (1 - \x^2 - \y^2)^\frac{k}{2} \nonumber \\[0.5em]
-          &=
-          \begin{dcases}
-              \sum_{p\,\mathrm{even}}^{k}
-              \sum_{q\,\mathrm{even}}^p
-              (-1)^\frac{p}{2}
-              C_{pq}^{k}
-              \x^{p-q} \y^{q}
-              \qquad & k\,\mathrm{even} \\
-              %
-              \sum_{p\,\mathrm{even}}^{k - 1}
-              \sum_{q\,\mathrm{even}}^p
-              (-1)^\frac{p}{2}
-              C_{pq}^{k-1}
-              \x^{p-q} \y^{q} \sqrt{1 - \x^2 - \y^2}
-              \qquad & k\,\mathrm{odd} \quad,
-          \end{dcases}
-          \label{eq:zk}
-\end{align}
-%
-where
-%
-\begin{align}
-    \label{eq:ckpq}
-    C_{pq}^{k} =
-    \frac{\left(\frac{k}{2}\right)!}{\left(\frac{q}{2}\right)!
-    \left(\frac{k-p}{2}\right)! \left(\frac{p-q}{2}\right)!} \quad.
-\end{align}
-%
-This gives us an expression for the spherical harmonics $Y_{lm}$
-as a function of $\x$ and $\y$ only:
-%
-\begin{align}
-    \label{eq:ylmxy}
-    \mathematica{Y}
-    Y_{lm}(\x, \y) &=
-    \begin{dcases}
-        \!\begin{aligned}%[b]
-            &
-                \sum_{j\, \mathrm{even}}^m
-                \sum_{k\, \mathrm{even}}^{l-m}
-                \sum_{p\,\mathrm{even}}^{k}
-                \sum_{q\,\mathrm{even}}^p
-                \left(-1\right)^{\frac{j+p}{2}}
-                A_{lm}
-                B_{lm}^{jk}
-                C_{pq}^{k}
-                \x^{m - j + p - q}
-                \y^{j + q}
-            \, + \\
-            &
-                \sum_{j\, \mathrm{even}}^m
-                \sum_{k\, \mathrm{odd}}^{l-m}
-                \sum_{p\,\mathrm{even}}^{k - 1}
-                \sum_{q\,\mathrm{even}}^p
-                \left(-1\right)^{\frac{j+p}{2}}
-                A_{lm}
-                B_{lm}^{jk}
-                C_{pq}^{k - 1}
-                \x^{m - j + p - q}
-                \y^{j + q}
-                \z
-       \end{aligned}
-       &
-       \quad m \ge 0 \\
-       %
-       %
-       \\
-       %
-       %
-       \!\begin{aligned}%[b]
-           &
-               \sum_{j\, \mathrm{odd}}^{|m|}
-               \sum_{k\, \mathrm{even}}^{l-|m|}
-               \sum_{p\,\mathrm{even}}^{k}
-               \sum_{q\,\mathrm{even}}^p
-               \left(-1\right)^{\frac{j+p-1}{2}}
-               A_{l|m|}
-               B_{l|m|}^{jk}
-               C_{pq}^{k}
-               \x^{|m| - j + p - q}
-               \y^{j + q}
-           \, + \\
-           &
-               \sum_{j\, \mathrm{odd}}^{|m|}
-               \sum_{k\, \mathrm{odd}}^{l-|m|}
-               \sum_{p\,\mathrm{even}}^{k - 1}
-               \sum_{q\,\mathrm{even}}^p
-               \left(-1\right)^{\frac{j+p-1}{2}}
-               A_{l|m|}
-               B_{l|m|}^{jk}
-               C_{pq}^{k - 1}
-               \x^{|m| - j + p - q}
-               \y^{j + q}
-               \z
-      \end{aligned}
-      &
-      \quad m < 0
-   \end{dcases}
-    %
-\end{align}
-%
-where $\z = \z(\x, \y) = \sqrt{1 - \x^2 - \y^2}$.
+Re-writing Equation~(\ref{eq:ylmtp}) in terms of $\x$, $\y$, and $\z$ leads
+to expressions that are simply polynomials of these variables, a fact we will
+heavily exploit below when computing their integrals.
+We derive the polynomimal representation of the spherical harmonics
+in Appendix~\ref{app:spharm}. The spherical harmonics up to
+degree $l = 5$ are shown in Figure~\ref{fig:ylms}.
 
-% ==============================================================================
 % ------------------------------------------------------------------------------
-% ------------------------------------------------------------------------------
-%\pagebreak
-\section{Surface map vectors}
+\subsection{Surface map vectors}
 \label{sec:vectors}
 % ------------------------------------------------------------------------------
-% ------------------------------------------------------------------------------
-% ==============================================================================
 
-We represent a surface map as a vector $\bvec{y}$ of spherical harmonic
+Any physical surface map of a celestial body can be expanded in terms of
+the real spherical harmonics defined in the previous section. For
+convenience, in this paper we represent a surface map as a
+vector $\bvec{y}$ of spherical harmonic
 coefficients such that the specific intensity at the point
 $(\x, \y)$ may be written
 %
@@ -370,7 +193,7 @@ $(\x, \y)$ may be written
     \quad,
 \end{align}
 %
-where $\ybasis$ is the basis of spherical harmonics,
+where $\ybasis$ is the \emph{spherical harmonic basis},
 arranged in increasing degree and order:
 %
 \begin{align}
@@ -406,225 +229,15 @@ to the spherical harmonic of degree and order given by
 \end{align}
 %
 
-% ==============================================================================
 % ------------------------------------------------------------------------------
-% ------------------------------------------------------------------------------
-%\pagebreak
-\section{Rotation}
-\label{sec:rotation}
-% ------------------------------------------------------------------------------
-% ------------------------------------------------------------------------------
-% ==============================================================================
-
-% ------------------------------------------------------------------------------
-\subsection{Euler angles}
-\label{sec:euler}
-% ------------------------------------------------------------------------------
-
-Defining a map as a vector of spherical harmonic coefficients makes it
-straightforward to compute the projection of the map under arbitrary rotations
-of the body via a rotation matrix $\bvec{R}$:
-%
-\begin{align}
-    \label{eq:rotation}
-    \bvec{y'} = \bvec{R} \, \bvec{y}
-\end{align}
-%
-where $\bvec{y'}$ are the spherical harmonic coefficients of the rotated map.
-\citet{AlvarezCollado1989} derived expressions for the rotation matrices for
-the real spherical harmonics of a given degree $l$ from the corresponding
-complex rotation matrices \citep{Steinborn1973}:
-%
-\begin{align}
-    \label{eq:rl}
-    \bvec{R}^l = \bvec{U}^{-1} \bvec{D}^l \bvec{U}
-\end{align}
-%
-where
-%
-\begin{align}
-    \label{eq:dl}
-    \bvec{D}^l_{m,m'} &= \mathrm{e}^{-\ii (\alpha m' + \gamma m)}
-                       (-1)^{m' + m}
-                       \sqrt{
-                            (l - m)! (l + m)! (l - m')! (l + m')!
-                       }
-                       \nonumber \\
-                       & \phantom{=}
-                       \times
-                       \sum_k (-1)^k
-                              \frac{
-                                \cos\left(\frac{\beta}{2}\right)^{2l + m - m' - 2k}
-                                \sin\left(\frac{\beta}{2}\right)^{-m + m' + 2k}
-                              }{
-                                k! (l + m - k)! (l - m' - k)! (m' - m + k)!
-                              }
-\end{align}
-%
-is the rotation matrix for the complex spherical harmonics of degree $l$ and
-%
-\begin{equation}
-    \label{eq:U}
-    \setstackgap{L}{1.25\baselineskip}
-    \fixTABwidth{T}
-    \bvec{U} =
-    \frac{1}{\sqrt{2}}
-        \parenMatrixstack{
-            \quad\quad\, \ddots \, \quad\quad\quad\quad
-                   &     &     &     &          &     &     &     & \Ddots \\
-                   & \ii &     &     &          &     &     &  1  &        \\
-                   &     & \ii &     &          &     &  1  &     &        \\
-                   &     &     & \ii &          &  1  &     &     &        \\
-                   &     &     &     & \sqrt{2} &     &     &     &        \\
-                   &     &     & \ii &          & -1  &     &     &        \\
-                   &     & -\ii&     &          &     &  1  &     &        \\
-                   & \ii &     &     &          &     &     & -1  &        \\
-            \Ddots &     &     &     &          &     &     &     & \ddots
-        }\quad.
-\end{equation}
-%
-describes the transformation from complex to real spherical harmonics. In
-\eq{dl} above, $\alpha$, $\beta$, and $\gamma$ are the (proper) Euler angles
-for rotation in the $z-y-z$ convention.
-%
-To obtain a rotation matrix for an arbitrary vector $\bvec{y}$ with spherical
-harmonics of different orders up to $l = l_\mathrm{max}$, we define the
-block-diagonal matrix $\bvec{R}$:
-%
-\begin{equation}
-    \label{eq:rblockdiag}
-    \setstackgap{L}{1.25\baselineskip}
-    \fixTABwidth{T}
-    \bvec{R} =
-        \parenMatrixstack{
-            \quad\quad \, \bvec{R}^0 \, \quad\quad
-                       &            &            &            &  \\
-                       & \bvec{R}^1 &            &            &  \\
-                       &            & \bvec{R}^2 &            &  \\
-                       &            &            & \bvec{R}^3 &  \\
-                       &            &            &            & \ddots
-        }\quad.
-    \mathematica{R}
-\end{equation}
-%
-Rotation of $\bvec{y}$ by the Euler angles $\alpha$, $\beta$, and $\gamma$
-is performed via \eq{rotation} with $\bvec{R}$ given by \eq{rblockdiag}.
-
-% ------------------------------------------------------------------------------
-\subsection{Axis-angle}
-\label{sec:axisangle}
-% ------------------------------------------------------------------------------
-
-It is often more convenient to define a rotation by an axis $\bvec{u}$
-and an angle $\theta$ of rotation about that axis. Given a unit vector
-$\bvec{u}$ and an angle $\theta$, we can find the corresponding Euler
-angles by comparing the 3-dimensional Cartesian rotation matrices for
-both systems,
-%
-\begin{equation}
-    \label{eq:rotP}
-    \setstackgap{L}{1.25\baselineskip}
-    \fixTABwidth{T}
-    \mathbf{P} =
-        \parenMatrixstack{
-        c_\theta + u_x^2 \left(1 - c_\theta\right)
-        &
-        u_x u_y \left(1 - c_\theta\right) - u_z s_\theta
-        &
-        u_x u_z \left(1 - c_\theta\right) + u_y s_\theta
-        \\
-        u_y u_x \left(1 - c_\theta\right) + u_z s_\theta
-        &
-        c_\theta + u_y^2\left(1 - c_\theta\right)
-        &
-        u_y u_z \left(1 - c_\theta\right) - u_x s_\theta
-        \\
-        \quad\,\, u_z u_x \left(1 - c_\theta\right) - u_y s_\theta \,\,\quad\,
-        &
-        u_z u_y \left(1 - c_\theta\right) + u_x s_\theta
-        &
-        c_\theta + u_z^2\left(1 - c_\theta\right)
-        }
-\end{equation}
-%
-for axis-angle rotations and
-%
-\begin{equation}
-    \label{eq:rotQ}
-    \setstackgap{L}{1.25\baselineskip}
-    \fixTABwidth{T}
-    \mathbf{Q} =
-        \parenMatrixstack{
-        c_\alpha c_\beta c_\gamma - s_\alpha s_\gamma
-        &
-        -c_\gamma s_\alpha - c_\alpha c_\beta s_\gamma
-        &
-        c_\alpha s_\beta
-        \\
-        c_\alpha s_\gamma + c_\beta c_\gamma s_\alpha
-        &
-        c_\alpha c_\gamma - c_\beta s_\alpha s_\gamma
-        &
-        s_\alpha s_\beta
-        \\
-        -c_\gamma s_\beta
-        &
-        s_\beta s_\gamma
-        &
-        c_\beta
-        }\quad,
-\end{equation}
-%
-for Euler rotations,
-where $c_{\bigdot} \equiv \cos(\cdot)$
-and $s_{\bigdot} \equiv \sin(\cdot)$.
-Comparison of the two matrices gives us expressions for the Euler
-angles in terms of $\bvec{u}$ and $\theta$:
-%
-\begin{align}
-    \label{eq:eulerangles}
-    \begin{matrix}
-        \cos\alpha = \frac{P_{0,2}}{\sqrt{P_{0,2}^2 + P_{1,2}^2}}
-        & & & &
-        \cos\beta = P_{2,2}
-        & & & &
-        \cos\gamma = -\frac{P_{2,0}}{\sqrt{P_{2,0}^2 + P_{2,1}^2}}
-        \\
-        \sin\alpha = \frac{P_{1,2}}{\sqrt{P_{0,2}^2 + P_{1,2}^2}}
-        & & & &
-        \sin\beta = \sqrt{1 - P_{2,2}^2}
-        & & & &
-        \sin\gamma = \frac{P_{2,1}}{\sqrt{P_{2,0}^2 + P_{2,1}^2}}
-    \end{matrix}
-    \quad.
-    \mathematica{R}
-\end{align}
-%
-Thus, given a spherical harmonic vector $\bvec{y}$, we can calculate
-how it transforms under rotation by an angle $\theta$ about an axis $\bvec{u}$
-by first computing the Euler angles (Equation~\ref{eq:eulerangles}) and using
-those to construct the spherical harmonic rotation matrix
-(Equation~\ref{eq:rblockdiag}).
-
-% ==============================================================================
-% ------------------------------------------------------------------------------
-% ------------------------------------------------------------------------------
-%\pagebreak
-\section{Change of basis}
+\subsection{Change of basis}
 \label{sec:basis}
-% ------------------------------------------------------------------------------
-% ------------------------------------------------------------------------------
-% ==============================================================================
-
-% ------------------------------------------------------------------------------
-\subsection{Polynomial basis}
-\label{sec:polybasis}
 % ------------------------------------------------------------------------------
 
 In order to compute the occultation light curve for a body with a given surface
 map $\bvec{y}$, it is convenient to first find its polynomial representation
 $\bvec{p}$, which we express as a vector of coefficients in the
-polynomial basis $\pbasis$:
+\emph{polynomial basis} $\pbasis$:
 %
 \begin{align}
     \label{eq:bp}
@@ -669,80 +282,8 @@ polynomial basis $\pbasis$:
 \end{align}
 %
 The columns of $\AOne$ are simply the polynomial vectors
-corresponding to each of the spherical harmonics in \eq{by}. From
-Equations (\ref{eq:ylmxy}) and (\ref{eq:bp}), we can calculate
-the first few spherical harmonics and their corresponding polynomial vectors:
-%
-\begin{equation}
-\def\arraystretch{1.3}
-\begin{array}{@{}lcccccccl@{}}
-    \phantom{..}
-    Y_{0,0} = \frac{1}{2\sqrt{\pi}}
-    & & & & & & & &
-    \bvec{p} = \frac{1}{2\sqrt{\pi}}
-                  \begin{pmatrix}
-                        1 & 0 & 0 & 0 & \cdot\cdot\cdot
-                  \end{pmatrix}^\mathsf{T}
-    %
-    \\
-    %
-    Y_{1,-1} = \frac{\sqrt{3}}{2\sqrt{\pi}}\y
-    & & & & & & & &
-    \bvec{p} = \frac{1}{2\sqrt{\pi}}
-                  \begin{pmatrix}
-                        0 & 0 & 0 & \sqrt{3} & \cdot\cdot\cdot
-                  \end{pmatrix}^\mathsf{T}
-    %
-    \\
-    %
-    \phantom{..}
-    Y_{1,0} = \frac{\sqrt{3}}{2\sqrt{\pi}}\z
-    & & & & & & & &
-    \bvec{p} = \frac{1}{2\sqrt{\pi}}
-                \begin{pmatrix}
-                      0 & 0 & \sqrt{3} & 0 & \cdot\cdot\cdot
-                \end{pmatrix}^\mathsf{T}
-    %
-    \\
-    %
-    \phantom{..}
-    Y_{1,1} = \frac{\sqrt{3}}{2\sqrt{\pi}}\x
-    & & & & & & & &
-    \bvec{p} = \frac{1}{2\sqrt{\pi}}
-                  \begin{pmatrix}
-                        0 & \sqrt{3} & 0 & 0 & \cdot\cdot\cdot
-                  \end{pmatrix}^\mathsf{T}
-    %
-    \\
-    %
-    Y_{2,-2} = \cdot\cdot\cdot
-    & & & & & & & &
-    \bvec{p} = \cdot\cdot\cdot
-\end{array}
-\end{equation}
-%
-From these we can construct $\AOne$. As an example, for spherical
-harmonics up to degree $l_\mathrm{max} = 2$, this is
-%
-\begin{equation}
-    \label{eq:AOne}
-    \setstackgap{L}{1.25\baselineskip}
-    \fixTABwidth{T}
-    \AOne =
-    \frac{1}{2 \sqrt{\pi }}
-        \parenMatrixstack{
-            1 & 0 & 0 & 0 & 0 & 0 & \sqrt{5} & 0 & 0 \\
-            0 & 0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 \\
-            0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 & 0 \\
-            0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-            0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{2} & 0 & \frac{\sqrt{15}}{2} \\
-            0 & 0 & 0 & 0 & 0 & 0 & 0 & \sqrt{15} & 0 \\
-            0 & 0 & 0 & 0 & \sqrt{15} & 0 & 0 & 0 & 0 \\
-            0 & 0 & 0 & 0 & 0 & \sqrt{15} & 0 & 0 & 0 \\
-            0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{2} & 0 & -\frac{\sqrt{15}}{2}
-        }\quad.
-    \mathematica{A1}
-\end{equation}
+corresponding to each of the spherical harmonics in \eq{by}; see
+Appendix~\ref{app:basis} for details.
 %
 As before, the specific intensity at the point $(\x, \y)$
 may be computed as
@@ -753,11 +294,6 @@ may be computed as
     \quad.
 \end{align}
 
-% ------------------------------------------------------------------------------
-%\pagebreak
-\subsection{Green's basis}
-\label{sec:greensbasis}
-% ------------------------------------------------------------------------------
 As we will see in the next section, integrating the surface map over the disk of
 the body is easier if we apply one final transformation to our input vector,
 rotating it into what we will refer to as the \emph{Green's basis}, $\gbasis$:
@@ -823,33 +359,11 @@ change of basis operation:
 \end{align}
 %
 where the columns of the matrix $\ATwo$ are the Green's vectors
-corresponding to each of the polynomial terms in \eq{bp}. In practice,
-it is easier to express the elements of $\gbasis$ in terms
-of the elements of $\pbasis$ and use those to populate the
-columns of the matrix $\ATwo^{-1}$. Continuing our example
-for $l_\mathrm{max} = 2$, our second change of basis matrix
-is
-%
-\begin{equation}
-    \setstackgap{L}{1.1\baselineskip}
-    \fixTABwidth{T}
-    \ATwo =
-        \parenMatrixstack{
-            \quad\quad\, 1\, \quad\quad\quad\quad & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-            0 & \frac{1}{2} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-            0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
-            0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
-            0 & 0 & 0 & 0 & \frac{1}{3} & 0 & 0 & 0 & 0 \\
-            0 & 0 & 0 & 0 & 0 & -\frac{1}{3} & 0 & 0 & 0 \\
-            0 & 0 & 0 & 0 & 0 & 0 & \frac{1}{2} & 0 & 0 \\
-            0 & 0 & 0 & 0 & 0 & 0 & 0 & \frac{1}{3} & 0 \\
-            0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
-        }\quad.
-    \mathematica{A2}
-\end{equation}
-%
-Given $\AOne$ and $\ATwo$, we can easily transform a spherical harmonic
-vector $\bvec{y}$ to a Green's vector $\bvec{g}$:
+corresponding to each of the polynomial terms in \eq{bp};
+see Appendix~\ref{app:basis} for details.
+
+Note that we may also transform directly from the spherical harmonic basis
+to the Green's basis:
 %
 \begin{align}
     \bvec{g} &= \ATwo \, \AOne \, \bvec{y} \nonumber \\
@@ -863,30 +377,11 @@ where
     \bvec{A} \equiv \ATwo \, \AOne
 \end{align}
 %
-is the full change of basis matrix. For
-$l_\mathrm{max} = 2$,
+is the full change of basis matrix.
 %
-\begin{equation}
-    \mathematica{A}
-    \setstackgap{L}{1.25\baselineskip}
-    \fixTABwidth{T}
-    \bvec{A} =
-        \frac{1}{2\sqrt{\pi}}
-        \parenMatrixstack{
-         1 & 0 & 0 & 0 & 0 & 0 & \frac{\sqrt{5}}{2} & 0 & 0 \\
-         0 & 0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 \\
-         0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 & 0 \\
-         0 & \frac{\sqrt{3}}{2} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-         0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{4} & 0 & \frac{\sqrt{15}}{2} \\
-         0 & 0 & 0 & 0 & 0 & 0 & 0 & \sqrt{\frac{5}{3}} & 0 \\
-         0 & 0 & 0 & 0 & \sqrt{\frac{5}{3}} & 0 & 0 & 0 & 0 \\
-         0 & 0 & 0 & 0 & 0 & -\sqrt{\frac{5}{3}} & 0 & 0 & 0 \\
-         0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{4} & 0 & -\frac{\sqrt{15}}{2}
-        }\quad.
-\end{equation}
-%
-For completeness, we note that the specific intensity at a point on a map
-described by the spherical harmonic vector $\bvec{y}$ is
+For completeness,
+we again note that the specific intensity at a point on a map
+described by the spherical harmonic vector $\bvec{y}$ may be written
 %
 \begin{align}
     \label{eq:fluxpoint}
@@ -896,12 +391,33 @@ described by the spherical harmonic vector $\bvec{y}$ is
 \end{align}
 %
 
+% ------------------------------------------------------------------------------
+\subsection{Rotation of surface maps}
+\label{sec:rotation}
+% ------------------------------------------------------------------------------
+
+Defining a map as a vector of spherical harmonic coefficients makes it
+straightforward to compute the projection of the map under arbitrary rotations
+of the body via a rotation matrix $\bvec{R}$:
+%
+\begin{align}
+    \label{eq:rotation}
+    \bvec{y'} = \bvec{R} \, \bvec{y}
+\end{align}
+%
+where $\bvec{y'}$ are the spherical harmonic coefficients of the rotated map.
+In Appendix~\ref{app:rotation} we derive expressions for $\bvec{R}$ in terms
+of the Euler angles $\alpha$, $\beta$, and $\gamma$, as well as in terms of
+an angle $\theta$ and an arbitrary axis of rotation $\bvec{u}$. Follow the link
+next to Figure~\ref{fig:ylms} to view an animation of the spherical harmonics
+rotating about the $y$-axis, computed from \eq{rotation}.
+
+
 % ==============================================================================
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
-%\pagebreak
-\section{Light curves}
-\label{sec:occultations}
+\section{Computing light curves}
+\label{sec:lightcurves}
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 % ==============================================================================
@@ -924,7 +440,7 @@ the specific intensity at a point $(\x, \y)$ on the surface is
 \end{align}
 %
 where $\pbasis$ is the polynomial basis and $\AOne$ is the corresponding
-change-of-basis matrix (\S\ref{sec:polybasis}).
+change-of-basis matrix (\S\ref{sec:basis}).
 The total flux radiated
 in the direction of the observer is obtained by integrating the specific
 intensity over a region $S$ of the projected disk of the body:
@@ -1003,9 +519,9 @@ computational efficiency.
 \label{sec:occultationflux}
 % ------------------------------------------------------------------------------
 
-Note that the specific intensity
+As we showed earlier, the specific intensity
 at a point $(\x, \y)$ on the surface of a body described by the map $\bvec{y}$
-may also be written as
+and the rotation matrix $\vec{R}$ may also be written as
 %
 \begin{align}
     I(\x, \y) &= \ybasis^\mathsf{T} (\x, \y) \bvec{R} \, \bvec{y}
@@ -1015,7 +531,7 @@ may also be written as
 \end{align}
 %
 where $\gbasis$ is the Greens basis and $\bvec{A}$ is the full change of basis
-matrix (\S\ref{sec:greensbasis}).
+matrix (\S\ref{sec:basis}).
 As before, the total flux radiated
 in the direction of the observer is obtained by integrating the specific
 intensity over a region $S$ of the projected disk of the body:
@@ -1290,9 +806,9 @@ evaluating the primitive integrals of $\bvec{G}_n$
 (Equations~\ref{eq:primitiveP} and \ref{eq:primitiveQ}).
 The solutions are in general tedious, but
 they are all analytical, involving sines, cosines, and complete elliptic integrals.
-In the Appendix we derive recurrence
-relations to quickly compute these. We note, in particular, that all
-solutions involve complete elliptic integrals of the \emph{same} argument,
+In Appendix~\ref{app:solutionvector} we derive recurrence
+relations to quickly compute these. We note, in particular, that the
+solutions all involve complete elliptic integrals of the \emph{same} argument,
 so that the elliptic integrals need only be evaluated once for a map
 of arbitrary degree, greatly improving the evaluation speed and the
 scalability of the problem to high order.
@@ -1313,8 +829,8 @@ centered at the point $(x_o, y_o)$, we must:
     \item Compute the rotation matrix $\bvec{R}$ to rotate the map to the correct
           viewing orientation, which may be
           specified by the Euler angles $\alpha$, $\beta$, and $\gamma$
-          (\S\ref{sec:euler}) or by an axis $\bvec{u}$ and an angle $\theta$
-          (\S\ref{sec:axisangle}).
+          (Appendix~\ref{app:euler}) or by an axis $\bvec{u}$ and an angle $\theta$
+          (Appendix~\ref{app:axisangle}).
     \item Compute the rotation matrix $\bvec{R'}$ to rotate the map
           by an angle $\omega$ about the $+z$-axis
           (Equation~\ref{eq:zrot}) so the center of the occultor is a
@@ -1328,8 +844,9 @@ centered at the point $(x_o, y_o)$, we must:
           computational speed.
     \item Compute the solution vector $\bvec{s}$ (Equation~\ref{eq:sn}), with
           $\mathcal{P}(\bvec{G}_n)$ and $\mathcal{Q}(\bvec{G}_n)$ given by
-          Equations~(\ref{eq:PGnI}) and (\ref{eq:QGnI}). Note that $s_2$
-          is special and must be computed separately (Equation~\ref{eq:s2}).
+          Equations~(\ref{eq:PGnI}) and (\ref{eq:QGnI}) in the Appendix.
+          Note that $s_2$ is special and must be computed separately
+          (Equation~\ref{eq:s2}).
 \end{enumerate}
 %
 Given these quantities, the total flux during an occultation is then just
@@ -1739,7 +1256,7 @@ the constant ($Y_{0,0}$) term, corresponding to uniform surface brightness.
 We can add quadratic limb darkening as before by editing the body's \textsf{map}
 attribute:
 %
-\begin{lstlisting}[language=Python,firstnumber=last]
+\begin{lstlisting}[language=Python,firstnumber=last,]
 star.map.limbdark(0.40, 0.26)
 \end{lstlisting}
 %
@@ -2028,7 +1545,7 @@ the analytical solutions to the occultation integrals may become numerically
 unstable when the map degree $l$ is large. This is due to the propagation of
 round-off error in the recurrence relations, which we mitigate
 with careful Taylor expansions and reparameterizations of the equations.
-We discuss this at length in Appendix~\ref{sec:numericalstability} and summarize
+We discuss this at length in Appendix~\ref{app:numericalstability} and summarize
 the results in Figure~\ref{fig:stability}. In general, numerical stability is
 not likely to be an issue for $l \leq 8$ and $r_o \lesssim 500$, for which
 the maximum fractional error due to round-off is on the order of one part
@@ -2124,8 +1641,575 @@ Some of the results in this paper have been derived using the HEALPix
 % ------------------------------------------------------------------------------
 \pagebreak
 \appendix
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+% ==============================================================================
+
+
+% ==============================================================================
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+\section{Spherical harmonics}
+\label{app:spharm}
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+% ==============================================================================
+
+In spherical coordinates, the spherical harmonics may be compactly represented
+as in Equation~(\ref{eq:ylmtp}). The formalism in this paper requires us to express
+them in Cartesian form, which is somewhat more cumbersome but still tractable.
+%
+Using Equation~(\ref{eq:xyz}) and expanding Equation~(\ref{eq:ylmtp})
+via the multiple angle formula, we obtain
+%
+\begin{align}
+    \label{eq:ylm0}
+    Y_{lm}(\x, \y , \z) =
+    \left(\frac{1}{\sqrt{1 - \z^2}}\right)^{|m|}
+    \begin{dcases}
+        \bar{P}_{lm}(\z)
+        \sum_{j\, \mathrm{even}}^{m}
+        \left(-1\right)^\frac{j}{2}
+        \binom{m}{j}
+        \x^{m - j}
+        \y^j
+         & \qquad m \geq 0
+         %
+         \\[1em]
+         %
+        \bar{P}_{l|m|}(\z)
+        \sum_{j\, \mathrm{odd}}^{|m|}
+        \left(-1\right)^\frac{j-1}{2}
+        \binom{|m|}{j}
+        \x^{|m| - j}
+        \y^j
+        & \qquad m < 0 \quad ,
+    \end{dcases}
+\end{align}
+%
+where $\binom{\bigdot}{\bigdot}$ is the binomial
+coefficient. The normalized associated Legendre functions are defined as
+%
+\begin{align}
+    \label{eq:plm}
+    \bar{P}_{lm}(\z) &= A_{lm} \left(\sqrt{1-\z^2}\right)^m
+                       \frac{\dd^m}{\dd \z^m}
+                       \left[
+                       \frac{1}{2^l l!}
+                       \frac{\dd^l}{\dd \z^l}
+                       \left(
+                       \z^2 - 1
+                       \right)^l
+                       \right] \quad,
+\end{align}
+%
+where
+%
+\begin{align}
+    \label{eq:alm}
+    A_{lm} = \sqrt{\frac{(2 - \delta_{m0})(2l + 1)(l - m)!}{4\pi(l + m)!}}
+             \quad.
+\end{align}
+%
+Expanding out the $\z$ derivatives, we obtain
+%
+\begin{align}
+    \label{eq:plm_exp}
+    \bar{P}_{lm}(\z) &= A_{lm} \left(\sqrt{1-\z^2}\right)^m\sum_{k=0}^{l-m}
+                       \frac{2^l \left(\frac{l + m + k - 1}{2}\right)!}
+                            {k!(l-m-k)!
+                             \left(\frac{-l + m + k - 1}{2}\right)!}
+                       \z^k
+                       \quad,
+\end{align}
+%
+which we combine with the previous results to write
+%
+\begin{align}
+    \label{eq:ylmxyz}
+    Y_{lm}(\x, \y , \z) &=
+    \begin{dcases}
+        \sum_{j\, \mathrm{even}}^m\sum_{k=0}^{l-m}
+        \left(-1\right)^{\frac{j}{2}}
+        A_{lm}
+        B_{lm}^{jk}
+        \x^{m - j}
+        \y^j
+        \z^k
+        \qquad & m \ge 0 \\
+        %
+        \sum_{j\, \mathrm{odd}}^{|m|}\sum_{k=0}^{l-|m|}
+        \left(-1\right)^{\frac{j-1}{2}}
+        A_{l|m|}
+        B_{l|m|}^{jk}
+        \x^{|m| - j}
+        \y^j
+        \z^k
+        \qquad & m < 0
+    \end{dcases}
+    \mathematica{Y}
+\end{align}
+%
+where
+%
+\begin{align}
+    \label{eq:blmjk}
+    B_{lm}^{jk} =
+    \frac{2^l m! \left(\frac{l + m + k - 1}{2}\right)!}
+         {j! k! (m - j)! (l - m - k)!
+          \left(\frac{-l + m + k - 1}{2}\right)!} \quad.
+\end{align}
+%
+Since we are confined to the surface of the unit sphere, we have
+$\z = \sqrt{1 - \x^2 - \y^2}$ and we may expand $\z^k$ using
+the binomial theorem:
+%
+\begin{align}
+    \z^{k} &= (1 - \x^2 - \y^2)^\frac{k}{2} \nonumber \\[0.5em]
+          &=
+          \begin{dcases}
+              \sum_{p\,\mathrm{even}}^{k}
+              \sum_{q\,\mathrm{even}}^p
+              (-1)^\frac{p}{2}
+              C_{pq}^{k}
+              \x^{p-q} \y^{q}
+              \qquad & k\,\mathrm{even} \\
+              %
+              \sum_{p\,\mathrm{even}}^{k - 1}
+              \sum_{q\,\mathrm{even}}^p
+              (-1)^\frac{p}{2}
+              C_{pq}^{k-1}
+              \x^{p-q} \y^{q} \sqrt{1 - \x^2 - \y^2}
+              \qquad & k\,\mathrm{odd} \quad,
+          \end{dcases}
+          \label{eq:zk}
+\end{align}
+%
+where
+%
+\begin{align}
+    \label{eq:ckpq}
+    C_{pq}^{k} =
+    \frac{\left(\frac{k}{2}\right)!}{\left(\frac{q}{2}\right)!
+    \left(\frac{k-p}{2}\right)! \left(\frac{p-q}{2}\right)!} \quad.
+\end{align}
+%
+This gives us an expression for the spherical harmonics $Y_{lm}$
+as a function of $\x$ and $\y$ only:
+%
+\begin{align}
+    \label{eq:ylmxy}
+    \mathematica{Y}
+    Y_{lm}(\x, \y) &=
+    \begin{dcases}
+        \!\begin{aligned}%[b]
+            &
+                \sum_{j\, \mathrm{even}}^m
+                \sum_{k\, \mathrm{even}}^{l-m}
+                \sum_{p\,\mathrm{even}}^{k}
+                \sum_{q\,\mathrm{even}}^p
+                \left(-1\right)^{\frac{j+p}{2}}
+                A_{lm}
+                B_{lm}^{jk}
+                C_{pq}^{k}
+                \x^{m - j + p - q}
+                \y^{j + q}
+            \, + \\
+            &
+                \sum_{j\, \mathrm{even}}^m
+                \sum_{k\, \mathrm{odd}}^{l-m}
+                \sum_{p\,\mathrm{even}}^{k - 1}
+                \sum_{q\,\mathrm{even}}^p
+                \left(-1\right)^{\frac{j+p}{2}}
+                A_{lm}
+                B_{lm}^{jk}
+                C_{pq}^{k - 1}
+                \x^{m - j + p - q}
+                \y^{j + q}
+                \z
+       \end{aligned}
+       &
+       \quad m \ge 0 \\
+       %
+       %
+       \\
+       %
+       %
+       \!\begin{aligned}%[b]
+           &
+               \sum_{j\, \mathrm{odd}}^{|m|}
+               \sum_{k\, \mathrm{even}}^{l-|m|}
+               \sum_{p\,\mathrm{even}}^{k}
+               \sum_{q\,\mathrm{even}}^p
+               \left(-1\right)^{\frac{j+p-1}{2}}
+               A_{l|m|}
+               B_{l|m|}^{jk}
+               C_{pq}^{k}
+               \x^{|m| - j + p - q}
+               \y^{j + q}
+           \, + \\
+           &
+               \sum_{j\, \mathrm{odd}}^{|m|}
+               \sum_{k\, \mathrm{odd}}^{l-|m|}
+               \sum_{p\,\mathrm{even}}^{k - 1}
+               \sum_{q\,\mathrm{even}}^p
+               \left(-1\right)^{\frac{j+p-1}{2}}
+               A_{l|m|}
+               B_{l|m|}^{jk}
+               C_{pq}^{k - 1}
+               \x^{|m| - j + p - q}
+               \y^{j + q}
+               \z
+      \end{aligned}
+      &
+      \quad m < 0
+   \end{dcases}
+    %
+\end{align}
+%
+where $\z = \z(\x, \y) = \sqrt{1 - \x^2 - \y^2}$. Evaluating the nested sums
+may be computationally slow, but these operations need only be performed a
+single time to construct our change of basis matrix (Appendix~\ref{sec:basis}).
+
+% ==============================================================================
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+\section{Change of Basis}
+\label{app:basis}
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+% ==============================================================================
+
+In this section we discuss how to compute the change of basis matrices
+$\AOne$ and $\ATwo$ from \S\ref{sec:basis} and provide links to
+\Mathematica scripts to compute them.
+%
+Recall that the columns of the change of basis matrix from spherical
+harmonics to polynomials, $\AOne$, are just the polynomial vectors
+corresponding to each of the spherical harmonics in \eq{by}. From
+Equations (\ref{eq:bp}) and (\ref{eq:ylmxy}), we can calculate
+the first few spherical harmonics and their corresponding polynomial vectors:
+%
+\begin{equation}
+\def\arraystretch{1.3}
+\begin{array}{@{}lcccccccl@{}}
+    \phantom{..}
+    Y_{0,0} = \frac{1}{2\sqrt{\pi}}
+    & & & & & & & &
+    \bvec{p} = \frac{1}{2\sqrt{\pi}}
+                  \begin{pmatrix}
+                        1 & 0 & 0 & 0 & \cdot\cdot\cdot
+                  \end{pmatrix}^\mathsf{T}
+    %
+    \\
+    %
+    Y_{1,-1} = \frac{\sqrt{3}}{2\sqrt{\pi}}\y
+    & & & & & & & &
+    \bvec{p} = \frac{1}{2\sqrt{\pi}}
+                  \begin{pmatrix}
+                        0 & 0 & 0 & \sqrt{3} & \cdot\cdot\cdot
+                  \end{pmatrix}^\mathsf{T}
+    %
+    \\
+    %
+    \phantom{..}
+    Y_{1,0} = \frac{\sqrt{3}}{2\sqrt{\pi}}\z
+    & & & & & & & &
+    \bvec{p} = \frac{1}{2\sqrt{\pi}}
+                \begin{pmatrix}
+                      0 & 0 & \sqrt{3} & 0 & \cdot\cdot\cdot
+                \end{pmatrix}^\mathsf{T}
+    %
+    \\
+    %
+    \phantom{..}
+    Y_{1,1} = \frac{\sqrt{3}}{2\sqrt{\pi}}\x
+    & & & & & & & &
+    \bvec{p} = \frac{1}{2\sqrt{\pi}}
+                  \begin{pmatrix}
+                        0 & \sqrt{3} & 0 & 0 & \cdot\cdot\cdot
+                  \end{pmatrix}^\mathsf{T}
+    %
+    \\
+    %
+    Y_{2,-2} = \cdot\cdot\cdot
+    & & & & & & & &
+    \bvec{p} = \cdot\cdot\cdot
+\end{array}
+\end{equation}
+%
+From these we can construct $\AOne$. As an example, for spherical
+harmonics up to degree $l_\mathrm{max} = 2$, this is
+%
+\begin{equation}
+    \label{eq:AOne}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \AOne =
+    \frac{1}{2 \sqrt{\pi }}
+        \parenMatrixstack{
+            1 & 0 & 0 & 0 & 0 & 0 & \sqrt{5} & 0 & 0 \\
+            0 & 0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 \\
+            0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 & 0 \\
+            0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+            0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{2} & 0 & \frac{\sqrt{15}}{2} \\
+            0 & 0 & 0 & 0 & 0 & 0 & 0 & \sqrt{15} & 0 \\
+            0 & 0 & 0 & 0 & \sqrt{15} & 0 & 0 & 0 & 0 \\
+            0 & 0 & 0 & 0 & 0 & \sqrt{15} & 0 & 0 & 0 \\
+            0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{2} & 0 & -\frac{\sqrt{15}}{2}
+        }\quad.
+    \mathematica{A1}
+\end{equation}
+%
+
+We compute the change of basis matrix from polynomials to Green's
+polynomials, $\ATwo$, in a similar manner. In practice,
+it is easier to express the elements of the Green's basis $\gbasis$ in terms
+of the elements of the polynomial basis $\pbasis$ and use those to populate the
+columns of the matrix $\ATwo^{-1}$. Continuing our example
+for $l_\mathrm{max} = 2$, our second change of basis matrix
+is
+%
+\begin{equation}
+    \setstackgap{L}{1.1\baselineskip}
+    \fixTABwidth{T}
+    \ATwo =
+        \parenMatrixstack{
+            \quad\quad\, 1\, \quad\quad\quad\quad & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+            0 & \frac{1}{2} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+            0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+            0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
+            0 & 0 & 0 & 0 & \frac{1}{3} & 0 & 0 & 0 & 0 \\
+            0 & 0 & 0 & 0 & 0 & -\frac{1}{3} & 0 & 0 & 0 \\
+            0 & 0 & 0 & 0 & 0 & 0 & \frac{1}{2} & 0 & 0 \\
+            0 & 0 & 0 & 0 & 0 & 0 & 0 & \frac{1}{3} & 0 \\
+            0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
+        }\quad.
+    \mathematica{A2}
+\end{equation}
+%
+
+Finally, recall that the complete change of basis matrix from spherical
+harmonics to Green's polynomials, $\bvec{A}$, is just the matrix product
+of $\AOne$ and $\ATwo$. For $l_\mathrm{max} = 2$, we haves
+%
+\begin{equation}
+    \mathematica{A}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \bvec{A} =
+        \frac{1}{2\sqrt{\pi}}
+        \parenMatrixstack{
+         1 & 0 & 0 & 0 & 0 & 0 & \frac{\sqrt{5}}{2} & 0 & 0 \\
+         0 & 0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 \\
+         0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 & 0 \\
+         0 & \frac{\sqrt{3}}{2} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+         0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{4} & 0 & \frac{\sqrt{15}}{2} \\
+         0 & 0 & 0 & 0 & 0 & 0 & 0 & \sqrt{\frac{5}{3}} & 0 \\
+         0 & 0 & 0 & 0 & \sqrt{\frac{5}{3}} & 0 & 0 & 0 & 0 \\
+         0 & 0 & 0 & 0 & 0 & -\sqrt{\frac{5}{3}} & 0 & 0 & 0 \\
+         0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{4} & 0 & -\frac{\sqrt{15}}{2}
+        }\quad.
+\end{equation}
+%
+
+% ==============================================================================
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+\vspace*{4em}
+\section{Rotation of spherical harmonics}
+\label{app:rotation}
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
+% ==============================================================================
+
+% ------------------------------------------------------------------------------
+\subsection{Euler angles}
+\label{app:euler}
+% ------------------------------------------------------------------------------
+
+\citet{AlvarezCollado1989} derived expressions for the rotation matrices for
+the real spherical harmonics of a given degree $l$ from the corresponding
+complex rotation matrices \citep{Steinborn1973}:
+%
+\begin{align}
+    \label{eq:rl}
+    \bvec{R}^l = \bvec{U}^{-1} \bvec{D}^l \bvec{U}
+\end{align}
+%
+where
+%
+\begin{align}
+    \label{eq:dl}
+    \bvec{D}^l_{m,m'} &= \mathrm{e}^{-\ii (\alpha m' + \gamma m)}
+                       (-1)^{m' + m}
+                       \sqrt{
+                            (l - m)! (l + m)! (l - m')! (l + m')!
+                       }
+                       \nonumber \\
+                       & \phantom{=}
+                       \times
+                       \sum_k (-1)^k
+                              \frac{
+                                \cos\left(\frac{\beta}{2}\right)^{2l + m - m' - 2k}
+                                \sin\left(\frac{\beta}{2}\right)^{-m + m' + 2k}
+                              }{
+                                k! (l + m - k)! (l - m' - k)! (m' - m + k)!
+                              }
+\end{align}
+%
+is the rotation matrix for the complex spherical harmonics of degree $l$ and
+%
+\begin{equation}
+    \label{eq:U}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \bvec{U} =
+    \frac{1}{\sqrt{2}}
+        \parenMatrixstack{
+            \quad\quad\, \ddots \, \quad\quad\quad\quad
+                   &     &     &     &          &     &     &     & \Ddots \\
+                   & \ii &     &     &          &     &     &  1  &        \\
+                   &     & \ii &     &          &     &  1  &     &        \\
+                   &     &     & \ii &          &  1  &     &     &        \\
+                   &     &     &     & \sqrt{2} &     &     &     &        \\
+                   &     &     & \ii &          & -1  &     &     &        \\
+                   &     & -\ii&     &          &     &  1  &     &        \\
+                   & \ii &     &     &          &     &     & -1  &        \\
+            \Ddots &     &     &     &          &     &     &     & \ddots
+        }\quad.
+\end{equation}
+%
+describes the transformation from complex to real spherical harmonics. In
+\eq{dl} above, $\alpha$, $\beta$, and $\gamma$ are the (proper) Euler angles
+for rotation in the $z-y-z$ convention.
+%
+To obtain a rotation matrix for an arbitrary vector $\bvec{y}$ with spherical
+harmonics of different orders up to $l = l_\mathrm{max}$, we define the
+block-diagonal matrix $\bvec{R}$:
+%
+\begin{equation}
+    \label{eq:rblockdiag}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \bvec{R} =
+        \parenMatrixstack{
+            \quad\quad \, \bvec{R}^0 \, \quad\quad
+                       &            &            &            &  \\
+                       & \bvec{R}^1 &            &            &  \\
+                       &            & \bvec{R}^2 &            &  \\
+                       &            &            & \bvec{R}^3 &  \\
+                       &            &            &            & \ddots
+        }\quad.
+    \mathematica{R}
+\end{equation}
+%
+Rotation of $\bvec{y}$ by the Euler angles $\alpha$, $\beta$, and $\gamma$
+is performed via \eq{rotation} with $\bvec{R}$ given by \eq{rblockdiag}.
+
+% ------------------------------------------------------------------------------
+\subsection{Axis-angle}
+\label{app:axisangle}
+% ------------------------------------------------------------------------------
+
+It is often more convenient to define a rotation by an axis $\bvec{u}$
+and an angle $\theta$ of rotation about that axis. Given a unit vector
+$\bvec{u}$ and an angle $\theta$, we can find the corresponding Euler
+angles by comparing the 3-dimensional Cartesian rotation matrices for
+both systems,
+%
+\begin{equation}
+    \label{eq:rotP}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \mathbf{P} =
+        \parenMatrixstack{
+        c_\theta + u_x^2 \left(1 - c_\theta\right)
+        &
+        u_x u_y \left(1 - c_\theta\right) - u_z s_\theta
+        &
+        u_x u_z \left(1 - c_\theta\right) + u_y s_\theta
+        \\
+        u_y u_x \left(1 - c_\theta\right) + u_z s_\theta
+        &
+        c_\theta + u_y^2\left(1 - c_\theta\right)
+        &
+        u_y u_z \left(1 - c_\theta\right) - u_x s_\theta
+        \\
+        \quad\,\, u_z u_x \left(1 - c_\theta\right) - u_y s_\theta \,\,\quad\,
+        &
+        u_z u_y \left(1 - c_\theta\right) + u_x s_\theta
+        &
+        c_\theta + u_z^2\left(1 - c_\theta\right)
+        }
+\end{equation}
+%
+for axis-angle rotations and
+%
+\begin{equation}
+    \label{eq:rotQ}
+    \setstackgap{L}{1.25\baselineskip}
+    \fixTABwidth{T}
+    \mathbf{Q} =
+        \parenMatrixstack{
+        c_\alpha c_\beta c_\gamma - s_\alpha s_\gamma
+        &
+        -c_\gamma s_\alpha - c_\alpha c_\beta s_\gamma
+        &
+        c_\alpha s_\beta
+        \\
+        c_\alpha s_\gamma + c_\beta c_\gamma s_\alpha
+        &
+        c_\alpha c_\gamma - c_\beta s_\alpha s_\gamma
+        &
+        s_\alpha s_\beta
+        \\
+        -c_\gamma s_\beta
+        &
+        s_\beta s_\gamma
+        &
+        c_\beta
+        }\quad,
+\end{equation}
+%
+for Euler rotations,
+where $c_{\bigdot} \equiv \cos(\cdot)$
+and $s_{\bigdot} \equiv \sin(\cdot)$.
+Comparison of the two matrices gives us expressions for the Euler
+angles in terms of $\bvec{u}$ and $\theta$:
+%
+\begin{align}
+    \label{eq:eulerangles}
+    \begin{matrix}
+        \cos\alpha = \frac{P_{0,2}}{\sqrt{P_{0,2}^2 + P_{1,2}^2}}
+        & & & &
+        \cos\beta = P_{2,2}
+        & & & &
+        \cos\gamma = -\frac{P_{2,0}}{\sqrt{P_{2,0}^2 + P_{2,1}^2}}
+        \\
+        \sin\alpha = \frac{P_{1,2}}{\sqrt{P_{0,2}^2 + P_{1,2}^2}}
+        & & & &
+        \sin\beta = \sqrt{1 - P_{2,2}^2}
+        & & & &
+        \sin\gamma = \frac{P_{2,1}}{\sqrt{P_{2,0}^2 + P_{2,1}^2}}
+    \end{matrix}
+    \quad.
+    \mathematica{R}
+\end{align}
+%
+Thus, given a spherical harmonic vector $\bvec{y}$, we can calculate
+how it transforms under rotation by an angle $\theta$ about an axis $\bvec{u}$
+by first computing the Euler angles (Equation~\ref{eq:eulerangles}) and using
+those to construct the spherical harmonic rotation matrix
+(Equation~\ref{eq:rblockdiag}).
+
+
+
+% ==============================================================================
+% ------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------
 \section{Computing the solution vector $\MakeLowercase{s_n}$}
-\label{sec:solutionvector}
+\label{app:solutionvector}
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 % ==============================================================================
@@ -2144,12 +2228,12 @@ solution exists \citep{Pal2012}. It is, however, more convenient
 to note that this term corresponds to a surface map given by the polynomial
 $I(x, y) = \tilde{g}_2(x, y) = \sqrt{1 - x^2 - y^2}$, which is the same function used
 to model linear limb darkening in stars \citep{MandelAgol2002}. We therefore
-evaluate this term separately in Appendix~\ref{sec:linearld} below, followed by
-the general term in Appendix~\ref{sec:generalterm}.
+evaluate this term separately in Appendix~\ref{app:linearld} below, followed by
+the general term in Appendix~\ref{app:generalterm}.
 
 % ------------------------------------------------------------------------------
 \subsection{Linear limb darkening ($n = 2$)}
-\label{sec:linearld}
+\label{app:linearld}
 % ------------------------------------------------------------------------------
 
 From \citet{MandelAgol2002}, the total flux visible during the occultation of a
@@ -2236,12 +2320,12 @@ respectively, defined as
 
 % ------------------------------------------------------------------------------
 \subsection{All other terms}
-\label{sec:generalterm}
+\label{app:generalterm}
 % ------------------------------------------------------------------------------
 
 % ------------------------------------------------------------------------------
 \subsubsection{Setting up the equations}
-\label{sec:generaltermsetup}
+\label{app:generaltermsetup}
 % ------------------------------------------------------------------------------
 
 We evaluate all other terms in $s_n$ by integrating the primitive integrals of
@@ -2329,7 +2413,8 @@ For convenience, let us introduce the integrals
             s_\varphi^v
             \, \dd\varphi
 %
-\\[1.5em]
+\end{align}
+\begin{align}
 %
     \label{eq:Iuv}
     \mathcal{I}_{u,v} &=
@@ -2338,7 +2423,8 @@ For convenience, let us introduce the integrals
             s_\varphi^v
             \, \dd\varphi
 %
-\\[1.5em]
+\end{align}
+\begin{align}
 %
     \label{eq:Juv}
     \mathcal{J}_{u,v} &=
@@ -2360,7 +2446,8 @@ along with the expressions
         \mathcal{I}_{u, i}
         \quad.
 %
-\\[1.5em]
+\end{align}
+\begin{align}
 %
     \label{eq:Luv}
     \mathcal{L}_{u,v} &=
@@ -2406,7 +2493,11 @@ With some algebra, we may therefore write
     \end{dcases}
     \pdf{PGn}
 %
-\intertext{and}
+\end{align}
+%
+and
+%
+\begin{align}
 %
     \nonumber \\
     \label{eq:QGnI}
@@ -2427,7 +2518,7 @@ $\mathcal{I}_{u, v}$, and $\mathcal{J}_{u, v}$.
 
 % ------------------------------------------------------------------------------
 \subsubsection{Solving the integrals}
-\label{sec:generaltermsol}
+\label{app:generaltermsol}
 % ------------------------------------------------------------------------------
 
 Fortunately, $\mathcal{H}_{u, v}$ and $\mathcal{I}_{u, v}$
@@ -2603,7 +2694,7 @@ computation of $s_n$ fast.
 
 % ------------------------------------------------------------------------------
 \subsubsection{Numerical stability}
-\label{sec:numericalstability}
+\label{app:numericalstability}
 % ------------------------------------------------------------------------------
 
 A few remarks are in order regarding the numerical stability of the solutions
@@ -2758,11 +2849,11 @@ $\bvec{A}$      & Change of basis matrix:
                   $Y_{lm}$s to Green's
                   polynomials                           & \eq{A} \\
 $\AOne$         & Change of basis matrix:
-                  $Y_{lm}$s to polynomials              & \S\ref{sec:polybasis} \\
+                  $Y_{lm}$s to polynomials              & \S\ref{sec:basis} \\
 $\ATwo$         & Change of basis matrix:
-                  polynomials to Green's polynomials    & \S\ref{sec:greensbasis} \\
+                  polynomials to Green's polynomials    & \S\ref{sec:basis} \\
 $b$             & Impact parameter in units of occulted
-                  body's radius                         & \S\ref{sec:occultations} \\
+                  body's radius                         & \S\ref{sec:lightcurves} \\
 $B_{lm}^{jk}$   & Spherical harmonic normalization      & \eq{blmjk} \\
 
 $c_{\bigdot}$   & $\cos(\bigdot)$                       & \\
@@ -2819,7 +2910,7 @@ $\bvec{Q}$      & Cartesian Euler angle rotation matrix & \eq{rotQ} \\
 $\mathcal{Q}$   & Primitive integral along perimiter
                   of occulted body                      & \eq{primitiveQ} \\
 $r$             & Occultor radius in units of occulted
-                  body's radius                         & \S\ref{sec:occultations} \\
+                  body's radius                         & \S\ref{sec:lightcurves} \\
 $\bvec{r}$      & Phase curve solution vector           & \eq{rn} \\
 $\bvec{R}$      & Rotation matrix for the real
                   spherical harmonics                   & \eq{rblockdiag} \\
@@ -2830,7 +2921,7 @@ $\bvec{s}$      & Occultation light curve solution
                   vector                                & \eq{rn} \\
 $u_1, u_2$      & Quadratic limb darkening coefficients & \eq{quadraticld} \\
 $\bvec{u}$      & Unit vector corresponding to the
-                  axis of rotation                      & \S\ref{sec:axisangle} \\
+                  axis of rotation                      & \S\ref{app:axisangle} \\
 $\bvec{U}$      & Complex to real spherical harmonics
                   transform matrix                      & \eq{U} \\
 $\x$            & Cartesian coordinate                  & \eq{xyz} \\
@@ -2842,12 +2933,12 @@ $\bvec{y}$      & Vector in the basis $\ybasis$         & \\
 $\z$            & Cartesian coordinate,
                   $z = \sqrt{1 - \x^2 - \y^2}$          & \eq{xyz} \\
 %
-$\alpha$        & Euler angle ($\zhat$ rotation)        & \S\ref{sec:euler} \\
-$\beta$         & Euler angle ($\yhat$ rotation)        & \S\ref{sec:euler} \\
-$\gamma$        & Euler angle ($\zhat$ rotation)        & \S\ref{sec:euler} \\
+$\alpha$        & Euler angle ($\zhat$ rotation)        & Appendix~\ref{app:euler} \\
+$\beta$         & Euler angle ($\yhat$ rotation)        & Appendix~\ref{app:euler} \\
+$\gamma$        & Euler angle ($\zhat$ rotation)        & Appendix~\ref{app:euler} \\
 $\Gamma$        & Gamma function                        & \\
 $\theta$        & Polar angle                           & \eq{ylmtp} \\
-                & Spherical harmonic rotation angle     & \S\ref{sec:axisangle} \\
+                & Spherical harmonic rotation angle     & Appendix~\ref{app:axisangle} \\
 $\Theta$        & Heaviside step function               & \eq{biglam} \\
 $\lambda$       & Angular position of
                   occultor/occulted intersection point  & \eq{lambda} \\

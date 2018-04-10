@@ -25,7 +25,7 @@
 \stackMath
 
 % Page breaks in long equations
-\allowdisplaybreaks
+%\allowdisplaybreaks
 
 % Bibliography stuff
 \bibliographystyle{aasjournal}
@@ -53,10 +53,10 @@
 % Add script hyperlinks as margin notes
 \definecolor{proofcolor}{rgb}{0.1216,0.4667,0.7059}
 \newcommand{\python}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.py}{\includegraphics[width=0.9cm]{figures/plot.png}}}}
-\newcommand{\mathematica}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.8cm]{figures/pen.png}}}}
-\newcommand{\pdf}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.8cm]{figures/pen.png}}}}
+\newcommand{\mathematica}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.9cm]{figures/pen.png}}}}
+\newcommand{\pdf}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.9cm]{figures/pen.png}}}}
 \newcommand{\animation}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.gif}{\includegraphics[width=0.9cm]{figures/play.png}}}}
-\newcommand{\todo}[1]{\marginnote{\includegraphics[width=0.6cm]{figures/todo.png}\\[-1ex]{\color{red}\scriptsize#1}}}
+\newcommand{\todo}[1]{\marginnote{\includegraphics[width=0.9cm]{figures/todo.png}\\[-1ex]{\color{red}\scriptsize#1}}}
 \newcommand{\pythonlogo}{%
   \hspace*{0.25em}\raisebox{-1.25ex}{\includegraphics[width=0.8cm]{figures/plot.png}}
 }
@@ -125,7 +125,9 @@
     showtabs=false,
     tabsize=2,
     aboveskip=1em,
-    belowskip=1em
+    belowskip=1em,
+    keywords=[2]{map},
+    keywordstyle=[2]{\color{black!80!black}},
 }
 \lstset{style=mystyle}
 
