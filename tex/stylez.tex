@@ -25,7 +25,7 @@
 \stackMath
 
 % Page breaks in long equations
-%\allowdisplaybreaks
+\allowdisplaybreaks
 
 % Bibliography stuff
 \bibliographystyle{aasjournal}
@@ -33,6 +33,7 @@
 % Shorthand for this paper
 \newcommand{\starry}{\textsf{starry}\xspace}
 \newcommand{\batman}{\textsf{batman}\xspace}
+\newcommand{\planetplanet}{\textsf{planetplanet}\xspace}
 \newcommand{\Python}{\textsf{Python}\xspace}
 \newcommand{\cpp}{\textsf{C}++\xspace}
 \newcommand{\Mathematica}{\textsf{Mathematica}\xspace}
@@ -51,20 +52,16 @@
 
 % Add script hyperlinks as margin notes
 \definecolor{proofcolor}{rgb}{0.1216,0.4667,0.7059}
-\newcommand{\code}[4]{\marginnote{\href{https://github.com/rodluger/starry/blob/#1/starry/#2\#L#3-L#4}{\includegraphics[width=0.9cm]{figures/python.png}}}}
-\newcommand{\python}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.py}{\includegraphics[width=0.9cm]{figures/python.png}}}}
-\newcommand{\mathematica}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.6cm]{figures/mathematica.png}}}}
-\newcommand{\pdf}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.6cm]{figures/pdf.png}}}}
-\newcommand{\animation}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.gif}{\,\,\includegraphics[width=0.6cm]{figures/play.png}}}}
+\newcommand{\python}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.py}{\includegraphics[width=0.9cm]{figures/plot.png}}}}
+\newcommand{\mathematica}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.8cm]{figures/pen.png}}}}
+\newcommand{\pdf}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.8cm]{figures/pen.png}}}}
+\newcommand{\animation}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.gif}{\includegraphics[width=0.9cm]{figures/play.png}}}}
 \newcommand{\todo}[1]{\marginnote{\includegraphics[width=0.6cm]{figures/todo.png}\\[-1ex]{\color{red}\scriptsize#1}}}
 \newcommand{\pythonlogo}{%
-  \scalerel*{\includegraphics[trim={0.1cm, 0.4cm, 0.4cm, 0.4cm},clip]{figures/python.png}}{B}\hspace*{-0.1em}
+  \hspace*{0.25em}\raisebox{-1.25ex}{\includegraphics[width=0.8cm]{figures/plot.png}}
 }
-\newcommand{\mathematicalogo}{%
-  \hspace*{0.2em}\scalerel*{\includegraphics[trim={0.cm, 0.cm, 0.cm, 0.cm},clip]{figures/mathematica.png}}{B}\hspace*{-0.1em}
-}
-\newcommand{\pdflogo}{%
-  \scalerel*{\,\,\,\includegraphics[trim={0.cm, 0.cm, 0.cm, 0.cm},clip]{figures/pdf.png}}{B}\hspace*{-0.05em}
+\newcommand{\penlogo}{%
+  \hspace*{0.25em}\raisebox{-1ex}{\includegraphics[width=0.6cm]{figures/pen.png}}
 }
 
 % Force margin notes to always be on the right side
