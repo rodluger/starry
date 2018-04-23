@@ -20,17 +20,19 @@ time = np.linspace(0, 20, 10000)
 # ----------------------------------------------------
 
 # Instantiate the star
-star = Star(m=1, r=1, L=1)
+star = Star()
 
 # Give the star a quadratic limb darkening profile
-star.map.limbdark(0.4, 0.26)
+star.map[1] = 0.4
+star.map[2] = 0.26
 
 # Instantiate planet b
-b = Planet(r=10,
+b = Planet(r=0.091679,
            L=5e-3,
            inc=90,
            porb=4.3,
            prot=4.3,
+           a=11.127991,
            lambda0=90,
            tref=2)
 
@@ -54,17 +56,19 @@ ax[0].plot(time, sF, '-', color='C0')
 # ----------------------------------------------------------------
 
 # Instantiate the star
-star = Star(m=1, r=1, L=1)
+star = Star()
 
 # Give the star a quadratic limb darkening profile
-star.map.limbdark(0.4, 0.26)
+star.map[1] = 0.4
+star.map[2] = 0.26
 
 # Instantiate planet b
-b = Planet(r=5,
+b = Planet(r=0.04584,
            L=5e-3,
            inc=89.0,
            porb=2.1,
            prot=2.1,
+           a=6.901084,
            lambda0=90,
            tref=0.5)
 
@@ -74,11 +78,12 @@ b.map[1, 0] = -1
 b.map[2, 1] = 1
 
 # Instantiate planet c
-c = Planet(r=8,
+c = Planet(r=0.07334,
            L=5e-3,
            inc=90.0,
            porb=6.7,
            prot=6.7,
+           a=14.95619,
            lambda0=90,
            tref=3)
 

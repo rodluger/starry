@@ -96,14 +96,12 @@ a = ((P * 86400) ** 2 * (1.32712440018e20 * mstar) /
 # Get the inclination in degrees
 inc = np.arccos(b0 / a) * 180 / np.pi
 
-# Note that starry expects the planet radius in units of REARTH
-r = rplanet * 6.957e8 * rstar / 6.3781e6
-
 # Compute and plot the starry flux
-star = Star(m=mstar, r=rstar)
-star.map.limbdark(u1, u2)
+star = Star()
+star.map[1] = u1
+star.map[2] = u2
 
-planet = Planet(r=r, inc=inc, porb=P, lambda0=90)
+planet = Planet(r=rplanet, inc=inc, porb=P, a=a, lambda0=90)
 system = System([star, planet])
 system.compute(time)
 sF = np.array(star.flux)

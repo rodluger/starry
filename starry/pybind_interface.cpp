@@ -85,8 +85,8 @@ PYBIND11_MODULE(starry, m) {
 
         The orbital classes
         ===================
-        .. autoclass:: Star(r=1, L=1, m=1)
-        .. autoclass:: Planet(lmax=2, r=1, L=0, u=(0, 1, 0), prot=0, theta0=0, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
+        .. autoclass:: Star()
+        .. autoclass:: Planet(lmax=2, r=0.1, L=0, u=(0, 1, 0), prot=0, theta0=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
         .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
 
     )pbdoc";
@@ -125,52 +125,8 @@ PYBIND11_MODULE(starry, m) {
                 The computed system light curve. Must run :py:meth:`compute` first.
             )pbdoc");
 
-     // Body class
-     py::class_<orbital::Body<double>> PyBody(m, "Body", R"pbdoc(
-             Celestial body base class.
-
-             .. note:: This is a base class for :py:class:`Star` and :py:class:`Body`. Users should \
-                       instantiate body objects via those two subclasses rather than instantiating this class \
-                       directly.
-
-             Args:
-                 lmax (int): Largest spherical harmonic degree in body's surface map.
-                 r (float): Body radius in units of :py:obj:`UNIT_RADIUS`.
-                 L (float): Body luminosity in units of :py:obj:`UNIT_LUMINOSITY`.
-                 u (ndarray): A unit vector specifying the body's axis of rotation.
-                 prot (float): Rotation period in days.
-                 theta0 (float): Rotation phase at time :py:obj:`tref` in degrees.
-                 m (float): Body mass in units of :py:obj:`UNIT_MASS`.
-                 porb (float): Orbital period in days.
-                 inc (float): Orbital inclination in degrees.
-                 ecc (float): Orbital eccentricity.
-                 w (float): Longitude of pericenter in degrees.
-                 Omega (float): Longitude of ascending node in degrees.
-                 lambda0 (float): Mean longitude at time :py:obj:`tref` in degrees.
-                 tref (float): Reference time in days.
-                 UNIT_RADIUS (float): Radius conversion factor in meters.
-                 UNIT_MASS (float): Mass conversion factor for this body in kg.
-                 UNIT_LUMINOSITY (float): Luminosity conversion factor for this body in W / m^2.
-
-             .. autoattribute:: map
-             .. autoattribute:: flux
-             .. autoattribute:: x
-             .. autoattribute:: y
-             .. autoattribute:: z
-             .. autoattribute:: r
-             .. autoattribute:: L
-             .. autoattribute:: u
-             .. autoattribute:: prot
-             .. autoattribute:: theta0
-             .. autoattribute:: m
-             .. autoattribute:: porb
-             .. autoattribute:: inc
-             .. autoattribute:: ecc
-             .. autoattribute:: w
-             .. autoattribute:: Omega
-             .. autoattribute:: lambda0
-             .. autoattribute:: tref
-         )pbdoc");
+     // Body class (not user-facing, just a base class)
+     py::class_<orbital::Body<double>> PyBody(m, "Body");
 
      PyBody.def(py::init<int, const double&, const double&,
                          Eigen::Matrix<double, 3, 1>&,
@@ -179,13 +135,11 @@ PYBIND11_MODULE(starry, m) {
                          const double&, const double&,
                          const double&, const double&,
                          const double&, const double&,
-                         const double&, const double&,
-                         const double&>(),
+                         bool>(),
                          "lmax"_a, "r"_a, "L"_a, "u"_a,
-                         "prot"_a, "theta0"_a, "m"_a, "porb"_a,
+                         "prot"_a, "theta0"_a, "a"_a, "porb"_a,
                          "inc"_a, "ecc"_a, "w"_a, "Omega"_a,
-                         "lambda0"_a, "tref"_a, "UNIT_RADIUS"_a,
-                         "UNIT_MASS"_a, "UNIT_LUMINOSITY"_a)
+                         "lambda0"_a, "tref"_a, "is_star"_a)
 
         .def_property_readonly("map", [](orbital::Body<double> &body){return &body.map;},
             R"pbdoc(
@@ -212,16 +166,16 @@ PYBIND11_MODULE(starry, m) {
                 The `z` position of the body in AU.
             )pbdoc")
 
-        .def_property("r", [](orbital::Body<double> &body){return body.r / body.UNIT_RADIUS;},
-                           [](orbital::Body<double> &body, double r){body.r = r * body.UNIT_RADIUS;},
+        .def_property("r", [](orbital::Body<double> &body){return body.r;},
+                           [](orbital::Body<double> &body, double r){body.r = r;},
             R"pbdoc(
-                Body radius in units of :py:obj:`UNIT_RADIUS`.
+                Body radius in units of stellar radius.
             )pbdoc")
 
-        .def_property("L", [](orbital::Body<double> &body){return body.L / body.UNIT_LUMINOSITY;},
-                           [](orbital::Body<double> &body, double L){body.L = L * body.UNIT_LUMINOSITY; body.reset();},
+        .def_property("L", [](orbital::Body<double> &body){return body.L;},
+                           [](orbital::Body<double> &body, double L){body.L = L; body.reset();},
             R"pbdoc(
-                Body luminosity in units of :py:obj:`UNIT_LUMINOSITY`.
+                Body luminosity in units of stellar luminosity.
             )pbdoc")
 
         .def_property("u", [](orbital::Body<double> &body){return body.u;},
@@ -242,10 +196,10 @@ PYBIND11_MODULE(starry, m) {
                 Rotation phase at time :py:obj:`tref` in degrees.
             )pbdoc")
 
-        .def_property("m", [](orbital::Body<double> &body){return body.m / body.UNIT_MASS;},
-                           [](orbital::Body<double> &body, double m){body.m = m * body.UNIT_MASS;},
+        .def_property("a", [](orbital::Body<double> &body){return body.a;},
+                           [](orbital::Body<double> &body, double a){body.a = a;},
             R"pbdoc(
-                Body mass in units of :py:obj:`UNIT_MASS`.
+                Body semi-major axis in units of stellar radius.
             )pbdoc")
 
         .def_property("porb", [](orbital::Body<double> &body){return body.porb / DAY;},
@@ -290,35 +244,66 @@ PYBIND11_MODULE(starry, m) {
                 Reference time in days.
             )pbdoc")
 
-        .def("__repr__", [](orbital::Body<double> &body) -> string {return body.repr();});
+        .def("__repr__", [](orbital::Body<double> &body) -> string {return body.repr();})
+
+        .def("__setitem__", [](orbital::Body<double> &body, py::object index, double coeff) {
+            if (py::isinstance<py::tuple>(index)) {
+                // This is a (l, m) tuple
+                py::tuple lm = index;
+                int l = py::cast<int>(lm[0]);
+                int m = py::cast<int>(lm[1]);
+                body.map.set_coeff(l, m, coeff);
+            } else {
+                // This is a limb darkening index
+                int n = py::cast<int>(index);
+                body.map.set_ld(n, coeff);
+            }
+        })
+
+        .def("__getitem__", [](orbital::Body<double> &body, py::object index) -> py::object {
+            if (py::isinstance<py::tuple>(index)) {
+                // This is a (l, m) tuple
+                py::tuple lm = index;
+                int l = py::cast<int>(lm[0]);
+                int m = py::cast<int>(lm[1]);
+                return py::cast(body.map.get_coeff(l, m));
+            } else {
+                // This is a limb darkening index
+                int n = py::cast<int>(index);
+                if (body.map.ld_order > 0)
+                    return py::cast(body.map.get_ld(n));
+                else
+                    return py::none();
+            }
+        });
 
     // Star class
     py::class_<orbital::Star<double>>(m, "Star", PyBody, R"pbdoc(
             Instantiate a stellar :py:class:`Body` object.
 
-            Instantiate a star by specifying its
-            radius, mass, and luminosity, which default to solar values. The
-            degree of the surface map is fixed at `l = 2` to allow for
-            quadratic limb-darkending. This class has the following units:
-
-                - :py:attr:`UNIT_RADIUS`: Solar radius
-                - :py:attr:`UNIT_MASS`: Solar mass
-                - :py:attr:`UNIT_LUMINOSITY`: Solar luminosity
+            The star's radius and luminosity are fixed at unity.
 
             Args:
-                r (float): Stellar radius in solar radii. Default 1.
-                L (float): Stellar luminosity in units of LSUN. Default 1.
-                m (float): Stellar mass in solar masses. Default 1.
+                lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
 
             .. autoattribute:: map
             .. autoattribute:: flux
-            .. autoattribute:: r
-            .. autoattribute:: L
-            .. autoattribute:: m
         )pbdoc")
 
-        .def(py::init<const double&, const double&, const double&>(),
-            "r"_a=1, "L"_a=1, "m"_a=1)
+        .def(py::init<int>(), "lmax"_a=2)
+        .def_property_readonly("r", [](orbital::Star<double> &star){return star.r;})
+        .def_property_readonly("L", [](orbital::Star<double> &star){return star.L;})
+        .def_property_readonly("u", [](orbital::Star<double> &star){return star.u;})
+        .def_property_readonly("prot", [](orbital::Star<double> &star){return star.prot;})
+        .def_property_readonly("theta0", [](orbital::Star<double> &star){return star.theta0;})
+        .def_property_readonly("a", [](orbital::Star<double> &star){return star.a;})
+        .def_property_readonly("porb", [](orbital::Star<double> &star){return star.porb;})
+        .def_property_readonly("inc", [](orbital::Star<double> &star){return star.inc;})
+        .def_property_readonly("ecc", [](orbital::Star<double> &star){return star.ecc;})
+        .def_property_readonly("w", [](orbital::Star<double> &star){return star.w;})
+        .def_property_readonly("Omega", [](orbital::Star<double> &star){return star.Omega;})
+        .def_property_readonly("lambda0", [](orbital::Star<double> &star){return star.lambda0;})
+        .def_property_readonly("tref", [](orbital::Star<double> &star){return star.tref;})
 
         .def("__repr__", [](orbital::Star<double> &star) -> string {return star.repr();});
 
@@ -328,19 +313,15 @@ PYBIND11_MODULE(starry, m) {
 
             Instantiate a planet. At present, :py:mod:`starry` computes orbits with a simple
             Keplerian solver, so the planet is assumed to be massless.
-            This class has the following units:
-
-                - :py:attr:`UNIT_RADIUS`: Earth radius
-                - :py:attr:`UNIT_MASS`: Earth mass
-                - :py:attr:`UNIT_LUMINOSITY`: 1.e-9 solar luminosity
 
             Args:
                 lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
-                r (float): Body radius in Earth radii. Default 1.
-                L (float): Body luminosity in units of LSUN. Default 0.
+                r (float): Body radius in stellar radii. Default 0.1
+                L (float): Body luminosity in units of the stellar luminosity. Default 0.
                 u (ndarray): A unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                 prot (float): Rotation period in days. Default no rotation.
                 theta0 (float): Rotation phase at time :py:obj:`tref` in degrees. Default 0.
+                a (float): Semi-major axis in stellar radii. Default 50.
                 porb (float): Orbital period in days. Default 1.
                 inc (float): Orbital inclination in degrees. Default 90.
                 ecc (float): Orbital eccentricity. Default 0.
@@ -359,6 +340,7 @@ PYBIND11_MODULE(starry, m) {
             .. autoattribute:: u
             .. autoattribute:: prot
             .. autoattribute:: theta0
+            .. autoattribute:: a
             .. autoattribute:: porb
             .. autoattribute:: inc
             .. autoattribute:: ecc
@@ -374,9 +356,9 @@ PYBIND11_MODULE(starry, m) {
                       const double&, const double&,
                       const double&, const double&,
                       const double&, const double&,
-                      const double&>(),
-                      "lmax"_a=2, "r"_a=1, "L"_a=0., "u"_a=maps::yhat,
-                      "prot"_a=0, "theta0"_a=0, "porb"_a=1,
+                      const double&, const double&>(),
+                      "lmax"_a=2, "r"_a=0.1, "L"_a=0., "u"_a=maps::yhat,
+                      "prot"_a=0, "theta0"_a=0, "a"_a=50., "porb"_a=1,
                       "inc"_a=90., "ecc"_a=0, "w"_a=90, "Omega"_a=0,
                       "lambda0"_a=90, "tref"_a=0)
 
@@ -396,12 +378,14 @@ PYBIND11_MODULE(starry, m) {
             .. automethod:: flux(u=(0, 1, 0), theta=0, xo=0, yo=0, ro=0, numerical=False, tol=1.e-4)
             .. automethod:: get_coeff(l, m)
             .. automethod:: set_coeff(l, m, coeff)
+            .. automethod:: get_ld(n)
+            .. automethod:: set_ld(n, u_n)
             .. automethod:: reset()
-            .. automethod:: limbdark(u1, u2)
             .. autoattribute:: lmax
             .. autoattribute:: y
             .. autoattribute:: p
             .. autoattribute:: g
+            .. autoattribute:: ld
             .. automethod:: minimum()
             .. automethod:: nonnegative()
             .. automethod:: random()
@@ -514,22 +498,34 @@ PYBIND11_MODULE(starry, m) {
                     coeff (float): The value of the coefficient.
             )pbdoc", "l"_a, "m"_a, "coeff"_a)
 
+        .def("get_ld", &maps::Map<double>::get_ld,
+            R"pbdoc(
+                Return the limb darkening coefficient of order :py:obj:`n`.
+
+                .. note:: Users can also retrieve a limb darkening coefficient by accessing the \
+                          [:py:obj:`n`] index of the map as if it were an array.
+
+                Args:
+                    n (int): The limb darkening order (1 or 2).
+            )pbdoc", "n"_a)
+
+        .def("set_ld", &maps::Map<double>::set_ld,
+            R"pbdoc(
+                Set the limb darkening coefficient of order :py:obj:`n`.
+
+                .. note:: Users can also set a coefficient by setting the \
+                          [:py:obj:`n`] index of the map as if it \
+                          were an array.
+
+                Args:
+                    n (int): The limb darkening order (1 or 2).
+                    u_n (float): The value of the coefficient.
+            )pbdoc", "n"_a, "u_n"_a)
+
         .def("reset", &maps::Map<double>::reset,
             R"pbdoc(
                 Set all of the map coefficients to zero.
             )pbdoc")
-
-        .def("limbdark", &maps::Map<double>::limbdark,
-            R"pbdoc(
-                Set the linear and quadratic limb darkening coefficients.
-
-                .. note:: This will overwrite all existing coefficients.
-
-                Args:
-                    u1 (float): The linear limb darkening coefficient.
-                    u2 (float): The quadratic limb darkening coefficient.
-
-            )pbdoc", "u1"_a, "u2"_a)
 
         .def_property_readonly("lmax", [](maps::Map<double> &map){return map.lmax;},
             R"pbdoc(
@@ -551,28 +547,44 @@ PYBIND11_MODULE(starry, m) {
                 The Green's polynomial map vector. *Read-only.*
             )pbdoc")
 
-        .def("__setitem__", [](maps::Map<double>& map, vector<int> lm, double coeff){
-            if (lm.size() == 1) {
-                int l = (int)floor(sqrt(lm[0]));
-                int m = lm[0] - l * l - l;
+        .def_property_readonly("ld", [](maps::Map<double> &map) -> py::object {
+            if (map.ld_order > 0)
+                return py::cast(map.ld);
+            else
+                return py::none();
+        },
+            R"pbdoc(
+                The limb darkening coefficients. *Read-only.*
+            )pbdoc")
+
+        .def("__setitem__", [](maps::Map<double>& map, py::object index, double coeff) {
+            if (py::isinstance<py::tuple>(index)) {
+                // This is a (l, m) tuple
+                py::tuple lm = index;
+                int l = py::cast<int>(lm[0]);
+                int m = py::cast<int>(lm[1]);
                 map.set_coeff(l, m, coeff);
-            } else if (lm.size() == 2) {
-                map.set_coeff(lm[0], lm[1], coeff);
             } else {
-                std::cout << "ERROR: Invalid spherical harmonic index." << std::endl;
+                // This is a limb darkening index
+                int n = py::cast<int>(index);
+                map.set_ld(n, coeff);
             }
         })
 
-        .def("__getitem__", [](maps::Map<double>& map, vector<int> lm){
-            if (lm.size() == 1) {
-                int l = (int)floor(sqrt(lm[0]));
-                int m = lm[0] - l * l - l;
-                return map.get_coeff(l, m);
-            } else if (lm.size() == 2) {
-                return map.get_coeff(lm[0], lm[1]);
+        .def("__getitem__", [](maps::Map<double>& map, py::object index) -> py::object {
+            if (py::isinstance<py::tuple>(index)) {
+                // This is a (l, m) tuple
+                py::tuple lm = index;
+                int l = py::cast<int>(lm[0]);
+                int m = py::cast<int>(lm[1]);
+                return py::cast(map.get_coeff(l, m));
             } else {
-                std::cout << "ERROR: Invalid spherical harmonic index." << std::endl;
-                return double(0.);
+                // This is a limb darkening index
+                int n = py::cast<int>(index);
+                if (map.ld_order > 0)
+                    return py::cast(map.get_ld(n));
+                else
+                    return py::none();
             }
         })
 

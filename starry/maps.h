@@ -14,6 +14,7 @@ Defines the surface map class.
 #include "basis.h"
 #include "solver.h"
 #include "numeric.h"
+#include "errors.h"
 
 // Multiprecision
 #ifndef STARRY_MP_DIGITS
@@ -71,8 +72,7 @@ namespace maps {
             // Keep track of whether the user has set
             // any non-limb darkening coefficients.
             bool radial_symmetry;
-            bool is_limbdark;
-            T limbdark_total_flux;
+            T ld_flux;
 
             // Temporary variables
             Vector<T> tmpvec;
@@ -90,10 +90,12 @@ namespace maps {
             Vector<T> y;
             Vector<T> p;
             Vector<T> g;
+            Vector<T> ld;
 
             // Map order
             int N;
             int lmax;
+            int ld_order;
 
             // Rotation matrices
             rotation::Wigner<T> R;
@@ -118,6 +120,7 @@ namespace maps {
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);
                 g = Vector<T>::Zero(N);
+                ld = Vector<T>::Zero(lmax + 1);
                 tmpvec = Vector<T>::Zero(N);
                 ARRy = Vector<T>::Zero(N);
                 mpVec = Vector<bigdouble>::Zero(N);
@@ -127,8 +130,8 @@ namespace maps {
                 tmpu3 = 0;
                 basis.resize(N, 1);
                 radial_symmetry = true;
-                is_limbdark = false;
-                limbdark_total_flux = 0;
+                ld_order = 0;
+                ld_flux = 0;
                 use_mp = false;
                 update(true);
             }
@@ -144,8 +147,9 @@ namespace maps {
             void update(bool force=false);
             void random(double beta=0);
             void set_coeff(int l, int m, T coeff);
-            void limbdark(T u1=0, T u2=0);
             T get_coeff(int l, int m);
+            void set_ld(int n, T coeff);
+            T get_ld(int n);
             void reset();
             T flux(UnitVector<T>& u=yhat, T theta=0,
                    T xo=0, T yo=0, T ro=0,
@@ -262,7 +266,7 @@ namespace maps {
         apply_rotation(u, cos(theta), sin(theta), y, y);
         needs_update = true;
         radial_symmetry = false;
-        is_limbdark = false;
+        ld_order = 0;
     }
 
     // Shortcut to rotate the base map in-place given `costheta` and `sintheta`
@@ -271,7 +275,7 @@ namespace maps {
         apply_rotation(u, costheta, sintheta, y, y);
         needs_update = true;
         radial_symmetry = false;
-        is_limbdark = false;
+        ld_order = 0;
     }
 
     // Shortcut to rotate an arbitrary map given `theta`
@@ -299,11 +303,10 @@ namespace maps {
         // Check for complete occultation
         if (b <= ro - 1) return 0;
 
-        // If we're doing quadratic limb darkening,
-        // let's skip all the overhead
-        if ((is_limbdark) && (ro < 1) && (!numerical) && (!use_mp)) {
+        // If we're doing quadratic limb darkening, let's skip all the overhead
+        if (((ld_order == 1) || (ld_order == 2)) && (ro < 1) && (!numerical) && (!use_mp)) {
             if ((b >= 1 + ro) || (ro == 0))
-                return limbdark_total_flux;
+                return ld_flux;
             else
                 return solver::QuadLimbDark(G, b, ro, g(0), g(2), g(8));
         }
@@ -380,9 +383,10 @@ namespace maps {
             y(n) = coeff;
             needs_update = true;
             if (m != 0) radial_symmetry = false;
-            is_limbdark = false;
+            ld.setZero(lmax + 1);
+            ld_order = 0;
         } else
-            std::cout << "ERROR: Invalid value for `l` and/or `m`." << std::endl;
+            std::cout << "WARNING: Invalid value for `l` and/or `m`." << std::endl;
     }
 
     // Get the (l, m) coefficient
@@ -391,32 +395,66 @@ namespace maps {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
             return y(l * l + l + m);
         else {
-            std::cout << "ERROR: Invalid value for `l` and/or `m`." << std::endl;
+            std::cout << "WARNING: Invalid value for `l` and/or `m`." << std::endl;
             return 0;
         }
     }
 
-    // Set the linear/quadratic limb darkening coefficients
+    // Set a limb darkening coefficient
     template <class T>
-    void Map<T>::limbdark(T u1, T u2) {
-        reset();
-        set_coeff(0, 0, 2 * sqrt(M_PI) / 3. * (3 - 3 * u1 - 4 * u2));
-        set_coeff(1, 0, 2 * sqrt(M_PI / 3.) * (u1 + 2 * u2));
-        set_coeff(2, 0, -4. / 3. * sqrt(M_PI / 5) * u2);
+    void Map<T>::set_ld(int n, T u_n) {
+        if (n <= 0) {
+            std::cout << "WARNING: Index `n` must be positive." << std::endl;
+            return;
+        } else if (n > 2) {
+            // TODO! Implement higher order limb darkening.
+            throw errors::LimbDark();
+        } else if (n > lmax) {
+            std::cout << "WARNING: Index `n` must be less than or equal to `lmax`." << std::endl;
+            return;
+        }
+
+        // Set the limb darkening coefficient
+        ld(n) = u_n;
+        ld_order = max(ld_order, n);
+
+        // Update the map vector
+        y.setZero(N);
+        y(0) = 2 * sqrt(M_PI) / 3. * (3 - 3 * ld(1) - 4 * ld(2));
+        y(2) = 2 * sqrt(M_PI / 3.) * (ld(1) + 2 * ld(2));
+        y(6) = -4. / 3. * sqrt(M_PI / 5) * ld(2);
         radial_symmetry = true;
+
         // Pre-compute the greens polynomials so we can
         // breeze through the flux calculation
         g = C.A * y;
-        limbdark_total_flux = G.pi * g(0) + 2. * G.pi / 3. * g(2) + G.pi_over_2 * g(8);
-        is_limbdark = true;
+        ld_flux = G.pi * g(0) + 2. * G.pi / 3. * g(2) + G.pi_over_2 * g(8);
+        radial_symmetry = true;
+        needs_update = true;
+    }
+
+    // Get a limb darkening coefficient
+    template <class T>
+    T Map<T>::get_ld(int n) {
+        if (ld_order == 0) {
+            std::cout << "WARNING: The map is not currently limb-darkened." << std::endl;
+            return 0;
+        } else if ((0 < n) && (n <= 2))
+            return ld(n);
+        else {
+            std::cout << "WARNING: Invalid value for `n`." << std::endl;
+            return 0;
+        }
     }
 
     // Reset the map
     template <class T>
     void Map<T>::reset() {
         y.setZero(N);
+        ld.setZero(lmax + 1);
         needs_update = true;
         radial_symmetry = true;
+        ld_order = 0;
     }
 
     // Generate a random map with a given power spectrum power index `beta`
@@ -444,7 +482,10 @@ namespace maps {
         int nterms = 0;
         char buf[30];
         std::ostringstream os;
-        os << "<STARRY Map: ";
+        if (ld_order > 0)
+            os << "<STARRY Map (LD): ";
+        else
+            os << "<STARRY Map: ";
         for (int l = 0; l < lmax + 1; l++) {
             for (int m = -l; m < l + 1; m++) {
                 if (std::abs(y(n)) > STARRY_MAP_TOLERANCE){

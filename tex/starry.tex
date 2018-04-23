@@ -125,7 +125,7 @@ in the paper, with references to the equations defining them.
 \label{sec:spharm}
 % ------------------------------------------------------------------------------
 
-The orthonormalized real spherical harmonics $Y_{lm}(\theta,\phi)$ of degree $l \ge 0$
+The orthonormalized real spherical harmonics $Y_{lm}(\uptheta,\upphi)$ of degree $l \ge 0$
 and order $m \in [-l,\, l]$ with the Condon-Shortley phase factor \citep[e.g.][]{Varshalovich1988}
 are defined in spherical coordinates as
 %
@@ -133,8 +133,8 @@ are defined in spherical coordinates as
     \label{eq:ylmtp}
     Y_{lm}(\theta, \phi) =
     \begin{cases}
-        \bar{P}_{lm}(\cos\theta)\cos(m\phi) & \qquad m \geq 0 \\
-        \bar{P}_{l|m|}(\cos\theta)\sin(|m|\phi) & \qquad m < 0 \quad,
+        \bar{P}_{lm}(\cos\uptheta)\cos(m\upphi) & \qquad m \geq 0 \\
+        \bar{P}_{l|m|}(\cos\uptheta)\sin(|m|\upphi) & \qquad m < 0 \quad,
     \end{cases}
 \end{align}
 %
@@ -144,12 +144,12 @@ surface of the unit sphere, we have
 %
 \begin{align}
     \label{eq:xyz}
-    \x &= \sin\theta \cos\phi \nonumber \\
-    \y &= \sin\theta \sin\phi \nonumber \\
-    \z &= \cos\theta \quad.
+    \x &= \sin\uptheta \cos\upphi \nonumber \\
+    \y &= \sin\uptheta \sin\upphi \nonumber \\
+    \z &= \cos\uptheta \quad.
 \end{align}
 %
-The observer is located along the $z$-axis at $z = -\infty$ such
+The observer is located along the $z$-axis at $z = \infty$ such
 that the projected disk of the body sits at the origin on the $xy$-plane with $\xhat$ to
 the right and $\yhat$ up.
 %
@@ -2937,8 +2937,8 @@ $\alpha$        & Euler angle ($\zhat$ rotation)        & Appendix~\ref{app:eule
 $\beta$         & Euler angle ($\yhat$ rotation)        & Appendix~\ref{app:euler} \\
 $\gamma$        & Euler angle ($\zhat$ rotation)        & Appendix~\ref{app:euler} \\
 $\Gamma$        & Gamma function                        & \\
-$\theta$        & Polar angle                           & \eq{ylmtp} \\
-                & Spherical harmonic rotation angle     & Appendix~\ref{app:axisangle} \\
+$\uptheta$      & Spherical harmonic polar angle        & \eq{ylmtp} \\
+$\theta$        & Rotation angle                        & Appendix~\ref{app:axisangle} \\
 $\Theta$        & Heaviside step function               & \eq{biglam} \\
 $\lambda$       & Angular position of
                   occultor/occulted intersection point  & \eq{lambda} \\
@@ -2949,8 +2949,8 @@ $\nu$           & $l + m$                               & \eq{munu} \\
 $\Pi(\bigdot,\bigdot)$
                 & Complete elliptic integral of the
                   third kind                            & \eq{elliptic} \\
-$\phi$          & Spherical harmonic azimuthal angle    & \eq{ylmtp} \\
-                & Angular position of
+$\upphi$        & Spherical harmonic azimuthal angle    & \eq{ylmtp} \\
+$\phi$          & Angular position of
                   occultor/occulted intersection point  & \eq{phi} \\
 $\varphi$       & Dummy integration variable            & \\
 $\omega$        & Angular position of occultor          & \eq{zrot}

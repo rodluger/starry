@@ -22,9 +22,6 @@ a = ((P * 86400) ** 2 * (1.32712440018e20 * mstar) /
 # Get the inclination in degrees
 inc = np.arccos(b0 / a) * 180 / np.pi
 
-# Starry expects the planet radius in units of REARTH:
-r = rplanet * 6.957e8 * rstar / 6.3781e6
-
 # Timing params
 number = 10
 nN = 8
@@ -40,9 +37,10 @@ for i, N in enumerate(Narr):
     t = np.linspace(-1, 1, N)
 
     # starry
-    star = Star(m=mstar, r=rstar, L=1)
-    star.map.limbdark(u1, u2)
-    planet = Planet(r=r, inc=inc, porb=P, lambda0=90)
+    star = Star()
+    star.map[1] = u1
+    star.map[2] = u2
+    planet = Planet(r=rplanet, inc=inc, porb=P, a=a, lambda0=90)
     system = System([star, planet])
     tstart = time.time()
     for k in range(number):

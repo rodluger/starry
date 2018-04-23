@@ -49,6 +49,18 @@ namespace errors {
         }
     };
 
+    struct LimbDark : public exception {
+        const char * what () const throw (){
+            return "Limb darkening is currently only available up to second order.";
+        }
+    };
+
+    struct BadSystem : public exception {
+        const char * what () const throw (){
+            return "The first body (and only the first body) must be a `Star`.";
+        }
+    };
+
 }; // namespace errors
 
 #endif

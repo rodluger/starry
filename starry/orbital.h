@@ -21,6 +21,7 @@ using UnitVector = Eigen::Matrix<T, 3, 1>;
 using maps::Map;
 using maps::yhat;
 using std::vector;
+using std::max;
 
 namespace orbital {
 
@@ -44,21 +45,20 @@ namespace orbital {
             System(vector<Body<T>*> bodies, const double& eps=1.0e-7, const int& maxiter=100) :
                 bodies(bodies), eps(eps), maxiter(maxiter) {
 
+                // Check that we have at least one body
+                if (bodies.size() == 0)
+                    throw errors::BadSystem();
+
+                // Check that first body (and only first body) is a star
+                if (!bodies[0]->is_star)
+                    throw errors::BadSystem();
+
                 // Propagate settings down
                 for (int i = 1; i < bodies.size(); i++) {
+                    if (bodies[i]->is_star)
+                        throw errors::BadSystem();
                     bodies[i]->eps = eps;
                     bodies[i]->maxiter = maxiter;
-                }
-
-                // Set the flag for the primary
-                bodies[0]->is_primary = true;
-
-                // Compute the semi-major axes of each planet/satellite
-                for (int i = 1; i < bodies.size(); i++) {
-                    bodies[i]->is_primary = false;
-                    bodies[i]->a = pow((bodies[i]->porb * bodies[i]->porb) *
-                                       (BIGG * bodies[0]->m) /
-                                       (4 * M_PI * M_PI), (1. / 3.));
                 }
 
             }
@@ -168,13 +168,7 @@ namespace orbital {
 
         public:
 
-            // Unit conversions for I/O
-            T UNIT_RADIUS;
-            T UNIT_MASS;
-            T UNIT_LUMINOSITY;
-
             // Flag
-            bool is_primary;
             bool computed;
 
             // Map stuff
@@ -189,7 +183,6 @@ namespace orbital {
 
             // Orbital elements
             T a;
-            T m;
             T porb;
             T inc;
             T ecc;
@@ -197,6 +190,7 @@ namespace orbital {
             T Omega;
             T lambda0;
             T tref;
+            bool is_star;
 
             // Settings
             double eps;
@@ -219,7 +213,7 @@ namespace orbital {
                  const T& prot,
                  const T& theta0,
                  // Orbital stuff
-                 const T& m,
+                 const T& a,
                  const T& porb,
                  const T& inc,
                  const T& ecc,
@@ -227,31 +221,28 @@ namespace orbital {
                  const T& Omega,
                  const T& lambda0,
                  const T& tref,
-                 const T& UNIT_RADIUS,
-                 const T& UNIT_MASS,
-                 const T& UNIT_LUMINOSITY) :
-                 UNIT_RADIUS(UNIT_RADIUS),
-                 UNIT_MASS(UNIT_MASS),
-                 UNIT_LUMINOSITY(UNIT_LUMINOSITY),
+                 bool is_star) :
                  lmax(lmax),
                  u(u),
                  prot(prot * DAY),
                  theta0(theta0 * DEGREE),
-                 r(r * UNIT_RADIUS),
-                 L(L * UNIT_LUMINOSITY),
+                 r(r),
+                 L(L),
                  map{Map<T>(lmax)},
-                 m(m * UNIT_MASS),
+                 a(a),
                  porb(porb * DAY),
                  inc(inc * DEGREE),
                  ecc(ecc),
                  w(w * DEGREE),
                  Omega(Omega * DEGREE),
                  lambda0(lambda0 * DEGREE),
-                 tref(tref * DAY)
+                 tref(tref * DAY),
+                 is_star(is_star)
                  {
                      // Initialize the map to constant surface brightness
-                     // And reset all variables
                      map.set_coeff(0, 0, 1);
+
+                     // Initialize orbital vars
                      reset();
                  }
 
@@ -337,7 +328,7 @@ namespace orbital {
     inline void Body<T>::step(const T& time, const int& t){
 
         // Primary is fixed at the origin in the Keplerian solver
-        if (is_primary) {
+        if (is_star) {
             x(t) = 0;
             y(t) = 0;
             z(t) = 0;
@@ -390,12 +381,9 @@ namespace orbital {
     template <class T>
     class Star : public Body<T> {
         public:
-            Star(const T& r=1.,
-                 const T& L=1.,
-                 const T& m=1.) :
-                 Body<T>(2, r, L, yhat, INFINITY, 0,
-                         m, INFINITY, 0, 0, 0, 0, 0, 0,
-                         RSUN, MSUN, LSUN) {
+            Star(int lmax=2) :
+                 Body<T>(lmax, 1, 1, yhat, INFINITY, 0,
+                         0, INFINITY, 0, 0, 0, 0, 0, 0, true) {
             }
         std::string repr();
     };
@@ -413,11 +401,12 @@ namespace orbital {
     class Planet : public Body<T> {
         public:
             Planet(int lmax=2,
-                   const T& r=1.,
+                   const T& r=0.1,
                    const T& L=0.,
                    const UnitVector<T>& u=yhat,
                    const T& prot=0.,
                    const T& theta0=0,
+                   const T& a=50.,
                    const T& porb=1.,
                    const T& inc=90.,
                    const T& ecc=0.,
@@ -425,9 +414,10 @@ namespace orbital {
                    const T& Omega=0.,
                    const T& lambda0=90.,
                    const T& tref=0.) :
-                   Body<T>(lmax, r, L, u, prot, theta0, 0, porb, inc,
+                   Body<T>(lmax, r, L, u, prot,
+                           theta0, a, porb, inc,
                            ecc, w, Omega, lambda0, tref,
-                           REARTH, MEARTH, LSUN) {
+                           false) {
             }
             std::string repr();
     };
@@ -436,7 +426,7 @@ namespace orbital {
     template <class T>
     std::string Planet<T>::repr() {
         std::ostringstream os;
-        os << "<STARRY Planet>";
+        os << "<STARRY Planet at P = " << std::setprecision(3) << this->porb / DAY << " days>";
         return std::string(os.str());
     }
 
