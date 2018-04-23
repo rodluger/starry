@@ -14,7 +14,7 @@
 \author[0000-0002-0296-3826]{Rodrigo Luger}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
 \author{Eric Agol}
-\affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
+\affil{Department~of~Astronomy, University~of~Washington, Seattle, WA; Virtual Planetary Laboratory; Guggenheim Fellow}
 \author{Javid Lustig-Fleming}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
 \author{Russell Deitrick}
@@ -1624,6 +1624,14 @@ as \batman \citep{Kreidberg2015}. Because the light curves are all analytical,
 to all input parameters via autodifferentiation, facilitating its interface with
 gradient-based inference schemes such as Hamiltonian Monte Carol (HMC)
 or gradient-descent optimization methods.
+
+Although we have in mind the application of this \starry to exoplanets, it could
+in principle be applied to eclipsing binaries as well.  If the deformation of
+the body is small and reflection is negligible, as is the case for long orbital periods, 
+then the surface brightness of each star can be decomposed into spherical harmonics, 
+and the \starry formalism may be used to integrate their phase curves and eclipses.
+One could imagine applying \starry, for instance, to secondary eclipses of white
+dwarfs to search for non-uniform surface brightness.
 
 At present, \starry supports only
 monochromatic surface maps, making it ideally suited for the modeling of
