@@ -240,8 +240,8 @@ namespace solver {
             T res1, res2;
             // Terms independent of ksq
             d3 = 2 * p + q - (p + q - 2);
-            d4 = (3 - p) + (p - 3);
-            res1 = (d3 * G.M(p - 2, q) + d4 * G.M(p - 4, q)) / (p + q + 3);
+            d4 = 0;
+            res1 = d3 * G.M(p - 2, q);
             // Terms proportional to ksq
             d3 = -(p + q - 2);
             d4 = (p - 3);

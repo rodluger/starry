@@ -8,7 +8,7 @@
 \setlength{\belowdisplayskip}{1.5em}
 
 \title{%
-    \textbf{STARRY}: analytical Occultation Light Curves
+    \textbf{STARRY}: Analytical Occultation Light Curves
 }
 
 \author[0000-0002-0296-3826]{Rodrigo Luger}
@@ -1163,8 +1163,34 @@ of occultations (transits) of limb-darkened stars by noting that any
 radially symmetric specific intensity profile can be expressed as a sum
 over the $m = 0$ spherical harmonics (see Figure~\ref{fig:ylms}).
 %
-In particular, the radial intensity profile of a quadratically
-limb-darkened star,
+In particular, \citet{limbdark} show how a limb darkening profile
+that is an order $l$ polynomial function of the radial coordinate,
+$\upmu = \z = \sqrt{1 - \x^2 - \y^2}$, can be exactly
+expressed in terms of the $m = 0$ spherical harmonics up to order $l$.
+
+For convenience, we implement this functionality in \starry, allowing users
+to specify the coefficients of the limb darkening polynomial directly as
+follows:
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+m = Map(2)
+m.set_ld(1) = u1
+m.set_ld(2) = u2
+\end{lstlisting}
+%
+or, more compactly,
+\footnote{Note that when two indices are used to access the map vector,
+as in \S\ref{sec:starrymap},
+\starry interprets them as the $l$ and $m$ spherical harmonic indices.
+When a single index is used, as in this case, \starry interprets it as
+the limb darkening polynomial index.}
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+m[1] = u1
+m[2] = u2
+\end{lstlisting}
+%
+In either case, this sets the map's limb darkening profile to
 %
 \begin{align}
     \label{eq:quadraticld}
@@ -1172,17 +1198,9 @@ limb-darkened star,
     \quad,
 \end{align}
 %
-where $\upmu = \z = \sqrt{1 - \x^2 - \y^2}$ and $u_1$ and $u_2$ are the
-limb darkening coefficients, can be written in terms of spherical harmonics
-by re-writing \eq{quadraticld} as
-%
-\begin{align}
-    I(\x, \y) = (1 - u_1 - 2u_2) + (u_1 + 2u_2) \z + u_2 \x^2 + u_2 \y^2
-           \quad.
-\end{align}
-%
-Inverting \eq{AOne} to express this polynomial in the basis of spherical harmonics,
-we have
+with $\upmu$ given above, corresponding to the well-known case of a quadratically
+limb-darkened star.
+From \citet{limbdark}, this corresponds to the spherical harmonic sum
 %
 \begin{align}
     \label{eq:qldylm}
@@ -1194,17 +1212,12 @@ we have
 \mathematica{limbdark}
 \end{align}
 %
-Thus, quadratic limb darkening can be expressed exactly as the sum of the first
-three $m = 0$ spherical harmonics. For convenience, this is implemented in
-\starry:
-%
-\begin{lstlisting}[language=Python,firstnumber=last]
-m = Map(2)
-m.limbdark(u1, u2)
-\end{lstlisting}
-%
-although users may also specify the coefficients in \eq{qldylm} as in
-\S\ref{sec:starrymap}.
+Note, importantly, that setting the limb darkening coefficients of a map
+resets all $m \neq 0$ coefficients. \starry does not at present support
+adding limb darkening to pre-existing, non-radially symmetric maps; this
+functionality will be added in the future to allow for limb darkening
+of, say, planetary atmospheres.
+
 Figure~\ref{fig:transit} shows a transit light curve computed with \starry
 for $u_1 = 0.4, u_2 = 0.26$. The planet/star radius ratio is $r = 0.1$ and
 the planet transits at impact parameter $b = 0.5$. For comparison, we also
@@ -1247,17 +1260,19 @@ creating a star:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 from starry import Star
-star = Star(r=1, m=1, L=1)
+star = Star(lmax=2)
 \end{lstlisting}
 %
-where \textsf{r} is the radius, \textsf{m} is the mass, and \textsf{L} is
-the luminosity, all in solar units. By default, the body's map is set to
+A \textsf{starry.Star} has unit radius and unit luminosity; the planet's radii,
+semi-major axes, and luminosities are all defined relative to these.
+By default, the star's map is set to
 the constant ($Y_{0,0}$) term, corresponding to uniform surface brightness.
-We can add quadratic limb darkening as before by editing the body's \textsf{map}
+We can add quadratic limb darkening as before by editing the star's \textsf{map}
 attribute:
 %
 \begin{lstlisting}[language=Python,firstnumber=last,]
-star.map.limbdark(0.40, 0.26)
+star.map[1] = 0.40
+star.map[2] = 0.26
 \end{lstlisting}
 %
 where we arbitrarily set $u_1 = 0.40$ and $u_2 = 0.26$.
@@ -1265,11 +1280,12 @@ Next, we can instantiate a planet by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 from starry import Planet
-planet = Planet(lmax=1, r=10, L=5.e-3, porb=4.3, prot=4.3)
+planet = Planet(lmax=1, r=0.1, L=5.e-3, porb=4.3, prot=4.3)
 \end{lstlisting}
 %
 where \textsf{lmax} is the highest degree of the planet map, \textsf{r} is the
-planet radius in Earth radii, \textsf{L} is the total planet luminosity in $L_\odot$,
+planet radius in units of the stellar radius, \textsf{L} is the total planet luminosity
+in units of the stellar luminosity,
 \textsf{porb} is the orbital period and \textsf{prot} is the rotational
 period, both in days.
 Several other keyword arguments may be provided; these are detailed in full
@@ -2644,7 +2660,7 @@ with
     d_1 &= q + 2 + (p + q - 2)(1 - k^2) \nonumber \\
     d_2 &= (3 - q)(1 - k^2) \nonumber \\
     d_3 &= 2 p + q - (p + q - 2)(1 - k^2) \nonumber \\
-    d_4 &= (3 - p) + (p - 3)(1 - k^2)
+    d_4 &= (3 - p) k^2
 \end{align}
 %
 and $k^2$ defined as in \eq{k2}.
