@@ -1,5 +1,5 @@
 /**
-Sturm's theorem to ensure polynomial is positive everywhere.
+Sturm's theorem to ensure polynomial is positive in [0, 1].
 Adapted from DFM's celerite <https://github.com/dfm/celerite>
 
 */
@@ -107,7 +107,7 @@ inline int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
-// Count the positive roots of a polynomial using Sturm's theorem.
+// Count the positive roots of a polynomial over the domain [0, 1] using Sturm's theorem.
 template <typename T>
 inline int polycountroots (const Eigen::Matrix<T, Eigen::Dynamic, 1>& p) {
   if (p.rows() <= 1) return 0;
@@ -117,11 +117,13 @@ inline int polycountroots (const Eigen::Matrix<T, Eigen::Dynamic, 1>& p) {
 
   // Compute the initial signs and count any initial sign change.
   Eigen::Matrix<T, Eigen::Dynamic, 1> p0 = p, p1 = polyder(p0), tmp;
-  int s_0 = sgn(p1[p1.rows() - 1]),
-      s_inf = sgn(p1[0]),
-      s;
+  // Sign at x = 0
+  int s_0 = sgn(p1[p1.rows() - 1]);
+  // Sign at x = 1
+  int s_1 = sgn(polyval(p1, 1));
+  int s;
   count += (sgn(p0[p0.rows() - 1]) != s_0);
-  count -= (sgn(p0[0]) != s_inf);
+  count -= (sgn(polyval(p0, 1)) != s_1);
 
   // Loop over the Sturm sequence and compute each polynomial.
   for (int k = 0; k < n; ++k) {
@@ -134,9 +136,9 @@ inline int polycountroots (const Eigen::Matrix<T, Eigen::Dynamic, 1>& p) {
     s = s_0;
     s_0 = sgn(p1[p1.rows() - 1]);
     count += (s != s_0);
-    s = s_inf;
-    s_inf = sgn(p1[0]);
-    count -= (s != s_inf);
+    s = s_1;
+    s_1 = sgn(polyval(p1, 1));
+    count -= (s != s_1);
 
     if (p1.rows() == 1) break;
   }
