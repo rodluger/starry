@@ -8,7 +8,7 @@
 \setlength{\belowdisplayskip}{1.5em}
 
 \title{%
-    \textbf{STARRY}: Analytical Occultation Light Curves 
+    \textbf{STARRY}: Analytical Occultation Light Curves
 }
 
 \author[0000-0002-0296-3826]{Rodrigo Luger}
@@ -1194,7 +1194,7 @@ In either case, this sets the map's limb darkening profile to
 %
 \begin{align}
     \label{eq:quadraticld}
-    I(\upmu) &= 1 - u_1 (1 - \upmu) - u_2 (1 - \upmu)^2
+    I(\upmu) / I_0 &= 1 - u_1 (1 - \upmu) - u_2 (1 - \upmu)^2
     \quad,
 \end{align}
 %
@@ -1627,8 +1627,8 @@ or gradient-descent optimization methods.
 
 Although we have in mind the application of this \starry to exoplanets, it could
 in principle be applied to eclipsing binaries as well.  If the deformation of
-the body is small and reflection is negligible, as is the case for long orbital periods, 
-then the surface brightness of each star can be decomposed into spherical harmonics, 
+the body is small and reflection is negligible, as is the case for long orbital periods,
+then the surface brightness of each star can be decomposed into spherical harmonics,
 and the \starry formalism may be used to integrate their phase curves and eclipses.
 One could imagine applying \starry, for instance, to secondary eclipses of white
 dwarfs to search for non-uniform surface brightness.
