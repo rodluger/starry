@@ -705,6 +705,10 @@ namespace solver {
                 if (abs(y(n)) > STARRY_MAP_TOLERANCE) {
                     if ((l == 1) && (m == 0))
                         G.sT(n) = s2(G);
+                    // These terms are zero because they are proportional to
+                    // odd powers of x, so we don't need to compute them!
+                    else if ((G.taylor) && (is_even(G.mu - 1)) && (!is_even((G.mu - 1) / 2)))
+                        G.sT(n) = 0;
                     else
                         G.sT(n) = Q(G) - P(G);
                 } else {
