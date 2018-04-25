@@ -9,6 +9,7 @@ Tabulated square roots for integers.
 #include <cmath>
 #include <iostream>
 #include "constants.h"
+#include "errors.h"
 
 namespace sqrtint {
 
@@ -439,9 +440,7 @@ namespace sqrtint {
     // Square root of n
     double sqrt_int(int n) {
         if (n < 0) {
-            // TODO: Better error handling
-            std::cout << "ERROR: Argument of sqrt_int must be nonnegative." << std::endl;
-            return NAN;
+            throw errors::BadSqrt();
         } else if (n > STARRY_MAX_SQRT) {
             return sqrt(n);
         } else {
@@ -452,9 +451,7 @@ namespace sqrtint {
     // Inverse of the square root of n
     double invsqrt_int(int n) {
         if (n < 0) {
-            // TODO: Better error handling
-            std::cout << "ERROR: Argument of invsqrt_int must be nonnegative." << std::endl;
-            return NAN;
+            throw errors::BadSqrt();
         } else if (n > STARRY_MAX_SQRT) {
             return 1. / sqrt(n);
         } else {

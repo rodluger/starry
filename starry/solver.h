@@ -249,10 +249,7 @@ namespace solver {
             res2 *= -G.ksq();
             // Add them
             return res1 + res2;
-        } else {
-            std::cout << "ERROR: Domain error in function computeM()." << std::endl;
-            exit(1);
-        }
+        } else throw errors::Domain();
     }
 
     // The helper primitive integral K_{u,v}

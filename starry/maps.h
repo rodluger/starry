@@ -385,8 +385,7 @@ namespace maps {
             if (m != 0) radial_symmetry = false;
             ld.setZero(lmax + 1);
             ld_order = 0;
-        } else
-            std::cout << "WARNING: Invalid value for `l` and/or `m`." << std::endl;
+        } else throw errors::BadLM();
     }
 
     // Get the (l, m) coefficient
@@ -394,24 +393,19 @@ namespace maps {
     T Map<T>::get_coeff(int l, int m) {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
             return y(l * l + l + m);
-        else {
-            std::cout << "WARNING: Invalid value for `l` and/or `m`." << std::endl;
-            return 0;
-        }
+        else throw errors::BadLM();
     }
 
     // Set a limb darkening coefficient
     template <class T>
     void Map<T>::set_ld(int n, T u_n) {
         if (n <= 0) {
-            std::cout << "WARNING: Index `n` must be positive." << std::endl;
-            return;
+            throw errors::BadIndex();
         } else if (n > 2) {
             // TODO! Implement higher order limb darkening.
             throw errors::LimbDark();
         } else if (n > lmax) {
-            std::cout << "WARNING: Index `n` must be less than or equal to `lmax`." << std::endl;
-            return;
+            throw errors::BadIndex();
         }
 
         // Set the limb darkening coefficient
@@ -436,15 +430,12 @@ namespace maps {
     // Get a limb darkening coefficient
     template <class T>
     T Map<T>::get_ld(int n) {
-        if (ld_order == 0) {
-            std::cout << "WARNING: The map is not currently limb-darkened." << std::endl;
-            return 0;
-        } else if ((0 < n) && (n <= 2))
+        if (ld_order == 0)
+            throw errors::NoLimbDark();
+        else if ((0 < n) && (n <= 2))
             return ld(n);
-        else {
-            std::cout << "WARNING: Invalid value for `n`." << std::endl;
-            return 0;
-        }
+        else
+            throw errors::BadIndex();
     }
 
     // Reset the map

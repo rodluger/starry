@@ -67,6 +67,37 @@ namespace errors {
         }
     };
 
+    struct SparseFail : public exception {
+        const char * what () const throw (){
+            return "Sparse solve failed for matrix `A`.";
+        }
+    };
+
+    struct BadLM : public exception {
+        const char * what () const throw (){
+            return "Invalid value for `l` and/or `m`.";
+        }
+    };
+
+    struct NoLimbDark : public exception {
+        const char * what () const throw (){
+            return "The map is not currently limb-darkened.";
+        }
+    };
+
+    struct Domain : public exception {
+        const char * what () const throw (){
+            return "Domain error in function computeM().";
+        }
+    };
+
+    struct BadSqrt : public exception {
+        const char * what () const throw (){
+            return "Argument of `sqrt_int` must be nonnegative.";
+        }
+    };
+
+
 }; // namespace errors
 
 #endif
