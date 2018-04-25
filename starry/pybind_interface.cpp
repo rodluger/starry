@@ -549,6 +549,17 @@ PYBIND11_MODULE(starry, m) {
                 The Green's polynomial map vector. *Read-only.*
             )pbdoc")
 
+        .def_property_readonly("s", [](maps::Map<double> &map){
+            if (map.use_mp) {
+                VectorT<double> sT = map.mpG.sT.template cast<double>();
+                return sT;
+            } else
+                return map.G.sT;
+        },
+            R"pbdoc(
+                The current solution vector `s`. *Read-only.*
+            )pbdoc")
+
         .def_property_readonly("ld", [](maps::Map<double> &map) -> py::object {
             if (map.ld_order > 0)
                 return py::cast(map.ld);
