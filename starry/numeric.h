@@ -20,6 +20,7 @@ template <typename T>
 using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
 template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
+using std::abs;
 
 namespace numeric {
 
@@ -43,7 +44,7 @@ namespace numeric {
         // Compute the polynomial basis where it is needed
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
-                if (std::abs(p(n)) < 1e-14) {
+                if (abs(p(n)) < 1e-14) {
                     basis(n) = 0;
                 } else {
                     mu = l - m;
@@ -66,7 +67,10 @@ namespace numeric {
     // Return the flux in a cell
     template <typename T>
     T fcell(T r1, T r2, T t1, T t2, T xo, T yo, T ro, int lmax, Vector<T>& p) {
-        return 0.125 * (r2 * r2 - r1 * r1) * (t2 - t1) *
+        T modulo = fmod(t1 + M_PI - t2, 2 * M_PI);
+        if (t1 + M_PI - t2 < 0) modulo += 2 * M_PI;
+        T deltheta = abs(modulo - M_PI);
+        return 0.125 * (r2 * r2 - r1 * r1) * deltheta *
                (evaluate<T>(r1 * cos(t1), r1 * sin(t1), xo, yo, ro, lmax, p) +
                 evaluate<T>(r1 * cos(t2), r1 * sin(t2), xo, yo, ro, lmax, p) +
                 evaluate<T>(r2 * cos(t1), r2 * sin(t1), xo, yo, ro, lmax, p) +
@@ -81,14 +85,14 @@ namespace numeric {
 
         // Fine estimate (bisection)
         T r = 0.5 * (r1 + r2);
-        T t = 0.5 * (t1 + t2);
+        T t = atan2(sin(t1) + sin(t2), cos(t1) + cos(t2));
         T ffine = (fcell<T>(r1, r, t1, t, xo, yo, ro, lmax, p) +
                    fcell<T>(r1, r, t, t2, xo, yo, ro, lmax, p) +
                    fcell<T>(r, r2, t1, t, xo, yo, ro, lmax, p) +
                    fcell<T>(r, r2, t, t2, xo, yo, ro, lmax, p));
 
         // Compare
-        if (std::abs(fcoarse - ffine) > tol) {
+        if (abs(fcoarse - ffine) > tol) {
             // Recurse
             fnum<T>(r1, r, t1, t, xo, yo, ro, tol, lmax, p, f);
             fnum<T>(r1, r, t, t2, xo, yo, ro, tol, lmax, p, f);
@@ -104,26 +108,47 @@ namespace numeric {
     // Compute the total flux during or outside of an occultation
     template <typename T>
     T flux(T xo, T yo, T ro, int lmax, Vector<T>& p, double tol) {
-        T f = 0;
-        T b;
-        T theta;
-        if (isinf(xo) || isinf(yo)) {
-            b = INFINITY;
-            theta = 0;
-        } else {
-            b = sqrt(xo * xo + yo * yo);
-            theta = atan2(yo, xo);
-        }
         tol /= M_PI;
-        if (b > 1 + ro) {
-            fnum<T>(0, 1, theta, theta + 2 * M_PI, xo, yo, ro, tol, lmax, p, &f);
+        T f = 0;
+        T b = sqrt(xo * xo + yo * yo);
+        T theta = atan2(yo, xo);
+        T theta0 = theta - M_PI;
+        if (theta0 < 0) theta0 += 2 * M_PI;
+        else if (theta0 > 2 * M_PI) theta0 -= 2 * M_PI;
+        T rmid, deltheta, theta1, theta2;
+        if (b <= ro) {
+            rmid = 0.5;
+            deltheta = 0.5;
+        } else if (b > 1 + ro) {
+            rmid = 0.5;
+            deltheta = 0.5;
         } else if (b > 1) {
-            fnum<T>(0, (1 + b - ro) / 2., theta, theta + 2 * M_PI, xo, yo, ro, tol, lmax, p, &f);
-            fnum<T>((1 + b - ro) / 2., 1, theta, theta + 2 * M_PI, xo, yo, ro, tol, lmax, p, &f);
+            rmid = 0.5 * (1 + b - ro);
+            deltheta = 0.95 * abs(acos((b * b - ro * ro + rmid * rmid) / (2 * b * rmid)));
         } else {
-            fnum<T>(0, b, theta, theta + 2 * M_PI, xo, yo, ro, tol, lmax, p, &f);
-            fnum<T>(b, 1, theta, theta + 2 * M_PI, xo, yo, ro, tol, lmax, p, &f);
+            rmid = b;
+            deltheta = 0.95 * abs(acos(1 - 0.5 * (ro * ro) / (b * b)));
         }
+        theta1 = theta - deltheta;
+        if (theta1 < 0) theta1 += 2 * M_PI;
+        theta2 = theta + deltheta;
+        if (theta2 > 2 * M_PI) theta2 -= 2 * M_PI;
+
+        // Compute the six segments
+        // A
+        fnum<T>(0, rmid, theta1, theta2, xo, yo, ro, tol, lmax, p, &f);
+        // B
+        fnum<T>(rmid, 1, theta1, theta2, xo, yo, ro, tol, lmax, p, &f);
+        // C
+        fnum<T>(0, rmid, theta0, theta1, xo, yo, ro, tol, lmax, p, &f);
+        // D
+        fnum<T>(rmid, 1, theta0, theta1, xo, yo, ro, tol, lmax, p, &f);
+        // E
+        fnum<T>(0, rmid, theta0, theta2, xo, yo, ro, tol, lmax, p, &f);
+        // F
+        fnum<T>(rmid, 1, theta0, theta2, xo, yo, ro, tol, lmax, p, &f);
+
+        // We're done
         return f;
     }
 
