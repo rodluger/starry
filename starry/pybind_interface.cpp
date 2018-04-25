@@ -14,6 +14,7 @@
 #include "rotation.h"
 #include "solver.h"
 #include "orbital.h"
+#include "taylor.h"
 #include "sturm.h"
 
 using namespace std;

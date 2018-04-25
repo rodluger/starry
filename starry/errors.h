@@ -61,6 +61,12 @@ namespace errors {
         }
     };
 
+    struct BadFactorial : public exception {
+        const char * what () const throw (){
+            return "Factorial argument out of bounds.";
+        }
+    };
+
 }; // namespace errors
 
 #endif
