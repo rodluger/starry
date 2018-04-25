@@ -70,7 +70,7 @@ namespace numeric {
         T modulo = fmod(t1 + M_PI - t2, 2 * M_PI);
         if (t1 + M_PI - t2 < 0) modulo += 2 * M_PI;
         T deltheta = abs(modulo - M_PI);
-        return 0.125 * (r2 * r2 - r1 * r1) * deltheta *
+        return 0.125 * abs(r2 * r2 - r1 * r1) * deltheta *
                (evaluate<T>(r1 * cos(t1), r1 * sin(t1), xo, yo, ro, lmax, p) +
                 evaluate<T>(r1 * cos(t2), r1 * sin(t2), xo, yo, ro, lmax, p) +
                 evaluate<T>(r2 * cos(t1), r2 * sin(t1), xo, yo, ro, lmax, p) +
@@ -117,8 +117,8 @@ namespace numeric {
         else if (theta0 > 2 * M_PI) theta0 -= 2 * M_PI;
         T rmid, deltheta, theta1, theta2;
         if (b <= ro) {
-            rmid = 0.5;
-            deltheta = 0.5;
+            rmid = 0.95;
+            deltheta = 0.25;
         } else if (b > 1 + ro) {
             rmid = 0.5;
             deltheta = 0.5;
@@ -131,8 +131,11 @@ namespace numeric {
         }
         theta1 = theta - deltheta;
         if (theta1 < 0) theta1 += 2 * M_PI;
+        else if (theta1 > 0) theta1 -= 2 * M_PI;
         theta2 = theta + deltheta;
-        if (theta2 > 2 * M_PI) theta2 -= 2 * M_PI;
+        if (theta2 < 0) theta2 += 2 * M_PI;
+        else if (theta2 > 2 * M_PI) theta2 -= 2 * M_PI;
+
 
         // Compute the six segments
         // A

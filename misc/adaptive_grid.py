@@ -21,7 +21,7 @@ class Flux(object):
 
 def evaluate(x, y, x0, y0, r0, I):
     """Evaluate the specific intensity I(x, y) at a point."""
-    if (x - x0) ** 2 + (y - y0) ** 2 < r0 ** 2:
+    if (x - x0) ** 2 + (y - y0) ** 2 <= r0 ** 2:
         return 0
     else:
         return I(x, y)
@@ -117,9 +117,9 @@ def compute(I=lambda x, y: x ** 2 + y ** 2, tol=1e-4, show_cells=False):
     axx0 = pl.axes([0.2, 0.15, 0.65, 0.03])
     axy0 = pl.axes([0.2, 0.10, 0.65, 0.03])
     axr0 = pl.axes([0.2, 0.05, 0.65, 0.03])
-    sx0 = Slider(axx0, 'x0', -1.0, 1.0, valinit=x0)
-    sy0 = Slider(axy0, 'y0', -1.0, 1.0, valinit=y0)
-    sr0 = Slider(axr0, 'r0', 0.01, 1.0, valinit=r0)
+    sx0 = Slider(axx0, 'x0', -5.0, 5.0, valinit=x0)
+    sy0 = Slider(axy0, 'y0', -5.0, 5.0, valinit=y0)
+    sr0 = Slider(axr0, 'r0', 0.01, 3.0, valinit=r0)
 
     def update(val=None):
         flux = Flux()
@@ -131,9 +131,9 @@ def compute(I=lambda x, y: x ** 2 + y ** 2, tol=1e-4, show_cells=False):
         elif theta0 > 2 * np.pi:
             theta0 -= 2 * np.pi
 
-        if b <= sr0.val:
-            rmid = 0.5
-            deltheta = 0.5
+        if (b <= sr0.val):
+            rmid = 0.75
+            deltheta = 0.25
         elif b > 1 + sr0.val:
             rmid = 0.5
             deltheta = 0.5
