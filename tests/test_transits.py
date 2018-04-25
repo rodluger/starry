@@ -111,7 +111,9 @@ def test_transits():
     nF /= np.nanmax(nF)
 
     # Compute the error, check that it's better than 1 ppb
-    error = np.max((np.abs(nF - sF) / (1 - nF))[np.where(nF < 1)])
+    den = (1 - nF)
+    den[den == 0] = 1e-10
+    error = np.max((np.abs(nF - sF) / den)[np.where(nF < 1)])
     assert error < 1e-9
 
 
