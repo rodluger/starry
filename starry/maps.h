@@ -670,6 +670,8 @@ namespace maps {
         u.setZero(lmax + 1);
         y.setZero(N);
         y(0) = 2 * sqrt(M_PI);
+        g = C.A * y;
+        ld_flux = G.pi * g(0);
         needs_update = true;
     }
 
