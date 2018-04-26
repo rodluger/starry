@@ -5,7 +5,7 @@ from scipy.integrate import dblquad
 np.random.seed(1234)
 
 
-def NumericalFlux(m, u, theta):
+def NumericalFlux(m, axis, theta):
     """Compute the flux by numerical integration of the surface integral."""
     # Lower integration limit
     def y1(x):
@@ -17,7 +17,7 @@ def NumericalFlux(m, u, theta):
 
     # Specific intensity map
     def I(y, x):
-        return m.evaluate(u=u, theta=theta, x=x, y=y)
+        return m.evaluate(axis=axis, theta=theta, x=x, y=y)
 
     # Compute the total flux
     flux, _ = dblquad(I, -1, 1, y1, y2, epsabs=1e-2, epsrel=1e-2)
@@ -34,12 +34,12 @@ def test_phasecurves():
     ux = np.random.random()
     uy = np.random.random() * (1 - ux)
     uz = np.sqrt(1 - ux ** 2 - uy ** 2)
-    u = [ux, uy, uz]
+    axis = [ux, uy, uz]
     theta = np.linspace(0, 2 * np.pi, 25, endpoint=False)
-    sF = m.flux(u=u, theta=theta)
+    sF = m.flux(axis=axis, theta=theta)
 
     # Compute the flux numerically
-    nF = [NumericalFlux(m, u, t) for t in theta]
+    nF = [NumericalFlux(m, axis, t) for t in theta]
 
     # Compute the error
     error = np.max(np.abs((sF - nF) / sF))

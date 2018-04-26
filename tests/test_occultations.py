@@ -14,7 +14,7 @@ def test_occultations():
     ux = np.random.random()
     uy = np.random.random() * (1 - ux)
     uz = np.sqrt(1 - ux ** 2 - uy ** 2)
-    u = [ux, uy, uz]
+    axis = [ux, uy, uz]
     npts = 30
     theta = np.linspace(0, 2 * np.pi, npts, endpoint=False)
 
@@ -24,8 +24,8 @@ def test_occultations():
     yo = 0
 
     # Analytical and numerical fluxes
-    sF = np.array(m.flux(u=u, theta=theta, xo=xo, yo=yo, ro=ro))
-    nF = np.array(m.flux(u=u, theta=theta, xo=xo, yo=yo, ro=ro,
+    sF = np.array(m.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro))
+    nF = np.array(m.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro,
                   numerical=True, tol=1e-6))
 
     # Compute the (relative) error
