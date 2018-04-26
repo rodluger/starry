@@ -19,6 +19,7 @@ using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
 using maps::Map;
+using maps::LimbDarkenedMap;
 using maps::yhat;
 using std::vector;
 using std::max;
@@ -78,14 +79,16 @@ namespace orbital {
         int p, o;
         int NT = time.size();
 
-        // Allocate arrays and check that the maps are physical
+        // Allocate arrays and check that the planet maps are physical
         for (i = 0; i < bodies.size(); i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
-            if (bodies[i]->map.get_coeff(0, 0) <= 0) {
-                throw errors::BadY00();
+            if (i > 0) {
+                if (bodies[i]->map.get_coeff(0, 0) <= 0) {
+                    throw errors::BadY00();
+                }
             }
         }
 
@@ -170,15 +173,17 @@ namespace orbital {
 
             // Flag
             bool computed;
+            bool is_star;
 
             // Map stuff
             int lmax;
-            UnitVector<T> u;
+            UnitVector<T> axis;
             T prot;
             T theta0;
             T r;
             T L;
             Map<T> map;
+            LimbDarkenedMap<T> ldmap;
             T norm;
 
             // Orbital elements
@@ -190,7 +195,6 @@ namespace orbital {
             T Omega;
             T lambda0;
             T tref;
-            bool is_star;
 
             // Settings
             double eps;
@@ -209,7 +213,7 @@ namespace orbital {
                  int lmax,
                  const T& r,
                  const T& L,
-                 const UnitVector<T>& u,
+                 const UnitVector<T>& axis,
                  const T& prot,
                  const T& theta0,
                  // Orbital stuff
@@ -222,13 +226,16 @@ namespace orbital {
                  const T& lambda0,
                  const T& tref,
                  bool is_star) :
+                 is_star(is_star),
                  lmax(lmax),
-                 u(u),
+                 axis(axis),
                  prot(prot * DAY),
                  theta0(theta0 * DEGREE),
                  r(r),
                  L(L),
-                 map{Map<T>(lmax)},
+                 // Don't waste time allocating maps we won't use
+                 map{is_star ? Map<T>(0) : Map<T>(lmax)},
+                 ldmap{is_star ? LimbDarkenedMap<T>(lmax) : LimbDarkenedMap<T>(0)},
                  a(a),
                  porb(porb * DAY),
                  inc(inc * DEGREE),
@@ -236,11 +243,11 @@ namespace orbital {
                  w(w * DEGREE),
                  Omega(Omega * DEGREE),
                  lambda0(lambda0 * DEGREE),
-                 tref(tref * DAY),
-                 is_star(is_star)
+                 tref(tref * DAY)
                  {
+
                      // Initialize the map to constant surface brightness
-                     map.set_coeff(0, 0, 1);
+                     if (!is_star) map.set_coeff(0, 0, 1);
 
                      // Initialize orbital vars
                      reset();
@@ -283,8 +290,12 @@ namespace orbital {
     // Compute the flux in occultation
     template <class T>
     inline void Body<T>::getflux(const T& time, const int& t, const T& xo, const T& yo, const T& ro){
-        if (L != 0)
-            flux(t) += (norm / map.get_coeff(0, 0)) * map.flux(u, theta(time), xo, yo, ro) - totalflux;
+        if (L != 0) {
+            if (is_star)
+                flux(t) += (norm / ldmap.y(0)) * ldmap.flux(xo, yo, ro) - totalflux;
+            else
+                flux(t) += (norm / map.get_coeff(0, 0)) * map.flux(axis, theta(time), xo, yo, ro) - totalflux;
+        }
     }
 
     // Compute the mean anomaly
@@ -359,10 +370,14 @@ namespace orbital {
         }
 
         // Compute total flux this timestep
-        if (L == 0)
+        if (L == 0) {
             totalflux = 0;
-        else
-            totalflux = (norm / map.get_coeff(0, 0)) * map.flux(u, theta(time));
+        } else {
+            if (is_star)
+                totalflux = (norm / ldmap.y(0)) * ldmap.flux(); // TODO: Check this
+            else
+                totalflux = (norm / map.get_coeff(0, 0)) * map.flux(axis, theta(time));
+        }
         flux(t) = totalflux;
 
         return;
@@ -403,7 +418,7 @@ namespace orbital {
             Planet(int lmax=2,
                    const T& r=0.1,
                    const T& L=0.,
-                   const UnitVector<T>& u=yhat,
+                   const UnitVector<T>& axis=yhat,
                    const T& prot=0.,
                    const T& theta0=0,
                    const T& a=50.,
@@ -414,7 +429,7 @@ namespace orbital {
                    const T& Omega=0.,
                    const T& lambda0=90.,
                    const T& tref=0.) :
-                   Body<T>(lmax, r, L, u, prot,
+                   Body<T>(lmax, r, L, axis, prot,
                            theta0, a, porb, inc,
                            ecc, w, Omega, lambda0, tref,
                            false) {

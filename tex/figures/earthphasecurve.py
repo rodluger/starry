@@ -26,17 +26,17 @@ m = Map(10)
 for continent, label in zip(continents, labels):
     m.load_image(continent)
     m.rotate([0, 1, 0], -np.pi)
-    F = m.flux(u=[0, 1, 0], theta=theta)
+    F = m.flux(axis=[0, 1, 0], theta=theta)
     ax.plot(theta * 180 / np.pi - 180, F - base, label=label)
 
 # Compute and plot the total phase curve
 m.load_image('earth.jpg')
 m.rotate([0, 1, 0], -np.pi)
-total = m.flux(u=[0, 1, 0], theta=theta)
+total = m.flux(axis=[0, 1, 0], theta=theta)
 ax.plot(theta * 180 / np.pi - 180, total - base, 'k-', label='Total')
 
 # Compute and plot the total phase curve (numerical)
-totalnum = m.flux(u=[0, 1, 0], theta=thetanum, numerical=True, tol=1e-5)
+totalnum = m.flux(axis=[0, 1, 0], theta=thetanum, numerical=True, tol=1e-5)
 ax.plot(thetanum * 180 / np.pi - 180, totalnum - base, 'k.')
 
 # Appearance
@@ -56,7 +56,7 @@ ax_im = [pl.subplot2grid((5, nim), (0, n)) for n in range(nim)]
 x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 for n in range(nim):
     i = int(np.linspace(0, npts - 1, nim)[n])
-    I = m.evaluate(u=[0, 1, 0], theta=theta[i], x=x, y=y)
+    I = m.evaluate(axis=[0, 1, 0], theta=theta[i], x=x, y=y)
     ax_im[n].imshow(I, origin="lower", interpolation="none", cmap='plasma',
                     extent=(-1, 1, -1, 1))
     ax_im[n].axis('off')

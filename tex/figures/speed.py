@@ -224,7 +224,7 @@ def speed():
 
                 # Phase curve
                 time_phase[l, m, i] = timeit.timeit(
-                    'ylm.flux(u=[0,1,0], theta=theta)',
+                    'ylm.flux(axis=[0,1,0], theta=theta)',
                     number=number) / number
 
                 # Occultation (no rotation)

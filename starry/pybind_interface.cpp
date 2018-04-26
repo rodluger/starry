@@ -63,7 +63,9 @@ PYBIND11_MODULE(starry, m) {
 
             - Users can instantiate a :py:class:`Map` class to compute phase curves
               and occultation light curves by directly specifying the rotational state
-              of the object and (optionally) the position and size of an occultor. This
+              of the object and (optionally) the position and size of an occultor.
+              Users can also instantiate a :py:class:`LimbDarkenedMap` class for
+              radially-symmetric stellar surfaces. Both cases
               may be particularly useful for users who wish to integrate :py:mod:`starry`
               with their own dynamical code or for users wishing to compute simple light
               curves without any orbital solutions.
@@ -80,15 +82,16 @@ PYBIND11_MODULE(starry, m) {
         with an N-body solver, so stay tuned!
 
 
-        The Map class
-        =============
+        The Map classes
+        ===============
         .. autoclass:: Map(lmax=2)
+        .. autoclass:: LimbDarkenedMap(lmax=2)
 
 
         The orbital classes
         ===================
         .. autoclass:: Star()
-        .. autoclass:: Planet(lmax=2, r=0.1, L=0, u=(0, 1, 0), prot=0, theta0=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
+        .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, theta0=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
         .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
 
     )pbdoc";
@@ -138,7 +141,7 @@ PYBIND11_MODULE(starry, m) {
                          const double&, const double&,
                          const double&, const double&,
                          bool>(),
-                         "lmax"_a, "r"_a, "L"_a, "u"_a,
+                         "lmax"_a, "r"_a, "L"_a, "axis"_a,
                          "prot"_a, "theta0"_a, "a"_a, "porb"_a,
                          "inc"_a, "ecc"_a, "w"_a, "Omega"_a,
                          "lambda0"_a, "tref"_a, "is_star"_a)
@@ -180,10 +183,10 @@ PYBIND11_MODULE(starry, m) {
                 Body luminosity in units of stellar luminosity.
             )pbdoc")
 
-        .def_property("u", [](orbital::Body<double> &body){return body.u;},
-                           [](orbital::Body<double> &body, UnitVector<double> u){body.u = u;},
+        .def_property("axis", [](orbital::Body<double> &body){return body.axis;},
+                           [](orbital::Body<double> &body, UnitVector<double> axis){body.axis = axis;},
             R"pbdoc(
-                Unit vector specifying the body's axis of rotation.
+                *Normalized* unit vector specifying the body's axis of rotation.
             )pbdoc")
 
         .def_property("prot", [](orbital::Body<double> &body){return body.prot / DAY;},
@@ -246,38 +249,7 @@ PYBIND11_MODULE(starry, m) {
                 Reference time in days.
             )pbdoc")
 
-        .def("__repr__", [](orbital::Body<double> &body) -> string {return body.repr();})
-
-        .def("__setitem__", [](orbital::Body<double> &body, py::object index, double coeff) {
-            if (py::isinstance<py::tuple>(index)) {
-                // This is a (l, m) tuple
-                py::tuple lm = index;
-                int l = py::cast<int>(lm[0]);
-                int m = py::cast<int>(lm[1]);
-                body.map.set_coeff(l, m, coeff);
-            } else {
-                // This is a limb darkening index
-                int n = py::cast<int>(index);
-                body.map.set_ld(n, coeff);
-            }
-        })
-
-        .def("__getitem__", [](orbital::Body<double> &body, py::object index) -> py::object {
-            if (py::isinstance<py::tuple>(index)) {
-                // This is a (l, m) tuple
-                py::tuple lm = index;
-                int l = py::cast<int>(lm[0]);
-                int m = py::cast<int>(lm[1]);
-                return py::cast(body.map.get_coeff(l, m));
-            } else {
-                // This is a limb darkening index
-                int n = py::cast<int>(index);
-                if (body.map.ld_order > 0)
-                    return py::cast(body.map.get_ld(n));
-                else
-                    return py::none();
-            }
-        });
+        .def("__repr__", [](orbital::Body<double> &body) -> string {return body.repr();});
 
     // Star class
     py::class_<orbital::Star<double>>(m, "Star", PyBody, R"pbdoc(
@@ -293,9 +265,13 @@ PYBIND11_MODULE(starry, m) {
         )pbdoc")
 
         .def(py::init<int>(), "lmax"_a=2)
+        .def_property_readonly("map", [](orbital::Body<double> &body){return &body.ldmap;},
+            R"pbdoc(
+                The star's surface map, a :py:class:`LimbDarkenedMap` instance.
+            )pbdoc")
         .def_property_readonly("r", [](orbital::Star<double> &star){return star.r;})
         .def_property_readonly("L", [](orbital::Star<double> &star){return star.L;})
-        .def_property_readonly("u", [](orbital::Star<double> &star){return star.u;})
+        .def_property_readonly("axis", [](orbital::Star<double> &star){return star.axis;})
         .def_property_readonly("prot", [](orbital::Star<double> &star){return star.prot;})
         .def_property_readonly("theta0", [](orbital::Star<double> &star){return star.theta0;})
         .def_property_readonly("a", [](orbital::Star<double> &star){return star.a;})
@@ -306,7 +282,22 @@ PYBIND11_MODULE(starry, m) {
         .def_property_readonly("Omega", [](orbital::Star<double> &star){return star.Omega;})
         .def_property_readonly("lambda0", [](orbital::Star<double> &star){return star.lambda0;})
         .def_property_readonly("tref", [](orbital::Star<double> &star){return star.tref;})
-
+        .def("__setitem__", [](orbital::Star<double> &body, py::object index, double coeff) {
+            if (py::isinstance<py::tuple>(index)) {
+                throw errors::BadIndex();
+            } else {
+                int l = py::cast<int>(index);
+                body.ldmap.set_coeff(l, coeff);
+            }
+        })
+        .def("__getitem__", [](orbital::Star<double> &body, py::object index) {
+            if (py::isinstance<py::tuple>(index)) {
+                throw errors::BadIndex();
+            } else {
+                int l = py::cast<int>(index);
+                return body.ldmap.get_coeff(l);
+            }
+        })
         .def("__repr__", [](orbital::Star<double> &star) -> string {return star.repr();});
 
     // Planet class
@@ -320,7 +311,7 @@ PYBIND11_MODULE(starry, m) {
                 lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
                 r (float): Body radius in stellar radii. Default 0.1
                 L (float): Body luminosity in units of the stellar luminosity. Default 0.
-                u (ndarray): A unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
+                axis (ndarray): A *normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                 prot (float): Rotation period in days. Default no rotation.
                 theta0 (float): Rotation phase at time :py:obj:`tref` in degrees. Default 0.
                 a (float): Semi-major axis in stellar radii. Default 50.
@@ -339,7 +330,7 @@ PYBIND11_MODULE(starry, m) {
             .. autoattribute:: z
             .. autoattribute:: r
             .. autoattribute:: L
-            .. autoattribute:: u
+            .. autoattribute:: axis
             .. autoattribute:: prot
             .. autoattribute:: theta0
             .. autoattribute:: a
@@ -359,11 +350,32 @@ PYBIND11_MODULE(starry, m) {
                       const double&, const double&,
                       const double&, const double&,
                       const double&, const double&>(),
-                      "lmax"_a=2, "r"_a=0.1, "L"_a=0., "u"_a=maps::yhat,
+                      "lmax"_a=2, "r"_a=0.1, "L"_a=0., "axis"_a=maps::yhat,
                       "prot"_a=0, "theta0"_a=0, "a"_a=50., "porb"_a=1,
                       "inc"_a=90., "ecc"_a=0, "w"_a=90, "Omega"_a=0,
                       "lambda0"_a=90, "tref"_a=0)
-
+        .def("__setitem__", [](orbital::Planet<double> &body, py::object index, double coeff) {
+            if (py::isinstance<py::tuple>(index)) {
+                // This is a (l, m) tuple
+                py::tuple lm = index;
+                int l = py::cast<int>(lm[0]);
+                int m = py::cast<int>(lm[1]);
+                body.map.set_coeff(l, m, coeff);
+            } else {
+                throw errors::BadIndex();
+            }
+        })
+        .def("__getitem__", [](orbital::Planet<double> &body, py::object index) {
+            if (py::isinstance<py::tuple>(index)) {
+                // This is a (l, m) tuple
+                py::tuple lm = index;
+                int l = py::cast<int>(lm[0]);
+                int m = py::cast<int>(lm[1]);
+                return body.map.get_coeff(l, m);
+            } else {
+                throw errors::BadIndex();
+            }
+        })
         .def("__repr__", [](orbital::Planet<double> &planet) -> string {return planet.repr();});
 
     // Surface map class
@@ -375,26 +387,23 @@ PYBIND11_MODULE(starry, m) {
 
             .. autoattribute:: use_mp
             .. autoattribute:: taylor
-            .. automethod:: evaluate(u=(0, 1, 0), theta=0, x=0, y=0)
-            .. automethod:: rotate(u=(0, 1, 0), theta=0)
-            .. automethod:: flux(u=(0, 1, 0), theta=0, xo=0, yo=0, ro=0, numerical=False, tol=1.e-4)
+            .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
+            .. automethod:: rotate(axis=(0, 1, 0), theta=0)
+            .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0, numerical=False, tol=1.e-4)
             .. automethod:: get_coeff(l, m)
             .. automethod:: set_coeff(l, m, coeff)
-            .. automethod:: get_ld(n)
-            .. automethod:: set_ld(n, u_n)
             .. automethod:: reset()
             .. autoattribute:: lmax
             .. autoattribute:: y
             .. autoattribute:: p
             .. autoattribute:: g
-            .. autoattribute:: ld
             .. automethod:: minimum()
             .. automethod:: nonnegative()
             .. automethod:: random()
             .. automethod:: load_image(image)
             .. automethod:: load_healpix(image)
             .. automethod:: show(cmap='plasma', res=300)
-            .. automethod:: animate(u=(0, 1, 0), cmap='plasma', res=150, frames=50)
+            .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
 
         )pbdoc")
 
@@ -427,29 +436,29 @@ PYBIND11_MODULE(starry, m) {
                 not rotate the base map.
 
                 Args:
-                    u (ndarray): Unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
+                    axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     theta (float or ndarray): Angle of rotation in radians. Default 0.
                     x (float or ndarray): Position scalar, vector, or matrix.
                     y (float or ndarray): Position scalar, vector, or matrix.
 
                 Returns:
                     The specific intensity at (`x`, `y`).
-            )pbdoc", "u"_a=maps::yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
+            )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
 
-        .def("rotate", [](maps::Map<double> &map, UnitVector<double>& u,
-                          double theta){return map.rotate(u, theta);},
+        .def("rotate", [](maps::Map<double> &map, UnitVector<double>& axis,
+                          double theta){return map.rotate(axis, theta);},
             R"pbdoc(
-                Rotate the base map an angle :py:obj:`theta` about :py:obj:`u`.
+                Rotate the base map an angle :py:obj:`theta` about :py:obj:`axis`.
 
                 This performs a permanent rotation to the base map. Subsequent
                 rotations and calculations will be performed relative to this
                 rotational state.
 
                 Args:
-                    u (ndarray): Unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
+                    axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     theta (float or ndarray): Angle of rotation in radians. Default 0.
 
-            )pbdoc", "u"_a=maps::yhat, "theta"_a=0)
+            )pbdoc", "axis"_a=maps::yhat, "theta"_a=0)
 
         .def("flux", py::vectorize(&maps::Map<double>::flux),
             R"pbdoc(
@@ -459,7 +468,7 @@ PYBIND11_MODULE(starry, m) {
                 map during or outside of an occultation.
 
                 Args:
-                    u (ndarray): Unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
+                    axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     theta (float or ndarray): Angle of rotation. Default 0.
                     xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
                     yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
@@ -469,7 +478,7 @@ PYBIND11_MODULE(starry, m) {
 
                 Returns:
                     The flux received by the observer (a scalar or a vector).
-            )pbdoc", "u"_a=maps::yhat, "theta"_a=0, "xo"_a=0,
+            )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0,
                      "yo"_a=0, "ro"_a=0, "numerical"_a=false,
                      "tol"_a=1e-4)
 
@@ -499,30 +508,6 @@ PYBIND11_MODULE(starry, m) {
                     m (int): The spherical harmonic order, ranging from -:py:obj:`l` to :py:attr:`l`.
                     coeff (float): The value of the coefficient.
             )pbdoc", "l"_a, "m"_a, "coeff"_a)
-
-        .def("get_ld", &maps::Map<double>::get_ld,
-            R"pbdoc(
-                Return the limb darkening coefficient of order :py:obj:`n`.
-
-                .. note:: Users can also retrieve a limb darkening coefficient by accessing the \
-                          [:py:obj:`n`] index of the map as if it were an array.
-
-                Args:
-                    n (int): The limb darkening order (1 or 2).
-            )pbdoc", "n"_a)
-
-        .def("set_ld", &maps::Map<double>::set_ld,
-            R"pbdoc(
-                Set the limb darkening coefficient of order :py:obj:`n`.
-
-                .. note:: Users can also set a coefficient by setting the \
-                          [:py:obj:`n`] index of the map as if it \
-                          were an array.
-
-                Args:
-                    n (int): The limb darkening order (1 or 2).
-                    u_n (float): The value of the coefficient.
-            )pbdoc", "n"_a, "u_n"_a)
 
         .def("reset", &maps::Map<double>::reset,
             R"pbdoc(
@@ -560,16 +545,6 @@ PYBIND11_MODULE(starry, m) {
                 The current solution vector `s`. *Read-only.*
             )pbdoc")
 
-        .def_property_readonly("ld", [](maps::Map<double> &map) -> py::object {
-            if (map.ld_order > 0)
-                return py::cast(map.ld);
-            else
-                return py::none();
-        },
-            R"pbdoc(
-                The limb darkening coefficients. *Read-only.*
-            )pbdoc")
-
         .def("__setitem__", [](maps::Map<double>& map, py::object index, double coeff) {
             if (py::isinstance<py::tuple>(index)) {
                 // This is a (l, m) tuple
@@ -578,9 +553,7 @@ PYBIND11_MODULE(starry, m) {
                 int m = py::cast<int>(lm[1]);
                 map.set_coeff(l, m, coeff);
             } else {
-                // This is a limb darkening index
-                int n = py::cast<int>(index);
-                map.set_ld(n, coeff);
+                throw errors::BadIndex();
             }
         })
 
@@ -592,12 +565,7 @@ PYBIND11_MODULE(starry, m) {
                 int m = py::cast<int>(lm[1]);
                 return py::cast(map.get_coeff(l, m));
             } else {
-                // This is a limb darkening index
-                int n = py::cast<int>(index);
-                if (map.ld_order > 0)
-                    return py::cast(map.get_ld(n));
-                else
-                    return py::none();
+                throw errors::BadIndex();
             }
         })
 
@@ -746,7 +714,7 @@ PYBIND11_MODULE(starry, m) {
                 res (int): The resolution of the map in pixels on a side. Default 300.
         )pbdoc", "cmap"_a="plasma", "res"_a=300)
 
-        .def("animate", [](maps::Map<double> &map, UnitVector<double>& u, string cmap, int res, int frames) {
+        .def("animate", [](maps::Map<double> &map, UnitVector<double>& axis, string cmap, int res, int frames) {
             std::cout << "Rendering animation..." << std::endl;
             py::object animate = py::module::import("starry_maps").attr("animate");
             vector<Matrix<double>> I;
@@ -757,21 +725,215 @@ PYBIND11_MODULE(starry, m) {
                 I.push_back(Matrix<double>::Zero(res, res));
                 for (int i = 0; i < res; i++){
                     for (int j = 0; j < res; j++){
-                        I[t](j, i) = map.evaluate(u, theta(t), x(i), x(j));
+                        I[t](j, i) = map.evaluate(axis, theta(t), x(i), x(j));
                     }
                 }
             }
-            animate(I, u, "cmap"_a=cmap, "res"_a=res);
+            animate(I, axis, "cmap"_a=cmap, "res"_a=res);
         },
         R"pbdoc(
             Convenience routine to animate the body's surface map as it rotates.
 
             Args:
-                u (ndarray): Unit vector specifying the axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
+                axis (ndarray): *Normalized* unit vector specifying the axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                 cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
                 res (int): The resolution of the map in pixels on a side. Default 150.
                 frames (int): The number of frames in the animation. Default 50.
-        )pbdoc", "u"_a=maps::yhat, "cmap"_a="plasma", "res"_a=150, "frames"_a=50);
+        )pbdoc", "axis"_a=maps::yhat, "cmap"_a="plasma", "res"_a=150, "frames"_a=50);
+
+    // Limb-darkened surface map class
+    py::class_<maps::LimbDarkenedMap<double>>(m, "LimbDarkenedMap", R"pbdoc(
+            Instantiate a :py:mod:`starry` limb-darkened surface map.
+
+            This differs from the base :py:class:`Map` class in that maps
+            instantiated this way are radially symmetric: only the radial (`m = 0`)
+            coefficients of the map are available. Users edit the map by directly
+            specifying the polynomial limb darkening coefficients `u`.
+
+            Args:
+                lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
+
+            .. autoattribute:: use_mp
+            .. autoattribute:: taylor
+            .. automethod:: evaluate(x=0, y=0)
+            .. automethod:: flux(xo=0, yo=0, ro=0, numerical=False, tol=1.e-4)
+            .. automethod:: get_coeff(l)
+            .. automethod:: set_coeff(l, coeff)
+            .. automethod:: reset()
+            .. autoattribute:: lmax
+            .. autoattribute:: y
+            .. autoattribute:: p
+            .. autoattribute:: g
+            .. autoattribute:: u
+            .. automethod:: show(cmap='plasma', res=300)
+
+        )pbdoc")
+
+        .def(py::init<int>(), "lmax"_a=2)
+
+        .def_property("use_mp", [](maps::LimbDarkenedMap<double> &map){return map.use_mp;},
+                                [](maps::LimbDarkenedMap<double> &map, bool use_mp){map.use_mp = use_mp;},
+            R"pbdoc(
+                Set to :py:obj:`True` to turn on multi-precision mode. By default, this \
+                will perform all occultation calculations using 128-bit (quadruple) floating point \
+                precision, corresponding to 32 significant digits. Users can increase this to any \
+                number of digits (RAM permitting) by setting the :py:obj:`STARRY_MP_DIGITS=XX` flag \
+                at compile time. Note, importantly, that run times are **much** slower when multi-precision \
+                is enabled. Default :py:obj:`False`.
+            )pbdoc")
+
+        .def_property("taylor", [](maps::LimbDarkenedMap<double> &map){return map.G.taylor;},
+                                [](maps::LimbDarkenedMap<double> &map, bool taylor){map.G.taylor = taylor;},
+            R"pbdoc(
+                Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
+                computing occultation light curves. This is in general not something you should do! \
+                Default :py:obj:`True`.
+            )pbdoc")
+
+        .def("evaluate", py::vectorize(&maps::LimbDarkenedMap<double>::evaluate),
+            R"pbdoc(
+                Return the specific intensity at a point (`x`, `y`) on the map.
+
+                Users may optionally provide a rotation state. Note that this does
+                not rotate the base map.
+
+                Args:
+                    x (float or ndarray): Position scalar, vector, or matrix.
+                    y (float or ndarray): Position scalar, vector, or matrix.
+
+                Returns:
+                    The specific intensity at (`x`, `y`).
+            )pbdoc", "x"_a=0, "y"_a=0)
+
+        .def("flux", py::vectorize(&maps::LimbDarkenedMap<double>::flux),
+            R"pbdoc(
+                Return the total flux received by the observer.
+
+                Computes the total flux received by the observer from the
+                map during or outside of an occultation.
+
+                Args:
+                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
+                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
+                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+                    numerical (bool): Compute the flux numerically using an adaptive mesh? Default :py:obj:`False`.
+                    tol (float): Tolerance of the numerical solver. Default `1.e-4`
+
+                Returns:
+                    The flux received by the observer (a scalar or a vector).
+            )pbdoc", "xo"_a=0, "yo"_a=0, "ro"_a=0, "numerical"_a=false,
+                     "tol"_a=1e-4)
+
+        .def("get_coeff", &maps::LimbDarkenedMap<double>::get_coeff,
+            R"pbdoc(
+                Return the limb darkening coefficient of order :py:obj:`l`.
+
+                .. note:: Users can also retrieve a limb darkening coefficient by accessing the \
+                          [:py:obj:`l`] index of the map as if it were an array.
+
+                Args:
+                    l (int): The limb darkening order (> 0).
+            )pbdoc", "l"_a)
+
+        .def("set_coeff", &maps::LimbDarkenedMap<double>::set_coeff,
+            R"pbdoc(
+                Set the limb darkening coefficient of order :py:obj:`l`.
+
+                .. note:: Users can also set a coefficient by setting the \
+                          [:py:obj:`l`] index of the map as if it \
+                          were an array.
+
+                Args:
+                    l (int): The limb darkening order (> 0).
+                    u_l (float): The value of the coefficient.
+            )pbdoc", "l"_a, "u_l"_a)
+
+        .def("reset", &maps::LimbDarkenedMap<double>::reset,
+            R"pbdoc(
+                Set all of the map coefficients to zero.
+            )pbdoc")
+
+        .def_property_readonly("lmax", [](maps::LimbDarkenedMap<double> &map){return map.lmax;},
+            R"pbdoc(
+                The highest spherical harmonic order of the map. *Read-only.*
+            )pbdoc")
+
+        .def_property_readonly("y", [](maps::LimbDarkenedMap<double> &map){map.update(true); return map.y;},
+            R"pbdoc(
+                The spherical harmonic map vector. *Read-only.*
+            )pbdoc")
+
+        .def_property_readonly("p", [](maps::LimbDarkenedMap<double> &map){map.update(true); return map.p;},
+            R"pbdoc(
+                The polynomial map vector. *Read-only.*
+            )pbdoc")
+
+        .def_property_readonly("g", [](maps::LimbDarkenedMap<double> &map){map.update(true); return map.g;},
+            R"pbdoc(
+                The Green's polynomial map vector. *Read-only.*
+            )pbdoc")
+
+        .def_property_readonly("s", [](maps::LimbDarkenedMap<double> &map){
+            if (map.use_mp) {
+                VectorT<double> sT = map.mpG.sT.template cast<double>();
+                return sT;
+            } else
+                return map.G.sT;
+        },
+            R"pbdoc(
+                The current solution vector `s`. *Read-only.*
+            )pbdoc")
+
+        .def_property_readonly("u", [](maps::LimbDarkenedMap<double> &map) {return map.u;},
+            R"pbdoc(
+                The limb darkening coefficients. *Read-only.*
+            )pbdoc")
+
+        .def("__setitem__", [](maps::LimbDarkenedMap<double>& map, py::object index, double coeff) {
+            if (py::isinstance<py::tuple>(index)) {
+                throw errors::BadIndex();
+            } else {
+                // This is a limb darkening index
+                int l = py::cast<int>(index);
+                map.set_coeff(l, coeff);
+            }
+        })
+
+        .def("__getitem__", [](maps::LimbDarkenedMap<double>& map, py::object index) {
+            if (py::isinstance<py::tuple>(index)) {
+                throw errors::BadIndex();
+            } else {
+                int l = py::cast<int>(index);
+                return map.get_coeff(l);
+            }
+        })
+
+        .def("__repr__", [](maps::LimbDarkenedMap<double> &map) -> string {return map.repr();})
+
+        //
+        // This is where things go nuts: Let's call Python from C++
+        //
+
+        .def("show", [](maps::LimbDarkenedMap<double> &map, string cmap, int res) {
+            py::object show = py::module::import("starry_maps").attr("show");
+            Matrix<double> I;
+            I.resize(res, res);
+            Vector<double> x;
+            x = Vector<double>::LinSpaced(res, -1, 1);
+            for (int i = 0; i < res; i++){
+                for (int j = 0; j < res; j++){
+                    I(j, i) = map.evaluate(x(i), x(j));
+                }
+            }
+            show(I, "cmap"_a=cmap, "res"_a=res);
+        },
+        R"pbdoc(
+            Convenience routine to quickly display the body's surface map.
+
+            Args:
+                cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
+                res (int): The resolution of the map in pixels on a side. Default 300.
+        )pbdoc", "cmap"_a="plasma", "res"_a=300);
 
 
 #ifdef VERSION_INFO

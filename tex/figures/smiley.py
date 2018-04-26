@@ -17,7 +17,7 @@ x = np.linspace(-1, 1, 300)
 y = np.linspace(-1, 1, 300)
 x, y = np.meshgrid(x, y)
 for i in range(nax):
-    I = m.evaluate(u=[1, 0, 0], theta=theta[i], x=x, y=y)
+    I = m.evaluate(axis=[1, 0, 0], theta=theta[i], x=x, y=y)
     ax[i].imshow(I, origin="lower", interpolation="none", cmap='plasma')
     ax[i].axis('off')
 

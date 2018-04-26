@@ -14,13 +14,18 @@
 #include "sqrtint.h"
 #include "rotation.h"
 #include "solver.h"
+#include "orbital.h"
 
 using namespace std;
 
 int main() {
 
-    // Generate a map
-    maps::Map<double> y = maps::Map<double>(8);
+    // Instantiate a star and a planet, just to check the constructors
+    orbital::Planet<double> planet = orbital::Planet<double>(8);
+    orbital::Star<double> star = orbital::Star<double>(8);
+
+    // Manipulate the planet's map
+    maps::Map<double>& y = planet.map;
     y.set_coeff(2, 0, 1);
     cout << y.repr() << endl;
 
@@ -42,7 +47,7 @@ int main() {
               << setw(12) << "----------" << endl;
     for (int i = 0; i < npts; i ++) {
         flux(i) = y.flux(maps::yhat, 0, x0(i), y0, r);
-        numflux(i) = y.flux(maps::yhat, 0, x0(i), y0, r, true, 1e-5);
+        numflux(i) = y.flux(maps::yhat, 0, x0(i), y0, r, true, 1e-4);
         diff = (flux(i) - numflux(i));
         cout << setw(12) << flux(i) << "     "
              << setw(12) << numflux(i) << "    "

@@ -97,6 +97,11 @@ namespace errors {
         }
     };
 
+    struct NotImplemented : public exception {
+        const char * what () const throw (){
+            return "Function or method not implemented.";
+        }
+    };
 
 }; // namespace errors
 

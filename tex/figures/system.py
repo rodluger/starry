@@ -1,4 +1,4 @@
-"""Exoplanet system example. TODO: Not yet finished."""
+"""Exoplanet system example."""
 from starry import Star, Planet, System
 import matplotlib.pyplot as pl
 import numpy as np
@@ -41,7 +41,7 @@ b.map[0, 0] = 1.75
 b.map[1, 0] = -1
 
 # Rotate the planet map to produce a hotspot offset of 15 degrees
-b.map.rotate(u=(0, 1, 0), theta=15 * np.pi / 180)
+b.map.rotate(axis=(0, 1, 0), theta=15 * np.pi / 180)
 
 # Compute and plot the starry flux
 time = np.linspace(0, 20, 10000)
@@ -93,7 +93,7 @@ c.map[1, 0] = -1
 c.map[2, -2] = 1
 
 # Rotate the planet map to produce a hotspot offset of 15 degrees
-c.map.rotate(u=(0, 1, 0), theta=15 * np.pi / 180)
+c.map.rotate(axis=(0, 1, 0), theta=15 * np.pi / 180)
 
 # Compute and plot the starry flux
 system = System([star, b, c])

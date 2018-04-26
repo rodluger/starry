@@ -13,6 +13,7 @@ old
 docs/_build
 docs/_generate
 .pytest_cache/
+starry/test
 
 # Latex
 *.aux

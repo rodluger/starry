@@ -213,7 +213,7 @@ namespace rotation {
 
     */
     template <typename T>
-    void computeR(int lmax, Eigen::Matrix<T, 3, 1>& u, T& costheta, T& sintheta, Matrix<T>* D, Matrix<T>* R, double tol=1e-15) {
+    void computeR(int lmax, Eigen::Matrix<T, 3, 1>& axis, T& costheta, T& sintheta, Matrix<T>* D, Matrix<T>* R, double tol=1e-15) {
 
         // Trivial case
         if (lmax == 0) {
@@ -222,9 +222,9 @@ namespace rotation {
         }
 
         // Construct the axis-angle rotation matrix R_A
-        T ux = u(0);
-        T uy = u(1);
-        T uz = u(2);
+        T ux = axis(0);
+        T uy = axis(1);
+        T uz = axis(2);
         T RA01 = ux * uy * (1 - costheta) - uz * sintheta;
         T RA02 = ux * uz * (1 - costheta) + uy * sintheta;
         T RA11 = costheta + uy * uy * (1 - costheta);

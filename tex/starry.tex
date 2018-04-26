@@ -11,7 +11,7 @@
     \textbf{STARRY}: Analytical Occultation Light Curves
 }
 
-\author[0000-0002-0296-3826]{Rodrigo Luger} 
+\author[0000-0002-0296-3826]{Rodrigo Luger}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
 \author{Eric Agol}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA; Virtual Planetary Laboratory; Guggenheim Fellow}
@@ -964,10 +964,10 @@ m.show()
 or
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m.animate(u=u)
+m.animate(axis=axis)
 \end{lstlisting}
 %
-where \textsf{u} defines the axis of rotation for the animation.
+where \textsf{axis} defines the axis of rotation for the animation.
 Rotation of this map about $\xhat$ yields\python{smiley}
 %
 \begin{center}
@@ -1044,10 +1044,10 @@ Once a map is instantiated, it is easy to compute its rotational
 phase curve, \textsf{F}:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-F = m.flux(u=u, theta=theta)
+F = m.flux(axis=axis, theta=theta)
 \end{lstlisting}
 %
-where \textsf{u} is the axis of rotation and \textsf{theta} is an array of
+where \textsf{axis} is the axis of rotation and \textsf{theta} is an array of
 angles (in radians) for which to compute the flux. Note that rotations performed
 by \textsf{flux()} are not cumulative; instead, all angles should be specified
 relative to the original, unrotated map frame.
@@ -1069,7 +1069,7 @@ by executing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 theta = np.linspace(0, 2 * np.pi, 100)
-F = m.flux(u=[0, 1, 0], theta=theta)
+F = m.flux(axis=[0, 1, 0], theta=theta)
 \end{lstlisting}
 %
 The variable $\textsf{F}$ is
@@ -1100,10 +1100,10 @@ the seven individual continents.
 Occultation light curves are similarly easy to compute:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-F = m.flux(u=u, theta=theta, xo=xo, yo=yo, ro=ro)
+F = m.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro)
 \end{lstlisting}
 %
-where \textsf{u} and \textsf{theta} are the same as above, and
+where \textsf{axis} and \textsf{theta} are the same as above, and
 \textsf{xo}, \textsf{yo}, and \textsf{ro} are the occultor parameters
 ($\x$ position, $\y$ position, and radius, all in units of the
 occulted body's radius), which may be either scalars
@@ -1154,7 +1154,7 @@ occultation is double-dipped: one dip due to the occultation of South
 America, and one dip due to the occultation of Africa.
 
 % ------------------------------------------------------------------------------
-\subsection{Computing transit light curves}
+\subsection{Computing transits of limb-darkened stars}
 \label{sec:starrytransits}
 % ------------------------------------------------------------------------------
 
@@ -1168,22 +1168,26 @@ that is an order $l$ polynomial function of the radial coordinate,
 $\upmu = \z = \sqrt{1 - \x^2 - \y^2}$, can be exactly
 expressed in terms of the $m = 0$ spherical harmonics up to order $l$.
 
-For convenience, we implement this functionality in \starry, allowing users
+For convenience, we implement this functionality in \starry via the
+\textsf{starry.LimbDarkenedMap} class. This class behaves similarly
+to the \textsf{starry.Map} class but allows users
 to specify the coefficients of the limb darkening polynomial directly as
 follows:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m = Map(2)
-m.set_ld(1) = u1
-m.set_ld(2) = u2
+from starry import LimbDarkenedMap
+m = LimbDarkenedMap(2)
+m.set_coeff(1) = u1
+m.set_coeff(2) = u2
 \end{lstlisting}
 %
 or, more compactly,
-\footnote{Note that when two indices are used to access the map vector,
-as in \S\ref{sec:starrymap},
-\starry interprets them as the $l$ and $m$ spherical harmonic indices.
-When a single index is used, as in this case, \starry interprets it as
-the limb darkening polynomial index.}
+\footnote{Note that \textsf{starry.Map} instances accept two indices
+($l$ and $m$) to specify a map coefficient, while
+\textsf{starry.LimbDarkenedMap} instances accept a single index $l$,
+the limb darkening polynomial index. Note, also, that in the limb-darkened
+case the $l = 0$ coefficient cannot be set, as it is automatically computed to
+enforce the correct normalization.}
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 m[1] = u1
@@ -1248,7 +1252,8 @@ than $10^{-5}$ parts per million everywhere in the light curve.
 \label{sec:starryphotodynamics}
 % ------------------------------------------------------------------------------
 
-The \textsf{starry.Map} class discussed above is convenient when the rotational
+The \textsf{starry.Map} and \textsf{starry.LimbDarkenedMap} classes
+discussed above are convenient when the rotational
 state of the body in question and/or the position of the occultor is known,
 or when these can easily be computed by some other means. For convenience,
 \starry implements a simple Keplerian solver to compute stellar and
@@ -1265,8 +1270,8 @@ star = Star(lmax=2)
 %
 A \textsf{starry.Star} has unit radius and unit luminosity; the planet's radii,
 semi-major axes, and luminosities are all defined relative to these.
-By default, the star's map is set to
-the constant ($Y_{0,0}$) term, corresponding to uniform surface brightness.
+The star's \textsf{map} attribute is a \textsf{starry.LimbDarkenedMap} instance,
+which by default is set to a constant term corresponding to uniform surface brightness.
 We can add quadratic limb darkening as before by editing the star's \textsf{map}
 attribute:
 %
@@ -1289,7 +1294,8 @@ in units of the stellar luminosity,
 \textsf{porb} is the orbital period and \textsf{prot} is the rotational
 period, both in days.
 Several other keyword arguments may be provided; these are detailed in full
-in the \docs. As with \textsf{starry.Star}, the planet's map can be accessed
+in the \docs. As with \textsf{starry.Star}, the planet's map
+(a \textsf{starry.Map} instance) can be accessed
 via the \textsf{map} property. Suppose we wish to give the planet a simple
 dipole map ($Y_{1,0}$) with peak brightness at the sub-stellar point.
 By default, the planet is instantiated at a transiting configuration (new phase),
@@ -1306,7 +1312,7 @@ This ensures that the hot spot is on the side of the planet facing the star
 set \textsf{planet.lambda0 = 270}.}
 %
 
-Finally, care must always be taken to ensure the map is positive everywhere.
+Finally, care must be taken to ensure the map is positive everywhere.
 In our case, this requires that the coefficient of the $Y_{0,0}$ term be at least
 $\sqrt{3}$:
 \footnote{In Cartesian coordinates, we have $Y_{0,0} = \sqrt{\frac{1}{4\pi}}$ and
@@ -1393,7 +1399,7 @@ adaptive mesh scheme.
 In \starry, users can request numerical solutions to the flux by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-F = m.flux(u=u, theta=theta, xo=xo, yo=yo, ro=ro,
+F = m.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro,
            numerical=True, tol=1.e-4)
 \end{lstlisting}
 %
@@ -2943,11 +2949,13 @@ $\bvec{R}^l$    & Rotation matrix for the real
 $s_{\bigdot}$   & $\sin(\bigdot)$                       & \\
 $\bvec{s}$      & Occultation light curve solution
                   vector                                & \eq{rn} \\
+$u$             & Dummy indexed                         & \\
 $u_1, u_2$      & Quadratic limb darkening coefficients & \eq{quadraticld} \\
 $\bvec{u}$      & Unit vector corresponding to the
                   axis of rotation                      & \S\ref{app:axisangle} \\
 $\bvec{U}$      & Complex to real spherical harmonics
                   transform matrix                      & \eq{U} \\
+$v$             & Dummy indexed                         & \\
 $\x$            & Cartesian coordinate                  & \eq{xyz} \\
 $\y$            & Cartesian coordinate                  & \eq{xyz} \\
 $Y_{l,m}$       & Spherical harmonic of degree $l$

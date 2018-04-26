@@ -32,12 +32,12 @@ theta = np.linspace(theta0, theta0 + 1., npts, endpoint=True)
 thetanum = np.linspace(theta0, theta0 + 1., nptsnum, endpoint=True)
 
 # Compute and plot the flux
-F = m.flux(u=[0, 1, 0], theta=theta, xo=xo, yo=yo, ro=ro)
+F = m.flux(axis=[0, 1, 0], theta=theta, xo=xo, yo=yo, ro=ro)
 F /= np.max(F)
 ax_lc.plot(time, F, 'k-', label='Total')
 
 # Compute and plot the numerical flux
-Fnum = m.flux(u=[0, 1, 0], theta=thetanum, xo=xonum, yo=yonum, ro=ro,
+Fnum = m.flux(axis=[0, 1, 0], theta=thetanum, xo=xonum, yo=yonum, ro=ro,
               numerical=True, tol=1e-5)
 Fnum /= np.max(Fnum)
 ax_lc.plot(timenum, Fnum, 'k.')
@@ -46,7 +46,7 @@ ax_lc.plot(timenum, Fnum, 'k.')
 x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 for n in range(nim):
     i = int(np.linspace(0, npts - 1, nim)[n])
-    I = m.evaluate(u=[0, 1, 0], theta=theta[i], x=x, y=y)
+    I = m.evaluate(axis=[0, 1, 0], theta=theta[i], x=x, y=y)
     ax_im[n].imshow(I, origin="lower", interpolation="none", cmap='plasma',
                     extent=(-1, 1, -1, 1))
     xm = np.linspace(xo[i] - ro + 1e-5, xo[i] + ro - 1e-5, res)
