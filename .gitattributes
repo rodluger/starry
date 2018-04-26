@@ -1,3 +1,4 @@
 lib/* linguist-vendored
 docs/* linguist-documentation
 tex/* linguist-documentation
+misc/* linguist-documentation
