@@ -115,10 +115,10 @@ using std::abs;
                        nsq = n_value * n_value;
     return Eigen::AutoDiffScalar<T>(
       Pnk,
-      (n.derivatives() * 0.5 * (Ek + (Kk * (ksq - n_value) +
-      Pnk * (nsq - ksq)) / n_value) / (n_value - 1.0) -
-      ksq.derivatives() * 0.5 * (Ek / (ksq - 1.0) + Pnk)) /
-      (ksq - n_value)
+      (n.derivatives() * 0.5 * (Ek + (Kk * (ksq_value - n_value) +
+      Pnk * (nsq - ksq_value)) / n_value) / (n_value - 1.0) -
+      ksq.derivatives() * 0.5 * (Ek / (ksq_value - 1.0) + Pnk)) /
+      (ksq_value - n_value)
     );
   }
 
