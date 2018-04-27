@@ -1,8 +1,3 @@
-// Disable autodiff for these tests
-#ifndef STARRY_NO_AUTODIFF
-#define STARRY_NO_AUTODIFF                      1
-#endif
-
 #include <iostream>
 #include <iomanip>
 #include <Eigen/Core>

@@ -14,16 +14,11 @@ Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
 #include <cmath>
 #include "constants.h"
 #include "errors.h"
-
-#ifndef STARRY_NO_AUTODIFF
-#include <unsupported/Eigen/AutoDiff> //"AutoDiffScalar.h"
-#endif
+#include <unsupported/Eigen/AutoDiff>
 
 namespace ellip {
 
 using std::abs;
-
-
 
   // Complete elliptic integral of the first kind
   template <typename T>
