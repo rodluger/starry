@@ -11,7 +11,7 @@
     \textbf{STARRY}: Analytical Occultation Light Curves
 }
 
-\author[0000-0002-0296-3826]{Rodrigo Luger} 
+\author[0000-0002-0296-3826]{Rodrigo Luger}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
 \author{Eric Agol}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA; Virtual Planetary Laboratory; Guggenheim Fellow}
@@ -1216,9 +1216,8 @@ From \citet{limbdark}, this corresponds to the spherical harmonic sum
 \mathematica{limbdark}
 \end{align}
 %
-Note, importantly, that setting the limb darkening coefficients of a map
-resets all $m \neq 0$ coefficients. \starry does not at present support
-adding limb darkening to pre-existing, non-radially symmetric maps; this
+At present, \starry does not support
+adding limb darkening to non-radially symmetric maps; this
 functionality will be added in the future to allow for limb darkening
 of, say, planetary atmospheres.
 
@@ -1318,7 +1317,7 @@ $\sqrt{3}$:
 \footnote{In Cartesian coordinates, we have $Y_{0,0} = \sqrt{\frac{1}{4\pi}}$ and
 $Y_{1,0} = \sqrt{\frac{3}{4\pi}}z$. At the anti-stellar point ($z = 1$), the ratio
 of these two terms is $\sqrt{3}$, so the coefficient of $Y_{0,0}$ must be at least
-this value to ensure the anti-stellar point has a nonnegative surface intensity.}
+this value to ensure the anti-stellar point has a non-negative surface intensity.}
 \begin{lstlisting}[language=Python,firstnumber=last]
 planet.map[0, 0] = 1.75
 \end{lstlisting}
@@ -1548,7 +1547,8 @@ could be desirable when fitting a model to real data. The minimum
 can, of course, be found numerically, although this is slow and
 should probably not be done repeatedly during optimization to
 enforce a prior. Nevertheless, users can request to offset
-the $Y_{0,0}$ coefficient of a given map to make it non-negative over
+the $Y_{0,0}$ coefficient of a given \textsf{starry.Map} instance
+to make it non-negative over
 the entire domain by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
@@ -2949,13 +2949,13 @@ $\bvec{R}^l$    & Rotation matrix for the real
 $s_{\bigdot}$   & $\sin(\bigdot)$                       & \\
 $\bvec{s}$      & Occultation light curve solution
                   vector                                & \eq{rn} \\
-$u$             & Dummy indexed                         & \\
+$u$             & Dummy index                           & \\
 $u_1, u_2$      & Quadratic limb darkening coefficients & \eq{quadraticld} \\
 $\bvec{u}$      & Unit vector corresponding to the
                   axis of rotation                      & \S\ref{app:axisangle} \\
 $\bvec{U}$      & Complex to real spherical harmonics
                   transform matrix                      & \eq{U} \\
-$v$             & Dummy indexed                         & \\
+$v$             & Dummy index                           & \\
 $\x$            & Cartesian coordinate                  & \eq{xyz} \\
 $\y$            & Cartesian coordinate                  & \eq{xyz} \\
 $Y_{l,m}$       & Spherical harmonic of degree $l$

@@ -10,52 +10,6 @@ using std::vector;
 #define STARRY_MAP_TOLERANCE                    1.0e-14
 #endif
 
-// Largest value of l for large occultors
-// (analytic expressions are numerically unstable above this)
-#ifndef STARRY_LMAX_LARGE_OCC
-#define STARRY_LMAX_LARGE_OCC                   8
-#endif
-
-// Default value of the radius threshold for
-// Taylor expansion of the M integral
-#ifndef STARRY_RADIUS_THRESH_M
-#define STARRY_RADIUS_THRESH_M                  2.0
-#endif
-
-// Re-parametrize s2() when |b-r| < this value
-#ifndef STARRY_BMINUSR_THRESH_S2
-#define STARRY_BMINUSR_THRESH_S2                1.e-2
-#endif
-
-// Taylor expand J() when b is smaller than this
-#ifndef STARRY_B_MAXL
-#define STARRY_B_MAXL                           10
-const vector<double> STARRY_B_THRESH_J_VEC({1.e-2, 1.e-2, 1.5e-2, 2.e-2, 3.e-2, 4.e-2, 4.e-2, 5.e-2, 6.e-2, 8.e-2, 1.e-1});
-template <typename T>
-T STARRY_B_THRESH_J(int l, T r) {
-    if (r > 0.5)
-        return 0.1 * (1 - r);
-    else if (l <= STARRY_B_MAXL)
-        return STARRY_B_THRESH_J_VEC[l];
-    else
-        return 0;
-}
-#endif
-
-// Default value of the radius threshold for
-// quartic expansion of the occultor limb
-#ifndef STARRY_QUARTIC_MAXL
-#define STARRY_QUARTIC_MAXL                     8
-const vector<double> STARRY_RADIUS_THRESH_QUARTIC_VEC({100, 30, 30, 20, 15, 10, 8, 6, 5});
-template <typename T>
-T STARRY_RADIUS_THRESH_QUARTIC(int l) {
-    if (l <= STARRY_QUARTIC_MAXL)
-        return STARRY_RADIUS_THRESH_QUARTIC_VEC[l];
-    else
-        return 1;
-}
-#endif
-
 // Largest tabulated integer square root
 #ifndef STARRY_MAX_SQRT
 #define STARRY_MAX_SQRT                         201

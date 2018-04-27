@@ -189,7 +189,7 @@ namespace solver {
         if (G.b() == 0) {
             // Special case
             return pow(1 - G.r(2), 1.5) * G.I(u, v);
-        } else if ((G.taylor) && (G.r() < 1) && (G.b() < STARRY_B_THRESH_J<T>(G.l, G.r()))) {
+        } else if ((G.taylor) && (G.b() < STARRY_B_THRESH_J<T>(G.r()))) {
             return taylor::computeJ(G, u, v);
         } else {
             for (int i = 0; i < v + 1; i++) {

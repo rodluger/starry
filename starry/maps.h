@@ -668,6 +668,7 @@ namespace maps {
     template <class T>
     void LimbDarkenedMap<T>::reset() {
         u.setZero(lmax + 1);
+        u(0) = 1;
         y.setZero(N);
         y(0) = 2 * sqrt(M_PI);
         g = C.A * y;
@@ -678,43 +679,9 @@ namespace maps {
     // Return a human-readable map string
     template <class T>
     std::string LimbDarkenedMap<T>::repr() {
-        int n = 0;
-        int nterms = 0;
-        char buf[30];
         std::ostringstream os;
         os << "<STARRY LimbDarkenedMap: ";
-        for (int l = 0; l < lmax + 1; l++) {
-            for (int m = -l; m < l + 1; m++) {
-                if (std::abs(y(n)) > STARRY_MAP_TOLERANCE){
-                    // Separator
-                    if ((nterms > 0) && (y(n) > 0)) {
-                        os << " + ";
-                    } else if ((nterms > 0) && (y(n) < 0)){
-                        os << " - ";
-                    } else if ((nterms == 0) && (y(n) < 0)){
-                        os << "-";
-                    }
-                    // Term
-                    if ((y(n) == 1) || (y(n) == -1)) {
-                        sprintf(buf, "Y_{%d,%d}", l, m);
-                        os << buf;
-                    } else if (fmod(std::abs(y(n)), 1) < STARRY_MAP_TOLERANCE) {
-                        sprintf(buf, "%d Y_{%d,%d}", (int)std::abs(y(n)), l, m);
-                        os << buf;
-                    } else if (fmod(std::abs(y(n)), 1) >= 0.01) {
-                        sprintf(buf, "%.2f Y_{%d,%d}", std::abs(y(n)), l, m);
-                        os << buf;
-                    } else {
-                        sprintf(buf, "%.2e Y_{%d,%d}", std::abs(y(n)), l, m);
-                        os << buf;
-                    }
-                    nterms++;
-                }
-                n++;
-            }
-        }
-        if (nterms == 0)
-            os << "Null";
+        os << u.transpose();
         os << ">";
         return std::string(os.str());
     }
