@@ -504,7 +504,9 @@ namespace solver {
 
             // Getter function
             inline T value(int n) {
-                if (n < 0) throw errors::BadIndex();
+                if (n < 0) {
+                    throw errors::BadIndex();
+                }
                 while (n >= vec.size()) {
                     vec.push_back(vec[1] * vec[vec.size() - 1]);
                 }
@@ -578,7 +580,7 @@ namespace solver {
             // Constructor
             Greens(int lmax, bool taylor=true) :
                    lmax(lmax),
-                   N(max(lmax + 5, 2 * lmax + 1)),
+                   N(max(lmax + 5, 2 * lmax + 1) + 12), // DEBUG: +12 for taylor::computeJ. Find smallest value of N that will work.
                    taylor(taylor),
                    ksq(0),
                    b(0),

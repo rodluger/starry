@@ -14,7 +14,7 @@ b = np.logspace(np.log10(bmin), np.log10(bmax), blen)
 r = np.logspace(np.log10(rmin), np.log10(rmax), rlen)
 R, B = np.meshgrid(r, b)
 MACHINE_PRECISION = 1.6e-16
-MIN_FLUX = 1.e-15
+MIN_FLUX = 1.e-9
 
 # Exact
 m128 = starry.Map(7)
@@ -36,46 +36,59 @@ flux_starry = np.array(m.flux(xo=0, yo=B, ro=R))
 flux_notaylor = np.array(mnt.flux(xo=0, yo=B, ro=R))
 
 # Compute the fractional errors
-err_starry = (flux_starry - flux_128) / flux_128
-# If both are zero or if both are identical, set the error to machine precision
+err_starry = (flux_starry - flux_128) / (flux_128)
 err_starry[(flux_128 == 0) & (flux_starry == 0)] = MACHINE_PRECISION
 err_starry[(flux_128 == flux_starry)] = MACHINE_PRECISION
-# If both are *very* small, set the error to machine precision
-err_starry[(np.abs(flux_128) < MIN_FLUX) &
-           (np.abs(flux_starry) < MIN_FLUX)] = MACHINE_PRECISION
-# Take the log
 err_starry = np.log10(np.abs(err_starry))
 
 err_notaylor = (flux_notaylor - flux_128) / flux_128
-# If both are zero or if both are identical, set the error to machine precision
 err_notaylor[(flux_128 == 0) & (flux_notaylor == 0)] = MACHINE_PRECISION
 err_notaylor[(flux_128 == flux_notaylor)] = MACHINE_PRECISION
-# If both are *very* small, set the error to machine precision
-err_notaylor[(np.abs(flux_128) < MIN_FLUX) &
-             (np.abs(flux_notaylor) < MIN_FLUX)] = MACHINE_PRECISION
-# Take the log
 err_notaylor = np.log10(np.abs(err_notaylor))
 
+# Mask regions where the flux is very small
+err_starry_mask = np.zeros_like(err_starry)
+err_starry_mask[(np.abs(flux_128) < MIN_FLUX) &
+                (np.abs(flux_starry) < MIN_FLUX) &
+                (err_starry > np.log10(MACHINE_PRECISION))] = 1
+err_notaylor_mask = np.zeros_like(err_notaylor)
+err_notaylor_mask[(np.abs(flux_128) < MIN_FLUX) &
+                  (np.abs(flux_notaylor) < MIN_FLUX) &
+                  (err_notaylor > np.log10(MACHINE_PRECISION))] = 1
 
 # Plot
 vmax = 0
-fig, ax = pl.subplots(1, 2, figsize=(12, 6))
-im = ax[0].imshow(err_starry, origin='lower',
-                  vmin=np.log10(MACHINE_PRECISION),
-                  vmax=vmax,
-                  extent=(np.log10(rmin), np.log10(rmax),
-                          np.log10(bmin), np.log10(bmax)))
-im = ax[1].imshow(err_notaylor, origin='lower',
-                  vmin=np.log10(MACHINE_PRECISION),
-                  vmax=vmax,
-                  extent=(np.log10(rmin), np.log10(rmax),
-                          np.log10(bmin), np.log10(bmax)))
+fig, ax = pl.subplots(2, 2, figsize=(8, 8))
+im = ax[0, 0].imshow(err_starry, origin='lower',
+                     vmin=np.log10(MACHINE_PRECISION),
+                     vmax=vmax,
+                     extent=(np.log10(rmin), np.log10(rmax),
+                             np.log10(bmin), np.log10(bmax)))
+
+im = ax[0, 1].imshow(err_notaylor, origin='lower',
+                     vmin=np.log10(MACHINE_PRECISION),
+                     vmax=vmax,
+                     extent=(np.log10(rmin), np.log10(rmax),
+                             np.log10(bmin), np.log10(bmax)))
 axc = pl.axes([0.815, 0.1, 0.125, 0.8])
 axc.axis('off')
 pl.colorbar(im, label=r'$\log\,\mathrm{error}$')
 
+# Masks
+cmap_mask = pl.get_cmap('Greys')
+cmap_mask.set_under(alpha=0)
+cmap_mask.set_over((0.267004, 0.004874, 0.329415, 1))
+ax[0, 0].imshow(err_starry_mask, origin='lower',
+                vmin=0.4, vmax=0.6, cmap=cmap_mask,
+                extent=(np.log10(rmin), np.log10(rmax),
+                        np.log10(bmin), np.log10(bmax)))
+ax[0, 1].imshow(err_notaylor_mask, origin='lower',
+                vmin=0.4, vmax=0.6, cmap=cmap_mask,
+                extent=(np.log10(rmin), np.log10(rmax),
+                        np.log10(bmin), np.log10(bmax)))
+
 # Appearance
-for axis in ax:
+for axis in (ax[0, 0], ax[0, 1]):
     axis.set_xlabel(r'$\log\,r$', fontsize=14)
     axis.set_ylabel(r'$\log\,b$', fontsize=14)
     axis.set_xlim(np.log10(rmin), np.log10(rmax))
