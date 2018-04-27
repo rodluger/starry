@@ -16,7 +16,7 @@ Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
 #include "errors.h"
 
 #ifndef STARRY_NO_AUTODIFF
-#include "AutoDiffScalar.h"
+#include <unsupported/Eigen/AutoDiff> //"AutoDiffScalar.h"
 #endif
 
 namespace ellip {
