@@ -14,16 +14,11 @@ Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
 #include <cmath>
 #include "constants.h"
 #include "errors.h"
-
-#ifndef STARRY_NO_AUTODIFF
-#include "AutoDiffScalar.h"
-#endif
+#include <unsupported/Eigen/AutoDiff>
 
 namespace ellip {
 
 using std::abs;
-
-
 
   // Complete elliptic integral of the first kind
   template <typename T>
@@ -115,10 +110,10 @@ using std::abs;
                        nsq = n_value * n_value;
     return Eigen::AutoDiffScalar<T>(
       Pnk,
-      (n.derivatives() * 0.5 * (Ek + (Kk * (ksq - n_value) +
-      Pnk * (nsq - ksq)) / n_value) / (n_value - 1.0) -
-      ksq.derivatives() * 0.5 * (Ek / (ksq - 1.0) + Pnk)) /
-      (ksq - n_value)
+      (n.derivatives() * 0.5 * (Ek + (Kk * (ksq_value - n_value) +
+      Pnk * (nsq - ksq_value)) / n_value) / (n_value - 1.0) -
+      ksq.derivatives() * 0.5 * (Ek / (ksq_value - 1.0) + Pnk)) /
+      (ksq_value - n_value)
     );
   }
 
