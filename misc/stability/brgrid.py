@@ -8,7 +8,7 @@ MACHINE_PRECISION = 1.6e-16
 MIN_FLUX = 1.e-9
 
 
-def BRGrid(ax, l, m, res=1):
+def BRGrid(ax, l, m, res=1, aspect=1):
     """Plot b-r grid."""
     blen = int(301 * res)
     rlen = int(301 * res)
@@ -63,13 +63,13 @@ def BRGrid(ax, l, m, res=1):
     # Plot
     im1 = ax[0].imshow(err_starry, origin='lower',
                        vmin=np.log10(MACHINE_PRECISION),
-                       vmax=0,
+                       vmax=0, aspect=aspect,
                        extent=(np.log10(rmin), np.log10(rmax),
                                np.log10(bmin), np.log10(bmax)))
 
     im2 = ax[1].imshow(err_notaylor, origin='lower',
                        vmin=np.log10(MACHINE_PRECISION),
-                       vmax=0,
+                       vmax=0, aspect=aspect,
                        extent=(np.log10(rmin), np.log10(rmax),
                                np.log10(bmin), np.log10(bmax)))
 
@@ -80,11 +80,11 @@ def BRGrid(ax, l, m, res=1):
     ax[0].imshow(err_starry_mask, origin='lower',
                  vmin=0.4, vmax=0.6, cmap=cmap_mask,
                  extent=(np.log10(rmin), np.log10(rmax),
-                         np.log10(bmin), np.log10(bmax)))
+                         np.log10(bmin), np.log10(bmax)), aspect=aspect)
     ax[1].imshow(err_notaylor_mask, origin='lower',
                  vmin=0.4, vmax=0.6, cmap=cmap_mask,
                  extent=(np.log10(rmin), np.log10(rmax),
-                         np.log10(bmin), np.log10(bmax)))
+                         np.log10(bmin), np.log10(bmax)), aspect=aspect)
 
     # Appearance
     for axis in ax:
@@ -95,13 +95,9 @@ def BRGrid(ax, l, m, res=1):
         '''
         # Boundary lines
         r = np.logspace(np.log10(rmin), np.log10(rmax), 10000)
-        axis.plot(np.log10(r), np.log10(1 - r), ls='--',
-                  lw=1, color='w', alpha=0.25)
         axis.plot(np.log10(r), np.log10(r - 1), ls='--',
                   lw=1, color='w', alpha=0.25)
-        axis.plot(np.log10(r), np.log10(1 + r), ls='--',
-                  lw=1, color='w', alpha=0.25)
-        axis.plot(np.log10(r), np.log10(0.1 * (1 - r)), ls='--',
+        axis.plot(np.log10(r), np.log10(r + 1), ls='--',
                   lw=1, color='w', alpha=0.25)
         '''
 
@@ -110,11 +106,11 @@ def BRGrid(ax, l, m, res=1):
     return im1, im2
 
 
-def LargeR(ax, l, m, res=1, deltab=1):
-    """Plot the error for large radii."""
-    blen = int(51 * res)
+def RMinusOneRPlusOne(ax, l, m, res=1, deltab=1, aspect=1):
+    """Plot the error for r - 1 < b < r + 1."""
+    blen = int(101 * res)
     rlen = int(301 * res)
-    rmin = 1
+    rmin = 1e-5
     rmax = 1e3
     r = np.logspace(np.log10(rmin), np.log10(rmax), rlen)
 
@@ -166,32 +162,33 @@ def LargeR(ax, l, m, res=1, deltab=1):
     # Plot
     im3 = ax[0].imshow(err_starry, origin='lower',
                        vmin=np.log10(MACHINE_PRECISION),
-                       vmax=0,
-                       extent=(np.log10(rmin), np.log10(rmax), 0, 1))
+                       vmax=0, aspect=aspect,
+                       extent=(np.log10(rmin), np.log10(rmax), 0, 2))
 
     im4 = ax[1].imshow(err_notaylor, origin='lower',
                        vmin=np.log10(MACHINE_PRECISION),
-                       vmax=0,
-                       extent=(np.log10(rmin), np.log10(rmax), 0, 1))
+                       vmax=0, aspect=aspect,
+                       extent=(np.log10(rmin), np.log10(rmax), 0, 2))
 
     # Masks
     cmap_mask = pl.get_cmap('Greys')
     cmap_mask.set_under(alpha=0)
     cmap_mask.set_over((0.267004, 0.004874, 0.329415, 1))
-    ax[0].imshow(err_starry_mask, origin='lower',
+    ax[0].imshow(err_starry_mask, origin='lower', aspect=aspect,
                  vmin=0.4, vmax=0.6, cmap=cmap_mask,
-                 extent=(np.log10(rmin), np.log10(rmax), 0, 1))
-    ax[1].imshow(err_notaylor_mask, origin='lower',
+                 extent=(np.log10(rmin), np.log10(rmax), 0, 2))
+    ax[1].imshow(err_notaylor_mask, origin='lower', aspect=aspect,
                  vmin=0.4, vmax=0.6, cmap=cmap_mask,
-                 extent=(np.log10(rmin), np.log10(rmax), 0, 1))
+                 extent=(np.log10(rmin), np.log10(rmax), 0, 2))
 
     # Appearance
     for axis in ax:
         axis.set_xlabel(r'$\log\,r$', fontsize=14)
         axis.set_xlim(np.log10(rmin), np.log10(rmax))
-        axis.set_ylim(0, 1)
-        axis.set_yticks([0, 0.5, 1])
-    ax[0].set_yticklabels(["Ing", "Mid", "Tot"])
+        axis.set_ylim(0, 2)
+        axis.set_yticks([0, 1, 2])
+    ax[0].set_ylabel(r'$b$', fontsize=14)
+    ax[0].set_yticklabels([r"$r - 1$", r"$r$", r"$r + 1$"])
     ax[1].set_yticklabels([])
 
     return im3, im4
@@ -199,16 +196,20 @@ def LargeR(ax, l, m, res=1, deltab=1):
 
 def Ylm(l, m, res=1):
     """Generate a stability plot for a given Ylm."""
-    fig = pl.figure(figsize=(9, 6))
+    fig = pl.figure(figsize=(8.5, 11))
     fig.subplots_adjust(right=0.8, top=0.925)
-    axBR = [pl.subplot2grid([4, 2], [0, 0], rowspan=3),
-            pl.subplot2grid([4, 2], [0, 1], rowspan=3)]
-    axLR = [pl.subplot2grid([4, 2], [3, 0], rowspan=3),
-            pl.subplot2grid([4, 2], [3, 1], rowspan=3)]
-    axBR[0].set_title('Taylor')
-    axBR[1].set_title('Original')
-    im1, im2 = BRGrid(axBR, l, m, res=res)
-    im3, im4 = LargeR(axLR, l, m, res=res, deltab=1e-12)
+    ax1 = [pl.subplot2grid([80, 2], [0, 0], rowspan=30),
+           pl.subplot2grid([80, 2], [0, 1], rowspan=30)]
+    ax2 = [pl.subplot2grid([80, 2], [30, 0], rowspan=10),
+           pl.subplot2grid([80, 2], [30, 1], rowspan=10)]
+    ax3 = [pl.subplot2grid([80, 2], [42, 0], rowspan=10),
+           pl.subplot2grid([80, 2], [42, 1], rowspan=10)]
+    ax1[0].set_title('Optimized')
+    ax1[1].set_title('Original')
+    im1, im2 = BRGrid(ax1, l, m, res=res)
+    im3, im4 = RMinusOneRPlusOne(ax2, l, m, res=res)
+    im4, im5 = RMinusOneRPlusOne(ax3, l, m, res=res, deltab=1e-6)
+    ax3[0].set_yticklabels([r"$r - \epsilon$", r"$r$", r"$r + \epsilon$"])
     axc = pl.axes([0.725, 0.075, 0.15, 0.8])
     axc.axis('off')
     cb = pl.colorbar(im1)

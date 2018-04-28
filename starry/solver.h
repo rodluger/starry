@@ -58,7 +58,7 @@ namespace solver {
     inline T s2(Greens<T>& G) {
 
         // Taylor expand for r > 2?
-        if ((G.taylor) && (G.r() >= 2))
+        if ((G.taylor) && (G.r() >= STARRY_RADIUS_THRESH_S2))
             return taylor::s2(G);
 
         T Lambda;
@@ -362,7 +362,16 @@ namespace solver {
                     if ((G.b() == 0) || (G.ksq() == 1))
                         vPI = 0;
                     else if (G.ksq() < 1)
-                        vPI = 3 * (G.b() - G.r()) * ellip::PI(G.ksq() * (G.b() + G.r()) * (G.b() + G.r()), G.ksq());
+                        // TODO: We need to find a reparametrization of PI here, since it diverges
+                        // when b = r. My expression is valid to *zeroth* order near b = r.
+                        if ((G.taylor) && (abs(G.b() - G.r()) < 1e-8) && (G.r() < STARRY_RADIUS_THRESH_S2)) {
+                            if (G.b() > G.r())
+                                vPI = -(6. * G.pi * G.r(2)) / (1 - 4. * G.r(2));
+                            else
+                                vPI = (6. * G.pi * G.r(2)) / (1 - 4. * G.r(2));
+                        } else {
+                            vPI = 3 * (G.b() - G.r()) * ellip::PI(G.ksq() * (G.b() + G.r()) * (G.b() + G.r()), G.ksq());
+                        }
                     else {
                         T EPI;
                         if ((G.taylor) && (abs(G.b() - G.r()) < STARRY_BMINUSR_THRESH_S2)) {
@@ -391,7 +400,7 @@ namespace solver {
                             // Compute the elliptic integral directly
                             EPI = ellip::PI(1. / (G.ksq() * (G.b() + G.r()) * (G.b() + G.r())), 1. / G.ksq());
                         }
-                        // TODO: There may be small numerical issue here. As b - r --> 1,
+                        // TODO: There are small numerical issue here. As b - r --> 1,
                         // the denominator diverges. Should re-parametrize.
                         if (abs(G.b() - G.r()) != 1.0)
                             vPI = 3 * (G.b() - G.r()) / (G.b() + G.r()) * EPI /

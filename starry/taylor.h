@@ -19,6 +19,9 @@ Not for the faint of heart.
 // (analytic expressions are numerically unstable above this)
 #define STARRY_LMAX_LARGE_OCC                   8
 
+// Taylor expansion of the s2 term above this radius
+#define STARRY_RADIUS_THRESH_S2                 2.0
+
 // Taylor expansion of the M integral at large radius
 #define STARRY_RADIUS_THRESH_M                  2.0
 #define STARRY_R_ORDER                          12
