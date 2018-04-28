@@ -15,10 +15,28 @@ Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
 #include "constants.h"
 #include "errors.h"
 #include <unsupported/Eigen/AutoDiff>
+#include <boost/math/special_functions/ellint_1.hpp>
+#include <boost/math/special_functions/ellint_2.hpp>
 
 namespace ellip {
 
+using boost::math::ellint_1;
+using boost::math::ellint_2;
 using std::abs;
+
+  // Incomplete elliptic integral of the first kind
+  // Currently using boost's implementation
+  template <typename T>
+  T F (const T& ksq, const T& phi) {
+      return ellint_1(sqrt(ksq), phi);
+  }
+
+  // Incomplete elliptic integral of the second kind
+  // Currently using boost's implementation
+  template <typename T>
+  T E (const T& ksq, const T& phi) {
+      return ellint_2(sqrt(ksq), phi);
+  }
 
   // Complete elliptic integral of the first kind
   template <typename T>

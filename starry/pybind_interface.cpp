@@ -420,8 +420,8 @@ PYBIND11_MODULE(starry, m) {
                 is enabled. Default :py:obj:`False`.
             )pbdoc")
 
-        .def_property("taylor", [](maps::Map<double> &map){return map.G.taylor;},
-                                [](maps::Map<double> &map, bool taylor){map.G.taylor = taylor;},
+        .def_property("optimize", [](maps::Map<double> &map){return map.G.taylor;},
+                                  [](maps::Map<double> &map, bool taylor){map.G.taylor = taylor;},
             R"pbdoc(
                 Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
                 computing occultation light curves. This is in general not something you should do! \
@@ -782,8 +782,8 @@ PYBIND11_MODULE(starry, m) {
                 is enabled. Default :py:obj:`False`.
             )pbdoc")
 
-        .def_property("taylor", [](maps::LimbDarkenedMap<double> &map){return map.G.taylor;},
-                                [](maps::LimbDarkenedMap<double> &map, bool taylor){map.G.taylor = taylor;},
+        .def_property("optimize", [](maps::LimbDarkenedMap<double> &map){return map.G.taylor;},
+                                  [](maps::LimbDarkenedMap<double> &map, bool taylor){map.G.taylor = taylor;},
             R"pbdoc(
                 Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
                 computing occultation light curves. This is in general not something you should do! \

@@ -14,8 +14,6 @@ Spherical harmonic integration utilities.
 #include "fact.h"
 #include "errors.h"
 #include "taylor.h"
-#include <boost/math/special_functions/ellint_1.hpp>
-#include <boost/math/special_functions/ellint_2.hpp>
 
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
@@ -59,8 +57,8 @@ namespace solver {
     template <typename T>
     inline T s2(Greens<T>& G) {
 
-        // Taylor expand for r > 1?
-        if ((G.taylor) && (G.r() >= 1))
+        // Taylor expand for r > 2?
+        if ((G.taylor) && (G.r() >= 2))
             return taylor::s2(G);
 
         T Lambda;
@@ -383,8 +381,8 @@ namespace solver {
                             T psi = asin(sqrt(one_minus_n / (1. - 1. / G.ksq())));
                             T mc = 1. - 1. / G.ksq();
                             // Compute Heuman's Lambda Function via A&S 17.4.40:
-                            T EEI = boost::math::ellint_2(sqrt(mc), psi);
-                            T EFI = boost::math::ellint_1(sqrt(mc), psi);
+                            T EEI = ellip::E(mc, psi);
+                            T EFI = ellip::F(mc, psi);
                             T HLam = 2. / G.pi * (EK * EEI - (EK - EE) * EFI);
                             T d2 = sqrt((1. / one_minus_n - 1.) / (1. - one_minus_n - 1. / G.ksq()));
                             // Equation 17.7.14 in A&S:

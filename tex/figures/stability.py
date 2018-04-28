@@ -88,7 +88,7 @@ def impact_param(ax, lmax=8):
 
     # Double precision
     ylm = Map(lmax)
-    ylm.taylor = True
+    ylm.optimize = True
 
     # Quad precision (~exact)
     ylm128 = Map(lmax)

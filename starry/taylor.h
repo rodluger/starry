@@ -169,20 +169,28 @@ namespace solver
 
 namespace taylor {
 
+    using std::abs;
+
     // Taylor expand the difference between the elliptic integrals
     // for the s2 term when r >= 1; much more numerically stable!
     template <typename T>
     inline T s2(solver::Greens<T>& G) {
         T x = 1. / G.b_r(1);
         T eps = x - 1;
-        T EP = ellip::PI(1 - 1. / ((G.b() - G.r()) * (G.b() - G.r())), G.ksq());
+        T EP, goodterm;
+        if (abs(G.b() - G.r()) > 1e-8) {
+            EP = ellip::PI(1 - 1. / ((G.b() - G.r()) * (G.b() - G.r())), G.ksq());
+            goodterm = (3 * (G.b() + G.r()) / (G.b() - G.r()) * EP) / sqrt(G.br);
+        } else {
+            // Numerically stable first order expansion when b = r
+            goodterm = 6 * G.pi * G.r() * (0.5 - solver::step(G.r() - G.b())) / sqrt(G.br);
+        }
         T EminusK = 0;
         for (int i = 0; i < STARRY_EMINUSK_ORDER; i++)
             EminusK += STARRY_EMINUSK_COEFF[i] * G.ksq(i);
         EminusK *= -G.pi;
         T taylor = 2 * G.b(3) * sqrt(x) * (EminusK * (16 + 28 * eps + 14 * eps * eps) - eps * eps * (2 + 3 * eps) * G.ELL.K());
         T badterm = taylor + sqrt(G.br) * ((8 - 3 / G.br + 12 / G.b_r(1)) * G.ELL.K() - 16 * G.ELL.E());
-        T goodterm = (3 * (G.b() + G.r()) / (G.b() - G.r()) * EP) / sqrt(G.br);
         T Lambda = (badterm + goodterm) / (9 * G.pi);
         return (2. * G.pi / 3.) * (1 - 1.5 * Lambda - solver::step(G.r() - G.b()));
     }
