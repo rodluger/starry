@@ -219,6 +219,81 @@ namespace taylor {
         return res;
     }
 
+    // The series solution to Eric Agol's \varepsilon_3
+    // This is the numerically stable version of the expression
+    //
+    //        (1 - 0.5 * m) * ellip::K(m) - ellip::E(m)
+    //
+    // ** Not currently used. My taylor expansion gives slightly
+    // ** better results at large radius.
+
+    /*
+    template <typename T>
+    inline T eps3(T pi, T m) {
+        if (m >= 1)
+            return (1 - 0.5 * m) * ellip::K(m) - ellip::E(m);
+        T tol = m * std::numeric_limits<T>::epsilon();
+        T res = 0;
+        T term = pi / 32.;
+        res += term;
+        int n = 2;
+        while (abs(term) > tol * abs(res)) {
+            term *= 0.25 * (2 * n - 1) * (2 * n - 1) * m / (n * n - 1);
+            res += term;
+            n++;
+        }
+        return res * m * m;
+    }
+
+    // Eric Agol's taylor expansion of M() for large occultors
+    template <typename T>
+    inline T computeM(solver::Greens<T>& G, int p, int q) {
+        T m = G.ksq();
+        T m2 = m * m;
+        T e3 = eps3(G.pi, m);
+
+        if ((p == 0) && (q == 0)) {
+            return ((8 - 16 * m) * e3 + 4 * m2 * G.ELL.K()) / 3.;
+        } else if ((p == 0) && (q == 2)) {
+            return ((8 - 28 * m - 12 * m2) * e3 + (22 - 6 * m) * m2 * G.ELL.K()) / 15.;
+        } else if ((p == 2) && (q == 0)) {
+            return ((32 - 52 * m + 12 * m2) * e3 + (-2 + 6 * m) * m2 * G.ELL.K()) / 15.;
+        } else if ((p == 2) && (q == 2)) {
+            return ((32 - 76 * m + 36 * m2 - 24 * m2 * m) * e3 + (-2 + 30 * m - 12 * m2) * m2 * G.ELL.K()) / 105.;
+        } else if (q >= 4) {
+            T d1, d2;
+            T res1, res2;
+            // Terms independent of m
+            d1 = q + 2 + (p + q - 2);
+            d2 = (3 - q);
+            res1 = (d1 * G.M(p, q - 2) + d2 * G.M(p, q - 4)) / (p + q + 3);
+            // Terms proportional to m
+            d1 = (p + q - 2);
+            d2 = (3 - q);
+            res2 = (d1 * G.M(p, q - 2) + d2 * G.M(p, q - 4)) / (p + q + 3);
+            res2 *= -m;
+            // Add them
+            return res1 + res2;
+        } else if (p >= 4) {
+            T d3, d4;
+            T res1, res2;
+            // Terms independent of m
+            d3 = 2 * p + q - (p + q - 2);
+            d4 = 0;
+            res1 = (d3 * G.M(p - 2, q)) / (p + q + 3);
+            // Terms proportional to m
+            d3 = -(p + q - 2);
+            d4 = (p - 3);
+            res2 = (d3 * G.M(p - 2, q) + d4 * G.M(p - 4, q)) / (p + q + 3);
+            res2 *= -m;
+            // Add them
+            return res1 + res2;
+        } else {
+            throw errors::BadTaylor();
+            return 0;
+        }
+    }
+    */
 
 }; // namespace taylor
 
