@@ -13,6 +13,7 @@ Spherical harmonic integration utilities.
 #include "ellip.h"
 #include "fact.h"
 #include "errors.h"
+#include "lld.h"
 #include "taylor.h"
 
 template <typename T>
@@ -33,15 +34,6 @@ namespace solver {
     template <class T>
     class Greens;
 
-    // Heaviside step function
-    template <typename T>
-    inline T step(T x) {
-        if (x <= 0)
-            return 0;
-        else
-            return 1;
-    }
-
     // Check if number is even (or doubly, triply, quadruply... even)
     inline bool is_even(int n, int ntimes=1) {
         for (int i = 0; i < ntimes; i++) {
@@ -56,46 +48,12 @@ namespace solver {
     // reparametrized for speed
     template <typename T>
     inline T s2(Greens<T>& G) {
-
-        // Taylor expand for r > 2?
-        if ((G.taylor) && (G.r() >= STARRY_RADIUS_THRESH_S2))
-            return taylor::s2(G);
-
-        T Lambda;
-        T xi = 2 * G.br * (4 - 7 * G.r(2) - G.b(2));
-        T bpr = G.b() + G.r();
-        T bpr2 = bpr * bpr;
-        T bmr = G.b() - G.r();
-        if (G.b() == 0) {
-            Lambda = -2. / 3. * pow(1. - G.r(2), 1.5);
-        } else if (G.b() == G.r()) {
-            if (G.r() == 0.5)
-                Lambda = (1. / 3.) - 4. / (9. * G.pi);
-            else if (G.r() < 0.5)
-                Lambda = (1. / 3.) +
-                         2. / (9. * G.pi) * (4. * (2. * G.r(2) - 1.) * ellip::E(4 * G.r(2)) +
-                         (1 - 4 * G.r(2)) * ellip::K(4 * G.r(2)));
-            else
-                Lambda = (1. / 3.) +
-                         16. * G.r() / (9. * G.pi) * (2. * G.r(2) - 1.) * ellip::E(1. / (4 * G.r(2))) -
-                         (1 - 4 * G.r(2)) * (3 - 8 * G.r(2)) / (9 * G.pi * G.r()) * ellip::K(1. / (4 * G.r(2)));
-        } else {
-            if (G.ksq() < 1) {
-                // Note: Using Eric Agol's reparametrized solution
-                Lambda = ((bpr2 - 1) / bpr * (-2 * G.r() * (2 * bpr2 - bpr * bmr - 3) * G.ELL.K() + G.ELL.PI())
-                         - 2 * xi * G.ELL.E()) / (9 * G.pi * sqrt(G.br));
-            } else if (G.ksq() > 1) {
-                // Note: Using Eric Agol's reparametrized solution
-                T bmr2 = bmr * bmr;
-                Lambda = 2 * ((1 - bpr2) * (sqrt(1 - bmr2) * G.ELL.K() + G.ELL.PI())
-                         - sqrt(1 - bmr2) * (4 - 7 * G.r(2) - G.b(2)) * G.ELL.E()) / (9 * G.pi);
-            } else {
-                Lambda = 2. / (3. * G.pi) * acos(1. - 2 * G.r()) -
-                         4 / (9 * G.pi) * (3 + 2 * G.r() - 8 * G.r(2)) * sqrt(G.br) -
-                         2. / 3. * step(G.r() - 0.5);
-            }
-        }
-        return (2. * G.pi / 3.) * (1 - 1.5 * Lambda - step(-bmr));
+        T b = G.b();
+        T r = G.r();
+        T ksq = G.ksq();
+        T K = G.ELL.K();
+        T E = G.ELL.E();
+        return lld::s2(b, r, ksq, K, E, G.pi, G.taylor);
     }
 
     // Compute the flux for a transit of a quadratically limb-darkened star

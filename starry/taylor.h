@@ -19,9 +19,6 @@ Not for the faint of heart.
 // (analytic expressions are numerically unstable above this)
 #define STARRY_LMAX_LARGE_OCC                   8
 
-// Taylor expansion of the s2 term above this radius
-#define STARRY_RADIUS_THRESH_S2                 2.0
-
 // Taylor expansion of the M integral at large radius
 #define STARRY_RADIUS_THRESH_M                  2.0
 #define STARRY_R_ORDER                          12
@@ -120,9 +117,6 @@ static const double STARRY_R_COEFF[STARRY_R_NPQ][STARRY_R_NPQ][STARRY_R_ORDER] =
 -0.06169478981277563,0.08097441162926802,-0.05214261354914986},{0,0,0,0,0,0,0,0,
 0.018983012250084808,-0.07540474310450354,0.12724550398884973,-0.11471374980812968}}};
 
-// Re-parametrize s2() when |b-r| < this value
-#define STARRY_BMINUSR_THRESH_S2                1.e-2
-
 // Default value of the radius threshold for quartic expansion of the occultor limb
 #define STARRY_QUARTIC_MAXL                     8
 const vector<double> STARRY_RADIUS_THRESH_QUARTIC_VEC({100, 30, 30, 20, 15, 10, 8, 6, 5});
@@ -147,56 +141,24 @@ static const double STARRY_B_COEFF[STARRY_B_ORDER][STARRY_B_ORDER / 2] =
  {0.01171875,0.41015625,2.4609375,5.4140625,5.02734375,1.67578125},
  {0.08203125,1.23046875,5.4140625,10.0546875,8.37890625,2.58984375}};
 
-// Taylor expansion of E() - K() when r >= 1
-#define STARRY_EMINUSK_ORDER                          13
-static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
-{0, 0.25, 0.09375, 0.05859375, 0.042724609375, 0.0336456298828125,
- 0.027757644653320312, 0.023627042770385742, 0.020568184554576874,
- 0.018211413407698274, 0.016339684807462618, 0.01481712326858542,
- 0.013554300262740071};
-
-
 template <typename T>
 using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 
+// Forward declare a few things
+// TODO: Put `Greens` and `is_even` in a separate header file
+// so I don't have to do this!
 namespace solver
 {
     template <class T>
     class Greens;
     bool is_even(int n, int ntimes);
-    template <typename T>
-    inline T step(T x);
 };
 
 namespace taylor {
 
     using std::abs;
-
-    // Taylor expand the difference between the elliptic integrals
-    // for the s2 term when r >= 1; much more numerically stable!
-    template <typename T>
-    inline T s2(solver::Greens<T>& G) {
-        T x = 1. / G.b_r(1);
-        T eps = x - 1;
-        T EP, goodterm;
-        if (abs(G.b() - G.r()) > 1e-8) {
-            EP = ellip::PI(1 - 1. / ((G.b() - G.r()) * (G.b() - G.r())), G.ksq());
-            goodterm = (3 * (G.b() + G.r()) / (G.b() - G.r()) * EP) / sqrt(G.br);
-        } else {
-            // Numerically stable first order expansion when b = r
-            goodterm = 6 * G.pi * G.r() * (0.5 - solver::step(G.r() - G.b())) / sqrt(G.br);
-        }
-        T EminusK = 0;
-        for (int i = 0; i < STARRY_EMINUSK_ORDER; i++)
-            EminusK += STARRY_EMINUSK_COEFF[i] * G.ksq(i);
-        EminusK *= -G.pi;
-        T taylor = 2 * G.b(3) * sqrt(x) * (EminusK * (16 + 28 * eps + 14 * eps * eps) - eps * eps * (2 + 3 * eps) * G.ELL.K());
-        T badterm = taylor + sqrt(G.br) * ((8 - 3 / G.br + 12 / G.b_r(1)) * G.ELL.K() - 16 * G.ELL.E());
-        T Lambda = (badterm + goodterm) / (9 * G.pi);
-        return (2. * G.pi / 3.) * (1 - 1.5 * Lambda - solver::step(G.r() - G.b()));
-    }
 
     // Taylor expansion about b = 0
     template <typename T>

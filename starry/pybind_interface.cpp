@@ -5,17 +5,8 @@
 #include <Eigen/Core>
 #include <cmath>
 #include <stdlib.h>
-#include "constants.h"
-#include "ellip.h"
 #include "maps.h"
-#include "basis.h"
-#include "fact.h"
-#include "sqrtint.h"
-#include "rotation.h"
-#include "solver.h"
 #include "orbital.h"
-#include "taylor.h"
-#include "sturm.h"
 
 using namespace std;
 using namespace pybind11::literals;
