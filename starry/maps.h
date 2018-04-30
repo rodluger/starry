@@ -99,6 +99,7 @@ namespace maps {
             // Map order
             int N;
             int lmax;
+            bool Y00_is_unity;
 
             // Rotation matrices
             rotation::Wigner<T> R;
@@ -132,6 +133,7 @@ namespace maps {
                 tmpu3 = 0;
                 basis.resize(N, 1);
                 use_mp = false;
+                Y00_is_unity = false;
                 update(true);
             }
 
@@ -351,6 +353,7 @@ namespace maps {
     // Set the (l, m) coefficient
     template <class T>
     void Map<T>::set_coeff(int l, int m, T coeff) {
+        if ((l == 0) && (Y00_is_unity) && (coeff != 1)) throw errors::Y00IsUnity();
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
             y(n) = coeff;
@@ -379,7 +382,7 @@ namespace maps {
         int l, m, n;
         double norm;
         Vector<double> coeffs;
-        set_coeff(0, 0, 1.);
+        set_coeff(0, 0, 1);
         for (l = 1; l < lmax + 1; l++) {
             coeffs = Vector<double>::Random(2 * l + 1);
             norm = pow(l, beta) / coeffs.squaredNorm();
@@ -632,16 +635,20 @@ namespace maps {
         u(l) = u_l;
 
         // Update the map vector
+        T norm;
         y.setZero(N);
         if (lmax == 0) {
-            y(0) = 2 * sqrt(M_PI);
+            norm = M_PI;
+            y(0) = 2 * sqrt(M_PI) / norm;
         } else if (lmax == 1) {
-            y(0) = 2 * sqrt(M_PI) / 3. * (3 - 3 * u(1));
-            y(2) = 2 * sqrt(M_PI / 3.) * u(1);
+            norm = M_PI * (1 - u(1) / 3.);
+            y(0) = 2 * sqrt(M_PI) / 3. * (3 - 3 * u(1)) / norm;
+            y(2) = 2 * sqrt(M_PI / 3.) * u(1) / norm;
         } else {
-            y(0) = 2 * sqrt(M_PI) / 3. * (3 - 3 * u(1) - 4 * u(2));
-            y(2) = 2 * sqrt(M_PI / 3.) * (u(1) + 2 * u(2));
-            y(6) = -4. / 3. * sqrt(M_PI / 5) * u(2);
+            norm = M_PI * (1 - u(1) / 3. - u(2) / 6.);
+            y(0) = 2 * sqrt(M_PI) / 3. * (3 - 3 * u(1) - 4 * u(2)) / norm;
+            y(2) = 2 * sqrt(M_PI / 3.) * (u(1) + 2 * u(2)) / norm;
+            y(6) = -4. / 3. * sqrt(M_PI / 5) * u(2) / norm;
         }
 
         // Pre-compute the greens polynomials so we can
@@ -670,7 +677,7 @@ namespace maps {
         u.setZero(lmax + 1);
         u(0) = 1;
         y.setZero(N);
-        y(0) = 2 * sqrt(M_PI);
+        y(0) = 2 * sqrt(M_PI) / M_PI;
         g = C.A * y;
         ld_flux = G.pi * g(0);
         needs_update = true;

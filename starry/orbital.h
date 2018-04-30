@@ -85,11 +85,6 @@ namespace orbital {
             bodies[i]->y.resize(NT);
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
-            if (i > 0) {
-                if (bodies[i]->map.get_coeff(0, 0) <= 0) {
-                    throw errors::BadY00();
-                }
-            }
         }
 
         // Loop through the timeseries
@@ -163,6 +158,7 @@ namespace orbital {
 
             // Total flux at current timestep
             T totalflux;
+            T norm;
 
             // Methods
             void computeM(const T& time);
@@ -184,7 +180,6 @@ namespace orbital {
             T L;
             Map<T> map;
             LimbDarkenedMap<T> ldmap;
-            T norm;
 
             // Orbital elements
             T a;
@@ -247,7 +242,13 @@ namespace orbital {
                  {
 
                      // Initialize the map to constant surface brightness
-                     if (!is_star) map.set_coeff(0, 0, 1);
+                     if (!is_star) {
+                         map.set_coeff(0, 0, 1);
+                         map.Y00_is_unity = true;
+                     }
+
+                     // This is deprecated. Map is already normalized.
+                     norm = 1.;
 
                      // Initialize orbital vars
                      reset();
@@ -266,7 +267,6 @@ namespace orbital {
                 sqrtonepluse = sqrt(1 + ecc);
                 sqrtoneminuse = sqrt(1 - ecc);
                 ecc2 = ecc * ecc;
-                norm = L / (2 * sqrt(M_PI));
                 angvelorb = 2 * M_PI / porb;
                 angvelrot = 2 * M_PI / prot;
             };
@@ -292,9 +292,9 @@ namespace orbital {
     inline void Body<T>::getflux(const T& time, const int& t, const T& xo, const T& yo, const T& ro){
         if (L != 0) {
             if (is_star)
-                flux(t) += (norm / ldmap.y(0)) * ldmap.flux(xo, yo, ro) - totalflux;
+                flux(t) += norm * ldmap.flux(xo, yo, ro) - totalflux;
             else
-                flux(t) += (norm / map.get_coeff(0, 0)) * map.flux(axis, theta(time), xo, yo, ro) - totalflux;
+                flux(t) += norm * L * map.flux(axis, theta(time), xo, yo, ro) - totalflux;
         }
     }
 
@@ -374,9 +374,9 @@ namespace orbital {
             totalflux = 0;
         } else {
             if (is_star)
-                totalflux = (norm / ldmap.y(0)) * ldmap.flux(); // TODO: Check this
+                totalflux = norm * ldmap.flux();
             else
-                totalflux = (norm / map.get_coeff(0, 0)) * map.flux(axis, theta(time));
+                totalflux = norm * L * map.flux(axis, theta(time));
         }
         flux(t) = totalflux;
 

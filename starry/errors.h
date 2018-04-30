@@ -19,12 +19,6 @@ namespace errors {
         }
     };
 
-    struct BadY00 : public exception {
-    	const char * what () const throw (){
-        	return "The coefficient of Y_{0,0} must be positive for all bodies.";
-        }
-    };
-
     struct Elliptic : public exception {
     	const char * what () const throw (){
         	return "Elliptic integral did not converge.";
@@ -100,6 +94,12 @@ namespace errors {
     struct NotImplemented : public exception {
         const char * what () const throw (){
             return "Function or method not implemented.";
+        }
+    };
+
+    struct Y00IsUnity : public exception {
+        const char * what () const throw (){
+            return "The Y_{0,0} coefficient is fixed at unity. You probably want to change the body's luminosity instead.";
         }
     };
 

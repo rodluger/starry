@@ -1198,7 +1198,7 @@ In either case, this sets the map's limb darkening profile to
 %
 \begin{align}
     \label{eq:quadraticld}
-    I(\upmu) / I_0 &= 1 - u_1 (1 - \upmu) - u_2 (1 - \upmu)^2
+    \frac{I(\upmu)}{I(1)} &= 1 - u_1 (1 - \upmu) - u_2 (1 - \upmu)^2
     \quad,
 \end{align}
 %
@@ -1208,14 +1208,23 @@ From \citet{limbdark}, this corresponds to the spherical harmonic sum
 %
 \begin{align}
     \label{eq:qldylm}
-    I(\x, \y) =
+    \frac{I(\x, \y)}{I(1)} =
             \frac{2\sqrt{\pi}}{3} (3 - 3u_1 + 4u_2) \, Y_{0,0}
           + \frac{2\sqrt{\pi}}{\sqrt{3}} (u_1 + 2u_2) \, Y_{1,0}
           - \frac{4\sqrt{\pi}}{3\sqrt{5}} u_2 \, Y_{2,0}
-      \quad.
+      \quad,
 \mathematica{limbdark}
 \end{align}
 %
+where we set
+%
+\begin{align}
+    \label{eq:I1}
+    I(1) = \frac{1}{1 - \frac{1}{3}u_1 - \frac{1}{6}u_2}
+\end{align}
+%
+to enforce the integral of the specific intensity over the visible disk
+is unity.
 At present, \starry does not support
 adding limb darkening to non-radially symmetric maps; this
 functionality will be added in the future to allow for limb darkening
