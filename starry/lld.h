@@ -143,7 +143,7 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
         T beta = asin(sqrt(b * r) * 2 / (b + r));
         T xi = 2 * b * r * (4 - 7 * r * r - b * b);
         T Kprime = ellip::K(mc);
-        T Piprime = ellip::PI(1 / ((b + r) * (b + r)) - 1, mc);
+        T Piprime = ellip::PI(-(1 / ((b + r) * (b + r)) - 1), mc);
         T Fprime = ellip::F(mc, beta);
         T Piofnk3 = (K * (-Kprime + Piprime) / (b + r) + pi * sqrt(b * r) / abs(b - r) * Fprime) / Kprime;
         return (((r + b) * (r + b) - 1) / (r + b) * (-2 * r * (2 * (r + b) * (r + b) + (r + b) * (r - b) - 3) * K) + 3 * (b - r) * Piofnk3 - 2 * xi * E) / (9 * pi * sqrt(b * r));
@@ -161,7 +161,7 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
         T mc = 1.0 - 1.0 / ksq;
         T beta = asin(sqrt(1.0 - (b - r) * (b - r)));
         T Kprime = ellip::K(mc);
-        T Piprime = ellip::PI((b + r) * (b + r) - 1, mc);
+        T Piprime = ellip::PI(-((b + r) * (b + r) - 1), mc);
         T Fprime = ellip::F(mc, beta);
         T Piofnk3 = -(b + r) * K * (1.0 - Piprime / Kprime) / sqrt(1.0 - (b - r) * (b - r)) + pi / 2 / abs(b - r) * Fprime / Kprime;
         return 2 * ((1 - (r + b) * (r + b)) * sqrt(1 - (b - r) * (b - r)) * K + 3 * (b - r) * Piofnk3 - sqrt(1 - (b - r) * (b - r)) * (4 - 7 * r * r - b * b) * E) / (9 * pi);
@@ -199,12 +199,12 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
                          (1 - 4 * r2) * (3 - 8 * r2) / (9 * pi * r) * ellip::K(1. / (4 * r2));
         } else {
             if (ksq < 1) {
-                if (b + r > 1 + STARRY_BPLUSR_THRESH_S2)
+                if ((!taylor) || (b + r > 1 + STARRY_BPLUSR_THRESH_S2))
                     Lambda = ((bpr2 - 1) / bpr * (-2 * r * (2 * bpr2 - bpr * bmr - 3) * K + PITerm(b, r, ksq, pi, taylor)) - 2 * xi * E) / (9 * pi * sqrt(b * r));
                 else
                     Lambda = LambdaBPlusROnePlusEpsilon(b, r, ksq, K, E, pi);
             } else if (ksq > 1) {
-                if (b + r < 1 - STARRY_BPLUSR_THRESH_S2) {
+                if ((!taylor) || (b + r < 1 - STARRY_BPLUSR_THRESH_S2)) {
                     T bmr2 = bmr * bmr;
                     Lambda = 2 * ((1 - bpr2) * (sqrt(1 - bmr2) * K + PITerm(b, r, ksq, pi, taylor)) - sqrt(1 - bmr2) * (4 - 7 * r2 - b2) * E) / (9 * pi);
                 } else {
