@@ -1311,7 +1311,7 @@ with mean longitude \textsf{lambda0} $= 90^\circ$, so we must actually set
 the corresponding coefficient in the map to be \emph{negative}:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-planet.map[1, 0] = -1
+planet.map[1, 0] = -0.5
 \end{lstlisting}
 %
 This ensures that the hot spot is on the side of the planet facing the star
@@ -1320,18 +1320,25 @@ This ensures that the hot spot is on the side of the planet facing the star
 set \textsf{planet.lambda0 = 270}.}
 %
 
-Finally, care must be taken to ensure the map is positive everywhere.
-In our case, this requires that the coefficient of the $Y_{0,0}$ term be at least
-$\sqrt{3}$:
+Finally, care should be taken to ensure the map is positive everywhere. By default,
+the coefficient of the $Y_{0,0}$ term of a planet's map is fixed at unity, since
+changing this term would change the total luminosity (this should instead be
+modified via the \textsf{planet.L} property). In the case of a simple dipole map of
+the form $Y_{0,0} + c Y_{1, 0}$, it is easy to show that as long as we enforce
+%
+\begin{align}
+    |c| \le \frac{1}{\sqrt{3}} \approx 0.5773
+\end{align}
+%
+the map will be non-negative everywhere along the unit sphere.
 \footnote{In Cartesian coordinates, we have $Y_{0,0} = \sqrt{\frac{1}{4\pi}}$ and
 $Y_{1,0} = \sqrt{\frac{3}{4\pi}}z$. At the anti-stellar point ($z = 1$), the ratio
-of these two terms is $\sqrt{3}$, so the coefficient of $Y_{0,0}$ must be at least
-this value to ensure the anti-stellar point has a non-negative surface intensity.}
-\begin{lstlisting}[language=Python,firstnumber=last]
-planet.map[0, 0] = 1.75
-\end{lstlisting}
+of these two terms is $\nicefrac{1}{\sqrt{3}}$, so the absolute value of the
+coefficient of $Y_{1,0}$ must be at most this value to ensure the anti-stellar
+point has a non-negative surface intensity.}
 %
-For more details on ensuring surface maps are positive everywhere, see \S\ref{sec:caveats}.
+For more details on ensuring surface maps are positive everywhere, see
+\S\ref{sec:nonnegative}.
 
 We are now ready to instantiate the planetary system:
 %
@@ -1544,6 +1551,7 @@ this elliptical curve. This will be the topic of a future paper and will
 be implemented in future versions of the code.
 
 \subsection{Non-negative surface maps}
+\label{sec:nonnegative}
 While spherical harmonics are a convenient way to approximate surface
 maps of celestial bodies, it is not trivial to ensure
 that a given spherical harmonic expansion $\bvec{y}$ evaluates to
@@ -1555,20 +1563,19 @@ specific intensity of a celestial body cannot be negative, which
 could be desirable when fitting a model to real data. The minimum
 can, of course, be found numerically, although this is slow and
 should probably not be done repeatedly during optimization to
-enforce a prior. Nevertheless, users can request to offset
-the $Y_{0,0}$ coefficient of a given \textsf{starry.Map} instance
-to make it non-negative over
-the entire domain by typing
+enforce a prior. Nevertheless, users can find the minimum of the
+map over the entire domain by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m.nonnegative()
+m.minimum()
 \end{lstlisting}
 %
 This method evaluates the surface map on a coarse grid, locates the
 approximate location of the minimum, and performs a gradient-descent
-optimization to locate the global minimum of the map. The
-$Y_{0,0}$ coefficient is then offset to enforce non-negative
-intensities everywhere.
+optimization to locate the global minimum of the map. If the minimum
+is negative, users should either scale the $Y_{0,0}$ coefficient up
+or the coefficients of all other harmonics down until the map is
+non-negative everywhere.
 
 \subsection{Very large occultors}
 When the occultor becomes much larger than the occulted body ($r_o \gg 1$),

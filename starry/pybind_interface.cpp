@@ -389,8 +389,6 @@ PYBIND11_MODULE(starry, m) {
             .. autoattribute:: p
             .. autoattribute:: g
             .. automethod:: minimum()
-            .. automethod:: nonnegative()
-            .. automethod:: random()
             .. automethod:: load_image(image)
             .. automethod:: load_healpix(image)
             .. automethod:: show(cmap='plasma', res=300)
@@ -584,27 +582,8 @@ PYBIND11_MODULE(starry, m) {
                       a map to data!
         )pbdoc")
 
-        .def("nonnegative", [](maps::Map<double> &map) {
-            py::object minimize = py::module::import("starry_maps").attr("minimize");
-            double minval, c00;
-            map.update();
-            c00 = map.get_coeff(0, 0);
-            minval = minimize(map.p).cast<double>();
-            if (minval < 0)
-                map.set_coeff(0, 0, c00 - sqrt(4 * M_PI) * minval);
-        },
-        R"pbdoc(
-            Offset the map so that it is non-negative everywhere.
-
-            This routine wraps :py:class:`scipy.optimize.minimize` to find
-            the global minimum of the surface map.
-
-            .. note:: Because this routine wraps a Python wrapper of a C function \
-                      to perform a non-linear optimization in three dimensions, it is \
-                      **slow** and should probably not be used repeatedly when fitting \
-                      a map to data!
-        )pbdoc")
-
+        /*
+        // TODO: I need to give this function a little more thought.
         .def("random", [] (maps::Map<double>& map, double beta=0, bool nonnegative=true) {
             py::object minimize = py::module::import("starry_maps").attr("minimize");
             double minval, c00;
@@ -629,6 +608,7 @@ PYBIND11_MODULE(starry, m) {
                               degree `l` is proportional to `l ** beta`. Default 0 (white spectrum).
                 nonnegative (bool): Force map to be non-negative everywhere? Default :py:obj:`True`.
             )pbdoc", "beta"_a=0., "nonnegative"_a=true)
+        */
 
         .def("load_image", [](maps::Map<double> &map, string& image) {
             py::object load_map = py::module::import("starry_maps").attr("load_map");
@@ -636,7 +616,7 @@ PYBIND11_MODULE(starry, m) {
             int n = 0;
             for (int l = 0; l < map.lmax + 1; l++) {
                 for (int m = -l; m < l + 1; m++) {
-                    map.set_coeff(l, m, y(n));
+                    map.set_coeff(l, m, y(n) / y(0));
                     n++;
                 }
             }
@@ -663,7 +643,7 @@ PYBIND11_MODULE(starry, m) {
             int n = 0;
             for (int l = 0; l < map.lmax + 1; l++) {
                 for (int m = -l; m < l + 1; m++) {
-                    map.set_coeff(l, m, y(n));
+                    map.set_coeff(l, m, y(n) / y(0));
                     n++;
                 }
             }

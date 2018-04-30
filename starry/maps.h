@@ -373,6 +373,7 @@ namespace maps {
     template <class T>
     void Map<T>::reset() {
         y.setZero(N);
+        if (Y00_is_unity) y(0) = 1;
         needs_update = true;
     }
 
