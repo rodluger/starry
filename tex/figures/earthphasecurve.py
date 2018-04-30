@@ -27,17 +27,20 @@ for continent, label in zip(continents, labels):
     m.load_image(continent)
     m.rotate([0, 1, 0], -np.pi)
     F = m.flux(axis=[0, 1, 0], theta=theta)
-    ax.plot(theta * 180 / np.pi - 180, F - base, label=label)
+    F -= np.nanmin(F)
+    ax.plot(theta * 180 / np.pi - 180, F, label=label)
 
 # Compute and plot the total phase curve
 m.load_image('earth.jpg')
 m.rotate([0, 1, 0], -np.pi)
 total = m.flux(axis=[0, 1, 0], theta=theta)
-ax.plot(theta * 180 / np.pi - 180, total - base, 'k-', label='Total')
+total /= np.max(total)
+ax.plot(theta * 180 / np.pi - 180, total, 'k-', label='Total')
 
 # Compute and plot the total phase curve (numerical)
 totalnum = m.flux(axis=[0, 1, 0], theta=thetanum, numerical=True, tol=1e-5)
-ax.plot(thetanum * 180 / np.pi - 180, totalnum - base, 'k.')
+totalnum /= np.max(totalnum)
+ax.plot(thetanum * 180 / np.pi - 180, totalnum, 'k.')
 
 # Appearance
 ax.set_xlim(-180, 180)
