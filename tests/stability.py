@@ -31,6 +31,8 @@ def BRGrid(ax, l, m, blen=100, rlen=300, rmin=1e-5, rmax=1e3,
     for i, ro in enumerate(r):
         if blog:
             b = np.logspace(np.log10(bmin), np.log10(bmax), blen)
+            # Make the smallest value zero
+            b[0] = 0
         else:
             b = np.linspace(bmin(ro), bmax(ro), blen)
         # Ensure the unstable value is in the array
@@ -133,11 +135,11 @@ def Ylm(l, m):
 
     # Labels for zoomed-in regions
     pl.figtext(0.92, 0.565, r"$b = r$", ha="center", va="center", rotation=90,
-               fontsize=28)
+               fontsize=22)
     pl.figtext(0.92, 0.365, r"$b = r + 1$", ha="center", va="center",
-               rotation=90, fontsize=24)
+               rotation=90, fontsize=20)
     pl.figtext(0.92, 0.16, r"$b = r - 1$", ha="center", va="center",
-               rotation=90, fontsize=24)
+               rotation=90, fontsize=20)
 
     # Hack a colorbar
     for axis in [ax1, ax2, ax3, ax4, ax5, ax6, ax7]:

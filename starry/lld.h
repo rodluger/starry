@@ -16,6 +16,9 @@ using std::abs;
 
 namespace lld {
 
+// Re-parametrize EllipticPi when 1 - STARRY_KSQ_EPS < ksq < 1 + STARRY_KSQ_EPS
+#define STARRY_KSQ_EPS                          1.e-6
+
 // Re-parametrize s2() when |b-r| < this value
 #define STARRY_BMINUSR_THRESH_S2                1.e-2
 
@@ -123,6 +126,47 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
         return (2. * pi / 3.) * (1 - 1.5 * Lambda - step(r - b));
     }
 
+    /* Eric Agol's reparametrized solution for Lambda when ksq is very close to 1.
+       In this limit, the elliptic integral Pi diverges, so we need to reparameterize it.
+
+       Specifically, this transforms complete elliptic integral of the third kind using
+       Byrd & Friedman equation 117.06 (first equation).
+       Note that:
+            1). ellpic_bulirsch uses opposite sign convention for n;
+            2). B&F 117.06 has a sign error - right hand side should be negative.
+
+       The expression Piofnk3 is equal to Pi(n,ksq)*((r+b)^2-1)/(b+r)
+    */
+    template <typename T>
+    inline T LambdaKsqOneMinusEpsilon(T& b, T& r, T& ksq, T& K, T& E, T& pi) {
+        T mc = 1.0 - ksq;
+        T beta = asin(sqrt(b * r) * 2 / (b + r));
+        T xi = 2 * b * r * (4 - 7 * r * r - b * b);
+        T Kprime = ellip::K(mc);
+        T Piprime = ellip::PI(1 / ((b + r) * (b + r)) - 1, mc);
+        T Fprime = ellip::F(mc, beta);
+        T Piofnk3 = (K * (-Kprime + Piprime) / (b + r) + pi * sqrt(b * r) / abs(b - r) * Fprime) / Kprime;
+        return (((r + b) * (r + b) - 1) / (r + b) * (-2 * r * (2 * (r + b) * (r + b) + (r + b) * (r - b) - 3) * K) + 3 * (b - r) * Piofnk3 - 2 * xi * E) / (9 * pi * sqrt(b * r));
+    }
+
+    /* Eric Agol's reparametrized solution for Lambda when ksq is very close to 1.
+       In this limit, the elliptic integral Pi diverges, so we need to reparameterize it.
+
+       See notes in `LambdaKsqOneMinusEpsilon` above.
+
+       The expression Piofnk3 is equal to Pi(n,m)/(b+r)*(1-(r+b)^2)/sqrt(1-(b-r)^2)
+    */
+    template <typename T>
+    inline T LambdaKsqOnePlusEpsilon(T& b, T& r, T& ksq, T& K, T& E, T& pi) {
+        T mc = 1.0 - 1.0 / ksq;
+        T beta = asin(sqrt(1.0 - (b - r) * (b - r)));
+        T Kprime = ellip::K(mc);
+        T Piprime = ellip::PI((b + r) * (b + r) - 1, mc);
+        T Fprime = ellip::F(mc, beta);
+        T Piofnk3 = -(b + r) * K * (1.0 - Piprime / Kprime) / sqrt(1.0 - (b - r) * (b - r)) + pi / 2 / abs(b - r) * Fprime / Kprime;
+        return 2 * ((1 - (r + b) * (r + b)) * sqrt(1 - (b - r) * (b - r)) * K + 3 * (b - r) * Piofnk3 - sqrt(1 - (b - r) * (b - r)) * (4 - 7 * r * r - b * b) * E) / (9 * pi);
+    }
+
     // Compute the n=2 term of the *s^T* occultation solution vector.
     // This is the Mandel & Agol solution for linear limb darkening,
     // reparametrized for speed and stability
@@ -155,14 +199,17 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
                          (1 - 4 * r2) * (3 - 8 * r2) / (9 * pi * r) * ellip::K(1. / (4 * r2));
         } else {
             if (ksq < 1) {
-                // Note: Using Eric Agol's reparametrized solution
-                Lambda = ((bpr2 - 1) / bpr * (-2 * r * (2 * bpr2 - bpr * bmr - 3) * K + PITerm(b, r, ksq, pi, taylor))
-                         - 2 * xi * E) / (9 * pi * sqrt(b * r));
+                if (ksq < 1 - STARRY_KSQ_EPS)
+                    Lambda = ((bpr2 - 1) / bpr * (-2 * r * (2 * bpr2 - bpr * bmr - 3) * K + PITerm(b, r, ksq, pi, taylor)) - 2 * xi * E) / (9 * pi * sqrt(b * r));
+                else
+                    Lambda = LambdaKsqOneMinusEpsilon(b, r, ksq, K, E, pi);
             } else if (ksq > 1) {
-                // Note: Using Eric Agol's reparametrized solution
-                T bmr2 = bmr * bmr;
-                Lambda = 2 * ((1 - bpr2) * (sqrt(1 - bmr2) * K + PITerm(b, r, ksq, pi, taylor))
-                         - sqrt(1 - bmr2) * (4 - 7 * r2 - b2) * E) / (9 * pi);
+                if (ksq < 1 - STARRY_KSQ_EPS) {
+                    T bmr2 = bmr * bmr;
+                    Lambda = 2 * ((1 - bpr2) * (sqrt(1 - bmr2) * K + PITerm(b, r, ksq, pi, taylor)) - sqrt(1 - bmr2) * (4 - 7 * r2 - b2) * E) / (9 * pi);
+                } else {
+                    Lambda = LambdaKsqOnePlusEpsilon(b, r, ksq, K, E, pi);
+                }
             } else {
                 Lambda = 2. / (3. * pi) * acos(1. - 2 * r) -
                          4 / (9 * pi) * (3 + 2 * r - 8 * r2) * sqrt(b * r) -
