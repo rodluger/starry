@@ -87,8 +87,44 @@ using std::abs;
     throw errors::Elliptic();
   }
 
+  // Gradient of F
+  template <typename T>
+  Eigen::AutoDiffScalar<T> F (const Eigen::AutoDiffScalar<T>& ksq,
+                              const Eigen::AutoDiffScalar<T>& phi)
+  {
+    typename T::Scalar ksq_value = ksq.value(),
+                       phi_value = phi.value(),
+                       F_value = F(ksq_value, phi_value),
+                       E_value = E(ksq_value, phi_value),
+                       sin_phi = sin(phi_value),
+                       cos_phi = cos(phi_value),
+                       fac = 1. / sqrt(1 - ksq_value * sin_phi * sin_phi);
+    return Eigen::AutoDiffScalar<T>(
+      F_value,
+      phi.derivatives() * fac +
+      ksq.derivatives() * (cos_phi * sin_phi * fac / (m - 1) -
+                           E_value / (2 * m * (m - 1)) -
+                           F_value / (2 * m))
+    );
+  }
 
-#ifndef STARRY_NO_AUTODIFF
+  // Gradient of E (incomplete)
+  template <typename T>
+  Eigen::AutoDiffScalar<T> E (const Eigen::AutoDiffScalar<T>& ksq,
+                              const Eigen::AutoDiffScalar<T>& phi)
+  {
+    typename T::Scalar ksq_value = ksq.value(),
+                       phi_value = phi.value(),
+                       F_value = F(ksq_value, phi_value),
+                       E_value = E(ksq_value, phi_value),
+                       fac = sqrt(1 - ksq_value * sin_phi * sin_phi);
+    return Eigen::AutoDiffScalar<T>(
+      F_value,
+      phi.derivatives() * fac +
+      ksq.derivatives() * (E_value - F_value) / (2 * m);
+    );
+  }
+
   // Gradient of K
   template <typename T>
   Eigen::AutoDiffScalar<T> K (const Eigen::AutoDiffScalar<T>& z)
@@ -102,7 +138,7 @@ using std::abs;
     );
   }
 
-  // Gradient of E
+  // Gradient of E (complete)
   template <typename T>
   Eigen::AutoDiffScalar<T> E (const Eigen::AutoDiffScalar<T>& z)
   {
@@ -134,8 +170,6 @@ using std::abs;
       (ksq_value - n_value)
     );
   }
-
-#endif
 
 }; // namespace ellip
 
