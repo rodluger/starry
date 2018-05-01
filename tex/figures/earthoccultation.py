@@ -37,8 +37,8 @@ F /= np.max(F)
 ax_lc.plot(time, F, 'k-', label='Total')
 
 # Compute and plot the numerical flux
-Fnum = m.flux(axis=[0, 1, 0], theta=thetanum, xo=xonum, yo=yonum, ro=ro,
-              numerical=True, tol=1e-5)
+Fnum = m.flux_numerical(axis=[0, 1, 0], theta=thetanum, xo=xonum,
+                        yo=yonum, ro=ro, tol=1e-5)
 Fnum /= np.max(Fnum)
 ax_lc.plot(timenum, Fnum, 'k.')
 

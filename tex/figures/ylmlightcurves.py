@@ -41,8 +41,8 @@ for yo, zorder, color in zip([0.25, 0.75], [1, 0], ['C0', 'C1']):
             y.set_coeff(l, m, 1)
             flux = y.flux(axis=[1, 0, 0], theta=0, xo=xo, yo=yo, ro=ro)
             ax[i, j].plot(xo, flux, lw=1, zorder=zorder, color=color)
-            fluxn = y.flux(axis=[1, 0, 0], theta=0, xo=xon, yo=yo, ro=ro,
-                           numerical=True, tol=1e-5)
+            fluxn = y.flux_numerical(axis=[1, 0, 0], theta=0, xo=xon,
+                                     yo=yo, ro=ro, tol=1e-5)
             ax[i, j].plot(xon, fluxn, '.', ms=2, zorder=zorder, color=color)
 
 # Hack a legend

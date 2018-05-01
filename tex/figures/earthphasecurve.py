@@ -38,7 +38,7 @@ total /= np.max(total)
 ax.plot(theta * 180 / np.pi - 180, total, 'k-', label='Total')
 
 # Compute and plot the total phase curve (numerical)
-totalnum = m.flux(axis=[0, 1, 0], theta=thetanum, numerical=True, tol=1e-5)
+totalnum = m.flux_numerical(axis=[0, 1, 0], theta=thetanum, tol=1e-5)
 totalnum /= np.max(totalnum)
 ax.plot(thetanum * 180 / np.pi - 180, totalnum, 'k.')
 

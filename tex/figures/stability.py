@@ -15,14 +15,9 @@ def earth_eclipse(lmax=8):
     """Compute the error on the secondary eclipse of the Earth."""
     npts = 1000
 
-    # Double precision
+    # Create our map
     m = Map(lmax)
     m.load_image('earth')
-
-    # Quadruple precision
-    m128 = Map(lmax)
-    m128.use_mp = True
-    m128.load_image('earth')
 
     # Compute. Ingress duration is
     # dt = (2 REARTH) / (2 PI * 1 AU / 1 year) ~ 7 minutes
@@ -31,7 +26,7 @@ def earth_eclipse(lmax=8):
     time = np.linspace(0, 7 * 1.5, npts)
     xo = np.linspace(-(ro + 1.5), -(ro - 1.5), npts, -1)
     flux = np.array(m.flux(xo=xo, yo=yo, ro=ro))
-    flux128 = np.array(m128.flux(xo=xo, yo=yo, ro=ro))
+    flux128 = np.array(m.flux_mp(xo=xo, yo=yo, ro=ro))
 
     # Show
     fig = pl.figure(figsize=(7, 6))
@@ -86,13 +81,9 @@ def impact_param(ax, lmax=8):
     barr = np.logspace(-5, np.log10(2.0), npts)
     xo = np.sqrt(barr ** 2 - yo ** 2)
 
-    # Double precision
+    # Create our map
     ylm = Map(lmax)
     ylm.optimize = True
-
-    # Quad precision (~exact)
-    ylm128 = Map(lmax)
-    ylm128.use_mp = True
 
     # Compute
     for l in range(0, lmax + 1):
@@ -102,8 +93,6 @@ def impact_param(ax, lmax=8):
         # computing the fractional error below
         ylm.reset()
         ylm[0, 0] = 1
-        ylm128.reset()
-        ylm128[0, 0] = 1
 
         # Set all odd terms
         for m in range(-l, l + 1):
@@ -111,12 +100,11 @@ def impact_param(ax, lmax=8):
             if (l + m) % 2 == 0:
                 continue
             ylm[l, m] = 1
-            ylm128[l, m] = 1
 
         ro = 0.1
         # Compute
         flux = np.array(ylm.flux(xo=xo, yo=yo, ro=ro))
-        flux128 = np.array(ylm128.flux(xo=xo, yo=yo, ro=ro))
+        flux128 = np.array(ylm.flux_mp(xo=xo, yo=yo, ro=ro))
         error = np.abs(flux / flux128 - 1)
 
         # HACK to make it prettier.
@@ -158,35 +146,28 @@ def occultor_radius(ax, lmax=8):
     yo = 0
     rarr = np.logspace(-3, 3, npts)
 
-    # Double precision
+    # Create our map
     ylm = Map(lmax)
-
-    # Quad precision (~exact)
-    ylm128 = Map(lmax)
-    ylm128.use_mp = True
 
     # Loop over the degrees
     for l in tqdm(range(lmax + 1)):
         ylm.reset()
-        ylm128.reset()
 
         # Set the constant term
         # so we don't divide by zero when
         # computing the fractional error below
         ylm[0, 0] = 1
-        ylm128[0, 0] = 1
 
         # Set the coefficients for all orders
         for m in range(-l, l + 1):
             ylm[l, m] = 1
-            ylm128[l, m] = 1
         # Occultor radius loop
         error = np.zeros_like(rarr)
         for i, ro in enumerate(rarr):
             xo0 = 0.5 * ((ro + 1) + np.abs(ro - 1))
             xo = np.linspace(xo0 - 25 * eps, xo0 + 25 * eps, 50)
             flux = np.array(ylm.flux(xo=xo, yo=yo, ro=ro))
-            flux128 = np.array(ylm128.flux(xo=xo, yo=yo, ro=ro))
+            flux128 = np.array(ylm.flux_mp(xo=xo, yo=yo, ro=ro))
             error[i] = np.max(np.abs((flux / flux128 - 1)))
         ax.plot(rarr, error, '-', color=color(l, lmax),
                 label=r"$l=%d$" % l)

@@ -1414,8 +1414,7 @@ adaptive mesh scheme.
 In \starry, users can request numerical solutions to the flux by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-F = m.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro,
-           numerical=True, tol=1.e-4)
+F = m.flux_numerical(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro, tol=1.e-4)
 \end{lstlisting}
 %
 where \textsf{tol} is the error tolerance, the maximum absolute value of the
@@ -1589,15 +1588,16 @@ not likely to be an issue for $l \leq 8$ and $r_o \lesssim 500$, for which
 the maximum fractional error due to round-off is on the order of one part
 per thousand, which in the case of exoplanets is likely far below the
 detectability limits of telescopes in the foreseable future. Nevertheless, users
-can bypass these numerical issues by requesting that calculations be performed
-using multiple precision:
+can bypass these numerical issues by calling the
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m.use_mp = True
+m.flux_mp(...)
 \end{lstlisting}
 %
-which defaults to quadruple (128-bit) floating point precision. We caution, however,
-that this will increase computation time by at least an order of magnitude.
+routine instead of \textsf{m.flux()} to enable multiprecision mode,
+which by default is set to quadruple (128-bit) floating point precision.
+We caution, however, that this will increase computation time by at least
+an order of magnitude.
 
 \subsection{Three-body events}
 The occultation formalism developed in this paper applies specifically to the
@@ -2818,13 +2818,13 @@ The fractional error is less than 1 ppm everywhere.
 The solutions outlined above ensure numerical stability over a wide range of occultor radii and impact
 parameters, but instabilities may still occur in \starry when the occultor becomes very large
 ($r_o \gg 100$) and/or when the map degree is very high ($l \gtrsim 8$). In these cases, users may wish
-to enable multiple floating-point precision by setting
+to compute light curves using multiprecision:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m.use_mp = True
+m.flux_mp(...)
 \end{lstlisting}
 %
-for a \textsf{starry.Map} instance \textsf{m}, which by default computes the occultation solution
+(instead of \textsf{m.flux()}), which by default computes the occultation solution
 vector $\bvec{s}$ using a 128-bit (quadruple) precision type implemented with the \textsf{boost}
 \cpp libraries \citep[e.g.,][]{Schaling2014}.
 

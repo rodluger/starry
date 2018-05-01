@@ -103,9 +103,6 @@ namespace maps {
             solver::Greens<bigdouble> mpG;
             solver::Greens<T> G;
 
-            // Multiprecision flag
-            bool use_mp;
-
             // Constructor: initialize map to zeros
             Map(int lmax=2) :
                   lmax(lmax), R(lmax), C(lmax),
@@ -123,7 +120,6 @@ namespace maps {
                 tmpu2 = 0;
                 tmpu3 = 0;
                 basis.resize(N, 1);
-                use_mp = false;
                 Y00_is_unity = false;
                 update(true);
             }
@@ -141,9 +137,12 @@ namespace maps {
             void set_coeff(int l, int m, T coeff);
             T get_coeff(int l, int m);
             void reset();
+            T flux_numerical(UnitVector<T>& axis=yhat, T theta=0,
+                             T xo=0, T yo=0, T ro=0, double tol=1e-4);
+            T flux_mp(UnitVector<T>& axis=yhat, T theta=0,
+                      T xo=0, T yo=0, T ro=0);
             T flux(UnitVector<T>& axis=yhat, T theta=0,
-                   T xo=0, T yo=0, T ro=0,
-                   bool numerical=false, double tol=1e-4);
+                   T xo=0, T yo=0, T ro=0);
             std::string repr();
 
     };
@@ -270,10 +269,9 @@ namespace maps {
         apply_rotation(axis, costheta, sintheta, yin, yout);
     }
 
-    // Compute the total flux during or outside of an occultation
+    // Compute the total flux during or outside of an occultation numerically
     template <class T>
-    T Map<T>::flux(UnitVector<T>& axis, T theta, T xo, T yo, T ro,
-                   bool numerical, double tol) {
+    T Map<T>::flux_numerical(UnitVector<T>& axis, T theta, T xo, T yo, T ro, double tol) {
 
         // Impact parameter
         T b = sqrt(xo * xo + yo * yo);
@@ -291,10 +289,31 @@ namespace maps {
             ptry = &tmpvec;
         }
 
-        // Compute it numerically?
-        if (numerical) {
-            tmpvec = C.A1 * (*ptry);
-            return numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
+        // Compute the flux numerically
+        tmpvec = C.A1 * (*ptry);
+        return numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
+
+    }
+
+    // Compute the total flux during or outside of an occultation using
+    // multi-precision. This is *much* slower (~20x) than using doubles.
+    template <class T>
+    T Map<T>::flux_mp(UnitVector<T>& axis, T theta, T xo, T yo, T ro) {
+
+        // Impact parameter
+        T b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) return 0;
+
+        // Pointer to the map we're integrating
+        // (defaults to the base map)
+        Vector<T>* ptry = &y;
+
+        // Rotate the map into view if necessary and update our pointer
+        if (theta != 0) {
+            rotate(axis, theta, (*ptry), tmpvec);
+            ptry = &tmpvec;
         }
 
         // No occultation: cake
@@ -307,35 +326,71 @@ namespace maps {
 
             // Align occultor with the +y axis if necessary
             if ((b > 0) && (xo != 0)) {
-                rotate(zhat, yo / b, xo / b, (*ptry), tmpvec);
+                UnitVector<T> zaxis = UnitVector<T>(zhat);
+                rotate(zaxis, yo / b, xo / b, (*ptry), tmpvec);
                 ptry = &tmpvec;
             }
 
             // Perform the rotation + change of basis
             ARRy = C.A * (*ptry);
 
-            if (use_mp) {
+            // Compute sT using Boost multiprecision
+            mpVec = ARRy.template cast<bigdouble>();
+            bigdouble mpb = b;
+            bigdouble mpro = ro;
+            solver::computesT<bigdouble>(mpG, mpb, mpro, mpVec);
 
-                // Compute sT using Boost multiprecision
-                // This is *much* slower (~20x) than using doubles.
-                // TODO: Investigate how to get this to work with autodiff!
-                mpVec = ARRy.template cast<bigdouble>();
-                bigdouble mpb = b;
-                bigdouble mpro = ro;
-                solver::computesT<bigdouble>(mpG, mpb, mpro, mpVec);
+            // Dot the result in
+            bigdouble tmp = mpG.sT * mpVec;
+            return (T) tmp;
 
-                // Dot the result in
-                bigdouble tmp = mpG.sT * mpVec;
-                return (T) tmp;
+        }
 
-            } else {
+    }
 
-                // Compute the sT vector
-                solver::computesT<T>(G, b, ro, ARRy);
+    // Compute the total flux during or outside of an occultation
+    template <class T>
+    T Map<T>::flux(UnitVector<T>& axis, T theta, T xo, T yo, T ro) {
 
-                // Dot the result in and we're done
-                return G.sT * ARRy;
+        // Impact parameter
+        T b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) return 0;
+
+        // Pointer to the map we're integrating
+        // (defaults to the base map)
+        Vector<T>* ptry = &y;
+
+        // Rotate the map into view if necessary and update our pointer
+        if (theta != 0) {
+            rotate(axis, theta, (*ptry), tmpvec);
+            ptry = &tmpvec;
+        }
+
+        // No occultation: cake
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            return C.rTA1 * (*ptry);
+
+        // Occultation
+        } else {
+
+            // Align occultor with the +y axis if necessary
+            if ((b > 0) && (xo != 0)) {
+                UnitVector<T> zaxis = UnitVector<T>(zhat);
+                rotate(zaxis, yo / b, xo / b, (*ptry), tmpvec);
+                ptry = &tmpvec;
             }
+
+            // Perform the rotation + change of basis
+            ARRy = C.A * (*ptry);
+
+            // Compute the sT vector
+            solver::computesT<T>(G, b, ro, ARRy);
+
+            // Dot the result in and we're done
+            return G.sT * ARRy;
 
         }
 
@@ -471,9 +526,6 @@ namespace maps {
             solver::Greens<bigdouble> mpG;
             solver::Greens<T> G;
 
-            // Multiprecision flag
-            bool use_mp;
-
             // Constructor: initialize map to zeros
             LimbDarkenedMap(int lmax=2) :
                   lmax(lmax), C(lmax),
@@ -488,7 +540,6 @@ namespace maps {
                 ARRy = Vector<T>::Zero(N);
                 mpVec = Vector<bigdouble>::Zero(N);
                 basis.resize(N, 1);
-                use_mp = false;
                 reset();
                 update(true);
             }
@@ -499,7 +550,9 @@ namespace maps {
             void set_coeff(int l, T coeff);
             T get_coeff(int l);
             void reset();
-            T flux(T xo=0, T yo=0, T ro=0, bool numerical=false, double tol=1e-4);
+            T flux_numerical(T xo=0, T yo=0, T ro=0, double tol=1e-4);
+            T flux_mp(T xo=0, T yo=0, T ro=0);
+            T flux(T xo=0, T yo=0, T ro=0);
             std::string repr();
 
     };
@@ -551,9 +604,61 @@ namespace maps {
 
     }
 
+    // Compute the total flux during or outside of an occultation numerically
+    template <class T>
+    T LimbDarkenedMap<T>::flux_numerical(T xo, T yo, T ro, double tol) {
+
+        // Impact parameter
+        T b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) return 0;
+
+        // Compute it numerically
+        tmpvec = C.A1 * y;
+        return numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
+
+    }
+
+    // Compute the total flux during or outside of an occultation using
+    // multi-precision. This is *much* slower (~20x) than using doubles.
+    template <class T>
+    T LimbDarkenedMap<T>::flux_mp(T xo, T yo, T ro) {
+
+        // Impact parameter
+        T b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) return 0;
+
+        // No occultation: cake
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            return C.rTA1 * y;
+
+        // Occultation
+        } else {
+
+            // Perform the change of basis
+            ARRy = C.A * y;
+
+            // Compute sT using Boost multiprecision
+            mpVec = ARRy.template cast<bigdouble>();
+            bigdouble mpb = b;
+            bigdouble mpro = ro;
+            solver::computesT<bigdouble>(mpG, mpb, mpro, mpVec);
+
+            // Dot the result in
+            bigdouble tmp = mpG.sT * mpVec;
+            return (T) tmp;
+
+        }
+
+    }
+
     // Compute the total flux during or outside of an occultation
     template <class T>
-    T LimbDarkenedMap<T>::flux(T xo, T yo, T ro, bool numerical, double tol) {
+    T LimbDarkenedMap<T>::flux(T xo, T yo, T ro) {
 
         // Impact parameter
         T b = sqrt(xo * xo + yo * yo);
@@ -562,17 +667,11 @@ namespace maps {
         if (b <= ro - 1) return 0;
 
         // If we're doing quadratic limb darkening, let's skip all the overhead
-        if ((lmax <= 2) && (ro < 1) && (!numerical) && (!use_mp)) {
+        if ((lmax <= 2) && (ro < 1)) {
             if ((b >= 1 + ro) || (ro == 0))
                 return ld_flux;
             else
                 return solver::QuadLimbDark(G, b, ro, g(0), g(2), g(8));
-        }
-
-        // Compute it numerically?
-        if (numerical) {
-            tmpvec = C.A1 * y;
-            return numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
         }
 
         // No occultation: cake
@@ -586,28 +685,11 @@ namespace maps {
             // Perform the change of basis
             ARRy = C.A * y;
 
-            if (use_mp) {
+            // Compute the sT vector
+            solver::computesT<T>(G, b, ro, ARRy);
 
-                // Compute sT using Boost multiprecision
-                // This is *much* slower (~20x) than using doubles.
-                // TODO: Investigate how to get this to work with autodiff!
-                mpVec = ARRy.template cast<bigdouble>();
-                bigdouble mpb = b;
-                bigdouble mpro = ro;
-                solver::computesT<bigdouble>(mpG, mpb, mpro, mpVec);
-
-                // Dot the result in
-                bigdouble tmp = mpG.sT * mpVec;
-                return (T) tmp;
-
-            } else {
-
-                // Compute the sT vector
-                solver::computesT<T>(G, b, ro, ARRy);
-
-                // Dot the result in and we're done
-                return G.sT * ARRy;
-            }
+            // Dot the result in and we're done
+            return G.sT * ARRy;
 
         }
 

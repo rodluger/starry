@@ -610,7 +610,6 @@ namespace solver {
                         G.sT(n) = s2(G);
                     // These terms are zero because they are proportional to
                     // odd powers of x, so we don't need to compute them!
-                    // TODO: Will this screw up the derivatives? (I don't think so)
                     else if ((G.taylor) && (is_even(G.mu - 1)) && (!is_even((G.mu - 1) / 2)))
                         G.sT(n) = 0;
                     else

@@ -376,11 +376,12 @@ PYBIND11_MODULE(starry, m) {
             Args:
                 lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-            .. autoattribute:: use_mp
             .. autoattribute:: taylor
             .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
             .. automethod:: rotate(axis=(0, 1, 0), theta=0)
-            .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0, numerical=False, tol=1.e-4)
+            .. automethod:: flux_numerical(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0, tol=1.e-4)
+            .. automethod:: flux_mp(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
+            .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
             .. automethod:: get_coeff(l, m)
             .. automethod:: set_coeff(l, m, coeff)
             .. automethod:: reset()
@@ -388,6 +389,8 @@ PYBIND11_MODULE(starry, m) {
             .. autoattribute:: y
             .. autoattribute:: p
             .. autoattribute:: g
+            .. autoattribute:: s
+            .. autoattribute:: s_mp
             .. automethod:: minimum()
             .. automethod:: load_image(image)
             .. automethod:: load_healpix(image)
@@ -397,17 +400,6 @@ PYBIND11_MODULE(starry, m) {
         )pbdoc")
 
         .def(py::init<int>(), "lmax"_a=2)
-
-        .def_property("use_mp", [](maps::Map<double> &map){return map.use_mp;},
-                                [](maps::Map<double> &map, bool use_mp){map.use_mp = use_mp;},
-            R"pbdoc(
-                Set to :py:obj:`True` to turn on multi-precision mode. By default, this \
-                will perform all occultation calculations using 128-bit (quadruple) floating point \
-                precision, corresponding to 32 significant digits. Users can increase this to any \
-                number of digits (RAM permitting) by setting the :py:obj:`STARRY_MP_DIGITS=XX` flag \
-                at compile time. Note, importantly, that run times are **much** slower when multi-precision \
-                is enabled. Default :py:obj:`False`.
-            )pbdoc")
 
         .def_property("optimize", [](maps::Map<double> &map){return map.G.taylor;},
                                   [](maps::Map<double> &map, bool taylor){map.G.taylor = taylor;},
@@ -449,6 +441,49 @@ PYBIND11_MODULE(starry, m) {
 
             )pbdoc", "axis"_a=maps::yhat, "theta"_a=0)
 
+        .def("flux_numerical", py::vectorize(&maps::Map<double>::flux_numerical),
+            R"pbdoc(
+                Return the total flux received by the observer, computed numerically.
+
+                Computes the total flux received by the observer from the
+                map during or outside of an occultation. The flux is computed
+                numerically using an adaptive radial mesh.
+
+                Args:
+                    axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
+                    theta (float or ndarray): Angle of rotation. Default 0.
+                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
+                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
+                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+                    tol (float): Tolerance of the numerical solver. Default `1.e-4`
+
+                Returns:
+                    The flux received by the observer (a scalar or a vector).
+            )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
+
+        .def("flux_mp", py::vectorize(&maps::Map<double>::flux_mp),
+            R"pbdoc(
+                Return the total flux received by the observer, computed using multi-precision.
+
+                Computes the total flux received by the observer from the
+                map during or outside of an occultation. By default, this method
+                performs all occultation calculations using 128-bit (quadruple) floating point
+                precision, corresponding to 32 significant digits. Users can increase this to any
+                number of digits (RAM permitting) by setting the :py:obj:`STARRY_MP_DIGITS=XX` flag
+                at compile time. Note, importantly, that run times are **much** slower for multi-precision
+                calculations.
+
+                Args:
+                    axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
+                    theta (float or ndarray): Angle of rotation. Default 0.
+                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
+                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
+                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+
+                Returns:
+                    The flux received by the observer (a scalar or a vector).
+            )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+
         .def("flux", py::vectorize(&maps::Map<double>::flux),
             R"pbdoc(
                 Return the total flux received by the observer.
@@ -462,14 +497,10 @@ PYBIND11_MODULE(starry, m) {
                     xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
                     yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
                     ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
-                    numerical (bool): Compute the flux numerically using an adaptive mesh? Default :py:obj:`False`.
-                    tol (float): Tolerance of the numerical solver. Default `1.e-4`
 
                 Returns:
                     The flux received by the observer (a scalar or a vector).
-            )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0,
-                     "yo"_a=0, "ro"_a=0, "numerical"_a=false,
-                     "tol"_a=1e-4)
+            )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("get_coeff", &maps::Map<double>::get_coeff,
             R"pbdoc(
@@ -524,14 +555,18 @@ PYBIND11_MODULE(starry, m) {
             )pbdoc")
 
         .def_property_readonly("s", [](maps::Map<double> &map){
-            if (map.use_mp) {
-                VectorT<double> sT = map.mpG.sT.template cast<double>();
-                return sT;
-            } else
-                return map.G.sT;
+            return map.G.sT;
         },
             R"pbdoc(
                 The current solution vector `s`. *Read-only.*
+            )pbdoc")
+
+        .def_property_readonly("s_mp", [](maps::Map<double> &map){
+            VectorT<double> sT = map.mpG.sT.template cast<double>();
+            return sT;
+        },
+            R"pbdoc(
+                The current multi-precision solution vector `s`. Only available after `flux_mp` has been called. *Read-only.*
             )pbdoc")
 
         .def("__setitem__", [](maps::Map<double>& map, py::object index, double coeff) {
@@ -724,10 +759,11 @@ PYBIND11_MODULE(starry, m) {
             Args:
                 lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-            .. autoattribute:: use_mp
             .. autoattribute:: taylor
             .. automethod:: evaluate(x=0, y=0)
-            .. automethod:: flux(xo=0, yo=0, ro=0, numerical=False, tol=1.e-4)
+            .. automethod:: flux_numerical(xo=0, yo=0, ro=0, tol=1.e-4)
+            .. automethod:: flux_mp(xo=0, yo=0, ro=0)
+            .. automethod:: flux(xo=0, yo=0, ro=0)
             .. automethod:: get_coeff(l)
             .. automethod:: set_coeff(l, coeff)
             .. automethod:: reset()
@@ -736,22 +772,13 @@ PYBIND11_MODULE(starry, m) {
             .. autoattribute:: p
             .. autoattribute:: g
             .. autoattribute:: u
+            .. autoattribute:: s
+            .. autoattribute:: s_mp
             .. automethod:: show(cmap='plasma', res=300)
 
         )pbdoc")
 
         .def(py::init<int>(), "lmax"_a=2)
-
-        .def_property("use_mp", [](maps::LimbDarkenedMap<double> &map){return map.use_mp;},
-                                [](maps::LimbDarkenedMap<double> &map, bool use_mp){map.use_mp = use_mp;},
-            R"pbdoc(
-                Set to :py:obj:`True` to turn on multi-precision mode. By default, this \
-                will perform all occultation calculations using 128-bit (quadruple) floating point \
-                precision, corresponding to 32 significant digits. Users can increase this to any \
-                number of digits (RAM permitting) by setting the :py:obj:`STARRY_MP_DIGITS=XX` flag \
-                at compile time. Note, importantly, that run times are **much** slower when multi-precision \
-                is enabled. Default :py:obj:`False`.
-            )pbdoc")
 
         .def_property("optimize", [](maps::LimbDarkenedMap<double> &map){return map.G.taylor;},
                                   [](maps::LimbDarkenedMap<double> &map, bool taylor){map.G.taylor = taylor;},
@@ -776,6 +803,45 @@ PYBIND11_MODULE(starry, m) {
                     The specific intensity at (`x`, `y`).
             )pbdoc", "x"_a=0, "y"_a=0)
 
+        .def("flux_numerical", py::vectorize(&maps::LimbDarkenedMap<double>::flux_numerical),
+            R"pbdoc(
+                Return the total flux received by the observer, computed numerically.
+
+                Computes the total flux received by the observer from the
+                map during or outside of an occultation. This method computes the
+                flux numerically using an adaptive radial mesh.
+
+                Args:
+                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
+                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
+                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+                    tol (float): Tolerance of the numerical solver. Default `1.e-4`
+
+                Returns:
+                    The flux received by the observer (a scalar or a vector).
+            )pbdoc", "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
+
+        .def("flux_mp", py::vectorize(&maps::LimbDarkenedMap<double>::flux_mp),
+            R"pbdoc(
+                Return the total flux received by the observer, computed using multi-precision.
+
+                Computes the total flux received by the observer from the
+                map during or outside of an occultation. By default, this method
+                performs all occultation calculations using 128-bit (quadruple) floating point
+                precision, corresponding to 32 significant digits. Users can increase this to any
+                number of digits (RAM permitting) by setting the :py:obj:`STARRY_MP_DIGITS=XX` flag
+                at compile time. Note, importantly, that run times are **much** slower for multi-precision
+                calculations.
+
+                Args:
+                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
+                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
+                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+
+                Returns:
+                    The flux received by the observer (a scalar or a vector).
+            )pbdoc", "xo"_a=0, "yo"_a=0, "ro"_a=0)
+
         .def("flux", py::vectorize(&maps::LimbDarkenedMap<double>::flux),
             R"pbdoc(
                 Return the total flux received by the observer.
@@ -787,13 +853,10 @@ PYBIND11_MODULE(starry, m) {
                     xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
                     yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
                     ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
-                    numerical (bool): Compute the flux numerically using an adaptive mesh? Default :py:obj:`False`.
-                    tol (float): Tolerance of the numerical solver. Default `1.e-4`
 
                 Returns:
                     The flux received by the observer (a scalar or a vector).
-            )pbdoc", "xo"_a=0, "yo"_a=0, "ro"_a=0, "numerical"_a=false,
-                     "tol"_a=1e-4)
+            )pbdoc", "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("get_coeff", &maps::LimbDarkenedMap<double>::get_coeff,
             R"pbdoc(
@@ -845,14 +908,18 @@ PYBIND11_MODULE(starry, m) {
             )pbdoc")
 
         .def_property_readonly("s", [](maps::LimbDarkenedMap<double> &map){
-            if (map.use_mp) {
-                VectorT<double> sT = map.mpG.sT.template cast<double>();
-                return sT;
-            } else
                 return map.G.sT;
-        },
+            },
             R"pbdoc(
                 The current solution vector `s`. *Read-only.*
+            )pbdoc")
+
+        .def_property_readonly("s_mp", [](maps::LimbDarkenedMap<double> &map){
+                VectorT<double> sT = map.mpG.sT.template cast<double>();
+                return sT;
+            },
+            R"pbdoc(
+                The current multi-precision solution vector `s`. Only available after `flux_mp` has been called. *Read-only.*
             )pbdoc")
 
         .def_property_readonly("u", [](maps::LimbDarkenedMap<double> &map) {return map.u;},
