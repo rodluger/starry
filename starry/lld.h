@@ -131,9 +131,7 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
 
        Specifically, this transforms complete elliptic integral of the third kind using
        Byrd & Friedman equation 117.06 (first equation).
-       Note that:
-            1). ellpic_bulirsch uses opposite sign convention for n;
-            2). B&F 117.06 has a sign error - right hand side should be negative.
+       Note that B&F 117.06 has a sign error - right hand side should be negative.
 
        The expression Piofnk3 is equal to Pi(n,ksq)*((r+b)^2-1)/(b+r)
     */
