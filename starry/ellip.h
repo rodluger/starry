@@ -102,9 +102,9 @@ using std::abs;
     return Eigen::AutoDiffScalar<T>(
       F_value,
       phi.derivatives() * fac +
-      ksq.derivatives() * (cos_phi * sin_phi * fac / (m - 1) -
-                           E_value / (2 * m * (m - 1)) -
-                           F_value / (2 * m))
+      ksq.derivatives() * (0.5 * cos_phi * sin_phi * fac / (ksq_value - 1) -
+                           E_value / (2 * ksq_value * (ksq_value - 1)) -
+                           F_value / (2 * ksq_value))
     );
   }
 
@@ -117,11 +117,12 @@ using std::abs;
                        phi_value = phi.value(),
                        F_value = F(ksq_value, phi_value),
                        E_value = E(ksq_value, phi_value),
+                       sin_phi = sin(phi_value),
                        fac = sqrt(1 - ksq_value * sin_phi * sin_phi);
     return Eigen::AutoDiffScalar<T>(
       F_value,
       phi.derivatives() * fac +
-      ksq.derivatives() * (E_value - F_value) / (2 * m);
+      ksq.derivatives() * (E_value - F_value) / (2 * ksq_value)
     );
   }
 
