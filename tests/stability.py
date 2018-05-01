@@ -16,11 +16,6 @@ def BRGrid(ax, l, m, blen=100, rlen=300, rmin=1e-5, rmax=1e3,
     """Plot the error on the b-r plane."""
     r = np.logspace(np.log10(rmin), np.log10(rmax), rlen)
 
-    # Exact
-    m128 = starry.Map(l)
-    m128.use_mp = True
-    m128[l, m] = 1
-
     # Starry
     mt = starry.Map(l)
     mt[l, m] = 1
@@ -38,7 +33,7 @@ def BRGrid(ax, l, m, blen=100, rlen=300, rmin=1e-5, rmax=1e3,
         # Ensure the unstable value is in the array
         if bmid is not None:
             b[len(b) // 2] = bmid(ro)
-        flux_128[:, i] = np.array(m128.flux(xo=0, yo=b, ro=ro))
+        flux_128[:, i] = np.array(mt.flux_mp(xo=0, yo=b, ro=ro))
         flux_starry[:, i] = np.array(mt.flux(xo=0, yo=b, ro=ro))
 
     # Compute the fractional error
