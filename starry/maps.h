@@ -25,7 +25,6 @@ template <typename T>
 using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
 template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
-using constants::bigdouble;
 
 namespace maps {
 
