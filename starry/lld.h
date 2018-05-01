@@ -57,7 +57,7 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
                 else
                     res = (6. * pi * r * r) / (1 - 4. * r * r);
             } else {
-                res = 3 * (b - r) * ellip::PI(ksq * (b + r) * (b + r), ksq);
+                res = 3 * (b - r) * ellip::PI(T(ksq * (b + r) * (b + r)), ksq);
             }
         else {
             T EPI;
@@ -72,8 +72,8 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
                                 (1. - (b + r) * (b + r)) /
                                 (1. - (b - r) * (b - r)) /
                                 ((b + r) * (b + r));
-                T EK = ellip::K(1. / ksq);
-                T EE = ellip::E(1. / ksq);
+                T EK = ellip::K(T(1. / ksq));
+                T EE = ellip::E(T(1. / ksq));
                 T psi = asin(sqrt(one_minus_n / (1. - 1. / ksq)));
                 T mc = 1. - 1. / ksq;
                 // Compute Heuman's Lambda Function via A&S 17.4.40:
@@ -85,7 +85,7 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
                 EPI = EK + 0.5 * pi * d2 * (1. - HLam);
             } else {
                 // Compute the elliptic integral directly
-                EPI = ellip::PI(1. / (ksq * (b + r) * (b + r)), 1. / ksq);
+                EPI = ellip::PI(T(1. / (ksq * (b + r) * (b + r))), T(1. / ksq));
             }
             // TODO: There are small numerical issue here. As b - r --> 1,
             // the denominator diverges. Should re-parametrize.
@@ -107,11 +107,11 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
         T eps = x - 1;
         T EP, goodterm;
         if (abs(b - r) > 1e-8) {
-            EP = ellip::PI(1 - 1. / ((b - r) * (b - r)), ksq);
+            EP = ellip::PI(T(1 - 1. / ((b - r) * (b - r))), ksq);
             goodterm = (3 * (b + r) / (b - r) * EP) / sqrt(b * r);
         } else {
             // Numerically stable first order expansion when b = r
-            goodterm = 6 * pi * r * (0.5 - step(r - b)) / sqrt(b * r);
+            goodterm = 6 * pi * r * (0.5 - step(T(r - b))) / sqrt(b * r);
         }
         T EminusK = 0;
         T ksqi = 1;
@@ -123,7 +123,7 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
         T taylor = 2 * b * b * b * sqrt(x) * (EminusK * (16 + 28 * eps + 14 * eps * eps) - eps * eps * (2 + 3 * eps) * K);
         T badterm = taylor + sqrt(b * r) * ((8 - 3 / (b * r) + 12 / (b / r)) * K - 16 * E);
         T Lambda = (badterm + goodterm) / (9 * pi);
-        return (2. * pi / 3.) * (1 - 1.5 * Lambda - step(r - b));
+        return (2. * pi / 3.) * (1 - 1.5 * Lambda - step(T(r - b)));
     }
 
     /* Eric Agol's reparametrized solution for Lambda when b + r is very close to 1.
@@ -141,7 +141,7 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
         T beta = asin(sqrt(b * r) * 2 / (b + r));
         T xi = 2 * b * r * (4 - 7 * r * r - b * b);
         T Kprime = ellip::K(mc);
-        T Piprime = ellip::PI(-(1 / ((b + r) * (b + r)) - 1), mc);
+        T Piprime = ellip::PI(T(-(1 / ((b + r) * (b + r)) - 1)), mc);
         T Fprime = ellip::F(mc, beta);
         T Piofnk3 = (K * (-Kprime + Piprime) / (b + r) + pi * sqrt(b * r) / abs(b - r) * Fprime) / Kprime;
         return (((r + b) * (r + b) - 1) / (r + b) * (-2 * r * (2 * (r + b) * (r + b) + (r + b) * (r - b) - 3) * K) + 3 * (b - r) * Piofnk3 - 2 * xi * E) / (9 * pi * sqrt(b * r));
@@ -159,7 +159,7 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
         T mc = 1.0 - 1.0 / ksq;
         T beta = asin(sqrt(1.0 - (b - r) * (b - r)));
         T Kprime = ellip::K(mc);
-        T Piprime = ellip::PI(-((b + r) * (b + r) - 1), mc);
+        T Piprime = ellip::PI(T(-((b + r) * (b + r) - 1)), mc);
         T Fprime = ellip::F(mc, beta);
         T Piofnk3 = -(b + r) * K * (1.0 - Piprime / Kprime) / sqrt(1.0 - (b - r) * (b - r)) + pi / 2 / abs(b - r) * Fprime / Kprime;
         return 2 * ((1 - (r + b) * (r + b)) * sqrt(1 - (b - r) * (b - r)) * K + 3 * (b - r) * Piofnk3 - sqrt(1 - (b - r) * (b - r)) * (4 - 7 * r * r - b * b) * E) / (9 * pi);
@@ -189,12 +189,12 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
                 Lambda = (1. / 3.) - 4. / (9. * pi);
             else if (r < 0.5)
                 Lambda = (1. / 3.) +
-                         2. / (9. * pi) * (4. * (2. * r2 - 1.) * ellip::E(4 * r2) +
-                         (1 - 4 * r2) * ellip::K(4 * r2));
+                         2. / (9. * pi) * (4. * (2. * r2 - 1.) * ellip::E(T(4 * r2)) +
+                         (1 - 4 * r2) * ellip::K(T(4 * r2)));
             else
                 Lambda = (1. / 3.) +
-                         16. * r / (9. * pi) * (2. * r2 - 1.) * ellip::E(1. / (4 * r2)) -
-                         (1 - 4 * r2) * (3 - 8 * r2) / (9 * pi * r) * ellip::K(1. / (4 * r2));
+                         16. * r / (9. * pi) * (2. * r2 - 1.) * ellip::E(T(1. / (4 * r2))) -
+                         (1 - 4 * r2) * (3 - 8 * r2) / (9 * pi * r) * ellip::K(T(1. / (4 * r2)));
         } else {
             if (ksq < 1) {
                 if ((!taylor) || (b + r > 1 + STARRY_BPLUSR_THRESH_S2))
@@ -214,7 +214,7 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
                          2. / 3. * step(r - 0.5);
             }
         }
-        return (2. * pi / 3.) * (1 - 1.5 * Lambda - step(-bmr));
+        return (2. * pi / 3.) * (1 - 1.5 * Lambda - step(T(-bmr)));
     }
 
 }; // namespace lld

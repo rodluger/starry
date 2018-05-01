@@ -16,14 +16,6 @@ Defines the surface map class.
 #include "numeric.h"
 #include "errors.h"
 
-// Multiprecision
-#ifndef STARRY_MP_DIGITS
-#define STARRY_MP_DIGITS    32
-#endif
-#include <boost/multiprecision/cpp_dec_float.hpp>
-typedef boost::multiprecision::cpp_dec_float<STARRY_MP_DIGITS> mp_backend;
-typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off> bigdouble;
-
 // Shorthand
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
@@ -33,6 +25,7 @@ template <typename T>
 using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
 template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
+using constants::bigdouble;
 
 namespace maps {
 
@@ -40,7 +33,6 @@ namespace maps {
     UnitVector<double> xhat({1, 0, 0});
     UnitVector<double> yhat({0, 1, 0});
     UnitVector<double> zhat({0, 0, 1});
-
 
     // Constant matrices/vectors
     class Constants {

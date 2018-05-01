@@ -266,12 +266,10 @@ namespace solver {
 
             T vK;
             T vE;
-            T vPI;
             T vE1;
             T vE2;
             bool bK;
             bool bE;
-            bool bPI;
             bool bE1;
             bool bE2;
             Greens<T>& G;
@@ -291,7 +289,7 @@ namespace solver {
                     else if (G.ksq() < 1)
                         vK = ellip::K(G.ksq());
                     else
-                        vK = ellip::K(1. / G.ksq());
+                        vK = ellip::K(T(1. / G.ksq()));
                     bK = true;
                 }
                 return vK;
@@ -307,68 +305,10 @@ namespace solver {
                     else if (G.ksq() < 1)
                         vE = ellip::E(G.ksq());
                     else
-                        vE = ellip::E(1. / G.ksq());
+                        vE = ellip::E(T(1. / G.ksq()));
                     bE = true;
                 }
                 return vE;
-            }
-
-            // Elliptic integral of the third kind
-            // NOTE: Using Eric Agol's reparametrized version of PI
-            inline T PI() {
-                if (!bPI) {
-                    if ((G.b() == 0) || (G.ksq() == 1))
-                        vPI = 0;
-                    else if (G.ksq() < 1)
-                        // TODO: We need to find a reparametrization of PI here, since it diverges
-                        // when b = r. My expression is valid to *zeroth* order near b = r.
-                        if ((G.taylor) && (abs(G.b() - G.r()) < 1e-8) && (G.r() < STARRY_RADIUS_THRESH_S2)) {
-                            if (G.b() > G.r())
-                                vPI = -(6. * G.pi * G.r(2)) / (1 - 4. * G.r(2));
-                            else
-                                vPI = (6. * G.pi * G.r(2)) / (1 - 4. * G.r(2));
-                        } else {
-                            vPI = 3 * (G.b() - G.r()) * ellip::PI(G.ksq() * (G.b() + G.r()) * (G.b() + G.r()), G.ksq());
-                        }
-                    else {
-                        T EPI;
-                        if ((G.taylor) && (abs(G.b() - G.r()) < STARRY_BMINUSR_THRESH_S2)) {
-                            // This is a reparameterization of the complete elliptic integral
-                            // of the third kind, necessary to suppress numerical instabilities when b ~ r.
-                            // It relies on expressing PI in terms of the incomplete elliptic integrals
-                            // of the first and second kind. I haven't done speed tests, but I suspect
-                            // it has to be slower, so we only do this when b is really close to r.
-                            // Use transformation of 17.7.14 in Abramowitz & Stegun:
-                            T one_minus_n = (G.b() - G.r()) * (G.b() - G.r()) *
-                                            (1. - (G.b() + G.r()) * (G.b() + G.r())) /
-                                            (1. - (G.b() - G.r()) * (G.b() - G.r())) /
-                                            ((G.b() + G.r()) * (G.b() + G.r()));
-                            T EK = ellip::K(1. / G.ksq());
-                            T EE = ellip::E(1. / G.ksq());
-                            T psi = asin(sqrt(one_minus_n / (1. - 1. / G.ksq())));
-                            T mc = 1. - 1. / G.ksq();
-                            // Compute Heuman's Lambda Function via A&S 17.4.40:
-                            T EEI = ellip::E(mc, psi);
-                            T EFI = ellip::F(mc, psi);
-                            T HLam = 2. / G.pi * (EK * EEI - (EK - EE) * EFI);
-                            T d2 = sqrt((1. / one_minus_n - 1.) / (1. - one_minus_n - 1. / G.ksq()));
-                            // Equation 17.7.14 in A&S:
-                            EPI = EK + 0.5 * G.pi * d2 * (1. - HLam);
-                        } else {
-                            // Compute the elliptic integral directly
-                            EPI = ellip::PI(1. / (G.ksq() * (G.b() + G.r()) * (G.b() + G.r())), 1. / G.ksq());
-                        }
-                        // TODO: There are small numerical issue here. As b - r --> 1,
-                        // the denominator diverges. Should re-parametrize.
-                        if (abs(G.b() - G.r()) != 1.0)
-                            vPI = 3 * (G.b() - G.r()) / (G.b() + G.r()) * EPI /
-                                   sqrt(1 - (G.b() - G.r()) * (G.b() - G.r()));
-                        else
-                            vPI = 0;
-                    }
-                    bPI = true;
-                }
-                return vPI;
             }
 
             // First elliptic function
@@ -405,7 +345,6 @@ namespace solver {
             void reset() {
                 bK = false;
                 bE = false;
-                bPI = false;
                 bE1 = false;
                 bE2 = false;
             }
@@ -565,7 +504,7 @@ namespace solver {
                 sT.resize((lmax + 1) * (lmax + 1));
 
                 // Compute pi at the actual precision of the T type
-                pi = acos((T)(-1.));
+                pi = T(BIGPI);
                 pi_over_2 = 0.5 * pi;
 
             }
@@ -671,6 +610,7 @@ namespace solver {
                         G.sT(n) = s2(G);
                     // These terms are zero because they are proportional to
                     // odd powers of x, so we don't need to compute them!
+                    // TODO: Will this screw up the derivatives? (I don't think so)
                     else if ((G.taylor) && (is_even(G.mu - 1)) && (!is_even((G.mu - 1) / 2)))
                         G.sT(n) = 0;
                     else

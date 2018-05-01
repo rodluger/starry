@@ -5,6 +5,17 @@ Defines constants used throughout the code.
 #include <vector>
 using std::vector;
 
+// Multiprecision
+#ifndef STARRY_MP_DIGITS
+#define STARRY_MP_DIGITS    32
+#endif
+#include <boost/multiprecision/cpp_dec_float.hpp>
+typedef boost::multiprecision::cpp_dec_float<STARRY_MP_DIGITS> mp_backend;
+typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off> bigdouble;
+#ifndef BIGPI
+#define BIGPI               bigdouble("3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117068")
+#endif
+
 // Smallest allowable map coefficient
 #ifndef STARRY_MAP_TOLERANCE
 #define STARRY_MAP_TOLERANCE                    1.0e-14
