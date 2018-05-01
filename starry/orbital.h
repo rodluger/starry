@@ -247,8 +247,13 @@ namespace orbital {
                          map.Y00_is_unity = true;
                      }
 
-                     // This is deprecated. Map is already normalized.
-                     norm = 1.;
+                     // LimbDarkenedMaps are normalized to 1 by default,
+                     // but regular Maps (used by Planets) are normalized
+                     // to sqrt(pi) / 2. Let's take care of that here.
+                     if (is_star)
+                        norm = 1;
+                     else
+                        norm = 2. / sqrt(M_PI);
 
                      // Initialize orbital vars
                      reset();
