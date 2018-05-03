@@ -25,10 +25,11 @@ template <typename T>
 using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
 template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
+using std::abs;
 
 namespace maps {
 
-    // Some default unit vectors
+    // Some useful unit vectors
     UnitVector<double> xhat({1, 0, 0});
     UnitVector<double> yhat({0, 1, 0});
     UnitVector<double> zhat({0, 0, 1});
@@ -221,7 +222,7 @@ namespace maps {
         // Compute the polynomial basis where it is needed
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
-                if (std::abs((*ptrmap)(n)) < STARRY_MAP_TOLERANCE) {
+                if (abs((*ptrmap)(n)) < STARRY_MAP_TOLERANCE) {
                     basis(n) = 0;
                 } else {
                     mu = l - m;
@@ -451,7 +452,7 @@ namespace maps {
         os << "<STARRY Map: ";
         for (int l = 0; l < lmax + 1; l++) {
             for (int m = -l; m < l + 1; m++) {
-                if (std::abs(y(n)) > STARRY_MAP_TOLERANCE){
+                if (abs(y(n)) > STARRY_MAP_TOLERANCE){
                     // Separator
                     if ((nterms > 0) && (y(n) > 0)) {
                         os << " + ";
@@ -464,14 +465,14 @@ namespace maps {
                     if ((y(n) == 1) || (y(n) == -1)) {
                         sprintf(buf, "Y_{%d,%d}", l, m);
                         os << buf;
-                    } else if (fmod(std::abs(y(n)), 1) < STARRY_MAP_TOLERANCE) {
-                        sprintf(buf, "%d Y_{%d,%d}", (int)std::abs(y(n)), l, m);
+                    } else if (fmod(abs(y(n)), 1.0) < STARRY_MAP_TOLERANCE) {
+                        sprintf(buf, "%d Y_{%d,%d}", (int)abs(y(n)), l, m);
                         os << buf;
-                    } else if (fmod(std::abs(y(n)), 1) >= 0.01) {
-                        sprintf(buf, "%.2f Y_{%d,%d}", std::abs(y(n)), l, m);
+                    } else if (fmod(abs(y(n)), 1.0) >= 0.01) {
+                        sprintf(buf, "%.2f Y_{%d,%d}", abs(y(n)), l, m);
                         os << buf;
                     } else {
-                        sprintf(buf, "%.2e Y_{%d,%d}", std::abs(y(n)), l, m);
+                        sprintf(buf, "%.2e Y_{%d,%d}", abs(y(n)), l, m);
                         os << buf;
                     }
                     nterms++;
@@ -584,7 +585,7 @@ namespace maps {
         // Compute the polynomial basis where it is needed
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
-                if (std::abs(p(n)) < STARRY_MAP_TOLERANCE) {
+                if (abs(p(n)) < STARRY_MAP_TOLERANCE) {
                     basis(n) = 0;
                 } else {
                     mu = l - m;

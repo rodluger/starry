@@ -5,6 +5,7 @@
 #include <Eigen/Core>
 #include <cmath>
 #include <stdlib.h>
+#include <vector>
 #include "maps.h"
 #include "orbital.h"
 
@@ -19,12 +20,43 @@ template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
-using std::vector;
 
+// TODO: Make usage of & consistent in input arguments!
 
-// Ensure we are passing the flux back to Python by reference. (I think we are).
-// Check out PYBIND11_MAKE_OPAQUE(vector<orbital::Body<double>*>);
+// Autodiff stuff
+#ifndef STARRY_AUTODIFF
 
+    using MapType = double;
+
+#else
+
+    #include <unsupported/Eigen/AutoDiff>
+    #ifndef STARRY_NGRAD
+    #define STARRY_NGRAD 7
+    #endif
+    using Grad = Eigen::AutoDiffScalar<Eigen::Matrix<double, STARRY_NGRAD, 1>>;
+    using MapType = Grad;
+
+    // Home-built vectorization wrapper to replace py::vectorize when using autodiff
+    Eigen::VectorXd vectorize(py::object& obj, int& size){
+        Eigen::VectorXd res;
+        if (py::isinstance<py::float_>(obj) || py::isinstance<py::int_>(obj)) {
+            res = Eigen::VectorXd::Constant(size, py::cast<double>(obj));
+            return res;
+        } else if (py::isinstance<py::array>(obj) || py::isinstance<py::list>(obj) || py::isinstance<py::tuple>(obj)) {
+            res = py::cast<Eigen::VectorXd>(obj);
+            if ((size == 0) || (res.size() == size)) {
+                size = res.size();
+                return res;
+            } else {
+                throw invalid_argument("Mismatch in argument dimensions.");
+            }
+        } else {
+            throw invalid_argument("Incorrect type for one or more of the arguments.");
+        }
+    }
+
+#endif
 
 PYBIND11_MODULE(starry, m) {
 
@@ -370,7 +402,7 @@ PYBIND11_MODULE(starry, m) {
         .def("__repr__", [](orbital::Planet<double> &planet) -> string {return planet.repr();});
 
     // Surface map class
-    py::class_<maps::Map<double>>(m, "Map", R"pbdoc(
+    py::class_<maps::Map<MapType>>(m, "Map", R"pbdoc(
             Instantiate a :py:mod:`starry` surface map.
 
             Args:
@@ -401,15 +433,23 @@ PYBIND11_MODULE(starry, m) {
 
         .def(py::init<int>(), "lmax"_a=2)
 
-        .def_property("optimize", [](maps::Map<double> &map){return map.G.taylor;},
-                                  [](maps::Map<double> &map, bool taylor){map.G.taylor = taylor;},
+        .def_property("optimize", [](maps::Map<MapType> &map){return map.G.taylor;},
+                                  [](maps::Map<MapType> &map, bool taylor){map.G.taylor = taylor;},
             R"pbdoc(
                 Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
                 computing occultation light curves. This is in general not something you should do! \
                 Default :py:obj:`True`.
             )pbdoc")
 
-        .def("evaluate", py::vectorize(&maps::Map<double>::evaluate),
+        .def("evaluate",
+#ifndef STARRY_AUTODIFF
+            py::vectorize(&maps::Map<MapType>::evaluate),
+#else
+            // TODO
+            [](maps::Map<MapType>& map, UnitVector<double>& axis, py::object theta, py::object x, py::object y){
+                return 0.;
+            },
+#endif
             R"pbdoc(
                 Return the specific intensity at a point (`x`, `y`) on the map.
 
@@ -426,8 +466,15 @@ PYBIND11_MODULE(starry, m) {
                     The specific intensity at (`x`, `y`).
             )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
 
-        .def("rotate", [](maps::Map<double> &map, UnitVector<double>& axis,
-                          double theta){return map.rotate(axis, theta);},
+        .def("rotate",
+#ifndef STARRY_AUTODIFF
+            [](maps::Map<MapType> &map, UnitVector<double>& axis, double theta){return map.rotate(axis, theta);},
+#else
+            // TODO
+            [](maps::Map<MapType> &map, UnitVector<double>& axis, double theta){
+                return 0.;
+            },
+#endif
             R"pbdoc(
                 Rotate the base map an angle :py:obj:`theta` about :py:obj:`axis`.
 
@@ -441,7 +488,15 @@ PYBIND11_MODULE(starry, m) {
 
             )pbdoc", "axis"_a=maps::yhat, "theta"_a=0)
 
-        .def("flux_numerical", py::vectorize(&maps::Map<double>::flux_numerical),
+        .def("flux_numerical",
+#ifndef STARRY_AUTODIFF
+            py::vectorize(&maps::Map<MapType>::flux_numerical),
+#else
+            // TODO
+            [](maps::Map<MapType> &map, UnitVector<double>& axis, py::object theta, py::object xo, py::object yo, py::object ro, double tol){
+                return 0.;
+            },
+#endif
             R"pbdoc(
                 Return the total flux received by the observer, computed numerically.
 
@@ -461,7 +516,16 @@ PYBIND11_MODULE(starry, m) {
                     The flux received by the observer (a scalar or a vector).
             )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
 
-        .def("flux_mp", py::vectorize(&maps::Map<double>::flux_mp),
+
+        .def("flux_mp",
+#ifndef STARRY_AUTODIFF
+            py::vectorize(&maps::Map<MapType>::flux_mp),
+#else
+            // TODO
+            [](maps::Map<MapType> &map, UnitVector<double>& axis, py::object theta, py::object xo, py::object yo, py::object ro){
+                return 0.;
+            },
+#endif
             R"pbdoc(
                 Return the total flux received by the observer, computed using multi-precision.
 
@@ -484,7 +548,69 @@ PYBIND11_MODULE(starry, m) {
                     The flux received by the observer (a scalar or a vector).
             )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
-        .def("flux", py::vectorize(&maps::Map<double>::flux),
+        .def("flux",
+#ifndef STARRY_AUTODIFF
+            py::vectorize(&maps::Map<MapType>::flux),
+#else
+            [](maps::Map<MapType> &map, UnitVector<double> axis, py::object theta, py::object xo, py::object yo, py::object ro){
+                // Vectorize the inputs
+                int size = 0;
+                Eigen::VectorXd theta_v, xo_v, yo_v, ro_v;
+                if (py::hasattr(theta, "__len__")) {
+                    theta_v = vectorize(theta, size);
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                } else if (py::hasattr(xo, "__len__")) {
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                    theta_v = vectorize(theta, size);
+                } else if (py::hasattr(yo, "__len__")) {
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                    theta_v = vectorize(theta, size);
+                    xo_v = vectorize(xo, size);
+                } else if (py::hasattr(ro, "__len__")) {
+                    ro_v = vectorize(ro, size);
+                    theta_v = vectorize(theta, size);
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                } else {
+                    size = 1;
+                    theta_v = vectorize(theta, size);
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                }
+
+                // Declare the result matrix
+                Eigen::MatrixXd result(theta_v.size(), STARRY_NGRAD + 1);
+
+                // Declare our gradient types
+                MapType axis_x(axis(0), STARRY_NGRAD, 0);
+                MapType axis_y(axis(1), STARRY_NGRAD, 1);
+                MapType axis_z(axis(2), STARRY_NGRAD, 2);
+                MapType theta_g(0., STARRY_NGRAD, 3);
+                MapType xo_g(0., STARRY_NGRAD, 4);
+                MapType yo_g(0., STARRY_NGRAD, 5);
+                MapType ro_g(0., STARRY_NGRAD, 6);
+                UnitVector<Grad> axis_g({axis_x, axis_y, axis_z});
+                MapType tmp;
+
+                // Compute the flux at each cadence
+                for (int i = 0; i < xo_v.size(); i++) {
+                    theta_g.value() = theta_v(i);
+                    xo_g.value() = xo_v(i);
+                    yo_g.value() = yo_v(i);
+                    ro_g.value() = ro_v(i);
+                    tmp = map.flux(axis_g, theta_g, xo_g, yo_g, ro_g);
+                    result(i, 0) = tmp.value();
+                    result.block<1, STARRY_NGRAD>(i, 1) = tmp.derivatives();
+                }
+                return result;
+            },
+#endif
             R"pbdoc(
                 Return the total flux received by the observer.
 
@@ -502,7 +628,14 @@ PYBIND11_MODULE(starry, m) {
                     The flux received by the observer (a scalar or a vector).
             )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
-        .def("get_coeff", &maps::Map<double>::get_coeff,
+        .def("get_coeff",
+#ifndef STARRY_AUTODIFF
+        &maps::Map<MapType>::get_coeff,
+#else
+        [](maps::Map<MapType> &map, int l, int m){
+            return map.get_coeff(l, m).value();
+        },
+#endif
             R"pbdoc(
                 Return the (:py:obj:`l`, :py:obj:`m`) coefficient of the map.
 
@@ -515,7 +648,14 @@ PYBIND11_MODULE(starry, m) {
                     m (int): The spherical harmonic order, ranging from -:py:obj:`l` to :py:attr:`l`.
             )pbdoc", "l"_a, "m"_a)
 
-        .def("set_coeff", &maps::Map<double>::set_coeff,
+        .def("set_coeff",
+#ifndef STARRY_AUTODIFF
+        &maps::Map<MapType>::set_coeff,
+#else
+        [](maps::Map<MapType> &map, int l, int m, double coeff){
+            map.set_coeff(l, m, Grad(coeff));
+        },
+#endif
             R"pbdoc(
                 Set the (:py:obj:`l`, :py:obj:`m`) coefficient of the map.
 
@@ -529,80 +669,130 @@ PYBIND11_MODULE(starry, m) {
                     coeff (float): The value of the coefficient.
             )pbdoc", "l"_a, "m"_a, "coeff"_a)
 
-        .def("reset", &maps::Map<double>::reset,
+        .def("reset", &maps::Map<MapType>::reset,
             R"pbdoc(
                 Set all of the map coefficients to zero.
             )pbdoc")
 
-        .def_property_readonly("lmax", [](maps::Map<double> &map){return map.lmax;},
+        .def_property_readonly("lmax", [](maps::Map<MapType> &map){return map.lmax;},
             R"pbdoc(
                 The highest spherical harmonic order of the map. *Read-only.*
             )pbdoc")
 
-        .def_property_readonly("y", [](maps::Map<double> &map){map.update(true); return map.y;},
+        .def_property_readonly("y", [](maps::Map<MapType> &map){
+            map.update(true);
+#ifndef STARRY_AUTODIFF
+            return map.y;
+#else
+            // TODO
+            return 0.;
+#endif
+        },
             R"pbdoc(
                 The spherical harmonic map vector. *Read-only.*
             )pbdoc")
 
-        .def_property_readonly("p", [](maps::Map<double> &map){map.update(true); return map.p;},
+        .def_property_readonly("p", [](maps::Map<MapType> &map){
+            map.update(true);
+#ifndef STARRY_AUTODIFF
+            return map.p;
+#else
+            // TODO
+            return 0.;
+#endif
+            },
             R"pbdoc(
                 The polynomial map vector. *Read-only.*
             )pbdoc")
 
-        .def_property_readonly("g", [](maps::Map<double> &map){map.update(true); return map.g;},
+        .def_property_readonly("g", [](maps::Map<MapType> &map){
+            map.update(true);
+#ifndef STARRY_AUTODIFF
+            return map.g;
+#else
+            // TODO
+                return 0.;
+#endif
+        },
             R"pbdoc(
                 The Green's polynomial map vector. *Read-only.*
             )pbdoc")
 
-        .def_property_readonly("s", [](maps::Map<double> &map){
+        .def_property_readonly("s", [](maps::Map<MapType> &map){
+#ifndef STARRY_AUTODIFF
             return map.G.sT;
+#else
+            // TODO
+            return 0;
+#endif
         },
             R"pbdoc(
                 The current solution vector `s`. *Read-only.*
             )pbdoc")
 
-        .def_property_readonly("s_mp", [](maps::Map<double> &map){
+        .def_property_readonly("s_mp", [](maps::Map<MapType> &map){
+#ifndef STARRY_AUTODIFF
             VectorT<double> sT = map.mpG.sT.template cast<double>();
             return sT;
+#else
+            // TODO
+            return 0;
+#endif
         },
             R"pbdoc(
                 The current multi-precision solution vector `s`. Only available after `flux_mp` has been called. *Read-only.*
             )pbdoc")
 
-        .def("__setitem__", [](maps::Map<double>& map, py::object index, double coeff) {
+        .def("__setitem__", [](maps::Map<MapType>& map, py::object index, double coeff) {
             if (py::isinstance<py::tuple>(index)) {
                 // This is a (l, m) tuple
                 py::tuple lm = index;
                 int l = py::cast<int>(lm[0]);
                 int m = py::cast<int>(lm[1]);
-                map.set_coeff(l, m, coeff);
+                map.set_coeff(l, m, MapType(coeff));
             } else {
                 throw errors::BadIndex();
             }
         })
 
-        .def("__getitem__", [](maps::Map<double>& map, py::object index) -> py::object {
+        .def("__getitem__", [](maps::Map<MapType>& map, py::object index) -> py::object {
             if (py::isinstance<py::tuple>(index)) {
                 // This is a (l, m) tuple
                 py::tuple lm = index;
                 int l = py::cast<int>(lm[0]);
                 int m = py::cast<int>(lm[1]);
+#ifndef STARRY_AUTODIFF
                 return py::cast(map.get_coeff(l, m));
+#else
+                return py::cast(map.get_coeff(l, m).value());
+#endif
             } else {
                 throw errors::BadIndex();
             }
         })
 
-        .def("__repr__", [](maps::Map<double> &map) -> string {return map.repr();})
+        .def("__repr__", [](maps::Map<MapType> &map) -> string {
+#ifndef STARRY_AUTODIFF
+            return map.repr();
+#else
+            // TODO
+            return "";
+#endif
+        })
 
         //
         // This is where things go nuts: Let's call Python from C++
         //
 
-        .def("minimum", [](maps::Map<double> &map) -> double {
+        .def("minimum", [](maps::Map<MapType> &map) -> double {
             map.update();
             py::object minimize = py::module::import("starry_maps").attr("minimize");
+#ifndef STARRY_AUTODIFF
             return minimize(map.p).cast<double>();
+#else
+            // TODO
+            return 0.;
+#endif
         },
         R"pbdoc(
             Find the global minimum of the map.
@@ -619,7 +809,7 @@ PYBIND11_MODULE(starry, m) {
 
         /*
         // TODO: I need to give this function a little more thought.
-        .def("random", [] (maps::Map<double>& map, double beta=0, bool nonnegative=true) {
+        .def("random", [] (maps::Map<MapType>& map, double beta=0, bool nonnegative=true) {
             py::object minimize = py::module::import("starry_maps").attr("minimize");
             double minval, c00;
 
@@ -645,21 +835,26 @@ PYBIND11_MODULE(starry, m) {
             )pbdoc", "beta"_a=0., "nonnegative"_a=true)
         */
 
-        .def("load_image", [](maps::Map<double> &map, string& image) {
+        .def("load_image", [](maps::Map<MapType> &map, string& image) {
             py::object load_map = py::module::import("starry_maps").attr("load_map");
             Vector<double> y = load_map(image, map.lmax).cast<Vector<double>>();
+            double y_normed;
             int n = 0;
             for (int l = 0; l < map.lmax + 1; l++) {
                 for (int m = -l; m < l + 1; m++) {
-                    map.set_coeff(l, m, y(n) / y(0));
+                    y_normed = y(n) / y(0);
+                    map.set_coeff(l, m, MapType(y_normed));
                     n++;
                 }
             }
             // We need to apply some rotations to get
             // to the desired orientation
-            map.rotate(maps::xhat, M_PI / 2.);
-            map.rotate(maps::zhat, M_PI);
-            map.rotate(maps::yhat, M_PI / 2);
+            UnitVector<MapType> xhat(maps::xhat);
+            UnitVector<MapType> yhat(maps::yhat);
+            UnitVector<MapType> zhat(maps::zhat);
+            map.rotate(xhat, MapType(M_PI / 2.));
+            map.rotate(yhat, MapType(M_PI));
+            map.rotate(zhat, MapType(M_PI / 2.));
         },
         R"pbdoc(
             Load an image from file.
@@ -670,23 +865,32 @@ PYBIND11_MODULE(starry, m) {
             Args:
                 image (str): The full path to the image file.
 
+            ..todo:: The map is currently unnormalized; the max/min will depend \
+                     on the colorscale of the input image. This will be fixed \
+                     soon.
+
         )pbdoc", "image"_a)
 
-        .def("load_healpix", [](maps::Map<double> &map, Matrix<double>& image) {
+        .def("load_healpix", [](maps::Map<MapType> &map, Matrix<double>& image) {
             py::object load_map = py::module::import("starry_maps").attr("load_map");
             Vector<double> y = load_map(image, map.lmax).cast<Vector<double>>();
+            double y_normed;
             int n = 0;
             for (int l = 0; l < map.lmax + 1; l++) {
                 for (int m = -l; m < l + 1; m++) {
-                    map.set_coeff(l, m, y(n) / y(0));
+                    y_normed = y(n) / y(0);
+                    map.set_coeff(l, m, MapType(y_normed));
                     n++;
                 }
             }
             // We need to apply some rotations to get
             // to the desired orientation
-            map.rotate(maps::xhat, M_PI / 2.);
-            map.rotate(maps::zhat, M_PI);
-            map.rotate(maps::yhat, M_PI / 2);
+            UnitVector<MapType> xhat(maps::xhat);
+            UnitVector<MapType> yhat(maps::yhat);
+            UnitVector<MapType> zhat(maps::zhat);
+            map.rotate(xhat, MapType(M_PI / 2.));
+            map.rotate(yhat, MapType(M_PI));
+            map.rotate(zhat, MapType(M_PI / 2.));
         },
         R"pbdoc(
             Load a healpix image array.
@@ -699,15 +903,20 @@ PYBIND11_MODULE(starry, m) {
                 image (ndarray): The ring-ordered :py:obj:`healpix` array.
         )pbdoc", "image"_a)
 
-        .def("show", [](maps::Map<double> &map, string cmap, int res) {
+        .def("show", [](maps::Map<MapType> &map, string cmap, int res) {
             py::object show = py::module::import("starry_maps").attr("show");
             Matrix<double> I;
             I.resize(res, res);
             Vector<double> x;
+            UnitVector<MapType> yhat(maps::yhat);
             x = Vector<double>::LinSpaced(res, -1, 1);
             for (int i = 0; i < res; i++){
                 for (int j = 0; j < res; j++){
-                    I(j, i) = map.evaluate(maps::yhat, 0, x(i), x(j));
+#ifndef STARRY_AUTODIFF
+                    I(j, i) = map.evaluate(yhat, 0, x(i), x(j));
+#else
+                    I(j, i) = map.evaluate(yhat, MapType(0), MapType(x(i)), MapType(x(j))).value();
+#endif
                 }
             }
             show(I, "cmap"_a=cmap, "res"_a=res);
@@ -720,18 +929,23 @@ PYBIND11_MODULE(starry, m) {
                 res (int): The resolution of the map in pixels on a side. Default 300.
         )pbdoc", "cmap"_a="plasma", "res"_a=300)
 
-        .def("animate", [](maps::Map<double> &map, UnitVector<double>& axis, string cmap, int res, int frames) {
+        .def("animate", [](maps::Map<MapType> &map, UnitVector<double>& axis, string cmap, int res, int frames) {
             std::cout << "Rendering animation..." << std::endl;
             py::object animate = py::module::import("starry_maps").attr("animate");
             vector<Matrix<double>> I;
             Vector<double> x, theta;
             x = Vector<double>::LinSpaced(res, -1, 1);
             theta = Vector<double>::LinSpaced(frames, 0, 2 * M_PI);
+            UnitVector<MapType> MapType_axis(axis);
             for (int t = 0; t < frames; t++){
                 I.push_back(Matrix<double>::Zero(res, res));
                 for (int i = 0; i < res; i++){
                     for (int j = 0; j < res; j++){
+#ifndef STARRY_AUTODIFF
                         I[t](j, i) = map.evaluate(axis, theta(t), x(i), x(j));
+#else
+                        I[t](j, i) = map.evaluate(MapType_axis, MapType(theta(t)), MapType(x(i)), MapType(x(j))).value();
+#endif
                     }
                 }
             }

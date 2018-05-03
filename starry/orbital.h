@@ -31,6 +31,24 @@ namespace orbital {
     template <class T> class Star;
     template <class T> class Planet;
 
+    /*
+    // Derivative of the floating point modulo function,
+    // based on https://math.stackexchange.com/a/1277049
+    // This will need to be implemented eventually.
+    #include <unsupported/Eigen/AutoDiff>
+    template <typename T>
+    Eigen::AutoDiffScalar<T> fmod(const Eigen::AutoDiffScalar<T>& numer, const Eigen::AutoDiffScalar<T>& denom) {
+        typename T::Scalar numer_value = numer.value(),
+                           denom_value = denom.value(),
+                           modulo_value = fmod(numer_value, denom_value);
+        return Eigen::AutoDiffScalar<T>(
+          modulo_value,
+          numer.derivatives() +
+          denom.derivatives() * (modulo_value - numer_value) / denom_value
+        );
+    }
+    */
+
     // System class
     template <class T>
     class System {
