@@ -717,7 +717,7 @@ void add_starry_grad(py::module &m) {
                 R"pbdoc()pbdoc",
 #else
                 R"pbdoc(
-                .. note:: Tis function only return the **value** of the numerical flux, and **not** its \
+                .. note:: This function only returns the **value** of the numerical flux, and **not** its \
                           derivatives. Autodifferentiation of numerical integration is \
                           simply a terrible idea!
                 )pbdoc",
