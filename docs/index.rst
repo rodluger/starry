@@ -4,6 +4,7 @@ starry documentation
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
-   starry
+   starry <starry>
+   starry.grad <starry_grad>
