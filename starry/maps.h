@@ -227,14 +227,29 @@ namespace maps {
                 } else {
                     mu = l - m;
                     nu = l + m;
-                    if ((nu % 2) == 0)
-                        basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
-                    else
-                        basis(n) = pow(x0, (mu - 1) / 2) *
-                                   pow(y0, (nu - 1) / 2) * z0;
+                    if ((nu % 2) == 0) {
+                        if ((mu > 0) && (nu > 0))
+                            basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
+                        else if (mu > 0)
+                            basis(n) = pow(x0, mu / 2);
+                        else if (nu > 0)
+                            basis(n) = pow(y0, nu / 2);
+                        else
+                            basis(n) = 1;
+                    } else {
+                        if ((mu > 1) && (nu > 1))
+                            basis(n) = pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
+                        else if (mu > 1)
+                            basis(n) = pow(x0, (mu - 1) / 2) * z0;
+                        else if (nu > 1)
+                            basis(n) = pow(y0, (nu - 1) / 2) * z0;
+                        else
+                            basis(n) = z0;
+                    }
                 }
                 n++;
             }
+
         }
 
         // Dot the coefficients in to our polynomial map

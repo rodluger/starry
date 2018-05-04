@@ -10,6 +10,7 @@ Numerical integration by adaptive mesh refinement.
 #include <cmath>
 #include <Eigen/Core>
 #include "constants.h"
+#include <unsupported/Eigen/AutoDiff>
 
 // Shorthand
 template <typename T>
@@ -23,6 +24,25 @@ using UnitVector = Eigen::Matrix<T, 3, 1>;
 using std::abs;
 
 namespace numeric {
+
+    // Re-definition of fmod so we can define its derivative below
+    double fmod(double numer, double denom) {
+        return std::fmod(numer, denom);
+    }
+
+    // Derivative of the floating point modulo function,
+    // based on https://math.stackexchange.com/a/1277049
+    template <typename T>
+    Eigen::AutoDiffScalar<T> fmod(const Eigen::AutoDiffScalar<T>& numer, const Eigen::AutoDiffScalar<T>& denom) {
+        typename T::Scalar numer_value = numer.value(),
+                           denom_value = denom.value(),
+                           modulo_value = fmod(numer_value, denom_value);
+        return Eigen::AutoDiffScalar<T>(
+          modulo_value,
+          numer.derivatives() +
+          denom.derivatives() * (modulo_value - numer_value) / denom_value
+        );
+    }
 
     // Evaluate a map `p` at a given (x, y) coordinate during an occultation
     template <typename T>
@@ -49,11 +69,25 @@ namespace numeric {
                 } else {
                     mu = l - m;
                     nu = l + m;
-                    if ((nu % 2) == 0)
-                        basis(n) = pow(x, mu / 2) * pow(y, nu / 2);
-                    else
-                        basis(n) = pow(x, (mu - 1) / 2) *
-                                   pow(y, (nu - 1) / 2) * z;
+                   if ((nu % 2) == 0) {
+                       if ((mu > 0) && (nu > 0))
+                           basis(n) = pow(x, mu / 2) * pow(y, nu / 2);
+                       else if (mu > 0)
+                           basis(n) = pow(x, mu / 2);
+                       else if (nu > 0)
+                           basis(n) = pow(y, nu / 2);
+                       else
+                           basis(n) = 1;
+                   } else {
+                       if ((mu > 1) && (nu > 1))
+                           basis(n) = pow(x, (mu - 1) / 2) * pow(y, (nu - 1) / 2) * z;
+                       else if (mu > 1)
+                           basis(n) = pow(x, (mu - 1) / 2) * z;
+                       else if (nu > 1)
+                           basis(n) = pow(y, (nu - 1) / 2) * z;
+                       else
+                           basis(n) = z;
+                   }
                 }
                 n++;
             }
@@ -67,7 +101,9 @@ namespace numeric {
     // Return the flux in a cell
     template <typename T>
     T fcell(T r1, T r2, T t1, T t2, T xo, T yo, T ro, int lmax, Vector<T>& p) {
-        T modulo = fmod(t1 + M_PI - t2, 2 * M_PI);
+        T numer = t1 + M_PI - t2;
+        T denom = 2 * M_PI;
+        T modulo = fmod(numer, denom);
         if (t1 + M_PI - t2 < 0) modulo += 2 * M_PI;
         T deltheta = abs(modulo - M_PI);
         return 0.125 * abs(r2 * r2 - r1 * r1) * deltheta *

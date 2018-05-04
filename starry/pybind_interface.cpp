@@ -8,6 +8,7 @@
 #include <vector>
 #include "maps.h"
 #include "orbital.h"
+#include "numeric.h"
 
 using namespace std;
 using namespace pybind11::literals;
@@ -31,11 +32,11 @@ using UnitVector = Eigen::Matrix<T, 3, 1>;
 #else
 
     #include <unsupported/Eigen/AutoDiff>
-    #ifndef STARRY_NGRAD
-    #define STARRY_NGRAD 7
-    #endif
-    using Grad = Eigen::AutoDiffScalar<Eigen::Matrix<double, STARRY_NGRAD, 1>>;
-    using MapType = Grad;
+    #define STARRY_NGRAD                7
+    #define STARRY_NGRAD_EVALUATE       6
+    #define STARRY_NGRAD_FLUX           7
+
+    using MapType = Eigen::AutoDiffScalar<Eigen::Matrix<double, STARRY_NGRAD, 1>>;
 
     // Home-built vectorization wrapper to replace py::vectorize when using autodiff
     Eigen::VectorXd vectorize(py::object& obj, int& size){
@@ -408,7 +409,7 @@ PYBIND11_MODULE(starry, m) {
             Args:
                 lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-            .. autoattribute:: taylor
+            .. autoattribute:: optimize
             .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
             .. automethod:: rotate(axis=(0, 1, 0), theta=0)
             .. automethod:: flux_numerical(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0, tol=1.e-4)
@@ -445,9 +446,52 @@ PYBIND11_MODULE(starry, m) {
 #ifndef STARRY_AUTODIFF
             py::vectorize(&maps::Map<MapType>::evaluate),
 #else
-            // TODO
             [](maps::Map<MapType>& map, UnitVector<double>& axis, py::object theta, py::object x, py::object y){
-                return 0.;
+                // Vectorize the inputs
+                int size = 0;
+                Eigen::VectorXd theta_v, x_v, y_v;
+                if (py::hasattr(theta, "__len__")) {
+                    theta_v = vectorize(theta, size);
+                    x_v = vectorize(x, size);
+                    y_v = vectorize(y, size);
+                } else if (py::hasattr(x, "__len__")) {
+                    x_v = vectorize(x, size);
+                    y_v = vectorize(y, size);
+                    theta_v = vectorize(theta, size);
+                } else if (py::hasattr(y, "__len__")) {
+                    y_v = vectorize(y, size);
+                    theta_v = vectorize(theta, size);
+                    x_v = vectorize(x, size);
+                } else {
+                    size = 1;
+                    theta_v = vectorize(theta, size);
+                    x_v = vectorize(x, size);
+                    y_v = vectorize(y, size);
+                }
+
+                // Declare the result matrix
+                Eigen::MatrixXd result(theta_v.size(), STARRY_NGRAD_EVALUATE + 1);
+
+                // Declare our gradient types
+                MapType axis_x(axis(0), STARRY_NGRAD, 0);
+                MapType axis_y(axis(1), STARRY_NGRAD, 1);
+                MapType axis_z(axis(2), STARRY_NGRAD, 2);
+                MapType theta_g(0., STARRY_NGRAD, 3);
+                MapType x_g(0., STARRY_NGRAD, 4);
+                MapType y_g(0., STARRY_NGRAD, 5);
+                UnitVector<MapType> axis_g({axis_x, axis_y, axis_z});
+                MapType tmp;
+
+                // Compute the flux at each cadence
+                for (int i = 0; i < theta_v.size(); i++) {
+                    theta_g.value() = theta_v(i);
+                    x_g.value() = x_v(i);
+                    y_g.value() = y_v(i);
+                    tmp = map.evaluate(axis_g, theta_g, x_g, y_g);
+                    result(i, 0) = tmp.value();
+                    result.block<1, STARRY_NGRAD_EVALUATE>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_EVALUATE>();
+                }
+                return result;
             },
 #endif
             R"pbdoc(
@@ -468,11 +512,17 @@ PYBIND11_MODULE(starry, m) {
 
         .def("rotate",
 #ifndef STARRY_AUTODIFF
-            [](maps::Map<MapType> &map, UnitVector<double>& axis, double theta){return map.rotate(axis, theta);},
-#else
-            // TODO
             [](maps::Map<MapType> &map, UnitVector<double>& axis, double theta){
-                return 0.;
+                return map.rotate(axis, theta);
+            },
+#else
+            [](maps::Map<MapType> &map, UnitVector<double>& axis, double theta){
+                MapType axis_x(axis(0), STARRY_NGRAD, 0);
+                MapType axis_y(axis(1), STARRY_NGRAD, 1);
+                MapType axis_z(axis(2), STARRY_NGRAD, 2);
+                MapType theta_g(theta, STARRY_NGRAD, 3);
+                UnitVector<MapType> axis_g({axis_x, axis_y, axis_z});
+                return map.rotate(axis_g, theta_g);
             },
 #endif
             R"pbdoc(
@@ -492,9 +542,63 @@ PYBIND11_MODULE(starry, m) {
 #ifndef STARRY_AUTODIFF
             py::vectorize(&maps::Map<MapType>::flux_numerical),
 #else
-            // TODO
             [](maps::Map<MapType> &map, UnitVector<double>& axis, py::object theta, py::object xo, py::object yo, py::object ro, double tol){
-                return 0.;
+                // Vectorize the inputs
+                int size = 0;
+                Eigen::VectorXd theta_v, xo_v, yo_v, ro_v;
+                if (py::hasattr(theta, "__len__")) {
+                    theta_v = vectorize(theta, size);
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                } else if (py::hasattr(xo, "__len__")) {
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                    theta_v = vectorize(theta, size);
+                } else if (py::hasattr(yo, "__len__")) {
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                    theta_v = vectorize(theta, size);
+                    xo_v = vectorize(xo, size);
+                } else if (py::hasattr(ro, "__len__")) {
+                    ro_v = vectorize(ro, size);
+                    theta_v = vectorize(theta, size);
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                } else {
+                    size = 1;
+                    theta_v = vectorize(theta, size);
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                }
+
+                // Declare the result vector
+                Eigen::VectorXd result(theta_v.size());
+
+                // Declare our gradient types, although I simply *will not*
+                // take automatic derivatives of a numerically computed function!
+                MapType axis_x(axis(0));
+                MapType axis_y(axis(1));
+                MapType axis_z(axis(2));
+                MapType theta_g(0.);
+                MapType xo_g(0.);
+                MapType yo_g(0.);
+                MapType ro_g(0.);
+                UnitVector<MapType> axis_g({axis_x, axis_y, axis_z});
+                MapType tmp;
+
+                // Compute the flux at each cadence
+                for (int i = 0; i < theta_v.size(); i++) {
+                    theta_g.value() = theta_v(i);
+                    xo_g.value() = xo_v(i);
+                    yo_g.value() = yo_v(i);
+                    ro_g.value() = ro_v(i);
+                    tmp = map.flux_numerical(axis_g, theta_g, xo_g, yo_g, ro_g, tol);
+                    result(i) = tmp.value();
+                }
+                return result;
             },
 #endif
             R"pbdoc(
@@ -514,6 +618,12 @@ PYBIND11_MODULE(starry, m) {
 
                 Returns:
                     The flux received by the observer (a scalar or a vector).
+
+                .. note:: Even if automatic differentiation is enabled, this function will \
+                          only return the value of the numerical flux, and not its \
+                          derivatives. Autodifferentiation of numerical integration is \
+                          simply a terrible idea!
+
             )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
 
 
@@ -585,7 +695,7 @@ PYBIND11_MODULE(starry, m) {
                 }
 
                 // Declare the result matrix
-                Eigen::MatrixXd result(theta_v.size(), STARRY_NGRAD + 1);
+                Eigen::MatrixXd result(theta_v.size(), STARRY_NGRAD_FLUX + 1);
 
                 // Declare our gradient types
                 MapType axis_x(axis(0), STARRY_NGRAD, 0);
@@ -595,18 +705,18 @@ PYBIND11_MODULE(starry, m) {
                 MapType xo_g(0., STARRY_NGRAD, 4);
                 MapType yo_g(0., STARRY_NGRAD, 5);
                 MapType ro_g(0., STARRY_NGRAD, 6);
-                UnitVector<Grad> axis_g({axis_x, axis_y, axis_z});
+                UnitVector<MapType> axis_g({axis_x, axis_y, axis_z});
                 MapType tmp;
 
                 // Compute the flux at each cadence
-                for (int i = 0; i < xo_v.size(); i++) {
+                for (int i = 0; i < theta_v.size(); i++) {
                     theta_g.value() = theta_v(i);
                     xo_g.value() = xo_v(i);
                     yo_g.value() = yo_v(i);
                     ro_g.value() = ro_v(i);
                     tmp = map.flux(axis_g, theta_g, xo_g, yo_g, ro_g);
                     result(i, 0) = tmp.value();
-                    result.block<1, STARRY_NGRAD>(i, 1) = tmp.derivatives();
+                    result.block<1, STARRY_NGRAD_FLUX>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_FLUX>();
                 }
                 return result;
             },
@@ -653,7 +763,7 @@ PYBIND11_MODULE(starry, m) {
         &maps::Map<MapType>::set_coeff,
 #else
         [](maps::Map<MapType> &map, int l, int m, double coeff){
-            map.set_coeff(l, m, Grad(coeff));
+            map.set_coeff(l, m, MapType(coeff));
         },
 #endif
             R"pbdoc(
@@ -775,8 +885,47 @@ PYBIND11_MODULE(starry, m) {
 #ifndef STARRY_AUTODIFF
             return map.repr();
 #else
-            // TODO
-            return "";
+            int n = 0;
+            int nterms = 0;
+            char buf[30];
+            double yn;
+            ostringstream os;
+            os << "<STARRY Map: ";
+            for (int l = 0; l < map.lmax + 1; l++) {
+                for (int m = -l; m < l + 1; m++) {
+                    yn = map.y(n).value();
+                    if (abs(yn) > STARRY_MAP_TOLERANCE) {
+                        // Separator
+                        if ((nterms > 0) && (yn > 0)) {
+                            os << " + ";
+                        } else if ((nterms > 0) && (yn < 0)) {
+                            os << " - ";
+                        } else if ((nterms == 0) && (yn < 0)) {
+                            os << "-";
+                        }
+                        // Term
+                        if ((yn == 1) || (yn == -1)) {
+                            sprintf(buf, "Y_{%d,%d}", l, m);
+                            os << buf;
+                        } else if (fmod(abs(yn), 1.0) < STARRY_MAP_TOLERANCE) {
+                            sprintf(buf, "%d Y_{%d,%d}", (int)abs(yn), l, m);
+                            os << buf;
+                        } else if (fmod(abs(yn), 1.0) >= 0.01) {
+                            sprintf(buf, "%.2f Y_{%d,%d}", abs(yn), l, m);
+                            os << buf;
+                        } else {
+                            sprintf(buf, "%.2e Y_{%d,%d}", abs(yn), l, m);
+                            os << buf;
+                        }
+                        nterms++;
+                    }
+                    n++;
+                }
+            }
+            if (nterms == 0)
+                os << "Null";
+            os << ">";
+            return std::string(os.str());
 #endif
         })
 
@@ -865,9 +1014,9 @@ PYBIND11_MODULE(starry, m) {
             Args:
                 image (str): The full path to the image file.
 
-            ..todo:: The map is currently unnormalized; the max/min will depend \
-                     on the colorscale of the input image. This will be fixed \
-                     soon.
+            .. todo:: The map is currently unnormalized; the max/min will depend \
+                      on the colorscale of the input image. This will be fixed \
+                      soon.
 
         )pbdoc", "image"_a)
 
@@ -973,7 +1122,7 @@ PYBIND11_MODULE(starry, m) {
             Args:
                 lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-            .. autoattribute:: taylor
+            .. autoattribute:: optimize
             .. automethod:: evaluate(x=0, y=0)
             .. automethod:: flux_numerical(xo=0, yo=0, ro=0, tol=1.e-4)
             .. automethod:: flux_mp(xo=0, yo=0, ro=0)
