@@ -63,13 +63,15 @@ Apologies to sticklers for the indented #define's.
 #ifndef STARRY_AUTODIFF
 
     #undef MapType
-    #define MapType                     double
+    #define MapType                         double
 
 #else
 
-    #define STARRY_NGRAD                7
-    #define STARRY_NGRAD_EVALUATE       6
-    #define STARRY_NGRAD_FLUX           7
+    #define STARRY_NGRAD                    7
+    #define STARRY_NGRAD_MAP_EVALUATE       6
+    #define STARRY_NGRAD_MAP_FLUX           7
+    #define STARRY_NGRAD_LDMAP_EVALUATE     2
+    #define STARRY_NGRAD_LDMAP_FLUX         3
     #undef MapType
     #define MapType                     Eigen::AutoDiffScalar<Eigen::Matrix<double, STARRY_NGRAD, 1>>
 
@@ -506,8 +508,12 @@ void add_starry_grad(py::module &m) {
             .. autoattribute:: optimize
             .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
             .. automethod:: rotate(axis=(0, 1, 0), theta=0)
-            .. automethod:: flux_numerical(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0, tol=1.e-4)
-            .. automethod:: flux_mp(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
+            .. automethod:: flux_numerical(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0, tol=1.e-4))pbdoc"
+    #ifndef STARRY_AUTODIFF
+            R"pbdoc(
+            .. automethod:: flux_mp(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0))pbdoc"
+    #endif
+            R"pbdoc(
             .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
             .. automethod:: get_coeff(l, m)
             .. automethod:: set_coeff(l, m, coeff)
@@ -516,8 +522,13 @@ void add_starry_grad(py::module &m) {
             .. autoattribute:: y
             .. autoattribute:: p
             .. autoattribute:: g
-            .. autoattribute:: s
-            .. autoattribute:: s_mp
+            .. autoattribute:: s)pbdoc"
+    #ifndef STARRY_AUTODIFF
+            R"pbdoc(
+            .. autoattribute:: s_mp)pbdoc"
+    #endif
+            R"pbdoc(
+            .. autoattribute:: r
             .. automethod:: minimum()
             .. automethod:: load_image(image)
             .. automethod:: load_healpix(image)
@@ -564,7 +575,7 @@ void add_starry_grad(py::module &m) {
                 }
 
                 // Declare the result matrix
-                Eigen::MatrixXd result(theta_v.size(), STARRY_NGRAD_EVALUATE + 1);
+                Eigen::MatrixXd result(theta_v.size(), STARRY_NGRAD_MAP_EVALUATE + 1);
 
                 // Declare our gradient types
                 MapType axis_x(axis(0), STARRY_NGRAD, 0);
@@ -583,7 +594,7 @@ void add_starry_grad(py::module &m) {
                     y_g.value() = y_v(i);
                     tmp = map.evaluate(axis_g, theta_g, x_g, y_g);
                     result(i, 0) = tmp.value();
-                    result.block<1, STARRY_NGRAD_EVALUATE>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_EVALUATE>();
+                    result.block<1, STARRY_NGRAD_MAP_EVALUATE>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_MAP_EVALUATE>();
                 }
                 return result;
             },
@@ -713,27 +724,22 @@ void add_starry_grad(py::module &m) {
                 Returns:
                     The flux received by the observer (a scalar or a vector).
                 )pbdoc"
-#ifndef STARRY_AUTODIFF
+    #ifndef STARRY_AUTODIFF
                 R"pbdoc()pbdoc",
-#else
+    #else
                 R"pbdoc(
                 .. note:: This function only returns the **value** of the numerical flux, and **not** its \
                           derivatives. Autodifferentiation of numerical integration is \
                           simply a terrible idea!
                 )pbdoc",
-#endif
+    #endif
             "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
 
-
-        .def("flux_mp",
     #ifndef STARRY_AUTODIFF
+        // NOTE: No autograd implementation of this function.
+        .def("flux_mp",
+
             py::vectorize(&maps::Map<MapType>::flux_mp),
-    #else
-            // TODO
-            [](maps::Map<MapType> &map, UnitVector<double>& axis, py::object theta, py::object xo, py::object yo, py::object ro){
-                return 0.;
-            },
-    #endif
             R"pbdoc(
                 Return the total flux received by the observer, computed using multi-precision.
 
@@ -755,6 +761,7 @@ void add_starry_grad(py::module &m) {
                 Returns:
                     The flux received by the observer (a scalar or a vector).
             )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+    #endif
 
         .def("flux",
     #ifndef STARRY_AUTODIFF
@@ -793,7 +800,7 @@ void add_starry_grad(py::module &m) {
                 }
 
                 // Declare the result matrix
-                Eigen::MatrixXd result(theta_v.size(), STARRY_NGRAD_FLUX + 1);
+                Eigen::MatrixXd result(theta_v.size(), STARRY_NGRAD_MAP_FLUX + 1);
 
                 // Declare our gradient types
                 MapType axis_x(axis(0), STARRY_NGRAD, 0);
@@ -814,7 +821,7 @@ void add_starry_grad(py::module &m) {
                     ro_g.value() = ro_v(i);
                     tmp = map.flux(axis_g, theta_g, xo_g, yo_g, ro_g);
                     result(i, 0) = tmp.value();
-                    result.block<1, STARRY_NGRAD_FLUX>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_FLUX>();
+                    result.block<1, STARRY_NGRAD_MAP_FLUX>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_MAP_FLUX>();
                 }
                 return result;
             },
@@ -838,11 +845,11 @@ void add_starry_grad(py::module &m) {
 
         .def("get_coeff",
     #ifndef STARRY_AUTODIFF
-        &maps::Map<MapType>::get_coeff,
+            &maps::Map<MapType>::get_coeff,
     #else
-        [](maps::Map<MapType> &map, int l, int m){
-            return map.get_coeff(l, m).value();
-        },
+            [](maps::Map<MapType> &map, int l, int m){
+                return map.get_coeff(l, m).value();
+            },
     #endif
             R"pbdoc(
                 Return the (:py:obj:`l`, :py:obj:`m`) coefficient of the map.
@@ -858,11 +865,11 @@ void add_starry_grad(py::module &m) {
 
         .def("set_coeff",
     #ifndef STARRY_AUTODIFF
-        &maps::Map<MapType>::set_coeff,
+            &maps::Map<MapType>::set_coeff,
     #else
-        [](maps::Map<MapType> &map, int l, int m, double coeff){
-            map.set_coeff(l, m, MapType(coeff));
-        },
+            [](maps::Map<MapType> &map, int l, int m, double coeff){
+                map.set_coeff(l, m, MapType(coeff));
+            },
     #endif
             R"pbdoc(
                 Set the (:py:obj:`l`, :py:obj:`m`) coefficient of the map.
@@ -892,8 +899,12 @@ void add_starry_grad(py::module &m) {
     #ifndef STARRY_AUTODIFF
             return map.y;
     #else
-            // TODO
-            return 0.;
+            Eigen::VectorXd vec;
+            vec.resize(map.N);
+            for (int n = 0; n < map.N + 1; n++) {
+                vec(n) = map.y(n).value();
+            }
+            return vec;
     #endif
         },
             R"pbdoc(
@@ -905,8 +916,12 @@ void add_starry_grad(py::module &m) {
     #ifndef STARRY_AUTODIFF
             return map.p;
     #else
-            // TODO
-            return 0.;
+            Eigen::VectorXd vec;
+            vec.resize(map.N);
+            for (int n = 0; n < map.N + 1; n++) {
+                vec(n) = map.p(n).value();
+            }
+            return vec;
     #endif
             },
             R"pbdoc(
@@ -918,8 +933,12 @@ void add_starry_grad(py::module &m) {
     #ifndef STARRY_AUTODIFF
             return map.g;
     #else
-            // TODO
-                return 0.;
+            Eigen::VectorXd vec;
+            vec.resize(map.N);
+            for (int n = 0; n < map.N + 1; n++) {
+                vec(n) = map.g(n).value();
+            }
+            return vec;
     #endif
         },
             R"pbdoc(
@@ -930,26 +949,35 @@ void add_starry_grad(py::module &m) {
     #ifndef STARRY_AUTODIFF
             return map.G.sT;
     #else
-            // TODO
-            return 0;
+            Eigen::VectorXd vec;
+            vec.resize(map.N);
+            for (int n = 0; n < map.N + 1; n++) {
+                vec(n) = map.G.sT(n).value();
+            }
+            return vec;
     #endif
         },
             R"pbdoc(
                 The current solution vector `s`. *Read-only.*
             )pbdoc")
 
-        .def_property_readonly("s_mp", [](maps::Map<MapType> &map){
+        .def_property_readonly("r", [](maps::Map<MapType> &map){
+            return map.C.rT;
+        },
+            R"pbdoc(
+                The current solution vector `r`. *Read-only.*
+            )pbdoc")
+
     #ifndef STARRY_AUTODIFF
+        // NOTE: No autograd implementation of this attribute.
+        .def_property_readonly("s_mp", [](maps::Map<MapType> &map){
             VectorT<double> sT = map.mpG.sT.template cast<double>();
             return sT;
-    #else
-            // TODO
-            return 0;
-    #endif
         },
             R"pbdoc(
                 The current multi-precision solution vector `s`. Only available after `flux_mp` has been called. *Read-only.*
             )pbdoc")
+    #endif
 
         .def("__setitem__", [](maps::Map<MapType>& map, py::object index, double coeff) {
             if (py::isinstance<py::tuple>(index)) {
@@ -988,7 +1016,7 @@ void add_starry_grad(py::module &m) {
             char buf[30];
             double yn;
             ostringstream os;
-            os << "<STARRY Map: ";
+            os << "<STARRY AutoDiff Map: ";
             for (int l = 0; l < map.lmax + 1; l++) {
                 for (int m = -l; m < l + 1; m++) {
                     yn = map.y(n).value();
@@ -1037,8 +1065,12 @@ void add_starry_grad(py::module &m) {
     #ifndef STARRY_AUTODIFF
             return minimize(map.p).cast<double>();
     #else
-            // TODO
-            return 0.;
+            Eigen::VectorXd vec;
+            vec.resize(map.N);
+            for (int n = 0; n < map.N + 1; n++) {
+                vec(n) = map.p(n).value();
+            }
+            return minimize(vec).cast<double>();
     #endif
         },
         R"pbdoc(
@@ -1100,8 +1132,8 @@ void add_starry_grad(py::module &m) {
             UnitVector<MapType> yhat(maps::yhat);
             UnitVector<MapType> zhat(maps::zhat);
             map.rotate(xhat, MapType(M_PI / 2.));
-            map.rotate(yhat, MapType(M_PI));
-            map.rotate(zhat, MapType(M_PI / 2.));
+            map.rotate(zhat, MapType(M_PI));
+            map.rotate(yhat, MapType(M_PI / 2.));
         },
         R"pbdoc(
             Load an image from file.
@@ -1136,8 +1168,8 @@ void add_starry_grad(py::module &m) {
             UnitVector<MapType> yhat(maps::yhat);
             UnitVector<MapType> zhat(maps::zhat);
             map.rotate(xhat, MapType(M_PI / 2.));
-            map.rotate(yhat, MapType(M_PI));
-            map.rotate(zhat, MapType(M_PI / 2.));
+            map.rotate(zhat, MapType(M_PI));
+            map.rotate(yhat, MapType(M_PI / 2.));
         },
         R"pbdoc(
             Load a healpix image array.
@@ -1209,10 +1241,9 @@ void add_starry_grad(py::module &m) {
         )pbdoc", "axis"_a=maps::yhat, "cmap"_a="plasma", "res"_a=150, "frames"_a=50);
 
 
-#ifndef STARRY_AUTODIFF
 
     // Limb-darkened surface map class
-    py::class_<maps::LimbDarkenedMap<double>>(m, "LimbDarkenedMap", R"pbdoc(
+    py::class_<maps::LimbDarkenedMap<MapType>>(m, "LimbDarkenedMap", R"pbdoc(
             Instantiate a :py:mod:`starry` limb-darkened surface map.
 
             This differs from the base :py:class:`Map` class in that maps
@@ -1225,8 +1256,12 @@ void add_starry_grad(py::module &m) {
 
             .. autoattribute:: optimize
             .. automethod:: evaluate(x=0, y=0)
-            .. automethod:: flux_numerical(xo=0, yo=0, ro=0, tol=1.e-4)
-            .. automethod:: flux_mp(xo=0, yo=0, ro=0)
+            .. automethod:: flux_numerical(xo=0, yo=0, ro=0, tol=1.e-4)pbdoc"
+    #ifndef STARRY_AUTODIFF
+            R"pbdoc(
+            .. automethod:: flux_mp(xo=0, yo=0, ro=0))pbdoc"
+    #endif
+            R"pbdoc(
             .. automethod:: flux(xo=0, yo=0, ro=0)
             .. automethod:: get_coeff(l)
             .. automethod:: set_coeff(l, coeff)
@@ -1236,8 +1271,12 @@ void add_starry_grad(py::module &m) {
             .. autoattribute:: p
             .. autoattribute:: g
             .. autoattribute:: u
-            .. autoattribute:: s
-            .. autoattribute:: s_mp
+            .. autoattribute:: s)pbdoc"
+    #ifndef STARRY_AUTODIFF
+            R"pbdoc(
+            .. autoattribute:: s_mp)pbdoc"
+    #endif
+            R"pbdoc(
             .. automethod:: show(cmap='plasma', res=300)
 
         )pbdoc")
@@ -1252,7 +1291,45 @@ void add_starry_grad(py::module &m) {
                 Default :py:obj:`True`.
             )pbdoc")
 
-        .def("evaluate", py::vectorize(&maps::LimbDarkenedMap<double>::evaluate),
+        .def("evaluate",
+    #ifndef STARRY_AUTODIFF
+            py::vectorize(&maps::LimbDarkenedMap<MapType>::evaluate),
+    #else
+            [](maps::LimbDarkenedMap<MapType>& map, py::object x, py::object y){
+                // Vectorize the inputs
+                int size = 0;
+                Eigen::VectorXd x_v, y_v;
+                if (py::hasattr(x, "__len__")) {
+                    x_v = vectorize(x, size);
+                    y_v = vectorize(y, size);
+                } else if (py::hasattr(y, "__len__")) {
+                    y_v = vectorize(y, size);
+                    x_v = vectorize(x, size);
+                } else {
+                    size = 1;
+                    x_v = vectorize(x, size);
+                    y_v = vectorize(y, size);
+                }
+
+                // Declare the result matrix
+                Eigen::MatrixXd result(x_v.size(), STARRY_NGRAD_LDMAP_EVALUATE + 1);
+
+                // Declare our gradient types
+                MapType x_g(0., STARRY_NGRAD, 0);
+                MapType y_g(0., STARRY_NGRAD, 1);
+                MapType tmp;
+
+                // Compute the flux at each cadence
+                for (int i = 0; i < x_v.size(); i++) {
+                    x_g.value() = x_v(i);
+                    y_g.value() = y_v(i);
+                    tmp = map.evaluate(x_g, y_g);
+                    result(i, 0) = tmp.value();
+                    result.block<1, STARRY_NGRAD_LDMAP_EVALUATE>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_LDMAP_EVALUATE>();
+                }
+                return result;
+            },
+    #endif
             R"pbdoc(
                 Return the specific intensity at a point (`x`, `y`) on the map.
 
@@ -1267,13 +1344,60 @@ void add_starry_grad(py::module &m) {
                     The specific intensity at (`x`, `y`).
             )pbdoc", "x"_a=0, "y"_a=0)
 
-        .def("flux_numerical", py::vectorize(&maps::LimbDarkenedMap<double>::flux_numerical),
+        .def("flux_numerical",
+    #ifndef STARRY_AUTODIFF
+            py::vectorize(&maps::LimbDarkenedMap<MapType>::flux_numerical),
+    #else
+            [](maps::LimbDarkenedMap<MapType> &map, py::object xo, py::object yo, py::object ro, double tol){
+                // Vectorize the inputs
+                int size = 0;
+                Eigen::VectorXd xo_v, yo_v, ro_v;
+                if (py::hasattr(xo, "__len__")) {
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                } else if (py::hasattr(yo, "__len__")) {
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                    xo_v = vectorize(xo, size);
+                } else if (py::hasattr(ro, "__len__")) {
+                    ro_v = vectorize(ro, size);
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                } else {
+                    size = 1;
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                }
+
+                // Declare the result vector
+                Eigen::VectorXd result(xo_v.size());
+
+                // Declare our gradient types, although I simply *will not*
+                // take automatic derivatives of a numerically computed function!
+                MapType xo_g(0.);
+                MapType yo_g(0.);
+                MapType ro_g(0.);
+                MapType tmp;
+
+                // Compute the flux at each cadence
+                for (int i = 0; i < xo_v.size(); i++) {
+                    xo_g.value() = xo_v(i);
+                    yo_g.value() = yo_v(i);
+                    ro_g.value() = ro_v(i);
+                    tmp = map.flux_numerical(xo_g, yo_g, ro_g, tol);
+                    result(i) = tmp.value();
+                }
+                return result;
+            },
+    #endif
             R"pbdoc(
                 Return the total flux received by the observer, computed numerically.
 
                 Computes the total flux received by the observer from the
-                map during or outside of an occultation. This method computes the
-                flux numerically using an adaptive radial mesh.
+                map during or outside of an occultation. The flux is computed
+                numerically using an adaptive radial mesh.
 
                 Args:
                     xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
@@ -1283,9 +1407,21 @@ void add_starry_grad(py::module &m) {
 
                 Returns:
                     The flux received by the observer (a scalar or a vector).
-            )pbdoc", "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
+                )pbdoc"
+    #ifndef STARRY_AUTODIFF
+                R"pbdoc()pbdoc",
+    #else
+                R"pbdoc(
+                .. note:: This function only returns the **value** of the numerical flux, and **not** its \
+                          derivatives. Autodifferentiation of numerical integration is \
+                          simply a terrible idea!
+                )pbdoc",
+    #endif
+            "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
 
-        .def("flux_mp", py::vectorize(&maps::LimbDarkenedMap<double>::flux_mp),
+    #ifndef STARRY_AUTODIFF
+        // NOTE: No autograd implementation of this function.
+        .def("flux_mp", py::vectorize(&maps::LimbDarkenedMap<MapType>::flux_mp),
             R"pbdoc(
                 Return the total flux received by the observer, computed using multi-precision.
 
@@ -1305,8 +1441,56 @@ void add_starry_grad(py::module &m) {
                 Returns:
                     The flux received by the observer (a scalar or a vector).
             )pbdoc", "xo"_a=0, "yo"_a=0, "ro"_a=0)
+    #endif
 
-        .def("flux", py::vectorize(&maps::LimbDarkenedMap<double>::flux),
+        .def("flux",
+    #ifndef STARRY_AUTODIFF
+            py::vectorize(&maps::LimbDarkenedMap<MapType>::flux),
+    #else
+            [](maps::LimbDarkenedMap<MapType> &map, py::object xo, py::object yo, py::object ro){
+                // Vectorize the inputs
+                int size = 0;
+                Eigen::VectorXd xo_v, yo_v, ro_v;
+                if (py::hasattr(xo, "__len__")) {
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                } else if (py::hasattr(yo, "__len__")) {
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                    xo_v = vectorize(xo, size);
+                } else if (py::hasattr(ro, "__len__")) {
+                    ro_v = vectorize(ro, size);
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                } else {
+                    size = 1;
+                    xo_v = vectorize(xo, size);
+                    yo_v = vectorize(yo, size);
+                    ro_v = vectorize(ro, size);
+                }
+
+                // Declare the result matrix
+                Eigen::MatrixXd result(xo_v.size(), STARRY_NGRAD_LDMAP_FLUX + 1);
+
+                // Declare our gradient types
+                MapType xo_g(0., STARRY_NGRAD, 0);
+                MapType yo_g(0., STARRY_NGRAD, 1);
+                MapType ro_g(0., STARRY_NGRAD, 2);
+                MapType tmp;
+
+                // Compute the flux at each cadence
+                for (int i = 0; i < xo_v.size(); i++) {
+                    xo_g.value() = xo_v(i);
+                    yo_g.value() = yo_v(i);
+                    ro_g.value() = ro_v(i);
+                    tmp = map.flux(xo_g, yo_g, ro_g);
+                    result(i, 0) = tmp.value();
+                    result.block<1, STARRY_NGRAD_LDMAP_FLUX>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_LDMAP_FLUX>();
+                }
+                return result;
+            },
+    #endif
             R"pbdoc(
                 Return the total flux received by the observer.
 
@@ -1322,18 +1506,32 @@ void add_starry_grad(py::module &m) {
                     The flux received by the observer (a scalar or a vector).
             )pbdoc", "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
-        .def("get_coeff", &maps::LimbDarkenedMap<double>::get_coeff,
+        .def("get_coeff",
+    #ifndef STARRY_AUTODIFF
+            &maps::LimbDarkenedMap<MapType>::get_coeff,
+    #else
+            [](maps::LimbDarkenedMap<MapType> &map, int l){
+                return map.get_coeff(l).value();
+            },
+    #endif
             R"pbdoc(
                 Return the limb darkening coefficient of order :py:obj:`l`.
 
-                .. note:: Users can also retrieve a limb darkening coefficient by accessing the \
+                .. note:: Users can also retrieve a coefficient by accessing the \
                           [:py:obj:`l`] index of the map as if it were an array.
 
                 Args:
                     l (int): The limb darkening order (> 0).
             )pbdoc", "l"_a)
 
-        .def("set_coeff", &maps::LimbDarkenedMap<double>::set_coeff,
+        .def("set_coeff",
+    #ifndef STARRY_AUTODIFF
+            &maps::LimbDarkenedMap<MapType>::set_coeff,
+    #else
+            [](maps::LimbDarkenedMap<MapType> &map, int l, double coeff){
+                map.set_coeff(l, MapType(coeff));
+            },
+    #endif
             R"pbdoc(
                 Set the limb darkening coefficient of order :py:obj:`l`.
 
@@ -1343,80 +1541,157 @@ void add_starry_grad(py::module &m) {
 
                 Args:
                     l (int): The limb darkening order (> 0).
-                    u_l (float): The value of the coefficient.
-            )pbdoc", "l"_a, "u_l"_a)
+                    coeff (float): The value of the coefficient.
+            )pbdoc", "l"_a, "coeff"_a)
 
-        .def("reset", &maps::LimbDarkenedMap<double>::reset,
+        .def("reset", &maps::LimbDarkenedMap<MapType>::reset,
             R"pbdoc(
                 Set all of the map coefficients to zero.
             )pbdoc")
 
-        .def_property_readonly("lmax", [](maps::LimbDarkenedMap<double> &map){return map.lmax;},
+        .def_property_readonly("lmax", [](maps::LimbDarkenedMap<MapType> &map){return map.lmax;},
             R"pbdoc(
                 The highest spherical harmonic order of the map. *Read-only.*
             )pbdoc")
 
-        .def_property_readonly("y", [](maps::LimbDarkenedMap<double> &map){map.update(true); return map.y;},
+        .def_property_readonly("y", [](maps::LimbDarkenedMap<MapType> &map){
+            map.update(true);
+    #ifndef STARRY_AUTODIFF
+            return map.y;
+    #else
+            Eigen::VectorXd vec;
+            vec.resize(map.N);
+            for (int n = 0; n < map.N + 1; n++) {
+                vec(n) = map.y(n).value();
+            }
+            return vec;
+    #endif
+        },
             R"pbdoc(
                 The spherical harmonic map vector. *Read-only.*
             )pbdoc")
 
-        .def_property_readonly("p", [](maps::LimbDarkenedMap<double> &map){map.update(true); return map.p;},
+        .def_property_readonly("p", [](maps::LimbDarkenedMap<MapType> &map){
+            map.update(true);
+    #ifndef STARRY_AUTODIFF
+            return map.p;
+    #else
+            Eigen::VectorXd vec;
+            vec.resize(map.N);
+            for (int n = 0; n < map.N + 1; n++) {
+                vec(n) = map.p(n).value();
+            }
+            return vec;
+    #endif
+            },
             R"pbdoc(
                 The polynomial map vector. *Read-only.*
             )pbdoc")
 
-        .def_property_readonly("g", [](maps::LimbDarkenedMap<double> &map){map.update(true); return map.g;},
+        .def_property_readonly("g", [](maps::LimbDarkenedMap<MapType> &map){
+            map.update(true);
+    #ifndef STARRY_AUTODIFF
+            return map.g;
+    #else
+            Eigen::VectorXd vec;
+            vec.resize(map.N);
+            for (int n = 0; n < map.N + 1; n++) {
+                vec(n) = map.g(n).value();
+            }
+            return vec;
+    #endif
+        },
             R"pbdoc(
                 The Green's polynomial map vector. *Read-only.*
             )pbdoc")
 
-        .def_property_readonly("s", [](maps::LimbDarkenedMap<double> &map){
-                return map.G.sT;
-            },
+        .def_property_readonly("s", [](maps::LimbDarkenedMap<MapType> &map){
+    #ifndef STARRY_AUTODIFF
+            return map.G.sT;
+    #else
+            Eigen::VectorXd vec;
+            vec.resize(map.N);
+            for (int n = 0; n < map.N + 1; n++) {
+                vec(n) = map.G.sT(n).value();
+            }
+            return vec;
+    #endif
+        },
             R"pbdoc(
                 The current solution vector `s`. *Read-only.*
             )pbdoc")
 
-        .def_property_readonly("s_mp", [](maps::LimbDarkenedMap<double> &map){
-                VectorT<double> sT = map.mpG.sT.template cast<double>();
-                return sT;
-            },
+    #ifndef STARRY_AUTODIFF
+        // NOTE: No autograd implementation of this attribute.
+        .def_property_readonly("s_mp", [](maps::LimbDarkenedMap<MapType> &map){
+            VectorT<double> sT = map.mpG.sT.template cast<double>();
+            return sT;
+        },
             R"pbdoc(
                 The current multi-precision solution vector `s`. Only available after `flux_mp` has been called. *Read-only.*
             )pbdoc")
+    #endif
 
-        .def_property_readonly("u", [](maps::LimbDarkenedMap<double> &map) {return map.u;},
+        .def_property_readonly("u", [](maps::LimbDarkenedMap<MapType> &map) {
+    #ifndef STARRY_AUTODIFF
+            return map.u;
+    #else
+            Eigen::VectorXd vec;
+            vec.resize(map.lmax + 1);
+            for (int n = 0; n < map.lmax + 1; n++) {
+                vec(n) = map.u(n).value();
+            }
+            return vec;
+    #endif
+        },
             R"pbdoc(
                 The limb darkening coefficients. *Read-only.*
             )pbdoc")
 
-        .def("__setitem__", [](maps::LimbDarkenedMap<double>& map, py::object index, double coeff) {
+        .def("__setitem__", [](maps::LimbDarkenedMap<MapType>& map, py::object index, double coeff) {
             if (py::isinstance<py::tuple>(index)) {
                 throw errors::BadIndex();
             } else {
                 // This is a limb darkening index
                 int l = py::cast<int>(index);
-                map.set_coeff(l, coeff);
+                map.set_coeff(l, MapType(coeff));
             }
         })
 
-        .def("__getitem__", [](maps::LimbDarkenedMap<double>& map, py::object index) {
+        .def("__getitem__", [](maps::LimbDarkenedMap<MapType>& map, py::object index) {
             if (py::isinstance<py::tuple>(index)) {
                 throw errors::BadIndex();
             } else {
                 int l = py::cast<int>(index);
+    #ifndef STARRY_AUTODIFF
                 return map.get_coeff(l);
+    #else
+                return map.get_coeff(l).value();
+    #endif
             }
         })
 
-        .def("__repr__", [](maps::LimbDarkenedMap<double> &map) -> string {return map.repr();})
+        .def("__repr__", [](maps::LimbDarkenedMap<MapType> &map) -> string {
+    #ifndef STARRY_AUTODIFF
+            return map.repr();
+    #else
+            ostringstream os;
+            os << "<STARRY AutoDiff LimbDarkenedMap: ";
+            Eigen::VectorXd u;
+            u.resize(map.lmax + 1);
+            for (int n = 0; n < map.lmax + 1; n++)
+                u(n) = map.u(n).value();
+            os << u.transpose();
+            os << ">";
+            return std::string(os.str());
+    #endif
+        })
 
         //
         // This is where things go nuts: Let's call Python from C++
         //
 
-        .def("show", [](maps::LimbDarkenedMap<double> &map, string cmap, int res) {
+        .def("show", [](maps::LimbDarkenedMap<MapType> &map, string cmap, int res) {
             py::object show = py::module::import("starry_maps").attr("show");
             Matrix<double> I;
             I.resize(res, res);
@@ -1424,7 +1699,11 @@ void add_starry_grad(py::module &m) {
             x = Vector<double>::LinSpaced(res, -1, 1);
             for (int i = 0; i < res; i++){
                 for (int j = 0; j < res; j++){
+    #ifndef STARRY_AUTODIFF
                     I(j, i) = map.evaluate(x(i), x(j));
+    #else
+                    I(j, i) = map.evaluate(MapType(x(i)), MapType(x(j))).value();
+    #endif
                 }
             }
             show(I, "cmap"_a=cmap, "res"_a=res);
@@ -1436,9 +1715,5 @@ void add_starry_grad(py::module &m) {
                 cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
                 res (int): The resolution of the map in pixels on a side. Default 300.
         )pbdoc", "cmap"_a="plasma", "res"_a=300);
-#else
-        // TODO
-        py::class_<maps::LimbDarkenedMap<MapType>>(m, "LimbDarkenedMap", R"pbdoc(Not yet implemented.)pbdoc");
-#endif
 
 }
