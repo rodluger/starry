@@ -380,8 +380,10 @@ namespace orbital {
         } else {
             if (is_star)
                 totalflux = norm * ldmap.flux();
-            else
-                totalflux = norm * L * map.flux(axis, theta(time));
+            else {
+                T theta_time(theta(time));
+                totalflux = norm * L * map.flux(axis, theta_time);
+            }
         }
         flux(t) = totalflux;
 

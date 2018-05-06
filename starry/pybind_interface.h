@@ -67,13 +67,13 @@ Apologies to sticklers for the indented #define's.
 
 #else
 
-    #define STARRY_NGRAD                    7
+    #define STARRY_NGRAD                    21
     #define STARRY_NGRAD_MAP_EVALUATE       6
     #define STARRY_NGRAD_MAP_FLUX           7
     #define STARRY_NGRAD_LDMAP_EVALUATE     2
     #define STARRY_NGRAD_LDMAP_FLUX         3
     #undef MapType
-    #define MapType                     Eigen::AutoDiffScalar<Eigen::Matrix<double, STARRY_NGRAD, 1>>
+    #define MapType                         Eigen::AutoDiffScalar<Eigen::Matrix<double, STARRY_NGRAD, 1>> // Eigen::AutoDiffScalar<Eigen::VectorXd>
 
 #endif
 
@@ -803,15 +803,28 @@ void add_starry_grad(py::module &m) {
                 Eigen::MatrixXd result(theta_v.size(), STARRY_NGRAD_MAP_FLUX + 1);
 
                 // Declare our gradient types
-                MapType axis_x(axis(0), STARRY_NGRAD, 0);
-                MapType axis_y(axis(1), STARRY_NGRAD, 1);
-                MapType axis_z(axis(2), STARRY_NGRAD, 2);
+                // TODO: This is how we should be defining active vectors!
+                UnitVector<MapType> axis_g;
+                axis_g(0).value() = axis(0);
+                axis_g(0).derivatives() = Eigen::VectorXd::Unit(STARRY_NGRAD, 0);
+                axis_g(1).value() = axis(1);
+                axis_g(1).derivatives() = Eigen::VectorXd::Unit(STARRY_NGRAD, 1);
+                axis_g(2).value() = axis(2);
+                axis_g(2).derivatives() = Eigen::VectorXd::Unit(STARRY_NGRAD, 2);
                 MapType theta_g(0., STARRY_NGRAD, 3);
                 MapType xo_g(0., STARRY_NGRAD, 4);
                 MapType yo_g(0., STARRY_NGRAD, 5);
                 MapType ro_g(0., STARRY_NGRAD, 6);
-                UnitVector<MapType> axis_g({axis_x, axis_y, axis_z});
                 MapType tmp;
+
+                /*
+                TODO:
+                I think this is how I would go about requesting derivs w/ respect
+                to the map coeffs:
+
+                    map.y(n).derivatives() = Eigen::VectorXd::Unit(STARRY_NGRAD, derNumber);
+
+                */
 
                 // Compute the flux at each cadence
                 for (int i = 0; i < theta_v.size(); i++) {
@@ -1131,9 +1144,11 @@ void add_starry_grad(py::module &m) {
             UnitVector<MapType> xhat(maps::xhat);
             UnitVector<MapType> yhat(maps::yhat);
             UnitVector<MapType> zhat(maps::zhat);
-            map.rotate(xhat, MapType(M_PI / 2.));
-            map.rotate(zhat, MapType(M_PI));
-            map.rotate(yhat, MapType(M_PI / 2.));
+            MapType Pi(M_PI);
+            MapType PiOver2(M_PI / 2.);
+            map.rotate(xhat, PiOver2);
+            map.rotate(zhat, Pi);
+            map.rotate(yhat, PiOver2);
         },
         R"pbdoc(
             Load an image from file.
@@ -1167,9 +1182,11 @@ void add_starry_grad(py::module &m) {
             UnitVector<MapType> xhat(maps::xhat);
             UnitVector<MapType> yhat(maps::yhat);
             UnitVector<MapType> zhat(maps::zhat);
-            map.rotate(xhat, MapType(M_PI / 2.));
-            map.rotate(zhat, MapType(M_PI));
-            map.rotate(yhat, MapType(M_PI / 2.));
+            MapType Pi(M_PI);
+            MapType PiOver2(M_PI / 2.);
+            map.rotate(xhat, PiOver2);
+            map.rotate(zhat, Pi);
+            map.rotate(yhat, PiOver2);
         },
         R"pbdoc(
             Load a healpix image array.
@@ -1189,12 +1206,18 @@ void add_starry_grad(py::module &m) {
             Vector<double> x;
             UnitVector<MapType> yhat(maps::yhat);
             x = Vector<double>::LinSpaced(res, -1, 1);
+            MapType Zero = 0.;
+    #ifdef STARRY_AUTODIFF
+            MapType tmp1, tmp2;
+    #endif
             for (int i = 0; i < res; i++){
                 for (int j = 0; j < res; j++){
     #ifndef STARRY_AUTODIFF
-                    I(j, i) = map.evaluate(yhat, 0, x(i), x(j));
+                    I(j, i) = map.evaluate(yhat, Zero, x(i), x(j));
     #else
-                    I(j, i) = map.evaluate(yhat, MapType(0), MapType(x(i)), MapType(x(j))).value();
+                    tmp1.value() = x(i);
+                    tmp2.value() = x(j);
+                    I(j, i) = map.evaluate(yhat, Zero, tmp1, tmp2).value();
     #endif
                 }
             }
@@ -1216,6 +1239,9 @@ void add_starry_grad(py::module &m) {
             x = Vector<double>::LinSpaced(res, -1, 1);
             theta = Vector<double>::LinSpaced(frames, 0, 2 * M_PI);
             UnitVector<MapType> MapType_axis(axis);
+    #ifdef STARRY_AUTODIFF
+            MapType tmp1, tmp2, tmp3;
+    #endif
             for (int t = 0; t < frames; t++){
                 I.push_back(Matrix<double>::Zero(res, res));
                 for (int i = 0; i < res; i++){
@@ -1223,7 +1249,10 @@ void add_starry_grad(py::module &m) {
     #ifndef STARRY_AUTODIFF
                         I[t](j, i) = map.evaluate(axis, theta(t), x(i), x(j));
     #else
-                        I[t](j, i) = map.evaluate(MapType_axis, MapType(theta(t)), MapType(x(i)), MapType(x(j))).value();
+                        tmp1.value() = theta(t);
+                        tmp2.value() = x(i);
+                        tmp3.value() = x(j);
+                        I[t](j, i) = map.evaluate(MapType_axis, tmp1, tmp2, tmp3).value();
     #endif
                     }
                 }
@@ -1327,6 +1356,7 @@ void add_starry_grad(py::module &m) {
                     result(i, 0) = tmp.value();
                     result.block<1, STARRY_NGRAD_LDMAP_EVALUATE>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_LDMAP_EVALUATE>();
                 }
+
                 return result;
             },
     #endif
@@ -1488,6 +1518,7 @@ void add_starry_grad(py::module &m) {
                     result(i, 0) = tmp.value();
                     result.block<1, STARRY_NGRAD_LDMAP_FLUX>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_LDMAP_FLUX>();
                 }
+
                 return result;
             },
     #endif

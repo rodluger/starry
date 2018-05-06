@@ -547,7 +547,7 @@ namespace solver {
 
     // Compute the *s^T* occultation solution vector
     template <typename T>
-    void computesT(Greens<T>& G, T& b, T& r, Vector<T>& y) {
+    void computesT(Greens<T>& G, const T& b, const T& r, Vector<T>& y) {
 
         // Check for likely instability
         if ((G.taylor) && (r >= 1) && (G.lmax > STARRY_LMAX_LARGE_OCC))

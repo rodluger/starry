@@ -78,7 +78,7 @@ namespace maps {
             Vector<T> ARRy;
 
             // Private methods
-            void apply_rotation(UnitVector<T>& axis, T costheta, T sintheta,
+            void apply_rotation(UnitVector<T>& axis, const T& costheta, const T& sintheta,
                                 Vector<T>& yin, Vector<T>& yout);
 
         public:
@@ -126,31 +126,31 @@ namespace maps {
             }
 
             // Public methods
-            T evaluate(UnitVector<T>& axis=yhat, T theta=0, T x0=0, T y0=0);
-            void rotate(UnitVector<T>& axis, T theta, Vector<T>& yin,
+            T evaluate(UnitVector<T>& axis=yhat, const T& theta=0, const T& x0=0, const T& y0=0);
+            void rotate(UnitVector<T>& axis, const T& theta, Vector<T>& yin,
                         Vector<T>& yout);
-            void rotate(UnitVector<T>& axis, T costheta, T sintheta,
+            void rotate(UnitVector<T>& axis, const T& costheta, const T& sintheta,
                         Vector<T>& yin, Vector<T>& yout);
-            void rotate(UnitVector<T>& axis, T theta);
-            void rotate(UnitVector<T>& axis, T costheta, T sintheta);
+            void rotate(UnitVector<T>& axis, const T& theta);
+            void rotate(UnitVector<T>& axis, const T& costheta, const T& sintheta);
             void update(bool force=false);
             void random(double beta=0);
             void set_coeff(int l, int m, T coeff);
             T get_coeff(int l, int m);
             void reset();
-            T flux_numerical(UnitVector<T>& axis=yhat, T theta=0,
-                             T xo=0, T yo=0, T ro=0, double tol=1e-4);
-            T flux_mp(UnitVector<T>& axis=yhat, T theta=0,
-                      T xo=0, T yo=0, T ro=0);
-            T flux(UnitVector<T>& axis=yhat, T theta=0,
-                   T xo=0, T yo=0, T ro=0);
+            T flux_numerical(UnitVector<T>& axis=yhat, const T& theta=0,
+                             const T& xo=0, const T& yo=0, const T& ro=0, double tol=1e-4);
+            T flux_mp(UnitVector<T>& axis=yhat, const T& theta=0,
+                      const T& xo=0, const T& yo=0, const T& ro=0);
+            T flux(UnitVector<T>& axis=yhat, const T& theta=0,
+                   const T& xo=0, const T& yo=0, const T& ro=0);
             std::string repr();
 
     };
 
     // Rotate a map `yin` and store the result in `yout`
     template <class T>
-    void Map<T>::apply_rotation(UnitVector<T>& axis, T costheta, T sintheta,
+    void Map<T>::apply_rotation(UnitVector<T>& axis, const T& costheta, const T& sintheta,
                                 Vector<T>& yin, Vector<T>& yout) {
 
         // Compute the rotation matrix R
@@ -184,7 +184,7 @@ namespace maps {
 
     // Evaluate our map at a given (x0, y0) coordinate
     template <class T>
-    T Map<T>::evaluate(UnitVector<T>& axis, T theta, T x0, T y0) {
+    T Map<T>::evaluate(UnitVector<T>& axis, const T& theta, const T& x0, const T& y0) {
 
         // Update the maps if necessary
         update();
@@ -259,35 +259,39 @@ namespace maps {
 
     // Shortcut to rotate the base map in-place given `theta`
     template <class T>
-    void Map<T>::rotate(UnitVector<T>& axis, T theta) {
-        apply_rotation(axis, cos(theta), sin(theta), y, y);
+    void Map<T>::rotate(UnitVector<T>& axis, const T& theta) {
+        T costheta = cos(theta);
+        T sintheta = sin(theta);
+        apply_rotation(axis, costheta, sintheta, y, y);
         needs_update = true;
     }
 
     // Shortcut to rotate the base map in-place given `costheta` and `sintheta`
     template <class T>
-    void Map<T>::rotate(UnitVector<T>& axis, T costheta, T sintheta) {
+    void Map<T>::rotate(UnitVector<T>& axis, const T& costheta, const T& sintheta) {
         apply_rotation(axis, costheta, sintheta, y, y);
         needs_update = true;
     }
 
     // Shortcut to rotate an arbitrary map given `theta`
     template <class T>
-    void Map<T>::rotate(UnitVector<T>& axis, T theta,
+    void Map<T>::rotate(UnitVector<T>& axis, const T& theta,
                         Vector<T>& yin, Vector<T>& yout) {
-        apply_rotation(axis, cos(theta), sin(theta), yin, yout);
+        T costheta = cos(theta);
+        T sintheta = sin(theta);
+        apply_rotation(axis, costheta, sintheta, yin, yout);
     }
 
     // Shortcut to rotate an arbitrary map given `costheta` and `sintheta`
     template <class T>
-    void Map<T>::rotate(UnitVector<T>& axis, T costheta, T sintheta,
+    void Map<T>::rotate(UnitVector<T>& axis, const T& costheta, const T& sintheta,
                         Vector<T>& yin, Vector<T>& yout) {
         apply_rotation(axis, costheta, sintheta, yin, yout);
     }
 
     // Compute the total flux during or outside of an occultation numerically
     template <class T>
-    T Map<T>::flux_numerical(UnitVector<T>& axis, T theta, T xo, T yo, T ro, double tol) {
+    T Map<T>::flux_numerical(UnitVector<T>& axis, const T& theta, const T& xo, const T& yo, const T& ro, double tol) {
 
         // Impact parameter
         T b = sqrt(xo * xo + yo * yo);
@@ -314,7 +318,7 @@ namespace maps {
     // Compute the total flux during or outside of an occultation using
     // multi-precision. This is *much* slower (~20x) than using doubles.
     template <class T>
-    T Map<T>::flux_mp(UnitVector<T>& axis, T theta, T xo, T yo, T ro) {
+    T Map<T>::flux_mp(UnitVector<T>& axis, const T& theta, const T& xo, const T& yo, const T& ro) {
 
         // Impact parameter
         T b = sqrt(xo * xo + yo * yo);
@@ -343,7 +347,9 @@ namespace maps {
             // Align occultor with the +y axis if necessary
             if ((b > 0) && (xo != 0)) {
                 UnitVector<T> zaxis = UnitVector<T>(zhat);
-                rotate(zaxis, yo / b, xo / b, (*ptry), tmpvec);
+                T yo_b(yo / b);
+                T xo_b(xo / b);
+                rotate(zaxis, yo_b, xo_b, (*ptry), tmpvec);
                 ptry = &tmpvec;
             }
 
@@ -366,7 +372,7 @@ namespace maps {
 
     // Compute the total flux during or outside of an occultation
     template <class T>
-    T Map<T>::flux(UnitVector<T>& axis, T theta, T xo, T yo, T ro) {
+    T Map<T>::flux(UnitVector<T>& axis, const T& theta, const T& xo, const T& yo, const T& ro) {
 
         // Impact parameter
         T b = sqrt(xo * xo + yo * yo);
@@ -395,7 +401,9 @@ namespace maps {
             // Align occultor with the +y axis if necessary
             if ((b > 0) && (xo != 0)) {
                 UnitVector<T> zaxis = UnitVector<T>(zhat);
-                rotate(zaxis, yo / b, xo / b, (*ptry), tmpvec);
+                T yo_b(yo / b);
+                T xo_b(xo / b);
+                rotate(zaxis, yo_b, xo_b, (*ptry), tmpvec);
                 ptry = &tmpvec;
             }
 
