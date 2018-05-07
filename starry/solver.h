@@ -402,7 +402,7 @@ namespace solver {
 
             // Constructor
             Power(T val) {
-                vec.push_back(1.0);
+                vec.push_back(1.0 * val);
                 vec.push_back(val);
             }
 
@@ -424,7 +424,7 @@ namespace solver {
             // Resetter
             void reset(T val) {
                 vec.clear();
-                vec.push_back(1.0);
+                vec.push_back(1.0 * val);
                 vec.push_back(val);
             }
 
@@ -547,7 +547,10 @@ namespace solver {
 
     // Compute the *s^T* occultation solution vector
     template <typename T>
-    void computesT(Greens<T>& G, const T& b, const T& r, Vector<T>& y) {
+    void computesT(Greens<T>& G, const T& b, const T& r, const Vector<T>& y) {
+
+        // AutoDiff casting hack
+        T zero = 0 * r;
 
         // Check for likely instability
         if ((G.taylor) && (r >= 1) && (G.lmax > STARRY_LMAX_LARGE_OCC))
@@ -583,12 +586,12 @@ namespace solver {
                 G.lam = asin(G.sinlam());
             }
         } else {
-            G.sinphi.reset(1);
-            G.cosphi.reset(0);
-            G.sinlam.reset(1);
-            G.coslam.reset(0);
-            G.phi = 0.5 * G.pi;
-            G.lam = 0.5 * G.pi;
+            G.sinphi.reset(1 + zero);
+            G.cosphi.reset(zero);
+            G.sinlam.reset(1 + zero);
+            G.coslam.reset(zero);
+            G.phi = T(0.5 * G.pi) + zero;
+            G.lam = T(0.5 * G.pi) + zero;
         }
 
         // Initialize our storage classes
@@ -611,11 +614,11 @@ namespace solver {
                     // These terms are zero because they are proportional to
                     // odd powers of x, so we don't need to compute them!
                     else if ((G.taylor) && (is_even(G.mu - 1)) && (!is_even((G.mu - 1) / 2)))
-                        G.sT(n) = 0;
+                        G.sT(n) = zero;
                     else
                         G.sT(n) = Q(G) - P(G);
                 } else {
-                    G.sT(n) = 0;
+                    G.sT(n) = zero;
                 }
                 n++;
             }

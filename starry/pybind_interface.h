@@ -18,6 +18,7 @@ TODO: Make usage of & consistent in input arguments!
 #include <vector>
 #include "maps.h"
 #include "orbital.h"
+#include "docstrings.h"
 
 using namespace std;
 using namespace pybind11::literals;
@@ -52,6 +53,70 @@ Eigen::VectorXd vectorize(py::object& obj, int& size){
         throw invalid_argument("Incorrect type for one or more of the arguments.");
     }
 }
+
+void vectorize(py::object arg1, py::object arg2, py::object arg3, Eigen::VectorXd& arg1_v, Eigen::VectorXd& arg2_v, Eigen::VectorXd& arg3_v) {
+    int size = 0;
+    if (py::hasattr(arg1, "__len__")) {
+        // arg1 is a vector
+        arg1_v = vectorize(arg1, size);
+        arg2_v = vectorize(arg2, size);
+        arg3_v = vectorize(arg3, size);
+    } else if (py::hasattr(arg2, "__len__")) {
+        // arg2 is a vector
+        arg2_v = vectorize(arg2, size);
+        arg3_v = vectorize(arg3, size);
+        arg1_v = vectorize(arg1, size);
+    } else if (py::hasattr(arg3, "__len__")) {
+        // arg3 is a vector
+        arg3_v = vectorize(arg3, size);
+        arg1_v = vectorize(arg1, size);
+        arg2_v = vectorize(arg2, size);
+    } else {
+        // no arg is a vector
+        size = 1;
+        arg1_v = vectorize(arg1, size);
+        arg2_v = vectorize(arg2, size);
+        arg3_v = vectorize(arg3, size);
+    }
+}
+
+void vectorize(py::object arg1, py::object arg2, py::object arg3, py::object arg4, Eigen::VectorXd& arg1_v, Eigen::VectorXd& arg2_v, Eigen::VectorXd& arg3_v, Eigen::VectorXd& arg4_v) {
+    int size = 0;
+    if (py::hasattr(arg1, "__len__")) {
+        // arg1 is a vector
+        arg1_v = vectorize(arg1, size);
+        arg2_v = vectorize(arg2, size);
+        arg3_v = vectorize(arg3, size);
+        arg4_v = vectorize(arg4, size);
+    } else if (py::hasattr(arg2, "__len__")) {
+        // arg2 is a vector
+        arg2_v = vectorize(arg2, size);
+        arg3_v = vectorize(arg3, size);
+        arg4_v = vectorize(arg4, size);
+        arg1_v = vectorize(arg1, size);
+    } else if (py::hasattr(arg3, "__len__")) {
+        // arg3 is a vector
+        arg3_v = vectorize(arg3, size);
+        arg4_v = vectorize(arg4, size);
+        arg1_v = vectorize(arg1, size);
+        arg2_v = vectorize(arg2, size);
+    } else if (py::hasattr(arg4, "__len__")) {
+        // arg4 is a vector
+        arg4_v = vectorize(arg4, size);
+        arg1_v = vectorize(arg1, size);
+        arg2_v = vectorize(arg2, size);
+        arg3_v = vectorize(arg3, size);
+    } else {
+        // no arg is a vector
+        size = 1;
+        arg1_v = vectorize(arg1, size);
+        arg2_v = vectorize(arg2, size);
+        arg3_v = vectorize(arg3, size);
+        arg4_v = vectorize(arg4, size);
+    }
+}
+
+
 #endif
 
 
@@ -64,16 +129,19 @@ Apologies to sticklers for the indented #define's.
 
     #undef MapType
     #define MapType                         double
+    #undef docs
+    #define docs                            docstrings
 
 #else
 
-    #define STARRY_NGRAD                    21
     #define STARRY_NGRAD_MAP_EVALUATE       6
     #define STARRY_NGRAD_MAP_FLUX           7
     #define STARRY_NGRAD_LDMAP_EVALUATE     2
     #define STARRY_NGRAD_LDMAP_FLUX         3
     #undef MapType
-    #define MapType                         Eigen::AutoDiffScalar<Eigen::Matrix<double, STARRY_NGRAD, 1>> // Eigen::AutoDiffScalar<Eigen::VectorXd>
+    #define MapType                         Eigen::AutoDiffScalar<Eigen::VectorXd>
+    #undef docs
+    #define docs                            docstrings_grad
 
 #endif
 
@@ -200,6 +268,8 @@ void add_starry_grad(py::module &m) {
         .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
 
     )pbdoc";
+
+/** DEBUG --->
 
 #ifndef STARRY_AUTODIFF
     // Orbital system class
@@ -498,92 +568,63 @@ void add_starry_grad(py::module &m) {
         py::class_<orbital::Planet<MapType>>(m, "Planet", R"pbdoc(Not yet implemented.)pbdoc");
 #endif
 
+<--- DEBUG */
+
     // Surface map class
-    py::class_<maps::Map<MapType>>(m, "Map", R"pbdoc(
-            Instantiate a :py:mod:`starry` surface map.
-
-            Args:
-                lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
-
-            .. autoattribute:: optimize
-            .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
-            .. automethod:: rotate(axis=(0, 1, 0), theta=0)
-            .. automethod:: flux_numerical(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0, tol=1.e-4))pbdoc"
-    #ifndef STARRY_AUTODIFF
-            R"pbdoc(
-            .. automethod:: flux_mp(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0))pbdoc"
-    #endif
-            R"pbdoc(
-            .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
-            .. automethod:: get_coeff(l, m)
-            .. automethod:: set_coeff(l, m, coeff)
-            .. automethod:: reset()
-            .. autoattribute:: lmax
-            .. autoattribute:: y
-            .. autoattribute:: p
-            .. autoattribute:: g
-            .. autoattribute:: s)pbdoc"
-    #ifndef STARRY_AUTODIFF
-            R"pbdoc(
-            .. autoattribute:: s_mp)pbdoc"
-    #endif
-            R"pbdoc(
-            .. autoattribute:: r
-            .. automethod:: minimum()
-            .. automethod:: load_image(image)
-            .. automethod:: load_healpix(image)
-            .. automethod:: show(cmap='plasma', res=300)
-            .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
-
-        )pbdoc")
+    py::class_<maps::Map<MapType>>(m, "Map", docs::map::map)
 
         .def(py::init<int>(), "lmax"_a=2)
 
+        .def("__setitem__", [](maps::Map<MapType>& map, py::object index, double coeff) {
+            if (py::isinstance<py::tuple>(index)) {
+                // This is a (l, m) tuple
+                py::tuple lm = index;
+                int l = py::cast<int>(lm[0]);
+                int m = py::cast<int>(lm[1]);
+                map.set_coeff(l, m, MapType(coeff));
+            } else {
+                throw errors::BadIndex();
+            }
+        })
+
+        .def("__getitem__", [](maps::Map<MapType>& map, py::object index) -> py::object {
+            if (py::isinstance<py::tuple>(index)) {
+                py::tuple lm = index;
+                int l = py::cast<int>(lm[0]);
+                int m = py::cast<int>(lm[1]);
+#ifndef STARRY_AUTODIFF
+                return py::cast(map.get_coeff(l, m));
+#else
+                return py::cast(map.get_coeff(l, m).value());
+#endif
+            } else {
+                throw errors::BadIndex();
+            }
+        })
+
         .def_property("optimize", [](maps::Map<MapType> &map){return map.G.taylor;},
-                                  [](maps::Map<MapType> &map, bool taylor){map.G.taylor = taylor;},
-            R"pbdoc(
-                Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
-                computing occultation light curves. This is in general not something you should do! \
-                Default :py:obj:`True`.
-            )pbdoc")
+                                  [](maps::Map<MapType> &map, bool taylor){map.G.taylor = taylor;}, docs::map::optimize)
 
-        .def("evaluate",
-    #ifndef STARRY_AUTODIFF
-            py::vectorize(&maps::Map<MapType>::evaluate),
-    #else
-            [](maps::Map<MapType>& map, UnitVector<double>& axis, py::object theta, py::object x, py::object y){
+        .def("evaluate", [](maps::Map<MapType>& map, UnitVector<double>& axis, py::object theta, py::object x, py::object y) {
                 // Vectorize the inputs
-                int size = 0;
                 Eigen::VectorXd theta_v, x_v, y_v;
-                if (py::hasattr(theta, "__len__")) {
-                    theta_v = vectorize(theta, size);
-                    x_v = vectorize(x, size);
-                    y_v = vectorize(y, size);
-                } else if (py::hasattr(x, "__len__")) {
-                    x_v = vectorize(x, size);
-                    y_v = vectorize(y, size);
-                    theta_v = vectorize(theta, size);
-                } else if (py::hasattr(y, "__len__")) {
-                    y_v = vectorize(y, size);
-                    theta_v = vectorize(theta, size);
-                    x_v = vectorize(x, size);
-                } else {
-                    size = 1;
-                    theta_v = vectorize(theta, size);
-                    x_v = vectorize(x, size);
-                    y_v = vectorize(y, size);
-                }
-
+                vectorize(theta, x, y, theta_v, x_v, y_v);
+#ifndef STARRY_AUTODIFF
+                // Easy
+                Eigen::VectorXd result(theta_v.size());
+                for (int i = 0; i < theta_v.size(); i++)
+                    result(i) = map.evaluate(axis, theta_v(i), x_v(i), y_v(i));
+#else
                 // Declare the result matrix
                 Eigen::MatrixXd result(theta_v.size(), STARRY_NGRAD_MAP_EVALUATE + 1);
 
                 // Declare our gradient types
-                MapType axis_x(axis(0), STARRY_NGRAD, 0);
-                MapType axis_y(axis(1), STARRY_NGRAD, 1);
-                MapType axis_z(axis(2), STARRY_NGRAD, 2);
-                MapType theta_g(0., STARRY_NGRAD, 3);
-                MapType x_g(0., STARRY_NGRAD, 4);
-                MapType y_g(0., STARRY_NGRAD, 5);
+                MapType axis_x(axis(0), STARRY_NGRAD_MAP_EVALUATE, 0);
+                MapType axis_y(axis(1), STARRY_NGRAD_MAP_EVALUATE, 1);
+                MapType axis_z(axis(2), STARRY_NGRAD_MAP_EVALUATE, 2);
+                MapType theta_g(0., STARRY_NGRAD_MAP_EVALUATE, 3);
+                MapType x_g(0., STARRY_NGRAD_MAP_EVALUATE, 4);
+                MapType y_g(0., STARRY_NGRAD_MAP_EVALUATE, 5);
                 UnitVector<MapType> axis_g({axis_x, axis_y, axis_z});
                 MapType tmp;
 
@@ -596,24 +637,62 @@ void add_starry_grad(py::module &m) {
                     result(i, 0) = tmp.value();
                     result.block<1, STARRY_NGRAD_MAP_EVALUATE>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_MAP_EVALUATE>();
                 }
+#endif
                 return result;
-            },
-    #endif
-            R"pbdoc(
-                Return the specific intensity at a point (`x`, `y`) on the map.
+            }, docs::map::evaluate, "axis"_a=maps::yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
 
-                Users may optionally provide a rotation state. Note that this does
-                not rotate the base map.
+        .def("flux", [](maps::Map<MapType>& map, UnitVector<double>& axis, py::object theta, py::object xo, py::object yo, py::object ro) {
+                // Vectorize the inputs
+                Eigen::VectorXd theta_v, xo_v, yo_v, ro_v;
+                vectorize(theta, xo, yo, ro, theta_v, xo_v, yo_v, ro_v);
+#ifndef STARRY_AUTODIFF
+                // Easy
+                Eigen::VectorXd result(theta_v.size());
+                for (int i = 0; i < theta_v.size(); i++)
+                    result(i) = map.flux(axis, theta_v(i), xo_v(i), yo_v(i), ro_v(i));
+#else
+                // Declare the result matrix
+                Eigen::MatrixXd result(theta_v.size(), STARRY_NGRAD_MAP_FLUX + 1);
 
-                Args:
-                    axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
-                    theta (float or ndarray): Angle of rotation in radians. Default 0.
-                    x (float or ndarray): Position scalar, vector, or matrix.
-                    y (float or ndarray): Position scalar, vector, or matrix.
+                // Declare our gradient types
+                MapType axis_x(axis(0), STARRY_NGRAD_MAP_FLUX, 0);
+                MapType axis_y(axis(1), STARRY_NGRAD_MAP_FLUX, 1);
+                MapType axis_z(axis(2), STARRY_NGRAD_MAP_FLUX, 2);
+                MapType theta_g(0., STARRY_NGRAD_MAP_FLUX, 3);
+                MapType xo_g(0., STARRY_NGRAD_MAP_FLUX, 4);
+                MapType yo_g(0., STARRY_NGRAD_MAP_FLUX, 5);
+                MapType ro_g(0., STARRY_NGRAD_MAP_FLUX, 6);
+                UnitVector<MapType> axis_g({axis_x, axis_y, axis_z});
+                MapType tmp;
 
-                Returns:
-                    The specific intensity at (`x`, `y`).
-            )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
+                // Compute the flux at each cadence
+                for (int i = 0; i < theta_v.size(); i++) {
+                    theta_g.value() = theta_v(i);
+                    xo_g.value() = xo_v(i);
+                    yo_g.value() = yo_v(i);
+                    ro_g.value() = ro_v(i);
+                    tmp = map.flux(axis_g, theta_g, xo_g, yo_g, ro_g);
+
+                    // debug
+                    cout << tmp.value() << endl;
+                    cout << tmp.derivatives().transpose() << endl;
+                    //if (tmp.derivatives().size() == 0)
+                    //    tmp.derivatives() = Eigen::VectorXd::Zero(STARRY_NGRAD_MAP_FLUX);
+
+                    result(i, 0) = tmp.value();
+                    result.block<1, STARRY_NGRAD_MAP_FLUX>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_MAP_FLUX>();
+                }
+#endif
+                return result;
+            }, docs::map::flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0);
+
+/** DEBUG -->
+
+//TODO:
+//I think this is how I would go about requesting derivs w/ respect
+//to the map coeffs:
+//
+//    map.y(n).derivatives() = Eigen::VectorXd::Unit(STARRY_NGRAD, derNumber);
 
         .def("rotate",
     #ifndef STARRY_AUTODIFF
@@ -763,99 +842,6 @@ void add_starry_grad(py::module &m) {
             )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
     #endif
 
-        .def("flux",
-    #ifndef STARRY_AUTODIFF
-            py::vectorize(&maps::Map<MapType>::flux),
-    #else
-            [](maps::Map<MapType> &map, UnitVector<double> axis, py::object theta, py::object xo, py::object yo, py::object ro){
-                // Vectorize the inputs
-                int size = 0;
-                Eigen::VectorXd theta_v, xo_v, yo_v, ro_v;
-                if (py::hasattr(theta, "__len__")) {
-                    theta_v = vectorize(theta, size);
-                    xo_v = vectorize(xo, size);
-                    yo_v = vectorize(yo, size);
-                    ro_v = vectorize(ro, size);
-                } else if (py::hasattr(xo, "__len__")) {
-                    xo_v = vectorize(xo, size);
-                    yo_v = vectorize(yo, size);
-                    ro_v = vectorize(ro, size);
-                    theta_v = vectorize(theta, size);
-                } else if (py::hasattr(yo, "__len__")) {
-                    yo_v = vectorize(yo, size);
-                    ro_v = vectorize(ro, size);
-                    theta_v = vectorize(theta, size);
-                    xo_v = vectorize(xo, size);
-                } else if (py::hasattr(ro, "__len__")) {
-                    ro_v = vectorize(ro, size);
-                    theta_v = vectorize(theta, size);
-                    xo_v = vectorize(xo, size);
-                    yo_v = vectorize(yo, size);
-                } else {
-                    size = 1;
-                    theta_v = vectorize(theta, size);
-                    xo_v = vectorize(xo, size);
-                    yo_v = vectorize(yo, size);
-                    ro_v = vectorize(ro, size);
-                }
-
-                // Declare the result matrix
-                Eigen::MatrixXd result(theta_v.size(), STARRY_NGRAD_MAP_FLUX + 1);
-
-                // Declare our gradient types
-                // TODO: This is how we should be defining active vectors!
-                UnitVector<MapType> axis_g;
-                axis_g(0).value() = axis(0);
-                axis_g(0).derivatives() = Eigen::VectorXd::Unit(STARRY_NGRAD, 0);
-                axis_g(1).value() = axis(1);
-                axis_g(1).derivatives() = Eigen::VectorXd::Unit(STARRY_NGRAD, 1);
-                axis_g(2).value() = axis(2);
-                axis_g(2).derivatives() = Eigen::VectorXd::Unit(STARRY_NGRAD, 2);
-                MapType theta_g(0., STARRY_NGRAD, 3);
-                MapType xo_g(0., STARRY_NGRAD, 4);
-                MapType yo_g(0., STARRY_NGRAD, 5);
-                MapType ro_g(0., STARRY_NGRAD, 6);
-                MapType tmp;
-
-                /*
-                TODO:
-                I think this is how I would go about requesting derivs w/ respect
-                to the map coeffs:
-
-                    map.y(n).derivatives() = Eigen::VectorXd::Unit(STARRY_NGRAD, derNumber);
-
-                */
-
-                // Compute the flux at each cadence
-                for (int i = 0; i < theta_v.size(); i++) {
-                    theta_g.value() = theta_v(i);
-                    xo_g.value() = xo_v(i);
-                    yo_g.value() = yo_v(i);
-                    ro_g.value() = ro_v(i);
-                    tmp = map.flux(axis_g, theta_g, xo_g, yo_g, ro_g);
-                    result(i, 0) = tmp.value();
-                    result.block<1, STARRY_NGRAD_MAP_FLUX>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_MAP_FLUX>();
-                }
-                return result;
-            },
-    #endif
-            R"pbdoc(
-                Return the total flux received by the observer.
-
-                Computes the total flux received by the observer from the
-                map during or outside of an occultation.
-
-                Args:
-                    axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
-                    theta (float or ndarray): Angle of rotation. Default 0.
-                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
-                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
-                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
-
-                Returns:
-                    The flux received by the observer (a scalar or a vector).
-            )pbdoc", "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
-
         .def("get_coeff",
     #ifndef STARRY_AUTODIFF
             &maps::Map<MapType>::get_coeff,
@@ -992,34 +978,6 @@ void add_starry_grad(py::module &m) {
             )pbdoc")
     #endif
 
-        .def("__setitem__", [](maps::Map<MapType>& map, py::object index, double coeff) {
-            if (py::isinstance<py::tuple>(index)) {
-                // This is a (l, m) tuple
-                py::tuple lm = index;
-                int l = py::cast<int>(lm[0]);
-                int m = py::cast<int>(lm[1]);
-                map.set_coeff(l, m, MapType(coeff));
-            } else {
-                throw errors::BadIndex();
-            }
-        })
-
-        .def("__getitem__", [](maps::Map<MapType>& map, py::object index) -> py::object {
-            if (py::isinstance<py::tuple>(index)) {
-                // This is a (l, m) tuple
-                py::tuple lm = index;
-                int l = py::cast<int>(lm[0]);
-                int m = py::cast<int>(lm[1]);
-    #ifndef STARRY_AUTODIFF
-                return py::cast(map.get_coeff(l, m));
-    #else
-                return py::cast(map.get_coeff(l, m).value());
-    #endif
-            } else {
-                throw errors::BadIndex();
-            }
-        })
-
         .def("__repr__", [](maps::Map<MapType> &map) -> string {
     #ifndef STARRY_AUTODIFF
             return map.repr();
@@ -1098,34 +1056,6 @@ void add_starry_grad(py::module &m) {
                       **slow** and should probably not be used repeatedly when fitting \
                       a map to data!
         )pbdoc")
-
-        /*
-        // TODO: I need to give this function a little more thought.
-        .def("random", [] (maps::Map<MapType>& map, double beta=0, bool nonnegative=true) {
-            py::object minimize = py::module::import("starry_maps").attr("minimize");
-            double minval, c00;
-
-            // Generate random coefficients
-            map.random(beta);
-
-            // Ensure non-negative
-            if (nonnegative) {
-                map.update();
-                c00 = map.get_coeff(0, 0);
-                minval = minimize(map.p).cast<double>();
-                if (minval < 0)
-                    map.set_coeff(0, 0, c00 - sqrt(4 * M_PI) * minval);
-            }
-        },
-        R"pbdoc(
-            Generate a random map with a power spectrum given by the power law index `beta`.
-
-            Args:
-                beta (float): Power law index. The sum of the squares of all the coefficients at \
-                              degree `l` is proportional to `l ** beta`. Default 0 (white spectrum).
-                nonnegative (bool): Force map to be non-negative everywhere? Default :py:obj:`True`.
-            )pbdoc", "beta"_a=0., "nonnegative"_a=true)
-        */
 
         .def("load_image", [](maps::Map<MapType> &map, string& image) {
             py::object load_map = py::module::import("starry_maps").attr("load_map");
@@ -1746,5 +1676,7 @@ void add_starry_grad(py::module &m) {
                 cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
                 res (int): The resolution of the map in pixels on a side. Default 300.
         )pbdoc", "cmap"_a="plasma", "res"_a=300);
+
+<-- DEBUG */
 
 }

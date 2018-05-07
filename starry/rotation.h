@@ -196,7 +196,7 @@ namespace rotation {
         // The remaining matrices are calculated using symmetry and
         // and recurrence relations
         if (abs(s2) < tol)
-            tgbet2 = 0.;
+            tgbet2 = s2; // = 0
         else
             tgbet2 = (1. - c2) / s2;
 
@@ -213,7 +213,7 @@ namespace rotation {
 
     */
     template <typename T>
-    void computeR(int lmax, Eigen::Matrix<T, 3, 1>& axis, const T& costheta, const T& sintheta, Matrix<T>* D, Matrix<T>* R, double tol=1e-15) {
+    void computeR(int lmax, const Eigen::Matrix<T, 3, 1>& axis, const T& costheta, const T& sintheta, Matrix<T>* D, Matrix<T>* R, double tol=1e-15) {
 
         // Trivial case
         if (lmax == 0) {
@@ -234,19 +234,19 @@ namespace rotation {
         T cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
         T norm1, norm2;
         if ((RA22 < -1 + tol) && (RA22 > -1 - tol)) {
-            cosbeta = -1;
-            sinbeta = 0;
+            cosbeta = RA22; // = -1
+            sinbeta = 1 + RA22; // = 0
             cosgamma = RA11;
             singamma = RA01;
-            cosalpha = 1;
-            sinalpha = 0;
+            cosalpha = -RA22; // = 1
+            sinalpha = 1 + RA22; // = 0
         } else if ((RA22 < 1 + tol) && (RA22 > 1 - tol)) {
-            cosbeta = 1;
-            sinbeta = 0;
+            cosbeta = RA22; // = 1
+            sinbeta = 1 - RA22; // = 0
             cosgamma = RA11;
             singamma = -RA01;
-            cosalpha = 1;
-            sinalpha = 0;
+            cosalpha = RA22; // = 1
+            sinalpha = 1 - RA22; // = 0
         } else {
             cosbeta = RA22;
             sinbeta = sqrt(1 - cosbeta * cosbeta);
