@@ -4,7 +4,7 @@
 // MAGIC: Include our starry interface twice,
 // once with no derivs and once with derivs.
 #undef STARRY_AUTODIFF
-//#include "pybind_interface.h"
+#include "pybind_interface.h"
 #define STARRY_AUTODIFF
 #include "pybind_interface.h"
 
@@ -20,7 +20,7 @@ PYBIND11_MODULE(starry, m) {
     options.disable_function_signatures();
 
     // starry
-    //add_starry(m);
+    add_starry(m);
 
     // starry.grad
     auto mgrad = m.def_submodule("grad");

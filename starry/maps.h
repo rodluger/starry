@@ -15,19 +15,11 @@ Defines the surface map class.
 #include "solver.h"
 #include "numeric.h"
 #include "errors.h"
-
-// Shorthand
-template <typename T>
-using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-template <typename T>
-using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-template <typename T>
-using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
-template <typename T>
-using UnitVector = Eigen::Matrix<T, 3, 1>;
-using std::abs;
+#include "utils.h"
 
 namespace maps {
+
+    using std::abs;
 
     // Some useful unit vectors
     static const UnitVector<double> xhat({1, 0, 0});
@@ -91,7 +83,10 @@ namespace maps {
             // Map order
             int N;
             int lmax;
+
+            // Misc flags
             bool Y00_is_unity;
+            bool map_gradients;
 
             // Rotation matrices
             rotation::Wigner<T> R;
@@ -122,6 +117,7 @@ namespace maps {
                 tmpu3 = 0;
                 basis.resize(N, 1);
                 Y00_is_unity = false;
+                map_gradients = false;
                 update(true);
             }
 
@@ -209,7 +205,7 @@ namespace maps {
         tmpu3 = axis(2);
 
         // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) return NAN;
+        if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
 
         int l, m, mu, nu, n = 0;
         T z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
@@ -218,7 +214,7 @@ namespace maps {
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
                 if (abs((*ptrmap)(n)) < STARRY_MAP_TOLERANCE) {
-                    basis(n) = 0;
+                    basis(n) = 0 * x0;
                 } else {
                     mu = l - m;
                     nu = l + m;
@@ -471,27 +467,27 @@ namespace maps {
         os << "<STARRY Map: ";
         for (int l = 0; l < lmax + 1; l++) {
             for (int m = -l; m < l + 1; m++) {
-                if (abs(y(n)) > STARRY_MAP_TOLERANCE){
+                if (abs(get_value(y(n))) > STARRY_MAP_TOLERANCE){
                     // Separator
-                    if ((nterms > 0) && (y(n) > 0)) {
+                    if ((nterms > 0) && (get_value(y(n)) > 0)) {
                         os << " + ";
-                    } else if ((nterms > 0) && (y(n) < 0)){
+                    } else if ((nterms > 0) && (get_value(y(n)) < 0)){
                         os << " - ";
-                    } else if ((nterms == 0) && (y(n) < 0)){
+                    } else if ((nterms == 0) && (get_value(y(n)) < 0)){
                         os << "-";
                     }
                     // Term
-                    if ((y(n) == 1) || (y(n) == -1)) {
+                    if ((get_value(y(n)) == 1) || (get_value(y(n)) == -1)) {
                         sprintf(buf, "Y_{%d,%d}", l, m);
                         os << buf;
-                    } else if (fmod(abs(y(n)), 1.0) < STARRY_MAP_TOLERANCE) {
-                        sprintf(buf, "%d Y_{%d,%d}", (int)abs(y(n)), l, m);
+                    } else if (fmod(abs(get_value(y(n))), 1.0) < STARRY_MAP_TOLERANCE) {
+                        sprintf(buf, "%d Y_{%d,%d}", (int)abs(get_value(y(n))), l, m);
                         os << buf;
-                    } else if (fmod(abs(y(n)), 1.0) >= 0.01) {
-                        sprintf(buf, "%.2f Y_{%d,%d}", abs(y(n)), l, m);
+                    } else if (fmod(abs(get_value(y(n))), 1.0) >= 0.01) {
+                        sprintf(buf, "%.2f Y_{%d,%d}", abs(get_value(y(n))), l, m);
                         os << buf;
                     } else {
-                        sprintf(buf, "%.2e Y_{%d,%d}", abs(y(n)), l, m);
+                        sprintf(buf, "%.2e Y_{%d,%d}", abs(get_value(y(n))), l, m);
                         os << buf;
                     }
                     nterms++;

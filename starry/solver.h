@@ -402,7 +402,7 @@ namespace solver {
 
             // Constructor
             Power(T val) {
-                vec.push_back(1.0 * val);
+                vec.push_back(1.0 + (val * 0));
                 vec.push_back(val);
             }
 
@@ -424,7 +424,7 @@ namespace solver {
             // Resetter
             void reset(T val) {
                 vec.clear();
-                vec.push_back(1.0 * val);
+                vec.push_back(1.0 + (val * 0));
                 vec.push_back(val);
             }
 
@@ -501,11 +501,11 @@ namespace solver {
                    M(*this, computeM) {
 
                 // Initialize the solution vector
-                sT.resize((lmax + 1) * (lmax + 1));
+                sT = VectorT<T>::Zero((lmax + 1) * (lmax + 1));
 
                 // Compute pi at the actual precision of the T type
                 pi = T(BIGPI);
-                pi_over_2 = 0.5 * pi;
+                pi_over_2 = T(0.5 * pi);
 
             }
 
