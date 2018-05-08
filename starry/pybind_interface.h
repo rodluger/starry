@@ -20,6 +20,7 @@ have to duplicate any code.
 #include "docstrings.h"
 #include "vect.h"
 #include "utils.h"
+#include "errors.h"
 
 using namespace std;
 using namespace pybind11::literals;
@@ -254,7 +255,6 @@ void ADD_MODULE(py::module &m) {
         .def("__repr__", [](maps::Map<MAPTYPE> &map) -> string {return map.repr();});
 
 
-
     // Limb-darkened surface map class
     py::class_<maps::LimbDarkenedMap<MAPTYPE>>(m, "LimbDarkenedMap", DOCS::LimbDarkenedMap::LimbDarkenedMap)
 
@@ -365,45 +365,23 @@ void ADD_MODULE(py::module &m) {
         .def("__repr__", [](maps::LimbDarkenedMap<MAPTYPE> &map) -> string {return map.repr();});
 
 
-/** DEBUG --->
-
-#ifndef STARRY_AUTODIFF
     // Orbital system class
-    py::class_<orbital::System<double>>(m, "System", R"pbdoc(
-            Instantiate an orbital system.
+    py::class_<orbital::System<MAPTYPE>>(m, "System", DOCS::System::System)
 
-            Args:
-                bodies (list): List of bodies in the system, with the primary (usually the star) listed first.
-                kepler_tol (float): Kepler solver tolerance.
-                kepler_max_iter (int): Maximum number of iterations in the Kepler solver.
-
-            .. automethod:: compute(time)
-            .. autoattribute:: flux
-        )pbdoc")
-
-        .def(py::init<vector<orbital::Body<double>*>, double, int>(),
+        .def(py::init<vector<orbital::Body<MAPTYPE>*>, double, int>(),
             "bodies"_a, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100)
 
-        .def("compute", &orbital::System<double>::compute,
-            R"pbdoc(
-                Compute the system light curve analytically.
+        .def("compute", [](orbital::System<MAPTYPE> &system, Vector<double>& time){
+                system.compute((Vector<MAPTYPE>)time);
+            }, DOCS::System::compute, "time"_a)
 
-                Compute the full system light curve at the times
-                given by the :py:obj:`time <>` array and store the result
-                in :py:attr:`flux`. The light curve for each body in the
-                system is stored in the body's :py:attr:`flux` attribute.
+        // TODO: Return gradient as well?
+        .def_property_readonly("flux", [](orbital::System<MAPTYPE> &system){return get_value(system.flux);},
+            DOCS::System::flux);
 
-                Args:
-                    time (ndarray): Time array, measured in days.
-            )pbdoc", "time"_a)
-
-        .def_property_readonly("flux", [](orbital::System<double> &system){return system.flux;},
-            R"pbdoc(
-                The computed system light curve. Must run :py:meth:`compute` first.
-            )pbdoc");
 
      // Body class (not user-facing, just a base class)
-     py::class_<orbital::Body<double>> PyBody(m, "Body");
+     py::class_<orbital::Body<MAPTYPE>> PyBody(m, "Body");
 
      PyBody.def(py::init<int, const double&, const double&,
                          Eigen::Matrix<double, 3, 1>&,
@@ -418,212 +396,120 @@ void ADD_MODULE(py::module &m) {
                          "inc"_a, "ecc"_a, "w"_a, "Omega"_a,
                          "lambda0"_a, "tref"_a, "is_star"_a)
 
-        .def_property_readonly("map", [](orbital::Body<double> &body){return &body.map;},
-            R"pbdoc(
-                The body's surface map.
-            )pbdoc")
+        // NOTE: & is necessary in the return statement so we pass a reference back to Python!
+        .def_property_readonly("map", [](orbital::Body<MAPTYPE> &body){return &body.map;}, DOCS::Body::map)
 
-        .def_property_readonly("flux", [](orbital::Body<double> &body){return &body.flux;},
-            R"pbdoc(
-                The body's computed light curve.
-            )pbdoc")
+        // TODO: Return gradient as well?
+        .def_property_readonly("flux", [](orbital::Body<MAPTYPE> &body){return get_value(body.flux);}, DOCS::Body::flux)
 
-        .def_property_readonly("x", [](orbital::Body<double> &body){return body.x * AU;},
-            R"pbdoc(
-                The `x` position of the body in AU.
-            )pbdoc")
+        // TODO: Return gradient as well?
+        .def_property_readonly("x", [](orbital::Body<MAPTYPE> &body){return get_value(body.x) * AU;}, DOCS::Body::x)
 
-        .def_property_readonly("y", [](orbital::Body<double> &body){return body.y * AU;},
-            R"pbdoc(
-                The `y` position of the body in AU.
-            )pbdoc")
+        // TODO: Return gradient as well?
+        .def_property_readonly("y", [](orbital::Body<MAPTYPE> &body){return get_value(body.y) * AU;}, DOCS::Body::y)
 
-        .def_property_readonly("z", [](orbital::Body<double> &body){return body.z * AU;},
-            R"pbdoc(
-                The `z` position of the body in AU.
-            )pbdoc")
+        // TODO: Return gradient as well?
+        .def_property_readonly("z", [](orbital::Body<MAPTYPE> &body){return get_value(body.z) * AU;}, DOCS::Body::z)
 
-        .def_property("r", [](orbital::Body<double> &body){return body.r;},
-                           [](orbital::Body<double> &body, double r){body.r = r;},
-            R"pbdoc(
-                Body radius in units of stellar radius.
-            )pbdoc")
+        .def_property("r", [](orbital::Body<MAPTYPE> &body){return get_value(body.r);},
+            [](orbital::Body<MAPTYPE> &body, double r){body.r = r;}, DOCS::Body::r)
 
-        .def_property("L", [](orbital::Body<double> &body){return body.L;},
-                           [](orbital::Body<double> &body, double L){body.L = L; body.reset();},
-            R"pbdoc(
-                Body luminosity in units of stellar luminosity.
-            )pbdoc")
+        .def_property("L", [](orbital::Body<MAPTYPE> &body){return get_value(body.L);},
+            [](orbital::Body<MAPTYPE> &body, double L){body.L = L; body.reset();}, DOCS::Body::L)
 
-        .def_property("axis", [](orbital::Body<double> &body){return body.axis;},
-                           [](orbital::Body<double> &body, UnitVector<double> axis){body.axis = axis;},
-            R"pbdoc(
-                *Normalized* unit vector specifying the body's axis of rotation.
-            )pbdoc")
+        .def_property("axis", [](orbital::Body<MAPTYPE> &body){return get_value((Vector<MAPTYPE>)body.axis);},
+            [](orbital::Body<MAPTYPE> &body, UnitVector<double> axis){body.axis = (Vector<MAPTYPE>)axis;}, DOCS::Body::axis)
 
-        .def_property("prot", [](orbital::Body<double> &body){return body.prot / DAY;},
-                              [](orbital::Body<double> &body, double prot){body.prot = prot * DAY; body.reset();},
-            R"pbdoc(
-                Rotation period in days.
-            )pbdoc")
+        .def_property("prot", [](orbital::Body<MAPTYPE> &body){return get_value(body.prot) / DAY;},
+            [](orbital::Body<MAPTYPE> &body, double prot){body.prot = prot * DAY; body.reset();}, DOCS::Body::prot)
 
-        .def_property("theta0", [](orbital::Body<double> &body){return body.theta0 / DEGREE;},
-                                [](orbital::Body<double> &body, double theta0){body.theta0 = theta0 * DEGREE;},
-            R"pbdoc(
-                Rotation phase at time :py:obj:`tref` in degrees.
-            )pbdoc")
+        .def_property("theta0", [](orbital::Body<MAPTYPE> &body){return get_value(body.theta0) / DEGREE;},
+            [](orbital::Body<MAPTYPE> &body, double theta0){body.theta0 = theta0 * DEGREE;}, DOCS::Body::theta0)
 
-        .def_property("a", [](orbital::Body<double> &body){return body.a;},
-                           [](orbital::Body<double> &body, double a){body.a = a;},
-            R"pbdoc(
-                Body semi-major axis in units of stellar radius.
-            )pbdoc")
+        .def_property("a", [](orbital::Body<MAPTYPE> &body){return get_value(body.a);},
+            [](orbital::Body<MAPTYPE> &body, double a){body.a = a;}, DOCS::Body::a)
 
-        .def_property("porb", [](orbital::Body<double> &body){return body.porb / DAY;},
-                              [](orbital::Body<double> &body, double porb){body.porb = porb * DAY; body.reset();},
-            R"pbdoc(
-                Orbital period in days.
-            )pbdoc")
+        .def_property("porb", [](orbital::Body<MAPTYPE> &body){return get_value(body.porb) / DAY;},
+            [](orbital::Body<MAPTYPE> &body, double porb){body.porb = porb * DAY; body.reset();}, DOCS::Body::porb)
 
-        .def_property("inc", [](orbital::Body<double> &body){return body.inc / DEGREE;},
-                             [](orbital::Body<double> &body, double inc){body.inc = inc * DEGREE; body.reset();},
-            R"pbdoc(
-                Orbital inclination in degrees.
-            )pbdoc")
+        .def_property("inc", [](orbital::Body<MAPTYPE> &body){return get_value(body.inc) / DEGREE;},
+            [](orbital::Body<MAPTYPE> &body, double inc){body.inc = inc * DEGREE; body.reset();}, DOCS::Body::inc)
 
-        .def_property("ecc", [](orbital::Body<double> &body){return body.ecc;},
-                             [](orbital::Body<double> &body, double ecc){body.ecc = ecc; body.reset();},
-            R"pbdoc(
-                Orbital eccentricity.
-            )pbdoc")
+        .def_property("ecc", [](orbital::Body<MAPTYPE> &body){return get_value(body.ecc);},
+            [](orbital::Body<MAPTYPE> &body, double ecc){body.ecc = ecc; body.reset();}, DOCS::Body::ecc)
 
-        .def_property("w", [](orbital::Body<double> &body){return body.w / DEGREE;},
-                           [](orbital::Body<double> &body, double w){body.w = w * DEGREE; body.reset();},
-            R"pbdoc(
-                Longitude of pericenter in degrees.
-            )pbdoc")
+        .def_property("w", [](orbital::Body<MAPTYPE> &body){return get_value(body.w) / DEGREE;},
+            [](orbital::Body<MAPTYPE> &body, double w){body.w = w * DEGREE; body.reset();}, DOCS::Body::w)
 
-        .def_property("Omega", [](orbital::Body<double> &body){return body.Omega / DEGREE;},
-                               [](orbital::Body<double> &body, double Omega){body.Omega = Omega * DEGREE; body.reset();},
-            R"pbdoc(
-                Longitude of ascending node in degrees.
-            )pbdoc")
+        .def_property("Omega", [](orbital::Body<MAPTYPE> &body){return get_value(body.Omega) / DEGREE;},
+            [](orbital::Body<MAPTYPE> &body, double Omega){body.Omega = Omega * DEGREE; body.reset();}, DOCS::Body::Omega)
 
-        .def_property("lambda0", [](orbital::Body<double> &body){return body.lambda0 / DEGREE;},
-                                 [](orbital::Body<double> &body, double lambda0){body.lambda0 = lambda0 * DEGREE; body.reset();},
-            R"pbdoc(
-                Mean longitude at time :py:obj:`tref` in degrees.
-            )pbdoc")
+        .def_property("lambda0", [](orbital::Body<MAPTYPE> &body){return get_value(body.lambda0) / DEGREE;},
+            [](orbital::Body<MAPTYPE> &body, double lambda0){body.lambda0 = lambda0 * DEGREE; body.reset();}, DOCS::Body::lambda0)
 
-        .def_property("tref", [](orbital::Body<double> &body){return body.tref / DAY;},
-                              [](orbital::Body<double> &body, double tref){body.tref = tref * DAY;},
-            R"pbdoc(
-                Reference time in days.
-            )pbdoc")
+        .def_property("tref", [](orbital::Body<MAPTYPE> &body){return get_value(body.tref) / DAY;},
+            [](orbital::Body<MAPTYPE> &body, double tref){body.tref = tref * DAY;}, DOCS::Body::tref)
 
-        .def("__repr__", [](orbital::Body<double> &body) -> string {return body.repr();});
-#else
-        // TODO
-        py::class_<orbital::System<MapType>>(m, "System", R"pbdoc(Not yet implemented.)pbdoc");
-#endif
+        .def("__repr__", [](orbital::Body<MAPTYPE> &body) -> string {return body.repr();});
 
-#ifndef STARRY_AUTODIFF
+
     // Star class
-    py::class_<orbital::Star<double>>(m, "Star", PyBody, R"pbdoc(
-            Instantiate a stellar :py:class:`Body` object.
-
-            The star's radius and luminosity are fixed at unity.
-
-            Args:
-                lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
-
-            .. autoattribute:: map
-            .. autoattribute:: flux
-        )pbdoc")
+    py::class_<orbital::Star<MAPTYPE>>(m, "Star", PyBody, DOCS::Star::Star)
 
         .def(py::init<int>(), "lmax"_a=2)
-        .def_property_readonly("map", [](orbital::Body<double> &body){return &body.ldmap;},
-            R"pbdoc(
-                The star's surface map, a :py:class:`LimbDarkenedMap` instance.
-            )pbdoc")
-        .def_property_readonly("r", [](orbital::Star<double> &star){return star.r;})
-        .def_property_readonly("L", [](orbital::Star<double> &star){return star.L;})
-        .def_property_readonly("axis", [](orbital::Star<double> &star){return star.axis;})
-        .def_property_readonly("prot", [](orbital::Star<double> &star){return star.prot;})
-        .def_property_readonly("theta0", [](orbital::Star<double> &star){return star.theta0;})
-        .def_property_readonly("a", [](orbital::Star<double> &star){return star.a;})
-        .def_property_readonly("porb", [](orbital::Star<double> &star){return star.porb;})
-        .def_property_readonly("inc", [](orbital::Star<double> &star){return star.inc;})
-        .def_property_readonly("ecc", [](orbital::Star<double> &star){return star.ecc;})
-        .def_property_readonly("w", [](orbital::Star<double> &star){return star.w;})
-        .def_property_readonly("Omega", [](orbital::Star<double> &star){return star.Omega;})
-        .def_property_readonly("lambda0", [](orbital::Star<double> &star){return star.lambda0;})
-        .def_property_readonly("tref", [](orbital::Star<double> &star){return star.tref;})
-        .def("__setitem__", [](orbital::Star<double> &body, py::object index, double coeff) {
-            if (py::isinstance<py::tuple>(index)) {
-                throw errors::BadIndex();
-            } else {
-                int l = py::cast<int>(index);
-                body.ldmap.set_coeff(l, coeff);
-            }
-        })
-        .def("__getitem__", [](orbital::Star<double> &body, py::object index) {
-            if (py::isinstance<py::tuple>(index)) {
-                throw errors::BadIndex();
-            } else {
-                int l = py::cast<int>(index);
-                return body.ldmap.get_coeff(l);
-            }
-        })
-        .def("__repr__", [](orbital::Star<double> &star) -> string {return star.repr();});
-#else
-        // TODO
-        py::class_<orbital::Star<MapType>>(m, "Star", R"pbdoc(Not yet implemented.)pbdoc");
-#endif
 
-#ifndef STARRY_AUTODIFF
+        // NOTE: & is necessary in the return statement so we pass a reference back to Python!
+        .def_property_readonly("map", [](orbital::Body<MAPTYPE> &body){return &body.ldmap;}, DOCS::Star::map)
+
+        .def_property_readonly("r", [](orbital::Star<MAPTYPE> &star){return 1.;}, DOCS::Star::r)
+
+        .def_property_readonly("L", [](orbital::Star<MAPTYPE> &star){return 1.;}, DOCS::Star::L)
+
+        .def_property_readonly("axis", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
+
+        .def_property_readonly("prot", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
+
+        .def_property_readonly("theta0", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
+
+        .def_property_readonly("a", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
+
+        .def_property_readonly("porb", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
+
+        .def_property_readonly("inc", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
+
+        .def_property_readonly("ecc", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
+
+        .def_property_readonly("w", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
+
+        .def_property_readonly("Omega", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
+
+        .def_property_readonly("lambda0", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
+
+        .def_property_readonly("tref", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
+
+        .def("__setitem__", [](orbital::Star<MAPTYPE> &body, py::object index, double coeff) {
+            if (py::isinstance<py::tuple>(index)) {
+                throw errors::BadIndex();
+            } else {
+                int l = py::cast<int>(index);
+                body.ldmap.set_coeff(l, MAPTYPE(coeff));
+            }
+        })
+
+        .def("__getitem__", [](orbital::Star<MAPTYPE> &body, py::object index) {
+            if (py::isinstance<py::tuple>(index)) {
+                throw errors::BadIndex();
+            } else {
+                int l = py::cast<int>(index);
+                return get_value(body.ldmap.get_coeff(l));
+            }
+        })
+
+        .def("__repr__", [](orbital::Star<MAPTYPE> &star) -> string {return star.repr();});
+
+
     // Planet class
-    py::class_<orbital::Planet<double>>(m, "Planet", PyBody, R"pbdoc(
-            Instantiate a planetary :py:class:`Body` object.
-
-            Instantiate a planet. At present, :py:mod:`starry` computes orbits with a simple
-            Keplerian solver, so the planet is assumed to be massless.
-
-            Args:
-                lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
-                r (float): Body radius in stellar radii. Default 0.1
-                L (float): Body luminosity in units of the stellar luminosity. Default 0.
-                axis (ndarray): A *normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
-                prot (float): Rotation period in days. Default no rotation.
-                theta0 (float): Rotation phase at time :py:obj:`tref` in degrees. Default 0.
-                a (float): Semi-major axis in stellar radii. Default 50.
-                porb (float): Orbital period in days. Default 1.
-                inc (float): Orbital inclination in degrees. Default 90.
-                ecc (float): Orbital eccentricity. Default 0.
-                w (float): Longitude of pericenter in degrees. Default 90.
-                Omega (float): Longitude of ascending node in degrees. Default 0.
-                lambda0 (float): Mean longitude at time :py:obj:`tref` in degrees. Default 90.
-                tref (float): Reference time in days. Default 0.
-
-            .. autoattribute:: map
-            .. autoattribute:: flux
-            .. autoattribute:: x
-            .. autoattribute:: y
-            .. autoattribute:: z
-            .. autoattribute:: r
-            .. autoattribute:: L
-            .. autoattribute:: axis
-            .. autoattribute:: prot
-            .. autoattribute:: theta0
-            .. autoattribute:: a
-            .. autoattribute:: porb
-            .. autoattribute:: inc
-            .. autoattribute:: ecc
-            .. autoattribute:: w
-            .. autoattribute:: Omega
-            .. autoattribute:: lambda0
-            .. autoattribute:: tref
-        )pbdoc")
+    py::class_<orbital::Planet<MAPTYPE>>(m, "Planet", PyBody, DOCS::Planet::Planet)
 
         .def(py::init<int, const double&, const double&,
                       Eigen::Matrix<double, 3, 1>&,
@@ -636,35 +522,28 @@ void ADD_MODULE(py::module &m) {
                       "prot"_a=0, "theta0"_a=0, "a"_a=50., "porb"_a=1,
                       "inc"_a=90., "ecc"_a=0, "w"_a=90, "Omega"_a=0,
                       "lambda0"_a=90, "tref"_a=0)
-        .def("__setitem__", [](orbital::Planet<double> &body, py::object index, double coeff) {
+        .def("__setitem__", [](orbital::Planet<MAPTYPE> &body, py::object index, double coeff) {
             if (py::isinstance<py::tuple>(index)) {
                 // This is a (l, m) tuple
                 py::tuple lm = index;
                 int l = py::cast<int>(lm[0]);
                 int m = py::cast<int>(lm[1]);
-                body.map.set_coeff(l, m, coeff);
+                body.map.set_coeff(l, m, MAPTYPE(coeff));
             } else {
                 throw errors::BadIndex();
             }
         })
-        .def("__getitem__", [](orbital::Planet<double> &body, py::object index) {
+        .def("__getitem__", [](orbital::Planet<MAPTYPE> &body, py::object index) {
             if (py::isinstance<py::tuple>(index)) {
                 // This is a (l, m) tuple
                 py::tuple lm = index;
                 int l = py::cast<int>(lm[0]);
                 int m = py::cast<int>(lm[1]);
-                return body.map.get_coeff(l, m);
+                return get_value(body.map.get_coeff(l, m));
             } else {
                 throw errors::BadIndex();
             }
         })
-        .def("__repr__", [](orbital::Planet<double> &planet) -> string {return planet.repr();});
-#else
-        // TODO
-        py::class_<orbital::Planet<MapType>>(m, "Planet", R"pbdoc(Not yet implemented.)pbdoc");
-#endif
+        .def("__repr__", [](orbital::Planet<MAPTYPE> &planet) -> string {return planet.repr();});
 
-<--- DEBUG */
-
-
-}
+} // ADD_MODULE

@@ -23,6 +23,7 @@ using maps::LimbDarkenedMap;
 using maps::yhat;
 using std::vector;
 using std::max;
+using std::abs;
 
 namespace orbital {
 
@@ -272,7 +273,7 @@ namespace orbital {
                      if (is_star)
                         norm = 1;
                      else
-                        norm = 2. / sqrt(M_PI);
+                        norm = T(2. / sqrt(M_PI));
 
                      // Initialize orbital vars
                      reset();
@@ -291,8 +292,8 @@ namespace orbital {
                 sqrtonepluse = sqrt(1 + ecc);
                 sqrtoneminuse = sqrt(1 - ecc);
                 ecc2 = ecc * ecc;
-                angvelorb = 2 * M_PI / porb;
-                angvelrot = 2 * M_PI / prot;
+                angvelorb = T(2 * M_PI) / porb;
+                angvelrot = T(2 * M_PI) / prot;
             };
 
             // Public methods
@@ -305,10 +306,10 @@ namespace orbital {
     // Rotation angle as a function of time
     template <class T>
     inline T Body<T>::theta(const T& time) {
-        if ((prot == 0) || isinf(prot))
+        if ((prot == 0) || (prot == INFINITY))
             return theta0;
         else
-            return fmod(theta0 + angvelrot * (time - tref), 2 * M_PI);
+            return fmod(T(theta0 + angvelrot * (time - tref)), T(2 * M_PI));
     }
 
     // Compute the flux in occultation
@@ -325,7 +326,7 @@ namespace orbital {
     // Compute the mean anomaly
     template <class T>
     inline void Body<T>::computeM(const T& time) {
-        M = fmod(M0 + angvelorb * (time - tref), 2 * M_PI);
+        M = fmod(T(M0 + angvelorb * (time - tref)), T(2 * M_PI));
     }
 
     // Compute the eccentric anomaly. Adapted from
@@ -339,7 +340,7 @@ namespace orbital {
             // Iterate
             for (int iter = 0; iter <= maxiter; iter++) {
                 E = E - (E - ecc * sin(E) - M) / (1. - ecc * cos(E));
-                if (fabs(E - ecc * sin(E) - M) <= eps) return;
+                if (abs(E - ecc * sin(E) - M) <= eps) return;
             }
 
             // Didn't converge!
@@ -467,7 +468,7 @@ namespace orbital {
     template <class T>
     std::string Planet<T>::repr() {
         std::ostringstream os;
-        os << "<STARRY Planet at P = " << std::setprecision(3) << this->porb / DAY << " days>";
+        os << "<STARRY Planet at P = " << std::setprecision(3) << get_value(this->porb) / DAY << " days>";
         return std::string(os.str());
     }
 

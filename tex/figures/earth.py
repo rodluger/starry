@@ -17,7 +17,9 @@ fig, ax = pl.subplots(1, nax, figsize=(3 * nax, 3))
 theta = np.linspace(0, 2 * np.pi, nax, endpoint=False)
 x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 for i in range(nax):
-    I = m.evaluate(axis=[0, 1, 0], theta=-theta[i], x=x, y=y)
+    # starry functions accept vector arguments, but not matrix arguments,
+    # so we need to iterate below:
+    I = [m.evaluate(axis=[0, 1, 0], theta=-theta[i], x=x[j], y=y[j]) for j in range(res)]
     ax[i].imshow(I, origin="lower", interpolation="none", cmap='plasma')
     ax[i].axis('off')
 

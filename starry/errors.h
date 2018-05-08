@@ -93,7 +93,7 @@ namespace errors {
 
     struct NotImplemented : public exception {
         const char * what () const throw (){
-            return "Function or method not implemented.";
+            return "Function, method, or attribute not implemented.";
         }
     };
 

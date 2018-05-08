@@ -101,7 +101,6 @@ def compare_to_numerical():
     nstarry = 1000
     ylm = starry.Map(lmax)
     ylm_grad = starry.grad.Map(lmax)
-    X, Y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 
     class Funcs(object):
 

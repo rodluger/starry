@@ -46,7 +46,8 @@ ax_lc.plot(timenum, Fnum, 'k.')
 x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 for n in range(nim):
     i = int(np.linspace(0, npts - 1, nim)[n])
-    I = m.evaluate(axis=[0, 1, 0], theta=theta[i], x=x, y=y)
+    I = [m.evaluate(axis=[0, 1, 0], theta=theta[i], x=x[j], y=y[j])
+         for j in range(res)]
     ax_im[n].imshow(I, origin="lower", interpolation="none", cmap='plasma',
                     extent=(-1, 1, -1, 1))
     xm = np.linspace(xo[i] - ro + 1e-5, xo[i] + ro - 1e-5, res)

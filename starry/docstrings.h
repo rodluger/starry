@@ -65,6 +65,11 @@ namespace docstrings {
 
     )pbdoc";
 
+    const char * NotImplemented =
+    R"pbdoc(
+        Method or attribute not implemented for this class.
+    )pbdoc";
+
     namespace Map {
 
         const char * Map =
@@ -510,6 +515,216 @@ namespace docstrings {
 
     } // namespace LimbDarkenedMap
 
+    namespace System {
+
+        const char * System =
+        R"pbdoc(
+                Instantiate an orbital system.
+
+                Args:
+                    bodies (list): List of bodies in the system, with the primary (usually the star) listed first.
+                    kepler_tol (float): Kepler solver tolerance.
+                    kepler_max_iter (int): Maximum number of iterations in the Kepler solver.
+
+                .. automethod:: compute(time)
+                .. autoattribute:: flux
+        )pbdoc";
+
+        const char * compute =
+        R"pbdoc(
+            Compute the system light curve analytically.
+
+            Compute the full system light curve at the times
+            given by the :py:obj:`time <>` array and store the result
+            in :py:attr:`flux`. The light curve for each body in the
+            system is stored in the body's :py:attr:`flux` attribute.
+
+            Args:
+                time (ndarray): Time array, measured in days.
+        )pbdoc";
+
+        const char * flux =
+        R"pbdoc(
+            The computed system light curve. Must run :py:meth:`compute` first.
+        )pbdoc";
+
+    } // namespace System
+
+    namespace Body {
+
+        const char * map =
+        R"pbdoc(
+            The body's surface map.
+        )pbdoc";
+
+        const char * flux =
+        R"pbdoc(
+            The body's computed light curve.
+        )pbdoc";
+
+        const char * x =
+        R"pbdoc(
+            The `x` position of the body in AU.
+        )pbdoc";
+
+        const char * y =
+        R"pbdoc(
+            The `y` position of the body in AU.
+        )pbdoc";
+
+        const char * z =
+        R"pbdoc(
+            The `z` position of the body in AU.
+        )pbdoc";
+
+        const char * r =
+        R"pbdoc(
+            Body radius in units of stellar radius.
+        )pbdoc";
+
+        const char * L =
+        R"pbdoc(
+            Body luminosity in units of stellar luminosity.
+        )pbdoc";
+
+        const char * axis =
+        R"pbdoc(
+            *Normalized* unit vector specifying the body's axis of rotation.
+        )pbdoc";
+
+        const char * prot =
+        R"pbdoc(
+            Rotation period in days.
+        )pbdoc";
+
+        const char * theta0 =
+        R"pbdoc(
+            Rotation phase at time :py:obj:`tref` in degrees.
+        )pbdoc";
+
+        const char * a =
+        R"pbdoc(
+            Body semi-major axis in units of stellar radius.
+        )pbdoc";
+
+        const char * porb =
+        R"pbdoc(
+            Orbital period in days.
+        )pbdoc";
+
+        const char * inc =
+        R"pbdoc(
+            Orbital inclination in degrees.
+        )pbdoc";
+
+        const char * ecc =
+        R"pbdoc(
+            Orbital eccentricity.
+        )pbdoc";
+
+        const char * w =
+        R"pbdoc(
+            Longitude of pericenter in degrees.
+        )pbdoc";
+
+        const char * Omega =
+        R"pbdoc(
+            Longitude of ascending node in degrees.
+        )pbdoc";
+
+        const char * lambda0 =
+        R"pbdoc(
+            Mean longitude at time :py:obj:`tref` in degrees.
+        )pbdoc";
+
+        const char * tref =
+        R"pbdoc(
+            Reference time in days.
+        )pbdoc";
+
+    } // namespace Body
+
+    namespace Star {
+
+        const char * Star =
+        R"pbdoc(
+            Instantiate a stellar :py:class:`Body` object.
+
+            The star's radius and luminosity are fixed at unity.
+
+            Args:
+                lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
+
+            .. autoattribute:: map
+            .. autoattribute:: flux
+            .. autoattribute:: r
+            .. autoattribute:: L
+        )pbdoc";
+
+        const char * map =
+        R"pbdoc(
+            The star's surface map, a :py:class:`LimbDarkenedMap` instance.
+        )pbdoc";
+
+        const char * r =
+        R"pbdoc(
+            The star's radius, fixed to unity. *Read-only.*
+        )pbdoc";
+
+        const char * L =
+        R"pbdoc(
+            The star's luminosity, fixed to unity. *Read-only.*
+        )pbdoc";
+
+    } // namespace Star
+
+    namespace Planet {
+
+        const char * Planet =
+        R"pbdoc(
+            Instantiate a planetary :py:class:`Body` object.
+
+            Instantiate a planet. At present, :py:mod:`starry` computes orbits with a simple
+            Keplerian solver, so the planet is assumed to be massless.
+
+            Args:
+                lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
+                r (float): Body radius in stellar radii. Default 0.1
+                L (float): Body luminosity in units of the stellar luminosity. Default 0.
+                axis (ndarray): A *normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
+                prot (float): Rotation period in days. Default no rotation.
+                theta0 (float): Rotation phase at time :py:obj:`tref` in degrees. Default 0.
+                a (float): Semi-major axis in stellar radii. Default 50.
+                porb (float): Orbital period in days. Default 1.
+                inc (float): Orbital inclination in degrees. Default 90.
+                ecc (float): Orbital eccentricity. Default 0.
+                w (float): Longitude of pericenter in degrees. Default 90.
+                Omega (float): Longitude of ascending node in degrees. Default 0.
+                lambda0 (float): Mean longitude at time :py:obj:`tref` in degrees. Default 90.
+                tref (float): Reference time in days. Default 0.
+
+            .. autoattribute:: map
+            .. autoattribute:: flux
+            .. autoattribute:: x
+            .. autoattribute:: y
+            .. autoattribute:: z
+            .. autoattribute:: r
+            .. autoattribute:: L
+            .. autoattribute:: axis
+            .. autoattribute:: prot
+            .. autoattribute:: theta0
+            .. autoattribute:: a
+            .. autoattribute:: porb
+            .. autoattribute:: inc
+            .. autoattribute:: ecc
+            .. autoattribute:: w
+            .. autoattribute:: Omega
+            .. autoattribute:: lambda0
+            .. autoattribute:: tref
+        )pbdoc";
+
+    } // namespace Planet
+
 } // namespace docstrings
 
 namespace docstrings_grad {
@@ -606,6 +821,8 @@ namespace docstrings_grad {
         .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, theta0=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
         .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
     )pbdoc";
+
+    const char * NotImplemented = docstrings::NotImplemented;
 
     namespace Map {
 
@@ -774,6 +991,74 @@ namespace docstrings_grad {
         )pbdoc";
 
     } // namespace LimbDarkenedMap
+
+    namespace System {
+
+        const char * System = docstrings::System::System;
+
+        const char * compute = docstrings::System::compute;
+
+        const char * flux = docstrings::System::flux;
+
+    } // namespace System
+
+    namespace Body {
+
+        const char * map = docstrings::Body::map;
+
+        const char * flux = docstrings::Body::flux;
+
+        const char * x = docstrings::Body::x;
+
+        const char * y = docstrings::Body::y;
+
+        const char * z = docstrings::Body::z;
+
+        const char * r = docstrings::Body::r;
+
+        const char * L = docstrings::Body::L;
+
+        const char * axis = docstrings::Body::axis;
+
+        const char * prot = docstrings::Body::prot;
+
+        const char * theta0 = docstrings::Body::theta0;
+
+        const char * a = docstrings::Body::a;
+
+        const char * porb = docstrings::Body::porb;
+
+        const char * inc = docstrings::Body::inc;
+
+        const char * ecc = docstrings::Body::ecc;
+
+        const char * w = docstrings::Body::w;
+
+        const char * Omega = docstrings::Body::Omega;
+
+        const char * lambda0 = docstrings::Body::lambda0;
+
+        const char * tref = docstrings::Body::tref;
+
+    } // namespace Body
+
+    namespace Star {
+
+        const char * Star = docstrings::Star::Star;
+
+        const char * map = docstrings::Star::map;
+
+        const char * r = docstrings::Star::r;
+
+        const char * L = docstrings::Star::L;
+
+    } // namespace Star
+
+    namespace Planet {
+
+        const char * Planet = docstrings::Planet::Planet;
+
+    } // namespace Planet
 
 } // namespace docstrings_grad
 

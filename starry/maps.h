@@ -574,29 +574,39 @@ namespace maps {
     void LimbDarkenedMap<T>::update() {
 
         // Update the spherical harmonic vector
-        // and the total flux
+        // NOTE: All the casting to type `T` below is necessary
+        // to avoid this issue with AutoDiffScalar:
+        // http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1281#c1
         T norm;
         y.setZero(N);
         if (lmax == 0) {
             norm = M_PI;
             y(0) = T(T(2 * sqrt(M_PI)) / norm) + 0 * u(1);
-            ld_flux = T(G.pi * g(0));
+
         } else if (lmax == 1) {
             norm = M_PI * (1 - u(1) / 3.);
             y(0) = T(2. / norm) * T(sqrt(M_PI) / 3.) * T(3 - T(3 * u(1)));
             y(2) = T(T(2. / norm) * sqrt(T(M_PI / 3.))) * u(1);
-            ld_flux = T(G.pi * g(0)) + T(T(2. * T(G.pi / 3.)) * g(2));
+
         } else {
             norm = M_PI * (1 - u(1) / 3. - u(2) / 6.);
-            y(0) = T(2. / norm) * T(sqrt(M_PI) / 3.) * T(3 - T(3 * u(1)));
-            y(2) = T(T(2. / norm) * sqrt(T(M_PI / 3.))) * u(1);
+            y(0) = T(2. / norm) * T(sqrt(M_PI) / 3.) * T(3 - T(3 * u(1)) - T(4 * u(2)));
+            y(2) = T(T(2. / norm) * sqrt(T(M_PI / 3.))) * (u(1) + 2 * u(2));
             y(6) = T(T(-4. / 3.) * sqrt(T(M_PI / 5.))) * T(u(2) / norm);
-            ld_flux = T(G.pi * g(0)) + T(T(2. * T(G.pi / 3.)) * g(2)) + T(G.pi_over_2 * g(8));
+
         }
 
         // Update the other vectors
         p = C.A1 * y;
         g = C.A * y;
+
+        // Update the total flux
+        if (lmax == 0)
+            ld_flux = T(G.pi * g(0));
+        else if (lmax == 1)
+            ld_flux = T(G.pi * g(0)) + T(T(2. * T(G.pi / 3.)) * g(2));
+        else
+            ld_flux = T(G.pi * g(0)) + T(T(2. * T(G.pi / 3.)) * g(2)) + T(G.pi_over_2 * g(8));
 
     }
 
@@ -769,10 +779,6 @@ namespace maps {
     void LimbDarkenedMap<T>::reset() {
         u.setZero(lmax + 1);
         u(0) = 1;
-        y.setZero(N);
-        y(0) = 2 * sqrt(M_PI) / M_PI;
-        g = C.A * y;
-        ld_flux = G.pi * g(0);
         update();
     }
 
