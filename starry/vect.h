@@ -339,15 +339,18 @@ namespace vect {
             py::object& arg1, py::object& arg2,
             Grad (maps::LimbDarkenedMap<Grad>::*func)(const Grad&, const Grad&),
             maps::LimbDarkenedMap<Grad>& map) {
-        int nder = 2 + (map.lmax + 1) * (int)map.map_gradients;
+        int nder = 2 + (map.lmax) * (int)map.map_gradients;
         Vector<double> arg1_v, arg2_v;
         vectorize_args(arg1, arg2, arg1_v, arg2_v);
         Grad arg1_g(0., nder, 0);
         Grad arg2_g(0., nder, 1);
         Grad tmp;
         if (map.map_gradients) {
-            for (int n = 0; n < map.lmax + 1; n++)
-                map.u(n).derivatives() = Vector<double>::Unit(nder, 2 + n);
+            // The constant term u(0) is always unity, so we won't
+            // include it in the output derivative vector
+            map.u(0).derivatives() = Vector<double>::Zero(nder);
+            for (int n = 0; n < map.lmax; n++)
+                map.u(n + 1).derivatives() = Vector<double>::Unit(nder, 2 + n);
         }
         // Force the derivatives to propagate to the polynomial vector
         map.update();
@@ -372,7 +375,7 @@ namespace vect {
             py::object& arg1, py::object& arg2, py::object& arg3,
             Grad (maps::LimbDarkenedMap<Grad>::*func)(const Grad&, const Grad&, const Grad&),
             maps::LimbDarkenedMap<Grad>& map) {
-        int nder = 3 + (map.lmax + 1) * (int)map.map_gradients;
+        int nder = 3 + (map.lmax) * (int)map.map_gradients;
         Vector<double> arg1_v, arg2_v, arg3_v;
         vectorize_args(arg1, arg2, arg3, arg1_v, arg2_v, arg3_v);
         Grad arg1_g(0., nder, 0);
@@ -380,8 +383,11 @@ namespace vect {
         Grad arg3_g(0., nder, 2);
         Grad tmp;
         if (map.map_gradients) {
-            for (int n = 0; n < map.lmax + 1; n++)
-                map.u(n).derivatives() = Vector<double>::Unit(nder, 3 + n);
+            // The constant term u(0) is always unity, so we won't
+            // include it in the output derivative vector
+            map.u(0).derivatives() = Vector<double>::Zero(nder);
+            for (int n = 0; n < map.lmax; n++)
+                map.u(n + 1).derivatives() = Vector<double>::Unit(nder, 3 + n);
         }
         // Force the derivatives to propagate to the Green's vector
         map.update();
