@@ -28,7 +28,7 @@ inline Vector<double> get_value(Vector<double> x) { return x; }
 inline Vector<double> get_value(Vector<Grad> x) {
     Vector<double> vec;
     vec.resize(x.size());
-    for (int n = 0; n < x.size() + 1; n++) {
+    for (int n = 0; n < x.size(); n++) {
         vec(n) = x(n).value();
     }
     return vec;

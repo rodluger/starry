@@ -93,6 +93,7 @@ namespace orbital {
             Vector<T> flux;
             double eps;
             int maxiter;
+            bool computed;
 
             // Constructor
             System(vector<Body<T>*> bodies, const double& eps=1.0e-7, const int& maxiter=100) :
@@ -113,6 +114,9 @@ namespace orbital {
                     bodies[i]->eps = eps;
                     bodies[i]->maxiter = maxiter;
                 }
+
+                // Set the flag
+                computed = false;
 
             }
 
@@ -178,6 +182,9 @@ namespace orbital {
             flux += bodies[i]->flux;
         }
 
+        // Set the flag
+        computed = true;
+
     }
 
     // Body class
@@ -215,7 +222,6 @@ namespace orbital {
         public:
 
             // Flag
-            bool computed;
             bool is_star;
 
             // Map stuff
