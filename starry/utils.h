@@ -8,6 +8,7 @@ Miscellaneous stuff used throughout the code.
 
 #include <Eigen/Core>
 #include <unsupported/Eigen/AutoDiff>
+#include <iostream>
 
 // Our custom vector types
 template <typename T>
@@ -32,5 +33,9 @@ inline Vector<double> get_value(Vector<Grad> x) {
     }
     return vec;
 }
+
+// Print the derivatives of a MapType variable for debugging
+void print_derivs(double x) { std::cout << "None" << std::endl; }
+void print_derivs(Grad x) { std::cout << x.derivatives().transpose() << std::endl; }
 
 #endif

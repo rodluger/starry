@@ -2,9 +2,8 @@
 This defines the main Python interface to the code.
 Note that this file is #include'd *twice*, once
 for `starry` and once for `starry.grad` so we don't
-have to duplicate any code. Yes, this is super hacky.
+have to duplicate any code.
 
-TODO: Make usage of & consistent in input arguments!
 */
 
 #include <iostream>
@@ -61,7 +60,7 @@ void ADD_MODULE(py::module &m) {
     m.doc() = DOCS::starry;
 
     // Surface map class
-    py::class_<maps::Map<MAPTYPE>>(m, "Map", DOCS::map::map)
+    py::class_<maps::Map<MAPTYPE>>(m, "Map", DOCS::Map::Map)
 
         .def(py::init<int>(), "lmax"_a=2)
 
@@ -89,66 +88,60 @@ void ADD_MODULE(py::module &m) {
 
         .def("get_coeff", [](maps::Map<MAPTYPE> &map, int l, int m){
                 return get_value(map.get_coeff(l, m));
-            }, DOCS::map::get_coeff, "l"_a, "m"_a)
+            }, DOCS::Map::get_coeff, "l"_a, "m"_a)
 
         .def("set_coeff", [](maps::Map<MAPTYPE> &map, int l, int m, double coeff){
                 map.set_coeff(l, m, MAPTYPE(coeff));
-            }, DOCS::map::set_coeff, "l"_a, "m"_a, "coeff"_a)
+            }, DOCS::Map::set_coeff, "l"_a, "m"_a, "coeff"_a)
 
-        .def("reset", &maps::Map<MAPTYPE>::reset, DOCS::map::reset)
+        .def("reset", &maps::Map<MAPTYPE>::reset, DOCS::Map::reset)
 
-        .def_property_readonly("lmax", [](maps::Map<MAPTYPE> &map){return map.lmax;}, DOCS::map::lmax)
+        .def_property_readonly("lmax", [](maps::Map<MAPTYPE> &map){return map.lmax;}, DOCS::Map::lmax)
 
         .def_property_readonly("y", [](maps::Map<MAPTYPE> &map){
-                map.update(true);
                 return get_value(map.y);
-            }, DOCS::map::y)
+            }, DOCS::Map::y)
 
         .def_property_readonly("p", [](maps::Map<MAPTYPE> &map){
-                map.update(true);
                 return get_value(map.p);
-            }, DOCS::map::p)
+            }, DOCS::Map::p)
 
         .def_property_readonly("g", [](maps::Map<MAPTYPE> &map){
-                map.update(true);
                 return get_value(map.g);
-            }, DOCS::map::g)
+            }, DOCS::Map::g)
 
         .def_property_readonly("s", [](maps::Map<MAPTYPE> &map){
-                map.update(true);
                 return get_value((Vector<MAPTYPE>)map.G.sT);
-            }, DOCS::map::s)
+            }, DOCS::Map::s)
 
         .def_property_readonly("r", [](maps::Map<MAPTYPE> &map){
-                map.update(true);
                 return get_value((Vector<MAPTYPE>)map.C.rT);
-            }, DOCS::map::r)
+            }, DOCS::Map::r)
 
         .def_property("optimize", [](maps::Map<MAPTYPE> &map){return map.G.taylor;},
-            [](maps::Map<MAPTYPE> &map, bool taylor){map.G.taylor = taylor;}, DOCS::map::optimize)
+            [](maps::Map<MAPTYPE> &map, bool taylor){map.G.taylor = taylor;}, DOCS::Map::optimize)
 
         .def("evaluate", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& x, py::object& y) {
                 return vectorize(axis, theta, x, y, &maps::Map<MAPTYPE>::evaluate, map);
-            }, DOCS::map::evaluate, "axis"_a=maps::yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
+            }, DOCS::Map::evaluate, "axis"_a=maps::yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
 
         .def("flux", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
                 return vectorize(axis, theta, xo, yo, ro, &maps::Map<MAPTYPE>::flux, map);
-            }, DOCS::map::flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+            }, DOCS::Map::flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("rotate", [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis, double theta){
                 map.rotate(UnitVector<MAPTYPE>(axis), MAPTYPE(theta));
-            }, DOCS::map::rotate, "axis"_a=maps::yhat, "theta"_a=0)
+            }, DOCS::Map::rotate, "axis"_a=maps::yhat, "theta"_a=0)
 
         //
         // This is where things go nuts: Let's call Python from C++
         //
 
         .def("minimum", [](maps::Map<MAPTYPE> &map) -> double {
-                map.update();
                 py::object minimize = py::module::import("starry_maps").attr("minimize");
                 Vector<double> p = get_value(map.p);
                 return minimize(p).cast<double>();
-            }, DOCS::map::minimum)
+            }, DOCS::Map::minimum)
 
         .def("load_image", [](maps::Map<MAPTYPE> &map, string& image) {
                 py::object load_map = py::module::import("starry_maps").attr("load_map");
@@ -172,7 +165,7 @@ void ADD_MODULE(py::module &m) {
                 map.rotate(xhat, PiOver2);
                 map.rotate(zhat, Pi);
                 map.rotate(yhat, PiOver2);
-            }, DOCS::map::load_image, "image"_a)
+            }, DOCS::Map::load_image, "image"_a)
 
         .def("load_healpix", [](maps::Map<MAPTYPE> &map, Matrix<double>& image) {
                 py::object load_map = py::module::import("starry_maps").attr("load_map");
@@ -196,7 +189,7 @@ void ADD_MODULE(py::module &m) {
                 map.rotate(xhat, PiOver2);
                 map.rotate(zhat, Pi);
                 map.rotate(yhat, PiOver2);
-            }, DOCS::map::load_healpix, "image"_a)
+            }, DOCS::Map::load_healpix, "image"_a)
 
         .def("show", [](maps::Map<MAPTYPE> &map, string cmap, int res) {
                 py::object show = py::module::import("starry_maps").attr("show");
@@ -211,7 +204,7 @@ void ADD_MODULE(py::module &m) {
                     }
                 }
                 show(I, "cmap"_a=cmap, "res"_a=res);
-            }, DOCS::map::show, "cmap"_a="plasma", "res"_a=300)
+            }, DOCS::Map::show, "cmap"_a="plasma", "res"_a=300)
 
         .def("animate", [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis, string cmap, int res, int frames) {
             std::cout << "Rendering animation..." << std::endl;
@@ -230,7 +223,7 @@ void ADD_MODULE(py::module &m) {
                 }
             }
             animate(I, axis, "cmap"_a=cmap, "res"_a=res);
-        }, DOCS::map::animate, "axis"_a=maps::yhat, "cmap"_a="plasma", "res"_a=150, "frames"_a=50)
+        }, DOCS::Map::animate, "axis"_a=maps::yhat, "cmap"_a="plasma", "res"_a=150, "frames"_a=50)
 
 #ifndef STARRY_AUTODIFF
 
@@ -239,508 +232,137 @@ void ADD_MODULE(py::module &m) {
         .def_property_readonly("s_mp", [](maps::Map<MAPTYPE> &map){
                 VectorT<double> sT = map.mpG.sT.template cast<double>();
                 return sT;
-            }, DOCS::map::s_mp)
+            }, DOCS::Map::s_mp)
 
         .def("flux_mp", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
                 return vectorize(axis, theta, xo, yo, ro, &maps::Map<MAPTYPE>::flux_mp, map);
-            }, DOCS::map::flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+            }, DOCS::Map::flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("flux_numerical", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro, double tol) {
                 return vectorize(axis, theta, xo, yo, ro, tol, &maps::Map<MAPTYPE>::flux_numerical, map);
-            }, DOCS::map::flux_numerical, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
+            }, DOCS::Map::flux_numerical, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
 
 #else
 
         // Methods and attributes only in `starry.grad.Map()`
 
         .def_property("map_gradients", [](maps::Map<MAPTYPE> &map){return map.map_gradients;},
-            [](maps::Map<MAPTYPE> &map, bool map_gradients){map.map_gradients = map_gradients;}, DOCS::map::map_gradients)
+            [](maps::Map<MAPTYPE> &map, bool map_gradients){map.map_gradients = map_gradients;}, DOCS::Map::map_gradients)
 
 #endif
 
         .def("__repr__", [](maps::Map<MAPTYPE> &map) -> string {return map.repr();});
 
 
-/* DEBUG --->
 
     // Limb-darkened surface map class
-    py::class_<maps::LimbDarkenedMap<MapType>>(m, "LimbDarkenedMap", R"pbdoc(
-            Instantiate a :py:mod:`starry` limb-darkened surface map.
-
-            This differs from the base :py:class:`Map` class in that maps
-            instantiated this way are radially symmetric: only the radial (`m = 0`)
-            coefficients of the map are available. Users edit the map by directly
-            specifying the polynomial limb darkening coefficients `u`.
-
-            Args:
-                lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
-
-            .. autoattribute:: optimize
-            .. automethod:: evaluate(x=0, y=0)
-            .. automethod:: flux_numerical(xo=0, yo=0, ro=0, tol=1.e-4)pbdoc"
-    #ifndef STARRY_AUTODIFF
-            R"pbdoc(
-            .. automethod:: flux_mp(xo=0, yo=0, ro=0))pbdoc"
-    #endif
-            R"pbdoc(
-            .. automethod:: flux(xo=0, yo=0, ro=0)
-            .. automethod:: get_coeff(l)
-            .. automethod:: set_coeff(l, coeff)
-            .. automethod:: reset()
-            .. autoattribute:: lmax
-            .. autoattribute:: y
-            .. autoattribute:: p
-            .. autoattribute:: g
-            .. autoattribute:: u
-            .. autoattribute:: s)pbdoc"
-    #ifndef STARRY_AUTODIFF
-            R"pbdoc(
-            .. autoattribute:: s_mp)pbdoc"
-    #endif
-            R"pbdoc(
-            .. automethod:: show(cmap='plasma', res=300)
-
-        )pbdoc")
+    py::class_<maps::LimbDarkenedMap<MAPTYPE>>(m, "LimbDarkenedMap", DOCS::LimbDarkenedMap::LimbDarkenedMap)
 
         .def(py::init<int>(), "lmax"_a=2)
 
-        .def_property("optimize", [](maps::LimbDarkenedMap<double> &map){return map.G.taylor;},
-                                  [](maps::LimbDarkenedMap<double> &map, bool taylor){map.G.taylor = taylor;},
-            R"pbdoc(
-                Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
-                computing occultation light curves. This is in general not something you should do! \
-                Default :py:obj:`True`.
-            )pbdoc")
-
-        .def("evaluate",
-    #ifndef STARRY_AUTODIFF
-            py::vectorize(&maps::LimbDarkenedMap<MapType>::evaluate),
-    #else
-            [](maps::LimbDarkenedMap<MapType>& map, py::object x, py::object y){
-                // Vectorize the inputs
-                int size = 0;
-                Eigen::VectorXd x_v, y_v;
-                if (py::hasattr(x, "__len__")) {
-                    x_v = vectorize(x, size);
-                    y_v = vectorize(y, size);
-                } else if (py::hasattr(y, "__len__")) {
-                    y_v = vectorize(y, size);
-                    x_v = vectorize(x, size);
-                } else {
-                    size = 1;
-                    x_v = vectorize(x, size);
-                    y_v = vectorize(y, size);
-                }
-
-                // Declare the result matrix
-                Eigen::MatrixXd result(x_v.size(), STARRY_NGRAD_LDMAP_EVALUATE + 1);
-
-                // Declare our gradient types
-                MapType x_g(0., STARRY_NGRAD, 0);
-                MapType y_g(0., STARRY_NGRAD, 1);
-                MapType tmp;
-
-                // Compute the flux at each cadence
-                for (int i = 0; i < x_v.size(); i++) {
-                    x_g.value() = x_v(i);
-                    y_g.value() = y_v(i);
-                    tmp = map.evaluate(x_g, y_g);
-                    result(i, 0) = tmp.value();
-                    result.block<1, STARRY_NGRAD_LDMAP_EVALUATE>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_LDMAP_EVALUATE>();
-                }
-
-                return result;
-            },
-    #endif
-            R"pbdoc(
-                Return the specific intensity at a point (`x`, `y`) on the map.
-
-                Users may optionally provide a rotation state. Note that this does
-                not rotate the base map.
-
-                Args:
-                    x (float or ndarray): Position scalar, vector, or matrix.
-                    y (float or ndarray): Position scalar, vector, or matrix.
-
-                Returns:
-                    The specific intensity at (`x`, `y`).
-            )pbdoc", "x"_a=0, "y"_a=0)
-
-        .def("flux_numerical",
-    #ifndef STARRY_AUTODIFF
-            py::vectorize(&maps::LimbDarkenedMap<MapType>::flux_numerical),
-    #else
-            [](maps::LimbDarkenedMap<MapType> &map, py::object xo, py::object yo, py::object ro, double tol){
-                // Vectorize the inputs
-                int size = 0;
-                Eigen::VectorXd xo_v, yo_v, ro_v;
-                if (py::hasattr(xo, "__len__")) {
-                    xo_v = vectorize(xo, size);
-                    yo_v = vectorize(yo, size);
-                    ro_v = vectorize(ro, size);
-                } else if (py::hasattr(yo, "__len__")) {
-                    yo_v = vectorize(yo, size);
-                    ro_v = vectorize(ro, size);
-                    xo_v = vectorize(xo, size);
-                } else if (py::hasattr(ro, "__len__")) {
-                    ro_v = vectorize(ro, size);
-                    xo_v = vectorize(xo, size);
-                    yo_v = vectorize(yo, size);
-                } else {
-                    size = 1;
-                    xo_v = vectorize(xo, size);
-                    yo_v = vectorize(yo, size);
-                    ro_v = vectorize(ro, size);
-                }
-
-                // Declare the result vector
-                Eigen::VectorXd result(xo_v.size());
-
-                // Declare our gradient types, although I simply *will not*
-                // take automatic derivatives of a numerically computed function!
-                MapType xo_g(0.);
-                MapType yo_g(0.);
-                MapType ro_g(0.);
-                MapType tmp;
-
-                // Compute the flux at each cadence
-                for (int i = 0; i < xo_v.size(); i++) {
-                    xo_g.value() = xo_v(i);
-                    yo_g.value() = yo_v(i);
-                    ro_g.value() = ro_v(i);
-                    tmp = map.flux_numerical(xo_g, yo_g, ro_g, tol);
-                    result(i) = tmp.value();
-                }
-                return result;
-            },
-    #endif
-            R"pbdoc(
-                Return the total flux received by the observer, computed numerically.
-
-                Computes the total flux received by the observer from the
-                map during or outside of an occultation. The flux is computed
-                numerically using an adaptive radial mesh.
-
-                Args:
-                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
-                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
-                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
-                    tol (float): Tolerance of the numerical solver. Default `1.e-4`
-
-                Returns:
-                    The flux received by the observer (a scalar or a vector).
-                )pbdoc"
-    #ifndef STARRY_AUTODIFF
-                R"pbdoc()pbdoc",
-    #else
-                R"pbdoc(
-                .. note:: This function only returns the **value** of the numerical flux, and **not** its \
-                          derivatives. Autodifferentiation of numerical integration is \
-                          simply a terrible idea!
-                )pbdoc",
-    #endif
-            "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
-
-    #ifndef STARRY_AUTODIFF
-        // NOTE: No autograd implementation of this function.
-        .def("flux_mp", py::vectorize(&maps::LimbDarkenedMap<MapType>::flux_mp),
-            R"pbdoc(
-                Return the total flux received by the observer, computed using multi-precision.
-
-                Computes the total flux received by the observer from the
-                map during or outside of an occultation. By default, this method
-                performs all occultation calculations using 128-bit (quadruple) floating point
-                precision, corresponding to 32 significant digits. Users can increase this to any
-                number of digits (RAM permitting) by setting the :py:obj:`STARRY_MP_DIGITS=XX` flag
-                at compile time. Note, importantly, that run times are **much** slower for multi-precision
-                calculations.
-
-                Args:
-                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
-                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
-                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
-
-                Returns:
-                    The flux received by the observer (a scalar or a vector).
-            )pbdoc", "xo"_a=0, "yo"_a=0, "ro"_a=0)
-    #endif
-
-        .def("flux",
-    #ifndef STARRY_AUTODIFF
-            py::vectorize(&maps::LimbDarkenedMap<MapType>::flux),
-    #else
-            [](maps::LimbDarkenedMap<MapType> &map, py::object xo, py::object yo, py::object ro){
-                // Vectorize the inputs
-                int size = 0;
-                Eigen::VectorXd xo_v, yo_v, ro_v;
-                if (py::hasattr(xo, "__len__")) {
-                    xo_v = vectorize(xo, size);
-                    yo_v = vectorize(yo, size);
-                    ro_v = vectorize(ro, size);
-                } else if (py::hasattr(yo, "__len__")) {
-                    yo_v = vectorize(yo, size);
-                    ro_v = vectorize(ro, size);
-                    xo_v = vectorize(xo, size);
-                } else if (py::hasattr(ro, "__len__")) {
-                    ro_v = vectorize(ro, size);
-                    xo_v = vectorize(xo, size);
-                    yo_v = vectorize(yo, size);
-                } else {
-                    size = 1;
-                    xo_v = vectorize(xo, size);
-                    yo_v = vectorize(yo, size);
-                    ro_v = vectorize(ro, size);
-                }
-
-                // Declare the result matrix
-                Eigen::MatrixXd result(xo_v.size(), STARRY_NGRAD_LDMAP_FLUX + 1);
-
-                // Declare our gradient types
-                MapType xo_g(0., STARRY_NGRAD, 0);
-                MapType yo_g(0., STARRY_NGRAD, 1);
-                MapType ro_g(0., STARRY_NGRAD, 2);
-                MapType tmp;
-
-                // Compute the flux at each cadence
-                for (int i = 0; i < xo_v.size(); i++) {
-                    xo_g.value() = xo_v(i);
-                    yo_g.value() = yo_v(i);
-                    ro_g.value() = ro_v(i);
-                    tmp = map.flux(xo_g, yo_g, ro_g);
-                    result(i, 0) = tmp.value();
-                    result.block<1, STARRY_NGRAD_LDMAP_FLUX>(i, 1) = tmp.derivatives().head<STARRY_NGRAD_LDMAP_FLUX>();
-                }
-
-                return result;
-            },
-    #endif
-            R"pbdoc(
-                Return the total flux received by the observer.
-
-                Computes the total flux received by the observer from the
-                map during or outside of an occultation.
-
-                Args:
-                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
-                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
-                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
-
-                Returns:
-                    The flux received by the observer (a scalar or a vector).
-            )pbdoc", "xo"_a=0, "yo"_a=0, "ro"_a=0)
-
-        .def("get_coeff",
-    #ifndef STARRY_AUTODIFF
-            &maps::LimbDarkenedMap<MapType>::get_coeff,
-    #else
-            [](maps::LimbDarkenedMap<MapType> &map, int l){
-                return map.get_coeff(l).value();
-            },
-    #endif
-            R"pbdoc(
-                Return the limb darkening coefficient of order :py:obj:`l`.
-
-                .. note:: Users can also retrieve a coefficient by accessing the \
-                          [:py:obj:`l`] index of the map as if it were an array.
-
-                Args:
-                    l (int): The limb darkening order (> 0).
-            )pbdoc", "l"_a)
-
-        .def("set_coeff",
-    #ifndef STARRY_AUTODIFF
-            &maps::LimbDarkenedMap<MapType>::set_coeff,
-    #else
-            [](maps::LimbDarkenedMap<MapType> &map, int l, double coeff){
-                map.set_coeff(l, MapType(coeff));
-            },
-    #endif
-            R"pbdoc(
-                Set the limb darkening coefficient of order :py:obj:`l`.
-
-                .. note:: Users can also set a coefficient by setting the \
-                          [:py:obj:`l`] index of the map as if it \
-                          were an array.
-
-                Args:
-                    l (int): The limb darkening order (> 0).
-                    coeff (float): The value of the coefficient.
-            )pbdoc", "l"_a, "coeff"_a)
-
-        .def("reset", &maps::LimbDarkenedMap<MapType>::reset,
-            R"pbdoc(
-                Set all of the map coefficients to zero.
-            )pbdoc")
-
-        .def_property_readonly("lmax", [](maps::LimbDarkenedMap<MapType> &map){return map.lmax;},
-            R"pbdoc(
-                The highest spherical harmonic order of the map. *Read-only.*
-            )pbdoc")
-
-        .def_property_readonly("y", [](maps::LimbDarkenedMap<MapType> &map){
-            map.update(true);
-    #ifndef STARRY_AUTODIFF
-            return map.y;
-    #else
-            Eigen::VectorXd vec;
-            vec.resize(map.N);
-            for (int n = 0; n < map.N + 1; n++) {
-                vec(n) = map.y(n).value();
-            }
-            return vec;
-    #endif
-        },
-            R"pbdoc(
-                The spherical harmonic map vector. *Read-only.*
-            )pbdoc")
-
-        .def_property_readonly("p", [](maps::LimbDarkenedMap<MapType> &map){
-            map.update(true);
-    #ifndef STARRY_AUTODIFF
-            return map.p;
-    #else
-            Eigen::VectorXd vec;
-            vec.resize(map.N);
-            for (int n = 0; n < map.N + 1; n++) {
-                vec(n) = map.p(n).value();
-            }
-            return vec;
-    #endif
-            },
-            R"pbdoc(
-                The polynomial map vector. *Read-only.*
-            )pbdoc")
-
-        .def_property_readonly("g", [](maps::LimbDarkenedMap<MapType> &map){
-            map.update(true);
-    #ifndef STARRY_AUTODIFF
-            return map.g;
-    #else
-            Eigen::VectorXd vec;
-            vec.resize(map.N);
-            for (int n = 0; n < map.N + 1; n++) {
-                vec(n) = map.g(n).value();
-            }
-            return vec;
-    #endif
-        },
-            R"pbdoc(
-                The Green's polynomial map vector. *Read-only.*
-            )pbdoc")
-
-        .def_property_readonly("s", [](maps::LimbDarkenedMap<MapType> &map){
-    #ifndef STARRY_AUTODIFF
-            return map.G.sT;
-    #else
-            Eigen::VectorXd vec;
-            vec.resize(map.N);
-            for (int n = 0; n < map.N + 1; n++) {
-                vec(n) = map.G.sT(n).value();
-            }
-            return vec;
-    #endif
-        },
-            R"pbdoc(
-                The current solution vector `s`. *Read-only.*
-            )pbdoc")
-
-    #ifndef STARRY_AUTODIFF
-        // NOTE: No autograd implementation of this attribute.
-        .def_property_readonly("s_mp", [](maps::LimbDarkenedMap<MapType> &map){
-            VectorT<double> sT = map.mpG.sT.template cast<double>();
-            return sT;
-        },
-            R"pbdoc(
-                The current multi-precision solution vector `s`. Only available after `flux_mp` has been called. *Read-only.*
-            )pbdoc")
-    #endif
-
-        .def_property_readonly("u", [](maps::LimbDarkenedMap<MapType> &map) {
-    #ifndef STARRY_AUTODIFF
-            return map.u;
-    #else
-            Eigen::VectorXd vec;
-            vec.resize(map.lmax + 1);
-            for (int n = 0; n < map.lmax + 1; n++) {
-                vec(n) = map.u(n).value();
-            }
-            return vec;
-    #endif
-        },
-            R"pbdoc(
-                The limb darkening coefficients. *Read-only.*
-            )pbdoc")
-
-        .def("__setitem__", [](maps::LimbDarkenedMap<MapType>& map, py::object index, double coeff) {
-            if (py::isinstance<py::tuple>(index)) {
-                throw errors::BadIndex();
-            } else {
-                // This is a limb darkening index
-                int l = py::cast<int>(index);
-                map.set_coeff(l, MapType(coeff));
-            }
-        })
-
-        .def("__getitem__", [](maps::LimbDarkenedMap<MapType>& map, py::object index) {
+        .def("__setitem__", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object index, double coeff) {
             if (py::isinstance<py::tuple>(index)) {
                 throw errors::BadIndex();
             } else {
                 int l = py::cast<int>(index);
-    #ifndef STARRY_AUTODIFF
-                return map.get_coeff(l);
-    #else
-                return map.get_coeff(l).value();
-    #endif
+                map.set_coeff(l, MAPTYPE(coeff));
             }
         })
 
-        .def("__repr__", [](maps::LimbDarkenedMap<MapType> &map) -> string {
-    #ifndef STARRY_AUTODIFF
-            return map.repr();
-    #else
-            ostringstream os;
-            os << "<STARRY AutoDiff LimbDarkenedMap: ";
-            Eigen::VectorXd u;
-            u.resize(map.lmax + 1);
-            for (int n = 0; n < map.lmax + 1; n++)
-                u(n) = map.u(n).value();
-            os << u.transpose();
-            os << ">";
-            return std::string(os.str());
-    #endif
+        .def("__getitem__", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object index) {
+            if (py::isinstance<py::tuple>(index)) {
+                throw errors::BadIndex();
+            } else {
+                int l = py::cast<int>(index);
+                return get_value(map.get_coeff(l));
+            }
         })
 
-        //
-        // This is where things go nuts: Let's call Python from C++
-        //
+        .def("get_coeff", [](maps::LimbDarkenedMap<MAPTYPE> &map, int l){
+                return get_value(map.get_coeff(l));
+            }, DOCS::LimbDarkenedMap::get_coeff, "l"_a)
 
-        .def("show", [](maps::LimbDarkenedMap<MapType> &map, string cmap, int res) {
-            py::object show = py::module::import("starry_maps").attr("show");
-            Matrix<double> I;
-            I.resize(res, res);
-            Vector<double> x;
-            x = Vector<double>::LinSpaced(res, -1, 1);
-            for (int i = 0; i < res; i++){
-                for (int j = 0; j < res; j++){
-    #ifndef STARRY_AUTODIFF
-                    I(j, i) = map.evaluate(x(i), x(j));
-    #else
-                    I(j, i) = map.evaluate(MapType(x(i)), MapType(x(j))).value();
-    #endif
+        .def("set_coeff", [](maps::LimbDarkenedMap<MAPTYPE> &map, int l, double coeff){
+                map.set_coeff(l, MAPTYPE(coeff));
+            }, DOCS::LimbDarkenedMap::set_coeff, "l"_a, "coeff"_a)
+
+        .def("reset", &maps::LimbDarkenedMap<MAPTYPE>::reset, DOCS::LimbDarkenedMap::reset)
+
+        .def_property_readonly("lmax", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.lmax;}, DOCS::LimbDarkenedMap::lmax)
+
+        .def_property_readonly("y", [](maps::LimbDarkenedMap<MAPTYPE> &map){
+                return get_value(map.y);
+            }, DOCS::LimbDarkenedMap::y)
+
+        .def_property_readonly("p", [](maps::LimbDarkenedMap<MAPTYPE> &map){
+                return get_value(map.p);
+            }, DOCS::LimbDarkenedMap::p)
+
+        .def_property_readonly("g", [](maps::LimbDarkenedMap<MAPTYPE> &map){
+                return get_value(map.g);
+            }, DOCS::LimbDarkenedMap::g)
+
+        .def_property_readonly("s", [](maps::LimbDarkenedMap<MAPTYPE> &map){
+                return get_value((Vector<MAPTYPE>)map.G.sT);
+            }, DOCS::LimbDarkenedMap::s)
+
+        .def_property_readonly("u", [](maps::LimbDarkenedMap<MAPTYPE> &map){
+                return get_value((Vector<MAPTYPE>)map.u);
+            }, DOCS::LimbDarkenedMap::u)
+
+        .def_property("optimize", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.G.taylor;},
+            [](maps::LimbDarkenedMap<MAPTYPE> &map, bool taylor){map.G.taylor = taylor;}, DOCS::LimbDarkenedMap::optimize)
+
+        .def("evaluate", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object& x, py::object& y) {
+                return vectorize(x, y, &maps::LimbDarkenedMap<MAPTYPE>::evaluate, map);
+            }, DOCS::LimbDarkenedMap::evaluate, "x"_a=0, "y"_a=0)
+
+        .def("flux", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object& xo, py::object& yo, py::object& ro) {
+                return vectorize(xo, yo, ro, &maps::LimbDarkenedMap<MAPTYPE>::flux, map);
+            }, DOCS::LimbDarkenedMap::flux, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+
+        .def("show", [](maps::LimbDarkenedMap<MAPTYPE> &map, string cmap, int res) {
+                py::object show = py::module::import("starry_maps").attr("show");
+                Matrix<double> I;
+                I.resize(res, res);
+                Vector<double> x;
+                UnitVector<MAPTYPE> yhat(maps::yhat);
+                x = Vector<double>::LinSpaced(res, -1, 1);
+                for (int i = 0; i < res; i++){
+                    for (int j = 0; j < res; j++){
+                        I(j, i) = get_value(map.evaluate(MAPTYPE(x(i)), MAPTYPE(x(j))));
+                    }
                 }
-            }
-            show(I, "cmap"_a=cmap, "res"_a=res);
-        },
-        R"pbdoc(
-            Convenience routine to quickly display the body's surface map.
+                show(I, "cmap"_a=cmap, "res"_a=res);
+            }, DOCS::LimbDarkenedMap::show, "cmap"_a="plasma", "res"_a=300)
 
-            Args:
-                cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
-                res (int): The resolution of the map in pixels on a side. Default 300.
-        )pbdoc", "cmap"_a="plasma", "res"_a=300);
+#ifndef STARRY_AUTODIFF
 
-<-- DEBUG */
+        // Methods and attributes only in `starry.LimbDarkenedMap()``
 
+        .def_property_readonly("s_mp", [](maps::LimbDarkenedMap<MAPTYPE> &map){
+                VectorT<double> sT = map.mpG.sT.template cast<double>();
+                return sT;
+            }, DOCS::LimbDarkenedMap::s_mp)
+
+        .def("flux_mp", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object& xo, py::object& yo, py::object& ro) {
+                return vectorize(xo, yo, ro, &maps::LimbDarkenedMap<MAPTYPE>::flux_mp, map);
+            }, DOCS::LimbDarkenedMap::flux, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+
+        .def("flux_numerical", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object& xo, py::object& yo, py::object& ro, double tol) {
+                return vectorize(xo, yo, ro, tol, &maps::LimbDarkenedMap<MAPTYPE>::flux_numerical, map);
+            }, DOCS::LimbDarkenedMap::flux_numerical, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
+
+#else
+
+        // Methods and attributes only in `starry.grad.LimbDarkenedMap()`
+
+        .def_property("map_gradients", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.map_gradients;},
+            [](maps::LimbDarkenedMap<MAPTYPE> &map, bool map_gradients){map.map_gradients = map_gradients;}, DOCS::LimbDarkenedMap::map_gradients)
+
+#endif
+
+        .def("__repr__", [](maps::LimbDarkenedMap<MAPTYPE> &map) -> string {return map.repr();});
 
 
 /** DEBUG --->
@@ -1043,5 +665,6 @@ void ADD_MODULE(py::module &m) {
 #endif
 
 <--- DEBUG */
+
 
 }

@@ -65,9 +65,9 @@ namespace docstrings {
 
     )pbdoc";
 
-    namespace map {
+    namespace Map {
 
-        const char * map =
+        const char * Map =
         R"pbdoc(
                 Instantiate a :py:mod:`starry` surface map.
 
@@ -327,7 +327,188 @@ namespace docstrings {
                 frames (int): The number of frames in the animation. Default 50.
         )pbdoc";
 
-        } // namespace map
+    } // namespace Map
+
+    namespace LimbDarkenedMap {
+
+        const char * LimbDarkenedMap =
+        R"pbdoc(
+                Instantiate a :py:mod:`starry` limb-darkened surface map.
+
+                This differs from the base :py:class:`Map` class in that maps
+                instantiated this way are radially symmetric: only the radial (:py:obj:`m = 0`)
+                coefficients of the map are available. Users edit the map by directly
+                specifying the polynomial limb darkening coefficients :py:obj:`u`.
+
+                Args:
+                    lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
+
+                .. autoattribute:: optimize
+                .. automethod:: evaluate(x=0, y=0)
+                .. automethod:: flux_numerical(xo=0, yo=0, ro=0, tol=1.e-4)
+                .. automethod:: flux_mp(xo=0, yo=0, ro=0)
+                .. automethod:: flux(xo=0, yo=0, ro=0)
+                .. automethod:: get_coeff(l)
+                .. automethod:: set_coeff(l, coeff)
+                .. automethod:: reset()
+                .. autoattribute:: lmax
+                .. autoattribute:: y
+                .. autoattribute:: p
+                .. autoattribute:: g
+                .. autoattribute:: u
+                .. autoattribute:: s
+                .. autoattribute:: s_mp
+                .. automethod:: show(cmap='plasma', res=300)
+        )pbdoc";
+
+        const char * get_coeff =
+        R"pbdoc(
+            Return the limb darkening coefficient of order :py:obj:`l`.
+
+            .. note:: Users can also retrieve a coefficient by accessing the \
+                      [:py:obj:`l`] index of the map as if it were an array.
+
+            Args:
+                l (int): The limb darkening order (> 0).
+        )pbdoc";
+
+        const char * set_coeff =
+        R"pbdoc(
+            Set the limb darkening coefficient of order :py:obj:`l`.
+
+            .. note:: Users can also set a coefficient by setting the \
+                      [:py:obj:`l`] index of the map as if it \
+                      were an array.
+
+            Args:
+                l (int): The limb darkening order (> 0).
+                coeff (float): The value of the coefficient.
+        )pbdoc";
+
+        const char * reset =
+        R"pbdoc(
+            Set all of the map coefficients to zero.
+        )pbdoc";
+
+        const char * lmax =
+        R"pbdoc(
+            The highest spherical harmonic order of the map. *Read-only.*
+        )pbdoc";
+
+        const char * y =
+        R"pbdoc(
+            The spherical harmonic map vector. *Read-only.*
+        )pbdoc";
+
+        const char * p =
+        R"pbdoc(
+            The polynomial map vector. *Read-only.*
+        )pbdoc";
+
+        const char * g =
+        R"pbdoc(
+            The Green's polynomial map vector. *Read-only.*
+        )pbdoc";
+
+        const char * s =
+        R"pbdoc(
+            The current solution vector `s`. *Read-only.*
+        )pbdoc";
+
+        const char * u =
+        R"pbdoc(
+            The limb darkening coefficient vector. *Read-only.*
+        )pbdoc";
+
+        const char * s_mp =
+        R"pbdoc(
+            The current multi-precision solution vector `s`. Only available after :py:method:`flux_mp` has been called. *Read-only.*
+        )pbdoc";
+
+        const char * optimize =
+        R"pbdoc(
+            Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
+            computing occultation light curves. This is in general not something you should do! \
+            Default :py:obj:`True`.
+        )pbdoc";
+
+        const char * evaluate =
+        R"pbdoc(
+            Return the specific intensity at a point (`x`, `y`) on the map.
+
+            Args:
+                x (float or ndarray): Position scalar, vector, or matrix.
+                y (float or ndarray): Position scalar, vector, or matrix.
+
+            Returns:
+                The specific intensity at (`x`, `y`).
+        )pbdoc";
+
+        const char * flux =
+        R"pbdoc(
+            Return the total flux received by the observer.
+
+            Computes the total flux received by the observer from the
+            map during or outside of an occultation.
+
+            Args:
+                xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
+                yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
+                ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+
+            Returns:
+                The flux received by the observer (a scalar or a vector).
+        )pbdoc";
+
+        const char * flux_mp =
+        R"pbdoc(
+            Return the total flux received by the observer, computed using multi-precision.
+
+            Computes the total flux received by the observer from the
+            map during or outside of an occultation. By default, this method
+            performs all occultation calculations using 128-bit (quadruple) floating point
+            precision, corresponding to 32 significant digits. Users can increase this to any
+            number of digits (RAM permitting) by setting the :py:obj:`STARRY_MP_DIGITS=XX` flag
+            at compile time. Note, importantly, that run times are **much** slower for multi-precision
+            calculations.
+
+            Args:
+                xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
+                yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
+                ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+
+            Returns:
+                The flux received by the observer (a scalar or a vector).
+        )pbdoc";
+
+        const char * flux_numerical =
+        R"pbdoc(
+            Return the total flux received by the observer, computed numerically.
+
+            Computes the total flux received by the observer from the
+            map during or outside of an occultation. The flux is computed
+            numerically using an adaptive radial mesh.
+
+            Args:
+                xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
+                yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
+                ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+                tol (float): Tolerance of the numerical solver. Default `1.e-4`
+
+            Returns:
+                The flux received by the observer (a scalar or a vector).
+            )pbdoc";
+
+        const char * show =
+        R"pbdoc(
+            Convenience routine to quickly display the body's surface map.
+
+            Args:
+                cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
+                res (int): The resolution of the map in pixels on a side. Default 300.
+        )pbdoc";
+
+    } // namespace LimbDarkenedMap
 
 } // namespace docstrings
 
@@ -424,12 +605,11 @@ namespace docstrings_grad {
         .. autoclass:: Star()
         .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, theta0=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
         .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
-
     )pbdoc";
 
-    namespace map {
+    namespace Map {
 
-        const char * map =
+        const char * Map =
         R"pbdoc(
                 Instantiate a :py:mod:`starry` surface map.
 
@@ -454,32 +634,31 @@ namespace docstrings_grad {
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
                 .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
+        )pbdoc";
 
-            )pbdoc";
+        const char * get_coeff = docstrings::Map::get_coeff;
 
-        const char * get_coeff = docstrings::map::get_coeff;
+        const char * set_coeff = docstrings::Map::set_coeff;
 
-        const char * set_coeff = docstrings::map::set_coeff;
+        const char * reset = docstrings::Map::reset;
 
-        const char * reset = docstrings::map::reset;
+        const char * lmax = docstrings::Map::lmax;
 
-        const char * lmax = docstrings::map::lmax;
+        const char * y = docstrings::Map::y;
 
-        const char * y = docstrings::map::y;
+        const char * p = docstrings::Map::p;
 
-        const char * p = docstrings::map::p;
+        const char * g = docstrings::Map::g;
 
-        const char * g = docstrings::map::g;
+        const char * s = docstrings::Map::s;
 
-        const char * s = docstrings::map::s;
+        const char * r = docstrings::Map::r;
 
-        const char * r = docstrings::map::r;
+        const char * optimize = docstrings::Map::optimize;
 
-        const char * optimize = docstrings::map::optimize;
+        const char * evaluate = docstrings::Map::evaluate;
 
-        const char * evaluate = docstrings::map::evaluate;
-
-        const char * flux = docstrings::map::flux;
+        const char * flux = docstrings::Map::flux;
 
         const char * flux_numerical =
         R"pbdoc(
@@ -503,29 +682,98 @@ namespace docstrings_grad {
             .. note:: This function only returns the **value** of the numerical flux, and **not** its \
                       derivatives. Autodifferentiation of numerical integration is \
                       simply a terrible idea!
+        )pbdoc";
 
-            )pbdoc";
+        const char * rotate = docstrings::Map::rotate;
 
-        const char * rotate = docstrings::map::rotate;
+        const char * minimum = docstrings::Map::minimum;
 
-        const char * minimum = docstrings::map::minimum;
+        const char * load_image = docstrings::Map::load_image;
 
-        const char * load_image = docstrings::map::load_image;
+        const char * load_healpix = docstrings::Map::load_healpix;
 
-        const char * load_healpix = docstrings::map::load_healpix;
+        const char * show = docstrings::Map::show;
 
-        const char * show = docstrings::map::show;
-
-        const char * animate = docstrings::map::animate;
+        const char * animate = docstrings::Map::animate;
 
         const char * map_gradients =
         R"pbdoc(
             Compute gradients with respect to the map coefficients?
             Default :py:obj:`False`, in which case only gradients
-            with respect to the orbital parameters are computed.
+            with respect to the orbital parameters are computed. If
+            Default :py:obj:`True`, the map gradients are appended to
+            the end of the vector returned by the functions
+            :py:method:`flux` and :py:method:`flux`.
         )pbdoc";
 
-    } // namespace map
+    } // namespace Map
+
+    namespace LimbDarkenedMap {
+
+        const char * LimbDarkenedMap =
+        R"pbdoc(
+                Instantiate a :py:mod:`starry` limb-darkened surface map.
+
+                This differs from the base :py:class:`Map` class in that maps
+                instantiated this way are radially symmetric: only the radial (:py:obj:`m = 0`)
+                coefficients of the map are available. Users edit the map by directly
+                specifying the polynomial limb darkening coefficients :py:obj:`u`.
+
+                Args:
+                    lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
+
+                .. autoattribute:: optimize
+                .. automethod:: evaluate(x=0, y=0)
+                .. automethod:: flux(xo=0, yo=0, ro=0)
+                .. automethod:: get_coeff(l)
+                .. automethod:: set_coeff(l, coeff)
+                .. automethod:: reset()
+                .. autoattribute:: lmax
+                .. autoattribute:: y
+                .. autoattribute:: p
+                .. autoattribute:: g
+                .. autoattribute:: u
+                .. autoattribute:: s
+                .. automethod:: show(cmap='plasma', res=300)
+        )pbdoc";
+
+        const char * get_coeff = docstrings::LimbDarkenedMap::get_coeff;
+
+        const char * set_coeff = docstrings::LimbDarkenedMap::set_coeff;
+
+        const char * reset = docstrings::LimbDarkenedMap::reset;
+
+        const char * lmax = docstrings::LimbDarkenedMap::lmax;
+
+        const char * y = docstrings::LimbDarkenedMap::y;
+
+        const char * p = docstrings::LimbDarkenedMap::p;
+
+        const char * g = docstrings::LimbDarkenedMap::g;
+
+        const char * s = docstrings::LimbDarkenedMap::s;
+
+        const char * u = docstrings::LimbDarkenedMap::u;
+
+        const char * optimize = docstrings::LimbDarkenedMap::optimize;
+
+        const char * evaluate = docstrings::LimbDarkenedMap::evaluate;
+
+        const char * flux = docstrings::LimbDarkenedMap::flux;
+
+        const char * show = docstrings::LimbDarkenedMap::show;
+
+        const char * map_gradients =
+        R"pbdoc(
+            Compute gradients with respect to the map coefficients?
+            Default :py:obj:`False`, in which case only gradients
+            with respect to the orbital parameters are computed. If
+            Default :py:obj:`True`, the map gradients are appended to
+            the end of the vector returned by the functions
+            :py:method:`flux` and :py:method:`flux`.
+        )pbdoc";
+
+    } // namespace LimbDarkenedMap
 
 } // namespace docstrings_grad
 

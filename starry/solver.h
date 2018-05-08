@@ -65,7 +65,7 @@ namespace solver {
     // Note, importantly, that the term g(4) is *always* 1/3 * g(8), so we fold
     // that into `s8` below.
     template <typename T>
-    inline T QuadLimbDark(Greens<T>& G, T& b, T& r, T& g0, T& g2, T& g8) {
+    inline T QuadLimbDark(Greens<T>& G, const T& b, const T& r, T& g0, T& g2, T& g8) {
 
         // Initialize only the necessary variables
         T s0, s8;
@@ -85,19 +85,19 @@ namespace solver {
             G.lam = asin(G.sinlam());
             s0 = G.lam + G.pi_over_2 + G.sinlam() * G.coslam() -
                  G.r(2) * (G.phi + G.pi_over_2 + G.sinphi() * G.cosphi());
-            s8 = 0.5 * (G.pi_over_2 + G.lam) + (1. / 3.) * G.coslam() * G.sinlam() -
-                 (1. / 6.) * G.coslam(3) * G.sinlam() + (1. / 6.) * G.coslam() * G.sinlam(3) -
+            s8 = 0.5 * (G.pi_over_2 + G.lam) + T(1. / 3.) * G.coslam() * G.sinlam() -
+                 T(1. / 6.) * G.coslam(3) * G.sinlam() + T(1. / 6.) * G.coslam() * G.sinlam(3) -
                  (G.r(2) * G.b(2) * (G.pi_over_2 + G.phi + G.cosphi() * G.sinphi()) -
-                  G.r(3) * G.b() * G.cosphi() * (1. + (1. / 3.) * G.cosphi(2) - G.sinphi(2)) +
-                  G.r(4) * (0.5 * (G.pi_over_2 + G.phi) + (1. / 3.) * G.cosphi() * G.sinphi() -
-                            (1. / 6.) * G.cosphi(3) * G.sinphi() + (1. / 6.) * G.cosphi() * G.sinphi(3)));
+                  G.r(3) * G.b() * G.cosphi() * (T(1.) + T(1. / 3.) * G.cosphi(2) - G.sinphi(2)) +
+                  G.r(4) * (0.5 * (G.pi_over_2 + G.phi) + T(1. / 3.) * G.cosphi() * G.sinphi() -
+                            T(1. / 6.) * G.cosphi(3) * G.sinphi() + T(1. / 6.) * G.cosphi() * G.sinphi(3)));
         } else {
             G.sinphi.reset(1);
             G.cosphi.reset(0);
             G.sinlam.reset(1);
             G.coslam.reset(0);
-            G.phi = 0.5 * G.pi;
-            G.lam = 0.5 * G.pi;
+            G.phi = T(0.5 * G.pi);
+            G.lam = T(0.5 * G.pi);
             s0 = G.pi * (1 - G.r(2));
             s8 = G.pi_over_2 - G.pi * G.r(2) * (0.5 * G.r(2) + G.b(2));
         }

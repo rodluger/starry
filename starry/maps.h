@@ -61,7 +61,6 @@ namespace maps {
         protected:
 
             Vector<T> basis;
-            bool needs_update;
 
             // Temporary variables
             Vector<T> tmpvec;
@@ -118,7 +117,7 @@ namespace maps {
                 basis.resize(N, 1);
                 Y00_is_unity = false;
                 map_gradients = false;
-                update(true);
+                update();
             }
 
             // Public methods
@@ -127,7 +126,7 @@ namespace maps {
             void rotate(const UnitVector<T>& axis, const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout);
             void rotate(const UnitVector<T>& axis, const T& theta);
             void rotate(const UnitVector<T>& axis, const T& costheta, const T& sintheta);
-            void update(bool force=false);
+            void update();
             void random(double beta=0);
             void set_coeff(int l, int m, T coeff);
             T get_coeff(int l, int m);
@@ -159,26 +158,20 @@ namespace maps {
     // Update the maps after the coefficients changed
     // or after a base rotation was applied
     template <class T>
-    void Map<T>::update(bool force) {
-        if (force || needs_update) {
-            p = C.A1 * y;
-            g = C.A * y;
-            tmpscalar = NAN;
-            tmpu1 = 0;
-            tmpu2 = 0;
-            tmpu3 = 0;
-            tmpvec = Vector<T>::Zero(N);
-            needs_update = false;
-        }
+    void Map<T>::update() {
+        p = C.A1 * y;
+        g = C.A * y;
+        tmpscalar = NAN;
+        tmpu1 = 0;
+        tmpu2 = 0;
+        tmpu3 = 0;
+        tmpvec = Vector<T>::Zero(N);
     }
 
 
     // Evaluate our map at a given (x0, y0) coordinate
     template <class T>
     T Map<T>::evaluate(const UnitVector<T>& axis, const T& theta, const T& x0, const T& y0) {
-
-        // Update the maps if necessary
-        update();
 
         // Get the polynomial map
         Vector<T>* ptrmap;
@@ -254,14 +247,14 @@ namespace maps {
         T costheta = cos(theta);
         T sintheta = sin(theta);
         apply_rotation(axis, costheta, sintheta, y, y);
-        needs_update = true;
+        update();
     }
 
     // Shortcut to rotate the base map in-place given `costheta` and `sintheta`
     template <class T>
     void Map<T>::rotate(const UnitVector<T>& axis, const T& costheta, const T& sintheta) {
         apply_rotation(axis, costheta, sintheta, y, y);
-        needs_update = true;
+        update();
     }
 
     // Shortcut to rotate an arbitrary map given `theta`
@@ -419,7 +412,7 @@ namespace maps {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
             y(n) = coeff;
-            needs_update = true;
+            update();
         } else throw errors::BadLM();
     }
 
@@ -436,7 +429,7 @@ namespace maps {
     void Map<T>::reset() {
         y.setZero(N);
         if (Y00_is_unity) y(0) = 1;
-        needs_update = true;
+        update();
     }
 
     // Generate a random map with a given power spectrum power index `beta`
@@ -515,7 +508,6 @@ namespace maps {
         protected:
 
             Vector<T> basis;
-            bool needs_update;
             T ld_flux;
 
             // Temporary variables
@@ -533,6 +525,9 @@ namespace maps {
             // Map order
             int N;
             int lmax;
+
+            // Misc flags
+            bool map_gradients;
 
             // Constant matrices
             Constants C;
@@ -556,43 +551,61 @@ namespace maps {
                 ARRy = Vector<T>::Zero(N);
                 mpVec = Vector<bigdouble>::Zero(N);
                 basis.resize(N, 1);
+                map_gradients = false;
                 reset();
-                update(true);
+                update();
             }
 
             // Public methods
-            T evaluate(T x0=0, T y0=0);
-            void update(bool force=false);
+            T evaluate(const T& x0=0, const T& y0=0);
+            void update();
             void set_coeff(int l, T coeff);
             T get_coeff(int l);
             void reset();
-            T flux_numerical(T xo=0, T yo=0, T ro=0, double tol=1e-4);
-            T flux_mp(T xo=0, T yo=0, T ro=0);
-            T flux(T xo=0, T yo=0, T ro=0);
+            T flux_numerical(const T& xo=0, const T& yo=0, const T& ro=0, double tol=1e-4);
+            T flux_mp(const T& xo=0, const T& yo=0, const T& ro=0);
+            T flux(const T& xo=0, const T& yo=0, const T& ro=0);
             std::string repr();
 
     };
 
     // Update the maps after the coefficients changed
-    // or after a base rotation was applied
     template <class T>
-    void LimbDarkenedMap<T>::update(bool force) {
-        if (force || needs_update) {
-            p = C.A1 * y;
-            g = C.A * y;
-            needs_update = false;
+    void LimbDarkenedMap<T>::update() {
+
+        // Update the spherical harmonic vector
+        // and the total flux
+        T norm;
+        y.setZero(N);
+        if (lmax == 0) {
+            norm = M_PI;
+            y(0) = T(T(2 * sqrt(M_PI)) / norm) + 0 * u(1);
+            ld_flux = T(G.pi * g(0));
+        } else if (lmax == 1) {
+            norm = M_PI * (1 - u(1) / 3.);
+            y(0) = T(2. / norm) * T(sqrt(M_PI) / 3.) * T(3 - T(3 * u(1)));
+            y(2) = T(T(2. / norm) * sqrt(T(M_PI / 3.))) * u(1);
+            ld_flux = T(G.pi * g(0)) + T(T(2. * T(G.pi / 3.)) * g(2));
+        } else {
+            norm = M_PI * (1 - u(1) / 3. - u(2) / 6.);
+            y(0) = T(2. / norm) * T(sqrt(M_PI) / 3.) * T(3 - T(3 * u(1)));
+            y(2) = T(T(2. / norm) * sqrt(T(M_PI / 3.))) * u(1);
+            y(6) = T(T(-4. / 3.) * sqrt(T(M_PI / 5.))) * T(u(2) / norm);
+            ld_flux = T(G.pi * g(0)) + T(T(2. * T(G.pi / 3.)) * g(2)) + T(G.pi_over_2 * g(8));
         }
+
+        // Update the other vectors
+        p = C.A1 * y;
+        g = C.A * y;
+
     }
 
     // Evaluate our map at a given (x0, y0) coordinate
     template <class T>
-    T LimbDarkenedMap<T>::evaluate(T x0, T y0) {
-
-        // Update the map if necessary
-        update();
+    T LimbDarkenedMap<T>::evaluate(const T& x0, const T& y0) {
 
         // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) return NAN;
+        if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
 
         int l, m, mu, nu, n = 0;
         T z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
@@ -601,7 +614,7 @@ namespace maps {
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
                 if (abs(p(n)) < STARRY_MAP_TOLERANCE) {
-                    basis(n) = 0;
+                    basis(n) = 0 * x0;
                 } else {
                     mu = l - m;
                     nu = l + m;
@@ -622,7 +635,7 @@ namespace maps {
 
     // Compute the total flux during or outside of an occultation numerically
     template <class T>
-    T LimbDarkenedMap<T>::flux_numerical(T xo, T yo, T ro, double tol) {
+    T LimbDarkenedMap<T>::flux_numerical(const T& xo, const T& yo, const T& ro, double tol) {
 
         // Impact parameter
         T b = sqrt(xo * xo + yo * yo);
@@ -639,7 +652,7 @@ namespace maps {
     // Compute the total flux during or outside of an occultation using
     // multi-precision. This is *much* slower (~20x) than using doubles.
     template <class T>
-    T LimbDarkenedMap<T>::flux_mp(T xo, T yo, T ro) {
+    T LimbDarkenedMap<T>::flux_mp(const T& xo, const T& yo, const T& ro) {
 
         // Impact parameter
         T b = sqrt(xo * xo + yo * yo);
@@ -674,20 +687,29 @@ namespace maps {
 
     // Compute the total flux during or outside of an occultation
     template <class T>
-    T LimbDarkenedMap<T>::flux(T xo, T yo, T ro) {
+    T LimbDarkenedMap<T>::flux(const T& xo, const T& yo, const T& ro) {
+
+        // AutoDiff casting hack
+        T zero = 0 * ro;
 
         // Impact parameter
         T b = sqrt(xo * xo + yo * yo);
 
         // Check for complete occultation
-        if (b <= ro - 1) return 0;
+        if (b <= ro - 1) return zero;
 
         // If we're doing quadratic limb darkening, let's skip all the overhead
         if ((lmax <= 2) && (ro < 1)) {
             if ((b >= 1 + ro) || (ro == 0))
-                return ld_flux;
-            else
-                return solver::QuadLimbDark(G, b, ro, g(0), g(2), g(8));
+                return ld_flux + zero;
+            else {
+                if (lmax == 0)
+                    return solver::QuadLimbDark(G, b, ro, g(0), zero, zero);
+                else if (lmax == 1)
+                    return solver::QuadLimbDark(G, b, ro, g(0), g(2), zero);
+                else
+                    return solver::QuadLimbDark(G, b, ro, g(0), g(2), g(8));
+            }
         }
 
         // No occultation: cake
@@ -724,28 +746,9 @@ namespace maps {
         // Set the limb darkening coefficient
         u(l) = u_l;
 
-        // Update the map vector
-        T norm;
-        y.setZero(N);
-        if (lmax == 0) {
-            norm = M_PI;
-            y(0) = 2 * sqrt(M_PI) / norm;
-        } else if (lmax == 1) {
-            norm = M_PI * (1 - u(1) / 3.);
-            y(0) = 2 * sqrt(M_PI) / 3. * (3 - 3 * u(1)) / norm;
-            y(2) = 2 * sqrt(M_PI / 3.) * u(1) / norm;
-        } else {
-            norm = M_PI * (1 - u(1) / 3. - u(2) / 6.);
-            y(0) = 2 * sqrt(M_PI) / 3. * (3 - 3 * u(1) - 4 * u(2)) / norm;
-            y(2) = 2 * sqrt(M_PI / 3.) * (u(1) + 2 * u(2)) / norm;
-            y(6) = -4. / 3. * sqrt(M_PI / 5) * u(2) / norm;
-        }
+        // Update all the vectors
+        update();
 
-        // Pre-compute the greens polynomials so we can
-        // breeze through the flux calculation
-        g = C.A * y;
-        ld_flux = G.pi * g(0) + 2. * G.pi / 3. * g(2) + G.pi_over_2 * g(8);
-        needs_update = true;
     }
 
     // Get a limb darkening coefficient
@@ -770,15 +773,20 @@ namespace maps {
         y(0) = 2 * sqrt(M_PI) / M_PI;
         g = C.A * y;
         ld_flux = G.pi * g(0);
-        needs_update = true;
+        update();
     }
 
     // Return a human-readable map string
     template <class T>
     std::string LimbDarkenedMap<T>::repr() {
         std::ostringstream os;
+        char buf[30];
         os << "<STARRY LimbDarkenedMap: ";
-        os << u.transpose();
+        for (int l = 1; l < lmax + 1; l++) {
+            sprintf(buf, "u%d = %.3f", l, get_value(u(l)));
+            os << buf;
+            if (l < lmax) os << ", ";
+        }
         os << ">";
         return std::string(os.str());
     }
