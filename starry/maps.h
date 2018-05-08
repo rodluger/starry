@@ -411,7 +411,7 @@ namespace maps {
         if ((l == 0) && (Y00_is_unity) && (coeff != 1)) throw errors::Y00IsUnity();
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
-            y(n) = coeff;
+            set_value(y(n), coeff);
             update();
         } else throw errors::BadLM();
     }
@@ -754,7 +754,7 @@ namespace maps {
         }
 
         // Set the limb darkening coefficient
-        u(l) = u_l;
+        set_value(u(l), u_l);
 
         // Update all the vectors
         update();

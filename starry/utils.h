@@ -34,6 +34,10 @@ inline Vector<double> get_value(Vector<Grad> x) {
     return vec;
 }
 
+// Set the value of a MapType variable
+inline void set_value(double& x, double& value) { x = value; }
+inline void set_value(Grad& x, Grad& value) { x.value() = value.value(); }
+
 // Print the derivatives of a MapType variable for debugging
 void print_derivs(double x) { std::cout << "None" << std::endl; }
 void print_derivs(Grad x) { std::cout << x.derivatives().transpose() << std::endl; }
