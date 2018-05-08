@@ -51,6 +51,38 @@ namespace orbital {
         );
     }
 
+    // Compute the eccentric anomaly. Adapted from
+    // https://github.com/lkreidberg/batman/blob/master/c_src/_rsky.c
+    double EccentricAnomaly(double& M, double& ecc, const double& eps, const int& maxiter) {
+        // Initial condition
+        double E = M;
+        if (ecc > 0) {
+            // Iterate
+            for (int iter = 0; iter <= maxiter; iter++) {
+                E = E - (E - ecc * sin(E) - M) / (1. - ecc * cos(E));
+                if (abs(E - ecc * sin(E) - M) <= eps) return E;
+            }
+            // Didn't converge!
+            throw errors::Kepler();
+        }
+        return E;
+    }
+
+    // Derivative of the eccentric anomaly
+    template <typename T>
+    Eigen::AutoDiffScalar<T> EccentricAnomaly(const Eigen::AutoDiffScalar<T>& M, const Eigen::AutoDiffScalar<T>& ecc, const double& eps, const int& maxiter) {
+        typename T::Scalar M_value = M.value(),
+                           ecc_value = ecc.value(),
+                           E_value = EccentricAnomaly(M_value, ecc_value, eps, maxiter),
+                           cosE_value = cos(E_value),
+                           sinE_value = sin(E_value);
+        return Eigen::AutoDiffScalar<T>(
+          E_value,
+          M.derivatives() / (1. - ecc_value * cosE_value) +
+          ecc.derivatives() * sinE_value / (1. - ecc_value * cosE_value)
+        );
+    }
+
     // System class
     template <class T>
     class System {
@@ -179,11 +211,6 @@ namespace orbital {
             // Total flux at current timestep
             T totalflux;
             T norm;
-
-            // Methods
-            void computeM(const T& time);
-            void computeE();
-            void computef();
 
         public:
 
@@ -323,41 +350,6 @@ namespace orbital {
         }
     }
 
-    // Compute the mean anomaly
-    template <class T>
-    inline void Body<T>::computeM(const T& time) {
-        M = fmod(T(M0 + angvelorb * (time - tref)), T(2 * M_PI));
-    }
-
-    // Compute the eccentric anomaly. Adapted from
-    // https://github.com/lkreidberg/batman/blob/master/c_src/_rsky.c
-    template <class T>
-    inline void Body<T>::computeE() {
-        // Initial condition
-        E = M;
-        if (ecc > 0) {
-
-            // Iterate
-            for (int iter = 0; iter <= maxiter; iter++) {
-                E = E - (E - ecc * sin(E) - M) / (1. - ecc * cos(E));
-                if (abs(E - ecc * sin(E) - M) <= eps) return;
-            }
-
-            // Didn't converge!
-            throw errors::Kepler();
-
-        }
-
-    }
-
-    // Compute the true anomaly
-    template <class T>
-    inline void Body<T>::computef() {
-        if (ecc == 0) f = E;
-        else f = 2. * atan2(sqrtonepluse * sin(E / 2.),
-                            sqrtoneminuse * cos(E / 2.));
-    }
-
     // Compute the instantaneous x, y, and z positions of the
     // body with a simple Keplerian solver.
     template <class T>
@@ -371,13 +363,15 @@ namespace orbital {
         } else {
 
             // Mean anomaly
-            computeM(time);
+            M = fmod(T(M0 + angvelorb * (time - tref)), T(2 * M_PI));
 
             // Eccentric anomaly
-            computeE();
+            E = EccentricAnomaly(M, ecc, eps, maxiter);
 
             // True anomaly
-            computef();
+            if (ecc == 0) f = E;
+            else f = 2. * atan2(sqrtonepluse * sin(E / 2.),
+                                sqrtoneminuse * cos(E / 2.));
 
             // Orbital radius
             if (ecc > 0)
