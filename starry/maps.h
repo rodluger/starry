@@ -20,6 +20,7 @@ Defines the surface map class.
 namespace maps {
 
     using std::abs;
+    using std::string;
 
     // Some useful unit vectors
     static const UnitVector<double> xhat({1, 0, 0});
@@ -85,7 +86,9 @@ namespace maps {
 
             // Misc flags
             bool Y00_is_unity;
-            bool map_gradients;
+
+            // Derivatives dictionary
+            std::map<string, Eigen::VectorXd> derivs;
 
             // Rotation matrices
             rotation::Wigner<T> R;
@@ -116,7 +119,6 @@ namespace maps {
                 tmpu3 = 0;
                 basis.resize(N, 1);
                 Y00_is_unity = false;
-                map_gradients = false;
                 update();
             }
 
@@ -356,14 +358,11 @@ namespace maps {
     template <class T>
     T Map<T>::flux(const UnitVector<T>& axis, const T& theta, const T& xo, const T& yo, const T& ro) {
 
-        // AutoDiff casting hack
-        T zero = 0 * ro;
-
         // Impact parameter
         T b = sqrt(xo * xo + yo * yo);
 
         // Check for complete occultation
-        if (b <= ro - 1) return zero;
+        if (b <= ro - 1) return 0;
 
         // Pointer to the map we're integrating
         // (defaults to the base map)
@@ -378,14 +377,14 @@ namespace maps {
         // No occultation: cake
         if ((b >= 1 + ro) || (ro == 0)) {
 
-            return T(C.rTA1 * (*ptry)) + zero;
+            return C.rTA1 * (*ptry);
 
         // Occultation
         } else {
 
             // Align occultor with the +y axis if necessary
             if ((b > 0) && (xo != 0)) {
-                UnitVector<T> zaxis({zero, zero, 1 + zero});
+                UnitVector<T> zaxis({0, 0, 1});
                 T yo_b(yo / b);
                 T xo_b(xo / b);
                 rotate(zaxis, yo_b, xo_b, (*ptry), tmpvec);
@@ -526,8 +525,8 @@ namespace maps {
             int N;
             int lmax;
 
-            // Misc flags
-            bool map_gradients;
+            // Derivatives dictionary
+            std::map<string, Eigen::VectorXd> derivs;
 
             // Constant matrices
             Constants C;
@@ -551,7 +550,6 @@ namespace maps {
                 ARRy = Vector<T>::Zero(N);
                 mpVec = Vector<bigdouble>::Zero(N);
                 basis.resize(N, 1);
-                map_gradients = false;
                 reset();
                 update();
             }
@@ -581,18 +579,18 @@ namespace maps {
         y.setZero(N);
         if (lmax == 0) {
             norm = M_PI;
-            y(0) = T(T(2 * sqrt(M_PI)) / norm) + 0 * u(1);
+            y(0) = 2 * sqrt(M_PI) / norm;
 
         } else if (lmax == 1) {
             norm = M_PI * (1 - u(1) / 3.);
-            y(0) = T(2. / norm) * T(sqrt(M_PI) / 3.) * T(3 - T(3 * u(1)));
-            y(2) = T(T(2. / norm) * sqrt(T(M_PI / 3.))) * u(1);
+            y(0) = (2. / norm) * sqrt(M_PI) / 3. * (3 - 3 * u(1));
+            y(2) = (2. / norm) * sqrt(M_PI / 3.) * u(1);
 
         } else {
             norm = M_PI * (1 - u(1) / 3. - u(2) / 6.);
-            y(0) = T(2. / norm) * T(sqrt(M_PI) / 3.) * T(3 - T(3 * u(1)) - T(4 * u(2)));
-            y(2) = T(T(2. / norm) * sqrt(T(M_PI / 3.))) * (u(1) + 2 * u(2));
-            y(6) = T(T(-4. / 3.) * sqrt(T(M_PI / 5.))) * T(u(2) / norm);
+            y(0) = (2. / norm) * sqrt(M_PI) / 3. * (3 - 3 * u(1) - 4 * u(2));
+            y(2) = (2. / norm) * sqrt(M_PI / 3.) * (u(1) + 2 * u(2));
+            y(6) = (-4. / 3.) * sqrt(M_PI / 5.) * u(2) / norm;
 
         }
 
@@ -602,11 +600,11 @@ namespace maps {
 
         // Update the total flux
         if (lmax == 0)
-            ld_flux = T(G.pi * g(0));
+            ld_flux = G.pi * g(0);
         else if (lmax == 1)
-            ld_flux = T(G.pi * g(0)) + T(T(2. * T(G.pi / 3.)) * g(2));
+            ld_flux = G.pi * g(0) + 2. * G.pi / 3. * g(2);
         else
-            ld_flux = T(G.pi * g(0)) + T(T(2. * T(G.pi / 3.)) * g(2)) + T(G.pi_over_2 * g(8));
+            ld_flux = G.pi * g(0) + 2. * G.pi / 3. * g(2) + G.pi_over_2 * g(8);
 
     }
 

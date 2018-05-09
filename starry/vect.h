@@ -12,12 +12,15 @@ please go for it!
 
 #include <iostream>
 #include <cmath>
+#include <string>
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 #include <stdlib.h>
 #include <utils.h>
 #include <maps.h>
+#include "constants.h"
+#include "errors.h"
 
 using namespace std;
 namespace py = pybind11;
@@ -126,17 +129,22 @@ namespace vect {
         }
     }
 
-    /**
-    Vectorize a class member function for class type double.
-    Based on https://stackoverflow.com/a/12662950. This function
-    takes 5 arguments, the first of which is a constant unit vector.
-    The remaining arguments are vectorized.
+    /* --------------------------------------------- */
 
-    This is used specifically to vectorize `starry.Map.flux()` and `starry.Map.flux_mp()`.
-    */
-    inline Vector<double> vectorize(
+    // Instantiate a Grad type with or without derivatives
+    Grad new_grad(const string& name, const double& value, const vector<string>& gradients, int& n, const int& ngrad) {
+        if(find(gradients.begin(), gradients.end(), name) != gradients.end()) {
+            return Grad(value, ngrad, n++);
+        } else {
+            return Grad(value);
+        }
+    }
+
+    /* --------------------------------------------- */
+
+    // Vectorize `starry.Map.flux()`.
+    inline Vector<double> vectorize_map_flux(
             UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4, py::object& arg5,
-            double (maps::Map<double>::*func)(const UnitVector<double>&, const double&, const double&, const double&, const double&),
             maps::Map<double>& map) {
         // Vectorize the inputs
         Vector<double> arg2_v, arg3_v, arg4_v, arg5_v;
@@ -145,263 +153,335 @@ namespace vect {
         // Compute the function for each vector index
         Vector<double> result(arg2_v.size());
         for (int i = 0; i < arg2_v.size(); i++)
-            result(i) = (map.*func)(arg1, arg2_v(i), arg3_v(i), arg4_v(i), arg5_v(i));
+            result(i) = map.flux(arg1, arg2_v(i), arg3_v(i), arg4_v(i), arg5_v(i));
 
         // Return an array
         return result;
     }
 
-    /**
-    Overloaded definition of `vectorize()` for function taking 4 arguments, the
-    first of which is a constant unit vector.
-
-    This is used specifically to vectorize `starry.Map.evaluate()`.
-    */
-    inline Vector<double> vectorize(
-            UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4,
-            double (maps::Map<double>::*func)(const UnitVector<double>&, const double&, const double&, const double&),
-            maps::Map<double>& map) {
-        Vector<double> arg2_v, arg3_v, arg4_v;
-        vectorize_args(arg2, arg3, arg4, arg2_v, arg3_v, arg4_v);
-        Vector<double> result(arg2_v.size());
-        for (int i = 0; i < arg2_v.size(); i++)
-            result(i) = (map.*func)(arg1, arg2_v(i), arg3_v(i), arg4_v(i));
-        return result;
-    }
-
-    /**
-    Overloaded definition of `vectorize()` for function taking 3 arguments.
-
-    This is used specifically to vectorize `starry.LimbDarkenedMap.flux()`.
-    */
-    inline Vector<double> vectorize(
-            py::object& arg1, py::object& arg2, py::object& arg3,
-            double (maps::LimbDarkenedMap<double>::*func)(const double&, const double&, const double&),
-            maps::LimbDarkenedMap<double>& map) {
-        Vector<double> arg1_v, arg2_v, arg3_v;
-        vectorize_args(arg1, arg2, arg3, arg1_v, arg2_v, arg3_v);
-        Vector<double> result(arg1_v.size());
-        for (int i = 0; i < arg1_v.size(); i++)
-            result(i) = (map.*func)(arg1_v(i), arg2_v(i), arg3_v(i));
-        return result;
-    }
-
-    /**
-    Overloaded definition of `vectorize()` for function taking 2 arguments.
-
-    This is used specifically to vectorize `starry.LimbDarkenedMap.evaluate()`.
-    */
-    inline Vector<double> vectorize(
-            py::object& arg1, py::object& arg2,
-            double (maps::LimbDarkenedMap<double>::*func)(const double&, const double&),
-            maps::LimbDarkenedMap<double>& map) {
-        Vector<double> arg1_v, arg2_v;
-        vectorize_args(arg1, arg2, arg1_v, arg2_v);
-        Vector<double> result(arg1_v.size());
-        for (int i = 0; i < arg1_v.size(); i++)
-            result(i) = (map.*func)(arg1_v(i), arg2_v(i));
-        return result;
-    }
-
-    /**
-    Overloaded definition of `vectorize()` for function taking 6 arguments, the
-    first of which is a constant unit vector, and the last of which is a constant double.
-
-    This is used specifically to vectorize `starry.Map.flux_numerical()`.
-    */
-    inline Vector<double> vectorize(
+    // Vectorize `starry.Map.flux_numerical()`.
+    inline Vector<double> vectorize_map_flux_numerical(
             UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4, py::object& arg5, double& arg6,
-            double (maps::Map<double>::*func)(const UnitVector<double>&, const double&, const double&, const double&, const double&, double),
             maps::Map<double>& map) {
         Vector<double> arg2_v, arg3_v, arg4_v, arg5_v;
         vectorize_args(arg2, arg3, arg4, arg5, arg2_v, arg3_v, arg4_v, arg5_v);
         Vector<double> result(arg2_v.size());
         for (int i = 0; i < arg2_v.size(); i++)
-            result(i) = (map.*func)(arg1, arg2_v(i), arg3_v(i), arg4_v(i), arg5_v(i), arg6);
+            result(i) = map.flux_numerical(arg1, arg2_v(i), arg3_v(i), arg4_v(i), arg5_v(i), arg6);
         return result;
     }
 
-    /**
-    Overloaded definition of `vectorize()` for function taking 4 arguments, the
-    last of which is a constant double.
+    // Vectorize `starry.Map.flux_mp()`.
+    inline Vector<double> vectorize_map_flux_mp(
+            UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4, py::object& arg5,
+            maps::Map<double>& map) {
+        // Vectorize the inputs
+        Vector<double> arg2_v, arg3_v, arg4_v, arg5_v;
+        vectorize_args(arg2, arg3, arg4, arg5, arg2_v, arg3_v, arg4_v, arg5_v);
 
-    This is used specifically to vectorize `starry.LimbDarkenedMap.flux_numerical()`.
-    */
-    inline Vector<double> vectorize(
-            py::object& arg1, py::object& arg2, py::object& arg3, double& arg4,
-            double (maps::LimbDarkenedMap<double>::*func)(const double&, const double&, const double&, double),
+        // Compute the function for each vector index
+        Vector<double> result(arg2_v.size());
+        for (int i = 0; i < arg2_v.size(); i++)
+            result(i) = map.flux_mp(arg1, arg2_v(i), arg3_v(i), arg4_v(i), arg5_v(i));
+
+        // Return an array
+        return result;
+    }
+
+    // Vectorize `starry.Map.evaluate()`.
+    inline Vector<double> vectorize_map_evaluate(
+            UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4,
+            maps::Map<double>& map) {
+        Vector<double> arg2_v, arg3_v, arg4_v;
+        vectorize_args(arg2, arg3, arg4, arg2_v, arg3_v, arg4_v);
+        Vector<double> result(arg2_v.size());
+        for (int i = 0; i < arg2_v.size(); i++)
+            result(i) = map.evaluate(arg1, arg2_v(i), arg3_v(i), arg4_v(i));
+        return result;
+    }
+
+    // Vectorize `starry.LimbDarkenedMap.flux()`.
+    inline Vector<double> vectorize_ldmap_flux(
+            py::object& arg1, py::object& arg2, py::object& arg3,
             maps::LimbDarkenedMap<double>& map) {
         Vector<double> arg1_v, arg2_v, arg3_v;
         vectorize_args(arg1, arg2, arg3, arg1_v, arg2_v, arg3_v);
         Vector<double> result(arg1_v.size());
         for (int i = 0; i < arg1_v.size(); i++)
-            result(i) = (map.*func)(arg1_v(i), arg2_v(i), arg3_v(i), arg4);
+            result(i) = map.flux(arg1_v(i), arg2_v(i), arg3_v(i));
         return result;
     }
 
-    /**
-    Vectorize a class member function for class type Grad.
-    Based on https://stackoverflow.com/a/12662950. This function
-    takes 5 arguments, the first of which is a constant unit vector.
-    The remaining arguments are vectorized.
+    // Vectorize `starry.LimbDarkenedMap.flux_numerical()`.
+    inline Vector<double> vectorize_ldmap_flux_numerical(
+            py::object& arg1, py::object& arg2, py::object& arg3, double& arg4,
+            maps::LimbDarkenedMap<double>& map) {
+        Vector<double> arg1_v, arg2_v, arg3_v;
+        vectorize_args(arg1, arg2, arg3, arg1_v, arg2_v, arg3_v);
+        Vector<double> result(arg1_v.size());
+        for (int i = 0; i < arg1_v.size(); i++)
+            result(i) = map.flux_numerical(arg1_v(i), arg2_v(i), arg3_v(i), arg4);
+        return result;
+    }
 
-    This is used specifically to vectorize `starry.grad.Map.flux()`.
-    */
-    inline Matrix<double> vectorize(
+    // Vectorize `starry.LimbDarkenedMap.flux_mp()`.
+    inline Vector<double> vectorize_ldmap_flux_mp(
+            py::object& arg1, py::object& arg2, py::object& arg3,
+            maps::LimbDarkenedMap<double>& map) {
+        Vector<double> arg1_v, arg2_v, arg3_v;
+        vectorize_args(arg1, arg2, arg3, arg1_v, arg2_v, arg3_v);
+        Vector<double> result(arg1_v.size());
+        for (int i = 0; i < arg1_v.size(); i++)
+            result(i) = map.flux_mp(arg1_v(i), arg2_v(i), arg3_v(i));
+        return result;
+    }
+
+    // Vectorize `starry.LimbDarkenedMap.evaluate()`.
+    inline Vector<double> vectorize_ldmap_evaluate(
+            py::object& arg1, py::object& arg2,
+            maps::LimbDarkenedMap<double>& map) {
+        Vector<double> arg1_v, arg2_v;
+        vectorize_args(arg1, arg2, arg1_v, arg2_v);
+        Vector<double> result(arg1_v.size());
+        for (int i = 0; i < arg1_v.size(); i++)
+            result(i) = map.evaluate(arg1_v(i), arg2_v(i));
+        return result;
+    }
+
+    /* --------------------------------------------- */
+
+    // Vectorize `starry.grad.Map.flux()`.
+    inline Matrix<double> vectorize_map_flux(
             UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4, py::object& arg5,
-            Grad (maps::Map<Grad>::*func)(const UnitVector<Grad>&, const Grad&, const Grad&, const Grad&, const Grad&),
             maps::Map<Grad>& map) {
 
+        int l, m, n, i;
+
+        // Check that our derivative vectors are large enough
+        int ngrad = 7 + map.N;
+        if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
+
         // Vectorize only the inputs of type double
-        int nder = 7 + map.N * (int)map.map_gradients;
         Vector<double> arg2_v, arg3_v, arg4_v, arg5_v;
         vectorize_args(arg2, arg3, arg4, arg5, arg2_v, arg3_v, arg4_v, arg5_v);
 
         // Declare our gradient types
-        Grad arg1_x(arg1(0), nder, 0);
-        Grad arg1_y(arg1(1), nder, 1);
-        Grad arg1_z(arg1(2), nder, 2);
-        Grad arg2_g(0., nder, 3);
-        Grad arg3_g(0., nder, 4);
-        Grad arg4_g(0., nder, 5);
-        Grad arg5_g(0., nder, 6);
+        vector<string> names {"axis_x", "axis_y", "axis_z", "theta", "xo", "yo", "ro"};
+        Grad arg1_x(arg1(0), STARRY_NGRAD, 0);
+        Grad arg1_y(arg1(1), STARRY_NGRAD, 1);
+        Grad arg1_z(arg1(2), STARRY_NGRAD, 2);
+        Grad arg2_g(0., STARRY_NGRAD, 3);
+        Grad arg3_g(0., STARRY_NGRAD, 4);
+        Grad arg4_g(0., STARRY_NGRAD, 5);
+        Grad arg5_g(0., STARRY_NGRAD, 6);
         UnitVector<Grad> arg1_g({arg1_x, arg1_y, arg1_z});
-        Grad tmp;
-
-        // Compute gradients w/ respect to the map coefficients?
-        if (map.map_gradients) {
-            for (int n = 0; n < map.N; n++)
-                map.y(n).derivatives() = Vector<double>::Unit(nder, 7 + n);
+        n = 0;
+        for (l = 0; l < map.lmax + 1; l++) {
+            for (m = -l; m < l + 1; m++) {
+                names.push_back(string("Y_{" + to_string(l) + "," + to_string(m) + "}"));
+                map.y(n).derivatives() = Vector<double>::Unit(STARRY_NGRAD, 7 + n);
+                n++;
+            }
         }
 
         // Compute the function at each index
-        Matrix<double> result(arg2_v.size(), nder + 1);
-        for (int i = 0; i < arg2_v.size(); i++) {
+        Grad tmp;
+        Vector<double> result(arg2_v.size());
+
+        // Allocate memory for the derivs
+        map.derivs.clear();
+        for (n = 0; n < ngrad; n++) {
+            map.derivs[names[n]].resize(arg2_v.size());
+        }
+
+        // Populate the result vector and the gradients
+        for (i = 0; i < arg2_v.size(); i++) {
             arg2_g.value() = arg2_v(i);
             arg3_g.value() = arg3_v(i);
             arg4_g.value() = arg4_v(i);
             arg5_g.value() = arg5_v(i);
-            tmp = (map.*func)(arg1_g, arg2_g, arg3_g, arg4_g, arg5_g);
-            result(i, 0) = tmp.value();
-            for (int j = 0; j < nder; j++)
-                result(i, j + 1) = tmp.derivatives()(j);
+            tmp = map.flux(arg1_g, arg2_g, arg3_g, arg4_g, arg5_g);
+            result(i) = tmp.value();
+            for (n = 0; n < ngrad; n++)
+                (map.derivs[names[n]])(i) = tmp.derivatives()(n);
         }
 
-        // Return a matrix of function value, derivatives at each index
+        // Return an array
         return result;
 
     }
 
-    /**
-    Overloaded definition of `vectorize()` for function taking 4 arguments, the
-    first of which is a constant unit vector.
-
-    This is used specifically to vectorize `starry.grad.Map.evaluate()`.
-    */
-    inline Matrix<double> vectorize(
+    // Vectorize `starry.grad.Map.evaluate()`.
+    inline Matrix<double> vectorize_map_evaluate(
             UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4,
-            Grad (maps::Map<Grad>::*func)(const UnitVector<Grad>&, const Grad&, const Grad&, const Grad&),
             maps::Map<Grad>& map) {
-        int nder = 6 + map.N * (int)map.map_gradients;
+
+        int l, m, n, i;
+
+        // Check that our derivative vectors are large enough
+        int ngrad = 6 + map.N;
+        if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
+
+        // Vectorize only the inputs of type double
         Vector<double> arg2_v, arg3_v, arg4_v;
         vectorize_args(arg2, arg3, arg4, arg2_v, arg3_v, arg4_v);
-        Grad arg1_x(arg1(0), nder, 0);
-        Grad arg1_y(arg1(1), nder, 1);
-        Grad arg1_z(arg1(2), nder, 2);
-        Grad arg2_g(0., nder, 3);
-        Grad arg3_g(0., nder, 4);
-        Grad arg4_g(0., nder, 5);
+
+        // Declare our gradient types
+        vector<string> names {"axis_x", "axis_y", "axis_z", "theta", "x", "y"};
+        Grad arg1_x(arg1(0), STARRY_NGRAD, 0);
+        Grad arg1_y(arg1(1), STARRY_NGRAD, 1);
+        Grad arg1_z(arg1(2), STARRY_NGRAD, 2);
+        Grad arg2_g(0., STARRY_NGRAD, 3);
+        Grad arg3_g(0., STARRY_NGRAD, 4);
+        Grad arg4_g(0., STARRY_NGRAD, 5);
         UnitVector<Grad> arg1_g({arg1_x, arg1_y, arg1_z});
-        Grad tmp;
-        if (map.map_gradients) {
-            for (int n = 0; n < map.N; n++)
-                map.y(n).derivatives() = Vector<double>::Unit(nder, 6 + n);
+        n = 0;
+        for (l = 0; l < map.lmax + 1; l++) {
+            for (m = -l; m < l + 1; m++) {
+                names.push_back(string("Y_{" + to_string(l) + "," + to_string(m) + "}"));
+                map.y(n).derivatives() = Vector<double>::Unit(STARRY_NGRAD, 6 + n);
+                n++;
+            }
         }
-        Matrix<double> result(arg2_v.size(), nder + 1);
-        for (int i = 0; i < arg2_v.size(); i++) {
+
+        // Compute the function at each index
+        Grad tmp;
+        Vector<double> result(arg2_v.size());
+
+        // Allocate memory for the derivs
+        map.derivs.clear();
+        for (n = 0; n < ngrad; n++) {
+            map.derivs[names[n]].resize(arg2_v.size());
+        }
+
+        // Populate the result vector and the gradients
+        for (i = 0; i < arg2_v.size(); i++) {
             arg2_g.value() = arg2_v(i);
             arg3_g.value() = arg3_v(i);
             arg4_g.value() = arg4_v(i);
-            tmp = (map.*func)(arg1_g, arg2_g, arg3_g, arg4_g);
-            result(i, 0) = tmp.value();
-            for (int j = 0; j < nder; j++)
-                result(i, j + 1) = tmp.derivatives()(j);
+            tmp = map.evaluate(arg1_g, arg2_g, arg3_g, arg4_g);
+            result(i) = tmp.value();
+            for (n = 0; n < ngrad; n++)
+                (map.derivs[names[n]])(i) = tmp.derivatives()(n);
         }
+
+        // Return an array
         return result;
+
     }
 
-    /**
-    Overloaded definition of `vectorize()` for function taking 2 arguments.
-
-    This is used specifically to vectorize `starry.grad.LimbDarkenedMap.evaluate()`.
-    */
-    inline Matrix<double> vectorize(
-            py::object& arg1, py::object& arg2,
-            Grad (maps::LimbDarkenedMap<Grad>::*func)(const Grad&, const Grad&),
-            maps::LimbDarkenedMap<Grad>& map) {
-        int nder = 2 + (map.lmax) * (int)map.map_gradients;
-        Vector<double> arg1_v, arg2_v;
-        vectorize_args(arg1, arg2, arg1_v, arg2_v);
-        Grad arg1_g(0., nder, 0);
-        Grad arg2_g(0., nder, 1);
-        Grad tmp;
-        if (map.map_gradients) {
-            // The constant term u(0) is always unity, so we won't
-            // include it in the output derivative vector
-            map.u(0).derivatives() = Vector<double>::Zero(nder);
-            for (int n = 0; n < map.lmax; n++)
-                map.u(n + 1).derivatives() = Vector<double>::Unit(nder, 2 + n);
-        }
-        // Force the derivatives to propagate to the polynomial vector
-        map.update();
-        Matrix<double> result(arg1_v.size(), nder + 1);
-        for (int i = 0; i < arg1_v.size(); i++) {
-            arg1_g.value() = arg1_v(i);
-            arg2_g.value() = arg2_v(i);
-            tmp = (map.*func)(arg1_g, arg2_g);
-            result(i, 0) = tmp.value();
-            for (int j = 0; j < nder; j++)
-                result(i, j + 1) = tmp.derivatives()(j);
-        }
-        return result;
-    }
-
-    /**
-    Overloaded definition of `vectorize()` for function taking 3 arguments.
-
-    This is used specifically to vectorize `starry.grad.LimbDarkenedMap.flux()`.
-    */
-    inline Matrix<double> vectorize(
+    // Vectorize `starry.grad.LimbDarkenedMap.flux()`.
+    inline Matrix<double> vectorize_ldmap_flux(
             py::object& arg1, py::object& arg2, py::object& arg3,
-            Grad (maps::LimbDarkenedMap<Grad>::*func)(const Grad&, const Grad&, const Grad&),
             maps::LimbDarkenedMap<Grad>& map) {
-        int nder = 3 + (map.lmax) * (int)map.map_gradients;
+
+        int l, m, n, i;
+
+        // Check that our derivative vectors are large enough
+        int ngrad = 3 + map.N;
+        if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
+
+        // Vectorize only the inputs of type double
         Vector<double> arg1_v, arg2_v, arg3_v;
         vectorize_args(arg1, arg2, arg3, arg1_v, arg2_v, arg3_v);
-        Grad arg1_g(0., nder, 0);
-        Grad arg2_g(0., nder, 1);
-        Grad arg3_g(0., nder, 2);
-        Grad tmp;
-        if (map.map_gradients) {
-            // The constant term u(0) is always unity, so we won't
-            // include it in the output derivative vector
-            map.u(0).derivatives() = Vector<double>::Zero(nder);
-            for (int n = 0; n < map.lmax; n++)
-                map.u(n + 1).derivatives() = Vector<double>::Unit(nder, 3 + n);
+
+        // Declare our gradient types
+        vector<string> names {"xo", "yo", "ro"};
+        Grad arg1_g(0., STARRY_NGRAD, 0);
+        Grad arg2_g(0., STARRY_NGRAD, 1);
+        Grad arg3_g(0., STARRY_NGRAD, 2);
+        n = 0;
+        for (l = 0; l < map.lmax + 1; l++) {
+            for (m = -l; m < l + 1; m++) {
+                names.push_back(string("Y_{" + to_string(l) + "," + to_string(m) + "}"));
+                map.y(n).derivatives() = Vector<double>::Unit(STARRY_NGRAD, 3 + n);
+                n++;
+            }
         }
+
         // Force the derivatives to propagate to the Green's vector
         map.update();
-        Matrix<double> result(arg1_v.size(), nder + 1);
-        for (int i = 0; i < arg1_v.size(); i++) {
+
+        // Compute the function at each index
+        Grad tmp;
+        Vector<double> result(arg1_v.size());
+
+        // Allocate memory for the derivs
+        map.derivs.clear();
+        for (n = 0; n < ngrad; n++) {
+            map.derivs[names[n]].resize(arg1_v.size());
+        }
+
+        // Populate the result vector and the gradients
+        for (i = 0; i < arg1_v.size(); i++) {
             arg1_g.value() = arg1_v(i);
             arg2_g.value() = arg2_v(i);
             arg3_g.value() = arg3_v(i);
-            tmp = (map.*func)(arg1_g, arg2_g, arg3_g);
-            result(i, 0) = tmp.value();
-            for (int j = 0; j < nder; j++)
-                result(i, j + 1) = tmp.derivatives()(j);
+            tmp = map.flux(arg1_g, arg2_g, arg3_g);
+            result(i) = tmp.value();
+            for (n = 0; n < ngrad; n++)
+                (map.derivs[names[n]])(i) = tmp.derivatives()(n);
         }
+
+        // Return an array
         return result;
+
+    }
+
+    // Vectorize `starry.grad.LimbDarkenedMap.evaluate()`.
+    inline Matrix<double> vectorize_ldmap_evaluate(
+            py::object& arg1, py::object& arg2,
+            maps::LimbDarkenedMap<Grad>& map) {
+
+        int l, m, n, i;
+
+        // Check that our derivative vectors are large enough
+        int ngrad = 2 + map.N;
+        if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
+
+        // Vectorize only the inputs of type double
+        Vector<double> arg1_v, arg2_v;
+        vectorize_args(arg1, arg2, arg1_v, arg2_v);
+
+        // Declare our gradient types
+        vector<string> names {"x", "y"};
+        Grad arg1_g(0., STARRY_NGRAD, 0);
+        Grad arg2_g(0., STARRY_NGRAD, 1);
+        n = 0;
+        for (l = 0; l < map.lmax + 1; l++) {
+            for (m = -l; m < l + 1; m++) {
+                names.push_back(string("Y_{" + to_string(l) + "," + to_string(m) + "}"));
+                map.y(n).derivatives() = Vector<double>::Unit(STARRY_NGRAD, 2 + n);
+                n++;
+            }
+        }
+
+        // Force the derivatives to propagate to the Green's vector
+        map.update();
+
+        // Compute the function at each index
+        Grad tmp;
+        Vector<double> result(arg1_v.size());
+
+        // Allocate memory for the derivs
+        map.derivs.clear();
+        for (n = 0; n < ngrad; n++) {
+            map.derivs[names[n]].resize(arg1_v.size());
+        }
+
+        // Populate the result vector and the gradients
+        for (i = 0; i < arg1_v.size(); i++) {
+            arg1_g.value() = arg1_v(i);
+            arg2_g.value() = arg2_v(i);
+            tmp = map.evaluate(arg1_g, arg2_g);
+            result(i) = tmp.value();
+            for (n = 0; n < ngrad; n++)
+                (map.derivs[names[n]])(i) = tmp.derivatives()(n);
+        }
+
+        // Return an array
+        return result;
+
     }
 
 } // namespace vect

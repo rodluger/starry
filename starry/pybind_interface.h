@@ -45,7 +45,7 @@ and some other type-specific stuff.
 #else
 
 #undef MAPTYPE
-#define MAPTYPE                         Eigen::AutoDiffScalar<Vector<double>>
+#define MAPTYPE                         Grad
 #undef DOCS
 #define DOCS                            docstrings_grad
 #undef ADD_MODULE
@@ -123,11 +123,11 @@ void ADD_MODULE(py::module &m) {
             [](maps::Map<MAPTYPE> &map, bool taylor){map.G.taylor = taylor;}, DOCS::Map::optimize)
 
         .def("evaluate", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& x, py::object& y) {
-                return vectorize(axis, theta, x, y, &maps::Map<MAPTYPE>::evaluate, map);
+                return vectorize_map_evaluate(axis, theta, x, y, map);
             }, DOCS::Map::evaluate, "axis"_a=maps::yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
 
         .def("flux", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
-                return vectorize(axis, theta, xo, yo, ro, &maps::Map<MAPTYPE>::flux, map);
+                return vectorize_map_flux(axis, theta, xo, yo, ro, map);
             }, DOCS::Map::flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("rotate", [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis, double theta){
@@ -236,19 +236,20 @@ void ADD_MODULE(py::module &m) {
             }, DOCS::Map::s_mp)
 
         .def("flux_mp", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
-                return vectorize(axis, theta, xo, yo, ro, &maps::Map<MAPTYPE>::flux_mp, map);
+                return vectorize_map_flux_mp(axis, theta, xo, yo, ro, map);
             }, DOCS::Map::flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("flux_numerical", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro, double tol) {
-                return vectorize(axis, theta, xo, yo, ro, tol, &maps::Map<MAPTYPE>::flux_numerical, map);
+                return vectorize_map_flux_numerical(axis, theta, xo, yo, ro, tol, map);
             }, DOCS::Map::flux_numerical, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
 
 #else
 
         // Methods and attributes only in `starry.grad.Map()`
 
-        .def_property("map_gradients", [](maps::Map<MAPTYPE> &map){return map.map_gradients;},
-            [](maps::Map<MAPTYPE> &map, bool map_gradients){map.map_gradients = map_gradients;}, DOCS::Map::map_gradients)
+        .def_property_readonly("gradient", [](maps::Map<MAPTYPE> &map){
+                return py::cast(map.derivs);
+            }, DOCS::Map::gradient)
 
 #endif
 
@@ -314,11 +315,11 @@ void ADD_MODULE(py::module &m) {
             [](maps::LimbDarkenedMap<MAPTYPE> &map, bool taylor){map.G.taylor = taylor;}, DOCS::LimbDarkenedMap::optimize)
 
         .def("evaluate", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object& x, py::object& y) {
-                return vectorize(x, y, &maps::LimbDarkenedMap<MAPTYPE>::evaluate, map);
+                return vectorize_ldmap_evaluate(x, y, map);
             }, DOCS::LimbDarkenedMap::evaluate, "x"_a=0, "y"_a=0)
 
         .def("flux", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object& xo, py::object& yo, py::object& ro) {
-                return vectorize(xo, yo, ro, &maps::LimbDarkenedMap<MAPTYPE>::flux, map);
+                return vectorize_ldmap_flux(xo, yo, ro, map);
             }, DOCS::LimbDarkenedMap::flux, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("show", [](maps::LimbDarkenedMap<MAPTYPE> &map, string cmap, int res) {
@@ -346,19 +347,16 @@ void ADD_MODULE(py::module &m) {
             }, DOCS::LimbDarkenedMap::s_mp)
 
         .def("flux_mp", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object& xo, py::object& yo, py::object& ro) {
-                return vectorize(xo, yo, ro, &maps::LimbDarkenedMap<MAPTYPE>::flux_mp, map);
+                return vectorize_ldmap_flux_mp(xo, yo, ro, map);
             }, DOCS::LimbDarkenedMap::flux, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("flux_numerical", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object& xo, py::object& yo, py::object& ro, double tol) {
-                return vectorize(xo, yo, ro, tol, &maps::LimbDarkenedMap<MAPTYPE>::flux_numerical, map);
+                return vectorize_ldmap_flux_numerical(xo, yo, ro, tol, map);
             }, DOCS::LimbDarkenedMap::flux_numerical, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
 
 #else
 
         // Methods and attributes only in `starry.grad.LimbDarkenedMap()`
-
-        .def_property("map_gradients", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.map_gradients;},
-            [](maps::LimbDarkenedMap<MAPTYPE> &map, bool map_gradients){map.map_gradients = map_gradients;}, DOCS::LimbDarkenedMap::map_gradients)
 
 #endif
 
@@ -372,7 +370,21 @@ void ADD_MODULE(py::module &m) {
             "bodies"_a, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100)
 
         .def("compute", [](orbital::System<MAPTYPE> &system, Vector<double>& time){
+
+
+// DEBUG
+#ifndef STARRY_AUTODIFF
                 system.compute((Vector<MAPTYPE>)time);
+#else
+                Vector<MAPTYPE> time_g = time;
+                for (int i = 0; i < time_g.size(); i++)
+                    time_g(i).derivatives() = Vector<double>::Unit(1, 0);
+                system.compute(time_g);
+                for (int i = 0; i < time_g.size(); i++)
+                    std::cout << system.flux(i).derivatives().transpose() << std::endl;
+#endif
+
+
             }, DOCS::System::compute, "time"_a)
 
         // TODO: Return gradient as well?

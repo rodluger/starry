@@ -9,6 +9,7 @@ Miscellaneous stuff used throughout the code.
 #include <Eigen/Core>
 #include <unsupported/Eigen/AutoDiff>
 #include <iostream>
+#include "constants.h"
 
 // Our custom vector types
 template <typename T>
@@ -19,7 +20,7 @@ template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
-using Grad = Eigen::AutoDiffScalar<Vector<double>>;
+using Grad = Eigen::AutoDiffScalar<Eigen::Matrix<double, STARRY_NGRAD, 1>>;
 
 // Return the value of a MapType variable
 inline double get_value(double x) { return x; }
@@ -35,8 +36,8 @@ inline Vector<double> get_value(Vector<Grad> x) {
 }
 
 // Set the value of a MapType variable
-inline void set_value(double& x, double& value) { x = value; }
-inline void set_value(Grad& x, Grad& value) { x.value() = value.value(); }
+inline void set_value(double& x, double& y) { x = y; }
+inline void set_value(Grad& x, Grad& y) { x.value() = y.value(); }
 
 // Print the derivatives of a MapType variable for debugging
 void print_derivs(double x) { std::cout << "None" << std::endl; }

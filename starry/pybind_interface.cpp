@@ -1,3 +1,6 @@
+// DEBUG: This will throw Assertion errors if we've messed up
+// any Eigen operations. Remove this once the code is stable.
+#undef NDEBUG
 #include <pybind11/pybind11.h>
 #include <stdlib.h>
 

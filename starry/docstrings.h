@@ -743,7 +743,7 @@ namespace docstrings_grad {
         This page documents the :py:mod:`starry.grad` API, which is coded
         in C++ with a :py:mod:`pybind11` Python interface. This API is
         identical in nearly all respects to the :py:mod:`starry` API, except
-        that its methods return gradients with respect to the input parameters,
+        that its methods compute gradients with respect to the input parameters,
         in addition to the actual return values. For instance, consider the
         following code block:
 
@@ -760,26 +760,75 @@ namespace docstrings_grad {
         .. code-block:: python
 
             >>> import starry
-            >>> m = starry.Map()
+            >>> m = starry.grad.Map()
             >>> m[1, 0] = 1
             >>> m.flux(axis=(0, 1, 0), theta=0.3, xo=0.1, yo=0.1, ro=0.1)
-            array([[ 9.62688266e-01,  4.53620580e-04,  0.00000000e+00,
-                    -6.85580453e-05, -2.99401131e-01, -3.04715096e-03,
-                    1.48905485e-03, -2.97910667e-01]])
+            0.9626882655504516
 
-        The :py:obj:`flux()` method now returns a vector, where the first value is the
-        actual flux and the remaining seven values are the derivatives of the flux
-        with respect to each of the input parameters
-        :py:obj:`(axis[0], axis[1], axis[2], theta, xo, yo, ro)`. Note that as in
-        :py:mod:`starry`, many of the functions in :py:mod:`starry.grad` are
-        vectorizable, meaning that vectors can be provided as inputs to compute,
-        say, the light curve for an entire timeseries. In this case, the return
-        values are **matrices**, with one vector of :py:obj:`(value, derivs)` per row.
+        So far, they look identical. However, in the second case :py:obj:`starry`
+        has also computed the gradient of the flux with respect to each of the
+        input parameters (including the map coefficients):
+
+        .. code-block:: python
+
+            >>> m.gradient
+            {'Y_{0,0}': array([0.]),
+             'Y_{1,-1}': array([-0.00153499]),
+             'Y_{1,0}': array([0.96268827]),
+             'Y_{1,1}': array([-0.29940113]),
+             'Y_{2,-1}': array([0.]),
+             'Y_{2,-2}': array([0.]),
+             'Y_{2,0}': array([0.]),
+             'Y_{2,1}': array([0.]),
+             'Y_{2,2}': array([0.]),
+             'axis_x': array([0.00045362]),
+             'axis_y': array([0.]),
+             'axis_z': array([-6.85580453e-05]),
+             'ro': array([-0.29791067]),
+             'theta': array([-0.29940113]),
+             'xo': array([-0.00304715]),
+             'yo': array([0.00148905])}
+
+        The :py:attribute:`gradient` attribute can be accessed like any Python
+        dictionary:
+
+        .. code-block:: python
+
+            >>> m.gradient["ro"]
+            array([-0.29791067])
+            >>> m.gradient["theta"]
+            array([-0.29940113])
+
+        In case :py:obj:`flux` is called with vector arguments, :py:attribute:`gradient`
+        is also vectorized:
+
+        .. code-block:: python
+
+            >>> import starry
+            >>> m = starry.grad.Map()
+            >>> m[1, 0] = 1
+            >>> m.flux(axis=(0, 1, 0), theta=0.3, xo=[0.1, 0.2, 0.3, 0.4], yo=0.1, ro=0.1)
+            array([[0.96268827],
+                   [0.96245977],
+                   [0.96238958],
+                   [0.96249153]])
+            >>> m.gradient["ro"]
+            array([-0.29791067, -0.30245629, -0.30381564, -0.30170352])
+            >>> m.gradient["theta"]
+            array([-0.29940113, -0.3009372 , -0.30252224, -0.30416053])
 
         Note, importantly, that the derivatives in this module are all
         computed **analytically** using autodifferentiation, so their evaluation is fast
         and numerically stable. However, runtimes will in general be slower than those
         in :py:mod:`starry`.
+
+        .. note:: If the degree of the map is large, you may run into a \
+                  :py:obj:`RuntimeError: Too many derivatives requested. Either decrease the degree of the map or re-compile starry with compiler flag STARRY_NGRAD >= 56.` \
+                  The :py:obj:`STARRY_NGRAD` compiler flag determines the size of the \
+                  gradient vector and can be changed by setting an environment variable \
+                  of the same name prior to compiling :py:obj:`starry`: \
+                  .. code-block:: bash
+                     STARRY_NGRAD=56 pip install --force-reinstall --ignore-installed --no-binary :all: starry
 
         As in :py:mod:`starry`, the API consists of a :py:class:`Map` class,
         which houses all of the surface map photometry
@@ -840,6 +889,7 @@ namespace docstrings_grad {
                 .. automethod:: get_coeff(l, m)
                 .. automethod:: set_coeff(l, m, coeff)
                 .. automethod:: reset()
+                .. autoattribute:: gradient
                 .. autoattribute:: lmax
                 .. autoattribute:: y
                 .. autoattribute:: p
@@ -859,6 +909,12 @@ namespace docstrings_grad {
 
         const char * reset = docstrings::Map::reset;
 
+        const char * gradient =
+        R"pbdoc(
+            A dictionary of derivatives for all model parameters, populated on
+            calls to :py:method:`flux` and :py:method:`evaluate`.
+        )pbdoc";
+
         const char * lmax = docstrings::Map::lmax;
 
         const char * y = docstrings::Map::y;
@@ -877,30 +933,6 @@ namespace docstrings_grad {
 
         const char * flux = docstrings::Map::flux;
 
-        const char * flux_numerical =
-        R"pbdoc(
-            Return the total flux received by the observer, computed numerically.
-
-            Computes the total flux received by the observer from the
-            map during or outside of an occultation. The flux is computed
-            numerically using an adaptive radial mesh.
-
-            Args:
-                axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
-                theta (float or ndarray): Angle of rotation. Default 0.
-                xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
-                yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
-                ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
-                tol (float): Tolerance of the numerical solver. Default `1.e-4`
-
-            Returns:
-                The flux received by the observer (a scalar or a vector).
-
-            .. note:: This function only returns the **value** of the numerical flux, and **not** its \
-                      derivatives. Autodifferentiation of numerical integration is \
-                      simply a terrible idea!
-        )pbdoc";
-
         const char * rotate = docstrings::Map::rotate;
 
         const char * minimum = docstrings::Map::minimum;
@@ -912,16 +944,6 @@ namespace docstrings_grad {
         const char * show = docstrings::Map::show;
 
         const char * animate = docstrings::Map::animate;
-
-        const char * map_gradients =
-        R"pbdoc(
-            Compute gradients with respect to the map coefficients?
-            Default :py:obj:`False`, in which case only gradients
-            with respect to the orbital parameters are computed. If
-            Default :py:obj:`True`, the map gradients are appended to
-            the end of the vector returned by the functions
-            :py:method:`flux` and :py:method:`flux`.
-        )pbdoc";
 
     } // namespace Map
 
@@ -945,6 +967,7 @@ namespace docstrings_grad {
                 .. automethod:: get_coeff(l)
                 .. automethod:: set_coeff(l, coeff)
                 .. automethod:: reset()
+                .. autoattribute:: gradient
                 .. autoattribute:: lmax
                 .. autoattribute:: y
                 .. autoattribute:: p
@@ -959,6 +982,12 @@ namespace docstrings_grad {
         const char * set_coeff = docstrings::LimbDarkenedMap::set_coeff;
 
         const char * reset = docstrings::LimbDarkenedMap::reset;
+
+        const char * gradient =
+        R"pbdoc(
+            A dictionary of derivatives for all model parameters, populated on
+            calls to :py:method:`flux` and :py:method:`evaluate`.
+        )pbdoc";
 
         const char * lmax = docstrings::LimbDarkenedMap::lmax;
 
@@ -979,16 +1008,6 @@ namespace docstrings_grad {
         const char * flux = docstrings::LimbDarkenedMap::flux;
 
         const char * show = docstrings::LimbDarkenedMap::show;
-
-        const char * map_gradients =
-        R"pbdoc(
-            Compute gradients with respect to the map coefficients?
-            Default :py:obj:`False`, in which case only gradients
-            with respect to the orbital parameters are computed. If
-            Default :py:obj:`True`, the map gradients are appended to
-            the end of the vector returned by the functions
-            :py:method:`flux` and :py:method:`flux`.
-        )pbdoc";
 
     } // namespace LimbDarkenedMap
 

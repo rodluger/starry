@@ -85,19 +85,19 @@ namespace solver {
             G.lam = asin(G.sinlam());
             s0 = G.lam + G.pi_over_2 + G.sinlam() * G.coslam() -
                  G.r(2) * (G.phi + G.pi_over_2 + G.sinphi() * G.cosphi());
-            s8 = 0.5 * (G.pi_over_2 + G.lam) + T(1. / 3.) * G.coslam() * G.sinlam() -
-                 T(1. / 6.) * G.coslam(3) * G.sinlam() + T(1. / 6.) * G.coslam() * G.sinlam(3) -
+            s8 = 0.5 * (G.pi_over_2 + G.lam) + (1. / 3.) * G.coslam() * G.sinlam() -
+                 (1. / 6.) * G.coslam(3) * G.sinlam() + (1. / 6.) * G.coslam() * G.sinlam(3) -
                  (G.r(2) * G.b(2) * (G.pi_over_2 + G.phi + G.cosphi() * G.sinphi()) -
-                  G.r(3) * G.b() * G.cosphi() * (T(1.) + T(1. / 3.) * G.cosphi(2) - G.sinphi(2)) +
-                  G.r(4) * (0.5 * (G.pi_over_2 + G.phi) + T(1. / 3.) * G.cosphi() * G.sinphi() -
-                            T(1. / 6.) * G.cosphi(3) * G.sinphi() + T(1. / 6.) * G.cosphi() * G.sinphi(3)));
+                  G.r(3) * G.b() * G.cosphi() * (1. + (1. / 3.) * G.cosphi(2) - G.sinphi(2)) +
+                  G.r(4) * (0.5 * (G.pi_over_2 + G.phi) + (1. / 3.) * G.cosphi() * G.sinphi() -
+                            (1. / 6.) * G.cosphi(3) * G.sinphi() + (1. / 6.) * G.cosphi() * G.sinphi(3)));
         } else {
             G.sinphi.reset(1);
             G.cosphi.reset(0);
             G.sinlam.reset(1);
             G.coslam.reset(0);
-            G.phi = T(0.5 * G.pi);
-            G.lam = T(0.5 * G.pi);
+            G.phi = 0.5 * G.pi;
+            G.lam = 0.5 * G.pi;
             s0 = G.pi * (1 - G.r(2));
             s8 = G.pi_over_2 - G.pi * G.r(2) * (0.5 * G.r(2) + G.b(2));
         }
@@ -549,9 +549,6 @@ namespace solver {
     template <typename T>
     void computesT(Greens<T>& G, const T& b, const T& r, const Vector<T>& y) {
 
-        // AutoDiff casting hack
-        T zero = 0 * r;
-
         // Check for likely instability
         if ((G.taylor) && (r >= 1) && (G.lmax > STARRY_LMAX_LARGE_OCC))
             throw errors::LargeOccultorsUnstable();
@@ -586,12 +583,12 @@ namespace solver {
                 G.lam = asin(G.sinlam());
             }
         } else {
-            G.sinphi.reset(1 + zero);
-            G.cosphi.reset(zero);
-            G.sinlam.reset(1 + zero);
-            G.coslam.reset(zero);
-            G.phi = T(0.5 * G.pi) + zero;
-            G.lam = T(0.5 * G.pi) + zero;
+            G.sinphi.reset(1);
+            G.cosphi.reset(0);
+            G.sinlam.reset(1);
+            G.coslam.reset(0);
+            G.phi = 0.5 * G.pi;
+            G.lam = 0.5 * G.pi;
         }
 
         // Initialize our storage classes
@@ -614,11 +611,11 @@ namespace solver {
                     // These terms are zero because they are proportional to
                     // odd powers of x, so we don't need to compute them!
                     else if ((G.taylor) && (is_even(G.mu - 1)) && (!is_even((G.mu - 1) / 2)))
-                        G.sT(n) = zero;
+                        G.sT(n) = 0;
                     else
                         G.sT(n) = Q(G) - P(G);
                 } else {
-                    G.sT(n) = zero;
+                    G.sT(n) = 0;
                 }
                 n++;
             }

@@ -40,14 +40,12 @@ namespace orbital {
     // Derivative of the floating point modulo function,
     // based on https://math.stackexchange.com/a/1277049
     template <typename T>
-    Eigen::AutoDiffScalar<T> fmod(const Eigen::AutoDiffScalar<T>& numer, const Eigen::AutoDiffScalar<T>& denom) {
+    Eigen::AutoDiffScalar<T> fmod(const Eigen::AutoDiffScalar<T>& numer, double denom) {
         typename T::Scalar numer_value = numer.value(),
-                           denom_value = denom.value(),
-                           modulo_value = fmod(numer_value, denom_value);
+                           modulo_value = fmod(numer_value, denom);
         return Eigen::AutoDiffScalar<T>(
           modulo_value,
-          numer.derivatives() +
-          denom.derivatives() * (modulo_value - numer_value) / denom_value
+          numer.derivatives()
         );
     }
 
@@ -75,12 +73,17 @@ namespace orbital {
                            ecc_value = ecc.value(),
                            E_value = EccentricAnomaly(M_value, ecc_value, eps, maxiter),
                            cosE_value = cos(E_value),
-                           sinE_value = sin(E_value);
-        return Eigen::AutoDiffScalar<T>(
-          E_value,
-          M.derivatives() / (1. - ecc_value * cosE_value) +
-          ecc.derivatives() * sinE_value / (1. - ecc_value * cosE_value)
-        );
+                           sinE_value = sin(E_value),
+                           norm1 = 1./ (1. - ecc_value * cosE_value),
+                           norm2 = sinE_value * norm1;
+        if (M.derivatives().size() && ecc.derivatives().size())
+            return Eigen::AutoDiffScalar<T>(E_value, M.derivatives() * norm1 + ecc.derivatives() * norm2);
+        else if (M.derivatives().size())
+            return Eigen::AutoDiffScalar<T>(E_value, M.derivatives() * norm1);
+        else if (ecc.derivatives().size())
+            return Eigen::AutoDiffScalar<T>(E_value, ecc.derivatives() * norm2);
+        else
+            return Eigen::AutoDiffScalar<T>(E_value, M.derivatives());
     }
 
     // System class
@@ -94,6 +97,7 @@ namespace orbital {
             double eps;
             int maxiter;
             bool computed;
+            T zero;
 
             // Constructor
             System(vector<Body<T>*> bodies, const double& eps=1.0e-7, const int& maxiter=100) :
@@ -136,6 +140,8 @@ namespace orbital {
         int NT = time.size();
 
         // Allocate arrays and check that the planet maps are physical
+        // TODO: Allocation must happen in `pybind_interface.h` so user
+        // can control which derivs to take!
         for (i = 0; i < bodies.size(); i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
@@ -166,7 +172,7 @@ namespace orbital {
                     }
                     xo = (bodies[o]->x(t) - bodies[p]->x(t)) / bodies[p]->r;
                     yo = (bodies[o]->y(t) - bodies[p]->y(t)) / bodies[p]->r;
-                    ro = bodies[o]->r / bodies[p]->r;
+                    ro = (bodies[o]->r / bodies[p]->r);
                     // Compute the flux in occultation
                     if (sqrt(xo * xo + yo * yo) < 1 + ro) {
                         bodies[p]->getflux(tsec, t, xo, yo, ro);
@@ -306,10 +312,11 @@ namespace orbital {
                      if (is_star)
                         norm = 1;
                      else
-                        norm = T(2. / sqrt(M_PI));
+                        norm = 2. / sqrt(M_PI);
 
                      // Initialize orbital vars
                      reset();
+
                  }
 
             // Reset orbital variables and map normalization
@@ -325,8 +332,8 @@ namespace orbital {
                 sqrtonepluse = sqrt(1 + ecc);
                 sqrtoneminuse = sqrt(1 - ecc);
                 ecc2 = ecc * ecc;
-                angvelorb = T(2 * M_PI) / porb;
-                angvelrot = T(2 * M_PI) / prot;
+                angvelorb = (2 * M_PI) / porb;
+                angvelrot = (2 * M_PI) / prot;
             };
 
             // Public methods
@@ -342,7 +349,7 @@ namespace orbital {
         if ((prot == 0) || (prot == INFINITY))
             return theta0;
         else
-            return fmod(T(theta0 + angvelrot * (time - tref)), T(2 * M_PI));
+            return fmod(theta0 + angvelrot * (time - tref), 2 * M_PI);
     }
 
     // Compute the flux in occultation
@@ -369,27 +376,27 @@ namespace orbital {
         } else {
 
             // Mean anomaly
-            M = fmod(T(M0 + angvelorb * (time - tref)), T(2 * M_PI));
+            M = fmod(M0 + angvelorb * (time - tref), 2 * M_PI);
 
             // Eccentric anomaly
             E = EccentricAnomaly(M, ecc, eps, maxiter);
 
             // True anomaly
             if (ecc == 0) f = E;
-            else f = 2. * atan2(sqrtonepluse * sin(E / 2.),
-                                sqrtoneminuse * cos(E / 2.));
+            else f = (2. * atan2(sqrtonepluse * sin(E / 2.),
+                                 sqrtoneminuse * cos(E / 2.)));
 
             // Orbital radius
             if (ecc > 0)
-                rorb = a * (1 - ecc2) / (1. + ecc * cos(f));
+                rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
             else
                 rorb = a;
 
             // Murray and Dermott p. 51
             cwf = cos(w + f);
             swf = sin(w + f);
-            x(t) = rorb * (cosO * cwf - sinOcosi * swf);
-            y(t) = rorb * (sinO * cwf + cosOcosi * swf);
+            x(t) = rorb * cosO * cwf - sinOcosi * swf;
+            y(t) = rorb * sinO * cwf + cosOcosi * swf;
             z(t) = rorb * swf * sini;
 
         }
