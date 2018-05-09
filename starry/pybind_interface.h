@@ -373,40 +373,20 @@ void ADD_MODULE(py::module &m) {
         .def(py::init<vector<orbital::Body<MAPTYPE>*>, double, int>(),
             "bodies"_a, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100)
 
-        .def("compute", [](orbital::System<MAPTYPE> &system, Vector<double>& time){
+        .def("compute", [](orbital::System<MAPTYPE> &system, Vector<double>& time){system.compute((Vector<MAPTYPE>)time);},
+            DOCS::System::compute, "time"_a)
 
+        .def_property_readonly("flux", [](orbital::System<MAPTYPE> &system){return get_value(system.flux);},
+            DOCS::System::flux)
 
-// DEBUG
-#ifndef STARRY_AUTODIFF
-                system.compute((Vector<MAPTYPE>)time);
-#else
-                Vector<MAPTYPE> time_g = time;
-                for (int i = 0; i < time_g.size(); i++)
-                    time_g(i).derivatives() = Vector<double>::Unit(STARRY_NGRAD, 0);
-                system.compute(time_g);
+#ifdef STARRY_AUTODIFF
 
-                // Star derivs
-                system.bodies[0]->ldmap.derivs.clear();
-                system.bodies[0]->ldmap.derivs["time"].resize(time.size());
-                for (int j = 0; j < time.size(); j++)
-                    (system.bodies[0]->ldmap.derivs["time"])(j) = system.bodies[0]->flux(j).derivatives()(0);
-
-                // Planet derivs
-                for (int i = 1; i < system.bodies.size(); i++) {
-                    system.bodies[i]->map.derivs.clear();
-                    system.bodies[i]->map.derivs["time"].resize(time.size());
-                    for (int j = 0; j < time.size(); j++)
-                        (system.bodies[i]->map.derivs["time"])(j) = system.bodies[i]->flux(j).derivatives()(0);
-                }
+        .def_property_readonly("gradient", [](orbital::System<MAPTYPE> &system){return py::cast(system.derivs);},
+            DOCS::System::gradient)
 
 #endif
 
-
-            }, DOCS::System::compute, "time"_a)
-
-        .def_property_readonly("flux", [](orbital::System<MAPTYPE> &system){return get_value(system.flux);},
-            DOCS::System::flux);
-
+        .def("__repr__", [](orbital::System<MAPTYPE> &system) -> string {return system.repr();});
 
      // Body class (not user-facing, just a base class)
      py::class_<orbital::Body<MAPTYPE>> PyBody(m, "Body");
@@ -428,6 +408,13 @@ void ADD_MODULE(py::module &m) {
         .def_property_readonly("map", [](orbital::Body<MAPTYPE> &body){return &body.map;}, DOCS::Body::map)
 
         .def_property_readonly("flux", [](orbital::Body<MAPTYPE> &body){return get_value(body.flux);}, DOCS::Body::flux)
+
+#ifdef STARRY_AUTODIFF
+
+        .def_property_readonly("gradient", [](orbital::Body<MAPTYPE> &body){return py::cast(body.derivs);},
+            DOCS::Body::gradient)
+
+#endif
 
         .def_property_readonly("x", [](orbital::Body<MAPTYPE> &body){return get_value(body.x) * AU;}, DOCS::Body::x)
 

@@ -1013,11 +1013,30 @@ namespace docstrings_grad {
 
     namespace System {
 
-        const char * System = docstrings::System::System;
+        const char * System =
+        R"pbdoc(
+                Instantiate an orbital system.
+
+                Args:
+                    bodies (list): List of bodies in the system, with the primary (usually the star) listed first.
+                    kepler_tol (float): Kepler solver tolerance.
+                    kepler_max_iter (int): Maximum number of iterations in the Kepler solver.
+
+                .. automethod:: compute(time)
+                .. autoattribute:: flux
+                .. autoattribute:: gradient
+
+        )pbdoc";
 
         const char * compute = docstrings::System::compute;
 
         const char * flux = docstrings::System::flux;
+
+        const char * gradient =
+        R"pbdoc(
+            A dictionary of derivatives of the system flux with respect to
+            all model parameters, populated on calls to :py:meth:`compute`.
+        )pbdoc";
 
     } // namespace System
 
@@ -1026,6 +1045,12 @@ namespace docstrings_grad {
         const char * map = docstrings::Body::map;
 
         const char * flux = docstrings::Body::flux;
+
+        const char * gradient =
+        R"pbdoc(
+            A dictionary of derivatives of the body's flux with respect to
+            all model parameters, populated on calls to :py:meth:`System.compute`.
+        )pbdoc";
 
         const char * x = docstrings::Body::x;
 
@@ -1063,7 +1088,21 @@ namespace docstrings_grad {
 
     namespace Star {
 
-        const char * Star = docstrings::Star::Star;
+        const char * Star =
+        R"pbdoc(
+            Instantiate a stellar :py:class:`Body` object.
+
+            The star's radius and luminosity are fixed at unity.
+
+            Args:
+                lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
+
+            .. autoattribute:: map
+            .. autoattribute:: flux
+            .. autoattribuet:: gradient
+            .. autoattribute:: r
+            .. autoattribute:: L
+        )pbdoc";
 
         const char * map = docstrings::Star::map;
 
@@ -1075,7 +1114,49 @@ namespace docstrings_grad {
 
     namespace Planet {
 
-        const char * Planet = docstrings::Planet::Planet;
+        const char * Planet =
+        R"pbdoc(
+            Instantiate a planetary :py:class:`Body` object.
+
+            Instantiate a planet. At present, :py:mod:`starry` computes orbits with a simple
+            Keplerian solver, so the planet is assumed to be massless.
+
+            Args:
+                lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
+                r (float): Body radius in stellar radii. Default 0.1
+                L (float): Body luminosity in units of the stellar luminosity. Default 0.
+                axis (ndarray): A *normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
+                prot (float): Rotation period in days. Default no rotation.
+                theta0 (float): Rotation phase at time :py:obj:`tref` in degrees. Default 0.
+                a (float): Semi-major axis in stellar radii. Default 50.
+                porb (float): Orbital period in days. Default 1.
+                inc (float): Orbital inclination in degrees. Default 90.
+                ecc (float): Orbital eccentricity. Default 0.
+                w (float): Longitude of pericenter in degrees. Default 90.
+                Omega (float): Longitude of ascending node in degrees. Default 0.
+                lambda0 (float): Mean longitude at time :py:obj:`tref` in degrees. Default 90.
+                tref (float): Reference time in days. Default 0.
+
+            .. autoattribute:: map
+            .. autoattribute:: flux
+            .. autoattribuet:: gradient
+            .. autoattribute:: x
+            .. autoattribute:: y
+            .. autoattribute:: z
+            .. autoattribute:: r
+            .. autoattribute:: L
+            .. autoattribute:: axis
+            .. autoattribute:: prot
+            .. autoattribute:: theta0
+            .. autoattribute:: a
+            .. autoattribute:: porb
+            .. autoattribute:: inc
+            .. autoattribute:: ecc
+            .. autoattribute:: w
+            .. autoattribute:: Omega
+            .. autoattribute:: lambda0
+            .. autoattribute:: tref
+        )pbdoc";
 
     } // namespace Planet
 
