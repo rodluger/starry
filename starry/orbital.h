@@ -395,8 +395,8 @@ namespace orbital {
             // Murray and Dermott p. 51
             cwf = cos(w + f);
             swf = sin(w + f);
-            x(t) = rorb * cosO * cwf - sinOcosi * swf;
-            y(t) = rorb * sinO * cwf + cosOcosi * swf;
+            x(t) = rorb * (cosO * cwf - sinOcosi * swf);
+            y(t) = rorb * (sinO * cwf + cosOcosi * swf);
             z(t) = rorb * swf * sini;
 
         }

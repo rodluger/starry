@@ -358,6 +358,10 @@ void ADD_MODULE(py::module &m) {
 
         // Methods and attributes only in `starry.grad.LimbDarkenedMap()`
 
+        .def_property_readonly("gradient", [](maps::LimbDarkenedMap<MAPTYPE> &map){
+                return py::cast(map.derivs);
+            }, DOCS::LimbDarkenedMap::gradient)
+
 #endif
 
         .def("__repr__", [](maps::LimbDarkenedMap<MAPTYPE> &map) -> string {return map.repr();});

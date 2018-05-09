@@ -166,7 +166,7 @@ namespace docstrings {
 
         const char * s_mp =
         R"pbdoc(
-            The current multi-precision solution vector `s`. Only available after :py:method:`flux_mp` has been called. *Read-only.*
+            The current multi-precision solution vector `s`. Only available after :py:meth:`flux_mp` has been called. *Read-only.*
         )pbdoc";
 
         const char * optimize =
@@ -427,7 +427,7 @@ namespace docstrings {
 
         const char * s_mp =
         R"pbdoc(
-            The current multi-precision solution vector `s`. Only available after :py:method:`flux_mp` has been called. *Read-only.*
+            The current multi-precision solution vector `s`. Only available after :py:meth:`flux_mp` has been called. *Read-only.*
         )pbdoc";
 
         const char * optimize =
@@ -789,7 +789,7 @@ namespace docstrings_grad {
              'xo': array([-0.00304715]),
              'yo': array([0.00148905])}
 
-        The :py:attribute:`gradient` attribute can be accessed like any Python
+        The :py:attr:`gradient` attribute can be accessed like any Python
         dictionary:
 
         .. code-block:: python
@@ -799,7 +799,7 @@ namespace docstrings_grad {
             >>> m.gradient["theta"]
             array([-0.29940113])
 
-        In case :py:obj:`flux` is called with vector arguments, :py:attribute:`gradient`
+        In case :py:obj:`flux` is called with vector arguments, :py:attr:`gradient`
         is also vectorized:
 
         .. code-block:: python
@@ -823,12 +823,12 @@ namespace docstrings_grad {
         in :py:mod:`starry`.
 
         .. note:: If the degree of the map is large, you may run into a \
-                  :py:obj:`RuntimeError: Too many derivatives requested. Either decrease the degree of the map or re-compile starry with compiler flag STARRY_NGRAD >= 56.` \
+                  :py:obj:`RuntimeError` saying too many derivatives were requested. \
                   The :py:obj:`STARRY_NGRAD` compiler flag determines the size of the \
                   gradient vector and can be changed by setting an environment variable \
-                  of the same name prior to compiling :py:obj:`starry`: \
-                  .. code-block:: bash
-                     STARRY_NGRAD=56 pip install --force-reinstall --ignore-installed --no-binary :all: starry
+                  of the same name prior to compiling :py:obj:`starry`. You can do this \
+                  by executing \
+                  :py:obj:`STARRY_NGRAD=56 pip install --force-reinstall --ignore-installed --no-binary :all: starry`
 
         As in :py:mod:`starry`, the API consists of a :py:class:`Map` class,
         which houses all of the surface map photometry
@@ -912,7 +912,7 @@ namespace docstrings_grad {
         const char * gradient =
         R"pbdoc(
             A dictionary of derivatives for all model parameters, populated on
-            calls to :py:method:`flux` and :py:method:`evaluate`.
+            calls to :py:meth:`flux` and :py:meth:`evaluate`.
         )pbdoc";
 
         const char * lmax = docstrings::Map::lmax;
@@ -986,7 +986,7 @@ namespace docstrings_grad {
         const char * gradient =
         R"pbdoc(
             A dictionary of derivatives for all model parameters, populated on
-            calls to :py:method:`flux` and :py:method:`evaluate`.
+            calls to :py:meth:`flux` and :py:meth:`evaluate`.
         )pbdoc";
 
         const char * lmax = docstrings::LimbDarkenedMap::lmax;
