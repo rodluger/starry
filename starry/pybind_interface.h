@@ -382,16 +382,28 @@ void ADD_MODULE(py::module &m) {
 #else
                 Vector<MAPTYPE> time_g = time;
                 for (int i = 0; i < time_g.size(); i++)
-                    time_g(i).derivatives() = Vector<double>::Unit(1, 0);
+                    time_g(i).derivatives() = Vector<double>::Unit(STARRY_NGRAD, 0);
                 system.compute(time_g);
-                for (int i = 0; i < time_g.size(); i++)
-                    std::cout << system.flux(i).derivatives().transpose() << std::endl;
+
+                // Star derivs
+                system.bodies[0]->ldmap.derivs.clear();
+                system.bodies[0]->ldmap.derivs["time"].resize(time.size());
+                for (int j = 0; j < time.size(); j++)
+                    (system.bodies[0]->ldmap.derivs["time"])(j) = system.bodies[0]->flux(j).derivatives()(0);
+
+                // Planet derivs
+                for (int i = 1; i < system.bodies.size(); i++) {
+                    system.bodies[i]->map.derivs.clear();
+                    system.bodies[i]->map.derivs["time"].resize(time.size());
+                    for (int j = 0; j < time.size(); j++)
+                        (system.bodies[i]->map.derivs["time"])(j) = system.bodies[i]->flux(j).derivatives()(0);
+                }
+
 #endif
 
 
             }, DOCS::System::compute, "time"_a)
 
-        // TODO: Return gradient as well?
         .def_property_readonly("flux", [](orbital::System<MAPTYPE> &system){return get_value(system.flux);},
             DOCS::System::flux);
 
@@ -415,16 +427,12 @@ void ADD_MODULE(py::module &m) {
         // NOTE: & is necessary in the return statement so we pass a reference back to Python!
         .def_property_readonly("map", [](orbital::Body<MAPTYPE> &body){return &body.map;}, DOCS::Body::map)
 
-        // TODO: Return gradient as well?
         .def_property_readonly("flux", [](orbital::Body<MAPTYPE> &body){return get_value(body.flux);}, DOCS::Body::flux)
 
-        // TODO: Return gradient as well?
         .def_property_readonly("x", [](orbital::Body<MAPTYPE> &body){return get_value(body.x) * AU;}, DOCS::Body::x)
 
-        // TODO: Return gradient as well?
         .def_property_readonly("y", [](orbital::Body<MAPTYPE> &body){return get_value(body.y) * AU;}, DOCS::Body::y)
 
-        // TODO: Return gradient as well?
         .def_property_readonly("z", [](orbital::Body<MAPTYPE> &body){return get_value(body.z) * AU;}, DOCS::Body::z)
 
         .def_property("r", [](orbital::Body<MAPTYPE> &body){return get_value(body.r);},
