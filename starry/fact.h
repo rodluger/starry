@@ -9,6 +9,7 @@ Tabulated factorials for integers and half-integers.
 #include <cmath>
 #include <iostream>
 #include "constants.h"
+#include "errors.h"
 
 namespace fact {
 
@@ -548,8 +549,7 @@ namespace fact {
     // Factorial of n
     double factorial(int n) {
         if ((n < 0) || (n > STARRY_MAX_FACT)) {
-            // TODO: Better error handling
-            std::cout << "ERROR: Factorial argument out of bounds." << std::endl;
+            throw errors::BadFactorial();
             return NAN;
         } else {
             return fact_table[n].f;
@@ -559,8 +559,7 @@ namespace fact {
     // Factorial of (n / 2)
     double half_factorial(int n) {
         if ((n < -STARRY_MAX_HALF_FACT) || (n > STARRY_MAX_HALF_FACT)) {
-            // TODO: Better error handling
-            std::cout << "ERROR: Half factorial argument out of bounds." << std::endl;
+            throw errors::BadFactorial();
             return NAN;
         } else if (n % 2 == 0) {
             if (n < 0)

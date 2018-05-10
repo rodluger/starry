@@ -1,11 +1,11 @@
-"""Test the starry code."""
+"""Test the rotation matrices."""
 from starry import Map
 import numpy as np
 
 
-def test_main():
-    """Main routines."""
-    # Check the Map class
+def test_rotations():
+    """Test some elementary rotations."""
+    # Instantiate
     m = Map(1)
     m.set_coeff(1, 0, 1)
     assert np.allclose(m.y, np.array([0, 0, 1, 0]))
@@ -28,4 +28,4 @@ def test_main():
 
 
 if __name__ == "__main__":
-    test_main()
+    test_rotations()

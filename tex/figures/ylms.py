@@ -9,12 +9,12 @@ class animated():
     """Plot an animated GIF showing rotation of the Ylms."""
 
     def __init__(self, lmax=5, res=300, dpi=100, fps=10, frames=50,
-                 u=[0., 1., 0.]):
+                 axis=[0., 1., 0.]):
         """Initialize."""
         self.lmax = lmax
         self.ylm = Map(lmax)
         self.res = res
-        self.u = u
+        self.axis = axis
         self.frames = frames
         x = np.linspace(-1, 1, res)
         y = np.linspace(-1, 1, res)
@@ -51,7 +51,8 @@ class animated():
                 # Compute the spherical harmonic
                 self.ylm.reset()
                 self.ylm.set_coeff(l, m, 1)
-                flux = self.ylm.evaluate(u=self.u, theta=0, x=self.X, y=self.Y)
+                flux = [self.ylm.evaluate(axis=self.axis, theta=0,
+                        x=self.X[j], y=self.Y[j]) for j in range(res)]
 
                 # Plot the spherical harmonic
                 img = self.ax[i, j].imshow(flux, cmap='plasma',
@@ -81,7 +82,7 @@ class animated():
             for j, m in enumerate(range(-l, l + 1)):
                 self.ylm.reset()
                 self.ylm.set_coeff(l, m, 1)
-                flux = self.ylm.evaluate(u=self.u, theta=theta,
+                flux = self.ylm.evaluate(axis=self.axis, theta=theta,
                                          x=self.X, y=self.Y)
                 self.img[n].set_data(flux)
                 n += 1
@@ -129,7 +130,7 @@ def static(lmax=5, res=300):
             # with no rotation
             ylm.reset()
             ylm.set_coeff(l, m, 1)
-            flux = ylm.evaluate(x=X, y=Y)
+            flux = [ylm.evaluate(x=X[j], y=Y[j]) for j in range(res)]
 
             # Plot the spherical harmonic
             ax[i, j].imshow(flux, cmap='plasma',

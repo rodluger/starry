@@ -2,8 +2,14 @@
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import sys
+import os
 import setuptools
 __version__ = '0.0.2'
+
+
+# Custom compiler flags
+STARRY_NGRAD = 43
+STARRY_MP_DIGITS = 32
 
 
 class get_pybind_include(object):
@@ -40,7 +46,11 @@ ext_modules = [
             # Path to boost headers
             "lib/boost_1_66_0"
         ],
-        language='c++'
+        language='c++',
+        define_macros=[('STARRY_NGRAD',
+                        os.getenv('STARRY_NGRAD', STARRY_NGRAD)),
+                       ('STARRY_MP_DIGITS',
+                        os.getenv('STARRY_MP_DIGITS', STARRY_MP_DIGITS))]
     ),
 ]
 
@@ -110,7 +120,7 @@ setup(
     packages=['starry'],
     ext_modules=ext_modules,
     install_requires=['matplotlib',
-                      'starry_maps',
+                      'starry_maps>=0.0.7',
                       'pybind11>=2.2'],
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,

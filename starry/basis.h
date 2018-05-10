@@ -12,6 +12,7 @@ Spherical harmonic, polynomial, and Green's basis utilities.
 #include <Eigen/SparseLU>
 #include "fact.h"
 #include "sqrtint.h"
+#include "errors.h"
 
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
@@ -232,13 +233,11 @@ namespace basis {
         Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
         solver.compute(A2Inv);
         if (solver.info() != Eigen::Success) {
-            std::cout << "ERROR: Sparse solve failed for matrix `A`." << std::endl;
-            exit(1);
+            throw errors::SparseFail();
         }
         A = solver.solve(A1);
         if (solver.info() != Eigen::Success) {
-            std::cout << "ERROR: Sparse solve failed for matrix `A`." << std::endl;
-            exit(1);
+            throw errors::SparseFail();
         }
 
         return;

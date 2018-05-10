@@ -4,9 +4,11 @@ import matplotlib.pyplot as pl
 import numpy as np
 
 # Set up the plot
+nim = 12
 npts = 100
 nptsnum = 10
-fig, ax = pl.subplots(1, figsize=(12, 4))
+fig = pl.figure(figsize=(12, 5))
+ax = pl.subplot2grid((5, nim), (1, 0), colspan=nim, rowspan=4)
 theta = np.linspace(0, 2 * np.pi, npts, endpoint=True)
 thetanum = np.linspace(0, 2 * np.pi, nptsnum, endpoint=True)
 total = np.zeros(npts, dtype=float)
@@ -24,18 +26,21 @@ m = Map(10)
 for continent, label in zip(continents, labels):
     m.load_image(continent)
     m.rotate([0, 1, 0], -np.pi)
-    F = m.flux(u=[0, 1, 0], theta=theta)
-    ax.plot(theta * 180 / np.pi - 180, F - base, label=label)
+    F = m.flux(axis=[0, 1, 0], theta=theta)
+    F -= np.nanmin(F)
+    ax.plot(theta * 180 / np.pi - 180, F, label=label)
 
 # Compute and plot the total phase curve
 m.load_image('earth.jpg')
 m.rotate([0, 1, 0], -np.pi)
-total = m.flux(u=[0, 1, 0], theta=theta)
-ax.plot(theta * 180 / np.pi - 180, total - base, 'k-', label='Total')
+total = m.flux(axis=[0, 1, 0], theta=theta)
+total /= np.max(total)
+ax.plot(theta * 180 / np.pi - 180, total, 'k-', label='Total')
 
 # Compute and plot the total phase curve (numerical)
-totalnum = m.flux(u=[0, 1, 0], theta=thetanum, numerical=True, tol=1e-5)
-ax.plot(thetanum * 180 / np.pi - 180, totalnum - base, 'k.')
+totalnum = m.flux_numerical(axis=[0, 1, 0], theta=thetanum, tol=1e-5)
+totalnum /= np.max(totalnum)
+ax.plot(thetanum * 180 / np.pi - 180, totalnum, 'k.')
 
 # Appearance
 ax.set_xlim(-180, 180)
@@ -47,6 +52,20 @@ ax.set_xlabel('Sub-observer longitude [deg]', fontsize=24)
 ax.set_ylabel('Normalized flux', fontsize=24)
 for tick in ax.get_xticklabels() + ax.get_yticklabels():
     tick.set_fontsize(22)
+
+# Plot the earth images
+res = 100
+ax_im = [pl.subplot2grid((5, nim), (0, n)) for n in range(nim)]
+x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
+for n in range(nim):
+    i = int(np.linspace(0, npts - 1, nim)[n])
+    I = [m.evaluate(axis=[0, 1, 0], theta=theta[i], x=x[j], y=y[j])
+         for j in range(res)]
+    ax_im[n].imshow(I, origin="lower", interpolation="none", cmap='plasma',
+                    extent=(-1, 1, -1, 1))
+    ax_im[n].axis('off')
+    ax_im[n].set_xlim(-1.05, 1.05)
+    ax_im[n].set_ylim(-1.05, 1.05)
 
 # Save
 pl.savefig('earthphasecurve.pdf', bbox_inches='tight')

@@ -38,12 +38,12 @@ thetan = np.linspace(0, 2 * np.pi, nn, endpoint=False)
 for i, l in enumerate(range(lmax + 1)):
     for j, m in enumerate(range(l + 1)):
         nnull = 0
-        for u, zorder, color in zip([ux, uy], [1, 0], ['C0', 'C1']):
+        for axis, zorder, color in zip([ux, uy], [1, 0], ['C0', 'C1']):
             y.reset()
             y.set_coeff(l, m, 1)
-            flux = y.flux(u=u, theta=theta)
+            flux = y.flux(axis=axis, theta=theta)
             ax[i, j].plot(theta, flux, lw=1, zorder=zorder, color=color)
-            fluxn = y.flux(u=u, theta=thetan, numerical=True, tol=1e-5)
+            fluxn = y.flux_numerical(axis=axis, theta=thetan, tol=1e-5)
             ax[i, j].plot(thetan, fluxn, '.', ms=2, zorder=zorder, color=color)
             if np.max(np.abs(flux)) < 1e-10:
                 nnull += 1

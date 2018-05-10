@@ -14,16 +14,29 @@ Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
 #include <cmath>
 #include "constants.h"
 #include "errors.h"
-
-#ifndef STARRY_NO_AUTODIFF
-#include "AutoDiffScalar.h"
-#endif
+#include <unsupported/Eigen/AutoDiff>
+#include <boost/math/special_functions/ellint_1.hpp>
+#include <boost/math/special_functions/ellint_2.hpp>
 
 namespace ellip {
 
+using boost::math::ellint_1;
+using boost::math::ellint_2;
 using std::abs;
 
+  // Incomplete elliptic integral of the first kind
+  // Currently using boost's implementation
+  template <typename T>
+  T F (const T& ksq, const T& phi) {
+      return ellint_1(sqrt(ksq), phi);
+  }
 
+  // Incomplete elliptic integral of the second kind
+  // Currently using boost's implementation
+  template <typename T>
+  T E (const T& ksq, const T& phi) {
+      return ellint_2(sqrt(ksq), phi);
+  }
 
   // Complete elliptic integral of the first kind
   template <typename T>
@@ -74,8 +87,45 @@ using std::abs;
     throw errors::Elliptic();
   }
 
+  // Gradient of F
+  template <typename T>
+  Eigen::AutoDiffScalar<T> F (const Eigen::AutoDiffScalar<T>& ksq,
+                              const Eigen::AutoDiffScalar<T>& phi)
+  {
+    typename T::Scalar ksq_value = ksq.value(),
+                       phi_value = phi.value(),
+                       F_value = F(ksq_value, phi_value),
+                       E_value = E(ksq_value, phi_value),
+                       sin_phi = sin(phi_value),
+                       cos_phi = cos(phi_value),
+                       fac = 1. / sqrt(1 - ksq_value * sin_phi * sin_phi);
+    return Eigen::AutoDiffScalar<T>(
+      F_value,
+      phi.derivatives() * fac +
+      ksq.derivatives() * (0.5 * cos_phi * sin_phi * fac / (ksq_value - 1) -
+                           E_value / (2 * ksq_value * (ksq_value - 1)) -
+                           F_value / (2 * ksq_value))
+    );
+  }
 
-#ifndef STARRY_NO_AUTODIFF
+  // Gradient of E (incomplete)
+  template <typename T>
+  Eigen::AutoDiffScalar<T> E (const Eigen::AutoDiffScalar<T>& ksq,
+                              const Eigen::AutoDiffScalar<T>& phi)
+  {
+    typename T::Scalar ksq_value = ksq.value(),
+                       phi_value = phi.value(),
+                       F_value = F(ksq_value, phi_value),
+                       E_value = E(ksq_value, phi_value),
+                       sin_phi = sin(phi_value),
+                       fac = sqrt(1 - ksq_value * sin_phi * sin_phi);
+    return Eigen::AutoDiffScalar<T>(
+      F_value,
+      phi.derivatives() * fac +
+      ksq.derivatives() * (E_value - F_value) / (2 * ksq_value)
+    );
+  }
+
   // Gradient of K
   template <typename T>
   Eigen::AutoDiffScalar<T> K (const Eigen::AutoDiffScalar<T>& z)
@@ -89,7 +139,7 @@ using std::abs;
     );
   }
 
-  // Gradient of E
+  // Gradient of E (complete)
   template <typename T>
   Eigen::AutoDiffScalar<T> E (const Eigen::AutoDiffScalar<T>& z)
   {
@@ -115,14 +165,12 @@ using std::abs;
                        nsq = n_value * n_value;
     return Eigen::AutoDiffScalar<T>(
       Pnk,
-      (n.derivatives() * 0.5 * (Ek + (Kk * (ksq - n_value) +
-      Pnk * (nsq - ksq)) / n_value) / (n_value - 1.0) -
-      ksq.derivatives() * 0.5 * (Ek / (ksq - 1.0) + Pnk)) /
-      (ksq - n_value)
+      (n.derivatives() * 0.5 * (Ek + (Kk * (ksq_value - n_value) +
+      Pnk * (nsq - ksq_value)) / n_value) / (n_value - 1.0) -
+      ksq.derivatives() * 0.5 * (Ek / (ksq_value - 1.0) + Pnk)) /
+      (ksq_value - n_value)
     );
   }
-
-#endif
 
 }; // namespace ellip
 

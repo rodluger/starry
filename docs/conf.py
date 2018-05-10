@@ -37,8 +37,11 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
+    'sphinx.ext.todo',
     'matplotlib.sphinxext.plot_directive'
 ]
+
+todo_include_todos = True
 
 autosummary_generate = True
 

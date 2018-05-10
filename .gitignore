@@ -13,6 +13,9 @@ old
 docs/_build
 docs/_generate
 .pytest_cache/
+starry/test
+starry/test_autodiff
+misc/stability/*.pdf
 
 # Latex
 *.aux

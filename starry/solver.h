@@ -13,9 +13,8 @@ Spherical harmonic integration utilities.
 #include "ellip.h"
 #include "fact.h"
 #include "errors.h"
+#include "lld.h"
 #include "taylor.h"
-#include <boost/math/special_functions/ellint_1.hpp>
-#include <boost/math/special_functions/ellint_2.hpp>
 
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
@@ -35,15 +34,6 @@ namespace solver {
     template <class T>
     class Greens;
 
-    // Heaviside step function
-    template <typename T>
-    inline T step(T x) {
-        if (x <= 0)
-            return 0;
-        else
-            return 1;
-    }
-
     // Check if number is even (or doubly, triply, quadruply... even)
     inline bool is_even(int n, int ntimes=1) {
         for (int i = 0; i < ntimes; i++) {
@@ -57,44 +47,63 @@ namespace solver {
     // This is the Mandel & Agol solution for linear limb darkening,
     // reparametrized for speed
     template <typename T>
-    T s2(Greens<T>& G) {
+    inline T s2(Greens<T>& G) {
+        T b = G.b();
+        T r = G.r();
+        T ksq = G.ksq();
+        T K = G.ELL.K();
+        T E = G.ELL.E();
+        return lld::s2(b, r, ksq, K, E, G.pi, G.taylor);
+    }
 
-        // Taylor expand for r > 1?
-        if ((G.taylor) && (G.r() >= 1))
-            return taylor::s2(G);
+    // Compute the flux for a transit of a quadratically limb-darkened star
+    // This code has been stripped of a lot of the overhead for speed, so
+    // it may be a bit opaque. Basically, for a quadratically limb-darkened star,
+    // the only terms that matter in the Greens polynomial basis are those at
+    // indices n = 0, 2, 4, and 8. We therefore only compute those indices of the
+    // solution vector -- we do it directly, without any recurrence relations.
+    // Note, importantly, that the term g(4) is *always* 1/3 * g(8), so we fold
+    // that into `s8` below.
+    template <typename T>
+    inline T QuadLimbDark(Greens<T>& G, const T& b, const T& r, T& g0, T& g2, T& g8) {
 
-        T Lambda;
-        T xi = 2 * G.br * (4 - 7 * G.r(2) - G.b(2));
-        if (G.b() == 0) {
-            Lambda = -2. / 3. * pow(1. - G.r(2), 1.5);
-        } else if (G.b() == G.r()) {
-            if (G.r() == 0.5)
-                Lambda = (1. / 3.) - 4. / (9. * G.pi);
-            else if (G.r() < 0.5)
-                Lambda = (1. / 3.) +
-                         2. / (9. * G.pi) * (4. * (2. * G.r(2) - 1.) * ellip::E(4 * G.r(2)) +
-                         (1 - 4 * G.r(2)) * ellip::K(4 * G.r(2)));
-            else
-                Lambda = (1. / 3.) +
-                         16. * G.r() / (9. * G.pi) * (2. * G.r(2) - 1.) * ellip::E(1. / (4 * G.r(2))) -
-                         (1 - 4 * G.r(2)) * (3 - 8 * G.r(2)) / (9 * G.pi * G.r()) * ellip::K(1. / (4 * G.r(2)));
+        // Initialize only the necessary variables
+        T s0, s8;
+        G.br = b * r;
+        G.b.reset(b);
+        G.r.reset(r);
+        G.ksq.reset((1 - G.r(2) - G.b(2) + 2 * G.br) / (4 * G.br));
+        G.k = sqrt(G.ksq());
+        G.ELL.reset();
+
+        if ((abs(1 - r) < b) && (b < 1 + r)) {
+            G.sinphi.reset((1 - G.r(2) - G.b(2)) / (2 * G.br));
+            G.cosphi.reset(sqrt(1 - G.sinphi() * G.sinphi()));
+            G.sinlam.reset((1 - G.r(2) + G.b(2)) / (2 * G.b()));
+            G.coslam.reset(sqrt(1 - G.sinlam() * G.sinlam()));
+            G.phi = asin(G.sinphi());
+            G.lam = asin(G.sinlam());
+            s0 = G.lam + G.pi_over_2 + G.sinlam() * G.coslam() -
+                 G.r(2) * (G.phi + G.pi_over_2 + G.sinphi() * G.cosphi());
+            s8 = 0.5 * (G.pi_over_2 + G.lam) + (1. / 3.) * G.coslam() * G.sinlam() -
+                 (1. / 6.) * G.coslam(3) * G.sinlam() + (1. / 6.) * G.coslam() * G.sinlam(3) -
+                 (G.r(2) * G.b(2) * (G.pi_over_2 + G.phi + G.cosphi() * G.sinphi()) -
+                  G.r(3) * G.b() * G.cosphi() * (1. + (1. / 3.) * G.cosphi(2) - G.sinphi(2)) +
+                  G.r(4) * (0.5 * (G.pi_over_2 + G.phi) + (1. / 3.) * G.cosphi() * G.sinphi() -
+                            (1. / 6.) * G.cosphi(3) * G.sinphi() + (1. / 6.) * G.cosphi() * G.sinphi(3)));
         } else {
-            if (G.ksq() < 1) {
-                // Note: Using Eric Agol's reparametrized solution
-                Lambda = (((G.r() + G.b()) * (G.r() + G.b()) - 1) /
-                           (G.r() + G.b()) * (-2 * G.r() * (2 * (G.r() + G.b()) * (G.r() + G.b()) + (G.r() + G.b()) * (G.r() - G.b()) - 3) * G.ELL.K() + G.ELL.PI())
-                         - 2 * xi * G.ELL.E()) / (9 * G.pi * sqrt(G.br));
-            } else if (G.ksq() > 1) {
-                // Note: Using Eric Agol's reparametrized solution
-                Lambda = 2 * ((1 - (G.r() + G.b()) * (G.r() + G.b())) * (sqrt(1 - (G.b() - G.r()) * (G.b() - G.r())) * G.ELL.K() + G.ELL.PI())
-                         - sqrt(1 - (G.b() - G.r()) * (G.b() - G.r())) * (4 - 7 * G.r(2) - G.b(2)) * G.ELL.E()) / (9 * G.pi);
-            } else {
-                Lambda = 2. / (3. * G.pi) * acos(1. - 2 * G.r()) -
-                         4 / (9 * G.pi) * (3 + 2 * G.r() - 8 * G.r(2)) * sqrt(G.br) -
-                         2. / 3. * step(G.r() - 0.5);
-            }
+            G.sinphi.reset(1);
+            G.cosphi.reset(0);
+            G.sinlam.reset(1);
+            G.coslam.reset(0);
+            G.phi = 0.5 * G.pi;
+            G.lam = 0.5 * G.pi;
+            s0 = G.pi * (1 - G.r(2));
+            s8 = G.pi_over_2 - G.pi * G.r(2) * (0.5 * G.r(2) + G.b(2));
         }
-        return (2. * G.pi / 3.) * (1 - 1.5 * Lambda - step(G.r() - G.b()));
+
+        return s0 * g0 + s2(G) * g2 + s8 * g8;
+
     }
 
     // Compute the primitive integral helper matrix H
@@ -136,7 +145,7 @@ namespace solver {
         if (G.b() == 0) {
             // Special case
             return pow(1 - G.r(2), 1.5) * G.I(u, v);
-        } else if ((G.taylor) && (G.r() < 1) && (G.b() < STARRY_B_THRESH_J<T>(G.l, G.r()))) {
+        } else if ((G.taylor) && (G.b() < STARRY_B_THRESH_J<T>(G.r()))) {
             return taylor::computeJ(G, u, v);
         } else {
             for (int i = 0; i < v + 1; i++) {
@@ -187,8 +196,8 @@ namespace solver {
             T res1, res2;
             // Terms independent of ksq
             d3 = 2 * p + q - (p + q - 2);
-            d4 = (3 - p) + (p - 3);
-            res1 = (d3 * G.M(p - 2, q) + d4 * G.M(p - 4, q)) / (p + q + 3);
+            d4 = 0;
+            res1 = (d3 * G.M(p - 2, q)) / (p + q + 3);
             // Terms proportional to ksq
             d3 = -(p + q - 2);
             d4 = (p - 3);
@@ -196,10 +205,7 @@ namespace solver {
             res2 *= -G.ksq();
             // Add them
             return res1 + res2;
-        } else {
-            std::cout << "ERROR: Domain error in function computeM()." << std::endl;
-            exit(1);
-        }
+        } else throw errors::Domain();
     }
 
     // The helper primitive integral K_{u,v}
@@ -260,12 +266,10 @@ namespace solver {
 
             T vK;
             T vE;
-            T vPI;
             T vE1;
             T vE2;
             bool bK;
             bool bE;
-            bool bPI;
             bool bE1;
             bool bE2;
             Greens<T>& G;
@@ -285,7 +289,7 @@ namespace solver {
                     else if (G.ksq() < 1)
                         vK = ellip::K(G.ksq());
                     else
-                        vK = ellip::K(1. / G.ksq());
+                        vK = ellip::K(T(1. / G.ksq()));
                     bK = true;
                 }
                 return vK;
@@ -301,59 +305,10 @@ namespace solver {
                     else if (G.ksq() < 1)
                         vE = ellip::E(G.ksq());
                     else
-                        vE = ellip::E(1. / G.ksq());
+                        vE = ellip::E(T(1. / G.ksq()));
                     bE = true;
                 }
                 return vE;
-            }
-
-            // Elliptic integral of the third kind
-            // NOTE: Using Eric Agol's reparametrized version of PI
-            inline T PI() {
-                if (!bPI) {
-                    if ((G.b() == 0) || (G.ksq() == 1))
-                        vPI = 0;
-                    else if (G.ksq() < 1)
-                        vPI = 3 * (G.b() - G.r()) * ellip::PI(G.ksq() * (G.b() + G.r()) * (G.b() + G.r()), G.ksq());
-                    else {
-                        T EPI;
-                        if ((G.taylor) && (abs(G.b() - G.r()) < STARRY_BMINUSR_THRESH_S2)) {
-                            // This is a reparameterization of the complete elliptic integral
-                            // of the third kind, necessary to suppress numerical instabilities when b ~ r.
-                            // It relies on expressing PI in terms of the incomplete elliptic integrals
-                            // of the first and second kind. I haven't done speed tests, but I suspect
-                            // it has to be slower, so we only do this when b is really close to r.
-                            // Use transformation of 17.7.14 in Abramowitz & Stegun:
-                            T one_minus_n = (G.b() - G.r()) * (G.b() - G.r()) *
-                                            (1. - (G.b() + G.r()) * (G.b() + G.r())) /
-                                            (1. - (G.b() - G.r()) * (G.b() - G.r())) /
-                                            ((G.b() + G.r()) * (G.b() + G.r()));
-                            T EK = ellip::K(1. / G.ksq());
-                            T EE = ellip::E(1. / G.ksq());
-                            T psi = asin(sqrt(one_minus_n / (1. - 1. / G.ksq())));
-                            T mc = 1. - 1. / G.ksq();
-                            // Compute Heuman's Lambda Function via A&S 17.4.40:
-                            T EEI = boost::math::ellint_2(sqrt(mc), psi);
-                            T EFI = boost::math::ellint_1(sqrt(mc), psi);
-                            T HLam = 2. / G.pi * (EK * EEI - (EK - EE) * EFI);
-                            T d2 = sqrt((1. / one_minus_n - 1.) / (1. - one_minus_n - 1. / G.ksq()));
-                            // Equation 17.7.14 in A&S:
-                            EPI = EK + 0.5 * G.pi * d2 * (1. - HLam);
-                        } else {
-                            // Compute the elliptic integral directly
-                            EPI = ellip::PI(1. / (G.ksq() * (G.b() + G.r()) * (G.b() + G.r())), 1. / G.ksq());
-                        }
-                        // TODO: There may be small numerical issue here. As b - r --> 1,
-                        // the denominator diverges. Should re-parametrize.
-                        if (abs(G.b() - G.r()) != 1.0)
-                            vPI = 3 * (G.b() - G.r()) / (G.b() + G.r()) * EPI /
-                                   sqrt(1 - (G.b() - G.r()) * (G.b() - G.r()));
-                        else
-                            vPI = 0;
-                    }
-                    bPI = true;
-                }
-                return vPI;
             }
 
             // First elliptic function
@@ -390,7 +345,6 @@ namespace solver {
             void reset() {
                 bK = false;
                 bE = false;
-                bPI = false;
                 bE1 = false;
                 bE2 = false;
             }
@@ -448,13 +402,15 @@ namespace solver {
 
             // Constructor
             Power(T val) {
-                vec.push_back(1.0);
+                vec.push_back(1.0 + (val * 0));
                 vec.push_back(val);
             }
 
             // Getter function
             inline T value(int n) {
-                if (n < 0) throw errors::BadIndex();
+                if (n < 0) {
+                    throw errors::BadIndex();
+                }
                 while (n >= vec.size()) {
                     vec.push_back(vec[1] * vec[vec.size() - 1]);
                 }
@@ -468,7 +424,7 @@ namespace solver {
             // Resetter
             void reset(T val) {
                 vec.clear();
-                vec.push_back(1.0);
+                vec.push_back(1.0 + (val * 0));
                 vec.push_back(val);
             }
 
@@ -523,11 +479,12 @@ namespace solver {
             // The value of pi, computed at
             // the user-requested precision
             T pi;
+            T pi_over_2;
 
             // Constructor
             Greens(int lmax, bool taylor=true) :
                    lmax(lmax),
-                   N(max(lmax + 5, 2 * lmax + 1)),
+                   N(max(lmax + 5, 2 * lmax + 1) + 12), // DEBUG: +12 for taylor::computeJ. Find smallest value of N that will work.
                    taylor(taylor),
                    ksq(0),
                    b(0),
@@ -544,10 +501,11 @@ namespace solver {
                    M(*this, computeM) {
 
                 // Initialize the solution vector
-                sT.resize((lmax + 1) * (lmax + 1));
+                sT = VectorT<T>::Zero((lmax + 1) * (lmax + 1));
 
                 // Compute pi at the actual precision of the T type
-                pi = acos((T)(-1.));
+                pi = T(BIGPI);
+                pi_over_2 = T(0.5 * pi);
 
             }
 
@@ -589,7 +547,7 @@ namespace solver {
 
     // Compute the *s^T* occultation solution vector
     template <typename T>
-    void computesT(Greens<T>& G, T& b, T& r, Vector<T>& y) {
+    void computesT(Greens<T>& G, const T& b, const T& r, const Vector<T>& y) {
 
         // Check for likely instability
         if ((G.taylor) && (r >= 1) && (G.lmax > STARRY_LMAX_LARGE_OCC))
@@ -650,6 +608,10 @@ namespace solver {
                 if (abs(y(n)) > STARRY_MAP_TOLERANCE) {
                     if ((l == 1) && (m == 0))
                         G.sT(n) = s2(G);
+                    // These terms are zero because they are proportional to
+                    // odd powers of x, so we don't need to compute them!
+                    else if ((G.taylor) && (is_even(G.mu - 1)) && (!is_even((G.mu - 1) / 2)))
+                        G.sT(n) = 0;
                     else
                         G.sT(n) = Q(G) - P(G);
                 } else {

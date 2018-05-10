@@ -6,4 +6,5 @@
 <p align="center">
   <a href="https://travis-ci.org/rodluger/starry/"><img src="https://travis-ci.org/rodluger/starry.svg?branch=master"/></a>
   <a href="https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master-pdf/tex/starry.pdf"><img src="https://img.shields.io/badge/read-the_paper-brightgreen.svg?style=flat"/></a>
+  <a href="https://rodluger.github.io/starry/"><img src="https://img.shields.io/badge/read-the_docs-brightgreen.svg?style=flat"/></a>
 </p>
