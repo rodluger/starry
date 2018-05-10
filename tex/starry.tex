@@ -131,7 +131,7 @@ are defined in spherical coordinates as
 %
 \begin{align}
     \label{eq:ylmtp}
-    Y_{lm}(\theta, \phi) =
+    Y_{lm}(\uptheta, \upphi) =
     \begin{cases}
         \bar{P}_{lm}(\cos\uptheta)\cos(m\upphi) & \qquad m \geq 0 \\
         \bar{P}_{l|m|}(\cos\uptheta)\sin(|m|\upphi) & \qquad m < 0 \quad,
@@ -1399,7 +1399,7 @@ We still need to think about how to expose the autodiff stuff to the user.\todo{
 %
 \begin{figure}[ht]
     \begin{centering}
-    \includegraphics[width=0.5\linewidth]{figures/autodiff.pdf}
+    \includegraphics[width=0.9\linewidth]{figures/autodiff.pdf}
     \caption{\label{fig:system}
              \python{autodiff}
              Hello! Autodiff!}
