@@ -100,7 +100,7 @@ def compare_to_numerical():
     res = 300
     nstarry = 1000
     ylm = starry.Map(lmax)
-    ylm_grad = starry.grad.Map(lmax)
+    ylm_grad = starry.grad.Map(5)
 
     class Funcs(object):
 
@@ -137,11 +137,16 @@ def compare_to_numerical():
         for m in range(-l, l + 1):
             c = np.random.random()
             ylm[l, m] = c
-            ylm_grad[l, m] = c
+            # NOTE: Default compile of starry.grad is for lmax <= 5
+            if l <= 5:
+                ylm_grad[l, m] = c
         # Time the runs
         builtins.__dict__.update(locals())
         time_starry[l] = timeit.timeit('funcs.fstar()', number=1) / nstarry
-        time_grad[l] = timeit.timeit('funcs.fgrad()', number=1) / nstarry
+        if l <= 5:
+            time_grad[l] = timeit.timeit('funcs.fgrad()', number=1) / nstarry
+        else:
+            time_grad[l] = np.nan
         time_numer[l] = timeit.timeit('funcs.fnumer()', number=1)
         time_mesh[l] = timeit.timeit('funcs.fmesh()', number=1)
         time_grid[l] = timeit.timeit('funcs.fgrid()', number=1)
