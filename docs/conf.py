@@ -38,12 +38,17 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
     'sphinx.ext.todo',
-    'matplotlib.sphinxext.plot_directive'
+    'matplotlib.sphinxext.plot_directive',
+    'nbsphinx'
 ]
 
 todo_include_todos = True
 
 autosummary_generate = True
+
+# Remove jupyter notebook prompt numbers
+nbsphinx_prompt_width = 0
+napoleon_use_ivar = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

@@ -16,7 +16,7 @@ API, and more.
    :maxdepth: 1
 
    Examples <http://depts.washington.edu/astron/jake-todo>
-   Tutorials <http://depts.washington.edu/astron/jake-todo>
+   Tutorials <tutorials>
    API <api>
    Github <https://github.com/rodluger/starry>
    Submit an issue <https://github.com/rodluger/starry/issues>
