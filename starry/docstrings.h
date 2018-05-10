@@ -70,6 +70,19 @@ namespace docstrings {
         Method or attribute not implemented for this class.
     )pbdoc";
 
+    const char * mp_digits =
+    R"pbdoc(
+        Number of digits used to perform multi-precision calculations.
+        Double precision roughly corresponds to 16, and quadrupole
+        precision (default) roughly corresponds 32.
+        This is a compile-time constant. If you wish to change it, you'll
+        have to re-compile :py:obj:`starry` by executing
+
+        .. code-block:: bash
+
+            STARRY_MP_DIGITS=XX pip install --force-reinstall --ignore-installed --no-binary :all: starry
+    )pbdoc";
+
     namespace Map {
 
         const char * Map =
@@ -100,6 +113,8 @@ namespace docstrings {
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
                 .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
+                .. autoattribute:: mp_digits
+
             )pbdoc";
 
         const char * get_coeff =
@@ -364,6 +379,8 @@ namespace docstrings {
                 .. autoattribute:: s
                 .. autoattribute:: s_mp
                 .. automethod:: show(cmap='plasma', res=300)
+                .. autoattribute:: mp_digits
+
         )pbdoc";
 
         const char * get_coeff =
@@ -873,6 +890,19 @@ namespace docstrings_grad {
 
     const char * NotImplemented = docstrings::NotImplemented;
 
+    const char * mp_digits = docstrings::mp_digits;
+
+    const char * ngrad =
+    R"pbdoc(
+        Length of the gradient vector.
+        This is a compile-time constant. If you get errors saying this
+        value is too small, you'll need to re-compile :py:obj:`starry` by executing
+
+        .. code-block:: bash
+        
+            STARRY_NGRAD=XX pip install --force-reinstall --ignore-installed --no-binary :all: starry
+    )pbdoc";
+
     namespace Map {
 
         const char * Map =
@@ -901,6 +931,8 @@ namespace docstrings_grad {
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
                 .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
+                .. autoattribute:: mp_digits
+                .. autoattribute:: ngrad
         )pbdoc";
 
         const char * get_coeff = docstrings::Map::get_coeff;
@@ -975,6 +1007,9 @@ namespace docstrings_grad {
                 .. autoattribute:: u
                 .. autoattribute:: s
                 .. automethod:: show(cmap='plasma', res=300)
+                .. autoattribute:: mp_digits
+                .. autoattribute:: ngrad
+
         )pbdoc";
 
         const char * get_coeff = docstrings::LimbDarkenedMap::get_coeff;
@@ -1099,7 +1134,7 @@ namespace docstrings_grad {
 
             .. autoattribute:: map
             .. autoattribute:: flux
-            .. autoattribuet:: gradient
+            .. autoattribute:: gradient
             .. autoattribute:: r
             .. autoattribute:: L
         )pbdoc";
@@ -1139,7 +1174,7 @@ namespace docstrings_grad {
 
             .. autoattribute:: map
             .. autoattribute:: flux
-            .. autoattribuet:: gradient
+            .. autoattribute:: gradient
             .. autoattribute:: x
             .. autoattribute:: y
             .. autoattribute:: z

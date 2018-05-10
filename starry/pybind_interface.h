@@ -97,6 +97,8 @@ void ADD_MODULE(py::module &m) {
 
         .def("reset", &maps::Map<MAPTYPE>::reset, DOCS::Map::reset)
 
+        .def_property_readonly("mp_digits", [](maps::Map<MAPTYPE> &map){return STARRY_MP_DIGITS;}, DOCS::mp_digits)
+
         .def_property_readonly("lmax", [](maps::Map<MAPTYPE> &map){return map.lmax;}, DOCS::Map::lmax)
 
         .def_property_readonly("y", [](maps::Map<MAPTYPE> &map){
@@ -251,6 +253,8 @@ void ADD_MODULE(py::module &m) {
                 return py::cast(map.derivs);
             }, DOCS::Map::gradient)
 
+        .def_property_readonly("ngrad", [](maps::Map<MAPTYPE> &map){return STARRY_NGRAD;}, DOCS::ngrad)
+
 #endif
 
         .def("__repr__", [](maps::Map<MAPTYPE> &map) -> string {return map.repr();});
@@ -290,6 +294,8 @@ void ADD_MODULE(py::module &m) {
         .def("reset", &maps::LimbDarkenedMap<MAPTYPE>::reset, DOCS::LimbDarkenedMap::reset)
 
         .def_property_readonly("lmax", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.lmax;}, DOCS::LimbDarkenedMap::lmax)
+
+        .def_property_readonly("mp_digits", [](maps::LimbDarkenedMap<MAPTYPE> &map){return STARRY_MP_DIGITS;}, DOCS::mp_digits)
 
         .def_property_readonly("y", [](maps::LimbDarkenedMap<MAPTYPE> &map){
                 return get_value(map.y);
@@ -361,6 +367,8 @@ void ADD_MODULE(py::module &m) {
         .def_property_readonly("gradient", [](maps::LimbDarkenedMap<MAPTYPE> &map){
                 return py::cast(map.derivs);
             }, DOCS::LimbDarkenedMap::gradient)
+
+        .def_property_readonly("ngrad", [](maps::LimbDarkenedMap<MAPTYPE> &map){return STARRY_NGRAD;}, DOCS::ngrad)
 
 #endif
 

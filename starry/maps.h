@@ -574,9 +574,6 @@ namespace maps {
     void LimbDarkenedMap<T>::update() {
 
         // Update the spherical harmonic vector
-        // NOTE: All the casting to type `T` below is necessary
-        // to avoid this issue with AutoDiffScalar:
-        // http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1281#c1
         T norm;
         y.setZero(N);
         if (lmax == 0) {

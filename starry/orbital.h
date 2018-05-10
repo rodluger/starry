@@ -577,17 +577,23 @@ namespace orbital {
             // The following ensures the derivatives of `u` are correctly
             // propagated to the `g` vector, which is what we use in the
             // flux calculation for limb-darkened bodies.
-            // TODO: Deal with maps with lmax != 2!
             if (t == 0) {
                 bodies[0]->ldmap.update();
                 tmpder.push_back(bodies[0]->ldmap.g(0).derivatives());
-                tmpder.push_back(bodies[0]->ldmap.g(2).derivatives());
-                tmpder.push_back(bodies[0]->ldmap.g(8).derivatives());
+                if (bodies[0]->ldmap.lmax >= 1)
+                    tmpder.push_back(bodies[0]->ldmap.g(2).derivatives());
+                if (bodies[0]->ldmap.lmax >= 2)
+                    tmpder.push_back(bodies[0]->ldmap.g(8).derivatives());
+                // TODO! Implement higher order limb darkening.
+                if (bodies[0]->ldmap.lmax >= 3)
+                    throw errors::LimbDark();
                 tmpder.push_back(bodies[0]->ldmap.ld_flux.derivatives());
             } else {
                 bodies[0]->ldmap.g(0).derivatives() = tmpder[0];
-                bodies[0]->ldmap.g(2).derivatives() = tmpder[1];
-                bodies[0]->ldmap.g(8).derivatives() = tmpder[2];
+                if (bodies[0]->ldmap.lmax >= 1)
+                    bodies[0]->ldmap.g(2).derivatives() = tmpder[1];
+                if (bodies[0]->ldmap.lmax >= 2)
+                    bodies[0]->ldmap.g(8).derivatives() = tmpder[2];
                 bodies[0]->ldmap.ld_flux.derivatives() = tmpder[3];
             }
 
