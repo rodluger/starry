@@ -507,6 +507,7 @@ namespace orbital {
         int p, o;
         int NT = time.size();
         int NB = bodies.size();
+        vector<Vector<double>> tmpder;
 
         // List of gradient names
         vector<string> names {"time"};
@@ -558,15 +559,6 @@ namespace orbital {
             derivs[names[n]].resize(NT);
         }
 
-        // TODO: I suspect we need to do something explicit here to
-        // activate the stellar *u* derivatives, since they are not
-        // directly accessed in the flux calculation (the result
-        // depends on **g**, which is pre-computed).
-        /*
-        for (k = 1; k < bodies[0]->ldmap.lmax + 1; k++)
-            bodies[0]->ldmap.u(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-        */
-
         // Loop through the timeseries
         for (t = 0; t < NT; t++){
 
@@ -574,12 +566,30 @@ namespace orbital {
             n = 0;
             tsec = time(t) * DAY;
             tsec.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-            // HACK: Convert the deriv back to days!
+
+            // Convert the deriv back to days!
             tsec.derivatives()(0) *= DAY;
 
             // Star derivs (map only)
             for (k = 1; k < bodies[0]->ldmap.lmax + 1; k++)
                 bodies[0]->ldmap.u(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+
+            // The following ensures the derivatives of `u` are correctly
+            // propagated to the `g` vector, which is what we use in the
+            // flux calculation for limb-darkened bodies.
+            // TODO: Deal with maps with lmax != 2!
+            if (t == 0) {
+                bodies[0]->ldmap.update();
+                tmpder.push_back(bodies[0]->ldmap.g(0).derivatives());
+                tmpder.push_back(bodies[0]->ldmap.g(2).derivatives());
+                tmpder.push_back(bodies[0]->ldmap.g(8).derivatives());
+                tmpder.push_back(bodies[0]->ldmap.ld_flux.derivatives());
+            } else {
+                bodies[0]->ldmap.g(0).derivatives() = tmpder[0];
+                bodies[0]->ldmap.g(2).derivatives() = tmpder[1];
+                bodies[0]->ldmap.g(8).derivatives() = tmpder[2];
+                bodies[0]->ldmap.ld_flux.derivatives() = tmpder[3];
+            }
 
             // Planet derivs
             for (i = 1; i < NB; i++) {
@@ -601,6 +611,9 @@ namespace orbital {
                 bodies[i]->lambda0.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->tref.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
 
+                // Propagate derivs to the helper variables
+                bodies[i]->reset();
+
                 // Map derivs
                 for (k = 0; k < bodies[i]->map.N; k++)
                     bodies[i]->map.y(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
@@ -613,6 +626,7 @@ namespace orbital {
             // Compute any occultations
             for (i = 0; i < NB; i++) {
                 for (j = i + 1; j < NB; j++) {
+
                     // Determine the relative positions of the two bodies
                     if (bodies[j]->z(t) > bodies[i]->z(t)) {
                         o = j;
@@ -624,6 +638,7 @@ namespace orbital {
                     xo = (bodies[o]->x(t) - bodies[p]->x(t)) / bodies[p]->r;
                     yo = (bodies[o]->y(t) - bodies[p]->y(t)) / bodies[p]->r;
                     ro = (bodies[o]->r / bodies[p]->r);
+
                     // Compute the flux in occultation
                     if (sqrt(xo * xo + yo * yo) < 1 + ro) {
                         bodies[p]->getflux(tsec, t, xo, yo, ro);

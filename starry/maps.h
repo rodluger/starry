@@ -507,13 +507,15 @@ namespace maps {
         protected:
 
             Vector<T> basis;
-            T ld_flux;
 
             // Temporary variables
             Vector<T> ARRy;
             Vector<T> tmpvec;
 
         public:
+
+            // Total flux
+            T ld_flux;
 
             // The map vectors
             Vector<T> y;
