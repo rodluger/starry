@@ -22,27 +22,10 @@ using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
 template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
 using std::abs;
+using std::fmod;
+
 
 namespace numeric {
-
-    // Re-definition of fmod so we can define its derivative below
-    double fmod(double numer, double denom) {
-        return std::fmod(numer, denom);
-    }
-
-    // Derivative of the floating point modulo function,
-    // based on https://math.stackexchange.com/a/1277049
-    template <typename T>
-    Eigen::AutoDiffScalar<T> fmod(const Eigen::AutoDiffScalar<T>& numer, const Eigen::AutoDiffScalar<T>& denom) {
-        typename T::Scalar numer_value = numer.value(),
-                           denom_value = denom.value(),
-                           modulo_value = fmod(numer_value, denom_value);
-        return Eigen::AutoDiffScalar<T>(
-          modulo_value,
-          numer.derivatives() +
-          denom.derivatives() * (modulo_value - numer_value) / denom_value
-        );
-    }
 
     // Evaluate a map `p` at a given (x, y) coordinate during an occultation
     template <typename T>

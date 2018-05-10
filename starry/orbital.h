@@ -9,6 +9,8 @@ Orbital star/planet/moon system class.
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
+#include <string>
+#include <vector>
 #include "constants.h"
 #include "errors.h"
 #include "maps.h"
@@ -23,6 +25,9 @@ using maps::LimbDarkenedMap;
 using maps::yhat;
 using std::vector;
 using std::max;
+using std::abs;
+using std::string;
+using std::to_string;
 
 namespace orbital {
 
@@ -31,101 +36,58 @@ namespace orbital {
     template <class T> class Star;
     template <class T> class Planet;
 
-    // System class
-    template <class T>
-    class System {
+    // Re-definition of fmod so we can define its derivative below
+    double fmod(double numer, double denom) {
+        return std::fmod(numer, denom);
+    }
 
-        public:
+    // Derivative of the floating point modulo function,
+    // based on https://math.stackexchange.com/a/1277049
+    template <typename T>
+    Eigen::AutoDiffScalar<T> fmod(const Eigen::AutoDiffScalar<T>& numer, double denom) {
+        typename T::Scalar numer_value = numer.value(),
+                           modulo_value = fmod(numer_value, denom);
+        return Eigen::AutoDiffScalar<T>(
+          modulo_value,
+          numer.derivatives()
+        );
+    }
 
-            vector<Body<T>*> bodies;
-            Vector<T> flux;
-            double eps;
-            int maxiter;
-
-            // Constructor
-            System(vector<Body<T>*> bodies, const double& eps=1.0e-7, const int& maxiter=100) :
-                bodies(bodies), eps(eps), maxiter(maxiter) {
-
-                // Check that we have at least one body
-                if (bodies.size() == 0)
-                    throw errors::BadSystem();
-
-                // Check that first body (and only first body) is a star
-                if (!bodies[0]->is_star)
-                    throw errors::BadSystem();
-
-                // Propagate settings down
-                for (int i = 1; i < bodies.size(); i++) {
-                    if (bodies[i]->is_star)
-                        throw errors::BadSystem();
-                    bodies[i]->eps = eps;
-                    bodies[i]->maxiter = maxiter;
-                }
-
+    // Compute the eccentric anomaly. Adapted from
+    // https://github.com/lkreidberg/batman/blob/master/c_src/_rsky.c
+    double EccentricAnomaly(double& M, double& ecc, const double& eps, const int& maxiter) {
+        // Initial condition
+        double E = M;
+        if (ecc > 0) {
+            // Iterate
+            for (int iter = 0; iter <= maxiter; iter++) {
+                E = E - (E - ecc * sin(E) - M) / (1. - ecc * cos(E));
+                if (abs(E - ecc * sin(E) - M) <= eps) return E;
             }
-
-            // Methods
-            void compute(const Vector<T>& time);
-
-    };
-
-    // Compute the light curve
-    template <class T>
-    void System<T>::compute(const Vector<T>& time) {
-
-        int i, j, t;
-        T xo, yo, ro;
-        T tsec;
-        int p, o;
-        int NT = time.size();
-
-        // Allocate arrays and check that the planet maps are physical
-        for (i = 0; i < bodies.size(); i++) {
-            bodies[i]->x.resize(NT);
-            bodies[i]->y.resize(NT);
-            bodies[i]->z.resize(NT);
-            bodies[i]->flux.resize(NT);
+            // Didn't converge!
+            throw errors::Kepler();
         }
+        return E;
+    }
 
-        // Loop through the timeseries
-        for (t = 0; t < NT; t++){
-
-            // Time in seconds
-            tsec = time(t) * DAY;
-
-            // Take an orbital step
-            for (i = 0; i < bodies.size(); i++)
-                bodies[i]->step(tsec, t);
-
-            // Compute any occultations
-            for (i = 0; i < bodies.size(); i++) {
-                for (j = i + 1; j < bodies.size(); j++) {
-                    // Determine the relative positions of the two bodies
-                    if (bodies[j]->z(t) > bodies[i]->z(t)) {
-                        o = j;
-                        p = i;
-                    } else {
-                        o = i;
-                        p = j;
-                    }
-                    xo = (bodies[o]->x(t) - bodies[p]->x(t)) / bodies[p]->r;
-                    yo = (bodies[o]->y(t) - bodies[p]->y(t)) / bodies[p]->r;
-                    ro = bodies[o]->r / bodies[p]->r;
-                    // Compute the flux in occultation
-                    if (sqrt(xo * xo + yo * yo) < 1 + ro) {
-                        bodies[p]->getflux(tsec, t, xo, yo, ro);
-                    }
-                }
-            }
-
-        }
-
-        // Add up all the fluxes
-        flux = Vector<T>::Zero(NT);
-        for (i = 0; i < bodies.size(); i++) {
-            flux += bodies[i]->flux;
-        }
-
+    // Derivative of the eccentric anomaly
+    template <typename T>
+    Eigen::AutoDiffScalar<T> EccentricAnomaly(const Eigen::AutoDiffScalar<T>& M, const Eigen::AutoDiffScalar<T>& ecc, const double& eps, const int& maxiter) {
+        typename T::Scalar M_value = M.value(),
+                           ecc_value = ecc.value(),
+                           E_value = EccentricAnomaly(M_value, ecc_value, eps, maxiter),
+                           cosE_value = cos(E_value),
+                           sinE_value = sin(E_value),
+                           norm1 = 1./ (1. - ecc_value * cosE_value),
+                           norm2 = sinE_value * norm1;
+        if (M.derivatives().size() && ecc.derivatives().size())
+            return Eigen::AutoDiffScalar<T>(E_value, M.derivatives() * norm1 + ecc.derivatives() * norm2);
+        else if (M.derivatives().size())
+            return Eigen::AutoDiffScalar<T>(E_value, M.derivatives() * norm1);
+        else if (ecc.derivatives().size())
+            return Eigen::AutoDiffScalar<T>(E_value, ecc.derivatives() * norm2);
+        else
+            return Eigen::AutoDiffScalar<T>(E_value, M.derivatives());
     }
 
     // Body class
@@ -160,15 +122,9 @@ namespace orbital {
             T totalflux;
             T norm;
 
-            // Methods
-            void computeM(const T& time);
-            void computeE();
-            void computef();
-
         public:
 
             // Flag
-            bool computed;
             bool is_star;
 
             // Map stuff
@@ -190,6 +146,9 @@ namespace orbital {
             T Omega;
             T lambda0;
             T tref;
+
+            // Derivatives dictionary
+            std::map<string, Eigen::VectorXd> derivs;
 
             // Settings
             double eps;
@@ -257,6 +216,7 @@ namespace orbital {
 
                      // Initialize orbital vars
                      reset();
+
                  }
 
             // Reset orbital variables and map normalization
@@ -272,8 +232,8 @@ namespace orbital {
                 sqrtonepluse = sqrt(1 + ecc);
                 sqrtoneminuse = sqrt(1 - ecc);
                 ecc2 = ecc * ecc;
-                angvelorb = 2 * M_PI / porb;
-                angvelrot = 2 * M_PI / prot;
+                angvelorb = (2 * M_PI) / porb;
+                angvelrot = (2 * M_PI) / prot;
             };
 
             // Public methods
@@ -286,7 +246,7 @@ namespace orbital {
     // Rotation angle as a function of time
     template <class T>
     inline T Body<T>::theta(const T& time) {
-        if ((prot == 0) || isinf(prot))
+        if ((prot == 0) || (prot == INFINITY))
             return theta0;
         else
             return fmod(theta0 + angvelrot * (time - tref), 2 * M_PI);
@@ -303,41 +263,6 @@ namespace orbital {
         }
     }
 
-    // Compute the mean anomaly
-    template <class T>
-    inline void Body<T>::computeM(const T& time) {
-        M = fmod(M0 + angvelorb * (time - tref), 2 * M_PI);
-    }
-
-    // Compute the eccentric anomaly. Adapted from
-    // https://github.com/lkreidberg/batman/blob/master/c_src/_rsky.c
-    template <class T>
-    inline void Body<T>::computeE() {
-        // Initial condition
-        E = M;
-        if (ecc > 0) {
-
-            // Iterate
-            for (int iter = 0; iter <= maxiter; iter++) {
-                E = E - (E - ecc * sin(E) - M) / (1. - ecc * cos(E));
-                if (fabs(E - ecc * sin(E) - M) <= eps) return;
-            }
-
-            // Didn't converge!
-            throw errors::Kepler();
-
-        }
-
-    }
-
-    // Compute the true anomaly
-    template <class T>
-    inline void Body<T>::computef() {
-        if (ecc == 0) f = E;
-        else f = 2. * atan2(sqrtonepluse * sin(E / 2.),
-                            sqrtoneminuse * cos(E / 2.));
-    }
-
     // Compute the instantaneous x, y, and z positions of the
     // body with a simple Keplerian solver.
     template <class T>
@@ -351,17 +276,19 @@ namespace orbital {
         } else {
 
             // Mean anomaly
-            computeM(time);
+            M = fmod(M0 + angvelorb * (time - tref), 2 * M_PI);
 
             // Eccentric anomaly
-            computeE();
+            E = EccentricAnomaly(M, ecc, eps, maxiter);
 
             // True anomaly
-            computef();
+            if (ecc == 0) f = E;
+            else f = (2. * atan2(sqrtonepluse * sin(E / 2.),
+                                 sqrtoneminuse * cos(E / 2.)));
 
             // Orbital radius
             if (ecc > 0)
-                rorb = a * (1 - ecc2) / (1. + ecc * cos(f));
+                rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
             else
                 rorb = a;
 
@@ -380,8 +307,10 @@ namespace orbital {
         } else {
             if (is_star)
                 totalflux = norm * ldmap.flux();
-            else
-                totalflux = norm * L * map.flux(axis, theta(time));
+            else {
+                T theta_time(theta(time));
+                totalflux = norm * L * map.flux(axis, theta_time);
+            }
         }
         flux(t) = totalflux;
 
@@ -446,8 +375,305 @@ namespace orbital {
     template <class T>
     std::string Planet<T>::repr() {
         std::ostringstream os;
-        os << "<STARRY Planet at P = " << std::setprecision(3) << this->porb / DAY << " days>";
+        os << "<STARRY Planet at P = " << std::setprecision(3) << get_value(this->porb) / DAY << " days>";
         return std::string(os.str());
+    }
+
+    // System class
+    template <class T>
+    class System {
+
+        public:
+
+            vector<Body<T>*> bodies;
+            Vector<T> flux;
+            double eps;
+            int maxiter;
+            bool computed;
+            T zero;
+
+            // Derivatives dictionary
+            std::map<string, Eigen::VectorXd> derivs;
+
+            // Constructor
+            System(vector<Body<T>*> bodies, const double& eps=1.0e-7, const int& maxiter=100) :
+                bodies(bodies), eps(eps), maxiter(maxiter) {
+
+                // Check that we have at least one body
+                if (bodies.size() == 0)
+                    throw errors::BadSystem();
+
+                // Check that first body (and only first body) is a star
+                if (!bodies[0]->is_star)
+                    throw errors::BadSystem();
+
+                // Propagate settings down
+                for (int i = 1; i < bodies.size(); i++) {
+                    if (bodies[i]->is_star)
+                        throw errors::BadSystem();
+                    bodies[i]->eps = eps;
+                    bodies[i]->maxiter = maxiter;
+                }
+
+                // Set the flag
+                computed = false;
+
+            }
+
+            // Methods
+            void compute(const Vector<T>& time);
+            std::string repr();
+
+    };
+
+    // Return a human-readable string
+    template <class T>
+    std::string System<T>::repr() {
+        std::ostringstream os;
+        os << "<STARRY " << (bodies.size() - 1) << "-planet system>";
+        return std::string(os.str());
+    }
+
+    // Compute the light curve
+    template <class T>
+    void System<T>::compute(const Vector<T>& time) {
+
+        int i, j, t;
+        T xo, yo, ro;
+        T tsec;
+        int p, o;
+        int NT = time.size();
+        int NB = bodies.size();
+
+        // Allocate arrays and check that the planet maps are physical
+        for (i = 0; i < NB; i++) {
+            bodies[i]->x.resize(NT);
+            bodies[i]->y.resize(NT);
+            bodies[i]->z.resize(NT);
+            bodies[i]->flux.resize(NT);
+        }
+
+        // Loop through the timeseries
+        for (t = 0; t < NT; t++){
+
+            // Time in seconds
+            tsec = time(t) * DAY;
+
+            // Take an orbital step
+            for (i = 0; i < NB; i++)
+                bodies[i]->step(tsec, t);
+
+            // Compute any occultations
+            for (i = 0; i < NB; i++) {
+                for (j = i + 1; j < NB; j++) {
+                    // Determine the relative positions of the two bodies
+                    if (bodies[j]->z(t) > bodies[i]->z(t)) {
+                        o = j;
+                        p = i;
+                    } else {
+                        o = i;
+                        p = j;
+                    }
+                    xo = (bodies[o]->x(t) - bodies[p]->x(t)) / bodies[p]->r;
+                    yo = (bodies[o]->y(t) - bodies[p]->y(t)) / bodies[p]->r;
+                    ro = (bodies[o]->r / bodies[p]->r);
+                    // Compute the flux in occultation
+                    if (sqrt(xo * xo + yo * yo) < 1 + ro) {
+                        bodies[p]->getflux(tsec, t, xo, yo, ro);
+                    }
+                }
+            }
+
+        }
+
+        // Add up all the fluxes
+        flux = Vector<T>::Zero(NT);
+        for (i = 0; i < NB; i++) {
+            flux += bodies[i]->flux;
+        }
+
+        // Set the flag
+        computed = true;
+
+    }
+
+    // Grad specialization: compute the light curve and the derivs
+    template <>
+    void System<Grad>::compute(const Vector<Grad>& time) {
+
+        int i, j, t, n, k, l, m;
+        Grad xo, yo, ro;
+        Grad tsec;
+        int p, o;
+        int NT = time.size();
+        int NB = bodies.size();
+        vector<Vector<double>> tmpder;
+
+        // List of gradient names
+        vector<string> names {"time"};
+        for (l = 1; l < bodies[0]->ldmap.lmax + 1; l++) {
+            names.push_back(string("star.u_" + to_string(l)));
+        }
+        for (i = 1; i < NB; i++) {
+            names.push_back(string("planet" + to_string(i) + ".r"));
+            names.push_back(string("planet" + to_string(i) + ".L"));
+            names.push_back(string("planet" + to_string(i) + ".axis_x"));
+            names.push_back(string("planet" + to_string(i) + ".axis_y"));
+            names.push_back(string("planet" + to_string(i) + ".axis_z"));
+            names.push_back(string("planet" + to_string(i) + ".prot"));
+            names.push_back(string("planet" + to_string(i) + ".theta0"));
+            names.push_back(string("planet" + to_string(i) + ".a"));
+            names.push_back(string("planet" + to_string(i) + ".porb"));
+            names.push_back(string("planet" + to_string(i) + ".inc"));
+            names.push_back(string("planet" + to_string(i) + ".ecc"));
+            names.push_back(string("planet" + to_string(i) + ".w"));
+            names.push_back(string("planet" + to_string(i) + ".Omega"));
+            names.push_back(string("planet" + to_string(i) + ".lambda0"));
+            names.push_back(string("planet" + to_string(i) + ".tref"));
+            for (l = 0; l < bodies[i]->map.lmax + 1; l++) {
+                for (m = -l; m < l + 1; m++) {
+                    names.push_back(string("planet" + to_string(i) + ".Y_{" + to_string(l) + "," + to_string(m) + "}"));
+                }
+            }
+        }
+
+        // Check that our derivative vectors are large enough
+        int ngrad = names.size();
+        if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
+
+        // Allocate arrays and derivs
+        for (i = 0; i < NB; i++) {
+            bodies[i]->x.resize(NT);
+            bodies[i]->y.resize(NT);
+            bodies[i]->z.resize(NT);
+            bodies[i]->flux.resize(NT);
+            bodies[i]->derivs.clear();
+            for (n = 0; n < ngrad; n++) {
+                if (i == 0)
+                    bodies[i]->derivs[names[n]].resize(NT);
+                else
+                    bodies[i]->derivs[names[n]].resize(NT);
+            }
+        }
+        for (n = 0; n < ngrad; n++) {
+            derivs[names[n]].resize(NT);
+        }
+
+        // Loop through the timeseries
+        for (t = 0; t < NT; t++){
+
+            // Allocate the derivatives
+            n = 0;
+            tsec = time(t) * DAY;
+            tsec.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+
+            // Convert the deriv back to days!
+            tsec.derivatives()(0) *= DAY;
+
+            // Star derivs (map only)
+            for (k = 1; k < bodies[0]->ldmap.lmax + 1; k++)
+                bodies[0]->ldmap.u(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+
+            // The following ensures the derivatives of `u` are correctly
+            // propagated to the `g` vector, which is what we use in the
+            // flux calculation for limb-darkened bodies.
+            if (t == 0) {
+                bodies[0]->ldmap.update();
+                tmpder.push_back(bodies[0]->ldmap.g(0).derivatives());
+                if (bodies[0]->ldmap.lmax >= 1)
+                    tmpder.push_back(bodies[0]->ldmap.g(2).derivatives());
+                if (bodies[0]->ldmap.lmax >= 2)
+                    tmpder.push_back(bodies[0]->ldmap.g(8).derivatives());
+                // TODO! Implement higher order limb darkening.
+                if (bodies[0]->ldmap.lmax >= 3)
+                    throw errors::LimbDark();
+                tmpder.push_back(bodies[0]->ldmap.ld_flux.derivatives());
+            } else {
+                bodies[0]->ldmap.g(0).derivatives() = tmpder[0];
+                if (bodies[0]->ldmap.lmax >= 1)
+                    bodies[0]->ldmap.g(2).derivatives() = tmpder[1];
+                if (bodies[0]->ldmap.lmax >= 2)
+                    bodies[0]->ldmap.g(8).derivatives() = tmpder[2];
+                bodies[0]->ldmap.ld_flux.derivatives() = tmpder[3];
+            }
+
+            // Planet derivs
+            for (i = 1; i < NB; i++) {
+
+                // Orbital derivs
+                bodies[i]->r.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->L.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->axis(0).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->axis(1).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->axis(2).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->prot.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->theta0.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->a.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->porb.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->inc.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->ecc.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->w.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->Omega.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->lambda0.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->tref.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+
+                // Propagate derivs to the helper variables
+                bodies[i]->reset();
+
+                // Map derivs
+                for (k = 0; k < bodies[i]->map.N; k++)
+                    bodies[i]->map.y(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+            }
+
+            // Take an orbital step
+            for (i = 0; i < NB; i++)
+                bodies[i]->step(tsec, t);
+
+            // Compute any occultations
+            for (i = 0; i < NB; i++) {
+                for (j = i + 1; j < NB; j++) {
+
+                    // Determine the relative positions of the two bodies
+                    if (bodies[j]->z(t) > bodies[i]->z(t)) {
+                        o = j;
+                        p = i;
+                    } else {
+                        o = i;
+                        p = j;
+                    }
+                    xo = (bodies[o]->x(t) - bodies[p]->x(t)) / bodies[p]->r;
+                    yo = (bodies[o]->y(t) - bodies[p]->y(t)) / bodies[p]->r;
+                    ro = (bodies[o]->r / bodies[p]->r);
+
+                    // Compute the flux in occultation
+                    if (sqrt(xo * xo + yo * yo) < 1 + ro) {
+                        bodies[p]->getflux(tsec, t, xo, yo, ro);
+                    }
+                }
+            }
+
+            // Store the derivs
+            for (n = 0; n < ngrad; n++) {
+                for (i = 0; i < NB; i++) {
+                    (bodies[i]->derivs[names[n]])(t) = bodies[i]->flux(t).derivatives()(n);
+                    if (i == 0)
+                        (derivs[names[n]])(t) = bodies[i]->flux(t).derivatives()(n);
+                    else
+                        (derivs[names[n]])(t) += bodies[i]->flux(t).derivatives()(n);
+                }
+            }
+
+        }
+
+        // Add up all the fluxes
+        flux = Vector<Grad>::Zero(NT);
+        for (i = 0; i < NB; i++) {
+            flux += bodies[i]->flux;
+        }
+
+        // Set the flag
+        computed = true;
+
     }
 
 }; // namespace orbital

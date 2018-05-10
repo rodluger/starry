@@ -65,7 +65,7 @@ namespace solver {
     // Note, importantly, that the term g(4) is *always* 1/3 * g(8), so we fold
     // that into `s8` below.
     template <typename T>
-    inline T QuadLimbDark(Greens<T>& G, T& b, T& r, T& g0, T& g2, T& g8) {
+    inline T QuadLimbDark(Greens<T>& G, const T& b, const T& r, T& g0, T& g2, T& g8) {
 
         // Initialize only the necessary variables
         T s0, s8;
@@ -402,7 +402,7 @@ namespace solver {
 
             // Constructor
             Power(T val) {
-                vec.push_back(1.0);
+                vec.push_back(1.0 + (val * 0));
                 vec.push_back(val);
             }
 
@@ -424,7 +424,7 @@ namespace solver {
             // Resetter
             void reset(T val) {
                 vec.clear();
-                vec.push_back(1.0);
+                vec.push_back(1.0 + (val * 0));
                 vec.push_back(val);
             }
 
@@ -501,11 +501,11 @@ namespace solver {
                    M(*this, computeM) {
 
                 // Initialize the solution vector
-                sT.resize((lmax + 1) * (lmax + 1));
+                sT = VectorT<T>::Zero((lmax + 1) * (lmax + 1));
 
                 // Compute pi at the actual precision of the T type
                 pi = T(BIGPI);
-                pi_over_2 = 0.5 * pi;
+                pi_over_2 = T(0.5 * pi);
 
             }
 
@@ -547,7 +547,7 @@ namespace solver {
 
     // Compute the *s^T* occultation solution vector
     template <typename T>
-    void computesT(Greens<T>& G, T& b, T& r, Vector<T>& y) {
+    void computesT(Greens<T>& G, const T& b, const T& r, const Vector<T>& y) {
 
         // Check for likely instability
         if ((G.taylor) && (r >= 1) && (G.lmax > STARRY_LMAX_LARGE_OCC))

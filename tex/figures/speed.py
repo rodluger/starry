@@ -100,7 +100,7 @@ def compare_to_numerical():
     res = 300
     nstarry = 1000
     ylm = starry.Map(lmax)
-    X, Y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
+    ylm_grad = starry.grad.Map(5)
 
     class Funcs(object):
 
@@ -111,6 +111,9 @@ def compare_to_numerical():
         def fstar(self):
             self.vstar = ylm.flux(xo=np.zeros(nstarry), yo=b, ro=r)[0]
 
+        def fgrad(self):
+            self.vgrad = ylm_grad.flux(xo=np.zeros(nstarry), yo=b, ro=r)[0]
+
         def fmesh(self):
             self.vmesh = ylm.flux_numerical(yo=b, ro=r)
 
@@ -120,6 +123,7 @@ def compare_to_numerical():
 
     funcs = Funcs()
     time_starry = np.zeros(lmax + 1)
+    time_grad = np.zeros(lmax + 1)
     time_numer = np.zeros(lmax + 1)
     time_mesh = np.zeros(lmax + 1)
     time_grid = np.zeros(lmax + 1)
@@ -131,10 +135,18 @@ def compare_to_numerical():
         b = np.random.random()
         r = np.random.random()
         for m in range(-l, l + 1):
-            ylm[l, m] = np.random.random()
+            c = np.random.random()
+            ylm[l, m] = c
+            # NOTE: Default compile of starry.grad is for lmax <= 5
+            if l <= 5:
+                ylm_grad[l, m] = c
         # Time the runs
         builtins.__dict__.update(locals())
         time_starry[l] = timeit.timeit('funcs.fstar()', number=1) / nstarry
+        if l <= 5:
+            time_grad[l] = timeit.timeit('funcs.fgrad()', number=1) / nstarry
+        else:
+            time_grad[l] = np.nan
         time_numer[l] = timeit.timeit('funcs.fnumer()', number=1)
         time_mesh[l] = timeit.timeit('funcs.fmesh()', number=1)
         time_grid[l] = timeit.timeit('funcs.fgrid()', number=1)
@@ -164,6 +176,10 @@ def compare_to_numerical():
     ax.plot(range(lmax + 1), time_starry, 'o', color='C0', ms=2)
     ax.plot(range(lmax + 1), time_starry, '-', color='C0', lw=1, alpha=0.25)
 
+    # Starry.grad
+    ax.plot(range(lmax + 1), time_grad, 'o', color='C4', ms=2)
+    ax.plot(range(lmax + 1), time_grad, '-', color='C4', lw=1, alpha=0.25)
+
     # Mesh
     for l in range(lmax + 1):
         ax.plot(l, time_mesh[l], 'o', color='C1', ms=ms(error_mesh[l]))
@@ -181,6 +197,7 @@ def compare_to_numerical():
     ax.set_yscale('log')
 
     axleg1.plot([0, 1], [0, 1], color='C0', label='starry')
+    axleg1.plot([0, 1], [0, 1], color='C4', label='starry.grad')
     axleg1.plot([0, 1], [0, 1], color='C1', label='mesh')
     axleg1.plot([0, 1], [0, 1], color='C2', label='grid')
     axleg1.plot([0, 1], [0, 1], color='C3', label='dblquad')

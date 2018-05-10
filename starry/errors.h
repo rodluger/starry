@@ -8,10 +8,21 @@ Custom exceptions for starry.
 
 #include <iostream>
 #include <exception>
+#include <string>
 
 namespace errors {
 
     using namespace std;
+
+    class TooManyDerivs : public exception {
+        string m_msg;
+    public:
+        TooManyDerivs(const int& ngrad) :
+            m_msg(string("Too many derivatives requested. Either decrease the degree of the map or re-compile starry with compiler flag STARRY_NGRAD >= " + to_string(ngrad) + ".")) { }
+        virtual const char* what() const throw() {
+            return m_msg.c_str();
+        }
+    };
 
     struct Kepler : public exception {
     	const char * what () const throw (){
@@ -93,7 +104,7 @@ namespace errors {
 
     struct NotImplemented : public exception {
         const char * what () const throw (){
-            return "Function or method not implemented.";
+            return "Function, method, or attribute not implemented.";
         }
     };
 

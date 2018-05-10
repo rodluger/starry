@@ -37,9 +37,9 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
     template <typename T>
     inline T step(T x) {
         if (x <= 0)
-            return 0;
+            return 0 * x;
         else
-            return 1;
+            return 1 + 0 * x;
     }
 
     // Term containing the elliptic integral of the third kind
@@ -53,9 +53,9 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
             // when b = r. My expression is valid to *zeroth* order near b = r.
             if ((taylor) && (abs(b - r) < 1e-8) && (r < STARRY_RADIUS_THRESH_S2)) {
                 if (b > r)
-                    res = -(6. * pi * r * r) / (1 - 4. * r * r);
+                    res = -(T(6. * pi) * r * r) / (1 - 4. * r * r);
                 else
-                    res = (6. * pi * r * r) / (1 - 4. * r * r);
+                    res = (T(6. * pi) * r * r) / (1 - 4. * r * r);
             } else {
                 res = 3 * (b - r) * ellip::PI(T(ksq * (b + r) * (b + r)), ksq);
             }
@@ -79,10 +79,10 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
                 // Compute Heuman's Lambda Function via A&S 17.4.40:
                 T EEI = ellip::E(mc, psi);
                 T EFI = ellip::F(mc, psi);
-                T HLam = 2. / pi * (EK * EEI - (EK - EE) * EFI);
+                T HLam = T(2. / pi) * (EK * EEI - (EK - EE) * EFI);
                 T d2 = sqrt((1. / one_minus_n - 1.) / (1. - one_minus_n - 1. / ksq));
                 // Equation 17.7.14 in A&S:
-                EPI = EK + 0.5 * pi * d2 * (1. - HLam);
+                EPI = EK + T(0.5 * pi) * d2 * (1. - HLam);
             } else {
                 // Compute the elliptic integral directly
                 EPI = ellip::PI(T(1. / (ksq * (b + r) * (b + r))), T(1. / ksq));
@@ -111,7 +111,7 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
             goodterm = (3 * (b + r) / (b - r) * EP) / sqrt(b * r);
         } else {
             // Numerically stable first order expansion when b = r
-            goodterm = 6 * pi * r * (0.5 - step(T(r - b))) / sqrt(b * r);
+            goodterm = T(6 * pi) * r * (0.5 - step(T(r - b))) / sqrt(b * r);
         }
         T EminusK = 0;
         T ksqi = 1;
@@ -122,8 +122,8 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
         EminusK *= -pi;
         T taylor = 2 * b * b * b * sqrt(x) * (EminusK * (16 + 28 * eps + 14 * eps * eps) - eps * eps * (2 + 3 * eps) * K);
         T badterm = taylor + sqrt(b * r) * ((8 - 3 / (b * r) + 12 / (b / r)) * K - 16 * E);
-        T Lambda = (badterm + goodterm) / (9 * pi);
-        return (2. * pi / 3.) * (1 - 1.5 * Lambda - step(T(r - b)));
+        T Lambda = (badterm + goodterm) / T(9 * pi);
+        return T(2. * pi / 3.) * (1 - 1.5 * Lambda - step(T(r - b)));
     }
 
     /* Eric Agol's reparametrized solution for Lambda when b + r is very close to 1.
@@ -144,7 +144,7 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
         T Piprime = ellip::PI(T(-(1 / ((b + r) * (b + r)) - 1)), mc);
         T Fprime = ellip::F(mc, beta);
         T Piofnk3 = (K * (-Kprime + Piprime) / (b + r) + pi * sqrt(b * r) / abs(b - r) * Fprime) / Kprime;
-        return (((r + b) * (r + b) - 1) / (r + b) * (-2 * r * (2 * (r + b) * (r + b) + (r + b) * (r - b) - 3) * K) + 3 * (b - r) * Piofnk3 - 2 * xi * E) / (9 * pi * sqrt(b * r));
+        return (((r + b) * (r + b) - 1) / (r + b) * (-2 * r * (2 * (r + b) * (r + b) + (r + b) * (r - b) - 3) * K) + 3 * (b - r) * Piofnk3 - 2 * xi * E) / (T(9 * pi) * sqrt(b * r));
     }
 
     /* Eric Agol's reparametrized solution for Lambda when b + r is very close to 1.
@@ -161,8 +161,8 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
         T Kprime = ellip::K(mc);
         T Piprime = ellip::PI(T(-((b + r) * (b + r) - 1)), mc);
         T Fprime = ellip::F(mc, beta);
-        T Piofnk3 = -(b + r) * K * (1.0 - Piprime / Kprime) / sqrt(1.0 - (b - r) * (b - r)) + pi / 2 / abs(b - r) * Fprime / Kprime;
-        return 2 * ((1 - (r + b) * (r + b)) * sqrt(1 - (b - r) * (b - r)) * K + 3 * (b - r) * Piofnk3 - sqrt(1 - (b - r) * (b - r)) * (4 - 7 * r * r - b * b) * E) / (9 * pi);
+        T Piofnk3 = -(b + r) * K * (1.0 - Piprime / Kprime) / sqrt(1.0 - (b - r) * (b - r)) + T(0.5 * pi) / abs(b - r) * Fprime / Kprime;
+        return 2 * ((1 - (r + b) * (r + b)) * sqrt(1 - (b - r) * (b - r)) * K + 3 * (b - r) * Piofnk3 - sqrt(1 - (b - r) * (b - r)) * (4 - 7 * r * r - b * b) * E) / T(9 * pi);
     }
 
     // Compute the n=2 term of the *s^T* occultation solution vector.
@@ -183,38 +183,38 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
         T bpr2 = bpr * bpr;
         T bmr = b - r;
         if (b == 0) {
-            Lambda = -2. / 3. * pow(1. - r2, 1.5);
+            Lambda = T(-2. / 3.) * pow(1. - r2, 1.5);
         } else if (b == r) {
             if (r == 0.5)
-                Lambda = (1. / 3.) - 4. / (9. * pi);
+                Lambda = T(1. / 3. - 4. / (9. * pi));
             else if (r < 0.5)
-                Lambda = (1. / 3.) +
-                         2. / (9. * pi) * (4. * (2. * r2 - 1.) * ellip::E(T(4 * r2)) +
+                Lambda = T(1. / 3.) +
+                         T(2. / (9. * pi)) * (4. * (2. * r2 - 1.) * ellip::E(T(4 * r2)) +
                          (1 - 4 * r2) * ellip::K(T(4 * r2)));
             else
-                Lambda = (1. / 3.) +
-                         16. * r / (9. * pi) * (2. * r2 - 1.) * ellip::E(T(1. / (4 * r2))) -
-                         (1 - 4 * r2) * (3 - 8 * r2) / (9 * pi * r) * ellip::K(T(1. / (4 * r2)));
+                Lambda = T(1. / 3.) +
+                         16. * r / T(9. * pi) * (2. * r2 - 1.) * ellip::E(T(1. / (4 * r2))) -
+                         (1 - 4 * r2) * (3 - 8 * r2) / (T(9 * pi) * r) * ellip::K(T(1. / (4 * r2)));
         } else {
             if (ksq < 1) {
                 if ((!taylor) || (b + r > 1 + STARRY_BPLUSR_THRESH_S2))
-                    Lambda = ((bpr2 - 1) / bpr * (-2 * r * (2 * bpr2 - bpr * bmr - 3) * K + PITerm(b, r, ksq, pi, taylor)) - 2 * xi * E) / (9 * pi * sqrt(b * r));
+                    Lambda = ((bpr2 - 1) / bpr * (-2 * r * (2 * bpr2 - bpr * bmr - 3) * K + PITerm(b, r, ksq, pi, taylor)) - 2 * xi * E) / (T(9 * pi) * sqrt(b * r));
                 else
                     Lambda = LambdaBPlusROnePlusEpsilon(b, r, ksq, K, E, pi);
             } else if (ksq > 1) {
                 if ((!taylor) || (b + r < 1 - STARRY_BPLUSR_THRESH_S2)) {
                     T bmr2 = bmr * bmr;
-                    Lambda = 2 * ((1 - bpr2) * (sqrt(1 - bmr2) * K + PITerm(b, r, ksq, pi, taylor)) - sqrt(1 - bmr2) * (4 - 7 * r2 - b2) * E) / (9 * pi);
+                    Lambda = 2 * ((1 - bpr2) * (sqrt(1 - bmr2) * K + PITerm(b, r, ksq, pi, taylor)) - sqrt(1 - bmr2) * (4 - 7 * r2 - b2) * E) / T(9 * pi);
                 } else {
                     Lambda = LambdaBPlusROneMinusEpsilon(b, r, ksq, K, E, pi);
                 }
             } else {
-                Lambda = 2. / (3. * pi) * acos(1. - 2 * r) -
-                         4 / (9 * pi) * (3 + 2 * r - 8 * r2) * sqrt(b * r) -
-                         2. / 3. * step(r - 0.5);
+                Lambda = T(2. / (3. * pi)) * acos(1. - 2 * r) -
+                         T(4. / (9. * pi)) * (3 + 2 * r - 8 * r2) * sqrt(b * r) -
+                         T(2. / 3.) * step(r - 0.5);
             }
         }
-        return (2. * pi / 3.) * (1 - 1.5 * Lambda - step(T(-bmr)));
+        return T(2. * pi / 3.) * (1 - 1.5 * Lambda - step(T(-bmr)));
     }
 
 }; // namespace lld

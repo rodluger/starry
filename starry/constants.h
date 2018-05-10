@@ -5,6 +5,11 @@ Defines constants used throughout the code.
 #include <vector>
 using std::vector;
 
+// Gradient size
+#ifndef STARRY_NGRAD
+#define STARRY_NGRAD                            43
+#endif
+
 // Multiprecision
 #ifndef STARRY_MP_DIGITS
 #define STARRY_MP_DIGITS                        32

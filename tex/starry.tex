@@ -131,7 +131,7 @@ are defined in spherical coordinates as
 %
 \begin{align}
     \label{eq:ylmtp}
-    Y_{lm}(\theta, \phi) =
+    Y_{lm}(\uptheta, \upphi) =
     \begin{cases}
         \bar{P}_{lm}(\cos\uptheta)\cos(m\upphi) & \qquad m \geq 0 \\
         \bar{P}_{l|m|}(\cos\uptheta)\sin(|m|\upphi) & \qquad m < 0 \quad,
@@ -968,7 +968,7 @@ m.animate(axis=axis)
 \end{lstlisting}
 %
 where \textsf{axis} defines the axis of rotation for the animation.
-Rotation of this map about $\xhat$ yields\python{smiley}
+Rotation of this map about $\yhat$ yields\python{smiley}
 %
 \begin{center}
     \includegraphics[width=0.85\linewidth]{figures/smiley.pdf}
@@ -1396,6 +1396,16 @@ light curve.
 % ------------------------------------------------------------------------------
 We still need to think about how to expose the autodiff stuff to the user.\todo{todo}
 
+%
+\begin{figure}[ht]
+    \begin{centering}
+    \includegraphics[width=0.9\linewidth]{figures/autodiff.pdf}
+    \caption{\label{fig:system}
+             \python{autodiff}
+             Hello! Autodiff!}
+    \end{centering}
+\end{figure}
+%
 
 % ------------------------------------------------------------------------------
 \subsection{Benchmarks}

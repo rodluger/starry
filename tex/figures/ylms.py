@@ -51,7 +51,8 @@ class animated():
                 # Compute the spherical harmonic
                 self.ylm.reset()
                 self.ylm.set_coeff(l, m, 1)
-                flux = self.ylm.evaluate(axis=self.axis, theta=0, x=self.X, y=self.Y)
+                flux = [self.ylm.evaluate(axis=self.axis, theta=0,
+                        x=self.X[j], y=self.Y[j]) for j in range(res)]
 
                 # Plot the spherical harmonic
                 img = self.ax[i, j].imshow(flux, cmap='plasma',
@@ -129,7 +130,7 @@ def static(lmax=5, res=300):
             # with no rotation
             ylm.reset()
             ylm.set_coeff(l, m, 1)
-            flux = ylm.evaluate(x=X, y=Y)
+            flux = [ylm.evaluate(x=X[j], y=Y[j]) for j in range(res)]
 
             # Plot the spherical harmonic
             ax[i, j].imshow(flux, cmap='plasma',
