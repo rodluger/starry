@@ -44,10 +44,10 @@ ax.plot(thetanum * 180 / np.pi - 180, totalnum, 'k.')
 
 # Appearance
 ax.set_xlim(-180, 180)
-ax.set_ylim(-0.05, 1.1)
+ax.set_ylim(-0.05, 1.2)
 ax.set_xticks([-180, -135, -90, -45, 0, 45, 90, 135, 180])
 ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
-ax.legend(loc='best', fontsize=12, ncol=2)
+ax.legend(loc='best', fontsize=11, ncol=2)
 ax.set_xlabel('Sub-observer longitude [deg]', fontsize=24)
 ax.set_ylabel('Normalized flux', fontsize=24)
 for tick in ax.get_xticklabels() + ax.get_yticklabels():
