@@ -15,6 +15,7 @@ pip install Pillow
 pip install batman-package
 pip install tqdm
 pip install starry_maps
+pip install ipython
 
 # Build the code
 # Build the extension
