@@ -63,7 +63,7 @@ star.map[2] = 0.26
 
 # Instantiate planet b
 b = Planet(r=0.04584,
-           L=5e-3,
+           L=1e-3,
            inc=89.0,
            porb=2.1,
            prot=2.1,
@@ -77,7 +77,7 @@ b.map[2, 1] = 0.5
 
 # Instantiate planet c
 c = Planet(r=0.07334,
-           L=5e-3,
+           L=1e-3,
            inc=90.0,
            porb=6.7,
            prot=6.7,

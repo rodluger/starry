@@ -68,6 +68,6 @@ for i, time in enumerate([time_transit, time_secondary]):
         axg.set_ylabel(partial(label), rotation=0, fontsize=14)
         axg.yaxis.set_label_coords(-0.07, 0.05)
         [i.set_linewidth(0.) for i in axg.spines.values()]
-    axg.set_xlabel('time', fontsize=16)
+    axg.set_xlabel('Time', fontsize=16)
 
 fig.savefig('autodiff.pdf', bbox_inches='tight')
