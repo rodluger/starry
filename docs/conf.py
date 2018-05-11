@@ -42,6 +42,13 @@ extensions = [
     'nbsphinx'
 ]
 
+nbsphinx_prolog = """
+{% set docname = env.doc2path(env.docname, base=None) %}
+
+.. note:: This tutorial was generated from an Jupyter notebook that can be
+          downloaded `here <https://github.com/rodluger/starry/blob/master/docs/{{ docname }}>`_.
+"""
+
 todo_include_todos = True
 
 autosummary_generate = True
