@@ -194,6 +194,36 @@ void ADD_MODULE(py::module &m) {
                 map.rotate(yhat, PiOver2);
             }, DOCS::Map::load_healpix, "image"_a)
 
+        .def("add_gaussian", [](maps::Map<MAPTYPE> &map, double sigma, double amp, double lat, double lon) {
+                py::object gaussian = py::module::import("starry_maps").attr("gaussian");
+                Vector<double> y = gaussian(sigma, map.lmax).cast<Vector<double>>();
+                int n = 0;
+                // Create a temporary map and add the gaussian
+                maps::Map<double> tmpmap(map.lmax);
+                for (int l = 0; l < tmpmap.lmax + 1; l++) {
+                    for (int m = -l; m < l + 1; m++) {
+                        tmpmap.set_coeff(l, m, amp * y(n));
+                        n++;
+                    }
+                }
+                // Rotate it to the sub-observer point
+                UnitVector<double> xhat(maps::xhat);
+                UnitVector<double> yhat(maps::yhat);
+                UnitVector<double> zhat(maps::zhat);
+                tmpmap.rotate(xhat, M_PI / 2.);
+                tmpmap.rotate(zhat, M_PI);
+                tmpmap.rotate(yhat, M_PI / 2.);
+                // Now rotate it to where the user wants it
+                tmpmap.rotate(xhat, -lat);
+                tmpmap.rotate(yhat, lon);
+                // Add it to the current map
+                for (int l = 0; l < map.lmax + 1; l++) {
+                    for (int m = -l; m < l + 1; m++) {
+                        map.set_coeff(l, m, get_value(map.get_coeff(l, m)) + tmpmap.get_coeff(l, m));
+                    }
+                }
+            }, "sigma"_a=0.1, "amp"_a=1, "lat"_a=0, "lon"_a=0)
+
         .def("show", [](maps::Map<MAPTYPE> &map, string cmap, int res) {
                 py::object show = py::module::import("starry_maps").attr("show");
                 Matrix<double> I;
