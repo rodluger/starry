@@ -1,203 +1,176 @@
-"""Numerical stability tests."""
-from starry import Map
-import matplotlib.pyplot as pl
+"""Stability tests for large occultors."""
 import numpy as np
+import matplotlib.pyplot as pl
+import starry
 from tqdm import tqdm
-cmap = pl.get_cmap('plasma')
 
 
-def color(l, lmax=8):
-    """Return the color for the spherical harmonic degree `l`."""
-    return cmap(0.1 + 0.8 * l / lmax)
+def is_even(n):
+    """Return true if n is even."""
+    if ((n % 2) != 0):
+        return False
+    else:
+        return True
 
 
-def earth_eclipse(lmax=8):
-    """Compute the error on the secondary eclipse of the Earth."""
-    npts = 1000
-
-    # Create our map
-    m = Map(lmax)
-    m.load_image('earth')
-
-    # Compute. Ingress duration is
-    # dt = (2 REARTH) / (2 PI * 1 AU / 1 year) ~ 7 minutes
-    yo = 0
-    ro = 6.957e8 / 6.3781e6
-    time = np.linspace(0, 7 * 1.5, npts)
-    xo = np.linspace(-(ro + 1.5), -(ro - 1.5), npts, -1)
-    flux = np.array(m.flux(xo=xo, yo=yo, ro=ro))
-    flux128 = np.array(m.flux_mp(xo=xo, yo=yo, ro=ro))
-
-    # Show
-    fig = pl.figure(figsize=(7, 6))
-    nim = 10
-    ax = [pl.subplot2grid((7, nim), (1, 0), colspan=nim, rowspan=3),
-          pl.subplot2grid((7, nim), (4, 0), colspan=nim, rowspan=3)]
-    fig.subplots_adjust(hspace=0.6)
-    ax[0].plot(time, flux / flux[0])
-    ax[1].plot(time, np.abs(flux / flux128 - 1))
-    ax[1].set_yscale('log')
-    ax[1].axhline(1e-3, color='k', ls='--', alpha=0.75, lw=0.5)
-    ax[1].axhline(1e-6, color='k', ls='--', alpha=0.75, lw=0.5)
-    ax[1].axhline(1e-9, color='k', ls='--', alpha=0.75, lw=0.5)
-    ax[1].annotate("ppt", xy=(1e-3, 1e-3), xycoords="data", xytext=(3, -3),
-                   textcoords="offset points", ha="left", va="top", alpha=0.75)
-    ax[1].annotate("ppm", xy=(1e-3, 1e-6), xycoords="data", xytext=(3, -3),
-                   textcoords="offset points", ha="left", va="top", alpha=0.75)
-    ax[1].annotate("ppb", xy=(1e-3, 1e-9), xycoords="data", xytext=(3, -3),
-                   textcoords="offset points", ha="left", va="top", alpha=0.75)
-    ax[1].set_ylim(5e-17, 20.)
-    ax[0].set_xlim(0, time[-1])
-    ax[1].set_xlim(0, time[-1])
-    ax[1].set_xlabel("Time [minutes]", fontsize=16)
-    ax[0].set_ylabel("Normalized flux", fontsize=16, labelpad=15)
-    ax[1].set_ylabel("Fractional error", fontsize=16)
-
-    # Plot the earth images
-    res = 100
-    ax_im = [pl.subplot2grid((7, nim), (0, n)) for n in range(nim)]
-    x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
-    for n in range(nim):
-        i = int(np.linspace(0, npts - 1, nim)[n])
-        I = [m.evaluate(axis=[0, 1, 0], theta=0, x=x[j], y=y[j])
-             for j in range(res)]
-        ax_im[n].imshow(I, origin="lower", interpolation="none", cmap='plasma',
-                        extent=(-1, 1, -1, 1))
-        xm = np.linspace(xo[i] - ro + 1e-5, xo[i] + ro - 1e-5, 10000)
-        ax_im[n].fill_between(xm, yo - np.sqrt(ro ** 2 - (xm - xo[i]) ** 2),
-                              yo + np.sqrt(ro ** 2 - (xm - xo[i]) ** 2),
-                              color='w')
-        ax_im[n].axis('off')
-        ax_im[n].set_xlim(-1.05, 1.05)
-        ax_im[n].set_ylim(-1.05, 1.05)
-
-    fig.savefig("stability_earth.pdf", bbox_inches='tight')
+def StarrySExact(barr, r, lmax):
+    """Compute s with starry multiprecision."""
+    map = starry.Map(lmax)
+    for ll in range(lmax + 1):
+        for mm in range(-ll, ll + 1):
+            map[ll, mm] = 1
+    s = np.zeros(((lmax + 1) ** 2, len(barr)))
+    for i in range(len(barr)):
+        map.flux_mp(xo=0, yo=barr[i], ro=r)
+        s[:, i] = map.s_mp
+    return s
 
 
-def impact_param(ax, lmax=8):
-    """Test the stability as a function of b."""
-    npts = 200
-    yo = 0
-    cutoff = 2.5e-16
-    barr = np.logspace(-5, np.log10(2.0), npts)
-    xo = np.sqrt(barr ** 2 - yo ** 2)
+def StarryS(barr, r, lmax, optimize=True):
+    """Compute s with starry."""
+    map = starry.Map(lmax)
+    map.optimize = optimize
+    for ll in range(lmax + 1):
+        for mm in range(-ll, ll + 1):
+            map[ll, mm] = 1
+    s = np.zeros(((lmax + 1) ** 2, len(barr)))
+    for i in range(len(barr)):
+        map.flux(xo=0, yo=barr[i], ro=r)
+        s[:, i] = map.s
+    return s
 
-    # Create our map
-    ylm = Map(lmax)
-    ylm.optimize = True
 
-    # Compute
-    for l in range(0, lmax + 1):
+def Compute(r, lmax=8, logdelta=-6, logeps=-12, res=50):
+    """Run the stability tests."""
+    delta = 10 ** logdelta
+    eps = 10 ** logeps
+    if r > 1:
+        bs = [np.linspace(r - 1, r - 1 + eps, res),
+              np.linspace(r - 1 + eps, r - 1 + delta, res),
+              np.linspace(r - 1 + delta, r - delta, 3 * res),
+              np.linspace(r - delta, r - eps, res),
+              np.linspace(r - eps, r + eps, res),
+              np.linspace(r + eps, r + delta, res),
+              np.linspace(r + delta, r + 1 - delta, 3 * res),
+              np.linspace(r + 1 - delta, r + 1 - eps, res),
+              np.linspace(r + 1 - eps, r + 1, res)]
+        labels = [r"$r - 1$", r"$r - 1 + 10^{%d}$" % logeps,
+                  r"$r - 1 + 10^{%d}$" % logdelta,
+                  r"$r - 10^{%d}$" % logdelta, r"$r - 10^{%d}$" % logeps,
+                  r"$r + 10^{%d}$" % logeps, r"$r + 10^{%d}$" % logdelta,
+                  r"$r + 1 - 10^{%d}$" % logdelta,
+                  r"$r + 1 - 10^{%d}$" % logeps, r"$r + 1$"]
+    else:
+        bs = [np.linspace(r - 1, r - 1 + eps, res),
+              np.linspace(r - 1 + eps, r - 1 + delta, res),
+              np.linspace(r - 1 + delta, 0 - delta, 3 * res),
+              np.linspace(0 - delta, 0 - eps, res),
+              np.linspace(0 - eps, 0, res),
+              np.linspace(0, r - eps, res),
+              np.linspace(r - eps, r + eps, res),
+              np.linspace(r + eps, r + delta, res),
+              np.linspace(r + delta, r + 1 - delta, 3 * res),
+              np.linspace(r + 1 - delta, r + 1 - eps, res),
+              np.linspace(r + 1 - eps, r + 1, res)]
+        labels = [r"$r - 1$", r"$r - 1 + 10^{%d}$" % logeps,
+                  r"$r - 1 + 10^{%d}$" % logdelta,
+                  r"$-10^{%d}$" % logdelta, r"$-10^{%d}$" % logeps, r"$0$",
+                  r"$r - 10^{%d}$" % logeps,
+                  r"$r + 10^{%d}$" % logeps, r"$r + 10^{%d}$" % logdelta,
+                  r"$r + 1 - 10^{%d}$" % logdelta,
+                  r"$r + 1 - 10^{%d}$" % logeps, r"$r + 1$"]
+    b = np.concatenate((bs))
 
-        # Set the constant term
-        # so we don't divide by zero when
-        # computing the fractional error below
-        ylm.reset()
-        ylm[0, 0] = 1
+    # Set up the figure
+    cmap = pl.get_cmap('plasma')
+    fig, ax = pl.subplots(2, 2, sharey=True, sharex=True, figsize=(10, 6))
+    fig.subplots_adjust(wspace=0.05, hspace=0.1, bottom=0.15)
+    ax[0, 0].set_yscale('log')
+    ax[0, 0].set_ylim(1e-16, 1e0)
+    for axis in ax.flatten():
+        axis.set_xticks([])
+        axis.margins(0, None)
+    bounds = np.cumsum([0] + [len(b) for b in bs]) - 1
+    bounds[0] = 0
+    for v in bounds:
+        for axis in ax.flatten():
+            axis.axvline(v, lw=0.5, color='k', alpha=0.5, zorder=10, ls='--')
+    ax[1, 0].set_xticks(bounds)
+    ax[1, 0].set_xticklabels(labels, rotation=45, fontsize=10)
+    ax[1, 1].set_xticks(bounds)
+    ax[1, 1].set_xticklabels(labels, rotation=45, fontsize=10)
+    for tick in ax[1, 0].xaxis.get_major_ticks() + \
+            ax[1, 1].xaxis.get_major_ticks():
+        tick.label.set_horizontalalignment('right')
+    ax[0, 0].set_title("Even terms", fontsize=14)
+    ax[0, 1].set_title("Odd terms", fontsize=14)
+    ax[0, 0].set_ylabel("Error (original)", fontsize=12)
+    ax[1, 0].set_ylabel("Error (optimized)", fontsize=12)
+    ax[1, 0].set_xlabel("Impact parameter", fontsize=12)
+    ax[1, 1].set_xlabel("Impact parameter", fontsize=12)
+    if r < 1:
+        fig.suptitle("r = %.5f" % r, fontweight='bold', fontsize=14)
+    else:
+        fig.suptitle("r = %.1f" % r, fontweight='bold', fontsize=14)
 
-        # Set all odd terms
+    # Plot!
+    s = StarryS(b, r, lmax, optimize=True)
+    s_noopt = StarryS(b, r, lmax, optimize=False)
+    s_mp = StarrySExact(b, r, lmax)
+    n = 0
+    for l in range(lmax + 1):
         for m in range(-l, l + 1):
-            # Skip even terms (they're fine!)
-            if (l + m) % 2 == 0:
-                continue
-            ylm[l, m] = 1
+            err = np.abs(s[n] - s_mp[n])
+            err_noopt = np.abs(s_noopt[n] - s_mp[n])
+            if is_even(l - m):
+                ax[0, 0].plot(err_noopt, color=cmap(l / (lmax + 2)), lw=1)
+                ax[1, 0].plot(err, color=cmap(l / (lmax + 2)), lw=1)
+            else:
+                ax[0, 1].plot(err_noopt, color=cmap(l / (lmax + 2)), lw=1)
+                ax[1, 1].plot(err, color=cmap(l / (lmax + 2)), lw=1)
+            n += 1
 
-        ro = 0.1
-        # Compute
-        flux = np.array(ylm.flux(xo=xo, yo=yo, ro=ro))
-        flux128 = np.array(ylm.flux_mp(xo=xo, yo=yo, ro=ro))
-        error = np.abs(flux / flux128 - 1)
+    # Dummy curves & a legend
+    lines = [None for l in range(lmax + 1)]
+    labels = ["%d" % l for l in range(lmax + 1)]
+    for l in range(lmax + 1):
+        lines[l], = ax[0, 0].plot((0, 1), (1e-20, 1e-20),
+                                  color=cmap(l / (lmax + 2)), lw=2)
+    leg = fig.legend(lines, labels, (0.925, 0.35), title='Degree')
+    leg.get_title().set_fontweight('bold')
 
-        # HACK to make it prettier.
-        error[error < cutoff] = cutoff
-        # HACK Believe it or not, quadruple precision is not good
-        # enough when the impact parameter is smaller than about 0.001
-        # at high values of l! While our taylor expansions are fine, the
-        # high precision comparison flux is wrong, so we get a spurious
-        # increase in the error towards smaller b. Let's just trim it
-        # for simplicity.
-        error[xo < 0.002] = cutoff
-
-        ax.plot(barr, error, ls='-',
-                label=r'$l = %d$' % l, color=color(l, lmax))
-
-    ax.legend(loc="upper left", ncol=3)
-    ax.axhline(1e-3, color='k', ls='--', alpha=0.75, lw=0.5)
-    ax.axhline(1e-6, color='k', ls='--', alpha=0.75, lw=0.5)
-    ax.axhline(1e-9, color='k', ls='--', alpha=0.75, lw=0.5)
-    ax.annotate("ppt", xy=(1e-5, 1e-3), xycoords="data", xytext=(3, -3),
-                textcoords="offset points", ha="left", va="top", alpha=0.75)
-    ax.annotate("ppm", xy=(1e-5, 1e-6), xycoords="data", xytext=(3, -3),
-                textcoords="offset points", ha="left", va="top", alpha=0.75)
-    ax.annotate("ppb", xy=(1e-5, 1e-9), xycoords="data", xytext=(3, -3),
-                textcoords="offset points", ha="left", va="top", alpha=0.75)
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.set_ylim(5e-17, 20.)
-    ax.set_xlim(1e-5, np.log10(2.0))
-    ax.set_xlabel("Impact parameter", fontsize=16)
-    ax.set_ylabel("Fractional error", fontsize=16)
-
-
-def occultor_radius(ax, lmax=8):
-    """Test the stability as a function of occultor radius."""
-    # Knobs
-    eps = 1e-6
-    npts = 50
-    yo = 0
-    rarr = np.logspace(-3, 3, npts)
-
-    # Create our map
-    ylm = Map(lmax)
-
-    # Loop over the degrees
-    for l in tqdm(range(lmax + 1)):
-        ylm.reset()
-
-        # Set the constant term
-        # so we don't divide by zero when
-        # computing the fractional error below
-        ylm[0, 0] = 1
-
-        # Set the coefficients for all orders
-        for m in range(-l, l + 1):
-            ylm[l, m] = 1
-        # Occultor radius loop
-        error = np.zeros_like(rarr)
-        for i, ro in enumerate(rarr):
-            xo0 = 0.5 * ((ro + 1) + np.abs(ro - 1))
-            xo = np.linspace(xo0 - 25 * eps, xo0 + 25 * eps, 50)
-            flux = np.array(ylm.flux(xo=xo, yo=yo, ro=ro))
-            flux128 = np.array(ylm.flux_mp(xo=xo, yo=yo, ro=ro))
-            error[i] = np.max(np.abs((flux / flux128 - 1)))
-        ax.plot(rarr, error, '-', color=color(l, lmax),
-                label=r"$l=%d$" % l)
-
-    ax.legend(loc="upper left", ncol=3)
-    ax.axhline(1e-3, color='k', ls='--', alpha=0.75, lw=0.5)
-    ax.axhline(1e-6, color='k', ls='--', alpha=0.75, lw=0.5)
-    ax.axhline(1e-9, color='k', ls='--', alpha=0.75, lw=0.5)
-    ax.annotate("ppt", xy=(1e-3, 1e-3), xycoords="data", xytext=(3, -3),
-                textcoords="offset points", ha="left", va="top", alpha=0.75)
-    ax.annotate("ppm", xy=(1e-3, 1e-6), xycoords="data", xytext=(3, -3),
-                textcoords="offset points", ha="left", va="top", alpha=0.75)
-    ax.annotate("ppb", xy=(1e-3, 1e-9), xycoords="data", xytext=(3, -3),
-                textcoords="offset points", ha="left", va="top", alpha=0.75)
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.set_ylim(5e-17, 20.)
-    ax.set_xlim(1e-3, 1e3)
-    ax.set_xlabel("Occultor radius", fontsize=16)
-    ax.set_ylabel("Fractional error", fontsize=16)
+    for axis in ax.flatten():
+        axis.axhline(1e-3, ls='--', lw=1, color='k', alpha=0.5)
+        axis.axhline(1e-6, ls='--', lw=1, color='k', alpha=0.5)
+        axis.axhline(1e-9, ls='--', lw=1, color='k', alpha=0.5)
+        axis.annotate("ppt", xy=(5, 1e-3), xycoords="data", xytext=(3, -3),
+                      textcoords="offset points", ha="left", va="top",
+                      alpha=0.75)
+        axis.annotate("ppm", xy=(5, 1e-6), xycoords="data", xytext=(3, -3),
+                      textcoords="offset points", ha="left", va="top",
+                      alpha=0.75)
+        axis.annotate("ppb", xy=(5, 1e-9), xycoords="data", xytext=(3, -3),
+                      textcoords="offset points", ha="left", va="top",
+                      alpha=0.75)
+    return fig, ax
 
 
 if __name__ == "__main__":
 
-    # Earth stability
-    earth_eclipse()
-
-    # Ylm stability
-    fig, ax = pl.subplots(2, figsize=(9, 8))
-    impact_param(ax[0])
-    occultor_radius(ax[1])
+    # Compute the ones for the paper
+    fig, ax = Compute(0.01, logdelta=-3, logeps=-6)
     fig.savefig("stability.pdf", bbox_inches='tight')
+    pl.close()
+    fig, ax = Compute(100, logdelta=-3, logeps=-6)
+    fig.savefig("stability_eclipse.pdf", bbox_inches='tight')
+    pl.close()
+
+    # Now compute the rest, but first
+    # disable LaTeX to speed up the plotting
+    pl.rc('text', usetex=False)
+    radii = [1e-4, 1e-3, 1e-2, 0.1, 0.25, 0.5, 0.75, 1.0,
+             3.0, 5.0, 10.0, 30.0, 50.0, 100.0, 300.0]
+    for n, r in tqdm(enumerate(radii), total=len(radii)):
+        fig, ax = Compute(r, logdelta=-3, logeps=-6)
+        fig.savefig("../stability_test%02d.pdf" % n)
+        pl.close()

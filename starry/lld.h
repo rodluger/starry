@@ -49,8 +49,10 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
         if ((b == 0) || (ksq == 1))
             res = 0;
         else if (ksq < 1)
-            // TODO: We need to find a reparametrization of PI here, since it diverges
-            // when b = r. My expression is valid to *zeroth* order near b = r.
+            // These lines circumvent an instability near the step function
+            // in the elliptic integral when b ~ r. However, we're actually
+            // Taylor expanding `s2` in the vicinity of b ~ r, so these lines
+            // shoulnd't get run anyways.
             if ((taylor) && (abs(b - r) < 1e-8) && (r < STARRY_RADIUS_THRESH_S2)) {
                 if (b > r)
                     res = -(T(6. * pi) * r * r) / (1 - 4. * r * r);
@@ -87,8 +89,9 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
                 // Compute the elliptic integral directly
                 EPI = ellip::PI(T(1. / (ksq * (b + r) * (b + r))), T(1. / ksq));
             }
-            // TODO: There are small numerical issue here. As b - r --> 1,
-            // the denominator diverges. Should re-parametrize.
+            // There may be small numerical issues here. As b - r --> 1,
+            // the denominator diverges. But in practice, I haven't seen this
+            // affect the flux.
             if (abs(b - r) != 1.0)
                 res = 3 * (b - r) / (b + r) * EPI /
                        sqrt(1 - (b - r) * (b - r));
@@ -195,6 +198,32 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
                 Lambda = T(1. / 3.) +
                          16. * r / T(9. * pi) * (2. * r2 - 1.) * ellip::E(T(1. / (4 * r2))) -
                          (1 - 4 * r2) * (3 - 8 * r2) / (T(9 * pi) * r) * ellip::K(T(1. / (4 * r2)));
+        } else if ((taylor) && (abs(b - r) < 1e-4)) {
+            // Eric Agol's reparametrization
+            // This circumvents the EllipticPi instability when b  is close to r.
+            // The error is sub-ppb in most places, but exceeds a few ppm when r = 0.5
+            // That's an edge case, though. We could find a fix if it really is a problem.
+            T s2bb = s2(b, b, ksq, K, E, pi, false);
+            T eps = abs(b - r);
+            if (r < b) {
+                if (b + r < 1) {
+                    T E2 = ellip::E(T(4 * b * b));
+                    T K2 = ellip::K(T(4 * b * b));
+                    return s2bb + 4 * eps * b * E2 - 2 * eps * eps * (1.5 * E2 - 0.5 * K2);
+                } else {
+                    return s2bb + (8 * eps * b * b - 6 * b * eps * eps) * (E - (1 - ksq) * K) + 0.5 * eps * eps / b * K;
+                }
+            } else if (r > b) {
+                if (b + r < 1) {
+                    T E2 = ellip::E(T(4 * b * b));
+                    T K2 = ellip::K(T(4 * b * b));
+                    return s2bb - 4 * eps * b * E2 - 2 * eps * eps * (1.5 * E2 - 0.5 * K2);
+                } else {
+                    return s2bb - (8 * eps * b * b + 6 * b * eps * eps) * (E - (1 - ksq) * K) + 0.5 * eps * eps / b * K;
+                }
+            } else {
+                return s2bb;
+            }
         } else {
             if (ksq < 1) {
                 if ((!taylor) || (b + r > 1 + STARRY_BPLUSR_THRESH_S2))

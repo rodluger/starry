@@ -34,6 +34,18 @@ namespace solver {
     template <class T>
     class Greens;
 
+    // Helper function to figure out if we're using multiprecision
+    template <typename T>
+    inline bool is_bigdouble(T x) {
+        return false;
+    }
+
+    // Helper function to figure out if we're using multiprecision
+    template <>
+    inline bool is_bigdouble(bigdouble x) {
+        return true;
+    }
+
     // Check if number is even (or doubly, triply, quadruply... even)
     inline bool is_even(int n, int ntimes=1) {
         for (int i = 0; i < ntimes; i++) {
@@ -145,7 +157,11 @@ namespace solver {
         if (G.b() == 0) {
             // Special case
             return pow(1 - G.r(2), 1.5) * G.I(u, v);
-        } else if ((G.taylor) && (G.b() < STARRY_B_THRESH_J<T>(G.r()))) {
+        } else if ((G.taylor || is_bigdouble(G.b())) && (G.b() < STARRY_B_THRESH_J<T>(G.r()))) {
+            // Normally we don't do any approximations/re-parametrizations when using multiprecision,
+            // but it turns out that `J` is **extremely** unstable at very small impact parameter.
+            // Instabilities in `J` take hold for `b` as high as 1e-6, even for 128 **digits** of precision
+            // (that's ~ **hexadecuple** precision), so we Taylor expand when type `T` is `bigdouble`.
             return taylor::computeJ(G, u, v);
         } else {
             for (int i = 0; i < v + 1; i++) {
@@ -237,7 +253,7 @@ namespace solver {
         else
             factor = 1;
         if (is_even(G.nu)) {
-            if ((G.taylor) && (G.r() > 1) && (G.r() > STARRY_RADIUS_THRESH_QUARTIC<T>(G.l))) {
+            if ((G.taylor) && (G.r() > 1) && (STARRY_QUARTIC_APPROX(G.l, G.b(), G.r()))) {
                 return taylor::P(G);
             } else {
                 return G.r(G.l + 2) * K(G, (G.mu + 4) / 2, G.nu / 2);

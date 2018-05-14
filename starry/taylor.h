@@ -117,15 +117,31 @@ static const double STARRY_R_COEFF[STARRY_R_NPQ][STARRY_R_NPQ][STARRY_R_ORDER] =
 -0.06169478981277563,0.08097441162926802,-0.05214261354914986},{0,0,0,0,0,0,0,0,
 0.018983012250084808,-0.07540474310450354,0.12724550398884973,-0.11471374980812968}}};
 
-// Default value of the radius threshold for quartic expansion of the occultor limb
+// Quartic expansion of the occultor limb for even terms at large radius
+// This is the result of a **lot** of manual tweaking and is **super** hacky
+// but ensures our expressions are numerically stable over most of the domain
+// up to lmax = 8.
 #define STARRY_QUARTIC_MAXL                     8
-const vector<double> STARRY_RADIUS_THRESH_QUARTIC_VEC({100, 30, 30, 20, 15, 10, 8, 6, 5});
+const vector<double> STARRY_RADIUS_THRESH_QUARTIC_RCRIT({120, 50, 30, 20, 12, 7.5, 6, 6, 4});
+const vector<double> STARRY_RADIUS_THRESH_QUARTIC_COEFF({5e-5, 1e-4, 2e-4, 4e-4, 8e-4, 8e-4, 8e-4, 2e-3, 2e-3});
 template <typename T>
-T STARRY_RADIUS_THRESH_QUARTIC(int l) {
-    if (l <= STARRY_QUARTIC_MAXL)
-        return STARRY_RADIUS_THRESH_QUARTIC_VEC[l];
-    else
-        return 1;
+bool STARRY_QUARTIC_APPROX(int l, T b, T r) {
+    if (l > STARRY_QUARTIC_MAXL)
+        return true;
+    else {
+        if ((l >= 8) && (abs(b - r) < 1 - 1e-3) && (r < 7))
+            return false;
+        else if ((b < r - 1 + 1e-3) && (r < 3))
+            return false;
+        else if (r > STARRY_RADIUS_THRESH_QUARTIC_RCRIT[l])
+            return true;
+        else if (b < r - 1 + STARRY_RADIUS_THRESH_QUARTIC_COEFF[l] * r * r)
+            return true;
+        else if (b > r + 1 - STARRY_RADIUS_THRESH_QUARTIC_COEFF[l] * r * r)
+            return true;
+        else
+            return false;
+    }
 }
 
 // Taylor expansion of J() for small impact parameter

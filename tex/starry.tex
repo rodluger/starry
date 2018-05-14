@@ -1400,7 +1400,7 @@ We still need to think about how to expose the autodiff stuff to the user.\todo{
 \begin{figure}[ht]
     \begin{centering}
     \includegraphics[width=0.9\linewidth]{figures/autodiff.pdf}
-    \caption{\label{fig:system}
+    \caption{\label{fig:autodiff}
              \python{autodiff}
              Hello! Autodiff!}
     \end{centering}
@@ -1592,8 +1592,8 @@ the analytical solutions to the occultation integrals may become numerically
 unstable when the map degree $l$ is large. This is due to the propagation of
 round-off error in the recurrence relations, which we mitigate
 with careful Taylor expansions and reparameterizations of the equations.
-We discuss this at length in Appendix~\ref{app:numericalstability} and summarize
-the results in Figure~\ref{fig:stability}. In general, numerical stability is
+We discuss this at length in Appendix~\ref{app:numericalstability}.
+In general, numerical stability is
 not likely to be an issue for $l \leq 8$ and $r_o \lesssim 500$, for which
 the maximum fractional error due to round-off is on the order of one part
 per thousand, which in the case of exoplanets is likely far below the
@@ -2787,13 +2787,7 @@ directly as
 \end{align}
 %
 In the vicinity of $b = 0$, we instead Taylor expand the integrand in \eq{Juv}.
-The top panel in Figure~\ref{fig:stability} shows the fractional error in the flux
-(relative to the light curve computed using quadruple precision)
-as a function of impact parameter for an occultor of radius $r_o = 0.1$, after
-implementing the Taylor expansion described above. Each curve
-corresponds to a surface map assembled from all coefficients of a given
-spherical harmonic degree $l$. While the instability grows with $l$, the fractional
-error is less than one part per billion (ppb) everywhere for $l \leq 8$.
+\todo{more}
 \mathematica{taylorb}
 %
 \item The recurrence relation (\ref{eq:Iuv}) is numerically unstable when $r > 1$ for large values of $l$. The
@@ -2808,9 +2802,7 @@ analytically.
 Unfortunately, a quartic expansion of the occultor limb is not feasible, since the resulting line
 integral is not analytical. Instead, we Taylor expand the elliptic integrals in the expression for $\mathcal{M}_{p,q}$
 to high order in $k^2$ and tabulate the expansion coefficients in \starry up to $l = 8$.
-The bottom panel in Figure~\ref{fig:stability} shows the maximum fractional error in the flux
-as a function of occultor radius over six orders of magnitude after implementing the quartic expansion
-for $\mathcal{I}_{u,v}$ and the Taylor expansion of the elliptic integrals for $\mathcal{M}_{p,q}$.
+\todo{more}
 Our expressions are stable with sub-ppb precision for all orders through $l = 8$ for $r_o < 1$.
 For occultors larger than the occulted body, our expressions are accurate to within
 one part per million (ppm) up to $l = 5$ and to within one part per thousand (ppt) up to $l = 8$.
@@ -2840,20 +2832,21 @@ vector $\bvec{s}$ using a 128-bit (quadruple) precision type implemented with th
 
 \begin{figure}[ht!]
     \begin{centering}
-    \includegraphics[width=\linewidth]{figures/stability.pdf}
-    \caption{\label{fig:stability}
+    \includegraphics[width=\linewidth]{figures/stability_transit.pdf}
+    \caption{\label{fig:stability_transit}
              \python{stability}
              Numerical stability tests for \starry. The error on the flux is computed relative
-             to computations using 128-bit (quadruple) floating point precision. The top panel
-             shows the fractional error as a function of impact parameter for an occultor of
-             radius $r_o = 0.1$ occulting spherical harmonics of different degrees. The rise
-             in the error toward small impact parameter is due to the instability
-             discussed in the text; as the error approaches the ppb level, \starry switches
-             to a stable, high order Taylor expansion of the expressions. The bottom panel
-             shows the maximum fractional error on the flux over the entire light curve
-             as a function of the occultor size. The flux is accurate at the sub-ppb level
-             for small ($r_o \leq 1$) occultors and at the sub-ppm level for large
-             ($r_o \gg 1$) occultors up to $l = 5$.}
+             to computations using 128-bit (quadruple) floating point precision.}
+    \end{centering}
+\end{figure}
+
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/stability_eclipse.pdf}
+    \caption{\label{fig:stability_eclipse}
+             \python{stability}
+             Numerical stability tests for \starry. The error on the flux is computed relative
+             to computations using 128-bit (quadruple) floating point precision.}
     \end{centering}
 \end{figure}
 

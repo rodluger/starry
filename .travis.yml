@@ -23,6 +23,5 @@ script:
     - py.test -v
 
 after_success:
-    - if [[ $TRAVIS_COMMIT_MESSAGE = *"[stability]"* ]]; then source .ci/build-stability.sh; fi
     - if [ "$TRAVIS_BRANCH" = "master" ]; then source .ci/build-docs.sh; fi
     - source .ci/build-paper.sh

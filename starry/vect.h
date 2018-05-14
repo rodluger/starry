@@ -251,7 +251,7 @@ namespace vect {
     /* --------------------------------------------- */
 
     // Vectorize `starry.grad.Map.flux()`.
-    inline Matrix<double> vectorize_map_flux(
+    inline Vector<double> vectorize_map_flux(
             UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4, py::object& arg5,
             maps::Map<Grad>& map) {
 
@@ -312,7 +312,7 @@ namespace vect {
     }
 
     // Vectorize `starry.grad.Map.evaluate()`.
-    inline Matrix<double> vectorize_map_evaluate(
+    inline Vector<double> vectorize_map_evaluate(
             UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4,
             maps::Map<Grad>& map) {
 
@@ -371,7 +371,7 @@ namespace vect {
     }
 
     // Vectorize `starry.grad.LimbDarkenedMap.flux()`.
-    inline Matrix<double> vectorize_ldmap_flux(
+    inline Vector<double> vectorize_ldmap_flux(
             py::object& arg1, py::object& arg2, py::object& arg3,
             maps::LimbDarkenedMap<Grad>& map) {
 
@@ -429,7 +429,7 @@ namespace vect {
     }
 
     // Vectorize `starry.grad.LimbDarkenedMap.evaluate()`.
-    inline Matrix<double> vectorize_ldmap_evaluate(
+    inline Vector<double> vectorize_ldmap_evaluate(
             py::object& arg1, py::object& arg2,
             maps::LimbDarkenedMap<Grad>& map) {
 

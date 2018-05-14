@@ -17,10 +17,11 @@ starry.pdf: starry.tex stylez.tex $(FIGURES) $(SOURCES)
 	( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done."
 	( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done."
 	( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done."
-	
+
 clean:
 	$(RM_TMP)
 	rm -rf starryNotes.bib
+	rm -rf stability_test*pdf
 	rm -rf $(FIGURES)
 
 figures/%.pdf: figures/%.py
