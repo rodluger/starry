@@ -877,7 +877,7 @@ Given these quantities, the total flux during an occultation is then just
 The \starry code package provides code to analytically
 compute light curves for celestial bodies using the formalism developed
 in this paper. \starry is coded entirely in \cpp for speed and wrapped
-in \Python using \textsf{pybind11} \citep{pybind11} for quick and easy
+in \Python using \pybind \citep{pybind11} for quick and easy
 light curve calculations. The
 code may be installed by running the following in a terminal:
 %
@@ -888,8 +888,8 @@ python setup.py develop
 \end{lstlisting}
 %
 There are two primary ways of interfacing with \starry: via the surface
-map class \textsf{starry.Map} and via the celestial body system class
-\textsf{starry.System}. The former gives users the most flexibility to
+map class \starryMap and via the celestial body system class
+\starrySystem. The former gives users the most flexibility to
 create and manipulate surface maps and compute their fluxes for a variety
 of applications, while the latter provides a quick and easy (but limited)
 way to generate light curves for exoplanet systems. Let us
@@ -906,12 +906,12 @@ To begin using \starry, execute the following in a \Python environment:
 from starry import Map
 \end{lstlisting}
 %
-A \starry \textsf{Map} is a vector of spherical harmonic coefficients, indexed by
+A \starry \Map is a vector of spherical harmonic coefficients, indexed by
 increasing degree and order, as in \eq{by}. We can create a map of
 spherical harmonics up to degree $l_\mathrm{max} = 5$ by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m = Map(5)
+map = Map(5)
 \end{lstlisting}
 %
 By default, all coefficients are set to zero.
@@ -923,12 +923,12 @@ Say our surface map is given by the function
     \quad.
 \end{align}
 %
-To instantiate this map, we set the corresponding coefficients in \textsf{m}:
+To instantiate this map, we set the corresponding coefficients in \map:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m[5, -3] = -2
-m[5, 0] = 2
-m[5, 4] = 1
+map[5, -3] = -2
+map[5, 0] = 2
+map[5, 4] = 1
 \end{lstlisting}
 %
 Printing the map to screen yields
@@ -939,19 +939,19 @@ Printing the map to screen yields
 %
 Users can also directly access the spherical harmonic vector $\bvec{y}$,
 polynomial vector $\bvec{p}$, and Green's polynomial vector $\bvec{g}$
-via the attributes \textsf{m.y}, \textsf{m.p}, and \textsf{m.g}, respectively:
+via the attributes \starryMapy, \starryMapp, and \starryMapg, respectively:
 %
 \begin{lstlisting}[language=Python,numbers=none]
-# m.y
+# map.y
 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
  0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 0, 2, 0, 0, 0, 1, 0]
 
-# m.p
+# map.p
 [0, 0, 1.87, 0, 0, 0, 0, 0, 0, 0, -13.10, -23.48, 0, 0,
  -13.10, 7.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16.81, 26.42,
  0, 0, 17.02, 17.61, 0, 0, 16.81, -8.81]
 
-# m.g
+# map.g
 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3.73, -7.83, 0, 0, 1.86,
  7.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5.59, 5.28, 0, 0,
  -16.81, 5.87, 0, 0, -16.75, -8.81])
@@ -960,13 +960,13 @@ via the attributes \textsf{m.y}, \textsf{m.p}, and \textsf{m.g}, respectively:
 Once a map is instantiated, users may quickly visualize it by calling
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m.show()
+map.show()
 \end{lstlisting}
 %
 or
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m.animate(axis=axis)
+map.animate(axis=axis)
 \end{lstlisting}
 %
 where \textsf{axis} defines the axis of rotation for the animation.
@@ -982,13 +982,13 @@ surface map on a rectangular latitude-longitude grid or a ring-ordered
 \textsf{Healpix}\footnote{\url{http://healpix.sf.net}} map array:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m.load_image("/path/to/image.jpg")
+map.load_image("/path/to/image.jpg")
 \end{lstlisting}
 %
 or
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m.load_healpix(array)
+map.load_healpix(array)
 \end{lstlisting}
 %
 In both cases, \starry uses the \textsf{map2alm()} function
@@ -1046,12 +1046,12 @@ Once a map is instantiated, it is easy to compute its rotational
 phase curve, \textsf{F}:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-F = m.flux(axis=axis, theta=theta)
+F = map.flux(axis=axis, theta=theta)
 \end{lstlisting}
 %
 where \textsf{axis} is the axis of rotation and \textsf{theta} is an array of
 angles (in radians) for which to compute the flux. Note that rotations performed
-by \textsf{flux()} are not cumulative; instead, all angles should be specified
+by \flux are not cumulative; instead, all angles should be specified
 relative to the original, unrotated map frame.
 %
 In the top panel of Figure~\ref{fig:ylmlightcurves} we plot rotational phase curves
@@ -1071,7 +1071,7 @@ by executing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 theta = np.linspace(0, 2 * np.pi, 100)
-F = m.flux(axis=[0, 1, 0], theta=theta)
+F = map.flux(axis=[0, 1, 0], theta=theta)
 \end{lstlisting}
 %
 The variable $\textsf{F}$ is
@@ -1102,7 +1102,7 @@ the seven individual continents.
 Occultation light curves are similarly easy to compute:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-F = m.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro)
+F = map.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro)
 \end{lstlisting}
 %
 where \textsf{axis} and \textsf{theta} are the same as above, and
@@ -1171,29 +1171,29 @@ $\upmu = \z = \sqrt{1 - \x^2 - \y^2}$, can be exactly
 expressed in terms of the $m = 0$ spherical harmonics up to order $l$.
 
 For convenience, we implement this functionality in \starry via the
-\textsf{starry.LimbDarkenedMap} class. This class behaves similarly
-to the \textsf{starry.Map} class but allows users
+\starryLimbDarkenedMap class. This class behaves similarly
+to the \starryMap class but allows users
 to specify the coefficients of the limb darkening polynomial directly as
 follows:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 from starry import LimbDarkenedMap
-m = LimbDarkenedMap(2)
-m.set_coeff(1) = u1
-m.set_coeff(2) = u2
+map = LimbDarkenedMap(2)
+map.set_coeff(1) = u1
+map.set_coeff(2) = u2
 \end{lstlisting}
 %
 or, more compactly,
-\footnote{Note that \textsf{starry.Map} instances accept two indices
+\footnote{Note that \starryMap instances accept two indices
 ($l$ and $m$) to specify a map coefficient, while
-\textsf{starry.LimbDarkenedMap} instances accept a single index $l$,
+\starryLimbDarkenedMap instances accept a single index $l$,
 the limb darkening polynomial index. Note, also, that in the limb-darkened
 case the $l = 0$ coefficient cannot be set, as it is automatically computed to
 enforce the correct normalization.}
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m[1] = u1
-m[2] = u2
+map[1] = u1
+map[2] = u2
 \end{lstlisting}
 %
 In either case, this sets the map's limb darkening profile to
@@ -1230,7 +1230,8 @@ is unity.
 At present, \starry does not support
 adding limb darkening to non-radially symmetric maps; this
 functionality will be added in the future to allow for limb darkening
-of, say, planetary atmospheres.
+of, say, planetary atmospheres. Note also that unlike \starryMap,
+instances of \starryLimbDarkenedMap cannot be rotated.
 
 Figure~\ref{fig:transit} shows a transit light curve computed with \starry
 for $u_1 = 0.4, u_2 = 0.26$. The planet/star radius ratio is $r = 0.1$ and
@@ -1262,15 +1263,15 @@ than $10^{-5}$ parts per million everywhere in the light curve.
 \label{sec:starryphotodynamics}
 % ------------------------------------------------------------------------------
 
-The \textsf{starry.Map} and \textsf{starry.LimbDarkenedMap} classes
+The \starryMap and \starryLimbDarkenedMap classes
 discussed above are convenient when the rotational
 state of the body in question and/or the position of the occultor is known,
 or when these can easily be computed by some other means. For convenience,
 \starry implements a simple Keplerian solver to compute stellar and
 planetary light curves for exoplanet systems given the orbital parameters as
 input. Users can access this functionality by instantiating a
-\textsf{starry.Star} and any number of \textsf{starry.Planet} objects, then
-passing them to a \textsf{starry.System} instance. Let us begin by
+\starryStar and any number of \starryPlanet objects, then
+passing them to a \starrySystem instance. Let us begin by
 creating a star:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
@@ -1278,11 +1279,11 @@ from starry import Star
 star = Star(lmax=2)
 \end{lstlisting}
 %
-A \textsf{starry.Star} has unit radius and unit luminosity; the planet's radii,
+A \starryStar has unit radius and unit luminosity; the planet's radii,
 semi-major axes, and luminosities are all defined relative to these.
-The star's \textsf{map} attribute is a \textsf{starry.LimbDarkenedMap} instance,
+The star's \ldmap attribute is a \starryLimbDarkenedMap instance,
 which by default is set to a constant term corresponding to uniform surface brightness.
-We can add quadratic limb darkening as before by editing the star's \textsf{map}
+We can add quadratic limb darkening as before by editing the star's \ldmap
 attribute:
 %
 \begin{lstlisting}[language=Python,firstnumber=last,]
@@ -1304,9 +1305,10 @@ in units of the stellar luminosity,
 \textsf{porb} is the orbital period and \textsf{prot} is the rotational
 period, both in days.
 Several other keyword arguments may be provided; these are detailed in full
-in the \docs. As with \textsf{starry.Star}, the planet's map
-(a \textsf{starry.Map} instance) can be accessed
-via the \textsf{map} property. Suppose we wish to give the planet a simple
+in the \href{https://rodluger.github.io/starry/starry.html\#starry.Planet}{documentation}.
+As with \starryStar, the planet's map
+(a \starryMap instance) can be accessed
+via the \ldmap property. Suppose we wish to give the planet a simple
 dipole map ($Y_{1,0}$) with peak brightness at the sub-stellar point.
 By default, the planet is instantiated at a transiting configuration (new phase),
 with mean longitude \textsf{lambda0} $= 90^\circ$, so we must actually set
@@ -1357,11 +1359,11 @@ system.compute(time)
 \end{lstlisting}
 %
 where \textsf{time} is the array of times (in days) at which to compute the
-light curve. This command internally calls the \textsf{flux()} method of each
+light curve. This command internally calls the \flux method of each
 of the surface maps, populating the \textsf{flux} attribute of each body
 with its respective light curve. The total light curve (the sum of the
 light curves of each of the bodies in the system, including the star) is
-stored in \textsf{system.flux}. The top panel of Figure~\ref{fig:system} shows
+stored in \starrySystemflux. The top panel of Figure~\ref{fig:system} shows
 the light curve for the system we instantiated above: both the transits
 and secondary eclipses of the planet are clearly visible. For flair, we added
 a hotspot offset of $15^\circ$ to simulate advection of heat by a
@@ -1426,7 +1428,7 @@ adaptive mesh scheme.
 In \starry, users can request numerical solutions to the flux by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-F = m.flux_numerical(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro, tol=1.e-4)
+F = map.flux_numerical(..., tol=1.e-4)
 \end{lstlisting}
 %
 where \textsf{tol} is the error tolerance, the maximum absolute value of the
@@ -1578,7 +1580,7 @@ enforce a prior. Nevertheless, users can find the minimum of the
 map over the entire domain by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m.minimum()
+map.minimum()
 \end{lstlisting}
 %
 This method evaluates the surface map on a coarse grid, locates the
@@ -1603,10 +1605,10 @@ detectability limits of telescopes in the foreseable future. Nevertheless, users
 can bypass these numerical issues by calling the
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m.flux_mp(...)
+map.flux_mp(...)
 \end{lstlisting}
 %
-routine instead of \textsf{m.flux()} to enable multiprecision mode,
+routine instead of \textsf{map.flux()} to enable multiprecision mode,
 which by default is set to quadruple (128-bit) floating point precision.
 We caution, however, that this will increase computation time by at least
 an order of magnitude.
@@ -2825,10 +2827,10 @@ parameters, but instabilities may still occur in \starry when the occultor becom
 to compute light curves using multiprecision:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-m.flux_mp(...)
+map.flux_mp(...)
 \end{lstlisting}
 %
-(instead of \textsf{m.flux()}), which by default computes the occultation solution
+(instead of \textsf{map.flux()}), which by default computes the occultation solution
 vector $\bvec{s}$ using a 128-bit (quadruple) precision type implemented with the \textsf{boost}
 \cpp libraries \citep[e.g.,][]{Schaling2014}.
 
