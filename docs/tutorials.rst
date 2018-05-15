@@ -1,7 +1,8 @@
-Tutorials
-=========
+Examples & Tutorials
+====================
 
-A collection of Jupyter Notebooks that demonstrate how to use :py:obj:`starry`.
+Below you'll find a collection of Jupyter Notebooks that demonstrate how
+to use :py:obj:`starry` in various different ways.
 
 .. toctree::
    :maxdepth: 1
