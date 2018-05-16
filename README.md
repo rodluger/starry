@@ -1,5 +1,5 @@
 <p align="center">
-  <img width = "350" src="https://github.com/rodluger/starry/blob/master/misc/starry.png?raw=true"/>
+  <img width = "450" src="https://github.com/rodluger/starry/blob/master/misc/starry.png?raw=true"/>
   <br>
   Analytic occultation light curves for astronomy.
 </p>
