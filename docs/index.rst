@@ -23,6 +23,7 @@ API, and more.
    :maxdepth: 1
 
    Installation <install>
+   Changelog <changelog>
    Examples & tutorials <tutorials>
    API <api>
    Github <https://github.com/rodluger/starry>
