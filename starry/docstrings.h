@@ -73,7 +73,7 @@ namespace docstrings {
     const char * mp_digits =
     R"pbdoc(
         Number of digits used to perform multi-precision calculations.
-        Double precision roughly corresponds to 16, and quadrupole
+        Double precision roughly corresponds to 16, and quadruple
         precision (default) roughly corresponds 32.
         This is a compile-time constant. If you wish to change it, you'll
         have to re-compile :py:obj:`starry` by executing
@@ -581,11 +581,11 @@ namespace docstrings {
 
                 .. automethod:: compute(time)
                 .. autoattribute:: flux
-                .. autoattribuet:: exposure_time
-                .. autoattribuet:: exposure_tol
-                .. autoattribuet:: exposure_max_depth
-                .. autoattribuet:: kepler_tol
-                .. autoattribuet:: kepler_max_iter
+                .. autoattribute:: exposure_time
+                .. autoattribute:: exposure_tol
+                .. autoattribute:: exposure_max_depth
+                .. autoattribute:: kepler_tol
+                .. autoattribute:: kepler_max_iter
         )pbdoc";
 
         const char * compute =
@@ -1142,11 +1142,12 @@ namespace docstrings_grad {
 
                 .. automethod:: compute(time)
                 .. autoattribute:: flux
-                .. autoattribuet:: exposure_time
-                .. autoattribuet:: exposure_tol
-                .. autoattribuet:: exposure_max_depth
-                .. autoattribuet:: kepler_tol
-                .. autoattribuet:: kepler_max_iter
+                .. autoattribute:: gradient
+                .. autoattribute:: exposure_time
+                .. autoattribute:: exposure_tol
+                .. autoattribute:: exposure_max_depth
+                .. autoattribute:: kepler_tol
+                .. autoattribute:: kepler_max_iter
 
         )pbdoc";
 
