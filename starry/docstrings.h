@@ -87,7 +87,9 @@ namespace docstrings {
 
         const char * Map =
         R"pbdoc(
-                Instantiate a :py:mod:`starry` surface map.
+                Instantiate a :py:mod:`starry` surface map. Maps instantiated in this fashion
+                are *orthonormalized*, so the total integrated luminosity of the map is
+                $2\sqrt{\pi} Y_{0,0}$.
 
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
@@ -109,6 +111,7 @@ namespace docstrings {
                 .. autoattribute:: s_mp
                 .. autoattribute:: r
                 .. automethod:: minimum()
+                .. automethod:: add_gaussian()
                 .. automethod:: load_image(image)
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
@@ -297,6 +300,27 @@ namespace docstrings {
                       a map to data!
         )pbdoc";
 
+        const char * add_gaussian =
+        R"pbdoc(
+            Add the spherical harmonic expansion of a gaussian to the current map.
+
+            This routine adds a gaussian-like feature to the surface map by computing
+            the spherical harmonic expansion of a 3D gaussian constrained to the surface
+            of the sphere. This is useful for, say, modeling star spots or other discrete,
+            localized features on a body's surface.
+
+            .. note:: Because this routine wraps a Python function, \
+                      it is **slow** and should probably not be used repeatedly when fitting \
+                      a map to data!
+
+            Args:
+                sigma (float): The standard deviation of the gaussian. Default 0.1
+                amp (float): The amplitude. Default 1.0, resulting in a gaussian whose \
+                             integral over the sphere is unity.
+                lat (float): The latitude of the center of the gaussian in radians. Default 0.
+                lon (float): The longitude of the center of the gaussian in radians. Default 0.
+        )pbdoc";
+
         const char * load_image =
         R"pbdoc(
             Load an image from file.
@@ -358,7 +382,15 @@ namespace docstrings {
                 This differs from the base :py:class:`Map` class in that maps
                 instantiated this way are radially symmetric: only the radial (:py:obj:`m = 0`)
                 coefficients of the map are available. Users edit the map by directly
-                specifying the polynomial limb darkening coefficients :py:obj:`u`.
+                specifying the polynomial limb darkening coefficients :py:obj:`u`, starting
+                with $u_1$ (linear limb darkening). The coefficient $u_0$ is fixed to enforce
+                the correct normalization.
+
+                .. warning:: Unlike :py:class:`Map`, maps instantiated this \
+                             way are normalized so that the integral of the specific intensity over the \
+                             visible disk is unity. This is convenient for using this map to model \
+                             stars: the unocculted flux from the star is equal to one, regardless of the limb-darkening \
+                             coefficients!
 
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
@@ -540,11 +572,20 @@ namespace docstrings {
 
                 Args:
                     bodies (list): List of bodies in the system, with the primary (usually the star) listed first.
-                    kepler_tol (float): Kepler solver tolerance.
-                    kepler_max_iter (int): Maximum number of iterations in the Kepler solver.
+                    kepler_tol (float): Kepler solver tolerance. Default `1e-7`.
+                    kepler_max_iter (int): Maximum number of iterations in the Kepler solver. Default `100`.
+                    exposure_time (float): The exposure time of the observations in days. If nonzero, the flux will \
+                                           be integrated over this exposure time. Default `0`.
+                    exposure_tol (float): Tolerance of the recursive method for integrating the flux over the exposure time. Default `1e-8`.
+                    exposure_maxdepth (int): Maximum recursion depth for the exposure calculation. Default `4`.
 
                 .. automethod:: compute(time)
                 .. autoattribute:: flux
+                .. autoattribuet:: exposure_time
+                .. autoattribuet:: exposure_tol
+                .. autoattribuet:: exposure_max_depth
+                .. autoattribuet:: kepler_tol
+                .. autoattribuet:: kepler_max_iter
         )pbdoc";
 
         const char * compute =
@@ -563,6 +604,32 @@ namespace docstrings {
         const char * flux =
         R"pbdoc(
             The computed system light curve. Must run :py:meth:`compute` first.
+        )pbdoc";
+
+        const char * exposure_time =
+        R"pbdoc(
+            The exposure time of the observations in days. If nonzero, the flux will
+            be integrated over this exposure time. Default `0`.
+        )pbdoc";
+
+        const char * exposure_tol =
+        R"pbdoc(
+            Tolerance of the recursive method for integrating the flux over the exposure time. Default `1e-8`.
+        )pbdoc";
+
+        const char * exposure_max_depth =
+        R"pbdoc(
+            Maximum recursion depth for the exposure calculation. Default `4`.
+        )pbdoc";
+
+        const char * kepler_max_iter =
+        R"pbdoc(
+            Maximum number of iterations in the Kepler solver. Default `100`.
+        )pbdoc";
+
+        const char * kepler_tol =
+        R"pbdoc(
+            Kepler solver tolerance. Default `1e-7`.
         )pbdoc";
 
     } // namespace System
@@ -899,7 +966,7 @@ namespace docstrings_grad {
         value is too small, you'll need to re-compile :py:obj:`starry` by executing
 
         .. code-block:: bash
-        
+
             STARRY_NGRAD=XX pip install --force-reinstall --ignore-installed --no-binary :all: starry
     )pbdoc";
 
@@ -907,7 +974,9 @@ namespace docstrings_grad {
 
         const char * Map =
         R"pbdoc(
-                Instantiate a :py:mod:`starry` surface map.
+                Instantiate a :py:mod:`starry` surface map. Maps instantiated in this fashion
+                are *orthonormalized*, so the total integrated luminosity of the map is
+                $2\sqrt{\pi} Y_{0,0}$.
 
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
@@ -959,6 +1028,8 @@ namespace docstrings_grad {
 
         const char * r = docstrings::Map::r;
 
+        const char * add_gaussian = docstrings::Map::add_gaussian;
+
         const char * optimize = docstrings::Map::optimize;
 
         const char * evaluate = docstrings::Map::evaluate;
@@ -988,7 +1059,15 @@ namespace docstrings_grad {
                 This differs from the base :py:class:`Map` class in that maps
                 instantiated this way are radially symmetric: only the radial (:py:obj:`m = 0`)
                 coefficients of the map are available. Users edit the map by directly
-                specifying the polynomial limb darkening coefficients :py:obj:`u`.
+                specifying the polynomial limb darkening coefficients :py:obj:`u`, starting
+                with $u_1$ (linear limb darkening). The coefficient $u_0$ is fixed to enforce
+                the correct normalization.
+
+                .. warning:: Unlike :py:class:`Map`, maps instantiated this \
+                             way are normalized so that the integral of the specific intensity over the \
+                             visible disk is unity. This is convenient for using this map to model \
+                             stars: the unocculted flux from the star is equal to one, regardless of the limb-darkening \
+                             coefficients!
 
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
@@ -1054,12 +1133,20 @@ namespace docstrings_grad {
 
                 Args:
                     bodies (list): List of bodies in the system, with the primary (usually the star) listed first.
-                    kepler_tol (float): Kepler solver tolerance.
-                    kepler_max_iter (int): Maximum number of iterations in the Kepler solver.
+                    kepler_tol (float): Kepler solver tolerance. Default `1e-7`.
+                    kepler_max_iter (int): Maximum number of iterations in the Kepler solver. Default `100`.
+                    exposure_time (float): The exposure time of the observations in days. If nonzero, the flux will \
+                                           be integrated over this exposure time. Default `0`.
+                    exposure_tol (float): Tolerance of the recursive method for integrating the flux over the exposure time. Default `1e-8`.
+                    exposure_maxdepth (int): Maximum recursion depth for the exposure calculation. Default `4`.
 
                 .. automethod:: compute(time)
                 .. autoattribute:: flux
-                .. autoattribute:: gradient
+                .. autoattribuet:: exposure_time
+                .. autoattribuet:: exposure_tol
+                .. autoattribuet:: exposure_max_depth
+                .. autoattribuet:: kepler_tol
+                .. autoattribuet:: kepler_max_iter
 
         )pbdoc";
 
@@ -1067,10 +1154,28 @@ namespace docstrings_grad {
 
         const char * flux = docstrings::System::flux;
 
+        const char * exposure_time = docstrings::System::exposure_time;
+
+        const char * exposure_tol = docstrings::System::exposure_tol;
+
+        const char * exposure_max_depth = docstrings::System::exposure_max_depth;
+
+        const char * kepler_max_iter = docstrings::System::kepler_max_iter;
+
+        const char * kepler_tol = docstrings::System::kepler_tol;
+
         const char * gradient =
         R"pbdoc(
             A dictionary of derivatives of the system flux with respect to
             all model parameters, populated on calls to :py:meth:`compute`.
+
+            .. note:: This dictionary is similar to the :py:obj:`gradient` \
+                      attribute of a :py:obj:`Map` instance, but the keys in \
+                      the dictionary are prepended by either `star.` (for \
+                      the star) or `planetX` (where `X` is the planet number,
+                      starting with 1). For instance, the gradient of the \
+                      system flux with respect to the second planet's eccentricity \
+                      is :py:obj:`gradient['planet2.ecc']`.
         )pbdoc";
 
     } // namespace System
@@ -1085,6 +1190,14 @@ namespace docstrings_grad {
         R"pbdoc(
             A dictionary of derivatives of the body's flux with respect to
             all model parameters, populated on calls to :py:meth:`System.compute`.
+
+            .. note:: This dictionary is similar to the :py:obj:`gradient` \
+                      attribute of a :py:obj:`Map` instance, but the keys in \
+                      the dictionary are prepended by either `star.` (for \
+                      the star) or `planetX` (where `X` is the planet number,
+                      starting with 1). For instance, the gradient of this body's \
+                      flux with respect to the second planet's eccentricity \
+                      is :py:obj:`gradient['planet2.ecc']`.
         )pbdoc";
 
         const char * x = docstrings::Body::x;

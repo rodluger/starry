@@ -222,7 +222,7 @@ void ADD_MODULE(py::module &m) {
                         map.set_coeff(l, m, get_value(map.get_coeff(l, m)) + tmpmap.get_coeff(l, m));
                     }
                 }
-            }, "sigma"_a=0.1, "amp"_a=1, "lat"_a=0, "lon"_a=0)
+            }, DOCS::Map::add_gaussian, "sigma"_a=0.1, "amp"_a=1, "lat"_a=0, "lon"_a=0)
 
         .def("show", [](maps::Map<MAPTYPE> &map, string cmap, int res) {
                 py::object show = py::module::import("starry_maps").attr("show");
@@ -408,14 +408,29 @@ void ADD_MODULE(py::module &m) {
     // Orbital system class
     py::class_<orbital::System<MAPTYPE>>(m, "System", DOCS::System::System)
 
-        .def(py::init<vector<orbital::Body<MAPTYPE>*>, double, int>(),
-            "bodies"_a, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100)
+        .def(py::init<vector<orbital::Body<MAPTYPE>*>, double, int, double, double, int>(),
+            "bodies"_a, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100, "exposure_time"_a=0, "exposure_tol"_a=1e-8, "exposure_max_depth"_a=4)
 
         .def("compute", [](orbital::System<MAPTYPE> &system, Vector<double>& time){system.compute((Vector<MAPTYPE>)time);},
             DOCS::System::compute, "time"_a)
 
         .def_property_readonly("flux", [](orbital::System<MAPTYPE> &system){return get_value(system.flux);},
             DOCS::System::flux)
+
+        .def_property("kepler_tol", [](orbital::System<MAPTYPE> &system){return system.eps;},
+            [](orbital::System<MAPTYPE> &system, double eps){system.eps = eps;}, DOCS::System::kepler_tol)
+
+        .def_property("kepler_max_iter", [](orbital::System<MAPTYPE> &system){return system.maxiter;},
+            [](orbital::System<MAPTYPE> &system, int maxiter){system.maxiter = maxiter;}, DOCS::System::kepler_max_iter)
+
+        .def_property("exposure_time", [](orbital::System<MAPTYPE> &system){return system.exptime / DAY;},
+            [](orbital::System<MAPTYPE> &system, double exptime){system.exptime = exptime * DAY;}, DOCS::System::exposure_time)
+
+        .def_property("exposure_tol", [](orbital::System<MAPTYPE> &system){return system.exptol;},
+            [](orbital::System<MAPTYPE> &system, double exptol){system.exptol = exptol;}, DOCS::System::exposure_tol)
+
+        .def_property("exposure_max_depth", [](orbital::System<MAPTYPE> &system){return system.expmaxdepth;},
+            [](orbital::System<MAPTYPE> &system, int expmaxdepth){system.expmaxdepth = expmaxdepth;}, DOCS::System::exposure_max_depth)
 
 #ifdef STARRY_AUTODIFF
 

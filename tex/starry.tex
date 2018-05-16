@@ -27,21 +27,21 @@
 \keywords{methods: analytical --- techniques: photometric}
 
 \begin{abstract}
-    We derive analytical, closed form solutions for the total flux
-    received from a spherical planet, moon or star during an occultation
-    if the specific intensity map of the body is expressed as a
-    sum of spherical harmonics. Our expressions are valid to arbitrary degree
-    and may be computed recursively for speed. The formalism we develop
-    here applies to the computation of stellar transit light curves,
-    planetary secondary eclipse light curves, and planet-planet/planet-moon
-    occultation light curves, as well as thermal (rotational) phase curves.
-    We present \starry, an open-source photodynamical code written in \cpp
-    and wrapped in \Python that computes these light curves. \starry also
-    computes analytical derivatives of the light curves with respect to all input
-    parameters for use in gradient-based inference schemes such as
-    Hamiltonian monte carlo (HMC), allowing users to quickly and efficiently
-    regress on observed light curves to infer properties of a celestial body's
-    surface map.
+We derive analytical, closed form solutions for the total flux
+received from a spherical planet, moon or star during an occultation
+if the specific intensity map of the body is expressed as a
+sum of spherical harmonics. Our expressions are valid to arbitrary degree
+and may be computed recursively for speed. The formalism we develop
+here applies to the computation of stellar transit light curves,
+planetary secondary eclipse light curves, and planet-planet/planet-moon
+occultation light curves, as well as thermal (rotational) phase curves.
+We present \starry, an open-source photodynamical code written in \cpp
+and wrapped in \Python that computes these light curves. \starry also
+computes analytical derivatives of the light curves with respect to all input
+parameters for use in gradient-based inference schemes such as
+Hamiltonian monte carlo (HMC), allowing users to quickly and efficiently
+regress on observed light curves to infer properties of a celestial body's
+surface map.
 \end{abstract}
 
 % ==============================================================================
@@ -1238,8 +1238,8 @@ for $u_1 = 0.4, u_2 = 0.26$. The planet/star radius ratio is $r = 0.1$ and
 the planet transits at impact parameter $b = 0.5$. For comparison, we also
 compute the flux with \batman \citep{Kreidberg2015} and with a
 high precision numerical integration of the surface integral of
-\eq{quadraticld}. The error on the transit depth for \starry flux is less
-than $10^{-5}$ parts per million everywhere in the light curve.
+\eq{quadraticld}. The relative error on the flux for \starry flux is less
+than $10^{-7}$ parts per million everywhere in the light curve.
 %
 \begin{figure}[ht!]
     \begin{centering}
@@ -1251,9 +1251,9 @@ than $10^{-5}$ parts per million everywhere in the light curve.
              top panel shows the \starry (blue curve) and \batman
              (orange dots) light curves, as well as a light curve generated
              by a high precision direct numerical integration of the surface
-             integral (purple dots). The bottom panel shows the fractional
-             error on the transit depth in parts per million relative to the
-             numerical solution for \starry (blue) and \batman (orange).}
+             integral (purple dots). The bottom panel shows the relative
+             error on the flux in parts per million compared to the high
+             precision numerical solution for \starry (blue) and \batman (orange).}
     \end{centering}
 \end{figure}
 %
@@ -1398,18 +1398,92 @@ light curve.
 \subsection{Gradients of the light curves}
 \label{sec:gradients}
 % ------------------------------------------------------------------------------
-We still need to think about how to expose the autodiff stuff to the user.\todo{todo}
+Since all expressions derived in this paper are analytic, so too are their
+derivatives. The ability to compute derivatives of a light curve model with
+respect to the model parameters can be extremely useful in both optimization
+and inference problems. When fitting a model to data with an optimization
+algorithm, knowledge of the gradient of the objective function can greatly
+speed up convergence, as the optimizer always ``knows'' which direction to
+take a step in to improve the fit. Gradients can also be used in Hamiltonian
+Monte Carlo (HMC) simulations, in which the gradient of the likelihood is used
+to improve the efficiency of the sampler and greatly speed up convergence of
+the chains \citep[e.g.,][]{Betancourt2017}.
 
+In principle, one could differentiate the recurrence relations in
+the Appendix and arrive at expressions for the derivatives of a light curve with
+respect to any of the input parameters, but this would be an extremely tedious
+task. Instead, we can take advantage of the analytic nature of our expressions
+and compute all derivatives using automatic differentiation \citep[autodiff; e.g.,][]{Wengert1964}.
+Despite the complexity of the expressions we derive here, each of the individual
+steps involved in computing a light curve is either a basic arithmetic operation
+or the evaluation of an elementary function and is therefore trivially differentiable.
+Autodiff algorithms exploit this fact by repeatedly applying the chain rule to
+compute the derivatives of any function during its evaluation, returning derivatives
+that are accurate to machine precision and at a speed that can be significantly greater
+than that of numeric (or symbolic) differentiation.
+
+We employ the autodiff algorithm of the Eigen \citep{eigen} C++ library to compute
+derivatives of the flux with respect to all input parameters. Although fast,
+evaluation of the derivatives introduces significant overhead to the computation
+and is therefore disabled by default. To enable it, users should instantiate the
+\starry classes from the \starrygrad module (i.e., users should use
+\gradMap instead of \starryMap). The classes in this module are
+identical in most respects to those in \starry, but automatically compute derivatives
+whenever their methods are called. All derivatives are stored in the \textsf{gradient}
+property of the class as a dictionary. As an example, let us instantiate a \gradMap
+class and compute the flux at one point during an occultation:
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+from starry.grad import Map
+map = Map(1)
+map[1, 0] = 1
+map.flux(axis=(0, 1, 0), theta=0.3, xo=0.1, yo=0.1, ro=0.1)
+\end{lstlisting}
+%
+Running the code above outputs the value of the flux, \textsf{0.962688...},
+which is exactly what you'd get with \starryMap. However, behind the scenes,
+\starry also computed gradients. Here's what we get when we access \textsf{map.gradient}:
+%
+\begin{lstlisting}[language=Python,firstnumber=last]
+{'Y_{0,0}': array([0.]),
+ 'Y_{1,-1}': array([-0.00153499]),
+ 'Y_{1,0}': array([0.96268827]),
+ 'Y_{1,1}': array([-0.29940113]),
+ 'axis_x': array([0.00045362]),
+ 'axis_y': array([0.]),
+ 'axis_z': array([-6.85580453e-05]),
+ 'ro': array([-0.29791067]),
+ 'theta': array([-0.29940113]),
+ 'xo': array([-0.00304715]),
+ 'yo': array([0.00148905])}
+\end{lstlisting}
+%
+These are the gradients of the flux with respect to each of the four map
+coefficients, the three components of the rotation axis, the occultor radius,
+the rotational phase, and the $xy$ position of the occultor.
 %
 \begin{figure}[ht]
     \begin{centering}
     \includegraphics[width=0.9\linewidth]{figures/autodiff.pdf}
     \caption{\label{fig:autodiff}
              \python{autodiff}
-             Hello! Autodiff!}
+             Transit (top left) and secondary eclipse (top right) of a mildly
+             eccentric, slightly inclined, quickly-rotating hot Jupiter with a
+             dipole map, computed with \gradMap. All calls to the \gradflux
+             and \gradeval methods of the maps in \starrygrad automatically
+             compute derivatives with respect to all input parameters. Derivatives
+             as a function of time for several of these parameters are plotted in
+             orange below each light curve. From top to bottom, the curves correspond
+             to derivatives with respect to time, planet radius, planet luminosity,
+             orbital period, eccentricity, inclination, longitude of pericenter,
+             rotational period, five of the planet surface map coefficients, and
+             the linear and quadratic stellar limb darkening coefficients.
+             }
     \end{centering}
 \end{figure}
 %
+Figure~\ref{fig:autodiff} shows an example of the autodiff capabilities of
+\starry for a transit and a secondary eclipse of a hot Jupiter.
 
 % ------------------------------------------------------------------------------
 \subsection{Benchmarks}
@@ -1450,7 +1524,7 @@ of the latter.
 Figure~\ref{fig:compare_to_numerical} shows the evaluation time for
 occultation calculations as a function of the spherical
 harmonic degree $l$ of the map. Analytical solutions computed with \starry
-are shown as the blue dots. Also shown are calculations using the adaptive
+are shown as the blue dots (purple dots for \starrygrad). Also shown are calculations using the adaptive
 mesh technique described in the previous section (orange dots),
 brute-force integration on a 300$\times$300 Cartesian grid (green dots),
 and numerical evaluation of the double integral using the
@@ -1466,10 +1540,8 @@ maps of different degree $l$, and the bottom panel shows curves for single-order
 maps of degree $l = 5$. Evaluation time scales exponentially with increasing
 degree, but \starry can compute full occultation light curves for $l = 5$ maps
 with $10^5$ points in under one second. Evaluation time is roughly constant
-across the different orders at fixed degree, except $m = 0$, which is substantially
-faster to evaluate (blue curve, bottom right). \starry is therefore particularly
-efficient at calculating light curves for symmetric maps, such as those of
-limb-darkened stars. In Figure~\ref{fig:speed_batman} we show a speed comparison
+across the different orders at fixed degree.
+In Figure~\ref{fig:speed_batman} we show a speed comparison
 to the \batman transit package \citep{Kreidberg2015} for transits across a
 quadratically limb-darkened star. \starry is as efficient as \batman at
 computing transit light curves.
@@ -1481,7 +1553,7 @@ computing transit light curves.
              \python{speed}
              Evaluation time for a single occultation calculation as a function
              of the spherical harmonic degree of the map using
-             \starry (blue), the adaptive mesh technique (\S\ref{sec:starrybenchmarks}, orange),
+             \starry (blue), \starrygrad (purple), the adaptive mesh technique (\S\ref{sec:starrybenchmarks}, orange),
              brute force integration on a Cartesian grid (green), and
              \textsf{scipy}'s \textsf{dblquad} two-dimensional numerical
              integration routine (red).
@@ -1608,7 +1680,7 @@ can bypass these numerical issues by calling the
 map.flux_mp(...)
 \end{lstlisting}
 %
-routine instead of \textsf{map.flux()} to enable multiprecision mode,
+routine instead of \starryMapflux to enable multiprecision mode,
 which by default is set to quadruple (128-bit) floating point precision.
 We caution, however, that this will increase computation time by at least
 an order of magnitude.
@@ -1658,7 +1730,7 @@ analytically and is comparable in speed to other transit-modeling packages such
 as \batman \citep{Kreidberg2015}. Because the light curves are all analytical,
 \starry can also easily compute analytical gradients of the light curves with respect
 to all input parameters via autodifferentiation, facilitating its interface with
-gradient-based inference schemes such as Hamiltonian Monte Carol (HMC)
+gradient-based inference schemes such as Hamiltonian Monte Carlo (HMC)
 or gradient-descent optimization methods.
 
 Although we have in mind the application of this \starry to exoplanets, it could

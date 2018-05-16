@@ -156,11 +156,15 @@ namespace orbital {
 
             // Orbital position
             Vector<T> x;
+            T x_;
             Vector<T> y;
+            T y_;
             Vector<T> z;
+            T z_;
 
             // Flux
             Vector<T> flux;
+            T flux_;
 
             // Constructor
             Body(// Map stuff
@@ -238,8 +242,8 @@ namespace orbital {
 
             // Public methods
             T theta(const T& time);
-            void step(const T& time, const int& t);
-            void getflux(const T& time, const int& t, const T& xo=0, const T& yo=0, const T& ro=0);
+            void step(const T& time);
+            void getflux(const T& time, const T& xo=0, const T& yo=0, const T& ro=0);
             std::string repr();
     };
 
@@ -254,25 +258,25 @@ namespace orbital {
 
     // Compute the flux in occultation
     template <class T>
-    inline void Body<T>::getflux(const T& time, const int& t, const T& xo, const T& yo, const T& ro){
+    inline void Body<T>::getflux(const T& time, const T& xo, const T& yo, const T& ro){
         if (L != 0) {
             if (is_star)
-                flux(t) += norm * ldmap.flux(xo, yo, ro) - totalflux;
+                flux_ += norm * ldmap.flux(xo, yo, ro) - totalflux;
             else
-                flux(t) += norm * L * map.flux(axis, theta(time), xo, yo, ro) - totalflux;
+                flux_ += norm * L * map.flux(axis, theta(time), xo, yo, ro) - totalflux;
         }
     }
 
     // Compute the instantaneous x, y, and z positions of the
     // body with a simple Keplerian solver.
     template <class T>
-    inline void Body<T>::step(const T& time, const int& t){
+    inline void Body<T>::step(const T& time){
 
         // Primary is fixed at the origin in the Keplerian solver
         if (is_star) {
-            x(t) = 0;
-            y(t) = 0;
-            z(t) = 0;
+            x_ = 0;
+            y_ = 0;
+            z_ = 0;
         } else {
 
             // Mean anomaly
@@ -295,9 +299,9 @@ namespace orbital {
             // Murray and Dermott p. 51
             cwf = cos(w + f);
             swf = sin(w + f);
-            x(t) = rorb * (cosO * cwf - sinOcosi * swf);
-            y(t) = rorb * (sinO * cwf + cosOcosi * swf);
-            z(t) = rorb * swf * sini;
+            x_ = rorb * (cosO * cwf - sinOcosi * swf);
+            y_ = rorb * (sinO * cwf + cosOcosi * swf);
+            z_ = rorb * swf * sini;
 
         }
 
@@ -312,7 +316,7 @@ namespace orbital {
                 totalflux = norm * L * map.flux(axis, theta_time);
             }
         }
-        flux(t) = totalflux;
+        flux_ = totalflux;
 
         return;
 
@@ -392,12 +396,22 @@ namespace orbital {
             bool computed;
             T zero;
 
+            T exptol;
+            T exptime;
+            int expmaxdepth;
+
             // Derivatives dictionary
             std::map<string, Eigen::VectorXd> derivs;
 
             // Constructor
-            System(vector<Body<T>*> bodies, const double& eps=1.0e-7, const int& maxiter=100) :
-                bodies(bodies), eps(eps), maxiter(maxiter) {
+            System(vector<Body<T>*> bodies, const double& eps=1.0e-7, const int& maxiter=100,
+                   const double& exptime=0, const double& exptol=1e-8, const int& expmaxdepth=4) :
+                bodies(bodies),
+                eps(eps),
+                maxiter(maxiter),
+                exptol(exptol),
+                exptime(exptime * DAY), // Convert to seconds
+                expmaxdepth(expmaxdepth) {
 
                 // Check that we have at least one body
                 if (bodies.size() == 0)
@@ -421,7 +435,10 @@ namespace orbital {
             }
 
             // Methods
+            T compute(const T& time);
             void compute(const Vector<T>& time);
+            T integrate (const T& f1, const T& f2, const T& t1, const T& t2, int depth);
+            T integrate (const T& time);
             std::string repr();
 
     };
@@ -434,16 +451,83 @@ namespace orbital {
         return std::string(os.str());
     }
 
+    //
+    template <class T>
+    T System<T>::integrate (const T& f1, const T& f2, const T& t1, const T& t2, int depth) {
+        T tmid = 0.5 * (t1 + t2);
+        T fmid = compute(tmid),
+          fapprox = 0.5 * (f1 + f2),
+          d = abs(fmid - fapprox);
+        if (d > exptol && depth < expmaxdepth) {
+            T a = integrate(f1, fmid, t1, tmid, depth + 1),
+              b = integrate(fmid, f2, tmid, t2, depth + 1);
+            return a + b;
+        }
+        return fapprox * (t2 - t1);
+    };
+
+    //
+    template <class T>
+    T System<T>::integrate (const T& time) {
+        if (exptime > 0.0) {
+            T dt = 0.5 * exptime,
+              t1 = time - dt,
+              t2 = time + dt;
+            return integrate(compute(t1), compute(t2), t1, t2, 0) / (t2 - t1);
+        }
+        return compute(time);
+    };
+
+    // Compute one cadence of the light curve
+    template <class T>
+    T System<T>::compute(const T& time) {
+
+        int i, j;
+        T xo, yo, ro;
+        int p, o;
+        int NB = bodies.size();
+        T result = 0;
+
+        // Take an orbital step
+        for (i = 0; i < NB; i++)
+            bodies[i]->step(time);
+
+        // Compute any occultations
+        for (i = 0; i < NB; i++) {
+            for (j = i + 1; j < NB; j++) {
+                // Determine the relative positions of the two bodies
+                if (bodies[j]->z_ > bodies[i]->z_) {
+                    o = j;
+                    p = i;
+                } else {
+                    o = i;
+                    p = j;
+                }
+                xo = (bodies[o]->x_ - bodies[p]->x_) / bodies[p]->r;
+                yo = (bodies[o]->y_ - bodies[p]->y_) / bodies[p]->r;
+                ro = (bodies[o]->r / bodies[p]->r);
+                // Compute the flux in occultation
+                if (sqrt(xo * xo + yo * yo) < 1 + ro) {
+                    bodies[p]->getflux(time, xo, yo, ro);
+                }
+            }
+        }
+
+        // Sum and return
+        for (i = 0; i < NB; i++) result += bodies[i]->flux_;
+        return result;
+
+    }
+
     // Compute the light curve
     template <class T>
     void System<T>::compute(const Vector<T>& time) {
 
-        int i, j, t;
-        T xo, yo, ro;
+        int i, t;
         T tsec;
-        int p, o;
         int NT = time.size();
         int NB = bodies.size();
+        flux = Vector<T>::Zero(NT);
 
         // Allocate arrays and check that the planet maps are physical
         for (i = 0; i < NB; i++) {
@@ -459,37 +543,17 @@ namespace orbital {
             // Time in seconds
             tsec = time(t) * DAY;
 
-            // Take an orbital step
-            for (i = 0; i < NB; i++)
-                bodies[i]->step(tsec, t);
+            // Take an orbital step and compute the fluxes
+            flux(t) = integrate(tsec);
 
-            // Compute any occultations
+            // Update the body vectors
             for (i = 0; i < NB; i++) {
-                for (j = i + 1; j < NB; j++) {
-                    // Determine the relative positions of the two bodies
-                    if (bodies[j]->z(t) > bodies[i]->z(t)) {
-                        o = j;
-                        p = i;
-                    } else {
-                        o = i;
-                        p = j;
-                    }
-                    xo = (bodies[o]->x(t) - bodies[p]->x(t)) / bodies[p]->r;
-                    yo = (bodies[o]->y(t) - bodies[p]->y(t)) / bodies[p]->r;
-                    ro = (bodies[o]->r / bodies[p]->r);
-                    // Compute the flux in occultation
-                    if (sqrt(xo * xo + yo * yo) < 1 + ro) {
-                        bodies[p]->getflux(tsec, t, xo, yo, ro);
-                    }
-                }
+                bodies[i]->flux(t) = bodies[i]->flux_;
+                bodies[i]->x(t) = bodies[i]->x_;
+                bodies[i]->y(t) = bodies[i]->y_;
+                bodies[i]->z(t) = bodies[i]->z_;
             }
 
-        }
-
-        // Add up all the fluxes
-        flux = Vector<T>::Zero(NT);
-        for (i = 0; i < NB; i++) {
-            flux += bodies[i]->flux;
         }
 
         // Set the flag
@@ -501,13 +565,13 @@ namespace orbital {
     template <>
     void System<Grad>::compute(const Vector<Grad>& time) {
 
-        int i, j, t, n, k, l, m;
+        int i, t, n, k, l, m;
         Grad xo, yo, ro;
         Grad tsec;
-        int p, o;
         int NT = time.size();
         int NB = bodies.size();
         vector<Vector<double>> tmpder;
+        flux = Vector<Grad>::Zero(NT);
 
         // List of gradient names
         vector<string> names {"time"};
@@ -625,36 +689,19 @@ namespace orbital {
                     bodies[i]->map.y(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
             }
 
-            // Take an orbital step
-            for (i = 0; i < NB; i++)
-                bodies[i]->step(tsec, t);
+            // Take an orbital step and compute the fluxes
+            flux(t) = integrate(tsec);
 
-            // Compute any occultations
+            // Get the total system flux and update body vectors
             for (i = 0; i < NB; i++) {
-                for (j = i + 1; j < NB; j++) {
+                flux(t) += bodies[i]->flux_;
+                bodies[i]->flux(t) = bodies[i]->flux_;
+                bodies[i]->x(t) = bodies[i]->x_;
+                bodies[i]->y(t) = bodies[i]->y_;
+                bodies[i]->z(t) = bodies[i]->z_;
 
-                    // Determine the relative positions of the two bodies
-                    if (bodies[j]->z(t) > bodies[i]->z(t)) {
-                        o = j;
-                        p = i;
-                    } else {
-                        o = i;
-                        p = j;
-                    }
-                    xo = (bodies[o]->x(t) - bodies[p]->x(t)) / bodies[p]->r;
-                    yo = (bodies[o]->y(t) - bodies[p]->y(t)) / bodies[p]->r;
-                    ro = (bodies[o]->r / bodies[p]->r);
-
-                    // Compute the flux in occultation
-                    if (sqrt(xo * xo + yo * yo) < 1 + ro) {
-                        bodies[p]->getflux(tsec, t, xo, yo, ro);
-                    }
-                }
-            }
-
-            // Store the derivs
-            for (n = 0; n < ngrad; n++) {
-                for (i = 0; i < NB; i++) {
+                // Store the derivs
+                for (n = 0; n < ngrad; n++) {
                     (bodies[i]->derivs[names[n]])(t) = bodies[i]->flux(t).derivatives()(n);
                     if (i == 0)
                         (derivs[names[n]])(t) = bodies[i]->flux(t).derivatives()(n);
@@ -663,12 +710,6 @@ namespace orbital {
                 }
             }
 
-        }
-
-        // Add up all the fluxes
-        flux = Vector<Grad>::Zero(NT);
-        for (i = 0; i < NB; i++) {
-            flux += bodies[i]->flux;
         }
 
         // Set the flag

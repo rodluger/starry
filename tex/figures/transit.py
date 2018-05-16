@@ -135,10 +135,14 @@ m = batman.TransitModel(params, time)
 bF = m.light_curve(params)
 ax[0].plot(time[::20], bF[::20], '.', color='C1', label='batman')
 
-# Plot the residual error
-ax[1].plot(time, 1e6 * np.abs(nF - sF) / (1 - nF), '-',
+# Plot the relative error
+sE = np.abs(nF - sF)
+sE[sE == 0] = np.nan
+bE = np.abs(nF - bF)
+bE[bE == 0] = np.nan
+ax[1].plot(time, 1e6 * sE, '-',
            color='C0', label='starry')
-ax[1].plot(time, 1e6 * np.abs(nF - bF) / (1 - nF), '-',
+ax[1].plot(time, 1e6 * bE, '-',
            color='C1', label='batman')
 ax[1].set_yscale('log')
 
@@ -147,7 +151,7 @@ ax[0].legend(loc='lower right')
 ax[1].legend(loc='lower right')
 ax[0].set_xlim(-0.25, 0.25)
 ax[0].set_ylabel('Normalized flux', fontsize=16)
-ax[1].set_ylabel('Depth error [ppm]', fontsize=16, labelpad=10)
+ax[1].set_ylabel('Relative error [ppm]', fontsize=16, labelpad=10)
 ax[1].set_xlabel('Time [arbitrary units]', fontsize=16)
 
 # Save

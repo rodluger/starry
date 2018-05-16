@@ -22,6 +22,8 @@
 \usepackage{booktabs}
 \usepackage{xspace}
 \usepackage{upgreek}
+\usepackage[T1]{fontenc} % https://tex.stackexchange.com/a/166791
+\usepackage{textcomp}
 \stackMath
 
 % Page breaks in long equations
@@ -54,7 +56,11 @@
 \newcommand{\starryMapg}{\href{https://rodluger.github.io/starry/starry.html\#starry.Map.g}{\color{black}\textsf{map.g}}\xspace}
 \newcommand{\flux}{\href{https://rodluger.github.io/starry/starry.html\#starry.Map.flux}{\color{black}\textsf{flux()}}\xspace}
 \newcommand{\starrySystemflux}{\href{https://rodluger.github.io/starry/starry.html\#starry.System.flux}{\color{black}\textsf{system.flux}}\xspace}
-
+\newcommand{\starryMapflux}{\href{https://rodluger.github.io/starry/starry.html\#starry.Map.flux}{\color{black}\textsf{map.flux}}\xspace}
+\newcommand{\gradMap}{\href{https://rodluger.github.io/starry/starry.html\#starry.grad.Map}{\color{black}\textsf{starry.grad.Map}}\xspace}
+\newcommand{\gradflux}{\href{https://rodluger.github.io/starry/starry.html\#starry.grad.Map.flux}{\color{black}\textsf{flux()}}\xspace}
+\newcommand{\gradeval}{\href{https://rodluger.github.io/starry/starry.html\#starry.grad.Map.evaluate}{\color{black}\textsf{evaluate()}}\xspace}
+\newcommand{\starrygrad}{\href{https://rodluger.github.io/starry/starry.html\#starry.grad}{\color{black}\textsf{starry.grad}}\xspace}
 
 % References to text content
 \newcommand{\documentname}{\textsl{article}}
@@ -145,6 +151,7 @@
     belowskip=1em,
     keywords=[2]{map},
     keywordstyle=[2]{\color{black!80!black}},
+    upquote=true
 }
 \lstset{style=mystyle}
 
