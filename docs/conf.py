@@ -15,7 +15,8 @@
 import sys
 import os
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-import sphinx_rtd_theme
+print(__file__)
+sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
 import starry
 
 # If extensions (or modules to document with autodoc) are in another directory,
