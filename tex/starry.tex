@@ -88,7 +88,12 @@ solid or liquid surfaces
     \item Cite \citet{Pal2012} and mention Green's theorem.
     \item Discuss JWST and prospects for exocartography.
     \item Mention other relevant papers.
-    \item ...
+    \item \citet{Farr2018} \exocartographer
+    \item \citet{Haggard2018} \earl
+    \item \citet{Louden2018} \spiderman
+    \item \citet{Pal2008} analytic derivatives
+    \item \citet{Majeau2012} use Green's theorem to compute spherical harmonics integrals,
+          but they evaluate both the inner and outer integrals numerically.
 \end{itemize}
 %
 %
@@ -300,6 +305,8 @@ As we will see in the next section, integrating the surface map over the disk of
 the body is easier if we apply one final transformation to our input vector,
 rotating it into what we will refer to as the \emph{Green's basis}, $\gbasis$:
 %
+\begingroup\makeatletter\def\f@size{10}\check@mathfonts
+\def\maketag@@@#1{\hbox{\m@th\normalsize#1}}%
 \begin{align}
     \label{eq:bg}
     \gbasisn &=
@@ -349,6 +356,7 @@ rotating it into what we will refer to as the \emph{Green's basis}, $\gbasis$:
     \quad,
     \mathematica{A2}
 \end{align}
+\endgroup
 %
 where the values of $l$, $m$, $\mu$, and $\nu$ are given by
 Equations~(\ref{eq:lm}) and (\ref{eq:munu}). Given
@@ -516,6 +524,10 @@ with an arbitrary surface map. Since $\bvec{r}$ and $\bvec{A_1}$ are independent
 of the map coefficients or its orientation, these may be pre-computed for
 computational efficiency.
 
+We note, finally, that a form of this solution was very recently found by \citet{Haggard2018};
+a special case of their equations for phase curves in reflected light yields
+analytic expressions for thermal phase curves of spherical harmonics.
+
 % ------------------------------------------------------------------------------
 \subsection{Occultation light curves}
 \label{sec:occultationflux}
@@ -532,7 +544,7 @@ and the rotation matrix $\vec{R}$ may also be written as
     \quad,
 \end{align}
 %
-where $\gbasis$ is the Greens basis and $\bvec{A}$ is the full change of basis
+where $\gbasis$ is the Green's basis and $\bvec{A}$ is the full change of basis
 matrix (\S\ref{sec:basis}).
 As before, the total flux radiated
 in the direction of the observer is obtained by integrating the specific
@@ -544,26 +556,14 @@ intensity over a region $S$ of the projected disk of the body:
     \oiint I(\x, \y) \, \dd S
     \nonumber \\
     &=
-    \oiint \gbasis^\mathsf{T} (\x, \y) \bvec{A} \, \bvec{R} \, \bvec{y} \, \dd S
-    \nonumber \\
-    &= \bvec{s}^\mathsf{T} \bvec{A} \, \bvec{R} \, \bvec{y} \,
-      \quad,
-\end{align}
-%
-where $\bvec{s}$ is a column vector whose $n^\mathrm{th}$ component is given by
-%
-\begin{align}
-    \label{eq:sndef}
-    s_n &\equiv
-      \oiint \gbasisn (\x, \y)  \, \dd S
-    \quad.
+    \oiint \gbasis^\mathsf{T} (\x, \y) \, \dd S \, \bvec{A} \, \bvec{R} \, \bvec{y}\quad.
 \end{align}
 %
 This time, suppose the body is
 occulted by another body of radius $r$ centered at the point $(x_o, y_o)$,
 so that the surface $S$ over which the integral is taken
 is a function of $r$, $x_o$, and $y_o$.
-In general, the integrals in \eq{sndef} are
+In general, the integral in \eq{occint} is
 difficult (and often impossible) to compute directly.
 %
 One way to simplify the problem is to first perform a rotation through an angle
@@ -626,12 +626,19 @@ be computed as in \S\ref{sec:phasecurves}, while
 if $b \le r - 1$, the entire disk of the body is occulted and the total flux
 is zero.
 
-%
-
 The second trick we employ to solve \eq{sn} is to use
 Green's theorem to express the surface integral of $\gbasis_n$ as the
 line integral of a vector function $\bvec{G}_n$ along the boundary of
-the same surface \citep{Pal2012}:
+the same surface \citep{Pal2012}. Defining the ``solution'' column vector
+%
+\begin{align}
+    \label{eq:sndef}
+    \bvec{s}^\mathsf{T} &\equiv
+      \oiint \gbasis^\mathsf{T} (\x, \y)  \, \dd S
+    \quad,
+\end{align}
+%
+we may write its $n^\mathrm{th}$ component as
 %
 \begin{align}
     \label{eq:greens}
@@ -639,7 +646,7 @@ the same surface \citep{Pal2012}:
     \oiint \gbasisn (\x, \y) \, \dd S
     =
     \oint \bvec{G}_n (\x, \y) \cdot \dd \bvec{r}
-    \quad
+    \quad,
 \end{align}
 %
 where $\bvec{G}_n (\x, \y) = {G_n}_x (\x, \y) \, \xhat + {G_n}_y (\x, \y) \, \yhat$ is
@@ -1462,7 +1469,7 @@ These are the gradients of the flux with respect to each of the four map
 coefficients, the three components of the rotation axis, the occultor radius,
 the rotational phase, and the $xy$ position of the occultor.
 %
-\begin{figure}[ht]
+\begin{figure}[p!]
     \begin{centering}
     \includegraphics[width=0.9\linewidth]{figures/autodiff.pdf}
     \caption{\label{fig:autodiff}
@@ -2380,7 +2387,7 @@ as
 where $\Theta(\bigdot)$ is the Heaviside step function and
 %
 \begingroup\makeatletter\def\f@size{10}\check@mathfonts
-\def\maketag@@@#1{\hbox{\m@th\large\normalfont#1}}%
+\def\maketag@@@#1{\hbox{\m@th\normalsize#1}}%
 \begin{align}
     \label{eq:biglam}
     \Lambda &=

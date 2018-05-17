@@ -12,7 +12,7 @@ import numpy as np
 np.random.seed(1234)
 
 
-def GridFlux(I, b, r, res=100):
+def GridFlux(I, b, r, res=300):
     """Compute the flux by brute-force grid integration."""
     flux = 0
     dA = np.pi / (res ** 2)
@@ -119,7 +119,7 @@ def compare_to_numerical():
 
         def fgrid(self):
             self.vgrid = GridFlux(lambda y, x:
-                                  ylm.evaluate(x=x, y=y), b, r)
+                                  ylm.evaluate(x=x, y=y), b, r, res=res)
 
     funcs = Funcs()
     time_starry = np.zeros(lmax + 1)
