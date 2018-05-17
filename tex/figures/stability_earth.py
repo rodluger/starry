@@ -29,7 +29,7 @@ def earth_eclipse(lmax=8):
           pl.subplot2grid((7, nim), (4, 0), colspan=nim, rowspan=3)]
     fig.subplots_adjust(hspace=0.6)
     ax[0].plot(time, flux / flux[0])
-    ax[1].plot(time, np.abs(flux / flux128 - 1))
+    ax[1].plot(time, np.abs(flux - flux128))
     ax[1].set_yscale('log')
     ax[1].axhline(1e-3, color='k', ls='--', alpha=0.75, lw=0.5)
     ax[1].axhline(1e-6, color='k', ls='--', alpha=0.75, lw=0.5)
@@ -45,7 +45,7 @@ def earth_eclipse(lmax=8):
     ax[1].set_xlim(0, time[-1])
     ax[1].set_xlabel("Time [minutes]", fontsize=16)
     ax[0].set_ylabel("Normalized flux", fontsize=16, labelpad=15)
-    ax[1].set_ylabel("Fractional error", fontsize=16)
+    ax[1].set_ylabel("Relative error", fontsize=16)
 
     # Plot the earth images
     res = 100

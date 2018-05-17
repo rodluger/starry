@@ -24,7 +24,8 @@ planet = Planet(lmax=2, r=0.1, a=60, inc=89.5, porb=50, prot=0.75,
 planet.map[1, 0] = -0.5
 
 # Instantiate the system
-system = System([star, planet])
+# TODO: Broken for exposure_time != 0
+system = System([star, planet], exposure_time=0)
 
 # Set up the plot
 fig = pl.figure(figsize=(8, 8))

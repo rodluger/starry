@@ -694,7 +694,6 @@ namespace orbital {
 
             // Get the total system flux and update body vectors
             for (i = 0; i < NB; i++) {
-                flux(t) += bodies[i]->flux_;
                 bodies[i]->flux(t) = bodies[i]->flux_;
                 bodies[i]->x(t) = bodies[i]->x_;
                 bodies[i]->y(t) = bodies[i]->y_;
