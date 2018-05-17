@@ -41,6 +41,9 @@ def test_exposure():
         system.compute(time)
         flux_starry = system.flux
 
+        # BROKEN! Flux integration not working for individual bodies.
+        assert np.allclose(system.flux, star.flux + planet.flux)
+
         assert np.max(np.abs(flux_manual - flux_starry)) < 1e-6
 
 

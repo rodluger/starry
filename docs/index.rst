@@ -7,6 +7,8 @@
    </div>
    <br/><br/>
 
+Documentation
+=============
 
 Welcome to the :py:mod:`starry` documentation. The :py:mod:`starry` code package
 enables the computation of light curves for various applications in
