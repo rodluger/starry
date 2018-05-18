@@ -47,7 +47,7 @@ and may be computed recursively for speed. The formalism we develop
 here applies to the computation of stellar transit light curves,
 planetary secondary eclipse light curves, and planet-planet/planet-moon
 occultation light curves, as well as thermal (rotational) phase curves.
-In this paper we also introduce \starry, an open-source photodynamical code written in \cpp
+In this paper we also introduce \starry, an open-source package written in \cpp
 and wrapped in \Python that computes these light curves.
 The algorithm in \starry is six orders of magnitude faster than direct
 numerical integration and several orders of magnitude more precise.
@@ -96,8 +96,8 @@ the upcoming James Webb Space Telescope (JWST) is expected to dramatically push 
 what can be inferred from these observations, potentially leading to the construction of de facto
 surface maps of planets in short orbital periods (\cn).
 %
-Future mission concepts such as the Large UV-Optical-InfraRed telescope (LUVOIR; \cn) and the
-Origins Space Telescope (OST; \cn) will likewise open doors for the mapping technique,
+Future mission concepts such as the Large UV-Optical-InfraRed telescope (LUVOIR) and the
+Origins Space Telescope (OST) will likewise open doors for the mapping technique,
 extending it to the study of exoplanets with solid or even liquid surfaces
 \citep[e.g.,][]{Cowan2012,CowanFuentesHaggard2013,CowanFujii2017,Fujii2017,LugerLustigYaegerAgol2017}.
 
@@ -139,7 +139,7 @@ real spherical harmonics and introduce our mathematical formalism for
 dealing with spherical harmonic surface maps. In \S\ref{sec:lightcurves} we
 discuss how to compute analytical thermal phase curves and occultation light curves
 for these surface maps. In \S\ref{sec:starrycode} we introduce our
-photodynamical code, \starry, and discuss how to use it to compute full
+light curve code, \starry, and discuss how to use it to compute full
 light curves for systems of exoplanets and other celestial bodies. We
 present important caveats in \S\ref{sec:caveats} and conclude in \S\ref{sec:conclusions}.
 Most of the math, including the derivations of the analytic expressions for the
@@ -1767,7 +1767,7 @@ only marginally slower than in the quadratic limb-darkening case.
 In the limit of zero occultor size, our expressions trivially reduce to equations
 for thermal phase curves of celestial bodies.
 
-We introduced \starry, a \Python-wrapped photodynamical model coded in \cpp
+We introduced \starry, a \Python-wrapped model coded in \cpp
 that can be used to compute phase curves and occultation light curves for
 individual celestial bodies or entire exoplanet systems. \starry computes
 transits, secondary eclipses, phase curves, and planet-planet occultations

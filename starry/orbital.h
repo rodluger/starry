@@ -439,10 +439,11 @@ namespace orbital {
             }
 
             // Methods
-            Vector<T> compute(const T& time, bool store_xyz=true);
             void compute(const Vector<T>& time);
+            inline Vector<T> compute(const T& time, bool store_xyz=true);
+            inline void compute_instantaneous(const Vector<T>& time);
             Vector<T> integrate (const Vector<T>& f1, const Vector<T>& f2, const T& t1, const T& t2, int depth);
-            Vector<T> integrate (const T& time);
+            inline Vector<T> integrate (const T& time);
             std::string repr();
 
     };
@@ -455,7 +456,7 @@ namespace orbital {
         return std::string(os.str());
     }
 
-    //
+    // Recursive exposure time integration function (single iteration)
     template <class T>
     Vector<T> System<T>::integrate (const Vector<T>& f1, const Vector<T>& f2, const T& t1, const T& t2, int depth) {
         T tmid = 0.5 * (t1 + t2);
@@ -476,9 +477,9 @@ namespace orbital {
         return fapprox * (t2 - t1);
     };
 
-    //
+    // Recursive exposure time integration function
     template <class T>
-    Vector<T> System<T>::integrate (const T& time) {
+    inline Vector<T> System<T>::integrate (const T& time) {
         if (exptime > 0.0) {
             T dt = 0.5 * exptime,
               t1 = time - dt,
@@ -491,7 +492,7 @@ namespace orbital {
 
     // Compute one cadence of the light curve
     template <class T>
-    Vector<T> System<T>::compute(const T& time, bool store_xyz) {
+    inline Vector<T> System<T>::compute(const T& time, bool store_xyz) {
 
         int i, j;
         T xo, yo, ro;
@@ -538,7 +539,10 @@ namespace orbital {
 
     // Compute the light curve
     template <class T>
-    void System<T>::compute(const Vector<T>& time) {
+    inline void System<T>::compute(const Vector<T>& time) {
+
+        // Optimized version of this function with no exposure time integration
+        if (exptime == 0.0) return compute_instantaneous(time);
 
         int i;
         T tsec;
@@ -568,6 +572,74 @@ namespace orbital {
             for (i = 0; i < NB; i++) {
                 bodies[i]->flux(t) = fluxes(i);
                 flux(t) += fluxes(i);
+            }
+
+        }
+
+        // Set the flag
+        computed = true;
+
+    }
+
+    // Compute the light curve. Special case w/ no exposure time integration
+    // optimized for speed.
+    template <class T>
+    inline void System<T>::compute_instantaneous(const Vector<T>& time) {
+
+        int i, j;
+        T xo, yo, ro;
+        T tsec;
+        int p, o;
+        int NT = time.size();
+        int NB = bodies.size();
+        flux = Vector<T>::Zero(NT);
+
+        // Allocate arrays and check that the planet maps are physical
+        for (i = 0; i < NB; i++) {
+            bodies[i]->x.resize(NT);
+            bodies[i]->y.resize(NT);
+            bodies[i]->z.resize(NT);
+            bodies[i]->flux.resize(NT);
+        }
+
+        // Loop through the timeseries
+        for (t = 0; t < NT; t++){
+
+            // Time in seconds
+            tsec = time(t) * DAY;
+
+            // Take an orbital step
+            for (i = 0; i < NB; i++)
+                bodies[i]->step(tsec);
+
+            // Compute any occultations
+            for (i = 0; i < NB; i++) {
+                for (j = i + 1; j < NB; j++) {
+                    // Determine the relative positions of the two bodies
+                    if (bodies[j]->z_ > bodies[i]->z_) {
+                        o = j;
+                        p = i;
+                    } else {
+                        o = i;
+                        p = j;
+                    }
+                    xo = (bodies[o]->x_ - bodies[p]->x_) / bodies[p]->r;
+                    yo = (bodies[o]->y_ - bodies[p]->y_) / bodies[p]->r;
+                    ro = (bodies[o]->r / bodies[p]->r);
+                    // Compute the flux in occultation
+                    if (sqrt(xo * xo + yo * yo) < 1 + ro) {
+                        bodies[p]->getflux(tsec, xo, yo, ro);
+                    }
+                }
+            }
+
+            // Update the body vectors
+            for (i = 0; i < NB; i++) {
+                bodies[i]->x(t) = bodies[i]->x_;
+                bodies[i]->y(t) = bodies[i]->y_;
+                bodies[i]->z(t) = bodies[i]->z_;
+                bodies[i]->flux(t) = bodies[i]->flux_;
+                flux(t) += bodies[i]->flux_;
             }
 
         }
