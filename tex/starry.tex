@@ -12,22 +12,34 @@
 }
 
 \author[0000-0002-0296-3826]{Rodrigo Luger}
+\email{rodluger@uw.edu}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
+\affil{Virtual~Planetary~Laboratory, University~of~Washington, Seattle, WA}
+%
 \author{Eric Agol}
-\affil{Department~of~Astronomy, University~of~Washington, Seattle, WA; Virtual Planetary Laboratory; Guggenheim Fellow}
-\author{David P. Fleming}
+\altaffiliation{Guggenheim~Fellow}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
-\author{Jacob Lustig-Yaeger}
-\affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
-\author{Russell Deitrick}
-\affil{Center~for~Space~and~Habitability, University~of~Bern, Bern, Switzerland}
+\affil{Virtual~Planetary~Laboratory, University~of~Washington, Seattle, WA}
+%
 \author{Daniel Foreman-Mackey}
 \affil{Center~for~Computational~Astrophysics, Flatiron~Institute, New~York, NY}
+%
+\author{David P. Fleming}
+\affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
+\affil{Virtual~Planetary~Laboratory, University~of~Washington, Seattle, WA}
+%
+\author{Jacob Lustig-Yaeger}
+\affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
+\affil{Virtual~Planetary~Laboratory, University~of~Washington, Seattle, WA}
+%
+\author{Russell Deitrick}
+\affil{Center~for~Space~and~Habitability, University~of~Bern, Bern, Switzerland}
+\affil{Virtual~Planetary~Laboratory, University~of~Washington, Seattle, WA}
 
 \keywords{methods: analytical --- techniques: photometric}
 
 \begin{abstract}
-We derive analytical, closed form solutions for the total flux
+We derive analytical, closed form, numerically stable solutions for the total flux
 received from a spherical planet, moon or star during an occultation
 if the specific intensity map of the body is expressed as a
 sum of spherical harmonics. Our expressions are valid to arbitrary degree
@@ -35,9 +47,11 @@ and may be computed recursively for speed. The formalism we develop
 here applies to the computation of stellar transit light curves,
 planetary secondary eclipse light curves, and planet-planet/planet-moon
 occultation light curves, as well as thermal (rotational) phase curves.
-We present \starry, an open-source photodynamical code written in \cpp
-and wrapped in \Python that computes these light curves. \starry also
-computes analytical derivatives of the light curves with respect to all input
+In this paper we also introduce \starry, an open-source photodynamical code written in \cpp
+and wrapped in \Python that computes these light curves.
+The algorithm in \starry is six orders of magnitude faster than direct
+numerical integration and several orders of magnitude more precise.
+\starry also computes analytical derivatives of the light curves with respect to all input
 parameters for use in gradient-based inference schemes such as
 Hamiltonian monte carlo (HMC), allowing users to quickly and efficiently
 regress on observed light curves to infer properties of a celestial body's
@@ -69,40 +83,61 @@ occultations yield the opportunity to constrain the presence of static variation
 in the surface features of exoplanets.
 
 The first application of time-dependent mapping to exoplanets was carried out in the
-infrared with the hot Jupiter HD 189733b using both phase-variations and
+infrared with the hot Jupiter HD 189733b using both phase variations and
 secondary eclipses of the exoplanet \citep{Knutson2007,Majeau2012,deWit2012}.
 These yielded crude constraints on the monopole and dipole components of the thermal
-emission from the thick, windy atmosphere of this giant planet. The subsequent
-discovery of vast numbers of smaller planets has
-opened the possibility of applying the mapping technique to exoplanets with
-solid or liquid surfaces
+emission from the thick, windy atmosphere of this giant planet.
+%
+Since then, phase curve and/or secondary eclipse measurements have been made for
+hundreds of other exoplanets \citep[e.g.,][]{Shabram2016, Jansen2017, Adams2018} and have allowed for
+the measurements of their average albedos and, in some cases, higher order spatial features
+such as hotspot offsets. Given its unprecedented photometric precision in the thermal infrared,
+the upcoming James Webb Space Telescope (JWST) is expected to dramatically push the boundaries of
+what can be inferred from these observations, potentially leading to the construction of de facto
+surface maps of planets in short orbital periods (\cn).
+%
+Future mission concepts such as the Large UV-Optical-InfraRed telescope (LUVOIR; \cn) and the
+Origins Space Telescope (OST; \cn) will likewise open doors for the mapping technique,
+extending it to the study of exoplanets with solid or even liquid surfaces
 \citep[e.g.,][]{Cowan2012,CowanFuentesHaggard2013,CowanFujii2017,Fujii2017,LugerLustigYaegerAgol2017}.
 
-%
-%
-%
-\noindent
-\begin{itemize}
-    \item Phase curves are a subset of rotational light curves
-          when a planet is tidally locked.\todo{todo}
-    \item Cite \citet{Pal2012} and mention Green's theorem.
-    \item Discuss JWST and prospects for exocartography.
-    \item Mention other relevant papers.
-    \item \citet{Farr2018} \exocartographer
-    \item \citet{Haggard2018} \earl
-    \item \citet{Louden2018} \spiderman
-    \item \citet{Pal2008} analytic derivatives
-    \item \citet{Majeau2012} use Green's theorem to compute spherical harmonics integrals,
-          but they evaluate both the inner and outer integrals numerically.
-\end{itemize}
-%
-%
-%
+As we gear up to perform these observations, it is essential that we have
+robust models of exoplanet light curves so
+that we may reliably infer the surface maps that generated them. Because the
+features that we seek will likely be close to the limit of detectability,
+exoplanet mapping is necessarily a probabilistic problem, necessitating
+a careful statistical approach capable of characterizing the uncertainty
+on the inferred map. Recently, \citet{Farr2018} introduced \exocartographer,
+a Bayesian model for inferring surface maps and rotation states
+of exoplanets directly imaged in reflected light. In a similar but
+complementary vein, \citet{Louden2018} presented \spiderman, a fast
+code to model phase curves and secondary eclipses of exoplanets, which
+the authors show is fast enough to be used in Markov Chain Monte Carlo
+(MCMC) runs for general mapping problems. However, both algorithms, along with all
+others in the literature to date, rely on numerical methods to compute
+the flux received from the planet during occultation. In addition to
+the potential loss of precision due to the approximations they employ,
+numerical algorithms are typically much slower than an analytic
+approach, should it exist. During the writing of this paper, \citet{Haggard2018} derived
+analytical solutions to the phase curve problem, demonstrating that an
+exoplanet's phase curve can be computed exactly in both thermal and
+reflected light if its map is expressed as a sum of spherical harmonics.
+
+Here we present an algorithm to compute analytic occultation light curves of stars,
+planets, or moons of arbitrary complexity if the surface map of the occulted body is expressed in the
+spherical harmonic basis. Our algorithm is a generalization of the \citet{MandelAgol2002}
+and \citet{Pal2012} analytic transit models to eclipses and occultations of bodies with arbitrary, non-radially
+symmetric surface maps or stars with limb darkening of arbitrary order.
+For radially symmetric, second-degree maps, our expressions reduce to the \citet{MandelAgol2002}
+quadratic limb-darkening transit model; in the limit of zero occultor size, they
+reduce to the expressions of \citet{Haggard2018} for thermal phase curves.
+
+% Mention that phase curves are a subset of rotational light curves when a planet is tidally locked.
 
 This paper is organized as follows: in \S\ref{sec:surfacemaps} we discuss the
 real spherical harmonics and introduce our mathematical formalism for
 dealing with spherical harmonic surface maps. In \S\ref{sec:lightcurves} we
-discuss how to compute analytical phase curves and occultation light curves
+discuss how to compute analytical thermal phase curves and occultation light curves
 for these surface maps. In \S\ref{sec:starrycode} we introduce our
 photodynamical code, \starry, and discuss how to use it to compute full
 light curves for systems of exoplanets and other celestial bodies. We
@@ -519,7 +554,7 @@ occurring), this may be written
 %
 where $\Gamma(\bigdot)$ is the gamma function.
 %
-\eq{phaseint} may be used to analytically compute the rotational phase curve of a body
+\eq{phaseint} may be used to analytically compute the rotational (thermal) phase curve of a body
 with an arbitrary surface map. Since $\bvec{r}$ and $\bvec{A_1}$ are independent
 of the map coefficients or its orientation, these may be pre-computed for
 computational efficiency.
@@ -1418,7 +1453,10 @@ the chains \citep[e.g.,][]{Betancourt2017}.
 
 In principle, one could differentiate the recurrence relations in
 the Appendix and arrive at expressions for the derivatives of a light curve with
-respect to any of the input parameters, but this would be an extremely tedious
+respect to any of the input parameters. \citet{Pal2008} derived gradients in
+this fashion for the case of transits across a quadratically limb-darkened star.
+However, for the complex surface maps we consider here, differentiating all our
+equations would be an extremely tedious
 task. Instead, we can take advantage of the analytic nature of our expressions
 and compute all derivatives using automatic differentiation \citep[autodiff; e.g.,][]{Wengert1964}.
 Despite the complexity of the expressions we derive here, each of the individual
@@ -1431,7 +1469,7 @@ than that of numeric (or symbolic) differentiation.
 
 We employ the autodiff algorithm of the Eigen \citep{eigen} C++ library to compute
 derivatives of the flux with respect to all input parameters. Although fast,
-evaluation of the derivatives introduces significant overhead to the computation
+evaluation of the derivatives introduces overhead to the computation
 and is therefore disabled by default. To enable it, users should instantiate the
 \starry classes from the \starrygrad module (i.e., users should use
 \gradMap instead of \starryMap). The classes in this module are
@@ -1767,8 +1805,14 @@ alien worlds.
 
 
 \acknowledgments
+This work was supported by the NASA Astrobiology
+Institute's Virtual Planetary Laboratory under Cooperative
+Agreement number NNA13AA93A.
+%
 Some of the results in this paper have been derived using the HEALPix
 \citep{Gorski2005} package.
+
+
 
 %
 \bibliography{starry}
