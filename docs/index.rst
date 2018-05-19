@@ -1,7 +1,7 @@
 .. raw:: html
 
    <div align="center">
-   <img src="_images/starry.png" width="600px">
+   <img src="_images/starry.png" width="450px">
    </img>
    <br/>
    </div>

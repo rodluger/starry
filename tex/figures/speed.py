@@ -12,7 +12,7 @@ import numpy as np
 np.random.seed(1234)
 
 
-def GridFlux(I, b, r, res=100):
+def GridFlux(I, b, r, res=300):
     """Compute the flux by brute-force grid integration."""
     flux = 0
     dA = np.pi / (res ** 2)
@@ -99,27 +99,26 @@ def compare_to_numerical():
     number = 1
     res = 300
     nstarry = 1000
-    ylm = starry.Map(lmax)
-    ylm_grad = starry.grad.Map(5)
 
     class Funcs(object):
 
         def fnumer(self):
             self.vnumer = NumericalFlux(lambda y, x:
-                                        ylm.evaluate(x=x, y=y), b, r)
+                                        self.ylm.evaluate(x=x, y=y), b, r)
 
         def fstar(self):
-            self.vstar = ylm.flux(xo=np.zeros(nstarry), yo=b, ro=r)[0]
+            self.vstar = self.ylm.flux(xo=np.zeros(nstarry), yo=b, ro=r)[0]
 
         def fgrad(self):
-            self.vgrad = ylm_grad.flux(xo=np.zeros(nstarry), yo=b, ro=r)[0]
+            self.vgrad = self.ylm_grad.flux(xo=np.zeros(nstarry),
+                                            yo=b, ro=r)[0]
 
         def fmesh(self):
-            self.vmesh = ylm.flux_numerical(yo=b, ro=r)
+            self.vmesh = self.ylm.flux_numerical(yo=b, ro=r)
 
         def fgrid(self):
             self.vgrid = GridFlux(lambda y, x:
-                                  ylm.evaluate(x=x, y=y), b, r)
+                                  self.ylm.evaluate(x=x, y=y), b, r, res=res)
 
     funcs = Funcs()
     time_starry = np.zeros(lmax + 1)
@@ -131,15 +130,17 @@ def compare_to_numerical():
     error_mesh = np.zeros(lmax + 1)
     error_grid = np.zeros(lmax + 1)
     for l in range(lmax + 1):
+        funcs.ylm = starry.Map(l)
+        funcs.ylm_grad = starry.grad.Map(min(l, 5))
         # Randomize a map and occultor properties
         b = np.random.random()
         r = np.random.random()
         for m in range(-l, l + 1):
             c = np.random.random()
-            ylm[l, m] = c
+            funcs.ylm[l, m] = c
             # NOTE: Default compile of starry.grad is for lmax <= 5
             if l <= 5:
-                ylm_grad[l, m] = c
+                funcs.ylm_grad[l, m] = c
         # Time the runs
         builtins.__dict__.update(locals())
         time_starry[l] = timeit.timeit('funcs.fstar()', number=1) / nstarry
