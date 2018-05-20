@@ -78,9 +78,10 @@ With the discovery of planets orbiting other
 stars, map-making becomes a formidable task: these planets are too distant to
 resolve their surfaces into maps as we do for our own planetary suite.  One way
 to overcome this drawback is to utilize the time-dependence of unresolved,
-disk-integrated light from planetary bodies:  both rotational variability and
-occultations yield the opportunity to constrain the presence of static variations
-in the surface features of exoplanets.
+disk-integrated light from planetary bodies:  both rotational variability 
+\citep{Russell1906,Lacis1972,Cowan2008}
+and occultations \citep{Williams2006,Rauscher2007} yield the opportunity to constrain 
+the presence of static variations in the surface features of exoplanets.
 
 The first application of time-dependent mapping to exoplanets was carried out in the
 infrared with the hot Jupiter HD 189733b using both phase variations and
@@ -94,12 +95,17 @@ the measurements of their average albedos and, in some cases, higher order spati
 such as hotspot offsets. Given its unprecedented photometric precision in the thermal infrared,
 the upcoming James Webb Space Telescope (JWST) is expected to dramatically push the boundaries of
 what can be inferred from these observations, potentially leading to the construction of de facto
-surface maps of planets in short orbital periods (\cn).
+surface maps of planets in short orbital periods \citep{Beichman2014,Schlawin2018}.
 %
 Future mission concepts such as the Large UV-Optical-InfraRed telescope (LUVOIR) and the
 Origins Space Telescope (OST) will likewise open doors for the mapping technique,
 extending it to the study of exoplanets with solid or even liquid surfaces
 \citep[e.g.,][]{Cowan2012,CowanFuentesHaggard2013,CowanFujii2017,Fujii2017,LugerLustigYaegerAgol2017}.
+Mutual transits binary planets, or planets and moons, seen in total flux
+with direct imaging may have surface features constrained with eclipse
+mapping \citep{Cabrera2007}, much as mutual events viewed in the Solar System
+\citep{Brinkman1973,Vermilion1974,Herzog1975,Brinkman1976,Reinsch1994,Young1999,
+Young2001,Livengood2011}.
 
 As we gear up to perform these observations, it is essential that we have
 robust models of exoplanet light curves so
@@ -125,7 +131,7 @@ reflected light if its map is expressed as a sum of spherical harmonics.
 
 Here we present an algorithm to compute analytic occultation light curves of stars,
 planets, or moons of arbitrary complexity if the surface map of the occulted body is expressed in the
-spherical harmonic basis. Our algorithm is a generalization of the \citet{MandelAgol2002}
+spherical harmonic basis. Our algorithm is a generalization of the \citet{MandelAgol2002}, \citet{Gimenez2006},
 and \citet{Pal2012} analytic transit models to eclipses and occultations of bodies with arbitrary, non-radially
 symmetric surface maps or stars with limb darkening of arbitrary order.
 For radially symmetric, second-degree maps, our expressions reduce to the \citet{MandelAgol2002}
