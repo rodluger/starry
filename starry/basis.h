@@ -9,6 +9,7 @@ Spherical harmonic, polynomial, and Green's basis utilities.
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
+#include <Eigen/Dense>
 #include <Eigen/SparseLU>
 #include "fact.h"
 #include "sqrtint.h"
@@ -241,6 +242,33 @@ namespace basis {
         }
 
         return;
+    }
+
+    // Compute the change of basis from limb darkening coefficients
+    // to spherical harmonic coefficients
+    void computeU(int lmax, Matrix<double>& U) {
+        double amp;
+        Matrix<double> LT, YT;
+        LT.setZero(lmax + 1, lmax + 1);
+        YT.setZero(lmax + 1, lmax + 1);
+
+        // Compute L^T and Y^T
+        for (int l = 0; l < lmax + 1; l++) {
+            amp = pow(2, l) * sqrt((2 * l + 1) / (4 * M_PI)) / fact::factorial(l);
+            for (int k = 0; k < l + 1; k++) {
+                if ((k + 1) % 2 == 0)
+                    LT(k, l) = fact::choose(l, k);
+                else
+                    LT(k, l) = -fact::choose(l, k);
+                YT(k, l) = amp * fact::choose(l, k) * fact::half_factorial(k + l - 1) / fact::half_factorial(k - l - 1);
+            }
+        }
+
+        // Compute U
+        Eigen::HouseholderQR<Eigen::MatrixXd> solver(lmax + 1, lmax + 1);
+        solver.compute(YT);
+        U = solver.solve(LT);
+
     }
 
 

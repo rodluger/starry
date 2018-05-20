@@ -37,6 +37,7 @@ namespace maps {
             Eigen::SparseMatrix<double> A;
             VectorT<double> rTA1;
             VectorT<double> rT;
+            Matrix<double> U;
 
             // Constructor: compute the matrices
             Constants(int lmax) : lmax(lmax) {
@@ -44,6 +45,7 @@ namespace maps {
                 basis::computeA(lmax, A1, A);
                 solver::computerT(lmax, rT);
                 rTA1 = rT * A1;
+                basis::computeU(lmax, U);
             }
 
     };
@@ -511,11 +513,9 @@ namespace maps {
             // Temporary variables
             Vector<T> ARRy;
             Vector<T> tmpvec;
+            Vector<T> tmpy;
 
         public:
-
-            // Total flux
-            T ld_flux;
 
             // The map vectors
             Vector<T> y;
@@ -548,6 +548,7 @@ namespace maps {
                 p = Vector<T>::Zero(N);
                 g = Vector<T>::Zero(N);
                 u = Vector<T>::Zero(lmax + 1);
+                tmpy = Vector<T>::Zero(lmax + 1);
                 tmpvec = Vector<T>::Zero(N);
                 ARRy = Vector<T>::Zero(N);
                 mpVec = Vector<bigdouble>::Zero(N);
@@ -573,38 +574,60 @@ namespace maps {
     template <class T>
     void LimbDarkenedMap<T>::update() {
 
-        // Update the spherical harmonic vector
+        // Update our map vectors
         T norm;
         y.setZero(N);
+
+        // Fast relations for constant, linear, and quad limb darkening
         if (lmax == 0) {
             norm = M_PI;
             y(0) = 2 * sqrt(M_PI) / norm;
+            p.setZero(N);
+            g.setZero(N);
+            p(0) = 1 / norm;
+            g(0) = p(0);
 
         } else if (lmax == 1) {
             norm = M_PI * (1 - u(1) / 3.);
             y(0) = (2. / norm) * sqrt(M_PI) / 3. * (3 - 3 * u(1));
             y(2) = (2. / norm) * sqrt(M_PI / 3.) * u(1);
+            p.setZero(N);
+            g.setZero(N);
+            p(0) = (1 - u(1)) / norm;
+            p(2) = u(1) / norm;
+            g(0) = p(0);
+            g(2) = p(2);
 
-        } else {
+        } else if (lmax == 2) {
             norm = M_PI * (1 - u(1) / 3. - u(2) / 6.);
             y(0) = (2. / norm) * sqrt(M_PI) / 3. * (3 - 3 * u(1) - 4 * u(2));
             y(2) = (2. / norm) * sqrt(M_PI / 3.) * (u(1) + 2 * u(2));
             y(6) = (-4. / 3.) * sqrt(M_PI / 5.) * u(2) / norm;
+            p.setZero(N);
+            g.setZero(N);
+            p(0) = (1 - u(1) - 2 * u(2)) / norm;
+            p(2) = (u(1) + 2 * u(2)) / norm;
+            p(4) = u(2) / norm;
+            p(8) = u(2) / norm;
+            g(0) = p(0);
+            g(2) = p(2);
+            g(4) = p(4) / 3.;
+            g(8) = p(8);
 
+        } else {
+            norm = 1;
+            for (int l = 1; l < lmax + 1; l++)
+                norm -= 2 * u(l) / ((l + 1) * (l + 2));
+            norm *= M_PI;
+            tmpy = C.U * u;
+
+            int n = 0;
+            for (int l = 0; l < lmax + 1; l++)
+                y(l * (l + 1)) = tmpy(n++) / norm;
+
+            p = C.A1 * y;
+            g = C.A * y;
         }
-
-        // Update the other vectors
-        p = C.A1 * y;
-        g = C.A * y;
-
-        // Update the total flux
-        if (lmax == 0)
-            ld_flux = G.pi * g(0);
-        else if (lmax == 1)
-            ld_flux = G.pi * g(0) + 2. * G.pi / 3. * g(2);
-        else
-            ld_flux = G.pi * g(0) + 2. * G.pi / 3. * g(2) + G.pi_over_2 * g(8);
-
     }
 
     // Evaluate our map at a given (x0, y0) coordinate
@@ -670,7 +693,7 @@ namespace maps {
         // No occultation: cake
         if ((b >= 1 + ro) || (ro == 0)) {
 
-            return C.rTA1 * y;
+            return 1.0;
 
         // Occultation
         } else {
@@ -708,7 +731,7 @@ namespace maps {
         // If we're doing quadratic limb darkening, let's skip all the overhead
         if ((lmax <= 2) && (ro < 1)) {
             if ((b >= 1 + ro) || (ro == 0))
-                return ld_flux + zero;
+                return 1.0;
             else {
                 if (lmax == 0)
                     return solver::QuadLimbDark(G, b, ro, g(0), zero, zero);
@@ -745,9 +768,6 @@ namespace maps {
     void LimbDarkenedMap<T>::set_coeff(int l, T u_l) {
         if ((l <= 0) || (l > lmax)) {
             throw errors::BadIndex();
-        } else if (l > 2) {
-            // TODO! Implement higher order limb darkening.
-            throw errors::LimbDark();
         }
 
         // Set the limb darkening coefficient
@@ -763,9 +783,6 @@ namespace maps {
     T LimbDarkenedMap<T>::get_coeff(int l) {
         if ((l <= 0) || (l > lmax)) {
             throw errors::BadIndex();
-        } else if (l > 2) {
-            // TODO! Implement higher order limb darkening.
-            throw errors::LimbDark();
         } else {
             return u(l);
         }
@@ -775,7 +792,7 @@ namespace maps {
     template <class T>
     void LimbDarkenedMap<T>::reset() {
         u.setZero(lmax + 1);
-        u(0) = 1;
+        u(0) = -1;
         update();
     }
 
