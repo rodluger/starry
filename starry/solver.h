@@ -583,7 +583,7 @@ namespace solver {
             ksq = (1 - G.r(2) - G.b(2) + 2 * G.br) / (4 * G.br);
         else
             ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * G.br);
-        k = sqrt(G.ksq());
+        k = sqrt(ksq);
         // Override the NaNs
         if ((b == 0) || (r == 0)) {
             set_derivs_to_zero(ksq);
