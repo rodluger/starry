@@ -10,5 +10,5 @@ to use :py:obj:`starry` in various different ways.
    Basics  <tutorials/tutorial.ipynb>
    MCMC parameter inference <tutorials/mcmc.ipynb>
    Optimization with analytic gradients <tutorials/autograd.ipynb>
-   High order limb darkening <tutorials/spottedstar.ipynb>
+   High order limb darkening <tutorials/high_order_ld.ipynb>
    Starspots <tutorials/spottedstar.ipynb>
