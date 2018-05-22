@@ -11,25 +11,54 @@ def transform(planet):
     This will be coded into `starry` as the default behavior
     when the user specifies the surface map for an inclined planet.
     """
-    # This is the axis perpendicular to the orbital plane
-    planet.axis = (np.sin(planet.Omega * np.pi / 180),
-                   np.sin(planet.inc * np.pi / 180) *
-                   np.cos(planet.Omega * np.pi / 180),
-                   np.cos(planet.inc * np.pi / 180))
+    # Normalize
+    planet.axis /= np.sqrt(planet.axis[0] ** 2 +
+                           planet.axis[1] ** 2 +
+                           planet.axis[2] ** 2)
 
-    # The dot product of `yhat` with `axis` is the cosine
-    # of the angle `theta` we need to rotate the map by to get
-    # it in the right frame
-    costheta = planet.axis[1]
-    theta = np.arccos(costheta)
+    inc = planet.inc * np.pi / 180
+    Omega = planet.Omega * np.pi / 180
 
-    # The cross product of `yhat` with `planet.axis` gives the axis
-    # of rotation `axis_prime` for this transformation
-    axis_prime = [planet.axis[2], 0, -planet.axis[0]]
-    axis_prime /= np.sqrt(planet.axis[2] ** 2 + planet.axis[0] ** 2)
+    # Rotate the map to the correct orientation on the sky
+    planet.map.rotate(axis=(1, 0, 0), theta=np.pi / 2 - inc)
+    planet.map.rotate(axis=(0, 0, 1), theta=Omega)
 
-    # Perform the transformation
-    planet.map.rotate(axis=axis_prime, theta=theta)
+    # This is the vector pointing "up", perpendicular to the orbital plane
+    up = (-np.sin(inc) * np.sin(Omega),
+          np.sin(inc) * np.cos(Omega),
+          np.cos(inc))
+
+    # Transform ("rotate") the rotation axis to the correct orientation
+    # Dot product of `yhat` and `planet.axis` gives the transformation angle
+    # Cross product of `yhat` and `planet.axis` gives the transformation axis
+    yhat = np.array([0, 1, 0])
+    cost = np.dot(yhat, planet.axis)
+    sint = np.sqrt(1 - cost ** 2)
+    ax, ay, az = planet.axis
+    ux = -az * yhat[1] + ay * yhat[2]
+    uy = az * yhat[0] - ax * yhat[2]
+    uz = -ay * yhat[0] + ax * yhat[1]
+    norm = np.sqrt(ux ** 2 + uy ** 2 + uz ** 2)
+    if norm != 0:
+        ux /= norm
+        uy /= norm
+        uz /= norm
+    else:
+        ux = np.sqrt(2) / 2
+        uy = 0
+        uz = np.sqrt(2) / 2
+
+    R = np.zeros((3, 3))
+    R[0, 0] = cost + ux ** 2 * (1 - cost)
+    R[0, 1] = ux * uy * (1 - cost) - uz * sint
+    R[0, 2] = ux * uz * (1 - cost) + uy * sint
+    R[1, 0] = uy * ux * (1 - cost) + uz * sint
+    R[1, 1] = cost + uy ** 2 * (1 - cost)
+    R[1, 2] = uy * uz * (1 - cost) - ux * sint
+    R[2, 0] = uz * ux * (1 - cost) - uy * sint
+    R[2, 1] = uz * uy * (1 - cost) + ux * sint
+    R[2, 2] = cost + uz ** 2 * (1 - cost)
+    planet.axis = np.dot(R, up)
 
 
 # Instantiate the system
@@ -37,7 +66,7 @@ planet = starry.Planet(L=1, porb=1, prot=1)
 star = starry.Star()
 sys = starry.System([star, planet])
 time = np.linspace(0, 1, 1000)
-Omega = 45
+Omega = 90
 planet.Omega = Omega
 
 # Set up the figure
@@ -48,6 +77,7 @@ ax_lc = pl.subplot2grid((5, 16), (0, 9), rowspan=5, colspan=8)
 x, y = np.meshgrid(np.linspace(-1, 1, 100), np.linspace(-1, 1, 100))
 lam = np.linspace(0, 2 * np.pi, 8, endpoint=False)
 phase = np.linspace(90, 450, 1000)
+phase[np.argmax(phase > 360)] = np.nan
 phase[phase > 360] -= 360
 
 # Go through different inclinations
@@ -55,13 +85,17 @@ for i, inc in enumerate([90, 60, 45, 30, 0]):
     planet.inc = inc
     planet.map.reset()
     planet.map[1, 0] = -0.5
+    planet.axis = (0., 1., 0.)
+
+    # Transform!
     transform(planet)
 
     # Plot the images
     ax[i, 0].set_ylabel(r'$i=%d^\circ$' % inc)
     for n in range(8):
         img = [planet.map.evaluate(x=x[j], y=y[j], axis=planet.axis,
-                                   theta=lam[n] - np.pi / 2) for j in range(100)]
+                                   theta=lam[n] - np.pi / 2)
+               for j in range(100)]
         ax[i, n].imshow(img, origin="lower", interpolation="none",
                         cmap="plasma", extent=(-1, 1, -1, 1))
         ax[i, n].contour(img, origin="lower", extent=(-1, 1, -1, 1),

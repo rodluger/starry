@@ -76,11 +76,7 @@ namespace docstrings {
         Double precision roughly corresponds to 16, and quadruple
         precision (default) roughly corresponds 32.
         This is a compile-time constant. If you wish to change it, you'll
-        have to re-compile :py:obj:`starry` by executing
-
-        .. code-block:: bash
-
-            STARRY_MP_DIGITS=XX pip install --force-reinstall --ignore-installed --no-binary :all: starry
+        have to re-compile :py:obj:`starry`. See :doc:`install` for more information.
     )pbdoc";
 
     namespace Map {
@@ -586,7 +582,8 @@ namespace docstrings {
                     kepler_tol (float): Kepler solver tolerance. Default `1e-7`.
                     kepler_max_iter (int): Maximum number of iterations in the Kepler solver. Default `100`.
                     exposure_time (float): The exposure time of the observations in days. If nonzero, the flux will \
-                                           be integrated over this exposure time. Default `0`.
+                                           be integrated over this exposure time. Note that setting this will result \
+                                           in slower run times, since the integrated flux is computed numerically. Default `0`.
                     exposure_tol (float): Tolerance of the recursive method for integrating the flux over the exposure time. Default `1e-8`.
                     exposure_maxdepth (int): Maximum recursion depth for the exposure calculation. Default `4`.
 
@@ -620,27 +617,27 @@ namespace docstrings {
         const char * exposure_time =
         R"pbdoc(
             The exposure time of the observations in days. If nonzero, the flux will
-            be integrated over this exposure time. Default `0`.
+            be integrated over this exposure time.
         )pbdoc";
 
         const char * exposure_tol =
         R"pbdoc(
-            Tolerance of the recursive method for integrating the flux over the exposure time. Default `1e-8`.
+            Tolerance of the recursive method for integrating the flux over the exposure time.
         )pbdoc";
 
         const char * exposure_max_depth =
         R"pbdoc(
-            Maximum recursion depth for the exposure calculation. Default `4`.
+            Maximum recursion depth for the exposure calculation.
         )pbdoc";
 
         const char * kepler_max_iter =
         R"pbdoc(
-            Maximum number of iterations in the Kepler solver. Default `100`.
+            Maximum number of iterations in the Kepler solver.
         )pbdoc";
 
         const char * kepler_tol =
         R"pbdoc(
-            Kepler solver tolerance. Default `1e-7`.
+            Kepler solver tolerance.
         )pbdoc";
 
     } // namespace System
@@ -654,22 +651,22 @@ namespace docstrings {
 
         const char * flux =
         R"pbdoc(
-            The body's computed light curve.
+            The body's computed light curve. *Read-only*.
         )pbdoc";
 
         const char * x =
         R"pbdoc(
-            The `x` position of the body in stellar radii.
+            The `x` position of the body in stellar radii. *Read-only*.
         )pbdoc";
 
         const char * y =
         R"pbdoc(
-            The `y` position of the body in stellar radii.
+            The `y` position of the body in stellar radii. *Read-only*.
         )pbdoc";
 
         const char * z =
         R"pbdoc(
-            The `z` position of the body in stellar radii.
+            The `z` position of the body in stellar radii. *Read-only*.
         )pbdoc";
 
         const char * r =
@@ -719,7 +716,8 @@ namespace docstrings {
 
         const char * w =
         R"pbdoc(
-            Longitude of pericenter in degrees.
+            Longitude of pericenter in degrees. This is usually denoted :math:`\varomega`.
+            See the `Wikipedia <https://en.wikipedia.org/wiki/Longitude_of_the_periapsis>`_ entry.
         )pbdoc";
 
         const char * Omega =
@@ -921,9 +919,8 @@ namespace docstrings_grad {
                   :py:obj:`RuntimeError` saying too many derivatives were requested. \
                   The :py:obj:`STARRY_NGRAD` compiler flag determines the size of the \
                   gradient vector and can be changed by setting an environment variable \
-                  of the same name prior to compiling :py:obj:`starry`. You can do this \
-                  by executing \
-                  :py:obj:`STARRY_NGRAD=56 pip install --force-reinstall --ignore-installed --no-binary :all: starry`
+                  of the same name prior to compiling :py:obj:`starry`.
+                  See :doc:`install` for more information.
 
         As in :py:mod:`starry`, the API consists of a :py:class:`Map` class,
         which houses all of the surface map photometry
@@ -974,11 +971,8 @@ namespace docstrings_grad {
     R"pbdoc(
         Length of the gradient vector.
         This is a compile-time constant. If you get errors saying this
-        value is too small, you'll need to re-compile :py:obj:`starry` by executing
-
-        .. code-block:: bash
-
-            STARRY_NGRAD=XX pip install --force-reinstall --ignore-installed --no-binary :all: starry
+        value is too small, you'll need to re-compile :py:obj:`starry`.
+        See :doc:`install` for more information.
     )pbdoc";
 
     namespace Map {

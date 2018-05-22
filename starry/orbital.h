@@ -137,6 +137,11 @@ namespace orbital {
             Map<T> map;
             LimbDarkenedMap<T> ldmap;
 
+            // Axis of rotation and surface map
+            // in the *sky* coordinates
+            UnitVector<T> axis_sky;
+            Map<T> map_sky;
+
             // Orbital elements
             T a;
             T porb;
@@ -194,6 +199,9 @@ namespace orbital {
                  // Don't waste time allocating maps we won't use
                  map{is_star ? Map<T>(0) : Map<T>(lmax)},
                  ldmap{is_star ? LimbDarkenedMap<T>(lmax) : LimbDarkenedMap<T>(0)},
+                 // Map in the sky coordinates
+                 axis_sky(axis),
+                 map_sky{is_star ? Map<T>(0) : Map<T>(lmax)},
                  a(a),
                  porb(porb * DAY),
                  inc(inc * DEGREE),
@@ -226,7 +234,7 @@ namespace orbital {
             // Reset orbital variables and map normalization
             // whenever the corresponding body parameters change
             void reset() {
-                M0 = lambda0 - Omega - w;
+                M0 = lambda0 - w;
                 cosi = cos(inc);
                 sini = sin(inc);
                 cosO = cos(Omega);
