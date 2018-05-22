@@ -493,11 +493,11 @@ void ADD_MODULE(py::module &m) {
 
 #endif
 
-        .def_property_readonly("x", [](orbital::Body<MAPTYPE> &body){return get_value(body.x) * AU;}, DOCS::Body::x)
+        .def_property_readonly("x", [](orbital::Body<MAPTYPE> &body){return get_value(body.x);}, DOCS::Body::x)
 
-        .def_property_readonly("y", [](orbital::Body<MAPTYPE> &body){return get_value(body.y) * AU;}, DOCS::Body::y)
+        .def_property_readonly("y", [](orbital::Body<MAPTYPE> &body){return get_value(body.y);}, DOCS::Body::y)
 
-        .def_property_readonly("z", [](orbital::Body<MAPTYPE> &body){return get_value(body.z) * AU;}, DOCS::Body::z)
+        .def_property_readonly("z", [](orbital::Body<MAPTYPE> &body){return get_value(body.z);}, DOCS::Body::z)
 
         .def_property("r", [](orbital::Body<MAPTYPE> &body){return get_value(body.r);},
             [](orbital::Body<MAPTYPE> &body, double r){body.r = r;}, DOCS::Body::r)

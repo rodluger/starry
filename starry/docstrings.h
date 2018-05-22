@@ -659,17 +659,17 @@ namespace docstrings {
 
         const char * x =
         R"pbdoc(
-            The `x` position of the body in AU.
+            The `x` position of the body in stellar radii.
         )pbdoc";
 
         const char * y =
         R"pbdoc(
-            The `y` position of the body in AU.
+            The `y` position of the body in stellar radii.
         )pbdoc";
 
         const char * z =
         R"pbdoc(
-            The `z` position of the body in AU.
+            The `z` position of the body in stellar radii.
         )pbdoc";
 
         const char * r =
