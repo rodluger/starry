@@ -3,7 +3,8 @@
 include("mpq.jl")
 include("ellk_bulirsch.jl")
 include("ellec_bulirsch.jl")
-include("s2.jl")
+include("s2_stable.jl")
+#include("s2.jl")
 
 function s_n!(l_max::Int64,r::T,b::T,sn::Array{T,1}) where {T <: Real}
 @assert(r > 0.0) # if r=0, then no occultation - can just use phase curve term.
@@ -24,8 +25,8 @@ if b == 0.0
   end
   k2 = Inf
   # Elliptic integrals K(0) & E(0):
-  Kofk = pi/2
-  Eofk = pi/2
+  Kofk += pi/2
+  Eofk +=  pi/2
 else
   if b > abs(1.0-r) && b < 1.0+r
     lam = asin((1.0-r^2+b^2)/(2*b))
@@ -46,8 +47,8 @@ else
     Eofk = ellec_bulirsch(k2inv)
   else
     # For k2=1.0, K(k2) diverges, E(k2) is 1:
-    Kofk = Inf
-    Eofk = 1.0
+    Kofk += Inf
+    Eofk += 1.0
   end
 end
 
@@ -133,7 +134,8 @@ end
 l = 0; n = 0; m = 0; pofgn = zero(typeof(r)); qofgn = zero(typeof(r))
 while n <= n_max
   if n == 2
-    sn[n+1] = s2(b,r,Kofk,Eofk)
+    sn[n+1] = s2(r,b)
+#    sn[n+1] = s2(r,b,Kofk,Eofk)
 #    println("l: ",l," m: ",m," mu: ",l-m," nu: ",l+m," n: ",n," s_n: ",sn[n+1])
   else
     mu = l-m; nu = l+m

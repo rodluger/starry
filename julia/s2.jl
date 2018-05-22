@@ -1,7 +1,7 @@
 # Computes the s_2 function.
 include("ellpic_bulirsch.jl")
 
-function s2(b::T,r::T,Kofk::T,Eofk::T) where {T <: Real}
+function s2(r::T,b::T,Kofk::T,Eofk::T) where {T <: Real}
 # For now, just compute linear component:
 Lambda1 = zero(typeof(b))
 if b > 1.0+r ||  r == 0.0

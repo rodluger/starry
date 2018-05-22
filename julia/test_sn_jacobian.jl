@@ -33,7 +33,10 @@ function sn_jac(l_max::Int64,r::T,b::T) where {T <: Real}
 return sn,sn_jacobian
 end
 
-r = 0.1; b= 0.95
+#r = 0.1; b= 0.95
+#r = 0.1; b= 1.0-r
+#r = 0.1; b= r
+r = 100.0; b=100.5
 l_max = 10
 sn,sn_jacobian= sn_jac(l_max,r,b)
 
