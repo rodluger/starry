@@ -1,5 +1,5 @@
 """
-Starry SPIDERMAN comparison speed tests.
+Starry SPIDERMAN phase curve comparison speed tests.
 """
 import starry
 import timeit
@@ -19,30 +19,29 @@ def ms(diff):
     return 18 + np.log10(diff)
 
 
-def comparison():
+def phase_comparison():
 
     ### Define SPIDERMAN model parameters ###
 
     # Parameters adapted from https://github.com/tomlouden/SPIDERMAN/blob/master/examples/Brightness%20maps.ipynb
     spider_params = sp.ModelParams(brightness_model='spherical')
 
-    spider_params.n_layers = 100        # Will be reset later
+    spider_params.n_layers = 100 # Will be reset later
 
-    # Work in the limit of a slowly rotating planet
     spider_params.t0 = 0                # Central time of PRIMARY transit [days]
-    spider_params.per = 0.81347753   # Period [days]
-    spider_params.a_abs = 1.0e-30      # Nearly 0 a to prevent light travel effects not modeled by starry
-    spider_params.inc = 90.0            # Inclination [degrees]
+    spider_params.per = 0.81347753      # Period [days]
+    spider_params.a_abs = 0.01526       # The absolute value of the semi-major axis [AU]
+    spider_params.inc = 90.0             # Inclination [degrees]
     spider_params.ecc = 0.0             # Eccentricity
-    spider_params.w = 0.0               # Argument of periastron
+    spider_params.w = 0                 # Argument of periastron
     spider_params.rp = 0.1594           # Planet to star radius ratio
-    spider_params.a = 4.855       # Semi-major axis scaled by stellar radius
-    spider_params.p_u1 = 0.0            # Planetary limb darkening parameter
-    spider_params.p_u2 = 0.0            # Planetary limb darkening parameter
+    spider_params.a = 4.855             # Semi-major axis scaled by stellar radius
+    spider_params.p_u1 = 0              # Planetary limb darkening parameter
+    spider_params.p_u2 = 0              # Planetary limb darkening parameter
 
     # SPIDERMAN spherical harmonics parameters
     ratio = 1.0e-3
-    spider_params.sph = [ratio, -ratio/2, 0, 0]      # vector of spherical harmonic weights to match starry
+    spider_params.sph = [ratio, 0, 0, ratio/2]
     spider_params.degree = 2
     spider_params.la0 = 0.0
     spider_params.lo0 = 0.0
@@ -63,14 +62,14 @@ def comparison():
                            a=spider_params.a,
                            porb=spider_params.per,
                            tref=spider_params.t0,
-                           prot=-spider_params.per, # Negative rotation to match SPIDERMAN
+                           prot=spider_params.per,
                            ecc=spider_params.ecc)
 
     # Define spherical harmonic coefficients
     planet.map[0,0] = 1.0
     planet.map[1,-1] = 0.0
-    planet.map[1,0] = 0.0
-    planet.map[1,1] = 0.5
+    planet.map[1,0] = 0.5
+    planet.map[1,1] = 0.0
 
     # Make a system
     system = starry.System([star,planet])
@@ -78,10 +77,10 @@ def comparison():
     ### Speed test! ###
 
     # Number of time array points
-    ns = np.array([20,100], dtype=int)
+    ns = np.array([50, 100, 200, 500, 1000], dtype=int)
 
     # SPIDERMAN grid resolution points
-    ngrid = np.array([5, 10, 20, 50, 100, 200], dtype=int)
+    ngrid = np.array([5, 10, 20, 50, 100], dtype=int)
 
     n_repeats = 5
     t_starry = np.nan + np.zeros(len(ns))
@@ -91,8 +90,8 @@ def comparison():
     for ii, n in enumerate(ns):
         print("Current time grid size: %d." % n)
 
-        # New time array of length n just around the occulation
-        time_arr = np.linspace(0.4*spider_params.per, 0.6*spider_params.per, n)
+        # New time array of length n
+        time_arr = np.linspace(0.1*spider_params.per, 0.9*spider_params.per, n)
 
         # Repeat calculation a few times and pick best one
         best_starry = np.inf
@@ -105,7 +104,7 @@ def comparison():
 
             if dt < best_starry:
                 best_starry = dt
-                best_starry_flux = flux/np.max(flux)
+                best_starry_flux = flux
 
         # Save fastest time
         t_starry[ii] = best_starry
@@ -126,15 +125,15 @@ def comparison():
 
                 if dt < best_spiderman:
                     best_spiderman = dt
-                    best_spiderman_flux = lc/np.max(lc)
+                    best_spiderman_flux = lc
 
             # Save fastest time
             t_spiderman[ii,jj] = best_spiderman
 
             # Save log maximum relative error
-            diff[ii,jj] = np.max(np.fabs((best_starry_flux - best_spiderman_flux)/best_starry_flux))
-
-    ### Generate the figure! ###
+            # Mask out transit, secondary eclipse for phasecurve comparison
+            mask = (time_arr > 0.45*spider_params.per) & (time_arr < 0.55*spider_params.per)
+            diff[ii,jj] = np.max(np.fabs((best_starry_flux[~mask] - best_spiderman_flux[~mask])/best_starry_flux[~mask]))
 
     ### Generate the figure! ###
     # Plot it
@@ -153,23 +152,24 @@ def comparison():
     for tick in ax.get_yticklabels():
         tick.set_fontsize(12)
 
-    # Starry, loop over all points
-    for ii in range(len(ns)):
-        ax.plot(ns[ii], t_starry[ii], "o", lw=2, color="C0", ms=ms(1.0e-16))
-    ax.plot(ns, t_starry, "-", lw=1.5, color="C0", alpha=0.25)
+    # Starry
+    ax.plot(ns, t_starry, "o", lw=2, color="C0")
+    ax.plot(ns, t_starry, "-", lw=2, color="C0", alpha=0.25)
 
     # Loop over all grid resolutions
     for jj, ng in enumerate(ngrid):
-        ax.plot(ns, t_spiderman[:,jj], "-", color="C%d" % (jj+1), alpha=0.25, lw=1.5)
+        ax.plot(ns, t_spiderman[:,jj], "-", color="C%d" % (jj+1))
         for kk in range(len(ns)):
             ax.plot(ns[kk], t_spiderman[kk,jj], "o", ms=ms(diff[kk,jj]),
                     color="C%d" % (jj+1))
+
+    # label="SPIDERMAN nlayers=%d" % ng
 
     # Legend 1
     axleg1.plot([0, 1], [0, 1], color='C0', label='starry')
     # Loop over all grid resolutions
     for jj, ng in enumerate(ngrid):
-        axleg1.plot([0, 1], [0, 1], color="C%d" % (jj+1), label="n$_{\mathrm{layers}}$=%d" % ng)
+        axleg1.plot([0, 1], [0, 1], color="C%d" % (jj+1), label="Spiderman n$_{\mathrm{layers}}$=%d" % ng)
     axleg1.set_xlim(2, 3)
     axleg1.legend(loc='center', frameon=False, title=r'\textbf{method}')
 
@@ -181,10 +181,9 @@ def comparison():
     leg = axleg2.legend(loc='center', labelspacing=1, frameon=False,
                         title=r'\textbf{log error}')
 
-    fig.savefig("spidercomp.png", bbox_inches="tight")
-# Done!
+    fig.savefig("spiderphase.png", bbox_inches="tight")
 # Done!
 
 # Run it!
 if __name__ == "__main__":
-    comparison()
+    phase_comparison()
