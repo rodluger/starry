@@ -653,7 +653,7 @@ namespace orbital {
     template <>
     void System<Grad>::compute(const Vector<Grad>& time) {
 
-        int i, n, k, l, m;
+        int i, j, n, k, l, m;
         Grad xo, yo, ro;
         Grad tsec;
         int NT = time.size();
@@ -732,22 +732,12 @@ namespace orbital {
             // flux calculation for limb-darkened bodies.
             if (t == 0) {
                 bodies[0]->ldmap.update();
-                tmpder.push_back(bodies[0]->ldmap.g(0).derivatives());
-                if (bodies[0]->ldmap.lmax >= 1)
-                    tmpder.push_back(bodies[0]->ldmap.g(2).derivatives());
-                if (bodies[0]->ldmap.lmax >= 2)
-                    tmpder.push_back(bodies[0]->ldmap.g(8).derivatives());
-                // TODO! Implement higher order limb darkening.
-                if (bodies[0]->ldmap.lmax >= 3)
-                    throw errors::LimbDark();
-                tmpder.push_back(bodies[0]->ldmap.ld_flux.derivatives());
+                for (i = 0; i < bodies[0]->ldmap.g.size(); i += 2)
+                    tmpder.push_back(bodies[0]->ldmap.g(i).derivatives());
             } else {
-                bodies[0]->ldmap.g(0).derivatives() = tmpder[0];
-                if (bodies[0]->ldmap.lmax >= 1)
-                    bodies[0]->ldmap.g(2).derivatives() = tmpder[1];
-                if (bodies[0]->ldmap.lmax >= 2)
-                    bodies[0]->ldmap.g(8).derivatives() = tmpder[2];
-                bodies[0]->ldmap.ld_flux.derivatives() = tmpder[3];
+                j = 0;
+                for (i = 0; i < bodies[0]->ldmap.g.size(); i += 2)
+                    bodies[0]->ldmap.g(i).derivatives() = tmpder[j++];
             }
 
             // Planet derivs

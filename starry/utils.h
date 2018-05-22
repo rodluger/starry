@@ -43,4 +43,10 @@ inline void set_value(Grad& x, Grad& y) { x.value() = y.value(); }
 void print_derivs(double x) { std::cout << "None" << std::endl; }
 void print_derivs(Grad x) { std::cout << x.derivatives().transpose() << std::endl; }
 
+// Zero out the derivatives of a MapType variable
+template <typename T>
+inline void set_derivs_to_zero(T& x) { }
+template <>
+inline void set_derivs_to_zero(Grad& x) { x.derivatives().setZero(x.derivatives().size()); }
+
 #endif

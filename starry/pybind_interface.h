@@ -146,6 +146,30 @@ void ADD_MODULE(py::module &m) {
                 return minimize(p).cast<double>();
             }, DOCS::Map::minimum)
 
+        .def("load_array", [](maps::Map<MAPTYPE> &map, Matrix<double>& image) {
+                py::object load_map = py::module::import("starry_maps").attr("load_map");
+                Vector<double> y = load_map(image, map.lmax, false).cast<Vector<double>>();
+                double y_normed;
+                int n = 0;
+                for (int l = 0; l < map.lmax + 1; l++) {
+                    for (int m = -l; m < l + 1; m++) {
+                        y_normed = y(n) / y(0);
+                        map.set_coeff(l, m, MAPTYPE(y_normed));
+                        n++;
+                    }
+                }
+                // We need to apply some rotations to get
+                // to the desired orientation
+                UnitVector<MAPTYPE> xhat(maps::xhat);
+                UnitVector<MAPTYPE> yhat(maps::yhat);
+                UnitVector<MAPTYPE> zhat(maps::zhat);
+                MAPTYPE Pi(M_PI);
+                MAPTYPE PiOver2(M_PI / 2.);
+                map.rotate(xhat, PiOver2);
+                map.rotate(zhat, Pi);
+                map.rotate(yhat, PiOver2);
+            }, DOCS::Map::load_array, "image"_a)
+
         .def("load_image", [](maps::Map<MAPTYPE> &map, string& image) {
                 py::object load_map = py::module::import("starry_maps").attr("load_map");
                 Vector<double> y = load_map(image, map.lmax).cast<Vector<double>>();
@@ -172,7 +196,7 @@ void ADD_MODULE(py::module &m) {
 
         .def("load_healpix", [](maps::Map<MAPTYPE> &map, Matrix<double>& image) {
                 py::object load_map = py::module::import("starry_maps").attr("load_map");
-                Vector<double> y = load_map(image, map.lmax).cast<Vector<double>>();
+                Vector<double> y = load_map(image, map.lmax, true).cast<Vector<double>>();
                 double y_normed;
                 int n = 0;
                 for (int l = 0; l < map.lmax + 1; l++) {
@@ -469,11 +493,11 @@ void ADD_MODULE(py::module &m) {
 
 #endif
 
-        .def_property_readonly("x", [](orbital::Body<MAPTYPE> &body){return get_value(body.x) * AU;}, DOCS::Body::x)
+        .def_property_readonly("x", [](orbital::Body<MAPTYPE> &body){return get_value(body.x);}, DOCS::Body::x)
 
-        .def_property_readonly("y", [](orbital::Body<MAPTYPE> &body){return get_value(body.y) * AU;}, DOCS::Body::y)
+        .def_property_readonly("y", [](orbital::Body<MAPTYPE> &body){return get_value(body.y);}, DOCS::Body::y)
 
-        .def_property_readonly("z", [](orbital::Body<MAPTYPE> &body){return get_value(body.z) * AU;}, DOCS::Body::z)
+        .def_property_readonly("z", [](orbital::Body<MAPTYPE> &body){return get_value(body.z);}, DOCS::Body::z)
 
         .def_property("r", [](orbital::Body<MAPTYPE> &body){return get_value(body.r);},
             [](orbital::Body<MAPTYPE> &body, double r){body.r = r;}, DOCS::Body::r)

@@ -15,6 +15,7 @@ Spherical harmonic integration utilities.
 #include "errors.h"
 #include "lld.h"
 #include "taylor.h"
+#include "utils.h"
 
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
@@ -572,16 +573,24 @@ namespace solver {
         // Initialize the basic variables
         int l, m;
         int n = 0;
+        T ksq, k;
         G.br = b * r;
         G.br32 = pow(G.br, 1.5);
         G.b.reset(b);
         G.r.reset(r);
         G.b_r.reset(b / r);
         if (r <= 1)
-            G.ksq.reset((1 - G.r(2) - G.b(2) + 2 * G.br) / (4 * G.br));
+            ksq = (1 - G.r(2) - G.b(2) + 2 * G.br) / (4 * G.br);
         else
-            G.ksq.reset((1 - (b - r)) * (1 + (b - r)) / (4 * G.br));
-        G.k = sqrt(G.ksq());
+            ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * G.br);
+        k = sqrt(ksq);
+        // Override the NaNs
+        if ((b == 0) || (r == 0)) {
+            set_derivs_to_zero(ksq);
+            set_derivs_to_zero(k);
+        }
+        G.ksq.reset(ksq);
+        G.k = k;
         if ((abs(1 - r) < b) && (b < 1 + r)) {
             if (r <= 1) {
                 G.sinphi.reset((1 - G.r(2) - G.b(2)) / (2 * G.br));

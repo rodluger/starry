@@ -75,12 +75,12 @@ and meteorological processes at play that are the basis of planetary science,
 including comparative planetology.
 %
 With the discovery of planets orbiting other
-stars, map-making becomes a formidable task: these planets are too distant to
+stars, cartography becomes a formidable task: these planets are too distant to
 resolve their surfaces into maps as we do for our own planetary suite.  One way
 to overcome this drawback is to utilize the time-dependence of unresolved,
-disk-integrated light from planetary bodies:  both rotational variability 
-\citep{Russell1906,Lacis1972,Cowan2008}
-and occultations \citep{Williams2006,Rauscher2007} yield the opportunity to constrain 
+disk-integrated light from planetary bodies:  both rotational variability
+\citep{Russell1906,Lacis1972,Cowan2008,OakleyCash2009}
+and occultations \citep{Williams2006,Rauscher2007} yield the opportunity to constrain
 the presence of static variations in the surface features of exoplanets.
 
 The first application of time-dependent mapping to exoplanets was carried out in the
@@ -100,11 +100,11 @@ surface maps of planets in short orbital periods \citep{Beichman2014,Schlawin201
 Future mission concepts such as the Large UV-Optical-InfraRed telescope (LUVOIR) and the
 Origins Space Telescope (OST) will likewise open doors for the mapping technique,
 extending it to the study of exoplanets with solid or even liquid surfaces
-\citep[e.g.,][]{Cowan2012,CowanFuentesHaggard2013,CowanFujii2017,Fujii2017,LugerLustigYaegerAgol2017}.
-Mutual transits binary planets, or planets and moons, seen in total flux
-with direct imaging may have surface features constrained with eclipse
-mapping \citep{Cabrera2007}, much as mutual events viewed in the Solar System
-\citep{Brinkman1973,Vermilion1974,Herzog1975,Brinkman1976,Reinsch1994,Young1999,
+\citep[e.g.,][]{KawaharaFujii2010,KawaharaFujii2011,FujiiKawahara2012,Cowan2012,CowanFuentesHaggard2013,CowanFujii2017,Fujii2017,LugerLustigYaegerAgol2017,BerdyuginaKuhn2017}.
+Future direct imaging telescopes should also enable eclipse mapping from
+mutual transits of binary planets or planet-moon systems \citep{Cabrera2007},
+in analogy with mutual events viewed in the Solar System
+\citep{Brinkmann1973,Vermilion1974,Herzog1975,Brinkmann1976,Reinsch1994,Young1999,
 Young2001,Livengood2011}.
 
 As we gear up to perform these observations, it is essential that we have
@@ -568,6 +568,10 @@ computational efficiency.
 We note, finally, that a form of this solution was very recently found by \citet{Haggard2018};
 a special case of their equations for phase curves in reflected light yields
 analytic expressions for thermal phase curves of spherical harmonics.
+
+% HACK
+\pagebreak
+% HACK
 
 % ------------------------------------------------------------------------------
 \subsection{Occultation light curves}
@@ -1221,14 +1225,16 @@ expressed in terms of the $m = 0$ spherical harmonics up to order $l$.
 For convenience, we implement this functionality in \starry via the
 \starryLimbDarkenedMap class. This class behaves similarly
 to the \starryMap class but allows users
-to specify the coefficients of the limb darkening polynomial directly as
-follows:
+to specify the coefficients of a limb darkening polynomial of arbirtary order
+directly as follows:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 from starry import LimbDarkenedMap
-map = LimbDarkenedMap(2)
+map = LimbDarkenedMap(lmax)
 map.set_coeff(1) = u1
 map.set_coeff(2) = u2
+...
+map.set_coeff(lmax) = ulmax
 \end{lstlisting}
 %
 or, more compactly,
@@ -1242,9 +1248,13 @@ enforce the correct normalization.}
 \begin{lstlisting}[language=Python,firstnumber=last]
 map[1] = u1
 map[2] = u2
+...
+map[lmax] = ulmax
 \end{lstlisting}
 %
-In either case, this sets the map's limb darkening profile to
+where \textsf{lmax} is the order of the limb darkening polynomial.
+In the case of quadratic limb darkening ($l_\mathrm{max} = 2$),
+this sets the map's limb darkening profile to
 %
 \begin{align}
     \label{eq:quadraticld}
@@ -1252,8 +1262,7 @@ In either case, this sets the map's limb darkening profile to
     \quad,
 \end{align}
 %
-with $\upmu$ given above, corresponding to the well-known case of a quadratically
-limb-darkened star.
+with $\upmu$ given above.
 From \citet{limbdark}, this corresponds to the spherical harmonic sum
 %
 \begin{align}
@@ -2180,7 +2189,7 @@ is
 
 Finally, recall that the complete change of basis matrix from spherical
 harmonics to Green's polynomials, $\bvec{A}$, is just the matrix product
-of $\AOne$ and $\ATwo$. For $l_\mathrm{max} = 2$, we haves
+of $\ATwo$ and $\AOne$. For $l_\mathrm{max} = 2$, we have
 %
 \begin{equation}
     \mathematica{A}
@@ -2189,15 +2198,15 @@ of $\AOne$ and $\ATwo$. For $l_\mathrm{max} = 2$, we haves
     \bvec{A} =
         \frac{1}{2\sqrt{\pi}}
         \parenMatrixstack{
-         1 & 0 & 0 & 0 & 0 & 0 & \frac{\sqrt{5}}{2} & 0 & 0 \\
-         0 & 0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 \\
-         0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 & 0 \\
-         0 & \frac{\sqrt{3}}{2} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-         0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{4} & 0 & \frac{\sqrt{15}}{2} \\
-         0 & 0 & 0 & 0 & 0 & 0 & 0 & \sqrt{\frac{5}{3}} & 0 \\
-         0 & 0 & 0 & 0 & \sqrt{\frac{5}{3}} & 0 & 0 & 0 & 0 \\
-         0 & 0 & 0 & 0 & 0 & -\sqrt{\frac{5}{3}} & 0 & 0 & 0 \\
-         0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{4} & 0 & -\frac{\sqrt{15}}{2}
+        1 & 0 & 0 & 0 & 0 & 0 & \sqrt{5} & 0 & 0 \\
+        0 & 0 & 0 & \frac{\sqrt{3}}{2} & 0 & 0 & 0 & 0 & 0 \\
+        0 & 0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 & 0 \\
+        0 & \sqrt{3} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 0 & 0 & -\frac{\sqrt{5}}{2} & 0 & \frac{\sqrt{\frac{5}{3}}}{2} \\
+        0 & 0 & 0 & 0 & 0 & 0 & 0 & -\sqrt{\frac{5}{3}} & 0 \\
+        0 & 0 & 0 & 0 & \frac{\sqrt{15}}{2} & 0 & 0 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 0 & \sqrt{\frac{5}{3}} & 0 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{2} & 0 & -\frac{\sqrt{15}}{2}
         }\quad.
 \end{equation}
 %

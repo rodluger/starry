@@ -112,6 +112,7 @@ namespace docstrings {
                 .. autoattribute:: r
                 .. automethod:: minimum()
                 .. automethod:: add_gaussian()
+                .. automethod:: load_array(image)
                 .. automethod:: load_image(image)
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
@@ -321,6 +322,19 @@ namespace docstrings {
                 lon (float): The longitude of the center of the gaussian in radians. Default 0.
         )pbdoc";
 
+        const char * load_array =
+        R"pbdoc(
+            Load a lat-lon image array.
+
+            This routine loads a 2D :py:obj:`numpy` array, computes its
+            spherical harmonic expansion up to degree :py:attr:`lmax`,
+            and sets the map vector.
+
+            Args:
+                image (ndarray): The 2D :py:obj:`numpy` lat-lon array.
+
+        )pbdoc";
+
         const char * load_image =
         R"pbdoc(
             Load an image from file.
@@ -330,10 +344,6 @@ namespace docstrings {
 
             Args:
                 image (str): The full path to the image file.
-
-            .. todo:: The map is currently unnormalized; the max/min will depend \
-                      on the colorscale of the input image. This will be fixed \
-                      soon.
 
         )pbdoc";
 
@@ -348,7 +358,8 @@ namespace docstrings {
             Args:
                 image (ndarray): The ring-ordered :py:obj:`healpix` array.
 
-            .. todo:: This routine has not yet been tested!
+            .. todo:: This routine has not been tested. If you have any \
+                      problems with it, please submit an issue on GitHub.
         )pbdoc";
 
         const char * show =
@@ -648,17 +659,17 @@ namespace docstrings {
 
         const char * x =
         R"pbdoc(
-            The `x` position of the body in AU.
+            The `x` position of the body in stellar radii.
         )pbdoc";
 
         const char * y =
         R"pbdoc(
-            The `y` position of the body in AU.
+            The `y` position of the body in stellar radii.
         )pbdoc";
 
         const char * z =
         R"pbdoc(
-            The `z` position of the body in AU.
+            The `z` position of the body in stellar radii.
         )pbdoc";
 
         const char * r =
@@ -996,6 +1007,7 @@ namespace docstrings_grad {
                 .. autoattribute:: s
                 .. autoattribute:: r
                 .. automethod:: minimum()
+                .. automethod:: load_array(image)
                 .. automethod:: load_image(image)
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
@@ -1039,6 +1051,8 @@ namespace docstrings_grad {
         const char * rotate = docstrings::Map::rotate;
 
         const char * minimum = docstrings::Map::minimum;
+
+        const char * load_array = docstrings::Map::load_array;
 
         const char * load_image = docstrings::Map::load_image;
 

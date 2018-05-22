@@ -1,18 +1,16 @@
-"""Test transit light curve generation."""
-from starry import Star, Planet, System
+"""Test high order limb darkening."""
+from starry import LimbDarkenedMap
 import numpy as np
 from scipy.integrate import dblquad
 
 
-def NumericalFlux(b, r, u1, u2):
+def NumericalFlux(b, r, u):
     """Compute the flux by numerical integration of the surface integral."""
     # I'm only coding up a specific case here
     assert (b >= 0) and (r <= 1), "Invalid range."
 
-    # Total flux
-    total = (np.pi / 6) * (6 - 2 * u1 - u2)
     if b >= 1 + r:
-        return total
+        return 1
 
     # Get points of intersection
     if b > 1 - r:
@@ -23,9 +21,13 @@ def NumericalFlux(b, r, u1, u2):
         xi = r
 
     # Specific intensity map
+    norm = np.pi * (1 - 2 * np.sum([u[l] / ((l + 1) * (l + 2))
+                                    for l in range(1, len(u))]))
+
     def I(y, x):
         mu = np.sqrt(1 - x ** 2 - y ** 2)
-        return 1 - u1 * (1 - mu) - u2 * (1 - mu) ** 2
+        return (1 - np.sum([u[l] * (1 - mu) ** l
+                            for l in range(1, len(u))])) / norm
 
     # Lower integration limit
     def y1(x):
@@ -68,57 +70,33 @@ def NumericalFlux(b, r, u1, u2):
 
         flux += 2 * additional_flux
 
-    return total - flux
+    return 1 - flux
 
 
 def test_transits():
-    """Test transit light curve generation."""
+    """Test transit light curve generation for 8th order limb darkening."""
     # Input params
-    u1 = 0.4
-    u2 = 0.26
-    mstar = 1       # solar masses
-    rstar = 1       # solar radii
-    rplanet = 0.1   # fraction of stellar radius
-    b0 = 0.5        # impact parameter
-    P = 50          # orbital period in days
+    u = [1, 0.4, 0.26, 0.3, 0.5, -0.2, 0.5, -0.7, 0.3]
     npts = 25
-    time = np.linspace(-0.25, 0.25, npts)
+    r = 0.1
+    b = np.linspace(0, 1 + r + 0.1, npts)
 
-    # Compute the semi-major axis from Kepler's third law in units of rstar
-    a = ((P * 86400) ** 2 * (1.32712440018e20 * mstar) /
-         (4 * np.pi ** 2)) ** (1. / 3.) / (6.957e8 * rstar)
-
-    # Get the inclination in degrees
-    inc = np.arccos(b0 / a) * 180 / np.pi
-
-    # Compute the flux from numerical integration
-    f = 2 * np.pi / P * time
-    b = a * np.sqrt(1 - np.sin(np.pi / 2. + f) ** 2
-                    * np.sin(inc * np.pi / 180) ** 2)
-    nF = np.zeros_like(time)
+    # Numerical flux
+    nF = np.zeros_like(b)
     for i in range(npts):
-        nF[i] = NumericalFlux(b[i], rplanet, u1, u2)
-    nF /= np.nanmax(nF)
+        nF[i] = NumericalFlux(b[i], r, u)
     den = (1 - nF)
     den[den == 0] = 1e-10
 
     # Compute the starry flux
-    # Instantiate a second-order map and a third-order map with u(3) = 0
-    # The second-order map is optimized for speed and uses different
-    # equations, but they should yield identical results.
-    for lmax in [2, 3]:
-        star = Star(lmax)
-        star.map[1] = u1
-        star.map[2] = u2
-        planet = Planet(r=rplanet, a=a, inc=inc, porb=P, lambda0=90)
-        system = System([star, planet])
-        system.compute(time)
-        sF = np.array(star.flux)
-        sF /= sF[0]
+    map = LimbDarkenedMap(len(u) - 1)
+    for l in range(1, len(u)):
+        map[l] = u[l]
+    sF = map.flux(xo=b, yo=0, ro=r)
 
-        # Compute the error, check that it's better than 1 ppb
-        error = np.max((np.abs(nF - sF) / den)[np.where(nF < 1)])
-        assert error < 1e-9
+    # Compute the error, check that it's better than 1 ppb
+    error = np.max((np.abs(nF - sF) / den)[np.where(nF < 1)])
+    assert error < 1e-9
 
 
 if __name__ == "__main__":
