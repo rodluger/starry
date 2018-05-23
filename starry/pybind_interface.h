@@ -432,14 +432,22 @@ void ADD_MODULE(py::module &m) {
     // Orbital system class
     py::class_<orbital::System<MAPTYPE>>(m, "System", DOCS::System::System)
 
-        .def(py::init<vector<orbital::Body<MAPTYPE>*>, double, int, double, double, int>(),
-            "bodies"_a, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100, "exposure_time"_a=0, "exposure_tol"_a=1e-8, "exposure_max_depth"_a=4)
+        .def(py::init<vector<orbital::Body<MAPTYPE>*>, double, double, int, double, double, int>(),
+            "bodies"_a, "scale"_a=0, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100, "exposure_time"_a=0, "exposure_tol"_a=1e-8, "exposure_max_depth"_a=4)
 
         .def("compute", [](orbital::System<MAPTYPE> &system, Vector<double>& time){system.compute((Vector<MAPTYPE>)time);},
             DOCS::System::compute, "time"_a)
 
         .def_property_readonly("flux", [](orbital::System<MAPTYPE> &system){return get_value(system.flux);},
             DOCS::System::flux)
+
+        .def_property("scale", [](orbital::System<MAPTYPE> &system){return CLIGHT / (system.clight * RSUN);},
+            [](orbital::System<MAPTYPE> &system, double scale){
+                if (scale == 0)
+                    system.clight = INFINITY;
+                else
+                    system.clight = CLIGHT / (scale * RSUN);
+            }, DOCS::System::scale)
 
         .def_property("kepler_tol", [](orbital::System<MAPTYPE> &system){return system.eps;},
             [](orbital::System<MAPTYPE> &system, double eps){system.eps = eps;}, DOCS::System::kepler_tol)
@@ -475,11 +483,11 @@ void ADD_MODULE(py::module &m) {
                          const double&, const double&,
                          const double&, const double&,
                          const double&, const double&,
-                         bool, const double&>(),
+                         bool>(),
                          "lmax"_a, "r"_a, "L"_a, "axis"_a,
                          "prot"_a, "theta0"_a, "a"_a, "porb"_a,
                          "inc"_a, "ecc"_a, "w"_a, "Omega"_a,
-                         "lambda0"_a, "tref"_a, "is_star"_a, "R"_a)
+                         "lambda0"_a, "tref"_a, "is_star"_a)
 
         // NOTE: & is necessary in the return statement so we pass a reference back to Python!
         .def_property_readonly("map", [](orbital::Body<MAPTYPE> &body){return &body.map;}, DOCS::Body::map)
@@ -544,13 +552,10 @@ void ADD_MODULE(py::module &m) {
     // Star class
     py::class_<orbital::Star<MAPTYPE>>(m, "Star", PyBody, DOCS::Star::Star)
 
-        .def(py::init<int, const double&>(), "lmax"_a=2, "R"_a=0)
+        .def(py::init<int>(), "lmax"_a=2)
 
         // NOTE: & is necessary in the return statement so we pass a reference back to Python!
         .def_property_readonly("map", [](orbital::Body<MAPTYPE> &body){return &body.ldmap;}, DOCS::Star::map)
-
-        .def_property("R", [](orbital::Star<MAPTYPE> &star){return star.R / RSUN;},
-            [](orbital::Star<MAPTYPE> &star, double R){star.R = R * RSUN;}, DOCS::Star::R)
 
         .def_property_readonly("r", [](orbital::Star<MAPTYPE> &star){return 1.;}, DOCS::Star::r)
 

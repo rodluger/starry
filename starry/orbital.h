@@ -130,9 +130,8 @@ namespace orbital {
             // Flag: is this a star?
             bool is_star;
 
-            // Radius of the star in m
-            // for light travel time delay
-            T R;
+            // Speed of light in units of Rstar/s
+            T clight;
 
             // Map stuff
             int lmax;
@@ -206,10 +205,8 @@ namespace orbital {
                  const T& Omega,
                  const T& lambda0,
                  const T& tref,
-                 bool is_star,
-                 const T& R) :
+                 bool is_star):
                  is_star(is_star),
-                 R(R),
                  lmax(lmax),
                  axis(axis),
                  prot(prot * DAY),
@@ -247,6 +244,7 @@ namespace orbital {
                         norm = 2. / sqrt(M_PI);
 
                      // Initialize orbital vars
+                     clight = INFINITY;
                      reset();
 
                  }
@@ -347,9 +345,8 @@ namespace orbital {
             y_ = rorb * (sinO * cwf + cosOcosi * swf);
             z_ = rorb * swf * sini;
 
-            // Compute the light travel time delay if the user
-            // set a length scale for the star
-            if (R > 0) {
+            // Compute the light travel time delay
+            if (!isinf(get_value(clight))) {
 
                 // Components of the velocity in the sky plane.
                 // Obtained by differentiating the expression on
@@ -359,7 +356,7 @@ namespace orbital {
                 vz_ = -vamp * sini * (ecw + cwf);
 
                 // Relative retarded time and position of the body this timestep
-                dt_ = (z0 - z_) / CLIGHT * R;
+                dt_ = (z0 - z_) / clight;
                 dx_ = -dt_ * vx_;
                 dy_ = -dt_ * vy_;
                 dz_ = -dt_ * vz_;
@@ -402,9 +399,9 @@ namespace orbital {
     template <class T>
     class Star : public Body<T> {
         public:
-            Star(int lmax=2, const T& R=0) :
+            Star(int lmax=2) :
                  Body<T>(lmax, 1, 1, yhat, INFINITY, 0,
-                         0, INFINITY, 0, 0, 0, 0, 0, 0, true, R) {
+                         0, INFINITY, 0, 0, 0, 0, 0, 0, true) {
             }
         std::string repr();
     };
@@ -438,7 +435,7 @@ namespace orbital {
                    Body<T>(lmax, r, L, axis, prot,
                            theta0, a, porb, inc,
                            ecc, w, Omega, lambda0, tref,
-                           false, 0) {
+                           false) {
             }
             std::string repr();
     };
@@ -463,6 +460,7 @@ namespace orbital {
             int maxiter;
             bool computed;
             T zero;
+            T clight;
 
             T exptol;
             T exptime;
@@ -475,11 +473,12 @@ namespace orbital {
             std::map<string, Eigen::VectorXd> derivs;
 
             // Constructor
-            System(vector<Body<T>*> bodies, const double& eps=1.0e-7, const int& maxiter=100,
+            System(vector<Body<T>*> bodies, const double& clight=INFINITY, const double& eps=1.0e-7, const int& maxiter=100,
                    const double& exptime=0, const double& exptol=1e-8, const int& expmaxdepth=4) :
                 bodies(bodies),
                 eps(eps),
                 maxiter(maxiter),
+                clight(clight),
                 exptol(exptol),
                 exptime(exptime * DAY), // Convert to seconds
                 expmaxdepth(expmaxdepth) {
@@ -626,7 +625,7 @@ namespace orbital {
             bodies[i]->y.resize(NT);
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
-            bodies[i]->R = bodies[0]->R;
+            bodies[i]->clight = clight;
         }
 
         // Loop through the timeseries
@@ -671,7 +670,7 @@ namespace orbital {
             bodies[i]->y.resize(NT);
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
-            bodies[i]->R = bodies[0]->R;
+            bodies[i]->clight = clight;
         }
 
         // Loop through the timeseries
@@ -780,7 +779,7 @@ namespace orbital {
                 else
                     bodies[i]->derivs[names[n]].resize(NT);
             }
-            bodies[i]->R = bodies[0]->R;
+            bodies[i]->clight = clight;
         }
         for (n = 0; n < ngrad; n++) {
             derivs[names[n]].resize(NT);

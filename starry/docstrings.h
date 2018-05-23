@@ -579,6 +579,9 @@ namespace docstrings {
 
                 Args:
                     bodies (list): List of bodies in the system, with the primary (usually the star) listed first.
+                    scale (float): This parameter sets the lengthscale for computing the light travel time delay \
+                                   and is simply equal to the radius of the star in $R_\odot$. Default `0`, meaning \
+                                   the light travel time effect is not computed.
                     kepler_tol (float): Kepler solver tolerance. Default `1e-7`.
                     kepler_max_iter (int): Maximum number of iterations in the Kepler solver. Default `100`.
                     exposure_time (float): The exposure time of the observations in days. If nonzero, the flux will \
@@ -611,7 +614,15 @@ namespace docstrings {
 
         const char * flux =
         R"pbdoc(
-            The computed system light curve. Must run :py:meth:`compute` first.
+            The computed system light curve. Must run :py:meth:`compute` first. *Read-only*.
+        )pbdoc";
+
+        const char * scale =
+        R"pbdoc(
+            This parameter sets the lengthscale for computing the light travel time delay
+            and is simply equal to the radius of the star in $R_\odot$. If zero, the light
+            travel time delay is not computed, corresponding to an effectively infinite
+            speed of light.
         )pbdoc";
 
         const char * exposure_time =
@@ -747,9 +758,6 @@ namespace docstrings {
 
             Args:
                 lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
-                R (double): The star's radius in solar radii. This is **only used** to set a lengthscale \
-                            when computing the light travel time delay within the system. The default is \
-                            0, meaning no light travel time delay. You'll probably want to set this, though!
 
             .. autoattribute:: map
             .. autoattribute:: flux
@@ -761,14 +769,6 @@ namespace docstrings {
         const char * map =
         R"pbdoc(
             The star's surface map, a :py:class:`LimbDarkenedMap` instance.
-        )pbdoc";
-
-        const char * R =
-        R"pbdoc(
-            The star's radius in solar radii. This is the only place where you'll
-            need to specify physical units in :py:obj:`starry`, as it sets the
-            lengthscale for computing the light travel time delay for all the objects
-            in the system.
         )pbdoc";
 
         const char * r =
@@ -1153,6 +1153,9 @@ namespace docstrings_grad {
 
                 Args:
                     bodies (list): List of bodies in the system, with the primary (usually the star) listed first.
+                    scale (float): This parameter sets the lengthscale for computing the light travel time delay \
+                                   and is simply equal to the radius of the star in $R_\odot$. Default `0`, meaning \
+                                   the light travel time effect is not computed.
                     kepler_tol (float): Kepler solver tolerance. Default `1e-7`.
                     kepler_max_iter (int): Maximum number of iterations in the Kepler solver. Default `100`.
                     exposure_time (float): The exposure time of the observations in days. If nonzero, the flux will \
@@ -1163,6 +1166,7 @@ namespace docstrings_grad {
                 .. automethod:: compute(time)
                 .. autoattribute:: flux
                 .. autoattribute:: gradient
+                .. autoattribute:: scale
                 .. autoattribute:: exposure_time
                 .. autoattribute:: exposure_tol
                 .. autoattribute:: exposure_max_depth
@@ -1174,6 +1178,8 @@ namespace docstrings_grad {
         const char * compute = docstrings::System::compute;
 
         const char * flux = docstrings::System::flux;
+
+        const char * scale = docstrings::System::scale;
 
         const char * exposure_time = docstrings::System::exposure_time;
 
@@ -1265,9 +1271,6 @@ namespace docstrings_grad {
 
             Args:
                 lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
-                R (double): The star's radius in solar radii. This is **only used** to set a lengthscale \
-                            when computing the light travel time delay within the system. The default is \
-                            0, meaning no light travel time delay. You'll probably want to set this, though!
 
             .. autoattribute:: map
             .. autoattribute:: flux
@@ -1278,8 +1281,6 @@ namespace docstrings_grad {
         )pbdoc";
 
         const char * map = docstrings::Star::map;
-
-        const char * R = docstrings::Star::R;
 
         const char * r = docstrings::Star::r;
 
