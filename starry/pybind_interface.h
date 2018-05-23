@@ -475,11 +475,11 @@ void ADD_MODULE(py::module &m) {
                          const double&, const double&,
                          const double&, const double&,
                          const double&, const double&,
-                         bool>(),
+                         bool, const double&>(),
                          "lmax"_a, "r"_a, "L"_a, "axis"_a,
                          "prot"_a, "theta0"_a, "a"_a, "porb"_a,
                          "inc"_a, "ecc"_a, "w"_a, "Omega"_a,
-                         "lambda0"_a, "tref"_a, "is_star"_a)
+                         "lambda0"_a, "tref"_a, "is_star"_a, "R"_a)
 
         // NOTE: & is necessary in the return statement so we pass a reference back to Python!
         .def_property_readonly("map", [](orbital::Body<MAPTYPE> &body){return &body.map;}, DOCS::Body::map)
@@ -515,7 +515,7 @@ void ADD_MODULE(py::module &m) {
             [](orbital::Body<MAPTYPE> &body, double theta0){body.theta0 = theta0 * DEGREE;}, DOCS::Body::theta0)
 
         .def_property("a", [](orbital::Body<MAPTYPE> &body){return get_value(body.a);},
-            [](orbital::Body<MAPTYPE> &body, double a){body.a = a;}, DOCS::Body::a)
+            [](orbital::Body<MAPTYPE> &body, double a){body.a = a; body.reset();}, DOCS::Body::a)
 
         .def_property("porb", [](orbital::Body<MAPTYPE> &body){return get_value(body.porb) / DAY;},
             [](orbital::Body<MAPTYPE> &body, double porb){body.porb = porb * DAY; body.reset();}, DOCS::Body::porb)
@@ -544,10 +544,13 @@ void ADD_MODULE(py::module &m) {
     // Star class
     py::class_<orbital::Star<MAPTYPE>>(m, "Star", PyBody, DOCS::Star::Star)
 
-        .def(py::init<int>(), "lmax"_a=2)
+        .def(py::init<int, const double&>(), "lmax"_a=2, "R"_a=0)
 
         // NOTE: & is necessary in the return statement so we pass a reference back to Python!
         .def_property_readonly("map", [](orbital::Body<MAPTYPE> &body){return &body.ldmap;}, DOCS::Star::map)
+
+        .def_property("R", [](orbital::Star<MAPTYPE> &star){return star.R / RSUN;},
+            [](orbital::Star<MAPTYPE> &star, double R){star.R = R * RSUN;}, DOCS::Star::R)
 
         .def_property_readonly("r", [](orbital::Star<MAPTYPE> &star){return 1.;}, DOCS::Star::r)
 

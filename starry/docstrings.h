@@ -747,9 +747,13 @@ namespace docstrings {
 
             Args:
                 lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
+                R (double): The star's radius in solar radii. This is **only used** to set a lengthscale \
+                            when computing the light travel time delay within the system. The default is \
+                            0, meaning no light travel time delay. You'll probably want to set this, though!
 
             .. autoattribute:: map
             .. autoattribute:: flux
+            .. autoattribute:: R
             .. autoattribute:: r
             .. autoattribute:: L
         )pbdoc";
@@ -757,6 +761,14 @@ namespace docstrings {
         const char * map =
         R"pbdoc(
             The star's surface map, a :py:class:`LimbDarkenedMap` instance.
+        )pbdoc";
+
+        const char * R =
+        R"pbdoc(
+            The star's radius in solar radii. This is the only place where you'll
+            need to specify physical units in :py:obj:`starry`, as it sets the
+            lengthscale for computing the light travel time delay for all the objects
+            in the system.
         )pbdoc";
 
         const char * r =
@@ -1253,15 +1265,21 @@ namespace docstrings_grad {
 
             Args:
                 lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
+                R (double): The star's radius in solar radii. This is **only used** to set a lengthscale \
+                            when computing the light travel time delay within the system. The default is \
+                            0, meaning no light travel time delay. You'll probably want to set this, though!
 
             .. autoattribute:: map
             .. autoattribute:: flux
             .. autoattribute:: gradient
+            .. autoattribute:: R
             .. autoattribute:: r
             .. autoattribute:: L
         )pbdoc";
 
         const char * map = docstrings::Star::map;
+
+        const char * R = docstrings::Star::R;
 
         const char * r = docstrings::Star::r;
 
