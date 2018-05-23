@@ -473,12 +473,12 @@ namespace orbital {
             std::map<string, Eigen::VectorXd> derivs;
 
             // Constructor
-            System(vector<Body<T>*> bodies, const double& clight=INFINITY, const double& eps=1.0e-7, const int& maxiter=100,
+            System(vector<Body<T>*> bodies, const double& scale=0, const double& eps=1.0e-7, const int& maxiter=100,
                    const double& exptime=0, const double& exptol=1e-8, const int& expmaxdepth=4) :
                 bodies(bodies),
                 eps(eps),
                 maxiter(maxiter),
-                clight(clight),
+                clight(CLIGHT / (scale * RSUN)),
                 exptol(exptol),
                 exptime(exptime * DAY), // Convert to seconds
                 expmaxdepth(expmaxdepth) {
@@ -497,6 +497,7 @@ namespace orbital {
                         throw errors::BadSystem();
                     bodies[i]->eps = eps;
                     bodies[i]->maxiter = maxiter;
+                    bodies[i]->clight = clight;
                 }
 
                 // Set the flag

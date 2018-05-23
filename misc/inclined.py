@@ -66,7 +66,7 @@ planet = starry.Planet(L=1, porb=1, prot=1)
 star = starry.Star()
 sys = starry.System([star, planet])
 time = np.linspace(0, 1, 1000)
-Omega = 90
+Omega = 0
 planet.Omega = Omega
 
 # Set up the figure
