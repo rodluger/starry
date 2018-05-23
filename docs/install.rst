@@ -39,13 +39,16 @@ For instance, by default :py:obj:`starry` computes the gradient of the flux
 with respect to at most 43 parameters. This is almost certainly overkill
 for most applications, but if you really need more derivatives, you'll have
 to change the :py:obj:`STARRY_NGRAD` compiler flag and re-build the code.
-You can do this by executing
+To do this, you'll need to clone the development version from github:
 
 .. code-block:: bash
 
-    STARRY_NGRAD=XX pip install --force-reinstall --ignore-installed --no-binary :all: starry
+        git clone https://github.com/rodluger/starry.git
+        cd starry
+        STARRY_NGRAD=XX python setup.py install
 
-in a terminal, where :py:obj:`XX` is the number of gradients you wish to
+
+where :py:obj:`XX` is the number of gradients you wish to
 compute. Keep in mind that the more gradients you ask :py:obj:`starry` to
 compute, the slower the code will run. If you really need performance in
 autodiff mode, you could potentially ask :py:obj:`starry` to compute fewer
