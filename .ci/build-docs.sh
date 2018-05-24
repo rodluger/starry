@@ -2,7 +2,7 @@
 # Run all the tutorial notebooks
 cd $TRAVIS_BUILD_DIR/docs/tutorials
 for filename in *.ipynb; do
-    jupyter nbconvert --to notebook --execute filename --output filename
+    jupyter nbconvert --to notebook --execute "$filename" --output filename
 done
 
 # Make the docs

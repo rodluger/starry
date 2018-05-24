@@ -178,7 +178,6 @@ namespace orbital {
             T z_;
 
             // Retarded position
-            T f0;
             T z0;
             T vx_;
             T vy_;
@@ -278,14 +277,10 @@ namespace orbital {
                 angvelrot = (2 * M_PI) / prot;
                 vamp = angvelorb * a / sqrt(1 - ecc2);
 
-                // Compute the z coordinate of the point in the orbit
-                // that is closest to the observer. This is our reference
-                // point for computing light travel time delays.
-                // NOTE: To get z0 I differentiated the expression for `z`
-                // in Murray & Dermott, p. 51, and set that to zero to get
-                // the true anomaly `f0` that maximizes the `z` coordinate.
-                T f0 = acos(ecw) - w;
-                z0 = sini * a * (1. - ecc2) * sin(w + f0) / (1. + ecc * cos(f0));
+                // Light travel time delay parameters
+                // `z0` is the reference point (the barycenter,
+                // assuming massless planets).
+                z0 = 0;
                 dt_ = 0;
                 dx_ = 0;
                 dy_ = 0;
