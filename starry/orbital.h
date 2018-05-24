@@ -16,20 +16,23 @@ Orbital star/planet/moon system class.
 #include "maps.h"
 #include "utils.h"
 #include "rotation.h"
+#include <limits>
 
-// Shorthand
-using maps::Map;
-using maps::LimbDarkenedMap;
-using maps::xhat;
-using maps::yhat;
-using maps::zhat;
-using std::vector;
-using std::max;
-using std::abs;
-using std::string;
-using std::to_string;
 
 namespace orbital {
+
+    // Shorthand
+    using maps::Map;
+    using maps::LimbDarkenedMap;
+    using maps::xhat;
+    using maps::yhat;
+    using maps::zhat;
+    using std::vector;
+    using std::max;
+    using std::abs;
+    using std::string;
+    using std::to_string;
+    using std::numeric_limits;
 
     template <class T> class Body;
     template <class T> class System;
@@ -237,6 +240,8 @@ namespace orbital {
                      if (!is_star) {
                          map.set_coeff(0, 0, 1);
                          map.Y00_is_unity = true;
+                         map_sky.set_coeff(0, 0, 1);
+                         map_sky.Y00_is_unity = true;
                      }
 
                      // LimbDarkenedMaps are normalized to 1 by default,
@@ -250,7 +255,7 @@ namespace orbital {
                      // Initialize orbital vars
                      clight = INFINITY;
                      reset();
-                     update_map_sky();
+                     sync_maps();
 
                  }
 
@@ -288,31 +293,32 @@ namespace orbital {
             };
 
             // Public methods
-            void update_map_sky();
+            void sync_maps();
             T theta(const T& time);
             void step(const T& time);
             void getflux(const T& time, const T& xo=0, const T& yo=0, const T& ro=0);
             std::string repr();
     };
 
-    // Rotate the map to its actual orientation on the sky
+    // Sync the map in the orbital plane (the user-facing one)
+    // and the map in the sky plane (the one used internally to compute the flux)
     template <class T>
-    inline void Body<T>::update_map_sky() {
+    inline void Body<T>::sync_maps() {
         if (!is_star){
-            if ((Omega != 0) || (sini < 1. - 1.e-15)) {
+            // Sync the two maps
+            map_sky.y = map.y;
+            map_sky.update();
+            map.G.sT = map_sky.G.sT;
+            map.C.rT = map_sky.C.rT;
+            axis_sky = axis;
+            // If there's inclination or rotation of the orbital plane,
+            // we need to rotate the sky map as well as the rotation axis
+            if ((Omega != 0) || (sini < 1. - 2 * numeric_limits<T>::epsilon())) {
                 UnitVector<T> axis1 = UnitVector<T>(xhat);
                 UnitVector<T> axis2 = UnitVector<T>(zhat);
-                map_sky.y = map.y;
                 map_sky.rotate(axis1, M_PI_2 - inc);
                 map_sky.rotate(axis2, Omega);
                 axis_sky = rotation::AxisAngle(axis2, Omega) * (rotation::AxisAngle(axis1, T(M_PI_2 - inc)) * axis);
-            } else {
-                map_sky.y = map.y;
-
-                //map.p =
-                // TODO p, g, G.sT, C.rT, optimize,
-
-                axis_sky = axis;
             }
         }
     }
@@ -333,7 +339,7 @@ namespace orbital {
             if (is_star)
                 flux_ += norm * ldmap.flux(xo, yo, ro) - totalflux;
             else
-                flux_ += norm * L * map.flux(axis, theta(time), xo, yo, ro) - totalflux;
+                flux_ += norm * L * map_sky.flux(axis, theta(time), xo, yo, ro) - totalflux;
         }
     }
 
@@ -445,7 +451,7 @@ namespace orbital {
                 totalflux = norm * ldmap.flux();
             else {
                 T theta_time(theta(time));
-                totalflux = norm * L * map.flux(axis, theta_time);
+                totalflux = norm * L * map_sky.flux(axis, theta_time);
             }
         }
         flux_ = totalflux;
@@ -677,7 +683,8 @@ namespace orbital {
     inline void System<T>::compute(const Vector<T>& time) {
 
         // Optimized version of this function with no exposure time integration
-        if (exptime == 0.0) return compute_instantaneous(time);
+        if (exptime == 0.0)
+            return compute_instantaneous(time);
 
         int i;
         T tsec;
@@ -687,13 +694,15 @@ namespace orbital {
         flux = Vector<T>::Zero(NT);
 
         // Allocate arrays and check that the planet maps are physical
-        // Propagate the radius of the star to all the bodies
+        // Propagate the speed of light to all the bodies
+        // Sync the orbital and sky maps
         for (i = 0; i < NB; i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
             bodies[i]->clight = clight;
+            bodies[i]->sync_maps();
         }
 
         // Loop through the timeseries
@@ -732,13 +741,15 @@ namespace orbital {
         flux = Vector<T>::Zero(NT);
 
         // Allocate arrays and check that the planet maps are physical
-        // Propagate the radius of the star to all the bodies
+        // Propagate the speed of light to all the bodies
+        // Sync the orbital and sky maps
         for (i = 0; i < NB; i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
             bodies[i]->clight = clight;
+            bodies[i]->sync_maps();
         }
 
         // Loop through the timeseries
@@ -822,7 +833,7 @@ namespace orbital {
             names.push_back(string("planet" + to_string(i) + ".Omega"));
             names.push_back(string("planet" + to_string(i) + ".lambda0"));
             names.push_back(string("planet" + to_string(i) + ".tref"));
-            for (l = 0; l < bodies[i]->map.lmax + 1; l++) {
+            for (l = 0; l < bodies[i]->map_sky.lmax + 1; l++) {
                 for (m = -l; m < l + 1; m++) {
                     names.push_back(string("planet" + to_string(i) + ".Y_{" + to_string(l) + "," + to_string(m) + "}"));
                 }
@@ -834,7 +845,8 @@ namespace orbital {
         if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
 
         // Allocate arrays and derivs
-        // Propagate the radius of the star to all the bodies
+        // Propagate the speed of light to all the bodies
+        // Sync the orbital and sky maps
         for (i = 0; i < NB; i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
@@ -848,6 +860,7 @@ namespace orbital {
                     bodies[i]->derivs[names[n]].resize(NT);
             }
             bodies[i]->clight = clight;
+            bodies[i]->sync_maps();
         }
         for (n = 0; n < ngrad; n++) {
             derivs[names[n]].resize(NT);
@@ -905,8 +918,8 @@ namespace orbital {
                 bodies[i]->reset();
 
                 // Map derivs
-                for (k = 0; k < bodies[i]->map.N; k++)
-                    bodies[i]->map.y(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                for (k = 0; k < bodies[i]->map_sky.N; k++)
+                    bodies[i]->map_sky.y(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
             }
 
             // Take an orbital step and compute the fluxes

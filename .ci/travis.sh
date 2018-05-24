@@ -16,6 +16,7 @@ pip install batman-package
 pip install tqdm
 pip install starry_maps
 pip install ipython
+pip install jupyter
 
 # Build the code
 # Build the extension

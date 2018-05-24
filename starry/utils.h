@@ -9,6 +9,7 @@ Miscellaneous stuff used throughout the code.
 #include <Eigen/Core>
 #include <unsupported/Eigen/AutoDiff>
 #include <iostream>
+#include <limits>
 #include "constants.h"
 
 // Our custom vector types
