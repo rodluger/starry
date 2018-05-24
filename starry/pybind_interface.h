@@ -432,14 +432,22 @@ void ADD_MODULE(py::module &m) {
     // Orbital system class
     py::class_<orbital::System<MAPTYPE>>(m, "System", DOCS::System::System)
 
-        .def(py::init<vector<orbital::Body<MAPTYPE>*>, double, int, double, double, int>(),
-            "bodies"_a, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100, "exposure_time"_a=0, "exposure_tol"_a=1e-8, "exposure_max_depth"_a=4)
+        .def(py::init<vector<orbital::Body<MAPTYPE>*>, double, double, int, double, double, int>(),
+            "bodies"_a, "scale"_a=0, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100, "exposure_time"_a=0, "exposure_tol"_a=1e-8, "exposure_max_depth"_a=4)
 
         .def("compute", [](orbital::System<MAPTYPE> &system, Vector<double>& time){system.compute((Vector<MAPTYPE>)time);},
             DOCS::System::compute, "time"_a)
 
         .def_property_readonly("flux", [](orbital::System<MAPTYPE> &system){return get_value(system.flux);},
             DOCS::System::flux)
+
+        .def_property("scale", [](orbital::System<MAPTYPE> &system){return CLIGHT / (system.clight * RSUN);},
+            [](orbital::System<MAPTYPE> &system, double scale){
+                if (scale == 0)
+                    system.clight = INFINITY;
+                else
+                    system.clight = CLIGHT / (scale * RSUN);
+            }, DOCS::System::scale)
 
         .def_property("kepler_tol", [](orbital::System<MAPTYPE> &system){return system.eps;},
             [](orbital::System<MAPTYPE> &system, double eps){system.eps = eps;}, DOCS::System::kepler_tol)
@@ -515,7 +523,7 @@ void ADD_MODULE(py::module &m) {
             [](orbital::Body<MAPTYPE> &body, double theta0){body.theta0 = theta0 * DEGREE;}, DOCS::Body::theta0)
 
         .def_property("a", [](orbital::Body<MAPTYPE> &body){return get_value(body.a);},
-            [](orbital::Body<MAPTYPE> &body, double a){body.a = a;}, DOCS::Body::a)
+            [](orbital::Body<MAPTYPE> &body, double a){body.a = a; body.reset();}, DOCS::Body::a)
 
         .def_property("porb", [](orbital::Body<MAPTYPE> &body){return get_value(body.porb) / DAY;},
             [](orbital::Body<MAPTYPE> &body, double porb){body.porb = porb * DAY; body.reset();}, DOCS::Body::porb)

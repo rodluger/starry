@@ -115,8 +115,11 @@ namespace orbital {
             T ecc2;
             T cosOcosi;
             T sinOcosi;
+            T ecw;
+            T esw;
             T angvelorb;
             T angvelrot;
+            T vamp;
 
             // Total flux at current timestep
             T totalflux;
@@ -124,8 +127,11 @@ namespace orbital {
 
         public:
 
-            // Flag
+            // Flag: is this a star?
             bool is_star;
+
+            // Speed of light in units of Rstar/s
+            T clight;
 
             // Map stuff
             int lmax;
@@ -167,6 +173,17 @@ namespace orbital {
             Vector<T> z;
             T z_;
 
+            // Retarded position
+            T f0;
+            T z0;
+            T vx_;
+            T vy_;
+            T vz_;
+            T dt_;
+            T dx_;
+            T dy_;
+            T dz_;
+
             // Flux
             Vector<T> flux;
             T flux_;
@@ -188,7 +205,7 @@ namespace orbital {
                  const T& Omega,
                  const T& lambda0,
                  const T& tref,
-                 bool is_star) :
+                 bool is_star):
                  is_star(is_star),
                  lmax(lmax),
                  axis(axis),
@@ -227,6 +244,7 @@ namespace orbital {
                         norm = 2. / sqrt(M_PI);
 
                      // Initialize orbital vars
+                     clight = INFINITY;
                      reset();
 
                  }
@@ -244,8 +262,24 @@ namespace orbital {
                 sqrtonepluse = sqrt(1 + ecc);
                 sqrtoneminuse = sqrt(1 - ecc);
                 ecc2 = ecc * ecc;
+                ecw = ecc * cos(w);
+                esw = ecc * sin(w);
                 angvelorb = (2 * M_PI) / porb;
                 angvelrot = (2 * M_PI) / prot;
+                vamp = angvelorb * a / sqrt(1 - ecc2);
+
+                // Compute the z coordinate of the point in the orbit
+                // that is closest to the observer. This is our reference
+                // point for computing light travel time delays.
+                // NOTE: To get z0 I differentiated the expression for `z`
+                // in Murray & Dermott, p. 51, and set that to zero to get
+                // the true anomaly `f0` that maximizes the `z` coordinate.
+                T f0 = acos(ecw) - w;
+                z0 = sini * a * (1. - ecc2) * sin(w + f0) / (1. + ecc * cos(f0));
+                dt_ = 0;
+                dx_ = 0;
+                dy_ = 0;
+                dz_ = 0;
             };
 
             // Public methods
@@ -255,13 +289,13 @@ namespace orbital {
             std::string repr();
     };
 
-    // Rotation angle as a function of time
+    // Rotation angle as a function of (retarded) time
     template <class T>
     inline T Body<T>::theta(const T& time) {
         if ((prot == 0) || (prot == INFINITY))
             return theta0;
         else
-            return fmod(theta0 + angvelrot * (time - tref), 2 * M_PI);
+            return fmod(theta0 + angvelrot * (time - tref - dt_), 2 * M_PI);
     }
 
     // Compute the flux in occultation
@@ -310,6 +344,29 @@ namespace orbital {
             x_ = rorb * (cosO * cwf - sinOcosi * swf);
             y_ = rorb * (sinO * cwf + cosOcosi * swf);
             z_ = rorb * swf * sini;
+
+            // Compute the light travel time delay
+            if (!isinf(get_value(clight))) {
+
+                // Components of the velocity in the sky plane.
+                // Obtained by differentiating the expression on
+                // p. 51 of Murray and Dermott
+                vx_ = -vamp * (cosO * (esw + swf) - sinOcosi * (ecw + cwf));
+                vy_ = vamp * (cosOcosi * (ecw + cwf) - sinO * (esw + swf));
+                vz_ = -vamp * sini * (ecw + cwf);
+
+                // Relative retarded time and position of the body this timestep
+                dt_ = (z0 - z_) / clight;
+                dx_ = -dt_ * vx_;
+                dy_ = -dt_ * vy_;
+                dz_ = -dt_ * vz_;
+
+                // Add it in!
+                x_ += dx_;
+                y_ += dy_;
+                z_ += dz_;
+
+            }
 
         }
 
@@ -403,6 +460,7 @@ namespace orbital {
             int maxiter;
             bool computed;
             T zero;
+            T clight;
 
             T exptol;
             T exptime;
@@ -415,11 +473,12 @@ namespace orbital {
             std::map<string, Eigen::VectorXd> derivs;
 
             // Constructor
-            System(vector<Body<T>*> bodies, const double& eps=1.0e-7, const int& maxiter=100,
+            System(vector<Body<T>*> bodies, const double& scale=0, const double& eps=1.0e-7, const int& maxiter=100,
                    const double& exptime=0, const double& exptol=1e-8, const int& expmaxdepth=4) :
                 bodies(bodies),
                 eps(eps),
                 maxiter(maxiter),
+                clight(CLIGHT / (scale * RSUN)),
                 exptol(exptol),
                 exptime(exptime * DAY), // Convert to seconds
                 expmaxdepth(expmaxdepth) {
@@ -438,6 +497,7 @@ namespace orbital {
                         throw errors::BadSystem();
                     bodies[i]->eps = eps;
                     bodies[i]->maxiter = maxiter;
+                    bodies[i]->clight = clight;
                 }
 
                 // Set the flag
@@ -560,11 +620,13 @@ namespace orbital {
         flux = Vector<T>::Zero(NT);
 
         // Allocate arrays and check that the planet maps are physical
+        // Propagate the radius of the star to all the bodies
         for (i = 0; i < NB; i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
+            bodies[i]->clight = clight;
         }
 
         // Loop through the timeseries
@@ -603,11 +665,13 @@ namespace orbital {
         flux = Vector<T>::Zero(NT);
 
         // Allocate arrays and check that the planet maps are physical
+        // Propagate the radius of the star to all the bodies
         for (i = 0; i < NB; i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
+            bodies[i]->clight = clight;
         }
 
         // Loop through the timeseries
@@ -703,6 +767,7 @@ namespace orbital {
         if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
 
         // Allocate arrays and derivs
+        // Propagate the radius of the star to all the bodies
         for (i = 0; i < NB; i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
@@ -715,6 +780,7 @@ namespace orbital {
                 else
                     bodies[i]->derivs[names[n]].resize(NT);
             }
+            bodies[i]->clight = clight;
         }
         for (n = 0; n < ngrad; n++) {
             derivs[names[n]].resize(NT);

@@ -4,6 +4,23 @@ import matplotlib.pyplot as pl
 import starry
 
 
+def R(u, theta):
+    """Return the rotation matrix for an angle `theta` and an axis `u`."""
+    cost = np.cos(theta)
+    sint = np.sin(theta)
+    ux, uy, uz = u
+    R = np.zeros((3, 3))
+    R[0, 0] = cost + ux ** 2 * (1 - cost)
+    R[0, 1] = ux * uy * (1 - cost) - uz * sint
+    R[0, 2] = ux * uz * (1 - cost) + uy * sint
+    R[1, 0] = uy * ux * (1 - cost) + uz * sint
+    R[1, 1] = cost + uy ** 2 * (1 - cost)
+    R[1, 2] = uy * uz * (1 - cost) - ux * sint
+    R[2, 0] = uz * ux * (1 - cost) - uy * sint
+    R[2, 1] = uz * uy * (1 - cost) + ux * sint
+    R[2, 2] = cost + uz ** 2 * (1 - cost)
+    return R
+
 def transform(planet):
     """
     Rotate the planet to the correct orientation.
@@ -23,42 +40,9 @@ def transform(planet):
     planet.map.rotate(axis=(1, 0, 0), theta=np.pi / 2 - inc)
     planet.map.rotate(axis=(0, 0, 1), theta=Omega)
 
-    # This is the vector pointing "up", perpendicular to the orbital plane
-    up = (-np.sin(inc) * np.sin(Omega),
-          np.sin(inc) * np.cos(Omega),
-          np.cos(inc))
-
-    # Transform ("rotate") the rotation axis to the correct orientation
-    # Dot product of `yhat` and `planet.axis` gives the transformation angle
-    # Cross product of `yhat` and `planet.axis` gives the transformation axis
-    yhat = np.array([0, 1, 0])
-    cost = np.dot(yhat, planet.axis)
-    sint = np.sqrt(1 - cost ** 2)
-    ax, ay, az = planet.axis
-    ux = -az * yhat[1] + ay * yhat[2]
-    uy = az * yhat[0] - ax * yhat[2]
-    uz = -ay * yhat[0] + ax * yhat[1]
-    norm = np.sqrt(ux ** 2 + uy ** 2 + uz ** 2)
-    if norm != 0:
-        ux /= norm
-        uy /= norm
-        uz /= norm
-    else:
-        ux = np.sqrt(2) / 2
-        uy = 0
-        uz = np.sqrt(2) / 2
-
-    R = np.zeros((3, 3))
-    R[0, 0] = cost + ux ** 2 * (1 - cost)
-    R[0, 1] = ux * uy * (1 - cost) - uz * sint
-    R[0, 2] = ux * uz * (1 - cost) + uy * sint
-    R[1, 0] = uy * ux * (1 - cost) + uz * sint
-    R[1, 1] = cost + uy ** 2 * (1 - cost)
-    R[1, 2] = uy * uz * (1 - cost) - ux * sint
-    R[2, 0] = uz * ux * (1 - cost) - uy * sint
-    R[2, 1] = uz * uy * (1 - cost) + ux * sint
-    R[2, 2] = cost + uz ** 2 * (1 - cost)
-    planet.axis = np.dot(R, up)
+    # Rotate the axis of rotation in the same way
+    planet.axis = np.dot(R((1, 0, 0), np.pi / 2 - inc), planet.axis)
+    planet.axis = np.dot(R((0, 0, 1), Omega), planet.axis)
 
 
 # Instantiate the system
@@ -66,7 +50,7 @@ planet = starry.Planet(L=1, porb=1, prot=1)
 star = starry.Star()
 sys = starry.System([star, planet])
 time = np.linspace(0, 1, 1000)
-Omega = 90
+Omega = 0
 planet.Omega = Omega
 
 # Set up the figure
@@ -107,6 +91,7 @@ for i, inc in enumerate([90, 60, 45, 30, 0]):
     # Compute and plot the phase curve
     sys.compute(time)
     ax_lc.plot(phase, planet.flux, label=r"$i=%d^\circ$" % inc)
+
 
 # Appearance
 for n in range(8):

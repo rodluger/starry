@@ -63,7 +63,7 @@ typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off>
 #define STARRY_PHYSICAL_CONSTANTS
 #define BIGG                                    6.67428e-11                     // Gravitational constant in m^3/kg/s^2
 #define DAY                                     86400.                          // Number of seconds in one day
-#define CLIGHT                                  2.998e8                         // Speed of light in m / s
+#define CLIGHT                                  299792458.                      // Speed of light in m / s
 #define REARTH                                  6.3781e6                        // Radius of the Earth in m
 #define PARSEC                                  3.086e16                        // Meters in 1 parsec
 #define MEARTH                                  (3.986004418e14 / BIGG)         // Mass of Earth in kg (from GM)
