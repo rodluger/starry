@@ -20,9 +20,9 @@ Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
 
 namespace ellip {
 
-using boost::math::ellint_1;
-using boost::math::ellint_2;
-using std::abs;
+  using boost::math::ellint_1;
+  using boost::math::ellint_2;
+  using std::abs;
 
   // Incomplete elliptic integral of the first kind
   // Currently using boost's implementation

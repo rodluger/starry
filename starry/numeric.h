@@ -11,21 +11,12 @@ Numerical integration by adaptive mesh refinement.
 #include <Eigen/Core>
 #include "constants.h"
 #include <unsupported/Eigen/AutoDiff>
-
-// Shorthand
-template <typename T>
-using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-template <typename T>
-using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-template <typename T>
-using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
-template <typename T>
-using UnitVector = Eigen::Matrix<T, 3, 1>;
-using std::abs;
-using std::fmod;
-
+#include "utils.h"
 
 namespace numeric {
+
+    using std::abs;
+    using std::fmod;
 
     // Evaluate a map `p` at a given (x, y) coordinate during an occultation
     template <typename T>

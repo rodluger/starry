@@ -21,11 +21,11 @@ please go for it!
 #include <maps.h>
 #include "constants.h"
 #include "errors.h"
-
-using namespace std;
 namespace py = pybind11;
 
 namespace vect {
+
+    using namespace std;
 
     // Vectorize a single python object
     inline Vector<double> vectorize_arg(py::object& obj, int& size){

@@ -14,15 +14,15 @@ Orbital star/planet/moon system class.
 #include "constants.h"
 #include "errors.h"
 #include "maps.h"
+#include "utils.h"
+#include "rotation.h"
 
 // Shorthand
-template <typename T>
-using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-template <typename T>
-using UnitVector = Eigen::Matrix<T, 3, 1>;
 using maps::Map;
 using maps::LimbDarkenedMap;
+using maps::xhat;
 using maps::yhat;
+using maps::zhat;
 using std::vector;
 using std::max;
 using std::abs;
@@ -120,6 +120,7 @@ namespace orbital {
             T angvelorb;
             T angvelrot;
             T vamp;
+            T aamp;
 
             // Total flux at current timestep
             T totalflux;
@@ -179,6 +180,9 @@ namespace orbital {
             T vx_;
             T vy_;
             T vz_;
+            T ax_;
+            T ay_;
+            T az_;
             T dt_;
             T dx_;
             T dy_;
@@ -246,6 +250,7 @@ namespace orbital {
                      // Initialize orbital vars
                      clight = INFINITY;
                      reset();
+                     update_map_sky();
 
                  }
 
@@ -283,11 +288,34 @@ namespace orbital {
             };
 
             // Public methods
+            void update_map_sky();
             T theta(const T& time);
             void step(const T& time);
             void getflux(const T& time, const T& xo=0, const T& yo=0, const T& ro=0);
             std::string repr();
     };
+
+    // Rotate the map to its actual orientation on the sky
+    template <class T>
+    inline void Body<T>::update_map_sky() {
+        if (!is_star){
+            if ((Omega != 0) || (sini < 1. - 1.e-15)) {
+                UnitVector<T> axis1 = UnitVector<T>(xhat);
+                UnitVector<T> axis2 = UnitVector<T>(zhat);
+                map_sky.y = map.y;
+                map_sky.rotate(axis1, M_PI_2 - inc);
+                map_sky.rotate(axis2, Omega);
+                axis_sky = rotation::AxisAngle(axis2, Omega) * (rotation::AxisAngle(axis1, T(M_PI_2 - inc)) * axis);
+            } else {
+                map_sky.y = map.y;
+
+                //map.p =
+                // TODO p, g, G.sT, C.rT, optimize,
+
+                axis_sky = axis;
+            }
+        }
+    }
 
     // Rotation angle as a function of (retarded) time
     template <class T>
@@ -339,27 +367,66 @@ namespace orbital {
                 rorb = a;
 
             // Murray and Dermott p. 51
+            // NOTE: x and y are negative to make orbits prograde!
             cwf = cos(w + f);
             swf = sin(w + f);
-            x_ = rorb * (cosO * cwf - sinOcosi * swf);
-            y_ = rorb * (sinO * cwf + cosOcosi * swf);
+            x_ = -rorb * (cosO * cwf - sinOcosi * swf);
+            y_ = -rorb * (sinO * cwf + cosOcosi * swf);
             z_ = rorb * swf * sini;
 
-            // Compute the light travel time delay
+            // Compute the light travel time delay.
+            // The equation we want to solve is
+            //
+            //    x'(t + dt(x(t))) = x(t)
+            //
+            // where `t` is the current time, `dt` is the light travel time
+            // from the body's current true position vector (`x`) to the
+            // reference point, and `x'` is the observed (retarded) position
+            // vector. Rearranging, we can write
+            //
+            //    x'(t) = x(t - dt(x(t)))
+            //
+            // which is the quantity we use to calculate the light curve.
+            // The issue with the RHS is that it is transcendental, so we
+            // Taylor expand it:
+            //
+            //    x(t - dt(x(t))) = x(t) - v(t) dt(x(t)) + 1/2 a(t) dt(x(t))^2
+            //
+            // where `v` and `a` are the current (true) velocity and acceleration
+            // vectors. We could carry this out to higher order but this should
+            // suffice for any realistic application.
             if (!isinf(get_value(clight))) {
 
                 // Components of the velocity in the sky plane.
-                // Obtained by differentiating the expression on
-                // p. 51 of Murray and Dermott
-                vx_ = -vamp * (cosO * (esw + swf) - sinOcosi * (ecw + cwf));
-                vy_ = vamp * (cosOcosi * (ecw + cwf) - sinO * (esw + swf));
-                vz_ = -vamp * sini * (ecw + cwf);
+                // Obtained by differentiating the expressions above
+                vx_ = vamp * (cosO * (esw + swf) - sinOcosi * (ecw + cwf));
+                vy_ = -vamp * (cosOcosi * (ecw + cwf) - sinO * (esw + swf));
+                vz_ = vamp * sini * (ecw + cwf);
+
+                // Components of the acceleration in the sky plane.
+                // These are easier, thanks to Kepler!
+                aamp = -angvelorb * angvelorb * a * a * a / (rorb * rorb);
+                ax_ = aamp * x_ / rorb;
+                ay_ = aamp * y_ / rorb;
+                az_ = aamp * z_ / rorb;
+
+                /*
+                // You can get the same answer by differentiating the velocity
+                // vector, but this is slower!
+                tmp = (1 - ecc * cos(E));
+                tmp = sqrt(1 - ecc2) / (tmp * tmp);
+                dcwfdt = angvelorb * swf * tmp;
+                dswfdt = -angvelorb * cwf * tmp;
+                ax_ = -vamp * (cosO * (esw + dswfdt) - sinOcosi * (ecw + dcwfdt));
+                ay_ = vamp * (cosOcosi * (ecw + dcwfdt) - sinO * (esw + dswfdt));
+                az_ = -vamp * sini * (ecw + dcwfdt);
+                */
 
                 // Relative retarded time and position of the body this timestep
                 dt_ = (z0 - z_) / clight;
-                dx_ = -dt_ * vx_;
-                dy_ = -dt_ * vy_;
-                dz_ = -dt_ * vz_;
+                dx_ = -vx_ * dt_ + 0.5 * ax_ * dt_ * dt_;
+                dy_ = -vy_ * dt_ + 0.5 * ay_ * dt_ * dt_;
+                dz_ = -vz_ * dt_ + 0.5 * az_ * dt_ * dt_;
 
                 // Add it in!
                 x_ += dx_;

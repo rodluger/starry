@@ -14,9 +14,7 @@ Spherical harmonic, polynomial, and Green's basis utilities.
 #include "fact.h"
 #include "sqrtint.h"
 #include "errors.h"
-
-template <typename T>
-using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+#include "utils.h"
 
 namespace basis {
 

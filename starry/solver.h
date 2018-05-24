@@ -17,17 +17,11 @@ Spherical harmonic integration utilities.
 #include "taylor.h"
 #include "utils.h"
 
-template <typename T>
-using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-template <typename T>
-using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-template <typename T>
-using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
-using std::abs;
-using std::max;
-using std::vector;
-
 namespace solver {
+
+    using std::abs;
+    using std::max;
+    using std::vector;
 
     // Forward declarations
     template <class T>
