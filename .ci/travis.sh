@@ -17,6 +17,7 @@ pip install tqdm
 pip install starry_maps
 pip install ipython
 pip install jupyter
+pip install emcee
 
 # Build the code
 # Build the extension
