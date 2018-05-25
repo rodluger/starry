@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+
 # Run all the tutorial notebooks
 cd $TRAVIS_BUILD_DIR/docs/tutorials
 for filename in *.ipynb; do

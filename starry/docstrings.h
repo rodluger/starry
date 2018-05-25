@@ -761,7 +761,6 @@ namespace docstrings {
 
             .. autoattribute:: map
             .. autoattribute:: flux
-            .. autoattribute:: R
             .. autoattribute:: r
             .. autoattribute:: L
         )pbdoc";
@@ -1275,7 +1274,6 @@ namespace docstrings_grad {
             .. autoattribute:: map
             .. autoattribute:: flux
             .. autoattribute:: gradient
-            .. autoattribute:: R
             .. autoattribute:: r
             .. autoattribute:: L
         )pbdoc";
