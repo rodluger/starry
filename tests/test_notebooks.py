@@ -3,6 +3,8 @@ import glob
 import os
 from nbconvert import PythonExporter
 import re
+import matplotlib.pyplot as pl
+
 
 # Set the benchmark flag
 __benchmark__ = True
@@ -36,6 +38,7 @@ def test_notebooks():
         # Run it
         print("Running %s..." % os.path.basename(notebook))
         exec(script, globals(), globals())
+        pl.close('all')
 
 
 if __name__ == "__main__":
