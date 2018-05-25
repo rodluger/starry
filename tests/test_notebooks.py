@@ -29,6 +29,9 @@ def test_notebooks():
         # Remove the %time wrappers
         script = re.sub("get_ipython\(\).magic\('time (.*)'\)", r"\1", script)
 
+        # Remove calls to map.show()
+        script = re.sub("(.*)\.show()(.*)", r"#", script)
+
         # DEBUG
         if "ipython" in script:
             print(script)
