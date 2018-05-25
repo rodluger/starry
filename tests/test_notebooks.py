@@ -23,6 +23,8 @@ def test_notebooks():
 
         # Get rid of %matplotlib inline commands
         script = script.replace("get_ipython().magic('matplotlib inline')", "")
+        script = script.replace(
+            "get_ipython().run_line_magic('matplotlib', 'inline')", "")
 
         # Remove the %time wrappers
         script = re.sub("get_ipython\(\).magic\('time (.*)'\)", r"\1", script)
@@ -30,6 +32,7 @@ def test_notebooks():
         # DEBUG
         if "ipython" in script:
             print(script)
+            continue
 
         # Run it
         print("Running %s..." % os.path.basename(notebook))
