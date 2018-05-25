@@ -108,6 +108,7 @@ namespace sturm {
     }
 
     // Count the positive roots of a polynomial over the domain [0, 1] using Sturm's theorem.
+    // `p` are the polynomial coefficients, highest order first.
     template <typename T>
     inline int polycountroots (const Eigen::Matrix<T, Eigen::Dynamic, 1>& p) {
       if (p.rows() <= 1) return 0;

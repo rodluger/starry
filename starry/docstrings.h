@@ -85,7 +85,7 @@ namespace docstrings {
         R"pbdoc(
                 Instantiate a :py:mod:`starry` surface map. Maps instantiated in this fashion
                 are *orthonormalized*, so the total integrated luminosity of the map is
-                $2\sqrt{\pi} Y_{0,0}$.
+                :math:`2\sqrt{\pi} Y_{0,0}`.
 
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
@@ -390,7 +390,7 @@ namespace docstrings {
                 instantiated this way are radially symmetric: only the radial (:py:obj:`m = 0`)
                 coefficients of the map are available. Users edit the map by directly
                 specifying the polynomial limb darkening coefficients :py:obj:`u`, starting
-                with $u_1$ (linear limb darkening). The coefficient $u_0$ is fixed to enforce
+                with :math:`u_1` (linear limb darkening). The coefficient :math:`u_0` is fixed to enforce
                 the correct normalization.
 
                 .. warning:: Unlike :py:class:`Map`, maps instantiated this \
@@ -410,6 +410,7 @@ namespace docstrings {
                 .. automethod:: get_coeff(l)
                 .. automethod:: set_coeff(l, coeff)
                 .. automethod:: reset()
+                .. automethod:: roots()
                 .. autoattribute:: lmax
                 .. autoattribute:: y
                 .. autoattribute:: p
@@ -444,6 +445,14 @@ namespace docstrings {
             Args:
                 l (int): The limb darkening order (> 0).
                 coeff (float): The value of the coefficient.
+        )pbdoc";
+
+        const char * roots =
+        R"pbdoc(
+            Count the number of roots of the specific intensity using Sturm's
+            theorem. Physical maps with positive semi-definite specific
+            intensity should have zero roots. If this number is nonzero,
+            your star has negative brightness somewhere!
         )pbdoc";
 
         const char * reset =
@@ -580,7 +589,7 @@ namespace docstrings {
                 Args:
                     bodies (list): List of bodies in the system, with the primary (usually the star) listed first.
                     scale (float): This parameter sets the lengthscale for computing the light travel time delay \
-                                   and is simply equal to the radius of the star in $R_\odot$. Default `0`, meaning \
+                                   and is simply equal to the radius of the star in :math:`R_\odot`. Default `0`, meaning \
                                    the light travel time effect is not computed.
                     kepler_tol (float): Kepler solver tolerance. Default `1e-7`.
                     kepler_max_iter (int): Maximum number of iterations in the Kepler solver. Default `100`.
@@ -620,7 +629,7 @@ namespace docstrings {
         const char * scale =
         R"pbdoc(
             This parameter sets the lengthscale for computing the light travel time delay
-            and is simply equal to the radius of the star in $R_\odot$. If zero, the light
+            and is simply equal to the radius of the star in :math:`R_\odot`. If zero, the light
             travel time delay is not computed, corresponding to an effectively infinite
             speed of light.
         )pbdoc";
@@ -992,7 +1001,7 @@ namespace docstrings_grad {
         R"pbdoc(
                 Instantiate a :py:mod:`starry` surface map. Maps instantiated in this fashion
                 are *orthonormalized*, so the total integrated luminosity of the map is
-                $2\sqrt{\pi} Y_{0,0}$.
+                :math:`2\sqrt{\pi} Y_{0,0}`.
 
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
@@ -1079,7 +1088,7 @@ namespace docstrings_grad {
                 instantiated this way are radially symmetric: only the radial (:py:obj:`m = 0`)
                 coefficients of the map are available. Users edit the map by directly
                 specifying the polynomial limb darkening coefficients :py:obj:`u`, starting
-                with $u_1$ (linear limb darkening). The coefficient $u_0$ is fixed to enforce
+                with :math:`u_1` (linear limb darkening). The coefficient :math:`u_0` is fixed to enforce
                 the correct normalization.
 
                 .. warning:: Unlike :py:class:`Map`, maps instantiated this \
@@ -1097,6 +1106,7 @@ namespace docstrings_grad {
                 .. automethod:: get_coeff(l)
                 .. automethod:: set_coeff(l, coeff)
                 .. automethod:: reset()
+                .. automethod:: roots()
                 .. autoattribute:: gradient
                 .. autoattribute:: lmax
                 .. autoattribute:: y
@@ -1115,6 +1125,8 @@ namespace docstrings_grad {
         const char * set_coeff = docstrings::LimbDarkenedMap::set_coeff;
 
         const char * reset = docstrings::LimbDarkenedMap::reset;
+
+        const char * roots = docstrings::LimbDarkenedMap::roots;
 
         const char * gradient =
         R"pbdoc(
@@ -1153,7 +1165,7 @@ namespace docstrings_grad {
                 Args:
                     bodies (list): List of bodies in the system, with the primary (usually the star) listed first.
                     scale (float): This parameter sets the lengthscale for computing the light travel time delay \
-                                   and is simply equal to the radius of the star in $R_\odot$. Default `0`, meaning \
+                                   and is simply equal to the radius of the star in :math:`R_\odot`. Default `0`, meaning \
                                    the light travel time effect is not computed.
                     kepler_tol (float): Kepler solver tolerance. Default `1e-7`.
                     kepler_max_iter (int): Maximum number of iterations in the Kepler solver. Default `100`.

@@ -347,6 +347,8 @@ void ADD_MODULE(py::module &m) {
 
         .def("reset", &maps::LimbDarkenedMap<MAPTYPE>::reset, DOCS::LimbDarkenedMap::reset)
 
+        .def("roots", &maps::LimbDarkenedMap<MAPTYPE>::roots, DOCS::LimbDarkenedMap::roots)
+
         .def_property_readonly("lmax", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.lmax;}, DOCS::LimbDarkenedMap::lmax)
 
         .def_property_readonly("mp_digits", [](maps::LimbDarkenedMap<MAPTYPE> &map){return STARRY_MP_DIGITS;}, DOCS::mp_digits)
