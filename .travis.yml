@@ -20,7 +20,7 @@ install:
     - source .ci/travis.sh
 
 script:
-    - py.test -v
+    - py.test -v -s
 
 after_success:
     - if [ "$TRAVIS_BRANCH" = "master" ]; then source .ci/build-docs.sh; fi

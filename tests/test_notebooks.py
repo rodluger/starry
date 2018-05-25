@@ -27,6 +27,10 @@ def test_notebooks():
         # Remove the %time wrappers
         script = re.sub("get_ipython\(\).magic\('time (.*)'\)", r"\1", script)
 
+        # DEBUG
+        if "ipython" in script:
+            print(script)
+
         # Run it
         print("Running %s..." % os.path.basename(notebook))
         exec(script, globals(), globals())
