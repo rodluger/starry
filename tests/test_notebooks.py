@@ -4,6 +4,9 @@ import os
 from nbconvert import PythonExporter
 import re
 
+# Set the benchmark flag
+__benchmark__ = True
+
 
 def test_notebooks():
     """Run all notebooks in /docs/tutorials/ as tests."""
@@ -11,9 +14,6 @@ def test_notebooks():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     path = os.path.join(root, 'docs', 'tutorials')
     notebooks = glob.glob(os.path.join(path, '*.ipynb'))
-
-    # Set the benchmark flag
-    __benchmark__ = True
 
     # Convert them to python scripts
     exporter = PythonExporter()
