@@ -27,7 +27,6 @@ using namespace pybind11::literals;
 namespace py = pybind11;
 using namespace vect;
 
-
 /**
 Define our map type (double or AutoDiffScalar)
 and some other type-specific stuff.
@@ -125,15 +124,18 @@ void ADD_MODULE(py::module &m) {
             [](maps::Map<MAPTYPE> &map, bool taylor){map.G.taylor = taylor;}, DOCS::Map::optimize)
 
         .def("evaluate", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& x, py::object& y) {
-                return vectorize_map_evaluate(axis, theta, x, y, map);
+                UnitVector<double> axis_norm = norm_unit(axis);
+                return vectorize_map_evaluate(axis_norm, theta, x, y, map);
             }, DOCS::Map::evaluate, "axis"_a=maps::yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
 
         .def("flux", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
-                return vectorize_map_flux(axis, theta, xo, yo, ro, map);
+                UnitVector<double> axis_norm = norm_unit(axis);
+                return vectorize_map_flux(axis_norm, theta, xo, yo, ro, map);
             }, DOCS::Map::flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("rotate", [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis, double theta){
-                map.rotate(UnitVector<MAPTYPE>(axis), MAPTYPE(theta));
+                UnitVector<MAPTYPE> axis_norm = UnitVector<MAPTYPE>(norm_unit(axis));
+                map.rotate(axis_norm, theta * DEGREE);
             }, DOCS::Map::rotate, "axis"_a=maps::yhat, "theta"_a=0)
 
         //
@@ -238,8 +240,8 @@ void ADD_MODULE(py::module &m) {
                 tmpmap.rotate(zhat, M_PI);
                 tmpmap.rotate(yhat, M_PI / 2.);
                 // Now rotate it to where the user wants it
-                tmpmap.rotate(xhat, -lat);
-                tmpmap.rotate(yhat, lon);
+                tmpmap.rotate(xhat, -lat * DEGREE);
+                tmpmap.rotate(yhat, lon * DEGREE);
                 // Add it to the current map
                 for (int l = 0; l < map.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
@@ -270,12 +272,12 @@ void ADD_MODULE(py::module &m) {
             Vector<double> x, theta;
             x = Vector<double>::LinSpaced(res, -1, 1);
             theta = Vector<double>::LinSpaced(frames, 0, 2 * M_PI);
-            UnitVector<MAPTYPE> MapType_axis(axis);
+            UnitVector<MAPTYPE> MapType_axis(norm_unit(axis));
             for (int t = 0; t < frames; t++){
                 I.push_back(Matrix<double>::Zero(res, res));
                 for (int i = 0; i < res; i++){
                     for (int j = 0; j < res; j++){
-                        I[t](j, i) = get_value(map.evaluate(axis, MAPTYPE(theta(t)), MAPTYPE(x(i)), MAPTYPE(x(j))));
+                        I[t](j, i) = get_value(map.evaluate(MapType_axis, MAPTYPE(theta(t)), MAPTYPE(x(i)), MAPTYPE(x(j))));
                     }
                 }
             }
@@ -292,11 +294,13 @@ void ADD_MODULE(py::module &m) {
             }, DOCS::Map::s_mp)
 
         .def("flux_mp", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
-                return vectorize_map_flux_mp(axis, theta, xo, yo, ro, map);
+                UnitVector<double> axis_norm = norm_unit(axis);
+                return vectorize_map_flux_mp(axis_norm, theta, xo, yo, ro, map);
             }, DOCS::Map::flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("flux_numerical", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro, double tol) {
-                return vectorize_map_flux_numerical(axis, theta, xo, yo, ro, tol, map);
+                UnitVector<double> axis_norm = norm_unit(axis);
+                return vectorize_map_flux_numerical(axis_norm, theta, xo, yo, ro, tol, map);
             }, DOCS::Map::flux_numerical, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
 
 #else
@@ -516,7 +520,7 @@ void ADD_MODULE(py::module &m) {
             [](orbital::Body<MAPTYPE> &body, double L){body.L = L; body.reset();}, DOCS::Body::L)
 
         .def_property("axis", [](orbital::Body<MAPTYPE> &body){return get_value((Vector<MAPTYPE>)body.axis);},
-            [](orbital::Body<MAPTYPE> &body, UnitVector<double> axis){body.axis = (Vector<MAPTYPE>)axis;}, DOCS::Body::axis)
+            [](orbital::Body<MAPTYPE> &body, UnitVector<double> axis){body.axis = (Vector<MAPTYPE>)norm_unit(axis);}, DOCS::Body::axis)
 
         .def_property("prot", [](orbital::Body<MAPTYPE> &body){return get_value(body.prot) / DAY;},
             [](orbital::Body<MAPTYPE> &body, double prot){body.prot = prot * DAY; body.reset();}, DOCS::Body::prot)

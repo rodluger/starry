@@ -61,7 +61,7 @@ class animated():
                 self.img.append(img)
 
         # Set up the animation
-        self.theta = np.linspace(0, 2 * np.pi, frames, endpoint=False)
+        self.theta = np.linspace(0, 360, frames, endpoint=False)
         self.animation = animation.FuncAnimation(self.fig, self.animate,
                                                  frames=self.frames,
                                                  interval=50,

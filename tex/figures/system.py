@@ -40,7 +40,7 @@ b = Planet(r=0.091679,
 b.map[1, 0] = -0.5
 
 # Rotate the planet map to produce a hotspot offset of 15 degrees
-b.map.rotate(axis=(0, 1, 0), theta=15 * np.pi / 180)
+b.map.rotate(axis=(0, 1, 0), theta=15)
 
 # Compute and plot the starry flux
 time = np.linspace(0, 20, 10000)
@@ -90,7 +90,7 @@ c.map[1, 0] = -0.5
 c.map[2, -2] = 0.5
 
 # Rotate the planet map to produce a hotspot offset of 15 degrees
-c.map.rotate(axis=(0, 1, 0), theta=15 * np.pi / 180)
+c.map.rotate(axis=(0, 1, 0), theta=15)
 
 # Compute and plot the starry flux
 system = System([star, b, c])

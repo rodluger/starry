@@ -214,7 +214,7 @@ namespace orbital {
                  bool is_star):
                  is_star(is_star),
                  lmax(lmax),
-                 axis(axis),
+                 axis(norm_unit(axis)),
                  prot(prot * DAY),
                  theta0(theta0 * DEGREE),
                  r(r),
@@ -223,7 +223,7 @@ namespace orbital {
                  map{is_star ? Map<T>(0) : Map<T>(lmax)},
                  ldmap{is_star ? LimbDarkenedMap<T>(lmax) : LimbDarkenedMap<T>(0)},
                  // Map in the sky coordinates
-                 axis_sky(axis),
+                 axis_sky(norm_unit(axis)),
                  map_sky{is_star ? Map<T>(0) : Map<T>(lmax)},
                  a(a),
                  porb(porb * DAY),

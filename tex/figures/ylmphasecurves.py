@@ -33,8 +33,8 @@ for j, m in enumerate(range(lmax + 1)):
 ux = np.array([1., 0., 0.])
 uy = np.array([0., 1., 0.])
 y = Map(lmax)
-theta = np.linspace(0, 2 * np.pi, nt, endpoint=False)
-thetan = np.linspace(0, 2 * np.pi, nn, endpoint=False)
+theta = np.linspace(0, 360, nt, endpoint=False)
+thetan = np.linspace(0, 360, nn, endpoint=False)
 for i, l in enumerate(range(lmax + 1)):
     for j, m in enumerate(range(l + 1)):
         nnull = 0
