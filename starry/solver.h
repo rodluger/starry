@@ -631,6 +631,9 @@ namespace solver {
                     // odd powers of x, so we don't need to compute them!
                     else if ((G.taylor) && (is_even(G.mu - 1)) && (!is_even((G.mu - 1) / 2)))
                         G.sT(n) = 0;
+                    // These terms are also zero for the same reason
+                    else if ((G.taylor) && (is_even(G.mu)) && (!is_even(G.mu / 2)))
+                        G.sT(n) = 0;
                     else
                         G.sT(n) = Q(G) - P(G);
                 } else {
