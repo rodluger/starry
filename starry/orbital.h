@@ -201,7 +201,6 @@ namespace orbital {
                  const T& L,
                  const UnitVector<T>& axis,
                  const T& prot,
-                 const T& theta0,
                  // Orbital stuff
                  const T& a,
                  const T& porb,
@@ -216,7 +215,6 @@ namespace orbital {
                  lmax(lmax),
                  axis(norm_unit(axis)),
                  prot(prot * DAY),
-                 theta0(theta0 * DEGREE),
                  r(r),
                  L(L),
                  // Don't waste time allocating maps we won't use
@@ -285,6 +283,17 @@ namespace orbital {
                 dx_ = 0;
                 dy_ = 0;
                 dz_ = 0;
+
+                // Initial map rotation angle. The map is defined at the
+                // eclipsing configuration (full dayside as seen by an
+                // observer viewing the system edge-on), so let's find the
+                // angle by which we need to rotate the map initially to
+                // make this happen.
+                T f_eclipse = 1.5 * M_PI - w;
+                T E_eclipse = atan2(sqrt(1 - ecc2) * sin(f_eclipse), ecc + cos(f_eclipse));
+                T M_eclipse = E_eclipse - ecc * sin(E_eclipse);
+                theta0 = -(porb / prot) * (M_eclipse - M0);
+                
             };
 
             // Public methods
@@ -469,7 +478,7 @@ namespace orbital {
         public:
             Star(int lmax=2) :
                  Body<T>(lmax, 1, 1, yhat, INFINITY, 0,
-                         0, INFINITY, 0, 0, 0, 0, 0, 0, true) {
+                         0, INFINITY, 0, 0, 0, 0, 0, true) {
             }
         std::string repr();
     };
@@ -491,7 +500,6 @@ namespace orbital {
                    const T& L=0.,
                    const UnitVector<T>& axis=yhat,
                    const T& prot=0.,
-                   const T& theta0=0,
                    const T& a=50.,
                    const T& porb=1.,
                    const T& inc=90.,
@@ -501,7 +509,7 @@ namespace orbital {
                    const T& lambda0=90.,
                    const T& tref=0.) :
                    Body<T>(lmax, r, L, axis, prot,
-                           theta0, a, porb, inc,
+                           a, porb, inc,
                            ecc, w, Omega, lambda0, tref,
                            false) {
             }
@@ -819,7 +827,6 @@ namespace orbital {
             names.push_back(string("planet" + to_string(i) + ".axis_y"));
             names.push_back(string("planet" + to_string(i) + ".axis_z"));
             names.push_back(string("planet" + to_string(i) + ".prot"));
-            names.push_back(string("planet" + to_string(i) + ".theta0"));
             names.push_back(string("planet" + to_string(i) + ".a"));
             names.push_back(string("planet" + to_string(i) + ".porb"));
             names.push_back(string("planet" + to_string(i) + ".inc"));
@@ -899,7 +906,6 @@ namespace orbital {
                 bodies[i]->axis(1).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->axis(2).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->prot.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->theta0.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->a.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->porb.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->inc.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);

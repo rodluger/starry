@@ -991,23 +991,23 @@ Printing the map to screen yields
 %
 Users can also directly access the spherical harmonic vector $\bvec{y}$,
 polynomial vector $\bvec{p}$, and Green's polynomial vector $\bvec{g}$
-via the attributes \starryMapy, \starryMapp, and \starryMapg, respectively:
+via the attributes \starryMapy, \starryMapp, and \starryMapg, respectively.
 %
-\begin{lstlisting}[language=Python,numbers=none]
-# map.y
-[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
- 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 0, 2, 0, 0, 0, 1, 0]
-
-# map.p
-[0, 0, 1.87, 0, 0, 0, 0, 0, 0, 0, -13.10, -23.48, 0, 0,
- -13.10, 7.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16.81, 26.42,
- 0, 0, 17.02, 17.61, 0, 0, 16.81, -8.81]
-
-# map.g
-[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3.73, -7.83, 0, 0, 1.86,
- 7.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5.59, 5.28, 0, 0,
- -16.81, 5.87, 0, 0, -16.75, -8.81])
-\end{lstlisting}
+%\begin{lstlisting}[language=Python,numbers=none]
+%# map.y
+%[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+% 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 0, 2, 0, 0, 0, 1, 0]
+%
+%# map.p
+%[0, 0, 1.87, 0, 0, 0, 0, 0, 0, 0, -13.10, -23.48, 0, 0,
+% -13.10, 7.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16.81, 26.42,
+% 0, 0, 17.02, 17.61, 0, 0, 16.81, -8.81]
+%
+%# map.g
+%[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3.73, -7.83, 0, 0, 1.86,
+% 7.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5.59, 5.28, 0, 0,
+% -16.81, 5.87, 0, 0, -16.75, -8.81])
+%\end{lstlisting}
 %
 Once a map is instantiated, users may quickly visualize it by calling
 %
@@ -1122,7 +1122,7 @@ As a second example, we can compute the rotational phase curve of the simplified
 by executing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-theta = np.linspace(0, 2 * np.pi, 100)
+theta = np.linspace(0, 360, 100)
 F = map.flux(axis=[0, 1, 0], theta=theta)
 \end{lstlisting}
 %
@@ -1497,25 +1497,25 @@ class and compute the flux at one point during an occultation:
 from starry.grad import Map
 map = Map(1)
 map[1, 0] = 1
-map.flux(axis=(0, 1, 0), theta=0.3, xo=0.1, yo=0.1, ro=0.1)
+map.flux(axis=(0, 1, 0), theta=30, xo=0.1, yo=0.1, ro=0.1)
 \end{lstlisting}
 %
-Running the code above outputs the value of the flux, \textsf{0.962688...},
+Running the code above outputs the value of the flux, \textsf{0.8723...},
 which is exactly what you'd get with \starryMap. However, behind the scenes,
 \starry also computed gradients. Here's what we get when we access \textsf{map.gradient}:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 {'Y_{0,0}': array([0.]),
  'Y_{1,-1}': array([-0.00153499]),
- 'Y_{1,0}': array([0.96268827]),
- 'Y_{1,1}': array([-0.29940113]),
- 'axis_x': array([0.00045362]),
- 'axis_y': array([0.]),
- 'axis_z': array([-6.85580453e-05]),
- 'ro': array([-0.29791067]),
- 'theta': array([-0.29940113]),
- 'xo': array([-0.00304715]),
- 'yo': array([0.00148905])}
+ 'Y_{1,0}': array([0.87233361]),
+ 'Y_{1,1}': array([-0.5054145]),
+ 'axis_x': array([0.0007675]),
+ 'axis_y': array([8.52090655e-20]),
+ 'axis_z': array([-0.00020565]),
+ 'ro': array([-0.27718567]),
+ 'theta': array([-0.00882115]),
+ 'xo': array([-0.0063251]),
+ 'yo': array([0.00134985])}
 \end{lstlisting}
 %
 These are the gradients of the flux with respect to each of the four map

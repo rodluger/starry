@@ -9,6 +9,7 @@ to use :py:obj:`starry` in various different ways.
 
    Basics I: Surface maps  <tutorials/basics1.ipynb>
    Basics II: Exoplanet systems <tutorials/basics2.ipynb>
+   Orientation of the map on the sky <tutorials/geometry.ipynb>
    Parameter inference with MCMC <tutorials/mcmc.ipynb>
    Optimization with analytic gradients <tutorials/autograd.ipynb>
    High order limb darkening <tutorials/high_order_ld.ipynb>

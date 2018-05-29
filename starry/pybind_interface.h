@@ -488,10 +488,9 @@ void ADD_MODULE(py::module &m) {
                          const double&, const double&,
                          const double&, const double&,
                          const double&, const double&,
-                         const double&, const double&,
-                         bool>(),
+                         const double&, bool>(),
                          "lmax"_a, "r"_a, "L"_a, "axis"_a,
-                         "prot"_a, "theta0"_a, "a"_a, "porb"_a,
+                         "prot"_a, "a"_a, "porb"_a,
                          "inc"_a, "ecc"_a, "w"_a, "Omega"_a,
                          "lambda0"_a, "tref"_a, "is_star"_a)
 
@@ -524,9 +523,6 @@ void ADD_MODULE(py::module &m) {
 
         .def_property("prot", [](orbital::Body<MAPTYPE> &body){return get_value(body.prot) / DAY;},
             [](orbital::Body<MAPTYPE> &body, double prot){body.prot = prot * DAY; body.reset();}, DOCS::Body::prot)
-
-        .def_property("theta0", [](orbital::Body<MAPTYPE> &body){return get_value(body.theta0) / DEGREE;},
-            [](orbital::Body<MAPTYPE> &body, double theta0){body.theta0 = theta0 * DEGREE;}, DOCS::Body::theta0)
 
         .def_property("a", [](orbital::Body<MAPTYPE> &body){return get_value(body.a);},
             [](orbital::Body<MAPTYPE> &body, double a){body.a = a; body.reset();}, DOCS::Body::a)
@@ -570,8 +566,6 @@ void ADD_MODULE(py::module &m) {
         .def_property_readonly("axis", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
 
         .def_property_readonly("prot", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
-
-        .def_property_readonly("theta0", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
 
         .def_property_readonly("a", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
 
@@ -619,9 +613,9 @@ void ADD_MODULE(py::module &m) {
                       const double&, const double&,
                       const double&, const double&,
                       const double&, const double&,
-                      const double&, const double&>(),
+                      const double&>(),
                       "lmax"_a=2, "r"_a=0.1, "L"_a=0., "axis"_a=maps::yhat,
-                      "prot"_a=0, "theta0"_a=0, "a"_a=50., "porb"_a=1,
+                      "prot"_a=0, "a"_a=50., "porb"_a=1,
                       "inc"_a=90., "ecc"_a=0, "w"_a=90, "Omega"_a=0,
                       "lambda0"_a=90, "tref"_a=0)
         .def("__setitem__", [](orbital::Planet<MAPTYPE> &body, py::object index, double coeff) {

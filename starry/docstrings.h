@@ -60,7 +60,7 @@ namespace docstrings {
         The orbital classes
         ===================
         .. autoclass:: Star()
-        .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, theta0=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
+        .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
         .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
 
     )pbdoc";
@@ -200,7 +200,7 @@ namespace docstrings {
 
             Args:
                 axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
-                theta (float or ndarray): Angle of rotation in radians. Default 0.
+                theta (float or ndarray): Angle of rotation in degrees. Default 0.
                 x (float or ndarray): Position scalar, vector, or matrix.
                 y (float or ndarray): Position scalar, vector, or matrix.
 
@@ -279,7 +279,7 @@ namespace docstrings {
 
             Args:
                 axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
-                theta (float or ndarray): Angle of rotation in radians. Default 0.
+                theta (float or ndarray): Angle of rotation in degrees. Default 0.
 
         )pbdoc";
 
@@ -314,8 +314,8 @@ namespace docstrings {
                 sigma (float): The standard deviation of the gaussian. Default 0.1
                 amp (float): The amplitude. Default 1.0, resulting in a gaussian whose \
                              integral over the sphere is unity.
-                lat (float): The latitude of the center of the gaussian in radians. Default 0.
-                lon (float): The longitude of the center of the gaussian in radians. Default 0.
+                lat (float): The latitude of the center of the gaussian in degrees. Default 0.
+                lon (float): The longitude of the center of the gaussian in degrees. Default 0.
         )pbdoc";
 
         const char * load_array =
@@ -709,11 +709,6 @@ namespace docstrings {
             Rotation period in days.
         )pbdoc";
 
-        const char * theta0 =
-        R"pbdoc(
-            Rotation phase at time :py:obj:`tref` in degrees.
-        )pbdoc";
-
         const char * a =
         R"pbdoc(
             Body semi-major axis in units of stellar radius.
@@ -806,7 +801,6 @@ namespace docstrings {
                 L (float): Body luminosity in units of the stellar luminosity. Default 0.
                 axis (ndarray): A *normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                 prot (float): Rotation period in days. Default no rotation.
-                theta0 (float): Rotation phase at time :py:obj:`tref` in degrees. Default 0.
                 a (float): Semi-major axis in stellar radii. Default 50.
                 porb (float): Orbital period in days. Default 1.
                 inc (float): Orbital inclination in degrees. Default 90.
@@ -825,7 +819,6 @@ namespace docstrings {
             .. autoattribute:: L
             .. autoattribute:: axis
             .. autoattribute:: prot
-            .. autoattribute:: theta0
             .. autoattribute:: a
             .. autoattribute:: porb
             .. autoattribute:: inc
@@ -865,8 +858,8 @@ namespace docstrings_grad {
             >>> import starry
             >>> m = starry.Map()
             >>> m[1, 0] = 1
-            >>> m.flux(axis=(0, 1, 0), theta=0.3, xo=0.1, yo=0.1, ro=0.1)
-            0.9626882655504516
+            >>> m.flux(axis=(0, 1, 0), theta=30, xo=0.1, yo=0.1, ro=0.1)
+            0.8723336063428014
 
         Here's the same code executed using the :py:obj:`Map()` class in :py:mod:`starry.grad`:
 
@@ -875,8 +868,8 @@ namespace docstrings_grad {
             >>> import starry
             >>> m = starry.grad.Map()
             >>> m[1, 0] = 1
-            >>> m.flux(axis=(0, 1, 0), theta=0.3, xo=0.1, yo=0.1, ro=0.1)
-            0.9626882655504516
+            >>> m.flux(axis=(0, 1, 0), theta=30, xo=0.1, yo=0.1, ro=0.1)
+            0.8723336063428014
 
         So far, they look identical. However, in the second case :py:obj:`starry`
         has also computed the gradient of the flux with respect to each of the
@@ -887,20 +880,20 @@ namespace docstrings_grad {
             >>> m.gradient
             {'Y_{0,0}': array([0.]),
              'Y_{1,-1}': array([-0.00153499]),
-             'Y_{1,0}': array([0.96268827]),
-             'Y_{1,1}': array([-0.29940113]),
+             'Y_{1,0}': array([0.87233361]),
+             'Y_{1,1}': array([-0.5054145]),
              'Y_{2,-1}': array([0.]),
              'Y_{2,-2}': array([0.]),
              'Y_{2,0}': array([0.]),
              'Y_{2,1}': array([0.]),
              'Y_{2,2}': array([0.]),
-             'axis_x': array([0.00045362]),
-             'axis_y': array([0.]),
-             'axis_z': array([-6.85580453e-05]),
-             'ro': array([-0.29791067]),
-             'theta': array([-0.29940113]),
-             'xo': array([-0.00304715]),
-             'yo': array([0.00148905])}
+             'axis_x': array([0.0007675]),
+             'axis_y': array([8.52090655e-20]),
+             'axis_z': array([-0.00020565]),
+             'ro': array([-0.27718567]),
+             'theta': array([-0.00882115]),
+             'xo': array([-0.0063251]),
+             'yo': array([0.00134985])}
 
         The :py:attr:`gradient` attribute can be accessed like any Python
         dictionary:
@@ -908,9 +901,9 @@ namespace docstrings_grad {
         .. code-block:: python
 
             >>> m.gradient["ro"]
-            array([-0.29791067])
+            array([-0.27718567])
             >>> m.gradient["theta"]
-            array([-0.29940113])
+            array([-0.00882115])
 
         In case :py:obj:`flux` is called with vector arguments, :py:attr:`gradient`
         is also vectorized:
@@ -920,15 +913,15 @@ namespace docstrings_grad {
             >>> import starry
             >>> m = starry.grad.Map()
             >>> m[1, 0] = 1
-            >>> m.flux(axis=(0, 1, 0), theta=0.3, xo=[0.1, 0.2, 0.3, 0.4], yo=0.1, ro=0.1)
-            array([[0.96268827],
-                   [0.96245977],
-                   [0.96238958],
-                   [0.96249153]])
+            >>> m.flux(axis=(0, 1, 0), theta=30, xo=[0.1, 0.2, 0.3, 0.4], yo=0.1, ro=0.1)
+            array([[0.87233361],
+                   [0.87177019],
+                   [0.87135028],
+                   [0.87108642]])
             >>> m.gradient["ro"]
-            array([-0.29791067, -0.30245629, -0.30381564, -0.30170352])
+            array([-0.27718567, -0.28843198, -0.29678989, -0.30200085])
             >>> m.gradient["theta"]
-            array([-0.29940113, -0.3009372 , -0.30252224, -0.30416053])
+            array([-0.00882115, -0.0088464 , -0.00887311, -0.00890139])
 
         Note, importantly, that the derivatives in this module are all
         computed **analytically** using autodifferentiation, so their evaluation is fast
@@ -979,7 +972,7 @@ namespace docstrings_grad {
         The orbital classes
         ===================
         .. autoclass:: Star()
-        .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, theta0=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
+        .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
         .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
     )pbdoc";
 
@@ -1252,8 +1245,6 @@ namespace docstrings_grad {
 
         const char * prot = docstrings::Body::prot;
 
-        const char * theta0 = docstrings::Body::theta0;
-
         const char * a = docstrings::Body::a;
 
         const char * porb = docstrings::Body::porb;
@@ -1313,7 +1304,6 @@ namespace docstrings_grad {
                 L (float): Body luminosity in units of the stellar luminosity. Default 0.
                 axis (ndarray): A *normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                 prot (float): Rotation period in days. Default no rotation.
-                theta0 (float): Rotation phase at time :py:obj:`tref` in degrees. Default 0.
                 a (float): Semi-major axis in stellar radii. Default 50.
                 porb (float): Orbital period in days. Default 1.
                 inc (float): Orbital inclination in degrees. Default 90.
@@ -1333,7 +1323,6 @@ namespace docstrings_grad {
             .. autoattribute:: L
             .. autoattribute:: axis
             .. autoattribute:: prot
-            .. autoattribute:: theta0
             .. autoattribute:: a
             .. autoattribute:: porb
             .. autoattribute:: inc
