@@ -1,5 +1,5 @@
 #!/bin/bash -x
-set -e
+#set -e
 
 # Are there changes in the tex directory?
 if git diff --name-only $TRAVIS_COMMIT_RANGE | grep 'tex/'

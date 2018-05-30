@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+#set -e
 
 # Make the docs
 pip install sphinx #sphinx_rtd_theme
