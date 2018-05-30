@@ -36,7 +36,7 @@
 \affil{Center~for~Space~and~Habitability, University~of~Bern, Bern, Switzerland}
 \affil{Virtual~Planetary~Laboratory, University~of~Washington, Seattle, WA}
 
-\keywords{methods: analytical --- techniques: photometric}
+\keywords{methods: analytical --- techniques: photometric} 
 
 \begin{abstract}
 We derive analytical, closed form, numerically stable solutions for the total flux
@@ -3000,7 +3000,7 @@ where
 \begin{eqnarray}
 K_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k I_{u,u+2(v-k)}\\
 I_{u,v} &=& \int_{-\kappa/2}^{\kappa/2} c_\varphi^u s_\varphi^v d\varphi\\
-L_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k J_{u,u+2(v-k)}\\ 
+L_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k J_{u,u+2(v-k)}\\
 J_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u\sin{\varphi}^v\left(k^2-\sin^2{\varphi}\right)^{3/2}.
 \end{eqnarray}
 
@@ -3013,7 +3013,7 @@ To obtain numerically stable expressions for $r \gg 1$, we expand these
 integrals using the small parameters $\kappa \ll 1$ and $k^2 \ll 1$ in this limit.
 For $I_{u,v}$,
 \begin{eqnarray}
-I_{u,v} &=& \begin{cases} 
+I_{u,v} &=& \begin{cases}
 0 & v \ {\rm odd}\\ \left(\frac{\kappa}{2}\right)^{v+1} \left(\frac{2}{v+1}-\frac{u+\tfrac{v}{3}}{v+3}\left(\frac{\kappa}{2}\right)^2+ {\cal O}(\kappa^4)\right) & v \ {\rm even}\end{cases}.
 \end{eqnarray}
 Note the leading-order term which has a steep dependence on $\kappa$ for large $v$:  it is
@@ -3025,7 +3025,7 @@ For $J_{u,v}$, we make the substitution $w=\sin^2{\varphi}/k^2$, giving
 \begin{equation}
 J_{p,q} = (4br)^{3/2} k^{4+q} \int_0^1 (1-k^2 w)^{\frac{p-1}{2}} w^{\frac{q-1}{2}} (1-w)^{3/2} dw.
 \end{equation}
-Again, this can be evaluated analytically in terms of complete elliptic integrals, 
+Again, this can be evaluated analytically in terms of complete elliptic integrals,
 as above, or it can be expressed as a series in $k^2$:
 \begin{eqnarray}
 J_{p,q} &=& 3(4br)^{3/2} k^{4+q}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (p-2i+1) \\
