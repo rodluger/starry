@@ -1367,18 +1367,13 @@ As with \starryStar, the planet's map
 (a \starryMap instance) can be accessed
 via the \ldmap property. Suppose we wish to give the planet a simple
 dipole map ($Y_{1,0}$) with peak brightness at the sub-stellar point.
-By default, the planet is instantiated at a transiting configuration (new phase),
-with mean longitude \textsf{lambda0} $= 90^\circ$, so we must actually set
-the corresponding coefficient in the map to be \emph{negative}:
+\starry expects the planet map to be instantiated at an eclipsing
+configuration (full phase), so we want to set the coefficient for the $Y_{1,0}$
+harmonic (see Figure~\ref{fig:ylms}):
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-planet.map[1, 0] = -0.5
+planet.map[1, 0] = 0.5
 \end{lstlisting}
-%
-This ensures that the hot spot is on the side of the planet facing the star
-(away from the observer when the planet is transiting).
-\footnote{Alternatively, users may specify the map as seen from full phase and
-set \textsf{planet.lambda0 = 270}.}
 %
 
 Finally, care should be taken to ensure the map is positive everywhere. By default,
