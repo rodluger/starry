@@ -28,6 +28,10 @@ def test_notebooks():
         script = script.replace(
             "get_ipython().run_line_magic('matplotlib', 'inline')", "")
 
+        # Get rid of %run commands
+        script = re.sub("get_ipython\(\).magic\('run (.*)'\)", r"#", script)
+        script = re.sub("get_ipython\(\).run_line_magic\('run', '(.*)'\)", r"#", script)
+
         # Remove the %time wrappers
         script = re.sub("get_ipython\(\).magic\('time (.*)'\)", r"\1", script)
         script = re.sub("get_ipython\(\).run_line_magic\('time', '(.*)'\)", r"\1", script)
