@@ -2534,7 +2534,7 @@ $\bvec{G}_n$. These are given by
             r c_\varphi
             \, \dd\varphi
             %
-            & \qquad \nu \, \mathrm{even}
+            & \qquad \frac{\nu}{2} \, \mathrm{even}
         \\[1em]
         %
         -\int\displaylimits_{\pi - \phi}^{2\pi + \phi}
@@ -2566,7 +2566,10 @@ $\bvec{G}_n$. These are given by
             (1 {-} r^2 {-} b^2 {-} 2 b r s_\varphi)^{\frac{3}{2}}
             r c_\varphi
             \, \dd\varphi
-            & \qquad \mathrm{otherwise}
+            & \qquad \frac{\nu-1}{2} \, \mathrm{even}, \, \mu > 1
+        \\[1em]
+        %
+        0 & \qquad \mathrm{otherwise}
     \end{dcases}
 %
 \intertext{and}
@@ -2582,7 +2585,7 @@ $\bvec{G}_n$. These are given by
             c_\varphi
             \, \dd\varphi
             %
-            & \qquad\qquad \nu \, \mathrm{even}
+            & \qquad\qquad \nu \, \mathrm{even}, \, \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
         %
         \phantom{XXXXX}0
@@ -2916,13 +2919,13 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
             (\delta + s_\varphi^2)^{\frac{\nu}{2}}
             \, \dd\varphi
             %
-            & \qquad \nu \, \mathrm{even}
+            & \qquad \frac{\nu}{2} \, \mathrm{even}
         \\[1em]
         %
-        -\int\displaylimits_{\pi - \phi}^{2\pi + \phi}
-            (r c_\varphi)^{l-2}
-            (1 {-} r^2 {-} b^2 {-} 2 b r s_\varphi)^{\frac{3}{2}}
-            r s_\varphi
+        -(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
+            (s_\varphi c_\varphi)^{l-2}
+            (k^2- s_\varphi^2)^{\frac{3}{2}}
+            (2s_\varphi^2-1)
             \, \dd\varphi
             %
             & \qquad \nu \, \mathrm{odd}, \,
@@ -2930,11 +2933,11 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
                      l \, \mathrm{even}
         \\[1em]
         %
-        -\int\displaylimits_{\pi - \phi}^{2\pi + \phi}
-            (r c_\varphi)^{l-3}
-            (b + r s_\varphi)
-            (1 {-} r^2 {-} b^2 {-} 2 b r s_\varphi)^{\frac{3}{2}}
-            r s_\varphi
+        -(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
+            (s_\varphi c_\varphi)^{l-3}
+            (\delta + s_\varphi^2)
+            (k^2- s_\varphi^2)^{\frac{3}{2}}
+            (2 s_\varphi^2-1)
             \, \dd\varphi
             %
             & \qquad \nu \, \mathrm{odd}, \,
@@ -2947,10 +2950,76 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
             (\delta + s_\varphi^2)^{\frac{\nu-1}{2}}
             (k^2 - s_\varphi^2)^{\frac{3}{2}}
             \, \dd\varphi
-            & \qquad \mathrm{otherwise}
+            & \qquad \frac{\nu-1}{2} \, \mathrm{even}
+        \\[1em]
+        %
+        0 & \qquad \mathrm{otherwise}
     \end{dcases}
 \end{align}
 where we have dropped the prime from $\varphi^\prime$.
+
+Expanding the terms $(\delta + s_\varphi^2)^n$ with the
+binomial theorem, we rewrite these expressions as:
+\begin{align}
+    \label{eq:PGnI}
+    \mathcal{P}(\bvec{G}_n) &=
+    \begin{dcases}
+        %
+        2(2r)^{l+2} K_{\frac{\mu+4}{2}, \frac{\nu}{2}}
+            %
+            & \qquad \frac{\nu}{2} \, \mathrm{even}
+        \\[1em]
+        -(2r)^{l-1} \left(2J_{l-2, l}-J_{l-2,l-2}\right)
+            %
+            & \qquad \nu \, \mathrm{odd}, \,
+                     \mu = 1, \,
+                     l \, \mathrm{even}
+        \\[1em]
+        %
+        -(2r)^{l-1} \left( (2\delta-1) J_{l-3,l-1} - \delta J_{l-3,l-3} + 2 J_{l-3,l+1} \right)
+            %
+            & \qquad \nu \, \mathrm{odd}, \,
+                     \mu = 1, \,
+                     l \, \mathrm{odd}
+        \\[1em]
+        %
+        2(2r)^{l-1} L_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}
+            & \qquad \frac{\nu-1}{2} \, \mathrm{even}
+        \\[1em]
+        %
+        0 & \qquad \mathrm{otherwise}
+    \end{dcases}
+    \pdf{PGn}
+%
+\end{align}
+
+where
+\begin{eqnarray}
+K_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k I_{u,u+2(v-k)}\\
+I_{u,v} &=& \int_{-\kappa/2}^{\kappa/2} c_\varphi^u s_\varphi^v d\varphi\\
+L_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k J_{u,u+2(v-k)}\\ 
+J_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u\sin{\varphi}^v\left(k^2-\sin^2{\varphi}\right)^{3/2}.
+\end{eqnarray}
+
+The integrals $I_{u,v}$ and $J_{u,v}$ can be found exactly, using integral
+reduction formulae as above.  However, the resulting recursion relations
+tend to be numerically unstable since cancellation of low-order terms occurs
+during the iteration when $r \gg 1$.
+
+To obtain numerically stable expressions for $r \gg 1$, we expand these
+integrals using the facts that $\kappa \ll 1$ and $k^2 \ll 1$ in this limit.
+For $I_{u,v}$,
+\begin{eqnarray}
+I_{u,v} &=& \begin{cases} 
+0 & v \ {\rm odd}\\ \left(\frac{\kappa}{2}\right)^{v+1} \left(\frac{2}{v+1}-\frac{u+\tfrac{v}{3}}{v+3}\left(\frac{\kappa}{2}\right)^2+ {\cal O}(\kappa^4)\right) & v \ {\rm even}\end{cases}\\.
+\end{eqnarray}
+This can be expanded to higher order in $\kappa$ if necessary.
+
+For $J_{u,v}$, we make the substitution $w=\sin^2{\varphi}/k^2$, giving
+\begin{equation}
+J_{p,q} = (4br)^{3/2} k^{4+q} \int_0^1 (1-k^2 w)^{\frac{p-1}{2}} w^{\frac{q-1}{2}} (1-w)^{3/2} dw.
+\end{equation}
+
 
 % ------------------------------------------------------------------------------
 \subsubsection{Numerical stability}
