@@ -265,7 +265,7 @@ namespace solver {
     // The primitive integral Q(G_n)
     template <typename T>
     inline T Q(Greens<T>& G){
-        if (is_even(G.nu))
+        if (is_even(G.nu) && is_even(G.mu / 2))
             return G.H((G.mu + 4) / 2, G.nu / 2);
         else
             return 0;
