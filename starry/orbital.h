@@ -14,22 +14,25 @@ Orbital star/planet/moon system class.
 #include "constants.h"
 #include "errors.h"
 #include "maps.h"
+#include "utils.h"
+#include "rotation.h"
+#include <limits>
 
-// Shorthand
-template <typename T>
-using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-template <typename T>
-using UnitVector = Eigen::Matrix<T, 3, 1>;
-using maps::Map;
-using maps::LimbDarkenedMap;
-using maps::yhat;
-using std::vector;
-using std::max;
-using std::abs;
-using std::string;
-using std::to_string;
 
 namespace orbital {
+
+    // Shorthand
+    using maps::Map;
+    using maps::LimbDarkenedMap;
+    using maps::xhat;
+    using maps::yhat;
+    using maps::zhat;
+    using std::vector;
+    using std::max;
+    using std::abs;
+    using std::string;
+    using std::to_string;
+    using std::numeric_limits;
 
     template <class T> class Body;
     template <class T> class System;
@@ -120,6 +123,7 @@ namespace orbital {
             T angvelorb;
             T angvelrot;
             T vamp;
+            T aamp;
 
             // Total flux at current timestep
             T totalflux;
@@ -174,11 +178,13 @@ namespace orbital {
             T z_;
 
             // Retarded position
-            T f0;
             T z0;
             T vx_;
             T vy_;
             T vz_;
+            T ax_;
+            T ay_;
+            T az_;
             T dt_;
             T dx_;
             T dy_;
@@ -195,7 +201,6 @@ namespace orbital {
                  const T& L,
                  const UnitVector<T>& axis,
                  const T& prot,
-                 const T& theta0,
                  // Orbital stuff
                  const T& a,
                  const T& porb,
@@ -208,16 +213,15 @@ namespace orbital {
                  bool is_star):
                  is_star(is_star),
                  lmax(lmax),
-                 axis(axis),
+                 axis(norm_unit(axis)),
                  prot(prot * DAY),
-                 theta0(theta0 * DEGREE),
                  r(r),
                  L(L),
                  // Don't waste time allocating maps we won't use
                  map{is_star ? Map<T>(0) : Map<T>(lmax)},
                  ldmap{is_star ? LimbDarkenedMap<T>(lmax) : LimbDarkenedMap<T>(0)},
                  // Map in the sky coordinates
-                 axis_sky(axis),
+                 axis_sky(norm_unit(axis)),
                  map_sky{is_star ? Map<T>(0) : Map<T>(lmax)},
                  a(a),
                  porb(porb * DAY),
@@ -233,6 +237,8 @@ namespace orbital {
                      if (!is_star) {
                          map.set_coeff(0, 0, 1);
                          map.Y00_is_unity = true;
+                         map_sky.set_coeff(0, 0, 1);
+                         map_sky.Y00_is_unity = true;
                      }
 
                      // LimbDarkenedMaps are normalized to 1 by default,
@@ -246,6 +252,7 @@ namespace orbital {
                      // Initialize orbital vars
                      clight = INFINITY;
                      reset();
+                     sync_maps();
 
                  }
 
@@ -268,26 +275,57 @@ namespace orbital {
                 angvelrot = (2 * M_PI) / prot;
                 vamp = angvelorb * a / sqrt(1 - ecc2);
 
-                // Compute the z coordinate of the point in the orbit
-                // that is closest to the observer. This is our reference
-                // point for computing light travel time delays.
-                // NOTE: To get z0 I differentiated the expression for `z`
-                // in Murray & Dermott, p. 51, and set that to zero to get
-                // the true anomaly `f0` that maximizes the `z` coordinate.
-                T f0 = acos(ecw) - w;
-                z0 = sini * a * (1. - ecc2) * sin(w + f0) / (1. + ecc * cos(f0));
+                // Light travel time delay parameters
+                // `z0` is the reference point (the barycenter,
+                // assuming massless planets).
+                z0 = 0;
                 dt_ = 0;
                 dx_ = 0;
                 dy_ = 0;
                 dz_ = 0;
+
+                // Initial map rotation angle. The map is defined at the
+                // eclipsing configuration (full dayside as seen by an
+                // observer viewing the system edge-on), so let's find the
+                // angle by which we need to rotate the map initially to
+                // make this happen.
+                T f_eclipse = 1.5 * M_PI - w;
+                T E_eclipse = atan2(sqrt(1 - ecc2) * sin(f_eclipse), ecc + cos(f_eclipse));
+                T M_eclipse = E_eclipse - ecc * sin(E_eclipse);
+                theta0 = -(porb / prot) * (M_eclipse - M0);
+                
             };
 
             // Public methods
+            void sync_maps();
             T theta(const T& time);
             void step(const T& time);
             void getflux(const T& time, const T& xo=0, const T& yo=0, const T& ro=0);
             std::string repr();
     };
+
+    // Sync the map in the orbital plane (the user-facing one)
+    // and the map in the sky plane (the one used internally to compute the flux)
+    template <class T>
+    inline void Body<T>::sync_maps() {
+        if (!is_star){
+            // Sync the two maps
+            map_sky.y = map.y;
+            map_sky.update();
+            map.G.sT = map_sky.G.sT;
+            map.C.rT = map_sky.C.rT;
+            axis_sky = axis;
+            // If there's inclination or rotation of the orbital plane,
+            // we need to rotate the sky map as well as the rotation axis
+            if ((Omega != 0) || (sini < 1. - 2 * numeric_limits<T>::epsilon())) {
+                UnitVector<T> axis1 = UnitVector<T>(xhat);
+                UnitVector<T> axis2 = UnitVector<T>(zhat);
+                map_sky.rotate(axis1, M_PI_2 - inc);
+                map_sky.rotate(axis2, Omega);
+                axis_sky = rotation::AxisAngle(axis2, Omega) * (rotation::AxisAngle(axis1, T(M_PI_2 - inc)) * axis);
+            }
+        }
+    }
 
     // Rotation angle as a function of (retarded) time
     template <class T>
@@ -305,7 +343,7 @@ namespace orbital {
             if (is_star)
                 flux_ += norm * ldmap.flux(xo, yo, ro) - totalflux;
             else
-                flux_ += norm * L * map.flux(axis, theta(time), xo, yo, ro) - totalflux;
+                flux_ += norm * L * map_sky.flux(axis, theta(time), xo, yo, ro) - totalflux;
         }
     }
 
@@ -339,27 +377,66 @@ namespace orbital {
                 rorb = a;
 
             // Murray and Dermott p. 51
+            // NOTE: x and y are negative to make orbits prograde!
             cwf = cos(w + f);
             swf = sin(w + f);
-            x_ = rorb * (cosO * cwf - sinOcosi * swf);
-            y_ = rorb * (sinO * cwf + cosOcosi * swf);
+            x_ = -rorb * (cosO * cwf - sinOcosi * swf);
+            y_ = -rorb * (sinO * cwf + cosOcosi * swf);
             z_ = rorb * swf * sini;
 
-            // Compute the light travel time delay
+            // Compute the light travel time delay.
+            // The equation we want to solve is
+            //
+            //    x'(t + dt(x(t))) = x(t)
+            //
+            // where `t` is the current time, `dt` is the light travel time
+            // from the body's current true position vector (`x`) to the
+            // reference point, and `x'` is the observed (retarded) position
+            // vector. Rearranging, we can write
+            //
+            //    x'(t) = x(t - dt(x(t)))
+            //
+            // which is the quantity we use to calculate the light curve.
+            // The issue with the RHS is that it is transcendental, so we
+            // Taylor expand it:
+            //
+            //    x(t - dt(x(t))) = x(t) - v(t) dt(x(t)) + 1/2 a(t) dt(x(t))^2
+            //
+            // where `v` and `a` are the current (true) velocity and acceleration
+            // vectors. We could carry this out to higher order but this should
+            // suffice for any realistic application.
             if (!isinf(get_value(clight))) {
 
                 // Components of the velocity in the sky plane.
-                // Obtained by differentiating the expression on
-                // p. 51 of Murray and Dermott
-                vx_ = -vamp * (cosO * (esw + swf) - sinOcosi * (ecw + cwf));
-                vy_ = vamp * (cosOcosi * (ecw + cwf) - sinO * (esw + swf));
-                vz_ = -vamp * sini * (ecw + cwf);
+                // Obtained by differentiating the expressions above
+                vx_ = vamp * (cosO * (esw + swf) - sinOcosi * (ecw + cwf));
+                vy_ = -vamp * (cosOcosi * (ecw + cwf) - sinO * (esw + swf));
+                vz_ = vamp * sini * (ecw + cwf);
+
+                // Components of the acceleration in the sky plane.
+                // These are easier, thanks to Kepler!
+                aamp = -angvelorb * angvelorb * a * a * a / (rorb * rorb);
+                ax_ = aamp * x_ / rorb;
+                ay_ = aamp * y_ / rorb;
+                az_ = aamp * z_ / rorb;
+
+                /*
+                // You can get the same answer by differentiating the velocity
+                // vector, but this is slower!
+                tmp = (1 - ecc * cos(E));
+                tmp = sqrt(1 - ecc2) / (tmp * tmp);
+                dcwfdt = angvelorb * swf * tmp;
+                dswfdt = -angvelorb * cwf * tmp;
+                ax_ = -vamp * (cosO * (esw + dswfdt) - sinOcosi * (ecw + dcwfdt));
+                ay_ = vamp * (cosOcosi * (ecw + dcwfdt) - sinO * (esw + dswfdt));
+                az_ = -vamp * sini * (ecw + dcwfdt);
+                */
 
                 // Relative retarded time and position of the body this timestep
                 dt_ = (z0 - z_) / clight;
-                dx_ = -dt_ * vx_;
-                dy_ = -dt_ * vy_;
-                dz_ = -dt_ * vz_;
+                dx_ = -vx_ * dt_ + 0.5 * ax_ * dt_ * dt_;
+                dy_ = -vy_ * dt_ + 0.5 * ay_ * dt_ * dt_;
+                dz_ = -vz_ * dt_ + 0.5 * az_ * dt_ * dt_;
 
                 // Add it in!
                 x_ += dx_;
@@ -378,7 +455,7 @@ namespace orbital {
                 totalflux = norm * ldmap.flux();
             else {
                 T theta_time(theta(time));
-                totalflux = norm * L * map.flux(axis, theta_time);
+                totalflux = norm * L * map_sky.flux(axis, theta_time);
             }
         }
         flux_ = totalflux;
@@ -401,7 +478,7 @@ namespace orbital {
         public:
             Star(int lmax=2) :
                  Body<T>(lmax, 1, 1, yhat, INFINITY, 0,
-                         0, INFINITY, 0, 0, 0, 0, 0, 0, true) {
+                         0, INFINITY, 0, 0, 0, 0, 0, true) {
             }
         std::string repr();
     };
@@ -423,7 +500,6 @@ namespace orbital {
                    const T& L=0.,
                    const UnitVector<T>& axis=yhat,
                    const T& prot=0.,
-                   const T& theta0=0,
                    const T& a=50.,
                    const T& porb=1.,
                    const T& inc=90.,
@@ -433,7 +509,7 @@ namespace orbital {
                    const T& lambda0=90.,
                    const T& tref=0.) :
                    Body<T>(lmax, r, L, axis, prot,
-                           theta0, a, porb, inc,
+                           a, porb, inc,
                            ecc, w, Omega, lambda0, tref,
                            false) {
             }
@@ -610,7 +686,8 @@ namespace orbital {
     inline void System<T>::compute(const Vector<T>& time) {
 
         // Optimized version of this function with no exposure time integration
-        if (exptime == 0.0) return compute_instantaneous(time);
+        if (exptime == 0.0)
+            return compute_instantaneous(time);
 
         int i;
         T tsec;
@@ -620,13 +697,15 @@ namespace orbital {
         flux = Vector<T>::Zero(NT);
 
         // Allocate arrays and check that the planet maps are physical
-        // Propagate the radius of the star to all the bodies
+        // Propagate the speed of light to all the bodies
+        // Sync the orbital and sky maps
         for (i = 0; i < NB; i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
             bodies[i]->clight = clight;
+            bodies[i]->sync_maps();
         }
 
         // Loop through the timeseries
@@ -665,13 +744,15 @@ namespace orbital {
         flux = Vector<T>::Zero(NT);
 
         // Allocate arrays and check that the planet maps are physical
-        // Propagate the radius of the star to all the bodies
+        // Propagate the speed of light to all the bodies
+        // Sync the orbital and sky maps
         for (i = 0; i < NB; i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
             bodies[i]->clight = clight;
+            bodies[i]->sync_maps();
         }
 
         // Loop through the timeseries
@@ -746,7 +827,6 @@ namespace orbital {
             names.push_back(string("planet" + to_string(i) + ".axis_y"));
             names.push_back(string("planet" + to_string(i) + ".axis_z"));
             names.push_back(string("planet" + to_string(i) + ".prot"));
-            names.push_back(string("planet" + to_string(i) + ".theta0"));
             names.push_back(string("planet" + to_string(i) + ".a"));
             names.push_back(string("planet" + to_string(i) + ".porb"));
             names.push_back(string("planet" + to_string(i) + ".inc"));
@@ -755,7 +835,7 @@ namespace orbital {
             names.push_back(string("planet" + to_string(i) + ".Omega"));
             names.push_back(string("planet" + to_string(i) + ".lambda0"));
             names.push_back(string("planet" + to_string(i) + ".tref"));
-            for (l = 0; l < bodies[i]->map.lmax + 1; l++) {
+            for (l = 0; l < bodies[i]->map_sky.lmax + 1; l++) {
                 for (m = -l; m < l + 1; m++) {
                     names.push_back(string("planet" + to_string(i) + ".Y_{" + to_string(l) + "," + to_string(m) + "}"));
                 }
@@ -767,7 +847,8 @@ namespace orbital {
         if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
 
         // Allocate arrays and derivs
-        // Propagate the radius of the star to all the bodies
+        // Propagate the speed of light to all the bodies
+        // Sync the orbital and sky maps
         for (i = 0; i < NB; i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
@@ -781,6 +862,7 @@ namespace orbital {
                     bodies[i]->derivs[names[n]].resize(NT);
             }
             bodies[i]->clight = clight;
+            bodies[i]->sync_maps();
         }
         for (n = 0; n < ngrad; n++) {
             derivs[names[n]].resize(NT);
@@ -824,7 +906,6 @@ namespace orbital {
                 bodies[i]->axis(1).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->axis(2).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->prot.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->theta0.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->a.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->porb.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->inc.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
@@ -838,8 +919,8 @@ namespace orbital {
                 bodies[i]->reset();
 
                 // Map derivs
-                for (k = 0; k < bodies[i]->map.N; k++)
-                    bodies[i]->map.y(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                for (k = 0; k < bodies[i]->map_sky.N; k++)
+                    bodies[i]->map_sky.y(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
             }
 
             // Take an orbital step and compute the fluxes

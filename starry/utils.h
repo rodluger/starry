@@ -9,6 +9,7 @@ Miscellaneous stuff used throughout the code.
 #include <Eigen/Core>
 #include <unsupported/Eigen/AutoDiff>
 #include <iostream>
+#include <limits>
 #include "constants.h"
 
 // Our custom vector types
@@ -48,5 +49,12 @@ template <typename T>
 inline void set_derivs_to_zero(T& x) { }
 template <>
 inline void set_derivs_to_zero(Grad& x) { x.derivatives().setZero(x.derivatives().size()); }
+
+// Normalize a unit vector
+template <typename T>
+inline UnitVector<T> norm_unit(const UnitVector<T>& vec) {
+    UnitVector<T> result = vec / sqrt(vec(0) * vec(0) + vec(1) * vec(1) + vec(2) * vec(2));
+    return result;
+}
 
 #endif

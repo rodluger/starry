@@ -12,7 +12,7 @@ m.set_coeff(5, 4, 1)
 # Render it under consecutive rotations
 nax = 9
 fig, ax = pl.subplots(1, nax, figsize=(3 * nax, 3))
-theta = np.linspace(-np.pi / 2, np.pi / 2, nax, endpoint=True)
+theta = np.linspace(-90, 90, nax, endpoint=True)
 x = np.linspace(-1, 1, 300)
 y = np.linspace(-1, 1, 300)
 x, y = np.meshgrid(x, y)

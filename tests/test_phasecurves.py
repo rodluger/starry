@@ -35,7 +35,7 @@ def test_phasecurves():
     uy = np.random.random() * (1 - ux)
     uz = np.sqrt(1 - ux ** 2 - uy ** 2)
     axis = [ux, uy, uz]
-    theta = np.linspace(0, 2 * np.pi, 25, endpoint=False)
+    theta = np.linspace(0, 360, 25, endpoint=False)
     sF = m.flux(axis=axis, theta=theta)
 
     # Compute the flux numerically

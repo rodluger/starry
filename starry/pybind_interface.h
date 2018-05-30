@@ -27,7 +27,6 @@ using namespace pybind11::literals;
 namespace py = pybind11;
 using namespace vect;
 
-
 /**
 Define our map type (double or AutoDiffScalar)
 and some other type-specific stuff.
@@ -125,15 +124,18 @@ void ADD_MODULE(py::module &m) {
             [](maps::Map<MAPTYPE> &map, bool taylor){map.G.taylor = taylor;}, DOCS::Map::optimize)
 
         .def("evaluate", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& x, py::object& y) {
-                return vectorize_map_evaluate(axis, theta, x, y, map);
+                UnitVector<double> axis_norm = norm_unit(axis);
+                return vectorize_map_evaluate(axis_norm, theta, x, y, map);
             }, DOCS::Map::evaluate, "axis"_a=maps::yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
 
         .def("flux", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
-                return vectorize_map_flux(axis, theta, xo, yo, ro, map);
+                UnitVector<double> axis_norm = norm_unit(axis);
+                return vectorize_map_flux(axis_norm, theta, xo, yo, ro, map);
             }, DOCS::Map::flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("rotate", [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis, double theta){
-                map.rotate(UnitVector<MAPTYPE>(axis), MAPTYPE(theta));
+                UnitVector<MAPTYPE> axis_norm = UnitVector<MAPTYPE>(norm_unit(axis));
+                map.rotate(axis_norm, theta * DEGREE);
             }, DOCS::Map::rotate, "axis"_a=maps::yhat, "theta"_a=0)
 
         //
@@ -238,8 +240,8 @@ void ADD_MODULE(py::module &m) {
                 tmpmap.rotate(zhat, M_PI);
                 tmpmap.rotate(yhat, M_PI / 2.);
                 // Now rotate it to where the user wants it
-                tmpmap.rotate(xhat, -lat);
-                tmpmap.rotate(yhat, lon);
+                tmpmap.rotate(xhat, -lat * DEGREE);
+                tmpmap.rotate(yhat, lon * DEGREE);
                 // Add it to the current map
                 for (int l = 0; l < map.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
@@ -270,12 +272,12 @@ void ADD_MODULE(py::module &m) {
             Vector<double> x, theta;
             x = Vector<double>::LinSpaced(res, -1, 1);
             theta = Vector<double>::LinSpaced(frames, 0, 2 * M_PI);
-            UnitVector<MAPTYPE> MapType_axis(axis);
+            UnitVector<MAPTYPE> MapType_axis(norm_unit(axis));
             for (int t = 0; t < frames; t++){
                 I.push_back(Matrix<double>::Zero(res, res));
                 for (int i = 0; i < res; i++){
                     for (int j = 0; j < res; j++){
-                        I[t](j, i) = get_value(map.evaluate(axis, MAPTYPE(theta(t)), MAPTYPE(x(i)), MAPTYPE(x(j))));
+                        I[t](j, i) = get_value(map.evaluate(MapType_axis, MAPTYPE(theta(t)), MAPTYPE(x(i)), MAPTYPE(x(j))));
                     }
                 }
             }
@@ -292,11 +294,13 @@ void ADD_MODULE(py::module &m) {
             }, DOCS::Map::s_mp)
 
         .def("flux_mp", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
-                return vectorize_map_flux_mp(axis, theta, xo, yo, ro, map);
+                UnitVector<double> axis_norm = norm_unit(axis);
+                return vectorize_map_flux_mp(axis_norm, theta, xo, yo, ro, map);
             }, DOCS::Map::flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("flux_numerical", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro, double tol) {
-                return vectorize_map_flux_numerical(axis, theta, xo, yo, ro, tol, map);
+                UnitVector<double> axis_norm = norm_unit(axis);
+                return vectorize_map_flux_numerical(axis_norm, theta, xo, yo, ro, tol, map);
             }, DOCS::Map::flux_numerical, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
 
 #else
@@ -346,6 +350,8 @@ void ADD_MODULE(py::module &m) {
             }, DOCS::LimbDarkenedMap::set_coeff, "l"_a, "coeff"_a)
 
         .def("reset", &maps::LimbDarkenedMap<MAPTYPE>::reset, DOCS::LimbDarkenedMap::reset)
+
+        .def("roots", &maps::LimbDarkenedMap<MAPTYPE>::roots, DOCS::LimbDarkenedMap::roots)
 
         .def_property_readonly("lmax", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.lmax;}, DOCS::LimbDarkenedMap::lmax)
 
@@ -482,10 +488,9 @@ void ADD_MODULE(py::module &m) {
                          const double&, const double&,
                          const double&, const double&,
                          const double&, const double&,
-                         const double&, const double&,
-                         bool>(),
+                         const double&, bool>(),
                          "lmax"_a, "r"_a, "L"_a, "axis"_a,
-                         "prot"_a, "theta0"_a, "a"_a, "porb"_a,
+                         "prot"_a, "a"_a, "porb"_a,
                          "inc"_a, "ecc"_a, "w"_a, "Omega"_a,
                          "lambda0"_a, "tref"_a, "is_star"_a)
 
@@ -514,13 +519,10 @@ void ADD_MODULE(py::module &m) {
             [](orbital::Body<MAPTYPE> &body, double L){body.L = L; body.reset();}, DOCS::Body::L)
 
         .def_property("axis", [](orbital::Body<MAPTYPE> &body){return get_value((Vector<MAPTYPE>)body.axis);},
-            [](orbital::Body<MAPTYPE> &body, UnitVector<double> axis){body.axis = (Vector<MAPTYPE>)axis;}, DOCS::Body::axis)
+            [](orbital::Body<MAPTYPE> &body, UnitVector<double> axis){body.axis = (Vector<MAPTYPE>)norm_unit(axis);}, DOCS::Body::axis)
 
         .def_property("prot", [](orbital::Body<MAPTYPE> &body){return get_value(body.prot) / DAY;},
             [](orbital::Body<MAPTYPE> &body, double prot){body.prot = prot * DAY; body.reset();}, DOCS::Body::prot)
-
-        .def_property("theta0", [](orbital::Body<MAPTYPE> &body){return get_value(body.theta0) / DEGREE;},
-            [](orbital::Body<MAPTYPE> &body, double theta0){body.theta0 = theta0 * DEGREE;}, DOCS::Body::theta0)
 
         .def_property("a", [](orbital::Body<MAPTYPE> &body){return get_value(body.a);},
             [](orbital::Body<MAPTYPE> &body, double a){body.a = a; body.reset();}, DOCS::Body::a)
@@ -564,8 +566,6 @@ void ADD_MODULE(py::module &m) {
         .def_property_readonly("axis", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
 
         .def_property_readonly("prot", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
-
-        .def_property_readonly("theta0", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
 
         .def_property_readonly("a", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
 
@@ -613,9 +613,9 @@ void ADD_MODULE(py::module &m) {
                       const double&, const double&,
                       const double&, const double&,
                       const double&, const double&,
-                      const double&, const double&>(),
+                      const double&>(),
                       "lmax"_a=2, "r"_a=0.1, "L"_a=0., "axis"_a=maps::yhat,
-                      "prot"_a=0, "theta0"_a=0, "a"_a=50., "porb"_a=1,
+                      "prot"_a=0, "a"_a=50., "porb"_a=1,
                       "inc"_a=90., "ecc"_a=0, "w"_a=90, "Omega"_a=0,
                       "lambda0"_a=90, "tref"_a=0)
         .def("__setitem__", [](orbital::Planet<MAPTYPE> &body, py::object index, double coeff) {

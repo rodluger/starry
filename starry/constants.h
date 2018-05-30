@@ -41,11 +41,6 @@ typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off>
 #define STARRY_MAX_HALF_FACT                    341
 #endif
 
-// Elliptic integral convergence tolerance
-#ifndef STARRY_ELLIP_CONV_TOL
-#define STARRY_ELLIP_CONV_TOL                   1.0e-8
-#endif
-
 // Elliptic integral maximum iterations
 #ifndef STARRY_ELLIP_MAX_ITER
 #define STARRY_ELLIP_MAX_ITER                   200

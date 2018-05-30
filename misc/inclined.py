@@ -21,6 +21,7 @@ def R(u, theta):
     R[2, 2] = cost + uz ** 2 * (1 - cost)
     return R
 
+
 def transform(planet):
     """
     Rotate the planet to the correct orientation.

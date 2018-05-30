@@ -19,9 +19,9 @@ star.map[1] = 0.4
 star.map[2] = 0.26
 
 # Dipole-map hot jupiter
-planet = Planet(lmax=2, r=0.1, a=60, inc=89.5, porb=50, prot=0.75,
+planet = Planet(lmax=2, r=0.1, a=60, inc=89.5, porb=50, prot=2.49,
                 lambda0=89.9, ecc=0.3, w=89, L=1e-3)
-planet.map[1, 0] = -0.5
+planet.map[1, 0] = 0.5
 
 # Instantiate the system
 system = System([star, planet], exposure_time=0)

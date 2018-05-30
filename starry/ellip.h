@@ -14,15 +14,26 @@ Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
 #include <cmath>
 #include "constants.h"
 #include "errors.h"
+#include <limits>
 #include <unsupported/Eigen/AutoDiff>
 #include <boost/math/special_functions/ellint_1.hpp>
 #include <boost/math/special_functions/ellint_2.hpp>
 
 namespace ellip {
 
-using boost::math::ellint_1;
-using boost::math::ellint_2;
-using std::abs;
+  using boost::math::ellint_1;
+  using boost::math::ellint_2;
+  using std::abs;
+
+  // EA: Elliptic integral convergence tolerance should be sqrt of machine precision
+  static const double tol_double = sqrt(std::numeric_limits<double>::epsilon());
+  static const bigdouble tol_bigdouble = sqrt(std::numeric_limits<bigdouble>::epsilon());
+
+  template <typename T>
+  inline T tol(){ return T(tol_double); }
+
+  template <>
+  inline bigdouble tol(){ return tol_bigdouble; }
 
   // Incomplete elliptic integral of the first kind
   // Currently using boost's implementation
@@ -45,7 +56,7 @@ using std::abs;
     for (int i = 0; i < STARRY_ELLIP_MAX_ITER; ++i) {
       h = m;
       m += kc;
-      if (abs(h - kc) / h <= STARRY_ELLIP_CONV_TOL) return M_PI / m;
+      if (abs(h - kc) / h <= tol<T>()) return M_PI / m;
       kc = sqrt(h * kc);
       m *= 0.5;
     }
@@ -62,7 +73,7 @@ using std::abs;
       m0 = m;
       m += kc;
       a += b / m;
-      if (abs(m0 - kc) / m0 <= STARRY_ELLIP_CONV_TOL) return M_PI_4 * a / m;
+      if (abs(m0 - kc) / m0 <= tol<T>()) return M_PI_4 * a / m;
       kc = 2.0 * sqrt(kc * m0);
     }
     throw errors::Elliptic();
@@ -80,7 +91,7 @@ using std::abs;
       p = g + p;
       g = m0;
       m0 = kc + m0;
-      if (abs(1.0 - kc / g) <= STARRY_ELLIP_CONV_TOL) return M_PI_2 * (c * m0 + d) / (m0 * (m0 + p));
+      if (abs(1.0 - kc / g) <= tol<T>()) return M_PI_2 * (c * m0 + d) / (m0 * (m0 + p));
       kc = 2.0 * sqrt(e);
       e = kc * m0;
     }

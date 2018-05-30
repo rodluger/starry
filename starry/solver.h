@@ -17,17 +17,11 @@ Spherical harmonic integration utilities.
 #include "taylor.h"
 #include "utils.h"
 
-template <typename T>
-using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-template <typename T>
-using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-template <typename T>
-using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
-using std::abs;
-using std::max;
-using std::vector;
-
 namespace solver {
+
+    using std::abs;
+    using std::max;
+    using std::vector;
 
     // Forward declarations
     template <class T>
@@ -636,6 +630,9 @@ namespace solver {
                     // These terms are zero because they are proportional to
                     // odd powers of x, so we don't need to compute them!
                     else if ((G.taylor) && (is_even(G.mu - 1)) && (!is_even((G.mu - 1) / 2)))
+                        G.sT(n) = 0;
+                    // These terms are also zero for the same reason
+                    else if ((G.taylor) && (is_even(G.mu)) && (!is_even(G.mu / 2)))
                         G.sT(n) = 0;
                     else
                         G.sT(n) = Q(G) - P(G);
