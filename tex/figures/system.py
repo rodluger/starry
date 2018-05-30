@@ -37,7 +37,7 @@ b = Planet(r=0.091679,
            tref=2)
 
 # Give the planet a simple dipole map
-b.map[1, 0] = -0.5
+b.map[1, 0] = 0.5
 
 # Rotate the planet map to produce a hotspot offset of 15 degrees
 b.map.rotate(axis=(0, 1, 0), theta=15)
@@ -72,7 +72,7 @@ b = Planet(r=0.04584,
            tref=0.5)
 
 # Give the planet a wonky map
-b.map[1, 0] = -0.5
+b.map[1, 0] = 0.5
 b.map[2, 1] = 0.5
 
 # Instantiate planet c
@@ -86,7 +86,7 @@ c = Planet(r=0.07334,
            tref=3)
 
 # Give the planet a wonky map
-c.map[1, 0] = -0.5
+c.map[1, 0] = 0.5
 c.map[2, -2] = 0.5
 
 # Rotate the planet map to produce a hotspot offset of 15 degrees
