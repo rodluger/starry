@@ -2885,6 +2885,74 @@ required to evaluate $\mathcal{J}_{u,v}$ are elementary, making the
 computation of $s_n$ fast.
 
 % ------------------------------------------------------------------------------
+\subsubsection{Alternate equations for large radius occultors}
+
+We have found that the numerical evaluation of the integrals has numerical stability
+problems for $r \gg 1$.  In this section we present transformed equations which
+may help with stability.
+
+For $r \gg 1$, we are only concerned with ingress and egress during which
+$\vert r-b \vert < 1$ (otherwise the source is completely visible or completely
+obscurved).  Thus, $b \approx r$, so we define a small parameter,
+\begin{equation}
+\delta = \frac{b-r}{2r}.
+\end{equation}
+We also observe that for $r \gg 1$, $\phi \approx -\pi/2$.  We transform to a
+new angle variable, $\kappa = \pi/2 + \phi$, such that $\kappa \ll 1$ when
+$r \gg 1$,
+\begin{equation}
+\kappa = \cos^{-1} \left(\frac{r^2+b^2-1}{2br}\right).
+\end{equation}
+With this transformed variable, the limits of integration of $\mathcal{P}(\bvec{G}_n)$
+become $\tfrac{3\pi}{2}-\kappa$ to $\tfrac{3\pi}{2}+\kappa$.  Transforming
+$\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
+\begin{align}
+    \label{eq:PGn_large}
+    \mathcal{P}(\bvec{G}_n) &=
+    \begin{dcases}
+        %
+        +2(2r)^{l+2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
+            (s_\varphi c_\varphi)^{\frac{\mu+4}{2}}
+            (\delta + s_\varphi^2)^{\frac{\nu}{2}}
+            \, \dd\varphi
+            %
+            & \qquad \nu \, \mathrm{even}
+        \\[1em]
+        %
+        -\int\displaylimits_{\pi - \phi}^{2\pi + \phi}
+            (r c_\varphi)^{l-2}
+            (1 {-} r^2 {-} b^2 {-} 2 b r s_\varphi)^{\frac{3}{2}}
+            r s_\varphi
+            \, \dd\varphi
+            %
+            & \qquad \nu \, \mathrm{odd}, \,
+                     \mu = 1, \,
+                     l \, \mathrm{even}
+        \\[1em]
+        %
+        -\int\displaylimits_{\pi - \phi}^{2\pi + \phi}
+            (r c_\varphi)^{l-3}
+            (b + r s_\varphi)
+            (1 {-} r^2 {-} b^2 {-} 2 b r s_\varphi)^{\frac{3}{2}}
+            r s_\varphi
+            \, \dd\varphi
+            %
+            & \qquad \nu \, \mathrm{odd}, \,
+                     \mu = 1, \,
+                     l \, \mathrm{odd}
+        \\[1em]
+        %
+        +2(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
+            (s_\varphi c_\varphi)^{\frac{\mu-1}{2}}
+            (\delta + s_\varphi^2)^{\frac{\nu-1}{2}}
+            (k^2 - s_\varphi^2)^{\frac{3}{2}}
+            \, \dd\varphi
+            & \qquad \mathrm{otherwise}
+    \end{dcases}
+\end{align}
+where we have dropped the prime from $\varphi^\prime$.
+
+% ------------------------------------------------------------------------------
 \subsubsection{Numerical stability}
 \label{app:numericalstability}
 % ------------------------------------------------------------------------------
