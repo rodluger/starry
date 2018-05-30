@@ -2684,7 +2684,10 @@ With some algebra, we may therefore write
         \\[1em]
         %
         r^{l-1} \mathcal{L}_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}
-            & \qquad \mathrm{otherwise}
+            & \qquad \frac{\nu-1}{2}, \, \mathrm{even}, \, \mu > 1
+        \\[1em]
+        %
+        0 & \qquad \mathrm{otherwise}
     \end{dcases}
     \pdf{PGn}
 %
@@ -2950,7 +2953,7 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
             (\delta + s_\varphi^2)^{\frac{\nu-1}{2}}
             (k^2 - s_\varphi^2)^{\frac{3}{2}}
             \, \dd\varphi
-            & \qquad \frac{\nu-1}{2} \, \mathrm{even}
+            & \qquad \frac{\nu-1}{2} \, \mathrm{even}, \, \mu > 1
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise}
@@ -2984,7 +2987,7 @@ binomial theorem, we rewrite these expressions as:
         \\[1em]
         %
         2(2r)^{l-1} L_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}
-            & \qquad \frac{\nu-1}{2} \, \mathrm{even}
+            & \qquad \frac{\nu-1}{2} \, \mathrm{even}, \, \mu > 1
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise}
@@ -3003,7 +3006,7 @@ J_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u\sin
 
 The integrals $I_{u,v}$ and $J_{u,v}$ can be found exactly, using integral
 reduction formulae as above.  However, the resulting recursion relations
-tend to be numerically unstable since cancellation of low-order terms occurs
+tend to be numerically unstable due to cancellation of low-order terms occurs
 during the iteration when $r \gg 1$.
 
 To obtain numerically stable expressions for $r \gg 1$, we expand these
