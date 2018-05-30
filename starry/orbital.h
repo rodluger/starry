@@ -293,7 +293,7 @@ namespace orbital {
                 T E_eclipse = atan2(sqrt(1 - ecc2) * sin(f_eclipse), ecc + cos(f_eclipse));
                 T M_eclipse = E_eclipse - ecc * sin(E_eclipse);
                 theta0 = -(porb / prot) * (M_eclipse - M0);
-                
+
             };
 
             // Public methods
@@ -376,8 +376,8 @@ namespace orbital {
             else
                 rorb = a;
 
-            // Murray and Dermott p. 51
-            // NOTE: x and y are negative to make orbits prograde!
+            // Murray and Dermott p. 51, except x and y have the opposite sign
+            // This makes the orbits prograde!
             cwf = cos(w + f);
             swf = sin(w + f);
             x_ = -rorb * (cosO * cwf - sinOcosi * swf);
@@ -387,20 +387,20 @@ namespace orbital {
             // Compute the light travel time delay.
             // The equation we want to solve is
             //
-            //    x'(t + dt(x(t))) = x(t)
+            //    x'(t + dt(x'(t))) = x(t)
             //
             // where `t` is the current time, `dt` is the light travel time
             // from the body's current true position vector (`x`) to the
             // reference point, and `x'` is the observed (retarded) position
             // vector. Rearranging, we can write
             //
-            //    x'(t) = x(t - dt(x(t)))
+            //    x'(t) = x(t - dt(x'(t)))
             //
             // which is the quantity we use to calculate the light curve.
             // The issue with the RHS is that it is transcendental, so we
             // Taylor expand it:
             //
-            //    x(t - dt(x(t))) = x(t) - v(t) dt(x(t)) + 1/2 a(t) dt(x(t))^2
+            //    x(t - dt(x'(t))) = x(t) - v(t) dt(x'(t)) + 1/2 a(t) dt(x'(t))^2
             //
             // where `v` and `a` are the current (true) velocity and acceleration
             // vectors. We could carry this out to higher order but this should
@@ -420,20 +420,17 @@ namespace orbital {
                 ay_ = aamp * y_ / rorb;
                 az_ = aamp * z_ / rorb;
 
-                /*
-                // You can get the same answer by differentiating the velocity
-                // vector, but this is slower!
-                tmp = (1 - ecc * cos(E));
-                tmp = sqrt(1 - ecc2) / (tmp * tmp);
-                dcwfdt = angvelorb * swf * tmp;
-                dswfdt = -angvelorb * cwf * tmp;
-                ax_ = -vamp * (cosO * (esw + dswfdt) - sinOcosi * (ecw + dcwfdt));
-                ay_ = vamp * (cosOcosi * (ecw + dcwfdt) - sinO * (esw + dswfdt));
-                az_ = -vamp * sini * (ecw + dcwfdt);
-                */
+                // Compute the time delay at the **retarded** position
+                // See https://github.com/rodluger/starry/issues/66
+                if (abs(az_) < 1e-10)
+                    dt_ = (z0 - z_) / (clight + vz_);
+                else
+                    dt_ = (clight / az_) *
+                          ((1 + vz_ / clight)
+                           - sqrt((1 + vz_ / clight) * (1 + vz_ / clight)
+                                  - 2 * az_ * (z0 - z_) / (clight * clight)));
 
-                // Relative retarded time and position of the body this timestep
-                dt_ = (z0 - z_) / clight;
+                // Relative position of the body this timestep
                 dx_ = -vx_ * dt_ + 0.5 * ax_ * dt_ * dt_;
                 dy_ = -vy_ * dt_ + 0.5 * ay_ * dt_ * dt_;
                 dz_ = -vz_ * dt_ + 0.5 * az_ * dt_ * dt_;
