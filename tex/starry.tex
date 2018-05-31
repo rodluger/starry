@@ -2966,13 +2966,13 @@ binomial theorem, we rewrite these expressions as:
             %
             & \qquad \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
-        -(2r)^{l-1} \left(2J_{l-2, l}-J_{l-2,l-2}\right)
+        -(2r)^{l-1} \left(2\mathcal{J}_{l-2, l}-\mathcal{J}_{l-2,l-2}\right)
             %
             & \qquad \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
-        -(2r)^{l-1} \left( (2\delta-1) J_{l-3,l-1} - \delta J_{l-3,l-3} + 2 J_{l-3,l+1} \right)
+        -(2r)^{l-1} \left( (2\delta-1) \mathcal{J}_{l-3,l-1} - \delta \mathcal{J}_{l-3,l-3} + 2 \mathcal{J}_{l-3,l+1} \right)
             %
             & \qquad \mu = 1, \,
                      l \, \mathrm{odd}
@@ -2989,34 +2989,34 @@ binomial theorem, we rewrite these expressions as:
 
 where
 \begin{eqnarray}
-\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k I_{u,u+2(v-k)},\\
+\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
 \mathcal{I}_{u,v} &=& \int_{-\kappa/2}^{\kappa/2} c_\varphi^u s_\varphi^v d\varphi,\\
-%\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k J_{u,u+2(v-k)},\\
-\mathcal{L}_{u,v} &=& (4br)^{3/2} k^3 \sum_{i=1}^{u+v} A_{u+v-i,u,v} J_{2i+2u},\\
+%\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
+\mathcal{L}_{u,v} &=& (4br)^{3/2} k^3 \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{2i+2u},\\
 %\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u\sin{\varphi}^v\left(k^2-\sin^2{\varphi}\right)^{3/2},
 \mathcal{J}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi \sin^v{\varphi}\left(1-k^{-2}\sin^2{\varphi}\right)^{3/2},\\
 \mathcal{A}_{p,u,v} &=& \sum_{j=0}^{p} (-1)^{p+j} \binom{u}{p-j} \binom{v}{p}\delta^j,
 \end{eqnarray}
-where the coefficients $A_{p,u,v}$ are computed from Vieta's formulae, and are
+where the coefficients $\mathcal{A}_{p,u,v}$ are computed from Vieta's formulae, and are
 equal to the elementary symmetric polynomials of the roots of $(x-1)^u(x+\delta)^v$.
 
 The integrals $\mathcal{I}_{u,v}$ can be found exactly, using integral
 reduction formulae as above.  However, the resulting recursion relations
 tend to be numerically unstable due to cancellation of low-order terms occurs
-during recursion when $r \gg 1$.  In particular, $I_{u,v} \propto \kappa^{v+1}$
+during recursion when $r \gg 1$.  In particular, $\mathcal{I}_{u,v} \propto \kappa^{v+1}$
 for even $v$, and zero for odd $v$, so as these equations are computed by
 recursion in $v$, the lower powers of $\kappa$ cancel out, leading to
 round-off errors.  The recursion formulae in $u$ involve addition, so iterating
-in $u$ is numerically stable.  Consequently, we start by computing $I_{u,v_{max})$
-where $v_{max}$ is the maximum value we need in computing $K_{u,v}$;  note
+in $u$ is numerically stable.  Consequently, we start by computing $\mathcal{I}_{u,v_{max}}$
+where $v_{max}$ is the maximum value we need in computing $\mathcal{K}_{u,v}$;  note
 that we only require even values of $u$ and $v$.  Applying recursion,
 \begin{equation}
-I_{0,v-2} =  \frac{v}{v-1}I_{0,v} + \frac{2}{v-1} (\sin{\tfrac{\kappa}{2}})^{v-1}\cos{\tfrac{\kappa}{2},
+\mathcal{I}_{0,v-2} =  \frac{v}{v-1}\mathcal{I}_{0,v} + \frac{2}{v-1} (\sin{\tfrac{\kappa}{2}})^{v-1}\cos{\tfrac{\kappa}{2}},
 \end{equation}
-for $v \ge 2$.  To compute the highest value of $I_{0,v_{max}}$, we
+for $v \ge 2$.  To compute the highest value of $\mathcal{I}_{0,v_{max}}$, we
 use a series expansion for $(\sin{x}/x)^v$ valid for small $x=\kappa/2$,
 \begin{eqnarray}
-I_{0,v} &=& \sum_{-\kappa/2}^{\kappa/2} d\varphi \sin^v{\varphi}\\
+\mathcal{I}_{0,v} &=& \sum_{-\kappa/2}^{\kappa/2} d\varphi \sin^v{\varphi}\\
    &=& 2(\kappa/2)^{v+1} \sum_{m=0}^\infty \frac{c_m}{v+m+i} (\kappa/2)^{2m},\\
 c_m &=& \frac{1}{m} \sum_{i=1}^m (i(v+1)-m) a_i c_{m-i}\\
 a_i &=& \frac{(-1)^i}{(2i+1)!},
@@ -3024,17 +3024,17 @@ a_i &=& \frac{(-1)^i}{(2i+1)!},
 where $a_i$ are the series coefficients for $\sin{x}/x$ for even powers
 of $x^{2i}$.
 
-To obtain numerically stable expressions for $r \gg 1$, we expand these
-integrals using the small parameters $\kappa \ll 1$ in this limit.
-For $\mathcal{I}_{u,v}$,
-\begin{eqnarray}
-\mathcal{I}_{u,v} &=& \begin{cases}
-0 & v \ {\rm odd}\\ \left(\frac{\kappa}{2}\right)^{v+1} \left(\frac{2}{v+1}-\frac{u+\tfrac{v}{3}}{v+3}\left(\frac{\kappa}{2}\right)^2+ {\cal O}(\kappa^4)\right) & v \ {\rm even}\end{cases}.
-\end{eqnarray}
-Note the leading-order term which has a steep dependence on $\kappa$ for large $v$:  it is
-this dependence which is caused by the cancellation of lower-order terms during recursive
-evaluation of $\mathcal{I}_{u,v}$.
-This can be expanded to higher order in $\kappa$ if necessary.
+%To obtain numerically stable expressions for $r \gg 1$, we expand these
+%integrals using the small parameters $\kappa \ll 1$ in this limit.
+%For $\mathcal{I}_{u,v}$,
+%\begin{eqnarray}
+%\mathcal{I}_{u,v} &=& \begin{cases}
+%0 & v \ {\rm odd}\\ \left(\frac{\kappa}{2}\right)^{v+1} \left(\frac{2}{v+1}-\frac{u+\tfrac{v}{3}}{v+3}\left(\frac{\kappa}{2}\right)^2+ {\cal O}(\kappa^4)\right) & v \ {\rm even}\end{cases}.
+%\end{eqnarray}
+%Note the leading-order term which has a steep dependence on $\kappa$ for large $v$:  it is
+%this dependence which is caused by the cancellation of lower-order terms during recursive
+%evaluation of $\mathcal{I}_{u,v}$.
+%This can be expanded to higher order in $\kappa$ if necessary.
 
 For $\mathcal{J}_{u,v}$, we make the substitution $w=\sin^2{\varphi}/k^2$, giving
 \begin{equation}
