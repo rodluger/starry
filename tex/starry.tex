@@ -2061,7 +2061,7 @@ as a function of $\x$ and $\y$ only:
 %
 where $\z = \z(\x, \y) = \sqrt{1 - \x^2 - \y^2}$. Evaluating the nested sums
 may be computationally slow, but these operations need only be performed a
-single time to construct our change of basis matrix (Appendix~\ref{sec:basis}).
+single time to construct our change of basis matrix (following section).
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -2918,7 +2918,7 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
             (\delta + s_\varphi^2)^{\frac{\nu}{2}}
             \, \dd\varphi
             %
-            & \qquad \frac{\nu}{2} \, \mathrm{even}
+            & \qquad \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
         %
         -(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
@@ -2927,8 +2927,7 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
             (2s_\varphi^2-1)
             \, \dd\varphi
             %
-            & \qquad \nu \, \mathrm{odd}, \,
-                     \mu = 1, \,
+            & \qquad \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
@@ -2939,8 +2938,7 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
             (2 s_\varphi^2-1)
             \, \dd\varphi
             %
-            & \qquad \nu \, \mathrm{odd}, \,
-                     \mu = 1, \,
+            & \qquad \mu = 1, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
@@ -2949,7 +2947,7 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
             (\delta + s_\varphi^2)^{\frac{\nu-1}{2}}
             (k^2 - s_\varphi^2)^{\frac{3}{2}}
             \, \dd\varphi
-            & \qquad \frac{\nu-1}{2} \, \mathrm{even}, \, \mu > 1
+            & \qquad \frac{\mu-1}{2} \, \mathrm{even}
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise}
@@ -2966,69 +2964,66 @@ binomial theorem, we rewrite these expressions as:
         %
         2(2r)^{l+2} K_{\frac{\mu+4}{2}, \frac{\nu}{2}}
             %
-            & \qquad \frac{\nu}{2} \, \mathrm{even}
+            & \qquad \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
         -(2r)^{l-1} \left(2J_{l-2, l}-J_{l-2,l-2}\right)
             %
-            & \qquad \nu \, \mathrm{odd}, \,
-                     \mu = 1, \,
+            & \qquad \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
         -(2r)^{l-1} \left( (2\delta-1) J_{l-3,l-1} - \delta J_{l-3,l-3} + 2 J_{l-3,l+1} \right)
             %
-            & \qquad \nu \, \mathrm{odd}, \,
-                     \mu = 1, \,
+            & \qquad \mu = 1, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
         2(2r)^{l-1} L_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}
-            & \qquad \frac{\nu-1}{2} \, \mathrm{even}, \, \mu > 1
+            & \qquad \frac{\mu-1}{2} \, \mathrm{even}
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise}
     \end{dcases}
-    \pdf{PGn}
 %
 \end{align}
 
 where
 \begin{eqnarray}
-K_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k I_{u,u+2(v-k)}\\
-I_{u,v} &=& \int_{-\kappa/2}^{\kappa/2} c_\varphi^u s_\varphi^v d\varphi\\
-L_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k J_{u,u+2(v-k)}\\
-J_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u\sin{\varphi}^v\left(k^2-\sin^2{\varphi}\right)^{3/2}.
+\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)}\\
+\mathcal{I}_{u,v} &=& \int_{-\kappa/2}^{\kappa/2} c_\varphi^u s_\varphi^v d\varphi\\
+\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)}\\
+\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u\sin{\varphi}^v\left(k^2-\sin^2{\varphi}\right)^{3/2}.
 \end{eqnarray}
 
-The integrals $I_{u,v}$ and $J_{u,v}$ can be found exactly, using integral
+The integrals $\mathcal{I}_{u,v}$ and $\mathcal{J}_{u,v}$ can be found exactly, using integral
 reduction formulae as above.  However, the resulting recursion relations
 tend to be numerically unstable due to cancellation of low-order terms occurs
 during recursion when $r \gg 1$.
 
 To obtain numerically stable expressions for $r \gg 1$, we expand these
 integrals using the small parameters $\kappa \ll 1$ and $k^2 \ll 1$ in this limit.
-For $I_{u,v}$,
+For $\mathcal{I}_{u,v}$,
 \begin{eqnarray}
-I_{u,v} &=& \begin{cases}
+\mathcal{I}_{u,v} &=& \begin{cases}
 0 & v \ {\rm odd}\\ \left(\frac{\kappa}{2}\right)^{v+1} \left(\frac{2}{v+1}-\frac{u+\tfrac{v}{3}}{v+3}\left(\frac{\kappa}{2}\right)^2+ {\cal O}(\kappa^4)\right) & v \ {\rm even}\end{cases}.
 \end{eqnarray}
 Note the leading-order term which has a steep dependence on $\kappa$ for large $v$:  it is
 this dependence which is caused by the cancellation of lower-order terms during recursive
-evaluation of $I_{u,v}$.
+evaluation of $\mathcal{I}_{u,v}$.
 This can be expanded to higher order in $\kappa$ if necessary.
 
-For $J_{u,v}$, we make the substitution $w=\sin^2{\varphi}/k^2$, giving
+For $\mathcal{J}_{u,v}$, we make the substitution $w=\sin^2{\varphi}/k^2$, giving
 \begin{equation}
-J_{p,q} = (4br)^{3/2} k^{4+q} \int_0^1 (1-k^2 w)^{\frac{p-1}{2}} w^{\frac{q-1}{2}} (1-w)^{3/2} dw.
+\mathcal{J}_{p,q} = (4br)^{3/2} k^{4+q} \int_0^1 (1-k^2 w)^{\frac{p-1}{2}} w^{\frac{q-1}{2}} (1-w)^{3/2} dw.
 \end{equation}
 Again, this can be evaluated analytically in terms of complete elliptic integrals,
 as above, or it can be expressed as a series in $k^2$:
 \begin{eqnarray}
-J_{p,q} &=& 3(4br)^{3/2} k^{4+q}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (p-2i+1) \\
+\mathcal{J}_{p,q} &=& 3(4br)^{3/2} k^{4+q}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (p-2i+1) \\
 &\times& \begin{cases} \pi \frac{(2n+q-1)!!}{2^{n+q/2}(q/2+2+n)!} & q \, \mathrm{even}\\
 \frac{(q/2-1/2+n)! 2^{n+3+q/2-1/2}}{(q+2n+5)!} & q \, \mathrm{odd} \end{cases}.
 \end{eqnarray}
-Note the steep dependence of $J_{p,q}$ on $k$ for large $q$:  this is also due to cancellation
+Note the steep dependence of $\mathcal{J}_{p,q}$ on $k$ for large $q$:  this is also due to cancellation
 of lower order terms during recursion, which can lead to severe round-off errors.
 
 {\color{red} Code up this formula, and check for accuracy in the $r > 1$ limit.  Also,
