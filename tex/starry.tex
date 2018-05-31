@@ -2982,7 +2982,7 @@ binomial theorem, we rewrite these expressions as:
                      l \, \mathrm{odd}
         \\[1em]
         %
-        2(2r)^{l-1} L_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}
+        2(2r)^{l-1} L_{\frac{\mu-1}{4}, \frac{\nu-1}{2}}
             & \qquad \frac{\nu-1}{2} \, \mathrm{even}, \, \mu > 1
         \\[1em]
         %
@@ -2994,19 +2994,43 @@ binomial theorem, we rewrite these expressions as:
 
 where
 \begin{eqnarray}
-K_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k I_{u,u+2(v-k)}\\
-I_{u,v} &=& \int_{-\kappa/2}^{\kappa/2} c_\varphi^u s_\varphi^v d\varphi\\
-L_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k J_{u,u+2(v-k)}\\
-J_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u\sin{\varphi}^v\left(k^2-\sin^2{\varphi}\right)^{3/2}.
+K_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k I_{u,u+2(v-k)},\\
+I_{u,v} &=& \int_{-\kappa/2}^{\kappa/2} c_\varphi^u s_\varphi^v d\varphi,\\
+%L_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k J_{u,u+2(v-k)},\\
+L_{u,v} &=& (4br)^{3/2} k^3 \sum_{i=1}^{u+v} A_{u+v-i,u,v} J_{2i+2u},\\
+%J_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u\sin{\varphi}^v\left(k^2-\sin^2{\varphi}\right)^{3/2},
+J_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi \sin^v{\varphi}\left(1-k^{-2}\sin^2{\varphi}\right)^{3/2},\\
+A_{p,u,v} &=& \sum_{j=0}^{p} (-1)^{p+j} \binom{u}{p-j} \binom{v}{p}\delta^j,
 \end{eqnarray}
+where the coefficients $A_{p,u,v}$ are computed from Vieta's formulae, and are
+equal to the elementary symmetric polynomials of the roots of $(x-1)^u(x+\delta)^v$.
 
-The integrals $I_{u,v}$ and $J_{u,v}$ can be found exactly, using integral
+The integrals $I_{u,v}$ can be found exactly, using integral
 reduction formulae as above.  However, the resulting recursion relations
 tend to be numerically unstable due to cancellation of low-order terms occurs
-during recursion when $r \gg 1$.
+during recursion when $r \gg 1$.  In particular, $I_{u,v} \propto \kappa^{v+1}$
+for even $v$, and zero for odd $v$, so as these equations are computed by
+recursion in $v$, the lower powers of $\kappa$ cancel out, leading to
+round-off errors.  The recursion formulae in $u$ involve addition, so iterating
+in $u$ is numerically stable.  Consequently, we start by computing $I_{u,v_{max})$
+where $v_{max}$ is the maximum value we need in computing $K_{u,v}$;  note
+that we only require even values of $u$ and $v$.  Applying recursion,
+\begin{equation}
+I_{0,v-2} =  \frac{v}{v-1}I_{0,v} + \frac{2}{v-1} (\sin{\tfrac{\kappa}{2}})^{v-1}\cos{\tfrac{\kappa}{2},
+\end{equation}
+for $v \ge 2$.  To compute the highest value of $I_{0,v_{max}}$, we
+use a series expansion for $(\sin{x}/x)^v$ valid for small $x=\kappa/2$,
+\begin{eqnarray}
+I_{0,v} &=& \sum_{-\kappa/2}^{\kappa/2} d\varphi \sin^v{\varphi}\\
+   &=& 2(\kappa/2)^{v+1} \sum_{m=0}^\infty \frac{c_m}{v+m+i} (\kappa/2)^{2m},\\
+c_m &=& \frac{1}{m} \sum_{i=1}^m (i(v+1)-m) a_i c_{m-i}\\
+a_i &=& \frac{(-1)^i}{(2i+1)!},
+\end{eqnarray}
+where $a_i$ are the series coefficients for $\sin{x}/x$ for even powers
+of $x^{2i}$.
 
 To obtain numerically stable expressions for $r \gg 1$, we expand these
-integrals using the small parameters $\kappa \ll 1$ and $k^2 \ll 1$ in this limit.
+integrals using the small parameters $\kappa \ll 1$ in this limit.
 For $I_{u,v}$,
 \begin{eqnarray}
 I_{u,v} &=& \begin{cases}
