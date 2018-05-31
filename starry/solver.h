@@ -247,7 +247,7 @@ namespace solver {
             factor = G.br32;
         else
             factor = 1;
-        if (is_even(G.nu)) {
+        if (is_even(G.mu, 2)) {
             if ((G.taylor) && (G.r() > 1) && (STARRY_QUARTIC_APPROX(G.l, G.b(), G.r()))) {
                 return taylor::P(G);
             } else {
@@ -257,15 +257,16 @@ namespace solver {
             return factor * -G.r(G.l - 1) * G.J(G.l - 2, 1);
         else if ((G.mu == 1) && !is_even(G.l))
             return factor * -G.r(G.l - 2) * (G.b() * G.J(G.l - 3, 1) + G.r() * G.J(G.l - 3, 2));
-        else {
+        else if (is_even(G.mu - 1, 2))
             return factor * G.r(G.l - 1) * L(G, (G.mu - 1) / 2, (G.nu - 1) / 2);
-        }
+        else
+            return 0;
     }
 
     // The primitive integral Q(G_n)
     template <typename T>
     inline T Q(Greens<T>& G){
-        if (is_even(G.nu) && is_even(G.mu / 2))
+        if (is_even(G.mu, 2))
             return G.H((G.mu + 4) / 2, G.nu / 2);
         else
             return 0;
