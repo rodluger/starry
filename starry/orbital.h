@@ -179,16 +179,9 @@ namespace orbital {
 
             // Retarded position
             T z0;
-            T vx_;
-            T vy_;
             T vz_;
-            T ax_;
-            T ay_;
             T az_;
             T dt_;
-            T dx_;
-            T dy_;
-            T dz_;
 
             // Flux
             Vector<T> flux;
@@ -280,9 +273,6 @@ namespace orbital {
                 // assuming massless planets).
                 z0 = 0;
                 dt_ = 0;
-                dx_ = 0;
-                dy_ = 0;
-                dz_ = 0;
 
                 // Initial map rotation angle. The map is defined at the
                 // eclipsing configuration (full dayside as seen by an
@@ -362,19 +352,16 @@ namespace orbital {
             // Mean anomaly
             M = fmod(M0 + angvelorb * (time - tref), 2 * M_PI);
 
-            // Eccentric anomaly
-            E = EccentricAnomaly(M, ecc, eps, maxiter);
-
-            // True anomaly
-            if (ecc == 0) f = E;
-            else f = (2. * atan2(sqrtonepluse * sin(E / 2.),
-                                 sqrtoneminuse * cos(E / 2.)));
-
-            // Orbital radius
-            if (ecc > 0)
-                rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
-            else
+            // True anomaly and orbital radius
+            if (ecc == 0) {
+                f = M;
                 rorb = a;
+            } else {
+                E = EccentricAnomaly(M, ecc, eps, maxiter);
+                f = (2. * atan2(sqrtonepluse * sin(E / 2.),
+                                 sqrtoneminuse * cos(E / 2.)));
+                rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
+            }
 
             // Murray and Dermott p. 51, except x and y have the opposite sign
             // This makes the orbits prograde!
@@ -384,44 +371,27 @@ namespace orbital {
             y_ = -rorb * (sinO * cwf + cosOcosi * swf);
             z_ = rorb * swf * sini;
 
-            // Compute the light travel time delay.
-            // The equation we want to solve is
-            //
-            //    x'(t + dt(x'(t))) = x(t)
-            //
-            // where `t` is the current time, `dt` is the light travel time
-            // from the body's current true position vector (`x`) to the
-            // reference point, and `x'` is the observed (retarded) position
-            // vector. Rearranging, we can write
-            //
-            //    x'(t) = x(t - dt(x'(t)))
-            //
-            // which is the quantity we use to calculate the light curve.
-            // The issue with the RHS is that it is transcendental, so we
-            // Taylor expand it:
-            //
-            //    x(t - dt(x'(t))) = x(t) - v(t) dt(x'(t)) + 1/2 a(t) dt(x'(t))^2
-            //
-            // where `v` and `a` are the current (true) velocity and acceleration
-            // vectors. We could carry this out to higher order but this should
-            // suffice for any realistic application.
+            // Compute the light travel time delay
             if (!isinf(get_value(clight))) {
 
-                // Components of the velocity in the sky plane.
+                // Component of the velocity out of the sky
                 // Obtained by differentiating the expressions above
-                vx_ = vamp * (cosO * (esw + swf) - sinOcosi * (ecw + cwf));
-                vy_ = -vamp * (cosOcosi * (ecw + cwf) - sinO * (esw + swf));
                 vz_ = vamp * sini * (ecw + cwf);
 
-                // Components of the acceleration in the sky plane.
-                // These are easier, thanks to Kepler!
-                aamp = -angvelorb * angvelorb * a * a * a / (rorb * rorb);
-                ax_ = aamp * x_ / rorb;
-                ay_ = aamp * y_ / rorb;
-                az_ = aamp * z_ / rorb;
+                // Component of the acceleration out of the sky
+                az_ = -angvelorb * angvelorb * a * a * a / (rorb * rorb * rorb) * z_;
 
-                // Compute the time delay at the **retarded** position
-                // See https://github.com/rodluger/starry/issues/66
+                // Compute the time delay at the **retarded** position, accounting for
+                // the instantaneous velocity and acceleration of the body.
+                // This is slightly better than doing
+                //
+                //          dt_ = (z0 - z_) / clight
+                //
+                // which is actually the time delay at the **current** position.
+                // But the photons left the planet from the **retarded** position,
+                // so if the planet has motion in the `z` direction the two quantities
+                // will be slightly different. In practice this doesn't matter too much,
+                // though. See the derivation at https://github.com/rodluger/starry/issues/66
                 if (abs(az_) < 1e-10)
                     dt_ = (z0 - z_) / (clight + vz_);
                 else
@@ -430,15 +400,21 @@ namespace orbital {
                            - sqrt((1 + vz_ / clight) * (1 + vz_ / clight)
                                   - 2 * az_ * (z0 - z_) / (clight * clight)));
 
-                // Relative position of the body this timestep
-                dx_ = -vx_ * dt_ + 0.5 * ax_ * dt_ * dt_;
-                dy_ = -vy_ * dt_ + 0.5 * ay_ * dt_ * dt_;
-                dz_ = -vz_ * dt_ + 0.5 * az_ * dt_ * dt_;
-
-                // Add it in!
-                x_ += dx_;
-                y_ += dy_;
-                z_ += dz_;
+                // Re-compute Kepler's equation, this time solving for the **retarded** position
+                M = fmod(M0 + angvelorb * (time - dt_ - tref), 2 * M_PI);
+                if (ecc > 0) {
+                    E = EccentricAnomaly(M, ecc, eps, maxiter);
+                    f = (2. * atan2(sqrtonepluse * sin(E / 2.), sqrtoneminuse * cos(E / 2.)));
+                    rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
+                } else {
+                    f = M;
+                    rorb = a;
+                }
+                cwf = cos(w + f);
+                swf = sin(w + f);
+                x_ = -rorb * (cosO * cwf - sinOcosi * swf);
+                y_ = -rorb * (sinO * cwf + cosOcosi * swf);
+                z_ = rorb * swf * sini;
 
             }
 
