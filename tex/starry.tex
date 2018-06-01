@@ -2986,17 +2986,17 @@ we rewrite these expressions as:
     \end{dcases}
 %
 \end{align}
-
+{\color{red} I need to check the $L^{(0)}$ and $L^{(2)}$ terms.}
 where
 \begin{eqnarray}
 %\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
 \mathcal{K}_{u,v} &=& \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{I}_{2i+2u},\\
-\mathcal{I}_{v} &=& \int_{-\kappa/2}^{\kappa/2} s_\varphi^v d\varphi,\\
+\mathcal{I}_{v} &=& \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi,\\
 %\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
-\mathcal{L}^{(0)}_{u,v} &=& (4br)^{3/2} k^3 \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{2i+2u},\\
-\mathcal{L}^{(2)}_{u,v} &=& (4br)^{3/2} k^3 \sum_{i=1}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{2i+2u+2},\\
+\mathcal{L}^{(0)}_{u,v} &=& (4br)^{3/2} k^3 \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{i+u},\\
+\mathcal{L}^{(2)}_{u,v} &=& (4br)^{3/2} k^3 \sum_{i=1}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{i+u+},\\
 %\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u s_\varphi^v\left(k^2-s^2_\varphi\right)^{3/2},
-\mathcal{J}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^v_\varphi\left(1-k^{-2}s^2_\varphi\right)^{3/2},\\
+\mathcal{J}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^{2v}_\varphi\left(1-k^{-2}s^2_\varphi\right)^{3/2},\\
 \mathcal{A}_{p,u,v} &=& \sum_{j=0}^{p} (-1)^{p+j} \binom{u}{p-j} \binom{v}{p}\delta^j,
 \end{eqnarray}
 where the coefficients $\mathcal{A}_{p,u,v}$ are computed from Vieta's formulae for the
@@ -3013,19 +3013,18 @@ round-off errors.  To avoid these cancellations, we start by computing $\mathcal
 where $v_{max}$ is the maximum value we need in computing $\mathcal{K}_{u,v}$ for
 $l_{max}$;  note that we only require even values of $v$.  Applying recursion,
 \begin{equation}
-\mathcal{I}_{v-2} =  \frac{v}{v-1}\mathcal{I}_{v} + \frac{2}{v-1} (\sin{\tfrac{\kappa}{2}})^{v-1}\cos{\tfrac{\kappa}{2}},
+\mathcal{I}_{v-1} =  \frac{2v}{2v-1}\mathcal{I}_{v} + \frac{2}{2v-1} (\sin{\tfrac{\kappa}{2}})^{2v-1}\cos{\tfrac{\kappa}{2}},
 \end{equation}
-for $v \ge 2$.  To compute the highest value of $\mathcal{I}_{v_{max}}$, we
-use a series expansion for $(\sin{x}/x)^v$ valid for small $x=\kappa/2$,
+for $v \ge 1$.  To compute the highest value of $\mathcal{I}_{v_{max}}$, we
+use a series expansion for $(\sin{x}/x)^{2v}$ valid for small $x=\kappa/2$,
 \begin{eqnarray}
-\mathcal{I}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^v_\varphi\\
-   &=& 2\left(\frac{\kappa}{2}\right)^{v+1} \sum_{m=0}^\infty \frac{c_m}{v+2m+1} \left(\frac{\kappa}{2}\right)^{2m},\\
-c_0 &=& 1\\
-c_m &=& \frac{1}{m} \sum_{i=1}^m (i(v+1)-m) a_i c_{m-i}\\
+\mathcal{I}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^{2v}_\varphi\\
+   &=& 2\left(\frac{\kappa}{2}\right)^{2v+1} \sum_{m=0}^\infty \frac{c_m}{2v+2m+1} \left(\frac{\kappa}{2}\right)^{2m},\\
+c_0 &=& 1,\\
+c_m &=& \frac{1}{m} \sum_{i=1}^m (i(2v+1)-m) a_i c_{m-i},\\
 a_i &=& \frac{(-1)^i}{(2i+1)!},
 \end{eqnarray}
-where $a_i$ are the series coefficients for $\frac{\sin{x}}{x}$ for even powers
-of $x^{2i}$.
+where $a_i$ are the series coefficients for $\frac{\sin{x}}{x}$ for even powers of $x^{2i}$.
 
 %To obtain numerically stable expressions for $r \gg 1$, we expand these
 %integrals using the small parameters $\kappa \ll 1$ in this limit.
@@ -3039,24 +3038,32 @@ of $x^{2i}$.
 %evaluation of $\mathcal{I}_{u,v}$.
 %This can be expanded to higher order in $\kappa$ if necessary.
 
-For $\mathcal{I}_q$ and $\mathcal{J}_q$, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
+For both $\mathcal{I}_q$ and $\mathcal{J}_q$, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
 \begin{eqnarray}
-\mathcal{I}_q &=& k^{1+q} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{q-1}{2}} dw\\
-&=& \frac{2k^{1+q}}{1+q} \,_2F_1\left(\tfrac{1}{2},\tfrac{1+q}{2};\tfrac{3+q}{2};k^2\right),\\
-\mathcal{J}_{q} &=& k^{1+q} \int_0^1 (1-k^2 w)^{-\tfrac{1}{2}} w^{\tfrac{q-1}{2}} (1-w)^{3/2} dw\\
-&=& k^{1+q} \frac{3}{4}\sqrt{\pi} \frac{\Gamma\left(\frac{1+q}{2}\right)}{\Gamma\left(\frac{6+q}{2}\right)} \,_2F_1\left(\tfrac{1}{2},\tfrac{1+q}{2}; \tfrac{6+q}{2}; k^2\right),
+\mathcal{I}_q &=& k^{1+2q} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{2q-1}{2}} dw\\
+&=& \frac{2k^{1+2q}}{1+2q} \,_2F_1\left(\tfrac{1}{2},\tfrac{1+2q}{2};\tfrac{3+2q}{2};k^2\right),\\
+\mathcal{J}_{q} &=& k^{1+2q} \int_0^1 (1-k^2 w)^{-\tfrac{1}{2}} w^{\tfrac{2q-1}{2}} (1-w)^{3/2} dw\\
+&=& k^{1+2q} \frac{3}{4}\sqrt{\pi} \frac{\Gamma\left(q+\frac{1}{2}\right)}{(2+q)!} \,_2F_1\left(\tfrac{1}{2},\tfrac{1+2q}{2}; \tfrac{6+2q}{2}; k^2\right),
 \end{eqnarray}
 where $_2F_1(a,b;c;x)$ is the generalized Hypergeometric function.
-The function $\mathcal{I}_q$ can be expressed in terms of sines and cosines, 
+The function $\mathcal{I}_q$ can be also expressed in terms of sines and cosines, 
 while $\mathcal{J}_q$ can be expressed as complete elliptic integrals,
-as above, or it can be expressed as a series in $k^2$:
+with reduction, or it can be expressed as a series in $k^2$:
 \begin{eqnarray}
-\mathcal{J}_{q} &=& 3k^{1+q}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
-&\times& \begin{cases} \pi \frac{(2n+q-1)!!}{2^{n+q/2}(q/2+2+n)!} & q \, \mathrm{even}\\
-\frac{(q/2-1/2+n)! 2^{n+3+q/2-1/2}}{(q+2n+5)!} & q \, \mathrm{odd} \end{cases}.
+\mathcal{J}_{q} &=& 3k^{1+2q}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
+&\times& \pi \frac{(2(n+q)-1)!!}{2^{n+q}(q+2+n)!}
 \end{eqnarray}
+{\color{red} I need to check that the product term in this formula is correct; it doesn't look right.}
+%{\color{red} Note: we only need $q=2$ terms, which simplifies this equation.  We
+%can rewrite as $J_{2q}$ and only include the first option in the expansion.}
 Note the steep dependence of $\mathcal{J}_{q}$ on $k$ for large $q$:  this is also due to cancellation
 of lower order terms during recursion, which can lead to severe round-off errors.
+
+Consequently, we use an iterative formula to evaluate $J_q$:
+\begin{equation}
+J_{q-4} = \frac{1}{q-3}\left[(q-2+(q+2)k^{-2})J_{q-2}-(q+3)k^{-2}J_q + 2\sin^{q-3}\tfrac{\kappa}{2}\cos\tfrac{\kappa}{2}
+(1-k^{-2}\sin^2\tfrac{\kappa}{2})^{5/2}\right]
+\end{equation}
 
 {\color{red} Code up this formula, and check for accuracy in the $r > 1$ limit. Figure
 out the recursion relation for Jq.}
