@@ -3013,9 +3013,9 @@ round-off errors.  To avoid these cancellations, we start by computing $\mathcal
 where $v_{max}$ is the maximum value we need in computing $\mathcal{K}_{u,v}$ for
 $l_{max}$;  note that we only require even values of $v$.  Applying recursion,
 \begin{equation}
-\mathcal{I}_{v-1} =  \frac{2v}{2v-1}\mathcal{I}_{v} + \frac{2}{2v-1} (\sin{\tfrac{\kappa}{2}})^{2v-1}\cos{\tfrac{\kappa}{2}},
+\mathcal{I}_{v-1} =  \frac{2}{2v-1}\left[v\mathcal{I}_{v} + k^{2v-1}k_c\right],
 \end{equation}
-for $v \ge 1$.  To compute the highest value of $\mathcal{I}_{v_{max}}$, we
+for $v \ge 1$ where $k_c^2=1-k^2$.  To compute the highest value of $\mathcal{I}_{v_{max}}$, we
 use a series expansion for $(\sin{x}/x)^{2v}$ valid for small $x=\kappa/2$,
 \begin{eqnarray}
 \mathcal{I}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^{2v}_\varphi\\
@@ -3061,8 +3061,7 @@ of lower order terms during recursion, which can lead to severe round-off errors
 
 Consequently, we use an iterative formula to evaluate $J_q$:
 \begin{equation}
-J_{q-4} = \frac{1}{q-3}\left[(q-2+(q+2)k^{-2})J_{q-2}-(q+3)k^{-2}J_q + 2\sin^{q-3}\tfrac{\kappa}{2}\cos\tfrac{\kappa}{2}
-(1-k^{-2}\sin^2\tfrac{\kappa}{2})^{5/2}\right]
+J_{q-4} = \frac{1}{k^2(q-3)}\left[((q-2)k^2+(q+2))J_{q-2}-(q+3)J_q \right]
 \end{equation}
 
 {\color{red} Code up this formula, and check for accuracy in the $r > 1$ limit. Figure
