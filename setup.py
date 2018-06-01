@@ -120,7 +120,7 @@ setup(
     packages=['starry'],
     ext_modules=ext_modules,
     install_requires=['matplotlib',
-                      'starry_maps>=0.0.10',
+                      'starry_maps>=0.0.11',
                       'pybind11>=2.2'],
     cmdclass={'build_ext': BuildExt},
     zip_safe=False,
