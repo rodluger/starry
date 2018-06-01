@@ -2914,7 +2914,7 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
     \begin{dcases}
         %
         +2(2r)^{l+2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
-            (s_\varphi c_\varphi)^{\frac{\mu+4}{2}}
+            s_\varphi^{\frac{\mu+4}{2}} (1-s_\varphi^2)^{\frac{\mu+4}{4}}
             (\delta + s_\varphi^2)^{\frac{\nu}{2}}
             \, \dd\varphi
             %
@@ -2922,7 +2922,7 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
         \\[1em]
         %
         -(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
-            (s_\varphi c_\varphi)^{l-2}
+            s_\varphi^{l-2} (1-s_\varphi^2)^{(l-2)/2}
             (k^2- s_\varphi^2)^{\frac{3}{2}}
             (2s_\varphi^2-1)
             \, \dd\varphi
@@ -2932,7 +2932,7 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
         \\[1em]
         %
         -(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
-            (s_\varphi c_\varphi)^{l-3}
+            s_\varphi^{l-3} (1-s_\varphi^2)^{(l-3)/2}
             (\delta + s_\varphi^2)
             (k^2- s_\varphi^2)^{\frac{3}{2}}
             (2 s_\varphi^2-1)
@@ -2943,7 +2943,7 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
         \\[1em]
         %
         +2(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
-            (s_\varphi c_\varphi)^{\frac{\mu-1}{2}}
+            s_\varphi^{\frac{\mu-1}{2}} (1-s_\varphi^2)^{\frac{\mu-1}{4}}
             (\delta + s_\varphi^2)^{\frac{\nu-1}{2}}
             (k^2 - s_\varphi^2)^{\frac{3}{2}}
             \, \dd\varphi
@@ -2955,30 +2955,30 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
 \end{align}
 where we have dropped the prime from $\varphi^\prime$.
 
-Expanding the terms $(\delta + s_\varphi^2)^n$ with the
-binomial theorem, we rewrite these expressions as:
+Expanding the terms $(1-s_\varphi^2)^a(\delta + s_\varphi^2)^b$,
+we rewrite these expressions as:
 \begin{align}
     \label{eq:PGnI}
     \mathcal{P}(\bvec{G}_n) &=
     \begin{dcases}
         %
-        2(2r)^{l+2} K_{\frac{\mu+4}{2}, \frac{\nu}{2}}
+        2(2r)^{l+2} \mathcal{K}_{\frac{\mu+4}{4}, \frac{\nu}{2}}
             %
             & \qquad \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
-        -(2r)^{l-1} \left(2\mathcal{J}_{l-2, l}-\mathcal{J}_{l-2,l-2}\right)
+        -(2r)^{l-1} \left(2\mathcal{L}^{(2)}_{l-2, 0}-\mathcal{L}^{(0)}_{l-2,0}\right)
             %
             & \qquad \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
-        -(2r)^{l-1} \left( (2\delta-1) \mathcal{J}_{l-3,l-1} - \delta \mathcal{J}_{l-3,l-3} + 2 \mathcal{J}_{l-3,l+1} \right)
+        -(2r)^{l-1} \left( (2\delta-1) \mathcal{L}^{(2)}_{l-3,0} - \delta \mathcal{L}^{(0)}_{l-3,0} + 2 \mathcal{J}_{l-3,l+1} \right)
             %
             & \qquad \mu = 1, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
-        2(2r)^{l-1} L_{\frac{\mu-1}{4}, \frac{\nu-1}{2}}
+        2(2r)^{l-1} \mathcal{L}^{(0)}_{\frac{\mu-1}{4}, \frac{\nu-1}{2}}
             & \qquad \frac{\mu-1}{2} \, \mathrm{even}
         \\[1em]
         %
@@ -2989,39 +2989,42 @@ binomial theorem, we rewrite these expressions as:
 
 where
 \begin{eqnarray}
-\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
-\mathcal{I}_{u,v} &=& \int_{-\kappa/2}^{\kappa/2} c_\varphi^u s_\varphi^v d\varphi,\\
+%\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
+\mathcal{K}_{u,v} &=& \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{I}_{2i+2u},\\
+\mathcal{I}_{v} &=& \int_{-\kappa/2}^{\kappa/2} s_\varphi^v d\varphi,\\
 %\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
-\mathcal{L}_{u,v} &=& (4br)^{3/2} k^3 \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{2i+2u},\\
-%\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u\sin{\varphi}^v\left(k^2-\sin^2{\varphi}\right)^{3/2},
-\mathcal{J}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi \sin^v{\varphi}\left(1-k^{-2}\sin^2{\varphi}\right)^{3/2},\\
+\mathcal{L}^{(0)}_{u,v} &=& (4br)^{3/2} k^3 \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{2i+2u},\\
+\mathcal{L}^{(2)}_{u,v} &=& (4br)^{3/2} k^3 \sum_{i=1}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{2i+2u+2},\\
+%\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u s_\varphi^v\left(k^2-s^2_\varphi\right)^{3/2},
+\mathcal{J}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^v_\varphi\left(1-k^{-2}s^2_\varphi\right)^{3/2},\\
 \mathcal{A}_{p,u,v} &=& \sum_{j=0}^{p} (-1)^{p+j} \binom{u}{p-j} \binom{v}{p}\delta^j,
 \end{eqnarray}
-where the coefficients $\mathcal{A}_{p,u,v}$ are computed from Vieta's formulae, and are
+where the coefficients $\mathcal{A}_{p,u,v}$ are computed from Vieta's formulae for the
+coefficients of the product of binomial expansions, and are
 equal to the elementary symmetric polynomials of the roots of $(x-1)^u(x+\delta)^v$.
 
-The integrals $\mathcal{I}_{u,v}$ can be found exactly, using integral
+The integrals $\mathcal{I}_v$ can be found exactly, using integral
 reduction formulae as above.  However, the resulting recursion relations
 tend to be numerically unstable due to cancellation of low-order terms occurs
-during recursion when $r \gg 1$.  In particular, $\mathcal{I}_{u,v} \propto \kappa^{v+1}$
-for even $v$, and zero for odd $v$, so as these equations are computed by
+during recursion when $r \gg 1$.  To leading order in $\kappa$, $\mathcal{I}_v \propto \kappa^{v+1}$
+(for even $v$, and zero for odd $v$). Consequently, when these equations are computed by
 recursion in $v$, the lower powers of $\kappa$ cancel out, leading to
-round-off errors.  The recursion formulae in $u$ involve addition, so iterating
-in $u$ is numerically stable.  Consequently, we start by computing $\mathcal{I}_{u,v_{max}}$
-where $v_{max}$ is the maximum value we need in computing $\mathcal{K}_{u,v}$;  note
-that we only require even values of $u$ and $v$.  Applying recursion,
+round-off errors.  To avoid these cancellations, we start by computing $\mathcal{I}_{v_{max}}$
+where $v_{max}$ is the maximum value we need in computing $\mathcal{K}_{u,v}$ for
+$l_{max}$;  note that we only require even values of $v$.  Applying recursion,
 \begin{equation}
-\mathcal{I}_{0,v-2} =  \frac{v}{v-1}\mathcal{I}_{0,v} + \frac{2}{v-1} (\sin{\tfrac{\kappa}{2}})^{v-1}\cos{\tfrac{\kappa}{2}},
+\mathcal{I}_{v-2} =  \frac{v}{v-1}\mathcal{I}_{v} + \frac{2}{v-1} (\sin{\tfrac{\kappa}{2}})^{v-1}\cos{\tfrac{\kappa}{2}},
 \end{equation}
-for $v \ge 2$.  To compute the highest value of $\mathcal{I}_{0,v_{max}}$, we
+for $v \ge 2$.  To compute the highest value of $\mathcal{I}_{v_{max}}$, we
 use a series expansion for $(\sin{x}/x)^v$ valid for small $x=\kappa/2$,
 \begin{eqnarray}
-\mathcal{I}_{0,v} &=& \sum_{-\kappa/2}^{\kappa/2} d\varphi \sin^v{\varphi}\\
-   &=& 2(\kappa/2)^{v+1} \sum_{m=0}^\infty \frac{c_m}{v+m+i} (\kappa/2)^{2m},\\
+\mathcal{I}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^v_\varphi\\
+   &=& 2\left(\frac{\kappa}{2}\right)^{v+1} \sum_{m=0}^\infty \frac{c_m}{v+2m+1} \left(\frac{\kappa}{2}\right)^{2m},\\
+c_0 &=& 1\\
 c_m &=& \frac{1}{m} \sum_{i=1}^m (i(v+1)-m) a_i c_{m-i}\\
 a_i &=& \frac{(-1)^i}{(2i+1)!},
 \end{eqnarray}
-where $a_i$ are the series coefficients for $\sin{x}/x$ for even powers
+where $a_i$ are the series coefficients for $\frac{\sin{x}}{x}$ for even powers
 of $x^{2i}$.
 
 %To obtain numerically stable expressions for $r \gg 1$, we expand these
@@ -3036,22 +3039,28 @@ of $x^{2i}$.
 %evaluation of $\mathcal{I}_{u,v}$.
 %This can be expanded to higher order in $\kappa$ if necessary.
 
-For $\mathcal{J}_{u,v}$, we make the substitution $w=\sin^2{\varphi}/k^2$, giving
-\begin{equation}
-\mathcal{J}_{p,q} = (4br)^{3/2} k^{4+q} \int_0^1 (1-k^2 w)^{\frac{p-1}{2}} w^{\frac{q-1}{2}} (1-w)^{3/2} dw.
-\end{equation}
-Again, this can be evaluated analytically in terms of complete elliptic integrals,
+For $\mathcal{I}_q$ and $\mathcal{J}_q$, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
+\begin{eqnarray}
+\mathcal{I}_q &=& k^{1+q} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{q-1}{2}} dw\\
+&=& \frac{2k^{1+q}}{1+q} \,_2F_1\left(\tfrac{1}{2},\tfrac{1+q}{2};\tfrac{3+q}{2};k^2\right),\\
+\mathcal{J}_{q} &=& k^{1+q} \int_0^1 (1-k^2 w)^{-\tfrac{1}{2}} w^{\tfrac{q-1}{2}} (1-w)^{3/2} dw\\
+&=& k^{1+q} \frac{3}{4}\sqrt{\pi} \frac{\Gamma\left(\frac{1+q}{2}\right)}{\Gamma\left(\frac{6+q}{2}\right)} \,_2F_1\left(\tfrac{1}{2},\tfrac{1+q}{2}; \tfrac{6+q}{2}; k^2\right),
+\end{eqnarray}
+where $_2F_1(a,b;c;x)$ is the generalized Hypergeometric function.
+The function $\mathcal{I}_q$ can be expressed in terms of sines and cosines, 
+while $\mathcal{J}_q$ can be expressed as complete elliptic integrals,
 as above, or it can be expressed as a series in $k^2$:
 \begin{eqnarray}
-\mathcal{J}_{p,q} &=& 3(4br)^{3/2} k^{4+q}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (p-2i+1) \\
+\mathcal{J}_{q} &=& 3k^{1+q}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
 &\times& \begin{cases} \pi \frac{(2n+q-1)!!}{2^{n+q/2}(q/2+2+n)!} & q \, \mathrm{even}\\
 \frac{(q/2-1/2+n)! 2^{n+3+q/2-1/2}}{(q+2n+5)!} & q \, \mathrm{odd} \end{cases}.
 \end{eqnarray}
-Note the steep dependence of $\mathcal{J}_{p,q}$ on $k$ for large $q$:  this is also due to cancellation
+Note the steep dependence of $\mathcal{J}_{q}$ on $k$ for large $q$:  this is also due to cancellation
 of lower order terms during recursion, which can lead to severe round-off errors.
 
-{\color{red} Code up this formula, and check for accuracy in the $r > 1$ limit.  Also,
-I'm still hopeful that we can find a recursion formula that avoids the round-off error.}
+{\color{red} Code up this formula, and check for accuracy in the $r > 1$ limit. Figure
+out the recursion relation for Jq.}
+
 
 % ------------------------------------------------------------------------------
 \subsubsection{Numerical stability}
