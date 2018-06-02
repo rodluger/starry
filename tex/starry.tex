@@ -2424,7 +2424,7 @@ evaluate this term separately in Appendix~\ref{app:linearld} below, followed by
 the general term in Appendix~\ref{app:generalterm}.
 
 % ------------------------------------------------------------------------------
-\subsection{Linear limb darkening ($n = 2$)}
+\subsection{Linear limb darkening ($n = 2$, $l=1$, $m=0$)}
 \label{app:linearld}
 % ------------------------------------------------------------------------------
 
@@ -2554,7 +2554,7 @@ $\bvec{G}_n$. These are given by
             r s_\varphi
             \, \dd\varphi
             %
-            & \qquad \mu = 1, \,
+            & \qquad \mu = 1, \, l \ge 3, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
@@ -2565,6 +2565,9 @@ $\bvec{G}_n$. These are given by
             r c_\varphi
             \, \dd\varphi
             & \qquad \frac{\mu - 1}{2} \, \mathrm{even}
+        \\[1em]
+        %
+        s_2 & \qquad \mu=1, \, l=1
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise}
@@ -2584,6 +2587,9 @@ $\bvec{G}_n$. These are given by
             \, \dd\varphi
             %
             & \qquad\qquad \frac{\mu}{2} \, \mathrm{even}
+        \\[1em]
+        %
+        s_2 & \qquad \mu=1, \, l=1
         \\[1em]
         %
         \phantom{XXXXX}0
@@ -2675,12 +2681,15 @@ With some algebra, we may therefore write
         %b r^{l-2} \mathcal{L}_{l-3, 1}
         %- r^{l-1} \mathcal{L}_{l-3,2}
             %
-            & \qquad \mu = 1, \,
+            & \qquad \mu = 1, \, l \ge 3, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
         r^{l-1} \mathcal{L}_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}
             & \qquad \frac{\mu - 1}{2} \, \mathrm{even}
+        \\[1em]
+        %
+        s_2 & \qquad \mu=1, \, l=1
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise}
@@ -2905,6 +2914,8 @@ $r \gg 1$,
 \begin{equation}
 \kappa = \cos^{-1} \left(\frac{r^2+b^2-1}{2br}\right).
 \end{equation}
+This variable can be defined more simply in terms of $\sin^2\tfrac{\kappa}{2} = k^2$,
+or $\kappa = 2 \sin^{-1}k$.
 With this transformed variable, the limits of integration of $\mathcal{P}(\bvec{G}_n)$
 become $\tfrac{3\pi}{2}-\kappa$ to $\tfrac{3\pi}{2}+\kappa$.  Transforming
 $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
@@ -2938,7 +2949,7 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
             (2 s_\varphi^2-1)
             \, \dd\varphi
             %
-            & \qquad \mu = 1, \,
+            & \qquad \mu = 1, \, l \ge 3, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
@@ -2950,13 +2961,28 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
             & \qquad \frac{\mu-1}{2} \, \mathrm{even}
         \\[1em]
         %
+        s_2 & \qquad \mu=1, \, l=1
+        \\[1em]
+        %
         0 & \qquad \mathrm{otherwise}
     \end{dcases}
 \end{align}
-where we have dropped the prime from $\varphi^\prime$.
+where we have subsequently dropped the prime from $\varphi^\prime$ in these integrals.
 
-Expanding the terms $(1-s_\varphi^2)^a(\delta + s_\varphi^2)^b$,
-we rewrite these expressions as:
+Expanding the term $(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v$ as a polynomial
+in $s_\varphi^2$, we find
+\begin{equation}
+(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v = (-1)^u \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} s_\varphi^{2i},
+\end{equation}
+where
+\begin{equation}
+\mathcal{A}_{i,u,v} = \sum_{j=\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)} \binom{u}{j} \binom{v}{u+v-i-j}(-1)^{j}\delta^{u+v-i-j}.
+\end{equation}
+The coefficients $\mathcal{A}_{i,u,v}$ are computed from Vieta's formulae for the
+polynomial coefficients in terms of sums and products of the roots, and are
+equal to the elementary symmetric polynomials of the roots of $(x-1)^u(x+\delta)^v$.
+
+We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$ as:
 \begin{align}
     \label{eq:PGnI}
     \mathcal{P}(\bvec{G}_n) &=
@@ -2966,15 +2992,15 @@ we rewrite these expressions as:
             %
             & \qquad \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
-        -(2r)^{l-1} \left(2\mathcal{L}^{(2)}_{l-2, 0}-\mathcal{L}^{(0)}_{l-2,0}\right)
+        -(2r)^{l-1} \left(2\mathcal{L}^{(1)}_{\frac{l-2}{2}, 0}-\mathcal{L}^{(0)}_{\frac{l-2}{2},0}\right)
             %
             & \qquad \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
-        -(2r)^{l-1} \left( (2\delta-1) \mathcal{L}^{(2)}_{l-3,0} - \delta \mathcal{L}^{(0)}_{l-3,0} + 2 \mathcal{J}_{l-3,l+1} \right)
+        -(2r)^{l-1} \left( 2\mathcal{L}^{(1)}_{\frac{l-3}{2},1} - \mathcal{L}^{(0)}_{\frac{l-3}{2},1} \right)
             %
-            & \qquad \mu = 1, \,
+            & \qquad \mu = 1, \, l \ge 3, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
@@ -2982,50 +3008,62 @@ we rewrite these expressions as:
             & \qquad \frac{\mu-1}{2} \, \mathrm{even}
         \\[1em]
         %
+        s_2 & \qquad \mu=1, \, l=1
+        \\[1em]
+        %
         0 & \qquad \mathrm{otherwise}
     \end{dcases}
 %
 \end{align}
-
 where
 \begin{eqnarray}
 %\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
-\mathcal{K}_{u,v} &=& \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{I}_{2i+2u},\\
-\mathcal{I}_{v} &=& \int_{-\kappa/2}^{\kappa/2} s_\varphi^v d\varphi,\\
+\mathcal{K}_{u,v} &=& \int_{\kappa/2}^{\kappa/2} s_\varphi^{2u} (1-s_\varphi^2)^u (\delta + s_\varphi^2)^v d\varphi\\ 
+&=& \sum_{i=1}^{u+v} \mathcal{A}_{i,u,v} \mathcal{I}_{i+u},\\
+\mathcal{I}_{v} &=& \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi,\\
 %\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
-\mathcal{L}^{(0)}_{u,v} &=& (4br)^{3/2} k^3 \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{2i+2u},\\
-\mathcal{L}^{(2)}_{u,v} &=& (4br)^{3/2} k^3 \sum_{i=1}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{2i+2u+2},\\
+\mathcal{L}^{(t)}_{u,v} &=& (1-\delta^2)^{3/2} \int_{-\kappa/2}^{\kappa/2}s_\varphi^{2(u+t)}(1-s_\varphi^2)^u(\delta+s_\varphi^2)^v
+\left(1-k^{-2}s_\varphi^2\right)^{3/2}d\varphi,\\
+%&=& (1-\delta^2)^{3/2} \sum_{i=1}^{2u+v} \mathcal{A}_{u+v-i+t,u,v} \mathcal{J}_{i+u},\\
+&=& (1-\delta^2)^{3/2} (-1)^u \sum_{i=1}^{u+v} \mathcal{A}_{i,u,v} \mathcal{J}_{i+u+t},\\
+%\mathcal{L}^{(0)}_{u,v} &=& (1-\delta^2)^{3/2} \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{i+u},\\
+%\mathcal{L}^{(2)}_{u,v} &=& (1-\delta^2)^{3/2} \sum_{i=1}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{i+u+},\\
 %\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u s_\varphi^v\left(k^2-s^2_\varphi\right)^{3/2},
-\mathcal{J}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^v_\varphi\left(1-k^{-2}s^2_\varphi\right)^{3/2},\\
-\mathcal{A}_{p,u,v} &=& \sum_{j=0}^{p} (-1)^{p+j} \binom{u}{p-j} \binom{v}{p}\delta^j,
+\mathcal{J}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^{2v}_\varphi\left(1-k^{-2}s^2_\varphi\right)^{3/2},\\
+%\mathcal{A}_{p,u,v} &=& \sum_{j=0}^{p} (-1)^{p+j} \binom{u}{p-j} \binom{v}{p}\delta^j.
 \end{eqnarray}
-where the coefficients $\mathcal{A}_{p,u,v}$ are computed from Vieta's formulae for the
-coefficients of the product of binomial expansions, and are
-equal to the elementary symmetric polynomials of the roots of $(x-1)^u(x+\delta)^v$.
 
-The integrals $\mathcal{I}_v$ can be found exactly, using integral
-reduction formulae as above.  However, the resulting recursion relations
-tend to be numerically unstable due to cancellation of low-order terms occurs
-during recursion when $r \gg 1$.  To leading order in $\kappa$, $\mathcal{I}_v \propto \kappa^{v+1}$
-(for even $v$, and zero for odd $v$). Consequently, when these equations are computed by
-recursion in $v$, the lower powers of $\kappa$ cancel out, leading to
-round-off errors.  To avoid these cancellations, we start by computing $\mathcal{I}_{v_{max}}$
+The integrals $\mathcal{I}_v$ and $\mathcal{J}_v$ can be found exactly, using integral
+reduction formulae as above.  With reduction, the function $\mathcal{I}_v$ can be expressed 
+in terms of sums of powers of $k$ and $k_c=\sqrt{1-k^2}$, while $\mathcal{J}_v$ can be expressed 
+as sums of complete elliptic integrals of $k^2$ times polynomials in $k^2$. However, the resulting 
+recursion relations tend to be numerically unstable due to cancellation of low-order terms occurs
+during recursion when $r \gg 1$.  To leading order in $k$, $\mathcal{I}_v \propto k^{2v+1}$
+and $\mathcal{J}_v \propto k^{2v+1}$.  Consequently, when these equations are computed by
+recursion in $v$, the lower powers of $k$ cancel out, leading to
+round-off errors.  To avoid these cancellations, we start by computing $\mathcal{I}_{v_{max}}$, 
+$\mathcal{J}_{v_{max}}$, and $\mathcal{J}_{v_{max}-1}$, where
 where $v_{max}$ is the maximum value we need in computing $\mathcal{K}_{u,v}$ for
-$l_{max}$;  note that we only require even values of $v$.  Applying recursion,
-\begin{equation}
-\mathcal{I}_{v-2} =  \frac{v}{v-1}\mathcal{I}_{v} + \frac{2}{v-1} (\sin{\tfrac{\kappa}{2}})^{v-1}\cos{\tfrac{\kappa}{2}},
-\end{equation}
-for $v \ge 2$.  To compute the highest value of $\mathcal{I}_{v_{max}}$, we
-use a series expansion for $(\sin{x}/x)^v$ valid for small $x=\kappa/2$,
+$l_{max}$.  %  Give the explicit value of $v_{max}$ for given $l_{max}$. [ ]
+Applying integral reduction formulae, we obtain the recursion relations:
 \begin{eqnarray}
-\mathcal{I}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^v_\varphi\\
-   &=& 2\left(\frac{\kappa}{2}\right)^{v+1} \sum_{m=0}^\infty \frac{c_m}{v+2m+1} \left(\frac{\kappa}{2}\right)^{2m},\\
-c_0 &=& 1\\
-c_m &=& \frac{1}{m} \sum_{i=1}^m (i(v+1)-m) a_i c_{m-i}\\
-a_i &=& \frac{(-1)^i}{(2i+1)!},
+\mathcal{I}_{v-1} &=&  \frac{2}{2v-1}\left[v\mathcal{I}_{v} + k^{2v-1}k_c\right],\\
+\mathcal{J}_{v-2} &=& \frac{1}{k^2(2v-3)}\left[2(v+vk^2+k_c^2)\mathcal{J}_{v-1}-(2v+3)\mathcal{J}_v \right].
 \end{eqnarray}
-where $a_i$ are the series coefficients for $\frac{\sin{x}}{x}$ for even powers
-of $x^{2i}$.
+for $v \ge 1$ where $k_c^2=1-k^2$.  
+To compute the highest value of $\mathcal{I}_{v_{max}}$, $\mathcal{J}_{v_{max}}$,
+and  $\mathcal{J}_{v_{max}-1}$, we expand these as series in $k^2$.
+
+%To compute the highest value of $\mathcal{I}_{v_{max}}$, we
+%use a series expansion for $(\sin{x}/x)^{2v}$ valid for small $x=\kappa/2$,
+%\begin{eqnarray}
+%\mathcal{I}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^{2v}_\varphi\\
+%   &=& 2\left(\frac{\kappa}{2}\right)^{2v+1} \sum_{m=0}^\infty \frac{c_m}{2v+2m+1} \left(\frac{\kappa}{2}\right)^{2m},\\
+%c_0 &=& 1,\\
+%c_m &=& \frac{1}{m} \sum_{i=1}^m (i(2v+1)-m) a_i c_{m-i},\\
+%a_i &=& \frac{(-1)^i}{(2i+1)!},
+%\end{eqnarray}
+%where $a_i$ are the series coefficients for $\frac{\sin{x}}{x}$ for even powers of $x^{2i}$.
 
 %To obtain numerically stable expressions for $r \gg 1$, we expand these
 %integrals using the small parameters $\kappa \ll 1$ in this limit.
@@ -3039,27 +3077,41 @@ of $x^{2i}$.
 %evaluation of $\mathcal{I}_{u,v}$.
 %This can be expanded to higher order in $\kappa$ if necessary.
 
-For $\mathcal{I}_q$ and $\mathcal{J}_q$, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
+For both $\mathcal{I}_v$ and $\mathcal{J}_v$, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
 \begin{eqnarray}
-\mathcal{I}_q &=& k^{1+q} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{q-1}{2}} dw\\
-&=& \frac{2k^{1+q}}{1+q} \,_2F_1\left(\tfrac{1}{2},\tfrac{1+q}{2};\tfrac{3+q}{2};k^2\right),\\
-\mathcal{J}_{q} &=& k^{1+q} \int_0^1 (1-k^2 w)^{-\tfrac{1}{2}} w^{\tfrac{q-1}{2}} (1-w)^{3/2} dw\\
-&=& k^{1+q} \frac{3}{4}\sqrt{\pi} \frac{\Gamma\left(\frac{1+q}{2}\right)}{\Gamma\left(\frac{6+q}{2}\right)} \,_2F_1\left(\tfrac{1}{2},\tfrac{1+q}{2}; \tfrac{6+q}{2}; k^2\right),
+\mathcal{I}_v &=& k^{1+2v} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} dw\\
+&=& \frac{2k^{1+2v}}{1+2v} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2};v+\tfrac{3}{2};k^2\right),\\
+\mathcal{J}_v &=& k^{1+2v} \int_0^1 (1-k^2 w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} (1-w)^{3/2} dw\\
+&=& k^{1+2v} \frac{3\pi}{4} \frac{(2v-1)!!}{2^v(2+v)!} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2}; v+3; k^2\right),
 \end{eqnarray}
 where $_2F_1(a,b;c;x)$ is the generalized Hypergeometric function.
-The function $\mathcal{I}_q$ can be expressed in terms of sines and cosines,
-while $\mathcal{J}_q$ can be expressed as complete elliptic integrals,
-as above, or it can be expressed as a series in $k^2$:
-\begin{eqnarray}
-\mathcal{J}_{q} &=& 3k^{1+q}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
-&\times& \begin{cases} \pi \frac{(2n+q-1)!!}{2^{n+q/2}(q/2+2+n)!} & q \, \mathrm{even}\\
-\frac{(q/2-1/2+n)! 2^{n+3+q/2-1/2}}{(q+2n+5)!} & q \, \mathrm{odd} \end{cases}.
-\end{eqnarray}
-Note the steep dependence of $\mathcal{J}_{q}$ on $k$ for large $q$:  this is also due to cancellation
-of lower order terms during recursion, which can lead to severe round-off errors.
+These functions can also be expressed as a series in $k^2$
+by expanding $(1-k^2w)^{-1/2}$ as a series in $k^2w$, and then integrating each term over $w$, giving
 
-{\color{red} Code up this formula, and check for accuracy in the $r > 1$ limit. Figure
-out the recursion relation for Jq.}
+\begin{eqnarray}
+%\mathcal{J}_{v} &=& 3k^{1+2v}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
+%&\times& \pi \frac{(2(n+v)-1)!!}{2^{n+v}(v+2+n)!}
+\mathcal{I}_{v} &=& 2k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!}{2^{2n} n!(2n+2v+1)}(k^2)^n,\\
+\mathcal{J}_{v} &=& \frac{3\pi}{8}k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!(2n+2v-1)!!}{2^{2n+v} n!(n+v+2)!}(k^2)^n.
+\end{eqnarray}
+For large values of $v$ and small values of $k$, we find that these series
+converge rapidly, and so may be preferred over evaluating the Hypergeometric functions.
+%{\color{red} Note: we only need $v=2$ terms, which simplifies this equation.  We
+%can rewrite as $J_{2v}$ and only include the first option in the expansion.}
+%Note the steep dependence of $\mathcal{J}_{v}$ on $k$ for large $v$, $\propto k^{1+2v}$;  
+%this is also due to cancellation of lower order terms during recursion, which can lead 
+%to severe round-off errors.
+
+%Consequently, we use a more stable iterative formula to evaluate $J_{v-2}$ in terms 
+%of $J_{v}$ and $J_{v-1}$:
+%\begin{equation}
+%J_{v-2} = \frac{1}{k^2(2v-3)}\left[2((v-1)k^2+(v+1))J_{v-1}-(2v+3)J_v \right].
+%\end{equation}
+%We evaluate $J_{v_{max}}$ and $J_{v_{max}-1}$ with the series solution or hypergeometric
+%function for large $v_{max}$, and then iterate to find successively smaller values
+%of $v$ until $v=0$.
+
+{\color{red} Code up this formula, and check for accuracy in the $r > 1$ limit.}
 
 
 % ------------------------------------------------------------------------------
