@@ -118,6 +118,9 @@ namespace solver {
     inline T computeH(Greens<T>& G, int u, int v) {
         if (!is_even(u)) {
             return 0;
+        } else if (G.off_limb && !is_even(v)) {
+            // By symmetry, from the integral definition of H
+            return 0;
         } else if ((u == 0) && (v == 0)) {
             return 2 * G.lam + G.pi;
         } else if ((u == 0) && (v == 1)) {
@@ -134,6 +137,9 @@ namespace solver {
     inline T computeI(Greens<T>& G, int u, int v) {
         if (!is_even(u)) {
             return 0;
+        } else if (G.off_limb && !is_even(v)) {
+            // By symmetry, from the integral definition of I
+            return 0;
         } else if ((u == 0) && (v == 0)) {
             return 2 * G.phi + G.pi;
         } else if ((u == 0) && (v == 1)) {
@@ -149,7 +155,9 @@ namespace solver {
     template <typename T>
     inline T computeJ(Greens<T>& G, int u, int v) {
         T res = 0;
-        if (G.b() == 0) {
+        if (G.off_limb && !is_even(u)) {
+            return 0;
+        } else if (G.b() == 0) {
             // Special case
             return pow(1 - G.r(2), 1.5) * G.I(u, v);
         } else if ((G.taylor || is_bigdouble(G.b())) && (G.b() < STARRY_B_THRESH_J<T>(G.r()))) {
@@ -266,7 +274,12 @@ namespace solver {
     // The primitive integral Q(G_n)
     template <typename T>
     inline T Q(Greens<T>& G){
-        if (is_even(G.mu, 2))
+        // From the integral definition of Q, the result is zero
+        // unless both mu/2 and nu/2 are even when the occultor
+        // is not touching the limb of the planet.
+        if (G.off_limb && (!is_even(G.mu, 2) || !is_even(G.nu, 2)))
+            return 0;
+        else if (is_even(G.mu, 2))
             return G.H((G.mu + 4) / 2, G.nu / 2);
         else
             return 0;
@@ -459,6 +472,9 @@ namespace solver {
             // Taylor expand stuff?
             bool taylor;
 
+            // Occultor off the limb of the body (simpler formulae in this case)?
+            bool off_limb;
+
             // Some basic variables
             T br;
             T br32;
@@ -496,8 +512,9 @@ namespace solver {
             // Constructor
             Greens(int lmax, bool taylor=true) :
                    lmax(lmax),
-                   N(max(lmax + 5, 2 * lmax + 1) + 12), // DEBUG: +12 for taylor::computeJ. Find smallest value of N that will work.
+                   N(max(lmax + 5, 2 * lmax + 1) + 12), // DEBUG; TODO: +12 for taylor::computeJ. Find smallest value of N that will work.
                    taylor(taylor),
+                   off_limb(false),
                    ksq(0),
                    b(0),
                    r(0),
@@ -587,6 +604,7 @@ namespace solver {
         G.ksq.reset(ksq);
         G.k = k;
         if ((abs(1 - r) < b) && (b < 1 + r)) {
+            G.off_limb = false;
             if (r <= 1) {
                 G.sinphi.reset((1 - G.r(2) - G.b(2)) / (2 * G.br));
                 G.cosphi.reset(sqrt(1 - G.sinphi() * G.sinphi()));
@@ -603,6 +621,7 @@ namespace solver {
                 G.lam = asin(G.sinlam());
             }
         } else {
+            G.off_limb = true;
             G.sinphi.reset(1);
             G.cosphi.reset(0);
             G.sinlam.reset(1);
