@@ -2967,7 +2967,7 @@ $\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
 \end{align}
 where we have dropped the prime from $\varphi^\prime$.
 
-Expanding the terms $(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v$ as a polynomial
+Expanding the term $(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v$ as a polynomial
 in $s_\varphi^2$, we find
 \begin{equation}
 (1-s_\varphi^2)^u(\delta + s_\varphi^2)^v = (-1)^u \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} s_\varphi^{2i},
@@ -2977,7 +2977,7 @@ where
 \mathcal{A}_{i,u,v} = \sum_{j=\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)} \binom{u}{j} \binom{v}{u+v-i-j}(-1)^{j}\delta^{u+v-i-j}.
 \end{equation}
 The coefficients $\mathcal{A}_{i,u,v}$ are computed from Vieta's formulae for the
-coefficients of the product of binomial expansions, and are
+polynomial coefficients in terms of sums and products of the roots, and are
 equal to the elementary symmetric polynomials of the roots of $(x-1)^u(x+\delta)^v$.
 
 We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$ as:
@@ -2990,13 +2990,13 @@ We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$
             %
             & \qquad \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
-        -(2r)^{l-1} \left(2\mathcal{L}^{(1)}_{l-2, 0}-\mathcal{L}^{(0)}_{l-2,0}\right)
+        -(2r)^{l-1} \left(2\mathcal{L}^{(1)}_{\frac{l-2}{2}, 0}-\mathcal{L}^{(0)}_{\frac{l-2}{2},0}\right)
             %
             & \qquad \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
-        -(2r)^{l-1} \left( (2\delta-1) \mathcal{L}^{(1)}_{l-3,0} - \delta \mathcal{L}^{(0)}_{l-3,0} + 2 \mathcal{J}_{l-3,l+1} \right)
+        -(2r)^{l-1} \left( 2\mathcal{L}^{(1)}_{\frac{l-3}{2},1} - \mathcal{L}^{(0)}_{\frac{l-3}{2},1} \right)
             %
             & \qquad \mu = 1, \, l \ge 3, \,
                      l \, \mathrm{odd}
@@ -3013,17 +3013,17 @@ We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$
     \end{dcases}
 %
 \end{align}
-{\color{red} I need to check the $L^{(0)}$ and $L^{(1)}$ terms.}
 where
 \begin{eqnarray}
 %\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
-\mathcal{K}_{u,v} &=& \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{I}_{2i+2u},\\
+\mathcal{K}_{u,v} &=& \int_{\kappa/2}^{\kappa/2} s_\varphi^{2u} (1-s_\varphi^2)^u (\delta + s_\varphi^2)^v d\varphi\\ 
+&=& \sum_{i=1}^{u+v} \mathcal{A}_{i,u,v} \mathcal{I}_{i+u},\\
 \mathcal{I}_{v} &=& \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi,\\
 %\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
 \mathcal{L}^{(t)}_{u,v} &=& (1-\delta^2)^{3/2} \int_{-\kappa/2}^{\kappa/2}s_\varphi^{2(u+t)}(1-s_\varphi^2)^u(\delta+s_\varphi^2)^v
 \left(1-k^{-2}s_\varphi^2\right)^{3/2}d\varphi,\\
 %&=& (1-\delta^2)^{3/2} \sum_{i=1}^{2u+v} \mathcal{A}_{u+v-i+t,u,v} \mathcal{J}_{i+u},\\
-&=& (1-\delta^2)^{3/2} \sum_{i=1}^{2u+v} \mathcal{A}_{i,u,v} \mathcal{J}_{i+u+t},\\
+&=& (1-\delta^2)^{3/2} \sum_{i=1}^{u+v} \mathcal{A}_{i,u,v} \mathcal{J}_{i+u+t},\\
 %\mathcal{L}^{(0)}_{u,v} &=& (1-\delta^2)^{3/2} \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{i+u},\\
 %\mathcal{L}^{(2)}_{u,v} &=& (1-\delta^2)^{3/2} \sum_{i=1}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{i+u+},\\
 %\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u s_\varphi^v\left(k^2-s^2_\varphi\right)^{3/2},
@@ -3039,7 +3039,7 @@ during recursion when $r \gg 1$.  To leading order in $\kappa$, $\mathcal{I}_v \
 recursion in $v$, the lower powers of $\kappa$ cancel out, leading to
 round-off errors.  To avoid these cancellations, we start by computing $\mathcal{I}_{v_{max}}$
 where $v_{max}$ is the maximum value we need in computing $\mathcal{K}_{u,v}$ for
-$l_{max}$;  note that we only require even values of $v$.  Applying recursion,
+$l_{max}$.  Applying recursion,
 \begin{equation}
 \mathcal{I}_{v-1} =  \frac{2}{2v-1}\left[v\mathcal{I}_{v} + k^{2v-1}k_c\right],
 \end{equation}
@@ -3066,34 +3066,34 @@ where $a_i$ are the series coefficients for $\frac{\sin{x}}{x}$ for even powers 
 %evaluation of $\mathcal{I}_{u,v}$.
 %This can be expanded to higher order in $\kappa$ if necessary.
 
-For both $\mathcal{I}_q$ and $\mathcal{J}_q$, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
+For both $\mathcal{I}_v$ and $\mathcal{J}_v$, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
 \begin{eqnarray}
-\mathcal{I}_q &=& k^{1+2q} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{2q-1}{2}} dw\\
-&=& \frac{2k^{1+2q}}{1+2q} \,_2F_1\left(\tfrac{1}{2},\tfrac{1+2q}{2};\tfrac{3+2q}{2};k^2\right),\\
-\mathcal{J}_{q} &=& k^{1+2q} \int_0^1 (1-k^2 w)^{-\tfrac{1}{2}} w^{\tfrac{2q-1}{2}} (1-w)^{3/2} dw\\
-&=& k^{1+2q} \frac{3}{4}\sqrt{\pi} \frac{\Gamma\left(q+\frac{1}{2}\right)}{(2+q)!} \,_2F_1\left(\tfrac{1}{2},\tfrac{1+2q}{2}; \tfrac{6+2q}{2}; k^2\right),
+\mathcal{I}_v &=& k^{1+2v} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} dw\\
+&=& \frac{2k^{1+2v}}{1+2v} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2};v+\tfrac{3}{2};k^2\right),\\
+\mathcal{J}_v &=& k^{1+2v} \int_0^1 (1-k^2 w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} (1-w)^{3/2} dw\\
+&=& k^{1+2v} \frac{3}{4}\sqrt{\pi} \frac{\Gamma\left(v+\frac{1}{2}\right)}{(2+v)!} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2}; v+3; k^2\right),
 \end{eqnarray}
 where $_2F_1(a,b;c;x)$ is the generalized Hypergeometric function.
-The function $\mathcal{I}_q$ can be also expressed in terms of sines and cosines, 
-while $\mathcal{J}_q$ can be expressed as complete elliptic integrals,
+The function $\mathcal{I}_v$ can be also expressed in terms of sums of sines and cosines of $\kappa/2$, 
+while $\mathcal{J}_v$ can be expressed as sums of complete elliptic integrals,
 with reduction, or it can be expressed as a series in $k^2$:
 \begin{eqnarray}
-\mathcal{J}_{q} &=& 3k^{1+2q}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
-&\times& \pi \frac{(2(n+q)-1)!!}{2^{n+q}(q+2+n)!}
+\mathcal{J}_{v} &=& 3k^{1+2v}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
+&\times& \pi \frac{(2(n+v)-1)!!}{2^{n+v}(v+2+n)!}
 \end{eqnarray}
 {\color{red} I need to check that the product term in this formula is correct; it doesn't look right.}
-%{\color{red} Note: we only need $q=2$ terms, which simplifies this equation.  We
-%can rewrite as $J_{2q}$ and only include the first option in the expansion.}
-Note the steep dependence of $\mathcal{J}_{q}$ on $k$ for large $q$:  this is also due to cancellation
+%{\color{red} Note: we only need $v=2$ terms, which simplifies this equation.  We
+%can rewrite as $J_{2v}$ and only include the first option in the expansion.}
+Note the steep dependence of $\mathcal{J}_{v}$ on $k$ for large $v$:  this is also due to cancellation
 of lower order terms during recursion, which can lead to severe round-off errors.
 
-Consequently, we use an iterative formula to evaluate $J_q$:
+Consequently, we use an iterative formula to evaluate $J_v$:
 \begin{equation}
-J_{q-2} = \frac{1}{k^2(2q-3)}\left[2((q-1)k^2+(q+1))J_{q-1}-(2q+3)J_q \right].
+J_{v-2} = \frac{1}{k^2(2v-3)}\left[2((v-1)k^2+(v+1))J_{v-1}-(2v+3)J_v \right].
 \end{equation}
-We evaluate $J_{q_{max}}$ and $J_{q_{max}-1}$ with the series solution or hypergeometric
-function for large $q_{max}$, and then iterate to find successively smaller values
-of $q$ until $q=0$.
+We evaluate $J_{v_{max}}$ and $J_{v_{max}-1}$ with the series solution or hypergeometric
+function for large $v_{max}$, and then iterate to find successively smaller values
+of $v$ until $v=0$.
 
 {\color{red} Code up this formula, and check for accuracy in the $r > 1$ limit. Figure
 out the recursion relation for Jq.}
