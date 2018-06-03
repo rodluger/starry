@@ -547,7 +547,7 @@ namespace fact {
     };
 
     // Factorial of n
-    double factorial(int n) {
+    inline double factorial(int n) {
         if ((n < 0) || (n > STARRY_MAX_FACT)) {
             throw errors::BadFactorial();
             return NAN;
@@ -557,7 +557,7 @@ namespace fact {
     }
 
     // Factorial of (n / 2)
-    double half_factorial(int n) {
+    inline double half_factorial(int n) {
         if ((n < -STARRY_MAX_HALF_FACT) || (n > STARRY_MAX_HALF_FACT)) {
             throw errors::BadFactorial();
             return NAN;
@@ -572,7 +572,7 @@ namespace fact {
     }
 
     // Binomial coefficient
-    double choose(int n, int k) {
+    inline double choose(int n, int k) {
         return factorial(n) / (factorial(k) * factorial(n - k));
     }
 

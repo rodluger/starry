@@ -1,8 +1,7 @@
 /**
 This defines the main Python interface to the code.
-Note that this file is #include'd *twice*, once
-for `starry` and once for `starry.grad` so we don't
-have to duplicate any code.
+Note that this file is #include'd several times,
+once for each variable type (double, AutoDiffScalar, ...)
 
 */
 
@@ -28,11 +27,9 @@ namespace py = pybind11;
 using namespace vect;
 
 /**
-Define our map type (double or AutoDiffScalar)
-and some other type-specific stuff.
-
+Define our map type and some other type-specific stuff.
 */
-#ifndef STARRY_AUTODIFF
+#if MODULE == MODULE_STARRY
 
 #undef MAPTYPE
 #define MAPTYPE                         double
@@ -41,7 +38,7 @@ and some other type-specific stuff.
 #undef ADD_MODULE
 #define ADD_MODULE                      add_starry
 
-#else
+#elif MODULE == MODULE_STARRY_GRAD
 
 #undef MAPTYPE
 #define MAPTYPE                         Grad
@@ -53,7 +50,7 @@ and some other type-specific stuff.
 #endif
 
 /**
-Instantiate the `starry` module with or without autodiff
+Instantiate the `starry` module
 */
 void ADD_MODULE(py::module &m) {
 
@@ -64,12 +61,40 @@ void ADD_MODULE(py::module &m) {
 
         .def(py::init<int>(), "lmax"_a=2)
 
-        .def("__setitem__", [](maps::Map<MAPTYPE>& map, py::object index, double coeff) {
+        .def("__setitem__", [](maps::Map<MAPTYPE>& map, py::object index, py::object& coeff) {
                 if (py::isinstance<py::tuple>(index)) {
+                    // User provided a (l, m) tuple
                     py::tuple lm = index;
-                    int l = py::cast<int>(lm[0]);
-                    int m = py::cast<int>(lm[1]);
-                    map.set_coeff(l, m, MAPTYPE(coeff));
+                    int l, m;
+                    double value = py::cast<double>(coeff);
+                    try {
+                        l = py::cast<int>(lm[0]);
+                        m = py::cast<int>(lm[1]);
+                    } catch (const char* msg) {
+                        throw errors::BadLMIndex();
+                    }
+                    map.set_coeff(l, m, MAPTYPE(value));
+                } else if (py::isinstance<py::slice>(index)) {
+                    // User provided a slice of some sort
+                    size_t start, stop, step, slicelength;
+                    Vector<double> values;
+                    py::slice slice = py::cast<py::slice>(index);
+                    if(!slice.compute(map.N, &start, &stop, &step, &slicelength))
+                        throw pybind11::error_already_set();
+                    if (py::isinstance<py::float_>(coeff) || py::isinstance<py::int_>(coeff)) {
+                        // Set all indices to the same value
+                        values = Vector<double>::Constant(slicelength, py::cast<double>(coeff));
+                    } else {
+                        // Set the indices to a vector of values
+                        values = py::cast<Vector<double>>(coeff);
+                        if (values.size() != slicelength)
+                            throw errors::BadSliceLength();
+                    }
+                    for (size_t i = 0; i < slicelength; ++i) {
+                        map.y(start) = MAPTYPE(values(i));
+                        start += step;
+                    }
+                    map.update();
                 } else {
                     throw errors::BadIndex();
                 }
@@ -78,9 +103,27 @@ void ADD_MODULE(py::module &m) {
         .def("__getitem__", [](maps::Map<MAPTYPE>& map, py::object index) -> py::object {
                 if (py::isinstance<py::tuple>(index)) {
                     py::tuple lm = index;
-                    int l = py::cast<int>(lm[0]);
-                    int m = py::cast<int>(lm[1]);
+                    int l, m;
+                    try {
+                        l = py::cast<int>(lm[0]);
+                        m = py::cast<int>(lm[1]);
+                    } catch (const char* msg) {
+                        throw errors::BadLMIndex();
+                    }
                     return py::cast(get_value(map.get_coeff(l, m)));
+                } else if (py::isinstance<py::slice>(index)) {
+                    // User provided a slice of some sort
+                    size_t start, stop, step, slicelength;
+                    Vector<double> values;
+                    py::slice slice = py::cast<py::slice>(index);
+                    if(!slice.compute(map.N, &start, &stop, &step, &slicelength))
+                        throw pybind11::error_already_set();
+                    Vector<double> res(slicelength);
+                    for (size_t i = 0; i < slicelength; ++i) {
+                        res[i] = get_value(map.y(start));
+                        start += step;
+                    }
+                    return py::cast(res);
                 } else {
                     throw errors::BadIndex();
                 }
@@ -284,7 +327,7 @@ void ADD_MODULE(py::module &m) {
             animate(I, axis, "cmap"_a=cmap, "res"_a=res);
         }, DOCS::Map::animate, "axis"_a=maps::yhat, "cmap"_a="plasma", "res"_a=150, "frames"_a=50)
 
-#ifndef STARRY_AUTODIFF
+#if MODULE == MODULE_STARRY
 
         // Methods and attributes only in `starry.Map()``
 
@@ -303,7 +346,7 @@ void ADD_MODULE(py::module &m) {
                 return vectorize_map_flux_numerical(axis_norm, theta, xo, yo, ro, tol, map);
             }, DOCS::Map::flux_numerical, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
 
-#else
+#elif MODULE == MODULE_STARRY_GRAD
 
         // Methods and attributes only in `starry.grad.Map()`
 
@@ -323,22 +366,59 @@ void ADD_MODULE(py::module &m) {
 
         .def(py::init<int>(), "lmax"_a=2)
 
-        .def("__setitem__", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object index, double coeff) {
-            if (py::isinstance<py::tuple>(index)) {
-                throw errors::BadIndex();
-            } else {
+        .def("__setitem__", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object index, py::object& coeff) {
+            if (py::isinstance<py::int_>(index)) {
+                // User provided a single index
                 int l = py::cast<int>(index);
-                map.set_coeff(l, MAPTYPE(coeff));
+                double value = py::cast<double>(coeff);
+                map.set_coeff(l, MAPTYPE(value));
+            } else if (py::isinstance<py::slice>(index)) {
+                // User provided a slice of some sort
+                size_t start, stop, step, slicelength;
+                Vector<double> values;
+                py::slice slice = py::cast<py::slice>(index);
+                if(!slice.compute(map.lmax, &start, &stop, &step, &slicelength))
+                    throw pybind11::error_already_set();
+                if (py::isinstance<py::float_>(coeff) || py::isinstance<py::int_>(coeff)) {
+                    // Set all indices to the same value
+                    values = Vector<double>::Constant(slicelength, py::cast<double>(coeff));
+                } else {
+                    // Set the indices to a vector of values
+                    values = py::cast<Vector<double>>(coeff);
+                    if (values.size() != slicelength)
+                        throw errors::BadSliceLength();
+                }
+                for (size_t i = 0; i < slicelength; ++i) {
+                    map.u(start + 1) = MAPTYPE(values(i));
+                    start += step;
+                }
+                map.update();
+            } else {
+                throw errors::BadIndex();
             }
         })
 
-        .def("__getitem__", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object index) {
-            if (py::isinstance<py::tuple>(index)) {
-                throw errors::BadIndex();
-            } else {
-                int l = py::cast<int>(index);
-                return get_value(map.get_coeff(l));
-            }
+        .def("__getitem__", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object index) -> py::object {
+                if (py::isinstance<py::int_>(index)) {
+                    // User provided a single index
+                    int l = py::cast<int>(index);
+                    return py::cast(get_value(map.get_coeff(l)));
+                } else if (py::isinstance<py::slice>(index)) {
+                    // User provided a slice of some sort
+                    size_t start, stop, step, slicelength;
+                    Vector<double> values;
+                    py::slice slice = py::cast<py::slice>(index);
+                    if(!slice.compute(map.lmax, &start, &stop, &step, &slicelength))
+                        throw pybind11::error_already_set();
+                    Vector<double> res(slicelength);
+                    for (size_t i = 0; i < slicelength; ++i) {
+                        res[i] = get_value(map.u(start + 1));
+                        start += step;
+                    }
+                    return py::cast(res);
+                } else {
+                    throw errors::BadIndex();
+                }
         })
 
         .def("get_coeff", [](maps::LimbDarkenedMap<MAPTYPE> &map, int l){
@@ -374,7 +454,11 @@ void ADD_MODULE(py::module &m) {
             }, DOCS::LimbDarkenedMap::s)
 
         .def_property_readonly("u", [](maps::LimbDarkenedMap<MAPTYPE> &map){
-                return get_value((Vector<MAPTYPE>)map.u);
+                // Hide u_0, since it's never used!
+                Vector<double> u(map.lmax);
+                for (int i = 0; i < map.lmax; i++)
+                    u(i) = get_value(map.u(i + 1));
+                return u;
             }, DOCS::LimbDarkenedMap::u)
 
         .def_property("optimize", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.G.taylor;},
@@ -403,7 +487,7 @@ void ADD_MODULE(py::module &m) {
                 show(I, "cmap"_a=cmap, "res"_a=res);
             }, DOCS::LimbDarkenedMap::show, "cmap"_a="plasma", "res"_a=300)
 
-#ifndef STARRY_AUTODIFF
+#if MODULE == MODULE_STARRY
 
         // Methods and attributes only in `starry.LimbDarkenedMap()``
 
@@ -420,7 +504,7 @@ void ADD_MODULE(py::module &m) {
                 return vectorize_ldmap_flux_numerical(xo, yo, ro, tol, map);
             }, DOCS::LimbDarkenedMap::flux_numerical, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4)
 
-#else
+#elif MODULE == MODULE_STARRY_GRAD
 
         // Methods and attributes only in `starry.grad.LimbDarkenedMap()`
 
@@ -470,7 +554,7 @@ void ADD_MODULE(py::module &m) {
         .def_property("exposure_max_depth", [](orbital::System<MAPTYPE> &system){return system.expmaxdepth;},
             [](orbital::System<MAPTYPE> &system, int expmaxdepth){system.expmaxdepth = expmaxdepth;}, DOCS::System::exposure_max_depth)
 
-#ifdef STARRY_AUTODIFF
+#if MODULE == MODULE_STARRY_GRAD
 
         .def_property_readonly("gradient", [](orbital::System<MAPTYPE> &system){return py::cast(system.derivs);},
             DOCS::System::gradient)
@@ -499,7 +583,7 @@ void ADD_MODULE(py::module &m) {
 
         .def_property_readonly("flux", [](orbital::Body<MAPTYPE> &body){return get_value(body.flux);}, DOCS::Body::flux)
 
-#ifdef STARRY_AUTODIFF
+#if MODULE == MODULE_STARRY_GRAD
 
         .def_property_readonly("gradient", [](orbital::Body<MAPTYPE> &body){return py::cast(body.derivs);},
             DOCS::Body::gradient)
@@ -583,22 +667,59 @@ void ADD_MODULE(py::module &m) {
 
         .def_property_readonly("tref", [](orbital::Star<MAPTYPE> &star){throw errors::NotImplemented();}, DOCS::NotImplemented)
 
-        .def("__setitem__", [](orbital::Star<MAPTYPE> &body, py::object index, double coeff) {
-            if (py::isinstance<py::tuple>(index)) {
-                throw errors::BadIndex();
-            } else {
+        .def("__setitem__", [](orbital::Star<MAPTYPE> &star, py::object index, py::object& coeff) {
+            if (py::isinstance<py::int_>(index)) {
+                // User provided a single index
                 int l = py::cast<int>(index);
-                body.ldmap.set_coeff(l, MAPTYPE(coeff));
+                double value = py::cast<double>(coeff);
+                star.ldmap.set_coeff(l, MAPTYPE(value));
+            } else if (py::isinstance<py::slice>(index)) {
+                // User provided a slice of some sort
+                size_t start, stop, step, slicelength;
+                Vector<double> values;
+                py::slice slice = py::cast<py::slice>(index);
+                if(!slice.compute(star.ldmap.lmax, &start, &stop, &step, &slicelength))
+                    throw pybind11::error_already_set();
+                if (py::isinstance<py::float_>(coeff) || py::isinstance<py::int_>(coeff)) {
+                    // Set all indices to the same value
+                    values = Vector<double>::Constant(slicelength, py::cast<double>(coeff));
+                } else {
+                    // Set the indices to a vector of values
+                    values = py::cast<Vector<double>>(coeff);
+                    if (values.size() != slicelength)
+                        throw errors::BadSliceLength();
+                }
+                for (size_t i = 0; i < slicelength; ++i) {
+                    star.ldmap.u(start + 1) = MAPTYPE(values(i));
+                    start += step;
+                }
+                star.ldmap.update();
+            } else {
+                throw errors::BadIndex();
             }
         })
 
-        .def("__getitem__", [](orbital::Star<MAPTYPE> &body, py::object index) {
-            if (py::isinstance<py::tuple>(index)) {
-                throw errors::BadIndex();
-            } else {
-                int l = py::cast<int>(index);
-                return get_value(body.ldmap.get_coeff(l));
-            }
+        .def("__getitem__", [](orbital::Star<MAPTYPE> &star, py::object index) -> py::object {
+                if (py::isinstance<py::int_>(index)) {
+                    // User provided a single index
+                    int l = py::cast<int>(index);
+                    return py::cast(get_value(star.ldmap.get_coeff(l)));
+                } else if (py::isinstance<py::slice>(index)) {
+                    // User provided a slice of some sort
+                    size_t start, stop, step, slicelength;
+                    Vector<double> values;
+                    py::slice slice = py::cast<py::slice>(index);
+                    if(!slice.compute(star.ldmap.lmax, &start, &stop, &step, &slicelength))
+                        throw pybind11::error_already_set();
+                    Vector<double> res(slicelength);
+                    for (size_t i = 0; i < slicelength; ++i) {
+                        res[i] = get_value(star.ldmap.u(start + 1));
+                        start += step;
+                    }
+                    return py::cast(res);
+                } else {
+                    throw errors::BadIndex();
+                }
         })
 
         .def("__repr__", [](orbital::Star<MAPTYPE> &star) -> string {return star.repr();});
@@ -618,28 +739,75 @@ void ADD_MODULE(py::module &m) {
                       "prot"_a=0, "a"_a=50., "porb"_a=1,
                       "inc"_a=90., "ecc"_a=0, "w"_a=90, "Omega"_a=0,
                       "lambda0"_a=90, "tref"_a=0)
-        .def("__setitem__", [](orbital::Planet<MAPTYPE> &body, py::object index, double coeff) {
+
+        .def("__setitem__", [](orbital::Planet<MAPTYPE>& planet, py::object index, py::object& coeff) {
             if (py::isinstance<py::tuple>(index)) {
-                // This is a (l, m) tuple
+                // User provided a (l, m) tuple
                 py::tuple lm = index;
-                int l = py::cast<int>(lm[0]);
-                int m = py::cast<int>(lm[1]);
-                body.map.set_coeff(l, m, MAPTYPE(coeff));
+                int l, m;
+                double value = py::cast<double>(coeff);
+                try {
+                   l = py::cast<int>(lm[0]);
+                   m = py::cast<int>(lm[1]);
+                } catch (const char* msg) {
+                   throw errors::BadLMIndex();
+                }
+                planet.map.set_coeff(l, m, MAPTYPE(value));
+            } else if (py::isinstance<py::slice>(index)) {
+                // User provided a slice of some sort
+                size_t start, stop, step, slicelength;
+                Vector<double> values;
+                py::slice slice = py::cast<py::slice>(index);
+                if(!slice.compute(planet.map.N, &start, &stop, &step, &slicelength))
+                    throw pybind11::error_already_set();
+                if (py::isinstance<py::float_>(coeff) || py::isinstance<py::int_>(coeff)) {
+                    // Set all indices to the same value
+                    values = Vector<double>::Constant(slicelength, py::cast<double>(coeff));
+                } else {
+                    // Set the indices to a vector of values
+                    values = py::cast<Vector<double>>(coeff);
+                    if (values.size() != slicelength)
+                        throw errors::BadSliceLength();
+                }
+                for (size_t i = 0; i < slicelength; ++i) {
+                    planet.map.y(start) = MAPTYPE(values(i));
+                    start += step;
+                }
+                planet.map.update();
             } else {
                 throw errors::BadIndex();
             }
         })
-        .def("__getitem__", [](orbital::Planet<MAPTYPE> &body, py::object index) {
-            if (py::isinstance<py::tuple>(index)) {
-                // This is a (l, m) tuple
-                py::tuple lm = index;
-                int l = py::cast<int>(lm[0]);
-                int m = py::cast<int>(lm[1]);
-                return get_value(body.map.get_coeff(l, m));
-            } else {
-                throw errors::BadIndex();
-            }
-        })
+
+        .def("__getitem__", [](orbital::Planet<MAPTYPE>& planet, py::object index) -> py::object {
+              if (py::isinstance<py::tuple>(index)) {
+                  py::tuple lm = index;
+                  int l, m;
+                  try {
+                      l = py::cast<int>(lm[0]);
+                      m = py::cast<int>(lm[1]);
+                  } catch (const char* msg) {
+                      throw errors::BadLMIndex();
+                  }
+                  return py::cast(get_value(planet.map.get_coeff(l, m)));
+              } else if (py::isinstance<py::slice>(index)) {
+                  // User provided a slice of some sort
+                  size_t start, stop, step, slicelength;
+                  Vector<double> values;
+                  py::slice slice = py::cast<py::slice>(index);
+                  if(!slice.compute(planet.map.N, &start, &stop, &step, &slicelength))
+                      throw pybind11::error_already_set();
+                  Vector<double> res(slicelength);
+                  for (size_t i = 0; i < slicelength; ++i) {
+                      res[i] = get_value(planet.map.y(start));
+                      start += step;
+                  }
+                  return py::cast(res);
+              } else {
+                  throw errors::BadIndex();
+              }
+          })
+
         .def("__repr__", [](orbital::Planet<MAPTYPE> &planet) -> string {return planet.repr();});
 
 } // ADD_MODULE

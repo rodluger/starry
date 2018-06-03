@@ -62,7 +62,6 @@ namespace docstrings {
         .. autoclass:: Star()
         .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
         .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
-
     )pbdoc";
 
     const char * NotImplemented =
@@ -990,6 +989,8 @@ namespace docstrings_grad {
 
     namespace Map {
 
+        using namespace docstrings::Map;
+
         const char * Map =
         R"pbdoc(
                 Instantiate a :py:mod:`starry` surface map. Maps instantiated in this fashion
@@ -1023,55 +1024,17 @@ namespace docstrings_grad {
                 .. autoattribute:: ngrad
         )pbdoc";
 
-        const char * get_coeff = docstrings::Map::get_coeff;
-
-        const char * set_coeff = docstrings::Map::set_coeff;
-
-        const char * reset = docstrings::Map::reset;
-
         const char * gradient =
         R"pbdoc(
             A dictionary of derivatives for all model parameters, populated on
             calls to :py:meth:`flux` and :py:meth:`evaluate`.
         )pbdoc";
 
-        const char * lmax = docstrings::Map::lmax;
-
-        const char * y = docstrings::Map::y;
-
-        const char * p = docstrings::Map::p;
-
-        const char * g = docstrings::Map::g;
-
-        const char * s = docstrings::Map::s;
-
-        const char * r = docstrings::Map::r;
-
-        const char * add_gaussian = docstrings::Map::add_gaussian;
-
-        const char * optimize = docstrings::Map::optimize;
-
-        const char * evaluate = docstrings::Map::evaluate;
-
-        const char * flux = docstrings::Map::flux;
-
-        const char * rotate = docstrings::Map::rotate;
-
-        const char * minimum = docstrings::Map::minimum;
-
-        const char * load_array = docstrings::Map::load_array;
-
-        const char * load_image = docstrings::Map::load_image;
-
-        const char * load_healpix = docstrings::Map::load_healpix;
-
-        const char * show = docstrings::Map::show;
-
-        const char * animate = docstrings::Map::animate;
-
     } // namespace Map
 
     namespace LimbDarkenedMap {
+
+        using namespace docstrings::LimbDarkenedMap;
 
         const char * LimbDarkenedMap =
         R"pbdoc(
@@ -1110,16 +1073,7 @@ namespace docstrings_grad {
                 .. automethod:: show(cmap='plasma', res=300)
                 .. autoattribute:: mp_digits
                 .. autoattribute:: ngrad
-
         )pbdoc";
-
-        const char * get_coeff = docstrings::LimbDarkenedMap::get_coeff;
-
-        const char * set_coeff = docstrings::LimbDarkenedMap::set_coeff;
-
-        const char * reset = docstrings::LimbDarkenedMap::reset;
-
-        const char * roots = docstrings::LimbDarkenedMap::roots;
 
         const char * gradient =
         R"pbdoc(
@@ -1127,29 +1081,11 @@ namespace docstrings_grad {
             calls to :py:meth:`flux` and :py:meth:`evaluate`.
         )pbdoc";
 
-        const char * lmax = docstrings::LimbDarkenedMap::lmax;
-
-        const char * y = docstrings::LimbDarkenedMap::y;
-
-        const char * p = docstrings::LimbDarkenedMap::p;
-
-        const char * g = docstrings::LimbDarkenedMap::g;
-
-        const char * s = docstrings::LimbDarkenedMap::s;
-
-        const char * u = docstrings::LimbDarkenedMap::u;
-
-        const char * optimize = docstrings::LimbDarkenedMap::optimize;
-
-        const char * evaluate = docstrings::LimbDarkenedMap::evaluate;
-
-        const char * flux = docstrings::LimbDarkenedMap::flux;
-
-        const char * show = docstrings::LimbDarkenedMap::show;
-
     } // namespace LimbDarkenedMap
 
     namespace System {
+
+        using namespace docstrings::System;
 
         const char * System =
         R"pbdoc(
@@ -1176,24 +1112,7 @@ namespace docstrings_grad {
                 .. autoattribute:: exposure_max_depth
                 .. autoattribute:: kepler_tol
                 .. autoattribute:: kepler_max_iter
-
         )pbdoc";
-
-        const char * compute = docstrings::System::compute;
-
-        const char * flux = docstrings::System::flux;
-
-        const char * scale = docstrings::System::scale;
-
-        const char * exposure_time = docstrings::System::exposure_time;
-
-        const char * exposure_tol = docstrings::System::exposure_tol;
-
-        const char * exposure_max_depth = docstrings::System::exposure_max_depth;
-
-        const char * kepler_max_iter = docstrings::System::kepler_max_iter;
-
-        const char * kepler_tol = docstrings::System::kepler_tol;
 
         const char * gradient =
         R"pbdoc(
@@ -1213,9 +1132,7 @@ namespace docstrings_grad {
 
     namespace Body {
 
-        const char * map = docstrings::Body::map;
-
-        const char * flux = docstrings::Body::flux;
+        using namespace docstrings::Body;
 
         const char * gradient =
         R"pbdoc(
@@ -1231,39 +1148,11 @@ namespace docstrings_grad {
                       is :py:obj:`gradient['planet2.ecc']`.
         )pbdoc";
 
-        const char * x = docstrings::Body::x;
-
-        const char * y = docstrings::Body::y;
-
-        const char * z = docstrings::Body::z;
-
-        const char * r = docstrings::Body::r;
-
-        const char * L = docstrings::Body::L;
-
-        const char * axis = docstrings::Body::axis;
-
-        const char * prot = docstrings::Body::prot;
-
-        const char * a = docstrings::Body::a;
-
-        const char * porb = docstrings::Body::porb;
-
-        const char * inc = docstrings::Body::inc;
-
-        const char * ecc = docstrings::Body::ecc;
-
-        const char * w = docstrings::Body::w;
-
-        const char * Omega = docstrings::Body::Omega;
-
-        const char * lambda0 = docstrings::Body::lambda0;
-
-        const char * tref = docstrings::Body::tref;
-
     } // namespace Body
 
     namespace Star {
+
+        using namespace docstrings::Star;
 
         const char * Star =
         R"pbdoc(
@@ -1281,15 +1170,11 @@ namespace docstrings_grad {
             .. autoattribute:: L
         )pbdoc";
 
-        const char * map = docstrings::Star::map;
-
-        const char * r = docstrings::Star::r;
-
-        const char * L = docstrings::Star::L;
-
     } // namespace Star
 
     namespace Planet {
+
+        using namespace docstrings::Planet;
 
         const char * Planet =
         R"pbdoc(

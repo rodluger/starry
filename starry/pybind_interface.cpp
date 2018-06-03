@@ -4,17 +4,24 @@
 #include <pybind11/pybind11.h>
 #include <stdlib.h>
 
-// MAGIC: Include our starry interface twice,
-// once with no derivs and once with derivs.
-#undef STARRY_AUTODIFF
+// MAGIC: Include our starry interface several times
+#define MODULE_STARRY               1
+#define MODULE_STARRY_GRAD          2
+#define MODULE_STARRY_MULTI         3
+
+// starry
+#undef MODULE
+#define MODULE                      MODULE_STARRY
 #include "pybind_interface.h"
-#define STARRY_AUTODIFF
+
+// starry.grad
+#undef MODULE
+#define MODULE                      MODULE_STARRY_GRAD
 #include "pybind_interface.h"
 
 using namespace std;
 using namespace pybind11::literals;
 namespace py = pybind11;
-
 
 PYBIND11_MODULE(starry, m) {
 
