@@ -8,14 +8,14 @@
 \setlength{\belowdisplayskip}{1.5em}
 
 \title{%
-    \textbf{STARRY}: Analytical Occultation Light Curves
+    \textbf{STARRY}: Analytic Occultation Light Curves
 }
 
 \author[0000-0002-0296-3826]{Rodrigo Luger}
 \email{rodluger@uw.edu}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
 \affil{Virtual~Planetary~Laboratory, University~of~Washington, Seattle, WA}
-%
+% 
 \author{Eric Agol}
 \altaffiliation{Guggenheim~Fellow}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
@@ -75,12 +75,12 @@ and meteorological processes at play that are the basis of planetary science,
 including comparative planetology.
 %
 With the discovery of planets orbiting other
-stars, map-making becomes a formidable task: these planets are too distant to
+stars, cartography becomes a formidable task: these planets are too distant to
 resolve their surfaces into maps as we do for our own planetary suite.  One way
 to overcome this drawback is to utilize the time-dependence of unresolved,
-disk-integrated light from planetary bodies:  both rotational variability 
-\citep{Russell1906,Lacis1972,Cowan2008}
-and occultations \citep{Williams2006,Rauscher2007} yield the opportunity to constrain 
+disk-integrated light from planetary bodies:  both rotational variability
+\citep{Russell1906,Lacis1972,Cowan2008,OakleyCash2009}
+and occultations \citep{Williams2006,Rauscher2007} yield the opportunity to constrain
 the presence of static variations in the surface features of exoplanets.
 
 The first application of time-dependent mapping to exoplanets was carried out in the
@@ -100,11 +100,11 @@ surface maps of planets in short orbital periods \citep{Beichman2014,Schlawin201
 Future mission concepts such as the Large UV-Optical-InfraRed telescope (LUVOIR) and the
 Origins Space Telescope (OST) will likewise open doors for the mapping technique,
 extending it to the study of exoplanets with solid or even liquid surfaces
-\citep[e.g.,][]{Cowan2012,CowanFuentesHaggard2013,CowanFujii2017,Fujii2017,LugerLustigYaegerAgol2017}.
-Mutual transits binary planets, or planets and moons, seen in total flux
-with direct imaging may have surface features constrained with eclipse
-mapping \citep{Cabrera2007}, much as mutual events viewed in the Solar System
-\citep{Brinkman1973,Vermilion1974,Herzog1975,Brinkman1976,Reinsch1994,Young1999,
+\citep[e.g.,][]{KawaharaFujii2010,KawaharaFujii2011,FujiiKawahara2012,Cowan2012,CowanFuentesHaggard2013,CowanFujii2017,Fujii2017,LugerLustigYaegerAgol2017,BerdyuginaKuhn2017}.
+Future direct imaging telescopes should also enable eclipse mapping from
+mutual transits of binary planets or planet-moon systems \citep{Cabrera2007},
+in analogy with mutual events viewed in the Solar System
+\citep{Brinkmann1973,Vermilion1974,Herzog1975,Brinkmann1976,Reinsch1994,Young1999,
 Young2001,Livengood2011}.
 
 As we gear up to perform these observations, it is essential that we have
@@ -569,6 +569,10 @@ We note, finally, that a form of this solution was very recently found by \citet
 a special case of their equations for phase curves in reflected light yields
 analytic expressions for thermal phase curves of spherical harmonics.
 
+% HACK
+\pagebreak
+% HACK
+
 % ------------------------------------------------------------------------------
 \subsection{Occultation light curves}
 \label{sec:occultationflux}
@@ -987,23 +991,23 @@ Printing the map to screen yields
 %
 Users can also directly access the spherical harmonic vector $\bvec{y}$,
 polynomial vector $\bvec{p}$, and Green's polynomial vector $\bvec{g}$
-via the attributes \starryMapy, \starryMapp, and \starryMapg, respectively:
+via the attributes \starryMapy, \starryMapp, and \starryMapg, respectively.
 %
-\begin{lstlisting}[language=Python,numbers=none]
-# map.y
-[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
- 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 0, 2, 0, 0, 0, 1, 0]
-
-# map.p
-[0, 0, 1.87, 0, 0, 0, 0, 0, 0, 0, -13.10, -23.48, 0, 0,
- -13.10, 7.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16.81, 26.42,
- 0, 0, 17.02, 17.61, 0, 0, 16.81, -8.81]
-
-# map.g
-[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3.73, -7.83, 0, 0, 1.86,
- 7.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5.59, 5.28, 0, 0,
- -16.81, 5.87, 0, 0, -16.75, -8.81])
-\end{lstlisting}
+%\begin{lstlisting}[language=Python,numbers=none]
+%# map.y
+%[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+% 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 0, 2, 0, 0, 0, 1, 0]
+%
+%# map.p
+%[0, 0, 1.87, 0, 0, 0, 0, 0, 0, 0, -13.10, -23.48, 0, 0,
+% -13.10, 7.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16.81, 26.42,
+% 0, 0, 17.02, 17.61, 0, 0, 16.81, -8.81]
+%
+%# map.g
+%[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3.73, -7.83, 0, 0, 1.86,
+% 7.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5.59, 5.28, 0, 0,
+% -16.81, 5.87, 0, 0, -16.75, -8.81])
+%\end{lstlisting}
 %
 Once a map is instantiated, users may quickly visualize it by calling
 %
@@ -1118,7 +1122,7 @@ As a second example, we can compute the rotational phase curve of the simplified
 by executing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-theta = np.linspace(0, 2 * np.pi, 100)
+theta = np.linspace(0, 360, 100)
 F = map.flux(axis=[0, 1, 0], theta=theta)
 \end{lstlisting}
 %
@@ -1221,14 +1225,16 @@ expressed in terms of the $m = 0$ spherical harmonics up to order $l$.
 For convenience, we implement this functionality in \starry via the
 \starryLimbDarkenedMap class. This class behaves similarly
 to the \starryMap class but allows users
-to specify the coefficients of the limb darkening polynomial directly as
-follows:
+to specify the coefficients of a limb darkening polynomial of arbirtary order
+directly as follows:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 from starry import LimbDarkenedMap
-map = LimbDarkenedMap(2)
+map = LimbDarkenedMap(lmax)
 map.set_coeff(1) = u1
 map.set_coeff(2) = u2
+...
+map.set_coeff(lmax) = ulmax
 \end{lstlisting}
 %
 or, more compactly,
@@ -1242,9 +1248,13 @@ enforce the correct normalization.}
 \begin{lstlisting}[language=Python,firstnumber=last]
 map[1] = u1
 map[2] = u2
+...
+map[lmax] = ulmax
 \end{lstlisting}
 %
-In either case, this sets the map's limb darkening profile to
+where \textsf{lmax} is the order of the limb darkening polynomial.
+In the case of quadratic limb darkening ($l_\mathrm{max} = 2$),
+this sets the map's limb darkening profile to
 %
 \begin{align}
     \label{eq:quadraticld}
@@ -1252,8 +1262,7 @@ In either case, this sets the map's limb darkening profile to
     \quad,
 \end{align}
 %
-with $\upmu$ given above, corresponding to the well-known case of a quadratically
-limb-darkened star.
+with $\upmu$ given above.
 From \citet{limbdark}, this corresponds to the spherical harmonic sum
 %
 \begin{align}
@@ -1358,20 +1367,14 @@ As with \starryStar, the planet's map
 (a \starryMap instance) can be accessed
 via the \ldmap property. Suppose we wish to give the planet a simple
 dipole map ($Y_{1,0}$) with peak brightness at the sub-stellar point.
-By default, the planet is instantiated at a transiting configuration (new phase),
-with mean longitude \textsf{lambda0} $= 90^\circ$, so we must actually set
-the corresponding coefficient in the map to be \emph{negative}:
+\starry expects the planet map to be instantiated at an eclipsing
+configuration (full phase), so we want to set the coefficient for the $Y_{1,0}$
+harmonic (see Figure~\ref{fig:ylms}):
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-planet.map[1, 0] = -0.5
+planet.map[1, 0] = 0.5
 \end{lstlisting}
 %
-This ensures that the hot spot is on the side of the planet facing the star
-(away from the observer when the planet is transiting).
-\footnote{Alternatively, users may specify the map as seen from full phase and
-set \textsf{planet.lambda0 = 270}.}
-%
-
 Finally, care should be taken to ensure the map is positive everywhere. By default,
 the coefficient of the $Y_{0,0}$ term of a planet's map is fixed at unity, since
 changing this term would change the total luminosity (this should instead be
@@ -1488,25 +1491,25 @@ class and compute the flux at one point during an occultation:
 from starry.grad import Map
 map = Map(1)
 map[1, 0] = 1
-map.flux(axis=(0, 1, 0), theta=0.3, xo=0.1, yo=0.1, ro=0.1)
+map.flux(axis=(0, 1, 0), theta=30, xo=0.1, yo=0.1, ro=0.1)
 \end{lstlisting}
 %
-Running the code above outputs the value of the flux, \textsf{0.962688...},
+Running the code above outputs the value of the flux, \textsf{0.8723...},
 which is exactly what you'd get with \starryMap. However, behind the scenes,
 \starry also computed gradients. Here's what we get when we access \textsf{map.gradient}:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 {'Y_{0,0}': array([0.]),
  'Y_{1,-1}': array([-0.00153499]),
- 'Y_{1,0}': array([0.96268827]),
- 'Y_{1,1}': array([-0.29940113]),
- 'axis_x': array([0.00045362]),
- 'axis_y': array([0.]),
- 'axis_z': array([-6.85580453e-05]),
- 'ro': array([-0.29791067]),
- 'theta': array([-0.29940113]),
- 'xo': array([-0.00304715]),
- 'yo': array([0.00148905])}
+ 'Y_{1,0}': array([0.87233361]),
+ 'Y_{1,1}': array([-0.5054145]),
+ 'axis_x': array([0.0007675]),
+ 'axis_y': array([8.52090655e-20]),
+ 'axis_z': array([-0.00020565]),
+ 'ro': array([-0.27718567]),
+ 'theta': array([-0.00882115]),
+ 'xo': array([-0.0063251]),
+ 'yo': array([0.00134985])}
 \end{lstlisting}
 %
 These are the gradients of the flux with respect to each of the four map
@@ -2058,7 +2061,7 @@ as a function of $\x$ and $\y$ only:
 %
 where $\z = \z(\x, \y) = \sqrt{1 - \x^2 - \y^2}$. Evaluating the nested sums
 may be computationally slow, but these operations need only be performed a
-single time to construct our change of basis matrix (Appendix~\ref{sec:basis}).
+single time to construct our change of basis matrix (following section).
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -2421,7 +2424,7 @@ evaluate this term separately in Appendix~\ref{app:linearld} below, followed by
 the general term in Appendix~\ref{app:generalterm}.
 
 % ------------------------------------------------------------------------------
-\subsection{Linear limb darkening ($n = 2$)}
+\subsection{Linear limb darkening ($n = 2$, $l=1$, $m=0$)}
 \label{app:linearld}
 % ------------------------------------------------------------------------------
 
@@ -2531,7 +2534,7 @@ $\bvec{G}_n$. These are given by
             r c_\varphi
             \, \dd\varphi
             %
-            & \qquad \nu \, \mathrm{even}
+            & \qquad \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
         %
         -\int\displaylimits_{\pi - \phi}^{2\pi + \phi}
@@ -2540,8 +2543,7 @@ $\bvec{G}_n$. These are given by
             r s_\varphi
             \, \dd\varphi
             %
-            & \qquad \nu \, \mathrm{odd}, \,
-                     \mu = 1, \,
+            & \qquad \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
@@ -2552,8 +2554,7 @@ $\bvec{G}_n$. These are given by
             r s_\varphi
             \, \dd\varphi
             %
-            & \qquad \nu \, \mathrm{odd}, \,
-                     \mu = 1, \,
+            & \qquad \mu = 1, \, l \ge 3, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
@@ -2563,7 +2564,13 @@ $\bvec{G}_n$. These are given by
             (1 {-} r^2 {-} b^2 {-} 2 b r s_\varphi)^{\frac{3}{2}}
             r c_\varphi
             \, \dd\varphi
-            & \qquad \mathrm{otherwise}
+            & \qquad \frac{\mu - 1}{2} \, \mathrm{even}
+        \\[1em]
+        %
+        s_2 & \qquad \mu=1, \, l=1
+        \\[1em]
+        %
+        0 & \qquad \mathrm{otherwise}
     \end{dcases}
 %
 \intertext{and}
@@ -2579,7 +2586,7 @@ $\bvec{G}_n$. These are given by
             c_\varphi
             \, \dd\varphi
             %
-            & \qquad\qquad \nu \, \mathrm{even}
+            & \qquad\qquad \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
         %
         \phantom{XXXXX}0
@@ -2656,15 +2663,14 @@ With some algebra, we may therefore write
         %
         r^{l+2} \mathcal{K}_{\frac{\mu+4}{2}, \frac{\nu}{2}}
             %
-            & \qquad \nu \, \mathrm{even}
+            & \qquad \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
         %
         %b r^{l-2} \mathcal{L}_{l-2, 0}
         %- r^{l-1} \mathcal{L}_{l-2,1}
         -r^{l-1} \mathcal{J}_{l-2, 1}
             %
-            & \qquad \nu \, \mathrm{odd}, \,
-                     \mu = 1, \,
+            & \qquad \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
@@ -2672,13 +2678,18 @@ With some algebra, we may therefore write
         %b r^{l-2} \mathcal{L}_{l-3, 1}
         %- r^{l-1} \mathcal{L}_{l-3,2}
             %
-            & \qquad \nu \, \mathrm{odd}, \,
-                     \mu = 1, \,
+            & \qquad \mu = 1, \, l \ge 3, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
         r^{l-1} \mathcal{L}_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}
-            & \qquad \mathrm{otherwise}
+            & \qquad \frac{\mu - 1}{2} \, \mathrm{even}
+        \\[1em]
+        %
+        s_2 & \qquad \mu=1, \, l=1
+        \\[1em]
+        %
+        0 & \qquad \mathrm{otherwise}
     \end{dcases}
     \pdf{PGn}
 %
@@ -2693,11 +2704,11 @@ and
     \mathcal{Q}(\bvec{G}_n) &=
     \begin{dcases}
         \mathcal{H}_{\frac{\mu+4}{2}, \frac{\nu}{2}}
-        & \qquad \qquad \qquad \qquad \quad \quad \quad \quad \nu \, \mathrm{even}
+        & \qquad \qquad \qquad \qquad \quad \quad \quad \quad \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
         %
         0
-        & \qquad \qquad \qquad \qquad \quad \quad \quad \quad \nu \, \mathrm{odd} \quad.
+        & \qquad \qquad \qquad \qquad \quad \quad \quad \quad \mathrm{otherwise} \quad.
     \end{dcases}
 \end{align}
 %
@@ -2880,6 +2891,226 @@ so these need only be evaluated \emph{once} when computing the occultation flux 
 a map of arbitrary degree. Thanks to the recurrence relations, all other operations
 required to evaluate $\mathcal{J}_{u,v}$ are elementary, making the
 computation of $s_n$ fast.
+
+% ------------------------------------------------------------------------------
+\subsubsection{Alternate equations for large radius occultors}
+
+We have found that the numerical evaluation of the integrals has numerical stability
+problems for $r \gg 1$.  In this section we present transformed equations which
+may help with stability.
+
+For $r \gg 1$, we are only concerned with ingress and egress during which
+$\vert r-b \vert < 1$ (otherwise the source is completely visible or completely
+obscurved).  Thus, $b \approx r$, so we define a small parameter,
+\begin{equation}
+\delta = \frac{b-r}{2r}.
+\end{equation}
+We also observe that for $r \gg 1$, $\phi \approx -\pi/2$.  We transform to a
+new angle variable, $\kappa = \pi/2 + \phi$, such that $\kappa \ll 1$ when
+$r \gg 1$,
+\begin{equation}
+\kappa = \cos^{-1} \left(\frac{r^2+b^2-1}{2br}\right).
+\end{equation}
+This variable can be defined more simply in terms of $\sin^2\tfrac{\kappa}{2} = k^2$,
+or $\kappa = 2 \sin^{-1}k$.
+With this transformed variable, the limits of integration of $\mathcal{P}(\bvec{G}_n)$
+become $\tfrac{3\pi}{2}-\kappa$ to $\tfrac{3\pi}{2}+\kappa$.  Transforming
+$\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
+\begin{align}
+    \label{eq:PGn_large}
+    \mathcal{P}(\bvec{G}_n) &=
+    \begin{dcases}
+        %
+        +2(2r)^{l+2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
+            s_\varphi^{\frac{\mu+4}{2}} (1-s_\varphi^2)^{\frac{\mu+4}{4}}
+            (\delta + s_\varphi^2)^{\frac{\nu}{2}}
+            \, \dd\varphi
+            %
+            & \qquad \frac{\mu}{2} \, \mathrm{even}
+        \\[1em]
+        %
+        -(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
+            s_\varphi^{l-2} (1-s_\varphi^2)^{(l-2)/2}
+            (k^2- s_\varphi^2)^{\frac{3}{2}}
+            (2s_\varphi^2-1)
+            \, \dd\varphi
+            %
+            & \qquad \mu = 1, \,
+                     l \, \mathrm{even}
+        \\[1em]
+        %
+        -(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
+            s_\varphi^{l-3} (1-s_\varphi^2)^{(l-3)/2}
+            (\delta + s_\varphi^2)
+            (k^2- s_\varphi^2)^{\frac{3}{2}}
+            (2 s_\varphi^2-1)
+            \, \dd\varphi
+            %
+            & \qquad \mu = 1, \, l \ge 3, \,
+                     l \, \mathrm{odd}
+        \\[1em]
+        %
+        +2(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
+            s_\varphi^{\frac{\mu-1}{2}} (1-s_\varphi^2)^{\frac{\mu-1}{4}}
+            (\delta + s_\varphi^2)^{\frac{\nu-1}{2}}
+            (k^2 - s_\varphi^2)^{\frac{3}{2}}
+            \, \dd\varphi
+            & \qquad \frac{\mu-1}{2} \, \mathrm{even}
+        \\[1em]
+        %
+        s_2 & \qquad \mu=1, \, l=1
+        \\[1em]
+        %
+        0 & \qquad \mathrm{otherwise}
+    \end{dcases}
+\end{align}
+where we have subsequently dropped the prime from $\varphi^\prime$ in these integrals.
+
+Expanding the term $(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v$ as a polynomial
+in $s_\varphi^2$, we find
+\begin{equation}
+(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v = (-1)^u \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} s_\varphi^{2i},
+\end{equation}
+where
+\begin{equation}
+\mathcal{A}_{i,u,v} = \sum_{j=\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)} \binom{u}{j} \binom{v}{u+v-i-j}(-1)^{j}\delta^{u+v-i-j}.
+\end{equation}
+The coefficients $\mathcal{A}_{i,u,v}$ are computed from Vieta's formulae for the
+coefficients of a polynomial in terms of sums and products of its roots, and are
+equal to the elementary symmetric polynomials of the roots of $(x-1)^u(x+\delta)^v$.
+
+This expansion yields a sum over terms which are integrals over powers of $s_\varphi^{2v}$.
+We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$ as:
+\begin{align}
+    \label{eq:PGnI}
+    \mathcal{P}(\bvec{G}_n) &=
+    \begin{dcases}
+        %
+        2(2r)^{l+2} \mathcal{K}_{\frac{\mu+4}{4}, \frac{\nu}{2}}
+            %
+            & \qquad \frac{\mu}{2} \, \mathrm{even}
+        \\[1em]
+        -(2r)^{l-1} \left(2\mathcal{L}^{(1)}_{\frac{l-2}{2}, 0}-\mathcal{L}^{(0)}_{\frac{l-2}{2},0}\right)
+            %
+            & \qquad \mu = 1, \,
+                     l \, \mathrm{even}
+        \\[1em]
+        %
+        -(2r)^{l-1} \left( 2\mathcal{L}^{(1)}_{\frac{l-3}{2},1} - \mathcal{L}^{(0)}_{\frac{l-3}{2},1} \right)
+            %
+            & \qquad \mu = 1, \, l \ge 3, \,
+                     l \, \mathrm{odd}
+        \\[1em]
+        %
+        2(2r)^{l-1} \mathcal{L}^{(0)}_{\frac{\mu-1}{4}, \frac{\nu-1}{2}}
+            & \qquad \frac{\mu-1}{2} \, \mathrm{even}
+        \\[1em]
+        %
+        s_2 & \qquad \mu=1, \, l=1
+        \\[1em]
+        %
+        0 & \qquad \mathrm{otherwise}
+    \end{dcases}
+%
+\end{align}
+where
+\begin{eqnarray}
+%\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
+\mathcal{K}_{u,v} &=& \int_{\kappa/2}^{\kappa/2} s_\varphi^{2u} (1-s_\varphi^2)^u (\delta + s_\varphi^2)^v d\varphi\\
+&=& \sum_{i=1}^{u+v} \mathcal{A}_{i,u,v} \mathcal{I}_{i+u},\\
+\mathcal{I}_{v} &=& \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi,\\
+%\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
+\mathcal{L}^{(t)}_{u,v} &=& (1-\delta^2)^{3/2} \int_{-\kappa/2}^{\kappa/2}s_\varphi^{2(u+t)}(1-s_\varphi^2)^u(\delta+s_\varphi^2)^v
+\left(1-k^{-2}s_\varphi^2\right)^{3/2}d\varphi,\\
+%&=& (1-\delta^2)^{3/2} \sum_{i=1}^{2u+v} \mathcal{A}_{u+v-i+t,u,v} \mathcal{J}_{i+u},\\
+&=& (1-\delta^2)^{3/2} (-1)^u \sum_{i=1}^{u+v} \mathcal{A}_{i,u,v} \mathcal{J}_{i+u+t},\\
+%\mathcal{L}^{(0)}_{u,v} &=& (1-\delta^2)^{3/2} \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{i+u},\\
+%\mathcal{L}^{(2)}_{u,v} &=& (1-\delta^2)^{3/2} \sum_{i=1}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{i+u+},\\
+%\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u s_\varphi^v\left(k^2-s^2_\varphi\right)^{3/2},
+\mathcal{J}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^{2v}_\varphi\left(1-k^{-2}s^2_\varphi\right)^{3/2},\\
+%\mathcal{A}_{p,u,v} &=& \sum_{j=0}^{p} (-1)^{p+j} \binom{u}{p-j} \binom{v}{p}\delta^j.
+\end{eqnarray}
+
+The integrals $\mathcal{I}_v$ and $\mathcal{J}_v$ can be found exactly, using integral
+reduction formulae as above.  With reduction, the function $\mathcal{I}_v$ can be expressed
+in terms of sums of powers of $\sin^{-1}k$, $k$ and $k_c=\sqrt{1-k^2}$, while $\mathcal{J}_v$ can be expressed
+as sums of complete elliptic integrals of $k^2$ times polynomials in $k^2$. However, the resulting
+recursion relations tend to be numerically unstable due to cancellation of low-order terms occurs
+during recursion when $r \gg 1$.  To leading order in $k$, $\mathcal{I}_v \propto k^{2v+1}$
+and $\mathcal{J}_v \propto k^{2v+1}$.  Consequently, when these equations are computed by
+recursion in $v$, the lower powers of $k$ cancel out, leading to
+round-off errors.  To avoid these cancellations, we start by computing $\mathcal{I}_{v_{max}}$,
+$\mathcal{J}_{v_{max}}$, and $\mathcal{J}_{v_{max}-1}$, where
+where $v_{max}$ is the maximum value we need in computing $\mathcal{K}_{u,v}$ for
+$l_{max}$.  %  Give the explicit value of $v_{max}$ for given $l_{max}$. [ ]
+Applying integral reduction formulae, we obtain the recursion relations:
+\begin{eqnarray}
+\mathcal{I}_{v-1} &=&  \frac{2}{2v-1}\left[v\mathcal{I}_{v} + k^{2v-1}k_c\right],\\
+\mathcal{J}_{v-2} &=& \frac{1}{k^2(2v-3)}\left[2(v+vk^2+k_c^2)\mathcal{J}_{v-1}-(2v+3)\mathcal{J}_v \right].
+\end{eqnarray}
+for $v \ge 1$ where $k_c^2=1-k^2$.
+To compute the highest value of $\mathcal{I}_{v_{max}}$, $\mathcal{J}_{v_{max}}$,
+and  $\mathcal{J}_{v_{max}-1}$, we evaluate these in terms of special
+functions and expand these as series in $k^2$.
+
+%To compute the highest value of $\mathcal{I}_{v_{max}}$, we
+%use a series expansion for $(\sin{x}/x)^{2v}$ valid for small $x=\kappa/2$,
+%\begin{eqnarray}
+%\mathcal{I}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^{2v}_\varphi\\
+%   &=& 2\left(\frac{\kappa}{2}\right)^{2v+1} \sum_{m=0}^\infty \frac{c_m}{2v+2m+1} \left(\frac{\kappa}{2}\right)^{2m},\\
+%c_0 &=& 1,\\
+%c_m &=& \frac{1}{m} \sum_{i=1}^m (i(2v+1)-m) a_i c_{m-i},\\
+%a_i &=& \frac{(-1)^i}{(2i+1)!},
+%\end{eqnarray}
+%where $a_i$ are the series coefficients for $\frac{\sin{x}}{x}$ for even powers of $x^{2i}$.
+
+%To obtain numerically stable expressions for $r \gg 1$, we expand these
+%integrals using the small parameters $\kappa \ll 1$ in this limit.
+%For $\mathcal{I}_{u,v}$,
+%\begin{eqnarray}
+%\mathcal{I}_{u,v} &=& \begin{cases}
+%0 & v \ {\rm odd}\\ \left(\frac{\kappa}{2}\right)^{v+1} \left(\frac{2}{v+1}-\frac{u+\tfrac{v}{3}}{v+3}\left(\frac{\kappa}{2}\right)^2+ {\cal O}(\kappa^4)\right) & v \ {\rm even}\end{cases}.
+%\end{eqnarray}
+%Note the leading-order term which has a steep dependence on $\kappa$ for large $v$:  it is
+%this dependence which is caused by the cancellation of lower-order terms during recursive
+%evaluation of $\mathcal{I}_{u,v}$.
+%This can be expanded to higher order in $\kappa$ if necessary.
+
+For both $\mathcal{I}_v$ and $\mathcal{J}_v$, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
+\begin{eqnarray}
+\mathcal{I}_v &=& k^{1+2v} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} dw\\
+&=& \frac{2k^{1+2v}}{1+2v} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2};v+\tfrac{3}{2};k^2\right),\\
+\mathcal{J}_v &=& k^{1+2v} \int_0^1 (1-k^2 w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} (1-w)^{3/2} dw\\
+&=& k^{1+2v} \frac{3\pi}{4} \frac{(2v-1)!!}{2^v(2+v)!} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2}; v+3; k^2\right),
+\end{eqnarray}
+where $_2F_1(a,b;c;x)$ is the generalized Hypergeometric function.
+These functions can then be expressed as a series in $k^2$
+by expanding $(1-k^2w)^{-1/2}$ as a series in $k^2w$, and then integrating each term over $w$, giving
+\begin{eqnarray}
+%\mathcal{J}_{v} &=& 3k^{1+2v}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
+%&\times& \pi \frac{(2(n+v)-1)!!}{2^{n+v}(v+2+n)!}
+\mathcal{I}_{v} &=& 2k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!}{2^{2n} n!(2n+2v+1)}(k^2)^n,\\
+\mathcal{J}_{v} &=& \frac{3\pi}{4}k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!(2n+2v-1)!!}{2^{2n+v} n!(n+v+2)!}(k^2)^n.
+\end{eqnarray}
+For large values of $v$ and small values of $k$, we find that these series
+converge rapidly, and so may be preferred over evaluating the Hypergeometric functions.
+%{\color{red} Note: we only need $v=2$ terms, which simplifies this equation.  We
+%can rewrite as $J_{2v}$ and only include the first option in the expansion.}
+%Note the steep dependence of $\mathcal{J}_{v}$ on $k$ for large $v$, $\propto k^{1+2v}$;
+%this is also due to cancellation of lower order terms during recursion, which can lead
+%to severe round-off errors.
+
+%Consequently, we use a more stable iterative formula to evaluate $J_{v-2}$ in terms
+%of $J_{v}$ and $J_{v-1}$:
+%\begin{equation}
+%J_{v-2} = \frac{1}{k^2(2v-3)}\left[2((v-1)k^2+(v+1))J_{v-1}-(2v+3)J_v \right].
+%\end{equation}
+%We evaluate $J_{v_{max}}$ and $J_{v_{max}-1}$ with the series solution or hypergeometric
+%function for large $v_{max}$, and then iterate to find successively smaller values
+%of $v$ until $v=0$.
+
+{\color{red} Code up this formula, and check for accuracy in the $r > 1$ limit.}
+
 
 % ------------------------------------------------------------------------------
 \subsubsection{Numerical stability}

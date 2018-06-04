@@ -5,6 +5,13 @@ Defines constants used throughout the code.
 #include <vector>
 using std::vector;
 
+// Module types
+#ifndef STARRY_MODULE_STARRY
+#define STARRY_MODULE_STARRY 1
+#define STARRY_MODULE_GRAD   2
+#define STARRY_MODULE_MULTI  3
+#endif
+
 // Gradient size
 #ifndef STARRY_NGRAD
 #define STARRY_NGRAD                            43
@@ -41,29 +48,17 @@ typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off>
 #define STARRY_MAX_HALF_FACT                    341
 #endif
 
-// Elliptic integral convergence tolerance
-#ifndef STARRY_ELLIP_CONV_TOL
-#define STARRY_ELLIP_CONV_TOL                   1.0e-8
-#endif
-
 // Elliptic integral maximum iterations
 #ifndef STARRY_ELLIP_MAX_ITER
 #define STARRY_ELLIP_MAX_ITER                   200
 #endif
-
-// Uncomment this to disable autodiff
-/*
-#ifndef STARRY_NO_AUTODIFF
-#define STARRY_NO_AUTODIFF                      1
-#endif
-*/
 
 // Physical constants
 #ifndef STARRY_PHYSICAL_CONSTANTS
 #define STARRY_PHYSICAL_CONSTANTS
 #define BIGG                                    6.67428e-11                     // Gravitational constant in m^3/kg/s^2
 #define DAY                                     86400.                          // Number of seconds in one day
-#define CLIGHT                                  2.998e8                         // Speed of light in m / s
+#define CLIGHT                                  299792458.                      // Speed of light in m / s
 #define REARTH                                  6.3781e6                        // Radius of the Earth in m
 #define PARSEC                                  3.086e16                        // Meters in 1 parsec
 #define MEARTH                                  (3.986004418e14 / BIGG)         // Mass of Earth in kg (from GM)

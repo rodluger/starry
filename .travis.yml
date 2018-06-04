@@ -19,9 +19,14 @@ matrix:
 install:
     - source .ci/travis.sh
 
+before_script:
+    - "export DISPLAY=:99.0"
+    - "sh -e /etc/init.d/xvfb start"
+    - sleep 3
+
 script:
-    - py.test -v
+    - py.test -v -s
 
 after_success:
-    - if [ "$TRAVIS_BRANCH" = "master" ]; then source .ci/build-docs.sh; fi
-    - source .ci/build-paper.sh
+    - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
+    - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-paper.sh; fi

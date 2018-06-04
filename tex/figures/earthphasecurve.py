@@ -9,8 +9,8 @@ npts = 100
 nptsnum = 10
 fig = pl.figure(figsize=(12, 5))
 ax = pl.subplot2grid((5, nim), (1, 0), colspan=nim, rowspan=4)
-theta = np.linspace(0, 2 * np.pi, npts, endpoint=True)
-thetanum = np.linspace(0, 2 * np.pi, nptsnum, endpoint=True)
+theta = np.linspace(0, 360, npts, endpoint=True)
+thetanum = np.linspace(0, 360, nptsnum, endpoint=True)
 total = np.zeros(npts, dtype=float)
 
 # Compute the phase curves for each continent
@@ -25,22 +25,22 @@ labels = ['Asia', 'Africa', 'S. America',
 m = Map(10)
 for continent, label in zip(continents, labels):
     m.load_image(continent)
-    m.rotate([0, 1, 0], -np.pi)
+    m.rotate([0, 1, 0], -180)
     F = m.flux(axis=[0, 1, 0], theta=theta)
     F -= np.nanmin(F)
-    ax.plot(theta * 180 / np.pi - 180, F, label=label)
+    ax.plot(theta - 180, F, label=label)
 
 # Compute and plot the total phase curve
 m.load_image('earth.jpg')
-m.rotate([0, 1, 0], -np.pi)
+m.rotate([0, 1, 0], -180)
 total = m.flux(axis=[0, 1, 0], theta=theta)
 total /= np.max(total)
-ax.plot(theta * 180 / np.pi - 180, total, 'k-', label='Total')
+ax.plot(theta - 180, total, 'k-', label='Total')
 
 # Compute and plot the total phase curve (numerical)
 totalnum = m.flux_numerical(axis=[0, 1, 0], theta=thetanum, tol=1e-5)
 totalnum /= np.max(totalnum)
-ax.plot(thetanum * 180 / np.pi - 180, totalnum, 'k.')
+ax.plot(thetanum - 180, totalnum, 'k.')
 
 # Appearance
 ax.set_xlim(-180, 180)

@@ -16,16 +16,12 @@ Defines the surface map class.
 #include "numeric.h"
 #include "errors.h"
 #include "utils.h"
+#include "sturm.h"
 
 namespace maps {
 
     using std::abs;
     using std::string;
-
-    // Some useful unit vectors
-    static const UnitVector<double> xhat({1, 0, 0});
-    static const UnitVector<double> yhat({0, 1, 0});
-    static const UnitVector<double> zhat({0, 0, 1});
 
     // Constant matrices/vectors
     class Constants {
@@ -560,6 +556,7 @@ namespace maps {
             // Public methods
             T evaluate(const T& x0=0, const T& y0=0);
             void update();
+            int roots();
             void set_coeff(int l, T coeff);
             T get_coeff(int l);
             void reset();
@@ -628,6 +625,15 @@ namespace maps {
             p = C.A1 * y;
             g = C.A * y;
         }
+    }
+
+    // Count the number of zero-crossings of the specific intensity
+    // For a physical positive semi-definite map, this should return zero!
+    template <class T>
+    int LimbDarkenedMap<T>::roots() {
+        Vector<T> c = -u.reverse();
+        c(c.size() - 1) = 1;
+        return sturm::polycountroots(c);
     }
 
     // Evaluate our map at a given (x0, y0) coordinate

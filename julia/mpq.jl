@@ -68,6 +68,8 @@ else
   # However, for k2 >> 1, are the recursion relations stable?
     k2inv = 1.0/k2; k = sqrt(k2)
     eps1 = (1.0-k2)/k*Kofk; eps2 = k*Eofk+eps1
+  else
+    eps1 = zero(k2); eps2= one(k2)
   end
   mpq[1,1] = (8-12k2)*eps1/3+(-8+16*k2)*eps2/3
   mpq[1,3] = (8-24k2)*eps1/15+(-8+28*k2+12*k4)*eps2/15

@@ -54,6 +54,18 @@ namespace errors {
         }
     };
 
+    struct BadLMIndex : public exception {
+        const char * what () const throw (){
+            return "Invalid (`l`, `m`) index.";
+        }
+    };
+
+    struct BadSliceLength : public exception {
+        const char * what () const throw (){
+            return "Mismatch between slice length and array length.";
+        }
+    };
+
     struct LimbDark : public exception {
         const char * what () const throw (){
             return "Limb darkening is currently only available up to second order.";

@@ -15,36 +15,19 @@ Spherical harmonic integration utilities.
 #include "errors.h"
 #include "lld.h"
 #include "taylor.h"
-
-template <typename T>
-using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-template <typename T>
-using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-template <typename T>
-using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
-using std::abs;
-using std::max;
-using std::vector;
+#include "utils.h"
 
 namespace solver {
+
+    using std::abs;
+    using std::max;
+    using std::vector;
 
     // Forward declarations
     template <class T>
     class Primitive;
     template <class T>
     class Greens;
-
-    // Helper function to figure out if we're using multiprecision
-    template <typename T>
-    inline bool is_bigdouble(T x) {
-        return false;
-    }
-
-    // Helper function to figure out if we're using multiprecision
-    template <>
-    inline bool is_bigdouble(bigdouble x) {
-        return true;
-    }
 
     // Check if number is even (or doubly, triply, quadruply... even)
     inline bool is_even(int n, int ntimes=1) {
@@ -123,6 +106,9 @@ namespace solver {
     inline T computeH(Greens<T>& G, int u, int v) {
         if (!is_even(u)) {
             return 0;
+        } else if (G.off_limb && !is_even(v)) {
+            // By symmetry, from the integral definition of H
+            return 0;
         } else if ((u == 0) && (v == 0)) {
             return 2 * G.lam + G.pi;
         } else if ((u == 0) && (v == 1)) {
@@ -139,6 +125,9 @@ namespace solver {
     inline T computeI(Greens<T>& G, int u, int v) {
         if (!is_even(u)) {
             return 0;
+        } else if (G.off_limb && !is_even(v)) {
+            // By symmetry, from the integral definition of I
+            return 0;
         } else if ((u == 0) && (v == 0)) {
             return 2 * G.phi + G.pi;
         } else if ((u == 0) && (v == 1)) {
@@ -154,7 +143,9 @@ namespace solver {
     template <typename T>
     inline T computeJ(Greens<T>& G, int u, int v) {
         T res = 0;
-        if (G.b() == 0) {
+        if (G.off_limb && !is_even(u)) {
+            return 0;
+        } else if (G.b() == 0) {
             // Special case
             return pow(1 - G.r(2), 1.5) * G.I(u, v);
         } else if ((G.taylor || is_bigdouble(G.b())) && (G.b() < STARRY_B_THRESH_J<T>(G.r()))) {
@@ -252,7 +243,7 @@ namespace solver {
             factor = G.br32;
         else
             factor = 1;
-        if (is_even(G.nu)) {
+        if (is_even(G.mu, 2)) {
             if ((G.taylor) && (G.r() > 1) && (STARRY_QUARTIC_APPROX(G.l, G.b(), G.r()))) {
                 return taylor::P(G);
             } else {
@@ -262,15 +253,21 @@ namespace solver {
             return factor * -G.r(G.l - 1) * G.J(G.l - 2, 1);
         else if ((G.mu == 1) && !is_even(G.l))
             return factor * -G.r(G.l - 2) * (G.b() * G.J(G.l - 3, 1) + G.r() * G.J(G.l - 3, 2));
-        else {
+        else if (is_even(G.mu - 1, 2))
             return factor * G.r(G.l - 1) * L(G, (G.mu - 1) / 2, (G.nu - 1) / 2);
-        }
+        else
+            return 0;
     }
 
     // The primitive integral Q(G_n)
     template <typename T>
     inline T Q(Greens<T>& G){
-        if (is_even(G.nu))
+        // From the integral definition of Q, the result is zero
+        // unless both mu/2 and nu/2 are even when the occultor
+        // is not touching the limb of the planet.
+        if (G.off_limb && (!is_even(G.mu, 2) || !is_even(G.nu, 2)))
+            return 0;
+        else if (is_even(G.mu, 2))
             return G.H((G.mu + 4) / 2, G.nu / 2);
         else
             return 0;
@@ -463,6 +460,9 @@ namespace solver {
             // Taylor expand stuff?
             bool taylor;
 
+            // Occultor off the limb of the body (simpler formulae in this case)?
+            bool off_limb;
+
             // Some basic variables
             T br;
             T br32;
@@ -500,8 +500,9 @@ namespace solver {
             // Constructor
             Greens(int lmax, bool taylor=true) :
                    lmax(lmax),
-                   N(max(lmax + 5, 2 * lmax + 1) + 12), // DEBUG: +12 for taylor::computeJ. Find smallest value of N that will work.
+                   N(max(lmax + 5, 2 * lmax + 1) + 12), // DEBUG; TODO: +12 for taylor::computeJ. Find smallest value of N that will work.
                    taylor(taylor),
+                   off_limb(false),
                    ksq(0),
                    b(0),
                    r(0),
@@ -528,8 +529,9 @@ namespace solver {
     };
 
     // Return the n^th term of the *r* phase curve solution vector.
-    double rn(int mu, int nu) {
-            double a, b, c;
+    template <typename T>
+    T rn(int mu, int nu) {
+            T a, b, c;
             if (is_even(mu, 2) && is_even(nu, 2)) {
                 a = fact::gamma_sup(mu / 4);
                 b = fact::gamma_sup(nu / 4);
@@ -546,7 +548,8 @@ namespace solver {
     }
 
     // Compute the *r^T* phase curve solution vector
-    void computerT(int lmax, VectorT<double>& rT) {
+    template <typename T>
+    void computerT(int lmax, VectorT<T>& rT) {
         rT.resize((lmax + 1) * (lmax + 1));
         int l, m, mu, nu;
         int n = 0;
@@ -554,7 +557,7 @@ namespace solver {
             for (m=-l; m<l+1; m++) {
                 mu = l - m;
                 nu = l + m;
-                rT(n) = rn(mu, nu);
+                rT(n) = rn<T>(mu, nu);
                 n++;
             }
         }
@@ -572,17 +575,26 @@ namespace solver {
         // Initialize the basic variables
         int l, m;
         int n = 0;
+        T ksq, k;
         G.br = b * r;
         G.br32 = pow(G.br, 1.5);
         G.b.reset(b);
         G.r.reset(r);
         G.b_r.reset(b / r);
         if (r <= 1)
-            G.ksq.reset((1 - G.r(2) - G.b(2) + 2 * G.br) / (4 * G.br));
+            ksq = (1 - G.r(2) - G.b(2) + 2 * G.br) / (4 * G.br);
         else
-            G.ksq.reset((1 - (b - r)) * (1 + (b - r)) / (4 * G.br));
-        G.k = sqrt(G.ksq());
+            ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * G.br);
+        k = sqrt(ksq);
+        // Override the NaNs
+        if ((b == 0) || (r == 0)) {
+            set_derivs_to_zero(ksq);
+            set_derivs_to_zero(k);
+        }
+        G.ksq.reset(ksq);
+        G.k = k;
         if ((abs(1 - r) < b) && (b < 1 + r)) {
+            G.off_limb = false;
             if (r <= 1) {
                 G.sinphi.reset((1 - G.r(2) - G.b(2)) / (2 * G.br));
                 G.cosphi.reset(sqrt(1 - G.sinphi() * G.sinphi()));
@@ -599,6 +611,7 @@ namespace solver {
                 G.lam = asin(G.sinlam());
             }
         } else {
+            G.off_limb = true;
             G.sinphi.reset(1);
             G.cosphi.reset(0);
             G.sinlam.reset(1);
@@ -627,6 +640,9 @@ namespace solver {
                     // These terms are zero because they are proportional to
                     // odd powers of x, so we don't need to compute them!
                     else if ((G.taylor) && (is_even(G.mu - 1)) && (!is_even((G.mu - 1) / 2)))
+                        G.sT(n) = 0;
+                    // These terms are also zero for the same reason
+                    else if ((G.taylor) && (is_even(G.mu)) && (!is_even(G.mu / 2)))
                         G.sT(n) = 0;
                     else
                         G.sT(n) = Q(G) - P(G);

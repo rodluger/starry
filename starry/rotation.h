@@ -17,16 +17,7 @@ from the Wigner-D matrices for complex spherical harmonics.
 #include <Eigen/Core>
 #include "constants.h"
 #include "sqrtint.h"
-
-// Shorthand
-template <typename T>
-using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-template <typename T>
-using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-template <typename T>
-using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
-template <typename T>
-using UnitVector = Eigen::Matrix<T, 3, 1>;
+#include "utils.h"
 
 namespace rotation {
 
@@ -34,8 +25,27 @@ namespace rotation {
     using sqrtint::invsqrt_int;
     using std::abs;
 
+    /**
+    Axis-angle rotation matrix, used to rotate vectors around.
+
+    */
     template <typename T>
-    using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+    Matrix<T> AxisAngle(const UnitVector<T>& u, const T& theta) {
+        Matrix<T> R(3, 3);
+        T cost = cos(theta);
+        T sint = sin(theta);
+        R(0, 0) = cost + u(0) * u(0) * (1 - cost);
+        R(0, 1) = u(0) * u(1) * (1 - cost) - u(2) * sint;
+        R(0, 2) = u(0) * u(2) * (1 - cost) + u(1) * sint;
+        R(1, 0) = u(1) * u(0) * (1 - cost) + u(2) * sint;
+        R(1, 1) = cost + u(1) * u(1) * (1 - cost);
+        R(1, 2) = u(1) * u(2) * (1 - cost) - u(0) * sint;
+        R(2, 0) = u(2) * u(0) * (1 - cost) - u(1) * sint;
+        R(2, 1) = u(2) * u(1) * (1 - cost) + u(0) * sint;
+        R(2, 2) = cost + u(2) * u(2) * (1 - cost);
+        return R;
+    }
+
 
     /**
     Compute the Wigner D matrices.

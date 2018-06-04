@@ -24,12 +24,13 @@ xo = np.linspace(-1.5, 1.5, npts)
 xonum = np.linspace(-1.5, 1.5, nptsnum)
 
 # Say the occultation occurs over ~1 radian of the Earth's rotation
-# That's equal to 24 / (2*pi) hours
+# That's equal to 24 / (2 * pi) hours
+# (Remember, though, that `starry` accepts **DEGREES** as input!)
 time = np.linspace(0, 24 / (2 * np.pi), npts)
 timenum = np.linspace(0, 24 / (2 * np.pi), nptsnum)
 theta0 = 0
-theta = np.linspace(theta0, theta0 + 1., npts, endpoint=True)
-thetanum = np.linspace(theta0, theta0 + 1., nptsnum, endpoint=True)
+theta = np.linspace(theta0, theta0 + 180. / np.pi, npts, endpoint=True)
+thetanum = np.linspace(theta0, theta0 + 180. / np.pi, nptsnum, endpoint=True)
 
 # Compute and plot the flux
 F = m.flux(axis=[0, 1, 0], theta=theta, xo=xo, yo=yo, ro=ro)

@@ -14,6 +14,9 @@ Not for the faint of heart.
 #include "errors.h"
 #include "fact.h"
 #include "ellip.h"
+#include "utils.h"
+
+using std::abs;
 
 // Largest value of l for large occultors
 // (analytic expressions are numerically unstable above this)
@@ -157,10 +160,6 @@ static const double STARRY_B_COEFF[STARRY_B_ORDER][STARRY_B_ORDER / 2] =
  {0.01171875,0.41015625,2.4609375,5.4140625,5.02734375,1.67578125},
  {0.08203125,1.23046875,5.4140625,10.0546875,8.37890625,2.58984375}};
 
-template <typename T>
-using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-template <typename T>
-using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 
 // Forward declare a few things
 // TODO: Put `Greens` and `is_even` in a separate header file
@@ -171,6 +170,7 @@ namespace solver
     class Greens;
     bool is_even(int n, int ntimes);
 };
+
 
 namespace taylor {
 

@@ -5,6 +5,9 @@ These are not particularly elegant, and there's a lot of code duplication below.
 If anyone would like to try templating some of this stuff to make it more efficient,
 please go for it!
 
+NOTE: I'm converting the angles from degrees to radians here before they get passed
+      to `Map`. This is not the best way to be doing this...
+
 */
 
 #ifndef _STARRY_VECT_H_
@@ -21,11 +24,11 @@ please go for it!
 #include <maps.h>
 #include "constants.h"
 #include "errors.h"
-
-using namespace std;
 namespace py = pybind11;
 
 namespace vect {
+
+    using namespace std;
 
     // Vectorize a single python object
     inline Vector<double> vectorize_arg(py::object& obj, int& size){
@@ -153,7 +156,7 @@ namespace vect {
         // Compute the function for each vector index
         Vector<double> result(arg2_v.size());
         for (int i = 0; i < arg2_v.size(); i++)
-            result(i) = map.flux(arg1, arg2_v(i), arg3_v(i), arg4_v(i), arg5_v(i));
+            result(i) = map.flux(arg1, arg2_v(i) * DEGREE, arg3_v(i), arg4_v(i), arg5_v(i));
 
         // Return an array
         return result;
@@ -167,7 +170,7 @@ namespace vect {
         vectorize_args(arg2, arg3, arg4, arg5, arg2_v, arg3_v, arg4_v, arg5_v);
         Vector<double> result(arg2_v.size());
         for (int i = 0; i < arg2_v.size(); i++)
-            result(i) = map.flux_numerical(arg1, arg2_v(i), arg3_v(i), arg4_v(i), arg5_v(i), arg6);
+            result(i) = map.flux_numerical(arg1, arg2_v(i) * DEGREE, arg3_v(i), arg4_v(i), arg5_v(i), arg6);
         return result;
     }
 
@@ -182,7 +185,7 @@ namespace vect {
         // Compute the function for each vector index
         Vector<double> result(arg2_v.size());
         for (int i = 0; i < arg2_v.size(); i++)
-            result(i) = map.flux_mp(arg1, arg2_v(i), arg3_v(i), arg4_v(i), arg5_v(i));
+            result(i) = map.flux_mp(arg1, arg2_v(i) * DEGREE, arg3_v(i), arg4_v(i), arg5_v(i));
 
         // Return an array
         return result;
@@ -196,7 +199,7 @@ namespace vect {
         vectorize_args(arg2, arg3, arg4, arg2_v, arg3_v, arg4_v);
         Vector<double> result(arg2_v.size());
         for (int i = 0; i < arg2_v.size(); i++)
-            result(i) = map.evaluate(arg1, arg2_v(i), arg3_v(i), arg4_v(i));
+            result(i) = map.evaluate(arg1, arg2_v(i) * DEGREE, arg3_v(i), arg4_v(i));
         return result;
     }
 
@@ -300,10 +303,11 @@ namespace vect {
             arg3_g.value() = arg3_v(i);
             arg4_g.value() = arg4_v(i);
             arg5_g.value() = arg5_v(i);
-            tmp = map.flux(arg1_g, arg2_g, arg3_g, arg4_g, arg5_g);
+            tmp = map.flux(arg1_g, arg2_g * DEGREE, arg3_g, arg4_g, arg5_g);
             result(i) = tmp.value();
-            for (n = 0; n < ngrad; n++)
+            for (n = 0; n < ngrad; n++) {
                 (map.derivs[names[n]])(i) = tmp.derivatives()(n);
+            }
         }
 
         // Return an array
@@ -359,10 +363,11 @@ namespace vect {
             arg2_g.value() = arg2_v(i);
             arg3_g.value() = arg3_v(i);
             arg4_g.value() = arg4_v(i);
-            tmp = map.evaluate(arg1_g, arg2_g, arg3_g, arg4_g);
+            tmp = map.evaluate(arg1_g, arg2_g * DEGREE, arg3_g, arg4_g);
             result(i) = tmp.value();
-            for (n = 0; n < ngrad; n++)
+            for (n = 0; n < ngrad; n++) {
                 (map.derivs[names[n]])(i) = tmp.derivatives()(n);
+            }
         }
 
         // Return an array

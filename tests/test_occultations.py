@@ -16,7 +16,7 @@ def test_occultations():
     uz = np.sqrt(1 - ux ** 2 - uy ** 2)
     axis = [ux, uy, uz]
     npts = 30
-    theta = np.linspace(0, 2 * np.pi, npts, endpoint=False)
+    theta = np.linspace(0, 360, npts, endpoint=False)
 
     # Small occultor
     ro = 0.3

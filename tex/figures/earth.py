@@ -8,13 +8,13 @@ m = Map(10)
 m.load_image('earth')
 
 # Start centered at longitude 180 W
-m.rotate([0, 1, 0], -np.pi)
+m.rotate([0, 1, 0], -180)
 
 # Render it under consecutive rotations
 nax = 8
 res = 300
 fig, ax = pl.subplots(1, nax, figsize=(3 * nax, 3))
-theta = np.linspace(0, 2 * np.pi, nax, endpoint=False)
+theta = np.linspace(0, 360, nax, endpoint=False)
 x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 for i in range(nax):
     # starry functions accept vector arguments, but not matrix arguments,

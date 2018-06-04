@@ -231,7 +231,7 @@ def speed():
     for i, N in tqdm(enumerate(Narr), total=nN):
 
         # Compute for each Ylm
-        theta = np.linspace(0, 2 * np.pi, N)
+        theta = np.linspace(0, 360, N)
         xo = np.linspace(-1., 1., N)
         for l in range(lmax + 1):
             ylm = starry.Map(l)

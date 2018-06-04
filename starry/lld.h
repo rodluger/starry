@@ -12,7 +12,7 @@ Linear limb darkening (s2) integration utilities.
 #include "ellip.h"
 #include "errors.h"
 
-using std::abs;
+
 
 namespace lld {
 
@@ -32,6 +32,8 @@ static const double STARRY_EMINUSK_COEFF[STARRY_EMINUSK_ORDER] =
  0.027757644653320312, 0.023627042770385742, 0.020568184554576874,
  0.018211413407698274, 0.016339684807462618, 0.01481712326858542,
  0.013554300262740071};
+
+    using std::abs;
 
     // Heaviside step function
     template <typename T>
