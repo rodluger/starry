@@ -2976,9 +2976,10 @@ where
 \mathcal{A}_{i,u,v} = \sum_{j=\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)} \binom{u}{j} \binom{v}{u+v-i-j}(-1)^{j}\delta^{u+v-i-j}.
 \end{equation}
 The coefficients $\mathcal{A}_{i,u,v}$ are computed from Vieta's formulae for the
-polynomial coefficients in terms of sums and products of the roots, and are
+coefficients of a polynomial in terms of sums and products of its roots, and are
 equal to the elementary symmetric polynomials of the roots of $(x-1)^u(x+\delta)^v$.
 
+This expansion yields a sum over terms which are integrals over powers of $s_\varphi^{2v}$.
 We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$ as:
 \begin{align}
     \label{eq:PGnI}
@@ -3031,9 +3032,9 @@ where
 \end{eqnarray}
 
 The integrals $\mathcal{I}_v$ and $\mathcal{J}_v$ can be found exactly, using integral
-reduction formulae as above.  With reduction, the function $\mathcal{I}_v$ can be expressed
-in terms of sums of powers of $k$ and $k_c=\sqrt{1-k^2}$, while $\mathcal{J}_v$ can be expressed
-as sums of complete elliptic integrals of $k^2$ times polynomials in $k^2$. However, the resulting
+reduction formulae as above.  With reduction, the function $\mathcal{I}_v$ can be expressed 
+in terms of sums of powers of $\sin^{-1}k$, $k$ and $k_c=\sqrt{1-k^2}$, while $\mathcal{J}_v$ can be expressed 
+as sums of complete elliptic integrals of $k^2$ times polynomials in $k^2$. However, the resulting 
 recursion relations tend to be numerically unstable due to cancellation of low-order terms occurs
 during recursion when $r \gg 1$.  To leading order in $k$, $\mathcal{I}_v \propto k^{2v+1}$
 and $\mathcal{J}_v \propto k^{2v+1}$.  Consequently, when these equations are computed by
@@ -3049,7 +3050,8 @@ Applying integral reduction formulae, we obtain the recursion relations:
 \end{eqnarray}
 for $v \ge 1$ where $k_c^2=1-k^2$.
 To compute the highest value of $\mathcal{I}_{v_{max}}$, $\mathcal{J}_{v_{max}}$,
-and  $\mathcal{J}_{v_{max}-1}$, we expand these as series in $k^2$.
+and  $\mathcal{J}_{v_{max}-1}$, we evaluate these in terms of special
+functions and expand these as series in $k^2$.
 
 %To compute the highest value of $\mathcal{I}_{v_{max}}$, we
 %use a series expansion for $(\sin{x}/x)^{2v}$ valid for small $x=\kappa/2$,
@@ -3082,13 +3084,13 @@ For both $\mathcal{I}_v$ and $\mathcal{J}_v$, we make the substitution $w=k^{-2}
 &=& k^{1+2v} \frac{3\pi}{4} \frac{(2v-1)!!}{2^v(2+v)!} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2}; v+3; k^2\right),
 \end{eqnarray}
 where $_2F_1(a,b;c;x)$ is the generalized Hypergeometric function.
-These functions can also be expressed as a series in $k^2$
+These functions can then be expressed as a series in $k^2$
 by expanding $(1-k^2w)^{-1/2}$ as a series in $k^2w$, and then integrating each term over $w$, giving
 \begin{eqnarray}
 %\mathcal{J}_{v} &=& 3k^{1+2v}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
 %&\times& \pi \frac{(2(n+v)-1)!!}{2^{n+v}(v+2+n)!}
 \mathcal{I}_{v} &=& 2k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!}{2^{2n} n!(2n+2v+1)}(k^2)^n,\\
-\mathcal{J}_{v} &=& \frac{3\pi}{8}k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!(2n+2v-1)!!}{2^{2n+v} n!(n+v+2)!}(k^2)^n.
+\mathcal{J}_{v} &=& \frac{3\pi}{4}k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!(2n+2v-1)!!}{2^{2n+v} n!(n+v+2)!}(k^2)^n.
 \end{eqnarray}
 For large values of $v$ and small values of $k$, we find that these series
 converge rapidly, and so may be preferred over evaluating the Hypergeometric functions.
