@@ -5,6 +5,13 @@ Defines constants used throughout the code.
 #include <vector>
 using std::vector;
 
+// Module types
+#ifndef STARRY_MODULE_STARRY
+#define STARRY_MODULE_STARRY 1
+#define STARRY_MODULE_GRAD   2
+#define STARRY_MODULE_MULTI  3
+#endif
+
 // Gradient size
 #ifndef STARRY_NGRAD
 #define STARRY_NGRAD                            43
@@ -45,13 +52,6 @@ typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off>
 #ifndef STARRY_ELLIP_MAX_ITER
 #define STARRY_ELLIP_MAX_ITER                   200
 #endif
-
-// Uncomment this to disable autodiff
-/*
-#ifndef STARRY_NO_AUTODIFF
-#define STARRY_NO_AUTODIFF                      1
-#endif
-*/
 
 // Physical constants
 #ifndef STARRY_PHYSICAL_CONSTANTS

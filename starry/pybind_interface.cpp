@@ -3,24 +3,13 @@
 #undef NDEBUG
 #include <pybind11/pybind11.h>
 #include <stdlib.h>
-
-// MAGIC: Include our starry interface several times
-#define MODULE_STARRY               1
-#define MODULE_STARRY_GRAD          2
-#define MODULE_STARRY_MULTI         3
-
-// starry
-#undef MODULE
-#define MODULE                      MODULE_STARRY
+#include "utils.h"
 #include "pybind_interface.h"
-
-// starry.grad
-#undef MODULE
-#define MODULE                      MODULE_STARRY_GRAD
-#include "pybind_interface.h"
+#include "docstrings.h"
 
 using namespace std;
 using namespace pybind11::literals;
+using namespace docstrings;
 namespace py = pybind11;
 
 PYBIND11_MODULE(starry, m) {
@@ -30,15 +19,18 @@ PYBIND11_MODULE(starry, m) {
     options.disable_function_signatures();
 
     // starry
-    add_starry(m);
+    docs<double> docs_starry;
+    add_starry(m, docs_starry);
 
     // starry.grad
+    docs<Grad> docs_grad;
     auto mgrad = m.def_submodule("grad");
-    add_starry_grad(mgrad);
+    add_starry(mgrad, docs_grad);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
 #else
     m.attr("__version__") = "dev";
 #endif
+
 }
