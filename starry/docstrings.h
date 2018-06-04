@@ -45,9 +45,11 @@ namespace docstrings {
 
             get_coeff = R"pbdoc(
                 Return the (:py:obj:`l`, :py:obj:`m`) coefficient of the map.
+
                 .. note:: Users can also retrieve a coefficient by accessing the \
                           [:py:obj:`l`, :py:obj:`m`] index of the map as if it \
                           were a 2D array.
+
                 Args:
                     l (int): The spherical harmonic degree, ranging from 0 to :py:attr:`lmax`.
                     m (int): The spherical harmonic order, ranging from -:py:obj:`l` to :py:attr:`l`.
@@ -55,9 +57,11 @@ namespace docstrings {
 
             set_coeff = R"pbdoc(
                 Set the (:py:obj:`l`, :py:obj:`m`) coefficient of the map.
+
                 .. note:: Users can also set a coefficient by setting the \
                           [:py:obj:`l`, :py:obj:`m`] index of the map as if it \
                           were a 2D array.
+
                 Args:
                     l (int): The spherical harmonic degree, ranging from 0 to :py:attr:`lmax`.
                     m (int): The spherical harmonic order, ranging from -:py:obj:`l` to :py:attr:`l`.
@@ -106,11 +110,13 @@ namespace docstrings {
                 Return the specific intensity at a point (`x`, `y`) on the map.
                 Users may optionally provide a rotation state. Note that this does
                 not rotate the base map.
+
                 Args:
                     axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     theta (float or ndarray): Angle of rotation in degrees. Default 0.
                     x (float or ndarray): Position scalar, vector, or matrix.
                     y (float or ndarray): Position scalar, vector, or matrix.
+
                 Returns:
                     The specific intensity at (`x`, `y`).
             )pbdoc";
@@ -119,12 +125,14 @@ namespace docstrings {
                 Return the total flux received by the observer.
                 Computes the total flux received by the observer from the
                 map during or outside of an occultation.
+
                 Args:
                     axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     theta (float or ndarray): Angle of rotation. Default 0.
                     xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
                     yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
                     ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+
                 Returns:
                     The flux received by the observer (a scalar or a vector).
             )pbdoc";
@@ -138,12 +146,14 @@ namespace docstrings {
                 number of digits (RAM permitting) by setting the :py:obj:`STARRY_MP_DIGITS=XX` flag
                 at compile time. Note, importantly, that run times are **much** slower for multi-precision
                 calculations.
+
                 Args:
                     axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     theta (float or ndarray): Angle of rotation. Default 0.
                     xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
                     yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
                     ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+
                 Returns:
                     The flux received by the observer (a scalar or a vector).
             )pbdoc";
@@ -153,6 +163,7 @@ namespace docstrings {
                 Computes the total flux received by the observer from the
                 map during or outside of an occultation. The flux is computed
                 numerically using an adaptive radial mesh.
+
                 Args:
                     axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     theta (float or ndarray): Angle of rotation. Default 0.
@@ -160,6 +171,7 @@ namespace docstrings {
                     yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
                     ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
                     tol (float): Tolerance of the numerical solver. Default `1.e-4`
+
                 Returns:
                     The flux received by the observer (a scalar or a vector).
                 )pbdoc";
@@ -169,6 +181,7 @@ namespace docstrings {
                 This performs a permanent rotation to the base map. Subsequent
                 rotations and calculations will be performed relative to this
                 rotational state.
+
                 Args:
                     axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     theta (float or ndarray): Angle of rotation in degrees. Default 0.
@@ -179,6 +192,7 @@ namespace docstrings {
                 This routine wraps :py:class:`scipy.optimize.minimize` to find
                 the global minimum of the surface map. This is useful for ensuring
                 that the surface map is nonnegative everywhere.
+
                 .. note:: Because this routine wraps a Python wrapper of a C function \
                           to perform a non-linear optimization in three dimensions, it is \
                           **slow** and should probably not be used repeatedly when fitting \
@@ -191,9 +205,11 @@ namespace docstrings {
                 the spherical harmonic expansion of a 3D gaussian constrained to the surface
                 of the sphere. This is useful for, say, modeling star spots or other discrete,
                 localized features on a body's surface.
+
                 .. note:: Because this routine wraps a Python function, \
                           it is **slow** and should probably not be used repeatedly when fitting \
                           a map to data!
+
                 Args:
                     sigma (float): The standard deviation of the gaussian. Default 0.1
                     amp (float): The amplitude. Default 1.0, resulting in a gaussian whose \
@@ -207,6 +223,7 @@ namespace docstrings {
                 This routine loads a 2D :py:obj:`numpy` array, computes its
                 spherical harmonic expansion up to degree :py:attr:`lmax`,
                 and sets the map vector.
+
                 Args:
                     image (ndarray): The 2D :py:obj:`numpy` lat-lon array.
             )pbdoc";
@@ -215,6 +232,7 @@ namespace docstrings {
                 Load an image from file.
                 This routine loads an image file, computes its spherical harmonic
                 expansion up to degree :py:attr:`lmax`, and sets the map vector.
+
                 Args:
                     image (str): The full path to the image file.
             )pbdoc";
@@ -224,14 +242,17 @@ namespace docstrings {
                 This routine loads a :py:obj:`healpix` array, computes its
                 spherical harmonic
                 expansion up to degree :py:attr:`lmax`, and sets the map vector.
+
                 Args:
                     image (ndarray): The ring-ordered :py:obj:`healpix` array.
+
                 .. todo:: This routine has not been tested. If you have any \
                           problems with it, please submit an issue on GitHub.
             )pbdoc";
 
             show = R"pbdoc(
                 Convenience routine to quickly display the body's surface map.
+
                 Args:
                     cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
                     res (int): The resolution of the map in pixels on a side. Default 300.
@@ -239,6 +260,7 @@ namespace docstrings {
 
             animate = R"pbdoc(
                 Convenience routine to animate the body's surface map as it rotates.
+
                 Args:
                     axis (ndarray): *Normalized* unit vector specifying the axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
@@ -258,8 +280,10 @@ namespace docstrings {
                 Instantiate a :py:mod:`starry` surface map. Maps instantiated in this fashion
                 are *orthonormalized*, so the total integrated luminosity of the map is
                 :math:`2\sqrt{\pi} Y_{0,0}`.
+
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
+
                 .. autoattribute:: optimize
                 .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
                 .. automethod:: rotate(axis=(0, 1, 0), theta=0)
@@ -295,8 +319,10 @@ namespace docstrings {
                 Instantiate a :py:mod:`starry` surface map. Maps instantiated in this fashion
                 are *orthonormalized*, so the total integrated luminosity of the map is
                 :math:`2\sqrt{\pi} Y_{0,0}`.
+
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
+
                 .. autoattribute:: optimize
                 .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
                 .. automethod:: rotate(axis=(0, 1, 0), theta=0)
@@ -356,17 +382,21 @@ namespace docstrings {
 
             get_coeff = R"pbdoc(
                 Return the limb darkening coefficient of order :py:obj:`l`.
+
                 .. note:: Users can also retrieve a coefficient by accessing the \
                           [:py:obj:`l`] index of the map as if it were an array.
+
                 Args:
                     l (int): The limb darkening order (> 0).
             )pbdoc";
 
             set_coeff = R"pbdoc(
                 Set the limb darkening coefficient of order :py:obj:`l`.
+
                 .. note:: Users can also set a coefficient by setting the \
                           [:py:obj:`l`] index of the map as if it \
                           were an array.
+
                 Args:
                     l (int): The limb darkening order (> 0).
                     coeff (float): The value of the coefficient.
@@ -419,9 +449,11 @@ namespace docstrings {
 
             evaluate = R"pbdoc(
                 Return the specific intensity at a point (`x`, `y`) on the map.
+
                 Args:
                     x (float or ndarray): Position scalar, vector, or matrix.
                     y (float or ndarray): Position scalar, vector, or matrix.
+
                 Returns:
                     The specific intensity at (`x`, `y`).
             )pbdoc";
@@ -430,10 +462,12 @@ namespace docstrings {
                 Return the total flux received by the observer.
                 Computes the total flux received by the observer from the
                 map during or outside of an occultation.
+
                 Args:
                     xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
                     yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
                     ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+
                 Returns:
                     The flux received by the observer (a scalar or a vector).
             )pbdoc";
@@ -447,10 +481,12 @@ namespace docstrings {
                 number of digits (RAM permitting) by setting the :py:obj:`STARRY_MP_DIGITS=XX` flag
                 at compile time. Note, importantly, that run times are **much** slower for multi-precision
                 calculations.
+
                 Args:
                     xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
                     yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
                     ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+
                 Returns:
                     The flux received by the observer (a scalar or a vector).
             )pbdoc";
@@ -460,17 +496,20 @@ namespace docstrings {
                 Computes the total flux received by the observer from the
                 map during or outside of an occultation. The flux is computed
                 numerically using an adaptive radial mesh.
+
                 Args:
                     xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
                     yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
                     ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
                     tol (float): Tolerance of the numerical solver. Default `1.e-4`
+
                 Returns:
                     The flux received by the observer (a scalar or a vector).
                 )pbdoc";
 
             show = R"pbdoc(
                 Convenience routine to quickly display the body's surface map.
+
                 Args:
                     cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
                     res (int): The resolution of the map in pixels on a side. Default 300.
@@ -492,13 +531,16 @@ namespace docstrings {
                 specifying the polynomial limb darkening coefficients :py:obj:`u`, starting
                 with :math:`u_1` (linear limb darkening). The coefficient :math:`u_0` is fixed to enforce
                 the correct normalization.
+
                 .. warning:: Unlike :py:class:`Map`, maps instantiated this \
                              way are normalized so that the integral of the specific intensity over the \
                              visible disk is unity. This is convenient for using this map to model \
                              stars: the unocculted flux from the star is equal to one, regardless of the limb-darkening \
                              coefficients!
+
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
+
                 .. autoattribute:: optimize
                 .. automethod:: evaluate(x=0, y=0)
                 .. automethod:: flux_numerical(xo=0, yo=0, ro=0, tol=1.e-4)
@@ -532,13 +574,16 @@ namespace docstrings {
                 specifying the polynomial limb darkening coefficients :py:obj:`u`, starting
                 with :math:`u_1` (linear limb darkening). The coefficient :math:`u_0` is fixed to enforce
                 the correct normalization.
+
                 .. warning:: Unlike :py:class:`Map`, maps instantiated this \
                              way are normalized so that the integral of the specific intensity over the \
                              visible disk is unity. This is convenient for using this map to model \
                              stars: the unocculted flux from the star is equal to one, regardless of the limb-darkening \
                              coefficients!
+
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
+
                 .. autoattribute:: optimize
                 .. automethod:: evaluate(x=0, y=0)
                 .. automethod:: flux(xo=0, yo=0, ro=0)
@@ -588,6 +633,7 @@ namespace docstrings {
                 given by the :py:obj:`time <>` array and store the result
                 in :py:attr:`flux`. The light curve for each body in the
                 system is stored in the body's :py:attr:`flux` attribute.
+
                 Args:
                     time (ndarray): Time array, measured in days.
             )pbdoc";
@@ -635,6 +681,7 @@ namespace docstrings {
 
         doc = R"pbdoc(
                 Instantiate an orbital system.
+
                 Args:
                     bodies (list): List of bodies in the system, with the primary (usually the star) listed first.
                     scale (float): This parameter sets the lengthscale for computing the light travel time delay \
@@ -647,6 +694,7 @@ namespace docstrings {
                                            in slower run times, since the integrated flux is computed numerically. Default `0`.
                     exposure_tol (float): Tolerance of the recursive method for integrating the flux over the exposure time. Default `1e-8`.
                     exposure_maxdepth (int): Maximum recursion depth for the exposure calculation. Default `4`.
+
                 .. automethod:: compute(time)
                 .. autoattribute:: flux
                 .. autoattribute:: exposure_time
@@ -663,6 +711,7 @@ namespace docstrings {
 
         doc = R"pbdoc(
                 Instantiate an orbital system.
+
                 Args:
                     bodies (list): List of bodies in the system, with the primary (usually the star) listed first.
                     scale (float): This parameter sets the lengthscale for computing the light travel time delay \
@@ -674,6 +723,7 @@ namespace docstrings {
                                            be integrated over this exposure time. Default `0`.
                     exposure_tol (float): Tolerance of the recursive method for integrating the flux over the exposure time. Default `1e-8`.
                     exposure_maxdepth (int): Maximum recursion depth for the exposure calculation. Default `4`.
+
                 .. automethod:: compute(time)
                 .. autoattribute:: flux
                 .. autoattribute:: gradient
@@ -811,6 +861,7 @@ namespace docstrings {
         gradient = R"pbdoc(
             A dictionary of derivatives of the body's flux with respect to
             all model parameters, populated on calls to :py:meth:`System.compute`.
+
             .. note:: This dictionary is similar to the :py:obj:`gradient` \
                       attribute of a :py:obj:`Map` instance, but the keys in \
                       the dictionary are prepended by either `star.` (for \
@@ -857,8 +908,10 @@ namespace docstrings {
         doc = R"pbdoc(
            Instantiate a stellar :py:class:`Body` object.
            The star's radius and luminosity are fixed at unity.
+
            Args:
                lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
+
            .. autoattribute:: map
            .. autoattribute:: flux
            .. autoattribute:: r
@@ -873,8 +926,10 @@ namespace docstrings {
         doc = R"pbdoc(
             Instantiate a stellar :py:class:`Body` object.
             The star's radius and luminosity are fixed at unity.
+
             Args:
                 lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
+
             .. autoattribute:: map
             .. autoattribute:: flux
             .. autoattribute:: gradient
@@ -905,6 +960,7 @@ namespace docstrings {
             Instantiate a planetary :py:class:`Body` object.
             Instantiate a planet. At present, :py:mod:`starry` computes orbits with a simple
             Keplerian solver, so the planet is assumed to be massless.
+
             Args:
                 lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
                 r (float): Body radius in stellar radii. Default 0.1
@@ -919,6 +975,7 @@ namespace docstrings {
                 Omega (float): Longitude of ascending node in degrees. Default 0.
                 lambda0 (float): Mean longitude at time :py:obj:`tref` in degrees. Default 90.
                 tref (float): Reference time in days. Default 0.
+
             .. autoattribute:: map
             .. autoattribute:: flux
             .. autoattribute:: x
@@ -947,6 +1004,7 @@ namespace docstrings {
             Instantiate a planetary :py:class:`Body` object.
             Instantiate a planet. At present, :py:mod:`starry` computes orbits with a simple
             Keplerian solver, so the planet is assumed to be massless.
+
             Args:
                 lmax (int): Largest spherical harmonic degree in body's surface map. Default 2.
                 r (float): Body radius in stellar radii. Default 0.1
@@ -961,6 +1019,7 @@ namespace docstrings {
                 Omega (float): Longitude of ascending node in degrees. Default 0.
                 lambda0 (float): Mean longitude at time :py:obj:`tref` in degrees. Default 90.
                 tref (float): Reference time in days. Default 0.
+
             .. autoattribute:: map
             .. autoattribute:: flux
             .. autoattribute:: gradient

@@ -29,18 +29,6 @@ namespace solver {
     template <class T>
     class Greens;
 
-    // Helper function to figure out if we're using multiprecision
-    template <typename T>
-    inline bool is_bigdouble(T x) {
-        return false;
-    }
-
-    // Helper function to figure out if we're using multiprecision
-    template <>
-    inline bool is_bigdouble(bigdouble x) {
-        return true;
-    }
-
     // Check if number is even (or doubly, triply, quadruply... even)
     inline bool is_even(int n, int ntimes=1) {
         for (int i = 0; i < ntimes; i++) {
@@ -541,8 +529,9 @@ namespace solver {
     };
 
     // Return the n^th term of the *r* phase curve solution vector.
-    double rn(int mu, int nu) {
-            double a, b, c;
+    template <typename T>
+    T rn(int mu, int nu) {
+            T a, b, c;
             if (is_even(mu, 2) && is_even(nu, 2)) {
                 a = fact::gamma_sup(mu / 4);
                 b = fact::gamma_sup(nu / 4);
@@ -559,7 +548,8 @@ namespace solver {
     }
 
     // Compute the *r^T* phase curve solution vector
-    void computerT(int lmax, VectorT<double>& rT) {
+    template <typename T>
+    void computerT(int lmax, VectorT<T>& rT) {
         rT.resize((lmax + 1) * (lmax + 1));
         int l, m, mu, nu;
         int n = 0;
@@ -567,7 +557,7 @@ namespace solver {
             for (m=-l; m<l+1; m++) {
                 mu = l - m;
                 nu = l + m;
-                rT(n) = rn(mu, nu);
+                rT(n) = rn<T>(mu, nu);
                 n++;
             }
         }

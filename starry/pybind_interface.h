@@ -40,12 +40,12 @@ void add_Map_extras<double>(py::class_<maps::Map<double>>& PyMap, const docstrin
         .def("flux_mp", [](maps::Map<double>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
                 UnitVector<double> axis_norm = norm_unit(axis);
                 return vectorize_map_flux_mp(axis_norm, theta, xo, yo, ro, map);
-            }, docs.Map.flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+            }, docs.Map.flux, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("flux_numerical", [](maps::Map<double>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro, double tol) {
                 UnitVector<double> axis_norm = norm_unit(axis);
                 return vectorize_map_flux_numerical(axis_norm, theta, xo, yo, ro, tol, map);
-            }, docs.Map.flux_numerical, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4);
+            }, docs.Map.flux_numerical, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4);
 }
 
 template <>
@@ -175,17 +175,17 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
         .def("evaluate", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& x, py::object& y) {
                 UnitVector<double> axis_norm = norm_unit(axis);
                 return vectorize_map_evaluate(axis_norm, theta, x, y, map);
-            }, docs.Map.evaluate, "axis"_a=maps::yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
+            }, docs.Map.evaluate, "axis"_a=yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
 
         .def("flux", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
                 UnitVector<double> axis_norm = norm_unit(axis);
                 return vectorize_map_flux(axis_norm, theta, xo, yo, ro, map);
-            }, docs.Map.flux, "axis"_a=maps::yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+            }, docs.Map.flux, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("rotate", [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis, double theta){
                 UnitVector<MAPTYPE> axis_norm = UnitVector<MAPTYPE>(norm_unit(axis));
                 map.rotate(axis_norm, theta * DEGREE);
-            }, docs.Map.rotate, "axis"_a=maps::yhat, "theta"_a=0)
+            }, docs.Map.rotate, "axis"_a=yhat, "theta"_a=0)
 
         .def("minimum", [](maps::Map<MAPTYPE> &map) -> double {
                 py::object minimize = py::module::import("starry_maps").attr("minimize");
@@ -207,14 +207,14 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 }
                 // We need to apply some rotations to get
                 // to the desired orientation
-                UnitVector<MAPTYPE> xhat(maps::xhat);
-                UnitVector<MAPTYPE> yhat(maps::yhat);
-                UnitVector<MAPTYPE> zhat(maps::zhat);
+                UnitVector<MAPTYPE> M_xhat(xhat);
+                UnitVector<MAPTYPE> M_yhat(yhat);
+                UnitVector<MAPTYPE> M_zhat(zhat);
                 MAPTYPE Pi(M_PI);
                 MAPTYPE PiOver2(M_PI / 2.);
-                map.rotate(xhat, PiOver2);
-                map.rotate(zhat, Pi);
-                map.rotate(yhat, PiOver2);
+                map.rotate(M_xhat, PiOver2);
+                map.rotate(M_zhat, Pi);
+                map.rotate(M_yhat, PiOver2);
             }, docs.Map.load_array, "image"_a)
 
         .def("load_image", [](maps::Map<MAPTYPE> &map, string& image) {
@@ -231,14 +231,14 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 }
                 // We need to apply some rotations to get
                 // to the desired orientation
-                UnitVector<MAPTYPE> xhat(maps::xhat);
-                UnitVector<MAPTYPE> yhat(maps::yhat);
-                UnitVector<MAPTYPE> zhat(maps::zhat);
+                UnitVector<MAPTYPE> M_xhat(xhat);
+                UnitVector<MAPTYPE> M_yhat(yhat);
+                UnitVector<MAPTYPE> M_zhat(zhat);
                 MAPTYPE Pi(M_PI);
                 MAPTYPE PiOver2(M_PI / 2.);
-                map.rotate(xhat, PiOver2);
-                map.rotate(zhat, Pi);
-                map.rotate(yhat, PiOver2);
+                map.rotate(M_xhat, PiOver2);
+                map.rotate(M_zhat, Pi);
+                map.rotate(M_yhat, PiOver2);
             }, docs.Map.load_image, "image"_a)
 
         .def("load_healpix", [](maps::Map<MAPTYPE> &map, Matrix<double>& image) {
@@ -255,14 +255,14 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 }
                 // We need to apply some rotations to get
                 // to the desired orientation
-                UnitVector<MAPTYPE> xhat(maps::xhat);
-                UnitVector<MAPTYPE> yhat(maps::yhat);
-                UnitVector<MAPTYPE> zhat(maps::zhat);
+                UnitVector<MAPTYPE> M_xhat(xhat);
+                UnitVector<MAPTYPE> M_yhat(yhat);
+                UnitVector<MAPTYPE> M_zhat(zhat);
                 MAPTYPE Pi(M_PI);
                 MAPTYPE PiOver2(M_PI / 2.);
-                map.rotate(xhat, PiOver2);
-                map.rotate(zhat, Pi);
-                map.rotate(yhat, PiOver2);
+                map.rotate(M_xhat, PiOver2);
+                map.rotate(M_zhat, Pi);
+                map.rotate(M_yhat, PiOver2);
             }, docs.Map.load_healpix, "image"_a)
 
         .def("add_gaussian", [](maps::Map<MAPTYPE> &map, double sigma, double amp, double lat, double lon) {
@@ -278,15 +278,15 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                     }
                 }
                 // Rotate it to the sub-observer point
-                UnitVector<double> xhat(maps::xhat);
-                UnitVector<double> yhat(maps::yhat);
-                UnitVector<double> zhat(maps::zhat);
-                tmpmap.rotate(xhat, M_PI / 2.);
-                tmpmap.rotate(zhat, M_PI);
-                tmpmap.rotate(yhat, M_PI / 2.);
+                UnitVector<double> D_xhat(xhat);
+                UnitVector<double> D_yhat(yhat);
+                UnitVector<double> D_zhat(zhat);
+                tmpmap.rotate(D_xhat, M_PI / 2.);
+                tmpmap.rotate(D_zhat, M_PI);
+                tmpmap.rotate(D_yhat, M_PI / 2.);
                 // Now rotate it to where the user wants it
-                tmpmap.rotate(xhat, -lat * DEGREE);
-                tmpmap.rotate(yhat, lon * DEGREE);
+                tmpmap.rotate(D_xhat, -lat * DEGREE);
+                tmpmap.rotate(D_yhat, lon * DEGREE);
                 // Add it to the current map
                 for (int l = 0; l < map.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
@@ -300,11 +300,11 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 Matrix<double> I;
                 I.resize(res, res);
                 Vector<double> x;
-                UnitVector<MAPTYPE> yhat(maps::yhat);
+                UnitVector<MAPTYPE> M_yhat(yhat);
                 x = Vector<double>::LinSpaced(res, -1, 1);
                 for (int i = 0; i < res; i++){
                     for (int j = 0; j < res; j++){
-                        I(j, i) = get_value(map.evaluate(yhat, MAPTYPE(0), MAPTYPE(x(i)), MAPTYPE(x(j))));
+                        I(j, i) = get_value(map.evaluate(M_yhat, MAPTYPE(0), MAPTYPE(x(i)), MAPTYPE(x(j))));
                     }
                 }
                 show(I, "cmap"_a=cmap, "res"_a=res);
@@ -327,7 +327,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 }
             }
             animate(I, axis, "cmap"_a=cmap, "res"_a=res);
-        }, docs.Map.animate, "axis"_a=maps::yhat, "cmap"_a="plasma", "res"_a=150, "frames"_a=50)
+        }, docs.Map.animate, "axis"_a=yhat, "cmap"_a="plasma", "res"_a=150, "frames"_a=50)
 
         .def("__repr__", [](maps::Map<MAPTYPE> &map) -> string {return map.repr();});
 
@@ -488,7 +488,6 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
                 Matrix<double> I;
                 I.resize(res, res);
                 Vector<double> x;
-                UnitVector<MAPTYPE> yhat(maps::yhat);
                 x = Vector<double>::LinSpaced(res, -1, 1);
                 for (int i = 0; i < res; i++){
                     for (int j = 0; j < res; j++){
@@ -756,7 +755,7 @@ void add_Planet(py::class_<orbital::Planet<MAPTYPE>>& PyPlanet, const docstrings
                       const double&, const double&,
                       const double&, const double&,
                       const double&>(),
-                      "lmax"_a=2, "r"_a=0.1, "L"_a=0., "axis"_a=maps::yhat,
+                      "lmax"_a=2, "r"_a=0.1, "L"_a=0., "axis"_a=yhat,
                       "prot"_a=0, "a"_a=50., "porb"_a=1,
                       "inc"_a=90., "ecc"_a=0, "w"_a=90, "Omega"_a=0,
                       "lambda0"_a=90, "tref"_a=0)

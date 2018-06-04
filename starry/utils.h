@@ -10,7 +10,9 @@ Miscellaneous stuff used throughout the code.
 #include <unsupported/Eigen/AutoDiff>
 #include <iostream>
 #include <limits>
+#include <vector>
 #include "constants.h"
+#include "errors.h"
 
 // Our custom vector types
 template <typename T>
@@ -22,6 +24,11 @@ using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
 using Grad = Eigen::AutoDiffScalar<Eigen::Matrix<double, STARRY_NGRAD, 1>>;
+
+// Some useful unit vectors
+static const UnitVector<double> xhat({1, 0, 0});
+static const UnitVector<double> yhat({0, 1, 0});
+static const UnitVector<double> zhat({0, 0, 1});
 
 // Return the value of a scalar MapType variable
 inline double get_value(double x) { return x; }
@@ -69,5 +76,46 @@ inline UnitVector<T> norm_unit(const UnitVector<T>& vec) {
     UnitVector<T> result = vec / sqrt(vec(0) * vec(0) + vec(1) * vec(1) + vec(2) * vec(2));
     return result;
 }
+
+// Helper function to figure out if we're using multiprecision
+template <typename T>
+inline bool is_bigdouble(T x) {
+    return false;
+}
+
+// Helper function to figure out if we're using multiprecision
+template <>
+inline bool is_bigdouble(bigdouble x) {
+    return true;
+}
+
+// Fast square roots of integers
+template <class T>
+class SqrtInt {
+
+        std::vector<T> vec;
+
+    public:
+
+        // Constructor
+        SqrtInt() { vec.push_back(T(0.0)); }
+
+        // Getter function
+        inline T value(int n) {
+            if (n < 0)  throw errors::BadIndex();
+            while (n >= vec.size()) vec.push_back(sqrt(vec.size()));
+            return vec[n];
+        }
+
+        // Overload () to get the function value without calling value()
+        inline T operator() (int n) { return value(n); }
+
+        // Resetter
+        void reset(T val) {
+            vec.clear();
+            vec.push_back(T(0.0));
+        }
+
+};
 
 #endif
