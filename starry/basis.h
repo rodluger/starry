@@ -13,6 +13,7 @@ Spherical harmonic, polynomial, and Green's basis utilities.
 #include <Eigen/SparseLU>
 #include "errors.h"
 #include "utils.h"
+#include "tables.h"
 
 namespace basis {
 
@@ -23,10 +24,10 @@ namespace basis {
         } else if ((q > p) && ((q - p) % 2 == 0)) {
             return 0;
         } else {
-            return math.half_factorial<double>(k) /
-                        (math.half_factorial<double>(q) *
-                         math.half_factorial<double>(k - p) *
-                         math.half_factorial<double>(p - q));
+            return tables::half_factorial<double>(k) /
+                        (tables::half_factorial<double>(q) *
+                         tables::half_factorial<double>(k - p) *
+                         tables::half_factorial<double>(p - q));
         }
     }
 
@@ -35,8 +36,8 @@ namespace basis {
         return sqrt((1. / (4 * M_PI)) *
                     (2 - (int)(m == 0)) *
                     (2 * l + 1) *
-                    math.factorial<double>(l - abs(m)) /
-                    math.factorial<double>(l + abs(m)));
+                    tables::factorial<double>(l - abs(m)) /
+                    tables::factorial<double>(l + abs(m)));
     }
 
     // Return the B coefficient for a Ylm
@@ -54,13 +55,13 @@ namespace basis {
         double two_l = 1;
         for (int i=0; i < l; i++)
             two_l *= 2;
-        double a = math.factorial<double>(m);
-        double b = math.half_factorial<double>(i1);
-        double c = math.factorial<double>(j);
-        double d = math.factorial<double>(k);
-        double e = math.factorial<double>(m - j);
-        double f = math.factorial<double>(l - m - k);
-        double g = math.half_factorial<double>(i2);
+        double a = tables::factorial<double>(m);
+        double b = tables::half_factorial<double>(i1);
+        double c = tables::factorial<double>(j);
+        double d = tables::factorial<double>(k);
+        double e = tables::factorial<double>(m - j);
+        double f = tables::factorial<double>(l - m - k);
+        double g = tables::half_factorial<double>(i2);
         return two_l * a * b / (c * d * e * f * g);
     }
 
@@ -250,13 +251,13 @@ namespace basis {
 
         // Compute L^T and Y^T
         for (int l = 0; l < lmax + 1; l++) {
-            amp = pow(2, l) * sqrt((2 * l + 1) / (4 * M_PI)) / math.factorial<double>(l);
+            amp = pow(2, l) * sqrt((2 * l + 1) / (4 * M_PI)) / tables::factorial<double>(l);
             for (int k = 0; k < l + 1; k++) {
                 if ((k + 1) % 2 == 0)
-                    LT(k, l) = math.choose<double>(l, k);
+                    LT(k, l) = tables::choose<double>(l, k);
                 else
-                    LT(k, l) = -math.choose<double>(l, k);
-                YT(k, l) = amp * math.choose<double>(l, k) * math.half_factorial<double>(k + l - 1) / math.half_factorial<double>(k - l - 1);
+                    LT(k, l) = -tables::choose<double>(l, k);
+                YT(k, l) = amp * tables::choose<double>(l, k) * tables::half_factorial<double>(k + l - 1) / tables::half_factorial<double>(k - l - 1);
             }
         }
 

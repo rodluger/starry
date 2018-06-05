@@ -25,5 +25,5 @@ pip install corner
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     python setup.py develop
 else
-    CXX=g++-4.8 CC=gcc-4.8 python setup.py develop
+    CXX=g++-5 CC=gcc-5 python setup.py develop
 fi

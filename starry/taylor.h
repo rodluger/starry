@@ -15,6 +15,7 @@ Not for the faint of heart.
 #include "errors.h"
 #include "ellip.h"
 #include "utils.h"
+#include "tables.h"
 
 using std::abs;
 
@@ -209,10 +210,10 @@ namespace taylor {
         T frac = (G.mu + 2.) / 4.;
         int twofrac = 1 + G.mu / 2;
         for (int i = 0; i <= G.nu / 2; i++) {
-            jamp = math.choose<T>(G.nu / 2, i) * pow(2 * G.r() * (G.b() - G.r()), -i);
+            jamp = tables::choose<T>(G.nu / 2, i) * pow(2 * G.r() * (G.b() - G.r()), -i);
             jsum = 0;
             for (int j = 0; j <= i; j++) {
-                jsum += math.choose<T>(i, j)
+                jsum += tables::choose<T>(i, j)
                       * pow(4, -j) / G.r(2 * j)
                       * G.coslam(twofrac + 2 * (i + j + 1))
                       * (1. / (frac + i + j + 1) + 0.5 * G.coslam(2) / (G.r(2) * (frac + i + j + 2)));

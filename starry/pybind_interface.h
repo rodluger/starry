@@ -145,7 +145,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
 
         .def("reset", &maps::Map<MAPTYPE>::reset, docs.Map.reset)
 
-        .def_property_readonly("mp_digits", [](maps::Map<MAPTYPE> &map){return STARRY_MP_DIGITS;}, docs.mp_digits)
+        .def_property_readonly("nmulti", [](maps::Map<MAPTYPE> &map){return STARRY_NMULTI;}, docs.nmulti)
 
         .def_property_readonly("lmax", [](maps::Map<MAPTYPE> &map){return map.lmax;}, docs.Map.lmax)
 
@@ -446,7 +446,7 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
 
         .def_property_readonly("lmax", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.lmax;}, docs.LimbDarkenedMap.lmax)
 
-        .def_property_readonly("mp_digits", [](maps::LimbDarkenedMap<MAPTYPE> &map){return STARRY_MP_DIGITS;}, docs.mp_digits)
+        .def_property_readonly("nmulti", [](maps::LimbDarkenedMap<MAPTYPE> &map){return STARRY_NMULTI;}, docs.nmulti)
 
         .def_property_readonly("y", [](maps::LimbDarkenedMap<MAPTYPE> &map){
                 return get_value(map.y);
@@ -839,7 +839,7 @@ void add_starry(py::module& m, const docstrings::docs<MAPTYPE>& docs) {
 
     // Main docs
     m.doc() = docs.doc;
-    
+
     // Surface map class
     py::class_<maps::Map<MAPTYPE>> PyMap(m, "Map", docs.Map.doc);
     add_Map(PyMap, docs);

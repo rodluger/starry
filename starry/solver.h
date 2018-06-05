@@ -16,6 +16,7 @@ Spherical harmonic integration utilities.
 #include "lld.h"
 #include "taylor.h"
 #include "utils.h"
+#include "tables.h"
 
 namespace solver {
 
@@ -148,9 +149,9 @@ namespace solver {
         } else {
             for (int i = 0; i < v + 1; i++) {
                 if (is_even(i - v - u))
-                    res += math.choose<T>(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
+                    res += tables::choose<T>(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
                 else
-                    res -= math.choose<T>(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
+                    res -= tables::choose<T>(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
             }
             // Note that we multiply by the factor of (br)^1.5 inside computeM()
             // for small occultors and inside P() for large occultors.
@@ -211,7 +212,7 @@ namespace solver {
     inline T K(Greens<T>& G, int u, int v) {
         T res = 0;
         for (int i = 0; i < v + 1; i++)
-            res += math.choose<T>(v, i) * G.b_r(v - i) * G.I(u, i);
+            res += tables::choose<T>(v, i) * G.b_r(v - i) * G.I(u, i);
         return res;
     }
 
@@ -220,7 +221,7 @@ namespace solver {
     inline T L(Greens<T>& G, int u, int v) {
         T res = 0;
         for (int i = 0; i < v + 1; i++)
-            res += math.choose<T>(v, i) * G.b_r(v - i) * G.J(u, i);
+            res += tables::choose<T>(v, i) * G.b_r(v - i) * G.J(u, i);
         return res;
     }
 
@@ -512,7 +513,7 @@ namespace solver {
                 sT = VectorT<T>::Zero((lmax + 1) * (lmax + 1));
 
                 // Compute pi at the actual precision of the T type
-                pi = math.PI<T>();
+                pi = T(BIGPI);
                 pi_over_2 = T(0.5 * pi);
 
             }
@@ -524,14 +525,14 @@ namespace solver {
     T rn(int mu, int nu) {
             T a, b, c;
             if (is_even(mu, 2) && is_even(nu, 2)) {
-                a = math.gamma_sup<T>(mu / 4);
-                b = math.gamma_sup<T>(nu / 4);
-                c = math.gamma<T>((mu + nu) / 4 + 2);
+                a = tables::gamma_sup<T>(mu / 4);
+                b = tables::gamma_sup<T>(nu / 4);
+                c = tables::gamma<T>((mu + nu) / 4 + 2);
                 return a * b / c;
             } else if (is_even(mu - 1, 2) && is_even(nu - 1, 2)) {
-                a = math.gamma_sup<T>((mu - 1) / 4);
-                b = math.gamma_sup<T>((nu - 1) / 4);
-                c = math.gamma_sup<T>((mu + nu - 2) / 4 + 2) * M_2_SQRTPI;
+                a = tables::gamma_sup<T>((mu - 1) / 4);
+                b = tables::gamma_sup<T>((nu - 1) / 4);
+                c = tables::gamma_sup<T>((mu + nu - 2) / 4 + 2) * M_2_SQRTPI;
                 return a * b / c;
             } else {
                 return 0;

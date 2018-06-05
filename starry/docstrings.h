@@ -143,7 +143,7 @@ namespace docstrings {
                 map during or outside of an occultation. By default, this method
                 performs all occultation calculations using 128-bit (quadruple) floating point
                 precision, corresponding to 32 significant digits. Users can increase this to any
-                number of digits (RAM permitting) by setting the :py:obj:`STARRY_MP_DIGITS=XX` flag
+                number of digits (RAM permitting) by setting the :py:obj:`STARRY_NMULTI=XX` flag
                 at compile time. Note, importantly, that run times are **much** slower for multi-precision
                 calculations.
 
@@ -307,7 +307,7 @@ namespace docstrings {
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
                 .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
-                .. autoattribute:: mp_digits
+                .. autoattribute:: nmulti
             )pbdoc";
 
     };
@@ -343,7 +343,7 @@ namespace docstrings {
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
                 .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
-                .. autoattribute:: mp_digits
+                .. autoattribute:: nmulti
                 .. autoattribute:: ngrad
         )pbdoc";
 
@@ -478,7 +478,7 @@ namespace docstrings {
                 map during or outside of an occultation. By default, this method
                 performs all occultation calculations using 128-bit (quadruple) floating point
                 precision, corresponding to 32 significant digits. Users can increase this to any
-                number of digits (RAM permitting) by setting the :py:obj:`STARRY_MP_DIGITS=XX` flag
+                number of digits (RAM permitting) by setting the :py:obj:`STARRY_NMULTI=XX` flag
                 at compile time. Note, importantly, that run times are **much** slower for multi-precision
                 calculations.
 
@@ -558,7 +558,7 @@ namespace docstrings {
                 .. autoattribute:: s
                 .. autoattribute:: s_mp
                 .. automethod:: show(cmap='plasma', res=300)
-                .. autoattribute:: mp_digits
+                .. autoattribute:: nmulti
         )pbdoc";
 
     };
@@ -599,7 +599,7 @@ namespace docstrings {
                 .. autoattribute:: u
                 .. autoattribute:: s
                 .. automethod:: show(cmap='plasma', res=300)
-                .. autoattribute:: mp_digits
+                .. autoattribute:: nmulti
                 .. autoattribute:: ngrad
         )pbdoc";
 
@@ -1048,7 +1048,7 @@ namespace docstrings {
 
         const char * doc;
         const char * NotImplemented;
-        const char * mp_digits;
+        const char * nmulti;
         const char * ngrad;
         void add_extras() { };
         Map_<T> Map;
@@ -1064,7 +1064,7 @@ namespace docstrings {
                 Method or attribute not implemented for this class.
             )pbdoc";
 
-            mp_digits = R"pbdoc(
+            nmulti = R"pbdoc(
                 Number of digits used to perform multi-precision calculations.
                 Double precision roughly corresponds to 16, and quadruple
                 precision (default) roughly corresponds 32.
