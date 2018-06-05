@@ -7,14 +7,12 @@ language: c
 
 addons:
     apt:
-        sources:
-            - ubuntu-toolchain-r-test
         packages:
-            - gcc-5
-            - g++-5
+            - gcc-4.8
+            - g++-4.8
 
 env:
-     - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+     - MATRIX_EVAL="CC=gcc-4.8 && CXX=g++-4.8"
 
 matrix:
     include:
