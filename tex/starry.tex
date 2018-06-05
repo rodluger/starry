@@ -2921,37 +2921,37 @@ $\varphi$ to $\varphi^\prime = \frac{1}{2}(\varphi - \tfrac{3\pi}{2})$ yields
     \mathcal{P}(\bvec{G}_n) &=
     \begin{dcases}
         %
-        +2(2r)^{l+2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
-            s_\varphi^{\frac{\mu+4}{2}} (1-s_\varphi^2)^{\frac{\mu+4}{4}}
+        2(2r)^{l+2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
+            (s_\varphi^2 -s_\varphi^4)^{\frac{\mu+4}{4}}
             (\delta + s_\varphi^2)^{\frac{\nu}{2}}
             \, \dd\varphi
             %
             & \qquad \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
         %
-        -(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
-            s_\varphi^{l-2} (1-s_\varphi^2)^{(l-2)/2}
+        \mathcal{F}\int\displaylimits_{-\kappa/2}^{\kappa/2}
+            (s_\varphi^2-s_\varphi^4)^{\tfrac{l-2}{2}}
             (k^2- s_\varphi^2)^{\frac{3}{2}}
-            (2s_\varphi^2-1)
+            (1-2s_\varphi^2)
             \, \dd\varphi
             %
             & \qquad \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
-        -(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
-            s_\varphi^{l-3} (1-s_\varphi^2)^{(l-3)/2}
+        \mathcal{F}\int\displaylimits_{-\kappa/2}^{\kappa/2}
+            (s_\varphi^2-s_\varphi^4)^{\tfrac{l-3}{2}}
             (\delta + s_\varphi^2)
             (k^2- s_\varphi^2)^{\frac{3}{2}}
-            (2 s_\varphi^2-1)
+            (1-2 s_\varphi^2)
             \, \dd\varphi
             %
             & \qquad \mu = 1, \, l \ge 3, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
-        +2(2r)^{l-1}(4br)^{3/2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
-            s_\varphi^{\frac{\mu-1}{2}} (1-s_\varphi^2)^{\frac{\mu-1}{4}}
+        2\mathcal{F}\int\displaylimits_{-\kappa/2}^{\kappa/2}
+            (s_\varphi^2-s_\varphi^4)^{\frac{\mu-1}{4}}
             (\delta + s_\varphi^2)^{\frac{\nu-1}{2}}
             (k^2 - s_\varphi^2)^{\frac{3}{2}}
             \, \dd\varphi
@@ -2961,10 +2961,10 @@ $\varphi$ to $\varphi^\prime = \frac{1}{2}(\varphi - \tfrac{3\pi}{2})$ yields
         s_2 & \qquad \mu=1, \, l=1
         \\[1em]
         %
-        0 & \qquad \mathrm{otherwise}
+        0 & \qquad \mathrm{otherwise},
     \end{dcases}
 \end{align}
-where we have subsequently dropped the prime from $\varphi^\prime$ in these integrals.
+where $\mathcal{F} = (2r)^{l-1}(4br)^{3/2}$ and we have subsequently dropped the prime from $\varphi^\prime$ in these integrals.
 
 Expanding the term $(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v$ as a polynomial
 in $s_\varphi^2$, we find
@@ -2990,19 +2990,19 @@ We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$
             %
             & \qquad \frac{\mu}{2} \, \mathrm{even}
         \\[1em]
-        -(2r)^{l-1} \left(2\mathcal{L}^{(1)}_{\frac{l-2}{2}, 0}-\mathcal{L}^{(0)}_{\frac{l-2}{2},0}\right)
+        \mathcal{F} \left(\mathcal{L}^{(0)}_{\frac{l-2}{2},0}-2\mathcal{L}^{(1)}_{\frac{l-2}{2}, 0} \right)
             %
             & \qquad \mu = 1, \,
                      l \, \mathrm{even}
         \\[1em]
         %
-        -(2r)^{l-1} \left( 2\mathcal{L}^{(1)}_{\frac{l-3}{2},1} - \mathcal{L}^{(0)}_{\frac{l-3}{2},1} \right)
+        \mathcal{F} \left(\mathcal{L}^{(0)}_{\frac{l-3}{2},1}-2\mathcal{L}^{(1)}_{\frac{l-3}{2},1}   \right)
             %
             & \qquad \mu = 1, \, l \ge 3, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
-        2(2r)^{l-1} \mathcal{L}^{(0)}_{\frac{\mu-1}{4}, \frac{\nu-1}{2}}
+        2\mathcal{F} \mathcal{L}^{(0)}_{\frac{\mu-1}{4}, \frac{\nu-1}{2}}
             & \qquad \frac{\mu-1}{2} \, \mathrm{even}
         \\[1em]
         %
@@ -3020,10 +3020,10 @@ where
 &=& \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{I}_{i+u},\\
 \mathcal{I}_{v} &=& \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi,\\
 %\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
-\mathcal{L}^{(t)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \int_{-\kappa/2}^{\kappa/2}s_\varphi^{2(u+t)}(1-s_\varphi^2)^u(\delta+s_\varphi^2)^v
+\mathcal{L}^{(t)}_{u,v} &=& k^3 \int_{-\kappa/2}^{\kappa/2}s_\varphi^{2(u+t)}(1-s_\varphi^2)^u(\delta+s_\varphi^2)^v
 \left(1-k^{-2}s_\varphi^2\right)^{3/2}d\varphi,\\
-%&=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{2u+v} \mathcal{A}_{u+v-i+t,u,v} \mathcal{J}_{i+u},\\
-&=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{J}_{i+u+t},\\
+%&=& k^3 \sum_{i=0}^{2u+v} \mathcal{A}_{u+v-i+t,u,v} \mathcal{J}_{i+u},\\
+&=& k^3 \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{J}_{i+u+t},\\
 %\mathcal{L}^{(0)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{i+u},\\
 %\mathcal{L}^{(2)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{i+u+},\\
 %\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u s_\varphi^v\left(k^2-s^2_\varphi\right)^{3/2},
