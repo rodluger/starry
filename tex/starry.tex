@@ -8,7 +8,7 @@
 \setlength{\belowdisplayskip}{1.5em}
 
 \title{%
-    \textbf{STARRY}: Analytic Occultation Light Curves 
+    \textbf{STARRY}: Analytic Occultation Light Curves
 }
 
 \author[0000-0002-0296-3826]{Rodrigo Luger}
@@ -3039,7 +3039,7 @@ recursion relations tend to be numerically unstable due to cancellation of low-o
 during recursion when $r \gg 1$.  To leading order in $k$, $\mathcal{I}_v \propto k^{2v+1}$
 and $\mathcal{J}_v \propto k^{2v+1}$.  Consequently, when these equations are computed by
 recursion in $v$, the lower powers of $k$ cancel out, leading to
-round-off errors.  To avoid these cancellations, we start by computing $\mathcal{I}_{v_{max}}$, 
+round-off errors.  To avoid these cancellations, we start by computing $\mathcal{I}_{v_{max}}$,
 $\mathcal{J}_{v_{max}}$, and $\mathcal{J}_{v_{max}-1}$, where
 where $v_{max}$ is the maximum value we need in computing $\mathcal{K}_{u,v}$ for
 $l_{max}$.  %  Give the explicit value of $v_{max}$ for given $l_{max}$. [ ]
@@ -3048,7 +3048,7 @@ Applying integral reduction formulae, we obtain the recursion relations:
 \mathcal{I}_{v-1} &=&  \frac{2}{2v-1}\left[v\mathcal{I}_{v} + k^{2v-1}k_c\right],\\
 \mathcal{J}_{v-2} &=& \frac{1}{k^2(2v-3)}\left[2(v+vk^2+k_c^2)\mathcal{J}_{v-1}-(2v+3)\mathcal{J}_v \right].
 \end{eqnarray}
-for $v \ge 1$ where $k_c^2=1-k^2$.  
+for $v \ge 1$ where $k_c^2=1-k^2$.
 To compute the highest value of $\mathcal{I}_{v_{max}}$, $\mathcal{J}_{v_{max}}$,
 and  $\mathcal{J}_{v_{max}-1}$, we evaluate these in terms of special
 functions and expand these as series in $k^2$.
@@ -3096,11 +3096,11 @@ For large values of $v$ and small values of $k$, we find that these series
 converge rapidly, and so may be preferred over evaluating the Hypergeometric functions.
 %{\color{red} Note: we only need $v=2$ terms, which simplifies this equation.  We
 %can rewrite as $J_{2v}$ and only include the first option in the expansion.}
-%Note the steep dependence of $\mathcal{J}_{v}$ on $k$ for large $v$, $\propto k^{1+2v}$;  
-%this is also due to cancellation of lower order terms during recursion, which can lead 
+%Note the steep dependence of $\mathcal{J}_{v}$ on $k$ for large $v$, $\propto k^{1+2v}$;
+%this is also due to cancellation of lower order terms during recursion, which can lead
 %to severe round-off errors.
 
-%Consequently, we use a more stable iterative formula to evaluate $J_{v-2}$ in terms 
+%Consequently, we use a more stable iterative formula to evaluate $J_{v-2}$ in terms
 %of $J_{v}$ and $J_{v-1}$:
 %\begin{equation}
 %J_{v-2} = \frac{1}{k^2(2v-3)}\left[2((v-1)k^2+(v+1))J_{v-1}-(2v+3)J_v \right].
