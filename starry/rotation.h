@@ -16,13 +16,10 @@ from the Wigner-D matrices for complex spherical harmonics.
 #include <cmath>
 #include <Eigen/Core>
 #include "constants.h"
-#include "sqrtint.h"
 #include "utils.h"
 
 namespace rotation {
 
-    using sqrtint::sqrt_int;
-    using sqrtint::invsqrt_int;
     using std::abs;
 
     /**
@@ -67,8 +64,8 @@ namespace rotation {
         D[l](2 * l, 2 * l) = D[l - 1](isup + l - 1, isup + l - 1) * (1. + c2) / 2.;
         D[l](2 * l, 0) = D[l - 1](isup + l - 1, -isup + l - 1) * (1. - c2) / 2.;
         for (m=isup; m>iinf-1; m--)
-            D[l](2 * l, m + l) = -tgbet2 * sqrt_int(l + m + 1) *
-                                  invsqrt_int(l - m) * D[l](2 * l, m + 1 + l);
+            D[l](2 * l, m + l) = -tgbet2 * math.sqrt<T>(l + m + 1) *
+                                  math.invsqrt<T>(l - m) * D[l](2 * l, m + 1 + l);
 
         // The rows of the upper quarter triangle of the D[l;m',m) matrix
         // (Eq. 21 in Alvarez Collado et al.)
@@ -81,17 +78,17 @@ namespace rotation {
             amp = mp;
             laux = l + mp;
             lbux = l - mp;
-            aux = invsqrt_int(laux) * invsqrt_int(lbux) * ali;
-            cux = sqrt_int(laux - 1) * sqrt_int(lbux - 1) * al;
+            aux = math.invsqrt<T>(laux) * math.invsqrt<T>(lbux) * ali;
+            cux = math.sqrt<T>(laux - 1) * math.sqrt<T>(lbux - 1) * al;
             for (m=isup; m>iinf-1; m--) {
                 am = m;
                 lauz = l + m;
                 lbuz = l - m;
-                auz = invsqrt_int(lauz) * invsqrt_int(lbuz);
+                auz = math.invsqrt<T>(lauz) * math.invsqrt<T>(lbuz);
                 fact = aux * auz;
                 term = tal1 * (cosaux - am * amp) * D[l - 1](mp + l - 1, m + l - 1);
                 if ((lbuz != 1) && (lbux != 1)) {
-                    cuz = sqrt_int(lauz - 1) * sqrt_int(lbuz - 1);
+                    cuz = math.sqrt<T>(lauz - 1) * math.sqrt<T>(lbuz - 1);
                     term = term - D[l - 2](mp + l - 2, m + l - 2) * cux * cuz;
                 }
                 D[l](mp + l, m + l) = fact * term;
@@ -138,11 +135,11 @@ namespace rotation {
         for (mp=1; mp<l+1; mp++) {
             cosmga = c3;
             sinmga = s3;
-            aux = sqrt_int(2) * D[l](0 + l, mp + l);
+            aux = math.sqrt<T>(2) * D[l](0 + l, mp + l);
             R[l](mp + l, 0 + l) = aux * cosmal;
             R[l](-mp + l, 0 + l) = aux * sinmal;
             for (m=1; m<l+1; m++) {
-                aux = sqrt_int(2) * D[l](m + l, 0 + l);
+                aux = math.sqrt<T>(2) * D[l](m + l, 0 + l);
                 R[l](l, m + l) = aux * cosmga;
                 R[l](l, -m + l) = -aux * sinmga;
                 d1 = D[l](-mp + l, -m + l);
@@ -181,7 +178,7 @@ namespace rotation {
         D[0](0, 0) = 1.;
         R[0](0, 0) = 1.;
         D[1](2, 2) = (1. + c2) / 2.;
-        D[1](2, 1) = -s2 / sqrt_int(2);
+        D[1](2, 1) = -s2 / math.sqrt<T>(2);
         D[1](2, 0) = (1. - c2) / 2.;
         D[1](1, 2) = -D[1](2, 1);
         D[1](1, 1) = D[1](2, 2) - D[1](2, 0);
@@ -194,10 +191,10 @@ namespace rotation {
         sinag = s1 * c3 + c1 * s3;
         SINAMG = s1 * c3 - c1 * s3;
         R[1](1, 1) = D[1](1, 1);
-        R[1](2, 1) = sqrt_int(2) * D[1](1, 2) * c1;
-        R[1](0, 1) = sqrt_int(2) * D[1](1, 2) * s1;
-        R[1](1, 2) = sqrt_int(2) * D[1](2, 1) * c3;
-        R[1](1, 0) = -sqrt_int(2) * D[1](2, 1) * s3;
+        R[1](2, 1) = math.sqrt<T>(2) * D[1](1, 2) * c1;
+        R[1](0, 1) = math.sqrt<T>(2) * D[1](1, 2) * s1;
+        R[1](1, 2) = math.sqrt<T>(2) * D[1](2, 1) * c3;
+        R[1](1, 0) = -math.sqrt<T>(2) * D[1](2, 1) * s3;
         R[1](2, 2) = D[1](2, 2) * cosag - D[1](2, 0) * COSAMG;
         R[1](2, 0) = -D[1](2, 2) * sinag - D[1](2, 0) * SINAMG;
         R[1](0, 2) = D[1](2, 2) * sinag - D[1](2, 0) * SINAMG;

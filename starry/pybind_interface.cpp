@@ -11,6 +11,7 @@ using namespace std;
 using namespace pybind11::literals;
 using namespace docstrings;
 namespace py = pybind11;
+MathUtils math;
 
 PYBIND11_MODULE(starry, m) {
 

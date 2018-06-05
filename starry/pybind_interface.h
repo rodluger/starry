@@ -839,7 +839,7 @@ void add_starry(py::module& m, const docstrings::docs<MAPTYPE>& docs) {
 
     // Main docs
     m.doc() = docs.doc;
-
+    
     // Surface map class
     py::class_<maps::Map<MAPTYPE>> PyMap(m, "Map", docs.Map.doc);
     add_Map(PyMap, docs);

@@ -9,9 +9,9 @@ Spherical harmonic integration utilities.
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
+#include <vector>
 #include "constants.h"
 #include "ellip.h"
-#include "fact.h"
 #include "errors.h"
 #include "lld.h"
 #include "taylor.h"
@@ -28,15 +28,6 @@ namespace solver {
     class Primitive;
     template <class T>
     class Greens;
-
-    // Check if number is even (or doubly, triply, quadruply... even)
-    inline bool is_even(int n, int ntimes=1) {
-        for (int i = 0; i < ntimes; i++) {
-            if ((n % 2) != 0) return false;
-            n /= 2;
-        }
-        return true;
-    }
 
     // Compute the n=2 term of the *s^T* occultation solution vector.
     // This is the Mandel & Agol solution for linear limb darkening,
@@ -157,9 +148,9 @@ namespace solver {
         } else {
             for (int i = 0; i < v + 1; i++) {
                 if (is_even(i - v - u))
-                    res += fact::choose(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
+                    res += math.choose<T>(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
                 else
-                    res -= fact::choose(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
+                    res -= math.choose<T>(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
             }
             // Note that we multiply by the factor of (br)^1.5 inside computeM()
             // for small occultors and inside P() for large occultors.
@@ -220,7 +211,7 @@ namespace solver {
     inline T K(Greens<T>& G, int u, int v) {
         T res = 0;
         for (int i = 0; i < v + 1; i++)
-            res += fact::choose(v, i) * G.b_r(v - i) * G.I(u, i);
+            res += math.choose<T>(v, i) * G.b_r(v - i) * G.I(u, i);
         return res;
     }
 
@@ -229,7 +220,7 @@ namespace solver {
     inline T L(Greens<T>& G, int u, int v) {
         T res = 0;
         for (int i = 0; i < v + 1; i++)
-            res += fact::choose(v, i) * G.b_r(v - i) * G.J(u, i);
+            res += math.choose<T>(v, i) * G.b_r(v - i) * G.J(u, i);
         return res;
     }
 
@@ -521,7 +512,7 @@ namespace solver {
                 sT = VectorT<T>::Zero((lmax + 1) * (lmax + 1));
 
                 // Compute pi at the actual precision of the T type
-                pi = T(BIGPI);
+                pi = math.PI<T>();
                 pi_over_2 = T(0.5 * pi);
 
             }
@@ -533,14 +524,14 @@ namespace solver {
     T rn(int mu, int nu) {
             T a, b, c;
             if (is_even(mu, 2) && is_even(nu, 2)) {
-                a = fact::gamma_sup(mu / 4);
-                b = fact::gamma_sup(nu / 4);
-                c = fact::gamma((mu + nu) / 4 + 2);
+                a = math.gamma_sup<T>(mu / 4);
+                b = math.gamma_sup<T>(nu / 4);
+                c = math.gamma<T>((mu + nu) / 4 + 2);
                 return a * b / c;
             } else if (is_even(mu - 1, 2) && is_even(nu - 1, 2)) {
-                a = fact::gamma_sup((mu - 1) / 4);
-                b = fact::gamma_sup((nu - 1) / 4);
-                c = fact::gamma_sup((mu + nu - 2) / 4 + 2) * M_2_SQRTPI;
+                a = math.gamma_sup<T>((mu - 1) / 4);
+                b = math.gamma_sup<T>((nu - 1) / 4);
+                c = math.gamma_sup<T>((mu + nu - 2) / 4 + 2) * M_2_SQRTPI;
                 return a * b / c;
             } else {
                 return 0;

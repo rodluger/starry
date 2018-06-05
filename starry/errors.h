@@ -78,12 +78,6 @@ namespace errors {
         }
     };
 
-    struct BadFactorial : public exception {
-        const char * what () const throw (){
-            return "Factorial argument out of bounds.";
-        }
-    };
-
     struct SparseFail : public exception {
         const char * what () const throw (){
             return "Sparse solve failed for matrix `A`.";
@@ -105,12 +99,6 @@ namespace errors {
     struct Domain : public exception {
         const char * what () const throw (){
             return "Domain error in function computeM().";
-        }
-    };
-
-    struct BadSqrt : public exception {
-        const char * what () const throw (){
-            return "Argument of `sqrt_int` must be nonnegative.";
         }
     };
 
