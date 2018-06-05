@@ -3,7 +3,7 @@ include("sn_bigr.jl")
 
 #r=10.
 r=100.
-l_max = 8
+l_max = 20
 n_max = l_max^2+2*l_max
 sn_big = zeros(BigFloat,n_max+1);
 snew = zeros(typeof(r),n_max+1);

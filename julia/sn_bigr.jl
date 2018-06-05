@@ -52,7 +52,8 @@ function Jv_series(k2::T,v::Int64) where {T <: Real}
 nmax = 50
 n = 1; tol = eps(k2); error = Inf
 # Computing leading coefficient (n=0):
-coeff = 3pi/(2^(2+v)*factorial(v+2))
+#coeff = 3pi/(2^(2+v)*factorial(v+2))
+coeff = 3pi/(2^(2+v)*exp(lfact(v+2)))
 # multiply by (2v-1)!!
 for i=1:v
   coeff *= 2.*i-1
