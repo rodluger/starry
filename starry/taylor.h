@@ -11,8 +11,8 @@ Not for the faint of heart.
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
+#include <vector>
 #include "errors.h"
-#include "fact.h"
 #include "ellip.h"
 #include "utils.h"
 
@@ -125,8 +125,8 @@ static const double STARRY_R_COEFF[STARRY_R_NPQ][STARRY_R_NPQ][STARRY_R_ORDER] =
 // but ensures our expressions are numerically stable over most of the domain
 // up to lmax = 8.
 #define STARRY_QUARTIC_MAXL                     8
-const vector<double> STARRY_RADIUS_THRESH_QUARTIC_RCRIT({120, 50, 30, 20, 12, 7.5, 6, 6, 4});
-const vector<double> STARRY_RADIUS_THRESH_QUARTIC_COEFF({5e-5, 1e-4, 2e-4, 4e-4, 8e-4, 8e-4, 8e-4, 2e-3, 2e-3});
+const std::vector<double> STARRY_RADIUS_THRESH_QUARTIC_RCRIT({120, 50, 30, 20, 12, 7.5, 6, 6, 4});
+const std::vector<double> STARRY_RADIUS_THRESH_QUARTIC_COEFF({5e-5, 1e-4, 2e-4, 4e-4, 8e-4, 8e-4, 8e-4, 2e-3, 2e-3});
 template <typename T>
 bool STARRY_QUARTIC_APPROX(int l, T b, T r) {
     if (l > STARRY_QUARTIC_MAXL)
@@ -162,13 +162,11 @@ static const double STARRY_B_COEFF[STARRY_B_ORDER][STARRY_B_ORDER / 2] =
 
 
 // Forward declare a few things
-// TODO: Put `Greens` and `is_even` in a separate header file
-// so I don't have to do this!
+// TODO: Put `Greens` in a separate header file so I don't have to do this!
 namespace solver
 {
     template <class T>
     class Greens;
-    bool is_even(int n, int ntimes);
 };
 
 
@@ -191,10 +189,10 @@ namespace taylor {
         for (i = 0; i < STARRY_B_ORDER; i++) {
             foo = 0;
             for (j = 0; j < i / 2 + 1; j++) {
-                k = (solver::is_even(i, 1) ? 2 * j : 2 * j + 1);
+                k = (is_even(i, 1) ? 2 * j : 2 * j + 1);
                 foo += STARRY_B_COEFF[i][j] * G.r(k) * G.I(u, v + k) * fac(l + j);
             }
-            l += (int) solver::is_even(i, 1);
+            l += (int) is_even(i, 1);
             res += G.b(i) * foo;
         }
         return res;
@@ -203,7 +201,7 @@ namespace taylor {
     // Approximate occultor limb as a quartic function
     template <typename T>
     inline T P(solver::Greens<T>& G) {
-        if (!solver::is_even(G.mu / 2, 1))
+        if (!is_even(G.mu / 2, 1))
             return 0;
         T res = 0;
         T amp = pow(G.b() - G.r(), G.nu / 2) / G.r();
@@ -211,10 +209,10 @@ namespace taylor {
         T frac = (G.mu + 2.) / 4.;
         int twofrac = 1 + G.mu / 2;
         for (int i = 0; i <= G.nu / 2; i++) {
-            jamp = fact::choose(G.nu / 2, i) * pow(2 * G.r() * (G.b() - G.r()), -i);
+            jamp = math.choose<T>(G.nu / 2, i) * pow(2 * G.r() * (G.b() - G.r()), -i);
             jsum = 0;
             for (int j = 0; j <= i; j++) {
-                jsum += fact::choose(i, j)
+                jsum += math.choose<T>(i, j)
                       * pow(4, -j) / G.r(2 * j)
                       * G.coslam(twofrac + 2 * (i + j + 1))
                       * (1. / (frac + i + j + 1) + 0.5 * G.coslam(2) / (G.r(2) * (frac + i + j + 2)));

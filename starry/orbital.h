@@ -24,9 +24,6 @@ namespace orbital {
     // Shorthand
     using maps::Map;
     using maps::LimbDarkenedMap;
-    using maps::xhat;
-    using maps::yhat;
-    using maps::zhat;
     using std::vector;
     using std::max;
     using std::abs;

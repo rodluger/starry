@@ -54,6 +54,18 @@ namespace errors {
         }
     };
 
+    struct BadLMIndex : public exception {
+        const char * what () const throw (){
+            return "Invalid (`l`, `m`) index.";
+        }
+    };
+
+    struct BadSliceLength : public exception {
+        const char * what () const throw (){
+            return "Mismatch between slice length and array length.";
+        }
+    };
+
     struct LimbDark : public exception {
         const char * what () const throw (){
             return "Limb darkening is currently only available up to second order.";
@@ -63,12 +75,6 @@ namespace errors {
     struct BadSystem : public exception {
         const char * what () const throw (){
             return "The first body (and only the first body) must be a `Star`.";
-        }
-    };
-
-    struct BadFactorial : public exception {
-        const char * what () const throw (){
-            return "Factorial argument out of bounds.";
         }
     };
 
@@ -93,12 +99,6 @@ namespace errors {
     struct Domain : public exception {
         const char * what () const throw (){
             return "Domain error in function computeM().";
-        }
-    };
-
-    struct BadSqrt : public exception {
-        const char * what () const throw (){
-            return "Argument of `sqrt_int` must be nonnegative.";
         }
     };
 

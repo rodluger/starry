@@ -23,11 +23,6 @@ namespace maps {
     using std::abs;
     using std::string;
 
-    // Some useful unit vectors
-    static const UnitVector<double> xhat({1, 0, 0});
-    static const UnitVector<double> yhat({0, 1, 0});
-    static const UnitVector<double> zhat({0, 0, 1});
-
     // Constant matrices/vectors
     class Constants {
 
