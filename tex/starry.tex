@@ -3031,11 +3031,11 @@ where
 %\mathcal{A}_{p,u,v} &=& \sum_{j=0}^{p} (-1)^{p+j} \binom{u}{p-j} \binom{v}{p}\delta^j.
 \end{eqnarray}
 
-The integrals $\mathcal{I}_v$ and $\mathcal{J}_v$ can be found exactly, using integral
+The integrals $\mathcal{I}_v$ and $\mathcal{J}_v$ can be found exactly, using the same integral
 reduction formulae as above.  With reduction, the function $\mathcal{I}_v$ can be expressed
 in terms of sums of powers of $\sin^{-1}k$, $k$ and $k_c=\sqrt{1-k^2}$, while $\mathcal{J}_v$ can be expressed
 as sums of complete elliptic integrals of $k^2$ times polynomials in $k^2$. However, the resulting
-recursion relations tend to be numerically unstable due to cancellation of low-order terms occurs
+recursion relations tend to be numerically unstable due to cancellation of low-order terms which occurs
 during recursion when $r \gg 1$.  To leading order in $k$, $\mathcal{I}_v \propto k^{2v+1}$
 and $\mathcal{J}_v \propto k^{2v+1}$.  Consequently, when these equations are computed by
 recursion in $v$, the lower powers of $k$ cancel out, leading to
@@ -3043,7 +3043,7 @@ round-off errors.  To avoid these cancellations, we start by computing $\mathcal
 $\mathcal{J}_{v_{max}}$, and $\mathcal{J}_{v_{max}-1}$, where
 where $v_{max}$ is the maximum value we need in computing $\mathcal{K}_{u,v}$ for
 $l_{max}$.  %  Give the explicit value of $v_{max}$ for given $l_{max}$. [ ]
-Applying integral reduction formulae, we obtain the recursion relations:
+Applying the integral reduction formulae, we obtain the downward recursion relations:
 \begin{eqnarray}
 \mathcal{I}_{v-1} &=&  \frac{2}{2v-1}\left[v\mathcal{I}_{v} + k^{2v-1}k_c\right],\\
 \mathcal{J}_{v-2} &=& \frac{1}{k^2(2v-3)}\left[2(v+vk^2+k_c^2)\mathcal{J}_{v-1}-(2v+3)\mathcal{J}_v \right].
@@ -3108,8 +3108,6 @@ converge rapidly, and so may be preferred over evaluating the Hypergeometric fun
 %We evaluate $J_{v_{max}}$ and $J_{v_{max}-1}$ with the series solution or hypergeometric
 %function for large $v_{max}$, and then iterate to find successively smaller values
 %of $v$ until $v=0$.
-
-{\color{red} Code up this formula, and check for accuracy in the $r > 1$ limit.}
 
 
 % ------------------------------------------------------------------------------
