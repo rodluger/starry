@@ -2915,7 +2915,7 @@ This variable can be defined more simply in terms of $\sin^2\tfrac{\kappa}{2} = 
 or $\kappa = 2 \sin^{-1}k$.
 With this transformed variable, the limits of integration of $\mathcal{P}(\bvec{G}_n)$
 become $\tfrac{3\pi}{2}-\kappa$ to $\tfrac{3\pi}{2}+\kappa$.  Transforming
-$\varphi$ to $\varphi^\prime = 2(\varphi - \tfrac{3\pi}{2})$ yields
+$\varphi$ to $\varphi^\prime = \frac{1}{2}(\varphi - \tfrac{3\pi}{2})$ yields
 \begin{align}
     \label{eq:PGn_large}
     \mathcal{P}(\bvec{G}_n) &=
@@ -2969,15 +2969,15 @@ where we have subsequently dropped the prime from $\varphi^\prime$ in these inte
 Expanding the term $(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v$ as a polynomial
 in $s_\varphi^2$, we find
 \begin{equation}
-(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v = (-1)^u \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} s_\varphi^{2i},
+(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v = \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} s_\varphi^{2i},
 \end{equation}
 where
 \begin{equation}
-\mathcal{A}_{i,u,v} = \sum_{j=\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)} \binom{u}{j} \binom{v}{u+v-i-j}(-1)^{j}\delta^{u+v-i-j}.
+\mathcal{A}_{i,u,v} = \sum_{j=\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)} \binom{u}{j} \binom{v}{u+v-i-j}(-1)^{u+j}\delta^{u+v-i-j}.
 \end{equation}
 The coefficients $\mathcal{A}_{i,u,v}$ are computed from Vieta's formulae for the
 coefficients of a polynomial in terms of sums and products of its roots, and are
-equal to the elementary symmetric polynomials of the roots of $(x-1)^u(x+\delta)^v$.
+equal to the elementary symmetric polynomials of the roots of $(1-x)^u(x+\delta)^v$.
 
 This expansion yields a sum over terms which are integrals over powers of $s_\varphi^{2v}$.
 We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$ as:
@@ -3016,26 +3016,26 @@ We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$
 where
 \begin{eqnarray}
 %\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
-\mathcal{K}_{u,v} &=& \int_{\kappa/2}^{\kappa/2} s_\varphi^{2u} (1-s_\varphi^2)^u (\delta + s_\varphi^2)^v d\varphi\\
-&=& \sum_{i=1}^{u+v} \mathcal{A}_{i,u,v} \mathcal{I}_{i+u},\\
+\mathcal{K}_{u,v} &=& \int_{\kappa/2}^{\kappa/2} s_\varphi^{2u} (1-s_\varphi^2)^u (\delta + s_\varphi^2)^v d\varphi\\ 
+&=& \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{I}_{i+u},\\
 \mathcal{I}_{v} &=& \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi,\\
 %\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
-\mathcal{L}^{(t)}_{u,v} &=& (1-\delta^2)^{3/2} \int_{-\kappa/2}^{\kappa/2}s_\varphi^{2(u+t)}(1-s_\varphi^2)^u(\delta+s_\varphi^2)^v
+\mathcal{L}^{(t)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \int_{-\kappa/2}^{\kappa/2}s_\varphi^{2(u+t)}(1-s_\varphi^2)^u(\delta+s_\varphi^2)^v
 \left(1-k^{-2}s_\varphi^2\right)^{3/2}d\varphi,\\
-%&=& (1-\delta^2)^{3/2} \sum_{i=1}^{2u+v} \mathcal{A}_{u+v-i+t,u,v} \mathcal{J}_{i+u},\\
-&=& (1-\delta^2)^{3/2} (-1)^u \sum_{i=1}^{u+v} \mathcal{A}_{i,u,v} \mathcal{J}_{i+u+t},\\
-%\mathcal{L}^{(0)}_{u,v} &=& (1-\delta^2)^{3/2} \sum_{i=1}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{i+u},\\
-%\mathcal{L}^{(2)}_{u,v} &=& (1-\delta^2)^{3/2} \sum_{i=1}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{i+u+},\\
+%&=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{2u+v} \mathcal{A}_{u+v-i+t,u,v} \mathcal{J}_{i+u},\\
+&=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{J}_{i+u+t},\\
+%\mathcal{L}^{(0)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{i+u},\\
+%\mathcal{L}^{(2)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{i+u+},\\
 %\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u s_\varphi^v\left(k^2-s^2_\varphi\right)^{3/2},
 \mathcal{J}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^{2v}_\varphi\left(1-k^{-2}s^2_\varphi\right)^{3/2},\\
 %\mathcal{A}_{p,u,v} &=& \sum_{j=0}^{p} (-1)^{p+j} \binom{u}{p-j} \binom{v}{p}\delta^j.
 \end{eqnarray}
 
-The integrals $\mathcal{I}_v$ and $\mathcal{J}_v$ can be found exactly, using integral
+The integrals $\mathcal{I}_v$ and $\mathcal{J}_v$ can be found exactly, using the same integral
 reduction formulae as above.  With reduction, the function $\mathcal{I}_v$ can be expressed
 in terms of sums of powers of $\sin^{-1}k$, $k$ and $k_c=\sqrt{1-k^2}$, while $\mathcal{J}_v$ can be expressed
 as sums of complete elliptic integrals of $k^2$ times polynomials in $k^2$. However, the resulting
-recursion relations tend to be numerically unstable due to cancellation of low-order terms occurs
+recursion relations tend to be numerically unstable due to cancellation of low-order terms which occurs
 during recursion when $r \gg 1$.  To leading order in $k$, $\mathcal{I}_v \propto k^{2v+1}$
 and $\mathcal{J}_v \propto k^{2v+1}$.  Consequently, when these equations are computed by
 recursion in $v$, the lower powers of $k$ cancel out, leading to
@@ -3043,7 +3043,7 @@ round-off errors.  To avoid these cancellations, we start by computing $\mathcal
 $\mathcal{J}_{v_{max}}$, and $\mathcal{J}_{v_{max}-1}$, where
 where $v_{max}$ is the maximum value we need in computing $\mathcal{K}_{u,v}$ for
 $l_{max}$.  %  Give the explicit value of $v_{max}$ for given $l_{max}$. [ ]
-Applying integral reduction formulae, we obtain the recursion relations:
+Applying the integral reduction formulae, we obtain the downward recursion relations:
 \begin{eqnarray}
 \mathcal{I}_{v-1} &=&  \frac{2}{2v-1}\left[v\mathcal{I}_{v} + k^{2v-1}k_c\right],\\
 \mathcal{J}_{v-2} &=& \frac{1}{k^2(2v-3)}\left[2(v+vk^2+k_c^2)\mathcal{J}_{v-1}-(2v+3)\mathcal{J}_v \right].
@@ -3108,8 +3108,6 @@ converge rapidly, and so may be preferred over evaluating the Hypergeometric fun
 %We evaluate $J_{v_{max}}$ and $J_{v_{max}-1}$ with the series solution or hypergeometric
 %function for large $v_{max}$, and then iterate to find successively smaller values
 %of $v$ until $v=0$.
-
-{\color{red} Code up this formula, and check for accuracy in the $r > 1$ limit.}
 
 
 % ------------------------------------------------------------------------------
