@@ -13,11 +13,6 @@ Defines constants used throughout the code.
 #define STARRY_NMULTI                           32
 #endif
 
-// Smallest allowable map coefficient
-#ifndef STARRY_MAP_TOLERANCE
-#define STARRY_MAP_TOLERANCE                    1.0e-14
-#endif
-
 // Physical constants
 #ifndef BIGG
 #define BIGG                                    6.67428e-11                     // Gravitational constant in m^3/kg/s^2

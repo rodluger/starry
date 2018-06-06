@@ -27,6 +27,11 @@ PYBIND11_MODULE(starry, m) {
     auto mgrad = m.def_submodule("grad");
     add_starry(mgrad, docs_grad);
 
+    // starry.multi
+    docs<Multi> docs_multi;
+    auto mmulti = m.def_submodule("multi");
+    add_starry(mmulti, docs_multi);
+
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
 #else

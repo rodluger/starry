@@ -37,7 +37,8 @@ namespace orbital {
     template <class T> class Planet;
 
     // Re-definition of fmod so we can define its derivative below
-    double fmod(double numer, double denom) {
+    template <typename T>
+    T fmod(T numer, T denom) {
         return std::fmod(numer, denom);
     }
 
@@ -55,9 +56,10 @@ namespace orbital {
 
     // Compute the eccentric anomaly. Adapted from
     // https://github.com/lkreidberg/batman/blob/master/c_src/_rsky.c
-    double EccentricAnomaly(double& M, double& ecc, const double& eps, const int& maxiter) {
+    template <typename T>
+    T EccentricAnomaly(T& M, T& ecc, const double& eps, const int& maxiter) {
         // Initial condition
-        double E = M;
+        T E = M;
         if (ecc > 0) {
             // Iterate
             for (int iter = 0; iter <= maxiter; iter++) {
@@ -187,23 +189,23 @@ namespace orbital {
             // Constructor
             Body(// Map stuff
                  int lmax,
-                 const T& r,
-                 const T& L,
-                 const UnitVector<T>& axis,
-                 const T& prot,
+                 const double& r,
+                 const double& L,
+                 const UnitVector<double>& axis,
+                 const double& prot,
                  // Orbital stuff
-                 const T& a,
-                 const T& porb,
-                 const T& inc,
-                 const T& ecc,
-                 const T& w,
-                 const T& Omega,
-                 const T& lambda0,
-                 const T& tref,
+                 const double& a,
+                 const double& porb,
+                 const double& inc,
+                 const double& ecc,
+                 const double& w,
+                 const double& Omega,
+                 const double& lambda0,
+                 const double& tref,
                  bool is_star):
                  is_star(is_star),
                  lmax(lmax),
-                 axis(norm_unit(axis)),
+                 axis(norm_unit(axis).template cast<T>()),
                  prot(prot * DAY),
                  r(r),
                  L(L),
@@ -211,7 +213,7 @@ namespace orbital {
                  map{is_star ? Map<T>(0) : Map<T>(lmax)},
                  ldmap{is_star ? LimbDarkenedMap<T>(lmax) : LimbDarkenedMap<T>(0)},
                  // Map in the sky coordinates
-                 axis_sky(norm_unit(axis)),
+                 axis_sky(norm_unit(axis).template cast<T>()),
                  map_sky{is_star ? Map<T>(0) : Map<T>(lmax)},
                  a(a),
                  porb(porb * DAY),
@@ -305,8 +307,8 @@ namespace orbital {
             // If there's inclination or rotation of the orbital plane,
             // we need to rotate the sky map as well as the rotation axis
             if ((Omega != 0) || (sini < 1. - 2 * numeric_limits<T>::epsilon())) {
-                UnitVector<T> axis1 = UnitVector<T>(xhat);
-                UnitVector<T> axis2 = UnitVector<T>(zhat);
+                UnitVector<T> axis1 = xhat.template cast<T>();
+                UnitVector<T> axis2 = zhat.template cast<T>();
                 map_sky.rotate(axis1, M_PI_2 - inc);
                 map_sky.rotate(axis2, Omega);
                 axis_sky = rotation::AxisAngle(axis2, Omega) * (rotation::AxisAngle(axis1, T(M_PI_2 - inc)) * axis);
@@ -466,18 +468,18 @@ namespace orbital {
     class Planet : public Body<T> {
         public:
             Planet(int lmax=2,
-                   const T& r=0.1,
-                   const T& L=0.,
-                   const UnitVector<T>& axis=yhat,
-                   const T& prot=0.,
-                   const T& a=50.,
-                   const T& porb=1.,
-                   const T& inc=90.,
-                   const T& ecc=0.,
-                   const T& w=90.,
-                   const T& Omega=0.,
-                   const T& lambda0=90.,
-                   const T& tref=0.) :
+                   const double& r=0.1,
+                   const double& L=0.,
+                   const UnitVector<double>& axis=yhat,
+                   const double& prot=0.,
+                   const double& a=50.,
+                   const double& porb=1.,
+                   const double& inc=90.,
+                   const double& ecc=0.,
+                   const double& w=90.,
+                   const double& Omega=0.,
+                   const double& lambda0=90.,
+                   const double& tref=0.) :
                    Body<T>(lmax, r, L, axis, prot,
                            a, porb, inc,
                            ecc, w, Omega, lambda0, tref,

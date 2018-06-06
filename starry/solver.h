@@ -140,11 +140,11 @@ namespace solver {
         } else if (G.b() == 0) {
             // Special case
             return pow(1 - G.r(2), 1.5) * G.I(u, v);
-        } else if ((G.taylor || is_bigdouble(G.b())) && (G.b() < STARRY_B_THRESH_J<T>(G.r()))) {
+        } else if ((G.taylor || is_Multi(G.b())) && (G.b() < STARRY_B_THRESH_J<T>(G.r()))) {
             // Normally we don't do any approximations/re-parametrizations when using multiprecision,
             // but it turns out that `J` is **extremely** unstable at very small impact parameter.
             // Instabilities in `J` take hold for `b` as high as 1e-6, even for 128 **digits** of precision
-            // (that's ~ **hexadecuple** precision), so we Taylor expand when type `T` is `bigdouble`.
+            // (that's ~ **hexadecuple** precision), so we Taylor expand when type `T` is `Multi`.
             return taylor::computeJ(G, u, v);
         } else {
             for (int i = 0; i < v + 1; i++) {
@@ -626,7 +626,7 @@ namespace solver {
                 G.m = m;
                 G.mu = l - m;
                 G.nu = l + m;
-                if (abs(y(n)) > STARRY_MAP_TOLERANCE) {
+                if (abs(y(n)) > 10 * std::numeric_limits<T>::epsilon()) {
                     if ((l == 1) && (m == 0))
                         G.sT(n) = s2(G);
                     // These terms are zero because they are proportional to

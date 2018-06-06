@@ -24,11 +24,9 @@ namespace docstrings {
         const char * g;
         const char * s;
         const char * r;
-        const char * s_mp;
         const char * optimize;
         const char * evaluate;
         const char * flux;
-        const char * flux_mp;
         const char * flux_numerical;
         const char * rotate;
         const char * minimum;
@@ -96,10 +94,6 @@ namespace docstrings {
                 The current solution vector `r`. *Read-only.*
             )pbdoc";
 
-            s_mp = R"pbdoc(
-                The current multi-precision solution vector `s`. Only available after :py:meth:`flux_mp` has been called. *Read-only.*
-            )pbdoc";
-
             optimize = R"pbdoc(
                 Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
                 computing occultation light curves. This is in general not something you should do! \
@@ -136,45 +130,6 @@ namespace docstrings {
                 Returns:
                     The flux received by the observer (a scalar or a vector).
             )pbdoc";
-
-            flux_mp = R"pbdoc(
-                Return the total flux received by the observer, computed using multi-precision.
-                Computes the total flux received by the observer from the
-                map during or outside of an occultation. By default, this method
-                performs all occultation calculations using 128-bit (quadruple) floating point
-                precision, corresponding to 32 significant digits. Users can increase this to any
-                number of digits (RAM permitting) by setting the :py:obj:`STARRY_NMULTI=XX` flag
-                at compile time. Note, importantly, that run times are **much** slower for multi-precision
-                calculations.
-
-                Args:
-                    axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
-                    theta (float or ndarray): Angle of rotation. Default 0.
-                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
-                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
-                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
-
-                Returns:
-                    The flux received by the observer (a scalar or a vector).
-            )pbdoc";
-
-            flux_numerical = R"pbdoc(
-                Return the total flux received by the observer, computed numerically.
-                Computes the total flux received by the observer from the
-                map during or outside of an occultation. The flux is computed
-                numerically using an adaptive radial mesh.
-
-                Args:
-                    axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
-                    theta (float or ndarray): Angle of rotation. Default 0.
-                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
-                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
-                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
-                    tol (float): Tolerance of the numerical solver. Default `1.e-4`
-
-                Returns:
-                    The flux received by the observer (a scalar or a vector).
-                )pbdoc";
 
             rotate = R"pbdoc(
                 Rotate the base map an angle :py:obj:`theta` about :py:obj:`axis`.
@@ -288,7 +243,6 @@ namespace docstrings {
                 .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
                 .. automethod:: rotate(axis=(0, 1, 0), theta=0)
                 .. automethod:: flux_numerical(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0, tol=1.e-4)
-                .. automethod:: flux_mp(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
                 .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l, m)
                 .. automethod:: set_coeff(l, m, coeff)
@@ -298,7 +252,6 @@ namespace docstrings {
                 .. autoattribute:: p
                 .. autoattribute:: g
                 .. autoattribute:: s
-                .. autoattribute:: s_mp
                 .. autoattribute:: r
                 .. automethod:: minimum()
                 .. automethod:: add_gaussian()
@@ -307,7 +260,59 @@ namespace docstrings {
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
                 .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
-                .. autoattribute:: nmulti
+            )pbdoc";
+
+        flux_numerical = R"pbdoc(
+            Return the total flux received by the observer, computed numerically.
+            Computes the total flux received by the observer from the
+            map during or outside of an occultation. The flux is computed
+            numerically using an adaptive radial mesh.
+
+            Args:
+                axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
+                theta (float or ndarray): Angle of rotation. Default 0.
+                xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
+                yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
+                ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+                tol (float): Tolerance of the numerical solver. Default `1.e-4`
+
+            Returns:
+                The flux received by the observer (a scalar or a vector).
+            )pbdoc";
+
+    };
+
+    template <>
+    void Map_<Multi>::add_extras() {
+
+        doc = R"pbdoc(
+                Instantiate a :py:mod:`starry` surface map. Maps instantiated in this fashion
+                are *orthonormalized*, so the total integrated luminosity of the map is
+                :math:`2\sqrt{\pi} Y_{0,0}`.
+
+                Args:
+                    lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
+
+                .. autoattribute:: optimize
+                .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
+                .. automethod:: rotate(axis=(0, 1, 0), theta=0)
+                .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
+                .. automethod:: get_coeff(l, m)
+                .. automethod:: set_coeff(l, m, coeff)
+                .. automethod:: reset()
+                .. autoattribute:: lmax
+                .. autoattribute:: y
+                .. autoattribute:: p
+                .. autoattribute:: g
+                .. autoattribute:: s
+                .. autoattribute:: r
+                .. automethod:: minimum()
+                .. automethod:: add_gaussian()
+                .. automethod:: load_array(image)
+                .. automethod:: load_image(image)
+                .. automethod:: load_healpix(image)
+                .. automethod:: show(cmap='plasma', res=300)
+                .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
             )pbdoc";
 
     };
@@ -343,8 +348,6 @@ namespace docstrings {
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
                 .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
-                .. autoattribute:: nmulti
-                .. autoattribute:: ngrad
         )pbdoc";
 
         gradient = R"pbdoc(
@@ -367,11 +370,9 @@ namespace docstrings {
         const char * g;
         const char * s;
         const char * u;
-        const char * s_mp;
         const char * optimize;
         const char * evaluate;
         const char * flux;
-        const char * flux_mp;
         const char * flux_numerical;
         const char * roots;
         const char * show;
@@ -437,10 +438,6 @@ namespace docstrings {
                 The limb darkening coefficient vector. *Read-only.*
             )pbdoc";
 
-            s_mp = R"pbdoc(
-                The current multi-precision solution vector `s`. Only available after :py:meth:`flux_mp` has been called. *Read-only.*
-            )pbdoc";
-
             optimize = R"pbdoc(
                 Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
                 computing occultation light curves. This is in general not something you should do! \
@@ -471,41 +468,6 @@ namespace docstrings {
                 Returns:
                     The flux received by the observer (a scalar or a vector).
             )pbdoc";
-
-            flux_mp = R"pbdoc(
-                Return the total flux received by the observer, computed using multi-precision.
-                Computes the total flux received by the observer from the
-                map during or outside of an occultation. By default, this method
-                performs all occultation calculations using 128-bit (quadruple) floating point
-                precision, corresponding to 32 significant digits. Users can increase this to any
-                number of digits (RAM permitting) by setting the :py:obj:`STARRY_NMULTI=XX` flag
-                at compile time. Note, importantly, that run times are **much** slower for multi-precision
-                calculations.
-
-                Args:
-                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
-                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
-                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
-
-                Returns:
-                    The flux received by the observer (a scalar or a vector).
-            )pbdoc";
-
-            flux_numerical = R"pbdoc(
-                Return the total flux received by the observer, computed numerically.
-                Computes the total flux received by the observer from the
-                map during or outside of an occultation. The flux is computed
-                numerically using an adaptive radial mesh.
-
-                Args:
-                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
-                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
-                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
-                    tol (float): Tolerance of the numerical solver. Default `1.e-4`
-
-                Returns:
-                    The flux received by the observer (a scalar or a vector).
-                )pbdoc";
 
             show = R"pbdoc(
                 Convenience routine to quickly display the body's surface map.
@@ -544,7 +506,6 @@ namespace docstrings {
                 .. autoattribute:: optimize
                 .. automethod:: evaluate(x=0, y=0)
                 .. automethod:: flux_numerical(xo=0, yo=0, ro=0, tol=1.e-4)
-                .. automethod:: flux_mp(xo=0, yo=0, ro=0)
                 .. automethod:: flux(xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l)
                 .. automethod:: set_coeff(l, coeff)
@@ -556,9 +517,62 @@ namespace docstrings {
                 .. autoattribute:: g
                 .. autoattribute:: u
                 .. autoattribute:: s
-                .. autoattribute:: s_mp
                 .. automethod:: show(cmap='plasma', res=300)
-                .. autoattribute:: nmulti
+        )pbdoc";
+
+        flux_numerical = R"pbdoc(
+            Return the total flux received by the observer, computed numerically.
+            Computes the total flux received by the observer from the
+            map during or outside of an occultation. The flux is computed
+            numerically using an adaptive radial mesh.
+
+            Args:
+                xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
+                yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
+                ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+                tol (float): Tolerance of the numerical solver. Default `1.e-4`
+
+            Returns:
+                The flux received by the observer (a scalar or a vector).
+            )pbdoc";
+
+    };
+
+    template <>
+    void LimbDarkenedMap_<Multi>::add_extras() {
+
+        doc = R"pbdoc(
+                Instantiate a :py:mod:`starry` limb-darkened surface map.
+                This differs from the base :py:class:`Map` class in that maps
+                instantiated this way are radially symmetric: only the radial (:py:obj:`m = 0`)
+                coefficients of the map are available. Users edit the map by directly
+                specifying the polynomial limb darkening coefficients :py:obj:`u`, starting
+                with :math:`u_1` (linear limb darkening). The coefficient :math:`u_0` is fixed to enforce
+                the correct normalization.
+
+                .. warning:: Unlike :py:class:`Map`, maps instantiated this \
+                             way are normalized so that the integral of the specific intensity over the \
+                             visible disk is unity. This is convenient for using this map to model \
+                             stars: the unocculted flux from the star is equal to one, regardless of the limb-darkening \
+                             coefficients!
+
+                Args:
+                    lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
+
+                .. autoattribute:: optimize
+                .. automethod:: evaluate(x=0, y=0)
+                .. automethod:: flux(xo=0, yo=0, ro=0)
+                .. automethod:: get_coeff(l)
+                .. automethod:: set_coeff(l, coeff)
+                .. automethod:: reset()
+                .. automethod:: roots()
+                .. autoattribute:: lmax
+                .. autoattribute:: y
+                .. autoattribute:: p
+                .. autoattribute:: g
+                .. autoattribute:: u
+                .. autoattribute:: s
+                .. automethod:: show(cmap='plasma', res=300)
         )pbdoc";
 
     };
@@ -599,8 +613,6 @@ namespace docstrings {
                 .. autoattribute:: u
                 .. autoattribute:: s
                 .. automethod:: show(cmap='plasma', res=300)
-                .. autoattribute:: nmulti
-                .. autoattribute:: ngrad
         )pbdoc";
 
         gradient = R"pbdoc(
@@ -623,7 +635,7 @@ namespace docstrings {
         const char * kepler_max_iter;
         const char * kepler_tol;
         const char * gradient;
-        void add_extras() {};
+        void add_extras();
 
         System_(){
 
@@ -676,8 +688,8 @@ namespace docstrings {
 
     };
 
-    template <>
-    void System_<double>::add_extras() {
+    template <typename T>
+    void System_<T>::add_extras() {
 
         doc = R"pbdoc(
                 Instantiate an orbital system.
@@ -771,7 +783,7 @@ namespace docstrings {
         const char * lambda0;
         const char * tref;
         const char * gradient;
-        void add_extras() {};
+        void add_extras();
 
         Body_(){
 
@@ -850,8 +862,8 @@ namespace docstrings {
 
     };
 
-    template <>
-    void Body_<double>::add_extras() {
+    template <typename T>
+    void Body_<T>::add_extras() {
 
     };
 
@@ -880,7 +892,7 @@ namespace docstrings {
         const char * map;
         const char * r;
         const char * L;
-        void add_extras() {};
+        void add_extras();
 
         Star_(){
 
@@ -902,8 +914,8 @@ namespace docstrings {
 
     };
 
-    template <>
-    void Star_<double>::add_extras() {
+    template <typename T>
+    void Star_<T>::add_extras() {
 
         doc = R"pbdoc(
            Instantiate a stellar :py:class:`Body` object.
@@ -943,7 +955,7 @@ namespace docstrings {
     class Planet_ {
     public:
         const char * doc;
-        void add_extras() {};
+        void add_extras();
 
         Planet_(){
 
@@ -953,8 +965,8 @@ namespace docstrings {
 
     };
 
-    template <>
-    void Planet_<double>::add_extras() {
+    template <typename T>
+    void Planet_<T>::add_extras() {
 
         doc = R"pbdoc(
             Instantiate a planetary :py:class:`Body` object.
@@ -1064,14 +1076,6 @@ namespace docstrings {
                 Method or attribute not implemented for this class.
             )pbdoc";
 
-            nmulti = R"pbdoc(
-                Number of digits used to perform multi-precision calculations.
-                Double precision roughly corresponds to 16, and quadruple
-                precision (default) roughly corresponds 32.
-                This is a compile-time constant. If you wish to change it, you'll
-                have to re-compile :py:obj:`starry`. See :doc:`install` for more information.
-            )pbdoc";
-
             add_extras();
 
         }
@@ -1130,6 +1134,71 @@ namespace docstrings {
             .. autoclass:: Star()
             .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
             .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
+        )pbdoc";
+
+    };
+
+    template <>
+    void docs<Multi>::add_extras() {
+
+        doc = R"pbdoc(
+            starry
+            ------
+
+            .. contents::
+                :local:
+
+            Introduction
+            ============
+
+            This page documents the :py:mod:`starry` API, which is coded
+            in C++ with a :py:mod:`pybind11` Python interface. The API consists
+            of a :py:class:`Map` class, which houses all of the surface map photometry
+            stuff, and the :py:class:`Star`, :py:class:`Planet`, and :py:class:`System`
+            classes, which facilitate the generation of light curves for actual
+            stellar and planetary systems. There are two broad ways in which users can access
+            the core :py:mod:`starry` functionality:
+
+                - Users can instantiate a :py:class:`Map` class to compute phase curves
+                  and occultation light curves by directly specifying the rotational state
+                  of the object and (optionally) the position and size of an occultor.
+                  Users can also instantiate a :py:class:`LimbDarkenedMap` class for
+                  radially-symmetric stellar surfaces. Both cases
+                  may be particularly useful for users who wish to integrate :py:mod:`starry`
+                  with their own dynamical code or for users wishing to compute simple light
+                  curves without any orbital solutions.
+
+                - Users can instantiate a :py:class:`Star` and one or more :py:class:`Planet`
+                  objects and feed them into a :py:class:`System` instance for integration
+                  with the Keplerian solver. All :py:class:`Star` and :py:class:`Planet`
+                  instances have a :py:obj:`map <>` attribute that allows users to customize
+                  the surface map prior to computing the system light curve.
+
+            At present, :py:mod:`starry` uses a simple Keplerian solver to compute orbits, so
+            the second approach listed above is limited to systems with low mass planets that
+            do not exhibit transit timing variations. The next version will include integration
+            with an N-body solver, so stay tuned!
+
+
+            The Map classes
+            ===============
+            .. autoclass:: Map(lmax=2)
+            .. autoclass:: LimbDarkenedMap(lmax=2)
+
+
+            The orbital classes
+            ===================
+            .. autoclass:: Star()
+            .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
+            .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
+        )pbdoc";
+
+        nmulti = R"pbdoc(
+            Number of digits used to perform multi-precision calculations.
+            Double precision roughly corresponds to 16, and quadruple
+            precision (default) roughly corresponds 32.
+            This is a compile-time constant. If you wish to change it, you'll
+            have to re-compile :py:obj:`starry`. See :doc:`install` for more information.
         )pbdoc";
 
     };

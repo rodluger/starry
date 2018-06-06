@@ -91,11 +91,11 @@ namespace tables {
     }
 
     template <>
-    bigdouble sqrt_int(int n) {
+    Multi sqrt_int(int n) {
         if (n < 0)
             throw errors::BadIndex();
         else
-            return sqrt(bigdouble(n));
+            return sqrt(Multi(n));
     }
 
     // Inverse of the square root of n
@@ -110,11 +110,11 @@ namespace tables {
     }
 
     template <>
-    bigdouble invsqrt_int(int n) {
+    Multi invsqrt_int(int n) {
         if (n < 0)
             throw errors::BadIndex();
         else
-            return 1.0 / sqrt(bigdouble(n));
+            return 1.0 / sqrt(Multi(n));
     }
 
     // Factorial of n
@@ -129,11 +129,11 @@ namespace tables {
     }
 
     template <>
-    inline bigdouble factorial(int n) {
+    inline Multi factorial(int n) {
         if (n < 0)
             throw errors::BadIndex();
         else
-            return boost::math::factorial<bigdouble>(n);
+            return boost::math::factorial<Multi>(n);
     }
 
     // Factorial of (n / 2)
@@ -150,8 +150,17 @@ namespace tables {
     }
 
     template <>
-    inline bigdouble half_factorial(int n) {
-        return boost::math::tgamma<bigdouble>(1.0 + n / 2.0);
+    inline Multi half_factorial(int n) {
+        if (n % 2 == 0) {
+            if (n < 0)
+                return Multi(INFINITY);
+            else if (n == 0)
+                return 1;
+            else
+                return boost::math::factorial<Multi>(n / 2);
+        } else {
+            return boost::math::tgamma<Multi>(1.0 + n / 2.0);
+        }
     }
 
     // Binomial coefficient
