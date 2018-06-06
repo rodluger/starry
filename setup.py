@@ -92,7 +92,7 @@ class BuildExt(build_ext):
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' %
                         self.distribution.get_version())
-            opts.append('-std=c++1y')
+            opts.append('-std=c++14')
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
         elif ct == 'msvc':

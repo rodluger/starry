@@ -7,9 +7,11 @@ language: c
 
 addons:
     apt:
+        sources:
+            - ubuntu-toolchain-r-test
         packages:
-            - gcc-4.8
-            - g++-4.8
+            - gcc-5.2
+            - g++-5.2
 
 matrix:
     include:
