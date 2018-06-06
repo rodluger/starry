@@ -18,7 +18,12 @@ Miscellaneous stuff used throughout the code.
 #include <boost/multiprecision/cpp_dec_float.hpp>
 typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
 typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off> bigdouble;
-#define BIGPI                                   bigdouble("3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117068")
+
+// PI to 150 digits
+#define BIGPI bigdouble("3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067982148086513282306647093844609550582231725359408128")
+#if STARRY_NMULTI > 150
+#error "Currently, PI is computed to a maximum of 150 digits of precision. If you **really** need `STARRY_NMULTI` > 150, you will need to re-define the `BIGPI` macro in `utils.h`."
+#endif
 
 // Our custom vector types
 template <typename T>

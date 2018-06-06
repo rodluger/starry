@@ -13,11 +13,6 @@ Defines constants used throughout the code.
 #define STARRY_NMULTI                           32
 #endif
 
-// Tabulated functions
-#ifndef STARRY_NTABLE
-#define STARRY_NTABLE                           200
-#endif
-
 // Smallest allowable map coefficient
 #ifndef STARRY_MAP_TOLERANCE
 #define STARRY_MAP_TOLERANCE                    1.0e-14

@@ -18,6 +18,9 @@ using good old template metaprogramming (>= C++14)
 // Largest factorial computable at double precision
 #define MAXFACT 170
 
+// Largest square root we're willing to tabulate
+#define MAXSQRT 300
+
 namespace tables {
 
     double constexpr sqrt_rec(double x, double curr, double prev) {
@@ -49,20 +52,23 @@ namespace tables {
 
     // The table of values, coded using the (prettier) C++14 syntax for `constexpr`.
     // If needed, we could re-code this for C++11...
-    template <int N>
     struct Table {
 
-        double sqrt_int[N];
-        double invsqrt_int[N];
-        double factorial[N];
-        double half_factorial_pos[N];
-        double half_factorial_neg[N];
+        double sqrt_int[MAXSQRT + 1];
+        double invsqrt_int[MAXSQRT + 1];
+        double factorial[MAXFACT + 1];
+        double half_factorial_pos[2 * MAXFACT + 1];
+        double half_factorial_neg[2 * MAXFACT + 1];
 
         constexpr Table() : sqrt_int(), invsqrt_int(), factorial(), half_factorial_pos(), half_factorial_neg() {
-            for (auto i = 0; i < N; ++i) {
+            for (auto i = 0; i <= MAXSQRT; ++i) {
                 sqrt_int[i] = sqrt_(i);
                 invsqrt_int[i] = i > 0 ? 1. / sqrt_int[i] : INFINITY;
+            }
+            for (auto i = 0; i <= MAXFACT; ++i) {
                 factorial[i] = factorial_(i);
+            }
+            for (auto i = 0; i <= 2 * MAXFACT; ++i) {
                 half_factorial_pos[i] = half_factorial_pos_(i);
                 half_factorial_neg[i] = half_factorial_neg_(i);
             }
@@ -71,14 +77,14 @@ namespace tables {
     };
 
     // Instantiate the table
-    constexpr auto table = Table<STARRY_NTABLE>();
+    constexpr auto table = Table();
 
     // Square root of n
     template <typename T>
     T sqrt_int(int n) {
         if (n < 0)
             throw errors::BadIndex();
-        else if (n >= STARRY_NTABLE)
+        else if (n > MAXSQRT)
             return sqrt(T(n));
         else
             return T(table.sqrt_int[n]);
@@ -97,7 +103,7 @@ namespace tables {
     T invsqrt_int(int n) {
         if (n < 0)
             throw errors::BadIndex();
-        else if (n >= STARRY_NTABLE)
+        else if (n > MAXSQRT)
             return sqrt(T(n));
         else
             return T(table.invsqrt_int[n]);
@@ -116,7 +122,7 @@ namespace tables {
     inline T factorial(int n) {
         if (n < 0)
             throw errors::BadIndex();
-        else if (n >= STARRY_NTABLE)
+        else if (n > MAXFACT)
             return T(boost::math::factorial<double>(n));
         else
             return T(table.factorial[n]);
@@ -133,7 +139,7 @@ namespace tables {
     // Factorial of (n / 2)
     template <typename T>
     inline T half_factorial(int n) {
-        if (n >= STARRY_NTABLE)
+        if (n > 2 * MAXFACT)
             return T(boost::math::tgamma<double>(1.0 + n / 2.0));
         else {
             if (n < 0)
