@@ -1,5 +1,5 @@
 """Numerical stability tests."""
-from starry import Map
+import starry
 import matplotlib.pyplot as pl
 import numpy as np
 cmap = pl.get_cmap('plasma')
@@ -10,7 +10,7 @@ def earth_eclipse(lmax=8):
     npts = 1000
 
     # Create our map
-    m = Map(lmax)
+    m = starry.Map(lmax)
     m.load_image('earth')
 
     # Compute. Ingress duration is
@@ -20,7 +20,11 @@ def earth_eclipse(lmax=8):
     time = np.linspace(0, 7 * 1.5, npts)
     xo = np.linspace(-(ro + 1.5), -(ro - 1.5), npts, -1)
     flux = np.array(m.flux(xo=xo, yo=yo, ro=ro))
-    flux128 = np.array(m.flux_mp(xo=xo, yo=yo, ro=ro))
+
+    # Compute at high precision
+    m128 = starry.multi.Map(lmax)
+    m128[:] = m[:]
+    flux128 = np.array(m128.flux(xo=xo, yo=yo, ro=ro))
 
     # Show
     fig = pl.figure(figsize=(7, 6))

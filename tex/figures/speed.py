@@ -114,7 +114,7 @@ def compare_to_numerical():
                                             yo=b, ro=r)[0]
 
         def fmesh(self):
-            self.vmesh = self.ylm.flux_numerical(yo=b, ro=r)
+            self.vmesh = self.ylm._flux_numerical(yo=b, ro=r)
 
         def fgrid(self):
             self.vgrid = GridFlux(lambda y, x:

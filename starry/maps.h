@@ -24,16 +24,17 @@ namespace maps {
     using std::string;
 
     // Constant matrices/vectors
+    template <class T>
     class Constants {
 
         public:
 
             int lmax;
-            Eigen::SparseMatrix<double> A1;
-            Eigen::SparseMatrix<double> A;
-            VectorT<double> rTA1;
-            VectorT<double> rT;
-            Matrix<double> U;
+            Eigen::SparseMatrix<T> A1;
+            Eigen::SparseMatrix<T> A;
+            VectorT<T> rTA1;
+            VectorT<T> rT;
+            Matrix<T> U;
 
             // Constructor: compute the matrices
             Constants(int lmax) : lmax(lmax) {
@@ -46,6 +47,42 @@ namespace maps {
 
     };
 
+    // No need to autodifferentiate these, since they are constant!
+    template <>
+    class Constants<Grad> {
+
+            Eigen::SparseMatrix<double> D_A1;
+            Eigen::SparseMatrix<double> D_A;
+            VectorT<double> D_rTA1;
+            VectorT<double> D_rT;
+            Matrix<double> D_U;
+
+        public:
+
+            int lmax;
+            Eigen::SparseMatrix<Grad> A1;
+            Eigen::SparseMatrix<Grad> A;
+            VectorT<Grad> rTA1;
+            VectorT<Grad> rT;
+            Matrix<Grad> U;
+
+            // Constructor: compute the matrices
+            Constants(int lmax) : lmax(lmax) {
+                // Do things in double
+                basis::computeA1(lmax, D_A1);
+                basis::computeA(lmax, D_A1, D_A);
+                solver::computerT(lmax, D_rT);
+                D_rTA1 = D_rT * D_A1;
+                basis::computeU(lmax, D_U);
+                // Cast to Grad
+                A1 = D_A1.cast<Grad>();
+                A = D_A.cast<Grad>();
+                rTA1 = D_rTA1.cast<Grad>();
+                rT = D_rT.cast<Grad>();
+                U = D_U.cast<Grad>();
+            }
+
+    };
 
     // ****************************
     // ----------------------------
@@ -86,23 +123,20 @@ namespace maps {
             bool Y00_is_unity;
 
             // Derivatives dictionary
-            std::map<string, Eigen::VectorXd> derivs;
+            std::map<string, Vector<double>> derivs;
 
             // Rotation matrices
             rotation::Wigner<T> R;
 
             // Constant matrices
-            Constants C;
+            Constants<T> C;
 
             // Greens data
-            Vector<bigdouble> mpVec;
-            solver::Greens<bigdouble> mpG;
             solver::Greens<T> G;
 
             // Constructor: initialize map to zeros
             Map(int lmax=2) :
                   lmax(lmax), R(lmax), C(lmax),
-                  mpG(lmax, false),
                   G(lmax, true) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
@@ -110,7 +144,6 @@ namespace maps {
                 g = Vector<T>::Zero(N);
                 tmpvec = Vector<T>::Zero(N);
                 ARRy = Vector<T>::Zero(N);
-                mpVec = Vector<bigdouble>::Zero(N);
                 tmpscalar = NAN;
                 tmpu1 = 0;
                 tmpu2 = 0;
@@ -206,7 +239,7 @@ namespace maps {
         // Compute the polynomial basis where it is needed
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
-                if (abs((*ptrmap)(n)) < STARRY_MAP_TOLERANCE) {
+                if (abs((*ptrmap)(n)) < 10 * mach_eps<T>()) {
                     basis(n) = 0 * x0;
                 } else {
                     mu = l - m;
@@ -294,61 +327,6 @@ namespace maps {
         // Compute the flux numerically
         tmpvec = C.A1 * (*ptry);
         return numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
-
-    }
-
-    // Compute the total flux during or outside of an occultation using
-    // multi-precision. This is *much* slower (~20x) than using doubles.
-    template <class T>
-    T Map<T>::flux_mp(const UnitVector<T>& axis, const T& theta, const T& xo, const T& yo, const T& ro) {
-
-        // Impact parameter
-        T b = sqrt(xo * xo + yo * yo);
-
-        // Check for complete occultation
-        if (b <= ro - 1) return 0;
-
-        // Pointer to the map we're integrating
-        // (defaults to the base map)
-        Vector<T>* ptry = &y;
-
-        // Rotate the map into view if necessary and update our pointer
-        if (theta != 0) {
-            rotate(axis, theta, (*ptry), tmpvec);
-            ptry = &tmpvec;
-        }
-
-        // No occultation: cake
-        if ((b >= 1 + ro) || (ro == 0)) {
-
-            return C.rTA1 * (*ptry);
-
-        // Occultation
-        } else {
-
-            // Align occultor with the +y axis if necessary
-            if ((b > 0) && (xo != 0)) {
-                UnitVector<T> zaxis = UnitVector<T>(zhat);
-                T yo_b(yo / b);
-                T xo_b(xo / b);
-                rotate(zaxis, yo_b, xo_b, (*ptry), tmpvec);
-                ptry = &tmpvec;
-            }
-
-            // Perform the rotation + change of basis
-            ARRy = C.A * (*ptry);
-
-            // Compute sT using Boost multiprecision
-            mpVec = ARRy.template cast<bigdouble>();
-            bigdouble mpb = b;
-            bigdouble mpro = ro;
-            solver::computesT<bigdouble>(mpG, mpb, mpro, mpVec);
-
-            // Dot the result in
-            bigdouble tmp = mpG.sT * mpVec;
-            return (T) tmp;
-
-        }
 
     }
 
@@ -457,7 +435,7 @@ namespace maps {
         os << "<STARRY Map: ";
         for (int l = 0; l < lmax + 1; l++) {
             for (int m = -l; m < l + 1; m++) {
-                if (abs(get_value(y(n))) > STARRY_MAP_TOLERANCE){
+                if (abs(get_value(y(n))) > 10 * mach_eps<T>()){
                     // Separator
                     if ((nterms > 0) && (get_value(y(n)) > 0)) {
                         os << " + ";
@@ -470,7 +448,7 @@ namespace maps {
                     if ((get_value(y(n)) == 1) || (get_value(y(n)) == -1)) {
                         sprintf(buf, "Y_{%d,%d}", l, m);
                         os << buf;
-                    } else if (fmod(abs(get_value(y(n))), 1.0) < STARRY_MAP_TOLERANCE) {
+                    } else if (fmod(abs(get_value(y(n))), 1.0) < 10 * mach_eps<T>()) {
                         sprintf(buf, "%d Y_{%d,%d}", (int)abs(get_value(y(n))), l, m);
                         os << buf;
                     } else if (fmod(abs(get_value(y(n))), 1.0) >= 0.01) {
@@ -527,17 +505,14 @@ namespace maps {
             std::map<string, Eigen::VectorXd> derivs;
 
             // Constant matrices
-            Constants C;
+            Constants<T> C;
 
             // Greens data
-            Vector<bigdouble> mpVec;
-            solver::Greens<bigdouble> mpG;
             solver::Greens<T> G;
 
             // Constructor: initialize map to zeros
             LimbDarkenedMap(int lmax=2) :
                   lmax(lmax), C(lmax),
-                  mpG(lmax, false),
                   G(lmax, true) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
@@ -547,7 +522,6 @@ namespace maps {
                 tmpy = Vector<T>::Zero(lmax + 1);
                 tmpvec = Vector<T>::Zero(N);
                 ARRy = Vector<T>::Zero(N);
-                mpVec = Vector<bigdouble>::Zero(N);
                 basis.resize(N, 1);
                 reset();
                 update();
@@ -649,7 +623,7 @@ namespace maps {
         // Compute the polynomial basis where it is needed
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
-                if (abs(p(n)) < STARRY_MAP_TOLERANCE) {
+                if (abs(p(n)) < 10 * mach_eps<T>()) {
                     basis(n) = 0 * x0;
                 } else {
                     mu = l - m;
@@ -682,42 +656,6 @@ namespace maps {
         // Compute it numerically
         tmpvec = C.A1 * y;
         return numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
-
-    }
-
-    // Compute the total flux during or outside of an occultation using
-    // multi-precision. This is *much* slower (~20x) than using doubles.
-    template <class T>
-    T LimbDarkenedMap<T>::flux_mp(const T& xo, const T& yo, const T& ro) {
-
-        // Impact parameter
-        T b = sqrt(xo * xo + yo * yo);
-
-        // Check for complete occultation
-        if (b <= ro - 1) return 0;
-
-        // No occultation: cake
-        if ((b >= 1 + ro) || (ro == 0)) {
-
-            return 1.0;
-
-        // Occultation
-        } else {
-
-            // Perform the change of basis
-            ARRy = C.A * y;
-
-            // Compute sT using Boost multiprecision
-            mpVec = ARRy.template cast<bigdouble>();
-            bigdouble mpb = b;
-            bigdouble mpro = ro;
-            solver::computesT<bigdouble>(mpG, mpb, mpro, mpVec);
-
-            // Dot the result in
-            bigdouble tmp = mpG.sT * mpVec;
-            return (T) tmp;
-
-        }
 
     }
 

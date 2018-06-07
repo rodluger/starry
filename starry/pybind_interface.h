@@ -3,6 +3,9 @@ This defines the main Python interface to the code.
 
 */
 
+#ifndef _STARRY_PYBIND_H_
+#define _STARRY_PYBIND_H_
+
 #include <iostream>
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
@@ -32,17 +35,7 @@ void add_Map_extras<double>(py::class_<maps::Map<double>>& PyMap, const docstrin
 
     PyMap
 
-        .def_property_readonly("s_mp", [](maps::Map<double> &map){
-                VectorT<double> sT = map.mpG.sT.template cast<double>();
-                return sT;
-            }, docs.Map.s_mp)
-
-        .def("flux_mp", [](maps::Map<double>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
-                UnitVector<double> axis_norm = norm_unit(axis);
-                return vectorize_map_flux_mp(axis_norm, theta, xo, yo, ro, map);
-            }, docs.Map.flux, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
-
-        .def("flux_numerical", [](maps::Map<double>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro, double tol) {
+        .def("_flux_numerical", [](maps::Map<double>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro, double tol) {
                 UnitVector<double> axis_norm = norm_unit(axis);
                 return vectorize_map_flux_numerical(axis_norm, theta, xo, yo, ro, tol, map);
             }, docs.Map.flux_numerical, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4);
@@ -55,9 +48,7 @@ void add_Map_extras<Grad>(py::class_<maps::Map<Grad>>& PyMap, const docstrings::
 
         .def_property_readonly("gradient", [](maps::Map<Grad> &map){
                 return py::cast(map.derivs);
-            }, docs.Map.gradient)
-
-        .def_property_readonly("ngrad", [](maps::Map<Grad> &map){return STARRY_NGRAD;}, docs.ngrad);
+            }, docs.Map.gradient);
 }
 
 template <typename MAPTYPE>
@@ -145,8 +136,6 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
 
         .def("reset", &maps::Map<MAPTYPE>::reset, docs.Map.reset)
 
-        .def_property_readonly("nmulti", [](maps::Map<MAPTYPE> &map){return STARRY_NMULTI;}, docs.nmulti)
-
         .def_property_readonly("lmax", [](maps::Map<MAPTYPE> &map){return map.lmax;}, docs.Map.lmax)
 
         .def_property_readonly("y", [](maps::Map<MAPTYPE> &map){
@@ -183,7 +172,8 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
             }, docs.Map.flux, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("rotate", [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis, double theta){
-                UnitVector<MAPTYPE> axis_norm = UnitVector<MAPTYPE>(norm_unit(axis));
+                //UnitVector<MAPTYPE> axis_norm = UnitVector<MAPTYPE>(norm_unit(axis));
+                UnitVector<MAPTYPE> axis_norm = norm_unit(axis).template cast<MAPTYPE>();
                 map.rotate(axis_norm, theta * DEGREE);
             }, docs.Map.rotate, "axis"_a=yhat, "theta"_a=0)
 
@@ -207,9 +197,9 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 }
                 // We need to apply some rotations to get
                 // to the desired orientation
-                UnitVector<MAPTYPE> M_xhat(xhat);
-                UnitVector<MAPTYPE> M_yhat(yhat);
-                UnitVector<MAPTYPE> M_zhat(zhat);
+                UnitVector<MAPTYPE> M_xhat = xhat.template cast<MAPTYPE>();
+                UnitVector<MAPTYPE> M_yhat = yhat.template cast<MAPTYPE>();
+                UnitVector<MAPTYPE> M_zhat = zhat.template cast<MAPTYPE>();
                 MAPTYPE Pi(M_PI);
                 MAPTYPE PiOver2(M_PI / 2.);
                 map.rotate(M_xhat, PiOver2);
@@ -231,9 +221,9 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 }
                 // We need to apply some rotations to get
                 // to the desired orientation
-                UnitVector<MAPTYPE> M_xhat(xhat);
-                UnitVector<MAPTYPE> M_yhat(yhat);
-                UnitVector<MAPTYPE> M_zhat(zhat);
+                UnitVector<MAPTYPE> M_xhat = xhat.template cast<MAPTYPE>();
+                UnitVector<MAPTYPE> M_yhat = yhat.template cast<MAPTYPE>();
+                UnitVector<MAPTYPE> M_zhat = zhat.template cast<MAPTYPE>();
                 MAPTYPE Pi(M_PI);
                 MAPTYPE PiOver2(M_PI / 2.);
                 map.rotate(M_xhat, PiOver2);
@@ -255,9 +245,9 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 }
                 // We need to apply some rotations to get
                 // to the desired orientation
-                UnitVector<MAPTYPE> M_xhat(xhat);
-                UnitVector<MAPTYPE> M_yhat(yhat);
-                UnitVector<MAPTYPE> M_zhat(zhat);
+                UnitVector<MAPTYPE> M_xhat = xhat.template cast<MAPTYPE>();
+                UnitVector<MAPTYPE> M_yhat = yhat.template cast<MAPTYPE>();
+                UnitVector<MAPTYPE> M_zhat = zhat.template cast<MAPTYPE>();
                 MAPTYPE Pi(M_PI);
                 MAPTYPE PiOver2(M_PI / 2.);
                 map.rotate(M_xhat, PiOver2);
@@ -300,7 +290,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 Matrix<double> I;
                 I.resize(res, res);
                 Vector<double> x;
-                UnitVector<MAPTYPE> M_yhat(yhat);
+                UnitVector<MAPTYPE> M_yhat = yhat.template cast<MAPTYPE>();
                 x = Vector<double>::LinSpaced(res, -1, 1);
                 for (int i = 0; i < res; i++){
                     for (int j = 0; j < res; j++){
@@ -317,7 +307,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
             Vector<double> x, theta;
             x = Vector<double>::LinSpaced(res, -1, 1);
             theta = Vector<double>::LinSpaced(frames, 0, 2 * M_PI);
-            UnitVector<MAPTYPE> MapType_axis(norm_unit(axis));
+            UnitVector<MAPTYPE> MapType_axis = norm_unit(axis).template cast<MAPTYPE>();
             for (int t = 0; t < frames; t++){
                 I.push_back(Matrix<double>::Zero(res, res));
                 for (int i = 0; i < res; i++){
@@ -343,16 +333,7 @@ void add_LimbDarkenedMap_extras<double>(py::class_<maps::LimbDarkenedMap<double>
 
     PyLimbDarkenedMap
 
-        .def_property_readonly("s_mp", [](maps::LimbDarkenedMap<double> &map){
-                VectorT<double> sT = map.mpG.sT.template cast<double>();
-                return sT;
-            }, docs.LimbDarkenedMap.s_mp)
-
-        .def("flux_mp", [](maps::LimbDarkenedMap<double>& map, py::object& xo, py::object& yo, py::object& ro) {
-                return vectorize_ldmap_flux_mp(xo, yo, ro, map);
-            }, docs.LimbDarkenedMap.flux, "xo"_a=0, "yo"_a=0, "ro"_a=0)
-
-        .def("flux_numerical", [](maps::LimbDarkenedMap<double>& map, py::object& xo, py::object& yo, py::object& ro, double tol) {
+        .def("_flux_numerical", [](maps::LimbDarkenedMap<double>& map, py::object& xo, py::object& yo, py::object& ro, double tol) {
                 return vectorize_ldmap_flux_numerical(xo, yo, ro, tol, map);
             }, docs.LimbDarkenedMap.flux_numerical, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4);
 
@@ -365,9 +346,7 @@ void add_LimbDarkenedMap_extras<Grad>(py::class_<maps::LimbDarkenedMap<Grad>>& P
 
         .def_property_readonly("gradient", [](maps::LimbDarkenedMap<Grad> &map){
                 return py::cast(map.derivs);
-            }, docs.LimbDarkenedMap.gradient)
-
-        .def_property_readonly("ngrad", [](maps::LimbDarkenedMap<Grad> &map){return STARRY_NGRAD;}, docs.ngrad);
+            }, docs.LimbDarkenedMap.gradient);
 }
 
 template <typename MAPTYPE>
@@ -446,8 +425,6 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
 
         .def_property_readonly("lmax", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.lmax;}, docs.LimbDarkenedMap.lmax)
 
-        .def_property_readonly("nmulti", [](maps::LimbDarkenedMap<MAPTYPE> &map){return STARRY_NMULTI;}, docs.nmulti)
-
         .def_property_readonly("y", [](maps::LimbDarkenedMap<MAPTYPE> &map){
                 return get_value(map.y);
             }, docs.LimbDarkenedMap.y)
@@ -524,7 +501,7 @@ void add_System(py::class_<orbital::System<MAPTYPE>>& PySystem, const docstrings
         .def(py::init<vector<orbital::Body<MAPTYPE>*>, double, double, int, double, double, int>(),
             "bodies"_a, "scale"_a=0, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100, "exposure_time"_a=0, "exposure_tol"_a=1e-8, "exposure_max_depth"_a=4)
 
-        .def("compute", [](orbital::System<MAPTYPE> &system, Vector<double>& time){system.compute((Vector<MAPTYPE>)time);},
+        .def("compute", [](orbital::System<MAPTYPE> &system, Vector<double>& time){system.compute(time.template cast<MAPTYPE>());},
             docs.System.compute, "time"_a)
 
         .def_property_readonly("flux", [](orbital::System<MAPTYPE> &system){return get_value(system.flux);},
@@ -533,9 +510,9 @@ void add_System(py::class_<orbital::System<MAPTYPE>>& PySystem, const docstrings
         .def_property("scale", [](orbital::System<MAPTYPE> &system){return CLIGHT / (system.clight * RSUN);},
             [](orbital::System<MAPTYPE> &system, double scale){
                 if (scale == 0)
-                    system.clight = INFINITY;
+                    system.clight = MAPTYPE(INFINITY);
                 else
-                    system.clight = CLIGHT / (scale * RSUN);
+                    system.clight = MAPTYPE(CLIGHT / (scale * RSUN));
             }, docs.System.scale)
 
         .def_property("kepler_tol", [](orbital::System<MAPTYPE> &system){return system.eps;},
@@ -601,40 +578,40 @@ void add_Body(py::class_<orbital::Body<MAPTYPE>>& PyBody, const docstrings::docs
         .def_property_readonly("z", [](orbital::Body<MAPTYPE> &body){return get_value(body.z);}, docs.Body.z)
 
         .def_property("r", [](orbital::Body<MAPTYPE> &body){return get_value(body.r);},
-            [](orbital::Body<MAPTYPE> &body, double r){body.r = r;}, docs.Body.r)
+            [](orbital::Body<MAPTYPE> &body, double r){body.r = MAPTYPE(r);}, docs.Body.r)
 
         .def_property("L", [](orbital::Body<MAPTYPE> &body){return get_value(body.L);},
-            [](orbital::Body<MAPTYPE> &body, double L){body.L = L; body.reset();}, docs.Body.L)
+            [](orbital::Body<MAPTYPE> &body, double L){body.L = MAPTYPE(L); body.reset();}, docs.Body.L)
 
         .def_property("axis", [](orbital::Body<MAPTYPE> &body){return get_value((Vector<MAPTYPE>)body.axis);},
-            [](orbital::Body<MAPTYPE> &body, UnitVector<double> axis){body.axis = (Vector<MAPTYPE>)norm_unit(axis);}, docs.Body.axis)
+            [](orbital::Body<MAPTYPE> &body, UnitVector<double> axis){body.axis = norm_unit(axis).template cast<MAPTYPE>();}, docs.Body.axis)
 
         .def_property("prot", [](orbital::Body<MAPTYPE> &body){return get_value(body.prot) / DAY;},
-            [](orbital::Body<MAPTYPE> &body, double prot){body.prot = prot * DAY; body.reset();}, docs.Body.prot)
+            [](orbital::Body<MAPTYPE> &body, double prot){body.prot = MAPTYPE(prot * DAY); body.reset();}, docs.Body.prot)
 
         .def_property("a", [](orbital::Body<MAPTYPE> &body){return get_value(body.a);},
-            [](orbital::Body<MAPTYPE> &body, double a){body.a = a; body.reset();}, docs.Body.a)
+            [](orbital::Body<MAPTYPE> &body, double a){body.a = MAPTYPE(a); body.reset();}, docs.Body.a)
 
         .def_property("porb", [](orbital::Body<MAPTYPE> &body){return get_value(body.porb) / DAY;},
-            [](orbital::Body<MAPTYPE> &body, double porb){body.porb = porb * DAY; body.reset();}, docs.Body.porb)
+            [](orbital::Body<MAPTYPE> &body, double porb){body.porb = MAPTYPE(porb * DAY); body.reset();}, docs.Body.porb)
 
         .def_property("inc", [](orbital::Body<MAPTYPE> &body){return get_value(body.inc) / DEGREE;},
-            [](orbital::Body<MAPTYPE> &body, double inc){body.inc = inc * DEGREE; body.reset();}, docs.Body.inc)
+            [](orbital::Body<MAPTYPE> &body, double inc){body.inc = MAPTYPE(inc * DEGREE); body.reset();}, docs.Body.inc)
 
         .def_property("ecc", [](orbital::Body<MAPTYPE> &body){return get_value(body.ecc);},
-            [](orbital::Body<MAPTYPE> &body, double ecc){body.ecc = ecc; body.reset();}, docs.Body.ecc)
+            [](orbital::Body<MAPTYPE> &body, double ecc){body.ecc = MAPTYPE(ecc); body.reset();}, docs.Body.ecc)
 
         .def_property("w", [](orbital::Body<MAPTYPE> &body){return get_value(body.w) / DEGREE;},
-            [](orbital::Body<MAPTYPE> &body, double w){body.w = w * DEGREE; body.reset();}, docs.Body.w)
+            [](orbital::Body<MAPTYPE> &body, double w){body.w = MAPTYPE(w * DEGREE); body.reset();}, docs.Body.w)
 
         .def_property("Omega", [](orbital::Body<MAPTYPE> &body){return get_value(body.Omega) / DEGREE;},
-            [](orbital::Body<MAPTYPE> &body, double Omega){body.Omega = Omega * DEGREE; body.reset();}, docs.Body.Omega)
+            [](orbital::Body<MAPTYPE> &body, double Omega){body.Omega = MAPTYPE(Omega * DEGREE); body.reset();}, docs.Body.Omega)
 
         .def_property("lambda0", [](orbital::Body<MAPTYPE> &body){return get_value(body.lambda0) / DEGREE;},
-            [](orbital::Body<MAPTYPE> &body, double lambda0){body.lambda0 = lambda0 * DEGREE; body.reset();}, docs.Body.lambda0)
+            [](orbital::Body<MAPTYPE> &body, double lambda0){body.lambda0 = MAPTYPE(lambda0 * DEGREE); body.reset();}, docs.Body.lambda0)
 
         .def_property("tref", [](orbital::Body<MAPTYPE> &body){return get_value(body.tref) / DAY;},
-            [](orbital::Body<MAPTYPE> &body, double tref){body.tref = tref * DAY;}, docs.Body.tref)
+            [](orbital::Body<MAPTYPE> &body, double tref){body.tref = MAPTYPE(tref * DAY);}, docs.Body.tref)
 
         .def("__repr__", [](orbital::Body<MAPTYPE> &body) -> string {return body.repr();});
 
@@ -835,10 +812,26 @@ void add_Planet(py::class_<orbital::Planet<MAPTYPE>>& PyPlanet, const docstrings
 }
 
 template <typename MAPTYPE>
+void add_extras(py::module& m, const docstrings::docs<MAPTYPE>& docs) { }
+
+template <>
+void add_extras(py::module& m, const docstrings::docs<Multi>& docs) {
+    m.attr("NMULTI") = STARRY_NMULTI;
+}
+
+template <>
+void add_extras(py::module& m, const docstrings::docs<Grad>& docs) {
+    m.attr("NGRAD") = STARRY_NGRAD;
+}
+
+template <typename MAPTYPE>
 void add_starry(py::module& m, const docstrings::docs<MAPTYPE>& docs) {
 
     // Main docs
     m.doc() = docs.doc;
+
+    // Type-specific stuff
+    add_extras(m, docs);
 
     // Surface map class
     py::class_<maps::Map<MAPTYPE>> PyMap(m, "Map", docs.Map.doc);
@@ -865,3 +858,5 @@ void add_starry(py::module& m, const docstrings::docs<MAPTYPE>& docs) {
     add_Planet(PyPlanet, docs);
 
 }
+
+#endif
