@@ -15,14 +15,12 @@ def is_even(n):
 
 def StarrySExact(barr, r, lmax):
     """Compute s with starry multiprecision."""
-    map = starry.Map(lmax)
-    for ll in range(lmax + 1):
-        for mm in range(-ll, ll + 1):
-            map[ll, mm] = 1
+    map = starry.multi.Map(lmax)
+    map[:] = 1
     s = np.zeros(((lmax + 1) ** 2, len(barr)))
     for i in range(len(barr)):
-        map.flux_mp(xo=0, yo=barr[i], ro=r)
-        s[:, i] = map.s_mp
+        map.flux(xo=0, yo=barr[i], ro=r)
+        s[:, i] = map.s
     return s
 
 

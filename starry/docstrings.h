@@ -46,7 +46,7 @@ namespace docstrings {
 
                 .. note:: Users can also retrieve a coefficient by accessing the \
                           [:py:obj:`l`, :py:obj:`m`] index of the map as if it \
-                          were a 2D array.
+                          were a 2D array. Single slice indexing is also allowed.
 
                 Args:
                     l (int): The spherical harmonic degree, ranging from 0 to :py:attr:`lmax`.
@@ -58,7 +58,7 @@ namespace docstrings {
 
                 .. note:: Users can also set a coefficient by setting the \
                           [:py:obj:`l`, :py:obj:`m`] index of the map as if it \
-                          were a 2D array.
+                          were a 2D array. Single slice indexing is also allowed.
 
                 Args:
                     l (int): The spherical harmonic degree, ranging from 0 to :py:attr:`lmax`.
@@ -242,7 +242,6 @@ namespace docstrings {
                 .. autoattribute:: optimize
                 .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
                 .. automethod:: rotate(axis=(0, 1, 0), theta=0)
-                .. automethod:: flux_numerical(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0, tol=1.e-4)
                 .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l, m)
                 .. automethod:: set_coeff(l, m, coeff)
@@ -385,7 +384,8 @@ namespace docstrings {
                 Return the limb darkening coefficient of order :py:obj:`l`.
 
                 .. note:: Users can also retrieve a coefficient by accessing the \
-                          [:py:obj:`l`] index of the map as if it were an array.
+                          [:py:obj:`l`] index of the map as if it were an array. \
+                          Single slice indexing is also allowed.
 
                 Args:
                     l (int): The limb darkening order (> 0).
@@ -396,7 +396,7 @@ namespace docstrings {
 
                 .. note:: Users can also set a coefficient by setting the \
                           [:py:obj:`l`] index of the map as if it \
-                          were an array.
+                          were an array. Single slice indexing is also allowed.
 
                 Args:
                     l (int): The limb darkening order (> 0).
@@ -505,7 +505,6 @@ namespace docstrings {
 
                 .. autoattribute:: optimize
                 .. automethod:: evaluate(x=0, y=0)
-                .. automethod:: flux_numerical(xo=0, yo=0, ro=0, tol=1.e-4)
                 .. automethod:: flux(xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l)
                 .. automethod:: set_coeff(l, coeff)
@@ -840,7 +839,7 @@ namespace docstrings {
             )pbdoc";
 
             w = R"pbdoc(
-                Longitude of pericenter in degrees. This is usually denoted :math:`\varomega`.
+                Longitude of pericenter in degrees. This is usually denoted :math:`\varpi`.
                 See the `Wikipedia <https://en.wikipedia.org/wiki/Longitude_of_the_periapsis>`_ entry.
             )pbdoc";
 
@@ -1151,34 +1150,17 @@ namespace docstrings {
             Introduction
             ============
 
-            This page documents the :py:mod:`starry` API, which is coded
-            in C++ with a :py:mod:`pybind11` Python interface. The API consists
-            of a :py:class:`Map` class, which houses all of the surface map photometry
-            stuff, and the :py:class:`Star`, :py:class:`Planet`, and :py:class:`System`
-            classes, which facilitate the generation of light curves for actual
-            stellar and planetary systems. There are two broad ways in which users can access
-            the core :py:mod:`starry` functionality:
+            This page documents the :py:mod:`starry.multi` API, which is coded
+            in C++ with a :py:mod:`pybind11` Python interface. This API is
+            identical in nearly all respects to the :py:mod:`starry` API, except
+            that all internal computations are done using multi-precision floating
+            point arithmetic. By default, :py:mod:`starry.multi` performs calculations
+            using 32 digits, which roughly corresponds to 128-bit (quadruple) precision.
 
-                - Users can instantiate a :py:class:`Map` class to compute phase curves
-                  and occultation light curves by directly specifying the rotational state
-                  of the object and (optionally) the position and size of an occultor.
-                  Users can also instantiate a :py:class:`LimbDarkenedMap` class for
-                  radially-symmetric stellar surfaces. Both cases
-                  may be particularly useful for users who wish to integrate :py:mod:`starry`
-                  with their own dynamical code or for users wishing to compute simple light
-                  curves without any orbital solutions.
-
-                - Users can instantiate a :py:class:`Star` and one or more :py:class:`Planet`
-                  objects and feed them into a :py:class:`System` instance for integration
-                  with the Keplerian solver. All :py:class:`Star` and :py:class:`Planet`
-                  instances have a :py:obj:`map <>` attribute that allows users to customize
-                  the surface map prior to computing the system light curve.
-
-            At present, :py:mod:`starry` uses a simple Keplerian solver to compute orbits, so
-            the second approach listed above is limited to systems with low mass planets that
-            do not exhibit transit timing variations. The next version will include integration
-            with an N-body solver, so stay tuned!
-
+            .. note:: The :py:obj:`STARRY_NMULTI` compiler flag determines the number of significant \
+                      digits to use in multi-precision calculations and can be changed by setting an environment variable \
+                      of the same name prior to compiling :py:obj:`starry`.
+                      See :doc:`install` for more information.
 
             The Map classes
             ===============

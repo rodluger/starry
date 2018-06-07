@@ -104,7 +104,7 @@ namespace tables {
         if (n < 0)
             throw errors::BadIndex();
         else if (n > MAXSQRT)
-            return sqrt(T(n));
+            return 1.0 / sqrt(T(n));
         else
             return T(table.invsqrt_int[n]);
     }

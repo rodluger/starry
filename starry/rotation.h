@@ -172,7 +172,7 @@ namespace rotation {
 
     */
     template <typename T>
-    void rotar(int lmax, T& c1, T& s1, T& c2, T& s2, T& c3, T& s3, Matrix<T>* D, Matrix<T>* R, T tol=10 * std::numeric_limits<T>::epsilon()) {
+    void rotar(int lmax, T& c1, T& s1, T& c2, T& s2, T& c3, T& s3, Matrix<T>* D, Matrix<T>* R, T tol=10 * mach_eps<T>()) {
         T cosag, COSAMG, sinag, SINAMG, tgbet2;
 
         // Compute the initial matrices D0, R0, D1 and R1
@@ -221,7 +221,7 @@ namespace rotation {
 
     */
     template <typename T>
-    void computeR(int lmax, const Eigen::Matrix<T, 3, 1>& axis, const T& costheta, const T& sintheta, Matrix<T>* D, Matrix<T>* R, T tol=10 * std::numeric_limits<T>::epsilon()) {
+    void computeR(int lmax, const Eigen::Matrix<T, 3, 1>& axis, const T& costheta, const T& sintheta, Matrix<T>* D, Matrix<T>* R, T tol=10 * mach_eps<T>()) {
 
         // Trivial case
         if (lmax == 0) {

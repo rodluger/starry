@@ -626,7 +626,7 @@ namespace solver {
                 G.m = m;
                 G.mu = l - m;
                 G.nu = l + m;
-                if (abs(y(n)) > 10 * std::numeric_limits<T>::epsilon()) {
+                if (abs(y(n)) > 10 * mach_eps<T>()) {
                     if ((l == 1) && (m == 0))
                         G.sT(n) = s2(G);
                     // These terms are zero because they are proportional to

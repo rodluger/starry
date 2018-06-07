@@ -11,7 +11,7 @@
     \textbf{STARRY}: Analytic Occultation Light Curves
 }
 
-\author[0000-0002-0296-3826]{Rodrigo Luger} 
+\author[0000-0002-0296-3826]{Rodrigo Luger}
 \email{rodluger@uw.edu}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
 \affil{Virtual~Planetary~Laboratory, University~of~Washington, Seattle, WA}
@@ -36,10 +36,10 @@
 \affil{Center~for~Space~and~Habitability, University~of~Bern, Bern, Switzerland}
 \affil{Virtual~Planetary~Laboratory, University~of~Washington, Seattle, WA}
 
-\keywords{methods: analytical --- techniques: photometric}
+\keywords{methods: analytic --- techniques: photometric}
 
 \begin{abstract}
-We derive analytical, closed form, numerically stable solutions for the total flux
+We derive analytic, closed form, numerically stable solutions for the total flux
 received from a spherical planet, moon or star during an occultation
 if the specific intensity map of the body is expressed as a
 sum of spherical harmonics. Our expressions are valid to arbitrary degree
@@ -51,7 +51,7 @@ In this paper we also introduce \starry, an open-source package written in \cpp
 and wrapped in \Python that computes these light curves.
 The algorithm in \starry is six orders of magnitude faster than direct
 numerical integration and several orders of magnitude more precise.
-\starry also computes analytical derivatives of the light curves with respect to all input
+\starry also computes analytic derivatives of the light curves with respect to all input
 parameters for use in gradient-based inference schemes such as
 Hamiltonian monte carlo (HMC), allowing users to quickly and efficiently
 regress on observed light curves to infer properties of a celestial body's
@@ -125,7 +125,7 @@ the flux received from the planet during occultation. In addition to
 the potential loss of precision due to the approximations they employ,
 numerical algorithms are typically much slower than an analytic
 approach, should it exist. During the writing of this paper, \citet{Haggard2018} derived
-analytical solutions to the phase curve problem, demonstrating that an
+analytic solutions to the phase curve problem, demonstrating that an
 exoplanet's phase curve can be computed exactly in both thermal and
 reflected light if its map is expressed as a sum of spherical harmonics.
 
@@ -143,7 +143,7 @@ reduce to the expressions of \citet{Haggard2018} for thermal phase curves.
 This paper is organized as follows: in \S\ref{sec:surfacemaps} we discuss the
 real spherical harmonics and introduce our mathematical formalism for
 dealing with spherical harmonic surface maps. In \S\ref{sec:lightcurves} we
-discuss how to compute analytical thermal phase curves and occultation light curves
+discuss how to compute analytic thermal phase curves and occultation light curves
 for these surface maps. In \S\ref{sec:starrycode} we introduce our
 light curve code, \starry, and discuss how to use it to compute full
 light curves for systems of exoplanets and other celestial bodies. We
@@ -560,7 +560,7 @@ occurring), this may be written
 %
 where $\Gamma(\bigdot)$ is the gamma function.
 %
-\eq{phaseint} may be used to analytically compute the rotational (thermal) phase curve of a body
+\eq{phaseint} may be used to analyticly compute the rotational (thermal) phase curve of a body
 with an arbitrary surface map. Since $\bvec{r}$ and $\bvec{A_1}$ are independent
 of the map coefficients or its orientation, these may be pre-computed for
 computational efficiency.
@@ -859,7 +859,7 @@ where $l$ and $m$ are given by \eq{lm} and $\mu$ and $\nu$ are given by
 evaluating the primitive integrals of $\bvec{G}_n$
 (Equations~\ref{eq:primitiveP} and \ref{eq:primitiveQ}).
 The solutions are in general tedious, but
-they are all analytical, involving sines, cosines, and complete elliptic integrals.
+they are all analytic, involving sines, cosines, and complete elliptic integrals.
 In Appendix~\ref{app:solutionvector} we derive recurrence
 relations to quickly compute these. We note, in particular, that the
 solutions all involve complete elliptic integrals of the \emph{same} argument,
@@ -1427,7 +1427,7 @@ before secondary eclipse (refer to the \Python script for details).
     \includegraphics[width=\linewidth]{figures/system.pdf}
     \caption{\label{fig:system}
              \python{system}
-             Sample analytical exoplanet system light curves computed with \starry.
+             Sample analytic exoplanet system light curves computed with \starry.
              \emph{Top:} a hot Jupiter
              transiting a Sun-like star. The planet's map is a simple dipole,
              with the hotspot offset 15$^\circ$ from stellar noon; the offset
@@ -1549,25 +1549,27 @@ light curves by comparing them to numerical solutions of the corresponding
 surface integrals. We integrate the specific intensity of the body by
 discretely summing over its surface map on an adaptive radial mesh whose
 resolution is iteratively increased wherever the spatial gradient of the
+%
+\animation{adaptive}
+%
 specific intensity is large and in the vicinity of the limb of the occultor.
-\animation{adaptive} Click on the link at right for an animation of our
-adaptive mesh scheme.
+Click on the link at right for an animation of our adaptive mesh scheme.
 
-In \starry, users can request numerical solutions to the flux by typing
+%In \starry, users can request numerical solutions to the flux by typing
 %
-\begin{lstlisting}[language=Python,firstnumber=last]
-F = map.flux_numerical(..., tol=1.e-4)
-\end{lstlisting}
+%\begin{lstlisting}[language=Python,firstnumber=last]
+%F = map._flux_numerical(..., tol=1.e-4)
+%\end{lstlisting}
 %
-where \textsf{tol} is the error tolerance, the maximum absolute value of the
-difference between the
-specific intensity at the center of a grid cell to the average of the specific
-intensity at the four vertices of the same cell. The mesh is locally
-refined until the requested tolerance is met in all cells.
+%where \textsf{tol} is the error tolerance, the maximum absolute value of the
+%difference between the
+%specific intensity at the center of a grid cell to the average of the specific
+%intensity at the four vertices of the same cell. The mesh is locally
+%refined until the requested tolerance is met in all cells.
 
 All light curves in Figure~\ref{fig:ylmlightcurves} show the flux computed
 in this way as the small points along each of the curves. We find that our
-analytical light curves agree with the numerical solutions to within the error
+analytic light curves agree with the numerical solutions to within the error
 of the latter.
 
 % ------------------------------------------------------------------------------
@@ -1577,7 +1579,7 @@ of the latter.
 
 Figure~\ref{fig:compare_to_numerical} shows the evaluation time for
 occultation calculations as a function of the spherical
-harmonic degree $l$ of the map. Analytical solutions computed with \starry
+harmonic degree $l$ of the map. Analytic solutions computed with \starry
 are shown as the blue dots (purple dots for \starrygrad). Also shown are calculations using the adaptive
 mesh technique described in the previous section (orange dots),
 brute-force integration on a 300$\times$300 Cartesian grid (green dots),
@@ -1612,7 +1614,7 @@ computing transit light curves.
              \textsf{scipy}'s \textsf{dblquad} two-dimensional numerical
              integration routine (red).
              The size of each point is proportional to the log of the error relative
-             to the \starry analytical solution.
+             to the \starry analytic solution.
              }
     \end{centering}
 \end{figure}
@@ -1695,7 +1697,7 @@ While spherical harmonics are a convenient way to approximate surface
 maps of celestial bodies, it is not trivial to ensure
 that a given spherical harmonic expansion $\bvec{y}$ evaluates to
 non-negative values everywhere on the unit sphere. This is because
-there is no analytical way to compute the extrema of a function of
+there is no analytic way to compute the extrema of a function of
 spherical harmonics of arbitrary order.
 This fact makes it difficult to enforce the physical prior that the
 specific intensity of a celestial body cannot be negative, which
@@ -1718,7 +1720,7 @@ non-negative everywhere.
 
 \subsection{Very large occultors}
 When the occultor becomes much larger than the occulted body ($r_o \gg 1$),
-the analytical solutions to the occultation integrals may become numerically
+the analytic solutions to the occultation integrals may become numerically
 unstable when the map degree $l$ is large. This is due to the propagation of
 round-off error in the recurrence relations, which we mitigate
 with careful Taylor expansions and reparameterizations of the equations.
@@ -1728,25 +1730,25 @@ not likely to be an issue for $l \leq 8$ and $r_o \lesssim 500$, for which
 the maximum fractional error due to round-off is on the order of one part
 per thousand, which in the case of exoplanets is likely far below the
 detectability limits of telescopes in the foreseable future. Nevertheless, users
-can bypass these numerical issues by calling the
+can bypass these numerical issues by instantiating a map from the \textsf{starry.multi}
+module:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-map.flux_mp(...)
+map = starry.multi.Map()
 \end{lstlisting}
 %
-routine instead of \starryMapflux to enable multiprecision mode,
-which by default is set to quadruple (128-bit) floating point precision.
-We caution, however, that this will increase computation time by at least
-an order of magnitude.
+to enable multiprecision mode, which by default is set to quadruple (128-bit)
+floating point precision. We caution, however, that this will increase
+computation time by at least an order of magnitude.
 
 \subsection{Three-body events}
 The occultation formalism developed in this paper applies specifically to the
 case of a single occultor, so \starry cannot at present handle mutual occultations
 involving more than two bodies. However, even for an arbitrary number of bodies
-the problem is still analytical, since Green's theorem may be employed in the same
+the problem is still analytic, since Green's theorem may be employed in the same
 way, but instead evaluating the line integrals along the more complex network of
 arcs defining the edges of the visible portion of the body's surface. This was
-first noted by \cite{Pal2012}, whose \textsf{mttr} code computes analytical
+first noted by \cite{Pal2012}, whose \textsf{mttr} code computes analytic
 transit light curves for mutually overlapping bodies such as a transiting
 planet with a moon. Future versions of \starry will extend the calculations
 to this general case.
@@ -1760,9 +1762,9 @@ to this general case.
 % ------------------------------------------------------------------------------
 % ==============================================================================
 
-In this paper, we derived a formalism to compute analytical thermal light curves of celestial
+In this paper, we derived a formalism to compute analytic thermal light curves of celestial
 bodies in occultation, provided their specific intensity maps can be expressed as a sum
-of spherical harmonics. Our expressions extend the analytical results of the
+of spherical harmonics. Our expressions extend the analytic results of the
 \citet{MandelAgol2002} transit model for limb-darkened stars to transits and
 occultations of celestial bodies whose surface maps are not radially symmetric
 and/or possess higher order features, and are thus generally applicable to
@@ -1781,8 +1783,8 @@ that can be used to compute phase curves and occultation light curves for
 individual celestial bodies or entire exoplanet systems. \starry computes
 transits, secondary eclipses, phase curves, and planet-planet occultations
 analytically and is comparable in speed to other transit-modeling packages such
-as \batman \citep{Kreidberg2015}. Because the light curves are all analytical,
-\starry can also easily compute analytical gradients of the light curves with respect
+as \batman \citep{Kreidberg2015}. Because the light curves are all analytic,
+\starry can also easily compute analytic gradients of the light curves with respect
 to all input parameters via autodifferentiation, facilitating its interface with
 gradient-based inference schemes such as Hamiltonian Monte Carlo (HMC)
 or gradient-descent optimization methods.
@@ -1801,7 +1803,7 @@ light curves collected via filter photometry, but future work will extend
 it to spectrophotometry. \starry is also limited to thermal light curves of
 planets and moons, since the discontinuity in the gradient of the
 illumination pattern at the terminator makes it more challenging to analytically
-solve the surface integrals in reflected light. However, an analytical solution
+solve the surface integrals in reflected light. However, an analytic solution
 is likely to exist, and future work aims to extend \starry to this case.
 
 The upcoming James Webb Space Telescope (JWST) and eventual
@@ -2415,7 +2417,7 @@ $\bvec{G}_n$ defined in \eq{Gn}. Note that all of the terms in \eq{Gn},
 with the exception of the $l = 1, m = 0$ case, are simple polynomials
 in $\x$, $\y$, and $\z$, which facilitates their integration.
 The $l = 1, m = 0$ term (corresponding to the $n = 2$ term in the Green's basis)
-is more difficult to integrate, but an analytical
+is more difficult to integrate, but an analytic
 solution exists \citep{Pal2012}. It is, however, more convenient
 to note that this term corresponds to a surface map given by the polynomial
 $I(x, y) = \tilde{g}_2(x, y) = \sqrt{1 - x^2 - y^2}$, which is the same function used
@@ -3016,7 +3018,7 @@ We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$
 where
 \begin{eqnarray}
 %\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
-\mathcal{K}_{u,v} &=& \int_{\kappa/2}^{\kappa/2} s_\varphi^{2u} (1-s_\varphi^2)^u (\delta + s_\varphi^2)^v d\varphi\\ 
+\mathcal{K}_{u,v} &=& \int_{\kappa/2}^{\kappa/2} s_\varphi^{2u} (1-s_\varphi^2)^u (\delta + s_\varphi^2)^v d\varphi\\
 &=& \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{I}_{i+u},\\
 \mathcal{I}_{v} &=& \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi,\\
 %\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
@@ -3151,7 +3153,7 @@ analytically.
 %
 \item Finally, the recurrence relation (\ref{eq:Mpq}) is also numerically unstable for $r \gg 1$ and large $l$.
 Unfortunately, a quartic expansion of the occultor limb is not feasible, since the resulting line
-integral is not analytical. Instead, we Taylor expand the elliptic integrals in the expression for $\mathcal{M}_{p,q}$
+integral is not analytic. Instead, we Taylor expand the elliptic integrals in the expression for $\mathcal{M}_{p,q}$
 to 12th order in $k^2$ and tabulate the expansion coefficients in \starry up to $l = 8$.
 \mathematica{computeMTaylor}
 \end{itemize}
@@ -3213,13 +3215,13 @@ As expected, the relative error is less than 1 ppm everywhere.
 The solutions outlined above ensure numerical stability over a wide range of occultor radii and impact
 parameters, but instabilities may still occur in \starry when the occultor becomes very large
 ($r_o \gg 100$) and/or when the map degree is very high ($l \gtrsim 8$). In these cases, users may wish
-to compute light curves using multiprecision:
+to compute light curves using multiprecision by instantiating maps as
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-map.flux_mp(...)
+map = starry.multi.Map()
 \end{lstlisting}
 %
-(instead of \textsf{map.flux(...)}), which by default computes the occultation solution
+which by default computes the occultation solution
 vector $\bvec{s}$ using a 128-bit (quadruple) precision type implemented with the \textsf{boost}
 \cpp libraries \citep[e.g.,][]{Schaling2014}.
 

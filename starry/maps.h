@@ -51,22 +51,35 @@ namespace maps {
     template <>
     class Constants<Grad> {
 
+            Eigen::SparseMatrix<double> D_A1;
+            Eigen::SparseMatrix<double> D_A;
+            VectorT<double> D_rTA1;
+            VectorT<double> D_rT;
+            Matrix<double> D_U;
+
         public:
 
             int lmax;
-            Eigen::SparseMatrix<double> A1;
-            Eigen::SparseMatrix<double> A;
-            VectorT<double> rTA1;
-            VectorT<double> rT;
-            Matrix<double> U;
+            Eigen::SparseMatrix<Grad> A1;
+            Eigen::SparseMatrix<Grad> A;
+            VectorT<Grad> rTA1;
+            VectorT<Grad> rT;
+            Matrix<Grad> U;
 
             // Constructor: compute the matrices
             Constants(int lmax) : lmax(lmax) {
-                basis::computeA1(lmax, A1);
-                basis::computeA(lmax, A1, A);
-                solver::computerT(lmax, rT);
-                rTA1 = rT * A1;
-                basis::computeU(lmax, U);
+                // Do things in double
+                basis::computeA1(lmax, D_A1);
+                basis::computeA(lmax, D_A1, D_A);
+                solver::computerT(lmax, D_rT);
+                D_rTA1 = D_rT * D_A1;
+                basis::computeU(lmax, D_U);
+                // Cast to Grad
+                A1 = D_A1.cast<Grad>();
+                A = D_A.cast<Grad>();
+                rTA1 = D_rTA1.cast<Grad>();
+                rT = D_rT.cast<Grad>();
+                U = D_U.cast<Grad>();
             }
 
     };
@@ -226,7 +239,7 @@ namespace maps {
         // Compute the polynomial basis where it is needed
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
-                if (abs((*ptrmap)(n)) < 10 * std::numeric_limits<T>::epsilon()) {
+                if (abs((*ptrmap)(n)) < 10 * mach_eps<T>()) {
                     basis(n) = 0 * x0;
                 } else {
                     mu = l - m;
@@ -422,7 +435,7 @@ namespace maps {
         os << "<STARRY Map: ";
         for (int l = 0; l < lmax + 1; l++) {
             for (int m = -l; m < l + 1; m++) {
-                if (abs(get_value(y(n))) > 10 * std::numeric_limits<T>::epsilon()){
+                if (abs(get_value(y(n))) > 10 * mach_eps<T>()){
                     // Separator
                     if ((nterms > 0) && (get_value(y(n)) > 0)) {
                         os << " + ";
@@ -435,7 +448,7 @@ namespace maps {
                     if ((get_value(y(n)) == 1) || (get_value(y(n)) == -1)) {
                         sprintf(buf, "Y_{%d,%d}", l, m);
                         os << buf;
-                    } else if (fmod(abs(get_value(y(n))), 1.0) < 10 * std::numeric_limits<T>::epsilon()) {
+                    } else if (fmod(abs(get_value(y(n))), 1.0) < 10 * mach_eps<T>()) {
                         sprintf(buf, "%d Y_{%d,%d}", (int)abs(get_value(y(n))), l, m);
                         os << buf;
                     } else if (fmod(abs(get_value(y(n))), 1.0) >= 0.01) {
@@ -610,7 +623,7 @@ namespace maps {
         // Compute the polynomial basis where it is needed
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
-                if (abs(p(n)) < 10 * std::numeric_limits<T>::epsilon()) {
+                if (abs(p(n)) < 10 * mach_eps<T>()) {
                     basis(n) = 0 * x0;
                 } else {
                     mu = l - m;

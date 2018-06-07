@@ -109,4 +109,15 @@ inline bool is_even(int n, int ntimes=1) {
     return true;
 }
 
+// Machine precision at current type
+template <typename T>
+inline T mach_eps() {
+    return std::numeric_limits<T>::epsilon();
+}
+
+template <>
+inline Grad mach_eps() {
+    return Grad(mach_eps<double>());
+}
+
 #endif

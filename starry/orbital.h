@@ -16,7 +16,6 @@ Orbital star/planet/moon system class.
 #include "maps.h"
 #include "utils.h"
 #include "rotation.h"
-#include <limits>
 
 
 namespace orbital {
@@ -29,7 +28,6 @@ namespace orbital {
     using std::abs;
     using std::string;
     using std::to_string;
-    using std::numeric_limits;
 
     template <class T> class Body;
     template <class T> class System;
@@ -306,7 +304,7 @@ namespace orbital {
             axis_sky = axis;
             // If there's inclination or rotation of the orbital plane,
             // we need to rotate the sky map as well as the rotation axis
-            if ((Omega != 0) || (sini < 1. - 2 * numeric_limits<T>::epsilon())) {
+            if ((Omega != 0) || (sini < 1. - 2 * mach_eps<T>())) {
                 UnitVector<T> axis1 = xhat.template cast<T>();
                 UnitVector<T> axis2 = zhat.template cast<T>();
                 map_sky.rotate(axis1, M_PI_2 - inc);

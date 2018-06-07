@@ -35,7 +35,7 @@ void add_Map_extras<double>(py::class_<maps::Map<double>>& PyMap, const docstrin
 
     PyMap
 
-        .def("flux_numerical", [](maps::Map<double>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro, double tol) {
+        .def("_flux_numerical", [](maps::Map<double>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro, double tol) {
                 UnitVector<double> axis_norm = norm_unit(axis);
                 return vectorize_map_flux_numerical(axis_norm, theta, xo, yo, ro, tol, map);
             }, docs.Map.flux_numerical, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4);
@@ -333,7 +333,7 @@ void add_LimbDarkenedMap_extras<double>(py::class_<maps::LimbDarkenedMap<double>
 
     PyLimbDarkenedMap
 
-        .def("flux_numerical", [](maps::LimbDarkenedMap<double>& map, py::object& xo, py::object& yo, py::object& ro, double tol) {
+        .def("_flux_numerical", [](maps::LimbDarkenedMap<double>& map, py::object& xo, py::object& yo, py::object& ro, double tol) {
                 return vectorize_ldmap_flux_numerical(xo, yo, ro, tol, map);
             }, docs.LimbDarkenedMap.flux_numerical, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4);
 
