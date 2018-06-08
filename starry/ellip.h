@@ -29,13 +29,13 @@ namespace ellip {
 
   // EA: Elliptic integral convergence tolerance should be sqrt of machine precision
   static const double tol_double = sqrt(std::numeric_limits<double>::epsilon());
-  static const bigdouble tol_bigdouble = sqrt(std::numeric_limits<bigdouble>::epsilon());
+  static const Multi tol_Multi = sqrt(std::numeric_limits<Multi>::epsilon());
 
   template <typename T>
   inline T tol(){ return T(tol_double); }
 
   template <>
-  inline bigdouble tol(){ return tol_bigdouble; }
+  inline Multi tol(){ return tol_Multi; }
 
   // Incomplete elliptic integral of the first kind
   // Currently using boost's implementation

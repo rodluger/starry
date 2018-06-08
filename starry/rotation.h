@@ -17,6 +17,7 @@ from the Wigner-D matrices for complex spherical harmonics.
 #include <Eigen/Core>
 #include "constants.h"
 #include "utils.h"
+#include "tables.h"
 
 namespace rotation {
 
@@ -64,8 +65,8 @@ namespace rotation {
         D[l](2 * l, 2 * l) = D[l - 1](isup + l - 1, isup + l - 1) * (1. + c2) / 2.;
         D[l](2 * l, 0) = D[l - 1](isup + l - 1, -isup + l - 1) * (1. - c2) / 2.;
         for (m=isup; m>iinf-1; m--)
-            D[l](2 * l, m + l) = -tgbet2 * math.sqrt<T>(l + m + 1) *
-                                  math.invsqrt<T>(l - m) * D[l](2 * l, m + 1 + l);
+            D[l](2 * l, m + l) = -tgbet2 * tables::sqrt_int<T>(l + m + 1) *
+                                  tables::invsqrt_int<T>(l - m) * D[l](2 * l, m + 1 + l);
 
         // The rows of the upper quarter triangle of the D[l;m',m) matrix
         // (Eq. 21 in Alvarez Collado et al.)
@@ -78,17 +79,17 @@ namespace rotation {
             amp = mp;
             laux = l + mp;
             lbux = l - mp;
-            aux = math.invsqrt<T>(laux) * math.invsqrt<T>(lbux) * ali;
-            cux = math.sqrt<T>(laux - 1) * math.sqrt<T>(lbux - 1) * al;
+            aux = tables::invsqrt_int<T>(laux) * tables::invsqrt_int<T>(lbux) * ali;
+            cux = tables::sqrt_int<T>(laux - 1) * tables::sqrt_int<T>(lbux - 1) * al;
             for (m=isup; m>iinf-1; m--) {
                 am = m;
                 lauz = l + m;
                 lbuz = l - m;
-                auz = math.invsqrt<T>(lauz) * math.invsqrt<T>(lbuz);
+                auz = tables::invsqrt_int<T>(lauz) * tables::invsqrt_int<T>(lbuz);
                 fact = aux * auz;
                 term = tal1 * (cosaux - am * amp) * D[l - 1](mp + l - 1, m + l - 1);
                 if ((lbuz != 1) && (lbux != 1)) {
-                    cuz = math.sqrt<T>(lauz - 1) * math.sqrt<T>(lbuz - 1);
+                    cuz = tables::sqrt_int<T>(lauz - 1) * tables::sqrt_int<T>(lbuz - 1);
                     term = term - D[l - 2](mp + l - 2, m + l - 2) * cux * cuz;
                 }
                 D[l](mp + l, m + l) = fact * term;
@@ -135,11 +136,11 @@ namespace rotation {
         for (mp=1; mp<l+1; mp++) {
             cosmga = c3;
             sinmga = s3;
-            aux = math.sqrt<T>(2) * D[l](0 + l, mp + l);
+            aux = tables::sqrt_int<T>(2) * D[l](0 + l, mp + l);
             R[l](mp + l, 0 + l) = aux * cosmal;
             R[l](-mp + l, 0 + l) = aux * sinmal;
             for (m=1; m<l+1; m++) {
-                aux = math.sqrt<T>(2) * D[l](m + l, 0 + l);
+                aux = tables::sqrt_int<T>(2) * D[l](m + l, 0 + l);
                 R[l](l, m + l) = aux * cosmga;
                 R[l](l, -m + l) = -aux * sinmga;
                 d1 = D[l](-mp + l, -m + l);
@@ -171,14 +172,14 @@ namespace rotation {
 
     */
     template <typename T>
-    void rotar(int lmax, T& c1, T& s1, T& c2, T& s2, T& c3, T& s3, Matrix<T>* D, Matrix<T>* R, double tol) {
+    void rotar(int lmax, T& c1, T& s1, T& c2, T& s2, T& c3, T& s3, Matrix<T>* D, Matrix<T>* R, T tol=10 * mach_eps<T>()) {
         T cosag, COSAMG, sinag, SINAMG, tgbet2;
 
         // Compute the initial matrices D0, R0, D1 and R1
         D[0](0, 0) = 1.;
         R[0](0, 0) = 1.;
         D[1](2, 2) = (1. + c2) / 2.;
-        D[1](2, 1) = -s2 / math.sqrt<T>(2);
+        D[1](2, 1) = -s2 / tables::sqrt_int<T>(2);
         D[1](2, 0) = (1. - c2) / 2.;
         D[1](1, 2) = -D[1](2, 1);
         D[1](1, 1) = D[1](2, 2) - D[1](2, 0);
@@ -191,10 +192,10 @@ namespace rotation {
         sinag = s1 * c3 + c1 * s3;
         SINAMG = s1 * c3 - c1 * s3;
         R[1](1, 1) = D[1](1, 1);
-        R[1](2, 1) = math.sqrt<T>(2) * D[1](1, 2) * c1;
-        R[1](0, 1) = math.sqrt<T>(2) * D[1](1, 2) * s1;
-        R[1](1, 2) = math.sqrt<T>(2) * D[1](2, 1) * c3;
-        R[1](1, 0) = -math.sqrt<T>(2) * D[1](2, 1) * s3;
+        R[1](2, 1) = tables::sqrt_int<T>(2) * D[1](1, 2) * c1;
+        R[1](0, 1) = tables::sqrt_int<T>(2) * D[1](1, 2) * s1;
+        R[1](1, 2) = tables::sqrt_int<T>(2) * D[1](2, 1) * c3;
+        R[1](1, 0) = -tables::sqrt_int<T>(2) * D[1](2, 1) * s3;
         R[1](2, 2) = D[1](2, 2) * cosag - D[1](2, 0) * COSAMG;
         R[1](2, 0) = -D[1](2, 2) * sinag - D[1](2, 0) * SINAMG;
         R[1](0, 2) = D[1](2, 2) * sinag - D[1](2, 0) * SINAMG;
@@ -220,7 +221,7 @@ namespace rotation {
 
     */
     template <typename T>
-    void computeR(int lmax, const Eigen::Matrix<T, 3, 1>& axis, const T& costheta, const T& sintheta, Matrix<T>* D, Matrix<T>* R, double tol=1e-15) {
+    void computeR(int lmax, const Eigen::Matrix<T, 3, 1>& axis, const T& costheta, const T& sintheta, Matrix<T>* D, Matrix<T>* R, T tol=10 * mach_eps<T>()) {
 
         // Trivial case
         if (lmax == 0) {

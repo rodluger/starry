@@ -30,11 +30,13 @@ def test_notebooks():
 
         # Get rid of %run commands
         script = re.sub("get_ipython\(\).magic\('run (.*)'\)", r"#", script)
-        script = re.sub("get_ipython\(\).run_line_magic\('run', '(.*)'\)", r"#", script)
+        script = re.sub("get_ipython\(\).run_line_magic\('run', '(.*)'\)",
+                        r"#", script)
 
         # Remove the %time wrappers
         script = re.sub("get_ipython\(\).magic\('time (.*)'\)", r"\1", script)
-        script = re.sub("get_ipython\(\).run_line_magic\('time', '(.*)'\)", r"\1", script)
+        script = re.sub("get_ipython\(\).run_line_magic\('time', '(.*)'\)",
+                        r"\1", script)
 
         # Remove calls to map.show()
         script = re.sub("(.*)\.show()(.*)", r"#", script)

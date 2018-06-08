@@ -20,8 +20,8 @@ NOTE: I'm converting the angles from degrees to radians here before they get pas
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 #include <stdlib.h>
-#include <utils.h>
-#include <maps.h>
+#include "utils.h"
+#include "maps.h"
 #include "constants.h"
 #include "errors.h"
 namespace py = pybind11;
@@ -174,23 +174,6 @@ namespace vect {
         return result;
     }
 
-    // Vectorize `starry.Map.flux_mp()`.
-    inline Vector<double> vectorize_map_flux_mp(
-            UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4, py::object& arg5,
-            maps::Map<double>& map) {
-        // Vectorize the inputs
-        Vector<double> arg2_v, arg3_v, arg4_v, arg5_v;
-        vectorize_args(arg2, arg3, arg4, arg5, arg2_v, arg3_v, arg4_v, arg5_v);
-
-        // Compute the function for each vector index
-        Vector<double> result(arg2_v.size());
-        for (int i = 0; i < arg2_v.size(); i++)
-            result(i) = map.flux_mp(arg1, arg2_v(i) * DEGREE, arg3_v(i), arg4_v(i), arg5_v(i));
-
-        // Return an array
-        return result;
-    }
-
     // Vectorize `starry.Map.evaluate()`.
     inline Vector<double> vectorize_map_evaluate(
             UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4,
@@ -227,18 +210,6 @@ namespace vect {
         return result;
     }
 
-    // Vectorize `starry.LimbDarkenedMap.flux_mp()`.
-    inline Vector<double> vectorize_ldmap_flux_mp(
-            py::object& arg1, py::object& arg2, py::object& arg3,
-            maps::LimbDarkenedMap<double>& map) {
-        Vector<double> arg1_v, arg2_v, arg3_v;
-        vectorize_args(arg1, arg2, arg3, arg1_v, arg2_v, arg3_v);
-        Vector<double> result(arg1_v.size());
-        for (int i = 0; i < arg1_v.size(); i++)
-            result(i) = map.flux_mp(arg1_v(i), arg2_v(i), arg3_v(i));
-        return result;
-    }
-
     // Vectorize `starry.LimbDarkenedMap.evaluate()`.
     inline Vector<double> vectorize_ldmap_evaluate(
             py::object& arg1, py::object& arg2,
@@ -248,6 +219,65 @@ namespace vect {
         Vector<double> result(arg1_v.size());
         for (int i = 0; i < arg1_v.size(); i++)
             result(i) = map.evaluate(arg1_v(i), arg2_v(i));
+        return result;
+    }
+
+    /* --------------------------------------------- */
+
+    // Vectorize `starry.multi.Map.flux()`.
+    inline Vector<double> vectorize_map_flux(
+            UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4, py::object& arg5,
+            maps::Map<Multi>& map) {
+        // Vectorize the inputs
+        Vector<double> arg2_v, arg3_v, arg4_v, arg5_v;
+        vectorize_args(arg2, arg3, arg4, arg5, arg2_v, arg3_v, arg4_v, arg5_v);
+
+        // Convert to Multi
+        UnitVector<Multi> M_arg1 = arg1.cast<Multi>();
+
+        // Compute the function for each vector index
+        Vector<double> result(arg2_v.size());
+        for (int i = 0; i < arg2_v.size(); i++)
+            result(i) = (double)map.flux(M_arg1, arg2_v(i) * DEGREE, arg3_v(i), arg4_v(i), arg5_v(i));
+
+        // Return an array
+        return result;
+    }
+
+    // Vectorize `starry.multi.Map.evaluate()`.
+    inline Vector<double> vectorize_map_evaluate(
+            UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4,
+            maps::Map<Multi>& map) {
+        Vector<double> arg2_v, arg3_v, arg4_v;
+        vectorize_args(arg2, arg3, arg4, arg2_v, arg3_v, arg4_v);
+        UnitVector<Multi> M_arg1 = arg1.cast<Multi>();
+        Vector<double> result(arg2_v.size());
+        for (int i = 0; i < arg2_v.size(); i++)
+            result(i) = (double)map.evaluate(M_arg1, arg2_v(i) * DEGREE, arg3_v(i), arg4_v(i));
+        return result;
+    }
+
+    // Vectorize `starry.multi.LimbDarkenedMap.flux()`.
+    inline Vector<double> vectorize_ldmap_flux(
+            py::object& arg1, py::object& arg2, py::object& arg3,
+            maps::LimbDarkenedMap<Multi>& map) {
+        Vector<double> arg1_v, arg2_v, arg3_v;
+        vectorize_args(arg1, arg2, arg3, arg1_v, arg2_v, arg3_v);
+        Vector<double> result(arg1_v.size());
+        for (int i = 0; i < arg1_v.size(); i++)
+            result(i) = (double)map.flux(arg1_v(i), arg2_v(i), arg3_v(i));
+        return result;
+    }
+
+    // Vectorize `starry.multi.LimbDarkenedMap.evaluate()`.
+    inline Vector<double> vectorize_ldmap_evaluate(
+            py::object& arg1, py::object& arg2,
+            maps::LimbDarkenedMap<Multi>& map) {
+        Vector<double> arg1_v, arg2_v;
+        vectorize_args(arg1, arg2, arg1_v, arg2_v);
+        Vector<double> result(arg1_v.size());
+        for (int i = 0; i < arg1_v.size(); i++)
+            result(i) = (double)map.evaluate(arg1_v(i), arg2_v(i));
         return result;
     }
 

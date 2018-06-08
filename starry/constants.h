@@ -9,13 +9,8 @@ Defines constants used throughout the code.
 #endif
 
 // Multiprecision
-#ifndef STARRY_MP_DIGITS
-#define STARRY_MP_DIGITS                        32
-#endif
-
-// Smallest allowable map coefficient
-#ifndef STARRY_MAP_TOLERANCE
-#define STARRY_MAP_TOLERANCE                    1.0e-14
+#ifndef STARRY_NMULTI
+#define STARRY_NMULTI                           32
 #endif
 
 // Physical constants
