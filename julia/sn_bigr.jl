@@ -1,5 +1,5 @@
 # Computes s_n vector from Luger et al. (2018) to ~machine
-# precision for r > 1:
+# precision for b+r > 1:
 
 function aiuv(delta::T,u::Int64,v::Int64) where {T <: Real}
 # Computes the double-binomial coefficients A_{i,u,v}:
