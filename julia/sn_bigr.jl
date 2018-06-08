@@ -1,5 +1,5 @@
 # Computes s_n vector from Luger et al. (2018) to ~machine
-# precision for r > 1:
+# precision for b+r > 1:
 
 function aiuv(delta::T,u::Int64,v::Int64) where {T <: Real}
 # Computes the double-binomial coefficients A_{i,u,v}:
@@ -160,6 +160,7 @@ Kuv = zeros(typeof(r),u_max+1,v_max+1)
 Luv = zeros(typeof(r),u_max+1,v_max+1,2)
 delta = (b-r)/(2r)
 l = 0; n = 0; m = 0; pofgn = zero(typeof(r)); qofgn = zero(typeof(r))
+#  k^3*(4br)^(3/2) = (1-(2r\delta)^2)^{3/2}:
 Lfac = (1-(2r*delta)^2)^1.5
 while n <= n_max
   if n == 2
@@ -195,13 +196,21 @@ while n <= n_max
       if mod(mu,4) == 0
         pofgn = 2*(2r)^(l+2)*Kuv[u+1,v+1]
         qofgn = Huv[2u+1,v+1]
-      elseif iseven(l) && mu == 1
-        pofgn = -(2r)^(l-1)*(2*Luv[u+1,v+1,2]-Luv[u+1,v+1,1])
-      elseif isodd(l) && mu == 1
-        pofgn = -(2r)^(l-1)*(2*Luv[u+1,v+1,2]-Luv[u+1,v+1,1])
       else
-        pofgn = 2*(2r)^(l-1)*Luv[u+1,v+1,1]
+        pofgn = Luv[u+1,v+1,1]
+        if mu == 1 
+          pofgn -= 2*Luv[u+1,v+1,2]
+        else
+          pofgn *= 2
+        end
+        pofgn *= (2r)^(l-1)
       end
+#      elseif iseven(l) && mu == 1
+#        pofgn = -(2r)^(l-1)*(2*Luv[u+1,v+1,2]-Luv[u+1,v+1,1])
+#      elseif isodd(l) && mu == 1
+#        pofgn = -(2r)^(l-1)*(2*Luv[u+1,v+1,2]-Luv[u+1,v+1,1])
+#      else
+#        pofgn = 2*(2r)^(l-1)*Luv[u+1,v+1,1]
     end
     sn[n+1] = qofgn-pofgn
   end
