@@ -54,6 +54,12 @@ namespace errors {
         }
     };
 
+    struct SqrtNegativeNumber : public exception {
+        const char * what () const throw (){
+            return "Attempt to take square root of a negative number.";
+        }
+    };
+
     struct BadLMIndex : public exception {
         const char * what () const throw (){
             return "Invalid (`l`, `m`) index.";

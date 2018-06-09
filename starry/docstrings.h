@@ -24,7 +24,7 @@ namespace docstrings {
         const char * g;
         const char * s;
         const char * r;
-        const char * optimize;
+        const char * reparam;
         const char * evaluate;
         const char * flux;
         const char * flux_numerical;
@@ -94,9 +94,9 @@ namespace docstrings {
                 The current solution vector `r`. *Read-only.*
             )pbdoc";
 
-            optimize = R"pbdoc(
-                Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
-                computing occultation light curves. This is in general not something you should do! \
+            reparam = R"pbdoc(
+                Set to :py:obj:`False` to disable reparametrization of the primitive integrals when \
+                computing occultation light curves for large occultors. This is in general not something you should do! \
                 Default :py:obj:`True`.
             )pbdoc";
 
@@ -239,7 +239,6 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. autoattribute:: optimize
                 .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
                 .. automethod:: rotate(axis=(0, 1, 0), theta=0)
                 .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
@@ -292,7 +291,6 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. autoattribute:: optimize
                 .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
                 .. automethod:: rotate(axis=(0, 1, 0), theta=0)
                 .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
@@ -327,7 +325,6 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. autoattribute:: optimize
                 .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
                 .. automethod:: rotate(axis=(0, 1, 0), theta=0)
                 .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
@@ -369,7 +366,7 @@ namespace docstrings {
         const char * g;
         const char * s;
         const char * u;
-        const char * optimize;
+        const char * reparam;
         const char * evaluate;
         const char * flux;
         const char * flux_numerical;
@@ -438,9 +435,9 @@ namespace docstrings {
                 The limb darkening coefficient vector. *Read-only.*
             )pbdoc";
 
-            optimize = R"pbdoc(
-                Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
-                computing occultation light curves. This is in general not something you should do! \
+            reparam = R"pbdoc(
+                Set to :py:obj:`False` to disable reparametrization of the primitive integrals when \
+                computing occultation light curves for large occultors. This is in general not something you should do! \
                 Default :py:obj:`True`.
             )pbdoc";
 
@@ -503,7 +500,6 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. autoattribute:: optimize
                 .. automethod:: evaluate(x=0, y=0)
                 .. automethod:: flux(xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l)
@@ -558,7 +554,6 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. autoattribute:: optimize
                 .. automethod:: evaluate(x=0, y=0)
                 .. automethod:: flux(xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l)
@@ -597,7 +592,6 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. autoattribute:: optimize
                 .. automethod:: evaluate(x=0, y=0)
                 .. automethod:: flux(xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l)

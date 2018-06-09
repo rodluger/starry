@@ -100,6 +100,66 @@ namespace ellip {
     throw errors::Elliptic();
   }
 
+  // Computes the function cel(kc, p, a, b) from Bulirsch (1969)
+  template <typename T>
+  T CEL (const T& ksq, const T& kc0, const T& p0, const T& a0, const T& b0, const T& pi) {
+      if (ksq > 1) throw errors::Elliptic();
+      T ca = sqrt(mach_eps<T>());
+      T m = 1.0;
+      T p = p0;
+      T a = a0;
+      T b = b0;
+      T kc = kc0;
+      T q, g, f, ee;
+      if (ksq == 1) kc = mach_eps<T>();
+      ee = kc;
+      if (p > 0) {
+          p = sqrt(p);
+          b /= p;
+      } else {
+          q = ksq;
+          g = 1.0 - p;
+          f = g - ksq;
+          q *= (b - a * p);
+          p = sqrt(f / g);
+          a = (a - b) / g;
+          b = -q /(g * g * p) + a * p;
+      }
+      f = a;
+      a += b / p;
+      g = ee / p;
+      b += f * g;
+      b += b;
+      p += g;
+      g = m;
+      m += kc;
+      for (int i = 0; i < STARRY_ELLIP_MAX_ITER; ++i) {
+          kc = sqrt(ee);
+          kc += kc;
+          ee = kc * m;
+          f = a;
+          a += b/p;
+          g = ee/p;
+          b += f * g;
+          b += b;
+          p += g;
+          g = m;
+          m += kc;
+          if (abs(g - kc) < g * ca)
+            return pi / 2 * (a * m + b) / (m * (m + p));
+      }
+      throw errors::Elliptic();
+  }
+
+  // Overload for when the user doesn't provide kc
+  template <typename T>
+  T CEL (const T& ksq, const T& p0, const T& a0, const T& b0, const T& pi) {
+      T kc;
+      if (ksq == 1) kc = mach_eps<T>();
+      else kc = sqrt(1.0 - ksq);
+      return CEL(ksq, kc, p0, a0, b0, pi);
+  }
+
   // Gradient of F
   template <typename T>
   Eigen::AutoDiffScalar<T> F (const Eigen::AutoDiffScalar<T>& ksq,

@@ -158,9 +158,6 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 return get_value((Vector<MAPTYPE>)map.C.rT);
             }, docs.Map.r)
 
-        .def_property("optimize", [](maps::Map<MAPTYPE> &map){return map.G.taylor;},
-            [](maps::Map<MAPTYPE> &map, bool taylor){map.G.taylor = taylor;}, docs.Map.optimize)
-
         .def("evaluate", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& x, py::object& y) {
                 UnitVector<double> axis_norm = norm_unit(axis);
                 return vectorize_map_evaluate(axis_norm, theta, x, y, map);
@@ -448,9 +445,6 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
                     u(i) = get_value(map.u(i + 1));
                 return u;
             }, docs.LimbDarkenedMap.u)
-
-        .def_property("optimize", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.G.taylor;},
-            [](maps::LimbDarkenedMap<MAPTYPE> &map, bool taylor){map.G.taylor = taylor;}, docs.LimbDarkenedMap.optimize)
 
         .def("evaluate", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object& x, py::object& y) {
                 return vectorize_ldmap_evaluate(x, y, map);

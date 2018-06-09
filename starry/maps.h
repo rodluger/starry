@@ -137,7 +137,7 @@ namespace maps {
             // Constructor: initialize map to zeros
             Map(int lmax=2) :
                   lmax(lmax), R(lmax), C(lmax),
-                  G(lmax, true) {
+                  G(lmax) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);
@@ -513,7 +513,7 @@ namespace maps {
             // Constructor: initialize map to zeros
             LimbDarkenedMap(int lmax=2) :
                   lmax(lmax), C(lmax),
-                  G(lmax, true) {
+                  G(lmax) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);
@@ -698,7 +698,7 @@ namespace maps {
             ARRy = C.A * y;
 
             // Compute the sT vector
-            solver::computesT<T>(G, b, ro, ARRy);
+            solver::computesT(G, b, ro, ARRy);
 
             // Dot the result in and we're done
             return G.sT * ARRy;

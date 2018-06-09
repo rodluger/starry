@@ -8,8 +8,8 @@ __version__ = '0.0.2'
 
 
 # Custom compiler flags
-STARRY_NGRAD = 43
-STARRY_NMULTI = 32
+macros = dict(STARRY_NGRAD=43,
+              STARRY_NMULTI=32)
 
 
 class get_pybind_include(object):
@@ -47,10 +47,8 @@ ext_modules = [
             "lib/boost_1_66_0"
         ],
         language='c++',
-        define_macros=[('STARRY_NGRAD',
-                        os.getenv('STARRY_NGRAD', STARRY_NGRAD)),
-                       ('STARRY_NMULTI',
-                        os.getenv('STARRY_NMULTI', STARRY_NMULTI))]
+        define_macros=[(key, os.getenv(key, value))
+                       for key, value in macros.items()]
     ),
 ]
 
