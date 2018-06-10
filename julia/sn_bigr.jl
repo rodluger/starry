@@ -70,12 +70,63 @@ end
 return Jv*k2^v*sqrt(k2)
 end
 
-function IJv_iter!(l_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
+function IJv_raise!(l_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
+# Compute I_v, J_v for 0 <= v <= v_max = l_max+2
+# Define k:
+k = sqrt(k2)
+# Iterate upwards in v:
+v_max = l_max+3; v = v_max
+# Compute I_v via upward iteration on v:
+if k2 < 1
+# First, compute value for v=0:
+  Iv[1] = 2*asin(sqrt(k2))
+# Next, iterate upwards in v:
+  f0 = kc/k
+  v = 1
+# Loop over v, computing I_v and J_v from higher v:
+  while v <= v_max
+    Iv[v+1]=((2v-1)*Iv[v]/2-f0)/v
+    f0 *= k2
+    v += 1
+  end
+else # k^2 >= 1
+  # Compute v=0
+  Iv[1] = pi
+  for v=1:v_max
+    Iv[v+1]=Iv[v]*(1-.5/v)
+  end
+end
+# Need to compute J_v for v=0, 1:
+v= 0
+if k2 < 1
+  # Use cel_bulirsch:
+  fe = 2*(2k2-1); fk = (1-k2)*(2-3k2)
+  Jv[v]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),fe+fk,fe+fk*(1-k2))
+  fe = -3k2*k2+13k2-8; fk = 2*(1-k2)*(8-9k2)
+  Jv[v+1]= 2/(15k2*k)*cel_bulirsch(k2,kc,one(k2),fe+fk,fe+fk*(1-k2))
+else # k^2 >=1
+  k2inv = inv(k2)
+  f3 = (2-k2inv); fk=1-k2inv
+  Jv[v]=4/3*cel_bulirsch(k2,kc,one(k2),fe+fk,fe+fk*(1-k2))
+  f3 = -6k2+26-16k2inv; fk=2*(1-k2inv)*(3k2-4)
+  Jv[v+1]=cel_bulirsch(k2,kc,one(k2),fe+fk,fe+fk*(1-k2))/15
+end
+v=2
+while v <= v_max
+  f2 = k2*(2v-3); f1 = 2*(v+1+(v-1)*k2)/f2; f3 = (2v+3)/f2
+  Jv[v+1] = (f1*Jv[v]-Jv[v-1])/f3 
+  v += 1
+end
+return
+end
+
+function IJv_lower!(l_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
 # Compute I_v, J_v for 0 <= v <= v_max = l_max+2
 # Define k:
 k = sqrt(k2)
 # Iterate downwards in v:
 v_max = l_max+3; v = v_max
+# Add in k2 > 1 cases [ ]
 # First, compute approximation for large v:
 #Iv[v+1]=Iv_hyp(k2,v)
 Iv[v+1]=Iv_series(k2,v)
@@ -155,7 +206,7 @@ end
 
 Iv = zeros(typeof(k2),v_max+1); Jv = zeros(typeof(k2),v_max+1)
 # This computes I_v for the largest v, and then works down to smaller values:
-IJv_iter!(l_max,k2,kc,Iv,Jv)
+IJv_lower!(l_max,k2,kc,Iv,Jv)
 Kuv = zeros(typeof(r),u_max+1,v_max+1)
 Luv = zeros(typeof(r),u_max+1,v_max+1,2)
 delta = (b-r)/(2r)
