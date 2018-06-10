@@ -22,7 +22,7 @@ coeff = 2/(2v+1)
 # Add leading term to I_v:
 Iv = one(k2)*coeff
 # Now, compute higher order terms until desired precision is reached:
-while n < nmax && error > tol
+while n < nmax && abs(error) > tol
   coeff *= (2.0*n-1.0)*.5*(2n+2v-1)/(n*(2n+2v+1))*k2
   error = coeff
   Iv += coeff
@@ -53,21 +53,37 @@ nmax = 50
 n = 1; tol = eps(k2); error = Inf
 # Computing leading coefficient (n=0):
 #coeff = 3pi/(2^(2+v)*factorial(v+2))
-coeff = 3pi/(2^(2+v)*exp(lfact(v+2)))
+if k2 < 1
+  coeff = 3pi/(2^(2+v)*exp(lfact(v+2)))
 # multiply by (2v-1)!!
-for i=1:v
-  coeff *= 2.*i-1
-end
+  for i=1:v
+    coeff *= 2.*i-1
+  end
 # Add leading term to J_v:
-Jv = one(k2)*coeff
+  Jv = one(k2)*coeff
 # Now, compute higher order terms until desired precision is reached:
-while n < nmax && error > tol
-  coeff *= (2.0*n-1.0)*(2.0*(n+v)-1.0)*.25/(n*(n+v+2))*k2
-  error = coeff
-  Jv += coeff
-  n +=1
+  while n < nmax && abs(error) > tol
+    coeff *= (2.0*n-1.0)*(2.0*(n+v)-1.0)*.25/(n*(n+v+2))*k2
+    error = coeff
+    Jv += coeff
+    n +=1
+  end
+  return Jv*k2^v*sqrt(k2)
+else # k^2 >= 1
+  coeff = pi
+  # Compute (2v-1)!!/(2^v v!):
+  for i=1:v
+    coeff *= 1-.5/i
+  end
+  Jv = one(k2)*coeff; n=1
+  while n < nmax && abs(error) > tol
+    coeff *= (1.-2.5/n)*(1.-.5/(n+v))/k2
+    error = coeff
+    Jv += coeff
+    n +=1
+  end
+  return Jv
 end
-return Jv*k2^v*sqrt(k2)
 end
 
 function IJv_raise!(l_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
@@ -129,14 +145,22 @@ v_max = l_max+3; v = v_max
 # Add in k2 > 1 cases [ ]
 # First, compute approximation for large v:
 #Iv[v+1]=Iv_hyp(k2,v)
-Iv[v+1]=Iv_series(k2,v)
+if k2 < 1
+  Iv[v+1]=Iv_series(k2,v)
 # Next, iterate downwards in v:
-f0 = k2^v/k*kc
+  f0 = k2^v/k*kc
 # Loop over v, computing I_v and J_v from higher v:
-while v >= 1
-  Iv[v] = 2/(2v-1)*(v*Iv[v+1]+f0)
-  f0 /= k2
-  v -= 1
+  while v >= 1
+    Iv[v] = 2/(2v-1)*(v*Iv[v+1]+f0)
+    f0 /= k2
+    v -= 1
+  end
+else # k^2 >= 1
+  # Compute v=0 (no need to iterate downwards in this case):
+  Iv[1] = pi
+  for v=1:v_max
+    Iv[v+1]=Iv[v]*(1-.5/v)
+  end
 end
 v= v_max
 # Need to compute top two for J_v:
@@ -175,7 +199,7 @@ else
     lam=pi/2; phi=pi/2; slam = one(r); clam = zero(r)
   end
 # Next, compute k^2 = m:
-  k2 = (1.0-(b-r)^2)/(4b*r); kc = sqrt(((b+r)^2-1)/(4*b*r))
+  k2 = (1.0-(b-r)^2)/(4b*r); kc = sqrt(abs(((b+r)^2-1))/(4*b*r))
 end
 # First, compute Huv:
 Huv = zeros(typeof(r),l_max+3,l_max+1)
