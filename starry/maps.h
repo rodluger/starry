@@ -673,6 +673,8 @@ namespace maps {
         if (b <= ro - 1) return zero;
 
         // If we're doing quadratic limb darkening, let's skip all the overhead
+        /*
+        // TODO
         if ((lmax <= 2) && (ro < 1)) {
             if ((b >= 1 + ro) || (ro == 0))
                 return 1.0;
@@ -685,6 +687,7 @@ namespace maps {
                     return solver::QuadLimbDark(G, b, ro, g(0), g(2), g(8));
             }
         }
+        */
 
         // No occultation: cake
         if ((b >= 1 + ro) || (ro == 0)) {

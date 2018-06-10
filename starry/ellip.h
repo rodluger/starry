@@ -21,8 +21,6 @@ Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
 
 namespace ellip {
 
-#define STARRY_ELLIP_MAX_ITER                   200
-
   using boost::math::ellint_1;
   using boost::math::ellint_2;
   using std::abs;

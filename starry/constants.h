@@ -16,6 +16,16 @@ Defines compiler constants used throughout the code.
 #define STARRY_NMULTI                           32
 #endif
 
+// Max iterations in elliptic integrals
+#ifndef STARRY_ELLIP_MAX_ITER
+#define STARRY_ELLIP_MAX_ITER                   200
+#endif
+
+// Max iterations in computation of I_v and J_v
+#ifndef STARRY_IJ_MAX_ITER
+#define STARRY_IJ_MAX_ITER                      50
+#endif
+
 // Re-parameterize solution vector when abs(b - r) < STARRY_EPS_BMR_ZERO
 #ifndef STARRY_EPS_BMR_ZERO
 #define STARRY_EPS_BMR_ZERO                     1e-2

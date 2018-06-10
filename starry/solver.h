@@ -23,9 +23,7 @@ namespace solver {
     using std::max;
     using std::vector;
 
-    // Forward declarations
-    template <class T>
-    class Primitive;
+    // Forward declaration
     template <class T>
     class Greens;
 
@@ -104,215 +102,6 @@ namespace solver {
 
     };
 
-    // Compute the n=2 term of the *s^T* occultation solution vector.
-    // This is the Mandel & Agol solution for linear limb darkening,
-    // reparametrized for speed
-    template <typename T>
-    inline T s2(Greens<T>& G) {
-        T b = G.b();
-        T r = G.r();
-        T ksq = G.ksq();
-        T K = G.ELL.K();
-        T E = G.ELL.E();
-        return lld::s2(b, r, ksq, K, E, G.pi);
-    }
-
-    // Compute the flux for a transit of a quadratically limb-darkened star
-    // This code has been stripped of a lot of the overhead for speed, so
-    // it may be a bit opaque. Basically, for a quadratically limb-darkened star,
-    // the only terms that matter in the Greens polynomial basis are those at
-    // indices n = 0, 2, 4, and 8. We therefore only compute those indices of the
-    // solution vector -- we do it directly, without any recurrence relations.
-    // Note, importantly, that the term g(4) is *always* 1/3 * g(8), so we fold
-    // that into `s8` below.
-    template <typename T>
-    inline T QuadLimbDark(Greens<T>& G, const T& b, const T& r, T& g0, T& g2, T& g8) {
-
-        // Initialize only the necessary variables
-        T s0, s8;
-        G.br = b * r;
-        G.b.reset(b);
-        G.r.reset(r);
-        G.delta.reset((b - r) / (2 * r));
-        G.ksq.reset((1 - G.r(2) - G.b(2) + 2 * G.br) / (4 * G.br));
-        G.k = sqrt(G.ksq());
-        G.ELL.reset();
-
-        if ((abs(1 - r) < b) && (b < 1 + r)) {
-            G.sinphi.reset((1 - G.r(2) - G.b(2)) / (2 * G.br));
-            G.cosphi.reset(sqrt(1 - G.sinphi() * G.sinphi()));
-            G.sinlam.reset((1 - G.r(2) + G.b(2)) / (2 * G.b()));
-            G.coslam.reset(sqrt(1 - G.sinlam() * G.sinlam()));
-            G.phi = asin(G.sinphi());
-            G.lam = asin(G.sinlam());
-            s0 = G.lam + G.pi_over_2 + G.sinlam() * G.coslam() -
-                 G.r(2) * (G.phi + G.pi_over_2 + G.sinphi() * G.cosphi());
-            s8 = 0.5 * (G.pi_over_2 + G.lam) + (1. / 3.) * G.coslam() * G.sinlam() -
-                 (1. / 6.) * G.coslam(3) * G.sinlam() + (1. / 6.) * G.coslam() * G.sinlam(3) -
-                 (G.r(2) * G.b(2) * (G.pi_over_2 + G.phi + G.cosphi() * G.sinphi()) -
-                  G.r(3) * G.b() * G.cosphi() * (1. + (1. / 3.) * G.cosphi(2) - G.sinphi(2)) +
-                  G.r(4) * (0.5 * (G.pi_over_2 + G.phi) + (1. / 3.) * G.cosphi() * G.sinphi() -
-                            (1. / 6.) * G.cosphi(3) * G.sinphi() + (1. / 6.) * G.cosphi() * G.sinphi(3)));
-        } else {
-            G.sinphi.reset(1);
-            G.cosphi.reset(0);
-            G.sinlam.reset(1);
-            G.coslam.reset(0);
-            G.phi = 0.5 * G.pi;
-            G.lam = 0.5 * G.pi;
-            s0 = G.pi * (1 - G.r(2));
-            s8 = G.pi_over_2 - G.pi * G.r(2) * (0.5 * G.r(2) + G.b(2));
-        }
-
-        return s0 * g0 + s2(G) * g2 + s8 * g8;
-
-    }
-
-    // Compute the primitive integral helper matrix H
-    template <typename T>
-    inline T computeH(Greens<T>& G, int u, int v) {
-        if (!is_even(u)) {
-            return 0;
-        } else if (G.off_limb && !is_even(v)) {
-            // By symmetry, from the integral definition of H
-            return 0;
-        } else if ((u == 0) && (v == 0)) {
-            return 2 * G.lam + G.pi;
-        } else if ((u == 0) && (v == 1)) {
-            return -2 * G.coslam(1);
-        } else if (u >= 2) {
-            return (2 * G.coslam(u - 1) * G.sinlam(v + 1) + (u - 1) * G.H(u - 2, v)) / (u + v);
-        } else {
-            return (-2 * G.coslam(u + 1) * G.sinlam(v - 1) + (v - 1) * G.H(u, v - 2)) / (u + v);
-        }
-    }
-
-    // The helper primitive integral K_{u,v}
-    template <typename T>
-    inline T K(Greens<T>& G, int u, int v) {
-        T res = 0;
-        for (int i = 0; i < v + 1; i++)
-            res += tables::choose<T>(v, i) * G.b_r(v - i) * G.I(u, i);
-        return res;
-    }
-
-    // The helper primitive integral L_{u,v}
-    template <typename T>
-    inline T L(Greens<T>& G, int u, int v) {
-        T res = 0;
-        for (int i = 0; i < v + 1; i++)
-            res += tables::choose<T>(v, i) * G.b_r(v - i) * G.J(u, i);
-        return res;
-    }
-
-    // Compute the double-binomial coefficient A_{i,u,v}
-    template <typename T>
-    inline T computeAiuv(Greens<T>& G, int i, int u, int v) {
-        T res = 0;
-        int j1 = u - i;
-        if (j1 < 0) j1 = 0;
-        int j2 = u + v - i;
-        if (j2 > u) j2 = u;
-        int c;
-        for (int j = j1; j <= j2; j++) {
-            c = u + v - i - j;
-            if (c < 0)
-                break;
-            if (is_even(u + j))
-                res += tables::choose<T>(u, j) * tables::choose<T>(v, c) * G.delta(c);
-            else
-                res -= tables::choose<T>(u, j) * tables::choose<T>(v, c) * G.delta(c);
-        }
-        return res;
-    }
-
-    // The Taylor expansion of J near b = 0 (k^2 = \infty)
-    template <typename T>
-    inline T taylorJ(Greens<T>& G, int v){
-        T res = 0;
-        int n = 0;
-        int sign = 1;
-        // TODO: convergence criterion
-        while (n < 30) {
-            res += sign / (tables::factorial<T>(n) * tables::half_factorial<T>(3 - 2 * n))
-                        * (tables::gamma_sup<T>(n + v) / tables::gamma<T>(n + v + 1))
-                        / G.ksq(n);
-            sign *= -1;
-            n++;
-        }
-        // Note that sqrt(pi) * (3/2)! = 3 * pi / 4
-        res *= 0.75 * G.pi;
-        return res;
-    }
-
-    // The Taylor expansion of P near b = 0 (k^2 = \infty)
-    template <typename T>
-    inline T taylorP(Greens<T>& G){
-        T res = 0;
-        int a, b;
-        if ((G.mu == 1) && is_even(G.l)) {
-            a = (G.l - 2) / 2;
-            b = 0;
-            for (int i = 0; i <= a + b; i++)
-                res += 2 * computeAiuv(G, i, a, b) * taylorJ(G, a + i + 1)
-                         - computeAiuv(G, i, a, b) * taylorJ(G, a + i);
-            res *= -pow(2 * G.r(), G.l - 1) * pow(1 - (G.b() - G.r()) * (G.b() - G.r()), 1.5);
-        } else if ((G.mu == 1) && !is_even(G.l)) {
-            a = (G.l - 3) / 2;
-            b = 1;
-            for (int i = 0; i <= a + b; i++)
-                res += 2 * computeAiuv(G, i, a, b) * taylorJ(G, a + i + 1)
-                         - computeAiuv(G, i, a, b) * taylorJ(G, a + i);
-            res *= -pow(2 * G.r(), G.l - 1) * pow(1 - (G.b() - G.r()) * (G.b() - G.r()), 1.5);
-        } else {
-            a = (G.mu - 1) / 4;
-            b = (G.nu - 1) / 2;
-            for (int i = 0; i <= a + b; i++)
-                res += computeAiuv(G, i, a, b) * taylorJ(G, a + i);
-            res *= 2 * pow(2 * G.r(), G.l - 1) * pow(1 - (G.b() - G.r()) * (G.b() - G.r()), 1.5);
-        }
-        return res;
-    }
-
-    // The primitive integral P(G_n)
-    template <typename T>
-    inline T P(Greens<T>& G){
-        if (is_even(G.mu, 2)) {
-            return G.r(G.l + 2) * K(G, (G.mu + 4) / 2, G.nu / 2);
-        } else if ((G.mu == 1) && is_even(G.l)) {
-            if (J_unstable(G))
-                return taylorP(G);
-            else
-                return -G.r(G.l - 1) * G.J(G.l - 2, 1);
-        } else if ((G.mu == 1) && !is_even(G.l)) {
-            if (J_unstable(G))
-                return taylorP(G);
-            else
-                return -G.r(G.l - 2) * (G.b() * G.J(G.l - 3, 1) + G.r() * G.J(G.l - 3, 2));
-        } else if (is_even(G.mu - 1, 2)) {
-            if (J_unstable(G))
-                return taylorP(G);
-            else
-                return G.r(G.l - 1) * L(G, (G.mu - 1) / 2, (G.nu - 1) / 2);
-        } else {
-            return 0;
-        }
-    }
-
-    // The primitive integral Q(G_n)
-    template <typename T>
-    inline T Q(Greens<T>& G){
-        // From the integral definition of Q, the result is zero
-        // unless both mu/2 and nu/2 are even when the occultor
-        // is not touching the limb of the planet.
-        if (G.off_limb && (!is_even(G.mu, 2) || !is_even(G.nu, 2)))
-            return 0;
-        else if (is_even(G.mu, 2))
-            return G.H((G.mu + 4) / 2, G.nu / 2);
-        else
-            return 0;
-    }
-
     // Elliptic integral storage class
     template <class T>
     class Elliptic {
@@ -337,12 +126,12 @@ namespace solver {
             // Elliptic integral of the first kind
             inline T K() {
                 if (!bK) {
-                    if ((G.b() == 0) || (G.ksq() == 1))
+                    if ((G.b == 0) || (G.ksq == 1))
                         vK = 0;
-                    else if (G.ksq() < 1)
-                        vK = ellip::K(G.ksq());
+                    else if (G.ksq < 1)
+                        vK = ellip::K(G.ksq);
                     else
-                        vK = ellip::K(T(1. / G.ksq()));
+                        vK = ellip::K(T(1. / G.ksq));
                     bK = true;
                 }
                 return vK;
@@ -351,14 +140,14 @@ namespace solver {
             // Elliptic integral of the second kind
             inline T E() {
                 if (!bE) {
-                    if (G.b() == 0)
+                    if (G.b == 0)
                         vE = 0;
-                    else if (G.ksq() == 1)
+                    else if (G.ksq == 1)
                         vE = 1;
-                    else if (G.ksq() < 1)
-                        vE = ellip::E(G.ksq());
+                    else if (G.ksq < 1)
+                        vE = ellip::E(G.ksq);
                     else
-                        vE = ellip::E(T(1. / G.ksq()));
+                        vE = ellip::E(T(1. / G.ksq));
                     bE = true;
                 }
                 return vE;
@@ -367,12 +156,12 @@ namespace solver {
             // First elliptic function
             inline T E1() {
                 if (!bE1) {
-                    if ((G.b() == 0) || (G.ksq() == 1))
+                    if ((G.b == 0) || (G.ksq == 1))
                         vE1 = 0;
-                    else if (G.ksq() < 1)
-                        vE1 = (1 - G.ksq()) * K();
+                    else if (G.ksq < 1)
+                        vE1 = (1 - G.ksq) * K();
                     else
-                        vE1 = (1 - G.ksq()) / G.k * K();
+                        vE1 = (1 - G.ksq) / G.k() * K();
                     bE1 = true;
                 }
                 return vE1;
@@ -381,14 +170,14 @@ namespace solver {
             // Second elliptic function
             inline T E2() {
                 if (!bE2) {
-                    if (G.b() == 0)
+                    if (G.b == 0)
                         vE2 = 0;
-                    else if (G.ksq() == 1)
+                    else if (G.ksq == 1)
                         vE2 = 1;
-                    else if (G.ksq() < 1)
+                    else if (G.ksq < 1)
                         vE2 = E();
                     else
-                        vE2 = G.k * E() + (1 - G.ksq()) / G.k * K();
+                        vE2 = G.k() * E() + (1 - G.ksq) / G.k() * K();
                     bE2 = true;
                 }
                 return vE2;
@@ -404,50 +193,347 @@ namespace solver {
 
     };
 
-    // Primitive integral storage class
-    template <class T>
-    class Primitive {
+    // The constant factor F_l
+    template <typename T>
+    inline T F(Greens<T>& G){
+        return G.twor(G.l - 1) * G.fourbr32;
+    }
 
-            Matrix<bool> set;
-            Matrix<T> matrix;
-            int rows;
-            int cols;
-            T (*setter)(Greens<T>&, int, int);
+    // Compute the n=2 term of the *s^T* occultation solution vector.
+    // This is the Mandel & Agol solution for linear limb darkening,
+    // reparametrized for speed
+    template <typename T>
+    inline T s2(Greens<T>& G) {
+        T K = G.ELL.K();
+        T E = G.ELL.E();
+        return lld::s2(G.b, G.r, G.ksq, K, E, G.pi);
+    }
+
+    // Vieta's theorem coefficient A_{i,u,v}
+    template <class T>
+    class A {
+
+            Vector<bool>** set;
+            Vector<T>** vec;
+            int umax;
+            int vmax;
+            int j, j1, j2, c;
+            T res;
             Greens<T>& G;
 
         public:
 
             // Constructor
-            Primitive(Greens<T>& G, T (*setter)(Greens<T>&, int, int), int rows, int cols=1) : setter(setter), rows(rows), cols(cols), G(G) {
-                set = Matrix<bool>::Zero(rows, cols);
-                matrix.resize(rows, cols);
+            A(Greens<T>& G) : G(G) {
+                umax = is_even(G.lmax) ? (G.lmax + 2) / 2 : (G.lmax + 3) / 2;
+                vmax = G.lmax > 0 ? G.lmax : 1;
+                vec = new Vector<T>*[umax + 1];
+                set = new Vector<bool>*[umax + 1];
+                for (int u = 0; u < umax + 1; u++) {
+                    vec[u] = new Vector<T>[vmax + 1];
+                    set[u] = new Vector<bool>[vmax + 1];
+                    for (int v = 0; v < vmax + 1; v++) {
+                        vec[u][v].resize(u + v + 1);
+                        set[u][v].setZero(u + v + 1);
+                    }
+                }
+
             }
 
-            // Getter function. G is a pointer to the current Greens struct,
-            // and setter is a pointer to the function that computes the
-            // (i, j) element of this primitive matrix
-            inline T value(int i, int j=0) {
-                if ((i < 0) || (j < 0) || (i > rows - 1) || (j > cols - 1)) {
+            // Destructor
+            ~A() {
+                for (int u = 0; u < umax + 1; u++) {
+                    delete [] vec[u];
+                    delete [] set[u];
+                }
+                delete [] vec;
+                delete [] set;
+            }
+
+            // Compute the double-binomial coefficient A_{i,u,v}
+            inline T compute(int i, int u, int v) {
+                res = 0;
+                j1 = u - i;
+                if (j1 < 0) j1 = 0;
+                j2 = u + v - i;
+                if (j2 > u) j2 = u;
+                for (j = j1; j <= j2; j++) {
+                    c = u + v - i - j;
+                    if (c < 0)
+                        break;
+                    if (is_even(u + j))
+                        res += tables::choose<T>(u, j) * tables::choose<T>(v, c) * G.delta(c);
+                    else
+                        res -= tables::choose<T>(u, j) * tables::choose<T>(v, c) * G.delta(c);
+                }
+                return res;
+            }
+
+            // Getter function
+            inline T get_value(int i, int u, int v) {
+                if ((i < 0) || (u < 0) || (v < 0) || (u > umax) || (v > vmax) || (i > u + v)) {
                     throw errors::BadIndex();
                 }
-                if (!set(i, j)) {
-                    matrix(i, j) = (*setter)(G, i, j);
-                    set(i, j) = true;
+                if (!set[u][v](i)) {
+                    vec[u][v](i) = compute(i, u, v);
+                    set[u][v](i) = true;
                 }
-                return matrix(i, j);
+                return vec[u][v](i);
             }
 
             // Overload () to get the function value without calling value()
-            inline T operator() (int i, int j=0) { return value(i, j); }
+            inline T operator() (int i, int u, int v) { return get_value(i, u, v); }
 
             // Resetter
             void reset() {
-                set.setZero(rows, cols);
+                for (int u = 0; u < umax + 1; u++) {
+                    for (int v = 0; v < vmax + 1; v++) {
+                        set[u][v].setZero(u + v + 1);
+                    }
+                }
             }
 
     };
 
+    // The helper primitive integral H_{u,v}
+    template <class T>
+    class H {
 
+            Matrix<bool> set;
+            Matrix<T> value;
+            int umax;
+            int vmax;
+            Greens<T>& G;
+
+        public:
+
+            // Constructor
+            H(Greens<T>& G) : G(G) {
+                umax = G.lmax + 2;
+                vmax = G.lmax;
+                set = Matrix<bool>::Zero(umax + 1, vmax + 1);
+                value.resize(umax + 1, vmax + 1);
+            }
+
+            // Compute H_{u,v}
+            inline T compute(int u, int v) {
+                if (!is_even(u)) {
+                    return 0;
+                } else if (G.off_limb && !is_even(v)) {
+                    return 0;
+                } else if ((u == 0) && (v == 0)) {
+                    return 2 * asin(G.sinlam()) + G.pi;
+                } else if ((u == 0) && (v == 1)) {
+                    return -2 * G.coslam(1);
+                } else if (u >= 2) {
+                    return (2 * G.coslam(u - 1) * G.sinlam(v + 1) + (u - 1) * G.H(u - 2, v)) / (u + v);
+                } else {
+                    return (-2 * G.coslam(u + 1) * G.sinlam(v - 1) + (v - 1) * G.H(u, v - 2)) / (u + v);
+                }
+            }
+
+            // Getter function
+            inline T get_value(int u, int v) {
+                if ((u < 0) || (v < 0) || (u > umax) || (v > vmax)) {
+                    throw errors::BadIndex();
+                }
+                if (!set(u, v)) {
+                    value(u, v) = compute(u, v);
+                    set(u, v) = true;
+                }
+                return value(u, v);
+            }
+
+            // Overload () to get the function value without calling value()
+            inline T operator() (int u, int v) { return get_value(u, v); }
+
+            // Resetter
+            void reset() {
+                set.setZero(umax + 1, vmax + 1);
+            }
+
+    };
+
+    // The helper primitive integral I_v
+    template <class T>
+    class I {
+
+            Vector<bool> set;
+            Vector<T> value;
+            int vmax;
+            Greens<T>& G;
+
+        public:
+
+            I(Greens<T>& G) : G(G) {
+                vmax = 2 * G.lmax + 2;
+                set = Vector<bool>::Zero(vmax + 1);
+                value.resize(vmax + 1);
+            }
+
+            // Reset flags and compute I_vmax with a series expansion
+            inline void reset() {
+
+                // Reset flags
+                set.setZero(vmax + 1);
+
+                // Convergence
+                T tol = mach_eps<T>() * G.ksq;
+                T error = T(INFINITY);
+
+                // Computing leading coefficient (n=0):
+                T coeff = 2.0 / (2 * vmax + 1);
+
+                // Add leading term to I_vmax:
+                T res = coeff;
+
+                // Now, compute higher order terms until desired precision is reached
+                int n = 1;
+                while ((n < STARRY_IJ_MAX_ITER) && (error > tol)) {
+                    coeff *= (2.0 * n - 1.0) * 0.5 * (2 * n + 2 * vmax - 1) / (n * (2 * n + 2 * vmax + 1)) * G.ksq;
+                    error = coeff;
+                    res += coeff;
+                    n++;
+                }
+
+                // Store the result
+                value(vmax) = G.k(1 + 2 * vmax) * res;
+                set(vmax) = true;
+            }
+
+            // Getter function
+            inline T get_value(int v) {
+                if ((v < 0) || (v > vmax)) throw errors::BadIndex();
+                if (!set(v)) {
+                    value(v) = 2.0 / (2 * v + 1) * ((v + 1) * get_value(v + 1) + G.k(2 * v + 1) * G.kc);
+                    set(v) = true;
+                }
+                return value(v);
+            }
+
+            // Overload () to get the function value without calling get_value()
+            inline T operator() (int v) { return get_value(v); }
+
+    };
+
+    // The helper primitive integral J_v
+    template <class T>
+    class J {
+
+            Vector<bool> set;
+            Vector<T> value;
+            int vmax;
+            Greens<T>& G;
+
+        public:
+
+            J(Greens<T>& G) : G(G) {
+                vmax = 2 * G.lmax - 1;
+                set = Vector<bool>::Zero(vmax + 1);
+                value.resize(vmax + 1);
+            }
+
+            // Reset flags and compute J_vmax and J_{vmax - 1} with a series expansion
+            inline void reset() {
+
+                // Reset flags
+                set.setZero(vmax + 1);
+
+                // Convergence
+                T tol = mach_eps<T>() * G.ksq;
+
+                // Compute the highest two terms in J
+                for (int v = vmax; v >= vmax - 1; v--) {
+
+                    // Computing leading coefficient (n=0):
+                    T coeff = 3 * G.pi / (pow(2, 2 + v) * tables::factorial<T>(v + 2));
+                    for (int i = 1; i <= v; i++) coeff *= (2.0 * i - 1);
+
+                    // Add leading term to J_vmax:
+                    T res = coeff;
+
+                    // Now, compute higher order terms until desired precision is reached
+                    int n = 1;
+                    T error = T(INFINITY);
+                    while ((n < STARRY_IJ_MAX_ITER) && (error > tol)) {
+                        coeff *= (2.0 * n - 1.0) * (2.0 * (n + v) - 1.0) * 0.25 / (n * (n + v + 2)) * G.ksq;
+                        error = coeff;
+                        res += coeff;
+                        n++;
+                    }
+
+                    // Store the result
+                    value(v) = G.k(1 + 2 * v) * res;
+                    set(v) = true;
+                }
+
+            }
+
+            // Getter function
+            inline T get_value(int v) {
+                if ((v < 0) || (v > vmax)) throw errors::BadIndex();
+                if (!set(v)) {
+                    T f2 = G.ksq * (2 * v + 1);
+                    T f1 = 2 * (3 + v + G.ksq * (1 + v)) / f2;
+                    T f3 = (2 * v + 7) / f2;
+                    value(v) = f1 * get_value(v + 1) - f3 * get_value(v + 2);
+                    set(v) = true;
+                }
+                return value(v);
+            }
+
+            // Overload () to get the function value without calling get_value()
+            inline T operator() (int v) { return get_value(v); }
+
+    };
+
+    // The helper primitive integral K_{u,v}
+    template <typename T>
+    inline T K(Greens<T>& G, int u, int v) {
+        T res = 0;
+        for (int i = 0; i < u + v + 1; i++)
+            res += G.A(i, u, v) * G.I(i + u);
+        return res;
+    }
+
+    // The helper primitive integral L_{u,v}^(t)
+    template <typename T>
+    inline T L(Greens<T>& G, int u, int v, int t) {
+        T res = 0;
+        for (int i = 0; i < u + v + 1; i++)
+            res += G.A(i, u, v) * G.J(i + u + t);
+        return G.k(3) * res;
+    }
+
+    // The primitive integral P(G_n)
+    template <typename T>
+    inline T P(Greens<T>& G){
+        if (is_even(G.mu, 2)) {
+            return 2 * G.twor(G.l + 2) * K(G, (G.mu + 4) / 4, G.nu / 2);
+        } else if ((G.mu == 1) && is_even(G.l)) {
+            return F(G) * (L(G, (G.l - 2) / 2, 0, 0) - 2 * L(G, (G.l - 2) / 2, 0, 1));
+        } else if ((G.mu == 1) && !is_even(G.l)) {
+            return F(G) * (L(G, (G.l - 3) / 2, 1, 0) - 2 * L(G, (G.l - 3) / 2, 1, 1));
+        } else if (is_even(G.mu - 1, 2)) {
+            return 2 * F(G) * L(G, (G.mu - 1) / 4, (G.nu - 1) / 2, 0);
+        } else {
+            return 0;
+        }
+    }
+
+    // The primitive integral Q(G_n)
+    template <typename T>
+    inline T Q(Greens<T>& G){
+        // From the integral definition of Q, the result is zero
+        // unless both mu/2 and nu/2 are even when the occultor
+        // is not touching the limb of the planet.
+        if (G.off_limb && (!is_even(G.mu, 2) || !is_even(G.nu, 2)))
+            return 0;
+        else if (is_even(G.mu, 2))
+            return G.H((G.mu + 4) / 2, G.nu / 2);
+        else
+            return 0;
+    }
 
     // Greens integration housekeeping data
     template <class T>
@@ -462,35 +548,31 @@ namespace solver {
             int mu;
             int nu;
 
-            // Occultor off the limb of the body (simpler formulae in this case)?
+            // Occultor off the limb of the body?
             bool off_limb;
 
-            // Some basic variables
-            T br;
-            T br32;
-            T k;
-            T phi;
-            T lam;
+            // Basic variables
+            T b;
+            T r;
+            T ksq;
+            T kc;
+            T fourbr32;
 
             // Powers of basic variables
-            Power<T> ksq;
-            Power<T> b;
-            Power<T> r;
-            Power<T> b_r;
-            Power<T> cosphi;
-            Power<T> sinphi;
+            Power<T> k;
+            Power<T> twor;
+            Power<T> delta;
             Power<T> coslam;
             Power<T> sinlam;
-            Power<T> delta;
-            Power<T> F;
 
             // Elliptic integrals
             Elliptic<T> ELL;
 
             // Primitive matrices/vectors
-            Primitive<T> H;
-            Primitive<T> I;
-            Primitive<T> J;
+            H<T> H;
+            I<T> I;
+            J<T> J;
+            A<T> A;
 
             // The solution vector
             VectorT<T> sT;
@@ -498,33 +580,27 @@ namespace solver {
             // The value of pi, computed at
             // the user-requested precision
             T pi;
-            T pi_over_2;
 
             // Constructor
             Greens(int lmax) :
                    lmax(lmax),
                    off_limb(false),
-                   ksq(0),
-                   b(0),
-                   r(0),
-                   b_r(0),
-                   cosphi(0),
-                   sinphi(0),
+                   k(0),
+                   twor(0),
+                   delta(0),
                    coslam(0),
                    sinlam(0),
-                   delta(0),
-                   F(0),
                    ELL(*this),
-                   H(*this, computeH, lmax + 3, lmax + 1),
-                   I(*this, computeI, 2 * lmax + 3),
-                   J(*this, computeJ, 2 * lmax) {
+                   H(*this),
+                   I(*this),
+                   J(*this),
+                   A(*this) {
 
                 // Initialize the solution vector
                 sT = VectorT<T>::Zero((lmax + 1) * (lmax + 1));
 
                 // Compute pi at the actual precision of the T type
                 pi = T(BIGPI);
-                pi_over_2 = T(0.5 * pi);
 
             }
 
@@ -537,58 +613,38 @@ namespace solver {
         // Initialize the basic variables
         int l, m;
         int n = 0;
-        T ksq, k;
-        G.br = b * r;
-        G.br32 = pow(G.br, 1.5);
-        G.b.reset(b);
-        G.r.reset(r);
+        G.b = b;
+        G.r = r;
+        G.ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * b * r);
+        G.kc = sqrt(((b + r) * (b + r) - 1) / (4 * b * r));
+        G.fourbr32 = pow(4 * b * r, 1.5);
+
+        // Powers of basic variables
+        G.twor.reset(2 * r);
         G.delta.reset((b - r) / (2 * r));
-        G.b_r.reset(b / r);
-        if (r <= 1)
-            ksq = (1 - G.r(2) - G.b(2) + 2 * G.br) / (4 * G.br);
-        else
-            ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * G.br);
-        k = sqrt(ksq);
-        // Override the NaNs
-        if ((b == 0) || (r == 0)) {
-            set_derivs_to_zero(ksq);
-            set_derivs_to_zero(k);
-        }
-        G.ksq.reset(ksq);
-        G.k = k;
         if ((abs(1 - r) < b) && (b < 1 + r)) {
             G.off_limb = false;
-            if (r <= 1) {
-                G.sinphi.reset((1 - G.r(2) - G.b(2)) / (2 * G.br));
-                G.cosphi.reset(sqrt(1 - G.sinphi() * G.sinphi()));
-                G.sinlam.reset((1 - G.r(2) + G.b(2)) / (2 * G.b()));
-                G.coslam.reset(sqrt(1 - G.sinlam() * G.sinlam()));
-                G.phi = asin(G.sinphi());
-                G.lam = asin(G.sinlam());
-            } else {
-                G.sinphi.reset(2 * (G.ksq() - 0.5));
-                G.cosphi.reset(2 * G.k * sqrt(1 - G.ksq()));
-                G.sinlam.reset(0.5 * ((1. / b) + (b - r) * (1. + r / b)));
-                G.coslam.reset(sqrt(1 - G.sinlam() * G.sinlam()));
-                G.phi = asin(G.sinphi());
-                G.lam = asin(G.sinlam());
-            }
+            G.sinlam.reset(0.5 * ((1. / b) + (b - r) * (1. + r / b)));
+            G.coslam.reset(sqrt(1 - G.sinlam() * G.sinlam()));
         } else {
             G.off_limb = true;
-            G.sinphi.reset(1);
-            G.cosphi.reset(0);
-            G.sinlam.reset(1);
-            G.coslam.reset(0);
-            G.phi = 0.5 * G.pi;
-            G.lam = 0.5 * G.pi;
         }
 
+        // Override the NaNs in the derivs when b = 0 or r = 0
+        T k = sqrt(G.ksq);
+        if ((b == 0) || (r == 0)) {
+            set_derivs_to_zero(G.ksq);
+            set_derivs_to_zero(G.kc);
+            set_derivs_to_zero(k);
+        }
+        G.k.reset(k);
+
         // Initialize our storage classes
+        G.ELL.reset();
         G.H.reset();
         G.I.reset();
         G.J.reset();
-        G.M.reset();
-        G.ELL.reset();
+        G.A.reset();
 
         // Populate the solution vector
         for (l = 0; l < G.lmax + 1; l++) {
@@ -618,5 +674,26 @@ namespace solver {
     }
 
 }; // namespace solver
+
+/*
+// The Taylor expansion of J near b = 0 (k^2 = \infty)
+template <typename T>
+inline T taylorJ(Greens<T>& G, int v){
+    T res = 0;
+    int n = 0;
+    int sign = 1;
+    // TODO: convergence criterion
+    while (n < 30) {
+        res += sign / (tables::factorial<T>(n) * tables::half_factorial<T>(3 - 2 * n))
+                    * (tables::gamma_sup<T>(n + v) / tables::gamma<T>(n + v + 1))
+                    / G.k(2 * n);
+        sign *= -1;
+        n++;
+    }
+    // Note that sqrt(pi) * (3/2)! = 3 * pi / 4
+    res *= 0.75 * G.pi;
+    return res;
+}
+*/
 
 #endif
