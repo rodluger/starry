@@ -123,15 +123,14 @@ if k2 < 1
   Jv[v+2]= 2/(15k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
 else # k^2 >=1
   k2inv = inv(k2)
-  fe = 2*(2-k2inv); fk=1-k2inv
+  fe = 2*(2-k2inv); fk=-1+k2inv
   Jv[v+1]=2/3*cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))
   fe = -6k2+26-16k2inv; fk=2*(1-k2inv)*(3k2-4)
   Jv[v+2]=cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))/15
 end
 v=2
 while v <= v_max
-  f2 = k2*(2v-3); f1 = 2*(v+1+(v-1)*k2)/f2; f3 = (2v+3)/f2
-  Jv[v+1] = (f1*Jv[v]-Jv[v-1])/f3 
+  Jv[v+1] = (2*(v+1+(v-1)*k2)*Jv[v]-k2*(2v-3)*Jv[v-1])/(2v+3)
   v += 1
 end
 return
@@ -217,7 +216,7 @@ v_max = l_max+3; v = v_max
 # Compute I_v via upward iteration on v:
 if k2 < 1
 # First, compute value for v=0:
-  Hv[1] = 2*asin(sqrt(k2))
+  Hv[1] = 2*asin(k)
 # Next, iterate upwards in v:
   f0 = kc/k
   v = 1
@@ -268,8 +267,8 @@ end
 
 # First, compute Huv:
 Hv = zeros(typeof(r),v_max+1)
-Hv_raise!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
-#Hv_lower!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
+#Hv_raise!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
+Hv_lower!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
 Huv = zeros(typeof(r),l_max+3,l_max+1)
 clam = cos(lam); slam = sin(lam)
 clam2 = clam*clam; clamn = clam; slamn = slam
@@ -300,6 +299,9 @@ Iv = zeros(typeof(k2),v_max+1); Jv = zeros(typeof(k2),v_max+1)
 # This computes I_v for the largest v, and then works down to smaller values:
 #IJv_lower!(l_max,k2,kc,Iv,Jv)
 IJv_raise!(l_max,k2,kc,Iv,Jv)
+#Ivr = zeros(typeof(k2),v_max+1); Jvr = zeros(typeof(k2),v_max+1)
+#IJv_raise!(l_max,k2,kc,Ivr,Jvr)
+#println("Jv lower: ",Jv," Jv raise: ",Jvr," diff: ",Jv-Jvr)
 Kuv = zeros(typeof(r),u_max+1,v_max+1)
 Luv = zeros(typeof(r),u_max+1,v_max+1,2)
 delta = (b-r)/(2r)
