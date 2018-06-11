@@ -10,8 +10,8 @@ sn_big = zeros(BigFloat,n_max+1);
 snew = zeros(typeof(r),n_max+1);
 snew_big = zeros(BigFloat,n_max+1);
 #b=sqrt((r+.5)^2+0.1^2)
-#b=1e-5
-b=0.5
+b=1e-8
+#b=0.5
 for i=1:length(b)
   s_n_bigr!(l_max,r,b[i],snew)
   s_n_bigr!(l_max,big(r),big(b[i]),snew_big)

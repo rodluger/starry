@@ -166,6 +166,7 @@ v= v_max
 # Need to compute top two for J_v:
 #Jv[v]=Jv_hyp(k2,v-1); Jv[v+1]=Jv_hyp(k2,v)
 Jv[v]=Jv_series(k2,v-1); Jv[v+1]=Jv_series(k2,v)
+# Iterate downwards in v (lower):
 while v >= 2
   f2 = k2*(2v-3); f1 = 2*(v+1+(v-1)*k2)/f2; f3 = (2v+3)/f2
   Jv[v-1] = f1*Jv[v]-f3*Jv[v+1]
@@ -267,8 +268,8 @@ end
 
 # First, compute Huv:
 Hv = zeros(typeof(r),v_max+1)
-#Hv_raise!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
-Hv_lower!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
+Hv_raise!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
+#Hv_lower!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
 Huv = zeros(typeof(r),l_max+3,l_max+1)
 clam = cos(lam); slam = sin(lam)
 clam2 = clam*clam; clamn = clam; slamn = slam
@@ -297,8 +298,8 @@ end
 
 Iv = zeros(typeof(k2),v_max+1); Jv = zeros(typeof(k2),v_max+1)
 # This computes I_v for the largest v, and then works down to smaller values:
-#IJv_lower!(l_max,k2,kc,Iv,Jv)
-IJv_raise!(l_max,k2,kc,Iv,Jv)
+IJv_lower!(l_max,k2,kc,Iv,Jv)
+#IJv_raise!(l_max,k2,kc,Iv,Jv)
 #Ivr = zeros(typeof(k2),v_max+1); Jvr = zeros(typeof(k2),v_max+1)
 #IJv_raise!(l_max,k2,kc,Ivr,Jvr)
 #println("Jv lower: ",Jv," Jv raise: ",Jvr," diff: ",Jv-Jvr)
@@ -341,7 +342,7 @@ while n <= n_max
       # Now, compute P(Gn) & Q(Gn):
       if mod(mu,4) == 0
         pofgn = 2*(2r)^(l+2)*Kuv[u+1,v+1]
-        if iseven(v)  # Q is zero for odd v
+        if iseven(v) || k2 <= 1  # Q is zero for odd v
 #        qofgn = Huv[2u+1,v+1]
           a=aiuv(-0.5,u,v)
           qofgn = 2^(2u+v+1)*sum(a[1:u+v+1].*Hv[u+1:2u+v+1])
