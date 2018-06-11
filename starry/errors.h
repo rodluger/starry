@@ -36,21 +36,25 @@ namespace errors {
         }
     };
 
-    struct BadTaylor : public exception {
-        const char * what () const throw (){
-            return "Expression order exceeds the order of the tabulated Taylor expansions.";
-        }
-    };
-
-    struct LargeOccultorsUnstable : public exception {
-        const char * what () const throw (){
-            return "Expressions for large occultors are numerically unstable for l > 8. Please enable multi-precision.";
+    class Primitive : public exception {
+        string m_msg;
+    public:
+        Primitive(const string& name) :
+            m_msg(string("Primitive integral " + name + " did not converge.")) { }
+        virtual const char* what() const throw() {
+            return m_msg.c_str();
         }
     };
 
     struct BadIndex : public exception {
         const char * what () const throw (){
             return "Invalid index.";
+        }
+    };
+
+    struct Recursion : public exception {
+        const char * what () const throw (){
+            return "Error in recursion.";
         }
     };
 
@@ -69,12 +73,6 @@ namespace errors {
     struct BadSliceLength : public exception {
         const char * what () const throw (){
             return "Mismatch between slice length and array length.";
-        }
-    };
-
-    struct LimbDark : public exception {
-        const char * what () const throw (){
-            return "Limb darkening is currently only available up to second order.";
         }
     };
 
@@ -99,12 +97,6 @@ namespace errors {
     struct NoLimbDark : public exception {
         const char * what () const throw (){
             return "The map is not currently limb-darkened.";
-        }
-    };
-
-    struct Domain : public exception {
-        const char * what () const throw (){
-            return "Domain error in function computeM().";
         }
     };
 

@@ -5,7 +5,7 @@ import numpy as np
 cmap = pl.get_cmap('plasma')
 
 
-def earth_eclipse(lmax=8):
+def earth_eclipse(lmax=20):
     """Compute the error on the secondary eclipse of the Earth."""
     npts = 1000
 
