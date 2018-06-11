@@ -6,8 +6,13 @@ function aiuv(delta::T,u::Int64,v::Int64) where {T <: Real}
 a=zeros(typeof(delta),u+v+1)
 for i=0:u+v
   j1 = maximum([0,u-i])
+#  coeff = binomial(u,j1)*binomial(v,u+v-i-j1)*(-1.)^(u+j1)*delta^(v+u-i-j1)
+#  a[i+1] = coeff
   for j=j1:minimum([u+v-i,u])
+#  for j=j1+1:minimum([u+v-i,u])
+#    coeff *= -(u-j+1)*(u+v-i-j+1)/(j*(i+j-u)*delta)
     a[i+1] += binomial(u,j)*binomial(v,u+v-i-j)*(-1.)^(u+j)*delta^(v+u-i-j)
+#    a[i+1] += coeff
   end
 end
 return a
@@ -15,7 +20,7 @@ end
 
 function Iv_series(k2::T,v::Int64) where {T <: Real}
 # Use series expansion to compute I_v:
-nmax = 50
+nmax = 100
 n = 1; tol = eps(k2); error = Inf
 # Computing leading coefficient (n=0):
 coeff = 2/(2v+1)
@@ -49,7 +54,7 @@ end
 
 function Jv_series(k2::T,v::Int64) where {T <: Real}
 # Use series expansion to compute J_v:
-nmax = 50
+nmax = 100
 n = 1; tol = eps(k2); error = Inf
 # Computing leading coefficient (n=0):
 #coeff = 3pi/(2^(2+v)*factorial(v+2))
@@ -98,7 +103,8 @@ if k2 < 1
 # First, compute value for v=0:
   Iv[1] = 2*asin(sqrt(k2))
 # Next, iterate upwards in v:
-  f0 = kc/k
+#  f0 = kc/k
+  f0 = kc*k
   v = 1
 # Loop over v, computing I_v and J_v from higher v:
   while v <= v_max
@@ -110,7 +116,7 @@ else # k^2 >= 1
   # Compute v=0
   Iv[1] = pi
   for v=1:v_max
-    Iv[v+1]=Iv[v]*(1-.5/v)
+    Iv[v+1]=Iv[v]*(1.0-0.5/v)
   end
 end
 # Need to compute J_v for v=0, 1:
@@ -219,7 +225,8 @@ if k2 < 1
 # First, compute value for v=0:
   Hv[1] = 2*asin(k)
 # Next, iterate upwards in v:
-  f0 = kc/k
+#  f0 = kc/k
+  f0 = kc*k
   v = 1
 # Loop over v, computing I_v and J_v from higher v:
   while v <= v_max
@@ -308,7 +315,8 @@ Luv = zeros(typeof(r),u_max+1,v_max+1,2)
 delta = (b-r)/(2r)
 l = 0; n = 0; m = 0; pofgn = zero(typeof(r)); qofgn = zero(typeof(r))
 #  k^3*(4br)^(3/2) = (1-(2r\delta)^2)^{3/2}:
-Lfac = (1-(2r*delta)^2)^1.5
+#Lfac = (1-(2r*delta)^2)^1.5
+Lfac = (1-(b-r)^2)^1.5
 while n <= n_max
   if n == 2
     sn[n+1] = s2(r,b)
@@ -342,7 +350,17 @@ while n <= n_max
       # Now, compute P(Gn) & Q(Gn):
       if mod(mu,4) == 0
         pofgn = 2*(2r)^(l+2)*Kuv[u+1,v+1]
-        if iseven(v) || k2 <= 1  # Q is zero for odd v
+# Use alternate form of Kuv (6/11/2018 notes):
+#        Kuv_alt = zero(r)
+#        coeff = exp(2*lgamma(u+.5)-lgamma(2u+1))
+#        Kuv_alt = coeff*delta^v
+#        for i=1:v
+#          coeff *= (u+i-.5)/(2u+i)
+#          Kuv_alt += binomial(v,i)*delta^(v-i)*coeff
+#        end
+#        println("u ",u," v ",v," Kuv ",Kuv[u+1,v+1]," Kuv_alt ",Kuv_alt)
+##        pofgn = 2*(2r)^(l+2)*Kuv_alt
+        if iseven(v) || k2 <= 1  # Q is zero for odd v & k^2 > 1
 #        qofgn = Huv[2u+1,v+1]
           a=aiuv(-0.5,u,v)
           qofgn = 2^(2u+v+1)*sum(a[1:u+v+1].*Hv[u+1:2u+v+1])
