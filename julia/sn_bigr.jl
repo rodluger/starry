@@ -1,5 +1,28 @@
 # Computes s_n vector from Luger et al. (2018) to ~machine
 # precision for b+r > 1:
+using GSL
+
+function vector_sum(x::Array{T,1},y::Array{T,1},n::Int64) where {T <: Real}
+# Trying to stabilize arithmetic:
+sum_pos = zero(typeof(x[1]))
+sum_neg = zero(typeof(x[1]))
+# Sort from smallest to largest:
+ind = sortperm(abs.(x.*y))
+#println(x[ind].*y[ind])
+# Carry out sum from smallest to largest (keeping track of positive and negative
+# terms separately):
+for i=1:n
+#  term = x[i]*y[i]
+  term = x[ind[i]]*y[ind[i]]
+  if term > 0.0
+    sum_pos += term
+  else
+    sum_neg += term
+  end
+end
+# Add together the results:
+return sum_pos+sum_neg
+end
 
 function aiuv(delta::T,u::Int64,v::Int64) where {T <: Real}
 # Computes the double-binomial coefficients A_{i,u,v}:
@@ -45,11 +68,17 @@ end
 
 # Compute J_v with hypergeometric function:
 function Jv_hyp(k2::T,v::Int64) where {T <: Real}
-a = 0.5; b=v+0.5; c=v+3.0;  fac = 3pi/(4*(v+1)*(v+2))
-for i=1:v
-  fac *= (1.-.5/i)
+if k2 < 1
+  a = 0.5; b=v+0.5; c=v+3.0;  fac = 3pi/(4*(v+1)*(v+2))
+  for i=1:v
+    fac *= (1.-.5/i)
+  end
+  return sqrt(k2)*k2^v*fac*hypergeom([a,b],c,k2)
+else # k^2 >=1
+  k2inv = inv(k2)
+  # Found a simpler expression than the one in paper (and perhaps more stable for large k^2):
+  return  sqrt(pi)*gamma(v+.5)*(sf_hyperg_2F1_renorm(-.5,v+.5,v+1,k2inv)-(.5+v)*k2inv*sf_hyperg_2F1_renorm(-.5,v+1.5,v+2,k2inv))
 end
-return sqrt(k2)*k2^v*fac*hypergeom([a,b],c,k2)
 end
 
 function Jv_series(k2::T,v::Int64) where {T <: Real}
@@ -170,8 +199,14 @@ else # k^2 >= 1
 end
 v= v_max
 # Need to compute top two for J_v:
-#Jv[v]=Jv_hyp(k2,v-1); Jv[v+1]=Jv_hyp(k2,v)
-Jv[v]=Jv_series(k2,v-1); Jv[v+1]=Jv_series(k2,v)
+#if typeof(k2) == BigFloat
+  Jv[v]=Jv_series(k2,v-1); Jv[v+1]=Jv_series(k2,v)
+#else
+#  Jv[v]=Jv_hyp(k2,v-1); Jv[v+1]=Jv_hyp(k2,v)
+#end
+#if typeof(k2) == Float64
+#  println("v ",v," k2 ",k2," Jv_ser ",convert(Float64,Jv_series(big(k2),v-1))," ",convert(Float64,Jv_series(big(k2),v))," Jv_hyp ",Jv_hyp(k2,v-1)," ",Jv_hyp(k2,v))
+#end
 # Iterate downwards in v (lower):
 while v >= 2
   f2 = k2*(2v-3); f1 = 2*(v+1+(v-1)*k2)/f2; f3 = (2v+3)/f2
@@ -252,7 +287,6 @@ k = sqrt(k2)
 v_max = l_max+3; v = v_max
 # Add in k2 > 1 cases [ ]
 # First, compute approximation for large v:
-#Iv[v+1]=Iv_hyp(k2,v)
 if k2 < 1
   Hv[v+1]=Iv_series(k2,v)
 # Next, iterate downwards in v:
@@ -341,10 +375,14 @@ while n <= n_max
       if Kuv[u+1,v+1] == 0.0 && Luv[u+1,v+1,1] == 0.0 && Luv[u+1,v+1,2] == 0.0
         # First, compute double-binomial coefficients:
         a=aiuv(delta,u,v)
-        Kuv[u+1,v+1]   = sum(a[1:u+v+1].*Iv[u+1:2u+v+1])
-        Luv[u+1,v+1,1] = Lfac*sum(a[1:u+v+1].*Jv[u+1:v+2u+1])
+#        Kuv[u+1,v+1]   = sum(a[1:u+v+1].*Iv[u+1:2u+v+1])
+        Kuv[u+1,v+1]   = vector_sum(a[1:u+v+1],Iv[u+1:2u+v+1],u+v+1)
+#        println("Kuv 1 ",sum(a[1:u+v+1].*Iv[u+1:2u+v+1])," Kuv 2 ",Kuv[u+1,v+1])
+#        Luv[u+1,v+1,1] = Lfac*sum(a[1:u+v+1].*Jv[u+1:v+2u+1])
+        Luv[u+1,v+1,1] = Lfac*vector_sum(a[1:u+v+1],Jv[u+1:v+2u+1],u+v+1)
         if v <= 1
-          Luv[u+1,v+1,2] = Lfac*sum(a[1:u+v+1].*Jv[u+2:v+2u+2])
+#          Luv[u+1,v+1,2] = Lfac*sum(a[1:u+v+1].*Jv[u+2:v+2u+2])
+          Luv[u+1,v+1,2] = Lfac*vector_sum(a[1:u+v+1],Jv[u+2:v+2u+2],u+v+1)
         end
       end
       # Now, compute P(Gn) & Q(Gn):
@@ -362,8 +400,9 @@ while n <= n_max
 ##        pofgn = 2*(2r)^(l+2)*Kuv_alt
         if iseven(v) || k2 <= 1  # Q is zero for odd v & k^2 > 1
 #        qofgn = Huv[2u+1,v+1]
-          a=aiuv(-0.5,u,v)
-          qofgn = 2^(2u+v+1)*sum(a[1:u+v+1].*Hv[u+1:2u+v+1])
+          a=aiuv(-convert(typeof(k2),0.5),u,v)
+#          qofgn = 2^(2u+v+1)*sum(a[1:u+v+1].*Hv[u+1:2u+v+1])
+          qofgn = 2^(2u+v+1)*vector_sum(a[1:u+v+1],Hv[u+1:2u+v+1],u+v+1)
 #          println("u ",u," v ",v," Huv ",Huv[2u+1,v+1]," Qnew ",qofgn)
         end
       else

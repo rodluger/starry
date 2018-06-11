@@ -3,7 +3,8 @@ include("sn_bigr.jl")
 
 #r=10.
 #r=100.
-r=100.
+#r=100.
+r=0.1
 l_max = 20
 n_max = l_max^2+2*l_max
 sn_big = zeros(BigFloat,n_max+1);
@@ -11,7 +12,8 @@ snew = zeros(typeof(r),n_max+1);
 snew_big = zeros(BigFloat,n_max+1);
 #b=sqrt((r+.5)^2+0.1^2)
 #b=1e-8
-b=100.
+b=0.55
+#b=100.
 for i=1:length(b)
   s_n_bigr!(l_max,r,b[i],snew)
   s_n_bigr!(l_max,big(r),big(b[i]),snew_big)
