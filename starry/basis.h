@@ -11,79 +11,85 @@ Spherical harmonic, polynomial, and Green's basis utilities.
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/SparseLU>
-#include "fact.h"
-#include "sqrtint.h"
+#include <limits>
 #include "errors.h"
 #include "utils.h"
+#include "tables.h"
 
 namespace basis {
 
+    using std::abs;
+
     // Contraction coefficient for the Ylms
-    double C(int p, int q, int k) {
+    template <typename T>
+    T C(int p, int q, int k) {
         if ((p > k) && ((p - k) % 2 == 0)) {
-            return 0;
+            return T(0);
         } else if ((q > p) && ((q - p) % 2 == 0)) {
-            return 0;
+            return T(0);
         } else {
-            return fact::half_factorial(k) /
-                        (fact::half_factorial(q) *
-                         fact::half_factorial(k - p) *
-                         fact::half_factorial(p - q));
+            return tables::half_factorial<T>(k) /
+                        (tables::half_factorial<T>(q) *
+                         tables::half_factorial<T>(k - p) *
+                         tables::half_factorial<T>(p - q));
         }
     }
 
     // Return the normalization constant A for a Ylm
-    double Norm(int l, int m) {
-        return sqrt((1. / (4 * M_PI)) *
+    template <typename T>
+    T Norm(int l, int m) {
+        return sqrt((1. / (4 * T(BIGPI))) *
                     (2 - (int)(m == 0)) *
                     (2 * l + 1) *
-                    fact::factorial(l - abs(m)) /
-                    fact::factorial(l + abs(m)));
+                    tables::factorial<T>(l - abs(m)) /
+                    tables::factorial<T>(l + abs(m)));
     }
 
     // Return the B coefficient for a Ylm
-    double B(int l, int m, int j, int k) {
+    template <typename T>
+    T B(int l, int m, int j, int k) {
 
         // Is it zero?
         int i1 = l + m + k - 1;
         int i2 = -l + m + k - 1;
-        if ((i1 < 0) && (i1 % 2 == 0)) return INFINITY;
-        else if ((i2 < 0) && (i2 % 2 == 0)) return 0;
-        else if (m - j < 0) return 0;
-        else if (l - m - k < 0) return 0;
+        if ((i1 < 0) && (i1 % 2 == 0)) return T(INFINITY);
+        else if ((i2 < 0) && (i2 % 2 == 0)) return T(0);
+        else if (m - j < 0) return T(0);
+        else if (l - m - k < 0) return T(0);
 
         // Ok, let's calculate it
-        double two_l = 1;
+        T two_l = 1;
         for (int i=0; i < l; i++)
             two_l *= 2;
-        double a = fact::factorial(m);
-        double b = fact::half_factorial(i1);
-        double c = fact::factorial(j);
-        double d = fact::factorial(k);
-        double e = fact::factorial(m - j);
-        double f = fact::factorial(l - m - k);
-        double g = fact::half_factorial(i2);
+        T a = tables::factorial<T>(m);
+        T b = tables::half_factorial<T>(i1);
+        T c = tables::factorial<T>(j);
+        T d = tables::factorial<T>(k);
+        T e = tables::factorial<T>(m - j);
+        T f = tables::factorial<T>(l - m - k);
+        T g = tables::half_factorial<T>(i2);
         return two_l * a * b / (c * d * e * f * g);
     }
 
     // Return the ijk tensor element of the spherical harmonic Ylm
-    double Lijk(int l, int m, int i, int j, int k) {
+    template <typename T>
+    T Lijk(int l, int m, int i, int j, int k) {
         if ((i == abs(m) + k) && (j <= abs(m))) {
             if ((m >= 0) && (j % 2 == 0)) {
                 if ((j / 2) % 2 == 0)
-                    return Norm(l, m) * B(l, m, j, k);
+                    return Norm<T>(l, m) * B<T>(l, m, j, k);
                 else
-                    return -Norm(l, m) * B(l, m, j, k);
+                    return -Norm<T>(l, m) * B<T>(l, m, j, k);
             } else if ((m < 0) && (j % 2 == 1)) {
                 if (((j - 1) / 2) % 2 == 0)
-                    return Norm(l, -m) * B(l, -m, j, k);
+                    return Norm<T>(l, -m) * B<T>(l, -m, j, k);
                 else
-                    return -Norm(l, -m) * B(l, -m, j, k);
+                    return -Norm<T>(l, -m) * B<T>(l, -m, j, k);
             } else {
-                return 0;
+                return T(0);
             }
         } else {
-            return 0;
+            return T(0);
         }
     }
 
@@ -94,14 +100,16 @@ namespace basis {
     // in the dense version of A1, then convert it to sparse form.
     // Fortunately, this routine is only run **once** when a Map class is
     // instantiated.
-    void computeA1(int lmax, Eigen::SparseMatrix<double>& A1, double tol=1e-15) {
+    template <typename T>
+    void computeA1(int lmax, Eigen::SparseMatrix<T>& A1, T tol=10 * std::numeric_limits<T>::epsilon()) {
         int l, m;
         int n = 0;
         int i, j, k, p, q, v;
         int N = (lmax + 1) * (lmax + 1);
-        double coeff;
-        double Ylm[lmax + 1][lmax + 1][2];
-        Matrix<double> A1Dense = Matrix<double>::Zero(N, N);
+        T coeff;
+        Matrix<T> Ylm0(lmax + 1, lmax + 1);
+        Matrix<T> Ylm1(lmax + 1, lmax + 1);
+        Matrix<T> A1Dense = Matrix<T>::Zero(N, N);
 
         // Iterate over the spherical harmonic orders and degrees
         for (l=0; l<lmax+1; l++) {
@@ -110,28 +118,29 @@ namespace basis {
                 // Compute the contracted polynomial tensor
                 for (i=0;i<l+1;i++) {
                     for (j=0;j<l+1;j++){
-                        Ylm[i][j][0] = 0.;
-                        Ylm[i][j][1] = 0.;
+                        Ylm0(i, j) = 0.;
+                        Ylm1(i, j) = 0.;
                     }
                 }
                 for (k=0; k<l+1; k++) {
                     for (i=k; i<l+1; i++) {
                         for (j=0; j<i-k+1; j++) {
-                            coeff = Lijk(l, m, i, j, k);
-                            if (coeff) {
-                                if ((k == 0) || (k == 1)) {
-                                    // 1 or z
-                                    Ylm[i][j][k] += coeff;
+                            coeff = Lijk<T>(l, m, i, j, k);
+                            if (coeff != 0) {
+                                if (k == 0) {
+                                    Ylm0(i, j) += coeff;
+                                } else if (k == 1) {
+                                    Ylm1(i, j) += coeff;
                                 } else if ((k % 2) == 0) {
                                     // Even power of z
                                     for (p=0; p<k+1; p+=2) {
                                         for (q=0; q<p+1; q+=2) {
                                             if ((p / 2) % 2 == 0)
-                                                Ylm[i - k + p][j + q][0] +=
-                                                    C(p, q, k) * coeff;
+                                                Ylm0(i - k + p, j + q) +=
+                                                    C<T>(p, q, k) * coeff;
                                             else
-                                                Ylm[i - k + p][j + q][0] -=
-                                                    C(p, q, k) * coeff;
+                                                Ylm0(i - k + p, j + q) -=
+                                                    C<T>(p, q, k) * coeff;
                                         }
                                     }
                                 } else {
@@ -139,11 +148,11 @@ namespace basis {
                                     for (p=0; p<k+1; p+=2) {
                                         for (q=0; q<p+1; q+=2) {
                                             if ((p / 2) % 2 == 0)
-                                                Ylm[i - k + p + 1][j + q][1] +=
-                                                    C(p, q, k - 1) * coeff;
+                                                Ylm1(i - k + p + 1, j + q) +=
+                                                    C<T>(p, q, k - 1) * coeff;
                                             else
-                                                Ylm[i - k + p + 1][j + q][1] -=
-                                                    C(p, q, k - 1) * coeff;
+                                                Ylm1(i - k + p + 1, j + q) -=
+                                                    C<T>(p, q, k - 1) * coeff;
                                         }
                                     }
                                 }
@@ -156,12 +165,12 @@ namespace basis {
                 v = 0;
                 for (i=0; i<l+1; i++) {
                     for (j=0; j<i+1; j++) {
-                        if (std::abs(Ylm[i][j][0]) > tol)
-                            A1Dense(v, n) = Ylm[i][j][0];
+                        if (abs(Ylm0(i, j)) > tol)
+                            A1Dense(v, n) = Ylm0(i, j);
                         v++;
                         if (j < i) {
-                            if (std::abs(Ylm[i][j][1]) > tol)
-                                A1Dense(v, n) = Ylm[i][j][1];
+                            if (abs(Ylm1(i, j)) > tol)
+                                A1Dense(v, n) = Ylm1(i, j);
                             v++;
                         }
                     }
@@ -179,12 +188,13 @@ namespace basis {
     }
 
     // Compute the full change of basis matrix, A
-    void computeA(int lmax, Eigen::SparseMatrix<double>& A1, Eigen::SparseMatrix<double>& A, double tol=1e-15) {
+    template <typename T>
+    void computeA(int lmax, Eigen::SparseMatrix<T>& A1, Eigen::SparseMatrix<T>& A, T tol=10 * std::numeric_limits<T>::epsilon()) {
         int i, n, l, m, mu, nu;
         int N = (lmax + 1) * (lmax + 1);
 
         // Let's compute the inverse of A2, since it's easier
-        Matrix<double> A2InvDense = Matrix<double>::Zero(N, N);
+        Matrix<T> A2InvDense = Matrix<T>::Zero(N, N);
         n = 0;
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++){
@@ -228,8 +238,8 @@ namespace basis {
         }
 
         // Sparse dot A2 into A1
-        Eigen::SparseMatrix<double> A2Inv = A2InvDense.sparseView();
-        Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+        Eigen::SparseMatrix<T> A2Inv = A2InvDense.sparseView();
+        Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
         solver.compute(A2Inv);
         if (solver.info() != Eigen::Success) {
             throw errors::SparseFail();
@@ -244,31 +254,31 @@ namespace basis {
 
     // Compute the change of basis from limb darkening coefficients
     // to spherical harmonic coefficients
-    void computeU(int lmax, Matrix<double>& U) {
-        double amp;
-        Matrix<double> LT, YT;
+    template <typename T>
+    void computeU(int lmax, Matrix<T>& U) {
+        T amp;
+        Matrix<T> LT, YT;
         LT.setZero(lmax + 1, lmax + 1);
         YT.setZero(lmax + 1, lmax + 1);
 
         // Compute L^T and Y^T
         for (int l = 0; l < lmax + 1; l++) {
-            amp = pow(2, l) * sqrt((2 * l + 1) / (4 * M_PI)) / fact::factorial(l);
+            amp = pow(2, l) * sqrt((2 * l + 1) / (4 * M_PI)) / tables::factorial<T>(l);
             for (int k = 0; k < l + 1; k++) {
                 if ((k + 1) % 2 == 0)
-                    LT(k, l) = fact::choose(l, k);
+                    LT(k, l) = tables::choose<T>(l, k);
                 else
-                    LT(k, l) = -fact::choose(l, k);
-                YT(k, l) = amp * fact::choose(l, k) * fact::half_factorial(k + l - 1) / fact::half_factorial(k - l - 1);
+                    LT(k, l) = -tables::choose<T>(l, k);
+                YT(k, l) = amp * tables::choose<T>(l, k) * tables::half_factorial<T>(k + l - 1) / tables::half_factorial<T>(k - l - 1);
             }
         }
 
         // Compute U
-        Eigen::HouseholderQR<Eigen::MatrixXd> solver(lmax + 1, lmax + 1);
+        Eigen::HouseholderQR<Matrix<T>> solver(lmax + 1, lmax + 1);
         solver.compute(YT);
         U = solver.solve(LT);
 
     }
-
 
 }; // namespace basis
 

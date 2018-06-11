@@ -43,7 +43,7 @@ for i, l in enumerate(range(lmax + 1)):
             y.set_coeff(l, m, 1)
             flux = y.flux(axis=axis, theta=theta)
             ax[i, j].plot(theta, flux, lw=1, zorder=zorder, color=color)
-            fluxn = y.flux_numerical(axis=axis, theta=thetan, tol=1e-5)
+            fluxn = y._flux_numerical(axis=axis, theta=thetan, tol=1e-5)
             ax[i, j].plot(thetan, fluxn, '.', ms=2, zorder=zorder, color=color)
             if np.max(np.abs(flux)) < 1e-10:
                 nnull += 1

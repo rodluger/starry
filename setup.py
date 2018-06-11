@@ -9,7 +9,7 @@ __version__ = '0.0.2'
 
 # Custom compiler flags
 STARRY_NGRAD = 43
-STARRY_MP_DIGITS = 32
+STARRY_NMULTI = 32
 
 
 class get_pybind_include(object):
@@ -49,8 +49,8 @@ ext_modules = [
         language='c++',
         define_macros=[('STARRY_NGRAD',
                         os.getenv('STARRY_NGRAD', STARRY_NGRAD)),
-                       ('STARRY_MP_DIGITS',
-                        os.getenv('STARRY_MP_DIGITS', STARRY_MP_DIGITS))]
+                       ('STARRY_NMULTI',
+                        os.getenv('STARRY_NMULTI', STARRY_NMULTI))]
     ),
 ]
 
@@ -92,7 +92,7 @@ class BuildExt(build_ext):
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' %
                         self.distribution.get_version())
-            opts.append('-std=c++11')
+            opts.append('-std=c++14')
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
         elif ct == 'msvc':
