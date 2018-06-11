@@ -312,7 +312,7 @@ Hv = zeros(typeof(r),v_max+1)
 Hv_raise!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
 #Hv_lower!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
 Huv = zeros(typeof(r),l_max+3,l_max+1)
-clam = cos(lam); slam = sin(lam)
+#clam = cos(lam); slam = sin(lam)
 clam2 = clam*clam; clamn = clam; slamn = slam
 for u=0:2:l_max+2
   if u == 0
@@ -399,10 +399,10 @@ while n <= n_max
 #        println("u ",u," v ",v," Kuv ",Kuv[u+1,v+1]," Kuv_alt ",Kuv_alt)
 ##        pofgn = 2*(2r)^(l+2)*Kuv_alt
         if iseven(v) || k2 <= 1  # Q is zero for odd v & k^2 > 1
-#        qofgn = Huv[2u+1,v+1]
-          a=aiuv(-convert(typeof(k2),0.5),u,v)
+        qofgn = Huv[2u+1,v+1]
+#          a=aiuv(-convert(typeof(k2),0.5),u,v)
 #          qofgn = 2^(2u+v+1)*sum(a[1:u+v+1].*Hv[u+1:2u+v+1])
-          qofgn = 2^(2u+v+1)*vector_sum(a[1:u+v+1],Hv[u+1:2u+v+1],u+v+1)
+#          qofgn = 2^(2u+v+1)*vector_sum(a[1:u+v+1],Hv[u+1:2u+v+1],u+v+1)
 #          println("u ",u," v ",v," Huv ",Huv[2u+1,v+1]," Qnew ",qofgn)
         end
       else
