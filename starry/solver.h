@@ -105,6 +105,61 @@ namespace solver {
 
     };
 
+    // Elliptic integral storage class
+    template <class T>
+    class Elliptic {
+
+            T vK;
+            T vE;
+            bool bK;
+            bool bE;
+            Power<T>& ksq;
+
+        public:
+
+            // Constructor
+            Elliptic(Power<T>& ksq) : ksq(ksq) {
+                reset();
+            }
+
+            // Resetter
+            void reset() {
+                bK = false;
+                bE = false;
+            }
+
+            // Elliptic integral of the first kind
+            inline T K() {
+                if (!bK) {
+                    if ((isinf(get_value(ksq()))) || (ksq() == 1))
+                        vK = 0;
+                    else if (ksq() < 1)
+                        vK = ellip::K(ksq());
+                    else
+                        vK = ellip::K(T(1. / ksq()));
+                    bK = true;
+                }
+                return vK;
+            }
+
+            // Elliptic integral of the second kind
+            inline T E() {
+                if (!bE) {
+                    if (isinf(get_value(ksq())))
+                        vE = 0;
+                    else if (ksq() == 1)
+                        vE = 1;
+                    else if (ksq() < 1)
+                        vE = ellip::E(ksq());
+                    else
+                        vE = ellip::E(T(1. / ksq()));
+                    bE = true;
+                }
+                return vE;
+            }
+
+    };
+
     // The constant factor F_l
     template <typename T>
     inline T F(Greens<T>& G){
@@ -116,24 +171,9 @@ namespace solver {
     // reparametrized for speed
     template <typename T>
     inline T s2(Greens<T>& G) {
-
-        // TODO: Cache these!
-        T K, E;
+        T K = G.ELL.K();
+        T E = G.ELL.E();
         T ksq = G.ksq();
-        if (G.b == 0) {
-            K = 0;
-            E = 0;
-        } else if (ksq == 1) {
-            K = 0;
-            E = 1;
-        } else if (ksq < 1) {
-            K = ellip::K(ksq);
-            E = ellip::E(ksq);
-        } else {
-            K = ellip::K(T(1. / ksq));
-            E = ellip::E(T(1. / ksq));
-        }
-
         return lld::s2(G.b, G.r, ksq, K, E, G.pi);
     }
 
@@ -238,7 +278,7 @@ namespace solver {
         public:
 
             // Constructor
-            H(int lmax, Power<T>& sinlam, Power<T>& coslam) : umax(lmax + 2), vmax(lmax),
+            H(int lmax, Power<T>& sinlam, Power<T>& coslam) : umax(lmax + 2), vmax(max(1, lmax)),
                     sinlam(sinlam), coslam(coslam) {
                 set = Matrix<bool>::Zero(umax + 1, vmax + 1);
                 value.resize(umax + 1, vmax + 1);
@@ -298,8 +338,8 @@ namespace solver {
 
                 // Pre-tabulate I_v for ksq >= 1
                 sqrtpi = sqrt(T(BIGPI));
-                ivgamma.resize(vmax);
-                for (int v = 0; v < vmax; v++)
+                ivgamma.resize(vmax + 1);
+                for (int v = 0; v <= vmax; v++)
                     ivgamma(v) = sqrtpi * T(boost::math::tgamma_delta_ratio(Multi(v + 0.5), Multi(0.5)));
 
             }
@@ -383,6 +423,7 @@ namespace solver {
             Vector<bool> set;
             Vector<T> value;
             int vmax;
+            Elliptic<T>& ELL;
             Power<T>& ksq;
             Power<T>& two;
             T& k;
@@ -391,7 +432,7 @@ namespace solver {
 
         public:
 
-            J(int lmax, Power<T>& ksq, Power<T>& two, T& k, T& kc) : vmax(2 * lmax - 1), ksq(ksq), two(two), k(k), kc(kc) {
+            J(int lmax, Elliptic<T>& ELL, Power<T>& ksq, Power<T>& two, T& k, T& kc) : vmax(max(1, 2 * lmax - 1)), ELL(ELL), ksq(ksq), two(two), k(k), kc(kc) {
                 set = Vector<bool>::Zero(vmax + 1);
                 value.resize(vmax + 1);
                 pi = T(BIGPI);
@@ -452,25 +493,17 @@ namespace solver {
 
                     if (ksq() >= 1) {
 
-                        // TODO: Cache these
-                        T K = ellip::K(T(1. / ksq()));
-                        T E = ellip::E(T(1. / ksq()));
-
                         // Upward recursion: compute J_0 and J_1
-                        value(0) = (2.0 / 3.0) * (2 * (2 - 1. / ksq()) * E - (1 - 1. / ksq()) * K);
-                        value(1) = (2.0 / 15.0) * ((-3 * ksq() + 13 - 8 / ksq()) * E + (1 - 1 / ksq()) * (3 * ksq() - 4) * K);
+                        value(0) = (2.0 / 3.0) * (2 * (2 - 1. / ksq()) * ELL.E() - (1 - 1. / ksq()) * ELL.K());
+                        value(1) = (2.0 / 15.0) * ((-3 * ksq() + 13 - 8 / ksq()) * ELL.E() + (1 - 1 / ksq()) * (3 * ksq() - 4) * ELL.K());
 
                         // TODO: CEL expressions
 
                     } else {
 
-                        // TODO: Cache these
-                        T K = ellip::K(ksq());
-                        T E = ellip::E(ksq());
-
                         // Upward recursion: compute J_0 and J_1
-                        value(0) = 2.0 / (3.0 * ksq() * k) * (2 * (2 * ksq() - 1) * E + (1 - ksq()) * (2 - 3 * ksq()) * K);
-                        value(1) = 2.0 / (15.0 * ksq() * k) * ((-3 * ksq(2) + 13 * ksq() - 8) * E + (1 - ksq()) * (8 - 9 * ksq()) * K);
+                        value(0) = 2.0 / (3.0 * ksq() * k) * (2 * (2 * ksq() - 1) * ELL.E() + (1 - ksq()) * (2 - 3 * ksq()) * ELL.K());
+                        value(1) = 2.0 / (15.0 * ksq() * k) * ((-3 * ksq(2) + 13 * ksq() - 8) * ELL.E() + (1 - ksq()) * (8 - 9 * ksq()) * ELL.K());
 
                         // TODO: Fix the CEL expressions and use them when the expressions above are unstable
                         /*
@@ -599,6 +632,7 @@ namespace solver {
             Power<T> two;
 
             // Primitive matrices/vectors
+            Elliptic<T> ELL;
             H<T> H_Q;
             I<T> I_P;
             J<T> J_P;
@@ -620,9 +654,10 @@ namespace solver {
                    sinlam(0),
                    coslam(0),
                    two(0),
+                   ELL((*this).ksq),
                    H_Q(lmax, (*this).sinlam, (*this).coslam),
                    I_P(lmax, (*this).ksq, (*this).k, (*this).kc),
-                   J_P(lmax, (*this).ksq, (*this).two, (*this).k, (*this).kc),
+                   J_P(lmax, (*this).ELL, (*this).ksq, (*this).two, (*this).k, (*this).kc),
                    A_P(lmax, (*this).delta) {
 
                 // Initialize the solution vector
@@ -645,16 +680,23 @@ namespace solver {
         // TODO:
         // - Determine when to do upward recursion based on k and l
         // - CEL derivs
-        // - Cache elliptic integrals
 
         // Initialize the basic variables
         int l, m;
         int n = 0;
         G.b = b;
         G.r = r;
-        T ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * b * r);
-        G.k = sqrt(ksq);
-        G.kc = sqrt(((b + r) * (b + r) - 1) / (4 * b * r));
+        T ksq;
+        if ((b == 0) || (r == 0)) {
+            ksq = T(INFINITY);
+            G.k = T(INFINITY);
+            G.kc = T(-INFINITY);
+        } else {
+            ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * b * r);
+            G.k = sqrt(ksq);
+            G.kc = sqrt(((b + r) * (b + r) - 1) / (4 * b * r));
+        }
+        G.ksq.reset(ksq);
         G.fourbr32 = pow(4 * b * r, 1.5);
 
         // Powers of basic variables
@@ -668,20 +710,14 @@ namespace solver {
             G.coslam.reset(0);
         }
 
-        // Override the NaNs in the derivs when b = 0 or r = 0
-        if ((b == 0) || (r == 0)) {
-            set_derivs_to_zero(G.k);
-            set_derivs_to_zero(G.kc);
-            set_derivs_to_zero(ksq);
-        }
-        G.ksq.reset(ksq);
-
         // Initialize our storage classes
-        // TODO: Find better criteria for up/down recursion if necessary
+        // For 0.5 < ksq < 2 we do upward recursion,
+        // otherwise we do downward recursion.
         G.H_Q.reset();
         G.I_P.reset(ksq < 0.5);
         G.J_P.reset((ksq < 0.5) || (ksq > 2));
         G.A_P.reset();
+        G.ELL.reset();
 
         // Populate the solution vector
         for (l = 0; l < G.lmax + 1; l++) {

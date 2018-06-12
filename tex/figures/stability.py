@@ -24,10 +24,9 @@ def StarrySExact(barr, r, lmax):
     return s
 
 
-def StarryS(barr, r, lmax, optimize=True):
+def StarryS(barr, r, lmax):
     """Compute s with starry."""
     map = starry.Map(lmax)
-    map.optimize = optimize
     for ll in range(lmax + 1):
         for mm in range(-ll, ll + 1):
             map[ll, mm] = 1
@@ -102,8 +101,8 @@ def Compute(r, lmax=8, logdelta=-6, logeps=-12, res=50):
         tick.label.set_horizontalalignment('right')
     ax[0, 0].set_title("Even terms", fontsize=14)
     ax[0, 1].set_title("Odd terms", fontsize=14)
-    ax[0, 0].set_ylabel("Error (original)", fontsize=12)
-    ax[1, 0].set_ylabel("Error (optimized)", fontsize=12)
+    ax[0, 0].set_ylabel("Error (relative)", fontsize=12)
+    ax[1, 0].set_ylabel("Error (fractional)", fontsize=12)
     ax[1, 0].set_xlabel("Impact parameter", fontsize=12)
     ax[1, 1].set_xlabel("Impact parameter", fontsize=12)
     if r < 1:
@@ -112,20 +111,19 @@ def Compute(r, lmax=8, logdelta=-6, logeps=-12, res=50):
         fig.suptitle("r = %.1f" % r, fontweight='bold', fontsize=14)
 
     # Plot!
-    s = StarryS(b, r, lmax, optimize=True)
-    s_noopt = StarryS(b, r, lmax, optimize=False)
+    s = StarryS(b, r, lmax)
     s_mp = StarrySExact(b, r, lmax)
     n = 0
     for l in range(lmax + 1):
         for m in range(-l, l + 1):
-            err = np.abs(s[n] - s_mp[n])
-            err_noopt = np.abs(s_noopt[n] - s_mp[n])
+            err_rel = np.abs(s[n] - s_mp[n])
+            err_frac = np.abs((s[n] - s_mp[n]) / s_mp[n])
             if is_even(l - m):
-                ax[0, 0].plot(err_noopt, color=cmap(l / (lmax + 2)), lw=1)
-                ax[1, 0].plot(err, color=cmap(l / (lmax + 2)), lw=1)
+                ax[0, 0].plot(err_rel, color=cmap(l / (lmax + 2)), lw=1)
+                ax[1, 0].plot(err_frac, color=cmap(l / (lmax + 2)), lw=1)
             else:
-                ax[0, 1].plot(err_noopt, color=cmap(l / (lmax + 2)), lw=1)
-                ax[1, 1].plot(err, color=cmap(l / (lmax + 2)), lw=1)
+                ax[0, 1].plot(err_rel, color=cmap(l / (lmax + 2)), lw=1)
+                ax[1, 1].plot(err_frac, color=cmap(l / (lmax + 2)), lw=1)
             n += 1
 
     # Dummy curves & a legend
@@ -154,7 +152,7 @@ def Compute(r, lmax=8, logdelta=-6, logeps=-12, res=50):
 
 
 if __name__ == "__main__":
-
+    '''
     # Compute the ones for the paper
     fig, ax = Compute(0.01, logdelta=-3, logeps=-6)
     fig.savefig("stability.pdf", bbox_inches='tight')
@@ -162,6 +160,7 @@ if __name__ == "__main__":
     fig, ax = Compute(100, logdelta=-3, logeps=-6)
     fig.savefig("stability_eclipse.pdf", bbox_inches='tight')
     pl.close()
+    '''
 
     # Now compute the rest, but first
     # disable LaTeX to speed up the plotting
