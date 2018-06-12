@@ -23,7 +23,7 @@ Defines compiler constants used throughout the code.
 
 // Max iterations in computation of I_v and J_v
 #ifndef STARRY_IJ_MAX_ITER
-#define STARRY_IJ_MAX_ITER                      50
+#define STARRY_IJ_MAX_ITER                      100
 #endif
 
 // Re-parameterize solution vector when abs(b - r) < STARRY_EPS_BMR_ZERO

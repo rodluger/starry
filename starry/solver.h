@@ -10,6 +10,7 @@ Spherical harmonic integration utilities.
 #include <cmath>
 #include <Eigen/Core>
 #include <vector>
+#include <boost/math/special_functions/gamma.hpp>
 #include "constants.h"
 #include "ellip.h"
 #include "errors.h"
@@ -22,6 +23,7 @@ namespace solver {
     using std::abs;
     using std::max;
     using std::vector;
+    using std::min;
 
     // Forward declaration
     template <class T>
@@ -73,7 +75,8 @@ namespace solver {
         public:
 
             // Constructor
-            Power(T val) {
+            Power(T val, int reserve=100) {
+                if (reserve) vec.reserve(reserve);
                 vec.push_back(1.0 + (val * 0));
                 vec.push_back(val);
             }
@@ -116,21 +119,22 @@ namespace solver {
 
         // TODO: Cache these!
         T K, E;
+        T ksq = G.ksq();
         if (G.b == 0) {
             K = 0;
             E = 0;
-        } else if (G.ksq == 1) {
+        } else if (ksq == 1) {
             K = 0;
             E = 1;
-        } else if (G.ksq < 1) {
-            K = ellip::K(G.ksq);
-            E = ellip::E(G.ksq);
+        } else if (ksq < 1) {
+            K = ellip::K(ksq);
+            E = ellip::E(ksq);
         } else {
-            K = ellip::K(T(1. / G.ksq));
-            E = ellip::E(T(1. / G.ksq));
+            K = ellip::K(T(1. / ksq));
+            E = ellip::E(T(1. / ksq));
         }
 
-        return lld::s2(G.b, G.r, G.ksq, K, E, G.pi);
+        return lld::s2(G.b, G.r, ksq, K, E, G.pi);
     }
 
     // Vieta's theorem coefficient A_{i,u,v}
@@ -280,27 +284,40 @@ namespace solver {
             Vector<bool> set;
             Vector<T> value;
             int vmax;
-            Power<T>& k;
-            T& ksq;
+            Power<T>& ksq;
+            T& k;
             T& kc;
+            T sqrtpi;
+            Vector<T> ivgamma;
 
         public:
 
-            I(int lmax, Power<T>& k, T& ksq, T& kc) : vmax(2 * lmax + 2), k(k), ksq(ksq), kc(kc) {
+            I(int lmax, Power<T>& ksq, T& k, T& kc) : vmax(2 * lmax + 2), ksq(ksq), k(k), kc(kc) {
                 set = Vector<bool>::Zero(vmax + 1);
                 value.resize(vmax + 1);
+
+                // Pre-tabulate I_v for ksq >= 1
+                sqrtpi = sqrt(T(BIGPI));
+                ivgamma.resize(vmax);
+                for (int v = 0; v < vmax; v++)
+                    ivgamma(v) = sqrtpi * T(boost::math::tgamma_delta_ratio(Multi(v + 0.5), Multi(0.5)));
+
             }
 
             // Reset flags and compute either I_0 or I_vmax
             inline void reset(int downward=true) {
+
+                // No need to reset anything, as in the ksq >= 1
+                // case we can just use the pre-tabulated values of I_v!
+                if (ksq() >= 1) return;
 
                 // Reset flags
                 set.setZero(vmax + 1);
 
                 if (downward) {
 
-                    // Downward recursion, so we compute I_vmax
-                    T tol = mach_eps<T>() * ksq;
+                    // Downward recursion: compute I_vmax
+                    T tol = mach_eps<T>() * ksq();
                     T error = T(INFINITY);
 
                     // Computing leading coefficient (n=0):
@@ -311,23 +328,23 @@ namespace solver {
 
                     // Now, compute higher order terms until desired precision is reached
                     int n = 1;
-                    while ((n < STARRY_IJ_MAX_ITER) && (error > tol)) {
-                        coeff *= (2.0 * n - 1.0) * 0.5 * (2 * n + 2 * vmax - 1) / (n * (2 * n + 2 * vmax + 1)) * ksq;
+                    while ((n < STARRY_IJ_MAX_ITER) && (abs(error) > tol)) {
+                        coeff *= (2.0 * n - 1.0) * 0.5 * (2 * n + 2 * vmax - 1) / (n * (2 * n + 2 * vmax + 1)) * ksq();
                         error = coeff;
                         res += coeff;
                         n++;
                     }
 
                     // If we didn't converge, fall back to upward recursion
-                    if (n == STARRY_IJ_MAX_ITER) return reset(false);
+                    if (n == STARRY_IJ_MAX_ITER) throw errors::Primitive("I");
 
-                    value(vmax) = k(1 + 2 * vmax) * res;
+                    value(vmax) = ksq(vmax) * k * res;
                     set(vmax) = true;
 
                 } else {
 
-                    // Upward recursion, so we compute I_0
-                    value(0) = 2 * asin(k());
+                    // Upward recursion: compute I_0
+                    value(0) = 2 * asin(k);
                     set(0) = true;
 
                 }
@@ -337,13 +354,16 @@ namespace solver {
             // Getter function
             inline T get_value(int v) {
                 if ((v < 0) || (v > vmax)) throw errors::BadIndex();
-                if (!set(v)) {
+                if (ksq() >= 1) {
+                    // Easy: these are constant & tabulated!
+                    return ivgamma(v);
+                } else if (!set(v)) {
                     if (set(vmax))
                         // Downward recursion (preferred)
-                        value(v) = 2.0 / (2 * v + 1) * ((v + 1) * get_value(v + 1) + k(2 * v + 1) * kc);
+                        value(v) = 2.0 / (2 * v + 1) * ((v + 1) * get_value(v + 1) + ksq(v) * k * kc);
                     else if (set(0))
                         // Upward recursion
-                        value(v) = ((2 * v - 1) / 2.0 * get_value(v - 1) - k(2 * v - 1) * kc) / v;
+                        value(v) = ((2 * v - 1) / 2.0 * get_value(v - 1) - ksq(v - 1) * k * kc) / v;
                     else
                         throw errors::Recursion();
                     set(v) = true;
@@ -363,14 +383,15 @@ namespace solver {
             Vector<bool> set;
             Vector<T> value;
             int vmax;
-            Power<T>& k;
+            Power<T>& ksq;
             Power<T>& two;
-            T& ksq;
+            T& k;
+            T& kc;
             T pi;
 
         public:
 
-            J(int lmax, Power<T>& k, Power<T>& two, T& ksq) : vmax(2 * lmax - 1), k(k), two(two), ksq(ksq) {
+            J(int lmax, Power<T>& ksq, Power<T>& two, T& k, T& kc) : vmax(2 * lmax - 1), ksq(ksq), two(two), k(k), kc(kc) {
                 set = Vector<bool>::Zero(vmax + 1);
                 value.resize(vmax + 1);
                 pi = T(BIGPI);
@@ -379,39 +400,93 @@ namespace solver {
             // Reset flags and compute J_vmax and J_{vmax - 1} with a series expansion
             inline void reset(bool downward=true) {
 
-                // TODO!!!
-                if (!downward) throw errors::NotImplemented();
-
                 // Reset flags
                 set.setZero(vmax + 1);
 
-                // Convergence
-                T tol = mach_eps<T>() * ksq;
+                if (downward) {
 
-                // Compute the highest two terms in J
-                for (int v = vmax; v >= vmax - 1; v--) {
+                    // Downward recursion: compute J_vmax and J_{vmax - 1}
+                    T tol;
+                    if (ksq() >= 1)
+                        tol = mach_eps<T>() / ksq();
+                    else
+                        tol = mach_eps<T>() * ksq();
+                    for (int v = vmax; v >= vmax - 1; v--) {
 
-                    // Computing leading coefficient (n=0):
-                    T coeff = 3 * pi / (two(2 + v) * tables::factorial<T>(v + 2));
-                    for (int i = 1; i <= v; i++) coeff *= (2.0 * i - 1);
+                        // Computing leading coefficient (n=0):
+                        T coeff;
+                        if (ksq() >= 1) {
+                            coeff = pi;
+                            for (int i = 1; i <= v; i++) coeff *= (1 - 0.5 / i);
+                        } else {
+                            coeff = 3 * pi / (two(2 + v) * tables::factorial<T>(v + 2));
+                            for (int i = 1; i <= v; i++) coeff *= (2.0 * i - 1);
+                        }
 
-                    // Add leading term to J_vmax:
-                    T res = coeff;
+                        // Add leading term to J_vmax:
+                        T res = coeff;
 
-                    // Now, compute higher order terms until desired precision is reached
-                    int n = 1;
-                    T error = T(INFINITY);
-                    while ((n < STARRY_IJ_MAX_ITER) && (error > tol)) {
-                        coeff *= (2.0 * n - 1.0) * (2.0 * (n + v) - 1.0) * 0.25 / (n * (n + v + 2)) * ksq;
-                        error = coeff;
-                        res += coeff;
-                        n++;
+                        // Now, compute higher order terms until desired precision is reached
+                        int n = 1;
+                        T error = T(INFINITY);
+                        while ((n < STARRY_IJ_MAX_ITER) && (abs(error) > tol)) {
+                            if (ksq() >= 1)
+                                coeff *= (1.0 - 2.5 / n) * (1.0 - 0.5 / (n + v)) / ksq();
+                            else
+                                coeff *= (2.0 * n - 1.0) * (2.0 * (n + v) - 1.0) * 0.25 / (n * (n + v + 2)) * ksq();
+                            error = coeff;
+                            res += coeff;
+                            n++;
+                        }
+                        if (n == STARRY_IJ_MAX_ITER) throw errors::Primitive("J");
+
+                        // Store the result
+                        if (ksq() >= 1)
+                            value(v) = res;
+                        else
+                            value(v) = ksq(v) * k * res;
+                        set(v) = true;
                     }
-                    if (n == STARRY_IJ_MAX_ITER) throw errors::Primitive("J");
 
-                    // Store the result
-                    value(v) = k(1 + 2 * v) * res;
-                    set(v) = true;
+                } else {
+
+                    if (ksq() >= 1) {
+
+                        // TODO: Cache these
+                        T K = ellip::K(T(1. / ksq()));
+                        T E = ellip::E(T(1. / ksq()));
+
+                        // Upward recursion: compute J_0 and J_1
+                        value(0) = (2.0 / 3.0) * (2 * (2 - 1. / ksq()) * E - (1 - 1. / ksq()) * K);
+                        value(1) = (2.0 / 15.0) * ((-3 * ksq() + 13 - 8 / ksq()) * E + (1 - 1 / ksq()) * (3 * ksq() - 4) * K);
+
+                        // TODO: CEL expressions
+
+                    } else {
+
+                        // TODO: Cache these
+                        T K = ellip::K(ksq());
+                        T E = ellip::E(ksq());
+
+                        // Upward recursion: compute J_0 and J_1
+                        value(0) = 2.0 / (3.0 * ksq() * k) * (2 * (2 * ksq() - 1) * E + (1 - ksq()) * (2 - 3 * ksq()) * K);
+                        value(1) = 2.0 / (15.0 * ksq() * k) * ((-3 * ksq(2) + 13 * ksq() - 8) * E + (1 - ksq()) * (8 - 9 * ksq()) * K);
+
+                        // TODO: Fix the CEL expressions and use them when the expressions above are unstable
+                        /*
+                        T fe = 2 * (2 * ksq() - 1);
+                        T fk = (1 - ksq()) * (2 - 3 * ksq());
+                        value(0) = 2 / (3 * ksq() * k) * ellip::CEL<T>(ksq(), kc, 1, fk + fe, fk + fe * (1 - ksq()));
+                        fe = -3 * ksq(2) + 13 * ksq() - 8;
+                        fk = 2 * (1 - ksq()) * (8 - 9 * ksq());
+                        value(1) = 2 / (15 * ksq() * k) * ellip::CEL<T>(ksq(), kc, 1, fk + fe, fk + fe * (1 - ksq()));
+                        */
+
+                    }
+
+                    set(0) = true;
+                    set(1) = true;
+
                 }
 
             }
@@ -420,10 +495,20 @@ namespace solver {
             inline T get_value(int v) {
                 if ((v < 0) || (v > vmax)) throw errors::BadIndex();
                 if (!set(v)) {
-                    T f2 = ksq * (2 * v + 1);
-                    T f1 = 2 * (3 + v + ksq * (1 + v)) / f2;
-                    T f3 = (2 * v + 7) / f2;
-                    value(v) = f1 * get_value(v + 1) - f3 * get_value(v + 2);
+                    if (set(vmax)) {
+                        // Downward recursion (preferred)
+                        T f2 = ksq() * (2 * v + 1);
+                        T f1 = 2 * (3 + v + ksq() * (1 + v)) / f2;
+                        T f3 = (2 * v + 7) / f2;
+                        value(v) = f1 * get_value(v + 1) - f3 * get_value(v + 2);
+                    } else if (set(0)) {
+                        // Upward recursion
+                        T f1 = 2 * (v + (v - 1) * ksq() + 1);
+                        T f2 = ksq() * (2 * v - 3);
+                        value(v) = (f1 * get_value(v - 1) - f2 * get_value(v - 2)) / (2 * v + 3);
+                    } else {
+                        throw errors::Recursion();
+                    }
                     set(v) = true;
                 }
                 return value(v);
@@ -449,7 +534,7 @@ namespace solver {
         T res = 0;
         for (int i = 0; i < u + v + 1; i++)
             res += G.A_P(i, u, v) * G.J_P(i + u + t);
-        return G.k(3) * res;
+        return G.ksq() * G.k * res;
     }
 
     // The primitive integral P(G_n)
@@ -499,18 +584,18 @@ namespace solver {
             // Basic variables
             T b;
             T r;
-            T ksq;
+            T k;
             T kc;
             T fourbr32;
 
             // Powers of basic variables
-            Power<T> k;
+            Power<T> ksq;
             Power<T> twor;
             Power<T> delta;
             Power<T> sinlam;
             Power<T> coslam;
 
-            // Static powers
+            // Static stuff
             Power<T> two;
 
             // Primitive matrices/vectors
@@ -529,15 +614,15 @@ namespace solver {
             // Constructor
             Greens(int lmax) :
                    lmax(lmax),
-                   k(0),
+                   ksq(0),
                    twor(0),
                    delta(0),
                    sinlam(0),
                    coslam(0),
                    two(0),
                    H_Q(lmax, (*this).sinlam, (*this).coslam),
-                   I_P(lmax, (*this).k, (*this).ksq, (*this).kc),
-                   J_P(lmax, (*this).k, (*this).two, (*this).ksq),
+                   I_P(lmax, (*this).ksq, (*this).k, (*this).kc),
+                   J_P(lmax, (*this).ksq, (*this).two, (*this).k, (*this).kc),
                    A_P(lmax, (*this).delta) {
 
                 // Initialize the solution vector
@@ -558,17 +643,17 @@ namespace solver {
     void computesT(Greens<T>& G, const T& b, const T& r, const Vector<T>& y) {
 
         // TODO:
-        // 1. ksq should be the power, not k
-        // 2. Determine when to do upward recursion based on k and l
-        // 3. Upward recursion for J
-        // 4. k^2 > 1 case
+        // - Determine when to do upward recursion based on k and l
+        // - CEL derivs
+        // - Cache elliptic integrals
 
         // Initialize the basic variables
         int l, m;
         int n = 0;
         G.b = b;
         G.r = r;
-        G.ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * b * r);
+        T ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * b * r);
+        G.k = sqrt(ksq);
         G.kc = sqrt(((b + r) * (b + r) - 1) / (4 * b * r));
         G.fourbr32 = pow(4 * b * r, 1.5);
 
@@ -584,18 +669,18 @@ namespace solver {
         }
 
         // Override the NaNs in the derivs when b = 0 or r = 0
-        T k = sqrt(G.ksq);
         if ((b == 0) || (r == 0)) {
-            set_derivs_to_zero(G.ksq);
+            set_derivs_to_zero(G.k);
             set_derivs_to_zero(G.kc);
-            set_derivs_to_zero(k);
+            set_derivs_to_zero(ksq);
         }
-        G.k.reset(k);
+        G.ksq.reset(ksq);
 
         // Initialize our storage classes
+        // TODO: Find better criteria for up/down recursion if necessary
         G.H_Q.reset();
-        G.I_P.reset();
-        G.J_P.reset();
+        G.I_P.reset(ksq < 0.5);
+        G.J_P.reset((ksq < 0.5) || (ksq > 2));
         G.A_P.reset();
 
         // Populate the solution vector
@@ -626,26 +711,5 @@ namespace solver {
     }
 
 }; // namespace solver
-
-/*
-// The Taylor expansion of J near b = 0 (k^2 = \infty)
-template <typename T>
-inline T taylorJ(Greens<T>& G, int v){
-    T res = 0;
-    int n = 0;
-    int sign = 1;
-    // TODO: convergence criterion
-    while (n < 30) {
-        res += sign / (tables::factorial<T>(n) * tables::half_factorial<T>(3 - 2 * n))
-                    * (tables::gamma_sup<T>(n + v) / tables::gamma<T>(n + v + 1))
-                    / G.k(2 * n);
-        sign *= -1;
-        n++;
-    }
-    // Note that sqrt(pi) * (3/2)! = 3 * pi / 4
-    res *= 0.75 * G.pi;
-    return res;
-}
-*/
 
 #endif

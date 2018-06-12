@@ -70,7 +70,8 @@ namespace tables {
         double half_factorial_pos[2 * MAXFACT + 1];
         double half_factorial_neg[2 * MAXFACT + 1];
 
-        constexpr Table() : sqrt_int(), invsqrt_int(), factorial(), double_factorial(), half_factorial_pos(), half_factorial_neg() {
+        constexpr Table() : sqrt_int(), invsqrt_int(), factorial(), double_factorial(),
+                half_factorial_pos(), half_factorial_neg() {
             for (auto i = 0; i <= MAXSQRT; ++i) {
                 sqrt_int[i] = sqrt_(i);
                 invsqrt_int[i] = i > 0 ? 1. / sqrt_int[i] : INFINITY;
