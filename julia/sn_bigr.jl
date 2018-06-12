@@ -44,7 +44,7 @@ end
 function Iv_series(k2::T,v::Int64) where {T <: Real}
 # Use series expansion to compute I_v:
 nmax = 100
-n = 1; tol = eps(k2); error = Inf
+n = 1; error = Inf; if k2 < 1; tol = eps(k2); else; tol = eps(inv(k2)); end
 # Computing leading coefficient (n=0):
 coeff = 2/(2v+1)
 # Add leading term to I_v:
@@ -84,7 +84,7 @@ end
 function Jv_series(k2::T,v::Int64) where {T <: Real}
 # Use series expansion to compute J_v:
 nmax = 100
-n = 1; tol = eps(k2); error = Inf
+n = 1; error = Inf; if k2 < 1; tol = eps(k2); else; tol = eps(inv(k2)); end
 # Computing leading coefficient (n=0):
 #coeff = 3pi/(2^(2+v)*factorial(v+2))
 if k2 < 1
@@ -154,7 +154,7 @@ if k2 < 1
   # Use cel_bulirsch:
   fe = 2*(2k2-1); fk = (1-k2)*(2-3k2)
   Jv[v+1]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
-  fe = -3k2*k2+13k2-8; fk = 2*(1-k2)*(8-9k2)
+  fe = -3k2*k2+13k2-8; fk = (1-k2)*(8-9k2)
   Jv[v+2]= 2/(15k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
 else # k^2 >=1
   k2inv = inv(k2)
@@ -167,6 +167,69 @@ v=2
 while v <= v_max
   Jv[v+1] = (2*(v+1+(v-1)*k2)*Jv[v]-k2*(2v-3)*Jv[v-1])/(2v+3)
   v += 1
+end
+return
+end
+
+function IJv_tridiag!(l_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
+# Compute I_v, J_v for 0 <= v <= v_max = l_max+2
+# Define k:
+k = sqrt(k2)
+# Iterate downwards in v:
+v_max = l_max+3; v = v_max
+# Add in k2 > 1 cases [ ]
+# First, compute approximation for large v:
+#Iv[v+1]=Iv_hyp(k2,v)
+if k2 < 1
+  Iv[v+1]=Iv_series(k2,v)
+# Next, iterate downwards in v:
+  f0 = k2^v/k*kc
+# Loop over v, computing I_v and J_v from higher v:
+  while v >= 1
+    Iv[v] = 2/(2v-1)*(v*Iv[v+1]+f0)
+    f0 /= k2
+    v -= 1
+  end
+else # k^2 >= 1
+  # Compute v=0 (no need to iterate downwards in this case):
+  Iv[1] = pi
+  for v=1:v_max
+    Iv[v+1]=Iv[v]*(1-.5/v)
+  end
+end
+# Try tri-diagonal solver
+# Need to compute J_v for v=0 and v=v_max:
+if k2 < 1
+  # Use cel_bulirsch:
+  fe = 2*(2k2-1); fk = (1-k2)*(2-3k2)
+  Jv[1]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
+else # k^2 >=1
+  k2inv = inv(k2)
+  fe = 2*(2-k2inv); fk=-1+k2inv
+  Jv[1]=2/3*cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))
+end
+Jv[v_max+1]=Jv_series(k2,v_max)
+# Now, implement tridiagonal algorithm:
+c = zeros(v_max-1)
+d = zeros(v_max-1)
+# Iterate upwards in v (lower):
+v = 2
+fac = 2*((v+1)+(v-1)*k2)
+c[1] = -(2v+3)/fac
+d[1] =  (2v-3)*k2/fac*Jv[1]
+for v=3:v_max-1
+#  f2 = k2*(2v-3); f1 = 2*(v+1+(v-1)*k2)/f2; f3 = (2v+3)/f2
+  fac = 2*((v+1)+(v-1)*k2); den = fac + (2v-3)*k2*c[v-2]
+  c[v-1] = -(2v+3)/den
+  d[v-1] =  (2v-3)*k2*d[v-2]/den
+end
+v = v_max
+fac = 2*((v+1)+(v-1)*k2); den = fac + (2v-3)*k2*c[v-2]
+d[v_max-1]=((2v+3)*Jv[v_max+1]+(2v-3)*k2*d[v-2])/den
+# Now, back-substitution:
+Jv[v_max]=d[v_max-1]
+for v=v_max-1:-1:2
+  Jv[v]=d[v-1]-c[v-1]*Jv[v+1]
 end
 return
 end
@@ -308,8 +371,8 @@ return
 end
 
 # First, compute Huv:
-Hv = zeros(typeof(r),v_max+1)
-Hv_raise!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
+#Hv = zeros(typeof(r),v_max+1)
+#Hv_raise!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
 #Hv_lower!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
 Huv = zeros(typeof(r),l_max+3,l_max+1)
 #clam = cos(lam); slam = sin(lam)
@@ -339,11 +402,15 @@ end
 
 Iv = zeros(typeof(k2),v_max+1); Jv = zeros(typeof(k2),v_max+1)
 # This computes I_v for the largest v, and then works down to smaller values:
-IJv_lower!(l_max,k2,kc,Iv,Jv)
+#IJv_lower!(l_max,k2,kc,Iv,Jv)
 #IJv_raise!(l_max,k2,kc,Iv,Jv)
+IJv_tridiag!(l_max,k2,kc,Iv,Jv)
 #Ivr = zeros(typeof(k2),v_max+1); Jvr = zeros(typeof(k2),v_max+1)
 #IJv_raise!(l_max,k2,kc,Ivr,Jvr)
 #println("Jv lower: ",Jv," Jv raise: ",Jvr," diff: ",Jv-Jvr)
+#Ivt = zeros(typeof(k2),v_max+1); Jvt = zeros(typeof(k2),v_max+1)
+#IJv_tridiag!(l_max,k2,kc,Ivt,Jvt)
+#println("Jv lower: ",Jv," Jv tridiag: ",Jvt," diff: ",Jv-Jvt)
 Kuv = zeros(typeof(r),u_max+1,v_max+1)
 Luv = zeros(typeof(r),u_max+1,v_max+1,2)
 delta = (b-r)/(2r)
