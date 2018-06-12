@@ -220,7 +220,6 @@ namespace solver {
     };
 
     // The helper primitive integral H_{u,v}
-    // TODO: Clean this up to match I and J
     template <class T>
     class H {
 
@@ -228,42 +227,42 @@ namespace solver {
             Matrix<T> value;
             int umax;
             int vmax;
-            Greens<T>& G;
+            T pi;
+            Power<T>& sinlam;
+            Power<T>& coslam;
 
         public:
 
             // Constructor
-            H(Greens<T>& G) : G(G) {
-                umax = G.lmax + 2;
-                vmax = G.lmax;
+            H(int lmax, Power<T>& sinlam, Power<T>& coslam) : umax(lmax + 2), vmax(lmax),
+                    sinlam(sinlam), coslam(coslam) {
                 set = Matrix<bool>::Zero(umax + 1, vmax + 1);
                 value.resize(umax + 1, vmax + 1);
+                pi = T(BIGPI);
             }
 
-            // Compute H_{u,v}
-            inline T compute(int u, int v) {
-                if (!is_even(u)) {
-                    return 0;
-                } else if (G.off_limb && !is_even(v)) {
-                    return 0;
-                } else if ((u == 0) && (v == 0)) {
-                    return 2 * asin(G.sinlam()) + G.pi;
-                } else if ((u == 0) && (v == 1)) {
-                    return -2 * G.coslam(1);
-                } else if (u >= 2) {
-                    return (2 * G.coslam(u - 1) * G.sinlam(v + 1) + (u - 1) * G.H_Q(u - 2, v)) / (u + v);
-                } else {
-                    return (-2 * G.coslam(u + 1) * G.sinlam(v - 1) + (v - 1) * G.H_Q(u, v - 2)) / (u + v);
-                }
+            // Reset flags and compute H_00 and H_01
+            inline void reset(int downward=false) {
+                if (downward)
+                    throw errors::NotImplemented();
+                set.setZero(umax + 1, vmax + 1);
+                value(0, 0) = 2 * asin(sinlam()) + pi;
+                value(0, 1) = -2 * coslam(1);
+                set(0, 0) = true;
+                set(0, 1) = true;
             }
 
             // Getter function
             inline T get_value(int u, int v) {
                 if ((u < 0) || (v < 0) || (u > umax) || (v > vmax)) {
                     throw errors::BadIndex();
-                }
-                if (!set(u, v)) {
-                    value(u, v) = compute(u, v);
+                } else if (!is_even(u) || ((coslam() == 0) && !is_even(v))) {
+                    return 0;
+                } else if (!set(u, v)) {
+                    if (u >= 2)
+                        value(u, v) = (2 * coslam(u - 1) * sinlam(v + 1) + (u - 1) * get_value(u - 2, v)) / (u + v);
+                    else
+                        value(u, v) = (-2 * coslam(u + 1) * sinlam(v - 1) + (v - 1) * get_value(u, v - 2)) / (u + v);
                     set(u, v) = true;
                 }
                 return value(u, v);
@@ -271,11 +270,6 @@ namespace solver {
 
             // Overload () to get the function value without calling value()
             inline T operator() (int u, int v) { return get_value(u, v); }
-
-            // Resetter
-            void reset() {
-                set.setZero(umax + 1, vmax + 1);
-            }
 
     };
 
@@ -480,97 +474,12 @@ namespace solver {
         // From the integral definition of Q, the result is zero
         // unless both mu/2 and nu/2 are even when the occultor
         // is not touching the limb of the planet.
-        if (G.off_limb && (!is_even(G.mu, 2) || !is_even(G.nu, 2)))
+        if ((G.coslam() == 0) && (!is_even(G.mu, 2) || !is_even(G.nu, 2)))
             return 0;
         else if (!is_even(G.mu, 2))
             return 0;
         else {
-            // DEBUG. This works: return G.H_Q((G.mu + 4) / 2, G.nu / 2);
-
-            // Compute Q
-            int u = G.mu / 4 + 1;
-            int v = G.nu / 2;
-            int i, n;
-            T ksq = ((G.b + 1)  * (G.b + 1) - G.r * G.r) / (4 * G.b);
-            T k = sqrt(ksq);
-            T kc = sqrt(abs((G.r * G.r - (1 - G.b) * (1 - G.b))) / (4 * G.b));
-            T An;
-            int j, j1, j2, c;
-
-            // Upward recursion for I
-            T Iup = 2 * asin(k);
-            for (n = 1; n < u; n++)
-                Iup = ((2 * n - 1) / 2.0 * Iup - pow(k, 2 * n - 1) * kc) / n;
-
-            // Downward recursion for I
-            int vmax = 2 * u + v + 1;
-            T tol = mach_eps<T>() * ksq;
-            T error = T(INFINITY);
-            T coeff = 2.0 / (2 * vmax + 1);
-            T Idown = coeff;
-            n = 1;
-            while ((n < STARRY_IJ_MAX_ITER) && (error > tol)) {
-                coeff *= (2.0 * n - 1.0) * 0.5 * (2 * n + 2 * vmax - 1) / (n * (2 * n + 2 * vmax + 1)) * ksq;
-                error = coeff;
-                Idown += coeff;
-                n++;
-            }
-            Idown *= pow(k, 1 + 2 * vmax);
-
-            // Begin
-            T res = 0;
-
-            if (1) {
-
-                // Upward recursion
-                for (i = 0; i < u + v + 1; i++) {
-                    n = i + u;
-                    Iup = ((2 * n - 1) / 2.0 * Iup - pow(k, 2 * n - 1) * kc) / n;
-                    An = 0;
-                    j1 = u - i;
-                    if (j1 < 0) j1 = 0;
-                    j2 = u + v - i;
-                    if (j2 > u) j2 = u;
-                    for (j = j1; j <= j2; j++) {
-                        c = u + v - i - j;
-                        if (c < 0)
-                            break;
-                        if (is_even(u + j))
-                            An += tables::choose<T>(u, j) * tables::choose<T>(v, c) * pow(-0.5, c);
-                        else
-                            An -= tables::choose<T>(u, j) * tables::choose<T>(v, c) * pow(-0.5, c);
-                    }
-                    res += An * Iup;
-                }
-
-            } else {
-
-                // Downward recursion
-                for (i = u + v; i >= 0; i--) {
-                    n = i + u;
-                    Idown = 2.0 / (2 * n + 1) * ((n + 1) * Idown + pow(k, 2 * n + 1) * kc);
-                    An = 0;
-                    j1 = u - i;
-                    if (j1 < 0) j1 = 0;
-                    j2 = u + v - i;
-                    if (j2 > u) j2 = u;
-                    for (j = j1; j <= j2; j++) {
-                        c = u + v - i - j;
-                        if (c < 0)
-                            break;
-                        if (is_even(u + j))
-                            An += tables::choose<T>(u, j) * tables::choose<T>(v, c) * pow(-0.5, c);
-                        else
-                            An -= tables::choose<T>(u, j) * tables::choose<T>(v, c) * pow(-0.5, c);
-                    }
-                    res += An * Idown;
-                }
-            }
-
-            res *= pow(2, G.l + 3);
-
-            return res;
-
+            return G.H_Q((G.mu + 4) / 2, G.nu / 2);
         }
     }
 
@@ -586,9 +495,6 @@ namespace solver {
             int m;
             int mu;
             int nu;
-
-            // Occultor off the limb of the body?
-            bool off_limb;
 
             // Basic variables
             T b;
@@ -623,14 +529,13 @@ namespace solver {
             // Constructor
             Greens(int lmax) :
                    lmax(lmax),
-                   off_limb(false),
                    k(0),
                    twor(0),
                    delta(0),
                    sinlam(0),
                    coslam(0),
                    two(0),
-                   H_Q(*this),
+                   H_Q(lmax, (*this).sinlam, (*this).coslam),
                    I_P(lmax, (*this).k, (*this).ksq, (*this).kc),
                    J_P(lmax, (*this).k, (*this).two, (*this).ksq),
                    A_P(lmax, (*this).delta) {
@@ -671,11 +576,11 @@ namespace solver {
         G.twor.reset(2 * r);
         G.delta.reset((b - r) / (2 * r));
         if ((abs(1 - r) < b) && (b < 1 + r)) {
-            G.off_limb = false;
             G.sinlam.reset(0.5 * ((1. / b) + (b - r) * (1. + r / b)));
             G.coslam.reset(sqrt(1 - G.sinlam() * G.sinlam()));
         } else {
-            G.off_limb = true;
+            G.sinlam.reset(1);
+            G.coslam.reset(0);
         }
 
         // Override the NaNs in the derivs when b = 0 or r = 0
