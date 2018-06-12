@@ -26,12 +26,12 @@ def comparison():
     # Parameters adapted from https://github.com/tomlouden/SPIDERMAN/blob/master/examples/Brightness%20maps.ipynb
     spider_params = sp.ModelParams(brightness_model='spherical')
 
-    spider_params.n_layers = 100        # Will be reset later
+    spider_params.n_layers = 10        # Will be reset later
 
     # Work in the limit of a slowly rotating planet
     spider_params.t0 = 0                # Central time of PRIMARY transit [days]
     spider_params.per = 0.81347753   # Period [days]
-    spider_params.a_abs = 1.0e-30      # Nearly 0 a to prevent light travel effects not modeled by starry
+    spider_params.a_abs = 1.0e-30      # Nearly 0 a to prevent light travel effects
     spider_params.inc = 90.0            # Inclination [degrees]
     spider_params.ecc = 0.0             # Eccentricity
     spider_params.w = 0.0               # Argument of periastron
@@ -42,7 +42,7 @@ def comparison():
 
     # SPIDERMAN spherical harmonics parameters
     ratio = 1.0e-3
-    spider_params.sph = [ratio, -ratio/2, 0, 0]      # vector of spherical harmonic weights to match starry
+    spider_params.sph = [ratio, ratio/2, 0, 0]      # vector of spherical harmonic weights to match starry
     spider_params.degree = 2
     spider_params.la0 = 0.0
     spider_params.lo0 = 0.0
@@ -52,10 +52,9 @@ def comparison():
     # Define star
     star = starry.Star()
 
-    # Define planet with lambda0=90 (start a middle of primary transit)
+    # Define planet
     planet = starry.Planet(lmax=2,
                            lambda0=90.0,
-                           theta0=180.0,
                            w=spider_params.w,
                            r=spider_params.rp,
                            L=1.0e-3 * np.pi, # To match SPIDERMAN normalization
@@ -63,7 +62,7 @@ def comparison():
                            a=spider_params.a,
                            porb=spider_params.per,
                            tref=spider_params.t0,
-                           prot=-spider_params.per, # Negative rotation to match SPIDERMAN
+                           prot=spider_params.per,
                            ecc=spider_params.ecc)
 
     # Define spherical harmonic coefficients
@@ -78,15 +77,16 @@ def comparison():
     ### Speed test! ###
 
     # Number of time array points
-    ns = np.array([20,100], dtype=int)
+    ns = np.array([20, 100, 500, 1000], dtype=int)
 
     # SPIDERMAN grid resolution points
-    ngrid = np.array([5, 10, 20, 50, 100, 200], dtype=int)
+    ngrid = np.array([5, 10, 20, 50, 100], dtype=int)
 
-    n_repeats = 5
+    n_repeats = 1
     t_starry = np.nan + np.zeros(len(ns))
     t_spiderman = np.nan + np.zeros((len(ns),len(ngrid)))
     diff = np.nan + np.zeros_like(t_spiderman)
+    flux_comp = []
 
     for ii, n in enumerate(ns):
         print("Current time grid size: %d." % n)
@@ -105,7 +105,7 @@ def comparison():
 
             if dt < best_starry:
                 best_starry = dt
-                best_starry_flux = flux/np.max(flux)
+                best_starry_flux = flux
 
         # Save fastest time
         t_starry[ii] = best_starry
@@ -126,7 +126,7 @@ def comparison():
 
                 if dt < best_spiderman:
                     best_spiderman = dt
-                    best_spiderman_flux = lc/np.max(lc)
+                    best_spiderman_flux = lc
 
             # Save fastest time
             t_spiderman[ii,jj] = best_spiderman
@@ -134,7 +134,35 @@ def comparison():
             # Save log maximum relative error
             diff[ii,jj] = np.max(np.fabs((best_starry_flux - best_spiderman_flux)/best_starry_flux))
 
-    ### Generate the figure! ###
+            # For highest time resolution, compute differences between the predictions
+            if n == ns[-1]:
+                flux_comp.append(np.fabs(best_starry_flux - best_spiderman_flux))
+
+    ### Generate the figures! ###
+    fig = plt.figure(figsize=(5, 5))
+    ax = plt.subplot2grid((3, 1), (0, 0), colspan=1, rowspan=1)
+    ax2 = plt.subplot2grid((3, 1), (1, 0), colspan=1, rowspan=2)
+
+    time_arr = np.linspace(0.4*spider_params.per, 0.6*spider_params.per, ns[-1])
+
+    # Flux panel
+    ax.plot(time_arr, best_starry_flux)
+    ax.get_xaxis().set_ticklabels([])
+    ax.set_xlim(time_arr.min(), time_arr.max())
+    ax.set_ylabel("Flux")
+
+    # Error panel
+    for kk in range(len(flux_comp)):
+           ax2.plot(time_arr, flux_comp[kk],
+                   label="n$_{\mathrm{layers}}$=%d" % ngrid[kk])
+
+    ax2.set_ylim(1.0e-11, 1.0e-4)
+    ax2.set_xlim(time_arr.min(), time_arr.max())
+    ax2.set_yscale("log")
+    ax2.set_ylabel("Relative error")
+    ax2.set_xlabel("Time [d]")
+    ax2.legend(loc="best", framealpha=0.0)
+    fig.savefig("spidercomp_flux.png", bbox_inches="tight")
 
     ### Generate the figure! ###
     # Plot it
@@ -182,7 +210,6 @@ def comparison():
                         title=r'\textbf{log error}')
 
     fig.savefig("spidercomp.png", bbox_inches="tight")
-# Done!
 # Done!
 
 # Run it!
