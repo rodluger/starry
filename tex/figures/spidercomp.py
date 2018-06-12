@@ -164,7 +164,7 @@ def comparison():
     ax2.set_ylabel("Relative error")
     ax2.set_xlabel("Time [d]")
     ax2.legend(loc="best", framealpha=0.0)
-    fig.savefig("spidercomp_flux.png", bbox_inches="tight")
+    fig.savefig("spidercomp_flux.pdf", bbox_inches="tight")
 
     # Second figure: speed comparison
 
@@ -211,7 +211,7 @@ def comparison():
     leg = axleg2.legend(loc='center', labelspacing=1, frameon=False,
                         title=r'\textbf{log error}')
 
-    fig.savefig("spidercomp.png", bbox_inches="tight")
+    fig.savefig("spidercomp.pdf", bbox_inches="tight")
 # Done!
 
 # Run it!
