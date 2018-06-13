@@ -152,7 +152,6 @@ def Compute(r, lmax=8, logdelta=-6, logeps=-12, res=50):
 
 
 if __name__ == "__main__":
-    '''
     # Compute the ones for the paper
     fig, ax = Compute(0.01, logdelta=-3, logeps=-6)
     fig.savefig("stability.pdf", bbox_inches='tight')
@@ -160,7 +159,6 @@ if __name__ == "__main__":
     fig, ax = Compute(100, logdelta=-3, logeps=-6)
     fig.savefig("stability_eclipse.pdf", bbox_inches='tight')
     pl.close()
-    '''
 
     # Now compute the rest, but first
     # disable LaTeX to speed up the plotting
