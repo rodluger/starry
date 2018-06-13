@@ -162,8 +162,6 @@ if __name__ == "__main__":
     fig.savefig("stability_eclipse.pdf", bbox_inches='tight')
     pl.close()
 
-    quit()
-
     # Now compute the rest, but first
     # disable LaTeX to speed up the plotting
     pl.rc('text', usetex=False)
