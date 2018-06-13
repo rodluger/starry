@@ -19,6 +19,7 @@ pip install ipython
 pip install jupyter
 pip install emcee
 pip install corner
+pip install git+git://github.com/tomlouden/SPIDERMAN.git@69911b042bc46615ec9b39048a69e0d77c8542ad
 
 # Build the code
 # Build the extension

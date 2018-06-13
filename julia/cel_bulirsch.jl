@@ -19,9 +19,13 @@ else
 end
 # Compute recursion:
 f=a; a += b/p; g=ee/p; b += f*g; b +=b; p +=g; g=m; m += kc
-while abs(g-kc) > g*ca
+iter = 0; itmax = 50
+while abs(g-kc) > g*ca && iter < itmax
   kc=sqrt(ee); kc += kc; ee = kc*m
-  f=a; a += b/p; g=ee/p; b += f*g; b +=b; p +=g; g=m; m += kc
+  f=a; a += b/p; g=ee/p; b += f*g; b +=b; p +=g; g=m; m += kc; iter+=1
+end
+if iter == itmax
+  println("k2 ",k2," kc ",kc,"abs(g-kc) ",abs(g-kc)," g*ca ",g*ca)
 end
 return pi/2*(a*m+b)/(m*(m+p))
 end
@@ -31,7 +35,7 @@ function cel_bulirsch(k2::T,kc::T,p::T,a::T,b::T) where {T <: Real}
 @assert (k2 <= 1.0)
 ca = sqrt(eps(k2))
 # Avoid undefined k2=1 case:
-if k2 == 1.0
+if k2 == 1.0 || kc == 0.0
   kc = eps(k2)
 end
 # Initialize values:
@@ -45,9 +49,13 @@ else
 end
 # Compute recursion:
 f=a; a += b/p; g=ee/p; b += f*g; b +=b; p +=g; g=m; m += kc
-while abs(g-kc) > g*ca
+iter = 0; itmax = 50
+while abs(g-kc) > g*ca && iter < itmax
   kc=sqrt(ee); kc += kc; ee = kc*m
-  f=a; a += b/p; g=ee/p; b += f*g; b +=b; p +=g; g=m; m += kc
+  f=a; a += b/p; g=ee/p; b += f*g; b +=b; p +=g; g=m; m += kc; iter +=1
+end
+if iter == itmax
+  println("k2 ",k2," kc ",kc,"abs(g-kc) ",abs(g-kc)," g*ca ",g*ca)
 end
 return pi/2*(a*m+b)/(m*(m+p))
 end

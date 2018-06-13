@@ -1,13 +1,41 @@
 # Computes s_n vector from Luger et al. (2018) to ~machine
-# precision for r > 1:
+# precision for b+r > 1:
+using GSL
+
+function vector_sum(x::Array{T,1},y::Array{T,1},n::Int64) where {T <: Real}
+# Trying to stabilize arithmetic:
+sum_pos = zero(typeof(x[1]))
+sum_neg = zero(typeof(x[1]))
+# Sort from smallest to largest:
+ind = sortperm(abs.(x.*y))
+#println(x[ind].*y[ind])
+# Carry out sum from smallest to largest (keeping track of positive and negative
+# terms separately):
+for i=1:n
+#  term = x[i]*y[i]
+  term = x[ind[i]]*y[ind[i]]
+  if term > 0.0
+    sum_pos += term
+  else
+    sum_neg += term
+  end
+end
+# Add together the results:
+return sum_pos+sum_neg
+end
 
 function aiuv(delta::T,u::Int64,v::Int64) where {T <: Real}
 # Computes the double-binomial coefficients A_{i,u,v}:
 a=zeros(typeof(delta),u+v+1)
 for i=0:u+v
   j1 = maximum([0,u-i])
+#  coeff = binomial(u,j1)*binomial(v,u+v-i-j1)*(-1.)^(u+j1)*delta^(v+u-i-j1)
+#  a[i+1] = coeff
   for j=j1:minimum([u+v-i,u])
+#  for j=j1+1:minimum([u+v-i,u])
+#    coeff *= -(u-j+1)*(u+v-i-j+1)/(j*(i+j-u)*delta)
     a[i+1] += binomial(u,j)*binomial(v,u+v-i-j)*(-1.)^(u+j)*delta^(v+u-i-j)
+#    a[i+1] += coeff
   end
 end
 return a
@@ -15,14 +43,14 @@ end
 
 function Iv_series(k2::T,v::Int64) where {T <: Real}
 # Use series expansion to compute I_v:
-nmax = 50
-n = 1; tol = eps(k2); error = Inf
+nmax = 100
+n = 1; error = Inf; if k2 < 1; tol = eps(k2); else; tol = eps(inv(k2)); end
 # Computing leading coefficient (n=0):
 coeff = 2/(2v+1)
 # Add leading term to I_v:
 Iv = one(k2)*coeff
 # Now, compute higher order terms until desired precision is reached:
-while n < nmax && error > tol
+while n < nmax && abs(error) > tol
   coeff *= (2.0*n-1.0)*.5*(2n+2v-1)/(n*(2n+2v+1))*k2
   error = coeff
   Iv += coeff
@@ -40,57 +68,209 @@ end
 
 # Compute J_v with hypergeometric function:
 function Jv_hyp(k2::T,v::Int64) where {T <: Real}
-a = 0.5; b=v+0.5; c=v+3.0;  fac = 3pi/(4*(v+1)*(v+2))
-for i=1:v
-  fac *= (1.-.5/i)
+if k2 < 1
+  a = 0.5; b=v+0.5; c=v+3.0;  fac = 3pi/(4*(v+1)*(v+2))
+  for i=1:v
+    fac *= (1.-.5/i)
+  end
+  return sqrt(k2)*k2^v*fac*hypergeom([a,b],c,k2)
+else # k^2 >=1
+  k2inv = inv(k2)
+  # Found a simpler expression than the one in paper (and perhaps more stable for large k^2):
+  return  sqrt(pi)*gamma(v+.5)*(sf_hyperg_2F1_renorm(-.5,v+.5,v+1,k2inv)-(.5+v)*k2inv*sf_hyperg_2F1_renorm(-.5,v+1.5,v+2,k2inv))
 end
-return sqrt(k2)*k2^v*fac*hypergeom([a,b],c,k2)
 end
 
 function Jv_series(k2::T,v::Int64) where {T <: Real}
 # Use series expansion to compute J_v:
-nmax = 50
-n = 1; tol = eps(k2); error = Inf
+nmax = 100
+n = 1; error = Inf; if k2 < 1; tol = eps(k2); else; tol = eps(inv(k2)); end
 # Computing leading coefficient (n=0):
 #coeff = 3pi/(2^(2+v)*factorial(v+2))
-coeff = 3pi/(2^(2+v)*exp(lfact(v+2)))
+if k2 < 1
+  coeff = 3pi/(2^(2+v)*exp(lfact(v+2)))
 # multiply by (2v-1)!!
-for i=1:v
-  coeff *= 2.*i-1
-end
+  for i=1:v
+    coeff *= 2.*i-1
+  end
 # Add leading term to J_v:
-Jv = one(k2)*coeff
+  Jv = one(k2)*coeff
 # Now, compute higher order terms until desired precision is reached:
-while n < nmax && error > tol
-  coeff *= (2.0*n-1.0)*(2.0*(n+v)-1.0)*.25/(n*(n+v+2))*k2
-  error = coeff
-  Jv += coeff
-  n +=1
+  while n < nmax && abs(error) > tol
+    coeff *= (2.0*n-1.0)*(2.0*(n+v)-1.0)*.25/(n*(n+v+2))*k2
+    error = coeff
+    Jv += coeff
+    n +=1
+  end
+  return Jv*k2^v*sqrt(k2)
+else # k^2 >= 1
+  coeff = pi
+  # Compute (2v-1)!!/(2^v v!):
+  for i=1:v
+    coeff *= 1-.5/i
+  end
+  Jv = one(k2)*coeff; n=1
+  while n < nmax && abs(error) > tol
+    coeff *= (1.-2.5/n)*(1.-.5/(n+v))/k2
+    error = coeff
+    Jv += coeff
+    n +=1
+  end
+  return Jv
 end
-return Jv*k2^v*sqrt(k2)
 end
 
-function IJv_iter!(l_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
+function IJv_raise!(l_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
+# This function needs debugging. [ ]
+# Compute I_v, J_v for 0 <= v <= v_max = l_max+2
+# Define k:
+k = sqrt(k2)
+# Iterate upwards in v:
+v_max = l_max+3; v = v_max
+# Compute I_v via upward iteration on v:
+if k2 < 1
+# First, compute value for v=0:
+  Iv[1] = 2*asin(sqrt(k2))
+# Next, iterate upwards in v:
+#  f0 = kc/k
+  f0 = kc*k
+  v = 1
+# Loop over v, computing I_v and J_v from higher v:
+  while v <= v_max
+    Iv[v+1]=((2v-1)*Iv[v]/2-f0)/v
+    f0 *= k2
+    v += 1
+  end
+else # k^2 >= 1
+  # Compute v=0
+  Iv[1] = pi
+  for v=1:v_max
+    Iv[v+1]=Iv[v]*(1.0-0.5/v)
+  end
+end
+# Need to compute J_v for v=0, 1:
+v= 0
+if k2 < 1
+  # Use cel_bulirsch:
+  fe = 2*(2k2-1); fk = (1-k2)*(2-3k2)
+  Jv[v+1]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
+  fe = -3k2*k2+13k2-8; fk = (1-k2)*(8-9k2)
+  Jv[v+2]= 2/(15k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
+else # k^2 >=1
+  k2inv = inv(k2)
+  fe = 2*(2-k2inv); fk=-1+k2inv
+  Jv[v+1]=2/3*cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))
+  fe = -6k2+26-16k2inv; fk=2*(1-k2inv)*(3k2-4)
+  Jv[v+2]=cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))/15
+end
+v=2
+while v <= v_max
+  Jv[v+1] = (2*(v+1+(v-1)*k2)*Jv[v]-k2*(2v-3)*Jv[v-1])/(2v+3)
+  v += 1
+end
+return
+end
+
+function IJv_tridiag!(l_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
 # Compute I_v, J_v for 0 <= v <= v_max = l_max+2
 # Define k:
 k = sqrt(k2)
 # Iterate downwards in v:
 v_max = l_max+3; v = v_max
+# Add in k2 > 1 cases [ ]
 # First, compute approximation for large v:
 #Iv[v+1]=Iv_hyp(k2,v)
-Iv[v+1]=Iv_series(k2,v)
+if k2 < 1
+  Iv[v+1]=Iv_series(k2,v)
 # Next, iterate downwards in v:
-f0 = k2^v/k*kc
+  f0 = k2^v/k*kc
 # Loop over v, computing I_v and J_v from higher v:
-while v >= 1
-  Iv[v] = 2/(2v-1)*(v*Iv[v+1]+f0)
-  f0 /= k2
-  v -= 1
+  while v >= 1
+    Iv[v] = 2/(2v-1)*(v*Iv[v+1]+f0)
+    f0 /= k2
+    v -= 1
+  end
+else # k^2 >= 1
+  # Compute v=0 (no need to iterate downwards in this case):
+  Iv[1] = pi
+  for v=1:v_max
+    Iv[v+1]=Iv[v]*(1-.5/v)
+  end
+end
+# Try tri-diagonal solver
+# Need to compute J_v for v=0 and v=v_max:
+if k2 < 1
+  # Use cel_bulirsch:
+  fe = 2*(2k2-1); fk = (1-k2)*(2-3k2)
+  Jv[1]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
+else # k^2 >=1
+  k2inv = inv(k2)
+  fe = 2*(2-k2inv); fk=-1+k2inv
+  Jv[1]=2/3*cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))
+end
+Jv[v_max+1]=Jv_series(k2,v_max)
+# Now, implement tridiagonal algorithm:
+c = zeros(v_max-1)
+d = zeros(v_max-1)
+# Iterate upwards in v (lower):
+v = 2
+fac = 2*((v+1)+(v-1)*k2)
+c[1] = -(2v+3)/fac
+d[1] =  (2v-3)*k2/fac*Jv[1]
+for v=3:v_max-1
+#  f2 = k2*(2v-3); f1 = 2*(v+1+(v-1)*k2)/f2; f3 = (2v+3)/f2
+  fac = 2*((v+1)+(v-1)*k2); den = fac + (2v-3)*k2*c[v-2]
+  c[v-1] = -(2v+3)/den
+  d[v-1] =  (2v-3)*k2*d[v-2]/den
+end
+v = v_max
+fac = 2*((v+1)+(v-1)*k2); den = fac + (2v-3)*k2*c[v-2]
+d[v_max-1]=((2v+3)*Jv[v_max+1]+(2v-3)*k2*d[v-2])/den
+# Now, back-substitution:
+Jv[v_max]=d[v_max-1]
+for v=v_max-1:-1:2
+  Jv[v]=d[v-1]-c[v-1]*Jv[v+1]
+end
+return
+end
+
+function IJv_lower!(l_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
+# Compute I_v, J_v for 0 <= v <= v_max = l_max+2
+# Define k:
+k = sqrt(k2)
+# Iterate downwards in v:
+v_max = l_max+3; v = v_max
+# Add in k2 > 1 cases [ ]
+# First, compute approximation for large v:
+#Iv[v+1]=Iv_hyp(k2,v)
+if k2 < 1
+  Iv[v+1]=Iv_series(k2,v)
+# Next, iterate downwards in v:
+  f0 = k2^v/k*kc
+# Loop over v, computing I_v and J_v from higher v:
+  while v >= 1
+    Iv[v] = 2/(2v-1)*(v*Iv[v+1]+f0)
+    f0 /= k2
+    v -= 1
+  end
+else # k^2 >= 1
+  # Compute v=0 (no need to iterate downwards in this case):
+  Iv[1] = pi
+  for v=1:v_max
+    Iv[v+1]=Iv[v]*(1-.5/v)
+  end
 end
 v= v_max
 # Need to compute top two for J_v:
-#Jv[v]=Jv_hyp(k2,v-1); Jv[v+1]=Jv_hyp(k2,v)
-Jv[v]=Jv_series(k2,v-1); Jv[v+1]=Jv_series(k2,v)
+#if typeof(k2) == BigFloat
+  Jv[v]=Jv_series(k2,v-1); Jv[v+1]=Jv_series(k2,v)
+#else
+#  Jv[v]=Jv_hyp(k2,v-1); Jv[v+1]=Jv_hyp(k2,v)
+#end
+#if typeof(k2) == Float64
+#  println("v ",v," k2 ",k2," Jv_ser ",convert(Float64,Jv_series(big(k2),v-1))," ",convert(Float64,Jv_series(big(k2),v))," Jv_hyp ",Jv_hyp(k2,v-1)," ",Jv_hyp(k2,v))
+#end
+# Iterate downwards in v (lower):
 while v >= 2
   f2 = k2*(2v-3); f1 = 2*(v+1+(v-1)*k2)/f2; f3 = (2v+3)/f2
   Jv[v-1] = f1*Jv[v]-f3*Jv[v+1]
@@ -124,9 +304,76 @@ else
     lam=pi/2; phi=pi/2; slam = one(r); clam = zero(r)
   end
 # Next, compute k^2 = m:
-  k2 = (1.0-(b-r)^2)/(4b*r); kc = sqrt(((b+r)^2-1)/(4*b*r))
+  k2 = (1.0-(b-r)^2)/(4b*r); kc = sqrt(abs(((b+r)^2-1))/(4*b*r))
+  if k2 > 1
+    kc = sqrt(abs(((b+r)^2-1)/((b-r)^2-1)))
+  end
 end
+
+function Hv_raise!(l_max::Int64,k2::T,kc::T,Hv::Array{T,1})  where {T <: Real}
+# This Iv function is defined for Q(G_n)/H_uv calculation:
+#Iv = zeros(typeof(k2),v_max+1)
+# Compute H_uv,  0 <= v <= v_max = l_max+2
+# Define k:
+k = sqrt(k2)
+# Iterate upwards in v:
+v_max = l_max+3; v = v_max
+# Compute I_v via upward iteration on v:
+if k2 < 1
+# First, compute value for v=0:
+  Hv[1] = 2*asin(k)
+# Next, iterate upwards in v:
+#  f0 = kc/k
+  f0 = kc*k
+  v = 1
+# Loop over v, computing I_v and J_v from higher v:
+  while v <= v_max
+    Hv[v+1]=((2v-1)*Hv[v]/2-f0)/v
+    f0 *= k2
+    v += 1
+  end
+else # k^2 >= 1
+  # Compute v=0
+  Hv[1] = pi
+  for v=1:v_max
+    Hv[v+1]=Hv[v]*(1-.5/v)
+  end
+end
+return
+end
+
+function Hv_lower!(l_max::Int64,k2::T,kc::T,Hv::Array{T,1})  where {T <: Real}
+# Compute H_v for 0 <= v <= v_max = l_max+2
+# Define k:
+k = sqrt(k2)
+# Iterate downwards in v:
+v_max = l_max+3; v = v_max
+# Add in k2 > 1 cases [ ]
+# First, compute approximation for large v:
+if k2 < 1
+  Hv[v+1]=Iv_series(k2,v)
+# Next, iterate downwards in v:
+  f0 = k2^v/k*kc
+# Loop over v, computing I_v and J_v from higher v:
+  while v >= 1
+    Hv[v] = 2/(2v-1)*(v*Hv[v+1]+f0)
+    f0 /= k2
+    v -= 1
+  end
+else # k^2 >= 1
+  # Compute v=0 (no need to iterate downwards in this case):
+  Hv[1] = pi
+  for v=1:v_max
+    Hv[v+1]=Hv[v]*(1-.5/v)
+  end
+end
+return
+end
+
 # First, compute Huv:
+#Hv = zeros(typeof(r),v_max+1)
+#Hv_raise!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
+#Hv_lower!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
 Huv = zeros(typeof(r),l_max+3,l_max+1)
 #clam = cos(lam); slam = sin(lam)
 clam2 = clam*clam; clamn = clam; slamn = slam
@@ -155,12 +402,22 @@ end
 
 Iv = zeros(typeof(k2),v_max+1); Jv = zeros(typeof(k2),v_max+1)
 # This computes I_v for the largest v, and then works down to smaller values:
-IJv_iter!(l_max,k2,kc,Iv,Jv)
+#IJv_lower!(l_max,k2,kc,Iv,Jv)
+#IJv_raise!(l_max,k2,kc,Iv,Jv)
+IJv_tridiag!(l_max,k2,kc,Iv,Jv)
+#Ivr = zeros(typeof(k2),v_max+1); Jvr = zeros(typeof(k2),v_max+1)
+#IJv_raise!(l_max,k2,kc,Ivr,Jvr)
+#println("Jv lower: ",Jv," Jv raise: ",Jvr," diff: ",Jv-Jvr)
+#Ivt = zeros(typeof(k2),v_max+1); Jvt = zeros(typeof(k2),v_max+1)
+#IJv_tridiag!(l_max,k2,kc,Ivt,Jvt)
+#println("Jv lower: ",Jv," Jv tridiag: ",Jvt," diff: ",Jv-Jvt)
 Kuv = zeros(typeof(r),u_max+1,v_max+1)
 Luv = zeros(typeof(r),u_max+1,v_max+1,2)
 delta = (b-r)/(2r)
 l = 0; n = 0; m = 0; pofgn = zero(typeof(r)); qofgn = zero(typeof(r))
-Lfac = (1-(2r*delta)^2)^1.5
+#  k^3*(4br)^(3/2) = (1-(2r\delta)^2)^{3/2}:
+#Lfac = (1-(2r*delta)^2)^1.5
+Lfac = (1-(b-r)^2)^1.5
 while n <= n_max
   if n == 2
     sn[n+1] = s2(r,b)
@@ -185,23 +442,51 @@ while n <= n_max
       if Kuv[u+1,v+1] == 0.0 && Luv[u+1,v+1,1] == 0.0 && Luv[u+1,v+1,2] == 0.0
         # First, compute double-binomial coefficients:
         a=aiuv(delta,u,v)
-        Kuv[u+1,v+1]   = sum(a[1:u+v+1].*Iv[u+1:2u+v+1])
-        Luv[u+1,v+1,1] = Lfac*sum(a[1:u+v+1].*Jv[u+1:v+2u+1])
+#        Kuv[u+1,v+1]   = sum(a[1:u+v+1].*Iv[u+1:2u+v+1])
+        Kuv[u+1,v+1]   = vector_sum(a[1:u+v+1],Iv[u+1:2u+v+1],u+v+1)
+#        println("Kuv 1 ",sum(a[1:u+v+1].*Iv[u+1:2u+v+1])," Kuv 2 ",Kuv[u+1,v+1])
+#        Luv[u+1,v+1,1] = Lfac*sum(a[1:u+v+1].*Jv[u+1:v+2u+1])
+        Luv[u+1,v+1,1] = Lfac*vector_sum(a[1:u+v+1],Jv[u+1:v+2u+1],u+v+1)
         if v <= 1
-          Luv[u+1,v+1,2] = Lfac*sum(a[1:u+v+1].*Jv[u+2:v+2u+2])
+#          Luv[u+1,v+1,2] = Lfac*sum(a[1:u+v+1].*Jv[u+2:v+2u+2])
+          Luv[u+1,v+1,2] = Lfac*vector_sum(a[1:u+v+1],Jv[u+2:v+2u+2],u+v+1)
         end
       end
       # Now, compute P(Gn) & Q(Gn):
       if mod(mu,4) == 0
         pofgn = 2*(2r)^(l+2)*Kuv[u+1,v+1]
+# Use alternate form of Kuv (6/11/2018 notes):
+#        Kuv_alt = zero(r)
+#        coeff = exp(2*lgamma(u+.5)-lgamma(2u+1))
+#        Kuv_alt = coeff*delta^v
+#        for i=1:v
+#          coeff *= (u+i-.5)/(2u+i)
+#          Kuv_alt += binomial(v,i)*delta^(v-i)*coeff
+#        end
+#        println("u ",u," v ",v," Kuv ",Kuv[u+1,v+1]," Kuv_alt ",Kuv_alt)
+##        pofgn = 2*(2r)^(l+2)*Kuv_alt
+        if iseven(v) || k2 <= 1  # Q is zero for odd v & k^2 > 1
         qofgn = Huv[2u+1,v+1]
-      elseif iseven(l) && mu == 1
-        pofgn = -(2r)^(l-1)*(2*Luv[u+1,v+1,2]-Luv[u+1,v+1,1])
-      elseif isodd(l) && mu == 1
-        pofgn = -(2r)^(l-1)*(2*Luv[u+1,v+1,2]-Luv[u+1,v+1,1])
+#          a=aiuv(-convert(typeof(k2),0.5),u,v)
+#          qofgn = 2^(2u+v+1)*sum(a[1:u+v+1].*Hv[u+1:2u+v+1])
+#          qofgn = 2^(2u+v+1)*vector_sum(a[1:u+v+1],Hv[u+1:2u+v+1],u+v+1)
+#          println("u ",u," v ",v," Huv ",Huv[2u+1,v+1]," Qnew ",qofgn)
+        end
       else
-        pofgn = 2*(2r)^(l-1)*Luv[u+1,v+1,1]
+        pofgn = Luv[u+1,v+1,1]
+        if mu == 1 
+          pofgn -= 2*Luv[u+1,v+1,2]
+        else
+          pofgn *= 2
+        end
+        pofgn *= (2r)^(l-1)
       end
+#      elseif iseven(l) && mu == 1
+#        pofgn = -(2r)^(l-1)*(2*Luv[u+1,v+1,2]-Luv[u+1,v+1,1])
+#      elseif isodd(l) && mu == 1
+#        pofgn = -(2r)^(l-1)*(2*Luv[u+1,v+1,2]-Luv[u+1,v+1,1])
+#      else
+#        pofgn = 2*(2r)^(l-1)*Luv[u+1,v+1,1]
     end
     sn[n+1] = qofgn-pofgn
   end
