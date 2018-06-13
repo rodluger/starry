@@ -121,7 +121,7 @@ namespace ellip {
           q *= (b - a * p);
           p = sqrt(f / g);
           a = (a - b) / g;
-          b = -q /(g * g * p) + a * p;
+          b = -q / (g * g * p) + a * p;
       }
       f = a;
       a += b / p;

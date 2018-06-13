@@ -290,8 +290,17 @@ namespace solver {
                 if (downward)
                     throw errors::NotImplemented();
                 set.setZero(umax + 1, vmax + 1);
-                value(0, 0) = 2 * asin(sinlam()) + pi;
-                value(0, 1) = -2 * coslam(1);
+                if (coslam() == 0) {
+                    // When sinlam = 1, asin(sinlam) = pi
+                    // but the derivative is undefined, so
+                    // we sidestep the computation here to
+                    // prevent NaNs in the autodiff calculation.
+                    value(0, 0) = 2 * pi;
+                    value(0, 1) = 0;
+                } else {
+                    value(0, 0) = 2 * asin(sinlam()) + pi;
+                    value(0, 1) = -2 * coslam(1);
+                }
                 set(0, 0) = true;
                 set(0, 1) = true;
             }
@@ -637,6 +646,7 @@ namespace solver {
 
             // Static stuff
             Power<T> two;
+            T miny;
 
             // Primitive matrices/vectors
             Elliptic<T> ELL;
@@ -676,6 +686,10 @@ namespace solver {
                 // Initialize static stuff
                 two.reset(2);
 
+                // Smallest coefficient for which we'll actually
+                // bother to compute the integrals
+                miny = 10 * mach_eps<T>();
+
             }
 
     };
@@ -683,11 +697,6 @@ namespace solver {
     // Compute the *s^T* occultation solution vector
     template <typename T>
     void computesT(Greens<T>& G, const T& b, const T& r, const Vector<T>& y) {
-
-        // TODO:
-        // - Determine when to do upward recursion based on k and l
-        // - CEL derivs
-        // - Increase IJMAX to 200?
 
         // Initialize the basic variables
         int l, m;
@@ -735,7 +744,7 @@ namespace solver {
                 G.m = m;
                 G.mu = l - m;
                 G.nu = l + m;
-                if (abs(y(n)) > 10 * mach_eps<T>()) {
+                if (abs(y(n)) > G.miny) {
                     if ((l == 1) && (m == 0))
                         G.sT(n) = s2(G);
                     // These terms are zero because they are proportional to
