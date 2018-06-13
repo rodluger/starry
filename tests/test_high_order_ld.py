@@ -12,6 +12,9 @@ def NumericalFlux(b, r, u):
     if b >= 1 + r:
         return 1
 
+    # Add the constant term back in
+    u = [1] + list(u)
+
     # Get points of intersection
     if b > 1 - r:
         yi = (1. + b ** 2 - r ** 2) / (2. * b)
@@ -76,26 +79,32 @@ def NumericalFlux(b, r, u):
 def test_transits():
     """Test transit light curve generation for 8th order limb darkening."""
     # Input params
-    u = [1, 0.4, 0.26, 0.3, 0.5, -0.2, 0.5, -0.7, 0.3]
+    u = [0.4, 0.26, 0.3, 0.5, -0.2, 0.5, -0.7, 0.3]
     npts = 25
     r = 0.1
+
+    # DEBUG: NANs
+    '''
+    map = LimbDarkenedMap(len(u))
+    map[:] = u
+    print(map.flux(xo=0, yo=0, ro=r), "\n", ",".join(["%.3f" % s for s in map.s]))
+    quit()
+    '''
+
     b = np.linspace(0, 1 + r + 0.1, npts)
 
     # Numerical flux
     nF = np.zeros_like(b)
     for i in range(npts):
         nF[i] = NumericalFlux(b[i], r, u)
-    den = (1 - nF)
-    den[den == 0] = 1e-10
 
     # Compute the starry flux
-    map = LimbDarkenedMap(len(u) - 1)
-    for l in range(1, len(u)):
-        map[l] = u[l]
+    map = LimbDarkenedMap(len(u))
+    map[:] = u
     sF = map.flux(xo=b, yo=0, ro=r)
 
     # Compute the error, check that it's better than 1 ppb
-    error = np.max((np.abs(nF - sF) / den)[np.where(nF < 1)])
+    error = np.max((np.abs(nF - sF)))
     assert error < 1e-9
 
 

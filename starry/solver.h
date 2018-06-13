@@ -160,10 +160,10 @@ namespace solver {
 
     };
 
-    // The constant factor F_l
+    // The factor multiplying `L`
     template <typename T>
-    inline T F(Greens<T>& G){
-        return G.twor(G.l - 1) * G.fourbr32;
+    inline T LFac(Greens<T>& G){
+        return G.twor(G.l - 1) * G.lfac;
     }
 
     // Compute the n=2 term of the *s^T* occultation solution vector.
@@ -565,9 +565,15 @@ namespace solver {
     template <typename T>
     inline T L(Greens<T>& G, int u, int v, int t) {
         T res = 0;
-        for (int i = 0; i < u + v + 1; i++)
-            res += G.A_P(i, u, v) * G.J_P(i + u + t);
-        return G.ksq() * G.k * res;
+        for (int i = 0; i < u + v + 1; i++) {
+            if (G.b == 0) {
+                // Special case, J = I (evident from integral definition)
+                res += G.A_P(i, u, v) * G.I_P(i + u + t);
+            } else {
+                res += G.A_P(i, u, v) * G.J_P(i + u + t);
+            }
+        }
+        return res;
     }
 
     // The primitive integral P(G_n)
@@ -576,11 +582,11 @@ namespace solver {
         if (is_even(G.mu, 2)) {
             return 2 * G.twor(G.l + 2) * K(G, (G.mu + 4) / 4, G.nu / 2);
         } else if ((G.mu == 1) && is_even(G.l)) {
-            return F(G) * (L(G, (G.l - 2) / 2, 0, 0) - 2 * L(G, (G.l - 2) / 2, 0, 1));
+            return LFac(G) * (L(G, (G.l - 2) / 2, 0, 0) - 2 * L(G, (G.l - 2) / 2, 0, 1));
         } else if ((G.mu == 1) && !is_even(G.l)) {
-            return F(G) * (L(G, (G.l - 3) / 2, 1, 0) - 2 * L(G, (G.l - 3) / 2, 1, 1));
+            return LFac(G) * (L(G, (G.l - 3) / 2, 1, 0) - 2 * L(G, (G.l - 3) / 2, 1, 1));
         } else if (is_even(G.mu - 1, 2)) {
-            return 2 * F(G) * L(G, (G.mu - 1) / 4, (G.nu - 1) / 2, 0);
+            return 2 * LFac(G) * L(G, (G.mu - 1) / 4, (G.nu - 1) / 2, 0);
         } else {
             return 0;
         }
@@ -620,6 +626,7 @@ namespace solver {
             T k;
             T kc;
             T fourbr32;
+            T lfac;
 
             // Powers of basic variables
             Power<T> ksq;
@@ -680,6 +687,7 @@ namespace solver {
         // TODO:
         // - Determine when to do upward recursion based on k and l
         // - CEL derivs
+        // - Increase IJMAX to 200?
 
         // Initialize the basic variables
         int l, m;
@@ -698,6 +706,7 @@ namespace solver {
         }
         G.ksq.reset(ksq);
         G.fourbr32 = pow(4 * b * r, 1.5);
+        G.lfac = pow(1 - (b - r) * (b - r), 1.5);
 
         // Powers of basic variables
         G.twor.reset(2 * r);
@@ -713,11 +722,11 @@ namespace solver {
         // Initialize our storage classes
         // For 0.5 < ksq < 2 we do upward recursion,
         // otherwise we do downward recursion.
+        G.ELL.reset();
         G.H_Q.reset();
         G.I_P.reset(ksq < 0.5);
         G.J_P.reset((ksq < 0.5) || (ksq > 2));
         G.A_P.reset();
-        G.ELL.reset();
 
         // Populate the solution vector
         for (l = 0; l < G.lmax + 1; l++) {

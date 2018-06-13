@@ -19,7 +19,9 @@ namespace lld {
     // Return true if our regular expression for `s2` is likely to be unstable
     template <typename T>
     inline bool s2_unstable(const T& b, const T& r) {
-        if (abs(b - r) < STARRY_EPS_BMR_ZERO)
+        if (r > 1)
+            return true;
+        else if (abs(b - r) < STARRY_EPS_BMR_ZERO)
             return true;
         else if ((abs(b - r) > 1 - STARRY_EPS_BMR_ONE) && (abs(b - r) < 1 + STARRY_EPS_BMR_ONE))
             return true;
@@ -46,7 +48,7 @@ namespace lld {
     // This is the Mandel & Agol solution for linear limb darkening,
     // reparametrized for speed and stability
     template <typename T>
-    inline T s2(T& b, T& r, T& ksq, T& K, T& E, T& pi) {
+    inline T s2(const T& b, const T& r, const T& ksq, const T& K, const T& E, const T& pi) {
 
         T Lambda1, k2, k2c, kc, Eofk, k2inv, mu, p;
         T m, minv;

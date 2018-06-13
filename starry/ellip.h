@@ -109,7 +109,7 @@ namespace ellip {
       T b = b0;
       T kc = kc0;
       T q, g, f, ee;
-      if (ksq == 1) kc = mach_eps<T>();
+      if ((ksq == 1) || (kc == 0)) kc = mach_eps<T>();
       ee = kc;
       if (p > 0) {
           p = sqrt(p);
