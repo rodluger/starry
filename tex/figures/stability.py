@@ -37,8 +37,10 @@ def StarryS(barr, r, lmax):
     return s
 
 
-def Compute(r, lmax=8, logdelta=-6, logeps=-12, res=50):
+def Compute(r, larr=[0, 1, 2, 3, 5, 8, 10, 13, 15, 18, 20],
+            logdelta=-6, logeps=-12, res=50):
     """Run the stability tests."""
+    lmax = np.max(larr)
     delta = 10 ** logdelta
     eps = 10 ** logeps
     if r > 1:
@@ -114,7 +116,7 @@ def Compute(r, lmax=8, logdelta=-6, logeps=-12, res=50):
     s = StarryS(b, r, lmax)
     s_mp = StarrySExact(b, r, lmax)
     n = 0
-    for l in range(lmax + 1):
+    for l in larr:
         for m in range(-l, l + 1):
             err_rel = np.abs(s[n] - s_mp[n])
             err_frac = np.abs((s[n] - s_mp[n]) / s_mp[n])
@@ -127,10 +129,10 @@ def Compute(r, lmax=8, logdelta=-6, logeps=-12, res=50):
             n += 1
 
     # Dummy curves & a legend
-    lines = [None for l in range(lmax + 1)]
-    labels = ["%d" % l for l in range(lmax + 1)]
-    for l in range(lmax + 1):
-        lines[l], = ax[0, 0].plot((0, 1), (1e-20, 1e-20),
+    lines = [None for l in larr]
+    labels = ["%d" % l for l in larr]
+    for i, l in enumerate(larr):
+        lines[i], = ax[0, 0].plot((0, 1), (1e-20, 1e-20),
                                   color=cmap(l / (lmax + 2)), lw=2)
     leg = fig.legend(lines, labels, (0.925, 0.35), title='Degree')
     leg.get_title().set_fontweight('bold')
@@ -159,6 +161,8 @@ if __name__ == "__main__":
     fig, ax = Compute(100, logdelta=-3, logeps=-6)
     fig.savefig("stability_eclipse.pdf", bbox_inches='tight')
     pl.close()
+
+    quit()
 
     # Now compute the rest, but first
     # disable LaTeX to speed up the plotting

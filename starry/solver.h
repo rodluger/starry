@@ -177,6 +177,55 @@ namespace solver {
         return lld::s2(G.b, G.r, ksq, K, E, G.pi);
     }
 
+    // Compute the flux for a transit of a quadratically limb-darkened star
+    // This code has been stripped of a lot of the overhead for speed, so
+    // it may be a bit opaque. Basically, for a quadratically limb-darkened star,
+    // the only terms that matter in the Greens polynomial basis are those at
+    // indices n = 0, 2, 4, and 8. We therefore only compute those indices of the
+    // solution vector -- we do it directly, without any recurrence relations.
+    // Note, importantly, that the term g(4) is *always* 1/3 * g(8), so we fold
+    // that into `s8` below.
+    template <typename T>
+    inline T QuadLimbDark(Greens<T>& G, const T& b, const T& r, const T& g0, const T& g2, const T& g8) {
+        T s0, s8;
+        T b2 = b * b;
+        T r2 = r * r;
+        T pi_over_2 = 0.5 * G.pi;
+        if ((abs(1 - r) < b) && (b < 1 + r)) {
+            T r3 = r * r2;
+            T r4 = r2 * r2;
+            T sp = (1 - r2 - b2) / (2 * b * r);
+            T cp = sqrt(1 - sp * sp);
+            T sl = (1 - r2 + b2) / (2 * b);
+            T cl = sqrt(1 - sl * sl);
+            T l2 = asin(sl) + pi_over_2;
+            T p2  = asin(sp) + pi_over_2;
+            T cp2 = cp * cp;
+            T sp2 = sp * sp;
+            T cpsp = cp * sp;
+            T cp3 = cp * cp2;
+            T sp3 = sp * sp2;
+            T clsl = cl * sl;
+            T cl3 = cl * cl * cl;
+            T sl3 = sl * sl * sl;
+            s0 = l2 + clsl - r2 * (p2 + cpsp);
+            s8 = 0.5 * l2 + (1. / 3.) * clsl - (1. / 6.) * cl3 * sl + (1. / 6.) * cl * sl3 -
+                 (r2 * b2 * (p2 + cpsp) - r3 * b * cp * (1. + (1. / 3.) * cp2 - sp2) +
+                  r4 * (0.5 * p2 + (1. / 3.) * cpsp - (1. / 6.) * cp3 * sp + (1. / 6.) * cp * sp3));
+        } else {
+            s0 = G.pi * (1 - r2);
+            s8 = pi_over_2 - G.pi * r2 * (0.5 * r2 + b2);
+        }
+        G.b = b;
+        G.r = r;
+        if ((b == 0) || (r == 0))
+            G.ksq.reset(T(INFINITY));
+        else
+            G.ksq.reset((1 - (b - r)) * (1 + (b - r)) / (4 * b * r));
+        G.ELL.reset();
+        return s0 * g0 + s2(G) * g2 + s8 * g8;
+    }
+
     // Vieta's theorem coefficient A_{i,u,v}
     template <class T>
     class A {
