@@ -93,9 +93,8 @@ def NumericalFlux(I, b, r, epsabs=1e-8, epsrel=1e-8):
     return total - flux
 
 
-def compare_to_numerical():
+def compare_to_numerical(lmax=6, lmax_grad=5):
     """Compare to different numerical integration schemes."""
-    lmax = 6
     number = 1
     res = 300
     nstarry = 1000
@@ -126,25 +125,29 @@ def compare_to_numerical():
     time_numer = np.zeros(lmax + 1)
     time_mesh = np.zeros(lmax + 1)
     time_grid = np.zeros(lmax + 1)
+    error_starry = np.zeros(lmax + 1)
+    error_grad = np.zeros(lmax + 1)
     error_numer = np.zeros(lmax + 1)
     error_mesh = np.zeros(lmax + 1)
     error_grid = np.zeros(lmax + 1)
     for l in range(lmax + 1):
         funcs.ylm = starry.Map(l)
         funcs.ylm_grad = starry.grad.Map(min(l, 5))
+        ylm_128 = starry.multi.Map(l)
         # Randomize a map and occultor properties
         b = np.random.random()
         r = np.random.random()
         for m in range(-l, l + 1):
             c = np.random.random()
             funcs.ylm[l, m] = c
+            ylm_128[l, m] = c
             # NOTE: Default compile of starry.grad is for lmax <= 5
             if l <= 5:
                 funcs.ylm_grad[l, m] = c
         # Time the runs
         builtins.__dict__.update(locals())
         time_starry[l] = timeit.timeit('funcs.fstar()', number=1) / nstarry
-        if l <= 5:
+        if l <= lmax_grad:
             time_grad[l] = timeit.timeit('funcs.fgrad()', number=1) / nstarry
         else:
             time_grad[l] = np.nan
@@ -152,9 +155,12 @@ def compare_to_numerical():
         time_mesh[l] = timeit.timeit('funcs.fmesh()', number=1)
         time_grid[l] = timeit.timeit('funcs.fgrid()', number=1)
         # Compute the fractional error
-        error_numer[l] = np.abs(funcs.vnumer / funcs.vstar - 1)
-        error_mesh[l] = np.abs(funcs.vmesh / funcs.vstar - 1)
-        error_grid[l] = np.abs(funcs.vgrid / funcs.vstar - 1)
+        flux_128 = ylm_128.flux(xo=0, yo=b, ro=r)
+        error_starry[l] = max(1e-16, np.abs(funcs.vstar / flux_128 - 1))
+        error_grad[l] = max(1e-16, np.abs(funcs.vgrad / flux_128 - 1))
+        error_numer[l] = np.abs(funcs.vnumer / flux_128 - 1)
+        error_mesh[l] = np.abs(funcs.vmesh / flux_128 - 1)
+        error_grid[l] = np.abs(funcs.vgrid / flux_128 - 1)
 
     # Marker size is proportional to log error
     def ms(error):
@@ -174,11 +180,13 @@ def compare_to_numerical():
     ax.set_ylabel('Evaluation time [seconds]', fontsize=14, fontweight='bold')
 
     # Starry
-    ax.plot(range(lmax + 1), time_starry, 'o', color='C0', ms=2)
+    for l in range(lmax + 1):
+        ax.plot(l, time_starry[l], 'o', color='C0', ms=ms(error_starry[l]))
     ax.plot(range(lmax + 1), time_starry, '-', color='C0', lw=1, alpha=0.25)
 
     # Starry.grad
-    ax.plot(range(lmax + 1), time_grad, 'o', color='C4', ms=2)
+    for l in range(lmax + 1):
+        ax.plot(l, time_grad[l], 'o', color='C4', ms=ms(error_grad[l]))
     ax.plot(range(lmax + 1), time_grad, '-', color='C4', lw=1, alpha=0.25)
 
     # Mesh
@@ -301,5 +309,5 @@ def speed():
 
 
 if __name__ == "__main__":
-    compare_to_numerical()
+    compare_to_numerical(lmax=10)
     speed()

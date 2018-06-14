@@ -26,6 +26,11 @@ Defines compiler constants used throughout the code.
 #define STARRY_IJ_MAX_ITER                      200
 #endif
 
+// Max iterations in Kepler solver
+#ifndef STARRY_KEPLER_MAX_ITER
+#define STARRY_KEPLER_MAX_ITER                  100
+#endif
+
 // Re-parameterize solution vector when abs(b - r) < STARRY_EPS_BMR_ZERO
 #ifndef STARRY_EPS_BMR_ZERO
 #define STARRY_EPS_BMR_ZERO                     1e-2

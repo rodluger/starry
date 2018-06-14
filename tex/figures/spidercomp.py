@@ -1,52 +1,44 @@
-"""
-Starry-SPIDERMAN comparisons and speed tests.
-"""
+"""Starry-SPIDERMAN comparisons and speed tests."""
 import starry
-import timeit
-try:
-    import builtins
-except ImportError:
-    import __builtin__ as builtins
-
 import matplotlib.pyplot as plt
 import numpy as np
 import spiderman as sp
 import time
 
 
-# Marker size is proportional to log diff
 def ms(diff):
+    """Return marker size proportional to error."""
     return 18 + np.log10(diff)
 
-# Main comparison function
+
 def comparison():
-
-    ### Define SPIDERMAN model parameters ###
-
-    # Parameters adapted from https://github.com/tomlouden/SPIDERMAN/blob/master/examples/Brightness%20maps.ipynb
+    """Run the main comparison function."""
+    # Define SPIDERMAN model parameters
+    # Parameters adapted from
+    # https://github.com/tomlouden/SPIDERMAN/
+    # blob/master/examples/Brightness%20maps.ipynb
     spider_params = sp.ModelParams(brightness_model='spherical')
 
-    spider_params.n_layers = 10        # Will be reset later
-
-    spider_params.t0 = 0                # Central time of PRIMARY transit [days]
+    spider_params.n_layers = 10         # Will be reset later
+    spider_params.t0 = 0                # Central time of PRIMARY transit [d]
     spider_params.per = 0.81347753      # Period [days]
-    spider_params.a_abs = 1.0e-30       # Nearly 0 a to ignore light travel effects
+    spider_params.a_abs = 1.0e-30       # Nearly 0 a to ignore light travel
     spider_params.inc = 90.0            # Inclination [degrees]
     spider_params.ecc = 0.0             # Eccentricity
     spider_params.w = 0.0               # Argument of periastron
     spider_params.rp = 0.1594           # Planet to star radius ratio
-    spider_params.a = 4.855             # Semi-major axis scaled by stellar radius
+    spider_params.a = 4.855             # Semi-major axis scaled by rstar
     spider_params.p_u1 = 0.0            # Planetary limb darkening parameter
     spider_params.p_u2 = 0.0            # Planetary limb darkening parameter
 
     # SPIDERMAN spherical harmonics parameters
     ratio = 1.0e-3                                  # Planet-star flux ratio
-    spider_params.sph = [ratio, ratio/2, 0, 0]      # vector of spherical harmonic weights
+    spider_params.sph = [ratio, ratio / 2, 0, 0]      # vector of Ylm coeffs
     spider_params.degree = 2
     spider_params.la0 = 0.0
     spider_params.lo0 = 0.0
 
-    ### Define starry model parameters to match SPIDERMAN system ###
+    # Define starry model parameters to match SPIDERMAN system
 
     # Define star
     star = starry.Star()
@@ -56,7 +48,8 @@ def comparison():
                            lambda0=90.0,
                            w=spider_params.w,
                            r=spider_params.rp,
-                           L=1.0e-3 * np.pi, # Factor of pi to match SPIDERMAN normalization
+                           # Factor of pi to match SPIDERMAN normalization
+                           L=1.0e-3 * np.pi,
                            inc=spider_params.inc,
                            a=spider_params.a,
                            porb=spider_params.per,
@@ -65,33 +58,52 @@ def comparison():
                            ecc=spider_params.ecc)
 
     # Define spherical harmonic coefficients
-    planet.map[0,0] = 1.0
-    planet.map[1,-1] = 0.0
-    planet.map[1,0] = 0.0
-    planet.map[1,1] = 0.5
+    planet.map[0, 0] = 1.0
+    planet.map[1, -1] = 0.0
+    planet.map[1, 0] = 0.0
+    planet.map[1, 1] = 0.5
 
     # Make a system
-    system = starry.System([star,planet])
+    system = starry.System([star, planet])
 
-    ### Speed test! ###
+    # Now make a multiprecision system to compute error estimates
+    mstar = starry.multi.Star()
+    mplanet = starry.multi.Planet(lmax=2, lambda0=90., w=spider_params.w,
+                                  r=spider_params.rp, L=1.0e-3 * np.pi,
+                                  inc=spider_params.inc, a=spider_params.a,
+                                  porb=spider_params.per,
+                                  tref=spider_params.t0,
+                                  prot=spider_params.per,
+                                  ecc=spider_params.ecc)
+    mplanet.map[:] = planet.map[:]
+    msystem = starry.multi.System([mstar, mplanet])
+
+    # ## Speed test! ## #
 
     # Number of time array points
-    ns = np.array([20, 100, 500, 1000], dtype=int)
+    ns = np.array([10, 50, 100, 500, 1000], dtype=int)
 
     # SPIDERMAN grid resolution points
     ngrid = np.array([5, 10, 20, 50, 100], dtype=int)
 
     n_repeats = 3
     t_starry = np.nan + np.zeros(len(ns))
-    t_spiderman = np.nan + np.zeros((len(ns),len(ngrid)))
-    diff = np.nan + np.zeros_like(t_spiderman)
+    t_spiderman = np.nan + np.zeros((len(ns), len(ngrid)))
+    diff1 = np.nan + np.zeros_like(t_starry)
+    diff2 = np.nan + np.zeros_like(t_spiderman)
     flux_comp = []
 
     # Loop over time grid sizes
     for ii, n in enumerate(ns):
 
-        # New time array of length n just around the occulation and some phase curve
-        time_arr = np.linspace(0.4*spider_params.per, 0.6*spider_params.per, n)
+        # New time array of length n just around the
+        # occulation and some phase curve
+        time_arr = np.linspace(0.4 * spider_params.per,
+                               0.6 * spider_params.per, n)
+
+        # Compute **exact** flux using multiprecision
+        msystem.compute(time_arr)
+        mflux = np.array(msystem.flux)
 
         # Repeat calculation a few times and pick fastest one
         best_starry = np.inf
@@ -108,6 +120,9 @@ def comparison():
 
         # Save fastest time
         t_starry[ii] = best_starry
+
+        # Compute error
+        diff1[ii] = np.max(np.fabs((mflux - best_starry_flux) / mflux))
 
         # Time batman (for all grid resolutions)
         for jj, ng in enumerate(ngrid):
@@ -128,16 +143,19 @@ def comparison():
                     best_spiderman_flux = lc
 
             # Save fastest time
-            t_spiderman[ii,jj] = best_spiderman
+            t_spiderman[ii, jj] = best_spiderman
 
             # Save log maximum relative error
-            diff[ii,jj] = np.max(np.fabs((best_starry_flux - best_spiderman_flux)/best_starry_flux))
+            diff2[ii, jj] = np.max(np.fabs((mflux - best_spiderman_flux) /
+                                           mflux))
 
-            # For highest time resolution, compute differences between the predictions
+            # For highest time resolution, compute differences
+            # between the predictions
             if n == ns[-1]:
-                flux_comp.append(np.fabs(best_starry_flux - best_spiderman_flux))
+                flux_comp.append(
+                    np.fabs(best_starry_flux - best_spiderman_flux))
 
-    ### Generate the figures! ###
+    # ## Generate the figures! ## #
 
     # First figure: relative error
 
@@ -145,18 +163,19 @@ def comparison():
     ax = plt.subplot2grid((3, 1), (0, 0), colspan=1, rowspan=1)
     ax2 = plt.subplot2grid((3, 1), (1, 0), colspan=1, rowspan=2)
 
-    time_arr = np.linspace(0.4*spider_params.per, 0.6*spider_params.per, ns[-1])
+    time_arr = np.linspace(0.4 * spider_params.per,
+                           0.6 * spider_params.per, ns[-1])
 
     # Flux panel
-    ax.plot(time_arr, best_starry_flux)
+    ax.plot(time_arr, best_starry_flux, lw=1)
     ax.get_xaxis().set_ticklabels([])
     ax.set_xlim(time_arr.min(), time_arr.max())
     ax.set_ylabel("Flux")
 
     # Error panel
     for kk in range(len(flux_comp)):
-           ax2.plot(time_arr, flux_comp[kk],
-                   label="n$_{\mathrm{layers}}$=%d" % ngrid[kk])
+        ax2.plot(time_arr, flux_comp[kk], lw=1,
+                 label="n$_{\mathrm{layers}}$=%d" % ngrid[kk])
 
     ax2.set_ylim(1.0e-11, 1.0e-4)
     ax2.set_xlim(time_arr.min(), time_arr.max())
@@ -185,21 +204,23 @@ def comparison():
 
     # Starry, loop over all points
     for ii in range(len(ns)):
-        ax.plot(ns[ii], t_starry[ii], "o", lw=2, color="C0", ms=ms(1.0e-16))
+        ax.plot(ns[ii], t_starry[ii], "o", lw=2, color="C0", ms=ms(diff1[ii]))
     ax.plot(ns, t_starry, "-", lw=1.5, color="C0", alpha=0.25)
 
     # Loop over all grid resolutions
     for jj, ng in enumerate(ngrid):
-        ax.plot(ns, t_spiderman[:,jj], "-", color="C%d" % (jj+1), alpha=0.25, lw=1.5)
+        ax.plot(ns, t_spiderman[:, jj], "-", color="C%d" %
+                (jj + 1), alpha=0.25, lw=1.5)
         for kk in range(len(ns)):
-            ax.plot(ns[kk], t_spiderman[kk,jj], "o", ms=ms(diff[kk,jj]),
-                    color="C%d" % (jj+1))
+            ax.plot(ns[kk], t_spiderman[kk, jj], "o", ms=ms(diff2[kk, jj]),
+                    color="C%d" % (jj + 1))
 
     # Legend 1
     axleg1.plot([0, 1], [0, 1], color='C0', label='starry')
     # Loop over all grid resolutions
     for jj, ng in enumerate(ngrid):
-        axleg1.plot([0, 1], [0, 1], color="C%d" % (jj+1), label="n$_{\mathrm{layers}}$=%d" % ng)
+        axleg1.plot([0, 1], [0, 1], color="C%d" %
+                    (jj + 1), label="n$_{\mathrm{layers}}$=%d" % ng)
     axleg1.set_xlim(2, 3)
     axleg1.legend(loc='center', frameon=False, title=r'\textbf{method}')
 
@@ -208,11 +229,11 @@ def comparison():
                     ms=ms(10 ** logerr),
                     label=r'$%3d$' % logerr)
     axleg2.set_xlim(2, 3)
-    leg = axleg2.legend(loc='center', labelspacing=1, frameon=False,
-                        title=r'\textbf{log error}')
+    axleg2.legend(loc='center', labelspacing=1, frameon=False,
+                  title=r'\textbf{log error}')
 
     fig.savefig("spidercomp.pdf", bbox_inches="tight")
-# Done!
+
 
 # Run it!
 if __name__ == "__main__":

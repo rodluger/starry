@@ -58,13 +58,21 @@ static const UnitVector<double> zhat({0, 0, 1});
 // Return the value of a scalar MapType variable
 inline double get_value(double x) { return x; }
 inline double get_value(Grad x) { return x.value(); }
-inline double get_value(Multi x) { return (double)x; }
+inline double get_value(Multi x) {
+    if ((x > 1e308) || (x < -1e308))
+        return INFINITY;
+    else
+        return (double)x;
+}
 inline Vector<double> get_value(Vector<double> x) { return x; }
 inline Vector<double> get_value(Vector<Multi> x) {
     Vector<double> vec;
     vec.resize(x.size());
     for (int n = 0; n < x.size(); n++) {
-        vec(n) = (double)x(n);
+        if ((x(n) > 1e308) || (x(n) < -1e308))
+            vec(n) = INFINITY;
+        else
+            vec(n) = (double)x(n);
     }
     return vec;
 }

@@ -92,9 +92,9 @@ namespace lld {
                     if (s2_unstable(b, r)) {
                         k2c = -onembpr2 / fourbr;
                         kc = sqrt(k2c);
-                        Eofk = ellip::CEL<T>(k2, kc, T(1), T(1), k2c, pi);
                         Lambda1 = onembmr2 * (k2c * bmr * bpr * ellip::CEL<T>(k2, kc, bmr2 * k2c, T(0), T(3), pi)
-                                  - (3 - 6 * r2 - 2 * br) * ellip::CEL<T>(k2, kc, T(1), T(1), T(0), pi) - fourbr * Eofk) / (9. * pi * sqrt(br));
+                                  + ellip::CEL<T>(k2, kc, T(1), -3 + 6 * r2 - 2 * br, onembpr2, pi)) / (9. * pi * sqrt(br));
+
                     } else {
                         Lambda1 = ((bpr2 - 1) / bpr * (-2 * r * (2 * bpr2 - bpr * bmr - 3) * K + PITerm(b, r, ksq, bmr, bmr2, bpr2, bmrdbpr)) - 2 * xi * E) / (9 * pi * sqrt(br));
                     }

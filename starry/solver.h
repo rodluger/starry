@@ -555,7 +555,19 @@ namespace solver {
                         value(0) = (2.0 / 3.0) * (2 * (2 - 1. / ksq()) * ELL.E() - (1 - 1. / ksq()) * ELL.K());
                         value(1) = (2.0 / 15.0) * ((-3 * ksq() + 13 - 8 / ksq()) * ELL.E() + (1 - 1 / ksq()) * (3 * ksq() - 4) * ELL.K());
 
-                        // TODO: CEL expressions
+                        // NOTE: These expressions are in principle more stable, but I have not seen
+                        // this in practice. The advantage of the expressions above is that the elliptic
+                        // integrals are often used in the computation of `s2`, so they are available for free!
+                        /*
+                        T k2inv = 1 / ksq();
+                        T fe = 2 * (2 - k2inv);
+                        T fk = -1 + k2inv;
+                        value(0)= (2.0 / 3.0) * ellip::CEL<T>(k2inv, kc, T(1), fk + fe, fk + fe * (1 - k2inv), pi);
+                        fe = -6 * ksq() + 26 - 16 * k2inv;
+                        fk = 2 * (1 - k2inv) * (3 * ksq() - 4);
+                        value(1) = ellip::CEL<T>(k2inv, kc, T(1), fk + fe, fk + fe * (1 - k2inv), pi) / 15.;
+                        */
+
 
                     } else {
 
@@ -563,15 +575,16 @@ namespace solver {
                         value(0) = 2.0 / (3.0 * ksq() * k) * (2 * (2 * ksq() - 1) * ELL.E() + (1 - ksq()) * (2 - 3 * ksq()) * ELL.K());
                         value(1) = 2.0 / (15.0 * ksq() * k) * ((-3 * ksq(2) + 13 * ksq() - 8) * ELL.E() + (1 - ksq()) * (8 - 9 * ksq()) * ELL.K());
 
-                        // TODO: Fix the CEL expressions and use them when the expressions above are unstable
+                        // See NOTE above regarding these expressions
                         /*
                         T fe = 2 * (2 * ksq() - 1);
                         T fk = (1 - ksq()) * (2 - 3 * ksq());
-                        value(0) = 2 / (3 * ksq() * k) * ellip::CEL<T>(ksq(), kc, 1, fk + fe, fk + fe * (1 - ksq()));
+                        value(0) = 2 / (3 * ksq() * k) * ellip::CEL<T>(ksq(), kc, T(1), fk + fe, fk + fe * (1 - ksq()), pi);
                         fe = -3 * ksq(2) + 13 * ksq() - 8;
-                        fk = 2 * (1 - ksq()) * (8 - 9 * ksq());
-                        value(1) = 2 / (15 * ksq() * k) * ellip::CEL<T>(ksq(), kc, 1, fk + fe, fk + fe * (1 - ksq()));
+                        fk = (1 - ksq()) * (8 - 9 * ksq());
+                        value(1) = 2 / (15 * ksq() * k) * ellip::CEL<T>(ksq(), kc, T(1), fk + fe, fk + fe * (1 - ksq()), pi);
                         */
+
 
                     }
 
@@ -756,11 +769,14 @@ namespace solver {
         if ((b == 0) || (r == 0)) {
             ksq = T(INFINITY);
             G.k = T(INFINITY);
-            G.kc = T(-INFINITY);
+            G.kc = 1;
         } else {
             ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * b * r);
             G.k = sqrt(ksq);
-            G.kc = sqrt(((b + r) * (b + r) - 1) / (4 * b * r));
+            if (ksq > 1)
+                G.kc = sqrt(abs(((b + r) * (b + r) - 1) / ((b - r) * (b - r) - 1)));
+            else
+                G.kc = sqrt(abs(((b + r) * (b + r) - 1) / (4 * b * r)));
         }
         G.ksq.reset(ksq);
         G.fourbr32 = pow(4 * b * r, 1.5);

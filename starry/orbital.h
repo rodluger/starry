@@ -28,6 +28,7 @@ namespace orbital {
     using std::abs;
     using std::string;
     using std::to_string;
+    using std::fmod;
 
     template <class T> class Body;
     template <class T> class System;
@@ -36,16 +37,16 @@ namespace orbital {
 
     // Re-definition of fmod so we can define its derivative below
     template <typename T>
-    T fmod(T numer, T denom) {
-        return std::fmod(numer, denom);
+    T mod2pi(const T& numer) {
+        return fmod(numer, T(2 * M_PI));
     }
 
     // Derivative of the floating point modulo function,
     // based on https://math.stackexchange.com/a/1277049
     template <typename T>
-    Eigen::AutoDiffScalar<T> fmod(const Eigen::AutoDiffScalar<T>& numer, double denom) {
+    Eigen::AutoDiffScalar<T> mod2pi(const Eigen::AutoDiffScalar<T>& numer) {
         typename T::Scalar numer_value = numer.value(),
-                           modulo_value = fmod(numer_value, denom);
+                           modulo_value = mod2pi(numer_value);
         return Eigen::AutoDiffScalar<T>(
           modulo_value,
           numer.derivatives()
@@ -55,14 +56,15 @@ namespace orbital {
     // Compute the eccentric anomaly. Adapted from
     // https://github.com/lkreidberg/batman/blob/master/c_src/_rsky.c
     template <typename T>
-    T EccentricAnomaly(T& M, T& ecc, const double& eps, const int& maxiter) {
+    T EccentricAnomaly(T& M, T& ecc) {
         // Initial condition
         T E = M;
+        T tol = 10 * mach_eps<T>();
         if (ecc > 0) {
             // Iterate
-            for (int iter = 0; iter <= maxiter; iter++) {
+            for (int iter = 0; iter <= STARRY_KEPLER_MAX_ITER; iter++) {
                 E = E - (E - ecc * sin(E) - M) / (1. - ecc * cos(E));
-                if (abs(E - ecc * sin(E) - M) <= eps) return E;
+                if (abs(E - ecc * sin(E) - M) <= tol) return E;
             }
             // Didn't converge!
             throw errors::Kepler();
@@ -72,10 +74,10 @@ namespace orbital {
 
     // Derivative of the eccentric anomaly
     template <typename T>
-    Eigen::AutoDiffScalar<T> EccentricAnomaly(const Eigen::AutoDiffScalar<T>& M, const Eigen::AutoDiffScalar<T>& ecc, const double& eps, const int& maxiter) {
+    Eigen::AutoDiffScalar<T> EccentricAnomaly(const Eigen::AutoDiffScalar<T>& M, const Eigen::AutoDiffScalar<T>& ecc) {
         typename T::Scalar M_value = M.value(),
                            ecc_value = ecc.value(),
-                           E_value = EccentricAnomaly(M_value, ecc_value, eps, maxiter),
+                           E_value = EccentricAnomaly(M_value, ecc_value),
                            cosE_value = cos(E_value),
                            sinE_value = sin(E_value),
                            norm1 = 1./ (1. - ecc_value * cosE_value),
@@ -161,10 +163,6 @@ namespace orbital {
 
             // Derivatives dictionary
             std::map<string, Eigen::VectorXd> derivs;
-
-            // Settings
-            double eps;
-            int maxiter;
 
             // Orbital position
             Vector<T> x;
@@ -320,7 +318,7 @@ namespace orbital {
         if ((prot == 0) || (prot == INFINITY))
             return theta0;
         else
-            return fmod(theta0 + angvelrot * (time - tref - dt_), 2 * M_PI);
+            return mod2pi(T(theta0 + angvelrot * (time - tref - dt_)));
     }
 
     // Compute the flux in occultation
@@ -347,14 +345,14 @@ namespace orbital {
         } else {
 
             // Mean anomaly
-            M = fmod(M0 + angvelorb * (time - tref), 2 * M_PI);
+            M = mod2pi(T(M0 + angvelorb * (time - tref)));
 
             // True anomaly and orbital radius
             if (ecc == 0) {
                 f = M;
                 rorb = a;
             } else {
-                E = EccentricAnomaly(M, ecc, eps, maxiter);
+                E = EccentricAnomaly(M, ecc);
                 f = (2. * atan2(sqrtonepluse * sin(E / 2.),
                                  sqrtoneminuse * cos(E / 2.)));
                 rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
@@ -398,9 +396,9 @@ namespace orbital {
                                   - 2 * az_ * (z0 - z_) / (clight * clight)));
 
                 // Re-compute Kepler's equation, this time solving for the **retarded** position
-                M = fmod(M0 + angvelorb * (time - dt_ - tref), 2 * M_PI);
+                M = mod2pi(T(M0 + angvelorb * (time - dt_ - tref)));
                 if (ecc > 0) {
-                    E = EccentricAnomaly(M, ecc, eps, maxiter);
+                    E = EccentricAnomaly(M, ecc);
                     f = (2. * atan2(sqrtonepluse * sin(E / 2.), sqrtoneminuse * cos(E / 2.)));
                     rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
                 } else {
@@ -502,8 +500,6 @@ namespace orbital {
 
             vector<Body<T>*> bodies;
             Vector<T> flux;
-            double eps;
-            int maxiter;
             bool computed;
             T zero;
             T clight;
@@ -519,11 +515,8 @@ namespace orbital {
             std::map<string, Eigen::VectorXd> derivs;
 
             // Constructor
-            System(vector<Body<T>*> bodies, const double& scale=0, const double& eps=1.0e-7, const int& maxiter=100,
-                   const double& exptime=0, const double& exptol=1e-8, const int& expmaxdepth=4) :
+            System(vector<Body<T>*> bodies, const double& scale=0, const double& exptime=0, const double& exptol=1e-8, const int& expmaxdepth=4) :
                 bodies(bodies),
-                eps(eps),
-                maxiter(maxiter),
                 clight(CLIGHT / (scale * RSUN)),
                 exptol(exptol),
                 exptime(exptime * DAY), // Convert to seconds
@@ -541,8 +534,6 @@ namespace orbital {
                 for (int i = 1; i < bodies.size(); i++) {
                     if (bodies[i]->is_star)
                         throw errors::BadSystem();
-                    bodies[i]->eps = eps;
-                    bodies[i]->maxiter = maxiter;
                     bodies[i]->clight = clight;
                 }
 
