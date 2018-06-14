@@ -30,7 +30,9 @@ else
       k2c = -onembpr2/fourbr; kc = sqrt(k2c)
       Eofk = cel_bulirsch(k2,kc,one(b),one(b),k2c) # Complete elliptic integral of second kind
       Lambda1 = onembmr2*(k2c*(b-r)*(b+r)*cel_bulirsch(k2,kc,(b-r)^2*k2c,zero(b),3one(b))
-          -(3-6*r^2-2*b*r)*cel_bulirsch(k2,kc,one(b),one(b),zero(b))-fourbr*Eofk)/(9*pi*sqrt(b*r))
+          +cel_bulirsch(k2,kc,one(b),-3+6r^2-2*b*r,onembpr2))/(9*pi*sqrt(b*r))
+#      Lambda1 = onembmr2*(cel_bulirsch(k2,kc,(b-r)^2*k2c,zero(b),3*k2c*(b-r)*(b+r))
+#          -(3-6*r^2-2*b*r)*cel_bulirsch(k2,kc,one(b),one(b),zero(b))-fourbr*Eofk)/(9*pi*sqrt(b*r))
     elseif (b+r) < 1.0  # k^2 > 1, Case 3, Case 9
       k2inv = inv(k2); k2c =onembpr2/onembmr2; kc = sqrt(k2c)
       Eofk = cel_bulirsch(k2inv,kc,one(b),one(b),k2c) # Complete elliptic integral of second kind
