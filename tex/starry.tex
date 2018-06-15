@@ -3221,7 +3221,7 @@ to 12th order in $k^2$ and tabulate the expansion coefficients in \starry up to 
 \begin{figure}[ht!]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/stability.pdf}
-    \caption{\label{fig:stability_transit}
+    \caption{\label{fig:stability}
              \python{stability}
              Relative error in the terms of the solution vector $\mathbf{s}$ for a small
              ($r_o = 0.01$) occultor, computed relative to calculations using quadruple
@@ -3233,42 +3233,7 @@ to 12th order in $k^2$ and tabulate the expansion coefficients in \starry up to 
     \end{centering}
 \end{figure}
 
-\begin{figure}[ht!]
-    \begin{centering}
-    \includegraphics[width=\linewidth]{figures/stability_eclipse.pdf}
-    \caption{\label{fig:stability_eclipse}
-             \python{stability}
-             Same as Figure~\ref{fig:stability_transit}, but for a large ($r_o = 100$) occultor.}
-    \end{centering}
-\end{figure}
-
-Figures~\ref{fig:stability_transit} and \ref{fig:stability_eclipse} show the relative error
-in the computation of the solution vector $\mathbf{s}$ for $l \leq 8$ for a small occultor ($r_o = 0.01$)
-and a large occultor ($r_o = 100$), roughly corresponding to the case of the Earth transiting the
-Sun and the Earth in secondary eclipse, respectively. The error is computed relative to the solution
-obtained using quadruple precision, and is plotted for terms for which $\mu$ is even (left) and
-odd (right). In each figure, the top two panels show the error incurred when using the recurrence
-relations derived in the previous sections, while the bottom panels show the error when performing
-the reparametrizations and Taylor expansions discussed above. The horizontal axis spans impact parameters
-in the range $r - 1 \leq b \leq r + 1$ and is nonlinearly spaced, with extra resolution near the various
-regions of instability.
-
-For small occultors (Figure~\ref{fig:stability_transit}), the odd terms go unstable for small values
-of the impact parameter and diverge as $b \rightarrow 0$ (top row). Taylor expansion of $\mathcal{J}_{u,v}$
-ensure the relative error is less than a part per trillion everywhere (bottom row).
-For large occultors (Figure~\ref{fig:stability_eclipse}), both the even and odd terms go unstable at all values of the impact parameter,
-particularly at large values of $l$. The Taylor expansions discussed above reduce the error to less
-than 1 ppb for all terms except the $l = 8$ terms, for which the error is less than 1 ppm.
-Note, importantly, that the case $r_o \gg 1$ is typically only relevant to studies of
-(secondary) eclipses of exoplanets by their host stars, for which ppm precision (measured relative
-to the \emph{planet} flux) is at present orders of magnitude higher than what can be measured.
-Figure~\ref{fig:stability_earth} shows secondary eclipse ingress for the $l = 8$ Earth being
-occulted by the Sun ($r_o \approx 110$) alongside the fractional error on the flux.
-As expected, the relative error is less than 1 ppm everywhere.
-
-The solutions outlined above ensure numerical stability over a wide range of occultor radii and impact
-parameters, but instabilities may still occur in \starry when the occultor becomes very large
-($r_o \gg 100$) and/or when the map degree is very high ($l \gtrsim 8$). In these cases, users may wish
+In extreme cases, users may wish
 to compute light curves using multiprecision by instantiating maps as
 %
 \begin{lstlisting}[language=Python,firstnumber=last]

@@ -837,7 +837,7 @@ namespace orbital {
             tsec = time(t) * DAY;
             tsec.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
 
-            // Convert the deriv back to days!
+            // Convert the derivative back to days
             tsec.derivatives()(0) *= DAY;
 
             // Star derivs (map only)
@@ -866,15 +866,15 @@ namespace orbital {
                 bodies[i]->axis(0).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->axis(1).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->axis(2).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->prot.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->prot.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++) * DAY;
                 bodies[i]->a.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->porb.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->inc.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->porb.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++) * DAY;
+                bodies[i]->inc.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++) * DEGREE;
                 bodies[i]->ecc.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->w.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->Omega.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->lambda0.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->tref.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->w.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++) * DEGREE;
+                bodies[i]->Omega.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++) * DEGREE;
+                bodies[i]->lambda0.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++) * DEGREE;
+                bodies[i]->tref.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++) * DAY;
 
                 // Propagate derivs to the helper variables
                 bodies[i]->reset();

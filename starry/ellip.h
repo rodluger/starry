@@ -60,7 +60,7 @@ namespace ellip {
       kc = sqrt(h * kc);
       m *= 0.5;
     }
-    throw errors::Elliptic();
+    throw errors::Elliptic("K");
   }
 
   // Complete elliptic integral of the second kind
@@ -76,7 +76,7 @@ namespace ellip {
       if (abs(m0 - kc) / m0 <= tol<T>()) return M_PI_4 * a / m;
       kc = 2.0 * sqrt(kc * m0);
     }
-    throw errors::Elliptic();
+    throw errors::Elliptic("E");
   }
 
   // Complete elliptic integral of the third kind
@@ -95,21 +95,21 @@ namespace ellip {
       kc = 2.0 * sqrt(e);
       e = kc * m0;
     }
-    throw errors::Elliptic();
+    throw errors::Elliptic("PI");
   }
 
   // Computes the function cel(kc, p, a, b) from Bulirsch (1969)
   template <typename T>
   T CEL (const T& ksq, const T& kc0, const T& p0, const T& a0, const T& b0, const T& pi) {
-      if (ksq > 1) throw errors::Elliptic();
-      T ca = sqrt(mach_eps<T>());
+      if ((ksq > 1) || (kc0 < 0)) throw errors::Elliptic("CEL");
+      T ca = sqrt(mach_eps<T>() * ksq);
       T m = 1.0;
       T p = p0;
       T a = a0;
       T b = b0;
       T kc = kc0;
       T q, g, f, ee;
-      if ((ksq == 1) || (kc == 0)) kc = mach_eps<T>();
+      if ((ksq == 1) || (kc == 0)) kc = mach_eps<T>() * ksq;
       ee = kc;
       if (p > 0) {
           p = sqrt(p);
@@ -146,16 +146,7 @@ namespace ellip {
           if (abs(g - kc) < g * ca)
             return pi / 2 * (a * m + b) / (m * (m + p));
       }
-      throw errors::Elliptic();
-  }
-
-  // Overload for when the user doesn't provide kc
-  template <typename T>
-  T CEL (const T& ksq, const T& p0, const T& a0, const T& b0, const T& pi) {
-      T kc;
-      if (ksq == 1) kc = mach_eps<T>();
-      else kc = sqrt(1.0 - ksq);
-      return CEL(ksq, kc, p0, a0, b0, pi);
+      throw errors::Elliptic("CEL");
   }
 
   // Gradient of F
@@ -224,6 +215,7 @@ namespace ellip {
   }
 
   // Gradient of PI
+  // TODO: We should use the cached version of K and E to speed this up!
   template <typename T>
   Eigen::AutoDiffScalar<T> PI (const Eigen::AutoDiffScalar<T>& n,
                                const Eigen::AutoDiffScalar<T>& ksq)
@@ -240,6 +232,57 @@ namespace ellip {
       Pnk * (nsq - ksq_value)) / n_value) / (n_value - 1.0) -
       ksq.derivatives() * 0.5 * (Ek / (ksq_value - 1.0) + Pnk)) /
       (ksq_value - n_value)
+    );
+  }
+
+  // Gradient of CEL
+  template <typename T>
+  Eigen::AutoDiffScalar<T> CEL (const Eigen::AutoDiffScalar<T>& ksq,
+                                const Eigen::AutoDiffScalar<T>& kc,
+                                const Eigen::AutoDiffScalar<T>& p,
+                                const Eigen::AutoDiffScalar<T>& a,
+                                const Eigen::AutoDiffScalar<T>& b,
+                                const Eigen::AutoDiffScalar<T>& pi)
+  {
+    typename T::Scalar ksq_value = ksq.value(),
+                       kc_value = kc.value(),
+                       kc2 = kc_value * kc_value,
+                       p_value = p.value(),
+                       a_value = a.value(),
+                       b_value = b.value(),
+                       pi_value = pi.value(),
+                       oneminusp = 1 - p_value,
+                       kc2minusp = kc2 - p_value,
+                       CEL_value = CEL(ksq_value, kc_value, p_value, a_value, b_value, pi_value),
+                       dCdkc, dCda, dCdb, lambda, dCdp;
+
+      dCdkc = (-kc_value / (p_value - kc2)) * (CEL(ksq_value, kc_value, kc2, a_value, b_value, pi_value) - CEL_value);
+      if (a.derivatives().any())
+          dCda = CEL(ksq_value, kc_value, p_value, typename T::Scalar(1), typename T::Scalar(0), pi_value);
+      else
+          dCda = 0;
+      if (b.derivatives().any())
+          dCdb = CEL(ksq_value, kc_value, p_value, typename T::Scalar(0), typename T::Scalar(1), pi_value);
+      else
+          dCdb = 0;
+      if (p.derivatives().any()) {
+          lambda = kc2 * (b_value + a_value * p_value - 2 * b_value * p_value) + p_value * (3 * b_value * p_value - a_value * p_value * p_value - 2 * b_value);
+          dCdp = (CEL(ksq_value, kc_value, p_value, typename T::Scalar(0), lambda, pi_value) + (b_value - a_value * p_value) * CEL(ksq_value, kc_value, typename T::Scalar(1), oneminusp, kc2minusp, pi_value)) / (-2 * p_value * oneminusp * kc2minusp);
+          // Equivalent but probably less stable version:
+          // dCdp = (2 * p_value * b_value - p_value * a_value - b_value) / (2 * p_value * (1 - p_value)) * CEL(ksq_value, kc_value, p_value, typename T::Scalar(0), typename T::Scalar(1), pi_value) +
+          // (b_value - a_value * p_value) / (2 * p_value * (1 - p_value) * (p_value - kc2)) * CEL(ksq_value, kc_value, typename T::Scalar(1), typename T::Scalar(1), kc2, pi_value) -
+          // (b_value - a_value * p_value) / (2 * (1 - p_value) * (p_value - kc2)) * CEL(ksq_value, kc_value, p_value, typename T::Scalar(1), typename T::Scalar(1), pi_value);
+      } else {
+          dCdp = 0;
+      }
+
+    return Eigen::AutoDiffScalar<T>(
+      CEL_value,
+      ksq.derivatives() * dCdkc / (-2 * kc_value) +
+      kc.derivatives() * dCdkc +
+      p.derivatives() * dCdp +
+      a.derivatives() * dCda +
+      b.derivatives() * dCdb
     );
   }
 

@@ -478,6 +478,7 @@ namespace solver {
     template <class T>
     class J {
 
+            vector<int> vvec;
             Vector<bool> set;
             Vector<T> value;
             int vmax;
@@ -494,6 +495,16 @@ namespace solver {
                 set = Vector<bool>::Zero(vmax + 1);
                 value.resize(vmax + 1);
                 pi = T(BIGPI);
+                // These are the values of v we pre-compute on downward recursion
+                vvec.push_back(vmax);
+                vvec.push_back(vmax - 1);
+                // If lmax is large (>~ 15), we can lose significant precision
+                // by the time we get down to l = 0. So let's pre-compute
+                // the two J_v's at the midpoint for higher accuracy at low l
+                if (vmax >= 30) {
+                    vvec.push_back(vmax / 2);
+                    vvec.push_back(vmax / 2 - 1);
+                }
             }
 
             // Reset flags and compute J_vmax and J_{vmax - 1} with a series expansion
@@ -510,7 +521,7 @@ namespace solver {
                         tol = mach_eps<T>() / ksq();
                     else
                         tol = mach_eps<T>() * ksq();
-                    for (int v = vmax; v >= vmax - 1; v--) {
+                    for (int v : vvec) {
 
                         // Computing leading coefficient (n=0):
                         T coeff;
@@ -562,10 +573,10 @@ namespace solver {
                         T k2inv = 1 / ksq();
                         T fe = 2 * (2 - k2inv);
                         T fk = -1 + k2inv;
-                        value(0)= (2.0 / 3.0) * ellip::CEL<T>(k2inv, kc, T(1), fk + fe, fk + fe * (1 - k2inv), pi);
+                        value(0)= (2.0 / 3.0) * ellip::CEL(k2inv, kc, T(1), T(fk + fe), T(fk + fe * (1 - k2inv)), pi);
                         fe = -6 * ksq() + 26 - 16 * k2inv;
                         fk = 2 * (1 - k2inv) * (3 * ksq() - 4);
-                        value(1) = ellip::CEL<T>(k2inv, kc, T(1), fk + fe, fk + fe * (1 - k2inv), pi) / 15.;
+                        value(1) = ellip::CEL(k2inv, kc, T(1), T(fk + fe), T(fk + fe * (1 - k2inv)), pi) / 15.;
                         */
 
 
@@ -579,10 +590,10 @@ namespace solver {
                         /*
                         T fe = 2 * (2 * ksq() - 1);
                         T fk = (1 - ksq()) * (2 - 3 * ksq());
-                        value(0) = 2 / (3 * ksq() * k) * ellip::CEL<T>(ksq(), kc, T(1), fk + fe, fk + fe * (1 - ksq()), pi);
+                        value(0) = 2 / (3 * ksq() * k) * ellip::CEL(ksq(), kc, T(1), T(fk + fe), T(fk + fe * (1 - ksq())), pi);
                         fe = -3 * ksq(2) + 13 * ksq() - 8;
                         fk = (1 - ksq()) * (8 - 9 * ksq());
-                        value(1) = 2 / (15 * ksq() * k) * ellip::CEL<T>(ksq(), kc, T(1), fk + fe, fk + fe * (1 - ksq()), pi);
+                        value(1) = 2 / (15 * ksq() * k) * ellip::CEL(ksq(), kc, T(1), T(fk + fe), T(fk + fe * (1 - ksq())), pi);
                         */
 
 

@@ -79,11 +79,11 @@ namespace lld {
                     Lambda1 = (1. / 3.) - 4. / (9. * pi);
                 } else if (r < 0.5) {
                     m = 4 * r2;
-                    Lambda1 = (1. / 3.) + 2. / (9. * pi) * ellip::CEL<T>(m, T(1), m - 3, (1 - m) * (2 * m - 3), pi);
+                    Lambda1 = (1. / 3.) + 2. / (9. * pi) * ellip::CEL(m, T(sqrt(1.0 - m)), T(1), T(m - 3), T((1 - m) * (2 * m - 3)), pi);
                 } else {
                     m = 4 * r2;
                     minv = 1.0 / m;
-                    Lambda1 = (1. / 3.) + 1. / (9. * pi * r) * ellip::CEL<T>(minv, T(1), m - 3, 1 - m, pi);
+                    Lambda1 = (1. / 3.) + 1. / (9. * pi * r) * ellip::CEL(minv, T(sqrt(1.0 - minv)), T(1), T(m - 3), T(1 - m), pi);
                 }
             } else {
                 k2 = onembpr2 / fourbr + 1;
@@ -92,8 +92,8 @@ namespace lld {
                     if (s2_unstable(b, r)) {
                         k2c = -onembpr2 / fourbr;
                         kc = sqrt(k2c);
-                        Lambda1 = onembmr2 * (k2c * bmr * bpr * ellip::CEL<T>(k2, kc, bmr2 * k2c, T(0), T(3), pi)
-                                  + ellip::CEL<T>(k2, kc, T(1), -3 + 6 * r2 - 2 * br, onembpr2, pi)) / (9. * pi * sqrt(br));
+                        Lambda1 = onembmr2 * (k2c * bmr * bpr * ellip::CEL(k2, kc, T(bmr2 * k2c), T(0), T(3), pi)
+                                  + ellip::CEL(k2, kc, T(1), T(-3 + 6 * r2 - 2 * br), onembpr2, pi)) / (9. * pi * sqrt(br));
 
                     } else {
                         Lambda1 = ((bpr2 - 1) / bpr * (-2 * r * (2 * bpr2 - bpr * bmr - 3) * K + PITerm(b, r, ksq, bmr, bmr2, bpr2, bmrdbpr)) - 2 * xi * E) / (9 * pi * sqrt(br));
@@ -104,10 +104,10 @@ namespace lld {
                         k2inv = 1.0 / k2;
                         k2c = onembpr2 / onembmr2;
                         kc = sqrt(k2c);
-                        Eofk = ellip::CEL<T>(k2inv, kc, T(1), T(1), k2c, pi);
+                        Eofk = ellip::CEL(k2inv, kc, T(1), T(1), k2c, pi);
                         mu = 3 * bmrdbpr / onembmr2;
                         p = bmrdbpr * bmrdbpr * onembpr2 / onembmr2;
-                        Lambda1 = 2 * sqrt(onembmr2) * (onembpr2 * ellip::CEL<T>(k2inv, kc, p, 1 + mu, p + mu, pi) - (4 - 7 * r2 - b2) * Eofk) / (9. * pi);
+                        Lambda1 = 2 * sqrt(onembmr2) * (onembpr2 * ellip::CEL(k2inv, kc, p, T(1 + mu), T(p + mu), pi) - (4 - 7 * r2 - b2) * Eofk) / (9. * pi);
                     } else {
                         Lambda1 = 2 * ((1 - bpr2) * (sqrt(1 - bmr2) * K + PITerm(b, r, ksq, bmr, bmr2, bpr2, bmrdbpr)) - sqrt(1 - bmr2) * (4 - 7 * r2 - b2) * E) / (9 * pi);
                     }

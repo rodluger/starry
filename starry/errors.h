@@ -30,9 +30,13 @@ namespace errors {
         }
     };
 
-    struct Elliptic : public exception {
-    	const char * what () const throw (){
-        	return "Elliptic integral did not converge.";
+    class Elliptic : public exception {
+        string m_msg;
+    public:
+        Elliptic(const string& name) :
+            m_msg(string("Elliptic integral " + name + " did not converge.")) { }
+        virtual const char* what() const throw() {
+            return m_msg.c_str();
         }
     };
 
