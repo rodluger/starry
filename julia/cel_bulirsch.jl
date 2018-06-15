@@ -32,6 +32,7 @@ end
 
 # Version called with kc (this is to improve precision of computation):
 function cel_bulirsch(k2::T,kc::T,p::T,a::T,b::T) where {T <: Real}
+#println("cel ",k2," ",kc," ",p," ",a," ",b)
 @assert (k2 <= 1.0)
 ca = sqrt(eps(k2))
 # Avoid undefined k2=1 case:
@@ -55,7 +56,7 @@ while abs(g-kc) > g*ca && iter < itmax
   f=a; a += b/p; g=ee/p; b += f*g; b +=b; p +=g; g=m; m += kc; iter +=1
 end
 if iter == itmax
-  println("k2 ",k2," kc ",kc,"abs(g-kc) ",abs(g-kc)," g*ca ",g*ca)
+  println("k2 ",k2," kc ",kc," abs(g-kc) ",abs(g-kc)," g*ca ",g*ca," cel ",pi/2*(a*m+b)/(m*(m+p)))
 end
 return pi/2*(a*m+b)/(m*(m+p))
 end

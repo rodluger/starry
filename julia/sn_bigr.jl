@@ -152,16 +152,25 @@ end
 v= 0
 if k2 < 1
   # Use cel_bulirsch:
-  fe = 2*(2k2-1); fk = (1-k2)*(2-3k2)
-  Jv[v+1]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
-  fe = -3k2*k2+13k2-8; fk = (1-k2)*(8-9k2)
-  Jv[v+2]= 2/(15k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
+#  fe = 2*(2k2-1); fk = (1-k2)*(2-3k2)
+#  Jv[v+1]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
+  if k2 > 0
+#    println("k2: ",k2)
+    Jv[v+1]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),k2*(3k2-1),k2*(1-k2))
+    fe = -3k2*k2+13k2-8; fk = (1-k2)*(8-9k2)
+    Jv[v+2]= 2/(15k2*k)*cel_bulirsch(k2,kc,one(k2),2k2*(3k2-2),k2*(4-7k2+3k2*k2))
+  else
+    Jv[v+1]= 0.0
+    Jv[v+2]= 0.0
+  end
 else # k^2 >=1
   k2inv = inv(k2)
-  fe = 2*(2-k2inv); fk=-1+k2inv
-  Jv[v+1]=2/3*cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))
-  fe = -6k2+26-16k2inv; fk=2*(1-k2inv)*(3k2-4)
-  Jv[v+2]=cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))/15
+#  fe = 2*(2-k2inv); fk=-1+k2inv
+#  Jv[v+1]=2/3*cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))
+  Jv[v+1]=2/3*cel_bulirsch(k2inv,kc,one(k2),3-k2inv,3-5k2inv+2k2inv^2)
+#  fe = -6k2+26-16k2inv; fk=2*(1-k2inv)*(3k2-4)
+#  Jv[v+2]=cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))/15
+  Jv[v+2]=cel_bulirsch(k2inv,kc,one(k2),2-8*k2inv,8*(1-2k2inv)*(1-k2inv))/15
 end
 v=2
 while v <= v_max
@@ -183,7 +192,7 @@ v_max = l_max+3; v = v_max
 if k2 < 1
   Iv[v+1]=Iv_series(k2,v)
 # Next, iterate downwards in v:
-  f0 = k2^v/k*kc
+  f0 = k2^(v-1)*k*kc
 # Loop over v, computing I_v and J_v from higher v:
   while v >= 1
     Iv[v] = 2/(2v-1)*(v*Iv[v+1]+f0)
@@ -201,12 +210,19 @@ end
 # Need to compute J_v for v=0 and v=v_max:
 if k2 < 1
   # Use cel_bulirsch:
-  fe = 2*(2k2-1); fk = (1-k2)*(2-3k2)
-  Jv[1]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
+#  println("k2: ",k2)
+  if k2 > 0
+#    fe = 2*(2k2-1); fk = (1-k2)*(2-3k2)
+#    Jv[1] = 2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
+    Jv[1] = 2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),k2*(3k2-1),k2*(1-k2))
+  else
+    Jv[1] = 0.0
+  end
 else # k^2 >=1
   k2inv = inv(k2)
-  fe = 2*(2-k2inv); fk=-1+k2inv
-  Jv[1]=2/3*cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))
+#  fe = 2*(2-k2inv); fk=-1+k2inv
+#  Jv[1]=2/3*cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))
+  Jv[1]=2/3*cel_bulirsch(k2inv,kc,one(k2),3-k2inv,3-5k2inv+2k2inv^2)
 end
 Jv[v_max+1]=Jv_series(k2,v_max)
 # Now, implement tridiagonal algorithm:
@@ -246,7 +262,7 @@ v_max = l_max+3; v = v_max
 if k2 < 1
   Iv[v+1]=Iv_series(k2,v)
 # Next, iterate downwards in v:
-  f0 = k2^v/k*kc
+  f0 = k2^(v-1)*k*kc
 # Loop over v, computing I_v and J_v from higher v:
   while v >= 1
     Iv[v] = 2/(2v-1)*(v*Iv[v+1]+f0)
@@ -353,7 +369,7 @@ v_max = l_max+3; v = v_max
 if k2 < 1
   Hv[v+1]=Iv_series(k2,v)
 # Next, iterate downwards in v:
-  f0 = k2^v/k*kc
+  f0 = k2^(v-1)*k*kc
 # Loop over v, computing I_v and J_v from higher v:
   while v >= 1
     Hv[v] = 2/(2v-1)*(v*Hv[v+1]+f0)
@@ -402,9 +418,16 @@ end
 
 Iv = zeros(typeof(k2),v_max+1); Jv = zeros(typeof(k2),v_max+1)
 # This computes I_v for the largest v, and then works down to smaller values:
-#IJv_lower!(l_max,k2,kc,Iv,Jv)
+if k2 > 0
+  if k2 < 0.5 || k2 > 2.0
+    IJv_lower!(l_max,k2,kc,Iv,Jv)
+  else
+    IJv_raise!(l_max,k2,kc,Iv,Jv)
+  end
+end
+#println("Iv: ",Iv," Jv: ",Jv)
 #IJv_raise!(l_max,k2,kc,Iv,Jv)
-IJv_tridiag!(l_max,k2,kc,Iv,Jv)
+#IJv_tridiag!(l_max,k2,kc,Iv,Jv)
 #Ivr = zeros(typeof(k2),v_max+1); Jvr = zeros(typeof(k2),v_max+1)
 #IJv_raise!(l_max,k2,kc,Ivr,Jvr)
 #println("Jv lower: ",Jv," Jv raise: ",Jvr," diff: ",Jv-Jvr)

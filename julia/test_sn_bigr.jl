@@ -2,10 +2,10 @@ include("sn.jl")
 include("sn_bigr.jl")
 
 #r=10.
-#r=100.
+r=100.
 #r=110.
 #r=1.1
-r=0.1
+#r=0.1
 l_max = 20
 n_max = l_max^2+2*l_max
 sn_big = zeros(BigFloat,n_max+1);
@@ -14,11 +14,12 @@ snew_big = zeros(BigFloat,n_max+1);
 #b=sqrt((r+.5)^2+0.1^2)
 #b=1e-3
 #b=0.99
-b=0.9
+#b=0.9
 #b=0.55
 #b = 110.99
 #b = 1.0
 #b=100.
+b = r+1-1e-18
 diff_frac = zeros(n_max+1)
 diff_rel  = zeros(n_max+1)
 for i=1:length(b)
@@ -35,6 +36,7 @@ for i=1:length(b)
 #      if diff > 0.01
       println("n: ",n," l: ",l," m: ",m," mu: ",mu," nu: ",nu," s: ",snew[n+1],
 #       " s_old: ",convert(Float64,sn_big[n+1])," d_old: ",snew[n+1]/convert(Float64,sn_big[n+1])-1.,
+       " s_old: ",convert(Float64,sn_big[n+1]),
        " s_big: ",convert(Float64,snew_big[n+1])," d_old: ",snew[n+1]/convert(Float64,sn_big[n+1])-1.,
        " d_big: ",snew[n+1]/convert(Float64,snew_big[n+1])-1.)
 #      end
