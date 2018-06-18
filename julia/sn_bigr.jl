@@ -1,5 +1,7 @@
 # Computes s_n vector from Luger et al. (2018) to ~machine
 # precision for b+r > 1:
+include("s2_stable.jl")
+
 using GSL
 
 function vector_sum(x::Array{T,1},y::Array{T,1},n::Int64) where {T <: Real}
