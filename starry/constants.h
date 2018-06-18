@@ -1,30 +1,54 @@
 /**
-Defines constants used throughout the code.
+Defines compiler constants used throughout the code.
 
 */
 
-// Gradient size
+#ifndef _STARRY_CONSTS_H_
+#define _STARRY_CONSTS_H_
+
+// Gradient size in starry.grad
 #ifndef STARRY_NGRAD
 #define STARRY_NGRAD                            43
 #endif
 
-// Multiprecision
+// Number of digits for the multiprecision type in starry.multi
 #ifndef STARRY_NMULTI
 #define STARRY_NMULTI                           32
 #endif
 
-// Physical constants
-#ifndef BIGG
-#define BIGG                                    6.67428e-11                     // Gravitational constant in m^3/kg/s^2
-#define DAY                                     86400.                          // Number of seconds in one day
-#define CLIGHT                                  299792458.                      // Speed of light in m / s
-#define REARTH                                  6.3781e6                        // Radius of the Earth in m
-#define PARSEC                                  3.086e16                        // Meters in 1 parsec
-#define MEARTH                                  (3.986004418e14 / BIGG)         // Mass of Earth in kg (from GM)
-#define MSUN                                    (1.32712440018e20 / BIGG)       // Mass of the sun in kg (from GM)
-#define AU                                      149597870700.                   // Astronomical unit in m
-#define RSUN                                    6.957e8                         // Radius of the Sun in m
-#define LSUN                                    3.828e26                        // Solar luminosity in W/m^2
-#define RJUP                                    7.1492e7                        // Radius of Jupiter in m
-#define DEGREE                                  (M_PI / 180.)                   // One degree in radians
+// Max iterations in elliptic integrals
+#ifndef STARRY_ELLIP_MAX_ITER
+#define STARRY_ELLIP_MAX_ITER                   200
+#endif
+
+// Max iterations in computation of I_v and J_v
+#ifndef STARRY_IJ_MAX_ITER
+#define STARRY_IJ_MAX_ITER                      200
+#endif
+
+// Max iterations in Kepler solver
+#ifndef STARRY_KEPLER_MAX_ITER
+#define STARRY_KEPLER_MAX_ITER                  100
+#endif
+
+// Re-parameterize solution vector when abs(b - r) < STARRY_EPS_BMR_ZERO
+#ifndef STARRY_EPS_BMR_ZERO
+#define STARRY_EPS_BMR_ZERO                     1e-2
+#endif
+
+// Re-parameterize solution vector when 1 - STARRY_EPS_BMR_ONE < abs(b - r) < 1 + STARRY_EPS_BMR_ONE
+#ifndef STARRY_EPS_BMR_ONE
+#define STARRY_EPS_BMR_ONE                      1e-5
+#endif
+
+// Re-parameterize solution vector when 1 - STARRY_EPS_BMR_ONE < abs(b + r) < 1 + STARRY_EPS_BMR_ONE
+#ifndef STARRY_EPS_BPR_ONE
+#define STARRY_EPS_BPR_ONE                      1e-5
+#endif
+
+// Re-parameterize solution vector when abs(b) < STARRY_EPS_B_ZERO
+#ifndef STARRY_EPS_B_ZERO
+#define STARRY_EPS_B_ZERO                       1e-1
+#endif
+
 #endif

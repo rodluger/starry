@@ -158,9 +158,6 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 return get_value((Vector<MAPTYPE>)map.C.rT);
             }, docs.Map.r)
 
-        .def_property("optimize", [](maps::Map<MAPTYPE> &map){return map.G.taylor;},
-            [](maps::Map<MAPTYPE> &map, bool taylor){map.G.taylor = taylor;}, docs.Map.optimize)
-
         .def("evaluate", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& x, py::object& y) {
                 UnitVector<double> axis_norm = norm_unit(axis);
                 return vectorize_map_evaluate(axis_norm, theta, x, y, map);
@@ -449,9 +446,6 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
                 return u;
             }, docs.LimbDarkenedMap.u)
 
-        .def_property("optimize", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.G.taylor;},
-            [](maps::LimbDarkenedMap<MAPTYPE> &map, bool taylor){map.G.taylor = taylor;}, docs.LimbDarkenedMap.optimize)
-
         .def("evaluate", [](maps::LimbDarkenedMap<MAPTYPE>& map, py::object& x, py::object& y) {
                 return vectorize_ldmap_evaluate(x, y, map);
             }, docs.LimbDarkenedMap.evaluate, "x"_a=0, "y"_a=0)
@@ -498,8 +492,8 @@ void add_System(py::class_<orbital::System<MAPTYPE>>& PySystem, const docstrings
 
     PySystem
 
-        .def(py::init<vector<orbital::Body<MAPTYPE>*>, double, double, int, double, double, int>(),
-            "bodies"_a, "scale"_a=0, "kepler_tol"_a=1.0e-7, "kepler_max_iter"_a=100, "exposure_time"_a=0, "exposure_tol"_a=1e-8, "exposure_max_depth"_a=4)
+        .def(py::init<vector<orbital::Body<MAPTYPE>*>, double, double, double, int>(),
+            "bodies"_a, "scale"_a=0, "exposure_time"_a=0, "exposure_tol"_a=1e-8, "exposure_max_depth"_a=4)
 
         .def("compute", [](orbital::System<MAPTYPE> &system, Vector<double>& time){system.compute(time.template cast<MAPTYPE>());},
             docs.System.compute, "time"_a)
@@ -514,12 +508,6 @@ void add_System(py::class_<orbital::System<MAPTYPE>>& PySystem, const docstrings
                 else
                     system.clight = MAPTYPE(CLIGHT / (scale * RSUN));
             }, docs.System.scale)
-
-        .def_property("kepler_tol", [](orbital::System<MAPTYPE> &system){return system.eps;},
-            [](orbital::System<MAPTYPE> &system, double eps){system.eps = eps;}, docs.System.kepler_tol)
-
-        .def_property("kepler_max_iter", [](orbital::System<MAPTYPE> &system){return system.maxiter;},
-            [](orbital::System<MAPTYPE> &system, int maxiter){system.maxiter = maxiter;}, docs.System.kepler_max_iter)
 
         .def_property("exposure_time", [](orbital::System<MAPTYPE> &system){return system.exptime / DAY;},
             [](orbital::System<MAPTYPE> &system, double exptime){system.exptime = exptime * DAY;}, docs.System.exposure_time)

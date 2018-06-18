@@ -137,7 +137,7 @@ namespace maps {
             // Constructor: initialize map to zeros
             Map(int lmax=2) :
                   lmax(lmax), R(lmax), C(lmax),
-                  G(lmax, true) {
+                  G(lmax) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);
@@ -513,7 +513,7 @@ namespace maps {
             // Constructor: initialize map to zeros
             LimbDarkenedMap(int lmax=2) :
                   lmax(lmax), C(lmax),
-                  G(lmax, true) {
+                  G(lmax) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);
@@ -663,14 +663,11 @@ namespace maps {
     template <class T>
     T LimbDarkenedMap<T>::flux(const T& xo, const T& yo, const T& ro) {
 
-        // AutoDiff casting hack
-        T zero = 0 * ro;
-
         // Impact parameter
         T b = sqrt(xo * xo + yo * yo);
 
         // Check for complete occultation
-        if (b <= ro - 1) return zero;
+        if (b <= ro - 1) return 0;
 
         // If we're doing quadratic limb darkening, let's skip all the overhead
         if ((lmax <= 2) && (ro < 1)) {
@@ -678,18 +675,18 @@ namespace maps {
                 return 1.0;
             else {
                 if (lmax == 0)
-                    return solver::QuadLimbDark(G, b, ro, g(0), zero, zero);
+                    return solver::QuadLimbDark<T>(G, b, ro, g(0), 0, 0);
                 else if (lmax == 1)
-                    return solver::QuadLimbDark(G, b, ro, g(0), g(2), zero);
+                    return solver::QuadLimbDark<T>(G, b, ro, g(0), g(2), 0);
                 else
-                    return solver::QuadLimbDark(G, b, ro, g(0), g(2), g(8));
+                    return solver::QuadLimbDark<T>(G, b, ro, g(0), g(2), g(8));
             }
         }
 
         // No occultation: cake
         if ((b >= 1 + ro) || (ro == 0)) {
 
-            return C.rTA1 * y;
+            return 1.0;
 
         // Occultation
         } else {
@@ -698,7 +695,7 @@ namespace maps {
             ARRy = C.A * y;
 
             // Compute the sT vector
-            solver::computesT<T>(G, b, ro, ARRy);
+            solver::computesT(G, b, ro, ARRy);
 
             // Dot the result in and we're done
             return G.sT * ARRy;

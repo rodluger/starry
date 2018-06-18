@@ -43,7 +43,11 @@ def test_notebooks():
 
         # Run it
         print("Running %s..." % os.path.basename(notebook))
-        exec(script, globals(), globals())
+        try:
+            exec(script, globals(), globals())
+        except AssertionError:
+            print("Error in %s." % notebook)
+            raise
         pl.close('all')
 
 

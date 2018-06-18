@@ -140,9 +140,9 @@ sE = np.abs(nF - sF)
 sE[sE == 0] = np.nan
 bE = np.abs(nF - bF)
 bE[bE == 0] = np.nan
-ax[1].plot(time, 1e6 * sE, '-',
+ax[1].plot(time, sE, '-',
            color='C0', label='starry')
-ax[1].plot(time, 1e6 * bE, '-',
+ax[1].plot(time, bE, '-',
            color='C1', label='batman')
 ax[1].set_yscale('log')
 
@@ -151,7 +151,7 @@ ax[0].legend(loc='lower right')
 ax[1].legend(loc='lower right')
 ax[0].set_xlim(-0.25, 0.25)
 ax[0].set_ylabel('Normalized flux', fontsize=16)
-ax[1].set_ylabel('Relative error [ppm]', fontsize=16, labelpad=10)
+ax[1].set_ylabel('Relative error', fontsize=16, labelpad=10)
 ax[1].set_xlabel('Time [arbitrary units]', fontsize=16)
 
 # Save

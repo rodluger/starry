@@ -24,7 +24,7 @@ namespace docstrings {
         const char * g;
         const char * s;
         const char * r;
-        const char * optimize;
+        const char * reparam;
         const char * evaluate;
         const char * flux;
         const char * flux_numerical;
@@ -94,9 +94,9 @@ namespace docstrings {
                 The current solution vector `r`. *Read-only.*
             )pbdoc";
 
-            optimize = R"pbdoc(
-                Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
-                computing occultation light curves. This is in general not something you should do! \
+            reparam = R"pbdoc(
+                Set to :py:obj:`False` to disable reparametrization of the primitive integrals when \
+                computing occultation light curves for large occultors. This is in general not something you should do! \
                 Default :py:obj:`True`.
             )pbdoc";
 
@@ -239,7 +239,6 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. autoattribute:: optimize
                 .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
                 .. automethod:: rotate(axis=(0, 1, 0), theta=0)
                 .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
@@ -292,7 +291,6 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. autoattribute:: optimize
                 .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
                 .. automethod:: rotate(axis=(0, 1, 0), theta=0)
                 .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
@@ -327,7 +325,6 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. autoattribute:: optimize
                 .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
                 .. automethod:: rotate(axis=(0, 1, 0), theta=0)
                 .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
@@ -369,7 +366,7 @@ namespace docstrings {
         const char * g;
         const char * s;
         const char * u;
-        const char * optimize;
+        const char * reparam;
         const char * evaluate;
         const char * flux;
         const char * flux_numerical;
@@ -438,9 +435,9 @@ namespace docstrings {
                 The limb darkening coefficient vector. *Read-only.*
             )pbdoc";
 
-            optimize = R"pbdoc(
-                Set to :py:obj:`False` to disable Taylor expansions of the primitive integrals when \
-                computing occultation light curves. This is in general not something you should do! \
+            reparam = R"pbdoc(
+                Set to :py:obj:`False` to disable reparametrization of the primitive integrals when \
+                computing occultation light curves for large occultors. This is in general not something you should do! \
                 Default :py:obj:`True`.
             )pbdoc";
 
@@ -503,7 +500,6 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. autoattribute:: optimize
                 .. automethod:: evaluate(x=0, y=0)
                 .. automethod:: flux(xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l)
@@ -558,7 +554,6 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. autoattribute:: optimize
                 .. automethod:: evaluate(x=0, y=0)
                 .. automethod:: flux(xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l)
@@ -597,7 +592,6 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. autoattribute:: optimize
                 .. automethod:: evaluate(x=0, y=0)
                 .. automethod:: flux(xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l)
@@ -631,8 +625,6 @@ namespace docstrings {
         const char * exposure_time;
         const char * exposure_tol;
         const char * exposure_max_depth;
-        const char * kepler_max_iter;
-        const char * kepler_tol;
         const char * gradient;
         void add_extras();
 
@@ -673,14 +665,6 @@ namespace docstrings {
                 Maximum recursion depth for the exposure calculation.
             )pbdoc";
 
-            kepler_max_iter = R"pbdoc(
-                Maximum number of iterations in the Kepler solver.
-            )pbdoc";
-
-            kepler_tol = R"pbdoc(
-                Kepler solver tolerance.
-            )pbdoc";
-
             add_extras();
 
         }
@@ -698,8 +682,6 @@ namespace docstrings {
                     scale (float): This parameter sets the lengthscale for computing the light travel time delay \
                                    and is simply equal to the radius of the star in :math:`R_\odot`. Default `0`, meaning \
                                    the light travel time effect is not computed.
-                    kepler_tol (float): Kepler solver tolerance. Default `1e-7`.
-                    kepler_max_iter (int): Maximum number of iterations in the Kepler solver. Default `100`.
                     exposure_time (float): The exposure time of the observations in days. If nonzero, the flux will \
                                            be integrated over this exposure time. Note that setting this will result \
                                            in slower run times, since the integrated flux is computed numerically. Default `0`.
@@ -711,8 +693,6 @@ namespace docstrings {
                 .. autoattribute:: exposure_time
                 .. autoattribute:: exposure_tol
                 .. autoattribute:: exposure_max_depth
-                .. autoattribute:: kepler_tol
-                .. autoattribute:: kepler_max_iter
         )pbdoc";
 
     };
@@ -728,8 +708,6 @@ namespace docstrings {
                     scale (float): This parameter sets the lengthscale for computing the light travel time delay \
                                    and is simply equal to the radius of the star in :math:`R_\odot`. Default `0`, meaning \
                                    the light travel time effect is not computed.
-                    kepler_tol (float): Kepler solver tolerance. Default `1e-7`.
-                    kepler_max_iter (int): Maximum number of iterations in the Kepler solver. Default `100`.
                     exposure_time (float): The exposure time of the observations in days. If nonzero, the flux will \
                                            be integrated over this exposure time. Default `0`.
                     exposure_tol (float): Tolerance of the recursive method for integrating the flux over the exposure time. Default `1e-8`.
@@ -742,8 +720,6 @@ namespace docstrings {
                 .. autoattribute:: exposure_time
                 .. autoattribute:: exposure_tol
                 .. autoattribute:: exposure_max_depth
-                .. autoattribute:: kepler_tol
-                .. autoattribute:: kepler_max_iter
         )pbdoc";
 
         gradient = R"pbdoc(
@@ -1132,7 +1108,7 @@ namespace docstrings {
             ===================
             .. autoclass:: Star()
             .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
-            .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
+            .. autoclass:: System(bodies, scale=0, exposure_time=0, exposure_tol=1e-8, exposure_max_depth=4)
         )pbdoc";
 
     };
@@ -1172,7 +1148,7 @@ namespace docstrings {
             ===================
             .. autoclass:: Star()
             .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
-            .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
+            .. autoclass:: System(bodies, scale=0, exposure_time=0, exposure_tol=1e-8, exposure_max_depth=4)
         )pbdoc";
 
         nmulti = R"pbdoc(
@@ -1325,7 +1301,7 @@ namespace docstrings {
             ===================
             .. autoclass:: Star()
             .. autoclass:: Planet(lmax=2, r=0.1, L=0, axis=(0, 1, 0), prot=0, a=50, porb=1, inc=90, ecc=0, w=90, Omega=0, lambda0=90, tref=0)
-            .. autoclass:: System(bodies, kepler_tol=1.0e-7, kepler_max_iter=100)
+            .. autoclass:: System(bodies, scale=0, exposure_time=0, exposure_tol=1e-8, exposure_max_depth=4)
         )pbdoc";
 
         ngrad = R"pbdoc(

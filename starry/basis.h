@@ -136,11 +136,9 @@ namespace basis {
                                     for (p=0; p<k+1; p+=2) {
                                         for (q=0; q<p+1; q+=2) {
                                             if ((p / 2) % 2 == 0)
-                                                Ylm0(i - k + p, j + q) +=
-                                                    C<T>(p, q, k) * coeff;
+                                                Ylm0(i - k + p, j + q) += C<T>(p, q, k) * coeff;
                                             else
-                                                Ylm0(i - k + p, j + q) -=
-                                                    C<T>(p, q, k) * coeff;
+                                                Ylm0(i - k + p, j + q) -= C<T>(p, q, k) * coeff;
                                         }
                                     }
                                 } else {
@@ -148,11 +146,9 @@ namespace basis {
                                     for (p=0; p<k+1; p+=2) {
                                         for (q=0; q<p+1; q+=2) {
                                             if ((p / 2) % 2 == 0)
-                                                Ylm1(i - k + p + 1, j + q) +=
-                                                    C<T>(p, q, k - 1) * coeff;
+                                                Ylm1(i - k + p + 1, j + q) += C<T>(p, q, k - 1) * coeff;
                                             else
-                                                Ylm1(i - k + p + 1, j + q) -=
-                                                    C<T>(p, q, k - 1) * coeff;
+                                                Ylm1(i - k + p + 1, j + q) -= C<T>(p, q, k - 1) * coeff;
                                         }
                                     }
                                 }
