@@ -12,16 +12,19 @@ elseif b <= r-1.0
   Lambda1 = zero(b)  # Case 11
 else 
   if b == 0 
+#    Lambda1 = -2/3*sqrt(1.0-r^2)^3 # Case 10
     Lambda1 = -2/3*sqrt(1.0-r^2)^3 # Case 10
   elseif b==r
     if r == 0.5
-      Lambda1 = 1/3-4/(9pi) # Case 6
+      Lambda1 = 1/3-4/(9pi) - 2*(b-0.5)/(3*pi) +2*(r-0.5)/pi # Case 6; I've added in analytic first derivaties.
     elseif r < 0.5
       m = 4r^2
-      Lambda1 = 1/3+2/(9pi)*cel_bulirsch(m,one(r),m-3,(1-m)*(2m-3)) # Case 5
+      Lambda1 = 1/3+2/(9pi)*cel_bulirsch(m,one(r),m-3,(1-m)*(2m-3)) + # Case 5
+        (b-r)*4*r/(3pi)*cel_bulirsch(m,one(r),-one(r),1-m)  # Adding in first derivative
     else
       m = 4r^2; minv = inv(m)
-      Lambda1 = 1/3+1/(9pi*r)*cel_bulirsch(minv,one(r),m-3,1-m) # Case 7
+      Lambda1 = 1/3+1/(9pi*r)*cel_bulirsch(minv,one(r),m-3,1-m) - # Case 7
+        (b-r)*2/(3pi)*cel_bulirsch(minv,one(r),one(r),2*(1-minv)) # Adding in first derivative
     end
   else
     onembpr2 = 1-(b+r)^2; onembmr2=1-(b-r)^2; fourbr = 4b*r
@@ -43,10 +46,11 @@ else
              -(4-7r^2-b^2)*Eofk)/(9*pi)
     else
       # b+r = 1 or k^2=1, Case 4 (extending r up to 1)
-      Lambda1 = 2/(3pi)*acos(1.-2.*r)-4/(9pi)*(3+2r-8r^2)*sqrt(r*b)-2/3*convert(typeof(b),r>.5)
+      Lambda1 = 2/(3pi)*acos(1.-2.*r)-4/(9pi)*(3+2r-8r^2)*sqrt(r*(1-r))-2/3*convert(typeof(b),r>.5) -
+          8/(3pi)*(r+b-1)*r*sqrt(r*(1-r)) # Adding in first derivatives
     end
   end
 end
 flux = 1.0-1.5*Lambda1-convert(typeof(b),r>b)
-return flux
+return flux*2pi/3
 end
