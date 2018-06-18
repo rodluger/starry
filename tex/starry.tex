@@ -960,7 +960,7 @@ from starry import Map
 %
 A \starry \Map is a vector of spherical harmonic coefficients, indexed by
 increasing degree and order, as in \eq{by}. We can create a map of
-spherical harmonics up to degree $l_\mathrm{max} = 5$ by typing
+spherical harmonics up to degree $l_\mathrm\mathrm{max} = 5$ by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 map = Map(5)
@@ -1053,7 +1053,7 @@ is of course unphysical.
 In Figure~\ref{fig:earth} we show a
 simplified two-color map of the cloudless Earth and its corresponding
 \starry instance for
-$l_\mathrm{max} = 10$, rotated successively about $\yhat$.
+$l_\mathrm\mathrm{max} = 10$, rotated successively about $\yhat$.
 %
 \begin{figure}[ht!]
     \begin{centering}
@@ -1108,7 +1108,7 @@ relative to the original, unrotated map frame.
 %
 In the top panel of Figure~\ref{fig:ylmlightcurves} we plot rotational phase curves
 for all spherical harmonics
-up to $l_\mathrm{max} = 6$ for rotation about $\xhat$ (blue curves) and $\yhat$
+up to $l_\mathrm\mathrm{max} = 6$ for rotation about $\xhat$ (blue curves) and $\yhat$
 (orange curves). The small dots correspond to phase curves computed by numerical
 evaluation of the flux on an adaptive radial mesh (see \S\ref{sec:starrybenchmarks}).
 As discussed by \citet{CowanFuentesHaggard2013}, harmonics with
@@ -1137,7 +1137,7 @@ the seven individual continents.
     \caption{\label{fig:earthphasecurve}
              \python{earthphasecurve}
              Phase curve for the Earth rotating about its axis, computed
-             from the $l_\mathrm{max} = 10$ expansion from
+             from the $l_\mathrm\mathrm{max} = 10$ expansion from
              Figure~\ref{fig:earth}. The full rotational phase curve is shown in black,
              and the flux due to each of the seven continents is shown as
              the colored curves (see legend). The black dots correspond to the
@@ -1167,7 +1167,7 @@ or arrays.
 
 In the bottom panel of Figure~\ref{fig:ylmlightcurves} we plot
 occultation light curves for the spherical harmonics with $m \ge 0$
-up to $l_\mathrm{max} = 6$. The occultor has radius $r = 0.3$ and
+up to $l_\mathrm\mathrm{max} = 6$. The occultor has radius $r = 0.3$ and
 moves at a constant speed along the $\x$ direction at $y_o = 0.25$
 (blue curves) and $y_o = 0.75$ (orange curves). The light curve of
 any body undergoing such an occultation can be expressed as a weighted
@@ -1188,7 +1188,7 @@ occultation. As before, the numerical solutions are shown as the small dots.
              \python{earthoccultation}
              Occultation light curve for the Moon transiting the
              rotating Earth,
-             computed from the $l_\mathrm{max} = 10$ expansion from
+             computed from the $l_\mathrm\mathrm{max} = 10$ expansion from
              Figure~\ref{fig:earth}. The two largest dips are due
              to the occultations of South America (left) and Africa
              (right). Once again, the black dots correspond to the
@@ -1253,7 +1253,7 @@ map[lmax] = ulmax
 \end{lstlisting}
 %
 where \textsf{lmax} is the order of the limb darkening polynomial.
-In the case of quadratic limb darkening ($l_\mathrm{max} = 2$),
+In the case of quadratic limb darkening ($l_\mathrm\mathrm{max} = 2$),
 this sets the map's limb darkening profile to
 %
 \begin{align}
@@ -1824,7 +1824,7 @@ precision can degrade for large $l$ and $m$. Similarly, the coefficients
 of the occultation solution vector $\mathbf{s}$ can drop below machine
 precision at large $l$, leading to further numerical issues. While
 \starry is specifically coded up to minimize numerical instabilities,
-we find that for $l_\mathrm{max} \geq 30$ numerical issues may occur.
+we find that for $l_\mathrm\mathrm{max} \geq 30$ numerical issues may occur.
 Fortunately, situations in which maps of such high degree are necessary
 are not likely for exoplanet science in the foreseeable future.
 Nevertheless, if users wish to perform calculations for very large $l$,
@@ -2231,7 +2231,7 @@ the first few spherical harmonics and their corresponding polynomial vectors:
 \end{equation}
 %
 From these we can construct $\AOne$. As an example, for spherical
-harmonics up to degree $l_\mathrm{max} = 2$, this is
+harmonics up to degree $l_\mathrm\mathrm{max} = 2$, this is
 %
 \begin{equation}
     \label{eq:AOne}
@@ -2259,7 +2259,7 @@ polynomials, $\ATwo$, in a similar manner. In practice,
 it is easier to express the elements of the Green's basis $\gbasis$ in terms
 of the elements of the polynomial basis $\pbasis$ and use those to populate the
 columns of the matrix $\ATwo^{-1}$. Continuing our example
-for $l_\mathrm{max} = 2$, our second change of basis matrix
+for $l_\mathrm\mathrm{max} = 2$, our second change of basis matrix
 is
 %
 \begin{equation}
@@ -2283,7 +2283,7 @@ is
 
 Finally, recall that the complete change of basis matrix from spherical
 harmonics to Green's polynomials, $\bvec{A}$, is just the matrix product
-of $\ATwo$ and $\AOne$. For $l_\mathrm{max} = 2$, we have
+of $\ATwo$ and $\AOne$. For $l_\mathrm\mathrm{max} = 2$, we have
 %
 \begin{equation}
     \mathematica{A}
@@ -2377,7 +2377,7 @@ describes the transformation from complex to real spherical harmonics. In
 for rotation in the $z-y-z$ convention.
 %
 To obtain a rotation matrix for an arbitrary vector $\bvec{y}$ with spherical
-harmonics of different orders up to $l = l_\mathrm{max}$, we define the
+harmonics of different orders up to $l = l_\mathrm\mathrm{max}$, we define the
 block-diagonal matrix $\bvec{R}$:
 %
 \begin{equation}
@@ -2711,7 +2711,8 @@ proportional to $\z$ taken along the limb of the occulted planet
 \label{app:Q}
 % ------------------------------------------------------------------------------
 
-\xxx{The $\mathcal{Q}$ expression is easy. Let us define}
+We begin with the expression for $\mathcal{Q}$ (Equation~\ref{eq:QGn}), as this
+is the most straightforward. Defining the integral
 %
 \begin{align}
     \label{eq:Huv}
@@ -2720,9 +2721,10 @@ proportional to $\z$ taken along the limb of the occulted planet
             c_\varphi^u
             s_\varphi^v
             \, \dd\varphi
+            \quad,
 \end{align}
 %
-\xxx{so}
+we may write
 %
 \begin{align}
 %
@@ -2739,7 +2741,7 @@ proportional to $\z$ taken along the limb of the occulted planet
     \end{dcases}
 \end{align}
 %
-\citet{Pal2012} \xxx{derived simple recurrence relations for this:}
+\citet{Pal2012} derived simple recurrence relations for this integral:
 %
 \begin{align}
     \label{eq:Huvsol}
@@ -2783,21 +2785,30 @@ proportional to $\z$ taken along the limb of the occulted planet
 \label{app:P}
 % ------------------------------------------------------------------------------
 
-\xxx{To enforce numerical stability, it is convenient to define the parameters}
+To enforce numerical stability, it is convenient to define the parameters
+%
 \begin{equation}
-\delta = \frac{b-r}{2r}.
+    \label{eq:delta}
+    \delta = \frac{b-r}{2r}
 \end{equation}
-and $\kappa = \pi/2 + \phi$, so
-\begin{equation}
-\kappa = \cos^{-1} \left(\frac{r^2+b^2-1}{2br}\right).
-\end{equation}
-This variable can be defined more simply in terms of $\sin^2\tfrac{\kappa}{2} = k^2$,
-or $\kappa = 2 \sin^{-1}k$.  When $r+b \le 1$, $\phi=\pi/2$, so $\kappa = \pi$.
+%
+and
+%
+\begin{align}
+    \label{eq:kappa}
+    \kappa &= \phi + \frac{\pi}{2} \nonumber \\
+           &= \cos^{-1} \left(\frac{r^2+b^2-1}{2br}\right)
+           \quad.
+\end{align}
+%
+The latter variable can be defined more simply in terms of $\sin^2\tfrac{\kappa}{2} = k^2$,
+or $\kappa = 2 \sin^{-1}k$. Note that when $r+b \le 1$, $\phi=\pi/2$, so $\kappa = \pi$.
 With this transformed variable, the limits of integration of $\mathcal{P}(\bvec{G}_n)$
 become $\tfrac{3\pi}{2}-\kappa$ to $\tfrac{3\pi}{2}+\kappa$.  Transforming
 $\varphi$ to $\varphi^\prime = \frac{1}{2}(\varphi - \tfrac{3\pi}{2})$ yields
+%
 \begin{align}
-    \label{eq:PGn_large}
+    \label{eq:PGn_reparam}
     \mathcal{P}(\bvec{G}_n) &=
     \begin{dcases}
         %
@@ -2844,25 +2855,35 @@ $\varphi$ to $\varphi^\prime = \frac{1}{2}(\varphi - \tfrac{3\pi}{2})$ yields
         0 & \qquad \mathrm{otherwise},
     \end{dcases}
 \end{align}
-where $\mathcal{F} = (2r)^{l-1}(4br)^{3/2}$ and we have subsequently dropped the prime from $\varphi^\prime$ in these integrals.
-
+%
+where $\mathcal{F} = (2r)^{l-1}(4br)^{3/2}$ and we have subsequently
+dropped the prime from $\varphi^\prime$ in these integrals.
+%
 Expanding the term $(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v$ as a polynomial
 in $s_\varphi^2$, we find
+%
 \begin{equation}
-(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v = \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} s_\varphi^{2i},
+    \label{eq:poly_expansion}
+    (1-s_\varphi^2)^u(\delta + s_\varphi^2)^v = \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} s_\varphi^{2i},
 \end{equation}
+%
 where
+%
 \begin{equation}
-\mathcal{A}_{i,u,v} = \sum_{j=\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)} \binom{u}{j} \binom{v}{u+v-i-j}(-1)^{u+j}\delta^{u+v-i-j}.
+    \label{eq:vieta}
+    \mathcal{A}_{i,u,v} = \sum_{j=\mathrm\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)}
+                          \binom{u}{j} \binom{v}{u+v-i-j}(-1)^{u+j}\delta^{u+v-i-j}.
 \end{equation}
+%
 The coefficients $\mathcal{A}_{i,u,v}$ are computed from Vieta's formulae for the
 coefficients of a polynomial in terms of sums and products of its roots, and are
 equal to the elementary symmetric polynomials of the roots of $(1-x)^u(x+\delta)^v$.
-
+%
 This expansion yields a sum over terms which are integrals over powers of $s_\varphi^{2v}$.
-We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$ as:
+We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$ as
+%
 \begin{align}
-    \label{eq:PGnI}
+    \label{eq:PGnI_reparam}
     \mathcal{P}(\bvec{G}_n) &=
     \begin{dcases}
         %
@@ -2890,52 +2911,68 @@ We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise}
+        \quad,
     \end{dcases}
 %
 \end{align}
+%
 where
-\begin{eqnarray}
-%\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
-\mathcal{K}_{u,v} &=& \int_{\kappa/2}^{\kappa/2} s_\varphi^{2u} (1-s_\varphi^2)^u (\delta + s_\varphi^2)^v d\varphi\\
-&=& \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{I}_{i+u},\\
-\mathcal{I}_{v} &=& \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi,\\
-%\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
-\mathcal{L}^{(t)}_{u,v} &=& k^3 \int_{-\kappa/2}^{\kappa/2}s_\varphi^{2(u+t)}(1-s_\varphi^2)^u(\delta+s_\varphi^2)^v
-\left(1-k^{-2}s_\varphi^2\right)^{3/2}d\varphi,\\
-%&=& k^3 \sum_{i=0}^{2u+v} \mathcal{A}_{u+v-i+t,u,v} \mathcal{J}_{i+u},\\
-&=& k^3 \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{J}_{i+u+t},\\
-%\mathcal{L}^{(0)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{i+u},\\
-%\mathcal{L}^{(2)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{i+u+},\\
-%\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u s_\varphi^v\left(k^2-s^2_\varphi\right)^{3/2},
-\mathcal{J}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^{2v}_\varphi\left(1-k^{-2}s^2_\varphi\right)^{3/2},\\
-%\mathcal{A}_{p,u,v} &=& \sum_{j=0}^{p} (-1)^{p+j} \binom{u}{p-j} \binom{v}{p}\delta^j.
-\end{eqnarray}
-where $\kappa = 2\sin^{-1}(k)$ for $b+r > 1$ and $\kappa = \pi$ for $b + r \le 1$.
+%
+\begin{align}
+    \label{eq:KILJ}
+    %\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
+    \mathcal{K}_{u,v} &= \int_{\kappa/2}^{\kappa/2} s_\varphi^{2u} (1-s_\varphi^2)^u (\delta + s_\varphi^2)^v d\varphi \nonumber \\
+    &= \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{I}_{i+u},\\[0.5em]
+    %
+    %
+    \mathcal{I}_{v} &= \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi,\\[0.5em]
+    %
+    %
+    %\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
+    \mathcal{L}^{(t)}_{u,v} &= k^3 \int_{-\kappa/2}^{\kappa/2}s_\varphi^{2(u+t)}(1-s_\varphi^2)^u(\delta+s_\varphi^2)^v
+    \left(1-k^{-2}s_\varphi^2\right)^{3/2}d\varphi, \nonumber \\
+    %&=& k^3 \sum_{i=0}^{2u+v} \mathcal{A}_{u+v-i+t,u,v} \mathcal{J}_{i+u},\\
+    &= k^3 \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{J}_{i+u+t},\\
+    %
+    \intertext{and}
+    %
+    %\mathcal{L}^{(0)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{i+u},\\
+    %\mathcal{L}^{(2)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{i+u+},\\
+    %\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u s_\varphi^v\left(k^2-s^2_\varphi\right)^{3/2},
+    \mathcal{J}_v &= \int_{-\kappa/2}^{\kappa/2} d\varphi s^{2v}_\varphi\left(1-k^{-2}s^2_\varphi\right)^{3/2} \quad,
+    %\mathcal{A}_{p,u,v} &=& \sum_{j=0}^{p} (-1)^{p+j} \binom{u}{p-j} \binom{v}{p}\delta^j.
+\end{align}
+%
+recalling that $\kappa = 2\sin^{-1}(k)$ for $b+r > 1$ and $\kappa = \pi$ for $b + r \le 1$.
 
-The integrals $\mathcal{I}_v$ and $\mathcal{J}_v$ can be found exactly, using the same integral
-reduction formulae as above.  With reduction, the function $\mathcal{I}_v$ can be expressed
-in terms of sums of powers of $\sin^{-1}k$, $k$ and $k_c=\sqrt{1-k^2}$, while $\mathcal{J}_v$ can be expressed
+With some work, the integrals $\mathcal{I}_v$ and $\mathcal{J}_v$ can be found exactly.
+Using reduction, the function $\mathcal{I}_v$ can be expressed
+in terms of sums of powers of $\sin^{-1}k$, $k$ and $k_c \equiv \sqrt{1-k^2}$, while $\mathcal{J}_v$ can be expressed
 as sums of complete elliptic integrals of $k^2$ times polynomials in $k^2$. However, the resulting
 recursion relations tend to be numerically unstable due to cancellation of low-order terms which occurs
-during recursion when $r \gg 1$.  To leading order in $k$, when $k^2 <1$ ($b + r > 1$),
+during recursion, particularly when the occultor radius is large ($r_o \gg 1$).
+To leading order in $k$, when $k^2 <1$ ($b + r > 1$),
 $\mathcal{I}_v \propto k^{2v+1}$
 and $\mathcal{J}_v \propto k^{2v+1}$.  Consequently, when these equations are computed by
 recursion in $v$, the lower powers of $k$ cancel out, leading to
-round-off errors.  To avoid these cancellations, we start by computing $\mathcal{I}_{v_{max}}$,
-$\mathcal{J}_{v_{max}}$, and $\mathcal{J}_{v_{max}-1}$, where
-where $v_{max}$ is the maximum value we need in computing $\mathcal{K}_{u,v}$ for
-$l_{max}$.  %  Give the explicit value of $v_{max}$ for given $l_{max}$. [ ]
+round-off errors.  To avoid these cancellations, we start by computing $\mathcal{I}_{v_\mathrm{max}}$,
+$\mathcal{J}_{v_\mathrm{max}}$, and $\mathcal{J}_{v_\mathrm{max}-1}$, where
+where $v_\mathrm{max}$ is the maximum value needed to compute $\mathcal{K}_{u,v}$ when
+$l = l_\mathrm{max}$.  %  Give the explicit value of $v_\mathrm{max}$ for given $l_\mathrm{max}$. [ ]
 Applying the integral reduction formulae, we obtain the downward recursion relations:
-\begin{eqnarray}
-\mathcal{I}_{v-1} &=&  \frac{2}{2v-1}\left[v\mathcal{I}_{v} + k^{2v-1}k_c\right],\\
-\mathcal{J}_{v-2} &=& \frac{1}{k^2(2v-3)}\left[2(v+vk^2+k_c^2)\mathcal{J}_{v-1}-(2v+3)\mathcal{J}_v \right].
-\end{eqnarray}
-for $v \ge 1$ where $k_c^2=1-k^2$.
-To compute the highest value of $\mathcal{I}_{v_{max}}$, $\mathcal{J}_{v_{max}}$,
-and  $\mathcal{J}_{v_{max}-1}$, we evaluate these in terms of special
+%
+\begin{align}
+    \label{eq:IJdownward}
+    \mathcal{I}_{v-1} &=  \frac{2}{2v-1}\left[v\mathcal{I}_{v} + k^{2v-1}k_c\right],\\
+    \mathcal{J}_{v-2} &= \frac{1}{k^2(2v-3)}\left[2(v+vk^2+k_c^2)\mathcal{J}_{v-1}-(2v+3)\mathcal{J}_v \right].
+\end{align}
+%
+for $v \ge 1$, where $k_c^2=1-k^2$.
+To compute the highest value of $\mathcal{I}_{v_\mathrm{max}}$, $\mathcal{J}_{v_\mathrm{max}}$,
+and  $\mathcal{J}_{v_\mathrm{max}-1}$, we evaluate these in terms of special
 functions and expand these as series in $k^2$.
 
-%To compute the highest value of $\mathcal{I}_{v_{max}}$, we
+%To compute the highest value of $\mathcal{I}_{v_\mathrm{max}}$, we
 %use a series expansion for $(\sin{x}/x)^{2v}$ valid for small $x=\kappa/2$,
 %\begin{eqnarray}
 %\mathcal{I}_v &=& \int_{-\kappa/2}^{\kappa/2} d\varphi s^{2v}_\varphi\\
@@ -2960,31 +2997,38 @@ functions and expand these as series in $k^2$.
 
 For both $\mathcal{I}_v$ and $\mathcal{J}_v$, in the $k^2 <1$ limit, we make the substitution
 $w=k^{-2}\sin^2{\varphi}$, giving
-\begin{eqnarray}
-\mathcal{I}_v &=& k^{1+2v} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} dw\\
-&=& \frac{2k^{1+2v}}{1+2v} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2};v+\tfrac{3}{2};k^2\right),\\
-\mathcal{J}_v &=& k^{1+2v} \int_0^1 (1-k^2 w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} (1-w)^{3/2} dw\\
-&=& k^{1+2v} \frac{3\pi}{4} \frac{(2v-1)!!}{2^v(2+v)!} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2}; v+3; k^2\right),
-\end{eqnarray}
+%
+\begin{align}
+    \label{eq:IJHypergeo}
+    \mathcal{I}_v &= k^{1+2v} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} dw \nonumber \\
+                  &= \frac{2k^{1+2v}}{1+2v} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2};v+\tfrac{3}{2};k^2\right),\\[0.5em]
+    %
+    \mathcal{J}_v &= k^{1+2v} \int_0^1 (1-k^2 w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} (1-w)^{3/2} dw \nonumber \\
+                  &= k^{1+2v} \frac{3\pi}{4} \frac{(2v-1)!!}{2^v(2+v)!} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2}; v+3; k^2\right),
+\end{align}
+%
 where $_2F_1(a,b;c;x)$ is the generalized Hypergeometric function.
 These functions can then be expressed as a series in $k^2$
 by expanding $(1-k^2w)^{-1/2}$ as a series in $k^2w$, and then integrating each term over $w$, giving
-\begin{eqnarray}
+%
+\begin{align}
 %\mathcal{J}_{v} &=& 3k^{1+2v}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
 %&\times& \pi \frac{(2(n+v)-1)!!}{2^{n+v}(v+2+n)!}
-\mathcal{I}_{v} &=& 2k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!}{2^n n!(2n+2v+1)}(k^2)^n,\\
-\mathcal{J}_{v} &=& \frac{3\pi}{4}k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!(2n+2v-1)!!}{2^{2n+v} n!(n+v+2)!}(k^2)^n.
-\end{eqnarray}
+    \mathcal{I}_{v} &= 2k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!}{2^n n!(2n+2v+1)}(k^2)^n, \\[0.5em]
+    \mathcal{J}_{v} &= \frac{3\pi}{4}k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!(2n+2v-1)!!}{2^{2n+v} n!(n+v+2)!}(k^2)^n.
+\end{align}
+%
 For large values of $v$ and small values of $k$, we find that these series
 converge rapidly, and so may be preferred over evaluating the Hypergeometric functions.
 
 For large values of $k^2 < 1$, we start with small $v$ and iterate upwards.
 The starting terms are
-\begin{eqnarray}
-I_0 &=& \kappa = 2\sin^{-1}k\\
-J_0 &=& \frac{2}{3k^3} \left[2(2k^2-1)E(k^2)+(1-k^2)(2-3k^2)K(k^2)\right]\\
-J_1 &=& \frac{2}{15k^3} \left[(-3k^4+13k^2-8)E(k^2)+(1-k^2)(8-9k^2)K(k^2)\right].
-\end{eqnarray}
+%
+\begin{align}
+I_0 &= \kappa = 2\sin^{-1}k \\[0.5em]
+J_0 &= \frac{2}{3k^3} \left[2(2k^2-1)E(k^2)+(1-k^2)(2-3k^2)K(k^2)\right] \nonumber \\
+J_1 &= \frac{2}{15k^3} \left[(-3k^4+13k^2-8)E(k^2)+(1-k^2)(8-9k^2)K(k^2)\right].
+\end{align}
 
 % I just found:
 % Integrate[w^v/Sqrt[w]/Sqrt[1 - k2*w], {w, 0, 1}, Assumptions -> v \[Element] \[DoubleStruckCapitalZ]]
@@ -3004,30 +3048,33 @@ In the $k^2 \ge 1$ ($b+r \le 1$) limit, we find:
 \end{equation}
 which yields $K_{u,v}$ which is a polynomial in $\delta$.
 For $\mathcal{J}_v$ we make the substitution $w = \sin^2{\varphi}$ to obtain
-\begin{eqnarray}
-\mathcal{J}_v &=& \int_0^1 w^{v-\tfrac{1}{2}} (1-k^{-2}w)^{3/2} (1-w)^{-1/2} dw\\
+%
+\begin{align}
+\mathcal{J}_v &= \int_0^1 w^{v-\tfrac{1}{2}} (1-k^{-2}w)^{3/2} (1-w)^{-1/2} dw \nonumber \\
 %&=& \frac{\pi(2v-1)!!}{k^2 2^{v}(3+2v)}\left(2((2+v)k^2-(1+v)) _2\tilde{F}_1(-\tfrac{1}{2},v+\tfrac{1}{2},1+v,k^{-2})\right.\\
 %&+& \left.(1-k^2)_2\tilde{F}_1(\tfrac{1}{2},v+\tfrac{1}{2},1+v,k^{-2})\right),\\
-&=& \sqrt{\pi}\Gamma(v+\tfrac{1}{2})\left(_2\tilde{F}_1(-\tfrac{1}{2},v+\tfrac{1}{2},v+1,k^{-2})\right.\\
-&-&\left.(\frac{1}{2}+v)k^{-2}\,_2\tilde{F}_1(-\tfrac{1}{2},v+\tfrac{3}{2},v+2,k^{-2})\right),\\
-&=& \pi \sum_{n=0}^\infty (-1)^n \binom{3/2}{n} \frac{(2n+2v-1)!!}{2^{n+v} (n+v)!} (k^2)^{-n},
-\end{eqnarray}
+            &= \sqrt{\pi}\Gamma(v+\tfrac{1}{2})\left(_2\tilde{F}_1(-\tfrac{1}{2},v+\tfrac{1}{2},v+1,k^{-2})\right. \nonumber \\
+            &-\left.(\frac{1}{2}+v)k^{-2}\,_2\tilde{F}_1(-\tfrac{1}{2},v+\tfrac{3}{2},v+2,k^{-2})\right), \nonumber \\
+            &= \pi \sum_{n=0}^\infty (-1)^n \binom{3/2}{n} \frac{(2n+2v-1)!!}{2^{n+v} (n+v)!} (k^2)^{-n},
+\end{align}
+%
 where $_2\tilde{F}_1(a,b;c;x)$ is the regularized Hypergeometric function.
 
 Evaluating the first two terms, $v=0$ and $v=1$, and then iterating, we find:
-\begin{eqnarray}
-\mathcal{J}_0 &=& (\tfrac{8}{3}-\tfrac{4}{3k^2})E(k^{-2})-\tfrac{2}{3}(1-k^{-2})K(k^{-2})\\
-\mathcal{J}_1 &=& (-6k^2+26-16k^{-2})E(k^{-2})/15 + 2(1-k^{-2})(3k^2-4)K(k^{-2})/15\\
-\mathcal{J}_v &=& \frac{1}{2v+3} \left[2(v+vk^2+k_c^2)J_{v-1}-k^2(2v-3)J_{v-2}\right].
-\end{eqnarray}
+%
+\begin{align}
+    \mathcal{J}_0 &= (\tfrac{8}{3}-\tfrac{4}{3k^2})E(k^{-2})-\tfrac{2}{3}(1-k^{-2})K(k^{-2}) \nonumber \\
+    \mathcal{J}_1 &= (-6k^2+26-16k^{-2})E(k^{-2})/15 + 2(1-k^{-2})(3k^2-4)K(k^{-2})/15 \nonumber \\
+    \mathcal{J}_v &= \frac{1}{2v+3} \left[2(v+vk^2+k_c^2)J_{v-1}-k^2(2v-3)J_{v-2}\right] \quad.
+\end{align}
 
 %Consequently, we use a more stable iterative formula to evaluate $J_{v-2}$ in terms
 %of $J_{v}$ and $J_{v-1}$:
 %\begin{equation}
 %J_{v-2} = \frac{1}{k^2(2v-3)}\left[2((v-1)k^2+(v+1))J_{v-1}-(2v+3)J_v \right].
 %\end{equation}
-%We evaluate $J_{v_{max}}$ and $J_{v_{max}-1}$ with the series solution or hypergeometric
-%function for large $v_{max}$, and then iterate to find successively smaller values
+%We evaluate $J_{v_\mathrm{max}}$ and $J_{v_\mathrm{max}-1}$ with the series solution or hypergeometric
+%function for large $v_\mathrm{max}$, and then iterate to find successively smaller values
 %of $v$ until $v=0$.
 
 %
