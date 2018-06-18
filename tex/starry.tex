@@ -1315,24 +1315,6 @@ than $10^{-7}$ parts per million everywhere in the light curve.
 \end{figure}
 %
 
-\begin{figure}[ht!]
-    \begin{centering}
-    \includegraphics[width=\linewidth]{figures/spidercomp.pdf}
-    \caption{\label{fig:spidercomp}
-             \python{spidercomp}
-             Comparison to \spiderman (todo).}
-    \end{centering}
-\end{figure}
-
-\begin{figure}[ht!]
-    \begin{centering}
-    \includegraphics[width=\linewidth]{figures/spidercomp_flux.pdf}
-    \caption{\label{fig:spidercomp_flux}
-             \python{spidercomp}
-             Comparison to \spiderman (todo).}
-    \end{centering}
-\end{figure}
-
 % ------------------------------------------------------------------------------
 \subsection{Photodynamics}
 \label{sec:starryphotodynamics}
@@ -1397,18 +1379,15 @@ Finally, care should be taken to ensure the map is positive everywhere. By defau
 the coefficient of the $Y_{0,0}$ term of a planet's map is fixed at unity, since
 changing this term would change the total luminosity (this should instead be
 modified via the \textsf{planet.L} property). In the case of a simple dipole map of
-the form $Y_{0,0} + c Y_{1, 0}$, it is easy to show that as long as we enforce
+the form $Y_{0,0} \, + \, y_1 Y_{1, -1} \, + \, y_2 Y_{1, 0} \, + \, y_3 Y_{1, 1}$,
+it can be shown that as long as we enforce
 %
 \begin{align}
-    |c| \le \frac{1}{\sqrt{3}} \approx 0.5773
+    y_1^2 + y_2^2 + y_3^2 \le \frac{1}{3}
 \end{align}
 %
-the map will be non-negative everywhere along the unit sphere.
-\footnote{In Cartesian coordinates, we have $Y_{0,0} = \sqrt{\frac{1}{4\pi}}$ and
-$Y_{1,0} = \sqrt{\frac{3}{4\pi}}z$. At the anti-stellar point ($z = 1$), the ratio
-of these two terms is $\nicefrac{1}{\sqrt{3}}$, so the absolute value of the
-coefficient of $Y_{1,0}$ must be at most this value to ensure the anti-stellar
-point has a non-negative surface intensity.}
+the map will be non-negative everywhere along the unit sphere. Since $0.5^2 < \nicefrac{1}{3}$,
+our map is in fact positive semi-definite. \todo{proof}
 %
 For more details on ensuring surface maps are positive everywhere, see
 \S\ref{sec:nonnegative}.
@@ -1517,22 +1496,14 @@ which is exactly what you'd get with \starryMap. However, behind the scenes,
 \starry also computed gradients. Here's what we get when we access \textsf{map.gradient}:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-{'Y_{0,0}': array([0.]),
- 'Y_{1,-1}': array([-0.00153499]),
- 'Y_{1,0}': array([0.87233361]),
- 'Y_{1,1}': array([-0.5054145]),
- 'axis_x': array([0.0007675]),
- 'axis_y': array([8.52090655e-20]),
- 'axis_z': array([-0.00020565]),
- 'ro': array([-0.27718567]),
- 'theta': array([-0.00882115]),
+{'ro': array([-0.27718567]),
  'xo': array([-0.0063251]),
- 'yo': array([0.00134985])}
+ 'yo': array([0.00134985])...}
 \end{lstlisting}
 %
-These are the gradients of the flux with respect to each of the four map
-coefficients, the three components of the rotation axis, the occultor radius,
-the rotational phase, and the $xy$ position of the occultor.
+These are the gradients of the flux with respect to the occultor radius,
+the rotational phase, and the $xy$ position of the occultor, as well as
+all of the map coefficients and the rotational state of the map (not shown).
 %
 \begin{figure}[p!]
     \begin{centering}
@@ -1571,7 +1542,6 @@ resolution is iteratively increased wherever the spatial gradient of the
 \animation{adaptive}
 %
 specific intensity is large and in the vicinity of the limb of the occultor.
-Click on the link at right for an animation of our adaptive mesh scheme.
 
 %In \starry, users can request numerical solutions to the flux by typing
 %
@@ -1590,6 +1560,38 @@ in this way as the small points along each of the curves. We find that our
 analytic light curves agree with the numerical solutions to within the error
 of the latter.
 
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=0.75\linewidth]{figures/spidercomp_flux.pdf}
+    \caption{\label{fig:spidercomp_flux}
+             \python{spidercomp}
+             Comparison to a light curve generated using the \spiderman code
+             \citep{Louden2018}. The top panel shows a secondary eclipse of a
+             hot Jupiter with an offset dipole computed with \starry (blue)
+             and \spiderman (orange), and the bottom panel shows the absolute
+             value of the difference between the two light curves as the number
+             of layers in the \spiderman grid is increased. The \spiderman solution
+             appears to converge linearly to the \starry solution as the number of layers
+             is increased.}
+    \end{centering}
+\end{figure}
+
+We also compare our secondary eclipse and phase curve computations to
+light curves generated using the \spiderman package \citep{Louden2018}.
+The top panel of Figure~\ref{fig:spidercomp_flux} shows a secondary eclipse light curve
+for a hot Jupiter with an offset dipole map ($l = 1$) computed with
+\starry (solid blue) and \spiderman (dashed orange) using the default number
+of layers ($n_\mathrm{layers} = 5$) in their discretized surface intensity grid.
+The bottom panel shows the relative difference between the \spiderman flux and
+the \starry flux for different values of $n_\mathrm{layers}$. For the default
+number of layers, the maximum relative error in the \spiderman flux is on the
+order of 30 ppm (relative to the \emph{stellar} flux)
+during ingress and egress and is somewhat higher at the peak
+of the phase curve. Relative to the \emph{planet} flux, the error is $\sim 30 / 0.04 = 750$ ppm.
+This error decreases linearly as the number of layers increases, and the \spiderman solution
+appears to converge to the \starry solution in the limit $n_\mathrm{layers} \rightarrow \infty$.
+
+
 % ------------------------------------------------------------------------------
 \subsection{Speed tests}
 \label{sec:starryspeed}
@@ -1607,19 +1609,6 @@ is proportional to the log of the fractional error relative to the
 \starry solution. Light curve computation using \starry is several orders of
 magnitude faster and more accurate than any other evaluation technique.
 
-Figure~\ref{fig:speed} shows the evaluation time for \starry
-as a function of the number of points in the light curve for phase curves
-(left) and occultation light curves (right). The top panel shows curves for
-maps of different degree $l$, and the bottom panel shows curves for single-order
-maps of degree $l = 5$. Evaluation time scales exponentially with increasing
-degree, but \starry can compute full occultation light curves for $l = 5$ maps
-with $10^5$ points in under one second. Evaluation time is roughly constant
-across the different orders at fixed degree.
-In Figure~\ref{fig:speed_batman} we show a speed comparison
-to the \batman transit package \citep{Kreidberg2015} for transits across a
-quadratically limb-darkened star. \starry is as efficient as \batman at
-computing transit light curves.
-
 \begin{figure}[ht!]
     \begin{centering}
     \includegraphics[width=0.9\linewidth]{figures/compare_to_numerical.pdf}
@@ -1632,7 +1621,7 @@ computing transit light curves.
              \textsf{scipy}'s \textsf{dblquad} two-dimensional numerical
              integration routine (red).
              The size of each point is proportional to the log of the error relative
-             to the \starry analytic solution.
+             to the \starry quadruple-precision solution.
              }
     \end{centering}
 \end{figure}
@@ -1654,6 +1643,19 @@ computing transit light curves.
     \end{centering}
 \end{figure}
 
+Figure~\ref{fig:speed} shows the evaluation time for \starry
+as a function of the number of points in the light curve for phase curves
+(left) and occultation light curves (right). The top panel shows curves for
+maps of different degree $l$, and the bottom panel shows curves for single-order
+maps of degree $l = 5$. Evaluation time scales exponentially with increasing
+degree, but \starry can compute full occultation light curves for $l = 5$ maps
+with $10^5$ points in under one second. Evaluation time is roughly constant
+across the different orders at fixed degree.
+In Figure~\ref{fig:speed_batman} we show a speed comparison
+to the \batman transit package \citep{Kreidberg2015} for transits across a
+quadratically limb-darkened star. \starry is as efficient as \batman at
+computing transit light curves.
+
 \begin{figure}[p!]
     \begin{centering}
     \includegraphics[width=0.65\linewidth]{figures/speed_batman.pdf}
@@ -1665,6 +1667,35 @@ computing transit light curves.
              }
     \end{centering}
 \end{figure}
+
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/spidercomp.pdf}
+    \caption{\label{fig:spidercomp}
+             \python{spidercomp}
+             Speed comparison to the \spiderman code package \citep{Louden2018}.
+             For a dipole ($l = 1$) map, \starry computes secondary eclipse
+             light curves and phase curves in about an order of magnitude less
+             time compared to \spiderman with 5 layers in their surface intensity
+             grid. The size of the markers is proportional to the log of the
+             error in the solutions, compared to evaluation of the equations
+             presented in this paper using quadruple floating-point precision.
+             As the number of layers is increased in \spiderman, the error
+             decreases linearly, but the evaluation time increases proportionally.}
+    \end{centering}
+\end{figure}
+
+Finally, Figure~\ref{fig:spidercomp} shows the evaluation time for \starry
+compared to that for \spiderman \citep{Louden2018} for a secondary eclipse
+of a simple $l = 1$ map and varying values of the number of layers in the
+\spiderman grid. The size of the points is proportional to the log of the
+relative error on the solution (see Figure~\ref{fig:spidercomp_flux}).
+The evaluation time for \starry is about one order of magnitude less than
+\spiderman for the default $n_\mathrm{layers}=5$, for which the error
+is about 30 ppm (relative to the stellar flux). Computation of the \spiderman
+light curves with larger values of $n_\mathrm{layers}$ improves the precision
+but leads to proportionally longer evaluation times.
+
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -1736,19 +1767,19 @@ is negative, users should either scale the $Y_{0,0}$ coefficient up
 or the coefficients of all other harmonics down until the map is
 non-negative everywhere.
 
-\subsection{Very large occultors}
-When the occultor becomes much larger than the occulted body ($r_o \gg 1$),
-the analytic solutions to the occultation integrals may become numerically
-unstable when the map degree $l$ is large. This is due to the propagation of
-round-off error in the recurrence relations, which we mitigate
-with careful Taylor expansions and reparameterizations of the equations.
-We discuss this at length in Appendix~\ref{app:numericalstability}.
-In general, numerical stability is
-not likely to be an issue for $l \leq 8$ and $r_o \lesssim 500$, for which
-the maximum fractional error due to round-off is on the order of one part
-per thousand, which in the case of exoplanets is likely far below the
-detectability limits of telescopes in the foreseable future. Nevertheless, users
-can bypass these numerical issues by instantiating a map from the \textsf{starry.multi}
+\subsection{Maps of very large degree}
+For \emph{very} large values of the spherical harmonic degree $l$, the
+equations presented here may become numerically unstable. The evaluation
+of the spherical harmonics depends on ratios of several factorials, whose
+precision can degrade for large $l$ and $m$. Similarly, the coefficients
+of the occultation solution vector $\mathbf{s}$ can drop below machine
+precision at large $l$, leading to further numerical issues. While
+\starry is specifically coded up to minimize numerical instabilities,
+we find that for $l_\mathrm{max} \geq 30$ numerical issues may occur.
+Fortunately, situations in which maps of such high degree are necessary
+are not likely for exoplanet science in the foreseeable future.
+Nevertheless, if users wish to perform calculations for very large $l$,
+they can avoid these numerical issues by instantiating a map from the \textsf{starry.multi}
 module:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]

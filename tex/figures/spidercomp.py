@@ -8,6 +8,8 @@ import time
 
 def ms(diff):
     """Return marker size proportional to error."""
+    if diff < 1e-16:
+        diff = 1e-16
     return 18 + np.log10(diff)
 
 
@@ -138,6 +140,9 @@ def comparison():
                 lc = spider_params.lightcurve(time_arr, use_phase=False)
                 dt = time.time() - start
 
+                if (ng == 5):
+                    spider_lc_5 = np.array(lc)
+
                 if dt < best_spiderman:
                     best_spiderman = dt
                     best_spiderman_flux = lc
@@ -167,9 +172,15 @@ def comparison():
                            0.6 * spider_params.per, ns[-1])
 
     # Flux panel
-    ax.plot(time_arr, best_starry_flux, lw=1)
+    ax.plot(time_arr, best_starry_flux, lw=1, alpha=1, label='starry',
+            color='gray')
+    ax.plot(time_arr, spider_lc_5, lw=1, alpha=1, ls='--',
+            label='spiderman (5)')
+
+    ax.legend(loc='lower left', framealpha=0.0)
     ax.get_xaxis().set_ticklabels([])
     ax.set_xlim(time_arr.min(), time_arr.max())
+    ax.set_ylim(1.000 - 0.001, 1.004 + 0.001)
     ax.set_ylabel("Flux")
 
     # Error panel
@@ -204,23 +215,24 @@ def comparison():
 
     # Starry, loop over all points
     for ii in range(len(ns)):
-        ax.plot(ns[ii], t_starry[ii], "o", lw=2, color="C0", ms=ms(diff1[ii]))
-    ax.plot(ns, t_starry, "-", lw=1.5, color="C0", alpha=0.25)
+        ax.plot(ns[ii], t_starry[ii], "o", lw=2, color="gray",
+                ms=ms(diff1[ii]))
+    ax.plot(ns, t_starry, "-", lw=1.5, color="gray", alpha=0.45)
 
     # Loop over all grid resolutions
     for jj, ng in enumerate(ngrid):
         ax.plot(ns, t_spiderman[:, jj], "-", color="C%d" %
-                (jj + 1), alpha=0.25, lw=1.5)
+                (jj), alpha=0.25, lw=1.5)
         for kk in range(len(ns)):
             ax.plot(ns[kk], t_spiderman[kk, jj], "o", ms=ms(diff2[kk, jj]),
-                    color="C%d" % (jj + 1))
+                    color="C%d" % (jj))
 
     # Legend 1
-    axleg1.plot([0, 1], [0, 1], color='C0', label='starry')
+    axleg1.plot([0, 1], [0, 1], color='gray', label='starry')
     # Loop over all grid resolutions
     for jj, ng in enumerate(ngrid):
         axleg1.plot([0, 1], [0, 1], color="C%d" %
-                    (jj + 1), label="n$_{\mathrm{layers}}$=%d" % ng)
+                    (jj), label="n$_{\mathrm{layers}}$=%d" % ng)
     axleg1.set_xlim(2, 3)
     axleg1.legend(loc='center', frameon=False, title=r'\textbf{method}')
 

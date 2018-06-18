@@ -100,16 +100,27 @@ namespace ellip {
 
   // Computes the function cel(kc, p, a, b) from Bulirsch (1969)
   template <typename T>
-  T CEL (const T& ksq, const T& kc0, const T& p0, const T& a0, const T& b0, const T& pi) {
-      if ((ksq > 1) || (kc0 < 0)) throw errors::Elliptic("CEL");
-      T ca = sqrt(mach_eps<T>() * ksq);
-      T m = 1.0;
+  T CEL (const T& ksq0, const T& kc0, const T& p0, const T& a0, const T& b0, const T& pi) {
+      // Local copies of const inputs
       T p = p0;
       T a = a0;
       T b = b0;
-      T kc = kc0;
-      T q, g, f, ee;
+      T ksq, kc;
+      // In some rare cases, k^2 is so close to zero that it can actually
+      // go slightly negative. Let's explicitly force it to zero.
+      if (ksq0 >= 0) ksq = ksq0;
+      else ksq = 0;
+      if (kc0 >= 0) kc = kc0;
+      else kc = 0;
+      // We actually need kc to be nonzero, so let's set it to a very small number
       if ((ksq == 1) || (kc == 0)) kc = mach_eps<T>() * ksq;
+      // I haven't encountered cases where k^2 > 1 due to roundoff error,
+      // but they could happen. If so, change the line below to avoid an exception
+      if (ksq > 1) throw errors::Elliptic("CEL (ksq > 1)");
+      T ca = sqrt(mach_eps<T>() * ksq);
+      if (ca <= 0) ca = std::numeric_limits<T>::min();
+      T m = 1.0;
+      T q, g, f, ee;
       ee = kc;
       if (p > 0) {
           p = sqrt(p);
@@ -136,8 +147,8 @@ namespace ellip {
           kc += kc;
           ee = kc * m;
           f = a;
-          a += b/p;
-          g = ee/p;
+          a += b / p;
+          g = ee / p;
           b += f * g;
           b += b;
           p += g;
