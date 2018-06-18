@@ -35,9 +35,12 @@ cel_b,cel_gradient= cel_grad(kc,p,a,b)
 kc2 = kc*kc
 dcel_dkc = -kc/(p-kc2)*(cel_bulirsch(1-kc*kc,kc2,a,b)-cel_b)
 
-dcel_dp = (2*p*b-p*a-b)/(2*p*(1-p))*cel_bulirsch(1-kc*kc,p,zero(p),one(p))+
-  (b-a*p)/(2*p*(1-p)*(p-kc2))*cel_bulirsch(1-kc*kc,one(p),one(p),kc2) -
-  (b-a*p)/(2*(1-p)*(p-kc2))*cel_bulirsch(1-kc*kc,p,one(p),one(p))
+#dcel_dp = (2*p*b-p*a-b)/(2*p*(1-p))*cel_bulirsch(1-kc*kc,p,zero(p),one(p))+
+#  (b-a*p)/(2*p*(1-p)*(p-kc2))*cel_bulirsch(1-kc*kc,one(p),one(p),kc2) -
+#  (b-a*p)/(2*(1-p)*(p-kc2))*cel_bulirsch(1-kc*kc,p,one(p),one(p))
+
+dcel_dp = ((kc2*(b+a*p-2*b*p)+p*(3*b*p-a*p^2-2*b))*cel_bulirsch(1-kc*kc,p,zero(p),one(p))+
+  (b-a*p)*cel_bulirsch(1-kc*kc,one(p),1-p,kc2-p))/(2*p*(1-p)*(p-kc2))
 
 dcel_da = cel_bulirsch(1-kc*kc,p,one(p),zero(p))
 dcel_db = cel_bulirsch(1-kc*kc,p,zero(p),one(p))

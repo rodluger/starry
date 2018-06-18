@@ -1,5 +1,6 @@
 # Tests automatic differentiation on sn.jl:
-include("sn.jl")
+#include("sn.jl")
+include("sn_bigr.jl")
 
 using ForwardDiff
 using DiffResults
@@ -18,7 +19,8 @@ function sn_jac(l_max::Int64,r::T,b::T) where {T <: Real}
   # x should be a two-element vector with values [r,b]
   r,b = x
   sn = zeros(typeof(r),n_max+1)
-  s_n!(l_max,r,b,sn)
+#  s_n!(l_max,r,b,sn)
+  s_n_bigr!(l_max,r,b,sn)
   return sn
   end
 
@@ -49,16 +51,21 @@ sn_big = zeros(BigFloat,n_max+1)
 # Make BigFloat versions of r & b:
 r_big = big(r); b_big = big(b)
 # Compute s_n to BigFloat precision:
-s_n!(l_max,r_big,b_big,sn_big)
+#s_n!(l_max,r_big,b_big,sn_big)
+s_n_bigr!(l_max,r_big,b_big,sn_big)
 # Now, compute finite differences:
 sn_jac_big= zeros(BigFloat,n_max+1,2)
 sn_plus = copy(sn_big)
-s_n!(l_max,r_big+dq,b_big,sn_plus)
+#s_n!(l_max,r_big+dq,b_big,sn_plus)
+s_n_bigr!(l_max,r_big+dq,b_big,sn_plus)
 sn_minus = copy(sn_big)
-s_n!(l_max,r_big-dq,b_big,sn_minus)
+#s_n!(l_max,r_big-dq,b_big,sn_minus)
+s_n_bigr!(l_max,r_big-dq,b_big,sn_minus)
 sn_jac_big[:,1] = (sn_plus-sn_minus)*.5/dq
-s_n!(l_max,r_big,b_big+dq,sn_plus)
-s_n!(l_max,r_big,b_big-dq,sn_minus)
+#s_n!(l_max,r_big,b_big+dq,sn_plus)
+s_n_bigr!(l_max,r_big,b_big+dq,sn_plus)
+#s_n!(l_max,r_big,b_big-dq,sn_minus)
+s_n_bigr!(l_max,r_big,b_big-dq,sn_minus)
 sn_jac_big[:,2] = (sn_plus-sn_minus)*.5/dq
 
 #convert(Array{Float64,2},sn_jac_big)
