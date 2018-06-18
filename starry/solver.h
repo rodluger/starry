@@ -3,18 +3,18 @@ Spherical harmonic integration utilities.
 
 */
 
-#ifndef _STARRY_INTEGRATE_H_
-#define _STARRY_INTEGRATE_H_
+#ifndef _STARRY_SOLVER_H_
+#define _STARRY_SOLVER_H_
 
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
 #include <vector>
+#include <boost/math/special_functions/gamma.hpp>
 #include "constants.h"
 #include "ellip.h"
 #include "errors.h"
 #include "lld.h"
-#include "taylor.h"
 #include "utils.h"
 #include "tables.h"
 
@@ -23,379 +23,48 @@ namespace solver {
     using std::abs;
     using std::max;
     using std::vector;
+    using std::min;
 
-    // Forward declarations
-    template <class T>
-    class Primitive;
+    // Forward declaration
     template <class T>
     class Greens;
 
-    // Compute the n=2 term of the *s^T* occultation solution vector.
-    // This is the Mandel & Agol solution for linear limb darkening,
-    // reparametrized for speed
+    // Return the n^th term of the *r* phase curve solution vector
     template <typename T>
-    inline T s2(Greens<T>& G) {
-        T b = G.b();
-        T r = G.r();
-        T ksq = G.ksq();
-        T K = G.ELL.K();
-        T E = G.ELL.E();
-        return lld::s2(b, r, ksq, K, E, G.pi, G.taylor);
-    }
-
-    // Compute the flux for a transit of a quadratically limb-darkened star
-    // This code has been stripped of a lot of the overhead for speed, so
-    // it may be a bit opaque. Basically, for a quadratically limb-darkened star,
-    // the only terms that matter in the Greens polynomial basis are those at
-    // indices n = 0, 2, 4, and 8. We therefore only compute those indices of the
-    // solution vector -- we do it directly, without any recurrence relations.
-    // Note, importantly, that the term g(4) is *always* 1/3 * g(8), so we fold
-    // that into `s8` below.
-    template <typename T>
-    inline T QuadLimbDark(Greens<T>& G, const T& b, const T& r, T& g0, T& g2, T& g8) {
-
-        // Initialize only the necessary variables
-        T s0, s8;
-        G.br = b * r;
-        G.b.reset(b);
-        G.r.reset(r);
-        G.ksq.reset((1 - G.r(2) - G.b(2) + 2 * G.br) / (4 * G.br));
-        G.k = sqrt(G.ksq());
-        G.ELL.reset();
-
-        if ((abs(1 - r) < b) && (b < 1 + r)) {
-            G.sinphi.reset((1 - G.r(2) - G.b(2)) / (2 * G.br));
-            G.cosphi.reset(sqrt(1 - G.sinphi() * G.sinphi()));
-            G.sinlam.reset((1 - G.r(2) + G.b(2)) / (2 * G.b()));
-            G.coslam.reset(sqrt(1 - G.sinlam() * G.sinlam()));
-            G.phi = asin(G.sinphi());
-            G.lam = asin(G.sinlam());
-            s0 = G.lam + G.pi_over_2 + G.sinlam() * G.coslam() -
-                 G.r(2) * (G.phi + G.pi_over_2 + G.sinphi() * G.cosphi());
-            s8 = 0.5 * (G.pi_over_2 + G.lam) + (1. / 3.) * G.coslam() * G.sinlam() -
-                 (1. / 6.) * G.coslam(3) * G.sinlam() + (1. / 6.) * G.coslam() * G.sinlam(3) -
-                 (G.r(2) * G.b(2) * (G.pi_over_2 + G.phi + G.cosphi() * G.sinphi()) -
-                  G.r(3) * G.b() * G.cosphi() * (1. + (1. / 3.) * G.cosphi(2) - G.sinphi(2)) +
-                  G.r(4) * (0.5 * (G.pi_over_2 + G.phi) + (1. / 3.) * G.cosphi() * G.sinphi() -
-                            (1. / 6.) * G.cosphi(3) * G.sinphi() + (1. / 6.) * G.cosphi() * G.sinphi(3)));
-        } else {
-            G.sinphi.reset(1);
-            G.cosphi.reset(0);
-            G.sinlam.reset(1);
-            G.coslam.reset(0);
-            G.phi = 0.5 * G.pi;
-            G.lam = 0.5 * G.pi;
-            s0 = G.pi * (1 - G.r(2));
-            s8 = G.pi_over_2 - G.pi * G.r(2) * (0.5 * G.r(2) + G.b(2));
-        }
-
-        return s0 * g0 + s2(G) * g2 + s8 * g8;
-
-    }
-
-    // Compute the primitive integral helper matrix H
-    template <typename T>
-    inline T computeH(Greens<T>& G, int u, int v) {
-        if (!is_even(u)) {
-            return 0;
-        } else if (G.off_limb && !is_even(v)) {
-            // By symmetry, from the integral definition of H
-            return 0;
-        } else if ((u == 0) && (v == 0)) {
-            return 2 * G.lam + G.pi;
-        } else if ((u == 0) && (v == 1)) {
-            return -2 * G.coslam(1);
-        } else if (u >= 2) {
-            return (2 * G.coslam(u - 1) * G.sinlam(v + 1) + (u - 1) * G.H(u - 2, v)) / (u + v);
-        } else {
-            return (-2 * G.coslam(u + 1) * G.sinlam(v - 1) + (v - 1) * G.H(u, v - 2)) / (u + v);
-        }
-    }
-
-    // Compute the primitive integral helper matrix I
-    template <typename T>
-    inline T computeI(Greens<T>& G, int u, int v) {
-        if (!is_even(u)) {
-            return 0;
-        } else if (G.off_limb && !is_even(v)) {
-            // By symmetry, from the integral definition of I
-            return 0;
-        } else if ((u == 0) && (v == 0)) {
-            return 2 * G.phi + G.pi;
-        } else if ((u == 0) && (v == 1)) {
-            return -2 * G.cosphi(1);
-        } else if (u >= 2) {
-            return (2 * G.cosphi(u - 1) * G.sinphi(v + 1) + (u - 1) * G.I(u - 2, v)) / (u + v);
-        } else {
-            return (-2 * G.cosphi(u + 1) * G.sinphi(v - 1) + (v - 1) * G.I(u, v - 2)) / (u + v);
-        }
-    }
-
-    // Compute the primitive integral helper matrix J
-    template <typename T>
-    inline T computeJ(Greens<T>& G, int u, int v) {
-        T res = 0;
-        if (G.off_limb && !is_even(u)) {
-            return 0;
-        } else if (G.b() == 0) {
-            // Special case
-            return pow(1 - G.r(2), 1.5) * G.I(u, v);
-        } else if ((G.taylor || is_Multi(G.b())) && (G.b() < STARRY_B_THRESH_J<T>(G.r()))) {
-            // Normally we don't do any approximations/re-parametrizations when using multiprecision,
-            // but it turns out that `J` is **extremely** unstable at very small impact parameter.
-            // Instabilities in `J` take hold for `b` as high as 1e-6, even for 128 **digits** of precision
-            // (that's ~ **hexadecuple** precision), so we Taylor expand when type `T` is `Multi`.
-            return taylor::computeJ(G, u, v);
-        } else {
-            for (int i = 0; i < v + 1; i++) {
-                if (is_even(i - v - u))
-                    res += tables::choose<T>(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
-                else
-                    res -= tables::choose<T>(v, i) * G.M(u + 2 * i, u + 2 * v - 2 * i);
-            }
-            // Note that we multiply by the factor of (br)^1.5 inside computeM()
-            // for small occultors and inside P() for large occultors.
-            res *= pow(2, u + 3);
-        }
-        return res;
-    }
-
-    // Compute the primitive integral helper matrix M
-    template <typename T>
-    inline T computeM(Greens<T>& G, int p, int q) {
-        if (!is_even(p) || !is_even(q)) {
-            return 0;
-        } else if ((G.taylor) && (G.r() > STARRY_RADIUS_THRESH_M)) {
-            // Taylor expansion for large occultor
-            return taylor::computeM(G, p, q);
-        } else if ((p == 0) && (q == 0)) {
-            return G.br32 * ((8 - 12 * G.ksq()) * G.ELL.E1() + (-8 + 16 * G.ksq()) * G.ELL.E2()) / 3.;
-        } else if ((p == 0) && (q == 2)) {
-            return G.br32 * ((8 - 24 * G.ksq()) * G.ELL.E1() + (-8 + 28 * G.ksq() + 12 * G.ksq(2)) * G.ELL.E2()) / 15.;
-        } else if ((p == 2) && (q == 0)) {
-            return G.br32 * ((32 - 36 * G.ksq()) * G.ELL.E1() + (-32 + 52 * G.ksq() - 12 * G.ksq(2)) * G.ELL.E2()) / 15.;
-        } else if ((p == 2) && (q == 2)) {
-            return G.br32 * ((32 - 60 * G.ksq() + 12 * G.ksq(2)) * G.ELL.E1() + (-32 + 76 * G.ksq() - 36 * G.ksq(2) + 24 * G.ksq(3)) * G.ELL.E2()) / 105.;
-        } else if (q >= 4) {
-            T d1, d2;
-            T res1, res2;
-            // Terms independent of ksq
-            d1 = q + 2 + (p + q - 2);
-            d2 = (3 - q);
-            res1 = (d1 * G.M(p, q - 2) + d2 * G.M(p, q - 4)) / (p + q + 3);
-            // Terms proportional to ksq
-            d1 = (p + q - 2);
-            d2 = (3 - q);
-            res2 = (d1 * G.M(p, q - 2) + d2 * G.M(p, q - 4)) / (p + q + 3);
-            res2 *= -G.ksq();
-            // Add them
-            return res1 + res2;
-        } else if (p >= 4) {
-            T d3, d4;
-            T res1, res2;
-            // Terms independent of ksq
-            d3 = 2 * p + q - (p + q - 2);
-            d4 = 0;
-            res1 = (d3 * G.M(p - 2, q)) / (p + q + 3);
-            // Terms proportional to ksq
-            d3 = -(p + q - 2);
-            d4 = (p - 3);
-            res2 = (d3 * G.M(p - 2, q) + d4 * G.M(p - 4, q)) / (p + q + 3);
-            res2 *= -G.ksq();
-            // Add them
-            return res1 + res2;
-        } else throw errors::Domain();
-    }
-
-    // The helper primitive integral K_{u,v}
-    template <typename T>
-    inline T K(Greens<T>& G, int u, int v) {
-        T res = 0;
-        for (int i = 0; i < v + 1; i++)
-            res += tables::choose<T>(v, i) * G.b_r(v - i) * G.I(u, i);
-        return res;
-    }
-
-    // The helper primitive integral L_{u,v}
-    template <typename T>
-    inline T L(Greens<T>& G, int u, int v) {
-        T res = 0;
-        for (int i = 0; i < v + 1; i++)
-            res += tables::choose<T>(v, i) * G.b_r(v - i) * G.J(u, i);
-        return res;
-    }
-
-    // The primitive integral P(G_n)
-    // Note that for large occultors, we multiply all the
-    // terms here by (br)^1.5 instead of in the J matrix.
-    template <typename T>
-    inline T P(Greens<T>& G){
-        T factor;
-        if ((G.taylor) && (G.r() > STARRY_RADIUS_THRESH_M))
-            factor = G.br32;
-        else
-            factor = 1;
-        if (is_even(G.mu, 2)) {
-            if ((G.taylor) && (G.r() > 1) && (STARRY_QUARTIC_APPROX(G.l, G.b(), G.r()))) {
-                return taylor::P(G);
+    T rn(int mu, int nu, const T& twosqrtpi) {
+            T a, b, c;
+            if (is_even(mu, 2) && is_even(nu, 2)) {
+                a = tables::gamma_sup<T>(mu / 4);
+                b = tables::gamma_sup<T>(nu / 4);
+                c = tables::gamma<T>((mu + nu) / 4 + 2);
+                return a * b / c;
+            } else if (is_even(mu - 1, 2) && is_even(nu - 1, 2)) {
+                a = tables::gamma_sup<T>((mu - 1) / 4);
+                b = tables::gamma_sup<T>((nu - 1) / 4);
+                c = tables::gamma_sup<T>((mu + nu - 2) / 4 + 2) * twosqrtpi;
+                return a * b / c;
             } else {
-                return G.r(G.l + 2) * K(G, (G.mu + 4) / 2, G.nu / 2);
+                return 0;
             }
-        } else if ((G.mu == 1) && is_even(G.l))
-            return factor * -G.r(G.l - 1) * G.J(G.l - 2, 1);
-        else if ((G.mu == 1) && !is_even(G.l))
-            return factor * -G.r(G.l - 2) * (G.b() * G.J(G.l - 3, 1) + G.r() * G.J(G.l - 3, 2));
-        else if (is_even(G.mu - 1, 2))
-            return factor * G.r(G.l - 1) * L(G, (G.mu - 1) / 2, (G.nu - 1) / 2);
-        else
-            return 0;
     }
 
-    // The primitive integral Q(G_n)
+    // Compute the *r^T* phase curve solution vector
     template <typename T>
-    inline T Q(Greens<T>& G){
-        // From the integral definition of Q, the result is zero
-        // unless both mu/2 and nu/2 are even when the occultor
-        // is not touching the limb of the planet.
-        if (G.off_limb && (!is_even(G.mu, 2) || !is_even(G.nu, 2)))
-            return 0;
-        else if (is_even(G.mu, 2))
-            return G.H((G.mu + 4) / 2, G.nu / 2);
-        else
-            return 0;
+    void computerT(int lmax, VectorT<T>& rT) {
+        rT.resize((lmax + 1) * (lmax + 1));
+        T twosqrtpi = 2.0 / sqrt(T(BIGPI));
+        int l, m, mu, nu;
+        int n = 0;
+        for (l=0; l<lmax+1; l++) {
+            for (m=-l; m<l+1; m++) {
+                mu = l - m;
+                nu = l + m;
+                rT(n) = rn<T>(mu, nu, twosqrtpi);
+                n++;
+            }
+        }
+        return;
     }
-
-    // Elliptic integral storage class
-    template <class T>
-    class Elliptic {
-
-            T vK;
-            T vE;
-            T vE1;
-            T vE2;
-            bool bK;
-            bool bE;
-            bool bE1;
-            bool bE2;
-            Greens<T>& G;
-
-        public:
-
-            // Constructor
-            Elliptic(Greens<T>& G) : G(G) {
-                reset();
-            }
-
-            // Elliptic integral of the first kind
-            inline T K() {
-                if (!bK) {
-                    if ((G.b() == 0) || (G.ksq() == 1))
-                        vK = 0;
-                    else if (G.ksq() < 1)
-                        vK = ellip::K(G.ksq());
-                    else
-                        vK = ellip::K(T(1. / G.ksq()));
-                    bK = true;
-                }
-                return vK;
-            }
-
-            // Elliptic integral of the second kind
-            inline T E() {
-                if (!bE) {
-                    if (G.b() == 0)
-                        vE = 0;
-                    else if (G.ksq() == 1)
-                        vE = 1;
-                    else if (G.ksq() < 1)
-                        vE = ellip::E(G.ksq());
-                    else
-                        vE = ellip::E(T(1. / G.ksq()));
-                    bE = true;
-                }
-                return vE;
-            }
-
-            // First elliptic function
-            inline T E1() {
-                if (!bE1) {
-                    if ((G.b() == 0) || (G.ksq() == 1))
-                        vE1 = 0;
-                    else if (G.ksq() < 1)
-                        vE1 = (1 - G.ksq()) * K();
-                    else
-                        vE1 = (1 - G.ksq()) / G.k * K();
-                    bE1 = true;
-                }
-                return vE1;
-            }
-
-            // Second elliptic function
-            inline T E2() {
-                if (!bE2) {
-                    if (G.b() == 0)
-                        vE2 = 0;
-                    else if (G.ksq() == 1)
-                        vE2 = 1;
-                    else if (G.ksq() < 1)
-                        vE2 = E();
-                    else
-                        vE2 = G.k * E() + (1 - G.ksq()) / G.k * K();
-                    bE2 = true;
-                }
-                return vE2;
-            }
-
-            // Resetter
-            void reset() {
-                bK = false;
-                bE = false;
-                bE1 = false;
-                bE2 = false;
-            }
-
-    };
-
-    // Primitive integral storage class
-    template <class T>
-    class Primitive {
-
-            Matrix<bool> set;
-            Matrix<T> matrix;
-            T (*setter)(Greens<T>&, int, int);
-            Greens<T>& G;
-
-        public:
-
-            // Constructor
-            Primitive(Greens<T>& G, T (*setter)(Greens<T>&, int, int)) : setter(setter), G(G) {
-                set = Matrix<bool>::Zero(G.N, G.N);
-                matrix.resize(G.N, G.N);
-            }
-
-            // Getter function. G is a pointer to the current Greens struct,
-            // and setter is a pointer to the function that computes the
-            // (i, j) element of this primitive matrix
-            inline T value(int i, int j) {
-                if ((i < 0) || (j < 0) || (i > G.N - 1) || (j > G.N - 1)) {
-                    throw errors::BadIndex();
-                }
-                if (!set(i, j)) {
-                    matrix(i, j) = (*setter)(G, i, j);
-                    set(i, j) = true;
-                }
-                return matrix(i, j);
-            }
-
-            // Overload () to get the function value without calling value()
-            inline T operator() (int i, int j) { return value(i, j); }
-
-            // Resetter
-            void reset() {
-                set.setZero(G.N, G.N);
-            }
-
-    };
 
     // Fast powers of a variable
     template <class T>
@@ -406,7 +75,8 @@ namespace solver {
         public:
 
             // Constructor
-            Power(T val) {
+            Power(T val, int reserve=100) {
+                if (reserve) vec.reserve(reserve);
                 vec.push_back(1.0 + (val * 0));
                 vec.push_back(val);
             }
@@ -435,6 +105,590 @@ namespace solver {
 
     };
 
+    // Elliptic integral storage class
+    template <class T>
+    class Elliptic {
+
+            T vK;
+            T vE;
+            bool bK;
+            bool bE;
+            Power<T>& ksq;
+
+        public:
+
+            // Constructor
+            Elliptic(Power<T>& ksq) : ksq(ksq) {
+                reset();
+            }
+
+            // Resetter
+            void reset() {
+                bK = false;
+                bE = false;
+            }
+
+            // Elliptic integral of the first kind
+            inline T K() {
+                if (!bK) {
+                    if ((isinf(get_value(ksq()))) || (ksq() == 1))
+                        vK = 0;
+                    else if (ksq() < 1)
+                        vK = ellip::K(ksq());
+                    else
+                        vK = ellip::K(T(1. / ksq()));
+                    bK = true;
+                }
+                return vK;
+            }
+
+            // Elliptic integral of the second kind
+            inline T E() {
+                if (!bE) {
+                    if (isinf(get_value(ksq())))
+                        vE = 0;
+                    else if (ksq() == 1)
+                        vE = 1;
+                    else if (ksq() < 1)
+                        vE = ellip::E(ksq());
+                    else
+                        vE = ellip::E(T(1. / ksq()));
+                    bE = true;
+                }
+                return vE;
+            }
+
+    };
+
+    // The factor multiplying `L`
+    template <typename T>
+    inline T LFac(Greens<T>& G){
+        return G.twor(G.l - 1) * G.lfac;
+    }
+
+    // Compute the n=2 term of the *s^T* occultation solution vector.
+    // This is the Mandel & Agol solution for linear limb darkening,
+    // reparametrized for speed
+    template <typename T>
+    inline T s2(Greens<T>& G) {
+        T K = G.ELL.K();
+        T E = G.ELL.E();
+        T ksq = G.ksq();
+        return lld::s2(G.b, G.r, ksq, K, E, G.pi);
+    }
+
+    // Compute the flux for a transit of a quadratically limb-darkened star
+    // This code has been stripped of a lot of the overhead for speed, so
+    // it may be a bit opaque. Basically, for a quadratically limb-darkened star,
+    // the only terms that matter in the Greens polynomial basis are those at
+    // indices n = 0, 2, 4, and 8. We therefore only compute those indices of the
+    // solution vector -- we do it directly, without any recurrence relations.
+    // Note, importantly, that the term g(4) is *always* 1/3 * g(8), so we fold
+    // that into `s8` below.
+    template <typename T>
+    inline T QuadLimbDark(Greens<T>& G, const T& b, const T& r, const T& g0, const T& g2, const T& g8) {
+        T s0, s8;
+        T b2 = b * b;
+        T r2 = r * r;
+        T pi_over_2 = 0.5 * G.pi;
+        if ((abs(1 - r) < b) && (b < 1 + r)) {
+            T r3 = r * r2;
+            T r4 = r2 * r2;
+            T sp = (1 - r2 - b2) / (2 * b * r);
+            T cp = sqrt(1 - sp * sp);
+            T sl = (1 - r2 + b2) / (2 * b);
+            T cl = sqrt(1 - sl * sl);
+            T l2 = asin(sl) + pi_over_2;
+            T p2  = asin(sp) + pi_over_2;
+            T cp2 = cp * cp;
+            T sp2 = sp * sp;
+            T cpsp = cp * sp;
+            T cp3 = cp * cp2;
+            T sp3 = sp * sp2;
+            T clsl = cl * sl;
+            T cl3 = cl * cl * cl;
+            T sl3 = sl * sl * sl;
+            s0 = l2 + clsl - r2 * (p2 + cpsp);
+            s8 = 0.5 * l2 + (1. / 3.) * clsl - (1. / 6.) * cl3 * sl + (1. / 6.) * cl * sl3 -
+                 (r2 * b2 * (p2 + cpsp) - r3 * b * cp * (1. + (1. / 3.) * cp2 - sp2) +
+                  r4 * (0.5 * p2 + (1. / 3.) * cpsp - (1. / 6.) * cp3 * sp + (1. / 6.) * cp * sp3));
+        } else {
+            s0 = G.pi * (1 - r2);
+            s8 = pi_over_2 - G.pi * r2 * (0.5 * r2 + b2);
+        }
+        G.b = b;
+        G.r = r;
+        if ((b == 0) || (r == 0))
+            G.ksq.reset(T(INFINITY));
+        else
+            G.ksq.reset((1 - (b - r)) * (1 + (b - r)) / (4 * b * r));
+        G.ELL.reset();
+        return s0 * g0 + s2(G) * g2 + s8 * g8;
+    }
+
+    // Vieta's theorem coefficient A_{i,u,v}
+    template <class T>
+    class A {
+
+            Vector<bool>** set;
+            Vector<T>** vec;
+            int umax;
+            int vmax;
+            int j, j1, j2, c;
+            T res;
+            Power<T>& delta;
+
+        public:
+
+            // Constructor
+            A(int lmax, Power<T>& delta) :
+                    umax(is_even(lmax) ? (lmax + 2) / 2 : (lmax + 3) / 2),
+                    vmax(lmax > 0 ? lmax : 1), delta(delta) {
+                vec = new Vector<T>*[umax + 1];
+                set = new Vector<bool>*[umax + 1];
+                for (int u = 0; u < umax + 1; u++) {
+                    vec[u] = new Vector<T>[vmax + 1];
+                    set[u] = new Vector<bool>[vmax + 1];
+                    for (int v = 0; v < vmax + 1; v++) {
+                        vec[u][v].resize(u + v + 1);
+                        set[u][v].setZero(u + v + 1);
+                    }
+                }
+
+            }
+
+            // Destructor
+            ~A() {
+                for (int u = 0; u < umax + 1; u++) {
+                    delete [] vec[u];
+                    delete [] set[u];
+                }
+                delete [] vec;
+                delete [] set;
+            }
+
+            // Compute the double-binomial coefficient A_{i,u,v}
+            inline T compute(int i, int u, int v) {
+                res = 0;
+                j1 = u - i;
+                if (j1 < 0) j1 = 0;
+                j2 = u + v - i;
+                if (j2 > u) j2 = u;
+                for (j = j1; j <= j2; j++) {
+                    c = u + v - i - j;
+                    if (c < 0)
+                        break;
+                    if (is_even(u + j))
+                        res += tables::choose<T>(u, j) * tables::choose<T>(v, c) * delta(c);
+                    else
+                        res -= tables::choose<T>(u, j) * tables::choose<T>(v, c) * delta(c);
+                }
+                return res;
+            }
+
+            // Getter function
+            inline T get_value(int i, int u, int v) {
+                if ((i < 0) || (u < 0) || (v < 0) || (u > umax) || (v > vmax) || (i > u + v)) {
+                    throw errors::BadIndex();
+                }
+                if (!set[u][v](i)) {
+                    vec[u][v](i) = compute(i, u, v);
+                    set[u][v](i) = true;
+                }
+                return vec[u][v](i);
+            }
+
+            // Overload () to get the function value without calling value()
+            inline T operator() (int i, int u, int v) { return get_value(i, u, v); }
+
+            // Resetter
+            void reset() {
+                for (int u = 0; u < umax + 1; u++) {
+                    for (int v = 0; v < vmax + 1; v++) {
+                        set[u][v].setZero(u + v + 1);
+                    }
+                }
+            }
+
+    };
+
+    // The helper primitive integral H_{u,v}
+    template <class T>
+    class H {
+
+            Matrix<bool> set;
+            Matrix<T> value;
+            int umax;
+            int vmax;
+            T pi;
+            Power<T>& sinlam;
+            Power<T>& coslam;
+
+        public:
+
+            // Constructor
+            H(int lmax, Power<T>& sinlam, Power<T>& coslam) : umax(lmax + 2), vmax(max(1, lmax)),
+                    sinlam(sinlam), coslam(coslam) {
+                set = Matrix<bool>::Zero(umax + 1, vmax + 1);
+                value.resize(umax + 1, vmax + 1);
+                pi = T(BIGPI);
+            }
+
+            // Reset flags and compute H_00 and H_01
+            inline void reset(int downward=false) {
+                if (downward)
+                    throw errors::NotImplemented();
+                set.setZero(umax + 1, vmax + 1);
+                if (coslam() == 0) {
+                    // When sinlam = 1, asin(sinlam) = pi
+                    // but the derivative is undefined, so
+                    // we sidestep the computation here to
+                    // prevent NaNs in the autodiff calculation.
+                    value(0, 0) = 2 * pi;
+                    value(0, 1) = 0;
+                } else {
+                    value(0, 0) = 2 * asin(sinlam()) + pi;
+                    value(0, 1) = -2 * coslam(1);
+                }
+                set(0, 0) = true;
+                set(0, 1) = true;
+            }
+
+            // Getter function
+            inline T get_value(int u, int v) {
+                if ((u < 0) || (v < 0) || (u > umax) || (v > vmax)) {
+                    throw errors::BadIndex();
+                } else if (!is_even(u) || ((coslam() == 0) && !is_even(v))) {
+                    return 0;
+                } else if (!set(u, v)) {
+                    if (u >= 2)
+                        value(u, v) = (2 * coslam(u - 1) * sinlam(v + 1) + (u - 1) * get_value(u - 2, v)) / (u + v);
+                    else
+                        value(u, v) = (-2 * coslam(u + 1) * sinlam(v - 1) + (v - 1) * get_value(u, v - 2)) / (u + v);
+                    set(u, v) = true;
+                }
+                return value(u, v);
+            }
+
+            // Overload () to get the function value without calling value()
+            inline T operator() (int u, int v) { return get_value(u, v); }
+
+    };
+
+    // The helper primitive integral I_v
+    template <class T>
+    class I {
+
+            Vector<bool> set;
+            Vector<T> value;
+            int vmax;
+            Power<T>& ksq;
+            T& k;
+            T& kc;
+            T sqrtpi;
+            Vector<T> ivgamma;
+
+        public:
+
+            I(int lmax, Power<T>& ksq, T& k, T& kc) : vmax(2 * lmax + 2), ksq(ksq), k(k), kc(kc) {
+                set = Vector<bool>::Zero(vmax + 1);
+                value.resize(vmax + 1);
+
+                // Pre-tabulate I_v for ksq >= 1
+                sqrtpi = sqrt(T(BIGPI));
+                ivgamma.resize(vmax + 1);
+                for (int v = 0; v <= vmax; v++)
+                    ivgamma(v) = sqrtpi * T(boost::math::tgamma_delta_ratio(Multi(v + 0.5), Multi(0.5)));
+
+            }
+
+            // Reset flags and compute either I_0 or I_vmax
+            inline void reset(int downward=true) {
+
+                // No need to reset anything, as in the ksq >= 1
+                // case we can just use the pre-tabulated values of I_v!
+                if (ksq() >= 1) return;
+
+                // Reset flags
+                set.setZero(vmax + 1);
+
+                if (downward) {
+
+                    // Downward recursion: compute I_vmax
+                    T tol = mach_eps<T>() * ksq();
+                    T error = T(INFINITY);
+
+                    // Computing leading coefficient (n=0):
+                    T coeff = 2.0 / (2 * vmax + 1);
+
+                    // Add leading term to I_vmax:
+                    T res = coeff;
+
+                    // Now, compute higher order terms until desired precision is reached
+                    int n = 1;
+                    while ((n < STARRY_IJ_MAX_ITER) && (abs(error) > tol)) {
+                        coeff *= (2.0 * n - 1.0) * 0.5 * (2 * n + 2 * vmax - 1) / (n * (2 * n + 2 * vmax + 1)) * ksq();
+                        error = coeff;
+                        res += coeff;
+                        n++;
+                    }
+
+                    // If we didn't converge, fall back to upward recursion
+                    if (n == STARRY_IJ_MAX_ITER) throw errors::Primitive("I");
+
+                    value(vmax) = ksq(vmax) * k * res;
+                    set(vmax) = true;
+
+                } else {
+
+                    // Upward recursion: compute I_0
+                    value(0) = 2 * asin(k);
+                    set(0) = true;
+
+                }
+
+            }
+
+            // Getter function
+            inline T get_value(int v) {
+                if ((v < 0) || (v > vmax)) throw errors::BadIndex();
+                if (ksq() >= 1) {
+                    // Easy: these are constant & tabulated!
+                    return ivgamma(v);
+                } else if (!set(v)) {
+                    if (set(vmax))
+                        // Downward recursion (preferred)
+                        value(v) = 2.0 / (2 * v + 1) * ((v + 1) * get_value(v + 1) + ksq(v) * k * kc);
+                    else if (set(0))
+                        // Upward recursion
+                        value(v) = ((2 * v - 1) / 2.0 * get_value(v - 1) - ksq(v - 1) * k * kc) / v;
+                    else
+                        throw errors::Recursion();
+                    set(v) = true;
+                }
+                return value(v);
+            }
+
+            // Overload () to get the function value without calling get_value()
+            inline T operator() (int v) { return get_value(v); }
+
+    };
+
+    // The helper primitive integral J_v
+    template <class T>
+    class J {
+
+            vector<int> vvec;
+            Vector<bool> set;
+            Vector<T> value;
+            int vmax;
+            Elliptic<T>& ELL;
+            Power<T>& ksq;
+            Power<T>& two;
+            T& k;
+            T& kc;
+            T pi;
+
+        public:
+
+            J(int lmax, Elliptic<T>& ELL, Power<T>& ksq, Power<T>& two, T& k, T& kc) : vmax(max(1, 2 * lmax - 1)), ELL(ELL), ksq(ksq), two(two), k(k), kc(kc) {
+                set = Vector<bool>::Zero(vmax + 1);
+                value.resize(vmax + 1);
+                pi = T(BIGPI);
+                // These are the values of v we pre-compute on downward recursion
+                vvec.push_back(vmax);
+                vvec.push_back(vmax - 1);
+                // If lmax is large (>~ 15), we can lose significant precision
+                // by the time we get down to l = 0. So let's pre-compute
+                // the two J_v's at the midpoint for higher accuracy at low l
+                if (vmax >= 30) {
+                    vvec.push_back(vmax / 2);
+                    vvec.push_back(vmax / 2 - 1);
+                }
+            }
+
+            // Reset flags and compute J_vmax and J_{vmax - 1} with a series expansion
+            inline void reset(bool downward=true) {
+
+                // Reset flags
+                set.setZero(vmax + 1);
+
+                if (downward) {
+
+                    // Downward recursion: compute J_vmax and J_{vmax - 1}
+                    T tol;
+                    if (ksq() >= 1)
+                        tol = mach_eps<T>() / ksq();
+                    else
+                        tol = mach_eps<T>() * ksq();
+                    for (int v : vvec) {
+
+                        // Computing leading coefficient (n=0):
+                        T coeff;
+                        if (ksq() >= 1) {
+                            coeff = pi;
+                            for (int i = 1; i <= v; i++) coeff *= (1 - 0.5 / i);
+                        } else {
+                            coeff = 3 * pi / (two(2 + v) * tables::factorial<T>(v + 2));
+                            for (int i = 1; i <= v; i++) coeff *= (2.0 * i - 1);
+                        }
+
+                        // Add leading term to J_vmax:
+                        T res = coeff;
+
+                        // Now, compute higher order terms until desired precision is reached
+                        int n = 1;
+                        T error = T(INFINITY);
+                        while ((n < STARRY_IJ_MAX_ITER) && (abs(error) > tol)) {
+                            if (ksq() >= 1)
+                                coeff *= (1.0 - 2.5 / n) * (1.0 - 0.5 / (n + v)) / ksq();
+                            else
+                                coeff *= (2.0 * n - 1.0) * (2.0 * (n + v) - 1.0) * 0.25 / (n * (n + v + 2)) * ksq();
+                            error = coeff;
+                            res += coeff;
+                            n++;
+                        }
+                        if (n == STARRY_IJ_MAX_ITER) throw errors::Primitive("J");
+
+                        // Store the result
+                        if (ksq() >= 1)
+                            value(v) = res;
+                        else
+                            value(v) = ksq(v) * k * res;
+                        set(v) = true;
+                    }
+
+                } else {
+
+                    if (ksq() >= 1) {
+
+                        // Upward recursion: compute J_0 and J_1
+                        value(0) = (2.0 / 3.0) * (2 * (2 - 1. / ksq()) * ELL.E() - (1 - 1. / ksq()) * ELL.K());
+                        value(1) = (2.0 / 15.0) * ((-3 * ksq() + 13 - 8 / ksq()) * ELL.E() + (1 - 1 / ksq()) * (3 * ksq() - 4) * ELL.K());
+
+                        // NOTE: These expressions are in principle more stable, but I have not seen
+                        // this in practice. The advantage of the expressions above is that the elliptic
+                        // integrals are often used in the computation of `s2`, so they are available for free!
+                        /*
+                        T k2inv = 1 / ksq();
+                        T fe = 2 * (2 - k2inv);
+                        T fk = -1 + k2inv;
+                        value(0)= (2.0 / 3.0) * ellip::CEL(k2inv, kc, T(1), T(fk + fe), T(fk + fe * (1 - k2inv)), pi);
+                        fe = -6 * ksq() + 26 - 16 * k2inv;
+                        fk = 2 * (1 - k2inv) * (3 * ksq() - 4);
+                        value(1) = ellip::CEL(k2inv, kc, T(1), T(fk + fe), T(fk + fe * (1 - k2inv)), pi) / 15.;
+                        */
+
+
+                    } else {
+
+                        // Upward recursion: compute J_0 and J_1
+                        value(0) = 2.0 / (3.0 * ksq() * k) * (2 * (2 * ksq() - 1) * ELL.E() + (1 - ksq()) * (2 - 3 * ksq()) * ELL.K());
+                        value(1) = 2.0 / (15.0 * ksq() * k) * ((-3 * ksq(2) + 13 * ksq() - 8) * ELL.E() + (1 - ksq()) * (8 - 9 * ksq()) * ELL.K());
+
+                        // See NOTE above regarding these expressions
+                        /*
+                        T fe = 2 * (2 * ksq() - 1);
+                        T fk = (1 - ksq()) * (2 - 3 * ksq());
+                        value(0) = 2 / (3 * ksq() * k) * ellip::CEL(ksq(), kc, T(1), T(fk + fe), T(fk + fe * (1 - ksq())), pi);
+                        fe = -3 * ksq(2) + 13 * ksq() - 8;
+                        fk = (1 - ksq()) * (8 - 9 * ksq());
+                        value(1) = 2 / (15 * ksq() * k) * ellip::CEL(ksq(), kc, T(1), T(fk + fe), T(fk + fe * (1 - ksq())), pi);
+                        */
+
+
+                    }
+
+                    set(0) = true;
+                    set(1) = true;
+
+                }
+
+            }
+
+            // Getter function
+            inline T get_value(int v) {
+                if ((v < 0) || (v > vmax)) throw errors::BadIndex();
+                if (!set(v)) {
+                    if (set(vmax)) {
+                        // Downward recursion (preferred)
+                        T f2 = ksq() * (2 * v + 1);
+                        T f1 = 2 * (3 + v + ksq() * (1 + v)) / f2;
+                        T f3 = (2 * v + 7) / f2;
+                        value(v) = f1 * get_value(v + 1) - f3 * get_value(v + 2);
+                    } else if (set(0)) {
+                        // Upward recursion
+                        T f1 = 2 * (v + (v - 1) * ksq() + 1);
+                        T f2 = ksq() * (2 * v - 3);
+                        value(v) = (f1 * get_value(v - 1) - f2 * get_value(v - 2)) / (2 * v + 3);
+                    } else {
+                        throw errors::Recursion();
+                    }
+                    set(v) = true;
+                }
+                return value(v);
+            }
+
+            // Overload () to get the function value without calling get_value()
+            inline T operator() (int v) { return get_value(v); }
+
+    };
+
+    // The helper primitive integral K_{u,v}
+    template <typename T>
+    inline T K(Greens<T>& G, int u, int v) {
+        T res = 0;
+        for (int i = 0; i < u + v + 1; i++)
+            res += G.A_P(i, u, v) * G.I_P(i + u);
+        return res;
+    }
+
+    // The helper primitive integral L_{u,v}^(t)
+    template <typename T>
+    inline T L(Greens<T>& G, int u, int v, int t) {
+        T res = 0;
+        for (int i = 0; i < u + v + 1; i++) {
+            if (G.b == 0) {
+                // Special case, J = I (evident from integral definition)
+                res += G.A_P(i, u, v) * G.I_P(i + u + t);
+            } else {
+                res += G.A_P(i, u, v) * G.J_P(i + u + t);
+            }
+        }
+        return res;
+    }
+
+    // The primitive integral P(G_n)
+    template <typename T>
+    inline T P(Greens<T>& G){
+        if (is_even(G.mu, 2)) {
+            return 2 * G.twor(G.l + 2) * K(G, (G.mu + 4) / 4, G.nu / 2);
+        } else if ((G.mu == 1) && is_even(G.l)) {
+            return LFac(G) * (L(G, (G.l - 2) / 2, 0, 0) - 2 * L(G, (G.l - 2) / 2, 0, 1));
+        } else if ((G.mu == 1) && !is_even(G.l)) {
+            return LFac(G) * (L(G, (G.l - 3) / 2, 1, 0) - 2 * L(G, (G.l - 3) / 2, 1, 1));
+        } else if (is_even(G.mu - 1, 2)) {
+            return 2 * LFac(G) * L(G, (G.mu - 1) / 4, (G.nu - 1) / 2, 0);
+        } else {
+            return 0;
+        }
+    }
+
+    // The primitive integral Q(G_n)
+    template <typename T>
+    inline T Q(Greens<T>& G){
+        // From the integral definition of Q, the result is zero
+        // unless both mu/2 and nu/2 are even when the occultor
+        // is not touching the limb of the planet.
+        if ((G.coslam() == 0) && (!is_even(G.mu, 2) || !is_even(G.nu, 2)))
+            return 0;
+        else if (!is_even(G.mu, 2))
+            return 0;
+        else {
+            return G.H_Q((G.mu + 4) / 2, G.nu / 2);
+        }
+    }
+
     // Greens integration housekeeping data
     template <class T>
     class Greens {
@@ -443,43 +697,36 @@ namespace solver {
 
             // Indices
             int lmax;
-            int N;
             int l;
             int m;
             int mu;
             int nu;
 
-            // Taylor expand stuff?
-            bool taylor;
-
-            // Occultor off the limb of the body (simpler formulae in this case)?
-            bool off_limb;
-
-            // Some basic variables
-            T br;
-            T br32;
+            // Basic variables
+            T b;
+            T r;
             T k;
-            T phi;
-            T lam;
+            T kc;
+            T fourbr32;
+            T lfac;
 
             // Powers of basic variables
             Power<T> ksq;
-            Power<T> b;
-            Power<T> r;
-            Power<T> b_r;
-            Power<T> cosphi;
-            Power<T> sinphi;
-            Power<T> coslam;
+            Power<T> twor;
+            Power<T> delta;
             Power<T> sinlam;
+            Power<T> coslam;
 
-            // Elliptic integrals
+            // Static stuff
+            Power<T> two;
+            T miny;
+
+            // Primitive matrices/vectors
             Elliptic<T> ELL;
-
-            // Primitive matrices
-            Primitive<T> H;
-            Primitive<T> I;
-            Primitive<T> J;
-            Primitive<T> M;
+            H<T> H_Q;
+            I<T> I_P;
+            J<T> J_P;
+            A<T> A_P;
 
             // The solution vector
             VectorT<T> sT;
@@ -487,137 +734,84 @@ namespace solver {
             // The value of pi, computed at
             // the user-requested precision
             T pi;
-            T pi_over_2;
 
             // Constructor
-            Greens(int lmax, bool taylor=true) :
+            Greens(int lmax) :
                    lmax(lmax),
-                   N(max(lmax + 5, 2 * lmax + 1) + 12), // DEBUG; TODO: +12 for taylor::computeJ. Find smallest value of N that will work.
-                   taylor(taylor),
-                   off_limb(false),
                    ksq(0),
-                   b(0),
-                   r(0),
-                   b_r(0),
-                   cosphi(0),
-                   sinphi(0),
-                   coslam(0),
+                   twor(0),
+                   delta(0),
                    sinlam(0),
-                   ELL(*this),
-                   H(*this, computeH),
-                   I(*this, computeI),
-                   J(*this, computeJ),
-                   M(*this, computeM) {
+                   coslam(0),
+                   two(0),
+                   ELL((*this).ksq),
+                   H_Q(lmax, (*this).sinlam, (*this).coslam),
+                   I_P(lmax, (*this).ksq, (*this).k, (*this).kc),
+                   J_P(lmax, (*this).ELL, (*this).ksq, (*this).two, (*this).k, (*this).kc),
+                   A_P(lmax, (*this).delta) {
 
                 // Initialize the solution vector
                 sT = VectorT<T>::Zero((lmax + 1) * (lmax + 1));
 
                 // Compute pi at the actual precision of the T type
                 pi = T(BIGPI);
-                pi_over_2 = T(0.5 * pi);
+
+                // Initialize static stuff
+                two.reset(2);
+
+                // Smallest coefficient for which we'll actually
+                // bother to compute the integrals
+                miny = 10 * mach_eps<T>();
 
             }
 
     };
 
-    // Return the n^th term of the *r* phase curve solution vector.
-    template <typename T>
-    T rn(int mu, int nu) {
-            T a, b, c;
-            if (is_even(mu, 2) && is_even(nu, 2)) {
-                a = tables::gamma_sup<T>(mu / 4);
-                b = tables::gamma_sup<T>(nu / 4);
-                c = tables::gamma<T>((mu + nu) / 4 + 2);
-                return a * b / c;
-            } else if (is_even(mu - 1, 2) && is_even(nu - 1, 2)) {
-                a = tables::gamma_sup<T>((mu - 1) / 4);
-                b = tables::gamma_sup<T>((nu - 1) / 4);
-                c = tables::gamma_sup<T>((mu + nu - 2) / 4 + 2) * M_2_SQRTPI;
-                return a * b / c;
-            } else {
-                return 0;
-            }
-    }
-
-    // Compute the *r^T* phase curve solution vector
-    template <typename T>
-    void computerT(int lmax, VectorT<T>& rT) {
-        rT.resize((lmax + 1) * (lmax + 1));
-        int l, m, mu, nu;
-        int n = 0;
-        for (l=0; l<lmax+1; l++) {
-            for (m=-l; m<l+1; m++) {
-                mu = l - m;
-                nu = l + m;
-                rT(n) = rn<T>(mu, nu);
-                n++;
-            }
-        }
-        return;
-    }
-
     // Compute the *s^T* occultation solution vector
     template <typename T>
     void computesT(Greens<T>& G, const T& b, const T& r, const Vector<T>& y) {
 
-        // Check for likely instability
-        if ((G.taylor) && (r >= 1) && (G.lmax > STARRY_LMAX_LARGE_OCC))
-            throw errors::LargeOccultorsUnstable();
-
         // Initialize the basic variables
         int l, m;
         int n = 0;
-        T ksq, k;
-        G.br = b * r;
-        G.br32 = pow(G.br, 1.5);
-        G.b.reset(b);
-        G.r.reset(r);
-        G.b_r.reset(b / r);
-        if (r <= 1)
-            ksq = (1 - G.r(2) - G.b(2) + 2 * G.br) / (4 * G.br);
-        else
-            ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * G.br);
-        k = sqrt(ksq);
-        // Override the NaNs
+        G.b = b;
+        G.r = r;
+        T ksq;
         if ((b == 0) || (r == 0)) {
-            set_derivs_to_zero(ksq);
-            set_derivs_to_zero(k);
+            ksq = T(INFINITY);
+            G.k = T(INFINITY);
+            G.kc = 1;
+        } else {
+            ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * b * r);
+            G.k = sqrt(ksq);
+            if (ksq > 1)
+                G.kc = sqrt(abs(((b + r) * (b + r) - 1) / ((b - r) * (b - r) - 1)));
+            else
+                G.kc = sqrt(abs(((b + r) * (b + r) - 1) / (4 * b * r)));
         }
         G.ksq.reset(ksq);
-        G.k = k;
+        G.fourbr32 = pow(4 * b * r, 1.5);
+        G.lfac = pow(1 - (b - r) * (b - r), 1.5);
+
+        // Powers of basic variables
+        G.twor.reset(2 * r);
+        G.delta.reset((b - r) / (2 * r));
         if ((abs(1 - r) < b) && (b < 1 + r)) {
-            G.off_limb = false;
-            if (r <= 1) {
-                G.sinphi.reset((1 - G.r(2) - G.b(2)) / (2 * G.br));
-                G.cosphi.reset(sqrt(1 - G.sinphi() * G.sinphi()));
-                G.sinlam.reset((1 - G.r(2) + G.b(2)) / (2 * G.b()));
-                G.coslam.reset(sqrt(1 - G.sinlam() * G.sinlam()));
-                G.phi = asin(G.sinphi());
-                G.lam = asin(G.sinlam());
-            } else {
-                G.sinphi.reset(2 * (G.ksq() - 0.5));
-                G.cosphi.reset(2 * G.k * sqrt(1 - G.ksq()));
-                G.sinlam.reset(0.5 * ((1. / b) + (b - r) * (1. + r / b)));
-                G.coslam.reset(sqrt(1 - G.sinlam() * G.sinlam()));
-                G.phi = asin(G.sinphi());
-                G.lam = asin(G.sinlam());
-            }
+            G.sinlam.reset(0.5 * ((1. / b) + (b - r) * (1. + r / b)));
+            G.coslam.reset(sqrt(1 - G.sinlam() * G.sinlam()));
         } else {
-            G.off_limb = true;
-            G.sinphi.reset(1);
-            G.cosphi.reset(0);
             G.sinlam.reset(1);
             G.coslam.reset(0);
-            G.phi = 0.5 * G.pi;
-            G.lam = 0.5 * G.pi;
         }
 
         // Initialize our storage classes
-        G.H.reset();
-        G.I.reset();
-        G.J.reset();
-        G.M.reset();
+        // For 0.5 < ksq < 2 we do upward recursion,
+        // otherwise we do downward recursion.
         G.ELL.reset();
+        G.H_Q.reset();
+        G.I_P.reset(ksq < 0.5);
+        G.J_P.reset((ksq < 0.5) || (ksq > 2));
+        G.A_P.reset();
 
         // Populate the solution vector
         for (l = 0; l < G.lmax + 1; l++) {
@@ -626,15 +820,15 @@ namespace solver {
                 G.m = m;
                 G.mu = l - m;
                 G.nu = l + m;
-                if (abs(y(n)) > 10 * mach_eps<T>()) {
+                if (abs(y(n)) > G.miny) {
                     if ((l == 1) && (m == 0))
                         G.sT(n) = s2(G);
                     // These terms are zero because they are proportional to
                     // odd powers of x, so we don't need to compute them!
-                    else if ((G.taylor) && (is_even(G.mu - 1)) && (!is_even((G.mu - 1) / 2)))
+                    else if ((is_even(G.mu - 1)) && (!is_even((G.mu - 1) / 2)))
                         G.sT(n) = 0;
                     // These terms are also zero for the same reason
-                    else if ((G.taylor) && (is_even(G.mu)) && (!is_even(G.mu / 2)))
+                    else if ((is_even(G.mu)) && (!is_even(G.mu / 2)))
                         G.sT(n) = 0;
                     else
                         G.sT(n) = Q(G) - P(G);

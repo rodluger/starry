@@ -1315,24 +1315,6 @@ than $10^{-7}$ parts per million everywhere in the light curve.
 \end{figure}
 %
 
-\begin{figure}[ht!]
-    \begin{centering}
-    \includegraphics[width=\linewidth]{figures/spidercomp.pdf}
-    \caption{\label{fig:spidercomp}
-             \python{spidercomp}
-             Comparison to \spiderman (todo).}
-    \end{centering}
-\end{figure}
-
-\begin{figure}[ht!]
-    \begin{centering}
-    \includegraphics[width=\linewidth]{figures/spidercomp_flux.pdf}
-    \caption{\label{fig:spidercomp_flux}
-             \python{spidercomp}
-             Comparison to \spiderman (todo).}
-    \end{centering}
-\end{figure}
-
 % ------------------------------------------------------------------------------
 \subsection{Photodynamics}
 \label{sec:starryphotodynamics}
@@ -1397,18 +1379,15 @@ Finally, care should be taken to ensure the map is positive everywhere. By defau
 the coefficient of the $Y_{0,0}$ term of a planet's map is fixed at unity, since
 changing this term would change the total luminosity (this should instead be
 modified via the \textsf{planet.L} property). In the case of a simple dipole map of
-the form $Y_{0,0} + c Y_{1, 0}$, it is easy to show that as long as we enforce
+the form $Y_{0,0} \, + \, y_1 Y_{1, -1} \, + \, y_2 Y_{1, 0} \, + \, y_3 Y_{1, 1}$,
+it can be shown that as long as we enforce
 %
 \begin{align}
-    |c| \le \frac{1}{\sqrt{3}} \approx 0.5773
+    y_1^2 + y_2^2 + y_3^2 \le \frac{1}{3}
 \end{align}
 %
-the map will be non-negative everywhere along the unit sphere.
-\footnote{In Cartesian coordinates, we have $Y_{0,0} = \sqrt{\frac{1}{4\pi}}$ and
-$Y_{1,0} = \sqrt{\frac{3}{4\pi}}z$. At the anti-stellar point ($z = 1$), the ratio
-of these two terms is $\nicefrac{1}{\sqrt{3}}$, so the absolute value of the
-coefficient of $Y_{1,0}$ must be at most this value to ensure the anti-stellar
-point has a non-negative surface intensity.}
+the map will be non-negative everywhere along the unit sphere. Since $0.5^2 < \nicefrac{1}{3}$,
+our map is in fact positive semi-definite. \todo{proof}
 %
 For more details on ensuring surface maps are positive everywhere, see
 \S\ref{sec:nonnegative}.
@@ -1517,22 +1496,14 @@ which is exactly what you'd get with \starryMap. However, behind the scenes,
 \starry also computed gradients. Here's what we get when we access \textsf{map.gradient}:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-{'Y_{0,0}': array([0.]),
- 'Y_{1,-1}': array([-0.00153499]),
- 'Y_{1,0}': array([0.87233361]),
- 'Y_{1,1}': array([-0.5054145]),
- 'axis_x': array([0.0007675]),
- 'axis_y': array([8.52090655e-20]),
- 'axis_z': array([-0.00020565]),
- 'ro': array([-0.27718567]),
- 'theta': array([-0.00882115]),
+{'ro': array([-0.27718567]),
  'xo': array([-0.0063251]),
- 'yo': array([0.00134985])}
+ 'yo': array([0.00134985])...}
 \end{lstlisting}
 %
-These are the gradients of the flux with respect to each of the four map
-coefficients, the three components of the rotation axis, the occultor radius,
-the rotational phase, and the $xy$ position of the occultor.
+These are the gradients of the flux with respect to the occultor radius,
+the rotational phase, and the $xy$ position of the occultor, as well as
+all of the map coefficients and the rotational state of the map (not shown).
 %
 \begin{figure}[p!]
     \begin{centering}
@@ -1571,7 +1542,6 @@ resolution is iteratively increased wherever the spatial gradient of the
 \animation{adaptive}
 %
 specific intensity is large and in the vicinity of the limb of the occultor.
-Click on the link at right for an animation of our adaptive mesh scheme.
 
 %In \starry, users can request numerical solutions to the flux by typing
 %
@@ -1590,6 +1560,87 @@ in this way as the small points along each of the curves. We find that our
 analytic light curves agree with the numerical solutions to within the error
 of the latter.
 
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/stability.pdf}
+    \caption{\label{fig:stability}
+             \python{stability}
+             Error in the terms of the solution vector $\mathbf{s}$ for a small
+             occultor ($r_o = 0.01$, left) and a large occultor ($r_o = 100$, right),
+             computed relative to calculations using quadruple
+             floating point precision. The error is plotted as a function of impact parameter
+             for terms with $\mu$ even (left)
+             and $\mu$ odd (right). The horizontal axis extends from $r - 1$ to $r + 1$ and covers
+             the entire range of $b$ during an occultation, with extra resolution in the
+             vicinity of potentially unstable regions. The top panel shows the relative error,
+             while the bottom panel shows the fractional error, scaled to the largest value of
+             the function during the occultation.}
+    \end{centering}
+\end{figure}
+
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=0.85\linewidth]{figures/stability_earth.pdf}
+    \caption{\label{fig:stability_earth}
+             \python{stability}
+             Secondary eclipse ingress for the Earth being occulted by the Sun
+             ($r_o = 110$), computed for a $l = 20$ expansion of the planet's
+             surface map. The relative error due to floating point precision loss
+             is shown at the bottom and is
+             less than one part per billion everywhere.}
+    \end{centering}
+\end{figure}
+
+To test for numerical stability, we also compare our calculations to
+the same calculations performed at quadruple (128-bit) floating-point precision.
+Figure~\ref{fig:stability} shows the relative error on the computation of each of the
+terms in the solution vector $\mathbf{s}$ up to $l = 20$ for a small occultor (left)
+and a large occultor (right). The horizontal axis corresponds to the impact
+parameter, spanning all possible values of $b$ during an occultation.
+In both cases, the maximum relative error (top panel) is less than one part per
+trillion. The bottom panel shows the fractional error, equal to the relative
+error scaled to the largest value of the function during the occultation. In cases
+where the largest value of the flux is less than $10^{-9}$, we scale the relative
+error to this value to avoid division by a very small number. In all cases, the
+fractional error is less than 1 ppb.
+
+Figure~\ref{fig:stability_earth} shows the error on a secondary eclipse
+light curve for an $l = 20$ expansion of the Earth being occulted by the Sun.
+As expected, the relative error (relative to the Earth's flux) is much less than 1 part
+per billion everywhere.
+
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=0.75\linewidth]{figures/spidercomp_flux.pdf}
+    \caption{\label{fig:spidercomp_flux}
+             \python{spidercomp}
+             Comparison to a light curve generated using the \spiderman code
+             \citep{Louden2018}. The top panel shows a secondary eclipse of a
+             hot Jupiter with an offset dipole computed with \starry (blue)
+             and \spiderman (orange), and the bottom panel shows the absolute
+             value of the difference between the two light curves as the number
+             of layers in the \spiderman grid is increased. The \spiderman solution
+             appears to converge linearly to the \starry solution as the number of layers
+             is increased.}
+    \end{centering}
+\end{figure}
+
+Finally, we compare our secondary eclipse and phase curve computations to
+light curves generated using the \spiderman package \citep{Louden2018}.
+The top panel of Figure~\ref{fig:spidercomp_flux} shows a secondary eclipse light curve
+for a hot Jupiter with an offset dipole map ($l = 1$) computed with
+\starry (solid blue) and \spiderman (dashed orange) using the default number
+of layers ($n_\mathrm{layers} = 5$) in their discretized surface intensity grid.
+The bottom panel shows the relative difference between the \spiderman flux and
+the \starry flux for different values of $n_\mathrm{layers}$. For the default
+number of layers, the maximum relative error in the \spiderman flux is on the
+order of 30 ppm (relative to the \emph{stellar} flux)
+during ingress and egress and is somewhat higher at the peak
+of the phase curve. Relative to the \emph{planet} flux, the error is $\sim 30 / 0.04 = 750$ ppm.
+This error decreases linearly as the number of layers increases, and the \spiderman solution
+appears to converge to the \starry solution in the limit $n_\mathrm{layers} \rightarrow \infty$.
+
+
 % ------------------------------------------------------------------------------
 \subsection{Speed tests}
 \label{sec:starryspeed}
@@ -1607,19 +1658,6 @@ is proportional to the log of the fractional error relative to the
 \starry solution. Light curve computation using \starry is several orders of
 magnitude faster and more accurate than any other evaluation technique.
 
-Figure~\ref{fig:speed} shows the evaluation time for \starry
-as a function of the number of points in the light curve for phase curves
-(left) and occultation light curves (right). The top panel shows curves for
-maps of different degree $l$, and the bottom panel shows curves for single-order
-maps of degree $l = 5$. Evaluation time scales exponentially with increasing
-degree, but \starry can compute full occultation light curves for $l = 5$ maps
-with $10^5$ points in under one second. Evaluation time is roughly constant
-across the different orders at fixed degree.
-In Figure~\ref{fig:speed_batman} we show a speed comparison
-to the \batman transit package \citep{Kreidberg2015} for transits across a
-quadratically limb-darkened star. \starry is as efficient as \batman at
-computing transit light curves.
-
 \begin{figure}[ht!]
     \begin{centering}
     \includegraphics[width=0.9\linewidth]{figures/compare_to_numerical.pdf}
@@ -1632,7 +1670,7 @@ computing transit light curves.
              \textsf{scipy}'s \textsf{dblquad} two-dimensional numerical
              integration routine (red).
              The size of each point is proportional to the log of the error relative
-             to the \starry analytic solution.
+             to the \starry quadruple-precision solution.
              }
     \end{centering}
 \end{figure}
@@ -1654,6 +1692,19 @@ computing transit light curves.
     \end{centering}
 \end{figure}
 
+Figure~\ref{fig:speed} shows the evaluation time for \starry
+as a function of the number of points in the light curve for phase curves
+(left) and occultation light curves (right). The top panel shows curves for
+maps of different degree $l$, and the bottom panel shows curves for single-order
+maps of degree $l = 5$. Evaluation time scales exponentially with increasing
+degree, but \starry can compute full occultation light curves for $l = 5$ maps
+with $10^5$ points in under one second. Evaluation time is roughly constant
+across the different orders at fixed degree.
+In Figure~\ref{fig:speed_batman} we show a speed comparison
+to the \batman transit package \citep{Kreidberg2015} for transits across a
+quadratically limb-darkened star. \starry is as efficient as \batman at
+computing transit light curves.
+
 \begin{figure}[p!]
     \begin{centering}
     \includegraphics[width=0.65\linewidth]{figures/speed_batman.pdf}
@@ -1665,6 +1716,35 @@ computing transit light curves.
              }
     \end{centering}
 \end{figure}
+
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/spidercomp.pdf}
+    \caption{\label{fig:spidercomp}
+             \python{spidercomp}
+             Speed comparison to the \spiderman code package \citep{Louden2018}.
+             For a dipole ($l = 1$) map, \starry computes secondary eclipse
+             light curves and phase curves in about an order of magnitude less
+             time compared to \spiderman with 5 layers in their surface intensity
+             grid. The size of the markers is proportional to the log of the
+             error in the solutions, compared to evaluation of the equations
+             presented in this paper using quadruple floating-point precision.
+             As the number of layers is increased in \spiderman, the error
+             decreases linearly, but the evaluation time increases proportionally.}
+    \end{centering}
+\end{figure}
+
+Finally, Figure~\ref{fig:spidercomp} shows the evaluation time for \starry
+compared to that for \spiderman \citep{Louden2018} for a secondary eclipse
+of a simple $l = 1$ map and varying values of the number of layers in the
+\spiderman grid. The size of the points is proportional to the log of the
+relative error on the solution (see Figure~\ref{fig:spidercomp_flux}).
+The evaluation time for \starry is about one order of magnitude less than
+\spiderman for the default $n_\mathrm{layers}=5$, for which the error
+is about 30 ppm (relative to the stellar flux). Computation of the \spiderman
+light curves with larger values of $n_\mathrm{layers}$ improves the precision
+but leads to proportionally longer evaluation times.
+
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -1716,7 +1796,7 @@ maps of celestial bodies, it is not trivial to ensure
 that a given spherical harmonic expansion $\bvec{y}$ evaluates to
 non-negative values everywhere on the unit sphere. This is because
 there is no analytic way to compute the extrema of a function of
-spherical harmonics of arbitrary order.
+spherical harmonics of arbitrary degree.
 This fact makes it difficult to enforce the physical prior that the
 specific intensity of a celestial body cannot be negative, which
 could be desirable when fitting a model to real data. The minimum
@@ -1736,19 +1816,19 @@ is negative, users should either scale the $Y_{0,0}$ coefficient up
 or the coefficients of all other harmonics down until the map is
 non-negative everywhere.
 
-\subsection{Very large occultors}
-When the occultor becomes much larger than the occulted body ($r_o \gg 1$),
-the analytic solutions to the occultation integrals may become numerically
-unstable when the map degree $l$ is large. This is due to the propagation of
-round-off error in the recurrence relations, which we mitigate
-with careful Taylor expansions and reparameterizations of the equations.
-We discuss this at length in Appendix~\ref{app:numericalstability}.
-In general, numerical stability is
-not likely to be an issue for $l \leq 8$ and $r_o \lesssim 500$, for which
-the maximum fractional error due to round-off is on the order of one part
-per thousand, which in the case of exoplanets is likely far below the
-detectability limits of telescopes in the foreseable future. Nevertheless, users
-can bypass these numerical issues by instantiating a map from the \textsf{starry.multi}
+\subsection{Maps of very large degree}
+For \emph{very} large values of the spherical harmonic degree $l$, the
+equations presented here may become numerically unstable. The evaluation
+of the spherical harmonics depends on ratios of several factorials, whose
+precision can degrade for large $l$ and $m$. Similarly, the coefficients
+of the occultation solution vector $\mathbf{s}$ can drop below machine
+precision at large $l$, leading to further numerical issues. While
+\starry is specifically coded up to minimize numerical instabilities,
+we find that for $l_\mathrm{max} \geq 30$ numerical issues may occur.
+Fortunately, situations in which maps of such high degree are necessary
+are not likely for exoplanet science in the foreseeable future.
+Nevertheless, if users wish to perform calculations for very large $l$,
+they can avoid these numerical issues by instantiating a map from the \textsf{starry.multi}
 module:
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
@@ -2529,6 +2609,12 @@ respectively, defined as
     \Pi(n, k^2) &\equiv \int_0^{\frac{\pi}{2}} \frac{\dd \varphi}{(1 - n \sin^2 \varphi)\sqrt{1 - k^2 \sin^2 \varphi}}
     \quad.
 \end{align}
+%
+In some cases, the expressions above can become unstable. For $r > 1$,
+$b \approx r$, $b + r \approx 1$, and $|b - r| \approx 1$, we re-parametrize
+these expressions in terms of the modified elliptic integral
+$\mathrm{cel}(k_c, p, a, b)$ \citep{Bulirsch1969} as described in
+\citet{limbdark}.
 
 % ------------------------------------------------------------------------------
 \subsection{All other terms}
@@ -2619,7 +2705,13 @@ where we have used the fact that the line integral of any function
 proportional to $\z$ taken along the limb of the occulted planet
 (where $\z = \sqrt{1-\x^2-\y^2} = 0$) is zero.
 %
-For convenience, let us introduce the integrals
+
+% ------------------------------------------------------------------------------
+\subsubsection{The $\mathcal{Q}$ integral}
+\label{app:Q}
+% ------------------------------------------------------------------------------
+
+\xxx{The $\mathcal{Q}$ expression is easy. Let us define}
 %
 \begin{align}
     \label{eq:Huv}
@@ -2628,94 +2720,9 @@ For convenience, let us introduce the integrals
             c_\varphi^u
             s_\varphi^v
             \, \dd\varphi
-%
-\end{align}
-\begin{align}
-%
-    \label{eq:Iuv}
-    \mathcal{I}_{u,v} &=
-    \int\displaylimits_{\pi - \phi}^{2\pi + \phi}
-            c_\varphi^u
-            s_\varphi^v
-            \, \dd\varphi
-%
-\end{align}
-\begin{align}
-%
-    \label{eq:Juv}
-    \mathcal{J}_{u,v} &=
-    \int\displaylimits_{\pi - \phi}^{2\pi + \phi}
-        c_\varphi^u
-        s_\varphi^v
-        (1 - r^2 - b^2 - 2 b r s_\varphi)^{\frac{3}{2}}
-        \, \dd\varphi \quad,
 \end{align}
 %
-along with the expressions
-%
-\begin{align}
-    \label{eq:Kuv}
-    \mathcal{K}_{u,v} &=
-        \sum\displaylimits_{i=0}^{v}
-        {v \choose i}
-        \left(\frac{b}{r}\right)^{v-i}
-        \mathcal{I}_{u, i}
-        \quad.
-%
-\end{align}
-\begin{align}
-%
-    \label{eq:Luv}
-    \mathcal{L}_{u,v} &=
-        \sum\displaylimits_{i=0}^{v}
-        {v \choose i}
-        \left(\frac{b}{r}\right)^{v-i}
-        \mathcal{J}_{u, i}
-        \quad.
-\end{align}
-%
-With some algebra, we may therefore write
-%
-\begin{align}
-    \label{eq:PGnI}
-    \mathcal{P}(\bvec{G}_n) &=
-    \begin{dcases}
-        %
-        r^{l+2} \mathcal{K}_{\frac{\mu+4}{2}, \frac{\nu}{2}}
-            %
-            & \qquad \frac{\mu}{2} \, \mathrm{even}
-        \\[1em]
-        %
-        %b r^{l-2} \mathcal{L}_{l-2, 0}
-        %- r^{l-1} \mathcal{L}_{l-2,1}
-        -r^{l-1} \mathcal{J}_{l-2, 1}
-            %
-            & \qquad \mu = 1, \,
-                     l \, \mathrm{even}
-        \\[1em]
-        %
-        -r^{l-2} \left( b \mathcal{J}_{l-3,1} + r \mathcal{J}_{l-3,2} \right)
-        %b r^{l-2} \mathcal{L}_{l-3, 1}
-        %- r^{l-1} \mathcal{L}_{l-3,2}
-            %
-            & \qquad \mu = 1, \, l \ge 3, \,
-                     l \, \mathrm{odd}
-        \\[1em]
-        %
-        r^{l-1} \mathcal{L}_{\frac{\mu-1}{2}, \frac{\nu-1}{2}}
-            & \qquad \frac{\mu - 1}{2} \, \mathrm{even}
-        \\[1em]
-        %
-        s_2 & \qquad \mu=1, \, l=1
-        \\[1em]
-        %
-        0 & \qquad \mathrm{otherwise}
-    \end{dcases}
-    \pdf{PGn}
-%
-\end{align}
-%
-and
+\xxx{so}
 %
 \begin{align}
 %
@@ -2732,20 +2739,7 @@ and
     \end{dcases}
 \end{align}
 %
-The solution to the occultation problem is therefore a matter of finding
-expressions for the integrals $\mathcal{H}_{u, v}$,
-$\mathcal{I}_{u, v}$, and $\mathcal{J}_{u, v}$.
-
-% ------------------------------------------------------------------------------
-\subsubsection{Solving the integrals}
-\label{app:generaltermsol}
-% ------------------------------------------------------------------------------
-
-Fortunately, $\mathcal{H}_{u, v}$ and $\mathcal{I}_{u, v}$
-evaluate to terms containing
-only sines and cosines of $\lambda$ and $\phi$, respectively.
-\citet{Pal2012} derived simple recurrence relations
-for these terms:
+\citet{Pal2012} \xxx{derived simple recurrence relations for this:}
 %
 \begin{align}
     \label{eq:Huvsol}
@@ -2783,155 +2777,20 @@ for these terms:
     \mathematica{HI}
 \end{align}
 %
-and
-%
-\begin{align}
-    \label{eq:Iuvsol}
-    \mathcal{I}_{u,v} &=
-    \begin{dcases}
-        0
-        & \qquad u \ \mathrm{odd}
-        %
-        \\[0.5em]
-        %
-        2\phi + \pi
-        & \qquad u = v = 0
-        %
-        \\[0.5em]
-        %
-        -2\cos\phi
-        & \qquad u = 0, v = 1
-        %
-        \\[0.5em]
-        %
-        \frac{2}{u + v}
-        (\cos\phi)^{u - 1} (\sin\phi)^{v + 1} +
-        \frac{u - 1}{u + v} \mathcal{I}_{u-2,v}
-        & \qquad u \ge 2
-        %
-        \\[0.5em]
-        %
-        -\frac{2}{u + v}
-        (\cos\phi)^{u + 1} (\sin\phi)^{v - 1} +
-        \frac{v - 1}{u + v} \mathcal{I}_{u,v-2}
-        & \qquad v \ge 2
-        \quad.
-        %
-    \end{dcases}
-    \mathematica{HI}
-\end{align}
-%
-
-Conversely, because of the term raised to the $\nicefrac{3}{2}$ power in
-\eq{Juv}, $\mathcal{J}_{u,v}$ is significantly more
-difficult to compute. With some tedious algebraic manipulation, and using
-recurrence relations for expressions with integrands
-of the form $\cos^p\varphi\sin^q\varphi (1 - \chi^2 \sin^2 \varphi)^\frac{3}{2}$
-\citep{Gradshteyn1994}, we may write
-%
-\begin{align}
-    \label{eq:Juvsol}
-    \mathcal{J}_{u,v} &=
-        2^{u + 3} (b r)^\frac{3}{2}
-        \sum\displaylimits_{i=0}^v
-            {v \choose i}\left(-1\right)^{i-v-u}\mathcal{M}_{u + 2i, u + 2v - 2i}
-    \mathematica{case2}
-\end{align}
-%
-where
-%
-\begin{align}
-    \label{eq:Mpq}
-    \mathcal{M}_{p, q}  &=
-    \begin{dcases}
-        %
-        0 & \qquad p\ \mathrm{odd} \ \mathrm{or} \ q\ \mathrm{odd}\\[0.5em]
-        %
-        \frac{d_1 \mathcal{M}_{p,q-2} + d_2 \mathcal{M}_{p,q-4}}
-             {p + q + 3}
-        & \qquad q \ge 4 \\[0.5em]
-        %
-        \frac{d_3 \mathcal{M}_{p-2,q} + d_4 \mathcal{M}_{p-4,q}}
-             {p + q + 3}
-         & \qquad p \ge 4
-    \end{dcases}
-    \mathematica{case2}
-\end{align}
-%
-with
-%
-\begin{align}
-    d_1 &= q + 2 + (p + q - 2)(1 - k^2) \nonumber \\
-    d_2 &= (3 - q)(1 - k^2) \nonumber \\
-    d_3 &= 2 p + q - (p + q - 2)(1 - k^2) \nonumber \\
-    d_4 &= (3 - p) k^2
-\end{align}
-%
-and $k^2$ defined as in \eq{k2}.
-%
-These recurrence relations require four initial conditions:
-%
-\begin{align}
-    \mathcal{M}_{0,0} &= \frac{8-12k^2}{3}\mathcal{E}_1 + \frac{-8 + 16k^2}{3}\mathcal{E}_2 \nonumber \\[1em]
-    \mathcal{M}_{0,2} &= \frac{8-24k^2}{15}\mathcal{E}_1 + \frac{-8 + 28k^2 + 12k^4}{15}\mathcal{E}_2 \nonumber \\[1em]
-    \mathcal{M}_{2,0} &= \frac{32 - 36k^2}{15}\mathcal{E}_1 + \frac{-32 + 52k^2 - 12k^4}{15}\mathcal{E}_2 \nonumber \\[1em]
-    \mathcal{M}_{2,2} &= \frac{32-60k^2+12k^4}{105}\mathcal{E}_1 + \frac{-32 + 76 k^2 - 36 k^4 + 24 k^6}{105}\mathcal{E}_2
-    \quad,
-    \mathematica{case2}
-\end{align}
-%
-where we defined the elliptic functions
-%
-\begin{align}
-    \label{eq:E1}
-    \mathcal{E}_1 &=
-    \begin{dcases}
-        (1-k^2) K \left(k^2\right) & \qquad k^2 < 1 \\[0.5em]
-        0 & \qquad k^2 = 1 \\[0.5em]
-        \frac{1-k^2}{\sqrt{k^2}} K \left(\frac{1}{k^2}\right) & \qquad k^2 \ge 1
-    \end{dcases}
-    \\[0.5em]
-\intertext{and}
-    \label{eq:E2}
-    \mathcal{E}_2 &=
-    \begin{dcases}
-        E \left(k^2\right) & \qquad k^2 < 1 \\[0.5em]
-        0 & \qquad k^2 = 1 \\[0.5em]
-        \sqrt{k^2} E \left(\frac{1}{k^2}\right)
-            + \frac{1-k^2}{\sqrt{k^2}} K \left(\frac{1}{k^2}\right)
-          & \qquad k^2 \ge 1
-          \quad.
-    \end{dcases}
-    \mathematica{case2}
-\end{align}
-%
-Interestingly, the elliptic integrals in the expressions above are exactly
-the same as the ones used to evaluate the $s_2$ term (Equation~\ref{eq:biglam}),
-so these need only be evaluated \emph{once} when computing the occultation flux of
-a map of arbitrary degree. Thanks to the recurrence relations, all other operations
-required to evaluate $\mathcal{J}_{u,v}$ are elementary, making the
-computation of $s_n$ fast.
 
 % ------------------------------------------------------------------------------
-\subsubsection{Alternate equations for large radius occultors and small impact parameters}
+\subsubsection{The $\mathcal{P}$ integral}
+\label{app:P}
+% ------------------------------------------------------------------------------
 
-We have found that the numerical evaluation of the integrals has numerical stability
-problems for $r \gg 1$ and $b \ll 1$.  In this section we present transformed equations which
-may help with stability.
-
-For $r \gg 1$, we are only concerned with ingress and egress during which
-$\vert r-b \vert < 1$ (otherwise the source is completely visible or completely
-obscurved).  Thus, $b \approx r$, so we define a small parameter,
+\xxx{To enforce numerical stability, it is convenient to define the parameters}
 \begin{equation}
 \delta = \frac{b-r}{2r}.
 \end{equation}
-We also observe that for $r \gg 1$, $\phi \approx -\pi/2$.  We transform to a
-new angle variable, $\kappa = \pi/2 + \phi$, such that $\kappa \ll 1$ when
-$r \gg 1$,
+and $\kappa = \pi/2 + \phi$, so
 \begin{equation}
 \kappa = \cos^{-1} \left(\frac{r^2+b^2-1}{2br}\right).
 \end{equation}
-This parameter also turns out to be convenient to use when $b \ll 1$.
 This variable can be defined more simply in terms of $\sin^2\tfrac{\kappa}{2} = k^2$,
 or $\kappa = 2 \sin^{-1}k$.  When $r+b \le 1$, $\phi=\pi/2$, so $\kappa = \pi$.
 With this transformed variable, the limits of integration of $\mathcal{P}(\bvec{G}_n)$
@@ -3099,7 +2958,7 @@ functions and expand these as series in $k^2$.
 %evaluation of $\mathcal{I}_{u,v}$.
 %This can be expanded to higher order in $\kappa$ if necessary.
 
-For both $\mathcal{I}_v$ and $\mathcal{J}_v$, in the $k^2 <1$ limit, we make the substitution 
+For both $\mathcal{I}_v$ and $\mathcal{J}_v$, in the $k^2 <1$ limit, we make the substitution
 $w=k^{-2}\sin^2{\varphi}$, giving
 \begin{eqnarray}
 \mathcal{I}_v &=& k^{1+2v} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} dw\\
@@ -3170,133 +3029,6 @@ Evaluating the first two terms, $v=0$ and $v=1$, and then iterating, we find:
 %We evaluate $J_{v_{max}}$ and $J_{v_{max}-1}$ with the series solution or hypergeometric
 %function for large $v_{max}$, and then iterate to find successively smaller values
 %of $v$ until $v=0$.
-
-
-% ------------------------------------------------------------------------------
-\subsubsection{Numerical stability}
-\label{app:numericalstability}
-% ------------------------------------------------------------------------------
-
-A few remarks are in order regarding the numerical stability of the solutions
-presented above. Follow the links to the right of the text for more details on
-individual cases.
-
-\begin{itemize}
-\item The linear limb darkening term ($s_2$) is unstable in the vicinity of several
-points and curves in the $b-r$ plane. We use the reparametrized equations presented in
-\citet{limbdark} to ensure numerical stability over the entire domain.
-%
-\item The expression for $k^2$ (Equation~\ref{eq:k2}) diverges when either $b = 0$
-or $r = 0$. Our tests show that the latter case does not introduce significant numerical
-error when computing the solution vector $\mathbf{s}$ because of the factors of $r$
-multiplying the integrals in \eq{PGnI}. However, in the limit $b \rightarrow 0$,
-we find that the expressions for $\mathcal{M}_{p,q}$ (Equation~\ref{eq:Mpq}) are unstable,
-leading to large errors in the evaluation of $\mathcal{J}_{u,v}$ (Equation~\ref{eq:Juvsol})
-and thus also in $\mathcal{P}(\mathbf{G}_n)$ (Equation~\ref{eq:PGnI}). When $b = 0$, the term in
-parentheses in (Equation~\ref{eq:Juv}) vanishes, and we may compute $\mathcal{J}_{u,v}$
-directly as
-%
-\begin{align}
-    \mathcal{J}_{u,v}(b = 0) = (1 - r^2)^\frac{3}{2} \mathcal{I}_{u,v} \quad.
-\end{align}
-%
-In the vicinity of $b = 0$, we instead Taylor expand the integrand in \eq{Juv} to 12th order in $b$.
-\mathematica{taylorb}
-%
-\item The recurrence relation (\ref{eq:Iuv}) is numerically unstable when $r > 1$ for large values of $l$. The
-instability results from successive multiplications of $\sin\phi$  and $\cos\phi$ (Equation~\ref{eq:phi}),
-which become extremely close to zero and unity, respectively, as $r \rightarrow \infty$. This leads
-to roundoff error accumulation and causes the expressions to go unstable for large $l$.
-We remedy this by Taylor expanding the limb of the occultor as a quartic and computing the line integral
-analytically.
-\mathematica{QuarticLimb}
-%
-\item Finally, the recurrence relation (\ref{eq:Mpq}) is also numerically unstable for $r \gg 1$ and large $l$.
-Unfortunately, a quartic expansion of the occultor limb is not feasible, since the resulting line
-integral is not analytic. Instead, we Taylor expand the elliptic integrals in the expression for $\mathcal{M}_{p,q}$
-to 12th order in $k^2$ and tabulate the expansion coefficients in \starry up to $l = 8$.
-\mathematica{computeMTaylor}
-\end{itemize}
-
-\begin{figure}[ht!]
-    \begin{centering}
-    \includegraphics[width=\linewidth]{figures/stability.pdf}
-    \caption{\label{fig:stability_transit}
-             \python{stability}
-             Relative error in the terms of the solution vector $\mathbf{s}$ for a small
-             ($r_o = 0.01$) occultor, computed relative to calculations using quadruple
-             floating point precision. The error is plotted as a function of impact parameter
-             for terms with $\mu$ even (left)
-             and $\mu$ odd (right). The horizontal axis extends from $r - 1$ to $r + 1$ and covers
-             the entire range of $b$ during an occultation, with extra resolution in the
-             vicinity of unstable regions. While the original expressions (top) go unstable for
-             the odd terms at small values of the impact parameter, the reparametrized
-             expressions (bottom) are numerically stable everywhere.}
-    \end{centering}
-\end{figure}
-
-\begin{figure}[ht!]
-    \begin{centering}
-    \includegraphics[width=\linewidth]{figures/stability_eclipse.pdf}
-    \caption{\label{fig:stability_eclipse}
-             \python{stability}
-             Same as Figure~\ref{fig:stability_transit}, but for a large ($r_o = 100$) occultor.
-             The equations derived in the Appendix are very numerically unstable in this regime.
-             Expansion of the occultor limb as a quartic function for even terms and high order Taylor expansions
-             of the primitive integrals for odd terms ensures numerical stability in this case,
-             with maximum error $\ll 1$ ppm.}
-    \end{centering}
-\end{figure}
-
-Figures~\ref{fig:stability_transit} and \ref{fig:stability_eclipse} show the relative error
-in the computation of the solution vector $\mathbf{s}$ for $l \leq 8$ for a small occultor ($r_o = 0.01$)
-and a large occultor ($r_o = 100$), roughly corresponding to the case of the Earth transiting the
-Sun and the Earth in secondary eclipse, respectively. The error is computed relative to the solution
-obtained using quadruple precision, and is plotted for terms for which $\mu$ is even (left) and
-odd (right). In each figure, the top two panels show the error incurred when using the recurrence
-relations derived in the previous sections, while the bottom panels show the error when performing
-the reparametrizations and Taylor expansions discussed above. The horizontal axis spans impact parameters
-in the range $r - 1 \leq b \leq r + 1$ and is nonlinearly spaced, with extra resolution near the various
-regions of instability.
-
-For small occultors (Figure~\ref{fig:stability_transit}), the odd terms go unstable for small values
-of the impact parameter and diverge as $b \rightarrow 0$ (top row). Taylor expansion of $\mathcal{J}_{u,v}$
-ensure the relative error is less than a part per trillion everywhere (bottom row).
-For large occultors (Figure~\ref{fig:stability_eclipse}), both the even and odd terms go unstable at all values of the impact parameter,
-particularly at large values of $l$. The Taylor expansions discussed above reduce the error to less
-than 1 ppb for all terms except the $l = 8$ terms, for which the error is less than 1 ppm.
-Note, importantly, that the case $r_o \gg 1$ is typically only relevant to studies of
-(secondary) eclipses of exoplanets by their host stars, for which ppm precision (measured relative
-to the \emph{planet} flux) is at present orders of magnitude higher than what can be measured.
-Figure~\ref{fig:stability_earth} shows secondary eclipse ingress for the $l = 8$ Earth being
-occulted by the Sun ($r_o \approx 110$) alongside the fractional error on the flux.
-As expected, the relative error is less than 1 ppm everywhere.
-
-The solutions outlined above ensure numerical stability over a wide range of occultor radii and impact
-parameters, but instabilities may still occur in \starry when the occultor becomes very large
-($r_o \gg 100$) and/or when the map degree is very high ($l \gtrsim 8$). In these cases, users may wish
-to compute light curves using multiprecision by instantiating maps as
-%
-\begin{lstlisting}[language=Python,firstnumber=last]
-map = starry.multi.Map()
-\end{lstlisting}
-%
-which by default computes the occultation solution
-vector $\bvec{s}$ using a 128-bit (quadruple) precision type implemented with the \textsf{boost}
-\cpp libraries \citep[e.g.,][]{Schaling2014}.
-
-\begin{figure}[ht!]
-    \begin{centering}
-    \includegraphics[width=0.85\linewidth]{figures/stability_earth.pdf}
-    \caption{\label{fig:stability_earth}
-             \python{stability}
-             Secondary eclipse ingress for the Earth being occulted by the Sun
-             ($r_o = 110$), computed for a $l = 8$ expansion of the planet's
-             surface map. The relative error due to floating point precision loss
-             is shown at the bottom and is
-             less than one part per million everywhere.}
-    \end{centering}
-\end{figure}
 
 %
 

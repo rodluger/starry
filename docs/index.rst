@@ -30,4 +30,5 @@ API, and more.
    API <api>
    Github <https://github.com/rodluger/starry>
    Submit an issue <https://github.com/rodluger/starry/issues>
+   Upcoming features <https://github.com/rodluger/starry/issues?q=is%3Aissue+is%3Aopen+label%3A%22next+version%22>
    Read the paper <https://github.com/rodluger/starry/raw/master-pdf/tex/starry.pdf>

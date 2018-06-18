@@ -14,6 +14,20 @@ Miscellaneous stuff used throughout the code.
 #include "constants.h"
 #include "errors.h"
 
+// Physical constants
+#define BIGG                                    6.67428e-11                     // Gravitational constant in m^3/kg/s^2
+#define DAY                                     86400.                          // Number of seconds in one day
+#define CLIGHT                                  299792458.                      // Speed of light in m / s
+#define REARTH                                  6.3781e6                        // Radius of the Earth in m
+#define PARSEC                                  3.086e16                        // Meters in 1 parsec
+#define MEARTH                                  (3.986004418e14 / BIGG)         // Mass of Earth in kg (from GM)
+#define MSUN                                    (1.32712440018e20 / BIGG)       // Mass of the sun in kg (from GM)
+#define AU                                      149597870700.                   // Astronomical unit in m
+#define RSUN                                    6.957e8                         // Radius of the Sun in m
+#define LSUN                                    3.828e26                        // Solar luminosity in W/m^2
+#define RJUP                                    7.1492e7                        // Radius of Jupiter in m
+#define DEGREE                                  (M_PI / 180.)                   // One degree in radians
+
 // Multiprecision datatype
 #include <boost/multiprecision/cpp_dec_float.hpp>
 typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
@@ -44,13 +58,21 @@ static const UnitVector<double> zhat({0, 0, 1});
 // Return the value of a scalar MapType variable
 inline double get_value(double x) { return x; }
 inline double get_value(Grad x) { return x.value(); }
-inline double get_value(Multi x) { return (double)x; }
+inline double get_value(Multi x) {
+    if ((x > 1e308) || (x < -1e308))
+        return INFINITY;
+    else
+        return (double)x;
+}
 inline Vector<double> get_value(Vector<double> x) { return x; }
 inline Vector<double> get_value(Vector<Multi> x) {
     Vector<double> vec;
     vec.resize(x.size());
     for (int n = 0; n < x.size(); n++) {
-        vec(n) = (double)x(n);
+        if ((x(n) > 1e308) || (x(n) < -1e308))
+            vec(n) = INFINITY;
+        else
+            vec(n) = (double)x(n);
     }
     return vec;
 }

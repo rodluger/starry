@@ -18,6 +18,9 @@ using good old template metaprogramming (>= C++14)
 // Largest factorial computable at double precision
 #define MAXFACT 170
 
+// Largest double factorial computable at double precision
+#define MAXDOUBLEFACT 300
+
 // Largest square root we're willing to tabulate
 #define MAXSQRT 300
 
@@ -35,6 +38,12 @@ namespace tables {
     double constexpr factorial_(int x) {
         return x > 0 ?
                (x <= MAXFACT ? x * factorial_(x - 1) : INFINITY):
+               1.0;
+    }
+
+    double constexpr double_factorial_(int x) {
+        return x > 0 ?
+               (x <= MAXDOUBLEFACT ? x * double_factorial_(x - 2) : INFINITY):
                1.0;
     }
 
@@ -57,16 +66,21 @@ namespace tables {
         double sqrt_int[MAXSQRT + 1];
         double invsqrt_int[MAXSQRT + 1];
         double factorial[MAXFACT + 1];
+        double double_factorial[MAXDOUBLEFACT + 1];
         double half_factorial_pos[2 * MAXFACT + 1];
         double half_factorial_neg[2 * MAXFACT + 1];
 
-        constexpr Table() : sqrt_int(), invsqrt_int(), factorial(), half_factorial_pos(), half_factorial_neg() {
+        constexpr Table() : sqrt_int(), invsqrt_int(), factorial(), double_factorial(),
+                half_factorial_pos(), half_factorial_neg() {
             for (auto i = 0; i <= MAXSQRT; ++i) {
                 sqrt_int[i] = sqrt_(i);
                 invsqrt_int[i] = i > 0 ? 1. / sqrt_int[i] : INFINITY;
             }
             for (auto i = 0; i <= MAXFACT; ++i) {
                 factorial[i] = factorial_(i);
+            }
+            for (auto i = 0; i <= MAXDOUBLEFACT; ++i) {
+                double_factorial[i] = double_factorial_(i);
             }
             for (auto i = 0; i <= 2 * MAXFACT; ++i) {
                 half_factorial_pos[i] = half_factorial_pos_(i);
@@ -83,7 +97,7 @@ namespace tables {
     template <typename T>
     T sqrt_int(int n) {
         if (n < 0)
-            throw errors::BadIndex();
+            throw errors::SqrtNegativeNumber();
         else if (n > MAXSQRT)
             return sqrt(T(n));
         else
@@ -93,7 +107,7 @@ namespace tables {
     template <>
     Multi sqrt_int(int n) {
         if (n < 0)
-            throw errors::BadIndex();
+            throw errors::SqrtNegativeNumber();
         else
             return sqrt(Multi(n));
     }
@@ -102,7 +116,7 @@ namespace tables {
     template <typename T>
     T invsqrt_int(int n) {
         if (n < 0)
-            throw errors::BadIndex();
+            throw errors::SqrtNegativeNumber();
         else if (n > MAXSQRT)
             return 1.0 / sqrt(T(n));
         else
@@ -112,7 +126,7 @@ namespace tables {
     template <>
     Multi invsqrt_int(int n) {
         if (n < 0)
-            throw errors::BadIndex();
+            throw errors::SqrtNegativeNumber();
         else
             return 1.0 / sqrt(Multi(n));
     }
@@ -121,9 +135,9 @@ namespace tables {
     template <typename T>
     inline T factorial(int n) {
         if (n < 0)
-            throw errors::BadIndex();
+            return T(INFINITY);
         else if (n > MAXFACT)
-            return T(boost::math::factorial<double>(n));
+            return T(INFINITY);
         else
             return T(table.factorial[n]);
     }
@@ -131,16 +145,45 @@ namespace tables {
     template <>
     inline Multi factorial(int n) {
         if (n < 0)
-            throw errors::BadIndex();
+            return Multi(INFINITY);
         else
             return boost::math::factorial<Multi>(n);
+    }
+
+    // Double factorial of n
+    template <typename T>
+    inline T double_factorial(int n) {
+        if (n < 0) {
+            if ((-n) % 2 == 0)
+                return T(INFINITY);
+            else if (n == -1)
+                return T(1);
+            else
+                return pow(-1, (-n - 1) / 2) / double_factorial<T>(-2 - n);
+        } else if (n > MAXDOUBLEFACT)
+            return T(INFINITY);
+        else
+            return T(table.double_factorial[n]);
+    }
+
+    template <>
+    inline Multi double_factorial(int n) {
+        if (n < 0) {
+            if ((-n) % 2 == 0)
+                return Multi(INFINITY);
+            else if (n == -1)
+                return Multi(1);
+            else
+                return pow(-1, (-n - 1) / 2) / double_factorial<Multi>(-2 - n);
+        } else
+            return boost::math::double_factorial<Multi>(n);
     }
 
     // Factorial of (n / 2)
     template <typename T>
     inline T half_factorial(int n) {
         if (n > 2 * MAXFACT)
-            return T(boost::math::tgamma<double>(1.0 + n / 2.0));
+            return T(INFINITY);
         else {
             if (n < 0)
                 return T(table.half_factorial_neg[-n]);
