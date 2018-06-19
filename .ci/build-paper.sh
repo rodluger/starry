@@ -21,6 +21,9 @@ then
       cd ..
     fi
 
+    # Need ghostscript for matplotlib.usetex
+    sudo apt-get install ghostscript dvipng
+
     # For the cache check above to work...
     tlmgr install luatex
 
@@ -68,16 +71,14 @@ then
       booktabs \
       was \
       fontawesome \
-      dvipng
+      dvipng \
+      type1cm
 
     # Keep no backups (not required, simply makes cache bigger)
     tlmgr option -- autobackup 0
 
     # Update the TL install but add nothing new
     tlmgr update --self --all --no-auto-install
-
-    # Need ghostscript for matplotlib.usetex
-    sudo apt-get install ghostscript
 
     # Generate the figures
     echo "Generating figures..."
