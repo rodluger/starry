@@ -178,24 +178,41 @@ def PaperFigure(larr=[0, 1, 2, 3, 5, 8, 10, 13, 15, 18, 20],
                r"$r + 1 - 10^{%d}$" % logeps, r"$r + 1$"]
     b1 = np.concatenate((bs1))
     r = 0.01
-    bs0 = [np.linspace(r - 1, r - 1 + eps, res),
-           np.linspace(r - 1 + eps, r - 1 + delta, res),
-           np.linspace(r - 1 + delta, 0 - delta, 3 * res),
-           np.linspace(0 - delta, 0 - eps, res),
-           np.linspace(0 - eps, 0, res),
-           np.linspace(0, r - eps, res),
+    bs0 = [np.linspace(0, eps, res),
+           np.linspace(eps, delta, res),
+           np.linspace(delta, r - delta, 3 * res),
+           np.linspace(r - delta, r - eps, res),
            np.linspace(r - eps, r + eps, res),
            np.linspace(r + eps, r + delta, res),
-           np.linspace(r + delta, r + 1 - delta, 3 * res),
+           np.linspace(r + delta, 1 - r - delta, 3 * res),
+           np.linspace(1 - r - delta, 1 - r - eps, res),
+           np.linspace(1 - r - eps, 1 - r + eps, res),
+           np.linspace(1 - r + eps, 1 - r + delta, res),
+           np.linspace(1 - r + delta, 1 - delta, 3 * res),
+           np.linspace(1 - delta, 1 - eps, res),
+           np.linspace(1 - eps, 1 + eps, res),
+           np.linspace(1 + eps, 1 + delta, res),
+           np.linspace(1 + delta, r + 1 - delta, 3 * res),
            np.linspace(r + 1 - delta, r + 1 - eps, res),
            np.linspace(r + 1 - eps, r + 1, res)]
-    labels0 = [r"$r - 1$", r"$r - 1 + 10^{%d}$" % logeps,
-               r"$r - 1 + 10^{%d}$" % logdelta,
-               r"$-10^{%d}$" % logdelta, r"$-10^{%d}$" % logeps, r"$0$",
+    labels0 = [r"$0$",
+               r"$10^{%d}$" % logeps,
+               r"$10^{%d}$" % logdelta,
+               r"$r - 10^{%d}$" % logdelta,
                r"$r - 10^{%d}$" % logeps,
-               r"$r + 10^{%d}$" % logeps, r"$r + 10^{%d}$" % logdelta,
+               r"$r + 10^{%d}$" % logeps,
+               r"$r + 10^{%d}$" % logdelta,
+               r"$1 - r - 10^{%d}$" % logdelta,
+               r"$1 - r - 10^{%d}$" % logeps,
+               r"$1 - r + 10^{%d}$" % logeps,
+               r"$1 - r + 10^{%d}$" % logdelta,
+               r"$1 - 10^{%d}$" % logdelta,
+               r"$1 - 10^{%d}$" % logeps,
+               r"$1 + 10^{%d}$" % logeps,
+               r"$1 + 10^{%d}$" % logdelta,
                r"$r + 1 - 10^{%d}$" % logdelta,
-               r"$r + 1 - 10^{%d}$" % logeps, r"$r + 1$"]
+               r"$r + 1 - 10^{%d}$" % logeps,
+               r"$r + 1$"]
     b0 = np.concatenate((bs0))
 
     # Set up the figure
@@ -218,9 +235,9 @@ def PaperFigure(larr=[0, 1, 2, 3, 5, 8, 10, 13, 15, 18, 20],
         for axis in ax[:, 1]:
             axis.axvline(v, lw=0.5, color='k', alpha=0.5, zorder=10, ls='--')
     ax[1, 0].set_xticks(bounds0)
-    ax[1, 0].set_xticklabels(labels0, rotation=45, fontsize=10)
+    ax[1, 0].set_xticklabels(labels0, rotation=45, fontsize=7)
     ax[1, 1].set_xticks(bounds1)
-    ax[1, 1].set_xticklabels(labels1, rotation=45, fontsize=10)
+    ax[1, 1].set_xticklabels(labels1, rotation=45, fontsize=7)
     for tick in ax[1, 0].xaxis.get_major_ticks() + \
             ax[1, 1].xaxis.get_major_ticks():
         tick.label.set_horizontalalignment('right')

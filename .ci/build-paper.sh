@@ -6,10 +6,10 @@ if git diff --name-only $TRAVIS_COMMIT_RANGE | grep 'tex/'
 then
 
     # Install texlive
+    sudo apt-get -qq update
     sudo apt-get -qq update && sudo apt-get install -y --no-install-recommends texlive-full
-
     tex --version
-
+    sudo apt-get install -y xzdec
     sudo tlmgr init-usertree
     sudo tlmgr option repository ftp://tug.org/historic/systems/texlive/2015/tlnet-final
     sudo tlmgr update fontawesome

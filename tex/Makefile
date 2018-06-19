@@ -26,7 +26,7 @@ clean:
 	rm -rf $(FIGURES)
 
 figures/%.pdf: figures/%.py
-	#cd $(<D);python $(<F)
+	cd $(<D);python $(<F)
 
 publish:
 	cd ..; ./publish.sh
