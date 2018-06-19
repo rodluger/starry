@@ -640,10 +640,8 @@ For future reference, it can be shown that
         \arcsin\left({\frac{1 - r^2 - b^2}{2br}}\right)
                                                 & \qquad |1 - r| < b < 1 + r \\
         \frac{\pi}{2}                           & \qquad b \le 1 - r
-    \end{dcases}
-    \needsproof \\
+    \end{dcases} \\
 \intertext{and}
-    \label{eq:lambda}
     \lambda &=
     \begin{dcases}
         \arcsin\left(\frac{1 - r^2 + b^2}{2b}\right)
@@ -651,7 +649,7 @@ For future reference, it can be shown that
         \frac{\pi}{2}                           & \qquad b \le 1 - r
         \quad,
     \end{dcases}
-    \needsproof
+    \eqlabel{lambda}
 \end{align}
 %
 The case $b \le 1 - r$ corresponds to an occultation during which the occultor
@@ -809,7 +807,6 @@ we introduced it is that its anti-exterior derivatives are conveniently simple.
 It can be easily shown that one possible solution to \eq{DGg} is
 %
 \begin{align}
-    \label{eq:Gn}
     \bvec{G}_n (\x, \y) &=
     \begin{dcases}
         %
@@ -846,7 +843,7 @@ It can be easily shown that one possible solution to \eq{DGg} is
         \,\yhat
             & \qquad \mathrm{otherwise,}
     \end{dcases}
-    \needsproof
+    \eqlabel{Gn}
 \end{align}
 %
 where $l$ and $m$ are given by \eq{lm} and $\mu$ and $\nu$ are given by
