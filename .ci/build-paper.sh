@@ -1,10 +1,11 @@
 #!/bin/bash -x
-set -e
+#set -e
 
 # Are there changes in the tex directory?
 if git diff --name-only $TRAVIS_COMMIT_RANGE | grep 'tex/'
 then
 
+    # Borrowed from https://github.com/opieters/limecv/blob/master/support/install_texlive.sh
     export PATH=/tmp/texlive/bin/x86_64-linux:$PATH
     DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -66,13 +67,17 @@ then
       bbm \
       booktabs \
       was \
-      fontawesome
+      fontawesome \
+      dvipng
 
     # Keep no backups (not required, simply makes cache bigger)
     tlmgr option -- autobackup 0
 
     # Update the TL install but add nothing new
     tlmgr update --self --all --no-auto-install
+
+    # Need ghostscript for matplotlib.usetex
+    sudo apt-get install ghostscript
 
     # Generate the figures
     echo "Generating figures..."
