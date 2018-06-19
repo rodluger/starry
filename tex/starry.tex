@@ -960,7 +960,7 @@ from starry import Map
 %
 A \starry \Map is a vector of spherical harmonic coefficients, indexed by
 increasing degree and order, as in \eq{by}. We can create a map of
-spherical harmonics up to degree $l_\mathrm\mathrm{max} = 5$ by typing
+spherical harmonics up to degree $l_\mathrm{max} = 5$ by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 map = Map(5)
@@ -1053,7 +1053,7 @@ is of course unphysical.
 In Figure~\ref{fig:earth} we show a
 simplified two-color map of the cloudless Earth and its corresponding
 \starry instance for
-$l_\mathrm\mathrm{max} = 10$, rotated successively about $\yhat$.
+$l_\mathrm{max} = 10$, rotated successively about $\yhat$.
 %
 \begin{figure}[ht!]
     \begin{centering}
@@ -1108,7 +1108,7 @@ relative to the original, unrotated map frame.
 %
 In the top panel of Figure~\ref{fig:ylmlightcurves} we plot rotational phase curves
 for all spherical harmonics
-up to $l_\mathrm\mathrm{max} = 6$ for rotation about $\xhat$ (blue curves) and $\yhat$
+up to $l_\mathrm{max} = 6$ for rotation about $\xhat$ (blue curves) and $\yhat$
 (orange curves). The small dots correspond to phase curves computed by numerical
 evaluation of the flux on an adaptive radial mesh (see \S\ref{sec:starrybenchmarks}).
 As discussed by \citet{CowanFuentesHaggard2013}, harmonics with
@@ -1137,7 +1137,7 @@ the seven individual continents.
     \caption{\label{fig:earthphasecurve}
              \code{earthphasecurve}
              Phase curve for the Earth rotating about its axis, computed
-             from the $l_\mathrm\mathrm{max} = 10$ expansion from
+             from the $l_\mathrm{max} = 10$ expansion from
              Figure~\ref{fig:earth}. The full rotational phase curve is shown in black,
              and the flux due to each of the seven continents is shown as
              the colored curves (see legend). The black dots correspond to the
@@ -1167,7 +1167,7 @@ or arrays.
 
 In the bottom panel of Figure~\ref{fig:ylmlightcurves} we plot
 occultation light curves for the spherical harmonics with $m \ge 0$
-up to $l_\mathrm\mathrm{max} = 6$. The occultor has radius $r = 0.3$ and
+up to $l_\mathrm{max} = 6$. The occultor has radius $r = 0.3$ and
 moves at a constant speed along the $\x$ direction at $y_o = 0.25$
 (blue curves) and $y_o = 0.75$ (orange curves). The light curve of
 any body undergoing such an occultation can be expressed as a weighted
@@ -1188,7 +1188,7 @@ occultation. As before, the numerical solutions are shown as the small dots.
              \code{earthoccultation}
              Occultation light curve for the Moon transiting the
              rotating Earth,
-             computed from the $l_\mathrm\mathrm{max} = 10$ expansion from
+             computed from the $l_\mathrm{max} = 10$ expansion from
              Figure~\ref{fig:earth}. The two largest dips are due
              to the occultations of South America (left) and Africa
              (right). Once again, the black dots correspond to the
@@ -1253,7 +1253,7 @@ map[lmax] = ulmax
 \end{lstlisting}
 %
 where \textsf{lmax} is the order of the limb darkening polynomial.
-In the case of quadratic limb darkening ($l_\mathrm\mathrm{max} = 2$),
+In the case of quadratic limb darkening ($l_\mathrm{max} = 2$),
 this sets the map's limb darkening profile to
 %
 \begin{align}
@@ -1263,7 +1263,7 @@ this sets the map's limb darkening profile to
 \end{align}
 %
 with $\upmu$ given above.
-From \citet{limbdark}, this corresponds to the spherical harmonic sum
+It is straightforward to show that this corresponds to the spherical harmonic sum
 %
 \begin{align}
     \label{eq:qldylm}
@@ -1825,7 +1825,7 @@ precision can degrade for large $l$ and $m$. Similarly, the coefficients
 of the occultation solution vector $\mathbf{s}$ can drop below machine
 precision at large $l$, leading to further numerical issues. While
 \starry is specifically coded up to minimize numerical instabilities,
-we find that for $l_\mathrm\mathrm{max} \geq 30$ numerical issues may occur.
+we find that for $l_\mathrm{max} \geq 30$ numerical issues may occur.
 Fortunately, situations in which maps of such high degree are necessary
 are not likely for exoplanet science in the foreseeable future.
 Nevertheless, if users wish to perform calculations for very large $l$,
@@ -2232,7 +2232,7 @@ the first few spherical harmonics and their corresponding polynomial vectors:
 \end{equation}
 %
 From these we can construct $\AOne$. As an example, for spherical
-harmonics up to degree $l_\mathrm\mathrm{max} = 2$, this is
+harmonics up to degree $l_\mathrm{max} = 2$, this is
 %
 \begin{equation}
     \label{eq:AOne}
@@ -2260,7 +2260,7 @@ polynomials, $\ATwo$, in a similar manner. In practice,
 it is easier to express the elements of the Green's basis $\gbasis$ in terms
 of the elements of the polynomial basis $\pbasis$ and use those to populate the
 columns of the matrix $\ATwo^{-1}$. Continuing our example
-for $l_\mathrm\mathrm{max} = 2$, our second change of basis matrix
+for $l_\mathrm{max} = 2$, our second change of basis matrix
 is
 %
 \begin{equation}
@@ -2284,7 +2284,7 @@ is
 
 Finally, recall that the complete change of basis matrix from spherical
 harmonics to Green's polynomials, $\bvec{A}$, is just the matrix product
-of $\ATwo$ and $\AOne$. For $l_\mathrm\mathrm{max} = 2$, we have
+of $\ATwo$ and $\AOne$. For $l_\mathrm{max} = 2$, we have
 %
 \begin{equation}
     \needsproof
@@ -2378,7 +2378,7 @@ describes the transformation from complex to real spherical harmonics. In
 for rotation in the $z-y-z$ convention.
 %
 To obtain a rotation matrix for an arbitrary vector $\bvec{y}$ with spherical
-harmonics of different orders up to $l = l_\mathrm\mathrm{max}$, we define the
+harmonics of different orders up to $l = l_\mathrm{max}$, we define the
 block-diagonal matrix $\bvec{R}$:
 %
 \begin{equation}
@@ -2872,7 +2872,7 @@ where
 %
 \begin{equation}
     \label{eq:vieta}
-    \mathcal{A}_{i,u,v} = \sum_{j=\mathrm\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)}
+    \mathcal{A}_{i,u,v} = \sum_{j=\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)}
                           \binom{u}{j} \binom{v}{u+v-i-j}(-1)^{u+j}\delta^{u+v-i-j}.
 \end{equation}
 %

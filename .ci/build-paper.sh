@@ -7,6 +7,7 @@ then
 
     # Install texlive
     sudo apt-get -qq update && sudo apt-get install -y --no-install-recommends texlive-full
+    tlmgr update fontawesome
 
     # Generate the figures
     echo "Generating figures..."
@@ -19,6 +20,7 @@ then
 
     # Build the paper
     cd tex/
+    python falinks.py
 	pdflatex -interaction=nonstopmode -halt-on-error starry.tex
 	bibtex starry
 	pdflatex -interaction=nonstopmode -halt-on-error starry.tex
