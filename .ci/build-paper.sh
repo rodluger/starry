@@ -7,8 +7,12 @@ then
 
     # Install texlive
     sudo apt-get -qq update && sudo apt-get install -y --no-install-recommends texlive-full
-    tlmgr init-usertree
-    tlmgr update fontawesome
+
+    tex --version
+
+    sudo tlmgr init-usertree
+    sudo tlmgr option repository ftp://tug.org/historic/systems/texlive/2015/tlnet-final
+    sudo tlmgr update fontawesome
 
     # Generate the figures
     echo "Generating figures..."
