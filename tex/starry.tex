@@ -204,15 +204,12 @@ the right and $\yhat$ up.
 \begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/ylms.pdf}
-    \caption{\label{fig:ylms}
-             \animation{ylms}
+    \caption{\figlabel{ylms}\figanimation{ylms}
              The real spherical harmonics up to degree $l = 5$ computed from
              Equation~(\ref{eq:ylmtp}). In these plots, the $x$-axis points
              to the right,
              the $y$-axis points up, and the $z$-axis points
-             out of the page.
-             \code{ylms}Click on the link on the right to view an
-             animated version.}
+             out of the page.}
     \end{centering}
 \end{figure}
 %
@@ -288,7 +285,6 @@ $\bvec{p}$, which we express as a vector of coefficients in the
 \emph{polynomial basis} $\pbasis$:
 %
 \begin{align}
-    \label{eq:bp}
     \pbasisn &=
     \begin{dcases}
         \x^\frac{\mu}{2} \y^\frac{\nu}{2} & \qquad \nu \, \mathrm{even}
@@ -304,7 +300,7 @@ $\bvec{p}$, which we express as a vector of coefficients in the
         \cdot\cdot\cdot
     \end{pmatrix}^\mathsf{T}
     \quad,
-    \needsproof
+    \eqlabel{bp}
 \end{align}
 %
 where

@@ -76,7 +76,6 @@
 \newcommand{\Eq}[1]{Equation~(\eqref{#1})}
 \newcommand{\eq}[1]{\Eq{#1}}
 \newcommand{\eqalt}[1]{Equation~\eqref{#1}}
-\newcommand{\eqlabel}[1]{\label{eq:#1}}
 
 % Add script hyperlinks as margin notes
 \usepackage{fontawesome}
@@ -84,7 +83,10 @@
 \input{.code}
 \input{.proof}
 \input{.animation}
+\input{.figanimation}
 \newcommand{\needsproof}{\marginnote{\color{red}\Large\faPencilSquareO}}
+\newcommand{\eqlabel}[1]{\label{eq:#1}\proof{#1}}
+\newcommand{\figlabel}[1]{\label{fig:#1}\code{#1}}
 
 % Force margin notes to always be on the right side
 % https://tex.stackexchange.com/a/69624

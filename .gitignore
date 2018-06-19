@@ -27,6 +27,7 @@ starryNotes.bib
 tex/.animation.tex
 tex/.code.tex
 tex/.proof.tex
+tex/.figanimation.tex
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

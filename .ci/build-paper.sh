@@ -7,7 +7,7 @@ then
 
     # Install texlive
     sudo apt-get -qq update && sudo apt-get install -y --no-install-recommends texlive-full
-    tlmgr update fontawesome
+    sudo tlmgr update fontawesome
 
     # Generate the figures
     echo "Generating figures..."
