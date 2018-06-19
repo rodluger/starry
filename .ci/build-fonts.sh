@@ -1,12 +1,12 @@
 #!/bin/bash
-pushd /tmp
+cd /tmp
 
 # install unzip
 sudo apt-get install unzip -y
 
 # create directory for cache
 sudo mkdir -p starryfonts
-pushd starryfonts
+cd starryfonts
 
 # download fonts
 if [ ! -f FontAwesome.zip ]; then
@@ -14,7 +14,7 @@ if [ ! -f FontAwesome.zip ]; then
 fi
 
 # extract fonts
-unzip FontAwesome.zip -o -d FontAwesome
+sudo unzip FontAwesome.zip -o -d FontAwesome
 
 # create target directories for fonts
 sudo mkdir -p /usr/share/fonts/truetype/FontAwesome
@@ -27,5 +27,5 @@ sudo cp FontAwesome/Font-Awesome*/fonts/FontAwesome.otf /usr/share/fonts/opentyp
 # build cache
 sudo fc-cache -fv
 
-popd
-popd
+# return
+cd $TRAVIS_BUILD_DIR
