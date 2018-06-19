@@ -151,9 +151,9 @@ present important caveats in \S\ref{sec:caveats} and conclude in \S\ref{sec:conc
 Most of the math, including the derivations of the analytic expressions for the
 light curves, is folded into the Appendix. For convenience, throughout
 the paper we provide links
-to \Python code (\pythonlogo{}) to reproduce all of the
-figures, as well as links to \Mathematica \citep{Mathematica}
-scripts and PDFs (\penlogo{}) containing proofs and derivations
+to \Python code (\,{\color{linkcolor}\faCogs}\,) to reproduce all of the
+figures, as well as links to \Jupyter notebooks
+(\,{\color{linkcolor}\faPencilSquareO}\,) containing proofs and derivations
 of the principal
 equations. Finally, Table~\ref{tab:symbols} at the end lists
 all the symbols used
@@ -204,15 +204,12 @@ the right and $\yhat$ up.
 \begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/ylms.pdf}
-    \caption{\label{fig:ylms}
-             \animation{ylms}
+    \caption{\figlabel{ylms}\figanimation{ylms}
              The real spherical harmonics up to degree $l = 5$ computed from
              Equation~(\ref{eq:ylmtp}). In these plots, the $x$-axis points
              to the right,
              the $y$-axis points up, and the $z$-axis points
-             out of the page.
-             \python{ylms}Click on the link on the right to view an
-             animated version.}
+             out of the page.}
     \end{centering}
 \end{figure}
 %
@@ -288,7 +285,6 @@ $\bvec{p}$, which we express as a vector of coefficients in the
 \emph{polynomial basis} $\pbasis$:
 %
 \begin{align}
-    \label{eq:bp}
     \pbasisn &=
     \begin{dcases}
         \x^\frac{\mu}{2} \y^\frac{\nu}{2} & \qquad \nu \, \mathrm{even}
@@ -304,7 +300,7 @@ $\bvec{p}$, which we express as a vector of coefficients in the
         \cdot\cdot\cdot
     \end{pmatrix}^\mathsf{T}
     \quad,
-    \mathematica{A1}
+    \eqlabel{bp}
 \end{align}
 %
 where
@@ -349,7 +345,6 @@ rotating it into what we will refer to as the \emph{Green's basis}, $\gbasis$:
 \begingroup\makeatletter\def\f@size{10}\check@mathfonts
 \def\maketag@@@#1{\hbox{\m@th\normalsize#1}}%
 \begin{align}
-    \label{eq:bg}
     \gbasisn &=
     \begin{dcases}
         %
@@ -395,7 +390,7 @@ rotating it into what we will refer to as the \emph{Green's basis}, $\gbasis$:
         \cdot\cdot\cdot
     \end{pmatrix}^\mathsf{T}
     \quad,
-    \mathematica{A2}
+    \eqlabel{bg}
 \end{align}
 \endgroup
 %
@@ -555,7 +550,7 @@ occurring), this may be written
             0
             & \qquad \mathrm{otherwise.}
         \end{dcases}
-    \mathematica{rn}
+    \needsproof
 \end{align}
 %
 where $\Gamma(\bigdot)$ is the gamma function.
@@ -646,7 +641,7 @@ For future reference, it can be shown that
                                                 & \qquad |1 - r| < b < 1 + r \\
         \frac{\pi}{2}                           & \qquad b \le 1 - r
     \end{dcases}
-    \mathematica{philam} \\
+    \needsproof \\
 \intertext{and}
     \label{eq:lambda}
     \lambda &=
@@ -656,7 +651,7 @@ For future reference, it can be shown that
         \frac{\pi}{2}                           & \qquad b \le 1 - r
         \quad,
     \end{dcases}
-    \mathematica{philam}
+    \needsproof
 \end{align}
 %
 The case $b \le 1 - r$ corresponds to an occultation during which the occultor
@@ -779,7 +774,7 @@ body.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/geometry.pdf}
     \caption{\label{fig:geometry}
-             \python{geometry}
+             \code{geometry}
              Geometry of the occultation problem.
              The occulted body is centered
              at the origin and has unit radius, while the occultor
@@ -851,7 +846,7 @@ It can be easily shown that one possible solution to \eq{DGg} is
         \,\yhat
             & \qquad \mathrm{otherwise,}
     \end{dcases}
-    \mathematica{G}
+    \needsproof
 \end{align}
 %
 where $l$ and $m$ are given by \eq{lm} and $\mu$ and $\nu$ are given by
@@ -898,7 +893,7 @@ centered at the point $(x_o, y_o)$, we must:
           computational speed.
     \item Compute the solution vector $\bvec{s}$ (Equation~\ref{eq:sn}), with
           $\mathcal{P}(\bvec{G}_n)$ and $\mathcal{Q}(\bvec{G}_n)$ given by
-          Equations~(\ref{eq:PGnI}) and (\ref{eq:QGnI}) in the Appendix.
+          the equations in Appendix~\ref{app:generalterm}.
           Note that $s_2$ is special and must be computed separately
           (Equation~\ref{eq:s2}).
 \end{enumerate}
@@ -960,7 +955,7 @@ from starry import Map
 %
 A \starry \Map is a vector of spherical harmonic coefficients, indexed by
 increasing degree and order, as in \eq{by}. We can create a map of
-spherical harmonics up to degree $l_\mathrm\mathrm{max} = 5$ by typing
+spherical harmonics up to degree $l_\mathrm{max} = 5$ by typing
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
 map = Map(5)
@@ -1022,7 +1017,7 @@ map.animate(axis=axis)
 \end{lstlisting}
 %
 where \textsf{axis} defines the axis of rotation for the animation.
-Rotation of this map about $\yhat$ yields\python{smiley}
+Rotation of this map about $\yhat$ yields\code{smiley}
 %
 \begin{center}
     \includegraphics[width=0.85\linewidth]{figures/smiley.pdf}
@@ -1053,7 +1048,7 @@ is of course unphysical.
 In Figure~\ref{fig:earth} we show a
 simplified two-color map of the cloudless Earth and its corresponding
 \starry instance for
-$l_\mathrm\mathrm{max} = 10$, rotated successively about $\yhat$.
+$l_\mathrm{max} = 10$, rotated successively about $\yhat$.
 %
 \begin{figure}[ht!]
     \begin{centering}
@@ -1061,7 +1056,7 @@ $l_\mathrm\mathrm{max} = 10$, rotated successively about $\yhat$.
     \\[1em]
     \includegraphics[width=0.85\linewidth]{figures/earth.pdf}
     \caption{\label{fig:earth}
-             \python{earth}
+             \code{earth}
              A simplified two-color map of the cloudless Earth (top) and the
              corresponding tenth-degree spherical harmonic expansion,
              rotated about $\yhat$ (bottom).}
@@ -1080,12 +1075,12 @@ $l_\mathrm\mathrm{max} = 10$, rotated successively about $\yhat$.
     \\[1em]
     \includegraphics[width=\linewidth]{figures/ylmlightcurves.pdf}
     \caption{\label{fig:ylmlightcurves}
-             \python{ylmphasecurves}
+             \code{ylmphasecurves}
              \emph{Top:} Phase curves for the first several spherical
              harmonics with order $m \ge 0$ rotated about the $x$-axis
              (blue) and about the $y$-axis (orange).
              Odd harmonics with $l > 1$ and harmonics with $m < 0$ are
-             \python{ylmlightcurves}
+             \code{ylmlightcurves}
              in the phase curve null space \citep{CowanFuentesHaggard2013}.
              \emph{Bottom:} Occultation light curves for the same
              set of spherical harmonics. An occultor of radius $r=0.3$
@@ -1108,7 +1103,7 @@ relative to the original, unrotated map frame.
 %
 In the top panel of Figure~\ref{fig:ylmlightcurves} we plot rotational phase curves
 for all spherical harmonics
-up to $l_\mathrm\mathrm{max} = 6$ for rotation about $\xhat$ (blue curves) and $\yhat$
+up to $l_\mathrm{max} = 6$ for rotation about $\xhat$ (blue curves) and $\yhat$
 (orange curves). The small dots correspond to phase curves computed by numerical
 evaluation of the flux on an adaptive radial mesh (see \S\ref{sec:starrybenchmarks}).
 As discussed by \citet{CowanFuentesHaggard2013}, harmonics with
@@ -1135,9 +1130,9 @@ the seven individual continents.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/earthphasecurve.pdf}
     \caption{\label{fig:earthphasecurve}
-             \python{earthphasecurve}
+             \code{earthphasecurve}
              Phase curve for the Earth rotating about its axis, computed
-             from the $l_\mathrm\mathrm{max} = 10$ expansion from
+             from the $l_\mathrm{max} = 10$ expansion from
              Figure~\ref{fig:earth}. The full rotational phase curve is shown in black,
              and the flux due to each of the seven continents is shown as
              the colored curves (see legend). The black dots correspond to the
@@ -1167,7 +1162,7 @@ or arrays.
 
 In the bottom panel of Figure~\ref{fig:ylmlightcurves} we plot
 occultation light curves for the spherical harmonics with $m \ge 0$
-up to $l_\mathrm\mathrm{max} = 6$. The occultor has radius $r = 0.3$ and
+up to $l_\mathrm{max} = 6$. The occultor has radius $r = 0.3$ and
 moves at a constant speed along the $\x$ direction at $y_o = 0.25$
 (blue curves) and $y_o = 0.75$ (orange curves). The light curve of
 any body undergoing such an occultation can be expressed as a weighted
@@ -1185,10 +1180,10 @@ occultation. As before, the numerical solutions are shown as the small dots.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/earthoccultation.pdf}
     \caption{\label{fig:earthoccultation}
-             \python{earthoccultation}
+             \code{earthoccultation}
              Occultation light curve for the Moon transiting the
              rotating Earth,
-             computed from the $l_\mathrm\mathrm{max} = 10$ expansion from
+             computed from the $l_\mathrm{max} = 10$ expansion from
              Figure~\ref{fig:earth}. The two largest dips are due
              to the occultations of South America (left) and Africa
              (right). Once again, the black dots correspond to the
@@ -1253,7 +1248,7 @@ map[lmax] = ulmax
 \end{lstlisting}
 %
 where \textsf{lmax} is the order of the limb darkening polynomial.
-In the case of quadratic limb darkening ($l_\mathrm\mathrm{max} = 2$),
+In the case of quadratic limb darkening ($l_\mathrm{max} = 2$),
 this sets the map's limb darkening profile to
 %
 \begin{align}
@@ -1263,7 +1258,7 @@ this sets the map's limb darkening profile to
 \end{align}
 %
 with $\upmu$ given above.
-From \citet{limbdark}, this corresponds to the spherical harmonic sum
+It is straightforward to show that this corresponds to the spherical harmonic sum
 %
 \begin{align}
     \label{eq:qldylm}
@@ -1272,7 +1267,7 @@ From \citet{limbdark}, this corresponds to the spherical harmonic sum
           + \frac{2\sqrt{\pi}}{\sqrt{3}} (u_1 + 2u_2) \, Y_{1,0}
           - \frac{4\sqrt{\pi}}{3\sqrt{5}} u_2 \, Y_{2,0}
       \quad,
-\mathematica{limbdark}
+\needsproof
 \end{align}
 %
 where we set
@@ -1302,7 +1297,7 @@ than $10^{-7}$ parts per million everywhere in the light curve.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/transit.pdf}
     \caption{\label{fig:transit}
-             \python{transit}
+             \code{transit}
              Sample transit light curve for a planet ($r = 0.1$) transiting a
              quadratically limb-darkened star ($u_1 = 0.4, u_2 = 0.26$). The
              top panel shows the \starry (blue curve) and \batman
@@ -1383,11 +1378,12 @@ the form $Y_{0,0} \, + \, y_1 Y_{1, -1} \, + \, y_2 Y_{1, 0} \, + \, y_3 Y_{1, 1
 it can be shown that as long as we enforce
 %
 \begin{align}
+    \needsproof
     y_1^2 + y_2^2 + y_3^2 \le \frac{1}{3}
 \end{align}
 %
 the map will be non-negative everywhere along the unit sphere. Since $0.5^2 < \nicefrac{1}{3}$,
-our map is in fact positive semi-definite. \todo{proof}
+our map is in fact positive semi-definite.
 %
 For more details on ensuring surface maps are positive everywhere, see
 \S\ref{sec:nonnegative}.
@@ -1423,7 +1419,7 @@ before secondary eclipse (refer to the \Python script for details).
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/system.pdf}
     \caption{\label{fig:system}
-             \python{system}
+             \code{system}
              Sample analytic exoplanet system light curves computed with \starry.
              \emph{Top:} a hot Jupiter
              transiting a Sun-like star. The planet's map is a simple dipole,
@@ -1509,7 +1505,7 @@ all of the map coefficients and the rotational state of the map (not shown).
     \begin{centering}
     \includegraphics[width=0.9\linewidth]{figures/autodiff.pdf}
     \caption{\label{fig:autodiff}
-             \python{autodiff}
+             \code{autodiff}
              Transit (top left) and secondary eclipse (top right) of a mildly
              eccentric, slightly inclined, quickly-rotating hot Jupiter with a
              dipole map, computed with \gradMap. All calls to the \gradflux
@@ -1564,9 +1560,9 @@ of the latter.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/stability.pdf}
     \caption{\label{fig:stability}
-             \python{stability}
+             \code{stability}
              Error in the terms of the solution vector $\mathbf{s}$ for a small
-             occultor ($r_o = 0.01$, left) and a large occultor ($r_o = 100$, right),
+             occultor ($r = 0.01$, left) and a large occultor ($r = 100$, right),
              computed relative to calculations using quadruple
              floating point precision. The error is plotted as a function of impact parameter
              for terms with $\mu$ even (left)
@@ -1582,9 +1578,9 @@ of the latter.
     \begin{centering}
     \includegraphics[width=0.85\linewidth]{figures/stability_earth.pdf}
     \caption{\label{fig:stability_earth}
-             \python{stability}
+             \code{stability}
              Secondary eclipse ingress for the Earth being occulted by the Sun
-             ($r_o = 110$), computed for a $l = 20$ expansion of the planet's
+             ($r = 110$), computed for a $l = 20$ expansion of the planet's
              surface map. The relative error due to floating point precision loss
              is shown at the bottom and is
              less than one part per billion everywhere.}
@@ -1613,7 +1609,7 @@ per billion everywhere.
     \begin{centering}
     \includegraphics[width=0.75\linewidth]{figures/spidercomp_flux.pdf}
     \caption{\label{fig:spidercomp_flux}
-             \python{spidercomp}
+             \code{spidercomp}
              Comparison to a light curve generated using the \spiderman code
              \citep{Louden2018}. The top panel shows a secondary eclipse of a
              hot Jupiter with an offset dipole computed with \starry (blue)
@@ -1636,7 +1632,7 @@ the \starry flux for different values of $n_\mathrm{layers}$. For the default
 number of layers, the maximum relative error in the \spiderman flux is on the
 order of 30 ppm (relative to the \emph{stellar} flux)
 during ingress and egress and is somewhat higher at the peak
-of the phase curve. Relative to the \emph{planet} flux, the error is $\sim 30 / 0.04 = 750$ ppm.
+of the phase curve. Relative to the \emph{planet} flux, the error is more significant: $\sim 30 / 0.004 = 7500$ ppm.
 This error decreases linearly as the number of layers increases, and the \spiderman solution
 appears to converge to the \starry solution in the limit $n_\mathrm{layers} \rightarrow \infty$.
 
@@ -1662,7 +1658,7 @@ magnitude faster and more accurate than any other evaluation technique.
     \begin{centering}
     \includegraphics[width=0.9\linewidth]{figures/compare_to_numerical.pdf}
     \caption{\label{fig:compare_to_numerical}
-             \python{speed}
+             \code{speed}
              Evaluation time for a single occultation calculation as a function
              of the spherical harmonic degree of the map using
              \starry (blue), \starrygrad (purple), the adaptive mesh technique (\S\ref{sec:starrybenchmarks}, orange),
@@ -1679,7 +1675,7 @@ magnitude faster and more accurate than any other evaluation technique.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/speed.pdf}
     \caption{\label{fig:speed}
-             \python{speed}
+             \code{speed}
              Speed tests for \starry, showing the light curve evaluation time
              as a function of number of light curve points for rotational
              phase curves (left) and occultation light curves (right) of individual
@@ -1709,7 +1705,7 @@ computing transit light curves.
     \begin{centering}
     \includegraphics[width=0.65\linewidth]{figures/speed_batman.pdf}
     \caption{\label{fig:speed_batman}
-             \python{speed_batman}
+             \code{speed_batman}
              Speed comparison to the \batman transit modeling package
              \citep{Kreidberg2015} for a hot Jupiter transit across a
              quadratically limb-darkened star.
@@ -1721,7 +1717,7 @@ computing transit light curves.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/spidercomp.pdf}
     \caption{\label{fig:spidercomp}
-             \python{spidercomp}
+             \code{spidercomp}
              Speed comparison to the \spiderman code package \citep{Louden2018}.
              For a dipole ($l = 1$) map, \starry computes secondary eclipse
              light curves and phase curves in about an order of magnitude less
@@ -1824,7 +1820,7 @@ precision can degrade for large $l$ and $m$. Similarly, the coefficients
 of the occultation solution vector $\mathbf{s}$ can drop below machine
 precision at large $l$, leading to further numerical issues. While
 \starry is specifically coded up to minimize numerical instabilities,
-we find that for $l_\mathrm\mathrm{max} \geq 30$ numerical issues may occur.
+we find that for $l_\mathrm{max} \geq 30$ numerical issues may occur.
 Fortunately, situations in which maps of such high degree are necessary
 are not likely for exoplanet science in the foreseeable future.
 Nevertheless, if users wish to perform calculations for very large $l$,
@@ -2039,7 +2035,7 @@ which we combine with the previous results to write
         \z^k
         \qquad & m < 0
     \end{dcases}
-    \mathematica{Y}
+    \needsproof
 \end{align}
 %
 where
@@ -2091,7 +2087,7 @@ as a function of $\x$ and $\y$ only:
 %
 \begin{align}
     \label{eq:ylmxy}
-    \mathematica{Y}
+    \needsproof
     Y_{lm}(\x, \y) &=
     \begin{dcases}
         \!\begin{aligned}%[b]
@@ -2174,7 +2170,7 @@ single time to construct our change of basis matrix (following section).
 
 In this section we discuss how to compute the change of basis matrices
 $\AOne$ and $\ATwo$ from \S\ref{sec:basis} and provide links to
-\Mathematica scripts to compute them.
+\Jupyter scripts to compute them.
 %
 Recall that the columns of the change of basis matrix from spherical
 harmonics to polynomials, $\AOne$, are just the polynomial vectors
@@ -2231,7 +2227,7 @@ the first few spherical harmonics and their corresponding polynomial vectors:
 \end{equation}
 %
 From these we can construct $\AOne$. As an example, for spherical
-harmonics up to degree $l_\mathrm\mathrm{max} = 2$, this is
+harmonics up to degree $l_\mathrm{max} = 2$, this is
 %
 \begin{equation}
     \label{eq:AOne}
@@ -2250,7 +2246,7 @@ harmonics up to degree $l_\mathrm\mathrm{max} = 2$, this is
             0 & 0 & 0 & 0 & 0 & \sqrt{15} & 0 & 0 & 0 \\
             0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{2} & 0 & -\frac{\sqrt{15}}{2}
         }\quad.
-    \mathematica{A1}
+    \needsproof
 \end{equation}
 %
 
@@ -2259,7 +2255,7 @@ polynomials, $\ATwo$, in a similar manner. In practice,
 it is easier to express the elements of the Green's basis $\gbasis$ in terms
 of the elements of the polynomial basis $\pbasis$ and use those to populate the
 columns of the matrix $\ATwo^{-1}$. Continuing our example
-for $l_\mathrm\mathrm{max} = 2$, our second change of basis matrix
+for $l_\mathrm{max} = 2$, our second change of basis matrix
 is
 %
 \begin{equation}
@@ -2277,16 +2273,16 @@ is
             0 & 0 & 0 & 0 & 0 & 0 & 0 & \frac{1}{3} & 0 \\
             0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
         }\quad.
-    \mathematica{A2}
+    \needsproof
 \end{equation}
 %
 
 Finally, recall that the complete change of basis matrix from spherical
 harmonics to Green's polynomials, $\bvec{A}$, is just the matrix product
-of $\ATwo$ and $\AOne$. For $l_\mathrm\mathrm{max} = 2$, we have
+of $\ATwo$ and $\AOne$. For $l_\mathrm{max} = 2$, we have
 %
 \begin{equation}
-    \mathematica{A}
+    \needsproof
     \setstackgap{L}{1.25\baselineskip}
     \fixTABwidth{T}
     \bvec{A} =
@@ -2377,7 +2373,7 @@ describes the transformation from complex to real spherical harmonics. In
 for rotation in the $z-y-z$ convention.
 %
 To obtain a rotation matrix for an arbitrary vector $\bvec{y}$ with spherical
-harmonics of different orders up to $l = l_\mathrm\mathrm{max}$, we define the
+harmonics of different orders up to $l = l_\mathrm{max}$, we define the
 block-diagonal matrix $\bvec{R}$:
 %
 \begin{equation}
@@ -2393,7 +2389,7 @@ block-diagonal matrix $\bvec{R}$:
                        &            &            & \bvec{R}^3 &  \\
                        &            &            &            & \ddots
         }\quad.
-    \mathematica{R}
+    \needsproof
 \end{equation}
 %
 Rotation of $\bvec{y}$ by the Euler angles $\alpha$, $\beta$, and $\gamma$
@@ -2486,7 +2482,7 @@ angles in terms of $\bvec{u}$ and $\theta$:
         \sin\gamma = \frac{P_{2,1}}{\sqrt{P_{2,0}^2 + P_{2,1}^2}}
     \end{matrix}
     \quad.
-    \mathematica{R}
+    \needsproof
 \end{align}
 %
 Thus, given a spherical harmonic vector $\bvec{y}$, we can calculate
@@ -2776,7 +2772,7 @@ we may write
         \quad
         %
     \end{dcases}
-    \mathematica{HI}
+    \needsproof
 \end{align}
 %
 
@@ -2871,7 +2867,7 @@ where
 %
 \begin{equation}
     \label{eq:vieta}
-    \mathcal{A}_{i,u,v} = \sum_{j=\mathrm\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)}
+    \mathcal{A}_{i,u,v} = \sum_{j=\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)}
                           \binom{u}{j} \binom{v}{u+v-i-j}(-1)^{u+j}\delta^{u+v-i-j}.
 \end{equation}
 %
@@ -2950,7 +2946,7 @@ Using reduction, the function $\mathcal{I}_v$ can be expressed
 in terms of sums of powers of $\sin^{-1}k$, $k$ and $k_c \equiv \sqrt{1-k^2}$, while $\mathcal{J}_v$ can be expressed
 as sums of complete elliptic integrals of $k^2$ times polynomials in $k^2$. However, the resulting
 recursion relations tend to be numerically unstable due to cancellation of low-order terms which occurs
-during recursion, particularly when the occultor radius is large ($r_o \gg 1$).
+during recursion, particularly when the occultor radius is large ($r \gg 1$).
 To leading order in $k$, when $k^2 <1$ ($b + r > 1$),
 $\mathcal{I}_v \propto k^{2v+1}$
 and $\mathcal{J}_v \propto k^{2v+1}$.  Consequently, when these equations are computed by
@@ -3012,6 +3008,7 @@ These functions can then be expressed as a series in $k^2$
 by expanding $(1-k^2w)^{-1/2}$ as a series in $k^2w$, and then integrating each term over $w$, giving
 %
 \begin{align}
+    \label{eq:IJseries}
 %\mathcal{J}_{v} &=& 3k^{1+2v}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
 %&\times& \pi \frac{(2(n+v)-1)!!}{2^{n+v}(v+2+n)!}
     \mathcal{I}_{v} &= 2k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!}{2^n n!(2n+2v+1)}(k^2)^n, \\[0.5em]
@@ -3025,9 +3022,10 @@ For large values of $k^2 < 1$, we start with small $v$ and iterate upwards.
 The starting terms are
 %
 \begin{align}
-I_0 &= \kappa = 2\sin^{-1}k \\[0.5em]
-J_0 &= \frac{2}{3k^3} \left[2(2k^2-1)E(k^2)+(1-k^2)(2-3k^2)K(k^2)\right] \nonumber \\
-J_1 &= \frac{2}{15k^3} \left[(-3k^4+13k^2-8)E(k^2)+(1-k^2)(8-9k^2)K(k^2)\right].
+    \label{eq:IJseries0}
+    I_0 &= \kappa = 2\sin^{-1}k \\[0.5em]
+    J_0 &= \frac{2}{3k^3} \left[2(2k^2-1)E(k^2)+(1-k^2)(2-3k^2)K(k^2)\right] \nonumber \\
+    J_1 &= \frac{2}{15k^3} \left[(-3k^4+13k^2-8)E(k^2)+(1-k^2)(8-9k^2)K(k^2)\right].
 \end{align}
 
 % I just found:
@@ -3043,13 +3041,15 @@ J_1 &= \frac{2}{15k^3} \left[(-3k^4+13k^2-8)E(k^2)+(1-k^2)(8-9k^2)K(k^2)\right].
 %to severe round-off errors.
 
 In the $k^2 \ge 1$ ($b+r \le 1$) limit, we find:
-\begin{equation}
-\mathcal{I}_v = \pi \frac{(2v-1)!!}{2^v v!},
-\end{equation}
+\begin{align}
+    \label{eq:Ilargek}
+    \mathcal{I}_v = \pi \frac{(2v-1)!!}{2^v v!},
+\end{align}
 which yields $K_{u,v}$ which is a polynomial in $\delta$.
 For $\mathcal{J}_v$ we make the substitution $w = \sin^2{\varphi}$ to obtain
 %
 \begin{align}
+    \label{eq:Jlargek}
 \mathcal{J}_v &= \int_0^1 w^{v-\tfrac{1}{2}} (1-k^{-2}w)^{3/2} (1-w)^{-1/2} dw \nonumber \\
 %&=& \frac{\pi(2v-1)!!}{k^2 2^{v}(3+2v)}\left(2((2+v)k^2-(1+v)) _2\tilde{F}_1(-\tfrac{1}{2},v+\tfrac{1}{2},1+v,k^{-2})\right.\\
 %&+& \left.(1-k^2)_2\tilde{F}_1(\tfrac{1}{2},v+\tfrac{1}{2},1+v,k^{-2})\right),\\
@@ -3063,6 +3063,7 @@ where $_2\tilde{F}_1(a,b;c;x)$ is the regularized Hypergeometric function.
 Evaluating the first two terms, $v=0$ and $v=1$, and then iterating, we find:
 %
 \begin{align}
+    \label{Jseries0largek}
     \mathcal{J}_0 &= (\tfrac{8}{3}-\tfrac{4}{3k^2})E(k^{-2})-\tfrac{2}{3}(1-k^{-2})K(k^{-2}) \nonumber \\
     \mathcal{J}_1 &= (-6k^2+26-16k^{-2})E(k^{-2})/15 + 2(1-k^{-2})(3k^2-4)K(k^{-2})/15 \nonumber \\
     \mathcal{J}_v &= \frac{1}{2v+3} \left[2(v+vk^2+k_c^2)J_{v-1}-k^2(2v-3)J_{v-2}\right] \quad.
@@ -3130,9 +3131,10 @@ $\bvec{D}\,\wedge$
                 & Exterior derivative                   & \eq{extderiv} \\
 $E(\bigdot)$    & Complete elliptic integral of the
                   second kind                           & \eq{elliptic} \\
-$\mathcal{E}_1$ & First elliptic function               & \eq{E1} \\
-$\mathcal{E}_2$ & Second elliptic function              & \eq{E2} \\
 $F$             & Total flux seen by observer           & \eq{starry} \\
+$\mathcal{F}$   & Function of $b$ and $r$               & \eq{PGnI_reparam} \\
+$_2F_1$         & Generalized Hypergeometric function   & \eq{IJHypergeo} \\
+$_2\tilde{F}_1$ & Regularized Hypergeometric function   & \eq{Jlargek} \\
 $\gbasis$       & Green's basis                         & \eq{bg} \\
 $\bvec{g}$      & Vector in the basis $\gbasis$         & \\
 $\bvec{G}_n$    & Anti-exterior derivative of the
@@ -3141,23 +3143,21 @@ $\bvec{G}_n$    & Anti-exterior derivative of the
 $\mathcal{H}_{u,v}$
                 & Occultation integral                  & \eq{Huv} \\
 $I$             & Specific intensity, $I(\x, \y)$       & \eq{I} \\
-$\mathcal{I}_{u,v}$
-                & Occultation integral                  & \eq{Iuv} \\
+$\mathcal{I}_{v}$
+                & Occultation integral                  & \eq{KILJ} \\
 $j$             & Dummy index                           & \\
-$\mathcal{J}_{u,v}$
-                & Occultation integral                  & \eq{Juv} \\
+$\mathcal{J}_{v}$
+                & Occultation integral                  & \eq{KILJ} \\
 $k$             & Dummy index                           & \\
 $k^2$           & Elliptic parameter                    & \eq{k2} \\
 $K(\bigdot)$    & Complete Elliptic integral of the
                   first kind                            & \eq{elliptic} \\
 $\mathcal{K}_{u,v}$
-                & Occultation integral                  & \eq{Kuv} \\
+                & Occultation integral                  & \eq{KILJ} \\
 $l$             & Spherical harmonic degree             & \eq{lm} \\
-$\mathcal{L}_{u,v}$
-                & Occultation integral                  & \eq{Luv} \\
+$\mathcal{L}_{u,v}^(t)$
+                & Occultation integral                  & \eq{KILJ} \\
 $m$             & Spherical harmonic order              & \eq{lm} \\
-$\mathcal{M}_{p,q}$
-                & Occultation integral                  & \eq{Mpq} \\
 $n$             & Surface map vector index,
                   $n = l^2 + l + m$                     & \eq{n} \\
 $p$             & Dummy index                           & \\
@@ -3202,9 +3202,12 @@ $\alpha$        & Euler angle ($\zhat$ rotation)        & Appendix~\ref{app:eule
 $\beta$         & Euler angle ($\yhat$ rotation)        & Appendix~\ref{app:euler} \\
 $\gamma$        & Euler angle ($\zhat$ rotation)        & Appendix~\ref{app:euler} \\
 $\Gamma$        & Gamma function                        & \\
+$\delta$        & Function of $b$ and $r$               & \eq{delta} \\
 $\uptheta$      & Spherical harmonic polar angle        & \eq{ylmtp} \\
 $\theta$        & Rotation angle                        & Appendix~\ref{app:axisangle} \\
 $\Theta$        & Heaviside step function               & \eq{biglam} \\
+$\lambda$       & Angular position of
+                  occultor/occulted intersection point  & \eq{kappa} \\
 $\lambda$       & Angular position of
                   occultor/occulted intersection point  & \eq{lambda} \\
 $\Lambda$       & \citet{MandelAgol2002} function       & \eq{biglam} \\
