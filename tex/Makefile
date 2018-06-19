@@ -12,6 +12,7 @@ SOURCES     = $(wildcard ../src/*.[ch])
 default: starry.pdf
 
 starry.pdf: starry.tex stylez.tex $(FIGURES) $(SOURCES)
+	python falinks.py
 	${LATEX} starry.tex
 	bibtex starry
 	( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done."

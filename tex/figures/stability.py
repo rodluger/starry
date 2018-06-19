@@ -276,12 +276,13 @@ if __name__ == "__main__":
     # Compute the ones for the paper
     PaperFigure(logdelta=-3, logeps=-6)
 
-    # Now compute the rest, but first
-    # disable LaTeX to speed up the plotting
-    pl.rc('text', usetex=False)
-    radii = [1e-4, 1e-3, 1e-2, 0.1, 0.25, 0.5, 0.75, 1.0,
-             3.0, 5.0, 10.0, 30.0, 50.0, 100.0, 300.0]
-    for n, r in tqdm(enumerate(radii), total=len(radii)):
-        fig, ax = Compute(r, logdelta=-3, logeps=-6)
-        fig.savefig("../stability_test%02d.pdf" % n)
-        pl.close()
+    # Optionally, compute stability tests for a range
+    # of occultor sizes. Disabled by default.
+    if False:
+        pl.rc('text', usetex=False)
+        radii = [1e-4, 1e-3, 1e-2, 0.1, 0.25, 0.5, 0.75, 1.0,
+                 3.0, 5.0, 10.0, 30.0, 50.0, 100.0, 300.0]
+        for n, r in tqdm(enumerate(radii), total=len(radii)):
+            fig, ax = Compute(r, logdelta=-3, logeps=-6)
+            fig.savefig("../stability_test%02d.pdf" % n)
+            pl.close()

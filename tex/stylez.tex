@@ -42,7 +42,7 @@
 \newcommand{\planetplanet}{\textsf{planetplanet}\xspace}
 \newcommand{\Python}{\textsf{Python}\xspace}
 \newcommand{\cpp}{\textsf{C}++\xspace}
-\newcommand{\Mathematica}{\textsf{Mathematica}\xspace}
+\newcommand{\Jupyter}{\textsf{Jupyter}\xspace}
 \newcommand{\docs}{\href{https://rodluger.github.io/starry/starry.html\#starry.Planet}{documentation}}
 \newcommand{\cn}{{\color{red}citation needed}}
 \newcommand{\xxx}[1]{{\color{red}#1}}
@@ -79,18 +79,12 @@
 \newcommand{\eqlabel}[1]{\label{eq:#1}}
 
 % Add script hyperlinks as margin notes
-\definecolor{proofcolor}{rgb}{0.1216,0.4667,0.7059}
-\newcommand{\python}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.py}{\includegraphics[width=0.9cm]{figures/plot.png}}}}
-\newcommand{\mathematica}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.9cm]{figures/pen.png}}}}
-\newcommand{\pdf}[1]{\marginnote{\href{https://docs.google.com/viewer?url=https://github.com/rodluger/starry/raw/master/tex/notebooks/#1.pdf}{\includegraphics[width=0.9cm]{figures/pen.png}}}}
-\newcommand{\animation}[1]{\marginnote{\href{https://github.com/rodluger/starry/tree/master/tex/figures/#1.gif}{\includegraphics[width=0.9cm]{figures/play.png}}}}
-\newcommand{\todo}[1]{\marginnote{\includegraphics[width=0.9cm]{figures/todo.png}\\[-1ex]{\color{red}\scriptsize#1}}}
-\newcommand{\pythonlogo}{%
-  \hspace*{0.25em}\raisebox{-1.25ex}{\includegraphics[width=0.8cm]{figures/plot.png}}
-}
-\newcommand{\penlogo}{%
-  \hspace*{0.25em}\raisebox{-1ex}{\includegraphics[width=0.6cm]{figures/pen.png}}
-}
+\usepackage{fontawesome}
+\definecolor{linkcolor}{rgb}{0.1216,0.4667,0.7059}
+\input{.code}
+\input{.proof}
+\input{.animation}
+\newcommand{\needsproof}{\marginnote{\color{red}\Large\faPencilSquareO}}
 
 % Force margin notes to always be on the right side
 % https://tex.stackexchange.com/a/69624

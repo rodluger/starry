@@ -24,6 +24,9 @@ misc/stability/*.pdf
 tex/*.pdf
 tex/figures/*.pdf
 starryNotes.bib
+tex/.animation.tex
+tex/.code.tex
+tex/.proof.tex
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
