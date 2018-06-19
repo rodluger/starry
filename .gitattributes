@@ -3,3 +3,4 @@ docs/* linguist-documentation
 tex/* linguist-documentation
 misc/* linguist-documentation
 tutorials/* linguist-documentation
+julia/*.nb linguist-documentation
