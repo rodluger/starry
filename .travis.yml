@@ -19,8 +19,6 @@ matrix:
           env: PYTHON_VERSION=3.4 NUMPY_VERSION=1.11
 
 install:
-    # DEBUG!
-    - source .ci/build-paper.sh
     - source .ci/travis.sh
 
 cache:

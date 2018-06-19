@@ -20,8 +20,10 @@ then
       cd ..
     fi
 
+    # For the cache check above to work...
     tlmgr install luatex
 
+    # Install packages we need
     tlmgr install \
       l3kernel \
       l3packages \
@@ -34,15 +36,10 @@ then
       xcolor \
       cleveref \
       etoolbox \
-      oberdiek \
-      ifxetex \
-      ifluatex \
       tools \
-      url \
       parskip \
       xstring \
       fontspec \
-      fontawesome \
       lipsum \
       zapfding \
       luaotfload \
@@ -69,8 +66,7 @@ then
       bbm \
       booktabs \
       was \
-      fontawesome \
-      listings
+      fontawesome
 
     # Keep no backups (not required, simply makes cache bigger)
     tlmgr option -- autobackup 0
