@@ -2,7 +2,7 @@
 # precision for b+r > 1:
 include("s2_stable.jl")
 
-using GSL
+#using GSL
 
 function vector_sum(x::Array{T,1},y::Array{T,1},n::Int64) where {T <: Real}
 # Trying to stabilize arithmetic:
@@ -297,6 +297,44 @@ end
 return
 end
 
+function Huv_down(l_max,kappa)
+# Iterate downwards in v and upwards in u:
+Huv = zeros(typeof(kappa),l_max+3,3l_max+3)
+kap2 = 0.5*kappa
+ckap = cos(kap2); skap = sin(kap2)
+skap2 = skap*skap
+ckap2 = 1.0-skap2; ckapn = ckap; skapn = skap
+u=0
+if isodd(l_max)
+  v = 3l_max+1
+else
+  v = 3l_max+2
+end
+# First, compute approximation for large v:
+Huv[u+1,v+1]=kap2^(v+1)*(2/(v+1)-(u+v/3)/(v+3)*kap2^2+
+          (5*(3u+v)^2-30u-2v)/360*kap2^4)
+#println("Huv: ",Huv[u+1,v+1]," error: ",last_term)
+println("Huv: ",Huv[u+1,v+1])
+# Next, iterate downwards in v:
+while v >= 2
+  Huv[u+1,v-1] = (u+v)/(v-1)*(Huv[u+1,v+1]+2/(u+v)*skap^(v-1)*ckap^(u+1))
+  v -= 2
+end
+# Then, iterate upwards in u:
+for u=2:2:l_max+2
+  skapn = skap
+  v = 0
+  while v <= 3l_max+2
+    Huv[u+1,v+1]= (2*ckapn*skapn+(u-1)*Huv[u-1,v+1])/(u+v)
+    # We only need even terms:
+    skapn *= skap2
+    v +=2
+  end
+  ckapn *= ckap2
+end
+return Huv
+end
+
 function s_n_bigr!(l_max::Int64,r::T,b::T,sn::Array{T,1}) where {T <: Real}
 @assert(r > 0.0) # if r=0, then no occultation - can just use phase curve term.
 # Computes the s_n terms up to l_max
@@ -304,15 +342,14 @@ function s_n_bigr!(l_max::Int64,r::T,b::T,sn::Array{T,1}) where {T <: Real}
 n_max = l_max^2+2*l_max
 u_max = floor(Int64,l_max/2+1)
 v_max = l_max + 3
+if r >= 1+b
+  # full obscuration - return zeros
+  return sn
+end
 if b == 0.0
-  if r >= 1.0
-    # full obscuration - return zeros
-    return sn
-  else
-    # Annular eclipse - integrate around the full boundary of both bodies:
-    lam = pi/2; slam = one(r); clam = zero(r)
-    phi = pi/2
-  end
+  # Annular eclipse - integrate around the full boundary of both bodies:
+  lam = pi/2; slam = one(r); clam = zero(r)
+  phi = pi/2
   k2 = Inf
 else
   if b > abs(1.0-r) && b < 1.0+r
@@ -390,8 +427,12 @@ end
 
 # First, compute Huv:
 #Hv = zeros(typeof(r),v_max+1)
-#Hv_raise!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
-#Hv_lower!(l_max,((b+1)^2-r^2)/(4b),sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
+#k2H = ((b+1)^2-r^2)/(4b)
+#if k2H < 0.5 
+#  Hv_lower!(l_max,k2H,sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
+#else
+#  Hv_raise!(l_max,k2H,sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
+#end
 Huv = zeros(typeof(r),l_max+3,l_max+1)
 #clam = cos(lam); slam = sin(lam)
 clam2 = clam*clam; clamn = clam; slamn = slam
@@ -417,6 +458,9 @@ for u=0:2:l_max+2
     clamn *= clam2
   end
 end
+
+#println("gamma: ",asin(-clam))
+#Huv = Huv_down(l_max,acos(-slam))
 
 Iv = zeros(typeof(k2),v_max+1); Jv = zeros(typeof(k2),v_max+1)
 # This computes I_v for the largest v, and then works down to smaller values:
@@ -491,7 +535,7 @@ while n <= n_max
 #        println("u ",u," v ",v," Kuv ",Kuv[u+1,v+1]," Kuv_alt ",Kuv_alt)
 ##        pofgn = 2*(2r)^(l+2)*Kuv_alt
         if iseven(v) || k2 <= 1  # Q is zero for odd v & k^2 > 1
-        qofgn = Huv[2u+1,v+1]
+          qofgn = Huv[2u+1,v+1]
 #          a=aiuv(-convert(typeof(k2),0.5),u,v)
 #          qofgn = 2^(2u+v+1)*sum(a[1:u+v+1].*Hv[u+1:2u+v+1])
 #          qofgn = 2^(2u+v+1)*vector_sum(a[1:u+v+1],Hv[u+1:2u+v+1],u+v+1)
@@ -514,6 +558,7 @@ while n <= n_max
 #        pofgn = 2*(2r)^(l-1)*Luv[u+1,v+1,1]
     end
     sn[n+1] = qofgn-pofgn
+#    sn[n+1] = qofgn
   end
   m +=1
   if m > l
