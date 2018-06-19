@@ -73,7 +73,8 @@ then
       fontawesome \
       dvipng \
       type1cm \
-      revtex
+      revtex \
+      natbib
 
     # Keep no backups (not required, simply makes cache bigger)
     tlmgr option -- autobackup 0
