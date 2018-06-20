@@ -2,7 +2,6 @@
 set -e
 
 # Make the docs
-pip install sphinx #sphinx_rtd_theme
 cd $TRAVIS_BUILD_DIR/docs
 make html
 
