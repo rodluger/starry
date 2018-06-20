@@ -7,6 +7,7 @@
 
     #!/bin/bash -x
     cd $TRAVIS_BUILD_DIR/tex/
+    python falinks.py
     tectonic starry.tex --print
 
     # Force push the paper to GitHub
