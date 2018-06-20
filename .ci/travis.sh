@@ -13,7 +13,6 @@ if ! command -v conda > /dev/null; then
       pip install Pillow
       pip install batman-package
       pip install tqdm
-      pip install starry_maps
       pip install ipython
       pip install jupyter
       pip install emcee
@@ -21,6 +20,9 @@ if ! command -v conda > /dev/null; then
       pip install git+git://github.com/tomlouden/SPIDERMAN.git@69911b042bc46615ec9b39048a69e0d77c8542ad
       pip install sphinx
 fi
+
+# Install starry_maps
+pip install starry_maps
 
 # Display some info
 conda info -a

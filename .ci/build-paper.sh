@@ -5,7 +5,16 @@
 #if git diff --name-only $TRAVIS_COMMIT_RANGE | grep 'tex/'
 #then
 
-    #!/bin/bash -x
+    # Generate the figures
+    echo "Generating figures..."
+    cd $TRAVIS_BUILD_DIR/tex/figures
+    for f in *.py; do
+        echo "Running $f..."
+        python "$f"
+    done
+
+    # TeX it up
+    echo "Generating the PDF..."
     cd $TRAVIS_BUILD_DIR/tex/
     python falinks.py
     tectonic starry.tex --print
