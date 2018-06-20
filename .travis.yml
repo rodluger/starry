@@ -37,4 +37,4 @@ script:
 after_success:
     - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
     #- if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-fonts.sh; fi
-    - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-paper.sh; fi
+    #- if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-paper.sh; fi
