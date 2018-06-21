@@ -12,7 +12,7 @@ SOURCES     = $(wildcard ../src/*.[ch])
 default: starry.pdf
 
 starry.pdf: starry.tex stylez.tex $(FIGURES) $(SOURCES)
-	python falinks.py
+	python gitlinks.py
 	${LATEX} starry.tex
 	bibtex starry
 	( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done."
@@ -22,11 +22,7 @@ starry.pdf: starry.tex stylez.tex $(FIGURES) $(SOURCES)
 clean:
 	$(RM_TMP)
 	rm -rf starryNotes.bib
-	rm -rf stability_test*pdf
 	rm -rf $(FIGURES)
 
 figures/%.pdf: figures/%.py
 	cd $(<D);python $(<F)
-
-publish:
-	cd ..; ./publish.sh

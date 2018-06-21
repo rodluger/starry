@@ -13,10 +13,10 @@ then
         python "$f"
     done
 
-    # TeX it up
+    # TeX it up using tectonic
     echo "Generating the PDF..."
     cd $TRAVIS_BUILD_DIR/tex/
-    python falinks.py
+    python gitlinks.py
     tectonic starry.tex --print
 
     # Force push the paper to GitHub

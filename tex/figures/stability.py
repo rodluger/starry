@@ -287,7 +287,7 @@ def PaperFigure(larr=[0, 1, 2, 3, 5, 8, 10, 13, 15, 18, 20],
                       textcoords="offset points", ha="left", va="top",
                       alpha=0.75)
         axis.set_rasterization_zorder(0)
-    fig.savefig("stability.pdf", bbox_inches='tight')
+    fig.savefig("stability.pdf", bbox_inches='tight', dpi=300)
     pl.close()
 
 

@@ -84,7 +84,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                     } else {
                         // Set the indices to a vector of values
                         values = py::cast<Vector<double>>(coeff);
-                        if (values.size() != slicelength)
+                        if (size_t(values.size()) != slicelength)
                             throw errors::BadSliceLength();
                     }
                     for (size_t i = 0; i < slicelength; ++i) {
@@ -372,7 +372,7 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
                 } else {
                     // Set the indices to a vector of values
                     values = py::cast<Vector<double>>(coeff);
-                    if (values.size() != slicelength)
+                    if (size_t(values.size()) != slicelength)
                         throw errors::BadSliceLength();
                 }
                 for (size_t i = 0; i < slicelength; ++i) {
@@ -663,7 +663,7 @@ void add_Star(py::class_<orbital::Star<MAPTYPE>>& PyStar, const docstrings::docs
                 } else {
                     // Set the indices to a vector of values
                     values = py::cast<Vector<double>>(coeff);
-                    if (values.size() != slicelength)
+                    if (size_t(values.size()) != slicelength)
                         throw errors::BadSliceLength();
                 }
                 for (size_t i = 0; i < slicelength; ++i) {
@@ -751,7 +751,7 @@ void add_Planet(py::class_<orbital::Planet<MAPTYPE>>& PyPlanet, const docstrings
                 } else {
                     // Set the indices to a vector of values
                     values = py::cast<Vector<double>>(coeff);
-                    if (values.size() != slicelength)
+                    if (size_t(values.size()) != slicelength)
                         throw errors::BadSliceLength();
                 }
                 for (size_t i = 0; i < slicelength; ++i) {

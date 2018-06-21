@@ -87,14 +87,16 @@
 
 % Add code, proof, and animation hyperlinks
 \definecolor{linkcolor}{rgb}{0.1216,0.4667,0.7059}
-\input{.codelink}
-\input{.prooflink}
-\input{.animlink}
+\newcommand{\codeicon}{{\color{linkcolor}\faFileCodeO}}
+\newcommand{\prooficon}{{\color{linkcolor}\faPencilSquareO}}
+\newcommand{\animicon}{{\color{linkcolor}\faPlayCircle}}
+\input{gitlinks}
 
 % Define a proof environment
 \newtagform{eqtag}[]{(}{)}
 \newenvironment{proof}[1]{%
-\renewtagform{eqtag}[]{(}{)\,\prooflink{#1}}
+%\renewtagform{eqtag}[]{(}{)\,\prooflink{#1}}
+\renewtagform{eqtag}[]{\prooflink{#1}\,(}{)}
 \usetagform{eqtag}
 }{%
 \renewtagform{eqtag}[]{(}{)}
