@@ -2,8 +2,8 @@
 #set -e
 
 # Are there changes in the tex directory?
-#if git diff --name-only $TRAVIS_COMMIT_RANGE | grep 'tex/'
-#then
+if git diff --name-only $TRAVIS_COMMIT_RANGE | grep 'tex/'
+then
 
     # Generate the figures
     echo "Generating figures..."
@@ -27,4 +27,4 @@
     git -c user.name='travis' -c user.email='travis' commit -m "building the paper"
     git push -q -f https://$GITHUB_USER:$GITHUB_API_KEY@github.com/$TRAVIS_REPO_SLUG $TRAVIS_BRANCH-pdf
 
-#fi
+fi

@@ -234,16 +234,16 @@ def comparison():
         axleg1.plot([0, 1], [0, 1], color="C%d" %
                     (jj), label="n$_{\mathrm{layers}}$=%d" % ng)
     axleg1.set_xlim(2, 3)
-    axleg1.legend(loc='center', frameon=False, title=r'\textbf{method}')
+    leg = axleg1.legend(loc='center', frameon=False)
+    leg.set_title('method', prop={'weight': 'bold'})
 
     for logerr in [-16, -12, -8, -4, 0]:
         axleg2.plot([0, 1], [0, 1], 'o', color='gray',
                     ms=ms(10 ** logerr),
                     label=r'$%3d$' % logerr)
     axleg2.set_xlim(2, 3)
-    axleg2.legend(loc='center', labelspacing=1, frameon=False,
-                  title=r'\textbf{log error}')
-
+    leg = axleg2.legend(loc='center', labelspacing=1, frameon=False)
+    leg.set_title('log error', prop={'weight': 'bold'})
     fig.savefig("spidercomp.pdf", bbox_inches="tight")
 
 
