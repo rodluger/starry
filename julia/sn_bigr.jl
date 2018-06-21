@@ -348,15 +348,18 @@ if r >= 1+b
 end
 if b == 0.0
   # Annular eclipse - integrate around the full boundary of both bodies:
-  lam = pi/2; slam = one(r); clam = zero(r)
+  lam = pi/2; slam = one(r); clam = zero(r); clam2 = zero(r)
   phi = pi/2
-  k2 = Inf
+  k2 = Inf; kc = 0.0
 else
   if b > abs(1.0-r) && b < 1.0+r
-    lam = asin((1.0-r^2+b^2)/(2*b)); slam = (1.0-r^2+b^2)/(2*b); clam = sqrt((1-(b-r)^2)*((b+r)^2-1))/(2b)
+#    lam = asin((1.0-r^2+b^2)/(2*b)); slam = (1.0-r^2+b^2)/(2*b); clam = sqrt((1-(b-r)^2)*((b+r)^2-1))/(2b)
+#    slam = (1.0-r^2+b^2)/(2*b); lam = asin(slam);  clam = sqrt((1-(b-r)^2)*((b+r)^2-1))/(2b)
+#    slam = (1.0-r^2+b^2)/(2*b);  clam = sqrt((1-(b-r)^2)*((b+r)^2-1))/(2b);  clam2 = (1-(b-r)^2)*((b+r)^2-1)/(4b^2); lam = acos(clam); if lam > pi/2; lam -= pi; end
+    slam = ((1.0-r)*(1.0+r)+b^2)/(2*b);  clam = sqrt((1-b+r)*(1+b-r)*(b+r-1)*(b+r+1))/(2b);  clam2 = (1-b+r)*(1+b-r)*(b+r-1)*(b+r+1)/(4b^2); lam = acos(clam); if lam > pi/2; lam -= pi; end
     phi = asin((1.0-r^2-b^2)/(2*b*r))
   else
-    lam=pi/2; phi=pi/2; slam = one(r); clam = zero(r)
+    lam=pi/2; phi=pi/2; slam = one(r); clam = zero(r); clam2 = zero(r)
   end
 # Next, compute k^2 = m:
   k2 = (1.0-(b-r)^2)/(4b*r); kc = sqrt(abs(((b+r)^2-1))/(4*b*r))
@@ -434,7 +437,37 @@ end
 #  Hv_raise!(l_max,k2H,sqrt(abs((r^2-(1-b)^2))/(4b)),Hv)
 #end
 Huv = zeros(typeof(r),l_max+3,l_max+1)
-#clam = cos(lam); slam = sin(lam)
+##clam = cos(lam); slam = sin(lam)
+#clam2 = clam*clam; clamn = clam; slamn = slam
+#for u=0:2:l_max+2
+#  if u == 0
+#    Huv[1,1]=  2*lam+pi
+#    Huv[1,2]= -2*clam
+#    slamn = slam
+#    v=2
+#    while v <= l_max
+#      Huv[1,v+1]= (-2*clam*slamn+(v-1)*Huv[1,v-1])/(u+v)
+#      slamn *= slam
+#      v+=1
+#    end
+#  else
+#    slamn = slam
+#    v = 0
+##    Huv[u+1,v+1]= (2*clamn*slamn+(u-1)*Huv[u-1,v+1])/(u+v)
+##    slamn *= slam
+##    v = 1
+##    Huv[u+1,v+1]= (2*clamn*slamn+(u-1)*Huv[u-1,v+1])/(u+v)
+##    slamn *= slam
+##    v = 2
+#    while v <= l_max
+##      Huv[u+1,v+1]= (-2*clam*slamn+(v-1)*Huv[u+1,v-1])/(u+v)
+#      Huv[u+1,v+1]= (2*clamn*slamn+(u-1)*Huv[u-1,v+1])/(u+v)
+#      slamn *= slam
+#      v+=1
+#    end
+#    clamn *= clam2
+#  end
+#end
 clam2 = clam*clam; clamn = clam; slamn = slam
 for u=0:2:l_max+2
   if u == 0
@@ -449,15 +482,24 @@ for u=0:2:l_max+2
     end
   else
     slamn = slam
-    v = 0
+    v=0
+    Huv[u+1,v+1]= (2*clamn*slamn+(u-1)*Huv[u-1,v+1])/(u+v)
+    slamn *= slam
+    v=1
+#    Huv[u+1,v+1]= (2*clamn*slamn+(u-1)*Huv[u-1,v+1])/(u+v)
+    clamn *= clam2
+    Huv[u+1,v+1] = -2*clamn/(u+1)
+#    println("u: ",u," v: ",v," Huv[u+1,v+1] ",Huv[u+1,v+1]," -2*clamn/(u+1): ", -2*clamn/(u+1))
+    slamn = slam
+    v=2
     while v <= l_max
-      Huv[u+1,v+1]= (2*clamn*slamn+(u-1)*Huv[u-1,v+1])/(u+v)
+      Huv[u+1,v+1]= (-2*clamn*slamn+(v-1)*Huv[u+1,v-1])/(u+v)
       slamn *= slam
       v+=1
     end
-    clamn *= clam2
   end
 end
+
 
 #println("gamma: ",asin(-clam))
 #Huv = Huv_down(l_max,acos(-slam))
@@ -558,6 +600,7 @@ while n <= n_max
 #        pofgn = 2*(2r)^(l-1)*Luv[u+1,v+1,1]
     end
     sn[n+1] = qofgn-pofgn
+#    sn[n+1] = -pofgn
 #    sn[n+1] = qofgn
   end
   m +=1
