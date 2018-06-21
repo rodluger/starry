@@ -173,11 +173,11 @@ def compare_to_numerical(lmax=6, lmax_grad=5):
     axleg2 = pl.subplot2grid((2, 5), (1, 4))
     axleg1.axis('off')
     axleg2.axis('off')
-    ax.set_xlabel('Spherical harmonic degree', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Spherical harmonic degree', fontsize=14)
     ax.set_xticks(range(lmax + 1))
     for tick in ax.get_xticklabels():
         tick.set_fontsize(12)
-    ax.set_ylabel('Evaluation time [seconds]', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Evaluation time [seconds]', fontsize=14)
 
     # Starry
     for l in range(lmax + 1):

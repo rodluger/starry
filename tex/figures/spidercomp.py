@@ -204,10 +204,10 @@ def comparison():
     axleg2 = plt.subplot2grid((2, 5), (1, 4))
     axleg1.axis('off')
     axleg2.axis('off')
-    ax.set_xlabel('Number of points', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Number of points', fontsize=14)
     for tick in ax.get_xticklabels():
         tick.set_fontsize(12)
-    ax.set_ylabel('Evaluation time [seconds]', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Evaluation time [seconds]', fontsize=14)
     ax.set_yscale("log")
     ax.set_xscale("log")
     for tick in ax.get_yticklabels():

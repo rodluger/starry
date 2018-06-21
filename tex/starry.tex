@@ -204,12 +204,14 @@ the right and $\yhat$ up.
 \begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/ylms.pdf}
-    \caption{\figlabel{ylms}\figanimation{ylms}
+    \caption{\label{fig:ylms}
              The real spherical harmonics up to degree $l = 5$ computed from
              Equation~(\ref{eq:ylmtp}). In these plots, the $x$-axis points
              to the right,
              the $y$-axis points up, and the $z$-axis points
-             out of the page.}
+             out of the page.
+             \codelink{ylms}\animlink{ylms}
+             }
     \end{centering}
 \end{figure}
 %
@@ -284,24 +286,26 @@ map $\bvec{y}$, it is convenient to first find its polynomial representation
 $\bvec{p}$, which we express as a vector of coefficients in the
 \emph{polynomial basis} $\pbasis$:
 %
-\begin{align}
-    \pbasisn &=
-    \begin{dcases}
-        \x^\frac{\mu}{2} \y^\frac{\nu}{2} & \qquad \nu \, \mathrm{even}
-        \\
-        \x^\frac{\mu-1}{2} \y^\frac{\nu-1}{2} \z & \qquad \nu \, \mathrm{odd}
-    \end{dcases}
-    \nonumber\\[0.5em]
-    \pbasis &=
-    \begin{pmatrix}
-        1 &
-        \x & \z & \y &
-        \x^2 & \x\z & \x\y & \y\z & \y^2 &
-        \cdot\cdot\cdot
-    \end{pmatrix}^\mathsf{T}
-    \quad,
-    \eqlabel{bp}
-\end{align}
+\begin{proof}{bp}
+    \begin{align}
+        \pbasisn &=
+        \begin{dcases}
+            \x^\frac{\mu}{2} \y^\frac{\nu}{2} & \qquad \nu \, \mathrm{even}
+            \\
+            \x^\frac{\mu-1}{2} \y^\frac{\nu-1}{2} \z & \qquad \nu \, \mathrm{odd}
+        \end{dcases}
+        \nonumber\\[0.5em]
+        \pbasis &=
+        \begin{pmatrix}
+            1 &
+            \x & \z & \y &
+            \x^2 & \x\z & \x\y & \y\z & \y^2 &
+            \cdot\cdot\cdot
+        \end{pmatrix}^\mathsf{T}
+        \quad,
+        \label{eq:bp}
+    \end{align}
+\end{proof}
 %
 where
 %
@@ -342,57 +346,59 @@ As we will see in the next section, integrating the surface map over the disk of
 the body is easier if we apply one final transformation to our input vector,
 rotating it into what we will refer to as the \emph{Green's basis}, $\gbasis$:
 %
-\begingroup\makeatletter\def\f@size{10}\check@mathfonts
-\def\maketag@@@#1{\hbox{\m@th\normalsize#1}}%
-\begin{align}
-    \gbasisn &=
-    \begin{dcases}
-        %
-        \frac{\mu+2}{2}\x^\frac{\mu}{2} \y^\frac{\nu}{2}
-            & \qquad \nu \, \mathrm{even}
-        \\[1em]
-        %
-        \z
-            & \qquad l = 1, \, m = 0
-        \\[1em]
-        %
-        3\x^{l-2}\y\z
-            & \qquad \nu \, \mathrm{odd}, \,
-                     \mu = 1, \,
-                     l \, \mathrm{even}
-        \\[1em]
-        %
-        \z
-        \bigg(
-         -\x^{l-3} + \x^{l-1} + 4\x^{l-3}\y^2
-        \bigg)
-         & \qquad \nu \, \mathrm{odd}, \,
-                  \mu = 1, \,
-                  l \, \mathrm{odd}
-        \\[1em]
-        %
-        \z
-        \bigg(
-            \frac{\mu-3}{2} \x^\frac{\mu-5}{2} \y^\frac{\nu-1}{2}
-            -
-            \frac{\mu-3}{2} \x^\frac{\mu-5}{2} \y^\frac{\nu+3}{2}
-            -
-            \frac{\mu+3}{2} \x^\frac{\mu-1}{2} \y^\frac{\nu-1}{2}
-        \bigg)
-            & \qquad \mathrm{otherwise}
-    \end{dcases}
-    \nonumber\\[1.5em]
-    \gbasis &=
-    \begin{pmatrix}
-        1 &
-        2\x & \z & \y &
-        3\x^2 & -3\x\z & 2\x\y & 3\y\z & \y^2 &
-        \cdot\cdot\cdot
-    \end{pmatrix}^\mathsf{T}
-    \quad,
-    \eqlabel{bg}
-\end{align}
-\endgroup
+\begin{proof}{bg}
+    \begingroup\makeatletter\def\f@size{10}\check@mathfonts
+    \def\maketag@@@#1{\hbox{\m@th\normalsize#1}}%
+    \begin{align}
+        \gbasisn &=
+        \begin{dcases}
+            %
+            \frac{\mu+2}{2}\x^\frac{\mu}{2} \y^\frac{\nu}{2}
+                & \qquad \nu \, \mathrm{even}
+            \\[1em]
+            %
+            \z
+                & \qquad l = 1, \, m = 0
+            \\[1em]
+            %
+            3\x^{l-2}\y\z
+                & \qquad \nu \, \mathrm{odd}, \,
+                         \mu = 1, \,
+                         l \, \mathrm{even}
+            \\[1em]
+            %
+            \z
+            \bigg(
+             -\x^{l-3} + \x^{l-1} + 4\x^{l-3}\y^2
+            \bigg)
+             & \qquad \nu \, \mathrm{odd}, \,
+                      \mu = 1, \,
+                      l \, \mathrm{odd}
+            \\[1em]
+            %
+            \z
+            \bigg(
+                \frac{\mu-3}{2} \x^\frac{\mu-5}{2} \y^\frac{\nu-1}{2}
+                -
+                \frac{\mu-3}{2} \x^\frac{\mu-5}{2} \y^\frac{\nu+3}{2}
+                -
+                \frac{\mu+3}{2} \x^\frac{\mu-1}{2} \y^\frac{\nu-1}{2}
+            \bigg)
+                & \qquad \mathrm{otherwise}
+        \end{dcases}
+        \nonumber\\[1.5em]
+        \gbasis &=
+        \begin{pmatrix}
+            1 &
+            2\x & \z & \y &
+            3\x^2 & -3\x\z & 2\x\y & 3\y\z & \y^2 &
+            \cdot\cdot\cdot
+        \end{pmatrix}^\mathsf{T}
+        \quad,
+        \label{eq:bg}
+    \end{align}
+    \endgroup
+\end{proof}
 %
 where the values of $l$, $m$, $\mu$, and $\nu$ are given by
 Equations~(\ref{eq:lm}) and (\ref{eq:munu}). Given
@@ -516,42 +522,44 @@ where $\bvec{r}$ is a column vector whose $n^\mathrm{th}$ component is given by
 When the entire disk of the body is visible (i.e., when no occultation is
 occurring), this may be written
 %
-\begin{align}
-    r_n &=
-              \int_{-1}^{1}
-              \int_{-\sqrt{1-\x^2}}^{\sqrt{1+\x^2}}
-              \tilde{p}_n (\x, \y)
-              \,
-              \dd \y \, \dd \x
-        \nonumber \\[1em]
-        &=
-        \begin{dcases}
-            \frac{
-                    \Gamma\left(\frac{\mu}{4} + \frac{1}{2}\right)
-                    \Gamma\left(\frac{\nu}{4} + \frac{1}{2}\right)
-                }{
-                    \Gamma\left(\frac{\mu + \nu}{4} + 2\right)
-                }
-            & \qquad \frac{\mu}{2} \, \mathrm{even}, \, \frac{\nu}{2} \, \mathrm{even}
-            %
-            \\[1em]
-            %
-            \frac{\sqrt{\pi}}{2}
-            \frac{
-                    \Gamma\left(\frac{\mu}{4} + \frac{1}{4}\right)
-                    \Gamma\left(\frac{\nu}{4} + \frac{1}{4}\right)
-                }{
-                    \Gamma\left(\frac{\mu + \nu}{4} + 2\right)
-                }
-            & \qquad \frac{\mu-1}{2} \, \mathrm{even}, \, \frac{\nu-1}{2} \, \mathrm{even}
-            %
-            \\[1em]
-            %
-            0
-            & \qquad \mathrm{otherwise.}
-        \end{dcases}
-    \eqlabel{rnsoln}
-\end{align}
+\begin{proof}{rnsoln}
+    \begin{align}
+        r_n &=
+                  \int_{-1}^{1}
+                  \int_{-\sqrt{1-\x^2}}^{\sqrt{1+\x^2}}
+                  \tilde{p}_n (\x, \y)
+                  \,
+                  \dd \y \, \dd \x
+            \nonumber \\[1em]
+            &=
+            \begin{dcases}
+                \frac{
+                        \Gamma\left(\frac{\mu}{4} + \frac{1}{2}\right)
+                        \Gamma\left(\frac{\nu}{4} + \frac{1}{2}\right)
+                    }{
+                        \Gamma\left(\frac{\mu + \nu}{4} + 2\right)
+                    }
+                & \qquad \frac{\mu}{2} \, \mathrm{even}, \, \frac{\nu}{2} \, \mathrm{even}
+                %
+                \\[1em]
+                %
+                \frac{\sqrt{\pi}}{2}
+                \frac{
+                        \Gamma\left(\frac{\mu}{4} + \frac{1}{4}\right)
+                        \Gamma\left(\frac{\nu}{4} + \frac{1}{4}\right)
+                    }{
+                        \Gamma\left(\frac{\mu + \nu}{4} + 2\right)
+                    }
+                & \qquad \frac{\mu-1}{2} \, \mathrm{even}, \, \frac{\nu-1}{2} \, \mathrm{even}
+                %
+                \\[1em]
+                %
+                0
+                & \qquad \mathrm{otherwise.}
+            \end{dcases}
+        \label{eq:rnsoln}
+    \end{align}
+\end{proof}
 %
 where $\Gamma(\bigdot)$ is the gamma function.
 %
@@ -633,24 +641,26 @@ extends from $\pi - \lambda$ to $2\pi + \lambda$ (see the Figure).
 %
 For future reference, it can be shown that
 %
-\begin{align}
-    \label{eq:phi}
-    \phi &=
-    \begin{dcases}
-        \arcsin\left({\frac{1 - r^2 - b^2}{2br}}\right)
-                                                & \qquad |1 - r| < b < 1 + r \\
-        \frac{\pi}{2}                           & \qquad b \le 1 - r
-    \end{dcases} \\
-\intertext{and}
-    \lambda &=
-    \begin{dcases}
-        \arcsin\left(\frac{1 - r^2 + b^2}{2b}\right)
-                                                & \qquad |1 - r| < b < 1 + r \\
-        \frac{\pi}{2}                           & \qquad b \le 1 - r
-        \quad,
-    \end{dcases}
-    \eqlabel{lambda}
-\end{align}
+\begin{proof}{lambda}
+    \begin{align}
+        \label{eq:phi}
+        \phi &=
+        \begin{dcases}
+            \arcsin\left({\frac{1 - r^2 - b^2}{2br}}\right)
+                                                    & \qquad |1 - r| < b < 1 + r \\
+            \frac{\pi}{2}                           & \qquad b \le 1 - r
+        \end{dcases} \\
+    \intertext{and}
+        \lambda &=
+        \begin{dcases}
+            \arcsin\left(\frac{1 - r^2 + b^2}{2b}\right)
+                                                    & \qquad |1 - r| < b < 1 + r \\
+            \frac{\pi}{2}                           & \qquad b \le 1 - r
+            \quad,
+        \end{dcases}
+        \label{eq:lambda}
+    \end{align}
+\end{proof}
 %
 The case $b \le 1 - r$ corresponds to an occultation during which the occultor
 is fully within the planet disk, so no points of intersection exist.
@@ -772,7 +782,6 @@ body.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/geometry.pdf}
     \caption{\label{fig:geometry}
-             \code{geometry}
              Geometry of the occultation problem.
              The occulted body is centered
              at the origin and has unit radius, while the occultor
@@ -796,6 +805,7 @@ body.
              and extend from $-\nicefrac{\pi}{2}$ to $\nicefrac{\pi}{2}$. When
              the occultor is completely within the disk of the occulted body,
              we define $\phi = \lambda = \nicefrac{\pi}{2}$.
+             \codelink{geometry}
              }
     \end{centering}
 \end{figure}
@@ -806,45 +816,47 @@ As cumbersome as the Green's basis (Equation~\ref{eq:bg}) may appear, the reason
 we introduced it is that its anti-exterior derivatives are conveniently simple.
 It can be easily shown that one possible solution to \eq{DGg} is
 %
-\begin{align}
-    \bvec{G}_n (\x, \y) &=
-    \begin{dcases}
-        %
-        \x^{\frac{\mu + 2}{2}}
-        \y^{\frac{\nu}{2}}
-        \,\yhat
-            & \qquad \nu \, \mathrm{even}
-        \\[1em]
-        %
-        \frac{1-z^3}{3(1-z^2)}(-\y \, \xhat + \x \, \yhat)
-            & \qquad l = 1, \, m = 0
-        \\[1em]
-        %
-        \x^{l-2}
-        \z^3
-        \,\xhat
-            & \qquad \nu \, \mathrm{odd}, \,
-                     \mu = 1, \,
-                     l \, \mathrm{even}
-        \\[1em]
-        %
-        \x^{l-3}
-        \y
-        \z^3
-        \,\xhat
-         & \qquad \nu \, \mathrm{odd}, \,
-                  \mu = 1, \,
-                  l \, \mathrm{odd}
-        \\[1em]
-        %
-        \x^{\frac{\mu-3}{2}}
-        \y^{\frac{\nu-1}{2}}
-        \z^3
-        \,\yhat
-            & \qquad \mathrm{otherwise,}
-    \end{dcases}
-    \eqlabel{Gn}
-\end{align}
+\begin{proof}{Gn}
+    \begin{align}
+        \bvec{G}_n (\x, \y) &=
+        \begin{dcases}
+            %
+            \x^{\frac{\mu + 2}{2}}
+            \y^{\frac{\nu}{2}}
+            \,\yhat
+                & \qquad \nu \, \mathrm{even}
+            \\[1em]
+            %
+            \frac{1-z^3}{3(1-z^2)}(-\y \, \xhat + \x \, \yhat)
+                & \qquad l = 1, \, m = 0
+            \\[1em]
+            %
+            \x^{l-2}
+            \z^3
+            \,\xhat
+                & \qquad \nu \, \mathrm{odd}, \,
+                         \mu = 1, \,
+                         l \, \mathrm{even}
+            \\[1em]
+            %
+            \x^{l-3}
+            \y
+            \z^3
+            \,\xhat
+             & \qquad \nu \, \mathrm{odd}, \,
+                      \mu = 1, \,
+                      l \, \mathrm{odd}
+            \\[1em]
+            %
+            \x^{\frac{\mu-3}{2}}
+            \y^{\frac{\nu-1}{2}}
+            \z^3
+            \,\yhat
+                & \qquad \mathrm{otherwise,}
+        \end{dcases}
+        \label{eq:Gn}
+    \end{align}
+\end{proof}
 %
 where $l$ and $m$ are given by \eq{lm} and $\mu$ and $\nu$ are given by
 \eq{munu}. Solving the occultation problem is therefore a matter of
@@ -1014,7 +1026,7 @@ map.animate(axis=axis)
 \end{lstlisting}
 %
 where \textsf{axis} defines the axis of rotation for the animation.
-Rotation of this map about $\yhat$ yields\code{smiley}
+Rotation of this map about $\yhat$ yields%\codelink{smiley}
 %
 \begin{center}
     \includegraphics[width=0.85\linewidth]{figures/smiley.pdf}
@@ -1053,10 +1065,11 @@ $l_\mathrm{max} = 10$, rotated successively about $\yhat$.
     \\[1em]
     \includegraphics[width=0.85\linewidth]{figures/earth.pdf}
     \caption{\label{fig:earth}
-             \code{earth}
              A simplified two-color map of the cloudless Earth (top) and the
              corresponding tenth-degree spherical harmonic expansion,
-             rotated about $\yhat$ (bottom).}
+             rotated about $\yhat$ (bottom).
+             \codelink{earth}
+             }
     \end{centering}
 \end{figure}
 %
@@ -1072,17 +1085,17 @@ $l_\mathrm{max} = 10$, rotated successively about $\yhat$.
     \\[1em]
     \includegraphics[width=\linewidth]{figures/ylmlightcurves.pdf}
     \caption{\label{fig:ylmlightcurves}
-             \code{ylmphasecurves}
              \emph{Top:} Phase curves for the first several spherical
              harmonics with order $m \ge 0$ rotated about the $x$-axis
              (blue) and about the $y$-axis (orange).
              Odd harmonics with $l > 1$ and harmonics with $m < 0$ are
-             \code{ylmlightcurves}
              in the phase curve null space \citep{CowanFuentesHaggard2013}.
              \emph{Bottom:} Occultation light curves for the same
              set of spherical harmonics. An occultor of radius $r=0.3$
              transits the body along the $+\x$ direction at $y_o = 0.25$
-             (blue) and $y_o = 0.75$ (orange). }
+             (blue) and $y_o = 0.75$ (orange).
+             \codelink{ylmphasecurves}\codelink{ylmlightcurves}
+             }
     \end{centering}
 \end{figure}
 %
@@ -1127,13 +1140,14 @@ the seven individual continents.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/earthphasecurve.pdf}
     \caption{\label{fig:earthphasecurve}
-             \code{earthphasecurve}
              Phase curve for the Earth rotating about its axis, computed
              from the $l_\mathrm{max} = 10$ expansion from
              Figure~\ref{fig:earth}. The full rotational phase curve is shown in black,
              and the flux due to each of the seven continents is shown as
              the colored curves (see legend). The black dots correspond to the
-             numerical solution.}
+             numerical solution.
+             \codelink{earthphasecurve}
+             }
     \end{centering}
 \end{figure}
 %
@@ -1177,14 +1191,15 @@ occultation. As before, the numerical solutions are shown as the small dots.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/earthoccultation.pdf}
     \caption{\label{fig:earthoccultation}
-             \code{earthoccultation}
              Occultation light curve for the Moon transiting the
              rotating Earth,
              computed from the $l_\mathrm{max} = 10$ expansion from
              Figure~\ref{fig:earth}. The two largest dips are due
              to the occultations of South America (left) and Africa
              (right). Once again, the black dots correspond to the
-             numerical solution.}
+             numerical solution.
+             \codelink{earthoccultation}
+             }
     \end{centering}
 \end{figure}
 %
@@ -1264,7 +1279,7 @@ It is straightforward to show that this corresponds to the spherical harmonic su
           + \frac{2\sqrt{\pi}}{\sqrt{3}} (u_1 + 2u_2) \, Y_{1,0}
           - \frac{4\sqrt{\pi}}{3\sqrt{5}} u_2 \, Y_{2,0}
       \quad,
-\needsproof
+%\needsproof
 \end{align}
 %
 where we set
@@ -1294,7 +1309,6 @@ than $10^{-7}$ parts per million everywhere in the light curve.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/transit.pdf}
     \caption{\label{fig:transit}
-             \code{transit}
              Sample transit light curve for a planet ($r = 0.1$) transiting a
              quadratically limb-darkened star ($u_1 = 0.4, u_2 = 0.26$). The
              top panel shows the \starry (blue curve) and \batman
@@ -1302,7 +1316,8 @@ than $10^{-7}$ parts per million everywhere in the light curve.
              by a high precision direct numerical integration of the surface
              integral (purple dots). The bottom panel shows the relative
              error on the flux in parts per million compared to the high
-             precision numerical solution for \starry (blue) and \batman (orange).}
+             precision numerical solution for \starry (blue) and \batman (orange).
+             \codelink{transit}}
     \end{centering}
 \end{figure}
 %
@@ -1375,7 +1390,7 @@ the form $Y_{0,0} \, + \, y_1 Y_{1, -1} \, + \, y_2 Y_{1, 0} \, + \, y_3 Y_{1, 1
 it can be shown that as long as we enforce
 %
 \begin{align}
-    \needsproof
+    %\needsproof
     y_1^2 + y_2^2 + y_3^2 \le \frac{1}{3}
 \end{align}
 %
@@ -1416,7 +1431,6 @@ before secondary eclipse (refer to the \Python script for details).
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/system.pdf}
     \caption{\label{fig:system}
-             \code{system}
              Sample analytic exoplanet system light curves computed with \starry.
              \emph{Top:} a hot Jupiter
              transiting a Sun-like star. The planet's map is a simple dipole,
@@ -1425,7 +1439,7 @@ before secondary eclipse (refer to the \Python script for details).
              apparent. \emph{Bottom:} a two-planet system with more complex
              surface maps. In addition to transits and secondary eclipses,
              a few planet-planet occultations are visible (e.g., the very short
-             events at $t=0.1$ and $t=3.4$ days).}
+             events at $t=0.1$ and $t=3.4$ days).\codelink{system}}
     \end{centering}
 \end{figure}
 %
@@ -1502,7 +1516,6 @@ all of the map coefficients and the rotational state of the map (not shown).
     \begin{centering}
     \includegraphics[width=0.9\linewidth]{figures/autodiff.pdf}
     \caption{\label{fig:autodiff}
-             \code{autodiff}
              Transit (top left) and secondary eclipse (top right) of a mildly
              eccentric, slightly inclined, quickly-rotating hot Jupiter with a
              dipole map, computed with \gradMap. All calls to the \gradflux
@@ -1514,7 +1527,7 @@ all of the map coefficients and the rotational state of the map (not shown).
              orbital period, eccentricity, inclination, longitude of pericenter,
              rotational period, five of the planet surface map coefficients, and
              the linear and quadratic stellar limb darkening coefficients.
-             }
+             \codelink{autodiff}}
     \end{centering}
 \end{figure}
 %
@@ -1532,7 +1545,7 @@ surface integrals. We integrate the specific intensity of the body by
 discretely summing over its surface map on an adaptive radial mesh whose
 resolution is iteratively increased wherever the spatial gradient of the
 %
-\animation{adaptive}
+%\animation{adaptive}
 %
 specific intensity is large and in the vicinity of the limb of the occultor.
 
@@ -1557,7 +1570,6 @@ of the latter.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/stability.pdf}
     \caption{\label{fig:stability}
-             \code{stability}
              Error in the terms of the solution vector $\mathbf{s}$ for a small
              occultor ($r = 0.01$, left) and a large occultor ($r = 100$, right),
              computed relative to calculations using quadruple
@@ -1567,7 +1579,7 @@ of the latter.
              the entire range of $b$ during an occultation, with extra resolution in the
              vicinity of potentially unstable regions. The top panel shows the relative error,
              while the bottom panel shows the fractional error, scaled to the largest value of
-             the function during the occultation.}
+             the function during the occultation.\codelink{stability}}
     \end{centering}
 \end{figure}
 
@@ -1575,12 +1587,11 @@ of the latter.
     \begin{centering}
     \includegraphics[width=0.85\linewidth]{figures/stability_earth.pdf}
     \caption{\label{fig:stability_earth}
-             \code{stability}
              Secondary eclipse ingress for the Earth being occulted by the Sun
              ($r = 110$), computed for a $l = 20$ expansion of the planet's
              surface map. The relative error due to floating point precision loss
              is shown at the bottom and is
-             less than one part per billion everywhere.}
+             less than one part per billion everywhere.\codelink{stability}}
     \end{centering}
 \end{figure}
 
@@ -1606,7 +1617,6 @@ per billion everywhere.
     \begin{centering}
     \includegraphics[width=0.75\linewidth]{figures/spidercomp_flux.pdf}
     \caption{\label{fig:spidercomp_flux}
-             \code{spidercomp}
              Comparison to a light curve generated using the \spiderman code
              \citep{Louden2018}. The top panel shows a secondary eclipse of a
              hot Jupiter with an offset dipole computed with \starry (blue)
@@ -1614,7 +1624,7 @@ per billion everywhere.
              value of the difference between the two light curves as the number
              of layers in the \spiderman grid is increased. The \spiderman solution
              appears to converge linearly to the \starry solution as the number of layers
-             is increased.}
+             is increased.\codelink{spidercomp}}
     \end{centering}
 \end{figure}
 
@@ -1655,7 +1665,6 @@ magnitude faster and more accurate than any other evaluation technique.
     \begin{centering}
     \includegraphics[width=0.9\linewidth]{figures/compare_to_numerical.pdf}
     \caption{\label{fig:compare_to_numerical}
-             \code{speed}
              Evaluation time for a single occultation calculation as a function
              of the spherical harmonic degree of the map using
              \starry (blue), \starrygrad (purple), the adaptive mesh technique (\S\ref{sec:starrybenchmarks}, orange),
@@ -1664,7 +1673,7 @@ magnitude faster and more accurate than any other evaluation technique.
              integration routine (red).
              The size of each point is proportional to the log of the error relative
              to the \starry quadruple-precision solution.
-             }
+             \codelink{speed}}
     \end{centering}
 \end{figure}
 
@@ -1672,7 +1681,6 @@ magnitude faster and more accurate than any other evaluation technique.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/speed.pdf}
     \caption{\label{fig:speed}
-             \code{speed}
              Speed tests for \starry, showing the light curve evaluation time
              as a function of number of light curve points for rotational
              phase curves (left) and occultation light curves (right) of individual
@@ -1681,7 +1689,7 @@ magnitude faster and more accurate than any other evaluation technique.
              degrees $l$, averaged over all orders $m$. The bottom panels
              show the evaluation time for each of the positive orders
              of the $l = 5$ spherical harmonics.
-             }
+             \codelink{speed}}
     \end{centering}
 \end{figure}
 
@@ -1702,11 +1710,10 @@ computing transit light curves.
     \begin{centering}
     \includegraphics[width=0.65\linewidth]{figures/speed_batman.pdf}
     \caption{\label{fig:speed_batman}
-             \code{speed_batman}
              Speed comparison to the \batman transit modeling package
              \citep{Kreidberg2015} for a hot Jupiter transit across a
              quadratically limb-darkened star.
-             }
+             \codelink{speed_batman}}
     \end{centering}
 \end{figure}
 
@@ -1714,7 +1721,6 @@ computing transit light curves.
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/spidercomp.pdf}
     \caption{\label{fig:spidercomp}
-             \code{spidercomp}
              Speed comparison to the \spiderman code package \citep{Louden2018}.
              For a dipole ($l = 1$) map, \starry computes secondary eclipse
              light curves and phase curves in about an order of magnitude less
@@ -1723,7 +1729,8 @@ computing transit light curves.
              error in the solutions, compared to evaluation of the equations
              presented in this paper using quadruple floating-point precision.
              As the number of layers is increased in \spiderman, the error
-             decreases linearly, but the evaluation time increases proportionally.}
+             decreases linearly, but the evaluation time increases proportionally.
+             \codelink{spidercomp}}
     \end{centering}
 \end{figure}
 
@@ -2032,7 +2039,7 @@ which we combine with the previous results to write
         \z^k
         \qquad & m < 0
     \end{dcases}
-    \needsproof
+    %\needsproof
 \end{align}
 %
 where
@@ -2084,7 +2091,7 @@ as a function of $\x$ and $\y$ only:
 %
 \begin{align}
     \label{eq:ylmxy}
-    \needsproof
+    %\needsproof
     Y_{lm}(\x, \y) &=
     \begin{dcases}
         \!\begin{aligned}%[b]
@@ -2243,7 +2250,7 @@ harmonics up to degree $l_\mathrm{max} = 2$, this is
             0 & 0 & 0 & 0 & 0 & \sqrt{15} & 0 & 0 & 0 \\
             0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{2} & 0 & -\frac{\sqrt{15}}{2}
         }\quad.
-    \needsproof
+    %\needsproof
 \end{equation}
 %
 
@@ -2270,7 +2277,7 @@ is
             0 & 0 & 0 & 0 & 0 & 0 & 0 & \frac{1}{3} & 0 \\
             0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
         }\quad.
-    \needsproof
+    %\needsproof
 \end{equation}
 %
 
@@ -2279,7 +2286,7 @@ harmonics to Green's polynomials, $\bvec{A}$, is just the matrix product
 of $\ATwo$ and $\AOne$. For $l_\mathrm{max} = 2$, we have
 %
 \begin{equation}
-    \needsproof
+    %\needsproof
     \setstackgap{L}{1.25\baselineskip}
     \fixTABwidth{T}
     \bvec{A} =
@@ -2386,7 +2393,7 @@ block-diagonal matrix $\bvec{R}$:
                        &            &            & \bvec{R}^3 &  \\
                        &            &            &            & \ddots
         }\quad.
-    \needsproof
+    %\needsproof
 \end{equation}
 %
 Rotation of $\bvec{y}$ by the Euler angles $\alpha$, $\beta$, and $\gamma$
@@ -2479,7 +2486,7 @@ angles in terms of $\bvec{u}$ and $\theta$:
         \sin\gamma = \frac{P_{2,1}}{\sqrt{P_{2,0}^2 + P_{2,1}^2}}
     \end{matrix}
     \quad.
-    \needsproof
+    %\needsproof
 \end{align}
 %
 Thus, given a spherical harmonic vector $\bvec{y}$, we can calculate
@@ -2769,7 +2776,7 @@ we may write
         \quad
         %
     \end{dcases}
-    \needsproof
+    %\needsproof
 \end{align}
 %
 
@@ -3152,7 +3159,7 @@ $K(\bigdot)$    & Complete Elliptic integral of the
 $\mathcal{K}_{u,v}$
                 & Occultation integral                  & \eq{KILJ} \\
 $l$             & Spherical harmonic degree             & \eq{lm} \\
-$\mathcal{L}_{u,v}^(t)$
+$\mathcal{L}_{u,v}^{(t)}$
                 & Occultation integral                  & \eq{KILJ} \\
 $m$             & Spherical harmonic order              & \eq{lm} \\
 $n$             & Surface map vector index,

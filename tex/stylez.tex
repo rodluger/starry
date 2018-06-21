@@ -31,6 +31,7 @@
 \fi
 \usepackage{fontawesome}
 \usepackage{listings}
+\usepackage{mathtools}
 \stackMath
 
 % Page breaks in long equations
@@ -84,18 +85,21 @@
 \newcommand{\eq}[1]{\Eq{#1}}
 \newcommand{\eqalt}[1]{Equation~\eqref{#1}}
 
-% Add script hyperlinks as margin notes
+% Add code, proof, and animation hyperlinks
 \definecolor{linkcolor}{rgb}{0.1216,0.4667,0.7059}
-\input{.code}
-\input{.proof}
-\input{.animation}
-\input{.figanimation}
-\newcommand{\needsproof}{\marginnote{\color{red}\Large\faPencilSquareO}}
-\newcommand{\eqlabel}[1]{\label{eq:#1}\proof{#1}}
-\newcommand{\figlabel}[1]{\label{fig:#1}\code{#1}}
+\input{.codelink}
+\input{.prooflink}
+\input{.animlink}
 
-% Force margin notes to always be on the right side
-% https://tex.stackexchange.com/a/69624
+% Define a proof environment
+\newtagform{eqtag}[]{(}{)}
+\newenvironment{proof}[1]{%
+\renewtagform{eqtag}[]{(}{)\,\prooflink{#1}}
+\usetagform{eqtag}
+}{%
+\renewtagform{eqtag}[]{(}{)}
+\usetagform{eqtag}
+}
 
 % Math stuff
 \newcommand{\ii}{\ensuremath{\mathbf{i}}}
@@ -121,9 +125,9 @@
 \newcommand{\bigdot}{\scaleto{\cdot}{6pt}}
 
 % Bases
-\newcommand{\pbasis}{\ensuremath{\bvec{\tilde{p}}}}
-\newcommand{\gbasis}{\ensuremath{\bvec{\tilde{g}}}}
-\newcommand{\ybasis}{\ensuremath{\bvec{\tilde{y}}}}
+\newcommand{\pbasis}{\ensuremath{\tilde{\bvec{p}}}}
+\newcommand{\gbasis}{\ensuremath{\tilde{\bvec{g}}}}
+\newcommand{\ybasis}{\ensuremath{\tilde{\bvec{y}}}}
 \newcommand{\pbasisn}{\ensuremath{\tilde{p}_n}}
 \newcommand{\gbasisn}{\ensuremath{\tilde{g}_n}}
 \newcommand{\ybasisn}{\ensuremath{\tilde{y}_n}}
