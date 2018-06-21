@@ -8,16 +8,20 @@ RM_TMP      = $(foreach d, ${TEX_FILES}, rm -rf $(foreach suff, ${TMP_SUFFS}, ${
 CHECK_RERUN = grep Rerun starry.log
 FIGURES     = $(patsubst %.py,%.pdf,$(wildcard figures/*.py))
 SOURCES     = $(wildcard ../src/*.[ch])
+TECTONIC    = $(shell command -v tectonic >/dev/null && echo true || echo false )
 
 default: starry.pdf
 
-starry.pdf: starry.tex stylez.tex $(FIGURES) $(SOURCES)
+starry.pdf: starry.tex stylez.tex starry.bib $(FIGURES) $(SOURCES)
 	python gitlinks.py
-	${LATEX} starry.tex
-	bibtex starry
-	( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done."
-	( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done."
-	( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done."
+	if [ "${TECTONIC}" = "true" ]; then\
+		tectonic starry.tex --print;\
+	else\
+		${LATEX} starry.tex;\
+		( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done.";\
+		( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done.";\
+		( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done.";\
+	fi
 
 clean:
 	$(RM_TMP)

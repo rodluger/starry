@@ -1026,11 +1026,22 @@ map.animate(axis=axis)
 \end{lstlisting}
 %
 where \textsf{axis} defines the axis of rotation for the animation.
-Rotation of this map about $\yhat$ yields%\codelink{smiley}
+Rotation of this map about $\yhat$ yields the sequence shown in
+Figure~\ref{fig:smiley}.
+
 %
-\begin{center}
+%
+\begin{figure}[ht!]
+    \begin{centering}
     \includegraphics[width=0.85\linewidth]{figures/smiley.pdf}
-\end{center}
+    \caption{\label{fig:smiley}
+             Rotation of the map given by Equation~(\ref{eq:ylm_code_example})
+             about $\yhat$.
+             \codelink{smiley}
+             }
+    \end{centering}
+\end{figure}
+%
 %
 
 Alternatively, users may provide the path to an image file of the
@@ -1091,7 +1102,7 @@ $l_\mathrm{max} = 10$, rotated successively about $\yhat$.
              Odd harmonics with $l > 1$ and harmonics with $m < 0$ are
              in the phase curve null space \citep{CowanFuentesHaggard2013}.
              \emph{Bottom:} Occultation light curves for the same
-             set of spherical harmonics. An occultor of radius $r=0.3$
+             set of harmonics. An occultor of radius $r=0.3$
              transits the body along the $+\x$ direction at $y_o = 0.25$
              (blue) and $y_o = 0.75$ (orange).
              \codelink{ylmphasecurves}\codelink{ylmlightcurves}
@@ -1578,9 +1589,9 @@ of the latter.
              for terms with $\mu$ even (left)
              and $\mu$ odd (right). The horizontal axis extends from $r - 1$ to $r + 1$ and covers
              the entire range of $b$ during an occultation, with extra resolution in the
-             vicinity of potentially unstable regions. The top panel shows the relative error,
-             while the bottom panel shows the fractional error, scaled to the largest value of
-             the function during the occultation.
+             vicinity of potentially unstable regions. The top panel shows the relative error
+             and the bottom panel shows the fractional error, scaled to the largest value of
+             the function over the course of the occultation.
              \codelink{stability}}
     \end{centering}
 \end{figure}
@@ -1691,7 +1702,7 @@ magnitude faster and more accurate than any other evaluation technique.
              spherical harmonics. The top
              panels show the evaluation time for spherical harmonics of different
              degrees $l$, averaged over all orders $m$. The bottom panels
-             show the evaluation time for each of the positive orders
+             show the evaluation time for each of the non-negative orders ($m \ge 0$)
              of the $l = 5$ spherical harmonics.
              \codelink{speed}}
     \end{centering}

@@ -7,17 +7,7 @@ then
 
     # Generate the figures
     echo "Generating figures..."
-    cd $TRAVIS_BUILD_DIR/tex/figures
-    for f in *.py; do
-        echo "Running $f..."
-        python "$f"
-    done
-
-    # TeX it up using tectonic
-    echo "Generating the PDF..."
-    cd $TRAVIS_BUILD_DIR/tex/
-    python gitlinks.py
-    tectonic starry.tex --print
+    cd $TRAVIS_BUILD_DIR/tex && make
 
     # Force push the paper to GitHub
     cd $TRAVIS_BUILD_DIR
