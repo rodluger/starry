@@ -21,6 +21,12 @@ if ! command -v conda > /dev/null; then
       pip install sphinx
 fi
 
+python -c "import matplotlib.font_manager; print('\n'.join([font for font in matplotlib.font_manager.findSystemFonts(fontpaths=None, fontext='ttf')]))"
+python -c "import matplotlib.font_manager; flist = matplotlib.font_manager.get_fontconfig_fonts(); names = [matplotlib.font_manager.FontProperties(fname=fname).get_name() for fname in flist]; print(names)"
+
+# DEBUG
+exit
+
 # Install starry_maps
 pip install starry_maps
 

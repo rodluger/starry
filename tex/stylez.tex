@@ -24,8 +24,11 @@
 \usepackage{upgreek}
 \usepackage[T1]{fontenc} % https://tex.stackexchange.com/a/166791
 \usepackage{textcomp}
+\usepackage{ifxetex}
+\ifxetex
 \usepackage{fontspec}
 \defaultfontfeatures{Extension = .otf}
+\fi
 \usepackage{fontawesome}
 \usepackage{listings}
 \stackMath
