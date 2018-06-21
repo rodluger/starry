@@ -177,11 +177,11 @@ def comparison():
     ax.plot(time_arr, spider_lc_5, lw=1, alpha=1, ls='--',
             label='spiderman (5)')
 
-    ax.legend(loc='lower left', framealpha=0.0)
+    ax.legend(loc='lower left', framealpha=0.0, fontsize=10)
     ax.get_xaxis().set_ticklabels([])
     ax.set_xlim(time_arr.min(), time_arr.max())
     ax.set_ylim(1.000 - 0.001, 1.004 + 0.001)
-    ax.set_ylabel("Flux")
+    ax.set_ylabel("Flux", fontsize=14)
 
     # Error panel
     for kk in range(len(flux_comp)):
@@ -191,8 +191,8 @@ def comparison():
     ax2.set_ylim(1.0e-11, 1.0e-4)
     ax2.set_xlim(time_arr.min(), time_arr.max())
     ax2.set_yscale("log")
-    ax2.set_ylabel("Relative error")
-    ax2.set_xlabel("Time [d]")
+    ax2.set_ylabel("Relative error", fontsize=14)
+    ax2.set_xlabel("Time [d]", fontsize=14)
     ax2.legend(loc="best", framealpha=0.0)
     fig.savefig("spidercomp_flux.pdf", bbox_inches="tight")
 
@@ -204,10 +204,10 @@ def comparison():
     axleg2 = plt.subplot2grid((2, 5), (1, 4))
     axleg1.axis('off')
     axleg2.axis('off')
-    ax.set_xlabel('Number of points', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Number of points', fontsize=13)
     for tick in ax.get_xticklabels():
         tick.set_fontsize(12)
-    ax.set_ylabel('Evaluation time [seconds]', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Evaluation time [seconds]', fontsize=13)
     ax.set_yscale("log")
     ax.set_xscale("log")
     for tick in ax.get_yticklabels():
@@ -234,16 +234,16 @@ def comparison():
         axleg1.plot([0, 1], [0, 1], color="C%d" %
                     (jj), label="n$_{\mathrm{layers}}$=%d" % ng)
     axleg1.set_xlim(2, 3)
-    axleg1.legend(loc='center', frameon=False, title=r'\textbf{method}')
+    leg = axleg1.legend(loc='center', frameon=False)
+    leg.set_title('method', prop={'weight': 'bold'})
 
     for logerr in [-16, -12, -8, -4, 0]:
         axleg2.plot([0, 1], [0, 1], 'o', color='gray',
                     ms=ms(10 ** logerr),
                     label=r'$%3d$' % logerr)
     axleg2.set_xlim(2, 3)
-    axleg2.legend(loc='center', labelspacing=1, frameon=False,
-                  title=r'\textbf{log error}')
-
+    leg = axleg2.legend(loc='center', labelspacing=1, frameon=False)
+    leg.set_title('log error', prop={'weight': 'bold'})
     fig.savefig("spidercomp.pdf", bbox_inches="tight")
 
 

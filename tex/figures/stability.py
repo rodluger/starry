@@ -258,8 +258,10 @@ def PaperFigure(larr=[0, 1, 2, 3, 5, 8, 10, 13, 15, 18, 20],
                 err_rel = np.abs(s[n] - s_mp[n])
                 err_frac = np.abs((s[n] - s_mp[n]) /
                                   max(1e-9, np.max(np.abs(s_mp[n]))))
-                ax[0, i].plot(err_rel, color=cmap(l / (lmax + 2)), lw=1)
-                ax[1, i].plot(err_frac, color=cmap(l / (lmax + 2)), lw=1)
+                ax[0, i].plot(err_rel, color=cmap(l / (lmax + 2)), lw=1,
+                              zorder=-1)
+                ax[1, i].plot(err_frac, color=cmap(l / (lmax + 2)), lw=1,
+                              zorder=-1)
                 n += 1
 
     # Dummy curves & a legend
@@ -284,8 +286,8 @@ def PaperFigure(larr=[0, 1, 2, 3, 5, 8, 10, 13, 15, 18, 20],
         axis.annotate("ppb", xy=(5, 1e-9), xycoords="data", xytext=(3, -3),
                       textcoords="offset points", ha="left", va="top",
                       alpha=0.75)
-
-    fig.savefig("stability.pdf", bbox_inches='tight')
+        axis.set_rasterization_zorder(0)
+    fig.savefig("stability.pdf", bbox_inches='tight', dpi=300)
     pl.close()
 
 

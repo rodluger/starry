@@ -24,8 +24,14 @@
 \usepackage{upgreek}
 \usepackage[T1]{fontenc} % https://tex.stackexchange.com/a/166791
 \usepackage{textcomp}
+\usepackage{ifxetex}
+\ifxetex
+\usepackage{fontspec}
+\defaultfontfeatures{Extension = .otf}
+\fi
 \usepackage{fontawesome}
 \usepackage{listings}
+\usepackage{mathtools}
 \stackMath
 
 % Page breaks in long equations
@@ -79,22 +85,36 @@
 \newcommand{\eq}[1]{\Eq{#1}}
 \newcommand{\eqalt}[1]{Equation~\eqref{#1}}
 
-% Add script hyperlinks as margin notes
+% Add code, proof, and animation hyperlinks
 \definecolor{linkcolor}{rgb}{0.1216,0.4667,0.7059}
-\input{.code}
-\input{.proof}
-\input{.animation}
-\input{.figanimation}
-\newcommand{\needsproof}{\marginnote{\color{red}\Large\faPencilSquareO}}
-\newcommand{\eqlabel}[1]{\label{eq:#1}\proof{#1}}
-\newcommand{\figlabel}[1]{\label{fig:#1}\code{#1}}
+\newcommand{\codeicon}{{\color{linkcolor}\faFileCodeO}}
+\newcommand{\prooficon}{{\color{linkcolor}\faPencilSquareO}}
+\newcommand{\animicon}{{\color{linkcolor}\faPlayCircle}}
+\input{gitlinks}
 
-% Force margin notes to always be on the right side
-% https://tex.stackexchange.com/a/69624
+
+\newtagform{eqtag}[]{(}{)}
+
+% Define a proof environment
+\newenvironment{proof}[1]{%
+\renewtagform{eqtag}[]{\prooflink{#1}\,(}{)}
+\usetagform{eqtag}
+}{%
+\renewtagform{eqtag}[]{(}{)}
+\usetagform{eqtag}
+}
+
+% Define a needsproof environment
+\newenvironment{needsproof}{%
+\renewtagform{eqtag}[]{\raisebox{-0.1em}{{\color{red}\faPencilSquareO}}\,(}{)}
+\usetagform{eqtag}
+}{%
+\renewtagform{eqtag}[]{(}{)}
+\usetagform{eqtag}
+}
 
 % Math stuff
 \newcommand{\ii}{\ensuremath{\mathbf{i}}}
-\newcommand{\T}{\ensuremath{\mathrm{T}}}
 \newcommand{\dd}{\ensuremath{ \mathrm{d}}}
 \newcommand{\unit}[1]{{\ensuremath{\mathrm{#1}}}}
 \newcommand{\bvec}[1]{{\ensuremath{\mathbf{#1}}}}
@@ -117,9 +137,9 @@
 \newcommand{\bigdot}{\scaleto{\cdot}{6pt}}
 
 % Bases
-\newcommand{\pbasis}{\ensuremath{\bvec{\tilde{p}}}}
-\newcommand{\gbasis}{\ensuremath{\bvec{\tilde{g}}}}
-\newcommand{\ybasis}{\ensuremath{\bvec{\tilde{y}}}}
+\newcommand{\pbasis}{\ensuremath{\tilde{\bvec{p}}}}
+\newcommand{\gbasis}{\ensuremath{\tilde{\bvec{g}}}}
+\newcommand{\ybasis}{\ensuremath{\tilde{\bvec{y}}}}
 \newcommand{\pbasisn}{\ensuremath{\tilde{p}_n}}
 \newcommand{\gbasisn}{\ensuremath{\tilde{g}_n}}
 \newcommand{\ybasisn}{\ensuremath{\tilde{y}_n}}

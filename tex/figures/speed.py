@@ -173,11 +173,11 @@ def compare_to_numerical(lmax=6, lmax_grad=5):
     axleg2 = pl.subplot2grid((2, 5), (1, 4))
     axleg1.axis('off')
     axleg2.axis('off')
-    ax.set_xlabel('Spherical harmonic degree', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Spherical harmonic degree', fontsize=14)
     ax.set_xticks(range(lmax + 1))
     for tick in ax.get_xticklabels():
         tick.set_fontsize(12)
-    ax.set_ylabel('Evaluation time [seconds]', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Evaluation time [seconds]', fontsize=14)
 
     # Starry
     for l in range(lmax + 1):
@@ -211,16 +211,15 @@ def compare_to_numerical(lmax=6, lmax_grad=5):
     axleg1.plot([0, 1], [0, 1], color='C2', label='grid')
     axleg1.plot([0, 1], [0, 1], color='C3', label='dblquad')
     axleg1.set_xlim(2, 3)
-    axleg1.legend(loc='center', frameon=False, title=r'\textbf{method}')
-
+    leg = axleg1.legend(loc='center', frameon=False)
+    leg.set_title('method', prop={'weight': 'bold'})
     for logerr in [-16, -12, -8, -4, 0]:
         axleg2.plot([0, 1], [0, 1], 'o', color='gray',
                     ms=ms(10 ** logerr),
                     label=r'$%3d$' % logerr)
     axleg2.set_xlim(2, 3)
-    leg = axleg2.legend(loc='center', labelspacing=1, frameon=False,
-                        title=r'\textbf{log error}')
-
+    leg = axleg2.legend(loc='center', labelspacing=1, frameon=False)
+    leg.set_title('log error', prop={'weight': 'bold'})
     fig.savefig("compare_to_numerical.pdf", bbox_inches='tight')
 
 
