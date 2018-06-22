@@ -27,15 +27,14 @@ else
         (b-r)*2/(3pi)*cel_bulirsch(minv,one(r),one(r),2*(1-minv)) # Adding in first derivative
     end
   else
-    onembpr2 = 1-(b+r)^2; onembmr2=1-(b-r)^2; fourbr = 4b*r
+#    onembpr2 = 1-(b+r)^2; onembmr2=1-(b-r)^2; fourbr = 4b*r
+    onembpr2 = (1-b-r)*(1+b+r); onembmr2=(r-b+1)*(b-r+1); fourbr = 4b*r
     k2 = onembpr2/fourbr+1
+#    k2 = onembmr2/fourbr
     if (b+r) > 1.0 # k^2 < 1, Case 2, Case 8
-      k2c = -onembpr2/fourbr; kc = sqrt(k2c)
-      Eofk = cel_bulirsch(k2,kc,one(b),one(b),k2c) # Complete elliptic integral of second kind
-      Lambda1 = onembmr2*(k2c*(b-r)*(b+r)*cel_bulirsch(k2,kc,(b-r)^2*k2c,zero(b),3one(b))
-          +cel_bulirsch(k2,kc,one(b),-3+6r^2-2*b*r,onembpr2))/(9*pi*sqrt(b*r))
-#      Lambda1 = onembmr2*(cel_bulirsch(k2,kc,(b-r)^2*k2c,zero(b),3*k2c*(b-r)*(b+r))
-#          -(3-6*r^2-2*b*r)*cel_bulirsch(k2,kc,one(b),one(b),zero(b))-fourbr*Eofk)/(9*pi*sqrt(b*r))
+      k2c = -onembpr2/fourbr; kc = sqrt(k2c); sqbr=sqrt(b*r)
+      Lambda1 = onembmr2*(cel_bulirsch(k2,kc,(b-r)^2*k2c,zero(b),3*k2c*(b-r)*(b+r))+
+          cel_bulirsch(k2,kc,one(b),-3+6r^2-2*b*r,onembpr2))/(9*pi*sqrt(b*r))
     elseif (b+r) < 1.0  # k^2 > 1, Case 3, Case 9
       k2inv = inv(k2); k2c =onembpr2/onembmr2; kc = sqrt(k2c)
       Eofk = cel_bulirsch(k2inv,kc,one(b),one(b),k2c) # Complete elliptic integral of second kind
