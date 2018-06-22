@@ -287,24 +287,22 @@ $\bvec{p}$, which we express as a vector of coefficients in the
 \emph{polynomial basis} $\pbasis$:
 %
 \begin{proof}{bp}
-    \begin{align}
-        \pbasisn &=
-        \begin{dcases}
-            \x^\frac{\mu}{2} \y^\frac{\nu}{2} & \qquad \nu \, \mathrm{even}
-            \\
-            \x^\frac{\mu-1}{2} \y^\frac{\nu-1}{2} \z & \qquad \nu \, \mathrm{odd}
-        \end{dcases}
-        \nonumber\\[0.5em]
-        \pbasis &=
-        \begin{pmatrix}
-            1 &
-            \x & \z & \y &
-            \x^2 & \x\z & \x\y & \y\z & \y^2 &
-            \cdot\cdot\cdot
-        \end{pmatrix}^\mathsf{T}
-        \quad,
-        \label{eq:bp}
-    \end{align}
+    \pbasisn &=
+    \begin{dcases}
+        \x^\frac{\mu}{2} \y^\frac{\nu}{2} & \qquad \nu \, \mathrm{even}
+        \\
+        \x^\frac{\mu-1}{2} \y^\frac{\nu-1}{2} \z & \qquad \nu \, \mathrm{odd}
+    \end{dcases}
+    \nonumber\\[0.5em]
+    \pbasis &=
+    \begin{pmatrix}
+        1 &
+        \x & \z & \y &
+        \x^2 & \x\z & \x\y & \y\z & \y^2 &
+        \cdot\cdot\cdot
+    \end{pmatrix}^\mathsf{T}
+    \quad,
+    \label{eq:bp}
 \end{proof}
 %
 where
@@ -346,59 +344,57 @@ As we will see in the next section, integrating the surface map over the disk of
 the body is easier if we apply one final transformation to our input vector,
 rotating it into what we will refer to as the \emph{Green's basis}, $\gbasis$:
 %
+\begingroup\makeatletter\def\f@size{10}\check@mathfonts
+\def\maketag@@@#1{\hbox{\m@th\normalsize#1}}%
 \begin{proof}{bg}
-    \begingroup\makeatletter\def\f@size{10}\check@mathfonts
-    \def\maketag@@@#1{\hbox{\m@th\normalsize#1}}%
-    \begin{align}
-        \gbasisn &=
-        \begin{dcases}
-            %
-            \frac{\mu+2}{2}\x^\frac{\mu}{2} \y^\frac{\nu}{2}
-                & \qquad \nu \, \mathrm{even}
-            \\[1em]
-            %
-            \z
-                & \qquad l = 1, \, m = 0
-            \\[1em]
-            %
-            3\x^{l-2}\y\z
-                & \qquad \nu \, \mathrm{odd}, \,
-                         \mu = 1, \,
-                         l \, \mathrm{even}
-            \\[1em]
-            %
-            \z
-            \bigg(
-             -\x^{l-3} + \x^{l-1} + 4\x^{l-3}\y^2
-            \bigg)
-             & \qquad \nu \, \mathrm{odd}, \,
-                      \mu = 1, \,
-                      l \, \mathrm{odd}
-            \\[1em]
-            %
-            \z
-            \bigg(
-                \frac{\mu-3}{2} \x^\frac{\mu-5}{2} \y^\frac{\nu-1}{2}
-                -
-                \frac{\mu-3}{2} \x^\frac{\mu-5}{2} \y^\frac{\nu+3}{2}
-                -
-                \frac{\mu+3}{2} \x^\frac{\mu-1}{2} \y^\frac{\nu-1}{2}
-            \bigg)
-                & \qquad \mathrm{otherwise}
-        \end{dcases}
-        \nonumber\\[1.5em]
-        \gbasis &=
-        \begin{pmatrix}
-            1 &
-            2\x & \z & \y &
-            3\x^2 & -3\x\z & 2\x\y & 3\y\z & \y^2 &
-            \cdot\cdot\cdot
-        \end{pmatrix}^\mathsf{T}
-        \quad,
-        \label{eq:bg}
-    \end{align}
-    \endgroup
+    \gbasisn &=
+    \begin{dcases}
+        %
+        \frac{\mu+2}{2}\x^\frac{\mu}{2} \y^\frac{\nu}{2}
+            & \qquad \nu \, \mathrm{even}
+        \\[1em]
+        %
+        \z
+            & \qquad l = 1, \, m = 0
+        \\[1em]
+        %
+        3\x^{l-2}\y\z
+            & \qquad \nu \, \mathrm{odd}, \,
+                     \mu = 1, \,
+                     l \, \mathrm{even}
+        \\[1em]
+        %
+        \z
+        \bigg(
+         -\x^{l-3} + \x^{l-1} + 4\x^{l-3}\y^2
+        \bigg)
+         & \qquad \nu \, \mathrm{odd}, \,
+                  \mu = 1, \,
+                  l \, \mathrm{odd}
+        \\[1em]
+        %
+        \z
+        \bigg(
+            \frac{\mu-3}{2} \x^\frac{\mu-5}{2} \y^\frac{\nu-1}{2}
+            -
+            \frac{\mu-3}{2} \x^\frac{\mu-5}{2} \y^\frac{\nu+3}{2}
+            -
+            \frac{\mu+3}{2} \x^\frac{\mu-1}{2} \y^\frac{\nu-1}{2}
+        \bigg)
+            & \qquad \mathrm{otherwise}
+    \end{dcases}
+    \nonumber\\[1.5em]
+    \gbasis &=
+    \begin{pmatrix}
+        1 &
+        2\x & \z & \y &
+        3\x^2 & -3\x\z & 2\x\y & 3\y\z & \y^2 &
+        \cdot\cdot\cdot
+    \end{pmatrix}^\mathsf{T}
+    \quad,
+    \label{eq:bg}
 \end{proof}
+\endgroup
 %
 where the values of $l$, $m$, $\mu$, and $\nu$ are given by
 Equations~(\ref{eq:lm}) and (\ref{eq:munu}). Given
@@ -523,42 +519,40 @@ When the entire disk of the body is visible (i.e., when no occultation is
 occurring), this may be written
 %
 \begin{proof}{rnsoln}
-    \begin{align}
-        r_n &=
-                  \int_{-1}^{1}
-                  \int_{-\sqrt{1-\x^2}}^{\sqrt{1+\x^2}}
-                  \tilde{p}_n (\x, \y)
-                  \,
-                  \dd \y \, \dd \x
-            \nonumber \\[1em]
-            &=
-            \begin{dcases}
-                \frac{
-                        \Gamma\left(\frac{\mu}{4} + \frac{1}{2}\right)
-                        \Gamma\left(\frac{\nu}{4} + \frac{1}{2}\right)
-                    }{
-                        \Gamma\left(\frac{\mu + \nu}{4} + 2\right)
-                    }
-                & \qquad \frac{\mu}{2} \, \mathrm{even}, \, \frac{\nu}{2} \, \mathrm{even}
-                %
-                \\[1em]
-                %
-                \frac{\sqrt{\pi}}{2}
-                \frac{
-                        \Gamma\left(\frac{\mu}{4} + \frac{1}{4}\right)
-                        \Gamma\left(\frac{\nu}{4} + \frac{1}{4}\right)
-                    }{
-                        \Gamma\left(\frac{\mu + \nu}{4} + 2\right)
-                    }
-                & \qquad \frac{\mu-1}{2} \, \mathrm{even}, \, \frac{\nu-1}{2} \, \mathrm{even}
-                %
-                \\[1em]
-                %
-                0
-                & \qquad \mathrm{otherwise.}
-            \end{dcases}
-        \label{eq:rnsoln}
-    \end{align}
+    r_n &=
+              \int_{-1}^{1}
+              \int_{-\sqrt{1-\x^2}}^{\sqrt{1+\x^2}}
+              \tilde{p}_n (\x, \y)
+              \,
+              \dd \y \, \dd \x
+        \nonumber \\[1em]
+        &=
+        \begin{dcases}
+            \frac{
+                    \Gamma\left(\frac{\mu}{4} + \frac{1}{2}\right)
+                    \Gamma\left(\frac{\nu}{4} + \frac{1}{2}\right)
+                }{
+                    \Gamma\left(\frac{\mu + \nu}{4} + 2\right)
+                }
+            & \qquad \frac{\mu}{2} \, \mathrm{even}, \, \frac{\nu}{2} \, \mathrm{even}
+            %
+            \\[1em]
+            %
+            \frac{\sqrt{\pi}}{2}
+            \frac{
+                    \Gamma\left(\frac{\mu}{4} + \frac{1}{4}\right)
+                    \Gamma\left(\frac{\nu}{4} + \frac{1}{4}\right)
+                }{
+                    \Gamma\left(\frac{\mu + \nu}{4} + 2\right)
+                }
+            & \qquad \frac{\mu-1}{2} \, \mathrm{even}, \, \frac{\nu-1}{2} \, \mathrm{even}
+            %
+            \\[1em]
+            %
+            0
+            & \qquad \mathrm{otherwise.}
+        \end{dcases}
+    \label{eq:rnsoln}
 \end{proof}
 %
 where $\Gamma(\bigdot)$ is the gamma function.
@@ -642,24 +636,22 @@ extends from $\pi - \lambda$ to $2\pi + \lambda$ (see the Figure).
 For future reference, it can be shown that
 %
 \begin{proof}{lambda}
-    \begin{align}
-        \label{eq:phi}
-        \phi &=
-        \begin{dcases}
-            \arcsin\left({\frac{1 - r^2 - b^2}{2br}}\right)
-                                                    & \qquad |1 - r| < b < 1 + r \\
-            \frac{\pi}{2}                           & \qquad b \le 1 - r
-        \end{dcases} \\
-    \intertext{and}
-        \lambda &=
-        \begin{dcases}
-            \arcsin\left(\frac{1 - r^2 + b^2}{2b}\right)
-                                                    & \qquad |1 - r| < b < 1 + r \\
-            \frac{\pi}{2}                           & \qquad b \le 1 - r
-            \quad,
-        \end{dcases}
-        \label{eq:lambda}
-    \end{align}
+    \label{eq:phi}
+    \phi &=
+    \begin{dcases}
+        \arcsin\left({\frac{1 - r^2 - b^2}{2br}}\right)
+                                                & \qquad |1 - r| < b < 1 + r \\
+        \frac{\pi}{2}                           & \qquad b \le 1 - r
+    \end{dcases} \\
+\intertext{and}
+    \lambda &=
+    \begin{dcases}
+        \arcsin\left(\frac{1 - r^2 + b^2}{2b}\right)
+                                                & \qquad |1 - r| < b < 1 + r \\
+        \frac{\pi}{2}                           & \qquad b \le 1 - r
+        \quad,
+    \end{dcases}
+    \label{eq:lambda}
 \end{proof}
 %
 The case $b \le 1 - r$ corresponds to an occultation during which the occultor
@@ -817,45 +809,43 @@ we introduced it is that its anti-exterior derivatives are conveniently simple.
 It can be easily shown that one possible solution to \eq{DGg} is
 %
 \begin{proof}{Gn}
-    \begin{align}
-        \bvec{G}_n (\x, \y) &=
-        \begin{dcases}
-            %
-            \x^{\frac{\mu + 2}{2}}
-            \y^{\frac{\nu}{2}}
-            \,\yhat
-                & \qquad \nu \, \mathrm{even}
-            \\[1em]
-            %
-            \frac{1-z^3}{3(1-z^2)}(-\y \, \xhat + \x \, \yhat)
-                & \qquad l = 1, \, m = 0
-            \\[1em]
-            %
-            \x^{l-2}
-            \z^3
-            \,\xhat
-                & \qquad \nu \, \mathrm{odd}, \,
-                         \mu = 1, \,
-                         l \, \mathrm{even}
-            \\[1em]
-            %
-            \x^{l-3}
-            \y
-            \z^3
-            \,\xhat
-             & \qquad \nu \, \mathrm{odd}, \,
-                      \mu = 1, \,
-                      l \, \mathrm{odd}
-            \\[1em]
-            %
-            \x^{\frac{\mu-3}{2}}
-            \y^{\frac{\nu-1}{2}}
-            \z^3
-            \,\yhat
-                & \qquad \mathrm{otherwise,}
-        \end{dcases}
-        \label{eq:Gn}
-    \end{align}
+    \bvec{G}_n (\x, \y) &=
+    \begin{dcases}
+        %
+        \x^{\frac{\mu + 2}{2}}
+        \y^{\frac{\nu}{2}}
+        \,\yhat
+            & \qquad \nu \, \mathrm{even}
+        \\[1em]
+        %
+        \frac{1-z^3}{3(1-z^2)}(-\y \, \xhat + \x \, \yhat)
+            & \qquad l = 1, \, m = 0
+        \\[1em]
+        %
+        \x^{l-2}
+        \z^3
+        \,\xhat
+            & \qquad \nu \, \mathrm{odd}, \,
+                     \mu = 1, \,
+                     l \, \mathrm{even}
+        \\[1em]
+        %
+        \x^{l-3}
+        \y
+        \z^3
+        \,\xhat
+         & \qquad \nu \, \mathrm{odd}, \,
+                  \mu = 1, \,
+                  l \, \mathrm{odd}
+        \\[1em]
+        %
+        \x^{\frac{\mu-3}{2}}
+        \y^{\frac{\nu-1}{2}}
+        \z^3
+        \,\yhat
+            & \qquad \mathrm{otherwise,}
+    \end{dcases}
+    \label{eq:Gn}
 \end{proof}
 %
 where $l$ and $m$ are given by \eq{lm} and $\mu$ and $\nu$ are given by
@@ -2034,8 +2024,7 @@ Expanding out the $\z$ derivatives, we obtain
 %
 which we combine with the previous results to write
 %
-\begin{needsproof}
-\begin{align}
+\begin{proof}{ylmxyz}
     \label{eq:ylmxyz}
     Y_{lm}(\x, \y , \z) &=
     \begin{dcases}
@@ -2057,8 +2046,7 @@ which we combine with the previous results to write
         \z^k
         \qquad & m < 0
     \end{dcases}
-\end{align}
-\end{needsproof}
+\end{proof}
 %
 where
 %
@@ -2107,8 +2095,7 @@ where
 This gives us an expression for the spherical harmonics $Y_{lm}$
 as a function of $\x$ and $\y$ only:
 %
-\begin{needsproof}
-\begin{align}
+\begin{proof}{ylmxyz}
     \label{eq:ylmxy}
     Y_{lm}(\x, \y) &=
     \begin{dcases}
@@ -2175,8 +2162,7 @@ as a function of $\x$ and $\y$ only:
       \quad m < 0
    \end{dcases}
     %
-\end{align}
-\end{needsproof}
+\end{proof}
 %
 where $\z = \z(\x, \y) = \sqrt{1 - \x^2 - \y^2}$. Evaluating the nested sums
 may be computationally slow, but these operations need only be performed a
@@ -2252,8 +2238,7 @@ the first few spherical harmonics and their corresponding polynomial vectors:
 From these we can construct $\AOne$. As an example, for spherical
 harmonics up to degree $l_\mathrm{max} = 2$, this is
 %
-\begin{needsproof}
-\begin{equation}
+\begin{proof*}{A}
     \label{eq:AOne}
     \setstackgap{L}{1.25\baselineskip}
     \fixTABwidth{T}
@@ -2270,8 +2255,7 @@ harmonics up to degree $l_\mathrm{max} = 2$, this is
             0 & 0 & 0 & 0 & 0 & \sqrt{15} & 0 & 0 & 0 \\
             0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{2} & 0 & -\frac{\sqrt{15}}{2}
         }\quad.
-\end{equation}
-\end{needsproof}
+\end{proof*}
 %
 
 We compute the change of basis matrix from polynomials to Green's
@@ -2282,8 +2266,7 @@ columns of the matrix $\ATwo^{-1}$. Continuing our example
 for $l_\mathrm{max} = 2$, our second change of basis matrix
 is
 %
-\begin{needsproof}
-\begin{equation}
+\begin{proof*}{A}
     \setstackgap{L}{1.1\baselineskip}
     \fixTABwidth{T}
     \ATwo =
@@ -2298,16 +2281,14 @@ is
             0 & 0 & 0 & 0 & 0 & 0 & 0 & \frac{1}{3} & 0 \\
             0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
         }\quad.
-\end{equation}
-\end{needsproof}
+\end{proof*}
 %
 
 Finally, recall that the complete change of basis matrix from spherical
 harmonics to Green's polynomials, $\bvec{A}$, is just the matrix product
 of $\ATwo$ and $\AOne$. For $l_\mathrm{max} = 2$, we have
 %
-\begin{needsproof}
-\begin{equation}
+\begin{proof*}{A}
     \setstackgap{L}{1.25\baselineskip}
     \fixTABwidth{T}
     \bvec{A} =
@@ -2323,8 +2304,7 @@ of $\ATwo$ and $\AOne$. For $l_\mathrm{max} = 2$, we have
         0 & 0 & 0 & 0 & 0 & \sqrt{\frac{5}{3}} & 0 & 0 & 0 \\
         0 & 0 & 0 & 0 & 0 & 0 & -\frac{3 \sqrt{5}}{2} & 0 & -\frac{\sqrt{15}}{2}
         }\quad.
-\end{equation}
-\end{needsproof}
+\end{proof*}
 %
 
 % ==============================================================================
@@ -2353,7 +2333,7 @@ complex rotation matrices \citep{Steinborn1973}:
 %
 where
 %
-\begin{align}
+\begin{proof}{R}
     \label{eq:dl}
     \bvec{D}^l_{m,m'} &= \mathrm{e}^{-\ii (\alpha m' + \gamma m)}
                        (-1)^{m' + m}
@@ -2370,11 +2350,11 @@ where
                               }{
                                 k! (l + m - k)! (l - m' - k)! (m' - m + k)!
                               }
-\end{align}
+\end{proof}
 %
 is the rotation matrix for the complex spherical harmonics of degree $l$ and
 %
-\begin{equation}
+\begin{proof*}{R}
     \label{eq:U}
     \setstackgap{L}{1.25\baselineskip}
     \fixTABwidth{T}
@@ -2392,7 +2372,7 @@ is the rotation matrix for the complex spherical harmonics of degree $l$ and
                    & \ii &     &     &          &     &     & -1  &        \\
             \Ddots &     &     &     &          &     &     &     & \ddots
         }\quad.
-\end{equation}
+\end{proof*}
 %
 describes the transformation from complex to real spherical harmonics. In
 \eq{dl} above, $\alpha$, $\beta$, and $\gamma$ are the (proper) Euler angles
@@ -2402,8 +2382,7 @@ To obtain a rotation matrix for an arbitrary vector $\bvec{y}$ with spherical
 harmonics of different orders up to $l = l_\mathrm{max}$, we define the
 block-diagonal matrix $\bvec{R}$:
 %
-\begin{needsproof}
-\begin{equation}
+\begin{proof*}{R}
     \label{eq:rblockdiag}
     \setstackgap{L}{1.25\baselineskip}
     \fixTABwidth{T}
@@ -2416,8 +2395,7 @@ block-diagonal matrix $\bvec{R}$:
                        &            &            & \bvec{R}^3 &  \\
                        &            &            &            & \ddots
         }\quad.
-\end{equation}
-\end{needsproof}
+\end{proof*}
 %
 Rotation of $\bvec{y}$ by the Euler angles $\alpha$, $\beta$, and $\gamma$
 is performed via \eq{rotation} with $\bvec{R}$ given by \eq{rblockdiag}.
@@ -2493,8 +2471,7 @@ and $s_{\bigdot} \equiv \sin(\cdot)$.
 Comparison of the two matrices gives us expressions for the Euler
 angles in terms of $\bvec{u}$ and $\theta$:
 %
-\begin{needsproof}
-\begin{align}
+\begin{proof}{R}
     \label{eq:eulerangles}
     \begin{matrix}
         \cos\alpha = \frac{P_{0,2}}{\sqrt{P_{0,2}^2 + P_{1,2}^2}}
@@ -2510,8 +2487,7 @@ angles in terms of $\bvec{u}$ and $\theta$:
         \sin\gamma = \frac{P_{2,1}}{\sqrt{P_{2,0}^2 + P_{2,1}^2}}
     \end{matrix}
     \quad.
-\end{align}
-\end{needsproof}
+\end{proof}
 %
 Thus, given a spherical harmonic vector $\bvec{y}$, we can calculate
 how it transforms under rotation by an angle $\theta$ about an axis $\bvec{u}$

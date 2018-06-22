@@ -97,11 +97,24 @@
 
 % Define a proof environment
 \newenvironment{proof}[1]{%
-\renewtagform{eqtag}[]{\prooflink{#1}\,(}{)}
-\usetagform{eqtag}
+\renewtagform{eqtag}[]{\prooflink{#1}\,(}{)}%
+\usetagform{eqtag}%
+\align%
 }{%
-\renewtagform{eqtag}[]{(}{)}
-\usetagform{eqtag}
+\endalign%
+\renewtagform{eqtag}[]{(}{)}%
+\usetagform{eqtag}%
+}
+
+% Define a proof environment
+\newenvironment{proof*}[1]{%
+\renewtagform{eqtag}[]{\prooflink{#1}\,(}{)}%
+\usetagform{eqtag}%
+\equation%
+}{%
+\endequation%
+\renewtagform{eqtag}[]{(}{)}%
+\usetagform{eqtag}%
 }
 
 % Define a needsproof environment
