@@ -115,3 +115,54 @@ s2_grad_numeric = s2_grad_num(r,b)
 diff = s2_grad_numeric-s2_gradient
 println("Test b+r > 1:")
 println("b : ",b," r: ",r," diff: ",diff)
+
+# Now, try out hard cases - ingress/egress of small planets:
+r0 = [0.01,100.0]
+nb = 20
+#l_max = 20
+l_max = 10
+n_max = l_max^2+2*l_max
+
+using PyPlot
+fig,axes = subplots(1,2)
+get_cmap("plasma")
+epsilon = 1e-12; delta = 1e-3
+i=1
+for i=1:2
+  r=r0[i]
+  if r < 1.0
+    b = [linspace(1e-15,epsilon,nb); linspace(epsilon,delta,nb); linspace(delta,r-delta,nb);
+#     linspace(r-delta,r-epsilon,nb); linspace(r-epsilon,r,nb); linspace(r,r+epsilon,nb); linspace(r+epsilon,r+delta,nb);
+     linspace(r-delta,r-epsilon,nb); linspace(r-epsilon,r+epsilon,nb); linspace(r+epsilon,r+delta,nb);
+     linspace(r+delta,1-r-delta,nb); linspace(1-r-delta,1-r-epsilon,nb); linspace(1-r-epsilon,1-r+epsilon,nb);
+     linspace(1-r+epsilon,1-r+delta,nb); linspace(1-r+delta,1+r-delta,nb); linspace(1+r-delta,1+r-epsilon,nb);linspace(1+r-epsilon,1+r-1e-15,nb)]
+  else
+    b = [linspace(r-1+1e-15,r-1+epsilon,nb); linspace(r-1+epsilon,r-1+delta,nb); linspace(r-1+delta,r-delta,nb);
+#     linspace(r-delta,r-epsilon,nb); linspace(r-epsilon,r,nb); linspace(r,r+epsilon,nb); linspace(r+epsilon,r+delta,nb);
+     linspace(r-delta,r-epsilon,nb); linspace(r-epsilon,r+epsilon,nb); linspace(r+epsilon,r+delta,nb);
+     linspace(r+delta,r+1-delta,nb); linspace(r+1-delta,r+1-epsilon,nb); linspace(r+1-epsilon,r+1-1e-15,nb)]
+  end
+  igrid=linspace(1,length(b),length(b))-1
+  s2_jac_grid = zeros(length(b),2)
+  s2_grid = zeros(length(b))
+  s2_jac_grid_num = zeros(length(b),2)
+  for j=1:length(b)
+#    println("r: ",r," b: ",b[j])
+    s_2,s2_gradient= s2_grad(r,b[j])
+    s2_grid[j]=s_2
+    s2_jac_grid[j,:]=s2_gradient
+    s2_jac_grid_num[j,:]= s2_grad_num(r,b[j])
+  println("r: ",r," b: ",b[j]," ds2/dr: ",s2_jac_grid[j,1]," ",s2_jac_grid[j,1]-s2_jac_grid_num[j,1])
+  println("r: ",r," b: ",b[j]," ds2/db: ",s2_jac_grid[j,2]," ",s2_jac_grid[j,2]-s2_jac_grid_num[j,2])
+  end
+# Now, make plots:
+  ax = axes[i]
+  ax[:semilogy](b,abs.(s2_jac_grid[:,1]-s2_jac_grid_num[:,1]),lw=1,label="ds2/dr")
+  ax[:semilogy](b,abs.(s2_jac_grid[:,2]-s2_jac_grid_num[:,2]),lw=1,label="ds2/db")
+#  ax[:semilogy](b,abs.(asinh.(s2_jac_grid[:,1])-asinh.(s2_jac_grid_num[:,1])),lw=1,label="ds2/dr")
+#  ax[:semilogy](b,abs.(asinh.(s2_jac_grid[:,2])-asinh.(s2_jac_grid_num[:,2])),lw=1,label="ds2/db")
+  ax[:legend](loc="upper right",fontsize=6)
+  ax[:set_xlabel]("b values")
+  ax[:set_ylabel]("Derivative Error")
+#  ax[:axis]([0,length(b),1e-16,1])
+end
