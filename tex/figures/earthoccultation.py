@@ -60,10 +60,10 @@ for n in range(nim):
     ax_im[n].set_ylim(-1.05, 1.05)
 
 # Appearance
-ax_lc.set_xlabel('Time [hours]', fontsize=24)
-ax_lc.set_ylabel('Normalized flux', fontsize=24)
+ax_lc.set_xlabel('Time [hours]', fontsize=20)
+ax_lc.set_ylabel('Normalized flux', fontsize=20)
 for tick in ax_lc.get_xticklabels() + ax_lc.get_yticklabels():
-    tick.set_fontsize(22)
+    tick.set_fontsize(18)
 
 # Save
 pl.savefig('earthoccultation.pdf', bbox_inches='tight')

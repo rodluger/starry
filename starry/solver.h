@@ -86,7 +86,7 @@ namespace solver {
                 if (n < 0) {
                     throw errors::BadIndex();
                 }
-                while (n >= vec.size()) {
+                while (n >= (int)vec.size()) {
                     vec.push_back(vec[1] * vec[vec.size() - 1]);
                 }
                 return vec[n];

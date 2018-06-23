@@ -150,9 +150,9 @@ ax[1].set_yscale('log')
 ax[0].legend(loc='lower right')
 ax[1].legend(loc='lower right')
 ax[0].set_xlim(-0.25, 0.25)
-ax[0].set_ylabel('Normalized flux', fontsize=16)
-ax[1].set_ylabel('Relative error', fontsize=16, labelpad=10)
-ax[1].set_xlabel('Time [arbitrary units]', fontsize=16)
+ax[0].set_ylabel('Normalized flux', fontsize=13)
+ax[1].set_ylabel('Relative error', fontsize=13, labelpad=10)
+ax[1].set_xlabel('Time [arbitrary units]', fontsize=13)
 
 # Save
 pl.savefig('transit.pdf', bbox_inches='tight')

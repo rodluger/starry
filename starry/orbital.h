@@ -509,7 +509,7 @@ namespace orbital {
             int expmaxdepth;
 
             // Current time index
-            int t;
+            unsigned long t;
 
             // Derivatives dictionary
             std::map<string, Eigen::VectorXd> derivs;
@@ -531,7 +531,7 @@ namespace orbital {
                     throw errors::BadSystem();
 
                 // Propagate settings down
-                for (int i = 1; i < bodies.size(); i++) {
+                for (int i = 1; i < (int)bodies.size(); i++) {
                     if (bodies[i]->is_star)
                         throw errors::BadSystem();
                     bodies[i]->clight = clight;
@@ -652,7 +652,7 @@ namespace orbital {
 
         int i;
         T tsec;
-        int NT = time.size();
+        unsigned long NT = time.size();
         int NB = bodies.size();
         Vector<T> fluxes = Vector<T>::Zero(NB);
         flux = Vector<T>::Zero(NT);
@@ -700,7 +700,7 @@ namespace orbital {
         T xo, yo, ro;
         T tsec;
         int p, o;
-        int NT = time.size();
+        unsigned long NT = time.size();
         int NB = bodies.size();
         flux = Vector<T>::Zero(NT);
 
@@ -770,7 +770,7 @@ namespace orbital {
         int i, j, n, k, l, m;
         Grad xo, yo, ro;
         Grad tsec;
-        int NT = time.size();
+        unsigned long NT = time.size();
         int NB = bodies.size();
         Vector<Grad> fluxes = Vector<Grad>::Zero(NB);
         vector<Vector<double>> tmpder;
