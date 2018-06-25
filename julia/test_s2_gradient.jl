@@ -59,8 +59,11 @@ end
 r = 0.5; b= 0.5
 s_2,s2_gradient= s2_grad(r,b)
 s2_grad_numeric = s2_grad_num(r,b)
-diff = s2_grad_numeric-s2_gradient
-println("b : ",b," r: ",r," diff: ",diff)
+s2_grad_ana = zeros(2)
+diff1 = s2_grad_numeric-s2_gradient
+s_2=s2!(r,b,s2_grad_ana)
+diff2 = s2_grad_ana-s2_gradient
+println("b : ",b," r: ",r," diff(num-auto): ",diff1," diff(ana-auto): ",diff2 )
 println("gradient: ",s2_gradient," expected: ",-[2,-2./3.])
 
 # Try b=0 special case:
@@ -70,8 +73,7 @@ s_2,s2_gradient= s2_grad(r,b)
 # Numerical:
 diff1 = s2_grad_num(r,b)-s2_gradient
 # Analytic:
-s2_grad_ana = zeros(2)
-s2!(r,b,s2_grad_ana)
+s_2=s2!(r,b,s2_grad_ana)
 diff2 = s2_grad_ana-s2_gradient
 println("b : ",b," r: ",r," diff(num-auto): ",diff1," diff(ana-auto): ",diff2 )
 println("gradient: ",s2_grad_ana," expected: ",-pi*[2*r*sqrt(1.-r^2),0.])
@@ -82,10 +84,10 @@ s_2,s2_gradient= s2_grad(r,b)
 s2_grad_numeric = s2_grad_num(r,b)
 diff1 = s2_grad_numeric-s2_gradient
 # Analytic:
-s2!(r,b,s2_grad_ana)
+s_2=s2!(r,b,s2_grad_ana)
 diff2 = s2_grad_ana-s2_gradient
 println("b : ",b," r: ",r," diff(num-auto): ",diff1," diff(ana-auto): ",diff2 )
-println("gradient: ",s2_gradient," expected: ",-8r*sqrt(r*(1-r))*[1,-1/3])
+println("gradient: ",s2_grad_ana," expected: ",-8r*sqrt(r*(1-r))*[1,-1/3])
 
 # Try r=b <1/2 special case:
 r = 0.3; b= 0.3
@@ -93,10 +95,10 @@ s_2,s2_gradient= s2_grad(r,b)
 s2_grad_numeric = s2_grad_num(r,b)
 diff1 = s2_grad_numeric-s2_gradient
 # Analytic:
-s2!(r,b,s2_grad_ana)
+s_2=s2!(r,b,s2_grad_ana)
 diff2 = s2_grad_ana-s2_gradient
 println("b : ",b," r: ",r," diff(num-auto): ",diff1," diff(ana-auto): ",diff2 )
-println("gradient: ",s2_gradient," expected: ",-4*r*[cel_bulirsch(4*r^2,1.,1.,1-4*r^2),cel_bulirsch(4*r^2,1.,-1.,1.-4*r^2)/3.])
+println("gradient: ",s2_grad_ana," expected: ",-4*r*[cel_bulirsch(4*r^2,1.,1.,1-4*r^2),cel_bulirsch(4*r^2,1.,-1.,1.-4*r^2)/3.])
 
 # Try r=b > 1/2 special case:
 r = 3.0; b= 3.0
@@ -104,10 +106,10 @@ s_2,s2_gradient= s2_grad(r,b)
 s2_grad_numeric = s2_grad_num(r,b)
 diff1 = s2_grad_numeric-s2_gradient
 # Analytic:
-s2!(r,b,s2_grad_ana)
+s_2=s2!(r,b,s2_grad_ana)
 diff2 = s2_grad_ana-s2_gradient
 println("b : ",b," r: ",r," diff(num-auto): ",diff1," diff(ana-auto): ",diff2 )
-println("gradient: ",s2_gradient," expected: ",-2*[cel_bulirsch(.25/r^2,1.,1.,0.),-cel_bulirsch(.25/r^2,1.,1.,2*(1.-.25/r^2))/3.])
+println("gradient: ",s2_grad_ana," expected: ",-2*[cel_bulirsch(.25/r^2,1.,1.,0.),-cel_bulirsch(.25/r^2,1.,1.,2*(1.-.25/r^2))/3.])
 
 # Now, try a random case with b+r < 1:
 b=r=2.0
@@ -119,7 +121,7 @@ s2_grad_numeric = s2_grad_num(r,b)
 diff1 = s2_grad_numeric-s2_gradient
 println("Test b+r < 1:")
 # Analytic:
-s2!(r,b,s2_grad_ana)
+s_2=s2!(r,b,s2_grad_ana)
 diff2 = s2_grad_ana-s2_gradient
 println("b : ",b," r: ",r," diff(num-auto): ",diff1," diff(ana-auto): ",diff2 )
 
@@ -133,7 +135,7 @@ s2_grad_numeric = s2_grad_num(r,b)
 diff1 = s2_grad_numeric-s2_gradient
 println("Test b+r > 1:")
 # Analytic:
-s2!(r,b,s2_grad_ana)
+s_2=s2!(r,b,s2_grad_ana)
 diff2 = s2_grad_ana-s2_gradient
 println("b : ",b," r: ",r," diff(num-auto): ",diff1," diff(ana-auto): ",diff2 )
 
@@ -172,8 +174,8 @@ for i=1:2
     s2_grid[j]=s_2
     s2_jac_grid[j,:]=s2_grad_ana
     s2_jac_grid_num[j,:]= s2_grad_num(r,b[j])
-  println("r: ",r," b: ",b[j]," ds2/dr: ",s2_jac_grid[j,1]," ",s2_jac_grid[j,1]-s2_jac_grid_num[j,1])
-  println("r: ",r," b: ",b[j]," ds2/db: ",s2_jac_grid[j,2]," ",s2_jac_grid[j,2]-s2_jac_grid_num[j,2])
+#  println("r: ",r," b: ",b[j]," ds2/dr: ",s2_jac_grid[j,1]," ",s2_jac_grid[j,1]-s2_jac_grid_num[j,1])
+#  println("r: ",r," b: ",b[j]," ds2/db: ",s2_jac_grid[j,2]," ",s2_jac_grid[j,2]-s2_jac_grid_num[j,2])
   end
 # Now, make plots:
   ax = axes[i]
