@@ -97,7 +97,11 @@
 
 % Define a proof environment
 \newenvironment{proof}[1]{%
+\ifstrempty{#1}{%
+\renewtagform{eqtag}[]{\raisebox{-0.1em}{{\color{red}\faPencilSquareO}}\,(}{)}%
+}{%
 \renewtagform{eqtag}[]{\prooflink{#1}\,(}{)}%
+}%
 \usetagform{eqtag}%
 \align%
 }{%
@@ -108,22 +112,17 @@
 
 % Define a proof environment
 \newenvironment{proof*}[1]{%
+\ifstrempty{#1}{%
+\renewtagform{eqtag}[]{\raisebox{-0.1em}{{\color{red}\faPencilSquareO}}\,(}{)}%
+}{%
 \renewtagform{eqtag}[]{\prooflink{#1}\,(}{)}%
+}%
 \usetagform{eqtag}%
 \equation%
 }{%
 \endequation%
 \renewtagform{eqtag}[]{(}{)}%
 \usetagform{eqtag}%
-}
-
-% Define a needsproof environment
-\newenvironment{needsproof}{%
-\renewtagform{eqtag}[]{\raisebox{-0.1em}{{\color{red}\faPencilSquareO}}\,(}{)}
-\usetagform{eqtag}
-}{%
-\renewtagform{eqtag}[]{(}{)}
-\usetagform{eqtag}
 }
 
 % Math stuff
