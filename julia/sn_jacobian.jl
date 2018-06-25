@@ -16,10 +16,10 @@ function sn_jac(l_max::Int64,r::T,b::T) where {T <: Real}
   # Now, define a wrapper of s_n! for use with ForwardDiff:
   function diff_sn(x::Array{T,1}) where {T <: Real}
   # x should be a two-element vector with values [r,b]
-  r,b = x
-  sn = zeros(typeof(r),n_max+1)
+  r0,b0 = x
+  sn = zeros(typeof(r0),n_max+1)
 #  s_n!(l_max,r,b,sn)
-  s_n_bigr!(l_max,r,b,sn)
+  s_n_bigr!(l_max,r0,b0,sn)
   return sn
   end
 
@@ -31,6 +31,10 @@ function sn_jac(l_max::Int64,r::T,b::T) where {T <: Real}
   sn = DiffResults.value(out)
   # And, place the Jacobian in an array:
   sn_jacobian = DiffResults.jacobian(out)
+  # Add in s2:
+  s2_grad=zeros(typeof(r),2)
+  s_2=s2!(r,b,s2_grad)
+  sn_jacobian[3,:]=s2_grad
 return sn,sn_jacobian
 end
 

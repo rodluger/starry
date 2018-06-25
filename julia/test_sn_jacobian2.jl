@@ -4,7 +4,7 @@ include("sn_jacobian.jl")
 r0 = [0.01,100.0]
 nb = 50
 #l_max = 20
-l_max = 10
+l_max = 5
 n_max = l_max^2+2*l_max
 
 # Now, carry out finite-difference derivative computation:
@@ -37,13 +37,13 @@ end
 using PyPlot
 fig,axes = subplots(1,2)
 get_cmap("plasma")
-epsilon = 1e-6; delta = 1e-3
+epsilon = 1e-12; delta = 1e-3
 i=1
 for i=1:2
   r=r0[i]
   r=r0[i]
   if r < 1.0
-    b = [linspace(1e-12,epsilon,nb); linspace(epsilon,delta,nb); linspace(delta,r-delta,nb);
+    b = [linspace(1e-15,epsilon,nb); linspace(epsilon,delta,nb); linspace(delta,r-delta,nb);
      r-logspace(log10(delta),log10(epsilon),nb); linspace(r-epsilon,r+epsilon,nb); r+logspace(log10(epsilon),log10(delta),nb);
      linspace(r+delta,1-r-delta,nb); 1-r-logspace(log10(delta),log10(epsilon),nb); linspace(1-r-epsilon,1-r+epsilon,nb);
      1-r+logspace(log10(epsilon),log10(delta),nb); linspace(1-r+delta,1+r-delta,nb); 1+r-logspace(log10(delta),log10(epsilon),nb);linspace(1+r-epsilon,1+r-1e-15,nb)]
@@ -75,7 +75,6 @@ for i=1:2
   for j=1:length(b)
     println("r: ",r," b: ",b[j])
     sn_array,sn_jac_array= sn_jac(l_max,r,b[j])
-    println("got to here")
     sn_grid[j,:]=sn_array
     sn_jac_grid[j,:,:]=sn_jac_array
     sn_jac_grid_num[j,:,:]= sn_jac_num(l_max,r,b[j])
@@ -110,49 +109,50 @@ for i=1:2
   ax[:set_xlabel]("b values")
   ax[:set_ylabel]("Derivative Error")
   ax[:axis]([0,length(b),1e-16,1])
+  read(STDIN,Char)
 #  ax[:axis]([minimum(b),maximum(b),1e-16,1])
-end
 
 ## Loop over n and see where the differences between the finite-difference
 ## and AutoDiff are greater than the derivative value: 
-#l=0; m=0
-#for n=0:n_max
-#  diff = sn_jac_grid[:,n+1,:]-sn_jac_grid_num[:,n+1,:]
-#  mask = (abs.(diff) .> 1e-3*abs.(sn_jac_grid[:,n+1,:])) .& (abs.(sn_jac_grid[:,n+1,:]) .> 1e-5)
-#  if sum(mask) > 0 || mod(l-m,4) == 0
-#    println("n: ",n," max dsn/dr: ",maximum(abs.(diff)))
-#    println("b: ",b[mask[:,1]],b[mask[:,2]]," k^2_H: ",k2H[mask[:,1]],k2H[mask[:,2]])
-## end
-##end
-## Now, plot derivatives for each value of n:
-##for n=0:n_max
-#    clf()
-##    plot(sn_grid[:,n+1])
-##    plot(sn_jac_grid[:,n+1,1])
-##    plot(igrid[mask[:,1]],sn_jac_grid[mask[:,1],n+1,1],"o")
-##    plot(sn_jac_grid[:,n+1,2])
-##    plot(igrid[mask[:,2]],sn_jac_grid[mask[:,2],n+1,2],"o")
-##    plot(igrid,sn_jac_grid_num[:,n+1,1],linestyle="--",linewidth=2)
-##    plot(igrid,sn_jac_grid_num[:,n+1,2],linestyle="--",linewidth=2)
-#    plot(b,sn_grid[:,n+1])
-#    plot(b,sn_jac_grid[:,n+1,1])
-#    plot(b[mask[:,1]],sn_jac_grid[mask[:,1],n+1,1],"o")
-#    plot(b,sn_jac_grid[:,n+1,2])
-#    plot(b[mask[:,2]],sn_jac_grid[mask[:,2],n+1,2],"o")
-#    plot(b,sn_jac_grid_num[:,n+1,1],linestyle="--",linewidth=2)
-#    plot(b,sn_jac_grid_num[:,n+1,2],linestyle="--",linewidth=2)
-#    println("n: ",n," l: ",l," m: ",m," mu: ",l-m," nu: ",l+m)
-#    read(STDIN,Char)
-#  end
-#  m +=1
-#  if m > l
-#    l += 1
-#    m = -l
-#  end
+l=0; m=0
+for n=0:n_max
+  diff = sn_jac_grid[:,n+1,:]-sn_jac_grid_num[:,n+1,:]
+  mask = (abs.(diff) .> 1e-3*abs.(sn_jac_grid[:,n+1,:])) .& (abs.(sn_jac_grid[:,n+1,:]) .> 1e-5)
+  if sum(mask) > 0 || mod(l-m,4) == 0
+    println("n: ",n," max dsn/dr: ",maximum(abs.(diff)))
+    println("b: ",b[mask[:,1]],b[mask[:,2]]," k^2_H: ",k2H[mask[:,1]],k2H[mask[:,2]])
+# end
 #end
+# Now, plot derivatives for each value of n:
+#for n=0:n_max
+    clf()
+#    plot(sn_grid[:,n+1])
+#    plot(sn_jac_grid[:,n+1,1])
+#    plot(igrid[mask[:,1]],sn_jac_grid[mask[:,1],n+1,1],"o")
+#    plot(sn_jac_grid[:,n+1,2])
+#    plot(igrid[mask[:,2]],sn_jac_grid[mask[:,2],n+1,2],"o")
+#    plot(igrid,sn_jac_grid_num[:,n+1,1],linestyle="--",linewidth=2)
+#    plot(igrid,sn_jac_grid_num[:,n+1,2],linestyle="--",linewidth=2)
+    plot(b,sn_grid[:,n+1])
+    plot(b,sn_jac_grid[:,n+1,1])
+    plot(b[mask[:,1]],sn_jac_grid[mask[:,1],n+1,1],"o")
+    plot(b,sn_jac_grid[:,n+1,2])
+    plot(b[mask[:,2]],sn_jac_grid[mask[:,2],n+1,2],"o")
+    plot(b,sn_jac_grid_num[:,n+1,1],linestyle="--",linewidth=2)
+    plot(b,sn_jac_grid_num[:,n+1,2],linestyle="--",linewidth=2)
+    println("n: ",n," l: ",l," m: ",m," mu: ",l-m," nu: ",l+m)
+    read(STDIN,Char)
+  end
+  m +=1
+  if m > l
+    l += 1
+    m = -l
+  end
+end
 #
 #
 ##end
 #
 ##loglog(abs.(reshape(sn_jac_grid,length(b)*(n_max+1)*2)),abs.(reshape(sn_jac_grid-sn_jac_grid_num,length(b)*(n_max+1)*2)),".")
 ##loglog(abs.(reshape(sn_jac_grid,length(b)*(n_max+1)*2)),abs.(reshape(sn_jac_grid_num,length(b)*(n_max+1)*2)),".")
+end

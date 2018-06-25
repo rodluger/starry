@@ -37,7 +37,7 @@ end
 using PyPlot
 fig,axes = subplots(1,2)
 get_cmap("plasma")
-epsilon = 1e-6; delta = 1e-3
+epsilon = 1e-12; delta = 1e-3
 i=1
 for i=1:2
   r=r0[i]
