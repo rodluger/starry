@@ -75,6 +75,7 @@ for i=1:2
   for j=1:length(b)
     println("r: ",r," b: ",b[j])
     sn_array,sn_jac_array= sn_jac(l_max,r,b[j])
+#    s_n_bigr!(l_max,r,b[j],sn_array)
     sn_grid[j,:]=sn_array
     sn_jac_grid[j,:,:]=sn_jac_array
     sn_jac_grid_num[j,:,:]= sn_jac_num(l_max,r,b[j])
