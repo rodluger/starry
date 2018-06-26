@@ -67,15 +67,15 @@ end
 
 function cel_grad_num(kc::T,p::T,a::T,b::T) where {T <: Real}
 # Now, compute the gradients numerically:
-epsilon = 1e-24
-dcel_dkc = convert(Float64,(cel_bulirsch(big(1)-(big(kc)+big(epsilon))^2,big(kc)+big(epsilon),big(p),big(a),big(b))-
-  cel_bulirsch(big(1)-(big(kc)-big(epsilon))^2,big(kc)-big(epsilon),big(p),big(a),big(b)))/(2*big(epsilon)))
-dcel_dp = convert(Float64,(cel_bulirsch(big(1)-big(kc)^2,big(kc),big(p)+big(epsilon),big(a),big(b))-
-  cel_bulirsch(big(1)-big(kc)^2,big(kc),big(p)-big(epsilon),big(a),big(b)))/(2*big(epsilon)))
-dcel_da = convert(Float64,(cel_bulirsch(big(1)-big(kc)^2,big(kc),big(p),big(a)+big(epsilon),big(b))-
-  cel_bulirsch(big(1)-big(kc)^2,big(kc),big(p),big(a)-big(epsilon),big(b)))/(2*big(epsilon)))
-dcel_db = convert(Float64,(cel_bulirsch(big(1)-big(kc)^2,big(kc),big(p),big(a),big(b)+big(epsilon))-
-  cel_bulirsch(big(1)-big(kc)^2,big(kc),big(p),big(a),big(b)-big(epsilon)))/(2*big(epsilon)))
+dq = 1e-24
+dcel_dkc = convert(Float64,(cel_bulirsch(big(1)-(big(kc)+big(dq))^2,big(kc)+big(dq),big(p),big(a),big(b))-
+  cel_bulirsch(big(1)-(big(kc)-big(dq))^2,big(kc)-big(dq),big(p),big(a),big(b)))/(2*big(dq)))
+dcel_dp = convert(Float64,(cel_bulirsch(big(1)-big(kc)^2,big(kc),big(p)+big(dq),big(a),big(b))-
+  cel_bulirsch(big(1)-big(kc)^2,big(kc),big(p)-big(dq),big(a),big(b)))/(2*big(dq)))
+dcel_da = convert(Float64,(cel_bulirsch(big(1)-big(kc)^2,big(kc),big(p),big(a)+big(dq),big(b))-
+  cel_bulirsch(big(1)-big(kc)^2,big(kc),big(p),big(a)-big(dq),big(b)))/(2*big(dq)))
+dcel_db = convert(Float64,(cel_bulirsch(big(1)-big(kc)^2,big(kc),big(p),big(a),big(b)+big(dq))-
+  cel_bulirsch(big(1)-big(kc)^2,big(kc),big(p),big(a),big(b)-big(dq)))/(2*big(dq)))
 return [dcel_dkc,dcel_dp,dcel_da,dcel_db]
 end
 

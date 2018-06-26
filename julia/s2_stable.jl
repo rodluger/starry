@@ -79,8 +79,8 @@ else
       s2_grad[2] =  2/3  # dLambda/db
     elseif r < 0.5
       m = 4r^2
-      Lambda1 = 1/3+2/(9pi)*cel_bulirsch(m,2r,one(r),m-3,(1-m)*(2m-3))  # Case 5
-      s2_grad[1] = -4*pi*r*cel_bulirsch(m,2r,one(r),one(r),1-m)      # Adding in first derivative dLambda/dr
+      Lambda1 = 1/3+2/(9pi)*cel_bulirsch(m,one(r),m-3,(1-m)*(2m-3))  # Case 5
+      s2_grad[1] = -4*r*cel_bulirsch(m,one(r),one(r),1-m)      # Adding in first derivative dLambda/dr
       s2_grad[2] = -4*r/3*cel_bulirsch(m,one(r),-one(r),1-m) # Adding in first derivative dLambda/db
     else
       m = 4r^2; minv = inv(m); kc = sqrt(1.-minv)
@@ -112,7 +112,7 @@ else
     else
       # b+r = 1 or k^2=1, Case 4 (extending r up to 1)
       Lambda1 = 2/(3pi)*acos(1.-2.*r)-4/(9pi)*(3+2r-8r^2)*sqrt(r*(1-r))-2/3*convert(typeof(b),r>.5) 
-      s2_grad[1] = 8*r/pi*sqrt(r*(1-r))
+      s2_grad[1] = -8*r*sqrt(r*(1-r))
       s2_grad[2] = -s2_grad[1]/3
     end
   end
