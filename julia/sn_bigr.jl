@@ -79,7 +79,7 @@ if k2 < 1
 else # k^2 >=1
   k2inv = inv(k2)
   # Found a simpler expression than the one in paper (and perhaps more stable for large k^2):
-  return  sqrt(pi)*gamma(v+.5)*(sf_hyperg_2F1_renorm(-.5,v+.5,v+1,k2inv)-(.5+v)*k2inv*sf_hyperg_2F1_renorm(-.5,v+1.5,v+2,k2inv))
+  return  sqrt(pi)*gamma(v+.5)*(sf_hyperg_2F1_renorm(-.5,v+.5,v+1.,k2inv)-(.5+v)*k2inv*sf_hyperg_2F1_renorm(-.5,v+1.5,v+2.,k2inv))
 end
 end
 
@@ -109,7 +109,7 @@ else # k^2 >= 1
   coeff = pi
   # Compute (2v-1)!!/(2^v v!):
   for i=1:v
-    coeff *= 1-.5/i
+    coeff *= 1.-.5/i
   end
   Jv = one(k2)*coeff; n=1
   while n < nmax && abs(error) > tol
@@ -132,7 +132,14 @@ v_max = l_max+3; v = v_max
 # Compute I_v via upward iteration on v:
 if k2 < 1
 # First, compute value for v=0:
-  Iv[1] = 2*asin(sqrt(k2))
+  if k2 < 0.5
+    Iv[1] = 2*asin(sqrt(k2))
+#  Iv[1] = acos(1.-2k2)
+  else
+    Iv[1] = 2*acos(kc)
+  end
+# Try something else:
+#  Iv[1] = asin(2*k*kc)
 # Next, iterate upwards in v:
 #  f0 = kc/k
   f0 = kc*k
@@ -154,12 +161,8 @@ end
 v= 0
 if k2 < 1
   # Use cel_bulirsch:
-#  fe = 2*(2k2-1); fk = (1-k2)*(2-3k2)
-#  Jv[v+1]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
   if k2 > 0
-#    println("k2: ",k2)
     Jv[v+1]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),k2*(3k2-1),k2*(1-k2))
-    fe = -3k2*k2+13k2-8; fk = (1-k2)*(8-9k2)
     Jv[v+2]= 2/(15k2*k)*cel_bulirsch(k2,kc,one(k2),2k2*(3k2-2),k2*(4-7k2+3k2*k2))
   else
     Jv[v+1]= 0.0
@@ -167,12 +170,8 @@ if k2 < 1
   end
 else # k^2 >=1
   k2inv = inv(k2)
-#  fe = 2*(2-k2inv); fk=-1+k2inv
-#  Jv[v+1]=2/3*cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))
   Jv[v+1]=2/3*cel_bulirsch(k2inv,kc,one(k2),3-k2inv,3-5k2inv+2k2inv^2)
-#  fe = -6k2+26-16k2inv; fk=2*(1-k2inv)*(3k2-4)
-#  Jv[v+2]=cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))/15
-  Jv[v+2]=cel_bulirsch(k2inv,kc,one(k2),2-8*k2inv,8*(1-2k2inv)*(1-k2inv))/15
+  Jv[v+2]=cel_bulirsch(k2inv,kc,one(k2),12-8*k2inv,2*(9-8k2inv)*(1-k2inv))/15
 end
 v=2
 while v <= v_max
@@ -228,8 +227,8 @@ else # k^2 >=1
 end
 Jv[v_max+1]=Jv_series(k2,v_max)
 # Now, implement tridiagonal algorithm:
-c = zeros(v_max-1)
-d = zeros(v_max-1)
+c = zeros(typeof(k2),v_max-1)
+d = zeros(typeof(k2),v_max-1)
 # Iterate upwards in v (lower):
 v = 2
 fac = 2*((v+1)+(v-1)*k2)
@@ -289,10 +288,28 @@ v= v_max
 #  println("v ",v," k2 ",k2," Jv_ser ",convert(Float64,Jv_series(big(k2),v-1))," ",convert(Float64,Jv_series(big(k2),v))," Jv_hyp ",Jv_hyp(k2,v-1)," ",Jv_hyp(k2,v))
 #end
 # Iterate downwards in v (lower):
-while v >= 2
+while v >= 4
   f2 = k2*(2v-3); f1 = 2*(v+1+(v-1)*k2)/f2; f3 = (2v+3)/f2
   Jv[v-1] = f1*Jv[v]-f3*Jv[v+1]
   v -= 1
+end
+# Compute first two exactly:
+v= 0
+if k2 < 1
+  # Use cel_bulirsch:
+  if k2 > 0
+    Jv[v+1]=2/(3*k2*k)*cel_bulirsch(k2,kc,one(k2),k2*(3k2-1),k2*(1-k2))
+    Jv[v+2]=2/(15*k2*k)*cel_bulirsch(k2,kc,one(k2),2*k2*(3k2-2),k2*(4-7k2+3k2*k2))
+#    Jv[v+3] =-2/(35*k)*cel_bulirsch(k2,kc,one(k2),8-11k2+k2*k2,(-8+5k2+2k2*k2)*(1-k2))
+  else
+    Jv[v+1]= 0.0
+    Jv[v+2]= 0.0
+  end
+else # k^2 >=1
+  k2inv = inv(k2)
+  Jv[v+1]=2/3*cel_bulirsch(k2inv,kc,one(k2),3-k2inv,3-5k2inv+2k2inv^2)
+  Jv[v+2]=cel_bulirsch(k2inv,kc,one(k2),12-8*k2inv,2*(9-8k2inv)*(1-k2inv))/15
+#  Jv[v+3]=2/(35*k2)*cel_bulirsch(k2inv,kc,one(k2),-k2^2+11k2-8,(k2^2+16*k2-16)*(1-k2inv))
 end
 return
 end
@@ -314,7 +331,7 @@ end
 Huv[u+1,v+1]=kap2^(v+1)*(2/(v+1)-(u+v/3)/(v+3)*kap2^2+
           (5*(3u+v)^2-30u-2v)/360*kap2^4)
 #println("Huv: ",Huv[u+1,v+1]," error: ",last_term)
-println("Huv: ",Huv[u+1,v+1])
+#println("Huv: ",Huv[u+1,v+1])
 # Next, iterate downwards in v:
 while v >= 2
   Huv[u+1,v-1] = (u+v)/(v-1)*(Huv[u+1,v+1]+2/(u+v)*skap^(v-1)*ckap^(u+1))
@@ -336,6 +353,7 @@ return Huv
 end
 
 function s_n_bigr!(l_max::Int64,r::T,b::T,sn::Array{T,1}) where {T <: Real}
+Jv_check = false # Checks values of J_v
 @assert(r > 0.0) # if r=0, then no occultation - can just use phase curve term.
 # Computes the s_n terms up to l_max
 # Find n_max:
@@ -349,7 +367,7 @@ end
 if b == 0.0
   # Annular eclipse - integrate around the full boundary of both bodies:
   lam = pi/2; slam = one(r); clam = zero(r); clam2 = zero(r)
-  phi = pi/2
+  phi = pi/2; sphi = one(r); cphi = zero(r); cphi2 = zero(r)
   k2 = Inf; kc = 0.0
 else
   if b > abs(1.0-r) && b < 1.0+r
@@ -357,14 +375,16 @@ else
 #    slam = (1.0-r^2+b^2)/(2*b); lam = asin(slam);  clam = sqrt((1-(b-r)^2)*((b+r)^2-1))/(2b)
 #    slam = (1.0-r^2+b^2)/(2*b);  clam = sqrt((1-(b-r)^2)*((b+r)^2-1))/(2b);  clam2 = (1-(b-r)^2)*((b+r)^2-1)/(4b^2); lam = acos(clam); if lam > pi/2; lam -= pi; end
     slam = ((1.0-r)*(1.0+r)+b^2)/(2*b);  clam = sqrt((1-b+r)*(1+b-r)*(b+r-1)*(b+r+1))/(2b);  clam2 = (1-b+r)*(1+b-r)*(b+r-1)*(b+r+1)/(4b^2); lam = acos(clam); if lam > pi/2; lam -= pi; end
-    phi = asin((1.0-r^2-b^2)/(2*b*r))
+    sphi = (1.0-r^2-b^2)/(2*b*r); phi = asin(sphi); cphi = clam/r; cphi2 = clam2/r^2
   else
-    lam=pi/2; phi=pi/2; slam = one(r); clam = zero(r); clam2 = zero(r)
+    lam=pi/2; slam = one(r); clam = zero(r); clam2 = zero(r)
+    phi=pi/2; sphi = one(r); cphi = zero(r); cphi2 = zero(r)
   end
 # Next, compute k^2 = m:
-  k2 = (1.0-(b-r)^2)/(4b*r); kc = sqrt(abs(((b+r)^2-1))/(4*b*r))
+  k2 = (1.0-(b-r)^2)/(4b*r); kc = sqrt(abs(((b+r)^2-1))/(4*b*r)) #; kc2 = abs(((b+r)^2-1))/(4*b*r);
   if k2 > 1
     kc = sqrt(abs(((b+r)^2-1)/((b-r)^2-1)))
+#    kc2 = abs(((b+r)^2-1)/((b-r)^2-1))
   end
 end
 
@@ -500,6 +520,50 @@ for u=0:2:l_max+2
   end
 end
 
+Iuv = zeros(typeof(r),l_max+3,l_max+1)
+cphi2 = cphi*cphi; cphin = cphi; sphin = sphi
+for u=0:2:l_max+2
+  if u == 0
+    Iuv[1,1]=  2*phi+pi
+    Iuv[1,2]= -2*cphi
+    sphin = sphi
+    v=2
+    while v <= l_max
+      Iuv[1,v+1]= (-2*cphi*sphin+(v-1)*Iuv[1,v-1])/(u+v)
+      sphin *= sphi
+      v+=1
+    end
+  else
+    sphin = sphi
+    v=0
+    Iuv[u+1,v+1]= (2*cphin*sphin+(u-1)*Iuv[u-1,v+1])/(u+v)
+    sphin *= sphi
+    v=1
+    cphin *= cphi2
+    Iuv[u+1,v+1] = -2*cphin/(u+1)
+    sphin = sphi
+    v=2
+    while v <= l_max
+      Iuv[u+1,v+1]= (-2*cphin*sphin+(v-1)*Iuv[u+1,v-1])/(u+v)
+      sphin *= sphi
+      v+=1
+    end
+  end
+end
+#println("Iuv: ",Iuv)
+
+Kuv_old = zeros(typeof(r),l_max+3,l_max+1)
+bonr = b/r
+for u=0:2:l_max+2
+  for v=0:l_max
+    for i=0:v
+      fac = binomial(v,i)*bonr^(v-i)
+      Kuv_old[u+1,v+1] += fac*Iuv[u+1,i+1]
+    end
+  end
+end
+#println("Kuv: ",Kuv_old)
+#read(STDIN,Char)
 
 #println("gamma: ",asin(-clam))
 #Huv = Huv_down(l_max,acos(-slam))
@@ -511,6 +575,17 @@ if k2 > 0
     IJv_lower!(l_max,k2,kc,Iv,Jv)
   else
     IJv_raise!(l_max,k2,kc,Iv,Jv)
+  end
+#  IJv_tridiag!(l_max,k2,kc,Iv,Jv)
+end
+#println("v_max: ",v_max)
+if Jv_check && typeof(k2) == Float64
+# We can't compute Jv_hyp for values of k2 close to one and large values of v.
+  for v=0:8
+     Jv_tmp = Jv_hyp(k2,v)
+     if abs(Jv[v+1]-Jv_tmp) > 1e-5
+       println("v: ",v," k2: ",k2," Jv: ",Jv[v+1]," Jv_hyp: ",Jv_tmp)
+     end
   end
 end
 #println("Iv: ",Iv," Jv: ",Jv)
@@ -566,6 +641,8 @@ while n <= n_max
       # Now, compute P(Gn) & Q(Gn):
       if mod(mu,4) == 0
         pofgn = 2*(2r)^(l+2)*Kuv[u+1,v+1]
+#        println("u: ",u," v: ",v," mu: ",mu," nu: ",nu," Kuv: ",Kuv_old[2u+1,v+1]," Kuv new: ",2^(l+3)*Kuv[u+1,v+1])
+#        pofgn = r^(l+2)*Kuv_old[2u+1,v+1]
 # Use alternate form of Kuv (6/11/2018 notes):
 #        Kuv_alt = zero(r)
 #        coeff = exp(2*lgamma(u+.5)-lgamma(2u+1))

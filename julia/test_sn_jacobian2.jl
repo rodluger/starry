@@ -1,10 +1,12 @@
 # Tests automatic differentiation on sn.jl:
 include("sn_jacobian.jl")
+using PyPlot
 
+function test_sn_jacobian2()
 r0 = [0.01,100.0]
-nb = 20
+nb = 50
 #l_max = 20
-l_max = 10
+l_max = 5
 n_max = l_max^2+2*l_max
 
 # Now, carry out finite-difference derivative computation:
@@ -34,7 +36,6 @@ end
 #sn_jacobian
 #convert(Array{Float64,2},sn_jac_big)-sn_jacobian
 
-using PyPlot
 fig,axes = subplots(1,2)
 get_cmap("plasma")
 epsilon = 1e-12; delta = 1e-3
@@ -42,28 +43,41 @@ i=1
 for i=1:2
   r=r0[i]
   if r < 1.0
-    b = [linspace(1e-8,epsilon,nb); linspace(epsilon,delta,nb); linspace(delta,r-delta,nb);
-#     linspace(r-delta,r-epsilon,nb); linspace(r-epsilon,r,nb); linspace(r,r+epsilon,nb); linspace(r+epsilon,r+delta,nb);  
-     linspace(r-delta,r-epsilon,nb); linspace(r-epsilon,r+epsilon,nb); linspace(r+epsilon,r+delta,nb);  
-     linspace(r+delta,1-r-delta,nb); linspace(1-r-delta,1-r-epsilon,nb); linspace(1-r-epsilon,1-r+epsilon,nb);
-     linspace(1-r+epsilon,1-r+delta,nb); linspace(1-r+delta,1+r-delta,nb); linspace(1+r-delta,1+r-epsilon,nb);linspace(1+r-epsilon,1+r-1e-8,nb)]
+    b = [linspace(1e-15,epsilon,nb); linspace(epsilon,delta,nb); linspace(delta,r-delta,nb);
+     r-logspace(log10(delta),log10(epsilon),nb); linspace(r-epsilon,r+epsilon,nb); r+logspace(log10(epsilon),log10(delta),nb);
+     linspace(r+delta,1-r-delta,nb); 1-r-logspace(log10(delta),log10(epsilon),nb); linspace(1-r-epsilon,1-r+epsilon,nb);
+     1-r+logspace(log10(epsilon),log10(delta),nb); linspace(1-r+delta,1+r-delta,nb); 1+r-logspace(log10(delta),log10(epsilon),nb);linspace(1+r-epsilon,1+r-1e-15,nb)]
   else
-    b = [linspace(r-1+1e-8,r-1+epsilon,nb); linspace(r-1+epsilon,r-1+delta,nb); linspace(r-1+delta,r-delta,nb); 
-#     linspace(r-delta,r-epsilon,nb); linspace(r-epsilon,r,nb); linspace(r,r+epsilon,nb); linspace(r+epsilon,r+delta,nb);  
-     linspace(r-delta,r-epsilon,nb); linspace(r-epsilon,r+epsilon,nb); linspace(r+epsilon,r+delta,nb);  
-     linspace(r+delta,r+1-delta,nb); linspace(r+1-delta,r+1-epsilon,nb); linspace(r+1-epsilon,r+1-1e-8,nb)]
+    b = [linspace(r-1+1e-10,r-1+epsilon,nb); r-1+logspace(log10(epsilon),log10(delta),nb); linspace(r-1+delta,r-delta,nb);
+     r-logspace(log10(delta),log10(epsilon),nb); linspace(r-epsilon,r+epsilon,nb); r+logspace(log10(epsilon),log10(delta),nb);
+     linspace(r+delta,r+1-delta,nb); r+1-logspace(log10(delta),log10(epsilon),nb); linspace(r+1-epsilon,r+1-1e-10,nb)]
   end
+#  if r < 1.0
+#    b = [linspace(1e-8,epsilon,nb); linspace(epsilon,delta,nb); linspace(delta,r-delta,nb);
+##     linspace(r-delta,r-epsilon,nb); linspace(r-epsilon,r,nb); linspace(r,r+epsilon,nb); linspace(r+epsilon,r+delta,nb);  
+#     linspace(r-delta,r-epsilon,nb); linspace(r-epsilon,r+epsilon,nb); linspace(r+epsilon,r+delta,nb);  
+#     linspace(r+delta,1-r-delta,nb); linspace(1-r-delta,1-r-epsilon,nb); linspace(1-r-epsilon,1-r+epsilon,nb);
+#     linspace(1-r+epsilon,1-r+delta,nb); linspace(1-r+delta,1+r-delta,nb); linspace(1+r-delta,1+r-epsilon,nb);linspace(1+r-epsilon,1+r-1e-8,nb)]
+#  else
+#    b = [linspace(r-1+1e-8,r-1+epsilon,nb); linspace(r-1+epsilon,r-1+delta,nb); linspace(r-1+delta,r-delta,nb); 
+##     linspace(r-delta,r-epsilon,nb); linspace(r-epsilon,r,nb); linspace(r,r+epsilon,nb); linspace(r+epsilon,r+delta,nb);  
+#     linspace(r-delta,r-epsilon,nb); linspace(r-epsilon,r+epsilon,nb); linspace(r+epsilon,r+delta,nb);  
+#     linspace(r+delta,r+1-delta,nb); linspace(r+1-delta,r+1-epsilon,nb); linspace(r+1-epsilon,r+1-1e-8,nb)]
+#  end
   k2 = (1.-(r-b).^2)./(4.*b.*r)
   k2H = ((b+1).^2-r.^2)./(4b)
   igrid=linspace(1,length(b),length(b))-1
   sn_jac_grid = zeros(length(b),n_max+1,2)
+  sn_jac_array= zeros(n_max+1,2)
   sn_grid = zeros(length(b),n_max+1)
+  sn_array= zeros(n_max+1)
   sn_jac_grid_num = zeros(length(b),n_max+1,2)
   for j=1:length(b)
     println("r: ",r," b: ",b[j])
-    sn,sn_jacobian= sn_jac(l_max,r,b[j])
-    sn_grid[j,:]=sn
-    sn_jac_grid[j,:,:]=sn_jacobian
+    sn_array,sn_jac_array= sn_jac(l_max,r,b[j])
+    s_n_bigr!(l_max,r,b[j],sn_array)
+    sn_grid[j,:]=sn_array
+    sn_jac_grid[j,:,:]=sn_jac_array
     sn_jac_grid_num[j,:,:]= sn_jac_num(l_max,r,b[j])
   end
 # Now, make plots:
@@ -73,15 +87,22 @@ for i=1:2
     if m==0
 #      ax[:plot](abs.(sn_jac_grid[:,n+1,1]-sn_jac_grid_num[:,n+1,1]),color=cmap(l/(l_max+2)),lw=1,label=string("l=",l))
 #      ax[:semilogy](abs.(asinh.(sn_jac_grid[:,n+1,1])-sn_jac_grid_num[:,n+1,1]),lw=1,label=string("l=",l))
+#      ax[:semilogy](b,abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1])),lw=1,label=string("l=",l))
+#      ax[:semilogy](abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1])),lw=1,label=string("l=",l))
       ax[:semilogy](abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1])),lw=1,label=string("l=",l))
     else
 #      ax[:plot](abs.(sn_jac_grid[:,n+1,1]-sn_jac_grid_num[:,n+1,1]),color=cmap(l/(l_max+2)),lw=1)
 #      ax[:semilogy](abs.(sn_jac_grid[:,n+1,1]-sn_jac_grid_num[:,n+1,1]),lw=1)
       ax[:semilogy](abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1])),lw=1)
+#      ax[:semilogy](b,abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1])),lw=1)
     end
 #    ax[:plot](abs.(sn_jac_grid[:,n+1,2]-sn_jac_grid_num[:,n+1,2]),color=cmap(l/(l_max+2)),lw=1)
 #    ax[:semilogy](abs.(sn_jac_grid[:,n+1,2]-sn_jac_grid_num[:,n+1,2]),lw=1)
+#    ax[:semilogy](b,abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2])),lw=1)
     ax[:semilogy](abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2])),lw=1)
+    println("n: ",n," m: ",m," l: ",l," mu: ",l-m," nu: ",l+m," max dsn/dr: ",maximum(abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1]))),
+      " maximum dsn/db: ",maximum(abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2]))))
+    read(STDIN,Char)
     m +=1
     if m > l
       l += 1
@@ -92,11 +113,11 @@ for i=1:2
   ax[:set_xlabel]("b values")
   ax[:set_ylabel]("Derivative Error")
   ax[:axis]([0,length(b),1e-16,1])
-end
-read(STDIN,Char)
+  read(STDIN,Char)
+#  ax[:axis]([minimum(b),maximum(b),1e-16,1])
 
-# Loop over n and see where the differences between the finite-difference
-# and AutoDiff are greater than the derivative value: 
+## Loop over n and see where the differences between the finite-difference
+## and AutoDiff are greater than the derivative value: 
 l=0; m=0
 for n=0:n_max
   diff = sn_jac_grid[:,n+1,:]-sn_jac_grid_num[:,n+1,:]
@@ -132,9 +153,12 @@ for n=0:n_max
     m = -l
   end
 end
-
-
-#end
-
-#loglog(abs.(reshape(sn_jac_grid,length(b)*(n_max+1)*2)),abs.(reshape(sn_jac_grid-sn_jac_grid_num,length(b)*(n_max+1)*2)),".")
-#loglog(abs.(reshape(sn_jac_grid,length(b)*(n_max+1)*2)),abs.(reshape(sn_jac_grid_num,length(b)*(n_max+1)*2)),".")
+#
+#
+##end
+#
+##loglog(abs.(reshape(sn_jac_grid,length(b)*(n_max+1)*2)),abs.(reshape(sn_jac_grid-sn_jac_grid_num,length(b)*(n_max+1)*2)),".")
+##loglog(abs.(reshape(sn_jac_grid,length(b)*(n_max+1)*2)),abs.(reshape(sn_jac_grid_num,length(b)*(n_max+1)*2)),".")
+end
+return
+end
