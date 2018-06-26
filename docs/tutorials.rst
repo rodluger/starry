@@ -12,9 +12,9 @@ The basics
    :titlesonly:
    :maxdepth: 1
 
-   1. Surface maps  <tutorials/basics1.ipynb>
-   2. Limb-darkened maps <tutorials/basics2.ipynb>
-   3. Exoplanet systems <tutorials/basics3.ipynb>
+   Surface maps  <tutorials/basics1.ipynb>
+   Limb-darkened maps <tutorials/basics2.ipynb>
+   Exoplanet systems <tutorials/basics3.ipynb>
 
 
 Fitting and inference
@@ -24,8 +24,8 @@ Fitting and inference
    :titlesonly:
    :maxdepth: 1
 
-   1. Parameter inference with MCMC <tutorials/mcmc.ipynb>
-   2. Optimization with analytic gradients <tutorials/autograd.ipynb>
+   Parameter inference with MCMC <tutorials/mcmc.ipynb>
+   Optimization with analytic gradients <tutorials/autograd.ipynb>
 
 
 Miscellaneous
@@ -35,7 +35,8 @@ Miscellaneous
    :titlesonly:
    :maxdepth: 1
 
-   1. High order limb-darkening <tutorials/high_order_ld.ipynb>
-   2. Orientation of the map on the sky <tutorials/geometry.ipynb>
-   3. Light travel time delay <tutorials/light_travel.ipynb>
-   4. Starspots <tutorials/spottedstar.ipynb>
+   High order limb-darkening <tutorials/high_order_ld.ipynb>
+   Orientation of the map on the sky <tutorials/geometry.ipynb>
+   Light travel time delay <tutorials/light_travel.ipynb>
+   Starspots <tutorials/spottedstar.ipynb>
+   Positive-definite surface maps <tutorials/non-negative.ipynb>

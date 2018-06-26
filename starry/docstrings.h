@@ -29,7 +29,7 @@ namespace docstrings {
         const char * flux;
         const char * flux_numerical;
         const char * rotate;
-        const char * minimum;
+        const char * psd;
         const char * add_gaussian;
         const char * load_array;
         const char * load_image;
@@ -142,16 +142,16 @@ namespace docstrings {
                     theta (float or ndarray): Angle of rotation in degrees. Default 0.
             )pbdoc";
 
-            minimum = R"pbdoc(
-                Find the global minimum of the map.
-                This routine wraps :py:class:`scipy.optimize.minimize` to find
-                the global minimum of the surface map. This is useful for ensuring
-                that the surface map is nonnegative everywhere.
+            psd = R"pbdoc(
+                Check whether the map is positive semi-definite. Returns :py:obj:`True`
+                if it is positive semi-definite and :py:obj:`False` otherwise.
+                For maps of degree `l = 0` and `l = 1`, this is analytic and fast to
+                compute, but for maps of higher degree a numerical solution is employed;
+                this function may therefore be (relatively) slow to evaluate.
 
-                .. note:: Because this routine wraps a Python wrapper of a C function \
-                          to perform a non-linear optimization in three dimensions, it is \
-                          **slow** and should probably not be used repeatedly when fitting \
-                          a map to data!
+                Args:
+                    epsilon (float): Numerical solver tolerance. Default `1e-6`
+                    max_iterations (int): Maximum number of iterations for the numerical solver. Default `100`
             )pbdoc";
 
             add_gaussian = R"pbdoc(
@@ -251,7 +251,7 @@ namespace docstrings {
                 .. autoattribute:: g
                 .. autoattribute:: s
                 .. autoattribute:: r
-                .. automethod:: minimum()
+                .. automethod:: psd()
                 .. automethod:: add_gaussian()
                 .. automethod:: load_array(image)
                 .. automethod:: load_image(image)
@@ -303,7 +303,7 @@ namespace docstrings {
                 .. autoattribute:: g
                 .. autoattribute:: s
                 .. autoattribute:: r
-                .. automethod:: minimum()
+                .. automethod:: psd()
                 .. automethod:: add_gaussian()
                 .. automethod:: load_array(image)
                 .. automethod:: load_image(image)
@@ -338,7 +338,7 @@ namespace docstrings {
                 .. autoattribute:: g
                 .. autoattribute:: s
                 .. autoattribute:: r
-                .. automethod:: minimum()
+                .. automethod:: psd()
                 .. automethod:: load_array(image)
                 .. automethod:: load_image(image)
                 .. automethod:: load_healpix(image)
@@ -370,7 +370,7 @@ namespace docstrings {
         const char * evaluate;
         const char * flux;
         const char * flux_numerical;
-        const char * roots;
+        const char * psd;
         const char * show;
         const char * gradient;
         void add_extras() {};
@@ -400,11 +400,11 @@ namespace docstrings {
                     coeff (float): The value of the coefficient.
             )pbdoc";
 
-            roots = R"pbdoc(
-                Count the number of roots of the specific intensity using Sturm's
-                theorem. Physical maps with positive semi-definite specific
-                intensity should have zero roots. If this number is nonzero,
-                your star has negative brightness somewhere!
+            psd = R"pbdoc(
+                Check whether the map is positive semi-definite. Returns :py:obj:`True`
+                if it is positive semi-definite and :py:obj:`False` otherwise. This routine
+                uses Sturm's theorem to count the number of roots of the
+                specific intensity polynomial.
             )pbdoc";
 
             reset = R"pbdoc(
@@ -505,7 +505,7 @@ namespace docstrings {
                 .. automethod:: get_coeff(l)
                 .. automethod:: set_coeff(l, coeff)
                 .. automethod:: reset()
-                .. automethod:: roots()
+                .. automethod:: psd()
                 .. autoattribute:: lmax
                 .. autoattribute:: y
                 .. autoattribute:: p
@@ -559,7 +559,7 @@ namespace docstrings {
                 .. automethod:: get_coeff(l)
                 .. automethod:: set_coeff(l, coeff)
                 .. automethod:: reset()
-                .. automethod:: roots()
+                .. automethod:: psd()
                 .. autoattribute:: lmax
                 .. autoattribute:: y
                 .. autoattribute:: p
@@ -597,7 +597,7 @@ namespace docstrings {
                 .. automethod:: get_coeff(l)
                 .. automethod:: set_coeff(l, coeff)
                 .. automethod:: reset()
-                .. automethod:: roots()
+                .. automethod:: psd()
                 .. autoattribute:: gradient
                 .. autoattribute:: lmax
                 .. autoattribute:: y

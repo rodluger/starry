@@ -174,11 +174,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 map.rotate(axis_norm, theta * DEGREE);
             }, docs.Map.rotate, "axis"_a=yhat, "theta"_a=0)
 
-        .def("minimum", [](maps::Map<MAPTYPE> &map) -> double {
-                py::object minimize = py::module::import("starry_maps").attr("minimize");
-                Vector<double> p = get_value(map.p);
-                return minimize(p).cast<double>();
-            }, docs.Map.minimum)
+        .def("psd", &maps::Map<MAPTYPE>::psd, docs.Map.psd, "epsilon"_a=1.e-6, "max_iterations"_a=100)
 
         .def("load_array", [](maps::Map<MAPTYPE> &map, Matrix<double>& image) {
                 py::object load_map = py::module::import("starry_maps").attr("load_map");
@@ -418,7 +414,7 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
 
         .def("reset", &maps::LimbDarkenedMap<MAPTYPE>::reset, docs.LimbDarkenedMap.reset)
 
-        .def("roots", &maps::LimbDarkenedMap<MAPTYPE>::roots, docs.LimbDarkenedMap.roots)
+        .def("psd", &maps::LimbDarkenedMap<MAPTYPE>::psd, docs.LimbDarkenedMap.psd)
 
         .def_property_readonly("lmax", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.lmax;}, docs.LimbDarkenedMap.lmax)
 

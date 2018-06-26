@@ -142,4 +142,22 @@ inline Grad mach_eps() {
     return Grad(mach_eps<double>());
 }
 
+// Re-definition of fmod so we can define its derivative below
+using std::fmod;
+template <typename T>
+T mod2pi(const T& numer) {
+    return fmod(numer, T(2 * M_PI));
+}
+
+// Derivative of the floating point modulo function
+template <typename T>
+Eigen::AutoDiffScalar<T> mod2pi(const Eigen::AutoDiffScalar<T>& numer) {
+    typename T::Scalar numer_value = numer.value(),
+                       modulo_value = mod2pi(numer_value);
+    return Eigen::AutoDiffScalar<T>(
+      modulo_value,
+      numer.derivatives()
+    );
+}
+
 #endif

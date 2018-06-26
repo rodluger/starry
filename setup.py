@@ -44,7 +44,9 @@ ext_modules = [
             # Path to eigen headers
             "lib/eigen_3.3.3",
             # Path to boost headers
-            "lib/boost_1_66_0"
+            "lib/boost_1_66_0",
+            # Path to LBFGSpp headers
+            "lib/LBFGSpp/include"
         ],
         language='c++',
         define_macros=[(key, os.getenv(key, value))

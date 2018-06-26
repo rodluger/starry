@@ -24,9 +24,27 @@ namespace errors {
         }
     };
 
+    struct MinimumIsNotAnalytic : public exception {
+        const char * what () const throw (){
+            return "The minimum of the map cannot be found analytically. To enable numerical searches, instantiate a map from the main `starry` module.";
+        }
+    };
+
     struct Kepler : public exception {
     	const char * what () const throw (){
         	return "The Kepler solver failed to converge when computing the eccentric anomaly.";
+        }
+    };
+
+    struct MapIsNegative : public exception {
+    	const char * what () const throw (){
+        	return "The map is not positive semi-definite.";
+        }
+    };
+
+    struct TODO : public exception {
+    	const char * what () const throw (){
+        	return "TODO!";
         }
     };
 
