@@ -1,6 +1,8 @@
 # Tests automatic differentiation on sn.jl:
 include("sn_jacobian.jl")
+using PyPlot
 
+function test_sn_jacobian2()
 r0 = [0.01,100.0]
 nb = 50
 #l_max = 20
@@ -34,13 +36,11 @@ end
 #sn_jacobian
 #convert(Array{Float64,2},sn_jac_big)-sn_jacobian
 
-using PyPlot
 fig,axes = subplots(1,2)
 get_cmap("plasma")
 epsilon = 1e-12; delta = 1e-3
 i=1
 for i=1:2
-  r=r0[i]
   r=r0[i]
   if r < 1.0
     b = [linspace(1e-15,epsilon,nb); linspace(epsilon,delta,nb); linspace(delta,r-delta,nb);
@@ -156,4 +156,6 @@ end
 #
 ##loglog(abs.(reshape(sn_jac_grid,length(b)*(n_max+1)*2)),abs.(reshape(sn_jac_grid-sn_jac_grid_num,length(b)*(n_max+1)*2)),".")
 ##loglog(abs.(reshape(sn_jac_grid,length(b)*(n_max+1)*2)),abs.(reshape(sn_jac_grid_num,length(b)*(n_max+1)*2)),".")
+end
+return
 end

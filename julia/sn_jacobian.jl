@@ -16,10 +16,10 @@ function sn_jac(l_max::Int64,r::T,b::T) where {T <: Real}
   # Now, define a wrapper of s_n! for use with ForwardDiff:
   function diff_sn(x::Array{T,1}) where {T <: Real}
   # x should be a two-element vector with values [r,b]
-  r0,b0 = x
-  sn = zeros(typeof(r0),n_max+1)
-#  s_n!(l_max,r,b,sn)
-  s_n_bigr!(l_max,r0,b0,sn)
+  r_tmp,b_tmp = x
+  sn = zeros(typeof(r_tmp),n_max+1)
+#  s_n!(l_max,r_tmp,b_tmp,sn)
+  s_n_bigr!(l_max,r_tmp,b_tmp,sn)
   return sn
   end
 

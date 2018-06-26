@@ -2,7 +2,7 @@
 # precision for b+r > 1:
 include("s2_stable.jl")
 
-using GSL
+#using GSL
 
 function vector_sum(x::Array{T,1},y::Array{T,1},n::Int64) where {T <: Real}
 # Trying to stabilize arithmetic:
@@ -326,7 +326,7 @@ end
 Huv[u+1,v+1]=kap2^(v+1)*(2/(v+1)-(u+v/3)/(v+3)*kap2^2+
           (5*(3u+v)^2-30u-2v)/360*kap2^4)
 #println("Huv: ",Huv[u+1,v+1]," error: ",last_term)
-println("Huv: ",Huv[u+1,v+1])
+#println("Huv: ",Huv[u+1,v+1])
 # Next, iterate downwards in v:
 while v >= 2
   Huv[u+1,v-1] = (u+v)/(v-1)*(Huv[u+1,v+1]+2/(u+v)*skap^(v-1)*ckap^(u+1))
@@ -572,7 +572,7 @@ if k2 > 0
 #    IJv_tridiag!(l_max,k2,kc,Iv,Jv)
   end
 end
-println("v_max: ",v_max)
+#println("v_max: ",v_max)
 if Jv_check
 # We can't compute Jv_hyp for values of k2 close to one and large values of v.
   for v=0:8
