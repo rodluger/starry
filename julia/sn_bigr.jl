@@ -109,7 +109,7 @@ else # k^2 >= 1
   coeff = pi
   # Compute (2v-1)!!/(2^v v!):
   for i=1:v
-    coeff *= 1-.5/i
+    coeff *= 1.-.5/i
   end
   Jv = one(k2)*coeff; n=1
   while n < nmax && abs(error) > tol
@@ -138,6 +138,8 @@ if k2 < 1
   else
     Iv[1] = 2*acos(kc)
   end
+# Try something else:
+#  Iv[1] = asin(2*k*kc)
 # Next, iterate upwards in v:
 #  f0 = kc/k
   f0 = kc*k
@@ -159,31 +161,16 @@ end
 v= 0
 if k2 < 1
   # Use cel_bulirsch:
-#  fe = 2*(2k2-1); fk = (1-k2)*(2-3k2)
-#  Jv[v+1]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),fk+fe,fk+fe*(1-k2))
   if k2 > 0
-#    println("k2: ",k2)
     Jv[v+1]=2/(3k2*k)*cel_bulirsch(k2,kc,one(k2),k2*(3k2-1),k2*(1-k2))
-#    Jv[v+1]=2/(3*k)*cel_bulirsch(k2,kc,one(k2),(3k2-1),(1-k2))
-#    Jv[v+1]=2/3*cel_bulirsch(k2,kc,one(k2),(3k2-1)/k,(1-k2)/k)
-#    Jv[v+1]=2/(3*k)*(cel_bulirsch(k2,kc,one(k2),1-k2)+(3k2-2)*cel_bulirsch(k2,kc,one(k2),zero(k2)))
-    fe = -3k2*k2+13k2-8; fk = (1-k2)*(8-9k2)
     Jv[v+2]= 2/(15k2*k)*cel_bulirsch(k2,kc,one(k2),2k2*(3k2-2),k2*(4-7k2+3k2*k2))
-#    Jv[v+2]= 2/(15*k)*cel_bulirsch(k2,kc,one(k2),2*(3k2-2),(4-7k2+3k2*k2))
-#    Jv[v+2]= 2/15*cel_bulirsch(k2,kc,one(k2),2*(3k2-2)/k,(4-7k2+3k2*k2)/k)
-#    Jv[v+2]= 2/(15*k)*((4-3*k2)*cel_bulirsch(k2,kc,one(k2),one(k2),1-k2)+
-#            (9*k2-8)*cel_bulirsch(k2,kc,one(k2),one(k2),zero(k2)))
   else
     Jv[v+1]= 0.0
     Jv[v+2]= 0.0
   end
 else # k^2 >=1
   k2inv = inv(k2)
-#  fe = 2*(2-k2inv); fk=-1+k2inv
-#  Jv[v+1]=2/3*cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))
   Jv[v+1]=2/3*cel_bulirsch(k2inv,kc,one(k2),3-k2inv,3-5k2inv+2k2inv^2)
-#  fe = -6k2+26-16k2inv; fk=2*(1-k2inv)*(3k2-4)
-#  Jv[v+2]=cel_bulirsch(k2inv,kc,one(k2),fk+fe,fk+fe*(1-k2inv))/15
   Jv[v+2]=cel_bulirsch(k2inv,kc,one(k2),12-8*k2inv,2*(9-8k2inv)*(1-k2inv))/15
 end
 v=2
@@ -301,10 +288,28 @@ v= v_max
 #  println("v ",v," k2 ",k2," Jv_ser ",convert(Float64,Jv_series(big(k2),v-1))," ",convert(Float64,Jv_series(big(k2),v))," Jv_hyp ",Jv_hyp(k2,v-1)," ",Jv_hyp(k2,v))
 #end
 # Iterate downwards in v (lower):
-while v >= 2
+while v >= 4
   f2 = k2*(2v-3); f1 = 2*(v+1+(v-1)*k2)/f2; f3 = (2v+3)/f2
   Jv[v-1] = f1*Jv[v]-f3*Jv[v+1]
   v -= 1
+end
+# Compute first two exactly:
+v= 0
+if k2 < 1
+  # Use cel_bulirsch:
+  if k2 > 0
+    Jv[v+1]=2/(3*k2*k)*cel_bulirsch(k2,kc,one(k2),k2*(3k2-1),k2*(1-k2))
+    Jv[v+2]=2/(15*k2*k)*cel_bulirsch(k2,kc,one(k2),2*k2*(3k2-2),k2*(4-7k2+3k2*k2))
+#    Jv[v+3] =-2/(35*k)*cel_bulirsch(k2,kc,one(k2),8-11k2+k2*k2,(-8+5k2+2k2*k2)*(1-k2))
+  else
+    Jv[v+1]= 0.0
+    Jv[v+2]= 0.0
+  end
+else # k^2 >=1
+  k2inv = inv(k2)
+  Jv[v+1]=2/3*cel_bulirsch(k2inv,kc,one(k2),3-k2inv,3-5k2inv+2k2inv^2)
+  Jv[v+2]=cel_bulirsch(k2inv,kc,one(k2),12-8*k2inv,2*(9-8k2inv)*(1-k2inv))/15
+#  Jv[v+3]=2/(35*k2)*cel_bulirsch(k2inv,kc,one(k2),-k2^2+11k2-8,(k2^2+16*k2-16)*(1-k2inv))
 end
 return
 end
@@ -376,9 +381,10 @@ else
     phi=pi/2; sphi = one(r); cphi = zero(r); cphi2 = zero(r)
   end
 # Next, compute k^2 = m:
-  k2 = (1.0-(b-r)^2)/(4b*r); kc = sqrt(abs(((b+r)^2-1))/(4*b*r))
+  k2 = (1.0-(b-r)^2)/(4b*r); kc = sqrt(abs(((b+r)^2-1))/(4*b*r)) #; kc2 = abs(((b+r)^2-1))/(4*b*r);
   if k2 > 1
     kc = sqrt(abs(((b+r)^2-1)/((b-r)^2-1)))
+#    kc2 = abs(((b+r)^2-1)/((b-r)^2-1))
   end
 end
 
@@ -569,14 +575,17 @@ if k2 > 0
     IJv_lower!(l_max,k2,kc,Iv,Jv)
   else
     IJv_raise!(l_max,k2,kc,Iv,Jv)
-#    IJv_tridiag!(l_max,k2,kc,Iv,Jv)
   end
+#  IJv_tridiag!(l_max,k2,kc,Iv,Jv)
 end
 #println("v_max: ",v_max)
-if Jv_check
+if Jv_check && typeof(k2) == Float64
 # We can't compute Jv_hyp for values of k2 close to one and large values of v.
   for v=0:8
-     println("v: ",v," Jv: ",Jv[v+1]," Jv_hyp: ",Jv_hyp(k2,v))
+     Jv_tmp = Jv_hyp(k2,v)
+     if abs(Jv[v+1]-Jv_tmp) > 1e-5
+       println("v: ",v," k2: ",k2," Jv: ",Jv[v+1]," Jv_hyp: ",Jv_tmp)
+     end
   end
 end
 #println("Iv: ",Iv," Jv: ",Jv)

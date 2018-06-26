@@ -75,7 +75,7 @@ for i=1:2
   for j=1:length(b)
     println("r: ",r," b: ",b[j])
     sn_array,sn_jac_array= sn_jac(l_max,r,b[j])
-#    s_n_bigr!(l_max,r,b[j],sn_array)
+    s_n_bigr!(l_max,r,b[j],sn_array)
     sn_grid[j,:]=sn_array
     sn_jac_grid[j,:,:]=sn_jac_array
     sn_jac_grid_num[j,:,:]= sn_jac_num(l_max,r,b[j])
@@ -100,6 +100,9 @@ for i=1:2
 #    ax[:semilogy](abs.(sn_jac_grid[:,n+1,2]-sn_jac_grid_num[:,n+1,2]),lw=1)
 #    ax[:semilogy](b,abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2])),lw=1)
     ax[:semilogy](abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2])),lw=1)
+    println("n: ",n," m: ",m," l: ",l," mu: ",l-m," nu: ",l+m," max dsn/dr: ",maximum(abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1]))),
+      " maximum dsn/db: ",maximum(abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2]))))
+    read(STDIN,Char)
     m +=1
     if m > l
       l += 1

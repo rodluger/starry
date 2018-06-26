@@ -17,6 +17,7 @@ snew_big = zeros(BigFloat,n_max+1);
 #b=0.9
 #b=0.55
 b = 1-r-1e-8
+#b = 1-r+1e-8
 #b = 110.99
 #b = 1.0
 #b=100.
