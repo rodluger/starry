@@ -36,7 +36,7 @@ end
 #sn_jacobian
 #convert(Array{Float64,2},sn_jac_big)-sn_jacobian
 
-fig,axes = subplots(1,2)
+fig,axes = subplots(1,1)
 get_cmap("plasma")
 epsilon = 1e-12; delta = 1e-3
 i=1
@@ -47,6 +47,9 @@ for i=1:2
      r-logspace(log10(delta),log10(epsilon),nb); linspace(r-epsilon,r+epsilon,nb); r+logspace(log10(epsilon),log10(delta),nb);
      linspace(r+delta,1-r-delta,nb); 1-r-logspace(log10(delta),log10(epsilon),nb); linspace(1-r-epsilon,1-r+epsilon,nb);
      1-r+logspace(log10(epsilon),log10(delta),nb); linspace(1-r+delta,1+r-delta,nb); 1+r-logspace(log10(delta),log10(epsilon),nb);linspace(1+r-epsilon,1+r-1e-15,nb)]
+     nticks = 14
+     xticknames=[L"$10^{-15}$",L"$10^{-12}$",L"$10^{-3}$",L"$r-10^{-3}$",L"$r-10^{-12}$",L"$r+10^{-12}$",L"$r+10^{-3}$",
+     L"$1-r-10^{-3}$",L"$1-r-10^{-12}$",L"$1-r+10^{-12}$",L"$1-r+10^{-3}$",L"$1+r-10^{-3}$",L"$1+r-10^{-12}$",L"$1+r-10^{-15}$"]
   else
     b = [linspace(r-1+1e-10,r-1+epsilon,nb); r-1+logspace(log10(epsilon),log10(delta),nb); linspace(r-1+delta,r-delta,nb);
      r-logspace(log10(delta),log10(epsilon),nb); linspace(r-epsilon,r+epsilon,nb); r+logspace(log10(epsilon),log10(delta),nb);
@@ -81,7 +84,7 @@ for i=1:2
     sn_jac_grid_num[j,:,:]= sn_jac_num(l_max,r,b[j])
   end
 # Now, make plots:
-  ax = axes[i]
+  ax = axes
   m=0;l=0
   for n=0:n_max
     if m==0
@@ -90,19 +93,21 @@ for i=1:2
 #      ax[:semilogy](b,abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1])),lw=1,label=string("l=",l))
 #      ax[:semilogy](abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1])),lw=1,label=string("l=",l))
       ax[:semilogy](abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1])),lw=1,label=string("l=",l))
+#      semilogy(abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1])),lw=1,label=string("l=",l))
     else
 #      ax[:plot](abs.(sn_jac_grid[:,n+1,1]-sn_jac_grid_num[:,n+1,1]),color=cmap(l/(l_max+2)),lw=1)
 #      ax[:semilogy](abs.(sn_jac_grid[:,n+1,1]-sn_jac_grid_num[:,n+1,1]),lw=1)
       ax[:semilogy](abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1])),lw=1)
+#      semilogy(abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1])),lw=1)
 #      ax[:semilogy](b,abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1])),lw=1)
     end
 #    ax[:plot](abs.(sn_jac_grid[:,n+1,2]-sn_jac_grid_num[:,n+1,2]),color=cmap(l/(l_max+2)),lw=1)
 #    ax[:semilogy](abs.(sn_jac_grid[:,n+1,2]-sn_jac_grid_num[:,n+1,2]),lw=1)
 #    ax[:semilogy](b,abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2])),lw=1)
     ax[:semilogy](abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2])),lw=1)
+#    semilogy(abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2])),lw=1)
     println("n: ",n," m: ",m," l: ",l," mu: ",l-m," nu: ",l+m," max dsn/dr: ",maximum(abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1]))),
       " maximum dsn/db: ",maximum(abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2]))))
-    read(STDIN,Char)
     m +=1
     if m > l
       l += 1
@@ -113,8 +118,11 @@ for i=1:2
   ax[:set_xlabel]("b values")
   ax[:set_ylabel]("Derivative Error")
   ax[:axis]([0,length(b),1e-16,1])
-  read(STDIN,Char)
+  ax[:set_xticks](nb*linspace(0,nticks-1,nticks))
+  ax[:set_xticklabels](xticknames,rotation=45)
 #  ax[:axis]([minimum(b),maximum(b),1e-16,1])
+#  ax[:axis]([0,length(b),1e-16,1])
+  read(STDIN,Char)
 
 ## Loop over n and see where the differences between the finite-difference
 ## and AutoDiff are greater than the derivative value: 
