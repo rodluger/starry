@@ -48,6 +48,8 @@ def test_notebooks():
         except AssertionError:
             print("Error in %s." % notebook)
             raise
+        except SystemExit:
+            pass
         pl.close('all')
 
 
