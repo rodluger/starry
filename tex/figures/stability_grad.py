@@ -29,31 +29,6 @@ def StarryDExact(barr, r, lmax, d='b', tiny=1e-8):
     return res
 
 
-def _StarryDExact(barr, r, lmax, d='b', tiny=1e-16):
-    """Compute dF/d{b,r} for each degree with starry.grad."""
-    map = starry.grad.Map(lmax)
-    res = np.zeros((lmax + 1, len(barr)))
-    for ll in range(lmax + 1):
-        map.reset()
-        for mm in range(-ll, ll + 1):
-            map[ll, mm] = 1
-        if d == 'b':
-            map.flux(xo=0, yo=barr - barr * tiny, ro=r)
-            f1 = map.gradient['yo']
-            map.flux(xo=0, yo=barr + barr * tiny, ro=r)
-            f2 = map.gradient['yo']
-            res[ll] = 0.5 * (f1 + f2)
-        elif d == 'r':
-            map.flux(xo=0, yo=barr, ro=r - r * tiny)
-            f1 = map.gradient['ro']
-            map.flux(xo=0, yo=barr, ro=r + r * tiny)
-            f2 = map.gradient['ro']
-            res[ll] = 0.5 * (f1 + f2)
-        else:
-            raise ValueError("Invalid derivative name.")
-    return res
-
-
 def StarryD(barr, r, lmax, d='b'):
     """Compute dF/d{b,r} for each degree with starry.grad."""
     map = starry.grad.Map(lmax)
@@ -208,4 +183,4 @@ def PaperFigure(larr=[0, 1, 2, 3, 4, 5],
 
 
 if __name__ == "__main__":
-    PaperFigure(logdelta=-6, logeps=-12, d='b')
+    PaperFigure(logdelta=-3, logeps=-6, d='b')

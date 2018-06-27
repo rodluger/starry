@@ -253,7 +253,6 @@ namespace maps {
             T get_coeff(int l, int m);
             void reset();
             T flux_numerical(const UnitVector<T>& axis=yhat, const T& theta=0, const T& xo=0, const T& yo=0, const T& ro=0, double tol=1e-4);
-            T flux_mp(const UnitVector<T>& axis=yhat, const T& theta=0, const T& xo=0, const T& yo=0, const T& ro=0);
             T flux(const UnitVector<T>& axis=yhat, const T& theta=0, const T& xo=0, const T& yo=0, const T& ro=0);
             bool psd(double epsilon=1e-6, int max_iterations=100);
             std::string repr();
@@ -788,7 +787,6 @@ namespace maps {
             T get_coeff(int l);
             void reset();
             T flux_numerical(const T& xo=0, const T& yo=0, const T& ro=0, double tol=1e-4);
-            T flux_mp(const T& xo=0, const T& yo=0, const T& ro=0);
             T flux(const T& xo=0, const T& yo=0, const T& ro=0);
             std::string repr();
 
