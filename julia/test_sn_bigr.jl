@@ -2,10 +2,10 @@ include("sn.jl")
 include("sn_bigr.jl")
 
 #r=10.
-#r=100.
+r=100.
 #r=110.
 #r=1.1
-r=0.01
+#r=0.01
 l_max = 20
 n_max = l_max^2+2*l_max
 sn_big = zeros(BigFloat,n_max+1);
@@ -16,7 +16,7 @@ snew_big = zeros(BigFloat,n_max+1);
 #b=0.99
 #b=0.9
 #b=0.55
-b = 1-r-1e-8
+b = 1+r-1e-8
 #b = 1-r+1e-8
 #b = 110.99
 #b = 1.0

@@ -36,11 +36,10 @@ end
 #sn_jacobian
 #convert(Array{Float64,2},sn_jac_big)-sn_jacobian
 
-fig,axes = subplots(1,1)
 get_cmap("plasma")
 epsilon = 1e-12; delta = 1e-3
-i=1
 for i=1:2
+  fig,axes = subplots(1,1)
   r=r0[i]
   if r < 1.0
     b = [linspace(1e-15,epsilon,nb); linspace(epsilon,delta,nb); linspace(delta,r-delta,nb);
@@ -51,9 +50,12 @@ for i=1:2
      xticknames=[L"$10^{-15}$",L"$10^{-12}$",L"$10^{-3}$",L"$r-10^{-3}$",L"$r-10^{-12}$",L"$r+10^{-12}$",L"$r+10^{-3}$",
      L"$1-r-10^{-3}$",L"$1-r-10^{-12}$",L"$1-r+10^{-12}$",L"$1-r+10^{-3}$",L"$1+r-10^{-3}$",L"$1+r-10^{-12}$",L"$1+r-10^{-15}$"]
   else
-    b = [linspace(r-1+1e-10,r-1+epsilon,nb); r-1+logspace(log10(epsilon),log10(delta),nb); linspace(r-1+delta,r-delta,nb);
+    b = [r-1+logspace(log10(epsilon),log10(delta),nb); linspace(r-1+delta,r-delta,nb);
      r-logspace(log10(delta),log10(epsilon),nb); linspace(r-epsilon,r+epsilon,nb); r+logspace(log10(epsilon),log10(delta),nb);
-     linspace(r+delta,r+1-delta,nb); r+1-logspace(log10(delta),log10(epsilon),nb); linspace(r+1-epsilon,r+1-1e-10,nb)]
+     linspace(r+delta,r+1-delta,nb); r+1-logspace(log10(delta),log10(epsilon),nb)]
+     nticks = 8
+     xticknames=[L"$r-1+10^{-12}$",L"$r-1+10^{-3}$",L"$r-10^{-3}$",L"$r-10^{-12}$",L"$r+10^{-12}$",L"$r+10^{-3}$",
+     L"$r+1-10^{-3}$",L"$r+1-10^{-12}$"]
   end
 #  if r < 1.0
 #    b = [linspace(1e-8,epsilon,nb); linspace(epsilon,delta,nb); linspace(delta,r-delta,nb);
