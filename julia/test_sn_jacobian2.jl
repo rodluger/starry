@@ -122,6 +122,11 @@ for i=1:2
   ax[:axis]([0,length(b),1e-16,1])
   ax[:set_xticks](nb*linspace(0,nticks-1,nticks))
   ax[:set_xticklabels](xticknames,rotation=45)
+  if i==1 
+    ax[:set_title]("r = 0.01")
+  else
+    ax[:set_title]("r = 100")
+  end
 #  ax[:axis]([minimum(b),maximum(b),1e-16,1])
 #  ax[:axis]([0,length(b),1e-16,1])
   read(STDIN,Char)
