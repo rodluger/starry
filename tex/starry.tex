@@ -1567,9 +1567,9 @@ in this way as the small points along each of the curves. We find that our
 analytic light curves agree with the numerical solutions to within the error
 of the latter.
 
-\begin{figure}[ht!]
+\begin{figure}[p!]
     \begin{centering}
-    \includegraphics[width=\linewidth]{figures/stability.pdf}
+    \includegraphics[width=0.95\linewidth]{figures/stability.pdf}
     \caption{\label{fig:stability}
              Error in the terms of the solution vector $\mathbf{s}$ for a small
              occultor ($r = 0.01$, left) and a large occultor ($r = 100$, right),
@@ -1581,19 +1581,6 @@ of the latter.
              vicinity of potentially unstable regions. The top panel shows the relative error
              and the bottom panel shows the fractional error, scaled to the largest value of
              the function over the course of the occultation.
-             \codelink{stability}}
-    \end{centering}
-\end{figure}
-
-\begin{figure}[ht!]
-    \begin{centering}
-    \includegraphics[width=0.85\linewidth]{figures/stability_earth.pdf}
-    \caption{\label{fig:stability_earth}
-             Secondary eclipse ingress for the Earth being occulted by the Sun
-             ($r = 110$), computed for a $l = 20$ expansion of the planet's
-             surface map. The relative error due to floating point precision loss
-             is shown at the bottom and is
-             less than one part per billion everywhere.
              \codelink{stability}}
     \end{centering}
 \end{figure}
@@ -1610,6 +1597,36 @@ error scaled to the largest value of the function during the occultation. In cas
 where the largest value of the flux is less than $10^{-9}$, we scale the relative
 error to this value to avoid division by a very small number. In all cases, the
 fractional error is less than 1 ppb.
+
+\begin{figure}[p!]
+    \begin{centering}
+    \includegraphics[width=0.95\linewidth]{figures/stability_grad.pdf}
+    \caption{\label{fig:stability_grad}
+             Similar to Figure~\ref{fig:stability}, but showing instead the
+             error on the \emph{derivative} of the flux with respect to the impact
+             parameter computed analytically with autodifferentiation. The error is computed
+             relative to a numerical derivative computed at 128 bit precision.
+             \codelink{stability_grad}}
+    \end{centering}
+\end{figure}
+
+In Figure~\ref{fig:stability_grad} we show similar curves for the numerical error
+on the \emph{derivative} of the flux with respect to the impact parameter. Our
+expressions are again stable to within much less than 1 ppb at nearly all values
+of $b$ for both small and large occultors.
+
+\begin{figure}[ht!]
+    \begin{centering}
+    \includegraphics[width=0.85\linewidth]{figures/stability_earth.pdf}
+    \caption{\label{fig:stability_earth}
+             Secondary eclipse ingress for the Earth being occulted by the Sun
+             ($r = 110$), computed for a $l = 20$ expansion of the planet's
+             surface map. The relative error due to floating point precision loss
+             is shown at the bottom and is
+             less than one part per billion everywhere.
+             \codelink{stability}}
+    \end{centering}
+\end{figure}
 
 Figure~\ref{fig:stability_earth} shows the error on a secondary eclipse
 light curve for an $l = 20$ expansion of the Earth being occulted by the Sun.
@@ -1646,7 +1663,6 @@ during ingress and egress and is somewhat higher at the peak
 of the phase curve. Relative to the \emph{planet} flux, the error is more significant: $\sim 30 / 0.004 = 7500$ ppm.
 This error decreases linearly as the number of layers increases, and the \spiderman solution
 appears to converge to the \starry solution in the limit $n_\mathrm{layers} \rightarrow \infty$.
-
 
 % ------------------------------------------------------------------------------
 \subsection{Speed tests}

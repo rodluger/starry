@@ -442,7 +442,9 @@ namespace solver {
                 } else {
 
                     // Upward recursion: compute I_0
-                    value(0) = 2 * asin(k);
+                    // NOTE: This is equal to 2 * asin(k),
+                    // but much more stable!
+                    value(0) = 2 * acos(kc);
                     set(0) = true;
 
                 }

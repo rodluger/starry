@@ -51,6 +51,63 @@ void add_Map_extras<Grad>(py::class_<maps::Map<Grad>>& PyMap, const docstrings::
             }, docs.Map.gradient);
 }
 
+template <>
+void add_Map_extras<Multi>(py::class_<maps::Map<Multi>>& PyMap, const docstrings::docs<Multi>& docs) {
+
+    PyMap
+
+        // Numerically computed derivative of the flux with respect to `yo`. Used
+        // exclusively for stability tests of the double-precision derivatives in
+        // `starry.grad`. Not user-facing, not documented.
+        .def("_dfluxdyo", [](maps::Map<Multi>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
+
+                // Vectorize the inputs
+                UnitVector<Multi> axis_v = norm_unit(axis).cast<Multi>();
+                Vector<double> theta_v, xo_v, yo_v, ro_v;
+                vectorize_args(theta, xo, yo, ro, theta_v, xo_v, yo_v, ro_v);
+
+                // Step size
+                Multi eps = sqrt(mach_eps<Multi>());
+
+                // Compute the function for each vector index
+                Multi f2, f1;
+                Vector<double> deriv(theta_v.size());
+                for (int i = 0; i < theta_v.size(); i++) {
+                    f2 = map.flux(axis_v, theta_v(i) * DEGREE, xo_v(i), Multi(yo_v(i) + eps), ro_v(i));
+                    f1 = map.flux(axis_v, theta_v(i) * DEGREE, xo_v(i), Multi(yo_v(i) - eps), ro_v(i));
+                    deriv(i) = (double)((f2 - f1) / (2 * eps));
+                }
+                return deriv;
+
+            }, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+
+        // Numerically computed derivative of the flux with respect to `ro`. Used
+        // exclusively for stability tests of the double-precision derivatives in
+        // `starry.grad`. Not user-facing, not documented.
+        .def("_dfluxdro", [](maps::Map<Multi>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
+
+                // Vectorize the inputs
+                UnitVector<Multi> axis_v = norm_unit(axis).cast<Multi>();
+                Vector<double> theta_v, xo_v, yo_v, ro_v;
+                vectorize_args(theta, xo, yo, ro, theta_v, xo_v, yo_v, ro_v);
+
+                // Step size
+                Multi eps = sqrt(mach_eps<Multi>());
+
+                // Compute the function for each vector index
+                Multi f2, f1;
+                Vector<double> deriv(theta_v.size());
+                for (int i = 0; i < theta_v.size(); i++) {
+                    f2 = map.flux(axis_v, theta_v(i) * DEGREE, xo_v(i), yo_v(i), Multi(ro_v(i) + eps));
+                    f1 = map.flux(axis_v, theta_v(i) * DEGREE, xo_v(i), yo_v(i), Multi(ro_v(i) - eps));
+                    deriv(i) = (double)((f2 - f1) / (2 * eps));
+                }
+                return deriv;
+
+            }, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0);
+
+}
+
 template <typename MAPTYPE>
 void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTYPE>& docs) {
 
