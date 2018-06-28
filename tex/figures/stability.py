@@ -1,4 +1,4 @@
-"""Stability tests for large occultors."""
+"""Stability tests."""
 import numpy as np
 import matplotlib.pyplot as pl
 import starry

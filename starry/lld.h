@@ -44,11 +44,10 @@ namespace lld {
             return 3 * bmrdbpr * ellip::PI(T(1. / (ksq * bpr2)), T(1. / ksq)) / sqrt(1 - bmr2);
     }
 
-    // Compute the n=2 term of the *s^T* occultation solution vector.
     // This is the Mandel & Agol solution for linear limb darkening,
     // reparametrized for speed and stability
     template <typename T>
-    inline T s2(const T& b, const T& r, const T& ksq, const T& K, const T& E, const T& pi) {
+    inline T Lambda(const T& b, const T& r, const T& ksq, const T& K, const T& E, const T& pi) {
 
         T Lambda1, k2, k2c, kc, Eofk, k2inv, mu, p;
         T m, minv;
@@ -117,8 +116,58 @@ namespace lld {
                 }
             }
         }
+        return Lambda1;
+    }
 
-        return (2. * pi / 3.) * (1.0 - 1.5 * Lambda1 - T(r > b));
+
+    // Gradient of Lambda. We manually specify it to circumvent instabilities
+    // in certain limits via reparametrization in terms of CEL.
+    // See https://github.com/rodluger/starry/issues/113
+    template <typename T>
+    Eigen::AutoDiffScalar<T> Lambda (const Eigen::AutoDiffScalar<T>& b,
+                                     const Eigen::AutoDiffScalar<T>& r,
+                                     const Eigen::AutoDiffScalar<T>& ksq,
+                                     const Eigen::AutoDiffScalar<T>& K,
+                                     const Eigen::AutoDiffScalar<T>& E,
+                                     const Eigen::AutoDiffScalar<T>& pi)
+    {
+      typename T::Scalar b_value = b.value(),
+                         r_value = r.value(),
+                         ksq_value = ksq.value(),
+                         K_value = K.value(),
+                         E_value = E.value(),
+                         pi_value = pi.value(),
+                         Lambda_value = Lambda(b_value, r_value, ksq_value, K_value, E_value, pi_value),
+                         onembmr2 = 1 - (b_value - r_value) * (b_value - r_value),
+                         onembpr2 = 1 - (b_value + r_value) * (b_value + r_value),
+                         dLdb, dLdr, k2c, kc;
+
+      if (ksq_value < 1) {
+          typename T::Scalar sqrtbr = sqrt(b_value * r_value);
+          k2c = -onembpr2 / (4 * b_value * r_value);
+          kc = sqrt(k2c);
+          dLdr = 1.0 / (pi_value * sqrtbr) * ellip::CEL(ksq_value, kc, typename T::Scalar(1),
+                                                        typename T::Scalar(2 * r_value * onembmr2),
+                                                        typename T::Scalar(0), pi_value);
+          dLdb = onembmr2 / (3 * pi_value * sqrtbr) * ellip::CEL(ksq_value, kc, typename T::Scalar(1),
+                                                                 typename T::Scalar(-2 * r_value),
+                                                                 typename T::Scalar(onembpr2 / b_value), pi_value);
+      } else {
+          typename T::Scalar k2inv = 1.0 / ksq_value,
+                             fac = 4.0 * r_value / pi_value * sqrt(onembmr2);
+          k2c = onembpr2 / onembmr2;
+          kc = sqrt(k2c);
+          dLdr = fac * ellip::CEL(k2inv, kc, typename T::Scalar(1), typename T::Scalar(1), k2c, pi_value);
+          dLdb = fac / 3.0 * ellip::CEL(k2inv, kc, typename T::Scalar(1), typename T::Scalar(-1), k2c, pi_value);
+      }
+
+      return Eigen::AutoDiffScalar<T>(Lambda_value, b.derivatives() * dLdb + r.derivatives() * dLdr);
+    }
+
+    // Compute the n=2 term of the *s^T* occultation solution vector.
+    template <typename T>
+    inline T s2(const T& b, const T& r, const T& ksq, const T& K, const T& E, const T& pi) {
+        return (2. * pi / 3.) * (1.0 - 1.5 * Lambda(b, r, ksq, K, E, pi) - T(r > b));
 
     }
 

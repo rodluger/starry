@@ -112,6 +112,8 @@ namespace ellip {
       else ksq = 0;
       if (kc0 >= 0) kc = kc0;
       else kc = 0;
+      // If k^2 is very small, we get better precision evaluating `kc` like this
+      if (ksq < 1e-5) kc = sqrt(1 - ksq);
       // We actually need kc to be nonzero, so let's set it to a very small number
       if ((ksq == 1) || (kc == 0)) kc = mach_eps<T>() * ksq;
       // I haven't encountered cases where k^2 > 1 due to roundoff error,

@@ -18,7 +18,7 @@ def test_sturm():
     map = LimbDarkenedMap(10)
     for l in range(1, 11):
         map[l] = u[l]
-    map.roots() == 10
+    assert map.psd() is False
 
 
 if __name__ == "__main__":

@@ -35,24 +35,6 @@ namespace orbital {
     template <class T> class Star;
     template <class T> class Planet;
 
-    // Re-definition of fmod so we can define its derivative below
-    template <typename T>
-    T mod2pi(const T& numer) {
-        return fmod(numer, T(2 * M_PI));
-    }
-
-    // Derivative of the floating point modulo function,
-    // based on https://math.stackexchange.com/a/1277049
-    template <typename T>
-    Eigen::AutoDiffScalar<T> mod2pi(const Eigen::AutoDiffScalar<T>& numer) {
-        typename T::Scalar numer_value = numer.value(),
-                           modulo_value = mod2pi(numer_value);
-        return Eigen::AutoDiffScalar<T>(
-          modulo_value,
-          numer.derivatives()
-        );
-    }
-
     // Compute the eccentric anomaly. Adapted from
     // https://github.com/lkreidberg/batman/blob/master/c_src/_rsky.c
     template <typename T>
@@ -150,6 +132,10 @@ namespace orbital {
             // in the *sky* coordinates
             UnitVector<T> axis_sky;
             Map<T> map_sky;
+            rotation::Wigner<T> wtmp1;
+            rotation::Wigner<T> wtmp2;
+            rotation::Wigner<T> WignerRToSky;
+            Matrix<T> AxisAngleRToSky;
 
             // Orbital elements
             T a;
@@ -211,6 +197,10 @@ namespace orbital {
                  // Map in the sky coordinates
                  axis_sky(norm_unit(axis).template cast<T>()),
                  map_sky{is_star ? Map<T>(0) : Map<T>(lmax)},
+                 wtmp1(lmax),
+                 wtmp2(lmax),
+                 WignerRToSky(lmax),
+                 AxisAngleRToSky(Matrix<T>::Identity(3, 3)),
                  a(a),
                  porb(porb * DAY),
                  inc(inc * DEGREE),
@@ -294,20 +284,38 @@ namespace orbital {
     template <class T>
     inline void Body<T>::sync_maps() {
         if (!is_star){
+
             // Sync the two maps
             map_sky.y = map.y;
             map_sky.update();
             map.G.sT = map_sky.G.sT;
             map.C.rT = map_sky.C.rT;
             axis_sky = axis;
+
             // If there's inclination or rotation of the orbital plane,
             // we need to rotate the sky map as well as the rotation axis
             if ((Omega != 0) || (sini < 1. - 2 * mach_eps<T>())) {
                 UnitVector<T> axis1 = xhat.template cast<T>();
                 UnitVector<T> axis2 = zhat.template cast<T>();
-                map_sky.rotate(axis1, M_PI_2 - inc);
-                map_sky.rotate(axis2, Omega);
-                axis_sky = rotation::AxisAngle(axis2, Omega) * (rotation::AxisAngle(axis1, T(M_PI_2 - inc)) * axis);
+
+                // Let's store the rotation matrices: we'll need them to correctly
+                // transform the derivatives of the map back to the user coordinates
+                rotation::computeR(map.lmax, axis1, T(cos(T(M_PI_2 - inc))), T(sin(T(M_PI_2 - inc))), wtmp1.Complex, wtmp1.Real);
+                rotation::computeR(map.lmax, axis2, T(cos(Omega)), T(sin(Omega)), wtmp2.Complex, wtmp2.Real);
+                for (int l = 0; l < lmax + 1; l++) {
+                    WignerRToSky.Real[l] = wtmp1.Real[l] * wtmp2.Real[l];
+                    map_sky.y.segment(l * l, 2 * l + 1) = WignerRToSky.Real[l] * map.y.segment(l * l, 2 * l + 1);
+                }
+                AxisAngleRToSky = rotation::AxisAngle(axis2, Omega) * rotation::AxisAngle(axis1, T(M_PI_2 - inc));
+                axis_sky = AxisAngleRToSky * axis;
+
+            } else {
+
+                // Set the transformations to the identity matrix
+                for (int l = 0; l < lmax + 1; l++)
+                    WignerRToSky.Real[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+                AxisAngleRToSky = Matrix<T>::Identity(3, 3);
+
             }
         }
     }
@@ -784,9 +792,6 @@ namespace orbital {
         for (i = 1; i < NB; i++) {
             names.push_back(string("planet" + to_string(i) + ".r"));
             names.push_back(string("planet" + to_string(i) + ".L"));
-            names.push_back(string("planet" + to_string(i) + ".axis_x"));
-            names.push_back(string("planet" + to_string(i) + ".axis_y"));
-            names.push_back(string("planet" + to_string(i) + ".axis_z"));
             names.push_back(string("planet" + to_string(i) + ".prot"));
             names.push_back(string("planet" + to_string(i) + ".a"));
             names.push_back(string("planet" + to_string(i) + ".porb"));
@@ -796,6 +801,9 @@ namespace orbital {
             names.push_back(string("planet" + to_string(i) + ".Omega"));
             names.push_back(string("planet" + to_string(i) + ".lambda0"));
             names.push_back(string("planet" + to_string(i) + ".tref"));
+            names.push_back(string("planet" + to_string(i) + ".axis_x"));
+            names.push_back(string("planet" + to_string(i) + ".axis_y"));
+            names.push_back(string("planet" + to_string(i) + ".axis_z"));
             for (l = 0; l < bodies[i]->map_sky.lmax + 1; l++) {
                 for (m = -l; m < l + 1; m++) {
                     names.push_back(string("planet" + to_string(i) + ".Y_{" + to_string(l) + "," + to_string(m) + "}"));
@@ -863,9 +871,6 @@ namespace orbital {
                 // Orbital derivs
                 bodies[i]->r.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->L.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->axis(0).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->axis(1).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->axis(2).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->prot.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++) * DAY;
                 bodies[i]->a.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
                 bodies[i]->porb.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++) * DAY;
@@ -879,9 +884,23 @@ namespace orbital {
                 // Propagate derivs to the helper variables
                 bodies[i]->reset();
 
-                // Map derivs
-                for (k = 0; k < bodies[i]->map_sky.N; k++)
-                    bodies[i]->map_sky.y(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                // Map derivs: need to transform the derivatives from user coords to sky coords
+                // NOTE: These matrix operations are somewhat costly and probably don't have to be
+                // done every time. In particular, the derivative of the flux with respect to the
+                // map coefficients is almost trivial, so we could just code it up manually!
+                bodies[i]->axis(0).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->axis(1).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->axis(2).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                bodies[i]->axis_sky = bodies[i]->AxisAngleRToSky * bodies[i]->axis;
+                k = 0;
+                for (l = 0; l < bodies[i]->lmax + 1; l++) {
+                    for (m = -l; m < l + 1; m++) {
+                        bodies[i]->map.y(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                        k++;
+                    }
+                    bodies[i]->map_sky.y.segment(l * l, 2 * l + 1) = bodies[i]->WignerRToSky.Real[l] * bodies[i]->map.y.segment(l * l, 2 * l + 1);
+                }
+
             }
 
             // Take an orbital step and compute the fluxes
