@@ -1,6 +1,6 @@
 include("transit_poly.jl")
-
-r=0.1; b=0.00000001; c = [1.0,1.0,0.0,1.0]
+nc = round(Int64,rand()*20)
+r=rand(); b=rand()*(1+r); c = rand(nc)
 
 flux = transit_poly(r,b,c)
 
@@ -20,4 +20,5 @@ for i=1:nphi, j=1:ns
     fobs += s[j]*ds*dphi*imu
   end
 end
-println("f_an: ",flux," flux: ",flux0," f_num: ",fobs/flux0," f_exp: ",pi*(c[1]+2/3*c[2]))
+#println("r: ",r," b: ",b,"f_an: ",flux," flux: ",flux0," f_num: ",fobs/flux0," f_exp: ",pi*(c[1]+2/3*c[2]))
+println("r: ",r," b: ",b," f_an: ",flux," f_num: ",fobs/flux0)

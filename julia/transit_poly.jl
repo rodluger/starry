@@ -71,6 +71,7 @@ if k2 > 0
   end
 end
 
+#nphi = 1000; dphi=2pi/nphi; phigrid = linspace(.5*dphi,1-.5*dphi,nphi)
 # Next, loop over the Green's function components:
 for n=2:N_c
   pofgn = zero(r)
@@ -82,10 +83,10 @@ for n=2:N_c
     pofgn = coeff*((r-b)*Iv[n0+1]+2b*Iv[n0+2])
     kn = one(r)
 # For even n, compute coefficients for the sum over I_v:
-    println("n0: ",n0," i: ",0," coeff: ",coeff)
+#    println("n0: ",n0," i: ",0," coeff: ",coeff)
     for i=1:n0
       coeff *= -(n0-i+1)/i
-      println("n0: ",n0," i: ",i," coeff: ",coeff)
+#      println("n0: ",n0," i: ",i," coeff: ",coeff)
       kn *= k2
       pofgn += coeff*kn*((r-b)*Iv[n0-i+1]+2b*Iv[n0-i+2])
     end
@@ -97,20 +98,23 @@ for n=2:N_c
     # Compute i=0 term
     pofgn = coeff*((r-b)*Jv[n0+1]+2b*Jv[n0+2])
     kn = one(r)
-    println("n0: ",n0," i: ",0," coeff: ",coeff)
+#    println("n0: ",n0," i: ",0," coeff: ",coeff)
 # For even n, compute coefficients for the sum over I_v:
     for i=1:n0
       coeff *= -(n0-i+1)/i
-      println("n0: ",n0," i: ",i," coeff: ",coeff)
+#      println("n0: ",n0," i: ",i," coeff: ",coeff)
       kn *= k2
       pofgn += coeff*kn*((r-b)*Jv[n0-i+1]+2b*Jv[n0-i+2])
     end
     pofgn *= 2r*(1-(b-r)^2)^1.5*(4*b*r)^n0
   end
-# Q(G_n) is zero in this case since on limb of star z^{n+2} = 0
+#  pofgn_num = sum(sqrt.(1-r^2-b^2-2*b*r*sin.(phigrid)).^n.*(r+b.*sin.(phigrid))*r*dphi)
+#  println("n: ",n," P(G_n): ",pofgn," P(G_n),num: ",pofgn_num)
+# Q(G_n) is zero in this case since on limb of star z^n = 0 at the stellar
+# boundary for n > 0.
 # Compute sn[n]:
-  println("n: ",n," P(G_n): ",pofgn)
-  sn[n+1] = pofgn
+  #println("n: ",n," P(G_n): ",pofgn)
+  sn[n+1] = -pofgn
 end
 # Just compute sn[1] and sn[2], and then we're done. [ ]
 if b <= 1-r
@@ -121,7 +125,8 @@ end
 sn[1] = pi-lam
 sn[2] = s2(r,b)
 # That's it!
-println("s_n: ",sn)
+#println("s_n: ",sn)
+#println("c_n*s_n: ",c_n.*sn)
 flux = sum(c_n.*sn)/(pi*(c_n[1]+2*c_n[2]/3))  # for c_2 and above, the flux is zero.
 return flux
 end
