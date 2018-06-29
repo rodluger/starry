@@ -122,13 +122,13 @@ else # k^2 >= 1
 end
 end
 
-function IJv_raise!(l_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
+function IJv_raise!(v_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
 # This function needs debugging. [ ]
 # Compute I_v, J_v for 0 <= v <= v_max = l_max+2
 # Define k:
 k = sqrt(k2)
 # Iterate upwards in v:
-v_max = l_max+3; v = v_max
+v = v_max
 # Compute I_v via upward iteration on v:
 if k2 < 1
 # First, compute value for v=0:
@@ -181,12 +181,12 @@ end
 return
 end
 
-function IJv_tridiag!(l_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
+function IJv_tridiag!(v_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
 # Compute I_v, J_v for 0 <= v <= v_max = l_max+2
 # Define k:
 k = sqrt(k2)
 # Iterate downwards in v:
-v_max = l_max+3; v = v_max
+v = v_max
 # Add in k2 > 1 cases [ ]
 # First, compute approximation for large v:
 #Iv[v+1]=Iv_hyp(k2,v)
@@ -251,12 +251,12 @@ end
 return
 end
 
-function IJv_lower!(l_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
+function IJv_lower!(v_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1})  where {T <: Real}
 # Compute I_v, J_v for 0 <= v <= v_max = l_max+2
 # Define k:
 k = sqrt(k2)
 # Iterate downwards in v:
-v_max = l_max+3; v = v_max
+v = v_max
 # Add in k2 > 1 cases [ ]
 # First, compute approximation for large v:
 #Iv[v+1]=Iv_hyp(k2,v)
@@ -590,11 +590,11 @@ Iv = zeros(typeof(k2),v_max+1); Jv = zeros(typeof(k2),v_max+1)
 # This computes I_v for the largest v, and then works down to smaller values:
 if k2 > 0
   if k2 < 0.5 || k2 > 2.0
-    IJv_lower!(l_max,k2,kc,Iv,Jv)
+    IJv_lower!(v_max,k2,kc,Iv,Jv)
   else
-    IJv_raise!(l_max,k2,kc,Iv,Jv)
+    IJv_raise!(v_max,k2,kc,Iv,Jv)
   end
-#  IJv_tridiag!(l_max,k2,kc,Iv,Jv)
+#  IJv_tridiag!(v_max,k2,kc,Iv,Jv)
 end
 #println("v_max: ",v_max)
 if Jv_check && typeof(k2) == Float64
@@ -607,13 +607,13 @@ if Jv_check && typeof(k2) == Float64
   end
 end
 #println("Iv: ",Iv," Jv: ",Jv)
-#IJv_raise!(l_max,k2,kc,Iv,Jv)
-#IJv_tridiag!(l_max,k2,kc,Iv,Jv)
+#IJv_raise!(v_max,k2,kc,Iv,Jv)
+#IJv_tridiag!(v_max,k2,kc,Iv,Jv)
 #Ivr = zeros(typeof(k2),v_max+1); Jvr = zeros(typeof(k2),v_max+1)
-#IJv_raise!(l_max,k2,kc,Ivr,Jvr)
+#IJv_raise!(v_max,k2,kc,Ivr,Jvr)
 #println("Jv lower: ",Jv," Jv raise: ",Jvr," diff: ",Jv-Jvr)
 #Ivt = zeros(typeof(k2),v_max+1); Jvt = zeros(typeof(k2),v_max+1)
-#IJv_tridiag!(l_max,k2,kc,Ivt,Jvt)
+#IJv_tridiag!(v_max,k2,kc,Ivt,Jvt)
 #println("Jv lower: ",Jv," Jv tridiag: ",Jvt," diff: ",Jv-Jvt)
 Kuv = zeros(typeof(r),u_max+1,v_max+1)
 Luv = zeros(typeof(r),u_max+1,v_max+1,2)
