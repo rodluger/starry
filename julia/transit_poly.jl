@@ -29,7 +29,9 @@ c_n[2] = a_n[2]+3*c_n[4]
 c_n[1] = a_n[1]+2*c_n[3]
 #println("u_n: ",u_n)
 #println("a_n: ",a_n)
-#println("c_n: ",c_n)
+#if typeof(r) == Float64
+#  println("c_n: ",c_n)
+#end
 return transit_poly_c(r,b,c_n[1:n+1])
 end
 
@@ -45,7 +47,7 @@ N_c = length(c_n)-1
 
 # Set up a vector for storing results of P(G_n)-Q(G_n); note that
 # this is a different vector than the Starry case:
-sn = zeros(N_c+1)
+sn = zeros(typeof(r),N_c+1)
 
 # Check for different cases:
 if b >= 1+r
@@ -154,6 +156,9 @@ else
 end
 sn[1] = pi-lam
 sn[2] = s2(r,b)
+if typeof(r) == Float64
+  println("r: ",r," b: ",b," s2 error: ",convert(Float64,s2(big(r),big(b)))-sn[2])
+end
 # That's it!
 #println("s_n: ",sn)
 #println("c_n*s_n: ",c_n.*sn)

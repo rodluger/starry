@@ -29,7 +29,7 @@ function sn_jac_num(l_max::Int64,r::T,b::T) where {T <: Real}
   s_n_bigr!(l_max,r_big,b_big+dq,sn_plus)
   s_n_bigr!(l_max,r_big,b_big-dq,sn_minus)
   sn_jac_big[:,2] = (sn_plus-sn_minus)*.5/dq
-return convert(Array{Float64,2},sn_jac_big)
+return convert(Array{Float64,1},sn_big),convert(Array{Float64,2},sn_jac_big)
 end
 
 
@@ -75,6 +75,7 @@ for i=1:2
   sn_jac_grid = zeros(length(b),n_max+1,2)
   sn_jac_array= zeros(n_max+1,2)
   sn_grid = zeros(length(b),n_max+1)
+  sn_grid_big = zeros(length(b),n_max+1)
   sn_array= zeros(n_max+1)
   sn_jac_grid_num = zeros(length(b),n_max+1,2)
   for j=1:length(b)
@@ -83,7 +84,9 @@ for i=1:2
     s_n_bigr!(l_max,r,b[j],sn_array)
     sn_grid[j,:]=sn_array
     sn_jac_grid[j,:,:]=sn_jac_array
-    sn_jac_grid_num[j,:,:]= sn_jac_num(l_max,r,b[j])
+    sn_array,sn_jac_array = sn_jac_num(l_max,r,b[j]) 
+    sn_jac_grid_num[j,:,:]=sn_jac_array
+    sn_grid_big[j,:,:]=sn_array
   end
 # Now, make plots:
   ax = axes
@@ -107,6 +110,7 @@ for i=1:2
 #    ax[:semilogy](abs.(sn_jac_grid[:,n+1,2]-sn_jac_grid_num[:,n+1,2]),lw=1)
 #    ax[:semilogy](b,abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2])),lw=1)
     ax[:semilogy](abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2])),lw=1)
+    ax[:semilogy](abs.(asinh.(sn_grid[:,n+1])-asinh.(sn_grid_big[:,n+1])),lw=1)
 #    semilogy(abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2])),lw=1)
     println("n: ",n," m: ",m," l: ",l," mu: ",l-m," nu: ",l+m," max dsn/dr: ",maximum(abs.(asinh.(sn_jac_grid[:,n+1,1])-asinh.(sn_jac_grid_num[:,n+1,1]))),
       " maximum dsn/db: ",maximum(abs.(asinh.(sn_jac_grid[:,n+1,2])-asinh.(sn_jac_grid_num[:,n+1,2]))))
