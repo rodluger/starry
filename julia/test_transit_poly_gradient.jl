@@ -87,7 +87,10 @@ for i=1:2
     ax[:set_title]("r = 100")
   end
   read(STDIN,Char)
-
+  clf()
+  plot(b,tp_grid)
+  read(STDIN,Char)
+  clf()
 ### Loop over n and see where the differences between the finite-difference
 ### and AutoDiff are greater than the derivative value: 
 #l=0; m=0

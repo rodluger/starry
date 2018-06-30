@@ -2,11 +2,11 @@
 include("sn_jacobian.jl")
 using PyPlot
 
-function test_sn_jacobian2()
+function test_sn_jacobian2(l_max)
 r0 = [0.01,100.0]
 nb = 50
 #l_max = 20
-l_max = 5
+#l_max = 5
 n_max = l_max^2+2*l_max
 
 # Now, carry out finite-difference derivative computation:
@@ -86,7 +86,7 @@ for i=1:2
     sn_jac_grid[j,:,:]=sn_jac_array
     sn_array,sn_jac_array = sn_jac_num(l_max,r,b[j]) 
     sn_jac_grid_num[j,:,:]=sn_jac_array
-    sn_grid_big[j,:,:]=sn_array
+    sn_grid_big[j,:]=sn_array
   end
 # Now, make plots:
   ax = axes
@@ -134,7 +134,11 @@ for i=1:2
 #  ax[:axis]([minimum(b),maximum(b),1e-16,1])
 #  ax[:axis]([0,length(b),1e-16,1])
   read(STDIN,Char)
-
+  clf()
+  for n=0:n_max
+      plot(b,sn_grid[:,n+1])
+  end
+  read(STDIN,Char)
 ## Loop over n and see where the differences between the finite-difference
 ## and AutoDiff are greater than the derivative value: 
 l=0; m=0
