@@ -34,6 +34,8 @@ return convert(Float64,tp),convert(Array{Float64,1},tp_grad_big)
 end
 
 epsilon = 1e-12; delta = 1e-3
+dfdrbu = zeros(n_u+2)
+
 for i=1:2
   fig,axes = subplots(1,1)
   r=r0[i]
@@ -60,22 +62,27 @@ for i=1:2
   tp_grid = zeros(length(b))
   tp_grid_big = zeros(length(b))
   tp_grad_grid_num = zeros(length(b),n_u+2)
+  tp_grad_grid_ana = zeros(length(b),n_u+2)
   for j=1:length(b)
     println("r: ",r," b: ",b[j])
     tp,tp_grad_array= transit_poly_grad(r,b[j],u_n)
     transit_poly(r,b[j],u_n)
     tp_grid[j,:]=tp
-    tp_grad_grid[j,:,:]=tp_grad_array
+    tp_grad_grid[j,:]=tp_grad_array
     # Now compute with BigFloat finite difference:
     tp,tp_grad_array =  transit_poly_grad_num(r,b[j],u_n)
-    tp_grad_grid_num[j,:,:]=tp_grad_array
+    tp_grad_grid_num[j,:]=tp_grad_array
     tp_grid_big[j,:]=tp
+    # Finally, compute analytic result:
+    tp = transit_poly!(r,b[j],u_n,dfdrbu)
+    tp_grad_grid_ana[j,:]=dfdrbu
   end
 # Now, make plots:
   ax = axes
   ax[:semilogy](abs.(asinh.(tp_grid)-asinh.(tp_grid_big)),lw=1)
   for n=1:n_u+2
-    ax[:semilogy](abs.(asinh.(tp_grad_grid[:,n])-asinh.(tp_grad_grid_num[:,n])),lw=1)
+#    ax[:semilogy](abs.(asinh.(tp_grad_grid[:,n])-asinh.(tp_grad_grid_num[:,n])),lw=1)
+    ax[:semilogy](abs.(asinh.(tp_grad_grid_ana[:,n])-asinh.(tp_grad_grid_num[:,n])),lw=1)
   end
   ax[:legend](loc="upper right",fontsize=6)
   ax[:set_xlabel]("b values")

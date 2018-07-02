@@ -20,13 +20,13 @@ end
 k = sqrt(k2)
 if k2 > 0
   if k2 < 0.5 || k2 > 2.0
-    IJv_lower!(v_max,k2,kc,Iv,Jv,dIvdk,dJvdk)
+    dIJv_lower_dk!(v_max,k2,kc,Iv,Jv,dIvdk,dJvdk)
     if k2 <=1 
-      IJv_lower!(v_max,big(k2)+dq,sqrt(1-big(k2)-dq),Iv_bigp,Jv_bigp,dIvdk_big,dJvdk_big)
-      IJv_lower!(v_max,big(k2)-dq,sqrt(1-big(k2)+dq),Iv_bigm,Jv_bigm,dIvdk_big,dJvdk_big)
+      dIJv_lower_dk!(v_max,big(k2)+dq,sqrt(1-big(k2)-dq),Iv_bigp,Jv_bigp,dIvdk_big,dJvdk_big)
+      dIJv_lower_dk!(v_max,big(k2)-dq,sqrt(1-big(k2)+dq),Iv_bigm,Jv_bigm,dIvdk_big,dJvdk_big)
     else
-      IJv_lower!(v_max,big(k2)+dq,sqrt(1-inv(big(k2)+dq)),Iv_bigp,Jv_bigp,dIvdk_big,dJvdk_big)
-      IJv_lower!(v_max,big(k2)-dq,sqrt(1-inv(big(k2)-dq)),Iv_bigm,Jv_bigm,dIvdk_big,dJvdk_big)
+      dIJv_lower_dk!(v_max,big(k2)+dq,sqrt(1-inv(big(k2)+dq)),Iv_bigp,Jv_bigp,dIvdk_big,dJvdk_big)
+      dIJv_lower_dk!(v_max,big(k2)-dq,sqrt(1-inv(big(k2)-dq)),Iv_bigm,Jv_bigm,dIvdk_big,dJvdk_big)
     end
     for v=0:v_max
       dIvdk2_num[v+1] = convert(Float64,(Iv_bigp[v+1]-Iv_bigm[v+1])/(2dq))
@@ -34,13 +34,13 @@ if k2 > 0
       println("v: ",v," k2: ",k2," kc: ",kc," dIvdk: ",dIvdk[v+1]/(2*k)," dIvdk2_num: ",dIvdk2_num[v+1]," diff: ",dIvdk[v+1]/(2*k)-dIvdk2_num[v+1]," dJvdk2: ",dJvdk[v+1]/(2k)," dJvdk2_num: ",dJvdk2_num[v+1]," diff: ",dJvdk[v+1]/(2k)-dJvdk2_num[v+1])
     end
   else
-    IJv_raise!(v_max,k2,kc,Iv,Jv,dIvdk,dJvdk)
+    dIJv_raise_dk!(v_max,k2,kc,Iv,Jv,dIvdk,dJvdk)
     if k2 <=1 
-      IJv_raise!(v_max,big(k2)+dq,sqrt(1-big(k2)-dq),Iv_bigp,Jv_bigp,dIvdk_big,dJvdk_big)
-      IJv_raise!(v_max,big(k2)-dq,sqrt(1-big(k2)+dq),Iv_bigm,Jv_bigm,dIvdk_big,dJvdk_big)
+      dIJv_raise_dk!(v_max,big(k2)+dq,sqrt(1-big(k2)-dq),Iv_bigp,Jv_bigp,dIvdk_big,dJvdk_big)
+      dIJv_raise_dk!(v_max,big(k2)-dq,sqrt(1-big(k2)+dq),Iv_bigm,Jv_bigm,dIvdk_big,dJvdk_big)
     else
-      IJv_raise!(v_max,big(k2)+dq,sqrt(1-inv(big(k2)+dq)),Iv_bigp,Jv_bigp,dIvdk_big,dJvdk_big)
-      IJv_raise!(v_max,big(k2)-dq,sqrt(1-inv(big(k2)-dq)),Iv_bigm,Jv_bigm,dIvdk_big,dJvdk_big)
+      dIJv_raise_dk!(v_max,big(k2)+dq,sqrt(1-inv(big(k2)+dq)),Iv_bigp,Jv_bigp,dIvdk_big,dJvdk_big)
+      dIJv_raise_dk!(v_max,big(k2)-dq,sqrt(1-inv(big(k2)-dq)),Iv_bigm,Jv_bigm,dIvdk_big,dJvdk_big)
     end
     for v=0:v_max
       dIvdk2_num[v+1] = convert(Float64,(Iv_bigp[v+1]-Iv_bigm[v+1])/(2dq))

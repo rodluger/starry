@@ -44,7 +44,7 @@ else # k^2 >=1
 end
 end
 
-function Jv_series(k2::T,v::Int64) where {T <: Real}
+function dJv_seriesdk(k2::T,v::Int64) where {T <: Real}
 # Use series expansion to compute J_v:
 nmax = 100
 n = 1; error = Inf; if k2 < 1; tol = eps(k2); else; tol = eps(inv(k2)); end
@@ -89,7 +89,7 @@ else # k^2 >= 1
 end
 end
 
-function IJv_raise!(v_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1},dIvdk::Array{T,1},dJvdk::Array{T,1})  where {T <: Real}
+function dIJv_raise_dk!(v_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1},dIvdk::Array{T,1},dJvdk::Array{T,1})  where {T <: Real}
 # Compute I_v, J_v for 0 <= v <= v_max = l_max+2
 # Define k:
 k = sqrt(k2)
@@ -158,7 +158,7 @@ end
 return
 end
 
-function IJv_lower!(v_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1},dIvdk::Array{T,1},dJvdk::Array{T,1})  where {T <: Real}
+function dIJv_lower_dk!(v_max::Int64,k2::T,kc::T,Iv::Array{T,1},Jv::Array{T,1},dIvdk::Array{T,1},dJvdk::Array{T,1})  where {T <: Real}
 # Compute I_v, J_v for 0 <= v <= v_max = l_max+2
 # Define k:
 k = sqrt(k2)
@@ -195,7 +195,7 @@ v= v_max
 # Need to compute top two for J_v:
 #if typeof(k2) == BigFloat
   dJvdk0 = zero(typeof(k2)); dJvdk1 = zero(typeof(k2))
-  Jv[v],dJvdk0 = Jv_series(k2,v-1); Jv[v+1],dJvdk1=Jv_series(k2,v)
+  Jv[v],dJvdk0 = dJv_seriesdk(k2,v-1); Jv[v+1],dJvdk1=dJv_seriesdk(k2,v)
   dJvdk[v] = dJvdk0; dJvdk[v+1] = dJvdk1
 #else
 #  Jv[v]=Jv_hyp(k2,v-1); Jv[v+1]=Jv_hyp(k2,v)
