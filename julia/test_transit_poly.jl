@@ -1,5 +1,5 @@
 include("transit_poly.jl")
-nu = 2+ceil(Int64,rand()*20); r=rand(); b=rand()*(1+r); u = rand(nu); u *= rand()/sum(u)
+#nu = 2+ceil(Int64,rand()*20); r=rand(); b=rand()*(1+r); u = rand(nu); u *= rand()/sum(u)
 #r=rand(); b=rand()*(1+r); u = [0.,0.,0.,0.,1.0]; nu=length(u)
 
 flux = transit_poly(r,b,u)

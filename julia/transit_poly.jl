@@ -167,9 +167,9 @@ else
 #  sn[1] = pi-lam
 end
 sn[2] = s2(r,b)
-if typeof(r) == Float64
-  println("r: ",r," b: ",b," s2 error: ",convert(Float64,s2(big(r),big(b)))-sn[2])
-end
+#if typeof(r) == Float64
+#  println("r: ",r," b: ",b," s2 error: ",convert(Float64,s2(big(r),big(b)))-sn[2])
+#end
 # That's it!
 #println("s_n: ",sn)
 #println("c_n*s_n: ",c_n.*sn)
