@@ -2,40 +2,39 @@
 include("transit_poly_gradient.jl")
 using PyPlot
 
-function test_transit_poly_gradient(u_n)
-#r0 = [0.01,100.0]; n_u = 5; u_n = ones(n_u)/n_u
-r0 = [0.01,100.0]; n_u = length(u_n)
+function test_transit_poly_gradient_c(c_n)
+r0 = [0.01,100.0]; n_c = length(c_n)
 nb = 50
 
 # Now, carry out finite-difference derivative computation:
-function transit_poly_grad_num(r::T,b::T,u_n::Array{T,1}) where {T <: Real}
+function transit_poly_grad_c_num(r::T,b::T,c_n::Array{T,1}) where {T <: Real}
   dq = big(1e-18)
-# Make BigFloat versions of r, b & u_n:
-  r_big = big(r); b_big = big(b); u_big = big.(u_n)
+# Make BigFloat versions of r, b & c_n:
+  r_big = big(r); b_big = big(b); c_big = big.(c_n)
 # Compute flux to BigFloat precision:
-  tp=transit_poly(r_big,b_big,u_big)
-  println("r: ",r," b: ",b," tp error: ",convert(Float64,tp) - transit_poly(r,b,u_n))
+  tp=transit_poly_c(r_big,b_big,c_big)
+  println("r: ",r," b: ",b," tp error: ",convert(Float64,tp) - transit_poly_c(r,b,c_n))
 # Now, compute finite differences:
-  tp_grad_big= zeros(BigFloat,2+length(u_n))
-  tp_plus = transit_poly(r_big+dq,b_big,u_big)
-  tp_minus = transit_poly(r_big-dq,b_big,u_big)
+  tp_grad_big= zeros(BigFloat,2+length(c_n))
+  tp_plus = transit_poly_c(r_big+dq,b_big,c_big)
+  tp_minus = transit_poly_c(r_big-dq,b_big,c_big)
   tp_grad_big[1] = (tp_plus-tp_minus)*.5/dq
-  tp_plus = transit_poly(r_big,b_big+dq,u_big)
-  tp_minus = transit_poly(r_big,b_big-dq,u_big)
+  tp_plus = transit_poly_c(r_big,b_big+dq,c_big)
+  tp_minus = transit_poly_c(r_big,b_big-dq,c_big)
   tp_grad_big[2] = (tp_plus-tp_minus)*.5/dq
-  for i=1:length(u_n)
-    u_tmp = copy(u_big); u_tmp[i] += dq
-    tp_plus = transit_poly(r_big,b_big,u_tmp)
-    u_tmp[i] -= 2dq
-    tp_minus = transit_poly(r_big,b_big,u_tmp)
+  for i=1:length(c_n)
+    c_tmp = copy(c_big); c_tmp[i] += dq
+    tp_plus = transit_poly_c(r_big,b_big,c_tmp)
+    c_tmp[i] -= 2dq
+    tp_minus = transit_poly_c(r_big,b_big,c_tmp)
     tp_grad_big[2+i] = (tp_plus-tp_minus)*.5/dq
   end
 return convert(Float64,tp),convert(Array{Float64,1},tp_grad_big)
 end
 
 epsilon = 1e-12; delta = 1e-3
-dfdrbu = zeros(n_u+2)
-label_name=["r","b","u_1","u_2","u_3","u_4","u_5","u_6","u_7","u_8"]
+dfdrbc = zeros(n_c+2)
+label_name=["r","b","c_0","c_1","c_2","c_3","c_4","c_5","c_6","c_7","c_8"]
 for i=1:2
   fig,axes = subplots(1,1)
   r=r0[i]
@@ -57,30 +56,30 @@ for i=1:2
      xticknames=[L"$r-1+10^{-12}$",L"$r-1+10^{-3}$",L"$r-10^{-3}$",L"$r-10^{-12}$",L"$r+10^{-12}$",L"$r+10^{-3}$",
      L"$r+1-10^{-3}$",L"$r+1-10^{-12}$"]
   end
-  tp_grad_grid = zeros(length(b),n_u+2)
-  tp_grad_array= zeros(n_u+2)
+  tp_grad_grid = zeros(length(b),n_c+2)
+  tp_grad_array= zeros(n_c+2)
   tp_grid = zeros(length(b))
   tp_grid_big = zeros(length(b))
-  tp_grad_grid_num = zeros(length(b),n_u+2)
-  tp_grad_grid_ana = zeros(length(b),n_u+2)
+  tp_grad_grid_num = zeros(length(b),n_c+2)
+  tp_grad_grid_ana = zeros(length(b),n_c+2)
   for j=1:length(b)
     println("r: ",r," b: ",b[j])
-    tp,tp_grad_array= transit_poly_grad(r,b[j],u_n)
-    transit_poly(r,b[j],u_n)
+    tp,tp_grad_array= transit_poly_grad_c(r,b[j],c_n)
+    transit_poly_c(r,b[j],c_n)
     tp_grid[j,:]=tp
     tp_grad_grid[j,:]=tp_grad_array
     # Now compute with BigFloat finite difference:
-    tp,tp_grad_array =  transit_poly_grad_num(r,b[j],u_n)
+    tp,tp_grad_array =  transit_poly_grad_c_num(r,b[j],c_n)
     tp_grad_grid_num[j,:]=tp_grad_array
     tp_grid_big[j,:]=tp
     # Finally, compute analytic result:
-    tp = transit_poly!(r,b[j],u_n,dfdrbu)
-    tp_grad_grid_ana[j,:]=dfdrbu
+    tp = transit_poly_c!(r,b[j],c_n,dfdrbc)
+    tp_grad_grid_ana[j,:]=dfdrbc
   end
 # Now, make plots:
   ax = axes
   ax[:semilogy](abs.(asinh.(tp_grid)-asinh.(tp_grid_big)),lw=1,label="flux")
-  for n=1:n_u+2
+  for n=1:n_c+2
 #    ax[:semilogy](abs.(asinh.(tp_grad_grid[:,n])-asinh.(tp_grad_grid_num[:,n])),lw=1)
     ax[:semilogy](abs.(asinh.(tp_grad_grid_ana[:,n])-asinh.(tp_grad_grid_num[:,n])),lw=1,label=label_name[n])
   end

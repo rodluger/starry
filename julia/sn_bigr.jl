@@ -374,7 +374,9 @@ else
 #    lam = asin((1.0-r^2+b^2)/(2*b)); slam = (1.0-r^2+b^2)/(2*b); clam = sqrt((1-(b-r)^2)*((b+r)^2-1))/(2b)
 #    slam = (1.0-r^2+b^2)/(2*b); lam = asin(slam);  clam = sqrt((1-(b-r)^2)*((b+r)^2-1))/(2b)
 #    slam = (1.0-r^2+b^2)/(2*b);  clam = sqrt((1-(b-r)^2)*((b+r)^2-1))/(2b);  clam2 = (1-(b-r)^2)*((b+r)^2-1)/(4b^2); lam = acos(clam); if lam > pi/2; lam -= pi; end
-    slam = ((1.0-r)*(1.0+r)+b^2)/(2*b);  clam = sqrt((1-b+r)*(1+b-r)*(b+r-1)*(b+r+1))/(2b);  clam2 = (1-b+r)*(1+b-r)*(b+r-1)*(b+r+1)/(4b^2); lam = acos(clam); if slam < 0.; lam = -lam; end
+#    slam = ((1.0-r)*(1.0+r)+b^2)/(2*b);  clam = sqrt((1-b+r)*(1+b-r)*(b+r-1)*(b+r+1))/(2b);  clam2 = (1-b+r)*(1+b-r)*(b+r-1)*(b+r+1)/(4b^2); lam = acos(clam); if slam < 0.; lam = -lam; end
+    slam = ((1.0-r)*(1.0+r)+b^2)/(2*b);  clam = 2*area_triangle(1.,b,r)/b;  clam2 = (1-b+r)*(1+b-r)*(b+r-1)*(b+r+1)/(4b^2); lam = acos(clam); if slam < 0.; lam = -lam; end
+
 #    slam = ((1.0-r)*(1.0+r)+b^2)/(2*b);  clam = sqrt((1-b+r)*(1+b-r)*(b+r-1)*(b+r+1))/(2b);  clam2 = (1-b+r)*(1+b-r)*(b+r-1)*(b+r+1)/(4b^2); lam = asin(slam)
 #    slam = ((1.0-r)*(1.0+r)+b^2)/(2*b);  lam = asin(slam); clam = cos(lam); clam2=clam^2
     sphi = (1.0-r^2-b^2)/(2*b*r); phi = asin(sphi); cphi = clam/r; cphi2 = clam2/r^2
