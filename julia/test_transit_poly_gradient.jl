@@ -2,11 +2,6 @@
 include("transit_poly_gradient.jl")
 using PyPlot
 
-function test_transit_poly_gradient(u_n)
-#r0 = [0.01,100.0]; n_u = 5; u_n = ones(n_u)/n_u
-r0 = [0.01,100.0]; n_u = length(u_n)
-nb = 50
-
 # Now, carry out finite-difference derivative computation:
 function transit_poly_grad_num(r::T,b::T,u_n::Array{T,1}) where {T <: Real}
   dq = big(1e-18)
@@ -14,7 +9,6 @@ function transit_poly_grad_num(r::T,b::T,u_n::Array{T,1}) where {T <: Real}
   r_big = big(r); b_big = big(b); u_big = big.(u_n)
 # Compute flux to BigFloat precision:
   tp=transit_poly(r_big,b_big,u_big)
-  println("r: ",r," b: ",b," tp error: ",convert(Float64,tp) - transit_poly(r,b,u_n))
 # Now, compute finite differences:
   tp_grad_big= zeros(BigFloat,2+length(u_n))
   tp_plus = transit_poly(r_big+dq,b_big,u_big)
@@ -33,26 +27,31 @@ function transit_poly_grad_num(r::T,b::T,u_n::Array{T,1}) where {T <: Real}
 return convert(Float64,tp),convert(Array{Float64,1},tp_grad_big)
 end
 
+function test_transit_poly_gradient(u_n)
+r0 = [0.01,100.0]; n_u = length(u_n)
+nb = 50
+
 epsilon = 1e-12; delta = 1e-3
 dfdrbu = zeros(n_u+2)
-label_name=["r","b","u_1","u_2","u_3","u_4","u_5","u_6","u_7","u_8"]
+label_name=["r","b","u_0","u_1","u_2","u_3","u_4","u_5","u_6","u_7","u_8"]
+floor = 1e-20
 for i=1:2
   fig,axes = subplots(1,1)
   r=r0[i]
   if r < 1.0
 #    b = [linspace(1e-15,epsilon,nb); linspace(epsilon,delta,nb); linspace(delta,r-delta,nb);
-    b = [linspace(0.,epsilon,nb); linspace(epsilon,delta,nb); linspace(delta,r-delta,nb);
+    b = [linspace(1e-13,epsilon,nb); linspace(epsilon,delta,nb); linspace(delta,r-delta,nb);
      r-logspace(log10(delta),log10(epsilon),nb); linspace(r-epsilon,r+epsilon,nb); r+logspace(log10(epsilon),log10(delta),nb);
      linspace(r+delta,1-r-delta,nb); 1-r-logspace(log10(delta),log10(epsilon),nb); linspace(1-r-epsilon,1-r+epsilon,nb);
 #     1-r+logspace(log10(epsilon),log10(delta),nb); linspace(1-r+delta,1+r-delta,nb); 1+r-logspace(log10(delta),log10(epsilon),nb);linspace(1+r-epsilon,1+r,nb)]
-     1-r+logspace(log10(epsilon),log10(delta),nb); linspace(1-r+delta,1+r-delta,nb); 1+r-logspace(log10(delta),log10(epsilon),nb);linspace(1+r-epsilon,1+r-1e-15,nb)]
+     1-r+logspace(log10(epsilon),log10(delta),nb); linspace(1-r+delta,1+r-delta,nb); 1+r-logspace(log10(delta),log10(epsilon),nb);linspace(1+r-epsilon,1+r-1e-13,nb)]
      nticks = 14
      xticknames=[L"$10^{-15}$",L"$10^{-12}$",L"$10^{-3}$",L"$r-10^{-3}$",L"$r-10^{-12}$",L"$r+10^{-12}$",L"$r+10^{-3}$",
      L"$1-r-10^{-3}$",L"$1-r-10^{-12}$",L"$1-r+10^{-12}$",L"$1-r+10^{-3}$",L"$1+r-10^{-3}$",L"$1+r-10^{-12}$",L"$1+r-10^{-15}$"]
   else
-    b = [r-1;r-1+logspace(log10(epsilon),log10(delta),nb); linspace(r-1+delta,r-delta,nb);
+    b = [r-1+1e-13;r-1+logspace(log10(epsilon),log10(delta),nb); linspace(r-1+delta,r-delta,nb);
      r-logspace(log10(delta),log10(epsilon),nb); linspace(r-epsilon,r+epsilon,nb); r+logspace(log10(epsilon),log10(delta),nb);
-     linspace(r+delta,r+1-delta,nb); r+1-logspace(log10(delta),log10(epsilon),nb);r+1]
+     linspace(r+delta,r+1-delta,nb); r+1-logspace(log10(delta),log10(epsilon),nb);r+1-1e-13]
      nticks = 8
      xticknames=[L"$r-1+10^{-12}$",L"$r-1+10^{-3}$",L"$r-10^{-3}$",L"$r-10^{-12}$",L"$r+10^{-12}$",L"$r+10^{-3}$",
      L"$r+1-10^{-3}$",L"$r+1-10^{-12}$"]
@@ -64,7 +63,7 @@ for i=1:2
   tp_grad_grid_num = zeros(length(b),n_u+2)
   tp_grad_grid_ana = zeros(length(b),n_u+2)
   for j=1:length(b)
-    println("r: ",r," b: ",b[j])
+#    println("r: ",r," b: ",b[j])
     tp,tp_grad_array= transit_poly_grad(r,b[j],u_n)
     transit_poly(r,b[j],u_n)
     tp_grid[j,:]=tp
@@ -79,15 +78,22 @@ for i=1:2
   end
 # Now, make plots:
   ax = axes
-  ax[:semilogy](abs.(asinh.(tp_grid)-asinh.(tp_grid_big)),lw=1,label="flux")
+  y = abs.(asinh.(tp_grid)-asinh.(tp_grid_big)); mask = y .<= floor; y[mask]=floor
+  ax[:semilogy](y,lw=1,label="flux")
   for n=1:n_u+2
 #    ax[:semilogy](abs.(asinh.(tp_grad_grid[:,n])-asinh.(tp_grad_grid_num[:,n])),lw=1)
-    ax[:semilogy](abs.(asinh.(tp_grad_grid_ana[:,n])-asinh.(tp_grad_grid_num[:,n])),lw=1,label=label_name[n])
+    y = abs.(asinh.(tp_grad_grid_ana[:,n])-asinh.(tp_grad_grid_num[:,n])); mask = y .<= floor; y[mask]=floor
+#    ax[:semilogy](abs.(asinh.(tp_grad_grid_ana[:,n])-asinh.(tp_grad_grid_num[:,n])),lw=1,label=label_name[n])
+    ax[:semilogy](y,lw=1,label=label_name[n])
+    if n <= 2
+#      println("first: ",label_name[n]," ",tp_grad_grid_ana[1:3,n]," ",tp_grad_grid_num[1:3,n])
+#      println("last:  ",label_name[n]," ",tp_grad_grid_ana[length(b)-2:length(b),n]," ",tp_grad_grid_num[length(b)-2:length(b),n])
+    end
   end
   ax[:legend](loc="upper right",fontsize=6)
   ax[:set_xlabel]("b values")
   ax[:set_ylabel]("Derivative Error")
-  ax[:axis]([0,length(b),1e-20,1])
+  ax[:axis]([0,length(b),floor,1])
   ax[:set_xticks](nb*linspace(0,nticks-1,nticks))
   ax[:set_xticklabels](xticknames,rotation=45)
   if i==1 
@@ -95,7 +101,7 @@ for i=1:2
   else
     ax[:set_title]("r = 100")
   end
-  ax[:legend](loc="upper left")
+  ax[:legend](loc="upper right")
   read(STDIN,Char)
   clf()
   plot(b,tp_grid)

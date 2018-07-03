@@ -54,8 +54,8 @@ Iv = one(k2)*coeff
 # Now, compute higher order terms until desired precision is reached:
 while n < nmax && abs(error) > tol
   coeff *= (2.0*n-1.0)*.5*(2n+2v-1)/(n*(2n+2v+1))*k2
-  error = coeff
   Iv += coeff
+  error = coeff/Iv
   n +=1
 end
 return Iv*k2^v*sqrt(k2)
@@ -100,8 +100,8 @@ if k2 < 1
 # Now, compute higher order terms until desired precision is reached:
   while n < nmax && abs(error) > tol
     coeff *= (2.0*n-1.0)*(2.0*(n+v)-1.0)*.25/(n*(n+v+2))*k2
-    error = coeff
     Jv += coeff
+    error = coeff/Jv
     n +=1
   end
   return Jv*k2^v*sqrt(k2)
@@ -114,8 +114,8 @@ else # k^2 >= 1
   Jv = one(k2)*coeff; n=1
   while n < nmax && abs(error) > tol
     coeff *= (1.-2.5/n)*(1.-.5/(n+v))/k2
-    error = coeff
     Jv += coeff
+    error = coeff/Jv
     n +=1
   end
   return Jv

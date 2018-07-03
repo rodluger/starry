@@ -85,12 +85,14 @@ else
     if k2 > 2.0
       kc = sqrt(1.-inv(k2))
     else
-      kc2 = (1-(b+r)^2)/(1-(b-r)^2)
+#      kc2 = (1-(b+r)^2)/(1-(b-r)^2)
+      kc2 = (1-b-r)*(1+b+r)/(1-b+r)/(1-r+b)
       kc = sqrt(kc2)
     end
   else
     if k2 > 0.5
-      kc2 = ((b+r)^2-1)/(4*b*r)
+#      kc2 = ((b+r)^2-1)/(4*b*r)
+      kc2 = (b+r-1)*(b+r+1)/(4*b*r)
       kc = sqrt(kc2)
     else
       kc = sqrt(1.-k2)
@@ -185,7 +187,9 @@ sn[2] = s2(r,b)
 flux = sum(c_n.*sn)/(pi*(c_n[1]+2*c_n[2]/3))  # for c_2 and above, the flux is zero.
 return flux
 end
+# That's it!
 
+# Now, for the versions of these functions which include derivatives:
 function transit_poly!(r::T,b::T,u_n::Array{T,1},dfdrbu::Array{T,1}) where {T <: Real}
 # Transform the u_n coefficients to c_n, which are coefficients
 # of the basis in which the P(G_n) functions are computed.
@@ -222,20 +226,22 @@ for i=1:n
   dcdu[1,i] = dadu[1,i] + 2*dcdu[3,i]
 end
 #println("a_n: ",a_n)
-if typeof(r) == Float64
-  println("u_n: ",u_n)
-  println("c_n: ",c_n)
-  println("dcdu: ",dcdu)
-end
+#if typeof(r) == Float64
+#  println("u_n: ",u_n)
+#  println("c_n: ",c_n)
+#  println("dcdu: ",dcdu)
+#end
 # Pass c_n (without last two dummy values):
 flux = transit_poly_c!(r,b,c_n[1:n+1],dfdrbc)
 # Now, transform derivaties from c to u:
+fill!(dfdrbu,zero(r))
 dfdrbu[1] = dfdrbc[1]  # r derivative
 dfdrbu[2] = dfdrbc[2]  # b derivative
 # u_n derivatives:
 for i=1:n, j=0:n
   dfdrbu[i+2] += dfdrbc[j+3]*dcdu[j+1,i]
 end
+#println("dcdu: ",dcdu," dfdrbc: ",dfdrbc," dfdrbu: ",dfdrbu)
 return flux
 end
 
@@ -258,7 +264,7 @@ dsndr = zeros(typeof(r),N_c+1)
 dsndb = zeros(typeof(r),N_c+1)
 fill!(dfdrbc,zero(r))
 # Check for different cases:
-if b >= 1+r
+if b >= 1+r || r ==  0.0
   # unobscured - return one:
   return one(r)
 end
@@ -282,7 +288,9 @@ else
   onembmr2=(r-b+1)*(b-r+1); fourbr = 4b*r
   k2 = onembmr2/fourbr; k = sqrt(k2)
   dkdr = (b^2-r^2-1)/(8*k*b*r^2)
+#  dkdr = ((b-r)*(b+r)-1)/(8*k*b*r^2)
   dkdb = (r^2-b^2-1)/(8*k*b^2*r)
+#  dkdb = ((r-b)*(r+b)-1)/(8*k*b^2*r)
   if k2 > 1
     if k2 > 2.0
       kc = sqrt(1.-inv(k2))
@@ -308,7 +316,7 @@ if iseven(N_c)
 else
   v_max = round(Int64,(N_c-1)/2)+2
 end
-println("v_max: ",v_max," N_c: ",N_c)
+#println("v_max: ",v_max," N_c: ",N_c)
 # Compute the J_v and I_v functions:
 Iv = zeros(typeof(k2),v_max+1); Jv = zeros(typeof(k2),v_max+1)
 # And their derivatives with respect to k:
@@ -338,6 +346,7 @@ for n=2:N_c
     pofgn = coeff*((r-b)*Iv[n0+1]+2b*Iv[n0+2])
     dpdr = coeff*Iv[n0+1]
     dpdb = coeff*(-Iv[n0+1]+2*Iv[n0+2])
+#    println("v: ",n0,"-Iv[v]: ",-Iv[n0+1]," 2Iv[v+1]: ",2Iv[n0+2]," diff: ",-Iv[n0+1]+2*Iv[n0+2])
     dpdk = coeff*((r-b)*dIvdk[n0+1]+2b*dIvdk[n0+2])
 # For even n, compute coefficients for the sum over I_v:
 #    println("n0: ",n0," i: ",0," coeff: ",coeff)
@@ -347,6 +356,7 @@ for n=2:N_c
       pofgn += coeff*((r-b)*Iv[n0-i+1]+2b*Iv[n0-i+2])
       dpdr += coeff*Iv[n0-i+1]
       dpdb += coeff*(-Iv[n0-i+1]+2*Iv[n0-i+2])
+#      println("v: ",n0-i,"-Iv[v]: ",-Iv[n0-i+1]," 2Iv[v+1]: ",2Iv[n0-i+2]," diff: ",-Iv[n0-i+1]+2*Iv[n0-i+2])
       dpdk += coeff*((r-b)*dIvdk[n0-i+1]+2b*dIvdk[n0-i+2])
       dpdk += coeff*2*i/k*((r-b)*Iv[n0-i+1]+2b*Iv[n0-i+2])
     end
@@ -381,6 +391,7 @@ for n=2:N_c
     dpdr += ((n0+1)/r+3*(b-r)/onembmr2)*pofgn
     dpdb *= 2r*onembmr2^1.5
     dpdb += (n0/b-3*(b-r)/onembmr2)*pofgn
+#    dpdb += (n*onembmr2-3*(b-r)*(r+b)-3)/(2*b*onembmr2)*pofgn
     dpdk *= 2r*onembmr2^1.5
   end
 #  pofgn_num = sum(sqrt.(1-r^2-b^2-2*b*r*sin.(phigrid)).^n.*(r+b.*sin.(phigrid))*r*dphi)
@@ -390,7 +401,9 @@ for n=2:N_c
 # Compute sn[n]:
   #println("n: ",n," P(G_n): ",pofgn)
   sn[n+1] = -pofgn
+  println("dpdr: ",dpdr," dpdk*dkdr: ",dpdk*dkdr)
   dsndr[n+1] = -(dpdr+dpdk*dkdr)
+  println("dpdb: ",dpdb," dpdk*dkdb: ",dpdk*dkdb)
   dsndb[n+1] = -(dpdb+dpdk*dkdb)
 end
 # Just compute sn[1] and sn[2], and then we're done. [ ]

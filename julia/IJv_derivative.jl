@@ -15,8 +15,9 @@ Iv = one(k2)*coeff
 # Now, compute higher order terms until desired precision is reached:
 while n < nmax && abs(error) > tol
   coeff *= (2.0*n-1.0)*.5*(2n+2v-1)/(n*(2n+2v+1))*k2
-  error = coeff
   Iv += coeff
+#  error = coeff/Iv
+  error = coeff
   n +=1
 end
 return Iv*k2^v*sqrt(k2)
@@ -52,6 +53,7 @@ n = 1; error = Inf; if k2 < 1; tol = eps(k2); else; tol = eps(inv(k2)); end
 #coeff = 3pi/(2^(2+v)*factorial(v+2))
 if k2 < 1
   coeff = 3pi/(2^(2+v)*exp(lfact(v+2)))
+#  println("coefficient: ",coeff)
 # multiply by (2v-1)!!
   for i=1:v
     coeff *= 2.*i-1
@@ -62,13 +64,16 @@ if k2 < 1
 # Now, compute higher order terms until desired precision is reached:
   while n < nmax && abs(error) > tol
     coeff *= (2.0*n-1.0)*(2.0*(n+v)-1.0)*.25/(n*(n+v+2))*k2
-    error = coeff
     Jv += coeff
     dJvdk += coeff*(2*(n+v)+1)
+#    error = coeff/Jv
+    error = coeff
     n +=1
   end
   dJvdk *= k2^v
-  return Jv*k2^v*sqrt(k2),dJvdk
+  Jv *= k2^v*sqrt(k2)
+#  println("Jv: ",Jv," dJv/dk: ",dJvdk)
+  return Jv,dJvdk
 else # k^2 >= 1
   coeff = pi
   # Compute (2v-1)!!/(2^v v!):
@@ -79,9 +84,10 @@ else # k^2 >= 1
   dJvdk = zero(k2)
   while n < nmax && abs(error) > tol
     coeff *= (1.-2.5/n)*(1.-.5/(n+v))/k2
-    error = coeff
     Jv += coeff
     dJvdk -= 2*n*coeff
+#    error = coeff/Jv
+    error = coeff
     n +=1
   end
   dJvdk /= sqrt(k2)
@@ -194,9 +200,14 @@ end
 v= v_max
 # Need to compute top two for J_v:
 #if typeof(k2) == BigFloat
+while Jv[v+1] == 0.0  # Loop downward in v until we get a non-zero Jv[v]
   dJvdk0 = zero(typeof(k2)); dJvdk1 = zero(typeof(k2))
   Jv[v],dJvdk0 = dJv_seriesdk(k2,v-1); Jv[v+1],dJvdk1=dJv_seriesdk(k2,v)
   dJvdk[v] = dJvdk0; dJvdk[v+1] = dJvdk1
+#  println("Jv: ",Jv[v]," Jv+1: ",Jv[v+1])
+  v -=1
+end
+v +=1
 #else
 #  Jv[v]=Jv_hyp(k2,v-1); Jv[v+1]=Jv_hyp(k2,v)
 #end
