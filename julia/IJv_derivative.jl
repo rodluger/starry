@@ -108,7 +108,10 @@ if k2 < 1
     Iv[1] = 2*asin(sqrt(k2))
   else
     Iv[1] = 2*acos(kc)
+#    Iv[1] = 2*convert(Float64,acos(big(kc)))
+#    Iv[1] = convert(Float64,acos((big(b)^2+big(r)^2-big(1))/(big(2)*big(b)*big(r))))
   end
+#  Iv[1] = kap
 # Try something else:
 # Next, iterate upwards in v:
   f0 = kc*k

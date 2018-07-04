@@ -33,7 +33,7 @@ nb = 50
 
 epsilon = 1e-12; delta = 1e-3
 dfdrbu = zeros(n_u+2)
-label_name=["r","b","u_0","u_1","u_2","u_3","u_4","u_5","u_6","u_7","u_8"]
+label_name=["r","b","u_0","u_1","u_2","u_3","u_4","u_5","u_6","u_7","u_8","u_9","u_10","u_11","u_12","u_13"]
 floor = 1e-20
 for i=1:2
   fig,axes = subplots(1,1)

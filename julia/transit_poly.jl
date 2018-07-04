@@ -1,8 +1,8 @@
-#function area_triangle(a,b,c)
-#a,b,c=reverse(sort([a,b,c]))
-#area = .25*sqrt((a+(b+c))*(c-(a-b))*(c+(a-b))*(a+(b-c)))
-#return area
-#end
+function sqarea_triangle(a::T,b::T,c::T) where {T <: Real}
+a,b,c=reverse(sort([a,b,c]))
+area = (a+(b+c))*(c-(a-b))*(c+(a-b))*(a+(b-c))
+return area
+end
 
 
 # Computes a limb-darkened transit light curve with the dependence:
@@ -297,6 +297,8 @@ else
     else
 #      kc2 = (1-(b+r)^2)/(1-(b-r)^2)
       kc2 = (1-b-r)*(1+b+r)/(1-b+r)/(1-r+b)
+#      kc2 = -sqarea_triangle(1.,b,r)
+#      kc2 = -convert(Float64,sqarea_triangle(big(1.0),big(b),big(r)))
       kc = sqrt(kc2)
     end
   else
@@ -346,6 +348,8 @@ for n=2:N_c
     pofgn = coeff*((r-b)*Iv[n0+1]+2b*Iv[n0+2])
     dpdr = coeff*Iv[n0+1]
     dpdb = coeff*(-Iv[n0+1]+2*Iv[n0+2])
+    dpdr += n0*pofgn/r
+    dpdb += n0*pofgn/b
 #    println("v: ",n0,"-Iv[v]: ",-Iv[n0+1]," 2Iv[v+1]: ",2Iv[n0+2]," diff: ",-Iv[n0+1]+2*Iv[n0+2])
     dpdk = coeff*((r-b)*dIvdk[n0+1]+2b*dIvdk[n0+2])
 # For even n, compute coefficients for the sum over I_v:
@@ -353,18 +357,22 @@ for n=2:N_c
     for i=1:n0
       coeff *= -(n0-i+1)/i*k2
 #      println("n0: ",n0," i: ",i," coeff: ",coeff)
-      pofgn += coeff*((r-b)*Iv[n0-i+1]+2b*Iv[n0-i+2])
+      term =  coeff*((r-b)*Iv[n0-i+1]+2b*Iv[n0-i+2])
+      pofgn += term
       dpdr += coeff*Iv[n0-i+1]
       dpdb += coeff*(-Iv[n0-i+1]+2*Iv[n0-i+2])
+      dpdr += term*(-i*2*(r-b)/onembmr2+(n0-i)/r)
+      dpdb += term*(i*2*(r-b)/onembmr2+(n0-i)/b)
 #      println("v: ",n0-i,"-Iv[v]: ",-Iv[n0-i+1]," 2Iv[v+1]: ",2Iv[n0-i+2]," diff: ",-Iv[n0-i+1]+2*Iv[n0-i+2])
       dpdk += coeff*((r-b)*dIvdk[n0-i+1]+2b*dIvdk[n0-i+2])
-      dpdk += coeff*2*i/k*((r-b)*Iv[n0-i+1]+2b*Iv[n0-i+2])
+#      dpdk += coeff*2*i/k*((r-b)*Iv[n0-i+1]+2b*Iv[n0-i+2])
     end
     pofgn *= 2r
     dpdr *= 2r
-    dpdr += (n0+1)*pofgn/r
+#    dpdr += (n0+1)*pofgn/r
+    dpdr += pofgn/r
     dpdb *= 2r
-    dpdb += n0*pofgn/b
+#    dpdb += n0*pofgn/b
     dpdk *= 2r
   else
 # Now do the same for odd N_c in sum over J_v:
@@ -374,23 +382,30 @@ for n=2:N_c
     pofgn = coeff*((r-b)*Jv[n0+1]+2b*Jv[n0+2])
     dpdr = coeff*Jv[n0+1]
     dpdb = coeff*(-Jv[n0+1]+2*Jv[n0+2])
+    dpdr += n0*pofgn/r
+    dpdb += n0*pofgn/b
     dpdk = coeff*((r-b)*dJvdk[n0+1]+2b*dJvdk[n0+2])
 #    println("n0: ",n0," i: ",0," coeff: ",coeff)
 # For even n, compute coefficients for the sum over I_v:
     for i=1:n0
       coeff *= -(n0-i+1)/i*k2
 #      println("n0: ",n0," i: ",i," coeff: ",coeff)
-      pofgn += coeff*((r-b)*Jv[n0-i+1]+2b*Jv[n0-i+2])
+      term = coeff*((r-b)*Jv[n0-i+1]+2b*Jv[n0-i+2])
+      pofgn += term
       dpdr  +=  coeff*Jv[n0-i+1]
       dpdb  +=  coeff*(-Jv[n0-i+1]+2*Jv[n0-i+2])
+      dpdr += term*(i*2*(b-r)/onembmr2+(n0-i)/r)
+      dpdb += term*(i*2*(r-b)/onembmr2+(n0-i)/b)
       dpdk  += coeff*((r-b)*dJvdk[n0-i+1]+2b*dJvdk[n0-i+2])
-      dpdk  += coeff*2*i/k*((r-b)*Jv[n0-i+1]+2b*Jv[n0-i+2])
+#      dpdk  += coeff*2*i/k*((r-b)*Jv[n0-i+1]+2b*Jv[n0-i+2])
     end
     pofgn *= 2r*onembmr2^1.5
     dpdr *= 2r*onembmr2^1.5
-    dpdr += ((n0+1)/r+3*(b-r)/onembmr2)*pofgn
     dpdb *= 2r*onembmr2^1.5
-    dpdb += (n0/b-3*(b-r)/onembmr2)*pofgn
+#    dpdr += ((n0+1)/r+3*(b-r)/onembmr2)*pofgn
+    dpdr += (1/r+3*(b-r)/onembmr2)*pofgn
+#    dpdb += (n0/b-3*(b-r)/onembmr2)*pofgn
+    dpdb += 3*(r-b)/onembmr2*pofgn
 #    dpdb += (n*onembmr2-3*(b-r)*(r+b)-3)/(2*b*onembmr2)*pofgn
     dpdk *= 2r*onembmr2^1.5
   end
@@ -399,11 +414,8 @@ for n=2:N_c
 # Q(G_n) is zero in this case since on limb of star z^n = 0 at the stellar
 # boundary for n > 0.
 # Compute sn[n]:
-  #println("n: ",n," P(G_n): ",pofgn)
   sn[n+1] = -pofgn
-  println("dpdr: ",dpdr," dpdk*dkdr: ",dpdk*dkdr)
   dsndr[n+1] = -(dpdr+dpdk*dkdr)
-  println("dpdb: ",dpdb," dpdk*dkdb: ",dpdk*dkdb)
   dsndb[n+1] = -(dpdb+dpdk*dkdb)
 end
 # Just compute sn[1] and sn[2], and then we're done. [ ]
@@ -419,6 +431,9 @@ else
     kap = 2*atan2(sqrt((1-b+r)*(1+b-r)),sqrt((b+r-1)*(b+r+1)))
   else
     kap = 2*acos(kc)
+#    kap = convert(Float64,acos((big(b)^2+big(r)^2-big(1))/(big(2)*big(b)*big(r))))
+#    kap = atan2(b^2+r^2-1,4*area_triangle(1.,b,r))
+#    kap = acos((b^2+r^2-1)/(2*b*r))
   end
 #  slam = ((1.0-r)*(1.0+r)+b^2)/(2*b);  clam = sqrt((1-b+r)*(1+b-r)*(b+r-1)*(b+r+1))/(2b);  lam = acos(clam); if slam < 0.; lam = -lam; end
   slam = ((1.0-r)*(1.0+r)+b^2)/(2*b);  clam = 2*area_triangle(1.,b,r)/b;  lam = acos(clam); if slam < 0.; lam = -lam; end
