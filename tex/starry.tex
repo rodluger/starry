@@ -2673,7 +2673,7 @@ $\bvec{G}_n$. These are given by
             r s_\varphi
             \, \dd\varphi
             %
-            & \qquad \mu = 1, \, l \ge 3, \,
+            & \qquad \mu = 1, \, l \ne 1, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
@@ -2683,10 +2683,10 @@ $\bvec{G}_n$. These are given by
             (1 {-} r^2 {-} b^2 {-} 2 b r s_\varphi)^{\frac{3}{2}}
             r c_\varphi
             \, \dd\varphi
-            & \qquad \frac{\mu - 1}{2} \, \mathrm{even}
+            & \qquad \frac{\mu - 1}{2} \, \mathrm{even}, \, l \ne 1
         \\[1em]
         %
-        s_2 & \qquad \mu=1, \, l=1
+        \textrm{---} \ \mathrm{(c.f.\ Appendix\ \ref{app:linearld})} & \qquad \mu=1, \, l=1
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise}
@@ -2797,7 +2797,16 @@ we may write
 \label{app:P}
 % ------------------------------------------------------------------------------
 
-To enforce numerical stability, it is convenient to define the parameters
+In general, the $\mathcal{P}$ integral is more difficult to evaluate because
+of the term to the $\nicefrac{3}{2}$ power in several of the cases.
+Moreover, the presence of terms proportional to powers of $b$
+and $r$ and terms of order unity in several of the integrands in
+Equation~(\ref{eq:PGn}) can lead to severe numerical instabilities when
+either $b$ or $r$ are very large (which is typically the case for secondary eclipses
+of small planets) or very small (which occurs for small transiting bodies).
+%
+To enforce numerical stability in all regimes, we find that is convenient to
+define the parameters
 %
 \begin{equation}
     \label{eq:delta}
@@ -2819,7 +2828,7 @@ With this transformed variable, the limits of integration of $\mathcal{P}(\bvec{
 become $\tfrac{3\pi}{2}-\kappa$ to $\tfrac{3\pi}{2}+\kappa$.  Transforming
 $\varphi$ to $\varphi^\prime = \frac{1}{2}(\varphi - \tfrac{3\pi}{2})$ yields
 %
-\begin{align}
+\begin{proof}{PGn_reparam}
     \label{eq:PGn_reparam}
     \mathcal{P}(\bvec{G}_n) &=
     \begin{dcases}
@@ -2849,7 +2858,7 @@ $\varphi$ to $\varphi^\prime = \frac{1}{2}(\varphi - \tfrac{3\pi}{2})$ yields
             (1-2 s_\varphi^2)
             \, \dd\varphi
             %
-            & \qquad \mu = 1, \, l \ge 3, \,
+            & \qquad \mu = 1, \, l \ne 1, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
@@ -2858,15 +2867,15 @@ $\varphi$ to $\varphi^\prime = \frac{1}{2}(\varphi - \tfrac{3\pi}{2})$ yields
             (\delta + s_\varphi^2)^{\frac{\nu-1}{2}}
             (k^2 - s_\varphi^2)^{\frac{3}{2}}
             \, \dd\varphi
-            & \qquad \frac{\mu-1}{2} \, \mathrm{even}
+            & \qquad \frac{\mu-1}{2} \, \mathrm{even}, \, l \ne 1
         \\[1em]
         %
-        s_2 & \qquad \mu=1, \, l=1
+        \textrm{---} \ \mathrm{(c.f.\ Appendix\ \ref{app:linearld})} & \qquad \mu=1, \, l=1
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise},
     \end{dcases}
-\end{align}
+\end{proof}
 %
 where $\mathcal{F} = (2r)^{l-1}(4br)^{3/2}$ and we have subsequently
 dropped the prime from $\varphi^\prime$ in these integrals.
@@ -2874,14 +2883,14 @@ dropped the prime from $\varphi^\prime$ in these integrals.
 Expanding the term $(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v$ as a polynomial
 in $s_\varphi^2$, we find
 %
-\begin{proof}{}
+\begin{proof}{vieta}
     \label{eq:poly_expansion}
     (1-s_\varphi^2)^u(\delta + s_\varphi^2)^v = \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} s_\varphi^{2i},
 \end{proof}
 %
 where
 %
-\begin{proof}{}
+\begin{proof}{vieta}
     \label{eq:vieta}
     \mathcal{A}_{i,u,v} = \sum_{j=\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)}
                           \binom{u}{j} \binom{v}{u+v-i-j}(-1)^{u+j}\delta^{u+v-i-j}.
@@ -2894,8 +2903,8 @@ equal to the elementary symmetric polynomials of the roots of $(1-x)^u(x+\delta)
 This expansion yields a sum over terms which are integrals over powers of $s_\varphi^{2v}$.
 We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$ as
 %
-\begin{proof}{}
-    \label{eq:PGnI_reparam}
+\begin{proof}{PGn_reparam2}
+    \label{eq:PGn_reparam2}
     \mathcal{P}(\bvec{G}_n) &=
     \begin{dcases}
         %
@@ -2911,15 +2920,15 @@ We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$
         %
         \mathcal{F} \left(\mathcal{L}^{(0)}_{\frac{l-3}{2},1}-2\mathcal{L}^{(1)}_{\frac{l-3}{2},1}   \right)
             %
-            & \qquad \mu = 1, \, l \ge 3, \,
+            & \qquad \mu = 1, \, l \ne 1, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
         2\mathcal{F} \mathcal{L}^{(0)}_{\frac{\mu-1}{4}, \frac{\nu-1}{2}}
-            & \qquad \frac{\mu-1}{2} \, \mathrm{even}
+            & \qquad \frac{\mu-1}{2} \, \mathrm{even}, \, l \ne 1
         \\[1em]
         %
-        s_2 & \qquad \mu=1, \, l=1
+        \textrm{---} \ \mathrm{(c.f.\ Appendix\ \ref{app:linearld})} & \qquad \mu=1, \, l=1
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise}
@@ -2930,14 +2939,11 @@ We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$
 %
 where
 %
-\begin{proof}{}
+\begin{proof}{PGn_reparam2}
     \label{eq:KILJ}
     %\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
     \mathcal{K}_{u,v} &= \int_{\kappa/2}^{\kappa/2} s_\varphi^{2u} (1-s_\varphi^2)^u (\delta + s_\varphi^2)^v d\varphi \nonumber \\
     &= \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{I}_{i+u},\\[0.5em]
-    %
-    %
-    \mathcal{I}_{v} &= \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi,\\[0.5em]
     %
     %
     %\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
@@ -2948,6 +2954,9 @@ where
     %
     \intertext{and}
     %
+    \mathcal{I}_{v} &= \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi,\\[0.5em]
+    %
+    %
     %\mathcal{L}^{(0)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{i+u},\\
     %\mathcal{L}^{(2)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{i+u+},\\
     %\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u s_\varphi^v\left(k^2-s^2_\varphi\right)^{3/2},
@@ -2956,6 +2965,8 @@ where
 \end{proof}
 %
 recalling that $\kappa = 2\sin^{-1}(k)$ for $b+r > 1$ and $\kappa = \pi$ for $b + r \le 1$.
+
+{\color{red} [RL needs to continue editing below]}
 
 With some work, the integrals $\mathcal{I}_v$ and $\mathcal{J}_v$ can be found exactly.
 Using reduction, the function $\mathcal{I}_v$ can be expressed
@@ -2969,7 +2980,7 @@ and $\mathcal{J}_v \propto k^{2v+1}$.  Consequently, when these equations are co
 recursion in $v$, the lower powers of $k$ cancel out, leading to
 round-off errors.  To avoid these cancellations, we start by computing $\mathcal{I}_{v_\mathrm{max}}$,
 $\mathcal{J}_{v_\mathrm{max}}$, and $\mathcal{J}_{v_\mathrm{max}-1}$, where
-where $v_\mathrm{max}$ is the maximum value needed to compute $\mathcal{K}_{u,v}$ when
+$v_\mathrm{max}$ is the maximum value needed to compute $\mathcal{K}_{u,v}$ when
 $l = l_\mathrm{max}$.  %  Give the explicit value of $v_\mathrm{max}$ for given $l_\mathrm{max}$. [ ]
 Applying the integral reduction formulae, we obtain the downward recursion relations:
 %
@@ -3098,7 +3109,7 @@ Evaluating the first two terms, $v=0$ and $v=1$, and then iterating, we find:
 
 \clearpage
 \begin{center}
-\renewcommand*{\arraystretch}{1.1}
+\renewcommand*{\arraystretch}{1.08}
 \begin{longtable}{cll}
 \caption{Symbols used in this paper} \label{tab:symbols} \\
 %
@@ -3132,6 +3143,8 @@ $\AOne$         & Change of basis matrix:
                   $Y_{lm}$s to polynomials              & \S\ref{sec:basis} \\
 $\ATwo$         & Change of basis matrix:
                   polynomials to Green's polynomials    & \S\ref{sec:basis} \\
+$\mathcal{A}_{i,u,v}$
+                & Vieta's formula coefficient           & \eq{vieta} \\
 $b$             & Impact parameter in units of occulted
                   body's radius                         & \S\ref{sec:lightcurves} \\
 $B_{lm}^{jk}$   & Spherical harmonic normalization      & \eq{blmjk} \\
@@ -3148,7 +3161,7 @@ $\bvec{D}\,\wedge$
 $E(\bigdot)$    & Complete elliptic integral of the
                   second kind                           & \eq{elliptic} \\
 $F$             & Total flux seen by observer           & \eq{starry} \\
-$\mathcal{F}$   & Function of $b$ and $r$               & \eq{PGnI_reparam} \\
+$\mathcal{F}$   & Function of $b$ and $r$               & \eq{PGn_reparam2} \\
 $_2F_1$         & Generalized Hypergeometric function   & \eq{IJHypergeo} \\
 $_2\tilde{F}_1$ & Regularized Hypergeometric function   & \eq{Jlargek} \\
 $\gbasis$       & Green's basis                         & \eq{bg} \\
@@ -3164,8 +3177,8 @@ $\mathcal{I}_{v}$
 $j$             & Dummy index                           & \\
 $\mathcal{J}_{v}$
                 & Occultation integral                  & \eq{KILJ} \\
-$k$             & Dummy index                           & \\
-$k^2$           & Elliptic parameter                    & \eq{k2} \\
+$k$             & Elliptic parameter                    & \eq{k2} \\
+$k_c$           & $\sqrt{1 - k^2}$                      & Appendix~\ref{app:P} \\
 $K(\bigdot)$    & Complete Elliptic integral of the
                   first kind                            & \eq{elliptic} \\
 $\mathcal{K}_{u,v}$
@@ -3222,7 +3235,7 @@ $\delta$        & Function of $b$ and $r$               & \eq{delta} \\
 $\uptheta$      & Spherical harmonic polar angle        & \eq{ylmtp} \\
 $\theta$        & Rotation angle                        & Appendix~\ref{app:axisangle} \\
 $\Theta$        & Heaviside step function               & \eq{biglam} \\
-$\lambda$       & Angular position of
+$\kappa$       & Angular position of
                   occultor/occulted intersection point  & \eq{kappa} \\
 $\lambda$       & Angular position of
                   occultor/occulted intersection point  & \eq{lambda} \\
