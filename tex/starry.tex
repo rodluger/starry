@@ -1023,7 +1023,7 @@ Figure~\ref{fig:smiley}.
 %
 \begin{figure}[ht!]
     \begin{centering}
-    \includegraphics[width=0.85\linewidth]{figures/smiley.pdf}
+    \includegraphics[width=0.925\linewidth]{figures/smiley.pdf}
     \caption{\label{fig:smiley}
              Rotation of the map given by Equation~(\ref{eq:ylm_code_example})
              about $\yhat$.
@@ -1062,9 +1062,9 @@ $l_\mathrm{max} = 10$, rotated successively about $\yhat$.
 %
 \begin{figure}[ht!]
     \begin{centering}
-    \includegraphics[width=0.8\linewidth]{figures/earth.jpg}
+    \includegraphics[width=0.825\linewidth]{figures/earth.jpg}
     \\[1em]
-    \includegraphics[width=0.85\linewidth]{figures/earth.pdf}
+    \includegraphics[width=0.875\linewidth]{figures/earth.pdf}
     \caption{\label{fig:earth}
              A simplified two-color map of the cloudless Earth (top) and the
              corresponding tenth-degree spherical harmonic expansion,
@@ -1820,19 +1820,21 @@ spherical harmonics of arbitrary degree.
 This fact makes it difficult to enforce the physical prior that the
 specific intensity of a celestial body cannot be negative, which
 could be desirable when fitting a model to real data. The minimum
-can, of course, be found numerically, although this is slow and
-should probably not be done repeatedly during optimization to
-enforce a prior. Nevertheless, users can find the minimum of the
-map over the entire domain by typing
+can, of course, be found numerically. In \starry, users can check
+whether a map is positive semi-definite (P.S.D.) by evaluating
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-map.minimum()
+map.psd()
 \end{lstlisting}
 %
-This method evaluates the surface map on a coarse grid, locates the
+which returns either \textsf{True} (the map is non-negative
+everywhere) or \textsf{False} (at least one region on the map has
+a negative specific intensity).
+This method evaluates the surface map on a coarse grid in
+$\uptheta$ and $\upphi$, locates the
 approximate location of the minimum, and performs a gradient-descent
-optimization to locate the global minimum of the map. If the minimum
-is negative, users should either scale the $Y_{0,0}$ coefficient up
+optimization to locate the global minimum of the map. If the map is
+not P.S.D., users should either scale the $Y_{0,0}$ coefficient up
 or the coefficients of all other harmonics down until the map is
 non-negative everywhere.
 
@@ -2990,7 +2992,7 @@ are different depending on whether $k^2$ is less than or greater than unity.
 
 In the $k^2 < 1$ ($b+r < 1$) limit, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
 %
-\begin{proof}{}
+\begin{proof}{IJHypergeo}
     \label{eq:IJHypergeo}
     \mathcal{I}_v &= k^{1+2v} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} dw \nonumber \\
                   &= \frac{2k^{1+2v}}{1+2v} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2};v+\tfrac{3}{2};k^2\right) \quad,\\[0.5em]
@@ -3003,7 +3005,7 @@ where $_2F_1(a,b;c;x)$ is the generalized Hypergeometric function.
 These functions can alternatively be expressed as series in $k^2$
 by expanding $(1-k^2w)^{-1/2}$ as a series in $k^2w$, and then integrating each term over $w$, giving
 %
-\begin{proof}{}
+\begin{proof}{IJseries}
     \label{eq:IJseries}
     \mathcal{I}_{v} &= 2k^{1+2v}  \sum_{j=0}^\infty \frac{(2j-1)!!}{2^j j!(2j+2v+1)}(k^2)^j, \\[0.5em]
     \mathcal{J}_{v} &= \frac{3\pi}{4}k^{1+2v}\sum_{j=0}^\infty \frac{(2j-1)!!(2j+2v-1)!!}{2^{2j+v} j!(j+v+2)!}(k^2)^j \quad.
@@ -3014,7 +3016,7 @@ For computational efficiency, both $\mathcal{I}_v$ and $\mathcal{J}_v$ can be ev
 recursively via either upward or downward iteration. When iterating upward, we use
 the recursion relations
 %
-\begin{proof}{}
+\begin{proof}{IJupward}
     \label{eq:IJupward}
     \mathcal{I}_{v} &= \frac{1}{v} \left(\frac{2v - 1}{2} \mathcal{I}_{v - 1} - k^{2v - 1} k_c\right) \\
     \label{eq:IJupward:J}
@@ -3023,7 +3025,7 @@ the recursion relations
 %
 along with the initial values
 %
-\begin{proof}{}
+\begin{proof}{IJupward}
     \label{eq:IJseries0}
     \mathcal{I}_0 &= \kappa = 2\sin^{-1}k \\[0.5em]
     \mathcal{J}_0 &= \frac{2}{3k^3} \left[2(2k^2-1)E(k^2)+(1-k^2)(2-3k^2)K(k^2)\right] \nonumber \\
@@ -3032,7 +3034,7 @@ along with the initial values
 %
 When iterating downward, we can re-arrange Equation~(\ref{eq:IJupward}) to obtain the relations
 %
-\begin{proof}{}
+\begin{proof}{IJdownward}
     \label{eq:IJdownward}
     \mathcal{I}_{v} &= \frac{2}{2v + 1} \left[\left(v + 1\right) \mathcal{I}_{v + 1} + k^{2v + 1} k_c\right] \\
     \label{eq:IJdownward:J}
@@ -3055,11 +3057,11 @@ occultor radius is large ($r \gg 1$). To leading order in $k$, when $k^2 <1$ ($b
 $\mathcal{I}_v \propto k^{2v+1}$ and $\mathcal{J}_v \propto k^{2v+1}$.
 Consequently, when these equations are computed by
 recursion in $v$, the lower powers of $k$ cancel out, leading to
-round-off errors that grow indefinitely as $v$ gets large.
+round-off errors that grow as $v$ gets large.
 %
-In practice, we find that when $k^2 < \frac{1}{2}$, the upward recursion relations
+In practice, we find that when $k^2 > \frac{1}{2}$, the upward recursion relations
 are numerically stable, so we use Equation~(\ref{eq:IJupward}) to evaluate the
-integrals. When $k^2 \ge \frac{1}{2}$, we instead use Equation~(\ref{eq:IJdownward})
+integrals. When $k^2 \le \frac{1}{2}$, we instead use Equation~(\ref{eq:IJdownward})
 and start by computing $\mathcal{I}_{v_\mathrm{max}}$,
 $\mathcal{J}_{v_\mathrm{max}}$, and $\mathcal{J}_{v_\mathrm{max}-1}$, where
 $v_\mathrm{max}$ is the maximum value needed to compute $\mathcal{K}_{u,v}$ when
@@ -3077,7 +3079,7 @@ converge rapidly, so we use those expressions to evaluate the initial conditions
 In the $k^2 \ge 1$ ($b+r \le 1$) limit, the expression for $\mathcal{I}_v$ is
 simpler:
 %
-\begin{proof}{}
+\begin{proof}{Ilargek}
     \label{eq:Ilargek}
     \mathcal{I}_v = \pi \frac{(2v-1)!!}{2^v v!} \quad,
 \end{proof}
@@ -3086,7 +3088,7 @@ so $\mathcal{K}_{u,v}$ (Equation~\ref{eq:KILJ}) is simply a polynomial in $\delt
 %
 For $\mathcal{J}_v$, we make the substitution $w = \sin^2{\varphi}$ to obtain
 %
-\begin{proof}{}
+\begin{proof}{Jlargek}
     \label{eq:Jlargek}
 \mathcal{J}_v &= \int_0^1 w^{v-\tfrac{1}{2}} (1-k^{-2}w)^{3/2} (1-w)^{-1/2} dw \nonumber \\
             &= \sqrt{\pi}\Gamma(v+\tfrac{1}{2})\left(_2\tilde{F}_1\left(-\tfrac{1}{2},v+\tfrac{1}{2},v+1,k^{-2}\right)\right. \nonumber \\
@@ -3101,7 +3103,7 @@ As in the $k^2 < 1$ case, we can evaluate $\mathcal{J}_v$ via either upward (Equ
 or downward (Equation~\ref{eq:IJdownward:J}) recursion. For upward recursion, the initial
 values are given by
 %
-\begin{proof}{}
+\begin{proof}{Jseries0largek}
     \label{Jseries0largek}
     \mathcal{J}_0 &= \frac{1}{3}\left[(8-4k^{-2})E(k^{-2})-2(1-k^{-2})K(k^{-2})\right] \nonumber \\
     \mathcal{J}_1 &= \frac{1}{15}\left[(-6k^2+26-16k^{-2})E(k^{-2}) + 2(1-k^{-2})(3k^2-4)K(k^{-2})\right] \quad.
@@ -3110,8 +3112,8 @@ values are given by
 which, as before, make use of the same elliptic integrals as the $s_2$ term. For downward
 recursion, we evaluate $\mathcal{J}_{v_\mathrm{max}}$ and $\mathcal{J}_{v_\mathrm{max}-1}$
 from the series solution (Equation~\ref{eq:Jlargek}). In practice, we find that our results
-are numerically stable if we perform upward recursion for $k^2 > 2$ and downward recursion
-if $k^2 \le 2$.
+are numerically stable if we perform upward recursion for $k^2 < 2$ and downward recursion
+if $k^2 \ge 2$.
 
 
 %\mathcal{J}_{v} &=& 3k^{1+2v}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
