@@ -1023,7 +1023,7 @@ Figure~\ref{fig:smiley}.
 %
 \begin{figure}[ht!]
     \begin{centering}
-    \includegraphics[width=0.85\linewidth]{figures/smiley.pdf}
+    \includegraphics[width=0.925\linewidth]{figures/smiley.pdf}
     \caption{\label{fig:smiley}
              Rotation of the map given by Equation~(\ref{eq:ylm_code_example})
              about $\yhat$.
@@ -1062,9 +1062,9 @@ $l_\mathrm{max} = 10$, rotated successively about $\yhat$.
 %
 \begin{figure}[ht!]
     \begin{centering}
-    \includegraphics[width=0.8\linewidth]{figures/earth.jpg}
+    \includegraphics[width=0.825\linewidth]{figures/earth.jpg}
     \\[1em]
-    \includegraphics[width=0.85\linewidth]{figures/earth.pdf}
+    \includegraphics[width=0.875\linewidth]{figures/earth.pdf}
     \caption{\label{fig:earth}
              A simplified two-color map of the cloudless Earth (top) and the
              corresponding tenth-degree spherical harmonic expansion,
@@ -1820,19 +1820,21 @@ spherical harmonics of arbitrary degree.
 This fact makes it difficult to enforce the physical prior that the
 specific intensity of a celestial body cannot be negative, which
 could be desirable when fitting a model to real data. The minimum
-can, of course, be found numerically, although this is slow and
-should probably not be done repeatedly during optimization to
-enforce a prior. Nevertheless, users can find the minimum of the
-map over the entire domain by typing
+can, of course, be found numerically. In \starry, users can check
+whether a map is positive semi-definite (P.S.D.) by evaluating
 %
 \begin{lstlisting}[language=Python,firstnumber=last]
-map.minimum()
+map.psd()
 \end{lstlisting}
 %
-This method evaluates the surface map on a coarse grid, locates the
+which returns either \textsf{True} (the map is non-negative
+everywhere) or \textsf{False} (at least one region on the map has
+a negative specific intensity).
+This method evaluates the surface map on a coarse grid in
+$\uptheta$ and $\upphi$, locates the
 approximate location of the minimum, and performs a gradient-descent
-optimization to locate the global minimum of the map. If the minimum
-is negative, users should either scale the $Y_{0,0}$ coefficient up
+optimization to locate the global minimum of the map. If the map is
+not P.S.D., users should either scale the $Y_{0,0}$ coefficient up
 or the coefficients of all other harmonics down until the map is
 non-negative everywhere.
 
@@ -2552,11 +2554,11 @@ as
 %
 where $\Theta(\bigdot)$ is the Heaviside step function and
 %
-\begingroup\makeatletter\def\f@size{10}\check@mathfonts
+\begingroup\makeatletter\def\f@size{9}\check@mathfonts
 \def\maketag@@@#1{\hbox{\m@th\normalsize#1}}%
 \begin{proof}{biglam}
     \label{eq:biglam}
-    \Lambda &=
+    \mbox{\normalsize$\Lambda$} &=
     \begin{dcases}
           % I don't think we need this: the k^2>1 term is stable as b --> 0!
           %-\frac{2}{3}\left(1 - r^2\right)^\frac{3}{2}
@@ -2642,9 +2644,11 @@ $\mathrm{cel}(k_c, p, a, b)$ \citep{Bulirsch1969} as described in
 We evaluate all other terms in $s_n$ by integrating the primitive integrals of
 $\bvec{G}_n$. These are given by
 %
+\begingroup\makeatletter\def\f@size{9}\check@mathfonts
+\def\maketag@@@#1{\hbox{\m@th\normalsize#1}}%
 \begin{align}
     \label{eq:PGn}
-    \mathcal{P}(\bvec{G}_n) &=
+    \mbox{\normalsize$\mathcal{P}(\bvec{G}_n)$} &=
     \begin{dcases}
         %
         +\int\displaylimits_{\pi - \phi}^{2\pi + \phi}
@@ -2673,7 +2677,7 @@ $\bvec{G}_n$. These are given by
             r s_\varphi
             \, \dd\varphi
             %
-            & \qquad \mu = 1, \, l \ge 3, \,
+            & \qquad \mu = 1, \, l \ne 1, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
@@ -2683,18 +2687,21 @@ $\bvec{G}_n$. These are given by
             (1 {-} r^2 {-} b^2 {-} 2 b r s_\varphi)^{\frac{3}{2}}
             r c_\varphi
             \, \dd\varphi
-            & \qquad \frac{\mu - 1}{2} \, \mathrm{even}
+            & \qquad \frac{\mu - 1}{2} \, \mathrm{even}, \, l \ne 1
         \\[1em]
         %
-        s_2 & \qquad \mu=1, \, l=1
+        \textrm{---} \ \mathrm{(c.f.\ Appendix\ \ref{app:linearld})} & \qquad \mu=1, \, l=1
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise}
     \end{dcases}
 %
-\intertext{and}
+\end{align}
+\endgroup
 %
-    \nonumber \\
+and
+%
+\begin{align}
     \label{eq:QGn}
     \mathcal{Q}(\bvec{G}_n) &=
     \begin{dcases}
@@ -2797,7 +2804,16 @@ we may write
 \label{app:P}
 % ------------------------------------------------------------------------------
 
-To enforce numerical stability, it is convenient to define the parameters
+In general, the $\mathcal{P}$ integral is more difficult to evaluate because
+of the term to the $\nicefrac{3}{2}$ power in several of the cases.
+Moreover, the presence of terms proportional to powers of $b$
+and $r$ and terms of order unity in several of the integrands in
+Equation~(\ref{eq:PGn}) can lead to severe numerical instabilities when
+either $b$ or $r$ are very large (which is typically the case for secondary eclipses
+of small planets) or very small (which occurs for small transiting bodies).
+%
+To enforce numerical stability in all regimes, we find that is convenient to
+define the parameters
 %
 \begin{equation}
     \label{eq:delta}
@@ -2819,9 +2835,11 @@ With this transformed variable, the limits of integration of $\mathcal{P}(\bvec{
 become $\tfrac{3\pi}{2}-\kappa$ to $\tfrac{3\pi}{2}+\kappa$.  Transforming
 $\varphi$ to $\varphi^\prime = \frac{1}{2}(\varphi - \tfrac{3\pi}{2})$ yields
 %
-\begin{align}
+\begingroup\makeatletter\def\f@size{9}\check@mathfonts
+\def\maketag@@@#1{\hbox{\m@th\normalsize#1}}%
+\begin{proof}{PGn_reparam}
     \label{eq:PGn_reparam}
-    \mathcal{P}(\bvec{G}_n) &=
+    \mbox{\normalsize$\mathcal{P}(\bvec{G}_n)$} &=
     \begin{dcases}
         %
         2(2r)^{l+2}\int\displaylimits_{-\kappa/2}^{\kappa/2}
@@ -2849,7 +2867,7 @@ $\varphi$ to $\varphi^\prime = \frac{1}{2}(\varphi - \tfrac{3\pi}{2})$ yields
             (1-2 s_\varphi^2)
             \, \dd\varphi
             %
-            & \qquad \mu = 1, \, l \ge 3, \,
+            & \qquad \mu = 1, \, l \ne 1, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
@@ -2858,15 +2876,16 @@ $\varphi$ to $\varphi^\prime = \frac{1}{2}(\varphi - \tfrac{3\pi}{2})$ yields
             (\delta + s_\varphi^2)^{\frac{\nu-1}{2}}
             (k^2 - s_\varphi^2)^{\frac{3}{2}}
             \, \dd\varphi
-            & \qquad \frac{\mu-1}{2} \, \mathrm{even}
+            & \qquad \frac{\mu-1}{2} \, \mathrm{even}, \, l \ne 1
         \\[1em]
         %
-        s_2 & \qquad \mu=1, \, l=1
+        \textrm{---} \ \mathrm{(c.f.\ Appendix\ \ref{app:linearld})} & \qquad \mu=1, \, l=1
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise},
     \end{dcases}
-\end{align}
+\end{proof}
+\endgroup
 %
 where $\mathcal{F} = (2r)^{l-1}(4br)^{3/2}$ and we have subsequently
 dropped the prime from $\varphi^\prime$ in these integrals.
@@ -2874,14 +2893,14 @@ dropped the prime from $\varphi^\prime$ in these integrals.
 Expanding the term $(1-s_\varphi^2)^u(\delta + s_\varphi^2)^v$ as a polynomial
 in $s_\varphi^2$, we find
 %
-\begin{proof}{}
+\begin{proof}{vieta}
     \label{eq:poly_expansion}
     (1-s_\varphi^2)^u(\delta + s_\varphi^2)^v = \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} s_\varphi^{2i},
 \end{proof}
 %
 where
 %
-\begin{proof}{}
+\begin{proof}{vieta}
     \label{eq:vieta}
     \mathcal{A}_{i,u,v} = \sum_{j=\mathrm{max}(0,u-i)}^{\mathrm{min}(u+v-i,u)}
                           \binom{u}{j} \binom{v}{u+v-i-j}(-1)^{u+j}\delta^{u+v-i-j}.
@@ -2894,8 +2913,8 @@ equal to the elementary symmetric polynomials of the roots of $(1-x)^u(x+\delta)
 This expansion yields a sum over terms which are integrals over powers of $s_\varphi^{2v}$.
 We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$ as
 %
-\begin{proof}{}
-    \label{eq:PGnI_reparam}
+\begin{proof}{PGn_reparam2}
+    \label{eq:PGn_reparam2}
     \mathcal{P}(\bvec{G}_n) &=
     \begin{dcases}
         %
@@ -2911,15 +2930,15 @@ We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$
         %
         \mathcal{F} \left(\mathcal{L}^{(0)}_{\frac{l-3}{2},1}-2\mathcal{L}^{(1)}_{\frac{l-3}{2},1}   \right)
             %
-            & \qquad \mu = 1, \, l \ge 3, \,
+            & \qquad \mu = 1, \, l \ne 1, \,
                      l \, \mathrm{odd}
         \\[1em]
         %
         2\mathcal{F} \mathcal{L}^{(0)}_{\frac{\mu-1}{4}, \frac{\nu-1}{2}}
-            & \qquad \frac{\mu-1}{2} \, \mathrm{even}
+            & \qquad \frac{\mu-1}{2} \, \mathrm{even}, \, l \ne 1
         \\[1em]
         %
-        s_2 & \qquad \mu=1, \, l=1
+        \textrm{---} \ \mathrm{(c.f.\ Appendix\ \ref{app:linearld})} & \qquad \mu=1, \, l=1
         \\[1em]
         %
         0 & \qquad \mathrm{otherwise}
@@ -2930,23 +2949,23 @@ We use this expansion to rewrite the expressions for $\mathcal{P}(\mathbf{G}_n)$
 %
 where
 %
-\begin{proof}{}
+\begin{proof}{PGn_reparam2}
     \label{eq:KILJ}
     %\mathcal{K}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{I}_{u,u+2(v-k)},\\
     \mathcal{K}_{u,v} &= \int_{\kappa/2}^{\kappa/2} s_\varphi^{2u} (1-s_\varphi^2)^u (\delta + s_\varphi^2)^v d\varphi \nonumber \\
-    &= \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{I}_{i+u},\\[0.5em]
-    %
-    %
-    \mathcal{I}_{v} &= \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi,\\[0.5em]
+    &= \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{I}_{i+u} \quad,\\[0.5em]
     %
     %
     %\mathcal{L}_{u,v} &=& \sum_{i=0}^v \binom{v}{i} \delta^k \mathcal{J}_{u,u+2(v-k)},\\
     \mathcal{L}^{(t)}_{u,v} &= k^3 \int_{-\kappa/2}^{\kappa/2}s_\varphi^{2(u+t)}(1-s_\varphi^2)^u(\delta+s_\varphi^2)^v
     \left(1-k^{-2}s_\varphi^2\right)^{3/2}d\varphi, \nonumber \\
     %&=& k^3 \sum_{i=0}^{2u+v} \mathcal{A}_{u+v-i+t,u,v} \mathcal{J}_{i+u},\\
-    &= k^3 \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{J}_{i+u+t},\\
+    &= k^3 \sum_{i=0}^{u+v} \mathcal{A}_{i,u,v} \mathcal{J}_{i+u+t} \quad,\\
     %
     \intertext{and}
+    %
+    \mathcal{I}_{v} &= \int_{-\kappa/2}^{\kappa/2} s_\varphi^{2v} d\varphi \quad,\\[0.5em]
+    %
     %
     %\mathcal{L}^{(0)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{i+u},\\
     %\mathcal{L}^{(2)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{i+u+},\\
@@ -2958,32 +2977,151 @@ where
 %
 recalling that $\kappa = 2\sin^{-1}(k)$ for $b+r > 1$ and $\kappa = \pi$ for $b + r \le 1$.
 
-With some work, the integrals $\mathcal{I}_v$ and $\mathcal{J}_v$ can be found exactly.
-Using reduction, the function $\mathcal{I}_v$ can be expressed
-in terms of sums of powers of $\sin^{-1}k$, $k$ and $k_c \equiv \sqrt{1-k^2}$, while $\mathcal{J}_v$ can be expressed
-as sums of complete elliptic integrals of $k^2$ times polynomials in $k^2$. However, the resulting
-recursion relations tend to be numerically unstable due to cancellation of low-order terms which occurs
-during recursion, particularly when the occultor radius is large ($r \gg 1$).
-To leading order in $k$, when $k^2 <1$ ($b + r > 1$),
-$\mathcal{I}_v \propto k^{2v+1}$
-and $\mathcal{J}_v \propto k^{2v+1}$.  Consequently, when these equations are computed by
-recursion in $v$, the lower powers of $k$ cancel out, leading to
-round-off errors.  To avoid these cancellations, we start by computing $\mathcal{I}_{v_\mathrm{max}}$,
-$\mathcal{J}_{v_\mathrm{max}}$, and $\mathcal{J}_{v_\mathrm{max}-1}$, where
-where $v_\mathrm{max}$ is the maximum value needed to compute $\mathcal{K}_{u,v}$ when
-$l = l_\mathrm{max}$.  %  Give the explicit value of $v_\mathrm{max}$ for given $l_\mathrm{max}$. [ ]
-Applying the integral reduction formulae, we obtain the downward recursion relations:
+Given this formulation, evaluating $\mathcal{P}(\mathbf{G}_n)$ is a matter of finding
+formulae for the integrals $\mathcal{I}_v$ and $\mathcal{J}_v$, which are in fact
+analytic.
+Using integration by reduction, $\mathcal{I}_v$ can be expressed
+in terms of sums of powers of $\sin^{-1}k$, $k$ and $k_c \equiv \sqrt{1-k^2}$,
+while $\mathcal{J}_v$ can be expressed
+as sums of complete elliptic integrals of $k^2$ times polynomials in $k^2$. The solutions
+are different depending on whether $k^2$ is less than or greater than unity.
+
+% ------------------------------------------------------------------------------
+\subsubsection{Evaluating $\mathcal{I}_v$ and $\mathcal{J}_v$ for $k^2 < 1$}
+\label{app:IJklt1}
+% ------------------------------------------------------------------------------
+
+In the $k^2 < 1$ ($b+r < 1$) limit, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
 %
-\begin{proof}{}
-    \label{eq:IJdownward}
-    \mathcal{I}_{v-1} &=  \frac{2}{2v-1}\left[v\mathcal{I}_{v} + k^{2v-1}k_c\right],\\
-    \mathcal{J}_{v-2} &= \frac{1}{k^2(2v-3)}\left[2(v+vk^2+k_c^2)\mathcal{J}_{v-1}-(2v+3)\mathcal{J}_v \right].
+\begin{proof}{IJHypergeo}
+    \label{eq:IJHypergeo}
+    \mathcal{I}_v &= k^{1+2v} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} dw \nonumber \\
+                  &= \frac{2k^{1+2v}}{1+2v} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2};v+\tfrac{3}{2};k^2\right) \quad,\\[0.5em]
+    %
+    \mathcal{J}_v &= k^{1+2v} \int_0^1 (1-k^2 w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} (1-w)^{3/2} dw \nonumber \\
+                  &= k^{1+2v} \frac{3\pi}{4} \frac{(2v-1)!!}{2^v(2+v)!} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2}; v+3; k^2\right) \quad,
 \end{proof}
 %
-for $v \ge 1$, where $k_c^2=1-k^2$.
-To compute the highest value of $\mathcal{I}_{v_\mathrm{max}}$, $\mathcal{J}_{v_\mathrm{max}}$,
-and  $\mathcal{J}_{v_\mathrm{max}-1}$, we evaluate these in terms of special
-functions and expand these as series in $k^2$.
+where $_2F_1(a,b;c;x)$ is the generalized Hypergeometric function.
+These functions can alternatively be expressed as series in $k^2$
+by expanding $(1-k^2w)^{-1/2}$ as a series in $k^2w$, and then integrating each term over $w$, giving
+%
+\begin{proof}{IJseries}
+    \label{eq:IJseries}
+    \mathcal{I}_{v} &= 2k^{1+2v}  \sum_{j=0}^\infty \frac{(2j-1)!!}{2^j j!(2j+2v+1)}(k^2)^j, \\[0.5em]
+    \mathcal{J}_{v} &= \frac{3\pi}{4}k^{1+2v}\sum_{j=0}^\infty \frac{(2j-1)!!(2j+2v-1)!!}{2^{2j+v} j!(j+v+2)!}(k^2)^j \quad.
+\end{proof}
+%
+
+For computational efficiency, both $\mathcal{I}_v$ and $\mathcal{J}_v$ can be evaluated
+recursively via either upward or downward iteration. When iterating upward, we use
+the recursion relations
+%
+\begin{proof}{IJupward}
+    \label{eq:IJupward}
+    \mathcal{I}_{v} &= \frac{1}{v} \left(\frac{2v - 1}{2} \mathcal{I}_{v - 1} - k^{2v - 1} k_c\right) \\
+    \label{eq:IJupward:J}
+    \mathcal{J}_{v} &= \frac{1}{2v + 3} \left[2 \left(v + \left(v - 1\right) k^2 + 1\right) \mathcal{J}_{v - 1} - k^2 (2v - 3) \mathcal{J}_{v - 2}\right] \quad,
+\end{proof}
+%
+along with the initial values
+%
+\begin{proof}{IJupward}
+    \label{eq:IJseries0}
+    \mathcal{I}_0 &= \kappa = 2\sin^{-1}k \\[0.5em]
+    \mathcal{J}_0 &= \frac{2}{3k^3} \left[2(2k^2-1)E(k^2)+(1-k^2)(2-3k^2)K(k^2)\right] \nonumber \\
+    \mathcal{J}_1 &= \frac{2}{15k^3} \left[(-3k^4+13k^2-8)E(k^2)+(1-k^2)(8-9k^2)K(k^2)\right] \quad.
+\end{proof}
+%
+When iterating downward, we can re-arrange Equation~(\ref{eq:IJupward}) to obtain the relations
+%
+\begin{proof}{IJdownward}
+    \label{eq:IJdownward}
+    \mathcal{I}_{v} &= \frac{2}{2v + 1} \left[\left(v + 1\right) \mathcal{I}_{v + 1} + k^{2v + 1} k_c\right] \\
+    \label{eq:IJdownward:J}
+    \mathcal{J}_{v} &= \frac{1}{(2v + 1)k^2} \left[2 \left(3 + v + \left(1 + v\right)k^2\right) \mathcal{J}_{v + 1} - (2v + 7) \mathcal{J}_{v + 2}\right] \quad.
+\end{proof}
+%
+In this case, the starting values are obtained directly from Equation~(\ref{eq:IJHypergeo}) or Equation~(\ref{eq:IJseries}).
+
+Because the Hypergeometric function (Equation~\ref{eq:IJHypergeo}) can be costly to
+evaluate, it is in general more computationally efficient to evaluate the expressions
+in Equation~(\ref{eq:IJseries0}) and iterate upward. Moreover, note that the elliptic
+integrals $E$ and $K$ in those expressions are exactly the same as those used to evaluate the
+linear limb darkening ($s_2$) term of the solution vector, so these need only be
+computed \emph{once} to obtain solutions for spherical harmonic maps of arbitrary order,
+which makes this algorithm fast.
+
+However, in practice, the upward recursion relations can sometimes be
+numerically unstable due to cancellation of low-order terms, particularly when the
+occultor radius is large ($r \gg 1$). To leading order in $k$, when $k^2 <1$ ($b + r > 1$),
+$\mathcal{I}_v \propto k^{2v+1}$ and $\mathcal{J}_v \propto k^{2v+1}$.
+Consequently, when these equations are computed by
+recursion in $v$, the lower powers of $k$ cancel out, leading to
+round-off errors that grow as $v$ gets large.
+%
+In practice, we find that when $k^2 > \frac{1}{2}$, the upward recursion relations
+are numerically stable, so we use Equation~(\ref{eq:IJupward}) to evaluate the
+integrals. When $k^2 \le \frac{1}{2}$, we instead use Equation~(\ref{eq:IJdownward})
+and start by computing $\mathcal{I}_{v_\mathrm{max}}$,
+$\mathcal{J}_{v_\mathrm{max}}$, and $\mathcal{J}_{v_\mathrm{max}-1}$, where
+$v_\mathrm{max}$ is the maximum value needed to compute $\mathcal{K}_{u,v}$ when
+$l = l_\mathrm{max}$. We find that the series in Equation~(\ref{eq:IJseries})
+converge rapidly, so we use those expressions to evaluate the initial conditions.
+
+%  Give the explicit value of $v_\mathrm{max}$ for given $l_\mathrm{max}$. [ ]
+
+
+% ------------------------------------------------------------------------------
+\subsubsection{Evaluating $\mathcal{I}_v$ and $\mathcal{J}_v$ for $k^2 \ge 1$}
+\label{app:IJklt1}
+% ------------------------------------------------------------------------------
+
+In the $k^2 \ge 1$ ($b+r \le 1$) limit, the expression for $\mathcal{I}_v$ is
+simpler:
+%
+\begin{proof}{Ilargek}
+    \label{eq:Ilargek}
+    \mathcal{I}_v = \pi \frac{(2v-1)!!}{2^v v!} \quad,
+\end{proof}
+%
+so $\mathcal{K}_{u,v}$ (Equation~\ref{eq:KILJ}) is simply a polynomial in $\delta$.
+%
+For $\mathcal{J}_v$, we make the substitution $w = \sin^2{\varphi}$ to obtain
+%
+\begin{proof}{Jlargek}
+    \label{eq:Jlargek}
+\mathcal{J}_v &= \int_0^1 w^{v-\tfrac{1}{2}} (1-k^{-2}w)^{3/2} (1-w)^{-1/2} dw \nonumber \\
+            &= \sqrt{\pi}\Gamma(v+\tfrac{1}{2})\left(_2\tilde{F}_1\left(-\tfrac{1}{2},v+\tfrac{1}{2},v+1,k^{-2}\right)\right. \nonumber \\
+            &\phantom{MMMMMMm}
+                -\left.\left(\frac{1}{2}+v\right)k^{-2}\,_2\tilde{F}_1\left(-\tfrac{1}{2},v+\tfrac{3}{2},v+2,k^{-2}\right)\right) \quad, \nonumber \\[0.5em]
+            &= \pi \sum_{j=0}^\infty (-1)^j \binom{3/2}{j} \frac{(2j+2v-1)!!}{2^{j+v} (j+v)!} (k^2)^{-j} \quad,
+\end{proof}
+%
+where $_2\tilde{F}_1(a,b;c;x)$ is the regularized Hypergeometric function.
+
+As in the $k^2 < 1$ case, we can evaluate $\mathcal{J}_v$ via either upward (Equation~\ref{eq:IJupward:J})
+or downward (Equation~\ref{eq:IJdownward:J}) recursion. For upward recursion, the initial
+values are given by
+%
+\begin{proof}{Jseries0largek}
+    \label{Jseries0largek}
+    \mathcal{J}_0 &= \frac{1}{3}\left[(8-4k^{-2})E(k^{-2})-2(1-k^{-2})K(k^{-2})\right] \nonumber \\
+    \mathcal{J}_1 &= \frac{1}{15}\left[(-6k^2+26-16k^{-2})E(k^{-2}) + 2(1-k^{-2})(3k^2-4)K(k^{-2})\right] \quad.
+\end{proof}
+%
+which, as before, make use of the same elliptic integrals as the $s_2$ term. For downward
+recursion, we evaluate $\mathcal{J}_{v_\mathrm{max}}$ and $\mathcal{J}_{v_\mathrm{max}-1}$
+from the series solution (Equation~\ref{eq:Jlargek}). In practice, we find that our results
+are numerically stable if we perform upward recursion for $k^2 < 2$ and downward recursion
+if $k^2 \ge 2$.
+
+
+%\mathcal{J}_{v} &=& 3k^{1+2v}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
+%&\times& \pi \frac{(2(n+v)-1)!!}{2^{n+v}(v+2+n)!}
+
+%&=& \frac{\pi(2v-1)!!}{k^2 2^{v}(3+2v)}\left(2((2+v)k^2-(1+v)) _2\tilde{F}_1(-\tfrac{1}{2},v+\tfrac{1}{2},1+v,k^{-2})\right.\\
+%&+& \left.(1-k^2)_2\tilde{F}_1(\tfrac{1}{2},v+\tfrac{1}{2},1+v,k^{-2})\right),\\
 
 %To compute the highest value of $\mathcal{I}_{v_\mathrm{max}}$, we
 %use a series expansion for $(\sin{x}/x)^{2v}$ valid for small $x=\kappa/2$,
@@ -3008,83 +3146,16 @@ functions and expand these as series in $k^2$.
 %evaluation of $\mathcal{I}_{u,v}$.
 %This can be expanded to higher order in $\kappa$ if necessary.
 
-For both $\mathcal{I}_v$ and $\mathcal{J}_v$, in the $k^2 <1$ limit, we make the substitution
-$w=k^{-2}\sin^2{\varphi}$, giving
-%
-\begin{proof}{}
-    \label{eq:IJHypergeo}
-    \mathcal{I}_v &= k^{1+2v} \int_0^1 (1-k^2w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} dw \nonumber \\
-                  &= \frac{2k^{1+2v}}{1+2v} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2};v+\tfrac{3}{2};k^2\right),\\[0.5em]
-    %
-    \mathcal{J}_v &= k^{1+2v} \int_0^1 (1-k^2 w)^{-\tfrac{1}{2}} w^{\tfrac{2v-1}{2}} (1-w)^{3/2} dw \nonumber \\
-                  &= k^{1+2v} \frac{3\pi}{4} \frac{(2v-1)!!}{2^v(2+v)!} \,_2F_1\left(\tfrac{1}{2},v+\tfrac{1}{2}; v+3; k^2\right),
-\end{proof}
-%
-where $_2F_1(a,b;c;x)$ is the generalized Hypergeometric function.
-These functions can then be expressed as a series in $k^2$
-by expanding $(1-k^2w)^{-1/2}$ as a series in $k^2w$, and then integrating each term over $w$, giving
-%
-\begin{proof}{}
-    \label{eq:IJseries}
-%\mathcal{J}_{v} &=& 3k^{1+2v}  \sum_{n=0}^\infty \frac{(-k^2)^n}{2^n n!} \Pi_{i=1}^n (1-2i) \\
-%&\times& \pi \frac{(2(n+v)-1)!!}{2^{n+v}(v+2+n)!}
-    \mathcal{I}_{v} &= 2k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!}{2^n n!(2n+2v+1)}(k^2)^n, \\[0.5em]
-    \mathcal{J}_{v} &= \frac{3\pi}{4}k^{1+2v}  \sum_{n=0}^\infty \frac{(2n-1)!!(2n+2v-1)!!}{2^{2n+v} n!(n+v+2)!}(k^2)^n.
-\end{proof}
-%
-For large values of $v$ and small values of $k$, we find that these series
-converge rapidly, and so may be preferred over evaluating the Hypergeometric functions.
-
-For large values of $k^2 < 1$, we start with small $v$ and iterate upwards.
-The starting terms are
-%
-\begin{proof}{}
-    \label{eq:IJseries0}
-    I_0 &= \kappa = 2\sin^{-1}k \\[0.5em]
-    J_0 &= \frac{2}{3k^3} \left[2(2k^2-1)E(k^2)+(1-k^2)(2-3k^2)K(k^2)\right] \nonumber \\
-    J_1 &= \frac{2}{15k^3} \left[(-3k^4+13k^2-8)E(k^2)+(1-k^2)(8-9k^2)K(k^2)\right].
-\end{proof}
-
 % I just found:
 % Integrate[w^v/Sqrt[w]/Sqrt[1 - k2*w], {w, 0, 1}, Assumptions -> v \[Element] \[DoubleStruckCapitalZ]]
 % = k2^(-(1/2) - v) Beta[k2, 1/2 + v, 1/2];  could that be true?! [ ]  If so, why didn't Mathematica find
 % this before? [ ]  Beta[z,a,b] = \int_0^z t^{a-1}(1-t)^{b-1} dt.
-
 
 %{\color{red} Note: we only need $v=2$ terms, which simplifies this equation.  We
 %can rewrite as $J_{2v}$ and only include the first option in the expansion.}
 %Note the steep dependence of $\mathcal{J}_{v}$ on $k$ for large $v$, $\propto k^{1+2v}$;
 %this is also due to cancellation of lower order terms during recursion, which can lead
 %to severe round-off errors.
-
-In the $k^2 \ge 1$ ($b+r \le 1$) limit, we find:
-\begin{proof}{}
-    \label{eq:Ilargek}
-    \mathcal{I}_v = \pi \frac{(2v-1)!!}{2^v v!},
-\end{proof}
-which yields $K_{u,v}$ which is a polynomial in $\delta$.
-For $\mathcal{J}_v$ we make the substitution $w = \sin^2{\varphi}$ to obtain
-%
-\begin{proof}{}
-    \label{eq:Jlargek}
-\mathcal{J}_v &= \int_0^1 w^{v-\tfrac{1}{2}} (1-k^{-2}w)^{3/2} (1-w)^{-1/2} dw \nonumber \\
-%&=& \frac{\pi(2v-1)!!}{k^2 2^{v}(3+2v)}\left(2((2+v)k^2-(1+v)) _2\tilde{F}_1(-\tfrac{1}{2},v+\tfrac{1}{2},1+v,k^{-2})\right.\\
-%&+& \left.(1-k^2)_2\tilde{F}_1(\tfrac{1}{2},v+\tfrac{1}{2},1+v,k^{-2})\right),\\
-            &= \sqrt{\pi}\Gamma(v+\tfrac{1}{2})\left(_2\tilde{F}_1(-\tfrac{1}{2},v+\tfrac{1}{2},v+1,k^{-2})\right. \nonumber \\
-            &-\left.(\frac{1}{2}+v)k^{-2}\,_2\tilde{F}_1(-\tfrac{1}{2},v+\tfrac{3}{2},v+2,k^{-2})\right), \nonumber \\
-            &= \pi \sum_{n=0}^\infty (-1)^n \binom{3/2}{n} \frac{(2n+2v-1)!!}{2^{n+v} (n+v)!} (k^2)^{-n},
-\end{proof}
-%
-where $_2\tilde{F}_1(a,b;c;x)$ is the regularized Hypergeometric function.
-
-Evaluating the first two terms, $v=0$ and $v=1$, and then iterating, we find:
-%
-\begin{proof}{}
-    \label{Jseries0largek}
-    \mathcal{J}_0 &= (\tfrac{8}{3}-\tfrac{4}{3k^2})E(k^{-2})-\tfrac{2}{3}(1-k^{-2})K(k^{-2}) \nonumber \\
-    \mathcal{J}_1 &= (-6k^2+26-16k^{-2})E(k^{-2})/15 + 2(1-k^{-2})(3k^2-4)K(k^{-2})/15 \nonumber \\
-    \mathcal{J}_v &= \frac{1}{2v+3} \left[2(v+vk^2+k_c^2)J_{v-1}-k^2(2v-3)J_{v-2}\right] \quad.
-\end{proof}
 
 %Consequently, we use a more stable iterative formula to evaluate $J_{v-2}$ in terms
 %of $J_{v}$ and $J_{v-1}$:
@@ -3099,7 +3170,7 @@ Evaluating the first two terms, $v=0$ and $v=1$, and then iterating, we find:
 
 \clearpage
 \begin{center}
-\renewcommand*{\arraystretch}{1.1}
+\renewcommand*{\arraystretch}{1.08}
 \begin{longtable}{cll}
 \caption{Symbols used in this paper} \label{tab:symbols} \\
 %
@@ -3133,6 +3204,8 @@ $\AOne$         & Change of basis matrix:
                   $Y_{lm}$s to polynomials              & \S\ref{sec:basis} \\
 $\ATwo$         & Change of basis matrix:
                   polynomials to Green's polynomials    & \S\ref{sec:basis} \\
+$\mathcal{A}_{i,u,v}$
+                & Vieta's formula coefficient           & \eq{vieta} \\
 $b$             & Impact parameter in units of occulted
                   body's radius                         & \S\ref{sec:lightcurves} \\
 $B_{lm}^{jk}$   & Spherical harmonic normalization      & \eq{blmjk} \\
@@ -3140,7 +3213,6 @@ $B_{lm}^{jk}$   & Spherical harmonic normalization      & \eq{blmjk} \\
 $c_{\bigdot}$   & $\cos(\bigdot)$                       & \\
 $C_{pq}^k$      & Expansion coefficient for
                   $\z(\x, \y)$                          & \eq{ckpq} \\
-$d$             & Dummy coefficient                     & \\
 $\bvec{D}^l$    & Rotation matrix for the
                   complex spherical harmonics
                   of degree $l$                         & \eq{dl} \\
@@ -3149,7 +3221,7 @@ $\bvec{D}\,\wedge$
 $E(\bigdot)$    & Complete elliptic integral of the
                   second kind                           & \eq{elliptic} \\
 $F$             & Total flux seen by observer           & \eq{starry} \\
-$\mathcal{F}$   & Function of $b$ and $r$               & \eq{PGnI_reparam} \\
+$\mathcal{F}$   & Function of $b$ and $r$               & \eq{PGn_reparam2} \\
 $_2F_1$         & Generalized Hypergeometric function   & \eq{IJHypergeo} \\
 $_2\tilde{F}_1$ & Regularized Hypergeometric function   & \eq{Jlargek} \\
 $\gbasis$       & Green's basis                         & \eq{bg} \\
@@ -3159,14 +3231,17 @@ $\bvec{G}_n$    & Anti-exterior derivative of the
                   term in the Green's basis             & \eq{Gn} \\
 $\mathcal{H}_{u,v}$
                 & Occultation integral                  & \eq{Huv} \\
+$i$             & Dummy index                           & \\
 $I$             & Specific intensity, $I(\x, \y)$       & \eq{I} \\
 $\mathcal{I}_{v}$
                 & Occultation integral                  & \eq{KILJ} \\
 $j$             & Dummy index                           & \\
 $\mathcal{J}_{v}$
-                & Occultation integral                  & \eq{J} \\
-$k$             & Dummy index                           & \\
-$k^2$           & Elliptic parameter                    & \eq{k2} \\
+
+                & Occultation integral                  & \eq{KILJ} \\
+$k$             & Elliptic parameter                    & \eq{k2} \\
+                & Dummy index                           & \\
+$k_c$           & $\sqrt{1 - k^2}$                      & Appendix~\ref{app:P} \\
 $K(\bigdot)$    & Complete Elliptic integral of the
                   first kind                            & \eq{elliptic} \\
 $\mathcal{K}_{u,v}$
@@ -3223,7 +3298,7 @@ $\delta$        & Function of $b$ and $r$               & \eq{delta} \\
 $\uptheta$      & Spherical harmonic polar angle        & \eq{ylmtp} \\
 $\theta$        & Rotation angle                        & Appendix~\ref{app:axisangle} \\
 $\Theta$        & Heaviside step function               & \eq{biglam} \\
-$\lambda$       & Angular position of
+$\kappa$       & Angular position of
                   occultor/occulted intersection point  & \eq{kappa} \\
 $\lambda$       & Angular position of
                   occultor/occulted intersection point  & \eq{lambda} \\
