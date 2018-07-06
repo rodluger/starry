@@ -27,6 +27,7 @@ API, and more.
    Installation <install>
    Changelog <changelog>
    Examples & tutorials <tutorials>
+   Proofs <proofs>
    API <api>
    Github <https://github.com/rodluger/starry>
    Submit an issue <https://github.com/rodluger/starry/issues>

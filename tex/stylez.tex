@@ -94,6 +94,7 @@
 
 
 \newtagform{eqtag}[]{(}{)}
+\newcommand{\currentlabel}{None}
 
 % Define a proof environment
 \newenvironment{proof}[1]{%
@@ -103,11 +104,13 @@
 \renewtagform{eqtag}[]{\prooflink{#1}\,(}{)}%
 }%
 \usetagform{eqtag}%
+\renewcommand{\currentlabel}{#1}
 \align%
 }{%
 \endalign%
 \renewtagform{eqtag}[]{(}{)}%
 \usetagform{eqtag}%
+\message{<<<\currentlabel: \theequation>>>}
 }
 
 % Define a proof environment
@@ -118,11 +121,13 @@
 \renewtagform{eqtag}[]{\prooflink{#1}\,(}{)}%
 }%
 \usetagform{eqtag}%
+\renewcommand{\currentlabel}{#1}
 \equation%
 }{%
 \endequation%
 \renewtagform{eqtag}[]{(}{)}%
 \usetagform{eqtag}%
+\message{<<<\currentlabel: \theequation>>>}
 }
 
 % Math stuff

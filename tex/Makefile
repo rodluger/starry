@@ -15,7 +15,7 @@ default: starry.pdf
 starry.pdf: starry.tex stylez.tex starry.bib $(FIGURES) $(SOURCES)
 	python gitlinks.py
 	if [ "${TECTONIC}" = "true" ]; then\
-		tectonic starry.tex --print;\
+		tectonic starry.tex --print --keep-logs;\
 	else\
 		${LATEX} starry.tex;\
 		( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done.";\
