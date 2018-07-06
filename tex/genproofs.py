@@ -35,7 +35,7 @@ for pair in pairs:
         tags[idx].append(pair[1])
 
 # Print these to the table of contents in `proofs.rst`
-with open("proofs.rst", "w") as f:
+with open("../docs/proofs.rst", "w") as f:
     print(header, file=f)
     for i, _ in enumerate(tags):
         if len(tags[i]) == 1:
