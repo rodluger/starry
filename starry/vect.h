@@ -288,10 +288,10 @@ namespace vect {
             UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4, py::object& arg5,
             maps::Map<Grad>& map) {
 
-        int l, m, n, i;
+        int l, m, n, i, j;
 
         // Check that our derivative vectors are large enough
-        int ngrad = 7 + map.N;
+        int ngrad = 7;
         if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
 
         // Vectorize only the inputs of type double
@@ -308,16 +308,6 @@ namespace vect {
         Grad arg4_g(0., STARRY_NGRAD, 5);
         Grad arg5_g(0., STARRY_NGRAD, 6);
         UnitVector<Grad> arg1_g({arg1_x, arg1_y, arg1_z});
-        n = 0;
-        for (l = 0; l < map.lmax + 1; l++) {
-            for (m = -l; m < l + 1; m++) {
-                names.push_back(string("Y_{" + to_string(l) + "," + to_string(m) + "}"));
-                map.y(n).derivatives() = Vector<double>::Unit(STARRY_NGRAD, 7 + n);
-                n++;
-            }
-        }
-
-        // Compute the function at each index
         Grad tmp;
         Vector<double> result(arg2_v.size());
 
@@ -325,6 +315,15 @@ namespace vect {
         map.derivs.clear();
         for (n = 0; n < ngrad; n++) {
             map.derivs[names[n]].resize(arg2_v.size());
+        }
+
+        // Treat the map derivs separately (we compute them manually)
+        for (l = 0; l < map.lmax + 1; l++) {
+            for (m = -l; m < l + 1; m++) {
+                names.push_back(string("Y_{" + to_string(l) + "," + to_string(m) + "}"));
+                map.derivs[names[n]].resize(arg2_v.size());
+                n++;
+            }
         }
 
         // Populate the result vector and the gradients
@@ -338,6 +337,9 @@ namespace vect {
             for (n = 0; n < ngrad; n++) {
                 (map.derivs[names[n]])(i) = tmp.derivatives()(n);
             }
+            for (j = 0; j < map.N; j++) {
+                (map.derivs[names[n + j]])(i) = map.dFdy(j).value();
+            }
         }
 
         // Return an array
@@ -350,10 +352,10 @@ namespace vect {
             UnitVector<double>& arg1, py::object& arg2, py::object& arg3, py::object& arg4,
             maps::Map<Grad>& map) {
 
-        int l, m, n, i;
+        int l, m, n, i, j;
 
         // Check that our derivative vectors are large enough
-        int ngrad = 6 + map.N;
+        int ngrad = 6;
         if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
 
         // Vectorize only the inputs of type double
@@ -369,16 +371,6 @@ namespace vect {
         Grad arg3_g(0., STARRY_NGRAD, 4);
         Grad arg4_g(0., STARRY_NGRAD, 5);
         UnitVector<Grad> arg1_g({arg1_x, arg1_y, arg1_z});
-        n = 0;
-        for (l = 0; l < map.lmax + 1; l++) {
-            for (m = -l; m < l + 1; m++) {
-                names.push_back(string("Y_{" + to_string(l) + "," + to_string(m) + "}"));
-                map.y(n).derivatives() = Vector<double>::Unit(STARRY_NGRAD, 6 + n);
-                n++;
-            }
-        }
-
-        // Compute the function at each index
         Grad tmp;
         Vector<double> result(arg2_v.size());
 
@@ -386,6 +378,15 @@ namespace vect {
         map.derivs.clear();
         for (n = 0; n < ngrad; n++) {
             map.derivs[names[n]].resize(arg2_v.size());
+        }
+
+        // Treat the map derivs separately (we compute them manually)
+        for (l = 0; l < map.lmax + 1; l++) {
+            for (m = -l; m < l + 1; m++) {
+                names.push_back(string("Y_{" + to_string(l) + "," + to_string(m) + "}"));
+                map.derivs[names[n]].resize(arg2_v.size());
+                n++;
+            }
         }
 
         // Populate the result vector and the gradients
@@ -397,6 +398,9 @@ namespace vect {
             result(i) = tmp.value();
             for (n = 0; n < ngrad; n++) {
                 (map.derivs[names[n]])(i) = tmp.derivatives()(n);
+            }
+            for (j = 0; j < map.N; j++) {
+                (map.derivs[names[n + j]])(i) = map.dFdy(j).value();
             }
         }
 

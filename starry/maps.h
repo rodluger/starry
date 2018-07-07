@@ -184,6 +184,7 @@ namespace maps {
 
             // Temporary variables
             Vector<T> tmpvec;
+            VectorT<T> sTA;
             T tmpscalar;
             T tmpu1, tmpu2, tmpu3;
             Vector<T> ARRy;
@@ -206,8 +207,10 @@ namespace maps {
             // Misc flags
             bool Y00_is_unity;
 
-            // Derivatives dictionary
+            // Derivatives
             std::map<string, Vector<double>> derivs;
+            Vector<T> dFdy;
+            rotation::Wigner<T> RR;
 
             // Rotation matrices
             rotation::Wigner<T> R;
@@ -223,14 +226,16 @@ namespace maps {
 
             // Constructor: initialize map to zeros
             Map(int lmax=2) :
-                  lmax(lmax), R(lmax), C(lmax),
+                  lmax(lmax), RR(lmax), R(lmax), C(lmax),
                   G(lmax), M(*this) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);
                 g = Vector<T>::Zero(N);
                 tmpvec = Vector<T>::Zero(N);
+                sTA = VectorT<T>::Zero(N);
                 ARRy = Vector<T>::Zero(N);
+                dFdy = Vector<T>::Zero(N);
                 tmpscalar = NAN;
                 tmpu1 = 0;
                 tmpu2 = 0;
@@ -287,7 +292,6 @@ namespace maps {
         tmpu3 = 0;
         tmpvec = Vector<T>::Zero(N);
     }
-
 
     // Evaluate our map at a given (x0, y0) coordinate
     template <class T>
@@ -355,6 +359,89 @@ namespace maps {
 
         }
         return res;
+
+    }
+
+    // Evaluate our map at a given (x0, y0) coordinate
+    template <>
+    Grad Map<Grad>::evaluate(const UnitVector<Grad>& axis, const Grad& theta, const Grad& x0, const Grad& y0) {
+
+        // Get the polynomial map
+        Vector<Grad>* ptrmap;
+
+        if (theta == 0) {
+            // We will use this.p
+            ptrmap = &p;
+        } else if ((theta == tmpscalar) && (axis(0) == tmpu1) && (axis(1) == tmpu2) && (axis(2) == tmpu3)) {
+            // We will use this.tmpvec, which we computed last time around
+            ptrmap = &tmpvec;
+        } else {
+            // Rotate the map into view
+            rotate(axis, theta, y, tmpvec);
+            tmpvec = C.A1 * tmpvec;
+            ptrmap = &tmpvec;
+        }
+
+        // Save this value of theta so we don't have
+        // to keep rotating the map when we vectorize
+        // this function!
+        tmpscalar = theta;
+        tmpu1 = axis(0);
+        tmpu2 = axis(1);
+        tmpu3 = axis(2);
+
+        // Check if outside the sphere
+        if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
+
+        int l, m, mu, nu, n = 0;
+        Grad z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
+
+        // Evaluate each harmonic
+        VectorT<Grad> basis;
+        basis.resize(N);
+        for (l=0; l<lmax+1; l++) {
+            for (m=-l; m<l+1; m++) {
+                mu = l - m;
+                nu = l + m;
+                if ((nu % 2) == 0) {
+                    if ((mu > 0) && (nu > 0))
+                        basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
+                    else if (mu > 0)
+                        basis(n) = pow(x0, mu / 2);
+                    else if (nu > 0)
+                        basis(n) = pow(y0, nu / 2);
+                    else
+                        basis(n) = 1;
+                } else {
+                    if ((mu > 1) && (nu > 1))
+                        basis(n) = pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
+                    else if (mu > 1)
+                        basis(n) = pow(x0, (mu - 1) / 2) * z0;
+                    else if (nu > 1)
+                        basis(n) = pow(y0, (nu - 1) / 2) * z0;
+                    else
+                        basis(n) = z0;
+                }
+                n++;
+            }
+
+        }
+
+        // Compute the map derivs
+        if (theta == 0) {
+
+            dFdy = basis * C.A1;
+
+        } else {
+
+            sTA = basis * C.A1;
+            for (int l = 0; l < lmax + 1; l++)
+                dFdy.segment(l * l, 2 * l + 1) = sTA.segment(l * l, 2 * l + 1) * R.Real[l];
+
+        }
+
+        // Dot the coefficients in to our polynomial map
+        return basis.dot(*ptrmap);
 
     }
 
@@ -627,6 +714,75 @@ namespace maps {
 
             // Compute the sT vector
             solver::computesT(G, b, ro, ARRy);
+
+            // Dot the result in and we're done
+            return G.sT * ARRy;
+
+        }
+
+    }
+
+    // Compute the total flux during or outside of an occultation
+    template <>
+    Grad Map<Grad>::flux(const UnitVector<Grad>& axis, const Grad& theta, const Grad& xo, const Grad& yo, const Grad& ro) {
+
+        // Impact parameter
+        Grad b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) return 0;
+
+        // Pointer to the map we're integrating
+        // (defaults to the base map)
+        Vector<Grad>* ptry = &y;
+
+        // Rotate the map into view if necessary and update our pointer
+        if (theta != 0) {
+            rotate(axis, theta, (*ptry), tmpvec);
+            ptry = &tmpvec;
+            for (int l = 0; l < lmax + 1; l++)
+                RR.Real[l] = R.Real[l];
+        } else {
+            for (int l = 0; l < lmax + 1; l++)
+                RR.Real[l] = Matrix<Grad>::Identity(2 * l + 1, 2 * l + 1);
+        }
+
+        // No occultation: cake
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // Compute map derivs
+            for (int l = 0; l < lmax + 1; l++)
+                dFdy.segment(l * l, 2 * l + 1) = C.rTA1.segment(l * l, 2 * l + 1) * RR.Real[l];
+
+            return C.rTA1 * (*ptry);
+
+        // Occultation
+        } else {
+
+            // Align occultor with the +y axis if necessary
+            if ((b > 0) && (xo != 0)) {
+                UnitVector<Grad> zaxis({0, 0, 1});
+                Grad yo_b(yo / b);
+                Grad xo_b(xo / b);
+                rotate(zaxis, yo_b, xo_b, (*ptry), tmpvec);
+                ptry = &tmpvec;
+
+                // Update the rotation matrix for the map derivs
+                for (int l = 0; l < lmax + 1; l++)
+                    RR.Real[l] = R.Real[l] * RR.Real[l];
+
+            }
+
+            // Perform the rotation + change of basis
+            ARRy = C.A * (*ptry);
+
+            // Compute the sT vector
+            solver::computesT(G, b, ro, ARRy);
+
+            // Compute the derivatives w.r.t. the map coefficients
+            sTA = G.sT * C.A;
+            for (int l = 0; l < lmax + 1; l++)
+                dFdy.segment(l * l, 2 * l + 1) = sTA.segment(l * l, 2 * l + 1) * RR.Real[l];
 
             // Dot the result in and we're done
             return G.sT * ARRy;
