@@ -414,10 +414,10 @@ namespace vect {
             py::object& arg1, py::object& arg2, py::object& arg3,
             maps::LimbDarkenedMap<Grad>& map) {
 
-        int l, m, n, i;
+        int l, n, i;
 
         // Check that our derivative vectors are large enough
-        int ngrad = 3 + map.N;
+        int ngrad = 3;
         if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
 
         // Vectorize only the inputs of type double
@@ -429,19 +429,6 @@ namespace vect {
         Grad arg1_g(0., STARRY_NGRAD, 0);
         Grad arg2_g(0., STARRY_NGRAD, 1);
         Grad arg3_g(0., STARRY_NGRAD, 2);
-        n = 0;
-        for (l = 0; l < map.lmax + 1; l++) {
-            for (m = -l; m < l + 1; m++) {
-                names.push_back(string("Y_{" + to_string(l) + "," + to_string(m) + "}"));
-                map.y(n).derivatives() = Vector<double>::Unit(STARRY_NGRAD, 3 + n);
-                n++;
-            }
-        }
-
-        // Force the derivatives to propagate to the Green's vector
-        map.update();
-
-        // Compute the function at each index
         Grad tmp;
         Vector<double> result(arg1_v.size());
 
@@ -451,6 +438,16 @@ namespace vect {
             map.derivs[names[n]].resize(arg1_v.size());
         }
 
+        // Treat the map derivs separately
+        for (l = 1; l < map.lmax + 1; l++) {
+            names.push_back(string("u_" + to_string(l)));
+            map.derivs[names[n]].resize(arg1_v.size());
+            n++;
+        }
+
+        // Update map matrices and vectors
+        map.update();
+
         // Populate the result vector and the gradients
         for (i = 0; i < arg1_v.size(); i++) {
             arg1_g.value() = arg1_v(i);
@@ -458,8 +455,12 @@ namespace vect {
             arg3_g.value() = arg3_v(i);
             tmp = map.flux(arg1_g, arg2_g, arg3_g);
             result(i) = tmp.value();
-            for (n = 0; n < ngrad; n++)
+            for (n = 0; n < ngrad; n++) {
                 (map.derivs[names[n]])(i) = tmp.derivatives()(n);
+            }
+            for (l = 1; l < map.lmax + 1; l++) {
+                (map.derivs[names[n + l - 1]])(i) = map.dFdu(l).value();
+            }
         }
 
         // Return an array
@@ -472,10 +473,10 @@ namespace vect {
             py::object& arg1, py::object& arg2,
             maps::LimbDarkenedMap<Grad>& map) {
 
-        int l, m, n, i;
+        int l, n, i;
 
         // Check that our derivative vectors are large enough
-        int ngrad = 2 + map.N;
+        int ngrad = 2;
         if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
 
         // Vectorize only the inputs of type double
@@ -486,19 +487,6 @@ namespace vect {
         vector<string> names {"x", "y"};
         Grad arg1_g(0., STARRY_NGRAD, 0);
         Grad arg2_g(0., STARRY_NGRAD, 1);
-        n = 0;
-        for (l = 0; l < map.lmax + 1; l++) {
-            for (m = -l; m < l + 1; m++) {
-                names.push_back(string("Y_{" + to_string(l) + "," + to_string(m) + "}"));
-                map.y(n).derivatives() = Vector<double>::Unit(STARRY_NGRAD, 2 + n);
-                n++;
-            }
-        }
-
-        // Force the derivatives to propagate to the Green's vector
-        map.update();
-
-        // Compute the function at each index
         Grad tmp;
         Vector<double> result(arg1_v.size());
 
@@ -508,14 +496,28 @@ namespace vect {
             map.derivs[names[n]].resize(arg1_v.size());
         }
 
+        // Treat the map derivs separately
+        for (l = 1; l < map.lmax + 1; l++) {
+            names.push_back(string("u_" + to_string(l)));
+            map.derivs[names[n]].resize(arg1_v.size());
+            n++;
+        }
+
+        // Update map matrices and vectors
+        map.update();
+
         // Populate the result vector and the gradients
         for (i = 0; i < arg1_v.size(); i++) {
             arg1_g.value() = arg1_v(i);
             arg2_g.value() = arg2_v(i);
             tmp = map.evaluate(arg1_g, arg2_g);
             result(i) = tmp.value();
-            for (n = 0; n < ngrad; n++)
+            for (n = 0; n < ngrad; n++) {
                 (map.derivs[names[n]])(i) = tmp.derivatives()(n);
+            }
+            for (l = 1; l < map.lmax + 1; l++) {
+                (map.derivs[names[n + l - 1]])(i) = map.dFdu(l).value();
+            }
         }
 
         // Return an array

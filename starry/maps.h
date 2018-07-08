@@ -723,6 +723,7 @@ namespace maps {
     }
 
     // Compute the total flux during or outside of an occultation
+    // **Gradient over-ride: compute map derivs manually for speed**
     template <>
     Grad Map<Grad>::flux(const UnitVector<Grad>& axis, const Grad& theta, const Grad& xo, const Grad& yo, const Grad& ro) {
 
@@ -730,7 +731,10 @@ namespace maps {
         Grad b = sqrt(xo * xo + yo * yo);
 
         // Check for complete occultation
-        if (b <= ro - 1) return 0;
+        if (b <= ro - 1) {
+            dFdy = Vector<Grad>::Zero(N);
+            return 0;
+        }
 
         // Pointer to the map we're integrating
         // (defaults to the base map)
@@ -897,6 +901,7 @@ namespace maps {
             Vector<T> ARRy;
             Vector<T> tmpvec;
             Vector<T> tmpy;
+            VectorT<T> sTA;
 
         public:
 
@@ -912,6 +917,11 @@ namespace maps {
 
             // Derivatives dictionary
             std::map<string, Eigen::VectorXd> derivs;
+            Vector<T> dFdu;
+            Vector<T> dndu;
+            Matrix<T> dydu;
+            Matrix<T> dpdu;
+            Matrix<T> dgdu;
 
             // Constant matrices
             Constants<T> C;
@@ -930,9 +940,14 @@ namespace maps {
                 u = Vector<T>::Zero(lmax + 1);
                 tmpy = Vector<T>::Zero(lmax + 1);
                 tmpvec = Vector<T>::Zero(N);
+                sTA = VectorT<T>::Zero(N);
+                dFdu = Vector<T>::Zero(lmax + 1);
+                dndu = Vector<T>::Zero(lmax + 1);
+                dydu = Matrix<T>::Zero(N, lmax + 1);
+                dpdu = Matrix<T>::Zero(N, lmax + 1);
+                dgdu = Matrix<T>::Zero(N, lmax + 1);
                 ARRy = Vector<T>::Zero(N);
                 reset();
-                update();
             }
 
             // Public methods
@@ -1008,6 +1023,38 @@ namespace maps {
         }
     }
 
+    // Update the maps after the coefficients changed
+    // **Overload for autodiff of map coeffs**
+    template <>
+    void LimbDarkenedMap<Grad>::update() {
+
+        // Update our map vectors
+        Grad norm = 1;
+        y.setZero(N);
+        dndu.setZero(lmax + 1);
+        for (int l = 1; l < lmax + 1; l++) {
+            norm -= 2 * u(l) / ((l + 1) * (l + 2));
+            dndu(l) -= 2.0 / ((l + 1) * (l + 2));
+        }
+        norm *= M_PI;
+        dndu *= M_PI;
+        tmpy = C.U * u;
+
+        int n = 0;
+        dydu.setZero(N, lmax + 1);
+        for (int l = 0; l < lmax + 1; l++) {
+            y(l * (l + 1)) = tmpy(n) / norm;
+            dydu.row(l * (l + 1)) = ((C.U.row(n).transpose() * norm - tmpy(n) * dndu) / (norm * norm));
+            n++;
+        }
+
+        p = C.A1 * y;
+        g = C.A * y;
+        dpdu = C.A1 * dydu;
+        dgdu = C.A * dydu;
+
+    }
+
     // Check whether the map is positive semi-definite
     // using Sturm's theorem
     template <class T>
@@ -1048,6 +1095,37 @@ namespace maps {
             }
         }
         return res;
+
+    }
+
+    // Evaluate our map at a given (x0, y0) coordinate
+    // **Gradient over-ride: compute map derivs manually for speed**
+    template <>
+    Grad LimbDarkenedMap<Grad>::evaluate(const Grad& x0, const Grad& y0) {
+
+        // Check if outside the sphere
+        if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
+
+        int l, m, mu, nu, n = 0;
+        Grad z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
+
+        // Evaluate each harmonic
+        Vector<Grad> basis;
+        basis.resize(N);
+        for (l=0; l<lmax+1; l++) {
+            for (m=-l; m<l+1; m++) {
+                mu = l - m;
+                nu = l + m;
+                if ((nu % 2) == 0)
+                    basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
+                else
+                    basis(n) = pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
+                n++;
+            }
+        }
+
+        dFdu = basis.transpose() * dpdu;
+        return basis.dot(p);
 
     }
 
@@ -1099,14 +1177,78 @@ namespace maps {
         // Occultation
         } else {
 
+            // Compute the sT vector
+            solver::computesT(G, b, ro, ARRy);
+
+            // Dot the result in and we're done
+            return G.sT * g;
+
+        }
+
+    }
+
+    // Compute the total flux during or outside of an occultation
+    // **Gradient over-ride: compute map derivs manually for speed**
+    template <>
+    Grad LimbDarkenedMap<Grad>::flux(const Grad& xo, const Grad& yo, const Grad& ro) {
+
+        // The result
+        Grad res;
+
+        // Impact parameter
+        Grad b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+            dFdu = Vector<Grad>::Zero(lmax + 1);
+            return 0;
+        }
+
+        /*
+        TODO: We can really speed things up here...
+        // If we're doing quadratic limb darkening, let's skip all the overhead
+        if ((lmax <= 2) && (ro < 1)) {
+            if ((b >= 1 + ro) || (ro == 0)) {
+                dFdu = Vector<T>::Zero(lmax);
+                return 1.0;
+            } else {
+                if (lmax == 0) {
+                    // TODO
+                    res = solver::QuadLimbDark<Grad>(G, b, ro, g(0), 0, 0);
+                    return res;
+                } else if (lmax == 1) {
+                    // TODO
+                    res = solver::QuadLimbDark<Grad>(G, b, ro, g(0), g(2), 0);
+                    return res;
+                } else {
+                    // TODO
+                    res = solver::QuadLimbDark<Grad>(G, b, ro, g(0), g(2), g(8));
+                    return res;
+                }
+            }
+        }
+        */
+
+        // No occultation: cake
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            dFdu = Vector<Grad>::Zero(lmax + 1);
+            return 1.0;
+
+        // Occultation
+        } else {
+
             // Perform the change of basis
             ARRy = C.A * y;
 
             // Compute the sT vector
             solver::computesT(G, b, ro, ARRy);
 
-            // Dot the result in and we're done
-            return G.sT * ARRy;
+            // Compute the map derivs
+            dFdu = G.sT * dgdu;
+
+            // Dot the result in
+            return G.sT * g;
 
         }
 
