@@ -12,7 +12,7 @@ Proofs
    icon links to one of the proofs on this page.
    <br/><br/>
 
-.. toctree::
+.. toctree:: 
    :titlesonly:
    :maxdepth: 1
 

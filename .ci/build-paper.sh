@@ -13,7 +13,7 @@ then
     if git diff --name-only | grep 'proofs.rst'
     then
         git add $TRAVIS_BUILD_DIR/proofs.rst
-        git commit -m "updating proofs.rst"
+        git commit -m "updating proofs.rst [skip ci]"
         git push -q https://$GITHUB_USER:$GITHUB_API_KEY@github.com/$TRAVIS_REPO_SLUG $TRAVIS_BRANCH
     fi
 

@@ -11,8 +11,8 @@ __version__ = '0.0.2'
 macros = dict(STARRY_NGRAD=43,
               STARRY_NMULTI=32)
 
-# Optimize compiling?
-optimize = False
+# Enable optimization?
+optimize = True
 
 
 class get_pybind_include(object):
