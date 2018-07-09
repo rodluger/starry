@@ -9,13 +9,17 @@ then
     echo "Building the paper..."
     cd $TRAVIS_BUILD_DIR/tex && make
 
-    # If `proofs.rst` changed, let's commit it
+    # If `proofs.rst` changed, let's clone the repo in a temporary
+    # directory and commit & push the changes
     if git diff --name-only | grep 'proofs.rst'
     then
-        git checkout $TRAVIS_BRANCH
-        git add $TRAVIS_BUILD_DIR/docs/proofs.rst
+        mkdir -p tmp && cd tmp
+        git clone https://github.com/rodluger/starry.git && cd starry
+        cp $TRAVIS_BUILD_DIR/docs/proofs.rst docs/proofs.rst
+        git add docs/proofs.rst
         git commit -m "updating proofs.rst [skip ci]"
         git push https://$GITHUB_USER:$GITHUB_API_KEY@github.com/$TRAVIS_REPO_SLUG $TRAVIS_BRANCH || echo "Failed to push `proofs.rst`"
+        cd $TRAVIS_BUILD_DIR/tex && rm -r tmp
     fi
 
     # Force push the paper to GitHub
