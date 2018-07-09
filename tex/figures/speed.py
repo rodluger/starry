@@ -93,7 +93,7 @@ def NumericalFlux(I, b, r, epsabs=1e-8, epsrel=1e-8):
     return total - flux
 
 
-def compare_to_numerical(lmax=6, lmax_grad=5):
+def compare_to_numerical(lmax=5, lmax_grad=5):
     """Compare to different numerical integration schemes."""
     number = 1
     res = 300
@@ -132,7 +132,7 @@ def compare_to_numerical(lmax=6, lmax_grad=5):
     error_grid = np.zeros(lmax + 1)
     for l in range(lmax + 1):
         funcs.ylm = starry.Map(l)
-        funcs.ylm_grad = starry.grad.Map(min(l, 5))
+        funcs.ylm_grad = starry.grad.Map(min(l, lmax_grad))
         ylm_128 = starry.multi.Map(l)
         # Randomize a map and occultor properties
         b = np.random.random()
@@ -141,8 +141,7 @@ def compare_to_numerical(lmax=6, lmax_grad=5):
             c = np.random.random()
             funcs.ylm[l, m] = c
             ylm_128[l, m] = c
-            # NOTE: Default compile of starry.grad is for lmax <= 5
-            if l <= 5:
+            if l <= lmax_grad:
                 funcs.ylm_grad[l, m] = c
         # Time the runs
         builtins.__dict__.update(locals())
@@ -308,5 +307,5 @@ def speed():
 
 
 if __name__ == "__main__":
-    compare_to_numerical(lmax=10)
+    compare_to_numerical(lmax=10, lmax_grad=10)
     speed()

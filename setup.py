@@ -8,7 +8,7 @@ __version__ = '0.0.2'
 
 
 # Custom compiler flags
-macros = dict(STARRY_NGRAD=43,
+macros = dict(STARRY_NGRAD=12,
               STARRY_NMULTI=32)
 
 # Enable optimization?

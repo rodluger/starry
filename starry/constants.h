@@ -8,7 +8,7 @@ Defines compiler constants used throughout the code.
 
 // Gradient size in starry.grad
 #ifndef STARRY_NGRAD
-#define STARRY_NGRAD                            43
+#define STARRY_NGRAD                            12
 #endif
 
 // Number of digits for the multiprecision type in starry.multi
