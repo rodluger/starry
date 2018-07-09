@@ -4,7 +4,7 @@ Proofs
 Below you'll find proofs, derivations, or numerical validations
 of the principal equations in the :py:obj:`starry` paper.
 
-.. toctree:: 
+.. toctree::
    :titlesonly:
    :maxdepth: 1
 
@@ -25,9 +25,9 @@ of the principal equations in the :py:obj:`starry` paper.
    Equations (D33), (D34) <proofs/vieta.ipynb>
    Equations (D35), (D39) <proofs/PGn_reparam2.ipynb>
    Equation (D41) <proofs/IJHypergeo.ipynb>
-   Equation (D43) <proofs/IJseries.ipynb>
-   Equations (D45), (D47) <proofs/IJupward.ipynb>
-   Equation (D49) <proofs/IJdownward.ipynb>
-   Equation (D50) <proofs/Ilargek.ipynb>
-   Equation (D51) <proofs/Jlargek.ipynb>
-   Equation (D52) <proofs/Jseries0largek.ipynb>
+   Equation (D42) <proofs/IJSeries.ipynb>
+   Equations (D44), (D46) <proofs/IJupward.ipynb>
+   Equation (D48) <proofs/IJdownward.ipynb>
+   Equation (D49) <proofs/Ilargek.ipynb>
+   Equation (D50) <proofs/Jlargek.ipynb>
+   Equation (D51) <proofs/Jseries0largek.ipynb>
