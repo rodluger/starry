@@ -52,9 +52,9 @@ and wrapped in \Python that computes these light curves.
 The algorithm in \starry is six orders of magnitude faster than direct
 numerical integration and several orders of magnitude more precise.
 \starry also computes analytic derivatives of the light curves with respect to all input
-parameters for use in gradient-based inference schemes such as
+parameters for use in gradient-based optimization and inference, such as
 Hamiltonian monte carlo (HMC), allowing users to quickly and efficiently
-regress on observed light curves to infer properties of a celestial body's
+fit observed light curves to infer properties of a celestial body's
 surface map.
 \end{abstract}
 
@@ -107,11 +107,11 @@ in analogy with mutual events viewed in the Solar System
 \citep{Brinkmann1973,Vermilion1974,Herzog1975,Brinkmann1976,Reinsch1994,Young1999,
 Young2001,Livengood2011}.
 
-As we gear up to perform these observations, it is essential that we have
+As we prepare to perform these observations, it is essential that we have
 robust models of exoplanet light curves so
 that we may reliably infer the surface maps that generated them. Because the
 features that we seek will likely be close to the limit of detectability,
-exoplanet mapping is necessarily a probabilistic problem, necessitating
+exoplanet mapping is necessarily a probabilistic problem, requiring
 a careful statistical approach capable of characterizing the uncertainty
 on the inferred map. Recently, \citet{Farr2018} introduced \exocartographer,
 a Bayesian model for inferring surface maps and rotation states
@@ -120,7 +120,7 @@ complementary vein, \citet{Louden2018} presented \spiderman, a fast
 code to model phase curves and secondary eclipses of exoplanets, which
 the authors show is fast enough to be used in Markov Chain Monte Carlo
 (MCMC) runs for general mapping problems. However, both algorithms, along with all
-others in the literature to date, rely on numerical methods to compute
+others in the literature to date, rely on numerical integration methods to compute
 the flux received from the planet during occultation. In addition to
 the potential loss of precision due to the approximations they employ,
 numerical algorithms are typically much slower than an analytic
@@ -131,11 +131,12 @@ reflected light if its map is expressed as a sum of spherical harmonics.
 
 Here we present an algorithm to compute analytic occultation light curves of stars,
 planets, or moons of arbitrary complexity if the surface map of the occulted body is expressed in the
-spherical harmonic basis. Our algorithm is a generalization of the \citet{MandelAgol2002}, \citet{Gimenez2006},
-and \citet{Pal2012} analytic transit models to eclipses and occultations of bodies with arbitrary, non-radially
+spherical harmonic basis. Our algorithm generalizes the \citet{MandelAgol2002}, \citet{Gimenez2006},
+and \citet{Pal2012} analytic transit formulae to model eclipses and occultations of bodies with arbitrary, non-radially
 symmetric surface maps or stars with limb darkening of arbitrary order.
 For radially symmetric, second-degree maps, our expressions reduce to the \citet{MandelAgol2002}
-quadratic limb-darkening transit model; in the limit of zero occultor size, they
+quadratic limb-darkening transit model; in the limit of zero occultor size or large
+impact parameter, they
 reduce to the expressions of \citet{Haggard2018} for thermal phase curves.
 
 % Mention that phase curves are a subset of rotational light curves when a planet is tidally locked.
@@ -173,7 +174,7 @@ in the paper, with references to the equations defining them.
 \label{sec:spharm}
 % ------------------------------------------------------------------------------
 
-The orthonormalized real spherical harmonics $Y_{lm}(\uptheta,\upphi)$ of degree $l \ge 0$
+The orthonormal real spherical harmonics $Y_{lm}(\uptheta,\upphi)$ of degree $l \ge 0$
 and order $m \in [-l,\, l]$ with the Condon-Shortley phase factor \citep[e.g.][]{Varshalovich1988}
 are defined in spherical coordinates as
 %
@@ -764,9 +765,9 @@ and we used the fact that along the arc of a circle,
 \end{align}
 %
 In Equations~(\ref{eq:primitiveP}) and (\ref{eq:primitiveQ}), $\mathcal{P}(\bvec{G}_n)$
-is the line integral along the arc of the occultor
+is the line integral along the arc of the occultor of radius $r$,
 and $\mathcal{Q}(\bvec{G}_n)$ is the line integral along the arc of the occulted
-body.
+body of radius one.
 
 %
 %
@@ -859,7 +860,9 @@ relations to quickly compute these. We note, in particular, that the
 solutions all involve complete elliptic integrals of the \emph{same} argument,
 so that the elliptic integrals need only be evaluated once for a map
 of arbitrary degree, greatly improving the evaluation speed and the
-scalability of the problem to high order.
+scalability of the problem to high order. In practice we find that
+the stability in evaluation of these expressions is improved by using a
+rapidly converging series expansion for occultors of large and small radius.
 
 % ------------------------------------------------------------------------------
 \subsection{Summary}
@@ -1478,7 +1481,7 @@ steps involved in computing a light curve is either a basic arithmetic operation
 or the evaluation of an elementary function and is therefore trivially differentiable.
 Autodiff algorithms exploit this fact by repeatedly applying the chain rule to
 compute the derivatives of any function during its evaluation, returning derivatives
-that are accurate to machine precision and at a speed that can be significantly greater
+that can be accurate to high precision and at a speed that can be significantly greater
 than that of numeric (or symbolic) differentiation.
 
 We employ the autodiff algorithm of the Eigen \citep{eigen} C++ library to compute
@@ -1938,7 +1941,7 @@ alien worlds.
 \acknowledgments
 This work was supported by the NASA Astrobiology
 Institute's Virtual Planetary Laboratory under Cooperative
-Agreement number NNA13AA93A.
+Agreement number NNA13AA93A.  EA is supported by NSF grant 1615315.
 %
 Some of the results in this paper have been derived using the HEALPix
 \citep{Gorski2005} package.
@@ -2970,6 +2973,7 @@ where
     %\mathcal{L}^{(0)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v} \mathcal{A}_{u+v-i,u,v} \mathcal{J}_{i+u},\\
     %\mathcal{L}^{(2)}_{u,v} &=& (1-(2r\delta)^2)^{3/2} \sum_{i=0}^{u+v+2} \mathcal{A}_{u+v+1-i,u,v} \mathcal{J}_{i+u+},\\
     %\mathcal{J}_{u,v} &=& (4br)^{3/2} \int_{-\kappa/2}^{\kappa/2} d\varphi \cos{\varphi}^u s_\varphi^v\left(k^2-s^2_\varphi\right)^{3/2},
+    \label{eq:J}
     \mathcal{J}_v &= \int_{-\kappa/2}^{\kappa/2} d\varphi s^{2v}_\varphi\left(1-k^{-2}s^2_\varphi\right)^{3/2} \quad,
     %\mathcal{A}_{p,u,v} &=& \sum_{j=0}^{p} (-1)^{p+j} \binom{u}{p-j} \binom{v}{p}\delta^j.
 \end{proof}
@@ -2990,7 +2994,7 @@ are different depending on whether $k^2$ is less than or greater than unity.
 \label{app:IJklt1}
 % ------------------------------------------------------------------------------
 
-In the $k^2 < 1$ ($b+r < 1$) limit, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
+In the $k^2 < 1$ ($b+r > 1$) limit, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
 %
 \begin{proof}{IJHypergeo}
     \label{eq:IJHypergeo}
@@ -3007,7 +3011,7 @@ by expanding $(1-k^2w)^{-1/2}$ as a series in $k^2w$, and then integrating each 
 %
 \begin{proof}{IJSeries}
     \label{eq:IJseries}
-    \mathcal{I}_{v} &= 2k^{1+2v}  \sum_{j=0}^\infty \frac{(2j-1)!!}{2^j j!(2j+2v+1)}(k^2)^j, \\[0.5em]
+    \mathcal{I}_{v} &= 2k^{1+2v}  \sum_{j=0}^\infty \frac{(2j-1)!!}{2^j j!(2j+2v+1)}(k^2)^j, \nonumber\\[0.5em]
     \mathcal{J}_{v} &= \frac{3\pi}{4}k^{1+2v}\sum_{j=0}^\infty \frac{(2j-1)!!(2j+2v-1)!!}{2^{2j+v} j!(j+v+2)!}(k^2)^j \quad.
 \end{proof}
 %
@@ -3061,7 +3065,8 @@ round-off errors that grow as $v$ gets large.
 %
 In practice, we find that when $k^2 > \frac{1}{2}$, the upward recursion relations
 are numerically stable, so we use Equation~(\ref{eq:IJupward}) to evaluate the
-integrals. When $k^2 \le \frac{1}{2}$, we instead use Equation~(\ref{eq:IJdownward})
+integrals. When $k^2 \le \frac{1}{2}$, we instead use Equations(\ref{eq:IJdownward})
+and (\ref{eq:IJdownward:J}),
 and start by computing $\mathcal{I}_{v_\mathrm{max}}$,
 $\mathcal{J}_{v_\mathrm{max}}$, and $\mathcal{J}_{v_\mathrm{max}-1}$, where
 $v_\mathrm{max}$ is the maximum value needed to compute $\mathcal{K}_{u,v}$ when
@@ -3236,6 +3241,7 @@ $\mathcal{I}_{v}$
                 & Occultation integral                  & \eq{KILJ} \\
 $j$             & Dummy index                           & \\
 $\mathcal{J}_{v}$
+
                 & Occultation integral                  & \eq{KILJ} \\
 $k$             & Elliptic parameter                    & \eq{k2} \\
                 & Dummy index                           & \\
