@@ -26,11 +26,11 @@ then
     mkdir -p travis && cd travis
     mkdir -p tex && mv ../starry.pdf tex/
     git init
-    git add -f .
+    git add -f tex/starry.pdf
     git status
     git -c user.name='travis' -c user.email='travis' commit -m "building the paper"
     git status
-    git push -q -f https://$GITHUB_USER:$GITHUB_API_KEY@github.com/$TRAVIS_REPO_SLUG $TRAVIS_BRANCH-pdf
+    git push -f https://$GITHUB_USER:$GITHUB_API_KEY@github.com/$TRAVIS_REPO_SLUG HEAD:$TRAVIS_BRANCH-pdf
     cd $TRAVIS_BUILD_DIR
 
 fi
