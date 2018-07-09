@@ -11,6 +11,9 @@ __version__ = '0.0.2'
 macros = dict(STARRY_NGRAD=43,
               STARRY_NMULTI=32)
 
+# Optimize compiling?
+optimize = False
+
 
 class get_pybind_include(object):
     """
@@ -100,6 +103,8 @@ class BuildExt(build_ext):
                         self.distribution.get_version())
         for ext in self.extensions:
             ext.extra_compile_args = opts
+            if not optimize:
+                ext.extra_compile_args += ["-O0"]
             if sys.platform == "darwin":
                 ext.extra_compile_args += ["-march=native",
                                            "-mmacosx-version-min=10.9"]

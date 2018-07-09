@@ -445,9 +445,6 @@ namespace vect {
             n++;
         }
 
-        // Update map matrices and vectors
-        map.update();
-
         // Populate the result vector and the gradients
         for (i = 0; i < arg1_v.size(); i++) {
             arg1_g.value() = arg1_v(i);
@@ -502,9 +499,6 @@ namespace vect {
             map.derivs[names[n]].resize(arg1_v.size());
             n++;
         }
-
-        // Update map matrices and vectors
-        map.update();
 
         // Populate the result vector and the gradients
         for (i = 0; i < arg1_v.size(); i++) {

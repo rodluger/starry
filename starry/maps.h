@@ -898,7 +898,6 @@ namespace maps {
         protected:
 
             // Temporary variables
-            Vector<T> ARRy;
             Vector<T> tmpvec;
             Vector<T> tmpy;
             VectorT<T> sTA;
@@ -946,7 +945,6 @@ namespace maps {
                 dydu = Matrix<T>::Zero(N, lmax + 1);
                 dpdu = Matrix<T>::Zero(N, lmax + 1);
                 dgdu = Matrix<T>::Zero(N, lmax + 1);
-                ARRy = Vector<T>::Zero(N);
                 reset();
             }
 
@@ -1010,7 +1008,7 @@ namespace maps {
         } else {
             norm = 1;
             for (int l = 1; l < lmax + 1; l++)
-                norm -= 2 * u(l) / ((l + 1) * (l + 2));
+                norm -= 2.0 * u(l) / ((l + 1) * (l + 2));
             norm *= M_PI;
             tmpy = C.U * u;
 
@@ -1160,12 +1158,14 @@ namespace maps {
             if ((b >= 1 + ro) || (ro == 0))
                 return 1.0;
             else {
+                T s0, s2, s8;
                 if (lmax == 0)
-                    return solver::QuadLimbDark<T>(G, b, ro, g(0), 0, 0);
+                    solver::QuadLimbDark<T>(G, b, ro, g(0), 0, 0, s0, s2, s8);
                 else if (lmax == 1)
-                    return solver::QuadLimbDark<T>(G, b, ro, g(0), g(2), 0);
+                    solver::QuadLimbDark<T>(G, b, ro, g(0), g(2), 0, s0, s2, s8);
                 else
-                    return solver::QuadLimbDark<T>(G, b, ro, g(0), g(2), g(8));
+                    solver::QuadLimbDark<T>(G, b, ro, g(0), g(2), g(8), s0, s2, s8);
+                return s0 * g(0) + s2 * g(2) + s8 * g(8);
             }
         }
 
@@ -1178,7 +1178,7 @@ namespace maps {
         } else {
 
             // Compute the sT vector
-            solver::computesT(G, b, ro, ARRy);
+            solver::computesT(G, b, ro, g);
 
             // Dot the result in and we're done
             return G.sT * g;
@@ -1204,30 +1204,23 @@ namespace maps {
             return 0;
         }
 
-        /*
-        TODO: We can really speed things up here...
         // If we're doing quadratic limb darkening, let's skip all the overhead
         if ((lmax <= 2) && (ro < 1)) {
             if ((b >= 1 + ro) || (ro == 0)) {
-                dFdu = Vector<T>::Zero(lmax);
+                dFdu = Vector<Grad>::Zero(lmax + 1);
                 return 1.0;
             } else {
-                if (lmax == 0) {
-                    // TODO
-                    res = solver::QuadLimbDark<Grad>(G, b, ro, g(0), 0, 0);
-                    return res;
-                } else if (lmax == 1) {
-                    // TODO
-                    res = solver::QuadLimbDark<Grad>(G, b, ro, g(0), g(2), 0);
-                    return res;
-                } else {
-                    // TODO
-                    res = solver::QuadLimbDark<Grad>(G, b, ro, g(0), g(2), g(8));
-                    return res;
-                }
+                Grad s0, s2, s8;
+                if (lmax == 0)
+                    solver::QuadLimbDark<Grad>(G, b, ro, g(0), 0, 0, s0, s2, s8);
+                else if (lmax == 1)
+                    solver::QuadLimbDark<Grad>(G, b, ro, g(0), g(2), 0, s0, s2, s8);
+                else
+                    solver::QuadLimbDark<Grad>(G, b, ro, g(0), g(2), g(8), s0, s2, s8);
+                dFdu = (s0 * dgdu.row(0) + s2 * dgdu.row(2) + s8 * dgdu.row(8)).transpose();
+                return s0 * g(0) + s2 * g(2) + s8 * g(8);
             }
         }
-        */
 
         // No occultation: cake
         if ((b >= 1 + ro) || (ro == 0)) {
@@ -1238,11 +1231,8 @@ namespace maps {
         // Occultation
         } else {
 
-            // Perform the change of basis
-            ARRy = C.A * y;
-
             // Compute the sT vector
-            solver::computesT(G, b, ro, ARRy);
+            solver::computesT(G, b, ro, g);
 
             // Compute the map derivs
             dFdu = G.sT * dgdu;

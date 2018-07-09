@@ -186,8 +186,7 @@ namespace solver {
     // Note, importantly, that the term g(4) is *always* 1/3 * g(8), so we fold
     // that into `s8` below.
     template <typename T>
-    inline T QuadLimbDark(Greens<T>& G, const T& b, const T& r, const T& g0, const T& g2, const T& g8) {
-        T s0, s8;
+    inline void QuadLimbDark(Greens<T>& G, const T& b, const T& r, const T& g0, const T& g2, const T& g8, T& s0_val, T& s2_val, T& s8_val) {
         T b2 = b * b;
         T r2 = r * r;
         T pi_over_2 = 0.5 * G.pi;
@@ -208,13 +207,13 @@ namespace solver {
             T clsl = cl * sl;
             T cl3 = cl * cl * cl;
             T sl3 = sl * sl * sl;
-            s0 = l2 + clsl - r2 * (p2 + cpsp);
-            s8 = 0.5 * l2 + (1. / 3.) * clsl - (1. / 6.) * cl3 * sl + (1. / 6.) * cl * sl3 -
-                 (r2 * b2 * (p2 + cpsp) - r3 * b * cp * (1. + (1. / 3.) * cp2 - sp2) +
-                  r4 * (0.5 * p2 + (1. / 3.) * cpsp - (1. / 6.) * cp3 * sp + (1. / 6.) * cp * sp3));
+            s0_val = l2 + clsl - r2 * (p2 + cpsp);
+            s8_val = 0.5 * l2 + (1. / 3.) * clsl - (1. / 6.) * cl3 * sl + (1. / 6.) * cl * sl3 -
+                     (r2 * b2 * (p2 + cpsp) - r3 * b * cp * (1. + (1. / 3.) * cp2 - sp2) +
+                      r4 * (0.5 * p2 + (1. / 3.) * cpsp - (1. / 6.) * cp3 * sp + (1. / 6.) * cp * sp3));
         } else {
-            s0 = G.pi * (1 - r2);
-            s8 = pi_over_2 - G.pi * r2 * (0.5 * r2 + b2);
+            s0_val = G.pi * (1 - r2);
+            s8_val = pi_over_2 - G.pi * r2 * (0.5 * r2 + b2);
         }
         G.b = b;
         G.r = r;
@@ -223,7 +222,7 @@ namespace solver {
         else
             G.ksq.reset((1 - (b - r)) * (1 + (b - r)) / (4 * b * r));
         G.ELL.reset();
-        return s0 * g0 + s2(G) * g2 + s8 * g8;
+        s2_val = s2(G);
     }
 
     // Vieta's theorem coefficient A_{i,u,v}
