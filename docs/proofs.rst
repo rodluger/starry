@@ -1,19 +1,11 @@
 Proofs
 ======
 
-.. raw:: html
-
-   <div style="line-height:1.5em;">
-   Below you'll find proofs, derivations, and numerical validations
-   of the principal equations in the
-   <a href="https://github.com/rodluger/starry/raw/master-pdf/tex/starry.pdf">starry paper</a>.
-   Any equation labeled with the
-   <img src="_images/proof.png" width="25px"></img>
-   icon links to one of the proofs on this page.
-   <br/><br/>
+Below you'll find proofs, derivations, or numerical validations
+of the principal equations in the :py:obj:`starry` paper.
 
 .. toctree::
-   :titlesonly: 
+   :titlesonly:
    :maxdepth: 1
 
 
@@ -33,7 +25,7 @@ Proofs
    Equations (D33), (D34) <proofs/vieta.ipynb>
    Equations (D35), (D39) <proofs/PGn_reparam2.ipynb>
    Equation (D41) <proofs/IJHypergeo.ipynb>
-   Equation (D43) <proofs/IJSeries.ipynb>
+   Equation (D43) <proofs/IJseries.ipynb>
    Equations (D45), (D47) <proofs/IJupward.ipynb>
    Equation (D49) <proofs/IJdownward.ipynb>
    Equation (D50) <proofs/Ilargek.ipynb>
