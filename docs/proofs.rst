@@ -12,8 +12,8 @@ Proofs
    icon links to one of the proofs on this page.
    <br/><br/>
 
-.. toctree:: 
-   :titlesonly:
+.. toctree::
+   :titlesonly: 
    :maxdepth: 1
 
 
