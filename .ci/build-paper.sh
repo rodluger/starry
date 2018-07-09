@@ -19,7 +19,7 @@ then
         git add docs/proofs.rst
         git commit -m "updating proofs.rst [skip ci]"
         git push https://$GITHUB_USER:$GITHUB_API_KEY@github.com/$TRAVIS_REPO_SLUG $TRAVIS_BRANCH || echo "Failed to push `proofs.rst`"
-        cd $TRAVIS_BUILD_DIR/tex && rm -r tmp
+        cd $TRAVIS_BUILD_DIR/tex && rm -rf tmp
     fi
 
     # Force push the paper to GitHub

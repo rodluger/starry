@@ -6,7 +6,7 @@ of the principal equations in the :py:obj:`starry` paper.
 
 .. toctree::
    :titlesonly:
-   :maxdepth: 1 
+   :maxdepth: 1
 
 
    Equation (7) <proofs/bp.ipynb>
