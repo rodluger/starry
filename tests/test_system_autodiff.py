@@ -101,7 +101,7 @@ def test_system():
     # to a numerical version
     def compare(name, delta, tol=1e-6):
         assert np.max(np.abs(system.gradient[name] -
-                             numerical_gradient(**delta)) < tol)
+                             numerical_gradient(**delta))) < tol
 
     compare('star.u_1', dict(du1=1e-8))
     compare('star.u_2', dict(du2=1e-8))

@@ -8,8 +8,18 @@ __version__ = '0.0.2'
 
 
 # Custom compiler flags
-macros = dict(STARRY_NGRAD=12,
+macros = dict(STARRY_NGRAD=13,
               STARRY_NMULTI=32)
+
+# Override with user values
+for key, value in macros.items():
+    macros[key] = os.getenv(key, value)
+
+# HACK: We should probably follow the instructions here:
+# https://eigen.tuxfamily.org/dox/group__TopicStructHavingEigenMembers.html
+# but it's easier to require the gradient length to be odd!
+if int(macros['STARRY_NGRAD']) % 2 == 0:
+    macros['STARRY_NGRAD'] = int(macros['STARRY_NGRAD']) + 1
 
 # Enable optimization?
 optimize = True
@@ -52,8 +62,7 @@ ext_modules = [
             "lib/LBFGSpp/include"
         ],
         language='c++',
-        define_macros=[(key, os.getenv(key, value))
-                       for key, value in macros.items()]
+        define_macros=[(key, value) for key, value in macros.items()]
     ),
 ]
 

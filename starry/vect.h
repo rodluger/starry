@@ -291,7 +291,7 @@ namespace vect {
         int l, m, n, i, j;
 
         // Check that our derivative vectors are large enough
-        int ngrad = 7;
+        int ngrad = 4;
         if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
 
         // Vectorize only the inputs of type double
@@ -299,14 +299,14 @@ namespace vect {
         vectorize_args(arg2, arg3, arg4, arg5, arg2_v, arg3_v, arg4_v, arg5_v);
 
         // Declare our gradient types
-        vector<string> names {"axis_x", "axis_y", "axis_z", "theta", "xo", "yo", "ro"};
-        Grad arg1_x(arg1(0), STARRY_NGRAD, 0);
-        Grad arg1_y(arg1(1), STARRY_NGRAD, 1);
-        Grad arg1_z(arg1(2), STARRY_NGRAD, 2);
-        Grad arg2_g(0., STARRY_NGRAD, 3);
-        Grad arg3_g(0., STARRY_NGRAD, 4);
-        Grad arg4_g(0., STARRY_NGRAD, 5);
-        Grad arg5_g(0., STARRY_NGRAD, 6);
+        vector<string> names {"theta", "xo", "yo", "ro"};
+        Grad arg1_x = arg1(0);
+        Grad arg1_y = arg1(1);
+        Grad arg1_z = arg1(2);
+        Grad arg2_g(0., STARRY_NGRAD, 0);
+        Grad arg3_g(0., STARRY_NGRAD, 1);
+        Grad arg4_g(0., STARRY_NGRAD, 2);
+        Grad arg5_g(0., STARRY_NGRAD, 3);
         UnitVector<Grad> arg1_g({arg1_x, arg1_y, arg1_z});
         Grad tmp;
         Vector<double> result(arg2_v.size());
@@ -355,7 +355,7 @@ namespace vect {
         int l, m, n, i, j;
 
         // Check that our derivative vectors are large enough
-        int ngrad = 6;
+        int ngrad = 3;
         if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
 
         // Vectorize only the inputs of type double
@@ -364,12 +364,12 @@ namespace vect {
 
         // Declare our gradient types
         vector<string> names {"axis_x", "axis_y", "axis_z", "theta", "x", "y"};
-        Grad arg1_x(arg1(0), STARRY_NGRAD, 0);
-        Grad arg1_y(arg1(1), STARRY_NGRAD, 1);
-        Grad arg1_z(arg1(2), STARRY_NGRAD, 2);
-        Grad arg2_g(0., STARRY_NGRAD, 3);
-        Grad arg3_g(0., STARRY_NGRAD, 4);
-        Grad arg4_g(0., STARRY_NGRAD, 5);
+        Grad arg1_x = arg1(0);
+        Grad arg1_y = arg1(1);
+        Grad arg1_z = arg1(2);
+        Grad arg2_g(0., STARRY_NGRAD, 0);
+        Grad arg3_g(0., STARRY_NGRAD, 1);
+        Grad arg4_g(0., STARRY_NGRAD, 2);
         UnitVector<Grad> arg1_g({arg1_x, arg1_y, arg1_z});
         Grad tmp;
         Vector<double> result(arg2_v.size());
