@@ -952,6 +952,7 @@ namespace maps {
             T evaluate(const T& x0=0, const T& y0=0);
             void update();
             bool psd();
+            bool mono();
             void set_coeff(int l, T coeff);
             T get_coeff(int l);
             void reset();
@@ -1059,6 +1060,27 @@ namespace maps {
     bool LimbDarkenedMap<T>::psd() {
         Vector<T> c = -u.reverse();
         c(c.size() - 1) = 1;
+        int nroots = sturm::polycountroots(c);
+        if (nroots == 0)
+            return true;
+        else
+            return false;
+    }
+
+    // Check whether the map is monotonically decreasing
+    // toward the limb using Sturm's theorem on the derivative
+    template <class T>
+    bool LimbDarkenedMap<T>::mono() {
+        // The radial profile is
+        //      I = 1 - (1 - mu)^1 u1 - (1 - mu)^2 u2 - ...
+        //        = x^0 c0 + x^1 c1 + x^2 c2 + ...
+        // where x = (1 - mu), c = -u, c(0) = 1
+        // We want dI/dx < 0 everywhere, so we want the polynomial
+        //      P = x^0 c1 + 2x^1 c2 + 3x^2 c3 + ...
+        // to have zero roots in the interval [0, 1].
+        Vector<T> du = u.segment(1, lmax);
+        for (int i=0; i<lmax; i++) du(i) *= (i + 1);
+        Vector<T> c = -du.reverse();
         int nroots = sturm::polycountroots(c);
         if (nroots == 0)
             return true;

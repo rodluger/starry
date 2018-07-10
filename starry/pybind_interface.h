@@ -473,6 +473,8 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
 
         .def("psd", &maps::LimbDarkenedMap<MAPTYPE>::psd, docs.LimbDarkenedMap.psd)
 
+        .def("mono", &maps::LimbDarkenedMap<MAPTYPE>::mono, docs.LimbDarkenedMap.mono)
+
         .def_property_readonly("lmax", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.lmax;}, docs.LimbDarkenedMap.lmax)
 
         .def_property_readonly("y", [](maps::LimbDarkenedMap<MAPTYPE> &map){

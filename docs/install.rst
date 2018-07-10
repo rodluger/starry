@@ -36,7 +36,7 @@ Custom builds
 
 Some users may want to change the values of certain compile-time constants.
 For instance, by default :py:obj:`starry` computes the gradient of the flux
-with respect to at most 43 parameters. This is almost certainly overkill
+with respect to at most 13 parameters. This should be plenty
 for most applications, but if you really need more derivatives, you'll have
 to change the :py:obj:`STARRY_NGRAD` compiler flag and re-build the code.
 To do this, you'll need to clone the development version from github:
