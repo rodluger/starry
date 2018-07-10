@@ -5,7 +5,7 @@ Below you'll find proofs, derivations, or numerical validations
 of the principal equations in the :py:obj:`starry` paper.
 
 .. toctree::
-   :titlesonly:
+   :titlesonly: 
    :maxdepth: 1
 
 
