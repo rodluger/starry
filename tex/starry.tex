@@ -1024,7 +1024,7 @@ Figure~\ref{fig:smiley}.
 
 %
 %
-\begin{figure}[ht!]
+\begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=0.925\linewidth]{figures/smiley.pdf}
     \caption{\label{fig:smiley}
@@ -1065,9 +1065,9 @@ $l_\mathrm{max} = 10$, rotated successively about $\yhat$.
 %
 \begin{figure}[ht!]
     \begin{centering}
-    \includegraphics[width=0.8\linewidth]{figures/earth.jpg}
+    \includegraphics[width=0.75\linewidth]{figures/earth.jpg}
     \\[1em]
-    \includegraphics[width=0.85\linewidth]{figures/earth.pdf}
+    \includegraphics[width=0.8\linewidth]{figures/earth.pdf}
     \caption{\label{fig:earth}
              A simplified two-color map of the cloudless Earth (top) and the
              corresponding tenth-degree spherical harmonic expansion,
@@ -1572,7 +1572,7 @@ of the latter.
 
 \begin{figure}[p!]
     \begin{centering}
-    \includegraphics[width=0.95\linewidth]{figures/stability.pdf}
+    \includegraphics[width=0.925\linewidth]{figures/stability.pdf}
     \caption{\label{fig:stability}
              Error in the terms of the solution vector $\mathbf{s}$ for a small
              occultor ($r = 0.01$, left) and a large occultor ($r = 100$, right),
@@ -1588,6 +1588,18 @@ of the latter.
     \end{centering}
 \end{figure}
 
+\begin{figure}[p!]
+    \begin{centering}
+    \includegraphics[width=0.925\linewidth]{figures/stability_grad.pdf}
+    \caption{\label{fig:stability_grad}
+             Similar to Figure~\ref{fig:stability}, but showing instead the
+             error on the \emph{derivative} of the flux with respect to the impact
+             parameter computed analytically with autodifferentiation. The error is computed
+             relative to a numerical derivative computed at 128 bit precision.
+             \codelink{stability_grad}}
+    \end{centering}
+\end{figure}
+
 To test for numerical stability, we also compare our calculations to
 the same calculations performed at quadruple (128-bit) floating-point precision.
 Figure~\ref{fig:stability} shows the relative error on the computation of each of the
@@ -1600,18 +1612,6 @@ error scaled to the largest value of the function during the occultation. In cas
 where the largest value of the flux is less than $10^{-9}$, we scale the relative
 error to this value to avoid division by a very small number. In all cases, the
 fractional error is less than 1 ppb.
-
-\begin{figure}[p!]
-    \begin{centering}
-    \includegraphics[width=0.95\linewidth]{figures/stability_grad.pdf}
-    \caption{\label{fig:stability_grad}
-             Similar to Figure~\ref{fig:stability}, but showing instead the
-             error on the \emph{derivative} of the flux with respect to the impact
-             parameter computed analytically with autodifferentiation. The error is computed
-             relative to a numerical derivative computed at 128 bit precision.
-             \codelink{stability_grad}}
-    \end{centering}
-\end{figure}
 
 In Figure~\ref{fig:stability_grad} we show similar curves for the numerical error
 on the \emph{derivative} of the flux with respect to the impact parameter. Our
