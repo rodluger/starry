@@ -9,7 +9,10 @@ __version__ = '0.0.2'
 
 # Custom compiler flags
 macros = dict(STARRY_NGRAD=13,
-              STARRY_NMULTI=32)
+              STARRY_NMULTI=32,
+              STARRY_IJ_MAX_ITER=200,
+              STARRY_ELLIP_MAX_ITER=200,
+              STARRY_KEPLER_MAX_ITER=100)
 
 # Override with user values
 for key, value in macros.items():
@@ -23,6 +26,8 @@ if int(macros['STARRY_NGRAD']) % 2 == 0:
 
 # Enable optimization?
 optimize = True
+if (os.getenv('STARRY_NO_OPT', 0)):
+    optimize = False
 
 
 class get_pybind_include(object):

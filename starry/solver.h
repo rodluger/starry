@@ -574,12 +574,11 @@ namespace solver {
                         T k2inv = 1 / ksq();
                         T fe = 2 * (2 - k2inv);
                         T fk = -1 + k2inv;
-                        value(0)= (2.0 / 3.0) * ellip::CEL(k2inv, kc, T(1), T(fk + fe), T(fk + fe * (1 - k2inv)), pi);
+                        value(0) = (2.0 / 3.0) * ellip::CEL(k2inv, kc, T(1), T(fk + fe), T(fk + fe * (1 - k2inv)), pi);
                         fe = -6 * ksq() + 26 - 16 * k2inv;
                         fk = 2 * (1 - k2inv) * (3 * ksq() - 4);
                         value(1) = ellip::CEL(k2inv, kc, T(1), T(fk + fe), T(fk + fe * (1 - k2inv)), pi) / 15.;
                         */
-
 
                     } else {
 
@@ -596,7 +595,6 @@ namespace solver {
                         fk = (1 - ksq()) * (8 - 9 * ksq());
                         value(1) = 2 / (15 * ksq() * k) * ellip::CEL(ksq(), kc, T(1), T(fk + fe), T(fk + fe * (1 - ksq())), pi);
                         */
-
 
                     }
 

@@ -267,7 +267,8 @@ namespace orbital {
                 T f_eclipse = 1.5 * M_PI - w;
                 T E_eclipse = atan2(sqrt(1 - ecc2) * sin(f_eclipse), ecc + cos(f_eclipse));
                 T M_eclipse = E_eclipse - ecc * sin(E_eclipse);
-                theta0 = -(porb / prot) * (M_eclipse - M0);
+                if (prot == 0) theta0 = 0;
+                else theta0 = -(porb / prot) * (M_eclipse - M0);
 
             };
 
@@ -475,7 +476,7 @@ namespace orbital {
                    const double& r=0.1,
                    const double& L=0.,
                    const UnitVector<double>& axis=yhat,
-                   const double& prot=0.,
+                   const double& prot=INFINITY,
                    const double& a=50.,
                    const double& porb=1.,
                    const double& inc=90.,

@@ -788,8 +788,25 @@ namespace maps {
             for (int l = 0; l < lmax + 1; l++)
                 dFdy.segment(l * l, 2 * l + 1) = sTA.segment(l * l, 2 * l + 1) * RR.Real[l];
 
-            // Dot the result in and we're done
-            return G.sT * ARRy;
+            // Dot the result in to get the flux
+            Grad res = G.sT * ARRy;
+
+            // HACK: The fudges below are necessary to fix instabilities in the gradients
+            // in certain problematic limits.
+            if (b < STARRY_GRAD_EPS_B_ZERO) {
+
+                // Instability near b = 0
+                // TODO
+
+
+            } else if ((ro <= 1) && (abs(b - (1 - ro)) < STARRY_GRAD_EPS_BPR_ONE)) {
+
+                // Instability near b = 1 - r
+                // TODO
+
+            }
+
+            return res;
 
         }
 

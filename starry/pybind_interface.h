@@ -776,7 +776,7 @@ void add_Planet(py::class_<orbital::Planet<MAPTYPE>>& PyPlanet, const docstrings
                       const double&, const double&,
                       const double&>(),
                       "lmax"_a=2, "r"_a=0.1, "L"_a=0., "axis"_a=yhat,
-                      "prot"_a=0, "a"_a=50., "porb"_a=1,
+                      "prot"_a=INFINITY, "a"_a=50., "porb"_a=1,
                       "inc"_a=90., "ecc"_a=0, "w"_a=90, "Omega"_a=0,
                       "lambda0"_a=90, "tref"_a=0)
 

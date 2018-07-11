@@ -41,7 +41,7 @@ Defines compiler constants used throughout the code.
 #define STARRY_EPS_BMR_ONE                      1e-5
 #endif
 
-// Re-parameterize solution vector when 1 - STARRY_EPS_BMR_ONE < abs(b + r) < 1 + STARRY_EPS_BMR_ONE
+// Re-parameterize solution vector when 1 - STARRY_EPS_BMR_ONE < abs(b + r) < 1 + STARRY_EPS_BPR_ONE
 #ifndef STARRY_EPS_BPR_ONE
 #define STARRY_EPS_BPR_ONE                      1e-5
 #endif
@@ -49,6 +49,17 @@ Defines compiler constants used throughout the code.
 // Re-parameterize solution vector when abs(b) < STARRY_EPS_B_ZERO
 #ifndef STARRY_EPS_B_ZERO
 #define STARRY_EPS_B_ZERO                       1e-1
+#endif
+
+// Fudge gradient when when abs(b) < STARRY_GRAD_EPS_B_ZERO to avoid instabilities
+#ifndef STARRY_GRAD_EPS_B_ZERO
+#define STARRY_GRAD_EPS_B_ZERO                  1e-6
+#endif
+
+
+// Fudge gradient when when when 1 - STARRY_GRAD_EPS_BMR_ONE < abs(b + r) < 1 + STARRY_GRAD_EPS_BPR_ONE
+#ifndef STARRY_GRAD_EPS_BPR_ONE
+#define STARRY_GRAD_EPS_BPR_ONE                 1e-14
 #endif
 
 #endif

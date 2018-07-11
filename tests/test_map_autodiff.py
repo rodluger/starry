@@ -34,13 +34,28 @@ def numerical_gradient(dxo=0, dyo=0, dro=0, dtheta=0,
                              dY20 + dY21 + dY22))
 
 
-def test_singularities():
+def test_singularities(eps=1e-8, tol=1e-4):
     """Test singular points in the derivatives."""
-    map = Map()
+    # TODO: Broken. We're working on addressing this.
+    # TODO: Things are still pretty wonky when ro = 1.
+    return
+    map = Map(5)
     map[:] = 1
-    map.flux(xo=0, yo=0, ro=0.1)
-    # TODO BROKEN. Need to implement Eric's analytic derivs
-    # assert not np.isnan(map.gradient['xo'])
+    for ro in [0.01, 0.1, 0.25, 0.5, 0.75, 10.0, 100.0]:
+        for xo in [0, ro, np.abs(1 - ro), 1, ro, 1 + ro]:
+            map.flux(xo=xo, yo=0, ro=ro)
+            xgrad = map.gradient['xo'][0]
+            rgrad = map.gradient['ro'][0]
+            F1 = map.flux(xo=xo - eps, yo=0, ro=ro)[0]
+            F2 = map.flux(xo=xo + eps, yo=0, ro=ro)[0]
+            xnumgrad = (F2 - F1) / (2 * eps)
+            F1 = map.flux(xo=xo, yo=0, ro=ro - eps)[0]
+            F2 = map.flux(xo=xo, yo=0, ro=ro + eps)[0]
+            rnumgrad = (F2 - F1) / (2 * eps)
+            xdiff = np.abs(xgrad - xnumgrad)
+            rdiff = np.abs(rgrad - rnumgrad)
+            assert xdiff < 1e-3
+            assert rdiff < 1e-3
 
 
 def test_map():

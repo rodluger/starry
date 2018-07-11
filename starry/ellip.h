@@ -249,6 +249,7 @@ namespace ellip {
   }
 
   // Gradient of CEL
+  // NOTE: I don't think this is currently used in the code.
   template <typename T>
   Eigen::AutoDiffScalar<T> CEL (const Eigen::AutoDiffScalar<T>& ksq,
                                 const Eigen::AutoDiffScalar<T>& kc,
@@ -291,7 +292,9 @@ namespace ellip {
 
     return Eigen::AutoDiffScalar<T>(
       CEL_value,
-      ksq.derivatives() * dCdkc / (-2 * kc_value) +
+      // TODO: Why do I not need this line ?!
+      // Tests show the gradient is correect without it
+      //ksq.derivatives() * dCdkc / (-2 * kc_value) +
       kc.derivatives() * dCdkc +
       p.derivatives() * dCdp +
       a.derivatives() * dCda +
