@@ -22,6 +22,7 @@ Defines the surface map class.
 namespace maps {
 
     using std::abs;
+    using std::max;
     using std::string;
     using namespace LBFGSpp;
 
@@ -725,10 +726,22 @@ namespace maps {
     // Compute the total flux during or outside of an occultation
     // **Gradient over-ride: compute map derivs manually for speed**
     template <>
-    Grad Map<Grad>::flux(const UnitVector<Grad>& axis, const Grad& theta, const Grad& xo, const Grad& yo, const Grad& ro) {
+    Grad Map<Grad>::flux(const UnitVector<Grad>& axis, const Grad& theta, const Grad& xo, const Grad& yo_, const Grad& ro) {
+
+        // Local copy in case we need to nudge it
+        Grad yo = yo_;
 
         // Impact parameter
-        Grad b = sqrt(xo * xo + yo * yo);
+        Grad b = sqrt(xo * xo + yo_ * yo_);
+
+        // HACK
+        if (b == 0) {
+            // TODO
+        } else if (b == 1 - ro) {
+            // TODO
+        } else if (b == 1 + ro) {
+            // TODO
+        }
 
         // Check for complete occultation
         if (b <= ro - 1) {
@@ -766,7 +779,7 @@ namespace maps {
             // Align occultor with the +y axis if necessary
             if ((b > 0) && (xo != 0)) {
                 UnitVector<Grad> zaxis({0, 0, 1});
-                Grad yo_b(yo / b);
+                Grad yo_b(yo_ / b);
                 Grad xo_b(xo / b);
                 rotate(zaxis, yo_b, xo_b, (*ptry), tmpvec);
                 ptry = &tmpvec;
@@ -790,21 +803,6 @@ namespace maps {
 
             // Dot the result in to get the flux
             Grad res = G.sT * ARRy;
-
-            // HACK: The fudges below are necessary to fix instabilities in the gradients
-            // in certain problematic limits.
-            if (b < STARRY_GRAD_EPS_B_ZERO) {
-
-                // Instability near b = 0
-                // TODO
-
-
-            } else if ((ro <= 1) && (abs(b - (1 - ro)) < STARRY_GRAD_EPS_BPR_ONE)) {
-
-                // Instability near b = 1 - r
-                // TODO
-
-            }
 
             return res;
 

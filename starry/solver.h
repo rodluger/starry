@@ -114,11 +114,12 @@ namespace solver {
             bool bK;
             bool bE;
             Power<T>& ksq;
+            T& invksq;
 
         public:
 
             // Constructor
-            Elliptic(Power<T>& ksq) : ksq(ksq) {
+            Elliptic(Power<T>& ksq, T& invksq) : ksq(ksq), invksq(invksq) {
                 reset();
             }
 
@@ -136,7 +137,7 @@ namespace solver {
                     else if (ksq() < 1)
                         vK = ellip::K(ksq());
                     else
-                        vK = ellip::K(T(1. / ksq()));
+                        vK = ellip::K(invksq);
                     bK = true;
                 }
                 return vK;
@@ -152,7 +153,7 @@ namespace solver {
                     else if (ksq() < 1)
                         vE = ellip::E(ksq());
                     else
-                        vE = ellip::E(T(1. / ksq()));
+                        vE = ellip::E(invksq);
                     bE = true;
                 }
                 return vE;
@@ -217,10 +218,13 @@ namespace solver {
         }
         G.b = b;
         G.r = r;
-        if ((b == 0) || (r == 0))
+        if ((b == 0) || (r == 0)) {
             G.ksq.reset(T(INFINITY));
-        else
+            G.invksq = 0;
+        } else {
             G.ksq.reset((1 - (b - r)) * (1 + (b - r)) / (4 * b * r));
+            G.invksq = (4 * b * r) / ((1 - (b - r)) * (1 + (b - r)));
+        }
         G.ELL.reset();
         s2_val = s2(G);
     }
@@ -346,7 +350,10 @@ namespace solver {
                     value(0, 0) = 2 * pi;
                     value(0, 1) = 0;
                 } else {
-                    value(0, 0) = 2 * asin(sinlam()) + pi;
+                    if (sinlam() < 0.5)
+                        value(0, 0) = 2 * asin(sinlam()) + pi;
+                    else
+                        value(0, 0) = 2 * acos(coslam()) + pi;
                     value(0, 1) = -2 * coslam(1);
                 }
                 set(0, 0) = true;
@@ -488,11 +495,12 @@ namespace solver {
             Power<T>& two;
             T& k;
             T& kc;
+            T& invksq;
             T pi;
 
         public:
 
-            J(int lmax, Elliptic<T>& ELL, Power<T>& ksq, Power<T>& two, T& k, T& kc) : vmax(max(1, 2 * lmax - 1)), ELL(ELL), ksq(ksq), two(two), k(k), kc(kc) {
+            J(int lmax, Elliptic<T>& ELL, Power<T>& ksq, Power<T>& two, T& k, T& kc, T& invksq) : vmax(max(1, 2 * lmax - 1)), ELL(ELL), ksq(ksq), two(two), k(k), kc(kc), invksq(invksq) {
                 set = Vector<bool>::Zero(vmax + 1);
                 value.resize(vmax + 1);
                 pi = T(BIGPI);
@@ -519,7 +527,7 @@ namespace solver {
                     // Downward recursion: compute J_vmax and J_{vmax - 1}
                     T tol;
                     if (ksq() >= 1)
-                        tol = mach_eps<T>() / ksq();
+                        tol = mach_eps<T>() * invksq;
                     else
                         tol = mach_eps<T>() * ksq();
                     for (int v : vvec) {
@@ -542,7 +550,7 @@ namespace solver {
                         T error = T(INFINITY);
                         while ((n < STARRY_IJ_MAX_ITER) && (abs(error) > tol)) {
                             if (ksq() >= 1)
-                                coeff *= (1.0 - 2.5 / n) * (1.0 - 0.5 / (n + v)) / ksq();
+                                coeff *= (1.0 - 2.5 / n) * (1.0 - 0.5 / (n + v)) * invksq;
                             else
                                 coeff *= (2.0 * n - 1.0) * (2.0 * (n + v) - 1.0) * 0.25 / (n * (n + v + 2)) * ksq();
                             error = coeff;
@@ -564,8 +572,8 @@ namespace solver {
                     if (ksq() >= 1) {
 
                         // Upward recursion: compute J_0 and J_1
-                        value(0) = (2.0 / 3.0) * (2 * (2 - 1. / ksq()) * ELL.E() - (1 - 1. / ksq()) * ELL.K());
-                        value(1) = (2.0 / 15.0) * ((-3 * ksq() + 13 - 8 / ksq()) * ELL.E() + (1 - 1 / ksq()) * (3 * ksq() - 4) * ELL.K());
+                        value(0) = (2.0 / 3.0) * (2 * (2 - invksq) * ELL.E() - (1 - invksq) * ELL.K());
+                        value(1) = (2.0 / 15.0) * ((-3 * ksq() + 13 - 8 * invksq) * ELL.E() + (1 - invksq) * (3 * ksq() - 4) * ELL.K());
 
                         // NOTE: These expressions are in principle more stable, but I have not seen
                         // this in practice. The advantage of the expressions above is that the elliptic
@@ -611,9 +619,15 @@ namespace solver {
                 if (!set(v)) {
                     if (set(vmax)) {
                         // Downward recursion (preferred)
-                        T f2 = ksq() * (2 * v + 1);
-                        T f1 = 2 * (3 + v + ksq() * (1 + v)) / f2;
-                        T f3 = (2 * v + 7) / f2;
+                        T f1, f2, f3;
+                        if (ksq() < 1) {
+                            f2 = ksq() * (2 * v + 1);
+                            f1 = 2 * (3 + v + ksq() * (1 + v)) / f2;
+                            f3 = (2 * v + 7) / f2;
+                        } else {
+                            f3 = (2 * v + 7) / (2 * v + 1) * invksq;
+                            f1 = (2. / (2. * v + 1)) * ((3 + v) * invksq + 1 + v);
+                        }
                         value(v) = f1 * get_value(v + 1) - f3 * get_value(v + 2);
                     } else if (set(0)) {
                         // Upward recursion
@@ -708,6 +722,7 @@ namespace solver {
             T kc;
             T fourbr32;
             T lfac;
+            T invksq;
 
             // Powers of basic variables
             Power<T> ksq;
@@ -743,10 +758,10 @@ namespace solver {
                    sinlam(0),
                    coslam(0),
                    two(0),
-                   ELL((*this).ksq),
+                   ELL((*this).ksq, (*this).invksq),
                    H_Q(lmax, (*this).sinlam, (*this).coslam),
                    I_P(lmax, (*this).ksq, (*this).k, (*this).kc),
-                   J_P(lmax, (*this).ELL, (*this).ksq, (*this).two, (*this).k, (*this).kc),
+                   J_P(lmax, (*this).ELL, (*this).ksq, (*this).two, (*this).k, (*this).kc, (*this).invksq),
                    A_P(lmax, (*this).delta) {
 
                 // Initialize the solution vector
@@ -780,8 +795,10 @@ namespace solver {
             ksq = T(INFINITY);
             G.k = T(INFINITY);
             G.kc = 1;
+            G.invksq = 0;
         } else {
             ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * b * r);
+            G.invksq = (4 * b * r) / ((1 - (b - r)) * (1 + (b - r)));
             G.k = sqrt(ksq);
             if (ksq > 1)
                 G.kc = sqrt(abs(((b + r) * (b + r) - 1) / ((b - r) * (b - r) - 1)));
@@ -798,6 +815,13 @@ namespace solver {
         if ((abs(1 - r) < b) && (b < 1 + r)) {
             G.sinlam.reset(0.5 * ((1. / b) + (b - r) * (1. + r / b)));
             G.coslam.reset(sqrt(1 - G.sinlam() * G.sinlam()));
+            // Stability override
+            if (G.sinlam() > 0.5) {
+                T delta = 1 - (b + r);
+                T eps = ((r / b) * delta + (delta * delta) / (2 * b));
+                G.sinlam.reset(1 + eps);
+                G.coslam.reset(sqrt(-eps * (2 + eps)));
+            }
         } else {
             G.sinlam.reset(1);
             G.coslam.reset(0);

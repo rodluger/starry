@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as pl
 import starry
 
-
 def is_even(n):
     """Return true if n is even."""
     if ((n % 2) != 0):
