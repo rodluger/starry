@@ -1614,9 +1614,11 @@ error to this value to avoid division by a very small number. In all cases, the
 fractional error is less than 1 ppb.
 
 In Figure~\ref{fig:stability_grad} we show similar curves for the numerical error
-on the \emph{derivative} of the flux with respect to the impact parameter. Our
-expressions are again stable to within much less than 1 ppb at nearly all values
-of $b$ for both small and large occultors.
+on the \emph{derivative} of the flux with respect to the impact parameter. While
+the derivatives are in general more prone to numerical instabilities, particularly in the
+limits $b \rightarrow |1 - r|$ and $b \rightarrow 1 + r$, we find that the error
+is less than 1 ppb over most of the domain for both small and large occultors. For
+large values of $l$ near the unstable regions, the error approaches 1 ppm.
 
 \begin{figure}[ht!]
     \begin{centering}
