@@ -36,9 +36,12 @@ def numerical_gradient(dxo=0, dyo=0, dro=0, dtheta=0,
 
 def test_singularities(eps=1e-8, tol=1e-4):
     """Test singular points in the derivatives."""
-    # TODO: Broken. We're working on addressing this.
+    # TODO: There's significant error in these limits still.
+    #       Fortunately, you have to get *really* close to
+    #       notice it...
+    # TODO: Currently only checking for NaNs. Check the actual
+    #       values to make sure they match the numerical derivs.
     # TODO: Things are still pretty wonky when ro = 1.
-    return
     map = Map(5)
     map[:] = 1
     for ro in [0.01, 0.1, 0.25, 0.5, 0.75, 10.0, 100.0]:
@@ -54,8 +57,8 @@ def test_singularities(eps=1e-8, tol=1e-4):
             rnumgrad = (F2 - F1) / (2 * eps)
             xdiff = np.abs(xgrad - xnumgrad)
             rdiff = np.abs(rgrad - rnumgrad)
-            assert xdiff < 1e-3
-            assert rdiff < 1e-3
+            assert not(np.isnan(xdiff))
+            assert not(np.isnan(rdiff))
 
 
 def test_map():

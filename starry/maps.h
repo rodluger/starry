@@ -728,20 +728,26 @@ namespace maps {
     template <>
     Grad Map<Grad>::flux(const UnitVector<Grad>& axis, const Grad& theta, const Grad& xo, const Grad& yo_, const Grad& ro) {
 
-        // Local copy in case we need to nudge it
+        // Local copy so we can nudge it away from the
+        // unstable point
         Grad yo = yo_;
 
         // Impact parameter
-        Grad b = sqrt(xo * xo + yo_ * yo_);
+        Grad b = sqrt(xo * xo + yo * yo);
 
-        // HACK
+        // Nudge away from point instabilities
         if (b == 0) {
-            // TODO
-        } else if (b == 1 - ro) {
-            // TODO
+            yo += mach_eps<double>();
+            b = sqrt(xo * xo + yo * yo);
+        } else if (b == (1 - ro)) {
+            b -= mach_eps<double>();
         } else if (b == 1 + ro) {
-            // TODO
+            b += mach_eps<double>();
         }
+
+        // TODO: There are still instabilities in the limits
+        // b --> |1 - r| and b --> 1 + r. They are not terrible
+        // (and only present in dF/db) but should be fixed.
 
         // Check for complete occultation
         if (b <= ro - 1) {
@@ -779,7 +785,7 @@ namespace maps {
             // Align occultor with the +y axis if necessary
             if ((b > 0) && (xo != 0)) {
                 UnitVector<Grad> zaxis({0, 0, 1});
-                Grad yo_b(yo_ / b);
+                Grad yo_b(yo / b);
                 Grad xo_b(xo / b);
                 rotate(zaxis, yo_b, xo_b, (*ptry), tmpvec);
                 ptry = &tmpvec;

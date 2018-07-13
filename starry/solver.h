@@ -22,6 +22,7 @@ namespace solver {
 
     using std::abs;
     using std::max;
+    using std::swap;
     using std::vector;
     using std::min;
 
@@ -391,12 +392,14 @@ namespace solver {
             Power<T>& ksq;
             T& k;
             T& kc;
+            T& kkc;
+            T& kap0;
             T sqrtpi;
             Vector<T> ivgamma;
 
         public:
 
-            I(int lmax, Power<T>& ksq, T& k, T& kc) : vmax(2 * lmax + 2), ksq(ksq), k(k), kc(kc) {
+            I(int lmax, Power<T>& ksq, T& k, T& kc, T& kkc, T& kap0) : vmax(2 * lmax + 2), ksq(ksq), k(k), kc(kc), kkc(kkc), kap0(kap0) {
                 set = Vector<bool>::Zero(vmax + 1);
                 value.resize(vmax + 1);
 
@@ -448,9 +451,8 @@ namespace solver {
                 } else {
 
                     // Upward recursion: compute I_0
-                    // NOTE: This is equal to 2 * asin(k),
-                    // but much more stable!
-                    value(0) = 2 * acos(kc);
+                    // This also works: value(0) = 2 * acos(kc);
+                    value(0) = kap0;
                     set(0) = true;
 
                 }
@@ -466,10 +468,10 @@ namespace solver {
                 } else if (!set(v)) {
                     if (set(vmax))
                         // Downward recursion (preferred)
-                        value(v) = 2.0 / (2 * v + 1) * ((v + 1) * get_value(v + 1) + ksq(v) * k * kc);
+                        value(v) = 2.0 / (2 * v + 1) * ((v + 1) * get_value(v + 1) + ksq(v) * kkc);
                     else if (set(0))
                         // Upward recursion
-                        value(v) = ((2 * v - 1) / 2.0 * get_value(v - 1) - ksq(v - 1) * k * kc) / v;
+                        value(v) = ((2 * v - 1) / 2.0 * get_value(v - 1) - ksq(v - 1) * kkc) / v;
                     else
                         throw errors::Recursion();
                     set(v) = true;
@@ -720,6 +722,8 @@ namespace solver {
             T r;
             T k;
             T kc;
+            T kkc;
+            T kap0;
             T fourbr32;
             T lfac;
             T invksq;
@@ -760,7 +764,7 @@ namespace solver {
                    two(0),
                    ELL((*this).ksq, (*this).invksq),
                    H_Q(lmax, (*this).sinlam, (*this).coslam),
-                   I_P(lmax, (*this).ksq, (*this).k, (*this).kc),
+                   I_P(lmax, (*this).ksq, (*this).k, (*this).kc, (*this).kkc, (*this).kap0),
                    J_P(lmax, (*this).ELL, (*this).ksq, (*this).two, (*this).k, (*this).kc, (*this).invksq),
                    A_P(lmax, (*this).delta) {
 
@@ -795,15 +799,34 @@ namespace solver {
             ksq = T(INFINITY);
             G.k = T(INFINITY);
             G.kc = 1;
+            G.kkc = T(INFINITY);
             G.invksq = 0;
         } else {
             ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * b * r);
             G.invksq = (4 * b * r) / ((1 - (b - r)) * (1 + (b - r)));
             G.k = sqrt(ksq);
-            if (ksq > 1)
+            if (ksq > 1) {
                 G.kc = sqrt(abs(((b + r) * (b + r) - 1) / ((b - r) * (b - r) - 1)));
-            else
+                G.kkc = G.k * G.kc;
+                G.kap0 = 0; // Not used!
+            } else {
                 G.kc = sqrt(abs(((b + r) * (b + r) - 1) / (4 * b * r)));
+                // Eric Agol's "kite" method to compute a stable
+                // version of k * kc and I_0 = kap0
+                T p0 = 1, p1 = b, p2 = r;
+                if (p0 < p1) swap(p0, p1);
+                if (p1 < p2) swap(p1, p2);
+                if (p0 < p1) swap(p0, p1);
+                T kite_area2 = sqrt((p0 + (p1 + p2)) * (p2 - (p0 - p1)) * (p2 + (p0 - p1)) * (p0 + (p1 - p2)));
+                G.kkc = kite_area2 / (4 * b * r);
+                G.kap0 = atan2(kite_area2, (r - 1) * (r + 1) + b * b);
+
+                // DEBUG
+                G.kkc = G.k * G.kc;
+                G.kap0 = 2 * acos(G.kc);
+
+
+            }
         }
         G.ksq.reset(ksq);
         G.fourbr32 = pow(4 * b * r, 1.5);
