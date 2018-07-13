@@ -1233,13 +1233,28 @@ namespace maps {
     // Compute the total flux during or outside of an occultation
     // **Gradient over-ride: compute map derivs manually for speed**
     template <>
-    Grad LimbDarkenedMap<Grad>::flux(const Grad& xo, const Grad& yo, const Grad& ro) {
+    Grad LimbDarkenedMap<Grad>::flux(const Grad& xo, const Grad& yo_, const Grad& ro) {
 
-        // The result
-        Grad res;
+        // Local copy so we can nudge it away from the
+        // unstable point
+        Grad yo = yo_;
 
         // Impact parameter
         Grad b = sqrt(xo * xo + yo * yo);
+
+        // Nudge away from point instabilities
+        if (b == 0) {
+            yo += mach_eps<double>();
+            b = sqrt(xo * xo + yo * yo);
+        } else if (b == (1 - ro)) {
+            b -= mach_eps<double>();
+        } else if (b == 1 + ro) {
+            b += mach_eps<double>();
+        }
+
+        // TODO: There are still instabilities in the limits
+        // b --> |1 - r| and b --> 1 + r. They are not terrible
+        // (and only present in dF/db) but should be fixed.
 
         // Check for complete occultation
         if (b <= ro - 1) {

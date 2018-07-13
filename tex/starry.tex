@@ -195,9 +195,11 @@ surface of the unit sphere, we have
     \label{eq:xyz}
     \x &= \sin\uptheta \cos\upphi \nonumber \\
     \y &= \sin\uptheta \sin\upphi \nonumber \\
-    \z &= \cos\uptheta \quad.
+    \z &= \cos\uptheta \quad,
 \end{align}
 %
+where $\uptheta$ is the inclination angle and $\upphi$ is the azimuthal angle
+(ISO convention).
 The observer is located along the $z$-axis at $z = \infty$ such
 that the projected disk of the body sits at the origin on the $xy$-plane with $\xhat$ to
 the right and $\yhat$ up.
@@ -273,9 +275,10 @@ to the spherical harmonic of degree and order given by
     \label{eq:lm}
     l &= \floor*{\sqrt{n}} \nonumber \\
     m &= n - \floor*{\sqrt{n}}^2 - \floor*{\sqrt{n}}
-    \quad.
+    \quad,
 \end{align}
 %
+where $\floor*{\bigdot}$ is the floor function.
 
 % ------------------------------------------------------------------------------
 \subsection{Change of basis}
@@ -507,7 +510,8 @@ intensity over a region $S$ of the projected disk of the body:
     \quad,
 \end{align}
 %
-where $\bvec{r}$ is a column vector whose $n^\mathrm{th}$ component is given by
+where $\AOne$, $\bvec{R}$, and $\bvec{y}$ are constant and
+$\bvec{r}$ is a column vector whose $n^\mathrm{th}$ component is given by
 %
 \begin{align}
     \label{eq:rn}
@@ -558,7 +562,7 @@ occurring), this may be written
 %
 where $\Gamma(\bigdot)$ is the gamma function.
 %
-\eq{phaseint} may be used to analyticly compute the rotational (thermal) phase curve of a body
+\eq{phaseint} may be used to analytically compute the rotational (thermal) phase curve of a body
 with an arbitrary surface map. Since $\bvec{r}$ and $\bvec{A_1}$ are independent
 of the map coefficients or its orientation, these may be pre-computed for
 computational efficiency.
@@ -650,7 +654,7 @@ For future reference, it can be shown that
         \arcsin\left(\frac{1 - r^2 + b^2}{2b}\right)
                                                 & \qquad |1 - r| < b < 1 + r \\
         \frac{\pi}{2}                           & \qquad b \le 1 - r
-        \quad,
+        \quad.
     \end{dcases}
     \label{eq:lambda}
 \end{proof}
@@ -751,7 +755,7 @@ where, as in \citet{Pal2012}, we define the \emph{primitive integrals}
 \end{align}
 %
 %
-where, as before,
+where we defined
 $c_\varphi \equiv \cos \varphi$
 and
 $s_\varphi \equiv \sin \varphi$
@@ -780,7 +784,7 @@ body of radius one.
              at the origin and has unit radius, while the occultor
              is centered at $(x_o, y_o)$ and has radius $r$. We first rotate
              the two bodies about the origin through an angle
-             $\theta = \nicefrac{\pi}{2} - \mathrm{arctan2}(y_o, x_o)$
+             $\omega = \nicefrac{\pi}{2} - \mathrm{arctan2}(y_o, x_o)$
              so the problem is symmetric about the $y$-axis. In this frame,
              the occultor is located at $(0, b)$, where
              $b = \sqrt{x_o^2 + y_o^2}$ is the impact parameter.
@@ -890,9 +894,8 @@ centered at the point $(x_o, y_o)$, we must:
     \item Compute the change-of-basis matrix $\bvec{A}$ (\S\ref{sec:basis}) to
           convert our vector of spherical harmonic coefficients to a vector
           of polynomial coefficients in the Green's basis
-          (Equation~\ref{eq:bg}). Since $\bvec{A}$ is the same for all
-          occultations, this matrix may be pre-computed to improve
-          computational speed.
+          (Equation~\ref{eq:bg}). Since $\bvec{A}$ is constant,
+          this matrix may be pre-computed for speed.
     \item Compute the solution vector $\bvec{s}$ (Equation~\ref{eq:sn}), with
           $\mathcal{P}(\bvec{G}_n)$ and $\mathcal{Q}(\bvec{G}_n)$ given by
           the equations in Appendix~\ref{app:generalterm}.
