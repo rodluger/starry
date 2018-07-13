@@ -451,7 +451,6 @@ namespace solver {
                 } else {
 
                     // Upward recursion: compute I_0
-                    // This also works: value(0) = 2 * acos(kc);
                     value(0) = kap0;
                     set(0) = true;
 
@@ -627,7 +626,7 @@ namespace solver {
                             f1 = 2 * (3 + v + ksq() * (1 + v)) / f2;
                             f3 = (2 * v + 7) / f2;
                         } else {
-                            f3 = (2 * v + 7) / (2 * v + 1) * invksq;
+                            f3 = (2. * v + 7) / (2. * v + 1) * invksq;
                             f1 = (2. / (2. * v + 1)) * ((3 + v) * invksq + 1 + v);
                         }
                         value(v) = f1 * get_value(v + 1) - f3 * get_value(v + 2);
@@ -801,6 +800,7 @@ namespace solver {
             G.kc = 1;
             G.kkc = T(INFINITY);
             G.invksq = 0;
+            G.kap0 = 0;
         } else {
             ksq = (1 - (b - r)) * (1 + (b - r)) / (4 * b * r);
             G.invksq = (4 * b * r) / ((1 - (b - r)) * (1 + (b - r)));
@@ -813,6 +813,9 @@ namespace solver {
                 G.kc = sqrt(abs(((b + r) * (b + r) - 1) / (4 * b * r)));
                 // Eric Agol's "kite" method to compute a stable
                 // version of k * kc and I_0 = kap0
+                // Used to be
+                //   G.kkc = G.k * G.kc;
+                //   G.kap0 = 2 * acos(G.kc);
                 T p0 = 1, p1 = b, p2 = r;
                 if (p0 < p1) swap(p0, p1);
                 if (p1 < p2) swap(p1, p2);
@@ -820,12 +823,6 @@ namespace solver {
                 T kite_area2 = sqrt((p0 + (p1 + p2)) * (p2 - (p0 - p1)) * (p2 + (p0 - p1)) * (p0 + (p1 - p2)));
                 G.kkc = kite_area2 / (4 * b * r);
                 G.kap0 = atan2(kite_area2, (r - 1) * (r + 1) + b * b);
-
-                // DEBUG
-                G.kkc = G.k * G.kc;
-                G.kap0 = 2 * acos(G.kc);
-
-
             }
         }
         G.ksq.reset(ksq);
