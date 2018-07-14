@@ -4,7 +4,6 @@ from setuptools.command.build_ext import build_ext
 import sys
 import os
 import glob
-import copy
 import setuptools
 __version__ = '0.1.0'
 
@@ -53,8 +52,8 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        "starry._starry",
-        ["starry/pybind_interface.cpp"],
+        'starry._starry',
+        ['starry/pybind_interface.cpp'],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
@@ -70,7 +69,7 @@ ext_modules = [
         ],
         language='c++',
         define_macros=[(key, value) for key, value in macros.items()]
-    )
+    ),
 ]
 
 
