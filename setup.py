@@ -3,6 +3,8 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import sys
 import os
+import glob
+import copy
 import setuptools
 __version__ = '0.1.0'
 
@@ -49,10 +51,17 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-ext_modules = [
-    Extension(
-        'starry',
-        ['starry/pybind_interface.cpp'],
+def make_ext(name=None):
+    if name is None:
+        mod = 'starry._starry'
+        src = 'starry/pybind_interface.cpp'
+    else:
+        mod = 'starry.' + name
+        src = 'starry/' + name + '.cpp'
+
+    return Extension(
+        mod,
+        [src],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
@@ -68,7 +77,13 @@ ext_modules = [
         ],
         language='c++',
         define_macros=[(key, value) for key, value in macros.items()]
-    ),
+    )
+
+
+ext_modules = [
+    make_ext(),
+    make_ext("grad"),
+    make_ext("multi"),
 ]
 
 
@@ -116,7 +131,7 @@ class BuildExt(build_ext):
             opts.append('/DVERSION_INFO=\\"%s\\"' %
                         self.distribution.get_version())
         for ext in self.extensions:
-            ext.extra_compile_args = opts
+            ext.extra_compile_args = list(opts + ext.extra_compile_args)
             if not optimize:
                 ext.extra_compile_args += ["-O0"]
             if sys.platform == "darwin":
@@ -134,13 +149,14 @@ setup(
     author_email='rodluger@gmail.com',
     url='https://github.com/rodluger/starry',
     description='Analytic occultation light curves for astronomy.',
-    long_description='',
+    long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
     license='GPL',
-    packages=['starry'],
+    packages=['starry', 'starry.maps'],
     ext_modules=ext_modules,
-    install_requires=['matplotlib',
-                      'starry_maps>=0.1.0',
-                      'pybind11>=2.2'],
+    install_requires=['pybind11>=2.2'],
     cmdclass={'build_ext': BuildExt},
+    data_files=[('starry.maps', glob.glob('starry/maps/*.jpg'))],
+    include_package_data=True,
     zip_safe=False,
 )

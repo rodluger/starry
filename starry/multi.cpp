@@ -12,20 +12,14 @@ using namespace pybind11::literals;
 using namespace docstrings;
 namespace py = pybind11;
 
-PYBIND11_MODULE(_starry, m) {
+PYBIND11_MODULE(multi, m) {
 
     // Disable auto signatures
     py::options options;
     options.disable_function_signatures();
 
-    // starry
-    docs<double> docs_starry;
-    add_starry(m, docs_starry);
-
-#ifdef VERSION_INFO
-    m.attr("__version__") = VERSION_INFO;
-#else
-    m.attr("__version__") = "dev";
-#endif
+    // starry.grad
+    docs<Multi> docs_multi;
+    add_starry(m, docs_multi);
 
 }
