@@ -778,7 +778,12 @@ namespace solver {
 
                 // Smallest coefficient for which we'll actually
                 // bother to compute the integrals
-                miny = 10 * mach_eps<T>();
+                // NOTE: When doing autodiff, we always want to
+                // compute the solution vector for all indices!!!
+                if (is_Grad(pi))
+                    miny = 0;
+                else
+                    miny = 10 * mach_eps<T>();
 
             }
 
@@ -863,7 +868,7 @@ namespace solver {
                 G.m = m;
                 G.mu = l - m;
                 G.nu = l + m;
-                if (abs(y(n)) > G.miny) {
+                if (abs(y(n)) >= G.miny) {
                     if ((l == 1) && (m == 0))
                         G.sT(n) = s2(G);
                     // These terms are zero because they are proportional to
