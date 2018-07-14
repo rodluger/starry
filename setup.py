@@ -51,17 +51,10 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-def make_ext(name=None):
-    if name is None:
-        mod = 'starry._starry'
-        src = 'starry/pybind_interface.cpp'
-    else:
-        mod = 'starry.' + name
-        src = 'starry/' + name + '.cpp'
-
-    return Extension(
-        mod,
-        [src],
+ext_modules = [
+    Extension(
+        "starry._starry",
+        ["starry/pybind_interface.cpp"],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
@@ -78,12 +71,6 @@ def make_ext(name=None):
         language='c++',
         define_macros=[(key, value) for key, value in macros.items()]
     )
-
-
-ext_modules = [
-    make_ext(),
-    make_ext("grad"),
-    make_ext("multi"),
 ]
 
 
