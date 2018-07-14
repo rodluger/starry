@@ -5,7 +5,7 @@ import sys
 import os
 import glob
 import setuptools
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 
 # Custom compiler flags
