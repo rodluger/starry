@@ -21,9 +21,6 @@ if ! command -v conda > /dev/null; then
       pip install sphinx
 fi
 
-# Install starry_maps
-pip install starry_maps
-
 # Display some info
 conda info -a
 
