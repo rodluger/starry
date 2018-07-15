@@ -26,8 +26,9 @@ if int(macros['STARRY_NGRAD']) % 2 == 0:
     macros['STARRY_NGRAD'] = int(macros['STARRY_NGRAD']) + 1
 
 # Enable optimization?
-optimize = True
-if (os.getenv('STARRY_NO_OPT', 0)):
+if int(os.getenv('STARRY_OPT', 1)):
+    optimize = True
+else:
     optimize = False
 
 
@@ -107,14 +108,16 @@ class BuildExt(build_ext):
         """Build the extensions."""
         ct = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])
-
-        if not any(f.startswith("-std") for f in opts):
+        if not any(f.startswith("-std=") for f in opts):
             if has_flag(self.compiler, "-std=c++14"):
                 opts.append('-std=c++14')
             elif has_flag(self.compiler, "-std=c++11"):
                 opts.append('-std=c++11')
             else:
                 raise RuntimeError("C++11 or 14 is required to compile starry")
+
+        if has_flag(self.compiler, '-ftemplate-depth=512'):
+            opts.append('-ftemplate-depth=512')
 
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' %

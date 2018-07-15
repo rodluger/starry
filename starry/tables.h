@@ -10,6 +10,8 @@ using good old template metaprogramming (>= C++14)
 #include <cmath>
 #include <boost/math/special_functions/factorials.hpp>
 #include <boost/math/special_functions/gamma.hpp>
+#include <cstddef>
+#include <array>
 #include "errors.h"
 
 // Square root of pi at double precision
@@ -24,88 +26,100 @@ using good old template metaprogramming (>= C++14)
 // Largest square root we're willing to tabulate
 #define MAXSQRT 300
 
-namespace tables {
+// Compile-time-generated tables of square roots and factorials
+// closely following this thread: https://stackoverflow.com/a/19016627
+namespace const_tables {
+
+    template<std::size_t... Is>
+    struct seq{};
+
+    template<std::size_t N, std::size_t... Is>
+    struct gen_seq : gen_seq<N-1, N-1, Is...>{};
+
+    template<std::size_t... Is>
+    struct gen_seq<0, Is...> : seq<Is...>{};
+
+    template<class Generator, std::size_t... Is>
+    constexpr auto generate_array_helper(Generator g, seq<Is...>)
+      -> std::array<decltype(g(std::size_t{}, sizeof...(Is))), sizeof...(Is)> {
+      return {{g(Is, sizeof...(Is))...}};
+    }
+
+    template<std::size_t tcount, class Generator>
+    constexpr auto generate_array(Generator g)
+      -> decltype( generate_array_helper(g, gen_seq<tcount>{}) ) {
+      return generate_array_helper(g, gen_seq<tcount>{});
+    }
 
     double constexpr sqrt_rec(double x, double curr, double prev) {
         return curr == prev ? curr : sqrt_rec(x, 0.5 * (curr + x / curr), curr);
     }
 
-    template <typename T>
-    double constexpr sqrt_(T x) {
-        return x > 0 ? sqrt_rec((double)x, (double)x, 0) : NAN;
+    double constexpr sqrt_(std::size_t curr, std::size_t total) {
+        return curr > 0 ? sqrt_rec((double)curr, (double)curr, 0) : 0;
     }
 
-    double constexpr factorial_(int x) {
-        return x > 0 ?
-               (x <= MAXFACT ? x * factorial_(x - 1) : INFINITY):
+    // NOTE: Since infinity is not a constexpr, invsqrt_(0) = 0
+    // We override this behavior in `invsqrt()` below.
+    double constexpr invsqrt_(std::size_t curr, std::size_t total) {
+        return curr > 0 ?
+               1. / sqrt_rec((double)curr, (double)curr, 0):
+               0;
+    }
+
+    // NOTE: Since infinity is not a constexpr, factorial_(MAXFACT) = 0
+    // We override this behavior in `factorial()` below.
+    double constexpr factorial_(std::size_t curr, std::size_t total) {
+        return curr > 0 ?
+               (curr <= MAXFACT ? curr * factorial_(curr - 1, total) : 0):
                1.0;
     }
 
-    double constexpr double_factorial_(int x) {
-        return x > 0 ?
-               (x <= MAXDOUBLEFACT ? x * double_factorial_(x - 2) : INFINITY):
+    // NOTE: Since infinity is not a constexpr, double_factorial_(MAXFACT) = 0
+    // We override this behavior in `double_factorial()` below.
+    double constexpr double_factorial_(std::size_t curr, std::size_t total) {
+        return curr > 0 ?
+               (curr <= MAXDOUBLEFACT ? curr * double_factorial_(curr - 2, total) : 0):
                1.0;
     }
 
-    double constexpr half_factorial_pos_(int x) {
-        return x > 1 ?
-               (x % 2 == 0 ? factorial_(x / 2) : half_factorial_pos_(x - 2) * (x / 2.0)) :
-               (x == 0 ? 1 : 0.5 * SQRTPI);
+    double constexpr half_factorial_pos_(std::size_t curr, std::size_t total) {
+        return curr > 1 ?
+               (curr % 2 == 0 ? factorial_(curr / 2, total) : half_factorial_pos_(curr - 2, total) * (curr / 2.0)) :
+               (curr == 0 ? 1 : 0.5 * SQRTPI);
     }
 
-    double constexpr half_factorial_neg_(int x) {
-        return x > 1 ?
-               (x % 2 == 0 ? INFINITY : half_factorial_neg_(x - 2) / (1.0 - x / 2.0)) :
-               (x == 0 ? 1 : SQRTPI);
+    double constexpr half_factorial_neg_(std::size_t curr, std::size_t total) {
+        return curr > 1 ?
+               (curr % 2 == 0 ? INFINITY : half_factorial_neg_(curr - 2, total) / (1.0 - curr / 2.0)) :
+               (curr == 0 ? 1 : SQRTPI);
     }
 
-    // The table of values, coded using the (prettier) C++14 syntax for `constexpr`.
-    // If needed, we could re-code this for C++11...
-    struct Table {
+    // The compile-time tabulated arrays
+    constexpr auto sqrt_int = generate_array<MAXSQRT + 1>(sqrt_);
+    constexpr auto invsqrt_int = generate_array<MAXSQRT + 1>(invsqrt_);
+    constexpr auto factorial = generate_array<MAXFACT + 1>(factorial_);
+    constexpr auto double_factorial = generate_array<MAXDOUBLEFACT + 1>(double_factorial_);
+    constexpr auto half_factorial_pos = generate_array<2 * MAXFACT + 1>(half_factorial_pos_);
+    constexpr auto half_factorial_neg = generate_array<2 * MAXFACT + 1>(half_factorial_neg_);
 
-        double sqrt_int[MAXSQRT + 1];
-        double invsqrt_int[MAXSQRT + 1];
-        double factorial[MAXFACT + 1];
-        double double_factorial[MAXDOUBLEFACT + 1];
-        double half_factorial_pos[2 * MAXFACT + 1];
-        double half_factorial_neg[2 * MAXFACT + 1];
+}
 
-        constexpr Table() : sqrt_int(), invsqrt_int(), factorial(), double_factorial(),
-                half_factorial_pos(), half_factorial_neg() {
-            for (auto i = 0; i <= MAXSQRT; ++i) {
-                sqrt_int[i] = sqrt_(i);
-                invsqrt_int[i] = i > 0 ? 1. / sqrt_int[i] : INFINITY;
-            }
-            for (auto i = 0; i <= MAXFACT; ++i) {
-                factorial[i] = factorial_(i);
-            }
-            for (auto i = 0; i <= MAXDOUBLEFACT; ++i) {
-                double_factorial[i] = double_factorial_(i);
-            }
-            for (auto i = 0; i <= 2 * MAXFACT; ++i) {
-                half_factorial_pos[i] = half_factorial_pos_(i);
-                half_factorial_neg[i] = half_factorial_neg_(i);
-            }
-        }
-
-    };
-
-    // Instantiate the table
-    constexpr auto table = Table();
+namespace tables {
 
     // Square root of n
     template <typename T>
-    T sqrt_int(int n) {
+    inline T sqrt_int(int n) {
         if (n < 0)
             throw errors::SqrtNegativeNumber();
         else if (n > MAXSQRT)
             return sqrt(T(n));
         else
-            return T(table.sqrt_int[n]);
+            return T(const_tables::sqrt_int[n]);
     }
 
     template <>
-    Multi sqrt_int(int n) {
+    inline Multi sqrt_int(int n) {
         if (n < 0)
             throw errors::SqrtNegativeNumber();
         else
@@ -114,17 +128,19 @@ namespace tables {
 
     // Inverse of the square root of n
     template <typename T>
-    T invsqrt_int(int n) {
+    inline T invsqrt_int(int n) {
         if (n < 0)
             throw errors::SqrtNegativeNumber();
         else if (n > MAXSQRT)
             return 1.0 / sqrt(T(n));
+        else if (n == 0)
+            return INFINITY;
         else
-            return T(table.invsqrt_int[n]);
+            return T(const_tables::invsqrt_int[n]);
     }
 
     template <>
-    Multi invsqrt_int(int n) {
+    inline Multi invsqrt_int(int n) {
         if (n < 0)
             throw errors::SqrtNegativeNumber();
         else
@@ -139,7 +155,7 @@ namespace tables {
         else if (n > MAXFACT)
             return T(INFINITY);
         else
-            return T(table.factorial[n]);
+            return T(const_tables::factorial[n]);
     }
 
     template <>
@@ -163,7 +179,7 @@ namespace tables {
         } else if (n > MAXDOUBLEFACT)
             return T(INFINITY);
         else
-            return T(table.double_factorial[n]);
+            return T(const_tables::double_factorial[n]);
     }
 
     template <>
@@ -186,9 +202,9 @@ namespace tables {
             return T(INFINITY);
         else {
             if (n < 0)
-                return T(table.half_factorial_neg[-n]);
+                return T(const_tables::half_factorial_neg[-n]);
             else
-                return T(table.half_factorial_pos[n]);
+                return T(const_tables::half_factorial_pos[n]);
         }
     }
 
