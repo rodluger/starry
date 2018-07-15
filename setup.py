@@ -111,7 +111,7 @@ class BuildExt(build_ext):
         if not any(f.startswith("-std") for f in opts):
             if has_flag(self.compiler, "-std=c++14"):
                 opts.append('-std=c++14')
-            if has_flag(self.compiler, "-std=c++11"):
+            elif has_flag(self.compiler, "-std=c++11"):
                 opts.append('-std=c++11')
             else:
                 raise RuntimeError("C++11 or 14 is required to compile starry")
