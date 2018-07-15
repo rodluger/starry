@@ -5,7 +5,7 @@ import sys
 import os
 import glob
 import setuptools
-__version__ = '0.1.1'
+__version__ = '0.1.0'
 
 
 # Custom compiler flags
@@ -107,10 +107,18 @@ class BuildExt(build_ext):
         """Build the extensions."""
         ct = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])
+
+        if not any(f.startswith("-std") for f in opts):
+            if has_flag(self.compiler, "-std=c++14"):
+                opts.append('-std=c++14')
+            if has_flag(self.compiler, "-std=c++11"):
+                opts.append('-std=c++11')
+            else:
+                raise RuntimeError("C++11 or 14 is required to compile starry")
+
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' %
                         self.distribution.get_version())
-            opts.append('-std=c++14')
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
         elif ct == 'msvc':
