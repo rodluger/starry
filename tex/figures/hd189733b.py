@@ -12,6 +12,8 @@ from scipy.optimize import minimize
 from scipy.io.idl import readsav
 import emcee, corner
 
+rcParams["text.usetex"] = True
+
 import starry
 
 class EclipseData(object):
@@ -705,7 +707,7 @@ class MCMCCartography(object):
         ax = plt.subplot(gs[0])
         ax2 = plt.subplot(gs[2])
 
-        ax.plot(data.df['time'], data.df['flux'], "o", alpha = 0.25, ms = 0.1, color='C0', zorder = 1)
+        ax.plot(data.df['time'], data.df['flux'], "o", alpha = 0.25, ms = 0.1, color='C0', zorder = -1)
         ax.plot(data.df_med['time'], data.df_med['flux'], label = "data w/ rolling median", zorder = 10, color = "C0")
 
         ax.set_xlabel('Time [days]', fontsize=14, fontweight='bold');
@@ -716,7 +718,7 @@ class MCMCCartography(object):
         ax.set_ylim(0.975, 1.025)
         ax.set_xlim(data.df['time'].min(), data.df['time'].max())
 
-        ax2.plot(self.time, self.y, "o", alpha = 0.5, ms = 0.1, color='C0', zorder = 1)
+        ax2.plot(self.time, self.y, "o", alpha = 0.5, ms = 0.1, color='C0', zorder = -1)
         ax2.plot(data.df_med['time'], data.df_med['flux'], label = "data w/ rolling median", zorder = 10, color = "C0")
         ax2.plot(self.time, self.system.flux / self.system.flux[0], '-', color='C1', label = "max likelihood model")
 
@@ -727,6 +729,9 @@ class MCMCCartography(object):
         ax2.set_xlim(self.time.min(), self.time.max())
         ax2.set_ylim(0.995, 1.002)
         ax2.legend(numpoints = 3);
+
+        ax.set_rasterization_zorder(0)
+        ax2.set_rasterization_zorder(0)
 
         self.fig_fit_full = fig
 
@@ -743,9 +748,6 @@ if __name__ == "__main__":
 
     # Get HD189 data
     data = EclipseData(plot = False)
-
-    # Load HD189 secondary eclipse data
-    data = hd189.EclipseData(plot = False)
 
     # If there are no saved chains in this path
     if not os.path.exists(chain_path):
@@ -769,6 +771,9 @@ if __name__ == "__main__":
 
     else:
 
+        # Initialize system *without gradients*
+        star, planet, system = instatiate_HD189(grad = False)
+
         # Read-in saved chain
         mcmc = MCMCCartography(data.time, data.y, data.yerr, system, planet,
                                      chain_path = chain_path)
@@ -789,6 +794,6 @@ if __name__ == "__main__":
     # Get hot spot offset samples and append to a newly created chain
     mcmc.get_hot_spot_samples()
 
-    # Plot the corner with the map in the upper right  
+    # Plot the corner with the map in the upper right
     mcmc.plot_corner_with_map()
     mcmc.fig_corner.savefig("hd189_mcmc_corner.pdf", bbox_inches = "tight")

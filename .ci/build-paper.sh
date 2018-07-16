@@ -7,6 +7,8 @@ then
 
     # Build the paper
     echo "Building the paper..."
+    wget https://www.dropbox.com/s/hfi5tvjziu9d37u/map_chain.npz
+    mv map_chain.npz $TRAVIS_BUILD_DIR/tex/
     cd $TRAVIS_BUILD_DIR/tex && make
 
     # If `proofs.rst` changed, let's clone the repo in a temporary
