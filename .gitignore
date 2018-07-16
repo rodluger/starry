@@ -16,6 +16,8 @@ docs/_generate
 starry/test
 starry/test_autodiff
 misc/stability/*.pdf
+*.sav
+*.npz
 
 # Latex
 *.aux
