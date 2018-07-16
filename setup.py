@@ -5,7 +5,7 @@ import sys
 import os
 import glob
 import setuptools
-__version__ = '0.1.0'
+__version__ = '0.1.2'
 
 
 # Custom compiler flags
@@ -115,10 +115,6 @@ class BuildExt(build_ext):
                 opts.append('-std=c++11')
             else:
                 raise RuntimeError("C++11 or 14 is required to compile starry")
-
-        if has_flag(self.compiler, '-ftemplate-depth=512'):
-            opts.append('-ftemplate-depth=512')
-
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' %
                         self.distribution.get_version())
