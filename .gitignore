@@ -18,6 +18,7 @@ starry/test_autodiff
 misc/stability/*.pdf
 *.sav
 *.npz
+tex/travis
 
 # Latex
 *.aux

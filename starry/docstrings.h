@@ -146,8 +146,7 @@ namespace docstrings {
                 Check whether the map is positive semi-definite. Returns :py:obj:`True`
                 if it is positive semi-definite and :py:obj:`False` otherwise.
                 For maps of degree `l = 0` and `l = 1`, this is analytic and fast to
-                compute, but for maps of higher degree a numerical solution is employed;
-                this function may therefore be (relatively) slow to evaluate.
+                compute, but for maps of higher degree a numerical solution is employed.
 
                 Args:
                     epsilon (float): Numerical solver tolerance. Default `1e-6`
@@ -371,6 +370,7 @@ namespace docstrings {
         const char * flux;
         const char * flux_numerical;
         const char * psd;
+        const char * mono;
         const char * show;
         const char * gradient;
         void add_extras() {};
@@ -404,6 +404,13 @@ namespace docstrings {
                 Check whether the map is positive semi-definite. Returns :py:obj:`True`
                 if it is positive semi-definite and :py:obj:`False` otherwise. This routine
                 uses Sturm's theorem to count the number of roots of the
+                specific intensity polynomial.
+            )pbdoc";
+
+            mono = R"pbdoc(
+                Check whether the map is monotonically decreasing toward the limb. Returns :py:obj:`True`
+                if it this is the case and :py:obj:`False` otherwise. This routine
+                uses Sturm's theorem to count the number of roots of the derivative of the
                 specific intensity polynomial.
             )pbdoc";
 
@@ -506,6 +513,7 @@ namespace docstrings {
                 .. automethod:: set_coeff(l, coeff)
                 .. automethod:: reset()
                 .. automethod:: psd()
+                .. automethod:: mono()
                 .. autoattribute:: lmax
                 .. autoattribute:: y
                 .. autoattribute:: p
@@ -560,6 +568,7 @@ namespace docstrings {
                 .. automethod:: set_coeff(l, coeff)
                 .. automethod:: reset()
                 .. automethod:: psd()
+                .. automethod:: mono()
                 .. autoattribute:: lmax
                 .. autoattribute:: y
                 .. autoattribute:: p
@@ -598,6 +607,7 @@ namespace docstrings {
                 .. automethod:: set_coeff(l, coeff)
                 .. automethod:: reset()
                 .. automethod:: psd()
+                .. automethod:: mono()
                 .. autoattribute:: gradient
                 .. autoattribute:: lmax
                 .. autoattribute:: y

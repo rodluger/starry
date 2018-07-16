@@ -22,6 +22,7 @@ Defines the surface map class.
 namespace maps {
 
     using std::abs;
+    using std::max;
     using std::string;
     using namespace LBFGSpp;
 
@@ -184,6 +185,7 @@ namespace maps {
 
             // Temporary variables
             Vector<T> tmpvec;
+            VectorT<T> sTA;
             T tmpscalar;
             T tmpu1, tmpu2, tmpu3;
             Vector<T> ARRy;
@@ -206,8 +208,10 @@ namespace maps {
             // Misc flags
             bool Y00_is_unity;
 
-            // Derivatives dictionary
+            // Derivatives
             std::map<string, Vector<double>> derivs;
+            Vector<T> dFdy;
+            rotation::Wigner<T> RR;
 
             // Rotation matrices
             rotation::Wigner<T> R;
@@ -223,14 +227,16 @@ namespace maps {
 
             // Constructor: initialize map to zeros
             Map(int lmax=2) :
-                  lmax(lmax), R(lmax), C(lmax),
+                  lmax(lmax), RR(lmax), R(lmax), C(lmax),
                   G(lmax), M(*this) {
                 N = (lmax + 1) * (lmax + 1);
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);
                 g = Vector<T>::Zero(N);
                 tmpvec = Vector<T>::Zero(N);
+                sTA = VectorT<T>::Zero(N);
                 ARRy = Vector<T>::Zero(N);
+                dFdy = Vector<T>::Zero(N);
                 tmpscalar = NAN;
                 tmpu1 = 0;
                 tmpu2 = 0;
@@ -287,7 +293,6 @@ namespace maps {
         tmpu3 = 0;
         tmpvec = Vector<T>::Zero(N);
     }
-
 
     // Evaluate our map at a given (x0, y0) coordinate
     template <class T>
@@ -355,6 +360,89 @@ namespace maps {
 
         }
         return res;
+
+    }
+
+    // Evaluate our map at a given (x0, y0) coordinate
+    template <>
+    Grad Map<Grad>::evaluate(const UnitVector<Grad>& axis, const Grad& theta, const Grad& x0, const Grad& y0) {
+
+        // Get the polynomial map
+        Vector<Grad>* ptrmap;
+
+        if (theta == 0) {
+            // We will use this.p
+            ptrmap = &p;
+        } else if ((theta == tmpscalar) && (axis(0) == tmpu1) && (axis(1) == tmpu2) && (axis(2) == tmpu3)) {
+            // We will use this.tmpvec, which we computed last time around
+            ptrmap = &tmpvec;
+        } else {
+            // Rotate the map into view
+            rotate(axis, theta, y, tmpvec);
+            tmpvec = C.A1 * tmpvec;
+            ptrmap = &tmpvec;
+        }
+
+        // Save this value of theta so we don't have
+        // to keep rotating the map when we vectorize
+        // this function!
+        tmpscalar = theta;
+        tmpu1 = axis(0);
+        tmpu2 = axis(1);
+        tmpu3 = axis(2);
+
+        // Check if outside the sphere
+        if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
+
+        int l, m, mu, nu, n = 0;
+        Grad z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
+
+        // Evaluate each harmonic
+        VectorT<Grad> basis;
+        basis.resize(N);
+        for (l=0; l<lmax+1; l++) {
+            for (m=-l; m<l+1; m++) {
+                mu = l - m;
+                nu = l + m;
+                if ((nu % 2) == 0) {
+                    if ((mu > 0) && (nu > 0))
+                        basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
+                    else if (mu > 0)
+                        basis(n) = pow(x0, mu / 2);
+                    else if (nu > 0)
+                        basis(n) = pow(y0, nu / 2);
+                    else
+                        basis(n) = 1;
+                } else {
+                    if ((mu > 1) && (nu > 1))
+                        basis(n) = pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
+                    else if (mu > 1)
+                        basis(n) = pow(x0, (mu - 1) / 2) * z0;
+                    else if (nu > 1)
+                        basis(n) = pow(y0, (nu - 1) / 2) * z0;
+                    else
+                        basis(n) = z0;
+                }
+                n++;
+            }
+
+        }
+
+        // Compute the map derivs
+        if (theta == 0) {
+
+            dFdy = basis * C.A1;
+
+        } else {
+
+            sTA = basis * C.A1;
+            for (int l = 0; l < lmax + 1; l++)
+                dFdy.segment(l * l, 2 * l + 1) = sTA.segment(l * l, 2 * l + 1) * R.Real[l];
+
+        }
+
+        // Dot the coefficients in to our polynomial map
+        return basis.dot(*ptrmap);
 
     }
 
@@ -635,6 +723,99 @@ namespace maps {
 
     }
 
+    // Compute the total flux during or outside of an occultation
+    // **Gradient over-ride: compute map derivs manually for speed**
+    template <>
+    Grad Map<Grad>::flux(const UnitVector<Grad>& axis, const Grad& theta, const Grad& xo, const Grad& yo_, const Grad& ro) {
+
+        // Local copy so we can nudge it away from the
+        // unstable point
+        Grad yo = yo_;
+
+        // Impact parameter
+        Grad b = sqrt(xo * xo + yo * yo);
+
+        // Nudge away from point instabilities
+        if (b == 0) {
+            yo += mach_eps<double>();
+            b = sqrt(xo * xo + yo * yo);
+        } else if (b == (1 - ro)) {
+            b -= mach_eps<double>();
+        } else if (b == 1 + ro) {
+            b += mach_eps<double>();
+        }
+
+        // TODO: There are still instabilities in the limits
+        // b --> |1 - r| and b --> 1 + r. They are not terrible
+        // (and only present in dF/db) but should be fixed.
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+            dFdy = Vector<Grad>::Zero(N);
+            return 0;
+        }
+
+        // Pointer to the map we're integrating
+        // (defaults to the base map)
+        Vector<Grad>* ptry = &y;
+
+        // Rotate the map into view if necessary and update our pointer
+        if (theta != 0) {
+            rotate(axis, theta, (*ptry), tmpvec);
+            ptry = &tmpvec;
+            for (int l = 0; l < lmax + 1; l++)
+                RR.Real[l] = R.Real[l];
+        } else {
+            for (int l = 0; l < lmax + 1; l++)
+                RR.Real[l] = Matrix<Grad>::Identity(2 * l + 1, 2 * l + 1);
+        }
+
+        // No occultation: cake
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // Compute map derivs
+            for (int l = 0; l < lmax + 1; l++)
+                dFdy.segment(l * l, 2 * l + 1) = C.rTA1.segment(l * l, 2 * l + 1) * RR.Real[l];
+
+            return C.rTA1 * (*ptry);
+
+        // Occultation
+        } else {
+
+            // Align occultor with the +y axis if necessary
+            if ((b > 0) && (xo != 0)) {
+                UnitVector<Grad> zaxis({0, 0, 1});
+                Grad yo_b(yo / b);
+                Grad xo_b(xo / b);
+                rotate(zaxis, yo_b, xo_b, (*ptry), tmpvec);
+                ptry = &tmpvec;
+
+                // Update the rotation matrix for the map derivs
+                for (int l = 0; l < lmax + 1; l++)
+                    RR.Real[l] = R.Real[l] * RR.Real[l];
+
+            }
+
+            // Perform the rotation + change of basis
+            ARRy = C.A * (*ptry);
+
+            // Compute the sT vector
+            solver::computesT(G, b, ro, ARRy);
+
+            // Compute the derivatives w.r.t. the map coefficients
+            sTA = G.sT * C.A;
+            for (int l = 0; l < lmax + 1; l++)
+                dFdy.segment(l * l, 2 * l + 1) = sTA.segment(l * l, 2 * l + 1) * RR.Real[l];
+
+            // Dot the result in to get the flux
+            Grad res = G.sT * ARRy;
+
+            return res;
+
+        }
+
+    }
+
     // Set the (l, m) coefficient
     template <class T>
     void Map<T>::set_coeff(int l, int m, T coeff) {
@@ -738,9 +919,9 @@ namespace maps {
         protected:
 
             // Temporary variables
-            Vector<T> ARRy;
             Vector<T> tmpvec;
             Vector<T> tmpy;
+            VectorT<T> sTA;
 
         public:
 
@@ -756,6 +937,11 @@ namespace maps {
 
             // Derivatives dictionary
             std::map<string, Eigen::VectorXd> derivs;
+            Vector<T> dFdu;
+            Vector<T> dndu;
+            Matrix<T> dydu;
+            Matrix<T> dpdu;
+            Matrix<T> dgdu;
 
             // Constant matrices
             Constants<T> C;
@@ -774,15 +960,20 @@ namespace maps {
                 u = Vector<T>::Zero(lmax + 1);
                 tmpy = Vector<T>::Zero(lmax + 1);
                 tmpvec = Vector<T>::Zero(N);
-                ARRy = Vector<T>::Zero(N);
+                sTA = VectorT<T>::Zero(N);
+                dFdu = Vector<T>::Zero(lmax + 1);
+                dndu = Vector<T>::Zero(lmax + 1);
+                dydu = Matrix<T>::Zero(N, lmax + 1);
+                dpdu = Matrix<T>::Zero(N, lmax + 1);
+                dgdu = Matrix<T>::Zero(N, lmax + 1);
                 reset();
-                update();
             }
 
             // Public methods
             T evaluate(const T& x0=0, const T& y0=0);
             void update();
             bool psd();
+            bool mono();
             void set_coeff(int l, T coeff);
             T get_coeff(int l);
             void reset();
@@ -839,7 +1030,7 @@ namespace maps {
         } else {
             norm = 1;
             for (int l = 1; l < lmax + 1; l++)
-                norm -= 2 * u(l) / ((l + 1) * (l + 2));
+                norm -= 2.0 * u(l) / ((l + 1) * (l + 2));
             norm *= M_PI;
             tmpy = C.U * u;
 
@@ -852,12 +1043,65 @@ namespace maps {
         }
     }
 
+    // Update the maps after the coefficients changed
+    // **Overload for autodiff of map coeffs**
+    template <>
+    void LimbDarkenedMap<Grad>::update() {
+
+        // Update our map vectors
+        Grad norm = 1;
+        y.setZero(N);
+        dndu.setZero(lmax + 1);
+        for (int l = 1; l < lmax + 1; l++) {
+            norm -= 2 * u(l) / ((l + 1) * (l + 2));
+            dndu(l) -= 2.0 / ((l + 1) * (l + 2));
+        }
+        norm *= M_PI;
+        dndu *= M_PI;
+        tmpy = C.U * u;
+
+        int n = 0;
+        dydu.setZero(N, lmax + 1);
+        for (int l = 0; l < lmax + 1; l++) {
+            y(l * (l + 1)) = tmpy(n) / norm;
+            dydu.row(l * (l + 1)) = ((C.U.row(n).transpose() * norm - tmpy(n) * dndu) / (norm * norm));
+            n++;
+        }
+
+        p = C.A1 * y;
+        g = C.A * y;
+        dpdu = C.A1 * dydu;
+        dgdu = C.A * dydu;
+
+    }
+
     // Check whether the map is positive semi-definite
     // using Sturm's theorem
     template <class T>
     bool LimbDarkenedMap<T>::psd() {
         Vector<T> c = -u.reverse();
         c(c.size() - 1) = 1;
+        int nroots = sturm::polycountroots(c);
+        if (nroots == 0)
+            return true;
+        else
+            return false;
+    }
+
+    // Check whether the map is monotonically decreasing
+    // toward the limb using Sturm's theorem on the derivative
+    template <class T>
+    bool LimbDarkenedMap<T>::mono() {
+        // The radial profile is
+        //      I = 1 - (1 - mu)^1 u1 - (1 - mu)^2 u2 - ...
+        //        = x^0 c0 + x^1 c1 + x^2 c2 + ...
+        // where x = (1 - mu), c = -u, c(0) = 1
+        // We want dI/dx < 0 everywhere, so we want the polynomial
+        //      P = x^0 c1 + 2x^1 c2 + 3x^2 c3 + ...
+        // to have zero roots in the interval [0, 1].
+        Vector<T> du = u.segment(1, lmax);
+        for (int i=0; i<lmax; i++) du(i) *= (i + 1);
+        Vector<T> c = -du.reverse();
         int nroots = sturm::polycountroots(c);
         if (nroots == 0)
             return true;
@@ -895,6 +1139,37 @@ namespace maps {
 
     }
 
+    // Evaluate our map at a given (x0, y0) coordinate
+    // **Gradient over-ride: compute map derivs manually for speed**
+    template <>
+    Grad LimbDarkenedMap<Grad>::evaluate(const Grad& x0, const Grad& y0) {
+
+        // Check if outside the sphere
+        if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
+
+        int l, m, mu, nu, n = 0;
+        Grad z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
+
+        // Evaluate each harmonic
+        Vector<Grad> basis;
+        basis.resize(N);
+        for (l=0; l<lmax+1; l++) {
+            for (m=-l; m<l+1; m++) {
+                mu = l - m;
+                nu = l + m;
+                if ((nu % 2) == 0)
+                    basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
+                else
+                    basis(n) = pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
+                n++;
+            }
+        }
+
+        dFdu = basis.transpose() * dpdu;
+        return basis.dot(p);
+
+    }
+
     // Compute the total flux during or outside of an occultation numerically
     template <class T>
     T LimbDarkenedMap<T>::flux_numerical(const T& xo, const T& yo, const T& ro, double tol) {
@@ -926,12 +1201,14 @@ namespace maps {
             if ((b >= 1 + ro) || (ro == 0))
                 return 1.0;
             else {
+                T s0, s2, s8;
                 if (lmax == 0)
-                    return solver::QuadLimbDark<T>(G, b, ro, g(0), 0, 0);
+                    solver::QuadLimbDark<T>(G, b, ro, g(0), 0, 0, s0, s2, s8);
                 else if (lmax == 1)
-                    return solver::QuadLimbDark<T>(G, b, ro, g(0), g(2), 0);
+                    solver::QuadLimbDark<T>(G, b, ro, g(0), g(2), 0, s0, s2, s8);
                 else
-                    return solver::QuadLimbDark<T>(G, b, ro, g(0), g(2), g(8));
+                    solver::QuadLimbDark<T>(G, b, ro, g(0), g(2), g(8), s0, s2, s8);
+                return s0 * g(0) + s2 * g(2) + s8 * g(8);
             }
         }
 
@@ -943,14 +1220,83 @@ namespace maps {
         // Occultation
         } else {
 
-            // Perform the change of basis
-            ARRy = C.A * y;
-
             // Compute the sT vector
-            solver::computesT(G, b, ro, ARRy);
+            solver::computesT(G, b, ro, g);
 
             // Dot the result in and we're done
-            return G.sT * ARRy;
+            return G.sT * g;
+
+        }
+
+    }
+
+    // Compute the total flux during or outside of an occultation
+    // **Gradient over-ride: compute map derivs manually for speed**
+    template <>
+    Grad LimbDarkenedMap<Grad>::flux(const Grad& xo, const Grad& yo_, const Grad& ro) {
+
+        // Local copy so we can nudge it away from the
+        // unstable point
+        Grad yo = yo_;
+
+        // Impact parameter
+        Grad b = sqrt(xo * xo + yo * yo);
+
+        // Nudge away from point instabilities
+        if (b == 0) {
+            yo += mach_eps<double>();
+            b = sqrt(xo * xo + yo * yo);
+        } else if (b == (1 - ro)) {
+            b -= mach_eps<double>();
+        } else if (b == 1 + ro) {
+            b += mach_eps<double>();
+        }
+
+        // TODO: There are still instabilities in the limits
+        // b --> |1 - r| and b --> 1 + r. They are not terrible
+        // (and only present in dF/db) but should be fixed.
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+            dFdu = Vector<Grad>::Zero(lmax + 1);
+            return 0;
+        }
+
+        // If we're doing quadratic limb darkening, let's skip all the overhead
+        if ((lmax <= 2) && (ro < 1)) {
+            if ((b >= 1 + ro) || (ro == 0)) {
+                dFdu = Vector<Grad>::Zero(lmax + 1);
+                return 1.0;
+            } else {
+                Grad s0, s2, s8;
+                if (lmax == 0)
+                    solver::QuadLimbDark<Grad>(G, b, ro, g(0), 0, 0, s0, s2, s8);
+                else if (lmax == 1)
+                    solver::QuadLimbDark<Grad>(G, b, ro, g(0), g(2), 0, s0, s2, s8);
+                else
+                    solver::QuadLimbDark<Grad>(G, b, ro, g(0), g(2), g(8), s0, s2, s8);
+                dFdu = (s0 * dgdu.row(0) + s2 * dgdu.row(2) + s8 * dgdu.row(8)).transpose();
+                return s0 * g(0) + s2 * g(2) + s8 * g(8);
+            }
+        }
+
+        // No occultation: cake
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            dFdu = Vector<Grad>::Zero(lmax + 1);
+            return 1.0;
+
+        // Occultation
+        } else {
+
+            // Compute the sT vector
+            solver::computesT(G, b, ro, g);
+
+            // Compute the map derivs
+            dFdu = G.sT * dgdu;
+
+            // Dot the result in
+            return G.sT * g;
 
         }
 

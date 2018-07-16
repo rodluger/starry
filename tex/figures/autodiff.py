@@ -36,6 +36,8 @@ for i, time in enumerate([time_transit, time_secondary]):
 
     # Run!
     system.compute(time)
+    flux = np.array(system.flux)
+    grad = dict(system.gradient)
 
     # Plot it
     ax = pl.subplot2grid((20, 2), (0, i), rowspan=5)
@@ -61,13 +63,63 @@ for i, time in enumerate([time_transit, time_secondary]):
 
     for param, label, n in zip(params, labels, range(5, 5 + len(labels))):
         axg = pl.subplot2grid((20, 2), (n, i))
-        axg.plot(time, system.gradient[param], lw=1, color='C1')
+        axg.plot(time, grad[param], lw=1, color='C1')
         axg.margins(None, 0.5)
         axg.set_xticks([])
         axg.set_yticks([])
         axg.set_ylabel(partial(label), rotation=0, fontsize=14)
         axg.yaxis.set_label_coords(-0.07, 0.05)
         [i.set_linewidth(0.) for i in axg.spines.values()]
+
+        # Compute and plot the numerical gradient
+        eps = 1e-8
+        if param == 'time':
+            system.compute(time + eps)
+        elif param == 'planet1.r':
+            planet.r += eps
+            system.compute(time)
+            planet.r -= eps
+        elif param == 'planet1.L':
+            planet.L += eps
+            system.compute(time)
+            planet.L -= eps
+        elif param == 'planet1.porb':
+            planet.porb += eps
+            system.compute(time)
+            planet.porb -= eps
+        elif param == 'planet1.ecc':
+            planet.ecc += eps
+            system.compute(time)
+            planet.ecc -= eps
+        elif param == 'planet1.inc':
+            planet.inc += eps
+            system.compute(time)
+            planet.inc -= eps
+        elif param == 'planet1.w':
+            planet.w += eps
+            system.compute(time)
+            planet.w -= eps
+        elif param == 'planet1.prot':
+            planet.prot += eps
+            system.compute(time)
+            planet.prot -= eps
+        elif 'Y_' in param:
+            l, m = int(param[11]), int(param[13])
+            planet.map[l, m] += eps
+            system.compute(time)
+            planet.map[l, m] -= eps
+        elif param == 'star.u_1':
+            star.map[1] += eps
+            system.compute(time)
+            star.map[1] -= eps
+        elif param == 'star.u_2':
+            star.map[2] += eps
+            system.compute(time)
+            star.map[2] -= eps
+        numgrad = (system.flux - flux) / eps
+        axg.plot(time[::100], numgrad[::100], lw=0, ms=2,
+                 marker='.', color='C1')
+
     axg.set_xlabel('Time', fontsize=16)
 
 fig.savefig('autodiff.pdf', bbox_inches='tight')

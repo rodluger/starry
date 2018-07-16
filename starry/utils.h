@@ -122,6 +122,18 @@ inline bool is_Multi(Multi x) {
     return true;
 }
 
+// Helper function to figure out if we're using autodiff
+template <typename T>
+inline bool is_Grad(T x) {
+    return false;
+}
+
+// Helper function to figure out if we're using autodiff
+template <>
+inline bool is_Grad(Grad x) {
+    return true;
+}
+
 // Check if number is even (or doubly, triply, quadruply... even)
 inline bool is_even(int n, int ntimes=1) {
     for (int i = 0; i < ntimes; i++) {

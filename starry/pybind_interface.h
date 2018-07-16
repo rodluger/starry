@@ -234,7 +234,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
         .def("psd", &maps::Map<MAPTYPE>::psd, docs.Map.psd, "epsilon"_a=1.e-6, "max_iterations"_a=100)
 
         .def("load_array", [](maps::Map<MAPTYPE> &map, Matrix<double>& image) {
-                py::object load_map = py::module::import("starry_maps").attr("load_map");
+                py::object load_map = py::module::import("starry.maps").attr("load_map");
                 Vector<double> y = load_map(image, map.lmax, false).template cast<Vector<double>>();
                 double y_normed;
                 int n = 0;
@@ -258,7 +258,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
             }, docs.Map.load_array, "image"_a)
 
         .def("load_image", [](maps::Map<MAPTYPE> &map, string& image) {
-                py::object load_map = py::module::import("starry_maps").attr("load_map");
+                py::object load_map = py::module::import("starry.maps").attr("load_map");
                 Vector<double> y = load_map(image, map.lmax).template cast<Vector<double>>();
                 double y_normed;
                 int n = 0;
@@ -282,7 +282,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
             }, docs.Map.load_image, "image"_a)
 
         .def("load_healpix", [](maps::Map<MAPTYPE> &map, Matrix<double>& image) {
-                py::object load_map = py::module::import("starry_maps").attr("load_map");
+                py::object load_map = py::module::import("starry.maps").attr("load_map");
                 Vector<double> y = load_map(image, map.lmax, true).template cast<Vector<double>>();
                 double y_normed;
                 int n = 0;
@@ -306,7 +306,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
             }, docs.Map.load_healpix, "image"_a)
 
         .def("add_gaussian", [](maps::Map<MAPTYPE> &map, double sigma, double amp, double lat, double lon) {
-                py::object gaussian = py::module::import("starry_maps").attr("gaussian");
+                py::object gaussian = py::module::import("starry.maps").attr("gaussian");
                 Vector<double> y = gaussian(sigma, map.lmax).template cast<Vector<double>>();
                 int n = 0;
                 // Create a temporary map and add the gaussian
@@ -336,7 +336,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
             }, docs.Map.add_gaussian, "sigma"_a=0.1, "amp"_a=1, "lat"_a=0, "lon"_a=0)
 
         .def("show", [](maps::Map<MAPTYPE> &map, string cmap, int res) {
-                py::object show = py::module::import("starry_maps").attr("show");
+                py::object show = py::module::import("starry.maps").attr("show");
                 Matrix<double> I;
                 I.resize(res, res);
                 Vector<double> x;
@@ -352,7 +352,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
 
         .def("animate", [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis, string cmap, int res, int frames) {
             std::cout << "Rendering animation..." << std::endl;
-            py::object animate = py::module::import("starry_maps").attr("animate");
+            py::object animate = py::module::import("starry.maps").attr("animate");
             vector<Matrix<double>> I;
             Vector<double> x, theta;
             x = Vector<double>::LinSpaced(res, -1, 1);
@@ -473,6 +473,8 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
 
         .def("psd", &maps::LimbDarkenedMap<MAPTYPE>::psd, docs.LimbDarkenedMap.psd)
 
+        .def("mono", &maps::LimbDarkenedMap<MAPTYPE>::mono, docs.LimbDarkenedMap.mono)
+
         .def_property_readonly("lmax", [](maps::LimbDarkenedMap<MAPTYPE> &map){return map.lmax;}, docs.LimbDarkenedMap.lmax)
 
         .def_property_readonly("y", [](maps::LimbDarkenedMap<MAPTYPE> &map){
@@ -508,7 +510,7 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
             }, docs.LimbDarkenedMap.flux, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("show", [](maps::LimbDarkenedMap<MAPTYPE> &map, string cmap, int res) {
-                py::object show = py::module::import("starry_maps").attr("show");
+                py::object show = py::module::import("starry.maps").attr("show");
                 Matrix<double> I;
                 I.resize(res, res);
                 Vector<double> x;
@@ -774,7 +776,7 @@ void add_Planet(py::class_<orbital::Planet<MAPTYPE>>& PyPlanet, const docstrings
                       const double&, const double&,
                       const double&>(),
                       "lmax"_a=2, "r"_a=0.1, "L"_a=0., "axis"_a=yhat,
-                      "prot"_a=0, "a"_a=50., "porb"_a=1,
+                      "prot"_a=INFINITY, "a"_a=50., "porb"_a=1,
                       "inc"_a=90., "ecc"_a=0, "w"_a=90, "Omega"_a=0,
                       "lambda0"_a=90, "tref"_a=0)
 

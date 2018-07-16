@@ -52,9 +52,9 @@ and wrapped in \Python that computes these light curves.
 The algorithm in \starry is six orders of magnitude faster than direct
 numerical integration and several orders of magnitude more precise.
 \starry also computes analytic derivatives of the light curves with respect to all input
-parameters for use in gradient-based inference schemes such as
+parameters for use in gradient-based optimization and inference, such as
 Hamiltonian monte carlo (HMC), allowing users to quickly and efficiently
-regress on observed light curves to infer properties of a celestial body's
+fit observed light curves to infer properties of a celestial body's
 surface map.
 \end{abstract}
 
@@ -107,11 +107,11 @@ in analogy with mutual events viewed in the Solar System
 \citep{Brinkmann1973,Vermilion1974,Herzog1975,Brinkmann1976,Reinsch1994,Young1999,
 Young2001,Livengood2011}.
 
-As we gear up to perform these observations, it is essential that we have
+As we prepare to perform these observations, it is essential that we have
 robust models of exoplanet light curves so
 that we may reliably infer the surface maps that generated them. Because the
 features that we seek will likely be close to the limit of detectability,
-exoplanet mapping is necessarily a probabilistic problem, necessitating
+exoplanet mapping is necessarily a probabilistic problem, requiring
 a careful statistical approach capable of characterizing the uncertainty
 on the inferred map. Recently, \citet{Farr2018} introduced \exocartographer,
 a Bayesian model for inferring surface maps and rotation states
@@ -120,7 +120,7 @@ complementary vein, \citet{Louden2018} presented \spiderman, a fast
 code to model phase curves and secondary eclipses of exoplanets, which
 the authors show is fast enough to be used in Markov Chain Monte Carlo
 (MCMC) runs for general mapping problems. However, both algorithms, along with all
-others in the literature to date, rely on numerical methods to compute
+others in the literature to date, rely on numerical integration methods to compute
 the flux received from the planet during occultation. In addition to
 the potential loss of precision due to the approximations they employ,
 numerical algorithms are typically much slower than an analytic
@@ -131,11 +131,12 @@ reflected light if its map is expressed as a sum of spherical harmonics.
 
 Here we present an algorithm to compute analytic occultation light curves of stars,
 planets, or moons of arbitrary complexity if the surface map of the occulted body is expressed in the
-spherical harmonic basis. Our algorithm is a generalization of the \citet{MandelAgol2002}, \citet{Gimenez2006},
-and \citet{Pal2012} analytic transit models to eclipses and occultations of bodies with arbitrary, non-radially
+spherical harmonic basis. Our algorithm generalizes the \citet{MandelAgol2002}, \citet{Gimenez2006},
+and \citet{Pal2012} analytic transit formulae to model eclipses and occultations of bodies with arbitrary, non-radially
 symmetric surface maps or stars with limb darkening of arbitrary order.
 For radially symmetric, second-degree maps, our expressions reduce to the \citet{MandelAgol2002}
-quadratic limb-darkening transit model; in the limit of zero occultor size, they
+quadratic limb-darkening transit model; in the limit of zero occultor size or large
+impact parameter, they
 reduce to the expressions of \citet{Haggard2018} for thermal phase curves.
 
 % Mention that phase curves are a subset of rotational light curves when a planet is tidally locked.
@@ -173,7 +174,7 @@ in the paper, with references to the equations defining them.
 \label{sec:spharm}
 % ------------------------------------------------------------------------------
 
-The orthonormalized real spherical harmonics $Y_{lm}(\uptheta,\upphi)$ of degree $l \ge 0$
+The orthonormal real spherical harmonics $Y_{lm}(\uptheta,\upphi)$ of degree $l \ge 0$
 and order $m \in [-l,\, l]$ with the Condon-Shortley phase factor \citep[e.g.][]{Varshalovich1988}
 are defined in spherical coordinates as
 %
@@ -194,9 +195,11 @@ surface of the unit sphere, we have
     \label{eq:xyz}
     \x &= \sin\uptheta \cos\upphi \nonumber \\
     \y &= \sin\uptheta \sin\upphi \nonumber \\
-    \z &= \cos\uptheta \quad.
+    \z &= \cos\uptheta \quad,
 \end{align}
 %
+where $\uptheta$ is the inclination angle and $\upphi$ is the azimuthal angle
+(ISO convention).
 The observer is located along the $z$-axis at $z = \infty$ such
 that the projected disk of the body sits at the origin on the $xy$-plane with $\xhat$ to
 the right and $\yhat$ up.
@@ -272,9 +275,10 @@ to the spherical harmonic of degree and order given by
     \label{eq:lm}
     l &= \floor*{\sqrt{n}} \nonumber \\
     m &= n - \floor*{\sqrt{n}}^2 - \floor*{\sqrt{n}}
-    \quad.
+    \quad,
 \end{align}
 %
+where $\floor*{\bigdot}$ is the floor function.
 
 % ------------------------------------------------------------------------------
 \subsection{Change of basis}
@@ -506,7 +510,8 @@ intensity over a region $S$ of the projected disk of the body:
     \quad,
 \end{align}
 %
-where $\bvec{r}$ is a column vector whose $n^\mathrm{th}$ component is given by
+where $\AOne$, $\bvec{R}$, and $\bvec{y}$ are constant and
+$\bvec{r}$ is a column vector whose $n^\mathrm{th}$ component is given by
 %
 \begin{align}
     \label{eq:rn}
@@ -557,7 +562,7 @@ occurring), this may be written
 %
 where $\Gamma(\bigdot)$ is the gamma function.
 %
-\eq{phaseint} may be used to analyticly compute the rotational (thermal) phase curve of a body
+\eq{phaseint} may be used to analytically compute the rotational (thermal) phase curve of a body
 with an arbitrary surface map. Since $\bvec{r}$ and $\bvec{A_1}$ are independent
 of the map coefficients or its orientation, these may be pre-computed for
 computational efficiency.
@@ -565,10 +570,6 @@ computational efficiency.
 We note, finally, that a form of this solution was very recently found by \citet{Haggard2018};
 a special case of their equations for phase curves in reflected light yields
 analytic expressions for thermal phase curves of spherical harmonics.
-
-% HACK
-\pagebreak
-% HACK
 
 % ------------------------------------------------------------------------------
 \subsection{Occultation light curves}
@@ -649,7 +650,7 @@ For future reference, it can be shown that
         \arcsin\left(\frac{1 - r^2 + b^2}{2b}\right)
                                                 & \qquad |1 - r| < b < 1 + r \\
         \frac{\pi}{2}                           & \qquad b \le 1 - r
-        \quad,
+        \quad.
     \end{dcases}
     \label{eq:lambda}
 \end{proof}
@@ -750,7 +751,7 @@ where, as in \citet{Pal2012}, we define the \emph{primitive integrals}
 \end{align}
 %
 %
-where, as before,
+where we defined
 $c_\varphi \equiv \cos \varphi$
 and
 $s_\varphi \equiv \sin \varphi$
@@ -764,9 +765,9 @@ and we used the fact that along the arc of a circle,
 \end{align}
 %
 In Equations~(\ref{eq:primitiveP}) and (\ref{eq:primitiveQ}), $\mathcal{P}(\bvec{G}_n)$
-is the line integral along the arc of the occultor
+is the line integral along the arc of the occultor of radius $r$,
 and $\mathcal{Q}(\bvec{G}_n)$ is the line integral along the arc of the occulted
-body.
+body of radius one.
 
 %
 %
@@ -779,7 +780,7 @@ body.
              at the origin and has unit radius, while the occultor
              is centered at $(x_o, y_o)$ and has radius $r$. We first rotate
              the two bodies about the origin through an angle
-             $\theta = \nicefrac{\pi}{2} - \mathrm{arctan2}(y_o, x_o)$
+             $\omega = \nicefrac{\pi}{2} - \mathrm{arctan2}(y_o, x_o)$
              so the problem is symmetric about the $y$-axis. In this frame,
              the occultor is located at $(0, b)$, where
              $b = \sqrt{x_o^2 + y_o^2}$ is the impact parameter.
@@ -859,7 +860,9 @@ relations to quickly compute these. We note, in particular, that the
 solutions all involve complete elliptic integrals of the \emph{same} argument,
 so that the elliptic integrals need only be evaluated once for a map
 of arbitrary degree, greatly improving the evaluation speed and the
-scalability of the problem to high order.
+scalability of the problem to high order. In practice we find that
+the stability in evaluation of these expressions is improved by using a
+rapidly converging series expansion for occultors of large and small radius.
 
 % ------------------------------------------------------------------------------
 \subsection{Summary}
@@ -887,9 +890,8 @@ centered at the point $(x_o, y_o)$, we must:
     \item Compute the change-of-basis matrix $\bvec{A}$ (\S\ref{sec:basis}) to
           convert our vector of spherical harmonic coefficients to a vector
           of polynomial coefficients in the Green's basis
-          (Equation~\ref{eq:bg}). Since $\bvec{A}$ is the same for all
-          occultations, this matrix may be pre-computed to improve
-          computational speed.
+          (Equation~\ref{eq:bg}). Since $\bvec{A}$ is constant,
+          this matrix may be pre-computed for speed.
     \item Compute the solution vector $\bvec{s}$ (Equation~\ref{eq:sn}), with
           $\mathcal{P}(\bvec{G}_n)$ and $\mathcal{Q}(\bvec{G}_n)$ given by
           the equations in Appendix~\ref{app:generalterm}.
@@ -1021,7 +1023,7 @@ Figure~\ref{fig:smiley}.
 
 %
 %
-\begin{figure}[ht!]
+\begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=0.925\linewidth]{figures/smiley.pdf}
     \caption{\label{fig:smiley}
@@ -1062,9 +1064,9 @@ $l_\mathrm{max} = 10$, rotated successively about $\yhat$.
 %
 \begin{figure}[ht!]
     \begin{centering}
-    \includegraphics[width=0.825\linewidth]{figures/earth.jpg}
+    \includegraphics[width=0.75\linewidth]{figures/earth.jpg}
     \\[1em]
-    \includegraphics[width=0.875\linewidth]{figures/earth.pdf}
+    \includegraphics[width=0.8\linewidth]{figures/earth.pdf}
     \caption{\label{fig:earth}
              A simplified two-color map of the cloudless Earth (top) and the
              corresponding tenth-degree spherical harmonic expansion,
@@ -1478,7 +1480,7 @@ steps involved in computing a light curve is either a basic arithmetic operation
 or the evaluation of an elementary function and is therefore trivially differentiable.
 Autodiff algorithms exploit this fact by repeatedly applying the chain rule to
 compute the derivatives of any function during its evaluation, returning derivatives
-that are accurate to machine precision and at a speed that can be significantly greater
+that can be accurate to high precision and at a speed that can be significantly greater
 than that of numeric (or symbolic) differentiation.
 
 We employ the autodiff algorithm of the Eigen \citep{eigen} C++ library to compute
@@ -1523,7 +1525,9 @@ all of the map coefficients and the rotational state of the map (not shown).
              and \gradeval methods of the maps in \starrygrad automatically
              compute derivatives with respect to all input parameters. Derivatives
              as a function of time for several of these parameters are plotted in
-             orange below each light curve. From top to bottom, the curves correspond
+             orange below each light curve. Solid lines correspond to the analytic
+             derivatives and dots correspond to derivatives evaluated numerically
+             using finite differences. From top to bottom, the curves correspond
              to derivatives with respect to time, planet radius, planet luminosity,
              orbital period, eccentricity, inclination, longitude of pericenter,
              rotational period, five of the planet surface map coefficients, and
@@ -1569,7 +1573,7 @@ of the latter.
 
 \begin{figure}[p!]
     \begin{centering}
-    \includegraphics[width=0.95\linewidth]{figures/stability.pdf}
+    \includegraphics[width=0.925\linewidth]{figures/stability.pdf}
     \caption{\label{fig:stability}
              Error in the terms of the solution vector $\mathbf{s}$ for a small
              occultor ($r = 0.01$, left) and a large occultor ($r = 100$, right),
@@ -1577,11 +1581,23 @@ of the latter.
              floating point precision. The error is plotted as a function of impact parameter
              for terms with $\mu$ even (left)
              and $\mu$ odd (right). The horizontal axis extends from $r - 1$ to $r + 1$ and covers
-             the entire range of $b$ during an occultation, with extra resolution in the
-             vicinity of potentially unstable regions. The top panel shows the relative error
-             and the bottom panel shows the fractional error, scaled to the largest value of
-             the function over the course of the occultation.
+             the entire range of $b$ during an occultation, with extra resolution near
+             potentially unstable regions. The top panel shows the relative error
+             and the bottom panel shows the fractional error, scaled to the largest value
+             of $\mathbf{s}$ over the course of the occultation.
              \codelink{stability}}
+    \end{centering}
+\end{figure}
+
+\begin{figure}[p!]
+    \begin{centering}
+    \includegraphics[width=0.925\linewidth]{figures/stability_grad.pdf}
+    \caption{\label{fig:stability_grad}
+             Similar to Figure~\ref{fig:stability}, but showing instead the
+             error on the \emph{derivative} of the flux with respect to the impact
+             parameter computed analytically with autodifferentiation. The error is computed
+             relative to a numerical derivative computed at 128 bit precision.
+             \codelink{stability_grad}}
     \end{centering}
 \end{figure}
 
@@ -1598,22 +1614,12 @@ where the largest value of the flux is less than $10^{-9}$, we scale the relativ
 error to this value to avoid division by a very small number. In all cases, the
 fractional error is less than 1 ppb.
 
-\begin{figure}[p!]
-    \begin{centering}
-    \includegraphics[width=0.95\linewidth]{figures/stability_grad.pdf}
-    \caption{\label{fig:stability_grad}
-             Similar to Figure~\ref{fig:stability}, but showing instead the
-             error on the \emph{derivative} of the flux with respect to the impact
-             parameter computed analytically with autodifferentiation. The error is computed
-             relative to a numerical derivative computed at 128 bit precision.
-             \codelink{stability_grad}}
-    \end{centering}
-\end{figure}
-
 In Figure~\ref{fig:stability_grad} we show similar curves for the numerical error
-on the \emph{derivative} of the flux with respect to the impact parameter. Our
-expressions are again stable to within much less than 1 ppb at nearly all values
-of $b$ for both small and large occultors.
+on the \emph{derivative} of the flux with respect to the impact parameter. While
+the derivatives are in general more prone to numerical instabilities, particularly in the
+limits $b \rightarrow |1 - r|$ and $b \rightarrow 1 + r$, we find that the error
+is less than 1 ppb over most of the domain for both small and large occultors. For
+large values of $l$ near the unstable regions, the error approaches 1 ppm.
 
 \begin{figure}[ht!]
     \begin{centering}
@@ -1938,7 +1944,7 @@ alien worlds.
 \acknowledgments
 This work was supported by the NASA Astrobiology
 Institute's Virtual Planetary Laboratory under Cooperative
-Agreement number NNA13AA93A.
+Agreement number NNA13AA93A.  EA is supported by NSF grant 1615315.
 %
 Some of the results in this paper have been derived using the HEALPix
 \citep{Gorski2005} package.
@@ -2991,7 +2997,7 @@ are different depending on whether $k^2$ is less than or greater than unity.
 \label{app:IJklt1}
 % ------------------------------------------------------------------------------
 
-In the $k^2 < 1$ ($b+r < 1$) limit, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
+In the $k^2 < 1$ ($b+r > 1$) limit, we make the substitution $w=k^{-2}\sin^2{\varphi}$, giving
 %
 \begin{proof}{IJHypergeo}
     \label{eq:IJHypergeo}
@@ -3006,9 +3012,9 @@ where $_2F_1(a,b;c;x)$ is the generalized Hypergeometric function.
 These functions can alternatively be expressed as series in $k^2$
 by expanding $(1-k^2w)^{-1/2}$ as a series in $k^2w$, and then integrating each term over $w$, giving
 %
-\begin{proof}{IJseries}
+\begin{proof}{IJSeries}
     \label{eq:IJseries}
-    \mathcal{I}_{v} &= 2k^{1+2v}  \sum_{j=0}^\infty \frac{(2j-1)!!}{2^j j!(2j+2v+1)}(k^2)^j, \\[0.5em]
+    \mathcal{I}_{v} &= 2k^{1+2v}  \sum_{j=0}^\infty \frac{(2j-1)!!}{2^j j!(2j+2v+1)}(k^2)^j, \nonumber\\[0.5em]
     \mathcal{J}_{v} &= \frac{3\pi}{4}k^{1+2v}\sum_{j=0}^\infty \frac{(2j-1)!!(2j+2v-1)!!}{2^{2j+v} j!(j+v+2)!}(k^2)^j \quad.
 \end{proof}
 %
@@ -3062,7 +3068,8 @@ round-off errors that grow as $v$ gets large.
 %
 In practice, we find that when $k^2 > \frac{1}{2}$, the upward recursion relations
 are numerically stable, so we use Equation~(\ref{eq:IJupward}) to evaluate the
-integrals. When $k^2 \le \frac{1}{2}$, we instead use Equation~(\ref{eq:IJdownward})
+integrals. When $k^2 \le \frac{1}{2}$, we instead use Equations(\ref{eq:IJdownward})
+and (\ref{eq:IJdownward:J}),
 and start by computing $\mathcal{I}_{v_\mathrm{max}}$,
 $\mathcal{J}_{v_\mathrm{max}}$, and $\mathcal{J}_{v_\mathrm{max}-1}$, where
 $v_\mathrm{max}$ is the maximum value needed to compute $\mathcal{K}_{u,v}$ when

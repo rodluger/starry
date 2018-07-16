@@ -1,6 +1,6 @@
-// DEBUG: This will throw Assertion errors if we've messed up
-// any Eigen operations. Remove this once the code is stable.
-#undef NDEBUG
+// This throws Assertion errors if we've messed up
+// any Eigen operations. Uncomment for debugging.
+// #undef NDEBUG
 #include <pybind11/pybind11.h>
 #include <stdlib.h>
 #include "utils.h"
@@ -12,7 +12,7 @@ using namespace pybind11::literals;
 using namespace docstrings;
 namespace py = pybind11;
 
-PYBIND11_MODULE(starry, m) {
+PYBIND11_MODULE(_starry, m) {
 
     // Disable auto signatures
     py::options options;

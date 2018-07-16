@@ -3,13 +3,33 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import sys
 import os
+import glob
 import setuptools
-__version__ = '0.0.2'
+__version__ = '0.1.2'
 
 
 # Custom compiler flags
-macros = dict(STARRY_NGRAD=43,
-              STARRY_NMULTI=32)
+macros = dict(STARRY_NGRAD=13,
+              STARRY_NMULTI=32,
+              STARRY_IJ_MAX_ITER=200,
+              STARRY_ELLIP_MAX_ITER=200,
+              STARRY_KEPLER_MAX_ITER=100)
+
+# Override with user values
+for key, value in macros.items():
+    macros[key] = os.getenv(key, value)
+
+# HACK: We should probably follow the instructions here:
+# https://eigen.tuxfamily.org/dox/group__TopicStructHavingEigenMembers.html
+# but it's easier to require the gradient length to be odd!
+if int(macros['STARRY_NGRAD']) % 2 == 0:
+    macros['STARRY_NGRAD'] = int(macros['STARRY_NGRAD']) + 1
+
+# Enable optimization?
+if int(os.getenv('STARRY_OPT', 1)):
+    optimize = True
+else:
+    optimize = False
 
 
 class get_pybind_include(object):
@@ -33,7 +53,7 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        'starry',
+        'starry._starry',
         ['starry/pybind_interface.cpp'],
         include_dirs=[
             # Path to pybind11 headers
@@ -49,8 +69,7 @@ ext_modules = [
             "lib/LBFGSpp/include"
         ],
         language='c++',
-        define_macros=[(key, os.getenv(key, value))
-                       for key, value in macros.items()]
+        define_macros=[(key, value) for key, value in macros.items()]
     ),
 ]
 
@@ -89,17 +108,25 @@ class BuildExt(build_ext):
         """Build the extensions."""
         ct = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])
+        if not any(f.startswith("-std=") for f in opts):
+            if has_flag(self.compiler, "-std=c++14"):
+                opts.append('-std=c++14')
+            elif has_flag(self.compiler, "-std=c++11"):
+                opts.append('-std=c++11')
+            else:
+                raise RuntimeError("C++11 or 14 is required to compile starry")
         if ct == 'unix':
             opts.append('-DVERSION_INFO="%s"' %
                         self.distribution.get_version())
-            opts.append('-std=c++14')
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' %
                         self.distribution.get_version())
         for ext in self.extensions:
-            ext.extra_compile_args = opts
+            ext.extra_compile_args = list(opts + ext.extra_compile_args)
+            if not optimize:
+                ext.extra_compile_args += ["-O0"]
             if sys.platform == "darwin":
                 ext.extra_compile_args += ["-march=native",
                                            "-mmacosx-version-min=10.9"]
@@ -115,13 +142,14 @@ setup(
     author_email='rodluger@gmail.com',
     url='https://github.com/rodluger/starry',
     description='Analytic occultation light curves for astronomy.',
-    long_description='',
+    long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
     license='GPL',
-    packages=['starry'],
+    packages=['starry', 'starry.maps'],
     ext_modules=ext_modules,
-    install_requires=['matplotlib',
-                      'starry_maps>=0.0.12',
-                      'pybind11>=2.2'],
+    install_requires=['pybind11>=2.2'],
     cmdclass={'build_ext': BuildExt},
+    data_files=[('starry.maps', glob.glob('starry/maps/*.jpg'))],
+    include_package_data=True,
     zip_safe=False,
 )

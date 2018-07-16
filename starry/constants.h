@@ -8,7 +8,7 @@ Defines compiler constants used throughout the code.
 
 // Gradient size in starry.grad
 #ifndef STARRY_NGRAD
-#define STARRY_NGRAD                            43
+#define STARRY_NGRAD                            13
 #endif
 
 // Number of digits for the multiprecision type in starry.multi
@@ -41,7 +41,7 @@ Defines compiler constants used throughout the code.
 #define STARRY_EPS_BMR_ONE                      1e-5
 #endif
 
-// Re-parameterize solution vector when 1 - STARRY_EPS_BMR_ONE < abs(b + r) < 1 + STARRY_EPS_BMR_ONE
+// Re-parameterize solution vector when 1 - STARRY_EPS_BMR_ONE < abs(b + r) < 1 + STARRY_EPS_BPR_ONE
 #ifndef STARRY_EPS_BPR_ONE
 #define STARRY_EPS_BPR_ONE                      1e-5
 #endif

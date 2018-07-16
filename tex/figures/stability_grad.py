@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as pl
 import starry
 
-
 def is_even(n):
     """Return true if n is even."""
     if ((n % 2) != 0):
@@ -47,7 +46,7 @@ def StarryD(barr, r, lmax, d='b'):
     return res
 
 
-def PaperFigure(larr=[0, 1, 2, 3, 4, 5],
+def PaperFigure(larr=[0, 1, 2, 3, 5, 8, 10, 13, 15, 18, 20],
                 logdelta=-6, logeps=-12, res=50, d='b'):
     """Plot the stability figure for the paper."""
     lmax = np.max(larr)

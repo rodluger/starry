@@ -108,7 +108,6 @@ namespace orbital {
 
             // Total flux at current timestep
             T totalflux;
-            T norm;
 
         public:
 
@@ -127,6 +126,7 @@ namespace orbital {
             T L;
             Map<T> map;
             LimbDarkenedMap<T> ldmap;
+            T norm;
 
             // Axis of rotation and surface map
             // in the *sky* coordinates
@@ -267,7 +267,8 @@ namespace orbital {
                 T f_eclipse = 1.5 * M_PI - w;
                 T E_eclipse = atan2(sqrt(1 - ecc2) * sin(f_eclipse), ecc + cos(f_eclipse));
                 T M_eclipse = E_eclipse - ecc * sin(E_eclipse);
-                theta0 = -(porb / prot) * (M_eclipse - M0);
+                if (prot == 0) theta0 = 0;
+                else theta0 = -(porb / prot) * (M_eclipse - M0);
 
             };
 
@@ -475,7 +476,7 @@ namespace orbital {
                    const double& r=0.1,
                    const double& L=0.,
                    const UnitVector<double>& axis=yhat,
-                   const double& prot=0.,
+                   const double& prot=INFINITY,
                    const double& a=50.,
                    const double& porb=1.,
                    const double& inc=90.,
@@ -775,20 +776,19 @@ namespace orbital {
     template <>
     void System<Grad>::compute(const Vector<Grad>& time) {
 
-        int i, j, n, k, l, m;
+        int i, j, n, l, m;
         Grad xo, yo, ro;
         Grad tsec;
         unsigned long NT = time.size();
         int NB = bodies.size();
         Vector<Grad> fluxes = Vector<Grad>::Zero(NB);
-        vector<Vector<double>> tmpder;
         flux = Vector<Grad>::Zero(NT);
+        Vector<Grad> dFdysky;
+        Vector<Grad> dFdy;
+        int maxlmax = 0;
 
         // List of gradient names
         vector<string> names {"time"};
-        for (l = 1; l < bodies[0]->ldmap.lmax + 1; l++) {
-            names.push_back(string("star.u_" + to_string(l)));
-        }
         for (i = 1; i < NB; i++) {
             names.push_back(string("planet" + to_string(i) + ".r"));
             names.push_back(string("planet" + to_string(i) + ".L"));
@@ -801,39 +801,50 @@ namespace orbital {
             names.push_back(string("planet" + to_string(i) + ".Omega"));
             names.push_back(string("planet" + to_string(i) + ".lambda0"));
             names.push_back(string("planet" + to_string(i) + ".tref"));
+            /*
+            TODO: Include derivs w/ respect to the axis of rotation in the next version.
             names.push_back(string("planet" + to_string(i) + ".axis_x"));
             names.push_back(string("planet" + to_string(i) + ".axis_y"));
             names.push_back(string("planet" + to_string(i) + ".axis_z"));
-            for (l = 0; l < bodies[i]->map_sky.lmax + 1; l++) {
-                for (m = -l; m < l + 1; m++) {
-                    names.push_back(string("planet" + to_string(i) + ".Y_{" + to_string(l) + "," + to_string(m) + "}"));
-                }
-            }
+            */
         }
 
         // Check that our derivative vectors are large enough
         int ngrad = names.size();
         if (ngrad > STARRY_NGRAD) throw errors::TooManyDerivs(ngrad);
 
+        // Add in the map gradients. These are computed manually
+        int nmapgrad = 0;
+        for (l = 1; l < bodies[0]->ldmap.lmax + 1; l++) {
+            names.push_back(string("star.u_" + to_string(l)));
+            nmapgrad++;
+        }
+        for (i = 1; i < NB; i++) {
+            if (bodies[i]->map_sky.lmax > maxlmax) maxlmax = bodies[i]->map_sky.lmax;
+            for (l = 0; l < bodies[i]->map_sky.lmax + 1; l++) {
+                for (m = -l; m < l + 1; m++) {
+                    names.push_back(string("planet" + to_string(i) + ".Y_{" + to_string(l) + "," + to_string(m) + "}"));
+                    nmapgrad++;
+                }
+            }
+        }
+        dFdy.resize((maxlmax + 1) * (maxlmax + 1));
+        dFdysky.resize((maxlmax + 1) * (maxlmax + 1));
+
         // Allocate arrays and derivs
         // Propagate the speed of light to all the bodies
-        // Sync the orbital and sky maps
         for (i = 0; i < NB; i++) {
             bodies[i]->x.resize(NT);
             bodies[i]->y.resize(NT);
             bodies[i]->z.resize(NT);
             bodies[i]->flux.resize(NT);
             bodies[i]->derivs.clear();
-            for (n = 0; n < ngrad; n++) {
-                if (i == 0)
-                    bodies[i]->derivs[names[n]].resize(NT);
-                else
-                    bodies[i]->derivs[names[n]].resize(NT);
+            for (n = 0; n < ngrad + nmapgrad; n++) {
+                bodies[i]->derivs[names[n]].resize(NT);
             }
             bodies[i]->clight = clight;
-            bodies[i]->sync_maps();
         }
-        for (n = 0; n < ngrad; n++) {
+        for (n = 0; n < ngrad + nmapgrad; n++) {
             derivs[names[n]].resize(NT);
         }
 
@@ -843,27 +854,7 @@ namespace orbital {
             // Allocate the derivatives
             n = 0;
             tsec = time(t) * DAY;
-            tsec.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-
-            // Convert the derivative back to days
-            tsec.derivatives()(0) *= DAY;
-
-            // Star derivs (map only)
-            for (k = 1; k < bodies[0]->ldmap.lmax + 1; k++)
-                bodies[0]->ldmap.u(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-
-            // The following ensures the derivatives of `u` are correctly
-            // propagated to the `g` vector, which is what we use in the
-            // flux calculation for limb-darkened bodies.
-            if (t == 0) {
-                bodies[0]->ldmap.update();
-                for (i = 0; i < bodies[0]->ldmap.g.size(); i += 2)
-                    tmpder.push_back(bodies[0]->ldmap.g(i).derivatives());
-            } else {
-                j = 0;
-                for (i = 0; i < bodies[0]->ldmap.g.size(); i += 2)
-                    bodies[0]->ldmap.g(i).derivatives() = tmpder[j++];
-            }
+            tsec.derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++) * DAY;
 
             // Planet derivs
             for (i = 1; i < NB; i++) {
@@ -884,34 +875,28 @@ namespace orbital {
                 // Propagate derivs to the helper variables
                 bodies[i]->reset();
 
-                // Map derivs: need to transform the derivatives from user coords to sky coords
-                // NOTE: These matrix operations are somewhat costly and probably don't have to be
-                // done every time. In particular, the derivative of the flux with respect to the
-                // map coefficients is almost trivial, so we could just code it up manually!
-                bodies[i]->axis(0).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->axis(1).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                bodies[i]->axis(2).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
+                // Sync the orbital and sky maps
+                if (t == 0) bodies[i]->sync_maps();
+
+                /*
+                TODO: When doing autodiff on the axis of rotation, the cached
+                version of AxisAngleRToSky will come in handy here:
                 bodies[i]->axis_sky = bodies[i]->AxisAngleRToSky * bodies[i]->axis;
-                k = 0;
-                for (l = 0; l < bodies[i]->lmax + 1; l++) {
-                    for (m = -l; m < l + 1; m++) {
-                        bodies[i]->map.y(k).derivatives() = Vector<double>::Unit(STARRY_NGRAD, n++);
-                        k++;
-                    }
-                    bodies[i]->map_sky.y.segment(l * l, 2 * l + 1) = bodies[i]->WignerRToSky.Real[l] * bodies[i]->map.y.segment(l * l, 2 * l + 1);
-                }
+                */
 
             }
 
             // Take an orbital step and compute the fluxes
             fluxes = integrate(tsec);
 
-            // Get the total system flux and update body vectors
+            // Store the flux and the autodiff derivs
             for (i = 0; i < NB; i++) {
+
+                // Get the total system flux and update body vectors
                 bodies[i]->flux(t) = fluxes(i);
                 flux(t) += fluxes(i);
 
-                // Store the derivs
+                // Store the autodiff derivs
                 for (n = 0; n < ngrad; n++) {
                     (bodies[i]->derivs[names[n]])(t) = bodies[i]->flux(t).derivatives()(n);
                     if (i == 0)
@@ -919,7 +904,38 @@ namespace orbital {
                     else
                         (derivs[names[n]])(t) += bodies[i]->flux(t).derivatives()(n);
                 }
+
             }
+
+            // Now store the (manual) map derivs: first the star...
+            for (l = 1; l < bodies[0]->ldmap.lmax + 1; l++) {
+                (bodies[0]->derivs[names[n]])(t) = bodies[0]->ldmap.dFdu(l).value();
+                (derivs[names[n]])(t) = bodies[0]->ldmap.dFdu(l).value();
+                n++;
+            }
+
+            // ... then each of the planets
+            for (i = 1; i < NB; i++) {
+
+                // Get the dF / dysky vector
+                for (j = 0; j < bodies[i]->map_sky.N; j++) {
+                    dFdysky(j) = bodies[i]->map_sky.dFdy(j).value();
+                }
+
+                // dF / dy = dF / dysky * dysky / dy
+                // And since ysky = R y, we have dysky / dy = R
+                for (l = 0; l < bodies[i]->lmax + 1; l++) {
+                    dFdy.segment(l * l, 2 * l + 1) = bodies[i]->WignerRToSky.Real[l].transpose() * dFdysky.segment(l * l, 2 * l + 1);
+                }
+
+                for (j = 0; j < bodies[i]->map_sky.N; j++) {
+                    (bodies[i]->derivs[names[n]])(t) = bodies[i]->norm.value() * bodies[i]->L.value() * dFdy(j).value();
+                    (derivs[names[n]])(t) = bodies[i]->norm.value() * bodies[i]->L.value() * dFdy(j).value();
+                    n++;
+                }
+
+            }
+
 
         }
 
