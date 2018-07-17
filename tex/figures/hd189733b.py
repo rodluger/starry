@@ -12,7 +12,7 @@ from scipy.optimize import minimize
 from scipy.io.idl import readsav
 import emcee, corner
 
-rcParams["text.usetex"] = True
+#rcParams["text.usetex"] = True
 
 import starry
 
