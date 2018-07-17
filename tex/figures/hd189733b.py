@@ -706,21 +706,22 @@ class MCMCCartography(object):
         fig.subplots_adjust(wspace=0.08, hspace=0.00)
         ax = plt.subplot(gs[0])
         ax2 = plt.subplot(gs[2])
+        ax.set_title("HD189733b Secondary Eclipse")
 
         ax.plot(data.df['time'], data.df['flux'], "o", alpha = 0.25, ms = 0.1, color='C0', zorder = -1)
         ax.plot(data.df_med['time'], data.df_med['flux'], label = "data w/ rolling median", zorder = 10, color = "C0")
 
         ax.set_xlabel('Time [days]', fontsize=14, fontweight='bold');
         ax.set_ylabel('Normalized Flux', fontsize=14, fontweight='bold');
-        ax.axvline(self.time.min(), color = "grey", lw = 0.5)
-        ax.axvline(self.time.max(), color = "grey", lw = 0.5)
+        #ax.axvline(self.time.min(), color = "grey", lw = 0.5)
+        #ax.axvline(self.time.max(), color = "grey", lw = 0.5)
 
-        ax.set_ylim(0.975, 1.025)
-        ax.set_xlim(data.df['time'].min(), data.df['time'].max())
+        ax.set_ylim(0.98, 1.02)
+        ax.set_xlim(self.time.min(), self.time.max())
 
         ax2.plot(self.time, self.y, "o", alpha = 0.5, ms = 0.1, color='C0', zorder = -1)
         ax2.plot(data.df_med['time'], data.df_med['flux'], label = "data w/ rolling median", zorder = 10, color = "C0")
-        ax2.plot(self.time, self.system.flux / self.system.flux[0], '-', color='C1', label = "max likelihood model")
+        ax2.plot(self.time, self.system.flux / self.system.flux[0], '-', color='C1', label = "median model")
 
         ax2.set_xlabel('Time [days]', fontsize=14, fontweight='bold');
         ax2.set_ylabel('Normalized Flux', fontsize=14, fontweight='bold');

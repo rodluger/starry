@@ -1771,6 +1771,30 @@ is about 30 ppm (relative to the stellar flux). Computation of the \spiderman
 light curves with larger values of $n_\mathrm{layers}$ improves the precision
 but leads to proportionally longer evaluation times.
 
+% ------------------------------------------------------------------------------
+\subsection{Application to Real Data: HD189733b}
+\label{sec:hd189}
+% ------------------------------------------------------------------------------
+
+The strengths of \starry are best realized for inference problems. We demonstrate the inference capability of \starry by fitting the \textit{Spitzer}/IRAC 8 $\mu$m secondary eclipse light curve from  \citet{Knutson2007}. Our analysis here is very similar to \citet{Majeau2012}, who also fit a spherical harmonic map to the secondary eclipse data. We fit for the $l = 1$ map coefficients and the planet luminosity. Unlike \citet{Majeau2012}, we fit each point in the time-series without rebinning. We initially find the maximum likelihood fit to the data using \starry with gradients. We then initialize MCMC \citep{Foreman-Mackey2013} chains in a Gaussian ball about that maximum likelihood solution and run the MCMC for 10,000 steps with 40 walkers. 
+
+Figure \ref{fig:hd189_mcmc_fit} shows the secondary eclipse light curve and our median model fit to the data. As expected, our fit closely tracks the rolling median of the individually scattered data points. Figure \ref{fig:hd189_mcmc_corner} shows the marginalized posteriors and covariances of all fitting parameters, as well as the latitude and longitude of the hot spot relative to the substellar point. The median model map is also displayed, which shows a robust eastward offset in the location of the hot spot in agreement with previous studies \citep{Knutson2007, Majeau2012}. There is a strong degeneracy between the planet luminosity and the $Y_{1,0}$ spherical harmonic coefficient, which we marginalize over, but could easily be ameliorated by performing a simultaneous fit of the planet's phase curve. Although our constraints on the latitudinal offset of the hotspot are tighter than \citet{Majeau2012}, this is likely because we fixed the orbital parameters (particularly the inclination and impact parameter) rather than fitting for them alongside the map parameters. 
+
+%
+\begin{figure}[t!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/hd189_mcmc_fit.pdf}
+    \caption{\label{fig:hd189_mcmc_fit} Secondary eclipse light curve of HD189733b observed with \textit{Spitzer}/IRAC at 8 microns from \citet{Knutson2007} and our fit to the data. \codelink{hd189733b}}
+    \end{centering}
+\end{figure}
+%
+\begin{figure}[t!]
+    \begin{centering}
+    \includegraphics[width=\linewidth]{figures/hd189_mcmc_corner.pdf}
+    \caption{\label{fig:hd189_mcmc_corner} Marginalized posterior distributions for and covariances between parameters for our fit to the HD189733b secondary eclipse. The spherical harmonic coefficients $Y_{1,-1}$, $Y_{1,0}$, and $Y_{1,1}$ and the planet luminosity $L$ were fit for, while the latitude $\hat{\theta}$ and longitude $\hat{\phi}$ of the hotspot were calculated from the coefficients. The median inferred parameters were used to generate the map of HD189733b shown in the upper right. This figure made use of the \texttt{corner} plotting package \citep{Foreman-Mackey2016}. \codelink{hd189733b}}
+    \end{centering}
+\end{figure}
+%
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -1878,24 +1902,6 @@ first noted by \cite{Pal2012}, whose \textsf{mttr} code computes analytic
 transit light curves for mutually overlapping bodies such as a transiting
 planet with a moon. Future versions of \starry will extend the calculations
 to this general case.
-
-%HD189733b
-
-%
-\begin{figure}[t!]
-    \begin{centering}
-    \includegraphics[width=\linewidth]{figures/hd189_mcmc_fit.pdf}
-    \caption{\label{fig:hd189_mcmc_fit}}
-    \end{centering}
-\end{figure}
-%
-\begin{figure}[t!]
-    \begin{centering}
-    \includegraphics[width=\linewidth]{figures/hd189_mcmc_corner.pdf}
-    \caption{\label{fig:hd189_mcmc_corner}}
-    \end{centering}
-\end{figure}
-%
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
