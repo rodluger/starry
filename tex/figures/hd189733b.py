@@ -1,20 +1,17 @@
 """Analysis of HD189733b 8 micron Spitzer secondary eclipses."""
-
-import sys, os
+import os
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from matplotlib import rcParams
 import numpy as np
 import pandas as pd
 import wget
 from tqdm import tqdm
 from scipy.optimize import minimize
 from scipy.io.idl import readsav
-import emcee, corner
-
-rcParams["text.usetex"] = False
-
+import emcee
+import corner
 import starry
+
 
 class EclipseData(object):
     """
@@ -44,7 +41,7 @@ class EclipseData(object):
     >>> data = EclipseData(plot = True)
     """
 
-    def __init__(self, plot = False):
+    def __init__(self, plot=False):
 
         # Check if datafile exists
         filename = "light_curve.sav"
@@ -57,7 +54,8 @@ class EclipseData(object):
         idl = readsav(filename)
 
         # Make pandas DataFrame
-        df = pd.DataFrame(np.array(idl['light_curve']).byteswap().newbyteorder(), columns=["time", "flux"])
+        df = pd.DataFrame(np.array(idl['light_curve']).byteswap(
+        ).newbyteorder(), columns=["time", "flux"])
 
         # Calculate rolling median and standard deviation
         df_med = df.rolling(5000, center=False).median()
@@ -65,7 +63,7 @@ class EclipseData(object):
 
         # Calculate data uncertainties as the median rolling standard deviation
         assumed_errors = np.nanmedian(df_std.flux)
-        df['std'] = pd.Series(assumed_errors * np.ones(len(df.flux)), index = df.index)
+        df['std'] = pd.Series(assumed_errors * np.ones(len(df.flux)), index=df.index)
 
         time = df['time'].values
         y = df['flux'].values
@@ -79,13 +77,13 @@ class EclipseData(object):
 
             # Make plot
             fig, ax = plt.subplots(1, figsize=(16, 8))
-            ax.plot(time, y, "o", alpha = 1., ms = 0.1, color='C0', label = "data")
-            ax.plot(df_med['time'], df_med['flux'], label = "rolling median")
-            ax.set_xlabel('Time [days]', fontsize=14, fontweight='bold');
-            ax.set_ylabel('Normalized Flux', fontsize=14, fontweight='bold');
+            ax.plot(time, y, "o", alpha=1., ms=0.1, color='C0', label="data")
+            ax.plot(df_med['time'], df_med['flux'], label="rolling median")
+            ax.set_xlabel('Time [days]', fontsize=14)
+            ax.set_ylabel('Normalized Flux', fontsize=14)
             ax.set_ylim(0.995, 1.002)
             ax.set_xlim(-tstart, tstart)
-            ax.legend();
+            ax.legend(fontsize=14, loc='upper right')
 
             # Save fig, ax as attributes
             self.fig = fig
@@ -99,6 +97,7 @@ class EclipseData(object):
         self.y = df['flux'].values[mask]
         self.yerr = df['std'].values[mask]
 
+
 def hotspot_offset(p):
     """Calculate the latitude and longitude of the hot spot in degrees"""
     x = p[2] / np.sqrt(np.sum(p[:3] ** 2))
@@ -107,6 +106,7 @@ def hotspot_offset(p):
     lat = np.arcsin(y) * 180 / np.pi
     lon = np.arccos(z / np.sqrt(1 - y ** 2)) * 180 / np.pi
     return lat, lon
+
 
 def set_coeffs(p, planet):
     """Set the coefficients of the planet map."""
@@ -117,6 +117,7 @@ def set_coeffs(p, planet):
     planet.map[1, 1] = y11
     planet.L = L
 
+
 def gen_coeffs():
     """Generate random initial conditions."""
     y1m1 = np.random.randn()
@@ -124,7 +125,8 @@ def gen_coeffs():
     y11 = np.random.randn()
     L = np.random.randn()
     return np.array([y1m1, y10, y11, L])
-    #return np.array([y1m1, y10, y11])
+    # return np.array([y1m1, y10, y11])
+
 
 def gen_coeffs_in_bounds(planet):
     """Generate random initial conditions with finite lnprior."""
@@ -133,6 +135,7 @@ def gen_coeffs_in_bounds(planet):
         if np.isfinite(lnprior(t0, planet)):
             break
     return t0
+
 
 def lnprior_intensity(p):
     """
@@ -146,6 +149,7 @@ def lnprior_intensity(p):
     else:
         return 0
 
+
 def lnprior(p, planet):
     """Log prior"""
 
@@ -158,22 +162,22 @@ def lnprior(p, planet):
         lp += 0.0
 
     # Constrain the Luminosity more than harmonic coeffs
-    #"""
+    # """
     if (p[-1] < 0) or (p[-1] > 0.01):
         lp += -np.inf
     else:
         lp += 0.0
-    #"""
+    # """
 
     # Ensure that the minimum intensity from the planet is positive
     #     replaced: lp += lnprior_intensity(p)
-    #"""
+    # """
     set_coeffs(p, planet)
     if planet.map.psd():
         lp += 0.0
     else:
         lp += -np.inf
-    #"""
+    # """
 
     return lp
 
@@ -193,16 +197,18 @@ def lnlike(p, time, y, yerr, system, planet):
     model = system.flux / system.flux[0]
 
     # Compute the chi-squared
-    chisq = np.sum((y - model) ** 2 / yerr ** 2)# / len(y)
+    chisq = np.sum((y - model) ** 2 / yerr ** 2)  # / len(y)
 
     ll += -0.5 * chisq
 
     return ll
 
+
 def neglnlike(*args):
     """Negative log likelihood"""
     ll = lnlike(*args)
     return -ll
+
 
 def lnlike_grad(p, time, y, yerr, system, planet):
     """Log likelihood and gradient"""
@@ -232,14 +238,14 @@ def lnlike_grad(p, time, y, yerr, system, planet):
         system.gradient['planet1.L']
     ])
 
-     # Normalization (chain rule)
+    # Normalization (chain rule)
     '''
     M = np.zeros((len(model), len(model)))
     M[0,:] = system.flux / system.flux[0] ** 2
     dmdf = np.eye(len(model)) / system.flux[0] - M
     dmdy = np.dot(dfdy, dmdf)
     '''
-    foo = (dfdy[:, 0] * system.flux.reshape(-1,1)).transpose()
+    foo = (dfdy[:, 0] * system.flux.reshape(-1, 1)).transpose()
     dmdy = dfdy / f0 - foo / f0 ** 2
 
     # Now compute the gradient of chi-squared with respect to y
@@ -247,12 +253,14 @@ def lnlike_grad(p, time, y, yerr, system, planet):
 
     return ll, grad
 
+
 def neglnlike_grad(*args):
     """Negative log likelihood and gradient"""
     ll, gll = lnlike_grad(*args)
     return -ll, -gll
 
-def instatiate_HD189(grad = False):
+
+def instatiate_HD189(grad=False):
     """
     Instatiate the HD189733b :class:``starry.Star``, :class:``starry.Planet``
     and :class:``starry.System`` with or without gradients.
@@ -263,15 +271,15 @@ def instatiate_HD189(grad = False):
         Set to use gradients
     """
 
-    lmax=1
-    lambda0=90
-    r=0.155313
-    L=0.00344
-    inc=85.71
-    a=8.863
-    prot=2.21858
-    porb=2.21858
-    tref=-2.21858/2.
+    lmax = 1
+    lambda0 = 90
+    r = 0.155313
+    L = 0.00344
+    inc = 85.71
+    a = 8.863
+    prot = 2.21858
+    porb = 2.21858
+    tref = -2.21858/2.
 
     if grad:
 
@@ -313,6 +321,7 @@ def instatiate_HD189(grad = False):
 
     return star, planet, system
 
+
 class MaxLikeCartography(object):
     """
     Use ``scipy.optimize.minimize`` to find the maximum likelihood solution
@@ -334,7 +343,8 @@ class MaxLikeCartography(object):
     jac : bool
         Set to use Jacobians
     """
-    def __init__(self, time, y, yerr, system, planet, N = 10, jac = True):
+
+    def __init__(self, time, y, yerr, system, planet, N=10, jac=True):
 
         self.time = time
         self.y = y
@@ -358,7 +368,8 @@ class MaxLikeCartography(object):
             func = neglnlike
             string = ""
 
-        print("Finding maximum likelihood solution%s from %i random parameter initializations..." %(string, self.N))
+        print("Finding maximum likelihood solution%s from %i random parameter initializations..." %
+              (string, self.N))
 
         results = []
         x0s = []
@@ -370,8 +381,9 @@ class MaxLikeCartography(object):
             x0 = gen_coeffs_in_bounds(self.planet)
 
             # Find maximum likelihood solution
-            res = minimize(func, x0, args=(self.time, self.y, self.yerr, self.system, self.planet), jac=self.jac)
-            #options = {'gtol': 1e-10, 'ftol': 1e-10})
+            res = minimize(func, x0, args=(self.time, self.y, self.yerr,
+                                           self.system, self.planet), jac=self.jac)
+            # options = {'gtol': 1e-10, 'ftol': 1e-10})
 
             results.append(res)
             x0s.append(x0)
@@ -395,22 +407,22 @@ class MaxLikeCartography(object):
         data : :class:``EclipseData``
         """
 
-        fig, axs = plt.subplots(1, 2, figsize = (12,5))
+        fig, axs = plt.subplots(1, 2, figsize=(12, 5))
 
-        ax= axs[0]
+        ax = axs[0]
         ax2 = axs[1]
 
         xx, yy = np.meshgrid(np.linspace(-1, 1, 300), np.linspace(-1, 1, 300))
 
         set_coeffs(self.res.x, self.planet)
 
-        img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta = 0) for j in range(300)]
+        img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta=0) for j in range(300)]
         ax.imshow(img, origin="lower",
-                     interpolation="none", cmap="plasma",
-                     extent=(-1, 1, -1, 1))
+                  interpolation="none", cmap="plasma",
+                  extent=(-1, 1, -1, 1))
         ax.contour(img, origin="lower",
-                      extent=(-1, 1, -1, 1),
-                      colors='k', linewidths=1)
+                   extent=(-1, 1, -1, 1),
+                   colors='k', linewidths=1)
         ax.set_frame_on(False)
         ax.set_xticks([])
         ax.set_yticks([])
@@ -418,15 +430,14 @@ class MaxLikeCartography(object):
         #expr = "%.3e" %res.fun
         ax.set_xlabel(expr, fontsize=12)
 
-
         self.system.compute(self.time)
 
         # Plot the true model and our noised data
-        ax2.plot(self.time, self.system.flux / self.system.flux[0], '-', color='C1', label = "model")
-        ax2.plot(data.df_med['time'], data.df_med['flux'], label = "rolling median")
+        ax2.plot(self.time, self.system.flux / self.system.flux[0], '-', color='C1', label="model")
+        ax2.plot(data.df_med['time'], data.df_med['flux'], label="rolling median")
 
-        ax2.set_xlabel('Time [days]', fontsize=14, fontweight='bold');
-        ax2.set_ylabel('Normalized Flux', fontsize=14, fontweight='bold');
+        ax2.set_xlabel('Time [days]', fontsize=14)
+        ax2.set_ylabel('Normalized Flux', fontsize=14)
         ax2.set_ylim(0.995, 1.002)
         ax2.set_xlim(data.time.min(), data.time.max())
 
@@ -441,40 +452,41 @@ class MaxLikeCartography(object):
 
         for res in self.list:
 
-            fig, axs = plt.subplots(1, 2, figsize = (12,5))
+            fig, axs = plt.subplots(1, 2, figsize=(12, 5))
 
-            ax= axs[0]
+            ax = axs[0]
             ax2 = axs[1]
 
             xx, yy = np.meshgrid(np.linspace(-1, 1, 300), np.linspace(-1, 1, 300))
 
             set_coeffs(res.x, self.planet)
 
-            img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta = 0) for j in range(300)]
+            img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta=0) for j in range(300)]
             ax.imshow(img, origin="lower",
-                         interpolation="none", cmap="plasma",
-                         extent=(-1, 1, -1, 1))
+                      interpolation="none", cmap="plasma",
+                      extent=(-1, 1, -1, 1))
             ax.contour(img, origin="lower",
-                          extent=(-1, 1, -1, 1),
-                          colors='k', linewidths=1)
+                       extent=(-1, 1, -1, 1),
+                       colors='k', linewidths=1)
             ax.set_frame_on(False)
             ax.set_xticks([])
             ax.set_yticks([])
             expr = r"${0}$".format(self.planet.map.__repr__()[12:-1])
             ax.set_xlabel(expr, fontsize=12)
 
-
             self.system.compute(data.time)
 
             # Plot the true model and our noised data
-            ax2.plot(data.time, self.system.flux / self.system.flux[0], '-', color='C1', label = "model")
-            ax2.plot(data.df_med['time'], data.df_med['flux'], label = "rolling median")
+            ax2.plot(data.time, self.system.flux /
+                     self.system.flux[0], '-', color='C1', label="model")
+            ax2.plot(data.df_med['time'], data.df_med['flux'], label="rolling median")
 
-            ax2.set_xlabel('Time [days]', fontsize=14, fontweight='bold');
-            ax2.set_ylabel('Normalized Flux', fontsize=14, fontweight='bold');
+            ax2.set_xlabel('Time [days]', fontsize=14)
+            ax2.set_ylabel('Normalized Flux', fontsize=14)
             ax2.set_ylim(0.995, 1.002)
             ax2.set_xlim(data.time.min(), data.time.max())
-            ax2.set_title("%.3e" %res.fun)
+            ax2.set_title("%.3e" % res.fun)
+
 
 class MCMCCartography(object):
     """
@@ -501,9 +513,10 @@ class MCMCCartography(object):
     labels : list
         List of free parameter labels
     """
-    def __init__(self, time, y, yerr, system, planet, p0 = None,
-                 chain = None, chain_path = "map_chains.npz",
-                 labels = np.array([r"$Y_{1,-1}$", r"$Y_{1,0}$", r"$Y_{1,1}$", r"$L$"])):
+
+    def __init__(self, time, y, yerr, system, planet, p0=None,
+                 chain=None, chain_path="map_chains.npz",
+                 labels=np.array([r"$Y_{1,-1}$", r"$Y_{1,0}$", r"$Y_{1,1}$", r"$L$"])):
         self.time = time
         self.y = y
         self.yerr = yerr
@@ -518,7 +531,7 @@ class MCMCCartography(object):
         if self.chain_path is not None:
             self.load_chain()
 
-    def run_mcmc(self, nsteps = 1000):
+    def run_mcmc(self, nsteps=1000):
         """Run an MCMC chain for ``nsteps``"""
 
         self.nsteps = nsteps
@@ -528,7 +541,8 @@ class MCMCCartography(object):
         # Initialize walkers *in bounds*, if not provided
         if self.p0 is None:
             self.p0 = []
-            self.p0 = np.array([self.p0.append(gen_coeffs_in_bounds(self.planet)) for i in range(self.nwalk)])
+            self.p0 = np.array([self.p0.append(gen_coeffs_in_bounds(self.planet))
+                                for i in range(self.nwalk)])
         else:
             self.nwalk = self.p0.shape[0]
 
@@ -536,12 +550,12 @@ class MCMCCartography(object):
         if not hasattr(self, "sampler"):
             # Create a new sampler
             self.sampler = emcee.EnsembleSampler(self.nwalk, self.ndim, lnlike,
-                                    args=[self.time, self.y, self.yerr, self.system, self.planet])
+                                                 args=[self.time, self.y, self.yerr, self.system, self.planet])
             for i in tqdm(self.sampler.sample(self.p0, iterations=self.nsteps), total=self.nsteps):
                 pass
         else:
             # Continue running existing sampler from last step in chain
-            for i in tqdm(self.sampler.sample(self.sampler.chain[:,-1,:], iterations=self.nsteps), total=self.nsteps):
+            for i in tqdm(self.sampler.sample(self.sampler.chain[:, -1, :], iterations=self.nsteps), total=self.nsteps):
                 pass
 
         # Save sampler.chain as chain (this is might be really stupid b/c it duplicates
@@ -573,7 +587,7 @@ class MCMCCartography(object):
 
         return
 
-    def plot_trace(self, nburn = 0):
+    def plot_trace(self, nburn=0):
         """Plots the MCMC chains for manual inspection"""
 
         ndim = self.ndim
@@ -586,7 +600,7 @@ class MCMCCartography(object):
         axc = [plt.subplot2grid((ndim, 10), (n, 0), colspan=8, rowspan=1)
                for n in range(ndim)]
         axh = [plt.subplot2grid((ndim, 10), (n, 8), colspan=2,
-                               rowspan=1, sharey=axc[n]) for n in range(ndim)]
+                                rowspan=1, sharey=axc[n]) for n in range(ndim)]
         alpha = 0.3
         for i, label in enumerate(labels):
             for k in range(nwalk):
@@ -605,13 +619,13 @@ class MCMCCartography(object):
             axc[-1].set_ylabel("lnlike", fontsize=24);
         """
         plt.setp(axh[-1].get_yticklabels(), visible=False)
-        plt.setp(axh[-1].get_xticklabels(), visible=False);
+        plt.setp(axh[-1].get_xticklabels(), visible=False)
 
         self.fig_trace = fig
 
         return
 
-    def apply_burnin(self, nburn = 0):
+    def apply_burnin(self, nburn=0):
         """Creates attribute `samples` by flattening chain beyond the burn-in `nburn`"""
         self.samples = self.chain[:, nburn:, :].reshape(-1, self.ndim)
         return
@@ -621,11 +635,11 @@ class MCMCCartography(object):
         # Calculate the latitude and longitude of the hotspot offset
         lat, lon = np.zeros(self.samples.shape[0]), np.zeros(self.samples.shape[0])
         for i in range(self.samples.shape[0]):
-            lat[i], lon[i] = hotspot_offset(self.samples[i,:])
+            lat[i], lon[i] = hotspot_offset(self.samples[i, :])
 
         # Append lat and lon samples to the chains
         self.samples2 = np.vstack([self.samples.T, lat, lon]).T
-        self.labels2 = np.hstack([self.labels, r"$\check{\theta}$", r"$\check{\phi}$"])
+        self.labels2 = np.hstack([self.labels, r"$\hat{\theta}$", r"$\hat{\phi}$"])
 
         return
 
@@ -634,11 +648,23 @@ class MCMCCartography(object):
         medvals = np.nanmedian(self.samples, axis=0)
         truths = np.nanmedian(self.samples2, axis=0)
 
-        fig = corner.corner(self.samples2, labels=self.labels2, bins=45, show_titles=True, title_fmt='.3f');
+        fig = corner.corner(self.samples2, labels=self.labels2,
+                            bins=45, show_titles=True, title_fmt='.3f')
         for ax in fig.axes:
             ax.xaxis.label.set_fontsize(20)
             ax.yaxis.label.set_fontsize(20)
-            ax.title.set_fontsize(20)
+            ax.title.set_fontsize(18)
+
+        # DEBUG: The luminosity standard deviaton is too small
+        # for the label, so we need one more sig fig. Hacking it
+        # manually here.
+        q_50 = 0.002386320863440533
+        q_m = 0.00023922582062520454
+        q_p = 0.00044027585261682475
+        fmt = "{{0:{0}}}".format(".4f").format
+        Ltitle = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
+        Ltitle = r"$L = $" + Ltitle.format(fmt(q_50), fmt(q_m), fmt(q_p))
+        fig.axes[21].set_title(Ltitle, fontsize=16)
 
         left = 0.55
         bottom = 0.55
@@ -649,16 +675,19 @@ class MCMCCartography(object):
         xx, yy = np.meshgrid(np.linspace(-1, 1, 300), np.linspace(-1, 1, 300))
 
         set_coeffs(medvals, self.planet)
-        img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta = 0) for j in range(300)]
+        img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta=0) for j in range(300)]
         ax.imshow(img, origin="lower",
-                     interpolation="none", cmap="plasma",
-                     extent=(-1, 1, -1, 1))
+                  interpolation="none", cmap="plasma",
+                  extent=(-1, 1, -1, 1), zorder=-1)
         ax.contour(img, origin="lower",
-                      extent=(-1, 1, -1, 1),
-                      colors='k', linewidths=1)
+                   extent=(-1, 1, -1, 1),
+                   colors='k', linewidths=1)
         ax.set_frame_on(False)
         ax.set_xticks([])
         ax.set_yticks([])
+        ax.set_xlim(-1.25, 1.25)
+        ax.set_ylim(-1.25, 1.25)
+        ax.set_rasterization_zorder(0)
         #expr = r"${0}$".format(planet.map.__repr__()[12:-1])
         #ax.set_xlabel(expr, fontsize=12)
         #ax.set_title("max likelihood map", fontsize=24, fontweight='bold');
@@ -677,15 +706,15 @@ class MCMCCartography(object):
 
         # Plot the true model and our noised data
         fig, ax = plt.subplots(1, figsize=(16, 8))
-        ax.plot(self.time, self.y, "o", alpha = 1., ms = 0.1, color='C0', label = "data")
-        ax.plot(self.time, self.system.flux / self.system.flux[0], '-', color='C1', label = "model")
-        ax.plot(data.df_med['time'], data.df_med['flux'], label = "rolling median")
+        ax.plot(self.time, self.y, "o", alpha=1., ms=0.1, color='C0', label="data")
+        ax.plot(self.time, self.system.flux / self.system.flux[0], '-', color='C1', label="model")
+        ax.plot(data.df_med['time'], data.df_med['flux'], label="rolling median")
 
-        ax.set_xlabel('Time [days]', fontsize=14, fontweight='bold');
-        ax.set_ylabel('Normalized Flux', fontsize=14, fontweight='bold');
+        ax.set_xlabel('Time [days]', fontsize=14)
+        ax.set_ylabel('Normalized Flux', fontsize=14)
         ax.set_ylim(0.995, 1.002)
         ax.set_xlim(self.time.min(), self.time.max())
-        ax.legend();
+        ax.legend(fontsize=14, loc='upper right')
 
         self.fig_fit = fig
 
@@ -701,35 +730,37 @@ class MCMCCartography(object):
         self.system.compute(self.time)
 
         # Plot the true model and our noised data
-        fig = plt.figure(figsize=(8,10))
-        gs = gridspec.GridSpec(3,1, height_ratios = [0.3, 0.03, 0.5])
-        fig.subplots_adjust(wspace=0.08, hspace=0.00)
-        ax = plt.subplot(gs[0])
-        ax2 = plt.subplot(gs[2])
-        ax.set_title("HD189733b Secondary Eclipse")
+        fig, ax2 = plt.subplots(1, figsize=(8, 5))
 
-        ax.plot(data.df['time'], data.df['flux'], "o", alpha = 0.25, ms = 0.1, color='C0', zorder = -1)
-        ax.plot(data.df_med['time'], data.df_med['flux'], label = "data w/ rolling median", zorder = 10, color = "C0")
-
-        ax.set_xlabel('Time [days]', fontsize=14, fontweight='bold');
-        ax.set_ylabel('Normalized Flux', fontsize=14, fontweight='bold');
-        #ax.axvline(self.time.min(), color = "grey", lw = 0.5)
-        #ax.axvline(self.time.max(), color = "grey", lw = 0.5)
-
-        ax.set_ylim(0.98, 1.02)
+        # Inset
+        ax = plt.axes([0.15, 0.65, 0.2, 0.2], facecolor='w')
+        ax.plot(data.df['time'][::3], data.df['flux'][::3], ".", alpha=0.3, ms=0.1,
+                markeredgecolor='C0', color='C0', zorder=-1)
+        ax.plot(data.df_med['time'], data.df_med['flux'],
+                label="rolling median", zorder=10, color="C0", lw=1)
+        ax.plot(self.time, self.system.flux /
+                 self.system.flux[0], '-', color='C1')
+        ax.set_ylim(0.9825, 1.0175)
         ax.set_xlim(self.time.min(), self.time.max())
+        ax.set_xticks([])
+        ax.set_yticks([])
 
-        ax2.plot(self.time, self.y, "o", alpha = 0.5, ms = 0.1, color='C0', zorder = -1)
-        ax2.plot(data.df_med['time'], data.df_med['flux'], label = "data w/ rolling median", zorder = 10, color = "C0")
-        ax2.plot(self.time, self.system.flux / self.system.flux[0], '-', color='C1', label = "median model")
+        # Main plot
+        ax2.plot(-1, -1, 'o', ms=0.5, color='C0', label='data')
+        ax2.plot(self.time, self.y, "o", alpha=0.5, ms=0.1, color='C0',
+                 zorder=-1)
+        ax2.plot(data.df_med['time'], data.df_med['flux'],
+                 label="rolling median", zorder=10, color="C0")
+        ax2.plot(self.time, self.system.flux /
+                 self.system.flux[0], '-', color='C1', label="median model")
 
-        ax2.set_xlabel('Time [days]', fontsize=14, fontweight='bold');
-        ax2.set_ylabel('Normalized Flux', fontsize=14, fontweight='bold');
+        ax2.set_xlabel('Time [days]', fontsize=14)
+        ax2.set_ylabel('Normalized Flux', fontsize=14)
 
         # Mask phasecurve
         ax2.set_xlim(self.time.min(), self.time.max())
-        ax2.set_ylim(0.995, 1.002)
-        ax2.legend(numpoints = 3);
+        ax2.set_ylim(0.995, 1.0035)
+        ax2.legend(numpoints=3, loc=(0.725, 0.79))
 
         ax.set_rasterization_zorder(0)
         ax2.set_rasterization_zorder(0)
@@ -737,6 +768,7 @@ class MCMCCartography(object):
         self.fig_fit_full = fig
 
         return
+
 
 if __name__ == "__main__":
 
@@ -748,53 +780,53 @@ if __name__ == "__main__":
     std_ball = [0.01, 0.01, 0.01, 0.001]     # Gaussian ball for MCMC p0
 
     # Get HD189 data
-    data = EclipseData(plot = False)
+    data = EclipseData(plot=False)
 
     # If there are no saved chains in this path
     if not os.path.exists(chain_path):
 
         # Find ML solution
         # Initialize system
-        star, planet, system = instatiate_HD189(grad = grad)
-        results = MaxLikeCartography(data.time, data.y, data.yerr, system, planet, N = N, jac = grad)
+        star, planet, system = instatiate_HD189(grad=grad)
+        results = MaxLikeCartography(data.time, data.y, data.yerr, system, planet, N=N, jac=grad)
         results.compute()
 
         # Initialize system *without gradients*
-        star, planet, system = instatiate_HD189(grad = False)
+        star, planet, system = instatiate_HD189(grad=False)
 
         # Initialize MCMC walkers *from maximum likelihood optimized solution*
         p0 = emcee.utils.sample_ball(results.res.x, std_ball, nwalk)
 
         # Run MCMC
-        mcmc = MCMCCartography(data.time, data.y, data.yerr, system, planet, p0 = p0,
-                                     chain_path = chain_path)
+        mcmc = MCMCCartography(data.time, data.y, data.yerr, system, planet, p0=p0,
+                               chain_path=chain_path)
         mcmc.run_mcmc(nsteps=nsteps)
 
     else:
 
         # Initialize system *without gradients*
-        star, planet, system = instatiate_HD189(grad = False)
+        star, planet, system = instatiate_HD189(grad=False)
 
         # Read-in saved chain
         mcmc = MCMCCartography(data.time, data.y, data.yerr, system, planet,
-                                     chain_path = chain_path)
+                               chain_path=chain_path)
 
     # Plot the chains as a function of iteration
-    #mcmc.plot_trace()
+    # mcmc.plot_trace()
 
     # Apply a burn-in cut to samples
-    mcmc.apply_burnin(nburn = 2000)
+    mcmc.apply_burnin(nburn=2000)
 
     # Plot the fit to the data
-    #mcmc.plot_fit(data)
+    # mcmc.plot_fit(data)
 
     # Plot the full lightcurve and the fit to the eclipse
     mcmc.plot_fit_full(data)
-    mcmc.fig_fit_full.savefig("hd189_mcmc_fit.pdf", bbox_inches = "tight")
+    mcmc.fig_fit_full.savefig("hd189733b.pdf", bbox_inches="tight")
 
     # Get hot spot offset samples and append to a newly created chain
     mcmc.get_hot_spot_samples()
 
     # Plot the corner with the map in the upper right
     mcmc.plot_corner_with_map()
-    mcmc.fig_corner.savefig("hd189_mcmc_corner.pdf", bbox_inches = "tight")
+    mcmc.fig_corner.savefig("hd189_mcmc_corner.pdf", bbox_inches="tight")

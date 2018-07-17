@@ -8,7 +8,7 @@
 \setlength{\belowdisplayskip}{1.5em}
 
 \title{%
-    \textbf{STARRY}: Analytic Occultation Light Curves 
+    \textbf{STARRY}: Analytic Occultation Light Curves
 }
 
 \author[0000-0002-0296-3826]{Rodrigo Luger}
@@ -464,6 +464,9 @@ an angle $\theta$ and an arbitrary axis of rotation $\bvec{u}$. Follow the link
 next to Figure~\ref{fig:ylms} to view an animation of the spherical harmonics
 rotating about the $y$-axis, computed from \eq{rotation}.
 
+% HACK
+\pagebreak
+% HACK
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -927,7 +930,13 @@ compute light curves for celestial bodies using the formalism developed
 in this paper. \starry is coded entirely in \cpp for speed and wrapped
 in \Python using \pybind \citep{pybind11} for quick and easy
 light curve calculations. The
-code may be installed by running the following in a terminal:
+code may be installed via \texttt{pip},
+%
+\begin{lstlisting}[language=bash]
+pip install starry
+\end{lstlisting}
+%
+or from source by cloning the \href{https://github.com/rodluger/starry}{\texttt{GitHub}} repository,
 %
 \begin{lstlisting}[language=bash]
 git clone https://github.com/rodluger/starry.git
@@ -1772,26 +1781,64 @@ light curves with larger values of $n_\mathrm{layers}$ improves the precision
 but leads to proportionally longer evaluation times.
 
 % ------------------------------------------------------------------------------
-\subsection{Application to Real Data: HD189733b}
+\subsection{Application to real data: HD 189733b}
 \label{sec:hd189}
 % ------------------------------------------------------------------------------
 
-The strengths of \starry are best realized for inference problems. We demonstrate the inference capability of \starry by fitting the \textit{Spitzer}/IRAC 8 $\mu$m secondary eclipse light curve from  \citet{Knutson2007}. Our analysis here is very similar to \citet{Majeau2012}, who also fit a spherical harmonic map to the secondary eclipse data. We fit for the $l = 1$ map coefficients and the planet luminosity. Unlike \citet{Majeau2012}, we fit each point in the time-series without rebinning. We initially find the maximum likelihood fit to the data using \starry with gradients. We then initialize MCMC \citep{Foreman-Mackey2013} chains in a Gaussian ball about that maximum likelihood solution and run the MCMC for 10,000 steps with 40 walkers. 
+As a brief example of the application of \starry to a real dataset, we analyzed the
+well-studied \textit{Spitzer}/IRAC 8 $\mu$m secondary eclipse light curve of the
+hot jupiter HD 189733b from \citet{Knutson2007}.
+Our analysis is very similar to that of \citet{Majeau2012}, who also fit a spherical
+harmonic map to the secondary eclipse data, but evaluated their model numerically.
+We fit for the $l = 1$ map coefficients
+and the planet luminosity, holding the orbital parameters constant for simplicity.
+Unlike \citet{Majeau2012}, we fit each of the nearly 128,000 observations in the
+timeseries without binning. We first find the maximum likelihood fit to the
+data using \starrygrad, then initialize an MCMC sampler in a
+Gaussian ball about this solution and run a chain of 40 walkers for 10,000 steps
+using the \texttt{emcee} package \citep{Foreman-Mackey2013}.
 
-Figure \ref{fig:hd189_mcmc_fit} shows the secondary eclipse light curve and our median model fit to the data. As expected, our fit closely tracks the rolling median of the individually scattered data points. Figure \ref{fig:hd189_mcmc_corner} shows the marginalized posteriors and covariances of all fitting parameters, as well as the latitude and longitude of the hot spot relative to the substellar point. The median model map is also displayed, which shows a robust eastward offset in the location of the hot spot in agreement with previous studies \citep{Knutson2007, Majeau2012}. There is a strong degeneracy between the planet luminosity and the $Y_{1,0}$ spherical harmonic coefficient, which we marginalize over, but could easily be ameliorated by performing a simultaneous fit of the planet's phase curve. Although our constraints on the latitudinal offset of the hotspot are tighter than \citet{Majeau2012}, this is likely because we fixed the orbital parameters (particularly the inclination and impact parameter) rather than fitting for them alongside the map parameters. 
+Figure \ref{fig:hd189_mcmc_fit} shows the secondary eclipse light curve and our
+median model fit to the data. Figure \ref{fig:hd189_mcmc_corner}
+shows the marginalized posteriors and covariances of our four model parameters, as
+well as the latitude ($\hat{\theta}$) and longitude ($\hat{\phi}$) of the hotspot
+relative to the substellar
+point. A map corresponding to the median model is plotted at the top left,
+showing a statistically significant eastward
+offset in the location of the hotspot in agreement with previous studies
+\citep{Knutson2007, Majeau2012}. There is also evidence for a slight northward offset,
+although it is less statistically significant and consistent with zero.
+Note that because we did not simultaneously
+fit phasecurve data, there is a strong degeneracy between the planet's
+total luminosity and the $Y_{1,0}$ spherical harmonic coefficient. Moreover,
+since we did not account for the uncertainty in the planet's orbital parameters,
+we are likely underestimating the uncertainty on the map coefficients.
 
 %
 \begin{figure}[t!]
     \begin{centering}
-    \includegraphics[width=\linewidth]{figures/hd189_mcmc_fit.pdf}
-    \caption{\label{fig:hd189_mcmc_fit} Secondary eclipse light curve of HD189733b observed with \textit{Spitzer}/IRAC at 8 microns from \citet{Knutson2007} and our fit to the data. \codelink{hd189733b}}
+    \includegraphics[width=\linewidth]{figures/hd189733b.pdf}
+    \caption{\label{fig:hd189_mcmc_fit} Secondary eclipse light curve of
+             HD189733b observed with \textit{Spitzer}/IRAC at 8 $\mu$m from
+             \citet{Knutson2007} along with our fit to the data. The inset
+             at the top left shows a zoomed-out version of the timeseries.
+             \codelink{hd189733b}}
     \end{centering}
 \end{figure}
 %
 \begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/hd189_mcmc_corner.pdf}
-    \caption{\label{fig:hd189_mcmc_corner} Marginalized posterior distributions for and covariances between parameters for our fit to the HD189733b secondary eclipse. The spherical harmonic coefficients $Y_{1,-1}$, $Y_{1,0}$, and $Y_{1,1}$ and the planet luminosity $L$ were fit for, while the latitude $\hat{\theta}$ and longitude $\hat{\phi}$ of the hotspot were calculated from the coefficients. The median inferred parameters were used to generate the map of HD189733b shown in the upper right. This figure made use of the \texttt{corner} plotting package \citep{Foreman-Mackey2016}. \codelink{hd189733b}}
+    \caption{\label{fig:hd189_mcmc_corner} Posterior distributions
+             of our model parameters from the fit to the HD189733b
+             secondary eclipse, plotted using the \texttt{corner} package
+             \citep{Foreman-Mackey2016}. We fit for the spherical harmonic
+             coefficients $Y_{1,-1}$,
+             $Y_{1,0}$, and $Y_{1,1}$, as well as the planet luminosity $L$. The
+             latitude $\hat{\theta}$ and longitude $\hat{\phi}$
+             of the hotspot were calculated from these coefficients. The median
+             value of each parameter was used to generate the map of HD189733b
+             shown in the upper right. \codelink{hd189733b}}
     \end{centering}
 \end{figure}
 %
@@ -1825,6 +1872,10 @@ for each wavelength, this is at present inefficient, since \starry re-computes
 the occultation integrals for each wavelength bin. The next version of \starry
 will include functionality to allow users to easily and quickly compute
 spectra of celestial bodies in occultation.
+
+% HACK
+\pagebreak
+% HACK
 
 \subsection{Reflectance light curves}
 At present, \starry can only compute thermal phase curves and occultation
