@@ -754,7 +754,7 @@ if __name__ == "__main__":
 
         # Find ML solution
         # Initialize system
-        star, planet, system = hd189.instatiate_HD189(grad = grad)
+        star, planet, system = instatiate_HD189(grad = grad)
         results = MaxLikeCartography(data.time, data.y, data.yerr, system, planet, N = N, jac = grad)
         results.compute()
 
