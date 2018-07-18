@@ -38,7 +38,7 @@ namespace basis {
     // Return the normalization constant A for a Ylm
     template <typename T>
     T Norm(int l, int m) {
-        return sqrt((1. / (4 * T(BIGPI))) *
+        return sqrt((1. / (4 * PI<T>())) *
                     (2 - (int)(m == 0)) *
                     (2 * l + 1) *
                     tables::factorial<T>(l - abs(m)) /
@@ -259,7 +259,7 @@ namespace basis {
 
         // Compute L^T and Y^T
         for (int l = 0; l < lmax + 1; l++) {
-            amp = pow(2, l) * sqrt((2 * l + 1) / (4 * M_PI)) / tables::factorial<T>(l);
+            amp = pow(2, l) * sqrt((2 * l + 1) / (4 * PI<T>())) / tables::factorial<T>(l);
             for (int k = 0; k < l + 1; k++) {
                 if ((k + 1) % 2 == 0)
                     LT(k, l) = tables::choose<T>(l, k);

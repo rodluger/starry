@@ -88,7 +88,7 @@ namespace maps {
                 phi.resize(npts);
                 for (int i = 0; i < npts; i++) {
                     theta(i) = acos(2.0 * (T(i) / (npts + 1)) - 1.0);
-                    phi(i) = 2.0 * M_PI * (T(i) / (npts + 1));
+                    phi(i) = 2.0 * PI<T>() * (T(i) / (npts + 1));
                 }
 
                 // The function wrapper
@@ -503,9 +503,9 @@ namespace maps {
         // re-parametrize, but it's not really worth it...
         T tol = 1e-12;
         if (abs(theta) < tol) theta = tol;
-        if (abs(theta - M_PI) < tol) theta = M_PI + tol;
+        if (abs(theta - PI<T>()) < tol) theta = PI<T>() + tol;
         if (abs(phi) < tol) phi = tol;
-        if (abs(phi - M_PI) < tol) phi = M_PI + tol;
+        if (abs(phi - PI<T>()) < tol) phi = PI<T>() + tol;
         T sint = sin(theta),
           cost = cos(theta),
           tant = tan(theta),
@@ -993,17 +993,17 @@ namespace maps {
 
         // Fast relations for constant, linear, and quad limb darkening
         if (lmax == 0) {
-            norm = M_PI;
-            y(0) = 2 * sqrt(M_PI) / norm;
+            norm = PI<T>();
+            y(0) = 2 * SQRT_PI<T>() / norm;
             p.setZero(N);
             g.setZero(N);
             p(0) = 1 / norm;
             g(0) = p(0);
 
         } else if (lmax == 1) {
-            norm = M_PI * (1 - u(1) / 3.);
-            y(0) = (2. / norm) * sqrt(M_PI) / 3. * (3 - 3 * u(1));
-            y(2) = (2. / norm) * sqrt(M_PI / 3.) * u(1);
+            norm = PI<T>() * (1 - u(1) / 3.);
+            y(0) = (2. / norm) * SQRT_PI<T>() / 3. * (3 - 3 * u(1));
+            y(2) = (2. / norm) * SQRT_PI<T>() / sqrt(3.) * u(1);
             p.setZero(N);
             g.setZero(N);
             p(0) = (1 - u(1)) / norm;
@@ -1012,10 +1012,10 @@ namespace maps {
             g(2) = p(2);
 
         } else if (lmax == 2) {
-            norm = M_PI * (1 - u(1) / 3. - u(2) / 6.);
-            y(0) = (2. / norm) * sqrt(M_PI) / 3. * (3 - 3 * u(1) - 4 * u(2));
-            y(2) = (2. / norm) * sqrt(M_PI / 3.) * (u(1) + 2 * u(2));
-            y(6) = (-4. / 3.) * sqrt(M_PI / 5.) * u(2) / norm;
+            norm = PI<T>() * (1 - u(1) / 3. - u(2) / 6.);
+            y(0) = (2. / norm) * SQRT_PI<T>() / 3. * (3 - 3 * u(1) - 4 * u(2));
+            y(2) = (2. / norm) * SQRT_PI<T>() / sqrt(3.) * (u(1) + 2 * u(2));
+            y(6) = (-4. / 3.) * SQRT_PI<T>() / sqrt(5.) * u(2) / norm;
             p.setZero(N);
             g.setZero(N);
             p(0) = (1 - u(1) - 2 * u(2)) / norm;
@@ -1031,7 +1031,7 @@ namespace maps {
             norm = 1;
             for (int l = 1; l < lmax + 1; l++)
                 norm -= 2.0 * u(l) / ((l + 1) * (l + 2));
-            norm *= M_PI;
+            norm *= PI<T>();
             tmpy = C.U * u;
 
             int n = 0;
@@ -1056,8 +1056,8 @@ namespace maps {
             norm -= 2 * u(l) / ((l + 1) * (l + 2));
             dndu(l) -= 2.0 / ((l + 1) * (l + 2));
         }
-        norm *= M_PI;
-        dndu *= M_PI;
+        norm *= PI<double>();
+        dndu *= PI<double>();
         tmpy = C.U * u;
 
         int n = 0;

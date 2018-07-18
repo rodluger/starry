@@ -25,11 +25,9 @@ for key, value in macros.items():
 if int(macros['STARRY_NGRAD']) % 2 == 0:
     macros['STARRY_NGRAD'] = int(macros['STARRY_NGRAD']) + 1
 
-# Enable optimization?
-if int(os.getenv('STARRY_OPT', 1)):
-    optimize = True
-else:
-    optimize = False
+# Compiler optimization flag -O
+optimize = int(os.getenv('STARRY_O', 2))
+assert optimize in [0, 1, 2, 3], "Invalid optimization flag."
 
 
 class get_pybind_include(object):
@@ -125,8 +123,7 @@ class BuildExt(build_ext):
                         self.distribution.get_version())
         for ext in self.extensions:
             ext.extra_compile_args = list(opts + ext.extra_compile_args)
-            if not optimize:
-                ext.extra_compile_args += ["-O0"]
+            ext.extra_compile_args += ["-O%d" % optimize]
             if sys.platform == "darwin":
                 ext.extra_compile_args += ["-march=native",
                                            "-mmacosx-version-min=10.9"]

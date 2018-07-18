@@ -225,7 +225,7 @@ namespace orbital {
                      if (is_star)
                         norm = 1;
                      else
-                        norm = 2. / sqrt(M_PI);
+                        norm = TWO_OVER_SQRT_PI<T>();
 
                      // Initialize orbital vars
                      clight = INFINITY;
@@ -249,8 +249,8 @@ namespace orbital {
                 ecc2 = ecc * ecc;
                 ecw = ecc * cos(w);
                 esw = ecc * sin(w);
-                angvelorb = (2 * M_PI) / porb;
-                angvelrot = (2 * M_PI) / prot;
+                angvelorb = (2 * PI<T>()) / porb;
+                angvelrot = (2 * PI<T>()) / prot;
                 vamp = angvelorb * a / sqrt(1 - ecc2);
 
                 // Light travel time delay parameters
@@ -264,7 +264,7 @@ namespace orbital {
                 // observer viewing the system edge-on), so let's find the
                 // angle by which we need to rotate the map initially to
                 // make this happen.
-                T f_eclipse = 1.5 * M_PI - w;
+                T f_eclipse = 1.5 * PI<T>() - w;
                 T E_eclipse = atan2(sqrt(1 - ecc2) * sin(f_eclipse), ecc + cos(f_eclipse));
                 T M_eclipse = E_eclipse - ecc * sin(E_eclipse);
                 if (prot == 0) theta0 = 0;
@@ -301,13 +301,13 @@ namespace orbital {
 
                 // Let's store the rotation matrices: we'll need them to correctly
                 // transform the derivatives of the map back to the user coordinates
-                rotation::computeR(map.lmax, axis1, T(cos(T(M_PI_2 - inc))), T(sin(T(M_PI_2 - inc))), wtmp1.Complex, wtmp1.Real);
+                rotation::computeR(map.lmax, axis1, T(cos(T(0.5 * PI<T>() - inc))), T(sin(T(0.5 * PI<T>() - inc))), wtmp1.Complex, wtmp1.Real);
                 rotation::computeR(map.lmax, axis2, T(cos(Omega)), T(sin(Omega)), wtmp2.Complex, wtmp2.Real);
                 for (int l = 0; l < lmax + 1; l++) {
                     WignerRToSky.Real[l] = wtmp1.Real[l] * wtmp2.Real[l];
                     map_sky.y.segment(l * l, 2 * l + 1) = WignerRToSky.Real[l] * map.y.segment(l * l, 2 * l + 1);
                 }
-                AxisAngleRToSky = rotation::AxisAngle(axis2, Omega) * rotation::AxisAngle(axis1, T(M_PI_2 - inc));
+                AxisAngleRToSky = rotation::AxisAngle(axis2, Omega) * rotation::AxisAngle(axis1, T(0.5 * PI<T>() - inc));
                 axis_sky = AxisAngleRToSky * axis;
 
             } else {

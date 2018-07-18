@@ -32,7 +32,7 @@ namespace solver {
 
     // Return the n^th term of the *r* phase curve solution vector
     template <typename T>
-    T rn(int mu, int nu, const T& twosqrtpi) {
+    T rn(int mu, int nu) {
             T a, b, c;
             if (is_even(mu, 2) && is_even(nu, 2)) {
                 a = tables::gamma_sup<T>(mu / 4);
@@ -42,7 +42,7 @@ namespace solver {
             } else if (is_even(mu - 1, 2) && is_even(nu - 1, 2)) {
                 a = tables::gamma_sup<T>((mu - 1) / 4);
                 b = tables::gamma_sup<T>((nu - 1) / 4);
-                c = tables::gamma_sup<T>((mu + nu - 2) / 4 + 2) * twosqrtpi;
+                c = tables::gamma_sup<T>((mu + nu - 2) / 4 + 2) * TWO_OVER_SQRT_PI<T>();
                 return a * b / c;
             } else {
                 return 0;
@@ -53,14 +53,13 @@ namespace solver {
     template <typename T>
     void computerT(int lmax, VectorT<T>& rT) {
         rT.resize((lmax + 1) * (lmax + 1));
-        T twosqrtpi = 2.0 / sqrt(T(BIGPI));
         int l, m, mu, nu;
         int n = 0;
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
                 mu = l - m;
                 nu = l + m;
-                rT(n) = rn<T>(mu, nu, twosqrtpi);
+                rT(n) = rn<T>(mu, nu);
                 n++;
             }
         }
@@ -176,7 +175,7 @@ namespace solver {
         T K = G.ELL.K();
         T E = G.ELL.E();
         T ksq = G.ksq();
-        return lld::s2(G.b, G.r, ksq, K, E, G.pi);
+        return lld::s2(G.b, G.r, ksq, K, E);
     }
 
     // Compute the flux for a transit of a quadratically limb-darkened star
@@ -191,7 +190,6 @@ namespace solver {
     inline void QuadLimbDark(Greens<T>& G, const T& b, const T& r, const T& g0, const T& g2, const T& g8, T& s0_val, T& s2_val, T& s8_val) {
         T b2 = b * b;
         T r2 = r * r;
-        T pi_over_2 = 0.5 * G.pi;
         if ((abs(1 - r) < b) && (b < 1 + r)) {
             T r3 = r * r2;
             T r4 = r2 * r2;
@@ -199,8 +197,8 @@ namespace solver {
             T cp = sqrt(1 - sp * sp);
             T sl = (1 - r2 + b2) / (2 * b);
             T cl = sqrt(1 - sl * sl);
-            T l2 = asin(sl) + pi_over_2;
-            T p2  = asin(sp) + pi_over_2;
+            T l2 = asin(sl) + 0.5 * PI<T>();
+            T p2  = asin(sp) + 0.5 * PI<T>();
             T cp2 = cp * cp;
             T sp2 = sp * sp;
             T cpsp = cp * sp;
@@ -214,8 +212,8 @@ namespace solver {
                      (r2 * b2 * (p2 + cpsp) - r3 * b * cp * (1. + (1. / 3.) * cp2 - sp2) +
                       r4 * (0.5 * p2 + (1. / 3.) * cpsp - (1. / 6.) * cp3 * sp + (1. / 6.) * cp * sp3));
         } else {
-            s0_val = G.pi * (1 - r2);
-            s8_val = pi_over_2 - G.pi * r2 * (0.5 * r2 + b2);
+            s0_val = PI<T>() * (1 - r2);
+            s8_val = 0.5 * PI<T>() - PI<T>() * r2 * (0.5 * r2 + b2);
         }
         G.b = b;
         G.r = r;
@@ -324,7 +322,6 @@ namespace solver {
             Matrix<T> value;
             int umax;
             int vmax;
-            T pi;
             Power<T>& sinlam;
             Power<T>& coslam;
 
@@ -335,7 +332,6 @@ namespace solver {
                     sinlam(sinlam), coslam(coslam) {
                 set = Matrix<bool>::Zero(umax + 1, vmax + 1);
                 value.resize(umax + 1, vmax + 1);
-                pi = T(BIGPI);
             }
 
             // Reset flags and compute H_00 and H_01
@@ -348,13 +344,13 @@ namespace solver {
                     // but the derivative is undefined, so
                     // we sidestep the computation here to
                     // prevent NaNs in the autodiff calculation.
-                    value(0, 0) = 2 * pi;
+                    value(0, 0) = 2 * PI<T>();
                     value(0, 1) = 0;
                 } else {
                     if (sinlam() < 0.5)
-                        value(0, 0) = 2 * asin(sinlam()) + pi;
+                        value(0, 0) = 2 * asin(sinlam()) + PI<T>();
                     else
-                        value(0, 0) = 2 * acos(coslam()) + pi;
+                        value(0, 0) = 2 * acos(coslam()) + PI<T>();
                     value(0, 1) = -2 * coslam(1);
                 }
                 set(0, 0) = true;
@@ -394,7 +390,6 @@ namespace solver {
             T& kc;
             T& kkc;
             T& kap0;
-            T sqrtpi;
             Vector<T> ivgamma;
 
         public:
@@ -404,10 +399,9 @@ namespace solver {
                 value.resize(vmax + 1);
 
                 // Pre-tabulate I_v for ksq >= 1
-                sqrtpi = sqrt(T(BIGPI));
                 ivgamma.resize(vmax + 1);
                 for (int v = 0; v <= vmax; v++)
-                    ivgamma(v) = sqrtpi * T(boost::math::tgamma_delta_ratio(Multi(v + 0.5), Multi(0.5)));
+                    ivgamma(v) = SQRT_PI<T>() * T(boost::math::tgamma_delta_ratio(Multi(v + 0.5), Multi(0.5)));
 
             }
 
@@ -497,14 +491,12 @@ namespace solver {
             T& k;
             T& kc;
             T& invksq;
-            T pi;
 
         public:
 
             J(int lmax, Elliptic<T>& ELL, Power<T>& ksq, Power<T>& two, T& k, T& kc, T& invksq) : vmax(max(1, 2 * lmax - 1)), ELL(ELL), ksq(ksq), two(two), k(k), kc(kc), invksq(invksq) {
                 set = Vector<bool>::Zero(vmax + 1);
                 value.resize(vmax + 1);
-                pi = T(BIGPI);
                 // These are the values of v we pre-compute on downward recursion
                 vvec.push_back(vmax);
                 vvec.push_back(vmax - 1);
@@ -536,10 +528,10 @@ namespace solver {
                         // Computing leading coefficient (n=0):
                         T coeff;
                         if (ksq() >= 1) {
-                            coeff = pi;
+                            coeff = PI<T>();
                             for (int i = 1; i <= v; i++) coeff *= (1 - 0.5 / i);
                         } else {
-                            coeff = 3 * pi / (two(2 + v) * tables::factorial<T>(v + 2));
+                            coeff = 3 * PI<T>() / (two(2 + v) * tables::factorial<T>(v + 2));
                             for (int i = 1; i <= v; i++) coeff *= (2.0 * i - 1);
                         }
 
@@ -576,34 +568,11 @@ namespace solver {
                         value(0) = (2.0 / 3.0) * (2 * (2 - invksq) * ELL.E() - (1 - invksq) * ELL.K());
                         value(1) = (2.0 / 15.0) * ((-3 * ksq() + 13 - 8 * invksq) * ELL.E() + (1 - invksq) * (3 * ksq() - 4) * ELL.K());
 
-                        // NOTE: These expressions are in principle more stable, but I have not seen
-                        // this in practice. The advantage of the expressions above is that the elliptic
-                        // integrals are often used in the computation of `s2`, so they are available for free!
-                        /*
-                        T k2inv = 1 / ksq();
-                        T fe = 2 * (2 - k2inv);
-                        T fk = -1 + k2inv;
-                        value(0) = (2.0 / 3.0) * ellip::CEL(k2inv, kc, T(1), T(fk + fe), T(fk + fe * (1 - k2inv)), pi);
-                        fe = -6 * ksq() + 26 - 16 * k2inv;
-                        fk = 2 * (1 - k2inv) * (3 * ksq() - 4);
-                        value(1) = ellip::CEL(k2inv, kc, T(1), T(fk + fe), T(fk + fe * (1 - k2inv)), pi) / 15.;
-                        */
-
                     } else {
 
                         // Upward recursion: compute J_0 and J_1
                         value(0) = 2.0 / (3.0 * ksq() * k) * (2 * (2 * ksq() - 1) * ELL.E() + (1 - ksq()) * (2 - 3 * ksq()) * ELL.K());
                         value(1) = 2.0 / (15.0 * ksq() * k) * ((-3 * ksq(2) + 13 * ksq() - 8) * ELL.E() + (1 - ksq()) * (8 - 9 * ksq()) * ELL.K());
-
-                        // See NOTE above regarding these expressions
-                        /*
-                        T fe = 2 * (2 * ksq() - 1);
-                        T fk = (1 - ksq()) * (2 - 3 * ksq());
-                        value(0) = 2 / (3 * ksq() * k) * ellip::CEL(ksq(), kc, T(1), T(fk + fe), T(fk + fe * (1 - ksq())), pi);
-                        fe = -3 * ksq(2) + 13 * ksq() - 8;
-                        fk = (1 - ksq()) * (8 - 9 * ksq());
-                        value(1) = 2 / (15 * ksq() * k) * ellip::CEL(ksq(), kc, T(1), T(fk + fe), T(fk + fe * (1 - ksq())), pi);
-                        */
 
                     }
 
@@ -703,6 +672,17 @@ namespace solver {
         }
     }
 
+    // Smallest coefficient for which we'll actually
+    // bother to compute the integrals
+    template <typename T>
+    inline T min_coeff() { return mach_eps<T>(); }
+
+    // When doing autodiff, we always want to
+    // compute the solution vector for all indices
+    // to get the correct map derivatives.
+    template<>
+    inline Grad min_coeff() { return 0; }
+
     // Greens integration housekeeping data
     template <class T>
     class Greens {
@@ -748,10 +728,6 @@ namespace solver {
             // The solution vector
             VectorT<T> sT;
 
-            // The value of pi, computed at
-            // the user-requested precision
-            T pi;
-
             // Constructor
             Greens(int lmax) :
                    lmax(lmax),
@@ -770,20 +746,9 @@ namespace solver {
                 // Initialize the solution vector
                 sT = VectorT<T>::Zero((lmax + 1) * (lmax + 1));
 
-                // Compute pi at the actual precision of the T type
-                pi = T(BIGPI);
-
                 // Initialize static stuff
                 two.reset(2);
-
-                // Smallest coefficient for which we'll actually
-                // bother to compute the integrals
-                // NOTE: When doing autodiff, we always want to
-                // compute the solution vector for all indices!!!
-                if (is_Grad(pi))
-                    miny = 0;
-                else
-                    miny = 10 * mach_eps<T>();
+                miny = min_coeff<T>();
 
             }
 
@@ -811,7 +776,7 @@ namespace solver {
             G.invksq = (4 * b * r) / ((1 - (b - r)) * (1 + (b - r)));
             G.k = sqrt(ksq);
             if (ksq > 1) {
-                G.kc = sqrt(abs(((b + r) * (b + r) - 1) / ((b - r) * (b - r) - 1)));
+                G.kc = sqrt(1 - G.invksq);
                 G.kkc = G.k * G.kc;
                 G.kap0 = 0; // Not used!
             } else {

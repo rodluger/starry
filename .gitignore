@@ -17,6 +17,9 @@ starry/test
 starry/test_autodiff
 misc/stability/*.pdf
 tex/travis
+*.sav
+*.npz
+*callgrind.out.*
 
 # Latex
 *.aux

@@ -32,12 +32,25 @@ Miscellaneous stuff used throughout the code.
 #include <boost/multiprecision/cpp_dec_float.hpp>
 typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
 typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off> Multi;
-
-// PI to 150 digits
-#define BIGPI Multi("3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067982148086513282306647093844609550582231725359408128")
 #if STARRY_NMULTI > 150
-#error "Currently, PI is computed to a maximum of 150 digits of precision. If you **really** need `STARRY_NMULTI` > 150, you will need to re-define the `BIGPI` macro in `utils.h`."
+#error "Currently, PI is computed to a maximum of 150 digits of precision. If you **really** need `STARRY_NMULTI` > 150, you will need to re-define PI in `utils.h`."
 #endif
+
+// Some frequently used constants
+static const double PI_DOUBLE = M_PI;
+static const Multi PI_MULTI = Multi("3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067982148086513282306647093844609550582231725359408128");
+template <typename T> inline T PI(){ return T(PI_DOUBLE); }
+template <> inline Multi PI(){ return PI_MULTI; }
+
+static const double SQRT_PI_DOUBLE = sqrt(PI<double>());
+static const Multi SQRT_PI_MULTI = sqrt(PI<Multi>());
+template <typename T> inline T SQRT_PI(){ return T(SQRT_PI_DOUBLE); }
+template <> inline Multi SQRT_PI(){ return SQRT_PI_MULTI; }
+
+static const double TWO_OVER_SQRT_PI_DOUBLE = 2.0 / sqrt(PI<double>());
+static const Multi TWO_OVER_SQRT_PI_MULTI = 2.0 / sqrt(PI<Multi>());
+template <typename T> inline T TWO_OVER_SQRT_PI(){ return T(TWO_OVER_SQRT_PI_DOUBLE); }
+template <> inline Multi TWO_OVER_SQRT_PI(){ return TWO_OVER_SQRT_PI_MULTI; }
 
 // Our custom vector types
 template <typename T>
@@ -158,7 +171,7 @@ inline Grad mach_eps() {
 using std::fmod;
 template <typename T>
 T mod2pi(const T& numer) {
-    return fmod(numer, T(2 * M_PI));
+    return fmod(numer, T(2 * PI<T>()));
 }
 
 // Derivative of the floating point modulo function
