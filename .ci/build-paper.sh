@@ -32,6 +32,11 @@ then
     mkdir -p tex && mv ../starry.pdf tex/
     git init
     git add -f tex/starry.pdf
+    # If we're publishing the paper, commit the figures as well
+    if [[ $TRAVIS_COMMIT_MESSAGE = *"[publish]"* ]]
+    then
+        git add -f tex/figures/*.pdf
+    fi
     git status
     git -c user.name='travis' -c user.email='travis' commit -m "building the paper"
     git status
