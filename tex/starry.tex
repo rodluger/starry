@@ -2,7 +2,7 @@
 
 \input{stylez}
 
-\begin{document}%\raggedbottom\sloppy\sloppypar\frenchspacing
+\begin{document}
 
 \setlength{\abovedisplayskip}{1.5em}
 \setlength{\belowdisplayskip}{1.5em}
@@ -465,7 +465,6 @@ rotating about the $y$-axis, computed from \eq{rotation}.
 
 % HACK
 \pagebreak
-% HACK
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -475,7 +474,7 @@ rotating about the $y$-axis, computed from \eq{rotation}.
 % ------------------------------------------------------------------------------
 % ------------------------------------------------------------------------------
 % ==============================================================================
-
+%
 % ------------------------------------------------------------------------------
 \subsection{Rotational phase curves}
 \label{sec:phasecurves}
@@ -1070,7 +1069,7 @@ simplified two-color map of the cloudless Earth and its corresponding
 \starry instance for
 $l_\mathrm{max} = 10$, rotated successively about $\yhat$.
 %
-\begin{figure}[ht!]
+\begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=0.75\linewidth]{figures/earth.jpg}
     \\[1em]
@@ -1147,7 +1146,7 @@ an array of flux values computed from \eq{phaseint}; we plot this in
 Figure~\ref{fig:earthphasecurve}, alongside the rotational phase curves due to each of
 the seven individual continents.
 %
-\begin{figure}[ht!]
+\begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/earthphasecurve.pdf}
     \caption{\label{fig:earthphasecurve}
@@ -1198,7 +1197,7 @@ those with $m < 0$, which are not shown) produce a flux signal during
 occultation. As before, the numerical solutions are shown as the small dots.
 
 %
-\begin{figure}[ht!]
+\begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/earthoccultation.pdf}
     \caption{\label{fig:earthoccultation}
@@ -1224,6 +1223,9 @@ the sub-observer point rotates from Africa to South America, causing a
 steady flux decrease as the Pacific Ocean rotates into view. The
 occultation is double-dipped: one dip due to the occultation of South
 America, and one dip due to the occultation of Africa.
+
+% HACK
+\pagebreak
 
 % ------------------------------------------------------------------------------
 \subsection{Computing transits of limb-darkened stars}
@@ -1315,7 +1317,7 @@ high precision numerical integration of the surface integral of
 \eq{quadraticld}. The relative error on the flux for \starry flux is less
 than $10^{-7}$ parts per million everywhere in the light curve.
 %
-\begin{figure}[ht!]
+\begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/transit.pdf}
     \caption{\label{fig:transit}
@@ -1437,7 +1439,7 @@ westward wind, causing the peak of the planet's phase curve to occur slightly
 before secondary eclipse (refer to the \Python script for details).
 
 %
-\begin{figure}[ht]
+\begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/system.pdf}
     \caption{\label{fig:system}
@@ -1629,7 +1631,7 @@ limits $b \rightarrow |1 - r|$ and $b \rightarrow 1 + r$, we find that the error
 is less than 1 ppb over most of the domain for both small and large occultors. For
 large values of $l$ near the unstable regions, the error approaches 1 ppm.
 
-\begin{figure}[ht!]
+\begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=0.85\linewidth]{figures/stability_earth.pdf}
     \caption{\label{fig:stability_earth}
@@ -1647,7 +1649,7 @@ light curve for an $l = 20$ expansion of the Earth being occulted by the Sun.
 As expected, the relative error (relative to the Earth's flux) is much less than 1 part
 per billion everywhere.
 
-\begin{figure}[ht!]
+\begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=0.75\linewidth]{figures/spidercomp_flux.pdf}
     \caption{\label{fig:spidercomp_flux}
@@ -1695,7 +1697,7 @@ is proportional to the log of the fractional error relative to the
 \starry solution. Light curve computation using \starry is several orders of
 magnitude faster and more accurate than any other evaluation technique.
 
-\begin{figure}[ht!]
+\begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=0.9\linewidth]{figures/compare_to_numerical.pdf}
     \caption{\label{fig:compare_to_numerical}
@@ -1721,8 +1723,8 @@ magnitude faster and more accurate than any other evaluation technique.
              spherical harmonics. The top
              panels show the evaluation time for spherical harmonics of different
              degrees $l$, averaged over all orders $m$. The bottom panels
-             show the evaluation time for each of the non-negative orders ($m \ge 0$)
-             of the $l = 5$ spherical harmonics.
+             show the time for each of the non-negative orders ($m \ge 0$)
+             of the $l = 5$ harmonics.
              \codelink{speed}}
     \end{centering}
 \end{figure}
@@ -1751,7 +1753,7 @@ computing transit light curves.
     \end{centering}
 \end{figure}
 
-\begin{figure}[ht!]
+\begin{figure}[t!]
     \begin{centering}
     \includegraphics[width=\linewidth]{figures/spidercomp.pdf}
     \caption{\label{fig:spidercomp}
@@ -1778,6 +1780,9 @@ The evaluation time for \starry is about one order of magnitude less than
 is about 30 ppm (relative to the stellar flux). Computation of the \spiderman
 light curves with larger values of $n_\mathrm{layers}$ improves the precision
 but leads to proportionally longer evaluation times.
+
+% HACK
+\pagebreak
 
 % ------------------------------------------------------------------------------
 \subsection{Application to real data: HD 189733b}
@@ -1870,11 +1875,10 @@ compute wavelength-dependent light curves by specifying a different map
 for each wavelength, this is at present inefficient, since \starry re-computes
 the occultation integrals for each wavelength bin. The next version of \starry
 will include functionality to allow users to easily and quickly compute
-spectra of celestial bodies in occultation. 
+spectra of celestial bodies in occultation.
 
 % HACK
 \pagebreak
-% HACK
 
 \subsection{Reflectance light curves}
 At present, \starry can only compute thermal phase curves and occultation
