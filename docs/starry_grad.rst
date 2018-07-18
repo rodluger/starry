@@ -1,1 +1,1 @@
-.. automodule:: starry.grad
+.. automodule:: starry._starry.grad

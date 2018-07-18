@@ -1,1 +1,1 @@
-.. automodule:: starry
+.. automodule:: starry._starry
