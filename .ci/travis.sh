@@ -17,6 +17,8 @@ if ! command -v conda > /dev/null; then
       pip install jupyter
       pip install emcee
       pip install corner
+      pip install wget
+      pip install pandas
       pip install git+git://github.com/tomlouden/SPIDERMAN.git@69911b042bc46615ec9b39048a69e0d77c8542ad
       pip install sphinx
 fi
