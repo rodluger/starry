@@ -93,7 +93,7 @@ namespace solver {
             }
 
             // Overload () to get the function value without calling value()
-            inline T operator() () { return value(1); }
+            inline T operator() () { return vec[1]; }
             inline T operator() (int n) { return value(n); }
 
             // Resetter

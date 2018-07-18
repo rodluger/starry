@@ -50,7 +50,7 @@ namespace rotation {
 
     */
     template <typename T>
-    void dlmn(int l, T& s1, T& c1, T& c2, T& tgbet2, T& s3, T& c3, Matrix<T>* D, Matrix<T>* R) {
+    inline void dlmn(int l, T& s1, T& c1, T& c2, T& tgbet2, T& s3, T& c3, Matrix<T>* D, Matrix<T>* R) {
         int iinf = 1 - l;
         int isup = -iinf;
         int m, mp;
@@ -79,17 +79,17 @@ namespace rotation {
             amp = mp;
             laux = l + mp;
             lbux = l - mp;
-            aux = tables::invsqrt_int<T>(laux) * tables::invsqrt_int<T>(lbux) * ali;
-            cux = tables::sqrt_int<T>(laux - 1) * tables::sqrt_int<T>(lbux - 1) * al;
+            aux = tables::invsqrt_int<T>(laux * lbux) * ali;
+            cux = tables::sqrt_int<T>((laux - 1) * (lbux - 1)) * al;
             for (m=isup; m>iinf-1; m--) {
                 am = m;
                 lauz = l + m;
                 lbuz = l - m;
-                auz = tables::invsqrt_int<T>(lauz) * tables::invsqrt_int<T>(lbuz);
+                auz = tables::invsqrt_int<T>(lauz * lbuz);
                 fact = aux * auz;
                 term = tal1 * (cosaux - am * amp) * D[l - 1](mp + l - 1, m + l - 1);
                 if ((lbuz != 1) && (lbux != 1)) {
-                    cuz = tables::sqrt_int<T>(lauz - 1) * tables::sqrt_int<T>(lbuz - 1);
+                    cuz = tables::sqrt_int<T>((lauz - 1) * (lbuz - 1));
                     term = term - D[l - 2](mp + l - 2, m + l - 2) * cux * cuz;
                 }
                 D[l](mp + l, m + l) = fact * term;
@@ -172,15 +172,15 @@ namespace rotation {
 
     */
     template <typename T>
-    void rotar(int lmax, T& c1, T& s1, T& c2, T& s2, T& c3, T& s3, Matrix<T>* D, Matrix<T>* R, T tol=10 * mach_eps<T>()) {
+    inline void rotar(int lmax, T& c1, T& s1, T& c2, T& s2, T& c3, T& s3, Matrix<T>* D, Matrix<T>* R, T tol=10 * mach_eps<T>()) {
         T cosag, COSAMG, sinag, SINAMG, tgbet2;
 
         // Compute the initial matrices D0, R0, D1 and R1
         D[0](0, 0) = 1.;
         R[0](0, 0) = 1.;
-        D[1](2, 2) = (1. + c2) / 2.;
-        D[1](2, 1) = -s2 / tables::sqrt_int<T>(2);
-        D[1](2, 0) = (1. - c2) / 2.;
+        D[1](2, 2) = 0.5 * (1. + c2);
+        D[1](2, 1) = -s2 * tables::invsqrt_int<T>(2);
+        D[1](2, 0) = 0.5 * (1. - c2);
         D[1](1, 2) = -D[1](2, 1);
         D[1](1, 1) = D[1](2, 2) - D[1](2, 0);
         D[1](1, 0) = D[1](2, 1);
