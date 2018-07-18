@@ -1,7 +1,6 @@
 """Analysis of HD189733b 8 micron Spitzer secondary eclipses."""
 import os
 import matplotlib.pyplot as plt
-from matplotlib import gridspec
 import numpy as np
 import pandas as pd
 import wget
@@ -47,7 +46,8 @@ class EclipseData(object):
         filename = "light_curve.sav"
         if not os.path.exists(filename):
             # Download file
-            url = "https://www.dropbox.com/s/nhw8t3sqbfro585/light_curve.sav?dl=1"
+            url = "https://www.dropbox.com/s/nhw8t3sqbfro585/" + \
+                  "light_curve.sav?dl=1"
             filename = wget.download(url)
 
         # Load data from IDL save (should probably change this...)
@@ -63,7 +63,8 @@ class EclipseData(object):
 
         # Calculate data uncertainties as the median rolling standard deviation
         assumed_errors = np.nanmedian(df_std.flux)
-        df['std'] = pd.Series(assumed_errors * np.ones(len(df.flux)), index=df.index)
+        df['std'] = pd.Series(assumed_errors * np.ones(len(df.flux)),
+                              index=df.index)
 
         time = df['time'].values
         y = df['flux'].values
@@ -111,7 +112,6 @@ def hotspot_offset(p):
 def set_coeffs(p, planet):
     """Set the coefficients of the planet map."""
     y1m1, y10, y11, L = p
-    #y1m1, y10, y11 = p
     planet.map[1, -1] = y1m1
     planet.map[1, 0] = y10
     planet.map[1, 1] = y11
@@ -125,7 +125,6 @@ def gen_coeffs():
     y11 = np.random.randn()
     L = np.random.randn()
     return np.array([y1m1, y10, y11, L])
-    # return np.array([y1m1, y10, y11])
 
 
 def gen_coeffs_in_bounds(planet):
@@ -193,7 +192,6 @@ def lnlike(p, time, y, yerr, system, planet):
     system.compute(time)
 
     # Normalize the model so that the *total* flux baseline is unity
-    #model = system.flux / system.flux[0]
     model = system.flux / system.flux[0]
 
     # Compute the chi-squared
@@ -368,7 +366,8 @@ class MaxLikeCartography(object):
             func = neglnlike
             string = ""
 
-        print("Finding maximum likelihood solution%s from %i random parameter initializations..." %
+        print("Finding maximum likelihood " +
+              "solution%s from %i random parameter initializations..." %
               (string, self.N))
 
         results = []
@@ -382,7 +381,8 @@ class MaxLikeCartography(object):
 
             # Find maximum likelihood solution
             res = minimize(func, x0, args=(self.time, self.y, self.yerr,
-                                           self.system, self.planet), jac=self.jac)
+                                           self.system, self.planet),
+                           jac=self.jac)
             # options = {'gtol': 1e-10, 'ftol': 1e-10})
 
             results.append(res)
@@ -416,7 +416,8 @@ class MaxLikeCartography(object):
 
         set_coeffs(self.res.x, self.planet)
 
-        img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta=0) for j in range(300)]
+        img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta=0)
+               for j in range(300)]
         ax.imshow(img, origin="lower",
                   interpolation="none", cmap="plasma",
                   extent=(-1, 1, -1, 1))
@@ -427,14 +428,15 @@ class MaxLikeCartography(object):
         ax.set_xticks([])
         ax.set_yticks([])
         expr = r"${0}$".format(self.planet.map.__repr__()[12:-1])
-        #expr = "%.3e" %res.fun
         ax.set_xlabel(expr, fontsize=12)
 
         self.system.compute(self.time)
 
         # Plot the true model and our noised data
-        ax2.plot(self.time, self.system.flux / self.system.flux[0], '-', color='C1', label="model")
-        ax2.plot(data.df_med['time'], data.df_med['flux'], label="rolling median")
+        ax2.plot(self.time, self.system.flux / self.system.flux[0], '-',
+                 color='C1', label="model")
+        ax2.plot(data.df_med['time'], data.df_med['flux'],
+                 label="rolling median")
 
         ax2.set_xlabel('Time [days]', fontsize=14)
         ax2.set_ylabel('Normalized Flux', fontsize=14)
@@ -457,11 +459,13 @@ class MaxLikeCartography(object):
             ax = axs[0]
             ax2 = axs[1]
 
-            xx, yy = np.meshgrid(np.linspace(-1, 1, 300), np.linspace(-1, 1, 300))
+            xx, yy = np.meshgrid(np.linspace(-1, 1, 300),
+                                 np.linspace(-1, 1, 300))
 
             set_coeffs(res.x, self.planet)
 
-            img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta=0) for j in range(300)]
+            img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta=0)
+                   for j in range(300)]
             ax.imshow(img, origin="lower",
                       interpolation="none", cmap="plasma",
                       extent=(-1, 1, -1, 1))
@@ -479,7 +483,8 @@ class MaxLikeCartography(object):
             # Plot the true model and our noised data
             ax2.plot(data.time, self.system.flux /
                      self.system.flux[0], '-', color='C1', label="model")
-            ax2.plot(data.df_med['time'], data.df_med['flux'], label="rolling median")
+            ax2.plot(data.df_med['time'], data.df_med['flux'],
+                     label="rolling median")
 
             ax2.set_xlabel('Time [days]', fontsize=14)
             ax2.set_ylabel('Normalized Flux', fontsize=14)
@@ -516,7 +521,8 @@ class MCMCCartography(object):
 
     def __init__(self, time, y, yerr, system, planet, p0=None,
                  chain=None, chain_path="map_chains.npz",
-                 labels=np.array([r"$Y_{1,-1}$", r"$Y_{1,0}$", r"$Y_{1,1}$", r"$L$"])):
+                 labels=np.array([r"$Y_{1,-1}$", r"$Y_{1,0}$",
+                                  r"$Y_{1,1}$", r"$L$"])):
         self.time = time
         self.y = y
         self.yerr = yerr
@@ -541,8 +547,9 @@ class MCMCCartography(object):
         # Initialize walkers *in bounds*, if not provided
         if self.p0 is None:
             self.p0 = []
-            self.p0 = np.array([self.p0.append(gen_coeffs_in_bounds(self.planet))
-                                for i in range(self.nwalk)])
+            self.p0 = np.array([
+                self.p0.append(gen_coeffs_in_bounds(self.planet))
+                for i in range(self.nwalk)])
         else:
             self.nwalk = self.p0.shape[0]
 
@@ -550,16 +557,21 @@ class MCMCCartography(object):
         if not hasattr(self, "sampler"):
             # Create a new sampler
             self.sampler = emcee.EnsembleSampler(self.nwalk, self.ndim, lnlike,
-                                                 args=[self.time, self.y, self.yerr, self.system, self.planet])
-            for i in tqdm(self.sampler.sample(self.p0, iterations=self.nsteps), total=self.nsteps):
+                                                 args=[self.time, self.y,
+                                                       self.yerr, self.system,
+                                                       self.planet])
+            for i in tqdm(self.sampler.sample(self.p0,
+                                              iterations=self.nsteps),
+                          total=self.nsteps):
                 pass
         else:
             # Continue running existing sampler from last step in chain
-            for i in tqdm(self.sampler.sample(self.sampler.chain[:, -1, :], iterations=self.nsteps), total=self.nsteps):
+            for i in tqdm(self.sampler.sample(self.sampler.chain[:, -1, :],
+                          iterations=self.nsteps), total=self.nsteps):
                 pass
 
-        # Save sampler.chain as chain (this is might be really stupid b/c it duplicates
-        # the large chains)
+        # Save sampler.chain as chain (this is might be really stupid b/c
+        # it duplicates the large chains)
         self.chain = self.sampler.chain
 
         return
@@ -611,7 +623,6 @@ class MCMCCartography(object):
                         fill=False, color='k', lw=1)
             plt.setp(axh[i].get_yticklabels(), visible=False)
             plt.setp(axh[i].get_xticklabels(), visible=False)
-            #axh[i].axhline(maxlike[i], color='C0')
 
         """
         for k in range(nwalk):
@@ -626,7 +637,7 @@ class MCMCCartography(object):
         return
 
     def apply_burnin(self, nburn=0):
-        """Creates attribute `samples` by flattening chain beyond the burn-in `nburn`"""
+        """Creates `samples` by flattening chain beyond the burn-in `nburn`"""
         self.samples = self.chain[:, nburn:, :].reshape(-1, self.ndim)
         return
 
@@ -639,7 +650,8 @@ class MCMCCartography(object):
 
         # Append lat and lon samples to the chains
         self.samples2 = np.vstack([self.samples.T, lat, lon]).T
-        self.labels2 = np.hstack([self.labels, r"$\hat{\theta}$", r"$\hat{\phi}$"])
+        self.labels2 = np.hstack([self.labels, r"$\hat{\theta}$",
+                                  r"$\hat{\phi}$"])
 
         return
 
@@ -658,9 +670,9 @@ class MCMCCartography(object):
         # DEBUG: The luminosity standard deviaton is too small
         # for the label, so we need one more sig fig. Hacking it
         # manually here.
-        q_50 = 0.002386320863440533
-        q_m = 0.00023922582062520454
-        q_p = 0.00044027585261682475
+        q_16, q_50, q_84 = corner.quantile(self.samples2[:, 3],
+                                           [0.16, 0.5, 0.84])
+        q_m, q_p = q_50-q_16, q_84-q_50
         fmt = "{{0:{0}}}".format(".4f").format
         Ltitle = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
         Ltitle = r"$L = $" + Ltitle.format(fmt(q_50), fmt(q_m), fmt(q_p))
@@ -675,7 +687,8 @@ class MCMCCartography(object):
         xx, yy = np.meshgrid(np.linspace(-1, 1, 300), np.linspace(-1, 1, 300))
 
         set_coeffs(medvals, self.planet)
-        img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta=0) for j in range(300)]
+        img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta=0)
+               for j in range(300)]
         ax.imshow(img, origin="lower",
                   interpolation="none", cmap="plasma",
                   extent=(-1, 1, -1, 1), zorder=-1)
@@ -688,9 +701,6 @@ class MCMCCartography(object):
         ax.set_xlim(-1.25, 1.25)
         ax.set_ylim(-1.25, 1.25)
         ax.set_rasterization_zorder(0)
-        #expr = r"${0}$".format(planet.map.__repr__()[12:-1])
-        #ax.set_xlabel(expr, fontsize=12)
-        #ax.set_title("max likelihood map", fontsize=24, fontweight='bold');
 
         self.fig_corner = fig
         return
@@ -706,9 +716,12 @@ class MCMCCartography(object):
 
         # Plot the true model and our noised data
         fig, ax = plt.subplots(1, figsize=(16, 8))
-        ax.plot(self.time, self.y, "o", alpha=1., ms=0.1, color='C0', label="data")
-        ax.plot(self.time, self.system.flux / self.system.flux[0], '-', color='C1', label="model")
-        ax.plot(data.df_med['time'], data.df_med['flux'], label="rolling median")
+        ax.plot(self.time, self.y, "o", alpha=1., ms=0.1, color='C0',
+                label="data")
+        ax.plot(self.time, self.system.flux / self.system.flux[0], '-',
+                color='C1', label="model")
+        ax.plot(data.df_med['time'], data.df_med['flux'],
+                label="rolling median")
 
         ax.set_xlabel('Time [days]', fontsize=14)
         ax.set_ylabel('Normalized Flux', fontsize=14)
@@ -734,12 +747,13 @@ class MCMCCartography(object):
 
         # Inset
         ax = plt.axes([0.15, 0.65, 0.2, 0.2], facecolor='w')
-        ax.plot(data.df['time'][::3], data.df['flux'][::3], ".", alpha=0.3, ms=0.1,
+        ax.plot(data.df['time'][::3], data.df['flux'][::3], ".",
+                alpha=0.3, ms=0.1,
                 markeredgecolor='C0', color='C0', zorder=-1)
         ax.plot(data.df_med['time'], data.df_med['flux'],
                 label="rolling median", zorder=10, color="C0", lw=1)
         ax.plot(self.time, self.system.flux /
-                 self.system.flux[0], '-', color='C1')
+                self.system.flux[0], '-', color='C1')
         ax.set_ylim(0.9825, 1.0175)
         ax.set_xlim(self.time.min(), self.time.max())
         ax.set_xticks([])
@@ -788,7 +802,8 @@ if __name__ == "__main__":
         # Find ML solution
         # Initialize system
         star, planet, system = instatiate_HD189(grad=grad)
-        results = MaxLikeCartography(data.time, data.y, data.yerr, system, planet, N=N, jac=grad)
+        results = MaxLikeCartography(data.time, data.y, data.yerr, system,
+                                     planet, N=N, jac=grad)
         results.compute()
 
         # Initialize system *without gradients*
@@ -798,7 +813,8 @@ if __name__ == "__main__":
         p0 = emcee.utils.sample_ball(results.res.x, std_ball, nwalk)
 
         # Run MCMC
-        mcmc = MCMCCartography(data.time, data.y, data.yerr, system, planet, p0=p0,
+        mcmc = MCMCCartography(data.time, data.y, data.yerr, system,
+                               planet, p0=p0,
                                chain_path=chain_path)
         mcmc.run_mcmc(nsteps=nsteps)
 

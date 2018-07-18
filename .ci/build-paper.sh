@@ -35,6 +35,7 @@ then
     # If we're publishing the paper, commit the figures as well
     if [[ $TRAVIS_COMMIT_MESSAGE = *"[publish]"* ]]
     then
+        mv ../figures tex/
         git add -f tex/figures/*.pdf
     fi
     git status
