@@ -23,7 +23,7 @@ install:
 
 cache:
     directories:
-        #- $HOME/miniconda
+        - $HOME/miniconda
         - $HOME/.cache/Tectonic
 
 before_script:

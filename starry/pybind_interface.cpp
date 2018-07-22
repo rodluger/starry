@@ -1,6 +1,6 @@
 // This throws Assertion errors if we've messed up
 // any Eigen operations. Uncomment for debugging.
-// #undef NDEBUG
+#undef NDEBUG
 #include <pybind11/pybind11.h>
 #include <stdlib.h>
 #include "utils.h"

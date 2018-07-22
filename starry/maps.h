@@ -189,6 +189,12 @@ namespace maps {
             T tmpscalar;
             T tmpu1, tmpu2, tmpu3;
             Vector<T> ARRy;
+            Vector<T> cosnt;
+            Vector<T> sinnt;
+            Vector<T> cosmt;
+            Vector<T> sinmt;
+            Vector<T> Ry;
+            Vector<T> yrev;
 
             // Private methods
             void apply_rotation(const UnitVector<T>& axis, const T& costheta, const T& sintheta,
@@ -241,6 +247,14 @@ namespace maps {
                 tmpu1 = 0;
                 tmpu2 = 0;
                 tmpu3 = 0;
+                cosnt.resize(max(2, lmax + 1));
+                cosnt(0) = 1.0;
+                sinnt.resize(max(2, lmax + 1));
+                sinnt(0) = 0.0;
+                cosmt.resize(N);
+                sinmt.resize(N);
+                Ry.resize(N);
+                yrev.resize(N);
                 Y00_is_unity = false;
                 update();
             }
@@ -702,12 +716,34 @@ namespace maps {
         } else {
 
             // Align occultor with the +y axis if necessary
-            if ((b > 0) && (xo != 0)) {
-                UnitVector<T> zaxis({0, 0, 1});
-                T yo_b(yo / b);
-                T xo_b(xo / b);
-                rotate(zaxis, yo_b, xo_b, (*ptry), tmpvec);
+            if ((b > 0) && ((xo != 0) || (yo < 0))) {
+
+                // Fast rotation about the z axis, skipping the Wigner matrix computation
+                // https://github.com/rodluger/starry/issues/137#issuecomment-405975092
+                cosnt(1) = yo / b;
+                sinnt(1) = xo / b;
+                for (int n = 2; n < lmax + 1; n++) {
+                    cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
+                    sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
+                }
+                int n = 0;
+                for (int l = 0; l < lmax + 1; l++) {
+                    for (int m = -l; m < 0; m++) {
+                        cosmt(n) = cosnt(-m);
+                        sinmt(n) = -sinnt(-m);
+                        yrev(n) = (*ptry)(l * l + l - m);
+                        n++;
+                    }
+                    for (int m = 0; m < l + 1; m++) {
+                        cosmt(n) = cosnt(m);
+                        sinmt(n) = sinnt(m);
+                        yrev(n) = (*ptry)(l * l + l - m);
+                        n++;
+                    }
+                }
+                tmpvec = cosmt.cwiseProduct(*ptry) - sinmt.cwiseProduct(yrev);
                 ptry = &tmpvec;
+
             }
 
             // Perform the rotation + change of basis
