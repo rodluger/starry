@@ -1,12 +1,20 @@
 Installation
 ============
 
-.. note:: Installation via `conda forge <https://conda-forge.org/>`_ is coming soon!
+Using conda
+-----------
+
+The easiest way to install :py:obj:`starry` is using 
+`conda <https://conda.io/>`_ via `conda-forge <https://conda-forge.org/>`_:
+
+.. code-block:: bash
+
+    conda install -c conda-forge starry
 
 Using pip
 ---------
 
-The easiest way to install :py:obj:`starry` is using the
+The next easiest way to install :py:obj:`starry` is using the
 `pip <https://pip.pypa.io/en/stable/installing/>`_ command:
 
 .. code-block:: bash
