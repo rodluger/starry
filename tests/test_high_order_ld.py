@@ -82,15 +82,6 @@ def test_transits():
     u = [0.4, 0.26, 0.3, 0.5, -0.2, 0.5, -0.7, 0.3]
     npts = 25
     r = 0.1
-
-    # DEBUG: NANs
-    '''
-    map = LimbDarkenedMap(len(u))
-    map[:] = u
-    print(map.flux(xo=0, yo=0, ro=r), "\n", ",".join(["%.3f" % s for s in map.s]))
-    quit()
-    '''
-
     b = np.linspace(0, 1 + r + 0.1, npts)
 
     # Numerical flux
