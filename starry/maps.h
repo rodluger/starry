@@ -267,6 +267,7 @@ namespace maps {
             void rotate(const UnitVector<T>& axis, const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout);
             void rotate(const UnitVector<T>& axis, const T& theta);
             void rotate(const UnitVector<T>& axis, const T& costheta, const T& sintheta);
+            void zrot(const T& cost, const T& sint, const Vector<T>& yin, Vector<T>& yout);
             void update();
             void random(double beta=0);
             void set_coeff(int l, int m, T coeff);
@@ -687,6 +688,34 @@ namespace maps {
 
     }
 
+    // Fast rotation about the z axis, skipping the Wigner matrix computation
+    // https://github.com/rodluger/starry/issues/137#issuecomment-405975092
+    template <class T>
+    inline void Map<T>::zrot(const T& cost, const T& sint, const Vector<T>& yin, Vector<T>& yout) {
+        cosnt(1) = cost;
+        sinnt(1) = sint;
+        for (int n = 2; n < lmax + 1; n++) {
+            cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
+            sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
+        }
+        int n = 0;
+        for (int l = 0; l < lmax + 1; l++) {
+            for (int m = -l; m < 0; m++) {
+                cosmt(n) = cosnt(-m);
+                sinmt(n) = -sinnt(-m);
+                yrev(n) = yin(l * l + l - m);
+                n++;
+            }
+            for (int m = 0; m < l + 1; m++) {
+                cosmt(n) = cosnt(m);
+                sinmt(n) = sinnt(m);
+                yrev(n) = yin(l * l + l - m);
+                n++;
+            }
+        }
+        yout = cosmt.cwiseProduct(yin) - sinmt.cwiseProduct(yrev);
+    }
+
     // Compute the total flux during or outside of an occultation
     template <class T>
     T Map<T>::flux(const UnitVector<T>& axis, const T& theta, const T& xo, const T& yo, const T& ro) {
@@ -702,10 +731,40 @@ namespace maps {
         Vector<T>* ptry = &y;
 
         // Rotate the map into view if necessary and update our pointer
+
+
+        // DEBUG!
+        /*
         if (theta != 0) {
             rotate(axis, theta, (*ptry), tmpvec);
             ptry = &tmpvec;
         }
+        */
+        // TODO: sinzeta is +/-. Figure out which.
+        // Zeta is the angle by which we rotate to align the rotation axis
+        // with zhat, and axz is the axis for this transformation.
+        T coszeta = axis(2);
+        T sinzeta = sqrt(1 - axis(2) * axis(2));
+        UnitVector<T> axz;
+        axz(0) = axis(1) / sqrt(axis(0) * axis(0) + axis(1) * axis(1));
+        axz(1) = -axis(0) / sqrt(axis(0) * axis(0) + axis(1) * axis(1));
+        axz(2) = 0;
+        rotation::Wigner<T> Rp(lmax), Rpinv(lmax);
+        Vector<T> yprime(N);
+        rotation::computeR(lmax, axz, coszeta, sinzeta, Rp.Complex, Rp.Real);
+        for (int l = 0; l < lmax + 1; l++) {
+            yprime.segment(l * l, 2 * l + 1) = Rp.Real[l] * y.segment(l * l, 2 * l + 1);
+            Rpinv.Real[l] = Rp.Real[l].transpose();
+        }
+        // Rotate yprime about z and store in tmpvec
+        zrot(cos(theta), sin(theta), yprime, tmpvec);
+        // Now rotate about the perpendicular axis
+        for (int l = 0; l < lmax + 1; l++) {
+            tmpvec.segment(l * l, 2 * l + 1) = Rpinv.Real[l] * tmpvec.segment(l * l, 2 * l + 1);
+        }
+        ptry = &tmpvec;
+
+
 
         // No occultation: cake
         if ((b >= 1 + ro) || (ro == 0)) {
@@ -718,30 +777,7 @@ namespace maps {
             // Align occultor with the +y axis if necessary
             if ((b > 0) && ((xo != 0) || (yo < 0))) {
 
-                // Fast rotation about the z axis, skipping the Wigner matrix computation
-                // https://github.com/rodluger/starry/issues/137#issuecomment-405975092
-                cosnt(1) = yo / b;
-                sinnt(1) = xo / b;
-                for (int n = 2; n < lmax + 1; n++) {
-                    cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
-                    sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
-                }
-                int n = 0;
-                for (int l = 0; l < lmax + 1; l++) {
-                    for (int m = -l; m < 0; m++) {
-                        cosmt(n) = cosnt(-m);
-                        sinmt(n) = -sinnt(-m);
-                        yrev(n) = (*ptry)(l * l + l - m);
-                        n++;
-                    }
-                    for (int m = 0; m < l + 1; m++) {
-                        cosmt(n) = cosnt(m);
-                        sinmt(n) = sinnt(m);
-                        yrev(n) = (*ptry)(l * l + l - m);
-                        n++;
-                    }
-                }
-                tmpvec = cosmt.cwiseProduct(*ptry) - sinmt.cwiseProduct(yrev);
+                zrot(yo / b, xo / b, *ptry, tmpvec);
                 ptry = &tmpvec;
 
             }
