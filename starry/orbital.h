@@ -128,14 +128,11 @@ namespace orbital {
             LimbDarkenedMap<T> ldmap;
             T norm;
 
-            // Axis of rotation and surface map
-            // in the *sky* coordinates
-            UnitVector<T> axis_sky;
+            // Surface map in the *sky* coordinates
             Map<T> map_sky;
             rotation::Wigner<T> wtmp1;
             rotation::Wigner<T> wtmp2;
             rotation::Wigner<T> WignerRToSky;
-            Matrix<T> AxisAngleRToSky;
 
             // Orbital elements
             T a;
@@ -195,12 +192,10 @@ namespace orbital {
                  map{is_star ? Map<T>(0) : Map<T>(lmax)},
                  ldmap{is_star ? LimbDarkenedMap<T>(lmax) : LimbDarkenedMap<T>(0)},
                  // Map in the sky coordinates
-                 axis_sky(norm_unit(axis).template cast<T>()),
                  map_sky{is_star ? Map<T>(0) : Map<T>(lmax)},
                  wtmp1(lmax),
                  wtmp2(lmax),
                  WignerRToSky(lmax),
-                 AxisAngleRToSky(Matrix<T>::Identity(3, 3)),
                  a(a),
                  porb(porb * DAY),
                  inc(inc * DEGREE),
@@ -226,6 +221,12 @@ namespace orbital {
                         norm = 1;
                      else
                         norm = TWO_OVER_SQRT_PI<T>();
+
+                     // Initialize the rotation transforms in the sky map
+                     map_sky.axis(0) = axis(0);
+                     map_sky.axis(1) = axis(1);
+                     map_sky.axis(2) = axis(2);
+                     map_sky.update();
 
                      // Initialize orbital vars
                      clight = INFINITY;
@@ -291,7 +292,6 @@ namespace orbital {
             map_sky.update();
             map.G.sT = map_sky.G.sT;
             map.C.rT = map_sky.C.rT;
-            axis_sky = axis;
 
             // If there's inclination or rotation of the orbital plane,
             // we need to rotate the sky map as well as the rotation axis
@@ -307,15 +307,12 @@ namespace orbital {
                     WignerRToSky.Real[l] = wtmp1.Real[l] * wtmp2.Real[l];
                     map_sky.y.segment(l * l, 2 * l + 1) = WignerRToSky.Real[l] * map.y.segment(l * l, 2 * l + 1);
                 }
-                AxisAngleRToSky = rotation::AxisAngle(axis2, Omega) * rotation::AxisAngle(axis1, T(0.5 * PI<T>() - inc));
-                axis_sky = AxisAngleRToSky * axis;
 
             } else {
 
                 // Set the transformations to the identity matrix
                 for (int l = 0; l < lmax + 1; l++)
                     WignerRToSky.Real[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
-                AxisAngleRToSky = Matrix<T>::Identity(3, 3);
 
             }
         }
@@ -337,7 +334,7 @@ namespace orbital {
             if (is_star)
                 flux_ += norm * ldmap.flux(xo, yo, ro) - totalflux;
             else
-                flux_ += norm * L * map_sky.flux(axis, theta(time), xo, yo, ro) - totalflux;
+                flux_ += norm * L * map_sky.flux(theta(time), xo, yo, ro) - totalflux;
         }
     }
 
@@ -432,7 +429,7 @@ namespace orbital {
                 totalflux = norm * ldmap.flux();
             else {
                 T theta_time(theta(time));
-                totalflux = norm * L * map_sky.flux(axis, theta_time);
+                totalflux = norm * L * map_sky.flux(theta_time);
             }
         }
         flux_ = totalflux;
@@ -801,12 +798,6 @@ namespace orbital {
             names.push_back(string("planet" + to_string(i) + ".Omega"));
             names.push_back(string("planet" + to_string(i) + ".lambda0"));
             names.push_back(string("planet" + to_string(i) + ".tref"));
-            /*
-            TODO: Include derivs w/ respect to the axis of rotation in the next version.
-            names.push_back(string("planet" + to_string(i) + ".axis_x"));
-            names.push_back(string("planet" + to_string(i) + ".axis_y"));
-            names.push_back(string("planet" + to_string(i) + ".axis_z"));
-            */
         }
 
         // Check that our derivative vectors are large enough
@@ -877,12 +868,6 @@ namespace orbital {
 
                 // Sync the orbital and sky maps
                 if (t == 0) bodies[i]->sync_maps();
-
-                /*
-                TODO: When doing autodiff on the axis of rotation, the cached
-                version of AxisAngleRToSky will come in handy here:
-                bodies[i]->axis_sky = bodies[i]->AxisAngleRToSky * bodies[i]->axis;
-                */
 
             }
 

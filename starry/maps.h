@@ -1,6 +1,10 @@
 /**
 Defines the surface map class.
 
+TODO: Make everything protected and implement friend functions!
+      All I/O happens through the set and get methods.
+      Be careful when setting the `axis` within C++.
+
 */
 
 #ifndef _STARRY_MAPS_H_
@@ -25,6 +29,9 @@ namespace maps {
     using std::max;
     using std::string;
     using namespace LBFGSpp;
+    using rotation::Wigner;
+    using rotation::computeR;
+    using solver::Greens;
 
     // Forward declaration
     template <class T>
@@ -105,7 +112,7 @@ namespace maps {
                 minimum = map.evaluate(angles(0), angles(1));
                 for (int u = 0; u < npts; u++) {
                     for (int v = 0; v < npts; v++) {
-                        val = map.evaluate(theta(u), phi(v));
+                        val = map.evaluate_theta_phi(theta(u), phi(v));
                         if (val < 0) {
                             // Our job is done!
                             return false;
@@ -174,42 +181,26 @@ namespace maps {
     // ****************************
     // ----------------------------
     //
-    // The surface map vector class
+    //    The surface map class
     //
     // ----------------------------
     // ****************************
     template <class T>
     class Map {
 
-        protected:
-
-            // Temporary variables
-            Vector<T> tmpvec;
-            VectorT<T> sTA;
-            T tmpscalar;
-            T tmpu1, tmpu2, tmpu3;
-            Vector<T> ARRy;
-            Vector<T> cosnt;
-            Vector<T> sinnt;
-            Vector<T> cosmt;
-            Vector<T> sinmt;
-            Vector<T> Ry;
-            Vector<T> yrev;
-
-            // Private methods
-            void apply_rotation(const UnitVector<T>& axis, const T& costheta, const T& sintheta,
-                                const Vector<T>& yin, Vector<T>& yout);
-
         public:
+
+            // Map order
+            const int lmax;
+            const int N;
 
             // The map vectors
             Vector<T> y;
             Vector<T> p;
             Vector<T> g;
 
-            // Map order
-            int N;
-            int lmax;
+            // The rotation axis
+            UnitVector<T> axis;
 
             // Misc flags
             bool Y00_is_unity;
@@ -217,125 +208,345 @@ namespace maps {
             // Derivatives
             std::map<string, Vector<double>> derivs;
             Vector<T> dFdy;
-            rotation::Wigner<T> RR;
-
-            // Rotation matrices
-            rotation::Wigner<T> R;
 
             // Constant matrices
             Constants<T> C;
 
             // Greens data
-            solver::Greens<T> G;
+            Greens<T> G;
 
             // Minimization stuff
             Minimizer<T> M;
 
-            // Constructor: initialize map to zeros
+        protected:
+
+            // Cached and temporary variables
+            Vector<T> yzeta_rot;                        /**< The rotated spherical harmonic map in the zeta frame */
+            Vector<T> y_rot;                            /**< The rotated spherical harmonic map in the base frame */
+            Vector<T> y_rotz;                           /**< The rotated spherical harmonic map in the base frame, rotated to align the occultor with `yhat` */
+            Vector<T> p_rot;                            /**< The rotated polynomial map in the base frame */
+            T costheta_curr, sintheta_curr;             /**< The current rotation angle */
+            Vector<T>* ptry;                            /**< Pointer to the actual spherical harmonic map we're using in the flux computation */
+            Vector<T>* ptrp;                            /**< Pointer to the actual polynomial map we're using in the intensity computation */
+            Vector<T> ARRy;                             /**< Everything but the solution vector in `s^TAR'Ry`; a handy temporary variable */
+            VectorT<T> sTA;                             /**< The solution vector dotted into the change of basis matrix; handy for Grad stuff */
+            VectorT<T> pTA;                             /**< The polynomial basis dotted into the change of basis matrix; handy for Grad stuff */
+            Wigner<T> R;                                /**< The product of all the rotation matrices in `s^TAR'Ry`; handy for Grad stuff */
+            VectorT<Grad> basis;                        /**< Polynomial basis, used to evaluate gradients */
+
+            // Zeta transformation parameters
+            T coszeta, sinzeta;                         /**< Angle between the axis of rotation and `zhat` */
+            UnitVector<T> axzeta;                       /**< Axis of rotation to align the rotation axis with `zhat` */
+            Wigner<T> Rzeta, RzetaInv;                  /**< The rotation matrix into the `zeta` frame and its inverse */
+            Vector<T> yzeta;                            /**< The base map in the `zeta` frame */
+            Vector<T> cosnt;                            /**< Vector of cos(n theta) values */
+            Vector<T> sinnt;                            /**< Vector of sin(n theta) values */
+            Vector<T> cosmt;                            /**< Vector of cos(m theta) values */
+            Vector<T> sinmt;                            /**< Vector of sin(m theta) values */
+            Vector<T> yrev;                             /**< Degree-wise reverse of the spherical harmonic map */
+
+        public:
+
+            // Constructor
             Map(int lmax=2) :
-                  lmax(lmax), RR(lmax), R(lmax), C(lmax),
-                  G(lmax), M(*this) {
-                N = (lmax + 1) * (lmax + 1);
+                    lmax(lmax),
+                    N((lmax + 1) * (lmax + 1)),
+                    C(lmax), G(lmax), M(*this),
+                    R(lmax), Rzeta(lmax), RzetaInv(lmax) {
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);
                 g = Vector<T>::Zero(N);
-                tmpvec = Vector<T>::Zero(N);
+                axis(0) = 0;
+                axis(1) = 1;
+                axis(2) = 0;
+                yzeta.resize(N);
                 sTA = VectorT<T>::Zero(N);
+                pTA = VectorT<T>::Zero(N);
                 ARRy = Vector<T>::Zero(N);
                 dFdy = Vector<T>::Zero(N);
-                tmpscalar = NAN;
-                tmpu1 = 0;
-                tmpu2 = 0;
-                tmpu3 = 0;
                 cosnt.resize(max(2, lmax + 1));
                 cosnt(0) = 1.0;
                 sinnt.resize(max(2, lmax + 1));
                 sinnt(0) = 0.0;
                 cosmt.resize(N);
                 sinmt.resize(N);
-                Ry.resize(N);
                 yrev.resize(N);
+                y_rot.resize(N);
+                y_rotz.resize(N);
+                basis.resize(N);
                 Y00_is_unity = false;
                 update();
             }
 
-            // Public methods
-            T evaluate(const UnitVector<T>& axis=yhat, const T& theta=0, const T& x0=0, const T& y0=0);
-            T evaluate(const T& theta=0, const T& phi=0);
-            T objective(const Vector<T>& angles, Vector<T>& grad);
-            void rotate(const UnitVector<T>& axis, const T& theta, const Vector<T>& yin, Vector<T>& yout);
-            void rotate(const UnitVector<T>& axis, const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout);
-            void rotate(const UnitVector<T>& axis, const T& theta);
-            void rotate(const UnitVector<T>& axis, const T& costheta, const T& sintheta);
-            void zrot(const T& cost, const T& sint, const Vector<T>& yin, Vector<T>& yout);
+            // Housekeeping functions
             void update();
-            void random(double beta=0);
+            void reset();
+
+            // I/O functions
             void set_coeff(int l, int m, T coeff);
             T get_coeff(int l, int m);
-            void reset();
-            T flux_numerical(const UnitVector<T>& axis=yhat, const T& theta=0, const T& xo=0, const T& yo=0, const T& ro=0, double tol=1e-4);
-            T flux(const UnitVector<T>& axis=yhat, const T& theta=0, const T& xo=0, const T& yo=0, const T& ro=0);
-            bool psd(double epsilon=1e-6, int max_iterations=100);
+            void random(double beta=0);
             std::string repr();
+
+            // Various ways of rotating maps
+            void rotate(const T& theta);
+            void rotate(const T& costheta, const T& sintheta);
+            void rotate(const T& theta, Vector<T>& yout);
+            void rotate(const T& costheta, const T& sintheta, Vector<T>& yout);
+            void rotatez(const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout);
+
+            // Get the intensity of the map at a point
+            T evaluate(const T& theta=0, const T& x0=0, const T& y0=0);
+
+            // Get the flux of the map during or outside of an occultation
+            T flux_numerical(const T& theta=0, const T& xo=0, const T& yo=0, const T& ro=0, double tol=1e-4);
+            T flux(const T& theta=0, const T& xo=0, const T& yo=0, const T& ro=0);
+
+            // Map minimization routines
+            bool psd(double epsilon=1e-6, int max_iterations=100);
+            T evaluate_theta_phi(const T& theta=0, const T& phi=0);
+            T objective(const Vector<T>& angles, Vector<T>& grad);
 
     };
 
-    // Rotate a map `yin` and store the result in `yout`
-    template <class T>
-    void Map<T>::apply_rotation(const UnitVector<T>& axis, const T& costheta, const T& sintheta,
-                                const Vector<T>& yin, Vector<T>& yout) {
 
-        // Compute the rotation matrix R
-        rotation::computeR(lmax, axis, costheta, sintheta, R.Complex, R.Real);
+    /* ---------------- */
+    /*   HOUSEKEEPING   */
+    /* ---------------- */
 
-        // Dot R in, order by order
-        for (int l = 0; l < lmax + 1; l++) {
-            yout.segment(l * l, 2 * l + 1) = R.Real[l] * yin.segment(l * l, 2 * l + 1);
-        }
-
-        return;
-    }
 
     // Update the maps after the coefficients changed
     // or after a base rotation was applied
     template <class T>
     void Map<T>::update() {
+
+        // Update the polynomial and Green's map coefficients
         p = C.A1 * y;
         g = C.A * y;
-        tmpscalar = NAN;
-        tmpu1 = 0;
-        tmpu2 = 0;
-        tmpu3 = 0;
-        tmpvec = Vector<T>::Zero(N);
+
+        // Normalize the rotation axis
+        axis = axis / sqrt(axis(0) * axis(0) + axis(1) * axis(1) + axis(2) * axis(2));
+
+        // Compute the rotation transformation into and out of the `zeta` frame
+        coszeta = axis(2);
+        sinzeta = sqrt(1 - axis(2) * axis(2));
+        axzeta(0) = axis(1) / sqrt(axis(0) * axis(0) + axis(1) * axis(1));
+        axzeta(1) = -axis(0) / sqrt(axis(0) * axis(0) + axis(1) * axis(1));
+        axzeta(2) = 0;
+        computeR(lmax, axzeta, coszeta, sinzeta, Rzeta.Complex, Rzeta.Real);
+        for (int l = 0; l < lmax + 1; l++) {
+            yzeta.segment(l * l, 2 * l + 1) = Rzeta.Real[l] * y.segment(l * l, 2 * l + 1);
+            RzetaInv.Real[l] = Rzeta.Real[l].transpose();
+        }
+
+        // Reset our cache
+        costheta_curr = NAN;
+        sintheta_curr = NAN;
+
     }
+
+    // Reset the map
+    template <class T>
+    void Map<T>::reset() {
+        y.setZero(N);
+        if (Y00_is_unity) y(0) = 1;
+        axis(0) = 0;
+        axis(1) = 1;
+        axis(2) = 0;
+        update();
+    }
+
+
+    /* ---------------- */
+    /*        I/O       */
+    /* ---------------- */
+
+
+    // Set the (l, m) coefficient
+    template <class T>
+    void Map<T>::set_coeff(int l, int m, T coeff) {
+        if ((l == 0) && (Y00_is_unity) && (coeff != 1)) throw errors::Y00IsUnity();
+        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
+            int n = l * l + l + m;
+            set_value(y(n), coeff);
+            update();
+        } else throw errors::BadLM();
+    }
+
+    // Get the (l, m) coefficient
+    template <class T>
+    T Map<T>::get_coeff(int l, int m) {
+        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
+            return y(l * l + l + m);
+        else throw errors::BadLM();
+    }
+
+    // Generate a random map with a given power spectrum power index `beta`
+    template <class T>
+    void Map<T>::random(double beta) {
+        int l, m, n;
+        double norm;
+        Vector<double> coeffs;
+        set_coeff(0, 0, 1);
+        for (l = 1; l < lmax + 1; l++) {
+            coeffs = Vector<double>::Random(2 * l + 1);
+            norm = pow(l, beta) / coeffs.squaredNorm();
+            n = 0;
+            for (m = -l; m < l + 1; m++) {
+                set_coeff(l, m, coeffs(n) * norm);
+                n++;
+            }
+        }
+    }
+
+    // Return a human-readable map string
+    template <class T>
+    std::string Map<T>::repr() {
+        int n = 0;
+        int nterms = 0;
+        char buf[30];
+        std::ostringstream os;
+        os << "<STARRY Map: ";
+        for (int l = 0; l < lmax + 1; l++) {
+            for (int m = -l; m < l + 1; m++) {
+                if (abs(get_value(y(n))) > 10 * mach_eps<T>()){
+                    // Separator
+                    if ((nterms > 0) && (get_value(y(n)) > 0)) {
+                        os << " + ";
+                    } else if ((nterms > 0) && (get_value(y(n)) < 0)){
+                        os << " - ";
+                    } else if ((nterms == 0) && (get_value(y(n)) < 0)){
+                        os << "-";
+                    }
+                    // Term
+                    if ((get_value(y(n)) == 1) || (get_value(y(n)) == -1)) {
+                        sprintf(buf, "Y_{%d,%d}", l, m);
+                        os << buf;
+                    } else if (fmod(abs(get_value(y(n))), 1.0) < 10 * mach_eps<T>()) {
+                        sprintf(buf, "%d Y_{%d,%d}", (int)abs(get_value(y(n))), l, m);
+                        os << buf;
+                    } else if (fmod(abs(get_value(y(n))), 1.0) >= 0.01) {
+                        sprintf(buf, "%.2f Y_{%d,%d}", abs(get_value(y(n))), l, m);
+                        os << buf;
+                    } else {
+                        sprintf(buf, "%.2e Y_{%d,%d}", abs(get_value(y(n))), l, m);
+                        os << buf;
+                    }
+                    nterms++;
+                }
+                n++;
+            }
+        }
+        if (nterms == 0)
+            os << "Null";
+        os << ">";
+        return std::string(os.str());
+    }
+
+
+    /* ------------- */
+    /*   ROTATIONS   */
+    /* ------------- */
+
+
+    // Rotate the base map in-place given `costheta` and `sintheta`
+    template <class T>
+    void Map<T>::rotate(const T& costheta, const T& sintheta) {
+
+        // Rotate yzeta in-place about zhat
+        rotatez(costheta, sintheta, yzeta, yzeta);
+
+        // Rotate out of the `zeta` frame
+        for (int l = 0; l < lmax + 1; l++) {
+            y.segment(l * l, 2 * l + 1) = RzetaInv.Real[l] * yzeta.segment(l * l, 2 * l + 1);
+        }
+
+        // Update auxiliary variables
+        update();
+    }
+
+    // Shortcut to rotate the base map in-place given just `theta`
+    template <class T>
+    void Map<T>::rotate(const T& theta) {
+        rotate(cos(theta), sin(theta));
+    }
+
+    // Rotate the base map given `costheta` and `sintheta`
+    template <class T>
+    inline void Map<T>::rotate(const T& costheta, const T& sintheta, Vector<T>& yout) {
+
+        // Check if we already did this last time
+        if ((costheta == costheta_curr) && (sintheta == sintheta_curr)) {
+            yout = y;
+            return;
+        }
+
+        // Rotate yzeta about zhat and store in yzeta_rot;
+        rotatez(costheta, sintheta, yzeta, yzeta_rot);
+
+        // Rotate out of the `zeta` frame
+        for (int l = 0; l < lmax + 1; l++) {
+            yout.segment(l * l, 2 * l + 1) = RzetaInv.Real[l] * yzeta_rot.segment(l * l, 2 * l + 1);
+        }
+
+        // Cache the angles for next time
+        costheta_curr = costheta;
+        sintheta_curr = sintheta;
+
+    }
+
+    // Shortcut to rotate the base map given just `theta`
+    template <class T>
+    inline void Map<T>::rotate(const T& theta, Vector<T>& yout) {
+        rotate(cos(theta), sin(theta), yout);
+    }
+
+    // Fast rotation about the z axis, skipping the Wigner matrix computation
+    // See https://github.com/rodluger/starry/issues/137#issuecomment-405975092
+    template <class T>
+    inline void Map<T>::rotatez(const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout) {
+        cosnt(1) = costheta;
+        sinnt(1) = sintheta;
+        for (int n = 2; n < lmax + 1; n++) {
+            cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
+            sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
+        }
+        int n = 0;
+        for (int l = 0; l < lmax + 1; l++) {
+            for (int m = -l; m < 0; m++) {
+                cosmt(n) = cosnt(-m);
+                sinmt(n) = -sinnt(-m);
+                yrev(n) = yin(l * l + l - m);
+                n++;
+            }
+            for (int m = 0; m < l + 1; m++) {
+                cosmt(n) = cosnt(m);
+                sinmt(n) = sinnt(m);
+                yrev(n) = yin(l * l + l - m);
+                n++;
+            }
+        }
+        yout = cosmt.cwiseProduct(yin) - sinmt.cwiseProduct(yrev);
+    }
+
+
+    /* ------------- */
+    /*   INTENSITY   */
+    /* ------------- */
+
 
     // Evaluate our map at a given (x0, y0) coordinate
     template <class T>
-    T Map<T>::evaluate(const UnitVector<T>& axis, const T& theta, const T& x0, const T& y0) {
+    T Map<T>::evaluate(const T& theta, const T& x0, const T& y0) {
 
-        // Get the polynomial map
-        Vector<T>* ptrmap;
-
+        // Rotate the map into view
         if (theta == 0) {
-            // We will use this.p
-            ptrmap = &p;
-        } else if ((theta == tmpscalar) && (axis(0) == tmpu1) && (axis(1) == tmpu2) && (axis(2) == tmpu3)) {
-            // We will use this.tmpvec, which we computed last time around
-            ptrmap = &tmpvec;
+            ptrp = &p;
         } else {
-            // Rotate the map into view
-            rotate(axis, theta, y, tmpvec);
-            tmpvec = C.A1 * tmpvec;
-            ptrmap = &tmpvec;
+            rotate(theta, y_rot);
+            p_rot = C.A1 * y_rot;
+            ptrp = &p_rot;
         }
-
-        // Save this value of theta so we don't have
-        // to keep rotating the map when we vectorize
-        // this function!
-        tmpscalar = theta;
-        tmpu1 = axis(0);
-        tmpu2 = axis(1);
-        tmpu3 = axis(2);
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
@@ -347,27 +558,27 @@ namespace maps {
         T res = 0;
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
-                if (abs((*ptrmap)(n)) > 10 * mach_eps<T>()) {
+                if (abs((*ptrp)(n)) > 10 * mach_eps<T>()) {
                     mu = l - m;
                     nu = l + m;
                     if ((nu % 2) == 0) {
                         if ((mu > 0) && (nu > 0))
-                            res += (*ptrmap)(n) * pow(x0, mu / 2) * pow(y0, nu / 2);
+                            res += (*ptrp)(n) * pow(x0, mu / 2) * pow(y0, nu / 2);
                         else if (mu > 0)
-                            res += (*ptrmap)(n) * pow(x0, mu / 2);
+                            res += (*ptrp)(n) * pow(x0, mu / 2);
                         else if (nu > 0)
-                            res += (*ptrmap)(n) * pow(y0, nu / 2);
+                            res += (*ptrp)(n) * pow(y0, nu / 2);
                         else
-                            res += (*ptrmap)(n);
+                            res += (*ptrp)(n);
                     } else {
                         if ((mu > 1) && (nu > 1))
-                            res += (*ptrmap)(n) * pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
+                            res += (*ptrp)(n) * pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
                         else if (mu > 1)
-                            res += (*ptrmap)(n) * pow(x0, (mu - 1) / 2) * z0;
+                            res += (*ptrp)(n) * pow(x0, (mu - 1) / 2) * z0;
                         else if (nu > 1)
-                            res += (*ptrmap)(n) * pow(y0, (nu - 1) / 2) * z0;
+                            res += (*ptrp)(n) * pow(y0, (nu - 1) / 2) * z0;
                         else
-                            res += (*ptrmap)(n) * z0;
+                            res += (*ptrp)(n) * z0;
                     }
                 }
                 n++;
@@ -380,31 +591,31 @@ namespace maps {
 
     // Evaluate our map at a given (x0, y0) coordinate
     template <>
-    Grad Map<Grad>::evaluate(const UnitVector<Grad>& axis, const Grad& theta, const Grad& x0, const Grad& y0) {
+    Grad Map<Grad>::evaluate(const Grad& theta, const Grad& x0, const Grad& y0) {
 
-        // Get the polynomial map
-        Vector<Grad>* ptrmap;
-
+        // Rotate the map into view
         if (theta == 0) {
-            // We will use this.p
-            ptrmap = &p;
-        } else if ((theta == tmpscalar) && (axis(0) == tmpu1) && (axis(1) == tmpu2) && (axis(2) == tmpu3)) {
-            // We will use this.tmpvec, which we computed last time around
-            ptrmap = &tmpvec;
-        } else {
-            // Rotate the map into view
-            rotate(axis, theta, y, tmpvec);
-            tmpvec = C.A1 * tmpvec;
-            ptrmap = &tmpvec;
-        }
+            ptrp = &p;
 
-        // Save this value of theta so we don't have
-        // to keep rotating the map when we vectorize
-        // this function!
-        tmpscalar = theta;
-        tmpu1 = axis(0);
-        tmpu2 = axis(1);
-        tmpu3 = axis(2);
+            // Compute the rotation matrix explicitly
+            for (int l = 0; l < lmax + 1; l++)
+                R.Real[l] = Matrix<Grad>::Identity(2 * l + 1, 2 * l + 1);
+
+        } else {
+            rotate(theta, y_rot);
+            p_rot = C.A1 * y_rot;
+            ptrp = &p_rot;
+
+            // We need to explicitly compute the rotation matrix to get
+            // the derivatives below. See the explanation in `flux`.
+            for (int l = 0; l < lmax + 1; l++) {
+                for (int j = 0; j < 2 * l + 1; j++)
+                    R.Real[l].col(j) = RzetaInv.Real[l].col(j) * cosmt(l * l + j) +
+                                       RzetaInv.Real[l].col(2 * l - j) * sinmt(l * l + j);
+                R.Real[l] = R.Real[l] * Rzeta.Real[l];
+            }
+
+        }
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
@@ -413,8 +624,6 @@ namespace maps {
         Grad z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
 
         // Evaluate each harmonic
-        VectorT<Grad> basis;
-        basis.resize(N);
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
                 mu = l - m;
@@ -450,21 +659,234 @@ namespace maps {
 
         } else {
 
-            sTA = basis * C.A1;
+            pTA = basis * C.A1;
             for (int l = 0; l < lmax + 1; l++)
-                dFdy.segment(l * l, 2 * l + 1) = sTA.segment(l * l, 2 * l + 1) * R.Real[l];
+                dFdy.segment(l * l, 2 * l + 1) = pTA.segment(l * l, 2 * l + 1) * R.Real[l];
 
         }
 
         // Dot the coefficients in to our polynomial map
-        return basis.dot(*ptrmap);
+        return basis.dot(*ptrp);
 
     }
+
+
+    /* ------------- */
+    /*      FLUX     */
+    /* ------------- */
+
+
+    // Compute the total flux during or outside of an occultation numerically
+    template <class T>
+    T Map<T>::flux_numerical(const T& theta, const T& xo, const T& yo, const T& ro, double tol) {
+
+        // Impact parameter
+        T b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) return 0;
+
+        // Rotate the map into view
+        if (theta == 0) {
+            ptrp = &p;
+        } else {
+            rotate(theta, y_rot);
+            p_rot = C.A1 * y_rot;
+            ptrp = &p_rot;
+        }
+
+        // Compute the flux numerically
+        return numeric::flux(xo, yo, ro, lmax, *ptrp, tol);
+
+    }
+
+    // Compute the total flux during or outside of an occultation
+    template <class T>
+    T Map<T>::flux(const T& theta, const T& xo, const T& yo, const T& ro) {
+
+        // Impact parameter
+        T b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) return 0;
+
+        // Rotate the map into view
+        if (theta == 0) {
+            ptry = &y;
+        } else {
+            rotate(theta, y_rot);
+            ptry = &y_rot;
+        }
+
+        // No occultation: cake
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            return C.rTA1 * (*ptry);
+
+        // Occultation
+        } else {
+
+            // Align occultor with the +y axis
+            if ((b > 0) && ((xo != 0) || (yo < 0))) {
+                rotatez(yo / b, xo / b, *ptry, y_rotz);
+                ptry = &y_rotz;
+            }
+
+            // Perform the rotation + change of basis
+            ARRy = C.A * (*ptry);
+
+            // Compute the sT vector
+            solver::computesT(G, b, ro, ARRy);
+
+            // Dot the result in and we're done
+            return G.sT * ARRy;
+
+        }
+
+    }
+
+    /*
+    Compute the total flux during or outside of an occultation.
+    **Gradient over-ride:** compute map derivs manually for speed.
+
+    We've factored stuff so that the flux is
+
+        f = (s^T . A) . (Rz' . RzetaInv . Rz . Rzeta) . y
+
+    The derivative is therefore
+
+        df / dy = (s^T . A) . R
+
+    where
+
+        R = (Rz' . RzetaInv . Rz . Rzeta)
+    */
+    template <>
+    Grad Map<Grad>::flux(const Grad& theta, const Grad& xo, const Grad& yo_, const Grad& ro) {
+
+        // Local copy so we can nudge it away from the unstable point
+        Grad yo = yo_;
+
+        // Impact parameter
+        Grad b = sqrt(xo * xo + yo * yo);
+
+        // Nudge away from point instabilities
+        if (b == 0) {
+            yo += mach_eps<double>();
+            b = sqrt(xo * xo + yo * yo);
+        } else if (b == (1 - ro)) {
+            b -= mach_eps<double>();
+        } else if (b == 1 + ro) {
+            b += mach_eps<double>();
+        }
+
+        // TODO: There are still deriv instabilities in the limits
+        // b --> |1 - r| and b --> 1 + r. They are not terrible
+        // (and only present in dF/db) but should be fixed.
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+            dFdy = Vector<Grad>::Zero(N);
+            return 0;
+        }
+
+        // Rotate the map into view
+        if (theta == 0) {
+            ptry = &y;
+            for (int l = 0; l < lmax + 1; l++)
+                R.Real[l] = Matrix<Grad>::Identity(2 * l + 1, 2 * l + 1);
+        } else {
+            rotate(theta, y_rot);
+            ptry = &y_rot;
+
+            // Here we compute R = RzetaInv * Rz * Rzeta so we can
+            // analytically compute the map derivs below.
+            // Note that the Rz matrix looks like this:
+            /*
+                ...                             ...
+                    C3                      S3
+                        C2              S2
+                            C1      S1
+                                1
+                           -S1      C1
+                       -S2              C2
+                   -S3                      C3
+                ...                             ...
+            */
+            // where CX = cos(X theta) and SX = sin(X theta).
+            // This is the sum of a diagonal and an anti-diagonal
+            // matrix, so the dot product of RzetaInv and Rz can
+            // be computed efficiently by doing row-wise and col-wise
+            // operations on RzetaInv.
+            for (int l = 0; l < lmax + 1; l++) {
+                for (int j = 0; j < 2 * l + 1; j++)
+                    R.Real[l].col(j) = RzetaInv.Real[l].col(j) * cosmt(l * l + j) +
+                                       RzetaInv.Real[l].col(2 * l - j) * sinmt(l * l + j);
+                // NOTE: This last step can probably be merged into the for
+                // loop above. This is rather similar to eigendecomposition...
+                R.Real[l] = R.Real[l] * Rzeta.Real[l];
+            }
+
+        }
+
+        // No occultation: cake
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // Compute map derivs
+            for (int l = 0; l < lmax + 1; l++)
+                dFdy.segment(l * l, 2 * l + 1) = C.rTA1.segment(l * l, 2 * l + 1) * R.Real[l];
+
+            return C.rTA1 * (*ptry);
+
+        // Occultation
+        } else {
+
+            // Align occultor with the +y axis
+            if ((b > 0) && ((xo != 0) || (yo < 0))) {
+
+                // Rotate
+                rotatez(yo / b, xo / b, *ptry, y_rotz);
+                ptry = &y_rotz;
+
+                // Update the rotation matrix for the map derivs
+                // Since we rotated the map, we need to dot Rz' into R
+                // See our note above on what's going on here.
+                for (int l = 0; l < lmax + 1; l++) {
+                    for (int j = 0; j < 2 * l + 1; j ++)
+                        R.Real[l].row(j) = R.Real[l].row(j) * cosmt(l * l + j) -
+                                           R.Real[l].row(2 * l - j) * sinmt(l * l + j);
+                }
+
+            }
+
+            // Perform the rotation + change of basis
+            ARRy = C.A * (*ptry);
+
+            // Compute the sT vector
+            solver::computesT(G, b, ro, ARRy);
+
+            // Compute the derivatives w.r.t. the map coefficients
+            sTA = G.sT * C.A;
+            for (int l = 0; l < lmax + 1; l++)
+                dFdy.segment(l * l, 2 * l + 1) = sTA.segment(l * l, 2 * l + 1) * R.Real[l];
+
+            // Dot the result in to get the flux
+            return G.sT * ARRy;
+
+        }
+
+    }
+
+
+    /* ---------------- */
+    /*   MINIMIZATION   */
+    /* ---------------- */
+
 
     // Evaluate our map at a given (theta, phi) coordinate (no rotation)
     // Not user-facing; used exclusively for minimization of the map
     template <class T>
-    T Map<T>::evaluate(const T& theta, const T& phi) {
+    T Map<T>::evaluate_theta_phi(const T& theta, const T& phi) {
         T sint = sin(theta),
           cost = cos(theta),
           sinp = sin(phi),
@@ -618,6 +1040,7 @@ namespace maps {
     }
 
     // Check whether the map is positive semi-definite
+    // Double override: for l > 1, we do this numerically
     template <>
     bool Map<double>::psd(double epsilon, int max_iterations) {
         if (lmax == 0) {
@@ -630,351 +1053,6 @@ namespace maps {
             // We need to solve this numerically
             return M.psd(epsilon, max_iterations);
         }
-    }
-
-    // Shortcut to rotate the base map in-place given `theta`
-    template <class T>
-    void Map<T>::rotate(const UnitVector<T>& axis, const T& theta) {
-        T costheta = cos(theta);
-        T sintheta = sin(theta);
-        apply_rotation(axis, costheta, sintheta, y, y);
-        update();
-    }
-
-    // Shortcut to rotate the base map in-place given `costheta` and `sintheta`
-    template <class T>
-    void Map<T>::rotate(const UnitVector<T>& axis, const T& costheta, const T& sintheta) {
-        apply_rotation(axis, costheta, sintheta, y, y);
-        update();
-    }
-
-    // Shortcut to rotate an arbitrary map given `theta`
-    template <class T>
-    void Map<T>::rotate(const UnitVector<T>& axis, const T& theta, const Vector<T>& yin, Vector<T>& yout) {
-        T costheta = cos(theta);
-        T sintheta = sin(theta);
-        apply_rotation(axis, costheta, sintheta, yin, yout);
-    }
-
-    // Shortcut to rotate an arbitrary map given `costheta` and `sintheta`
-    template <class T>
-    void Map<T>::rotate(const UnitVector<T>& axis, const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout) {
-        apply_rotation(axis, costheta, sintheta, yin, yout);
-    }
-
-    // Compute the total flux during or outside of an occultation numerically
-    template <class T>
-    T Map<T>::flux_numerical(const UnitVector<T>& axis, const T& theta, const T& xo, const T& yo, const T& ro, double tol) {
-
-        // Impact parameter
-        T b = sqrt(xo * xo + yo * yo);
-
-        // Check for complete occultation
-        if (b <= ro - 1) return 0;
-
-        // Pointer to the map we're integrating
-        // (defaults to the base map)
-        Vector<T>* ptry = &y;
-
-        // Rotate the map into view if necessary and update our pointer
-        if (theta != 0) {
-            rotate(axis, theta, (*ptry), tmpvec);
-            ptry = &tmpvec;
-        }
-
-        // Compute the flux numerically
-        tmpvec = C.A1 * (*ptry);
-        return numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
-
-    }
-
-    // Fast rotation about the z axis, skipping the Wigner matrix computation
-    // https://github.com/rodluger/starry/issues/137#issuecomment-405975092
-    template <class T>
-    inline void Map<T>::zrot(const T& cost, const T& sint, const Vector<T>& yin, Vector<T>& yout) {
-        cosnt(1) = cost;
-        sinnt(1) = sint;
-        for (int n = 2; n < lmax + 1; n++) {
-            cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
-            sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
-        }
-        int n = 0;
-        for (int l = 0; l < lmax + 1; l++) {
-            for (int m = -l; m < 0; m++) {
-                cosmt(n) = cosnt(-m);
-                sinmt(n) = -sinnt(-m);
-                yrev(n) = yin(l * l + l - m);
-                n++;
-            }
-            for (int m = 0; m < l + 1; m++) {
-                cosmt(n) = cosnt(m);
-                sinmt(n) = sinnt(m);
-                yrev(n) = yin(l * l + l - m);
-                n++;
-            }
-        }
-        yout = cosmt.cwiseProduct(yin) - sinmt.cwiseProduct(yrev);
-    }
-
-    // Compute the total flux during or outside of an occultation
-    template <class T>
-    T Map<T>::flux(const UnitVector<T>& axis, const T& theta, const T& xo, const T& yo, const T& ro) {
-
-        // Impact parameter
-        T b = sqrt(xo * xo + yo * yo);
-
-        // Check for complete occultation
-        if (b <= ro - 1) return 0;
-
-        // Pointer to the map we're integrating
-        // (defaults to the base map)
-        Vector<T>* ptry = &y;
-
-        // Rotate the map into view if necessary and update our pointer
-
-
-        // DEBUG!
-        /*
-        if (theta != 0) {
-            rotate(axis, theta, (*ptry), tmpvec);
-            ptry = &tmpvec;
-        }
-        */
-        // TODO: sinzeta is +/-. Figure out which.
-        // Zeta is the angle by which we rotate to align the rotation axis
-        // with zhat, and axz is the axis for this transformation.
-        T coszeta = axis(2);
-        T sinzeta = sqrt(1 - axis(2) * axis(2));
-        UnitVector<T> axz;
-        axz(0) = axis(1) / sqrt(axis(0) * axis(0) + axis(1) * axis(1));
-        axz(1) = -axis(0) / sqrt(axis(0) * axis(0) + axis(1) * axis(1));
-        axz(2) = 0;
-        rotation::Wigner<T> Rp(lmax), Rpinv(lmax);
-        Vector<T> yprime(N);
-        rotation::computeR(lmax, axz, coszeta, sinzeta, Rp.Complex, Rp.Real);
-        for (int l = 0; l < lmax + 1; l++) {
-            yprime.segment(l * l, 2 * l + 1) = Rp.Real[l] * y.segment(l * l, 2 * l + 1);
-            Rpinv.Real[l] = Rp.Real[l].transpose();
-        }
-        // Rotate yprime about z and store in tmpvec
-        zrot(cos(theta), sin(theta), yprime, tmpvec);
-        // Now rotate about the perpendicular axis
-        for (int l = 0; l < lmax + 1; l++) {
-            tmpvec.segment(l * l, 2 * l + 1) = Rpinv.Real[l] * tmpvec.segment(l * l, 2 * l + 1);
-        }
-        ptry = &tmpvec;
-
-
-
-        // No occultation: cake
-        if ((b >= 1 + ro) || (ro == 0)) {
-
-            return C.rTA1 * (*ptry);
-
-        // Occultation
-        } else {
-
-            // Align occultor with the +y axis if necessary
-            if ((b > 0) && ((xo != 0) || (yo < 0))) {
-
-                zrot(yo / b, xo / b, *ptry, tmpvec);
-                ptry = &tmpvec;
-
-            }
-
-            // Perform the rotation + change of basis
-            ARRy = C.A * (*ptry);
-
-            // Compute the sT vector
-            solver::computesT(G, b, ro, ARRy);
-
-            // Dot the result in and we're done
-            return G.sT * ARRy;
-
-        }
-
-    }
-
-    // Compute the total flux during or outside of an occultation
-    // **Gradient over-ride: compute map derivs manually for speed**
-    template <>
-    Grad Map<Grad>::flux(const UnitVector<Grad>& axis, const Grad& theta, const Grad& xo, const Grad& yo_, const Grad& ro) {
-
-        // Local copy so we can nudge it away from the
-        // unstable point
-        Grad yo = yo_;
-
-        // Impact parameter
-        Grad b = sqrt(xo * xo + yo * yo);
-
-        // Nudge away from point instabilities
-        if (b == 0) {
-            yo += mach_eps<double>();
-            b = sqrt(xo * xo + yo * yo);
-        } else if (b == (1 - ro)) {
-            b -= mach_eps<double>();
-        } else if (b == 1 + ro) {
-            b += mach_eps<double>();
-        }
-
-        // TODO: There are still instabilities in the limits
-        // b --> |1 - r| and b --> 1 + r. They are not terrible
-        // (and only present in dF/db) but should be fixed.
-
-        // Check for complete occultation
-        if (b <= ro - 1) {
-            dFdy = Vector<Grad>::Zero(N);
-            return 0;
-        }
-
-        // Pointer to the map we're integrating
-        // (defaults to the base map)
-        Vector<Grad>* ptry = &y;
-
-        // Rotate the map into view if necessary and update our pointer
-        if (theta != 0) {
-            rotate(axis, theta, (*ptry), tmpvec);
-            ptry = &tmpvec;
-            for (int l = 0; l < lmax + 1; l++)
-                RR.Real[l] = R.Real[l];
-        } else {
-            for (int l = 0; l < lmax + 1; l++)
-                RR.Real[l] = Matrix<Grad>::Identity(2 * l + 1, 2 * l + 1);
-        }
-
-        // No occultation: cake
-        if ((b >= 1 + ro) || (ro == 0)) {
-
-            // Compute map derivs
-            for (int l = 0; l < lmax + 1; l++)
-                dFdy.segment(l * l, 2 * l + 1) = C.rTA1.segment(l * l, 2 * l + 1) * RR.Real[l];
-
-            return C.rTA1 * (*ptry);
-
-        // Occultation
-        } else {
-
-            // Align occultor with the +y axis if necessary
-            if ((b > 0) && (xo != 0)) {
-                UnitVector<Grad> zaxis({0, 0, 1});
-                Grad yo_b(yo / b);
-                Grad xo_b(xo / b);
-                rotate(zaxis, yo_b, xo_b, (*ptry), tmpvec);
-                ptry = &tmpvec;
-
-                // Update the rotation matrix for the map derivs
-                for (int l = 0; l < lmax + 1; l++)
-                    RR.Real[l] = R.Real[l] * RR.Real[l];
-
-            }
-
-            // Perform the rotation + change of basis
-            ARRy = C.A * (*ptry);
-
-            // Compute the sT vector
-            solver::computesT(G, b, ro, ARRy);
-
-            // Compute the derivatives w.r.t. the map coefficients
-            sTA = G.sT * C.A;
-            for (int l = 0; l < lmax + 1; l++)
-                dFdy.segment(l * l, 2 * l + 1) = sTA.segment(l * l, 2 * l + 1) * RR.Real[l];
-
-            // Dot the result in to get the flux
-            Grad res = G.sT * ARRy;
-
-            return res;
-
-        }
-
-    }
-
-    // Set the (l, m) coefficient
-    template <class T>
-    void Map<T>::set_coeff(int l, int m, T coeff) {
-        if ((l == 0) && (Y00_is_unity) && (coeff != 1)) throw errors::Y00IsUnity();
-        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
-            int n = l * l + l + m;
-            set_value(y(n), coeff);
-            update();
-        } else throw errors::BadLM();
-    }
-
-    // Get the (l, m) coefficient
-    template <class T>
-    T Map<T>::get_coeff(int l, int m) {
-        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
-            return y(l * l + l + m);
-        else throw errors::BadLM();
-    }
-
-    // Reset the map
-    template <class T>
-    void Map<T>::reset() {
-        y.setZero(N);
-        if (Y00_is_unity) y(0) = 1;
-        update();
-    }
-
-    // Generate a random map with a given power spectrum power index `beta`
-    template <class T>
-    void Map<T>::random(double beta) {
-        int l, m, n;
-        double norm;
-        Vector<double> coeffs;
-        set_coeff(0, 0, 1);
-        for (l = 1; l < lmax + 1; l++) {
-            coeffs = Vector<double>::Random(2 * l + 1);
-            norm = pow(l, beta) / coeffs.squaredNorm();
-            n = 0;
-            for (m = -l; m < l + 1; m++) {
-                set_coeff(l, m, coeffs(n) * norm);
-                n++;
-            }
-        }
-    }
-
-    // Return a human-readable map string
-    template <class T>
-    std::string Map<T>::repr() {
-        int n = 0;
-        int nterms = 0;
-        char buf[30];
-        std::ostringstream os;
-        os << "<STARRY Map: ";
-        for (int l = 0; l < lmax + 1; l++) {
-            for (int m = -l; m < l + 1; m++) {
-                if (abs(get_value(y(n))) > 10 * mach_eps<T>()){
-                    // Separator
-                    if ((nterms > 0) && (get_value(y(n)) > 0)) {
-                        os << " + ";
-                    } else if ((nterms > 0) && (get_value(y(n)) < 0)){
-                        os << " - ";
-                    } else if ((nterms == 0) && (get_value(y(n)) < 0)){
-                        os << "-";
-                    }
-                    // Term
-                    if ((get_value(y(n)) == 1) || (get_value(y(n)) == -1)) {
-                        sprintf(buf, "Y_{%d,%d}", l, m);
-                        os << buf;
-                    } else if (fmod(abs(get_value(y(n))), 1.0) < 10 * mach_eps<T>()) {
-                        sprintf(buf, "%d Y_{%d,%d}", (int)abs(get_value(y(n))), l, m);
-                        os << buf;
-                    } else if (fmod(abs(get_value(y(n))), 1.0) >= 0.01) {
-                        sprintf(buf, "%.2f Y_{%d,%d}", abs(get_value(y(n))), l, m);
-                        os << buf;
-                    } else {
-                        sprintf(buf, "%.2e Y_{%d,%d}", abs(get_value(y(n))), l, m);
-                        os << buf;
-                    }
-                    nterms++;
-                }
-                n++;
-            }
-        }
-        if (nterms == 0)
-            os << "Null";
-        os << ">";
-        return std::string(os.str());
     }
 
 

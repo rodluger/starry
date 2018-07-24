@@ -20,6 +20,6 @@ int main() {
   yo = 0.3;
   ro = 0.1;
   for (int i = 0; i < 100; i++)
-    map.flux(yhat, theta, xo, yo, ro);
+    map.flux(theta, xo, yo, ro);
 
 }
