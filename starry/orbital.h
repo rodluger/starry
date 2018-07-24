@@ -308,6 +308,9 @@ namespace orbital {
                     map_sky.y.segment(l * l, 2 * l + 1) = WignerRToSky.Real[l] * map.y.segment(l * l, 2 * l + 1);
                 }
 
+                // Force the map to re-compute the `zeta` transform
+                map_sky.update();
+
             } else {
 
                 // Set the transformations to the identity matrix

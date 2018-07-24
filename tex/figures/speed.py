@@ -244,11 +244,12 @@ def speed():
             for m in range(-l, l + 1):
                 ylm.reset()
                 ylm[l, m] = 1
+                ylm.axis = [0, 1, 0]
                 builtins.__dict__.update(locals())
 
                 # Phase curve
                 time_phase[l, m, i] = timeit.timeit(
-                    'ylm.flux(axis=[0,1,0], theta=theta)',
+                    'ylm.flux(theta=theta)',
                     number=number) / number
 
                 # Occultation (no rotation)

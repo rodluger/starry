@@ -477,7 +477,7 @@ namespace maps {
 
         // Check if we already did this last time
         if ((costheta == costheta_curr) && (sintheta == sintheta_curr)) {
-            yout = y;
+            yout = y_rot;
             return;
         }
 
