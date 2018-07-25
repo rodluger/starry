@@ -15,6 +15,7 @@ ax_lc = pl.subplot2grid((4, nim), (1, 0), colspan=nim, rowspan=3)
 # Instantiate the earth
 m = Map(10)
 m.load_image('earth')
+m.axis = [0, 1, 0]
 
 # Moon params
 ro = 0.273
@@ -33,12 +34,12 @@ theta = np.linspace(theta0, theta0 + 180. / np.pi, npts, endpoint=True)
 thetanum = np.linspace(theta0, theta0 + 180. / np.pi, nptsnum, endpoint=True)
 
 # Compute and plot the flux
-F = m.flux(axis=[0, 1, 0], theta=theta, xo=xo, yo=yo, ro=ro)
+F = m.flux(theta=theta, xo=xo, yo=yo, ro=ro)
 F /= np.max(F)
 ax_lc.plot(time, F, 'k-', label='Total')
 
 # Compute and plot the numerical flux
-Fnum = m._flux_numerical(axis=[0, 1, 0], theta=thetanum, xo=xonum,
+Fnum = m._flux_numerical(theta=thetanum, xo=xonum,
                         yo=yonum, ro=ro, tol=1e-5)
 Fnum /= np.max(Fnum)
 ax_lc.plot(timenum, Fnum, 'k.')
@@ -47,7 +48,7 @@ ax_lc.plot(timenum, Fnum, 'k.')
 x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 for n in range(nim):
     i = int(np.linspace(0, npts - 1, nim)[n])
-    I = [m.evaluate(axis=[0, 1, 0], theta=theta[i], x=x[j], y=y[j])
+    I = [m.evaluate(theta=theta[i], x=x[j], y=y[j])
          for j in range(res)]
     ax_im[n].imshow(I, origin="lower", interpolation="none", cmap='plasma',
                     extent=(-1, 1, -1, 1))

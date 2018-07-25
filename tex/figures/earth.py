@@ -8,7 +8,8 @@ m = Map(10)
 m.load_image('earth')
 
 # Start centered at longitude 180 W
-m.rotate([0, 1, 0], -180)
+m.axis = [0, 1, 0]
+m.rotate(-180)
 
 # Render it under consecutive rotations
 nax = 8
@@ -19,7 +20,7 @@ x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 for i in range(nax):
     # starry functions accept vector arguments, but not matrix arguments,
     # so we need to iterate below:
-    I = [m.evaluate(axis=[0, 1, 0], theta=-theta[i], x=x[j], y=y[j]) for j in range(res)]
+    I = [m.evaluate(theta=-theta[i], x=x[j], y=y[j]) for j in range(res)]
     ax[i].imshow(I, origin="lower", interpolation="none", cmap='plasma')
     ax[i].axis('off')
 

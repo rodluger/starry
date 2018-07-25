@@ -39,9 +39,9 @@ for yo, zorder, color in zip([0.25, 0.75], [1, 0], ['C0', 'C1']):
         for j, m in enumerate(range(l + 1)):
             y.reset()
             y.set_coeff(l, m, 1)
-            flux = y.flux(axis=[1, 0, 0], theta=0, xo=xo, yo=yo, ro=ro)
+            flux = y.flux(theta=0, xo=xo, yo=yo, ro=ro)
             ax[i, j].plot(xo, flux, lw=1, zorder=zorder, color=color)
-            fluxn = y._flux_numerical(axis=[1, 0, 0], theta=0, xo=xon,
+            fluxn = y._flux_numerical(theta=0, xo=xon,
                                      yo=yo, ro=ro, tol=1e-5)
             ax[i, j].plot(xon, fluxn, '.', ms=2, zorder=zorder, color=color)
 

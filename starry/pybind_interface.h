@@ -239,6 +239,25 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 map.rotate(theta * DEGREE);
             }, docs.Map.rotate, "theta"_a=0)
 
+        // -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+        // DEPRECATED FUNCTIONS. Throw explicit errors for users following syntax in the beta release
+        // -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+        .def("evaluate", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& x, py::object& y) {
+                throw errors::Deprecated("Calling `evaluate` with the `axis` keyword is deprecated. Set the `axis` attribute of the `Map` class before calling this method.");
+            }, "axis"_a=yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
+
+        .def("flux", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
+                throw errors::Deprecated("Calling `flux` with the `axis` keyword is deprecated. Set the `axis` attribute of the `Map` class before calling this method.");
+            }, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+
+        .def("rotate", [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis, double theta){
+                throw errors::Deprecated("Calling `rotate` with the `axis` keyword is deprecated. Set the `axis` attribute of the `Map` class before calling this method.");
+            }, "axis"_a=yhat, "theta"_a=0)
+
+        // -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+        // -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
         .def("psd", &maps::Map<MAPTYPE>::psd, docs.Map.psd, "epsilon"_a=1.e-6, "max_iterations"_a=100)
 
         .def("load_array", [](maps::Map<MAPTYPE> &map, Matrix<double>& image) {

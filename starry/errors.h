@@ -48,6 +48,16 @@ namespace errors {
         }
     };
 
+    class Deprecated : public exception {
+        string m_msg;
+    public:
+        Deprecated(const string& message) :
+            m_msg(string(message)) { }
+        virtual const char* what() const throw() {
+            return m_msg.c_str();
+        }
+    };
+
     class Elliptic : public exception {
         string m_msg;
     public:
