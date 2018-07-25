@@ -2,10 +2,12 @@
 Defines the surface map class.
 
 TODO: - Make everything protected and implement friend functions!
-      - All I/O happens through the set and get methods.
+      - All I/O should happen through set and get methods.
       - Be careful when setting the `axis` within C++.
       - Put minimization stuff somewhere else; use "friend"
-
+      - Cache rotations for Grad flux evaluations. I disabled them
+        because they were leading to weird stuff in the `orbit.h`
+        system functions.
 */
 
 #ifndef _STARRY_MAPS_H_
@@ -226,7 +228,7 @@ namespace maps {
             Vector<T> y_rot;                            /**< The rotated spherical harmonic map in the base frame */
             Vector<T> y_rotz;                           /**< The rotated spherical harmonic map in the base frame, rotated to align the occultor with `yhat` */
             Vector<T> p_rot;                            /**< The rotated polynomial map in the base frame */
-            T costheta_curr, sintheta_curr;             /**< The current rotation angle */
+            T theta_y_rot;                              /**< The angle by which we rotated `y` to get `y_rot` (used for caching rotations) */
             Vector<T>* ptry;                            /**< Pointer to the actual spherical harmonic map we're using in the flux computation */
             Vector<T>* ptrp;                            /**< Pointer to the actual polynomial map we're using in the intensity computation */
             Vector<T> ARRy;                             /**< Everything but the solution vector in `s^TAR'Ry`; a handy temporary variable */
@@ -250,11 +252,11 @@ namespace maps {
         public:
 
             // Constructor
-            Map(int lmax=2) :
-                    lmax(lmax),
-                    N((lmax + 1) * (lmax + 1)),
-                    C(lmax), G(lmax), M(*this),
-                    R(lmax), RR(lmax), Rzeta(lmax), RzetaInv(lmax) {
+            Map(int lmax=2) : lmax(lmax), N((lmax + 1) * (lmax + 1)),
+                              C(lmax), G(lmax), M(*this), R(lmax),
+                              RR(lmax), Rzeta(lmax), RzetaInv(lmax) {
+
+                // Initialize all our vectors
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);
                 g = Vector<T>::Zero(N);
@@ -278,6 +280,7 @@ namespace maps {
                 basis.resize(N);
                 Y00_is_unity = false;
                 update();
+
             }
 
             // Housekeeping functions
@@ -354,8 +357,7 @@ namespace maps {
         }
 
         // Reset our cache
-        costheta_curr = NAN;
-        sintheta_curr = NAN;
+        theta_y_rot = NAN;
 
     }
 
@@ -489,15 +491,6 @@ namespace maps {
     template <class T>
     inline void Map<T>::rotate(const T& costheta, const T& sintheta, Vector<T>& yout) {
 
-        // Check if we already did this last time
-        // DEBUG: This leads to weird grad behavior. Investigating...
-        /*
-        if ((costheta == costheta_curr) && (sintheta == sintheta_curr)) {
-            yout = y_rot;
-            return;
-        }
-        */
-
         // Rotate yzeta about zhat and store in yzeta_rot;
         rotatez(costheta, sintheta, yzeta, yzeta_rot);
 
@@ -505,10 +498,6 @@ namespace maps {
         for (int l = 0; l < lmax + 1; l++) {
             yout.segment(l * l, 2 * l + 1) = RzetaInv.Real[l] * yzeta_rot.segment(l * l, 2 * l + 1);
         }
-
-        // Cache the angles for next time
-        costheta_curr = costheta;
-        sintheta_curr = sintheta;
 
     }
 
@@ -560,7 +549,8 @@ namespace maps {
         if (theta == 0) {
             ptrp = &p;
         } else {
-            rotate(theta, y_rot);
+            if (theta != theta_y_rot) rotate(theta, y_rot);
+            theta_y_rot = theta;
             p_rot = C.A1 * y_rot;
             ptrp = &p_rot;
         }
@@ -707,7 +697,8 @@ namespace maps {
         if (theta == 0) {
             ptrp = &p;
         } else {
-            rotate(theta, y_rot);
+            if (theta != theta_y_rot) rotate(theta, y_rot);
+            theta_y_rot = theta;
             p_rot = C.A1 * y_rot;
             ptrp = &p_rot;
         }
@@ -731,7 +722,8 @@ namespace maps {
         if (theta == 0) {
             ptry = &y;
         } else {
-            rotate(theta, y_rot);
+            if (theta != theta_y_rot) rotate(theta, y_rot);
+            theta_y_rot = theta;
             ptry = &y_rot;
         }
 
@@ -763,9 +755,8 @@ namespace maps {
     }
 
     /*
-    Compute the total flux during or outside of an occultation.
-    **Gradient over-ride:** compute map derivs manually for speed.
-
+    Compute the total flux & its derivatives during or outside of an occultation.
+    Note that we compute map derivs manually for speed.
     We've factored stuff so that the flux is
 
         f = (s^T . A) . (Rz' . RzetaInv . Rz . Rzeta) . y
@@ -808,8 +799,6 @@ namespace maps {
         }
 
         // Rotate the map into view
-        // NOTE: Even if theta = 0, we should still go through
-        // the motions to correctly compute df / dtheta.
         rotate(theta, y_rot);
         ptry = &y_rot;
 
@@ -852,7 +841,7 @@ namespace maps {
         } else {
 
             // Align occultor with the +y axis
-            // NOTE: Even if xo = 0, we compute the prime rotation matrix
+            // Even if xo = 0, we compute the prime rotation matrix
             // to correctly propagate all the derivs.
             if (b > 0) {
 
