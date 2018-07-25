@@ -8,6 +8,8 @@ TODO: - Make everything protected and implement friend functions!
       - Cache rotations for Grad flux evaluations. I disabled them
         because they were leading to weird stuff in the `orbit.h`
         system functions.
+      - We **really** need to use double math for the constant
+        matrices in Grad!
 */
 
 #ifndef _STARRY_MAPS_H_
