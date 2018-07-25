@@ -3,10 +3,11 @@ from starry.grad import Map
 import numpy as np
 
 # Default system settings
+npts = 300
 ro = 0.1
-xo = np.linspace(-1.5, 1.5, 30)
-yo = np.linspace(-0.3, 0.3, 30)
-theta = np.linspace(0, 30, 30)
+xo = np.linspace(-1.5, 1.5, npts)
+yo = np.linspace(-0.3, 0.3, npts)
+theta = np.linspace(0, 30, npts)
 axis = np.array([1.0, 1.0, 1.0])
 y = [1, -0.3, -0.5, 0.3, 0.25, -0.25, 0.1, -0.3, 0.05]
 
@@ -19,14 +20,16 @@ def numerical_gradient(dxo=0, dyo=0, dro=0, dtheta=0,
     map = Map()
     map[:] = y - np.array([0, dY1m1, dY10, dY11, dY2m2,
                            dY2m1, dY20, dY21, dY22])
-    F1 = map.flux(axis=axis, theta=theta - dtheta, xo=xo - dxo,
+    map.axis = axis
+    F1 = map.flux(theta=theta - dtheta, xo=xo - dxo,
                   yo=yo - dyo, ro=ro - dro)
 
     # Compute F(x + dx)
     map = Map()
     map[:] = y + np.array([0, dY1m1, dY10, dY11, dY2m2,
                            dY2m1, dY20, dY21, dY22])
-    F2 = map.flux(axis=axis, theta=theta + dtheta, xo=xo + dxo,
+    map.axis = axis
+    F2 = map.flux(theta=theta + dtheta, xo=xo + dxo,
                   yo=yo + dyo, ro=ro + dro)
 
     return (F2 - F1) / (2 * (dxo + dyo + dro + dtheta +
@@ -66,7 +69,8 @@ def test_map():
     # Star
     map = Map()
     map[:] = y
-    map.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro)
+    map.axis = axis
+    map.flux(theta=theta, xo=xo, yo=yo, ro=ro)
 
     # Compare the gradient w/ respect to select parameters
     # to a numerical version

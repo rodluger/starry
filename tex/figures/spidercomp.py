@@ -1,10 +1,4 @@
 """Starry-SPIDERMAN comparisons and speed tests."""
-
-# DEBUG
-import sys; sys.path.insert(1, "/Users/rodrigo/src/starry/")
-import starry
-print(starry.__file__)
-
 import starry
 import matplotlib.pyplot as plt
 import numpy as np

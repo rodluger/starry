@@ -1,9 +1,10 @@
 /**
 Defines the surface map class.
 
-TODO: Make everything protected and implement friend functions!
-      All I/O happens through the set and get methods.
-      Be careful when setting the `axis` within C++.
+TODO: - Make everything protected and implement friend functions!
+      - All I/O happens through the set and get methods.
+      - Be careful when setting the `axis` within C++.
+      - Put minimization stuff somewhere else; use "friend"
 
 */
 
@@ -231,8 +232,9 @@ namespace maps {
             Vector<T> ARRy;                             /**< Everything but the solution vector in `s^TAR'Ry`; a handy temporary variable */
             VectorT<T> sTA;                             /**< The solution vector dotted into the change of basis matrix; handy for Grad stuff */
             VectorT<T> pTA;                             /**< The polynomial basis dotted into the change of basis matrix; handy for Grad stuff */
-            Wigner<T> R;                                /**< The product of all the rotation matrices in `s^TAR'Ry`; handy for Grad stuff */
-            VectorT<Grad> basis;                        /**< Polynomial basis, used to evaluate gradients */
+            Wigner<T> R;                                /**< The R rotation matrix in `s^TAR'Ry`; handy for Grad stuff */
+            Wigner<T> RR;                               /**< The product of the two rotation matrices in `s^TAR'Ry`; handy for Grad stuff */
+            VectorT<T> basis;                           /**< Polynomial basis, used to evaluate gradients */
 
             // Zeta transformation parameters
             T coszeta, sinzeta;                         /**< Angle between the axis of rotation and `zhat` */
@@ -252,7 +254,7 @@ namespace maps {
                     lmax(lmax),
                     N((lmax + 1) * (lmax + 1)),
                     C(lmax), G(lmax), M(*this),
-                    R(lmax), Rzeta(lmax), RzetaInv(lmax) {
+                    R(lmax), RR(lmax), Rzeta(lmax), RzetaInv(lmax) {
                 y = Vector<T>::Zero(N);
                 p = Vector<T>::Zero(N);
                 g = Vector<T>::Zero(N);
@@ -330,13 +332,25 @@ namespace maps {
         // Compute the rotation transformation into and out of the `zeta` frame
         coszeta = axis(2);
         sinzeta = sqrt(1 - axis(2) * axis(2));
-        axzeta(0) = axis(1) / sqrt(axis(0) * axis(0) + axis(1) * axis(1));
-        axzeta(1) = -axis(0) / sqrt(axis(0) * axis(0) + axis(1) * axis(1));
-        axzeta(2) = 0;
-        computeR(lmax, axzeta, coszeta, sinzeta, Rzeta.Complex, Rzeta.Real);
-        for (int l = 0; l < lmax + 1; l++) {
-            yzeta.segment(l * l, 2 * l + 1) = Rzeta.Real[l] * y.segment(l * l, 2 * l + 1);
-            RzetaInv.Real[l] = Rzeta.Real[l].transpose();
+        T norm = sqrt(axis(0) * axis(0) + axis(1) * axis(1));
+        if (abs(norm) < 10 * mach_eps<T>()) {
+            // The rotation axis is zhat, so our zeta transform
+            // is just the identity matrix.
+            for (int l = 0; l < lmax + 1; l++) {
+                Rzeta.Real[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+                RzetaInv.Real[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+            }
+            yzeta = y;
+        } else {
+            // We need to compute the actual Wigner matrices
+            axzeta(0) = axis(1) / norm;
+            axzeta(1) = -axis(0) / norm;
+            axzeta(2) = 0;
+            computeR(lmax, axzeta, coszeta, sinzeta, Rzeta.Complex, Rzeta.Real);
+            for (int l = 0; l < lmax + 1; l++) {
+                yzeta.segment(l * l, 2 * l + 1) = Rzeta.Real[l] * y.segment(l * l, 2 * l + 1);
+                RzetaInv.Real[l] = Rzeta.Real[l].transpose();
+            }
         }
 
         // Reset our cache
@@ -476,10 +490,13 @@ namespace maps {
     inline void Map<T>::rotate(const T& costheta, const T& sintheta, Vector<T>& yout) {
 
         // Check if we already did this last time
+        // DEBUG: This leads to weird grad behavior. Investigating...
+        /*
         if ((costheta == costheta_curr) && (sintheta == sintheta_curr)) {
             yout = y_rot;
             return;
         }
+        */
 
         // Rotate yzeta about zhat and store in yzeta_rot;
         rotatez(costheta, sintheta, yzeta, yzeta_rot);
@@ -791,42 +808,35 @@ namespace maps {
         }
 
         // Rotate the map into view
-        if (theta == 0) {
-            ptry = &y;
-            for (int l = 0; l < lmax + 1; l++)
-                R.Real[l] = Matrix<Grad>::Identity(2 * l + 1, 2 * l + 1);
-        } else {
-            rotate(theta, y_rot);
-            ptry = &y_rot;
+        // NOTE: Even if theta = 0, we should still go through
+        // the motions to correctly compute df / dtheta.
+        rotate(theta, y_rot);
+        ptry = &y_rot;
 
-            // Here we compute R = RzetaInv * Rz * Rzeta so we can
-            // analytically compute the map derivs below.
-            // Note that the Rz matrix looks like this:
-            /*
-                ...                             ...
-                    C3                      S3
-                        C2              S2
-                            C1      S1
-                                1
-                           -S1      C1
-                       -S2              C2
-                   -S3                      C3
-                ...                             ...
-            */
-            // where CX = cos(X theta) and SX = sin(X theta).
-            // This is the sum of a diagonal and an anti-diagonal
-            // matrix, so the dot product of RzetaInv and Rz can
-            // be computed efficiently by doing row-wise and col-wise
-            // operations on RzetaInv.
-            for (int l = 0; l < lmax + 1; l++) {
-                for (int j = 0; j < 2 * l + 1; j++)
-                    R.Real[l].col(j) = RzetaInv.Real[l].col(j) * cosmt(l * l + j) +
-                                       RzetaInv.Real[l].col(2 * l - j) * sinmt(l * l + j);
-                // NOTE: This last step can probably be merged into the for
-                // loop above. This is rather similar to eigendecomposition...
-                R.Real[l] = R.Real[l] * Rzeta.Real[l];
-            }
-
+        // Here we compute R = RzetaInv * Rz * Rzeta so we can
+        // analytically compute the map derivs below.
+        // Note that the Rz matrix looks like this:
+        /*
+            ...                             ...
+                C3                      S3
+                    C2              S2
+                        C1      S1
+                            1
+                       -S1      C1
+                   -S2              C2
+               -S3                      C3
+            ...                             ...
+        */
+        // where CX = cos(X theta) and SX = sin(X theta).
+        // This is the sum of a diagonal and an anti-diagonal
+        // matrix, so the dot product of RzetaInv and Rz can
+        // be computed efficiently by doing row-wise and col-wise
+        // operations on RzetaInv.
+        for (int l = 0; l < lmax + 1; l++) {
+            for (int j = 0; j < 2 * l + 1; j++)
+                R.Real[l].col(j) = RzetaInv.Real[l].col(j) * cosmt(l * l + j) +
+                                   RzetaInv.Real[l].col(2 * l - j) * sinmt(l * l + j);
+            R.Real[l] = R.Real[l] * Rzeta.Real[l];
         }
 
         // No occultation: cake
@@ -842,7 +852,9 @@ namespace maps {
         } else {
 
             // Align occultor with the +y axis
-            if ((b > 0) && ((xo != 0) || (yo < 0))) {
+            // NOTE: Even if xo = 0, we compute the prime rotation matrix
+            // to correctly propagate all the derivs.
+            if (b > 0) {
 
                 // Rotate
                 rotatez(yo / b, xo / b, *ptry, y_rotz);
@@ -852,9 +864,9 @@ namespace maps {
                 // Since we rotated the map, we need to dot Rz' into R
                 // See our note above on what's going on here.
                 for (int l = 0; l < lmax + 1; l++) {
-                    for (int j = 0; j < 2 * l + 1; j ++)
-                        R.Real[l].row(j) = R.Real[l].row(j) * cosmt(l * l + j) -
-                                           R.Real[l].row(2 * l - j) * sinmt(l * l + j);
+                    for (int j = 0; j < 2 * l + 1; j++)
+                        RR.Real[l].row(j) = R.Real[l].row(j) * cosmt(l * l + j) -
+                                            R.Real[l].row(2 * l - j) * sinmt(l * l + j);
                 }
 
             }
@@ -868,7 +880,7 @@ namespace maps {
             // Compute the derivatives w.r.t. the map coefficients
             sTA = G.sT * C.A;
             for (int l = 0; l < lmax + 1; l++)
-                dFdy.segment(l * l, 2 * l + 1) = sTA.segment(l * l, 2 * l + 1) * R.Real[l];
+                dFdy.segment(l * l, 2 * l + 1) = sTA.segment(l * l, 2 * l + 1) * RR.Real[l];
 
             // Dot the result in to get the flux
             return G.sT * ARRy;
