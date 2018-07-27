@@ -26,9 +26,19 @@ int main() {
     double s = 1;
     Vector<double> v = Vector<double>::Ones(5);
 
-    // Define our vectorization wrapper
-    Vec4<Vector<double>> add4(add_);
+    // 3 arguments
+    Vec3<Vector<double>> add3(add_);
+    std::cout << add3(s, s, s) << std::endl;
+    std::cout << add3(s, s, v) << std::endl;
+    std::cout << add3(s, v, s) << std::endl;
+    std::cout << add3(s, v, v) << std::endl;
+    std::cout << add3(v, s, s) << std::endl;
+    std::cout << add3(v, s, v) << std::endl;
+    std::cout << add3(v, v, s) << std::endl;
+    std::cout << add3(v, v, v) << std::endl;
 
+    // 4 arguments
+    Vec4<Vector<double>> add4(add_);
     std::cout << add4(s, s, s, s) << std::endl;
     std::cout << add4(s, s, s, v) << std::endl;
     std::cout << add4(s, s, v, s) << std::endl;
