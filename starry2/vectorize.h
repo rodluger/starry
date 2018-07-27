@@ -16,6 +16,34 @@ namespace vectorize {
     using Scalar = typename T::Scalar;
 
     /**
+    Vectorize a function of one argument.
+
+    */
+    template <class T>
+    class Vec1 {
+
+    public:
+
+        Scalar<T> (*function)(const Scalar<T>&);
+
+        Vec1(Scalar<T> (*function)(const Scalar<T>&)) :
+            function(function) { }
+
+        // 0
+        Scalar<T> operator()(const Scalar<T>& arg1) {
+            return function(arg1);
+        }
+
+        // 1
+        T operator()(const T& arg1) {
+            T res(arg1.size());
+            for (long i = 0; i < arg1.size(); i++) res(i) = function(arg1(i));
+            return res;
+        }
+
+    };
+
+    /**
     Vectorize a function of two arguments.
 
     */
@@ -30,7 +58,7 @@ namespace vectorize {
             function(function) { }
 
         // 00
-        Scalar<T> operator()(Scalar<T>& arg1, const Scalar<T>& arg2) {
+        Scalar<T> operator()(const Scalar<T>& arg1, const Scalar<T>& arg2) {
             return function(arg1, arg2);
         }
 
@@ -72,7 +100,7 @@ namespace vectorize {
             function(function) { }
 
         // 000
-        Scalar<T> operator()(Scalar<T>& arg1, const Scalar<T>& arg2, const Scalar<T>& arg3) {
+        Scalar<T> operator()(const Scalar<T>& arg1, const Scalar<T>& arg2, const Scalar<T>& arg3) {
             return function(arg1, arg2, arg3);
         }
 
@@ -142,7 +170,7 @@ namespace vectorize {
             function(function) { }
 
         // 0000
-        Scalar<T> operator()(Scalar<T>& arg1, const Scalar<T>& arg2, const Scalar<T>& arg3, const Scalar<T>& arg4) {
+        Scalar<T> operator()(const Scalar<T>& arg1, const Scalar<T>& arg2, const Scalar<T>& arg3, const Scalar<T>& arg4) {
             return function(arg1, arg2, arg3, arg4);
         }
 
@@ -196,7 +224,7 @@ namespace vectorize {
         }
 
         // 1000
-        T operator()(T& arg1, const Scalar<T>& arg2, const Scalar<T>& arg3, const Scalar<T>& arg4) {
+        T operator()(const T& arg1, const Scalar<T>& arg2, const Scalar<T>& arg3, const Scalar<T>& arg4) {
             T res(arg1.size());
             for (long i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2, arg3, arg4);
             return res;

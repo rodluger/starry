@@ -30,16 +30,18 @@ void add_Map_extras(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::doc
 template <>
 void add_Map_extras<double>(py::class_<maps::Map<double>>& PyMap, const docstrings::docs<double>& docs) { }
 
+/*
 template <>
 void add_Map_extras<Grad>(py::class_<maps::Map<Grad>>& PyMap, const docstrings::docs<Grad>& docs) {
 
     PyMap
 
         .def_property_readonly("gradient", [](maps::Map<Grad> &map){
-                return py::cast(map.derivs);
+                return py::cast(map.gradient);
             }, docs.Map.gradient);
 
 }
+*/
 
 template <>
 void add_Map_extras<Multi>(py::class_<maps::Map<Multi>>& PyMap, const docstrings::docs<Multi>& docs) { }
@@ -100,7 +102,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                     } catch (const char* msg) {
                         throw errors::BadLMIndex();
                     }
-                    return py::cast(get_value(map.getCoeff(l, m)));
+                    return py::cast(map.getCoeff(l, m));
                 } else if (py::isinstance<py::slice>(index)) {
                     // User provided a slice of some sort
                     size_t start, stop, step, slicelength;
@@ -110,7 +112,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                         throw pybind11::error_already_set();
                     Vector<double> res(slicelength);
                     for (size_t i = 0; i < slicelength; ++i) {
-                        res[i] = get_value(map.y(start));
+                        res[i] = map.y(start);
                         start += step;
                     }
                     return py::cast(res);
@@ -119,8 +121,8 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 }
             })
 
-        .def("get_coeff", [](maps::Map<MAPTYPE> &map, int l, int m){
-                return get_value(map.getCoeff(l, m));
+        .def("get_coeff", [](maps::Map<MAPTYPE> &map, int l, int m) -> double {
+                return map.getCoeff(l, m);
             }, docs.Map.get_coeff, "l"_a, "m"_a)
 
         .def("set_coeff", [](maps::Map<MAPTYPE> &map, int l, int m, double coeff){
@@ -130,9 +132,9 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
         .def_property("axis",
             [](maps::Map<MAPTYPE> &map) {
                 UnitVector<double> axis;
-                axis(0) = get_value(map.axis(0));
-                axis(1) = get_value(map.axis(1));
-                axis(2) = get_value(map.axis(2));
+                axis(0) = map.axis(0);
+                axis(1) = map.axis(1);
+                axis(2) = map.axis(2);
                 return axis;
             },
             [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis){
@@ -147,17 +149,18 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
         .def_property_readonly("lmax", [](maps::Map<MAPTYPE> &map){return map.lmax;}, docs.Map.lmax)
 
         .def_property_readonly("y", [](maps::Map<MAPTYPE> &map){
-                return get_value(map.y);
+                return map.y;
             }, docs.Map.y)
 
         .def_property_readonly("p", [](maps::Map<MAPTYPE> &map){
-                return get_value(map.p);
+                return map.p;
             }, docs.Map.p)
 
         .def_property_readonly("g", [](maps::Map<MAPTYPE> &map){
-                return get_value(map.g);
+                return map.g;
             }, docs.Map.g)
 
+        /*
         .def_property_readonly("s", [](maps::Map<MAPTYPE> &map){
                 return get_value((Vector<MAPTYPE>)map.G.sT);
             }, docs.Map.s)
@@ -165,6 +168,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
         .def_property_readonly("r", [](maps::Map<MAPTYPE> &map){
                 return get_value((Vector<MAPTYPE>)map.C.rT);
             }, docs.Map.r)
+        */
 
         /*
         .def("evaluate", [](maps::Map<MAPTYPE>& map, py::object& theta, py::object& x, py::object& y) {
@@ -190,10 +194,10 @@ void add_extras(py::module& m, const docstrings::docs<Multi>& docs) {
     m.attr("NMULTI") = STARRY_NMULTI;
 }
 
+/*
 template <>
-void add_extras(py::module& m, const docstrings::docs<Grad>& docs) {
-    m.attr("NGRAD") = STARRY_NGRAD;
-}
+void add_extras(py::module& m, const docstrings::docs<Grad>& docs) { }
+*/
 
 template <typename MAPTYPE>
 void add_starry(py::module& m, const docstrings::docs<MAPTYPE>& docs) {

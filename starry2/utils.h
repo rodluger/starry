@@ -36,7 +36,8 @@ typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off>
 #error "Currently, PI is computed to a maximum of 150 digits of precision. If you **really** need `STARRY_NMULTI` > 150, you will need to re-define PI in `utils.h`."
 #endif
 
-// Some frequently used constants
+// Some frequently used constants, computed
+// at both double and multi precision
 static const double PI_DOUBLE = M_PI;
 static const Multi PI_MULTI = Multi("3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067982148086513282306647093844609550582231725359408128");
 template <typename T> inline T PI(){ return T(PI_DOUBLE); }
@@ -61,15 +62,16 @@ template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
-using Grad = Eigen::AutoDiffScalar<Eigen::Matrix<double, STARRY_NGRAD, 1>>;
-using Grad0 = Eigen::AutoDiffScalar<Eigen::Matrix<double, 0, 1>>;
-
 
 // Some useful unit vectors
-static const UnitVector<double> xhat({1, 0, 0});
-static const UnitVector<double> yhat({0, 1, 0});
-static const UnitVector<double> zhat({0, 0, 1});
+static const UnitVector<double> xhat_double({1, 0, 0});
+static const UnitVector<double> yhat_double({0, 1, 0});
+static const UnitVector<double> zhat_double({0, 0, 1});
+template <typename T> inline UnitVector<T> xhat(){ return xhat_double.template cast<T>(); }
+template <typename T> inline UnitVector<T> yhat(){ return xhat_double.template cast<T>(); }
+template <typename T> inline UnitVector<T> zhat(){ return xhat_double.template cast<T>(); }
 
+/*
 // Return the value of a scalar MapType variable
 inline double get_value(double x) { return x; }
 inline double get_value(Grad x) { return x.value(); }
@@ -118,6 +120,7 @@ inline void set_derivs_to_zero(T& x) { }
 template <>
 inline void set_derivs_to_zero(Grad& x) { x.derivatives().setZero(x.derivatives().size()); }
 
+
 // Normalize a unit vector
 template <typename T>
 inline UnitVector<T> norm_unit(const UnitVector<T>& vec) {
@@ -149,6 +152,8 @@ inline bool is_Grad(Grad x) {
     return true;
 }
 
+*/
+
 // Check if number is even (or doubly, triply, quadruply... even)
 inline bool is_even(int n, int ntimes=1) {
     for (int i = 0; i < ntimes; i++) {
@@ -159,20 +164,19 @@ inline bool is_even(int n, int ntimes=1) {
 }
 
 // Machine precision at current type
-template <typename T>
-inline T mach_eps() {
-    return std::numeric_limits<T>::epsilon();
+// We need to be careful with AutoDiffScalar specialization.
+// See https://stackoverflow.com/a/36209847
+template<class T> struct tag{};
+template<class T> T mach_eps(tag<T>) { return std::numeric_limits<T>::epsilon(); }
+template<class T> Eigen::AutoDiffScalar<T> mach_eps(tag<Eigen::AutoDiffScalar<T>>) {
+    return std::numeric_limits<typename T::Scalar>::epsilon();
 }
-
-template <>
-inline Grad mach_eps() {
-    return Grad(mach_eps<double>());
-}
+template<class T> T mach_eps() { return mach_eps(tag<T>()); }
 
 // Re-definition of fmod so we can define its derivative below
-using std::fmod;
 template <typename T>
 T mod2pi(const T& numer) {
+    using std::fmod;
     return fmod(numer, T(2 * PI<T>()));
 }
 

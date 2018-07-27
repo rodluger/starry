@@ -22,6 +22,7 @@ PYBIND11_MODULE(starry2, m) {
     docs<double> docs_starry;
     add_starry(m, docs_starry);
 
+    /*
     // starry.grad
     docs<Grad> docs_grad;
     auto mgrad = m.def_submodule("grad");
@@ -31,6 +32,7 @@ PYBIND11_MODULE(starry2, m) {
     docs<Multi> docs_multi;
     auto mmulti = m.def_submodule("multi");
     add_starry(mmulti, docs_multi);
+    */
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

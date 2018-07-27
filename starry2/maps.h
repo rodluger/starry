@@ -40,32 +40,8 @@ namespace maps {
             ConstantMatrices(int lmax) : lmax(lmax) {
                 basis::computeA1(lmax, A1);
                 basis::computeA(lmax, A1, A);
-                solver::computerT(lmax, rT);
-                rTA1 = rT * A1;
-                basis::computeU(lmax, U);
-            }
-
-    };
-
-    // No need to autodifferentiate these, since they are constant!
-    template <>
-    class ConstantMatrices<Grad> {
-
-        public:
-
-            const int lmax;
-            Eigen::SparseMatrix<Grad::Scalar> A1;
-            Eigen::SparseMatrix<Grad::Scalar> A;
-            VectorT<Grad::Scalar> rTA1;
-            VectorT<Grad::Scalar> rT;
-            Matrix<Grad::Scalar> U;
-
-            // Constructor: compute the matrices
-            ConstantMatrices(int lmax) : lmax(lmax) {
-                basis::computeA1(lmax, A1);
-                basis::computeA(lmax, A1, A);
-                solver::computerT(lmax, rT);
-                rTA1 = rT * A1;
+                //solver::computerT(lmax, rT);
+                //rTA1 = rT * A1;
                 basis::computeU(lmax, U);
             }
 
@@ -90,10 +66,10 @@ namespace maps {
             Vector<T> g;                                /**< The map coefficients in the Green's basis */
             UnitVector<T> axis;                         /**< The axis of rotation for the map */
             bool Y00_is_unity;                          /**< Flag: are we fixing the constant map coeff at unity? */
-            std::map<string, Vector<double>> derivs;    /**< Dictionary of derivatives */
+            std::map<string, Vector<double>> gradient;  /**< Dictionary of derivatives */
             Vector<T> dFdy;                             /**< Derivative of the flux w/ respect to the map coeffs */
             ConstantMatrices<T> C;                      /**< Constant matrices used throughout the code */
-            Greens<T> G;                                /**< Green's theorem integration stuff */
+            //Greens<T> G;                                /**< Green's theorem integration stuff */
 
         protected:
 
@@ -127,9 +103,12 @@ namespace maps {
 
             // Constructor
             Map(int lmax=2) : lmax(lmax), N((lmax + 1) * (lmax + 1)),
-                              C(lmax), G(lmax), R(lmax),
-                              RR(lmax), Rzeta(lmax), RzetaInv(lmax),
-                              M(*this) {
+                              C(lmax),
+                              //G(lmax),
+                              R(lmax),
+                              RR(lmax), Rzeta(lmax), RzetaInv(lmax)
+                              //M(*this)
+                              {
 
                 // Initialize all our vectors
                 y = Vector<T>::Zero(N);
@@ -249,7 +228,7 @@ namespace maps {
         if ((l == 0) && (Y00_is_unity) && (coeff != 1)) throw errors::Y00IsUnity();
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
-            set_value(y(n), coeff);
+            y(n) = coeff;
             update();
         } else throw errors::BadLM();
     }
@@ -272,27 +251,27 @@ namespace maps {
         os << "<STARRY Map: ";
         for (int l = 0; l < lmax + 1; l++) {
             for (int m = -l; m < l + 1; m++) {
-                if (abs(get_value(y(n))) > 10 * mach_eps<T>()){
+                if (abs(y(n)) > 10 * mach_eps<T>()){
                     // Separator
-                    if ((nterms > 0) && (get_value(y(n)) > 0)) {
+                    if ((nterms > 0) && (y(n) > 0)) {
                         os << " + ";
-                    } else if ((nterms > 0) && (get_value(y(n)) < 0)){
+                    } else if ((nterms > 0) && (y(n) < 0)){
                         os << " - ";
-                    } else if ((nterms == 0) && (get_value(y(n)) < 0)){
+                    } else if ((nterms == 0) && (y(n) < 0)){
                         os << "-";
                     }
                     // Term
-                    if ((get_value(y(n)) == 1) || (get_value(y(n)) == -1)) {
+                    if ((y(n) == 1) || (y(n) == -1)) {
                         sprintf(buf, "Y_{%d,%d}", l, m);
                         os << buf;
-                    } else if (fmod(abs(get_value(y(n))), 1.0) < 10 * mach_eps<T>()) {
-                        sprintf(buf, "%d Y_{%d,%d}", (int)abs(get_value(y(n))), l, m);
+                    } else if (fmod(abs(y(n)), 1.0) < 10 * mach_eps<T>()) {
+                        sprintf(buf, "%d Y_{%d,%d}", (int)abs(y(n)), l, m);
                         os << buf;
-                    } else if (fmod(abs(get_value(y(n))), 1.0) >= 0.01) {
-                        sprintf(buf, "%.2f Y_{%d,%d}", abs(get_value(y(n))), l, m);
+                    } else if (fmod(abs(y(n)), 1.0) >= 0.01) {
+                        sprintf(buf, "%.2f Y_{%d,%d}", abs(y(n)), l, m);
                         os << buf;
                     } else {
-                        sprintf(buf, "%.2e Y_{%d,%d}", abs(get_value(y(n))), l, m);
+                        sprintf(buf, "%.2e Y_{%d,%d}", abs(y(n)), l, m);
                         os << buf;
                     }
                     nterms++;
@@ -312,18 +291,28 @@ namespace maps {
     /* ------------- */
 
 
+    // Rotate the base map given `costheta` and `sintheta`
+    template <class T>
+    inline void Map<T>::rotate(const T& costheta, const T& sintheta, Vector<T>& yout) {
+        // Rotate yzeta about zhat and store in yzeta_rot;
+        rotatez(costheta, sintheta, yzeta, yzeta_rot);
+        // Rotate out of the `zeta` frame
+        for (int l = 0; l < lmax + 1; l++) {
+            yout.segment(l * l, 2 * l + 1) = RzetaInv.Real[l] * yzeta_rot.segment(l * l, 2 * l + 1);
+        }
+    }
+
+    // Shortcut to rotate the base map given just `theta`
+    template <class T>
+    inline void Map<T>::rotate(const T& theta, Vector<T>& yout) {
+        rotate(cos(theta), sin(theta), yout);
+    }
+
     // Rotate the base map in-place given `costheta` and `sintheta`
     template <class T>
     void Map<T>::rotate(const T& costheta, const T& sintheta) {
-
-        // Rotate yzeta in-place about zhat
-        rotatez(costheta, sintheta, yzeta, yzeta);
-
-        // Rotate out of the `zeta` frame
-        for (int l = 0; l < lmax + 1; l++) {
-            y.segment(l * l, 2 * l + 1) = RzetaInv.Real[l] * yzeta.segment(l * l, 2 * l + 1);
-        }
-
+        // Do the rotation
+        rotate(costheta, sintheta, y);
         // Update auxiliary variables
         update();
     }
@@ -332,26 +321,6 @@ namespace maps {
     template <class T>
     void Map<T>::rotate(const T& theta) {
         rotate(cos(theta), sin(theta));
-    }
-
-    // Rotate the base map given `costheta` and `sintheta`
-    template <class T>
-    inline void Map<T>::rotate(const T& costheta, const T& sintheta, Vector<T>& yout) {
-
-        // Rotate yzeta about zhat and store in yzeta_rot;
-        rotatez(costheta, sintheta, yzeta, yzeta_rot);
-
-        // Rotate out of the `zeta` frame
-        for (int l = 0; l < lmax + 1; l++) {
-            yout.segment(l * l, 2 * l + 1) = RzetaInv.Real[l] * yzeta_rot.segment(l * l, 2 * l + 1);
-        }
-
-    }
-
-    // Shortcut to rotate the base map given just `theta`
-    template <class T>
-    inline void Map<T>::rotate(const T& theta, Vector<T>& yout) {
-        rotate(cos(theta), sin(theta), yout);
     }
 
     // Fast rotation about the z axis, skipping the Wigner matrix computation
@@ -442,88 +411,6 @@ namespace maps {
         return res;
 
     }
-
-    // Evaluate our map at a given (x0, y0) coordinate
-    template <>
-    Grad Map<Grad>::evaluate(const Grad& theta, const Grad& x0, const Grad& y0) {
-
-        // Rotate the map into view
-        if (theta == 0) {
-            ptrp = &p;
-
-            // Compute the rotation matrix explicitly
-            for (int l = 0; l < lmax + 1; l++)
-                R.Real[l] = Matrix<Grad>::Identity(2 * l + 1, 2 * l + 1);
-
-        } else {
-            rotate(theta, y_rot);
-            p_rot = C.A1 * y_rot;
-            ptrp = &p_rot;
-
-            // We need to explicitly compute the rotation matrix to get
-            // the derivatives below. See the explanation in `flux`.
-            for (int l = 0; l < lmax + 1; l++) {
-                for (int j = 0; j < 2 * l + 1; j++)
-                    R.Real[l].col(j) = RzetaInv.Real[l].col(j) * cosmt(l * l + j) +
-                                       RzetaInv.Real[l].col(2 * l - j) * sinmt(l * l + j);
-                R.Real[l] = R.Real[l] * Rzeta.Real[l];
-            }
-
-        }
-
-        // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
-
-        int l, m, mu, nu, n = 0;
-        Grad z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
-
-        // Evaluate each harmonic
-        for (l=0; l<lmax+1; l++) {
-            for (m=-l; m<l+1; m++) {
-                mu = l - m;
-                nu = l + m;
-                if ((nu % 2) == 0) {
-                    if ((mu > 0) && (nu > 0))
-                        basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
-                    else if (mu > 0)
-                        basis(n) = pow(x0, mu / 2);
-                    else if (nu > 0)
-                        basis(n) = pow(y0, nu / 2);
-                    else
-                        basis(n) = 1;
-                } else {
-                    if ((mu > 1) && (nu > 1))
-                        basis(n) = pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
-                    else if (mu > 1)
-                        basis(n) = pow(x0, (mu - 1) / 2) * z0;
-                    else if (nu > 1)
-                        basis(n) = pow(y0, (nu - 1) / 2) * z0;
-                    else
-                        basis(n) = z0;
-                }
-                n++;
-            }
-
-        }
-
-        // Compute the map derivs
-        if (theta == 0) {
-
-            dFdy = basis * C.A1;
-
-        } else {
-
-            pTA = basis * C.A1;
-            for (int l = 0; l < lmax + 1; l++)
-                dFdy.segment(l * l, 2 * l + 1) = pTA.segment(l * l, 2 * l + 1) * R.Real[l];
-
-        }
-
-        // Dot the coefficients in to our polynomial map
-        return basis.dot(*ptrp);
-
-    }
-
 
 }; // namespace maps
 
