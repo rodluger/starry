@@ -12,7 +12,7 @@ using namespace pybind11::literals;
 using namespace docstrings;
 namespace py = pybind11;
 
-PYBIND11_MODULE(_starry, m) {
+PYBIND11_MODULE(starry2, m) {
 
     // Disable auto signatures
     py::options options;

@@ -62,6 +62,8 @@ using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 template <typename T>
 using UnitVector = Eigen::Matrix<T, 3, 1>;
 using Grad = Eigen::AutoDiffScalar<Eigen::Matrix<double, STARRY_NGRAD, 1>>;
+using Grad0 = Eigen::AutoDiffScalar<Eigen::Matrix<double, 0, 1>>;
+
 
 // Some useful unit vectors
 static const UnitVector<double> xhat({1, 0, 0});

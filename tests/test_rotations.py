@@ -1,12 +1,12 @@
 """Test the rotation matrices."""
-from starry import Map
+from starry2 import SurfaceMap
 import numpy as np
 
 
 def test_rotations():
     """Test some elementary rotations."""
     # Instantiate
-    m = Map(1)
+    m = SurfaceMap(1)
     m.set_coeff(1, 0, 1)
     assert np.allclose(m.y, np.array([0, 0, 1, 0]))
 

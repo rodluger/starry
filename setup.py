@@ -51,14 +51,14 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        'starry._starry',
-        ['starry/pybind_interface.cpp'],
+        'starry2',
+        ['starry2/pybind_interface.cpp'],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
             get_pybind_include(user=True),
             # Path to starry headers
-            "starry",
+            "starry2",
             # Path to eigen headers
             "lib/eigen_3.3.3",
             # Path to boost headers
@@ -133,7 +133,7 @@ class BuildExt(build_ext):
 
 
 setup(
-    name='starry',
+    name='starry2',
     version=__version__,
     author='Rodrigo Luger',
     author_email='rodluger@gmail.com',
@@ -142,11 +142,10 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     license='GPL',
-    packages=['starry', 'starry.maps'],
+    packages=['starry2'],
     ext_modules=ext_modules,
     install_requires=['pybind11>=2.2'],
     cmdclass={'build_ext': BuildExt},
-    data_files=[('starry.maps', glob.glob('starry/maps/*.jpg'))],
     include_package_data=True,
     zip_safe=False,
 )

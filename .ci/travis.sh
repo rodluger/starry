@@ -23,6 +23,9 @@ if ! command -v conda > /dev/null; then
       pip install sphinx
 fi
 
+# Install the current version of starry from conda-forge
+conda install -c conda-forge starry
+
 # Display some info
 conda info -a
 
