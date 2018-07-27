@@ -12,10 +12,8 @@ Defines the surface map class.
 #include "constants.h"
 #include "rotation.h"
 #include "basis.h"
-#include "solver.h"
 #include "errors.h"
 #include "utils.h"
-#include "minimize.h"
 
 namespace maps {
 
@@ -24,8 +22,6 @@ namespace maps {
     using std::string;
     using rotation::Wigner;
     using rotation::computeR;
-    using solver::Greens;
-    using minimize::Minimizer;
 
     // Constant matrices/vectors
     template <class T>
@@ -55,44 +51,22 @@ namespace maps {
     template <>
     class ConstantMatrices<Grad> {
 
-            Eigen::SparseMatrix<double> D_A1;
-            Eigen::SparseMatrix<double> D_A;
-            VectorT<double> D_rTA1;
-            VectorT<double> D_rT;
-            Matrix<double> D_U;
-
         public:
 
-            int lmax;
-            // DEBUG
-            /*
-            Eigen::SparseMatrix<Grad> A1;
-            Eigen::SparseMatrix<Grad> A;
-            VectorT<Grad> rTA1;
-            VectorT<Grad> rT;
-            Matrix<Grad> U;
-            */
-
-            Eigen::SparseMatrix<double> A1;
-            Eigen::SparseMatrix<double> A;
-            VectorT<double> rTA1;
-            VectorT<double> rT;
-            Matrix<double> U;
+            const int lmax;
+            Eigen::SparseMatrix<Grad::Scalar> A1;
+            Eigen::SparseMatrix<Grad::Scalar> A;
+            VectorT<Grad::Scalar> rTA1;
+            VectorT<Grad::Scalar> rT;
+            Matrix<Grad::Scalar> U;
 
             // Constructor: compute the matrices
             ConstantMatrices(int lmax) : lmax(lmax) {
-                // Do things in double
-                basis::computeA1(lmax, D_A1);
-                basis::computeA(lmax, D_A1, D_A);
-                solver::computerT(lmax, D_rT);
-                D_rTA1 = D_rT * D_A1;
-                basis::computeU(lmax, D_U);
-                // Cast to Grad
-                A1 = D_A1; //D_A1.cast<Grad>();
-                A = D_A; //.cast<Grad>();
-                rTA1 = D_rTA1; //.cast<Grad>();
-                rT = D_rT; //.cast<Grad>();
-                U = D_U; //.cast<Grad>();
+                basis::computeA1(lmax, A1);
+                basis::computeA(lmax, A1, A);
+                solver::computerT(lmax, rT);
+                rTA1 = rT * A1;
+                basis::computeU(lmax, U);
             }
 
     };
@@ -149,9 +123,6 @@ namespace maps {
             Vector<T> sinmt;                            /**< Vector of sin(m theta) values */
             Vector<T> yrev;                             /**< Degree-wise reverse of the spherical harmonic map */
 
-            // Classes
-            Minimizer<T> M;                             /**< Surface map minimization stuff */
-
         public:
 
             // Constructor
@@ -194,7 +165,6 @@ namespace maps {
             // I/O functions
             void setCoeff(int l, int m, T coeff);
             T getCoeff(int l, int m);
-            void random(double beta=0);
             std::string repr();
 
             // Various ways of rotating maps
@@ -206,12 +176,6 @@ namespace maps {
 
             // Get the intensity of the map at a point
             T evaluate(const T& theta=0, const T& x0=0, const T& y0=0);
-
-            // Get the flux of the map during or outside of an occultation
-            T flux(const T& theta=0, const T& xo=0, const T& yo=0, const T& ro=0);
-
-            // Map minimization routines
-            bool psd(double epsilon=1e-6, int max_iterations=100);
 
     };
 
@@ -296,25 +260,6 @@ namespace maps {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
             return y(l * l + l + m);
         else throw errors::BadLM();
-    }
-
-    // Generate a random map with a given power spectrum power index `beta`
-    // TODO: Not tested, not yet exposed to Python
-    template <class T>
-    void Map<T>::random(double beta) {
-        int l, m, n;
-        double norm;
-        Vector<double> coeffs;
-        setCoeff(0, 0, 1);
-        for (l = 1; l < lmax + 1; l++) {
-            coeffs = Vector<double>::Random(2 * l + 1);
-            norm = pow(l, beta) / coeffs.squaredNorm();
-            n = 0;
-            for (m = -l; m < l + 1; m++) {
-                setCoeff(l, m, coeffs(n) * norm);
-                n++;
-            }
-        }
     }
 
     // Return a human-readable map string
@@ -579,220 +524,6 @@ namespace maps {
 
     }
 
-
-    /* ------------- */
-    /*      FLUX     */
-    /* ------------- */
-
-    // Compute the total flux during or outside of an occultation
-    template <class T>
-    T Map<T>::flux(const T& theta, const T& xo, const T& yo, const T& ro) {
-
-        // Impact parameter
-        T b = sqrt(xo * xo + yo * yo);
-
-        // Check for complete occultation
-        if (b <= ro - 1) return 0;
-
-        // Rotate the map into view
-        if (theta == 0) {
-            ptry = &y;
-        } else {
-            if (theta != theta_y_rot) rotate(theta, y_rot);
-            theta_y_rot = theta;
-            ptry = &y_rot;
-        }
-
-        // No occultation: cake
-        if ((b >= 1 + ro) || (ro == 0)) {
-
-            return C.rTA1 * (*ptry);
-
-        // Occultation
-        } else {
-
-            // Align occultor with the +y axis
-            if ((b > 0) && ((xo != 0) || (yo < 0))) {
-                rotatez(yo / b, xo / b, *ptry, y_rotz);
-                ptry = &y_rotz;
-            }
-
-            // Perform the rotation + change of basis
-            ARRy = C.A * (*ptry);
-
-            // Compute the sT vector
-            solver::computesT(G, b, ro, ARRy);
-
-            // Dot the result in and we're done
-            return G.sT * ARRy;
-
-        }
-
-    }
-
-    /*
-    Compute the total flux & its derivatives during or outside of an occultation.
-    Note that we compute map derivs manually for speed.
-    We've factored stuff so that the flux is
-
-        f = (s^T . A) . (Rz' . RzetaInv . Rz . Rzeta) . y
-
-    The derivative is therefore
-
-        df / dy = (s^T . A) . R
-
-    where
-
-        R = (Rz' . RzetaInv . Rz . Rzeta)
-    */
-    template <>
-    Grad Map<Grad>::flux(const Grad& theta, const Grad& xo, const Grad& yo_, const Grad& ro) {
-
-        // Local copy so we can nudge it away from the unstable point
-        Grad yo = yo_;
-
-        // Impact parameter
-        Grad b = sqrt(xo * xo + yo * yo);
-
-        // Nudge away from point instabilities
-        if (b == 0) {
-            yo += mach_eps<double>();
-            b = sqrt(xo * xo + yo * yo);
-        } else if (b == (1 - ro)) {
-            b -= mach_eps<double>();
-        } else if (b == 1 + ro) {
-            b += mach_eps<double>();
-        }
-
-        // TODO: There are still deriv instabilities in the limits
-        // b --> |1 - r| and b --> 1 + r. They are not terrible
-        // (and only present in dF/db) but should be fixed.
-
-        // Check for complete occultation
-        if (b <= ro - 1) {
-            dFdy = Vector<Grad>::Zero(N);
-            return 0;
-        }
-
-        // Rotate the map into view
-        if (theta != theta_y_rot) {
-            rotate(theta, y_rot);
-            // Here we compute R = RzetaInv * Rz * Rzeta so we can
-            // analytically compute the map derivs below.
-            // Note that the Rz matrix looks like this:
-            /*
-                ...                             ...
-                    C3                      S3
-                        C2              S2
-                            C1      S1
-                                1
-                           -S1      C1
-                       -S2              C2
-                   -S3                      C3
-                ...                             ...
-            */
-            // where CX = cos(X theta) and SX = sin(X theta).
-            // This is the sum of a diagonal and an anti-diagonal
-            // matrix, so the dot product of RzetaInv and Rz can
-            // be computed efficiently by doing row-wise and col-wise
-            // operations on RzetaInv.
-            for (int l = 0; l < lmax + 1; l++) {
-                for (int j = 0; j < 2 * l + 1; j++)
-                    R.Real[l].col(j) = RzetaInv.Real[l].col(j) * cosmt(l * l + j) +
-                                       RzetaInv.Real[l].col(2 * l - j) * sinmt(l * l + j);
-                R.Real[l] = R.Real[l] * Rzeta.Real[l];
-            }
-        }
-        theta_y_rot = theta;
-        ptry = &y_rot;
-
-        // No occultation: cake
-        if ((b >= 1 + ro) || (ro == 0)) {
-
-            // Compute map derivs
-            for (int l = 0; l < lmax + 1; l++)
-                dFdy.segment(l * l, 2 * l + 1) = C.rTA1.segment(l * l, 2 * l + 1) * R.Real[l];
-
-            return C.rTA1 * (*ptry);
-
-        // Occultation
-        } else {
-
-            // Align occultor with the +y axis
-            // Even if xo = 0, we compute the prime rotation matrix
-            // to correctly propagate all the derivs.
-            if (b > 0) {
-
-                // Rotate
-                rotatez(yo / b, xo / b, *ptry, y_rotz);
-                ptry = &y_rotz;
-
-                // Update the rotation matrix for the map derivs
-                // Since we rotated the map, we need to dot Rz' into R
-                // See our note above on what's going on here.
-                for (int l = 0; l < lmax + 1; l++) {
-                    for (int j = 0; j < 2 * l + 1; j++)
-                        RR.Real[l].row(j) = R.Real[l].row(j) * cosmt(l * l + j) -
-                                            R.Real[l].row(2 * l - j) * sinmt(l * l + j);
-                }
-
-            }
-
-            // Perform the rotation + change of basis
-            ARRy = C.A * (*ptry);
-
-            // Compute the sT vector
-            solver::computesT(G, b, ro, ARRy);
-
-            // Compute the derivatives w.r.t. the map coefficients
-            sTA = G.sT * C.A;
-            for (int l = 0; l < lmax + 1; l++)
-                dFdy.segment(l * l, 2 * l + 1) = sTA.segment(l * l, 2 * l + 1) * RR.Real[l];
-
-            // Dot the result in to get the flux
-            return G.sT * ARRy;
-
-        }
-
-    }
-
-
-    /* ---------------- */
-    /*   MINIMIZATION   */
-    /* ---------------- */
-
-
-    // Check whether the map is positive semi-definite
-    template <class T>
-    bool Map<T>::psd(double epsilon, int max_iterations) {
-        if (lmax == 0) {
-            // Trivial case
-            return y(0) >= 0;
-        } else if (lmax == 1) {
-            // Dipole case
-            return y(1) * y(1) + y(2) * y(2) + y(3) * y(3) <= y(0) / 3;
-        } else {
-            // Not analytic! For maps of type `double`, we can
-            // run our numerical search for the minimum (see below)
-            throw errors::MinimumIsNotAnalytic();
-        }
-    }
-
-    // Check whether the map is positive semi-definite
-    // Double override: for l > 1, we do this numerically
-    template <>
-    bool Map<double>::psd(double epsilon, int max_iterations) {
-        if (lmax == 0) {
-            // Trivial case
-            return y(0) >= 0;
-        } else if (lmax == 1) {
-            // Dipole case
-            return y(1) * y(1) + y(2) * y(2) + y(3) * y(3) <= y(0) / 3;
-        } else {
-            // We need to solve this numerically
-            return M.psd(epsilon, max_iterations);
-        }
-    }
 
 }; // namespace maps
 

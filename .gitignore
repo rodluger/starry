@@ -22,6 +22,7 @@ tex/travis
 *.sav
 *.npz
 *callgrind.out.*
+starry2/test
 
 # Latex
 *.aux

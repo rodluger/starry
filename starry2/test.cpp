@@ -13,11 +13,14 @@ using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 int main() {
 
     Vector<Grad> y;
+    y.resize(50);
     Matrix<Grad> gA;
+    gA.resize(50, 50);
     Matrix<double> dA;
+    dA.resize(50, 50);
     Vector<Grad> res;
 
-    for (int i = 0; i < 100000; i++)
-        res = dA * y;
+    for (int i = 0; i < 100; i++)
+        res = gA * y;
 
 }

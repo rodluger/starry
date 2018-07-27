@@ -170,17 +170,11 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
         .def("evaluate", [](maps::Map<MAPTYPE>& map, py::object& theta, py::object& x, py::object& y) {
                 return vectorize_map_evaluate(theta, x, y, map);
             }, docs.Map.evaluate, "theta"_a=0, "x"_a=0, "y"_a=0)
-
-        .def("flux", [](maps::Map<MAPTYPE>& map, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
-                return vectorize_map_flux(theta, xo, yo, ro, map);
-            }, docs.Map.flux, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
         */
 
         .def("rotate", [](maps::Map<MAPTYPE> &map, double theta){
                 map.rotate(theta * DEGREE);
             }, docs.Map.rotate, "theta"_a=0)
-
-        .def("psd", &maps::Map<MAPTYPE>::psd, docs.Map.psd, "epsilon"_a=1.e-6, "max_iterations"_a=100)
 
         .def("__repr__", [](maps::Map<MAPTYPE> &map) -> string {return map.repr();});
 
