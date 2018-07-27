@@ -114,7 +114,7 @@ namespace maps {
     class Map {
 
             /* TODO: Let's make C and G protected
-               and expose only rT and sT to the outside. 
+               and expose only rT and sT to the outside.
                More protected stuff, perhaps Y00_is_unity?
                Add a setter and getter for the axis.
             friend class orbital::Body<T>;
@@ -718,34 +718,36 @@ namespace maps {
         }
 
         // Rotate the map into view
-        rotate(theta, y_rot);
-        ptry = &y_rot;
-
-        // Here we compute R = RzetaInv * Rz * Rzeta so we can
-        // analytically compute the map derivs below.
-        // Note that the Rz matrix looks like this:
-        /*
-            ...                             ...
-                C3                      S3
-                    C2              S2
-                        C1      S1
-                            1
-                       -S1      C1
-                   -S2              C2
-               -S3                      C3
-            ...                             ...
-        */
-        // where CX = cos(X theta) and SX = sin(X theta).
-        // This is the sum of a diagonal and an anti-diagonal
-        // matrix, so the dot product of RzetaInv and Rz can
-        // be computed efficiently by doing row-wise and col-wise
-        // operations on RzetaInv.
-        for (int l = 0; l < lmax + 1; l++) {
-            for (int j = 0; j < 2 * l + 1; j++)
-                R.Real[l].col(j) = RzetaInv.Real[l].col(j) * cosmt(l * l + j) +
-                                   RzetaInv.Real[l].col(2 * l - j) * sinmt(l * l + j);
-            R.Real[l] = R.Real[l] * Rzeta.Real[l];
+        if (theta != theta_y_rot) {
+            rotate(theta, y_rot);
+            // Here we compute R = RzetaInv * Rz * Rzeta so we can
+            // analytically compute the map derivs below.
+            // Note that the Rz matrix looks like this:
+            /*
+                ...                             ...
+                    C3                      S3
+                        C2              S2
+                            C1      S1
+                                1
+                           -S1      C1
+                       -S2              C2
+                   -S3                      C3
+                ...                             ...
+            */
+            // where CX = cos(X theta) and SX = sin(X theta).
+            // This is the sum of a diagonal and an anti-diagonal
+            // matrix, so the dot product of RzetaInv and Rz can
+            // be computed efficiently by doing row-wise and col-wise
+            // operations on RzetaInv.
+            for (int l = 0; l < lmax + 1; l++) {
+                for (int j = 0; j < 2 * l + 1; j++)
+                    R.Real[l].col(j) = RzetaInv.Real[l].col(j) * cosmt(l * l + j) +
+                                       RzetaInv.Real[l].col(2 * l - j) * sinmt(l * l + j);
+                R.Real[l] = R.Real[l] * Rzeta.Real[l];
+            }
         }
+        theta_y_rot = theta;
+        ptry = &y_rot;
 
         // No occultation: cake
         if ((b >= 1 + ro) || (ro == 0)) {
