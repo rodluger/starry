@@ -188,4 +188,4 @@ def PaperFigure(larr=[0, 1, 2, 3, 5, 8, 10, 13, 15, 18, 20],
 
 
 if __name__ == "__main__":
-    PaperFigure(logdelta=-3, logeps=-6, d='b', res=25)
+    PaperFigure(logdelta=-3, logeps=-6, d='b', res=30)

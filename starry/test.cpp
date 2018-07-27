@@ -10,7 +10,7 @@ int main() {
   maps::Map<double> map(lmax);
   for (int l = 0; l < lmax + 1; l++) {
     for (int m = -l; m < l + 1; m++) {
-      map.set_coeff(l, m, 1.0);
+      map.setCoeff(l, m, 1.0);
     }
   }
 
@@ -19,7 +19,7 @@ int main() {
   xo = 0.3;
   yo = 0.3;
   ro = 0.1;
-  for (int i = 0; i < 100; i++)
+  for (int i = 0; i < 1000; i++)
     map.flux(theta, xo, yo, ro);
 
 }
