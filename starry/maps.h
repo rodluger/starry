@@ -57,35 +57,22 @@ namespace maps {
     template <>
     class ConstantMatrices<Grad> {
 
-            Eigen::SparseMatrix<double> D_A1;
-            Eigen::SparseMatrix<double> D_A;
-            VectorT<double> D_rTA1;
-            VectorT<double> D_rT;
-            Matrix<double> D_U;
-
         public:
 
             int lmax;
-            Eigen::SparseMatrix<Grad> A1;
-            Eigen::SparseMatrix<Grad> A;
-            VectorT<Grad> rTA1;
-            VectorT<Grad> rT;
-            Matrix<Grad> U;
+            Eigen::SparseMatrix<Grad::Scalar> A1;
+            Eigen::SparseMatrix<Grad::Scalar> A;
+            VectorT<Grad::Scalar> rTA1;
+            VectorT<Grad::Scalar> rT;
+            Matrix<Grad::Scalar> U;
 
             // Constructor: compute the matrices
             ConstantMatrices(int lmax) : lmax(lmax) {
-                // Do things in double
-                basis::computeA1(lmax, D_A1);
-                basis::computeA(lmax, D_A1, D_A);
-                solver::computerT(lmax, D_rT);
-                D_rTA1 = D_rT * D_A1;
-                basis::computeU(lmax, D_U);
-                // Cast to Grad
-                A1 = D_A1.cast<Grad>();
-                A = D_A.cast<Grad>();
-                rTA1 = D_rTA1.cast<Grad>();
-                rT = D_rT.cast<Grad>();
-                U = D_U.cast<Grad>();
+                basis::computeA1(lmax, A1);
+                basis::computeA(lmax, A1, A);
+                solver::computerT(lmax, rT);
+                rTA1 = rT * A1;
+                basis::computeU(lmax, U);
             }
 
     };
