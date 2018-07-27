@@ -208,9 +208,9 @@ namespace orbital {
 
                      // Initialize the map to constant surface brightness
                      if (!is_star) {
-                         map.set_coeff(0, 0, 1);
+                         map.setCoeff(0, 0, 1);
                          map.Y00_is_unity = true;
-                         map_sky.set_coeff(0, 0, 1);
+                         map_sky.setCoeff(0, 0, 1);
                          map_sky.Y00_is_unity = true;
                      }
 

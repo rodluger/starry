@@ -4,12 +4,7 @@ Defines the surface map class.
 TODO: - Make everything protected and implement friend functions!
       - All I/O should happen through set and get methods.
       - Be careful when setting the `axis` within C++.
-      - Put minimization stuff somewhere else; use "friend"
-      - Cache rotations for Grad flux evaluations. I disabled them
-        because they were leading to weird stuff in the `orbit.h`
-        system functions.
-      - We **really** need to use double math for the constant
-        matrices in Grad!
+      - Put vectorization in here! Handle grad stuff in here, too.
 */
 
 #ifndef _STARRY_MAPS_H_
@@ -18,7 +13,6 @@ TODO: - Make everything protected and implement friend functions!
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
-#include <LBFGS.h>
 #include "constants.h"
 #include "rotation.h"
 #include "basis.h"
@@ -27,24 +21,30 @@ TODO: - Make everything protected and implement friend functions!
 #include "errors.h"
 #include "utils.h"
 #include "sturm.h"
+#include "minimize.h"
 
 namespace maps {
 
     using std::abs;
     using std::max;
     using std::string;
-    using namespace LBFGSpp;
     using rotation::Wigner;
     using rotation::computeR;
     using solver::Greens;
+    using minimize::Minimizer;
 
-    // Forward declaration
-    template <class T>
-    class Map;
+    /* TODO: Forward-declare our friends!
+    namespace orbital {
+        template <class T> class Body;
+        template <class T> class System;
+        template <class T> class Star;
+        template <class T> class Planet;
+    }
+    */
 
     // Constant matrices/vectors
     template <class T>
-    class Constants {
+    class ConstantMatrices {
 
         public:
 
@@ -56,7 +56,7 @@ namespace maps {
             Matrix<T> U;
 
             // Constructor: compute the matrices
-            Constants(int lmax) : lmax(lmax) {
+            ConstantMatrices(int lmax) : lmax(lmax) {
                 basis::computeA1(lmax, A1);
                 basis::computeA(lmax, A1, A);
                 solver::computerT(lmax, rT);
@@ -66,89 +66,9 @@ namespace maps {
 
     };
 
-    // Misc stuff for fast map minimization
-    template <class T>
-    class Minimizer {
-
-        public:
-
-            Map<T>& map;
-            int lmax;
-            int npts;
-            Vector<T> theta;
-            Vector<T> phi;
-
-            LBFGSParam<T> param;
-            LBFGSSolver<T> solver;
-            Vector<T> angles;
-            std::function<T (const Vector<T>& angles, Vector<T>& grad)> functor;
-
-            T minimum, val;
-            int niter;
-
-            // Constructor: compute the matrices
-            Minimizer(Map<T>& map) : map(map), lmax(map.lmax), param(), solver(param), angles(Vector<T>::Zero(2)) {
-
-                // A spherical harmonic of degree `l` has at most
-                // `lmax^2 - lmax + 2` extrema
-                // (http://adsabs.harvard.edu/abs/1992SvA....36..220K)
-                // so let's have 4x this many points for good sampling
-                // We will pick points on the sphere uniformly according
-                // to http://mathworld.wolfram.com/SpherePointPicking.html
-                npts = ceil(sqrt(4 * (lmax * lmax - lmax + 2)));
-                theta.resize(npts);
-                phi.resize(npts);
-                for (int i = 0; i < npts; i++) {
-                    theta(i) = acos(2.0 * (T(i) / (npts + 1)) - 1.0);
-                    phi(i) = 2.0 * PI<T>() * (T(i) / (npts + 1));
-                }
-
-                // The function wrapper
-                functor = std::bind(&Map<T>::objective, &map, std::placeholders::_1, std::placeholders::_2);
-
-            }
-
-            // Determine if the map is positive semi-definite
-            bool psd(double epsilon=1e-6, int max_iterations=100) {
-
-                // Do a coarse grid search for the global minimum
-                angles(0) = 0;
-                angles(1) = 0;
-                minimum = map.evaluate(angles(0), angles(1));
-                for (int u = 0; u < npts; u++) {
-                    for (int v = 0; v < npts; v++) {
-                        val = map.evaluate_theta_phi(theta(u), phi(v));
-                        if (val < 0) {
-                            // Our job is done!
-                            return false;
-                        } else if (val < minimum) {
-                            minimum = val;
-                            angles(0) = theta(u);
-                            angles(1) = phi(v);
-                        }
-                    }
-                }
-
-                // Now refine it with gradient descent
-                param.epsilon = epsilon;
-                param.max_iterations = max_iterations;
-                try {
-                    niter = solver.minimize(functor, angles, minimum);
-                } catch (const errors::MapIsNegative& e) {
-                    return false;
-                }
-                if (minimum >= 0)
-                    return true;
-                else
-                    return false;
-
-            }
-
-    };
-
     // No need to autodifferentiate these, since they are constant!
     template <>
-    class Constants<Grad> {
+    class ConstantMatrices<Grad> {
 
             Eigen::SparseMatrix<double> D_A1;
             Eigen::SparseMatrix<double> D_A;
@@ -166,7 +86,7 @@ namespace maps {
             Matrix<Grad> U;
 
             // Constructor: compute the matrices
-            Constants(int lmax) : lmax(lmax) {
+            ConstantMatrices(int lmax) : lmax(lmax) {
                 // Do things in double
                 basis::computeA1(lmax, D_A1);
                 basis::computeA(lmax, D_A1, D_A);
@@ -193,35 +113,29 @@ namespace maps {
     template <class T>
     class Map {
 
+            /* TODO: Let's make C and G protected
+               and expose only rT and sT to the outside. 
+               More protected stuff, perhaps Y00_is_unity?
+               Add a setter and getter for the axis.
+            friend class orbital::Body<T>;
+            friend class orbital::System<T>;
+            friend class orbital::Star<T>;
+            friend class orbital::Planet<T>;
+            */
+
         public:
 
-            // Map order
-            const int lmax;
-            const int N;
-
-            // The map vectors
-            Vector<T> y;
-            Vector<T> p;
-            Vector<T> g;
-
-            // The rotation axis
-            UnitVector<T> axis;
-
-            // Misc flags
-            bool Y00_is_unity;
-
-            // Derivatives
-            std::map<string, Vector<double>> derivs;
-            Vector<T> dFdy;
-
-            // Constant matrices
-            Constants<T> C;
-
-            // Greens data
-            Greens<T> G;
-
-            // Minimization stuff
-            Minimizer<T> M;
+            const int lmax;                             /**< The highest degree of the map */
+            const int N;                                /**< The number of map coefficients */
+            Vector<T> y;                                /**< The map coefficients in the spherical harmonic basis */
+            Vector<T> p;                                /**< The map coefficients in the polynomial basis */
+            Vector<T> g;                                /**< The map coefficients in the Green's basis */
+            UnitVector<T> axis;                         /**< The axis of rotation for the map */
+            bool Y00_is_unity;                          /**< Flag: are we fixing the constant map coeff at unity? */
+            std::map<string, Vector<double>> derivs;    /**< Dictionary of derivatives */
+            Vector<T> dFdy;                             /**< Derivative of the flux w/ respect to the map coeffs */
+            ConstantMatrices<T> C;                      /**< Constant matrices used throughout the code */
+            Greens<T> G;                                /**< Green's theorem integration stuff */
 
         protected:
 
@@ -251,12 +165,16 @@ namespace maps {
             Vector<T> sinmt;                            /**< Vector of sin(m theta) values */
             Vector<T> yrev;                             /**< Degree-wise reverse of the spherical harmonic map */
 
+            // Classes
+            Minimizer<T> M;                             /**< Surface map minimization stuff */
+
         public:
 
             // Constructor
             Map(int lmax=2) : lmax(lmax), N((lmax + 1) * (lmax + 1)),
-                              C(lmax), G(lmax), M(*this), R(lmax),
-                              RR(lmax), Rzeta(lmax), RzetaInv(lmax) {
+                              C(lmax), G(lmax), R(lmax),
+                              RR(lmax), Rzeta(lmax), RzetaInv(lmax),
+                              M(*this) {
 
                 // Initialize all our vectors
                 y = Vector<T>::Zero(N);
@@ -290,8 +208,8 @@ namespace maps {
             void reset();
 
             // I/O functions
-            void set_coeff(int l, int m, T coeff);
-            T get_coeff(int l, int m);
+            void setCoeff(int l, int m, T coeff);
+            T getCoeff(int l, int m);
             void random(double beta=0);
             std::string repr();
 
@@ -311,8 +229,6 @@ namespace maps {
 
             // Map minimization routines
             bool psd(double epsilon=1e-6, int max_iterations=100);
-            T evaluate_theta_phi(const T& theta=0, const T& phi=0);
-            T objective(const Vector<T>& angles, Vector<T>& grad);
 
     };
 
@@ -382,7 +298,7 @@ namespace maps {
 
     // Set the (l, m) coefficient
     template <class T>
-    void Map<T>::set_coeff(int l, int m, T coeff) {
+    void Map<T>::setCoeff(int l, int m, T coeff) {
         if ((l == 0) && (Y00_is_unity) && (coeff != 1)) throw errors::Y00IsUnity();
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
@@ -393,25 +309,26 @@ namespace maps {
 
     // Get the (l, m) coefficient
     template <class T>
-    T Map<T>::get_coeff(int l, int m) {
+    T Map<T>::getCoeff(int l, int m) {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
             return y(l * l + l + m);
         else throw errors::BadLM();
     }
 
     // Generate a random map with a given power spectrum power index `beta`
+    // TODO: Not tested, not yet exposed to Python
     template <class T>
     void Map<T>::random(double beta) {
         int l, m, n;
         double norm;
         Vector<double> coeffs;
-        set_coeff(0, 0, 1);
+        setCoeff(0, 0, 1);
         for (l = 1; l < lmax + 1; l++) {
             coeffs = Vector<double>::Random(2 * l + 1);
             norm = pow(l, beta) / coeffs.squaredNorm();
             n = 0;
             for (m = -l; m < l + 1; m++) {
-                set_coeff(l, m, coeffs(n) * norm);
+                setCoeff(l, m, coeffs(n) * norm);
                 n++;
             }
         }
@@ -886,146 +803,6 @@ namespace maps {
     /* ---------------- */
 
 
-    // Evaluate our map at a given (theta, phi) coordinate (no rotation)
-    // Not user-facing; used exclusively for minimization of the map
-    template <class T>
-    T Map<T>::evaluate_theta_phi(const T& theta, const T& phi) {
-        T sint = sin(theta),
-          cost = cos(theta),
-          sinp = sin(phi),
-          cosp = cos(phi);
-        int l, m, mu, nu, n = 0;
-        T x0 = sint * cosp;
-        T y0 = sint * sinp;
-        T z0 = cost;
-        T res = 0;
-        for (l=0; l<lmax+1; l++) {
-            for (m=-l; m<l+1; m++) {
-                if (abs(p(n)) > 10 * mach_eps<T>()) {
-                    mu = l - m;
-                    nu = l + m;
-                    if ((nu % 2) == 0) {
-                        if ((mu > 0) && (nu > 0))
-                            res += p(n) * pow(x0, mu / 2) * pow(y0, nu / 2);
-                        else if (mu > 0)
-                            res += p(n) * pow(x0, mu / 2);
-                        else if (nu > 0)
-                            res += p(n) * pow(y0, nu / 2);
-                        else
-                            res += p(n);
-                    } else {
-                        if ((mu > 1) && (nu > 1))
-                            res += p(n) * pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
-                        else if (mu > 1)
-                            res += p(n) * pow(x0, (mu - 1) / 2) * z0;
-                        else if (nu > 1)
-                            res += p(n) * pow(y0, (nu - 1) / 2) * z0;
-                        else
-                            res += p(n) * z0;
-                    }
-                }
-                n++;
-            }
-
-        }
-        return res;
-    }
-
-    // Computes the specific intensity as a function of theta and phi.
-    // Used as the objective function in the minimization problem to
-    // determine if a map is positive semi-definite.
-    template <class T>
-    T Map<T>::objective(const Vector<T>& angles, Vector<T>& grad) {
-        T theta = mod2pi(angles(0)),
-          phi = mod2pi(angles(1));
-
-        // Avoid singular points in the derivative. In principle we could
-        // re-parametrize, but it's not really worth it...
-        T tol = 1e-12;
-        if (abs(theta) < tol) theta = tol;
-        if (abs(theta - PI<T>()) < tol) theta = PI<T>() + tol;
-        if (abs(phi) < tol) phi = tol;
-        if (abs(phi - PI<T>()) < tol) phi = PI<T>() + tol;
-        T sint = sin(theta),
-          cost = cos(theta),
-          tant = tan(theta),
-          sinp = sin(phi),
-          cosp = cos(phi),
-          tanp = tan(phi);
-        int l, m, mu, nu, n = 0;
-        T x0 = sint * cosp;
-        T y0 = sint * sinp;
-        T z0 = cost;
-        T I = 0;
-        T dIdt = 0;
-        T dIdp = 0;
-        T val;
-        for (l=0; l<lmax+1; l++) {
-            for (m=-l; m<l+1; m++) {
-                if (abs(p(n)) > 10 * mach_eps<T>()) {
-                    mu = l - m;
-                    nu = l + m;
-                    if ((nu % 2) == 0) {
-                        if ((mu > 0) && (nu > 0)) {
-                            val = p(n) * pow(x0, mu / 2) * pow(y0, nu / 2);
-                            I += val;
-                            dIdt += 0.5 * (mu + nu) / tant * val;
-                            dIdp += 0.5 * (nu / tanp - mu * tanp) * val;
-                        } else if (mu > 0) {
-                            val = p(n) * pow(x0, mu / 2);
-                            I += val;
-                            dIdt += 0.5 * mu / tant * val;
-                            dIdp += 0.5 * (-mu * tanp) * val;
-                        } else if (nu > 0) {
-                            val = p(n) * pow(y0, nu / 2);
-                            I += val;
-                            dIdt += 0.5 * nu / tant * val;
-                            dIdp += 0.5 * (nu / tanp) * val;
-                        } else {
-                            val = p(n);
-                            I += val;
-                            dIdt += 0;
-                            dIdp += 0;
-                        }
-                    } else {
-                        if ((mu > 1) && (nu > 1)) {
-                            val = p(n) * pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
-                            I += val;
-                            dIdt += (0.5 * (-2 + mu + nu) / tant - tant) * val;
-                            dIdp += 0.5 * (1 - mu + (-1 + nu) / (tanp * tanp)) * tanp * val;
-                        } else if (mu > 1) {
-                            val = p(n) * pow(x0, (mu - 1) / 2) * z0;
-                            I += val;
-                            dIdt += (0.5 * (-1 + mu) / tant - tant) * val;
-                            dIdp += -0.5 * (-1 + mu) * tanp * val;
-                        } else if (nu > 1) {
-                            val = p(n) * pow(y0, (nu - 1) / 2) * z0;
-                            I += val;
-                            dIdt += (0.5 * (-1 + nu) / tant - tant) * val;
-                            dIdp += 0.5 * (-1 + nu) / tanp * val;
-                        } else {
-                            val = p(n) * z0;
-                            I += val;
-                            dIdt += -tant * val;
-                            dIdp += 0;
-                        }
-                    }
-                }
-                n++;
-            }
-        }
-
-        // Throw an exception if the map is negative; this
-        // will be caught in the enclosing scope
-        if (I < 0) throw errors::MapIsNegative();
-
-        // Update the gradient
-        grad(0) = dIdt;
-        grad(1) = dIdp;
-        return I;
-
-    }
-
     // Check whether the map is positive semi-definite
     template <class T>
     bool Map<T>::psd(double epsilon, int max_iterations) {
@@ -1097,7 +874,7 @@ namespace maps {
             Matrix<T> dgdu;
 
             // Constant matrices
-            Constants<T> C;
+            ConstantMatrices<T> C;
 
             // Greens data
             solver::Greens<T> G;
@@ -1127,8 +904,8 @@ namespace maps {
             void update();
             bool psd();
             bool mono();
-            void set_coeff(int l, T coeff);
-            T get_coeff(int l);
+            void setCoeff(int l, T coeff);
+            T getCoeff(int l);
             void reset();
             T flux_numerical(const T& xo=0, const T& yo=0, const T& ro=0, double tol=1e-4);
             T flux(const T& xo=0, const T& yo=0, const T& ro=0);
@@ -1457,7 +1234,7 @@ namespace maps {
 
     // Set a limb darkening coefficient
     template <class T>
-    void LimbDarkenedMap<T>::set_coeff(int l, T u_l) {
+    void LimbDarkenedMap<T>::setCoeff(int l, T u_l) {
         if ((l <= 0) || (l > lmax)) {
             throw errors::BadIndex();
         }
@@ -1472,7 +1249,7 @@ namespace maps {
 
     // Get a limb darkening coefficient
     template <class T>
-    T LimbDarkenedMap<T>::get_coeff(int l) {
+    T LimbDarkenedMap<T>::getCoeff(int l) {
         if ((l <= 0) || (l > lmax)) {
             throw errors::BadIndex();
         } else {

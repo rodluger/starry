@@ -124,7 +124,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                     } catch (const char* msg) {
                         throw errors::BadLMIndex();
                     }
-                    map.set_coeff(l, m, MAPTYPE(value));
+                    map.setCoeff(l, m, MAPTYPE(value));
                 } else if (py::isinstance<py::slice>(index)) {
                     // User provided a slice of some sort
                     size_t start, stop, step, slicelength;
@@ -161,7 +161,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                     } catch (const char* msg) {
                         throw errors::BadLMIndex();
                     }
-                    return py::cast(get_value(map.get_coeff(l, m)));
+                    return py::cast(get_value(map.getCoeff(l, m)));
                 } else if (py::isinstance<py::slice>(index)) {
                     // User provided a slice of some sort
                     size_t start, stop, step, slicelength;
@@ -181,11 +181,11 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
             })
 
         .def("get_coeff", [](maps::Map<MAPTYPE> &map, int l, int m){
-                return get_value(map.get_coeff(l, m));
+                return get_value(map.getCoeff(l, m));
             }, docs.Map.get_coeff, "l"_a, "m"_a)
 
         .def("set_coeff", [](maps::Map<MAPTYPE> &map, int l, int m, double coeff){
-                map.set_coeff(l, m, MAPTYPE(coeff));
+                map.setCoeff(l, m, MAPTYPE(coeff));
             }, docs.Map.set_coeff, "l"_a, "m"_a, "coeff"_a)
 
         .def_property("axis",
@@ -268,7 +268,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 for (int l = 0; l < map.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
                         y_normed = y(n) / y(0);
-                        map.set_coeff(l, m, MAPTYPE(y_normed));
+                        map.setCoeff(l, m, MAPTYPE(y_normed));
                         n++;
                     }
                 }
@@ -291,7 +291,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 for (int l = 0; l < map.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
                         y_normed = y(n) / y(0);
-                        map.set_coeff(l, m, MAPTYPE(y_normed));
+                        map.setCoeff(l, m, MAPTYPE(y_normed));
                         n++;
                     }
                 }
@@ -314,7 +314,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 for (int l = 0; l < map.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
                         y_normed = y(n) / y(0);
-                        map.set_coeff(l, m, MAPTYPE(y_normed));
+                        map.setCoeff(l, m, MAPTYPE(y_normed));
                         n++;
                     }
                 }
@@ -337,7 +337,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 maps::Map<double> tmpmap(map.lmax);
                 for (int l = 0; l < tmpmap.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
-                        tmpmap.set_coeff(l, m, amp * y(n));
+                        tmpmap.setCoeff(l, m, amp * y(n));
                         n++;
                     }
                 }
@@ -356,7 +356,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 // Add it to the current map
                 for (int l = 0; l < map.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
-                        map.set_coeff(l, m, get_value(map.get_coeff(l, m)) + tmpmap.get_coeff(l, m));
+                        map.setCoeff(l, m, get_value(map.getCoeff(l, m)) + tmpmap.getCoeff(l, m));
                     }
                 }
             }, docs.Map.add_gaussian, "sigma"_a=0.1, "amp"_a=1, "lat"_a=0, "lon"_a=0)
@@ -435,7 +435,7 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
                 // User provided a single index
                 int l = py::cast<int>(index);
                 double value = py::cast<double>(coeff);
-                map.set_coeff(l, MAPTYPE(value));
+                map.setCoeff(l, MAPTYPE(value));
             } else if (py::isinstance<py::slice>(index)) {
                 // User provided a slice of some sort
                 size_t start, stop, step, slicelength;
@@ -466,7 +466,7 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
                 if (py::isinstance<py::int_>(index)) {
                     // User provided a single index
                     int l = py::cast<int>(index);
-                    return py::cast(get_value(map.get_coeff(l)));
+                    return py::cast(get_value(map.getCoeff(l)));
                 } else if (py::isinstance<py::slice>(index)) {
                     // User provided a slice of some sort
                     size_t start, stop, step, slicelength;
@@ -486,11 +486,11 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
         })
 
         .def("get_coeff", [](maps::LimbDarkenedMap<MAPTYPE> &map, int l){
-                return get_value(map.get_coeff(l));
+                return get_value(map.getCoeff(l));
             }, docs.LimbDarkenedMap.get_coeff, "l"_a)
 
         .def("set_coeff", [](maps::LimbDarkenedMap<MAPTYPE> &map, int l, double coeff){
-                map.set_coeff(l, MAPTYPE(coeff));
+                map.setCoeff(l, MAPTYPE(coeff));
             }, docs.LimbDarkenedMap.set_coeff, "l"_a, "coeff"_a)
 
         .def("reset", &maps::LimbDarkenedMap<MAPTYPE>::reset, docs.LimbDarkenedMap.reset)
@@ -734,7 +734,7 @@ void add_Star(py::class_<orbital::Star<MAPTYPE>>& PyStar, const docstrings::docs
                 // User provided a single index
                 int l = py::cast<int>(index);
                 double value = py::cast<double>(coeff);
-                star.ldmap.set_coeff(l, MAPTYPE(value));
+                star.ldmap.setCoeff(l, MAPTYPE(value));
             } else if (py::isinstance<py::slice>(index)) {
                 // User provided a slice of some sort
                 size_t start, stop, step, slicelength;
@@ -765,7 +765,7 @@ void add_Star(py::class_<orbital::Star<MAPTYPE>>& PyStar, const docstrings::docs
                 if (py::isinstance<py::int_>(index)) {
                     // User provided a single index
                     int l = py::cast<int>(index);
-                    return py::cast(get_value(star.ldmap.get_coeff(l)));
+                    return py::cast(get_value(star.ldmap.getCoeff(l)));
                 } else if (py::isinstance<py::slice>(index)) {
                     // User provided a slice of some sort
                     size_t start, stop, step, slicelength;
@@ -822,7 +822,7 @@ void add_Planet(py::class_<orbital::Planet<MAPTYPE>>& PyPlanet, const docstrings
                 } catch (const char* msg) {
                    throw errors::BadLMIndex();
                 }
-                planet.map.set_coeff(l, m, MAPTYPE(value));
+                planet.map.setCoeff(l, m, MAPTYPE(value));
             } else if (py::isinstance<py::slice>(index)) {
                 // User provided a slice of some sort
                 size_t start, stop, step, slicelength;
@@ -859,7 +859,7 @@ void add_Planet(py::class_<orbital::Planet<MAPTYPE>>& PyPlanet, const docstrings
                   } catch (const char* msg) {
                       throw errors::BadLMIndex();
                   }
-                  return py::cast(get_value(planet.map.get_coeff(l, m)));
+                  return py::cast(get_value(planet.map.getCoeff(l, m)));
               } else if (py::isinstance<py::slice>(index)) {
                   // User provided a slice of some sort
                   size_t start, stop, step, slicelength;
