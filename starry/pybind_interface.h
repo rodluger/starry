@@ -343,15 +343,20 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 }
                 // Rotate it to the sub-observer point
                 tmpmap.axis = xhat;
+                tmpmap.update();
                 tmpmap.rotate(0.5 * PI<double>());
                 tmpmap.axis = zhat;
+                tmpmap.update();
                 tmpmap.rotate(PI<double>());
                 tmpmap.axis = yhat;
+                tmpmap.update();
                 tmpmap.rotate(0.5 * PI<double>());
                 // Now rotate it to where the user wants it
                 tmpmap.axis = xhat;
+                tmpmap.update();
                 tmpmap.rotate(-lat * DEGREE);
                 tmpmap.axis = yhat;
+                tmpmap.update();
                 tmpmap.rotate(lon * DEGREE);
                 // Add it to the current map
                 for (int l = 0; l < map.lmax + 1; l++) {
