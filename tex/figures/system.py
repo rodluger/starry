@@ -34,13 +34,14 @@ b = Planet(r=0.091679,
            prot=4.3,
            a=11.127991,
            lambda0=90,
-           tref=2)
+           tref=2,
+           axis=[0, 1, 0])
 
 # Give the planet a simple dipole map
 b.map[1, 0] = 0.5
 
 # Rotate the planet map to produce a hotspot offset of 15 degrees
-b.map.rotate(axis=(0, 1, 0), theta=15)
+b.map.rotate(theta=15)
 
 # Compute and plot the starry flux
 time = np.linspace(0, 20, 10000)
@@ -83,14 +84,15 @@ c = Planet(r=0.07334,
            prot=6.7,
            a=14.95619,
            lambda0=90,
-           tref=3)
+           tref=3,
+           axis=[0, 1, 0])
 
 # Give the planet a wonky map
 c.map[1, 0] = 0.5
 c.map[2, -2] = 0.5
 
 # Rotate the planet map to produce a hotspot offset of 15 degrees
-c.map.rotate(axis=(0, 1, 0), theta=15)
+c.map.rotate(theta=15)
 
 # Compute and plot the starry flux
 system = System([star, b, c])

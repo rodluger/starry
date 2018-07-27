@@ -25,13 +25,13 @@ nim = 16
 axw = 0.1
 xim, yim = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 inds = np.array(np.linspace(0, nt, nim, endpoint=False), dtype=int)
-axis = [0, 1, 0]
+planet.map.axis = [0, 1, 0]
 theta = np.linspace(0, 360, nim, endpoint=False) + 180
 for n in range(nim):
     x = 0.5 + (planet.x[inds[n]] / 100)
     y = 0.5 + (planet.y[inds[n]] / 80)
     ax_im = fig.add_axes([x - axw / 2, y - axw / 2, axw, axw])
-    I = [planet.map.evaluate(axis=axis, theta=theta[n],
+    I = [planet.map.evaluate(theta=theta[n],
                              x=xim[j], y=yim[j]) for j in range(res)]
     ax_im.imshow(I, origin='lower', extent=(-1, 1, -1, 1), cmap='plasma')
     ax_im.set_xlim(-1.25, 1.25)

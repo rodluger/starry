@@ -24,6 +24,7 @@ namespace docstrings {
         const char * g;
         const char * s;
         const char * r;
+        const char * axis;
         const char * reparam;
         const char * evaluate;
         const char * flux;
@@ -94,6 +95,10 @@ namespace docstrings {
                 The current solution vector `r`. *Read-only.*
             )pbdoc";
 
+            axis = R"pbdoc(
+                *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
+            )pbdoc";
+
             reparam = R"pbdoc(
                 Set to :py:obj:`False` to disable reparametrization of the primitive integrals when \
                 computing occultation light curves for large occultors. This is in general not something you should do! \
@@ -106,7 +111,6 @@ namespace docstrings {
                 not rotate the base map.
 
                 Args:
-                    axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     theta (float or ndarray): Angle of rotation in degrees. Default 0.
                     x (float or ndarray): Position scalar, vector, or matrix.
                     y (float or ndarray): Position scalar, vector, or matrix.
@@ -121,7 +125,6 @@ namespace docstrings {
                 map during or outside of an occultation.
 
                 Args:
-                    axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     theta (float or ndarray): Angle of rotation. Default 0.
                     xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
                     yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
@@ -138,7 +141,6 @@ namespace docstrings {
                 rotational state.
 
                 Args:
-                    axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     theta (float or ndarray): Angle of rotation in degrees. Default 0.
             )pbdoc";
 
@@ -216,7 +218,6 @@ namespace docstrings {
                 Convenience routine to animate the body's surface map as it rotates.
 
                 Args:
-                    axis (ndarray): *Normalized* unit vector specifying the axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                     cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
                     res (int): The resolution of the map in pixels on a side. Default 150.
                     frames (int): The number of frames in the animation. Default 50.
@@ -238,9 +239,9 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
-                .. automethod:: rotate(axis=(0, 1, 0), theta=0)
-                .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
+                .. automethod:: evaluate(theta=0, x=0, y=0)
+                .. automethod:: rotate(theta=0)
+                .. automethod:: flux(theta=0, xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l, m)
                 .. automethod:: set_coeff(l, m, coeff)
                 .. automethod:: reset()
@@ -256,7 +257,7 @@ namespace docstrings {
                 .. automethod:: load_image(image)
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
-                .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
+                .. automethod:: animate(cmap='plasma', res=150, frames=50)
             )pbdoc";
 
         flux_numerical = R"pbdoc(
@@ -266,7 +267,6 @@ namespace docstrings {
             numerically using an adaptive radial mesh.
 
             Args:
-                axis (ndarray): *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
                 theta (float or ndarray): Angle of rotation. Default 0.
                 xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
                 yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
@@ -290,9 +290,9 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
-                .. automethod:: rotate(axis=(0, 1, 0), theta=0)
-                .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
+                .. automethod:: evaluate(theta=0, x=0, y=0)
+                .. automethod:: rotate(theta=0)
+                .. automethod:: flux(theta=0, xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l, m)
                 .. automethod:: set_coeff(l, m, coeff)
                 .. automethod:: reset()
@@ -308,7 +308,7 @@ namespace docstrings {
                 .. automethod:: load_image(image)
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
-                .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
+                .. automethod:: animate(cmap='plasma', res=150, frames=50)
             )pbdoc";
 
     };
@@ -324,9 +324,9 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. automethod:: evaluate(axis=(0, 1, 0), theta=0, x=0, y=0)
-                .. automethod:: rotate(axis=(0, 1, 0), theta=0)
-                .. automethod:: flux(axis=(0, 1, 0), theta=0, xo=0, yo=0, ro=0)
+                .. automethod:: evaluate(theta=0, x=0, y=0)
+                .. automethod:: rotate(theta=0)
+                .. automethod:: flux(theta=0, xo=0, yo=0, ro=0)
                 .. automethod:: get_coeff(l, m)
                 .. automethod:: set_coeff(l, m, coeff)
                 .. automethod:: reset()
@@ -342,7 +342,7 @@ namespace docstrings {
                 .. automethod:: load_image(image)
                 .. automethod:: load_healpix(image)
                 .. automethod:: show(cmap='plasma', res=300)
-                .. automethod:: animate(axis=(0, 1, 0), cmap='plasma', res=150, frames=50)
+                .. automethod:: animate(cmap='plasma', res=150, frames=50)
         )pbdoc";
 
         gradient = R"pbdoc(
@@ -1196,7 +1196,7 @@ namespace docstrings {
                 >>> import starry
                 >>> m = starry.Map()
                 >>> m[1, 0] = 1
-                >>> m.flux(axis=(0, 1, 0), theta=30, xo=0.1, yo=0.1, ro=0.1)
+                >>> m.flux(theta=30, xo=0.1, yo=0.1, ro=0.1)
                 0.8723336063428014
 
             Here's the same code executed using the :py:obj:`Map()` class in :py:mod:`starry.grad`:
@@ -1206,7 +1206,7 @@ namespace docstrings {
                 >>> import starry
                 >>> m = starry.grad.Map()
                 >>> m[1, 0] = 1
-                >>> m.flux(axis=(0, 1, 0), theta=30, xo=0.1, yo=0.1, ro=0.1)
+                >>> m.flux(theta=30, xo=0.1, yo=0.1, ro=0.1)
                 0.8723336063428014
 
             So far, they look identical. However, in the second case :py:obj:`starry`
@@ -1225,9 +1225,6 @@ namespace docstrings {
                  'Y_{2,0}': array([0.]),
                  'Y_{2,1}': array([0.]),
                  'Y_{2,2}': array([0.]),
-                 'axis_x': array([0.0007675]),
-                 'axis_y': array([8.52090655e-20]),
-                 'axis_z': array([-0.00020565]),
                  'ro': array([-0.27718567]),
                  'theta': array([-0.00882115]),
                  'xo': array([-0.0063251]),
@@ -1251,7 +1248,7 @@ namespace docstrings {
                 >>> import starry
                 >>> m = starry.grad.Map()
                 >>> m[1, 0] = 1
-                >>> m.flux(axis=(0, 1, 0), theta=30, xo=[0.1, 0.2, 0.3, 0.4], yo=0.1, ro=0.1)
+                >>> m.flux(theta=30, xo=[0.1, 0.2, 0.3, 0.4], yo=0.1, ro=0.1)
                 array([[0.87233361],
                        [0.87177019],
                        [0.87135028],

@@ -48,15 +48,18 @@ axis = [0, 1, 0]
 axis = np.dot(R((1, 0, 0), np.pi / 2 - planet.inc * np.pi / 180), axis)
 axis = np.dot(R((0, 0, 1), planet.Omega * np.pi / 180), axis)
 
-planet.map.rotate(axis=(1, 0, 0), theta=90 - planet.inc)
-planet.map.rotate(axis=(0, 0, 1), theta=planet.Omega)
+planet.map.axis = [1, 0, 0]
+planet.map.rotate(theta=90 - planet.inc)
+planet.map.axis = [0, 0, 1]
+planet.map.rotate(theta=planet.Omega)
+planet.map.axis = axis
 
 theta = np.linspace(0, 360, nim, endpoint=False) + 180
 for n in range(nim):
     x = 0.5 + (planet.x[inds[n]] / 100)
     y = 0.5 + (planet.y[inds[n]] / 80)
     ax_im = fig.add_axes([x - axw / 2, y - axw / 2, axw, axw])
-    I = [planet.map.evaluate(axis=axis, theta=theta[n],
+    I = [planet.map.evaluate(theta=theta[n],
                              x=xim[j], y=yim[j]) for j in range(res)]
     ax_im.imshow(I, origin='lower', extent=(-1, 1, -1, 1), cmap='plasma')
     ax_im.set_xlim(-1.25, 1.25)

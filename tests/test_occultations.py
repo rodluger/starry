@@ -24,8 +24,9 @@ def test_occultations():
     yo = 0
 
     # Analytical and numerical fluxes
-    sF = np.array(m.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro))
-    nF = np.array(m._flux_numerical(axis=axis, theta=theta, xo=xo, yo=yo,
+    m.axis = axis
+    sF = np.array(m.flux(theta=theta, xo=xo, yo=yo, ro=ro))
+    nF = np.array(m._flux_numerical(theta=theta, xo=xo, yo=yo,
                                     ro=ro, tol=1e-6))
 
     # Compute the (relative) error

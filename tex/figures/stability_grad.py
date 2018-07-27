@@ -2,6 +2,8 @@
 import numpy as np
 import matplotlib.pyplot as pl
 import starry
+from tqdm import tqdm
+
 
 def is_even(n):
     """Return true if n is even."""
@@ -11,11 +13,13 @@ def is_even(n):
         return True
 
 
-def StarryDExact(barr, r, lmax, d='b', tiny=1e-8):
+def StarryDExact(barr, r, larr, lmax, d='b', tiny=1e-8):
     """Compute dF/d{b,r} with starry multiprecision."""
     map = starry.multi.Map(lmax)
     res = np.zeros((lmax + 1, len(barr)))
-    for ll in range(lmax + 1):
+    for ll in tqdm(range(lmax + 1)):
+        if ll not in larr:
+            continue
         map.reset()
         for mm in range(-ll, ll + 1):
             map[ll, mm] = 1
@@ -28,11 +32,13 @@ def StarryDExact(barr, r, lmax, d='b', tiny=1e-8):
     return res
 
 
-def StarryD(barr, r, lmax, d='b'):
+def StarryD(barr, r, larr, lmax, d='b'):
     """Compute dF/d{b,r} for each degree with starry.grad."""
     map = starry.grad.Map(lmax)
     res = np.zeros((lmax + 1, len(barr)))
-    for ll in range(lmax + 1):
+    for ll in tqdm(range(lmax + 1)):
+        if ll not in larr:
+            continue
         map.reset()
         for mm in range(-ll, ll + 1):
             map[ll, mm] = 1
@@ -142,8 +148,8 @@ def PaperFigure(larr=[0, 1, 2, 3, 5, 8, 10, 13, 15, 18, 20],
 
     # Plot!
     for i, b, r in zip([0, 1], [b0, b1], [0.01, 100]):
-        dFdb = StarryD(b, r, lmax, d=d)
-        dFdb_mp = StarryDExact(b, r, lmax, d=d)
+        dFdb = StarryD(b, r, larr, lmax, d=d)
+        dFdb_mp = StarryDExact(b, r, larr, lmax, d=d)
         n = 0
         for l in larr:
             err_rel = np.abs(dFdb[l] - dFdb_mp[l])
@@ -182,4 +188,4 @@ def PaperFigure(larr=[0, 1, 2, 3, 5, 8, 10, 13, 15, 18, 20],
 
 
 if __name__ == "__main__":
-    PaperFigure(logdelta=-3, logeps=-6, d='b')
+    PaperFigure(logdelta=-3, logeps=-6, d='b', res=30)

@@ -35,10 +35,9 @@ void add_Map_extras<double>(py::class_<maps::Map<double>>& PyMap, const docstrin
 
     PyMap
 
-        .def("_flux_numerical", [](maps::Map<double>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro, double tol) {
-                UnitVector<double> axis_norm = norm_unit(axis);
-                return vectorize_map_flux_numerical(axis_norm, theta, xo, yo, ro, tol, map);
-            }, docs.Map.flux_numerical, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4);
+        .def("_flux_numerical", [](maps::Map<double>& map, py::object& theta, py::object& xo, py::object& yo, py::object& ro, double tol) {
+                return vectorize_map_flux_numerical(theta, xo, yo, ro, tol, map);
+            }, docs.Map.flux_numerical, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0, "tol"_a=1e-4);
 }
 
 template <>
@@ -59,10 +58,9 @@ void add_Map_extras<Multi>(py::class_<maps::Map<Multi>>& PyMap, const docstrings
         // Numerically computed derivative of the flux with respect to `yo`. Used
         // exclusively for stability tests of the double-precision derivatives in
         // `starry.grad`. Not user-facing, not documented.
-        .def("_dfluxdyo", [](maps::Map<Multi>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
+        .def("_dfluxdyo", [](maps::Map<Multi>& map, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
 
                 // Vectorize the inputs
-                UnitVector<Multi> axis_v = norm_unit(axis).cast<Multi>();
                 Vector<double> theta_v, xo_v, yo_v, ro_v;
                 vectorize_args(theta, xo, yo, ro, theta_v, xo_v, yo_v, ro_v);
 
@@ -73,21 +71,20 @@ void add_Map_extras<Multi>(py::class_<maps::Map<Multi>>& PyMap, const docstrings
                 Multi f2, f1;
                 Vector<double> deriv(theta_v.size());
                 for (int i = 0; i < theta_v.size(); i++) {
-                    f2 = map.flux(axis_v, theta_v(i) * DEGREE, xo_v(i), Multi(yo_v(i) + eps), ro_v(i));
-                    f1 = map.flux(axis_v, theta_v(i) * DEGREE, xo_v(i), Multi(yo_v(i) - eps), ro_v(i));
+                    f2 = map.flux(theta_v(i) * DEGREE, xo_v(i), Multi(yo_v(i) + eps), ro_v(i));
+                    f1 = map.flux(theta_v(i) * DEGREE, xo_v(i), Multi(yo_v(i) - eps), ro_v(i));
                     deriv(i) = (double)((f2 - f1) / (2 * eps));
                 }
                 return deriv;
 
-            }, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+            }, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         // Numerically computed derivative of the flux with respect to `ro`. Used
         // exclusively for stability tests of the double-precision derivatives in
         // `starry.grad`. Not user-facing, not documented.
-        .def("_dfluxdro", [](maps::Map<Multi>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
+        .def("_dfluxdro", [](maps::Map<Multi>& map, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
 
                 // Vectorize the inputs
-                UnitVector<Multi> axis_v = norm_unit(axis).cast<Multi>();
                 Vector<double> theta_v, xo_v, yo_v, ro_v;
                 vectorize_args(theta, xo, yo, ro, theta_v, xo_v, yo_v, ro_v);
 
@@ -98,13 +95,13 @@ void add_Map_extras<Multi>(py::class_<maps::Map<Multi>>& PyMap, const docstrings
                 Multi f2, f1;
                 Vector<double> deriv(theta_v.size());
                 for (int i = 0; i < theta_v.size(); i++) {
-                    f2 = map.flux(axis_v, theta_v(i) * DEGREE, xo_v(i), yo_v(i), Multi(ro_v(i) + eps));
-                    f1 = map.flux(axis_v, theta_v(i) * DEGREE, xo_v(i), yo_v(i), Multi(ro_v(i) - eps));
+                    f2 = map.flux(theta_v(i) * DEGREE, xo_v(i), yo_v(i), Multi(ro_v(i) + eps));
+                    f1 = map.flux(theta_v(i) * DEGREE, xo_v(i), yo_v(i), Multi(ro_v(i) - eps));
                     deriv(i) = (double)((f2 - f1) / (2 * eps));
                 }
                 return deriv;
 
-            }, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0);
+            }, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0);
 
 }
 
@@ -127,7 +124,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                     } catch (const char* msg) {
                         throw errors::BadLMIndex();
                     }
-                    map.set_coeff(l, m, MAPTYPE(value));
+                    map.setCoeff(l, m, MAPTYPE(value));
                 } else if (py::isinstance<py::slice>(index)) {
                     // User provided a slice of some sort
                     size_t start, stop, step, slicelength;
@@ -164,7 +161,7 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                     } catch (const char* msg) {
                         throw errors::BadLMIndex();
                     }
-                    return py::cast(get_value(map.get_coeff(l, m)));
+                    return py::cast(get_value(map.getCoeff(l, m)));
                 } else if (py::isinstance<py::slice>(index)) {
                     // User provided a slice of some sort
                     size_t start, stop, step, slicelength;
@@ -184,12 +181,27 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
             })
 
         .def("get_coeff", [](maps::Map<MAPTYPE> &map, int l, int m){
-                return get_value(map.get_coeff(l, m));
+                return get_value(map.getCoeff(l, m));
             }, docs.Map.get_coeff, "l"_a, "m"_a)
 
         .def("set_coeff", [](maps::Map<MAPTYPE> &map, int l, int m, double coeff){
-                map.set_coeff(l, m, MAPTYPE(coeff));
+                map.setCoeff(l, m, MAPTYPE(coeff));
             }, docs.Map.set_coeff, "l"_a, "m"_a, "coeff"_a)
+
+        .def_property("axis",
+            [](maps::Map<MAPTYPE> &map) {
+                UnitVector<double> axis;
+                axis(0) = get_value(map.axis(0));
+                axis(1) = get_value(map.axis(1));
+                axis(2) = get_value(map.axis(2));
+                return axis;
+            },
+            [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis){
+                map.axis(0) = axis(0);
+                map.axis(1) = axis(1);
+                map.axis(2) = axis(2);
+                map.update();
+            }, docs.Map.axis)
 
         .def("reset", &maps::Map<MAPTYPE>::reset, docs.Map.reset)
 
@@ -215,21 +227,36 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 return get_value((Vector<MAPTYPE>)map.C.rT);
             }, docs.Map.r)
 
+        .def("evaluate", [](maps::Map<MAPTYPE>& map, py::object& theta, py::object& x, py::object& y) {
+                return vectorize_map_evaluate(theta, x, y, map);
+            }, docs.Map.evaluate, "theta"_a=0, "x"_a=0, "y"_a=0)
+
+        .def("flux", [](maps::Map<MAPTYPE>& map, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
+                return vectorize_map_flux(theta, xo, yo, ro, map);
+            }, docs.Map.flux, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+
+        .def("rotate", [](maps::Map<MAPTYPE> &map, double theta){
+                map.rotate(theta * DEGREE);
+            }, docs.Map.rotate, "theta"_a=0)
+
+        // -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+        // DEPRECATED FUNCTIONS. Throw explicit errors for users following syntax in the beta release
+        // -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
         .def("evaluate", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& x, py::object& y) {
-                UnitVector<double> axis_norm = norm_unit(axis);
-                return vectorize_map_evaluate(axis_norm, theta, x, y, map);
-            }, docs.Map.evaluate, "axis"_a=yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
+                throw errors::Deprecated("Calling `evaluate` with the `axis` keyword is deprecated. Set the `axis` attribute of the `Map` class before calling this method.");
+            }, "axis"_a=yhat, "theta"_a=0, "x"_a=0, "y"_a=0)
 
         .def("flux", [](maps::Map<MAPTYPE>& map, UnitVector<double>& axis, py::object& theta, py::object& xo, py::object& yo, py::object& ro) {
-                UnitVector<double> axis_norm = norm_unit(axis);
-                return vectorize_map_flux(axis_norm, theta, xo, yo, ro, map);
-            }, docs.Map.flux, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
+                throw errors::Deprecated("Calling `flux` with the `axis` keyword is deprecated. Set the `axis` attribute of the `Map` class before calling this method.");
+            }, "axis"_a=yhat, "theta"_a=0, "xo"_a=0, "yo"_a=0, "ro"_a=0)
 
         .def("rotate", [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis, double theta){
-                //UnitVector<MAPTYPE> axis_norm = UnitVector<MAPTYPE>(norm_unit(axis));
-                UnitVector<MAPTYPE> axis_norm = norm_unit(axis).template cast<MAPTYPE>();
-                map.rotate(axis_norm, theta * DEGREE);
-            }, docs.Map.rotate, "axis"_a=yhat, "theta"_a=0)
+                throw errors::Deprecated("Calling `rotate` with the `axis` keyword is deprecated. Set the `axis` attribute of the `Map` class before calling this method.");
+            }, "axis"_a=yhat, "theta"_a=0)
+
+        // -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+        // -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 
         .def("psd", &maps::Map<MAPTYPE>::psd, docs.Map.psd, "epsilon"_a=1.e-6, "max_iterations"_a=100)
 
@@ -241,20 +268,19 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 for (int l = 0; l < map.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
                         y_normed = y(n) / y(0);
-                        map.set_coeff(l, m, MAPTYPE(y_normed));
+                        map.setCoeff(l, m, MAPTYPE(y_normed));
                         n++;
                     }
                 }
-                // We need to apply some rotations to get
-                // to the desired orientation
-                UnitVector<MAPTYPE> M_xhat = xhat.template cast<MAPTYPE>();
-                UnitVector<MAPTYPE> M_yhat = yhat.template cast<MAPTYPE>();
-                UnitVector<MAPTYPE> M_zhat = zhat.template cast<MAPTYPE>();
-                MAPTYPE Pi(M_PI);
-                MAPTYPE PiOver2(M_PI / 2.);
-                map.rotate(M_xhat, PiOver2);
-                map.rotate(M_zhat, Pi);
-                map.rotate(M_yhat, PiOver2);
+                // We need to apply some rotations to get to the desired orientation
+                UnitVector<MAPTYPE> map_axis = map.axis;
+                map.axis = xhat.template cast<MAPTYPE>();
+                map.rotate(0.5 * PI<MAPTYPE>());
+                map.axis = zhat.template cast<MAPTYPE>();
+                map.rotate(PI<MAPTYPE>());
+                map.axis = yhat.template cast<MAPTYPE>();
+                map.rotate(0.5 * PI<MAPTYPE>());
+                map.axis = map_axis;
             }, docs.Map.load_array, "image"_a)
 
         .def("load_image", [](maps::Map<MAPTYPE> &map, string& image) {
@@ -265,20 +291,19 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 for (int l = 0; l < map.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
                         y_normed = y(n) / y(0);
-                        map.set_coeff(l, m, MAPTYPE(y_normed));
+                        map.setCoeff(l, m, MAPTYPE(y_normed));
                         n++;
                     }
                 }
-                // We need to apply some rotations to get
-                // to the desired orientation
-                UnitVector<MAPTYPE> M_xhat = xhat.template cast<MAPTYPE>();
-                UnitVector<MAPTYPE> M_yhat = yhat.template cast<MAPTYPE>();
-                UnitVector<MAPTYPE> M_zhat = zhat.template cast<MAPTYPE>();
-                MAPTYPE Pi(M_PI);
-                MAPTYPE PiOver2(M_PI / 2.);
-                map.rotate(M_xhat, PiOver2);
-                map.rotate(M_zhat, Pi);
-                map.rotate(M_yhat, PiOver2);
+                // We need to apply some rotations to get to the desired orientation
+                UnitVector<MAPTYPE> map_axis = map.axis;
+                map.axis = xhat.template cast<MAPTYPE>();
+                map.rotate(0.5 * PI<MAPTYPE>());
+                map.axis = zhat.template cast<MAPTYPE>();
+                map.rotate(PI<MAPTYPE>());
+                map.axis = yhat.template cast<MAPTYPE>();
+                map.rotate(0.5 * PI<MAPTYPE>());
+                map.axis = map_axis;
             }, docs.Map.load_image, "image"_a)
 
         .def("load_healpix", [](maps::Map<MAPTYPE> &map, Matrix<double>& image) {
@@ -289,20 +314,19 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 for (int l = 0; l < map.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
                         y_normed = y(n) / y(0);
-                        map.set_coeff(l, m, MAPTYPE(y_normed));
+                        map.setCoeff(l, m, MAPTYPE(y_normed));
                         n++;
                     }
                 }
-                // We need to apply some rotations to get
-                // to the desired orientation
-                UnitVector<MAPTYPE> M_xhat = xhat.template cast<MAPTYPE>();
-                UnitVector<MAPTYPE> M_yhat = yhat.template cast<MAPTYPE>();
-                UnitVector<MAPTYPE> M_zhat = zhat.template cast<MAPTYPE>();
-                MAPTYPE Pi(M_PI);
-                MAPTYPE PiOver2(M_PI / 2.);
-                map.rotate(M_xhat, PiOver2);
-                map.rotate(M_zhat, Pi);
-                map.rotate(M_yhat, PiOver2);
+                // We need to apply some rotations to get to the desired orientation
+                UnitVector<MAPTYPE> map_axis = map.axis;
+                map.axis = xhat.template cast<MAPTYPE>();
+                map.rotate(0.5 * PI<MAPTYPE>());
+                map.axis = zhat.template cast<MAPTYPE>();
+                map.rotate(PI<MAPTYPE>());
+                map.axis = yhat.template cast<MAPTYPE>();
+                map.rotate(0.5 * PI<MAPTYPE>());
+                map.axis = map_axis;
             }, docs.Map.load_healpix, "image"_a)
 
         .def("add_gaussian", [](maps::Map<MAPTYPE> &map, double sigma, double amp, double lat, double lon) {
@@ -313,24 +337,31 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 maps::Map<double> tmpmap(map.lmax);
                 for (int l = 0; l < tmpmap.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
-                        tmpmap.set_coeff(l, m, amp * y(n));
+                        tmpmap.setCoeff(l, m, amp * y(n));
                         n++;
                     }
                 }
                 // Rotate it to the sub-observer point
-                UnitVector<double> D_xhat(xhat);
-                UnitVector<double> D_yhat(yhat);
-                UnitVector<double> D_zhat(zhat);
-                tmpmap.rotate(D_xhat, M_PI / 2.);
-                tmpmap.rotate(D_zhat, M_PI);
-                tmpmap.rotate(D_yhat, M_PI / 2.);
+                tmpmap.axis = xhat;
+                tmpmap.update();
+                tmpmap.rotate(0.5 * PI<double>());
+                tmpmap.axis = zhat;
+                tmpmap.update();
+                tmpmap.rotate(PI<double>());
+                tmpmap.axis = yhat;
+                tmpmap.update();
+                tmpmap.rotate(0.5 * PI<double>());
                 // Now rotate it to where the user wants it
-                tmpmap.rotate(D_xhat, -lat * DEGREE);
-                tmpmap.rotate(D_yhat, lon * DEGREE);
+                tmpmap.axis = xhat;
+                tmpmap.update();
+                tmpmap.rotate(-lat * DEGREE);
+                tmpmap.axis = yhat;
+                tmpmap.update();
+                tmpmap.rotate(lon * DEGREE);
                 // Add it to the current map
                 for (int l = 0; l < map.lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
-                        map.set_coeff(l, m, get_value(map.get_coeff(l, m)) + tmpmap.get_coeff(l, m));
+                        map.setCoeff(l, m, get_value(map.getCoeff(l, m)) + tmpmap.getCoeff(l, m));
                     }
                 }
             }, docs.Map.add_gaussian, "sigma"_a=0.1, "amp"_a=1, "lat"_a=0, "lon"_a=0)
@@ -340,34 +371,32 @@ void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTY
                 Matrix<double> I;
                 I.resize(res, res);
                 Vector<double> x;
-                UnitVector<MAPTYPE> M_yhat = yhat.template cast<MAPTYPE>();
                 x = Vector<double>::LinSpaced(res, -1, 1);
                 for (int i = 0; i < res; i++){
                     for (int j = 0; j < res; j++){
-                        I(j, i) = get_value(map.evaluate(M_yhat, MAPTYPE(0), MAPTYPE(x(i)), MAPTYPE(x(j))));
+                        I(j, i) = get_value(map.evaluate(MAPTYPE(0), MAPTYPE(x(i)), MAPTYPE(x(j))));
                     }
                 }
                 show(I, "cmap"_a=cmap, "res"_a=res);
             }, docs.Map.show, "cmap"_a="plasma", "res"_a=300)
 
-        .def("animate", [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis, string cmap, int res, int frames) {
+        .def("animate", [](maps::Map<MAPTYPE> &map, string cmap, int res, int frames) {
             std::cout << "Rendering animation..." << std::endl;
             py::object animate = py::module::import("starry.maps").attr("animate");
             vector<Matrix<double>> I;
             Vector<double> x, theta;
             x = Vector<double>::LinSpaced(res, -1, 1);
             theta = Vector<double>::LinSpaced(frames, 0, 2 * M_PI);
-            UnitVector<MAPTYPE> MapType_axis = norm_unit(axis).template cast<MAPTYPE>();
             for (int t = 0; t < frames; t++){
                 I.push_back(Matrix<double>::Zero(res, res));
                 for (int i = 0; i < res; i++){
                     for (int j = 0; j < res; j++){
-                        I[t](j, i) = get_value(map.evaluate(MapType_axis, MAPTYPE(theta(t)), MAPTYPE(x(i)), MAPTYPE(x(j))));
+                        I[t](j, i) = get_value(map.evaluate(MAPTYPE(theta(t)), MAPTYPE(x(i)), MAPTYPE(x(j))));
                     }
                 }
             }
-            animate(I, axis, "cmap"_a=cmap, "res"_a=res);
-        }, docs.Map.animate, "axis"_a=yhat, "cmap"_a="plasma", "res"_a=150, "frames"_a=50)
+            animate(I, "cmap"_a=cmap, "res"_a=res);
+        }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150, "frames"_a=50)
 
         .def("__repr__", [](maps::Map<MAPTYPE> &map) -> string {return map.repr();});
 
@@ -411,7 +440,7 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
                 // User provided a single index
                 int l = py::cast<int>(index);
                 double value = py::cast<double>(coeff);
-                map.set_coeff(l, MAPTYPE(value));
+                map.setCoeff(l, MAPTYPE(value));
             } else if (py::isinstance<py::slice>(index)) {
                 // User provided a slice of some sort
                 size_t start, stop, step, slicelength;
@@ -442,7 +471,7 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
                 if (py::isinstance<py::int_>(index)) {
                     // User provided a single index
                     int l = py::cast<int>(index);
-                    return py::cast(get_value(map.get_coeff(l)));
+                    return py::cast(get_value(map.getCoeff(l)));
                 } else if (py::isinstance<py::slice>(index)) {
                     // User provided a slice of some sort
                     size_t start, stop, step, slicelength;
@@ -462,11 +491,11 @@ void add_LimbDarkenedMap(py::class_<maps::LimbDarkenedMap<MAPTYPE>>& PyLimbDarke
         })
 
         .def("get_coeff", [](maps::LimbDarkenedMap<MAPTYPE> &map, int l){
-                return get_value(map.get_coeff(l));
+                return get_value(map.getCoeff(l));
             }, docs.LimbDarkenedMap.get_coeff, "l"_a)
 
         .def("set_coeff", [](maps::LimbDarkenedMap<MAPTYPE> &map, int l, double coeff){
-                map.set_coeff(l, MAPTYPE(coeff));
+                map.setCoeff(l, MAPTYPE(coeff));
             }, docs.LimbDarkenedMap.set_coeff, "l"_a, "coeff"_a)
 
         .def("reset", &maps::LimbDarkenedMap<MAPTYPE>::reset, docs.LimbDarkenedMap.reset)
@@ -627,7 +656,13 @@ void add_Body(py::class_<orbital::Body<MAPTYPE>>& PyBody, const docstrings::docs
             [](orbital::Body<MAPTYPE> &body, double L){body.L = MAPTYPE(L); body.reset();}, docs.Body.L)
 
         .def_property("axis", [](orbital::Body<MAPTYPE> &body){return get_value((Vector<MAPTYPE>)body.axis);},
-            [](orbital::Body<MAPTYPE> &body, UnitVector<double> axis){body.axis = norm_unit(axis).template cast<MAPTYPE>();}, docs.Body.axis)
+            [](orbital::Body<MAPTYPE> &body, UnitVector<double> axis){
+                body.axis = norm_unit(axis).template cast<MAPTYPE>();
+                body.map_sky.axis(0) = body.axis(0);
+                body.map_sky.axis(1) = body.axis(1);
+                body.map_sky.axis(2) = body.axis(2);
+                body.map_sky.update();
+            }, docs.Body.axis)
 
         .def_property("prot", [](orbital::Body<MAPTYPE> &body){return get_value(body.prot) / DAY;},
             [](orbital::Body<MAPTYPE> &body, double prot){body.prot = MAPTYPE(prot * DAY); body.reset();}, docs.Body.prot)
@@ -704,7 +739,7 @@ void add_Star(py::class_<orbital::Star<MAPTYPE>>& PyStar, const docstrings::docs
                 // User provided a single index
                 int l = py::cast<int>(index);
                 double value = py::cast<double>(coeff);
-                star.ldmap.set_coeff(l, MAPTYPE(value));
+                star.ldmap.setCoeff(l, MAPTYPE(value));
             } else if (py::isinstance<py::slice>(index)) {
                 // User provided a slice of some sort
                 size_t start, stop, step, slicelength;
@@ -735,7 +770,7 @@ void add_Star(py::class_<orbital::Star<MAPTYPE>>& PyStar, const docstrings::docs
                 if (py::isinstance<py::int_>(index)) {
                     // User provided a single index
                     int l = py::cast<int>(index);
-                    return py::cast(get_value(star.ldmap.get_coeff(l)));
+                    return py::cast(get_value(star.ldmap.getCoeff(l)));
                 } else if (py::isinstance<py::slice>(index)) {
                     // User provided a slice of some sort
                     size_t start, stop, step, slicelength;
@@ -792,7 +827,7 @@ void add_Planet(py::class_<orbital::Planet<MAPTYPE>>& PyPlanet, const docstrings
                 } catch (const char* msg) {
                    throw errors::BadLMIndex();
                 }
-                planet.map.set_coeff(l, m, MAPTYPE(value));
+                planet.map.setCoeff(l, m, MAPTYPE(value));
             } else if (py::isinstance<py::slice>(index)) {
                 // User provided a slice of some sort
                 size_t start, stop, step, slicelength;
@@ -829,7 +864,7 @@ void add_Planet(py::class_<orbital::Planet<MAPTYPE>>& PyPlanet, const docstrings
                   } catch (const char* msg) {
                       throw errors::BadLMIndex();
                   }
-                  return py::cast(get_value(planet.map.get_coeff(l, m)));
+                  return py::cast(get_value(planet.map.getCoeff(l, m)));
               } else if (py::isinstance<py::slice>(index)) {
                   // User provided a slice of some sort
                   size_t start, stop, step, slicelength;

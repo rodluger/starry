@@ -16,7 +16,7 @@ def show(I, res=300, cmap="plasma"):
     pl.show()
 
 
-def animate(I, u=[0, 1, 0], res=300, cmap="plasma"):
+def animate(I, res=300, cmap="plasma"):
     """Animate the map as it rotates about the axis `u`."""
     fig, ax = pl.subplots(1, figsize=(3, 3))
     img = ax.imshow(I[0], origin="lower", interpolation="none", cmap=cmap,

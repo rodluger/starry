@@ -55,9 +55,10 @@ def earth_eclipse(lmax=20):
     res = 100
     ax_im = [pl.subplot2grid((7, nim), (0, n)) for n in range(nim)]
     x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
+    m.axis = [0, 1, 0]
     for n in range(nim):
         i = int(np.linspace(0, npts - 1, nim)[n])
-        I = [m.evaluate(axis=[0, 1, 0], theta=0, x=x[j], y=y[j])
+        I = [m.evaluate(theta=0, x=x[j], y=y[j])
              for j in range(res)]
         ax_im[n].imshow(I, origin="lower", interpolation="none", cmap='plasma',
                         extent=(-1, 1, -1, 1))
