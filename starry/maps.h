@@ -1,10 +1,6 @@
 /**
 Defines the surface map class.
 
-TODO: - Make everything protected and implement friend functions!
-      - All I/O should happen through set and get methods.
-      - Be careful when setting the `axis` within C++.
-      - Put vectorization in here! Handle grad stuff in here, too.
 */
 
 #ifndef _STARRY_MAPS_H_
@@ -32,15 +28,6 @@ namespace maps {
     using rotation::computeR;
     using solver::Greens;
     using minimize::Minimizer;
-
-    /* TODO: Forward-declare our friends!
-    namespace orbital {
-        template <class T> class Body;
-        template <class T> class System;
-        template <class T> class Star;
-        template <class T> class Planet;
-    }
-    */
 
     // Constant matrices/vectors
     template <class T>
@@ -112,16 +99,6 @@ namespace maps {
     // ****************************
     template <class T>
     class Map {
-
-            /* TODO: Let's make C and G protected
-               and expose only rT and sT to the outside.
-               More protected stuff, perhaps Y00_is_unity?
-               Add a setter and getter for the axis.
-            friend class orbital::Body<T>;
-            friend class orbital::System<T>;
-            friend class orbital::Star<T>;
-            friend class orbital::Planet<T>;
-            */
 
         public:
 
