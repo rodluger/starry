@@ -18,6 +18,7 @@ Spherical harmonic, polynomial, and Green's basis utilities.
 
 namespace basis {
 
+    using namespace utils;
     using std::abs;
 
     // Contraction coefficient for the Ylms
@@ -238,11 +239,11 @@ namespace basis {
         Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
         solver.compute(A2Inv);
         if (solver.info() != Eigen::Success) {
-            throw errors::SparseFail();
+            throw errors::LinearAlgebraError("Error computing the change of basis matrix `A2`.");
         }
         A = solver.solve(A1);
         if (solver.info() != Eigen::Success) {
-            throw errors::SparseFail();
+            throw errors::LinearAlgebraError("Error computing the change of basis matrix `A1`.");
         }
 
         return;

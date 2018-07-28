@@ -20,14 +20,9 @@ PYBIND11_MODULE(starry2, m) {
 
     // starry
     docs<double> docs_starry;
-    add_starry(m, docs_starry);
+    pybind_interface::add_starry(m, docs_starry);
 
     /*
-    // starry.grad
-    docs<Grad> docs_grad;
-    auto mgrad = m.def_submodule("grad");
-    add_starry(mgrad, docs_grad);
-
     // starry.multi
     docs<Multi> docs_multi;
     auto mmulti = m.def_submodule("multi");

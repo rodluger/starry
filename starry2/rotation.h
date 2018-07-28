@@ -15,16 +15,18 @@ from the Wigner-D matrices for complex spherical harmonics.
 
 #include <cmath>
 #include <Eigen/Core>
-#include "constants.h"
 #include "utils.h"
 #include "tables.h"
 
 namespace rotation {
 
+    using namespace utils;
     using std::abs;
+    using std::max;
 
     /**
-    Axis-angle rotation matrix, used to rotate vectors around.
+    Axis-angle rotation matrix, used to rotate Cartesian
+    vectors around in 3D space.
 
     */
     template <typename T>
@@ -44,13 +46,294 @@ namespace rotation {
         return R;
     }
 
+    /**
+    Rotation matrix class for the spherical harmonics.
+
+    */
+    template <class T>
+    class Wigner {
+
+        const int lmax;
+        const int N;
+        const T tol;
+
+        // References to the base map and the rotation axis
+        Vector<T>& y;
+        UnitVector<T>& axis;
+
+        // The actual Wigner matrices
+        Matrix<T>* D;
+        Matrix<T>* R;
+        Matrix<T>* RInv;
+
+        // `zhat` rotation params
+        Vector<T> cosnt;                            /**< Vector of cos(n theta) values */
+        Vector<T> sinnt;                            /**< Vector of sin(n theta) values */
+        Vector<T> cosmt;                            /**< Vector of cos(m theta) values */
+        Vector<T> sinmt;                            /**< Vector of sin(m theta) values */
+        Vector<T> yrev;                             /**< Degree-wise reverse of the spherical harmonic map */
+
+        // `zeta` transform params
+        T cos_zeta, sin_zeta;                       /**< Angle between the axis of rotation and `zhat` */
+        UnitVector<T> axis_zeta;                    /**< Axis of rotation to align the rotation axis with `zhat` */
+        Vector<T> y_zeta;                           /**< The base map in the `zeta` frame */
+        Vector<T> y_zeta_rot;                       /**< The base map in the `zeta` frame after a `zhat` rotation */
+
+        // Methods
+        inline void rotar(T& c1, T& s1, T& c2, T& s2, T& c3, T& s3);
+        inline void dlmn(int l, T& s1, T& c1, T& c2, T& tgbet2, T& s3, T& c3);
+        inline void computeR(const UnitVector<T>& axis, const T& costheta, const T& sintheta);
+        inline void rotatez(const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout);
+
+    public:
+
+        // TODO Make protected and make Map a friend
+        inline void update();
+        inline void rotate(const T& costheta, const T& sintheta, Vector<T>& yout);
+        inline void rotate(const T& costheta, const T& sintheta);
+
+        // Constructor: allocate the matrices
+        Wigner(int lmax, Vector<T>& y, UnitVector<T>& axis) :
+            lmax(lmax), N((lmax + 1) * (lmax + 1)),
+            tol(10 * mach_eps<T>()), y(y), axis(axis) {
+
+            // Allocate the Wigner matrices
+            D = new Matrix<T>[lmax + 1];
+            R = new Matrix<T>[lmax + 1];
+            RInv = new Matrix<T>[lmax + 1];
+            for (int l = 0; l < lmax + 1; l++) {
+                D[l].resize(2 * l + 1, 2 * l + 1);
+                R[l].resize(2 * l + 1, 2 * l + 1);
+                RInv[l].resize(2 * l + 1, 2 * l + 1);
+            }
+
+            // Initialize our z rotation vectors
+            cosnt.resize(max(2, lmax + 1));
+            cosnt(0) = 1.0;
+            sinnt.resize(max(2, lmax + 1));
+            sinnt(0) = 0.0;
+            cosmt.resize(N);
+            sinmt.resize(N);
+            yrev.resize(N);
+
+            // The base map in the `zeta` frame
+            y_zeta.resize(N);
+
+            // Initialize!
+            update();
+
+        }
+
+        // Destructor: free the matrices
+        ~Wigner() {
+            delete [] D;
+            delete [] R;
+            delete [] RInv;
+        }
+
+    };
+
+    // Rotate the base map given `costheta` and `sintheta`
+    template <class T>
+    inline void Wigner<T>::rotate(const T& costheta, const T& sintheta, Vector<T>& yout) {
+
+        // Rotate `yzeta` about `zhat` and store in `yzeta_rot`;
+        rotatez(costheta, sintheta, y_zeta, y_zeta_rot);
+
+        // Rotate out of the `zeta` frame
+        for (int l = 0; l < lmax + 1; l++) {
+            yout.segment(l * l, 2 * l + 1) = RInv[l] * y_zeta_rot.segment(l * l, 2 * l + 1);
+        }
+
+    }
+
+    /**
+    Update the zeta rotation matrix and the base map
+    in the zeta frame whenever the map coeffs or the axis change.
+
+    */
+    template <class T>
+    inline void Wigner<T>::update() {
+
+       // Compute the rotation transformation into and out of the `zeta` frame
+       cos_zeta = axis(2);
+       sin_zeta = sqrt(1 - axis(2) * axis(2));
+       T norm = sqrt(axis(0) * axis(0) + axis(1) * axis(1));
+       if (abs(norm) < tol) {
+           // The rotation axis is zhat, so our zeta transform
+           // is just the identity matrix.
+           for (int l = 0; l < lmax + 1; l++) {
+               if (axis(2) > 0) {
+                   R[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+                   RInv[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+               } else {
+                   R[l] = -Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+                   RInv[l] = -Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+               }
+           }
+       } else {
+           // We need to compute the actual Wigner matrices
+           axis_zeta(0) = axis(1) / norm;
+           axis_zeta(1) = -axis(0) / norm;
+           axis_zeta(2) = 0;
+           computeR(axis_zeta, cos_zeta, sin_zeta);
+       }
+
+       // Update the map in the `zeta` frame
+       for (int l = 0; l < lmax + 1; l++) {
+           y_zeta.segment(l * l, 2 * l + 1) = R[l] * y.segment(l * l, 2 * l + 1);
+       }
+
+    }
+
+    /**
+    Perform a fast rotation about the z axis, skipping the Wigner matrix computation.
+    See https://github.com/rodluger/starry/issues/137#issuecomment-405975092
+
+    */
+    template <class T>
+    inline void Wigner<T>::rotatez(const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout) {
+        cosnt(1) = costheta;
+        sinnt(1) = sintheta;
+        for (int n = 2; n < lmax + 1; n++) {
+            cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
+            sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
+        }
+        int n = 0;
+        for (int l = 0; l < lmax + 1; l++) {
+            for (int m = -l; m < 0; m++) {
+                cosmt(n) = cosnt(-m);
+                sinmt(n) = -sinnt(-m);
+                yrev(n) = yin(l * l + l - m);
+                n++;
+            }
+            for (int m = 0; m < l + 1; m++) {
+                cosmt(n) = cosnt(m);
+                sinmt(n) = sinnt(m);
+                yrev(n) = yin(l * l + l - m);
+                n++;
+            }
+        }
+        yout = cosmt.cwiseProduct(yin) - sinmt.cwiseProduct(yrev);
+    }
+
+    /**
+    Compute the axis-angle rotation matrix for real spherical harmonics up to order lmax.
+
+    */
+    template <class T>
+    inline void Wigner<T>::computeR(const UnitVector<T>& axis, const T& costheta, const T& sintheta) {
+
+        // Trivial case
+        if (lmax == 0) {
+            R[0](0, 0) = 1;
+            RInv[0](0, 0) = 1;
+            return;
+        }
+
+        // Construct the axis-angle rotation matrix R_A
+        T RA01 = axis(0) * axis(1) * (1 - costheta) - axis(2) * sintheta;
+        T RA02 = axis(0) * axis(2) * (1 - costheta) + axis(1) * sintheta;
+        T RA11 = costheta + axis(1) * axis(1) * (1 - costheta);
+        T RA12 = axis(1) * axis(2) * (1 - costheta) - axis(0) * sintheta;
+        T RA20 = axis(2) * axis(0) * (1 - costheta) - axis(1) * sintheta;
+        T RA21 = axis(2) * axis(1) * (1 - costheta) + axis(0) * sintheta;
+        T RA22 = costheta + axis(2) * axis(2) * (1 - costheta);
+
+        // Determine the Euler angles
+        T cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
+        T norm1, norm2;
+        if ((RA22 < -1 + tol) && (RA22 > -1 - tol)) {
+            cosbeta = RA22; // = -1
+            sinbeta = 1 + RA22; // = 0
+            cosgamma = RA11;
+            singamma = RA01;
+            cosalpha = -RA22; // = 1
+            sinalpha = 1 + RA22; // = 0
+        } else if ((RA22 < 1 + tol) && (RA22 > 1 - tol)) {
+            cosbeta = RA22; // = 1
+            sinbeta = 1 - RA22; // = 0
+            cosgamma = RA11;
+            singamma = -RA01;
+            cosalpha = RA22; // = 1
+            sinalpha = 1 - RA22; // = 0
+        } else {
+            cosbeta = RA22;
+            sinbeta = sqrt(1 - cosbeta * cosbeta);
+            norm1 = sqrt(RA20 * RA20 + RA21 * RA21);
+            norm2 = sqrt(RA02 * RA02 + RA12 * RA12);
+            cosgamma = -RA20 / norm1;
+            singamma = RA21 / norm1;
+            cosalpha = RA02 / norm2;
+            sinalpha = RA12 / norm2;
+        }
+
+        // Call the eulerian rotation function
+        rotar(cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma);
+
+        // Set the inverse transform
+        for (int l = 0; l < lmax + 1; l++)
+            RInv[l] = R[l].transpose();
+
+        return;
+
+    }
+
+    /**
+    Compute the eulerian rotation matrix for real spherical
+    harmonics up to order lmax.
+
+    */
+    template <class T>
+    inline void Wigner<T>::rotar(T& c1, T& s1, T& c2, T& s2, T& c3, T& s3) {
+        T cosag, COSAMG, sinag, SINAMG, tgbet2;
+
+        // Compute the initial matrices D0, R0, D1 and R1
+        D[0](0, 0) = 1.;
+        R[0](0, 0) = 1.;
+        D[1](2, 2) = 0.5 * (1. + c2);
+        D[1](2, 1) = -s2 * tables::invsqrt_int<T>(2);
+        D[1](2, 0) = 0.5 * (1. - c2);
+        D[1](1, 2) = -D[1](2, 1);
+        D[1](1, 1) = D[1](2, 2) - D[1](2, 0);
+        D[1](1, 0) = D[1](2, 1);
+        D[1](0, 2) = D[1](2, 0);
+        D[1](0, 1) = D[1](1, 2);
+        D[1](0, 0) = D[1](2, 2);
+        cosag = c1 * c3 - s1 * s3;
+        COSAMG = c1 * c3 + s1 * s3;
+        sinag = s1 * c3 + c1 * s3;
+        SINAMG = s1 * c3 - c1 * s3;
+        R[1](1, 1) = D[1](1, 1);
+        R[1](2, 1) = tables::sqrt_int<T>(2) * D[1](1, 2) * c1;
+        R[1](0, 1) = tables::sqrt_int<T>(2) * D[1](1, 2) * s1;
+        R[1](1, 2) = tables::sqrt_int<T>(2) * D[1](2, 1) * c3;
+        R[1](1, 0) = -tables::sqrt_int<T>(2) * D[1](2, 1) * s3;
+        R[1](2, 2) = D[1](2, 2) * cosag - D[1](2, 0) * COSAMG;
+        R[1](2, 0) = -D[1](2, 2) * sinag - D[1](2, 0) * SINAMG;
+        R[1](0, 2) = D[1](2, 2) * sinag - D[1](2, 0) * SINAMG;
+        R[1](0, 0) = D[1](2, 2) * cosag + D[1](2, 0) * COSAMG;
+
+        // The remaining matrices are calculated using symmetry and
+        // and recurrence relations
+        if (abs(s2) < tol)
+            tgbet2 = s2; // = 0
+        else
+            tgbet2 = (1. - c2) / s2;
+
+        for (int l=2; l<lmax+1; l++)
+            dlmn(l, s1, c1, c2, tgbet2, s3, c3);
+
+        return;
+
+    }
 
     /**
     Compute the Wigner D matrices.
 
     */
-    template <typename T>
-    inline void dlmn(int l, T& s1, T& c1, T& c2, T& tgbet2, T& s3, T& c3, Matrix<T>* D, Matrix<T>* R) {
+    template <class T>
+    inline void Wigner<T>::dlmn(int l, T& s1, T& c1, T& c2, T& tgbet2, T& s3, T& c3) {
         int iinf = 1 - l;
         int isup = -iinf;
         int m, mp;
@@ -165,145 +448,6 @@ namespace rotation {
 
         return;
     }
-
-    /**
-    Compute the eulerian rotation matrix for real spherical
-    harmonics up to order lmax.
-
-    */
-    template <typename T>
-    inline void rotar(int lmax, T& c1, T& s1, T& c2, T& s2, T& c3, T& s3, Matrix<T>* D, Matrix<T>* R, T tol=10 * mach_eps<T>()) {
-        T cosag, COSAMG, sinag, SINAMG, tgbet2;
-
-        // Compute the initial matrices D0, R0, D1 and R1
-        D[0](0, 0) = 1.;
-        R[0](0, 0) = 1.;
-        D[1](2, 2) = 0.5 * (1. + c2);
-        D[1](2, 1) = -s2 * tables::invsqrt_int<T>(2);
-        D[1](2, 0) = 0.5 * (1. - c2);
-        D[1](1, 2) = -D[1](2, 1);
-        D[1](1, 1) = D[1](2, 2) - D[1](2, 0);
-        D[1](1, 0) = D[1](2, 1);
-        D[1](0, 2) = D[1](2, 0);
-        D[1](0, 1) = D[1](1, 2);
-        D[1](0, 0) = D[1](2, 2);
-        cosag = c1 * c3 - s1 * s3;
-        COSAMG = c1 * c3 + s1 * s3;
-        sinag = s1 * c3 + c1 * s3;
-        SINAMG = s1 * c3 - c1 * s3;
-        R[1](1, 1) = D[1](1, 1);
-        R[1](2, 1) = tables::sqrt_int<T>(2) * D[1](1, 2) * c1;
-        R[1](0, 1) = tables::sqrt_int<T>(2) * D[1](1, 2) * s1;
-        R[1](1, 2) = tables::sqrt_int<T>(2) * D[1](2, 1) * c3;
-        R[1](1, 0) = -tables::sqrt_int<T>(2) * D[1](2, 1) * s3;
-        R[1](2, 2) = D[1](2, 2) * cosag - D[1](2, 0) * COSAMG;
-        R[1](2, 0) = -D[1](2, 2) * sinag - D[1](2, 0) * SINAMG;
-        R[1](0, 2) = D[1](2, 2) * sinag - D[1](2, 0) * SINAMG;
-        R[1](0, 0) = D[1](2, 2) * cosag + D[1](2, 0) * COSAMG;
-
-        // The remaining matrices are calculated using symmetry and
-        // and recurrence relations
-        if (abs(s2) < tol)
-            tgbet2 = s2; // = 0
-        else
-            tgbet2 = (1. - c2) / s2;
-
-        for (int l=2; l<lmax+1; l++)
-            dlmn(l, s1, c1, c2, tgbet2, s3, c3, D, R);
-
-        return;
-
-    }
-
-    /**
-    Compute the axis-angle rotation matrix for real spherical
-    harmonics up to order lmax.
-
-    */
-    template <typename T>
-    void computeR(int lmax, const Eigen::Matrix<T, 3, 1>& axis, const T& costheta, const T& sintheta, Matrix<T>* D, Matrix<T>* R, T tol=10 * mach_eps<T>()) {
-
-        // Trivial case
-        if (lmax == 0) {
-            R[0](0, 0) = 1;
-            return;
-        }
-
-        // Construct the axis-angle rotation matrix R_A
-        T RA01 = axis(0) * axis(1) * (1 - costheta) - axis(2) * sintheta;
-        T RA02 = axis(0) * axis(2) * (1 - costheta) + axis(1) * sintheta;
-        T RA11 = costheta + axis(1) * axis(1) * (1 - costheta);
-        T RA12 = axis(1) * axis(2) * (1 - costheta) - axis(0) * sintheta;
-        T RA20 = axis(2) * axis(0) * (1 - costheta) - axis(1) * sintheta;
-        T RA21 = axis(2) * axis(1) * (1 - costheta) + axis(0) * sintheta;
-        T RA22 = costheta + axis(2) * axis(2) * (1 - costheta);
-
-        // Determine the Euler angles
-        T cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
-        T norm1, norm2;
-        if ((RA22 < -1 + tol) && (RA22 > -1 - tol)) {
-            cosbeta = RA22; // = -1
-            sinbeta = 1 + RA22; // = 0
-            cosgamma = RA11;
-            singamma = RA01;
-            cosalpha = -RA22; // = 1
-            sinalpha = 1 + RA22; // = 0
-        } else if ((RA22 < 1 + tol) && (RA22 > 1 - tol)) {
-            cosbeta = RA22; // = 1
-            sinbeta = 1 - RA22; // = 0
-            cosgamma = RA11;
-            singamma = -RA01;
-            cosalpha = RA22; // = 1
-            sinalpha = 1 - RA22; // = 0
-        } else {
-            cosbeta = RA22;
-            sinbeta = sqrt(1 - cosbeta * cosbeta);
-            norm1 = sqrt(RA20 * RA20 + RA21 * RA21);
-            norm2 = sqrt(RA02 * RA02 + RA12 * RA12);
-            cosgamma = -RA20 / norm1;
-            singamma = RA21 / norm1;
-            cosalpha = RA02 / norm2;
-            sinalpha = RA12 / norm2;
-        }
-
-        // Call the eulerian rotation function
-        rotar(lmax, cosalpha, sinalpha, cosbeta,
-              sinbeta, cosgamma, singamma, D, R, tol);
-
-        return;
-
-    }
-
-    // Rotation matrix class
-    template <class T>
-    class Wigner {
-
-        int lmax;
-
-    public:
-
-        Matrix<T>* Complex;
-        Matrix<T>* Real;
-
-        // Constructor: allocate the matrices
-        Wigner(int lmax) : lmax(lmax) {
-
-            Complex = new Matrix<T>[lmax + 1];
-            Real = new Matrix<T>[lmax + 1];
-            for (int l = 0; l < lmax + 1; l++) {
-                Complex[l].resize(2 * l + 1, 2 * l + 1);
-                Real[l].resize(2 * l + 1, 2 * l + 1);
-            }
-
-        }
-
-        // Destructor: free the matrices
-        ~Wigner() {
-            delete [] Complex;
-            delete [] Real;
-        }
-
-    };
 
 }; // namespace rotation
 

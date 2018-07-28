@@ -10,9 +10,8 @@ using good old template metaprogramming (>= C++14)
 #include <cmath>
 #include <boost/math/special_functions/factorials.hpp>
 #include <boost/math/special_functions/gamma.hpp>
-#include <cstddef>
-#include <array>
 #include "errors.h"
+#include "utils.h"
 
 // Square root of pi at double precision
 #define SQRTPI 1.772453850905516027298167483341
@@ -633,11 +632,13 @@ namespace const_tables {
 
 namespace tables {
 
+    using namespace utils;
+
     // Square root of n
     template <typename T>
     inline T sqrt_int(int n) {
         if (n < 0)
-            throw errors::SqrtNegativeNumber();
+            throw errors::ValueError("Attempt to take square root of a negative number.");
         else if (n > MAXSQRT)
             return sqrt(T(n));
         else
@@ -647,7 +648,7 @@ namespace tables {
     template <>
     inline Multi sqrt_int(int n) {
         if (n < 0)
-            throw errors::SqrtNegativeNumber();
+            throw errors::ValueError("Attempt to take square root of a negative number.");
         else
             return sqrt(Multi(n));
     }
@@ -656,7 +657,7 @@ namespace tables {
     template <typename T>
     inline T invsqrt_int(int n) {
         if (n < 0)
-            throw errors::SqrtNegativeNumber();
+            throw errors::ValueError("Attempt to take square root of a negative number.");
         else if (n > MAXSQRT)
             return 1.0 / sqrt(T(n));
         else
@@ -666,7 +667,7 @@ namespace tables {
     template <>
     inline Multi invsqrt_int(int n) {
         if (n < 0)
-            throw errors::SqrtNegativeNumber();
+            throw errors::ValueError("Attempt to take square root of a negative number.");
         else
             return 1.0 / sqrt(Multi(n));
     }
