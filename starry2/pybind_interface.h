@@ -121,11 +121,11 @@ namespace pybind_interface {
 
             .def_property_readonly("lmax", [](maps::Map<MAPTYPE> &map){return map.lmax;}, docs.Map.lmax)
 
-            .def_property_readonly("y", [](maps::Map<MAPTYPE> &map){return map.y;}, docs.Map.y)
+            .def_property_readonly("y", [](maps::Map<MAPTYPE> &map){return map.getY();}, docs.Map.y)
 
-            .def_property_readonly("p", [](maps::Map<MAPTYPE> &map){return map.p;}, docs.Map.p)
+            .def_property_readonly("p", [](maps::Map<MAPTYPE> &map){return map.getP();}, docs.Map.p)
 
-            .def_property_readonly("g", [](maps::Map<MAPTYPE> &map){return map.g;}, docs.Map.g)
+            .def_property_readonly("g", [](maps::Map<MAPTYPE> &map){return map.getG();}, docs.Map.g)
 
             /*
             .def_property_readonly("s", [](maps::Map<MAPTYPE> &map){

@@ -59,33 +59,41 @@ namespace maps {
 
             const int lmax;                             /**< The highest degree of the map */
             const int N;                                /**< The number of map coefficients */
+
+        // TODO: MAKE PRIVATE
+
             Vector<T> y;                                /**< The map coefficients in the spherical harmonic basis */
             Vector<T> p;                                /**< The map coefficients in the polynomial basis */
             Vector<T> g;                                /**< The map coefficients in the Green's basis */
+
+        private:
+
             UnitVector<T> axis;                         /**< The axis of rotation for the map */
-            bool Y00_is_unity;                          /**< Flag: are we fixing the constant map coeff at unity? */
             std::map<string, Vector<double>> gradient;  /**< Dictionary of derivatives */
             Vector<T> dFdy;                             /**< Derivative of the flux w/ respect to the map coeffs */
             ConstantMatrices<T> C;                      /**< Constant matrices used throughout the code */
-
-            Vector<T> tmp_vec;
-            Vector<T>* tmp_vec_ptr;
-
-        protected:
-
-            Wigner<T> W;
+            Wigner<T> W;                                /**< The class controlling rotations */
+            bool Y00_is_unity;                          /**< Flag: are we fixing the constant map coeff at unity? */
+            Vector<T> tmp_vec;                          /**< A temporary surface map vector. */
+            Vector<T>* tmp_vec_ptr;                     /**< A temporary pointer to a surface map vector. */
 
         public:
 
-            // Constructor
-            Map(int lmax=2) : lmax(lmax), N((lmax + 1) * (lmax + 1)),
-                              y(Vector<T>::Zero(N)), axis(yhat<T>()),
-                              C(lmax), W(lmax, (*this).y, (*this).axis) {
+            /**
+            Instantiate a `Map`.
+
+            */
+            Map(int lmax=2, bool Y00_is_unity=false) :
+                lmax(lmax),
+                N((lmax + 1) * (lmax + 1)),
+                y(Vector<T>::Zero(N)),
+                axis(yhat<T>()),
+                C(lmax),
+                W(lmax, (*this).y, (*this).axis),
+                Y00_is_unity(Y00_is_unity) {
 
                 // Initialize
                 dFdy = Vector<T>::Zero(N);
-
-                Y00_is_unity = false;
                 update();
 
             }
@@ -99,6 +107,9 @@ namespace maps {
             const T& getCoeff(int l, int m) const;
             void setAxis(const UnitVector<T>& new_axis);
             const UnitVector<T>& getAxis() const;
+            const Vector<T>& getY() const;
+            const Vector<T>& getP() const;
+            const Vector<T>& getG() const;
             std::string __repr__();
 
             // Rotate the base map
@@ -188,6 +199,24 @@ namespace maps {
     template <class T>
     const UnitVector<T>& Map<T>::getAxis() const {
         return axis;
+    }
+
+    // Get the spherical harmonic vector
+    template <class T>
+    const Vector<T>& Map<T>::getY() const {
+        return y;
+    }
+
+    // Get the polynomial vector
+    template <class T>
+    const Vector<T>& Map<T>::getP() const {
+        return p;
+    }
+
+    // Get the Green's vector
+    template <class T>
+    const Vector<T>& Map<T>::getG() const {
+        return g;
     }
 
     // Return a human-readable map string

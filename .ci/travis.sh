@@ -24,6 +24,7 @@ if ! command -v conda > /dev/null; then
 fi
 
 # Install the current version of starry from conda-forge
+conda config --set always_yes yes;
 conda install -c conda-forge starry
 
 # Display some info
