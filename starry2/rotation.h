@@ -84,13 +84,13 @@ namespace rotation {
         inline void dlmn(int l, T& s1, T& c1, T& c2, T& tgbet2, T& s3, T& c3);
         inline void computeR(const UnitVector<T>& axis, const T& costheta, const T& sintheta);
         inline void rotatez(const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout);
+        inline void rotate(const T& costheta, const T& sintheta);
 
     public:
 
-        // TODO Make protected and make Map a friend
+        // These methods are accessed by the `Map` class
         inline void update();
         inline void rotate(const T& costheta, const T& sintheta, Vector<T>& yout);
-        inline void rotate(const T& costheta, const T& sintheta);
 
         // Constructor: allocate the matrices
         Wigner(int lmax, Vector<T>& y, UnitVector<T>& axis) :

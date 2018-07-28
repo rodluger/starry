@@ -1,38 +1,38 @@
 """Test the rotation matrices."""
-from starry2 import SurfaceMap
+from starry2 import Map
 import numpy as np
 
 
 def test_rotations():
     """Test some elementary rotations."""
     # Instantiate
-    m = SurfaceMap(1)
-    m.set_coeff(1, 0, 1)
+    m = Map(1)
+    m[1, 0] = 1
     assert np.allclose(m.y, np.array([0, 0, 1, 0]))
 
     # Elemental rotations
     m.axis = [1, 0, 0]
-    m.rotate(-90 * np.pi / 180)
+    m.rotate(-90)
     assert np.allclose(m.y, np.array([0, 1, 0, 0]))
     assert np.allclose(m.p, np.array([0, 0, 0,
                                       np.sqrt(3 / (4 * np.pi))]))
 
     m.axis = [0, 0, 1]
-    m.rotate(-90 * np.pi / 180)
+    m.rotate(-90)
     assert np.allclose(m.y, np.array([0, 0, 0, 1]))
     assert np.allclose(m.p, np.array([0,
                                       np.sqrt(3 / (4 * np.pi)), 0, 0]))
     m.axis = [0, 1, 0]
-    m.rotate(-90 * np.pi / 180)
+    m.rotate(-90)
     assert np.allclose(m.y, np.array([0, 0, 1, 0]))
     assert np.allclose(m.p, np.array([0, 0,
                                       np.sqrt(3 / (4 * np.pi)), 0]))
 
     # A more complex rotation
-    m = SurfaceMap(5)
+    m = Map(5)
     m[:] = 1
     m.axis = [1, 2, 3]
-    m.rotate(60 * np.pi / 180)
+    m.rotate(60)
     benchmark = np.array([1.,  1.39148148,  0.91140212,  0.48283069,
                           1.46560344, 0.68477955,  0.30300625,  1.33817773,
                           -0.70749636, 0.66533701, 1.5250326,  0.09725931,

@@ -96,16 +96,16 @@ namespace maps {
 
             // I/O functions
             void setCoeff(int l, int m, T coeff);
-            T getCoeff(int l, int m);
+            const T& getCoeff(int l, int m) const;
             void setAxis(const UnitVector<T>& new_axis);
-            UnitVector<T> getAxis();
-            std::string repr();
+            const UnitVector<T>& getAxis() const;
+            std::string __repr__();
 
             // Rotate the base map
-            void rotate(const T& theta);
+            void rotate(const T& theta_deg);
 
             // Get the intensity of the map at a point
-            T evaluate(const T& theta=0, const T& x0=0, const T& y0=0);
+            inline T evaluate(const T& theta=0, const T& x0=0, const T& y0=0);
 
     };
 
@@ -161,10 +161,11 @@ namespace maps {
 
     // Get the (l, m) coefficient
     template <class T>
-    T Map<T>::getCoeff(int l, int m) {
+    const T& Map<T>::getCoeff(int l, int m) const {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
             return y(l * l + l + m);
-        else throw errors::IndexError("Invalid value for `l` and/or `m`.");
+        else
+            throw errors::IndexError("Invalid value for `l` and/or `m`.");
     }
 
     // TODO: Method to set multiple coeffs at once with less `update` overhead.
@@ -185,14 +186,13 @@ namespace maps {
 
     // Return a copy of the axis
     template <class T>
-    UnitVector<T> Map<T>::getAxis() {
-        UnitVector<T> axis_out = axis;
-        return axis_out;
+    const UnitVector<T>& Map<T>::getAxis() const {
+        return axis;
     }
 
     // Return a human-readable map string
     template <class T>
-    std::string Map<T>::repr() {
+    std::string Map<T>::__repr__() {
         int n = 0;
         int nterms = 0;
         char buf[30];
@@ -239,10 +239,11 @@ namespace maps {
     /*   ROTATIONS   */
     /* ------------- */
 
-    // Rotate the base map in-place
+    // Rotate the base map in-place given `theta` in **degrees**
     template <class T>
-    void Map<T>::rotate(const T& theta) {
-        W.rotate(cos(theta), sin(theta), y);
+    void Map<T>::rotate(const T& theta_deg) {
+        T theta_rad = theta_deg * (PI<T>() / 180.);
+        W.rotate(cos(theta_rad), sin(theta_rad), y);
         update();
     }
 
@@ -254,7 +255,7 @@ namespace maps {
 
     // Evaluate our map at a given (x0, y0) coordinate
     template <class T>
-    T Map<T>::evaluate(const T& theta, const T& x0, const T& y0) {
+    inline T Map<T>::evaluate(const T& theta, const T& x0, const T& y0) {
 
         // Rotate the map into view
         if (theta == 0) {

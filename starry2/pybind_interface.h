@@ -112,41 +112,20 @@ namespace pybind_interface {
                     }
                 })
 
-            .def("get_coeff", [](maps::Map<MAPTYPE> &map, int l, int m) -> double {
-                    return map.getCoeff(l, m);
-                }, docs.Map.get_coeff, "l"_a, "m"_a)
-
-            .def("set_coeff", [](maps::Map<MAPTYPE> &map, int l, int m, double coeff){
-                    map.setCoeff(l, m, MAPTYPE(coeff));
-                }, docs.Map.set_coeff, "l"_a, "m"_a, "coeff"_a)
-
             .def_property("axis",
-                [](maps::Map<MAPTYPE> &map) {
-                    UnitVector<double> axis;
-                    axis(0) = map.axis(0);
-                    axis(1) = map.axis(1);
-                    axis(2) = map.axis(2);
-                    return axis;
-                },
-                [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis){
-                    map.setAxis(axis);
-                }, docs.Map.axis)
+                [](maps::Map<MAPTYPE> &map) {return map.getAxis();},
+                [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis){map.setAxis(axis);},
+                docs.Map.axis)
 
             .def("reset", &maps::Map<MAPTYPE>::reset, docs.Map.reset)
 
             .def_property_readonly("lmax", [](maps::Map<MAPTYPE> &map){return map.lmax;}, docs.Map.lmax)
 
-            .def_property_readonly("y", [](maps::Map<MAPTYPE> &map){
-                    return map.y;
-                }, docs.Map.y)
+            .def_property_readonly("y", [](maps::Map<MAPTYPE> &map){return map.y;}, docs.Map.y)
 
-            .def_property_readonly("p", [](maps::Map<MAPTYPE> &map){
-                    return map.p;
-                }, docs.Map.p)
+            .def_property_readonly("p", [](maps::Map<MAPTYPE> &map){return map.p;}, docs.Map.p)
 
-            .def_property_readonly("g", [](maps::Map<MAPTYPE> &map){
-                    return map.g;
-                }, docs.Map.g)
+            .def_property_readonly("g", [](maps::Map<MAPTYPE> &map){return map.g;}, docs.Map.g)
 
             /*
             .def_property_readonly("s", [](maps::Map<MAPTYPE> &map){
@@ -164,12 +143,10 @@ namespace pybind_interface {
                 }, docs.Map.evaluate, "theta"_a=0, "x"_a=0, "y"_a=0)
             */
 
-            // TODO: DEGREES
-            .def("rotate", [](maps::Map<MAPTYPE> &map, double theta){
-                    map.rotate(theta);
-                }, docs.Map.rotate, "theta"_a=0)
+            .def("rotate", &maps::Map<MAPTYPE>::rotate, docs.Map.rotate, "theta"_a=0)
 
-            .def("__repr__", [](maps::Map<MAPTYPE> &map) -> string {return map.repr();});
+            .def("__repr__", &maps::Map<MAPTYPE>::__repr__);
+
 
         add_Map_extras(PyMap, docs);
 
@@ -193,7 +170,7 @@ namespace pybind_interface {
         add_extras(m, docs);
 
         // Surface map class
-        py::class_<maps::Map<MAPTYPE>> PyMap(m, "SurfaceMap", docs.Map.doc);
+        py::class_<maps::Map<MAPTYPE>> PyMap(m, "Map", docs.Map.doc);
         add_Map(PyMap, docs);
 
     }
