@@ -70,6 +70,15 @@ namespace utils {
     }
     template<class T> T mach_eps() { return mach_eps(tag<T>()); }
 
+    // Check if number is even (or doubly, triply, quadruply... even)
+    inline bool is_even(int n, int ntimes=1) {
+        for (int i = 0; i < ntimes; i++) {
+            if ((n % 2) != 0) return false;
+            n /= 2;
+        }
+        return true;
+    }
+
 }; // namespace utils
 
 #endif

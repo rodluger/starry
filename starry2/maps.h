@@ -13,37 +13,16 @@ Defines the surface map class.
 #include "basis.h"
 #include "errors.h"
 #include "utils.h"
+#include "vectorize.h"
 
 namespace maps {
 
     using namespace utils;
+    using namespace vectorize;
     using std::abs;
     using std::string;
     using rotation::Wigner;
-
-    // Constant matrices/vectors
-    template <class T>
-    class ConstantMatrices {
-
-        public:
-
-            const int lmax;
-            Eigen::SparseMatrix<T> A1;
-            Eigen::SparseMatrix<T> A;
-            VectorT<T> rTA1;
-            VectorT<T> rT;
-            Matrix<T> U;
-
-            // Constructor: compute the matrices
-            ConstantMatrices(int lmax) : lmax(lmax) {
-                basis::computeA1(lmax, A1);
-                basis::computeA(lmax, A1, A);
-                //solver::computerT(lmax, rT);
-                //rTA1 = rT * A1;
-                basis::computeU(lmax, U);
-            }
-
-    };
+    using basis::Basis;
 
     // ****************************
     // ----------------------------
@@ -60,18 +39,15 @@ namespace maps {
             const int lmax;                             /**< The highest degree of the map */
             const int N;                                /**< The number of map coefficients */
 
-        // TODO: MAKE PRIVATE
+        private:
 
             Vector<T> y;                                /**< The map coefficients in the spherical harmonic basis */
             Vector<T> p;                                /**< The map coefficients in the polynomial basis */
             Vector<T> g;                                /**< The map coefficients in the Green's basis */
-
-        private:
-
             UnitVector<T> axis;                         /**< The axis of rotation for the map */
             std::map<string, Vector<double>> gradient;  /**< Dictionary of derivatives */
             Vector<T> dFdy;                             /**< Derivative of the flux w/ respect to the map coeffs */
-            ConstantMatrices<T> C;                      /**< Constant matrices used throughout the code */
+            Basis<T> B;                                 /**< Basis transform stuff */
             Wigner<T> W;                                /**< The class controlling rotations */
             bool Y00_is_unity;                          /**< Flag: are we fixing the constant map coeff at unity? */
             Vector<T> tmp_vec;                          /**< A temporary surface map vector. */
@@ -88,7 +64,7 @@ namespace maps {
                 N((lmax + 1) * (lmax + 1)),
                 y(Vector<T>::Zero(N)),
                 axis(yhat<T>()),
-                C(lmax),
+                B(lmax),
                 W(lmax, (*this).y, (*this).axis),
                 Y00_is_unity(Y00_is_unity) {
 
@@ -104,19 +80,22 @@ namespace maps {
 
             // I/O functions
             void setCoeff(int l, int m, T coeff);
+            void setCoeff(const Vector<int>& inds, const Vector<T>& coeffs);
             const T& getCoeff(int l, int m) const;
+            const Vector<T> getCoeff(const Vector<int>& inds);
             void setAxis(const UnitVector<T>& new_axis);
             const UnitVector<T>& getAxis() const;
             const Vector<T>& getY() const;
             const Vector<T>& getP() const;
             const Vector<T>& getG() const;
+            const VectorT<T>& getR() const;
             std::string __repr__();
 
             // Rotate the base map
             void rotate(const T& theta_deg);
 
             // Get the intensity of the map at a point
-            inline T evaluate(const T& theta=0, const T& x0=0, const T& y0=0);
+            inline T evaluate(const T& theta_deg=0, const T& x0=0, const T& y0=0);
 
     };
 
@@ -131,8 +110,8 @@ namespace maps {
     void Map<T>::update() {
 
         // Update the polynomial and Green's map coefficients
-        p = C.A1 * y;
-        g = C.A * y;
+        p = B.A1 * y;
+        g = B.A * y;
 
         // Update the rotation matrix
         W.update();
@@ -170,6 +149,31 @@ namespace maps {
         }
     }
 
+    // Set several coefficients at once using a single index
+    template <class T>
+    void Map<T>::setCoeff(const Vector<int>& inds, const Vector<T>& coeffs) {
+
+        // Ensure sizes match
+        if (inds.size() != coeffs.size())
+            throw errors::IndexError("Size mismatch between `inds` and `coeffs`.");
+
+        // Loop through and set each coeff
+        for (int i = 0; i < inds.size(); i++) {
+            if ((inds(i) == 0) && (Y00_is_unity) && (coeffs(i) != 1))
+                throw errors::ValueError("The Y_{0,0} coefficient is fixed at unity. "
+                                         "You probably want to change the body's "
+                                         "luminosity instead.");
+            else if ((inds(i) < 0) || (inds(i) > N))
+                throw errors::IndexError("Invalid index.");
+            else
+                y(inds(i)) = coeffs(i);
+        }
+
+        // Update stuff
+        update();
+
+    }
+
     // Get the (l, m) coefficient
     template <class T>
     const T& Map<T>::getCoeff(int l, int m) const {
@@ -179,7 +183,18 @@ namespace maps {
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
     }
 
-    // TODO: Method to set multiple coeffs at once with less `update` overhead.
+    // Get several coefficients at once using a single index
+    template <class T>
+    const Vector<T> Map<T>::getCoeff(const Vector<int>& inds) {
+        Vector<T> coeffs(inds.size());
+        for (int i = 0; i < inds.size(); i++) {
+            if ((inds(i) < 0) || (inds(i) > N))
+                throw errors::IndexError("Invalid index.");
+            else
+                coeffs(i) = y(inds(i));
+        }
+        return coeffs;
+    }
 
     // Set the axis
     template <class T>
@@ -217,6 +232,12 @@ namespace maps {
     template <class T>
     const Vector<T>& Map<T>::getG() const {
         return g;
+    }
+
+    // Get the rotation solution vector
+    template <class T>
+    const VectorT<T>& Map<T>::getR() const {
+        return B.rT;
     }
 
     // Return a human-readable map string
@@ -268,6 +289,7 @@ namespace maps {
     /*   ROTATIONS   */
     /* ------------- */
 
+
     // Rotate the base map in-place given `theta` in **degrees**
     template <class T>
     void Map<T>::rotate(const T& theta_deg) {
@@ -284,19 +306,22 @@ namespace maps {
 
     // Evaluate our map at a given (x0, y0) coordinate
     template <class T>
-    inline T Map<T>::evaluate(const T& theta, const T& x0, const T& y0) {
+    inline T Map<T>::evaluate(const T& theta_deg, const T& x0, const T& y0) {
+
+        // Convert to radians
+        T theta_rad = theta_deg * (PI<T>() / 180.);
 
         // Rotate the map into view
-        if (theta == 0) {
+        if (theta_rad == 0) {
             tmp_vec_ptr = &p;
         } else {
-            W.rotate(cos(theta), sin(theta), tmp_vec);
-            tmp_vec = C.A1 * tmp_vec;
+            W.rotate(cos(theta_rad), sin(theta_rad), tmp_vec);
+            tmp_vec = B.A1 * tmp_vec;
             tmp_vec_ptr = &tmp_vec;
         }
 
         // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
+        if (x0 * x0 + y0 * y0 > 1.0) return T(NAN);
 
         int l, m, mu, nu, n = 0;
         T z0 = sqrt(1.0 - x0 * x0 - y0 * y0);

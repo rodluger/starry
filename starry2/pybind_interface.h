@@ -73,11 +73,12 @@ namespace pybind_interface {
                             if (size_t(values.size()) != slicelength)
                                 throw errors::IndexError("Invalid slice length.");
                         }
+                        Vector<int> inds(values.size());
                         for (size_t i = 0; i < slicelength; ++i) {
-                            map.y(start) = MAPTYPE(values(i));
+                            inds(i) = start;
                             start += step;
                         }
-                        map.update();
+                        map.setCoeff(inds, values);
                     } else {
                         throw errors::IndexError("Invalid value for `l` and/or `m`.");
                     }
@@ -97,15 +98,15 @@ namespace pybind_interface {
                     } else if (py::isinstance<py::slice>(index)) {
                         // User provided a slice of some sort
                         size_t start, stop, step, slicelength;
-                        Vector<double> values;
                         py::slice slice = py::cast<py::slice>(index);
                         if(!slice.compute(map.N, &start, &stop, &step, &slicelength))
                             throw pybind11::error_already_set();
-                        Vector<double> res(slicelength);
+                        Vector<int> inds(slicelength);
                         for (size_t i = 0; i < slicelength; ++i) {
-                            res[i] = map.y(start);
+                            inds(i) = start;
                             start += step;
                         }
+                        Vector<double> res = map.getCoeff(inds);
                         return py::cast(res);
                     } else {
                         throw errors::IndexError("Invalid value for `l` and/or `m`.");
@@ -127,20 +128,18 @@ namespace pybind_interface {
 
             .def_property_readonly("g", [](maps::Map<MAPTYPE> &map){return map.getG();}, docs.Map.g)
 
+            .def_property_readonly("r", [](maps::Map<MAPTYPE> &map){return map.getR();}, docs.Map.r)
+
             /*
             .def_property_readonly("s", [](maps::Map<MAPTYPE> &map){
                     return get_value((Vector<MAPTYPE>)map.G.sT);
                 }, docs.Map.s)
-
-            .def_property_readonly("r", [](maps::Map<MAPTYPE> &map){
-                    return get_value((Vector<MAPTYPE>)map.C.rT);
-                }, docs.Map.r)
             */
 
             /*
             .def("evaluate", [](maps::Map<MAPTYPE>& map, py::object& theta, py::object& x, py::object& y) {
-                    return vectorize_map_evaluate(theta, x, y, map);
-                }, docs.Map.evaluate, "theta"_a=0, "x"_a=0, "y"_a=0)
+                return vectorize_map_evaluate(theta, x, y, map);
+            }, docs.Map.evaluate, "theta"_a=0, "x"_a=0, "y"_a=0)
             */
 
             .def("rotate", &maps::Map<MAPTYPE>::rotate, docs.Map.rotate, "theta"_a=0)

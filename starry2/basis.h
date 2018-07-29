@@ -277,6 +277,66 @@ namespace basis {
 
     }
 
+    // Return the n^th term of the *r* phase curve solution vector
+    template <typename T>
+    T rn(int mu, int nu) {
+        T a, b, c;
+        if (is_even(mu, 2) && is_even(nu, 2)) {
+            a = tables::gamma_sup<T>(mu / 4);
+            b = tables::gamma_sup<T>(nu / 4);
+            c = tables::gamma<T>((mu + nu) / 4 + 2);
+            return a * b / c;
+        } else if (is_even(mu - 1, 2) && is_even(nu - 1, 2)) {
+            a = tables::gamma_sup<T>((mu - 1) / 4);
+            b = tables::gamma_sup<T>((nu - 1) / 4);
+            c = tables::gamma_sup<T>((mu + nu - 2) / 4 + 2) * TWO_OVER_SQRT_PI<T>();
+            return a * b / c;
+        } else {
+            return 0;
+        }
+    }
+
+    // Compute the *r^T* phase curve solution vector
+    template <typename T>
+    void computerT(int lmax, VectorT<T>& rT) {
+        rT.resize((lmax + 1) * (lmax + 1));
+        int l, m, mu, nu;
+        int n = 0;
+        for (l=0; l<lmax+1; l++) {
+            for (m=-l; m<l+1; m++) {
+                mu = l - m;
+                nu = l + m;
+                rT(n) = rn<T>(mu, nu);
+                n++;
+            }
+        }
+        return;
+    }
+
+    // Basis transform matrices
+    template <class T>
+    class Basis {
+
+        public:
+
+            const int lmax;
+            Eigen::SparseMatrix<T> A1;
+            Eigen::SparseMatrix<T> A;
+            Matrix<T> U;
+            VectorT<T> rT;                              /**< The rotation solution vector */
+            VectorT<T> rTA1;                            /**< The rotation vector times the `Ylm` change of basis matrix */
+
+            // Constructor: compute the matrices
+            Basis(int lmax) : lmax(lmax) {
+                computeA1(lmax, A1);
+                computeA(lmax, A1, A);
+                computeU(lmax, U);
+                computerT(lmax, rT);
+                rTA1 = rT * A1;
+            }
+
+    };
+
 }; // namespace basis
 
 #endif
