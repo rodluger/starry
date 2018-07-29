@@ -19,6 +19,7 @@ namespace maps {
 
     using namespace utils;
     using namespace vectorize;
+    using namespace std::placeholders;
     using std::abs;
     using std::string;
     using rotation::Wigner;
@@ -53,7 +54,12 @@ namespace maps {
             Vector<T> tmp_vec;                          /**< A temporary surface map vector. */
             Vector<T>* tmp_vec_ptr;                     /**< A temporary pointer to a surface map vector. */
 
+            // Methods
+            inline T evaluate_(const T& theta_deg=0, const T& x0=0, const T& y0=0);
+
         public:
+
+            Vec3<Vector<T>> evaluate;
 
             /**
             Instantiate a `Map`.
@@ -66,7 +72,9 @@ namespace maps {
                 axis(yhat<T>()),
                 B(lmax),
                 W(lmax, (*this).y, (*this).axis),
-                Y00_is_unity(Y00_is_unity) {
+                Y00_is_unity(Y00_is_unity),
+                // Vectorization wrappers
+                evaluate(std::bind(&Map::evaluate_, this, _1, _2, _3)) {
 
                 // Initialize
                 dFdy = Vector<T>::Zero(N);
@@ -93,9 +101,6 @@ namespace maps {
 
             // Rotate the base map
             void rotate(const T& theta_deg);
-
-            // Get the intensity of the map at a point
-            inline T evaluate(const T& theta_deg=0, const T& x0=0, const T& y0=0);
 
     };
 
@@ -306,7 +311,7 @@ namespace maps {
 
     // Evaluate our map at a given (x0, y0) coordinate
     template <class T>
-    inline T Map<T>::evaluate(const T& theta_deg, const T& x0, const T& y0) {
+    inline T Map<T>::evaluate_(const T& theta_deg, const T& x0, const T& y0) {
 
         // Convert to radians
         T theta_rad = theta_deg * (PI<T>() / 180.);

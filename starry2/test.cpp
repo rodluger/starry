@@ -9,78 +9,34 @@
 template <typename T>
 using Vector = Eigen::Matrix<T, 1, Eigen::Dynamic>;
 
-template<typename T>
-T add_(const T& first) {
-  return first;
-}
+class Test {
 
-template<typename T, typename... Args>
-T add_(const T& first, Args... args) {
-  return first + add_(args...);
-}
+public:
 
-// Test the vectorization of functions of up to 4 arguments
-void test_vectorization() {
+    int z;
+    double func1_(const double& x) {return x + z;}
+    double func2_(const double& x, const double& y) {return x + y + z;}
 
-    using namespace vectorize;
+    Test() : z(1) {
 
-    // A scalar and a vector
-    double s = 1;
-    Vector<double> v = Vector<double>::Ones(5);
+        vectorize::Vec1<Vector<double>> func1(std::bind(&Test::func1_, this, std::placeholders::_1));
+        vectorize::Vec2<Vector<double>> func2(std::bind(&Test::func2_, this, std::placeholders::_1, std::placeholders::_2));
 
-    // 1 argument
-    Vec1<Vector<double>> add1(add_);
-    std::cout << add1(s) << std::endl;
-    std::cout << add1(v) << std::endl;
+        Vector<double> foo(3);
+        foo(0) = 1;
+        foo(1) = 2;
+        foo(2) = 3;
 
-    // 2 arguments
-    Vec2<Vector<double>> add2(add_);
-    std::cout << add2(s, s) << std::endl;
-    std::cout << add2(s, v) << std::endl;
-    std::cout << add2(v, s) << std::endl;
-    std::cout << add2(v, v) << std::endl;
+        std::cout << func1(foo) << std::endl;
+        std::cout << func2(1, foo) << std::endl;
 
-    // 3 arguments
-    Vec3<Vector<double>> add3(add_);
-    std::cout << add3(s, s, s) << std::endl;
-    std::cout << add3(s, s, v) << std::endl;
-    std::cout << add3(s, v, s) << std::endl;
-    std::cout << add3(s, v, v) << std::endl;
-    std::cout << add3(v, s, s) << std::endl;
-    std::cout << add3(v, s, v) << std::endl;
-    std::cout << add3(v, v, s) << std::endl;
-    std::cout << add3(v, v, v) << std::endl;
+    }
 
-    // 4 arguments
-    Vec4<Vector<double>> add4(add_);
-    std::cout << add4(s, s, s, s) << std::endl;
-    std::cout << add4(s, s, s, v) << std::endl;
-    std::cout << add4(s, s, v, s) << std::endl;
-    std::cout << add4(s, s, v, v) << std::endl;
-    std::cout << add4(s, v, s, s) << std::endl;
-    std::cout << add4(s, v, s, v) << std::endl;
-    std::cout << add4(s, v, v, s) << std::endl;
-    std::cout << add4(s, v, v, v) << std::endl;
-    std::cout << add4(v, s, s, s) << std::endl;
-    std::cout << add4(v, s, s, v) << std::endl;
-    std::cout << add4(v, s, v, s) << std::endl;
-    std::cout << add4(v, s, v, v) << std::endl;
-    std::cout << add4(v, v, s, s) << std::endl;
-    std::cout << add4(v, v, s, v) << std::endl;
-    std::cout << add4(v, v, v, s) << std::endl;
-    std::cout << add4(v, v, v, v) << std::endl;
-
-}
-
-
-
-
+};
 
 
 int main() {
 
-    using Grad = Eigen::AutoDiffScalar<Eigen::Matrix<double, 10, 1>>;
+    Test test;
 
-    std::cout << mach_eps<double>() << std::endl;
-    std::cout << mach_eps<Grad>() << std::endl;
 }
