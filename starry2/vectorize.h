@@ -36,8 +36,8 @@ namespace vectorize {
 
         // 1
         inline T operator()(const T& arg1) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i));
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i));
             return res;
         }
 
@@ -64,22 +64,22 @@ namespace vectorize {
 
         // 01
         inline T operator()(const Scalar<T>& arg1, const T& arg2) {
-            T res(arg2.size());
-            for (size_t i = 0; i < arg2.size(); i++) res(i) = function(arg1, arg2(i));
+            T res(size_t(arg2.size()));
+            for (size_t i = 0; i < size_t(arg2.size()); i++) res(i) = function(arg1, arg2(i));
             return res;
         }
 
         // 10
         inline T operator()(const T& arg1, const Scalar<T>& arg2) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2);
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2);
             return res;
         }
 
         // 11
         inline T operator()(const T& arg1, const T& arg2) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2(i));
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2(i));
             return res;
         }
 
@@ -106,50 +106,50 @@ namespace vectorize {
 
         // 001
         inline T operator()(const Scalar<T>& arg1, const Scalar<T>& arg2, const T& arg3) {
-            T res(arg3.size());
-            for (size_t i = 0; i < arg3.size(); i++) res(i) = function(arg1, arg2, arg3(i));
+            T res(size_t(arg3.size()));
+            for (size_t i = 0; i < size_t(arg3.size()); i++) res(i) = function(arg1, arg2, arg3(i));
             return res;
         }
 
         // 010
         inline T operator()(const Scalar<T>& arg1, const T& arg2, const Scalar<T>& arg3) {
-            T res(arg2.size());
-            for (size_t i = 0; i < arg2.size(); i++) res(i) = function(arg1, arg2(i), arg3);
+            T res(size_t(arg2.size()));
+            for (size_t i = 0; i < size_t(arg2.size()); i++) res(i) = function(arg1, arg2(i), arg3);
             return res;
         }
 
         // 011
         inline T operator()(const Scalar<T>& arg1, const T& arg2, const T& arg3) {
-            T res(arg2.size());
-            for (size_t i = 0; i < arg2.size(); i++) res(i) = function(arg1, arg2(i), arg3(i));
+            T res(size_t(arg2.size()));
+            for (size_t i = 0; i < size_t(arg2.size()); i++) res(i) = function(arg1, arg2(i), arg3(i));
             return res;
         }
 
         // 100
         inline T operator()(const T& arg1, const Scalar<T>& arg2, const Scalar<T>& arg3) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2, arg3);
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2, arg3);
             return res;
         }
 
         // 101
         inline T operator()(const T& arg1, const Scalar<T>& arg2, const T& arg3) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2, arg3(i));
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2, arg3(i));
             return res;
         }
 
         // 110
         inline T operator()(const T& arg1, const T& arg2, const Scalar<T>& arg3) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2(i), arg3);
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2(i), arg3);
             return res;
         }
 
         // 111
         inline T operator()(const T& arg1, const T& arg2, const T& arg3) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2(i), arg3(i));
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2(i), arg3(i));
             return res;
         }
 
@@ -176,106 +176,106 @@ namespace vectorize {
 
         // 0001
         inline T operator()(const Scalar<T>& arg1, const Scalar<T>& arg2, const Scalar<T>& arg3, const T& arg4) {
-            T res(arg4.size());
-            for (size_t i = 0; i < arg4.size(); i++) res(i) = function(arg1, arg2, arg3, arg4(i));
+            T res(size_t(arg4.size()));
+            for (size_t i = 0; i < size_t(arg4.size()); i++) res(i) = function(arg1, arg2, arg3, arg4(i));
             return res;
         }
 
         // 0010
         inline T operator()(const Scalar<T>& arg1, const Scalar<T>& arg2, const T& arg3, const Scalar<T>& arg4) {
-            T res(arg3.size());
-            for (size_t i = 0; i < arg3.size(); i++) res(i) = function(arg1, arg2, arg3(i), arg4);
+            T res(size_t(arg3.size()));
+            for (size_t i = 0; i < size_t(arg3.size()); i++) res(i) = function(arg1, arg2, arg3(i), arg4);
             return res;
         }
 
         // 0011
         inline T operator()(const Scalar<T>& arg1, const Scalar<T>& arg2, const T& arg3, const T& arg4) {
-            T res(arg3.size());
-            for (size_t i = 0; i < arg3.size(); i++) res(i) = function(arg1, arg2, arg3(i), arg4(i));
+            T res(size_t(arg3.size()));
+            for (size_t i = 0; i < size_t(arg3.size()); i++) res(i) = function(arg1, arg2, arg3(i), arg4(i));
             return res;
         }
 
         // 0100
         inline T operator()(const Scalar<T>& arg1, const T& arg2, const Scalar<T>& arg3, const Scalar<T>& arg4) {
-            T res(arg2.size());
-            for (size_t i = 0; i < arg2.size(); i++) res(i) = function(arg1, arg2(i), arg3, arg4);
+            T res(size_t(arg2.size()));
+            for (size_t i = 0; i < size_t(arg2.size()); i++) res(i) = function(arg1, arg2(i), arg3, arg4);
             return res;
         }
 
         // 0101
         inline T operator()(const Scalar<T>& arg1, const T& arg2, const Scalar<T>& arg3, const T& arg4) {
-            T res(arg2.size());
-            for (size_t i = 0; i < arg2.size(); i++) res(i) = function(arg1, arg2(i), arg3, arg4(i));
+            T res(size_t(arg2.size()));
+            for (size_t i = 0; i < size_t(arg2.size()); i++) res(i) = function(arg1, arg2(i), arg3, arg4(i));
             return res;
         }
 
         // 0110
         inline T operator()(const Scalar<T>& arg1, const T& arg2, const T& arg3, const Scalar<T>& arg4) {
-            T res(arg2.size());
-            for (size_t i = 0; i < arg2.size(); i++) res(i) = function(arg1, arg2(i), arg3(i), arg4);
+            T res(size_t(arg2.size()));
+            for (size_t i = 0; i < size_t(arg2.size()); i++) res(i) = function(arg1, arg2(i), arg3(i), arg4);
             return res;
         }
 
         // 0111
         inline T operator()(const Scalar<T>& arg1, const T& arg2, const T& arg3, const T& arg4) {
-            T res(arg2.size());
-            for (size_t i = 0; i < arg2.size(); i++) res(i) = function(arg1, arg2(i), arg3(i), arg4(i));
+            T res(size_t(arg2.size()));
+            for (size_t i = 0; i < size_t(arg2.size()); i++) res(i) = function(arg1, arg2(i), arg3(i), arg4(i));
             return res;
         }
 
         // 1000
         inline T operator()(const T& arg1, const Scalar<T>& arg2, const Scalar<T>& arg3, const Scalar<T>& arg4) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2, arg3, arg4);
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2, arg3, arg4);
             return res;
         }
 
-        // 0001
+        // 1001
         inline T operator()(const T& arg1, const Scalar<T>& arg2, const Scalar<T>& arg3, const T& arg4) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2, arg3, arg4(i));
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2, arg3, arg4(i));
             return res;
         }
 
-        // 0010
+        // 1010
         inline T operator()(const T& arg1, const Scalar<T>& arg2, const T& arg3, const Scalar<T>& arg4) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2, arg3(i), arg4);
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2, arg3(i), arg4);
             return res;
         }
 
-        // 0011
+        // 1011
         inline T operator()(const T& arg1, const Scalar<T>& arg2, const T& arg3, const T& arg4) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2, arg3(i), arg4(i));
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2, arg3(i), arg4(i));
             return res;
         }
 
-        // 0100
+        // 1100
         inline T operator()(const T& arg1, const T& arg2, const Scalar<T>& arg3, const Scalar<T>& arg4) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2(i), arg3, arg4);
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2(i), arg3, arg4);
             return res;
         }
 
-        // 0101
+        // 1101
         inline T operator()(const T& arg1, const T& arg2, const Scalar<T>& arg3, const T& arg4) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2(i), arg3, arg4(i));
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2(i), arg3, arg4(i));
             return res;
         }
 
-        // 0110
+        // 1110
         inline T operator()(const T& arg1, const T& arg2, const T& arg3, const Scalar<T>& arg4) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2(i), arg3(i), arg4);
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2(i), arg3(i), arg4);
             return res;
         }
 
-        // 0111
+        // 1111
         inline T operator()(const T& arg1, const T& arg2, const T& arg3, const T& arg4) {
-            T res(arg1.size());
-            for (size_t i = 0; i < arg1.size(); i++) res(i) = function(arg1(i), arg2(i), arg3(i), arg4(i));
+            T res(size_t(arg1.size()));
+            for (size_t i = 0; i < size_t(arg1.size()); i++) res(i) = function(arg1(i), arg2(i), arg3(i), arg4(i));
             return res;
         }
 

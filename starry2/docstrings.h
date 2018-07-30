@@ -6,6 +6,7 @@ Docstrings for the Python functions.
 #ifndef _STARRY_DOCS_H_
 #define _STARRY_DOCS_H_
 #include <stdlib.h>
+#include "utils.h"
 
 namespace docstrings {
 
@@ -279,6 +280,13 @@ namespace docstrings {
 
     };
 
+    template <>
+    void Map_<utils::Multi>::add_extras() {
+
+        doc = R"pbdoc()pbdoc";
+
+    };
+
     template <class T>
     class docs {
     public:
@@ -348,6 +356,12 @@ namespace docstrings {
 
     };
 
+    template <>
+    void docs<utils::Multi>::add_extras() {
+
+        doc = R"pbdoc()pbdoc";
+
+    };
 
 }
 

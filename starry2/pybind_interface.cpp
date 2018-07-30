@@ -22,12 +22,11 @@ PYBIND11_MODULE(starry2, m) {
     docs<double> docs_starry;
     pybind_interface::add_starry(m, docs_starry);
 
-    /*
     // starry.multi
-    docs<Multi> docs_multi;
+    docs<utils::Multi> docs_multi;
     auto mmulti = m.def_submodule("multi");
-    add_starry(mmulti, docs_multi);
-    */
+    pybind_interface::add_starry(mmulti, docs_multi);
+    
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

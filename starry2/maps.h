@@ -13,12 +13,10 @@ Defines the surface map class.
 #include "basis.h"
 #include "errors.h"
 #include "utils.h"
-#include "vectorize.h"
 
 namespace maps {
 
     using namespace utils;
-    using namespace vectorize;
     using namespace std::placeholders;
     using std::abs;
     using std::string;
@@ -54,12 +52,7 @@ namespace maps {
             Vector<T> tmp_vec;                          /**< A temporary surface map vector. */
             Vector<T>* tmp_vec_ptr;                     /**< A temporary pointer to a surface map vector. */
 
-            // Methods
-            inline T evaluate_(const T& theta_deg=0, const T& x0=0, const T& y0=0);
-
         public:
-
-            Vec3<Vector<T>> evaluate;
 
             /**
             Instantiate a `Map`.
@@ -72,12 +65,11 @@ namespace maps {
                 axis(yhat<T>()),
                 B(lmax),
                 W(lmax, (*this).y, (*this).axis),
-                Y00_is_unity(Y00_is_unity),
-                // Vectorization wrappers
-                evaluate(std::bind(&Map::evaluate_, this, _1, _2, _3)) {
+                Y00_is_unity(Y00_is_unity) {
 
                 // Initialize
                 dFdy = Vector<T>::Zero(N);
+                tmp_vec = Vector<T>::Zero(N);
                 update();
 
             }
@@ -101,6 +93,11 @@ namespace maps {
 
             // Rotate the base map
             void rotate(const T& theta_deg);
+
+            // Evaluate the intensity at a point
+            inline T evaluate(const T& theta_deg=0, const T& x0=0, const T& y0=0);
+
+
 
     };
 
@@ -272,10 +269,10 @@ namespace maps {
                         sprintf(buf, "%d Y_{%d,%d}", (int)abs(y(n)), l, m);
                         os << buf;
                     } else if (fmod(abs(y(n)), 1.0) >= 0.01) {
-                        sprintf(buf, "%.2f Y_{%d,%d}", abs(y(n)), l, m);
+                        sprintf(buf, "%.2f Y_{%d,%d}", double(abs(y(n))), l, m);
                         os << buf;
                     } else {
-                        sprintf(buf, "%.2e Y_{%d,%d}", abs(y(n)), l, m);
+                        sprintf(buf, "%.2e Y_{%d,%d}", double(abs(y(n))), l, m);
                         os << buf;
                     }
                     nterms++;
@@ -311,7 +308,7 @@ namespace maps {
 
     // Evaluate our map at a given (x0, y0) coordinate
     template <class T>
-    inline T Map<T>::evaluate_(const T& theta_deg, const T& x0, const T& y0) {
+    inline T Map<T>::evaluate(const T& theta_deg, const T& x0, const T& y0) {
 
         // Convert to radians
         T theta_rad = theta_deg * (PI<T>() / 180.);

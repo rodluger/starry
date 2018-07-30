@@ -78,7 +78,7 @@ namespace pybind_interface {
                             inds(i) = start;
                             start += step;
                         }
-                        map.setCoeff(inds, values);
+                        map.setCoeff(inds, values.template cast<MAPTYPE>());
                     } else {
                         throw errors::IndexError("Invalid value for `l` and/or `m`.");
                     }
@@ -106,7 +106,7 @@ namespace pybind_interface {
                             inds(i) = start;
                             start += step;
                         }
-                        Vector<double> res = map.getCoeff(inds);
+                        Vector<double> res = map.getCoeff(inds).template cast<double>();
                         return py::cast(res);
                     } else {
                         throw errors::IndexError("Invalid value for `l` and/or `m`.");
@@ -114,21 +114,21 @@ namespace pybind_interface {
                 })
 
             .def_property("axis",
-                [](maps::Map<MAPTYPE> &map) {return map.getAxis();},
-                [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis){map.setAxis(axis);},
+                [](maps::Map<MAPTYPE> &map) {return map.getAxis().template cast<double>();},
+                [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis){map.setAxis(axis.template cast<MAPTYPE>());},
                 docs.Map.axis)
 
             .def("reset", &maps::Map<MAPTYPE>::reset, docs.Map.reset)
 
             .def_property_readonly("lmax", [](maps::Map<MAPTYPE> &map){return map.lmax;}, docs.Map.lmax)
 
-            .def_property_readonly("y", [](maps::Map<MAPTYPE> &map){return map.getY();}, docs.Map.y)
+            .def_property_readonly("y", [](maps::Map<MAPTYPE> &map){return map.getY().template cast<double>();}, docs.Map.y)
 
-            .def_property_readonly("p", [](maps::Map<MAPTYPE> &map){return map.getP();}, docs.Map.p)
+            .def_property_readonly("p", [](maps::Map<MAPTYPE> &map){return map.getP().template cast<double>();}, docs.Map.p)
 
-            .def_property_readonly("g", [](maps::Map<MAPTYPE> &map){return map.getG();}, docs.Map.g)
+            .def_property_readonly("g", [](maps::Map<MAPTYPE> &map){return map.getG().template cast<double>();}, docs.Map.g)
 
-            .def_property_readonly("r", [](maps::Map<MAPTYPE> &map){return map.getR();}, docs.Map.r)
+            .def_property_readonly("r", [](maps::Map<MAPTYPE> &map){return map.getR().template cast<double>();}, docs.Map.r)
 
             /*
             .def_property_readonly("s", [](maps::Map<MAPTYPE> &map){
@@ -136,11 +136,13 @@ namespace pybind_interface {
                 }, docs.Map.s)
             */
 
-            /*
-            .def("evaluate", [](maps::Map<MAPTYPE>& map, py::object& theta, py::object& x, py::object& y) {
-                return vectorize_map_evaluate(theta, x, y, map);
-            }, docs.Map.evaluate, "theta"_a=0, "x"_a=0, "y"_a=0)
-            */
+            //.def("evaluate", py::vectorize(&maps::Map<MAPTYPE>::evaluate), docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0)
+
+            //.def("evaluate", &maps::Map<MAPTYPE>::evaluate, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0)
+
+            .def("evaluate", [](maps::Map<MAPTYPE> &map, const double& theta, const double& x, const double& y){
+                return double(map.evaluate(theta, x, y));
+            }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0)
 
             .def("rotate", &maps::Map<MAPTYPE>::rotate, docs.Map.rotate, "theta"_a=0)
 
