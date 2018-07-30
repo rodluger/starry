@@ -25,6 +25,7 @@ namespace solver {
     using std::swap;
     using std::vector;
     using std::min;
+    using std::isinf;
 
     // Forward declaration
     template <class T>
