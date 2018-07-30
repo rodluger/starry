@@ -29,6 +29,7 @@ namespace orbital {
     using std::string;
     using std::to_string;
     using std::fmod;
+    using std::isinf;
 
     template <class T> class Body;
     template <class T> class System;
