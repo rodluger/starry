@@ -70,6 +70,7 @@ namespace rotation {
         Matrix<T>* D;
         Matrix<T>* R;
         Matrix<T>* RInv;
+        Matrix<T>* RFull;
 
         // `zhat` rotation params
         Vector<T> cosnt;                            /**< Vector of cos(n theta) values */
@@ -96,6 +97,7 @@ namespace rotation {
         // These methods are accessed by the `Map` class
         inline void update();
         inline void rotate(const T& costheta, const T& sintheta, Vector<T>& yout);
+        inline Matrix<T>* getR(const T& costheta, const T& sintheta);
 
         // Constructor: allocate the matrices
         Wigner(int lmax, Vector<T>& y, UnitVector<T>& axis) :
@@ -106,10 +108,12 @@ namespace rotation {
             D = new Matrix<T>[lmax + 1];
             R = new Matrix<T>[lmax + 1];
             RInv = new Matrix<T>[lmax + 1];
+            RFull = new Matrix<T>[lmax + 1];
             for (int l = 0; l < lmax + 1; l++) {
                 D[l].resize(2 * l + 1, 2 * l + 1);
                 R[l].resize(2 * l + 1, 2 * l + 1);
                 RInv[l].resize(2 * l + 1, 2 * l + 1);
+                RFull[l].resize(2 * l + 1, 2 * l + 1);
             }
 
             // Initialize our z rotation vectors
@@ -137,6 +141,7 @@ namespace rotation {
             delete [] D;
             delete [] R;
             delete [] RInv;
+            delete [] RFull;
         }
 
     };
@@ -164,6 +169,66 @@ namespace rotation {
         cache_costheta = costheta;
         cache_sintheta = sintheta;
 
+    }
+
+    // Explicitly compute and return the full rotation matrix
+    template <class T>
+    inline Matrix<T>* Wigner<T>::getR(const T& costheta, const T& sintheta) {
+        // The full rotation matrix is RFull = RInv . Rz . R
+        // where Rz has the form
+        /*
+                ...                             ...
+                    C3                      S3
+                        C2              S2
+                            C1      S1
+                                1
+                           -S1      C1
+                       -S2              C2
+                   -S3                      C3
+                ...                             ...
+        */
+        // where CX = cos(X theta) and SX = sin(X theta).
+
+        if (sintheta == 0) {
+
+            // This is very easy!
+            for (int l = 0; l < lmax + 1; l++)
+                RFull[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+
+        } else {
+
+            // Compute the cos and sin vectors for the zhat rotation
+            cosnt(1) = costheta;
+            sinnt(1) = sintheta;
+            for (int n = 2; n < lmax + 1; n++) {
+                cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
+                sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
+            }
+            int n = 0;
+            for (int l = 0; l < lmax + 1; l++) {
+                for (int m = -l; m < 0; m++) {
+                    cosmt(n) = cosnt(-m);
+                    sinmt(n) = -sinnt(-m);
+                    n++;
+                }
+                for (int m = 0; m < l + 1; m++) {
+                    cosmt(n) = cosnt(m);
+                    sinmt(n) = sinnt(m);
+                    n++;
+                }
+            }
+
+            // Now compute the full rotation matrix
+            for (int l = 0; l < lmax + 1; l++) {
+                for (int j = 0; j < 2 * l + 1; j++)
+                    RFull[l].col(j) = RInv[l].col(j) * cosmt(l * l + j) +
+                                      RInv[l].col(2 * l - j) * sinmt(l * l + j);
+                RFull[l] = RFull[l] * R[l];
+            }
+
+        }
+
+        return RFull;
     }
 
     /**

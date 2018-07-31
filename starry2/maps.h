@@ -55,9 +55,10 @@ namespace maps {
             bool Y00_is_unity;                                                  /**< Flag: are we fixing the constant map coeff at unity? */
 
             Vector<T> tmp_vec;                                                  /**< A temporary surface map vector. */
-            VectorT<U> tmp_col_vec;                                             /**< A temporary (column) surface map vector. */
+            VectorT<T> tmp_col_vec;                                             /**< A temporary (column) surface map vector. */
             Vector<T>* tmp_vec_ptr;                                             /**< A temporary pointer to a surface map vector. */
 
+            inline void poly_basis(const T& x0, const T& y0, VectorT<T>& basis);
             inline U evaluate_with_gradient(const U& theta_deg, const U& x0_,
                                             const U& y0_);
 
@@ -79,7 +80,8 @@ namespace maps {
                 B(lmax),
                 W(lmax, (*this).y, (*this).axis),
                 Y00_is_unity(Y00_is_unity),
-                tmp_vec(Vector<T>::Zero(N)) {
+                tmp_vec(Vector<T>::Zero(N)),
+                tmp_col_vec(VectorT<T>::Zero(N)) {
 
                 // Populate the gradient names
                 for (int l = 0; l < lmax + 1; l++) {
@@ -328,6 +330,39 @@ namespace maps {
     /*   INTENSITY   */
     /* ------------- */
 
+    // Compute the polynomial basis at a point
+    template <class T, class U>
+    inline void Map<T, U>::poly_basis(const T& x0, const T& y0, VectorT<T>& basis) {
+        int l, m, mu, nu, n = 0;
+        T z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
+        for (l=0; l<lmax+1; l++) {
+            for (m=-l; m<l+1; m++) {
+                mu = l - m;
+                nu = l + m;
+                if ((nu % 2) == 0) {
+                    if ((mu > 0) && (nu > 0))
+                        basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
+                    else if (mu > 0)
+                        basis(n) = pow(x0, mu / 2);
+                    else if (nu > 0)
+                        basis(n) = pow(y0, nu / 2);
+                    else
+                        basis(n) = 1;
+                } else {
+                    if ((mu > 1) && (nu > 1))
+                        basis(n) = pow(x0, (mu - 1) / 2) *
+                                         pow(y0, (nu - 1) / 2) * z0;
+                    else if (mu > 1)
+                        basis(n) = pow(x0, (mu - 1) / 2) * z0;
+                    else if (nu > 1)
+                        basis(n) = pow(y0, (nu - 1) / 2) * z0;
+                    else
+                        basis(n) = z0;
+                }
+                n++;
+            }
+        }
+    }
 
     // Evaluate our map at a given (x0, y0) coordinate
     template <class T, class U>
@@ -358,47 +393,15 @@ namespace maps {
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) return U(NAN);
 
-        int l, m, mu, nu, n = 0;
-        T z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
+        // Compute the polynomial basis
+        poly_basis(x0, y0, tmp_col_vec);
 
-        // Evaluate each harmonic
-        T res = 0;
-        for (l=0; l<lmax+1; l++) {
-            for (m=-l; m<l+1; m++) {
-                if (abs((*tmp_vec_ptr)(n)) > 10 * mach_eps<T>()) {
-                    mu = l - m;
-                    nu = l + m;
-                    if ((nu % 2) == 0) {
-                        if ((mu > 0) && (nu > 0))
-                            res += (*tmp_vec_ptr)(n) * pow(x0, mu / 2) *
-                                                       pow(y0, nu / 2);
-                        else if (mu > 0)
-                            res += (*tmp_vec_ptr)(n) * pow(x0, mu / 2);
-                        else if (nu > 0)
-                            res += (*tmp_vec_ptr)(n) * pow(y0, nu / 2);
-                        else
-                            res += (*tmp_vec_ptr)(n);
-                    } else {
-                        if ((mu > 1) && (nu > 1))
-                            res += (*tmp_vec_ptr)(n) * pow(x0, (mu - 1) / 2) *
-                                                       pow(y0, (nu - 1) / 2) * z0;
-                        else if (mu > 1)
-                            res += (*tmp_vec_ptr)(n) * pow(x0, (mu - 1) / 2) * z0;
-                        else if (nu > 1)
-                            res += (*tmp_vec_ptr)(n) * pow(y0, (nu - 1) / 2) * z0;
-                        else
-                            res += (*tmp_vec_ptr)(n) * z0;
-                    }
-                }
-                n++;
-            }
-
-        }
-        return U(res);
+        // Dot the coefficients in to our polynomial map
+        return U(tmp_col_vec.dot(*tmp_vec_ptr));
 
     }
 
-    // Evaluate our map at a given (x0, y0) coordinate
+    // Evaluate our map at a given (x0, y0) coordinate and compute the gradient
     template <class T, class U>
     inline U Map<T, U>::evaluate_with_gradient(const U& theta_deg, const U& x0_, const U& y0_) {
 
@@ -409,89 +412,42 @@ namespace maps {
         // Convert to radians
         T theta_rad = T(theta_deg) * (pi<T>() / 180.);
 
-
-        // DEBUG!!!!
-        return U(0);
-
-        /*
         // Rotate the map into view
-        if (theta == 0) {
-            ptrp = &p;
-
-            // Compute the rotation matrix explicitly
-            for (int l = 0; l < lmax + 1; l++)
-                R.Real[l] = Matrix<Grad>::Identity(2 * l + 1, 2 * l + 1);
-
+        auto R = W.getR(cos(theta_rad), sin(theta_rad));
+        if (theta_rad == 0) {
+            tmp_vec_ptr = &p;
         } else {
-            rotate(theta, y_rot);
-            p_rot = C.A1 * y_rot;
-            ptrp = &p_rot;
-
-            // We need to explicitly compute the rotation matrix to get
-            // the derivatives below. See the explanation in `flux`.
-            for (int l = 0; l < lmax + 1; l++) {
-                for (int j = 0; j < 2 * l + 1; j++)
-                    R.Real[l].col(j) = RzetaInv.Real[l].col(j) * cosmt(l * l + j) +
-                                       RzetaInv.Real[l].col(2 * l - j) * sinmt(l * l + j);
-                R.Real[l] = R.Real[l] * Rzeta.Real[l];
-            }
-
+            for (int l = 0; l < lmax + 1; l++)
+                tmp_vec.segment(l * l, 2 * l + 1) = R[l] * y.segment(l * l, 2 * l + 1);
+            tmp_vec = B.A1 * tmp_vec;
+            tmp_vec_ptr = &tmp_vec;
         }
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) return U(NAN);
 
-        int l, m, mu, nu, n = 0;
-        T z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
+        // Compute the polynomial basis
+        poly_basis(x0, y0, tmp_col_vec);
 
-        // Evaluate each harmonic
-        for (l=0; l<lmax+1; l++) {
-            for (m=-l; m<l+1; m++) {
-                mu = l - m;
-                nu = l + m;
-                if ((nu % 2) == 0) {
-                    if ((mu > 0) && (nu > 0))
-                        tmp_col_vec(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
-                    else if (mu > 0)
-                        tmp_col_vec(n) = pow(x0, mu / 2);
-                    else if (nu > 0)
-                        tmp_col_vec(n) = pow(y0, nu / 2);
-                    else
-                        tmp_col_vec(n) = 1;
-                } else {
-                    if ((mu > 1) && (nu > 1))
-                        tmp_col_vec(n) = pow(x0, (mu - 1) / 2) *
-                                         pow(y0, (nu - 1) / 2) * z0;
-                    else if (mu > 1)
-                        tmp_col_vec(n) = pow(x0, (mu - 1) / 2) * z0;
-                    else if (nu > 1)
-                        tmp_col_vec(n) = pow(y0, (nu - 1) / 2) * z0;
-                    else
-                        tmp_col_vec(n) = z0;
-                }
-                n++;
-            }
-
-        }
-
-        // Compute the map derivs
-        if (theta == 0) {
-
-            dFdy = tmp_col_vec * C.A1;
-
+        // Compute the map derivs manually
+        if (theta_rad == 0) {
+            dI.segment(3, N) = tmp_col_vec * B.A1;
         } else {
-
-            pTA = tmp_col_vec * C.A1;
+            dI.segment(3, N) = tmp_col_vec * B.A1;
             for (int l = 0; l < lmax + 1; l++)
-                dFdy.segment(l * l, 2 * l + 1) = pTA.segment(l * l, 2 * l + 1) * R.Real[l];
-
+                dI.segment(3 + l * l, 2 * l + 1) = dI.segment(3 + l * l, 2 * l + 1) * R[l];
         }
 
         // Dot the coefficients in to our polynomial map
-        return tmp_col_vec.dot(*ptrp);
+        return U(tmp_col_vec.dot(*tmp_vec_ptr));
 
-        */
+    }
 
+    // All sorts of errors occur when we try to AutoDiff a Boost multiprecision
+    // type, so let's just not go there.
+    template <>
+    inline double Map<Multi, double>::evaluate_with_gradient(const double& theta_deg, const double& x0_, const double& y0_) {
+        throw errors::NotImplementedError("Autodiff of multiprecision type is not currently implemented.");
     }
 
 }; // namespace maps

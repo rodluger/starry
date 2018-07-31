@@ -142,14 +142,14 @@ namespace pybind_interface {
                             gradient[name].resize(n);
 
                         // Nested lambda function; https://github.com/pybind/pybind11/issues/761#issuecomment-288818460
-                        int i = 0;
-                        auto I = py::vectorize([&map, compute_gradient, &gradient, &i](double theta, double x, double y) {
+                        int t = 0;
+                        auto I = py::vectorize([&map, compute_gradient, &gradient, &t](double theta, double x, double y) {
                             // Evaluate the function
                             double res = map.evaluate(theta, x, y, compute_gradient);
                             // Gather the derivatives
-                            for (auto name : map.dI_names)
-                                gradient[name](i) = map.dI(i);
-                            i++;
+                            for (int j = 0; j < map.dI.size(); j++)
+                                gradient[map.dI_names[j]](t) = map.dI(j);
+                            t++;
                             return res;
                         })(theta, x, y);
 
