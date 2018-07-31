@@ -44,6 +44,16 @@ def test_rotations():
                           1.05768142,  0.87317586, -1.46092763, -0.81070502])
     assert np.allclose(m.y, benchmark)
 
+    # Test rotation caching
+    m = Map(2)
+    m[1, 0] = 1
+    m.axis = [1, 2, 3]
+    assert np.allclose(m.evaluate(theta=[30, 30, 30]), 0.46522382467359763)
+    m.axis = [3, 2, 1]
+    assert np.allclose(m.evaluate(theta=[30, 30, 30]), 0.42781792510668176)
+    m.rotate(30)
+    assert np.allclose(m.evaluate(theta=[30, 30, 30]), 0.2617513456622787)
+
 
 if __name__ == "__main__":
     test_rotations()

@@ -61,6 +61,11 @@ namespace rotation {
         Vector<T>& y;
         UnitVector<T>& axis;
 
+        // Cached transforms
+        T cache_costheta;
+        T cache_sintheta;
+        Vector<T> cache_y;
+
         // The actual Wigner matrices
         Matrix<T>* D;
         Matrix<T>* R;
@@ -119,6 +124,9 @@ namespace rotation {
             // The base map in the `zeta` frame
             y_zeta.resize(N);
 
+            // The cached rotated map
+            cache_y.resize(N);
+
             // Initialize!
             update();
 
@@ -137,13 +145,24 @@ namespace rotation {
     template <class T>
     inline void Wigner<T>::rotate(const T& costheta, const T& sintheta, Vector<T>& yout) {
 
+        // Return the cached result?
+        if ((costheta == cache_costheta) && (sintheta == cache_sintheta)) {
+            yout = cache_y;
+            return;
+        }
+
         // Rotate `yzeta` about `zhat` and store in `yzeta_rot`;
         rotatez(costheta, sintheta, y_zeta, y_zeta_rot);
 
         // Rotate out of the `zeta` frame
         for (int l = 0; l < lmax + 1; l++) {
-            yout.segment(l * l, 2 * l + 1) = RInv[l] * y_zeta_rot.segment(l * l, 2 * l + 1);
+            cache_y.segment(l * l, 2 * l + 1) = RInv[l] * y_zeta_rot.segment(l * l, 2 * l + 1);
         }
+
+        // Export the result and cache the angles
+        yout = cache_y;
+        cache_costheta = costheta;
+        cache_sintheta = sintheta;
 
     }
 
@@ -183,6 +202,10 @@ namespace rotation {
        for (int l = 0; l < lmax + 1; l++) {
            y_zeta.segment(l * l, 2 * l + 1) = R[l] * y.segment(l * l, 2 * l + 1);
        }
+
+       // Reset the cache
+       cache_costheta = NAN;
+       cache_sintheta = NAN;
 
     }
 
