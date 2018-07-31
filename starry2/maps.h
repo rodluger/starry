@@ -25,6 +25,9 @@ namespace maps {
     using rotation::Wigner;
     using basis::Basis;
 
+    template <typename T, int N>
+    using ADScalar = Eigen::AutoDiffScalar<Eigen::Matrix<T, N, 1>>;
+
     // ****************************
     // ----------------------------
     //
@@ -58,7 +61,8 @@ namespace maps {
             VectorT<T> tmp_col_vec;                                             /**< A temporary (column) surface map vector. */
             Vector<T>* tmp_vec_ptr;                                             /**< A temporary pointer to a surface map vector. */
 
-            inline void poly_basis(const T& x0, const T& y0, VectorT<T>& basis);
+            template <typename V>
+            inline void poly_basis(const V& x0, const V& y0, VectorT<V>& basis);
             inline U evaluate_with_gradient(const U& theta_deg, const U& x0_,
                                             const U& y0_);
 
@@ -330,11 +334,12 @@ namespace maps {
     /*   INTENSITY   */
     /* ------------- */
 
-    // Compute the polynomial basis at a point
+    // Compute the polynomial basis at a point; templated for AutoDiff capability
     template <class T, class U>
-    inline void Map<T, U>::poly_basis(const T& x0, const T& y0, VectorT<T>& basis) {
+    template <typename V>
+    inline void Map<T, U>::poly_basis(const V& x0, const V& y0, VectorT<V>& basis) {
         int l, m, mu, nu, n = 0;
-        T z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
+        V z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
                 mu = l - m;
@@ -427,7 +432,18 @@ namespace maps {
         if (x0 * x0 + y0 * y0 > 1.0) return U(NAN);
 
         // Compute the polynomial basis
-        poly_basis(x0, y0, tmp_col_vec);
+        ADScalar<T, 2> x0_grad(x0, Vector<T>::Unit(2, 0));
+        ADScalar<T, 2> y0_grad(y0, Vector<T>::Unit(2, 1));
+        VectorT<ADScalar<T, 2>> basis;
+        basis.resize(N);
+        poly_basis(x0_grad, y0_grad, basis);
+        dI(1) = 0;
+        dI(2) = 0;
+        for (int i = 0; i < N; i++) {
+            dI(1) += basis(i).derivatives()(0) * (*tmp_vec_ptr)(i);
+            dI(2) += basis(i).derivatives()(1) * (*tmp_vec_ptr)(i);
+            tmp_col_vec(i) = basis(i).value();
+        }
 
         // Compute the map derivs manually
         if (theta_rad == 0) {
