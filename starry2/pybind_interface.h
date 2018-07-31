@@ -27,26 +27,23 @@ namespace pybind_interface {
     using namespace pybind11::literals;
     namespace py = pybind11;
 
-    template <typename T, bool Grad>
-    void add_Map_extras(py::class_<maps::Map<T, double, Grad>>& PyMap, const docstrings::docs<T, Grad>& docs) { }
+    template <typename T>
+    void add_Map_extras(py::class_<maps::Map<T, double>>& PyMap, const docstrings::docs<T>& docs) { }
 
     template <>
-    void add_Map_extras<double, false>(py::class_<maps::Map<double, double, false>>& PyMap, const docstrings::docs<double, false>& docs) { }
+    void add_Map_extras<double>(py::class_<maps::Map<double, double>>& PyMap, const docstrings::docs<double>& docs) { }
 
     template <>
-    void add_Map_extras<Multi, false>(py::class_<maps::Map<Multi, double, false>>& PyMap, const docstrings::docs<Multi, false>& docs) { }
+    void add_Map_extras<Multi>(py::class_<maps::Map<Multi, double>>& PyMap, const docstrings::docs<Multi>& docs) { }
 
-    template <>
-    void add_Map_extras<double, true>(py::class_<maps::Map<double, double, true>>& PyMap, const docstrings::docs<double, true>& docs) { }
-
-    template <typename T, bool Grad>
-    void add_Map(py::class_<maps::Map<T, double, Grad>>& PyMap, const docstrings::docs<T, Grad>& docs) {
+    template <typename T>
+    void add_Map(py::class_<maps::Map<T, double>>& PyMap, const docstrings::docs<T>& docs) {
 
         PyMap
 
             .def(py::init<int>(), "lmax"_a=2)
 
-            .def("__setitem__", [](maps::Map<T, double, Grad>& map, py::object index, py::object& coeff) {
+            .def("__setitem__", [](maps::Map<T, double>& map, py::object index, py::object& coeff) {
                     if (py::isinstance<py::tuple>(index)) {
                         // User provided a (l, m) tuple
                         py::tuple lm = index;
@@ -86,7 +83,7 @@ namespace pybind_interface {
                     }
                 })
 
-            .def("__getitem__", [](maps::Map<T, double, Grad>& map, py::object index) -> py::object {
+            .def("__getitem__", [](maps::Map<T, double>& map, py::object index) -> py::object {
                     if (py::isinstance<py::tuple>(index)) {
                         py::tuple lm = index;
                         int l, m;
@@ -116,43 +113,80 @@ namespace pybind_interface {
                 })
 
             .def_property("axis",
-                [](maps::Map<T, double, Grad> &map) {return map.getAxis();},
-                [](maps::Map<T, double, Grad> &map, UnitVector<double>& axis){map.setAxis(axis);},
+                [](maps::Map<T, double> &map) {return map.getAxis();},
+                [](maps::Map<T, double> &map, UnitVector<double>& axis){map.setAxis(axis);},
                 docs.Map.axis)
 
-            .def("reset", &maps::Map<T, double, Grad>::reset, docs.Map.reset)
+            .def("reset", &maps::Map<T, double>::reset, docs.Map.reset)
 
-            .def_property_readonly("lmax", [](maps::Map<T, double, Grad> &map){return map.lmax;}, docs.Map.lmax)
+            .def_property_readonly("lmax", [](maps::Map<T, double> &map){return map.lmax;}, docs.Map.lmax)
 
-            .def_property_readonly("y", [](maps::Map<T, double, Grad> &map){return map.getY();}, docs.Map.y)
+            .def_property_readonly("y", [](maps::Map<T, double> &map){return map.getY();}, docs.Map.y)
 
-            .def_property_readonly("p", [](maps::Map<T, double, Grad> &map){return map.getP();}, docs.Map.p)
+            .def_property_readonly("p", [](maps::Map<T, double> &map){return map.getP();}, docs.Map.p)
 
-            .def_property_readonly("g", [](maps::Map<T, double, Grad> &map){return map.getG();}, docs.Map.g)
+            .def_property_readonly("g", [](maps::Map<T, double> &map){return map.getG();}, docs.Map.g)
 
-            .def_property_readonly("r", [](maps::Map<T, double, Grad> &map){return map.getR();}, docs.Map.r)
+            .def_property_readonly("r", [](maps::Map<T, double> &map){return map.getR();}, docs.Map.r)
 
-            .def("evaluate", py::vectorize(&maps::Map<T, double, Grad>::evaluate), docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0)
+            .def("evaluate",
+                [](maps::Map<T, double> &map, py::array_t<double> theta, py::array_t<double> x,
+                   py::array_t<double> y, bool compute_gradient) -> py::object {
 
-            .def("rotate", &maps::Map<T, double, Grad>::rotate, docs.Map.rotate, "theta"_a=0)
+                    if (compute_gradient) {
 
-            .def("__repr__", &maps::Map<T, double, Grad>::__repr__);
+                        // Initialize a dictionary of derivatives
+                        size_t n = max(theta.size(), max(x.size(), y.size()));
+                        std::map<string, Vector<double>> gradient;
+                        for (auto name : map.dI_names)
+                            gradient[name].resize(n);
+
+                        // Nested lambda function; https://github.com/pybind/pybind11/issues/761#issuecomment-288818460
+                        int i = 0;
+                        auto I = py::vectorize([&map, compute_gradient, &gradient, &i](double theta, double x, double y) {
+                            // Evaluate the function
+                            double res = map.evaluate(theta, x, y, compute_gradient);
+                            // Gather the derivatives
+                            for (auto name : map.dI_names)
+                                gradient[name](i) = map.dI(i);
+                            i++;
+                            return res;
+                        })(theta, x, y);
+
+                        // Return a tuple of (I, dict(dI))
+                        return py::make_tuple(I, gradient);
+
+                    } else {
+
+                        // Easy! We'll just return I
+                        return py::vectorize([&map](double theta, double x, double y) {
+                            return map.evaluate(theta, x, y, false);
+                        })(theta, x, y);
+
+                    }
+
+                }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "compute_gradient"_a=false
+            )
+
+            .def("rotate", &maps::Map<T, double>::rotate, docs.Map.rotate, "theta"_a=0)
+
+            .def("__repr__", &maps::Map<T, double>::__repr__);
 
 
         add_Map_extras(PyMap, docs);
 
     }
 
-    template <typename T, bool Grad>
-    void add_extras(py::module& m, const docstrings::docs<T, Grad>& docs) { }
+    template <typename T>
+    void add_extras(py::module& m, const docstrings::docs<T>& docs) { }
 
     template <>
-    void add_extras(py::module& m, const docstrings::docs<Multi, false>& docs) {
+    void add_extras(py::module& m, const docstrings::docs<Multi>& docs) {
         m.attr("NMULTI") = STARRY_NMULTI;
     }
 
-    template <typename T, bool Grad>
-    void add_starry(py::module& m, const docstrings::docs<T, Grad>& docs) {
+    template <typename T>
+    void add_starry(py::module& m, const docstrings::docs<T>& docs) {
 
         // Main docs
         m.doc() = docs.doc;
@@ -161,7 +195,7 @@ namespace pybind_interface {
         add_extras(m, docs);
 
         // Surface map class
-        py::class_<maps::Map<T, double, Grad>> PyMap(m, "Map", docs.Map.doc);
+        py::class_<maps::Map<T, double>> PyMap(m, "Map", docs.Map.doc);
         add_Map(PyMap, docs);
 
     }

@@ -19,18 +19,13 @@ PYBIND11_MODULE(starry2, m) {
     options.disable_function_signatures();
 
     // starry
-    docs<double, false> docs_starry;
+    docs<double> docs_starry;
     pybind_interface::add_starry(m, docs_starry);
 
     // starry.multi
-    docs<utils::Multi, false> docs_multi;
+    docs<utils::Multi> docs_multi;
     auto mmulti = m.def_submodule("multi");
     pybind_interface::add_starry(mmulti, docs_multi);
-
-    // starry.grad
-    docs<double, true> docs_grad;
-    auto mgrad = m.def_submodule("grad");
-    pybind_interface::add_starry(mgrad, docs_grad);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

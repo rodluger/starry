@@ -12,7 +12,7 @@ namespace docstrings {
 
     using namespace std;
 
-    template <class T, bool Grad>
+    template <class T>
     class Map_ {
     public:
         const char * doc;
@@ -87,7 +87,7 @@ namespace docstrings {
     };
 
     template <>
-    void Map_<double, false>::add_extras() {
+    void Map_<double>::add_extras() {
 
         doc = R"pbdoc(
                 Instantiate a :py:mod:`starry` surface map. Maps instantiated in this fashion
@@ -110,14 +110,14 @@ namespace docstrings {
 
     };
 
-    template <class T, bool Grad>
+    template <class T>
     class docs {
     public:
 
         const char * doc;
         const char * nmulti;
         void add_extras() { doc = R"pbdoc()pbdoc"; };
-        Map_<T, Grad> Map;
+        Map_<T> Map;
 
         docs() : Map() {
 
