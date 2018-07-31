@@ -16,16 +16,13 @@ Miscellaneous stuff used throughout the code.
 
 namespace utils {
 
+    // Some type-independent constants
     using boost::math::constants::pi;
     using boost::math::constants::root_pi;
 
     // Multiprecision datatype
     typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
     typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off> Multi;
-    #if STARRY_NMULTI > 150
-    #error "Currently, PI is computed to a maximum of 150 digits of precision. "
-           "If you **really** need `STARRY_NMULTI` > 150, you will need to re-define PI in `utils.h`."
-    #endif
 
     // Our custom vector types
     template <typename T>
