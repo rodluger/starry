@@ -130,12 +130,6 @@ namespace pybind_interface {
 
             .def_property_readonly("r", [](maps::Map<T, double> &map){return map.getR();}, docs.Map.r)
 
-            /*
-            .def_property_readonly("s", [](maps::Map<T, double> &map){
-                    return get_value((Vector<T>)map.G.sT);
-                }, docs.Map.s)
-            */
-
             .def("evaluate", py::vectorize(&maps::Map<T, double>::evaluate), docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0)
 
             .def("rotate", &maps::Map<T, double>::rotate, docs.Map.rotate, "theta"_a=0)

@@ -97,11 +97,6 @@ namespace maps {
             // Evaluate the intensity at a point
             inline U evaluate(const U& theta_deg=0, const U& x0_=0, const U& y0_=0);
 
-            /*template <typename U = T>
-            typename std::enable_if<!std::is_same<U, double>::value>::type
-            foo (const T& x);
-            */
-
     };
 
     /* ---------------- */
