@@ -9,11 +9,15 @@ Miscellaneous stuff used throughout the code.
 #include <Eigen/Core>
 #include <unsupported/Eigen/AutoDiff>
 #include <boost/multiprecision/cpp_dec_float.hpp>
+#include <boost/math/constants/constants.hpp>
 #include <iostream>
 #include <limits>
 #include "errors.h"
 
 namespace utils {
+
+    using boost::math::constants::pi;
+    using boost::math::constants::root_pi;
 
     // Multiprecision datatype
     typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
@@ -22,25 +26,6 @@ namespace utils {
     #error "Currently, PI is computed to a maximum of 150 digits of precision. "
            "If you **really** need `STARRY_NMULTI` > 150, you will need to re-define PI in `utils.h`."
     #endif
-
-    // Some frequently used constants, computed
-    // at both double and multi precision
-    static const double PI_DOUBLE = M_PI;
-    static const Multi PI_MULTI = Multi("3.14159265358979323846264338327950288419716939937510582097"
-                                        "4944592307816406286208998628034825342117067982148086513282"
-                                        "306647093844609550582231725359408128");
-    template <typename T> inline T PI(){ return T(PI_DOUBLE); }
-    template <> inline Multi PI(){ return PI_MULTI; }
-
-    static const double SQRT_PI_DOUBLE = sqrt(PI<double>());
-    static const Multi SQRT_PI_MULTI = sqrt(PI<Multi>());
-    template <typename T> inline T SQRT_PI(){ return T(SQRT_PI_DOUBLE); }
-    template <> inline Multi SQRT_PI(){ return SQRT_PI_MULTI; }
-
-    static const double TWO_OVER_SQRT_PI_DOUBLE = 2.0 / sqrt(PI<double>());
-    static const Multi TWO_OVER_SQRT_PI_MULTI = 2.0 / sqrt(PI<Multi>());
-    template <typename T> inline T TWO_OVER_SQRT_PI(){ return T(TWO_OVER_SQRT_PI_DOUBLE); }
-    template <> inline Multi TWO_OVER_SQRT_PI(){ return TWO_OVER_SQRT_PI_MULTI; }
 
     // Our custom vector types
     template <typename T>

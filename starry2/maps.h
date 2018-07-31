@@ -9,6 +9,7 @@ Defines the surface map class.
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
+#include <type_traits>
 #include "rotation.h"
 #include "basis.h"
 #include "errors.h"
@@ -97,10 +98,12 @@ namespace maps {
             // Evaluate the intensity at a point
             inline T evaluate(const T& theta_deg=0, const T& x0=0, const T& y0=0);
 
-
+            /*template <typename U = T>
+            typename std::enable_if<!std::is_same<U, double>::value>::type
+            foo (const T& x);
+            */
 
     };
-
 
     /* ---------------- */
     /*   HOUSEKEEPING   */
@@ -295,7 +298,7 @@ namespace maps {
     // Rotate the base map in-place given `theta` in **degrees**
     template <class T>
     void Map<T>::rotate(const T& theta_deg) {
-        T theta_rad = theta_deg * (PI<T>() / 180.);
+        T theta_rad = theta_deg * (pi<T>() / 180.);
         W.rotate(cos(theta_rad), sin(theta_rad), y);
         update();
     }
@@ -311,7 +314,7 @@ namespace maps {
     inline T Map<T>::evaluate(const T& theta_deg, const T& x0, const T& y0) {
 
         // Convert to radians
-        T theta_rad = theta_deg * (PI<T>() / 180.);
+        T theta_rad = theta_deg * (pi<T>() / 180.);
 
         // Rotate the map into view
         if (theta_rad == 0) {
