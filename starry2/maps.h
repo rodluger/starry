@@ -18,7 +18,6 @@ Defines the surface map class.
 namespace maps {
 
     using namespace utils;
-    using namespace std::placeholders;
     using std::abs;
     using std::string;
     using rotation::Wigner;
@@ -31,7 +30,7 @@ namespace maps {
     //
     // ----------------------------
     // ****************************
-    template <class T>
+    template <class T, class U>
     class Map {
 
         public:
@@ -80,23 +79,23 @@ namespace maps {
             void reset();
 
             // I/O functions
-            void setCoeff(int l, int m, T coeff);
-            void setCoeff(const Vector<int>& inds, const Vector<T>& coeffs);
-            const T& getCoeff(int l, int m) const;
-            const Vector<T> getCoeff(const Vector<int>& inds);
-            void setAxis(const UnitVector<T>& new_axis);
-            const UnitVector<T>& getAxis() const;
-            const Vector<T>& getY() const;
-            const Vector<T>& getP() const;
-            const Vector<T>& getG() const;
-            const VectorT<T>& getR() const;
+            void setCoeff(int l, int m, U coeff);
+            void setCoeff(const Vector<int>& inds, const Vector<U>& coeffs);
+            U getCoeff(int l, int m);
+            Vector<U> getCoeff(const Vector<int>& inds);
+            void setAxis(const UnitVector<U>& new_axis);
+            UnitVector<U> getAxis();
+            Vector<U> getY();
+            Vector<U> getP();
+            Vector<U> getG();
+            VectorT<U> getR();
             std::string __repr__();
 
             // Rotate the base map
-            void rotate(const T& theta_deg);
+            void rotate(const U& theta_deg);
 
             // Evaluate the intensity at a point
-            inline T evaluate(const T& theta_deg=0, const T& x0=0, const T& y0=0);
+            inline U evaluate(const U& theta_deg=0, const U& x0_=0, const U& y0_=0);
 
             /*template <typename U = T>
             typename std::enable_if<!std::is_same<U, double>::value>::type
@@ -111,8 +110,8 @@ namespace maps {
 
 
     // Update the maps after the coefficients changed
-    template <class T>
-    void Map<T>::update() {
+    template <class T, class U>
+    void Map<T, U>::update() {
 
         // Update the polynomial and Green's map coefficients
         p = B.A1 * y;
@@ -124,8 +123,8 @@ namespace maps {
     }
 
     // Reset the map
-    template <class T>
-    void Map<T>::reset() {
+    template <class T, class U>
+    void Map<T, U>::reset() {
         y.setZero(N);
         if (Y00_is_unity) y(0) = 1;
         axis = yhat<T>();
@@ -139,15 +138,15 @@ namespace maps {
 
 
     // Set the (l, m) coefficient
-    template <class T>
-    void Map<T>::setCoeff(int l, int m, T coeff) {
+    template <class T, class U>
+    void Map<T, U>::setCoeff(int l, int m, U coeff) {
         if ((l == 0) && (Y00_is_unity) && (coeff != 1))
             throw errors::ValueError("The Y_{0,0} coefficient is fixed at unity. "
                                      "You probably want to change the body's "
                                      "luminosity instead.");
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
-            y(n) = coeff;
+            y(n) = T(coeff);
             update();
         } else {
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
@@ -155,8 +154,8 @@ namespace maps {
     }
 
     // Set several coefficients at once using a single index
-    template <class T>
-    void Map<T>::setCoeff(const Vector<int>& inds, const Vector<T>& coeffs) {
+    template <class T, class U>
+    void Map<T, U>::setCoeff(const Vector<int>& inds, const Vector<U>& coeffs) {
 
         // Ensure sizes match
         if (inds.size() != coeffs.size())
@@ -171,7 +170,7 @@ namespace maps {
             else if ((inds(i) < 0) || (inds(i) > N))
                 throw errors::IndexError("Invalid index.");
             else
-                y(inds(i)) = coeffs(i);
+                y(inds(i)) = T(coeffs(i));
         }
 
         // Update stuff
@@ -180,35 +179,38 @@ namespace maps {
     }
 
     // Get the (l, m) coefficient
-    template <class T>
-    const T& Map<T>::getCoeff(int l, int m) const {
-        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
-            return y(l * l + l + m);
-        else
+    template <class T, class U>
+    U Map<T, U>::getCoeff(int l, int m) {
+        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
+            return U(y(l * l + l + m));
+        } else
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
     }
 
     // Get several coefficients at once using a single index
-    template <class T>
-    const Vector<T> Map<T>::getCoeff(const Vector<int>& inds) {
-        Vector<T> coeffs(inds.size());
+    template <class T, class U>
+    Vector<U> Map<T, U>::getCoeff(const Vector<int>& inds) {
+        Vector<U> coeffs(inds.size());
         for (int i = 0; i < inds.size(); i++) {
             if ((inds(i) < 0) || (inds(i) > N))
                 throw errors::IndexError("Invalid index.");
             else
-                coeffs(i) = y(inds(i));
+                coeffs(i) = U(y(inds(i)));
         }
         return coeffs;
     }
 
     // Set the axis
-    template <class T>
-    void Map<T>::setAxis(const UnitVector<T>& new_axis) {
+    template <class T, class U>
+    void Map<T, U>::setAxis(const UnitVector<U>& new_axis) {
 
-        // Normalize it
-        axis = new_axis / sqrt(new_axis(0) * new_axis(0) +
-                               new_axis(1) * new_axis(1) +
-                               new_axis(2) * new_axis(2));
+        // Set it and normalize it
+        axis(0) = T(new_axis(0));
+        axis(1) = T(new_axis(1));
+        axis(2) = T(new_axis(2));
+        axis = axis / sqrt(axis(0) * axis(0) +
+                           axis(1) * axis(1) +
+                           axis(2) * axis(2));
 
         // Update the rotation matrix
         W.update();
@@ -216,38 +218,38 @@ namespace maps {
     }
 
     // Return a copy of the axis
-    template <class T>
-    const UnitVector<T>& Map<T>::getAxis() const {
-        return axis;
+    template <class T, class U>
+    UnitVector<U> Map<T, U>::getAxis() {
+        return axis.template cast<U>();
     }
 
     // Get the spherical harmonic vector
-    template <class T>
-    const Vector<T>& Map<T>::getY() const {
-        return y;
+    template <class T, class U>
+    Vector<U> Map<T, U>::getY() {
+        return y.template cast<U>();
     }
 
     // Get the polynomial vector
-    template <class T>
-    const Vector<T>& Map<T>::getP() const {
-        return p;
+    template <class T, class U>
+    Vector<U> Map<T, U>::getP() {
+        return p.template cast<U>();
     }
 
     // Get the Green's vector
-    template <class T>
-    const Vector<T>& Map<T>::getG() const {
-        return g;
+    template <class T, class U>
+    Vector<U> Map<T, U>::getG() {
+        return g.template cast<U>();
     }
 
     // Get the rotation solution vector
-    template <class T>
-    const VectorT<T>& Map<T>::getR() const {
-        return B.rT;
+    template <class T, class U>
+    VectorT<U> Map<T, U>::getR() {
+        return B.rT.template cast<U>();
     }
 
     // Return a human-readable map string
-    template <class T>
-    std::string Map<T>::__repr__() {
+    template <class T, class U>
+    std::string Map<T, U>::__repr__() {
         int n = 0;
         int nterms = 0;
         char buf[30];
@@ -296,9 +298,9 @@ namespace maps {
 
 
     // Rotate the base map in-place given `theta` in **degrees**
-    template <class T>
-    void Map<T>::rotate(const T& theta_deg) {
-        T theta_rad = theta_deg * (pi<T>() / 180.);
+    template <class T, class U>
+    void Map<T, U>::rotate(const U& theta_deg) {
+        T theta_rad = T(theta_deg) * (pi<T>() / 180.);
         W.rotate(cos(theta_rad), sin(theta_rad), y);
         update();
     }
@@ -310,11 +312,15 @@ namespace maps {
 
 
     // Evaluate our map at a given (x0, y0) coordinate
-    template <class T>
-    inline T Map<T>::evaluate(const T& theta_deg, const T& x0, const T& y0) {
+    template <class T, class U>
+    inline U Map<T, U>::evaluate(const U& theta_deg, const U& x0_, const U& y0_) {
+
+        // Convert to internal type
+        T x0 = T(x0_);
+        T y0 = T(y0_);
 
         // Convert to radians
-        T theta_rad = theta_deg * (pi<T>() / 180.);
+        T theta_rad = T(theta_deg) * (pi<T>() / 180.);
 
         // Rotate the map into view
         if (theta_rad == 0) {
@@ -326,7 +332,7 @@ namespace maps {
         }
 
         // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) return T(NAN);
+        if (x0 * x0 + y0 * y0 > 1.0) return U(NAN);
 
         int l, m, mu, nu, n = 0;
         T z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
@@ -362,7 +368,7 @@ namespace maps {
             }
 
         }
-        return res;
+        return U(res);
 
     }
 

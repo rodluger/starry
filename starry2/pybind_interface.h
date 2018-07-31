@@ -27,24 +27,24 @@ namespace pybind_interface {
     using namespace pybind11::literals;
     namespace py = pybind11;
 
-    template <typename MAPTYPE>
-    void add_Map_extras(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTYPE>& docs) { }
+    template <typename T>
+    void add_Map_extras(py::class_<maps::Map<T, double>>& PyMap, const docstrings::docs<T>& docs) { }
 
     template <>
-    void add_Map_extras<double>(py::class_<maps::Map<double>>& PyMap, const docstrings::docs<double>& docs) { }
+    void add_Map_extras<double>(py::class_<maps::Map<double, double>>& PyMap, const docstrings::docs<double>& docs) { }
 
 
     template <>
-    void add_Map_extras<Multi>(py::class_<maps::Map<Multi>>& PyMap, const docstrings::docs<Multi>& docs) { }
+    void add_Map_extras<Multi>(py::class_<maps::Map<Multi, double>>& PyMap, const docstrings::docs<Multi>& docs) { }
 
-    template <typename MAPTYPE>
-    void add_Map(py::class_<maps::Map<MAPTYPE>>& PyMap, const docstrings::docs<MAPTYPE>& docs) {
+    template <typename T>
+    void add_Map(py::class_<maps::Map<T, double>>& PyMap, const docstrings::docs<T>& docs) {
 
         PyMap
 
             .def(py::init<int>(), "lmax"_a=2)
 
-            .def("__setitem__", [](maps::Map<MAPTYPE>& map, py::object index, py::object& coeff) {
+            .def("__setitem__", [](maps::Map<T, double>& map, py::object index, py::object& coeff) {
                     if (py::isinstance<py::tuple>(index)) {
                         // User provided a (l, m) tuple
                         py::tuple lm = index;
@@ -56,7 +56,7 @@ namespace pybind_interface {
                         } catch (const char* msg) {
                             throw errors::IndexError("Invalid value for `l` and/or `m`.");
                         }
-                        map.setCoeff(l, m, MAPTYPE(value));
+                        map.setCoeff(l, m, value);
                     } else if (py::isinstance<py::slice>(index)) {
                         // User provided a slice of some sort
                         size_t start, stop, step, slicelength;
@@ -78,13 +78,13 @@ namespace pybind_interface {
                             inds(i) = start;
                             start += step;
                         }
-                        map.setCoeff(inds, values.template cast<MAPTYPE>());
+                        map.setCoeff(inds, values);
                     } else {
                         throw errors::IndexError("Invalid value for `l` and/or `m`.");
                     }
                 })
 
-            .def("__getitem__", [](maps::Map<MAPTYPE>& map, py::object index) -> py::object {
+            .def("__getitem__", [](maps::Map<T, double>& map, py::object index) -> py::object {
                     if (py::isinstance<py::tuple>(index)) {
                         py::tuple lm = index;
                         int l, m;
@@ -106,7 +106,7 @@ namespace pybind_interface {
                             inds(i) = start;
                             start += step;
                         }
-                        Vector<double> res = map.getCoeff(inds).template cast<double>();
+                        Vector<double> res = map.getCoeff(inds);
                         return py::cast(res);
                     } else {
                         throw errors::IndexError("Invalid value for `l` and/or `m`.");
@@ -114,55 +114,49 @@ namespace pybind_interface {
                 })
 
             .def_property("axis",
-                [](maps::Map<MAPTYPE> &map) {return map.getAxis().template cast<double>();},
-                [](maps::Map<MAPTYPE> &map, UnitVector<double>& axis){map.setAxis(axis.template cast<MAPTYPE>());},
+                [](maps::Map<T, double> &map) {return map.getAxis();},
+                [](maps::Map<T, double> &map, UnitVector<double>& axis){map.setAxis(axis);},
                 docs.Map.axis)
 
-            .def("reset", &maps::Map<MAPTYPE>::reset, docs.Map.reset)
+            .def("reset", &maps::Map<T, double>::reset, docs.Map.reset)
 
-            .def_property_readonly("lmax", [](maps::Map<MAPTYPE> &map){return map.lmax;}, docs.Map.lmax)
+            .def_property_readonly("lmax", [](maps::Map<T, double> &map){return map.lmax;}, docs.Map.lmax)
 
-            .def_property_readonly("y", [](maps::Map<MAPTYPE> &map){return map.getY().template cast<double>();}, docs.Map.y)
+            .def_property_readonly("y", [](maps::Map<T, double> &map){return map.getY();}, docs.Map.y)
 
-            .def_property_readonly("p", [](maps::Map<MAPTYPE> &map){return map.getP().template cast<double>();}, docs.Map.p)
+            .def_property_readonly("p", [](maps::Map<T, double> &map){return map.getP();}, docs.Map.p)
 
-            .def_property_readonly("g", [](maps::Map<MAPTYPE> &map){return map.getG().template cast<double>();}, docs.Map.g)
+            .def_property_readonly("g", [](maps::Map<T, double> &map){return map.getG();}, docs.Map.g)
 
-            .def_property_readonly("r", [](maps::Map<MAPTYPE> &map){return map.getR().template cast<double>();}, docs.Map.r)
+            .def_property_readonly("r", [](maps::Map<T, double> &map){return map.getR();}, docs.Map.r)
 
             /*
-            .def_property_readonly("s", [](maps::Map<MAPTYPE> &map){
-                    return get_value((Vector<MAPTYPE>)map.G.sT);
+            .def_property_readonly("s", [](maps::Map<T, double> &map){
+                    return get_value((Vector<T>)map.G.sT);
                 }, docs.Map.s)
             */
 
-            //.def("evaluate", py::vectorize(&maps::Map<MAPTYPE>::evaluate), docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0)
+            .def("evaluate", py::vectorize(&maps::Map<T, double>::evaluate), docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0)
 
-            //.def("evaluate", &maps::Map<MAPTYPE>::evaluate, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0)
+            .def("rotate", &maps::Map<T, double>::rotate, docs.Map.rotate, "theta"_a=0)
 
-            .def("evaluate", [](maps::Map<MAPTYPE> &map, const double& theta, const double& x, const double& y){
-                return double(map.evaluate(theta, x, y));
-            }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0)
-
-            .def("rotate", &maps::Map<MAPTYPE>::rotate, docs.Map.rotate, "theta"_a=0)
-
-            .def("__repr__", &maps::Map<MAPTYPE>::__repr__);
+            .def("__repr__", &maps::Map<T, double>::__repr__);
 
 
         add_Map_extras(PyMap, docs);
 
     }
 
-    template <typename MAPTYPE>
-    void add_extras(py::module& m, const docstrings::docs<MAPTYPE>& docs) { }
+    template <typename T>
+    void add_extras(py::module& m, const docstrings::docs<T>& docs) { }
 
     template <>
     void add_extras(py::module& m, const docstrings::docs<Multi>& docs) {
         m.attr("NMULTI") = STARRY_NMULTI;
     }
 
-    template <typename MAPTYPE>
-    void add_starry(py::module& m, const docstrings::docs<MAPTYPE>& docs) {
+    template <typename T>
+    void add_starry(py::module& m, const docstrings::docs<T>& docs) {
 
         // Main docs
         m.doc() = docs.doc;
@@ -171,7 +165,7 @@ namespace pybind_interface {
         add_extras(m, docs);
 
         // Surface map class
-        py::class_<maps::Map<MAPTYPE>> PyMap(m, "Map", docs.Map.doc);
+        py::class_<maps::Map<T, double>> PyMap(m, "Map", docs.Map.doc);
         add_Map(PyMap, docs);
 
     }
