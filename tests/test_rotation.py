@@ -1,9 +1,9 @@
 """Test the rotation matrices."""
-from starry2 import Map
+import starry2
 import numpy as np
 
 
-def test_rotations():
+def run(Map):
     """Test some elementary rotations."""
     # Instantiate
     m = Map(1)
@@ -55,5 +55,16 @@ def test_rotations():
     assert np.allclose(m.evaluate(theta=[30, 30, 30]), 0.2617513456622787)
 
 
+def test_rotation_double():
+    """Test some elementary rotations [double]."""
+    return run(starry2.Map)
+
+
+def test_rotation_multi():
+    """Test some elementary rotations [multi]."""
+    return run(starry2.multi.Map)
+
+
 if __name__ == "__main__":
-    test_rotations()
+    test_rotation_double()
+    test_rotation_multi()

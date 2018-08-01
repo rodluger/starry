@@ -1,9 +1,9 @@
 """Test the map evaluation."""
-from starry2 import Map
+import starry2
 import numpy as np
 
 
-def numerical_gradient(lmax, yvec, axis, theta, x, y, eps=1e-8):
+def numerical_gradient(Map, lmax, yvec, axis, theta, x, y, eps=1e-8):
     """Return the gradient computed numerically."""
     map = Map(lmax)
     map.axis = axis
@@ -38,7 +38,7 @@ def numerical_gradient(lmax, yvec, axis, theta, x, y, eps=1e-8):
     return grad
 
 
-def test_evaluation():
+def run(Map):
     """Test the map evaluation against some benchmarks."""
     # Instantiate
     lmax = 2
@@ -71,7 +71,7 @@ def test_evaluation():
                            1.7026057774431276])
 
 
-def test_evaluation_with_gradients():
+def run_with_gradients(Map):
     """Test the map evaluation with gradients."""
     # Instantiate
     lmax = 2
@@ -83,7 +83,7 @@ def test_evaluation_with_gradients():
     I = map.evaluate()
     I_grad, dI = map.evaluate(gradient=True)
     assert np.allclose(I, I_grad)
-    dI_num = numerical_gradient(lmax, map[:], map.axis, 0, 0, 0)
+    dI_num = numerical_gradient(Map, lmax, map[:], map.axis, 0, 0, 0)
     for key in dI.keys():
         assert np.allclose(dI[key], dI_num[key])
 
@@ -91,7 +91,7 @@ def test_evaluation_with_gradients():
     I = map.evaluate(x=0.1, y=0.1)
     I_grad, dI = map.evaluate(x=0.1, y=0.1, gradient=True)
     assert np.allclose(I, I_grad)
-    dI_num = numerical_gradient(lmax, map[:], map.axis, 0, 0.1, 0.1)
+    dI_num = numerical_gradient(Map, lmax, map[:], map.axis, 0, 0.1, 0.1)
     for key in dI.keys():
         assert np.allclose(dI[key], dI_num[key])
 
@@ -99,7 +99,7 @@ def test_evaluation_with_gradients():
     I = map.evaluate(x=0.1, y=0.1, theta=30)
     I_grad, dI = map.evaluate(x=0.1, y=0.1, theta=30, gradient=True)
     assert np.allclose(I, I_grad)
-    dI_num = numerical_gradient(lmax, map[:], map.axis, 30, 0.1, 0.1)
+    dI_num = numerical_gradient(Map, lmax, map[:], map.axis, 30, 0.1, 0.1)
     for key in dI.keys():
         assert np.allclose(dI[key], dI_num[key])
 
@@ -107,13 +107,35 @@ def test_evaluation_with_gradients():
     I = map.evaluate(x=0.1, y=0.1, theta=[0, 30])
     I_grad, dI = map.evaluate(x=0.1, y=0.1, theta=[0, 30], gradient=True)
     assert np.allclose(I, I_grad)
-    dI_num1 = numerical_gradient(lmax, map[:], map.axis, 0, 0.1, 0.1)
-    dI_num2 = numerical_gradient(lmax, map[:], map.axis, 30, 0.1, 0.1)
+    dI_num1 = numerical_gradient(Map, lmax, map[:], map.axis, 0, 0.1, 0.1)
+    dI_num2 = numerical_gradient(Map, lmax, map[:], map.axis, 30, 0.1, 0.1)
     for key in dI.keys():
         assert np.allclose(dI[key][0], dI_num1[key])
         assert np.allclose(dI[key][1], dI_num2[key])
 
 
+def test_evaluation_double():
+    """Test the map evaluation against some benchmarks [double]."""
+    return run(starry2.Map)
+
+
+def test_evaluation_multi():
+    """Test the map evaluation against some benchmarks [multi]."""
+    return run(starry2.multi.Map)
+
+
+def test_evaluation_with_gradients_double():
+    """Test the map evaluation with gradients [double]."""
+    return run_with_gradients(starry2.Map)
+
+
+def test_evaluation_with_gradients_multi():
+    """Test the map evaluation with gradients [multi]."""
+    return run_with_gradients(starry2.multi.Map)
+
+
 if __name__ == "__main__":
-    test_evaluation()
-    test_evaluation_with_gradients()
+    test_evaluation_double()
+    test_evaluation_multi()
+    test_evaluation_with_gradients_double()
+    test_evaluation_with_gradients_multi()

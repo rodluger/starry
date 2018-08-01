@@ -165,8 +165,7 @@ namespace pybind_interface {
 
                     }
 
-                }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "gradient"_a=false
-            )
+                }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "gradient"_a=false)
 
             .def("rotate", &maps::Map<T, double>::rotate, docs.Map.rotate, "theta"_a=0)
 
