@@ -131,30 +131,30 @@ namespace pybind_interface {
 
             .def("evaluate",
                 [](maps::Map<T, double> &map, py::array_t<double> theta, py::array_t<double> x,
-                   py::array_t<double> y, bool compute_gradient) -> py::object {
+                   py::array_t<double> y, bool gradient) -> py::object {
 
-                    if (compute_gradient) {
+                    if (gradient) {
 
                         // Initialize a dictionary of derivatives
                         size_t n = max(theta.size(), max(x.size(), y.size()));
-                        std::map<string, Vector<double>> gradient;
+                        std::map<string, Vector<double>> grad;
                         for (auto name : map.dI_names)
-                            gradient[name].resize(n);
+                            grad[name].resize(n);
 
                         // Nested lambda function; https://github.com/pybind/pybind11/issues/761#issuecomment-288818460
                         int t = 0;
-                        auto I = py::vectorize([&map, compute_gradient, &gradient, &t](double theta, double x, double y) {
+                        auto I = py::vectorize([&map, &grad, &t](double theta, double x, double y) {
                             // Evaluate the function
-                            double res = map.evaluate(theta, x, y, compute_gradient);
+                            double res = map.evaluate(theta, x, y, true);
                             // Gather the derivatives
                             for (int j = 0; j < map.dI.size(); j++)
-                                gradient[map.dI_names[j]](t) = map.dI(j);
+                                grad[map.dI_names[j]](t) = map.dI(j);
                             t++;
                             return res;
                         })(theta, x, y);
 
                         // Return a tuple of (I, dict(dI))
-                        return py::make_tuple(I, gradient);
+                        return py::make_tuple(I, grad);
 
                     } else {
 
@@ -165,7 +165,7 @@ namespace pybind_interface {
 
                     }
 
-                }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "compute_gradient"_a=false
+                }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "gradient"_a=false
             )
 
             .def("rotate", &maps::Map<T, double>::rotate, docs.Map.rotate, "theta"_a=0)

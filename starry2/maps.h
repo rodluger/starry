@@ -134,7 +134,7 @@ namespace maps {
 
             // Evaluate the intensity at a point
             inline U evaluate(const U& theta_deg=0, const U& x0_=0,
-                              const U& y0_=0, bool compute_gradient=false);
+                              const U& y0_=0, bool gradient=false);
 
     };
 
@@ -382,11 +382,11 @@ namespace maps {
     // Evaluate our map at a given (x0, y0) coordinate
     template <class T, class U>
     inline U Map<T, U>::evaluate(const U& theta_deg, const U& x0_,
-                                 const U& y0_, bool compute_gradient) {
+                                 const U& y0_, bool gradient) {
 
         // If we're computing the gradient as well,
         // call the specialized function
-        if (compute_gradient)
+        if (gradient)
             return evaluate_with_gradient(theta_deg, x0_, y0_);
 
         // Convert to internal types
