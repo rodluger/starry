@@ -3,7 +3,7 @@ Spherical harmonic rotation matrices. These are adapted from the Fortran
 code of
 
     Alvarez Collado  et al. (1989) "Rotation of real spherical harmonics".
-    Computer Physics Communications 52, 3.
+    compute Physics Communications 52, 3.
     https://doi.org/10.1016/0010-4655(89)90107-0
 
 who computed the Euleriean rotation matrices for real spherical harmonics
@@ -67,10 +67,9 @@ namespace rotation {
         Vector<T> cache_y;
 
         // The actual Wigner matrices
-        Matrix<T>* D;
-        Matrix<T>* R;
-        Matrix<T>* RInv;
-        Matrix<T>* RFull;
+        Matrix<T>* DZeta;
+        Matrix<T>* RZeta;
+        Matrix<T>* RZetaInv;
 
         // `zhat` rotation params
         Vector<T> cosnt;                            /**< Vector of cos(n theta) values */
@@ -88,16 +87,19 @@ namespace rotation {
         // Methods
         inline void rotar(T& c1, T& s1, T& c2, T& s2, T& c3, T& s3);
         inline void dlmn(int l, T& s1, T& c1, T& c2, T& tgbet2, T& s3, T& c3);
-        inline void computeR(const UnitVector<T>& axis, const T& costheta, const T& sintheta);
+        inline void computeZeta(const UnitVector<T>& axis, const T& costheta, const T& sintheta);
         inline void rotatez(const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout);
         inline void rotate(const T& costheta, const T& sintheta);
 
     public:
 
+        Matrix<T>* R;
+        Matrix<T>* dRdtheta;
+
         // These methods are accessed by the `Map` class
         inline void update();
         inline void rotate(const T& costheta, const T& sintheta, Vector<T>& yout);
-        inline Matrix<T>* getR(const T& costheta, const T& sintheta);
+        inline void compute(const T& costheta, const T& sintheta);
 
         // Constructor: allocate the matrices
         Wigner(int lmax, Vector<T>& y, UnitVector<T>& axis) :
@@ -105,15 +107,17 @@ namespace rotation {
             tol(10 * mach_eps<T>()), y(y), axis(axis) {
 
             // Allocate the Wigner matrices
-            D = new Matrix<T>[lmax + 1];
+            DZeta = new Matrix<T>[lmax + 1];
+            RZeta = new Matrix<T>[lmax + 1];
+            RZetaInv = new Matrix<T>[lmax + 1];
             R = new Matrix<T>[lmax + 1];
-            RInv = new Matrix<T>[lmax + 1];
-            RFull = new Matrix<T>[lmax + 1];
+            dRdtheta = new Matrix<T>[lmax + 1];
             for (int l = 0; l < lmax + 1; l++) {
-                D[l].resize(2 * l + 1, 2 * l + 1);
+                DZeta[l].resize(2 * l + 1, 2 * l + 1);
+                RZeta[l].resize(2 * l + 1, 2 * l + 1);
+                RZetaInv[l].resize(2 * l + 1, 2 * l + 1);
                 R[l].resize(2 * l + 1, 2 * l + 1);
-                RInv[l].resize(2 * l + 1, 2 * l + 1);
-                RFull[l].resize(2 * l + 1, 2 * l + 1);
+                dRdtheta[l].resize(2 * l + 1, 2 * l + 1);
             }
 
             // Initialize our z rotation vectors
@@ -138,10 +142,11 @@ namespace rotation {
 
         // Destructor: free the matrices
         ~Wigner() {
-            delete [] D;
+            delete [] DZeta;
+            delete [] RZeta;
+            delete [] RZetaInv;
             delete [] R;
-            delete [] RInv;
-            delete [] RFull;
+            delete [] dRdtheta;
         }
 
     };
@@ -161,7 +166,7 @@ namespace rotation {
 
         // Rotate out of the `zeta` frame
         for (int l = 0; l < lmax + 1; l++) {
-            cache_y.segment(l * l, 2 * l + 1) = RInv[l] * y_zeta_rot.segment(l * l, 2 * l + 1);
+            cache_y.segment(l * l, 2 * l + 1) = RZetaInv[l] * y_zeta_rot.segment(l * l, 2 * l + 1);
         }
 
         // Export the result and cache the angles
@@ -171,29 +176,53 @@ namespace rotation {
 
     }
 
-    // Explicitly compute and return the full rotation matrix
+    /**
+    Explicitly compute the full rotation matrix and its derivative.
+
+    The full rotation matrix is
+
+        R = RZetaInv . Rz . RZeta
+
+    where Rz has the form
+
+            ...                             ...
+                C3                      S3
+                    C2              S2
+                        C1      S1
+                            1
+                       -S1      C1
+                   -S2              C2
+               -S3                      C3
+            ...                             ...
+
+    with CX = cos(X theta) and SX = sin(X theta). The derivative of R with
+    respect to theta is
+
+        dR/dtheta = RZetaInv . dRz/dtheta . RZeta
+
+    where dRz/dtheta has the form
+
+            ...                                 ...
+                -3 S3                      3 C3
+                    -2 S2             2 C2
+                         -S1      C1
+                              0
+                        -C1      -S1
+                   -2 C2             -2 S2
+               -3 C3                      -3 S3
+           ...                                 ...
+
+    */
     template <class T>
-    inline Matrix<T>* Wigner<T>::getR(const T& costheta, const T& sintheta) {
-        // The full rotation matrix is RFull = RInv . Rz . R
-        // where Rz has the form
-        /*
-                ...                             ...
-                    C3                      S3
-                        C2              S2
-                            C1      S1
-                                1
-                           -S1      C1
-                       -S2              C2
-                   -S3                      C3
-                ...                             ...
-        */
-        // where CX = cos(X theta) and SX = sin(X theta).
+    inline void Wigner<T>::compute(const T& costheta, const T& sintheta) {
 
         if (sintheta == 0) {
 
             // This is very easy!
-            for (int l = 0; l < lmax + 1; l++)
-                RFull[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+            for (int l = 0; l < lmax + 1; l++) {
+                R[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+                dRdtheta[l] = Matrix<T>::Zero(2 * l + 1, 2 * l + 1);
+            }
 
         } else {
 
@@ -220,15 +249,18 @@ namespace rotation {
 
             // Now compute the full rotation matrix
             for (int l = 0; l < lmax + 1; l++) {
-                for (int j = 0; j < 2 * l + 1; j++)
-                    RFull[l].col(j) = RInv[l].col(j) * cosmt(l * l + j) +
-                                      RInv[l].col(2 * l - j) * sinmt(l * l + j);
-                RFull[l] = RFull[l] * R[l];
+                for (int j = 0; j < 2 * l + 1; j++) {
+                    R[l].col(j) = RZetaInv[l].col(j) * cosmt(l * l + j) +
+                                  RZetaInv[l].col(2 * l - j) * sinmt(l * l + j);
+                    dRdtheta[l].col(j) = RZetaInv[l].col(2 * l - j) * (j - l) * cosmt(l * l + j) -
+                                         RZetaInv[l].col(j) * abs((j - l) * sinmt(l * l + j));
+                }
+                R[l] = R[l] * RZeta[l];
+                dRdtheta[l] = dRdtheta[l] * RZeta[l];
             }
 
         }
 
-        return RFull;
     }
 
     /**
@@ -248,11 +280,11 @@ namespace rotation {
            // is just the identity matrix.
            for (int l = 0; l < lmax + 1; l++) {
                if (axis(2) > 0) {
-                   R[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
-                   RInv[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+                   RZeta[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+                   RZetaInv[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
                } else {
-                   R[l] = -Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
-                   RInv[l] = -Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+                   RZeta[l] = -Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
+                   RZetaInv[l] = -Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
                }
            }
        } else {
@@ -260,12 +292,12 @@ namespace rotation {
            axis_zeta(0) = axis(1) / norm;
            axis_zeta(1) = -axis(0) / norm;
            axis_zeta(2) = 0;
-           computeR(axis_zeta, cos_zeta, sin_zeta);
+           computeZeta(axis_zeta, cos_zeta, sin_zeta);
        }
 
        // Update the map in the `zeta` frame
        for (int l = 0; l < lmax + 1; l++) {
-           y_zeta.segment(l * l, 2 * l + 1) = R[l] * y.segment(l * l, 2 * l + 1);
+           y_zeta.segment(l * l, 2 * l + 1) = RZeta[l] * y.segment(l * l, 2 * l + 1);
        }
 
        // Reset the cache
@@ -310,12 +342,12 @@ namespace rotation {
 
     */
     template <class T>
-    inline void Wigner<T>::computeR(const UnitVector<T>& axis, const T& costheta, const T& sintheta) {
+    inline void Wigner<T>::computeZeta(const UnitVector<T>& axis, const T& costheta, const T& sintheta) {
 
         // Trivial case
         if (lmax == 0) {
-            R[0](0, 0) = 1;
-            RInv[0](0, 0) = 1;
+            RZeta[0](0, 0) = 1;
+            RZetaInv[0](0, 0) = 1;
             return;
         }
 
@@ -361,7 +393,7 @@ namespace rotation {
 
         // Set the inverse transform
         for (int l = 0; l < lmax + 1; l++)
-            RInv[l] = R[l].transpose();
+            RZetaInv[l] = RZeta[l].transpose();
 
         return;
 
@@ -377,30 +409,30 @@ namespace rotation {
         T cosag, COSAMG, sinag, SINAMG, tgbet2;
 
         // Compute the initial matrices D0, R0, D1 and R1
-        D[0](0, 0) = 1.;
-        R[0](0, 0) = 1.;
-        D[1](2, 2) = 0.5 * (1. + c2);
-        D[1](2, 1) = -s2 * tables::invsqrt_int<T>(2);
-        D[1](2, 0) = 0.5 * (1. - c2);
-        D[1](1, 2) = -D[1](2, 1);
-        D[1](1, 1) = D[1](2, 2) - D[1](2, 0);
-        D[1](1, 0) = D[1](2, 1);
-        D[1](0, 2) = D[1](2, 0);
-        D[1](0, 1) = D[1](1, 2);
-        D[1](0, 0) = D[1](2, 2);
+        DZeta[0](0, 0) = 1.;
+        RZeta[0](0, 0) = 1.;
+        DZeta[1](2, 2) = 0.5 * (1. + c2);
+        DZeta[1](2, 1) = -s2 * tables::invsqrt_int<T>(2);
+        DZeta[1](2, 0) = 0.5 * (1. - c2);
+        DZeta[1](1, 2) = -DZeta[1](2, 1);
+        DZeta[1](1, 1) = DZeta[1](2, 2) - DZeta[1](2, 0);
+        DZeta[1](1, 0) = DZeta[1](2, 1);
+        DZeta[1](0, 2) = DZeta[1](2, 0);
+        DZeta[1](0, 1) = DZeta[1](1, 2);
+        DZeta[1](0, 0) = DZeta[1](2, 2);
         cosag = c1 * c3 - s1 * s3;
         COSAMG = c1 * c3 + s1 * s3;
         sinag = s1 * c3 + c1 * s3;
         SINAMG = s1 * c3 - c1 * s3;
-        R[1](1, 1) = D[1](1, 1);
-        R[1](2, 1) = tables::sqrt_int<T>(2) * D[1](1, 2) * c1;
-        R[1](0, 1) = tables::sqrt_int<T>(2) * D[1](1, 2) * s1;
-        R[1](1, 2) = tables::sqrt_int<T>(2) * D[1](2, 1) * c3;
-        R[1](1, 0) = -tables::sqrt_int<T>(2) * D[1](2, 1) * s3;
-        R[1](2, 2) = D[1](2, 2) * cosag - D[1](2, 0) * COSAMG;
-        R[1](2, 0) = -D[1](2, 2) * sinag - D[1](2, 0) * SINAMG;
-        R[1](0, 2) = D[1](2, 2) * sinag - D[1](2, 0) * SINAMG;
-        R[1](0, 0) = D[1](2, 2) * cosag + D[1](2, 0) * COSAMG;
+        RZeta[1](1, 1) = DZeta[1](1, 1);
+        RZeta[1](2, 1) = tables::sqrt_int<T>(2) * DZeta[1](1, 2) * c1;
+        RZeta[1](0, 1) = tables::sqrt_int<T>(2) * DZeta[1](1, 2) * s1;
+        RZeta[1](1, 2) = tables::sqrt_int<T>(2) * DZeta[1](2, 1) * c3;
+        RZeta[1](1, 0) = -tables::sqrt_int<T>(2) * DZeta[1](2, 1) * s3;
+        RZeta[1](2, 2) = DZeta[1](2, 2) * cosag - DZeta[1](2, 0) * COSAMG;
+        RZeta[1](2, 0) = -DZeta[1](2, 2) * sinag - DZeta[1](2, 0) * SINAMG;
+        RZeta[1](0, 2) = DZeta[1](2, 2) * sinag - DZeta[1](2, 0) * SINAMG;
+        RZeta[1](0, 0) = DZeta[1](2, 2) * cosag + DZeta[1](2, 0) * COSAMG;
 
         // The remaining matrices are calculated using symmetry and
         // and recurrence relations
@@ -431,15 +463,15 @@ namespace rotation {
         T cosaux, cosmal, sinmal, cosag, sinag, cosagm, sinagm, cosmga, sinmga;
         T d1, d2;
 
-        // Compute the D[l;m',m) matrix.
+        // Compute the DZeta[l;m',m) matrix.
         // First row by recurrence (Eq. 19 and 20 in Alvarez Collado et al.)
-        D[l](2 * l, 2 * l) = D[l - 1](isup + l - 1, isup + l - 1) * (1. + c2) / 2.;
-        D[l](2 * l, 0) = D[l - 1](isup + l - 1, -isup + l - 1) * (1. - c2) / 2.;
+        DZeta[l](2 * l, 2 * l) = DZeta[l - 1](isup + l - 1, isup + l - 1) * (1. + c2) / 2.;
+        DZeta[l](2 * l, 0) = DZeta[l - 1](isup + l - 1, -isup + l - 1) * (1. - c2) / 2.;
         for (m=isup; m>iinf-1; m--)
-            D[l](2 * l, m + l) = -tgbet2 * tables::sqrt_int<T>(l + m + 1) *
-                                  tables::invsqrt_int<T>(l - m) * D[l](2 * l, m + 1 + l);
+            DZeta[l](2 * l, m + l) = -tgbet2 * tables::sqrt_int<T>(l + m + 1) *
+                                  tables::invsqrt_int<T>(l - m) * DZeta[l](2 * l, m + 1 + l);
 
-        // The rows of the upper quarter triangle of the D[l;m',m) matrix
+        // The rows of the upper quarter triangle of the DZeta[l;m',m) matrix
         // (Eq. 21 in Alvarez Collado et al.)
         al = l;
         al1 = al - 1;
@@ -458,21 +490,21 @@ namespace rotation {
                 lbuz = l - m;
                 auz = tables::invsqrt_int<T>(lauz * lbuz);
                 fact = aux * auz;
-                term = tal1 * (cosaux - am * amp) * D[l - 1](mp + l - 1, m + l - 1);
+                term = tal1 * (cosaux - am * amp) * DZeta[l - 1](mp + l - 1, m + l - 1);
                 if ((lbuz != 1) && (lbux != 1)) {
                     cuz = tables::sqrt_int<T>((lauz - 1) * (lbuz - 1));
-                    term = term - D[l - 2](mp + l - 2, m + l - 2) * cux * cuz;
+                    term = term - DZeta[l - 2](mp + l - 2, m + l - 2) * cux * cuz;
                 }
-                D[l](mp + l, m + l) = fact * term;
+                DZeta[l](mp + l, m + l) = fact * term;
             }
             iinf = iinf + 1;
             isup = isup - 1;
         }
 
-        // The remaining elements of the D[l;m',m) matrix are calculated
+        // The remaining elements of the DZeta[l;m',m) matrix are calculated
         // using the corresponding symmetry relations:
-        // reflection ---> ((-1)**(m-m')) D[l;m,m') = D[l;m',m), m'<=m
-        // inversion ---> ((-1)**(m-m')) D[l;-m',-m) = D[l;m',m)
+        // reflection ---> ((-1)**(m-m')) DZeta[l;m,m') = DZeta[l;m',m), m'<=m
+        // inversion ---> ((-1)**(m-m')) DZeta[l;-m',-m) = DZeta[l;m',m)
 
         // Reflection
         sign = 1;
@@ -480,7 +512,7 @@ namespace rotation {
         isup = l - 1;
         for (m=l; m>0; m--) {
             for (mp=iinf; mp<isup+1; mp++) {
-                D[l](mp + l, m + l) = sign * D[l](m + l, mp + l);
+                DZeta[l](mp + l, m + l) = sign * DZeta[l](m + l, mp + l);
                 sign = -sign;
             }
             iinf = iinf + 1;
@@ -493,37 +525,37 @@ namespace rotation {
         for (m=l-1; m>-(l+1); m--) {
             sign = -1;
             for (mp=isup; mp>iinf-1; mp--) {
-                D[l](mp + l, m + l) = sign * D[l](-mp + l, -m + l);
+                DZeta[l](mp + l, m + l) = sign * DZeta[l](-mp + l, -m + l);
                 sign = -sign;
             }
             isup = isup + 1;
         }
 
         // Compute the real rotation matrices R from the complex ones D
-        R[l](0 + l, 0 + l) = D[l](0 + l, 0 + l);
+        RZeta[l](0 + l, 0 + l) = DZeta[l](0 + l, 0 + l);
         cosmal = c1;
         sinmal = s1;
         sign = -1;
         for (mp=1; mp<l+1; mp++) {
             cosmga = c3;
             sinmga = s3;
-            aux = tables::sqrt_int<T>(2) * D[l](0 + l, mp + l);
-            R[l](mp + l, 0 + l) = aux * cosmal;
-            R[l](-mp + l, 0 + l) = aux * sinmal;
+            aux = tables::sqrt_int<T>(2) * DZeta[l](0 + l, mp + l);
+            RZeta[l](mp + l, 0 + l) = aux * cosmal;
+            RZeta[l](-mp + l, 0 + l) = aux * sinmal;
             for (m=1; m<l+1; m++) {
-                aux = tables::sqrt_int<T>(2) * D[l](m + l, 0 + l);
-                R[l](l, m + l) = aux * cosmga;
-                R[l](l, -m + l) = -aux * sinmga;
-                d1 = D[l](-mp + l, -m + l);
-                d2 = sign * D[l](mp + l, -m + l);
+                aux = tables::sqrt_int<T>(2) * DZeta[l](m + l, 0 + l);
+                RZeta[l](l, m + l) = aux * cosmga;
+                RZeta[l](l, -m + l) = -aux * sinmga;
+                d1 = DZeta[l](-mp + l, -m + l);
+                d2 = sign * DZeta[l](mp + l, -m + l);
                 cosag = cosmal * cosmga - sinmal * sinmga;
                 cosagm = cosmal * cosmga + sinmal * sinmga;
                 sinag = sinmal * cosmga + cosmal * sinmga;
                 sinagm = sinmal * cosmga - cosmal * sinmga;
-                R[l](mp + l, m + l) = d1 * cosag + d2 * cosagm;
-                R[l](mp + l, -m + l) = -d1 * sinag + d2 * sinagm;
-                R[l](-mp + l, m + l) = d1 * sinag + d2 * sinagm;
-                R[l](-mp + l, -m + l) = d1 * cosag - d2 * cosagm;
+                RZeta[l](mp + l, m + l) = d1 * cosag + d2 * cosagm;
+                RZeta[l](mp + l, -m + l) = -d1 * sinag + d2 * sinagm;
+                RZeta[l](-mp + l, m + l) = d1 * sinag + d2 * sinagm;
+                RZeta[l](-mp + l, -m + l) = d1 * cosag - d2 * cosagm;
                 aux = cosmga * c3 - sinmga * s3;
                 sinmga = sinmga * c3 + cosmga * s3;
                 cosmga = aux;

@@ -39,8 +39,8 @@ namespace utils {
     static const UnitVector<double> yhat_double({0, 1, 0});
     static const UnitVector<double> zhat_double({0, 0, 1});
     template <typename T> inline UnitVector<T> xhat(){ return xhat_double.template cast<T>(); }
-    template <typename T> inline UnitVector<T> yhat(){ return xhat_double.template cast<T>(); }
-    template <typename T> inline UnitVector<T> zhat(){ return xhat_double.template cast<T>(); }
+    template <typename T> inline UnitVector<T> yhat(){ return yhat_double.template cast<T>(); }
+    template <typename T> inline UnitVector<T> zhat(){ return zhat_double.template cast<T>(); }
 
     // Machine precision at current type
     // We need to be careful with AutoDiffScalar specialization.

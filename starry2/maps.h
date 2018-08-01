@@ -324,8 +324,8 @@ namespace maps {
     // Rotate the base map in-place given `theta` in **degrees**
     template <class T, class U>
     void Map<T, U>::rotate(const U& theta_deg) {
-        T theta_rad = T(theta_deg) * (pi<T>() / 180.);
-        W.rotate(cos(theta_rad), sin(theta_rad), y);
+        T theta = T(theta_deg) * (pi<T>() / 180.);
+        W.rotate(cos(theta), sin(theta), y);
         update();
     }
 
@@ -334,7 +334,7 @@ namespace maps {
     /*   INTENSITY   */
     /* ------------- */
 
-    // Compute the polynomial basis at a point; templated for AutoDiff capability
+    // Compute the polynomial basis at a point; templated for AD capability
     template <class T, class U>
     template <typename V>
     inline void Map<T, U>::poly_basis(const V& x0, const V& y0, VectorT<V>& basis) {
@@ -384,13 +384,13 @@ namespace maps {
         T y0 = T(y0_);
 
         // Convert to radians
-        T theta_rad = T(theta_deg) * (pi<T>() / 180.);
+        T theta = T(theta_deg) * (pi<T>() / 180.);
 
         // Rotate the map into view
-        if (theta_rad == 0) {
+        if (theta == 0) {
             tmp_vec_ptr = &p;
         } else {
-            W.rotate(cos(theta_rad), sin(theta_rad), tmp_vec);
+            W.rotate(cos(theta), sin(theta), tmp_vec);
             tmp_vec = B.A1 * tmp_vec;
             tmp_vec_ptr = &tmp_vec;
         }
@@ -410,20 +410,22 @@ namespace maps {
     template <class T, class U>
     inline U Map<T, U>::evaluate_with_gradient(const U& theta_deg, const U& x0_, const U& y0_) {
 
+        // TODO: Need to cast things from T to U below still.
+
         // Convert to internal type
         T x0 = T(x0_);
         T y0 = T(y0_);
 
         // Convert to radians
-        T theta_rad = T(theta_deg) * (pi<T>() / 180.);
+        T theta = T(theta_deg) * (pi<T>() / 180.);
 
         // Rotate the map into view
-        auto R = W.getR(cos(theta_rad), sin(theta_rad));
-        if (theta_rad == 0) {
+        W.compute(cos(theta), sin(theta));
+        if (theta == 0) {
             tmp_vec_ptr = &p;
         } else {
             for (int l = 0; l < lmax + 1; l++)
-                tmp_vec.segment(l * l, 2 * l + 1) = R[l] * y.segment(l * l, 2 * l + 1);
+                tmp_vec.segment(l * l, 2 * l + 1) = W.R[l] * y.segment(l * l, 2 * l + 1);
             tmp_vec = B.A1 * tmp_vec;
             tmp_vec_ptr = &tmp_vec;
         }
@@ -431,7 +433,7 @@ namespace maps {
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) return U(NAN);
 
-        // Compute the polynomial basis
+        // Compute the polynomial basis and its x and y derivs
         ADScalar<T, 2> x0_grad(x0, Vector<T>::Unit(2, 0));
         ADScalar<T, 2> y0_grad(y0, Vector<T>::Unit(2, 1));
         VectorT<ADScalar<T, 2>> basis;
@@ -445,14 +447,23 @@ namespace maps {
             tmp_col_vec(i) = basis(i).value();
         }
 
-        // Compute the map derivs manually
-        if (theta_rad == 0) {
+        // Compute the map derivs
+        if (theta == 0) {
             dI.segment(3, N) = tmp_col_vec * B.A1;
         } else {
             dI.segment(3, N) = tmp_col_vec * B.A1;
             for (int l = 0; l < lmax + 1; l++)
-                dI.segment(3 + l * l, 2 * l + 1) = dI.segment(3 + l * l, 2 * l + 1) * R[l];
+                dI.segment(3 + l * l, 2 * l + 1) = dI.segment(3 + l * l, 2 * l + 1).transpose() * W.R[l];
         }
+
+        // Compute the theta deriv
+        // TODO: Slow
+        Vector<T> foo;
+        foo.resize(N);
+        for (int l = 0; l < lmax + 1; l++)
+            foo.segment(l * l, 2 * l + 1) = W.dRdtheta[l] * y.segment(l * l, 2 * l + 1);
+        dI(0) = (tmp_col_vec * B.A1).dot(foo);
+        dI(0) *= (pi<T>() / 180.);
 
         // Dot the coefficients in to our polynomial map
         return U(tmp_col_vec.dot(*tmp_vec_ptr));
