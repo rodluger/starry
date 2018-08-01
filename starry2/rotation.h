@@ -216,49 +216,37 @@ namespace rotation {
     template <class T>
     inline void Wigner<T>::compute(const T& costheta, const T& sintheta) {
 
-        if (sintheta == 0) {
-
-            // This is very easy!
-            for (int l = 0; l < lmax + 1; l++) {
-                R[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
-                dRdtheta[l] = Matrix<T>::Zero(2 * l + 1, 2 * l + 1);
+        // Compute the cos and sin vectors for the zhat rotation
+        cosnt(1) = costheta;
+        sinnt(1) = sintheta;
+        for (int n = 2; n < lmax + 1; n++) {
+            cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
+            sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
+        }
+        int n = 0;
+        for (int l = 0; l < lmax + 1; l++) {
+            for (int m = -l; m < 0; m++) {
+                cosmt(n) = cosnt(-m);
+                sinmt(n) = -sinnt(-m);
+                n++;
             }
-
-        } else {
-
-            // Compute the cos and sin vectors for the zhat rotation
-            cosnt(1) = costheta;
-            sinnt(1) = sintheta;
-            for (int n = 2; n < lmax + 1; n++) {
-                cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
-                sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
+            for (int m = 0; m < l + 1; m++) {
+                cosmt(n) = cosnt(m);
+                sinmt(n) = sinnt(m);
+                n++;
             }
-            int n = 0;
-            for (int l = 0; l < lmax + 1; l++) {
-                for (int m = -l; m < 0; m++) {
-                    cosmt(n) = cosnt(-m);
-                    sinmt(n) = -sinnt(-m);
-                    n++;
-                }
-                for (int m = 0; m < l + 1; m++) {
-                    cosmt(n) = cosnt(m);
-                    sinmt(n) = sinnt(m);
-                    n++;
-                }
-            }
+        }
 
-            // Now compute the full rotation matrix
-            for (int l = 0; l < lmax + 1; l++) {
-                for (int j = 0; j < 2 * l + 1; j++) {
-                    R[l].col(j) = RZetaInv[l].col(j) * cosmt(l * l + j) +
-                                  RZetaInv[l].col(2 * l - j) * sinmt(l * l + j);
-                    dRdtheta[l].col(j) = RZetaInv[l].col(2 * l - j) * (j - l) * cosmt(l * l + j) -
-                                         RZetaInv[l].col(j) * abs((j - l) * sinmt(l * l + j));
-                }
-                R[l] = R[l] * RZeta[l];
-                dRdtheta[l] = dRdtheta[l] * RZeta[l];
+        // Now compute the full rotation matrix
+        for (int l = 0; l < lmax + 1; l++) {
+            for (int j = 0; j < 2 * l + 1; j++) {
+                R[l].col(j) = RZetaInv[l].col(j) * cosmt(l * l + j) +
+                              RZetaInv[l].col(2 * l - j) * sinmt(l * l + j);
+                dRdtheta[l].col(j) = RZetaInv[l].col(2 * l - j) * (j - l) * cosmt(l * l + j) -
+                                     RZetaInv[l].col(j) * abs((j - l) * sinmt(l * l + j));
             }
-
+            R[l] = R[l] * RZeta[l];
+            dRdtheta[l] = dRdtheta[l] * RZeta[l];
         }
 
     }
