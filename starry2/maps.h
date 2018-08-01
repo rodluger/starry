@@ -25,16 +25,10 @@ namespace maps {
     using rotation::Wigner;
     using basis::Basis;
 
-    template <typename T, int N>
-    using ADScalar = Eigen::AutoDiffScalar<Eigen::Matrix<T, N, 1>>;
+    /**
+    The main surface map class.
 
-    // ****************************
-    // ----------------------------
-    //
-    //    The surface map class
-    //
-    // ----------------------------
-    // ****************************
+    */
     template <class T, class U>
     class Map {
 
@@ -57,10 +51,18 @@ namespace maps {
             Wigner<T> W;                                                        /**< The class controlling rotations */
             bool Y00_is_unity;                                                  /**< Flag: are we fixing the constant map coeff at unity? */
 
-            Vector<T> tmp_vec;                                                  /**< A temporary surface map vector. */
-            VectorT<T> tmp_col_vec;                                             /**< A temporary (column) surface map vector. */
-            Vector<T>* tmp_vec_ptr;                                             /**< A temporary pointer to a surface map vector. */
+            // Temporary vectors
+            Vector<T> vtmp;                                                     /**< A temporary surface map vector */
+            VectorT<T> pT;                                                      /**< The polynomial basis column vector */
+            Vector<T> Ry;                                                       /**< The rotated spherical harmonic vector */
+            VectorT<T> pTA1;                                                    /**< Polynomial basis dotted into change of basis matrix */
+            Vector<T> dRdthetay;                                                /**< Derivative of `Ry` with respect to `theta` */
+            Vector<T>* ptr_A1Ry;                                                /**< Pointer to rotated polynomial vector */
+            ADScalar<T, 2> x0_grad;                                             /**< x position AD type for map evaluation */
+            ADScalar<T, 2> y0_grad;                                             /**< y position AD type for map evaluation */
+            VectorT<ADScalar<T, 2>> pT_grad;                                    /**< Polynomial basis AD type */
 
+            // Private methods
             template <typename V>
             inline void poly_basis(const V& x0, const V& y0, VectorT<V>& basis);
             inline U evaluate_with_gradient(const U& theta_deg, const U& x0_,
@@ -84,8 +86,16 @@ namespace maps {
                 B(lmax),
                 W(lmax, (*this).y, (*this).axis),
                 Y00_is_unity(Y00_is_unity),
-                tmp_vec(Vector<T>::Zero(N)),
-                tmp_col_vec(VectorT<T>::Zero(N)) {
+                //
+                vtmp(Vector<T>::Zero(N)),
+                pT(VectorT<T>::Zero(N)),
+                Ry(Vector<T>::Zero(N)),
+                pTA1(VectorT<T>::Zero(N)),
+                dRdthetay(Vector<T>::Zero(N)),
+                x0_grad(0, Vector<T>::Unit(2, 0)),
+                y0_grad(0, Vector<T>::Unit(2, 1)),
+                pT_grad(VectorT<ADScalar<T, 2>>::Zero(N))
+                {
 
                 // Populate the gradient names
                 for (int l = 0; l < lmax + 1; l++) {
@@ -379,30 +389,28 @@ namespace maps {
         if (compute_gradient)
             return evaluate_with_gradient(theta_deg, x0_, y0_);
 
-        // Convert to internal type
+        // Convert to internal types
         T x0 = T(x0_);
         T y0 = T(y0_);
-
-        // Convert to radians
         T theta = T(theta_deg) * (pi<T>() / 180.);
 
         // Rotate the map into view
         if (theta == 0) {
-            tmp_vec_ptr = &p;
+            ptr_A1Ry = &p;
         } else {
-            W.rotate(cos(theta), sin(theta), tmp_vec);
-            tmp_vec = B.A1 * tmp_vec;
-            tmp_vec_ptr = &tmp_vec;
+            W.rotate(cos(theta), sin(theta), Ry);
+            vtmp = B.A1 * Ry;
+            ptr_A1Ry = &vtmp;
         }
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) return U(NAN);
 
         // Compute the polynomial basis
-        poly_basis(x0, y0, tmp_col_vec);
+        poly_basis(x0, y0, pT);
 
         // Dot the coefficients in to our polynomial map
-        return U(tmp_col_vec.dot(*tmp_vec_ptr));
+        return U(pT.dot(*ptr_A1Ry));
 
     }
 
@@ -410,71 +418,58 @@ namespace maps {
     template <class T, class U>
     inline U Map<T, U>::evaluate_with_gradient(const U& theta_deg, const U& x0_, const U& y0_) {
 
-        // TODO: Need to cast things from T to U below still.
-
         // Convert to internal type
         T x0 = T(x0_);
         T y0 = T(y0_);
-
-        // Convert to radians
         T theta = T(theta_deg) * (pi<T>() / 180.);
 
         // Rotate the map into view
         W.compute(cos(theta), sin(theta));
         if (theta == 0) {
-            tmp_vec_ptr = &p;
+            ptr_A1Ry = &p;
         } else {
             for (int l = 0; l < lmax + 1; l++)
-                tmp_vec.segment(l * l, 2 * l + 1) = W.R[l] * y.segment(l * l, 2 * l + 1);
-            tmp_vec = B.A1 * tmp_vec;
-            tmp_vec_ptr = &tmp_vec;
+                Ry.segment(l * l, 2 * l + 1) = W.R[l] * y.segment(l * l, 2 * l + 1);
+            vtmp = B.A1 * Ry;
+            ptr_A1Ry = &vtmp;
         }
 
         // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) return U(NAN);
+        if (x0 * x0 + y0 * y0 > 1.0) {
+            dI = Vector<U>::Constant(N, NAN);
+            return U(NAN);
+        }
 
         // Compute the polynomial basis and its x and y derivs
-        ADScalar<T, 2> x0_grad(x0, Vector<T>::Unit(2, 0));
-        ADScalar<T, 2> y0_grad(y0, Vector<T>::Unit(2, 1));
-        VectorT<ADScalar<T, 2>> basis;
-        basis.resize(N);
-        poly_basis(x0_grad, y0_grad, basis);
+        x0_grad.value() = x0;
+        y0_grad.value() = y0;
+        poly_basis(x0_grad, y0_grad, pT_grad);
         dI(1) = 0;
         dI(2) = 0;
         for (int i = 0; i < N; i++) {
-            dI(1) += basis(i).derivatives()(0) * (*tmp_vec_ptr)(i);
-            dI(2) += basis(i).derivatives()(1) * (*tmp_vec_ptr)(i);
-            tmp_col_vec(i) = basis(i).value();
+            dI(1) += U(pT_grad(i).derivatives()(0) * (*ptr_A1Ry)(i));
+            dI(2) += U(pT_grad(i).derivatives()(1) * (*ptr_A1Ry)(i));
+            pT(i) = pT_grad(i).value();
         }
 
         // Compute the map derivs
+        pTA1 = pT * B.A1;
         if (theta == 0) {
-            dI.segment(3, N) = tmp_col_vec * B.A1;
+            dI.segment(3, N) = pTA1.transpose().template cast<U>();
         } else {
-            dI.segment(3, N) = tmp_col_vec * B.A1;
             for (int l = 0; l < lmax + 1; l++)
-                dI.segment(3 + l * l, 2 * l + 1) = dI.segment(3 + l * l, 2 * l + 1).transpose() * W.R[l];
+                dI.segment(3 + l * l, 2 * l + 1) = (pTA1.segment(l * l, 2 * l + 1) * W.R[l]).template cast<U>();
         }
 
         // Compute the theta deriv
-        // TODO: Slow
-        Vector<T> foo;
-        foo.resize(N);
         for (int l = 0; l < lmax + 1; l++)
-            foo.segment(l * l, 2 * l + 1) = W.dRdtheta[l] * y.segment(l * l, 2 * l + 1);
-        dI(0) = (tmp_col_vec * B.A1).dot(foo);
-        dI(0) *= (pi<T>() / 180.);
+            dRdthetay.segment(l * l, 2 * l + 1) = W.dRdtheta[l] * y.segment(l * l, 2 * l + 1);
+        dI(0) = U(pTA1.dot(dRdthetay));
+        dI(0) *= (pi<U>() / 180.);
 
         // Dot the coefficients in to our polynomial map
-        return U(tmp_col_vec.dot(*tmp_vec_ptr));
+        return U(pT.dot(*ptr_A1Ry));
 
-    }
-
-    // All sorts of errors occur when we try to AutoDiff a Boost multiprecision
-    // type, so let's just not go there.
-    template <>
-    inline double Map<Multi, double>::evaluate_with_gradient(const double& theta_deg, const double& x0_, const double& y0_) {
-        throw errors::NotImplementedError("Autodiff of multiprecision type is not currently implemented.");
     }
 
 }; // namespace maps

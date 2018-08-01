@@ -34,6 +34,10 @@ namespace utils {
     template <typename T>
     using UnitVector = Eigen::Matrix<T, 3, 1>;
 
+    // Our AutoDiffScalar type
+    template <typename T, int N>
+    using ADScalar = Eigen::AutoDiffScalar<Eigen::Matrix<T, N, 1>>;
+
     // Some useful unit vectors
     static const UnitVector<double> xhat_double({1, 0, 0});
     static const UnitVector<double> yhat_double({0, 1, 0});
