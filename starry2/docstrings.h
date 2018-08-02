@@ -29,6 +29,7 @@ namespace docstrings {
         const char * r;
         const char * axis;
         const char * evaluate;
+        const char * flux;
         const char * rotate;
         void add_extras() { doc = R"pbdoc()pbdoc"; };
 
@@ -78,6 +79,27 @@ namespace docstrings {
                     returns the tuple `(I, dI)`, where `I` is the specific intensity and `dI` is \
                     a dictionary containing the derivatives with respect to each of the input parameters \
                     and each of the map coefficients.
+            )pbdoc";
+
+            flux = R"pbdoc(
+                Return the total flux received by the observer.
+                Computes the total flux received by the observer from the
+                map during or outside of an occultation.
+
+                Args:
+                    theta (float or ndarray): Angle of rotation. Default 0.
+                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
+                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
+                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+                    gradient (bool): Compute and return the gradient of the flux as well? Default :py:obj:`False`.
+
+                Returns:
+                    The flux received by the observer (a scalar or a vector). \
+                    If :py:obj:`gradient` is :py:obj:`True`, \
+                    returns the tuple `(F, dF)`, where `F` is the flux and `dF` is \
+                    a dictionary containing the derivatives with respect to each of the input parameters \
+                    and each of the map coefficients.
+
             )pbdoc";
 
             rotate = R"pbdoc(

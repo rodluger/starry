@@ -89,8 +89,6 @@ namespace rotation {
         inline void dlmn(int l, T& s1, T& c1, T& c2, T& tgbet2, T& s3, T& c3);
         inline void computeZeta(const UnitVector<T>& axis, const T& costheta,
                                 const T& sintheta);
-        inline void rotatez(const T& costheta, const T& sintheta,
-                            const Vector<T>& yin, Vector<T>& yout);
         inline void rotate(const T& costheta, const T& sintheta);
 
     public:
@@ -103,6 +101,8 @@ namespace rotation {
         inline void rotate(const T& costheta, const T& sintheta,
                            Vector<T>& yout);
         inline void compute(const T& costheta, const T& sintheta);
+        inline void rotatez(const T& costheta, const T& sintheta,
+                            const Vector<T>& yin, Vector<T>& yout);
 
         // Constructor: allocate the matrices
         Wigner(int lmax, Vector<T>& y, UnitVector<T>& axis) :

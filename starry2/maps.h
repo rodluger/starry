@@ -61,12 +61,16 @@ namespace maps {
             ADScalar<T, 2> x0_grad;                                             /**< x position AD type for map evaluation */
             ADScalar<T, 2> y0_grad;                                             /**< y position AD type for map evaluation */
             VectorT<ADScalar<T, 2>> pT_grad;                                    /**< Polynomial basis AD type */
+            Vector<T>* ptr_Ry;                                                  /**< Pointer to rotated spherical harmonic vector */
+            Vector<T> ARRy;                                                     /**< The `ARRy` term in `s^TARRy` */
 
             // Private methods
             template <typename V>
             inline void poly_basis(const V& x0, const V& y0, VectorT<V>& basis);
             inline U evaluate_with_gradient(const U& theta_deg, const U& x0_,
                                             const U& y0_);
+            inline U flux_with_gradient(const U& theta_deg, const U& xo_,
+                                        const U& yo_, const U& ro_);
 
         public:
 
@@ -94,7 +98,8 @@ namespace maps {
                 dRdthetay(Vector<T>::Zero(N)),
                 x0_grad(0, Vector<T>::Unit(2, 0)),
                 y0_grad(0, Vector<T>::Unit(2, 1)),
-                pT_grad(VectorT<ADScalar<T, 2>>::Zero(N))
+                pT_grad(VectorT<ADScalar<T, 2>>::Zero(N)),
+                ARRy(Vector<T>::Zero(N))
                 {
 
                 // Populate the gradient names
@@ -135,6 +140,10 @@ namespace maps {
             // Evaluate the intensity at a point
             inline U evaluate(const U& theta_deg=0, const U& x0_=0,
                               const U& y0_=0, bool gradient=false);
+
+           // Compute the flux
+           inline U flux(const U& theta_deg=0, const U& xo_=0,
+                         const U& yo_=0, const U& ro_=0, bool gradient=false);
 
     };
 
@@ -522,6 +531,141 @@ namespace maps {
         return U(pT.dot(*ptr_A1Ry));
 
     }
+
+    /**
+    Compute the flux during or outside of an occultation
+
+    */
+    template <class T, class U>
+    inline U Map<T, U>::flux(const U& theta_deg, const U& xo_,
+                             const U& yo_, const U& ro_, bool gradient) {
+
+        // If we're computing the gradient as well,
+        // call the specialized function
+        if (gradient)
+            return flux_with_gradient(theta_deg, xo_, yo_, ro_);
+
+        // Convert to internal types
+        T xo = T(xo_);
+        T yo = T(yo_);
+        T ro = T(ro_);
+        T theta = T(theta_deg) * (pi<T>() / 180.);
+
+        // Impact parameter
+        T b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) return U(0);
+
+        // Rotate the map into view
+        if (theta == 0) {
+            ptr_Ry = &y;
+        } else {
+            W.rotate(cos(theta), sin(theta), Ry);
+            vtmp = Ry;
+            ptr_Ry = &vtmp;
+        }
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // This is very easy!
+            return U(B.rTA1.dot(*ptr_Ry));
+
+        // Occultation
+        } else {
+
+            // Align occultor with the +y axis
+            if ((b > 0) && ((xo != 0) || (yo < 0))) {
+                W.rotatez(yo / b, xo / b, *ptr_Ry, vtmp);
+                ptr_Ry = &vtmp;
+            }
+
+            // Perform the rotation + change of basis
+            ARRy = B.A * (*ptr_Ry);
+
+            // TODO
+            return U(0);
+            /*
+            // Compute the sT vector
+            solver::computesT(G, b, ro, ARRy);
+
+            // Dot the result in and we're done
+            return U(G.sT * ARRy);
+            */
+
+        }
+
+    }
+
+    /**
+    Compute the flux during or outside of an occultation and its gradient
+
+    */
+    template <class T, class U>
+    inline U Map<T, U>::flux_with_gradient(const U& theta_deg, const U& xo_, const U& yo_, const U& ro_) {
+
+        // Convert to internal type
+        T xo = T(xo_);
+        T yo = T(yo_);
+        T ro = T(ro_);
+        T theta = T(theta_deg) * (pi<T>() / 180.);
+
+        // Impact parameter
+        T b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+            dF = Vector<U>::Zero(N);
+            return U(0);
+        }
+
+        // Rotate the map into view
+        W.compute(cos(theta), sin(theta));
+        if (theta == 0) {
+            ptr_Ry = &y;
+        } else {
+            for (int l = 0; l < lmax + 1; l++)
+                Ry.segment(l * l, 2 * l + 1) = W.R[l] * y.segment(l * l, 2 * l + 1);
+            vtmp = Ry;
+            ptr_Ry = &vtmp;
+        }
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // Compute the theta deriv
+            for (int l = 0; l < lmax + 1; l++)
+                dRdthetay.segment(l * l, 2 * l + 1) = W.dRdtheta[l] * y.segment(l * l, 2 * l + 1);
+            dF(0) = U(B.rTA1.dot(dRdthetay));
+            dF(0) *= (pi<U>() / 180.);
+
+            // The x, y, and r derivs are trivial
+            dF(1) = 0;
+            dF(2) = 0;
+            dF(3) = 0;
+
+            // Compute the map derivs
+            if (theta == 0) {
+                dF.segment(4, N) = B.rTA1.transpose().template cast<U>();
+            } else {
+                for (int l = 0; l < lmax + 1; l++)
+                    dF.segment(4 + l * l, 2 * l + 1) = (B.rTA1.segment(l * l, 2 * l + 1) * W.R[l]).template cast<U>();
+            }
+
+            return U(B.rTA1.dot(*ptr_Ry));
+
+        // Occultation
+        } else {
+
+            // TODO!
+            dF = Vector<U>::Zero(N);
+            return U(0);
+
+        }
+
+    }
+
 
 }; // namespace maps
 

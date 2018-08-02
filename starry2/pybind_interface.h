@@ -167,6 +167,44 @@ namespace pybind_interface {
 
                 }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "gradient"_a=false)
 
+            .def("flux",
+                [](maps::Map<T, double> &map, py::array_t<double> theta, py::array_t<double> xo,
+                   py::array_t<double> yo, py::array_t<double> ro, bool gradient) -> py::object {
+
+                    if (gradient) {
+
+                        // Initialize a dictionary of derivatives
+                        size_t n = max(theta.size(), max(xo.size(), max(yo.size(), ro.size())));
+                        std::map<string, Vector<double>> grad;
+                        for (auto name : map.dF_names)
+                            grad[name].resize(n);
+
+                        // Nested lambda function; https://github.com/pybind/pybind11/issues/761#issuecomment-288818460
+                        int t = 0;
+                        auto F = py::vectorize([&map, &grad, &t](double theta, double xo, double yo, double ro) {
+                            // Evaluate the function
+                            double res = map.flux(theta, xo, yo, ro, true);
+                            // Gather the derivatives
+                            for (int j = 0; j < map.dF.size(); j++)
+                                grad[map.dF_names[j]](t) = map.dF(j);
+                            t++;
+                            return res;
+                        })(theta, xo, yo, ro);
+
+                        // Return a tuple of (F, dict(dF))
+                        return py::make_tuple(F, grad);
+
+                    } else {
+
+                        // Easy! We'll just return F
+                        return py::vectorize([&map](double theta, double xo, double yo, double ro) {
+                            return map.flux(theta, xo, yo, ro, false);
+                        })(theta, xo, yo, ro);
+
+                    }
+
+                }, docs.Map.flux, "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "ro"_a=0.0, "gradient"_a=false)
+
             .def("rotate", &maps::Map<T, double>::rotate, docs.Map.rotate, "theta"_a=0)
 
             .def("__repr__", &maps::Map<T, double>::__repr__);
