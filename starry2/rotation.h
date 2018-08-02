@@ -53,52 +53,55 @@ namespace rotation {
     template <class T>
     class Wigner {
 
-        const int lmax;
-        const int N;
-        const T tol;
+        const int lmax;                                                         /**< Highest degree of the map */
+        const int N;                                                            /**< Number of map coefficients */
+        const T tol;                                                            /**< Numerical tolerance used to prevent division-by-zero errors */
 
         // References to the base map and the rotation axis
-        Vector<T>& y;
-        UnitVector<T>& axis;
+        Vector<T>& y;                                                           /**< Reference to the spherical harmonic map to be rotated */
+        UnitVector<T>& axis;                                                    /**< Reference to the rotation axis */
 
         // Cached transforms
-        T cache_costheta;
-        T cache_sintheta;
-        Vector<T> cache_y;
+        T cache_costheta;                                                       /**< Last value of cos(theta) used */
+        T cache_sintheta;                                                       /**< Last value of sin(theta) used */
+        Vector<T> cache_y;                                                      /**< Last value of the rotated map coefficients */
 
         // The actual Wigner matrices
-        Matrix<T>* DZeta;
-        Matrix<T>* RZeta;
-        Matrix<T>* RZetaInv;
+        Matrix<T>* DZeta;                                                       /**< The complex Wigner matrix in the `zeta` frame */
+        Matrix<T>* RZeta;                                                       /**< The real Wigner matrix in the `zeta` frame */
+        Matrix<T>* RZetaInv;                                                    /**< The inverse of the real Wigner matrix in the `zeta` frame */
 
         // `zhat` rotation params
-        Vector<T> cosnt;                            /**< Vector of cos(n theta) values */
-        Vector<T> sinnt;                            /**< Vector of sin(n theta) values */
-        Vector<T> cosmt;                            /**< Vector of cos(m theta) values */
-        Vector<T> sinmt;                            /**< Vector of sin(m theta) values */
-        Vector<T> yrev;                             /**< Degree-wise reverse of the spherical harmonic map */
+        Vector<T> cosnt;                                                        /**< Vector of cos(n theta) values */
+        Vector<T> sinnt;                                                        /**< Vector of sin(n theta) values */
+        Vector<T> cosmt;                                                        /**< Vector of cos(m theta) values */
+        Vector<T> sinmt;                                                        /**< Vector of sin(m theta) values */
+        Vector<T> yrev;                                                         /**< Degree-wise reverse of the spherical harmonic map */
 
         // `zeta` transform params
-        T cos_zeta, sin_zeta;                       /**< Angle between the axis of rotation and `zhat` */
-        UnitVector<T> axis_zeta;                    /**< Axis of rotation to align the rotation axis with `zhat` */
-        Vector<T> y_zeta;                           /**< The base map in the `zeta` frame */
-        Vector<T> y_zeta_rot;                       /**< The base map in the `zeta` frame after a `zhat` rotation */
+        T cos_zeta, sin_zeta;                                                   /**< Angle between the axis of rotation and `zhat` */
+        UnitVector<T> axis_zeta;                                                /**< Axis of rotation to align the rotation axis with `zhat` */
+        Vector<T> y_zeta;                                                       /**< The base map in the `zeta` frame */
+        Vector<T> y_zeta_rot;                                                   /**< The base map in the `zeta` frame after a `zhat` rotation */
 
         // Methods
         inline void rotar(T& c1, T& s1, T& c2, T& s2, T& c3, T& s3);
         inline void dlmn(int l, T& s1, T& c1, T& c2, T& tgbet2, T& s3, T& c3);
-        inline void computeZeta(const UnitVector<T>& axis, const T& costheta, const T& sintheta);
-        inline void rotatez(const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout);
+        inline void computeZeta(const UnitVector<T>& axis, const T& costheta,
+                                const T& sintheta);
+        inline void rotatez(const T& costheta, const T& sintheta,
+                            const Vector<T>& yin, Vector<T>& yout);
         inline void rotate(const T& costheta, const T& sintheta);
 
     public:
 
-        Matrix<T>* R;
-        Matrix<T>* dRdtheta;
+        Matrix<T>* R;                                                           /**< The full rotation matrix for real spherical harmonics */
+        Matrix<T>* dRdtheta;                                                    /**< The derivative of the rotation matrix with respect to theta */
 
         // These methods are accessed by the `Map` class
         inline void update();
-        inline void rotate(const T& costheta, const T& sintheta, Vector<T>& yout);
+        inline void rotate(const T& costheta, const T& sintheta,
+                           Vector<T>& yout);
         inline void compute(const T& costheta, const T& sintheta);
 
         // Constructor: allocate the matrices
@@ -151,7 +154,10 @@ namespace rotation {
 
     };
 
-    // Rotate the base map given `costheta` and `sintheta`
+    /**
+    Rotate the base map given `costheta` and `sintheta`
+
+    */
     template <class T>
     inline void Wigner<T>::rotate(const T& costheta, const T& sintheta, Vector<T>& yout) {
 

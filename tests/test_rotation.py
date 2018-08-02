@@ -4,7 +4,7 @@ import numpy as np
 
 
 def run(Map):
-    """Test some elementary rotations."""
+    """Apply some elementary rotations."""
     # Instantiate
     m = Map(1)
     m[1, 0] = 1

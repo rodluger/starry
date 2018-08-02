@@ -86,7 +86,7 @@ namespace maps {
                 B(lmax),
                 W(lmax, (*this).y, (*this).axis),
                 Y00_is_unity(Y00_is_unity),
-                //
+                // Temporary stuff
                 vtmp(Vector<T>::Zero(N)),
                 pT(VectorT<T>::Zero(N)),
                 Ry(Vector<T>::Zero(N)),
@@ -143,7 +143,10 @@ namespace maps {
     /* ---------------- */
 
 
-    // Update the maps after the coefficients changed
+    /**
+    Update the maps after the coefficients changed
+
+    */
     template <class T, class U>
     void Map<T, U>::update() {
 
@@ -156,7 +159,10 @@ namespace maps {
 
     }
 
-    // Reset the map
+    /**
+    Reset the map
+
+    */
     template <class T, class U>
     void Map<T, U>::reset() {
         y.setZero(N);
@@ -171,7 +177,10 @@ namespace maps {
     /* ---------------- */
 
 
-    // Set the (l, m) coefficient
+    /**
+    Set the (l, m) coefficient
+
+    */
     template <class T, class U>
     void Map<T, U>::setCoeff(int l, int m, U coeff) {
         if ((l == 0) && (Y00_is_unity) && (coeff != 1))
@@ -187,7 +196,10 @@ namespace maps {
         }
     }
 
-    // Set several coefficients at once using a single index
+    /**
+    Set several coefficients at once using a single index
+
+    */
     template <class T, class U>
     void Map<T, U>::setCoeff(const Vector<int>& inds, const Vector<U>& coeffs) {
 
@@ -212,7 +224,10 @@ namespace maps {
 
     }
 
-    // Get the (l, m) coefficient
+    /**
+    Get the (l, m) coefficient
+
+    */
     template <class T, class U>
     U Map<T, U>::getCoeff(int l, int m) {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
@@ -221,7 +236,10 @@ namespace maps {
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
     }
 
-    // Get several coefficients at once using a single index
+    /**
+    Get several coefficients at once using a single index
+
+    */
     template <class T, class U>
     Vector<U> Map<T, U>::getCoeff(const Vector<int>& inds) {
         Vector<U> coeffs(inds.size());
@@ -234,7 +252,10 @@ namespace maps {
         return coeffs;
     }
 
-    // Set the axis
+    /**
+    Set the axis
+
+    */
     template <class T, class U>
     void Map<T, U>::setAxis(const UnitVector<U>& new_axis) {
 
@@ -251,37 +272,55 @@ namespace maps {
 
     }
 
-    // Return a copy of the axis
+    /**
+    Return a copy of the axis
+
+    */
     template <class T, class U>
     UnitVector<U> Map<T, U>::getAxis() {
         return axis.template cast<U>();
     }
 
-    // Get the spherical harmonic vector
+    /**
+    Get the spherical harmonic vector
+
+    */
     template <class T, class U>
     Vector<U> Map<T, U>::getY() {
         return y.template cast<U>();
     }
 
-    // Get the polynomial vector
+    /**
+    Get the polynomial vector
+
+    */
     template <class T, class U>
     Vector<U> Map<T, U>::getP() {
         return p.template cast<U>();
     }
 
-    // Get the Green's vector
+    /**
+    Get the Green's vector
+
+    */
     template <class T, class U>
     Vector<U> Map<T, U>::getG() {
         return g.template cast<U>();
     }
 
-    // Get the rotation solution vector
+    /**
+    Get the rotation solution vector
+
+    */
     template <class T, class U>
     VectorT<U> Map<T, U>::getR() {
         return B.rT.template cast<U>();
     }
 
-    // Return a human-readable map string
+    /**
+    Return a human-readable map string
+
+    */
     template <class T, class U>
     std::string Map<T, U>::__repr__() {
         int n = 0;
@@ -331,7 +370,10 @@ namespace maps {
     /* ------------- */
 
 
-    // Rotate the base map in-place given `theta` in **degrees**
+    /**
+    Rotate the base map in-place given `theta` in **degrees**
+
+    */
     template <class T, class U>
     void Map<T, U>::rotate(const U& theta_deg) {
         T theta = T(theta_deg) * (pi<T>() / 180.);
@@ -344,7 +386,10 @@ namespace maps {
     /*   INTENSITY   */
     /* ------------- */
 
-    // Compute the polynomial basis at a point; templated for AD capability
+    /**
+    Compute the polynomial basis at a point; templated for AD capability
+
+    */
     template <class T, class U>
     template <typename V>
     inline void Map<T, U>::poly_basis(const V& x0, const V& y0, VectorT<V>& basis) {
@@ -379,7 +424,10 @@ namespace maps {
         }
     }
 
-    // Evaluate our map at a given (x0, y0) coordinate
+    /**
+    Evaluate the map at a given (x0, y0) coordinate
+
+    */
     template <class T, class U>
     inline U Map<T, U>::evaluate(const U& theta_deg, const U& x0_,
                                  const U& y0_, bool gradient) {
@@ -414,7 +462,10 @@ namespace maps {
 
     }
 
-    // Evaluate our map at a given (x0, y0) coordinate and compute the gradient
+    /**
+    Evaluate the map at a given (x0, y0) coordinate and compute the gradient
+
+    */
     template <class T, class U>
     inline U Map<T, U>::evaluate_with_gradient(const U& theta_deg, const U& x0_, const U& y0_) {
 

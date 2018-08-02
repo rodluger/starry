@@ -13,23 +13,27 @@ using good old template metaprogramming (>= C++14)
 #include "errors.h"
 #include "utils.h"
 
-// Square root of pi at double precision
+//! Square root of pi at double precision
 #define SQRTPI 1.772453850905516027298167483341
 
-// Largest factorial computable at double precision
+//! Largest factorial computable at double precision
 #define MAXFACT 170
 
-// Largest double factorial computable at double precision
+//! Largest double factorial computable at double precision
 #define MAXDOUBLEFACT 300
 
-// Largest square root we're willing to tabulate
+//! Largest square root we're willing to tabulate
 #define MAXSQRT 300
 
-// Pre-tabulated square roots and factorials at double precision
+/**
+Pre-tabulated square roots and factorials at double precision
+
+*/
 namespace const_tables {
 
+    //! Square roots of the integers
     static const double sqrt_int[] =
-    { 0.00000000000000000e+00,   1.00000000000000000e+00,   1.41421356237309515e+00,
+    {0.00000000000000000e+00,  1.00000000000000000e+00,   1.41421356237309515e+00,
     1.73205080756887719e+00,   2.00000000000000000e+00,   2.23606797749978981e+00,
     2.44948974278317788e+00,   2.64575131106459072e+00,   2.82842712474619029e+00,
     3.00000000000000000e+00,   3.16227766016837952e+00,   3.31662479035539981e+00,
@@ -131,8 +135,9 @@ namespace const_tables {
     1.72336879396140858e+01,   1.72626765016320682e+01,   1.72916164657905824e+01,
     1.73205080756887746e+01};
 
+    //! One over the square roots of the integers
     static const double invsqrt_int[] =
-    {                INFINITY,   1.00000000000000000e+00,   7.07106781186547462e-01,
+    {              INFINITY,   1.00000000000000000e+00,   7.07106781186547462e-01,
     5.77350269189625842e-01,   5.00000000000000000e-01,   4.47213595499957928e-01,
     4.08248290463863073e-01,   3.77964473009227198e-01,   3.53553390593273731e-01,
     3.33333333333333315e-01,   3.16227766016837941e-01,   3.01511344577763629e-01,
@@ -234,6 +239,7 @@ namespace const_tables {
     5.80258853185659437e-02,   5.79284446363492259e-02,   5.78314931966240203e-02,
     5.77350269189625676e-02};
 
+    //! Factorial of the integers
     static const double factorial[] =
     { 1.00000000000000000e+00,   1.00000000000000000e+00,   2.00000000000000000e+00,
     6.00000000000000000e+00,   2.40000000000000000e+01,   1.20000000000000000e+02,
@@ -293,6 +299,7 @@ namespace const_tables {
     5.42391066613158868e+295,  9.00369170577843755e+297,  1.50361651486499915e+300,
     2.52607574497319842e+302,  4.26906800900470511e+304,  7.25741561530799904e+306,};
 
+    //! Double factorial of the integers
     static const double double_factorial[] =
     { 1.00000000000000000e+00,   1.00000000000000000e+00,   2.00000000000000000e+00,
     3.00000000000000000e+00,   8.00000000000000000e+00,   1.50000000000000000e+01,
@@ -396,6 +403,7 @@ namespace const_tables {
     1.25527562259930644e+304,  2.71813802312686483e+305,  3.75327411157192600e+306,
     8.15441406938059448e+307};
 
+    //! Factorial of (n/2) for positive n
     static const double half_factorial_pos[] =
     { 1.00000000000000000e+00,   8.86226925452757941e-01,   1.00000000000000000e+00,
     1.32934038817913702e+00,   2.00000000000000000e+00,   3.32335097044784256e+00,
@@ -512,6 +520,7 @@ namespace const_tables {
     2.52607574497319842e+302,  3.28147045106784503e+303,  4.26906800900470511e+304,
     5.56209241455999754e+305,  7.25741561530799904e+306};
 
+    //! Factorial of (n/2) for negative n
     static const double half_factorial_neg[] =
     { 1.00000000000000000e+00,   1.77245385090551588e+00,                  INFINITY,
     -3.54490770181103176e+00,                  INFINITY,   2.36327180120735436e+00,
@@ -634,7 +643,10 @@ namespace tables {
 
     using namespace utils;
 
-    // Square root of n
+    /**
+    Square root of n
+
+    */
     template <typename T>
     inline T sqrt_int(int n) {
         if (n < 0)
@@ -645,6 +657,10 @@ namespace tables {
             return T(const_tables::sqrt_int[n]);
     }
 
+    /**
+    Square root of n (multi-precision)
+
+    */
     template <>
     inline Multi sqrt_int(int n) {
         if (n < 0)
@@ -653,7 +669,10 @@ namespace tables {
             return sqrt(Multi(n));
     }
 
-    // Inverse of the square root of n
+    /**
+    One over the square root of n
+
+    */
     template <typename T>
     inline T invsqrt_int(int n) {
         if (n < 0)
@@ -664,6 +683,10 @@ namespace tables {
             return T(const_tables::invsqrt_int[n]);
     }
 
+    /**
+    One over the square root of n (multi-precision)
+
+    */
     template <>
     inline Multi invsqrt_int(int n) {
         if (n < 0)
@@ -672,7 +695,10 @@ namespace tables {
             return 1.0 / sqrt(Multi(n));
     }
 
-    // Factorial of n
+    /**
+    Factorial of n
+
+    */
     template <typename T>
     inline T factorial(int n) {
         if (n < 0)
@@ -683,6 +709,10 @@ namespace tables {
             return T(const_tables::factorial[n]);
     }
 
+    /**
+    Factorial of n (multi-precision)
+
+    */
     template <>
     inline Multi factorial(int n) {
         if (n < 0)
@@ -691,7 +721,10 @@ namespace tables {
             return boost::math::factorial<Multi>(n);
     }
 
-    // Double factorial of n
+    /**
+    Double factorial of n
+
+    */
     template <typename T>
     inline T double_factorial(int n) {
         if (n < 0) {
@@ -707,6 +740,10 @@ namespace tables {
             return T(const_tables::double_factorial[n]);
     }
 
+    /**
+    Double factorial of n (multi-precision)
+
+    */
     template <>
     inline Multi double_factorial(int n) {
         if (n < 0) {
@@ -720,7 +757,10 @@ namespace tables {
             return boost::math::double_factorial<Multi>(n);
     }
 
-    // Factorial of (n / 2)
+    /**
+    Factorial of n / 2
+
+    */
     template <typename T>
     inline T half_factorial(int n) {
         if (n > 2 * MAXFACT)
@@ -733,6 +773,10 @@ namespace tables {
         }
     }
 
+    /**
+    Factorial of n / 2 (multi-precision)
+
+    */
     template <>
     inline Multi half_factorial(int n) {
         if (n % 2 == 0) {
@@ -747,19 +791,28 @@ namespace tables {
         }
     }
 
-    // Binomial coefficient
+    /**
+    Binomial coefficient, n choose k
+
+    */
     template <typename T>
     inline T choose(int n, int k) {
         return factorial<T>(n) / (factorial<T>(k) * factorial<T>(n - k));
     }
 
-    // Gamma function
+    /**
+    Gamma function
+
+    */
     template <typename T>
     inline T gamma(int n) {
         return factorial<T>(n - 1);
     }
 
-    // Gamma of n + 1/2
+    /**
+    Gamma of n + 1/2
+
+    */
     template <typename T>
     inline T gamma_sup(int n) {
         return half_factorial<T>(2 * n - 1);

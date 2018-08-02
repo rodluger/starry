@@ -21,7 +21,10 @@ namespace basis {
     using namespace utils;
     using std::abs;
 
-    // Contraction coefficient for the Ylms
+    /**
+    Contraction coefficient for the Ylms
+
+    */
     template <typename T>
     T C(int p, int q, int k) {
         if ((p > k) && ((p - k) % 2 == 0)) {
@@ -36,7 +39,10 @@ namespace basis {
         }
     }
 
-    // Return the normalization constant A for a Ylm
+    /**
+    Return the normalization constant A for a Ylm
+
+    */
     template <typename T>
     T Norm(int l, int m) {
         return sqrt((1. / (4 * pi<T>())) *
@@ -46,7 +52,10 @@ namespace basis {
                     tables::factorial<T>(l + abs(m)));
     }
 
-    // Return the B coefficient for a Ylm
+    /**
+    Return the B coefficient for a Ylm
+
+    */
     template <typename T>
     T B(int l, int m, int j, int k) {
 
@@ -72,7 +81,10 @@ namespace basis {
         return two_l * a * b / (c * d * e * f * g);
     }
 
-    // Return the ijk tensor element of the spherical harmonic Ylm
+    /**
+    Return the ijk tensor element of the spherical harmonic Ylm
+
+    */
     template <typename T>
     T Lijk(int l, int m, int i, int j, int k) {
         if ((i == abs(m) + k) && (j <= abs(m))) {
@@ -94,13 +106,16 @@ namespace basis {
         }
     }
 
-    // Compute the first change of basis matrix, A_1
-    // NOTE: This routine is **not optimized**. We could compute the
-    // elements of the sparse matrix A1 directly, but instead we compute
-    // the elements of the tensors Ylm, contract these tensors to column vectors
-    // in the dense version of A1, then convert it to sparse form.
-    // Fortunately, this routine is only run **once** when a Map class is
-    // instantiated.
+    /**
+    Compute the first change of basis matrix, `A_1`.
+
+    NOTE: This routine is **not optimized**. We could compute the
+    elements of the sparse matrix `A1` directly, but instead we compute
+    the elements of the tensors `Ylm`, contract these tensors to column vectors
+    in the dense version of `A1`, then convert it to sparse form.
+    Fortunately, this routine is only run **once** when a `Map` class is
+    instantiated.
+    */
     template <typename T>
     void computeA1(int lmax, Eigen::SparseMatrix<T>& A1, T tol=10 * std::numeric_limits<T>::epsilon()) {
         int l, m;
@@ -184,7 +199,10 @@ namespace basis {
         return;
     }
 
-    // Compute the full change of basis matrix, A
+    /**
+    Compute the full change of basis matrix, `A`
+
+    */
     template <typename T>
     void computeA(int lmax, Eigen::SparseMatrix<T>& A1, Eigen::SparseMatrix<T>& A, T tol=10 * std::numeric_limits<T>::epsilon()) {
         int i, n, l, m, mu, nu;
@@ -249,8 +267,11 @@ namespace basis {
         return;
     }
 
-    // Compute the change of basis from limb darkening coefficients
-    // to spherical harmonic coefficients
+    /**
+    Compute the change of basis from limb darkening coefficients
+    to spherical harmonic coefficients
+
+    */
     template <typename T>
     void computeU(int lmax, Matrix<T>& U) {
         T amp;
@@ -277,7 +298,10 @@ namespace basis {
 
     }
 
-    // Return the n^th term of the *r* phase curve solution vector
+    /**
+    Return the n^th term of the `r` phase curve solution vector
+
+    */
     template <typename T>
     T rn(int mu, int nu) {
         T a, b, c;
@@ -296,7 +320,10 @@ namespace basis {
         }
     }
 
-    // Compute the *r^T* phase curve solution vector
+    /**
+    Compute the `r^T` phase curve solution vector
+
+    */
     template <typename T>
     void computerT(int lmax, VectorT<T>& rT) {
         rT.resize((lmax + 1) * (lmax + 1));
@@ -313,18 +340,21 @@ namespace basis {
         return;
     }
 
-    // Basis transform matrices
+    /**
+    Basis transform matrices
+
+    */
     template <class T>
     class Basis {
 
         public:
 
-            const int lmax;
-            Eigen::SparseMatrix<T> A1;
-            Eigen::SparseMatrix<T> A;
-            Matrix<T> U;
-            VectorT<T> rT;                              /**< The rotation solution vector */
-            VectorT<T> rTA1;                            /**< The rotation vector times the `Ylm` change of basis matrix */
+            const int lmax;                                                     /**< The highest degree of the map */
+            Eigen::SparseMatrix<T> A1;                                          /**< The polynomial change of basis matrix */
+            Eigen::SparseMatrix<T> A;                                           /**< The Green's change of basis matrix */
+            Matrix<T> U;                                                        /**< The limb darkening change of basis matrix */
+            VectorT<T> rT;                                                      /**< The rotation solution vector */
+            VectorT<T> rTA1;                                                    /**< The rotation vector times the `Ylm` change of basis matrix */
 
             // Constructor: compute the matrices
             Basis(int lmax) : lmax(lmax) {

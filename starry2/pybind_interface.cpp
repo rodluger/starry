@@ -6,10 +6,6 @@
 #include "utils.h"
 #include "pybind_interface.h"
 #include "docstrings.h"
-
-using namespace std;
-using namespace pybind11::literals;
-using namespace docstrings;
 namespace py = pybind11;
 
 PYBIND11_MODULE(starry2, m) {
@@ -19,11 +15,11 @@ PYBIND11_MODULE(starry2, m) {
     options.disable_function_signatures();
 
     // starry
-    docs<double> docs_starry;
+    docstrings::docs<double> docs_starry;
     pybind_interface::add_starry(m, docs_starry);
 
     // starry.multi
-    docs<utils::Multi> docs_multi;
+    docstrings::docs<utils::Multi> docs_multi;
     auto mmulti = m.def_submodule("multi");
     pybind_interface::add_starry(mmulti, docs_multi);
 

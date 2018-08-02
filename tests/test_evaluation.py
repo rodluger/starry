@@ -39,7 +39,7 @@ def numerical_gradient(Map, lmax, yvec, axis, theta, x, y, eps=1e-8):
 
 
 def run(Map):
-    """Test the map evaluation against some benchmarks."""
+    """Compare the map evaluation to some benchmarks."""
     # Instantiate
     lmax = 2
     map = Map(lmax)
@@ -72,7 +72,7 @@ def run(Map):
 
 
 def run_with_gradients(Map):
-    """Test the map evaluation with gradients."""
+    """Compare the gradients to numerical derivatives."""
     # Instantiate
     lmax = 2
     map = Map(lmax)
