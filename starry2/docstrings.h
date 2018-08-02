@@ -12,6 +12,11 @@ namespace docstrings {
 
     using namespace std;
 
+
+    /**
+    Python documentation for the `Map` class.
+
+    */
     template <class T>
     class Map_ {
     public:
@@ -27,7 +32,7 @@ namespace docstrings {
         const char * rotate;
         void add_extras() { doc = R"pbdoc()pbdoc"; };
 
-        Map_(){
+        Map_() {
 
             reset = R"pbdoc(
                 Set all of the map coefficients to zero.
@@ -66,9 +71,13 @@ namespace docstrings {
                     theta (float or ndarray): Angle of rotation in degrees. Default 0.
                     x (float or ndarray): Position scalar, vector, or matrix.
                     y (float or ndarray): Position scalar, vector, or matrix.
+                    gradient (bool): Compute and return the gradient of the intensity as well? Default :py:obj:`False`.
 
                 Returns:
-                    The specific intensity at (`x`, `y`).
+                    The specific intensity at (`x`, `y`). If :py:obj:`gradient` is :py:obj:`True`, \
+                    returns the tuple `(I, dI)`, where `I` is the specific intensity and `dI` is \
+                    a dictionary containing the derivatives with respect to each of the input parameters \
+                    and each of the map coefficients.
             )pbdoc";
 
             rotate = R"pbdoc(
@@ -86,6 +95,10 @@ namespace docstrings {
         }
     };
 
+    /**
+    Documentation specific to the `starry.map` class.
+
+    */
     template <>
     void Map_<double>::add_extras() {
 
@@ -110,6 +123,10 @@ namespace docstrings {
 
     };
 
+    /**
+    Python documentation for `starry`.
+
+    */
     template <class T>
     class docs {
     public:
