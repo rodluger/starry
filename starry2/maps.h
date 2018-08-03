@@ -15,6 +15,7 @@ Defines the surface map class.
 #include "basis.h"
 #include "errors.h"
 #include "utils.h"
+#include "solver.h"
 
 namespace maps {
 
@@ -24,6 +25,7 @@ namespace maps {
     using std::to_string;
     using rotation::Wigner;
     using basis::Basis;
+    using solver::Greens;
 
     /**
     The main surface map class.
@@ -49,6 +51,7 @@ namespace maps {
             UnitVector<T> axis;                                                 /**< The axis of rotation for the map */
             Basis<T> B;                                                         /**< Basis transform stuff */
             Wigner<T> W;                                                        /**< The class controlling rotations */
+            Greens<T> G;                                                        /**< The occultation integral solver class */
             bool Y00_is_unity;                                                  /**< Flag: are we fixing the constant map coeff at unity? */
 
             // Temporary vectors
@@ -89,6 +92,7 @@ namespace maps {
                 axis(yhat<T>()),
                 B(lmax),
                 W(lmax, (*this).y, (*this).axis),
+                G(lmax),
                 Y00_is_unity(Y00_is_unity),
                 // Temporary stuff
                 vtmp(Vector<T>::Zero(N)),
@@ -132,6 +136,7 @@ namespace maps {
             Vector<U> getP();
             Vector<U> getG();
             VectorT<U> getR();
+            VectorT<U> getS();
             std::string __repr__();
 
             // Rotate the base map
@@ -327,6 +332,15 @@ namespace maps {
     }
 
     /**
+    Get the occultation solution vector
+
+    */
+    template <class T, class U>
+    VectorT<U> Map<T, U>::getS() {
+        return G.sT.template cast<U>();
+    }
+
+    /**
     Return a human-readable map string
 
     */
@@ -476,7 +490,8 @@ namespace maps {
 
     */
     template <class T, class U>
-    inline U Map<T, U>::evaluate_with_gradient(const U& theta_deg, const U& x0_, const U& y0_) {
+    inline U Map<T, U>::evaluate_with_gradient(const U& theta_deg,
+                                               const U& x0_, const U& y0_) {
 
         // Convert to internal type
         T x0 = T(x0_);
@@ -489,7 +504,8 @@ namespace maps {
             ptr_A1Ry = &p;
         } else {
             for (int l = 0; l < lmax + 1; l++)
-                Ry.segment(l * l, 2 * l + 1) = W.R[l] * y.segment(l * l, 2 * l + 1);
+                Ry.segment(l * l, 2 * l + 1) =
+                    W.R[l] * y.segment(l * l, 2 * l + 1);
             vtmp = B.A1 * Ry;
             ptr_A1Ry = &vtmp;
         }
@@ -518,12 +534,14 @@ namespace maps {
             dI.segment(3, N) = pTA1.transpose().template cast<U>();
         } else {
             for (int l = 0; l < lmax + 1; l++)
-                dI.segment(3 + l * l, 2 * l + 1) = (pTA1.segment(l * l, 2 * l + 1) * W.R[l]).template cast<U>();
+                dI.segment(3 + l * l, 2 * l + 1) =
+                    (pTA1.segment(l * l, 2 * l + 1) * W.R[l]).template cast<U>();
         }
 
         // Compute the theta deriv
         for (int l = 0; l < lmax + 1; l++)
-            dRdthetay.segment(l * l, 2 * l + 1) = W.dRdtheta[l] * y.segment(l * l, 2 * l + 1);
+            dRdthetay.segment(l * l, 2 * l + 1) =
+                W.dRdtheta[l] * y.segment(l * l, 2 * l + 1);
         dI(0) = U(pTA1.dot(dRdthetay));
         dI(0) *= (pi<U>() / 180.);
 
@@ -584,15 +602,11 @@ namespace maps {
             // Perform the rotation + change of basis
             ARRy = B.A * (*ptr_Ry);
 
-            // TODO
-            return U(0);
-            /*
             // Compute the sT vector
-            solver::computesT(G, b, ro, ARRy);
+            G.compute(b, ro, ARRy);
 
             // Dot the result in and we're done
-            return U(G.sT * ARRy);
-            */
+            return U(G.sT.dot(ARRy));
 
         }
 
@@ -603,7 +617,8 @@ namespace maps {
 
     */
     template <class T, class U>
-    inline U Map<T, U>::flux_with_gradient(const U& theta_deg, const U& xo_, const U& yo_, const U& ro_) {
+    inline U Map<T, U>::flux_with_gradient(const U& theta_deg, const U& xo_,
+                                           const U& yo_, const U& ro_) {
 
         // Convert to internal type
         T xo = T(xo_);
@@ -626,7 +641,8 @@ namespace maps {
             ptr_Ry = &y;
         } else {
             for (int l = 0; l < lmax + 1; l++)
-                Ry.segment(l * l, 2 * l + 1) = W.R[l] * y.segment(l * l, 2 * l + 1);
+                Ry.segment(l * l, 2 * l + 1) =
+                    W.R[l] * y.segment(l * l, 2 * l + 1);
             vtmp = Ry;
             ptr_Ry = &vtmp;
         }
@@ -636,7 +652,8 @@ namespace maps {
 
             // Compute the theta deriv
             for (int l = 0; l < lmax + 1; l++)
-                dRdthetay.segment(l * l, 2 * l + 1) = W.dRdtheta[l] * y.segment(l * l, 2 * l + 1);
+                dRdthetay.segment(l * l, 2 * l + 1) =
+                    W.dRdtheta[l] * y.segment(l * l, 2 * l + 1);
             dF(0) = U(B.rTA1.dot(dRdthetay));
             dF(0) *= (pi<U>() / 180.);
 
@@ -650,7 +667,8 @@ namespace maps {
                 dF.segment(4, N) = B.rTA1.transpose().template cast<U>();
             } else {
                 for (int l = 0; l < lmax + 1; l++)
-                    dF.segment(4 + l * l, 2 * l + 1) = (B.rTA1.segment(l * l, 2 * l + 1) * W.R[l]).template cast<U>();
+                    dF.segment(4 + l * l, 2 * l + 1) =
+                        (B.rTA1.segment(l * l, 2 * l + 1) * W.R[l]).template cast<U>();
             }
 
             return U(B.rTA1.dot(*ptr_Ry));

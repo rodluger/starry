@@ -129,6 +129,8 @@ namespace pybind_interface {
 
             .def_property_readonly("r", [](maps::Map<T, double> &map){return map.getR();}, docs.Map.r)
 
+            .def_property_readonly("s", [](maps::Map<T, double> &map){return map.getS();}, docs.Map.s)
+
             .def("evaluate",
                 [](maps::Map<T, double> &map, py::array_t<double> theta, py::array_t<double> x,
                    py::array_t<double> y, bool gradient) -> py::object {

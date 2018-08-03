@@ -27,6 +27,7 @@ namespace docstrings {
         const char * p;
         const char * g;
         const char * r;
+        const char * s;
         const char * axis;
         const char * evaluate;
         const char * flux;
@@ -57,6 +58,10 @@ namespace docstrings {
 
             r = R"pbdoc(
                 The current solution vector `r`. *Read-only.*
+            )pbdoc";
+
+            s = R"pbdoc(
+                The current solution vector `s`. *Read-only.*
             )pbdoc";
 
             axis = R"pbdoc(
@@ -133,6 +138,7 @@ namespace docstrings {
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
                 .. automethod:: evaluate(theta=0, x=0, y=0)
+                .. automethod:: flux(theta=0, xo=0, yo=0, ro=0)
                 .. automethod:: rotate(theta=0)
                 .. automethod:: reset()
                 .. autoattribute:: lmax
@@ -140,6 +146,8 @@ namespace docstrings {
                 .. autoattribute:: p
                 .. autoattribute:: g
                 .. autoattribute:: r
+                .. autoattribute:: s
+                .. autoattribute:: axis
 
             )pbdoc";
 

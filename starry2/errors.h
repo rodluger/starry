@@ -103,6 +103,20 @@ namespace errors {
         }
     };
 
+    /**
+    Raised when an algorithm fails to converge.
+
+    */
+    class ConvergenceError : public exception {
+        string m_msg;
+    public:
+        ConvergenceError(const string& message) :
+            m_msg(string(message)) { }
+        virtual const char* what() const throw() {
+            return m_msg.c_str();
+        }
+    };
+
 }; // namespace errors
 
 #endif
