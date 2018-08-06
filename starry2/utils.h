@@ -16,12 +16,6 @@ Miscellaneous stuff used throughout the code.
 
 namespace utils {
 
-    //! Type-independent PI
-    using boost::math::constants::pi;
-
-    //! Type-independent sqrt of PI
-    using boost::math::constants::root_pi;
-
     //! Multiprecision datatype backend
     typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
 
@@ -31,22 +25,62 @@ namespace utils {
     //! A generic row vector
     template <typename T>
     using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-    template <typename T>
 
     //! A generic column vector
-    using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
     template <typename T>
+    using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
 
     //! A generic matrix
-    using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
     template <typename T>
+    using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 
     //! A generic 3-component unit vector
+    template <typename T>
     using UnitVector = Eigen::Matrix<T, 3, 1>;
 
     //! A custom AutoDiffScalar type
     template <typename T, int N>
     using ADScalar = Eigen::AutoDiffScalar<Eigen::Matrix<T, N, 1>>;
+
+    // -- Tag forwarding hacks --
+
+    //! Tag forwarding struct
+    template <class T> struct tag{};
+
+    //! Pi for current type (tag forwarding)
+    template <class T> T pi(tag<T>) { return boost::math::constants::pi<T>(); }
+
+    //! Pi for current type (AutoDiffScalar specialization)
+    template <class T> Eigen::AutoDiffScalar<T> pi(tag<Eigen::AutoDiffScalar<T>>) {
+        return boost::math::constants::pi<typename T::Scalar>();
+    }
+
+    //! Pi for current type
+    template <class T> T pi() { return pi(tag<T>()); }
+
+    //! Square root of pi for current type (tag forwarding)
+    template <class T> T root_pi(tag<T>) { return boost::math::constants::root_pi<T>(); }
+
+    //! Square root of pi for current type (AutoDiffScalar specialization)
+    template <class T> Eigen::AutoDiffScalar<T> root_pi(tag<Eigen::AutoDiffScalar<T>>) {
+        return boost::math::constants::root_pi<typename T::Scalar>();
+    }
+
+    //! Square root of pi for current type
+    template <class T> T root_pi() { return root_pi(tag<T>()); }
+
+    //! Machine precision for current type
+    template<class T> T mach_eps(tag<T>) { return std::numeric_limits<T>::epsilon(); }
+
+    //! Machine precision for current type (AutoDiffScalar specialization)
+    template<class T> Eigen::AutoDiffScalar<T> mach_eps(tag<Eigen::AutoDiffScalar<T>>) {
+        return std::numeric_limits<typename T::Scalar>::epsilon();
+    }
+
+    //! Machine precision for current type
+    template<class T> T mach_eps() { return mach_eps(tag<T>()); }
+
+    // -- --
 
     // Some useful unit vectors
     static const UnitVector<double> xhat_double({1, 0, 0});
@@ -67,27 +101,6 @@ namespace utils {
     template <typename T> inline UnitVector<T> zhat(){
         return zhat_double.template cast<T>();
     }
-
-    /**
-    Below we define the machine precision for an arbitrary type.
-    We need to be careful with AutoDiffScalar specialization.
-    See https://stackoverflow.com/a/36209847
-
-    */
-
-    //! Tag forwarding hack
-    template<class T> struct tag{};
-
-    //! Machine precision for current type
-    template<class T> T mach_eps(tag<T>) { return std::numeric_limits<T>::epsilon(); }
-
-    //! Machine precision for current type (AutoDiffScalar specialization)
-    template<class T> Eigen::AutoDiffScalar<T> mach_eps(tag<Eigen::AutoDiffScalar<T>>) {
-        return std::numeric_limits<typename T::Scalar>::epsilon();
-    }
-
-    //! Machine precision for current type
-    template<class T> T mach_eps() { return mach_eps(tag<T>()); }
 
     /**
     Check if a number is even (or doubly, triply, quadruply... even)

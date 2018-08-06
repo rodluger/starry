@@ -52,7 +52,9 @@ namespace maps {
             Basis<T> B;                                                         /**< Basis transform stuff */
             Wigner<T> W;                                                        /**< The class controlling rotations */
             Greens<T> G;                                                        /**< The occultation integral solver class */
+            Greens<ADScalar<T, 2>> G_grad;                                      /**< The occultation integral solver class w/ AutoDiff capability */
             bool Y00_is_unity;                                                  /**< Flag: are we fixing the constant map coeff at unity? */
+            T tol;                                                              /**< Machine epsilon */
 
             // Temporary vectors
             Vector<T> vtmp;                                                     /**< A temporary surface map vector */
@@ -64,6 +66,9 @@ namespace maps {
             ADScalar<T, 2> x0_grad;                                             /**< x position AD type for map evaluation */
             ADScalar<T, 2> y0_grad;                                             /**< y position AD type for map evaluation */
             VectorT<ADScalar<T, 2>> pT_grad;                                    /**< Polynomial basis AD type */
+            ADScalar<T, 2> b_grad;                                              /**< Occultor impact parameter AD type for flux evaluation */
+            ADScalar<T, 2> ro_grad;                                             /**< Occultor radius AD type for flux evaluation */
+            VectorT<ADScalar<T, 2>> sT_grad;                                    /**< Occultation solution vector AD type */
             Vector<T>* ptr_Ry;                                                  /**< Pointer to rotated spherical harmonic vector */
             Vector<T> ARRy;                                                     /**< The `ARRy` term in `s^TARRy` */
 
@@ -93,7 +98,9 @@ namespace maps {
                 B(lmax),
                 W(lmax, (*this).y, (*this).axis),
                 G(lmax),
+                G_grad(lmax),
                 Y00_is_unity(Y00_is_unity),
+                tol(mach_eps<T>()),
                 // Temporary stuff
                 vtmp(Vector<T>::Zero(N)),
                 pT(VectorT<T>::Zero(N)),
@@ -103,6 +110,9 @@ namespace maps {
                 x0_grad(0, Vector<T>::Unit(2, 0)),
                 y0_grad(0, Vector<T>::Unit(2, 1)),
                 pT_grad(VectorT<ADScalar<T, 2>>::Zero(N)),
+                b_grad(0, Vector<T>::Unit(2, 0)),
+                ro_grad(0, Vector<T>::Unit(2, 1)),
+                sT_grad(VectorT<ADScalar<T, 2>>::Zero(N)),
                 ARRy(Vector<T>::Zero(N))
                 {
 
@@ -602,8 +612,11 @@ namespace maps {
             // Perform the rotation + change of basis
             ARRy = B.A * (*ptr_Ry);
 
-            // Compute the sT vector
-            G.compute(b, ro, ARRy);
+            // Compute the sT vector (sparsely)
+            for (int n = 0; n < N; ++n) {
+                G.skip(n) = abs(ARRy(n)) < tol ? true : false;
+            }
+            G.compute(b, ro);
 
             // Dot the result in and we're done
             return U(G.sT.dot(ARRy));
@@ -676,8 +689,6 @@ namespace maps {
         // Occultation
         } else {
 
-            /*
-
             // Align occultor with the +y axis
             if ((b > 0) && ((xo != 0) || (yo < 0))) {
                 W.rotatez(yo / b, xo / b, *ptr_Ry, vtmp);
@@ -687,19 +698,21 @@ namespace maps {
             // Perform the rotation + change of basis
             ARRy = B.A * (*ptr_Ry);
 
-            // Compute the sT vector
-            G.compute(b, ro, ARRy);
+            // Compute the sT vector and its gradient
+            b_grad.value() = b;
+            ro_grad.value() = ro;
+            G_grad.compute(b_grad, ro_grad);
 
             // Dot the result in and we're done
-            return U(G.sT.dot(ARRy));
+            U res = 0;
+            for (int n = 0; n < N; ++n) {
+                res += U(G_grad.sT(n).value() * ARRy(n));
+            }
 
+            // TODO: Compute the derivatives
+            throw errors::NotImplementedError("Compute the derivs.");
 
-            */
-
-
-            // TODO!
-            dF = Vector<U>::Zero(N);
-            return U(0);
+            return res;
 
         }
 

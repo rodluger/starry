@@ -364,7 +364,7 @@ namespace solver {
                     throw errors::IndexError("Invalid index in `H` "
                                              "integral evaluation.");
                 } else if (!is_even(u) || ((coslam() == 0) && !is_even(v))) {
-                    return 0;
+                    return T(0.0);
                 } else if (!set(u, v)) {
                     if (u >= 2)
                         value(u, v) = (2 * coslam(u - 1) * sinlam(v + 1) +
@@ -435,7 +435,7 @@ namespace solver {
                     T error = T(INFINITY);
 
                     // Computing leading coefficient (n=0):
-                    T coeff = 2.0 / (2 * vmax + 1);
+                    T coeff = T(2.0 / (2 * vmax + 1));
 
                     // Add leading term to I_vmax:
                     T res = coeff;
@@ -685,7 +685,7 @@ namespace solver {
     */
     template <typename T>
     inline T K(Greens<T>& G, int u, int v) {
-        T res = 0;
+        T res(0.0);
         for (int i = 0; i < u + v + 1; i++)
             res += G.A_P(i, u, v) * G.I_P(i + u);
         return res;
@@ -697,7 +697,7 @@ namespace solver {
     */
     template <typename T>
     inline T L(Greens<T>& G, int u, int v, int t) {
-        T res = 0;
+        T res(0.0);
         for (int i = 0; i < u + v + 1; i++) {
             if (G.b == 0) {
                 // Special case, J = I (evident from integral definition)
@@ -726,7 +726,7 @@ namespace solver {
         } else if (is_even(G.mu - 1, 2)) {
             return 2 * LFac(G) * L(G, (G.mu - 1) / 4, (G.nu - 1) / 2, 0);
         } else {
-            return 0;
+            return T(0.0);
         }
     }
 
@@ -740,38 +740,12 @@ namespace solver {
         // unless both mu/2 and nu/2 are even when the occultor
         // is not touching the limb of the planet.
         if ((G.coslam() == 0) && (!is_even(G.mu, 2) || !is_even(G.nu, 2)))
-            return 0;
+            return T(0.0);
         else if (!is_even(G.mu, 2))
-            return 0;
+            return T(0.0);
         else {
             return G.H_Q((G.mu + 4) / 2, G.nu / 2);
         }
-    }
-
-    /**
-    Smallest coefficient for which we'll actually
-    bother to compute the integrals. `foo` is a dummy
-    variable of type `T` because I'm too lazy to
-    implement tag forwarding.
-
-    TODO: Implement tag forwarding.
-
-    */
-    template <typename T>
-    inline T min_coeff(const T& foo) { return mach_eps<T>(); }
-
-    /**
-    Smallest coefficient for which we'll actually
-    bother to compute the integrals.
-
-    When doing autodiff, we always want to
-    compute the solution vector for all indices
-    to get the correct map derivatives.
-
-    */
-    template <typename T>
-    inline Eigen::AutoDiffScalar<T> min_coeff(const Eigen::AutoDiffScalar<T>& foo) {
-        return 0;
     }
 
     /**
@@ -822,34 +796,30 @@ namespace solver {
             // The solution vector
             VectorT<T> sT;
 
+            // Off switch for certain elements of s^T
+            Vector<bool> skip;
+
             // Constructor
             Greens(int lmax) :
                    lmax(lmax),
-                   ksq(0),
-                   twor(0),
-                   delta(0),
-                   sinlam(0),
-                   coslam(0),
-                   two(0),
+                   ksq(T(0.0)),
+                   twor(T(0.0)),
+                   delta(T(0.0)),
+                   sinlam(T(0.0)),
+                   coslam(T(0.0)),
+                   two(T(2.0)),
                    ELL((*this).ksq, (*this).invksq),
                    H_Q(lmax, (*this).sinlam, (*this).coslam),
                    I_P(lmax, (*this).ksq, (*this).k, (*this).kc, (*this).kkc,
                        (*this).kap0),
                    J_P(lmax, (*this).ELL, (*this).ksq, (*this).two, (*this).k,
                        (*this).kc, (*this).invksq),
-                   A_P(lmax, (*this).delta) {
-
-                // Initialize the solution vector
-                sT = VectorT<T>::Zero((lmax + 1) * (lmax + 1));
-
-                // Initialize static stuff
-                two.reset(2);
-                miny = min_coeff(T(0));
-
-            }
+                   A_P(lmax, (*this).delta),
+                   sT(VectorT<T>::Zero((lmax + 1) * (lmax + 1))),
+                   skip(Vector<bool>::Zero((lmax + 1) * (lmax + 1))) { }
 
         // Compute the solution vector
-        inline void compute(const T& b_, const T& r_, const Vector<T>& y);
+        inline void compute(const T& b_, const T& r_);
 
     };
 
@@ -858,7 +828,7 @@ namespace solver {
 
     */
     template <class T>
-    inline void Greens<T>::compute(const T& b_, const T& r_, const Vector<T>& y) {
+    inline void Greens<T>::compute(const T& b_, const T& r_) {
 
         // Initialize the basic variables
         int n = 0;
@@ -888,7 +858,7 @@ namespace solver {
                 // Used to be
                 //   G.kkc = G.k * G.kc;
                 //   G.kap0 = 2 * acos(G.kc);
-                T p0 = 1, p1 = b, p2 = r;
+                T p0 = T(1.0), p1 = b, p2 = r;
                 if (p0 < p1) swap(p0, p1);
                 if (p1 < p2) swap(p1, p2);
                 if (p0 < p1) swap(p0, p1);
@@ -919,8 +889,8 @@ namespace solver {
             }
 
         } else {
-            sinlam.reset(1);
-            coslam.reset(0);
+            sinlam.reset(T(1.0));
+            coslam.reset(T(0.0));
         }
 
         // Initialize our storage classes.
@@ -937,7 +907,7 @@ namespace solver {
             for (m = -l; m < l + 1; m++) {
                 mu = l - m;
                 nu = l + m;
-                if (abs(y(n)) >= miny) {
+                if (!skip(n)) {
 
                     // Special case
                     if ((l == 1) && (m == 0))
