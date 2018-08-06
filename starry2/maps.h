@@ -676,6 +676,27 @@ namespace maps {
         // Occultation
         } else {
 
+            /*
+
+            // Align occultor with the +y axis
+            if ((b > 0) && ((xo != 0) || (yo < 0))) {
+                W.rotatez(yo / b, xo / b, *ptr_Ry, vtmp);
+                ptr_Ry = &vtmp;
+            }
+
+            // Perform the rotation + change of basis
+            ARRy = B.A * (*ptr_Ry);
+
+            // Compute the sT vector
+            G.compute(b, ro, ARRy);
+
+            // Dot the result in and we're done
+            return U(G.sT.dot(ARRy));
+
+
+            */
+
+
             // TODO!
             dF = Vector<U>::Zero(N);
             return U(0);

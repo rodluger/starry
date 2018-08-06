@@ -169,9 +169,8 @@ namespace solver {
 
     */
     template <typename T>
-    inline void QuadLimbDark(Greens<T>& G, const T& b, const T& r, const T& g0,
-                             const T& g2, const T& g8, T& s0_val, T& s2_val,
-                             T& s8_val) {
+    inline void QuadLimbDark(Greens<T>& G, const T& b, const T& r, T& s0_val,
+                             T& s2_val, T& s8_val) {
         T b2 = b * b;
         T r2 = r * r;
         if ((abs(1 - r) < b) && (b < 1 + r)) {

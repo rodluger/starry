@@ -204,7 +204,7 @@ namespace basis {
 
     */
     template <typename T>
-    void computeA(int lmax, Eigen::SparseMatrix<T>& A1, Eigen::SparseMatrix<T>& A, T tol=10 * std::numeric_limits<T>::epsilon()) {
+    void computeA(int lmax, Eigen::SparseMatrix<T>& A1, Eigen::SparseMatrix<T>& A) {
         int i, n, l, m, mu, nu;
         int N = (lmax + 1) * (lmax + 1);
 

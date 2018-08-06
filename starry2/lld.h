@@ -56,7 +56,7 @@ namespace lld {
 
     */
     template <typename T>
-    inline T PiTerm(const T& b, const T& r, const T& ksq, const T& bmr,
+    inline T PiTerm(const T& b, const T& ksq, const T& bmr,
                     const T& bmr2, const T& bpr2, const T& bmrdbpr) {
         if ((b == 0) || (ksq == 1))
             return 0;
@@ -130,7 +130,7 @@ namespace lld {
 
                     } else {
                         Lambda1 = ((bpr2 - 1) / bpr * (-2 * r * (2 * bpr2 - bpr * bmr - 3) * K +
-                                   PiTerm(b, r, ksq, bmr, bmr2, bpr2, bmrdbpr)) - 2 * xi * E) /
+                                   PiTerm(b, ksq, bmr, bmr2, bpr2, bmrdbpr)) - 2 * xi * E) /
                                   (9 * pi<T>() * sqrt(br));
                     }
                 } else if ((b + r) < 1.0) {
@@ -147,7 +147,7 @@ namespace lld {
                                                         - (4 - 7 * r2 - b2) * Eofk) / (9. * pi<T>());
                     } else {
                         Lambda1 = 2 * ((1 - bpr2) * (sqrt(1 - bmr2) * K +
-                                                     PiTerm(b, r, ksq, bmr, bmr2, bpr2, bmrdbpr)) -
+                                                     PiTerm(b, ksq, bmr, bmr2, bpr2, bmrdbpr)) -
                                        sqrt(1 - bmr2) * (4 - 7 * r2 - b2) * E) / (9 * pi<T>());
                     }
                 } else {

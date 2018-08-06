@@ -124,6 +124,9 @@ class BuildExt(build_ext):
         for ext in self.extensions:
             ext.extra_compile_args = list(opts + ext.extra_compile_args)
             ext.extra_compile_args += ["-O%d" % optimize]
+            ext.extra_compile_args += ["-Wextra",
+                                       "-Wno-unused-parameter",
+                                       "-Wpedantic"]
             if sys.platform == "darwin":
                 ext.extra_compile_args += ["-march=native",
                                            "-mmacosx-version-min=10.9"]
