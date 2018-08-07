@@ -699,6 +699,8 @@ namespace maps {
         } else {
 
             // Align occultor with the +y axis
+            T xo_b = xo / b;
+            T yo_b = yo / b;
             if ((b > 0) && ((xo != 0) || (yo < 0))) {
                 W.rotatez(yo / b, xo / b, *ptr_Ry, vtmp2);
                 ptr_RRy = &vtmp2;
@@ -747,9 +749,10 @@ namespace maps {
                 }
             }
 
-            // Compute the xo and yo derivs
-            dF(1) = U((xo / b) * dFdb + (yo / (b * b)) * sTAdRdtheta.dot(*ptr_Ry));
-            dF(2) = U((yo / b) * dFdb - (xo / (b * b)) * sTAdRdtheta.dot(*ptr_Ry));
+            // Compute the xo and yo derivs using the chain rule
+            T term = sTAdRdtheta.dot(*ptr_Ry) / b;
+            dF(1) = U(xo_b * dFdb + yo_b * term);
+            dF(2) = U(yo_b * dFdb - xo_b * term);
 
             // Compute the theta deriv
             for (int l = 0; l < lmax + 1; l++)

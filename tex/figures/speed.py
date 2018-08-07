@@ -306,4 +306,4 @@ def speed():
 
 if __name__ == "__main__":
     compare_to_numerical(lmax=10)
-    #speed()
+    speed()
