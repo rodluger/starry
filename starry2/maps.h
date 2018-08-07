@@ -58,6 +58,7 @@ namespace maps {
 
             // Temporary vectors
             Vector<T> vtmp;                                                     /**< A temporary surface map vector */
+            Vector<T> vtmp2;                                                    /**< A temporary surface map vector */
             VectorT<T> pT;                                                      /**< The polynomial basis column vector */
             Vector<T> Ry;                                                       /**< The rotated spherical harmonic vector */
             VectorT<T> pTA1;                                                    /**< Polynomial basis dotted into change of basis matrix */
@@ -70,7 +71,11 @@ namespace maps {
             ADScalar<T, 2> ro_grad;                                             /**< Occultor radius AD type for flux evaluation */
             VectorT<ADScalar<T, 2>> sT_grad;                                    /**< Occultation solution vector AD type */
             Vector<T>* ptr_Ry;                                                  /**< Pointer to rotated spherical harmonic vector */
+            Vector<T>* ptr_RRy;                                                 /**< Pointer to rotated spherical harmonic vector */
             Vector<T> ARRy;                                                     /**< The `ARRy` term in `s^TARRy` */
+            VectorT<T> sTA;                                                     /**< The solution vector in the sph harm basis */
+            VectorT<T> sTAR;                                                    /**< The solution vector in the rotated sph harm basis */
+            VectorT<T> sTAdRdtheta;                                             /**< The derivative of `sTAR` with respect to `theta` */
 
             // Private methods
             template <typename V>
@@ -103,6 +108,7 @@ namespace maps {
                 tol(mach_eps<T>()),
                 // Temporary stuff
                 vtmp(Vector<T>::Zero(N)),
+                vtmp2(Vector<T>::Zero(N)),
                 pT(VectorT<T>::Zero(N)),
                 Ry(Vector<T>::Zero(N)),
                 pTA1(VectorT<T>::Zero(N)),
@@ -113,7 +119,10 @@ namespace maps {
                 b_grad(0, Vector<T>::Unit(2, 0)),
                 ro_grad(0, Vector<T>::Unit(2, 1)),
                 sT_grad(VectorT<ADScalar<T, 2>>::Zero(N)),
-                ARRy(Vector<T>::Zero(N))
+                ARRy(Vector<T>::Zero(N)),
+                sTA(VectorT<T>::Zero(N)),
+                sTAR(VectorT<T>::Zero(N)),
+                sTAdRdtheta(VectorT<T>::Zero(N))
                 {
 
                 // Populate the gradient names
@@ -691,28 +700,75 @@ namespace maps {
 
             // Align occultor with the +y axis
             if ((b > 0) && ((xo != 0) || (yo < 0))) {
-                W.rotatez(yo / b, xo / b, *ptr_Ry, vtmp);
-                ptr_Ry = &vtmp;
+                W.rotatez(yo / b, xo / b, *ptr_Ry, vtmp2);
+                ptr_RRy = &vtmp2;
+            } else {
+                W.cosmt = Vector<T>::Constant(N, 1.0);
+                W.sinmt = Vector<T>::Constant(N, 0.0);
+                ptr_RRy = ptr_Ry;
             }
 
             // Perform the rotation + change of basis
-            ARRy = B.A * (*ptr_Ry);
+            ARRy = B.A * (*ptr_RRy);
 
-            // Compute the sT vector and its gradient
+            // Compute the sT vector using AutoDiff
             b_grad.value() = b;
             ro_grad.value() = ro;
             G_grad.compute(b_grad, ro_grad);
 
-            // Dot the result in and we're done
-            U res = 0;
-            for (int n = 0; n < N; ++n) {
-                res += U(G_grad.sT(n).value() * ARRy(n));
+            // Compute the b and ro derivs
+            U dFdb(0.0);
+            dF(3) = 0;
+            for (int i = 0; i < N; i++) {
+
+                // b deriv
+                dFdb += U(G_grad.sT(i).derivatives()(0) * ARRy(i));
+
+                // ro deriv
+                dF(3) += U(G_grad.sT(i).derivatives()(1) * ARRy(i));
+
+                // Store the value of s^T
+                G.sT(i) = G_grad.sT(i).value();
+
             }
 
-            // TODO: Compute the derivatives
-            throw errors::NotImplementedError("Compute the derivs.");
+            // Solution vector in spherical harmonic basis
+            sTA = G.sT * B.A;
 
-            return res;
+            // Compute stuff involving the Rprime rotation matrix
+            int m;
+            for (int l = 0; l < lmax + 1; l++) {
+                for (int j = 0; j < 2 * l + 1; j++) {
+                    m = j - l;
+                    sTAR(l * l + j) = sTA(l * l + j) * W.cosmt(l * l + j) +
+                                      sTA(l * l + 2 * l - j) * W.sinmt(l * l + j);
+                    sTAdRdtheta(l * l + j) = sTA(l * l + 2 * l - j) * m * W.cosmt(l * l + j) -
+                                             sTA(l * l + j) * m * W.sinmt(l * l + j);
+                }
+            }
+
+            // Compute the xo and yo derivs
+            dF(1) = U((xo / b) * dFdb + (yo / (b * b)) * sTAdRdtheta.dot(*ptr_Ry));
+            dF(2) = U((yo / b) * dFdb - (xo / (b * b)) * sTAdRdtheta.dot(*ptr_Ry));
+
+            // Compute the theta deriv
+            for (int l = 0; l < lmax + 1; l++)
+                dRdthetay.segment(l * l, 2 * l + 1) =
+                    W.dRdtheta[l] * y.segment(l * l, 2 * l + 1);
+            dF(0) = U(sTAR.dot(dRdthetay));
+            dF(0) *= (pi<U>() / 180.);
+
+            // Compute the map derivs
+            if (theta == 0) {
+                dF.segment(4, N) = sTAR.transpose().template cast<U>();
+            } else {
+                for (int l = 0; l < lmax + 1; l++)
+                    dF.segment(4 + l * l, 2 * l + 1) =
+                        (sTAR.segment(l * l, 2 * l + 1) * W.R[l]).template cast<U>();
+            }
+
+            // Dot the result in and we're done
+            return U(G.sT.dot(ARRy));
 
         }
 

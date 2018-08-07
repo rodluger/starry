@@ -74,8 +74,6 @@ namespace rotation {
         // `zhat` rotation params
         Vector<T> cosnt;                                                        /**< Vector of cos(n theta) values */
         Vector<T> sinnt;                                                        /**< Vector of sin(n theta) values */
-        Vector<T> cosmt;                                                        /**< Vector of cos(m theta) values */
-        Vector<T> sinmt;                                                        /**< Vector of sin(m theta) values */
         Vector<T> yrev;                                                         /**< Degree-wise reverse of the spherical harmonic map */
 
         // `zeta` transform params
@@ -95,6 +93,8 @@ namespace rotation {
 
         Matrix<T>* R;                                                           /**< The full rotation matrix for real spherical harmonics */
         Matrix<T>* dRdtheta;                                                    /**< The derivative of the rotation matrix with respect to theta */
+        Vector<T> cosmt;                                                        /**< Vector of cos(m theta) values */
+        Vector<T> sinmt;                                                        /**< Vector of sin(m theta) values */
 
         // These methods are accessed by the `Map` class
         inline void update();
@@ -244,12 +244,14 @@ namespace rotation {
         }
 
         // Now compute the full rotation matrix
+        int m;
         for (int l = 0; l < lmax + 1; l++) {
             for (int j = 0; j < 2 * l + 1; j++) {
+                m = j - l;
                 R[l].col(j) = RZetaInv[l].col(j) * cosmt(l * l + j) +
                               RZetaInv[l].col(2 * l - j) * sinmt(l * l + j);
-                dRdtheta[l].col(j) = RZetaInv[l].col(2 * l - j) * (j - l) * cosmt(l * l + j) -
-                                     RZetaInv[l].col(j) * abs((j - l) * sinmt(l * l + j));
+                dRdtheta[l].col(j) = RZetaInv[l].col(2 * l - j) * m * cosmt(l * l + j) -
+                                     RZetaInv[l].col(j) * m * sinmt(l * l + j);
             }
             R[l] = R[l] * RZeta[l];
             dRdtheta[l] = dRdtheta[l] * RZeta[l];

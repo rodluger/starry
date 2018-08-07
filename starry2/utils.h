@@ -48,37 +48,37 @@ namespace utils {
     template <class T> struct tag{};
 
     //! Pi for current type (tag forwarding)
-    template <class T> T pi(tag<T>) { return boost::math::constants::pi<T>(); }
+    template <class T> inline T pi(tag<T>) { return boost::math::constants::pi<T>(); }
 
     //! Pi for current type (AutoDiffScalar specialization)
-    template <class T> Eigen::AutoDiffScalar<T> pi(tag<Eigen::AutoDiffScalar<T>>) {
+    template <class T> inline Eigen::AutoDiffScalar<T> pi(tag<Eigen::AutoDiffScalar<T>>) {
         return boost::math::constants::pi<typename T::Scalar>();
     }
 
     //! Pi for current type
-    template <class T> T pi() { return pi(tag<T>()); }
+    template <class T> inline T pi() { return pi(tag<T>()); }
 
     //! Square root of pi for current type (tag forwarding)
-    template <class T> T root_pi(tag<T>) { return boost::math::constants::root_pi<T>(); }
+    template <class T> inline T root_pi(tag<T>) { return boost::math::constants::root_pi<T>(); }
 
     //! Square root of pi for current type (AutoDiffScalar specialization)
-    template <class T> Eigen::AutoDiffScalar<T> root_pi(tag<Eigen::AutoDiffScalar<T>>) {
+    template <class T> inline Eigen::AutoDiffScalar<T> root_pi(tag<Eigen::AutoDiffScalar<T>>) {
         return boost::math::constants::root_pi<typename T::Scalar>();
     }
 
     //! Square root of pi for current type
-    template <class T> T root_pi() { return root_pi(tag<T>()); }
+    template <class T> inline T root_pi() { return root_pi(tag<T>()); }
 
     //! Machine precision for current type
-    template<class T> T mach_eps(tag<T>) { return std::numeric_limits<T>::epsilon(); }
+    template<class T> inline T mach_eps(tag<T>) { return std::numeric_limits<T>::epsilon(); }
 
     //! Machine precision for current type (AutoDiffScalar specialization)
-    template<class T> Eigen::AutoDiffScalar<T> mach_eps(tag<Eigen::AutoDiffScalar<T>>) {
+    template<class T> inline Eigen::AutoDiffScalar<T> mach_eps(tag<Eigen::AutoDiffScalar<T>>) {
         return std::numeric_limits<typename T::Scalar>::epsilon();
     }
 
     //! Machine precision for current type
-    template<class T> T mach_eps() { return mach_eps(tag<T>()); }
+    template<class T> inline T mach_eps() { return mach_eps(tag<T>()); }
 
     // -- --
 
