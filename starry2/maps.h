@@ -40,7 +40,6 @@ namespace maps {
             const int lmax;                                                     /**< The highest degree of the map */
             const int N;                                                        /**< The number of map coefficients */
             const int NW;                                                       /**< The number of wavelengths */
-
             Matrix<U> dI;                                                       /**< Gradient of the intensity */
             std::vector<string> dI_names;                                       /**< Names of each of the params in the intensity gradient */
             Matrix<U> dF;                                                       /**< Gradient of the flux */
@@ -138,6 +137,9 @@ namespace maps {
             Matrix<U> getY();
             Matrix<U> getP();
             Matrix<U> getG();
+            VectorT<U> getR();
+            VectorT<U> getS();
+            std::string __repr__(int iwav=0);
 
             // Rotate the base map
             void rotate(const U& theta_deg);
@@ -282,6 +284,71 @@ namespace maps {
     template <class T, class U>
     Matrix<U> Map<T, U>::getG() {
         return g.template cast<U>();
+    }
+
+    /**
+    Get the rotation solution vector
+
+    */
+    template <class T, class U>
+    VectorT<U> Map<T, U>::getR() {
+        return B.rT.template cast<U>();
+    }
+
+    /**
+    Get the occultation solution vector
+
+    */
+    template <class T, class U>
+    VectorT<U> Map<T, U>::getS() {
+        return G.sT.template cast<U>();
+    }
+
+    /**
+    Return a human-readable map string
+
+    */
+    template <class T, class U>
+    std::string Map<T, U>::__repr__(int iwav) {
+        int n = 0;
+        int nterms = 0;
+        char buf[30];
+        std::ostringstream os;
+        os << "<STARRY Map: ";
+        for (int l = 0; l < lmax + 1; l++) {
+            for (int m = -l; m < l + 1; m++) {
+                if (abs(y(n, iwav)) > 10 * mach_eps<T>()){
+                    // Separator
+                    if ((nterms > 0) && (y(n, iwav) > 0)) {
+                        os << " + ";
+                    } else if ((nterms > 0) && (y(n, iwav) < 0)){
+                        os << " - ";
+                    } else if ((nterms == 0) && (y(n, iwav) < 0)){
+                        os << "-";
+                    }
+                    // Term
+                    if ((y(n, iwav) == 1) || (y(n, iwav) == -1)) {
+                        sprintf(buf, "Y_{%d,%d}", l, m);
+                        os << buf;
+                    } else if (fmod(abs(y(n, iwav)), 1.0) < 10 * mach_eps<T>()) {
+                        sprintf(buf, "%d Y_{%d,%d}", (int)abs(y(n, iwav)), l, m);
+                        os << buf;
+                    } else if (fmod(abs(y(n, iwav)), 1.0) >= 0.01) {
+                        sprintf(buf, "%.2f Y_{%d,%d}", double(abs(y(n, iwav))), l, m);
+                        os << buf;
+                    } else {
+                        sprintf(buf, "%.2e Y_{%d,%d}", double(abs(y(n, iwav))), l, m);
+                        os << buf;
+                    }
+                    nterms++;
+                }
+                n++;
+            }
+        }
+        if (nterms == 0)
+            os << "Null";
+        os << ">";
+        return std::string(os.str());
     }
 
 

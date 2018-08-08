@@ -23,4 +23,6 @@ int main() {
 
     std::cout << std::endl;
     std::cout << map.flux(30, 1.3, 0.5, 0., false).transpose() << std::endl;
+
+    std::cout << map.__repr__() << std::endl;
 }
