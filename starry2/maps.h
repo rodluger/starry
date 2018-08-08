@@ -15,6 +15,7 @@ Defines the surface map class.
 #include "basis.h"
 #include "errors.h"
 #include "utils.h"
+#include "solver.h"
 
 namespace maps {
 
@@ -24,6 +25,7 @@ namespace maps {
     using std::to_string;
     using rotation::Wigner;
     using basis::Basis;
+    using solver::Greens;
 
 
     /**
@@ -52,6 +54,7 @@ namespace maps {
             UnitVector<T> axis;                                                 /**< The axis of rotation for the map */
             Basis<T> B;                                                         /**< Basis transform stuff */
             Wigner<T> W;                                                        /**< The class controlling rotations */
+            Greens<T> G;                                                        /**< The occultation integral solver class */
             T tol;                                                              /**< Machine epsilon */
 
             // Temporary vectors
@@ -65,7 +68,8 @@ namespace maps {
             ADScalar<T, 2> x0_grad;                                             /**< x position AD type for map evaluation */
             ADScalar<T, 2> y0_grad;                                             /**< y position AD type for map evaluation */
             VectorT<ADScalar<T, 2>> pT_grad;                                    /**< Polynomial basis AD type */
-
+            Matrix<T>* ptr_Ry;                                                  /**< Pointer to rotated spherical harmonic vector */
+            Matrix<T> ARRy;                                                     /**< The `ARRy` term in `s^TARRy` */
 
             // Private methods
             template <typename V>
@@ -91,6 +95,7 @@ namespace maps {
                 axis(yhat<T>()),
                 B(lmax),
                 W(lmax, NW, (*this).y, (*this).axis),
+                G(lmax),
                 tol(mach_eps<T>()),
                 // Temporary stuff
                 mtmp(Matrix<T>::Zero(N, NW)),
@@ -101,7 +106,8 @@ namespace maps {
                 dRdthetay(Matrix<T>::Zero(N, NW)),
                 x0_grad(0, Vector<T>::Unit(2, 0)),
                 y0_grad(0, Vector<T>::Unit(2, 1)),
-                pT_grad(VectorT<ADScalar<T, 2>>::Zero(N))
+                pT_grad(VectorT<ADScalar<T, 2>>::Zero(N)),
+                ARRy(Matrix<T>::Zero(N, NW))
                 {
 
                 // Populate the gradient names
@@ -139,6 +145,10 @@ namespace maps {
             // Evaluate the intensity at a point
             inline Vector<U> evaluate(const U& theta_deg=0, const U& x0_=0,
                                       const U& y0_=0, bool gradient=false);
+
+            // Compute the flux
+            inline Vector<U> flux(const U& theta_deg=0, const U& xo_=0,
+                                  const U& yo_=0, const U& ro_=0, bool gradient=false);
 
     };
 
@@ -273,6 +283,7 @@ namespace maps {
     Matrix<U> Map<T, U>::getG() {
         return g.template cast<U>();
     }
+
 
     /* ------------- */
     /*   ROTATIONS   */
@@ -436,6 +447,85 @@ namespace maps {
 
         // Dot the coefficients in to our polynomial map
         return (pT * (*ptr_A1Ry)).template cast<U>();
+
+    }
+
+
+    /* ------------- */
+    /*      FLUX     */
+    /* ------------- */
+
+
+    /**
+    Compute the flux during or outside of an occultation
+    */
+    template <class T, class U>
+    inline Vector<U> Map<T, U>::flux(const U& theta_deg, const U& xo_,
+                                     const U& yo_, const U& ro_, bool gradient) {
+
+        // If we're computing the gradient as well,
+        // call the specialized function
+        /* TODO
+        if (gradient)
+            return flux_with_gradient(theta_deg, xo_, yo_, ro_);
+        */
+
+        // Convert to internal types
+        T xo = T(xo_);
+        T yo = T(yo_);
+        T ro = T(ro_);
+        T theta = T(theta_deg) * (pi<T>() / 180.);
+
+        // Impact parameter
+        T b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1)
+            return Vector<U>::Constant(NW, 0);
+
+        // Rotate the map into view
+        if (theta == 0) {
+            ptr_Ry = &y;
+        } else {
+            W.rotate(cos(theta), sin(theta), Ry);
+            mtmp = Ry;
+            ptr_Ry = &mtmp;
+        }
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // This is very easy!
+            return (B.rTA1 * (*ptr_Ry)).template cast<U>();
+
+        // Occultation
+        } else {
+
+            // Align occultor with the +y axis
+            if ((b > 0) && ((xo != 0) || (yo < 0))) {
+                W.rotatez(yo / b, xo / b, *ptr_Ry, mtmp);
+                ptr_Ry = &mtmp;
+            }
+
+            // Perform the rotation + change of basis
+            ARRy = B.A * (*ptr_Ry);
+
+            // Compute the sT vector (sparsely)
+            for (int n = 0; n < N; ++n) {
+                for (int i = 0; i < NW; ++i) {
+                    G.skip(n) = true;
+                    if (abs(ARRy(n, i)) > tol) {
+                        G.skip(n) = false;
+                        break;
+                    }
+                }
+            }
+            G.compute(b, ro);
+
+            // Dot the result in and we're done
+            return (G.sT * ARRy).template cast<U>();
+
+        }
 
     }
 
