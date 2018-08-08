@@ -17,12 +17,9 @@ int main() {
     coeff << 0, 1;
     map.setCoeff(1, 1, coeff);
 
-    std::cout << map.evaluate(0.01, 0.3, 0.5, true).transpose() << std::endl;
-    std::cout << std::endl;
-    std::cout << map.dI << std::endl;
 
-    std::cout << std::endl;
-    std::cout << map.flux(30, 1.3, 0.5, 0., false).transpose() << std::endl;
+    std::cout << map.flux(0.001, 1.3, 0.5, 0., true).transpose() << std::endl;
 
-    std::cout << map.__repr__() << std::endl;
+    std::cout << map.dF << std::endl;
+
 }
