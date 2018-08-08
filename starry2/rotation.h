@@ -55,16 +55,17 @@ namespace rotation {
 
         const int lmax;                                                         /**< Highest degree of the map */
         const int N;                                                            /**< Number of map coefficients */
+        const int NW;                                                           /**< Number of wavelengths */
         const T tol;                                                            /**< Numerical tolerance used to prevent division-by-zero errors */
 
         // References to the base map and the rotation axis
-        Vector<T>& y;                                                           /**< Reference to the spherical harmonic map to be rotated */
+        Matrix<T>& y;                                                           /**< Reference to the spherical harmonic map to be rotated */
         UnitVector<T>& axis;                                                    /**< Reference to the rotation axis */
 
         // Cached transforms
         T cache_costheta;                                                       /**< Last value of cos(theta) used */
         T cache_sintheta;                                                       /**< Last value of sin(theta) used */
-        Vector<T> cache_y;                                                      /**< Last value of the rotated map coefficients */
+        Matrix<T> cache_y;                                                      /**< Last value of the rotated map coefficients */
 
         // The actual Wigner matrices
         Matrix<T>* DZeta;                                                       /**< The complex Wigner matrix in the `zeta` frame */
@@ -74,13 +75,13 @@ namespace rotation {
         // `zhat` rotation params
         Vector<T> cosnt;                                                        /**< Vector of cos(n theta) values */
         Vector<T> sinnt;                                                        /**< Vector of sin(n theta) values */
-        Vector<T> yrev;                                                         /**< Degree-wise reverse of the spherical harmonic map */
+        Matrix<T> yrev;                                                         /**< Degree-wise reverse of the spherical harmonic map */
 
         // `zeta` transform params
         T cos_zeta, sin_zeta;                                                   /**< Angle between the axis of rotation and `zhat` */
         UnitVector<T> axis_zeta;                                                /**< Axis of rotation to align the rotation axis with `zhat` */
-        Vector<T> y_zeta;                                                       /**< The base map in the `zeta` frame */
-        Vector<T> y_zeta_rot;                                                   /**< The base map in the `zeta` frame after a `zhat` rotation */
+        Matrix<T> y_zeta;                                                       /**< The base map in the `zeta` frame */
+        Matrix<T> y_zeta_rot;                                                   /**< The base map in the `zeta` frame after a `zhat` rotation */
 
         // Methods
         inline void rotar(T& c1, T& s1, T& c2, T& s2, T& c3, T& s3);
@@ -99,14 +100,14 @@ namespace rotation {
         // These methods are accessed by the `Map` class
         inline void update();
         inline void rotate(const T& costheta, const T& sintheta,
-                           Vector<T>& yout);
+                           Matrix<T>& yout);
         inline void compute(const T& costheta, const T& sintheta);
         inline void rotatez(const T& costheta, const T& sintheta,
-                            const Vector<T>& yin, Vector<T>& yout);
+                            const Matrix<T>& yin, Matrix<T>& yout);
 
         // Constructor: allocate the matrices
-        Wigner(int lmax, Vector<T>& y, UnitVector<T>& axis) :
-            lmax(lmax), N((lmax + 1) * (lmax + 1)),
+        Wigner(int lmax, int nwav, Matrix<T>& y, UnitVector<T>& axis) :
+            lmax(lmax), N((lmax + 1) * (lmax + 1)), NW(nwav),
             tol(10 * mach_eps<T>()), y(y), axis(axis) {
 
             // Allocate the Wigner matrices
@@ -130,13 +131,13 @@ namespace rotation {
             sinnt(0) = 0.0;
             cosmt.resize(N);
             sinmt.resize(N);
-            yrev.resize(N);
+            yrev.resize(N, NW);
 
             // The base map in the `zeta` frame
-            y_zeta.resize(N);
+            y_zeta.resize(N, NW);
 
             // The cached rotated map
-            cache_y.resize(N);
+            cache_y.resize(N, NW);
 
             // Initialize!
             update();
@@ -159,7 +160,7 @@ namespace rotation {
 
     */
     template <class T>
-    inline void Wigner<T>::rotate(const T& costheta, const T& sintheta, Vector<T>& yout) {
+    inline void Wigner<T>::rotate(const T& costheta, const T& sintheta, Matrix<T>& yout) {
 
         // Return the cached result?
         if ((costheta == cache_costheta) && (sintheta == cache_sintheta)) {
@@ -172,7 +173,7 @@ namespace rotation {
 
         // Rotate out of the `zeta` frame
         for (int l = 0; l < lmax + 1; l++) {
-            cache_y.segment(l * l, 2 * l + 1) = RZetaInv[l] * y_zeta_rot.segment(l * l, 2 * l + 1);
+            cache_y.block(l * l, 0, 2 * l + 1, NW) = RZetaInv[l] * y_zeta_rot.block(l * l, 0, 2 * l + 1, NW);
         }
 
         // Export the result and cache the angles
@@ -293,7 +294,7 @@ namespace rotation {
 
        // Update the map in the `zeta` frame
        for (int l = 0; l < lmax + 1; l++) {
-           y_zeta.segment(l * l, 2 * l + 1) = RZeta[l] * y.segment(l * l, 2 * l + 1);
+           y_zeta.block(l * l, 0, 2 * l + 1, NW) = RZeta[l] * y.block(l * l, 0, 2 * l + 1, NW);
        }
 
        // Reset the cache
@@ -308,7 +309,7 @@ namespace rotation {
 
     */
     template <class T>
-    inline void Wigner<T>::rotatez(const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout) {
+    inline void Wigner<T>::rotatez(const T& costheta, const T& sintheta, const Matrix<T>& yin, Matrix<T>& yout) {
         cosnt(1) = costheta;
         sinnt(1) = sintheta;
         for (int n = 2; n < lmax + 1; n++) {
@@ -320,17 +321,21 @@ namespace rotation {
             for (int m = -l; m < 0; m++) {
                 cosmt(n) = cosnt(-m);
                 sinmt(n) = -sinnt(-m);
-                yrev(n) = yin(l * l + l - m);
+                yrev.row(n) = yin.row(l * l + l - m);
                 n++;
             }
             for (int m = 0; m < l + 1; m++) {
                 cosmt(n) = cosnt(m);
                 sinmt(n) = sinnt(m);
-                yrev(n) = yin(l * l + l - m);
+                yrev.row(n) = yin.row(l * l + l - m);
                 n++;
             }
         }
-        yout = cosmt.cwiseProduct(yin) - sinmt.cwiseProduct(yrev);
+
+        //yout = cosmt.cwiseProduct(yin) - sinmt.cwiseProduct(yrev);
+        yout = (yin.transpose().array().rowwise() * cosmt.array().transpose() -
+                yrev.transpose().array().rowwise() * sinmt.array().transpose()).transpose();
+
     }
 
     /**
