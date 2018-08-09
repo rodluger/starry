@@ -32,7 +32,7 @@ namespace maps {
     The main surface map class.
 
     */
-    template <class T, class U>
+    template <class T>
     class Map {
 
         public:
@@ -40,9 +40,9 @@ namespace maps {
             const int lmax;                                                     /**< The highest degree of the map */
             const int N;                                                        /**< The number of map coefficients */
             const int NW;                                                       /**< The number of wavelengths */
-            Matrix<U> dI;                                                       /**< Gradient of the intensity */
+            Matrix<T> dI;                                                       /**< Gradient of the intensity */
             std::vector<string> dI_names;                                       /**< Names of each of the params in the intensity gradient */
-            Matrix<U> dF;                                                       /**< Gradient of the flux */
+            Matrix<T> dF;                                                       /**< Gradient of the flux */
             std::vector<string> dF_names;                                       /**< Names of each of the params in the flux gradient */
 
         private:
@@ -84,11 +84,11 @@ namespace maps {
             // Private methods
             template <typename V>
             inline void poly_basis(const V& x0, const V& y0, VectorT<V>& basis);
-            inline Vector<U> evaluate_with_gradient(const U& theta_deg,
-                                                    const U& x0_, const U& y0_);
-            inline Vector<U> flux_with_gradient(const U& theta_deg,
-                                                const U& xo_, const U& yo_,
-                                                const U& ro_);
+            inline Vector<T> evaluate_with_gradient(const T& theta_deg,
+                                                    const T& x0_, const T& y0_);
+            inline Vector<T> flux_with_gradient(const T& theta_deg,
+                                                const T& xo_, const T& yo_,
+                                                const T& ro_);
 
         public:
 
@@ -100,9 +100,9 @@ namespace maps {
                 lmax(lmax),
                 N((lmax + 1) * (lmax + 1)),
                 NW(nwav),
-                dI(Matrix<U>::Zero(3 + N, NW)),
+                dI(Matrix<T>::Zero(3 + N, NW)),
                 dI_names({"theta", "x", "y"}),
-                dF(Matrix<U>::Zero(4 + N, NW)),
+                dF(Matrix<T>::Zero(4 + N, NW)),
                 dF_names({"theta", "xo", "yo", "ro"}),
                 y(Matrix<T>::Zero(N, NW)),
                 axis(yhat<T>()),
@@ -153,28 +153,30 @@ namespace maps {
             void reset();
 
             // I/O functions
-            void setCoeff(int l, int m, const VectorT<U>& coeff);
-            void setCoeff(int l, int m, U coeff);
-            VectorT<U> getCoeff(int l, int m);
-            void setAxis(const UnitVector<U>& new_axis);
-            UnitVector<U> getAxis();
-            Matrix<U> getY();
-            Matrix<U> getP();
-            Matrix<U> getG();
-            VectorT<U> getR();
-            VectorT<U> getS();
+            void setYlm(int l, int m, const VectorT<T>& coeff);
+            void setYlm(int l, int m, T coeff);
+            VectorT<T> getYlm(int l, int m) const;
+            void setAxis(const UnitVector<T>& axis_);
+            UnitVector<T> getAxis() const;
+            Matrix<T> getY() const;
+            void setY(const Matrix<T>& y_);
+            Matrix<T> getP() const;
+            Matrix<T> getG() const;
+            VectorT<T> getR() const;
+            VectorT<T> getS() const;
             std::string __repr__(int iwav=0);
 
             // Rotate the base map
-            void rotate(const U& theta_deg);
+            void rotate(const T& theta_);
 
             // Evaluate the intensity at a point
-            inline Vector<U> evaluate(const U& theta_deg=0, const U& x0_=0,
-                                      const U& y0_=0, bool gradient=false);
+            inline Vector<T> evaluate(const T& theta_=0, const T& x_=0,
+                                      const T& y_=0, bool gradient=false);
 
             // Compute the flux
-            inline Vector<U> flux(const U& theta_deg=0, const U& xo_=0,
-                                  const U& yo_=0, const U& ro_=0, bool gradient=false);
+            inline Vector<T> flux(const T& theta_=0, const T& xo_=0,
+                                  const T& yo_=0, const T& ro_=0,
+                                  bool gradient=false);
 
     };
 
@@ -187,8 +189,8 @@ namespace maps {
     Update the maps after the coefficients changed
 
     */
-    template <class T, class U>
-    void Map<T, U>::update() {
+    template <class T>
+    void Map<T>::update() {
 
         // Update the polynomial and Green's map coefficients
         p = B.A1 * y;
@@ -203,8 +205,8 @@ namespace maps {
     Reset the map
 
     */
-    template <class T, class U>
-    void Map<T, U>::reset() {
+    template <class T>
+    void Map<T>::reset() {
         y.setZero(N, NW);
         axis = yhat<T>();
         update();
@@ -217,16 +219,16 @@ namespace maps {
 
 
     /**
-    Set the (l, m) coefficient
+    Set the (l, m) spherical harmonic coefficient
 
     */
-    template <class T, class U>
-    void Map<T, U>::setCoeff(int l, int m, const VectorT<U>& coeff) {
+    template <class T>
+    void Map<T>::setYlm(int l, int m, const VectorT<T>& coeff) {
         if (coeff.size() != NW)
             throw errors::ValueError("Size mismatch in the wavelength dimension.");
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
-            y.row(n) = coeff.template cast<T>();
+            y.row(n) = coeff;
             update();
         } else {
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
@@ -234,22 +236,22 @@ namespace maps {
     }
 
     /**
-    Set the (l, m) coefficient (scalar override)
+    Set the (l, m) spherical harmonic coefficient (scalar override)
 
     */
-    template <class T, class U>
-    void Map<T, U>::setCoeff(int l, int m, U coeff) {
-        setCoeff(l, m, Vector<U>::Constant(1, coeff));
+    template <class T>
+    void Map<T>::setYlm(int l, int m, T coeff) {
+        setCoeff(l, m, Vector<T>::Constant(1, coeff));
     }
 
     /**
-    Get the (l, m) coefficient
+    Get the (l, m) spherical harmonic coefficient
 
     */
-    template <class T, class U>
-    VectorT<U> Map<T, U>::getCoeff(int l, int m) {
+    template <class T>
+    VectorT<T> Map<T>::getYlm(int l, int m) const {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
-            return y.row(l * l + l + m).template cast<U>();
+            return y.row(l * l + l + m);
         } else
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
     }
@@ -258,13 +260,13 @@ namespace maps {
     Set the axis
 
     */
-    template <class T, class U>
-    void Map<T, U>::setAxis(const UnitVector<U>& new_axis) {
+    template <class T>
+    void Map<T>::setAxis(const UnitVector<T>& axis_) {
 
         // Set it and normalize it
-        axis(0) = T(new_axis(0));
-        axis(1) = T(new_axis(1));
-        axis(2) = T(new_axis(2));
+        axis(0) = axis_(0);
+        axis(1) = axis_(1);
+        axis(2) = axis_(2);
         axis = axis / sqrt(axis(0) * axis(0) +
                            axis(1) * axis(1) +
                            axis(2) * axis(2));
@@ -278,62 +280,76 @@ namespace maps {
     Return a copy of the axis
 
     */
-    template <class T, class U>
-    UnitVector<U> Map<T, U>::getAxis() {
-        return axis.template cast<U>();
+    template <class T>
+    UnitVector<T> Map<T>::getAxis() const {
+        return axis;
     }
 
     /**
     Get the spherical harmonic vector
 
     */
-    template <class T, class U>
-    Matrix<U> Map<T, U>::getY() {
-        return y.template cast<U>();
+    template <class T>
+    Matrix<T> Map<T>::getY() const {
+        return y;
+    }
+
+    /**
+    Set the spherical harmonic vector
+
+    */
+    template <class T>
+    void Map<T>::setY(const Matrix<T>& y_) {
+        if ((y_.rows() == y.rows()) && (y_.cols() == y.cols())) {
+            y = y_;
+            update();
+        } else {
+            throw errors::ValueError("Dimension mismatch in `y`.");
+        }
     }
 
     /**
     Get the polynomial vector
 
     */
-    template <class T, class U>
-    Matrix<U> Map<T, U>::getP() {
-        return p.template cast<U>();
+    template <class T>
+    Matrix<T> Map<T>::getP() const {
+        return p;
     }
 
     /**
     Get the Green's vector
 
     */
-    template <class T, class U>
-    Matrix<U> Map<T, U>::getG() {
-        return g.template cast<U>();
+    template <class T>
+    Matrix<T> Map<T>::getG() const {
+        return g;
     }
 
     /**
     Get the rotation solution vector
 
     */
-    template <class T, class U>
-    VectorT<U> Map<T, U>::getR() {
-        return B.rT.template cast<U>();
+    template <class T>
+    VectorT<T> Map<T>::getR() const {
+        return B.rT;
     }
 
     /**
     Get the occultation solution vector
 
     */
-    template <class T, class U>
-    VectorT<U> Map<T, U>::getS() {
-        return G.sT.template cast<U>();
+    template <class T>
+    VectorT<T> Map<T>::getS() const {
+        return G.sT;
     }
 
     /**
     Return a human-readable map string at wavelength index `iwav`
 
     */
-    template <class T, class U>
-    std::string Map<T, U>::__repr__(int iwav) {
+    template <class T>
+    std::string Map<T>::__repr__(int iwav) {
         int n = 0;
         int nterms = 0;
         char buf[30];
@@ -385,9 +401,9 @@ namespace maps {
     Rotate the base map in-place given `theta` in **degrees**
 
     */
-    template <class T, class U>
-    void Map<T, U>::rotate(const U& theta_deg) {
-        T theta = T(theta_deg) * (pi<T>() / 180.);
+    template <class T>
+    void Map<T>::rotate(const T& theta_) {
+        T theta = theta_ * (pi<T>() / 180.);
         W.rotate(cos(theta), sin(theta), y);
         update();
     }
@@ -401,11 +417,10 @@ namespace maps {
     Compute the polynomial basis at a point; templated for AD capability
 
     */
-    template <class T, class U>
-    template <typename V>
-    inline void Map<T, U>::poly_basis(const V& x0, const V& y0, VectorT<V>& basis) {
+    template <class T> template <typename U>
+    inline void Map<T>::poly_basis(const U& x0, const U& y0, VectorT<U>& basis) {
         int l, m, mu, nu, n = 0;
-        V z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
+        U z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
         for (l=0; l<lmax+1; l++) {
             for (m=-l; m<l+1; m++) {
                 mu = l - m;
@@ -422,7 +437,7 @@ namespace maps {
                 } else {
                     if ((mu > 1) && (nu > 1))
                         basis(n) = pow(x0, (mu - 1) / 2) *
-                                         pow(y0, (nu - 1) / 2) * z0;
+                                       pow(y0, (nu - 1) / 2) * z0;
                     else if (mu > 1)
                         basis(n) = pow(x0, (mu - 1) / 2) * z0;
                     else if (nu > 1)
@@ -439,19 +454,19 @@ namespace maps {
     Evaluate the map at a given (x0, y0) coordinate
 
     */
-    template <class T, class U>
-    inline Vector<U> Map<T, U>::evaluate(const U& theta_deg, const U& x0_,
-                                         const U& y0_, bool gradient) {
+    template <class T>
+    inline Vector<T> Map<T>::evaluate(const T& theta_, const T& x_,
+                                      const T& y_, bool gradient) {
 
         // If we're computing the gradient as well,
         // call the specialized function
         if (gradient)
-            return evaluate_with_gradient(theta_deg, x0_, y0_);
+            return evaluate_with_gradient(theta_, x_, y_);
 
         // Convert to internal types
-        T x0 = T(x0_);
-        T y0 = T(y0_);
-        T theta = T(theta_deg) * (pi<T>() / 180.);
+        T x0 = x_;
+        T y0 = y_;
+        T theta = theta_ * (pi<T>() / 180.);
 
         // Rotate the map into view
         if (theta == 0) {
@@ -464,13 +479,13 @@ namespace maps {
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0)
-            return Vector<U>::Constant(NW, NAN);
+            return Vector<T>::Constant(NW, NAN);
 
         // Compute the polynomial basis
         poly_basis(x0, y0, pT);
 
         // Dot the coefficients in to our polynomial map
-        return (pT * (*ptr_A1Ry)).template cast<U>();
+        return pT * (*ptr_A1Ry);
 
     }
 
@@ -478,15 +493,15 @@ namespace maps {
     Evaluate the map at a given (x0, y0) coordinate and compute the gradient
 
     */
-    template <class T, class U>
-    inline Vector<U> Map<T, U>::evaluate_with_gradient(const U& theta_deg,
-                                                       const U& x0_,
-                                                       const U& y0_) {
+    template <class T>
+    inline Vector<T> Map<T>::evaluate_with_gradient(const T& theta_,
+                                                    const T& x_,
+                                                    const T& y_) {
 
         // Convert to internal type
-        T x0 = T(x0_);
-        T y0 = T(y0_);
-        T theta = T(theta_deg) * (pi<T>() / 180.);
+        T x0 = x_;
+        T y0 = y_;
+        T theta = theta_ * (pi<T>() / 180.);
 
         // Rotate the map into view
         W.compute(cos(theta), sin(theta));
@@ -502,19 +517,19 @@ namespace maps {
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) {
-            dI = Matrix<U>::Constant(N, NW, NAN);
-            return Vector<U>::Constant(NW, NAN);
+            dI = Matrix<T>::Constant(N, NW, NAN);
+            return Vector<T>::Constant(NW, NAN);
         }
 
         // Compute the polynomial basis and its x and y derivs
         x0_grad.value() = x0;
         y0_grad.value() = y0;
         poly_basis(x0_grad, y0_grad, pT_grad);
-        dI.row(1) = VectorT<U>::Constant(NW, 0);
-        dI.row(2) = VectorT<U>::Constant(NW, 0);
+        dI.row(1) = VectorT<T>::Constant(NW, 0);
+        dI.row(2) = VectorT<T>::Constant(NW, 0);
         for (int i = 0; i < N; i++) {
-            dI.row(1) += (pT_grad(i).derivatives()(0) * (*ptr_A1Ry).row(i)).template cast<U>();
-            dI.row(2) += (pT_grad(i).derivatives()(1) * (*ptr_A1Ry).row(i)).template cast<U>();
+            dI.row(1) += pT_grad(i).derivatives()(0) * (*ptr_A1Ry).row(i);
+            dI.row(2) += pT_grad(i).derivatives()(1) * (*ptr_A1Ry).row(i);
             pT(i) = pT_grad(i).value();
         }
 
@@ -522,22 +537,23 @@ namespace maps {
         pTA1 = pT * B.A1;
         if (theta == 0) {
             for (int i = 0; i < N; i++)
-                dI.row(3 + i) = VectorT<U>::Constant(NW, static_cast<U>(pTA1(i)));
+                dI.row(3 + i) = VectorT<T>::Constant(NW, pTA1(i));
         } else {
             for (int l = 0; l < lmax + 1; l++)
-                vtmp.segment(l * l, 2 * l + 1) = pTA1.segment(l * l, 2 * l + 1) * W.R[l];
+                vtmp.segment(l * l, 2 * l + 1) =
+                    pTA1.segment(l * l, 2 * l + 1) * W.R[l];
             for (int i = 0; i < N; i++)
-                dI.row(3 + i) = VectorT<U>::Constant(NW, static_cast<U>(vtmp(i)));
+                dI.row(3 + i) = VectorT<T>::Constant(NW, vtmp(i));
         }
 
         // Compute the theta deriv
         for (int l = 0; l < lmax + 1; l++)
             dRdthetay.block(l * l, 0, 2 * l + 1, NW) =
                 W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, NW);
-        dI.row(0) = (pTA1 * dRdthetay * (pi<T>() / 180.)).template cast<U>();
+        dI.row(0) = pTA1 * dRdthetay * (pi<T>() / 180.);
 
         // Dot the coefficients in to our polynomial map
-        return (pT * (*ptr_A1Ry)).template cast<U>();
+        return pT * (*ptr_A1Ry);
 
     }
 
@@ -550,27 +566,27 @@ namespace maps {
     /**
     Compute the flux during or outside of an occultation
     */
-    template <class T, class U>
-    inline Vector<U> Map<T, U>::flux(const U& theta_deg, const U& xo_,
-                                     const U& yo_, const U& ro_, bool gradient) {
+    template <class T>
+    inline Vector<T> Map<T>::flux(const T& theta_, const T& xo_,
+                                  const T& yo_, const T& ro_, bool gradient) {
 
         // If we're computing the gradient as well,
         // call the specialized function
         if (gradient)
-            return flux_with_gradient(theta_deg, xo_, yo_, ro_);
+            return flux_with_gradient(theta_, xo_, yo_, ro_);
 
         // Convert to internal types
-        T xo = T(xo_);
-        T yo = T(yo_);
-        T ro = T(ro_);
-        T theta = T(theta_deg) * (pi<T>() / 180.);
+        T xo = xo_;
+        T yo = yo_;
+        T ro = ro_;
+        T theta = theta_ * (pi<T>() / 180.);
 
         // Impact parameter
         T b = sqrt(xo * xo + yo * yo);
 
         // Check for complete occultation
         if (b <= ro - 1)
-            return Vector<U>::Constant(NW, 0);
+            return Vector<T>::Constant(NW, 0);
 
         // Rotate the map into view
         if (theta == 0) {
@@ -585,7 +601,7 @@ namespace maps {
         if ((b >= 1 + ro) || (ro == 0)) {
 
             // This is very easy!
-            return (B.rTA1 * (*ptr_Ry)).template cast<U>();
+            return (B.rTA1 * (*ptr_Ry));
 
         // Occultation
         } else {
@@ -612,7 +628,7 @@ namespace maps {
             G.compute(b, ro);
 
             // Dot the result in and we're done
-            return (G.sT * ARRy).template cast<U>();
+            return G.sT * ARRy;
 
         }
 
@@ -621,24 +637,24 @@ namespace maps {
     /**
     Compute the flux during or outside of an occultation and its gradient
     */
-    template <class T, class U>
-    inline Vector<U> Map<T, U>::flux_with_gradient(const U& theta_deg,
-                                                   const U& xo_,
-                                                   const U& yo_, const U& ro_) {
+    template <class T>
+    inline Vector<T> Map<T>::flux_with_gradient(const T& theta_deg,
+                                                const T& xo_,
+                                                const T& yo_, const T& ro_) {
 
         // Convert to internal type
-        T xo = T(xo_);
-        T yo = T(yo_);
-        T ro = T(ro_);
-        T theta = T(theta_deg) * (pi<T>() / 180.);
+        T xo = xo_;
+        T yo = yo_;
+        T ro = ro_;
+        T theta = theta_deg * (pi<T>() / 180.);
 
         // Impact parameter
         T b = sqrt(xo * xo + yo * yo);
 
         // Check for complete occultation
         if (b <= ro - 1) {
-            dF = Matrix<U>::Constant(N, NW, NAN);
-            return Vector<U>::Constant(NW, 0.0);
+            dF = Matrix<T>::Constant(N, NW, NAN);
+            return Vector<T>::Constant(NW, 0.0);
         }
 
         // Rotate the map into view
@@ -660,27 +676,28 @@ namespace maps {
             for (int l = 0; l < lmax + 1; l++)
                 dRdthetay.block(l * l, 0, 2 * l + 1, NW) =
                     W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, NW);
-            dF.row(0) = (B.rTA1 * dRdthetay * (pi<T>() / 180.)).template cast<U>();
+            dF.row(0) = B.rTA1 * dRdthetay * (pi<T>() / 180.);
 
             // The x, y, and r derivs are trivial
-            dF.row(1) = Vector<U>::Zero(NW);
-            dF.row(2) = Vector<U>::Zero(NW);
-            dF.row(3) = Vector<U>::Zero(NW);
+            dF.row(1) = Vector<T>::Zero(NW);
+            dF.row(2) = Vector<T>::Zero(NW);
+            dF.row(3) = Vector<T>::Zero(NW);
 
             // Compute the map derivs
             pTA1 = pT * B.A1;
             if (theta == 0) {
                 for (int i = 0; i < N; i++)
-                    dF.row(4 + i) = VectorT<U>::Constant(NW, static_cast<U>(B.rTA1(i)));
+                    dF.row(4 + i) = VectorT<T>::Constant(NW, B.rTA1(i));
             } else {
                 for (int l = 0; l < lmax + 1; l++)
-                    vtmp.segment(l * l, 2 * l + 1) = B.rTA1.segment(l * l, 2 * l + 1) * W.R[l];
+                    vtmp.segment(l * l, 2 * l + 1) =
+                        B.rTA1.segment(l * l, 2 * l + 1) * W.R[l];
                 for (int i = 0; i < N; i++)
-                    dF.row(4 + i) = VectorT<U>::Constant(NW, static_cast<U>(vtmp(i)));
+                    dF.row(4 + i) = VectorT<T>::Constant(NW, vtmp(i));
             }
 
             // We're done!
-            return (B.rTA1 * (*ptr_Ry)).template cast<U>();
+            return (B.rTA1 * (*ptr_Ry));
 
         // Occultation
         } else {
@@ -707,14 +724,14 @@ namespace maps {
 
             // Compute the b and ro derivs
             dFdb = VectorT<T>::Constant(NW, 0);
-            dF.row(3) = VectorT<U>::Constant(NW, 0);
+            dF.row(3) = VectorT<T>::Constant(NW, 0);
             for (int i = 0; i < N; i++) {
 
                 // b deriv
                 dFdb += G_grad.sT(i).derivatives()(0) * ARRy.row(i);
 
                 // ro deriv
-                dF.row(3) += (G_grad.sT(i).derivatives()(1) * ARRy.row(i)).template cast<U>();
+                dF.row(3) += G_grad.sT(i).derivatives()(1) * ARRy.row(i);
 
                 // Store the value of s^T
                 G.sT(i) = G_grad.sT(i).value();
@@ -738,28 +755,29 @@ namespace maps {
 
             // Compute the xo and yo derivs using the chain rule
             vTtmp = (sTAdRdtheta * (*ptr_Ry)) / b;
-            dF.row(1) = (xo_b * dFdb + yo_b * vTtmp).template cast<U>();
-            dF.row(2) = (yo_b * dFdb - xo_b * vTtmp).template cast<U>();
+            dF.row(1) = xo_b * dFdb + yo_b * vTtmp;
+            dF.row(2) = yo_b * dFdb - xo_b * vTtmp;
 
             // Compute the theta deriv
             for (int l = 0; l < lmax + 1; l++)
                 dRdthetay.block(l * l, 0, 2 * l + 1, NW) =
                     W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, NW);
-            dF.row(0) = (sTAR * dRdthetay * (pi<T>() / 180.)).template cast<U>();
+            dF.row(0) = sTAR * dRdthetay * (pi<T>() / 180.);
 
             // Compute the map derivs
             if (theta == 0) {
                 for (int i = 0; i < N; i++)
-                    dF.row(4 + i) = VectorT<U>::Constant(NW, static_cast<U>(sTAR(i)));
+                    dF.row(4 + i) = VectorT<T>::Constant(NW, sTAR(i));
             } else {
                 for (int l = 0; l < lmax + 1; l++)
-                    vtmp.segment(l * l, 2 * l + 1) = sTAR.segment(l * l, 2 * l + 1) * W.R[l];
+                    vtmp.segment(l * l, 2 * l + 1) =
+                        sTAR.segment(l * l, 2 * l + 1) * W.R[l];
                 for (int i = 0; i < N; i++)
-                    dF.row(4 + i) = VectorT<U>::Constant(NW, static_cast<U>(vtmp(i)));
+                    dF.row(4 + i) = VectorT<T>::Constant(NW, vtmp(i));
             }
 
             // Dot the result in and we're done
-            return (G.sT * ARRy).template cast<U>();
+            return G.sT * ARRy;
 
         }
 
