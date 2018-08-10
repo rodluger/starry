@@ -183,47 +183,12 @@ namespace pybind_interface {
                     return map.getS().template cast<double>();
                 }, docs.Map.s)
 
-            /*
-            .def("evaluate",
-                [](maps::Map<T> &map, py::array_t<double> theta, py::array_t<double> x,
-                   py::array_t<double> y, bool gradient) -> py::object {
-
-                    if (gradient) {
-
-                        // Initialize a dictionary of derivatives
-                        size_t n = max(theta.size(), max(x.size(), y.size()));
-                        std::map<string, Vector<double>> grad;
-                        for (auto name : map.dI_names)
-                            grad[name].resize(n);
-
-                        // Nested lambda function;
-                        // https://github.com/pybind/pybind11/issues/761#issuecomment-288818460
-                        int t = 0;
-                        auto I = py::vectorize([&map, &grad, &t](double theta, double x, double y) {
-                            // Evaluate the function
-                            double res = map.evaluate(theta, x, y, true);
-                            // Gather the derivatives
-                            for (int j = 0; j < map.dI.size(); j++)
-                                grad[map.dI_names[j]](t) = map.dI(j);
-                            t++;
-                            return res;
-                        })(theta, x, y);
-
-                        // Return a tuple of (I, dict(dI))
-                        return py::make_tuple(I, grad);
-
-                    } else {
-
-                        // Easy! We'll just return I
-                        return py::vectorize([&map](double theta, double x, double y) {
-                            return map.evaluate(theta, x, y, false);
-                        })(theta, x, y);
-
-                    }
-
-                }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "gradient"_a=false)
-
-            */
+            .def("evaluate", [](maps::Map<T1, T2, T3> &map, py::object& theta,
+                                py::object& x, py::object& y,
+                                bool gradient) -> py::object {
+                    return vectorize::evaluate(map, theta, x, y, gradient);
+                }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0,
+                                      "gradient"_a=false)
 
             .def("flux", [](maps::Map<T1, T2, T3> &map, py::object& theta,
                             py::object& xo, py::object& yo, py::object& ro,
