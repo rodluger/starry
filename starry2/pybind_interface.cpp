@@ -1,6 +1,7 @@
-// This throws Assertion errors if we've messed up
-// any Eigen operations. Uncomment for debugging.
+#ifdef STARRY_DEBUG
 #undef NDEBUG
+#endif
+
 #include <pybind11/pybind11.h>
 #include <stdlib.h>
 #include "utils.h"

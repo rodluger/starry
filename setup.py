@@ -29,6 +29,9 @@ if int(macros['STARRY_NGRAD']) % 2 == 0:
 optimize = int(os.getenv('STARRY_O', 2))
 assert optimize in [0, 1, 2, 3], "Invalid optimization flag."
 
+# Debug mode?
+debug = bool(os.getenv('STARRY_DEBUG', 0))
+
 
 class get_pybind_include(object):
     """
@@ -127,6 +130,9 @@ class BuildExt(build_ext):
             ext.extra_compile_args += ["-Wextra",
                                        "-Wno-unused-parameter",
                                        "-Wpedantic"]
+            if debug:
+                ext.extra_compile_args += ["-g"]
+                ext.extra_compile_args += ["-DSTARRY_DEBUG"]
             if sys.platform == "darwin":
                 ext.extra_compile_args += ["-march=native",
                                            "-mmacosx-version-min=10.9"]

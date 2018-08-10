@@ -9,6 +9,7 @@ Miscellaneous stuff used throughout the code.
 #include <Eigen/Core>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 #include <stdlib.h>
 #include "utils.h"
 #include "errors.h"
@@ -21,10 +22,10 @@ namespace pybind_vectorize {
     namespace py = pybind11;
 
     // Vectorize a single python object
-    inline Vector<double> vectorize_arg(py::array_t<double>& arg, int& size){
+    inline Vector<double> vectorize_arg(const py::array_t<double>& arg, int& size){
         Vector<double> res;
         if (arg.size() == 1) {
-            res = Vector<double>::Constant(size, py::cast<double>(arg(0)));
+            res = Vector<double>::Constant(size, py::cast<double>(arg));
             return res;
         } else {
             res = py::cast<Vector<double>>(arg);
@@ -38,9 +39,9 @@ namespace pybind_vectorize {
     }
 
     // Vectorize function of three args
-    inline void vectorize_args(py::array_t<double>& arg1,
-                               py::array_t<double>& arg2,
-                               py::array_t<double>& arg3,
+    inline void vectorize_args(const py::array_t<double>& arg1,
+                               const py::array_t<double>& arg2,
+                               const py::array_t<double>& arg3,
                                Vector<double>& arg1_v,
                                Vector<double>& arg2_v,
                                Vector<double>& arg3_v) {
@@ -70,10 +71,10 @@ namespace pybind_vectorize {
     }
 
     // Vectorize function of four args
-    inline void vectorize_args(py::array_t<double>& arg1,
-                               py::array_t<double>& arg2,
-                               py::array_t<double>& arg3,
-                               py::array_t<double>& arg4,
+    inline void vectorize_args(const py::array_t<double>& arg1,
+                               const py::array_t<double>& arg2,
+                               const py::array_t<double>& arg3,
+                               const py::array_t<double>& arg4,
                                Vector<double>& arg1_v,
                                Vector<double>& arg2_v,
                                Vector<double>& arg3_v,
@@ -246,20 +247,37 @@ namespace pybind_vectorize {
                         py::array_t<double>& y,
                         bool gradient){
 
+        // Vectorize the arguments manually
+        Vector<double> theta_v, x_v, y_v;
+        vectorize_args(theta, x, y, theta_v, x_v, y_v);
+        size_t sz = theta_v.size();
+
         if (gradient) {
 
-            /* TODO */
-            return py::cast(0.0);
+            // Initialize the gradient matrix
+            std::map<string, Matrix<double>> grad;
+            for (auto name : map.dI_names)
+                grad[name].resize(sz, map.nwav);
+
+            // Iterate through the timeseries
+            Matrix<double> I(sz, map.nwav);
+            for (size_t i = 0; i < sz; ++i) {
+
+                // Function value
+                I.row(i) = map.evaluate(theta_v(i), x_v(i), y_v(i), true);
+
+                // Gradient
+                for (int j = 0; j < map.dI.rows(); ++j)
+                    grad[map.dI_names[j]].row(i) = map.dI.row(j);
+
+            }
+
+            // Cast to python object
+            return py::make_tuple(I, grad);
 
         } else {
 
-            // Vectorize the arguments manually
-            Vector<double> theta_v, x_v, y_v;
-            vectorize_args(theta, x, y,
-                           theta_v, x_v, y_v);
-
             // Iterate through the timeseries
-            size_t sz = theta_v.size();
             Matrix<double> I(sz, map.nwav);
             for (size_t i = 0; i < sz; ++i) {
                 I.row(i) = map.evaluate(theta_v(i), x_v(i), y_v(i), false);
