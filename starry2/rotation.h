@@ -50,8 +50,10 @@ namespace rotation {
     Rotation matrix class for the spherical harmonics.
 
     */
-    template <class T>
+    template <class MapType>
     class Wigner {
+
+        using T = typename MapType::Scalar;
 
         const int lmax;                                                         /**< Highest degree of the map */
         const int N;                                                            /**< Number of map coefficients */
@@ -59,13 +61,13 @@ namespace rotation {
         const T tol;                                                            /**< Numerical tolerance used to prevent division-by-zero errors */
 
         // References to the base map and the rotation axis
-        Matrix<T>& y;                                                           /**< Reference to the spherical harmonic map to be rotated */
+        MapType& y;                                                             /**< Reference to the spherical harmonic map to be rotated */
         UnitVector<T>& axis;                                                    /**< Reference to the rotation axis */
 
         // Cached transforms
         T cache_costheta;                                                       /**< Last value of cos(theta) used */
         T cache_sintheta;                                                       /**< Last value of sin(theta) used */
-        Matrix<T> cache_y;                                                      /**< Last value of the rotated map coefficients */
+        MapType cache_y;                                                        /**< Last value of the rotated map coefficients */
 
         // The actual Wigner matrices
         Matrix<T>* DZeta;                                                       /**< The complex Wigner matrix in the `zeta` frame */
@@ -75,13 +77,13 @@ namespace rotation {
         // `zhat` rotation params
         Vector<T> cosnt;                                                        /**< Vector of cos(n theta) values */
         Vector<T> sinnt;                                                        /**< Vector of sin(n theta) values */
-        Matrix<T> yrev;                                                         /**< Degree-wise reverse of the spherical harmonic map */
+        MapType yrev;                                                           /**< Degree-wise reverse of the spherical harmonic map */
 
         // `zeta` transform params
         T cos_zeta, sin_zeta;                                                   /**< Angle between the axis of rotation and `zhat` */
         UnitVector<T> axis_zeta;                                                /**< Axis of rotation to align the rotation axis with `zhat` */
-        Matrix<T> y_zeta;                                                       /**< The base map in the `zeta` frame */
-        Matrix<T> y_zeta_rot;                                                   /**< The base map in the `zeta` frame after a `zhat` rotation */
+        MapType y_zeta;                                                         /**< The base map in the `zeta` frame */
+        MapType y_zeta_rot;                                                     /**< The base map in the `zeta` frame after a `zhat` rotation */
 
         // Methods
         inline void rotar(T& c1, T& s1, T& c2, T& s2, T& c3, T& s3);
@@ -100,13 +102,13 @@ namespace rotation {
         // These methods are accessed by the `Map` class
         inline void update();
         inline void rotate(const T& costheta, const T& sintheta,
-                           Matrix<T>& yout);
+                           MapType& yout);
         inline void compute(const T& costheta, const T& sintheta);
         inline void rotatez(const T& costheta, const T& sintheta,
-                            const Matrix<T>& yin, Matrix<T>& yout);
+                            const MapType& yin, MapType& yout);
 
         // Constructor: allocate the matrices
-        Wigner(int lmax, int nwav, Matrix<T>& y, UnitVector<T>& axis) :
+        Wigner(int lmax, int nwav, MapType& y, UnitVector<T>& axis) :
             lmax(lmax), N((lmax + 1) * (lmax + 1)), NW(nwav),
             tol(10 * mach_eps<T>()), y(y), axis(axis) {
 
@@ -131,16 +133,13 @@ namespace rotation {
             sinnt(0) = 0.0;
             cosmt.resize(N);
             sinmt.resize(N);
-            yrev.resize(N, NW);
+            setZero(yrev, N, NW);
 
             // The base map in the `zeta` frame
-            y_zeta.resize(N, NW);
+            setZero(y_zeta, N, NW);
 
             // The cached rotated map
-            cache_y.resize(N, NW);
-
-            // Initialize!
-            update();
+            setZero(cache_y, N, NW);
 
         }
 
@@ -159,8 +158,10 @@ namespace rotation {
     Rotate the base map given `costheta` and `sintheta`
 
     */
-    template <class T>
-    inline void Wigner<T>::rotate(const T& costheta, const T& sintheta, Matrix<T>& yout) {
+    template <class MapType>
+    inline void Wigner<MapType>::rotate(const typename MapType::Scalar& costheta,
+                                        const typename MapType::Scalar& sintheta,
+                                        MapType& yout) {
 
         // Return the cached result?
         if ((costheta == cache_costheta) && (sintheta == cache_sintheta)) {
@@ -173,7 +174,8 @@ namespace rotation {
 
         // Rotate out of the `zeta` frame
         for (int l = 0; l < lmax + 1; l++) {
-            cache_y.block(l * l, 0, 2 * l + 1, NW) = RZetaInv[l] * y_zeta_rot.block(l * l, 0, 2 * l + 1, NW);
+            cache_y.block(l * l, 0, 2 * l + 1, NW) =
+                RZetaInv[l] * y_zeta_rot.block(l * l, 0, 2 * l + 1, NW);
         }
 
         // Export the result and cache the angles
@@ -220,8 +222,9 @@ namespace rotation {
            ...                                 ...
 
     */
-    template <class T>
-    inline void Wigner<T>::compute(const T& costheta, const T& sintheta) {
+    template <class MapType>
+    inline void Wigner<MapType>::compute(const typename MapType::Scalar& costheta,
+                                         const typename MapType::Scalar& sintheta) {
 
         // Compute the cos and sin vectors for the zhat rotation
         cosnt(1) = costheta;
@@ -265,17 +268,17 @@ namespace rotation {
     in the zeta frame whenever the map coeffs or the axis change.
 
     */
-    template <class T>
-    inline void Wigner<T>::update() {
+    template <class MapType>
+    inline void Wigner<MapType>::update() {
 
-       // Compute the rotation transformation into and out of the `zeta` frame
-       cos_zeta = axis(2);
-       sin_zeta = sqrt(1 - axis(2) * axis(2));
-       T norm = sqrt(axis(0) * axis(0) + axis(1) * axis(1));
-       if (abs(norm) < tol) {
-           // The rotation axis is zhat, so our zeta transform
-           // is just the identity matrix.
-           for (int l = 0; l < lmax + 1; l++) {
+        // Compute the rotation transformation into and out of the `zeta` frame
+        cos_zeta = axis(2);
+        sin_zeta = sqrt(1 - axis(2) * axis(2));
+        typename MapType::Scalar norm = sqrt(axis(0) * axis(0) + axis(1) * axis(1));
+        if (abs(norm) < tol) {
+            // The rotation axis is zhat, so our zeta transform
+            // is just the identity matrix.
+            for (int l = 0; l < lmax + 1; l++) {
                if (axis(2) > 0) {
                    RZeta[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
                    RZetaInv[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
@@ -283,23 +286,24 @@ namespace rotation {
                    RZeta[l] = -Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
                    RZetaInv[l] = -Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
                }
-           }
-       } else {
-           // We need to compute the actual Wigner matrices
-           axis_zeta(0) = axis(1) / norm;
-           axis_zeta(1) = -axis(0) / norm;
-           axis_zeta(2) = 0;
-           computeZeta(axis_zeta, cos_zeta, sin_zeta);
-       }
+            }
+        } else {
+            // We need to compute the actual Wigner matrices
+            axis_zeta(0) = axis(1) / norm;
+            axis_zeta(1) = -axis(0) / norm;
+            axis_zeta(2) = 0;
+            computeZeta(axis_zeta, cos_zeta, sin_zeta);
+        }
 
-       // Update the map in the `zeta` frame
-       for (int l = 0; l < lmax + 1; l++) {
-           y_zeta.block(l * l, 0, 2 * l + 1, NW) = RZeta[l] * y.block(l * l, 0, 2 * l + 1, NW);
-       }
+        // Update the map in the `zeta` frame
+        for (int l = 0; l < lmax + 1; l++) {
+            y_zeta.block(l * l, 0, 2 * l + 1, NW) =
+                RZeta[l] * y.block(l * l, 0, 2 * l + 1, NW);
+        }
 
-       // Reset the cache
-       cache_costheta = NAN;
-       cache_sintheta = NAN;
+        // Reset the cache
+        cache_costheta = NAN;
+        cache_sintheta = NAN;
 
     }
 
@@ -308,8 +312,10 @@ namespace rotation {
     See https://github.com/rodluger/starry/issues/137#issuecomment-405975092
 
     */
-    template <class T>
-    inline void Wigner<T>::rotatez(const T& costheta, const T& sintheta, const Matrix<T>& yin, Matrix<T>& yout) {
+    template <class MapType>
+    inline void Wigner<MapType>::rotatez(const typename MapType::Scalar& costheta,
+                                         const typename MapType::Scalar& sintheta,
+                                         const MapType& yin, MapType& yout) {
         cosnt(1) = costheta;
         sinnt(1) = sintheta;
         for (int n = 2; n < lmax + 1; n++) {
@@ -332,7 +338,8 @@ namespace rotation {
             }
         }
 
-        //yout = cosmt.cwiseProduct(yin) - sinmt.cwiseProduct(yrev);
+        // TODO. This may be faster if MapType is Vector:
+        // yout = cosmt.cwiseProduct(yin) - sinmt.cwiseProduct(yrev);
         yout = (yin.transpose().array().rowwise() * cosmt.array().transpose() -
                 yrev.transpose().array().rowwise() * sinmt.array().transpose()).transpose();
 
@@ -342,8 +349,12 @@ namespace rotation {
     Compute the axis-angle rotation matrix for real spherical harmonics up to order lmax.
 
     */
-    template <class T>
-    inline void Wigner<T>::computeZeta(const UnitVector<T>& axis, const T& costheta, const T& sintheta) {
+    template <class MapType>
+    inline void Wigner<MapType>::computeZeta(const UnitVector<typename MapType::Scalar>& axis,
+                                             const typename MapType::Scalar& costheta,
+                                             const typename MapType::Scalar& sintheta) {
+
+        using T = typename MapType::Scalar;
 
         // Trivial case
         if (lmax == 0) {
@@ -405,8 +416,15 @@ namespace rotation {
     harmonics up to order lmax.
 
     */
-    template <class T>
-    inline void Wigner<T>::rotar(T& c1, T& s1, T& c2, T& s2, T& c3, T& s3) {
+    template <class MapType>
+    inline void Wigner<MapType>::rotar(typename MapType::Scalar& c1,
+                                       typename MapType::Scalar& s1,
+                                       typename MapType::Scalar& c2,
+                                       typename MapType::Scalar& s2,
+                                       typename MapType::Scalar& c3,
+                                       typename MapType::Scalar& s3) {
+
+        using T = typename MapType::Scalar;
         T cosag, COSAMG, sinag, SINAMG, tgbet2;
 
         // Compute the initial matrices D0, R0, D1 and R1
@@ -453,8 +471,15 @@ namespace rotation {
     Compute the Wigner D matrices.
 
     */
-    template <class T>
-    inline void Wigner<T>::dlmn(int l, T& s1, T& c1, T& c2, T& tgbet2, T& s3, T& c3) {
+    template <class MapType>
+    inline void Wigner<MapType>::dlmn(int l, typename MapType::Scalar& s1,
+                                             typename MapType::Scalar& c1,
+                                             typename MapType::Scalar& c2,
+                                             typename MapType::Scalar& tgbet2,
+                                             typename MapType::Scalar& s3,
+                                             typename MapType::Scalar& c3) {
+
+        using T = typename MapType::Scalar;
         int iinf = 1 - l;
         int isup = -iinf;
         int m, mp;

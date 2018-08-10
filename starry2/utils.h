@@ -158,6 +158,42 @@ namespace utils {
         return true;
     }
 
+    /**
+    Set a map vector/matrix to zero
+
+    */
+    template <class T>
+    void setZero(T& obj, int N, int NW) {
+        obj = 0;
+    }
+
+    /**
+    Set a map vector/matrix to zero
+
+    */
+    template <class T>
+    void setZero(Matrix<T>& obj, int N, int NW) {
+        obj = Matrix<T>::Zero(N, NW);
+    }
+
+    /**
+    Set a map vector/matrix to zero
+
+    */
+    template <class T>
+    void setZero(Vector<T>& obj, int N, int NW) {
+        obj = Vector<T>::Zero(N);
+    }
+
+    /**
+    Set a map vector/matrix to zero
+
+    */
+    template <class T>
+    void setZero(VectorT<T>& obj, int N, int NW) {
+        obj = VectorT<T>::Zero(NW);
+    }
+
 }; // namespace utils
 
 #endif

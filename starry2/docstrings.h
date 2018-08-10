@@ -8,6 +8,10 @@ Docstrings for the Python functions.
 #include <stdlib.h>
 #include "utils.h"
 
+#define STARRY_MODULE_MAIN     0
+#define STARRY_MODULE_MULTI    1
+#define STARRY_MODULE_SPECTRAL 2
+
 namespace docstrings {
 
     using namespace std;
@@ -17,7 +21,7 @@ namespace docstrings {
     Python documentation for the `Map` class.
 
     */
-    template <class T>
+    template <int Module>
     class Map_ {
     public:
         const char * doc;
@@ -32,6 +36,7 @@ namespace docstrings {
         const char * evaluate;
         const char * flux;
         const char * rotate;
+        const char * nwav;
         void add_extras() { doc = R"pbdoc()pbdoc"; };
 
         Map_() {
@@ -127,7 +132,7 @@ namespace docstrings {
 
     */
     template <>
-    void Map_<double>::add_extras() {
+    void Map_<STARRY_MODULE_MAIN>::add_extras() {
 
         doc = R"pbdoc(
                 Instantiate a :py:mod:`starry` surface map. Maps instantiated in this fashion
@@ -157,14 +162,14 @@ namespace docstrings {
     Python documentation for `starry`.
 
     */
-    template <class T>
+    template <int Module>
     class docs {
     public:
 
         const char * doc;
         const char * nmulti;
         void add_extras() { doc = R"pbdoc()pbdoc"; };
-        Map_<T> Map;
+        Map_<Module> Map;
 
         docs() : Map() {
 
