@@ -12,7 +12,7 @@ Miscellaneous stuff used throughout the code.
 #include "utils.h"
 #include "errors.h"
 
-namespace vectorize {
+namespace pybind_vectorize {
 
     using namespace utils;
     namespace py = pybind11;
@@ -76,6 +76,90 @@ namespace vectorize {
             arg3_v = vectorize_arg(arg3, size);
             arg4_v = vectorize_arg(arg4, size);
         }
+    }
+
+
+    template <typename T1, typename T2, typename T3>
+    py::object flux(maps::Map<T1, T2, T3> &map,
+                    py::object& theta,
+                    py::object& xo,
+                    py::object& yo,
+                    py::object& ro,
+                    bool gradient){
+
+        if (gradient) {
+
+            /* TODO
+
+            // Initialize a dictionary of derivatives
+            size_t n = max(theta.size(), max(xo.size(),
+                           max(yo.size(), ro.size())));
+            std::map<string, Vector<double>> grad;
+            for (auto name : map.dF_names)
+                grad[name].resize(n);
+
+            // Nested lambda function; https://github.com/pybind/pybind11/issues/761#issuecomment-288818460
+            int t = 0;
+            auto F = py::vectorize([&map, &grad, &t](double theta, double xo, double yo, double ro) {
+                // Evaluate the function
+                double res = map.flux(theta, xo, yo, ro, true);
+                // Gather the derivatives
+                for (int j = 0; j < map.dF.size(); j++)
+                    grad[map.dF_names[j]](t) = map.dF(j);
+                t++;
+                return res;
+            })(theta, xo, yo, ro);
+
+            // Return a tuple of (F, dict(dF))
+            return py::make_tuple(F, grad);
+
+            */
+
+            return py::cast(0.0);
+
+        } else {
+
+            // Easy! We'll just return F
+            return py::vectorize([&map](double theta, double xo, double yo, double ro) {
+                        return static_cast<double>(map.flux(theta, xo, yo, ro, false));
+                   })(theta, xo, yo, ro);
+
+        }
+
+    }
+
+    template <>
+    py::object flux(maps::Map<Matrix<double>, Vector<double>, VectorT<double>> &map,
+                    py::object& theta,
+                    py::object& xo,
+                    py::object& yo,
+                    py::object& ro,
+                    bool gradient){
+
+        if (gradient) {
+
+            /* TODO */
+            return py::cast(0.0);
+
+        } else {
+
+            // Vectorize the arguments manually
+            Vector<double> theta_v, xo_v, yo_v, ro_v;
+            vectorize_args(theta, xo, yo, ro,
+                           theta_v, xo_v, yo_v, ro_v);
+
+            // Iterate through the timeseries
+            size_t sz = theta_v.size();
+            Matrix<double> F(sz, map.nwav);
+            for (size_t i = 0; i < sz; ++i) {
+                F.row(i) = map.flux(theta_v(i), xo_v(i), yo_v(i), ro_v(i), false);
+            }
+
+            // Cast to python object
+            return py::cast(F);
+
+        }
+
     }
 
 }; // namespace vectorize

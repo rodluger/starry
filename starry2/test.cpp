@@ -29,4 +29,14 @@ int main() {
     std::cout << map2.evaluate(30, 0.1, 0.3, false) << std::endl;
     std::cout << map2.flux(30, 0.1, 0.3, 0.1, false) << std::endl;
 
+    // Multi
+    maps::Map<Vector<Multi>, Multi, Multi> map3(lmax);
+    for (int l = 0; l < lmax + 1; ++l) {
+        for (int m = -l; m < l + 1; ++m) {
+            map3.setYlm(l, m, Multi(1.0));
+        }
+    }
+    std::cout << map3.evaluate(30, 0.1, 0.3, false) << std::endl;
+    std::cout << map3.flux(30, 0.1, 0.3, 0.1, false) << std::endl;
+
 }

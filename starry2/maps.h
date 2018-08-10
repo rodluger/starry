@@ -161,7 +161,7 @@ namespace maps {
             Instantiate a `Map`.
 
             */
-            Map(int lmax=2, int nwav=1) :
+            explicit Map(int lmax=2, int nwav=1) :
                 lmax(lmax),
                 N((lmax + 1) * (lmax + 1)),
                 nwav(nwav),
