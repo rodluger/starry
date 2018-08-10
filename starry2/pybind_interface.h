@@ -183,16 +183,16 @@ namespace pybind_interface {
                     return map.getS().template cast<double>();
                 }, docs.Map.s)
 
-            .def("evaluate", [](maps::Map<T1, T2, T3> &map, py::object& theta,
-                                py::object& x, py::object& y,
+            .def("evaluate", [](maps::Map<T1, T2, T3> &map, py::array_t<double>& theta,
+                                py::array_t<double>& x, py::array_t<double>& y,
                                 bool gradient) -> py::object {
                     return vectorize::evaluate(map, theta, x, y, gradient);
                 }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0,
                                       "gradient"_a=false)
 
-            .def("flux", [](maps::Map<T1, T2, T3> &map, py::object& theta,
-                            py::object& xo, py::object& yo, py::object& ro,
-                            bool gradient) -> py::object {
+            .def("flux", [](maps::Map<T1, T2, T3> &map, py::array_t<double>& theta,
+                            py::array_t<double>& xo, py::array_t<double>& yo,
+                            py::array_t<double>& ro, bool gradient) -> py::object {
                     return vectorize::flux(map, theta, xo, yo, ro, gradient);
                 }, docs.Map.flux, "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0,
                                    "ro"_a=0.0, "gradient"_a=false)
