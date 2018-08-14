@@ -95,7 +95,7 @@ namespace pybind_interface {
                 vector<Matrix<double>> I;
                 Vector<double> x, theta;
                 x = Vector<double>::LinSpaced(res, -1, 1);
-                theta = Vector<double>::LinSpaced(frames, 0, 2 * M_PI);
+                theta = Vector<double>::LinSpaced(frames, 0, 360);
                 for (int t = 0; t < frames; t++){
                     I.push_back(Matrix<double>::Zero(res, res));
                     for (int i = 0; i < res; i++){
@@ -145,6 +145,8 @@ namespace pybind_interface {
                                    int l) -> VectorT<double> {
                 return map.getUl(l);
             });
+
+            // TODO: SHOW AND ANIMATE
 
     }
 
