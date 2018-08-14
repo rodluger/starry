@@ -1,7 +1,6 @@
 #ifdef STARRY_DEBUG
 #undef NDEBUG
 #endif
-
 #include <pybind11/pybind11.h>
 #include <stdlib.h>
 #include "utils.h"
@@ -9,7 +8,7 @@
 #include "docstrings.h"
 namespace py = pybind11;
 
-PYBIND11_MODULE(starry2, m) {
+PYBIND11_MODULE(_starry, m) {
 
     using utils::Matrix;
     using utils::Vector;

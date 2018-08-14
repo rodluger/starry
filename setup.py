@@ -5,12 +5,11 @@ import sys
 import os
 import glob
 import setuptools
-__version__ = '0.1.2'
+__version__ = '0.2.0'
 
 
 # Custom compiler flags
-macros = dict(STARRY_NGRAD=13,
-              STARRY_NMULTI=32,
+macros = dict(STARRY_NMULTI=32,
               STARRY_IJ_MAX_ITER=200,
               STARRY_ELLIP_MAX_ITER=200,
               STARRY_KEPLER_MAX_ITER=100)
@@ -18,12 +17,6 @@ macros = dict(STARRY_NGRAD=13,
 # Override with user values
 for key, value in macros.items():
     macros[key] = os.getenv(key, value)
-
-# HACK: We should probably follow the instructions here:
-# https://eigen.tuxfamily.org/dox/group__TopicStructHavingEigenMembers.html
-# but it's easier to require the gradient length to be odd!
-if int(macros['STARRY_NGRAD']) % 2 == 0:
-    macros['STARRY_NGRAD'] = int(macros['STARRY_NGRAD']) + 1
 
 # Compiler optimization flag -O
 optimize = int(os.getenv('STARRY_O', 2))
@@ -56,7 +49,7 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        'starry2',
+        'starry2._starry',
         ['starry2/pybind_interface.cpp'],
         include_dirs=[
             # Path to pybind11 headers
@@ -153,10 +146,11 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     license='GPL',
-    packages=['starry2'],
+    packages=['starry2', 'starry2.maps'],
     ext_modules=ext_modules,
     install_requires=['pybind11>=2.2'],
     cmdclass={'build_ext': BuildExt},
+    data_files=[('starry2.maps', glob.glob('starry2/maps/*.jpg'))],
     include_package_data=True,
     zip_safe=False,
 )

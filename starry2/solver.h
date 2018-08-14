@@ -800,7 +800,7 @@ namespace solver {
             Vector<bool> skip;
 
             // Constructor
-            Greens(int lmax) :
+            explicit Greens(int lmax) :
                    lmax(lmax),
                    ksq(T(0.0)),
                    twor(T(0.0)),
