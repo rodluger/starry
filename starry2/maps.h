@@ -27,172 +27,69 @@ namespace maps {
     using basis::Basis;
     using solver::Greens;
 
-    //! Check our `Map` types: catch-all
-    template <class T1, class T2, class T3>
-    inline void check_types(int N, int nwav, tag<T1>, tag<T2>, tag<T3>) {
-        throw errors::NotImplementedError("The `Map` class is not implemented for this type.");
-    }
-
-    //! Check our `Map` types: Matrix<T> specialization
-    template <class T>
-    inline void check_types(int N, int nwav, tag<Matrix<T>>, tag<Vector<T>>, tag<VectorT<T>>) {
-        // All is good!
-    }
-
-    //! Check our `Map` types: Vector<T> specialization
-    template <class T>
-    inline void check_types(int N, int nwav, tag<Vector<T>>, tag<T>, tag<T>) {
-        // Check that our wavelength dimension size is 1
-        if (nwav != 1)
-            throw errors::NotImplementedError("Spectral mode is disabled for this `Map` type.");
-    }
-
-    //! Check our `Map` types
-    template <class T1, class T2, class T3>
-    inline void check_types(int N, int nwav) {
-        return check_types(N, nwav, tag<T1>(), tag<T2>(), tag<T3>());
-    }
-
-    //! Set a vector map coefficient
-    template <class T>
-    inline void setCoeff(Vector<T>& y, int n, const T& coeff) {
-        y(n) = coeff;
-    }
-
-    //! Set a matrix map coefficient
-    template <class T>
-    inline void setCoeff(Matrix<T>& y, int n, const VectorT<T>& coeff) {
-        if (coeff.size() != y.cols())
-            throw errors::ValueError("Size mismatch in the wavelength dimension.");
-        y.row(n) = coeff;
-    }
-
-    //! Get a vector map coefficient
-    template <class T>
-    inline T getCoeff(const Vector<T>& y, int n) {
-        return y(n);
-    }
-
-    //! Get a matrix map coefficient
-    template <class T>
-    inline VectorT<T> getCoeff(const Matrix<T>& y, int n) {
-        return y.row(n);
-    }
-
-    //! Get the vector map coefficient at index `n`
-    template <class T>
-    inline T getFirstCoeff(const Vector<T>& y, int n) {
-        return y(n);
-    }
-
-    //! Get the matrix map coefficient at index `(n, 0)`
-    template <class T>
-    inline T getFirstCoeff(const Matrix<T>& y, int n) {
-        return y(n, 0);
-    }
-
-
-    template <class T>
-    inline void setRow(Vector<T>& vec, int row, T val) {
-        vec(row) = val;
-    }
-
-    template <class T>
-    inline void setRow(Matrix<T>& vec, int row, const VectorT<T>& val) {
-        vec.row(row) = val;
-    }
-
-    template <class T>
-    inline void setRow(Matrix<T>& vec, int row, T val) {
-        vec.row(row) = VectorT<T>::Constant(vec.cols(), val);
-    }
-
-    template <class T>
-    inline T getRow(const Vector<T>& vec, int row) {
-        return vec(row);
-    }
-
-    template <class T>
-    inline Vector<T> getRow(const Matrix<T>& vec, int row) {
-        return vec.row(row);
-    }
-
-
-    template <typename T>
-    T dot(const VectorT<T>& vT, const Vector<T>& u) {
-        return vT.dot(u);
-    }
-
-    template <typename T>
-    VectorT<T> dot(const VectorT<T>& vT, const Matrix<T>& U) {
-        return vT * U;
-    }
-
-
-
     /**
     The main surface map class.
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
+    template <class T>
     class Map {
-
-        using T = typename MapType::Scalar;
 
         public:
 
             const int lmax;                                                     /**< The highest degree of the map */
             const int N;                                                        /**< The number of map coefficients */
             const int nwav;                                                     /**< The number of wavelengths */
-            MapType dI;                                                         /**< Gradient of the intensity */
+            T dI;                                                               /**< Gradient of the intensity */
             std::vector<string> dI_names;                                       /**< Names of each of the params in the intensity gradient */
-            MapType dF;                                                         /**< Gradient of the flux */
+            T dF;                                                               /**< Gradient of the flux */
             std::vector<string> dF_names;                                       /**< Names of each of the params in the flux gradient */
 
         private:
 
-            MapType y;                                                          /**< The map coefficients in the spherical harmonic basis */
-            MapType p;                                                          /**< The map coefficients in the polynomial basis */
-            MapType g;                                                          /**< The map coefficients in the Green's basis */
-            UnitVector<T> axis;                                                 /**< The axis of rotation for the map */
-            Basis<T> B;                                                         /**< Basis transform stuff */
-            Wigner<MapType> W;                                                  /**< The class controlling rotations */
-            Greens<T> G;                                                        /**< The occultation integral solver class */
-            Greens<ADScalar<T, 2>> G_grad;                                      /**< The occultation integral solver class w/ AutoDiff capability */
-            T tol;                                                              /**< Machine epsilon */
+            T y;                                                                /**< The map coefficients in the spherical harmonic basis */
+            T p;                                                                /**< The map coefficients in the polynomial basis */
+            T g;                                                                /**< The map coefficients in the Green's basis */
+            UnitVector<Scalar<T>> axis;                                         /**< The axis of rotation for the map */
+            Basis<Scalar<T>> B;                                                 /**< Basis transform stuff */
+            Wigner<T> W;                                                        /**< The class controlling rotations */
+            Greens<Scalar<T>> G;                                                /**< The occultation integral solver class */
+            Greens<ADScalar<Scalar<T>, 2>> G_grad;                              /**< The occultation integral solver class w/ AutoDiff capability */
+            Scalar<T> tol;                                                      /**< Machine epsilon */
 
             // Temporary vectors
-            Vector<T> vtmp;                                                     /**< A temporary surface map vector */
-            VectorT<T> vTtmp;                                                   /**< A temporary surface map vector */
-            VectorT<T> pT;                                                      /**< The polynomial basis vector */
-            VectorT<T> pTA1;                                                    /**< Polynomial basis dotted into change of basis matrix */
-            ADScalar<T, 2> x0_grad;                                             /**< x position AD type for map evaluation */
-            ADScalar<T, 2> y0_grad;                                             /**< y position AD type for map evaluation */
-            VectorT<ADScalar<T, 2>> pT_grad;                                    /**< Polynomial basis AD type */
-            ADScalar<T, 2> b_grad;                                              /**< Occultor impact parameter AD type for flux evaluation */
-            ADScalar<T, 2> ro_grad;                                             /**< Occultor radius AD type for flux evaluation */
-            VectorT<ADScalar<T, 2>> sT_grad;                                    /**< Occultation solution vector AD type */
-            VectorT<T> sTA;                                                     /**< The solution vector in the sph harm basis */
-            VectorT<T> sTAR;                                                    /**< The solution vector in the rotated sph harm basis */
-            VectorT<T> sTAdRdtheta;                                             /**< The derivative of `sTAR` with respect to `theta` */
-            MapType mtmp;                                                       /**< A temporary surface map vector */
-            MapType mtmp2;                                                      /**< A temporary surface map vector */
-            MapType Ry;                                                         /**< The rotated spherical harmonic vector */
-            MapType dRdthetay;                                                  /**< Derivative of `Ry` with respect to `theta` */
-            MapType* ptr_A1Ry;                                                  /**< Pointer to rotated polynomial vector */
-            MapType* ptr_Ry;                                                    /**< Pointer to rotated spherical harmonic vector */
-            MapType* ptr_RRy;                                                   /**< Pointer to rotated spherical harmonic vector */
-            MapType ARRy;                                                       /**< The `ARRy` term in `s^TARRy` */
-            CoeffTypeT dFdb;                                                    /**< Gradient of the flux with respect to the impact parameter */
+            Vector<Scalar<T>> vtmp;                                             /**< A temporary surface map vector */
+            VectorT<Scalar<T>> pT;                                              /**< The polynomial basis vector */
+            VectorT<Scalar<T>> pTA1;                                            /**< Polynomial basis dotted into change of basis matrix */
+            ADScalar<Scalar<T>, 2> x0_grad;                                     /**< x position AD type for map evaluation */
+            ADScalar<Scalar<T>, 2> y0_grad;                                     /**< y position AD type for map evaluation */
+            VectorT<ADScalar<Scalar<T>, 2>> pT_grad;                            /**< Polynomial basis AD type */
+            ADScalar<Scalar<T>, 2> b_grad;                                      /**< Occultor impact parameter AD type for flux evaluation */
+            ADScalar<Scalar<T>, 2> ro_grad;                                     /**< Occultor radius AD type for flux evaluation */
+            VectorT<ADScalar<Scalar<T>, 2>> sT_grad;                            /**< Occultation solution vector AD type */
+            VectorT<Scalar<T>> sTA;                                             /**< The solution vector in the sph harm basis */
+            VectorT<Scalar<T>> sTAR;                                            /**< The solution vector in the rotated sph harm basis */
+            VectorT<Scalar<T>> sTAdRdtheta;                                     /**< The derivative of `sTAR` with respect to `theta` */
+            T mtmp;                                                             /**< A temporary surface map vector */
+            T mtmp2;                                                            /**< A temporary surface map vector */
+            T Ry;                                                               /**< The rotated spherical harmonic vector */
+            T dRdthetay;                                                        /**< Derivative of `Ry` with respect to `theta` */
+            T* ptr_A1Ry;                                                        /**< Pointer to rotated polynomial vector */
+            T* ptr_Ry;                                                          /**< Pointer to rotated spherical harmonic vector */
+            T* ptr_RRy;                                                         /**< Pointer to rotated spherical harmonic vector */
+            T ARRy;                                                             /**< The `ARRy` term in `s^TARRy` */
+            Row<T> dFdb;                                                        /**< Gradient of the flux with respect to the impact parameter */
+            Row<T> rtmp;                                                        /**< A temporary surface map vector */
 
             // Private methods
             template <typename V>
             inline void poly_basis(const V& x0, const V& y0, VectorT<V>& basis);
-            inline CoeffType evaluate_with_gradient(const T& theta_deg,
-                                                    const T& x_, const T& y_);
-            inline CoeffType flux_with_gradient(const T& theta_deg,
-                                                const T& xo_, const T& yo_,
-                                                const T& ro_);
+            inline Column<T> evaluate_with_gradient(const Scalar<T>& theta_deg,
+                                                    const Scalar<T>& x_,
+                                                    const Scalar<T>& y_);
+            inline Column<T> flux_with_gradient(const Scalar<T>& theta_deg,
+                                                const Scalar<T>& xo_,
+                                                const Scalar<T>& yo_,
+                                                const Scalar<T>& ro_);
 
         public:
 
@@ -210,10 +107,7 @@ namespace maps {
                 W(lmax, nwav, (*this).y, (*this).axis),
                 G(lmax),
                 G_grad(lmax),
-                tol(mach_eps<T>()) {
-
-                // Check that the map types are valid & consistent
-                check_types<MapType, CoeffType, CoeffTypeT>(N, nwav);
+                tol(mach_eps<Scalar<T>>()) {
 
                 // Populate the gradient names
                 for (int l = 0; l < lmax + 1; l++) {
@@ -227,20 +121,19 @@ namespace maps {
 
                 // Initialize all the vectors
                 setZero(y, N, nwav);
-                axis = yhat<T>();
-                vtmp = Vector<T>::Zero(N);
-                vTtmp = VectorT<T>::Zero(N);
-                pT = VectorT<T>::Zero(N);
-                pTA1 = VectorT<T>::Zero(N);
-                x0_grad = ADScalar<T, 2>(0, Vector<T>::Unit(2, 0));
-                y0_grad = ADScalar<T, 2>(0, Vector<T>::Unit(2, 1));
-                pT_grad = VectorT<ADScalar<T, 2>>::Zero(N);
-                b_grad = ADScalar<T, 2>(0, Vector<T>::Unit(2, 0));
-                ro_grad = ADScalar<T, 2>(0, Vector<T>::Unit(2, 1));
-                sT_grad = VectorT<ADScalar<T, 2>>::Zero(N);
-                sTA = VectorT<T>::Zero(N);
-                sTAR = VectorT<T>::Zero(N);
-                sTAdRdtheta = VectorT<T>::Zero(N);
+                axis = yhat<Scalar<T>>();
+                vtmp = Vector<Scalar<T>>::Zero(N);
+                pT = VectorT<Scalar<T>>::Zero(N);
+                pTA1 = VectorT<Scalar<T>>::Zero(N);
+                x0_grad = ADScalar<Scalar<T>, 2>(0, Vector<Scalar<T>>::Unit(2, 0));
+                y0_grad = ADScalar<Scalar<T>, 2>(0, Vector<Scalar<T>>::Unit(2, 1));
+                pT_grad = VectorT<ADScalar<Scalar<T>, 2>>::Zero(N);
+                b_grad = ADScalar<Scalar<T>, 2>(0, Vector<Scalar<T>>::Unit(2, 0));
+                ro_grad = ADScalar<Scalar<T>, 2>(0, Vector<Scalar<T>>::Unit(2, 1));
+                sT_grad = VectorT<ADScalar<Scalar<T>, 2>>::Zero(N);
+                sTA = VectorT<Scalar<T>>::Zero(N);
+                sTAR = VectorT<Scalar<T>>::Zero(N);
+                sTAdRdtheta = VectorT<Scalar<T>>::Zero(N);
                 setZero(dI, 3 + N, nwav);
                 setZero(dF, 4 + N, nwav);
                 setZero(mtmp, N, nwav);
@@ -249,6 +142,7 @@ namespace maps {
                 setZero(dRdthetay, N, nwav);
                 setZero(ARRy, N, nwav);
                 setZero(dFdb, N, nwav);
+                setZero(rtmp, N, nwav);
 
                 // Reset & update the map coeffs
                 reset();
@@ -260,28 +154,32 @@ namespace maps {
             void reset();
 
             // I/O functions
-            void setYlm(int l, int m, const CoeffTypeT& coeff);
-            CoeffTypeT getYlm(int l, int m) const;
-            void setAxis(const UnitVector<T>& axis_);
-            UnitVector<T> getAxis() const;
-            MapType getY() const;
-            void setY(const MapType& y_);
-            MapType getP() const;
-            MapType getG() const;
-            VectorT<T> getR() const;
-            VectorT<T> getS() const;
+            void setYlm(int l, int m, const Row<T>& coeff);
+            Row<T> getYlm(int l, int m) const;
+            void setAxis(const UnitVector<Scalar<T>>& axis_);
+            UnitVector<Scalar<T>> getAxis() const;
+            T getY() const;
+            void setY(const T& y_);
+            T getP() const;
+            T getG() const;
+            VectorT<Scalar<T>> getR() const;
+            VectorT<Scalar<T>> getS() const;
             std::string __repr__();
 
             // Rotate the base map
-            void rotate(const T& theta_);
+            void rotate(const Scalar<T>&  theta_);
 
             // Evaluate the intensity at a point
-            inline CoeffType evaluate(const T& theta_=0, const T& x_=0,
-                                      const T& y_=0, bool gradient=false);
+            inline Column<T> evaluate(const Scalar<T>& theta_=0,
+                                      const Scalar<T>& x_=0,
+                                      const Scalar<T>& y_=0,
+                                      bool gradient=false);
 
             // Compute the flux
-            inline CoeffType flux(const T& theta_=0, const T& xo_=0,
-                                  const T& yo_=0, const T& ro_=0,
+            inline Column<T> flux(const Scalar<T>& theta_=0,
+                                  const Scalar<T>& xo_=0,
+                                  const Scalar<T>& yo_=0,
+                                  const Scalar<T>& ro_=0,
                                   bool gradient=false);
 
     };
@@ -295,8 +193,8 @@ namespace maps {
     Update the maps after the coefficients changed
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    void Map<MapType, CoeffType, CoeffTypeT>::update() {
+    template <class T>
+    void Map<T>::update() {
 
         // Update the polynomial and Green's map coefficients
         p = B.A1 * y;
@@ -311,10 +209,10 @@ namespace maps {
     Reset the map
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    void Map<MapType, CoeffType, CoeffTypeT>::reset() {
+    template <class T>
+    void Map<T>::reset() {
         y.setZero(N, nwav);
-        axis = yhat<typename MapType::Scalar>();
+        axis = yhat<Scalar<T>>();
         update();
     }
 
@@ -328,8 +226,8 @@ namespace maps {
     Set the (l, m) spherical harmonic coefficient
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    void Map<MapType, CoeffType, CoeffTypeT>::setYlm(int l, int m, const CoeffTypeT& coeff) {
+    template <class T>
+    void Map<T>::setYlm(int l, int m, const Row<T>& coeff) {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
             setCoeff(y, n, coeff);
@@ -343,8 +241,8 @@ namespace maps {
     Get the (l, m) spherical harmonic coefficient
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    CoeffTypeT Map<MapType, CoeffType, CoeffTypeT>::getYlm(int l, int m) const {
+    template <class T>
+    Row<T> Map<T>::getYlm(int l, int m) const {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             return getCoeff(y, l * l + l + m);
         } else
@@ -355,8 +253,8 @@ namespace maps {
     Set the axis
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    void Map<MapType, CoeffType, CoeffTypeT>::setAxis(const UnitVector<T>& axis_) {
+    template <class T>
+    void Map<T>::setAxis(const UnitVector<Scalar<T>>& axis_) {
 
         // Set it and normalize it
         axis(0) = axis_(0);
@@ -375,8 +273,8 @@ namespace maps {
     Return a copy of the axis
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    UnitVector<typename MapType::Scalar> Map<MapType, CoeffType, CoeffTypeT>::getAxis() const {
+    template <class T>
+    UnitVector<Scalar<T>> Map<T>::getAxis() const {
         return axis;
     }
 
@@ -384,8 +282,8 @@ namespace maps {
     Get the spherical harmonic vector
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    MapType Map<MapType, CoeffType, CoeffTypeT>::getY() const {
+    template <class T>
+    T Map<T>::getY() const {
         return y;
     }
 
@@ -393,8 +291,8 @@ namespace maps {
     Set the spherical harmonic vector
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    void Map<MapType, CoeffType, CoeffTypeT>::setY(const MapType& y_) {
+    template <class T>
+    void Map<T>::setY(const T& y_) {
         if ((y_.rows() == y.rows()) && (y_.cols() == y.cols())) {
             y = y_;
             update();
@@ -407,8 +305,8 @@ namespace maps {
     Get the polynomial vector
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    MapType Map<MapType, CoeffType, CoeffTypeT>::getP() const {
+    template <class T>
+    T Map<T>::getP() const {
         return p;
     }
 
@@ -416,8 +314,8 @@ namespace maps {
     Get the Green's vector
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    MapType Map<MapType, CoeffType, CoeffTypeT>::getG() const {
+    template <class T>
+    T Map<T>::getG() const {
         return g;
     }
 
@@ -425,8 +323,8 @@ namespace maps {
     Get the rotation solution vector
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    VectorT<typename MapType::Scalar> Map<MapType, CoeffType, CoeffTypeT>::getR() const {
+    template <class T>
+    VectorT<Scalar<T>> Map<T>::getR() const {
         return B.rT;
     }
 
@@ -434,8 +332,8 @@ namespace maps {
     Get the occultation solution vector
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    VectorT<typename MapType::Scalar> Map<MapType, CoeffType, CoeffTypeT>::getS() const {
+    template <class T>
+    VectorT<Scalar<T>> Map<T>::getS() const {
         return G.sT;
     }
 
@@ -443,8 +341,8 @@ namespace maps {
     Return a human-readable map string
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    std::string Map<MapType, CoeffType, CoeffTypeT>::__repr__() {
+    template <class T>
+    std::string Map<T>::__repr__() {
         int n = 0;
         int nterms = 0;
         char buf[30];
@@ -452,7 +350,7 @@ namespace maps {
         os << "<STARRY Map: ";
         for (int l = 0; l < lmax + 1; l++) {
             for (int m = -l; m < l + 1; m++) {
-                if (abs(getFirstCoeff(y, n)) > 10 * mach_eps<T>()){
+                if (abs(getFirstCoeff(y, n)) > 10 * mach_eps<Scalar<T>>()){
                     // Separator
                     if ((nterms > 0) && (getFirstCoeff(y, n) > 0)) {
                         os << " + ";
@@ -465,7 +363,7 @@ namespace maps {
                     if ((getFirstCoeff(y, n) == 1) || (getFirstCoeff(y, n) == -1)) {
                         sprintf(buf, "Y_{%d,%d}", l, m);
                         os << buf;
-                    } else if (fmod(abs(getFirstCoeff(y, n)), 1.0) < 10 * mach_eps<T>()) {
+                    } else if (fmod(abs(getFirstCoeff(y, n)), 1.0) < 10 * mach_eps<Scalar<T>>()) {
                         sprintf(buf, "%d Y_{%d,%d}", (int)abs(getFirstCoeff(y, n)), l, m);
                         os << buf;
                     } else if (fmod(abs(getFirstCoeff(y, n)), 1.0) >= 0.01) {
@@ -496,10 +394,9 @@ namespace maps {
     Rotate the base map in-place given `theta` in **degrees**
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    void Map<MapType, CoeffType, CoeffTypeT>::rotate(const T& theta_) {
-        using T = typename MapType::Scalar;
-        T theta = theta_ * (pi<T>() / 180.);
+    template <class T>
+    void Map<T>::rotate(const Scalar<T>& theta_) {
+        Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
         W.rotate(cos(theta), sin(theta), y);
         update();
     }
@@ -513,10 +410,8 @@ namespace maps {
     Compute the polynomial basis at a point; templated for AD capability
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT> template <typename U>
-    inline void Map<MapType, CoeffType, CoeffTypeT>::poly_basis(const U& x0,
-                                                                const U& y0,
-                                                                VectorT<U>& basis) {
+    template <class T> template <typename U>
+    inline void Map<T>::poly_basis(const U& x0, const U& y0, VectorT<U>& basis) {
         int l, m, mu, nu, n = 0;
         U z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
         for (l=0; l<lmax+1; l++) {
@@ -552,13 +447,11 @@ namespace maps {
     Evaluate the map at a given (x0, y0) coordinate
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    inline CoeffType Map<MapType, CoeffType, CoeffTypeT>::evaluate(const T& theta_,
-                                                                   const T& x_,
-                                                                   const T& y_,
-                                                                   bool gradient) {
-
-        using T = typename MapType::Scalar;
+    template <class T>
+    inline Column<T> Map<T>::evaluate(const Scalar<T>& theta_,
+                                      const Scalar<T>& x_,
+                                      const Scalar<T>& y_,
+                                      bool gradient) {
 
         // If we're computing the gradient as well,
         // call the specialized function
@@ -566,9 +459,9 @@ namespace maps {
             return evaluate_with_gradient(theta_, x_, y_);
 
         // Convert to internal types
-        T x0 = x_;
-        T y0 = y_;
-        T theta = theta_ * (pi<T>() / 180.);
+        Scalar<T> x0 = x_;
+        Scalar<T> y0 = y_;
+        Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
 
         // Rotate the map into view
         if (theta == 0) {
@@ -581,7 +474,7 @@ namespace maps {
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) {
-            CoeffType res;
+            Column<T> res;
             setZero(res, N, nwav);
             return res * NAN;
         }
@@ -598,17 +491,15 @@ namespace maps {
     Evaluate the map at a given (x0, y0) coordinate and compute the gradient
 
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    inline CoeffType Map<MapType, CoeffType, CoeffTypeT>::evaluate_with_gradient(const T& theta_,
-                                                                                 const T& x_,
-                                                                                 const T& y_) {
-
-        using T = typename MapType::Scalar;
+    template <class T>
+    inline Column<T> Map<T>::evaluate_with_gradient(const Scalar<T>& theta_,
+                                                    const Scalar<T>& x_,
+                                                    const Scalar<T>& y_) {
 
         // Convert to internal type
-        T x0 = x_;
-        T y0 = y_;
-        T theta = theta_ * (pi<T>() / 180.);
+        Scalar<T> x0 = x_;
+        Scalar<T> y0 = y_;
+        Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
 
         // Rotate the map into view
         W.compute(cos(theta), sin(theta));
@@ -626,7 +517,7 @@ namespace maps {
         if (x0 * x0 + y0 * y0 > 1.0) {
             setZero(dI, 3 + N, nwav);
             dI = dI * NAN;
-            CoeffType res;
+            Column<T> res;
             setZero(res, N, nwav);
             return res * NAN;
         }
@@ -635,15 +526,13 @@ namespace maps {
         x0_grad.value() = x0;
         y0_grad.value() = y0;
         poly_basis(x0_grad, y0_grad, pT_grad);
-        setRow(dI, 1, T(0.0));
-        setRow(dI, 2, T(0.0));
+        setRow(dI, 1, Scalar<T>(0.0));
+        setRow(dI, 2, Scalar<T>(0.0));
         for (int i = 0; i < N; i++) {
-            setRow(dI, 1, CoeffTypeT(getRow(dI, 1) +
-                                     pT_grad(i).derivatives()(0) *
-                                     getRow(*ptr_A1Ry, i)));
-            setRow(dI, 2, CoeffTypeT(getRow(dI, 2) +
-                                     pT_grad(i).derivatives()(1) *
-                                     getRow(*ptr_A1Ry, i)));
+            setRow(dI, 1, Row<T>(getRow(dI, 1) +
+                                 pT_grad(i).derivatives()(0) * getRow(*ptr_A1Ry, i)));
+            setRow(dI, 2, Row<T>(getRow(dI, 2) +
+                                 pT_grad(i).derivatives()(1) * getRow(*ptr_A1Ry, i)));
             pT(i) = pT_grad(i).value();
         }
 
@@ -664,7 +553,7 @@ namespace maps {
         for (int l = 0; l < lmax + 1; l++)
             dRdthetay.block(l * l, 0, 2 * l + 1, nwav) =
                 W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, nwav);
-        setRow(dI, 0, CoeffTypeT(dot(pTA1, dRdthetay) * (pi<T>() / 180.)));
+        setRow(dI, 0, Row<T>(dot(pTA1, dRdthetay) * (pi<Scalar<T>>() / 180.)));
 
         // Dot the coefficients in to our polynomial map
         return pT * (*ptr_A1Ry);
@@ -680,33 +569,30 @@ namespace maps {
     /**
     Compute the flux during or outside of an occultation
     */
-    template <class MapType, class CoeffType, class CoeffTypeT>
-    inline CoeffType Map<MapType, CoeffType, CoeffTypeT>::flux(const T& theta_,
-                                                               const T& xo_,
-                                                               const T& yo_,
-                                                               const T& ro_,
-                                                               bool gradient) {
-
-        using T = typename MapType::Scalar;
+    template <class T>
+    inline Column<T> Map<T>::flux(const Scalar<T>& theta_,
+                                  const Scalar<T>& xo_,
+                                  const Scalar<T>& yo_,
+                                  const Scalar<T>& ro_,
+                                  bool gradient) {
 
         // If we're computing the gradient as well,
         // call the specialized function
-        // TODO
-        //if (gradient)
-        //    return flux_with_gradient(theta_, xo_, yo_, ro_);
+        if (gradient)
+            return flux_with_gradient(theta_, xo_, yo_, ro_);
 
         // Convert to internal types
-        T xo = xo_;
-        T yo = yo_;
-        T ro = ro_;
-        T theta = theta_ * (pi<T>() / 180.);
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+        Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
 
         // Impact parameter
-        T b = sqrt(xo * xo + yo * yo);
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
 
         // Check for complete occultation
         if (b <= ro - 1) {
-            CoeffType res;
+            Column<T> res;
             setZero(res, N, nwav);
             return res;
         }
@@ -759,28 +645,30 @@ namespace maps {
 
     /**
     Compute the flux during or outside of an occultation and its gradient
+
     */
 
-    /*
-    TODO
-    template <class T, class MapType, class CoeffType, class CoeffTypeT>
-    inline Vector<T> Map<T, MapType, CoeffType, CoeffTypeT>::flux_with_gradient(const T& theta_deg,
-                                                const T& xo_,
-                                                const T& yo_, const T& ro_) {
+    template <class T>
+    inline Column<T> Map<T>::flux_with_gradient(const Scalar<T>& theta_deg,
+                                                const Scalar<T>& xo_,
+                                                const Scalar<T>& yo_,
+                                                const Scalar<T>& ro_) {
 
         // Convert to internal type
-        T xo = xo_;
-        T yo = yo_;
-        T ro = ro_;
-        T theta = theta_deg * (pi<T>() / 180.);
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+        Scalar<T> theta = theta_deg * (pi<Scalar<T>>() / 180.);
 
         // Impact parameter
-        T b = sqrt(xo * xo + yo * yo);
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
 
         // Check for complete occultation
         if (b <= ro - 1) {
-            dF = MapType::Constant(N, nwav, NAN);
-            return Vector<T>::Constant(nwav, 0.0);
+            setZero(dF, N, nwav);
+            Column<T> res;
+            setZero(res, N, nwav);
+            return res;
         }
 
         // Rotate the map into view
@@ -802,24 +690,24 @@ namespace maps {
             for (int l = 0; l < lmax + 1; l++)
                 dRdthetay.block(l * l, 0, 2 * l + 1, nwav) =
                     W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, nwav);
-            dF.row(0) = B.rTA1 * dRdthetay * (pi<T>() / 180.);
+            setRow(dF, 0, Row<T>(dot(B.rTA1, dRdthetay) * (pi<Scalar<T>>() / 180.)));
 
             // The x, y, and r derivs are trivial
-            dF.row(1) = Vector<T>::Zero(nwav);
-            dF.row(2) = Vector<T>::Zero(nwav);
-            dF.row(3) = Vector<T>::Zero(nwav);
+            setRow(dF, 1, Scalar<T>(0.0));
+            setRow(dF, 2, Scalar<T>(0.0));
+            setRow(dF, 3, Scalar<T>(0.0));
 
             // Compute the map derivs
             pTA1 = pT * B.A1;
             if (theta == 0) {
                 for (int i = 0; i < N; i++)
-                    dF.row(4 + i) = VectorT<T>::Constant(nwav, B.rTA1(i));
+                    setRow(dI, 4 + i, B.rTA1(i));
             } else {
                 for (int l = 0; l < lmax + 1; l++)
                     vtmp.segment(l * l, 2 * l + 1) =
                         B.rTA1.segment(l * l, 2 * l + 1) * W.R[l];
                 for (int i = 0; i < N; i++)
-                    dF.row(4 + i) = VectorT<T>::Constant(nwav, vtmp(i));
+                    setRow(dI, 4 + i, vtmp(i));
             }
 
             // We're done!
@@ -829,14 +717,14 @@ namespace maps {
         } else {
 
             // Align occultor with the +y axis
-            T xo_b = xo / b;
-            T yo_b = yo / b;
+            Scalar<T> xo_b = xo / b;
+            Scalar<T> yo_b = yo / b;
             if ((b > 0) && ((xo != 0) || (yo < 0))) {
                 W.rotatez(yo_b, xo_b, *ptr_Ry, mtmp2);
                 ptr_RRy = &mtmp2;
             } else {
-                W.cosmt = Vector<T>::Constant(N, 1.0);
-                W.sinmt = Vector<T>::Constant(N, 0.0);
+                W.cosmt = Vector<Scalar<T>>::Constant(N, 1.0);
+                W.sinmt = Vector<Scalar<T>>::Constant(N, 0.0);
                 ptr_RRy = ptr_Ry;
             }
 
@@ -849,15 +737,16 @@ namespace maps {
             G_grad.compute(b_grad, ro_grad);
 
             // Compute the b and ro derivs
-            dFdb = VectorT<T>::Constant(nwav, 0);
-            dF.row(3) = VectorT<T>::Constant(nwav, 0);
+            setZero(dFdb, N, nwav);
+            setRow(dF, 3, Scalar<T>(0.0));
             for (int i = 0; i < N; i++) {
 
                 // b deriv
-                dFdb += G_grad.sT(i).derivatives()(0) * ARRy.row(i);
+                dFdb += G_grad.sT(i).derivatives()(0) * getRow(ARRy, i);
 
                 // ro deriv
-                dF.row(3) += G_grad.sT(i).derivatives()(1) * ARRy.row(i);
+                setRow(dF, 3, Row<T>(getRow(dF, 3) +
+                                     G_grad.sT(i).derivatives()(1) * getRow(ARRy, i)));
 
                 // Store the value of s^T
                 G.sT(i) = G_grad.sT(i).value();
@@ -880,26 +769,26 @@ namespace maps {
             }
 
             // Compute the xo and yo derivs using the chain rule
-            vTtmp = (sTAdRdtheta * (*ptr_Ry)) / b;
-            dF.row(1) = xo_b * dFdb + yo_b * vTtmp;
-            dF.row(2) = yo_b * dFdb - xo_b * vTtmp;
+            rtmp = dot(sTAdRdtheta, *ptr_Ry) / b;
+            setRow(dF, 1, Row<T>((xo_b * dFdb) + (yo_b * rtmp)));
+            setRow(dF, 2, Row<T>((yo_b * dFdb) - (xo_b * rtmp)));
 
             // Compute the theta deriv
             for (int l = 0; l < lmax + 1; l++)
                 dRdthetay.block(l * l, 0, 2 * l + 1, nwav) =
                     W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, nwav);
-            dF.row(0) = sTAR * dRdthetay * (pi<T>() / 180.);
+            setRow(dF, 0, Row<T>(dot(sTAR, dRdthetay) * (pi<Scalar<T>>() / 180.)));
 
             // Compute the map derivs
             if (theta == 0) {
                 for (int i = 0; i < N; i++)
-                    dF.row(4 + i) = VectorT<T>::Constant(nwav, sTAR(i));
+                    setRow(dF, 4 + i, sTAR(i));
             } else {
                 for (int l = 0; l < lmax + 1; l++)
                     vtmp.segment(l * l, 2 * l + 1) =
                         sTAR.segment(l * l, 2 * l + 1) * W.R[l];
                 for (int i = 0; i < N; i++)
-                    dF.row(4 + i) = VectorT<T>::Constant(nwav, vtmp(i));
+                    setRow(dF, 4 + i, vtmp(i));
             }
 
             // Dot the result in and we're done
@@ -908,7 +797,6 @@ namespace maps {
         }
 
     }
-    */
 
 }; // namespace maps
 

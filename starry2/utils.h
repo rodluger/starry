@@ -60,6 +60,11 @@ Miscellaneous stuff used throughout the code.
 
 namespace utils {
 
+    // --------------------------
+    // --------- Aliases --------
+    // --------------------------
+
+
     //! Multiprecision datatype backend
     typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
 
@@ -86,7 +91,11 @@ namespace utils {
     template <typename T, int N>
     using ADScalar = Eigen::AutoDiffScalar<Eigen::Matrix<T, N, 1>>;
 
+
+    // --------------------------
     // -- Tag forwarding hacks --
+    // --------------------------
+
 
     //! Tag forwarding struct
     template <class T> struct tag{};
@@ -124,7 +133,11 @@ namespace utils {
     //! Machine precision for current type
     template<class T> inline T mach_eps() { return mach_eps(tag<T>()); }
 
-    // -- --
+
+    // --------------------------
+    // ------ Unit Vectors ------
+    // --------------------------
+
 
     // Some useful unit vectors
     static const UnitVector<double> xhat_double({1, 0, 0});
@@ -146,10 +159,13 @@ namespace utils {
         return zhat_double.template cast<T>();
     }
 
-    /**
-    Check if a number is even (or doubly, triply, quadruply... even)
 
-    */
+    // --------------------------
+    // ----- Misc utilities -----
+    // --------------------------
+
+
+    //! Check if a number is even (or doubly, triply, quadruply... even)
     inline bool is_even(int n, int ntimes=1) {
         for (int i = 0; i < ntimes; i++) {
             if ((n % 2) != 0) return false;
@@ -158,40 +174,148 @@ namespace utils {
         return true;
     }
 
-    /**
-    Set a map vector/matrix to zero
+    //! Figure out the dimensions of the coefficients of a map.
+    namespace types {
 
-    */
+        template <typename T>
+        struct TypeSelector{ };
+
+        template <typename T>
+        struct TypeSelector <Matrix<T>>{
+            using Column = Vector<T>;
+            using Row = VectorT<T>;
+            using Scalar = T;
+        };
+
+        template <typename T>
+        struct TypeSelector <Vector<T>>{
+            using Column = T;
+            using Row = T;
+            using Scalar = T;
+        };
+
+    }
+
+    //! The type of a `Map` row (vector^T or scalar)
+    template <class MapType>
+    using Row = typename types::TypeSelector<MapType>::Row;
+
+    //! The type of a `Map` column (vector or scalar)
+    template <class MapType>
+    using Column = typename types::TypeSelector<MapType>::Column;
+
+    //! The scalar type of a `Map` (essentially the same as `MapType::Scalar`)
+    template <class MapType>
+    using Scalar = typename types::TypeSelector<MapType>::Scalar;
+
+
+    // --------------------------
+    // -- Map coefficient utils -
+    // --------------------------
+
+
+    //! Set a map vector/matrix to zero
     template <class T>
     void setZero(T& obj, int N, int NW) {
         obj = 0;
     }
 
-    /**
-    Set a map vector/matrix to zero
-
-    */
+    //! Set a map vector/matrix to zero
     template <class T>
     void setZero(Matrix<T>& obj, int N, int NW) {
         obj = Matrix<T>::Zero(N, NW);
     }
 
-    /**
-    Set a map vector/matrix to zero
-
-    */
+    //! Set a map vector/matrix to zero
     template <class T>
     void setZero(Vector<T>& obj, int N, int NW) {
         obj = Vector<T>::Zero(N);
     }
 
-    /**
-    Set a map vector/matrix to zero
-
-    */
+    //! Set a map vector/matrix to zero
     template <class T>
     void setZero(VectorT<T>& obj, int N, int NW) {
         obj = VectorT<T>::Zero(NW);
+    }
+
+    //! Set a vector map coefficient
+    template <class T>
+    inline void setCoeff(Vector<T>& y, int n, const T& coeff) {
+        y(n) = coeff;
+    }
+
+    //! Set a matrix map coefficient
+    template <class T>
+    inline void setCoeff(Matrix<T>& y, int n, const VectorT<T>& coeff) {
+        if (coeff.size() != y.cols())
+            throw errors::ValueError("Size mismatch in the wavelength dimension.");
+        y.row(n) = coeff;
+    }
+
+    //! Get a vector map coefficient
+    template <class T>
+    inline T getCoeff(const Vector<T>& y, int n) {
+        return y(n);
+    }
+
+    //! Get a matrix map coefficient
+    template <class T>
+    inline VectorT<T> getCoeff(const Matrix<T>& y, int n) {
+        return y.row(n);
+    }
+
+    //! Get the vector map coefficient at index `n`
+    template <class T>
+    inline T getFirstCoeff(const Vector<T>& y, int n) {
+        return y(n);
+    }
+
+    //! Get the matrix map coefficient at index `(n, 0)`
+    template <class T>
+    inline T getFirstCoeff(const Matrix<T>& y, int n) {
+        return y(n, 0);
+    }
+
+    //! Set a row in a map vector
+    template <class T>
+    inline void setRow(Vector<T>& vec, int row, T val) {
+        vec(row) = val;
+    }
+
+    //! Set a row in a map vector
+    template <class T>
+    inline void setRow(Matrix<T>& vec, int row, const VectorT<T>& val) {
+        vec.row(row) = val;
+    }
+
+    //! Set a row in a map vector
+    template <class T>
+    inline void setRow(Matrix<T>& vec, int row, T val) {
+        vec.row(row) = VectorT<T>::Constant(vec.cols(), val);
+    }
+
+    //! Return a row in a map vector
+    template <class T>
+    inline T getRow(const Vector<T>& vec, int row) {
+        return vec(row);
+    }
+
+    //! Return a row in a map vector
+    template <class T>
+    inline Vector<T> getRow(const Matrix<T>& vec, int row) {
+        return vec.row(row);
+    }
+
+    //! Vector-vector dot product
+    template <typename T>
+    T dot(const VectorT<T>& vT, const Vector<T>& u) {
+        return vT.dot(u);
+    }
+
+    //! Vector-matrix dot product
+    template <typename T>
+    VectorT<T> dot(const VectorT<T>& vT, const Matrix<T>& U) {
+        return vT * U;
     }
 
 }; // namespace utils
