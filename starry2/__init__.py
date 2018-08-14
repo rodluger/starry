@@ -1,4 +1,4 @@
 # -*- coding: utf-8 -*-
 
-from ._starry import *
-from ._starry import __version__
+from ._starry2 import *
+from ._starry2 import __version__

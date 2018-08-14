@@ -8,7 +8,7 @@
 #include "docstrings.h"
 namespace py = pybind11;
 
-PYBIND11_MODULE(_starry, m) {
+PYBIND11_MODULE(_starry2, m) {
 
     using utils::Matrix;
     using utils::Vector;

@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
 
-from ._starry.multi import *
+from ._starry2.multi import *

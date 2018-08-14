@@ -57,6 +57,10 @@ namespace docstrings {
                 The number of map coefficients, equal to `(l + 1) ** 2`. *Read-only.*
             )pbdoc";
 
+            nwav = R"pbdoc(
+                The number of wavelength bins in `spectral` mode. *Read-only.*
+            )pbdoc";
+
             y = R"pbdoc(
                 The spherical harmonic map vector.
             )pbdoc";

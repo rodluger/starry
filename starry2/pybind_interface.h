@@ -33,17 +33,13 @@ namespace pybind_interface {
 
     template <typename T, int Module>
     void add_Map_extras(py::class_<maps::Map<T>>& PyMap,
-                        const docstrings::docs<Module>& docs) { }
-
-    template <>
-    void add_Map_extras(py::class_<maps::Map<Vector<double>>>& PyMap,
-                        const docstrings::docs<STARRY_MODULE_MAIN>& docs) {
+                        const docstrings::docs<Module>& docs) {
 
         PyMap
 
             .def(py::init<int>(), "lmax"_a=2)
 
-            .def("__setitem__", [](maps::Map<Vector<double>>& map,
+            .def("__setitem__", [](maps::Map<T>& map,
                                    py::tuple lm, double& coeff) {
                 int l, m;
                 try {
@@ -52,59 +48,15 @@ namespace pybind_interface {
                 } catch (const char* msg) {
                     throw errors::IndexError("Invalid value for `l` and/or `m`.");
                 }
-                map.setYlm(l, m, coeff);
+                map.setYlm(l, m, static_cast<Scalar<T>>(coeff));
             })
 
-            .def("__setitem__", [](maps::Map<Vector<double>>& map,
+            .def("__setitem__", [](maps::Map<T>& map,
                                    int l, double& coeff) {
-                map.setUl(l, coeff);
+                map.setUl(l, static_cast<Scalar<T>>(coeff));
             })
 
-            .def("__getitem__", [](maps::Map<Vector<double>>& map,
-                                   py::tuple lm) -> double {
-                int l, m;
-                try {
-                    l = py::cast<int>(lm[0]);
-                    m = py::cast<int>(lm[1]);
-                } catch (const char* msg) {
-                    throw errors::IndexError("Invalid value for `l` and/or `m`.");
-                }
-                return map.getYlm(l, m);
-            })
-
-            .def("__getitem__", [](maps::Map<Vector<double>>& map,
-                                   int l) -> double {
-                return map.getUl(l);
-            });
-
-    }
-
-    template <>
-    void add_Map_extras(py::class_<maps::Map<Vector<Multi>>>& PyMap,
-                        const docstrings::docs<STARRY_MODULE_MULTI>& docs) {
-
-        PyMap
-
-            .def(py::init<int>(), "lmax"_a=2)
-
-            .def("__setitem__", [](maps::Map<Vector<Multi>>& map,
-                                   py::tuple lm, double& coeff) {
-                int l, m;
-                try {
-                    l = py::cast<int>(lm[0]);
-                    m = py::cast<int>(lm[1]);
-                } catch (const char* msg) {
-                    throw errors::IndexError("Invalid value for `l` and/or `m`.");
-                }
-                map.setYlm(l, m, static_cast<Multi>(coeff));
-            })
-
-            .def("__setitem__", [](maps::Map<Vector<Multi>>& map,
-                                   int l, double& coeff) {
-                map.setUl(l, static_cast<Multi>(coeff));
-            })
-
-            .def("__getitem__", [](maps::Map<Vector<Multi>>& map,
+            .def("__getitem__", [](maps::Map<T>& map,
                                    py::tuple lm) -> double {
                 int l, m;
                 try {
@@ -116,10 +68,46 @@ namespace pybind_interface {
                 return static_cast<double>(map.getYlm(l, m));
             })
 
-            .def("__getitem__", [](maps::Map<Vector<Multi>>& map,
+            .def("__getitem__", [](maps::Map<Vector<double>>& map,
                                    int l) -> double {
                 return static_cast<double>(map.getUl(l));
-            });
+            })
+
+            .def("show", [](maps::Map<T> &map, string cmap, int res) {
+                py::object show = py::module::import("starry2.maps").attr("show");
+                Matrix<double> I;
+                I.resize(res, res);
+                Vector<double> x;
+                x = Vector<double>::LinSpaced(res, -1, 1);
+                for (int i = 0; i < res; i++){
+                    for (int j = 0; j < res; j++){
+                        I(j, i) = static_cast<double>(map.evaluate(Scalar<T>(0.0),
+                                                                   Scalar<T>(x(i)),
+                                                                   Scalar<T>(x(j))));
+                    }
+                }
+                show(I, "cmap"_a=cmap, "res"_a=res);
+            }, docs.Map.show, "cmap"_a="plasma", "res"_a=300)
+
+            .def("animate", [](maps::Map<T> &map, string cmap, int res, int frames) {
+                std::cout << "Rendering animation..." << std::endl;
+                py::object animate = py::module::import("starry2.maps").attr("animate");
+                vector<Matrix<double>> I;
+                Vector<double> x, theta;
+                x = Vector<double>::LinSpaced(res, -1, 1);
+                theta = Vector<double>::LinSpaced(frames, 0, 2 * M_PI);
+                for (int t = 0; t < frames; t++){
+                    I.push_back(Matrix<double>::Zero(res, res));
+                    for (int i = 0; i < res; i++){
+                        for (int j = 0; j < res; j++){
+                            I[t](j, i) = static_cast<double>(map.evaluate(Scalar<T>(theta(t)),
+                                                                          Scalar<T>(x(i)),
+                                                                          Scalar<T>(x(j))));
+                        }
+                    }
+                }
+                animate(I, "cmap"_a=cmap, "res"_a=res);
+            }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150, "frames"_a=50);
 
     }
 
@@ -247,48 +235,7 @@ namespace pybind_interface {
                     map.rotate(static_cast<Scalar<T>>(theta));
             }, docs.Map.rotate, "theta"_a=0)
 
-            .def("__repr__", &maps::Map<T>::__repr__)
-
-
-            /* ----------------------- */
-            /*      EXTERNAL CALLS     */
-            /* ----------------------- */
-
-            // TODO: starry2 --> starry
-            .def("show", [](maps::Map<T> &map, string cmap, int res) {
-                py::object show = py::module::import("starry2.maps").attr("show");
-                Matrix<double> I;
-                I.resize(res, res);
-                Vector<double> x;
-                x = Vector<double>::LinSpaced(res, -1, 1);
-                for (int i = 0; i < res; i++){
-                    for (int j = 0; j < res; j++){
-                        I(j, i) = static_cast<double>(
-                            map.evaluate(T(0.0), T(x(i)), T(x(j))));
-                    }
-                }
-                show(I, "cmap"_a=cmap, "res"_a=res);
-            }, docs.Map.show, "cmap"_a="plasma", "res"_a=300)
-
-            // TODO: starry2 --> starry
-            .def("animate", [](maps::Map<T> &map, string cmap, int res, int frames) {
-                std::cout << "Rendering animation..." << std::endl;
-                py::object animate = py::module::import("starry2.maps").attr("animate");
-                vector<Matrix<double>> I;
-                Vector<double> x, theta;
-                x = Vector<double>::LinSpaced(res, -1, 1);
-                theta = Vector<double>::LinSpaced(frames, 0, 2 * M_PI);
-                for (int t = 0; t < frames; t++){
-                    I.push_back(Matrix<double>::Zero(res, res));
-                    for (int i = 0; i < res; i++){
-                        for (int j = 0; j < res; j++){
-                            I[t](j, i) = static_cast<double>(
-                                map.evaluate(T(theta(t)), T(x(i)), T(x(j))));
-                        }
-                    }
-                }
-                animate(I, "cmap"_a=cmap, "res"_a=res);
-            }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150, "frames"_a=50);
+            .def("__repr__", &maps::Map<T>::__repr__);
 
         add_Map_extras(PyMap, docs);
 

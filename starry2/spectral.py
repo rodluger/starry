@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
 
-from ._starry.spectral import *
+from ._starry2.spectral import *
