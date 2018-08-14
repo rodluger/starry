@@ -55,6 +55,11 @@ namespace pybind_interface {
                 map.setYlm(l, m, coeff);
             })
 
+            .def("__setitem__", [](maps::Map<Vector<double>>& map,
+                                   int l, double& coeff) {
+                map.setUl(l, coeff);
+            })
+
             .def("__getitem__", [](maps::Map<Vector<double>>& map,
                                    py::tuple lm) -> double {
                 int l, m;
@@ -65,6 +70,11 @@ namespace pybind_interface {
                     throw errors::IndexError("Invalid value for `l` and/or `m`.");
                 }
                 return map.getYlm(l, m);
+            })
+
+            .def("__getitem__", [](maps::Map<Vector<double>>& map,
+                                   int l) -> double {
+                return map.getUl(l);
             });
 
     }
@@ -89,6 +99,11 @@ namespace pybind_interface {
                 map.setYlm(l, m, static_cast<Multi>(coeff));
             })
 
+            .def("__setitem__", [](maps::Map<Vector<Multi>>& map,
+                                   int l, double& coeff) {
+                map.setUl(l, static_cast<Multi>(coeff));
+            })
+
             .def("__getitem__", [](maps::Map<Vector<Multi>>& map,
                                    py::tuple lm) -> double {
                 int l, m;
@@ -99,6 +114,11 @@ namespace pybind_interface {
                     throw errors::IndexError("Invalid value for `l` and/or `m`.");
                 }
                 return static_cast<double>(map.getYlm(l, m));
+            })
+
+            .def("__getitem__", [](maps::Map<Vector<Multi>>& map,
+                                   int l) -> double {
+                return static_cast<double>(map.getUl(l));
             });
 
     }
@@ -128,16 +148,14 @@ namespace pybind_interface {
                 map.setYlm(l, m, coeff);
             })
 
+            .def("__setitem__", [](maps::Map<Matrix<double>>& map,
+                                   int l, Vector<double>& coeff) {
+                map.setUl(l, coeff);
+            })
+
             .def("__getitem__", [](maps::Map<Matrix<double>>& map,
-                                   py::tuple lm) -> VectorT<double> {
-                int l, m;
-                try {
-                    l = py::cast<int>(lm[0]);
-                    m = py::cast<int>(lm[1]);
-                } catch (const char* msg) {
-                    throw errors::IndexError("Invalid value for `l` and/or `m`.");
-                }
-                return map.getYlm(l, m);
+                                   int l) -> VectorT<double> {
+                return map.getUl(l);
             });
 
     }
@@ -178,6 +196,15 @@ namespace pybind_interface {
                         map.setY(y.template cast<Scalar<T>>());
                     },
                 docs.Map.y)
+
+            // TODO: See note above.
+            .def_property("u", [](maps::Map<T> &map) -> Vector<double>{
+                        return map.getU().template cast<double>();
+                    },
+                [](maps::Map<T> &map, Vector<double>& u){
+                        map.setU(u.template cast<Scalar<T>>());
+                    },
+                docs.Map.u)
 
             .def_property_readonly("p", [](maps::Map<T> &map) -> Vector<double>{
                     return map.getP().template cast<double>();

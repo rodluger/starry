@@ -29,6 +29,7 @@ namespace docstrings {
         const char * lmax;
         const char * N;
         const char * y;
+        const char * u;
         const char * p;
         const char * g;
         const char * r;
@@ -55,7 +56,11 @@ namespace docstrings {
             )pbdoc";
 
             y = R"pbdoc(
-                The spherical harmonic map vector. *Read-only.*
+                The spherical harmonic map vector.
+            )pbdoc";
+
+            u = R"pbdoc(
+                The limb darkening map vector.
             )pbdoc";
 
             p = R"pbdoc(

@@ -49,6 +49,8 @@ namespace maps {
             T y;                                                                /**< The map coefficients in the spherical harmonic basis */
             T p;                                                                /**< The map coefficients in the polynomial basis */
             T g;                                                                /**< The map coefficients in the Green's basis */
+            T u;                                                                /**< The limb darkening coefficients */
+            T p_u;                                                              /**< The limb darkening coefficients in the polynomial basis */
             UnitVector<Scalar<T>> axis;                                         /**< The axis of rotation for the map */
             Basis<Scalar<T>> B;                                                 /**< Basis transform stuff */
             Wigner<T> W;                                                        /**< The class controlling rotations */
@@ -122,6 +124,7 @@ namespace maps {
 
                 // Initialize all the vectors
                 setZero(y, N, nwav);
+                setZero(u, lmax + 1, nwav);
                 axis = yhat<Scalar<T>>();
                 vtmp = Vector<Scalar<T>>::Zero(N);
                 pT = VectorT<Scalar<T>>::Zero(N);
@@ -158,10 +161,14 @@ namespace maps {
             // I/O functions
             void setYlm(int l, int m, const Row<T>& coeff);
             Row<T> getYlm(int l, int m) const;
+            void setUl(int l, const Row<T>& coeff);
+            Row<T> getUl(int l) const;
             void setAxis(const UnitVector<Scalar<T>>& axis_);
             UnitVector<Scalar<T>> getAxis() const;
             T getY() const;
             void setY(const T& y_);
+            T getU() const;
+            void setU(const T& u_);
             T getP() const;
             T getG() const;
             VectorT<Scalar<T>> getR() const;
@@ -205,6 +212,17 @@ namespace maps {
         // Update the rotation matrix
         W.update();
 
+        // Update the limb darkening polynomial map
+        Scalar<T> norm = 0.0;
+        for (int l = 0; l < lmax + 1; ++l)
+            norm -= 2.0 * u(l) / ((l + 1) * (l + 2));
+        norm *= pi<Scalar<T>>();
+        mtmp = B.U * u;
+        setZero(mtmp2, N, nwav);
+        for (int l = 0; l < lmax + 1; ++l)
+            mtmp2(l * (l + 1)) = mtmp(l) / norm;
+        p_u = B.A1 * mtmp2;
+
     }
 
     /**
@@ -214,6 +232,8 @@ namespace maps {
     template <class T>
     void Map<T>::reset() {
         y.setZero(N, nwav);
+        u.setZero(lmax + 1, nwav);
+        setRow(u, 0, Scalar<T>(-1.0));
         axis = yhat<Scalar<T>>();
         update();
     }
@@ -249,6 +269,32 @@ namespace maps {
             return getCoeff(y, l * l + l + m);
         } else
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
+    }
+
+    /**
+    Set the `l`th limb darkening coefficient
+
+    */
+    template <class T>
+    void Map<T>::setUl(int l, const Row<T>& coeff) {
+        if ((1 <= l) && (l <= lmax)) {
+            setCoeff(u, l, coeff);
+            update();
+        } else {
+            throw errors::IndexError("Invalid value for `l`.");
+        }
+    }
+
+    /**
+    Get the `l`th limb darkening coefficient
+
+    */
+    template <class T>
+    Row<T> Map<T>::getUl(int l) const {
+        if ((1 <= l) && (l <= lmax)) {
+            return getCoeff(u,l);
+        } else
+            throw errors::IndexError("Invalid value for `l`.");
     }
 
     /**
@@ -304,6 +350,29 @@ namespace maps {
     }
 
     /**
+    Get the limb darkening vector
+
+    */
+    template <class T>
+    T Map<T>::getU() const {
+        return u.block(1, 0, lmax, nwav);
+    }
+
+    /**
+    Set the limb darkening vector
+
+    */
+    template <class T>
+    void Map<T>::setU(const T& u_) {
+        if ((u_.rows() == u.rows() - 1) && (u_.cols() == u.cols())) {
+            u.block(1, 0, lmax, nwav) = u_;
+            update();
+        } else {
+            throw errors::ValueError("Dimension mismatch in `u`.");
+        }
+    }
+
+    /**
     Get the polynomial vector
 
     */
@@ -341,6 +410,8 @@ namespace maps {
 
     /**
     Return a human-readable map string
+
+    TODO: Show spectral and limb-darkening information.
 
     */
     template <class T>
