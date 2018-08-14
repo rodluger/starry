@@ -78,7 +78,8 @@ namespace maps {
             T* ptr_RRy;                                                         /**< Pointer to rotated spherical harmonic vector */
             T ARRy;                                                             /**< The `ARRy` term in `s^TARRy` */
             Row<T> dFdb;                                                        /**< Gradient of the flux with respect to the impact parameter */
-            Row<T> rtmp;                                                        /**< A temporary surface map vector */
+            Row<T> rtmp;                                                        /**< A temporary surface map row vector */
+            Column<T> ctmp;                                                     /**< A temporary surface map col vector */
 
             // Private methods
             template <typename V>
@@ -143,6 +144,7 @@ namespace maps {
                 setZero(ARRy, N, nwav);
                 setZero(dFdb, N, nwav);
                 setZero(rtmp, N, nwav);
+                setZero(ctmp, N, nwav);
 
                 // Reset & update the map coeffs
                 reset();
@@ -350,7 +352,7 @@ namespace maps {
         os << "<STARRY Map: ";
         for (int l = 0; l < lmax + 1; l++) {
             for (int m = -l; m < l + 1; m++) {
-                if (abs(getFirstCoeff(y, n)) > 10 * mach_eps<Scalar<T>>()){
+                if (abs(getFirstCoeff(y, n)) > 10 * tol){
                     // Separator
                     if ((nterms > 0) && (getFirstCoeff(y, n) > 0)) {
                         os << " + ";
@@ -363,7 +365,7 @@ namespace maps {
                     if ((getFirstCoeff(y, n) == 1) || (getFirstCoeff(y, n) == -1)) {
                         sprintf(buf, "Y_{%d,%d}", l, m);
                         os << buf;
-                    } else if (fmod(abs(getFirstCoeff(y, n)), 1.0) < 10 * mach_eps<Scalar<T>>()) {
+                    } else if (fmod(abs(getFirstCoeff(y, n)), 1.0) < 10 * tol) {
                         sprintf(buf, "%d Y_{%d,%d}", (int)abs(getFirstCoeff(y, n)), l, m);
                         os << buf;
                     } else if (fmod(abs(getFirstCoeff(y, n)), 1.0) >= 0.01) {
@@ -474,9 +476,8 @@ namespace maps {
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) {
-            Column<T> res;
-            setZero(res, N, nwav);
-            return res * NAN;
+            setZero(ctmp, N, nwav);
+            return ctmp * NAN;
         }
 
         // Compute the polynomial basis
@@ -517,9 +518,8 @@ namespace maps {
         if (x0 * x0 + y0 * y0 > 1.0) {
             setZero(dI, 3 + N, nwav);
             dI = dI * NAN;
-            Column<T> res;
-            setZero(res, N, nwav);
-            return res * NAN;
+            setZero(ctmp, N, nwav);
+            return ctmp * NAN;
         }
 
         // Compute the polynomial basis and its x and y derivs
@@ -568,6 +568,7 @@ namespace maps {
 
     /**
     Compute the flux during or outside of an occultation
+
     */
     template <class T>
     inline Column<T> Map<T>::flux(const Scalar<T>& theta_,
@@ -592,9 +593,8 @@ namespace maps {
 
         // Check for complete occultation
         if (b <= ro - 1) {
-            Column<T> res;
-            setZero(res, N, nwav);
-            return res;
+            setZero(ctmp, N, nwav);
+            return ctmp;
         }
 
         // Rotate the map into view
@@ -666,9 +666,8 @@ namespace maps {
         // Check for complete occultation
         if (b <= ro - 1) {
             setZero(dF, N, nwav);
-            Column<T> res;
-            setZero(res, N, nwav);
-            return res;
+            setZero(ctmp, N, nwav);
+            return ctmp;
         }
 
         // Rotate the map into view
@@ -701,13 +700,13 @@ namespace maps {
             pTA1 = pT * B.A1;
             if (theta == 0) {
                 for (int i = 0; i < N; i++)
-                    setRow(dI, 4 + i, B.rTA1(i));
+                    setRow(dF, 4 + i, B.rTA1(i));
             } else {
                 for (int l = 0; l < lmax + 1; l++)
                     vtmp.segment(l * l, 2 * l + 1) =
                         B.rTA1.segment(l * l, 2 * l + 1) * W.R[l];
                 for (int i = 0; i < N; i++)
-                    setRow(dI, 4 + i, vtmp(i));
+                    setRow(dF, 4 + i, vtmp(i));
             }
 
             // We're done!

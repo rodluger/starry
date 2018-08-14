@@ -30,7 +30,7 @@ def run(Map):
 
     # A more complex rotation
     m = Map(5)
-    m[:] = 1
+    m.y = np.ones(m.N)
     m.axis = [1, 2, 3]
     m.rotate(60)
     benchmark = np.array([1.,  1.39148148,  0.91140212,  0.48283069,

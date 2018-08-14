@@ -7,7 +7,7 @@ def numerical_gradient(Map, lmax, yvec, axis, theta, x, y, eps=1e-8):
     """Return the gradient computed numerically."""
     map = Map(lmax)
     map.axis = axis
-    map[:] = yvec
+    map.y = yvec
     grad = {}
 
     # x
@@ -44,7 +44,7 @@ def run(Map):
     lmax = 2
     map = Map(lmax)
     map.axis = [0, 1, 0]
-    map[:] = 1
+    map.y = np.ones(map.N)
 
     # No arguments
     I = map.evaluate()
@@ -77,13 +77,13 @@ def run_with_gradients(Map):
     lmax = 2
     map = Map(lmax)
     map.axis = [0, 1, 0]
-    map[:] = 1
+    map.y = np.ones(map.N)
 
     # No arguments
     I = map.evaluate()
     I_grad, dI = map.evaluate(gradient=True)
     assert np.allclose(I, I_grad)
-    dI_num = numerical_gradient(Map, lmax, map[:], map.axis, 0, 0, 0)
+    dI_num = numerical_gradient(Map, lmax, map.y, map.axis, 0, 0, 0)
     for key in dI.keys():
         assert np.allclose(dI[key], dI_num[key])
 
@@ -91,7 +91,7 @@ def run_with_gradients(Map):
     I = map.evaluate(x=0.1, y=0.1)
     I_grad, dI = map.evaluate(x=0.1, y=0.1, gradient=True)
     assert np.allclose(I, I_grad)
-    dI_num = numerical_gradient(Map, lmax, map[:], map.axis, 0, 0.1, 0.1)
+    dI_num = numerical_gradient(Map, lmax, map.y, map.axis, 0, 0.1, 0.1)
     for key in dI.keys():
         assert np.allclose(dI[key], dI_num[key])
 
@@ -99,7 +99,7 @@ def run_with_gradients(Map):
     I = map.evaluate(x=0.1, y=0.1, theta=30)
     I_grad, dI = map.evaluate(x=0.1, y=0.1, theta=30, gradient=True)
     assert np.allclose(I, I_grad)
-    dI_num = numerical_gradient(Map, lmax, map[:], map.axis, 30, 0.1, 0.1)
+    dI_num = numerical_gradient(Map, lmax, map.y, map.axis, 30, 0.1, 0.1)
     for key in dI.keys():
         assert np.allclose(dI[key], dI_num[key])
 
@@ -107,8 +107,8 @@ def run_with_gradients(Map):
     I = map.evaluate(x=0.1, y=0.1, theta=[0, 30])
     I_grad, dI = map.evaluate(x=0.1, y=0.1, theta=[0, 30], gradient=True)
     assert np.allclose(I, I_grad)
-    dI_num1 = numerical_gradient(Map, lmax, map[:], map.axis, 0, 0.1, 0.1)
-    dI_num2 = numerical_gradient(Map, lmax, map[:], map.axis, 30, 0.1, 0.1)
+    dI_num1 = numerical_gradient(Map, lmax, map.y, map.axis, 0, 0.1, 0.1)
+    dI_num2 = numerical_gradient(Map, lmax, map.y, map.axis, 30, 0.1, 0.1)
     for key in dI.keys():
         assert np.allclose(dI[key][0], dI_num1[key])
         assert np.allclose(dI[key][1], dI_num2[key])

@@ -31,19 +31,19 @@ namespace pybind_interface {
     namespace vectorize = pybind_vectorize;
 
 
-    template <typename T1, typename T2, typename T3, int Module>
-    void add_Map_extras(py::class_<maps::Map<T1, T2, T3>>& PyMap,
+    template <typename T, int Module>
+    void add_Map_extras(py::class_<maps::Map<T>>& PyMap,
                         const docstrings::docs<Module>& docs) { }
 
     template <>
-    void add_Map_extras(py::class_<maps::Map<Vector<double>, double, double>>& PyMap,
+    void add_Map_extras(py::class_<maps::Map<Vector<double>>>& PyMap,
                         const docstrings::docs<STARRY_MODULE_MAIN>& docs) {
 
         PyMap
 
             .def(py::init<int>(), "lmax"_a=2)
 
-            .def("__setitem__", [](maps::Map<Vector<double>, double, double>& map,
+            .def("__setitem__", [](maps::Map<Vector<double>>& map,
                                    py::tuple lm, double& coeff) {
                 int l, m;
                 try {
@@ -55,7 +55,7 @@ namespace pybind_interface {
                 map.setYlm(l, m, coeff);
             })
 
-            .def("__getitem__", [](maps::Map<Vector<double>, double, double>& map,
+            .def("__getitem__", [](maps::Map<Vector<double>>& map,
                                    py::tuple lm) -> double {
                 int l, m;
                 try {
@@ -70,14 +70,14 @@ namespace pybind_interface {
     }
 
     template <>
-    void add_Map_extras(py::class_<maps::Map<Vector<Multi>, Multi, Multi>>& PyMap,
+    void add_Map_extras(py::class_<maps::Map<Vector<Multi>>>& PyMap,
                         const docstrings::docs<STARRY_MODULE_MULTI>& docs) {
 
         PyMap
 
             .def(py::init<int>(), "lmax"_a=2)
 
-            .def("__setitem__", [](maps::Map<Vector<Multi>, Multi, Multi>& map,
+            .def("__setitem__", [](maps::Map<Vector<Multi>>& map,
                                    py::tuple lm, double& coeff) {
                 int l, m;
                 try {
@@ -89,7 +89,7 @@ namespace pybind_interface {
                 map.setYlm(l, m, static_cast<Multi>(coeff));
             })
 
-            .def("__getitem__", [](maps::Map<Vector<Multi>, Multi, Multi>& map,
+            .def("__getitem__", [](maps::Map<Vector<Multi>>& map,
                                    py::tuple lm) -> double {
                 int l, m;
                 try {
@@ -104,7 +104,7 @@ namespace pybind_interface {
     }
 
     template <>
-    void add_Map_extras(py::class_<maps::Map<Matrix<double>, Vector<double>, VectorT<double>>>& PyMap,
+    void add_Map_extras(py::class_<maps::Map<Matrix<double>>>& PyMap,
                         const docstrings::docs<STARRY_MODULE_SPECTRAL>& docs) {
 
         PyMap
@@ -112,11 +112,11 @@ namespace pybind_interface {
             .def(py::init<int, int>(), "lmax"_a=2, "nwav"_a=1)
 
             .def_property_readonly("nwav",
-                [](maps::Map<Matrix<double>, Vector<double>, VectorT<double>> &map){
+                [](maps::Map<Matrix<double>> &map){
                     return map.nwav;
                 }, docs.Map.nwav)
 
-            .def("__setitem__", [](maps::Map<Matrix<double>, Vector<double>, VectorT<double>>& map,
+            .def("__setitem__", [](maps::Map<Matrix<double>>& map,
                                    py::tuple lm, Vector<double>& coeff) {
                 int l, m;
                 try {
@@ -128,7 +128,7 @@ namespace pybind_interface {
                 map.setYlm(l, m, coeff);
             })
 
-            .def("__getitem__", [](maps::Map<Matrix<double>, Vector<double>, VectorT<double>>& map,
+            .def("__getitem__", [](maps::Map<Matrix<double>>& map,
                                    py::tuple lm) -> VectorT<double> {
                 int l, m;
                 try {
@@ -142,65 +142,85 @@ namespace pybind_interface {
 
     }
 
-    template <typename T1, typename T2, typename T3, int Module>
-    void add_Map(py::class_<maps::Map<T1, T2, T3>>& PyMap,
+    template <typename T, int Module>
+    void add_Map(py::class_<maps::Map<T>>& PyMap,
                  const docstrings::docs<Module>& docs) {
 
         PyMap
 
             .def_property("axis",
-                [](maps::Map<T1, T2, T3> &map) -> UnitVector<double> {
+                [](maps::Map<T> &map) -> UnitVector<double> {
                         return map.getAxis().template cast<double>();
                     },
-                [](maps::Map<T1, T2, T3> &map, UnitVector<double>& axis){
-                        map.setAxis(axis.template cast<typename T1::Scalar>());
+                [](maps::Map<T> &map, UnitVector<double>& axis){
+                        map.setAxis(axis.template cast<Scalar<T>>());
                     },
                 docs.Map.axis)
 
-            .def("reset", &maps::Map<T1, T2, T3>::reset, docs.Map.reset)
+            .def("reset", &maps::Map<T>::reset, docs.Map.reset)
 
-            .def_property_readonly("lmax", [](maps::Map<T1, T2, T3> &map){
+            .def_property_readonly("lmax", [](maps::Map<T> &map){
                     return map.lmax;
                 }, docs.Map.lmax)
 
-            .def_property_readonly("y", [](maps::Map<T1, T2, T3> &map) -> Vector<double>{
-                    return map.getY().template cast<double>();
-                }, docs.Map.y)
+            .def_property_readonly("N", [](maps::Map<T> &map){
+                    return map.N;
+                }, docs.Map.N)
 
-            .def_property_readonly("p", [](maps::Map<T1, T2, T3> &map) -> Vector<double>{
+            // TODO: Currently, slice indexing works for the getter,
+            // but not for the setter. Unfortunately, it doesn't throw
+            // an error -- it just simply never calls this function,
+            // so the array does not get set.
+            .def_property("y", [](maps::Map<T> &map) -> Vector<double>{
+                        return map.getY().template cast<double>();
+                    },
+                [](maps::Map<T> &map, Vector<double>& y){
+                        map.setY(y.template cast<Scalar<T>>());
+                    },
+                docs.Map.y)
+
+            .def_property_readonly("p", [](maps::Map<T> &map) -> Vector<double>{
                     return map.getP().template cast<double>();
                 }, docs.Map.p)
 
-            .def_property_readonly("g", [](maps::Map<T1, T2, T3> &map) -> Vector<double>{
+            .def_property_readonly("g", [](maps::Map<T> &map) -> Vector<double>{
                     return map.getG().template cast<double>();
                 }, docs.Map.g)
 
-            .def_property_readonly("r", [](maps::Map<T1, T2, T3> &map) -> VectorT<double>{
+            .def_property_readonly("r", [](maps::Map<T> &map) -> VectorT<double>{
                     return map.getR().template cast<double>();
                 }, docs.Map.r)
 
-            .def_property_readonly("s", [](maps::Map<T1, T2, T3> &map) -> VectorT<double>{
+            .def_property_readonly("s", [](maps::Map<T> &map) -> VectorT<double>{
                     return map.getS().template cast<double>();
                 }, docs.Map.s)
 
-            .def("evaluate", [](maps::Map<T1, T2, T3> &map, py::array_t<double>& theta,
-                                py::array_t<double>& x, py::array_t<double>& y,
-                                bool gradient) -> py::object {
+            .def("evaluate", [](maps::Map<T> &map,
+                                py::array_t<double>& theta,
+                                py::array_t<double>& x,
+                                py::array_t<double>& y,
+                                bool gradient)
+                                -> py::object {
                     return vectorize::evaluate(map, theta, x, y, gradient);
                 }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0,
                                       "gradient"_a=false)
 
-            .def("flux", [](maps::Map<T1, T2, T3> &map, py::array_t<double>& theta,
-                            py::array_t<double>& xo, py::array_t<double>& yo,
-                            py::array_t<double>& ro, bool gradient) -> py::object {
+            .def("flux", [](maps::Map<T> &map,
+                            py::array_t<double>& theta,
+                            py::array_t<double>& xo,
+                            py::array_t<double>& yo,
+                            py::array_t<double>& ro,
+                            bool gradient)
+                            -> py::object {
                     return vectorize::flux(map, theta, xo, yo, ro, gradient);
                 }, docs.Map.flux, "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0,
                                    "ro"_a=0.0, "gradient"_a=false)
 
-            .def("rotate", &maps::Map<T1, T2, T3>::rotate,
-                    docs.Map.rotate, "theta"_a=0)
+            .def("rotate", [](maps::Map<T> &map, double theta) {
+                    map.rotate(static_cast<Scalar<T>>(theta));
+            }, docs.Map.rotate, "theta"_a=0)
 
-            .def("__repr__", &maps::Map<T1, T2, T3>::__repr__);
+            .def("__repr__", &maps::Map<T>::__repr__);
 
         add_Map_extras(PyMap, docs);
 
@@ -215,7 +235,7 @@ namespace pybind_interface {
         m.attr("NMULTI") = STARRY_NMULTI;
     }
 
-    template <typename T1, typename T2, typename T3, int Module>
+    template <typename T, int Module>
     void add_starry(py::module& m, const docstrings::docs<Module>& docs) {
 
         // Main docs
@@ -225,7 +245,7 @@ namespace pybind_interface {
         add_extras(m, docs);
 
         // Surface map class
-        py::class_<maps::Map<T1, T2, T3>> PyMap(m, "Map", docs.Map.doc);
+        py::class_<maps::Map<T>> PyMap(m, "Map", docs.Map.doc);
         add_Map(PyMap, docs);
 
     }

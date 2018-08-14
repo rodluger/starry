@@ -115,8 +115,8 @@ namespace pybind_vectorize {
     }
 
 
-    template <typename T1, typename T2, typename T3>
-    py::object flux(maps::Map<T1, T2, T3> &map,
+    template <typename T>
+    py::object flux(maps::Map<T> &map,
                     py::array_t<double>& theta,
                     py::array_t<double>& xo,
                     py::array_t<double>& yo,
@@ -125,8 +125,6 @@ namespace pybind_vectorize {
 
         if (gradient) {
 
-            /* TODO
-
             // Initialize a dictionary of derivatives
             size_t n = max(theta.size(), max(xo.size(),
                            max(yo.size(), ro.size())));
@@ -134,24 +132,21 @@ namespace pybind_vectorize {
             for (auto name : map.dF_names)
                 grad[name].resize(n);
 
-            // Nested lambda function; https://github.com/pybind/pybind11/issues/761#issuecomment-288818460
+            // Nested lambda function;
+            // https://github.com/pybind/pybind11/issues/761#issuecomment-288818460
             int t = 0;
             auto F = py::vectorize([&map, &grad, &t](double theta, double xo, double yo, double ro) {
                 // Evaluate the function
-                double res = map.flux(theta, xo, yo, ro, true);
+                double res = static_cast<double>(map.flux(theta, xo, yo, ro, true));
                 // Gather the derivatives
                 for (int j = 0; j < map.dF.size(); j++)
-                    grad[map.dF_names[j]](t) = map.dF(j);
+                    grad[map.dF_names[j]](t) = static_cast<double>(map.dF(j));
                 t++;
                 return res;
             })(theta, xo, yo, ro);
 
             // Return a tuple of (F, dict(dF))
             return py::make_tuple(F, grad);
-
-            */
-
-            return py::cast(0.0);
 
         } else {
 
@@ -165,27 +160,46 @@ namespace pybind_vectorize {
     }
 
     template <>
-    py::object flux(maps::Map<Matrix<double>, Vector<double>, VectorT<double>> &map,
+    py::object flux(maps::Map<Matrix<double>> &map,
                     py::array_t<double>& theta,
                     py::array_t<double>& xo,
                     py::array_t<double>& yo,
                     py::array_t<double>& ro,
                     bool gradient){
 
+        // Vectorize the arguments manually
+        Vector<double> theta_v, xo_v, yo_v, ro_v;
+        vectorize_args(theta, xo, yo, ro,
+                       theta_v, xo_v, yo_v, ro_v);
+        size_t sz = theta_v.size();
+
         if (gradient) {
 
-            /* TODO */
-            return py::cast(0.0);
+            // Initialize the gradient matrix
+            std::map<string, Matrix<double>> grad;
+            for (auto name : map.dF_names)
+                grad[name].resize(sz, map.nwav);
+
+            // Iterate through the timeseries
+            Matrix<double> F(sz, map.nwav);
+            for (size_t i = 0; i < sz; ++i) {
+
+                // Function value
+                F.row(i) = map.flux(theta_v(i), xo_v(i),
+                                    yo_v(i), ro_v(i), true);
+
+                // Gradient
+                for (int j = 0; j < map.dF.rows(); ++j)
+                    grad[map.dF_names[j]].row(i) = map.dF.row(j);
+
+            }
+
+            // Cast to python object
+            return py::make_tuple(F, grad);
 
         } else {
 
-            // Vectorize the arguments manually
-            Vector<double> theta_v, xo_v, yo_v, ro_v;
-            vectorize_args(theta, xo, yo, ro,
-                           theta_v, xo_v, yo_v, ro_v);
-
             // Iterate through the timeseries
-            size_t sz = theta_v.size();
             Matrix<double> F(sz, map.nwav);
             for (size_t i = 0; i < sz; ++i) {
                 F.row(i) = map.flux(theta_v(i), xo_v(i), yo_v(i), ro_v(i), false);
@@ -198,8 +212,8 @@ namespace pybind_vectorize {
 
     }
 
-    template <typename T1, typename T2, typename T3>
-    py::object evaluate(maps::Map<T1, T2, T3> &map,
+    template <typename T>
+    py::object evaluate(maps::Map<T> &map,
                         py::array_t<double>& theta,
                         py::array_t<double>& x,
                         py::array_t<double>& y,
@@ -241,7 +255,7 @@ namespace pybind_vectorize {
     }
 
     template <>
-    py::object evaluate(maps::Map<Matrix<double>, Vector<double>, VectorT<double>> &map,
+    py::object evaluate(maps::Map<Matrix<double>> &map,
                         py::array_t<double>& theta,
                         py::array_t<double>& x,
                         py::array_t<double>& y,

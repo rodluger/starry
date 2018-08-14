@@ -31,6 +31,8 @@ assert optimize in [0, 1, 2, 3], "Invalid optimization flag."
 
 # Debug mode?
 debug = bool(os.getenv('STARRY_DEBUG', 0))
+if debug:
+    optimize = 0
 
 
 class get_pybind_include(object):

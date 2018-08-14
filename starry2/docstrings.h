@@ -27,6 +27,7 @@ namespace docstrings {
         const char * doc;
         const char * reset;
         const char * lmax;
+        const char * N;
         const char * y;
         const char * p;
         const char * g;
@@ -47,6 +48,10 @@ namespace docstrings {
 
             lmax = R"pbdoc(
                 The highest spherical harmonic order of the map. *Read-only.*
+            )pbdoc";
+
+            N = R"pbdoc(
+                The number of map coefficients, equal to `(l + 1) ** 2`. *Read-only.*
             )pbdoc";
 
             y = R"pbdoc(
