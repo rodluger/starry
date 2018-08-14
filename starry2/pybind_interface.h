@@ -247,7 +247,48 @@ namespace pybind_interface {
                     map.rotate(static_cast<Scalar<T>>(theta));
             }, docs.Map.rotate, "theta"_a=0)
 
-            .def("__repr__", &maps::Map<T>::__repr__);
+            .def("__repr__", &maps::Map<T>::__repr__)
+
+
+            /* ----------------------- */
+            /*      EXTERNAL CALLS     */
+            /* ----------------------- */
+
+            // TODO: starry2 --> starry
+            .def("show", [](maps::Map<T> &map, string cmap, int res) {
+                py::object show = py::module::import("starry2.maps").attr("show");
+                Matrix<double> I;
+                I.resize(res, res);
+                Vector<double> x;
+                x = Vector<double>::LinSpaced(res, -1, 1);
+                for (int i = 0; i < res; i++){
+                    for (int j = 0; j < res; j++){
+                        I(j, i) = static_cast<double>(
+                            map.evaluate(T(0.0), T(x(i)), T(x(j))));
+                    }
+                }
+                show(I, "cmap"_a=cmap, "res"_a=res);
+            }, docs.Map.show, "cmap"_a="plasma", "res"_a=300)
+
+            // TODO: starry2 --> starry
+            .def("animate", [](maps::Map<T> &map, string cmap, int res, int frames) {
+                std::cout << "Rendering animation..." << std::endl;
+                py::object animate = py::module::import("starry2.maps").attr("animate");
+                vector<Matrix<double>> I;
+                Vector<double> x, theta;
+                x = Vector<double>::LinSpaced(res, -1, 1);
+                theta = Vector<double>::LinSpaced(frames, 0, 2 * M_PI);
+                for (int t = 0; t < frames; t++){
+                    I.push_back(Matrix<double>::Zero(res, res));
+                    for (int i = 0; i < res; i++){
+                        for (int j = 0; j < res; j++){
+                            I[t](j, i) = static_cast<double>(
+                                map.evaluate(T(theta(t)), T(x(i)), T(x(j))));
+                        }
+                    }
+                }
+                animate(I, "cmap"_a=cmap, "res"_a=res);
+            }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150, "frames"_a=50);
 
         add_Map_extras(PyMap, docs);
 

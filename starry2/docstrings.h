@@ -28,6 +28,7 @@ namespace docstrings {
         const char * reset;
         const char * lmax;
         const char * N;
+        const char * nwav;
         const char * y;
         const char * u;
         const char * p;
@@ -38,7 +39,8 @@ namespace docstrings {
         const char * evaluate;
         const char * flux;
         const char * rotate;
-        const char * nwav;
+        const char * show;
+        const char * animate;
         void add_extras() { doc = R"pbdoc()pbdoc"; };
 
         Map_() {
@@ -132,6 +134,21 @@ namespace docstrings {
                     theta (float or ndarray): Angle of rotation in degrees. Default 0.
             )pbdoc";
 
+            show = R"pbdoc(
+                Convenience routine to quickly display the body's surface map.
+                Args:
+                    cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
+                    res (int): The resolution of the map in pixels on a side. Default 300.
+            )pbdoc";
+
+            animate = R"pbdoc(
+                Convenience routine to animate the body's surface map as it rotates.
+                Args:
+                    cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
+                    res (int): The resolution of the map in pixels on a side. Default 150.
+                    frames (int): The number of frames in the animation. Default 50.
+            )pbdoc";
+
             add_extras();
 
         }
@@ -155,9 +172,13 @@ namespace docstrings {
                 .. automethod:: evaluate(theta=0, x=0, y=0)
                 .. automethod:: flux(theta=0, xo=0, yo=0, ro=0)
                 .. automethod:: rotate(theta=0)
+                .. automethod:: show()
+                .. automethod:: animate()
                 .. automethod:: reset()
                 .. autoattribute:: lmax
+                .. autoattribute:: N
                 .. autoattribute:: y
+                .. autoattribute:: u
                 .. autoattribute:: p
                 .. autoattribute:: g
                 .. autoattribute:: r
