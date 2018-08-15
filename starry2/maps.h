@@ -28,6 +28,7 @@ namespace maps {
     using basis::Basis;
     using basis::polymul;
     using solver::Greens;
+    using solver::Power;
 
     /**
     The main surface map class.
@@ -87,10 +88,16 @@ namespace maps {
             Row<T> dFdb;                                                        /**< Gradient of the flux with respect to the impact parameter */
             Row<T> rtmp;                                                        /**< A temporary surface map row vector */
             Column<T> ctmp;                                                     /**< A temporary surface map col vector */
+            Scalar<T> cache_theta;                                              /**< Cached rotation angle */
+            T cache_p;                                                          /**< Cached polynomial map */
+            Power<Scalar<T>> xpow_scalar;
+            Power<Scalar<T>> ypow_scalar;
+            Power<ADScalar<Scalar<T>, 2>> xpow_grad;
+            Power<ADScalar<Scalar<T>, 2>> ypow_grad;
 
             // Private methods
-            template <typename V>
-            inline void poly_basis(const V& x0, const V& y0, VectorT<V>& basis);
+            template <typename U>
+            inline void poly_basis(Power<U>& xpow, Power<U>& ypow, VectorT<U>& basis);
             inline Row<T> evaluate_with_gradient(const Scalar<T>& theta_deg,
                                                  const Scalar<T>& x_,
                                                  const Scalar<T>& y_);
@@ -115,7 +122,11 @@ namespace maps {
                 W(lmax, nwav, (*this).y, (*this).axis),
                 G(lmax),
                 G_grad(lmax),
-                tol(mach_eps<Scalar<T>>()) {
+                tol(mach_eps<Scalar<T>>()),
+                xpow_scalar(Scalar<T>(0.0)),
+                ypow_scalar(Scalar<T>(0.0)),
+                xpow_grad(ADScalar<Scalar<T>, 2>(Scalar<T>(0.0))),
+                ypow_grad(ADScalar<Scalar<T>, 2>(Scalar<T>(0.0))) {
 
                 // Populate the gradient names
                 for (int l = 0; l < lmax + 1; l++) {
@@ -232,6 +243,9 @@ namespace maps {
             mtmp2(l * (l + 1)) = mtmp(l);
         p_u = B.A1 * mtmp2;
 
+        // Clear the cache
+        cache_theta = NAN;
+
     }
 
     /**
@@ -331,6 +345,9 @@ namespace maps {
 
         // Update the rotation matrix
         W.update();
+
+        // Reset the cache
+        cache_theta = NAN;
 
     }
 
@@ -477,32 +494,32 @@ namespace maps {
 
     */
     template <class T> template <typename U>
-    inline void Map<T>::poly_basis(const U& x0, const U& y0, VectorT<U>& basis) {
+    inline void Map<T>::poly_basis(Power<U>& xpow, Power<U>& ypow, VectorT<U>& basis) {
         int l, m, mu, nu, n = 0;
-        U z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
-        for (l=0; l<lmax+1; l++) {
-            for (m=-l; m<l+1; m++) {
+        U z = sqrt(1.0 - xpow() * xpow() - ypow() * ypow());
+        for (l=0; l<lmax+1; ++l) {
+            for (m=-l; m<l+1; ++m) {
                 mu = l - m;
                 nu = l + m;
                 if ((nu % 2) == 0) {
                     if ((mu > 0) && (nu > 0))
-                        basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
+                        basis(n) = xpow(mu / 2) * ypow(nu / 2);
                     else if (mu > 0)
-                        basis(n) = pow(x0, mu / 2);
+                        basis(n) = xpow(mu / 2);
                     else if (nu > 0)
-                        basis(n) = pow(y0, nu / 2);
+                        basis(n) = ypow(nu / 2);
                     else
                         basis(n) = 1;
                 } else {
                     if ((mu > 1) && (nu > 1))
-                        basis(n) = pow(x0, (mu - 1) / 2) *
-                                       pow(y0, (nu - 1) / 2) * z0;
+                        basis(n) = xpow((mu - 1) / 2) *
+                                   ypow((nu - 1) / 2) * z;
                     else if (mu > 1)
-                        basis(n) = pow(x0, (mu - 1) / 2) * z0;
+                        basis(n) = xpow((mu - 1) / 2) * z;
                     else if (nu > 1)
-                        basis(n) = pow(y0, (nu - 1) / 2) * z0;
+                        basis(n) = ypow((nu - 1) / 2) * z;
                     else
-                        basis(n) = z0;
+                        basis(n) = z;
                 }
                 n++;
             }
@@ -520,9 +537,9 @@ namespace maps {
     */
     template <class T>
     inline Row<T> Map<T>::evaluate(const Scalar<T>& theta_,
-                                      const Scalar<T>& x_,
-                                      const Scalar<T>& y_,
-                                      bool gradient) {
+                                   const Scalar<T>& x_,
+                                   const Scalar<T>& y_,
+                                   bool gradient) {
 
         // If we're computing the gradient as well,
         // call the specialized function
@@ -534,31 +551,46 @@ namespace maps {
         Scalar<T> y0 = y_;
         Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
 
-        // Rotate the map into view
-        if (theta == 0) {
-            ptr_A1Ry = &p;
+        if (theta == cache_theta) {
+
+            // We use the cached version of the polynomial map
+            ptr_A1Ry = &cache_p;
+
         } else {
-            W.rotate(cos(theta), sin(theta), Ry);
-            mtmp = B.A1 * Ry;
-            ptr_A1Ry = &mtmp;
-        }
 
-        // Apply limb darkening
-        if (u_deg > 0) {
+            // This is the pointer to the transformed polynomial map
+            ptr_A1Ry = &p;
 
-            // Multiply the map and the LD polynomial
-            polymul(y_deg, *ptr_A1Ry, u_deg, p_u, lmax, p_uy);
+            // Rotate the spherical harmonic map into view
+            if (y_deg > 0) {
+                W.rotate(cos(theta), sin(theta), Ry);
+                mtmp = B.A1 * Ry;
+                ptr_A1Ry = &mtmp;
+            }
 
-            // Normalize it by enforcing that limb darkening does not
-            // change the total disk-integrated flux.
-            rtmp = dot(B.rT, *ptr_A1Ry);
-            if (hasZero(rtmp))
-                throw errors::ValueError("Error computing the limb darkening normalization: "
-                                         "the visible map has zero net flux!");
-            p_uy *= cwiseQuotient(rtmp, dot(B.rT, p_uy));
+            // Apply limb darkening
+            if (u_deg > 0) {
 
-            // Update our pointer
-            ptr_A1Ry = &p_uy;
+                // Multiply the map and the LD polynomial
+                polymul(y_deg, *ptr_A1Ry, u_deg, p_u, lmax, p_uy);
+
+                // Normalize it by enforcing that limb darkening does not
+                // change the total disk-integrated flux.
+                rtmp = dot(B.rT, *ptr_A1Ry);
+                if (hasZero(rtmp))
+                    throw errors::ValueError("Error computing the limb darkening "
+                                             "normalization: the visible map has "
+                                             "zero net flux!");
+                p_uy *= cwiseQuotient(rtmp, dot(B.rT, p_uy));
+
+                // Update our pointer
+                ptr_A1Ry = &p_uy;
+
+            }
+
+            // Cache the polynomial map
+            cache_theta = theta;
+            cache_p = *ptr_A1Ry;
 
         }
 
@@ -569,7 +601,9 @@ namespace maps {
         }
 
         // Compute the polynomial basis
-        poly_basis(x0, y0, pT);
+        xpow_scalar.reset(x0);
+        ypow_scalar.reset(y0);
+        poly_basis(xpow_scalar, ypow_scalar, pT);
 
         // Dot the coefficients in to our polynomial map
         return pT * (*ptr_A1Ry);
@@ -615,7 +649,10 @@ namespace maps {
         // Compute the polynomial basis and its x and y derivs
         x0_grad.value() = x0;
         y0_grad.value() = y0;
-        poly_basis(x0_grad, y0_grad, pT_grad);
+        xpow_grad.reset(x0_grad);
+        ypow_grad.reset(y0_grad);
+        poly_basis(xpow_grad, ypow_grad, pT_grad);
+
         setRow(dI, 1, Scalar<T>(0.0));
         setRow(dI, 2, Scalar<T>(0.0));
         for (int i = 0; i < N; i++) {
@@ -717,15 +754,8 @@ namespace maps {
             ARRy = B.A * (*ptr_Ry);
 
             // Compute the sT vector (sparsely)
-            for (int n = 0; n < N; ++n) {
-                for (int i = 0; i < nwav; ++i) {
-                    G.skip(n) = true;
-                    if (abs(ARRy(n, i)) > tol) {
-                        G.skip(n) = false;
-                        break;
-                    }
-                }
-            }
+            for (int n = 0; n < N; ++n)
+                G.skip(n) = !(ARRy.block(n, 0, 1, nwav).array() != 0.0).any();
             G.compute(b, ro);
 
             // Dot the result in and we're done

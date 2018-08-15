@@ -77,37 +77,38 @@ namespace pybind_interface {
                 py::object show = py::module::import("starry2.maps").attr("show");
                 Matrix<double> I;
                 I.resize(res, res);
-                Vector<double> x;
-                x = Vector<double>::LinSpaced(res, -1, 1);
+                Vector<Scalar<T>> x;
+                x = Vector<Scalar<T>>::LinSpaced(res, -1, 1);
                 for (int i = 0; i < res; i++){
                     for (int j = 0; j < res; j++){
-                        I(j, i) = static_cast<double>(map.evaluate(Scalar<T>(0.0),
-                                                                   Scalar<T>(x(i)),
-                                                                   Scalar<T>(x(j))));
+                        I(j, i) = static_cast<double>(
+                                  map.evaluate(0.0, x(i), x(j)));
                     }
                 }
                 show(I, "cmap"_a=cmap, "res"_a=res);
             }, docs.Map.show, "cmap"_a="plasma", "res"_a=300)
 
-            .def("animate", [](maps::Map<T> &map, string cmap, int res, int frames, std::string& gif) {
-                std::cout << "Rendering animation..." << std::endl;
+            .def("animate", [](maps::Map<T> &map, string cmap, int res,
+                               int frames, std::string& gif) {
+                std::cout << "Rendering..." << std::endl;
                 py::object animate = py::module::import("starry2.maps").attr("animate");
                 vector<Matrix<double>> I;
-                Vector<double> x, theta;
-                x = Vector<double>::LinSpaced(res, -1, 1);
-                theta = Vector<double>::LinSpaced(frames, 0, 360);
+                Vector<Scalar<T>> x, theta;
+                x = Vector<Scalar<T>>::LinSpaced(res, -1, 1);
+                theta = Vector<Scalar<T>>::LinSpaced(frames, 0, 360);
                 for (int t = 0; t < frames; t++){
                     I.push_back(Matrix<double>::Zero(res, res));
                     for (int i = 0; i < res; i++){
                         for (int j = 0; j < res; j++){
-                            I[t](j, i) = static_cast<double>(map.evaluate(Scalar<T>(theta(t)),
-                                                                          Scalar<T>(x(i)),
-                                                                          Scalar<T>(x(j))));
+                            I[t](j, i) = static_cast<double>(
+                                         map.evaluate(theta(t), x(i), x(j)));
                         }
                     }
                 }
+                std::cout << "Plotting..." << std::endl;
                 animate(I, "cmap"_a=cmap, "res"_a=res, "gif"_a=gif);
-            }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150, "frames"_a=50, "gif"_a="");
+            }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150,
+                                 "frames"_a=50, "gif"_a="");
 
     }
 
