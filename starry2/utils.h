@@ -12,6 +12,7 @@ Miscellaneous stuff used throughout the code.
 #include <boost/math/constants/constants.hpp>
 #include <iostream>
 #include <limits>
+#include <type_traits>
 #include "errors.h"
 
 //! Number of digits for the multiprecision type in starry.multi
@@ -213,97 +214,87 @@ namespace utils {
     // -- Map coefficient utils -
     // --------------------------
 
-
-    //! Set a map vector/matrix to zero
+    //! Resize a map tensor (matrix overload)
     template <class T>
-    void setZero(T& obj, int N, int NW) {
+    inline void resize(Matrix<T>& obj, int N, int NW) {
+        obj.resize(N, NW);
+    }
+
+    //! Resize a map tensor (column vector overload)
+    template <class T>
+    inline void resize(Vector<T>& obj, int N, int NW) {
+        obj.resize(N);
+    }
+
+    //! Resize a map tensor (row vector overload)
+    template <class T>
+    inline void resize(VectorT<T>& obj, int N, int NW) {
+        obj.resize(NW);
+    }
+
+    //! Resize a map tensor (scalar overload: does nothing)
+    template <class T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    resize(T& obj, int N, int NW) { }
+
+    //! Zero out a map tensor (all Eigen types)
+    template <class T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    setZero(T& obj) {
+        obj.setZero();
+    }
+
+    //! Zero out a map tensor (scalar overload)
+    template <class T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    setZero(T& obj) {
         obj = 0;
     }
 
-    //! Set a map vector/matrix to zero
-    template <class T>
-    void setZero(Matrix<T>& obj, int N, int NW) {
-        obj = Matrix<T>::Zero(N, NW);
-    }
-
-    //! Set a map vector/matrix to zero
-    template <class T>
-    void setZero(Vector<T>& obj, int N, int NW) {
-        obj = Vector<T>::Zero(N);
-    }
-
-    //! Set a map vector/matrix to zero
-    template <class T>
-    void setZero(VectorT<T>& obj, int N, int NW) {
-        obj = VectorT<T>::Zero(NW);
-    }
-
-    //! Set a vector map coefficient
-    template <class T>
-    inline void setCoeff(Vector<T>& y, int n, const T& coeff) {
-        y(n) = coeff;
-    }
-
-    //! Set a matrix map coefficient
-    template <class T>
-    inline void setCoeff(Matrix<T>& y, int n, const VectorT<T>& coeff) {
-        if (coeff.size() != y.cols())
-            throw errors::ValueError("Size mismatch in the wavelength dimension.");
-        y.row(n) = coeff;
-    }
-
-    //! Get a vector map coefficient
-    template <class T>
-    inline T getCoeff(const Vector<T>& y, int n) {
-        return y(n);
-    }
-
-    //! Get a matrix map coefficient
-    template <class T>
-    inline VectorT<T> getCoeff(const Matrix<T>& y, int n) {
-        return y.row(n);
-    }
-
-    //! Get the vector map coefficient at index `n`
-    template <class T>
-    inline T getFirstCoeff(const Vector<T>& y, int n) {
-        return y(n);
-    }
-
-    //! Get the matrix map coefficient at index `(n, 0)`
-    template <class T>
-    inline T getFirstCoeff(const Matrix<T>& y, int n) {
-        return y(n, 0);
-    }
-
-    //! Set a row in a map vector
+    //! Set a row in a map tensor
     template <class T>
     inline void setRow(Vector<T>& vec, int row, T val) {
         vec(row) = val;
     }
 
-    //! Set a row in a map vector
+    //! Set a row in a map tensor
     template <class T>
     inline void setRow(Matrix<T>& vec, int row, const VectorT<T>& val) {
+        if (val.size() != vec.cols())
+            throw errors::ValueError("Size mismatch in the wavelength dimension.");
         vec.row(row) = val;
     }
 
-    //! Set a row in a map vector
+    //! Set a row in a map tensor
     template <class T>
     inline void setRow(Matrix<T>& vec, int row, T val) {
         vec.row(row) = VectorT<T>::Constant(vec.cols(), val);
     }
 
-    //! Return a row in a map vector
+    //! Return a row in a map tensor
     template <class T>
     inline T getRow(const Vector<T>& vec, int row) {
         return vec(row);
     }
 
-    //! Return a row in a map vector
+    //! Return a row in a map tensor
     template <class T>
     inline Vector<T> getRow(const Matrix<T>& vec, int row) {
         return vec.row(row);
+    }
+
+    //! Does a map tensor have any zero elements?
+    template <typename T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    hasZero(const T& v) {
+        return (v.array() == 0.0).any();
+    }
+
+    //! Does a map tensor have any zero elements?
+    template <typename T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    hasZero(const T& v) {
+        return v == 0.0;
     }
 
     //! Vector-vector dot product
@@ -316,6 +307,20 @@ namespace utils {
     template <typename T>
     VectorT<T> dot(const VectorT<T>& vT, const Matrix<T>& U) {
         return vT * U;
+    }
+
+    //! Vector-vector coeff-wise quotient
+    template <typename T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
+    cwiseQuotient(const T& v, const T& u) {
+        return v.cwiseQuotient(u);
+    }
+
+    //! Scalar-scalar quotient
+    template <typename T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
+    cwiseQuotient(const T& v, const T& u) {
+        return v / u;
     }
 
 }; // namespace utils

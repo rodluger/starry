@@ -89,7 +89,7 @@ namespace pybind_interface {
                 show(I, "cmap"_a=cmap, "res"_a=res);
             }, docs.Map.show, "cmap"_a="plasma", "res"_a=300)
 
-            .def("animate", [](maps::Map<T> &map, string cmap, int res, int frames) {
+            .def("animate", [](maps::Map<T> &map, string cmap, int res, int frames, std::string& gif) {
                 std::cout << "Rendering animation..." << std::endl;
                 py::object animate = py::module::import("starry2.maps").attr("animate");
                 vector<Matrix<double>> I;
@@ -106,8 +106,8 @@ namespace pybind_interface {
                         }
                     }
                 }
-                animate(I, "cmap"_a=cmap, "res"_a=res);
-            }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150, "frames"_a=50);
+                animate(I, "cmap"_a=cmap, "res"_a=res, "gif"_a=gif);
+            }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150, "frames"_a=50, "gif"_a="");
 
     }
 

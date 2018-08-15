@@ -21,6 +21,7 @@ namespace maps {
 
     using namespace utils;
     using std::abs;
+    using std::max;
     using std::string;
     using std::to_string;
     using rotation::Wigner;
@@ -52,8 +53,8 @@ namespace maps {
             T g;                                                                /**< The map coefficients in the Green's basis */
             T u;                                                                /**< The limb darkening coefficients */
             T p_u;                                                              /**< The limb darkening coefficients in the polynomial basis */
-            bool y_set;                                                         /**< Did the user set any spherical harmonic coeffs? */
-            bool u_set;                                                         /**< Did the user set any limb darkening coeffs? */
+            int y_deg;                                                          /**< Highest degree set by the user in the spherical harmonic vector */
+            int u_deg;                                                          /**< Highest degree set by the user in the limb darkening vector */
             UnitVector<Scalar<T>> axis;                                         /**< The axis of rotation for the map */
             Basis<Scalar<T>> B;                                                 /**< Basis transform stuff */
             Wigner<T> W;                                                        /**< The class controlling rotations */
@@ -76,6 +77,7 @@ namespace maps {
             VectorT<Scalar<T>> sTAdRdtheta;                                     /**< The derivative of `sTAR` with respect to `theta` */
             T mtmp;                                                             /**< A temporary surface map vector */
             T mtmp2;                                                            /**< A temporary surface map vector */
+            T p_uy;                                                             /**< The instantaneous limb-darkened map in the polynomial basis */
             T Ry;                                                               /**< The rotated spherical harmonic vector */
             T dRdthetay;                                                        /**< Derivative of `Ry` with respect to `theta` */
             T* ptr_A1Ry;                                                        /**< Pointer to rotated polynomial vector */
@@ -89,13 +91,13 @@ namespace maps {
             // Private methods
             template <typename V>
             inline void poly_basis(const V& x0, const V& y0, VectorT<V>& basis);
-            inline Column<T> evaluate_with_gradient(const Scalar<T>& theta_deg,
-                                                    const Scalar<T>& x_,
-                                                    const Scalar<T>& y_);
-            inline Column<T> flux_with_gradient(const Scalar<T>& theta_deg,
-                                                const Scalar<T>& xo_,
-                                                const Scalar<T>& yo_,
-                                                const Scalar<T>& ro_);
+            inline Row<T> evaluate_with_gradient(const Scalar<T>& theta_deg,
+                                                 const Scalar<T>& x_,
+                                                 const Scalar<T>& y_);
+            inline Row<T> flux_with_gradient(const Scalar<T>& theta_deg,
+                                             const Scalar<T>& xo_,
+                                             const Scalar<T>& yo_,
+                                             const Scalar<T>& ro_);
 
         public:
 
@@ -126,8 +128,6 @@ namespace maps {
                 }
 
                 // Initialize all the vectors
-                setZero(y, N, nwav);
-                setZero(u, lmax + 1, nwav);
                 axis = yhat<Scalar<T>>();
                 vtmp = Vector<Scalar<T>>::Zero(N);
                 pT = VectorT<Scalar<T>>::Zero(N);
@@ -141,16 +141,22 @@ namespace maps {
                 sTA = VectorT<Scalar<T>>::Zero(N);
                 sTAR = VectorT<Scalar<T>>::Zero(N);
                 sTAdRdtheta = VectorT<Scalar<T>>::Zero(N);
-                setZero(dI, 3 + N, nwav);
-                setZero(dF, 4 + N, nwav);
-                setZero(mtmp, N, nwav);
-                setZero(mtmp2, N, nwav);
-                setZero(Ry, N, nwav);
-                setZero(dRdthetay, N, nwav);
-                setZero(ARRy, N, nwav);
-                setZero(dFdb, N, nwav);
-                setZero(rtmp, N, nwav);
-                setZero(ctmp, N, nwav);
+
+                // Resize our T, Row<T>, and Col<T> matrices
+                // Note that the args to `resize()` are not necessarily
+                // the shape of the object, as some of these are vectors!
+                resize(y, N, nwav);
+                resize(u, lmax + 1, nwav);
+                resize(dI, 3 + N, nwav);
+                resize(dF, 4 + N, nwav);
+                resize(mtmp, N, nwav);
+                resize(mtmp2, N, nwav);
+                resize(Ry, N, nwav);
+                resize(dRdthetay, N, nwav);
+                resize(ARRy, N, nwav);
+                resize(dFdb, N, nwav);
+                resize(rtmp, N, nwav);
+                resize(ctmp, N, nwav);
 
                 // Reset & update the map coeffs
                 reset();
@@ -182,17 +188,17 @@ namespace maps {
             void rotate(const Scalar<T>&  theta_);
 
             // Evaluate the intensity at a point
-            inline Column<T> evaluate(const Scalar<T>& theta_=0,
-                                      const Scalar<T>& x_=0,
-                                      const Scalar<T>& y_=0,
-                                      bool gradient=false);
+            inline Row<T> evaluate(const Scalar<T>& theta_=0,
+                                   const Scalar<T>& x_=0,
+                                   const Scalar<T>& y_=0,
+                                   bool gradient=false);
 
             // Compute the flux
-            inline Column<T> flux(const Scalar<T>& theta_=0,
-                                  const Scalar<T>& xo_=0,
-                                  const Scalar<T>& yo_=0,
-                                  const Scalar<T>& ro_=0,
-                                  bool gradient=false);
+            inline Row<T> flux(const Scalar<T>& theta_=0,
+                               const Scalar<T>& xo_=0,
+                               const Scalar<T>& yo_=0,
+                               const Scalar<T>& ro_=0,
+                               bool gradient=false);
 
     };
 
@@ -204,13 +210,11 @@ namespace maps {
     /**
     Update the maps after the coefficients changed
 
+    TODO: This method needs to be made as fast as possible.
+
     */
     template <class T>
     void Map<T>::update() {
-
-        // Check if user set coeffs
-        y_set = (y.array() != 0.0).any();
-        u_set = (u.block(1, 0, lmax, nwav).array() != 0.0).any();
 
         // Update the polynomial and Green's map coefficients
         p = B.A1 * y;
@@ -220,16 +224,13 @@ namespace maps {
         W.update();
 
         // Update the limb darkening polynomial map
+        // Note that the limb darkening polynomial `p_u`
+        // is *unnormalized*; we normalize it later
         mtmp = B.U * u;
-        setZero(mtmp2, N, nwav);
+        setZero(mtmp2);
         for (int l = 0; l < lmax + 1; ++l)
             mtmp2(l * (l + 1)) = mtmp(l);
         p_u = B.A1 * mtmp2;
-
-        // TODO: Need to normalize p_u later so the
-        // disk-integrated intensity doesn't change
-        // THIS IS A HACK
-        setRow(p_u, 0, Scalar<T>(1.0));
 
     }
 
@@ -239,8 +240,10 @@ namespace maps {
     */
     template <class T>
     void Map<T>::reset() {
-        y.setZero(N, nwav);
-        u.setZero(lmax + 1, nwav);
+        setZero(y);
+        y_deg = 0;
+        setZero(u);
+        u_deg = 0;
         setRow(u, 0, Scalar<T>(-1.0));
         axis = yhat<Scalar<T>>();
         update();
@@ -260,7 +263,10 @@ namespace maps {
     void Map<T>::setYlm(int l, int m, const Row<T>& coeff) {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
-            setCoeff(y, n, coeff);
+            setRow(y, n, coeff);
+            y_deg = max(y_deg, l);
+            if (y_deg + u_deg > lmax)
+                throw errors::ValueError("Degree of the limb-darkened map exceeds `lmax`.");
             update();
         } else {
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
@@ -274,7 +280,7 @@ namespace maps {
     template <class T>
     Row<T> Map<T>::getYlm(int l, int m) const {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
-            return getCoeff(y, l * l + l + m);
+            return getRow(y, l * l + l + m);
         } else
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
     }
@@ -286,7 +292,10 @@ namespace maps {
     template <class T>
     void Map<T>::setUl(int l, const Row<T>& coeff) {
         if ((1 <= l) && (l <= lmax)) {
-            setCoeff(u, l, coeff);
+            setRow(u, l, coeff);
+            u_deg = max(u_deg, l);
+            if (y_deg + u_deg > lmax)
+                throw errors::ValueError("Degree of the limb-darkened map exceeds `lmax`.");
             update();
         } else {
             throw errors::IndexError("Invalid value for `l`.");
@@ -300,7 +309,7 @@ namespace maps {
     template <class T>
     Row<T> Map<T>::getUl(int l) const {
         if ((1 <= l) && (l <= lmax)) {
-            return getCoeff(u,l);
+            return getRow(u,l);
         } else
             throw errors::IndexError("Invalid value for `l`.");
     }
@@ -351,6 +360,12 @@ namespace maps {
     void Map<T>::setY(const T& y_) {
         if ((y_.rows() == y.rows()) && (y_.cols() == y.cols())) {
             y = y_;
+            for (int l = lmax; l >= 0; --l) {
+                if ((y.block(l * l, 0, 2 * l + 1, nwav).array() != 0.0).any()) {
+                    y_deg = l;
+                    break;
+                }
+            }
             update();
         } else {
             throw errors::ValueError("Dimension mismatch in `y`.");
@@ -374,6 +389,12 @@ namespace maps {
     void Map<T>::setU(const T& u_) {
         if ((u_.rows() == u.rows() - 1) && (u_.cols() == u.cols())) {
             u.block(1, 0, lmax, nwav) = u_;
+            for (int l = lmax; l > 0; --l) {
+                if (u(l) != 0) {
+                    u_deg = l;
+                    break;
+                }
+            }
             update();
         } else {
             throw errors::ValueError("Dimension mismatch in `u`.");
@@ -419,49 +440,13 @@ namespace maps {
     /**
     Return a human-readable map string
 
-    TODO: Show spectral and limb-darkening information.
+    TODO: Output a detailed summary of the map.
 
     */
     template <class T>
     std::string Map<T>::__repr__() {
-        int n = 0;
-        int nterms = 0;
-        char buf[30];
         std::ostringstream os;
-        os << "<STARRY Map: ";
-        for (int l = 0; l < lmax + 1; l++) {
-            for (int m = -l; m < l + 1; m++) {
-                if (abs(getFirstCoeff(y, n)) > 10 * tol){
-                    // Separator
-                    if ((nterms > 0) && (getFirstCoeff(y, n) > 0)) {
-                        os << " + ";
-                    } else if ((nterms > 0) && (getFirstCoeff(y, n) < 0)){
-                        os << " - ";
-                    } else if ((nterms == 0) && (getFirstCoeff(y, n) < 0)){
-                        os << "-";
-                    }
-                    // Term
-                    if ((getFirstCoeff(y, n) == 1) || (getFirstCoeff(y, n) == -1)) {
-                        sprintf(buf, "Y_{%d,%d}", l, m);
-                        os << buf;
-                    } else if (fmod(abs(getFirstCoeff(y, n)), 1.0) < 10 * tol) {
-                        sprintf(buf, "%d Y_{%d,%d}", (int)abs(getFirstCoeff(y, n)), l, m);
-                        os << buf;
-                    } else if (fmod(abs(getFirstCoeff(y, n)), 1.0) >= 0.01) {
-                        sprintf(buf, "%.2f Y_{%d,%d}", double(abs(getFirstCoeff(y, n))), l, m);
-                        os << buf;
-                    } else {
-                        sprintf(buf, "%.2e Y_{%d,%d}", double(abs(getFirstCoeff(y, n))), l, m);
-                        os << buf;
-                    }
-                    nterms++;
-                }
-                n++;
-            }
-        }
-        if (nterms == 0)
-            os << "Null";
-        os << ">";
+        os << "<STARRY Map>";
         return std::string(os.str());
     }
 
@@ -534,7 +519,7 @@ namespace maps {
 
     */
     template <class T>
-    inline Column<T> Map<T>::evaluate(const Scalar<T>& theta_,
+    inline Row<T> Map<T>::evaluate(const Scalar<T>& theta_,
                                       const Scalar<T>& x_,
                                       const Scalar<T>& y_,
                                       bool gradient) {
@@ -558,23 +543,28 @@ namespace maps {
             ptr_A1Ry = &mtmp;
         }
 
-        // TODO: Experimental. Can be optimized by restricting the
-        // order of the limb darkening.
         // Apply limb darkening
-        if (u_set) {
-            polymul(lmax, *ptr_A1Ry, lmax, p_u, lmax, mtmp2);
+        if (u_deg > 0) {
 
-            // DEBUG
-            std::cout << (*ptr_A1Ry).transpose() << std::endl;
-            std::cout << p_u.transpose() << std::endl;
-            std::cout << mtmp2.transpose() << std::endl;
+            // Multiply the map and the LD polynomial
+            polymul(y_deg, *ptr_A1Ry, u_deg, p_u, lmax, p_uy);
 
-            ptr_A1Ry = &mtmp2;
+            // Normalize it by enforcing that limb darkening does not
+            // change the total disk-integrated flux.
+            rtmp = dot(B.rT, *ptr_A1Ry);
+            if (hasZero(rtmp))
+                throw errors::ValueError("Error computing the limb darkening normalization: "
+                                         "the visible map has zero net flux!");
+            p_uy *= cwiseQuotient(rtmp, dot(B.rT, p_uy));
+
+            // Update our pointer
+            ptr_A1Ry = &p_uy;
+
         }
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) {
-            setZero(ctmp, N, nwav);
+            setZero(ctmp);
             return ctmp * NAN;
         }
 
@@ -589,9 +579,11 @@ namespace maps {
     /**
     Evaluate the map at a given (x0, y0) coordinate and compute the gradient
 
+    TODO: Add limb darkening
+
     */
     template <class T>
-    inline Column<T> Map<T>::evaluate_with_gradient(const Scalar<T>& theta_,
+    inline Row<T> Map<T>::evaluate_with_gradient(const Scalar<T>& theta_,
                                                     const Scalar<T>& x_,
                                                     const Scalar<T>& y_) {
 
@@ -614,9 +606,9 @@ namespace maps {
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) {
-            setZero(dI, 3 + N, nwav);
+            setZero(dI);
             dI = dI * NAN;
-            setZero(ctmp, N, nwav);
+            setZero(ctmp);
             return ctmp * NAN;
         }
 
@@ -667,9 +659,11 @@ namespace maps {
     /**
     Compute the flux during or outside of an occultation
 
+    TODO: Add limb darkening
+
     */
     template <class T>
-    inline Column<T> Map<T>::flux(const Scalar<T>& theta_,
+    inline Row<T> Map<T>::flux(const Scalar<T>& theta_,
                                   const Scalar<T>& xo_,
                                   const Scalar<T>& yo_,
                                   const Scalar<T>& ro_,
@@ -691,7 +685,7 @@ namespace maps {
 
         // Check for complete occultation
         if (b <= ro - 1) {
-            setZero(ctmp, N, nwav);
+            setZero(ctmp);
             return ctmp;
         }
 
@@ -744,10 +738,12 @@ namespace maps {
     /**
     Compute the flux during or outside of an occultation and its gradient
 
+    TODO: Add limb darkening
+
     */
 
     template <class T>
-    inline Column<T> Map<T>::flux_with_gradient(const Scalar<T>& theta_deg,
+    inline Row<T> Map<T>::flux_with_gradient(const Scalar<T>& theta_deg,
                                                 const Scalar<T>& xo_,
                                                 const Scalar<T>& yo_,
                                                 const Scalar<T>& ro_) {
@@ -763,8 +759,8 @@ namespace maps {
 
         // Check for complete occultation
         if (b <= ro - 1) {
-            setZero(dF, N, nwav);
-            setZero(ctmp, N, nwav);
+            setZero(dF);
+            setZero(ctmp);
             return ctmp;
         }
 
@@ -834,7 +830,7 @@ namespace maps {
             G_grad.compute(b_grad, ro_grad);
 
             // Compute the b and ro derivs
-            setZero(dFdb, N, nwav);
+            setZero(dFdb);
             setRow(dF, 3, Scalar<T>(0.0));
             for (int i = 0; i < N; i++) {
 

@@ -151,6 +151,9 @@ namespace docstrings {
                     cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
                     res (int): The resolution of the map in pixels on a side. Default 150.
                     frames (int): The number of frames in the animation. Default 50.
+                    gif (str): The name of the `.gif` file to save the animation to. \
+                               Requires `ImageMagick` to be installed. If set, does not \
+                               show the animation. Default :py:obj:`None`.
             )pbdoc";
 
             add_extras();

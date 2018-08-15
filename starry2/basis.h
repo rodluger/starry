@@ -20,6 +20,7 @@ namespace basis {
 
     using namespace utils;
     using std::abs;
+    using std::min;
 
     /**
     Contraction coefficient for the Ylms
@@ -394,8 +395,7 @@ namespace basis {
             for (m1 = 0; m1 < l1 + 1; ++m1) {
                 odd1 = (l1 + m1) % 2 == 0 ? false : true;
                 n2 = 0;
-                for (l2 = 0; l2 < lmax2 + 1; ++l2) {
-                    if (l1 + l2 > lmax12) break;
+                for (l2 = 0; l2 < min(lmax2 + 1, lmax12 - l1 + 1); ++l2) {
                     for (m2 = 0; m2 < l2 + 1; ++m2) {
                         l = l1 + l2;
                         n = l * l + l + m1 + m2;

@@ -133,13 +133,13 @@ namespace rotation {
             sinnt(0) = 0.0;
             cosmt.resize(N);
             sinmt.resize(N);
-            setZero(yrev, N, NW);
+            resize(yrev, N, NW);
 
             // The base map in the `zeta` frame
-            setZero(y_zeta, N, NW);
+            resize(y_zeta, N, NW);
 
             // The cached rotated map
-            setZero(cache_y, N, NW);
+            resize(cache_y, N, NW);
 
         }
 

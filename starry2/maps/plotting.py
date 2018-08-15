@@ -16,7 +16,7 @@ def show(I, res=300, cmap="plasma"):
     pl.show()
 
 
-def animate(I, res=300, cmap="plasma"):
+def animate(I, res=300, cmap="plasma", gif=""):
     """Animate the map as it rotates about the axis `u`."""
     fig, ax = pl.subplots(1, figsize=(3, 3))
     img = ax.imshow(I[0], origin="lower", interpolation="none", cmap=cmap,
@@ -30,4 +30,12 @@ def animate(I, res=300, cmap="plasma"):
 
     ani = animation.FuncAnimation(fig, updatefig, interval=75, blit=True,
                                   frames=len(I))
-    pl.show()
+
+    if gif != "":
+        if gif.endswith(".gif"):
+            gif = gif[:-4]
+        ani.save('%s.gif' % gif, writer='imagemagick')
+    else:
+        pl.show()
+
+    pl.close()

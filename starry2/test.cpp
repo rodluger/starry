@@ -4,6 +4,7 @@
 #include "utils.h"
 using namespace utils;
 
+
 int main() {
 
     int lmax = 2;
@@ -67,6 +68,5 @@ int main() {
     std::cout << map.flux(theta, x, y, r, false) << std::endl;
     std::cout << std::endl;
     std::cout << map.flux(theta, x, y, r, true) << std::endl;
-
 
 }
