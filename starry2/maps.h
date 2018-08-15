@@ -25,6 +25,7 @@ namespace maps {
     using std::to_string;
     using rotation::Wigner;
     using basis::Basis;
+    using basis::polymul;
     using solver::Greens;
 
     /**
@@ -51,6 +52,8 @@ namespace maps {
             T g;                                                                /**< The map coefficients in the Green's basis */
             T u;                                                                /**< The limb darkening coefficients */
             T p_u;                                                              /**< The limb darkening coefficients in the polynomial basis */
+            bool y_set;                                                         /**< Did the user set any spherical harmonic coeffs? */
+            bool u_set;                                                         /**< Did the user set any limb darkening coeffs? */
             UnitVector<Scalar<T>> axis;                                         /**< The axis of rotation for the map */
             Basis<Scalar<T>> B;                                                 /**< Basis transform stuff */
             Wigner<T> W;                                                        /**< The class controlling rotations */
@@ -205,6 +208,10 @@ namespace maps {
     template <class T>
     void Map<T>::update() {
 
+        // Check if user set coeffs
+        y_set = (y.array() != 0.0).any();
+        u_set = (u.block(1, 0, lmax, nwav).array() != 0.0).any();
+
         // Update the polynomial and Green's map coefficients
         p = B.A1 * y;
         g = B.A * y;
@@ -213,15 +220,16 @@ namespace maps {
         W.update();
 
         // Update the limb darkening polynomial map
-        Scalar<T> norm = 0.0;
-        for (int l = 0; l < lmax + 1; ++l)
-            norm -= 2.0 * u(l) / ((l + 1) * (l + 2));
-        norm *= pi<Scalar<T>>();
         mtmp = B.U * u;
         setZero(mtmp2, N, nwav);
         for (int l = 0; l < lmax + 1; ++l)
-            mtmp2(l * (l + 1)) = mtmp(l) / norm;
+            mtmp2(l * (l + 1)) = mtmp(l);
         p_u = B.A1 * mtmp2;
+
+        // TODO: Need to normalize p_u later so the
+        // disk-integrated intensity doesn't change
+        // THIS IS A HACK
+        setRow(p_u, 0, Scalar<T>(1.0));
 
     }
 
@@ -519,6 +527,11 @@ namespace maps {
     /**
     Evaluate the map at a given (x0, y0) coordinate
 
+    TODO: Can be vectorized intelligently to speed up
+          plotting! Currently we're doing a lot of
+          repetitive linear algebra for each frame
+          of the animation.
+
     */
     template <class T>
     inline Column<T> Map<T>::evaluate(const Scalar<T>& theta_,
@@ -543,6 +556,20 @@ namespace maps {
             W.rotate(cos(theta), sin(theta), Ry);
             mtmp = B.A1 * Ry;
             ptr_A1Ry = &mtmp;
+        }
+
+        // TODO: Experimental. Can be optimized by restricting the
+        // order of the limb darkening.
+        // Apply limb darkening
+        if (u_set) {
+            polymul(lmax, *ptr_A1Ry, lmax, p_u, lmax, mtmp2);
+
+            // DEBUG
+            std::cout << (*ptr_A1Ry).transpose() << std::endl;
+            std::cout << p_u.transpose() << std::endl;
+            std::cout << mtmp2.transpose() << std::endl;
+
+            ptr_A1Ry = &mtmp2;
         }
 
         // Check if outside the sphere

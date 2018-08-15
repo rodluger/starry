@@ -21,7 +21,7 @@ namespace pybind_vectorize {
     using namespace utils;
     namespace py = pybind11;
 
-    // Vectorize a single python object
+    //! Vectorize a single python object
     inline Vector<double> vectorize_arg(const py::array_t<double>& arg, int& size){
         Vector<double> res;
         if (arg.size() == 1) {
@@ -38,7 +38,7 @@ namespace pybind_vectorize {
         }
     }
 
-    // Vectorize function of three args
+    //! Vectorize function of three args
     inline void vectorize_args(const py::array_t<double>& arg1,
                                const py::array_t<double>& arg2,
                                const py::array_t<double>& arg3,
@@ -70,7 +70,7 @@ namespace pybind_vectorize {
         }
     }
 
-    // Vectorize function of four args
+    //! Vectorize function of four args
     inline void vectorize_args(const py::array_t<double>& arg1,
                                const py::array_t<double>& arg2,
                                const py::array_t<double>& arg3,
@@ -114,7 +114,7 @@ namespace pybind_vectorize {
         }
     }
 
-
+    //! Vectorized `flux` method
     template <typename T>
     py::object flux(maps::Map<T> &map,
                     py::array_t<double>& theta,
@@ -159,6 +159,7 @@ namespace pybind_vectorize {
 
     }
 
+    //! Vectorized `flux` method
     template <>
     py::object flux(maps::Map<Matrix<double>> &map,
                     py::array_t<double>& theta,
@@ -212,6 +213,7 @@ namespace pybind_vectorize {
 
     }
 
+    //! Vectorized `evaluate` method
     template <typename T>
     py::object evaluate(maps::Map<T> &map,
                         py::array_t<double>& theta,
@@ -254,6 +256,7 @@ namespace pybind_vectorize {
 
     }
 
+    //! Vectorized `evaluate` method
     template <>
     py::object evaluate(maps::Map<Matrix<double>> &map,
                         py::array_t<double>& theta,
