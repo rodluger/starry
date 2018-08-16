@@ -77,6 +77,7 @@ namespace pybind_interface {
     }
 
     /**
+    Parse a user-provided `(l, m)` tuple into spherical harmonic map indices.
 
     */
     std::vector<int> get_Ylm_inds(const int lmax, const py::tuple& lm) {
@@ -144,6 +145,7 @@ namespace pybind_interface {
     }
 
     /**
+    Parse a user-provided `l` into limb darkening map indices.
 
     */
     std::vector<int> get_Ul_inds(int lmax, const py::object& l) {
@@ -288,6 +290,8 @@ namespace pybind_interface {
             // Set one or more spherical harmonic coefficients to an array of values
             .def("__setitem__", [](maps::Map<T>& map, py::tuple lm, MapDouble<T>& coeff) {
                 auto inds = get_Ylm_inds(map.lmax, lm);
+                if (coeff.rows() != static_cast<long>(inds.size()))
+                    throw errors::ValueError("Mismatch in slice length and coefficient array size.");
                 auto y = map.getY();
                 int i = 0;
                 Row<T> row;
@@ -328,6 +332,8 @@ namespace pybind_interface {
             // Set one or more limb darkening coefficients to an array of values
             .def("__setitem__", [](maps::Map<T>& map, py::object l, MapDouble<T>& coeff) {
                 auto inds = get_Ul_inds(map.lmax, l);
+                if (coeff.rows() != static_cast<long>(inds.size()))
+                    throw errors::ValueError("Mismatch in slice length and coefficient array size.");
                 auto u = map.getU();
                 int i = 0;
                 Row<T> row;
