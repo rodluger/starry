@@ -7,7 +7,7 @@ def numerical_gradient(Map, lmax, yvec, axis, theta, x, y, eps=1e-8):
     """Return the gradient computed numerically."""
     map = Map(lmax)
     map.axis = axis
-    map.y = yvec
+    map[:, :] = yvec
     grad = {}
 
     # x
@@ -44,7 +44,7 @@ def run(Map):
     lmax = 2
     map = Map(lmax)
     map.axis = [0, 1, 0]
-    map.y = np.ones(map.N)
+    map[:, :] = 1
 
     # No arguments
     I = map.evaluate()
@@ -77,7 +77,7 @@ def run_with_gradients(Map):
     lmax = 2
     map = Map(lmax)
     map.axis = [0, 1, 0]
-    map.y = np.ones(map.N)
+    map[:, :] = 1
 
     # No arguments
     I = map.evaluate()

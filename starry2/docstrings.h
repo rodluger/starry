@@ -63,11 +63,11 @@ namespace docstrings {
             )pbdoc";
 
             y = R"pbdoc(
-                The spherical harmonic map vector.
+                The spherical harmonic map vector. *Read-only.*
             )pbdoc";
 
             u = R"pbdoc(
-                The limb darkening map vector.
+                The limb darkening map vector. *Read-only.*
             )pbdoc";
 
             p = R"pbdoc(

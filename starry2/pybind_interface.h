@@ -24,12 +24,160 @@ This defines the main Python interface to the code.
 
 namespace pybind_interface {
 
-    using namespace std;
     using namespace utils;
     using namespace pybind11::literals;
     namespace py = pybind11;
     namespace vectorize = pybind_vectorize;
+    using std::min;
+    using std::max;
 
+    /**
+    Re-interpret the `start`, `stop`, and `step` attributes of a `py::slice`,
+    allowing for *actual* negative indices.
+
+    */
+    void reinterpret_slice(const py::slice& slice, const int smin,
+                           const int smax, int& start, int& stop, int& step) {
+        // This is super hacky. Because `m` indices can be negative, we need
+        // to re-interpret what a slice with negative indices actually
+        // means. Casting to an actual Python slice and running
+        // `compute` interprets negative indices as indices counting
+        // backwards from the end, which is not what we want. There
+        // doesn't seem to be a way to reconstruct the original arguments
+        // to `slice(start, stop, step)` that works in *all* cases (I've tried!)
+        // so for now we'll parse the string representation of the slice.
+        // This is likely slow, so a hack that digs into the actual
+        // CPython backend and recovers the `start`, `stop`, and `step`
+        // attributes of a `py::slice` object would be better. Suggestions welcome!
+        std::ostringstream os;
+        os << slice;
+        std::string str_slice = std::string(os.str());
+        size_t pos = 0;
+        std::string str_start, str_stop, str_step;
+        pos = str_slice.find(", ");
+        str_start = str_slice.substr(6, pos - 6);
+        str_slice = str_slice.substr(pos + 2, str_slice.size() - pos);
+        pos = str_slice.find(", ");
+        str_stop = str_slice.substr(0, pos);
+        str_step = str_slice.substr(pos + 2, str_slice.size() - pos - 3);
+        if (str_start == "None")
+            start = smin;
+        else
+            start = stoi(str_start);
+        if (str_stop == "None")
+            stop = smax;
+        else
+            stop = stoi(str_stop);
+        if (str_step == "None")
+            step = 1;
+        else
+            step = stoi(str_step);
+        if (step < 0)
+            throw errors::ValueError("Slices with negative steps are not supported.");
+    }
+
+    /**
+
+    */
+    std::vector<int> get_Ylm_inds(const int lmax, const py::tuple& lm) {
+        if (lm.size() != 2)
+            throw errors::IndexError("Invalid `l`, `m` tuple.");
+        std::vector<int> inds;
+        if ((py::isinstance<py::int_>(lm[0])) && (py::isinstance<py::int_>(lm[1]))) {
+            // User provided `(l, m)`
+            int l = py::cast<int>(lm[0]);
+            int m = py::cast<int>(lm[1]);
+            inds.push_back(l * l + l + m);
+            return inds;
+        } else if ((py::isinstance<py::slice>(lm[0])) && (py::isinstance<py::slice>(lm[1]))) {
+            // User provided `(slice, slice)`
+            auto lslice = py::cast<py::slice>(lm[0]);
+            auto mslice = py::cast<py::slice>(lm[1]);
+            int lstart, lstop, lstep;
+            int mstart, mstop, mstep;
+            reinterpret_slice(lslice, 0, lmax, lstart, lstop, lstep);
+            if ((lstart < 0) || (lstart > lmax))
+                throw errors::IndexError("Invalid value for `l`.");
+            for (int l = lstart; l < lstop + 1; l += lstep) {
+                reinterpret_slice(mslice, -l, l, mstart, mstop, mstep);
+                if (mstart < -l)
+                    mstart = -l;
+                if (mstop > l)
+                    mstop = l;
+                for (int m = mstart; m < mstop + 1; m += mstep) {
+                    inds.push_back(l * l + l + m);
+                }
+            }
+            return inds;
+        } else if ((py::isinstance<py::int_>(lm[0])) && (py::isinstance<py::slice>(lm[1]))) {
+            // User provided `(l, slice)`
+            int l = py::cast<int>(lm[0]);
+            auto mslice = py::cast<py::slice>(lm[1]);
+            int mstart, mstop, mstep;
+            reinterpret_slice(mslice, -l, l, mstart, mstop, mstep);
+            if (mstart < -l)
+                mstart = -l;
+            if (mstop > l)
+                mstop = l;
+            for (int m = mstart; m < mstop + 1; m += mstep) {
+                inds.push_back(l * l + l + m);
+            }
+            return inds;
+        } else if ((py::isinstance<py::slice>(lm[0])) && (py::isinstance<py::int_>(lm[1]))) {
+            // User provided `(slice, m)`
+            int m = py::cast<int>(lm[1]);
+            auto lslice = py::cast<py::slice>(lm[0]);
+            int lstart, lstop, lstep;
+            reinterpret_slice(lslice, 0, lmax, lstart, lstop, lstep);
+            if ((lstart < 0) || (lstart > lmax))
+                throw errors::IndexError("Invalid value for `l`.");
+            for (int l = lstart; l < lstop + 1; l += lstep) {
+                if ((m < -l) || (m > l))
+                    continue;
+                inds.push_back(l * l + l + m);
+            }
+            return inds;
+        } else {
+            // User provided something silly
+            throw errors::IndexError("Unsupported input type for `l` and/or `m`.");
+        }
+    }
+
+    /**
+
+    */
+    std::vector<int> get_Ul_inds(int lmax, const py::object& l) {
+        std::vector<int> inds;
+        if (py::isinstance<py::int_>(l)) {
+            inds.push_back(py::cast<int>(l));
+            return inds;
+        } else if (py::isinstance<py::slice>(l)) {
+            py::slice slice = py::cast<py::slice>(l);
+            ssize_t start, stop, step, slicelength;
+            if(!slice.compute(lmax,
+                              reinterpret_cast<size_t*>(&start),
+                              reinterpret_cast<size_t*>(&stop),
+                              reinterpret_cast<size_t*>(&step),
+                              reinterpret_cast<size_t*>(&slicelength)))
+                throw pybind11::error_already_set();
+            if ((start < 0) || (start > lmax)) {
+                throw errors::IndexError("Invalid value for `l`.");
+            } else if (step < 0) {
+                throw errors::ValueError("Slices with negative steps are not supported.");
+            } else if (start == 0) {
+                // Let's give the user the benefit of the doubt here
+                start = 1;
+            }
+            std::vector<int> inds;
+            for (ssize_t i = start; i < stop + 1; i += step) {
+                inds.push_back(i);
+            }
+            return inds;
+        } else {
+            // User provided something silly
+            throw errors::IndexError("Unsupported input type for `l`.");
+        }
+    }
 
     template <typename T, int Module>
     void add_Map_extras(py::class_<maps::Map<T>>& PyMap,
@@ -39,41 +187,7 @@ namespace pybind_interface {
 
             .def(py::init<int>(), "lmax"_a=2)
 
-            .def("__setitem__", [](maps::Map<T>& map,
-                                   py::tuple lm, double& coeff) {
-                int l, m;
-                try {
-                    l = py::cast<int>(lm[0]);
-                    m = py::cast<int>(lm[1]);
-                } catch (const char* msg) {
-                    throw errors::IndexError("Invalid value for `l` and/or `m`.");
-                }
-                map.setYlm(l, m, static_cast<Scalar<T>>(coeff));
-            })
-
-            .def("__setitem__", [](maps::Map<T>& map,
-                                   int l, double& coeff) {
-                map.setUl(l, static_cast<Scalar<T>>(coeff));
-            })
-
-            .def("__getitem__", [](maps::Map<T>& map,
-                                   py::tuple lm) -> double {
-                int l, m;
-                try {
-                    l = py::cast<int>(lm[0]);
-                    m = py::cast<int>(lm[1]);
-                } catch (const char* msg) {
-                    throw errors::IndexError("Invalid value for `l` and/or `m`.");
-                }
-                return static_cast<double>(map.getYlm(l, m));
-            })
-
-            .def("__getitem__", [](maps::Map<Vector<double>>& map,
-                                   int l) -> double {
-                return static_cast<double>(map.getUl(l));
-            })
-
-            .def("show", [](maps::Map<T> &map, string cmap, int res) {
+            .def("show", [](maps::Map<T> &map, std::string cmap, int res) {
                 py::object show = py::module::import("starry2.maps").attr("show");
                 Matrix<double> I;
                 I.resize(res, res);
@@ -88,11 +202,11 @@ namespace pybind_interface {
                 show(I, "cmap"_a=cmap, "res"_a=res);
             }, docs.Map.show, "cmap"_a="plasma", "res"_a=300)
 
-            .def("animate", [](maps::Map<T> &map, string cmap, int res,
+            .def("animate", [](maps::Map<T> &map, std::string cmap, int res,
                                int frames, std::string& gif) {
                 std::cout << "Rendering..." << std::endl;
                 py::object animate = py::module::import("starry2.maps").attr("animate");
-                vector<Matrix<double>> I;
+                std::vector<Matrix<double>> I;
                 Vector<Scalar<T>> x, theta;
                 x = Vector<Scalar<T>>::LinSpaced(res, -1, 1);
                 theta = Vector<Scalar<T>>::LinSpaced(frames, 0, 360);
@@ -109,7 +223,7 @@ namespace pybind_interface {
              }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150,
                                  "frames"_a=50, "gif"_a="")
 
-             .def("load_image", [](maps::Map<T> &map, string& image, int lmax) {
+             .def("load_image", [](maps::Map<T> &map, std::string& image, int lmax) {
                  py::object load_map = py::module::import("starry.maps").attr("load_map");
                  if (lmax == -1)
                     lmax = map.lmax;
@@ -150,29 +264,7 @@ namespace pybind_interface {
             .def_property_readonly("nwav",
                 [](maps::Map<Matrix<double>> &map){
                     return map.nwav;
-                }, docs.Map.nwav)
-
-            .def("__setitem__", [](maps::Map<Matrix<double>>& map,
-                                   py::tuple lm, Vector<double>& coeff) {
-                int l, m;
-                try {
-                    l = py::cast<int>(lm[0]);
-                    m = py::cast<int>(lm[1]);
-                } catch (const char* msg) {
-                    throw errors::IndexError("Invalid value for `l` and/or `m`.");
-                }
-                map.setYlm(l, m, coeff);
-            })
-
-            .def("__setitem__", [](maps::Map<Matrix<double>>& map,
-                                   int l, Vector<double>& coeff) {
-                map.setUl(l, coeff);
-            })
-
-            .def("__getitem__", [](maps::Map<Matrix<double>>& map,
-                                   int l) -> VectorT<double> {
-                return map.getUl(l);
-            });
+                }, docs.Map.nwav);
 
             // TODO: SHOW, ANIMATE, LOAD_IMAGE
 
@@ -183,6 +275,86 @@ namespace pybind_interface {
                  const docstrings::docs<Module>& docs) {
 
         PyMap
+
+            // Set one or more spherical harmonic coefficients to the same value
+            .def("__setitem__", [](maps::Map<T>& map, py::tuple lm, RowDouble<T>& coeff) {
+                auto inds = get_Ylm_inds(map.lmax, lm);
+                auto y = map.getY();
+                for (auto n : inds)
+                    setRow(y, n, coeff);
+                map.setY(y);
+            })
+
+            // Set one or more spherical harmonic coefficients to an array of values
+            .def("__setitem__", [](maps::Map<T>& map, py::tuple lm, MapDouble<T>& coeff) {
+                auto inds = get_Ylm_inds(map.lmax, lm);
+                auto y = map.getY();
+                int i = 0;
+                Row<T> row;
+                for (auto n : inds) {
+                    row = getRow(coeff, i++);
+                    setRow(y, n, row);
+                }
+                map.setY(y);
+            })
+
+            // Retrieve one or more spherical harmonic coefficients
+            .def("__getitem__", [](maps::Map<T>& map, py::tuple lm) -> py::object {
+                auto inds = get_Ylm_inds(map.lmax, lm);
+                auto y = map.getY();
+                MapDouble<T> res;
+                resize(res, inds.size(), map.nwav);
+                int i = 0;
+                Row<T> row;
+                for (auto n : inds) {
+                    row = getRow(y, n);
+                    setRow(res, i++, row);
+                }
+                if (inds.size() == 1)
+                    return py::cast<RowDouble<T>>(getRow(res, 0));
+                else
+                    return py::cast<MapDouble<T>>(res);
+            })
+
+            // Set one or more limb darkening coefficients to the same value
+            .def("__setitem__", [](maps::Map<T>& map, py::object l, RowDouble<T>& coeff) {
+                auto inds = get_Ul_inds(map.lmax, l);
+                auto u = map.getU();
+                for (auto n : inds)
+                    setRow(u, n - 1, coeff);
+                map.setU(u);
+            })
+
+            // Set one or more limb darkening coefficients to an array of values
+            .def("__setitem__", [](maps::Map<T>& map, py::object l, MapDouble<T>& coeff) {
+                auto inds = get_Ul_inds(map.lmax, l);
+                auto u = map.getU();
+                int i = 0;
+                Row<T> row;
+                for (auto n : inds) {
+                    row = getRow(coeff, i++);
+                    setRow(u, n - 1, row);
+                }
+                map.setU(u);
+            })
+
+            // Retrieve one or more limb darkening coefficients
+            .def("__getitem__", [](maps::Map<T>& map, py::object l) -> py::object {
+                auto inds = get_Ul_inds(map.lmax, l);
+                auto u = map.getU();
+                MapDouble<T> res;
+                resize(res, inds.size(), map.nwav);
+                int i = 0;
+                Row<T> row;
+                for (auto n : inds) {
+                    row = getRow(u, n - 1);
+                    setRow(res, i++, row);
+                }
+                if (inds.size() == 1)
+                    return py::cast<RowDouble<T>>(getRow(res, 0));
+                else
+                    return py::cast<MapDouble<T>>(res);
+            })
 
             .def_property("axis",
                 [](maps::Map<T> &map) -> UnitVector<double> {
@@ -203,32 +375,19 @@ namespace pybind_interface {
                     return map.N;
                 }, docs.Map.N)
 
-            // TODO: Currently, slice indexing works for the getter,
-            // but not for the setter. Unfortunately, it doesn't throw
-            // an error -- it just simply never calls this function,
-            // so the array does not get set.
-            .def_property("y", [](maps::Map<T> &map) -> Vector<double>{
+            .def_property_readonly("y", [](maps::Map<T> &map) -> MapDouble<T>{
                         return map.getY().template cast<double>();
-                    },
-                [](maps::Map<T> &map, Vector<double>& y){
-                        map.setY(y.template cast<Scalar<T>>());
-                    },
-                docs.Map.y)
+                    }, docs.Map.y)
 
-            // TODO: See note above.
-            .def_property("u", [](maps::Map<T> &map) -> Vector<double>{
+            .def_property_readonly("u", [](maps::Map<T> &map) -> MapDouble<T>{
                         return map.getU().template cast<double>();
-                    },
-                [](maps::Map<T> &map, Vector<double>& u){
-                        map.setU(u.template cast<Scalar<T>>());
-                    },
-                docs.Map.u)
+                    }, docs.Map.u)
 
-            .def_property_readonly("p", [](maps::Map<T> &map) -> Vector<double>{
+            .def_property_readonly("p", [](maps::Map<T> &map) -> MapDouble<T>{
                     return map.getP().template cast<double>();
                 }, docs.Map.p)
 
-            .def_property_readonly("g", [](maps::Map<T> &map) -> Vector<double>{
+            .def_property_readonly("g", [](maps::Map<T> &map) -> MapDouble<T>{
                     return map.getG().template cast<double>();
                 }, docs.Map.g)
 

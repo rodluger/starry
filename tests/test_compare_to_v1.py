@@ -19,7 +19,7 @@ def test_transit():
     flux = map.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro)
 
     map2 = starry2.Map(5)
-    map2.y = np.ones(map2.N)
+    map2[:, :] = 1
     map2.axis = axis
     flux2 = map2.flux(theta=theta, xo=xo, yo=yo, ro=ro)
 
@@ -31,7 +31,7 @@ def test_transit():
     flux = map.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro)
 
     map2 = starry2.multi.Map(5)
-    map2.y = np.ones(map2.N)
+    map2[:, :] = 1
     map2.axis = axis
     flux2 = map2.flux(theta=theta, xo=xo, yo=yo, ro=ro)
 
@@ -54,7 +54,7 @@ def test_gradient():
     grad = map.gradient
 
     map2 = starry2.Map(5)
-    map2.y = np.ones(map2.N)
+    map2[:, :] = 1
     map2.axis = axis
     flux2, grad2 = map2.flux(theta=theta, xo=xo, yo=yo, ro=ro, gradient=True)
 

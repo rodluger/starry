@@ -1,5 +1,5 @@
 /**
-Miscellaneous stuff used throughout the code.
+Vectorization wrappers for the `Map` methods.
 
 */
 

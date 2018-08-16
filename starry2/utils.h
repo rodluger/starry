@@ -175,7 +175,7 @@ namespace utils {
         return true;
     }
 
-    //! Figure out the dimensions of the coefficients of a map.
+    //! Figure out the dimensions and types of the coefficients of a map.
     namespace types {
 
         template <typename T>
@@ -186,6 +186,9 @@ namespace utils {
             using Column = Vector<T>;
             using Row = VectorT<T>;
             using Scalar = T;
+            using MapDouble = Matrix<double>;
+            using ColumnDouble = Vector<double>;
+            using RowDouble = VectorT<double>;
         };
 
         template <typename T>
@@ -193,15 +196,18 @@ namespace utils {
             using Column = T;
             using Row = T;
             using Scalar = T;
+            using MapDouble = Vector<double>;
+            using ColumnDouble = double;
+            using RowDouble = double;
         };
 
     }
 
-    //! The type of a `Map` row (vector^T or scalar)
+    //! The type of a `Map` row (Vector^T or scalar)
     template <class MapType>
     using Row = typename types::TypeSelector<MapType>::Row;
 
-    //! The type of a `Map` column (vector or scalar)
+    //! The type of a `Map` column (Vector or scalar)
     template <class MapType>
     using Column = typename types::TypeSelector<MapType>::Column;
 
@@ -209,6 +215,17 @@ namespace utils {
     template <class MapType>
     using Scalar = typename types::TypeSelector<MapType>::Scalar;
 
+    //! The type of a `Map` row cast to double (Vector^T or scalar)
+    template <class MapType>
+    using RowDouble = typename types::TypeSelector<MapType>::RowDouble;
+
+    //! The type of a `Map` column cast to double (Vector or scalar)
+    template <class MapType>
+    using ColumnDouble = typename types::TypeSelector<MapType>::ColumnDouble;
+
+    //! The type of a `Map` column cast to double (Vector or scalar)
+    template <class MapType>
+    using MapDouble = typename types::TypeSelector<MapType>::MapDouble;
 
     // --------------------------
     // -- Map coefficient utils -
@@ -266,23 +283,23 @@ namespace utils {
     }
 
     //! Set a row in a map tensor
-    template <class T>
-    inline void setRow(Vector<T>& vec, int row, T val) {
-        vec(row) = val;
+    template <class T, class U>
+    inline void setRow(Vector<T>& vec, int row, U val) {
+        vec(row) = static_cast<T>(val);
     }
 
     //! Set a row in a map tensor
-    template <class T>
-    inline void setRow(Matrix<T>& vec, int row, const VectorT<T>& val) {
+    template <class T, class U>
+    inline void setRow(Matrix<T>& vec, int row, const VectorT<U>& val) {
         if (val.size() != vec.cols())
             throw errors::ValueError("Size mismatch in the wavelength dimension.");
-        vec.row(row) = val;
+        vec.row(row) = val.template cast<T>();
     }
 
     //! Set a row in a map tensor
-    template <class T>
-    inline void setRow(Matrix<T>& vec, int row, T val) {
-        vec.row(row) = VectorT<T>::Constant(vec.cols(), val);
+    template <class T, class U>
+    inline void setRow(Matrix<T>& vec, int row, U val) {
+        vec.row(row) = VectorT<T>::Constant(vec.cols(), static_cast<T>(val));
     }
 
     //! Return a row in a map tensor
