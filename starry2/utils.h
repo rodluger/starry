@@ -251,6 +251,20 @@ namespace utils {
         obj = 0;
     }
 
+    //! Set a map tensor to one (all Eigen types)
+    template <class T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    setOnes(T& obj) {
+        obj.setOnes();
+    }
+
+    //! Set a map tensor to one (scalar overload)
+    template <class T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    setOnes(T& obj) {
+        obj = 1;
+    }
+
     //! Set a row in a map tensor
     template <class T>
     inline void setRow(Vector<T>& vec, int row, T val) {

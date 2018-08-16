@@ -41,6 +41,7 @@ namespace docstrings {
         const char * rotate;
         const char * show;
         const char * animate;
+        const char * load_image;
         void add_extras() { doc = R"pbdoc()pbdoc"; };
 
         Map_() {
@@ -154,6 +155,16 @@ namespace docstrings {
                     gif (str): The name of the `.gif` file to save the animation to. \
                                Requires `ImageMagick` to be installed. If set, does not \
                                show the animation. Default :py:obj:`None`.
+            )pbdoc";
+
+            load_image = R"pbdoc(
+                Load an image from file.
+                This routine loads an image file, computes its spherical harmonic
+                expansion up to degree :py:attr:`lmax`, and sets the map vector.
+                Args:
+                    image (str): The full path to the image file.
+                    lmax (int): The maximum degree of the spherical harmonic expansion \
+                                of the image. Default :py:attr:`map.lmax`.
             )pbdoc";
 
             add_extras();

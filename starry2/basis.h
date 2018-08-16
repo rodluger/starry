@@ -205,7 +205,7 @@ namespace basis {
 
     */
     template <typename T>
-    void computeA(int lmax, Eigen::SparseMatrix<T>& A1, Eigen::SparseMatrix<T>& A) {
+    void computeA(int lmax, const Eigen::SparseMatrix<T>& A1, Eigen::SparseMatrix<T>& A2, Eigen::SparseMatrix<T>& A) {
         int i, n, l, m, mu, nu;
         int N = (lmax + 1) * (lmax + 1);
 
@@ -257,6 +257,11 @@ namespace basis {
         Eigen::SparseMatrix<T> A2Inv = A2InvDense.sparseView();
         Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
         solver.compute(A2Inv);
+        if (solver.info() != Eigen::Success) {
+            throw errors::LinearAlgebraError("Error computing the change of basis matrix `A2`.");
+        }
+        Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
+        A2 = solver.solve(I);
         if (solver.info() != Eigen::Success) {
             throw errors::LinearAlgebraError("Error computing the change of basis matrix `A2`.");
         }
@@ -427,7 +432,8 @@ namespace basis {
 
             const int lmax;                                                     /**< The highest degree of the map */
             Eigen::SparseMatrix<T> A1;                                          /**< The polynomial change of basis matrix */
-            Eigen::SparseMatrix<T> A;                                           /**< The Green's change of basis matrix */
+            Eigen::SparseMatrix<T> A2;                                          /**< The Green's change of basis matrix */
+            Eigen::SparseMatrix<T> A;                                           /**< The full change of basis matrix */
             Matrix<T> U;                                                        /**< The limb darkening change of basis matrix */
             VectorT<T> rT;                                                      /**< The rotation solution vector */
             VectorT<T> rTA1;                                                    /**< The rotation vector times the `Ylm` change of basis matrix */
@@ -435,7 +441,7 @@ namespace basis {
             // Constructor: compute the matrices
             Basis(int lmax) : lmax(lmax) {
                 computeA1(lmax, A1);
-                computeA(lmax, A1, A);
+                computeA(lmax, A1, A2, A);
                 computeU(lmax, U);
                 computerT(lmax, rT);
                 rTA1 = rT * A1;

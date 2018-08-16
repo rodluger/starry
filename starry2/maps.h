@@ -79,6 +79,7 @@ namespace maps {
             T mtmp;                                                             /**< A temporary surface map vector */
             T mtmp2;                                                            /**< A temporary surface map vector */
             T p_uy;                                                             /**< The instantaneous limb-darkened map in the polynomial basis */
+            T g_uy;                                                             /**< The instantaneous limb-darkened map in the Green's basis */
             T Ry;                                                               /**< The rotated spherical harmonic vector */
             T dRdthetay;                                                        /**< Derivative of `Ry` with respect to `theta` */
             T* ptr_A1Ry;                                                        /**< Pointer to rotated polynomial vector */
@@ -90,10 +91,11 @@ namespace maps {
             Column<T> ctmp;                                                     /**< A temporary surface map col vector */
             Scalar<T> cache_theta;                                              /**< Cached rotation angle */
             T cache_p;                                                          /**< Cached polynomial map */
-            Power<Scalar<T>> xpow_scalar;
-            Power<Scalar<T>> ypow_scalar;
-            Power<ADScalar<Scalar<T>, 2>> xpow_grad;
-            Power<ADScalar<Scalar<T>, 2>> ypow_grad;
+            T cache_g;                                                          /**< Cached Green's map */
+            Power<Scalar<T>> xpow_scalar;                                       /**< Powers of x for map evaluation */
+            Power<Scalar<T>> ypow_scalar;                                       /**< Powers of y for map evaluation */
+            Power<ADScalar<Scalar<T>, 2>> xpow_grad;                            /**< Powers of x for gradient map evaluation */
+            Power<ADScalar<Scalar<T>, 2>> ypow_grad;                            /**< Powers of y for gradient map evaluation */
 
             // Private methods
             template <typename U>
@@ -529,11 +531,6 @@ namespace maps {
     /**
     Evaluate the map at a given (x0, y0) coordinate
 
-    TODO: Can be vectorized intelligently to speed up
-          plotting! Currently we're doing a lot of
-          repetitive linear algebra for each frame
-          of the animation.
-
     */
     template <class T>
     inline Row<T> Map<T>::evaluate(const Scalar<T>& theta_,
@@ -618,8 +615,8 @@ namespace maps {
     */
     template <class T>
     inline Row<T> Map<T>::evaluate_with_gradient(const Scalar<T>& theta_,
-                                                    const Scalar<T>& x_,
-                                                    const Scalar<T>& y_) {
+                                                 const Scalar<T>& x_,
+                                                 const Scalar<T>& y_) {
 
         // Convert to internal type
         Scalar<T> x0 = x_;
@@ -696,15 +693,13 @@ namespace maps {
     /**
     Compute the flux during or outside of an occultation
 
-    TODO: Add limb darkening
-
     */
     template <class T>
     inline Row<T> Map<T>::flux(const Scalar<T>& theta_,
-                                  const Scalar<T>& xo_,
-                                  const Scalar<T>& yo_,
-                                  const Scalar<T>& ro_,
-                                  bool gradient) {
+                               const Scalar<T>& xo_,
+                               const Scalar<T>& yo_,
+                               const Scalar<T>& ro_,
+                               bool gradient) {
 
         // If we're computing the gradient as well,
         // call the specialized function
@@ -726,10 +721,11 @@ namespace maps {
             return ctmp;
         }
 
+        // This is the pointer to the rotated sph. harm. map
+        ptr_Ry = &y;
+
         // Rotate the map into view
-        if (theta == 0) {
-            ptr_Ry = &y;
-        } else {
+        if (y_deg > 0) {
             W.rotate(cos(theta), sin(theta), Ry);
             mtmp = Ry;
             ptr_Ry = &mtmp;
@@ -738,16 +734,70 @@ namespace maps {
         // No occultation
         if ((b >= 1 + ro) || (ro == 0)) {
 
-            // This is very easy!
-            return (B.rTA1 * (*ptr_Ry));
+            if ((y_deg == 0) && (u_deg > 0)) {
+
+                // Limb darkening only: flux is normalized to unity
+                setOnes(ctmp);
+                return ctmp;
+
+            } else {
+
+                // Business as usual
+                return (B.rTA1 * (*ptr_Ry));
+
+            }
 
         // Occultation
         } else {
 
-            // Align occultor with the +y axis
-            if ((b > 0) && ((xo != 0) || (yo < 0))) {
-                W.rotatez(yo / b, xo / b, *ptr_Ry, mtmp);
-                ptr_Ry = &mtmp;
+            // Apply limb darkening
+            if (u_deg > 0) {
+
+                if (theta == cache_theta) {
+
+                    ptr_Ry = &cache_g;
+
+                } else {
+
+                    // ************************
+                    // TODO: VERIFY ALL OF THIS
+                    // ************************
+                    // In particular, if the user **only** sets the
+                    // limb darkening coefficients, we should get the
+                    // same result as if the user sets Y_{0,0} = 1.
+
+                    // Multiply the map and the LD polynomial
+                    polymul(y_deg, *ptr_Ry, u_deg, p_u, lmax, g_uy);
+
+                    // Normalize it by enforcing that limb darkening does not
+                    // change the total disk-integrated flux.
+                    rtmp = dot(B.rT, *ptr_Ry);
+                    if (hasZero(rtmp))
+                        throw errors::ValueError("Error computing the limb darkening "
+                                                 "normalization: the visible map has "
+                                                 "zero net flux!");
+                    g_uy *= cwiseQuotient(rtmp, dot(B.rT, p_uy));
+
+                    // Convert to the Green's basis
+                    g_uy = B.A2 * g_uy;
+
+                    // Update our pointer
+                    ptr_Ry = &g_uy;
+
+                    // Cache the map
+                    cache_theta = theta;
+                    cache_g = *ptr_Ry;
+
+                }
+
+            }
+
+            // Rotate the map to align the occultor with the +y axis
+            if (y_deg > 0) {
+                if ((b > 0) && ((xo != 0) || (yo < 0))) {
+                    W.rotatez(yo / b, xo / b, *ptr_Ry, mtmp);
+                    ptr_Ry = &mtmp;
+                }
             }
 
             // Perform the rotation + change of basis
@@ -774,9 +824,9 @@ namespace maps {
 
     template <class T>
     inline Row<T> Map<T>::flux_with_gradient(const Scalar<T>& theta_deg,
-                                                const Scalar<T>& xo_,
-                                                const Scalar<T>& yo_,
-                                                const Scalar<T>& ro_) {
+                                             const Scalar<T>& xo_,
+                                             const Scalar<T>& yo_,
+                                             const Scalar<T>& ro_) {
 
         // Convert to internal type
         Scalar<T> xo = xo_;

@@ -105,10 +105,37 @@ namespace pybind_interface {
                         }
                     }
                 }
-                std::cout << "Plotting..." << std::endl;
                 animate(I, "cmap"_a=cmap, "res"_a=res, "gif"_a=gif);
-            }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150,
-                                 "frames"_a=50, "gif"_a="");
+             }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150,
+                                 "frames"_a=50, "gif"_a="")
+
+             .def("load_image", [](maps::Map<T> &map, string& image, int lmax) {
+                 py::object load_map = py::module::import("starry.maps").attr("load_map");
+                 if (lmax == -1)
+                    lmax = map.lmax;
+                 Vector<double> y_double = load_map(image, map.lmax).template cast<Vector<double>>();
+                 T y = y_double.template cast<Scalar<T>>();
+                 Scalar<T> y_normed;
+                 int n = 0;
+                 for (int l = 0; l < lmax + 1; ++l) {
+                     for (int m = -l; m < l + 1; ++m) {
+                         y_normed = y(n) / y(0);
+                         map.setYlm(l, m, y_normed);
+                         ++n;
+                     }
+                 }
+                 // We need to apply some rotations to get to the
+                 // desired orientation, where the center of the image
+                 // is projected onto the sub-observer point
+                 auto map_axis = map.getAxis();
+                 map.setAxis(xhat<Scalar<T>>());
+                 map.rotate(90.0);
+                 map.setAxis(zhat<Scalar<T>>());
+                 map.rotate(180.0);
+                 map.setAxis(yhat<Scalar<T>>());
+                 map.rotate(90.0);
+                 map.setAxis(map_axis);
+             }, docs.Map.load_image, "image"_a, "lmax"_a=-1);
 
     }
 
@@ -147,7 +174,7 @@ namespace pybind_interface {
                 return map.getUl(l);
             });
 
-            // TODO: SHOW AND ANIMATE
+            // TODO: SHOW, ANIMATE, LOAD_IMAGE
 
     }
 
