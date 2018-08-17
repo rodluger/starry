@@ -8,29 +8,28 @@ using namespace utils;
 int main() {
 
     using T = Vector<double>;
-    int lmax = 10;
-    int res = 150;
-    int frames = 50;
-    
-    maps::Map<T> map(lmax);
-    for (int l = 0; l < lmax + 1; ++l) {
-        for (int m = -l; m < l + 1; ++m) {
-            map.setYlm(l, m, 1.0);
-        }
-    }
-    std::vector<Matrix<double>> I;
-    Vector<Scalar<T>> x, theta;
-    x = Vector<Scalar<T>>::LinSpaced(res, -1, 1);
-    theta = Vector<Scalar<T>>::LinSpaced(frames, 0, 360);
-    for (int t = 0; t < frames; t++){
-        I.push_back(Matrix<double>::Zero(res, res));
-        for (int i = 0; i < res; i++){
-            for (int j = 0; j < res; j++){
-                I[t](j, i) = static_cast<double>(
-                             map.evaluate(theta(t), x(i), x(j)));
-            }
-        }
-    }
+    maps::Map<T> map(10);
+
+    map.setYlm(5, 5, 1.0);
+    std::cout << map.__repr__() << std::endl;
+
+    map.setYlm(4, 4, 1.0);
+    std::cout << map.__repr__() << std::endl;
+
+    map.setYlm(5, 5, 0.0);
+    std::cout << map.__repr__() << std::endl;
+
+    map.setUl(1, 1.0);
+    std::cout << map.__repr__() << std::endl;
+
+    map.setUl(3, 1.0);
+    std::cout << map.__repr__() << std::endl;
+
+    map.setUl(3, 0.0);
+    std::cout << map.__repr__() << std::endl;
+
+    map.setUl(1, 0.0);
+    std::cout << map.__repr__() << std::endl;
 
     /*
     int lmax = 2;

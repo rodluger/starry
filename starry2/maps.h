@@ -296,11 +296,22 @@ namespace maps {
     */
     template <class T>
     void Map<T>::setYlm(int l, int m, const Row<T>& coeff) {
-        // TODO: If coeff is zero, re-compute y_deg
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
             setRow(y, n, coeff);
-            y_deg = max(y_deg, l);
+            if (allZero(coeff)) {
+                // If coeff is zero, we need to re-compute y_deg
+                for (y_deg = l - 1; y_deg >= 0; --y_deg) {
+                    for (int m = -y_deg; m < y_deg + 1; ++m){
+                        if (!allZero(getRow(y, y_deg * y_deg + y_deg + m))) {
+                            update();
+                            return;
+                        }
+                    }
+                }
+            } else {
+                y_deg = max(y_deg, l);
+            }
             if (y_deg + u_deg > lmax)
                 throw errors::ValueError("Degree of the limb-darkened map exceeds `lmax`.");
             update();
@@ -327,10 +338,18 @@ namespace maps {
     */
     template <class T>
     void Map<T>::setUl(int l, const Row<T>& coeff) {
-        // TODO: If coeff is zero, re-compute u_deg
         if ((1 <= l) && (l <= lmax)) {
             setRow(u, l, coeff);
-            u_deg = max(u_deg, l);
+            if (allZero(coeff)) {
+                // If coeff is zero, we need to re-compute u_deg
+                for (u_deg = l - 1; u_deg >= 0; --u_deg) {
+                    if (!allZero(getRow(u, u_deg))) {
+                        break;
+                    }
+                }
+            } else {
+                u_deg = max(u_deg, l);
+            }
             if (y_deg + u_deg > lmax)
                 throw errors::ValueError("Degree of the limb-darkened map exceeds `lmax`.");
             update();
@@ -400,6 +419,7 @@ namespace maps {
     void Map<T>::setY(const T& y_) {
         if ((y_.rows() == y.rows()) && (y_.cols() == y.cols())) {
             y = y_;
+            y_deg = 0;
             for (int l = lmax; l >= 0; --l) {
                 if ((y.block(l * l, 0, 2 * l + 1, nwav).array() != 0.0).any()) {
                     y_deg = l;
@@ -429,8 +449,9 @@ namespace maps {
     void Map<T>::setU(const T& u_) {
         if ((u_.rows() == u.rows() - 1) && (u_.cols() == u.cols())) {
             u.block(1, 0, lmax, nwav) = u_;
+            u_deg = 0;
             for (int l = lmax; l > 0; --l) {
-                if (u(l) != 0) {
+                if (!allZero(getRow(u, l))) {
                     u_deg = l;
                     break;
                 }
@@ -995,7 +1016,7 @@ namespace maps {
         std::ostringstream os;
         os << "<"
            << "Ylm map of "
-           << "degree " << map.lmax << " "
+           << "degree " << map.y_deg << " "
            << "with ";
         if (map.u_deg == 0)
             os << "no ";
@@ -1019,7 +1040,7 @@ namespace maps {
         os << "<"
            << STARRY_NMULTI << "-digit precision "
            << "Ylm map of "
-           << "degree " << map.lmax << " "
+           << "degree " << map.y_deg << " "
            << "with ";
         if (map.u_deg == 0)
             os << "no ";
@@ -1042,7 +1063,7 @@ namespace maps {
         std::ostringstream os;
         os << "<"
            << "Ylm map of "
-           << "degree " << map.lmax << " "
+           << "degree " << map.y_deg << " "
            << "with ";
         if (map.nwav == 1)
             os << "one wavelength bin and ";

@@ -328,6 +328,20 @@ namespace utils {
         return v == 0.0;
     }
 
+    //! Does a map tensor have all zero elements?
+    template <typename T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    allZero(const T& v) {
+        return (v.array() == 0.0).all();
+    }
+
+    //! Does a map tensor have all zero elements?
+    template <typename T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    allZero(const T& v) {
+        return v == 0.0;
+    }
+
     //! Vector-vector dot product
     template <typename T>
     T dot(const VectorT<T>& vT, const Vector<T>& u) {
