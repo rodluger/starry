@@ -118,7 +118,7 @@ namespace basis {
     instantiated.
     */
     template <typename T>
-    void computeA1(int lmax, Eigen::SparseMatrix<T>& A1, T norm=1.0, T tol=10 * std::numeric_limits<T>::epsilon()) {
+    void computeA1(int lmax, Eigen::SparseMatrix<T>& A1, T norm=0.5 / root_pi<T>(), T tol=10 * std::numeric_limits<T>::epsilon()) {
         int l, m;
         int n = 0;
         int i, j, k, p, q, v;
@@ -282,7 +282,7 @@ namespace basis {
 
     */
     template <typename T>
-    void computeU(int lmax, Matrix<T>& U, T norm=1.0) {
+    void computeU(int lmax, Matrix<T>& U, T norm=0.5 / root_pi<T>()) {
         T amp;
         Matrix<T> LT, YT;
         LT.setZero(lmax + 1, lmax + 1);
@@ -440,6 +440,7 @@ namespace basis {
             const int lmax;                                                     /**< The highest degree of the map */
             const double norm;                                                  /**< Map normalization constant */
             Eigen::SparseMatrix<T> A1;                                          /**< The polynomial change of basis matrix */
+            Eigen::SparseMatrix<T> A1Inv;                                       /**< The inverse of the polynomial change of basis matrix */
             Eigen::SparseMatrix<T> A2;                                          /**< The Green's change of basis matrix */
             Eigen::SparseMatrix<T> A;                                           /**< The full change of basis matrix */
             Matrix<T> U;                                                        /**< The limb darkening change of basis matrix */
@@ -447,13 +448,23 @@ namespace basis {
             VectorT<T> rTA1;                                                    /**< The rotation vector times the `Ylm` change of basis matrix */
 
             // Constructor: compute the matrices
-            explicit Basis(int lmax, T norm=1.0) :
+            explicit Basis(int lmax, T norm=0.5 / root_pi<T>()) :
                     lmax(lmax), norm(norm) {
                 computeA1(lmax, A1, norm);
                 computeA(lmax, A1, A2, A);
                 computeU(lmax, U, norm);
                 computerT(lmax, rT);
                 rTA1 = rT * A1;
+
+                int N = (lmax + 1) * (lmax + 1);
+                Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
+                solver.compute(A1);
+                if (solver.info() != Eigen::Success)
+                    throw errors::LinearAlgebraError("Error computing the change of basis matrix `A1Inv`.");
+                Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
+                A1Inv = solver.solve(I);
+
+
             }
 
     };

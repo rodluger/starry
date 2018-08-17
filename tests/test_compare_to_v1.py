@@ -2,6 +2,7 @@
 import starry
 import starry2
 import numpy as np
+norm = 2 * np.sqrt(np.pi)
 
 
 def test_transit():
@@ -19,7 +20,7 @@ def test_transit():
     flux = map.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro)
 
     map2 = starry2.Map(5)
-    map2[:, :] = 1
+    map2[:, :] = norm
     map2.axis = axis
     flux2 = map2.flux(theta=theta, xo=xo, yo=yo, ro=ro)
 
@@ -31,7 +32,7 @@ def test_transit():
     flux = map.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro)
 
     map2 = starry2.multi.Map(5)
-    map2[:, :] = 1
+    map2[:, :] = norm
     map2.axis = axis
     flux2 = map2.flux(theta=theta, xo=xo, yo=yo, ro=ro)
 
@@ -54,7 +55,7 @@ def test_gradient():
     grad = map.gradient
 
     map2 = starry2.Map(5)
-    map2[:, :] = 1
+    map2[:, :] = norm
     map2.axis = axis
     flux2, grad2 = map2.flux(theta=theta, xo=xo, yo=yo, ro=ro, gradient=True)
 
@@ -63,7 +64,10 @@ def test_gradient():
 
     # Check the gradients are close
     for key in grad.keys():
-        assert(np.allclose(grad[key], grad2[key]))
+        if ('Y_' in key):
+            assert(np.allclose(grad[key], norm * grad2[key]))
+        else:
+            assert(np.allclose(grad[key], grad2[key]))
 
 
 if __name__ == "__main__":

@@ -1,32 +1,33 @@
 """Test the rotation matrices."""
 import starry2
 import numpy as np
+norm = 2 * np.sqrt(np.pi)
 
 
 def run(Map):
     """Apply some elementary rotations."""
     # Instantiate
     map = Map(1)
-    map[1, 0] = 1
-    assert np.allclose(map.y, np.array([0, 0, 1, 0]))
+    map[1, 0] = norm
+    assert np.allclose(map.y, np.array([0, 0, norm, 0]))
 
     # Elemental rotations
     map.axis = [1, 0, 0]
     map.rotate(-90)
-    assert np.allclose(map.y, np.array([0, 1, 0, 0]))
+    assert np.allclose(map.y, np.array([0, norm, 0, 0]))
     assert np.allclose(map.p, np.array([0, 0, 0,
-                                      np.sqrt(3 / (4 * np.pi))]))
+                                        np.sqrt(3 / (4 * np.pi))]))
 
     map.axis = [0, 0, 1]
     map.rotate(-90)
-    assert np.allclose(map.y, np.array([0, 0, 0, 1]))
+    assert np.allclose(map.y, np.array([0, 0, 0, norm]))
     assert np.allclose(map.p, np.array([0,
-                                      np.sqrt(3 / (4 * np.pi)), 0, 0]))
+                                        np.sqrt(3 / (4 * np.pi)), 0, 0]))
     map.axis = [0, 1, 0]
     map.rotate(-90)
-    assert np.allclose(map.y, np.array([0, 0, 1, 0]))
+    assert np.allclose(map.y, np.array([0, 0, norm, 0]))
     assert np.allclose(map.p, np.array([0, 0,
-                                      np.sqrt(3 / (4 * np.pi)), 0]))
+                                        np.sqrt(3 / (4 * np.pi)), 0]))
 
     # A more complex rotation
     map = Map(5)
@@ -46,7 +47,7 @@ def run(Map):
 
     # Test rotation caching
     map = Map(2)
-    map[1, 0] = 1
+    map[1, 0] = norm
     map.axis = [1, 2, 3]
     assert np.allclose(map.evaluate(theta=[30, 30, 30]), 0.46522382467359763)
     map.axis = [3, 2, 1]

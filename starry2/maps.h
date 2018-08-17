@@ -52,7 +52,6 @@ namespace maps {
             const int lmax;                                                     /**< The highest degree of the map */
             const int N;                                                        /**< The number of map coefficients */
             const int nwav;                                                     /**< The number of wavelengths */
-            const Scalar<T> norm;                                               /**< The map normalization constant */
             T dI;                                                               /**< Gradient of the intensity */
             std::vector<string> dI_names;                                       /**< Names of each of the params in the intensity gradient */
             T dF;                                                               /**< Gradient of the flux */
@@ -103,7 +102,7 @@ namespace maps {
             int cache_oper;                                                     /**< Cached operation identifier */
             Scalar<T> cache_theta;                                              /**< Cached rotation angle */
             T cache_p;                                                          /**< Cached polynomial map */
-            T cache_g;                                                          /**< Cached Green's map */
+            T cache_y;                                                          /**< Cached Ylm map */
             Power<Scalar<T>> xpow_scalar;                                       /**< Powers of x for map evaluation */
             Power<Scalar<T>> ypow_scalar;                                       /**< Powers of y for map evaluation */
             Power<ADScalar<Scalar<T>, 2>> xpow_grad;                            /**< Powers of x for gradient map evaluation */
@@ -130,14 +129,13 @@ namespace maps {
             Instantiate a `Map`.
 
             */
-            explicit Map(int lmax=2, int nwav=1, Scalar<T> norm=0.5 / root_pi<Scalar<T>>()) :
+            explicit Map(int lmax=2, int nwav=1) :
                 lmax(lmax),
                 N((lmax + 1) * (lmax + 1)),
                 nwav(nwav),
-                norm(norm),
                 dI_names({"theta", "x", "y"}),
                 dF_names({"theta", "xo", "yo", "ro"}),
-                B(lmax, norm),
+                B(lmax),
                 W(lmax, nwav, (*this).y, (*this).axis),
                 G(lmax),
                 G_grad(lmax),
@@ -782,8 +780,11 @@ namespace maps {
 
             if ((y_deg == 0) && (u_deg > 0)) {
 
-                // Limb darkening only: flux is normalized to unity
+                // Limb darkening only: since the 4*pi integrated
+                // intensity is unity, the disk-integrated intensity
+                // (over pi radians) is one quarter.
                 setOnes(ctmp);
+                ctmp *= 0.25;
                 return ctmp;
 
             } else {
@@ -801,39 +802,44 @@ namespace maps {
 
                 if ((theta == cache_theta) && (cache_oper == CACHE_FLUX)) {
 
-                    ptr_Ry = &cache_g;
+                    ptr_Ry = &cache_y;
 
                 } else {
 
                     // ************************
                     // TODO: VERIFY ALL OF THIS
                     // ************************
-                    // In particular, if the user **only** sets the
-                    // limb darkening coefficients, we should get the
-                    // same result as if the user sets Y_{0,0} = 1.
+                    // The back-and-forth changes of basis are SLOW.
+                    //
+                    // Also, limb darkening only works if the user
+                    // specified the Y_{0,0} coefficient. We should
+                    // think about how to make this more intuitive.
+
+                    // Transform into the polynomial basis
+                    mtmp = B.A1 * (*ptr_Ry);
 
                     // Multiply the map and the LD polynomial
-                    polymul(y_deg, *ptr_Ry, u_deg, p_u, lmax, g_uy);
+                    polymul(y_deg, mtmp, u_deg, p_u, lmax, p_uy);
 
                     // Normalize it by enforcing that limb darkening does not
                     // change the total disk-integrated flux.
-                    rtmp = dot(B.rT, *ptr_Ry);
+                    rtmp = dot(B.rT, mtmp);
                     if (hasZero(rtmp))
                         throw errors::ValueError("Error computing the limb darkening "
                                                  "normalization: the visible map has "
                                                  "zero net flux!");
-                    g_uy *= cwiseQuotient(rtmp, dot(B.rT, g_uy));
+                    p_uy *= cwiseQuotient(rtmp, dot(B.rT, p_uy));
 
-                    // Convert to the Green's basis
-                    g_uy = B.A2 * g_uy;
+                    // Back to the spherical harmonic basis
+                    mtmp = B.A1Inv * mtmp;
 
                     // Update our pointer
-                    ptr_Ry = &g_uy;
+                    ptr_Ry = &mtmp;
 
                     // Cache the map
                     cache_oper = CACHE_FLUX;
                     cache_theta = theta;
-                    cache_g = *ptr_Ry;
+                    cache_y = *ptr_Ry;
 
                 }
 
