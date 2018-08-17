@@ -780,11 +780,8 @@ namespace maps {
 
             if ((y_deg == 0) && (u_deg > 0)) {
 
-                // Limb darkening only: since the 4*pi integrated
-                // intensity is unity, the disk-integrated intensity
-                // (over pi radians) is one quarter.
+                // Limb darkening only: disk-integrated intensity is unity
                 setOnes(ctmp);
-                ctmp *= 0.25;
                 return ctmp;
 
             } else {

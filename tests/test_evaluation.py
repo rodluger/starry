@@ -1,7 +1,7 @@
 """Test the map evaluation."""
 import starry2
 import numpy as np
-norm = 2 * np.sqrt(np.pi)
+norm = 0.5 * np.sqrt(np.pi)
 
 
 def numerical_gradient(Map, lmax, yvec, axis, theta, x, y, eps=1e-8):

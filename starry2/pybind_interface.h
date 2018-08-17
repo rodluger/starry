@@ -29,7 +29,6 @@ namespace pybind_interface {
     namespace vectorize = pybind_vectorize;
     using namespace utils;
     using namespace pybind11::literals;
-    using pybind_utils::reinterpret_slice;
     using pybind_utils::get_Ylm_inds;
     using pybind_utils::get_Ul_inds;
 

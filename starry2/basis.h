@@ -118,7 +118,7 @@ namespace basis {
     instantiated.
     */
     template <typename T>
-    void computeA1(int lmax, Eigen::SparseMatrix<T>& A1, T norm=0.5 / root_pi<T>(), T tol=10 * std::numeric_limits<T>::epsilon()) {
+    void computeA1(int lmax, Eigen::SparseMatrix<T>& A1, T norm, T tol=10 * std::numeric_limits<T>::epsilon()) {
         int l, m;
         int n = 0;
         int i, j, k, p, q, v;
@@ -282,7 +282,7 @@ namespace basis {
 
     */
     template <typename T>
-    void computeU(int lmax, Matrix<T>& U, T norm=0.5 / root_pi<T>()) {
+    void computeU(int lmax, Matrix<T>& U, T norm) {
         T amp;
         Matrix<T> LT, YT;
         LT.setZero(lmax + 1, lmax + 1);
@@ -448,7 +448,7 @@ namespace basis {
             VectorT<T> rTA1;                                                    /**< The rotation vector times the `Ylm` change of basis matrix */
 
             // Constructor: compute the matrices
-            explicit Basis(int lmax, T norm=0.5 / root_pi<T>()) :
+            explicit Basis(int lmax, T norm=2.0 / root_pi<T>()) :
                     lmax(lmax), norm(norm) {
                 computeA1(lmax, A1, norm);
                 computeA(lmax, A1, A2, A);
@@ -456,6 +456,7 @@ namespace basis {
                 computerT(lmax, rT);
                 rTA1 = rT * A1;
 
+                // TODO: This matrix may not be necessary in the end.
                 int N = (lmax + 1) * (lmax + 1);
                 Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
                 solver.compute(A1);
@@ -463,7 +464,6 @@ namespace basis {
                     throw errors::LinearAlgebraError("Error computing the change of basis matrix `A1Inv`.");
                 Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
                 A1Inv = solver.solve(I);
-
 
             }
 

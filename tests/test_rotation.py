@@ -1,7 +1,7 @@
 """Test the rotation matrices."""
 import starry2
 import numpy as np
-norm = 2 * np.sqrt(np.pi)
+norm = 0.5 * np.sqrt(np.pi)
 
 
 def run(Map):
