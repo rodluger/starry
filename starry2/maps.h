@@ -34,6 +34,12 @@ namespace maps {
     using solver::Greens;
     using solver::Power;
 
+    // Forward-declare some stuff
+    template <class T> class Map;
+    template <class T> std::string info(const Map<T>& map);
+    template <> std::string info(const Map<Vector<Multi>>& map);
+    template <> std::string info(const Map<Matrix<double>>& map);
+
     /**
     The main surface map class.
 
@@ -101,6 +107,10 @@ namespace maps {
             Power<Scalar<T>> ypow_scalar;                                       /**< Powers of y for map evaluation */
             Power<ADScalar<Scalar<T>, 2>> xpow_grad;                            /**< Powers of x for gradient map evaluation */
             Power<ADScalar<Scalar<T>, 2>> ypow_grad;                            /**< Powers of y for gradient map evaluation */
+
+            // External info function
+            template <class U>
+            friend std::string info(const Map<U>& map);
 
             // Private methods
             template <typename U>
@@ -470,16 +480,11 @@ namespace maps {
     /**
     Return a human-readable map string
 
-    TODO: Output a detailed summary of the map.
-
     */
     template <class T>
     std::string Map<T>::__repr__() {
-        std::ostringstream os;
-        os << "<STARRY Map>";
-        return std::string(os.str());
+        return info(*this);
     }
-
 
     /* ------------- */
     /*   ROTATIONS   */
@@ -983,6 +988,81 @@ namespace maps {
         }
 
     }
+
+    //! Human-readable name of the map
+    template <class T>
+    std::string info(const Map<T>& map) {
+        std::ostringstream os;
+        os << "<"
+           << "Ylm map of "
+           << "degree " << map.lmax << " "
+           << "with ";
+        if (map.u_deg == 0)
+            os << "no ";
+        else if (map.u_deg == 1)
+            os << "1st order ";
+        else if (map.u_deg == 2)
+            os << "2nd order ";
+        else if (map.u_deg == 3)
+            os << "3rd order ";
+        else
+            os << map.u_deg << "th order ";
+        os << "limb darkening"
+           << ">";
+        return std::string(os.str());
+    }
+
+    //! Human-readable name of the map (multi)
+    template <>
+    std::string info(const Map<Vector<Multi>>& map) {
+        std::ostringstream os;
+        os << "<"
+           << STARRY_NMULTI << "-digit precision "
+           << "Ylm map of "
+           << "degree " << map.lmax << " "
+           << "with ";
+        if (map.u_deg == 0)
+            os << "no ";
+        else if (map.u_deg == 1)
+            os << "1st order ";
+        else if (map.u_deg == 2)
+            os << "2nd order ";
+        else if (map.u_deg == 3)
+            os << "3rd order ";
+        else
+            os << map.u_deg << "th order ";
+        os << "limb darkening"
+           << ">";
+        return std::string(os.str());
+    }
+
+    //! Human-readable name of the map (spectral)
+    template <>
+    std::string info(const Map<Matrix<double>>& map) {
+        std::ostringstream os;
+        os << "<"
+           << "Ylm map of "
+           << "degree " << map.lmax << " "
+           << "with ";
+        if (map.nwav == 1)
+            os << "one wavelength bin and ";
+        else
+            os << map.nwav << " wavelength bins and ";
+        if (map.u_deg == 0)
+            os << "no ";
+        else if (map.u_deg == 1)
+            os << "1st order ";
+        else if (map.u_deg == 2)
+            os << "2nd order ";
+        else if (map.u_deg == 3)
+            os << "3rd order ";
+        else
+            os << map.u_deg << "th order ";
+        os << "limb darkening"
+           << ">";
+        return std::string(os.str());
+    }
+
 
 }; // namespace maps
 

@@ -70,6 +70,8 @@ namespace pybind_utils {
 
     */
     std::vector<int> get_Ylm_inds(const int lmax, const py::tuple& lm) {
+        int N = (lmax + 1) * (lmax + 1);
+        int n;
         if (lm.size() != 2)
             throw errors::IndexError("Invalid `l`, `m` tuple.");
         std::vector<int> inds;
@@ -77,7 +79,10 @@ namespace pybind_utils {
             // User provided `(l, m)`
             int l = py::cast<int>(lm[0]);
             int m = py::cast<int>(lm[1]);
-            inds.push_back(l * l + l + m);
+            n = l * l + l + m;
+            if ((n < 0) || (n >= N))
+                throw errors::IndexError("Invalid value for `l` and/or `m`.");
+            inds.push_back(n);
             return inds;
         } else if ((py::isinstance<py::slice>(lm[0])) && (py::isinstance<py::slice>(lm[1]))) {
             // User provided `(slice, slice)`
@@ -95,7 +100,10 @@ namespace pybind_utils {
                 if (mstop > l)
                     mstop = l;
                 for (int m = mstart; m < mstop + 1; m += mstep) {
-                    inds.push_back(l * l + l + m);
+                    n = l * l + l + m;
+                    if ((n < 0) || (n >= N))
+                        throw errors::IndexError("Invalid value for `l` and/or `m`.");
+                    inds.push_back(n);
                 }
             }
             return inds;
@@ -110,7 +118,10 @@ namespace pybind_utils {
             if (mstop > l)
                 mstop = l;
             for (int m = mstart; m < mstop + 1; m += mstep) {
-                inds.push_back(l * l + l + m);
+                n = l * l + l + m;
+                if ((n < 0) || (n >= N))
+                    throw errors::IndexError("Invalid value for `l` and/or `m`.");
+                inds.push_back(n);
             }
             return inds;
         } else if ((py::isinstance<py::slice>(lm[0])) && (py::isinstance<py::int_>(lm[1]))) {
@@ -124,7 +135,10 @@ namespace pybind_utils {
             for (int l = lstart; l < lstop + 1; l += lstep) {
                 if ((m < -l) || (m > l))
                     continue;
-                inds.push_back(l * l + l + m);
+                n = l * l + l + m;
+                if ((n < 0) || (n >= N))
+                    throw errors::IndexError("Invalid value for `l` and/or `m`.");
+                inds.push_back(n);
             }
             return inds;
         } else {
@@ -138,9 +152,13 @@ namespace pybind_utils {
 
     */
     std::vector<int> get_Ul_inds(int lmax, const py::object& l) {
+        int n;
         std::vector<int> inds;
         if (py::isinstance<py::int_>(l)) {
-            inds.push_back(py::cast<int>(l));
+            n = py::cast<int>(l);
+            if ((n < 0) || (n > lmax))
+                throw errors::IndexError("Invalid value for `l`.");
+            inds.push_back(n);
             return inds;
         } else if (py::isinstance<py::slice>(l)) {
             py::slice slice = py::cast<py::slice>(l);
