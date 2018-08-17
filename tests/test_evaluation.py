@@ -83,36 +83,36 @@ def run_with_gradients(Map):
     # No arguments
     I = map.evaluate()
     I_grad, dI = map.evaluate(gradient=True)
-    assert np.allclose(I, I_grad)
+    assert np.allclose(I, I_grad, atol=1e-7)
     dI_num = numerical_gradient(Map, lmax, map.y, map.axis, 0, 0, 0)
     for key in dI.keys():
-        assert np.allclose(dI[key], dI_num[key])
+        assert np.allclose(dI[key], dI_num[key], atol=1e-7)
 
     # Scalar evaluation
     I = map.evaluate(x=0.1, y=0.1)
     I_grad, dI = map.evaluate(x=0.1, y=0.1, gradient=True)
-    assert np.allclose(I, I_grad)
+    assert np.allclose(I, I_grad, atol=1e-7)
     dI_num = numerical_gradient(Map, lmax, map.y, map.axis, 0, 0.1, 0.1)
     for key in dI.keys():
-        assert np.allclose(dI[key], dI_num[key])
+        assert np.allclose(dI[key], dI_num[key], atol=1e-7)
 
     # Scalar evaluation
     I = map.evaluate(x=0.1, y=0.1, theta=30)
     I_grad, dI = map.evaluate(x=0.1, y=0.1, theta=30, gradient=True)
-    assert np.allclose(I, I_grad)
+    assert np.allclose(I, I_grad, atol=1e-7)
     dI_num = numerical_gradient(Map, lmax, map.y, map.axis, 30, 0.1, 0.1)
     for key in dI.keys():
-        assert np.allclose(dI[key], dI_num[key])
+        assert np.allclose(dI[key], dI_num[key], atol=1e-7)
 
     # Vector evaluation
     I = map.evaluate(x=0.1, y=0.1, theta=[0, 30])
     I_grad, dI = map.evaluate(x=0.1, y=0.1, theta=[0, 30], gradient=True)
-    assert np.allclose(I, I_grad)
+    assert np.allclose(I, I_grad, atol=1e-7)
     dI_num1 = numerical_gradient(Map, lmax, map.y, map.axis, 0, 0.1, 0.1)
     dI_num2 = numerical_gradient(Map, lmax, map.y, map.axis, 30, 0.1, 0.1)
     for key in dI.keys():
-        assert np.allclose(dI[key][0], dI_num1[key])
-        assert np.allclose(dI[key][1], dI_num2[key])
+        assert np.allclose(dI[key][0], dI_num1[key], atol=1e-7)
+        assert np.allclose(dI[key][1], dI_num2[key], atol=1e-7)
 
 
 def test_evaluation_double():
