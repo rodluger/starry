@@ -286,6 +286,7 @@ namespace maps {
     template <class T>
     void Map<T>::reset() {
         setZero(y);
+        setRow(y, 0, Scalar<T>(1.0));
         y_deg = 0;
         setZero(u);
         u_deg = 0;
@@ -618,9 +619,9 @@ namespace maps {
                 // change the total disk-integrated flux.
                 rtmp = dot(B.rT, *ptr_A1Ry);
                 if (hasZero(rtmp))
-                    throw errors::ValueError("Error computing the limb darkening "
-                                             "normalization: the visible map has "
-                                             "zero net flux!");
+                    throw errors::ValueError("The visible map has "
+                                             "zero net flux and cannot "
+                                             "be limb-darkened.");
                 p_uy *= cwiseQuotient(rtmp, dot(B.rT, p_uy));
 
                 // Update our pointer
@@ -822,9 +823,9 @@ namespace maps {
                     // change the total disk-integrated flux.
                     rtmp = dot(B.rT, mtmp);
                     if (hasZero(rtmp))
-                        throw errors::ValueError("Error computing the limb darkening "
-                                                 "normalization: the visible map has "
-                                                 "zero net flux!");
+                        throw errors::ValueError("The visible map has "
+                                                 "zero net flux and cannot "
+                                                 "be limb-darkened.");
                     p_uy *= cwiseQuotient(rtmp, dot(B.rT, p_uy));
 
                     // Back to the spherical harmonic basis

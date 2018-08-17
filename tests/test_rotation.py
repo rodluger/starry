@@ -8,6 +8,7 @@ def run(Map):
     """Apply some elementary rotations."""
     # Instantiate
     map = Map(1)
+    map[0, 0] = 0
     map[1, 0] = norm
     assert np.allclose(map.y, np.array([0, 0, norm, 0]))
 
@@ -47,6 +48,7 @@ def run(Map):
 
     # Test rotation caching
     map = Map(2)
+    map[0, 0] = 0
     map[1, 0] = norm
     map.axis = [1, 2, 3]
     assert np.allclose(map.evaluate(theta=[30, 30, 30]), 0.46522382467359763)
