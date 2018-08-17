@@ -17,6 +17,10 @@ Defines the surface map class.
 #include "utils.h"
 #include "solver.h"
 
+#define CACHE_NONE 0
+#define CACHE_FLUX 1
+#define CACHE_EVAL 2
+
 namespace maps {
 
     using namespace utils;
@@ -89,6 +93,7 @@ namespace maps {
             Row<T> dFdb;                                                        /**< Gradient of the flux with respect to the impact parameter */
             Row<T> rtmp;                                                        /**< A temporary surface map row vector */
             Column<T> ctmp;                                                     /**< A temporary surface map col vector */
+            int cache_oper;                                                     /**< Cached operation identifier */
             Scalar<T> cache_theta;                                              /**< Cached rotation angle */
             T cache_p;                                                          /**< Cached polynomial map */
             T cache_g;                                                          /**< Cached Green's map */
@@ -230,15 +235,18 @@ namespace maps {
     void Map<T>::update() {
 
         // Update the polynomial and Green's map coefficients
+        // TODO: Only if y_deg
         p = B.A1 * y;
         g = B.A * y;
 
         // Update the rotation matrix
+        // TODO: Only if y_deg
         W.update();
 
         // Update the limb darkening polynomial map
         // Note that the limb darkening polynomial `p_u`
         // is *unnormalized*; we normalize it later
+        // TODO: Only if u_deg
         mtmp = B.U * u;
         setZero(mtmp2);
         for (int l = 0; l < lmax + 1; ++l)
@@ -246,6 +254,7 @@ namespace maps {
         p_u = B.A1 * mtmp2;
 
         // Clear the cache
+        cache_oper = CACHE_NONE;
         cache_theta = NAN;
 
     }
@@ -277,6 +286,7 @@ namespace maps {
     */
     template <class T>
     void Map<T>::setYlm(int l, int m, const Row<T>& coeff) {
+        // TODO: If coeff is zero, re-compute y_deg
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
             setRow(y, n, coeff);
@@ -307,6 +317,7 @@ namespace maps {
     */
     template <class T>
     void Map<T>::setUl(int l, const Row<T>& coeff) {
+        // TODO: If coeff is zero, re-compute u_deg
         if ((1 <= l) && (l <= lmax)) {
             setRow(u, l, coeff);
             u_deg = max(u_deg, l);
@@ -548,7 +559,7 @@ namespace maps {
         Scalar<T> y0 = y_;
         Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
 
-        if (theta == cache_theta) {
+        if ((theta == cache_theta) && (cache_oper == CACHE_EVAL)) {
 
             // We use the cached version of the polynomial map
             ptr_A1Ry = &cache_p;
@@ -586,6 +597,7 @@ namespace maps {
             }
 
             // Cache the polynomial map
+            cache_oper = CACHE_EVAL;
             cache_theta = theta;
             cache_p = *ptr_A1Ry;
 
@@ -753,7 +765,7 @@ namespace maps {
             // Apply limb darkening
             if (u_deg > 0) {
 
-                if (theta == cache_theta) {
+                if ((theta == cache_theta) && (cache_oper == CACHE_FLUX)) {
 
                     ptr_Ry = &cache_g;
 
@@ -776,7 +788,7 @@ namespace maps {
                         throw errors::ValueError("Error computing the limb darkening "
                                                  "normalization: the visible map has "
                                                  "zero net flux!");
-                    g_uy *= cwiseQuotient(rtmp, dot(B.rT, p_uy));
+                    g_uy *= cwiseQuotient(rtmp, dot(B.rT, g_uy));
 
                     // Convert to the Green's basis
                     g_uy = B.A2 * g_uy;
@@ -785,6 +797,7 @@ namespace maps {
                     ptr_Ry = &g_uy;
 
                     // Cache the map
+                    cache_oper = CACHE_FLUX;
                     cache_theta = theta;
                     cache_g = *ptr_Ry;
 
@@ -972,5 +985,9 @@ namespace maps {
     }
 
 }; // namespace maps
+
+#undef CACHE_NONE
+#undef CACHE_FLUX
+#undef CACHE_EVAL
 
 #endif
