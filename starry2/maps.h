@@ -804,14 +804,8 @@ namespace maps {
 
                 } else {
 
-                    // ************************
-                    // TODO: VERIFY ALL OF THIS
-                    // ************************
+                    // TODO
                     // The back-and-forth changes of basis are SLOW.
-                    //
-                    // Also, limb darkening only works if the user
-                    // specified the Y_{0,0} coefficient. We should
-                    // think about how to make this more intuitive.
 
                     // Transform into the polynomial basis
                     mtmp = B.A1 * (*ptr_Ry);
@@ -1027,7 +1021,7 @@ namespace maps {
     std::string info(const Map<T>& map) {
         std::ostringstream os;
         os << "<"
-           << "Ylm map of "
+           << "Map of "
            << "degree " << map.y_deg << " "
            << "with ";
         if (map.u_deg == 0)
@@ -1051,7 +1045,7 @@ namespace maps {
         std::ostringstream os;
         os << "<"
            << STARRY_NMULTI << "-digit precision "
-           << "Ylm map of "
+           << "map of "
            << "degree " << map.y_deg << " "
            << "with ";
         if (map.u_deg == 0)
@@ -1074,7 +1068,7 @@ namespace maps {
     std::string info(const Map<Matrix<double>>& map) {
         std::ostringstream os;
         os << "<"
-           << "Ylm map of "
+           << "Map of "
            << "degree " << map.y_deg << " "
            << "with ";
         if (map.nwav == 1)
