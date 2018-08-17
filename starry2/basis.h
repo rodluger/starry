@@ -118,7 +118,7 @@ namespace basis {
     instantiated.
     */
     template <typename T>
-    void computeA1(int lmax, Eigen::SparseMatrix<T>& A1, T tol=10 * std::numeric_limits<T>::epsilon()) {
+    void computeA1(int lmax, Eigen::SparseMatrix<T>& A1, T norm=1.0, T tol=10 * std::numeric_limits<T>::epsilon()) {
         int l, m;
         int n = 0;
         int i, j, k, p, q, v;
@@ -193,6 +193,9 @@ namespace basis {
                 n++;
             }
         }
+
+        // Normalize
+        A1Dense *= norm;
 
         // Make sparse
         A1 = A1Dense.sparseView();
@@ -279,7 +282,7 @@ namespace basis {
 
     */
     template <typename T>
-    void computeU(int lmax, Matrix<T>& U) {
+    void computeU(int lmax, Matrix<T>& U, T norm=1.0) {
         T amp;
         Matrix<T> LT, YT;
         LT.setZero(lmax + 1, lmax + 1);
@@ -301,6 +304,10 @@ namespace basis {
         Eigen::HouseholderQR<Matrix<T>> solver(lmax + 1, lmax + 1);
         solver.compute(YT);
         U = solver.solve(LT);
+
+        // Normalize it. Since we compute `U` from the *inverse*
+        // of `A1`, we must *divide* by the normalization constant
+        U /= norm;
 
     }
 
@@ -431,6 +438,7 @@ namespace basis {
         public:
 
             const int lmax;                                                     /**< The highest degree of the map */
+            const double norm;                                                  /**< Map normalization constant */
             Eigen::SparseMatrix<T> A1;                                          /**< The polynomial change of basis matrix */
             Eigen::SparseMatrix<T> A2;                                          /**< The Green's change of basis matrix */
             Eigen::SparseMatrix<T> A;                                           /**< The full change of basis matrix */
@@ -439,10 +447,11 @@ namespace basis {
             VectorT<T> rTA1;                                                    /**< The rotation vector times the `Ylm` change of basis matrix */
 
             // Constructor: compute the matrices
-            Basis(int lmax) : lmax(lmax) {
-                computeA1(lmax, A1);
+            explicit Basis(int lmax, T norm=1.0) :
+                    lmax(lmax), norm(norm) {
+                computeA1(lmax, A1, norm);
                 computeA(lmax, A1, A2, A);
-                computeU(lmax, U);
+                computeU(lmax, U, norm);
                 computerT(lmax, rT);
                 rTA1 = rT * A1;
             }

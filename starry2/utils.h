@@ -98,13 +98,13 @@ namespace utils {
     // --------------------------
 
 
-    //! Tag forwarding struct
+    //! @private
     template <class T> struct tag{};
 
-    //! Pi for current type (tag forwarding)
+    //! @private
     template <class T> inline T pi(tag<T>) { return boost::math::constants::pi<T>(); }
 
-    //! Pi for current type (AutoDiffScalar specialization)
+    //! @private
     template <class T> inline Eigen::AutoDiffScalar<T> pi(tag<Eigen::AutoDiffScalar<T>>) {
         return boost::math::constants::pi<typename T::Scalar>();
     }
@@ -112,10 +112,10 @@ namespace utils {
     //! Pi for current type
     template <class T> inline T pi() { return pi(tag<T>()); }
 
-    //! Square root of pi for current type (tag forwarding)
+    //! @private
     template <class T> inline T root_pi(tag<T>) { return boost::math::constants::root_pi<T>(); }
 
-    //! Square root of pi for current type (AutoDiffScalar specialization)
+    //! @private
     template <class T> inline Eigen::AutoDiffScalar<T> root_pi(tag<Eigen::AutoDiffScalar<T>>) {
         return boost::math::constants::root_pi<typename T::Scalar>();
     }
@@ -123,17 +123,16 @@ namespace utils {
     //! Square root of pi for current type
     template <class T> inline T root_pi() { return root_pi(tag<T>()); }
 
-    //! Machine precision for current type
+    //! @private
     template<class T> inline T mach_eps(tag<T>) { return std::numeric_limits<T>::epsilon(); }
 
-    //! Machine precision for current type (AutoDiffScalar specialization)
+    //! @private
     template<class T> inline Eigen::AutoDiffScalar<T> mach_eps(tag<Eigen::AutoDiffScalar<T>>) {
         return std::numeric_limits<typename T::Scalar>::epsilon();
     }
 
     //! Machine precision for current type
     template<class T> inline T mach_eps() { return mach_eps(tag<T>()); }
-
 
     // --------------------------
     // ------ Unit Vectors ------

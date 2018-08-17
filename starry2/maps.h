@@ -52,6 +52,7 @@ namespace maps {
             const int lmax;                                                     /**< The highest degree of the map */
             const int N;                                                        /**< The number of map coefficients */
             const int nwav;                                                     /**< The number of wavelengths */
+            const Scalar<T> norm;                                               /**< The map normalization constant */
             T dI;                                                               /**< Gradient of the intensity */
             std::vector<string> dI_names;                                       /**< Names of each of the params in the intensity gradient */
             T dF;                                                               /**< Gradient of the flux */
@@ -129,13 +130,14 @@ namespace maps {
             Instantiate a `Map`.
 
             */
-            explicit Map(int lmax=2, int nwav=1) :
+            explicit Map(int lmax=2, int nwav=1, Scalar<T> norm=0.5 / root_pi<Scalar<T>>()) :
                 lmax(lmax),
                 N((lmax + 1) * (lmax + 1)),
                 nwav(nwav),
+                norm(norm),
                 dI_names({"theta", "x", "y"}),
                 dF_names({"theta", "xo", "yo", "ro"}),
-                B(lmax),
+                B(lmax, norm),
                 W(lmax, nwav, (*this).y, (*this).axis),
                 G(lmax),
                 G_grad(lmax),
@@ -244,6 +246,16 @@ namespace maps {
     template <class T>
     void Map<T>::update() {
 
+        // Check if the total degree of the map is OK
+        if (y_deg + u_deg > lmax) {
+            setZero(u);
+            setRow(u, 0, Scalar<T>(-1.0));
+            u_deg = 0;
+            throw errors::ValueError("Degree of the limb-darkened "
+                                     "map exceeds `lmax`. Limb darkening "
+                                     "coefficients have been reset.");
+        }
+
         // Update the polynomial and Green's map coefficients
         // TODO: Only if y_deg
         p = B.A1 * y;
@@ -312,8 +324,6 @@ namespace maps {
             } else {
                 y_deg = max(y_deg, l);
             }
-            if (y_deg + u_deg > lmax)
-                throw errors::ValueError("Degree of the limb-darkened map exceeds `lmax`.");
             update();
         } else {
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
@@ -326,9 +336,9 @@ namespace maps {
     */
     template <class T>
     Row<T> Map<T>::getYlm(int l, int m) const {
-        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
+        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
             return getRow(y, l * l + l + m);
-        } else
+        else
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
     }
 
@@ -350,8 +360,6 @@ namespace maps {
             } else {
                 u_deg = max(u_deg, l);
             }
-            if (y_deg + u_deg > lmax)
-                throw errors::ValueError("Degree of the limb-darkened map exceeds `lmax`.");
             update();
         } else {
             throw errors::IndexError("Invalid value for `l`.");
@@ -364,9 +372,9 @@ namespace maps {
     */
     template <class T>
     Row<T> Map<T>::getUl(int l) const {
-        if ((1 <= l) && (l <= lmax)) {
+        if ((1 <= l) && (l <= lmax))
             return getRow(u,l);
-        } else
+        else
             throw errors::IndexError("Invalid value for `l`.");
     }
 
