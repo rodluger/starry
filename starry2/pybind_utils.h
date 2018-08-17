@@ -14,55 +14,34 @@ Miscellaneous utilities used for the pybind interface.
 #include <vector>
 #include "errors.h"
 
-
 namespace pybind_utils {
 
+    #include <Python.h>
     namespace py = pybind11;
 
     /**
     Re-interpret the `start`, `stop`, and `step` attributes of a `py::slice`,
-    allowing for *actual* negative indices.
+    allowing for *actual* negative indices. This allows the user to provide
+    something like `map[3, -3:0]` to get the `l = 3, m = {-3, -2, -1}` indices
+    of the spherical harmonic map. Pretty sneaky stuff.
 
     */
     void reinterpret_slice(const py::slice& slice, const int smin,
                            const int smax, int& start, int& stop, int& step) {
-        // NOTE: This is super hacky. Because `m` indices can be negative, we need
-        // to re-interpret what a slice with negative indices actually
-        // means. Casting to an actual Python slice and running
-        // `compute` interprets negative indices as indices counting
-        // backwards from the end, which is not what we want. There
-        // doesn't seem to be a way to reconstruct the original arguments
-        // to `slice(start, stop, step)` that works in *all* cases (I've tried!)
-        // so for now we'll parse the string representation of the slice.
-        //
-        // NOTE: This is likely slow, so a hack that digs into the actual
-        // CPython backend and recovers the `start`, `stop`, and `step`
-        // attributes of a `py::slice` object would be better. Suggestions welcome!
-        std::ostringstream os;
-        os << slice;
-        std::string str_slice = std::string(os.str());
-        size_t pos = 0;
-        std::string str_start, str_stop, str_step;
-        pos = str_slice.find(", ");
-        str_start = str_slice.substr(6, pos - 6);
-        str_slice = str_slice.substr(pos + 2, str_slice.size() - pos);
-        pos = str_slice.find(", ");
-        str_stop = str_slice.substr(0, pos);
-        str_step = str_slice.substr(pos + 2, str_slice.size() - pos - 3);
-        if (str_start == "None")
+        PySliceObject *r = (PySliceObject*)(slice.ptr());
+        if (r->start == Py_None)
             start = smin;
         else
-            start = stoi(str_start);
-        if (str_stop == "None")
+            start = PyLong_AsSsize_t(r->start);
+        if (r->stop == Py_None)
             stop = smax;
         else
-            stop = stoi(str_stop);
-        if (str_step == "None")
+            stop = PyLong_AsSsize_t(r->stop);
+        if ((r->step == Py_None) || (PyLong_AsSsize_t(r->step) == 1))
             step = 1;
         else
-            step = stoi(str_step);
-        if (step < 0)
-            throw errors::ValueError("Slices with negative steps are not supported.");
+            throw errors::ValueError("Slices with steps different from "
+                                     "one are not supported.");
     }
 
     /**
