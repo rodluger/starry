@@ -113,6 +113,10 @@ namespace maps {
             friend std::string info(const Map<U>& map);
 
             // Private methods
+            void check_degree();
+            void clear_cache();
+            void update_y();
+            void update_u();
             template <typename U>
             inline void poly_basis(Power<U>& xpow, Power<U>& ypow, VectorT<U>& basis);
             inline Row<T> evaluate_with_gradient(const Scalar<T>& theta_deg,
@@ -234,17 +238,12 @@ namespace maps {
     /*   HOUSEKEEPING   */
     /* ---------------- */
 
-
     /**
-    Update the maps after the coefficients changed
-
-    TODO: This method needs to be made as fast as possible.
+    Check if the total degree of the map is valid
 
     */
     template <class T>
-    void Map<T>::update() {
-
-        // Check if the total degree of the map is OK
+    inline void Map<T>::check_degree() {
         if (y_deg + u_deg > lmax) {
             setZero(u);
             setRow(u, 0, Scalar<T>(-1.0));
@@ -253,20 +252,52 @@ namespace maps {
                                      "map exceeds `lmax`. Limb darkening "
                                      "coefficients have been reset.");
         }
+    }
+
+    /**
+    Clear the cache
+
+    */
+    template <class T>
+    inline void Map<T>::clear_cache() {
+        cache_oper = CACHE_NONE;
+        cache_theta = NAN;
+    }
+
+    /**
+    Update the Ylm map after the coefficients changed
+    TODO: This method needs to be made as fast as possible.
+
+    */
+    template <class T>
+    inline void Map<T>::update_y() {
+        // Check the map degree is valid
+        check_degree();
 
         // Update the polynomial and Green's map coefficients
-        // TODO: Only if y_deg
         p = B.A1 * y;
         g = B.A * y;
 
         // Update the rotation matrix
-        // TODO: Only if y_deg
         W.update();
+
+        // Clear the cache
+        clear_cache();
+    }
+
+    /**
+    Update the limb darkening map after the coefficients changed
+    TODO: This method needs to be made as fast as possible.
+
+    */
+    template <class T>
+    inline void Map<T>::update_u() {
+        // Check the map degree is valid
+        check_degree();
 
         // Update the limb darkening polynomial map
         // Note that the limb darkening polynomial `p_u`
         // is *unnormalized*; we normalize it later
-        // TODO: Only if u_deg
         mtmp = B.U * u;
         setZero(mtmp2);
         for (int l = 0; l < lmax + 1; ++l)
@@ -274,9 +305,18 @@ namespace maps {
         p_u = B.A1 * mtmp2;
 
         // Clear the cache
-        cache_oper = CACHE_NONE;
-        cache_theta = NAN;
+        clear_cache();
+    }
 
+
+    /**
+    Update the two maps after the coefficients changed
+
+    */
+    template <class T>
+    inline void Map<T>::update() {
+        update_u();
+        update_y();
     }
 
     /**
@@ -315,7 +355,7 @@ namespace maps {
                 for (y_deg = l - 1; y_deg >= 0; --y_deg) {
                     for (int m = -y_deg; m < y_deg + 1; ++m){
                         if (!allZero(getRow(y, y_deg * y_deg + y_deg + m))) {
-                            update();
+                            update_y();
                             return;
                         }
                     }
@@ -323,7 +363,7 @@ namespace maps {
             } else {
                 y_deg = max(y_deg, l);
             }
-            update();
+            update_y();
         } else {
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
         }
@@ -359,7 +399,7 @@ namespace maps {
             } else {
                 u_deg = max(u_deg, l);
             }
-            update();
+            update_u();
         } else {
             throw errors::IndexError("Invalid value for `l`.");
         }
@@ -433,7 +473,7 @@ namespace maps {
                     break;
                 }
             }
-            update();
+            update_y();
         } else {
             throw errors::ValueError("Dimension mismatch in `y`.");
         }
@@ -463,7 +503,7 @@ namespace maps {
                     break;
                 }
             }
-            update();
+            update_u();
         } else {
             throw errors::ValueError("Dimension mismatch in `u`.");
         }
@@ -781,13 +821,14 @@ namespace maps {
 
             if ((y_deg == 0) && (u_deg > 0)) {
 
-                // Limb darkening only: disk-integrated intensity is unity
-                setOnes(ctmp);
-                return ctmp;
+                // Limb darkening only: disk-integrated intensity
+                // is just the Y_{0,0} coefficient
+                return getRow(y, 0);
 
             } else {
 
-                // Business as usual
+                // Business as usual. Note that limb-darkening does not
+                // affect the total disk-integrated flux
                 return (B.rTA1 * (*ptr_Ry));
 
             }
@@ -823,7 +864,7 @@ namespace maps {
                     p_uy *= cwiseQuotient(rtmp, dot(B.rT, p_uy));
 
                     // Back to the spherical harmonic basis
-                    mtmp = B.A1Inv * mtmp;
+                    mtmp = B.A1Inv * p_uy;
 
                     // Update our pointer
                     ptr_Ry = &mtmp;
