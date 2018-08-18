@@ -64,6 +64,7 @@ namespace maps {
             T g;                                                                /**< The map coefficients in the Green's basis */
             T u;                                                                /**< The limb darkening coefficients */
             T p_u;                                                              /**< The limb darkening coefficients in the polynomial basis */
+            T g_u;                                                              /**< The limb darkening coefficients in the Green's basis */
             int y_deg;                                                          /**< Highest degree set by the user in the spherical harmonic vector */
             int u_deg;                                                          /**< Highest degree set by the user in the limb darkening vector */
             UnitVector<Scalar<T>> axis;                                         /**< The axis of rotation for the map */
@@ -126,7 +127,9 @@ namespace maps {
                                              const Scalar<T>& xo_,
                                              const Scalar<T>& yo_,
                                              const Scalar<T>& ro_);
-
+            inline Row<T> flux_ld(const Scalar<T>& xo_,
+                                  const Scalar<T>& yo_,
+                                  const Scalar<T>& ro_);
         public:
 
             /**
@@ -200,10 +203,10 @@ namespace maps {
             void reset();
 
             // I/O functions
-            void setYlm(int l, int m, const Row<T>& coeff);
-            Row<T> getYlm(int l, int m) const;
-            void setUl(int l, const Row<T>& coeff);
-            Row<T> getUl(int l) const;
+            void setY(int l, int m, const Row<T>& coeff);
+            Row<T> getY(int l, int m) const;
+            void setU(int l, const Row<T>& coeff);
+            Row<T> getU(int l) const;
             void setAxis(const UnitVector<Scalar<T>>& axis_);
             UnitVector<Scalar<T>> getAxis() const;
             T getY() const;
@@ -296,13 +299,15 @@ namespace maps {
         check_degree();
 
         // Update the limb darkening polynomial map
-        // Note that the limb darkening polynomial `p_u`
-        // is *unnormalized*; we normalize it later
         mtmp = B.U * u;
         setZero(mtmp2);
         for (int l = 0; l < lmax + 1; ++l)
             mtmp2(l * (l + 1)) = mtmp(l);
         p_u = B.A1 * mtmp2;
+        p_u *= cwiseQuotient(getRow(y, 0), dot(B.rT, p_u));
+
+        // Update the limb darkening Green's map
+        g_u = B.A2 * p_u;
 
         // Clear the cache
         clear_cache();
@@ -340,13 +345,33 @@ namespace maps {
     /*        I/O       */
     /* ---------------- */
 
+    /**
+    Set the spherical harmonic vector
+
+    */
+    template <class T>
+    void Map<T>::setY(const T& y_) {
+        if ((y_.rows() == y.rows()) && (y_.cols() == y.cols())) {
+            y = y_;
+            y_deg = 0;
+            for (int l = lmax; l >= 0; --l) {
+                if ((y.block(l * l, 0, 2 * l + 1, nwav).array() != 0.0).any()) {
+                    y_deg = l;
+                    break;
+                }
+            }
+            update_y();
+        } else {
+            throw errors::ValueError("Dimension mismatch in `y`.");
+        }
+    }
 
     /**
     Set the (l, m) spherical harmonic coefficient
 
     */
     template <class T>
-    void Map<T>::setYlm(int l, int m, const Row<T>& coeff) {
+    void Map<T>::setY(int l, int m, const Row<T>& coeff) {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
             setRow(y, n, coeff);
@@ -370,86 +395,6 @@ namespace maps {
     }
 
     /**
-    Get the (l, m) spherical harmonic coefficient
-
-    */
-    template <class T>
-    Row<T> Map<T>::getYlm(int l, int m) const {
-        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
-            return getRow(y, l * l + l + m);
-        else
-            throw errors::IndexError("Invalid value for `l` and/or `m`.");
-    }
-
-    /**
-    Set the `l`th limb darkening coefficient
-
-    */
-    template <class T>
-    void Map<T>::setUl(int l, const Row<T>& coeff) {
-        if ((1 <= l) && (l <= lmax)) {
-            setRow(u, l, coeff);
-            if (allZero(coeff)) {
-                // If coeff is zero, we need to re-compute u_deg
-                for (u_deg = l - 1; u_deg >= 0; --u_deg) {
-                    if (!allZero(getRow(u, u_deg))) {
-                        break;
-                    }
-                }
-            } else {
-                u_deg = max(u_deg, l);
-            }
-            update_u();
-        } else {
-            throw errors::IndexError("Invalid value for `l`.");
-        }
-    }
-
-    /**
-    Get the `l`th limb darkening coefficient
-
-    */
-    template <class T>
-    Row<T> Map<T>::getUl(int l) const {
-        if ((1 <= l) && (l <= lmax))
-            return getRow(u,l);
-        else
-            throw errors::IndexError("Invalid value for `l`.");
-    }
-
-    /**
-    Set the axis
-
-    */
-    template <class T>
-    void Map<T>::setAxis(const UnitVector<Scalar<T>>& axis_) {
-
-        // Set it and normalize it
-        axis(0) = axis_(0);
-        axis(1) = axis_(1);
-        axis(2) = axis_(2);
-        axis = axis / sqrt(axis(0) * axis(0) +
-                           axis(1) * axis(1) +
-                           axis(2) * axis(2));
-
-        // Update the rotation matrix
-        W.update();
-
-        // Reset the cache
-        cache_theta = NAN;
-
-    }
-
-    /**
-    Return a copy of the axis
-
-    */
-    template <class T>
-    UnitVector<Scalar<T>> Map<T>::getAxis() const {
-        return axis;
-    }
-
-    /**
     Get the spherical harmonic vector
 
     */
@@ -459,33 +404,15 @@ namespace maps {
     }
 
     /**
-    Set the spherical harmonic vector
+    Get the (l, m) spherical harmonic coefficient
 
     */
     template <class T>
-    void Map<T>::setY(const T& y_) {
-        if ((y_.rows() == y.rows()) && (y_.cols() == y.cols())) {
-            y = y_;
-            y_deg = 0;
-            for (int l = lmax; l >= 0; --l) {
-                if ((y.block(l * l, 0, 2 * l + 1, nwav).array() != 0.0).any()) {
-                    y_deg = l;
-                    break;
-                }
-            }
-            update_y();
-        } else {
-            throw errors::ValueError("Dimension mismatch in `y`.");
-        }
-    }
-
-    /**
-    Get the limb darkening vector
-
-    */
-    template <class T>
-    T Map<T>::getU() const {
-        return u.block(1, 0, lmax, nwav);
+    Row<T> Map<T>::getY(int l, int m) const {
+        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
+            return getRow(y, l * l + l + m);
+        else
+            throw errors::IndexError("Invalid value for `l` and/or `m`.");
     }
 
     /**
@@ -507,6 +434,51 @@ namespace maps {
         } else {
             throw errors::ValueError("Dimension mismatch in `u`.");
         }
+    }
+
+    /**
+    Set the `l`th limb darkening coefficient
+
+    */
+    template <class T>
+    void Map<T>::setU(int l, const Row<T>& coeff) {
+        if ((1 <= l) && (l <= lmax)) {
+            setRow(u, l, coeff);
+            if (allZero(coeff)) {
+                // If coeff is zero, we need to re-compute u_deg
+                for (u_deg = l - 1; u_deg >= 0; --u_deg) {
+                    if (!allZero(getRow(u, u_deg))) {
+                        break;
+                    }
+                }
+            } else {
+                u_deg = max(u_deg, l);
+            }
+            update_u();
+        } else {
+            throw errors::IndexError("Invalid value for `l`.");
+        }
+    }
+
+    /**
+    Get the limb darkening vector
+
+    */
+    template <class T>
+    T Map<T>::getU() const {
+        return u.block(1, 0, lmax, nwav);
+    }
+
+    /**
+    Get the `l`th limb darkening coefficient
+
+    */
+    template <class T>
+    Row<T> Map<T>::getU(int l) const {
+        if ((1 <= l) && (l <= lmax))
+            return getRow(u,l);
+        else
+            throw errors::IndexError("Invalid value for `l`.");
     }
 
     /**
@@ -543,6 +515,38 @@ namespace maps {
     template <class T>
     VectorT<Scalar<T>> Map<T>::getS() const {
         return G.sT;
+    }
+
+    /**
+    Set the axis
+
+    */
+    template <class T>
+    void Map<T>::setAxis(const UnitVector<Scalar<T>>& axis_) {
+
+        // Set it and normalize it
+        axis(0) = axis_(0);
+        axis(1) = axis_(1);
+        axis(2) = axis_(2);
+        axis = axis / sqrt(axis(0) * axis(0) +
+                           axis(1) * axis(1) +
+                           axis(2) * axis(2));
+
+        // Update the rotation matrix
+        W.update();
+
+        // Reset the cache
+        cache_theta = NAN;
+
+    }
+
+    /**
+    Return a copy of the axis
+
+    */
+    template <class T>
+    UnitVector<Scalar<T>> Map<T>::getAxis() const {
+        return axis;
     }
 
     /**
@@ -786,10 +790,15 @@ namespace maps {
                                const Scalar<T>& ro_,
                                bool gradient) {
 
-        // If we're computing the gradient as well,
-        // call the specialized function
-        if (gradient)
+        if (gradient) {
+            // If we're computing the gradient as well,
+            // call the specialized function
             return flux_with_gradient(theta_, xo_, yo_, ro_);
+        } else if (y_deg == 0) {
+            // If only the Y_{0,0} term is set, call the
+            // faster method for pure limb-darkening
+            return flux_ld(xo_, yo_, ro_);
+        }
 
         // Convert to internal types
         Scalar<T> xo = xo_;
@@ -810,28 +819,16 @@ namespace maps {
         ptr_Ry = &y;
 
         // Rotate the map into view
-        if (y_deg > 0) {
-            W.rotate(cos(theta), sin(theta), Ry);
-            mtmp = Ry;
-            ptr_Ry = &mtmp;
-        }
+        W.rotate(cos(theta), sin(theta), Ry);
+        mtmp = Ry;
+        ptr_Ry = &mtmp;
 
         // No occultation
         if ((b >= 1 + ro) || (ro == 0)) {
 
-            if ((y_deg == 0) && (u_deg > 0)) {
-
-                // Limb darkening only: disk-integrated intensity
-                // is just the Y_{0,0} coefficient
-                return getRow(y, 0);
-
-            } else {
-
-                // Business as usual. Note that limb-darkening does not
-                // affect the total disk-integrated flux
-                return (B.rTA1 * (*ptr_Ry));
-
-            }
+            // Easy. Note that limb-darkening does not
+            // affect the total disk-integrated flux
+            return (B.rTA1 * (*ptr_Ry));
 
         // Occultation
         } else {
@@ -879,11 +876,9 @@ namespace maps {
             }
 
             // Rotate the map to align the occultor with the +y axis
-            if (y_deg > 0) {
-                if ((b > 0) && ((xo != 0) || (yo < 0))) {
-                    W.rotatez(yo / b, xo / b, *ptr_Ry, mtmp);
-                    ptr_Ry = &mtmp;
-                }
+            if ((b > 0) && ((xo != 0) || (yo < 0))) {
+                W.rotatez(yo / b, xo / b, *ptr_Ry, mtmp);
+                ptr_Ry = &mtmp;
             }
 
             // Perform the rotation + change of basis
@@ -896,6 +891,52 @@ namespace maps {
 
             // Dot the result in and we're done
             return G.sT * ARRy;
+
+        }
+
+    }
+
+    /**
+    Compute the flux during or outside of an occultation
+    for a pure limb-darkened map (Y_{l,m} = 0 for l > 0).
+
+    */
+    template <class T>
+    inline Row<T> Map<T>::flux_ld(const Scalar<T>& xo_,
+                                  const Scalar<T>& yo_,
+                                  const Scalar<T>& ro_) {
+
+        // Convert to internal types
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+
+        // Impact parameter
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+            setZero(ctmp);
+            return ctmp;
+        }
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // Easy: the disk-integrated intensity
+            // is just the Y_{0,0} coefficient
+            return getRow(y, 0);
+
+        // Occultation
+        } else {
+
+            // Compute the sT vector (sparsely)
+            for (int n = 0; n < N; ++n)
+                G.skip(n) = !(g_u.block(n, 0, 1, nwav).array() != 0.0).any();
+            G.compute(b, ro);
+
+            // Dot the result in and we're done
+            return G.sT * g_u;
 
         }
 

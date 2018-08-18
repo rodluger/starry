@@ -91,7 +91,7 @@ namespace pybind_interface {
                  for (int l = 0; l < lmax + 1; ++l) {
                      for (int m = -l; m < l + 1; ++m) {
                          y_normed = y(n) / y(0);
-                         map.setYlm(l, m, y_normed);
+                         map.setY(l, m, y_normed);
                          ++n;
                      }
                  }

@@ -309,7 +309,7 @@ namespace utils {
 
     //! Return a row in a map tensor
     template <class T>
-    inline Vector<T> getRow(const Matrix<T>& vec, int row) {
+    inline VectorT<T> getRow(const Matrix<T>& vec, int row) {
         return vec.row(row);
     }
 
