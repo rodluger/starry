@@ -108,6 +108,8 @@ namespace maps {
             Power<Scalar<T>> ypow_scalar;                                       /**< Powers of y for map evaluation */
             Power<ADScalar<Scalar<T>, 2>> xpow_grad;                            /**< Powers of x for gradient map evaluation */
             Power<ADScalar<Scalar<T>, 2>> ypow_grad;                            /**< Powers of y for gradient map evaluation */
+            Matrix<Vector<Scalar<T>>> grad_p1;                                  /**< Derivative of a polynomial product */
+            Matrix<Vector<Scalar<T>>> grad_p2;                                  /**< Derivative of a polynomial product */
 
             // External info function
             template <class U>
@@ -750,24 +752,34 @@ namespace maps {
         // Apply limb-darkening
         if (u_deg > 0) {
 
-
+            // TODO
             throw errors::ToDoError("Implement the deriv. of limb darkened intensity.");
-            /*
-            ADScalar<T, N> A1Ry_grad;
-            ADScalar<T, N> p_u_grad;
-            ADScalar<T, N> p_uy_grad;
 
-            x0_grad = ADScalar<Scalar<T>, 2>(0, Vector<Scalar<T>>::Unit(2, 0));
+            polymul(y_deg, *ptr_A1Ry, u_deg, p_u, lmax, p_uy, grad_p1, grad_p2);
 
-            polymul(y_deg, A1Ry_grad, u_deg, p_u_grad, lmax, p_uy_grad);
+            // Thinking about this:
+            // dI/dtheta = p^T . d LD / d(A1 . R . y) . A1 . d(R . y) / dtheta
+            // (1 x nwav) = (1 x N) (N x N) (N x N) x (N x nwav)
+            //
+            // So d LD / d(A1 . R . y) has to be (N x N)...
 
+            // Huh?
 
-            d(p_uy)/d(p_y)
+            // For a single wavelength bin, we have
+            // LD = (N x 1)
+            // A1.R.y = (N x 1)
+            // So, yes, dLD/dA1.R.y = (N x N)
 
-            // TODO: Normalize it
+            // But for multiple wavelength bins, we have
+            // LD = (N x nwav)
+            // A1.R.y = (N x nwav)
+            // I thought this was rank 4...
+
+            // TODO: Above is experimental. We need to actually call `limbdark`
+            // to normalize it
 
             ptr_A1Ry = &p_uy;
-            */
+
 
         }
 

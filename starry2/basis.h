@@ -395,10 +395,19 @@ namespace basis {
     /**
     Multiply two polynomials and manually compute the gradients
 
-    d(p1p2)/d(p1) = matrix of matrices. Wavelengths are independent,
-    so this boils down to a matrix of vectors. Each element in the matrix
-    d(p1p2)/d(p1) is a vector corresponding to the derivative of the product
-    with respect to the polynomial coefficients *at that wavelength*.
+    Since the inputs and outputs are both (in the most general case) matrices,
+    the derivative of `p1p2` with respect to either `p1` or `p2`
+    is a matrix of matrices, which is pretty gnarly. Fortunately,
+    the wavelength bins are all independent of each other, so we can get away
+    with setting each element of the matrix `p1p2` to be a *vector* corresponding
+    to the derivative of the product with respect to the polynomial coefficients
+    *at that particular wavelength*.
+
+    For reference, `grad_p1(i, j)(k)` is the derivative of the i^th
+    polynomial coefficient in the j^th wavelength bin of `p1p2` with respect
+    to the k^th polynomial coefficient in the j^th wavelength bin of `p1`.
+
+    Yuck.
 
     */
     template <typename T>
@@ -420,8 +429,8 @@ namespace basis {
         grad_p2 = Matrix<Vector<Scalar<T>>>::Zero(N, nwav);
         for (int i = 0; i < N; ++i){
             for (int j = 0; j < nwav; ++j){
-                grad_p1(i, j) = Vector<double>::Zero(p1.rows());
-                grad_p2(i, j) = Vector<double>::Zero(p2.rows());
+                grad_p1(i, j) = Vector<Scalar<T>>::Zero(p1.rows());
+                grad_p2(i, j) = Vector<Scalar<T>>::Zero(p2.rows());
             }
         }
 
@@ -490,13 +499,12 @@ namespace basis {
                 computeU(lmax, U, norm);
                 computerT(lmax, rT);
                 rTA1 = rT * A1;
-
-                // TODO: This matrix may not be necessary in the end.
                 int N = (lmax + 1) * (lmax + 1);
                 Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
                 solver.compute(A1);
                 if (solver.info() != Eigen::Success)
-                    throw errors::LinearAlgebraError("Error computing the change of basis matrix `A1Inv`.");
+                    throw errors::LinearAlgebraError(
+                        "Error computing the change of basis matrix `A1Inv`.");
                 Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
                 A1Inv = solver.solve(I);
 
