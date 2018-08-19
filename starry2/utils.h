@@ -367,6 +367,20 @@ namespace utils {
         return v / u;
     }
 
+    //! In-place column-wise matrix-vector multiplication
+    template <typename T>
+    inline void colwiseMult(Matrix<T>& mat, const VectorT<T>& vec) {
+        for (int n = 0; n < mat.cols(); ++n)
+            mat.col(n) *= vec(n);
+    }
+
+    //! In-place column-wise matrix-vector multiplication (vector-scalar overload)
+    template <typename T>
+    inline void colwiseMult(Vector<T>& vec, const T& scal) {
+        vec *= scal;
+    }
+
+
 }; // namespace utils
 
 #endif

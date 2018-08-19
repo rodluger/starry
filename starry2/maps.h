@@ -114,10 +114,12 @@ namespace maps {
             friend std::string info(const Map<U>& map);
 
             // Private methods
-            void check_degree();
-            void clear_cache();
-            void update_y();
-            void update_u();
+            inline void check_degree();
+            inline void clear_cache();
+            inline void update_y();
+            inline void update_u();
+            template <typename U>
+            inline void limb_darken(const U& poly, U& poly_ld);
             template <typename U>
             inline void poly_basis(Power<U>& xpow, Power<U>& ypow, VectorT<U>& basis);
             inline Row<T> evaluate_with_gradient(const Scalar<T>& theta_deg,
@@ -203,20 +205,20 @@ namespace maps {
             void reset();
 
             // I/O functions
-            void setY(int l, int m, const Row<T>& coeff);
-            Row<T> getY(int l, int m) const;
-            void setU(int l, const Row<T>& coeff);
-            Row<T> getU(int l) const;
-            void setAxis(const UnitVector<Scalar<T>>& axis_);
-            UnitVector<Scalar<T>> getAxis() const;
-            T getY() const;
             void setY(const T& y_);
+            void setY(int l, int m, const Row<T>& coeff);
+            T getY() const;
+            Row<T> getY(int l, int m) const;
             T getU() const;
+            Row<T> getU(int l) const;
             void setU(const T& u_);
+            void setU(int l, const Row<T>& coeff);
             T getP() const;
             T getG() const;
             VectorT<Scalar<T>> getR() const;
             VectorT<Scalar<T>> getS() const;
+            void setAxis(const UnitVector<Scalar<T>>& axis_);
+            UnitVector<Scalar<T>> getAxis() const;
             std::string __repr__();
 
             // Rotate the base map
@@ -302,9 +304,9 @@ namespace maps {
         mtmp = B.U * u;
         setZero(mtmp2);
         for (int l = 0; l < lmax + 1; ++l)
-            mtmp2(l * (l + 1)) = mtmp(l);
+            setRow(mtmp2, l * (l + 1), getRow(mtmp, l));
         p_u = B.A1 * mtmp2;
-        p_u *= cwiseQuotient(getRow(y, 0), dot(B.rT, p_u));
+        colwiseMult(p_u, cwiseQuotient(getRow(y, 0), dot(B.rT, p_u)));
 
         // Update the limb darkening Green's map
         g_u = B.A2 * p_u;
@@ -558,10 +560,10 @@ namespace maps {
         return info(*this);
     }
 
-    /* ------------- */
-    /*   ROTATIONS   */
-    /* ------------- */
 
+    /* -------------- */
+    /*   OPERATIONS   */
+    /* -------------- */
 
     /**
     Rotate the base map in-place given `theta` in **degrees**
@@ -572,6 +574,29 @@ namespace maps {
         Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
         W.rotate(cos(theta), sin(theta), y);
         update();
+    }
+
+
+    /**
+    Limb-darken a polynomial map; templated for AD capability
+
+    TODO: Specialize dot, hasZero, and cWiseQuotient for AD
+
+    */
+    template <class T> template <typename U>
+    inline void Map<T>::limb_darken(const U& poly, U& poly_ld) {
+        // Multiply a polynomial map by the LD polynomial
+        polymul(y_deg, poly, u_deg, p_u, lmax, p_uy);
+
+        // Normalize it by enforcing that limb darkening does not
+        // change the total disk-integrated flux.
+        rtmp = dot(B.rT, poly);
+        if (hasZero(rtmp))
+            throw errors::ValueError("The visible map has "
+                                     "zero net flux and cannot "
+                                     "be limb-darkened.");
+        colwiseMult(poly_ld, cwiseQuotient(rtmp, dot(B.rT, poly_ld)));
+
     }
 
 
@@ -636,6 +661,12 @@ namespace maps {
         Scalar<T> y0 = y_;
         Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
 
+        // Check if outside the sphere
+        if (x0 * x0 + y0 * y0 > 1.0) {
+            setZero(ctmp);
+            return ctmp * NAN;
+        }
+
         if ((theta == cache_theta) && (cache_oper == CACHE_EVAL)) {
 
             // We use the cached version of the polynomial map
@@ -655,22 +686,8 @@ namespace maps {
 
             // Apply limb darkening
             if (u_deg > 0) {
-
-                // Multiply the map and the LD polynomial
-                polymul(y_deg, *ptr_A1Ry, u_deg, p_u, lmax, p_uy);
-
-                // Normalize it by enforcing that limb darkening does not
-                // change the total disk-integrated flux.
-                rtmp = dot(B.rT, *ptr_A1Ry);
-                if (hasZero(rtmp))
-                    throw errors::ValueError("The visible map has "
-                                             "zero net flux and cannot "
-                                             "be limb-darkened.");
-                p_uy *= cwiseQuotient(rtmp, dot(B.rT, p_uy));
-
-                // Update our pointer
+                limb_darken(*ptr_A1Ry, p_uy);
                 ptr_A1Ry = &p_uy;
-
             }
 
             // Cache the polynomial map
@@ -678,12 +695,6 @@ namespace maps {
             cache_theta = theta;
             cache_p = *ptr_A1Ry;
 
-        }
-
-        // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) {
-            setZero(ctmp);
-            return ctmp * NAN;
         }
 
         // Compute the polynomial basis
@@ -712,6 +723,14 @@ namespace maps {
         Scalar<T> y0 = y_;
         Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
 
+        // Check if outside the sphere
+        if (x0 * x0 + y0 * y0 > 1.0) {
+            setZero(dI);
+            dI = dI * NAN;
+            setZero(ctmp);
+            return ctmp * NAN;
+        }
+
         // Rotate the map into view
         W.compute(cos(theta), sin(theta));
         if (theta == 0) {
@@ -724,13 +743,33 @@ namespace maps {
             ptr_A1Ry = &mtmp;
         }
 
-        // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) {
-            setZero(dI);
-            dI = dI * NAN;
-            setZero(ctmp);
-            return ctmp * NAN;
+        // Apply limb-darkening
+        if (u_deg > 0) {
+
+
+            throw errors::ToDoError("Implement the deriv. of limb darkened intensity.");
+            /*
+            ADScalar<T, N> A1Ry_grad;
+            ADScalar<T, N> p_u_grad;
+            ADScalar<T, N> p_uy_grad;
+
+            x0_grad = ADScalar<Scalar<T>, 2>(0, Vector<Scalar<T>>::Unit(2, 0));
+
+            polymul(y_deg, A1Ry_grad, u_deg, p_u_grad, lmax, p_uy_grad);
+
+
+            d(p_uy)/d(p_y)
+
+            // TODO: Normalize it
+
+            ptr_A1Ry = &p_uy;
+            */
+
         }
+
+
+        //
+
 
         // Compute the polynomial basis and its x and y derivs
         x0_grad.value() = x0;
@@ -748,6 +787,18 @@ namespace maps {
                                  pT_grad(i).derivatives()(1) * getRow(*ptr_A1Ry, i)));
             pT(i) = pT_grad(i).value();
         }
+
+        // We now have I = p^T . LD(A1 . R . y),
+        //
+        // so (I think)
+        //
+        // dI/dtheta = p^T . d LD / d(A1 . R . y) . A1 . d(R . y) / dtheta
+        //
+        // and
+        //
+        // dI/dy = p^T . d LD / d(A1 . R . y) . A1 . R
+        //
+        // So it's just a matter of autodiffing `limb_darken`.
 
         // Compute the map derivs
         pTA1 = pT * B.A1;
@@ -842,23 +893,11 @@ namespace maps {
 
                 } else {
 
-                    // TODO
-                    // The back-and-forth changes of basis are SLOW.
-
                     // Transform into the polynomial basis
                     mtmp = B.A1 * (*ptr_Ry);
 
-                    // Multiply the map and the LD polynomial
-                    polymul(y_deg, mtmp, u_deg, p_u, lmax, p_uy);
-
-                    // Normalize it by enforcing that limb darkening does not
-                    // change the total disk-integrated flux.
-                    rtmp = dot(B.rT, mtmp);
-                    if (hasZero(rtmp))
-                        throw errors::ValueError("The visible map has "
-                                                 "zero net flux and cannot "
-                                                 "be limb-darkened.");
-                    p_uy *= cwiseQuotient(rtmp, dot(B.rT, p_uy));
+                    // Limb-darken it
+                    limb_darken(mtmp, p_uy);
 
                     // Back to the spherical harmonic basis
                     mtmp = B.A1Inv * p_uy;

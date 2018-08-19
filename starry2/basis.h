@@ -404,11 +404,11 @@ namespace basis {
         p1p2 = Matrix<T>::Zero((lmax12 + 1) * (lmax12 + 1), p1.cols());
         n1 = 0;
         for (l1 = 0; l1 < lmax1 + 1; ++l1) {
-            for (m1 = 0; m1 < l1 + 1; ++m1) {
+            for (m1 = -l1; m1 < l1 + 1; ++m1) {
                 odd1 = (l1 + m1) % 2 == 0 ? false : true;
                 n2 = 0;
                 for (l2 = 0; l2 < min(lmax2 + 1, lmax12 - l1 + 1); ++l2) {
-                    for (m2 = 0; m2 < l2 + 1; ++m2) {
+                    for (m2 = -l2; m2 < l2 + 1; ++m2) {
                         l = l1 + l2;
                         n = l * l + l + m1 + m2;
                         mult = p1.row(n1).cwiseProduct(p2.row(n2));
