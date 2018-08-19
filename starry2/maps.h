@@ -322,8 +322,8 @@ namespace maps {
     */
     template <class T>
     inline void Map<T>::update() {
-        update_u();
         update_y();
+        update_u();
     }
 
     /**
@@ -362,7 +362,9 @@ namespace maps {
                     break;
                 }
             }
-            update_y();
+            // Note that we must implicitly call `update_u()` as well
+            // because its normalization depends on Y_{0,0}!
+            update();
         } else {
             throw errors::ValueError("Dimension mismatch in `y`.");
         }
@@ -382,7 +384,7 @@ namespace maps {
                 for (y_deg = l - 1; y_deg >= 0; --y_deg) {
                     for (int m = -y_deg; m < y_deg + 1; ++m){
                         if (!allZero(getRow(y, y_deg * y_deg + y_deg + m))) {
-                            update_y();
+                            update();
                             return;
                         }
                     }
@@ -390,7 +392,9 @@ namespace maps {
             } else {
                 y_deg = max(y_deg, l);
             }
-            update_y();
+            // Note that we must implicitly call `update_u()` as well
+            // because its normalization depends on Y_{0,0}!
+            update();
         } else {
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
         }
@@ -870,9 +874,10 @@ namespace maps {
         ptr_Ry = &y;
 
         // Rotate the map into view
-        W.rotate(cos(theta), sin(theta), Ry);
-        mtmp = Ry;
-        ptr_Ry = &mtmp;
+        if (y_deg > 0) {
+            W.rotate(cos(theta), sin(theta), Ry);
+            ptr_Ry = &Ry;
+        }
 
         // No occultation
         if ((b >= 1 + ro) || (ro == 0)) {

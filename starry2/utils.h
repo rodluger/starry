@@ -295,9 +295,10 @@ namespace utils {
         vec.row(row) = val.template cast<T>();
     }
 
-    //! Set a row in a map tensor
+    //! Set a row in a map tensor to a constant scalar value
     template <class T, class U>
-    inline void setRow(Matrix<T>& vec, int row, U val) {
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<U>, U>::value, void>::type
+    setRow(Matrix<T>& vec, int row, U val) {
         vec.row(row) = VectorT<T>::Constant(vec.cols(), static_cast<T>(val));
     }
 
@@ -351,6 +352,20 @@ namespace utils {
     template <typename T>
     VectorT<T> dot(const VectorT<T>& vT, const Matrix<T>& U) {
         return vT * U;
+    }
+
+    //! Vector-vector coeff-wise product
+    template <typename T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
+    cwiseProduct(const T& v, const T& u) {
+        return v.cwiseProduct(u);
+    }
+
+    //! Scalar-scalar product
+    template <typename T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
+    cwiseProduct(const T& v, const T& u) {
+        return v * u;
     }
 
     //! Vector-vector coeff-wise quotient

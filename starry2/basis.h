@@ -354,16 +354,17 @@ namespace basis {
     }
 
     /**
-    Multiply two polynomial vectors.
+    Multiply two polynomials
 
     */
     template <typename T>
-    inline void polymul(int lmax1, const Vector<T>& p1, int lmax2,
-                        const Vector<T>& p2, int lmax12, Vector<T>& p1p2) {
+    inline void polymul(int lmax1, const T& p1, int lmax2,
+                        const T& p2, int lmax12, T& p1p2) {
         int n1, n2, l1, m1, l2, m2, l, n;
         bool odd1;
-        p1p2 = Vector<T>::Zero((lmax12 + 1) * (lmax12 + 1));
-        T mult;
+        resize(p1p2, (lmax12 + 1) * (lmax12 + 1), p1.cols());
+        p1p2.setZero();
+        Row<T> mult;
         n1 = 0;
         for (l1 = 0; l1 < lmax1 + 1; ++l1) {
             for (m1 = -l1; m1 < l1 + 1; ++m1) {
@@ -374,50 +375,13 @@ namespace basis {
                     for (m2 = -l2; m2 < l2 + 1; ++m2) {
                         l = l1 + l2;
                         n = l * l + l + m1 + m2;
-                        mult = p1(n1) * p2(n2);
+                        mult = cwiseProduct(getRow(p1, n1), getRow(p2, n2));
                         if (odd1 && ((l2 + m2) % 2 != 0)) {
-                            p1p2(n - 4 * l + 2) += mult;
-                            p1p2(n - 2) -= mult;
-                            p1p2(n + 2) -= mult;
+                            setRow(p1p2, n - 4 * l + 2, Row<T>(getRow(p1p2, n - 4 * l + 2) + mult));
+                            setRow(p1p2, n - 2, Row<T>(getRow(p1p2, n - 2) - mult));
+                            setRow(p1p2, n + 2, Row<T>(getRow(p1p2, n + 2) - mult));
                         } else {
-                            p1p2(n) += mult;
-                        }
-                        ++n2;
-                    }
-                }
-                ++n1;
-            }
-        }
-        return;
-    }
-
-    /**
-    Multiply two polynomial vectors.
-
-    */
-    template <typename T>
-    inline void polymul(int lmax1, const Matrix<T>& p1, int lmax2,
-                        const Matrix<T>& p2, int lmax12, Matrix<T>& p1p2) {
-        int n1, n2, l1, m1, l2, m2, l, n;
-        bool odd1;
-        VectorT<T> mult;
-        p1p2 = Matrix<T>::Zero((lmax12 + 1) * (lmax12 + 1), p1.cols());
-        n1 = 0;
-        for (l1 = 0; l1 < lmax1 + 1; ++l1) {
-            for (m1 = -l1; m1 < l1 + 1; ++m1) {
-                odd1 = (l1 + m1) % 2 == 0 ? false : true;
-                n2 = 0;
-                for (l2 = 0; l2 < min(lmax2 + 1, lmax12 - l1 + 1); ++l2) {
-                    for (m2 = -l2; m2 < l2 + 1; ++m2) {
-                        l = l1 + l2;
-                        n = l * l + l + m1 + m2;
-                        mult = p1.row(n1).cwiseProduct(p2.row(n2));
-                        if (odd1 && ((l2 + m2) % 2 != 0)) {
-                            p1p2.row(n - 4 * l + 2) += mult;
-                            p1p2.row(n - 2) -= mult;
-                            p1p2.row(n + 2) -= mult;
-                        } else {
-                            p1p2.row(n) += mult;
+                            setRow(p1p2, n, Row<T>(getRow(p1p2, n) + mult));
                         }
                         ++n2;
                     }
