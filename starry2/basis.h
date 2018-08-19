@@ -393,6 +393,77 @@ namespace basis {
     }
 
     /**
+    Multiply two polynomials and manually compute the gradients
+
+    d(p1p2)/d(p1) = matrix of matrices. Wavelengths are independent,
+    so this boils down to a matrix of vectors. Each element in the matrix
+    d(p1p2)/d(p1) is a vector corresponding to the derivative of the product
+    with respect to the polynomial coefficients *at that wavelength*.
+
+    */
+    template <typename T>
+    inline void polymul(int lmax1, const T& p1, int lmax2,
+                        const T& p2, int lmax12, T& p1p2,
+                        Matrix<Vector<Scalar<T>>>& grad_p1,
+                        Matrix<Vector<Scalar<T>>>& grad_p2) {
+        int n1, n2, l1, m1, l2, m2, l, n;
+        bool odd1;
+        int nwav = p1.cols();
+        int N = (lmax12 + 1) * (lmax12 + 1);
+        resize(p1p2, N, nwav);
+        p1p2.setZero();
+        Row<T> mult;
+        n1 = 0;
+
+        // Initialize the gradients
+        grad_p1 = Matrix<Vector<Scalar<T>>>::Zero(N, nwav);
+        grad_p2 = Matrix<Vector<Scalar<T>>>::Zero(N, nwav);
+        for (int i = 0; i < N; ++i){
+            for (int j = 0; j < nwav; ++j){
+                grad_p1(i, j) = Vector<double>::Zero(p1.rows());
+                grad_p2(i, j) = Vector<double>::Zero(p2.rows());
+            }
+        }
+
+        for (l1 = 0; l1 < lmax1 + 1; ++l1) {
+            for (m1 = -l1; m1 < l1 + 1; ++m1) {
+                odd1 = (l1 + m1) % 2 == 0 ? false : true;
+                n2 = 0;
+                for (l2 = 0; l2 < lmax2 + 1; ++l2) {
+                    if (l1 + l2 > lmax12) break;
+                    for (m2 = -l2; m2 < l2 + 1; ++m2) {
+                        l = l1 + l2;
+                        n = l * l + l + m1 + m2;
+                        mult = cwiseProduct(getRow(p1, n1), getRow(p2, n2));
+                        if (odd1 && ((l2 + m2) % 2 != 0)) {
+                            setRow(p1p2, n - 4 * l + 2, Row<T>(getRow(p1p2, n - 4 * l + 2) + mult));
+                            setRow(p1p2, n - 2, Row<T>(getRow(p1p2, n - 2) - mult));
+                            setRow(p1p2, n + 2, Row<T>(getRow(p1p2, n + 2) - mult));
+                            for (int w = 0; w < nwav; ++w) {
+                                grad_p1(n - 4 * l + 2, w)(n1) += p2(n2, w);
+                                grad_p2(n - 4 * l + 2, w)(n2) += p1(n1, w);
+                                grad_p1(n - 2, w)(n1) -= p2(n2, w);
+                                grad_p2(n - 2, w)(n2) -= p1(n1, w);
+                                grad_p1(n + 2, w)(n1) -= p2(n2, w);
+                                grad_p2(n + 2, w)(n2) -= p1(n1, w);
+                            }
+                        } else {
+                            setRow(p1p2, n, Row<T>(getRow(p1p2, n) + mult));
+                            for (int w = 0; w < nwav; ++w) {
+                                grad_p1(n, w)(n1) += p2(n2, w);
+                                grad_p2(n, w)(n2) += p1(n1, w);
+                            }
+                        }
+                        ++n2;
+                    }
+                }
+                ++n1;
+            }
+        }
+        return;
+    }
+
+    /**
     Basis transform matrices
 
     */
