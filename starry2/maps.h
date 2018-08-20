@@ -108,8 +108,8 @@ namespace maps {
             Power<Scalar<T>> ypow_scalar;                                       /**< Powers of y for map evaluation */
             Power<ADScalar<Scalar<T>, 2>> xpow_grad;                            /**< Powers of x for gradient map evaluation */
             Power<ADScalar<Scalar<T>, 2>> ypow_grad;                            /**< Powers of y for gradient map evaluation */
-            Matrix<Vector<Scalar<T>>> grad_p1;                                  /**< Derivative of a polynomial product */
-            Matrix<Vector<Scalar<T>>> grad_p2;                                  /**< Derivative of a polynomial product */
+            Matrix<Row<T>> grad_p1;                                             /**< Derivative of a polynomial product */
+            Matrix<Row<T>> grad_p2;                                             /**< Derivative of a polynomial product */
 
             // External info function
             template <class U>
@@ -755,7 +755,8 @@ namespace maps {
             // TODO
             throw errors::ToDoError("Implement the deriv. of limb darkened intensity.");
 
-            polymul(y_deg, *ptr_A1Ry, u_deg, p_u, lmax, p_uy, grad_p1, grad_p2);
+            // I = p^T . LD(A1 . R . y)
+            // (1 x nwav) = (1 x N) (N x N) (N x N) (N x nwav)
 
             // Thinking about this:
             // dI/dtheta = p^T . d LD / d(A1 . R . y) . A1 . d(R . y) / dtheta
@@ -769,6 +770,8 @@ namespace maps {
             // LD = (N x 1)
             // A1.R.y = (N x 1)
             // So, yes, dLD/dA1.R.y = (N x N)
+
+            // specifically, it's (N_ld x N_a1ry)
 
             // But for multiple wavelength bins, we have
             // LD = (N x nwav)

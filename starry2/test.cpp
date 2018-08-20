@@ -1,56 +1,85 @@
 #include <stdlib.h>
 #include <iostream>
+#include <cmath>
 #include "utils.h"
+#include "rotation.h"
 #include "basis.h"
 using namespace utils;
 using namespace basis;
+using namespace rotation;
 
+/**
+Working like a charm.
 
-int main() {
+*/
+void dIdtheta() {
 
-    Matrix<double> p10(4, 2);
-    Matrix<double> p1(4, 2);
-    Matrix<double> p2(4, 2);
-    Matrix<double> p1p2;
-    Matrix<Vector<double>> grad_p1;
-    Matrix<Vector<double>> grad_p2;
-    Matrix<double> f1, f2;
-    p10 << 2.34, 3.10,
-           5.4, -3.4,
-           1.12, 2.01,
-           -0.14, -5.2;
-    p2 << 0.12, 4.91,
-          1.38, -0.44,
-          2.40, 3.08,
-          -3.11, 4.46;
+    int y_deg = 1;
+    int u_deg = 1;
+    int lmax = 2;
+    Vector<double> p_uy;
+    Matrix<double> grad_p1;
+    Matrix<double> grad_p2;
+    double I1, I2, dIdtheta;
+    double eps = 1.e-8;
 
+    // Mock sph harm and limb darkening vectors
+    Vector<double> y(9);
+    Vector<double> p_u(9);
+    y <<   2,
+           3,
+           5,
+           7,
+           0, 0, 0, 0, 0;
+    p_u << 0,
+           0,
+           0.5,
+           0,
+           0, 0, 0, 0, 0;
 
-    for (int a = 0; a < 4; ++a) {
+    // Mock polynomial basis vector
+    VectorT<double> pT(9);
+    pT << 1, 2, 3, 4, 5, 6, 7, 8, 9;
+    double theta;
 
-        // Analytically
-        p1 = p10;
-        polymul(1, p1, 1, p2, 2, p1p2, grad_p1, grad_p2);
-        for (int j = 0; j < 2; ++j) {
-            for (int i = 0; i < 9; ++i) {
-                std::cout << grad_p1(i, j)(a) << " ";
-            }
-            std::cout << std::endl;
-        }
-        std::cout << std::endl;
+    // Mock rotation matrix
+    Matrix<double> R(9, 9);
+    R.setZero();
+    R(0, 0) = 1;
+    Matrix<double> dRdtheta(9, 9);
+    dRdtheta.setZero();
 
-        // Numerically
-        for (int b = 0; b < 2; ++b) {
-            p1 = p10;
-            p1(a, b) -= 1.e-8;
-            polymul(1, p1, 1, p2, 2, f1);
-            p1 = p10;
-            p1(a, b) += 1.e-8;
-            polymul(1, p1, 1, p2, 2, f2);
-            std::cout << ((f2 - f1) / (2.e-8)).transpose().row(b) << std::endl;
+    // Mock change of basis matrix
+    Matrix<double> A1;
+    A1 = Matrix<double>::Identity(9, 9);
 
-        }
-        std::cout << std::endl << std::endl;
+    // Analytic derivative
+    // dI/dtheta = p^T . d LD / d(A1 . R . y) . A1 . d(R . y) / dtheta
+    theta = M_PI / 3;
+    R(1, 1) = sin(theta);
+    R(2, 2) = tan(theta);
+    R(3, 3) = cos(theta);
+    polymul(y_deg, Vector<double>(A1 * R * y), u_deg, p_u, lmax, p_uy, grad_p1, grad_p2);
+    dRdtheta(1, 1) = cos(theta);
+    dRdtheta(2, 2) = 1 / (cos(theta) * cos(theta));
+    dRdtheta(3, 3) = -sin(theta);
+    dIdtheta = pT * grad_p1 * A1 * dRdtheta * y;
+    std::cout << "Analytic: " << dIdtheta << std::endl;
 
-    }
+    // Numerical derivative
+    theta = M_PI / 3 - eps;
+    R(1, 1) = sin(theta);
+    R(2, 2) = tan(theta);
+    R(3, 3) = cos(theta);
+    polymul(y_deg, Vector<double>(A1 * R * y), u_deg, p_u, lmax, p_uy);
+    I1 = pT * p_uy;
+    theta = M_PI / 3 + eps;
+    R(1, 1) = sin(theta);
+    R(2, 2) = tan(theta);
+    R(3, 3) = cos(theta);
+    polymul(y_deg, Vector<double>(A1 * R * y), u_deg, p_u, lmax, p_uy);
+    I2 = pT * p_uy;
+    dIdtheta = (I2 - I1) / (2 * eps);
+    std::cout << "Numerical: " << dIdtheta << std::endl;
 
 }

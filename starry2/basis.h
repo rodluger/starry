@@ -413,8 +413,8 @@ namespace basis {
     template <typename T>
     inline void polymul(int lmax1, const T& p1, int lmax2,
                         const T& p2, int lmax12, T& p1p2,
-                        Matrix<Vector<Scalar<T>>>& grad_p1,
-                        Matrix<Vector<Scalar<T>>>& grad_p2) {
+                        Matrix<Row<T>>& grad_p1,
+                        Matrix<Row<T>>& grad_p2) {
         int n1, n2, l1, m1, l2, m2, l, n;
         bool odd1;
         int nwav = p1.cols();
@@ -425,12 +425,14 @@ namespace basis {
         n1 = 0;
 
         // Initialize the gradients
-        grad_p1 = Matrix<Vector<Scalar<T>>>::Zero(N, nwav);
-        grad_p2 = Matrix<Vector<Scalar<T>>>::Zero(N, nwav);
+        grad_p1 = Matrix<Row<T>>::Zero(N, N);
+        grad_p2 = Matrix<Row<T>>::Zero(N, N);
         for (int i = 0; i < N; ++i){
-            for (int j = 0; j < nwav; ++j){
-                grad_p1(i, j) = Vector<Scalar<T>>::Zero(p1.rows());
-                grad_p2(i, j) = Vector<Scalar<T>>::Zero(p2.rows());
+            for (int j = 0; j < N; ++j){
+                resize(grad_p1(i, j), N, nwav);
+                resize(grad_p2(i, j), N, nwav);
+                setZero(grad_p1(i, j));
+                setZero(grad_p2(i, j));
             }
         }
 
@@ -448,20 +450,16 @@ namespace basis {
                             setRow(p1p2, n - 4 * l + 2, Row<T>(getRow(p1p2, n - 4 * l + 2) + mult));
                             setRow(p1p2, n - 2, Row<T>(getRow(p1p2, n - 2) - mult));
                             setRow(p1p2, n + 2, Row<T>(getRow(p1p2, n + 2) - mult));
-                            for (int w = 0; w < nwav; ++w) {
-                                grad_p1(n - 4 * l + 2, w)(n1) += p2(n2, w);
-                                grad_p2(n - 4 * l + 2, w)(n2) += p1(n1, w);
-                                grad_p1(n - 2, w)(n1) -= p2(n2, w);
-                                grad_p2(n - 2, w)(n2) -= p1(n1, w);
-                                grad_p1(n + 2, w)(n1) -= p2(n2, w);
-                                grad_p2(n + 2, w)(n2) -= p1(n1, w);
-                            }
+                            grad_p1(n - 4 * l + 2, n1) += getRow(p2, n2);
+                            grad_p2(n - 4 * l + 2, n2) += getRow(p1, n1);
+                            grad_p1(n - 2, n1) -= getRow(p2, n2);
+                            grad_p2(n - 2, n2) -= getRow(p1, n1);
+                            grad_p1(n + 2, n1) -= getRow(p2, n2);
+                            grad_p2(n + 2, n2) -= getRow(p1, n1);
                         } else {
                             setRow(p1p2, n, Row<T>(getRow(p1p2, n) + mult));
-                            for (int w = 0; w < nwav; ++w) {
-                                grad_p1(n, w)(n1) += p2(n2, w);
-                                grad_p2(n, w)(n2) += p1(n1, w);
-                            }
+                            grad_p1(n, n1) += getRow(p2, n2);
+                            grad_p2(n, n2) += getRow(p1, n1);
                         }
                         ++n2;
                     }
