@@ -314,6 +314,37 @@ namespace utils {
         return vec.row(row);
     }
 
+    //! Return an index in a vector
+    template <class T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
+    getColumn(const T& vec, int col) {
+        if (col == 0)
+            return vec;
+        else
+            throw errors::IndexError("Attempting to index a scalar variable.");
+    }
+
+    //! Return a column in a map tensor
+    template <class T>
+    inline Vector<T> getColumn(const Vector<T>& vec, int col) {
+        if (col == 0)
+            return vec;
+        else
+            throw errors::IndexError("Attempting to index a scalar variable.");
+    }
+
+    //! Return a column in a map tensor
+    template <class T>
+    inline T getColumn(const VectorT<T>& vec, int col) {
+        return vec(col);
+    }
+
+    //! Return a column in a map tensor
+    template <class T>
+    inline Vector<T> getColumn(const Matrix<T>& vec, int col) {
+        return vec.col(col);
+    }
+
     //! Does a map tensor have any zero elements?
     template <typename T>
     inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type

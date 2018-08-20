@@ -112,6 +112,7 @@ namespace maps {
             Power<ADScalar<Scalar<T>, 2>> ypow_grad;                            /**< Powers of y for gradient map evaluation */
             VectorT<Matrix<Scalar<T>>> grad_p1;                                 /**< Derivative of a polynomial product (gross) */
             VectorT<Matrix<Scalar<T>>> grad_p2;                                 /**< Derivative of a polynomial product (gross) */
+            Matrix<Scalar<T>> mattmp;                                           /**< Temporary matrix */
 
             // External info function
             template <class U>
@@ -587,7 +588,9 @@ namespace maps {
 
 
     /**
-    Limb-darken a polynomial map
+    Limb-darken a polynomial map, and optionally compute the
+    gradient of the resulting map with respect to the input
+    polynomial map and the input limb-darkening map.
 
     */
     template <class T>
@@ -599,21 +602,34 @@ namespace maps {
         else
             polymul(y_deg, poly, u_deg, p_u, lmax, poly_ld);
 
-        // Normalize it by enforcing that limb darkening does not
+        // Compute the normalization by enforcing that limb darkening does not
         // change the total disk-integrated flux.
         rtmp = dot(B.rT, poly);
         if (hasZero(rtmp))
-            throw errors::ValueError("The visible map has "
-                                     "zero net flux and cannot "
-                                     "be limb-darkened.");
+            throw errors::ValueError("The visible map has zero net flux "
+                                     "and cannot be limb-darkened.");
         rtmp2 = dot(B.rT, poly_ld);
         rtmp3 = cwiseQuotient(rtmp, rtmp2);
+
+        // We need to do a little chain rule to propagate
+        // the normalization to the gradient
+        if (gradient) {
+            for (int n = 0; n < nwav; ++n) {
+                mattmp = getColumn(poly_ld, n) * B.rT;
+                grad_p1(n) = (grad_p1(n) * getColumn(rtmp3, n))
+                             + mattmp / getColumn(rtmp2, n);
+
+                // TODO: this expression for the derivative w/ respect
+                // to the limb darkening polynomial is **untested**
+                grad_p2(n) = (grad_p2(n) * getColumn(rtmp3, n))
+                             - mattmp / (getColumn(rtmp, n) *
+                                         getColumn(rtmp2, n) *
+                                         getColumn(rtmp2, n));
+            }
+        }
+
+        // Finally, apply the normalization
         colwiseMult(poly_ld, rtmp3);
-
-        // TODO: Chain rule for gradient
-        //f = poly_ld * fac;
-
-        //df/dp1 = dpoly_ld/dp1
 
     }
 
@@ -728,8 +744,6 @@ namespace maps {
     /**
     Evaluate the map at a given (x0, y0) coordinate and compute the gradient
 
-    TODO: Add limb darkening
-
     */
     template <class T>
     inline Row<T> Map<T>::evaluate_with_gradient(const Scalar<T>& theta_,
@@ -761,25 +775,11 @@ namespace maps {
             ptr_A1Ry = &mtmp;
         }
 
-        // Apply limb-darkening
+        // Apply limb-darkening and compute its derivative
         if (u_deg > 0) {
-
-            // TODO
-            throw errors::ToDoError("Implement the deriv. of limb darkened intensity.");
-
-
             limb_darken(*ptr_A1Ry, p_uy, true);
-
-
-
             ptr_A1Ry = &p_uy;
-
-
         }
-
-
-        //
-
 
         // Compute the polynomial basis and its x and y derivs
         x0_grad.value() = x0;
@@ -798,36 +798,36 @@ namespace maps {
             pT(i) = pT_grad(i).value();
         }
 
-        // We now have I = p^T . LD(A1 . R . y),
+        // NOTE: Computing the gradient of a limb-darkened map is
+        // a bit tricky, since we need to differentiate the (non-linear)
+        // limb-darkening operation, `limb_darken`.
         //
-        // so (I think)
-        //
-        // dI/dtheta = p^T . d LD / d(A1 . R . y) . A1 . d(R . y) / dtheta
-        //
-        // and
-        //
-        // dI/dy = p^T . d LD / d(A1 . R . y) . A1 . R
-        //
-        // So it's just a matter of autodiffing `limb_darken`.
+        // We have I = p^T . limb_darken(A1 . R . y), so
+        //      dI / dtheta = p^T . grad_p1 . A1 . d(R . y) / dtheta
+        //      dI / dy = p^T . grad_p1 . A1 . R
+        // where
+        //      grad_p1 = d (limb_darken) / d(A1 . R . y)
 
-        // Compute the map derivs
-        pTA1 = pT * B.A1;
-        if (theta == 0) {
-            for (int i = 0; i < N; i++)
-                setRow(dI, 3 + i, pTA1(i));
-        } else {
-            for (int l = 0; l < lmax + 1; l++)
-                vtmp.segment(l * l, 2 * l + 1) =
-                    pTA1.segment(l * l, 2 * l + 1) * W.R[l];
-            for (int i = 0; i < N; i++)
-                setRow(dI, 3 + i, vtmp(i));
-        }
-
-        // Compute the theta deriv
-        for (int l = 0; l < lmax + 1; l++)
+        // Compute dR/dtheta . y
+        for (int l = 0; l < lmax + 1; ++l)
             dRdthetay.block(l * l, 0, 2 * l + 1, nwav) =
                 W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, nwav);
-        setRow(dI, 0, Row<T>(dot(pTA1, dRdthetay) * (pi<Scalar<T>>() / 180.)));
+
+        // Compute the map derivs and the theta deriv
+        for (int n = 0; n < nwav; ++n) {
+            pTA1 = pT * grad_p1(n) * B.A1;
+            if (theta == 0) {
+                for (int i = 0; i < N; i++)
+                    dI(3 + i, n) = pTA1(i);
+            } else {
+                for (int l = 0; l < lmax + 1; l++)
+                    vtmp.segment(l * l, 2 * l + 1) =
+                        pTA1.segment(l * l, 2 * l + 1) * W.R[l];
+                for (int i = 0; i < N; i++)
+                    dI(3 + i, n) = vtmp(i);
+            }
+            dI(0, n) = dot(pTA1, getColumn(dRdthetay, n)) * (pi<Scalar<T>>() / 180.);
+        }
 
         // Dot the coefficients in to our polynomial map
         return pT * (*ptr_A1Ry);

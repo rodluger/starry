@@ -14,10 +14,12 @@ void spectral() {
     int u_deg = 1;
     int lmax = 2;
     int nwav = 2;
+    double theta;
     Matrix<double> p_uy;
     VectorT<Matrix<double>> grad_p1;
     VectorT<Matrix<double>> grad_p2;
     Vector<double> I1(2), I2(2), dIdtheta(2);
+    VectorT<double> rtmp, rtmp2, rtmp3;
     double eps = 1.e-8;
 
     // Mock sph harm and limb darkening vectors
@@ -37,7 +39,10 @@ void spectral() {
     // Mock polynomial basis vector
     VectorT<double> pT(9);
     pT << 1, 2, 3, 4, 5, 6, 7, 8, 9;
-    double theta;
+
+    // Mock rotation solution vector
+    VectorT<double> rT(9);
+    rT << 5, 7, 4, 3, -3, 6, 10, 2, 1;
 
     // Mock rotation matrix
     Matrix<double> R(9, 9);
@@ -57,6 +62,19 @@ void spectral() {
     R(2, 2) = tan(theta);
     R(3, 3) = cos(theta);
     polymul(y_deg, Matrix<double>(A1 * R * y), u_deg, p_u, lmax, p_uy, grad_p1, grad_p2);
+    rtmp = dot(rT, Matrix<double>(A1 * R * y));
+    rtmp2 = dot(rT, p_u);
+    rtmp3 = cwiseQuotient(rtmp, rtmp2);
+
+    // Chain rule
+    for (int n = 0; n < nwav; ++n) {
+        auto foo = getColumn(p_uy, n) * rT;
+        grad_p1(n) = (grad_p1(n) * getColumn(rtmp3, n)) + foo / getColumn(rtmp2, n);
+        grad_p2(n) = (grad_p2(n) * getColumn(rtmp3, n)) - foo / getColumn(rtmp, n) / (getColumn(rtmp2, n) * getColumn(rtmp2, n));
+    }
+
+    colwiseMult(p_uy, rtmp3);
+
     dRdtheta(1, 1) = cos(theta);
     dRdtheta(2, 2) = 1 / (cos(theta) * cos(theta));
     dRdtheta(3, 3) = -sin(theta);
@@ -72,12 +90,20 @@ void spectral() {
     R(2, 2) = tan(theta);
     R(3, 3) = cos(theta);
     polymul(y_deg, Matrix<double>(A1 * R * y), u_deg, p_u, lmax, p_uy);
+    rtmp = dot(rT, Matrix<double>(A1 * R * y));
+    rtmp2 = dot(rT, p_u);
+    rtmp3 = cwiseQuotient(rtmp, rtmp2);
+    colwiseMult(p_uy, rtmp3);
     I1 = pT * p_uy;
     theta = M_PI / 3 + eps;
     R(1, 1) = sin(theta);
     R(2, 2) = tan(theta);
     R(3, 3) = cos(theta);
     polymul(y_deg, Matrix<double>(A1 * R * y), u_deg, p_u, lmax, p_uy);
+    rtmp = dot(rT, Matrix<double>(A1 * R * y));
+    rtmp2 = dot(rT, p_u);
+    rtmp3 = cwiseQuotient(rtmp, rtmp2);
+    colwiseMult(p_uy, rtmp3);
     I2 = pT * p_uy;
     dIdtheta = (I2 - I1) / (2 * eps);
     std::cout << "Numerical: " << dIdtheta.transpose() << std::endl;
@@ -161,6 +187,6 @@ void scalar() {
 }
 
 int main() {
-    scalar();
+    //scalar();
     spectral();
 }
