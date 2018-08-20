@@ -99,6 +99,8 @@ namespace maps {
             T ARRy;                                                             /**< The `ARRy` term in `s^TARRy` */
             Row<T> dFdb;                                                        /**< Gradient of the flux with respect to the impact parameter */
             Row<T> rtmp;                                                        /**< A temporary surface map row vector */
+            Row<T> rtmp2;                                                        /**< A temporary surface map row vector */
+            Row<T> rtmp3;                                                        /**< A temporary surface map row vector */
             Column<T> ctmp;                                                     /**< A temporary surface map col vector */
             int cache_oper;                                                     /**< Cached operation identifier */
             Scalar<T> cache_theta;                                              /**< Cached rotation angle */
@@ -194,6 +196,8 @@ namespace maps {
                 resize(ARRy, N, nwav);
                 resize(dFdb, N, nwav);
                 resize(rtmp, N, nwav);
+                resize(rtmp2, N, nwav);
+                resize(rtmp3, N, nwav);
                 resize(ctmp, N, nwav);
 
                 // Reset & update the map coeffs
@@ -602,10 +606,14 @@ namespace maps {
             throw errors::ValueError("The visible map has "
                                      "zero net flux and cannot "
                                      "be limb-darkened.");
-        colwiseMult(poly_ld, cwiseQuotient(rtmp, dot(B.rT, poly_ld)));
+        rtmp2 = dot(B.rT, poly_ld);
+        rtmp3 = cwiseQuotient(rtmp, rtmp2);
+        colwiseMult(poly_ld, rtmp3);
 
         // TODO: Chain rule for gradient
+        //f = poly_ld * fac;
 
+        //df/dp1 = dpoly_ld/dp1
 
     }
 
