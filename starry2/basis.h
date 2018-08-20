@@ -403,9 +403,9 @@ namespace basis {
     to the derivative of the product with respect to the polynomial coefficients
     *at that particular wavelength*.
 
-    For reference, `grad_p1(i, k)(j)` is the derivative of the i^th
-    polynomial coefficient in the j^th wavelength bin of `p1p2` with respect
-    to the k^th polynomial coefficient in the j^th wavelength bin of `p1`.
+    For reference, `grad_p1(i)(j, k)` is the derivative of the j^th
+    polynomial coefficient of `p1p2` with respect to the k^th polynomial
+    coefficient of `p1`, both in the i^th wavelength bin.
 
     Yuck.
 

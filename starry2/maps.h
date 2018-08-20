@@ -108,8 +108,8 @@ namespace maps {
             Power<Scalar<T>> ypow_scalar;                                       /**< Powers of y for map evaluation */
             Power<ADScalar<Scalar<T>, 2>> xpow_grad;                            /**< Powers of x for gradient map evaluation */
             Power<ADScalar<Scalar<T>, 2>> ypow_grad;                            /**< Powers of y for gradient map evaluation */
-            Matrix<Row<T>> grad_p1;                                             /**< Derivative of a polynomial product */
-            Matrix<Row<T>> grad_p2;                                             /**< Derivative of a polynomial product */
+            VectorT<Matrix<Scalar<T>>> grad_p1;                                 /**< Derivative of a polynomial product (gross) */
+            VectorT<Matrix<Scalar<T>>> grad_p2;                                 /**< Derivative of a polynomial product (gross) */
 
             // External info function
             template <class U>
@@ -120,8 +120,7 @@ namespace maps {
             inline void clear_cache();
             inline void update_y();
             inline void update_u();
-            template <typename U>
-            inline void limb_darken(const U& poly, U& poly_ld);
+            inline void limb_darken(const T& poly, T& poly_ld, bool gradient=false);
             template <typename U>
             inline void poly_basis(Power<U>& xpow, Power<U>& ypow, VectorT<U>& basis);
             inline Row<T> evaluate_with_gradient(const Scalar<T>& theta_deg,
@@ -584,15 +583,17 @@ namespace maps {
 
 
     /**
-    Limb-darken a polynomial map; templated for AD capability
-
-    TODO: Specialize dot, hasZero, and cWiseQuotient for AD
+    Limb-darken a polynomial map
 
     */
-    template <class T> template <typename U>
-    inline void Map<T>::limb_darken(const U& poly, U& poly_ld) {
+    template <class T>
+    inline void Map<T>::limb_darken(const T& poly, T& poly_ld, bool gradient) {
+
         // Multiply a polynomial map by the LD polynomial
-        polymul(y_deg, poly, u_deg, p_u, lmax, p_uy);
+        if (gradient)
+            polymul(y_deg, poly, u_deg, p_u, lmax, poly_ld, grad_p1, grad_p2);
+        else
+            polymul(y_deg, poly, u_deg, p_u, lmax, poly_ld);
 
         // Normalize it by enforcing that limb darkening does not
         // change the total disk-integrated flux.
@@ -602,6 +603,9 @@ namespace maps {
                                      "zero net flux and cannot "
                                      "be limb-darkened.");
         colwiseMult(poly_ld, cwiseQuotient(rtmp, dot(B.rT, poly_ld)));
+
+        // TODO: Chain rule for gradient
+
 
     }
 
@@ -755,31 +759,10 @@ namespace maps {
             // TODO
             throw errors::ToDoError("Implement the deriv. of limb darkened intensity.");
 
-            // I = p^T . LD(A1 . R . y)
-            // (1 x nwav) = (1 x N) (N x N) (N x N) (N x nwav)
 
-            // Thinking about this:
-            // dI/dtheta = p^T . d LD / d(A1 . R . y) . A1 . d(R . y) / dtheta
-            // (1 x nwav) = (1 x N) (N x N) (N x N) x (N x nwav)
-            //
-            // So d LD / d(A1 . R . y) has to be (N x N)...
+            limb_darken(*ptr_A1Ry, p_uy, true);
 
-            // Huh?
 
-            // For a single wavelength bin, we have
-            // LD = (N x 1)
-            // A1.R.y = (N x 1)
-            // So, yes, dLD/dA1.R.y = (N x N)
-
-            // specifically, it's (N_ld x N_a1ry)
-
-            // But for multiple wavelength bins, we have
-            // LD = (N x nwav)
-            // A1.R.y = (N x nwav)
-            // I thought this was rank 4...
-
-            // TODO: Above is experimental. We need to actually call `limbdark`
-            // to normalize it
 
             ptr_A1Ry = &p_uy;
 
