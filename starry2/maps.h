@@ -1,6 +1,9 @@
 /**
 Defines the surface map class.
 
+TODO: Could speed up limb-darkened map rotations, since
+      the effective degree of the map is lower.
+
 */
 
 #ifndef _STARRY_MAPS_H_
@@ -99,8 +102,8 @@ namespace maps {
             T ARRy;                                                             /**< The `ARRy` term in `s^TARRy` */
             Row<T> dFdb;                                                        /**< Gradient of the flux with respect to the impact parameter */
             Row<T> rtmp;                                                        /**< A temporary surface map row vector */
-            Row<T> rtmp2;                                                        /**< A temporary surface map row vector */
-            Row<T> rtmp3;                                                        /**< A temporary surface map row vector */
+            Row<T> rtmp2;                                                       /**< A temporary surface map row vector */
+            Row<T> rtmp3;                                                       /**< A temporary surface map row vector */
             Column<T> ctmp;                                                     /**< A temporary surface map col vector */
             int cache_oper;                                                     /**< Cached operation identifier */
             Scalar<T> cache_theta;                                              /**< Cached rotation angle */
@@ -113,6 +116,7 @@ namespace maps {
             VectorT<Matrix<Scalar<T>>> grad_p1;                                 /**< Derivative of a polynomial product (gross) */
             VectorT<Matrix<Scalar<T>>> grad_p2;                                 /**< Derivative of a polynomial product (gross) */
             Matrix<Scalar<T>> mattmp;                                           /**< Temporary matrix */
+            Matrix<Scalar<T>> mattmp2;                                          /**< Temporary matrix */
 
             // External info function
             template <class U>
@@ -136,6 +140,10 @@ namespace maps {
             inline Row<T> flux_ld(const Scalar<T>& xo_,
                                   const Scalar<T>& yo_,
                                   const Scalar<T>& ro_);
+            inline Row<T> flux_ld_with_gradient(const Scalar<T>& xo_,
+                                                const Scalar<T>& yo_,
+                                                const Scalar<T>& ro_);
+
         public:
 
             /**
@@ -616,15 +624,11 @@ namespace maps {
         if (gradient) {
             for (int n = 0; n < nwav; ++n) {
                 mattmp = getColumn(poly_ld, n) * B.rT;
-                grad_p1(n) = (grad_p1(n) * getColumn(rtmp3, n))
-                             + mattmp / getColumn(rtmp2, n);
+                mattmp /= getColumn(rtmp2, n);
+                mattmp2 = grad_p1(n) * getColumn(rtmp3, n);
+                grad_p1(n) = mattmp2 + mattmp - mattmp * mattmp2;
 
-                // TODO: this expression for the derivative w/ respect
-                // to the limb darkening polynomial is **untested**
-                grad_p2(n) = (grad_p2(n) * getColumn(rtmp3, n))
-                             - mattmp / (getColumn(rtmp, n) *
-                                         getColumn(rtmp2, n) *
-                                         getColumn(rtmp2, n));
+                // TODO: normalize grad_p2
             }
         }
 
@@ -814,20 +818,37 @@ namespace maps {
                 W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, nwav);
 
         // Compute the map derivs and the theta deriv
-        for (int n = 0; n < nwav; ++n) {
-            pTA1 = pT * grad_p1(n) * B.A1;
+        if (u_deg > 0) {
+            for (int n = 0; n < nwav; ++n) {
+                pTA1 = pT * grad_p1(n) * B.A1;
+                if (theta == 0) {
+                    for (int i = 0; i < N; i++)
+                        dI(3 + i, n) = pTA1(i);
+                } else {
+                    for (int l = 0; l < lmax + 1; l++)
+                        vtmp.segment(l * l, 2 * l + 1) =
+                            pTA1.segment(l * l, 2 * l + 1) * W.R[l];
+                    for (int i = 0; i < N; i++)
+                        dI(3 + i, n) = vtmp(i);
+                }
+                dI(0, n) = dot(pTA1, getColumn(dRdthetay, n)) * (pi<Scalar<T>>() / 180.);
+            }
+        } else {
+            pTA1 = pT * B.A1;
             if (theta == 0) {
                 for (int i = 0; i < N; i++)
-                    dI(3 + i, n) = pTA1(i);
+                    setRow(dI, 3 + i, pTA1(i));
             } else {
                 for (int l = 0; l < lmax + 1; l++)
                     vtmp.segment(l * l, 2 * l + 1) =
                         pTA1.segment(l * l, 2 * l + 1) * W.R[l];
                 for (int i = 0; i < N; i++)
-                    dI(3 + i, n) = vtmp(i);
+                    setRow(dI, 3 + i, vtmp(i));
             }
-            dI(0, n) = dot(pTA1, getColumn(dRdthetay, n)) * (pi<Scalar<T>>() / 180.);
+            setRow(dI, 0, Row<T>(dot(pTA1, dRdthetay) * (pi<Scalar<T>>() / 180.)));
         }
+
+        // TODO: Compute the derivs with respect to the limb darkening!
 
         // Dot the coefficients in to our polynomial map
         return pT * (*ptr_A1Ry);
@@ -838,7 +859,6 @@ namespace maps {
     /* ------------- */
     /*      FLUX     */
     /* ------------- */
-
 
     /**
     Compute the flux during or outside of an occultation
@@ -853,8 +873,11 @@ namespace maps {
 
         if (gradient) {
             // If we're computing the gradient as well,
-            // call the specialized function
-            return flux_with_gradient(theta_, xo_, yo_, ro_);
+            // call the specialized functions
+            if (y_deg == 0)
+                return flux_ld_with_gradient(xo_, yo_, ro_);
+            else
+                return flux_with_gradient(theta_, xo_, yo_, ro_);
         } else if (y_deg == 0) {
             // If only the Y_{0,0} term is set, call the
             // faster method for pure limb-darkening
@@ -955,6 +978,56 @@ namespace maps {
     inline Row<T> Map<T>::flux_ld(const Scalar<T>& xo_,
                                   const Scalar<T>& yo_,
                                   const Scalar<T>& ro_) {
+
+        // Convert to internal types
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+
+        // Impact parameter
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+            setZero(ctmp);
+            return ctmp;
+        }
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // Easy: the disk-integrated intensity
+            // is just the Y_{0,0} coefficient
+            return getRow(y, 0);
+
+        // Occultation
+        } else {
+
+            // Compute the sT vector (sparsely)
+            for (int n = 0; n < N; ++n)
+                G.skip(n) = !(g_u.block(n, 0, 1, nwav).array() != 0.0).any();
+            G.compute(b, ro);
+
+            // Dot the result in and we're done
+            return G.sT * g_u;
+
+        }
+
+    }
+
+    /**
+    Compute the flux during or outside of an occultation
+    for a pure limb-darkened map (Y_{l,m} = 0 for l > 0).
+
+    TODO: Add limb darkening.
+
+    */
+    template <class T>
+    inline Row<T> Map<T>::flux_ld_with_gradient(const Scalar<T>& xo_,
+                                                const Scalar<T>& yo_,
+                                                const Scalar<T>& ro_) {
+
+        throw errors::ToDoError("Implement derivative of limb-darkened flux.");
 
         // Convert to internal types
         Scalar<T> xo = xo_;
