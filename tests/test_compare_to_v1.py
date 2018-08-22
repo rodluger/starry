@@ -8,6 +8,44 @@ norm = 0.5 * np.sqrt(np.pi)
 def test_transit():
     """Compare transit evaluation to the previous version of starry."""
     npts = 100
+    xo = np.linspace(-1.5, 1.5, npts)
+    yo = np.linspace(-0.3, 0.7, npts)
+    ro = 0.1
+
+    # Double precision
+    map = starry.LimbDarkenedMap(3)
+    map[1] = 0.4
+    map[2] = 0.26
+    map[3] = 0.1
+    flux = map.flux(xo=xo, yo=yo, ro=ro)
+
+    map2 = starry2.Map(3)
+    map2[1] = 0.4
+    map2[2] = 0.26
+    map2[3] = 0.1
+    flux2 = map2.flux(xo=xo, yo=yo, ro=ro)
+
+    assert np.allclose(flux, flux2)
+
+    # Multi precision
+    map = starry.multi.LimbDarkenedMap(3)
+    map[1] = 0.4
+    map[2] = 0.26
+    map[3] = 0.1
+    flux = map.flux(xo=xo, yo=yo, ro=ro)
+
+    map2 = starry2.multi.Map(3)
+    map2[1] = 0.4
+    map2[2] = 0.26
+    map2[3] = 0.1
+    flux2 = map2.flux(xo=xo, yo=yo, ro=ro)
+
+    assert np.allclose(flux, flux2)
+
+
+def test_occultation():
+    """Compare occultation evaluation to the previous version of starry."""
+    npts = 100
     theta = np.linspace(0, 30, npts)
     xo = np.linspace(-1.5, 1.5, npts)
     yo = np.linspace(-0.3, 0.7, npts)
@@ -39,8 +77,8 @@ def test_transit():
     assert np.allclose(flux, flux2)
 
 
-def test_gradient():
-    """Compare transit evaluation w/ grad to the previous version of starry."""
+def test_occultation_gradient():
+    """Compare occult. evaluation w/ grad to the previous version of starry."""
     npts = 300
     theta = np.linspace(1, 359, npts)
     xo = np.linspace(-1.5, 1.5, npts)
@@ -72,4 +110,5 @@ def test_gradient():
 
 if __name__ == "__main__":
     test_transit()
-    test_gradient()
+    test_occultation()
+    test_occultation_gradient()

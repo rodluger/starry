@@ -181,7 +181,8 @@ void scalar() {
         foo = grad_p1(n) + mattmp - mattmp * grad_p1(n);
         grad_p1(n) = foo;
 
-        //grad_p1(n) = grad_p1(n) + mattmp - mattmp * grad_p1(n);
+        grad_p2(n) *= getColumn(rtmp3, n);
+        
 
 
 

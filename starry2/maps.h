@@ -4,6 +4,9 @@ Defines the surface map class.
 TODO: Could speed up limb-darkened map rotations, since
       the effective degree of the map is lower.
 
+TODO: We need a better way of maintaining the temporary
+      tensors in the Map class. Current method is so clunky.
+
 */
 
 #ifndef _STARRY_MAPS_H_
@@ -166,7 +169,7 @@ namespace maps {
                 xpow_grad(ADScalar<Scalar<T>, 2>(Scalar<T>(0.0))),
                 ypow_grad(ADScalar<Scalar<T>, 2>(Scalar<T>(0.0))) {
 
-                // Populate the gradient names
+                // Populate the gradient names: spherical harmonic coeffs
                 for (int l = 0; l < lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
                         dI_names.push_back(string("Y_{" + to_string(l) +
@@ -174,6 +177,11 @@ namespace maps {
                         dF_names.push_back(string("Y_{" + to_string(l) +
                                            "," + to_string(m) + "}"));
                     }
+                }
+                // Populate the gradient names: limb darkening coeffs
+                for (int l = 1; l < lmax + 1; l++) {
+                    dI_names.push_back(string("u_{" + to_string(l) + "}"));
+                    dF_names.push_back(string("u_{" + to_string(l) + "}"));
                 }
 
                 // Initialize all the vectors
@@ -196,8 +204,8 @@ namespace maps {
                 // the shape of the object, as some of these are vectors!
                 resize(y, N, nwav);
                 resize(u, lmax + 1, nwav);
-                resize(dI, 3 + N, nwav);
-                resize(dF, 4 + N, nwav);
+                resize(dI, 3 + N + lmax, nwav);
+                resize(dF, 4 + N + lmax, nwav);
                 resize(mtmp, N, nwav);
                 resize(mtmp2, N, nwav);
                 resize(Ry, N, nwav);
@@ -315,12 +323,11 @@ namespace maps {
         check_degree();
 
         // Update the limb darkening polynomial map
-        mtmp = B.U * u;
-        setZero(mtmp2);
-        for (int l = 0; l < lmax + 1; ++l)
-            setRow(mtmp2, l * (l + 1), getRow(mtmp, l));
-        p_u = B.A1 * mtmp2;
-        colwiseMult(p_u, cwiseQuotient(getRow(y, 0), dot(B.rT, p_u)));
+        p_u = B.U1 * u;
+
+        // Normalize it to preserve the disk-integrated intensity
+        Row<T> norm = cwiseQuotient(getRow(y, 0), dot(B.rT, p_u));
+        colwiseMult(p_u, norm);
 
         // Update the limb darkening Green's map
         g_u = B.A2 * p_u;
@@ -627,8 +634,8 @@ namespace maps {
                 mattmp /= getColumn(rtmp2, n);
                 mattmp2 = grad_p1(n) * getColumn(rtmp3, n);
                 grad_p1(n) = mattmp2 + mattmp - mattmp * mattmp2;
-
-                // TODO: normalize grad_p2
+                mattmp2 = grad_p2(n) * getColumn(rtmp3, n);
+                grad_p2(n) = mattmp2 - mattmp * mattmp2;
             }
         }
 
@@ -647,7 +654,8 @@ namespace maps {
 
     */
     template <class T> template <typename U>
-    inline void Map<T>::poly_basis(Power<U>& xpow, Power<U>& ypow, VectorT<U>& basis) {
+    inline void Map<T>::poly_basis(Power<U>& xpow, Power<U>& ypow,
+                                   VectorT<U>& basis) {
         int l, m, mu, nu, n = 0;
         U z = sqrt(1.0 - xpow() * xpow() - ypow() * ypow());
         for (l=0; l<lmax+1; ++l) {
@@ -699,6 +707,9 @@ namespace maps {
         Scalar<T> y0 = y_;
         Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
 
+        // Disable rotation for constant maps
+        if (y_deg == 0) theta = 0;
+
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) {
             setZero(ctmp);
@@ -748,6 +759,9 @@ namespace maps {
     /**
     Evaluate the map at a given (x0, y0) coordinate and compute the gradient
 
+    TODO: We should really look into rotation & limb darkening
+          caching for this function.
+
     */
     template <class T>
     inline Row<T> Map<T>::evaluate_with_gradient(const Scalar<T>& theta_,
@@ -758,6 +772,9 @@ namespace maps {
         Scalar<T> x0 = x_;
         Scalar<T> y0 = y_;
         Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
+
+        // Disable rotation for constant maps
+        if (y_deg == 0) theta = 0;
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) {
@@ -796,21 +813,17 @@ namespace maps {
         setRow(dI, 2, Scalar<T>(0.0));
         for (int i = 0; i < N; i++) {
             setRow(dI, 1, Row<T>(getRow(dI, 1) +
-                                 pT_grad(i).derivatives()(0) * getRow(*ptr_A1Ry, i)));
+                                 pT_grad(i).derivatives()(0) *
+                                 getRow(*ptr_A1Ry, i)));
             setRow(dI, 2, Row<T>(getRow(dI, 2) +
-                                 pT_grad(i).derivatives()(1) * getRow(*ptr_A1Ry, i)));
+                                 pT_grad(i).derivatives()(1) *
+                                 getRow(*ptr_A1Ry, i)));
             pT(i) = pT_grad(i).value();
         }
 
-        // NOTE: Computing the gradient of a limb-darkened map is
-        // a bit tricky, since we need to differentiate the (non-linear)
-        // limb-darkening operation, `limb_darken`.
-        //
-        // We have I = p^T . limb_darken(A1 . R . y), so
-        //      dI / dtheta = p^T . grad_p1 . A1 . d(R . y) / dtheta
-        //      dI / dy = p^T . grad_p1 . A1 . R
-        // where
-        //      grad_p1 = d (limb_darken) / d(A1 . R . y)
+        // If grad_p1 = d (limb_darken) / d(A1 . R . y), then
+        // dI / dtheta = p^T . grad_p1 . A1 . d(R . y) / dtheta
+        // dI / dy = p^T . grad_p1 . A1 . R
 
         // Compute dR/dtheta . y
         for (int l = 0; l < lmax + 1; ++l)
@@ -831,7 +844,8 @@ namespace maps {
                     for (int i = 0; i < N; i++)
                         dI(3 + i, n) = vtmp(i);
                 }
-                dI(0, n) = dot(pTA1, getColumn(dRdthetay, n)) * (pi<Scalar<T>>() / 180.);
+                dI(0, n) = dot(pTA1, getColumn(dRdthetay, n))
+                           * (pi<Scalar<T>>() / 180.);
             }
         } else {
             pTA1 = pT * B.A1;
@@ -845,10 +859,50 @@ namespace maps {
                 for (int i = 0; i < N; i++)
                     setRow(dI, 3 + i, vtmp(i));
             }
-            setRow(dI, 0, Row<T>(dot(pTA1, dRdthetay) * (pi<Scalar<T>>() / 180.)));
+            setRow(dI, 0, Row<T>(dot(pTA1, dRdthetay)
+                          * (pi<Scalar<T>>() / 180.)));
         }
 
-        // TODO: Compute the derivs with respect to the limb darkening!
+        // Compute the derivs with respect to the limb darkening coeffs
+        if (y_deg > 0) {
+
+            // TODO!!! Could be tricky?
+
+        } else {
+
+            /* Since I = p^T . U1 . u * (rT . y / (rT . U1 . u)),
+
+               dI / du = p^T . U1 * (rT . y / (rT . U1 . u))
+                       - p^T . U1 . u . rT . U1 * (rT . y) / (rT . U1 . u)^2
+
+            */
+
+
+            // TODO: THIS IS SO MESSY
+
+            VectorT<Scalar<T>> pTU1 = pT * B.U1;
+            VectorT<Scalar<T>> rTU1 = B.rT * B.U1;
+            T U1u = B.U1 * u;
+
+            rtmp = getRow(y, 0);
+            rtmp2 = dot(B.rT, U1u);
+
+            rtmp3 = cwiseQuotient(rtmp, rtmp2);
+
+            Row<T> rtmp4 = cwiseQuotient(rtmp, cwiseProduct(rtmp2, rtmp2));
+
+            VectorT<Scalar<T>> dIdu;
+
+            for (int n = 0; n < nwav; ++n) {
+                Scalar<T> r3 = getColumn(rtmp3, n);
+                Scalar<T> r4 = getColumn(rtmp4, n);
+
+                dIdu = pTU1 * r3 - (pTU1 * getColumn(u, n)) * (rTU1 * r4);
+
+                dI.block(3 + N, n, lmax, 1) = dIdu.segment(1, lmax).transpose();
+
+            }
+        }
 
         // Dot the coefficients in to our polynomial map
         return pT * (*ptr_A1Ry);
