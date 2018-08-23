@@ -8,6 +8,8 @@ TODO: Could speed up limb-darkened map rotations, since
 TODO: (In progress) Binding temporary references in each function
       to make code faster and easier to read.
 
+TODO: Move linalg stuff from utils.h to linalg.h
+
 */
 
 #ifndef _STARRY_MAPS_H_
@@ -209,12 +211,7 @@ namespace maps {
                 G(lmax),
                 G_grad(lmax),
                 tol(mach_eps<Scalar<T>>()),
-                tmp(N, nwav),
-                // TODO: I don't think we need these:
-                xpow_scalar(Scalar<T>(0.0)),
-                ypow_scalar(Scalar<T>(0.0)),
-                xpow_grad(ADScalar<Scalar<T>, 2>(Scalar<T>(0.0))),
-                ypow_grad(ADScalar<Scalar<T>, 2>(Scalar<T>(0.0))) {
+                tmp(N, nwav) {
 
                 // Populate the map gradient names
                 for (int l = 0; l < lmax + 1; l++) {
@@ -241,7 +238,7 @@ namespace maps {
                 resize(dI, 3 + N + lmax, nwav);
                 resize(dF, 4 + N + lmax, nwav);
 
-                // Get rid of this stuff
+                // TODO: Get rid of this stuff
                 vtmp = Vector<Scalar<T>>::Zero(N);
                 pT = VectorT<Scalar<T>>::Zero(N);
                 pTA1 = VectorT<Scalar<T>>::Zero(N);
@@ -686,24 +683,7 @@ namespace maps {
 
         // Multiply a polynomial map by the LD polynomial
         if (gradient) {
-
-            // NOTE: The following doesn't work, since we lose information
-            // about the gradients of coefficients above y_deg and u_deg.
-            // polymul(y_deg, poly, u_deg, p_u, lmax, poly_ld, grad_p1, grad_p2);
-
-            // TODO: This works, but REALLY needs to be sped up.
-            T tmp_poly;
-            VectorT<Matrix<Scalar<T>>> tmp_grad1;
-            VectorT<Matrix<Scalar<T>>> tmp_grad2;
-            polymul(lmax, poly, lmax, p_u, 2 * lmax, tmp_poly, tmp_grad1, tmp_grad2);
-            poly_ld = tmp_poly.block(0, 0, N, nwav);
-            grad_p1.resize(nwav);
-            grad_p2.resize(nwav);
-            for (int n = 0; n < nwav; ++n){
-                grad_p1(n) = tmp_grad1(n).block(0, 0, N, N);
-                grad_p2(n) = tmp_grad2(n).block(0, 0, N, N);
-            }
-
+            polymul(y_deg, poly, u_deg, p_u, lmax, poly_ld, grad_p1, grad_p2);
         } else
             polymul(y_deg, poly, u_deg, p_u, lmax, poly_ld);
 

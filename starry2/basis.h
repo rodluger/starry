@@ -420,9 +420,12 @@ namespace basis {
                         n = l * l + l + m1 + m2;
                         mult = cwiseProduct(getRow(p1, n1), getRow(p2, n2));
                         if (odd1 && ((l2 + m2) % 2 != 0)) {
-                            setRow(p1p2, n - 4 * l + 2, Row<T>(getRow(p1p2, n - 4 * l + 2) + mult));
-                            setRow(p1p2, n - 2, Row<T>(getRow(p1p2, n - 2) - mult));
-                            setRow(p1p2, n + 2, Row<T>(getRow(p1p2, n + 2) - mult));
+                            setRow(p1p2, n - 4 * l + 2,
+                                   Row<T>(getRow(p1p2, n - 4 * l + 2) + mult));
+                            setRow(p1p2, n - 2,
+                                   Row<T>(getRow(p1p2, n - 2) - mult));
+                            setRow(p1p2, n + 2,
+                                   Row<T>(getRow(p1p2, n + 2) - mult));
                         } else {
                             setRow(p1p2, n, Row<T>(getRow(p1p2, n) + mult));
                         }
@@ -475,20 +478,26 @@ namespace basis {
             grad_p2(i) = Matrix<Scalar<T>>::Zero(N, N);
         }
 
-        for (l1 = 0; l1 < lmax1 + 1; ++l1) {
+        // Note that our loops go up to `lmax12` for both polynomials
+        // so we can compute the gradients for all coefficients, including
+        // those above `y_deg` and `u_deg`.
+        for (l1 = 0; l1 < lmax12 + 1; ++l1) {
             for (m1 = -l1; m1 < l1 + 1; ++m1) {
                 odd1 = (l1 + m1) % 2 == 0 ? false : true;
                 n2 = 0;
-                for (l2 = 0; l2 < lmax2 + 1; ++l2) {
+                for (l2 = 0; l2 < lmax12 + 1; ++l2) {
                     if (l1 + l2 > lmax12) break;
                     for (m2 = -l2; m2 < l2 + 1; ++m2) {
                         l = l1 + l2;
                         n = l * l + l + m1 + m2;
                         mult = cwiseProduct(getRow(p1, n1), getRow(p2, n2));
                         if (odd1 && ((l2 + m2) % 2 != 0)) {
-                            setRow(p1p2, n - 4 * l + 2, Row<T>(getRow(p1p2, n - 4 * l + 2) + mult));
-                            setRow(p1p2, n - 2, Row<T>(getRow(p1p2, n - 2) - mult));
-                            setRow(p1p2, n + 2, Row<T>(getRow(p1p2, n + 2) - mult));
+                            setRow(p1p2, n - 4 * l + 2,
+                                   Row<T>(getRow(p1p2, n - 4 * l + 2) + mult));
+                            setRow(p1p2, n - 2,
+                                   Row<T>(getRow(p1p2, n - 2) - mult));
+                            setRow(p1p2, n + 2,
+                                   Row<T>(getRow(p1p2, n + 2) - mult));
                             for (i = 0; i < nwav; ++i) {
                                 grad_p1(i)(n - 4 * l + 2, n1) += p2(n2, i);
                                 grad_p2(i)(n - 4 * l + 2, n2) += p1(n1, i);

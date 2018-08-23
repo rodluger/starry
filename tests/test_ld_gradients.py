@@ -53,11 +53,12 @@ def run_evaluate(Map):
     """Compare the gradients to numerical derivatives."""
 
     # Instantiate
-    lmax = 2
+    lmax = 3
     y_deg = 1
     map = Map(lmax)
     map.axis = [0, 1, 0]
     map[:y_deg, :] = 1
+    map[1] = 1
 
     # No arguments
     print("No arguments...")
