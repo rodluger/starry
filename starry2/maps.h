@@ -52,7 +52,7 @@ namespace maps {
     template <class T>
     class Temporary {
 
-            static constexpr int TLEN = 3;
+            static constexpr int TLEN = 4;
             static constexpr int RLEN = 4;
             static constexpr int CLEN = 1;
             static constexpr int VLEN = 1;
@@ -803,13 +803,12 @@ namespace maps {
 
         } else {
 
-            // Start with the base polynomial map
-            A1Ry = p;
-
+            // Rotate the spherical harmonic map into view
             if (y_deg > 0) {
-                // Rotate the spherical harmonic map into view
                 W.rotate(cos(theta), sin(theta), Ry);
                 A1Ry = B.A1 * Ry;
+            } else {
+                A1Ry = p;
             }
 
             if (u_deg > 0) {
@@ -1002,6 +1001,13 @@ namespace maps {
             return flux_ld(xo_, yo_, ro_);
         }
 
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+        T& Ry(tmp.tmpT[0]);
+        T& A1Ry(tmp.tmpT[1]);
+        T& RRy(tmp.tmpT[2]);
+        T& ARRy(tmp.tmpT[3]);
+
         // Convert to internal types
         Scalar<T> xo = xo_;
         Scalar<T> yo = yo_;
@@ -1013,25 +1019,23 @@ namespace maps {
 
         // Check for complete occultation
         if (b <= ro - 1) {
-            setZero(ctmp);
-            return ctmp;
+            setZero(result);
+            return result;
         }
-
-        // This is the pointer to the rotated sph. harm. map
-        ptr_Ry = &y;
 
         // Rotate the map into view
         if (y_deg > 0) {
             W.rotate(cos(theta), sin(theta), Ry);
-            ptr_Ry = &Ry;
+        } else {
+            Ry = y;
         }
 
         // No occultation
         if ((b >= 1 + ro) || (ro == 0)) {
 
             // Easy. Note that limb-darkening does not
-            // affect the total disk-integrated flux
-            return (B.rTA1 * (*ptr_Ry));
+            // affect the total disk-integrated flux!
+            return (B.rTA1 * Ry);
 
         // Occultation
         } else {
@@ -1041,39 +1045,37 @@ namespace maps {
 
                 if ((theta == cache_theta) && (cache_oper == CACHE_FLUX)) {
 
-                    ptr_Ry = &cache_y;
+                    // Easy. Use the cached rotated map
+                    Ry = cache_y;
 
                 } else {
 
                     // Transform into the polynomial basis
-                    mtmp = B.A1 * (*ptr_Ry);
+                    A1Ry = B.A1 * Ry;
 
                     // Limb-darken it
-                    limb_darken(mtmp, p_uy);
+                    limb_darken(A1Ry, p_uy);
 
                     // Back to the spherical harmonic basis
-                    mtmp = B.A1Inv * p_uy;
-
-                    // Update our pointer
-                    ptr_Ry = &mtmp;
+                    Ry = B.A1Inv * p_uy;
 
                     // Cache the map
                     cache_oper = CACHE_FLUX;
                     cache_theta = theta;
-                    cache_y = *ptr_Ry;
+                    cache_y = Ry;
 
                 }
 
             }
 
             // Rotate the map to align the occultor with the +y axis
+            // Change basis to Green's polynomials
             if ((b > 0) && ((xo != 0) || (yo < 0))) {
-                W.rotatez(yo / b, xo / b, *ptr_Ry, mtmp);
-                ptr_Ry = &mtmp;
+                W.rotatez(yo / b, xo / b, Ry, RRy);
+                ARRy = B.A * RRy;
+            } else {
+                ARRy = B.A * Ry;
             }
-
-            // Perform the rotation + change of basis
-            ARRy = B.A * (*ptr_Ry);
 
             // Compute the sT vector (sparsely)
             for (int n = 0; n < N; ++n)
