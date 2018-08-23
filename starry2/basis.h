@@ -530,6 +530,7 @@ namespace basis {
             Eigen::SparseMatrix<T> A;                                           /**< The full change of basis matrix */
             VectorT<T> rT;                                                      /**< The rotation solution vector */
             VectorT<T> rTA1;                                                    /**< The rotation vector times the `Ylm` change of basis matrix */
+            VectorT<T> rTU1;                                                    /**< The rotation vector times the LD change of basis matrix */
             Eigen::SparseMatrix<T> U1;                                          /**< The limb darkening to polynomial change of basis matrix */
             Eigen::SparseMatrix<T> U;                                           /**< The full limb darkening change of basis matrix */
 
@@ -542,6 +543,7 @@ namespace basis {
                 computerT(lmax, rT);
                 rTA1 = rT * A1;
                 computeU(lmax, A1, A, U1, U, norm);
+                rTU1 = rT * U1;
             }
 
     };

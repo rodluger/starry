@@ -413,17 +413,19 @@ namespace utils {
         return v / u;
     }
 
-    //! In-place column-wise matrix-vector multiplication
+    //! Column-wise matrix-vector multiplication
     template <typename T>
-    inline void colwiseMult(Matrix<T>& mat, const VectorT<T>& vec) {
+    inline Matrix<T> colwiseProduct(Matrix<T>& mat, const VectorT<T>& vec) {
+        Matrix<T> out = mat;
         for (int n = 0; n < mat.cols(); ++n)
-            mat.col(n) *= vec(n);
+            out.col(n) *= vec(n);
+        return out;
     }
 
-    //! In-place column-wise matrix-vector multiplication (vector-scalar overload)
+    //! Column-wise matrix-vector multiplication (vector-scalar overload)
     template <typename T>
-    inline void colwiseMult(Vector<T>& vec, const T& scal) {
-        vec *= scal;
+    inline Vector<T> colwiseProduct(Vector<T>& vec, const T& scal) {
+        return vec * scal;
     }
 
 

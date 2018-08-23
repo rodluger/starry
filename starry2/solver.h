@@ -42,6 +42,12 @@ namespace solver {
 
         public:
 
+            //! Default constructor
+            Power() {
+                vec.push_back(T(1.0));
+                vec.push_back(T(0.0));
+            }
+
             //! Constructor
             explicit Power(T val, int reserve=100) {
                 if (reserve) vec.reserve(reserve);

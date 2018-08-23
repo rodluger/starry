@@ -37,20 +37,30 @@ def num_grad_eval(Map, lmax, y_deg, yvec, uvec, axis, theta, x, y, eps=1e-8):
             map[l, m] -= eps
             grad['Y_{%d,%d}' % (l, m)] = [(F2 - F1) / (2 * eps)]
 
+    # ld coeffs
+    for l in range(1, lmax - y_deg + 1):
+        map[l] -= eps
+        F1 = map.evaluate(x=x, y=y, theta=theta)
+        map[l] += 2 * eps
+        F2 = map.evaluate(x=x, y=y, theta=theta)
+        map[l] -= eps
+        grad['u_{%d}' % (l)] = [(F2 - F1) / (2 * eps)]
+
     return grad
 
 
 def run_evaluate(Map):
     """Compare the gradients to numerical derivatives."""
+
     # Instantiate
     lmax = 2
     y_deg = 1
     map = Map(lmax)
     map.axis = [0, 1, 0]
     map[:y_deg, :] = 1
-    map[1] = 1
 
     # No arguments
+    print("No arguments...")
     I = map.evaluate()
     I_grad, dI = map.evaluate(gradient=True)
     assert np.allclose(I, I_grad, atol=1e-7)
@@ -60,6 +70,7 @@ def run_evaluate(Map):
             assert np.allclose(dI[key], dI_num[key], atol=1e-7)
 
     # Scalar evaluation
+    print("Scalar evaluation...")
     I = map.evaluate(x=0.1, y=0.1)
     I_grad, dI = map.evaluate(x=0.1, y=0.1, gradient=True)
     assert np.allclose(I, I_grad, atol=1e-7)
@@ -70,6 +81,7 @@ def run_evaluate(Map):
             assert np.allclose(dI[key], dI_num[key], atol=1e-7)
 
     # Scalar evaluation
+    print("Scalar evaluation with rotation...")
     I = map.evaluate(x=0.1, y=0.1, theta=30)
     I_grad, dI = map.evaluate(x=0.1, y=0.1, theta=30, gradient=True)
     assert np.allclose(I, I_grad, atol=1e-7)
@@ -80,6 +92,7 @@ def run_evaluate(Map):
             assert np.allclose(dI[key], dI_num[key], atol=1e-7)
 
     # Vector evaluation
+    print("Vector evaluation...")
     I = map.evaluate(x=0.1, y=0.1, theta=[0, 30])
     I_grad, dI = map.evaluate(x=0.1, y=0.1, theta=[0, 30], gradient=True)
     assert np.allclose(I, I_grad, atol=1e-7)
