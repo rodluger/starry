@@ -61,7 +61,6 @@ def run_evaluate(Map):
     map[1] = 1
 
     # No arguments
-    print("No arguments...")
     I = map.evaluate()
     I_grad, dI = map.evaluate(gradient=True)
     assert np.allclose(I, I_grad, atol=1e-7)
@@ -71,7 +70,6 @@ def run_evaluate(Map):
             assert np.allclose(dI[key], dI_num[key], atol=1e-7)
 
     # Scalar evaluation
-    print("Scalar evaluation...")
     I = map.evaluate(x=0.1, y=0.1)
     I_grad, dI = map.evaluate(x=0.1, y=0.1, gradient=True)
     assert np.allclose(I, I_grad, atol=1e-7)
@@ -82,7 +80,6 @@ def run_evaluate(Map):
             assert np.allclose(dI[key], dI_num[key], atol=1e-7)
 
     # Scalar evaluation
-    print("Scalar evaluation with rotation...")
     I = map.evaluate(x=0.1, y=0.1, theta=30)
     I_grad, dI = map.evaluate(x=0.1, y=0.1, theta=30, gradient=True)
     assert np.allclose(I, I_grad, atol=1e-7)
@@ -93,7 +90,6 @@ def run_evaluate(Map):
             assert np.allclose(dI[key], dI_num[key], atol=1e-7)
 
     # Vector evaluation
-    print("Vector evaluation...")
     I = map.evaluate(x=0.1, y=0.1, theta=[0, 30])
     I_grad, dI = map.evaluate(x=0.1, y=0.1, theta=[0, 30], gradient=True)
     assert np.allclose(I, I_grad, atol=1e-7)
