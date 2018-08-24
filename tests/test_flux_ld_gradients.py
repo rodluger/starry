@@ -79,6 +79,19 @@ def run_flux(Map, case="ld"):
         map[:y_deg, :] = 1
 
         # DEBUG: I'm coding this one up still!
+        I = map.flux(theta=30)
+        I_grad, dI = map.flux(theta=30, gradient=True)
+        assert np.allclose(I, I_grad, atol=1e-7)
+        dI_num = num_grad_flux(Map, lmax, y_deg, map.y, map.u,
+                               map.axis, 30, 0, 0, 0)
+        print("Phase curve:", dI['theta'], dI_num['theta'])
+
+        I = map.flux(theta=30, ro=0.1, xo=0.1, yo=0.1)
+        I_grad, dI = map.flux(theta=30, ro=0.1, xo=0.1, yo=0.1, gradient=True)
+        assert np.allclose(I, I_grad, atol=1e-7)
+        dI_num = num_grad_flux(Map, lmax, y_deg, map.y, map.u,
+                               map.axis, 30, 0.1, 0.1, 0.1)
+        print("Occultation:", dI['theta'], dI_num['theta'])
         return
 
     # Scalar evaluation

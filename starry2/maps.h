@@ -4,6 +4,22 @@ Defines the surface map class.
 TODO: Get rid of evaluation gradients
       Map evaluations only via the operator() on a Map.
 
+TODO: Macro for loops involving nwav and specialize for nwav = 1?
+      Essentially we'd replace
+
+        for (int n = 0; n < nwav; ++n) {
+            ...
+        }
+
+      with
+
+        WAVELENGTH_LOOP(n)
+            ...
+        END_WAVELENGTH_LOOP
+
+      and just do {int n = 0; ...} for nwav = 1.
+
+
 TODO: Could speed up limb-darkened map rotations, since
       the effective degree of the map is lower. Won't
       work when computing gradients.
@@ -26,10 +42,6 @@ TODO: Move linalg stuff from utils.h to linalg.h
 #include "utils.h"
 #include "solver.h"
 
-#define CACHE_NONE 0
-#define CACHE_FLUX 1
-#define CACHE_EVAL 2
-
 namespace maps {
 
     using namespace utils;
@@ -50,13 +62,44 @@ namespace maps {
     template <> std::string info(const Map<Matrix<double>>& map);
 
     /**
+    Stores cached Map variables.
+
+    */
+    template <class T>
+    class Cache {
+
+        public:
+
+            static const int NONE = 0;                                          /**< Cached operation identifier (empty cache)*/
+            static const int FLUX = 1;                                          /**< Cached operation identifier (flux) */
+            static const int EVAL = 2;                                          /**< Cached operation identifier (evaluation) */
+            int oper;                                                           /**< Cached operation identifier */
+            Scalar<T> theta;                                                    /**< Cached rotation angle */
+            T p;                                                                /**< Cached polynomial map */
+            T y;                                                                /**< Cached Ylm map */
+
+            //! Default constructor
+            Cache() {
+                clear();
+            }
+
+            //! Clear the cache
+            inline void clear() {
+                oper = NONE;
+                theta = NAN;
+            }
+
+
+    };
+
+    /**
     Temporary vector/matrix/tensor storage class.
 
     */
     template <class T>
     class Temporary {
 
-            static constexpr int TLEN = 4;
+            static constexpr int TLEN = 6;
             static constexpr int RLEN = 4;
             static constexpr int CLEN = 1;
             static constexpr int VLEN = 1;
@@ -136,10 +179,7 @@ namespace maps {
 
             // Temporaries and cache
             Temporary<T> tmp;
-            int cache_oper;                                                     /**< Cached operation identifier */
-            Scalar<T> cache_theta;                                              /**< Cached rotation angle */
-            T cache_p;                                                          /**< Cached polynomial map */
-            T cache_y;                                                          /**< Cached Ylm map */
+            Cache<T> cache;
 
             // External info function
             template <class U>
@@ -147,7 +187,6 @@ namespace maps {
 
             // Private methods
             inline void check_degree();
-            inline void clear_cache();
             inline void update_y();
             inline void update_u();
             inline void limb_darken(const T& poly, T& poly_ld,
@@ -188,7 +227,8 @@ namespace maps {
                 tol(mach_eps<Scalar<T>>()),
                 dp_udu(nwav),
                 dg_udu(nwav),
-                tmp(N, nwav) {
+                tmp(N, nwav),
+                cache() {
 
                 // Populate the map gradient names
                 for (int l = 0; l < lmax + 1; l++) {
@@ -280,16 +320,6 @@ namespace maps {
     }
 
     /**
-    Clear the cache
-
-    */
-    template <class T>
-    inline void Map<T>::clear_cache() {
-        cache_oper = CACHE_NONE;
-        cache_theta = NAN;
-    }
-
-    /**
     Update the Ylm map after the coefficients changed
     TODO: This method needs to be made as fast as possible.
 
@@ -307,7 +337,7 @@ namespace maps {
         W.update();
 
         // Clear the cache
-        clear_cache();
+        cache.clear();
     }
 
     /**
@@ -351,7 +381,7 @@ namespace maps {
         g_u = B.A2 * p_u;
 
         // Clear the cache
-        clear_cache();
+        cache.clear();
     }
 
 
@@ -580,8 +610,8 @@ namespace maps {
         // Update the rotation matrix
         W.update();
 
-        // Reset the cache
-        cache_theta = NAN;
+        // Clear the cache
+        cache.clear();
 
     }
 
@@ -750,10 +780,10 @@ namespace maps {
             return result;
         }
 
-        if ((theta == cache_theta) && (cache_oper == CACHE_EVAL)) {
+        if ((theta == cache.theta) && (cache.oper == cache.EVAL)) {
 
             // We use the cached version of the polynomial map
-            A1Ry = cache_p;
+            A1Ry = cache.p;
 
         } else {
 
@@ -772,9 +802,9 @@ namespace maps {
             }
 
             // Cache the polynomial map
-            cache_oper = CACHE_EVAL;
-            cache_theta = theta;
-            cache_p = A1Ry;
+            cache.oper = cache.EVAL;
+            cache.theta = theta;
+            cache.p = A1Ry;
 
         }
 
@@ -791,10 +821,7 @@ namespace maps {
     /**
     Evaluate the map at a given (x0, y0) coordinate and compute the gradient
 
-    TODO: We should really look into rotation & limb darkening
-          caching for this function. This is currently VERY SLOW
-          for cases where the map is evaluated over a grid at
-          constant theta and limb darkening.
+    TODO: Remove this function.
 
     */
     template <class T>
@@ -997,10 +1024,10 @@ namespace maps {
             // Apply limb darkening
             if (u_deg > 0) {
 
-                if ((theta == cache_theta) && (cache_oper == CACHE_FLUX)) {
+                if ((theta == cache.theta) && (cache.oper == cache.FLUX)) {
 
                     // Easy. Use the cached rotated map
-                    Ry = cache_y;
+                    Ry = cache.y;
 
                 } else {
 
@@ -1014,9 +1041,9 @@ namespace maps {
                     Ry = B.A1Inv * p_uy;
 
                     // Cache the map
-                    cache_oper = CACHE_FLUX;
-                    cache_theta = theta;
-                    cache_y = Ry;
+                    cache.oper = cache.FLUX;
+                    cache.theta = theta;
+                    cache.y = Ry;
 
                 }
 
@@ -1096,6 +1123,9 @@ namespace maps {
     Compute the flux during or outside of an occultation
     for a pure limb-darkened map (Y_{l,m} = 0 for l > 0).
 
+    TODO: Add a note to the docs about why dF/dY_{l,m} = NAN
+          for l > 0, and explain how to override this.
+
     */
     template <class T>
     inline Row<T> Map<T>::flux_ld_with_gradient(const Scalar<T>& xo_,
@@ -1125,10 +1155,11 @@ namespace maps {
         }
 
         // We intentionally don't compute the spherical
-        // harmonic coeff derivs above Y_{0,0}, since that would
-        // make this function slow.
-        // TODO: Add a note about this in the docs,
-        // and explain how to override this.
+        // harmonic coeff derivs above Y_{0,0}, since that
+        // would make this function slow. If users *really*
+        // need them, set one of the l > 0 coeffs to a very
+        // small (~1e-14) value to force the code to use the
+        // generalized `flux` method.
         for (int i = 1; i < N; ++i)
             setRow(dF, 4 + i, Scalar<T>(NAN));
 
@@ -1206,7 +1237,7 @@ namespace maps {
     /**
     Compute the flux during or outside of an occultation and its gradient
 
-    TODO: Add limb darkening
+    TODO: Add limb darkening derivs
 
     */
 
@@ -1219,22 +1250,26 @@ namespace maps {
         // Bind references to temporaries for speed
         Row<T>& result(tmp.tmpRow[0]);
         Row<T>& dFdb(tmp.tmpRow[1]);
-        Row<T>& sTAdRdthetaRy_b(tmp.tmpRow[2]);
+        Row<T>& sTAdRdthetaLDRy_b(tmp.tmpRow[2]);
         T& Ry(tmp.tmpT[0]);
-        T& RRy(tmp.tmpT[1]);
-        T& ARRy(tmp.tmpT[2]);
-        T& dRdthetay(tmp.tmpT[3]);
+        T& RLDRy(tmp.tmpT[1]);
+        T& ARLDRy(tmp.tmpT[2]);
+        T& A1Ry(tmp.tmpT[3]);
+        T& LDRy(tmp.tmpT[4]);
+        T& dLDRydtheta(tmp.tmpT[5]);
         VectorT<Scalar<T>>& sTA(tmp.tmpRowVector[0]);
         VectorT<Scalar<T>>& sTAR(tmp.tmpRowVector[1]);
         sTAR.resize(N);
-        VectorT<Scalar<T>>& sTARR(tmp.tmpRowVector[2]);
-        sTARR.resize(N);
+        VectorT<Scalar<T>>& sTARLDR(tmp.tmpRowVector[2]);
+        sTARLDR.resize(N);
         VectorT<Scalar<T>>& sTAdRdtheta(tmp.tmpRowVector[3]);
         sTAdRdtheta.resize(N);
         VectorT<Scalar<T>>& rTA1R(tmp.tmpRowVector[4]);
         rTA1R.resize(N);
         ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
         ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
+        VectorT<Matrix<Scalar<T>>>& A1dLDdpA1(tmp.tmpRowVectorOfMatrices[0]);
+        A1dLDdpA1.resize(nwav);
 
         // Convert to internal type
         Scalar<T> xo = xo_;
@@ -1253,6 +1288,8 @@ namespace maps {
         }
 
         // Rotate the map into view
+        // TODO: Cache this operation *here*
+        //       Save W.R, W.dRdtheta, Ry
         W.compute(cos(theta), sin(theta));
         if (theta == 0) {
             Ry = y;
@@ -1262,14 +1299,36 @@ namespace maps {
                     W.R[l] * y.block(l * l, 0, 2 * l + 1, nwav);
         }
 
+        // Apply limb darkening
+        // Note that we do this even if there's no limb
+        // darkening set, to get the correct derivs
+        // TODO: Cache these operations for fixed theta. Seriously
+        A1Ry = B.A1 * Ry;
+        limb_darken(A1Ry, p_uy, true);
+        LDRy = B.A1Inv * p_uy;
+        for (int n = 0; n < nwav; ++n)
+            A1dLDdpA1(n) = B.A1Inv * dLDdp(n) * B.A1;
+
+        // TODO: Propagate LD derivs below
+        // LDRy = A1^-1 . LD(A1 . R . y)
+        // dLDRy / dy = A1^-1 . dLDdp . A1 . R
+        //            = A1dLDdpA1 . R
+        // dLDRy / du = A1^-1 . dLDdp_u . dp_u / du
+        // dLDRy / dtheta = A1^-1 . dLDdp . d(A1 . R . y) / dtheta
+        //                = A1dLDdpA1 . dR / dtheta . y
+
+        for (int n = 0; n < nwav; ++n)
+            for (int l = 0; l < lmax + 1; ++l)
+                dLDRydtheta.block(l * l, n, 2 * l + 1, 1) =
+                    A1dLDdpA1(n).block(l * l, l * l, 2 * l + 1, 2 * l + 1) *
+                    W.dRdtheta[l] *
+                    y.block(l * l, n, 2 * l + 1, 1);
+
         // No occultation
         if ((b >= 1 + ro) || (ro == 0)) {
 
             // Compute the theta deriv
-            for (int l = 0; l < lmax + 1; l++)
-                dRdthetay.block(l * l, 0, 2 * l + 1, nwav) =
-                    W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, nwav);
-            setRow(dF, 0, Row<T>(dot(B.rTA1, dRdthetay) *
+            setRow(dF, 0, Row<T>(dot(B.rTA1, dLDRydtheta) *
                                 (pi<Scalar<T>>() / 180.)));
 
             // The x, y, and r derivs are trivial
@@ -1279,15 +1338,20 @@ namespace maps {
 
             // Compute the map derivs
             if (theta == 0) {
-                for (int i = 0; i < N; i++)
+                for (int i = 0; i < N; ++i)
                     setRow(dF, 4 + i, B.rTA1(i));
             } else {
-                for (int l = 0; l < lmax + 1; l++)
+                for (int l = 0; l < lmax + 1; ++l)
                     rTA1R.segment(l * l, 2 * l + 1) =
                         B.rTA1.segment(l * l, 2 * l + 1) * W.R[l];
-                for (int i = 0; i < N; i++)
+                for (int i = 0; i < N; ++i)
                     setRow(dF, 4 + i, rTA1R(i));
             }
+
+            // The limb darkening derivs are zero, since
+            // they don't affect the total flux!
+            for (int i = 0; i < lmax; ++i)
+                setRow(dF, 4 + N + i, Scalar<T>(0.0));
 
             // We're done!
             return (B.rTA1 * Ry);
@@ -1299,15 +1363,15 @@ namespace maps {
             Scalar<T> xo_b = xo / b;
             Scalar<T> yo_b = yo / b;
             if ((b > 0) && ((xo != 0) || (yo < 0))) {
-                W.rotatez(yo_b, xo_b, Ry, RRy);
+                W.rotatez(yo_b, xo_b, LDRy, RLDRy);
             } else {
-                setOnes(W.cosmt); // = Vector<Scalar<T>>::Constant(N, 1.0);
-                setZero(W.sinmt); // = Vector<Scalar<T>>::Constant(N, 0.0);
-                RRy = Ry;
+                setOnes(W.cosmt);
+                setZero(W.sinmt);
+                RLDRy = LDRy;
             }
 
             // Perform the rotation + change of basis
-            ARRy = B.A * RRy;
+            ARLDRy = B.A * RLDRy;
 
             // Compute the sT vector using AutoDiff
             b_grad.value() = b;
@@ -1322,12 +1386,12 @@ namespace maps {
             for (int i = 0; i < N; i++) {
 
                 // b deriv
-                dFdb += G_grad.sT(i).derivatives()(0) * getRow(ARRy, i);
+                dFdb += G_grad.sT(i).derivatives()(0) * getRow(ARLDRy, i);
 
                 // ro deriv
                 setRow(dF, 3, Row<T>(getRow(dF, 3) +
                                      G_grad.sT(i).derivatives()(1) *
-                                     getRow(ARRy, i)));
+                                     getRow(ARLDRy, i)));
 
                 // Store the value of s^T
                 G.sT(i) = G_grad.sT(i).value();
@@ -1339,8 +1403,8 @@ namespace maps {
 
             // Compute stuff involving the Rprime rotation matrix
             int m;
-            for (int l = 0; l < lmax + 1; l++) {
-                for (int j = 0; j < 2 * l + 1; j++) {
+            for (int l = 0; l < lmax + 1; ++l) {
+                for (int j = 0; j < 2 * l + 1; ++j) {
                     m = j - l;
                     sTAR(l * l + j) = sTA(l * l + j) *
                                       W.cosmt(l * l + j) +
@@ -1354,31 +1418,32 @@ namespace maps {
             }
 
             // Compute the xo and yo derivs using the chain rule
-            sTAdRdthetaRy_b = dot(sTAdRdtheta, Ry) / b;
-            setRow(dF, 1, Row<T>((xo_b * dFdb) + (yo_b * sTAdRdthetaRy_b)));
-            setRow(dF, 2, Row<T>((yo_b * dFdb) - (xo_b * sTAdRdthetaRy_b)));
+            sTAdRdthetaLDRy_b = dot(sTAdRdtheta, LDRy) / b;
+            setRow(dF, 1, Row<T>((xo_b * dFdb) + (yo_b * sTAdRdthetaLDRy_b)));
+            setRow(dF, 2, Row<T>((yo_b * dFdb) - (xo_b * sTAdRdthetaLDRy_b)));
 
             // Compute the theta deriv
-            for (int l = 0; l < lmax + 1; l++)
-                dRdthetay.block(l * l, 0, 2 * l + 1, nwav) =
-                    W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, nwav);
-            setRow(dF, 0, Row<T>(dot(sTAR, dRdthetay) *
+            setRow(dF, 0, Row<T>(dot(sTAR, dLDRydtheta) *
                                 (pi<Scalar<T>>() / 180.)));
 
             // Compute the map derivs
+            // TODO: Account for limb darkening
             if (theta == 0) {
-                for (int i = 0; i < N; i++)
+                for (int i = 0; i < N; ++i)
                     setRow(dF, 4 + i, sTAR(i));
             } else {
-                for (int l = 0; l < lmax + 1; l++)
-                    sTARR.segment(l * l, 2 * l + 1) =
+                for (int l = 0; l < lmax + 1; ++l)
+                    sTARLDR.segment(l * l, 2 * l + 1) =
                         sTAR.segment(l * l, 2 * l + 1) * W.R[l];
-                for (int i = 0; i < N; i++)
-                    setRow(dF, 4 + i, sTARR(i));
+                for (int i = 0; i < N; ++i)
+                    setRow(dF, 4 + i, sTARLDR(i));
             }
 
+            // Compute the derivs with respect to the limb darkening coeffs
+            // TODO: Implement this
+
             // Dot the result in and we're done
-            return G.sT * ARRy;
+            return G.sT * ARLDRy;
 
         }
 
@@ -1460,9 +1525,5 @@ namespace maps {
 
 
 }; // namespace maps
-
-#undef CACHE_NONE
-#undef CACHE_FLUX
-#undef CACHE_EVAL
 
 #endif

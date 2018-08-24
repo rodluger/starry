@@ -187,7 +187,6 @@ namespace rotation {
 
     /**
     Explicitly compute the full rotation matrix and its derivative.
-
     The full rotation matrix is
 
         R = RZetaInv . Rz . RZeta
