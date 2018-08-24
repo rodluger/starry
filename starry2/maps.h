@@ -116,6 +116,7 @@ namespace maps {
             int y_deg;                                                          /**< Highest degree set by the user in the spherical harmonic vector */
             int u_deg;                                                          /**< Highest degree set by the user in the limb darkening vector */
             Vector<Matrix<Scalar<T>>> dp_udu;                                   /**< Deriv of limb darkening polynomial w/ respect to limb darkening coeffs */
+            Vector<Matrix<Scalar<T>>> dg_udu;                                   /**< Deriv of limb darkening Green's polynomials w/ respect to limb darkening coeffs */
             UnitVector<Scalar<T>> axis;                                         /**< The axis of rotation for the map */
             Basis<Scalar<T>> B;                                                 /**< Basis transform stuff */
             Wigner<T> W;                                                        /**< The class controlling rotations */
@@ -206,6 +207,7 @@ namespace maps {
                 dI_names({"theta", "x", "y"}),
                 dF_names({"theta", "xo", "yo", "ro"}),
                 dp_udu(nwav),
+                dg_udu(nwav),
                 B(lmax),
                 W(lmax, nwav, (*this).y, (*this).axis),
                 G(lmax),
@@ -381,13 +383,17 @@ namespace maps {
         rTp_u = dot(B.rT, p_u);
         ld_norm = cwiseQuotient(Y00, rTp_u);
 
-        // Compute the derivative of the LD polynomial
+        // Compute the derivative of the LD polynomials
         // with respect to the LD coefficients
         for (int n = 0; n < nwav; ++n) {
+            // Polynomial basis
             dp_udu(n) = -getColumn(p_u, n) * B.rTU1;
             dp_udu(n) /= dot(B.rT, getColumn(p_u, n));
             dp_udu(n) += B.U1;
             dp_udu(n) *= getColumn(ld_norm, n);
+
+            // Green's basis
+            dg_udu(n) = B.A2 * dp_udu(n);
         }
 
         // Apply the normalization
@@ -864,14 +870,14 @@ namespace maps {
         pTA1.resize(N);
         VectorT<Scalar<T>>& pTA1R(tmp.tmpRowVector[2]);
         pTA1R.resize(N);
+        VectorT<Scalar<T>>& dIdu(tmp.tmpRowVector[3]);
+        VectorT<Scalar<T>>& dIdp_u(tmp.tmpRowVector[4]);
         ADScalar<Scalar<T>, 2>& x0_grad(tmp.tmpADScalar2[0]);
         ADScalar<Scalar<T>, 2>& y0_grad(tmp.tmpADScalar2[1]);
         Power<ADScalar<Scalar<T>, 2>>& xpow(tmp.tmpPowerOfADScalar2[0]);
         Power<ADScalar<Scalar<T>, 2>>& ypow(tmp.tmpPowerOfADScalar2[1]);
         VectorT<ADScalar<Scalar<T>, 2>>& pT_grad(tmp.tmpRowVectorOfADScalar2[0]);
         pT_grad.resize(N);
-        VectorT<Scalar<T>>& dIdu(tmp.tmpRowVector[3]);
-        VectorT<Scalar<T>>& dIdp_u(tmp.tmpRowVector[4]);
 
         // Check if outside the sphere
         if (x0 * x0 + y0 * y0 > 1.0) {
@@ -1099,6 +1105,9 @@ namespace maps {
                                   const Scalar<T>& yo_,
                                   const Scalar<T>& ro_) {
 
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+
         // Convert to internal types
         Scalar<T> xo = xo_;
         Scalar<T> yo = yo_;
@@ -1109,8 +1118,8 @@ namespace maps {
 
         // Check for complete occultation
         if (b <= ro - 1) {
-            setZero(ctmp);
-            return ctmp;
+            setZero(result);
+            return result;
         }
 
         // No occultation
@@ -1139,7 +1148,7 @@ namespace maps {
     Compute the flux during or outside of an occultation
     for a pure limb-darkened map (Y_{l,m} = 0 for l > 0).
 
-    TODO: Add limb darkening.
+    TODO: CHECK THIS FUNCTION
 
     */
     template <class T>
@@ -1147,7 +1156,12 @@ namespace maps {
                                                 const Scalar<T>& yo_,
                                                 const Scalar<T>& ro_) {
 
-        throw errors::ToDoError("Implement derivative of limb-darkened flux.");
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+        Row<T>& dFdb(tmp.tmpRow[1]);
+        VectorT<Scalar<T>>& dFdu(tmp.tmpRowVector[0]);
+        ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
+        ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
 
         // Convert to internal types
         Scalar<T> xo = xo_;
@@ -1159,12 +1173,38 @@ namespace maps {
 
         // Check for complete occultation
         if (b <= ro - 1) {
-            setZero(ctmp);
-            return ctmp;
+            setZero(dF);
+            setZero(result);
+            return result;
         }
+
+        // We intentionally don't compute the spherical
+        // harmonic coeff derivs above Y_{0,0}, since that would
+        // make this function slow.
+        // TODO: Add a note about this in the docs,
+        // and explain how to override this.
+        for (int i = 1; i < N; ++i)
+            setRow(dF, 4 + i, Scalar<T>(NAN));
+
+        // The theta deriv is always zero, since
+        // pure limb-darkened maps can't be rotated.
+        setRow(dF, 0, Scalar<T>(0.0));
 
         // No occultation
         if ((b >= 1 + ro) || (ro == 0)) {
+
+            // The x, y, and r derivs are trivial
+            setRow(dF, 1, Scalar<T>(0.0));
+            setRow(dF, 2, Scalar<T>(0.0));
+            setRow(dF, 3, Scalar<T>(0.0));
+
+            // Compute the Y_{0,0} deriv, which is trivial
+            setRow(dF, 4, Scalar<T>(1.0));
+
+            // The limb darkening derivs are zero, since
+            // they don't affect the total flux!
+            for (int i = 0; i < lmax; ++i)
+                setRow(dF, 4 + N + i, Scalar<T>(0.0));
 
             // Easy: the disk-integrated intensity
             // is just the Y_{0,0} coefficient
@@ -1173,13 +1213,45 @@ namespace maps {
         // Occultation
         } else {
 
-            // Compute the sT vector (sparsely)
-            for (int n = 0; n < N; ++n)
-                G.skip(n) = !(g_u.block(n, 0, 1, nwav).array() != 0.0).any();
-            G.compute(b, ro);
+            // Compute the sT vector using AutoDiff
+            b_grad.value() = b;
+            b_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
+            ro_grad.value() = ro;
+            ro_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
+            G_grad.compute(b_grad, ro_grad);
 
-            // Dot the result in and we're done
-            return G.sT * g_u;
+            // Compute the b and ro derivs
+            setZero(dFdb);
+            setRow(dF, 3, Scalar<T>(0.0));
+            for (int i = 0; i < N; ++i) {
+                // dF / db = dsT / db . g_u
+                dFdb += G_grad.sT(i).derivatives()(0) * getRow(g_u, i);
+                // dF / dro = dsT / dro . g_u
+                setRow(dF, 3, Row<T>(getRow(dF, 3) +
+                                     G_grad.sT(i).derivatives()(1) *
+                                     getRow(g_u, i)));
+                // Store the value of s^T
+                G.sT(i) = G_grad.sT(i).value();
+            }
+
+            // Compute the resulting flux
+            result = dot(G.sT, g_u);
+
+            // Compute the x and y derivs (straighforward chain rule)
+            setRow(dF, 1, Row<T>(dFdb * xo / b));
+            setRow(dF, 2, Row<T>(dFdb * yo / b));
+
+            // Compute the Y_{0, 0} deriv (straightforward since it's linear)
+            setRow(dF, 4, cwiseQuotient(result, getRow(y, 0)));
+
+            // Compute the derivs with respect to the limb darkening coeffs
+            // dF / du = s^T . dg_u / du
+            for (int n = 0; n < nwav; ++n) {
+                dFdu = G.sT * dg_udu(n);
+                dF.block(4 + N, n, lmax, 1) = dFdu.segment(1, lmax).transpose();
+            }
+
+            return result;
 
         }
 
