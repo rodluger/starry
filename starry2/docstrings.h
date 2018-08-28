@@ -99,13 +99,9 @@ namespace docstrings {
                     theta (float or ndarray): Angle of rotation in degrees. Default 0.
                     x (float or ndarray): Position scalar, vector, or matrix.
                     y (float or ndarray): Position scalar, vector, or matrix.
-                    gradient (bool): Compute and return the gradient of the intensity as well? Default :py:obj:`False`.
 
                 Returns:
-                    The specific intensity at (`x`, `y`). If :py:obj:`gradient` is :py:obj:`True`, \
-                    returns the tuple `(I, dI)`, where `I` is the specific intensity and `dI` is \
-                    a dictionary containing the derivatives with respect to each of the input parameters \
-                    and each of the map coefficients.
+                    The specific intensity at (`x`, `y`).
             )pbdoc";
 
             flux = R"pbdoc(
@@ -187,7 +183,7 @@ namespace docstrings {
                 Args:
                     lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
 
-                .. automethod:: evaluate(theta=0, x=0, y=0)
+                .. automethod:: __call__(theta=0, x=0, y=0)
                 .. automethod:: flux(theta=0, xo=0, yo=0, ro=0)
                 .. automethod:: rotate(theta=0)
                 .. automethod:: show()

@@ -1,9 +1,6 @@
 /**
 Defines the surface map class.
 
-TODO: Get rid of evaluation gradients
-      Map evaluations only via the operator() on a Map.
-
 TODO: Macro for loops involving nwav and specialize for nwav = 1?
       Essentially we'd replace
 
@@ -24,8 +21,6 @@ TODO: Speed up limb-darkened map rotations, since
       This can easily be implemented in W.rotate
       if we pass y_deg along. Don't implement it in
       W.compute, since we need gradients.
-
-TODO: Move linalg stuff from utils.h to linalg.h
 
 */
 
@@ -195,9 +190,6 @@ namespace maps {
             template <typename U>
             inline void poly_basis(Power<U>& xpow, Power<U>& ypow,
                                    VectorT<U>& basis);
-            inline Row<T> evaluate_with_gradient(const Scalar<T>& theta_deg,
-                                                 const Scalar<T>& x_,
-                                                 const Scalar<T>& y_);
             inline Row<T> flux_with_gradient(const Scalar<T>& theta_deg,
                                              const Scalar<T>& xo_,
                                              const Scalar<T>& yo_,
@@ -286,10 +278,9 @@ namespace maps {
             void rotate(const Scalar<T>&  theta_);
 
             // Evaluate the intensity at a point
-            inline Row<T> evaluate(const Scalar<T>& theta_=0,
-                                   const Scalar<T>& x_=0,
-                                   const Scalar<T>& y_=0,
-                                   bool gradient=false);
+            inline Row<T> operator()(const Scalar<T>& theta_=0,
+                                     const Scalar<T>& x_=0,
+                                     const Scalar<T>& y_=0);
 
             // Compute the flux
             inline Row<T> flux(const Scalar<T>& theta_=0,
@@ -748,15 +739,9 @@ namespace maps {
 
     */
     template <class T>
-    inline Row<T> Map<T>::evaluate(const Scalar<T>& theta_,
-                                   const Scalar<T>& x_,
-                                   const Scalar<T>& y_,
-                                   bool gradient) {
-
-        // If we're computing the gradient,
-        // call the specialized function instead
-        if (gradient)
-            return evaluate_with_gradient(theta_, x_, y_);
+    inline Row<T> Map<T>::operator()(const Scalar<T>& theta_,
+                                     const Scalar<T>& x_,
+                                     const Scalar<T>& y_) {
 
         // Bind references to temporaries for speed
         Row<T>& result(tmp.tmpRow[0]);
@@ -816,141 +801,6 @@ namespace maps {
 
         // Dot the coefficients in to our polynomial map
         return pT * A1Ry;
-
-    }
-
-    /**
-    Evaluate the map at a given (x0, y0) coordinate and compute the gradient
-
-    TODO: Remove this function.
-
-    */
-    template <class T>
-    inline Row<T> Map<T>::evaluate_with_gradient(const Scalar<T>& theta_,
-                                                 const Scalar<T>& x_,
-                                                 const Scalar<T>& y_) {
-
-        // Convert to internal type
-        Scalar<T> x0 = x_;
-        Scalar<T> y0 = y_;
-        Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
-
-        // Bind references to temporaries for speed
-        Row<T>& result(tmp.tmpRow[0]);
-        T& Ry(tmp.tmpT[0]);
-        T& A1Ry(tmp.tmpT[1]);
-        T& dRdthetay(tmp.tmpT[2]);
-        VectorT<Scalar<T>>& pT(tmp.tmpRowVector[0]);
-        pT.resize(N);
-        VectorT<Scalar<T>>& pTA1(tmp.tmpRowVector[1]);
-        pTA1.resize(N);
-        VectorT<Scalar<T>>& pTA1R(tmp.tmpRowVector[2]);
-        pTA1R.resize(N);
-        VectorT<Scalar<T>>& dIdu(tmp.tmpRowVector[3]);
-        VectorT<Scalar<T>>& dIdp_u(tmp.tmpRowVector[4]);
-        ADScalar<Scalar<T>, 2>& x0_grad(tmp.tmpADScalar2[0]);
-        ADScalar<Scalar<T>, 2>& y0_grad(tmp.tmpADScalar2[1]);
-        Power<ADScalar<Scalar<T>, 2>>& xpow(tmp.tmpPowerOfADScalar2[0]);
-        Power<ADScalar<Scalar<T>, 2>>& ypow(tmp.tmpPowerOfADScalar2[1]);
-        VectorT<ADScalar<Scalar<T>, 2>>& pT_grad(tmp.tmpRowVectorOfADScalar2[0]);
-        pT_grad.resize(N);
-
-        // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) {
-            dI *= NAN;
-            result *= NAN;
-            return result;
-        }
-
-        // Rotate the map into view
-        // Note that there's no skipping this, even for constant
-        // maps, so we get the right derivatives below
-        W.compute(cos(theta), sin(theta));
-        if (theta == 0) {
-            A1Ry = p;
-        } else {
-            for (int l = 0; l < lmax + 1; l++)
-                Ry.block(l * l, 0, 2 * l + 1, nwav) =
-                    W.R[l] * y.block(l * l, 0, 2 * l + 1, nwav);
-            A1Ry = B.A1 * Ry;
-        }
-
-        // Apply limb-darkening and compute its derivative
-        // Note that we do this even if there's no limb
-        // darkening set, to get the correct derivs
-        limb_darken(A1Ry, p_uy, true);
-        A1Ry = p_uy;
-
-        // Compute the polynomial basis and its x and y derivs
-        x0_grad.value() = x0;
-        x0_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
-        y0_grad.value() = y0;
-        y0_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
-        xpow.reset(x0_grad);
-        ypow.reset(y0_grad);
-        poly_basis(xpow, ypow, pT_grad);
-        setRow(dI, 1, Scalar<T>(0.0));
-        setRow(dI, 2, Scalar<T>(0.0));
-        for (int i = 0; i < N; i++) {
-            setRow(dI, 1, Row<T>(getRow(dI, 1) +
-                                 pT_grad(i).derivatives()(0) *
-                                 getRow(A1Ry, i)));
-            setRow(dI, 2, Row<T>(getRow(dI, 2) +
-                                 pT_grad(i).derivatives()(1) *
-                                 getRow(A1Ry, i)));
-            pT(i) = pT_grad(i).value();
-        }
-
-        // Compute dR/dtheta . y
-        for (int l = 0; l < lmax + 1; ++l)
-            dRdthetay.block(l * l, 0, 2 * l + 1, nwav) =
-                W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, nwav);
-
-        // Compute the map derivs and the theta deriv
-        // dI / dtheta = p^T . dLDdp . A1 . d(R . y) / dtheta
-        // dI / dy = p^T . dLDdp . A1 . R
-        if (u_deg > 0) {
-            for (int n = 0; n < nwav; ++n) {
-                pTA1 = pT * dLDdp(n) * B.A1;
-                if (theta == 0) {
-                    for (int i = 0; i < N; i++)
-                        dI(3 + i, n) = pTA1(i);
-                } else {
-                    for (int l = 0; l < lmax + 1; l++)
-                        pTA1R.segment(l * l, 2 * l + 1) =
-                            pTA1.segment(l * l, 2 * l + 1) * W.R[l];
-                    for (int i = 0; i < N; i++)
-                        dI(3 + i, n) = pTA1R(i);
-                }
-                dI(0, n) = dot(pTA1, getColumn(dRdthetay, n))
-                           * (pi<Scalar<T>>() / 180.);
-            }
-        } else {
-            pTA1 = pT * B.A1;
-            if (theta == 0) {
-                for (int i = 0; i < N; i++)
-                    setRow(dI, 3 + i, pTA1(i));
-            } else {
-                for (int l = 0; l < lmax + 1; l++)
-                    pTA1R.segment(l * l, 2 * l + 1) =
-                        pTA1.segment(l * l, 2 * l + 1) * W.R[l];
-                for (int i = 0; i < N; i++)
-                    setRow(dI, 3 + i, pTA1R(i));
-            }
-            setRow(dI, 0, Row<T>(dot(pTA1, dRdthetay)
-                          * (pi<Scalar<T>>() / 180.)));
-        }
-
-        // Compute the derivs with respect to the limb darkening coeffs
-        // dI / du = p^T . dLDdp_u . dp_u / du
-        for (int n = 0; n < nwav; ++n) {
-            dIdp_u = pT * dLDdp_u(n);
-            dIdu = dIdp_u * dp_udu(n);
-            dI.block(3 + N, n, lmax, 1) = dIdu.segment(1, lmax).transpose();
-        }
-
-        // Dot the coefficients in to our polynomial map
-        return dot(pT, A1Ry);
 
     }
 

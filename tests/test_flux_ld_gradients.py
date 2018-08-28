@@ -78,18 +78,6 @@ def run_flux(Map, case="ld"):
         map[1] = 0.4
         map[:y_deg, :] = 1
 
-        # DEBUG
-        '''
-        I = map.flux(theta=0, ro=0.1, xo=0.1, yo=0.1)
-        I_grad, dI = map.flux(theta=0, ro=0.1, xo=0.1, yo=0.1, gradient=True)
-        assert np.allclose(I, I_grad, atol=1e-7)
-        dI_num = num_grad_flux(Map, lmax, y_deg, map.y, map.u,
-                               map.axis, 0, 0.1, 0.1, 0.1)
-        for key in dI.keys():
-            if (key in dI_num.keys()) and (not np.isnan(dI[key])):
-                print(key, dI[key], dI_num[key])
-        quit()'''
-
     # Scalar evaluation
     I = map.flux(theta=30)
     I_grad, dI = map.flux(theta=30, gradient=True)

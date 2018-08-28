@@ -51,11 +51,11 @@ def run(Map):
     map[0, 0] = 0
     map[1, 0] = norm
     map.axis = [1, 2, 3]
-    assert np.allclose(map.evaluate(theta=[30, 30, 30]), 0.46522382467359763)
+    assert np.allclose(map(theta=[30, 30, 30]), 0.46522382467359763)
     map.axis = [3, 2, 1]
-    assert np.allclose(map.evaluate(theta=[30, 30, 30]), 0.42781792510668176)
+    assert np.allclose(map(theta=[30, 30, 30]), 0.42781792510668176)
     map.rotate(30)
-    assert np.allclose(map.evaluate(theta=[30, 30, 30]), 0.2617513456622787)
+    assert np.allclose(map(theta=[30, 30, 30]), 0.2617513456622787)
 
 
 def test_rotation_double():

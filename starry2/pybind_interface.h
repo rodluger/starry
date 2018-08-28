@@ -53,7 +53,7 @@ namespace pybind_interface {
                 for (int i = 0; i < res; i++){
                     for (int j = 0; j < res; j++){
                         I(j, i) = static_cast<double>(
-                                  map.evaluate(0.0, x(i), x(j)));
+                                  map(0.0, x(i), x(j)));
                     }
                 }
                 show(I, "cmap"_a=cmap, "res"_a=res);
@@ -72,7 +72,7 @@ namespace pybind_interface {
                     for (int i = 0; i < res; i++){
                         for (int j = 0; j < res; j++){
                             I[t](j, i) = static_cast<double>(
-                                         map.evaluate(theta(t), x(i), x(j)));
+                                         map(theta(t), x(i), x(j)));
                         }
                     }
                 }
@@ -225,6 +225,15 @@ namespace pybind_interface {
                     return py::cast<MapDouble<T>>(res);
             })
 
+            // Evaluate the map intensity at a point
+            .def("__call__", [](maps::Map<T> &map,
+                                py::array_t<double>& theta,
+                                py::array_t<double>& x,
+                                py::array_t<double>& y)
+                                -> py::object {
+                    return vectorize::evaluate(map, theta, x, y);
+                }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0)
+
             .def_property("axis",
                 [](maps::Map<T> &map) -> UnitVector<double> {
                         return map.getAxis().template cast<double>();
@@ -267,16 +276,6 @@ namespace pybind_interface {
             .def_property_readonly("s", [](maps::Map<T> &map) -> VectorT<double>{
                     return map.getS().template cast<double>();
                 }, docs.Map.s)
-
-            .def("evaluate", [](maps::Map<T> &map,
-                                py::array_t<double>& theta,
-                                py::array_t<double>& x,
-                                py::array_t<double>& y,
-                                bool gradient)
-                                -> py::object {
-                    return vectorize::evaluate(map, theta, x, y, gradient);
-                }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0,
-                                      "gradient"_a=false)
 
             .def("flux", [](maps::Map<T> &map,
                             py::array_t<double>& theta,

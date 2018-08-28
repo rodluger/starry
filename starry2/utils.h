@@ -134,6 +134,7 @@ namespace utils {
     //! Machine precision for current type
     template<class T> inline T mach_eps() { return mach_eps(tag<T>()); }
 
+
     // --------------------------
     // ------ Unit Vectors ------
     // --------------------------
@@ -226,68 +227,70 @@ namespace utils {
     template <class MapType>
     using MapDouble = typename types::TypeSelector<MapType>::MapDouble;
 
+
     // --------------------------
     // -- Map coefficient utils -
     // --------------------------
 
-    //! Resize a map tensor (matrix overload)
+
+    //! Resize a map: Matrix specialization
     template <class T>
     inline void resize(Matrix<T>& obj, int N, int NW) {
         obj.resize(N, NW);
     }
 
-    //! Resize a map tensor (column vector overload)
+    //! Resize a map: Vector specialization
     template <class T>
     inline void resize(Vector<T>& obj, int N, int NW) {
         obj.resize(N);
     }
 
-    //! Resize a map tensor (row vector overload)
+    //! Resize a map: VectorT specialization
     template <class T>
     inline void resize(VectorT<T>& obj, int N, int NW) {
         obj.resize(NW);
     }
 
-    //! Resize a map tensor (scalar overload: does nothing)
+    //! Resize a map: Scalar specialization (does nothing!)
     template <class T>
     inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
     resize(T& obj, int N, int NW) { }
 
-    //! Zero out a map tensor (all Eigen types)
+    //! Zero out a map: specialization for all Eigen types
     template <class T>
     inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
     setZero(T& obj) {
         obj.setZero();
     }
 
-    //! Zero out a map tensor (scalar overload)
+    //! Zero out a map: Scalar specialization
     template <class T>
     inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
     setZero(T& obj) {
         obj = 0;
     }
 
-    //! Set a map tensor to one (all Eigen types)
+    //! Set a map to one: specialization for all Eigen types
     template <class T>
     inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
     setOnes(T& obj) {
         obj.setOnes();
     }
 
-    //! Set a map tensor to one (scalar overload)
+    //! Set a map to one: Scalar specialization
     template <class T>
     inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
     setOnes(T& obj) {
         obj = 1;
     }
 
-    //! Set a row in a map tensor
+    //! Set a row in a map: Vector specialization
     template <class T, class U>
     inline void setRow(Vector<T>& vec, int row, U val) {
         vec(row) = static_cast<T>(val);
     }
 
-    //! Set a row in a map tensor
+    //! Set a row in a map: Matrix specialization
     template <class T, class U>
     inline void setRow(Matrix<T>& vec, int row, const VectorT<U>& val) {
         if (val.size() != vec.cols())
@@ -295,26 +298,47 @@ namespace utils {
         vec.row(row) = val.template cast<T>();
     }
 
-    //! Set a row in a map tensor to a constant scalar value
+    //! Set a row in a map to a constant value: specialization for all eigen types
     template <class T, class U>
     inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<U>, U>::value, void>::type
     setRow(Matrix<T>& vec, int row, U val) {
         vec.row(row) = VectorT<T>::Constant(vec.cols(), static_cast<T>(val));
     }
 
-    //! Return a row in a map tensor
+    //! Return a row in a map: Vector specialization
     template <class T>
     inline T getRow(const Vector<T>& vec, int row) {
         return vec(row);
     }
 
-    //! Return a row in a map tensor
+    //! Return a row in a map: VectorT specialization
     template <class T>
     inline VectorT<T> getRow(const Matrix<T>& vec, int row) {
         return vec.row(row);
     }
 
-    //! Return an index in a vector
+    //! Return the value at an index: Vector specialization
+    template <class T>
+    inline Vector<T> getColumn(const Vector<T>& vec, int col) {
+        if (col == 0)
+            return vec;
+        else
+            throw errors::IndexError("Attempting to index a scalar variable.");
+    }
+
+    //! Return the value at an index: VectorT specialization
+    template <class T>
+    inline T getColumn(const VectorT<T>& vec, int col) {
+        return vec(col);
+    }
+
+    //! Return the value at an index: Matrix specialization
+    template <class T>
+    inline Vector<T> getColumn(const Matrix<T>& vec, int col) {
+        return vec.col(col);
+    }
+
+    //! Return the value at an index: Scalar specialization
     template <class T>
     inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
     getColumn(const T& vec, int col) {
@@ -324,68 +348,47 @@ namespace utils {
             throw errors::IndexError("Attempting to index a scalar variable.");
     }
 
-    //! Return a column in a map tensor
-    template <class T>
-    inline Vector<T> getColumn(const Vector<T>& vec, int col) {
-        if (col == 0)
-            return vec;
-        else
-            throw errors::IndexError("Attempting to index a scalar variable.");
-    }
-
-    //! Return a column in a map tensor
-    template <class T>
-    inline T getColumn(const VectorT<T>& vec, int col) {
-        return vec(col);
-    }
-
-    //! Return a column in a map tensor
-    template <class T>
-    inline Vector<T> getColumn(const Matrix<T>& vec, int col) {
-        return vec.col(col);
-    }
-
-    //! Does a map tensor have any zero elements?
+    //! Does a map tensor have any zero elements? Specialization for all Eigen types
     template <typename T>
     inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
     hasZero(const T& v) {
         return (v.array() == 0.0).any();
     }
 
-    //! Does a map tensor have any zero elements?
+    //! Does a map tensor have any zero elements? Specialization for Scalar
     template <typename T>
     inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
     hasZero(const T& v) {
         return v == 0.0;
     }
 
-    //! Does a map tensor have all zero elements?
+    //! Does a map tensor have all zero elements? Specialization for all Eigen types
     template <typename T>
     inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
     allZero(const T& v) {
         return (v.array() == 0.0).all();
     }
 
-    //! Does a map tensor have all zero elements?
+    //! Does a map tensor have all zero elements? Specialization for Scalar
     template <typename T>
     inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
     allZero(const T& v) {
         return v == 0.0;
     }
 
-    //! Vector-vector dot product
+    //! VectorT-Vector dot product
     template <typename T>
     T dot(const VectorT<T>& vT, const Vector<T>& u) {
         return vT.dot(u);
     }
 
-    //! Vector-matrix dot product
+    //! VectorT-Matrix dot product
     template <typename T>
     VectorT<T> dot(const VectorT<T>& vT, const Matrix<T>& U) {
         return vT * U;
     }
 
-    //! Vector-vector coeff-wise product
+    //! Eigen-Eigen coeff-wise product
     template <typename T>
     inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
     cwiseProduct(const T& v, const T& u) {
@@ -399,7 +402,7 @@ namespace utils {
         return v * u;
     }
 
-    //! Vector-vector coeff-wise quotient
+    //! Eigen-Eigen coeff-wise quotient
     template <typename T>
     inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
     cwiseQuotient(const T& v, const T& u) {
@@ -413,7 +416,7 @@ namespace utils {
         return v / u;
     }
 
-    //! Column-wise matrix-vector multiplication
+    //! Column-wise Matrix-VectorT multiplication
     template <typename T>
     inline Matrix<T> colwiseProduct(Matrix<T>& mat, const VectorT<T>& vec) {
         Matrix<T> out = mat;
@@ -422,7 +425,7 @@ namespace utils {
         return out;
     }
 
-    //! Column-wise matrix-vector multiplication (vector-scalar overload)
+    //! Column-wise Vector-Scalar multiplication
     template <typename T>
     inline Vector<T> colwiseProduct(Vector<T>& vec, const T& scal) {
         return vec * scal;

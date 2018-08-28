@@ -218,41 +218,12 @@ namespace pybind_vectorize {
     py::object evaluate(maps::Map<T> &map,
                         py::array_t<double>& theta,
                         py::array_t<double>& x,
-                        py::array_t<double>& y,
-                        bool gradient){
+                        py::array_t<double>& y){
 
-        if (gradient) {
-
-            // Initialize a dictionary of derivatives
-            size_t n = max(theta.size(), max(x.size(), y.size()));
-            std::map<string, Vector<double>> grad;
-            for (auto name : map.dI_names)
-                grad[name].resize(n);
-
-            // Nested lambda function;
-            // https://github.com/pybind/pybind11/issues/761#issuecomment-288818460
-            int t = 0;
-            auto I = py::vectorize([&map, &grad, &t](double theta, double x, double y) {
-                // Evaluate the function
-                double res = static_cast<double>(map.evaluate(theta, x, y, true));
-                // Gather the derivatives
-                for (int j = 0; j < map.dI.size(); j++)
-                    grad[map.dI_names[j]](t) = static_cast<double>(map.dI(j));
-                t++;
-                return res;
-            })(theta, x, y);
-
-            // Return a tuple of (I, dict(dI))
-            return py::make_tuple(I, grad);
-
-        } else {
-
-            // Easy! We'll just return I
-            return py::vectorize([&map](double theta, double x, double y) {
-                return static_cast<double>(map.evaluate(theta, x, y, false));
-            })(theta, x, y);
-
-        }
+        // Easy! We'll just return I
+        return py::vectorize([&map](double theta, double x, double y) {
+            return static_cast<double>(map(theta, x, y));
+        })(theta, x, y);
 
     }
 
@@ -261,49 +232,21 @@ namespace pybind_vectorize {
     py::object evaluate(maps::Map<Matrix<double>> &map,
                         py::array_t<double>& theta,
                         py::array_t<double>& x,
-                        py::array_t<double>& y,
-                        bool gradient){
+                        py::array_t<double>& y){
 
         // Vectorize the arguments manually
         Vector<double> theta_v, x_v, y_v;
         vectorize_args(theta, x, y, theta_v, x_v, y_v);
         size_t sz = theta_v.size();
 
-        if (gradient) {
-
-            // Initialize the gradient matrix
-            std::map<string, Matrix<double>> grad;
-            for (auto name : map.dI_names)
-                grad[name].resize(sz, map.nwav);
-
-            // Iterate through the timeseries
-            Matrix<double> I(sz, map.nwav);
-            for (size_t i = 0; i < sz; ++i) {
-
-                // Function value
-                I.row(i) = map.evaluate(theta_v(i), x_v(i), y_v(i), true);
-
-                // Gradient
-                for (int j = 0; j < map.dI.rows(); ++j)
-                    grad[map.dI_names[j]].row(i) = map.dI.row(j);
-
-            }
-
-            // Cast to python object
-            return py::make_tuple(I, grad);
-
-        } else {
-
-            // Iterate through the timeseries
-            Matrix<double> I(sz, map.nwav);
-            for (size_t i = 0; i < sz; ++i) {
-                I.row(i) = map.evaluate(theta_v(i), x_v(i), y_v(i), false);
-            }
-
-            // Cast to python object
-            return py::cast(I);
-
+        // Iterate through the timeseries
+        Matrix<double> I(sz, map.nwav);
+        for (size_t i = 0; i < sz; ++i) {
+            I.row(i) = map(theta_v(i), x_v(i), y_v(i));
         }
+
+        // Cast to python object
+        return py::cast(I);
 
     }
 
