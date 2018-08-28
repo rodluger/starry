@@ -78,21 +78,17 @@ def run_flux(Map, case="ld"):
         map[1] = 0.4
         map[:y_deg, :] = 1
 
-        # DEBUG: I'm coding this one up still!
-        I = map.flux(theta=30)
-        I_grad, dI = map.flux(theta=30, gradient=True)
+        # DEBUG
+        '''
+        I = map.flux(theta=0, ro=0.1, xo=0.1, yo=0.1)
+        I_grad, dI = map.flux(theta=0, ro=0.1, xo=0.1, yo=0.1, gradient=True)
         assert np.allclose(I, I_grad, atol=1e-7)
         dI_num = num_grad_flux(Map, lmax, y_deg, map.y, map.u,
-                               map.axis, 30, 0, 0, 0)
-        print("Phase curve:", dI['theta'], dI_num['theta'])
-
-        I = map.flux(theta=30, ro=0.1, xo=0.1, yo=0.1)
-        I_grad, dI = map.flux(theta=30, ro=0.1, xo=0.1, yo=0.1, gradient=True)
-        assert np.allclose(I, I_grad, atol=1e-7)
-        dI_num = num_grad_flux(Map, lmax, y_deg, map.y, map.u,
-                               map.axis, 30, 0.1, 0.1, 0.1)
-        print("Occultation:", dI['theta'], dI_num['theta'])
-        return
+                               map.axis, 0, 0.1, 0.1, 0.1)
+        for key in dI.keys():
+            if (key in dI_num.keys()) and (not np.isnan(dI[key])):
+                print(key, dI[key], dI_num[key])
+        quit()'''
 
     # Scalar evaluation
     I = map.flux(theta=30)
@@ -102,7 +98,7 @@ def run_flux(Map, case="ld"):
                            map.axis, 30, 0, 0, 0)
     for key in dI.keys():
         if (key in dI_num.keys()) and (not np.isnan(dI[key])):
-            assert np.allclose(dI[key], dI_num[key], atol=1e-7)
+            assert np.allclose(dI[key], dI_num[key], atol=1e-6)
 
     # Scalar evaluation
     I = map.flux(xo=0.1, yo=0.1, ro=0.1)
@@ -112,7 +108,7 @@ def run_flux(Map, case="ld"):
                            map.axis, 0, 0.1, 0.1, 0.1)
     for key in dI.keys():
         if (key in dI_num.keys()) and (not np.isnan(dI[key])):
-            assert np.allclose(dI[key], dI_num[key], atol=1e-7)
+            assert np.allclose(dI[key], dI_num[key], atol=1e-6)
 
     # Scalar evaluation
     I = map.flux(xo=0.1, yo=0.1, ro=0.1, theta=30)
@@ -122,7 +118,7 @@ def run_flux(Map, case="ld"):
                            map.axis, 30, 0.1, 0.1, 0.1)
     for key in dI.keys():
         if (key in dI_num.keys()) and (not np.isnan(dI[key])):
-            assert np.allclose(dI[key], dI_num[key], atol=1e-7)
+            assert np.allclose(dI[key], dI_num[key], atol=1e-6)
 
     # Vector evaluation
     I = map.flux(xo=0.1, yo=0.1, ro=0.1, theta=[0, 30])
@@ -135,8 +131,8 @@ def run_flux(Map, case="ld"):
                             map.axis, 30, 0.1, 0.1, 0.1)
     for key in dI.keys():
         if (key in dI_num.keys()) and (not np.any(np.isnan(dI[key]))):
-            assert np.allclose(dI[key][0], dI_num1[key], atol=1e-7)
-            assert np.allclose(dI[key][1], dI_num2[key], atol=1e-7)
+            assert np.allclose(dI[key][0], dI_num1[key], atol=1e-6)
+            assert np.allclose(dI[key][1], dI_num2[key], atol=1e-6)
 
 
 def test_ld_flux_with_gradients_double():

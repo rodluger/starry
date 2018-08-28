@@ -19,10 +19,11 @@ TODO: Macro for loops involving nwav and specialize for nwav = 1?
 
       and just do {int n = 0; ...} for nwav = 1.
 
-
-TODO: Could speed up limb-darkened map rotations, since
-      the effective degree of the map is lower. Won't
-      work when computing gradients.
+TODO: Speed up limb-darkened map rotations, since
+      the effective degree of the map is lower.
+      This can easily be implemented in W.rotate
+      if we pass y_deg along. Don't implement it in
+      W.compute, since we need gradients.
 
 TODO: Move linalg stuff from utils.h to linalg.h
 
@@ -103,7 +104,7 @@ namespace maps {
             static constexpr int RLEN = 4;
             static constexpr int CLEN = 1;
             static constexpr int VLEN = 1;
-            static constexpr int VTLEN = 5;
+            static constexpr int VTLEN = 8;
             static constexpr int MLEN = 2;
             static constexpr int VTMLEN = 1;
             static constexpr int ALEN = 2;
@@ -961,6 +962,15 @@ namespace maps {
     /**
     Compute the flux during or outside of an occultation
 
+    TODO: Five flux functions:
+
+        - flux
+        - flux_ld
+        - flux_with_gradient
+        - flux_ld_with_gradient
+            (This one sets dF/dy to NAN)
+        - flux_sph_with_gradient (Copy from https://github.com/rodluger/starry/blob/082deebe9783bfe87a938e40956ede6f3d6d6707/starry2/maps.h#L1214)
+            (This one sets dF/du to NAN)
     */
     template <class T>
     inline Row<T> Map<T>::flux(const Scalar<T>& theta_,
@@ -1260,16 +1270,23 @@ namespace maps {
         VectorT<Scalar<T>>& sTA(tmp.tmpRowVector[0]);
         VectorT<Scalar<T>>& sTAR(tmp.tmpRowVector[1]);
         sTAR.resize(N);
-        VectorT<Scalar<T>>& sTARLDR(tmp.tmpRowVector[2]);
-        sTARLDR.resize(N);
-        VectorT<Scalar<T>>& sTAdRdtheta(tmp.tmpRowVector[3]);
+        VectorT<Scalar<T>>& sTARdLDdpA1(tmp.tmpRowVector[2]);
+        VectorT<Scalar<T>>& sTARdLDdpA1R(tmp.tmpRowVector[3]);
+        sTARdLDdpA1R.resize(N);
+        VectorT<Scalar<T>>& sTAdRdtheta(tmp.tmpRowVector[4]);
         sTAdRdtheta.resize(N);
-        VectorT<Scalar<T>>& rTA1R(tmp.tmpRowVector[4]);
+        VectorT<Scalar<T>>& rTA1R(tmp.tmpRowVector[5]);
         rTA1R.resize(N);
+
+        VectorT<Scalar<T>>& dFdu(tmp.tmpRowVector[6]);
+        VectorT<Scalar<T>>& dFdp_u(tmp.tmpRowVector[7]);
+
         ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
         ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
         VectorT<Matrix<Scalar<T>>>& A1dLDdpA1(tmp.tmpRowVectorOfMatrices[0]);
         A1dLDdpA1.resize(nwav);
+        Matrix<Scalar<T>>& A1dLDdpA1dRdtheta(tmp.tmpMatrix[0]);
+        A1dLDdpA1dRdtheta.resize(N, N);
 
         // Convert to internal type
         Scalar<T> xo = xo_;
@@ -1299,33 +1316,17 @@ namespace maps {
                     W.R[l] * y.block(l * l, 0, 2 * l + 1, nwav);
         }
 
-        // Apply limb darkening
-        // Note that we do this even if there's no limb
-        // darkening set, to get the correct derivs
-        // TODO: Cache these operations for fixed theta. Seriously
-        A1Ry = B.A1 * Ry;
-        limb_darken(A1Ry, p_uy, true);
-        LDRy = B.A1Inv * p_uy;
-        for (int n = 0; n < nwav; ++n)
-            A1dLDdpA1(n) = B.A1Inv * dLDdp(n) * B.A1;
-
-        // TODO: Propagate LD derivs below
-        // LDRy = A1^-1 . LD(A1 . R . y)
-        // dLDRy / dy = A1^-1 . dLDdp . A1 . R
-        //            = A1dLDdpA1 . R
-        // dLDRy / du = A1^-1 . dLDdp_u . dp_u / du
-        // dLDRy / dtheta = A1^-1 . dLDdp . d(A1 . R . y) / dtheta
-        //                = A1dLDdpA1 . dR / dtheta . y
-
-        for (int n = 0; n < nwav; ++n)
-            for (int l = 0; l < lmax + 1; ++l)
-                dLDRydtheta.block(l * l, n, 2 * l + 1, 1) =
-                    A1dLDdpA1(n).block(l * l, l * l, 2 * l + 1, 2 * l + 1) *
-                    W.dRdtheta[l] *
-                    y.block(l * l, n, 2 * l + 1, 1);
-
         // No occultation
         if ((b >= 1 + ro) || (ro == 0)) {
+
+            // Compute d(R . y) / dtheta
+            // Since limb darkening doesn't change the total flux,
+            // we don't have to apply it here.
+            for (int n = 0; n < nwav; ++n)
+                for (int l = 0; l < lmax + 1; ++l)
+                    dLDRydtheta.block(l * l, n, 2 * l + 1, 1) =
+                        W.dRdtheta[l] *
+                        y.block(l * l, n, 2 * l + 1, 1);
 
             // Compute the theta deriv
             setRow(dF, 0, Row<T>(dot(B.rTA1, dLDRydtheta) *
@@ -1358,6 +1359,27 @@ namespace maps {
 
         // Occultation
         } else {
+
+            // Apply limb darkening
+            // Note that we do this even if there's no limb
+            // darkening set, to get the correct derivs
+            // TODO: Cache these operations for fixed theta. Seriously
+            A1Ry = B.A1 * Ry;
+            limb_darken(A1Ry, p_uy, true);
+            LDRy = B.A1Inv * p_uy;
+            for (int n = 0; n < nwav; ++n)
+                A1dLDdpA1(n) = B.A1Inv * dLDdp(n) * B.A1;
+
+            // Compute the theta deriv of the limb-darkened, rotated map
+            // dLDRy / dtheta = A1^-1 . dLDdp . d(A1 . R . y) / dtheta
+            //                = A1dLDdpA1 . dR / dtheta . y
+            for (int n = 0; n < nwav; ++n) {
+                for (int l = 0; l < lmax + 1; ++l)
+                    A1dLDdpA1dRdtheta.block(0, l * l, N, 2 * l + 1) =
+                        A1dLDdpA1(n).block(0, l * l, N, 2 * l + 1)
+                        * W.dRdtheta[l];
+                dLDRydtheta.col(n) = A1dLDdpA1dRdtheta * getColumn(y, n);
+            }
 
             // Align occultor with the +y axis
             Scalar<T> xo_b = xo / b;
@@ -1427,20 +1449,29 @@ namespace maps {
                                 (pi<Scalar<T>>() / 180.)));
 
             // Compute the map derivs
-            // TODO: Account for limb darkening
-            if (theta == 0) {
-                for (int i = 0; i < N; ++i)
-                    setRow(dF, 4 + i, sTAR(i));
-            } else {
-                for (int l = 0; l < lmax + 1; ++l)
-                    sTARLDR.segment(l * l, 2 * l + 1) =
-                        sTAR.segment(l * l, 2 * l + 1) * W.R[l];
-                for (int i = 0; i < N; ++i)
-                    setRow(dF, 4 + i, sTARLDR(i));
+            // dF / dy = s^T . A . R' . (A1^-1 . dLDdp . A1) . R
+            for (int n = 0; n < nwav; ++n) {
+                sTARdLDdpA1 = sTAR * A1dLDdpA1(n);
+                if (theta == 0) {
+                    for (int i = 0; i < N; ++i)
+                        dF(4 + i, n) = sTARdLDdpA1(i);
+                } else {
+                    for (int l = 0; l < lmax + 1; ++l)
+                        sTARdLDdpA1R.segment(l * l, 2 * l + 1) =
+                            sTARdLDdpA1.segment(l * l, 2 * l + 1) * W.R[l];
+                    for (int i = 0; i < N; ++i)
+                        dF(4 + i, n) = sTARdLDdpA1R(i);
+                }
             }
 
+            // TODO: Can be sped up
             // Compute the derivs with respect to the limb darkening coeffs
-            // TODO: Implement this
+            // dF / du = s^T . A . R' . A1^-1 . dLDdp_u . dp_udu
+            for (int n = 0; n < nwav; ++n) {
+                dFdp_u = sTAR * B.A1Inv * dLDdp_u(n);
+                dFdu = dFdp_u * dp_udu(n);
+                dF.block(4 + N, n, lmax, 1) = dFdu.segment(1, lmax).transpose();
+            }
 
             // Dot the result in and we're done
             return G.sT * ARLDRy;
