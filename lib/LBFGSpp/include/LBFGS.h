@@ -11,6 +11,7 @@
 
 namespace LBFGSpp {
 
+using std::abs;
 
 ///
 /// LBFGS solver for unconstrained numerical optimization
@@ -123,7 +124,7 @@ public:
             // Convergence test -- objective function value
             if(fpast > 0)
             {
-                if(k >= fpast && std::abs((m_fx[k % fpast] - fx) / fx) < m_param.delta)
+                if(k >= fpast && abs((m_fx[k % fpast] - fx) / fx) < m_param.delta)
                     return k;
 
                 m_fx[k % fpast] = fx;

@@ -51,6 +51,7 @@ namespace docstrings {
         const char * evaluate;
         const char * flux;
         const char * rotate;
+        const char * psd;
         const char * show;
         const char * animate;
         const char * load_image;
@@ -145,6 +146,21 @@ namespace docstrings {
 
                 Args:
                     theta (float or ndarray): Angle of rotation in degrees. Default 0.
+            )pbdoc";
+
+            psd = R"pbdoc(
+                Check whether the map is positive semi-definite (PSD). Returns :py:obj:`True`
+                if the map is PSD, :py:obj:`False` otherwise. For pure limb-darkened maps,
+                this routine uses Sturm's theorem to find the number of roots. For pure
+                spherical harmonic maps up to `l = 1`, the solution is analytic. For all
+                other cases, this routine attempts to find the global minimum numerically
+                and checks if it is negative. For :py:obj:`spectral` maps, this routine
+                returns an array of boolean values, one per wavelength bin.
+
+                Args:
+                    epsilon (float): Numerical tolerance. Default 1.e-6
+                    max_iterations (int): Maximum number of iterations for the numerical solver. Default 100
+
             )pbdoc";
 
             show = R"pbdoc(

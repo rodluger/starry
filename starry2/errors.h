@@ -117,6 +117,16 @@ namespace errors {
         }
     };
 
+    /**
+    Raised and caught internally when a map is not PSD.
+
+    */
+    struct MapIsNegative : public exception {
+    	const char * what () const throw (){
+        	return "The map is not positive semi-definite.";
+        }
+    };
+
 }; // namespace errors
 
 #endif

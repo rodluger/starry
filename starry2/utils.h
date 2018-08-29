@@ -175,6 +175,12 @@ namespace utils {
         return true;
     }
 
+    //! Return the modulo of an angle by 2 pi
+    template <typename T>
+    T mod2pi(const T& numer) {
+        return fmod(numer, T(2 * pi<T>()));
+    }
+
     //! Figure out the dimensions and types of the coefficients of a map.
     namespace types {
 
@@ -189,6 +195,7 @@ namespace utils {
             using MapDouble = Matrix<double>;
             using ColumnDouble = Vector<double>;
             using RowDouble = VectorT<double>;
+            using RowBool = VectorT<bool>;
         };
 
         template <typename T>
@@ -199,6 +206,7 @@ namespace utils {
             using MapDouble = Vector<double>;
             using ColumnDouble = double;
             using RowDouble = double;
+            using RowBool = bool;
         };
 
     }
@@ -223,9 +231,13 @@ namespace utils {
     template <class MapType>
     using ColumnDouble = typename types::TypeSelector<MapType>::ColumnDouble;
 
-    //! The type of a `Map` column cast to double (Vector or scalar)
+    //! The type of a `Map` cast to double (Matrix or vector)
     template <class MapType>
     using MapDouble = typename types::TypeSelector<MapType>::MapDouble;
+
+    //! The type of a `Map` row cast to bool (Vector or scalar)
+    template <class MapType>
+    using RowBool = typename types::TypeSelector<MapType>::RowBool;
 
 
     // --------------------------
@@ -315,6 +327,27 @@ namespace utils {
     template <class T>
     inline VectorT<T> getRow(const Matrix<T>& vec, int row) {
         return vec.row(row);
+    }
+
+    //! Set an index of a vector: Row vector specialization
+    template <class T>
+    inline void setIndex(VectorT<T>& vec, int col, T val) {
+        vec(col) = val;
+    }
+
+    //! Set an index of a vector: Column vector specialization
+    template <class T>
+    inline void setIndex(Vector<T>& vec, int row, T val) {
+        vec(row) = val;
+    }
+
+    //! Set an index of a vector: Scalar specialization
+    template <class T>
+    inline void setIndex(T& scalar, int col, T val) {
+        if (col == 0)
+            scalar = val;
+        else
+            throw errors::IndexError("Attempting to index a scalar variable.");
     }
 
     //! Return the value at an index: Vector specialization

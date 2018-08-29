@@ -39,6 +39,8 @@ TODO: Speed up limb-darkened map rotations, since
 #include "errors.h"
 #include "utils.h"
 #include "solver.h"
+#include "sturm.h"
+#include "minimize.h"
 
 namespace maps {
 
@@ -52,6 +54,7 @@ namespace maps {
     using basis::polymul;
     using solver::Greens;
     using solver::Power;
+    using minimize::Minimizer;
 
     // Forward-declare some stuff
     template <class T> class Map;
@@ -161,6 +164,7 @@ namespace maps {
             Wigner<T> W;                                                        /**< The class controlling rotations */
             Greens<Scalar<T>> G;                                                /**< The occultation integral solver class */
             Greens<ADScalar<Scalar<T>, 2>> G_grad;                              /**< The occultation integral solver class w/ AutoDiff capability */
+            Minimizer<T> M;                                                     /**< Map minimization class */
             Scalar<T> tol;                                                      /**< Machine epsilon */
             std::vector<string> dF_orbital_names;                               /**< Names of each of the orbital params in the flux gradient */
             std::vector<string> dF_ylm_names;                                   /**< Names of each of the Ylm params in the flux gradient */
@@ -224,6 +228,7 @@ namespace maps {
                 W(lmax, nwav, (*this).y, (*this).axis),
                 G(lmax),
                 G_grad(lmax),
+                M(lmax),
                 tol(mach_eps<Scalar<T>>()),
                 dp_udu(nwav),
                 dg_udu(nwav),
@@ -298,6 +303,10 @@ namespace maps {
                                const Scalar<T>& yo_=0,
                                const Scalar<T>& ro_=0,
                                bool gradient=false);
+
+           // Is the map positive semi-definite?
+           inline RowBool<T> psd(const Scalar<T>& epsilon=1.e-6,
+                                 const int max_iterations=100);
 
     };
 
@@ -728,6 +737,90 @@ namespace maps {
         poly_ld = colwiseProduct(poly_ld, norm);
 
     }
+
+    /**
+    Check whether the map is positive semi-definite
+
+    */
+    template <class T>
+    inline RowBool<T> Map<T>::psd(const Scalar<T>& epsilon,
+                                  const int max_iterations) {
+        RowBool<T> is_psd(nwav);
+        if ((y_deg == 0) && (u_deg == 0)) {
+            // Trivial case
+            Row<T> y00 = getRow(y, 0);
+            for (int n = 0; n < nwav; ++n) {
+                setIndex(is_psd, n, getColumn(y00, n) >= 0);
+            }
+        } else if (y_deg == 0) {
+            // Limb darkening only: use Sturm's theorem
+            for (int n = 0; n < nwav; ++n) {
+                Vector<Scalar<T>> c = -getColumn(u, n).reverse();
+                c(c.size() - 1) = 1;
+                int nroots = sturm::polycountroots(c);
+                if (nroots == 0)
+                    setIndex(is_psd, n, true);
+                else
+                    setIndex(is_psd, n, false);
+            }
+        } else if ((y_deg == 1) && (u_deg == 0)) {
+            // Dipole only: analytic
+            Row<T> y00 = getRow(y, 0);
+            Row<T> y1m1 = getRow(y, 1);
+            Row<T> y10 = getRow(y, 2);
+            Row<T> y1p1 = getRow(y, 3);
+            for (int n = 0; n < nwav; ++n) {
+                setIndex(is_psd, n,
+                         getColumn(y1m1, n) * getColumn(y1m1, n) +
+                         getColumn(y10, n) * getColumn(y10, n) +
+                         getColumn(y1p1, n) * getColumn(y1p1, n)
+                         <= getColumn(y00, n) / 3.);
+            }
+        } else {
+            // We need to solve this numerically
+            for (int n = 0; n < nwav; ++n) {
+                // Check if the polynomial map is PSD at
+                // the current wavelength
+                setIndex(is_psd, n, M.psd(getColumn(p, n),
+                                          epsilon, max_iterations));
+                // Check that the limb darkening filter is also PSD
+                if (u_deg > 0) {
+                    Vector<Scalar<T>> c = -getColumn(u, n).reverse();
+                    c(c.size() - 1) = 1;
+                    int nroots = sturm::polycountroots(c);
+                    if (nroots != 0)
+                        setIndex(is_psd, n, false);
+                }
+            }
+        }
+        return is_psd;
+    }
+
+    /**
+    Check whether the map is monotonically decreasing
+    toward the limb using Sturm's theorem on the derivative
+
+    TODO
+
+    template <class T>
+    bool Map<T>::mono() {
+        // The radial profile is
+        //      I = 1 - (1 - mu)^1 u1 - (1 - mu)^2 u2 - ...
+        //        = x^0 c0 + x^1 c1 + x^2 c2 + ...
+        // where x = (1 - mu), c = -u, c(0) = 1
+        // We want dI/dx < 0 everywhere, so we want the polynomial
+        //      P = x^0 c1 + 2x^1 c2 + 3x^2 c3 + ...
+        // to have zero roots in the interval [0, 1].
+        Vector<T> du = u.segment(1, lmax);
+        for (int i=0; i<lmax; i++) du(i) *= (i + 1);
+        Vector<T> c = -du.reverse();
+        int nroots = sturm::polycountroots(c);
+        if (nroots == 0)
+            return true;
+        else
+            return false;
+    }
+    */
 
 
     /* ------------- */
