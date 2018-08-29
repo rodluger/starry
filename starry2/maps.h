@@ -1,19 +1,6 @@
 /**
 Defines the surface map class.
 
-TODO: Change the gradient names depending on how many/which ones we need!
-      (In progress)
-
-TODO: Add a note to the docs about when we don't compute
-      dF/dy or dF/du, and explain how to override this. I.e.:
-
-        Note that we intentionally don't compute the spherical
-        harmonic coeff derivs above Y_{0,0}, since that
-        would make this function slow. If users *really*
-        need them, set one of the l > 0 coeffs to a very
-        small (~1e-14) value to force the code to use the
-        generalized `flux` method.
-
 TODO: Implement a map-like interface to the gradients
 
 TODO: Macro for loops involving nwav and specialize for nwav = 1?
@@ -219,7 +206,10 @@ namespace maps {
             inline Row<T> flux_ld_with_gradient(const Scalar<T>& xo_,
                                                 const Scalar<T>& yo_,
                                                 const Scalar<T>& ro_);
-
+            inline Row<T> flux_sph_with_gradient(const Scalar<T>& theta_deg,
+                                                 const Scalar<T>& xo_,
+                                                 const Scalar<T>& yo_,
+                                                 const Scalar<T>& ro_);
         public:
 
             /**
@@ -637,16 +627,19 @@ namespace maps {
     }
 
     /**
-    Set the string of flux gradient names
+    Resize the gradient vector and set the string vector of gradient names
 
     */
     template <class T>
     inline void Map<T>::resizeGradients(const int n_ylm, const int n_ul) {
+
         // Do we need to do anything?
         if ((n_ylm == dF_n_ylm) && (n_ul == dF_n_ul))
             return;
+
         // Resize the gradient vector
         dF.resize(4 + n_ylm + n_ul, nwav);
+
         // Reset the vector of names and start from scratch
         dF_names.clear();
         dF_names.reserve(dF_orbital_names.size() + n_ylm + n_ul);
@@ -658,6 +651,7 @@ namespace maps {
                         dF_ul_names.begin() + n_ul);
         dF_n_ylm = n_ylm;
         dF_n_ul = n_ul;
+
     }
 
     /**
@@ -855,17 +849,9 @@ namespace maps {
 
     /**
     Compute the flux during or outside of an occultation
+    for the general case of a spherical harmonic map
+    with or without limb darkening.
 
-    TODO: Five flux functions:
-
-        [ ] flux
-        [x] flux_ld
-        [x] flux_with_gradient
-            (This one computes both dF/du and dF/dy)
-        [x] flux_ld_with_gradient
-            (This one only computes dF/du)
-        [ ] flux_sph_with_gradient (Copy from https://github.com/rodluger/starry/blob/082deebe9783bfe87a938e40956ede6f3d6d6707/starry2/maps.h#L1214)
-            (This one only computes dF/dy)
     */
     template <class T>
     inline Row<T> Map<T>::flux(const Scalar<T>& theta_,
@@ -879,6 +865,8 @@ namespace maps {
             // call the specialized functions
             if (y_deg == 0)
                 return flux_ld_with_gradient(xo_, yo_, ro_);
+            else if (u_deg == 0)
+                return flux_sph_with_gradient(theta_, xo_, yo_, ro_);
             else
                 return flux_with_gradient(theta_, xo_, yo_, ro_);
         } else if (y_deg == 0) {
@@ -1027,6 +1015,8 @@ namespace maps {
     /**
     Compute the flux during or outside of an occultation
     for a pure limb-darkened map (Y_{l,m} = 0 for l > 0).
+    Also compute the gradient with respect to the orbital
+    parameters and the limb darkening coefficients.
 
     */
     template <class T>
@@ -1132,7 +1122,195 @@ namespace maps {
     }
 
     /**
-    Compute the flux during or outside of an occultation and its gradient
+    Compute the flux during or outside of an occultation
+    for a pure spherical harmonic map (u_{l} = 0 for l > 0).
+    Also compute the gradient with respect to the orbital
+    parameters and the spherical harmonic map coefficients.
+
+    */
+    template <class T>
+    inline Row<T> Map<T>::flux_sph_with_gradient(const Scalar<T>& theta_deg,
+                                                 const Scalar<T>& xo_,
+                                                 const Scalar<T>& yo_,
+                                                 const Scalar<T>& ro_) {
+
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+        Row<T>& dFdb(tmp.tmpRow[1]);
+        Row<T>& sTAdRdthetaRy_b(tmp.tmpRow[2]);
+        T& Ry(tmp.tmpT[0]);
+        T& RRy(tmp.tmpT[1]);
+        T& ARRy(tmp.tmpT[2]);
+        T& dRdthetay(tmp.tmpT[3]);
+        VectorT<Scalar<T>>& sTA(tmp.tmpRowVector[0]);
+        VectorT<Scalar<T>>& sTAR(tmp.tmpRowVector[1]);
+        sTAR.resize(N);
+        VectorT<Scalar<T>>& sTARR(tmp.tmpRowVector[2]);
+        sTARR.resize(N);
+        VectorT<Scalar<T>>& sTAdRdtheta(tmp.tmpRowVector[3]);
+        sTAdRdtheta.resize(N);
+        VectorT<Scalar<T>>& rTA1R(tmp.tmpRowVector[4]);
+        rTA1R.resize(N);
+        ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
+        ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
+
+        // Resize the gradients
+        resizeGradients(N, 0);
+
+        // Convert to internal type
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+        Scalar<T> theta = theta_deg * (pi<Scalar<T>>() / 180.);
+
+        // Impact parameter
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+           setZero(dF);
+           setZero(result);
+           return result;
+        }
+
+        // Rotate the map into view
+        W.compute(cos(theta), sin(theta));
+        if (theta == 0) {
+            Ry = y;
+        } else {
+            for (int l = 0; l < lmax + 1; l++)
+                Ry.block(l * l, 0, 2 * l + 1, nwav) =
+                    W.R[l] * y.block(l * l, 0, 2 * l + 1, nwav);
+        }
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // Compute the theta deriv
+            for (int l = 0; l < lmax + 1; l++)
+                dRdthetay.block(l * l, 0, 2 * l + 1, nwav) =
+                    W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, nwav);
+            setRow(dF, 0, Row<T>(dot(B.rTA1, dRdthetay) *
+                                (pi<Scalar<T>>() / 180.)));
+
+            // The x, y, and r derivs are trivial
+            setRow(dF, 1, Scalar<T>(0.0));
+            setRow(dF, 2, Scalar<T>(0.0));
+            setRow(dF, 3, Scalar<T>(0.0));
+
+            // Compute the map derivs
+            if (theta == 0) {
+                for (int i = 0; i < N; i++)
+                    setRow(dF, 4 + i, B.rTA1(i));
+            } else {
+                for (int l = 0; l < lmax + 1; l++)
+                    rTA1R.segment(l * l, 2 * l + 1) =
+                        B.rTA1.segment(l * l, 2 * l + 1) * W.R[l];
+                for (int i = 0; i < N; i++)
+                    setRow(dF, 4 + i, rTA1R(i));
+            }
+
+            // We're done!
+            return (B.rTA1 * Ry);
+
+        // Occultation
+        } else {
+
+            // Align occultor with the +y axis
+            Scalar<T> xo_b = xo / b;
+            Scalar<T> yo_b = yo / b;
+            if ((b > 0) && ((xo != 0) || (yo < 0))) {
+                W.rotatez(yo_b, xo_b, Ry, RRy);
+            } else {
+                setOnes(W.cosmt);
+                setZero(W.sinmt);
+                RRy = Ry;
+            }
+
+            // Perform the rotation + change of basis
+            ARRy = B.A * RRy;
+
+            // Compute the sT vector using AutoDiff
+            b_grad.value() = b;
+            b_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
+            ro_grad.value() = ro;
+            ro_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
+            G_grad.compute(b_grad, ro_grad);
+
+            // Compute the b and ro derivs
+            setZero(dFdb);
+            setRow(dF, 3, Scalar<T>(0.0));
+            for (int i = 0; i < N; i++) {
+
+                // b deriv
+                dFdb += G_grad.sT(i).derivatives()(0) * getRow(ARRy, i);
+
+                // ro deriv
+                setRow(dF, 3, Row<T>(getRow(dF, 3) +
+                                     G_grad.sT(i).derivatives()(1) *
+                                     getRow(ARRy, i)));
+
+                // Store the value of s^T
+                G.sT(i) = G_grad.sT(i).value();
+
+            }
+
+            // Solution vector in spherical harmonic basis
+            sTA = G.sT * B.A;
+
+            // Compute stuff involving the Rprime rotation matrix
+            int m;
+            for (int l = 0; l < lmax + 1; l++) {
+                for (int j = 0; j < 2 * l + 1; j++) {
+                    m = j - l;
+                    sTAR(l * l + j) = sTA(l * l + j) *
+                                      W.cosmt(l * l + j) +
+                                      sTA(l * l + 2 * l - j) *
+                                      W.sinmt(l * l + j);
+                    sTAdRdtheta(l * l + j) = sTA(l * l + 2 * l - j) * m *
+                                             W.cosmt(l * l + j) -
+                                             sTA(l * l + j) * m *
+                                             W.sinmt(l * l + j);
+                }
+            }
+
+            // Compute the xo and yo derivs using the chain rule
+            sTAdRdthetaRy_b = dot(sTAdRdtheta, Ry) / b;
+            setRow(dF, 1, Row<T>((xo_b * dFdb) + (yo_b * sTAdRdthetaRy_b)));
+            setRow(dF, 2, Row<T>((yo_b * dFdb) - (xo_b * sTAdRdthetaRy_b)));
+
+            // Compute the theta deriv
+            for (int l = 0; l < lmax + 1; l++)
+                dRdthetay.block(l * l, 0, 2 * l + 1, nwav) =
+                    W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, nwav);
+            setRow(dF, 0, Row<T>(dot(sTAR, dRdthetay) *
+                                (pi<Scalar<T>>() / 180.)));
+
+            // Compute the map derivs
+            if (theta == 0) {
+                for (int i = 0; i < N; i++)
+                    setRow(dF, 4 + i, sTAR(i));
+            } else {
+                for (int l = 0; l < lmax + 1; l++)
+                    sTARR.segment(l * l, 2 * l + 1) =
+                        sTAR.segment(l * l, 2 * l + 1) * W.R[l];
+                for (int i = 0; i < N; i++)
+                    setRow(dF, 4 + i, sTARR(i));
+            }
+
+            // Dot the result in and we're done
+            return G.sT * ARRy;
+
+        }
+
+    }
+
+    /**
+    Compute the flux during or outside of an occultation for the
+    general case of a limb-darkened spherical harmonic map. Also
+    compute the gradient with respect to the orbital parameters,
+    the spherical harmonic map coefficients, and the limb darkening
+    coefficients.
 
     */
     template <class T>

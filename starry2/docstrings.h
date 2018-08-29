@@ -1,6 +1,18 @@
 /**
 Docstrings for the Python functions.
 
+TODO: The docs need a lot of work still.
+
+TODO: Add a note to the docs about when we don't compute
+      dF/dy or dF/du, and explain how to override this. I.e.:
+
+        Note that we intentionally don't compute the spherical
+        harmonic coeff derivs above Y_{0,0}, since that
+        would make this function slow. If users *really*
+        need them, set one of the l > 0 coeffs to a very
+        small (~1e-14) value to force the code to use the
+        generalized `flux` method.
+
 */
 
 #ifndef _STARRY_DOCS_H_
