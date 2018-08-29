@@ -16,19 +16,26 @@ def show(I, res=300, cmap="plasma"):
     pl.show()
 
 
-def animate(I, res=300, cmap="plasma", gif=""):
-    """Animate the map as it rotates about the axis `u`."""
+def animate(I, res=300, cmap="plasma", gif="", interval=75, labels=None):
+    """Animate the map as it rotates."""
     fig, ax = pl.subplots(1, figsize=(3, 3))
     img = ax.imshow(I[0], origin="lower", interpolation="none", cmap=cmap,
                     extent=(-1, 1, -1, 1), animated=True,
                     vmin=np.nanmin(I), vmax=np.nanmax(I))
     ax.axis('off')
+    if labels is not None:
+        ax.set_title(labels[0])
 
     def updatefig(i):
         img.set_array(I[i])
-        return img,
+        if labels is not None:
+            ax.set_title(labels[i])
+            return img, ax
+        else:
+            return img,
 
-    ani = animation.FuncAnimation(fig, updatefig, interval=75, blit=True,
+    ani = animation.FuncAnimation(fig, updatefig, interval=interval,
+                                  blit=(labels is None),
                                   frames=len(I))
 
     if gif != "":

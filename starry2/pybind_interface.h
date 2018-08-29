@@ -33,7 +33,7 @@ namespace pybind_interface {
     using pybind_utils::get_Ul_inds;
 
     /**
-    The pybind wrapper for the Map class.
+    Add type-specific features to the Map class.
 
     */
     template <typename T, int Module>
@@ -60,7 +60,7 @@ namespace pybind_interface {
             }, docs.Map.show, "cmap"_a="plasma", "res"_a=300)
 
             .def("animate", [](maps::Map<T> &map, std::string cmap, int res,
-                               int frames, std::string& gif) {
+                               int frames, int interval, std::string& gif) {
                 std::cout << "Rendering..." << std::endl;
                 py::object animate = py::module::import("starry2.maps").attr("animate");
                 std::vector<Matrix<double>> I;
@@ -76,9 +76,10 @@ namespace pybind_interface {
                         }
                     }
                 }
-                animate(I, "cmap"_a=cmap, "res"_a=res, "gif"_a=gif);
+                animate(I, "cmap"_a=cmap, "res"_a=res, "gif"_a=gif,
+                        "interval"_a=interval);
              }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150,
-                                 "frames"_a=50, "gif"_a="")
+                                  "frames"_a=50, "interval"_a=75, "gif"_a="")
 
              .def("load_image", [](maps::Map<T> &map, std::string& image, int lmax) {
                  py::object load_map = py::module::import("starry.maps").attr("load_map");
@@ -111,7 +112,9 @@ namespace pybind_interface {
     }
 
     /**
-    The pybind wrapper for the Map class.
+    Add type-specific features to the Map class: spectral specialization.
+
+    TODO: Add a "load_image" method to load images at specific wavelengths.
 
     */
     template <>
@@ -125,9 +128,38 @@ namespace pybind_interface {
             .def_property_readonly("nwav",
                 [](maps::Map<Matrix<double>> &map){
                     return map.nwav;
-                }, docs.Map.nwav);
+                }, docs.Map.nwav)
 
-            // TODO: SHOW, ANIMATE, LOAD_IMAGE
+            .def("show", [](maps::Map<Matrix<double>> &map, std::string cmap,
+                            int res, std::string& gif) {
+                std::cout << "Rendering..." << std::endl;
+                py::object animate = py::module::import("starry2.maps").attr("animate");
+                std::vector<Matrix<double>> I;
+                Vector<double> x;
+                VectorT<double> row;
+                std::vector<std::string> labels;
+                x = Vector<double>::LinSpaced(res, -1, 1);
+                int interval = static_cast<int>(75 * (50.0 / map.nwav));
+                if (interval < 50)
+                    interval = 50;
+                else if (interval > 500)
+                    interval = 500;
+                for (int t = 0; t < map.nwav; t++) {
+                    labels.push_back(std::string("Wavelength Bin #") +
+                                     std::to_string(t + 1));
+                    I.push_back(Matrix<double>::Zero(res, res));
+                }
+                for (int i = 0; i < res; i++){
+                    for (int j = 0; j < res; j++){
+                        row = map(0, x(i), x(j));
+                        for (int t = 0; t < map.nwav; t++) {
+                            I[t](j, i) = row(t);
+                        }
+                    }
+                }
+                animate(I, "cmap"_a=cmap, "res"_a=res, "gif"_a=gif,
+                        "labels"_a=labels, "interval"_a=interval);
+            }, docs.Map.show, "cmap"_a="plasma", "res"_a=150, "gif"_a="");
 
     }
 
