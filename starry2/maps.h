@@ -1,6 +1,21 @@
 /**
 Defines the surface map class.
 
+TODO: Change the gradient names depending on how many/which ones we need!
+      (In progress)
+
+TODO: Add a note to the docs about when we don't compute
+      dF/dy or dF/du, and explain how to override this. I.e.:
+
+        Note that we intentionally don't compute the spherical
+        harmonic coeff derivs above Y_{0,0}, since that
+        would make this function slow. If users *really*
+        need them, set one of the l > 0 coeffs to a very
+        small (~1e-14) value to force the code to use the
+        generalized `flux` method.
+
+TODO: Implement a map-like interface to the gradients
+
 TODO: Macro for loops involving nwav and specialize for nwav = 1?
       Essentially we'd replace
 
@@ -131,6 +146,7 @@ namespace maps {
 
     };
 
+
     /**
     The main surface map class.
 
@@ -143,8 +159,6 @@ namespace maps {
             const int lmax;                                                     /**< The highest degree of the map */
             const int N;                                                        /**< The number of map coefficients */
             const int nwav;                                                     /**< The number of wavelengths */
-            T dI;                                                               /**< Gradient of the intensity */
-            std::vector<string> dI_names;                                       /**< Names of each of the params in the intensity gradient */
             T dF;                                                               /**< Gradient of the flux */
             std::vector<string> dF_names;                                       /**< Names of each of the params in the flux gradient */
 
@@ -161,6 +175,11 @@ namespace maps {
             Greens<Scalar<T>> G;                                                /**< The occultation integral solver class */
             Greens<ADScalar<Scalar<T>, 2>> G_grad;                              /**< The occultation integral solver class w/ AutoDiff capability */
             Scalar<T> tol;                                                      /**< Machine epsilon */
+            std::vector<string> dF_orbital_names;                               /**< Names of each of the orbital params in the flux gradient */
+            std::vector<string> dF_ylm_names;                                   /**< Names of each of the Ylm params in the flux gradient */
+            std::vector<string> dF_ul_names;                                    /**< Names of each of the limb darkening params in the flux gradient */
+            int dF_n_ylm;                                                       /**< Number of current Ylm gradients */
+            int dF_n_ul;                                                        /**< Number of current limb darkening gradients */
 
             // Limb darkening
             T u;                                                                /**< The limb darkening coefficients */
@@ -211,8 +230,6 @@ namespace maps {
                 lmax(lmax),
                 N((lmax + 1) * (lmax + 1)),
                 nwav(nwav),
-                dI_names({"theta", "x", "y"}),
-                dF_names({"theta", "xo", "yo", "ro"}),
                 B(lmax),
                 W(lmax, nwav, (*this).y, (*this).axis),
                 G(lmax),
@@ -224,18 +241,22 @@ namespace maps {
                 cache() {
 
                 // Populate the map gradient names
+                dF_orbital_names.push_back("theta");
+                dF_orbital_names.push_back("xo");
+                dF_orbital_names.push_back("yo");
+                dF_orbital_names.push_back("ro");
                 for (int l = 0; l < lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
-                        dI_names.push_back(string("Y_{" + to_string(l) +
-                                           "," + to_string(m) + "}"));
-                        dF_names.push_back(string("Y_{" + to_string(l) +
+                        dF_ylm_names.push_back(string("Y_{" + to_string(l) +
                                            "," + to_string(m) + "}"));
                     }
                 }
                 for (int l = 1; l < lmax + 1; l++) {
-                    dI_names.push_back(string("u_{" + to_string(l) + "}"));
-                    dF_names.push_back(string("u_{" + to_string(l) + "}"));
+                    dF_ul_names.push_back(string("u_{" + to_string(l) + "}"));
                 }
+                dF_n_ul = 0;
+                dF_n_ylm = 0;
+                resizeGradients(N, lmax);
 
                 // Initialize the map vectors
                 axis = yhat<Scalar<T>>();
@@ -245,8 +266,6 @@ namespace maps {
                 u.resize(lmax + 1, nwav);
                 p_u.resize(N, nwav);
                 g_u.resize(N, nwav);
-                dI.resize(3 + N + lmax, nwav);
-                dF.resize(4 + N + lmax, nwav);
 
                 // Reset & update the map coeffs
                 reset();
@@ -272,6 +291,7 @@ namespace maps {
             VectorT<Scalar<T>> getS() const;
             void setAxis(const UnitVector<Scalar<T>>& axis_);
             UnitVector<Scalar<T>> getAxis() const;
+            inline void resizeGradients(const int n_ylm, const int n_ul);
             std::string __repr__();
 
             // Rotate the base map
@@ -617,6 +637,30 @@ namespace maps {
     }
 
     /**
+    Set the string of flux gradient names
+
+    */
+    template <class T>
+    inline void Map<T>::resizeGradients(const int n_ylm, const int n_ul) {
+        // Do we need to do anything?
+        if ((n_ylm == dF_n_ylm) && (n_ul == dF_n_ul))
+            return;
+        // Resize the gradient vector
+        dF.resize(4 + n_ylm + n_ul, nwav);
+        // Reset the vector of names and start from scratch
+        dF_names.clear();
+        dF_names.reserve(dF_orbital_names.size() + n_ylm + n_ul);
+        dF_names.insert(dF_names.end(), dF_orbital_names.begin(),
+                        dF_orbital_names.end());
+        dF_names.insert(dF_names.end(), dF_ylm_names.begin(),
+                        dF_ylm_names.begin() + n_ylm);
+        dF_names.insert(dF_names.end(), dF_ul_names.begin(),
+                        dF_ul_names.begin() + n_ul);
+        dF_n_ylm = n_ylm;
+        dF_n_ul = n_ul;
+    }
+
+    /**
     Return a human-readable map string
 
     */
@@ -735,7 +779,7 @@ namespace maps {
     }
 
     /**
-    Evaluate the map at a given (x0, y0) coordinate
+    Evaluate the map at a given (x, y) coordinate
 
     */
     template <class T>
@@ -814,13 +858,14 @@ namespace maps {
 
     TODO: Five flux functions:
 
-        - flux
-        - flux_ld
-        - flux_with_gradient
-        - flux_ld_with_gradient
-            (This one sets dF/dy to NAN)
-        - flux_sph_with_gradient (Copy from https://github.com/rodluger/starry/blob/082deebe9783bfe87a938e40956ede6f3d6d6707/starry2/maps.h#L1214)
-            (This one sets dF/du to NAN)
+        [ ] flux
+        [x] flux_ld
+        [x] flux_with_gradient
+            (This one computes both dF/du and dF/dy)
+        [x] flux_ld_with_gradient
+            (This one only computes dF/du)
+        [ ] flux_sph_with_gradient (Copy from https://github.com/rodluger/starry/blob/082deebe9783bfe87a938e40956ede6f3d6d6707/starry2/maps.h#L1214)
+            (This one only computes dF/dy)
     */
     template <class T>
     inline Row<T> Map<T>::flux(const Scalar<T>& theta_,
@@ -983,9 +1028,6 @@ namespace maps {
     Compute the flux during or outside of an occultation
     for a pure limb-darkened map (Y_{l,m} = 0 for l > 0).
 
-    TODO: Add a note to the docs about why dF/dY_{l,m} = NAN
-          for l > 0, and explain how to override this.
-
     */
     template <class T>
     inline Row<T> Map<T>::flux_ld_with_gradient(const Scalar<T>& xo_,
@@ -998,6 +1040,9 @@ namespace maps {
         VectorT<Scalar<T>>& dFdu(tmp.tmpRowVector[0]);
         ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
         ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
+
+        // Resize the gradients
+        resizeGradients(1, lmax);
 
         // Convert to internal types
         Scalar<T> xo = xo_;
@@ -1013,15 +1058,6 @@ namespace maps {
             setZero(result);
             return result;
         }
-
-        // We intentionally don't compute the spherical
-        // harmonic coeff derivs above Y_{0,0}, since that
-        // would make this function slow. If users *really*
-        // need them, set one of the l > 0 coeffs to a very
-        // small (~1e-14) value to force the code to use the
-        // generalized `flux` method.
-        for (int i = 1; i < N; ++i)
-            setRow(dF, 4 + i, Scalar<T>(NAN));
 
         // The theta deriv is always zero, since
         // pure limb-darkened maps can't be rotated.
@@ -1041,7 +1077,7 @@ namespace maps {
             // The limb darkening derivs are zero, since
             // they don't affect the total flux!
             for (int i = 0; i < lmax; ++i)
-                setRow(dF, 4 + N + i, Scalar<T>(0.0));
+                setRow(dF, 5 + i, Scalar<T>(0.0));
 
             // Easy: the disk-integrated intensity
             // is just the Y_{0,0} coefficient
@@ -1085,9 +1121,10 @@ namespace maps {
             // dF / du = s^T . dg_u / du
             for (int n = 0; n < nwav; ++n) {
                 dFdu = G.sT * dg_udu(n);
-                dF.block(4 + N, n, lmax, 1) = dFdu.segment(1, lmax).transpose();
+                dF.block(5, n, lmax, 1) = dFdu.segment(1, lmax).transpose();
             }
 
+            // Return the flux
             return result;
 
         }
@@ -1097,10 +1134,7 @@ namespace maps {
     /**
     Compute the flux during or outside of an occultation and its gradient
 
-    TODO: Add limb darkening derivs
-
     */
-
     template <class T>
     inline Row<T> Map<T>::flux_with_gradient(const Scalar<T>& theta_deg,
                                              const Scalar<T>& xo_,
@@ -1127,16 +1161,17 @@ namespace maps {
         sTAdRdtheta.resize(N);
         VectorT<Scalar<T>>& rTA1R(tmp.tmpRowVector[5]);
         rTA1R.resize(N);
-
         VectorT<Scalar<T>>& dFdu(tmp.tmpRowVector[6]);
         VectorT<Scalar<T>>& dFdp_u(tmp.tmpRowVector[7]);
-
         ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
         ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
         VectorT<Matrix<Scalar<T>>>& A1dLDdpA1(tmp.tmpRowVectorOfMatrices[0]);
         A1dLDdpA1.resize(nwav);
         Matrix<Scalar<T>>& A1dLDdpA1dRdtheta(tmp.tmpMatrix[0]);
         A1dLDdpA1dRdtheta.resize(N, N);
+
+        // Resize the gradients
+        resizeGradients(N, lmax);
 
         // Convert to internal type
         Scalar<T> xo = xo_;
