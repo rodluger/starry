@@ -51,7 +51,7 @@ namespace docstrings {
         const char * evaluate;
         const char * flux;
         const char * rotate;
-        const char * psd;
+        const char * is_physical;
         const char * show;
         const char * animate;
         const char * load_image;
@@ -148,7 +148,7 @@ namespace docstrings {
                     theta (float or ndarray): Angle of rotation in degrees. Default 0.
             )pbdoc";
 
-            psd = R"pbdoc(
+            is_physical = R"pbdoc(
                 Check whether the map is positive semi-definite (PSD). Returns :py:obj:`True`
                 if the map is PSD, :py:obj:`False` otherwise. For pure limb-darkened maps,
                 this routine uses Sturm's theorem to find the number of roots. For pure

@@ -324,10 +324,10 @@ namespace pybind_interface {
                     map.rotate(static_cast<Scalar<T>>(theta));
             }, docs.Map.rotate, "theta"_a=0)
 
-            .def("psd", [](maps::Map<T> &map, double epsilon, int max_iterations) {
-                    return map.psd(static_cast<Scalar<T>>(epsilon),
+            .def("is_physical", [](maps::Map<T> &map, double epsilon, int max_iterations) {
+                    return map.isPhysical(static_cast<Scalar<T>>(epsilon),
                                    max_iterations);
-            }, docs.Map.psd, "epsilon"_a=1.e-6, "max_iterations"_a=100)
+            }, docs.Map.is_physical, "epsilon"_a=1.e-6, "max_iterations"_a=100)
 
             .def("__repr__", &maps::Map<T>::__repr__);
 

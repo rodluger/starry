@@ -24,6 +24,8 @@ TODO: Speed up limb-darkened map rotations, since
       if we pass y_deg along. Don't implement it in
       W.compute, since we need gradients.
 
+TODO: Add unit tests for `is_physical`
+
 */
 
 #ifndef _STARRY_MAPS_H_
@@ -192,28 +194,28 @@ namespace maps {
             friend std::string info(const Map<U>& map);
 
             // Private methods
-            inline void check_degree();
-            inline void update_y();
-            inline void update_u();
-            inline void limb_darken(const T& poly, T& poly_ld,
-                                    bool gradient=false);
+            inline void checkDegree();
+            inline void updateY();
+            inline void updateU();
+            inline void limbDarken(const T& poly, T& poly_ld,
+                bool gradient=false);
             template <typename U>
-            inline void poly_basis(Power<U>& xpow, Power<U>& ypow,
-                                   VectorT<U>& basis);
-            inline Row<T> flux_with_gradient(const Scalar<T>& theta_deg,
-                                             const Scalar<T>& xo_,
-                                             const Scalar<T>& yo_,
-                                             const Scalar<T>& ro_);
-            inline Row<T> flux_ld(const Scalar<T>& xo_,
-                                  const Scalar<T>& yo_,
-                                  const Scalar<T>& ro_);
-            inline Row<T> flux_ld_with_gradient(const Scalar<T>& xo_,
-                                                const Scalar<T>& yo_,
-                                                const Scalar<T>& ro_);
-            inline Row<T> flux_sph_with_gradient(const Scalar<T>& theta_deg,
-                                                 const Scalar<T>& xo_,
-                                                 const Scalar<T>& yo_,
-                                                 const Scalar<T>& ro_);
+            inline void polyBasis(Power<U>& xpow, Power<U>& ypow,
+                VectorT<U>& basis);
+            inline Row<T> fluxWithGradient(const Scalar<T>& theta_deg,
+                const Scalar<T>& xo_,
+                const Scalar<T>& yo_,
+                const Scalar<T>& ro_);
+            inline Row<T> fluxLD(const Scalar<T>& xo_,
+                const Scalar<T>& yo_,
+                const Scalar<T>& ro_);
+            inline Row<T> fluxLDWithGradient(const Scalar<T>& xo_,
+                const Scalar<T>& yo_,
+                const Scalar<T>& ro_);
+            inline Row<T> fluxYlmWithGradient(const Scalar<T>& theta_deg,
+                const Scalar<T>& xo_,
+                const Scalar<T>& yo_,
+                const Scalar<T>& ro_);
         public:
 
             /**
@@ -294,19 +296,19 @@ namespace maps {
 
             // Evaluate the intensity at a point
             inline Row<T> operator()(const Scalar<T>& theta_=0,
-                                     const Scalar<T>& x_=0,
-                                     const Scalar<T>& y_=0);
+                const Scalar<T>& x_=0,
+                const Scalar<T>& y_=0);
 
             // Compute the flux
             inline Row<T> flux(const Scalar<T>& theta_=0,
-                               const Scalar<T>& xo_=0,
-                               const Scalar<T>& yo_=0,
-                               const Scalar<T>& ro_=0,
-                               bool gradient=false);
+                const Scalar<T>& xo_=0,
+                const Scalar<T>& yo_=0,
+                const Scalar<T>& ro_=0,
+                bool gradient=false);
 
-           // Is the map positive semi-definite?
-           inline RowBool<T> psd(const Scalar<T>& epsilon=1.e-6,
-                                 const int max_iterations=100);
+           // Is the map physical?
+           inline RowBool<T> isPhysical(const Scalar<T>& epsilon=1.e-6,
+                const int max_iterations=100);
 
     };
 
@@ -319,7 +321,7 @@ namespace maps {
 
     */
     template <class T>
-    inline void Map<T>::check_degree() {
+    inline void Map<T>::checkDegree() {
         if (y_deg + u_deg > lmax) {
             setZero(u);
             setRow(u, 0, Scalar<T>(-1.0));
@@ -336,9 +338,9 @@ namespace maps {
 
     */
     template <class T>
-    inline void Map<T>::update_y() {
+    inline void Map<T>::updateY() {
         // Check the map degree is valid
-        check_degree();
+        checkDegree();
 
         // Update the polynomial and Green's map coefficients
         p = B.A1 * y;
@@ -357,14 +359,14 @@ namespace maps {
 
     */
     template <class T>
-    inline void Map<T>::update_u() {
+    inline void Map<T>::updateU() {
         // Bind references to temporaries for speed
         Row<T>& Y00(tmp.tmpRow[0]);
         Row<T>& rTp_u(tmp.tmpRow[1]);
         Row<T>& ld_norm(tmp.tmpRow[2]);
 
         // Check the map degree is valid
-        check_degree();
+        checkDegree();
 
         // Update the limb darkening polynomial map
         p_u = B.U1 * u;
@@ -402,8 +404,8 @@ namespace maps {
     */
     template <class T>
     inline void Map<T>::update() {
-        update_y();
-        update_u();
+        updateY();
+        updateU();
     }
 
     /**
@@ -442,7 +444,7 @@ namespace maps {
                     break;
                 }
             }
-            // Note that we must implicitly call `update_u()` as well
+            // Note that we must implicitly call `updateU()` as well
             // because its normalization depends on Y_{0,0}!
             update();
         } else {
@@ -472,7 +474,7 @@ namespace maps {
             } else {
                 y_deg = max(y_deg, l);
             }
-            // Note that we must implicitly call `update_u()` as well
+            // Note that we must implicitly call `updateU()` as well
             // because its normalization depends on Y_{0,0}!
             update();
         } else {
@@ -516,7 +518,7 @@ namespace maps {
                     break;
                 }
             }
-            update_u();
+            updateU();
         } else {
             throw errors::ValueError("Dimension mismatch in `u`.");
         }
@@ -540,7 +542,7 @@ namespace maps {
             } else {
                 u_deg = max(u_deg, l);
             }
-            update_u();
+            updateU();
         } else {
             throw errors::IndexError("Invalid value for `l`.");
         }
@@ -696,7 +698,7 @@ namespace maps {
 
     */
     template <class T>
-    inline void Map<T>::limb_darken(const T& poly, T& poly_ld, bool gradient) {
+    inline void Map<T>::limbDarken(const T& poly, T& poly_ld, bool gradient) {
         // Bind references to temporaries for speed
         Row<T>& rTp(tmp.tmpRow[0]);
         Row<T>& rTp_ld(tmp.tmpRow[1]);
@@ -739,88 +741,100 @@ namespace maps {
     }
 
     /**
-    Check whether the map is positive semi-definite
+    Check whether the map is physical: the spherical harmonic
+    component and the limb darkening components must
+    independently be positive semi-definite, and the limb darkening
+    component must be a monotonically decreasing function toward
+    the limb.
+
+    To ensure positive semi-definiteness...
+
+    To ensure monotonicity, note that the radial profile is
+
+         I = 1 - (1 - mu)^1 u1 - (1 - mu)^2 u2 - ...
+           = x^0 c0 + x^1 c1 + x^2 c2 + ...
+
+    where x = (1 - mu), c = -u, c(0) = 1. We want dI/dx < 0
+    everywhere, so we require the polynomial
+
+         P = x^0 c1 + 2x^1 c2 + 3x^2 c3 + ...
+
+    to have zero roots in the interval [0, 1]. We use Sturm's
+    theorem for this.
 
     */
     template <class T>
-    inline RowBool<T> Map<T>::psd(const Scalar<T>& epsilon,
-                                  const int max_iterations) {
-        RowBool<T> is_psd(nwav);
-        if ((y_deg == 0) && (u_deg == 0)) {
-            // Trivial case
-            Row<T> y00 = getRow(y, 0);
-            for (int n = 0; n < nwav; ++n) {
-                setIndex(is_psd, n, getColumn(y00, n) >= 0);
+    inline RowBool<T> Map<T>::isPhysical(const Scalar<T>& epsilon,
+                                         const int max_iterations) {
+        RowBool<T> physical(nwav);
+
+        for (int n = 0; n < nwav; ++n) {
+
+            // 1. Check if the polynomial map is PSD
+            if (y_deg == 0) {
+
+                // Trivial case
+                Row<T> y00 = getRow(y, 0);
+                for (int n = 0; n < nwav; ++n) {
+                    setIndex(physical, n, getColumn(y00, n) >= 0);
+                }
+
+            } else if (y_deg == 1) {
+
+                // Dipole: analytic
+                Row<T> y00 = getRow(y, 0);
+                Row<T> y1m1 = getRow(y, 1);
+                Row<T> y10 = getRow(y, 2);
+                Row<T> y1p1 = getRow(y, 3);
+                for (int n = 0; n < nwav; ++n) {
+                    setIndex(physical, n,
+                             getColumn(y1m1, n) * getColumn(y1m1, n) +
+                             getColumn(y10, n) * getColumn(y10, n) +
+                             getColumn(y1p1, n) * getColumn(y1p1, n)
+                             <= getColumn(y00, n) / 3.);
+                }
+
+            } else {
+
+                // Higher degrees are solved numerically
+                setIndex(physical, n, M.psd(getColumn(p, n),
+                                            epsilon, max_iterations));
+
             }
-        } else if (y_deg == 0) {
-            // Limb darkening only: use Sturm's theorem
-            for (int n = 0; n < nwav; ++n) {
+
+            // 2. Check if the LD map is PSD and monotonic
+            if (u_deg > 0) {
+
+                // Sturm's theorem on the intensity to get PSD
                 Vector<Scalar<T>> c = -getColumn(u, n).reverse();
                 c(c.size() - 1) = 1;
+                // Hack: DFM's Sturm routine doesn't behave when
+                // the linear term is zero. Not sure why.
+                if (c(c.size() - 2) == 0)
+                    c(c.size() - 2) = -mach_eps<Scalar<T>>();
                 int nroots = sturm::polycountroots(c);
-                if (nroots == 0)
-                    setIndex(is_psd, n, true);
-                else
-                    setIndex(is_psd, n, false);
+                if (nroots != 0)
+                    setIndex(physical, n, false);
+
+                // Sturm's theorem on the deriv to get monotonicity
+                Vector<Scalar<T>> du = getColumn(u, n).segment(1, lmax);
+                // Another hack
+                if (du(0) == 0)
+                    du(0) = mach_eps<Scalar<T>>();
+                for (int i = 0; i < lmax; ++i)
+                    du(i) *= (i + 1);
+                c = -du.reverse();
+                nroots = sturm::polycountroots(c);
+                if (nroots != 0)
+                    setIndex(physical, n, false);
+
             }
-        } else if ((y_deg == 1) && (u_deg == 0)) {
-            // Dipole only: analytic
-            Row<T> y00 = getRow(y, 0);
-            Row<T> y1m1 = getRow(y, 1);
-            Row<T> y10 = getRow(y, 2);
-            Row<T> y1p1 = getRow(y, 3);
-            for (int n = 0; n < nwav; ++n) {
-                setIndex(is_psd, n,
-                         getColumn(y1m1, n) * getColumn(y1m1, n) +
-                         getColumn(y10, n) * getColumn(y10, n) +
-                         getColumn(y1p1, n) * getColumn(y1p1, n)
-                         <= getColumn(y00, n) / 3.);
-            }
-        } else {
-            // We need to solve this numerically
-            for (int n = 0; n < nwav; ++n) {
-                // Check if the polynomial map is PSD at
-                // the current wavelength
-                setIndex(is_psd, n, M.psd(getColumn(p, n),
-                                          epsilon, max_iterations));
-                // Check that the limb darkening filter is also PSD
-                if (u_deg > 0) {
-                    Vector<Scalar<T>> c = -getColumn(u, n).reverse();
-                    c(c.size() - 1) = 1;
-                    int nroots = sturm::polycountroots(c);
-                    if (nroots != 0)
-                        setIndex(is_psd, n, false);
-                }
-            }
+
         }
-        return is_psd;
+
+        return physical;
+
     }
-
-    /**
-    Check whether the map is monotonically decreasing
-    toward the limb using Sturm's theorem on the derivative
-
-    TODO
-
-    template <class T>
-    bool Map<T>::mono() {
-        // The radial profile is
-        //      I = 1 - (1 - mu)^1 u1 - (1 - mu)^2 u2 - ...
-        //        = x^0 c0 + x^1 c1 + x^2 c2 + ...
-        // where x = (1 - mu), c = -u, c(0) = 1
-        // We want dI/dx < 0 everywhere, so we want the polynomial
-        //      P = x^0 c1 + 2x^1 c2 + 3x^2 c3 + ...
-        // to have zero roots in the interval [0, 1].
-        Vector<T> du = u.segment(1, lmax);
-        for (int i=0; i<lmax; i++) du(i) *= (i + 1);
-        Vector<T> c = -du.reverse();
-        int nroots = sturm::polycountroots(c);
-        if (nroots == 0)
-            return true;
-        else
-            return false;
-    }
-    */
 
 
     /* ------------- */
@@ -832,7 +846,7 @@ namespace maps {
 
     */
     template <class T> template <typename U>
-    inline void Map<T>::poly_basis(Power<U>& xpow, Power<U>& ypow,
+    inline void Map<T>::polyBasis(Power<U>& xpow, Power<U>& ypow,
                                    VectorT<U>& basis) {
         int l, m, mu, nu, n = 0;
         U z = sqrt(1.0 - xpow() * xpow() - ypow() * ypow());
@@ -914,7 +928,7 @@ namespace maps {
 
             if (u_deg > 0) {
                 // Apply limb darkening
-                limb_darken(A1Ry, p_uy);
+                limbDarken(A1Ry, p_uy);
                 A1Ry = p_uy;
             }
 
@@ -928,7 +942,7 @@ namespace maps {
         // Compute the polynomial basis
         xpow.reset(x0);
         ypow.reset(y0);
-        poly_basis(xpow, ypow, pT);
+        polyBasis(xpow, ypow, pT);
 
         // Dot the coefficients in to our polynomial map
         return pT * A1Ry;
@@ -957,15 +971,15 @@ namespace maps {
             // If we're computing the gradient as well,
             // call the specialized functions
             if (y_deg == 0)
-                return flux_ld_with_gradient(xo_, yo_, ro_);
+                return fluxLDWithGradient(xo_, yo_, ro_);
             else if (u_deg == 0)
-                return flux_sph_with_gradient(theta_, xo_, yo_, ro_);
+                return fluxYlmWithGradient(theta_, xo_, yo_, ro_);
             else
-                return flux_with_gradient(theta_, xo_, yo_, ro_);
+                return fluxWithGradient(theta_, xo_, yo_, ro_);
         } else if (y_deg == 0) {
             // If only the Y_{0,0} term is set, call the
             // faster method for pure limb-darkening
-            return flux_ld(xo_, yo_, ro_);
+            return fluxLD(xo_, yo_, ro_);
         }
 
         // Bind references to temporaries for speed
@@ -1021,7 +1035,7 @@ namespace maps {
                     A1Ry = B.A1 * Ry;
 
                     // Limb-darken it
-                    limb_darken(A1Ry, p_uy);
+                    limbDarken(A1Ry, p_uy);
 
                     // Back to the spherical harmonic basis
                     Ry = B.A1Inv * p_uy;
@@ -1062,7 +1076,7 @@ namespace maps {
 
     */
     template <class T>
-    inline Row<T> Map<T>::flux_ld(const Scalar<T>& xo_,
+    inline Row<T> Map<T>::fluxLD(const Scalar<T>& xo_,
                                   const Scalar<T>& yo_,
                                   const Scalar<T>& ro_) {
 
@@ -1113,7 +1127,7 @@ namespace maps {
 
     */
     template <class T>
-    inline Row<T> Map<T>::flux_ld_with_gradient(const Scalar<T>& xo_,
+    inline Row<T> Map<T>::fluxLDWithGradient(const Scalar<T>& xo_,
                                                 const Scalar<T>& yo_,
                                                 const Scalar<T>& ro_) {
 
@@ -1222,7 +1236,7 @@ namespace maps {
 
     */
     template <class T>
-    inline Row<T> Map<T>::flux_sph_with_gradient(const Scalar<T>& theta_deg,
+    inline Row<T> Map<T>::fluxYlmWithGradient(const Scalar<T>& theta_deg,
                                                  const Scalar<T>& xo_,
                                                  const Scalar<T>& yo_,
                                                  const Scalar<T>& ro_) {
@@ -1407,7 +1421,7 @@ namespace maps {
 
     */
     template <class T>
-    inline Row<T> Map<T>::flux_with_gradient(const Scalar<T>& theta_deg,
+    inline Row<T> Map<T>::fluxWithGradient(const Scalar<T>& theta_deg,
                                              const Scalar<T>& xo_,
                                              const Scalar<T>& yo_,
                                              const Scalar<T>& ro_) {
@@ -1521,7 +1535,7 @@ namespace maps {
             // darkening set, to get the correct derivs
             // TODO: Cache these operations for fixed theta. Seriously
             A1Ry = B.A1 * Ry;
-            limb_darken(A1Ry, p_uy, true);
+            limbDarken(A1Ry, p_uy, true);
             LDRy = B.A1Inv * p_uy;
             for (int n = 0; n < nwav; ++n)
                 A1dLDdpA1(n) = B.A1Inv * dLDdp(n) * B.A1;

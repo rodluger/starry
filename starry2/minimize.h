@@ -42,13 +42,16 @@ namespace minimize {
                      const Scalar<T>& epsilon=1e-6,
                      const int max_iterations=100) {
 
-                // Update the polynomial map
+                // Update the polynomial map and re-bind the function
                 p = p_new;
+                functor = std::bind(*this, std::placeholders::_1,
+                                           std::placeholders::_2);
 
                 // Do a coarse grid search for the global minimum
                 angles(0) = 0;
                 angles(1) = 0;
                 minimum = evaluate(p, angles(0), angles(1));
+                if (minimum < 0) return false;
                 for (int u = 0; u < npts; u++) {
                     for (int v = 0; v < npts; v++) {
                         val = evaluate(p, theta(u), phi(v));
@@ -130,6 +133,8 @@ namespace minimize {
             // determine if a map is positive semi-definite.
             Scalar<T> operator()(const Vector<Scalar<T>>& angles,
                                  Vector<Scalar<T>>& grad) {
+
+                std::cout << p << std::endl;
 
                 // Ensure in range
                 Scalar<T> theta = mod2pi(angles(0)),
