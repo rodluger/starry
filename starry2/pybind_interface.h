@@ -330,7 +330,7 @@ namespace pybind_interface {
                                    max_iterations);
             }, docs.Map.is_physical, "epsilon"_a=1.e-6, "max_iterations"_a=100)
 
-            .def("__repr__", &maps::Map<T>::__repr__);
+            .def("__repr__", &maps::Map<T>::info);
 
         add_Map_extras(PyMap, docs);
 

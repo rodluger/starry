@@ -60,9 +60,9 @@ namespace maps {
 
     // Forward-declare some stuff
     template <class T> class Map;
-    template <class T> std::string info(const Map<T>& map);
-    template <> std::string info(const Map<Vector<Multi>>& map);
-    template <> std::string info(const Map<Matrix<double>>& map);
+    template <class T> std::string get_info(const Map<T>& map);
+    template <> std::string get_info(const Map<Vector<Multi>>& map);
+    template <> std::string get_info(const Map<Matrix<double>>& map);
 
     /**
     Stores cached Map variables.
@@ -227,7 +227,7 @@ namespace maps {
 
             // External info function
             template <class U>
-            friend std::string info(const Map<U>& map);
+            friend std::string get_info(const Map<U>& map);
 
             // Private methods
             void update();
@@ -324,7 +324,7 @@ namespace maps {
             VectorT<Scalar<T>> getS() const;
             void setAxis(const UnitVector<Scalar<T>>& axis_);
             UnitVector<Scalar<T>> getAxis() const;
-            std::string __repr__();
+            std::string info();
 
             // Rotate the base map
             void rotate(const Scalar<T>&  theta_);
@@ -705,8 +705,8 @@ namespace maps {
 
     */
     template <class T>
-    std::string Map<T>::__repr__() {
-        return info(*this);
+    std::string Map<T>::info() {
+        return get_info(*this);
     }
 
 
@@ -1687,7 +1687,7 @@ namespace maps {
 
     //! Human-readable name of the map
     template <class T>
-    std::string info(const Map<T>& map) {
+    std::string get_info(const Map<T>& map) {
         std::ostringstream os;
         os << "<"
            << "Map of "
@@ -1710,7 +1710,7 @@ namespace maps {
 
     //! Human-readable name of the map (multi)
     template <>
-    std::string info(const Map<Vector<Multi>>& map) {
+    std::string get_info(const Map<Vector<Multi>>& map) {
         std::ostringstream os;
         os << "<"
            << STARRY_NMULTI << "-digit precision "
@@ -1734,7 +1734,7 @@ namespace maps {
 
     //! Human-readable name of the map (spectral)
     template <>
-    std::string info(const Map<Matrix<double>>& map) {
+    std::string get_info(const Map<Matrix<double>>& map) {
         std::ostringstream os;
         os << "<"
            << "Map of "

@@ -1,6 +1,10 @@
 /**
 Keplerian star/planet/moon system class.
 
+TODO: `getflux()` is simply
+
+        if (L != 0) flux_ += L * flux(theta(time), xo, yo, ro) - totalflux;
+
 */
 
 #ifndef _STARRY_ORBITAL_H_
@@ -25,6 +29,11 @@ namespace units {
 namespace kepler {
 
     using namespace utils;
+
+
+    /* ---------------- */
+    /*     FUNCTIONS    */
+    /* ---------------- */
 
     /**
     Compute the eccentric anomaly. Adapted from
@@ -74,6 +83,11 @@ namespace kepler {
             return Eigen::AutoDiffScalar<T>(E_value, M.derivatives());
     }
 
+
+    /* ---------------- */
+    /*       BODY       */
+    /* ---------------- */
+
     /**
     Generic body class, a subclass of Map with added orbital features.
 
@@ -93,22 +107,159 @@ namespace kepler {
             S r;                                                                /**< Body radius in units of primary radius */
             S L;                                                                /**< Body luminosity in units of primary luminosity */
             S prot;                                                             /**< Body rotation period in seconds */
+            S tref;                                                             /**< Reference time in seconds */
+
             S theta0;                                                           /**< Body initial rotation angle in radians */
+            S angvelrot;                                                        /**< Body rotational angular velocity in radians / second */
+            S z0;                                                               /**< Reference point for retarded time calculation (the primary, assuming massless secondaries) */
+            S dt_;                                                              /**< The light travel time delay in seconds */
+
 
             // Map attributes we need access to within this class
             using maps::Map<T>::lmax;
             using maps::Map<T>::N;
             using maps::Map<T>::nwav;
 
+            // Private methods
+            inline S theta(const S& time);
+            void reset();
+
+            //! Constructor
+            explicit Body(int lmax=2, int nwav=1) :
+                // Call the `Map` constructor
+                maps::Map<T>(lmax, nwav) {
+
+                // Set the orbital variables to default values
+                setR(1.0);
+                setL(1.0);
+                setPRot(0.0);
+                setTRef(0.0);
+                reset();
+            }
+
         public:
 
-            explicit Body(S r=1, S L=1, S prot=0, S theta0=0,
-                          int lmax=2, int nwav=1) :
-                maps::Map<T>(lmax, nwav),
-                r(r),
-                L(L),
-                prot(prot * units::DayToSeconds),
-                theta0(theta0 * pi<S>()/ 180.) {
+            // I/O
+            void setR(const S& r_);
+            S getR() const;
+            void setL(const S& L_);
+            S getL() const;
+            void setPRot(const S& prot_);
+            S getPRot() const;
+            void setTRef(const S& tref_);
+            S getTRef() const;
+
+    };
+
+
+    /* ---------------------- */
+    /*    BODY: OPERATIONS    */
+    /* ---------------------- */
+
+    //! Re-compute orbital variables
+    template <class T>
+    void Body<T>::reset() {
+
+        // Angular velocity
+        angvelrot = (2 * pi<Scalar<T>>()) / prot;
+
+        // Light travel time delay parameters.
+        // Overriden by subclasses.
+        z0 = 0;
+        dt_ = 0;
+
+        // Initial map rotation angle
+        // Overriden by subclasses.
+        theta0 = 0;
+
+    };
+
+    //! Rotation angle as a function of (retarded) time
+    template <class T>
+    inline Scalar<T> Body<T>::theta(const Scalar<T>& time) {
+        if (prot == INFINITY)
+            return theta0;
+        else
+            return mod2pi(theta0 + angvelrot * (time - tref - dt_));
+    }
+
+
+    /* ------------------ */
+    /*     BODY: I/O      */
+    /* ------------------ */
+
+    //! Set the body's radius
+    template <class T>
+    void Body<T>::setR(const Scalar<T>& r_) {
+        if (r_ > 0) r = r_;
+        else throw errors::ValueError("Body's radius must be positive.");
+    }
+
+    //! Get the body's radius
+    template <class T>
+    Scalar<T> Body<T>::getR() const {
+        return r;
+    }
+
+    //! Set the body's luminosity
+    template <class T>
+    void Body<T>::setL(const Scalar<T>& L_) {
+        if (L_ > 0) L = L_;
+        else throw errors::ValueError("Body's luminosity must be positive.");
+    }
+
+    //! Get the body's luminosity
+    template <class T>
+    Scalar<T> Body<T>::getL() const {
+        return L;
+    }
+
+    //! Set the body's rotation period
+    template <class T>
+    void Body<T>::setPRot(const Scalar<T>& prot_) {
+        if (prot_ > 0) prot = prot_ * units::DayToSeconds;
+        else if (prot_ == 0) prot = INFINITY;
+        else throw errors::ValueError("Body's rotation period must be positive.");
+    }
+
+    //! Get the body's rotation period
+    template <class T>
+    Scalar<T> Body<T>::getPRot() const {
+        return prot / units::DayToSeconds;
+    }
+
+    //! Set the reference time
+    template <class T>
+    void Body<T>::setTRef(const Scalar<T>& tref_) {
+        tref = tref_ * units::DayToSeconds;
+    }
+
+    //! Get the reference time
+    template <class T>
+    Scalar<T> Body<T>::getTRef() const {
+        return tref / units::DayToSeconds;
+    }
+
+
+    /* ---------------- */
+    /*     PRIMARY      */
+    /* ---------------- */
+
+    /**
+    Primary class, a subclass of Body that simply sits
+    quietly at the origin.
+
+    */
+    template <class T>
+    class Primary : public Body<T> {
+
+        public:
+
+            //! Constructor
+            explicit Primary(int lmax=2, int nwav=1) :
+
+                // Call the `Body` constructor
+                Body<T>(lmax, nwav) {
 
             }
 
