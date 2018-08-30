@@ -31,6 +31,20 @@ namespace errors {
     };
 
     /**
+    Raised when a value has the wrong type.
+
+    */
+    class TypeError : public exception {
+        string m_msg;
+    public:
+        TypeError(const string& message) :
+            m_msg(string(message)) { }
+        virtual const char* what() const throw() {
+            return m_msg.c_str();
+        }
+    };
+
+    /**
     Raised when a deprecated operation or function is used.
 
     */

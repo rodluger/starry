@@ -19,6 +19,7 @@ This defines the main Python interface to the code.
 #include "docstrings.h"
 #include "utils.h"
 #include "errors.h"
+#include "kepler.h"
 #include "pybind_vectorize.h"
 #include "pybind_utils.h"
 

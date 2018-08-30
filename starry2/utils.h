@@ -160,6 +160,14 @@ namespace utils {
         return zhat_double.template cast<T>();
     }
 
+    // Normalize a unit vector
+    template <typename T>
+    inline UnitVector<T> norm_unit(const UnitVector<T>& vec) {
+        UnitVector<T> result = vec / sqrt(vec(0) * vec(0) +
+                                          vec(1) * vec(1) +
+                                          vec(2) * vec(2));
+        return result;
+    }
 
     // --------------------------
     // ----- Misc utilities -----

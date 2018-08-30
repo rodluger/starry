@@ -138,6 +138,42 @@ namespace maps {
 
     };
 
+    /**
+    Check that `Map` is instantiated with the right type: catch-all.
+
+    */
+    template <class T>
+    void checkType(const Map<T>& map) {
+        throw errors::TypeError("Invalid type for the `Map` class.");
+    }
+
+    /**
+    Check that `Map` is instantiated with the right type: Vector<T>.
+    This is the type of a `starry.Map` or a `starry.multi.Map` in the
+    Python interface.
+
+    */
+    template <class T>
+    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    checkType(const Map<Vector<T>>& map) {
+        if (map.nwav != 1) {
+            throw errors::ValueError("Multi-wavelength support is "
+                                     "available only for `Matrix` types.");
+        }
+    }
+
+    /**
+    Check that `Map` is instantiated with the right type: Matrix<T>.
+    This is the type of a `starry.spectral.Map` in the
+    Python interface.
+
+    */
+    template <class T>
+    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    checkType(const Map<Matrix<T>>& map) {
+        // We're good!
+    }
+
 
     /**
     The main surface map class.
@@ -194,6 +230,8 @@ namespace maps {
             friend std::string info(const Map<U>& map);
 
             // Private methods
+            void update();
+            inline void resizeGradients(const int n_ylm, const int n_ul);
             inline void checkDegree();
             inline void updateY();
             inline void updateU();
@@ -237,6 +275,9 @@ namespace maps {
                 tmp(N, nwav),
                 cache() {
 
+                // Check that type T is valid
+                checkType(*this);
+
                 // Populate the map gradient names
                 dF_orbital_names.push_back("theta");
                 dF_orbital_names.push_back("xo");
@@ -269,11 +310,8 @@ namespace maps {
 
             }
 
-            // Housekeeping functions
-            void update();
+            // Housekeeping and I/O
             void reset();
-
-            // I/O functions
             void setY(const T& y_);
             void setY(int l, int m, const Row<T>& coeff);
             T getY() const;
@@ -288,7 +326,6 @@ namespace maps {
             VectorT<Scalar<T>> getS() const;
             void setAxis(const UnitVector<Scalar<T>>& axis_);
             UnitVector<Scalar<T>> getAxis() const;
-            inline void resizeGradients(const int n_ylm, const int n_ul);
             std::string __repr__();
 
             // Rotate the base map
