@@ -8,9 +8,8 @@ using namespace kepler;
 
 int main() {
 
-    Primary<Vector<Multi>> primary{};
-    primary.setU(1, 0.4);
-    primary.setU(2, 0.26);
-    std::cout << primary() << std::endl;
+    Secondary<Vector<Multi>> secondary{};
+    secondary.setY(1, 0, 1);
+    std::cout << secondary.debug() << std::endl;
 
 }

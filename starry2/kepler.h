@@ -5,6 +5,11 @@ TODO: `getflux()` is simply
 
         if (L != 0) flux_ += L * flux(theta(time), xo, yo, ro) - totalflux;
 
+TIP: To hide a method/attribute from the base class, just do
+
+    protected:
+        Row<T> flux();
+
 */
 
 #ifndef _STARRY_ORBITAL_H_
@@ -97,10 +102,6 @@ namespace kepler {
 
         protected:
 
-            // Hide the Map's flux function from the user,
-            // as we compute lightcurves via the System class
-            Row<T> flux();
-
             // Shorthand for the scalar type (double, Multi)
             using S = Scalar<T>;
 
@@ -112,22 +113,29 @@ namespace kepler {
             S theta0;                                                           /**< Body initial rotation angle in radians */
             S angvelrot;                                                        /**< Body rotational angular velocity in radians / second */
             S z0;                                                               /**< Reference point for retarded time calculation (the primary, assuming massless secondaries) */
-            S dt_;                                                              /**< The light travel time delay in seconds */
+            S delay;                                                            /**< The light travel time delay in seconds */
 
-
-            // Map attributes we need access to within this class
-            using maps::Map<T>::lmax;
-            using maps::Map<T>::N;
-            using maps::Map<T>::nwav;
+            Row<T> flux_cur;                                                    /**< Current flux visible from the body */
+            Row<T> flux_tot;                                                    /**< Total flux from the body */
 
             // Private methods
             inline S theta(const S& time);
             void reset();
+            void computeTotal(const S& time);
+            void occult(const S& time, const S& xo, const S& yo, const S& ro);
+
+            //! Wrapper to get the flux from the map (overriden in Secondary)
+            virtual inline Row<T> getFlux(const S& theta, const S& xo,
+                const S& yo, const S& ro, bool gradient) {
+                return this->flux(theta, xo, yo, ro, gradient);
+            }
 
             //! Constructor
-            explicit Body(int lmax=2, int nwav=1) :
-                // Call the `Map` constructor
-                maps::Map<T>(lmax, nwav) {
+            explicit Body(int lmax=2, int nwav=1) : maps::Map<T>(lmax, nwav) {
+
+                // Initialize some stuff
+                flux_cur = 0;
+                flux_tot = 0;
 
                 // Set the orbital variables to default values
                 setR(1.0);
@@ -149,6 +157,13 @@ namespace kepler {
             void setTRef(const S& tref_);
             S getTRef() const;
 
+
+            // DEBUG
+            S debug() {
+                computeTotal(0);
+                return flux_cur;
+            }
+
     };
 
 
@@ -166,7 +181,7 @@ namespace kepler {
         // Light travel time delay parameters.
         // Overriden by subclasses.
         z0 = 0;
-        dt_ = 0;
+        delay = 0;
 
         // Initial map rotation angle
         // Overriden by subclasses.
@@ -180,9 +195,27 @@ namespace kepler {
         if (prot == INFINITY)
             return theta0;
         else
-            return mod2pi(theta0 + angvelrot * (time - tref - dt_));
+            return mod2pi(theta0 + angvelrot * (time - tref - delay));
     }
 
+    //! Compute the total flux from the body
+    template <class T>
+    inline void Body<T>::computeTotal(const Scalar<T>& time) {
+        if (L != 0)
+            flux_tot = L * getFlux(theta(time), 0, 0, 0, false);
+        else
+            flux_tot = 0;
+        flux_cur = flux_tot;
+    }
+
+    //! Occult the body and update the current flux
+    template <class T>
+    inline void Body<T>::occult(const Scalar<T>& time, const Scalar<T>& xo,
+                                const Scalar<T>& yo, const Scalar<T>& ro) {
+        if (L != 0)
+            flux_cur += L * getFlux(theta(time), xo, yo, ro, false)
+                        - flux_tot;
+    }
 
     /* ------------------ */
     /*     BODY: I/O      */
@@ -259,7 +292,73 @@ namespace kepler {
             explicit Primary(int lmax=2, int nwav=1) :
 
                 // Call the `Body` constructor
-                Body<T>(lmax, nwav) {
+                Body<T>(lmax, nwav)
+            {
+
+            }
+
+    };
+
+
+    /* ----------------- */
+    /*      SECONDARY    */
+    /* ----------------- */
+
+    /**
+    Secondary class, a subclass of Body that
+    moves around the Primary in a Keplerian orbit.
+
+    */
+    template <class T>
+    class Secondary : public Body<T> {
+
+        protected:
+
+            // Shorthand for the scalar type (double, Multi)
+            using S = Scalar<T>;
+
+            // Sky projection stuff
+            maps::Map<T> skyMap;                                                /**< An internal copy of the map, rotated into the sky plane */
+
+            // The orbital elements
+            S a;                                                                /**< The semi-major axis in units of the primary radius */
+            S porb;                                                             /**< The orbital period in seconds */
+            S inc;                                                              /**< The inclination in radians */
+            S ecc;                                                              /**< The orbital eccentricity */
+            S w;                                                                /**< The longitude of pericenter (varpi) in radians */
+            S Omega;                                                            /**< The longitude of ascending node in radians */
+            S lambda0;                                                          /**< The mean longitude at the reference time in radians */
+
+            // Attributes we need access to within this class
+            using Body<T>::r;
+            using Body<T>::L;
+            using Body<T>::prot;
+            using Body<T>::tref;
+            using Body<T>::theta0;
+            using Body<T>::angvelrot;
+            using Body<T>::z0;
+            using Body<T>::delay;
+            using Body<T>::theta;
+
+            //! Override `getFlux`: return the flux from the sky-projected map
+            inline Row<T> getFlux(const S& theta, const S& xo,
+                const S& yo, const S& ro, bool gradient) {
+                return skyMap.flux(theta, xo, yo, ro, gradient);
+            }
+
+        public:
+
+            //! Constructor
+            explicit Secondary(int lmax=2, int nwav=1) :
+
+                // Call the `Body` constructor
+                Body<T>(lmax, nwav),
+
+                // Initialize our sky map
+                skyMap(lmax, nwav)
+
+            {
+
 
             }
 
