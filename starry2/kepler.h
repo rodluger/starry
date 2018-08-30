@@ -1,8 +1,6 @@
 /**
 Keplerian star/planet/moon system class.
 
-TODO: Make Body a friend of Map.
-
 */
 
 #ifndef _STARRY_ORBITAL_H_
@@ -44,7 +42,10 @@ namespace orbital {
         return E;
     }
 
-    // Derivative of the eccentric anomaly
+    /**
+    Manual override of the derivative of the eccentric anomaly
+
+    */
     template <typename T>
     Eigen::AutoDiffScalar<T> EccentricAnomaly(const Eigen::AutoDiffScalar<T>& M,
         const Eigen::AutoDiffScalar<T>& ecc) {
@@ -67,7 +68,10 @@ namespace orbital {
             return Eigen::AutoDiffScalar<T>(E_value, M.derivatives());
     }
 
-    // Generic body class
+    /**
+    Generic body class
+
+    */
     template <class T>
     class Body : public maps::Map<T> {
 

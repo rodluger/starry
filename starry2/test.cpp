@@ -28,7 +28,7 @@ class Body : public maps::Map<T> {
 
 int main() {
 
-    Body<Matrix<double>> map(2);
+    Body<Vector<Vector<double>>> map(2);
     //map.setY(1, 0, 1.0);
     //std::cout << map.flux() << std::endl;
 

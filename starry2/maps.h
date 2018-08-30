@@ -139,26 +139,19 @@ namespace maps {
     };
 
     /**
-    Check that `Map` is instantiated with the right type: catch-all.
-
-    */
-    template <class T>
-    void checkType(const Map<T>& map) {
-        throw errors::TypeError("Invalid type for the `Map` class.");
-    }
-
-    /**
     Check that `Map` is instantiated with the right type: Vector<T>.
     This is the type of a `starry.Map` or a `starry.multi.Map` in the
     Python interface.
 
     */
     template <class T>
-    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
     checkType(const Map<Vector<T>>& map) {
         if (map.nwav != 1) {
             throw errors::ValueError("Multi-wavelength support is "
                                      "available only for `Matrix` types.");
+        } else {
+            return true;
         }
     }
 
@@ -169,11 +162,14 @@ namespace maps {
 
     */
     template <class T>
-    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
     checkType(const Map<Matrix<T>>& map) {
-        // We're good!
+        if (map.nwav < 1) {
+            throw errors::ValueError("Invalid number of wavelength bins.");
+        } else {
+            return true;
+        }
     }
-
 
     /**
     The main surface map class.
@@ -181,6 +177,7 @@ namespace maps {
     */
     template <class T>
     class Map {
+
 
         public:
 
@@ -191,6 +188,9 @@ namespace maps {
             std::vector<string> dF_names;                                       /**< Names of each of the params in the flux gradient */
 
         private:
+
+            // Sanity checks
+            const bool type_valid;                                              /**< Is the type of the Map valid? */
 
             // Map stuff
             T y;                                                                /**< The map coefficients in the spherical harmonic basis */
@@ -264,6 +264,7 @@ namespace maps {
                 lmax(lmax),
                 N((lmax + 1) * (lmax + 1)),
                 nwav(nwav),
+                type_valid(checkType(*this)),
                 B(lmax),
                 W(lmax, nwav, (*this).y, (*this).axis),
                 G(lmax),
@@ -274,9 +275,6 @@ namespace maps {
                 dg_udu(nwav),
                 tmp(N, nwav),
                 cache() {
-
-                // Check that type T is valid
-                checkType(*this);
 
                 // Populate the map gradient names
                 dF_orbital_names.push_back("theta");
