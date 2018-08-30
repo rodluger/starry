@@ -16,7 +16,13 @@ Keplerian star/planet/moon system class.
 #include "utils.h"
 #include "rotation.h"
 
-namespace orbital {
+namespace units {
+
+    const double DayToSeconds = 86400.0;
+
+}; // namespace units
+
+namespace kepler {
 
     using namespace utils;
 
@@ -69,17 +75,45 @@ namespace orbital {
     }
 
     /**
-    Generic body class
+    Generic body class, a subclass of Map with added orbital features.
 
     */
     template <class T>
     class Body : public maps::Map<T> {
 
+        protected:
+
+            // Hide the Map's flux function from the user,
+            // as we compute lightcurves via the System class
+            Row<T> flux();
+
+            // Shorthand for the scalar type (double, Multi)
+            using S = Scalar<T>;
+
+            S r;                                                                /**< Body radius in units of primary radius */
+            S L;                                                                /**< Body luminosity in units of primary luminosity */
+            S prot;                                                             /**< Body rotation period in seconds */
+            S theta0;                                                           /**< Body initial rotation angle in radians */
+
+            // Map attributes we need access to within this class
+            using maps::Map<T>::lmax;
+            using maps::Map<T>::N;
+            using maps::Map<T>::nwav;
+
+        public:
+
+            explicit Body(S r=1, S L=1, S prot=0, S theta0=0,
+                          int lmax=2, int nwav=1) :
+                maps::Map<T>(lmax, nwav),
+                r(r),
+                L(L),
+                prot(prot * units::DayToSeconds),
+                theta0(theta0 * pi<S>()/ 180.) {
+
+            }
+
     };
 
-
-
-
-}; // namespace orbital
+}; // namespace kepler
 
 #endif
