@@ -9,7 +9,6 @@ using namespace kepler;
 int main() {
 
     Secondary<Vector<Multi>> secondary{};
-    secondary.setY(1, 0, 1);
-    std::cout << secondary.debug() << std::endl;
+    //secondary.setY(1, 0, 1);
 
 }

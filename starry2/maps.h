@@ -44,6 +44,7 @@ TODO: Add unit tests for `is_physical`
 #include "sturm.h"
 #include "minimize.h"
 
+
 namespace maps {
 
     using namespace utils;
@@ -178,7 +179,6 @@ namespace maps {
     template <class T>
     class Map {
 
-
         public:
 
             const int lmax;                                                     /**< The highest degree of the map */
@@ -187,7 +187,7 @@ namespace maps {
             T dF;                                                               /**< Gradient of the flux */
             std::vector<string> dF_names;                                       /**< Names of each of the params in the flux gradient */
 
-        private:
+        protected:
 
             // Sanity checks
             const bool type_valid;                                              /**< Is the type of the Map valid? */
@@ -320,8 +320,8 @@ namespace maps {
             void setU(int l, const Row<T>& coeff);
             T getP() const;
             T getG() const;
-            VectorT<Scalar<T>> getR() const;
-            VectorT<Scalar<T>> getS() const;
+            virtual VectorT<Scalar<T>> getR() const;
+            virtual VectorT<Scalar<T>> getS() const;
             void setAxis(const UnitVector<Scalar<T>>& axis_);
             UnitVector<Scalar<T>> getAxis() const;
             std::string info();
