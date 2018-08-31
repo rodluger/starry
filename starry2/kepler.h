@@ -3,6 +3,8 @@ Keplerian star/planet/moon system class.
 
 TODO: gradients
 
+TODO: bind clight to clight in primary via pointer
+
 */
 
 #ifndef _STARRY_ORBITAL_H_
@@ -18,9 +20,14 @@ TODO: gradients
 #include "utils.h"
 #include "rotation.h"
 
+// Body codes
+#define STARRY_BODY        0
+#define STARRY_PRIMARY     1
+#define STARRY_SECONDARY   2
+
 namespace units {
 
-    const double DayToSeconds = 86400.0;
+    const double DayToSeconds = 86400.0;                                        /**< One day in seconds */
 
 }; // namespace units
 
@@ -99,8 +106,7 @@ namespace kepler {
 
         protected:
 
-            // Shorthand for the scalar type (double, Multi)
-            using S = Scalar<T>;
+            using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
 
             S r;                                                                /**< Body radius in units of primary radius */
             S L;                                                                /**< Body luminosity in units of primary luminosity */
@@ -155,6 +161,7 @@ namespace kepler {
         public:
 
             // I/O
+            virtual inline int getId() {return STARRY_BODY;}
             void setRadius(const S& r_);
             S getRadius() const;
             void setLuminosity(const S& L_);
@@ -294,6 +301,9 @@ namespace kepler {
 
             }
 
+            // I/O
+            virtual inline int getId() {return STARRY_PRIMARY;}
+
     };
 
 
@@ -321,12 +331,12 @@ namespace kepler {
             using Body<T>::N;
             using Body<T>::nwav;
             using Body<T>::tref;
+            using Body<T>::z0;
+            using Body<T>::delay;
             /*
             using Body<T>::r;
             using Body<T>::L;
             using Body<T>::angvelrot;
-            using Body<T>::z0;
-            using Body<T>::delay;
             using Body<T>::theta;
             */
 
@@ -349,6 +359,7 @@ namespace kepler {
             S lambda0;                                                          /**< The mean longitude at the reference time in radians */
 
             // Keplerian solution variables
+            S clight;                                                           /**< The speed of light in units of the primary radius / second */
             S M;                                                                /**< Mean anomaly in radians */
             S E;                                                                /**< Eccentric anomaly in radians */
             S f;                                                                /**< True anomaly in radians */
@@ -382,12 +393,16 @@ namespace kepler {
             void computeTheta0();
             inline void syncSkyMap();
             inline void orbitStep(const T& time);
+            inline void applyLightDelay();
 
         public:
 
             // I/O
+            virtual inline int getId() {return STARRY_SECONDARY;}
             VectorT<Scalar<T>> getR() const;
             VectorT<Scalar<T>> getS() const;
+            void setCLight(const S& c_);
+            S getCLight() const;
             void setSemi(const S& a_);
             S getSemi() const;
             void setOrbPer(const S& porb_);
@@ -431,6 +446,7 @@ namespace kepler {
                 setVarPi(90.0);
                 setOmega(0.0);
                 setLambda0(90.0);
+                setCLight(INFINITY);
 
                 // Initialize the sky rotation matrix
                 RSky = new Matrix<S>[lmax + 1];
@@ -559,58 +575,66 @@ namespace kepler {
         y_cur = -rorb * (sinO * cwf + cosOcosi * swf);
         z_cur = rorb * swf * sini;
 
-        // Compute the light travel time delay (TODO)
-        /*
-        if (!isinf(clight)) {
-
-            // Component of the velocity out of the sky
-            // Obtained by differentiating the expressions above
-            vz_ = vamp * sini * (ecw + cwf);
-
-            // Component of the acceleration out of the sky
-            az_ = -angvelorb * angvelorb * a * a * a / (rorb * rorb * rorb) * z_;
-
-            // Compute the time delay at the **retarded** position, accounting
-            // for the instantaneous velocity and acceleration of the body.
-            // This is slightly better than doing
-            //
-            //          dt_ = (z0 - z_) / clight
-            //
-            // which is actually the time delay at the **current** position.
-            // But the photons left the planet from the **retarded** position,
-            // so if the planet has motion in the `z` direction the two values
-            // will be slightly different. In practice it doesn't really matter
-            // that much, though. See the derivation at
-            // https://github.com/rodluger/starry/issues/66
-            if (abs(az_) < 1e-10)
-                dt_ = (z0 - z_) / (clight + vz_);
-            else
-                dt_ = (clight / az_) *
-                      ((1 + vz_ / clight)
-                       - sqrt((1 + vz_ / clight) * (1 + vz_ / clight)
-                              - 2 * az_ * (z0 - z_) / (clight * clight)));
-
-            // Re-compute Kepler's equation, this time
-            // solving for the **retarded** position
-            M = mod2pi(T(M0 + angvelorb * (time - dt_ - tref)));
-            if (ecc > 0) {
-                E = EccentricAnomaly(M, ecc);
-                f = (2. * atan2(sqrtonepluse * sin(E / 2.), sqrtoneminuse * cos(E / 2.)));
-                rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
-            } else {
-                f = M;
-                rorb = a;
-            }
-            cwf = cos(w + f);
-            swf = sin(w + f);
-            x_ = -rorb * (cosO * cwf - sinOcosi * swf);
-            y_ = -rorb * (sinO * cwf + cosOcosi * swf);
-            z_ = rorb * swf * sini;
-
-        }
-        */
+        // Compute the light travel time delay
+        if (!isinf(clight)) applyLightDelay();
 
     }
+
+    /**
+    Compute the light travel time delay and apply
+    it to the current (x, y, z) position of the body.
+
+    */
+    template <class T>
+    void Secondary<T>::applyLightDelay() {
+
+        // Component of the velocity out of the sky
+        // Obtained by differentiating the expressions above
+        Scalar<T> vz = vamp * sini * (ecw + cwf);
+
+        // Component of the acceleration out of the sky
+        Scalar<T> az = -angvelorb * angvelorb * a * a * a /
+                       (rorb * rorb * rorb) * z_cur;
+
+        // Compute the time delay at the **retarded** position, accounting
+        // for the instantaneous velocity and acceleration of the body.
+        // This is slightly better than doing
+        //
+        //          dt_ = (z0 - z_) / clight
+        //
+        // which is actually the time delay at the **current** position.
+        // But the photons left the planet from the **retarded** position,
+        // so if the planet has motion in the `z` direction the two values
+        // will be slightly different. In practice it doesn't really matter
+        // that much, though. See the derivation at
+        // https://github.com/rodluger/starry/issues/66
+        if (abs(az) < 1e-10)
+            delay = (z0 - z_cur) / (clight + vz);
+        else
+            delay = (clight / az) * ((1 + vz / clight)
+                    - sqrt((1 + vz / clight) * (1 + vz / clight)
+                    - 2 * az * (z0 - z_cur) / (clight * clight)));
+
+        // Re-compute Kepler's equation, this time
+        // solving for the **retarded** position
+        M = mod2pi(M0 + angvelorb * (time - delay - tref));
+        if (ecc > 0) {
+            E = EccentricAnomaly(M, ecc);
+            f = (2. * atan2(sqrtonepluse * sin(E / 2.),
+                            sqrtoneminuse * cos(E / 2.)));
+            rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
+        } else {
+            f = M;
+            rorb = a;
+        }
+        cwf = cos(w + f);
+        swf = sin(w + f);
+        x_cur = -rorb * (cosO * cwf - sinOcosi * swf);
+        y_cur = -rorb * (sinO * cwf + cosOcosi * swf);
+        z_cur = rorb * swf * sini;
+
+    }
+
 
     /* --------------------- */
     /*     SECONDARY: I/O    */
@@ -626,6 +650,19 @@ namespace kepler {
     template <class T>
     VectorT<Scalar<T>> Secondary<T>::getS() const {
         return skyMap.getS();
+    }
+
+    //! Set the speed of light
+    template <class T>
+    void Secondary<T>::setCLight(const Scalar<T>& c_) {
+        if (c_ > 0) clight = c_;
+        else throw errors::ValueError("The speed of light must be positive.");
+    }
+
+    //! Get the speed of light
+    template <class T>
+    Scalar<T> Secondary<T>::getCLight() const {
+        return clight;
     }
 
     //! Set the semi-major axis
@@ -741,6 +778,47 @@ namespace kepler {
         return lambda0 * 180.0 / pi<Scalar<T>>();
     }
 
+
+    /* ----------------- */
+    /*       SYSTEM      */
+    /* ----------------- */
+
+    //! Keplerian system class
+    template <class T>
+    class System {
+
+        protected:
+
+            using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
+            S clight;
+            unsigned long t;                                                    /**< Current time index */
+
+        public:
+
+            std::vector<Body<T>*> bodies;
+
+            //! Constructor
+            explicit System(std::vector<Body<T>*> bodies) : bodies(bodies) {
+
+                // Check that the user instantiated the correct classes
+                for (int n = 0; n < bodies.size(); ++n) {
+                    if ((n == 0) && (bodies[n]->getId() != STARRY_PRIMARY))
+                        throw errors::ValueError("The first body must be "
+                                                 "an instance of `Primary`.");
+                    else if ((n > 0) && (bodies[n]->getId() != STARRY_SECONDARY))
+                        throw errors::ValueError("All bodies following the "
+                                                 "first one must be instances "
+                                                 "of `Secondary`.");
+                }
+
+            }
+
+    };
+
 }; // namespace kepler
+
+#undef STARRY_BODY
+#undef STARRY_PRIMARY
+#undef STARRY_SECONDARY
 
 #endif

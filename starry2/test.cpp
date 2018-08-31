@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <cmath>
+#include <vector>
 #include "kepler.h"
 #include "utils.h"
 using namespace utils;
@@ -8,7 +9,17 @@ using namespace kepler;
 
 int main() {
 
-    Secondary<Vector<Multi>> secondary{};
-    //secondary.setY(1, 0, 1);
+    using T = Vector<double>;
+
+    Primary<T> star{};
+    Secondary<T> b{};
+    Secondary<T> c{};
+    std::vector<Body<T>*> bodies{&star, &b, &c};
+    System<T> system(bodies);
+
+    b.setRadius(10.0);
+    std::cout << system.bodies[1]->getRadius() << std::endl;
+    system.bodies[1]->setRadius(20.0);
+    std::cout << b.getRadius() << std::endl;
 
 }
