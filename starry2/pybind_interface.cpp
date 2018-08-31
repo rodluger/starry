@@ -1,11 +1,11 @@
 #ifdef STARRY_DEBUG
 #undef NDEBUG
 #endif
+
 #include <pybind11/pybind11.h>
 #include <stdlib.h>
 #include "utils.h"
 #include "pybind_interface.h"
-#include "docstrings.h"
 namespace py = pybind11;
 
 PYBIND11_MODULE(_starry2, m) {
@@ -20,18 +20,19 @@ PYBIND11_MODULE(_starry2, m) {
     options.disable_function_signatures();
 
     // starry
-    docstrings::docs<STARRY_MODULE_MAIN> docs_starry;
-    pybind_interface::add_starry<Vector<double>, STARRY_MODULE_MAIN>(m, docs_starry);
+    pybind_interface::add_starry<Vector<double>>(m);
 
     // starry.multi
-    docstrings::docs<STARRY_MODULE_MULTI> docs_multi;
     auto mmulti = m.def_submodule("multi");
-    pybind_interface::add_starry<Vector<Multi>, STARRY_MODULE_MULTI>(mmulti, docs_multi);
+    pybind_interface::add_starry<Vector<Multi>>(mmulti);
 
     // starry.spectral
-    docstrings::docs<STARRY_MODULE_SPECTRAL> docs_spectral;
     auto mspectral = m.def_submodule("spectral");
-    pybind_interface::add_starry<Matrix<double>, STARRY_MODULE_SPECTRAL>(mspectral, docs_spectral);
+    pybind_interface::add_starry<Matrix<double>>(mspectral);
+
+    // starry.multispectral
+    auto mmultispectral = m.def_submodule("multispectral");
+    pybind_interface::add_starry<Matrix<Multi>>(mmultispectral);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

@@ -20,236 +20,173 @@ TODO: Add a note to the docs about when we don't compute
 #include <stdlib.h>
 #include "utils.h"
 
-#define STARRY_MODULE_MAIN     0
-#define STARRY_MODULE_MULTI    1
-#define STARRY_MODULE_SPECTRAL 2
-
 namespace docstrings {
 
     using namespace std;
 
+    namespace starry {
 
-    /**
-    Python documentation for the `Map` class.
+        const char* doc = R"pbdoc()pbdoc";
 
-    */
-    template <int Module>
-    class Map_ {
-    public:
-        const char * doc;
-        const char * reset;
-        const char * lmax;
-        const char * N;
-        const char * nwav;
-        const char * y;
-        const char * u;
-        const char * p;
-        const char * g;
-        const char * r;
-        const char * s;
-        const char * axis;
-        const char * evaluate;
-        const char * flux;
-        const char * rotate;
-        const char * is_physical;
-        const char * show;
-        const char * animate;
-        const char * load_image;
-        void add_extras() { doc = R"pbdoc()pbdoc"; };
+    }
 
-        Map_() {
+    namespace Map {
 
-            reset = R"pbdoc(
-                Set all of the map coefficients to zero.
-            )pbdoc";
+        const char* doc = R"pbdoc(
+            Instantiate a :py:mod:`starry` surface map.
 
-            lmax = R"pbdoc(
-                The highest spherical harmonic order of the map. *Read-only.*
-            )pbdoc";
+            Args:
+                lmax (int): Largest spherical harmonic degree \
+                            in the surface map. Default 2.
 
-            N = R"pbdoc(
-                The number of map coefficients, equal to `(l + 1) ** 2`. *Read-only.*
-            )pbdoc";
+            .. automethod:: __call__(theta=0, x=0, y=0)
+            .. automethod:: flux(theta=0, xo=0, yo=0, ro=0)
+            .. automethod:: rotate(theta=0)
+            .. automethod:: show()
+            .. automethod:: animate()
+            .. automethod:: reset()
+            .. autoattribute:: lmax
+            .. autoattribute:: N
+            .. autoattribute:: y
+            .. autoattribute:: u
+            .. autoattribute:: p
+            .. autoattribute:: g
+            .. autoattribute:: r
+            .. autoattribute:: s
+            .. autoattribute:: axis
+        )pbdoc";
 
-            nwav = R"pbdoc(
-                The number of wavelength bins in `spectral` mode. *Read-only.*
-            )pbdoc";
+        const char* reset = R"pbdoc(
+            Set all of the map coefficients to zero.
+        )pbdoc";
 
-            y = R"pbdoc(
-                The spherical harmonic map vector. *Read-only.*
-            )pbdoc";
+        const char* lmax = R"pbdoc(
+            The highest spherical harmonic order of the map. *Read-only.*
+        )pbdoc";
 
-            u = R"pbdoc(
-                The limb darkening map vector. *Read-only.*
-            )pbdoc";
+        const char* N = R"pbdoc(
+            The number of map coefficients, equal to `(l + 1) ** 2`. *Read-only.*
+        )pbdoc";
 
-            p = R"pbdoc(
-                The polynomial map vector. *Read-only.*
-            )pbdoc";
+        const char* nwav = R"pbdoc(
+            The number of wavelength bins in `spectral` mode. *Read-only.*
+        )pbdoc";
 
-            g = R"pbdoc(
-                The Green's polynomial map vector. *Read-only.*
-            )pbdoc";
+        const char* y = R"pbdoc(
+            The spherical harmonic map vector. *Read-only.*
+        )pbdoc";
 
-            r = R"pbdoc(
-                The current solution vector `r`. *Read-only.*
-            )pbdoc";
+        const char* u = R"pbdoc(
+            The limb darkening map vector. *Read-only.*
+        )pbdoc";
 
-            s = R"pbdoc(
-                The current solution vector `s`. *Read-only.*
-            )pbdoc";
+        const char* p = R"pbdoc(
+            The polynomial map vector. *Read-only.*
+        )pbdoc";
 
-            axis = R"pbdoc(
-                *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
-            )pbdoc";
+        const char* g = R"pbdoc(
+            The Green's polynomial map vector. *Read-only.*
+        )pbdoc";
 
-            evaluate = R"pbdoc(
-                Return the specific intensity at a point (`x`, `y`) on the map.
-                Users may optionally provide a rotation state. Note that this does
-                not rotate the base map.
+        const char* r = R"pbdoc(
+            The current solution vector `r`. *Read-only.*
+        )pbdoc";
 
-                Args:
-                    theta (float or ndarray): Angle of rotation in degrees. Default 0.
-                    x (float or ndarray): Position scalar, vector, or matrix.
-                    y (float or ndarray): Position scalar, vector, or matrix.
+        const char* s = R"pbdoc(
+            The current solution vector `s`. *Read-only.*
+        )pbdoc";
 
-                Returns:
-                    The specific intensity at (`x`, `y`).
-            )pbdoc";
+        const char* axis = R"pbdoc(
+            *Normalized* unit vector specifying the body's axis of rotation. Default :math:`\hat{y} = (0, 1, 0)`.
+        )pbdoc";
 
-            flux = R"pbdoc(
-                Return the total flux received by the observer.
-                Computes the total flux received by the observer from the
-                map during or outside of an occultation.
+        const char* evaluate = R"pbdoc(
+            Return the specific intensity at a point (`x`, `y`) on the map.
+            Users may optionally provide a rotation state. Note that this does
+            not rotate the base map.
 
-                Args:
-                    theta (float or ndarray): Angle of rotation. Default 0.
-                    xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
-                    yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
-                    ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
-                    gradient (bool): Compute and return the gradient of the flux as well? Default :py:obj:`False`.
+            Args:
+                theta (float or ndarray): Angle of rotation in degrees. Default 0.
+                x (float or ndarray): Position scalar, vector, or matrix.
+                y (float or ndarray): Position scalar, vector, or matrix.
 
-                Returns:
-                    The flux received by the observer (a scalar or a vector). \
-                    If :py:obj:`gradient` is :py:obj:`True`, \
-                    returns the tuple `(F, dF)`, where `F` is the flux and `dF` is \
-                    a dictionary containing the derivatives with respect to each of the input parameters \
-                    and each of the map coefficients.
+            Returns:
+                The specific intensity at (`x`, `y`).
+        )pbdoc";
 
-            )pbdoc";
+        const char* flux = R"pbdoc(
+            Return the total flux received by the observer.
+            Computes the total flux received by the observer from the
+            map during or outside of an occultation.
 
-            rotate = R"pbdoc(
-                Rotate the base map an angle :py:obj:`theta` about :py:obj:`axis`.
-                This performs a permanent rotation to the base map. Subsequent
-                rotations and calculations will be performed relative to this
-                rotational state.
+            Args:
+                theta (float or ndarray): Angle of rotation. Default 0.
+                xo (float or ndarray): The `x` position of the occultor (if any). Default 0.
+                yo (float or ndarray): The `y` position of the occultor (if any). Default 0.
+                ro (float): The radius of the occultor in units of this body's radius. Default 0 (no occultation).
+                gradient (bool): Compute and return the gradient of the flux as well? Default :py:obj:`False`.
 
-                Args:
-                    theta (float or ndarray): Angle of rotation in degrees. Default 0.
-            )pbdoc";
+            Returns:
+                The flux received by the observer (a scalar or a vector). \
+                If :py:obj:`gradient` is :py:obj:`True`, \
+                returns the tuple `(F, dF)`, where `F` is the flux and `dF` is \
+                a dictionary containing the derivatives with respect to each of the input parameters \
+                and each of the map coefficients.
+        )pbdoc";
 
-            is_physical = R"pbdoc(
-                Check whether the map is positive semi-definite (PSD). Returns :py:obj:`True`
-                if the map is PSD, :py:obj:`False` otherwise. For pure limb-darkened maps,
-                this routine uses Sturm's theorem to find the number of roots. For pure
-                spherical harmonic maps up to `l = 1`, the solution is analytic. For all
-                other cases, this routine attempts to find the global minimum numerically
-                and checks if it is negative. For :py:obj:`spectral` maps, this routine
-                returns an array of boolean values, one per wavelength bin.
+        const char* rotate = R"pbdoc(
+            Rotate the base map an angle :py:obj:`theta` about :py:obj:`axis`.
+            This performs a permanent rotation to the base map. Subsequent
+            rotations and calculations will be performed relative to this
+            rotational state.
 
-                Args:
-                    epsilon (float): Numerical tolerance. Default 1.e-6
-                    max_iterations (int): Maximum number of iterations for the numerical solver. Default 100
+            Args:
+                theta (float or ndarray): Angle of rotation in degrees. Default 0.
+        )pbdoc";
 
-            )pbdoc";
+        const char* is_physical = R"pbdoc(
+            Check whether the map is positive semi-definite (PSD). Returns :py:obj:`True`
+            if the map is PSD, :py:obj:`False` otherwise. For pure limb-darkened maps,
+            this routine uses Sturm's theorem to find the number of roots. For pure
+            spherical harmonic maps up to `l = 1`, the solution is analytic. For all
+            other cases, this routine attempts to find the global minimum numerically
+            and checks if it is negative. For :py:obj:`spectral` maps, this routine
+            returns an array of boolean values, one per wavelength bin.
 
-            show = R"pbdoc(
-                Convenience routine to quickly display the body's surface map.
-                Args:
-                    cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
-                    res (int): The resolution of the map in pixels on a side. Default 300.
-            )pbdoc";
+            Args:
+                epsilon (float): Numerical tolerance. Default 1.e-6
+                max_iterations (int): Maximum number of iterations for the numerical solver. Default 100
+        )pbdoc";
 
-            animate = R"pbdoc(
-                Convenience routine to animate the body's surface map as it rotates.
-                Args:
-                    cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
-                    res (int): The resolution of the map in pixels on a side. Default 150.
-                    frames (int): The number of frames in the animation. Default 50.
-                    gif (str): The name of the `.gif` file to save the animation to. \
-                               Requires `ImageMagick` to be installed. If set, does not \
-                               show the animation. Default :py:obj:`None`.
-            )pbdoc";
+        const char* show = R"pbdoc(
+            Convenience routine to quickly display the body's surface map.
+            Args:
+                cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
+                res (int): The resolution of the map in pixels on a side. Default 300.
+        )pbdoc";
 
-            load_image = R"pbdoc(
-                Load an image from file.
-                This routine loads an image file, computes its spherical harmonic
-                expansion up to degree :py:attr:`lmax`, and sets the map vector.
-                Args:
-                    image (str): The full path to the image file.
-                    lmax (int): The maximum degree of the spherical harmonic expansion \
-                                of the image. Default :py:attr:`map.lmax`.
-            )pbdoc";
+        const char* animate = R"pbdoc(
+            Convenience routine to animate the body's surface map as it rotates.
+            Args:
+                cmap (str): The :py:mod:`matplotlib` colormap name. Default `plasma`.
+                res (int): The resolution of the map in pixels on a side. Default 150.
+                frames (int): The number of frames in the animation. Default 50.
+                gif (str): The name of the `.gif` file to save the animation to. \
+                           Requires `ImageMagick` to be installed. If set, does not \
+                           show the animation. Default :py:obj:`None`.
+        )pbdoc";
 
-            add_extras();
+        const char* load_image = R"pbdoc(
+            Load an image from file.
+            This routine loads an image file, computes its spherical harmonic
+            expansion up to degree :py:attr:`lmax`, and sets the map vector.
+            Args:
+                image (str): The full path to the image file.
+                lmax (int): The maximum degree of the spherical harmonic expansion \
+                            of the image. Default :py:attr:`map.lmax`.
+        )pbdoc";
 
-        }
-    };
-
-    /**
-    Documentation specific to the `starry.map` class.
-
-    */
-    template <>
-    void Map_<STARRY_MODULE_MAIN>::add_extras() {
-
-        doc = R"pbdoc(
-                Instantiate a :py:mod:`starry` surface map. Maps instantiated in this fashion
-                are *orthonormalized*, so the total integrated luminosity of the map is
-                :math:`2\sqrt{\pi} Y_{0,0}`.
-
-                Args:
-                    lmax (int): Largest spherical harmonic degree in the surface map. Default 2.
-
-                .. automethod:: __call__(theta=0, x=0, y=0)
-                .. automethod:: flux(theta=0, xo=0, yo=0, ro=0)
-                .. automethod:: rotate(theta=0)
-                .. automethod:: show()
-                .. automethod:: animate()
-                .. automethod:: reset()
-                .. autoattribute:: lmax
-                .. autoattribute:: N
-                .. autoattribute:: y
-                .. autoattribute:: u
-                .. autoattribute:: p
-                .. autoattribute:: g
-                .. autoattribute:: r
-                .. autoattribute:: s
-                .. autoattribute:: axis
-
-            )pbdoc";
-
-    };
-
-    /**
-    Python documentation for `starry`.
-
-    */
-    template <int Module>
-    class docs {
-    public:
-
-        const char * doc;
-        const char * nmulti;
-        void add_extras() { doc = R"pbdoc()pbdoc"; };
-        Map_<Module> Map;
-
-        docs() : Map() {
-
-            add_extras();
-
-        }
-    };
+    }
 
 }
 

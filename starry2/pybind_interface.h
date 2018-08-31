@@ -15,6 +15,7 @@ This defines the main Python interface to the code.
 #include <cmath>
 #include <stdlib.h>
 #include <vector>
+#include <type_traits>
 #include "maps.h"
 #include "docstrings.h"
 #include "utils.h"
@@ -34,19 +35,19 @@ namespace pybind_interface {
     using pybind_utils::get_Ul_inds;
 
     /**
-    Add type-specific features to the Map class.
+    Add type-specific features to the Map class: single-wavelength starry.
 
     */
-    template <typename T, int Module>
-    void add_Map_extras(py::class_<maps::Map<T>>& PyMap,
-                        const docstrings::docs<Module>& docs) {
+    template <typename T>
+    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<Row<T>>,
+                                             Row<T>>::value, void>::type
+    add_Map_extras(py::class_<maps::Map<T>>& PyMap) {
 
         PyMap
 
-            .def(py::init<int>(), "lmax"_a=2)
-
             .def("show", [](maps::Map<T> &map, std::string cmap, int res) {
-                py::object show = py::module::import("starry2.maps").attr("show");
+                py::object show =
+                    py::module::import("starry2.maps").attr("show");
                 Matrix<double> I;
                 I.resize(res, res);
                 Vector<Scalar<T>> x;
@@ -58,12 +59,13 @@ namespace pybind_interface {
                     }
                 }
                 show(I, "cmap"_a=cmap, "res"_a=res);
-            }, docs.Map.show, "cmap"_a="plasma", "res"_a=300)
+            }, docstrings::Map::show, "cmap"_a="plasma", "res"_a=300)
 
             .def("animate", [](maps::Map<T> &map, std::string cmap, int res,
                                int frames, int interval, std::string& gif) {
                 std::cout << "Rendering..." << std::endl;
-                py::object animate = py::module::import("starry2.maps").attr("animate");
+                py::object animate =
+                    py::module::import("starry2.maps").attr("animate");
                 std::vector<Matrix<double>> I;
                 Vector<Scalar<T>> x, theta;
                 x = Vector<Scalar<T>>::LinSpaced(res, -1, 1);
@@ -79,14 +81,17 @@ namespace pybind_interface {
                 }
                 animate(I, "cmap"_a=cmap, "res"_a=res, "gif"_a=gif,
                         "interval"_a=interval);
-             }, docs.Map.animate, "cmap"_a="plasma", "res"_a=150,
+             }, docstrings::Map::animate, "cmap"_a="plasma", "res"_a=150,
                                   "frames"_a=50, "interval"_a=75, "gif"_a="")
 
-             .def("load_image", [](maps::Map<T> &map, std::string& image, int lmax) {
-                 py::object load_map = py::module::import("starry.maps").attr("load_map");
+             .def("load_image", [](maps::Map<T> &map, std::string& image,
+                                   int lmax) {
+                 py::object load_map =
+                    py::module::import("starry.maps").attr("load_map");
                  if (lmax == -1)
                     lmax = map.lmax;
-                 Vector<double> y_double = load_map(image, map.lmax).template cast<Vector<double>>();
+                 Vector<double> y_double =
+                    load_map(image, map.lmax).template cast<Vector<double>>();
                  T y = y_double.template cast<Scalar<T>>();
                  Scalar<T> y_normed;
                  int n = 0;
@@ -108,38 +113,33 @@ namespace pybind_interface {
                  map.setAxis(yhat<Scalar<T>>());
                  map.rotate(90.0);
                  map.setAxis(map_axis);
-             }, docs.Map.load_image, "image"_a, "lmax"_a=-1);
+             }, docstrings::Map::load_image, "image"_a, "lmax"_a=-1);
 
     }
 
     /**
-    Add type-specific features to the Map class: spectral specialization.
+    Add type-specific features to the Map class: spectral starry.
 
     TODO: Add a "load_image" method to load images at specific wavelengths.
 
     */
-    template <>
-    void add_Map_extras(py::class_<maps::Map<Matrix<double>>>& PyMap,
-                        const docstrings::docs<STARRY_MODULE_SPECTRAL>& docs) {
+    template <typename T>
+    typename std::enable_if<std::is_base_of<Eigen::EigenBase<Row<T>>,
+                                            Row<T>>::value, void>::type
+    add_Map_extras(py::class_<maps::Map<T>>& PyMap) {
 
         PyMap
 
-            .def(py::init<int, int>(), "lmax"_a=2, "nwav"_a=1)
-
-            .def_property_readonly("nwav",
-                [](maps::Map<Matrix<double>> &map){
-                    return map.nwav;
-                }, docs.Map.nwav)
-
-            .def("show", [](maps::Map<Matrix<double>> &map, std::string cmap,
+            .def("show", [](maps::Map<T> &map, std::string cmap,
                             int res, std::string& gif) {
                 std::cout << "Rendering..." << std::endl;
-                py::object animate = py::module::import("starry2.maps").attr("animate");
+                py::object animate =
+                    py::module::import("starry2.maps").attr("animate");
                 std::vector<Matrix<double>> I;
-                Vector<double> x;
-                VectorT<double> row;
+                Vector<Scalar<T>> x;
+                VectorT<Scalar<T>> row;
                 std::vector<std::string> labels;
-                x = Vector<double>::LinSpaced(res, -1, 1);
+                x = Vector<Scalar<T>>::LinSpaced(res, -1, 1);
                 int interval = static_cast<int>(75 * (50.0 / map.nwav));
                 if (interval < 50)
                     interval = 50;
@@ -154,13 +154,14 @@ namespace pybind_interface {
                     for (int j = 0; j < res; j++){
                         row = map(0, x(i), x(j));
                         for (int t = 0; t < map.nwav; t++) {
-                            I[t](j, i) = row(t);
+                            I[t](j, i) = static_cast<double>(row(t));
                         }
                     }
                 }
                 animate(I, "cmap"_a=cmap, "res"_a=res, "gif"_a=gif,
                         "labels"_a=labels, "interval"_a=interval);
-            }, docs.Map.show, "cmap"_a="plasma", "res"_a=150, "gif"_a="");
+            }, docstrings::Map::show, "cmap"_a="plasma",
+               "res"_a=150, "gif"_a="");
 
     }
 
@@ -168,14 +169,23 @@ namespace pybind_interface {
     The pybind wrapper for the Map class.
 
     */
-    template <typename T, int Module>
-    void add_Map(py::class_<maps::Map<T>>& PyMap,
-                 const docstrings::docs<Module>& docs) {
+    template <typename T>
+    void add_Map(py::class_<maps::Map<T>>& PyMap) {
 
         PyMap
 
+            // Constructor
+            .def(py::init<int, int>(), "lmax"_a=2, "nwav"_a=1)
+
+            // Number of wavelength bins
+            .def_property_readonly("nwav",
+                [](maps::Map<Matrix<double>> &map){
+                    return map.nwav;
+                }, docstrings::Map::nwav)
+
             // Set one or more spherical harmonic coefficients to the same value
-            .def("__setitem__", [](maps::Map<T>& map, py::tuple lm, RowDouble<T>& coeff) {
+            .def("__setitem__", [](maps::Map<T>& map, py::tuple lm,
+                                   RowDouble<T>& coeff) {
                 auto inds = get_Ylm_inds(map.lmax, lm);
                 auto y = map.getY();
                 for (auto n : inds)
@@ -184,10 +194,13 @@ namespace pybind_interface {
             })
 
             // Set one or more spherical harmonic coefficients to an array of values
-            .def("__setitem__", [](maps::Map<T>& map, py::tuple lm, MapDouble<T>& coeff) {
+            .def("__setitem__", [](maps::Map<T>& map, py::tuple lm,
+                                   MapDouble<T>& coeff_) {
                 auto inds = get_Ylm_inds(map.lmax, lm);
+                T coeff = coeff_.template cast<Scalar<T>>();
                 if (coeff.rows() != static_cast<long>(inds.size()))
-                    throw errors::ValueError("Mismatch in slice length and coefficient array size.");
+                    throw errors::ValueError("Mismatch in slice length and "
+                                             "coefficient array size.");
                 auto y = map.getY();
                 int i = 0;
                 Row<T> row;
@@ -199,7 +212,8 @@ namespace pybind_interface {
             })
 
             // Retrieve one or more spherical harmonic coefficients
-            .def("__getitem__", [](maps::Map<T>& map, py::tuple lm) -> py::object {
+            .def("__getitem__", [](maps::Map<T>& map,
+                                   py::tuple lm) -> py::object {
                 auto inds = get_Ylm_inds(map.lmax, lm);
                 auto y = map.getY();
                 MapDouble<T> res;
@@ -217,7 +231,8 @@ namespace pybind_interface {
             })
 
             // Set one or more limb darkening coefficients to the same value
-            .def("__setitem__", [](maps::Map<T>& map, py::object l, RowDouble<T>& coeff) {
+            .def("__setitem__", [](maps::Map<T>& map, py::object l,
+                                   RowDouble<T>& coeff) {
                 auto inds = get_Ul_inds(map.lmax, l);
                 auto u = map.getU();
                 for (auto n : inds)
@@ -226,10 +241,13 @@ namespace pybind_interface {
             })
 
             // Set one or more limb darkening coefficients to an array of values
-            .def("__setitem__", [](maps::Map<T>& map, py::object l, MapDouble<T>& coeff) {
+            .def("__setitem__", [](maps::Map<T>& map, py::object l,
+                                   MapDouble<T>& coeff_) {
                 auto inds = get_Ul_inds(map.lmax, l);
+                T coeff = coeff_.template cast<Scalar<T>>();
                 if (coeff.rows() != static_cast<long>(inds.size()))
-                    throw errors::ValueError("Mismatch in slice length and coefficient array size.");
+                    throw errors::ValueError("Mismatch in slice length and "
+                                             "coefficient array size.");
                 auto u = map.getU();
                 int i = 0;
                 Row<T> row;
@@ -241,7 +259,8 @@ namespace pybind_interface {
             })
 
             // Retrieve one or more limb darkening coefficients
-            .def("__getitem__", [](maps::Map<T>& map, py::object l) -> py::object {
+            .def("__getitem__", [](maps::Map<T>& map,
+                                   py::object l) -> py::object {
                 auto inds = get_Ul_inds(map.lmax, l);
                 auto u = map.getU();
                 MapDouble<T> res;
@@ -265,7 +284,8 @@ namespace pybind_interface {
                                 py::array_t<double>& y)
                                 -> py::object {
                     return vectorize::evaluate(map, theta, x, y);
-                }, docs.Map.evaluate, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0)
+                }, docstrings::Map::evaluate, "theta"_a=0.0,
+                   "x"_a=0.0, "y"_a=0.0)
 
             .def_property("axis",
                 [](maps::Map<T> &map) -> UnitVector<double> {
@@ -274,41 +294,43 @@ namespace pybind_interface {
                 [](maps::Map<T> &map, UnitVector<double>& axis){
                         map.setAxis(axis.template cast<Scalar<T>>());
                     },
-                docs.Map.axis)
+                docstrings::Map::axis)
 
-            .def("reset", &maps::Map<T>::reset, docs.Map.reset)
+            .def("reset", &maps::Map<T>::reset, docstrings::Map::reset)
 
             .def_property_readonly("lmax", [](maps::Map<T> &map){
                     return map.lmax;
-                }, docs.Map.lmax)
+                }, docstrings::Map::lmax)
 
             .def_property_readonly("N", [](maps::Map<T> &map){
                     return map.N;
-                }, docs.Map.N)
+                }, docstrings::Map::N)
 
             .def_property_readonly("y", [](maps::Map<T> &map) -> MapDouble<T>{
                         return map.getY().template cast<double>();
-                    }, docs.Map.y)
+                    }, docstrings::Map::y)
 
             .def_property_readonly("u", [](maps::Map<T> &map) -> MapDouble<T>{
                         return map.getU().template cast<double>();
-                    }, docs.Map.u)
+                    }, docstrings::Map::u)
 
             .def_property_readonly("p", [](maps::Map<T> &map) -> MapDouble<T>{
                     return map.getP().template cast<double>();
-                }, docs.Map.p)
+                }, docstrings::Map::p)
 
             .def_property_readonly("g", [](maps::Map<T> &map) -> MapDouble<T>{
                     return map.getG().template cast<double>();
-                }, docs.Map.g)
+                }, docstrings::Map::g)
 
-            .def_property_readonly("r", [](maps::Map<T> &map) -> VectorT<double>{
+            .def_property_readonly("r", [](maps::Map<T> &map)
+                                        -> VectorT<double>{
                     return map.getR().template cast<double>();
-                }, docs.Map.r)
+                }, docstrings::Map::r)
 
-            .def_property_readonly("s", [](maps::Map<T> &map) -> VectorT<double>{
+            .def_property_readonly("s", [](maps::Map<T> &map)
+                                        -> VectorT<double>{
                     return map.getS().template cast<double>();
-                }, docs.Map.s)
+                }, docstrings::Map::s)
 
             .def("flux", [](maps::Map<T> &map,
                             py::array_t<double>& theta,
@@ -318,45 +340,36 @@ namespace pybind_interface {
                             bool gradient)
                             -> py::object {
                     return vectorize::flux(map, theta, xo, yo, ro, gradient);
-                }, docs.Map.flux, "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0,
+                }, docstrings::Map::flux, "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0,
                                    "ro"_a=0.0, "gradient"_a=false)
 
             .def("rotate", [](maps::Map<T> &map, double theta) {
                     map.rotate(static_cast<Scalar<T>>(theta));
-            }, docs.Map.rotate, "theta"_a=0)
+            }, docstrings::Map::rotate, "theta"_a=0)
 
-            .def("is_physical", [](maps::Map<T> &map, double epsilon, int max_iterations) {
+            .def("is_physical", [](maps::Map<T> &map, double epsilon,
+                                   int max_iterations) {
                     return map.isPhysical(static_cast<Scalar<T>>(epsilon),
                                    max_iterations);
-            }, docs.Map.is_physical, "epsilon"_a=1.e-6, "max_iterations"_a=100)
+            }, docstrings::Map::is_physical, "epsilon"_a=1.e-6,
+               "max_iterations"_a=100)
 
             .def("__repr__", &maps::Map<T>::info);
 
-        add_Map_extras(PyMap, docs);
+        add_Map_extras(PyMap);
 
     }
 
-    template <int Module>
-    void add_extras(py::module& m, const docstrings::docs<Module>& docs) { }
 
-    template <>
-    void add_extras(py::module& m,
-                    const docstrings::docs<STARRY_MODULE_MULTI>& docs) {
-        m.attr("NMULTI") = STARRY_NMULTI;
-    }
-
-    template <typename T, int Module>
-    void add_starry(py::module& m, const docstrings::docs<Module>& docs) {
+    template <typename T>
+    void add_starry(py::module& m) {
 
         // Main docs
-        m.doc() = docs.doc;
-
-        // Type-specific stuff
-        add_extras(m, docs);
+        m.doc() = docstrings::starry::doc;
 
         // Surface map class
-        py::class_<maps::Map<T>> PyMap(m, "Map", docs.Map.doc);
-        add_Map(PyMap, docs);
+        py::class_<maps::Map<T>> PyMap(m, "Map", docstrings::Map::doc);
+        add_Map(PyMap);
 
     }
 

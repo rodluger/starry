@@ -409,18 +409,32 @@ namespace utils {
         return v == 0.0;
     }
 
-    //! Does a map tensor have all zero elements? Specialization for all Eigen types
+    //! Does a map tensor have *all* zero elements? Specialization for all Eigen types
     template <typename T>
     inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
     allZero(const T& v) {
         return (v.array() == 0.0).all();
     }
 
-    //! Does a map tensor have all zero elements? Specialization for Scalar
+    //! Does a map tensor have *all* zero elements? Specialization for Scalar
     template <typename T>
     inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
     allZero(const T& v) {
         return v == 0.0;
+    }
+
+    //! Does a map tensor have *all* unit elements? Specialization for all Eigen types
+    template <typename T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    allOnes(const T& v) {
+        return (v.array() == 1.0).all();
+    }
+
+    //! Does a map tensor have *all* unit elements? Specialization for Scalar
+    template <typename T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    allOnes(const T& v) {
+        return v == 1.0;
     }
 
     //! VectorT-Vector dot product

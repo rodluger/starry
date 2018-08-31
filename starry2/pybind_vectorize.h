@@ -22,7 +22,8 @@ namespace pybind_vectorize {
     namespace py = pybind11;
 
     //! Vectorize a single python object
-    inline Vector<double> vectorize_arg(const py::array_t<double>& arg, int& size){
+    inline Vector<double> vectorize_arg(const py::array_t<double>& arg,
+                                        int& size){
         Vector<double> res;
         if (arg.size() == 1) {
             res = Vector<double>::Constant(size, py::cast<double>(arg));
@@ -114,14 +115,12 @@ namespace pybind_vectorize {
         }
     }
 
-    //! Vectorized `flux` method
+    //! Vectorized `flux` method: single-wavelength starry
     template <typename T>
-    py::object flux(maps::Map<T> &map,
-                    py::array_t<double>& theta,
-                    py::array_t<double>& xo,
-                    py::array_t<double>& yo,
-                    py::array_t<double>& ro,
-                    bool gradient){
+    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<Row<T>>,
+                                             Row<T>>::value, py::object>::type
+    flux(maps::Map<T> &map, py::array_t<double>& theta, py::array_t<double>& xo,
+         py::array_t<double>& yo, py::array_t<double>& ro, bool gradient){
 
         if (gradient) {
 
@@ -133,11 +132,14 @@ namespace pybind_vectorize {
                 grad[name].resize(n);
 
             // Nested lambda function;
-            // https://github.com/pybind/pybind11/issues/761#issuecomment-288818460
+            // https://github.com/pybind/pybind11/issues/
+            // 761#issuecomment-288818460
             int t = 0;
-            auto F = py::vectorize([&map, &grad, &t](double theta, double xo, double yo, double ro) {
+            auto F = py::vectorize([&map, &grad, &t](double theta, double xo,
+                                                     double yo, double ro) {
                 // Evaluate the function
-                double res = static_cast<double>(map.flux(theta, xo, yo, ro, true));
+                double res = static_cast<double>(map.flux(theta, xo, yo,
+                                                          ro, true));
                 // Gather the derivatives
                 for (int j = 0; j < map.dF.size(); j++)
                     grad[map.dF_names[j]](t) = static_cast<double>(map.dF(j));
@@ -151,22 +153,21 @@ namespace pybind_vectorize {
         } else {
 
             // Easy! We'll just return F
-            return py::vectorize([&map](double theta, double xo, double yo, double ro) {
-                        return static_cast<double>(map.flux(theta, xo, yo, ro, false));
-                   })(theta, xo, yo, ro);
+            return py::vectorize([&map](double theta, double xo,
+                                        double yo, double ro) {
+                return static_cast<double>(map.flux(theta, xo, yo, ro, false));
+            })(theta, xo, yo, ro);
 
         }
 
     }
 
-    //! Vectorized `flux` method
-    template <>
-    py::object flux(maps::Map<Matrix<double>> &map,
-                    py::array_t<double>& theta,
-                    py::array_t<double>& xo,
-                    py::array_t<double>& yo,
-                    py::array_t<double>& ro,
-                    bool gradient){
+    //! Vectorized `flux` method: spectral starry
+    template <typename T>
+    typename std::enable_if<std::is_base_of<Eigen::EigenBase<Row<T>>,
+                                            Row<T>>::value, py::object>::type
+    flux(maps::Map<T> &map, py::array_t<double>& theta, py::array_t<double>& xo,
+         py::array_t<double>& yo, py::array_t<double>& ro, bool gradient){
 
         // Vectorize the arguments manually
         Vector<double> theta_v, xo_v, yo_v, ro_v;
@@ -187,11 +188,12 @@ namespace pybind_vectorize {
 
                 // Function value
                 F.row(i) = map.flux(theta_v(i), xo_v(i),
-                                    yo_v(i), ro_v(i), true);
+                           yo_v(i), ro_v(i), true).template cast<double>();
 
                 // Gradient
                 for (int j = 0; j < map.dF.rows(); ++j)
-                    grad[map.dF_names[j]].row(i) = map.dF.row(j);
+                    grad[map.dF_names[j]].row(i) =
+                        map.dF.row(j).template cast<double>();
 
             }
 
@@ -203,7 +205,8 @@ namespace pybind_vectorize {
             // Iterate through the timeseries
             Matrix<double> F(sz, map.nwav);
             for (size_t i = 0; i < sz; ++i) {
-                F.row(i) = map.flux(theta_v(i), xo_v(i), yo_v(i), ro_v(i), false);
+                F.row(i) = map.flux(theta_v(i), xo_v(i),
+                           yo_v(i), ro_v(i), false).template cast<double>();
             }
 
             // Cast to python object
@@ -213,12 +216,12 @@ namespace pybind_vectorize {
 
     }
 
-    //! Vectorized `evaluate` method
+    //! Vectorized `evaluate` method: single-wavelength starry
     template <typename T>
-    py::object evaluate(maps::Map<T> &map,
-                        py::array_t<double>& theta,
-                        py::array_t<double>& x,
-                        py::array_t<double>& y){
+    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<Row<T>>,
+                                             Row<T>>::value, py::object>::type
+    evaluate(maps::Map<T> &map, py::array_t<double>& theta,
+             py::array_t<double>& x, py::array_t<double>& y){
 
         // Easy! We'll just return I
         return py::vectorize([&map](double theta, double x, double y) {
@@ -227,12 +230,12 @@ namespace pybind_vectorize {
 
     }
 
-    //! Vectorized `evaluate` method
-    template <>
-    py::object evaluate(maps::Map<Matrix<double>> &map,
-                        py::array_t<double>& theta,
-                        py::array_t<double>& x,
-                        py::array_t<double>& y){
+    //! Vectorized `evaluate` method: spectral starry
+    template <typename T>
+    typename std::enable_if<std::is_base_of<Eigen::EigenBase<Row<T>>,
+                                            Row<T>>::value, py::object>::type
+    evaluate(maps::Map<T> &map, py::array_t<double>& theta,
+             py::array_t<double>& x, py::array_t<double>& y){
 
         // Vectorize the arguments manually
         Vector<double> theta_v, x_v, y_v;
@@ -242,7 +245,7 @@ namespace pybind_vectorize {
         // Iterate through the timeseries
         Matrix<double> I(sz, map.nwav);
         for (size_t i = 0; i < sz; ++i) {
-            I.row(i) = map(theta_v(i), x_v(i), y_v(i));
+            I.row(i) = map(theta_v(i), x_v(i), y_v(i)).template cast<double>();
         }
 
         // Cast to python object

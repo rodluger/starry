@@ -1,9 +1,7 @@
 /**
 Keplerian star/planet/moon system class.
 
-TODO: gradients
-
-TODO: Disable setting the Y00 element
+TODO: gradients, exposure time
 
 */
 
@@ -20,10 +18,6 @@ TODO: Disable setting the Y00 element
 #include "utils.h"
 #include "rotation.h"
 
-// Body codes
-#define STARRY_BODY        0
-#define STARRY_PRIMARY     1
-#define STARRY_SECONDARY   2
 
 namespace units {
 
@@ -119,17 +113,14 @@ namespace kepler {
         protected:
 
             using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
-
             S r;                                                                /**< Body radius in units of primary radius */
             S L;                                                                /**< Body luminosity in units of primary luminosity */
             S prot;                                                             /**< Body rotation period in seconds */
             S tref;                                                             /**< Reference time in seconds */
-
             S theta0_deg;                                                       /**< Body initial rotation angle in degrees */
             S angvelrot_deg;                                                    /**< Body rotational angular velocity in degrees / second */
             S z0;                                                               /**< Reference point for retarded time calculation (the primary, assuming massless secondaries) */
             S delay;                                                            /**< The light travel time delay in seconds */
-
             Row<T> flux_cur;                                                    /**< Current flux visible from the body */
             Row<T> flux_tot;                                                    /**< Total flux from the body */
 
@@ -173,7 +164,6 @@ namespace kepler {
         public:
 
             // I/O
-            virtual inline int getId() {return STARRY_BODY;}
             void setRadius(const S& r_);
             S getRadius() const;
             void setLuminosity(const S& L_);
@@ -277,6 +267,8 @@ namespace kepler {
         return tref / units::DayToSeconds;
     }
 
+    //!
+
 
     /* ---------------- */
     /*     PRIMARY      */
@@ -296,11 +288,8 @@ namespace kepler {
         protected:
 
             using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
-
-            // Prevent the user from modifying these
-            using Body<T>::setRadius;
-            using Body<T>::setLuminosity;
-
+            using Body<T>::setRadius;                                           /**< Declaring this as `protected` hides it from the user */
+            using Body<T>::setLuminosity;                                       /**< Declaring this as `protected` hides it from the user */
             S r_meters;                                                         /**< Radius of the body in meters */
             S c_light;                                                          /**< Speed of light in units of primary radius / s */
 
@@ -324,7 +313,6 @@ namespace kepler {
             }
 
             // I/O
-            virtual inline int getId() {return STARRY_PRIMARY;}
             void setRadiusInMeters(const S& r_);
             S getRadiusInMeters() const;
             const Matrix<Scalar<T>>& getLightcurve() const;
@@ -461,7 +449,6 @@ namespace kepler {
         public:
 
             // I/O
-            virtual inline int getId() {return STARRY_SECONDARY;}
             VectorT<Scalar<T>> getR() const;
             VectorT<Scalar<T>> getS() const;
             void setSemi(const S& a_);
@@ -735,7 +722,8 @@ namespace kepler {
     template <class T>
     void Secondary<T>::setOrbPer(const Scalar<T>& porb_) {
         if (porb_ > 0) porb = porb_ * units::DayToSeconds;
-        else throw errors::ValueError("Orbital period must be greater than zero.");
+        else throw errors::ValueError("Orbital period must be "
+                                      "greater than zero.");
         angvelorb = (2 * pi<Scalar<T>>()) / porb;
         vamp = angvelorb * a / sqrt(1 - ecc2);
         computeTheta0();
@@ -768,7 +756,8 @@ namespace kepler {
     template <class T>
     void Secondary<T>::setEcc(const Scalar<T>& ecc_) {
         if ((ecc_ >= 0) && (ecc_ < 1)) ecc = ecc_;
-        else throw errors::ValueError("Eccentricity must be in the range [0, 1).");
+        else throw errors::ValueError("Eccentricity must be "
+                                      "in the range [0, 1).");
         sqrtonepluse = sqrt(1 + ecc);
         sqrtoneminuse = sqrt(1 - ecc);
         ecc2 = ecc * ecc;
@@ -866,7 +855,6 @@ namespace kepler {
 
             using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
             size_t t;                                                           /**< Current time index */
-
             Matrix<Scalar<T>> lightcurve;                                       /**< The body's full light curve */
 
             // Protected methods
@@ -897,8 +885,6 @@ namespace kepler {
             // Public methods
             void compute(const Vector<Scalar<T>>& time);
             const Matrix<Scalar<T>>& getLightcurve() const;
-
-
 
     };
 
@@ -945,6 +931,11 @@ namespace kepler {
             if (secondary->nwav != primary->nwav)
                 throw errors::ValueError("All bodies must have the same "
                                          "wavelength grid.");
+            if (!allOnes(secondary->getY(0, 0)))
+                throw errors::ValueError("Bodies instantiated via the Kepler "
+                                         "module must all have Y_{0, 0} = 1. "
+                                         "You probably want to change the "
+                                         "body's luminosity instead.");
             secondary->xvec.resize(NT);
             secondary->yvec.resize(NT);
             secondary->zvec.resize(NT);
@@ -994,13 +985,15 @@ namespace kepler {
             }
 
             // Update the light curves and orbital positions
-            primary->lightcurve.block(t, 0, 1, primary->nwav) = primary->flux_cur;
+            primary->lightcurve.block(t, 0, 1, primary->nwav) =
+                primary->flux_cur;
             lightcurve.block(t, 0, 1, primary->nwav) = primary->flux_cur;
             for (auto secondary : secondaries) {
                 secondary->xvec(t) = secondary->x_cur;
                 secondary->yvec(t) = secondary->y_cur;
                 secondary->zvec(t) = secondary->z_cur;
-                secondary->lightcurve.block(t, 0, 1, primary->nwav) = secondary->flux_cur;
+                secondary->lightcurve.block(t, 0, 1, primary->nwav) =
+                    secondary->flux_cur;
                 lightcurve.block(t, 0, 1, primary->nwav) += secondary->flux_cur;
             }
 
@@ -1009,9 +1002,5 @@ namespace kepler {
     }
 
 }; // namespace kepler
-
-#undef STARRY_BODY
-#undef STARRY_PRIMARY
-#undef STARRY_SECONDARY
 
 #endif
