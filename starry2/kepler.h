@@ -822,50 +822,123 @@ namespace kepler {
 
             using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
             unsigned long t;                                                    /**< Current time index */
-            std::vector<Body<T>*> bodies;
 
             // Protected methods
-            void castBodies();
+            inline void syncSpeedOfLight();
 
         public:
 
             Primary<T>* primary;
             std::vector<Secondary<T>*> secondaries;
 
-            //! Constructor
-            explicit System(std::vector<Body<T>*> bodies) : bodies(bodies) {
-
-                // Cast each body from Body to Primary or Secondary
-                castBodies();
-
-                // Propagate the speed of light to all secondaries
-                for (auto secondary : secondaries)
-                    secondary->c_light = &(primary->c_light);
-
+            //! Constructor: single secondary
+            explicit System(Primary<T>* primary,
+                            Secondary<T>* secondary) :
+                            primary(primary)
+            {
+                secondaries.push_back(secondary);
+                syncSpeedOfLight();
             }
+
+            //! Constructor: multiple secondaries
+            explicit System(Primary<T>* primary,
+                            std::vector<Secondary<T>*> secondaries) :
+                            primary(primary),
+                            secondaries(secondaries)
+            {
+                syncSpeedOfLight();
+            }
+
+
+            // TODO: Make protected
+            void computeInstantaneous(const Vector<T>& time);
+
 
     };
 
-    //! Cast all of the bodies to the correct subclasses
+    //! Sync the speed of light among all bodies
     template <class T>
-    void System<T>::castBodies() {
+    inline void System<T>::syncSpeedOfLight() {
+        for (auto secondary : secondaries)
+            secondary->c_light = &(primary->c_light);
+    }
 
-        // Check that the user instantiated the correct body classes
-        for (int n = 0; n < bodies.size(); ++n) {
-            if ((n == 0) && (bodies[n]->getId() != STARRY_PRIMARY))
-                throw errors::ValueError("The first body must be "
-                                         "an instance of `Primary`.");
-            else if ((n > 0) && (bodies[n]->getId() != STARRY_SECONDARY))
-                throw errors::ValueError("All bodies following the "
-                                         "first one must be instances "
-                                         "of `Secondary`.");
+    /**
+    Compute the full system light curve. Special case w/ no exposure
+    time integration, optimized for speed.
+
+    */
+    template <class T>
+    void System<T>::computeInstantaneous(const Vector<T>& time) {
+
+        using S = Scalar<T>;
+
+        /*
+        int i, j;
+        S xo, yo, ro;
+        S tsec;
+        int p, o;
+        unsigned long NT = time.size();
+        int NB = bodies.size();
+        flux = Vector<T>::Zero(NT);
+
+        // Allocate arrays and check that the planet maps are physical
+        // Propagate the speed of light to all the bodies
+        // Sync the orbital and sky maps
+        for (i = 0; i < NB; i++) {
+            bodies[i]->x.resize(NT);
+            bodies[i]->y.resize(NT);
+            bodies[i]->z.resize(NT);
+            bodies[i]->flux.resize(NT);
+            bodies[i]->clight = clight;
+            bodies[i]->sync_maps();
         }
 
-        // Cast the bodies to the respective subclasses
-        primary = static_cast<Primary<T>*>(bodies[0]);
-        for (int n = 1; n < bodies.size(); ++n)
-            secondaries.push_back(static_cast<Secondary<T>*>(bodies[n]));
+        // Loop through the timeseries
+        for (t = 0; t < NT; t++){
 
+            // Time in seconds
+            tsec = time(t) * DAY;
+
+            // Take an orbital step
+            for (i = 0; i < NB; i++)
+                bodies[i]->step(tsec);
+
+            // Compute any occultations
+            for (i = 0; i < NB; i++) {
+                for (j = i + 1; j < NB; j++) {
+                    // Determine the relative positions of the two bodies
+                    if (bodies[j]->z_ > bodies[i]->z_) {
+                        o = j;
+                        p = i;
+                    } else {
+                        o = i;
+                        p = j;
+                    }
+                    xo = (bodies[o]->x_ - bodies[p]->x_) / bodies[p]->r;
+                    yo = (bodies[o]->y_ - bodies[p]->y_) / bodies[p]->r;
+                    ro = (bodies[o]->r / bodies[p]->r);
+                    // Compute the flux in occultation
+                    if (sqrt(xo * xo + yo * yo) < 1 + ro) {
+                        bodies[p]->getflux(tsec, xo, yo, ro);
+                    }
+                }
+            }
+
+            // Update the body vectors
+            for (i = 0; i < NB; i++) {
+                bodies[i]->x(t) = bodies[i]->x_;
+                bodies[i]->y(t) = bodies[i]->y_;
+                bodies[i]->z(t) = bodies[i]->z_;
+                bodies[i]->flux(t) = bodies[i]->flux_;
+                flux(t) += bodies[i]->flux_;
+            }
+
+        }
+
+        // Set the flag
+        computed = true;
+        */
     }
 
 }; // namespace kepler

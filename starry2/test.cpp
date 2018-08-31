@@ -14,12 +14,9 @@ int main() {
     Primary<T> star{};
     Secondary<T> b{};
     Secondary<T> c{};
-    std::vector<Body<T>*> bodies{&star, &b, &c};
-    System<T> system(bodies);
+    std::vector<Secondary<T>*> planets{&b, &c};
+    System<T> system(&star, &b);
 
-    b.setRadius(10.0);
-    std::cout << system.secondaries[0]->getRadius() << std::endl;
-    system.secondaries[0]->setRadius(20.0);
-    std::cout << b.getRadius() << std::endl;
+
 
 }
