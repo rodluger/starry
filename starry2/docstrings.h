@@ -68,8 +68,12 @@ namespace docstrings {
             The number of map coefficients, equal to `(l + 1) ** 2`. *Read-only.*
         )pbdoc";
 
+        const char* precision = R"pbdoc(
+            The floating-point precision of the map. *Read-only.*
+        )pbdoc";
+
         const char* nwav = R"pbdoc(
-            The number of wavelength bins in `spectral` mode. *Read-only.*
+            The number of wavelength bins. *Read-only.*
         )pbdoc";
 
         const char* y = R"pbdoc(
@@ -150,12 +154,13 @@ namespace docstrings {
             this routine uses Sturm's theorem to find the number of roots. For pure
             spherical harmonic maps up to `l = 1`, the solution is analytic. For all
             other cases, this routine attempts to find the global minimum numerically
-            and checks if it is negative. For :py:obj:`spectral` maps, this routine
+            and checks if it is negative. For maps with `nwav > 1`, this routine
             returns an array of boolean values, one per wavelength bin.
 
             Args:
                 epsilon (float): Numerical tolerance. Default 1.e-6
-                max_iterations (int): Maximum number of iterations for the numerical solver. Default 100
+                max_iterations (int): Maximum number of iterations for the \
+                    numerical solver. Default 100
         )pbdoc";
 
         const char* show = R"pbdoc(

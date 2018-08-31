@@ -134,6 +134,23 @@ namespace utils {
     //! Machine precision for current type
     template<class T> inline T mach_eps() { return mach_eps(tag<T>()); }
 
+    //! @private
+    template<class T> inline std::string precision(tag<T>) {
+        return "unknown";
+    }
+
+    //! @private
+    template<> inline std::string precision(tag<double>) {
+        return "double";
+    }
+
+    //! @private
+    template<> inline std::string precision(tag<Multi>) {
+        return std::to_string(STARRY_NMULTI) + " digits";
+    }
+
+    //! Scalar type precision descriptor
+    template<class T> inline std::string precision() { return precision(tag<T>()); }
 
     // --------------------------
     // ------ Unit Vectors ------

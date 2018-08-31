@@ -188,6 +188,12 @@ namespace pybind_interface {
                     return map.nwav;
             }, docstrings::Map::nwav)
 
+            // Floating point precision
+            .def_property_readonly("precision",
+                [](maps::Map<T> &map){
+                    return precision<Scalar<T>>();
+            }, docstrings::Map::precision)
+
             // Set one or more spherical harmonic coefficients to the same value
             .def("__setitem__", [](maps::Map<T>& map, py::tuple lm,
                                    RowDouble<T>& coeff) {
