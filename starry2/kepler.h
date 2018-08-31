@@ -36,6 +36,8 @@ namespace kepler {
     using namespace utils;
     using maps::Map;
     using rotation::Wigner;
+    using std::abs;
+    using std::isinf;
 
     // Forward declare our classes
     template <class T> class Body;
@@ -209,7 +211,7 @@ namespace kepler {
     template <class T>
     inline void Body<T>::occult(const Scalar<T>& time, const Scalar<T>& xo,
                                 const Scalar<T>& yo, const Scalar<T>& ro) {
-        if (L != 0)
+        if ((L != 0) && (xo * xo + yo * yo < (1 + ro) * (1 + ro)))
             flux_cur += L * getFlux(theta(time), xo, yo, ro, false)
                         - flux_tot;
     }
@@ -272,8 +274,6 @@ namespace kepler {
     Scalar<T> Body<T>::getRefTime() const {
         return tref / units::DayToSeconds;
     }
-
-
 
 
     /* ---------------- */
@@ -389,6 +389,12 @@ namespace kepler {
             using Body<T>::theta;
             */
 
+            // Computed values
+            Vector<Row<T>> lightcurve;                                          /**< The body's full light curve */
+            Vector<Scalar<T>> xvec;                                             /**< The body's Cartesian x position vector */
+            Vector<Scalar<T>> yvec;                                             /**< The body's Cartesian y position vector */
+            Vector<Scalar<T>> zvec;                                             /**< The body's Cartesian z position vector */
+
             // Sky projection stuff
             Map<T> skyMap;                                                      /**< An internal copy of the map, rotated into the sky plane */
             T skyY;                                                             /**< The skyMap spherical harmonic vector of coefficients */
@@ -441,15 +447,10 @@ namespace kepler {
                 const S& yo, const S& ro, bool gradient);
             void computeTheta0();
             inline void syncSkyMap();
-            inline void orbitStep(const T& time);
-            inline void applyLightDelay();
+            inline void orbitStep(const S& time);
+            inline void applyLightDelay(const S& time);
 
         public:
-
-            Vector<Row<T>> lightcurve;                                          /**< The body's full light curve */
-            Vector<Scalar<T>> xvec;                                             /**< The body's Cartesian x position vector */
-            Vector<Scalar<T>> yvec;                                             /**< The body's Cartesian y position vector */
-            Vector<Scalar<T>> zvec;                                             /**< The body's Cartesian z position vector */
 
             // I/O
             virtual inline int getId() {return STARRY_SECONDARY;}
@@ -469,6 +470,10 @@ namespace kepler {
             S getOmega() const;
             void setLambda0(const S& lambda0_);
             S getLambda0() const;
+            const Vector<Row<T>>& getLightcurve() const;
+            const Vector<Row<T>>& getXVector() const;
+            const Vector<Row<T>>& getYVector() const;
+            const Vector<Row<T>>& getZVector() const;
 
             //! Constructor
             explicit Secondary(int lmax=2, int nwav=1) :
@@ -601,7 +606,7 @@ namespace kepler {
 
     */
     template <class T>
-    void Secondary<T>::orbitStep(const T& time) {
+    void Secondary<T>::orbitStep(const Scalar<T>& time) {
 
         // Mean anomaly
         M = mod2pi(M0 + angvelorb * (time - tref));
@@ -627,7 +632,7 @@ namespace kepler {
         z_cur = rorb * swf * sini;
 
         // Compute the light travel time delay
-        if (!isinf(*c_light)) applyLightDelay();
+        if (!isinf(*c_light)) applyLightDelay(time);
 
     }
 
@@ -637,7 +642,7 @@ namespace kepler {
 
     */
     template <class T>
-    void Secondary<T>::applyLightDelay() {
+    void Secondary<T>::applyLightDelay(const Scalar<T>& time) {
 
         // Component of the velocity out of the sky
         // Obtained by differentiating the expressions above
@@ -773,7 +778,7 @@ namespace kepler {
     //! Set the longitude of pericenter
     template <class T>
     void Secondary<T>::setVarPi(const Scalar<T>& w_) {
-        w = mod2pi(w_) * pi<Scalar<T>>() / 180.0;
+        w = mod2pi(w_ * pi<Scalar<T>>() / 180.0);
         M0 = lambda0 - w;
         ecw = ecc * cos(w);
         esw = ecc * sin(w);
@@ -789,7 +794,7 @@ namespace kepler {
     //! Set the longitude of ascending node
     template <class T>
     void Secondary<T>::setOmega(const Scalar<T>& Om_) {
-        Omega = mod2pi(Om_) * pi<Scalar<T>>() / 180.0;
+        Omega = mod2pi(Om_ * pi<Scalar<T>>() / 180.0);
         cosO = cos(Omega);
         sinO = sin(Omega);
         cosOcosi = cosO * cosi;
@@ -805,7 +810,7 @@ namespace kepler {
     //! Set the mean longitude at the reference time
     template <class T>
     void Secondary<T>::setLambda0(const Scalar<T>& lambda0_) {
-        lambda0 = mod2pi(lambda0_) * pi<Scalar<T>>() / 180.0;
+        lambda0 = mod2pi(lambda0_ * pi<Scalar<T>>() / 180.0);
         M0 = lambda0 - w;
         computeTheta0();
     }
@@ -816,6 +821,29 @@ namespace kepler {
         return lambda0 * 180.0 / pi<Scalar<T>>();
     }
 
+    //! Get the body's full light curve
+    template <class T>
+    const Vector<Row<T>>& Secondary<T>::getLightcurve() const {
+        return lightcurve;
+    }
+
+    //! Get the body's x position vector
+    template <class T>
+    const Vector<Row<T>>& Secondary<T>::getXVector() const {
+        return xvec;
+    }
+
+    //! Get the body's y position vector
+    template <class T>
+    const Vector<Row<T>>& Secondary<T>::getYVector() const {
+        return yvec;
+    }
+
+    //! Get the body's z position vector
+    template <class T>
+    const Vector<Row<T>>& Secondary<T>::getZVector() const {
+        return zvec;
+    }
 
     /* ----------------- */
     /*       SYSTEM      */
@@ -828,9 +856,12 @@ namespace kepler {
         protected:
 
             using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
-            unsigned long t;                                                    /**< Current time index */
+            size_t t;                                                           /**< Current time index */
+
+            Vector<Row<T>> lightcurve;                                          /**< The body's full light curve */
 
             // Protected methods
+            void computeInstantaneous(const Vector<Scalar<T>>& time);
 
         public:
 
@@ -854,12 +885,32 @@ namespace kepler {
 
             }
 
+            // Public methods
+            void compute(const Vector<Scalar<T>>& time);
+            const Vector<Row<T>>& getLightcurve() const;
 
-            // TODO: Make protected
-            void computeInstantaneous(const Vector<T>& time);
 
 
     };
+
+    //! Return the full system light curve.
+    template <class T>
+    const Vector<Row<T>>& System<T>::getLightcurve() const {
+        return lightcurve;
+    }
+
+    /**
+    Compute the full system light curve.
+
+    */
+    template <class T>
+    void System<T>::compute(const Vector<Scalar<T>>& time_) {
+
+        // TODO: Exposure time, gradients, etc.
+
+        return computeInstantaneous(time_);
+
+    }
 
     /**
     Compute the full system light curve. Special case w/ no exposure
@@ -867,72 +918,85 @@ namespace kepler {
 
     */
     template <class T>
-    void System<T>::computeInstantaneous(const Vector<T>& time) {
+    void System<T>::computeInstantaneous(const Vector<Scalar<T>>& time_) {
 
         using S = Scalar<T>;
-        int i, j;
         S xo, yo, ro;
-        S tsec;
         int p, o;
-        unsigned long NT = time.size();
+        size_t NT = time_.size();
+        size_t NS = secondaries.size();
+        Vector<Scalar<T>> time = time_ * units::DayToSeconds;
 
         // Allocate arrays
         // Sync the orbital and sky maps
         // Sync the speed of light across all secondaries
+        lightcurve.resize(NT, primary->nwav);
+        primary->lightcurve.resize(NT, primary->nwav);
         for (auto secondary : secondaries) {
+            if (secondary->nwav != primary->nwav)
+                throw errors::ValueError("All bodies must have the same "
+                                         "wavelength grid.");
             secondary->xvec.resize(NT);
             secondary->yvec.resize(NT);
             secondary->zvec.resize(NT);
-            secondary->flux.resize(NT, secondary->nwav);
-            secondary->sync_maps();
+            secondary->lightcurve.resize(NT, primary->nwav);
+            secondary->syncSkyMap();
             secondary->c_light = &(primary->c_light);
         }
 
-        /*
         // Loop through the timeseries
         for (t = 0; t < NT; t++){
 
-            // Time in seconds
-            tsec = time(t) * DAY;
+            // Compute fluxes and take an orbital step
+            primary->computeTotal(time(t));
+            for (auto secondary : secondaries) {
+                secondary->orbitStep(time(t));
+                secondary->computeTotal(time(t));
+            }
 
-            // Take an orbital step
-            for (i = 0; i < NB; i++)
-                bodies[i]->step(tsec);
+            // Compute occultations involving the primary
+            for (auto secondary : secondaries) {
+                if (secondary->z_cur > 0) {
+                    primary->occult(time(t), secondary->x_cur,
+                                    secondary->y_cur, secondary->r);
+                } else {
+                    ro = 1. / secondary->r;
+                    secondary->occult(time(t), -ro * secondary->x_cur,
+                                      -ro * secondary->y_cur, ro);
+                }
+            }
 
-            // Compute any occultations
-            for (i = 0; i < NB; i++) {
-                for (j = i + 1; j < NB; j++) {
-                    // Determine the relative positions of the two bodies
-                    if (bodies[j]->z_ > bodies[i]->z_) {
+            // Compute occultations among the secondaries
+            for (int i = 0; i < NS; i++) {
+                for (int j = i + 1; j < NS; j++) {
+                    if (secondaries[j]->z_cur > secondaries[i]->z_cur) {
                         o = j;
                         p = i;
                     } else {
                         o = i;
                         p = j;
                     }
-                    xo = (bodies[o]->x_ - bodies[p]->x_) / bodies[p]->r;
-                    yo = (bodies[o]->y_ - bodies[p]->y_) / bodies[p]->r;
-                    ro = (bodies[o]->r / bodies[p]->r);
-                    // Compute the flux in occultation
-                    if (sqrt(xo * xo + yo * yo) < 1 + ro) {
-                        bodies[p]->getflux(tsec, xo, yo, ro);
-                    }
+                    ro = 1. / secondaries[p]->r;
+                    xo = ro * (secondaries[o]->x_cur - secondaries[p]->x_cur);
+                    yo = ro * (secondaries[o]->y_cur - secondaries[p]->y_cur);
+                    ro = ro * secondaries[o]->r;
+                    secondaries[p]->occult(time(t), xo, yo, ro);
                 }
             }
 
-            // Update the body vectors
-            for (i = 0; i < NB; i++) {
-                bodies[i]->x(t) = bodies[i]->x_;
-                bodies[i]->y(t) = bodies[i]->y_;
-                bodies[i]->z(t) = bodies[i]->z_;
-                bodies[i]->flux(t) = bodies[i]->flux_;
-                flux(t) += bodies[i]->flux_;
+            // Update the light curves and orbital positions
+            primary->lightcurve(t) = primary->flux_cur;
+            lightcurve(t) = primary->flux_cur;
+            for (auto secondary : secondaries) {
+                secondary->xvec(t) = secondary->x_cur;
+                secondary->yvec(t) = secondary->y_cur;
+                secondary->zvec(t) = secondary->z_cur;
+                secondary->lightcurve(t) = secondary->flux_cur;
+                lightcurve(t) += secondary->flux_cur;
             }
 
         }
 
-        */
-        
     }
 
 }; // namespace kepler
