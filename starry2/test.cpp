@@ -18,8 +18,8 @@ int main() {
     System<T> system(bodies);
 
     b.setRadius(10.0);
-    std::cout << system.bodies[1]->getRadius() << std::endl;
-    system.bodies[1]->setRadius(20.0);
+    std::cout << system.secondaries[0]->getRadius() << std::endl;
+    system.secondaries[0]->setRadius(20.0);
     std::cout << b.getRadius() << std::endl;
 
 }

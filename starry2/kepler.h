@@ -3,8 +3,6 @@ Keplerian star/planet/moon system class.
 
 TODO: gradients
 
-TODO: bind clight to clight in primary via pointer
-
 */
 
 #ifndef _STARRY_ORBITAL_H_
@@ -28,6 +26,8 @@ TODO: bind clight to clight in primary via pointer
 namespace units {
 
     const double DayToSeconds = 86400.0;                                        /**< One day in seconds */
+    const double SpeedOfLight = 299792458.;                                     /**< Speed of light in m / s */
+    const double SolarRadius = 6.95700e8;                                       /**< Radius of the sun in m */
 
 }; // namespace units
 
@@ -36,6 +36,12 @@ namespace kepler {
     using namespace utils;
     using maps::Map;
     using rotation::Wigner;
+
+    // Forward declare our classes
+    template <class T> class Body;
+    template <class T> class Primary;
+    template <class T> class Secondary;
+    template <class T> class System;
 
 
     /* ---------------- */
@@ -103,6 +109,8 @@ namespace kepler {
     */
     template <class T>
     class Body : public Map<T> {
+
+        friend class System<T>;
 
         protected:
 
@@ -266,6 +274,8 @@ namespace kepler {
     }
 
 
+
+
     /* ---------------- */
     /*     PRIMARY      */
     /* ---------------- */
@@ -279,11 +289,18 @@ namespace kepler {
     template <class T>
     class Primary : public Body<T> {
 
+        friend class System<T>;
+
         protected:
+
+            using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
 
             // Prevent the user from modifying these
             using Body<T>::setRadius;
             using Body<T>::setLuminosity;
+
+            S r_meters;                                                         /**< Radius of the body in meters */
+            S c_light;                                                          /**< Speed of light in units of primary radius / s */
 
         public:
 
@@ -294,6 +311,7 @@ namespace kepler {
                 Body<T>(lmax, nwav)
             {
 
+                setRadiusInMeters(0.0);
                 setRadius(1.0);
                 setLuminosity(1.0);
                 this->setRotPer(0.0);
@@ -303,8 +321,35 @@ namespace kepler {
 
             // I/O
             virtual inline int getId() {return STARRY_PRIMARY;}
+            void setRadiusInMeters(const S& r_);
+            S getRadiusInMeters() const;
 
     };
+
+
+    /* --------------------- */
+    /*      PRIMARY: I/O     */
+    /* --------------------- */
+
+    //! Set the physical radius
+    template <class T>
+    void Primary<T>::setRadiusInMeters(const Scalar<T>& r_) {
+        if (r_ > 0) {
+            r_meters = r_;
+            c_light = units::SpeedOfLight / r_meters;
+        } else if (r_ == 0) {
+            r_meters = 0;
+            c_light = INFINITY;
+        } else {
+            throw errors::ValueError("The radius cannot be negative.");
+        }
+    }
+
+    //! Get the physical radius
+    template <class T>
+    Scalar<T> Primary<T>::getRadiusInMeters() const {
+        return r_meters;
+    }
 
 
     /* ----------------- */
@@ -318,6 +363,8 @@ namespace kepler {
     */
     template <class T>
     class Secondary : public Body<T> {
+
+        friend class System<T>;
 
         protected:
 
@@ -359,7 +406,7 @@ namespace kepler {
             S lambda0;                                                          /**< The mean longitude at the reference time in radians */
 
             // Keplerian solution variables
-            S clight;                                                           /**< The speed of light in units of the primary radius / second */
+            S* c_light;                                                         /**< Pointer to the speed of light in units of primary radius / s */
             S M;                                                                /**< Mean anomaly in radians */
             S E;                                                                /**< Eccentric anomaly in radians */
             S f;                                                                /**< True anomaly in radians */
@@ -401,8 +448,6 @@ namespace kepler {
             virtual inline int getId() {return STARRY_SECONDARY;}
             VectorT<Scalar<T>> getR() const;
             VectorT<Scalar<T>> getS() const;
-            void setCLight(const S& c_);
-            S getCLight() const;
             void setSemi(const S& a_);
             S getSemi() const;
             void setOrbPer(const S& porb_);
@@ -446,7 +491,6 @@ namespace kepler {
                 setVarPi(90.0);
                 setOmega(0.0);
                 setLambda0(90.0);
-                setCLight(INFINITY);
 
                 // Initialize the sky rotation matrix
                 RSky = new Matrix<S>[lmax + 1];
@@ -576,7 +620,7 @@ namespace kepler {
         z_cur = rorb * swf * sini;
 
         // Compute the light travel time delay
-        if (!isinf(clight)) applyLightDelay();
+        if (!isinf(*c_light)) applyLightDelay();
 
     }
 
@@ -600,7 +644,7 @@ namespace kepler {
         // for the instantaneous velocity and acceleration of the body.
         // This is slightly better than doing
         //
-        //          dt_ = (z0 - z_) / clight
+        //          dt_ = (z0 - z_) / c_light
         //
         // which is actually the time delay at the **current** position.
         // But the photons left the planet from the **retarded** position,
@@ -609,11 +653,11 @@ namespace kepler {
         // that much, though. See the derivation at
         // https://github.com/rodluger/starry/issues/66
         if (abs(az) < 1e-10)
-            delay = (z0 - z_cur) / (clight + vz);
+            delay = (z0 - z_cur) / (*c_light + vz);
         else
-            delay = (clight / az) * ((1 + vz / clight)
-                    - sqrt((1 + vz / clight) * (1 + vz / clight)
-                    - 2 * az * (z0 - z_cur) / (clight * clight)));
+            delay = (*c_light / az) * ((1 + vz / *c_light)
+                    - sqrt((1 + vz / *c_light) * (1 + vz / *c_light)
+                    - 2 * az * (z0 - z_cur) / (*c_light * *c_light)));
 
         // Re-compute Kepler's equation, this time
         // solving for the **retarded** position
@@ -650,19 +694,6 @@ namespace kepler {
     template <class T>
     VectorT<Scalar<T>> Secondary<T>::getS() const {
         return skyMap.getS();
-    }
-
-    //! Set the speed of light
-    template <class T>
-    void Secondary<T>::setCLight(const Scalar<T>& c_) {
-        if (c_ > 0) clight = c_;
-        else throw errors::ValueError("The speed of light must be positive.");
-    }
-
-    //! Get the speed of light
-    template <class T>
-    Scalar<T> Secondary<T>::getCLight() const {
-        return clight;
     }
 
     //! Set the semi-major axis
@@ -790,30 +821,52 @@ namespace kepler {
         protected:
 
             using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
-            S clight;
             unsigned long t;                                                    /**< Current time index */
+            std::vector<Body<T>*> bodies;
+
+            // Protected methods
+            void castBodies();
 
         public:
 
-            std::vector<Body<T>*> bodies;
+            Primary<T>* primary;
+            std::vector<Secondary<T>*> secondaries;
 
             //! Constructor
             explicit System(std::vector<Body<T>*> bodies) : bodies(bodies) {
 
-                // Check that the user instantiated the correct classes
-                for (int n = 0; n < bodies.size(); ++n) {
-                    if ((n == 0) && (bodies[n]->getId() != STARRY_PRIMARY))
-                        throw errors::ValueError("The first body must be "
-                                                 "an instance of `Primary`.");
-                    else if ((n > 0) && (bodies[n]->getId() != STARRY_SECONDARY))
-                        throw errors::ValueError("All bodies following the "
-                                                 "first one must be instances "
-                                                 "of `Secondary`.");
-                }
+                // Cast each body from Body to Primary or Secondary
+                castBodies();
+
+                // Propagate the speed of light to all secondaries
+                for (auto secondary : secondaries)
+                    secondary->c_light = &(primary->c_light);
 
             }
 
     };
+
+    //! Cast all of the bodies to the correct subclasses
+    template <class T>
+    void System<T>::castBodies() {
+
+        // Check that the user instantiated the correct body classes
+        for (int n = 0; n < bodies.size(); ++n) {
+            if ((n == 0) && (bodies[n]->getId() != STARRY_PRIMARY))
+                throw errors::ValueError("The first body must be "
+                                         "an instance of `Primary`.");
+            else if ((n > 0) && (bodies[n]->getId() != STARRY_SECONDARY))
+                throw errors::ValueError("All bodies following the "
+                                         "first one must be instances "
+                                         "of `Secondary`.");
+        }
+
+        // Cast the bodies to the respective subclasses
+        primary = static_cast<Primary<T>*>(bodies[0]);
+        for (int n = 1; n < bodies.size(); ++n)
+            secondaries.push_back(static_cast<Secondary<T>*>(bodies[n]));
+
+    }
 
 }; // namespace kepler
 
