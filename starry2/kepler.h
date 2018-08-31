@@ -304,6 +304,8 @@ namespace kepler {
 
         public:
 
+            Vector<Row<T>> lightcurve;                                          /**< The body's full light curve */
+
             //! Constructor
             explicit Primary(int lmax=2, int nwav=1) :
 
@@ -443,6 +445,11 @@ namespace kepler {
             inline void applyLightDelay();
 
         public:
+
+            Vector<Row<T>> lightcurve;                                          /**< The body's full light curve */
+            Vector<Scalar<T>> xvec;                                             /**< The body's Cartesian x position vector */
+            Vector<Scalar<T>> yvec;                                             /**< The body's Cartesian y position vector */
+            Vector<Scalar<T>> zvec;                                             /**< The body's Cartesian z position vector */
 
             // I/O
             virtual inline int getId() {return STARRY_SECONDARY;}
@@ -824,7 +831,6 @@ namespace kepler {
             unsigned long t;                                                    /**< Current time index */
 
             // Protected methods
-            inline void syncSpeedOfLight();
 
         public:
 
@@ -837,7 +843,6 @@ namespace kepler {
                             primary(primary)
             {
                 secondaries.push_back(secondary);
-                syncSpeedOfLight();
             }
 
             //! Constructor: multiple secondaries
@@ -846,7 +851,7 @@ namespace kepler {
                             primary(primary),
                             secondaries(secondaries)
             {
-                syncSpeedOfLight();
+
             }
 
 
@@ -855,13 +860,6 @@ namespace kepler {
 
 
     };
-
-    //! Sync the speed of light among all bodies
-    template <class T>
-    inline void System<T>::syncSpeedOfLight() {
-        for (auto secondary : secondaries)
-            secondary->c_light = &(primary->c_light);
-    }
 
     /**
     Compute the full system light curve. Special case w/ no exposure
@@ -872,28 +870,25 @@ namespace kepler {
     void System<T>::computeInstantaneous(const Vector<T>& time) {
 
         using S = Scalar<T>;
-
-        /*
         int i, j;
         S xo, yo, ro;
         S tsec;
         int p, o;
         unsigned long NT = time.size();
-        int NB = bodies.size();
-        flux = Vector<T>::Zero(NT);
 
-        // Allocate arrays and check that the planet maps are physical
-        // Propagate the speed of light to all the bodies
+        // Allocate arrays
         // Sync the orbital and sky maps
-        for (i = 0; i < NB; i++) {
-            bodies[i]->x.resize(NT);
-            bodies[i]->y.resize(NT);
-            bodies[i]->z.resize(NT);
-            bodies[i]->flux.resize(NT);
-            bodies[i]->clight = clight;
-            bodies[i]->sync_maps();
+        // Sync the speed of light across all secondaries
+        for (auto secondary : secondaries) {
+            secondary->xvec.resize(NT);
+            secondary->yvec.resize(NT);
+            secondary->zvec.resize(NT);
+            secondary->flux.resize(NT, secondary->nwav);
+            secondary->sync_maps();
+            secondary->c_light = &(primary->c_light);
         }
 
+        /*
         // Loop through the timeseries
         for (t = 0; t < NT; t++){
 
@@ -936,9 +931,8 @@ namespace kepler {
 
         }
 
-        // Set the flag
-        computed = true;
         */
+        
     }
 
 }; // namespace kepler
