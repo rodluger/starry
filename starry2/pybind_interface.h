@@ -184,9 +184,9 @@ namespace pybind_interface {
 
             // Number of wavelength bins
             .def_property_readonly("nwav",
-                [](maps::Map<Matrix<double>> &map){
+                [](maps::Map<T> &map){
                     return map.nwav;
-                }, docstrings::Map::nwav)
+            }, docstrings::Map::nwav)
 
             // Set one or more spherical harmonic coefficients to the same value
             .def("__setitem__", [](maps::Map<T>& map, py::tuple lm,
