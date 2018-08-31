@@ -128,6 +128,7 @@ namespace pybind_vectorize {
             size_t n = max(theta.size(), max(xo.size(),
                            max(yo.size(), ro.size())));
             std::map<string, Vector<double>> grad;
+            map._resizeGradients();
             for (auto name : map.dF_names)
                 grad[name].resize(n);
 
@@ -179,6 +180,7 @@ namespace pybind_vectorize {
 
             // Initialize the gradient matrix
             std::map<string, Matrix<double>> grad;
+            map._resizeGradients();
             for (auto name : map.dF_names)
                 grad[name].resize(sz, map.nwav);
 

@@ -325,6 +325,7 @@ namespace maps {
             void setAxis(const UnitVector<Scalar<T>>& axis_);
             UnitVector<Scalar<T>> getAxis() const;
             std::string info();
+            inline void _resizeGradients();
 
             // Rotate the base map
             void rotate(const Scalar<T>&  theta_);
@@ -341,8 +342,8 @@ namespace maps {
                 const Scalar<T>& ro_=0,
                 bool gradient=false);
 
-           // Is the map physical?
-           inline RowBool<T> isPhysical(const Scalar<T>& epsilon=1.e-6,
+            // Is the map physical?
+            inline RowBool<T> isPhysical(const Scalar<T>& epsilon=1.e-6,
                 const int max_iterations=100);
 
     };
@@ -457,6 +458,23 @@ namespace maps {
         setRow(u, 0, Scalar<T>(-1.0));
         axis = yhat<Scalar<T>>();
         update();
+    }
+
+    /**
+    Public workaround to resize the gradients
+    prior to a flux evaluation, so that we know
+    externally how many gradients to expect. This
+    is used in the pybind11 interface.
+
+    */
+    template <class T>
+    inline void Map<T>::_resizeGradients() {
+        if (y_deg == 0)
+            resizeGradients(1, lmax);
+        else if (u_deg == 0)
+            resizeGradients(N, 0);
+        else
+            resizeGradients(N, lmax);
     }
 
 
