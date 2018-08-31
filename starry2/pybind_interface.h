@@ -44,9 +44,9 @@ namespace pybind_interface {
     template <typename T>
     typename std::enable_if<!std::is_base_of<Eigen::EigenBase<Row<T>>,
                                              Row<T>>::value, void>::type
-    addMapExtras(py::class_<maps::Map<T>>& PyMap) {
+    addMapExtras(py::class_<maps::Map<T>>& Map) {
 
-        PyMap
+        Map
 
             .def("show", [](maps::Map<T> &map, std::string cmap, int res) {
                 py::object show =
@@ -127,9 +127,9 @@ namespace pybind_interface {
     template <typename T>
     typename std::enable_if<std::is_base_of<Eigen::EigenBase<Row<T>>,
                                             Row<T>>::value, void>::type
-    addMapExtras(py::class_<maps::Map<T>>& PyMap) {
+    addMapExtras(py::class_<maps::Map<T>>& Map) {
 
-        PyMap
+        Map
 
             .def("show", [](maps::Map<T> &map, std::string cmap,
                             int res, std::string& gif) {
@@ -174,10 +174,10 @@ namespace pybind_interface {
     py::class_<maps::Map<T>> bindMap(py::module& m, const char* name) {
 
         // Declare the class
-        py::class_<maps::Map<T>> PyMap(m, name, docstrings::Map::doc);
+        py::class_<maps::Map<T>> Map(m, name, docstrings::Map::doc);
 
         // Add generic attributes & methods
-        PyMap
+        Map
 
             // Constructor
             .def(py::init<int, int>(), "lmax"_a=2, "nwav"_a=1)
@@ -194,7 +194,7 @@ namespace pybind_interface {
                     return precision<Scalar<T>>();
             }, docstrings::Map::precision)
 
-            // Set one or more spherical harmonic coefficients to the same value
+            // Set one or more spherical harmonic coeffs to the same value
             .def("__setitem__", [](maps::Map<T>& map, py::tuple lm,
                                    RowDouble<T>& coeff) {
                 auto inds = get_Ylm_inds(map.lmax, lm);
@@ -204,7 +204,7 @@ namespace pybind_interface {
                 map.setY(y);
             })
 
-            // Set one or more spherical harmonic coefficients to an array of values
+            // Set one or more spherical harmonic coeffs to an array of values
             .def("__setitem__", [](maps::Map<T>& map, py::tuple lm,
                                    MapDouble<T>& coeff_) {
                 auto inds = get_Ylm_inds(map.lmax, lm);
@@ -368,11 +368,130 @@ namespace pybind_interface {
             .def("__repr__", &maps::Map<T>::info);
 
         // Add type-specific attributes & methods
-        addMapExtras(PyMap);
+        addMapExtras(Map);
 
-        return PyMap;
+        return Map;
 
     }
+
+    /**
+    The pybind wrapper for the Body class.
+
+    */
+    template <typename T>
+    py::class_<kepler::Body<T>> bindBody(py::module& m, const char* name) {
+
+        // Declare the class
+        py::class_<kepler::Body<T>> Body(m, name);
+
+        // Add generic attributes & methods
+        Body
+
+            // Radius in units of primary radius
+            .def_property("r",
+                [](kepler::Body<T> &body) {
+                    return static_cast<double>(body.getRadius());
+                },
+                [](kepler::Body<T> &body, const double& r){
+                    body.setRadius(r);
+                })
+
+            // Luminosity in units of primary luminosity
+            .def_property("L",
+                [](kepler::Body<T> &body) {
+                    return static_cast<double>(body.getLuminosity());
+                },
+                [](kepler::Body<T> &body, const double& L){
+                    body.setLuminosity(L);
+                })
+
+            // Rotation period in days
+            .def_property("prot",
+                [](kepler::Body<T> &body) {
+                    return static_cast<double>(body.getRotPer());
+                },
+                [](kepler::Body<T> &body, const double& prot){
+                    body.setRotPer(prot);
+                })
+
+            // Reference time in days
+            .def_property("tref",
+                [](kepler::Body<T> &body) {
+                    return static_cast<double>(body.getRefTime());
+                },
+                [](kepler::Body<T> &body, const double& tref){
+                    body.setRefTime(tref);
+                });
+
+        return Body;
+    }
+
+    /**
+    The pybind wrapper for the Primary class.
+
+    */
+    template <typename T>
+    py::class_<maps::Map<T>> bindPrimary(py::module& m,
+                                         py::class_<kepler::Body<T>> Body,
+                                         const char* name) {
+
+        // Declare the class
+        py::class_<kepler::Primary<T>> Primary(m, name, Body);
+
+        // Add generic attributes & methods
+        Primary
+
+            // Constructor
+            .def(py::init<int, int>(), "lmax"_a=2, "nwav"_a=1)
+
+            // Radius in units of primary radius
+            .def_property("r",
+                [](kepler::Primary<T> &body) {
+                    return static_cast<double>(body.getRadius());
+                },
+                [](kepler::Primary<T> &body, const double& r){
+                    body.setRadius(r);
+                })
+
+            // Luminosity in units of primary luminosity
+            .def_property("L",
+                [](kepler::Primary<T> &body) {
+                    return static_cast<double>(body.getLuminosity());
+                },
+                [](kepler::Primary<T> &body, const double& L){
+                    body.setLuminosity(L);
+                });
+
+            // TODO
+
+        return Primary;
+
+    }
+
+    /**
+    The pybind wrapper for the Secondary class.
+
+    */
+    template <typename T>
+    py::class_<maps::Map<T>> bindSecondary(py::module& m,
+                                           py::class_<kepler::Body<T>> Body,
+                                           const char* name) {
+
+        // Declare the class
+        py::class_<kepler::Secondary<T>> Secondary(m, name, Body);
+
+        // Add generic attributes & methods
+        Secondary
+
+            // Constructor
+            .def(py::init<int, int>(), "lmax"_a=2, "nwav"_a=1);
+
+            // TODO
+
+        return Secondary;
+
+    }
+
 
 }; // namespace pybind_interface
 

@@ -24,7 +24,7 @@ TODO: Speed up limb-darkened map rotations, since
       if we pass y_deg along. Don't implement it in
       W.compute, since we need gradients.
 
-TODO: Add unit tests for `is_physical`
+TODO: Add unit tests for `isPhysical`
 
 */
 
@@ -62,8 +62,6 @@ namespace maps {
     // Forward-declare some stuff
     template <class T> class Map;
     template <class T> std::string get_info(const Map<T>& map);
-    template <> std::string get_info(const Map<Vector<Multi>>& map);
-    template <> std::string get_info(const Map<Matrix<double>>& map);
 
     /**
     Stores cached Map variables.
@@ -141,8 +139,6 @@ namespace maps {
 
     /**
     Check that `Map` is instantiated with the right type: Vector<T>.
-    This is the type of a `starry.Map` or a `starry.multi.Map` in the
-    Python interface.
 
     */
     template <class T>
@@ -158,8 +154,6 @@ namespace maps {
 
     /**
     Check that `Map` is instantiated with the right type: Matrix<T>.
-    This is the type of a `starry.spectral.Map` in the
-    Python interface.
 
     */
     template <class T>

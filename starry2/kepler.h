@@ -165,9 +165,9 @@ namespace kepler {
 
             // I/O
             void setRadius(const S& r_);
-            S getRadius() const;
+            virtual S getRadius() const;
             void setLuminosity(const S& L_);
-            S getLuminosity() const;
+            virtual S getLuminosity() const;
             void setRotPer(const S& prot_);
             S getRotPer() const;
             void setRefTime(const S& tref_);
@@ -288,8 +288,6 @@ namespace kepler {
         protected:
 
             using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
-            using Body<T>::setRadius;                                           /**< Declaring this as `protected` hides it from the user */
-            using Body<T>::setLuminosity;                                       /**< Declaring this as `protected` hides it from the user */
             S r_meters;                                                         /**< Radius of the body in meters */
             S c_light;                                                          /**< Speed of light in units of primary radius / s */
 
@@ -313,6 +311,8 @@ namespace kepler {
             }
 
             // I/O
+            void setRadius(const S& r_);
+            void setLuminosity(const S& L_);
             void setRadiusInMeters(const S& r_);
             S getRadiusInMeters() const;
             const Matrix<Scalar<T>>& getLightcurve() const;
@@ -349,6 +349,23 @@ namespace kepler {
     const Matrix<Scalar<T>>& Primary<T>::getLightcurve() const {
         return lightcurve;
     }
+
+    //! Set the body's radius
+    template <class T>
+    void Primary<T>::setRadius(const Scalar<T>& r_) {
+        if (r_ != 1.0)
+            throw errors::NotImplementedError("The radius of the primary body "
+                                              "is fixed at unity.");
+    }
+
+    //! Set the body's luminosity
+    template <class T>
+    void Primary<T>::setLuminosity(const Scalar<T>& L_) {
+        if (L_ != 1.0)
+            throw errors::NotImplementedError("The luminosity of the primary "
+                                              "body is fixed at unity.");
+    }
+
 
     /* ----------------- */
     /*      SECONDARY    */
