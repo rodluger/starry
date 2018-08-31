@@ -1777,6 +1777,33 @@ namespace maps {
         return std::string(os.str());
     }
 
+    //! Human-readable name of the map (spectral + multi)
+    template <>
+    std::string get_info(const Map<Matrix<Multi>>& map) {
+        std::ostringstream os;
+        os << "<"
+           << STARRY_NMULTI << "-digit precision "
+           << "map of "
+           << "degree " << map.y_deg << " "
+           << "with ";
+        if (map.nwav == 1)
+            os << "one wavelength bin and ";
+        else
+            os << map.nwav << " wavelength bins and ";
+        if (map.u_deg == 0)
+            os << "no ";
+        else if (map.u_deg == 1)
+            os << "1st order ";
+        else if (map.u_deg == 2)
+            os << "2nd order ";
+        else if (map.u_deg == 3)
+            os << "3rd order ";
+        else
+            os << map.u_deg << "th order ";
+        os << "limb darkening"
+           << ">";
+        return std::string(os.str());
+    }
 
 }; // namespace maps
 

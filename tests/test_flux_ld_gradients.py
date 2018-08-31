@@ -4,10 +4,10 @@ import numpy as np
 norm = 0.5 * np.sqrt(np.pi)
 
 
-def num_grad_flux(Map, lmax, y_deg, yvec, uvec, axis, theta, xo, yo, ro,
+def num_grad_flux(multi, lmax, y_deg, yvec, uvec, axis, theta, xo, yo, ro,
                   eps=1e-8):
     """Return the gradient computed numerically."""
-    map = Map(lmax)
+    map = starry2.Map(lmax, multi=multi)
     map.axis = axis
     map[:, :] = yvec
     map[:] = uvec
@@ -56,12 +56,12 @@ def num_grad_flux(Map, lmax, y_deg, yvec, uvec, axis, theta, xo, yo, ro,
     return grad
 
 
-def run_flux(Map, case="ld"):
+def run_flux(multi=False, case="ld"):
     """Compare the gradients to numerical derivatives."""
 
     # Instantiate
     lmax = 3
-    map = Map(lmax)
+    map = starry2.Map(lmax, multi=multi)
     map.axis = [0, 1, 0]
     if case == "ld":
         # Limb darkening only
@@ -82,7 +82,7 @@ def run_flux(Map, case="ld"):
     I = map.flux(theta=30)
     I_grad, dI = map.flux(theta=30, gradient=True)
     assert np.allclose(I, I_grad, atol=1e-7)
-    dI_num = num_grad_flux(Map, lmax, y_deg, map.y, map.u,
+    dI_num = num_grad_flux(multi, lmax, y_deg, map.y, map.u,
                            map.axis, 30, 0, 0, 0)
     for key in dI.keys():
         if (key in dI_num.keys()) and (not np.isnan(dI[key])):
@@ -92,7 +92,7 @@ def run_flux(Map, case="ld"):
     I = map.flux(xo=0.1, yo=0.1, ro=0.1)
     I_grad, dI = map.flux(xo=0.1, yo=0.1, ro=0.1, gradient=True)
     assert np.allclose(I, I_grad, atol=1e-7)
-    dI_num = num_grad_flux(Map, lmax, y_deg, map.y, map.u,
+    dI_num = num_grad_flux(multi, lmax, y_deg, map.y, map.u,
                            map.axis, 0, 0.1, 0.1, 0.1)
     for key in dI.keys():
         if (key in dI_num.keys()) and (not np.isnan(dI[key])):
@@ -102,7 +102,7 @@ def run_flux(Map, case="ld"):
     I = map.flux(xo=0.1, yo=0.1, ro=0.1, theta=30)
     I_grad, dI = map.flux(xo=0.1, yo=0.1, ro=0.1, theta=30, gradient=True)
     assert np.allclose(I, I_grad, atol=1e-7)
-    dI_num = num_grad_flux(Map, lmax, y_deg, map.y, map.u,
+    dI_num = num_grad_flux(multi, lmax, y_deg, map.y, map.u,
                            map.axis, 30, 0.1, 0.1, 0.1)
     for key in dI.keys():
         if (key in dI_num.keys()) and (not np.isnan(dI[key])):
@@ -113,9 +113,9 @@ def run_flux(Map, case="ld"):
     I_grad, dI = map.flux(xo=0.1, yo=0.1, ro=0.1,
                               theta=[0, 30], gradient=True)
     assert np.allclose(I, I_grad, atol=1e-7)
-    dI_num1 = num_grad_flux(Map, lmax, y_deg, map.y, map.u,
+    dI_num1 = num_grad_flux(multi, lmax, y_deg, map.y, map.u,
                             map.axis, 0, 0.1, 0.1, 0.1)
-    dI_num2 = num_grad_flux(Map, lmax, y_deg, map.y, map.u,
+    dI_num2 = num_grad_flux(multi, lmax, y_deg, map.y, map.u,
                             map.axis, 30, 0.1, 0.1, 0.1)
     for key in dI.keys():
         if (key in dI_num.keys()) and (not np.any(np.isnan(dI[key]))):
@@ -126,13 +126,13 @@ def run_flux(Map, case="ld"):
 def test_ld_flux_with_gradients_double():
     """Test the flux with gradients [double]."""
     for case in ["ld", "sph", "ld+sph"]:
-        run_flux(starry2.Map, case=case)
+        run_flux(multi=False, case=case)
 
 
 def test_ld_flux_with_gradients_multi():
     """Test the flux with gradients [multi]."""
     for case in ["ld", "sph", "ld+sph"]:
-        run_flux(starry2.multi.Map, case=case)
+        run_flux(multi=True, case=case)
 
 
 if __name__ == "__main__":

@@ -34,7 +34,7 @@ def test_transit():
     map[3] = 0.1
     flux = map.flux(xo=xo, yo=yo, ro=ro)
 
-    map2 = starry2.multi.Map(3)
+    map2 = starry2.Map(3, multi=True)
     map2[1] = 0.4
     map2[2] = 0.26
     map2[3] = 0.1
@@ -69,7 +69,7 @@ def test_occultation():
     map[:] = 1
     flux = map.flux(axis=axis, theta=theta, xo=xo, yo=yo, ro=ro)
 
-    map2 = starry2.multi.Map(5)
+    map2 = starry2.Map(5, multi=True)
     map2[:, :] = norm
     map2.axis = axis
     flux2 = map2.flux(theta=theta, xo=xo, yo=yo, ro=ro)

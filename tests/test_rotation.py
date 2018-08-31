@@ -4,10 +4,10 @@ import numpy as np
 norm = 0.5 * np.sqrt(np.pi)
 
 
-def run(Map):
+def run(multi=False):
     """Apply some elementary rotations."""
     # Instantiate
-    map = Map(1)
+    map = starry2.Map(1, multi=multi)
     map[0, 0] = 0
     map[1, 0] = norm
     assert np.allclose(map.y, np.array([0, 0, norm, 0]))
@@ -31,7 +31,7 @@ def run(Map):
                                         np.sqrt(3 / (4 * np.pi)), 0]))
 
     # A more complex rotation
-    map = Map(5)
+    map = starry2.Map(5, multi=multi)
     map[:, :] = 1
     map.axis = [1, 2, 3]
     map.rotate(60)
@@ -47,7 +47,7 @@ def run(Map):
     assert np.allclose(map.y, benchmark)
 
     # Test rotation caching
-    map = Map(2)
+    map = starry2.Map(2, multi=multi)
     map[0, 0] = 0
     map[1, 0] = norm
     map.axis = [1, 2, 3]
@@ -60,12 +60,12 @@ def run(Map):
 
 def test_rotation_double():
     """Test some elementary rotations [double]."""
-    return run(starry2.Map)
+    return run(multi=False)
 
 
 def test_rotation_multi():
     """Test some elementary rotations [multi]."""
-    return run(starry2.multi.Map)
+    return run(multi=True)
 
 
 if __name__ == "__main__":

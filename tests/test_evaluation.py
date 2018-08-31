@@ -4,11 +4,11 @@ import numpy as np
 norm = 0.5 * np.sqrt(np.pi)
 
 
-def run(Map):
+def run(multi=False):
     """Compare the map evaluation to some benchmarks."""
     # Instantiate
     lmax = 2
-    map = Map(lmax)
+    map = starry2.Map(lmax, multi=multi)
     map.axis = [0, 1, 0]
     map[:, :] = norm
 
@@ -39,12 +39,12 @@ def run(Map):
 
 def test_evaluation_double():
     """Test the map evaluation against some benchmarks [double]."""
-    return run(starry2.Map)
+    return run(multi=False)
 
 
 def test_evaluation_multi():
     """Test the map evaluation against some benchmarks [multi]."""
-    return run(starry2.multi.Map)
+    return run(multi=True)
 
 
 if __name__ == "__main__":

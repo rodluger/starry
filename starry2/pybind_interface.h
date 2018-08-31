@@ -1,6 +1,9 @@
 /**
 This defines the main Python interface to the code.
 
+TODO: Add a "load_image" method to Spectral to
+      load images at specific wavelengths.
+
 */
 
 #ifndef _STARRY_PYBIND_H_
@@ -41,7 +44,7 @@ namespace pybind_interface {
     template <typename T>
     typename std::enable_if<!std::is_base_of<Eigen::EigenBase<Row<T>>,
                                              Row<T>>::value, void>::type
-    add_Map_extras(py::class_<maps::Map<T>>& PyMap) {
+    addMapExtras(py::class_<maps::Map<T>>& PyMap) {
 
         PyMap
 
@@ -120,13 +123,11 @@ namespace pybind_interface {
     /**
     Add type-specific features to the Map class: spectral starry.
 
-    TODO: Add a "load_image" method to load images at specific wavelengths.
-
     */
     template <typename T>
     typename std::enable_if<std::is_base_of<Eigen::EigenBase<Row<T>>,
                                             Row<T>>::value, void>::type
-    add_Map_extras(py::class_<maps::Map<T>>& PyMap) {
+    addMapExtras(py::class_<maps::Map<T>>& PyMap) {
 
         PyMap
 
@@ -170,8 +171,12 @@ namespace pybind_interface {
 
     */
     template <typename T>
-    void add_Map(py::class_<maps::Map<T>>& PyMap) {
+    py::class_<maps::Map<T>> bindMap(py::module& m, const char* name) {
 
+        // Declare the class
+        py::class_<maps::Map<T>> PyMap(m, name, docstrings::Map::doc);
+
+        // Add generic attributes & methods
         PyMap
 
             // Constructor
@@ -356,20 +361,10 @@ namespace pybind_interface {
 
             .def("__repr__", &maps::Map<T>::info);
 
-        add_Map_extras(PyMap);
+        // Add type-specific attributes & methods
+        addMapExtras(PyMap);
 
-    }
-
-
-    template <typename T>
-    void add_starry(py::module& m) {
-
-        // Main docs
-        m.doc() = docstrings::starry::doc;
-
-        // Surface map class
-        py::class_<maps::Map<T>> PyMap(m, "Map", docstrings::Map::doc);
-        add_Map(PyMap);
+        return PyMap;
 
     }
 
