@@ -189,6 +189,12 @@ namespace utils {
         return fmod(numer, T(2 * pi<T>()));
     }
 
+    //! Return the modulo of an angle by 360 degrees
+    template <typename T>
+    T mod360(const T& numer) {
+        return fmod(numer, T(360.0));
+    }
+
     //! Figure out the dimensions and types of the coefficients of a map.
     namespace types {
 

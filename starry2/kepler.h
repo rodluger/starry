@@ -3,6 +3,8 @@ Keplerian star/planet/moon system class.
 
 TODO: gradients
 
+TODO: Disable setting the Y00 element
+
 */
 
 #ifndef _STARRY_ORBITAL_H_
@@ -123,8 +125,8 @@ namespace kepler {
             S prot;                                                             /**< Body rotation period in seconds */
             S tref;                                                             /**< Reference time in seconds */
 
-            S theta0;                                                           /**< Body initial rotation angle in radians */
-            S angvelrot;                                                        /**< Body rotational angular velocity in radians / second */
+            S theta0_deg;                                                       /**< Body initial rotation angle in degrees */
+            S angvelrot_deg;                                                    /**< Body rotational angular velocity in degrees / second */
             S z0;                                                               /**< Reference point for retarded time calculation (the primary, assuming massless secondaries) */
             S delay;                                                            /**< The light travel time delay in seconds */
 
@@ -132,19 +134,19 @@ namespace kepler {
             Row<T> flux_tot;                                                    /**< Total flux from the body */
 
             // Private methods
-            inline S theta(const S& time);
+            inline S theta_deg(const S& time);
             void computeTotal(const S& time);
             void occult(const S& time, const S& xo, const S& yo, const S& ro);
 
             //! Wrapper to get the flux from the map (overriden in Secondary)
-            virtual inline Row<T> getFlux(const S& theta, const S& xo,
+            virtual inline Row<T> getFlux(const S& theta_deg, const S& xo,
                 const S& yo, const S& ro, bool gradient) {
-                return this->flux(theta, xo, yo, ro, gradient);
+                return this->flux(theta_deg, xo, yo, ro, gradient);
             }
 
             //! Compute the initial rotation angle (overriden in Secondary)
             virtual void computeTheta0() {
-                theta0 = 0;
+                theta0_deg = 0;
             }
 
             //! Constructor
@@ -188,20 +190,20 @@ namespace kepler {
     /*    BODY: OPERATIONS    */
     /* ---------------------- */
 
-    //! Rotation angle as a function of (retarded) time
+    //! Rotation angle in degrees as a function of (retarded) time
     template <class T>
-    inline Scalar<T> Body<T>::theta(const Scalar<T>& time) {
+    inline Scalar<T> Body<T>::theta_deg(const Scalar<T>& time) {
         if (prot == INFINITY)
-            return theta0;
+            return theta0_deg;
         else
-            return mod2pi(theta0 + angvelrot * (time - tref - delay));
+            return mod360(theta0_deg + angvelrot_deg * (time - tref - delay));
     }
 
     //! Compute the total flux from the body
     template <class T>
     inline void Body<T>::computeTotal(const Scalar<T>& time) {
         if (L != 0)
-            flux_tot = L * getFlux(theta(time), 0, 0, 0, false);
+            flux_tot = L * getFlux(theta_deg(time), 0, 0, 0, false);
         else
             setZero(flux_tot);
         flux_cur = flux_tot;
@@ -212,7 +214,7 @@ namespace kepler {
     inline void Body<T>::occult(const Scalar<T>& time, const Scalar<T>& xo,
                                 const Scalar<T>& yo, const Scalar<T>& ro) {
         if ((L != 0) && (xo * xo + yo * yo < (1 + ro) * (1 + ro)))
-            flux_cur += L * getFlux(theta(time), xo, yo, ro, false)
+            flux_cur += L * getFlux(theta_deg(time), xo, yo, ro, false)
                         - flux_tot;
     }
 
@@ -253,7 +255,7 @@ namespace kepler {
         if (prot_ > 0) prot = prot_ * units::DayToSeconds;
         else if (prot_ == 0) prot = INFINITY;
         else throw errors::ValueError("Body's rotation period must be positive.");
-        angvelrot = (2 * pi<Scalar<T>>()) / prot;
+        angvelrot_deg = 360.0 / prot;
         computeTheta0();
     }
 
@@ -304,7 +306,7 @@ namespace kepler {
 
         public:
 
-            Vector<Row<T>> lightcurve;                                          /**< The body's full light curve */
+            Matrix<Scalar<T>> lightcurve;                                       /**< The body's full light curve */
 
             //! Constructor
             explicit Primary(int lmax=2, int nwav=1) :
@@ -325,6 +327,7 @@ namespace kepler {
             virtual inline int getId() {return STARRY_PRIMARY;}
             void setRadiusInMeters(const S& r_);
             S getRadiusInMeters() const;
+            const Matrix<Scalar<T>>& getLightcurve() const;
 
     };
 
@@ -353,6 +356,11 @@ namespace kepler {
         return r_meters;
     }
 
+    //! Get the body's full light curve
+    template <class T>
+    const Matrix<Scalar<T>>& Primary<T>::getLightcurve() const {
+        return lightcurve;
+    }
 
     /* ----------------- */
     /*      SECONDARY    */
@@ -371,7 +379,7 @@ namespace kepler {
         protected:
 
             using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
-            using Body<T>::theta0;
+            using Body<T>::theta0_deg;
             using Body<T>::prot;
             using Body<T>::y;
             using Body<T>::G;
@@ -385,12 +393,12 @@ namespace kepler {
             /*
             using Body<T>::r;
             using Body<T>::L;
-            using Body<T>::angvelrot;
-            using Body<T>::theta;
+            using Body<T>::angvelrot_deg;
+            using Body<T>::theta_deg;
             */
 
             // Computed values
-            Vector<Row<T>> lightcurve;                                          /**< The body's full light curve */
+            Matrix<Scalar<T>> lightcurve;                                       /**< The body's full light curve */
             Vector<Scalar<T>> xvec;                                             /**< The body's Cartesian x position vector */
             Vector<Scalar<T>> yvec;                                             /**< The body's Cartesian y position vector */
             Vector<Scalar<T>> zvec;                                             /**< The body's Cartesian z position vector */
@@ -443,7 +451,7 @@ namespace kepler {
             S aamp;                                                             /**< Orbital acceleration amplitude for time delay expansion */
 
             // Private methods
-            inline Row<T> getFlux(const S& theta, const S& xo,
+            inline Row<T> getFlux(const S& theta_deg, const S& xo,
                 const S& yo, const S& ro, bool gradient);
             void computeTheta0();
             inline void syncSkyMap();
@@ -470,10 +478,10 @@ namespace kepler {
             S getOmega() const;
             void setLambda0(const S& lambda0_);
             S getLambda0() const;
-            const Vector<Row<T>>& getLightcurve() const;
-            const Vector<Row<T>>& getXVector() const;
-            const Vector<Row<T>>& getYVector() const;
-            const Vector<Row<T>>& getZVector() const;
+            const Matrix<Scalar<T>>& getLightcurve() const;
+            const Vector<Scalar<T>>& getXVector() const;
+            const Vector<Scalar<T>>& getYVector() const;
+            const Vector<Scalar<T>>& getZVector() const;
 
             //! Constructor
             explicit Secondary(int lmax=2, int nwav=1) :
@@ -570,16 +578,16 @@ namespace kepler {
 
     */
     template <class T>
-    inline Row<T> Secondary<T>::getFlux(const Scalar<T>& theta,
+    inline Row<T> Secondary<T>::getFlux(const Scalar<T>& theta_deg,
                                         const Scalar<T>& xo,
                                         const Scalar<T>& yo,
                                         const Scalar<T>& ro,
                                         bool gradient) {
-        return skyMap.flux(theta, xo, yo, ro, gradient);
+        return skyMap.flux(theta_deg, xo, yo, ro, gradient);
     }
 
     /**
-    Initial map rotation angle. The map is defined at the
+    Initial map rotation angle in degrees. The map is defined at the
     eclipsing configuration (full dayside as seen by an
     observer viewing the system edge-on), so let's find the
     angle by which we need to rotate the map initially to
@@ -590,13 +598,14 @@ namespace kepler {
     template <class T>
     void Secondary<T>::computeTheta0() {
         if (prot == INFINITY) {
-            theta0 = 0.0;
+            theta0_deg = 0.0;
         } else {
             Scalar<T> f_eclipse = 1.5 * pi<Scalar<T>>() - w;
             Scalar<T> E_eclipse = atan2(sqrt(1 - ecc2) * sin(f_eclipse),
                                         ecc + cos(f_eclipse));
             Scalar<T> M_eclipse = E_eclipse - ecc * sin(E_eclipse);
-            theta0 = -(porb / prot) * (M_eclipse - M0);
+            theta0_deg = -(porb / prot) * (M_eclipse - M0);
+            theta0_deg *= 180.0 / pi<Scalar<T>>();
         }
     }
 
@@ -823,25 +832,25 @@ namespace kepler {
 
     //! Get the body's full light curve
     template <class T>
-    const Vector<Row<T>>& Secondary<T>::getLightcurve() const {
+    const Matrix<Scalar<T>>& Secondary<T>::getLightcurve() const {
         return lightcurve;
     }
 
     //! Get the body's x position vector
     template <class T>
-    const Vector<Row<T>>& Secondary<T>::getXVector() const {
+    const Vector<Scalar<T>>& Secondary<T>::getXVector() const {
         return xvec;
     }
 
     //! Get the body's y position vector
     template <class T>
-    const Vector<Row<T>>& Secondary<T>::getYVector() const {
+    const Vector<Scalar<T>>& Secondary<T>::getYVector() const {
         return yvec;
     }
 
     //! Get the body's z position vector
     template <class T>
-    const Vector<Row<T>>& Secondary<T>::getZVector() const {
+    const Vector<Scalar<T>>& Secondary<T>::getZVector() const {
         return zvec;
     }
 
@@ -858,7 +867,7 @@ namespace kepler {
             using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
             size_t t;                                                           /**< Current time index */
 
-            Vector<Row<T>> lightcurve;                                          /**< The body's full light curve */
+            Matrix<Scalar<T>> lightcurve;                                       /**< The body's full light curve */
 
             // Protected methods
             void computeInstantaneous(const Vector<Scalar<T>>& time);
@@ -887,7 +896,7 @@ namespace kepler {
 
             // Public methods
             void compute(const Vector<Scalar<T>>& time);
-            const Vector<Row<T>>& getLightcurve() const;
+            const Matrix<Scalar<T>>& getLightcurve() const;
 
 
 
@@ -895,7 +904,7 @@ namespace kepler {
 
     //! Return the full system light curve.
     template <class T>
-    const Vector<Row<T>>& System<T>::getLightcurve() const {
+    const Matrix<Scalar<T>>& System<T>::getLightcurve() const {
         return lightcurve;
     }
 
@@ -985,14 +994,14 @@ namespace kepler {
             }
 
             // Update the light curves and orbital positions
-            primary->lightcurve(t) = primary->flux_cur;
-            lightcurve(t) = primary->flux_cur;
+            primary->lightcurve.block(t, 0, 1, primary->nwav) = primary->flux_cur;
+            lightcurve.block(t, 0, 1, primary->nwav) = primary->flux_cur;
             for (auto secondary : secondaries) {
                 secondary->xvec(t) = secondary->x_cur;
                 secondary->yvec(t) = secondary->y_cur;
                 secondary->zvec(t) = secondary->z_cur;
-                secondary->lightcurve(t) = secondary->flux_cur;
-                lightcurve(t) += secondary->flux_cur;
+                secondary->lightcurve.block(t, 0, 1, primary->nwav) = secondary->flux_cur;
+                lightcurve.block(t, 0, 1, primary->nwav) += secondary->flux_cur;
             }
 
         }
