@@ -902,8 +902,19 @@ namespace kepler {
             // Public methods
             void compute(const Vector<Scalar<T>>& time);
             const Matrix<Scalar<T>>& getLightcurve() const;
+            std::string info();
 
     };
+
+    /**
+    Return a human-readable info string
+
+    */
+    template <class T>
+    std::string System<T>::info() {
+        return "<Keplerian " + std::to_string(secondaries.size() + 1) +
+               "-body system>";
+    }
 
     //! Return the full system light curve.
     template <class T>
@@ -934,7 +945,7 @@ namespace kepler {
 
         using S = Scalar<T>;
         S xo, yo, ro;
-        int p, o;
+        size_t p, o;
         size_t NT = time_.size();
         size_t NS = secondaries.size();
         Vector<Scalar<T>> time = time_ * units::DayToSeconds;
@@ -984,8 +995,8 @@ namespace kepler {
             }
 
             // Compute occultations among the secondaries
-            for (int i = 0; i < NS; i++) {
-                for (int j = i + 1; j < NS; j++) {
+            for (size_t i = 0; i < NS; i++) {
+                for (size_t j = i + 1; j < NS; j++) {
                     if (secondaries[j]->z_cur > secondaries[i]->z_cur) {
                         o = j;
                         p = i;
@@ -1002,16 +1013,18 @@ namespace kepler {
             }
 
             // Update the light curves and orbital positions
-            primary->lightcurve.block(t, 0, 1, primary->nwav) =
-                primary->flux_cur;
-            lightcurve.block(t, 0, 1, primary->nwav) = primary->flux_cur;
+            for (int n = 0; n < primary->nwav; ++n) {
+                primary->lightcurve(t, n) = getColumn(primary->flux_cur, n);
+                lightcurve(t, n) = getColumn(primary->flux_cur, n);
+            }
             for (auto secondary : secondaries) {
                 secondary->xvec(t) = secondary->x_cur;
                 secondary->yvec(t) = secondary->y_cur;
                 secondary->zvec(t) = secondary->z_cur;
-                secondary->lightcurve.block(t, 0, 1, primary->nwav) =
-                    secondary->flux_cur;
-                lightcurve.block(t, 0, 1, primary->nwav) += secondary->flux_cur;
+                for (int n = 0; n < primary->nwav; ++n) {
+                    secondary->lightcurve(t, n) = getColumn(secondary->flux_cur, n);
+                    lightcurve(t, n) += getColumn(secondary->flux_cur, n);
+                }
             }
 
         }

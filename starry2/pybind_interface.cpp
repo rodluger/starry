@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "pybind_interface.h"
 #include "docstrings.h"
+#include "kepler.h"
 namespace py = pybind11;
 
 PYBIND11_MODULE(_starry2, m) {
@@ -19,6 +20,7 @@ PYBIND11_MODULE(_starry2, m) {
     using pybind_interface::bindBody;
     using pybind_interface::bindPrimary;
     using pybind_interface::bindSecondary;
+    using pybind_interface::bindSystem;
     using namespace pybind11::literals;
 
     // Add the top-level documentation
@@ -26,7 +28,7 @@ PYBIND11_MODULE(_starry2, m) {
     options.disable_function_signatures();
     m.doc() = docstrings::starry::doc;
 
-    // Declare the Map class
+    // Declare the `Map` class
     auto MapDoubleMono = bindMap<Vector<double>>(m, "MapDoubleMono");
     auto MapMultiMono = bindMap<Vector<Multi>>(m, "MapMultiMono");
     auto MapDoubleSpectral = bindMap<Matrix<double>>(m, "MapDoubleSpectral");
@@ -50,13 +52,17 @@ PYBIND11_MODULE(_starry2, m) {
     // Declare the `kepler` module
     auto mkepler = m.def_submodule("kepler");
 
-    // Declare the Body class (not user-facing)
-    auto BodyDoubleMono = bindBody<Vector<double>>(m, "BodyDoubleMono");
-    auto BodyMultiMono = bindBody<Vector<Multi>>(m, "BodyMultiMono");
-    auto BodyDoubleSpectral = bindBody<Matrix<double>>(m, "BodyDoubleSpectral");
-    auto BodyMultiSpectral = bindBody<Matrix<Multi>>(m, "BodyMultiSpectral");
+    // Declare the `Body` class (not user-facing)
+    auto BodyDoubleMono = bindBody<Vector<double>>(m,
+        MapDoubleMono, "BodyDoubleMono");
+    auto BodyMultiMono = bindBody<Vector<Multi>>(m,
+        MapMultiMono, "BodyMultiMono");
+    auto BodyDoubleSpectral = bindBody<Matrix<double>>(m,
+        MapDoubleSpectral, "BodyDoubleSpectral");
+    auto BodyMultiSpectral = bindBody<Matrix<Multi>>(m,
+        MapMultiSpectral, "BodyMultiSpectral");
 
-    // Declare the Primary class
+    // Declare the `Primary` class
     auto PrimaryDoubleMono = bindPrimary<Vector<double>>(mkepler,
         BodyDoubleMono, "PrimaryDoubleMono");
     auto PrimaryMultiMono = bindPrimary<Vector<Multi>>(mkepler,
@@ -80,9 +86,9 @@ PYBIND11_MODULE(_starry2, m) {
         } else {
             throw errors::ValueError("Invalid argument(s) to `Primary`.");
         }
-    }, "lmax"_a=2, "nwav"_a=1, "multi"_a=false);
+    }, docstrings::Primary::doc, "lmax"_a=2, "nwav"_a=1, "multi"_a=false);
 
-    // Declare the Secondary class
+    // Declare the `Secondary` class
     auto SecondaryDoubleMono = bindSecondary<Vector<double>>(mkepler,
         BodyDoubleMono, "SecondaryDoubleMono");
     auto SecondaryMultiMono = bindSecondary<Vector<Multi>>(mkepler,
@@ -106,7 +112,25 @@ PYBIND11_MODULE(_starry2, m) {
         } else {
             throw errors::ValueError("Invalid argument(s) to `Secondary`.");
         }
-    }, "lmax"_a=2, "nwav"_a=1, "multi"_a=false);
+    }, docstrings::Secondary::doc, "lmax"_a=2, "nwav"_a=1, "multi"_a=false);
+
+    // Declare the `System` class
+    auto SystemDoubleMono = bindSystem<Vector<double>>(mkepler,
+        "SystemDoubleMono");
+    auto SystemMultiMono = bindSystem<Vector<Multi>>(mkepler,
+        "SystemMultiMono");
+    auto SystemDoubleSpectral = bindSystem<Matrix<double>>(mkepler,
+        "SystemDoubleSpectral");
+    auto SystemMultiSpectral = bindSystem<Matrix<Multi>>(mkepler,
+        "SystemMultiSpectral");
+
+    // TODO: Declare one of these per case
+    mkepler.def("System", [SystemDoubleMono]
+        (kepler::Primary<Vector<double>>* primary,
+         kepler::Secondary<Vector<double>>* secondary)
+    { return SystemDoubleMono(primary, secondary); },
+    docstrings::System::doc, "primary"_a, "secondary"_a);
+
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

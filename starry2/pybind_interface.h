@@ -379,10 +379,12 @@ namespace pybind_interface {
 
     */
     template <typename T>
-    py::class_<kepler::Body<T>> bindBody(py::module& m, const char* name) {
+    py::class_<kepler::Body<T>> bindBody(py::module& m,
+                                         py::class_<maps::Map<T>> Map,
+                                         const char* name) {
 
         // Declare the class
-        py::class_<kepler::Body<T>> Body(m, name);
+        py::class_<kepler::Body<T>> Body(m, name, Map);
 
         // Add generic attributes & methods
         Body
@@ -492,6 +494,44 @@ namespace pybind_interface {
 
     }
 
+    /**
+    The pybind wrapper for the System class.
+
+    */
+    template <typename T>
+    py::class_<maps::Map<T>> bindSystem(py::module& m,
+                                        const char* name) {
+
+        // Declare the class
+        py::class_<kepler::System<T>> System(m, name);
+
+        // Add generic attributes & methods
+        System
+
+            // Constructor: one secondary
+            .def(py::init<kepler::Primary<T>*, kepler::Secondary<T>*>())
+
+            // Constructor: multiple secondaries
+            .def(py::init<kepler::Primary<T>*, std::vector<kepler::Secondary<T>*>>())
+
+            // Compute the light curve
+            .def("compute", [](kepler::System<T> &system, const Vector<double>& time) {
+                system.compute(time.template cast<Scalar<T>>());
+            }, "time"_a)
+
+            // The computed light curve
+            // TODO: Make a vector if nwav = 1?
+            .def_property_readonly("lightcurve", [](kepler::System<T> &system) -> Matrix<double>{
+                return system.getLightcurve().template cast<double>();
+            })
+
+            // TODO
+
+            .def("__repr__", &kepler::System<T>::info);
+
+        return System;
+
+    }
 
 }; // namespace pybind_interface
 

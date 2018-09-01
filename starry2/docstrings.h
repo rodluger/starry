@@ -193,6 +193,29 @@ namespace docstrings {
 
     }
 
+    namespace Primary {
+
+        const char* doc = R"pbdoc()pbdoc";
+
+        // TODO
+
+    }
+
+    namespace Secondary {
+
+        const char* doc = R"pbdoc()pbdoc";
+
+        // TODO
+
+    }
+
+    namespace System {
+
+        const char* doc = R"pbdoc()pbdoc";
+
+        // TODO
+
+    }
 }
 
 #endif

@@ -61,7 +61,6 @@ namespace maps {
 
     // Forward-declare some stuff
     template <class T> class Map;
-    template <class T> std::string get_info(const Map<T>& map);
 
     /**
     Stores cached Map variables.
@@ -218,10 +217,6 @@ namespace maps {
             // Temporaries and cache
             Temporary<T> tmp;
             Cache<T> cache;
-
-            // External info function
-            template <class U>
-            friend std::string get_info(const Map<U>& map);
 
             // Private methods
             void update();
@@ -718,7 +713,28 @@ namespace maps {
     */
     template <class T>
     std::string Map<T>::info() {
-        return get_info(*this);
+        std::ostringstream os;
+        os << "<" << precision<T>() << " precision "
+           << "map of "
+           << "degree " << y_deg << " "
+           << "with ";
+        if (nwav == 1)
+            os << "one wavelength bin and ";
+        else
+            os << nwav << " wavelength bins and ";
+        if (u_deg == 0)
+            os << "no ";
+        else if (u_deg == 1)
+            os << "1st order ";
+        else if (u_deg == 2)
+            os << "2nd order ";
+        else if (u_deg == 3)
+            os << "3rd order ";
+        else
+            os << u_deg << "th order ";
+        os << "limb darkening"
+           << ">";
+        return std::string(os.str());
     }
 
 
@@ -1695,108 +1711,6 @@ namespace maps {
 
         }
 
-    }
-
-    //! Human-readable name of the map
-    template <class T>
-    std::string get_info(const Map<T>& map) {
-        std::ostringstream os;
-        os << "<"
-           << "Map of "
-           << "degree " << map.y_deg << " "
-           << "with ";
-        if (map.u_deg == 0)
-            os << "no ";
-        else if (map.u_deg == 1)
-            os << "1st order ";
-        else if (map.u_deg == 2)
-            os << "2nd order ";
-        else if (map.u_deg == 3)
-            os << "3rd order ";
-        else
-            os << map.u_deg << "th order ";
-        os << "limb darkening"
-           << ">";
-        return std::string(os.str());
-    }
-
-    //! Human-readable name of the map (multi)
-    template <>
-    std::string get_info(const Map<Vector<Multi>>& map) {
-        std::ostringstream os;
-        os << "<"
-           << STARRY_NMULTI << "-digit precision "
-           << "map of "
-           << "degree " << map.y_deg << " "
-           << "with ";
-        if (map.u_deg == 0)
-            os << "no ";
-        else if (map.u_deg == 1)
-            os << "1st order ";
-        else if (map.u_deg == 2)
-            os << "2nd order ";
-        else if (map.u_deg == 3)
-            os << "3rd order ";
-        else
-            os << map.u_deg << "th order ";
-        os << "limb darkening"
-           << ">";
-        return std::string(os.str());
-    }
-
-    //! Human-readable name of the map (spectral)
-    template <>
-    std::string get_info(const Map<Matrix<double>>& map) {
-        std::ostringstream os;
-        os << "<"
-           << "Map of "
-           << "degree " << map.y_deg << " "
-           << "with ";
-        if (map.nwav == 1)
-            os << "one wavelength bin and ";
-        else
-            os << map.nwav << " wavelength bins and ";
-        if (map.u_deg == 0)
-            os << "no ";
-        else if (map.u_deg == 1)
-            os << "1st order ";
-        else if (map.u_deg == 2)
-            os << "2nd order ";
-        else if (map.u_deg == 3)
-            os << "3rd order ";
-        else
-            os << map.u_deg << "th order ";
-        os << "limb darkening"
-           << ">";
-        return std::string(os.str());
-    }
-
-    //! Human-readable name of the map (spectral + multi)
-    template <>
-    std::string get_info(const Map<Matrix<Multi>>& map) {
-        std::ostringstream os;
-        os << "<"
-           << STARRY_NMULTI << "-digit precision "
-           << "map of "
-           << "degree " << map.y_deg << " "
-           << "with ";
-        if (map.nwav == 1)
-            os << "one wavelength bin and ";
-        else
-            os << map.nwav << " wavelength bins and ";
-        if (map.u_deg == 0)
-            os << "no ";
-        else if (map.u_deg == 1)
-            os << "1st order ";
-        else if (map.u_deg == 2)
-            os << "2nd order ";
-        else if (map.u_deg == 3)
-            os << "3rd order ";
-        else
-            os << map.u_deg << "th order ";
-        os << "limb darkening"
-           << ">";
-        return std::string(os.str());
     }
 
 }; // namespace maps
