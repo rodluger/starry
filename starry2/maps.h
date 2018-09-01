@@ -714,7 +714,7 @@ namespace maps {
     template <class T>
     std::string Map<T>::info() {
         std::ostringstream os;
-        os << "<" << precision<T>() << " precision "
+        os << "<" << precision<Scalar<T>>() << " precision "
            << "map of "
            << "degree " << y_deg << " "
            << "with ";
@@ -752,7 +752,6 @@ namespace maps {
         W.rotate(cos(theta), sin(theta), y);
         update();
     }
-
 
     /**
     Limb-darken a polynomial map, and optionally compute the
