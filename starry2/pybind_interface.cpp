@@ -112,36 +112,63 @@ PYBIND11_MODULE(_starry2, m) {
     auto System3 = bindSystem<T3>(mk, "System3");
     auto System4 = bindSystem<T4>(mk, "System4");
 
-    // User-facing class factories: single secondary
-    mk.def("System", [System1] (kepler::Primary<T1>& pri, kepler::Secondary<T1>& sec) {
-        return System1(&pri, &sec);
-    }, docstrings::System::doc, "primary"_a, "secondary"_a);
-    mk.def("System", [System2] (kepler::Primary<T2>& pri, kepler::Secondary<T2>& sec) {
-        return System2(&pri, &sec);
-    }, docstrings::System::doc, "primary"_a, "secondary"_a);
-    mk.def("System", [System3] (kepler::Primary<T3>& pri, kepler::Secondary<T3>& sec) {
-        return System3(&pri, &sec);
-    }, docstrings::System::doc, "primary"_a, "secondary"_a);
-    mk.def("System", [System4] (kepler::Primary<T4>& pri, kepler::Secondary<T4>& sec) {
-        return System4(&pri, &sec);
-    }, docstrings::System::doc, "primary"_a, "secondary"_a);
+    // User-facing class factories (one per type)
+    // Note: We could probably template these!
+    mk.def("System", [System1] (kepler::Primary<T1>& primary,
+                                py::args secondaries) {
+        if (secondaries.size() == 1) {
+            kepler::Secondary<T1>& sec =
+                py::cast<kepler::Secondary<T1>&>(secondaries[0]);
+            return System1(&primary, &sec);
+        } else {
+            std::vector<kepler::Secondary<T1>*> sec;
+            for (size_t n = 0; n < secondaries.size(); ++n)
+                sec.push_back(py::cast<kepler::Secondary<T1>*>(secondaries[n]));
+            return System1(&primary, sec);
+        }
+    }, docstrings::System::doc, "primary"_a);
 
-    // User-facing class factories: multiple secondaries
-    // NOTE: C++ disallows vectors of references, so I'm resorting to
-    // pointers here. TODO, BUG: Currently not working
-    mk.def("System", [System1] (kepler::Primary<T1>& pri, std::vector<kepler::Secondary<T1>*> sec) {
-        return System1(&pri, sec);
-    }, docstrings::System::doc, "primary"_a, "secondary"_a);
-    mk.def("System", [System2] (kepler::Primary<T2>& pri, std::vector<kepler::Secondary<T2>*> sec) {
-        return System2(&pri, sec);
-    }, docstrings::System::doc, "primary"_a, "secondary"_a);
-    mk.def("System", [System3] (kepler::Primary<T3>& pri, std::vector<kepler::Secondary<T3>*> sec) {
-        return System3(&pri, sec);
-    }, docstrings::System::doc, "primary"_a, "secondary"_a);
-    mk.def("System", [System4] (kepler::Primary<T4>& pri, std::vector<kepler::Secondary<T4>*> sec) {
-        return System4(&pri, sec);
-    }, docstrings::System::doc, "primary"_a, "secondary"_a);
+    mk.def("System", [System2] (kepler::Primary<T2>& primary,
+                                py::args secondaries) {
+        if (secondaries.size() == 1) {
+            kepler::Secondary<T2>& sec =
+                py::cast<kepler::Secondary<T2>&>(secondaries[0]);
+            return System2(&primary, &sec);
+        } else {
+            std::vector<kepler::Secondary<T2>*> sec;
+            for (size_t n = 0; n < secondaries.size(); ++n)
+                sec.push_back(py::cast<kepler::Secondary<T2>*>(secondaries[n]));
+            return System2(&primary, sec);
+        }
+    }, docstrings::System::doc, "primary"_a);
 
+    mk.def("System", [System3] (kepler::Primary<T3>& primary,
+                                py::args secondaries) {
+        if (secondaries.size() == 1) {
+            kepler::Secondary<T3>& sec =
+                py::cast<kepler::Secondary<T3>&>(secondaries[0]);
+            return System3(&primary, &sec);
+        } else {
+            std::vector<kepler::Secondary<T3>*> sec;
+            for (size_t n = 0; n < secondaries.size(); ++n)
+                sec.push_back(py::cast<kepler::Secondary<T3>*>(secondaries[n]));
+            return System3(&primary, sec);
+        }
+    }, docstrings::System::doc, "primary"_a);
+
+    mk.def("System", [System4] (kepler::Primary<T4>& primary,
+                                py::args secondaries) {
+        if (secondaries.size() == 1) {
+            kepler::Secondary<T4>& sec =
+                py::cast<kepler::Secondary<T4>&>(secondaries[0]);
+            return System4(&primary, &sec);
+        } else {
+            std::vector<kepler::Secondary<T4>*> sec;
+            for (size_t n = 0; n < secondaries.size(); ++n)
+                sec.push_back(py::cast<kepler::Secondary<T4>*>(secondaries[n]));
+            return System4(&primary, sec);
+        }
+    }, docstrings::System::doc, "primary"_a);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

@@ -520,9 +520,12 @@ namespace pybind_interface {
             }, "time"_a)
 
             // The computed light curve
-            // TODO: Make a vector if nwav = 1?
-            .def_property_readonly("lightcurve", [](kepler::System<T> &system) -> Matrix<double>{
-                return system.getLightcurve().template cast<double>();
+            .def_property_readonly("lightcurve", [](kepler::System<T> &system) -> py::object{
+                if (system.primary->nwav == 1) {
+                    return py::cast(getColumn(system.getLightcurve(), 0).template cast<double>());
+                } else {
+                    return py::cast(system.getLightcurve().template cast<double>());
+                }
             })
 
             // TODO
