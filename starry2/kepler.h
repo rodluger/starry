@@ -63,7 +63,8 @@ namespace kepler {
                 if (abs(E - ecc * sin(E) - M) <= tol) return E;
             }
             // Didn't converge!
-            throw errors::ConvergenceError("The Kepler solver did not converge.");
+            throw errors::ConvergenceError("The Kepler solver "
+                                           "did not converge.");
         }
         return E;
     }
@@ -244,7 +245,8 @@ namespace kepler {
     void Body<T>::setRotPer(const Scalar<T>& prot_) {
         if (prot_ > 0) prot = prot_ * units::DayToSeconds;
         else if (prot_ == 0) prot = INFINITY;
-        else throw errors::ValueError("Body's rotation period must be positive.");
+        else throw errors::ValueError("Body's rotation period "
+                                      "must be positive.");
         angvelrot_deg = 360.0 / prot;
         computeTheta0();
     }
@@ -756,7 +758,8 @@ namespace kepler {
     template <class T>
     void Secondary<T>::setInc(const Scalar<T>& inc_) {
         if ((inc_ >= 0) && (inc_ < 180.0)) inc = inc_ * pi<Scalar<T>>() / 180.0;
-        else throw errors::ValueError("Inclination must be in the range [0, 180).");
+        else throw errors::ValueError("Inclination must be "
+                                      "in the range [0, 180).");
         cosi = cos(inc);
         sini = sin(inc);
         cosOcosi = cosO * cosi;
@@ -871,11 +874,17 @@ namespace kepler {
         protected:
 
             using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
-            size_t t;                                                           /**< Current time index */
             Matrix<Scalar<T>> lightcurve;                                       /**< The body's full light curve */
+            Scalar<T> exptime;                                                  /**< Exposure time in days */
+            Scalar<T> exptol;
+            int expmaxdepth;
 
             // Protected methods
-            void computeInstantaneous(const Vector<Scalar<T>>& time);
+            inline void step(const S& time_cur);
+            Vector<S> integrate(const Vector<S>& f1, const Vector<S>& f2,
+                                const S& t1, const S& t2, int depth);
+            inline Vector<S> integrate (const S& time);
+            inline Vector<S> compute(const S& time, bool store_xyz=true);
 
         public:
 
@@ -888,6 +897,9 @@ namespace kepler {
                             primary(primary)
             {
                 secondaries.push_back(secondary);
+                setExposureTime(0.0);
+                setExposureTol(sqrt(mach_eps<Scalar<T>>()));
+                setExposureMaxDepth(4);
             }
 
             //! Constructor: multiple secondaries
@@ -896,42 +908,169 @@ namespace kepler {
                             primary(primary),
                             secondaries(secondaries)
             {
-
+                setExposureTime(0.0);
+                setExposureTol(sqrt(mach_eps<Scalar<T>>()));
+                setExposureMaxDepth(4);
             }
 
             // Public methods
-            void compute(const Vector<Scalar<T>>& time);
-            const Matrix<Scalar<T>>& getLightcurve() const;
+            void compute(const Vector<S>& time);
+            const Matrix<S>& getLightcurve() const;
             std::string info();
+            void setExposureTime(const S& t_);
+            S getExposureTime() const;
+            void setExposureTol(const S& t_);
+            S getExposureTol() const;
+            void setExposureMaxDepth(const int d_);
+            int getExposureMaxDepth() const;
 
     };
 
-    /**
-    Return a human-readable info string
+    //! Set the exposure time
+    template <class T>
+    void System<T>::setExposureTime(const Scalar<T>& t_) {
+        exptime = t_;
+    }
 
-    */
+    //! Get the exposure time
+    template <class T>
+    Scalar<T> System<T>::getExposureTime() const {
+        return exptime;
+    }
+
+    //! Set the exposure tolerance
+    template <class T>
+    void System<T>::setExposureTol(const Scalar<T>& t_) {
+        exptol = t_;
+    }
+
+    //! Get the exposure tolerance
+    template <class T>
+    Scalar<T> System<T>::getExposureTol() const {
+        return exptol;
+    }
+
+    //! Set the maximum exposure depth
+    template <class T>
+    void System<T>::setExposureMaxDepth(const int d_) {
+        expmaxdepth = d_;
+    }
+
+    //! Get the maximum exposure depth
+    template <class T>
+    int System<T>::getExposureMaxDepth() const {
+        return expmaxdepth;
+    }
+
+    //! Return a human-readable info string
     template <class T>
     std::string System<T>::info() {
         return "<Keplerian " + std::to_string(secondaries.size() + 1) +
                "-body system>";
     }
 
-    //! Return the full system light curve.
+    //! Return the full system light curve
     template <class T>
     const Matrix<Scalar<T>>& System<T>::getLightcurve() const {
         return lightcurve;
     }
 
+
+
     /**
-    Compute the full system light curve.
+    Recursive exposure time integration function (single iteration)
 
     */
     template <class T>
-    void System<T>::compute(const Vector<Scalar<T>>& time_) {
+    Vector<Scalar<T>> System<T>::integrate(const Vector<Scalar<T>>& f1,
+                                           const Vector<Scalar<T>>& f2,
+                                           const Scalar<T>& t1,
+                                           const Scalar<T>& t2, int depth) {
+        using S = Scalar<T>;
+        S tmid = 0.5 * (t1 + t2);
+        // If this is the first time we're recursing,
+        // store the xyz position of the bodies
+        Vector<S> fmid = compute(tmid, depth == 0),
+                  fapprox = 0.5 * (f1 + f2),
+                  d = fmid - fapprox;
+        if (depth < expmaxdepth) {
+            for (int i = 0; i < d.size(); i++) {
+                if (abs(d(i)) > exptol) {
+                    Vector<S> a = integrate(f1, fmid, t1, tmid, depth + 1),
+                              b = integrate(fmid, f2, tmid, t2, depth + 1);
+                    return a + b;
+                }
+            }
+        }
+        return fapprox * (t2 - t1);
+    };
 
-        // TODO: Exposure time, gradients, etc.
+    /**
+    Recursive exposure time integration function
 
-        return computeInstantaneous(time_);
+    */
+    template <class T>
+    inline Vector<Scalar<T>> System<T>::integrate(const Scalar<T>& time) {
+        if (exptime > 0.0) {
+            Scalar<T> dt = 0.5 * exptime,
+                      t1 = time - dt,
+                      t2 = time + dt;
+            return integrate(compute(t1), compute(t2), t1, t2, 0) / (t2 - t1);
+        }
+        // No integration
+        return compute(time, true);
+    };
+
+
+
+
+    /**
+    Take a single orbital + photometric step.
+
+    */
+    template <class T>
+    inline void System<T>::step(const Scalar<T>& time_cur) {
+
+        Scalar<T> xo, yo, ro;
+        size_t NS = secondaries.size();
+        size_t o, p;
+
+        // Compute fluxes and take an orbital step
+        primary->computeTotal(time_cur);
+        for (auto secondary : secondaries) {
+            secondary->orbitStep(time_cur);
+            secondary->computeTotal(time_cur);
+        }
+
+        // Compute occultations involving the primary
+        for (auto secondary : secondaries) {
+            if (secondary->z_cur > 0) {
+                primary->occult(time_cur, secondary->x_cur,
+                                secondary->y_cur, secondary->r);
+            } else {
+                ro = 1. / secondary->r;
+                secondary->occult(time_cur, -ro * secondary->x_cur,
+                                  -ro * secondary->y_cur, ro);
+            }
+        }
+
+        // Compute occultations among the secondaries
+        for (size_t i = 0; i < NS; i++) {
+            for (size_t j = i + 1; j < NS; j++) {
+                if (secondaries[j]->z_cur > secondaries[i]->z_cur) {
+                    o = j;
+                    p = i;
+                } else {
+                    o = i;
+                    p = j;
+                }
+                ro = 1. / secondaries[p]->r;
+                xo = ro * (secondaries[o]->x_cur - secondaries[p]->x_cur);
+                yo = ro * (secondaries[o]->y_cur - secondaries[p]->y_cur);
+                ro = ro * secondaries[o]->r;
+                secondaries[p]->occult(time_cur, xo, yo, ro);
+            }
+        }
 
     }
 
@@ -941,13 +1080,9 @@ namespace kepler {
 
     */
     template <class T>
-    void System<T>::computeInstantaneous(const Vector<Scalar<T>>& time_) {
+    void System<T>::compute(const Vector<Scalar<T>>& time_) {
 
-        using S = Scalar<T>;
-        S xo, yo, ro;
-        size_t p, o;
         size_t NT = time_.size();
-        size_t NS = secondaries.size();
         Vector<Scalar<T>> time = time_ * units::DayToSeconds;
 
         // Allocate arrays
@@ -973,44 +1108,13 @@ namespace kepler {
         }
 
         // Loop through the timeseries
-        for (t = 0; t < NT; t++){
+        for (size_t t = 0; t < NT; ++t){
 
-            // Compute fluxes and take an orbital step
-            primary->computeTotal(time(t));
-            for (auto secondary : secondaries) {
-                secondary->orbitStep(time(t));
-                secondary->computeTotal(time(t));
-            }
-
-            // Compute occultations involving the primary
-            for (auto secondary : secondaries) {
-                if (secondary->z_cur > 0) {
-                    primary->occult(time(t), secondary->x_cur,
-                                    secondary->y_cur, secondary->r);
-                } else {
-                    ro = 1. / secondary->r;
-                    secondary->occult(time(t), -ro * secondary->x_cur,
-                                      -ro * secondary->y_cur, ro);
-                }
-            }
-
-            // Compute occultations among the secondaries
-            for (size_t i = 0; i < NS; i++) {
-                for (size_t j = i + 1; j < NS; j++) {
-                    if (secondaries[j]->z_cur > secondaries[i]->z_cur) {
-                        o = j;
-                        p = i;
-                    } else {
-                        o = i;
-                        p = j;
-                    }
-                    ro = 1. / secondaries[p]->r;
-                    xo = ro * (secondaries[o]->x_cur - secondaries[p]->x_cur);
-                    yo = ro * (secondaries[o]->y_cur - secondaries[p]->y_cur);
-                    ro = ro * secondaries[o]->r;
-                    secondaries[p]->occult(time(t), xo, yo, ro);
-                }
-            }
+            // Take an orbital step and compute the fluxes
+            if (exptime == 0)
+                step(time(t));
+            else
+                throw errors::NotImplementedError("TODO: Exposure time.");
 
             // Update the light curves and orbital positions
             for (int n = 0; n < primary->nwav; ++n) {
@@ -1022,7 +1126,8 @@ namespace kepler {
                 secondary->yvec(t) = secondary->y_cur;
                 secondary->zvec(t) = secondary->z_cur;
                 for (int n = 0; n < primary->nwav; ++n) {
-                    secondary->lightcurve(t, n) = getColumn(secondary->flux_cur, n);
+                    secondary->lightcurve(t, n) =
+                        getColumn(secondary->flux_cur, n);
                     lightcurve(t, n) += getColumn(secondary->flux_cur, n);
                 }
             }
