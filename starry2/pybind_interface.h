@@ -613,6 +613,33 @@ namespace pybind_interface {
                 system.compute(time.template cast<Scalar<T>>());
             }, docstrings::System::compute, "time"_a)
 
+            // Exposure time in days
+            .def_property("exposure_time",
+                [](kepler::System<T> &sys) {
+                    return static_cast<double>(sys.getExposureTime());
+                },
+                [](kepler::System<T> &sys, const double& t){
+                    sys.setExposureTime(t);
+                }, docstrings::System::exposure_time)
+
+            // Exposure tolerance
+            .def_property("exposure_tol",
+                [](kepler::System<T> &sys) {
+                    return static_cast<double>(sys.getExposureTol());
+                },
+                [](kepler::System<T> &sys, const double& t){
+                    sys.setExposureTol(t);
+                }, docstrings::System::exposure_tol)
+
+            // Exposure max recursion depth
+            .def_property("exposure_max_depth",
+                [](kepler::System<T> &sys) {
+                    return sys.getExposureMaxDepth();
+                },
+                [](kepler::System<T> &sys, int d){
+                    sys.setExposureMaxDepth(d);
+                }, docstrings::System::exposure_max_depth)
+
             // The computed light curve
             .def_property_readonly("lightcurve", [](kepler::System<T> &system)
                     -> py::object{

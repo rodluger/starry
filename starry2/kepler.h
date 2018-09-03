@@ -1,7 +1,7 @@
 /**
 Keplerian star/planet/moon system class.
 
-TODO: gradients, exposure time
+TODO: gradients!
 
 */
 
@@ -878,13 +878,14 @@ namespace kepler {
             Scalar<T> exptime;                                                  /**< Exposure time in days */
             Scalar<T> exptol;
             int expmaxdepth;
+            size_t t;
 
             // Protected methods
             inline void step(const S& time_cur);
-            Vector<S> integrate(const Vector<S>& f1, const Vector<S>& f2,
-                                const S& t1, const S& t2, int depth);
-            inline Vector<S> integrate (const S& time);
-            inline Vector<S> compute(const S& time, bool store_xyz=true);
+            T step(const S& time_cur, bool store_xyz);
+            T integrate(const T& f1, const T& f2,
+                        const S& t1, const S& t2, int depth);
+            inline T integrate (const S& time_cur);
 
         public:
 
@@ -926,16 +927,16 @@ namespace kepler {
 
     };
 
-    //! Set the exposure time
+    //! Set the exposure time in days
     template <class T>
     void System<T>::setExposureTime(const Scalar<T>& t_) {
-        exptime = t_;
+        exptime = t_ * units::DayToSeconds;
     }
 
-    //! Get the exposure time
+    //! Get the exposure time in days
     template <class T>
     Scalar<T> System<T>::getExposureTime() const {
-        return exptime;
+        return exptime / units::DayToSeconds;
     }
 
     //! Set the exposure tolerance
@@ -975,30 +976,33 @@ namespace kepler {
         return lightcurve;
     }
 
-
-
     /**
     Recursive exposure time integration function (single iteration)
 
     */
     template <class T>
-    Vector<Scalar<T>> System<T>::integrate(const Vector<Scalar<T>>& f1,
-                                           const Vector<Scalar<T>>& f2,
-                                           const Scalar<T>& t1,
-                                           const Scalar<T>& t2, int depth) {
-        using S = Scalar<T>;
-        S tmid = 0.5 * (t1 + t2);
-        // If this is the first time we're recursing,
-        // store the xyz position of the bodies
-        Vector<S> fmid = compute(tmid, depth == 0),
-                  fapprox = 0.5 * (f1 + f2),
-                  d = fmid - fapprox;
+    T System<T>::integrate(const T& f1,
+                           const T& f2,
+                           const Scalar<T>& t1,
+                           const Scalar<T>& t2, int depth) {
+        Scalar<T> tmid = 0.5 * (t1 + t2);
+        // If this is the first time we're recursing (depth == 0),
+        // store the xyz position of the bodies in the output vectors
+        T fmid = step(tmid, depth == 0),
+          fapprox = 0.5 * (f1 + f2),
+          d = fmid - fapprox;
+
+        // DEBUG
+        //std::cout << depth << ": " << d.transpose() << std::endl;
+
         if (depth < expmaxdepth) {
-            for (int i = 0; i < d.size(); i++) {
-                if (abs(d(i)) > exptol) {
-                    Vector<S> a = integrate(f1, fmid, t1, tmid, depth + 1),
-                              b = integrate(fmid, f2, tmid, t2, depth + 1);
-                    return a + b;
+            for (int i = 0; i < d.rows(); ++i) {
+                for (int n = 0; n < primary->nwav; ++n) {
+                    if (abs(d(i, n)) > exptol) {
+                        T a = integrate(f1, fmid, t1, tmid, depth + 1),
+                          b = integrate(fmid, f2, tmid, t2, depth + 1);
+                        return a + b;
+                    }
                 }
             }
         }
@@ -1010,19 +1014,15 @@ namespace kepler {
 
     */
     template <class T>
-    inline Vector<Scalar<T>> System<T>::integrate(const Scalar<T>& time) {
-        if (exptime > 0.0) {
-            Scalar<T> dt = 0.5 * exptime,
-                      t1 = time - dt,
-                      t2 = time + dt;
-            return integrate(compute(t1), compute(t2), t1, t2, 0) / (t2 - t1);
-        }
-        // No integration
-        return compute(time, true);
+    inline T System<T>::integrate(const Scalar<T>& time_cur) {
+        Scalar<T> dt = 0.5 * exptime,
+                  t1 = time_cur - dt,
+                  t2 = time_cur + dt;
+
+        return integrate(step(t1, false), step(t2, false), t1, t2, 0) /
+                   (t2 - t1);
+
     };
-
-
-
 
     /**
     Take a single orbital + photometric step.
@@ -1075,6 +1075,37 @@ namespace kepler {
     }
 
     /**
+    Take a single orbital + photometric step
+    (exposure time integration overload).
+
+    */
+    template <class T>
+    inline T System<T>::step(const Scalar<T>& time, bool store_xyz) {
+
+        // Take the step
+        step(time);
+
+        // Get the current values of the flux for each body
+        size_t NS = secondaries.size();
+        T fluxes(NS + 1, primary->nwav);
+        setRow(fluxes, 0, primary->flux_cur);
+        for (size_t n = 0; n < NS; ++n) {
+            if (store_xyz) {
+                // If this is the midpoint of the integration,
+                // store the cartesian position of the bodies
+                secondaries[n]->xvec(t) = secondaries[n]->x_cur;
+                secondaries[n]->yvec(t) = secondaries[n]->y_cur;
+                secondaries[n]->zvec(t) = secondaries[n]->z_cur;
+            }
+            setRow(fluxes, n + 1, secondaries[n]->flux_cur);
+        }
+
+        // Return the flux from each of the bodies
+        return fluxes;
+
+    }
+
+    /**
     Compute the full system light curve. Special case w/ no exposure
     time integration, optimized for speed.
 
@@ -1108,28 +1139,47 @@ namespace kepler {
         }
 
         // Loop through the timeseries
-        for (size_t t = 0; t < NT; ++t){
+        for (t = 0; t < NT; ++t){
 
             // Take an orbital step and compute the fluxes
-            if (exptime == 0)
-                step(time(t));
-            else
-                throw errors::NotImplementedError("TODO: Exposure time.");
+            if (exptime == 0) {
 
-            // Update the light curves and orbital positions
-            for (int n = 0; n < primary->nwav; ++n) {
-                primary->lightcurve(t, n) = getColumn(primary->flux_cur, n);
-                lightcurve(t, n) = getColumn(primary->flux_cur, n);
-            }
-            for (auto secondary : secondaries) {
-                secondary->xvec(t) = secondary->x_cur;
-                secondary->yvec(t) = secondary->y_cur;
-                secondary->zvec(t) = secondary->z_cur;
+                // Advance the system
+                step(time(t));
+
+                // Update the light curves and orbital positions
                 for (int n = 0; n < primary->nwav; ++n) {
-                    secondary->lightcurve(t, n) =
-                        getColumn(secondary->flux_cur, n);
-                    lightcurve(t, n) += getColumn(secondary->flux_cur, n);
+                    primary->lightcurve(t, n) = getColumn(primary->flux_cur, n);
+                    lightcurve(t, n) = getColumn(primary->flux_cur, n);
                 }
+                for (auto secondary : secondaries) {
+                    secondary->xvec(t) = secondary->x_cur;
+                    secondary->yvec(t) = secondary->y_cur;
+                    secondary->zvec(t) = secondary->z_cur;
+                    for (int n = 0; n < primary->nwav; ++n) {
+                        secondary->lightcurve(t, n) =
+                            getColumn(secondary->flux_cur, n);
+                        lightcurve(t, n) += getColumn(secondary->flux_cur, n);
+                    }
+                }
+
+            } else {
+
+                // Integrate over the exposure time
+                T fluxes = integrate(time(t));
+
+                // Update the light curves
+                for (int n = 0; n < primary->nwav; ++n) {
+                    primary->lightcurve(t, n) = fluxes(0, n);
+                    lightcurve(t, n) = fluxes(0, n);
+                }
+                for (size_t i = 0; i < secondaries.size(); ++i) {
+                    for (int n = 0; n < primary->nwav; ++n) {
+                        secondaries[i]->lightcurve(t, n) = fluxes(i + 1, n);
+                        lightcurve(t, n) += fluxes(i + 1, n);
+                    }
+                }
+
             }
 
         }

@@ -259,6 +259,12 @@ namespace docstrings {
 
         const char* lightcurve = R"pbdoc()pbdoc";
 
+        const char* exposure_time = R"pbdoc()pbdoc";
+
+        const char* exposure_tol = R"pbdoc()pbdoc";
+
+        const char* exposure_max_depth = R"pbdoc()pbdoc";
+        
         // TODO
 
     }
