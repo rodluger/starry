@@ -193,9 +193,31 @@ namespace docstrings {
 
     }
 
+    namespace Body {
+
+        const char* doc = R"pbdoc()pbdoc";
+
+        const char* r = R"pbdoc()pbdoc";
+
+        const char* L = R"pbdoc()pbdoc";
+
+        const char* tref = R"pbdoc()pbdoc";
+
+        const char* prot = R"pbdoc()pbdoc";
+
+        // TODO
+
+    }
+
     namespace Primary {
 
         const char* doc = R"pbdoc()pbdoc";
+
+        const char* r = R"pbdoc()pbdoc";
+
+        const char* L = R"pbdoc()pbdoc";
+
+        const char* r_m = R"pbdoc()pbdoc";
 
         // TODO
 
@@ -205,6 +227,26 @@ namespace docstrings {
 
         const char* doc = R"pbdoc()pbdoc";
 
+        const char* a = R"pbdoc()pbdoc";
+
+        const char* porb = R"pbdoc()pbdoc";
+
+        const char* inc = R"pbdoc()pbdoc";
+
+        const char* ecc = R"pbdoc()pbdoc";
+
+        const char* w = R"pbdoc()pbdoc";
+
+        const char* Omega = R"pbdoc()pbdoc";
+
+        const char* lambda0 = R"pbdoc()pbdoc";
+
+        const char* X = R"pbdoc()pbdoc";
+
+        const char* Y = R"pbdoc()pbdoc";
+
+        const char* Z = R"pbdoc()pbdoc";
+
         // TODO
 
     }
@@ -212,6 +254,10 @@ namespace docstrings {
     namespace System {
 
         const char* doc = R"pbdoc()pbdoc";
+
+        const char* compute = R"pbdoc()pbdoc";
+
+        const char* lightcurve = R"pbdoc()pbdoc";
 
         // TODO
 

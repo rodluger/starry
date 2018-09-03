@@ -4,6 +4,10 @@ This defines the main Python interface to the code.
 TODO: Add a "load_image" method to Spectral to
       load images at specific wavelengths.
 
+TODO: Add wavelength-dependent radius support
+      Two options: arbitrary r(lambda), full computation
+      or linear expansion about mean radius using autodiff.
+
 */
 
 #ifndef _STARRY_PYBIND_H_
@@ -384,7 +388,7 @@ namespace pybind_interface {
                                          const char* name) {
 
         // Declare the class
-        py::class_<kepler::Body<T>> Body(m, name, Map);
+        py::class_<kepler::Body<T>> Body(m, name, Map, docstrings::Body::doc);
 
         // Add generic attributes & methods
         Body
@@ -396,7 +400,7 @@ namespace pybind_interface {
                 },
                 [](kepler::Body<T> &body, const double& r){
                     body.setRadius(r);
-                })
+                }, docstrings::Body::r)
 
             // Luminosity in units of primary luminosity
             .def_property("L",
@@ -405,7 +409,7 @@ namespace pybind_interface {
                 },
                 [](kepler::Body<T> &body, const double& L){
                     body.setLuminosity(L);
-                })
+                }, docstrings::Body::L)
 
             // Rotation period in days
             .def_property("prot",
@@ -414,7 +418,7 @@ namespace pybind_interface {
                 },
                 [](kepler::Body<T> &body, const double& prot){
                     body.setRotPer(prot);
-                })
+                }, docstrings::Body::prot)
 
             // Reference time in days
             .def_property("tref",
@@ -423,7 +427,7 @@ namespace pybind_interface {
                 },
                 [](kepler::Body<T> &body, const double& tref){
                     body.setRefTime(tref);
-                });
+                }, docstrings::Body::tref);
 
         return Body;
     }
@@ -438,7 +442,8 @@ namespace pybind_interface {
                                          const char* name) {
 
         // Declare the class
-        py::class_<kepler::Primary<T>> Primary(m, name, Body);
+        py::class_<kepler::Primary<T>> Primary(m, name, Body,
+                                               docstrings::Primary::doc);
 
         // Add generic attributes & methods
         Primary
@@ -453,7 +458,7 @@ namespace pybind_interface {
                 },
                 [](kepler::Primary<T> &body, const double& r){
                     body.setRadius(r);
-                })
+                }, docstrings::Primary::r)
 
             // Luminosity in units of primary luminosity
             .def_property("L",
@@ -462,9 +467,16 @@ namespace pybind_interface {
                 },
                 [](kepler::Primary<T> &body, const double& L){
                     body.setLuminosity(L);
-                });
+                }, docstrings::Primary::L)
 
-            // TODO
+            // Radius in meters (sets a scale for light travel time delay)
+            .def_property("r_m",
+                [](kepler::Primary<T> &body) {
+                    return static_cast<double>(body.getRadiusInMeters());
+                },
+                [](kepler::Primary<T> &body, const double& r_m){
+                    body.setRadiusInMeters(r_m);
+                }, docstrings::Primary::r_m);
 
         return Primary;
 
@@ -480,15 +492,95 @@ namespace pybind_interface {
                                            const char* name) {
 
         // Declare the class
-        py::class_<kepler::Secondary<T>> Secondary(m, name, Body);
+        py::class_<kepler::Secondary<T>> Secondary(m, name, Body,
+                                                   docstrings::Secondary::doc);
 
         // Add generic attributes & methods
         Secondary
 
             // Constructor
-            .def(py::init<int, int>(), "lmax"_a=2, "nwav"_a=1);
+            .def(py::init<int, int>(), "lmax"_a=2, "nwav"_a=1)
 
-            // TODO
+            // Semi-major axis in units of primary radius
+            .def_property("a",
+                [](kepler::Secondary<T> &sec) {
+                    return static_cast<double>(sec.getSemi());
+                },
+                [](kepler::Secondary<T> &sec, const double& a){
+                    sec.setSemi(a);
+                }, docstrings::Secondary::a)
+
+            // Orbital period in days
+            .def_property("porb",
+                [](kepler::Secondary<T> &sec) {
+                    return static_cast<double>(sec.getOrbPer());
+                },
+                [](kepler::Secondary<T> &sec, const double& p){
+                    sec.setOrbPer(p);
+                }, docstrings::Secondary::porb)
+
+            // Semi-major axis
+            .def_property("inc",
+                [](kepler::Secondary<T> &sec) {
+                    return static_cast<double>(sec.getInc());
+                },
+                [](kepler::Secondary<T> &sec, const double& i){
+                    sec.setInc(i);
+                }, docstrings::Secondary::inc)
+
+            // Eccentricity
+            .def_property("ecc",
+                [](kepler::Secondary<T> &sec) {
+                    return static_cast<double>(sec.getEcc());
+                },
+                [](kepler::Secondary<T> &sec, const double& ecc){
+                    sec.setEcc(ecc);
+                }, docstrings::Secondary::ecc)
+
+            // Longitude of pericenter (varpi) in degrees
+            .def_property("w",
+                [](kepler::Secondary<T> &sec) {
+                    return static_cast<double>(sec.getVarPi());
+                },
+                [](kepler::Secondary<T> &sec, const double& w){
+                    sec.setVarPi(w);
+                }, docstrings::Secondary::w)
+
+            // Longitude of ascending node in degrees
+            .def_property("Omega",
+                [](kepler::Secondary<T> &sec) {
+                    return static_cast<double>(sec.getOmega());
+                },
+                [](kepler::Secondary<T> &sec, const double& Om){
+                    sec.setOmega(Om);
+                }, docstrings::Secondary::Omega)
+
+            // Mean longitude at the reference time in degrees
+            .def_property("lambda0",
+                [](kepler::Secondary<T> &sec) {
+                    return static_cast<double>(sec.getLambda0());
+                },
+                [](kepler::Secondary<T> &sec, const double& l0){
+                    sec.setLambda0(l0);
+                }, docstrings::Secondary::lambda0)
+
+            // Cartesian x position vector
+            .def_property_readonly("X",
+                [](kepler::Secondary<T> &sec) {
+                    return sec.getXVector().template cast<double>();
+                }, docstrings::Secondary::X)
+
+            // Cartesian y position vector
+            .def_property_readonly("Y",
+                [](kepler::Secondary<T> &sec) {
+                    return sec.getYVector().template cast<double>();
+                }, docstrings::Secondary::Y)
+
+            // Cartesian z position vector
+            .def_property_readonly("Z",
+                [](kepler::Secondary<T> &sec) {
+                    return sec.getZVector().template cast<double>();
+                }, docstrings::Secondary::Z);
 
         return Secondary;
 
@@ -503,7 +595,7 @@ namespace pybind_interface {
                                         const char* name) {
 
         // Declare the class
-        py::class_<kepler::System<T>> System(m, name);
+        py::class_<kepler::System<T>> System(m, name, docstrings::System::doc);
 
         // Add generic attributes & methods
         System
@@ -512,23 +604,26 @@ namespace pybind_interface {
             .def(py::init<kepler::Primary<T>*, kepler::Secondary<T>*>())
 
             // Constructor: multiple secondaries
-            .def(py::init<kepler::Primary<T>*, std::vector<kepler::Secondary<T>*>>())
+            .def(py::init<kepler::Primary<T>*,
+                          std::vector<kepler::Secondary<T>*>>())
 
             // Compute the light curve
-            .def("compute", [](kepler::System<T> &system, const Vector<double>& time) {
+            .def("compute", [](kepler::System<T> &system,
+                               const Vector<double>& time) {
                 system.compute(time.template cast<Scalar<T>>());
-            }, "time"_a)
+            }, docstrings::System::compute, "time"_a)
 
             // The computed light curve
-            .def_property_readonly("lightcurve", [](kepler::System<T> &system) -> py::object{
+            .def_property_readonly("lightcurve", [](kepler::System<T> &system)
+                    -> py::object{
                 if (system.primary->nwav == 1) {
-                    return py::cast(getColumn(system.getLightcurve(), 0).template cast<double>());
+                    return py::cast(getColumn(
+                            system.getLightcurve(), 0).template cast<double>());
                 } else {
-                    return py::cast(system.getLightcurve().template cast<double>());
+                    return py::cast(
+                            system.getLightcurve().template cast<double>());
                 }
-            })
-
-            // TODO
+            }, docstrings::System::lightcurve)
 
             .def("__repr__", &kepler::System<T>::info);
 
