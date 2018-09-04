@@ -203,13 +203,40 @@ namespace utils {
     //! Return the modulo of an angle by 2 pi
     template <typename T>
     T mod2pi(const T& numer) {
+        using std::fmod;
         return fmod(numer, T(2 * pi<T>()));
+    }
+
+    //! Manual override of the derivative of `mod2pi`
+    template <typename T>
+    Eigen::AutoDiffScalar<T> mod2pi(const Eigen::AutoDiffScalar<T>& numer) {
+        typename T::Scalar numer_value = numer.value(),
+                           modulo_value = mod2pi(numer_value);
+        return Eigen::AutoDiffScalar<T>(
+          modulo_value,
+          numer.derivatives()
+        );
     }
 
     //! Return the modulo of an angle by 360 degrees
     template <typename T>
     T mod360(const T& numer) {
+        using std::fmod;
         return fmod(numer, T(360.0));
+    }
+
+    //! Check whether a number is infinite
+    template <typename T>
+    inline bool isinf(const T& number) {
+        using std::isinf;
+        return isinf(number);
+    }
+
+    //! Check whether an AutoDiffScalar's value is infinite
+    template <typename T>
+    inline bool isinf(const Eigen::AutoDiffScalar<T>& number) {
+        using std::isinf;
+        return isinf(number.value());
     }
 
     //! Figure out the dimensions and types of the coefficients of a map.

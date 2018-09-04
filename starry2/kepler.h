@@ -33,7 +33,7 @@ namespace kepler {
     using maps::Map;
     using rotation::Wigner;
     using std::abs;
-    using std::isinf;
+    using utils::isinf;
 
     // Forward declare our classes
     template <class T> class Body;
@@ -52,7 +52,7 @@ namespace kepler {
 
     */
     template <typename T>
-    T EccentricAnomaly(T& M, T& ecc) {
+    T EccentricAnomaly(const T& M, const T& ecc) {
         // Initial condition
         T E = M;
         T tol = 10 * mach_eps<T>();
@@ -69,13 +69,10 @@ namespace kepler {
         return E;
     }
 
-    /**
-    Manual override of the derivative of the eccentric anomaly
-
-    */
+    //! Manual derivative of the eccentric anomaly
     template <typename T>
     Eigen::AutoDiffScalar<T> EccentricAnomaly(const Eigen::AutoDiffScalar<T>& M,
-        const Eigen::AutoDiffScalar<T>& ecc) {
+            const Eigen::AutoDiffScalar<T>& ecc) {
         typename T::Scalar M_value = M.value(),
                            ecc_value = ecc.value(),
                            E_value = EccentricAnomaly(M_value, ecc_value),
@@ -84,8 +81,7 @@ namespace kepler {
                            norm1 = 1./ (1. - ecc_value * cosE_value),
                            norm2 = sinE_value * norm1;
         if (M.derivatives().size() && ecc.derivatives().size())
-            return Eigen::AutoDiffScalar<T>(E_value,
-                                            M.derivatives() * norm1 +
+            return Eigen::AutoDiffScalar<T>(E_value, M.derivatives() * norm1 +
                                             ecc.derivatives() * norm2);
         else if (M.derivatives().size())
             return Eigen::AutoDiffScalar<T>(E_value, M.derivatives() * norm1);
@@ -95,6 +91,117 @@ namespace kepler {
             return Eigen::AutoDiffScalar<T>(E_value, M.derivatives());
     }
 
+    /**
+    Compute the light travel time delay and apply
+    it to the current (x, y, z) position of the body.
+
+    */
+    template <class U>
+    void applyLightDelay(const U& time,
+        const U& a, const U& ecc, const U& ecc2,
+        const U& sqrtonepluse, const U& sqrtoneminuse,
+        const U& w, const U& angvelorb, const U& tref,
+        const U& M0, const U& cosO, const U& sinO, const U& sini,
+        const U& cosOcosi, const U& sinOcosi,
+        const U& vamp, const U& ecw, const U& z0, const U& c,
+        U& cwf, U& rorb, U& x, U& y, U& z, U& delay) {
+
+        // Component of the velocity out of the sky
+        // Obtained by differentiating the Kepler solution
+        U vz = vamp * sini * (ecw + cwf);
+
+        // Component of the acceleration out of the sky
+        U az = -angvelorb * angvelorb * a * a * a /
+               (rorb * rorb * rorb) * z;
+
+        // Compute the time delay at the **retarded** position, accounting
+        // for the instantaneous velocity and acceleration of the body.
+        // This is slightly better than doing
+        //
+        //          dt = (z0 - z) / c
+        //
+        // which is actually the time delay at the **current** position.
+        // But the photons left the planet from the **retarded** position,
+        // so if the planet has motion in the `z` direction the two values
+        // will be slightly different. In practice it doesn't really matter
+        // that much, though. See the derivation at
+        // https://github.com/rodluger/starry/issues/66
+        if (abs(az) < 1e-10)
+            delay = (z0 - z) / (c + vz);
+        else
+            delay = (c / az) * ((1 + vz / c)
+                    - sqrt((1 + vz / c) * (1 + vz / c)
+                    - 2 * az * (z0 - z) / (c * c)));
+
+        // Re-compute Kepler's equation, this time
+        // solving for the **retarded** position
+        U M = mod2pi(M0 + angvelorb * (time - delay - tref));
+        U f;
+        if (ecc > 0) {
+            U E = EccentricAnomaly(M, ecc);
+            f = (2. * atan2(sqrtonepluse * sin(E / 2.),
+                            sqrtoneminuse * cos(E / 2.)));
+            rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
+        } else {
+            f = M;
+            rorb = a;
+        }
+        cwf = cos(w + f);
+        U swf = sin(w + f);
+        x = -rorb * (cosO * cwf - sinOcosi * swf);
+        y = -rorb * (sinO * cwf + cosOcosi * swf);
+        z = rorb * swf * sini;
+
+    }
+
+    /**
+    Compute the instantaneous x, y, and z positions of the
+    body with a simple Keplerian solver. Templated for
+    AD capability.
+
+    */
+    template <class U>
+    void keplerStep(const U& time,
+        const U& a, const U& ecc, const U& ecc2,
+        const U& sqrtonepluse, const U& sqrtoneminuse,
+        const U& w, const U& angvelorb, const U& tref,
+        const U& M0, const U& cosO, const U& sinO, const U& sini,
+        const U& cosOcosi, const U& sinOcosi,
+        const U& vamp, const U& ecw, const U& z0, const U& c,
+        U& x, U& y, U& z, U& delay) {
+
+        // Mean anomaly
+        U M = mod2pi(M0 + angvelorb * (time - tref));
+
+        // True anomaly and orbital radius
+        U f, rorb;
+        if (ecc == 0) {
+            f = M;
+            rorb = a;
+        } else {
+            U E = EccentricAnomaly(M, ecc);
+            f = (2. * atan2(sqrtonepluse * sin(E / 2.),
+                            sqrtoneminuse * cos(E / 2.)));
+            rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
+        }
+
+        // See Murray and Dermott p. 51, except x and y
+        // have the opposite sign here.
+        // This ensures the orbits are prograde!
+        U cwf = cos(w + f);
+        U swf = sin(w + f);
+        x = -rorb * (cosO * cwf - sinOcosi * swf);
+        y = -rorb * (sinO * cwf + cosOcosi * swf);
+        z = rorb * swf * sini;
+
+        // Compute the light travel time delay
+        if (!isinf(c))
+            applyLightDelay(time, a, ecc, ecc2, sqrtonepluse, sqrtoneminuse,
+                            w, angvelorb, tref, M0, cosO, sinO, sini,
+                            cosOcosi, sinOcosi, vamp, ecw, z0, c, cwf, rorb,
+                            x, y, z, delay);
+
+    }
 
     /* ---------------- */
     /*       BODY       */
@@ -438,12 +545,6 @@ namespace kepler {
 
             // Keplerian solution variables
             S* c_light;                                                         /**< Pointer to the speed of light in units of primary radius / s */
-            S M;                                                                /**< Mean anomaly in radians */
-            S E;                                                                /**< Eccentric anomaly in radians */
-            S f;                                                                /**< True anomaly in radians */
-            S rorb;                                                             /**< Instantaneous orbital radius in units of the primary radius */
-            S cwf;                                                              /**< cos(w + f) */
-            S swf;                                                              /**< sin(w + f) */
             S x_cur;                                                            /**< Current Cartesian x position */
             S y_cur;                                                            /**< Current Cartesian y position */
             S z_cur;                                                            /**< Current Cartesian z position */
@@ -470,7 +571,7 @@ namespace kepler {
                 const S& yo, const S& ro, bool gradient);
             void computeTheta0();
             inline void syncSkyMap();
-            inline void orbitStep(const S& time, bool gradient);
+            inline void computeXYZ(const S& time, bool gradient);
             inline void applyLightDelay(const S& time);
 
         public:
@@ -623,97 +724,59 @@ namespace kepler {
         }
     }
 
-    /**
-    Compute the instantaneous x, y, and z positions of the
-    body with a simple Keplerian solver.
-
-    */
     template <class T>
-    void Secondary<T>::orbitStep(const Scalar<T>& time, bool gradient) {
-
-        // Mean anomaly
-        M = mod2pi(M0 + angvelorb * (time - tref));
-
-        // True anomaly and orbital radius
-        if (ecc == 0) {
-            f = M;
-            rorb = a;
+    void Secondary<T>::computeXYZ(const Scalar<T>& time, bool gradient) {
+        if (!gradient) {
+            keplerStep(time, a, ecc, ecc2, sqrtonepluse, sqrtoneminuse,
+                       w, angvelorb, tref, M0, cosO, sinO, sini, cosOcosi,
+                       sinOcosi, vamp, ecw, z0, *c_light,
+                       x_cur, y_cur, z_cur, delay);
         } else {
-            E = EccentricAnomaly(M, ecc);
-            f = (2. * atan2(sqrtonepluse * sin(E / 2.),
-                            sqrtoneminuse * cos(E / 2.)));
-            rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
+            using S = Scalar<T>;
+            using AD = ADScalar<S, 9>;
+            AD AD_time(time, Vector<S>::Unit(9, 0));
+            AD AD_a(a, Vector<S>::Unit(9, 1));
+            AD AD_ecc(ecc, Vector<S>::Unit(9, 2));
+            AD AD_M0(M0, Vector<S>::Unit(9, 3));
+            AD AD_tref(tref, Vector<S>::Unit(9, 4));
+            AD AD_porb(porb, Vector<S>::Unit(9, 5));
+            AD AD_w(w, Vector<S>::Unit(9, 6));
+            AD AD_Omega(Omega, Vector<S>::Unit(9, 7));
+            AD AD_inc(inc, Vector<S>::Unit(9, 8));
+
+            // TODO: These should be pre-computed
+            AD AD_ecc2 = AD_ecc * AD_ecc;
+            AD AD_sqrtonepluse = sqrt(1 + AD_ecc);
+            AD AD_sqrtoneminuse = sqrt(1 - AD_ecc);
+            AD AD_angvelorb = 2 * pi<S>() / AD_porb;
+            AD AD_cosO = cos(AD_Omega);
+            AD AD_sinO = sin(AD_Omega);
+            AD AD_cosi = cos(AD_inc);
+            AD AD_sini = sin(AD_inc);
+            AD AD_cosOcosi = AD_cosO * AD_cosi;
+            AD AD_sinOcosi = AD_sinO * AD_cosi;
+            AD AD_vamp = AD_angvelorb * AD_a / sqrt(1 - AD_ecc2);
+            AD AD_ecw = AD_ecc * cos(AD_w);
+            AD AD_z0 = AD(z0);
+            AD AD_c = AD(*c_light);
+
+            // Take the step
+            AD AD_x, AD_y, AD_z, AD_delay;
+            keplerStep(AD_time, AD_a, AD_ecc, AD_ecc2, AD_sqrtonepluse,
+                       AD_sqrtoneminuse, AD_w, AD_angvelorb, AD_tref,
+                       AD_M0, AD_cosO, AD_sinO, AD_sini, AD_cosOcosi,
+                       AD_sinOcosi, AD_vamp, AD_ecw, AD_z0, AD_c,
+                       AD_x, AD_y, AD_z, AD_delay);
+
+            // Store the values
+            x_cur = AD_x.value();
+            y_cur = AD_y.value();
+            z_cur = AD_z.value();
+            delay = AD_delay.value();
+
+            // Chain rule (TODO)
+
         }
-
-        // See Murray and Dermott p. 51, except x and y
-        // have the opposite sign here.
-        // This ensures the orbits are prograde!
-        cwf = cos(w + f);
-        swf = sin(w + f);
-        x_cur = -rorb * (cosO * cwf - sinOcosi * swf);
-        y_cur = -rorb * (sinO * cwf + cosOcosi * swf);
-        z_cur = rorb * swf * sini;
-
-        // Compute the light travel time delay
-        if (!isinf(*c_light)) applyLightDelay(time);
-
-        // TODO: Compute d{xyz}/d{everything} w/ autodiff
-
-    }
-
-    /**
-    Compute the light travel time delay and apply
-    it to the current (x, y, z) position of the body.
-
-    */
-    template <class T>
-    void Secondary<T>::applyLightDelay(const Scalar<T>& time) {
-
-        // Component of the velocity out of the sky
-        // Obtained by differentiating the expressions above
-        Scalar<T> vz = vamp * sini * (ecw + cwf);
-
-        // Component of the acceleration out of the sky
-        Scalar<T> az = -angvelorb * angvelorb * a * a * a /
-                       (rorb * rorb * rorb) * z_cur;
-
-        // Compute the time delay at the **retarded** position, accounting
-        // for the instantaneous velocity and acceleration of the body.
-        // This is slightly better than doing
-        //
-        //          dt_ = (z0 - z_) / c_light
-        //
-        // which is actually the time delay at the **current** position.
-        // But the photons left the planet from the **retarded** position,
-        // so if the planet has motion in the `z` direction the two values
-        // will be slightly different. In practice it doesn't really matter
-        // that much, though. See the derivation at
-        // https://github.com/rodluger/starry/issues/66
-        if (abs(az) < 1e-10)
-            delay = (z0 - z_cur) / (*c_light + vz);
-        else
-            delay = (*c_light / az) * ((1 + vz / *c_light)
-                    - sqrt((1 + vz / *c_light) * (1 + vz / *c_light)
-                    - 2 * az * (z0 - z_cur) / (*c_light * *c_light)));
-
-        // Re-compute Kepler's equation, this time
-        // solving for the **retarded** position
-        M = mod2pi(M0 + angvelorb * (time - delay - tref));
-        if (ecc > 0) {
-            E = EccentricAnomaly(M, ecc);
-            f = (2. * atan2(sqrtonepluse * sin(E / 2.),
-                            sqrtoneminuse * cos(E / 2.)));
-            rorb = a * (1. - ecc2) / (1. + ecc * cos(f));
-        } else {
-            f = M;
-            rorb = a;
-        }
-        cwf = cos(w + f);
-        swf = sin(w + f);
-        x_cur = -rorb * (cosO * cwf - sinOcosi * swf);
-        y_cur = -rorb * (sinO * cwf + cosOcosi * swf);
-        z_cur = rorb * swf * sini;
-
     }
 
 
@@ -1063,7 +1126,7 @@ namespace kepler {
         // Compute fluxes and take an orbital step
         primary->computeTotal(time_cur, gradient);
         for (auto secondary : secondaries) {
-            secondary->orbitStep(time_cur, gradient);
+            secondary->computeXYZ(time_cur, gradient);
             secondary->computeTotal(time_cur, gradient);
         }
 
