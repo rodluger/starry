@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+rm -rf build && STARRY_DEBUG=1 python setup.py develop && python debug.py

@@ -427,7 +427,33 @@ namespace pybind_interface {
                 },
                 [](kepler::Body<T> &body, const double& tref){
                     body.setRefTime(tref);
-                }, docstrings::Body::tref);
+                }, docstrings::Body::tref)
+
+            // The computed light curve: a matrix or a vector
+            .def_property_readonly("lightcurve", [](kepler::Body<T> &body)
+                    -> py::object{
+                if (body.nwav == 1) {
+                    return py::cast(getColumn(
+                            body.getLightcurve(), 0).template cast<double>());
+                } else {
+                    return py::cast(
+                            body.getLightcurve().template cast<double>());
+                }
+            }, docstrings::Body::lightcurve)
+
+            // The gradient of the light curve: a tensor or a matrix
+            // TODO: Cast to 2-dimensional numpy array if nwav = 1
+            //       Return a dictionary
+            // TODO: This can probably be sped up.
+            .def_property_readonly("gradient", [](kepler::Body<T> &body)
+                    -> py::array_t<double>{
+                const Vector<T>& dL = body.getGradient();
+                std::vector<MapDouble<T>> dL_double;
+                for (int t = 0; t < dL.size(); ++t) {
+                    dL_double.push_back(dL(t).template cast<double>());
+                }
+                return py::cast(dL_double);
+            }, docstrings::Body::gradient);
 
         return Body;
     }
@@ -641,7 +667,7 @@ namespace pybind_interface {
                     sys.setExposureMaxDepth(d);
                 }, docstrings::System::exposure_max_depth)
 
-            // The computed light curve
+            // The computed light curve: a matrix or a vector
             .def_property_readonly("lightcurve", [](kepler::System<T> &system)
                     -> py::object{
                 if (system.primary->nwav == 1) {
@@ -652,6 +678,9 @@ namespace pybind_interface {
                             system.getLightcurve().template cast<double>());
                 }
             }, docstrings::System::lightcurve)
+
+            // The gradient of the light curve: a tensor or a matrix
+            // TODO
 
             .def("__repr__", &kepler::System<T>::info);
 
