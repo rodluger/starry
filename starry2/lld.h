@@ -215,6 +215,6 @@ namespace lld {
         return (2. * pi<T>() / 3.) * (1.0 - 1.5 * Lambda(b, r, ksq, K, E) - T(r > b));
     }
 
-}; // namespace lld
+} // namespace lld
 
 #endif

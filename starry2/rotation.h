@@ -594,6 +594,6 @@ namespace rotation {
         return;
     }
 
-}; // namespace rotation
+} // namespace rotation
 
 #endif

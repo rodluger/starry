@@ -688,6 +688,6 @@ namespace pybind_interface {
 
     }
 
-}; // namespace pybind_interface
+} // namespace pybind_interface
 
 #endif

@@ -255,6 +255,6 @@ namespace pybind_vectorize {
 
     }
 
-}; // namespace vectorize
+} // namespace vectorize
 
 #endif

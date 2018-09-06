@@ -267,6 +267,6 @@ namespace minimize {
 
     };
 
-}; // namespace minimize
+} // namespace minimize
 
 #endif

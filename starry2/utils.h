@@ -537,6 +537,6 @@ namespace utils {
     }
 
 
-}; // namespace utils
+} // namespace utils
 
 #endif

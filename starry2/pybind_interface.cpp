@@ -42,7 +42,7 @@ PYBIND11_MODULE(_starry2, m) {
 
     // User-facing class factory
     m.def("Map", [Map1, Map2, Map3, Map4]
-                 (const int lmax=2, const int nwav=1, const bool multi=false) {
+                 (const int lmax, const int nwav, const bool multi) {
         if ((nwav == 1) && (!multi))
             return Map1(lmax, nwav);
         else if ((nwav == 1) && (multi))
@@ -72,7 +72,7 @@ PYBIND11_MODULE(_starry2, m) {
 
     // User-facing class factory
     mk.def("Primary", [Primary1, Primary2, Primary3, Primary4]
-            (const int lmax=2, const int nwav=1, const bool multi=false) {
+            (const int lmax, const int nwav, const bool multi) {
         if ((nwav == 1) && (!multi))
             return Primary1(lmax, nwav);
         else if ((nwav == 1) && (multi))
@@ -93,7 +93,7 @@ PYBIND11_MODULE(_starry2, m) {
 
     // User-facing class factory
     mk.def("Secondary", [Secondary1, Secondary2, Secondary3, Secondary4]
-            (const int lmax=2, const int nwav=1, const bool multi=false) {
+            (const int lmax, const int nwav, const bool multi) {
         if ((nwav == 1) && (!multi))
             return Secondary1(lmax, nwav);
         else if ((nwav == 1) && (multi))

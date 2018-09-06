@@ -1712,6 +1712,6 @@ namespace maps {
 
     }
 
-}; // namespace maps
+} // namespace maps
 
 #endif

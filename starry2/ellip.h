@@ -212,6 +212,6 @@ namespace ellip {
         );
     }
 
-}; // namespace ellip
+} // namespace ellip
 
 #endif

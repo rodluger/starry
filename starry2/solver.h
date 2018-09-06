@@ -943,6 +943,6 @@ namespace solver {
         }
     }
 
-}; // namespace solver
+} // namespace solver
 
 #endif

@@ -141,6 +141,6 @@ namespace errors {
         }
     };
 
-}; // namespace errors
+} // namespace errors
 
 #endif

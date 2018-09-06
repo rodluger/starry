@@ -25,7 +25,7 @@ namespace units {
     const double SpeedOfLight = 299792458.;                                     /**< Speed of light in m / s */
     const double SolarRadius = 6.95700e8;                                       /**< Radius of the sun in m */
 
-}; // namespace units
+} // namespace units
 
 namespace kepler {
 
@@ -867,7 +867,7 @@ namespace kepler {
         }
 
         // We need to transform from the derivatives of `skyMap`
-        // to the derivatives of the user-facing map.
+        // to the derivatives of the user-facing map via a rotation
         if ((gradient) && (y_deg > 0)) {
             // dF / d{y} = dF / d{ysky} * d{ysky} / d{y}
             // And since ysky = R y, we have d{ysky} / d{y} = R
@@ -1462,6 +1462,6 @@ namespace kepler {
 
     }
 
-}; // namespace kepler
+} // namespace kepler
 
 #endif

@@ -557,6 +557,6 @@ namespace basis {
 
     };
 
-}; // namespace basis
+} // namespace basis
 
 #endif
