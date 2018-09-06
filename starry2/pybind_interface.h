@@ -447,7 +447,7 @@ namespace pybind_interface {
             // TODO: This can probably be sped up.
             .def_property_readonly("gradient", [](kepler::Body<T> &body)
                     -> py::array_t<double>{
-                const Vector<T>& dL = body.getGradient();
+                const Vector<T>& dL = body.getLightcurveGradient();
                 std::vector<MapDouble<T>> dL_double;
                 for (int t = 0; t < dL.size(); ++t) {
                     dL_double.push_back(dL(t).template cast<double>());

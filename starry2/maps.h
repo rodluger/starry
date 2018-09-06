@@ -1,8 +1,6 @@
 /**
 Defines the surface map class.
 
-TODO: Implement a map-like interface to the gradients
-
 TODO: Macro for loops involving nwav and specialize for nwav = 1?
       Essentially we'd replace
 
@@ -177,10 +175,11 @@ namespace maps {
             const int lmax;                                                     /**< The highest degree of the map */
             const int N;                                                        /**< The number of map coefficients */
             const int nwav;                                                     /**< The number of wavelengths */
-            T dF;                                                               /**< Gradient of the flux */
-            std::vector<string> dF_names;                                       /**< Names of each of the params in the flux gradient */
 
         protected:
+
+            T dF;                                                               /**< Gradient of the flux */
+            std::vector<string> dF_names;                                       /**< Names of each of the params in the flux gradient */
 
             // Sanity checks
             const bool type_valid;                                              /**< Is the type of the Map valid? */
@@ -220,7 +219,7 @@ namespace maps {
 
             // Private methods
             void update();
-            inline void resizeGradients(const int n_ylm, const int n_ul);
+            inline void resizeGradient(const int n_ylm, const int n_ul);
             inline void checkDegree();
             inline void updateY();
             inline void updateU();
@@ -281,7 +280,7 @@ namespace maps {
                 }
                 dF_n_ul = 0;
                 dF_n_ylm = 0;
-                resizeGradients(N, lmax);
+                resizeGradient(N, lmax);
 
                 // Initialize the map vectors
                 axis = yhat<Scalar<T>>();
@@ -314,7 +313,9 @@ namespace maps {
             void setAxis(const UnitVector<Scalar<T>>& axis_);
             UnitVector<Scalar<T>> getAxis() const;
             std::string info();
-            inline void _resizeGradients();
+            inline void resizeGradient();
+            const T& getGradient() const;
+            const std::vector<std::string>& getGradientNames() const;
 
             // Rotate the base map
             void rotate(const Scalar<T>&  theta_);
@@ -457,19 +458,31 @@ namespace maps {
 
     */
     template <class T>
-    inline void Map<T>::_resizeGradients() {
+    inline void Map<T>::resizeGradient() {
         if (y_deg == 0)
-            resizeGradients(1, lmax);
+            resizeGradient(1, lmax);
         else if (u_deg == 0)
-            resizeGradients(N, 0);
+            resizeGradient(N, 0);
         else
-            resizeGradients(N, lmax);
+            resizeGradient(N, lmax);
     }
 
 
     /* ---------------- */
     /*        I/O       */
     /* ---------------- */
+
+    //! Get the gradient of the flux
+    template <class T>
+    const T& Map<T>::getGradient() const {
+        return dF;
+    }
+
+    //! Get the names of the gradient params
+    template <class T>
+    const std::vector<std::string>& Map<T>::getGradientNames() const {
+        return dF_names;
+    }
 
     /**
     Set the spherical harmonic vector
@@ -684,7 +697,7 @@ namespace maps {
 
     */
     template <class T>
-    inline void Map<T>::resizeGradients(const int n_ylm, const int n_ul) {
+    inline void Map<T>::resizeGradient(const int n_ylm, const int n_ul) {
 
         // Do we need to do anything?
         if ((n_ylm == dF_n_ylm) && (n_ul == dF_n_ul))
@@ -1201,7 +1214,7 @@ namespace maps {
         ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
 
         // Resize the gradients
-        resizeGradients(1, lmax);
+        resizeGradient(1, lmax);
 
         // Convert to internal types
         Scalar<T> xo = xo_;
@@ -1324,7 +1337,7 @@ namespace maps {
         ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
 
         // Resize the gradients
-        resizeGradients(N, 0);
+        resizeGradient(N, 0);
 
         // Convert to internal type
         Scalar<T> xo = xo_;
@@ -1518,7 +1531,7 @@ namespace maps {
         A1dLDdpA1dRdtheta.resize(N, N);
 
         // Resize the gradients
-        resizeGradients(N, lmax);
+        resizeGradient(N, lmax);
 
         // Convert to internal type
         Scalar<T> xo = xo_;

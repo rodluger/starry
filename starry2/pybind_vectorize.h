@@ -128,22 +128,24 @@ namespace pybind_vectorize {
             size_t n = max(theta.size(), max(xo.size(),
                            max(yo.size(), ro.size())));
             std::map<string, Vector<double>> grad;
-            map._resizeGradients();
-            for (auto name : map.dF_names)
+            map.resizeGradient();
+            auto dF_names = map.getGradientNames();
+            for (auto name : dF_names)
                 grad[name].resize(n);
 
             // Nested lambda function;
             // https://github.com/pybind/pybind11/issues/
             // 761#issuecomment-288818460
             int t = 0;
-            auto F = py::vectorize([&map, &grad, &t](double theta, double xo,
-                                                     double yo, double ro) {
+            auto F = py::vectorize([&map, &grad, &t, &dF_names]
+                        (double theta, double xo, double yo, double ro) {
                 // Evaluate the function
                 double res = static_cast<double>(map.flux(theta, xo, yo,
                                                           ro, true));
                 // Gather the derivatives
-                for (int j = 0; j < map.dF.size(); j++)
-                    grad[map.dF_names[j]](t) = static_cast<double>(map.dF(j));
+                auto dF = map.getGradient();
+                for (int j = 0; j < dF.size(); j++)
+                    grad[dF_names[j]](t) = static_cast<double>(dF(j));
                 t++;
                 return res;
             })(theta, xo, yo, ro);
@@ -180,8 +182,9 @@ namespace pybind_vectorize {
 
             // Initialize the gradient matrix
             std::map<string, Matrix<double>> grad;
-            map._resizeGradients();
-            for (auto name : map.dF_names)
+            map.resizeGradient();
+            auto dF_names = map.getGradientNames();
+            for (auto name : dF_names)
                 grad[name].resize(sz, map.nwav);
 
             // Iterate through the timeseries
@@ -193,9 +196,10 @@ namespace pybind_vectorize {
                            yo_v(i), ro_v(i), true).template cast<double>();
 
                 // Gradient
-                for (int j = 0; j < map.dF.rows(); ++j)
-                    grad[map.dF_names[j]].row(i) =
-                        map.dF.row(j).template cast<double>();
+                auto dF = map.getGradient();
+                for (int j = 0; j < dF.rows(); ++j)
+                    grad[dF_names[j]].row(i) =
+                        dF.row(j).template cast<double>();
 
             }
 

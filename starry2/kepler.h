@@ -41,6 +41,9 @@ namespace kepler {
     template <class T> class Secondary;
     template <class T> class System;
 
+    //
+    static const std::vector<std::string> PRIMARY_GRAD_NAMES({"prot", "tref"});
+    static const std::vector<std::string> SECONDARY_GRAD_NAMES({"r", "L", "prot", "a", "porb", "inc", "ecc", "w", "Omega", "lambda0", "tref"});
 
     /* ---------------- */
     /*     FUNCTIONS    */
@@ -336,6 +339,7 @@ namespace kepler {
 
             Matrix<Scalar<T>> lightcurve;                                       /**< The body's full light curve */
             Vector<T> dL;                                                       /**< The gradient of the body's light curve */
+            std::vector<std::string> dL_names;                                  /**< Names of each of the params in the light curve gradient */
 
             // Private methods
             inline S theta_deg(const S& time);
@@ -378,6 +382,7 @@ namespace kepler {
         public:
 
             // I/O
+            using Map<T>::nwav;
             void setRadius(const S& r_);
             virtual S getRadius() const;
             void setLuminosity(const S& L_);
@@ -387,7 +392,8 @@ namespace kepler {
             void setRefTime(const S& tref_);
             S getRefTime() const;
             const Matrix<Scalar<T>>& getLightcurve() const;
-            const Vector<T>& getGradient() const;
+            const Vector<T>& getLightcurveGradient() const;
+            const std::vector<std::string>& getLightcurveGradientNames() const;
 
     };
 
@@ -410,44 +416,8 @@ namespace kepler {
     inline void Body<T>::computeTotal(const Scalar<T>& time, bool gradient) {
         if (L != 0) {
             flux_tot = L * getFlux(theta_deg(time), 0, 0, 0, gradient);
-            if (gradient) {
-
-                // Map derivs:  {theta, xo, yo, ro, {y}, {u}}
-                // Body derivs: {time, r, L, prot, a, porb, inc, ecc, w,
-                //               Omega, lambda0, tref, {y}, {u}}
-                dflux_cur.resize(dF.rows() + 8, dF.cols());
-
-                // dF / dt
-                // TODO: Need to account for the time derivative of time delay!
-                setRow(dflux_cur, 0, Row<T>(L * getRow(dF, 0) * angvelrot_deg));
-
-                // dF / dr
-                setRow(dflux_cur, 1, 0);
-
-                // dF / dL = F / L
-                setRow(dflux_cur, 2, Row<T>(flux_tot / L));
-
-                // Other orbital derivs
-                // TODO: Figure these out
-                dflux_cur.block(3, 0, 9, dF.cols()).setZero();
-
-                // dF / d{y} and dF / d{u}
-                dflux_cur.block(12, 0, dflux_cur.rows() - 12, dF.cols()) =
-                    L * dF.block(4, 0, dF.rows() - 4, dF.cols());
-
-            }
         } else {
             setZero(flux_tot);
-            if (gradient) {
-                // All derivs are zero. NOTE: The deriv with respect to the
-                // luminosity is technically nonzero -- it's equal to the flux
-                // returned by `getFlux()`. But if the user set L = 0, they
-                // most likely don't need any of the map derivs anyways.
-                // Since computing the gradient is very costly, we disable
-                // it here. If the user *really* needs to know the gradient,
-                // just set L to a very small (1e-15) value instead of zero.
-                dflux_cur.setZero(dF.rows() + 8, dF.cols());
-            }
         }
         flux_cur = flux_tot;
     }
@@ -461,7 +431,6 @@ namespace kepler {
             flux_cur += L * getFlux(theta_deg(time), xo, yo, ro, gradient)
                         - flux_tot;
         }
-        // TODO: compute gradient
     }
 
 
@@ -532,8 +501,14 @@ namespace kepler {
 
     //! Get the gradient of the body's light curve
     template <class T>
-    const Vector<T>& Body<T>::getGradient() const {
+    const Vector<T>& Body<T>::getLightcurveGradient() const {
         return dL;
+    }
+
+    //! Get the names of the params in the gradient
+    template <class T>
+    const std::vector<std::string>& Body<T>::getLightcurveGradientNames() const {
+        return dL_names;
     }
 
     /* ---------------- */
@@ -557,6 +532,17 @@ namespace kepler {
             using Body<T>::lightcurve;
             using Body<T>::setRotPer;
             using Body<T>::setRefTime;
+            using Body<T>::L;
+            using Body<T>::dflux_cur;
+            using Body<T>::flux_tot;
+            using Body<T>::dF;
+            using Body<T>::angvelrot_deg;
+            using Body<T>::prot;
+            using Body<T>::tref;
+            using Body<T>::theta0_deg;
+            using Body<T>::delay;
+            using Body<T>::y_deg;
+            using Body<T>::u_deg;
             S r_meters;                                                         /**< Radius of the body in meters */
             S c_light;                                                          /**< Speed of light in units of primary radius / s */
 
@@ -660,12 +646,10 @@ namespace kepler {
             using Body<T>::lightcurve;
             using Body<T>::dF;
             using Body<T>::axis;
-            /*
-            using Body<T>::r;
             using Body<T>::L;
+            using Body<T>::dflux_cur;
+            using Body<T>::flux_tot;
             using Body<T>::angvelrot_deg;
-            using Body<T>::theta_deg;
-            */
 
             // Computed values
             Vector<Scalar<T>> xvec;                                             /**< The body's Cartesian x position vector */
@@ -857,13 +841,14 @@ namespace kepler {
         Row<T> F = skyMap.flux(theta_deg, xo, yo, ro, gradient);
 
         // Carry over the derivatives from the sky map
-        dF.block(0, 0, 4, nwav) = skyMap.dF.block(0, 0, 4, nwav);
+        auto sky_dF = skyMap.getGradient();
+        dF.block(0, 0, 4, nwav) = sky_dF.block(0, 0, 4, nwav);
         if (u_deg > 0) {
             if (y_deg == 0)
-                dF.block(5, 0, lmax, nwav) = skyMap.dF.block(5, 0, lmax, nwav);
+                dF.block(5, 0, lmax, nwav) = sky_dF.block(5, 0, lmax, nwav);
             else
                 dF.block(4 + N, 0, lmax, nwav) =
-                    skyMap.dF.block(4 + N, 0, lmax, nwav);
+                    sky_dF.block(4 + N, 0, lmax, nwav);
         }
 
         // We need to transform from the derivatives of `skyMap`
@@ -874,7 +859,7 @@ namespace kepler {
             for (int l = 0; l < lmax + 1; ++l) {
                 dF.block(4 + l * l, 0, 2 * l + 1, nwav) =
                     RSky[l].transpose() *
-                    skyMap.dF.block(4 + l * l, 0, 2 * l + 1, nwav);
+                    sky_dF.block(4 + l * l, 0, 2 * l + 1, nwav);
             }
         }
 
@@ -1112,10 +1097,12 @@ namespace kepler {
             using S = Scalar<T>;                                                /**< Shorthand for the scalar type (double, Multi, ...) */
             Matrix<Scalar<T>> lightcurve;                                       /**< The full system light curve */
             Vector<T> dL;                                                       /**< The gradient of the system light curve */
+            std::vector<std::string> dL_names;                                  /**< The names of each of the derivatives in the gradient */
             Scalar<T> exptime;                                                  /**< Exposure time in days */
             Scalar<T> exptol;                                                   /**< Exposure integration tolerance */
             int expmaxdepth;                                                    /**< Maximum recursion depth in the exposure integration */
             size_t t;                                                           /** The current index in the time array */
+            size_t ngrad;                                                       /** Number of derivatives to compute */
 
             // Protected methods
             inline void step(const S& time_cur, bool gradient);
@@ -1155,7 +1142,7 @@ namespace kepler {
             // Public methods
             void compute(const Vector<S>& time, bool gradient=false);
             const Matrix<S>& getLightcurve() const;
-            const Vector<T>& getGradient() const;
+            const Vector<T>& getLightcurveGradient() const;
             std::string info();
             void setExposureTime(const S& t_);
             S getExposureTime() const;
@@ -1217,7 +1204,7 @@ namespace kepler {
 
     //! Return the gradient of the light curve
     template <class T>
-    const Vector<T>& System<T>::getGradient() const {
+    const Vector<T>& System<T>::getLightcurveGradient() const {
         return dL;
     }
 
@@ -1379,14 +1366,35 @@ namespace kepler {
 
         size_t NT = time_.size();
         Vector<Scalar<T>> time = time_ * units::DayToSeconds;
+        int iletter = 98;                                                       // This is the ASCII code for 'b'
+        std::string letter;                                                     // The secondary letter designation
 
-        // Allocate arrays
-        // Sync the orbital and sky maps
-        // Sync the speed of light across all secondaries
+        // Primary:
+        // - Allocate arrays
+        // - Figure out the number and names of derivatives
         lightcurve.resize(NT, primary->nwav);
-        dL.resize(NT);
         primary->lightcurve.resize(NT, primary->nwav);
-        primary->dL.resize(NT);
+        if (gradient) {
+            // Resize the outer arrays and
+            // populate the primary gradient names
+            dL.resize(NT);
+            primary->resizeGradient();
+            dL_names.clear();
+            dL_names.push_back("time");
+            for (std::string name : PRIMARY_GRAD_NAMES)
+                dL_names.push_back("A." + name);
+            for (size_t n=4; n < primary->dF_names.size(); ++n)
+                dL_names.push_back("A." + primary->dF_names[n]);
+            ngrad = dL_names.size();
+        } else {
+            ngrad = 0;
+        }
+
+        // Secondaries:
+        // - Allocate arrays
+        // - Sync the orbital and sky maps
+        // - Sync the speed of light across all secondaries
+        // - Figure out the number and names of derivatives
         for (auto secondary : secondaries) {
             if (secondary->nwav != primary->nwav)
                 throw errors::ValueError("All bodies must have the same "
@@ -1400,9 +1408,35 @@ namespace kepler {
             secondary->yvec.resize(NT);
             secondary->zvec.resize(NT);
             secondary->lightcurve.resize(NT, primary->nwav);
-            secondary->dL.resize(NT);
             secondary->syncSkyMap();
             secondary->c_light = &(primary->c_light);
+            if (gradient) {
+                // Resize the outer arrays
+                // and populate the secondary gradient names
+                letter = (char) iletter++;
+                secondary->resizeGradient();
+                for (std::string name : SECONDARY_GRAD_NAMES)
+                    dL_names.push_back(letter + "." + name);
+                for (size_t n=4; n < secondary->dF_names.size(); ++n)
+                    dL_names.push_back(letter + "." + secondary->dF_names[n]);
+                ngrad += dL_names.size();
+            }
+        }
+
+        // Sync the derivs across all bodies
+        if (gradient) {
+            primary->dL.resize(NT);
+            primary->dL_names.clear();
+            primary->dL_names.insert(primary->dL_names.end(), dL_names.begin(),
+                                     dL_names.end());
+            std::vector<std::string> dL_names;
+            for (auto secondary : secondaries) {
+                secondary->dL.resize(NT);
+                secondary->dL_names.clear();
+                secondary->dL_names.insert(secondary->dL_names.end(),
+                                           dL_names.begin(),
+                                           dL_names.end());
+            }
         }
 
         // Loop through the timeseries
@@ -1419,7 +1453,8 @@ namespace kepler {
                     primary->lightcurve(t, n) = getColumn(primary->flux_cur, n);
                     lightcurve(t, n) = getColumn(primary->flux_cur, n);
                 }
-                primary->dL(t) = primary->dflux_cur;
+                if (gradient)
+                    primary->dL(t) = primary->dflux_cur;
                 for (auto secondary : secondaries) {
                     secondary->xvec(t) = secondary->x_cur;
                     secondary->yvec(t) = secondary->y_cur;
@@ -1429,7 +1464,8 @@ namespace kepler {
                             getColumn(secondary->flux_cur, n);
                         lightcurve(t, n) += getColumn(secondary->flux_cur, n);
                     }
-                    secondary->dL(t) = secondary->dflux_cur;
+                    if (gradient)
+                        secondary->dL(t) = secondary->dflux_cur;
                 }
 
                 // TODO: Compute dL for the system!
@@ -1444,13 +1480,15 @@ namespace kepler {
                     primary->lightcurve(t, n) = fluxes(0, n);
                     lightcurve(t, n) = fluxes(0, n);
                 }
-                primary->dL(t) = primary->dflux_cur;
+                if (gradient)
+                    primary->dL(t) = primary->dflux_cur;
                 for (size_t i = 0; i < secondaries.size(); ++i) {
                     for (int n = 0; n < primary->nwav; ++n) {
                         secondaries[i]->lightcurve(t, n) = fluxes(i + 1, n);
                         lightcurve(t, n) += fluxes(i + 1, n);
                     }
-                    secondaries[i]->dL(t) = secondaries[i]->dflux_cur;
+                    if (gradient)
+                        secondaries[i]->dL(t) = secondaries[i]->dflux_cur;
                 }
 
                 // TODO: Compute dL for the system!
