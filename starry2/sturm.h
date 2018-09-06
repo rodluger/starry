@@ -146,6 +146,6 @@ namespace sturm {
       return count;
     }
 
-};
+} // namespace sturm
 
 #endif

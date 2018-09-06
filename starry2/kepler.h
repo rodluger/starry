@@ -635,6 +635,7 @@ namespace kepler {
             using Body<T>::theta0_deg;
             using Body<T>::prot;
             using Body<T>::y;
+            using Body<T>::u;
             using Body<T>::G;
             using Body<T>::B;
             using Body<T>::lmax;
@@ -795,6 +796,9 @@ namespace kepler {
 
         // Sync the axis of rotation
         skyMap.setAxis(axis);
+
+        // Sync the limb darkening
+        skyMap.setU(u.block(1, 0, u.rows() - 1, nwav));
 
         // If there's any inclination or rotation of the orbital plane,
         // we need to rotate the sky map as well as the rotation axis
@@ -1105,6 +1109,7 @@ namespace kepler {
             int expmaxdepth;                                                    /**< Maximum recursion depth in the exposure integration */
             size_t t;                                                           /** The current index in the time array */
             size_t ngrad;                                                       /** Number of derivatives to compute */
+            size_t g;                                                           /** The current gradient index */
 
             // Protected methods
             inline void step(const S& time_cur, bool gradient);
@@ -1299,11 +1304,13 @@ namespace kepler {
 
         // Compute fluxes and take an orbital step
         primary->computeTotal(time_cur, gradient);
-        computePrimaryTotalGradient(time_cur);
+        if (gradient)
+            computePrimaryTotalGradient(time_cur);
         for (auto secondary : secondaries) {
             secondary->computeXYZ(time_cur, gradient);
             secondary->computeTotal(time_cur, gradient);
-            computeSecondaryTotalGradient(time_cur, secondary);
+            if (gradient)
+                computeSecondaryTotalGradient(time_cur, secondary);
         }
 
         // Compute occultations involving the primary
@@ -1312,13 +1319,15 @@ namespace kepler {
                 primary->occult(time_cur, secondary->x_cur,
                                 secondary->y_cur, secondary->r,
                                 gradient);
-                computePrimaryOccultationGradient(time_cur);
+                if (gradient)
+                    computePrimaryOccultationGradient(time_cur);
             } else {
                 ro = 1. / secondary->r;
                 secondary->occult(time_cur, -ro * secondary->x_cur,
                                   -ro * secondary->y_cur, ro,
                                   gradient);
-                computeSecondaryOccultationGradient(time_cur, secondary);
+                if (gradient)
+                    computeSecondaryOccultationGradient(time_cur, secondary);
             }
         }
 
@@ -1411,6 +1420,11 @@ namespace kepler {
         } else {
             ngrad = 0;
         }
+        if (!allOnes(primary->getY(0, 0)))
+            throw errors::ValueError("Bodies instantiated via the Kepler "
+                                     "module must all have Y_{0, 0} = 1. "
+                                     "You probably want to change the "
+                                     "body's luminosity instead.");
 
         // Secondaries:
         // - Allocate arrays
@@ -1526,9 +1540,33 @@ namespace kepler {
     template <class T>
     inline void System<T>::computePrimaryTotalGradient(const S& time_cur) {
 
+        // Allocate memory; reset the gradient index
         primary->dflux_cur.resize(ngrad, primary->nwav);
+        g = 0;
 
-    };
+        // dF / dt from dtheta / dt
+        setRow(primary->dflux_cur, g++,
+               Row<T>(primary->L * getRow(primary->dF, 0) *
+                      primary->angvelrot_deg * units::DayToSeconds));
+
+        // dF / dprot from dtheta / dt
+        setRow(primary->dflux_cur, g++,
+               Row<T>(-primary->L * getRow(primary->dF, 0) *
+               (primary->angvelrot_deg *
+               (time_cur - primary->tref - primary->delay) / primary->prot +
+               primary->theta0_deg / primary->prot) * units::DayToSeconds));
+
+        // dF / dtref from dtheta / dt
+        setRow(primary->dflux_cur, g++,
+            Row<T>(primary->L * getRow(primary->dF, 0) *
+                primary->angvelrot_deg * units::DayToSeconds));
+
+        // dF / d{y} and dF / d{u} from the map derivs
+        int sz = primary->dF.size() - 4;
+        primary->dflux_cur.block(g += sz, 0, sz, primary->nwav) =
+            primary->L * primary->dF.block(4, 0, sz, primary->nwav);
+
+    }
 
     /**
     Compute the gradient of the secondary's total flux.
@@ -1541,7 +1579,7 @@ namespace kepler {
 
         secondary->dflux_cur.resize(ngrad, secondary->nwav);
 
-    };
+    }
 
     /**
     Compute the gradient of the primary's flux in occultation.
@@ -1549,7 +1587,7 @@ namespace kepler {
 
     */
     template <class T>
-    inline void System<T>::computePrimaryOccultationGradient(const S& time_cur) {};
+    inline void System<T>::computePrimaryOccultationGradient(const S& time_cur) {}
 
     /**
     Compute the gradient of the secondary's flux in occultation.
@@ -1558,7 +1596,7 @@ namespace kepler {
     */
     template <class T>
     inline void System<T>::computeSecondaryOccultationGradient(const S& time_cur,
-            Secondary<T>* secondary) {};
+            Secondary<T>* secondary) {}
 
 } // namespace kepler
 
