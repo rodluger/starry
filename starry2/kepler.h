@@ -336,6 +336,7 @@ namespace kepler {
             Row<T> flux_cur;                                                    /**< Current flux visible from the body */
             Row<T> flux_tot;                                                    /**< Total flux from the body */
             T dflux_cur;                                                        /**< Current gradient of the flux from the body */
+            int ngrad;
 
             Matrix<Scalar<T>> lightcurve;                                       /**< The body's full light curve */
             Vector<T> dL;                                                       /**< The gradient of the body's light curve */
@@ -510,6 +511,7 @@ namespace kepler {
     const std::vector<std::string>& Body<T>::getLightcurveGradientNames() const {
         return dL_names;
     }
+
 
     /* ---------------- */
     /*     PRIMARY      */
@@ -1112,6 +1114,13 @@ namespace kepler {
                         int depth, bool gradient);
             inline T integrate (const S& time_cur, bool gradient);
 
+            inline void computePrimaryTotalGradient(const S& time_cur);
+            inline void computeSecondaryTotalGradient(const S& time_cur,
+                Secondary<T>* secondary);
+            inline void computePrimaryOccultationGradient(const S& time_cur);
+            inline void computeSecondaryOccultationGradient(const S& time_cur,
+                Secondary<T>* secondary);
+
         public:
 
             Primary<T>* primary;                                                /**< Pointer to the primary body */
@@ -1143,6 +1152,7 @@ namespace kepler {
             void compute(const Vector<S>& time, bool gradient=false);
             const Matrix<S>& getLightcurve() const;
             const Vector<T>& getLightcurveGradient() const;
+            const std::vector<std::string>& getLightcurveGradientNames() const;
             std::string info();
             void setExposureTime(const S& t_);
             S getExposureTime() const;
@@ -1206,6 +1216,13 @@ namespace kepler {
     template <class T>
     const Vector<T>& System<T>::getLightcurveGradient() const {
         return dL;
+    }
+
+    //! Get the names of the params in the gradient
+    template <class T>
+    const std::vector<std::string>& System<T>::getLightcurveGradientNames()
+            const {
+        return dL_names;
     }
 
     /**
@@ -1282,9 +1299,11 @@ namespace kepler {
 
         // Compute fluxes and take an orbital step
         primary->computeTotal(time_cur, gradient);
+        computePrimaryTotalGradient(time_cur);
         for (auto secondary : secondaries) {
             secondary->computeXYZ(time_cur, gradient);
             secondary->computeTotal(time_cur, gradient);
+            computeSecondaryTotalGradient(time_cur, secondary);
         }
 
         // Compute occultations involving the primary
@@ -1293,11 +1312,13 @@ namespace kepler {
                 primary->occult(time_cur, secondary->x_cur,
                                 secondary->y_cur, secondary->r,
                                 gradient);
+                computePrimaryOccultationGradient(time_cur);
             } else {
                 ro = 1. / secondary->r;
                 secondary->occult(time_cur, -ro * secondary->x_cur,
                                   -ro * secondary->y_cur, ro,
                                   gradient);
+                computeSecondaryOccultationGradient(time_cur, secondary);
             }
         }
 
@@ -1316,6 +1337,7 @@ namespace kepler {
                 yo = ro * (secondaries[o]->y_cur - secondaries[p]->y_cur);
                 ro = ro * secondaries[o]->r;
                 secondaries[p]->occult(time_cur, xo, yo, ro, gradient);
+                computeSecondaryOccultationGradient(time_cur, secondaries[p]);
             }
         }
 
@@ -1426,16 +1448,12 @@ namespace kepler {
         // Sync the derivs across all bodies
         if (gradient) {
             primary->dL.resize(NT);
-            primary->dL_names.clear();
-            primary->dL_names.insert(primary->dL_names.end(), dL_names.begin(),
-                                     dL_names.end());
-            std::vector<std::string> dL_names;
+            primary->dL_names = dL_names;
+            primary->ngrad = ngrad;
             for (auto secondary : secondaries) {
                 secondary->dL.resize(NT);
-                secondary->dL_names.clear();
-                secondary->dL_names.insert(secondary->dL_names.end(),
-                                           dL_names.begin(),
-                                           dL_names.end());
+                secondary->dL_names = dL_names;
+                secondary->ngrad = ngrad;
             }
         }
 
@@ -1453,8 +1471,10 @@ namespace kepler {
                     primary->lightcurve(t, n) = getColumn(primary->flux_cur, n);
                     lightcurve(t, n) = getColumn(primary->flux_cur, n);
                 }
-                if (gradient)
+                if (gradient) {
                     primary->dL(t) = primary->dflux_cur;
+                    dL(t) = primary->dL(t);
+                }
                 for (auto secondary : secondaries) {
                     secondary->xvec(t) = secondary->x_cur;
                     secondary->yvec(t) = secondary->y_cur;
@@ -1464,11 +1484,11 @@ namespace kepler {
                             getColumn(secondary->flux_cur, n);
                         lightcurve(t, n) += getColumn(secondary->flux_cur, n);
                     }
-                    if (gradient)
+                    if (gradient) {
                         secondary->dL(t) = secondary->dflux_cur;
+                        dL(t) += secondary->dL(t);
+                    }
                 }
-
-                // TODO: Compute dL for the system!
 
             } else {
 
@@ -1480,25 +1500,65 @@ namespace kepler {
                     primary->lightcurve(t, n) = fluxes(0, n);
                     lightcurve(t, n) = fluxes(0, n);
                 }
-                if (gradient)
+                if (gradient) {
+                    dL(t) = primary->dL(t);
                     primary->dL(t) = primary->dflux_cur;
+                }
                 for (size_t i = 0; i < secondaries.size(); ++i) {
                     for (int n = 0; n < primary->nwav; ++n) {
                         secondaries[i]->lightcurve(t, n) = fluxes(i + 1, n);
                         lightcurve(t, n) += fluxes(i + 1, n);
                     }
-                    if (gradient)
+                    if (gradient) {
                         secondaries[i]->dL(t) = secondaries[i]->dflux_cur;
+                        dL(t) += secondaries[i]->dL(t);
+                    }
                 }
-
-                // TODO: Compute dL for the system!
-
-
             }
-
         }
-
     }
+
+    /**
+    Compute the gradient of the primary's total flux.
+    TODO!
+
+    */
+    template <class T>
+    inline void System<T>::computePrimaryTotalGradient(const S& time_cur) {
+
+        primary->dflux_cur.resize(ngrad, primary->nwav);
+
+    };
+
+    /**
+    Compute the gradient of the secondary's total flux.
+    TODO!
+
+    */
+    template <class T>
+    inline void System<T>::computeSecondaryTotalGradient(const S& time_cur,
+            Secondary<T>* secondary) {
+
+        secondary->dflux_cur.resize(ngrad, secondary->nwav);
+
+    };
+
+    /**
+    Compute the gradient of the primary's flux in occultation.
+    TODO!
+
+    */
+    template <class T>
+    inline void System<T>::computePrimaryOccultationGradient(const S& time_cur) {};
+
+    /**
+    Compute the gradient of the secondary's flux in occultation.
+    TODO!
+
+    */
+    template <class T>
+    inline void System<T>::computeSecondaryOccultationGradient(const S& time_cur,
+            Secondary<T>* secondary) {};
 
 } // namespace kepler
 

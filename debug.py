@@ -37,10 +37,13 @@ sys2.compute(time, gradient=True)
 # Check that the flux agrees
 assert np.isclose(b.flux[0], b2.lightcurve[0])
 
+
+# DEBUG
+print(b2.gradient)
 quit()
 
 # Check that the orbital gradients agree
-assert np.isclose(b.gradient['time'][0], b2.gradient[0][0])
+assert np.isclose(b.gradient["time"][0], b2.gradient[0][0])
 assert np.isclose(b.gradient["planet1.r"][0], b2.gradient[0][1])
 assert np.isclose(b.gradient["planet1.L"][0], b2.gradient[0][2])
 assert np.isclose(b.gradient["planet1.prot"][0], b2.gradient[0][3])
