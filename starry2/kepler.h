@@ -1,7 +1,7 @@
 /**
 Keplerian star/planet/moon system class.
 
-TODO: gradients!
+TODO: Currently working on gradients.
 
 */
 
@@ -699,6 +699,8 @@ namespace kepler {
             S angvelorb;                                                        /**< Orbital angular velocity in radians / second */
             S vamp;                                                             /**< Orbital velocity amplitude for time delay expansion */
             S aamp;                                                             /**< Orbital acceleration amplitude for time delay expansion */
+            S dtheta0_degdw;                                                    /**< Derivative of theta0 with respect to varpi in degrees/radian */
+            S dtheta0_degde;                                                    /**< Derivative of theta0 with respect to the eccentricity in degrees */
 
             // AutoDiff
             AutoDiffKepler<T> AD;
@@ -885,13 +887,25 @@ namespace kepler {
     void Secondary<T>::computeTheta0() {
         if (prot == INFINITY) {
             theta0_deg = 0.0;
+            dtheta0_degdw = 0.0;
+            dtheta0_degde = 0.0;
         } else {
-            Scalar<T> f_eclipse = 1.5 * pi<Scalar<T>>() - w;
-            Scalar<T> E_eclipse = atan2(sqrt(1 - ecc2) * sin(f_eclipse),
-                                        ecc + cos(f_eclipse));
-            Scalar<T> M_eclipse = E_eclipse - ecc * sin(E_eclipse);
-            theta0_deg = -(porb / prot) * (M_eclipse - M0);
-            theta0_deg *= 180.0 / pi<Scalar<T>>();
+            using S = Scalar<T>;
+            using A = ADScalar<S, 2>;
+            using V = Vector<S>;
+            A w_ = A(w, V::Unit(2, 0));
+            A ecc_ = A(ecc, V::Unit(2, 1));
+            A M0_ = lambda0 - w_;
+            // Values @ eclipsing configuration
+            A f_ = 1.5 * pi<Scalar<T>>() - w_;
+            A E_ = atan2(sqrt(1 - ecc_ * ecc_) * sin(f_), ecc_ + cos(f_));
+            A M_ = E_ - ecc_ * sin(E_);
+            A theta0_deg_ = -(porb / prot) * (M_ - M0_) *
+                            180.0 / pi<Scalar<T>>();
+            // Store the value & the derivs for later
+            theta0_deg = theta0_deg_.value();
+            dtheta0_degdw = theta0_deg_.derivatives()(0);
+            dtheta0_degde = theta0_deg_.derivatives()(1);
         }
     }
 
@@ -1592,7 +1606,7 @@ namespace kepler {
         if (secondary->L != 0) {
 
             // dF / dt from dtheta / dt
-            // TODO: Need to account for the time derivative of time delay!
+            // TODO: Time delay deriv
             setRow(secondary->dflux_cur, 0,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->angvelrot_deg * units::DayToSeconds));
@@ -1614,15 +1628,18 @@ namespace kepler {
                           units::DayToSeconds));
 
             // dF / da
+            // TODO: Time delay deriv
             setRow(secondary->dflux_cur, g++, 0.0);
 
             // dF / dporb
+            // TODO: Time delay deriv
             setRow(secondary->dflux_cur, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->theta0_deg / secondary->porb *
                           units::DayToSeconds));
 
             // dF / dinc
+            // TODO: Time delay deriv
             if (secondary->y_deg > 0) {
                 T y_transf(secondary->N, secondary->nwav);
                 for (int n = 0; n < secondary->nwav; ++n) {
@@ -1639,19 +1656,44 @@ namespace kepler {
                               (-secondary->L * pi<Scalar<T>>() / 180.)));
             }
 
-            // dF / decc (TODO)
-            setRow(secondary->dflux_cur, g++, 0.0);
+            // dF / decc
+            // TODO: Time delay deriv
+            setRow(secondary->dflux_cur, g++,
+                   Row<T>(secondary->L * getRow(secondary->dF, 0) *
+                          secondary->dtheta0_degde));
 
-            // dF / dw (TODO)
-            setRow(secondary->dflux_cur, g++, 0.0);
+            // dF / dw
+            // TODO: Time delay deriv
+            setRow(secondary->dflux_cur, g++,
+                   Row<T>(secondary->L * getRow(secondary->dF, 0) *
+                          secondary->dtheta0_degdw * pi<Scalar<T>>() / 180.0));
 
-            // dF / dOmega (TODO)
-            setRow(secondary->dflux_cur, g++, 0.0);
+            // dF / dOmega
+            // TODO: Time delay deriv
+            if (secondary->y_deg > 0) {
+                T y_transf(secondary->N, secondary->nwav);
+                for (int n = 0; n < secondary->nwav; ++n) {
+                    for (int l = 0; l < secondary->lmax + 1; ++l) {
+                        y_transf.block(l * l, n, 2 * l + 1, 1) =
+                            secondary->skyMap.W.R[l] *
+                            secondary->W1.R[l] *
+                            secondary->W2.dRdtheta[l] *
+                            secondary->y.block(l * l, n, 2 * l + 1, 1);
+                    }
+                }
+                setRow(secondary->dflux_cur, g++,
+                       Row<T>(dot(secondary->B.rTA1, y_transf) *
+                              (secondary->L * pi<Scalar<T>>() / 180.)));
+            }
 
-            // dF / dlambda0 (TODO)
-            setRow(secondary->dflux_cur, g++, 0.0);
+            // dF / dlambda0
+            // TODO: Time delay deriv
+            setRow(secondary->dflux_cur, g++,
+                   Row<T>(secondary->L * getRow(secondary->dF, 0) *
+                          secondary->porb / secondary->prot));
 
             // dF / dtref from dtheta / dt
+            // TODO: Time delay deriv
             setRow(secondary->dflux_cur, g++,
                    Row<T>(-secondary->L * getRow(secondary->dF, 0) *
                           secondary->angvelrot_deg * units::DayToSeconds));
