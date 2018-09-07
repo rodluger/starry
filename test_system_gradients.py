@@ -17,10 +17,11 @@ def lightcurve(eps=np.zeros(22), gradient=False):
     star[1, 0] = 0.23 + eps[4]
     star[1, 1] = -0.15 + eps[5]
     star[1] = 0.3 + eps[6]
+    star.axis = [1, 3, 2]
 
     b = starry2.kepler.Secondary()
     b.r = 0.1 + eps[7]
-    b.L = 0.001 + eps[8]
+    b.L = 0.01 + eps[8]
     b.prot = 1.4 + eps[9]
     b.a = 30.3 + eps[10]
     b.porb = 1.2 + eps[11]
@@ -39,30 +40,43 @@ def lightcurve(eps=np.zeros(22), gradient=False):
     if gradient:
         sys = starry2.kepler.System(star, b)
         sys.compute(time, gradient=True)
-        grad = np.zeros(22)
+        star_grad = np.zeros(22)
+        b_grad = np.zeros(22)
         for i, name in enumerate(names):
-            grad[i] = sys.gradient[name]
-        return sys.lightcurve[0], grad
+            star_grad[i] = star.gradient[name]
+            b_grad[i] = b.gradient[name]
+        return star.lightcurve[0], star_grad, \
+               b.lightcurve[0], b_grad
     else:
         sys = starry2.kepler.System(star, b)
         sys.compute(time)
-        return sys.lightcurve[0]
+        return star.lightcurve[0], b.lightcurve[0]
 
 
 def run():
     """Verify the gradient against numerical derivatives."""
-    num_grad = np.zeros(22)
-    f1, grad = lightcurve(gradient=True)
+    star_num_grad = np.zeros(22)
+    b_num_grad = np.zeros(22)
+    fstar1, star_grad, fb1, b_grad = lightcurve(gradient=True)
     for i, name in enumerate(names):
         eps = np.zeros(22)
         eps[i] = 1e-8
-        f2 = lightcurve(eps)
-        num_grad[i] = (f2 - f1) / 1e-8
-        if np.isclose(grad[i], num_grad[i]):
+        fstar2, fb2 = lightcurve(eps)
+        star_num_grad[i] = (fstar2 - fstar1) / 1e-8
+        if np.isclose(star_grad[i], star_num_grad[i]):
             status = ""
         else:
             status = "X"
-        print("%10s: %8.5f %8.5f %s" % (name, grad[i], num_grad[i], status))
+        print("%10s: %8.5f %8.5f %s" % (name, star_grad[i],
+              star_num_grad[i], status))
+        b_num_grad[i] = (fb2 - fb1) / 1e-8
+        if np.isclose(b_grad[i], b_num_grad[i]):
+            status = ""
+        else:
+            status = "X"
+        print("%10s: %8.5f %8.5f %s" % (name, b_grad[i],
+              b_num_grad[i], status))
+        print("")
 
 
 if __name__ == "__main__":

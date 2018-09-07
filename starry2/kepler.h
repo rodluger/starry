@@ -1541,7 +1541,7 @@ namespace kepler {
     inline void System<T>::computePrimaryTotalGradient(const S& time_cur) {
 
         // Allocate memory; reset the gradient index
-        primary->dflux_cur.resize(ngrad, primary->nwav);
+        primary->dflux_cur.setZero(ngrad, primary->nwav);
         g = 0;
 
         // dF / dt from dtheta / dt
@@ -1558,15 +1558,18 @@ namespace kepler {
 
         // dF / dtref from dtheta / dt
         setRow(primary->dflux_cur, g++,
-            Row<T>(primary->L * getRow(primary->dF, 0) *
-                primary->angvelrot_deg * units::DayToSeconds));
+            Row<T>(-primary->L * getRow(primary->dF, 0) *
+                   primary->angvelrot_deg * units::DayToSeconds));
 
         // dF / d{y} and dF / d{u} from the map derivs
         int sz = primary->dF.size() - 4;
-        primary->dflux_cur.block(g += sz, 0, sz, primary->nwav) =
+        primary->dflux_cur.block(g, 0, sz, primary->nwav) =
             primary->L * primary->dF.block(4, 0, sz, primary->nwav);
+        g += sz;
 
-    }
+        // The total flux doesn't depend on anything else!
+
+}
 
     /**
     Compute the gradient of the secondary's total flux.
@@ -1577,7 +1580,18 @@ namespace kepler {
     inline void System<T>::computeSecondaryTotalGradient(const S& time_cur,
             Secondary<T>* secondary) {
 
-        secondary->dflux_cur.resize(ngrad, secondary->nwav);
+        // Allocate memory for this secondary
+        secondary->dflux_cur.setZero(ngrad, secondary->nwav);
+
+        if (secondary->L != 0) {
+
+            // dF / dt from dtheta / dt
+            // TODO: Need to account for the time derivative of time delay!
+            setRow(secondary->dflux_cur, 0,
+                   Row<T>(secondary->L * getRow(secondary->dF, 0) *
+                          secondary->angvelrot_deg * units::DayToSeconds));
+
+        }
 
     }
 
