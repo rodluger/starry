@@ -1606,7 +1606,6 @@ namespace kepler {
         if (secondary->L != 0) {
 
             // dF / dt from dtheta / dt
-            // TODO: Time delay deriv
             setRow(secondary->dflux_cur, 0,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->angvelrot_deg * units::DayToSeconds));
@@ -1628,18 +1627,15 @@ namespace kepler {
                           units::DayToSeconds));
 
             // dF / da
-            // TODO: Time delay deriv
             setRow(secondary->dflux_cur, g++, 0.0);
 
             // dF / dporb
-            // TODO: Time delay deriv
             setRow(secondary->dflux_cur, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->theta0_deg / secondary->porb *
                           units::DayToSeconds));
 
             // dF / dinc
-            // TODO: Time delay deriv
             if (secondary->y_deg > 0) {
                 T y_transf(secondary->N, secondary->nwav);
                 for (int n = 0; n < secondary->nwav; ++n) {
@@ -1657,19 +1653,16 @@ namespace kepler {
             }
 
             // dF / decc
-            // TODO: Time delay deriv
             setRow(secondary->dflux_cur, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->dtheta0_degde));
 
             // dF / dw
-            // TODO: Time delay deriv
             setRow(secondary->dflux_cur, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->dtheta0_degdw * pi<Scalar<T>>() / 180.0));
 
             // dF / dOmega
-            // TODO: Time delay deriv
             if (secondary->y_deg > 0) {
                 T y_transf(secondary->N, secondary->nwav);
                 for (int n = 0; n < secondary->nwav; ++n) {
@@ -1687,13 +1680,11 @@ namespace kepler {
             }
 
             // dF / dlambda0
-            // TODO: Time delay deriv
             setRow(secondary->dflux_cur, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->porb / secondary->prot));
 
             // dF / dtref from dtheta / dt
-            // TODO: Time delay deriv
             setRow(secondary->dflux_cur, g++,
                    Row<T>(-secondary->L * getRow(secondary->dF, 0) *
                           secondary->angvelrot_deg * units::DayToSeconds));
@@ -1703,6 +1694,20 @@ namespace kepler {
             secondary->dflux_cur.block(g, 0, sz, secondary->nwav) =
                 secondary->L * secondary->dF.block(4, 0, sz, secondary->nwav);
             g += sz;
+
+            // If there's a light travel time delay, we need to
+            // add a correction term to the derivatives
+            if (!isinf(*(secondary->c_light))) {
+
+                // derivatives() = time, a, ecc, M0, tref, porb, w, Omega, inc
+                Row<T> corr = -secondary->L * getRow(secondary->dF, 0) *
+                               secondary->angvelrot_deg *
+                               units::DayToSeconds;
+                setRow(secondary->dflux_cur, 0,
+                       Row<T>(getRow(secondary->dflux_cur, 0) +
+                              corr * secondary->AD.delay.derivatives()(0)));
+
+            }
 
         }
 
