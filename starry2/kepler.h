@@ -1583,6 +1583,12 @@ namespace kepler {
         // Allocate memory for this secondary
         secondary->dflux_cur.setZero(ngrad, secondary->nwav);
 
+        // NOTE: If L = 0, we don't actually call the `flux()` routine,
+        // so we set all derivs to zero. In reality, dF / dL is nonzero,
+        // so this is *technically* incorrect. But computing `flux()`
+        // *just* to get this single derivative (which will likely never
+        // be used) seems silly. To override this, users can just set the
+        // body's luminosity to a very small nonzero value (~1e-15).
         if (secondary->L != 0) {
 
             // dF / dt from dtheta / dt
@@ -1590,6 +1596,71 @@ namespace kepler {
             setRow(secondary->dflux_cur, 0,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->angvelrot_deg * units::DayToSeconds));
+
+            // dF / dr
+            setRow(secondary->dflux_cur, g++, 0.0);
+
+            // dF / dL
+            setRow(secondary->dflux_cur, g++,
+                   Row<T>(secondary->flux_tot / secondary->L));
+
+            // dF / dprot from dtheta / dt
+            setRow(secondary->dflux_cur, g++,
+                   Row<T>(-secondary->L * getRow(secondary->dF, 0) *
+                         (secondary->angvelrot_deg *
+                         (time_cur - secondary->tref - secondary->delay) /
+                          secondary->prot +
+                          secondary->theta0_deg / secondary->prot) *
+                          units::DayToSeconds));
+
+            // dF / da
+            setRow(secondary->dflux_cur, g++, 0.0);
+
+            // dF / dporb
+            setRow(secondary->dflux_cur, g++,
+                   Row<T>(secondary->L * getRow(secondary->dF, 0) *
+                          secondary->theta0_deg / secondary->porb *
+                          units::DayToSeconds));
+
+            // dF / dinc
+            if (secondary->y_deg > 0) {
+                T y_transf(secondary->N, secondary->nwav);
+                for (int n = 0; n < secondary->nwav; ++n) {
+                    for (int l = 0; l < secondary->lmax + 1; ++l) {
+                        y_transf.block(l * l, n, 2 * l + 1, 1) =
+                            secondary->skyMap.W.R[l] *
+                            secondary->W1.dRdtheta[l] *
+                            secondary->W2.R[l] *
+                            secondary->y.block(l * l, n, 2 * l + 1, 1);
+                    }
+                }
+                setRow(secondary->dflux_cur, g++,
+                       Row<T>(dot(secondary->B.rTA1, y_transf) *
+                              (-secondary->L * pi<Scalar<T>>() / 180.)));
+            }
+
+            // dF / decc (TODO)
+            setRow(secondary->dflux_cur, g++, 0.0);
+
+            // dF / dw (TODO)
+            setRow(secondary->dflux_cur, g++, 0.0);
+
+            // dF / dOmega (TODO)
+            setRow(secondary->dflux_cur, g++, 0.0);
+
+            // dF / dlambda0 (TODO)
+            setRow(secondary->dflux_cur, g++, 0.0);
+
+            // dF / dtref from dtheta / dt
+            setRow(secondary->dflux_cur, g++,
+                   Row<T>(-secondary->L * getRow(secondary->dF, 0) *
+                          secondary->angvelrot_deg * units::DayToSeconds));
+
+            // dF / d{y} and dF / d{u} from the map derivs
+            int sz = secondary->dF.size() - 4;
+            secondary->dflux_cur.block(g, 0, sz, secondary->nwav) =
+                secondary->L * secondary->dF.block(4, 0, sz, secondary->nwav);
+            g += sz;
 
         }
 

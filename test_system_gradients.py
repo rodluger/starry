@@ -67,14 +67,14 @@ def run():
             status = ""
         else:
             status = "X"
-        print("%10s: %8.5f %8.5f %s" % (name, star_grad[i],
+        print("%10s: %11.8f %11.8f %s" % (name, star_grad[i],
               star_num_grad[i], status))
         b_num_grad[i] = (fb2 - fb1) / 1e-8
         if np.isclose(b_grad[i], b_num_grad[i]):
             status = ""
         else:
             status = "X"
-        print("%10s: %8.5f %8.5f %s" % (name, b_grad[i],
+        print("%10s: %11.8f %11.8f %s" % (name, b_grad[i],
               b_num_grad[i], status))
         print("")
 

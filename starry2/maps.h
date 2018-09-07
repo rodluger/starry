@@ -42,6 +42,12 @@ TODO: Add unit tests for `isPhysical`
 #include "sturm.h"
 #include "minimize.h"
 
+namespace kepler {
+    template <class T>
+    class Body;
+    template <class T>
+    class System;
+}
 
 namespace maps {
 
@@ -169,6 +175,9 @@ namespace maps {
     */
     template <class T>
     class Map {
+
+        friend class kepler::Body<T>;
+        friend class kepler::System<T>;
 
         public:
 
