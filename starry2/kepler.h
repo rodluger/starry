@@ -340,7 +340,8 @@ namespace kepler {
             S delay;                                                            /**< The light travel time delay in seconds */
             Row<T> flux_cur;                                                    /**< Current flux visible from the body */
             Row<T> flux_tot;                                                    /**< Total flux from the body */
-            T dflux_cur;                                                        /**< Current gradient of the flux from the body */
+            T dflux_tot;                                                        /**< Gradient of the total flux from the body */
+            T dflux_cur;                                                        /**< Gradient of the current flux from the body */
             int ngrad;
 
             Matrix<Scalar<T>> lightcurve;                                       /**< The body's full light curve */
@@ -538,6 +539,7 @@ namespace kepler {
             using Body<T>::setRotPer;
             using Body<T>::setRefTime;
             using Body<T>::L;
+            using Body<T>::dflux_tot;
             using Body<T>::dflux_cur;
             using Body<T>::flux_tot;
             using Body<T>::dF;
@@ -653,6 +655,7 @@ namespace kepler {
             using Body<T>::dF;
             using Body<T>::axis;
             using Body<T>::L;
+            using Body<T>::dflux_tot;
             using Body<T>::dflux_cur;
             using Body<T>::flux_tot;
             using Body<T>::angvelrot_deg;
@@ -1139,7 +1142,8 @@ namespace kepler {
             inline void computePrimaryTotalGradient(const S& time_cur);
             inline void computeSecondaryTotalGradient(const S& time_cur,
                 Secondary<T>* secondary);
-            inline void computePrimaryOccultationGradient(const S& time_cur);
+            inline void computePrimaryOccultationGradient(const S& time_cur,
+                Secondary<T>* occultor);
             inline void computeSecondaryOccultationGradient(const S& time_cur,
                 Secondary<T>* secondary);
 
@@ -1328,7 +1332,7 @@ namespace kepler {
                                     secondary->y_cur, secondary->r,
                                     gradient);
                     if (gradient)
-                        computePrimaryOccultationGradient(time_cur);
+                        computePrimaryOccultationGradient(time_cur, secondary);
                 } else if (secondary->L != 0) {
                     ro = 1. / secondary->r;
                     secondary->occult(time_cur, -ro * secondary->x_cur,
@@ -1556,31 +1560,35 @@ namespace kepler {
     inline void System<T>::computePrimaryTotalGradient(const S& time_cur) {
 
         // Allocate memory; reset the gradient index
-        primary->dflux_cur.setZero(ngrad, primary->nwav);
+        primary->dflux_tot.setZero(ngrad, primary->nwav);
         g = 0;
 
         // dF / dt from dtheta / dt
-        setRow(primary->dflux_cur, g++,
-               Row<T>(primary->L * getRow(primary->dF, 0) *
+        setRow(primary->dflux_tot, g++,
+               Row<T>(getRow(primary->dF, 0) *
                       primary->angvelrot_deg * units::DayToSeconds));
 
         // dF / dprot from dtheta / dt
-        setRow(primary->dflux_cur, g++,
-               Row<T>(-primary->L * getRow(primary->dF, 0) *
+        setRow(primary->dflux_tot, g++,
+               Row<T>(-getRow(primary->dF, 0) *
                (primary->angvelrot_deg *
                (time_cur - primary->tref - primary->delay) / primary->prot +
                primary->theta0_deg / primary->prot) * units::DayToSeconds));
 
         // dF / dtref from dtheta / dt
-        setRow(primary->dflux_cur, g++,
-            Row<T>(-primary->L * getRow(primary->dF, 0) *
+        setRow(primary->dflux_tot, g++,
+            Row<T>(-getRow(primary->dF, 0) *
                    primary->angvelrot_deg * units::DayToSeconds));
 
         // dF / d{y} and dF / d{u} from the map derivs
         int sz = primary->dF.size() - 4;
-        primary->dflux_cur.block(g, 0, sz, primary->nwav) =
-            primary->L * primary->dF.block(4, 0, sz, primary->nwav);
+        primary->dflux_tot.block(g, 0, sz, primary->nwav) =
+            primary->dF.block(4, 0, sz, primary->nwav);
         g += sz;
+
+
+        // Update current flux derivative
+        primary->dflux_cur = primary->dflux_tot;
 
     }
 
@@ -1593,7 +1601,7 @@ namespace kepler {
             Secondary<T>* secondary) {
 
         // Allocate memory for this secondary
-        secondary->dflux_cur.setZero(ngrad, secondary->nwav);
+        secondary->dflux_tot.setZero(ngrad, secondary->nwav);
 
         // NOTE: If L = 0, we don't actually call the `flux()` routine,
         // so we set all derivs to zero. In reality, dF / dL is nonzero,
@@ -1609,21 +1617,21 @@ namespace kepler {
                           secondary->angvelrot_deg;
 
             // dF / dt from dtheta / dt
-            setRow(secondary->dflux_cur, 0,
+            setRow(secondary->dflux_tot, 0,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->angvelrot_deg * units::DayToSeconds +
                           corr * secondary->AD.delay.derivatives()(0) *
                           units::DayToSeconds));
 
             // dF / dr
-            setRow(secondary->dflux_cur, g++, 0.0);
+            setRow(secondary->dflux_tot, g++, 0.0);
 
             // dF / dL
-            setRow(secondary->dflux_cur, g++,
+            setRow(secondary->dflux_tot, g++,
                    Row<T>(secondary->flux_tot / secondary->L));
 
             // dF / dprot from dtheta / dt
-            setRow(secondary->dflux_cur, g++,
+            setRow(secondary->dflux_tot, g++,
                    Row<T>(-secondary->L * getRow(secondary->dF, 0) *
                          (secondary->angvelrot_deg *
                          (time_cur - secondary->tref - secondary->delay) /
@@ -1632,11 +1640,11 @@ namespace kepler {
                           units::DayToSeconds));
 
             // dF / da
-            setRow(secondary->dflux_cur, g++,
+            setRow(secondary->dflux_tot, g++,
                    Row<T>(corr * secondary->AD.delay.derivatives()(1)));
 
             // dF / dporb
-            setRow(secondary->dflux_cur, g++,
+            setRow(secondary->dflux_tot, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->theta0_deg / secondary->porb *
                           units::DayToSeconds +
@@ -1655,7 +1663,7 @@ namespace kepler {
                             secondary->y.block(l * l, n, 2 * l + 1, 1);
                     }
                 }
-                setRow(secondary->dflux_cur, g++,
+                setRow(secondary->dflux_tot, g++,
                        Row<T>(dot(secondary->B.rTA1, y_transf) *
                               (-secondary->L * pi<Scalar<T>>() / 180.) +
                               corr * secondary->AD.delay.derivatives()(8) *
@@ -1663,13 +1671,13 @@ namespace kepler {
             }
 
             // dF / decc
-            setRow(secondary->dflux_cur, g++,
+            setRow(secondary->dflux_tot, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->dtheta0_degde +
                           corr * secondary->AD.delay.derivatives()(2)));
 
             // dF / dw; note that we must account for d(delay) / dM0(w)
-            setRow(secondary->dflux_cur, g++,
+            setRow(secondary->dflux_tot, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->dtheta0_degdw * pi<Scalar<T>>() / 180.0 +
                           corr * (secondary->AD.delay.derivatives()(6) -
@@ -1688,20 +1696,20 @@ namespace kepler {
                             secondary->y.block(l * l, n, 2 * l + 1, 1);
                     }
                 }
-                setRow(secondary->dflux_cur, g++,
+                setRow(secondary->dflux_tot, g++,
                        Row<T>(dot(secondary->B.rTA1, y_transf) *
                               (secondary->L * pi<Scalar<T>>() / 180.)));
             }
 
             // dF / dlambda0
-            setRow(secondary->dflux_cur, g++,
+            setRow(secondary->dflux_tot, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->porb / secondary->prot +
                           corr * secondary->AD.delay.derivatives()(3) *
                           pi<Scalar<T>>() / 180.0));
 
             // dF / dtref from dtheta / dt
-            setRow(secondary->dflux_cur, g++,
+            setRow(secondary->dflux_tot, g++,
                    Row<T>(-secondary->L * getRow(secondary->dF, 0) *
                           secondary->angvelrot_deg * units::DayToSeconds +
                           corr * secondary->AD.delay.derivatives()(4) *
@@ -1709,11 +1717,14 @@ namespace kepler {
 
             // dF / d{y} and dF / d{u} from the map derivs
             int sz = secondary->dF.size() - 4;
-            secondary->dflux_cur.block(g, 0, sz, secondary->nwav) =
+            secondary->dflux_tot.block(g, 0, sz, secondary->nwav) =
                 secondary->L * secondary->dF.block(4, 0, sz, secondary->nwav);
             g += sz;
 
         }
+
+        // Update current flux derivative
+        secondary->dflux_cur = secondary->dflux_tot;
 
     }
 
@@ -1723,20 +1734,48 @@ namespace kepler {
 
     */
     template <class T>
-    inline void System<T>::computePrimaryOccultationGradient(const S& time_cur) {
+    inline void System<T>::computePrimaryOccultationGradient(const S& time_cur,
+        Secondary<T>* occultor) {
 
-        /**
-        TODO: We will autodiff the orbit computation to get
-                d{x, y, z} / d{orbital elements}
-              Then, after each flux computation, we  use the chain rule
-              to go from
-                dF / d{xo, yo, ro, theta}
-              to
-                dF / d{x, y, z, time}
-              for each planet. The chain rule will then give us
-                dF / d{orbital elements}
-              for each planet. Boom.
-        */
+        // The derivative is
+        // dflux_cur = dflux_cur - dflux_tot +
+        //     L * dF(theta, occultor->x_cur, occultor->y_cur, occultor->r)
+
+        // dF / dt
+        g = 0;
+        setRow(primary->dflux_cur, g, Row<T>(
+               getRow(primary->dflux_cur, g) -
+               getRow(primary->dflux_tot, g) +
+               (getRow(primary->dF, 0) * primary->angvelrot_deg +               // dtheta / dt
+                getRow(primary->dF, 1) * occultor->AD.x.derivatives()(0) +      // dxo / dt
+                getRow(primary->dF, 2) * occultor->AD.y.derivatives()(0)) *     // dyo / dt
+               units::DayToSeconds));
+        g++;
+
+        // dF / prot
+        setRow(primary->dflux_cur, g, Row<T>(
+               getRow(primary->dflux_cur, g) -
+               getRow(primary->dflux_tot, g) -
+               getRow(primary->dF, 0) *
+               (primary->angvelrot_deg *
+               (time_cur - primary->tref - primary->delay) / primary->prot +
+               primary->theta0_deg / primary->prot) * units::DayToSeconds));
+        g++;
+
+        // dF / dtref
+        setRow(primary->dflux_cur, g, Row<T>(
+               getRow(primary->dflux_cur, g) -
+               getRow(primary->dflux_tot, g) -
+               getRow(primary->dF, 0) *
+               primary->angvelrot_deg * units::DayToSeconds));
+        g++;
+
+        // dF / d{y} and dF / d{u}
+        int sz = primary->dF.size() - 4;
+        primary->dflux_cur.block(g, 0, sz, primary->nwav) +=
+            primary->dF.block(4, 0, sz, primary->nwav) -
+            primary->dflux_tot.block(g, 0, sz, primary->nwav);
+        g += sz;
 
     }
 
