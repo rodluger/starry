@@ -10,7 +10,7 @@ def lightcurve(eps=np.zeros(22), gradient=False):
     """Compute the light curve."""
     time = [0.3] + eps[0]
 
-    star = starry2.kepler.Primary()
+    star = starry2.kepler.Primary(multi=True)
     star.r_m = 3e8
     star.prot = 1.23 + eps[1]
     star.tref = 0.1 + eps[2]
@@ -20,7 +20,7 @@ def lightcurve(eps=np.zeros(22), gradient=False):
     star[1] = 0.3 + eps[6]
     star.axis = [1, 3, 2]
 
-    b = starry2.kepler.Secondary()
+    b = starry2.kepler.Secondary(multi=True)
     b.r = 0.1 + eps[7]
     b.L = 1 + eps[8]
     b.prot = 1.4 + eps[9]

@@ -1605,10 +1605,16 @@ namespace kepler {
         // body's luminosity to a very small nonzero value (~1e-15).
         if (secondary->L != 0) {
 
+            // Time delay corrections to the derivatives
+            Row<T> corr = -secondary->L * getRow(secondary->dF, 0) *
+                          secondary->angvelrot_deg;
+
             // dF / dt from dtheta / dt
             setRow(secondary->dflux_cur, 0,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
-                          secondary->angvelrot_deg * units::DayToSeconds));
+                          secondary->angvelrot_deg * units::DayToSeconds +
+                          corr * secondary->AD.delay.derivatives()(0) *
+                          units::DayToSeconds));
 
             // dF / dr
             setRow(secondary->dflux_cur, g++, 0.0);
@@ -1627,7 +1633,8 @@ namespace kepler {
                           units::DayToSeconds));
 
             // dF / da
-            setRow(secondary->dflux_cur, g++, 0.0);
+            setRow(secondary->dflux_cur, g++,
+                   Row<T>(corr * secondary->AD.delay.derivatives()(1)));
 
             // dF / dporb
             setRow(secondary->dflux_cur, g++,
@@ -1655,7 +1662,8 @@ namespace kepler {
             // dF / decc
             setRow(secondary->dflux_cur, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
-                          secondary->dtheta0_degde));
+                          secondary->dtheta0_degde +
+                          corr * secondary->AD.delay.derivatives()(2)));
 
             // dF / dw
             setRow(secondary->dflux_cur, g++,
@@ -1687,27 +1695,15 @@ namespace kepler {
             // dF / dtref from dtheta / dt
             setRow(secondary->dflux_cur, g++,
                    Row<T>(-secondary->L * getRow(secondary->dF, 0) *
-                          secondary->angvelrot_deg * units::DayToSeconds));
+                          secondary->angvelrot_deg * units::DayToSeconds +
+                          corr * secondary->AD.delay.derivatives()(4) *
+                          units::DayToSeconds));
 
             // dF / d{y} and dF / d{u} from the map derivs
             int sz = secondary->dF.size() - 4;
             secondary->dflux_cur.block(g, 0, sz, secondary->nwav) =
                 secondary->L * secondary->dF.block(4, 0, sz, secondary->nwav);
             g += sz;
-
-            // If there's a light travel time delay, we need to
-            // add a correction term to the derivatives
-            if (!isinf(*(secondary->c_light))) {
-
-                // derivatives() = time, a, ecc, M0, tref, porb, w, Omega, inc
-                Row<T> corr = -secondary->L * getRow(secondary->dF, 0) *
-                               secondary->angvelrot_deg *
-                               units::DayToSeconds;
-                setRow(secondary->dflux_cur, 0,
-                       Row<T>(getRow(secondary->dflux_cur, 0) +
-                              corr * secondary->AD.delay.derivatives()(0)));
-
-            }
 
         }
 
