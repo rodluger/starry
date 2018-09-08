@@ -6,12 +6,20 @@ names = ["time", "A.prot", "A.tref", "A.Y_{1,-1}", "A.Y_{1,0}", "A.Y_{1,1}",
          "b.w", "b.Omega", "b.lambda0", "b.tref", "b.Y_{1,-1}", "b.Y_{1,0}",
          "b.Y_{1,1}", "b.u_{1}"]
 
-def lightcurve(eps=np.zeros(22), gradient=False):
+
+def lightcurve(eps=np.zeros(22), gradient=False, delay=False, transit=False):
     """Compute the light curve."""
-    time = [0.3] + eps[0]
+    # Evaluate the flux mid-transit (manually tuned)
+    if transit and delay:
+        time = [0.5] + eps[0]
+    elif transit:
+        time = [0.56] + eps[0]
+    else:
+        time = [0.3] + eps[0]
 
     star = starry2.kepler.Primary(multi=True)
-    star.r_m = 3e8
+    if delay:
+        star.r_m = 3e11
     star.prot = 1.23 + eps[1]
     star.tref = 0.1 + eps[2]
     star[1, -1] = 0.11 + eps[3]
@@ -24,17 +32,21 @@ def lightcurve(eps=np.zeros(22), gradient=False):
     b.r = 0.1 + eps[7]
     b.L = 1 + eps[8]
     b.prot = 1.4 + eps[9]
-    b.a = 30.3 + eps[10]
+    b.a = 9.3 + eps[10]
     b.porb = 1.2 + eps[11]
-    b.inc = 77.3 + eps[12] # no transit!
+    # Adjust inclination so planet transits if needed
+    if transit:
+        b.inc = 89.9 + eps[12]
+    else:
+        b.inc = 77.3 + eps[12]
     b.ecc = 0.3 + eps[13]
-    b.w = 20.5 + eps[14]
-    b.Omega = 30.2 + eps[15]
-    b.lambda0 = 52.1 + eps[16]
+    b.w = 3.5 + eps[14]
+    b.Omega = 4.2 + eps[15]
+    b.lambda0 = 7.1 + eps[16]
     b.tref = -0.8 + eps[17]
     b[1, -1] = 0.21 + eps[18]
     b[1, 0] = 0.17 + eps[19]
-    b[1, 1] = -0.08 + eps[20]
+    b[1, 1] = -0.2 + eps[20]
     b[1] = 0.1 + eps[21]
     b.axis = [1, 2, 3]
 
@@ -54,31 +66,37 @@ def lightcurve(eps=np.zeros(22), gradient=False):
         return star.lightcurve[0], b.lightcurve[0]
 
 
-def run():
+def run(epsilon=1e-8, delay=False, transit=False):
     """Verify the gradient against numerical derivatives."""
     star_num_grad = np.zeros(22)
     b_num_grad = np.zeros(22)
-    fstar1, star_grad, fb1, b_grad = lightcurve(gradient=True)
+    fstar1, star_grad, fb1, b_grad = lightcurve(gradient=True, delay=delay,
+                                                transit=transit)
     for i, name in enumerate(names):
         eps = np.zeros(22)
-        eps[i] = 1e-8
-        fstar2, fb2 = lightcurve(eps)
-        star_num_grad[i] = (fstar2 - fstar1) / 1e-8
-        if np.isclose(star_grad[i], star_num_grad[i]):
-            status = ""
-        else:
-            status = "X"
-        print("%10s: %11.8f %11.8f %s" % (name, star_grad[i],
-              star_num_grad[i], status))
-        b_num_grad[i] = (fb2 - fb1) / 1e-8
-        if np.isclose(b_grad[i], b_num_grad[i]):
-            status = ""
-        else:
-            status = "X"
-        print("%10s: %11.8f %11.8f %s" % (name, b_grad[i],
-              b_num_grad[i], status))
-        print("")
+        eps[i] = epsilon
+        fstar2, fb2 = lightcurve(eps, delay=delay, transit=transit)
+        star_num_grad[i] = (fstar2 - fstar1) / epsilon
+        b_num_grad[i] = (fb2 - fb1) / epsilon
+
+        if not np.isclose(star_grad[i], star_num_grad[i]):
+            print("A - %10s: %11.8f %11.8f" % (name, star_grad[i], star_num_grad[i]))
+        if not np.isclose(b_grad[i], b_num_grad[i]):
+           print("b - %10s: %11.8f %11.8f" % (name, b_grad[i], b_num_grad[i]))
+
+
+def test_phase_curve():
+    """Test the phase curve derivatives."""
+    run(delay=False, transit=False)
+    run(delay=True, transit=False)
+
+
+def test_light_curve():
+    """Test the phase curve derivatives."""
+    run(delay=False, transit=True)
+    run(delay=True, transit=True)
 
 
 if __name__ == "__main__":
-    run()
+    test_phase_curve()
+    test_light_curve()

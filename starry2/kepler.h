@@ -1605,7 +1605,8 @@ namespace kepler {
         // body's luminosity to a very small nonzero value (~1e-15).
         if (secondary->L != 0) {
 
-            // Time delay corrections to the derivatives
+            // Time delay corrections to the derivatives from
+            // the dependence of `theta` on `delay`
             Row<T> corr = -secondary->L * getRow(secondary->dF, 0) *
                           secondary->angvelrot_deg;
 
@@ -1640,6 +1641,8 @@ namespace kepler {
             setRow(secondary->dflux_cur, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->theta0_deg / secondary->porb *
+                          units::DayToSeconds +
+                          corr * secondary->AD.delay.derivatives()(5) *
                           units::DayToSeconds));
 
             // dF / dinc
@@ -1656,7 +1659,9 @@ namespace kepler {
                 }
                 setRow(secondary->dflux_cur, g++,
                        Row<T>(dot(secondary->B.rTA1, y_transf) *
-                              (-secondary->L * pi<Scalar<T>>() / 180.)));
+                              (-secondary->L * pi<Scalar<T>>() / 180.) +
+                              corr * secondary->AD.delay.derivatives()(8) *
+                              pi<Scalar<T>>() / 180.0));
             }
 
             // dF / decc
@@ -1665,12 +1670,18 @@ namespace kepler {
                           secondary->dtheta0_degde +
                           corr * secondary->AD.delay.derivatives()(2)));
 
-            // dF / dw
+            // dF / dw (M0 and w derivs!)
             setRow(secondary->dflux_cur, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
-                          secondary->dtheta0_degdw * pi<Scalar<T>>() / 180.0));
+                          secondary->dtheta0_degdw * pi<Scalar<T>>() / 180.0 +
 
-            // dF / dOmega
+                          corr * (secondary->AD.delay.derivatives()(6) -
+                                  secondary->AD.delay.derivatives()(3)) *
+                          pi<Scalar<T>>() / 180.0)
+
+                      );
+
+            // dF / dOmega; note that time delay correction is always zero
             if (secondary->y_deg > 0) {
                 T y_transf(secondary->N, secondary->nwav);
                 for (int n = 0; n < secondary->nwav; ++n) {
@@ -1690,7 +1701,9 @@ namespace kepler {
             // dF / dlambda0
             setRow(secondary->dflux_cur, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
-                          secondary->porb / secondary->prot));
+                          secondary->porb / secondary->prot +
+                          corr * secondary->AD.delay.derivatives()(3) *
+                          pi<Scalar<T>>() / 180.0));
 
             // dF / dtref from dtheta / dt
             setRow(secondary->dflux_cur, g++,
