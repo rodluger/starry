@@ -3,6 +3,8 @@ Keplerian star/planet/moon system class.
 
 TODO: Currently working on gradients.
 
+TODO: Many of the gradient methods here can still be optimized for speed.
+
 */
 
 #ifndef _STARRY_ORBITAL_H_
@@ -41,9 +43,11 @@ namespace kepler {
     template <class T> class Secondary;
     template <class T> class System;
 
-    //
+    // Gradient labels
     static const std::vector<std::string> PRIMARY_GRAD_NAMES({"prot", "tref"});
-    static const std::vector<std::string> SECONDARY_GRAD_NAMES({"r", "L", "prot", "a", "porb", "inc", "ecc", "w", "Omega", "lambda0", "tref"});
+    static const std::vector<std::string> SECONDARY_GRAD_NAMES({"r", "L",
+        "prot", "a", "porb", "inc", "ecc", "w", "Omega", "lambda0", "tref"});
+
 
     /* ---------------- */
     /*     FUNCTIONS    */
@@ -97,6 +101,7 @@ namespace kepler {
     /**
     Compute the light travel time delay and apply
     it to the current (x, y, z) position of the body.
+    Templated so we can autodiff it!
 
     */
     template <class U>
@@ -428,10 +433,8 @@ namespace kepler {
     inline void Body<T>::occult(const Scalar<T>& time, const Scalar<T>& xo,
                                 const Scalar<T>& yo, const Scalar<T>& ro,
                                 bool gradient) {
-        if ((L != 0) && (xo * xo + yo * yo < (1 + ro) * (1 + ro))) {
-            flux_cur += L * getFlux(theta_deg(time), xo, yo, ro, gradient)
-                        - flux_tot;
-        }
+        flux_cur += L * getFlux(theta_deg(time), xo, yo, ro, gradient)
+                    - flux_tot;
     }
 
 
@@ -920,7 +923,7 @@ namespace kepler {
 
             AD.reset(time, a, ecc, M0, tref, porb, w, Omega, inc);
 
-            // TODO: These should be pre-computed
+            // TODO: These need to be pre-computed @ input time
             AD.ecc2 = AD.ecc * AD.ecc;
             AD.sqrtonepluse = sqrt(1 + AD.ecc);
             AD.sqrtoneminuse = sqrt(1 - AD.ecc);
@@ -1247,8 +1250,6 @@ namespace kepler {
     /**
     Recursive exposure time integration function (single iteration)
 
-    TODO: Pre-allocate fmid, fapprox, d, and fluxes
-
     */
     template <class T>
     T System<T>::integrate(const T& f1,
@@ -1259,6 +1260,7 @@ namespace kepler {
         Scalar<T> tmid = 0.5 * (t1 + t2);
         // If this is the first time we're recursing (depth == 0),
         // store the xyz position of the bodies in the output vectors
+        // TODO: Pre-allocate fmid, fapprox, d, and fluxes
         T fmid = step(tmid, gradient, depth == 0),
           fapprox = 0.5 * (f1 + f2),
           d = fmid - fapprox;
@@ -1297,17 +1299,6 @@ namespace kepler {
     /**
     Take a single orbital + photometric step.
 
-    TODO: We will autodiff the orbit computation to get
-            d{x, y, z} / d{orbital elements}
-          Then, after each flux computation, we  use the chain rule
-          to go from
-            dF / d{xo, yo, ro, theta}
-          to
-            dF / d{x, y, z, time}
-          for each planet. The chain rule will then give us
-            dF / d{orbital elements}
-          for each planet. Boom.
-
     */
     template <class T>
     inline void System<T>::step(const Scalar<T>& time_cur, bool gradient) {
@@ -1329,19 +1320,24 @@ namespace kepler {
 
         // Compute occultations involving the primary
         for (auto secondary : secondaries) {
-            if (secondary->z_cur > 0) {
-                primary->occult(time_cur, secondary->x_cur,
-                                secondary->y_cur, secondary->r,
-                                gradient);
-                if (gradient)
-                    computePrimaryOccultationGradient(time_cur);
-            } else {
-                ro = 1. / secondary->r;
-                secondary->occult(time_cur, -ro * secondary->x_cur,
-                                  -ro * secondary->y_cur, ro,
-                                  gradient);
-                if (gradient)
-                    computeSecondaryOccultationGradient(time_cur, secondary);
+            Scalar<T> bsq = secondary->x_cur * secondary->x_cur +
+                            secondary->y_cur * secondary->y_cur;
+            if (bsq < (1 + secondary->r) * (1 + secondary->r)) {
+                if (secondary->z_cur > 0) {
+                    primary->occult(time_cur, secondary->x_cur,
+                                    secondary->y_cur, secondary->r,
+                                    gradient);
+                    if (gradient)
+                        computePrimaryOccultationGradient(time_cur);
+                } else if (secondary->L != 0) {
+                    ro = 1. / secondary->r;
+                    secondary->occult(time_cur, -ro * secondary->x_cur,
+                                      -ro * secondary->y_cur, ro,
+                                      gradient);
+                    if (gradient)
+                        computeSecondaryOccultationGradient(time_cur,
+                                                            secondary);
+                }
             }
         }
 
@@ -1355,12 +1351,18 @@ namespace kepler {
                     o = i;
                     p = j;
                 }
-                ro = 1. / secondaries[p]->r;
-                xo = ro * (secondaries[o]->x_cur - secondaries[p]->x_cur);
-                yo = ro * (secondaries[o]->y_cur - secondaries[p]->y_cur);
-                ro = ro * secondaries[o]->r;
-                secondaries[p]->occult(time_cur, xo, yo, ro, gradient);
-                computeSecondaryOccultationGradient(time_cur, secondaries[p]);
+                if (secondaries[p]->L != 0) {
+                    ro = 1. / secondaries[p]->r;
+                    xo = ro * (secondaries[o]->x_cur - secondaries[p]->x_cur);
+                    yo = ro * (secondaries[o]->y_cur - secondaries[p]->y_cur);
+                    ro = ro * secondaries[o]->r;
+                    if (xo * xo + yo * yo < (1 + ro) * (1 + ro)) {
+                        secondaries[p]->occult(time_cur, xo, yo, ro, gradient);
+                        if (gradient)
+                            computeSecondaryOccultationGradient(time_cur,
+                                                                secondaries[p]);
+                    }
+                }
             }
         }
 
@@ -1548,7 +1550,6 @@ namespace kepler {
 
     /**
     Compute the gradient of the primary's total flux.
-    TODO!
 
     */
     template <class T>
@@ -1581,13 +1582,10 @@ namespace kepler {
             primary->L * primary->dF.block(4, 0, sz, primary->nwav);
         g += sz;
 
-        // The total flux doesn't depend on anything else!
-
-}
+    }
 
     /**
     Compute the gradient of the secondary's total flux.
-    TODO!
 
     */
     template <class T>
@@ -1600,7 +1598,7 @@ namespace kepler {
         // NOTE: If L = 0, we don't actually call the `flux()` routine,
         // so we set all derivs to zero. In reality, dF / dL is nonzero,
         // so this is *technically* incorrect. But computing `flux()`
-        // *just* to get this single derivative (which will likely never
+        // just to get this single derivative (which will likely never
         // be used) seems silly. To override this, users can just set the
         // body's luminosity to a very small nonzero value (~1e-15).
         if (secondary->L != 0) {
@@ -1670,16 +1668,13 @@ namespace kepler {
                           secondary->dtheta0_degde +
                           corr * secondary->AD.delay.derivatives()(2)));
 
-            // dF / dw (M0 and w derivs!)
+            // dF / dw; note that we must account for d(delay) / dM0(w)
             setRow(secondary->dflux_cur, g++,
                    Row<T>(secondary->L * getRow(secondary->dF, 0) *
                           secondary->dtheta0_degdw * pi<Scalar<T>>() / 180.0 +
-
                           corr * (secondary->AD.delay.derivatives()(6) -
                                   secondary->AD.delay.derivatives()(3)) *
-                          pi<Scalar<T>>() / 180.0)
-
-                      );
+                          pi<Scalar<T>>() / 180.0));
 
             // dF / dOmega; note that time delay correction is always zero
             if (secondary->y_deg > 0) {
@@ -1728,7 +1723,22 @@ namespace kepler {
 
     */
     template <class T>
-    inline void System<T>::computePrimaryOccultationGradient(const S& time_cur) {}
+    inline void System<T>::computePrimaryOccultationGradient(const S& time_cur) {
+
+        /**
+        TODO: We will autodiff the orbit computation to get
+                d{x, y, z} / d{orbital elements}
+              Then, after each flux computation, we  use the chain rule
+              to go from
+                dF / d{xo, yo, ro, theta}
+              to
+                dF / d{x, y, z, time}
+              for each planet. The chain rule will then give us
+                dF / d{orbital elements}
+              for each planet. Boom.
+        */
+
+    }
 
     /**
     Compute the gradient of the secondary's flux in occultation.
@@ -1737,7 +1747,12 @@ namespace kepler {
     */
     template <class T>
     inline void System<T>::computeSecondaryOccultationGradient(const S& time_cur,
-            Secondary<T>* secondary) {}
+            Secondary<T>* secondary) {
+
+        // NOTE: Only if (secondary->L != 0)
+
+
+    }
 
 } // namespace kepler
 
