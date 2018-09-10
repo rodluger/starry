@@ -6,6 +6,11 @@ TODO: Currently working on gradients.
 TODO: Many of the gradient methods here can still be optimized for speed.
       Common variables can be pre-computed.
 
+TODO: The biggest speedup may come from only computing the total flux
+      when there are no occultations or when there are more than one
+      occultations. For exactly one occultations, the occultation flux
+      is all we need!
+
 */
 
 #ifndef _STARRY_ORBITAL_H_
@@ -1147,6 +1152,8 @@ namespace kepler {
                 Secondary<T>* occultor);
             inline void computeSecondaryOccultationGradient(const S& time_cur,
                 Secondary<T>* secondary);
+            inline void computeSecondaryOccultationGradient(const S& time_cur,
+                Secondary<T>* secondary, Secondary<T>* occultor);
 
         public:
 
@@ -1365,7 +1372,8 @@ namespace kepler {
                         secondaries[p]->occult(time_cur, xo, yo, ro, gradient);
                         if (gradient)
                             computeSecondaryOccultationGradient(time_cur,
-                                                                secondaries[p]);
+                                                                secondaries[p],
+                                                                secondaries[o]);
                     }
                 }
             }
@@ -1864,13 +1872,59 @@ namespace kepler {
     }
 
     /**
-    Compute the gradient of the secondary's flux in occultation.
-    TODO!
+    Compute the gradient of the secondary's flux during an occultation by
+    the primary.
+
+    This function computes
+
+        dflux_cur += L * dF - dflux_tot
 
     */
     template <class T>
     inline void System<T>::computeSecondaryOccultationGradient(const S& time_cur,
             Secondary<T>* secondary) {
+
+        // See note in `computeSecondaryTotalGradient()`
+        if (secondary->L != 0) {
+
+            // Time delay corrections to the derivatives from
+            // the dependence of `theta` on `delay`
+            Row<T> corr = -secondary->L * getRow(secondary->dF, 0) *
+                          secondary->angvelrot_deg;
+
+            // Occultor Radius
+            Scalar<T> ro = 1. / secondary->r;
+
+
+            // ** First, derivs with respect to the secondary's own props **
+            // t, r, L, prot, a, porb, inc, ecc, w, Omega, lambda0, tref
+
+            // dF / dt
+            setRow(secondary->dflux_cur, 0, Row<T>(
+                   getRow(secondary->dflux_cur, 0) -
+                   getRow(secondary->dflux_tot, 0) +
+                   secondary->L *
+                   (getRow(secondary->dF, 0) * secondary->angvelrot_deg +
+                    corr * secondary->AD.delay.derivatives()(0) -
+                    ro * getRow(secondary->dF, 1) *
+                        secondary->AD.x.derivatives()(0) -
+                    ro * getRow(secondary->dF, 2) *
+                        secondary->AD.y.derivatives()(0)) *
+                   units::DayToSeconds));
+
+            
+
+        }
+    }
+
+    /**
+    Compute the gradient of the secondary's flux during a secondary-secondary
+    occultation.
+
+    */
+    template <class T>
+    inline void System<T>::computeSecondaryOccultationGradient(const S& time_cur,
+            Secondary<T>* secondary, Secondary<T>* occultor) {
 
         // NOTE: Only if (secondary->L != 0)
 
