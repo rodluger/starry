@@ -896,7 +896,7 @@ namespace kepler {
     eclipsing configuration (full dayside as seen by an
     observer viewing the system edge-on), so let's find the
     angle by which we need to rotate the map initially to
-    make this happen. This overrides `computeTheta0` in
+    make this happen. This overrides `` in
     the Body class.
 
     */
@@ -1668,6 +1668,7 @@ namespace kepler {
                           units::DayToSeconds));
 
             // dF / dinc
+            // Tricky because the sky rotation transform depends on inc
             if (secondary->y_deg > 0) {
                 T y_transf(secondary->N, secondary->nwav);
                 for (int n = 0; n < secondary->nwav; ++n) {
@@ -1701,6 +1702,7 @@ namespace kepler {
                           pi<Scalar<T>>() / 180.0));
 
             // dF / dOmega; note that time delay correction is always zero
+            // Tricky because the sky rotation transform depends on Omega
             if (secondary->y_deg > 0) {
                 T y_transf(secondary->N, secondary->nwav);
                 for (int n = 0; n < secondary->nwav; ++n) {
@@ -1887,6 +1889,8 @@ namespace kepler {
 
         dflux_cur += L * dF - dflux_tot
 
+    via EXTENSIVE use of the chain rule.
+
     */
     template <class T>
     inline void System<T>::computeSecondaryOccultationGradient(const S& time_cur,
@@ -1896,11 +1900,6 @@ namespace kepler {
         if (secondary->L != 0) {
 
             // ** Pre-compute some stuff **
-
-            // Time delay corrections to the derivatives from
-            // the dependence of `theta` on `delay`
-            Row<T> corr = -secondary->L * getRow(secondary->dF, 0) *
-                          secondary->angvelrot_deg;
 
             // Occultor Radius
             Scalar<T> ro = 1. / secondary->r;
@@ -1916,8 +1915,9 @@ namespace kepler {
                    getRow(secondary->dflux_cur, 0) -
                    getRow(secondary->dflux_tot, 0) +
                    secondary->L *
-                   (getRow(secondary->dF, 0) * secondary->angvelrot_deg +
-                    corr * secondary->AD.delay.derivatives()(0) -
+                   (getRow(secondary->dF, 0) * secondary->angvelrot_deg -
+                    getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                        secondary->AD.delay.derivatives()(0) -
                     ro * getRow(secondary->dF, 1) *
                         secondary->AD.x.derivatives()(0) -
                     ro * getRow(secondary->dF, 2) *
@@ -1941,38 +1941,109 @@ namespace kepler {
                    secondary->flux_cur / secondary->L));
             g++;
 
-            // dF / dprot (TODO)
+            // dF / dprot
             setRow(secondary->dflux_cur, g, Row<T>(
                    getRow(secondary->dflux_cur, g) -
                    getRow(secondary->dflux_tot, g) -
-                   getRow(secondary->dF, 0) *
+                   secondary->L * getRow(secondary->dF, 0) *
                    (secondary->angvelrot_deg *
                    (time_cur - secondary->tref - secondary->delay) / secondary->prot +
                    secondary->theta0_deg / secondary->prot) * units::DayToSeconds));
             g++;
 
-            // dF / da (TODO)
+            // dF / da
+            setRow(secondary->dflux_cur, g, Row<T>(
+                   getRow(secondary->dflux_cur, g) -
+                   getRow(secondary->dflux_tot, g) -
+                   secondary->L * (
+                       getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                            secondary->AD.delay.derivatives()(1) +
+                       getRow(secondary->dF, 1) *
+                            secondary->AD.x.derivatives()(1) * ro +
+                       getRow(secondary->dF, 2) *
+                            secondary->AD.y.derivatives()(1) * ro)));
             g++;
 
-            // dF / porb (TODO)
+            // dF / porb
+            setRow(secondary->dflux_cur, g, Row<T>(
+                   getRow(secondary->dflux_cur, g) -
+                   getRow(secondary->dflux_tot, g) -
+                   secondary->L * units::DayToSeconds * (
+                       getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                            secondary->AD.delay.derivatives()(5) -
+                       getRow(secondary->dF, 0) *
+                            secondary->theta0_deg / secondary->porb +
+                       getRow(secondary->dF, 1) *
+                            secondary->AD.x.derivatives()(5) * ro +
+                       getRow(secondary->dF, 2) *
+                            secondary->AD.y.derivatives()(5) * ro)));
             g++;
 
             // dF / dinc (TODO)
             g++;
 
-            // dF / decc (TODO)
+            // dF / decc
+            setRow(secondary->dflux_cur, g, Row<T>(
+                   getRow(secondary->dflux_cur, g) -
+                   getRow(secondary->dflux_tot, g) -
+                   secondary->L * (
+                       getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                            secondary->AD.delay.derivatives()(2) -
+                       getRow(secondary->dF, 0) *
+                            secondary->dtheta0_degde +
+                       getRow(secondary->dF, 1) *
+                            secondary->AD.x.derivatives()(2) * ro +
+                       getRow(secondary->dF, 2) *
+                            secondary->AD.y.derivatives()(2) * ro)));
             g++;
 
-            // dF / dw (TODO)
+            // dF / dw; note that we must account for d / dM0(w)
+            setRow(secondary->dflux_cur, g, Row<T>(
+                   getRow(secondary->dflux_cur, g) -
+                   getRow(secondary->dflux_tot, g) -
+                   secondary->L * pi<Scalar<T>>() / 180.0 * (
+                       getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                            (secondary->AD.delay.derivatives()(6) -
+                             secondary->AD.delay.derivatives()(3)) -
+                       getRow(secondary->dF, 0) *
+                            secondary->dtheta0_degdw +
+                       getRow(secondary->dF, 1) *
+                            (secondary->AD.x.derivatives()(6) -
+                             secondary->AD.x.derivatives()(3)) * ro +
+                       getRow(secondary->dF, 2) *
+                            (secondary->AD.y.derivatives()(6) -
+                             secondary->AD.y.derivatives()(3)) * ro)));
             g++;
 
             // dF / dOmega (TODO)
             g++;
 
-            // dF / dlambda0 (TODO)
+            // dF / dlambda0
+            setRow(secondary->dflux_cur, g, Row<T>(
+                   getRow(secondary->dflux_cur, g) -
+                   getRow(secondary->dflux_tot, g) +
+                   secondary->L * pi<Scalar<T>>() / 180.0 * (
+                       getRow(secondary->dF, 0) *
+                            (180.0 / pi<Scalar<T>>() * secondary->porb / secondary->prot -
+                             secondary->angvelrot_deg * secondary->AD.delay.derivatives()(3)) -
+                       getRow(secondary->dF, 1) *
+                            secondary->AD.x.derivatives()(3) * ro -
+                       getRow(secondary->dF, 2) *
+                            secondary->AD.y.derivatives()(3) * ro)));
             g++;
 
-            // dF / dtref (TODO)
+            // dF / dtref
+            setRow(secondary->dflux_cur, g, Row<T>(
+                   getRow(secondary->dflux_cur, g) -
+                   getRow(secondary->dflux_tot, g) -
+                   secondary->L * units::DayToSeconds * (
+                       getRow(secondary->dF, 0) *
+                            secondary->angvelrot_deg *
+                            (1 + secondary->AD.delay.derivatives()(4)) +
+                       getRow(secondary->dF, 1) *
+                            secondary->AD.x.derivatives()(4) * ro +
+                       getRow(secondary->dF, 2) *
+                            secondary->AD.y.derivatives()(4) * ro)));
             g++;
 
             // dF / d{y} and dF / d{u}
