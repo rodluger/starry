@@ -111,6 +111,7 @@ def test_transit():
 def test_eclipse():
     """Test the secondary eclipse derivatives."""
     run(delay=False, event='eclipse')
+    print("DELAY")
     run(delay=True, event='eclipse')
 
 

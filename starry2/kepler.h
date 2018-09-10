@@ -1669,6 +1669,8 @@ namespace kepler {
 
             // dF / dinc
             // Tricky because the sky rotation transform depends on inc
+            // NOTE: There's a more intelligent way of doing this; see
+            // `dF / dinc` in `computeSecondaryOccultationGradient()`
             if (secondary->y_deg > 0) {
                 T y_transf(secondary->N, secondary->nwav);
                 for (int n = 0; n < secondary->nwav; ++n) {
@@ -1703,6 +1705,8 @@ namespace kepler {
 
             // dF / dOmega; note that time delay correction is always zero
             // Tricky because the sky rotation transform depends on Omega
+            // NOTE: There's a more intelligent way of doing this; see
+            // `dF / dOmega` in `computeSecondaryOccultationGradient()`
             if (secondary->y_deg > 0) {
                 T y_transf(secondary->N, secondary->nwav);
                 for (int n = 0; n < secondary->nwav; ++n) {
@@ -1979,7 +1983,39 @@ namespace kepler {
                             secondary->AD.y.derivatives()(5) * ro)));
             g++;
 
-            // dF / dinc (TODO)
+            // dF / dinc
+            // Tricky because the sky rotation transform depends on I
+            // TODO: This can be sped up a ton
+            if (secondary->y_deg > 0) {
+                Row<T> dFdinc;
+                resize(dFdinc, secondary->N, secondary->nwav);
+                for (int n = 0; n < secondary->nwav; ++n) {
+                    Vector<Scalar<T>> dyskydinc(secondary->N);
+                    VectorT<Scalar<T>> dFdysky =
+                        secondary->skyMap.getGradient().
+                            block(4, n, secondary->N, 1).transpose();
+                    for (int l = 0; l < secondary->lmax + 1; ++l) {
+                        dyskydinc.segment(l * l, 2 * l + 1) =
+                            -secondary->W1.dRdtheta[l] *
+                            secondary->W2.R[l] *
+                            secondary->y.block(l * l, n, 2 * l + 1, 1);
+                    }
+                    setIndex(dFdinc, n, dFdysky.dot(dyskydinc));
+                }
+                setRow(secondary->dflux_cur, g, Row<T>(
+                       getRow(secondary->dflux_cur, g) -
+                       getRow(secondary->dflux_tot, g) +
+                       secondary->L * pi<Scalar<T>>() / 180. * (
+                       -getRow(secondary->dF, 0) *
+                               secondary->angvelrot_deg *
+                               secondary->AD.delay.derivatives()(8) +
+                       dFdinc
+                       - getRow(secondary->dF, 1) *
+                            secondary->AD.x.derivatives()(8) * ro
+                       - getRow(secondary->dF, 2) *
+                            secondary->AD.y.derivatives()(8) * ro))
+                   );
+            }
             g++;
 
             // dF / decc
@@ -2015,7 +2051,37 @@ namespace kepler {
                              secondary->AD.y.derivatives()(3)) * ro)));
             g++;
 
-            // dF / dOmega (TODO)
+
+            // dF / dOmega
+            // Tricky because the sky rotation transform depends on Omega
+            // TODO: This can be sped up a ton
+            if (secondary->y_deg > 0) {
+                Row<T> dFdOmega;
+                resize(dFdOmega, secondary->N, secondary->nwav);
+                for (int n = 0; n < secondary->nwav; ++n) {
+                    Vector<Scalar<T>> dyskydOmega(secondary->N);
+                    VectorT<Scalar<T>> dFdysky =
+                        secondary->skyMap.getGradient().
+                            block(4, n, secondary->N, 1).transpose();
+                    for (int l = 0; l < secondary->lmax + 1; ++l) {
+                        dyskydOmega.segment(l * l, 2 * l + 1) =
+                            secondary->W1.R[l] *
+                            secondary->W2.dRdtheta[l] *
+                            secondary->y.block(l * l, n, 2 * l + 1, 1);
+                    }
+                    setIndex(dFdOmega, n, dFdysky.dot(dyskydOmega));
+                }
+                setRow(secondary->dflux_cur, g, Row<T>(
+                       getRow(secondary->dflux_cur, g) -
+                       getRow(secondary->dflux_tot, g) +
+                       secondary->L * pi<Scalar<T>>() / 180. * (
+                       dFdOmega
+                       - getRow(secondary->dF, 1) *
+                            secondary->AD.x.derivatives()(7) * ro
+                       - getRow(secondary->dF, 2) *
+                            secondary->AD.y.derivatives()(7) * ro))
+                   );
+            }
             g++;
 
             // dF / dlambda0
@@ -2024,8 +2090,10 @@ namespace kepler {
                    getRow(secondary->dflux_tot, g) +
                    secondary->L * pi<Scalar<T>>() / 180.0 * (
                        getRow(secondary->dF, 0) *
-                            (180.0 / pi<Scalar<T>>() * secondary->porb / secondary->prot -
-                             secondary->angvelrot_deg * secondary->AD.delay.derivatives()(3)) -
+                            (180.0 / pi<Scalar<T>>() *
+                            secondary->porb / secondary->prot -
+                            secondary->angvelrot_deg *
+                            secondary->AD.delay.derivatives()(3)) -
                        getRow(secondary->dF, 1) *
                             secondary->AD.x.derivatives()(3) * ro -
                        getRow(secondary->dF, 2) *

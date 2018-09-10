@@ -493,6 +493,12 @@ namespace utils {
         return vT * U;
     }
 
+    //! Matrix-Vector dot product
+    template <typename T>
+    VectorT<T> dot(const Matrix<T>& U, const Vector<T>& v) {
+        return U * v;
+    }
+
     //! Eigen-Eigen coeff-wise product
     template <typename T>
     inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
