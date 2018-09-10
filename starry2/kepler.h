@@ -4,6 +4,7 @@ Keplerian star/planet/moon system class.
 TODO: Currently working on gradients.
 
 TODO: Many of the gradient methods here can still be optimized for speed.
+      Common variables can be pre-computed.
 
 */
 
@@ -1730,16 +1731,17 @@ namespace kepler {
 
     /**
     Compute the gradient of the primary's flux in occultation.
-    TODO!
+    This function computes
+
+        dflux_cur += L * dF - dflux_tot
 
     */
     template <class T>
     inline void System<T>::computePrimaryOccultationGradient(const S& time_cur,
         Secondary<T>* occultor) {
 
-        // The derivative is
-        // dflux_cur = dflux_cur - dflux_tot +
-        //     L * dF(theta, occultor->x_cur, occultor->y_cur, occultor->r)
+        // ** First, derivs with respect to the primary's own properties **
+        // t, prot, tref, and map coeffs
 
         // dF / dt
         g = 0;
@@ -1776,6 +1778,88 @@ namespace kepler {
             primary->dF.block(4, 0, sz, primary->nwav) -
             primary->dflux_tot.block(g, 0, sz, primary->nwav);
         g += sz;
+
+        // ** Now the derivs with respect to the occultor's properties **
+        // r, L, prot, a, porb, inc, ecc, w, Omega, lambda0, tref
+
+        // dF / dr
+        setRow(primary->dflux_cur, g, Row<T>(
+               getRow(primary->dflux_cur, g) -
+               getRow(primary->dflux_tot, g) +
+               getRow(primary->dF, 3)));
+        g += 3;                                                                 // dF / dL and dF / dprot are zero
+
+        // dF / da
+        setRow(primary->dflux_cur, g, Row<T>(
+               getRow(primary->dflux_cur, g) -
+               getRow(primary->dflux_tot, g) +
+               (getRow(primary->dF, 1) * occultor->AD.x.derivatives()(1) +      // dxo / da
+                getRow(primary->dF, 2) * occultor->AD.y.derivatives()(1))));    // dyo / da
+        g++;
+
+        // dF / dporb
+        setRow(primary->dflux_cur, g, Row<T>(
+               getRow(primary->dflux_cur, g) -
+               getRow(primary->dflux_tot, g) +
+               (getRow(primary->dF, 1) * occultor->AD.x.derivatives()(5) +      // dxo / dporb
+                getRow(primary->dF, 2) * occultor->AD.y.derivatives()(5)) *     // dyo / dporb
+               units::DayToSeconds));
+        g++;
+
+        // dF / dinc
+        setRow(primary->dflux_cur, g, Row<T>(
+               getRow(primary->dflux_cur, g) -
+               getRow(primary->dflux_tot, g) +
+               (getRow(primary->dF, 1) * occultor->AD.x.derivatives()(8) +      // dxo / dinc
+                getRow(primary->dF, 2) * occultor->AD.y.derivatives()(8)) *     // dyo / dinc
+               pi<Scalar<T>>() / 180.0));
+        g++;
+
+        // dF / decc
+        setRow(primary->dflux_cur, g, Row<T>(
+               getRow(primary->dflux_cur, g) -
+               getRow(primary->dflux_tot, g) +
+               (getRow(primary->dF, 1) * occultor->AD.x.derivatives()(2) +      // dxo / decc
+                getRow(primary->dF, 2) * occultor->AD.y.derivatives()(2))));    // dyo / decc
+        g++;
+
+        // dF / dw
+        setRow(primary->dflux_cur, g, Row<T>(
+               getRow(primary->dflux_cur, g) -
+               getRow(primary->dflux_tot, g) +
+               (getRow(primary->dF, 1) * (occultor->AD.x.derivatives()(6) -
+                                          occultor->AD.x.derivatives()(3)) +    // dxo / dw
+                getRow(primary->dF, 2) * (occultor->AD.x.derivatives()(6) -
+                                          occultor->AD.x.derivatives()(3))) *   // dyo / dw
+               pi<Scalar<T>>() / 180.0));
+        g++;
+
+        // dF / dOmega
+        setRow(primary->dflux_cur, g, Row<T>(
+               getRow(primary->dflux_cur, g) -
+               getRow(primary->dflux_tot, g) +
+               (getRow(primary->dF, 1) * occultor->AD.x.derivatives()(7) +      // dxo / dOmega
+                getRow(primary->dF, 2) * occultor->AD.y.derivatives()(7)) *     // dyo / dOmega
+               pi<Scalar<T>>() / 180.0));
+        g++;
+
+        // dF / dlambda0
+        setRow(primary->dflux_cur, g, Row<T>(
+               getRow(primary->dflux_cur, g) -
+               getRow(primary->dflux_tot, g) +
+               (getRow(primary->dF, 1) * occultor->AD.x.derivatives()(3) +      // dxo / dlambda0
+                getRow(primary->dF, 2) * occultor->AD.y.derivatives()(3)) *     // dyo / dlambda0
+               pi<Scalar<T>>() / 180.0));
+        g++;
+
+        // dF / dtref
+        setRow(primary->dflux_cur, g, Row<T>(
+               getRow(primary->dflux_cur, g) -
+               getRow(primary->dflux_tot, g) +
+               (getRow(primary->dF, 1) * occultor->AD.x.derivatives()(4) +      // dxo / dtref
+                getRow(primary->dF, 2) * occultor->AD.y.derivatives()(4)) *     // dyo / dtref
+               units::DayToSeconds));
+        g++;
 
     }
 
