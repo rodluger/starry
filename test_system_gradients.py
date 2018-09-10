@@ -57,7 +57,7 @@ def lightcurve(x, eps=np.zeros(22), gradient=False, delay=False, event="phase"):
 
 def run(delay=False, event="phase"):
     """Verify the gradient against numerical derivatives."""
-    x = np.array([0.5, 1.23, 0.1, 0.11, 0.23, -0.15, 0.3, 0.1, 1.0,
+    x = np.array([0.5, 1.23, 0.1, 0.11, 0.23, -0.15, 0.3, 0.1, 0.76,
                   1.4, 9.3, 1.2, 89.9, 0.3, 39.5, 67.2, 43.1, -0.8,
                   0.21, 0.17, -0.2, 0.1])
     # Adjust the timestamp
@@ -115,6 +115,6 @@ def test_eclipse():
 
 
 if __name__ == "__main__":
-    #test_phase_curve()
-    #test_transit()
+    test_phase_curve()
+    test_transit()
     test_eclipse()
