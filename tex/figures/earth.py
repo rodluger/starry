@@ -1,5 +1,5 @@
 """Earth spherical harmonic example."""
-from starry import Map
+from starry2 import Map
 import matplotlib.pyplot as pl
 import numpy as np
 
@@ -20,7 +20,7 @@ x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 for i in range(nax):
     # starry functions accept vector arguments, but not matrix arguments,
     # so we need to iterate below:
-    I = [m.evaluate(theta=-theta[i], x=x[j], y=y[j]) for j in range(res)]
+    I = [m(theta=-theta[i], x=x[j], y=y[j]) for j in range(res)]
     ax[i].imshow(I, origin="lower", interpolation="none", cmap='plasma')
     ax[i].axis('off')
 

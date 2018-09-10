@@ -120,7 +120,8 @@ namespace pybind_vectorize {
     typename std::enable_if<!std::is_base_of<Eigen::EigenBase<Row<T>>,
                                              Row<T>>::value, py::object>::type
     flux(maps::Map<T> &map, py::array_t<double>& theta, py::array_t<double>& xo,
-         py::array_t<double>& yo, py::array_t<double>& ro, bool gradient){
+         py::array_t<double>& yo, py::array_t<double>& ro, bool gradient,
+         bool numerical){
 
         if (gradient) {
 
@@ -137,11 +138,12 @@ namespace pybind_vectorize {
             // https://github.com/pybind/pybind11/issues/
             // 761#issuecomment-288818460
             int t = 0;
-            auto F = py::vectorize([&map, &grad, &t, &dF_names]
+            auto F = py::vectorize([&map, &grad, &t, &dF_names, &numerical]
                         (double theta, double xo, double yo, double ro) {
                 // Evaluate the function
                 double res = static_cast<double>(map.flux(theta, xo, yo,
-                                                          ro, true));
+                                                          ro, true,
+                                                          numerical));
                 // Gather the derivatives
                 auto dF = map.getGradient();
                 for (int j = 0; j < dF.size(); j++)
@@ -170,7 +172,8 @@ namespace pybind_vectorize {
     typename std::enable_if<std::is_base_of<Eigen::EigenBase<Row<T>>,
                                             Row<T>>::value, py::object>::type
     flux(maps::Map<T> &map, py::array_t<double>& theta, py::array_t<double>& xo,
-         py::array_t<double>& yo, py::array_t<double>& ro, bool gradient){
+         py::array_t<double>& yo, py::array_t<double>& ro, bool gradient,
+         bool numerical){
 
         // Vectorize the arguments manually
         Vector<double> theta_v, xo_v, yo_v, ro_v;
@@ -193,7 +196,8 @@ namespace pybind_vectorize {
 
                 // Function value
                 F.row(i) = map.flux(theta_v(i), xo_v(i),
-                           yo_v(i), ro_v(i), true).template cast<double>();
+                           yo_v(i), ro_v(i), true,
+                           numerical).template cast<double>();
 
                 // Gradient
                 auto dF = map.getGradient();
@@ -212,7 +216,8 @@ namespace pybind_vectorize {
             Matrix<double> F(sz, map.nwav);
             for (size_t i = 0; i < sz; ++i) {
                 F.row(i) = map.flux(theta_v(i), xo_v(i),
-                           yo_v(i), ro_v(i), false).template cast<double>();
+                           yo_v(i), ro_v(i), false,
+                           numerical).template cast<double>();
             }
 
             // Cast to python object

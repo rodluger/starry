@@ -41,6 +41,7 @@ TODO: Add unit tests for `isPhysical`
 #include "solver.h"
 #include "sturm.h"
 #include "minimize.h"
+#include "numeric.h"
 
 namespace kepler {
     template <class T>
@@ -339,7 +340,8 @@ namespace maps {
                 const Scalar<T>& xo_=0,
                 const Scalar<T>& yo_=0,
                 const Scalar<T>& ro_=0,
-                bool gradient=false);
+                bool gradient=false,
+                bool numerical=false);
 
             // Is the map physical?
             inline RowBool<T> isPhysical(const Scalar<T>& epsilon=1.e-6,
@@ -1049,9 +1051,13 @@ namespace maps {
                                const Scalar<T>& xo_,
                                const Scalar<T>& yo_,
                                const Scalar<T>& ro_,
-                               bool gradient) {
+                               bool gradient,
+                               bool numerical) {
 
         if (gradient) {
+            if (numerical)
+                throw errors::NotImplementedError("Numerical gradients of the "
+                                                  "flux have not been implemented.");
             // If we're computing the gradient as well,
             // call the specialized functions
             if (y_deg == 0)
@@ -1072,6 +1078,7 @@ namespace maps {
         T& A1Ry(tmp.tmpT[1]);
         T& RRy(tmp.tmpT[2]);
         T& ARRy(tmp.tmpT[3]);
+        Vector<Scalar<T>>& Ryn(tmp.tmpColumnVector[0]);
 
         // Convert to internal types
         Scalar<T> xo = xo_;
@@ -1131,6 +1138,18 @@ namespace maps {
 
                 }
 
+            }
+
+            // Compute the flux numerically.
+            // NOTE: This is used exclusively for debugging!
+            if (numerical) {
+                const Scalar<T> tol = 1e-4;
+                for (int n = 0; n < nwav; ++n) {
+                    Ryn = getColumn(Ry, n);
+                    setIndex(result, n,
+                             numeric::flux(xo, yo, ro, lmax, Ryn, tol));
+                }
+                return result;
             }
 
             // Rotate the map to align the occultor with the +y axis
