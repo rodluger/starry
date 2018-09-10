@@ -1,19 +1,18 @@
 /**
 Keplerian star/planet/moon system class.
 
-TODO: Currently working on gradients.
-
 TODO: Many of the gradient methods here can still be optimized for speed.
-      Common variables can be pre-computed.
+      Common variables can be pre-computed; use references to make the
+      application of the chain rule more legible.
 
 TODO: The biggest speedup may come from only computing the total flux
       when there are no occultations or when there are more than one
       occultations. For exactly one occultations, the occultation flux
       is all we need!
 
-TODO: Derivatives of planet-planet occultations
+TODO: Code up derivatives of planet-planet occultations
 
-TODO: Derivatives of the fluence
+TODO: Code up derivatives of the fluence
 
 */
 
@@ -1014,7 +1013,7 @@ namespace kepler {
     //! Get the orbital period
     template <class T>
     Scalar<T> Secondary<T>::getOrbPer() const {
-        return porb;
+        return porb / units::DayToSeconds;
     }
 
     //! Set the inclination
@@ -1851,8 +1850,8 @@ namespace kepler {
                getRow(primary->dflux_tot, g) +
                (getRow(primary->dF, 1) * (occultor->AD.x.derivatives()(6) -
                                           occultor->AD.x.derivatives()(3)) +    // dxo / dw
-                getRow(primary->dF, 2) * (occultor->AD.x.derivatives()(6) -
-                                          occultor->AD.x.derivatives()(3))) *   // dyo / dw
+                getRow(primary->dF, 2) * (occultor->AD.y.derivatives()(6) -
+                                          occultor->AD.y.derivatives()(3))) *   // dyo / dw
                pi<Scalar<T>>() / 180.0));
         g++;
 
@@ -2132,10 +2131,12 @@ namespace kepler {
     inline void System<T>::computeSecondaryOccultationGradient(const S& time_cur,
             Secondary<T>* secondary, Secondary<T>* occultor) {
 
-        // NOTE: Only if (secondary->L != 0)
-
-        // TODO!!!
-
+        if (secondary->L != 0) {
+            // TODO! This will be a quite tedious derivation.
+            throw errors::NotImplementedError("Gradients of secondary-secondary "
+                                              "occultations have not yet been "
+                                              "implemented.");
+        }
     }
 
 } // namespace kepler
