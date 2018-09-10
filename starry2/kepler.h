@@ -1942,6 +1942,13 @@ namespace kepler {
             g++;
 
             // dF / dprot (TODO)
+            setRow(secondary->dflux_cur, g, Row<T>(
+                   getRow(secondary->dflux_cur, g) -
+                   getRow(secondary->dflux_tot, g) -
+                   getRow(secondary->dF, 0) *
+                   (secondary->angvelrot_deg *
+                   (time_cur - secondary->tref - secondary->delay) / secondary->prot +
+                   secondary->theta0_deg / secondary->prot) * units::DayToSeconds));
             g++;
 
             // dF / da (TODO)
