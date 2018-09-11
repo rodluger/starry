@@ -1147,7 +1147,7 @@ namespace kepler {
             T integrate(const T& f1, const T& f2,
                         const S& t1, const S& t2,
                         int depth, bool gradient);
-            inline T integrate (const S& time_cur, bool gradient);
+            inline void integrate(const S& time_cur, bool gradient);
 
             inline void computePrimaryTotalGradient(const S& time_cur);
             inline void computeSecondaryTotalGradient(const S& time_cur,
@@ -1299,17 +1299,21 @@ namespace kepler {
 
     */
     template <class T>
-    inline T System<T>::integrate(const Scalar<T>& time_cur, bool gradient) {
+    inline void System<T>::integrate(const Scalar<T>& time_cur, bool gradient) {
+        T fluxes;
         if (exptime > 0) {
             Scalar<T> dt = 0.5 * exptime,
                       t1 = time_cur - dt,
                       t2 = time_cur + dt;
-            return integrate(step(t1, gradient, false),
-                             step(t2, gradient, false), t1, t2, 0, gradient)
-                             / (t2 - t1);
+            fluxes = integrate(step(t1, gradient, false),
+                               step(t2, gradient, false), t1, t2, 0, gradient)
+                               / (t2 - t1);
         } else {
-            return step(time_cur, gradient, true);
+            fluxes = step(time_cur, gradient, true);
         }
+        primary->flux_cur = getRow(fluxes, 0);
+        for (size_t i = 0; i < secondaries.size(); ++i)
+            secondaries[i]->flux_cur = getRow(fluxes, i + 1);
     }
 
     /**
@@ -1509,60 +1513,37 @@ namespace kepler {
         for (t = 0; t < NT; ++t){
 
             // Take an orbital step and compute the fluxes
-            if (exptime == 0) {
-
-                // Advance the system
+            if (exptime == 0)
                 step(time(t), gradient);
+            else
+                integrate(time(t), gradient);
 
-                // Update the light curves and orbital positions
-                for (int n = 0; n < primary->nwav; ++n) {
-                    primary->lightcurve(t, n) = getColumn(primary->flux_cur, n);
-                    lightcurve(t, n) = getColumn(primary->flux_cur, n);
-                }
-                if (gradient) {
-                    primary->dL(t) = primary->dflux_cur;
-                    dL(t) = primary->dL(t);
-                }
-                for (auto secondary : secondaries) {
+            // Update the light curves and orbital positions
+            for (int n = 0; n < primary->nwav; ++n) {
+                primary->lightcurve(t, n) = getColumn(primary->flux_cur, n);
+                lightcurve(t, n) = getColumn(primary->flux_cur, n);
+            }
+            if (gradient) {
+                primary->dL(t) = primary->dflux_cur;
+                dL(t) = primary->dL(t);
+            }
+            for (auto secondary : secondaries) {
+                if (exptime == 0) {
                     secondary->xvec(t) = secondary->x_cur;
                     secondary->yvec(t) = secondary->y_cur;
                     secondary->zvec(t) = secondary->z_cur;
-                    for (int n = 0; n < primary->nwav; ++n) {
-                        secondary->lightcurve(t, n) =
-                            getColumn(secondary->flux_cur, n);
-                        lightcurve(t, n) += getColumn(secondary->flux_cur, n);
-                    }
-                    if (gradient) {
-                        secondary->dL(t) = secondary->dflux_cur;
-                        dL(t) += secondary->dL(t);
-                    }
                 }
-
-            } else {
-
-                // Integrate over the exposure time
-                T fluxes = integrate(time(t), gradient);
-
-                // Update the light curves
                 for (int n = 0; n < primary->nwav; ++n) {
-                    primary->lightcurve(t, n) = fluxes(0, n);
-                    lightcurve(t, n) = fluxes(0, n);
+                    secondary->lightcurve(t, n) =
+                        getColumn(secondary->flux_cur, n);
+                    lightcurve(t, n) += getColumn(secondary->flux_cur, n);
                 }
                 if (gradient) {
-                    dL(t) = primary->dL(t);
-                    primary->dL(t) = primary->dflux_cur;
-                }
-                for (size_t i = 0; i < secondaries.size(); ++i) {
-                    for (int n = 0; n < primary->nwav; ++n) {
-                        secondaries[i]->lightcurve(t, n) = fluxes(i + 1, n);
-                        lightcurve(t, n) += fluxes(i + 1, n);
-                    }
-                    if (gradient) {
-                        secondaries[i]->dL(t) = secondaries[i]->dflux_cur;
-                        dL(t) += secondaries[i]->dL(t);
-                    }
+                    secondary->dL(t) = secondary->dflux_cur;
+                    dL(t) += secondary->dL(t);
                 }
             }
+
         }
     }
 
