@@ -1,7 +1,7 @@
 """Stability tests for the gradients."""
 import numpy as np
 import matplotlib.pyplot as pl
-import starry
+import starry2
 from tqdm import tqdm
 
 
@@ -15,18 +15,20 @@ def is_even(n):
 
 def StarryDExact(barr, r, larr, lmax, d='b', tiny=1e-8):
     """Compute dF/d{b,r} with starry multiprecision."""
-    map = starry.multi.Map(lmax)
+    map = starry2.Map(lmax, multi=True)
     res = np.zeros((lmax + 1, len(barr)))
     for ll in tqdm(range(lmax + 1)):
         if ll not in larr:
             continue
         map.reset()
+        map[0, 0] = 0
         for mm in range(-ll, ll + 1):
             map[ll, mm] = 1
+        flux, gradient = map.flux(xo=0, yo=barr, ro=r, gradient=True)
         if d == 'b':
-            res[ll] = map._dfluxdyo(xo=0, yo=barr, ro=r)
+            res[ll] = gradient['yo']
         elif d == 'r':
-            res[ll] = map._dfluxdro(xo=0, yo=barr, ro=r)
+            res[ll] = gradient['ro']
         else:
             raise ValueError("Invalid derivative name.")
     return res
@@ -34,19 +36,20 @@ def StarryDExact(barr, r, larr, lmax, d='b', tiny=1e-8):
 
 def StarryD(barr, r, larr, lmax, d='b'):
     """Compute dF/d{b,r} for each degree with starry.grad."""
-    map = starry.grad.Map(lmax)
+    map = starry2.Map(lmax)
     res = np.zeros((lmax + 1, len(barr)))
     for ll in tqdm(range(lmax + 1)):
         if ll not in larr:
             continue
         map.reset()
+        map[0, 0] = 0
         for mm in range(-ll, ll + 1):
             map[ll, mm] = 1
-        map.flux(xo=0, yo=barr, ro=r)
+        flux, gradient = map.flux(xo=0, yo=barr, ro=r, gradient=True)
         if d == 'b':
-            res[ll] = map.gradient['yo']
+            res[ll] = gradient['yo']
         elif d == 'r':
-            res[ll] = map.gradient['ro']
+            res[ll] = gradient['ro']
         else:
             raise ValueError("Invalid derivative name.")
     return res

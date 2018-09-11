@@ -1,10 +1,6 @@
 """Starry speed tests."""
-import starry2 as starry
-import timeit
-try:
-    import builtins
-except ImportError:
-    import __builtin__ as builtins
+import starry2
+import time
 import matplotlib.pyplot as pl
 from tqdm import tqdm
 from scipy.integrate import dblquad
@@ -103,24 +99,22 @@ def compare_to_numerical(lmax=5):
 
         def fnumer(self):
             self.vnumer = NumericalFlux(lambda y, x:
-                                        self.ylm.evaluate(x=x, y=y), b, r)
+                                        self.map_64(x=x, y=y), b, r)
 
         def fstar(self):
-            self.vstar = self.ylm.flux(xo=np.zeros(nstarry), yo=b, ro=r)[0]
+            self.vstar = self.map_64.flux(xo=np.zeros(nstarry), yo=b, ro=r)[0]
 
         def fgrad(self):
-            f, _ = self.ylm.flux(xo=np.zeros(nstarry),
-                                 yo=b, ro=r, gradient=True)
+            f, _ = self.map_64.flux(xo=np.zeros(nstarry),
+                                    yo=b, ro=r, gradient=True)
             self.vgrad = f[0]
 
         def fmesh(self):
-            # DEBUG TODO
-            self.vmesh = np.nan
-            #self.vmesh = self.ylm._flux_numerical(yo=b, ro=r)
+            self.vmesh = self.map_64.flux(yo=b, ro=r, numerical=True)
 
         def fgrid(self):
             self.vgrid = GridFlux(lambda y, x:
-                                  self.ylm.evaluate(x=x, y=y), b, r, res=res)
+                                  self.map_64(x=x, y=y), b, r, res=res)
 
     funcs = Funcs()
     time_starry = np.zeros(lmax + 1)
@@ -134,24 +128,23 @@ def compare_to_numerical(lmax=5):
     error_mesh = np.zeros(lmax + 1)
     error_grid = np.zeros(lmax + 1)
     for l in range(lmax + 1):
-        funcs.ylm = starry.Map(l)
-        ylm_128 = starry.multi.Map(l)
+        funcs.map_64 = starry2.Map(l)
+        map_128 = starry2.Map(l, multi=True)
         # Randomize a map and occultor properties
         b = np.random.random()
         r = np.random.random()
         for m in range(-l, l + 1):
             c = np.random.random()
-            funcs.ylm[l, m] = c
-            ylm_128[l, m] = c
+            funcs.map_64[l, m] = c
+            map_128[l, m] = c
         # Time the runs
-        builtins.__dict__.update(locals())
-        time_starry[l] = timeit.timeit('funcs.fstar()', number=1) / nstarry
-        time_grad[l] = timeit.timeit('funcs.fgrad()', number=1) / nstarry
-        time_numer[l] = timeit.timeit('funcs.fnumer()', number=1)
-        time_mesh[l] = timeit.timeit('funcs.fmesh()', number=1)
-        time_grid[l] = timeit.timeit('funcs.fgrid()', number=1)
+        t = time.time(); funcs.fstar(); time_starry[l] = (time.time() - t) / nstarry
+        t = time.time(); funcs.fgrad(); time_grad[l] = (time.time() - t) / nstarry
+        t = time.time(); funcs.fnumer(); time_numer[l] = time.time() - t
+        t = time.time(); funcs.fmesh(); time_mesh[l] = time.time() - t
+        t = time.time(); funcs.fgrid(); time_grid[l] = time.time() - t
         # Compute the relative error
-        flux_128 = ylm_128.flux(xo=0, yo=b, ro=r)
+        flux_128 = map_128.flux(xo=0, yo=b, ro=r)
         error_starry[l] = max(1e-16, np.abs(funcs.vstar - flux_128))
         error_grad[l] = max(1e-16, np.abs(funcs.vgrad - flux_128))
         error_numer[l] = np.abs(funcs.vnumer - flux_128)
@@ -234,25 +227,27 @@ def speed():
     for i, N in tqdm(enumerate(Narr), total=nN):
 
         # Compute for each Ylm
-        theta = np.linspace(0, 360, N)
+        theta = np.linspace(0., 360., N)
         xo = np.linspace(-1., 1., N)
         for l in range(lmax + 1):
-            ylm = starry.Map(l)
+            map = starry2.Map(l)
             for m in range(-l, l + 1):
-                ylm.reset()
-                ylm[l, m] = 1
-                ylm.axis = [0, 1, 0]
-                builtins.__dict__.update(locals())
+                map.reset()
+                map[0, 0] = 0
+                map[l, m] = 1
+                map.axis = [0, 1, 0]
 
                 # Phase curve
-                time_phase[l, m, i] = timeit.timeit(
-                    'ylm.flux(theta=theta)',
-                    number=number) / number
+                t = time.time()
+                for n in range(number):
+                    map.flux(theta=theta)
+                time_phase[l, m, i] = (time.time() - t) / number
 
                 # Occultation (no rotation)
-                time_occ[l, m, i] = timeit.timeit(
-                    'ylm.flux(xo=xo, yo=0.5, ro=0.1)',
-                    number=number) / number
+                t = time.time()
+                for n in range(number):
+                    map.flux(xo=xo, yo=0.5, ro=0.1)
+                time_occ[l, m, i] = (time.time() - t) / number
 
     # Plot
     fig, ax = pl.subplots(2, 2, figsize=(7, 5))

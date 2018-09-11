@@ -1,5 +1,5 @@
 """Stellar transit example."""
-from starry import LimbDarkenedMap
+from starry2 import Map
 import matplotlib.pyplot as pl
 import numpy as np
 from scipy.integrate import dblquad
@@ -106,7 +106,7 @@ npts = 500
 r = 0.1
 b = np.linspace(-1.5, 1.5, npts)
 for u, label in zip([u_quad, u_exact], ['Quadratic', 'Exact']):
-    map = LimbDarkenedMap(len(u) - 1)
+    map = Map(len(u) - 1)
     for l in range(1, len(u)):
         map[l] = u[l]
     sF = map.flux(xo=b, yo=0, ro=r)

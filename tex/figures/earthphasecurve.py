@@ -1,5 +1,5 @@
 """Earth phase curve example."""
-from starry import Map
+from starry2 import Map
 import matplotlib.pyplot as pl
 import numpy as np
 
@@ -22,24 +22,24 @@ labels = ['Asia', 'Africa', 'S. America',
           'N. America', 'Oceania',
           'Europe',
           'Antarctica']
-m = Map(10)
-m.axis = [0, 1, 0]
+map = Map(10)
+map.axis = [0, 1, 0]
 for continent, label in zip(continents, labels):
-    m.load_image(continent)
-    m.rotate(-180)
-    F = m.flux(theta=theta)
+    map.load_image(continent)
+    map.rotate(-180)
+    F = map.flux(theta=theta)
     F -= np.nanmin(F)
     ax.plot(theta - 180, F, label=label)
 
 # Compute and plot the total phase curve
-m.load_image('earth.jpg')
-m.rotate(-180)
-total = m.flux(theta=theta)
+map.load_image('earth.jpg')
+map.rotate(-180)
+total = map.flux(theta=theta)
 total /= np.max(total)
 ax.plot(theta - 180, total, 'k-', label='Total')
 
 # Compute and plot the total phase curve (numerical)
-totalnum = m._flux_numerical(theta=thetanum, tol=1e-5)
+totalnum = map.flux(theta=thetanum, numerical=True)
 totalnum /= np.max(totalnum)
 ax.plot(thetanum - 180, totalnum, 'k.')
 
@@ -60,8 +60,7 @@ ax_im = [pl.subplot2grid((5, nim), (0, n)) for n in range(nim)]
 x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
 for n in range(nim):
     i = int(np.linspace(0, npts - 1, nim)[n])
-    I = [m.evaluate(theta=theta[i], x=x[j], y=y[j])
-         for j in range(res)]
+    I = [map(theta=theta[i], x=x[j], y=y[j]) for j in range(res)]
     ax_im[n].imshow(I, origin="lower", interpolation="none", cmap='plasma',
                     extent=(-1, 1, -1, 1))
     ax_im[n].axis('off')

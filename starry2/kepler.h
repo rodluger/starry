@@ -1292,7 +1292,7 @@ namespace kepler {
             }
         }
         return fapprox * (t2 - t1);
-    };
+    }
 
     /**
     Recursive exposure time integration function
@@ -1310,7 +1310,7 @@ namespace kepler {
         } else {
             return step(time_cur, gradient, true);
         }
-    };
+    }
 
     /**
     Take a single orbital + photometric step.

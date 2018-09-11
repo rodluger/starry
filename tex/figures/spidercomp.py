@@ -1,5 +1,5 @@
 """Starry-SPIDERMAN comparisons and speed tests."""
-import starry
+import starry2
 import matplotlib.pyplot as plt
 import numpy as np
 import spiderman as sp
@@ -43,42 +43,46 @@ def comparison():
     # Define starry model parameters to match SPIDERMAN system
 
     # Define star
-    star = starry.Star()
+    star = starry2.kepler.Primary()
 
     # Define planet
-    planet = starry.Planet(lmax=2,
-                           lambda0=90.0,
-                           w=spider_params.w,
-                           r=spider_params.rp,
-                           # Factor of pi to match SPIDERMAN normalization
-                           L=1.0e-3 * np.pi,
-                           inc=spider_params.inc,
-                           a=spider_params.a,
-                           porb=spider_params.per,
-                           tref=spider_params.t0,
-                           prot=spider_params.per,
-                           ecc=spider_params.ecc)
+    planet = starry2.kepler.Secondary()
+    planet.lambda0 = 90.0
+    planet.w = spider_params.w
+    planet.r = spider_params.rp
+    # Factor of pi to match SPIDERMAN normalization
+    planet.L = 1.0e-3 * np.pi
+    planet.inc = spider_params.inc
+    planet.a = spider_params.a
+    planet.porb = spider_params.per
+    planet.tref = spider_params.t0
+    planet.prot = spider_params.per
+    planet.ecc = spider_params.ecc
 
     # Define spherical harmonic coefficients
-    planet.map[0, 0] = 1.0
-    planet.map[1, -1] = 0.0
-    planet.map[1, 0] = 0.0
-    planet.map[1, 1] = 0.5
+    planet[1, -1] = 0.0
+    planet[1, 0] = 0.0
+    planet[1, 1] = 0.5
 
     # Make a system
-    system = starry.System([star, planet])
+    system = starry2.kepler.System(star, planet)
 
     # Now make a multiprecision system to compute error estimates
-    mstar = starry.multi.Star()
-    mplanet = starry.multi.Planet(lmax=2, lambda0=90., w=spider_params.w,
-                                  r=spider_params.rp, L=1.0e-3 * np.pi,
-                                  inc=spider_params.inc, a=spider_params.a,
-                                  porb=spider_params.per,
-                                  tref=spider_params.t0,
-                                  prot=spider_params.per,
-                                  ecc=spider_params.ecc)
-    mplanet.map[:] = planet.map[:]
-    msystem = starry.multi.System([mstar, mplanet])
+    mstar = starry2.kepler.Primary(multi=True)
+    mplanet = starry2.kepler.Secondary(multi=True)
+    mplanet.lambda0 = 90.0
+    mplanet.w = spider_params.w
+    mplanet.r = spider_params.rp
+    # Factor of pi to match SPIDERMAN normalization
+    mplanet.L = 1.0e-3 * np.pi
+    mplanet.inc = spider_params.inc
+    mplanet.a = spider_params.a
+    mplanet.porb = spider_params.per
+    mplanet.tref = spider_params.t0
+    mplanet.prot = spider_params.per
+    mplanet.ecc = spider_params.ecc
+    mplanet[:, :] = planet[:, :]
+    msystem = starry2.kepler.System(mstar, mplanet)
 
     # ## Speed test! ## #
 
@@ -105,7 +109,7 @@ def comparison():
 
         # Compute **exact** flux using multiprecision
         msystem.compute(time_arr)
-        mflux = np.array(msystem.flux)
+        mflux = np.array(msystem.lightcurve)
 
         # Repeat calculation a few times and pick fastest one
         best_starry = np.inf
@@ -113,7 +117,7 @@ def comparison():
 
             start = time.time()
             system.compute(time_arr)
-            flux = np.array(system.flux)
+            flux = np.array(system.lightcurve)
             dt = time.time() - start
 
             if dt < best_starry:

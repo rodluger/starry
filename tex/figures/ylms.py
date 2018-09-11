@@ -1,5 +1,5 @@
 """Plot the Ylms on the surface of the sphere."""
-from starry import Map
+from starry2 import Map
 import matplotlib.pyplot as pl
 import matplotlib.animation as animation
 import numpy as np
@@ -12,7 +12,7 @@ class animated():
                  axis=[0., 1., 0.]):
         """Initialize."""
         self.lmax = lmax
-        self.ylm = Map(lmax)
+        self.map = Map(lmax)
         self.res = res
         self.axis = axis
         self.frames = frames
@@ -49,10 +49,10 @@ class animated():
                 j += self.lmax - l
 
                 # Compute the spherical harmonic
-                self.ylm.reset()
-                self.ylm.set_coeff(l, m, 1)
-                flux = [self.ylm.evaluate(theta=0,
-                        x=self.X[j], y=self.Y[j]) for j in range(res)]
+                self.map.reset()
+                self.map[l, m] = 1
+                flux = [self.map(theta=0, x=self.X[j], y=self.Y[j])
+                        for j in range(res)]
 
                 # Plot the spherical harmonic
                 img = self.ax[i, j].imshow(flux, cmap='plasma',
@@ -80,11 +80,10 @@ class animated():
         theta = self.theta[j]
         for i, l in enumerate(range(self.lmax + 1)):
             for j, m in enumerate(range(-l, l + 1)):
-                self.ylm.reset()
-                self.ylm.set_coeff(l, m, 1)
-                self.ylm.axis = self.axis
-                flux = self.ylm.evaluate(theta=theta,
-                                         x=self.X, y=self.Y)
+                self.map.reset()
+                self.map[l, m] = 1
+                self.map.axis = self.axis
+                flux = self.map(theta=theta, x=self.X, y=self.Y)
                 self.img[n].set_data(flux)
                 n += 1
         return self.img
@@ -118,7 +117,7 @@ def static(lmax=5, res=300):
     x = np.linspace(-1, 1, res)
     y = np.linspace(-1, 1, res)
     X, Y = np.meshgrid(x, y)
-    ylm = Map(lmax)
+    map = Map(lmax)
 
     # Loop over the orders and degrees
     for i, l in enumerate(range(lmax + 1)):
@@ -129,9 +128,9 @@ def static(lmax=5, res=300):
 
             # Compute the spherical harmonic
             # with no rotation
-            ylm.reset()
-            ylm.set_coeff(l, m, 1)
-            flux = [ylm.evaluate(x=X[j], y=Y[j]) for j in range(res)]
+            map.reset()
+            map[l, m] = 1
+            flux = [map(x=X[j], y=Y[j]) for j in range(res)]
 
             # Plot the spherical harmonic
             ax[i, j].imshow(flux, cmap='plasma',

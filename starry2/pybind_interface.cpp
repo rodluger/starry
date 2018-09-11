@@ -9,6 +9,7 @@
 #include "pybind_interface.h"
 #include "docstrings.h"
 #include "kepler.h"
+#include "maps.h"
 namespace py = pybind11;
 
 PYBIND11_MODULE(_starry2, m) {

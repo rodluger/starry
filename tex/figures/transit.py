@@ -1,5 +1,5 @@
 """Stellar transit example."""
-from starry import Star, Planet, System
+from starry2.kepler import Primary, Secondary, System
 from tqdm import tqdm
 import matplotlib.pyplot as pl
 import numpy as np
@@ -97,14 +97,19 @@ a = ((P * 86400) ** 2 * (1.32712440018e20 * mstar) /
 inc = np.arccos(b0 / a) * 180 / np.pi
 
 # Compute and plot the starry flux
-star = Star()
-star.map[1] = u1
-star.map[2] = u2
+star = Primary()
+star[1] = u1
+star[2] = u2
 
-planet = Planet(r=rplanet, inc=inc, porb=P, a=a, lambda0=90)
-system = System([star, planet])
+planet = Secondary()
+planet.r = rplanet
+planet.inc = inc
+planet.porb = P
+planet.a = a
+planet.lambda0 = 90
+system = System(star, planet)
 system.compute(time)
-sF = np.array(star.flux)
+sF = np.array(star.lightcurve)
 sF /= sF[0]
 ax[0].plot(time, sF, '-', color='C0', label='starry')
 

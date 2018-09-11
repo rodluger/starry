@@ -1154,7 +1154,7 @@ namespace maps {
 
             // Rotate the map to align the occultor with the +y axis
             // Change basis to Green's polynomials
-            if ((b > 0) && ((xo != 0) || (yo < 0))) {
+            if ((y_deg > 0) && (b > 0) && ((xo != 0) || (yo < 0))) {
                 W.rotatez(yo / b, xo / b, Ry, RRy);
                 ARRy = B.A * RRy;
             } else {
@@ -1210,13 +1210,31 @@ namespace maps {
         // Occultation
         } else {
 
-            // Compute the sT vector (sparsely)
-            for (int n = 0; n < N; ++n)
-                G.skip(n) = !(g_u.block(n, 0, 1, nwav).array() != 0.0).any();
-            G.compute(b, ro);
+            if ((u_deg <= 2) && (ro < 1)) {
 
-            // Dot the result in and we're done
-            return G.sT * g_u;
+                // Skip the overhead for quadratic limb darkening
+                G.quad(b, ro);
+                if (u_deg == 0)
+                    return G.sT(0) * getRow(g_u, 0);
+                else if (u_deg == 1)
+                    return G.sT(0) * getRow(g_u, 0) +
+                           G.sT(2) * getRow(g_u, 2);
+                else
+                    return G.sT(0) * getRow(g_u, 0) +
+                           G.sT(2) * getRow(g_u, 2) +
+                           G.sT(8) * getRow(g_u, 8);
+
+            } else {
+
+                // Compute the sT vector (sparsely)
+                for (int n = 0; n < N; ++n)
+                    G.skip(n) = !(g_u.block(n, 0, 1, nwav).array() != 0.0).any();
+                G.compute(b, ro);
+
+                // Dot the result in and we're done
+                return G.sT * g_u;
+
+            }
 
         }
 

@@ -87,13 +87,8 @@ def run(delay=False, event="phase"):
         fstar2, fb2 = lightcurve(x, eps, delay=delay, event=event)
         star_num_grad[i] = (fstar2 - fstar1) / eps[i]
         b_num_grad[i] = (fb2 - fb1) / eps[i]
-        #assert np.isclose(star_grad[i], star_num_grad[i])
-        #assert np.isclose(b_grad[i], b_num_grad[i])
-
-        if not np.isclose(star_grad[i], star_num_grad[i]):
-            print("A - %10s: %11.8f %11.8f" % (name, star_grad[i], star_num_grad[i]))
-        if not np.isclose(b_grad[i], b_num_grad[i]):
-           print("b - %10s: %11.8f %11.8f" % (name, b_grad[i], b_num_grad[i]))
+        assert np.isclose(star_grad[i], star_num_grad[i])
+        assert np.isclose(b_grad[i], b_num_grad[i])
 
 
 def test_phase_curve():
