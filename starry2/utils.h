@@ -208,7 +208,6 @@ namespace utils {
     //! Return the modulo of an angle by 2 pi
     template <typename T>
     T mod2pi(const T& numer) {
-        using std::fmod;
         return fmod(numer, T(2 * pi<T>()));
     }
 
@@ -226,7 +225,6 @@ namespace utils {
     //! Return the modulo of an angle by 360 degrees
     template <typename T>
     T mod360(const T& numer) {
-        using std::fmod;
         return fmod(numer, T(360.0));
     }
 

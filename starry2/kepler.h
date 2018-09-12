@@ -6,8 +6,8 @@ TODO: Many of the gradient methods here can still be optimized for speed.
       application of the chain rule more legible.
 
 TODO: The biggest speedup may come from only computing the total flux
-      when there are no occultations or when there are more than one
-      occultations. For exactly one occultations, the occultation flux
+      when there are no occultations or when there are more than one.
+      For exactly one occultation, the occultation flux
       is all we need!
 
 TODO: Code up derivatives of planet-planet occultations
