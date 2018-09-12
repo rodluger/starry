@@ -20,6 +20,7 @@ TODO: Code up derivatives of planet-planet occultations
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
+#include <unsupported/Eigen/AutoDiff>
 #include <string>
 #include <vector>
 #include "errors.h"
