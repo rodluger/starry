@@ -10,8 +10,8 @@ addons:
         sources:
             - ubuntu-toolchain-r-test
         packages:
-            - gcc-4.8
-            - g++-4.8
+            - gcc-4.9
+            - g++-4.9
 
 matrix:
     include:
@@ -19,7 +19,7 @@ matrix:
           env: PYTHON_VERSION=3.4 NUMPY_VERSION=1.11
 
 install:
-    - travis_wait 60 source .ci/travis.sh
+    - source .ci/travis.sh
 
 cache:
     directories:
