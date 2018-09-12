@@ -1143,7 +1143,7 @@ namespace maps {
             // Compute the flux numerically.
             // NOTE: This is used exclusively for debugging!
             if (numerical) {
-                const Scalar<T> tol = 1e-4;
+                const Scalar<T> tol = 1e-5;
                 for (int n = 0; n < nwav; ++n) {
                     Ryn = getColumn(Ry, n);
                     setIndex(result, n,

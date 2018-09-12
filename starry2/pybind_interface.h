@@ -1,9 +1,6 @@
 /**
 This defines the main Python interface to the code.
 
-TODO: Add a "load_image" method to Spectral to
-      load images at specific wavelengths.
-
 TODO: Add wavelength-dependent radius support
       Two options: arbitrary r(lambda), full computation
       or linear expansion about mean radius using autodiff.

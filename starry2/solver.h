@@ -25,7 +25,6 @@ namespace solver {
     using std::swap;
     using std::vector;
     using std::min;
-    using std::isinf;
     using namespace utils;
 
     // Forward declaration

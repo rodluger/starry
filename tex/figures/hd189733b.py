@@ -112,9 +112,7 @@ def hotspot_offset(p):
 def set_coeffs(p, planet):
     """Set the coefficients of the planet map."""
     y1m1, y10, y11, L = p
-    planet[1, -1] = y1m1
-    planet[1, 0] = y10
-    planet[1, 1] = y11
+    planet[1, :] = [y1m1, y10, y11]
     planet.L = L
 
 
@@ -134,19 +132,6 @@ def gen_coeffs_in_bounds(planet):
         if np.isfinite(lnprior(t0, planet)):
             break
     return t0
-
-
-def lnprior_intensity(p):
-    """
-    Ensure that the minimum intensity from the planet is positive
-
-    This has been replaced with: planet.map.psd()
-    """
-    cmag = np.sqrt(p[0]**2 + p[1]**2 + p[2]**2)
-    if cmag >= np.sqrt(1./3.):
-        return -np.inf
-    else:
-        return 0
 
 
 def lnprior(p, planet):
@@ -169,7 +154,6 @@ def lnprior(p, planet):
     # """
 
     # Ensure that the minimum intensity from the planet is positive
-    #     replaced: lp += lnprior_intensity(p)
     # """
     if p[-1] < 0:
         return -np.inf
@@ -197,7 +181,7 @@ def lnlike(p, time, y, yerr, system, planet):
     model = system.lightcurve / system.lightcurve[0]
 
     # Compute the chi-squared
-    chisq = np.sum((y - model) ** 2 / yerr ** 2)  # / len(y)
+    chisq = np.sum((y - model) ** 2 / yerr ** 2)
 
     ll += -0.5 * chisq
 
@@ -277,7 +261,7 @@ def instantiate_HD189():
     a = 8.863
     prot = 2.21858
     porb = 2.21858
-    tref = -2.21858/2.
+    tref = -2.21858 / 2.
 
     # Instantiate the star
     star = starry2.kepler.Primary()
@@ -768,7 +752,8 @@ if __name__ == "__main__":
     chain_path = "map_chain.npz"             # Name of file with MCMC chain
     grad = True                              # Use gradients in ML fit(s)
     N = 1                                    # Number of ML fits
-    nsteps = 100                             # Number of MCMC steps
+    nsteps = 1000                            # Number of MCMC steps
+    nburn = 200
     nwalk = 40                               # Number of MCMC walkers
     std_ball = [0.01, 0.01, 0.01, 0.001]     # Gaussian ball for MCMC p0
 
@@ -811,7 +796,7 @@ if __name__ == "__main__":
     # mcmc.plot_trace()
 
     # Apply a burn-in cut to samples
-    mcmc.apply_burnin(nburn=2000)
+    mcmc.apply_burnin(nburn=nburn)
 
     # Plot the fit to the data
     # mcmc.plot_fit(data)

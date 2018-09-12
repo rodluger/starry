@@ -12,8 +12,6 @@ TODO: The biggest speedup may come from only computing the total flux
 
 TODO: Code up derivatives of planet-planet occultations
 
-TODO: Code up derivatives of the fluence
-
 */
 
 #ifndef _STARRY_ORBITAL_H_
@@ -44,7 +42,7 @@ namespace kepler {
     using maps::Map;
     using rotation::Wigner;
     using std::abs;
-    using utils::isinf;
+    using utils::isInfinite;
 
     // Forward declare our classes
     template <class T> class Body;
@@ -212,13 +210,65 @@ namespace kepler {
         z = rorb * swf * sini;
 
         // Compute the light travel time delay
-        if (!isinf(c))
+        if (!isInfinite(c))
             applyLightDelay(time, a, ecc, ecc2, sqrtonepluse, sqrtoneminuse,
                             w, angvelorb, tref, M0, cosO, sinO, sini,
                             cosOcosi, sinOcosi, vamp, ecw, z0, c, cwf, rorb,
                             x, y, z, delay);
 
     }
+
+    /**
+    Flux container for exposure time integration.
+
+    */
+    template <class T>
+    class Exposure {
+
+        public:
+
+            std::vector<Row<T>> flux;
+            std::vector<T> gradient;
+            size_t nsec;
+            bool grad;
+
+            explicit Exposure(size_t nsec, bool grad) :
+                    nsec(nsec), grad(grad) {
+                flux.resize(nsec + 1);
+                if (grad) gradient.resize(nsec + 1);
+            }
+
+            inline Exposure<T> operator+(const Exposure<T>& exposure) const {
+                Exposure<T> result(*this);
+                for (size_t n = 0; n < nsec + 1; ++n) {
+                    result.flux[n] += exposure.flux[n];
+                    if (grad)
+                        result.gradient[n] += exposure.gradient[n];
+                }
+                return result;
+            }
+
+            inline Exposure<T> operator-(const Exposure<T>& exposure) const {
+                Exposure<T> result(*this);
+                for (size_t n = 0; n < nsec + 1; ++n) {
+                    result.flux[n] -= exposure.flux[n];
+                    if (grad)
+                        result.gradient[n] -= exposure.gradient[n];
+                }
+                return result;
+            }
+
+            inline Exposure<T> operator*(const Scalar<T>& mult) const {
+                Exposure<T> result(*this);
+                for (size_t n = 0; n < nsec + 1; ++n) {
+                    result.flux[n] *= mult;
+                    if (grad)
+                        result.gradient[n] *= mult;
+                }
+                return result;
+            }
+
+    };
 
 
     /* ---------------- */
@@ -1143,10 +1193,10 @@ namespace kepler {
 
             // Protected methods
             inline void step(const S& time_cur, bool gradient);
-            T step(const S& time_cur, bool gradient, bool store_xyz);
-            T integrate(const T& f1, const T& f2,
-                        const S& t1, const S& t2,
-                        int depth, bool gradient);
+            Exposure<T> step(const S& time_cur, bool gradient, bool store_xyz);
+            Exposure<T> integrate(const Exposure<T>& f1, const Exposure<T>& f2,
+                                  const S& t1, const S& t2,
+                                  int depth, bool gradient);
             inline void integrate(const S& time_cur, bool gradient);
 
             inline void computePrimaryTotalGradient(const S& time_cur);
@@ -1268,24 +1318,25 @@ namespace kepler {
 
     */
     template <class T>
-    T System<T>::integrate(const T& f1,
-                           const T& f2,
-                           const Scalar<T>& t1,
-                           const Scalar<T>& t2,
-                           int depth, bool gradient) {
-        Scalar<T> tmid = 0.5 * (t1 + t2);
+    Exposure<T> System<T>::integrate(const Exposure<T>& f1,
+                                     const Exposure<T>& f2,
+                                     const Scalar<T>& t1,
+                                     const Scalar<T>& t2,
+                                     int depth, bool gradient) {
+        Scalar<T> tmid = (t1 + t2) * 0.5;
         // If this is the first time we're recursing (depth == 0),
         // store the xyz position of the bodies in the output vectors
-        // TODO: Pre-allocate fmid, fapprox, d, and fluxes
-        T fmid = step(tmid, gradient, depth == 0),
-          fapprox = 0.5 * (f1 + f2),
-          d = fmid - fapprox;
+        Exposure<T> fmid = step(tmid, gradient, depth == 0);
+        Exposure<T> fapprox = (f1 + f2) * 0.5;
+        Exposure<T> d = fmid - fapprox;
+        Exposure<T> a(secondaries.size(), gradient);
+        Exposure<T> b(secondaries.size(), gradient);
         if (depth < expmaxdepth) {
-            for (int i = 0; i < d.rows(); ++i) {
+            for (size_t i = 0; i < secondaries.size() + 1; ++i) {
                 for (int n = 0; n < primary->nwav; ++n) {
-                    if (abs(d(i, n)) > exptol) {
-                        T a = integrate(f1, fmid, t1, tmid, depth + 1, gradient),
-                          b = integrate(fmid, f2, tmid, t2, depth + 1, gradient);
+                    if (abs(getIndex(d.flux[i], n)) > exptol) {
+                        a = integrate(f1, fmid, t1, tmid, depth + 1, gradient);
+                        b = integrate(fmid, f2, tmid, t2, depth + 1, gradient);
                         return a + b;
                     }
                 }
@@ -1300,20 +1351,22 @@ namespace kepler {
     */
     template <class T>
     inline void System<T>::integrate(const Scalar<T>& time_cur, bool gradient) {
-        T fluxes;
-        if (exptime > 0) {
-            Scalar<T> dt = 0.5 * exptime,
-                      t1 = time_cur - dt,
-                      t2 = time_cur + dt;
-            fluxes = integrate(step(t1, gradient, false),
-                               step(t2, gradient, false), t1, t2, 0, gradient)
-                               / (t2 - t1);
-        } else {
-            fluxes = step(time_cur, gradient, true);
+        Exposure<T> exposure(secondaries.size(), gradient);
+        Scalar<T> dt = 0.5 * exptime,
+                  t1 = time_cur - dt,
+                  t2 = time_cur + dt,
+                  invdt = 1. / (t2 - t1);
+        exposure = integrate(step(t1, gradient, false),
+                             step(t2, gradient, false),
+                             t1, t2, 0, gradient) * invdt;
+        primary->flux_cur = exposure.flux[0];
+        if (gradient)
+            primary->dflux_cur = exposure.gradient[0];
+        for (size_t i = 0; i < secondaries.size(); ++i) {
+            secondaries[i]->flux_cur = exposure.flux[i + 1];
+            if (gradient)
+                secondaries[i]->dflux_cur = exposure.gradient[i + 1];
         }
-        primary->flux_cur = getRow(fluxes, 0);
-        for (size_t i = 0; i < secondaries.size(); ++i)
-            secondaries[i]->flux_cur = getRow(fluxes, i + 1);
     }
 
     /**
@@ -1393,12 +1446,10 @@ namespace kepler {
     Take a single orbital + photometric step
     (exposure time integration overload).
 
-    TODO: Need to do these operations on the gradient
-
     */
     template <class T>
-    inline T System<T>::step(const Scalar<T>& time, bool gradient,
-                             bool store_xyz) {
+    inline Exposure<T> System<T>::step(const Scalar<T>& time, bool gradient,
+                                       bool store_xyz) {
 
         // Take the step
         step(time, gradient);
@@ -1407,8 +1458,10 @@ namespace kepler {
         // We compare them to the previous iteration to determine
         // whether we need to recurse.
         size_t NS = secondaries.size();
-        T fluxes(NS + 1, primary->nwav);
-        setRow(fluxes, 0, primary->flux_cur);
+        Exposure<T> exposure(NS, gradient);
+        exposure.flux[0] = primary->flux_cur;
+        if (gradient)
+            exposure.gradient[0] = primary->dflux_cur;
         for (size_t n = 0; n < NS; ++n) {
             if (store_xyz) {
                 // If this is the midpoint of the integration,
@@ -1417,11 +1470,13 @@ namespace kepler {
                 secondaries[n]->yvec(t) = secondaries[n]->y_cur;
                 secondaries[n]->zvec(t) = secondaries[n]->z_cur;
             }
-            setRow(fluxes, n + 1, secondaries[n]->flux_cur);
+            exposure.flux[n + 1] = secondaries[n]->flux_cur;
+            if (gradient)
+                exposure.gradient[n + 1] = secondaries[n]->dflux_cur;
         }
 
         // Return the flux from each of the bodies
-        return fluxes;
+        return exposure;
 
     }
 

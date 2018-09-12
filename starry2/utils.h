@@ -61,6 +61,11 @@ Miscellaneous stuff used throughout the code.
 
 namespace utils {
 
+
+    using std::isinf;
+    using std::fmod;
+
+
     // --------------------------
     // --------- Aliases --------
     // --------------------------
@@ -227,15 +232,13 @@ namespace utils {
 
     //! Check whether a number is infinite
     template <typename T>
-    inline bool isinf(const T& number) {
-        using std::isinf;
+    inline bool isInfinite(const T& number) {
         return isinf(number);
     }
 
     //! Check whether an AutoDiffScalar's value is infinite
     template <typename T>
-    inline bool isinf(const Eigen::AutoDiffScalar<T>& number) {
-        using std::isinf;
+    inline bool isInfinite(const Eigen::AutoDiffScalar<T>& number) {
         return isinf(number.value());
     }
 
@@ -404,6 +407,27 @@ namespace utils {
     inline void setIndex(T& scalar, int col, T val) {
         if (col == 0)
             scalar = val;
+        else
+            throw errors::IndexError("Attempting to index a scalar variable.");
+    }
+
+    //! Get an index of a vector: Row vector specialization
+    template <class T>
+    inline T getIndex(const VectorT<T>& vec, int col) {
+        return vec(col);
+    }
+
+    //! Get an index of a vector: Column vector specialization
+    template <class T>
+    inline T getIndex(const Vector<T>& vec, int row) {
+        return vec(row);
+    }
+
+    //! Get an index of a vector: Scalar specialization
+    template <class T>
+    inline T getIndex(const T& scalar, int col) {
+        if (col == 0)
+            return scalar;
         else
             throw errors::IndexError("Attempting to index a scalar variable.");
     }
