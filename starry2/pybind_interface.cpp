@@ -57,7 +57,7 @@ PYBIND11_MODULE(_starry2, m) {
     }, docstrings::Map::doc, "lmax"_a=2, "nwav"_a=1, "multi"_a=false);
 
     // Declare the `kepler` module
-    auto mk = m.def_submodule("kepler");
+    auto mk = m.def_submodule("kepler", docstrings::kepler::doc);
 
     // Declare the `Body` class (not user-facing)
     auto Body1 = bindBody<T1>(mk, Map1, "Body1");

@@ -31,4 +31,4 @@ conda install -c conda-forge starry
 conda info -a
 
 # Build the code
-CC=gcc-4.9 && CXX=g++-4.9 python setup.py develop
+CC=gcc-4.8 && CXX=g++-4.8 python setup.py develop

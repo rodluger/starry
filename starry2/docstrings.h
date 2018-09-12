@@ -26,7 +26,11 @@ namespace docstrings {
 
     namespace starry {
 
-        const char* doc = R"pbdoc()pbdoc";
+        const char* doc = R"pbdoc(
+
+            .. autoclass:: Map1
+
+        )pbdoc";
 
     }
 
@@ -189,6 +193,18 @@ namespace docstrings {
                 image (str): The full path to the image file.
                 lmax (int): The maximum degree of the spherical harmonic expansion \
                             of the image. Default :py:attr:`map.lmax`.
+        )pbdoc";
+
+    }
+
+    namespace kepler {
+
+        const char* doc = R"pbdoc(
+
+            .. autoclass:: Primary
+            .. autoclass:: Secondary
+            .. autoclass:: System
+
         )pbdoc";
 
     }

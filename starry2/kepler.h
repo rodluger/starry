@@ -281,7 +281,7 @@ namespace kepler {
     Kepler solver.
 
     */
-    template <class T, int N=9>
+    template <class T, int N=10>
     class AutoDiffKepler {
 
         public:
