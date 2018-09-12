@@ -1078,7 +1078,7 @@ namespace maps {
         T& A1Ry(tmp.tmpT[1]);
         T& RRy(tmp.tmpT[2]);
         T& ARRy(tmp.tmpT[3]);
-        Vector<Scalar<T>>& Ryn(tmp.tmpColumnVector[0]);
+        Vector<Scalar<T>>& A1Ryn(tmp.tmpColumnVector[0]);
 
         // Convert to internal types
         Scalar<T> xo = xo_;
@@ -1141,13 +1141,13 @@ namespace maps {
             }
 
             // Compute the flux numerically.
-            // NOTE: This is used exclusively for debugging!
+            // NOTE: This is VERY SLOW and used exclusively for debugging!
             if (numerical) {
                 const Scalar<T> tol = 1e-5;
                 for (int n = 0; n < nwav; ++n) {
-                    Ryn = getColumn(Ry, n);
+                    A1Ryn =  B.A1 * getColumn(Ry, n);
                     setIndex(result, n,
-                             numeric::flux(xo, yo, ro, lmax, Ryn, tol));
+                             numeric::flux(xo, yo, ro, lmax, A1Ryn, tol));
                 }
                 return result;
             }

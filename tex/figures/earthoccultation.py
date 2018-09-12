@@ -35,12 +35,13 @@ thetanum = np.linspace(theta0, theta0 + 180. / np.pi, nptsnum, endpoint=True)
 
 # Compute and plot the flux
 F = map.flux(theta=theta, xo=xo, yo=yo, ro=ro)
-F /= np.max(F)
+maxF = np.max(F)
+F /= maxF
 ax_lc.plot(time, F, 'k-', label='Total')
 
 # Compute and plot the numerical flux
 Fnum = map.flux(theta=thetanum, xo=xonum, yo=yonum, ro=ro, numerical=True)
-Fnum /= np.max(Fnum)
+Fnum /= maxF
 ax_lc.plot(timenum, Fnum, 'k.')
 
 # Plot the earth images
