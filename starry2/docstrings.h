@@ -14,7 +14,10 @@ namespace docstrings {
 
     namespace starry {
 
-        const char* doc = R"pbdoc()pbdoc";
+        const char* doc = R"pbdoc(
+            A code to compute analytic occultation light curves in C++,
+            with a sleek Python interface.
+        )pbdoc";
 
     }
 
@@ -27,9 +30,9 @@ namespace docstrings {
             coefficients by direct assignment to the :py:obj:`l, m` index of
             the map instance. If :py:obj:`map` is an instance of this class,
 
-                .. code-block:: python
+            .. code-block:: python
 
-                    map[1, 0] = 0.5
+                map[1, 0] = 0.5
 
             sets the coefficient of the :math:`Y_{1,0}` harmonic to
             :math:`\frac{1}{2}`. Users can set limb darkening coefficients
@@ -42,13 +45,13 @@ namespace docstrings {
             sets the first order limb darkening coefficient :math:`u_1` to
             :math:`0.4`.
 
-            Note that map instances are normalized such that the
-            **average disk-integrated intensity is equal to the coefficient
-            of the :math:`Y_{0,0}` term**, which defaults to unity. The total
-            luminosity over all :math:`4\pi` steradians is therefore four
-            times the :math:`Y_{0,0}` coefficient. This normalization is
-            particularly convenient for purely limb-darkened maps, whose
-            disk-integrated intensity is always equal to unity.
+            ..note:: Map instances are normalized such that the
+                **average disk-integrated intensity is equal to the coefficient
+                of the** :math:`Y_{0,0}` **term**, which defaults to unity. The
+                total luminosity over all :math:`4\pi` steradians is therefore
+                four times the :math:`Y_{0,0}` coefficient. This normalization
+                is particularly convenient for purely limb-darkened maps, whose
+                disk-integrated intensity is always equal to unity.
 
             Args:
                 lmax (int): Largest spherical harmonic degree \
@@ -104,25 +107,25 @@ namespace docstrings {
         const char* y = R"pbdoc(
             The spherical harmonic map vector. This is a vector of the
             coefficients of the spherical harmonics
-            :math:`{Y_{0,0}, Y_{1,-1}, Y_{1,0}, Y_{1,1}, ...}`.
+            :math:`\{Y_{0,0}, Y_{1,-1}, Y_{1,0}, Y_{1,1}, ...\}`.
             *Read-only.*
         )pbdoc";
 
         const char* u = R"pbdoc(
             The limb darkening map vector. This is a vector of the limb
-            darkening coefficients :math:`{u_1, u_2, u_3, ...}`. *Read-only.*
+            darkening coefficients :math:`\{u_1, u_2, u_3, ...\}`. *Read-only.*
         )pbdoc";
 
         const char* p = R"pbdoc(
             The polynomial map vector. This is a vector of the coefficients of
-            the polynomial basis :math:`{1, x, z, y, x^2, xz, ...}`.
+            the polynomial basis :math:`\{1, x, z, y, x^2, xz, ...\}`.
             *Read-only.*
         )pbdoc";
 
         const char* g = R"pbdoc(
             The Green's polynomial map vector. This is a vector of the
             coefficients of the polynomial basis
-            :math:`{1, 2x, z, y, 3x^2, -3xz, ...}`.
+            :math:`\{1, 2x, z, y, 3x^2, -3xz, ...\}`.
             *Read-only.*
         )pbdoc";
 
@@ -309,9 +312,9 @@ namespace docstrings {
             vectors (:py:obj:`nwav = 1`) or matrices (:py:obj:`nwav > 1`).
             The dictionary keys are the names of all parameters of all bodies
             in the current :py:class:`System` object, formatted as \
-            :py:obj:`<body>.<parameter>`, where :py:obj:`<body>` is :py:obj:`A`
+            :py:obj:`body.parameter`, where :py:obj:`body` is :py:obj:`A`
             for the primary and :py:obj:`b`, :py:obj:`c`, :py:obj:`d`, etc. for
-            the secondaries. The :py:obj:`<parameter>` label is the name of the
+            the secondaries. The :py:obj:`parameter` label is the name of the
             parameter; for map coefficients, this takes the form
             :py:obj:`Y_{l,m}` or :py:obj:`u_{l}`.
 
@@ -339,6 +342,13 @@ namespace docstrings {
         using namespace Body;
 
         const char* doc = R"pbdoc(
+
+            Instantiate a primary body. This body is assumed to be fixed
+            at the origin. This class
+            inherits from :py:class:`Map`, so users can assign to and retrieve
+            spherical harmonic and limb darkening coefficients in the same
+            way. Refer to the documentation of :py:class:`Map` for all
+            options.
 
             .. autoattribute:: r
             .. autoattribute:: L
@@ -380,6 +390,12 @@ namespace docstrings {
         using namespace Body;
 
         const char* doc = R"pbdoc(
+            Instantiate a secondary body. This body is assumed to be massless
+            and orbits the primary in a pure Keplerian orbit. This class
+            inherits from :py:class:`Map`, so users can assign to and retrieve
+            spherical harmonic and limb darkening coefficients in the same
+            way. Refer to the documentation of :py:class:`Map` for all
+            options.
 
             .. autoattribute:: r
             .. autoattribute:: L
@@ -461,8 +477,18 @@ namespace docstrings {
     namespace System {
 
         const char* doc = R"pbdoc(
+            Instantiate a Keplerian orbital system. The primary is fixed
+            at the origin, and all secondary bodies are assumed to be
+            massless.
 
-            .. automethod:: compute
+            Args:
+                primary (:py:class:`Primary`): The primary body. This body \
+                    has unit radius and luminosity and is fixed at the \
+                    origin.
+                secondaries (:py:class:`Secondary`): The secondary body, or \
+                    a sequence of secondaries.
+
+            .. automethod:: compute(time, gradient=False)
             .. autoattribute:: lightcurve
             .. autoattribute:: gradient
             .. autoattribute:: exposure_time
@@ -471,19 +497,55 @@ namespace docstrings {
 
         )pbdoc";
 
-        const char* compute = R"pbdoc()pbdoc";
+        const char* compute = R"pbdoc(
+            Compute the system light curve analytically.
+            Compute the full system light curve at the times
+            given by the :py:obj:`time` array and store the result
+            in :py:attr:`lightcurve`. The light curve for each body in the
+            system is stored in the body's :py:attr:`lightcurve` attribute.
+            Optionally, also compute the gradient of the light curve and
+            store it in the :py:attr:`gradient` attribute of the system
+            and each of the body instances.
 
-        const char* lightcurve = R"pbdoc()pbdoc";
+            Args:
+                time (ndarray): Time array, measured in days.
+                gradient (bool): Compute the gradient of the light curve \
+                    with respect to all body parameters? Default :py:obj:`False`
+        )pbdoc";
 
-        const char* gradient = R"pbdoc()pbdoc";
+        const char* lightcurve = R"pbdoc(
+            The computed light curve for the system, equal to the sum
+            of the light curves of each of the bodies. If :py:obj:`nwav = 1`,
+            this is a timeseries vector of fluxes. For :py:obj:`nwav > 1`, this
+            is a matrix whose columns are the timeseries in each wavelength bin.
 
-        const char* exposure_time = R"pbdoc()pbdoc";
+            .. note:: Users should call :py:method:`compute` first.
+        )pbdoc";
 
-        const char* exposure_tol = R"pbdoc()pbdoc";
+        const char* gradient = R"pbdoc(
+            The gradient of the systems's light curve. This is a dictionary of
+            vectors (:py:obj:`nwav = 1`) or matrices (:py:obj:`nwav > 1`).
+            See the docstring of :py:attr:`Body.gradient` for more details.
 
-        const char* exposure_max_depth = R"pbdoc()pbdoc";
+            .. note:: Users should call :py:method:`compute` first.
+        )pbdoc";
 
-        // TODO
+        const char* exposure_time = R"pbdoc(
+            Exposure time for each data point in the light curve. Default 0.
+            If nonzero, integrates the light curve over the exposure time
+            using a recursive technique to approximate the integral.
+        )pbdoc";
+
+        const char* exposure_tol = R"pbdoc(
+            Tolerance of the recursive exposure time algorithm. Default
+            is square root of machine epsilon.
+        )pbdoc";
+
+        const char* exposure_max_depth = R"pbdoc(
+            Maximum number of recursions in the exposure time algorithm.
+            Default 4. Increase this for higher accuracy (and longer
+            run times).
+        )pbdoc";
 
     }
 }

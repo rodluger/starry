@@ -172,6 +172,6 @@ namespace numeric {
         return f;
     }
 
-}; // namespace numeric
+} // namespace numeric
 
 #endif

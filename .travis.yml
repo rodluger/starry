@@ -23,7 +23,7 @@ install:
     - export CC=gcc-4.8
     - export CXX=g++-4.8
     - export STARRY_DEBUG=1
-    - python setup.py develop
+    - travis_wait 30 python setup.py develop
 
 cache:
     directories:
