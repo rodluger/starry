@@ -20,6 +20,8 @@
   increase speed. The largest speed improvement is in the computation of
   gradients. The code is no longer limited by the `STARRY_NGRAD` parameter,
   and arbitrary number of gradients can now be taken efficiently.
+- Minor changes to the names of some keywords and class properties, and
+  to some call sequences.
 - Minor bug fixes here and there.
 
 
