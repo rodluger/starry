@@ -67,8 +67,7 @@ namespace docstrings {
             .. automethod:: flux(theta=0, xo=0, yo=0, ro=0, gradient=False)
             .. automethod:: rotate(theta=0)
             .. automethod:: show(cmap='plasma', res=300)
-            .. automethod:: animate(cmap='plasma', res=150, frames=50, \
-                interval=75, gif='')
+            .. automethod:: animate(cmap='plasma', res=150, frames=50, interval=75, gif='')
             .. automethod:: reset()
             .. autoattribute:: lmax
             .. autoattribute:: nwav
