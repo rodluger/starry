@@ -22,8 +22,7 @@ install:
     - source .ci/travis.sh
     - export CC=gcc-4.8
     - export CXX=g++-4.8
-    - export STARRY_DEBUG=1
-    #- travis_wait 30 python setup.py develop
+    - travis_wait 30 python setup.py develop
 
 cache:
     directories:
@@ -37,13 +36,8 @@ before_script:
 
 script:
     - echo "SCRIPT"
-    #- py.test -v -s
+    - py.test -v -s
 
 after_success:
-    - export CC=gcc-4.8
-    - export CXX=g++-4.8
-    - travis_wait 30 python setup.py develop
-    - sleep 3
-    - echo "WOO"
-    #- if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-paper.sh; fi
-    #- if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
+    - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-paper.sh; fi
+    - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
