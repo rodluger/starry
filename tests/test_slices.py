@@ -1,12 +1,12 @@
 """Test slice indexing of the map."""
-import starry2
+import starry
 import numpy as np
 
 
 def test_scalar():
     """Test slice indexing for scalar maps."""
     # Do the default and the multi maps
-    for map in starry2.Map(5), starry2.Map(5, multi=True):
+    for map in starry.Map(5), starry.Map(5, multi=True):
         # No slice
         map[0, 0] = 1
         assert map.y[0] == 1
@@ -41,7 +41,7 @@ def test_scalar():
 def test_spectral():
     """Test slice indexing for spectral maps."""
     # Let's do two wavelength bins
-    map = starry2.Map(5, 2)
+    map = starry.Map(5, 2)
 
     # No slice
     map[0, 0] = [1, 2]

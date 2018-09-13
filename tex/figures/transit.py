@@ -1,5 +1,5 @@
 """Stellar transit example."""
-from starry2.kepler import Primary, Secondary, System
+from starry.kepler import Primary, Secondary, System
 from tqdm import tqdm
 import matplotlib.pyplot as pl
 import numpy as np

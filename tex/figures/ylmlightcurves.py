@@ -1,7 +1,7 @@
 """Plot some Ylm occultation light curves."""
 import matplotlib.pyplot as pl
 import numpy as np
-from starry2 import Map
+from starry import Map
 
 # Compute and plot up to this order
 lmax = 6

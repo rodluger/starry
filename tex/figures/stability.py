@@ -1,7 +1,7 @@
 """Stability tests."""
 import numpy as np
 import matplotlib.pyplot as pl
-import starry2
+import starry
 from tqdm import tqdm
 
 
@@ -15,7 +15,7 @@ def is_even(n):
 
 def StarrySExact(barr, r, lmax):
     """Compute s with starry multiprecision."""
-    map = starry2.Map(lmax, multi=True)
+    map = starry.Map(lmax, multi=True)
     map[:, :] = 1
     s = np.zeros(((lmax + 1) ** 2, len(barr)))
     for i in range(len(barr)):
@@ -26,7 +26,7 @@ def StarrySExact(barr, r, lmax):
 
 def StarryS(barr, r, lmax):
     """Compute s with starry."""
-    map = starry2.Map(lmax)
+    map = starry.Map(lmax)
     for ll in range(lmax + 1):
         for mm in range(-ll, ll + 1):
             map[ll, mm] = 1

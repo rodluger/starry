@@ -1,5 +1,5 @@
 """Test occultation light curves."""
-from starry2 import Map
+from starry import Map
 import numpy as np
 np.random.seed(1234)
 

@@ -1,7 +1,7 @@
 """Stability tests for the gradients."""
 import numpy as np
 import matplotlib.pyplot as pl
-import starry2
+import starry
 from tqdm import tqdm
 import os
 
@@ -16,7 +16,7 @@ def is_even(n):
 
 def StarryDExact(barr, r, larr, lmax, d='b'):
     """Compute F and dF/d{b,r} with starry multiprecision."""
-    map = starry2.Map(lmax, multi=True)
+    map = starry.Map(lmax, multi=True)
     res = np.zeros((lmax + 1, len(barr)))
     flx = np.zeros((lmax + 1, len(barr)))
     for ll in tqdm(range(lmax + 1)):
@@ -38,7 +38,7 @@ def StarryDExact(barr, r, larr, lmax, d='b'):
 
 def StarryD(barr, r, larr, lmax, d='b'):
     """Compute dF/d{b,r} for each degree with starry.grad."""
-    map = starry2.Map(lmax)
+    map = starry.Map(lmax)
     res = np.zeros((lmax + 1, len(barr)))
     for ll in tqdm(range(lmax + 1)):
         if ll not in larr:

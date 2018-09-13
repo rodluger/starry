@@ -872,13 +872,11 @@ namespace maps {
                 Row<T> y1m1 = getRow(y, 1);
                 Row<T> y10 = getRow(y, 2);
                 Row<T> y1p1 = getRow(y, 3);
-                for (int n = 0; n < nwav; ++n) {
-                    setIndex(physical, n,
-                             getColumn(y1m1, n) * getColumn(y1m1, n) +
-                             getColumn(y10, n) * getColumn(y10, n) +
-                             getColumn(y1p1, n) * getColumn(y1p1, n)
-                             <= getColumn(y00, n) / 3.);
-                }
+                setIndex(physical, n,
+                         getColumn(y1m1, n) * getColumn(y1m1, n) +
+                         getColumn(y10, n) * getColumn(y10, n) +
+                         getColumn(y1p1, n) * getColumn(y1p1, n)
+                         <= getColumn(y00, n) / 3.);
 
             } else {
 

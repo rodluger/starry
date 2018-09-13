@@ -134,8 +134,6 @@ namespace minimize {
             Scalar<T> operator()(const Vector<Scalar<T>>& angles,
                                  Vector<Scalar<T>>& grad) {
 
-                std::cout << p << std::endl;
-
                 // Ensure in range
                 Scalar<T> theta = mod2pi(angles(0)),
                           phi = mod2pi(angles(1));

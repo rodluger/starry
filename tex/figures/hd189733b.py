@@ -9,7 +9,7 @@ from scipy.optimize import minimize
 from scipy.io.idl import readsav
 import emcee
 import corner
-import starry2
+import starry
 
 
 class EclipseData(object):
@@ -264,10 +264,10 @@ def instantiate_HD189():
     tref = -2.21858 / 2.
 
     # Instantiate the star
-    star = starry2.kepler.Primary()
+    star = starry.kepler.Primary()
 
     # Instantiate the planet
-    planet = starry2.kepler.Secondary(lmax=lmax)
+    planet = starry.kepler.Secondary(lmax=lmax)
     planet.lambda0 = lambda0
     planet.r = r
     planet.L = L
@@ -278,7 +278,7 @@ def instantiate_HD189():
     planet.tref = tref
 
     # Instantiate the system
-    system = starry2.kepler.System(star, planet)
+    system = starry.kepler.System(star, planet)
 
     return star, planet, system
 

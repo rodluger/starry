@@ -3,14 +3,14 @@
 #endif
 
 // Default
-#define STARRY_NAME _starry2_mono_64
+#define STARRY_NAME _starry_mono_64
 #define STARRY_TYPE Vector<double>
 
 // Monochromatic, double precision
 #ifdef STARRY_MONO_64
 #undef STARRY_NAME
 #undef STARRY_TYPE
-#define STARRY_NAME _starry2_mono_64
+#define STARRY_NAME _starry_mono_64
 #define STARRY_TYPE Vector<double>
 #endif
 
@@ -18,7 +18,7 @@
 #ifdef STARRY_MONO_128
 #undef STARRY_NAME
 #undef STARRY_TYPE
-#define STARRY_NAME _starry2_mono_128
+#define STARRY_NAME _starry_mono_128
 #define STARRY_TYPE Vector<Multi>
 #endif
 
@@ -26,7 +26,7 @@
 #ifdef STARRY_SPECTRAL_64
 #undef STARRY_NAME
 #undef STARRY_TYPE
-#define STARRY_NAME _starry2_spectral_64
+#define STARRY_NAME _starry_spectral_64
 #define STARRY_TYPE Matrix<double>
 #endif
 
@@ -34,7 +34,7 @@
 #ifdef STARRY_SPECTRAL_128
 #undef STARRY_NAME
 #undef STARRY_TYPE
-#define STARRY_NAME _starry2_spectral_128
+#define STARRY_NAME _starry_spectral_128
 #define STARRY_TYPE Matrix<Multi>
 #endif
 

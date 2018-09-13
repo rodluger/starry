@@ -1,5 +1,5 @@
 """Stellar transit example."""
-from starry2 import Map
+from starry import Map
 import matplotlib.pyplot as pl
 import numpy as np
 from scipy.integrate import dblquad

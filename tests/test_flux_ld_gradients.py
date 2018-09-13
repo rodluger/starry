@@ -1,5 +1,5 @@
 """Test gradients of limb-darkened maps."""
-import starry2
+import starry
 import numpy as np
 norm = 0.5 * np.sqrt(np.pi)
 
@@ -7,7 +7,7 @@ norm = 0.5 * np.sqrt(np.pi)
 def num_grad_flux(multi, lmax, y_deg, yvec, uvec, axis, theta, xo, yo, ro,
                   eps=1e-8):
     """Return the gradient computed numerically."""
-    map = starry2.Map(lmax, multi=multi)
+    map = starry.Map(lmax, multi=multi)
     map.axis = axis
     map[:, :] = yvec
     map[:] = uvec
@@ -61,7 +61,7 @@ def run_flux(multi=False, case="ld"):
 
     # Instantiate
     lmax = 3
-    map = starry2.Map(lmax, multi=multi)
+    map = starry.Map(lmax, multi=multi)
     map.axis = [0, 1, 0]
     if case == "ld":
         # Limb darkening only

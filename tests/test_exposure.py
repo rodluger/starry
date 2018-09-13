@@ -1,5 +1,5 @@
 """Test exposure time integration."""
-import starry2
+import starry
 import numpy as np
 
 
@@ -20,11 +20,11 @@ def test_exposure():
     npts = 100000
     thin = 100
 
-    star = starry2.kepler.Primary()
+    star = starry.kepler.Primary()
     star[1] = 0.4
     star[2] = 0.26
-    planet = starry2.kepler.Secondary()
-    system = starry2.kepler.System(star, planet)
+    planet = starry.kepler.Secondary()
+    system = starry.kepler.System(star, planet)
     time = np.linspace(-0.01, 0.01, npts)
 
     # No exposure time integration

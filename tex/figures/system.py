@@ -1,5 +1,5 @@
 """Exoplanet system example."""
-from starry2.kepler import Primary, Secondary, System
+from starry.kepler import Primary, Secondary, System
 import matplotlib.pyplot as pl
 import numpy as np
 

@@ -1,5 +1,5 @@
 """Plot the Ylms on the surface of the sphere."""
-from starry2 import Map
+from starry import Map
 import matplotlib.pyplot as pl
 import matplotlib.animation as animation
 import numpy as np

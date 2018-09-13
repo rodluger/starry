@@ -1,5 +1,5 @@
 """Starry speed tests."""
-from starry2.kepler import Primary, Secondary, System
+from starry.kepler import Primary, Secondary, System
 import time
 import matplotlib.pyplot as pl
 import numpy as np

@@ -1,5 +1,5 @@
 """Test the rotation matrices."""
-import starry2
+import starry
 import numpy as np
 norm = 0.5 * np.sqrt(np.pi)
 
@@ -7,7 +7,7 @@ norm = 0.5 * np.sqrt(np.pi)
 def run(multi=False):
     """Apply some elementary rotations."""
     # Instantiate
-    map = starry2.Map(1, multi=multi)
+    map = starry.Map(1, multi=multi)
     map[0, 0] = 0
     map[1, 0] = norm
     assert np.allclose(map.y, np.array([0, 0, norm, 0]))
@@ -31,7 +31,7 @@ def run(multi=False):
                                         np.sqrt(3 / (4 * np.pi)), 0]))
 
     # A more complex rotation
-    map = starry2.Map(5, multi=multi)
+    map = starry.Map(5, multi=multi)
     map[:, :] = 1
     map.axis = [1, 2, 3]
     map.rotate(60)
@@ -47,7 +47,7 @@ def run(multi=False):
     assert np.allclose(map.y, benchmark)
 
     # Test rotation caching
-    map = starry2.Map(2, multi=multi)
+    map = starry.Map(2, multi=multi)
     map[0, 0] = 0
     map[1, 0] = norm
     map.axis = [1, 2, 3]

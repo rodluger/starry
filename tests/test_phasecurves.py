@@ -1,5 +1,5 @@
 """Test phase curves."""
-from starry2 import Map
+from starry import Map
 import numpy as np
 from scipy.integrate import dblquad
 np.random.seed(1234)

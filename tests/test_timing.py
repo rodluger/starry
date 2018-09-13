@@ -1,5 +1,5 @@
 """Test the code run time."""
-from starry2 import Map
+from starry import Map
 import numpy as np
 import time
 

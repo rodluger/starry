@@ -47,16 +47,16 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-def get_ext(module='starry2._starry2_mono_64', name='STARRY_MONO_64'):
+def get_ext(module='starry._starry_mono_64', name='STARRY_MONO_64'):
     return Extension(
         module,
-        ['starry2/pybind_interface.cpp'],
+        ['starry/pybind_interface.cpp'],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
             get_pybind_include(user=True),
             # Path to starry headers
-            "starry2",
+            "starry",
             # Path to eigen headers
             "lib/eigen_3.3.3",
             # Path to boost headers
@@ -70,10 +70,10 @@ def get_ext(module='starry2._starry2_mono_64', name='STARRY_MONO_64'):
     )
 
 ext_modules = [
-    get_ext('starry2._starry2_mono_64', 'STARRY_MONO_64'),
-    get_ext('starry2._starry2_mono_128', 'STARRY_MONO_128'),
-    get_ext('starry2._starry2_spectral_64', 'STARRY_SPECTRAL_64'),
-    get_ext('starry2._starry2_spectral_128', 'STARRY_SPECTRAL_128'),
+    get_ext('starry._starry_mono_64', 'STARRY_MONO_64'),
+    get_ext('starry._starry_mono_128', 'STARRY_MONO_128'),
+    get_ext('starry._starry_spectral_64', 'STARRY_SPECTRAL_64'),
+    get_ext('starry._starry_spectral_128', 'STARRY_SPECTRAL_128'),
 ]
 
 
@@ -144,7 +144,7 @@ class BuildExt(build_ext):
 
 
 setup(
-    name='starry2',
+    name='starry',
     version=__version__,
     author='Rodrigo Luger',
     author_email='rodluger@gmail.com',
@@ -153,11 +153,11 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     license='GPL',
-    packages=['starry2', 'starry2.maps'],
+    packages=['starry', 'starry.maps'],
     ext_modules=ext_modules,
     install_requires=['pybind11>=2.2'],
     cmdclass={'build_ext': BuildExt},
-    data_files=[('starry2.maps', glob.glob('starry2/maps/*.jpg'))],
+    data_files=[('starry.maps', glob.glob('starry/maps/*.jpg'))],
     include_package_data=True,
     zip_safe=False,
 )

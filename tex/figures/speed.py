@@ -1,5 +1,5 @@
 """Starry speed tests."""
-import starry2
+import starry
 import time
 import matplotlib.pyplot as pl
 from tqdm import tqdm
@@ -128,8 +128,8 @@ def compare_to_numerical(lmax=5):
     error_mesh = np.zeros(lmax + 1)
     error_grid = np.zeros(lmax + 1)
     for l in range(lmax + 1):
-        funcs.map_64 = starry2.Map(l)
-        map_128 = starry2.Map(l, multi=True)
+        funcs.map_64 = starry.Map(l)
+        map_128 = starry.Map(l, multi=True)
         # Randomize a map and occultor properties
         b = np.random.random()
         r = np.random.random()
@@ -230,7 +230,7 @@ def speed():
         theta = np.linspace(0., 360., N)
         xo = np.linspace(-1., 1., N)
         for l in range(lmax + 1):
-            map = starry2.Map(l)
+            map = starry.Map(l)
             for m in range(-l, l + 1):
                 map.reset()
                 map[0, 0] = 0

@@ -35,9 +35,9 @@ before_script:
     - sleep 3
 
 script:
-    - echo "SCRIPT"
     - py.test -v -s
 
 after_success:
     - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-paper.sh; fi
-    - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
+    # DEBUG:                 "master"
+    - if [ "$TRAVIS_BRANCH" = "dev" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi

@@ -1,5 +1,5 @@
 """Test autodiff with the `System` class."""
-from starry2.kepler import Primary, Secondary, System
+from starry.kepler import Primary, Secondary, System
 import numpy as np
 import matplotlib.pyplot as pl
 

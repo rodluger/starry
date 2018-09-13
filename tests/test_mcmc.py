@@ -1,5 +1,5 @@
 """Test a quick MCMC inference run."""
-from starry2.kepler import Primary, Secondary, System
+from starry.kepler import Primary, Secondary, System
 import emcee
 import numpy as np
 from tqdm import tqdm

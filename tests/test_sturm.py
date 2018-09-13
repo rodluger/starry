@@ -1,5 +1,5 @@
 """Test Sturm's theorem."""
-from starry2 import Map
+from starry import Map
 import numpy as np
 from scipy.optimize import curve_fit
 

@@ -1,4 +1,4 @@
-import starry2
+import starry
 import numpy as np
 
 names = ["time", "A.prot", "A.tref", "A.Y_{1,-1}", "A.Y_{1,0}", "A.Y_{1,1}",
@@ -9,8 +9,8 @@ names = ["time", "A.prot", "A.tref", "A.Y_{1,-1}", "A.Y_{1,0}", "A.Y_{1,1}",
 
 def lightcurve(x, eps=np.zeros(22), gradient=False, delay=False, event="phase"):
     """Compute the light curve."""
-    star = starry2.kepler.Primary(multi=True)
-    b = starry2.kepler.Secondary(multi=True)
+    star = starry.kepler.Primary(multi=True)
+    b = starry.kepler.Secondary(multi=True)
     if delay:
         star.r_m = 3e11
     else:
@@ -40,7 +40,7 @@ def lightcurve(x, eps=np.zeros(22), gradient=False, delay=False, event="phase"):
     b[1, 1] = x[20] + eps[20]
     b[1] = x[21] + eps[21]
     if gradient:
-        sys = starry2.kepler.System(star, b)
+        sys = starry.kepler.System(star, b)
         sys.compute(time, gradient=True)
         star_grad = np.zeros(22)
         b_grad = np.zeros(22)
@@ -50,7 +50,7 @@ def lightcurve(x, eps=np.zeros(22), gradient=False, delay=False, event="phase"):
         return star.lightcurve[0], star_grad, \
                b.lightcurve[0], b_grad
     else:
-        sys = starry2.kepler.System(star, b)
+        sys = starry.kepler.System(star, b)
         sys.compute(time)
         return star.lightcurve[0], b.lightcurve[0]
 

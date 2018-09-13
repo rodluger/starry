@@ -49,16 +49,16 @@ of the code, which will incorporate an N-body solver.
 
 .. _Map:
 
-.. autoclass:: starry2.Map
+.. autoclass:: starry.Map
 
 .. _Primary:
 
-.. autoclass:: starry2.kepler.Primary
+.. autoclass:: starry.kepler.Primary
 
 .. _Secondary:
 
-.. autoclass:: starry2.kepler.Secondary
+.. autoclass:: starry.kepler.Secondary
 
 .. _System:
 
-.. autoclass:: starry2.kepler.System
+.. autoclass:: starry.kepler.System

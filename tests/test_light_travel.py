@@ -1,5 +1,5 @@
 """Test the light travel time delay."""
-from starry2.kepler import Primary, Secondary, System
+from starry.kepler import Primary, Secondary, System
 import numpy as np
 
 

@@ -1,5 +1,5 @@
 """Test transit light curve generation."""
-from starry2.kepler import Primary, Secondary, System
+from starry.kepler import Primary, Secondary, System
 import numpy as np
 from scipy.integrate import dblquad
 

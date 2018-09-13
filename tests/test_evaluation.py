@@ -1,5 +1,5 @@
 """Test the map evaluation."""
-import starry2
+import starry
 import numpy as np
 norm = 0.5 * np.sqrt(np.pi)
 
@@ -8,7 +8,7 @@ def run(multi=False):
     """Compare the map evaluation to some benchmarks."""
     # Instantiate
     lmax = 2
-    map = starry2.Map(lmax, multi=multi)
+    map = starry.Map(lmax, multi=multi)
     map.axis = [0, 1, 0]
     map[:, :] = norm
 

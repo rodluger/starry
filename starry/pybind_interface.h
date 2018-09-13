@@ -51,7 +51,7 @@ namespace pybind_interface {
 
             .def("show", [](maps::Map<T> &map, std::string cmap, int res) {
                 py::object show =
-                    py::module::import("starry2.maps").attr("show");
+                    py::module::import("starry.maps").attr("show");
                 Matrix<double> I;
                 I.resize(res, res);
                 Vector<Scalar<T>> x;
@@ -69,7 +69,7 @@ namespace pybind_interface {
                                int frames, int interval, std::string& gif) {
                 std::cout << "Rendering..." << std::endl;
                 py::object animate =
-                    py::module::import("starry2.maps").attr("animate");
+                    py::module::import("starry.maps").attr("animate");
                 std::vector<Matrix<double>> I;
                 Vector<Scalar<T>> x, theta;
                 x = Vector<Scalar<T>>::LinSpaced(res, -1, 1);
@@ -136,7 +136,7 @@ namespace pybind_interface {
                             int res, std::string& gif) {
                 std::cout << "Rendering..." << std::endl;
                 py::object animate =
-                    py::module::import("starry2.maps").attr("animate");
+                    py::module::import("starry.maps").attr("animate");
                 std::vector<Matrix<double>> I;
                 Vector<Scalar<T>> x;
                 VectorT<Scalar<T>> row;
