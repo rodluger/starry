@@ -17,7 +17,13 @@ import os
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 print(__file__)
 sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
+if sys.version_info[0] < 3:
+    import __builtin__ as builtins
+else:
+    import builtins
+builtins.__STARRY_DOCS__ = True
 import starry2
+
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -53,6 +59,8 @@ nbsphinx_prolog = """
 todo_include_todos = True
 
 autosummary_generate = True
+
+autodoc_docstring_signature = True
 
 # Remove jupyter notebook prompt numbers
 nbsphinx_prompt_width = 0

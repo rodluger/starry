@@ -20,6 +20,9 @@ matrix:
 
 install:
     - source .ci/travis.sh
+    - export CC=gcc-4.8
+    - export CXX=g++-4.8
+    - travis_wait 30 python setup.py develop
 
 cache:
     directories:

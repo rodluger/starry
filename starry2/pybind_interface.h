@@ -434,7 +434,7 @@ namespace pybind_interface {
                                          const char* name) {
 
         // Declare the class
-        py::class_<kepler::Body<T>> Body(m, name, Map, docstrings::Body::doc);
+        py::class_<kepler::Body<T>> Body(m, name, Map);
 
         // Add generic attributes & methods
         Body
