@@ -45,7 +45,7 @@ namespace docstrings {
             sets the first order limb darkening coefficient :math:`u_1` to
             :math:`0.4`.
 
-            ..note:: Map instances are normalized such that the
+            .. note:: Map instances are normalized such that the
                 **average disk-integrated intensity is equal to the coefficient
                 of the** :math:`Y_{0,0}` **term**, which defaults to unity. The
                 total luminosity over all :math:`4\pi` steradians is therefore
@@ -518,7 +518,7 @@ namespace docstrings {
             this is a timeseries vector of fluxes. For :py:obj:`nwav > 1`, this
             is a matrix whose columns are the timeseries in each wavelength bin.
 
-            .. note:: Users should call :py:method:`compute` first.
+            .. note:: Users should call :py:meth:`compute` first.
         )pbdoc";
 
         const char* gradient = R"pbdoc(
@@ -526,7 +526,7 @@ namespace docstrings {
             vectors (:py:obj:`nwav = 1`) or matrices (:py:obj:`nwav > 1`).
             See the docstring of :py:attr:`Body.gradient` for more details.
 
-            .. note:: Users should call :py:method:`compute` first.
+            .. note:: Users should call :py:meth:`compute` first.
         )pbdoc";
 
         const char* exposure_time = R"pbdoc(

@@ -1,8 +1,19 @@
 API
 ===
 
-.. contents::
-    :local:
+.. hlist::
+    :columns: 1
+
+    * Intro_
+    * Map_
+    * Primary_
+    * Secondary_
+    * System_
+
+.. _Intro:
+
+Introduction
+------------
 
 This page documents the :py:mod:`starry` API, which is coded
 in C++ with a :py:mod:`pybind11` Python interface. The API consists
@@ -36,11 +47,18 @@ so the second approach listed above is limited to two-body systems or systems
 where the secondary masses are negligible. Stay tuned for the next release
 of the code, which will incorporate an N-body solver.
 
+.. _Map:
 
-.. autoclass:: starry2._starry2.Map1
+.. autoclass:: starry2.Map
 
-.. autoclass:: starry2._starry2.kepler.Primary1
+.. _Primary:
 
-.. autoclass:: starry2._starry2.kepler.Secondary1
+.. autoclass:: starry2.kepler.Primary
 
-.. autoclass:: starry2._starry2.kepler.System1
+.. _Secondary:
+
+.. autoclass:: starry2.kepler.Secondary
+
+.. _System:
+
+.. autoclass:: starry2.kepler.System

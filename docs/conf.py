@@ -24,6 +24,18 @@ else:
 builtins.__STARRY_DOCS__ = True
 import starry2
 
+# Suuuper hacky: clone the hidden classes to beautify their call names
+starry2.Map = type('Map', starry2._starry2.Map1.__bases__,
+    dict(starry2._starry2.Map1.__dict__))
+starry2.kepler.Primary = type('Primary',
+    starry2._starry2.kepler.Primary1.__bases__,
+    dict(starry2._starry2.kepler.Primary1.__dict__))
+starry2.kepler.Secondary = type('Secondary',
+    starry2._starry2.kepler.Secondary1.__bases__,
+    dict(starry2._starry2.kepler.Secondary1.__dict__))
+starry2.kepler.System = type('System',
+    starry2._starry2.kepler.System1.__bases__,
+    dict(starry2._starry2.kepler.System1.__dict__))
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
