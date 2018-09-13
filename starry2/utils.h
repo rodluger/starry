@@ -157,6 +157,17 @@ namespace utils {
     //! Scalar type precision descriptor
     template<class T> inline std::string precision() { return precision(tag<T>()); }
 
+
+    //! @private
+    template<class T> inline bool isMulti(const T& scalar) {
+        return false;
+    }
+
+    //! @private
+    template<> inline bool isMulti(const Multi& scalar) {
+        return true;
+    }
+
     // --------------------------
     // ------ Unit Vectors ------
     // --------------------------

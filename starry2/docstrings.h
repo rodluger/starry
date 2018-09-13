@@ -71,6 +71,7 @@ namespace docstrings {
             .. automethod:: reset()
             .. autoattribute:: lmax
             .. autoattribute:: nwav
+            .. autoattribuet:: multi
             .. autoattribute:: N
             .. autoattribute:: y
             .. autoattribute:: u
@@ -101,6 +102,10 @@ namespace docstrings {
 
         const char* nwav = R"pbdoc(
             The number of wavelength bins. *Read-only.*
+        )pbdoc";
+
+        const char* multi = R"pbdoc(
+            Are calculations done using multi-precision? *Read-only.*
         )pbdoc";
 
         const char* y = R"pbdoc(
@@ -273,7 +278,10 @@ namespace docstrings {
 
     namespace kepler {
 
-        const char* doc = R"pbdoc()pbdoc";
+        const char* doc = R"pbdoc(
+            Implements a simple Keplerian solver for photodynamical
+            modeling.
+        )pbdoc";
 
     }
 

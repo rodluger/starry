@@ -47,9 +47,9 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-ext_modules = [
-    Extension(
-        'starry2._starry2',
+def get_ext(module='starry2._starry2_mono_64', name='STARRY_MONO_64'):
+    return Extension(
+        module,
         ['starry2/pybind_interface.cpp'],
         include_dirs=[
             # Path to pybind11 headers
@@ -65,8 +65,15 @@ ext_modules = [
             "lib/LBFGSpp/include"
         ],
         language='c++',
-        define_macros=[(key, value) for key, value in macros.items()]
-    ),
+        define_macros=[(name, 1)]+
+                      [(key, value) for key, value in macros.items()]
+    )
+
+ext_modules = [
+    get_ext('starry2._starry2_mono_64', 'STARRY_MONO_64'),
+    get_ext('starry2._starry2_mono_128', 'STARRY_MONO_128'),
+    get_ext('starry2._starry2_spectral_64', 'STARRY_SPECTRAL_64'),
+    get_ext('starry2._starry2_spectral_128', 'STARRY_SPECTRAL_128'),
 ]
 
 

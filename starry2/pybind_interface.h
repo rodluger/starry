@@ -235,6 +235,13 @@ namespace pybind_interface {
                     return map.nwav;
             }, docstrings::Map::nwav)
 
+            // Is multiprecision enabled?
+            .def_property_readonly("multi",
+                [](maps::Map<T> &map){
+                    Scalar<T> foo;
+                    return isMulti(foo);
+            }, docstrings::Map::multi)
+
             // Floating point precision
             .def_property_readonly("precision",
                 [](maps::Map<T> &map){
