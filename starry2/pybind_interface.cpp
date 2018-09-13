@@ -27,8 +27,10 @@ PYBIND11_MODULE(_starry2, m) {
     // The four supported Map types
     using T1 = Vector<double>;
     using T2 = Vector<Multi>;
+    /*
     using T3 = Matrix<double>;
     using T4 = Matrix<Multi>;
+    */
 
     // Add the top-level documentation
     py::options options;
@@ -38,20 +40,24 @@ PYBIND11_MODULE(_starry2, m) {
     // Declare the `Map` class (not user-facing)
     auto Map1 = bindMap<T1>(m, "Map1");
     auto Map2 = bindMap<T2>(m, "Map2");
+    /*
     auto Map3 = bindMap<T3>(m, "Map3");
     auto Map4 = bindMap<T4>(m, "Map4");
+    */
 
     // User-facing class factory
-    m.def("Map", [Map1, Map2, Map3, Map4]
+    m.def("Map", [Map1, Map2]
                  (const int lmax, const int nwav, const bool multi) {
         if ((nwav == 1) && (!multi))
             return Map1(lmax, nwav);
         else if ((nwav == 1) && (multi))
             return Map2(lmax, nwav);
+        /*
         else if ((nwav > 1) && (!multi))
             return Map3(lmax, nwav);
         else if ((nwav > 1) && (multi))
             return Map4(lmax, nwav);
+        */
         else
             throw errors::ValueError("Invalid argument(s) to `Map`.");
     }, docstrings::Map::doc, "lmax"_a=2, "nwav"_a=1, "multi"_a=false);
@@ -62,26 +68,32 @@ PYBIND11_MODULE(_starry2, m) {
     // Declare the `Body` class (not user-facing)
     auto Body1 = bindBody<T1>(mk, Map1, "Body1");
     auto Body2 = bindBody<T2>(mk, Map2, "Body2");
+    /*
     auto Body3 = bindBody<T3>(mk, Map3, "Body3");
     auto Body4 = bindBody<T4>(mk, Map4, "Body4");
+    */
 
     // Declare the `Primary` class (not user-facing)
     auto Primary1 = bindPrimary<T1>(mk, Body1, "Primary1");
     auto Primary2 = bindPrimary<T2>(mk, Body2, "Primary2");
+    /*
     auto Primary3 = bindPrimary<T3>(mk, Body3, "Primary3");
     auto Primary4 = bindPrimary<T4>(mk, Body4, "Primary4");
+    */
 
     // User-facing class factory
-    mk.def("Primary", [Primary1, Primary2, Primary3, Primary4]
+    mk.def("Primary", [Primary1, Primary2]
             (const int lmax, const int nwav, const bool multi) {
         if ((nwav == 1) && (!multi))
             return Primary1(lmax, nwav);
         else if ((nwav == 1) && (multi))
             return Primary2(lmax, nwav);
+        /*
         else if ((nwav > 1) && (!multi))
             return Primary3(lmax, nwav);
         else if ((nwav > 1) && (multi))
             return Primary4(lmax, nwav);
+        */
         else
             throw errors::ValueError("Invalid argument(s) to `Primary`.");
     }, docstrings::Primary::doc, "lmax"_a=2, "nwav"_a=1, "multi"_a=false);
@@ -89,20 +101,24 @@ PYBIND11_MODULE(_starry2, m) {
     // Declare the `Secondary` class (not user-facing)
     auto Secondary1 = bindSecondary<T1>(mk, Body1, "Secondary1");
     auto Secondary2 = bindSecondary<T2>(mk, Body2, "Secondary2");
+    /*
     auto Secondary3 = bindSecondary<T3>(mk, Body3, "Secondary3");
     auto Secondary4 = bindSecondary<T4>(mk, Body4, "Secondary4");
+    */
 
     // User-facing class factory
-    mk.def("Secondary", [Secondary1, Secondary2, Secondary3, Secondary4]
+    mk.def("Secondary", [Secondary1, Secondary2]
             (const int lmax, const int nwav, const bool multi) {
         if ((nwav == 1) && (!multi))
             return Secondary1(lmax, nwav);
         else if ((nwav == 1) && (multi))
             return Secondary2(lmax, nwav);
+        /*
         else if ((nwav > 1) && (!multi))
             return Secondary3(lmax, nwav);
         else if ((nwav > 1) && (multi))
             return Secondary4(lmax, nwav);
+        */
         else
             throw errors::ValueError("Invalid argument(s) to `Secondary`.");
     }, docstrings::Secondary::doc, "lmax"_a=2, "nwav"_a=1, "multi"_a=false);
@@ -110,8 +126,10 @@ PYBIND11_MODULE(_starry2, m) {
     // Declare the `System` class (not user-facing)
     auto System1 = bindSystem<T1>(mk, "System1");
     auto System2 = bindSystem<T2>(mk, "System2");
+    /*
     auto System3 = bindSystem<T3>(mk, "System3");
     auto System4 = bindSystem<T4>(mk, "System4");
+    */
 
     // User-facing class factories (one per type)
     // Note: We could probably template these!
@@ -143,6 +161,7 @@ PYBIND11_MODULE(_starry2, m) {
         }
     }, docstrings::System::doc, "primary"_a);
 
+    /*
     mk.def("System", [System3] (kepler::Primary<T3>& primary,
                                 py::args secondaries) {
         if (secondaries.size() == 1) {
@@ -170,6 +189,7 @@ PYBIND11_MODULE(_starry2, m) {
             return System4(&primary, sec);
         }
     }, docstrings::System::doc, "primary"_a);
+    */
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
