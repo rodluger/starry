@@ -851,6 +851,11 @@ namespace maps {
     inline RowBool<T> Map<T>::isPhysical(const Scalar<T>& epsilon,
                                          const int max_iterations) {
         RowBool<T> physical(nwav);
+        Row<T> center, limb;
+        if (u_deg > 0) {
+            center = (*this)(0, 0, 0);
+            limb = (*this)(0, 1, 0);
+        }
 
         for (int n = 0; n < nwav; ++n) {
 
@@ -887,6 +892,13 @@ namespace maps {
             // 2. Check if the LD map is PSD and monotonic
             if (u_deg > 0) {
 
+                // First of all, ensure the function is *decreasing*
+                // toward the limb
+                if (getIndex(center, n) - getIndex(limb, n) < 0) {
+                    setIndex(physical, n, false);
+                    continue;
+                }
+
                 // Sturm's theorem on the intensity to get PSD
                 Vector<Scalar<T>> c = -getColumn(u, n).reverse();
                 c(c.size() - 1) = 1;
@@ -913,11 +925,6 @@ namespace maps {
                     setIndex(physical, n, false);
                     continue;
                 }
-
-                // Finally, ensure the function is *decreasing*
-                // toward the limb
-                if ((*this)(0, 0, 0) - (*this)(0, 1, 0) < 0)
-                    setIndex(physical, n, false);
 
             }
 
