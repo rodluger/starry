@@ -40,8 +40,4 @@ Miscellaneous
    Light travel time delay <tutorials/light_travel.ipynb>
    Positive-definite surface maps <tutorials/non-negative.ipynb>
    Physical limb-darkened maps <tutorials/sturm.ipynb>
-
-
-.. TODO!!!
-
    Starspots <tutorials/spottedstar.ipynb>

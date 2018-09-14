@@ -117,7 +117,39 @@ namespace pybind_interface {
                  map.setAxis(yhat<Scalar<T>>());
                  map.rotate(90.0);
                  map.setAxis(map_axis);
-             }, docstrings::Map::load_image, "image"_a, "lmax"_a=-1);
+             }, docstrings::Map::load_image, "image"_a, "lmax"_a=-1)
+
+             .def("add_gaussian", [](maps::Map<T> &map, const double& sigma,
+                                     const double& amp, const double& lat,
+                                     const double& lon) {
+                py::object gaussian =
+                    py::module::import("starry.maps").attr("gaussian");
+                Vector<double> y = amp *
+                    gaussian(sigma, map.lmax).template cast<Vector<double>>();
+
+                // Create a temporary map and add the gaussian
+                maps::Map<Vector<double>> tmpmap(map.lmax);
+                tmpmap.setY(y);
+
+                // Rotate it to the sub-observer point
+                tmpmap.setAxis(xhat<double>());
+                tmpmap.rotate(90.0);
+                tmpmap.setAxis(zhat<double>());
+                tmpmap.rotate(180.0);
+                tmpmap.setAxis(yhat<double>());
+                tmpmap.rotate(90.0);
+
+                // Now rotate it to where the user wants it
+                tmpmap.setAxis(xhat<double>());
+                tmpmap.rotate(-lat);
+                tmpmap.setAxis(yhat<double>());
+                tmpmap.rotate(lon);
+
+                // Add it to the current map
+                map.setY(map.getY() + tmpmap.getY());
+
+            }, docstrings::Map::add_gaussian, "sigma"_a=0.1, "amp"_a=1,
+                "lat"_a=0, "lon"_a=0);
 
     }
 

@@ -68,6 +68,7 @@ namespace docstrings {
             .. automethod:: rotate(theta=0)
             .. automethod:: show(cmap='plasma', res=300)
             .. automethod:: animate(cmap='plasma', res=150, frames=50, interval=75, gif='')
+            .. automethod:: add_gaussian
             .. automethod:: reset()
             .. autoattribute:: lmax
             .. autoattribute:: nwav
@@ -159,16 +160,40 @@ namespace docstrings {
             Return the specific intensity at a point :py:obj:`(x, y)` on the
             map. Users may optionally provide a rotation state. Note that this
             does not rotate the base map.
-
             Args:
                 theta (float or ndarray): Angle of rotation in degrees. \
                     Default 0.
                 x (float or ndarray): Position scalar or vector.
                 y (float or ndarray): Position scalar or vector.
-
             Returns:
                 The specific intensity at :py:obj:`(x, y)`.
         )pbdoc";
+
+        const char * add_gaussian = R"pbdoc(
+            Add the spherical harmonic expansion of a gaussian to the current
+            map. This routine adds a gaussian-like feature to the surface map
+            by computing the spherical harmonic expansion of a 3D gaussian
+            constrained to the surface of the sphere. This is useful for, say,
+            modeling star spots or other discrete, localized features on a
+            body's surface.
+
+            .. note:: Because this routine wraps a Python function,
+                      it is **slow** and should probably not be used repeatedly
+                      when fitting a map to data!
+
+            .. warning:: This routine is still in beta and may change in the
+                         near future.
+
+            Args:
+                sigma (float): The standard deviation of the gaussian. \
+                    Default 0.1
+                amp (float): The amplitude. Default 1.0, resulting in a \
+                    gaussian whose integral over the sphere is unity.
+                lat (float): The latitude of the center of the gaussian \
+                    in degrees. Default 0.
+                lon (float): The longitude of the center of the gaussian \
+                    in degrees. Default 0.
+            )pbdoc";
 
         const char* flux = R"pbdoc(
             Return the total flux received by the observer from the map.

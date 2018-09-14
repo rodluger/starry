@@ -71,9 +71,9 @@ def get_ext(module='starry._starry_mono_64', name='STARRY_MONO_64'):
 
 ext_modules = [
     get_ext('starry._starry_mono_64', 'STARRY_MONO_64'),
-    #get_ext('starry._starry_mono_128', 'STARRY_MONO_128'),
-    #get_ext('starry._starry_spectral_64', 'STARRY_SPECTRAL_64'),
-    #get_ext('starry._starry_spectral_128', 'STARRY_SPECTRAL_128'),
+    get_ext('starry._starry_mono_128', 'STARRY_MONO_128'),
+    get_ext('starry._starry_spectral_64', 'STARRY_SPECTRAL_64'),
+    get_ext('starry._starry_spectral_128', 'STARRY_SPECTRAL_128'),
 ]
 
 
