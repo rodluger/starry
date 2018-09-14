@@ -1,6 +1,9 @@
 /**
 Defines functions used to find the minimum of a map.
 
+TODO: The `pow()` calls in `evaluate()` and `operator()` are SUPER
+      slow. Let's use the same trick as in `maps.h` to speed this up.
+
 */
 
 #ifndef _STARRY_MIN_H_
@@ -31,8 +34,6 @@ namespace minimize {
             LBFGSParam<Scalar<T>> param;
             LBFGSSolver<Scalar<T>> solver;
             Vector<Scalar<T>> angles;
-            std::function<Scalar<T> (const Vector<Scalar<T>>& angles,
-                                     Vector<Scalar<T>>& grad)> functor;
             Scalar<T> minimum, val;
             int niter;
             Vector<Scalar<T>> p;
@@ -42,10 +43,12 @@ namespace minimize {
                      const Scalar<T>& epsilon=1e-6,
                      const int max_iterations=100) {
 
-                // Update the polynomial map and re-bind the function
+                // Update the polynomial map and bind the function
                 p = p_new;
-                functor = std::bind(*this, std::placeholders::_1,
-                                           std::placeholders::_2);
+                std::function<Scalar<T> (const Vector<Scalar<T>>& angles,
+                                         Vector<Scalar<T>>& grad)> functor =
+                    std::bind(*this, std::placeholders::_1,
+                                     std::placeholders::_2);
 
                 // Do a coarse grid search for the global minimum
                 angles(0) = 0;
@@ -256,10 +259,6 @@ namespace minimize {
                     phi(i) = 2.0 * pi<Scalar<T>>() *
                                    (Scalar<T>(i) / (npts + 1));
                 }
-
-                // The function wrapper
-                functor = std::bind(*this, std::placeholders::_1,
-                                           std::placeholders::_2);
 
             }
 
