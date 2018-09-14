@@ -146,7 +146,7 @@ namespace pybind_interface {
                 tmpmap.rotate(lon);
 
                 // Add it to the current map
-                map.setY(map.getY() + tmpmap.getY());
+                map.setY(map.getY() + tmpmap.getY().template cast<Scalar<T>>());
 
             }, docstrings::Map::add_gaussian, "sigma"_a=0.1, "amp"_a=1,
                 "lat"_a=0, "lon"_a=0);
