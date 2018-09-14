@@ -38,10 +38,10 @@ Miscellaneous
    High order limb-darkening <tutorials/high_order_ld.ipynb>
    Orientation of the map on the sky <tutorials/geometry.ipynb>
    Light travel time delay <tutorials/light_travel.ipynb>
+   Positive-definite surface maps <tutorials/non-negative.ipynb>
+   Physical limb-darkened maps <tutorials/sturm.ipynb>
 
 
 .. TODO!!!
 
    Starspots <tutorials/spottedstar.ipynb>
-   Positive-definite surface maps <tutorials/non-negative.ipynb>
-   Physical limb-darkened maps <tutorials/sturm.ipynb>

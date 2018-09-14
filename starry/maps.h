@@ -22,8 +22,6 @@ TODO: Speed up limb-darkened map rotations, since
       if we pass y_deg along. Don't implement it in
       W.compute, since we need gradients.
 
-TODO: Add unit tests for `isPhysical`
-
 */
 
 #ifndef _STARRY_MAPS_H_
@@ -897,8 +895,10 @@ namespace maps {
                 if (c(c.size() - 2) == 0)
                     c(c.size() - 2) = -mach_eps<Scalar<T>>();
                 int nroots = sturm::polycountroots(c);
-                if (nroots != 0)
+                if (nroots != 0) {
                     setIndex(physical, n, false);
+                    continue;
+                }
 
                 // Sturm's theorem on the deriv to get monotonicity
                 Vector<Scalar<T>> du = getColumn(u, n).segment(1, lmax);
@@ -909,7 +909,14 @@ namespace maps {
                     du(i) *= (i + 1);
                 c = -du.reverse();
                 nroots = sturm::polycountroots(c);
-                if (nroots != 0)
+                if (nroots != 0) {
+                    setIndex(physical, n, false);
+                    continue;
+                }
+
+                // Finally, ensure the function is *decreasing*
+                // toward the limb
+                if ((*this)(0, 0, 0) - (*this)(0, 1, 0) < 0)
                     setIndex(physical, n, false);
 
             }
