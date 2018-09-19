@@ -50,8 +50,8 @@ namespace docstrings {
                 of the** :math:`Y_{0,0}` **term**, which defaults to unity. The
                 total luminosity over all :math:`4\pi` steradians is therefore
                 four times the :math:`Y_{0,0}` coefficient. This normalization
-                is particularly convenient for purely limb-darkened maps, whose
-                disk-integrated intensity is always equal to unity.
+                is particularly convenient for constant or purely limb-darkened
+                maps, whose disk-integrated intensity is always equal to unity.
 
             Args:
                 lmax (int): Largest spherical harmonic degree \
@@ -68,7 +68,7 @@ namespace docstrings {
             .. automethod:: rotate(theta=0)
             .. automethod:: show(cmap='plasma', res=300)
             .. automethod:: animate(cmap='plasma', res=150, frames=50, interval=75, gif='')
-            .. automethod:: add_gaussian
+            .. automethod:: add_gaussian(sigma=0.1, amp=1, lat=0, lon=0)
             .. automethod:: reset()
             .. autoattribute:: lmax
             .. autoattribute:: nwav
@@ -284,18 +284,22 @@ namespace docstrings {
         )pbdoc";
 
         const char* load_image = R"pbdoc(
-            Load an image from file.
+            Load an array or an image from file.
             This routine loads an image file, computes its spherical harmonic
             expansion up to degree :py:attr:`lmax`, and sets the map vector.
+            Alternatively, users may provide a two-dimensional :py:obj:`numpy`
+            array, structured such that the pixel at index :py:obj:`(0, 0)`
+            is at latitude :math:`+90^\circ` and longitude :math:`180^\circ W`.
 
             Args:
-                image (str): The full path to the image file.
+                image (str or array): The full path to the image file, or a \
+                    2D :py:obj:`numpy` array of floats.
                 lmax (int): The maximum degree of the spherical harmonic \
                     expansion of the image. Default :py:attr:`lmax`.
 
             .. note:: For maps with :py:obj:`nwav > 1`, users may specify a
                 :py:obj:`nwav` keyword argument indicating the wavelength bin
-                into which the image will be loaded.
+                into which the image or array will be loaded.
 
         )pbdoc";
 

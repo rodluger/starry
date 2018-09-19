@@ -29,7 +29,7 @@ the core :py:mod:`starry` functionality:
       of the object and (optionally) the position and size of an occultor.
       Users can specify spherical harmonic coefficients, limb
       darkening coefficients, or both. There is also support for both
-      monochromatic and wavelenght-dependent maps and light curves.
+      monochromatic and wavelength-dependent maps and light curves.
       This class may be particularly useful for users who wish to
       integrate :py:mod:`starry` with their own dynamical code or for users
       wishing to compute simple light curves without any orbital solutions.

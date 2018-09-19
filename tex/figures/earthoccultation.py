@@ -39,6 +39,11 @@ maxF = np.max(F)
 F /= maxF
 ax_lc.plot(time, F, 'k-', label='Total')
 
+# Compute and plot the flux (no occultation)
+Frot = map.flux(theta=theta)
+Frot /= maxF
+ax_lc.plot(time, Frot, 'k:', alpha=0.25, lw=1)
+
 # Compute and plot the numerical flux
 Fnum = map.flux(theta=thetanum, xo=xonum, yo=yonum, ro=ro, numerical=True)
 Fnum /= maxF

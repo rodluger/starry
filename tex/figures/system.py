@@ -49,7 +49,6 @@ time = np.linspace(0, 20, 10000)
 system = System(star, b)
 system.compute(time)
 sF = np.array(system.lightcurve)
-sF /= sF[0]
 ax[0].plot(time, sF, '-', color='C0')
 
 
@@ -101,7 +100,6 @@ c.rotate(theta=15)
 system = System(star, b, c)
 system.compute(time)
 sF = np.array(system.lightcurve)
-sF /= sF[0]
 ax[1].plot(time, sF, '-', color='C0')
 
 # Save

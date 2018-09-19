@@ -605,7 +605,6 @@ class MCMCCartography(object):
         return
 
     def get_hot_spot_samples(self):
-
         # Calculate the latitude and longitude of the hotspot offset
         lat, lon = np.zeros(self.samples.shape[0]), np.zeros(self.samples.shape[0])
         for i in range(self.samples.shape[0]):
@@ -652,18 +651,41 @@ class MCMCCartography(object):
         set_coeffs(medvals, self.planet)
         img = [self.planet(x=xx[j], y=yy[j], theta=0)
                for j in range(300)]
+        img /= np.nanmax(img)
         ax.imshow(img, origin="lower",
                   interpolation="none", cmap="plasma",
                   extent=(-1, 1, -1, 1), zorder=-1)
         ax.contour(img, origin="lower",
                    extent=(-1, 1, -1, 1),
-                   colors='k', linewidths=1)
+                   colors='k', linewidths=0.25,
+                   levels=np.linspace(0.0, 1.0, 11))
         ax.set_frame_on(False)
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_xlim(-1.25, 1.25)
         ax.set_ylim(-1.25, 1.25)
         ax.set_rasterization_zorder(0)
+
+        # Latitude lines
+        for lat in [-90, -75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75, 90]:
+            y = np.sin(lat * np.pi / 180)
+            x = np.sqrt(1 - y * y)
+            ax.plot([-x, x], [y, y], 'k--', lw=0.5)
+
+        # Longitude lines
+        for lon in [-90, -75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75, 90]:
+            b = np.sin(lon * np.pi / 180)
+            y = np.linspace(-1, 1, 1000)
+            x = b * np.sqrt(1 - y ** 2)
+            ax.plot(x, y, 'k--', lw=0.5)
+
+        # Mark the max
+        lat, lon = hotspot_offset(self.planet[1, :])
+        y = np.sin(lat * np.pi / 180)
+        b = np.sin(lon * np.pi / 180)
+        x = b * np.sqrt(1 - y ** 2)
+        ax.plot(x, y, 'kx')
+
 
         self.fig_corner = fig
         return
