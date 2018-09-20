@@ -1,6 +1,27 @@
 /**
 Defines the surface map class.
 
+TODO: Macro for loops involving nwav and specialize for nwav = 1?
+      Essentially we'd replace
+
+        for (int n = 0; n < nwav; ++n) {
+            ...
+        }
+
+      with
+
+        WAVELENGTH_LOOP(n)
+            ...
+        END_WAVELENGTH_LOOP
+
+      and just do {int n = 0; ...} for nwav = 1.
+
+TODO: Speed up limb-darkened map rotations, since
+      the effective degree of the map is lower.
+      This can easily be implemented in W.rotate
+      if we pass y_deg along. Don't implement it in
+      W.compute, since we need gradients.
+
 */
 
 #ifndef _STARRY_MAPS_H_
@@ -9,249 +30,454 @@ Defines the surface map class.
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
-#include "constants.h"
+#include <type_traits>
+#include <vector>
 #include "rotation.h"
 #include "basis.h"
-#include "solver.h"
-#include "numeric.h"
 #include "errors.h"
 #include "utils.h"
+#include "solver.h"
 #include "sturm.h"
 #include "minimize.h"
+#include "numeric.h"
+
+namespace kepler {
+    template <class T>
+    class Body;
+    template <class T>
+    class System;
+}
 
 namespace maps {
 
+    using namespace utils;
     using std::abs;
     using std::max;
     using std::string;
+    using std::to_string;
     using rotation::Wigner;
-    using rotation::computeR;
+    using basis::Basis;
+    using basis::polymul;
     using solver::Greens;
+    using solver::Power;
     using minimize::Minimizer;
 
-    // Constant matrices/vectors
+    // Forward-declare some stuff
+    template <class T> class Map;
+
+    /**
+    Stores cached Map variables.
+
+    */
     template <class T>
-    class ConstantMatrices {
+    class Cache {
 
         public:
 
-            int lmax;
-            Eigen::SparseMatrix<T> A1;
-            Eigen::SparseMatrix<T> A;
-            VectorT<T> rTA1;
-            VectorT<T> rT;
-            Matrix<T> U;
+            static const int NONE = 0;                                          /**< Cached operation identifier (empty cache)*/
+            static const int FLUX = 1;                                          /**< Cached operation identifier (flux) */
+            static const int EVAL = 2;                                          /**< Cached operation identifier (evaluation) */
+            int oper;                                                           /**< Cached operation identifier */
+            Scalar<T> theta;                                                    /**< Cached rotation angle */
+            T p;                                                                /**< Cached polynomial map */
+            T y;                                                                /**< Cached Ylm map */
 
-            // Constructor: compute the matrices
-            ConstantMatrices(int lmax) : lmax(lmax) {
-                basis::computeA1(lmax, A1);
-                basis::computeA(lmax, A1, A);
-                solver::computerT(lmax, rT);
-                rTA1 = rT * A1;
-                basis::computeU(lmax, U);
+            //! Default constructor
+            Cache() {
+                clear();
+            }
+
+            //! Clear the cache
+            inline void clear() {
+                oper = NONE;
+                theta = NAN;
+            }
+
+
+    };
+
+    /**
+    Temporary vector/matrix/tensor storage class.
+
+    */
+    template <class T>
+    class Temporary {
+
+            static constexpr int TLEN = 6;
+            static constexpr int RLEN = 4;
+            static constexpr int CLEN = 1;
+            static constexpr int VLEN = 1;
+            static constexpr int VTLEN = 8;
+            static constexpr int MLEN = 2;
+            static constexpr int VTMLEN = 1;
+            static constexpr int ALEN = 2;
+            static constexpr int VTALEN = 1;
+            static constexpr int PLEN = 2;
+            static constexpr int PALEN = 2;
+
+        public:
+
+            T tmpT[TLEN];
+            Row<T> tmpRow[RLEN];
+            Column<T> tmpColumn[CLEN];
+            Vector<Scalar<T>> tmpColumnVector[VLEN];
+            VectorT<Scalar<T>> tmpRowVector[VTLEN];
+            Matrix<Scalar<T>> tmpMatrix[MLEN];
+            VectorT<Matrix<Scalar<T>>> tmpRowVectorOfMatrices[VTMLEN];
+            ADScalar<Scalar<T>, 2> tmpADScalar2[ALEN];
+            VectorT<ADScalar<Scalar<T>, 2>> tmpRowVectorOfADScalar2[VTALEN];
+            Power<Scalar<T>> tmpPower[PLEN];
+            Power<ADScalar<Scalar<T>, 2>> tmpPowerOfADScalar2[PALEN];
+
+            explicit Temporary(int N, int nwav) {
+                // Allocate memory for the Map-like variables
+                // All other containers need to be allocated elsewhere
+                for (int n = 0; n < TLEN; ++n) resize(tmpT[n], N, nwav);
+                for (int n = 0; n < RLEN; ++n) resize(tmpRow[n], N, nwav);
+                for (int n = 0; n < CLEN; ++n) resize(tmpColumn[n], N, nwav);
             }
 
     };
 
-    // No need to autodifferentiate these, since they are constant!
-    template <>
-    class ConstantMatrices<Grad> {
+    /**
+    Check that `Map` is instantiated with the right type: Vector<T>.
 
-        public:
+    */
+    template <class T>
+    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    checkType(const Map<Vector<T>>& map) {
+        if (map.nwav != 1) {
+            throw errors::ValueError("Multi-wavelength support is "
+                                     "available only for `Matrix` types.");
+        } else {
+            return true;
+        }
+    }
 
-            int lmax;
-            Eigen::SparseMatrix<Grad::Scalar> A1;
-            Eigen::SparseMatrix<Grad::Scalar> A;
-            VectorT<Grad::Scalar> rTA1;
-            VectorT<Grad::Scalar> rT;
-            Matrix<Grad::Scalar> U;
+    /**
+    Check that `Map` is instantiated with the right type: Matrix<T>.
 
-            // Constructor: compute the matrices
-            ConstantMatrices(int lmax) : lmax(lmax) {
-                basis::computeA1(lmax, A1);
-                basis::computeA(lmax, A1, A);
-                solver::computerT(lmax, rT);
-                rTA1 = rT * A1;
-                basis::computeU(lmax, U);
-            }
+    */
+    template <class T>
+    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    checkType(const Map<Matrix<T>>& map) {
+        if (map.nwav < 1) {
+            throw errors::ValueError("Invalid number of wavelength bins.");
+        } else {
+            return true;
+        }
+    }
 
-    };
+    /**
+    The main surface map class.
 
-    // ****************************
-    // ----------------------------
-    //
-    //    The surface map class
-    //
-    // ----------------------------
-    // ****************************
+    */
     template <class T>
     class Map {
 
+        friend class kepler::Body<T>;
+        friend class kepler::System<T>;
+
         public:
 
-            const int lmax;                             /**< The highest degree of the map */
-            const int N;                                /**< The number of map coefficients */
-            Vector<T> y;                                /**< The map coefficients in the spherical harmonic basis */
-            Vector<T> p;                                /**< The map coefficients in the polynomial basis */
-            Vector<T> g;                                /**< The map coefficients in the Green's basis */
-            UnitVector<T> axis;                         /**< The axis of rotation for the map */
-            bool Y00_is_unity;                          /**< Flag: are we fixing the constant map coeff at unity? */
-            std::map<string, Vector<double>> derivs;    /**< Dictionary of derivatives */
-            Vector<T> dFdy;                             /**< Derivative of the flux w/ respect to the map coeffs */
-            ConstantMatrices<T> C;                      /**< Constant matrices used throughout the code */
-            Greens<T> G;                                /**< Green's theorem integration stuff */
+            const int lmax;                                                     /**< The highest degree of the map */
+            const int N;                                                        /**< The number of map coefficients */
+            const int nwav;                                                     /**< The number of wavelengths */
 
         protected:
 
-            // Cached and temporary variables
-            Vector<T> yzeta_rot;                        /**< The rotated spherical harmonic map in the zeta frame */
-            Vector<T> y_rot;                            /**< The rotated spherical harmonic map in the base frame */
-            Vector<T> y_rotz;                           /**< The rotated spherical harmonic map in the base frame, rotated to align the occultor with `yhat` */
-            Vector<T> p_rot;                            /**< The rotated polynomial map in the base frame */
-            T theta_y_rot;                              /**< The angle by which we rotated `y` to get `y_rot` (used for caching rotations) */
-            Vector<T>* ptry;                            /**< Pointer to the actual spherical harmonic map we're using in the flux computation */
-            Vector<T>* ptrp;                            /**< Pointer to the actual polynomial map we're using in the intensity computation */
-            Vector<T> ARRy;                             /**< Everything but the solution vector in `s^TAR'Ry`; a handy temporary variable */
-            VectorT<T> sTA;                             /**< The solution vector dotted into the change of basis matrix; handy for Grad stuff */
-            VectorT<T> pTA;                             /**< The polynomial basis dotted into the change of basis matrix; handy for Grad stuff */
-            Wigner<T> R;                                /**< The R rotation matrix in `s^TAR'Ry`; handy for Grad stuff */
-            Wigner<T> RR;                               /**< The product of the two rotation matrices in `s^TAR'Ry`; handy for Grad stuff */
-            VectorT<T> basis;                           /**< Polynomial basis, used to evaluate gradients */
+            T dF;                                                               /**< Gradient of the flux */
+            std::vector<string> dF_names;                                       /**< Names of each of the params in the flux gradient */
 
-            // Zeta transformation parameters
-            T coszeta, sinzeta;                         /**< Angle between the axis of rotation and `zhat` */
-            UnitVector<T> axzeta;                       /**< Axis of rotation to align the rotation axis with `zhat` */
-            Wigner<T> Rzeta, RzetaInv;                  /**< The rotation matrix into the `zeta` frame and its inverse */
-            Vector<T> yzeta;                            /**< The base map in the `zeta` frame */
-            Vector<T> cosnt;                            /**< Vector of cos(n theta) values */
-            Vector<T> sinnt;                            /**< Vector of sin(n theta) values */
-            Vector<T> cosmt;                            /**< Vector of cos(m theta) values */
-            Vector<T> sinmt;                            /**< Vector of sin(m theta) values */
-            Vector<T> yrev;                             /**< Degree-wise reverse of the spherical harmonic map */
+            // Sanity checks
+            const bool type_valid;                                              /**< Is the type of the Map valid? */
 
-            // Classes
-            Minimizer<T> M;                             /**< Surface map minimization stuff */
+            // Map stuff
+            T y;                                                                /**< The map coefficients in the spherical harmonic basis */
+            T p;                                                                /**< The map coefficients in the polynomial basis */
+            T g;                                                                /**< The map coefficients in the Green's basis */
+            int y_deg;                                                          /**< Highest degree set by the user in the spherical harmonic vector */
+            UnitVector<Scalar<T>> axis;                                         /**< The axis of rotation for the map */
+            Basis<Scalar<T>> B;                                                 /**< Basis transform stuff */
+            Wigner<T> W;                                                        /**< The class controlling rotations */
+            Greens<Scalar<T>> G;                                                /**< The occultation integral solver class */
+            Greens<ADScalar<Scalar<T>, 2>> G_grad;                              /**< The occultation integral solver class w/ AutoDiff capability */
+            Minimizer<T> M;                                                     /**< Map minimization class */
+            Scalar<T> tol;                                                      /**< Machine epsilon */
+            std::vector<string> dF_orbital_names;                               /**< Names of each of the orbital params in the flux gradient */
+            std::vector<string> dF_ylm_names;                                   /**< Names of each of the Ylm params in the flux gradient */
+            std::vector<string> dF_ul_names;                                    /**< Names of each of the limb darkening params in the flux gradient */
+            int dF_n_ylm;                                                       /**< Number of current Ylm gradients */
+            int dF_n_ul;                                                        /**< Number of current limb darkening gradients */
 
+            // Limb darkening
+            T u;                                                                /**< The limb darkening coefficients */
+            T p_u;                                                              /**< The limb darkening coefficients in the polynomial basis */
+            T g_u;                                                              /**< The limb darkening coefficients in the Green's basis */
+            int u_deg;                                                          /**< Highest degree set by the user in the limb darkening vector */
+            Vector<Matrix<Scalar<T>>> dp_udu;                                   /**< Deriv of limb darkening polynomial w/ respect to limb darkening coeffs */
+            Vector<Matrix<Scalar<T>>> dg_udu;                                   /**< Deriv of limb darkening Green's polynomials w/ respect to limb darkening coeffs */
+            VectorT<Matrix<Scalar<T>>> dLDdp;                                   /**< Derivative of the limb-darkened polynomial w.r.t `p` */
+            VectorT<Matrix<Scalar<T>>> dLDdp_u;                                 /**< Derivative of the limb-darkened polynomial w.r.t `p_u` */
+            T p_uy;                                                             /**< The instantaneous limb-darkened map in the polynomial basis */
+
+            // Temporaries and cache
+            Temporary<T> tmp;
+            Cache<T> cache;
+
+            // Private methods
+            void update();
+            inline void resizeGradient(const int n_ylm, const int n_ul);
+            inline void checkDegree();
+            inline void updateY();
+            inline void updateU();
+            inline void limbDarken(const T& poly, T& poly_ld,
+                bool gradient=false);
+            template <typename U>
+            inline void polyBasis(Power<U>& xpow, Power<U>& ypow,
+                VectorT<U>& basis);
+            inline Row<T> fluxWithGradient(const Scalar<T>& theta_deg,
+                const Scalar<T>& xo_,
+                const Scalar<T>& yo_,
+                const Scalar<T>& ro_);
+            inline Row<T> fluxLD(const Scalar<T>& xo_,
+                const Scalar<T>& yo_,
+                const Scalar<T>& ro_);
+            inline Row<T> fluxLDWithGradient(const Scalar<T>& xo_,
+                const Scalar<T>& yo_,
+                const Scalar<T>& ro_);
+            inline Row<T> fluxYlmWithGradient(const Scalar<T>& theta_deg,
+                const Scalar<T>& xo_,
+                const Scalar<T>& yo_,
+                const Scalar<T>& ro_);
         public:
 
-            // Constructor
-            Map(int lmax=2) : lmax(lmax), N((lmax + 1) * (lmax + 1)),
-                              C(lmax), G(lmax), R(lmax),
-                              RR(lmax), Rzeta(lmax), RzetaInv(lmax),
-                              M(*this) {
+            /**
+            Instantiate a `Map`.
 
-                // Initialize all our vectors
-                y = Vector<T>::Zero(N);
-                p = Vector<T>::Zero(N);
-                g = Vector<T>::Zero(N);
-                axis(0) = 0;
-                axis(1) = 1;
-                axis(2) = 0;
-                yzeta.resize(N);
-                sTA = VectorT<T>::Zero(N);
-                pTA = VectorT<T>::Zero(N);
-                ARRy = Vector<T>::Zero(N);
-                dFdy = Vector<T>::Zero(N);
-                cosnt.resize(max(2, lmax + 1));
-                cosnt(0) = 1.0;
-                sinnt.resize(max(2, lmax + 1));
-                sinnt(0) = 0.0;
-                cosmt.resize(N);
-                sinmt.resize(N);
-                yrev.resize(N);
-                y_rot.resize(N);
-                y_rotz.resize(N);
-                basis.resize(N);
-                Y00_is_unity = false;
-                update();
+            */
+            explicit Map(int lmax=2, int nwav=1) :
+                lmax(lmax),
+                N((lmax + 1) * (lmax + 1)),
+                nwav(nwav),
+                type_valid(checkType(*this)),
+                B(lmax),
+                W(lmax, nwav, (*this).y, (*this).axis),
+                G(lmax),
+                G_grad(lmax),
+                M(lmax),
+                tol(mach_eps<Scalar<T>>()),
+                dp_udu(nwav),
+                dg_udu(nwav),
+                tmp(N, nwav),
+                cache() {
+
+                // Populate the map gradient names
+                dF_orbital_names.push_back("theta");
+                dF_orbital_names.push_back("xo");
+                dF_orbital_names.push_back("yo");
+                dF_orbital_names.push_back("ro");
+                for (int l = 0; l < lmax + 1; l++) {
+                    for (int m = -l; m < l + 1; m++) {
+                        dF_ylm_names.push_back(string("Y_{" + to_string(l) +
+                                           "," + to_string(m) + "}"));
+                    }
+                }
+                for (int l = 1; l < lmax + 1; l++) {
+                    dF_ul_names.push_back(string("u_{" + to_string(l) + "}"));
+                }
+                dF_n_ul = 0;
+                dF_n_ylm = 0;
+                resizeGradient(N, lmax);
+
+                // Initialize the map vectors
+                axis = yhat<Scalar<T>>();
+                y.resize(N, nwav);
+                p.resize(N, nwav);
+                g.resize(N, nwav);
+                u.resize(lmax + 1, nwav);
+                p_u.resize(N, nwav);
+                g_u.resize(N, nwav);
+
+                // Reset & update the map coeffs
+                reset();
 
             }
 
-            // Housekeeping functions
-            void update();
+            // Housekeeping and I/O
             void reset();
+            void setY(const T& y_);
+            void setY(int l, int m, const Row<T>& coeff);
+            T getY() const;
+            Row<T> getY(int l, int m) const;
+            T getU() const;
+            Row<T> getU(int l) const;
+            void setU(const T& u_);
+            void setU(int l, const Row<T>& coeff);
+            T getP() const;
+            T getG() const;
+            virtual VectorT<Scalar<T>> getR() const;
+            virtual VectorT<Scalar<T>> getS() const;
+            void setAxis(const UnitVector<Scalar<T>>& axis_);
+            UnitVector<Scalar<T>> getAxis() const;
+            std::string info();
+            inline void resizeGradient();
+            const T& getGradient() const;
+            const std::vector<std::string>& getGradientNames() const;
 
-            // I/O functions
-            void setCoeff(int l, int m, T coeff);
-            T getCoeff(int l, int m);
-            void random(double beta=0);
-            std::string repr();
+            // Rotate the base map
+            void rotate(const Scalar<T>&  theta_);
 
-            // Various ways of rotating maps
-            void rotate(const T& theta);
-            void rotate(const T& costheta, const T& sintheta);
-            void rotate(const T& theta, Vector<T>& yout);
-            void rotate(const T& costheta, const T& sintheta, Vector<T>& yout);
-            void rotatez(const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout);
+            // Evaluate the intensity at a point
+            inline Row<T> operator()(const Scalar<T>& theta_=0,
+                const Scalar<T>& x_=0,
+                const Scalar<T>& y_=0);
 
-            // Get the intensity of the map at a point
-            T evaluate(const T& theta=0, const T& x0=0, const T& y0=0);
+            // Compute the flux
+            inline Row<T> flux(const Scalar<T>& theta_=0,
+                const Scalar<T>& xo_=0,
+                const Scalar<T>& yo_=0,
+                const Scalar<T>& ro_=0,
+                bool gradient=false,
+                bool numerical=false);
 
-            // Get the flux of the map during or outside of an occultation
-            T flux_numerical(const T& theta=0, const T& xo=0, const T& yo=0, const T& ro=0, double tol=1e-4);
-            T flux(const T& theta=0, const T& xo=0, const T& yo=0, const T& ro=0);
-
-            // Map minimization routines
-            bool psd(double epsilon=1e-6, int max_iterations=100);
+            // Is the map physical?
+            inline RowBool<T> isPhysical(const Scalar<T>& epsilon=1.e-6,
+                const int max_iterations=100);
 
     };
-
 
     /* ---------------- */
     /*   HOUSEKEEPING   */
     /* ---------------- */
 
+    /**
+    Check if the total degree of the map is valid
 
-    // Update the maps after the coefficients changed
-    // or after a base rotation was applied
+    */
     template <class T>
-    void Map<T>::update() {
-
-        // Update the polynomial and Green's map coefficients
-        p = C.A1 * y;
-        g = C.A * y;
-
-        // Normalize the rotation axis
-        axis = axis / sqrt(axis(0) * axis(0) + axis(1) * axis(1) + axis(2) * axis(2));
-
-        // Compute the rotation transformation into and out of the `zeta` frame
-        coszeta = axis(2);
-        sinzeta = sqrt(1 - axis(2) * axis(2));
-        T norm = sqrt(axis(0) * axis(0) + axis(1) * axis(1));
-        if (abs(norm) < 10 * mach_eps<T>()) {
-            // The rotation axis is zhat, so our zeta transform
-            // is just the identity matrix.
-            for (int l = 0; l < lmax + 1; l++) {
-                Rzeta.Real[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
-                RzetaInv.Real[l] = Matrix<T>::Identity(2 * l + 1, 2 * l + 1);
-            }
-            yzeta = y;
-        } else {
-            // We need to compute the actual Wigner matrices
-            axzeta(0) = axis(1) / norm;
-            axzeta(1) = -axis(0) / norm;
-            axzeta(2) = 0;
-            computeR(lmax, axzeta, coszeta, sinzeta, Rzeta.Complex, Rzeta.Real);
-            for (int l = 0; l < lmax + 1; l++) {
-                yzeta.segment(l * l, 2 * l + 1) = Rzeta.Real[l] * y.segment(l * l, 2 * l + 1);
-                RzetaInv.Real[l] = Rzeta.Real[l].transpose();
-            }
+    inline void Map<T>::checkDegree() {
+        if (y_deg + u_deg > lmax) {
+            setZero(y);
+            setRow(y, 0, Scalar<T>(1.0));
+            y_deg = 0;
+            setZero(u);
+            u_deg = 0;
+            setRow(u, 0, Scalar<T>(-1.0));
+            update();
+            throw errors::ValueError("Degree of the limb-darkened "
+                                     "map exceeds `lmax`. All "
+                                     "coefficients have been reset.");
         }
-
-        // Reset our cache
-        theta_y_rot = NAN;
-
     }
 
-    // Reset the map
+    /**
+    Update the Ylm map after the coefficients changed
+    TODO: This method needs to be made as fast as possible.
+
+    */
+    template <class T>
+    inline void Map<T>::updateY() {
+        // Check the map degree is valid
+        checkDegree();
+
+        // Update the polynomial and Green's map coefficients
+        p = B.A1 * y;
+        g = B.A * y;
+
+        // Update the rotation matrix
+        W.update();
+
+        // Clear the cache
+        cache.clear();
+    }
+
+    /**
+    Update the limb darkening map after the coefficients changed
+    TODO: This method needs to be made as fast as possible.
+
+    */
+    template <class T>
+    inline void Map<T>::updateU() {
+        // Bind references to temporaries for speed
+        Row<T>& Y00(tmp.tmpRow[0]);
+        Row<T>& rTp_u(tmp.tmpRow[1]);
+        Row<T>& ld_norm(tmp.tmpRow[2]);
+
+        // Check the map degree is valid
+        checkDegree();
+
+        // Update the limb darkening polynomial map
+        p_u = B.U1 * u;
+
+        // Compute the normalization that preserves
+        // the disk-integrated intensity
+        Y00 = getRow(y, 0);
+        rTp_u = dot(B.rT, p_u);
+        ld_norm = cwiseQuotient(Y00, rTp_u);
+
+        // Compute the derivative of the LD polynomials
+        // with respect to the LD coefficients
+        for (int n = 0; n < nwav; ++n) {
+            dp_udu(n) = -getColumn(p_u, n) * B.rTU1;
+            dp_udu(n) /= dot(B.rT, getColumn(p_u, n));
+            dp_udu(n) += B.U1;
+            dp_udu(n) *= getColumn(ld_norm, n);
+            dg_udu(n) = B.A2 * dp_udu(n);
+        }
+
+        // Apply the normalization
+        p_u = colwiseProduct(p_u, ld_norm);
+
+        // Update the limb darkening Green's map
+        g_u = B.A2 * p_u;
+
+        // Clear the cache
+        cache.clear();
+    }
+
+
+    /**
+    Update the two maps after the coefficients changed
+
+    */
+    template <class T>
+    inline void Map<T>::update() {
+        updateY();
+        updateU();
+    }
+
+    /**
+    Reset the map
+
+    */
     template <class T>
     void Map<T>::reset() {
-        y.setZero(N);
-        if (Y00_is_unity) y(0) = 1;
-        axis(0) = 0;
-        axis(1) = 1;
-        axis(2) = 0;
+        setZero(y);
+        setRow(y, 0, Scalar<T>(1.0));
+        y_deg = 0;
+        setZero(u);
+        u_deg = 0;
+        setRow(u, 0, Scalar<T>(-1.0));
+        axis = yhat<Scalar<T>>();
         update();
+    }
+
+    /**
+    Public workaround to resize the gradients
+    prior to a flux evaluation, so that we know
+    externally how many gradients to expect. This
+    is used in the pybind11 interface.
+
+    */
+    template <class T>
+    inline void Map<T>::resizeGradient() {
+        if (y_deg == 0)
+            resizeGradient(1, lmax);
+        else if (u_deg == 0)
+            resizeGradient(N, 0);
+        else
+            resizeGradient(N, lmax);
     }
 
 
@@ -259,163 +485,457 @@ namespace maps {
     /*        I/O       */
     /* ---------------- */
 
-
-    // Set the (l, m) coefficient
+    //! Get the gradient of the flux
     template <class T>
-    void Map<T>::setCoeff(int l, int m, T coeff) {
-        if ((l == 0) && (Y00_is_unity) && (coeff != 1)) throw errors::Y00IsUnity();
+    const T& Map<T>::getGradient() const {
+        return dF;
+    }
+
+    //! Get the names of the gradient params
+    template <class T>
+    const std::vector<std::string>& Map<T>::getGradientNames() const {
+        return dF_names;
+    }
+
+    /**
+    Set the spherical harmonic vector
+
+    */
+    template <class T>
+    void Map<T>::setY(const T& y_) {
+        if ((y_.rows() == y.rows()) && (y_.cols() == y.cols())) {
+            y = y_;
+            y_deg = 0;
+            for (int l = lmax; l >= 0; --l) {
+                if ((y.block(l * l, 0, 2 * l + 1, nwav).array() != 0.0).any()) {
+                    y_deg = l;
+                    break;
+                }
+            }
+            // Note that we must implicitly call `updateU()` as well
+            // because its normalization depends on Y_{0,0}!
+            update();
+        } else {
+            throw errors::ValueError("Dimension mismatch in `y`.");
+        }
+    }
+
+    /**
+    Set the (l, m) spherical harmonic coefficient
+
+    */
+    template <class T>
+    void Map<T>::setY(int l, int m, const Row<T>& coeff) {
         if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l)) {
             int n = l * l + l + m;
-            set_value(y(n), coeff);
-            update();
-        } else throw errors::BadLM();
-    }
-
-    // Get the (l, m) coefficient
-    template <class T>
-    T Map<T>::getCoeff(int l, int m) {
-        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
-            return y(l * l + l + m);
-        else throw errors::BadLM();
-    }
-
-    // Generate a random map with a given power spectrum power index `beta`
-    // TODO: Not tested, not yet exposed to Python
-    template <class T>
-    void Map<T>::random(double beta) {
-        int l, m, n;
-        double norm;
-        Vector<double> coeffs;
-        setCoeff(0, 0, 1);
-        for (l = 1; l < lmax + 1; l++) {
-            coeffs = Vector<double>::Random(2 * l + 1);
-            norm = pow(l, beta) / coeffs.squaredNorm();
-            n = 0;
-            for (m = -l; m < l + 1; m++) {
-                setCoeff(l, m, coeffs(n) * norm);
-                n++;
-            }
-        }
-    }
-
-    // Return a human-readable map string
-    template <class T>
-    std::string Map<T>::repr() {
-        int n = 0;
-        int nterms = 0;
-        char buf[30];
-        std::ostringstream os;
-        os << "<STARRY Map: ";
-        for (int l = 0; l < lmax + 1; l++) {
-            for (int m = -l; m < l + 1; m++) {
-                if (abs(get_value(y(n))) > 10 * mach_eps<T>()){
-                    // Separator
-                    if ((nterms > 0) && (get_value(y(n)) > 0)) {
-                        os << " + ";
-                    } else if ((nterms > 0) && (get_value(y(n)) < 0)){
-                        os << " - ";
-                    } else if ((nterms == 0) && (get_value(y(n)) < 0)){
-                        os << "-";
+            setRow(y, n, coeff);
+            if (allZero(coeff)) {
+                // If coeff is zero, we need to re-compute y_deg
+                for (y_deg = l - 1; y_deg >= 0; --y_deg) {
+                    for (int m = -y_deg; m < y_deg + 1; ++m){
+                        if (!allZero(getRow(y, y_deg * y_deg + y_deg + m))) {
+                            update();
+                            return;
+                        }
                     }
-                    // Term
-                    if ((get_value(y(n)) == 1) || (get_value(y(n)) == -1)) {
-                        sprintf(buf, "Y_{%d,%d}", l, m);
-                        os << buf;
-                    } else if (fmod(abs(get_value(y(n))), 1.0) < 10 * mach_eps<T>()) {
-                        sprintf(buf, "%d Y_{%d,%d}", (int)abs(get_value(y(n))), l, m);
-                        os << buf;
-                    } else if (fmod(abs(get_value(y(n))), 1.0) >= 0.01) {
-                        sprintf(buf, "%.2f Y_{%d,%d}", abs(get_value(y(n))), l, m);
-                        os << buf;
-                    } else {
-                        sprintf(buf, "%.2e Y_{%d,%d}", abs(get_value(y(n))), l, m);
-                        os << buf;
-                    }
-                    nterms++;
                 }
-                n++;
+            } else {
+                y_deg = max(y_deg, l);
             }
+            // Note that we must implicitly call `updateU()` as well
+            // because its normalization depends on Y_{0,0}!
+            update();
+        } else {
+            throw errors::IndexError("Invalid value for `l` and/or `m`.");
         }
-        if (nterms == 0)
-            os << "Null";
-        os << ">";
+    }
+
+    /**
+    Get the spherical harmonic vector
+
+    */
+    template <class T>
+    T Map<T>::getY() const {
+        return y;
+    }
+
+    /**
+    Get the (l, m) spherical harmonic coefficient
+
+    */
+    template <class T>
+    Row<T> Map<T>::getY(int l, int m) const {
+        if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
+            return getRow(y, l * l + l + m);
+        else
+            throw errors::IndexError("Invalid value for `l` and/or `m`.");
+    }
+
+    /**
+    Set the limb darkening vector
+
+    */
+    template <class T>
+    void Map<T>::setU(const T& u_) {
+        if ((u_.rows() == u.rows() - 1) && (u_.cols() == u.cols())) {
+            u.block(1, 0, lmax, nwav) = u_;
+            u_deg = 0;
+            for (int l = lmax; l > 0; --l) {
+                if (!allZero(getRow(u, l))) {
+                    u_deg = l;
+                    break;
+                }
+            }
+            updateU();
+        } else {
+            throw errors::ValueError("Dimension mismatch in `u`.");
+        }
+    }
+
+    /**
+    Set the `l`th limb darkening coefficient
+
+    */
+    template <class T>
+    void Map<T>::setU(int l, const Row<T>& coeff) {
+        if ((1 <= l) && (l <= lmax)) {
+            setRow(u, l, coeff);
+            if (allZero(coeff)) {
+                // If coeff is zero, we need to re-compute u_deg
+                for (u_deg = l - 1; u_deg >= 0; --u_deg) {
+                    if (!allZero(getRow(u, u_deg))) {
+                        break;
+                    }
+                }
+            } else {
+                u_deg = max(u_deg, l);
+            }
+            updateU();
+        } else {
+            throw errors::IndexError("Invalid value for `l`.");
+        }
+    }
+
+    /**
+    Get the limb darkening vector
+
+    */
+    template <class T>
+    T Map<T>::getU() const {
+        return u.block(1, 0, lmax, nwav);
+    }
+
+    /**
+    Get the `l`th limb darkening coefficient
+
+    */
+    template <class T>
+    Row<T> Map<T>::getU(int l) const {
+        if ((1 <= l) && (l <= lmax))
+            return getRow(u,l);
+        else
+            throw errors::IndexError("Invalid value for `l`.");
+    }
+
+    /**
+    Get the polynomial vector
+
+    */
+    template <class T>
+    T Map<T>::getP() const {
+        return p;
+    }
+
+    /**
+    Get the Green's vector
+
+    */
+    template <class T>
+    T Map<T>::getG() const {
+        return g;
+    }
+
+    /**
+    Get the rotation solution vector
+
+    */
+    template <class T>
+    VectorT<Scalar<T>> Map<T>::getR() const {
+        return B.rT;
+    }
+
+    /**
+    Get the occultation solution vector
+
+    */
+    template <class T>
+    VectorT<Scalar<T>> Map<T>::getS() const {
+        return G.sT;
+    }
+
+    /**
+    Set the axis
+
+    */
+    template <class T>
+    void Map<T>::setAxis(const UnitVector<Scalar<T>>& axis_) {
+
+        // Set it and normalize it
+        axis(0) = axis_(0);
+        axis(1) = axis_(1);
+        axis(2) = axis_(2);
+        axis = axis / sqrt(axis(0) * axis(0) +
+                           axis(1) * axis(1) +
+                           axis(2) * axis(2));
+
+        // Update the rotation matrix
+        W.update();
+
+        // Clear the cache
+        cache.clear();
+
+    }
+
+    /**
+    Return a copy of the axis
+
+    */
+    template <class T>
+    UnitVector<Scalar<T>> Map<T>::getAxis() const {
+        return axis;
+    }
+
+    /**
+    Resize the gradient vector and set the string vector of gradient names
+
+    */
+    template <class T>
+    inline void Map<T>::resizeGradient(const int n_ylm, const int n_ul) {
+
+        // Do we need to do anything?
+        if ((n_ylm == dF_n_ylm) && (n_ul == dF_n_ul))
+            return;
+
+        // Resize the gradient vector
+        dF.resize(4 + n_ylm + n_ul, nwav);
+
+        // Reset the vector of names and start from scratch
+        dF_names.clear();
+        dF_names.reserve(dF_orbital_names.size() + n_ylm + n_ul);
+        dF_names.insert(dF_names.end(), dF_orbital_names.begin(),
+                        dF_orbital_names.end());
+        dF_names.insert(dF_names.end(), dF_ylm_names.begin(),
+                        dF_ylm_names.begin() + n_ylm);
+        dF_names.insert(dF_names.end(), dF_ul_names.begin(),
+                        dF_ul_names.begin() + n_ul);
+        dF_n_ylm = n_ylm;
+        dF_n_ul = n_ul;
+
+    }
+
+    /**
+    Return a human-readable map string
+
+    */
+    template <class T>
+    std::string Map<T>::info() {
+        std::ostringstream os;
+        os << "<" << precision<Scalar<T>>() << " precision "
+           << "map of "
+           << "degree " << y_deg << " "
+           << "with ";
+        if (nwav == 1)
+            os << "one wavelength bin and ";
+        else
+            os << nwav << " wavelength bins and ";
+        if (u_deg == 0)
+            os << "no ";
+        else if (u_deg == 1)
+            os << "1st order ";
+        else if (u_deg == 2)
+            os << "2nd order ";
+        else if (u_deg == 3)
+            os << "3rd order ";
+        else
+            os << u_deg << "th order ";
+        os << "limb darkening"
+           << ">";
         return std::string(os.str());
     }
 
 
-    /* ------------- */
-    /*   ROTATIONS   */
-    /* ------------- */
+    /* -------------- */
+    /*   OPERATIONS   */
+    /* -------------- */
 
+    /**
+    Rotate the base map in-place given `theta` in **degrees**
 
-    // Rotate the base map in-place given `costheta` and `sintheta`
+    */
     template <class T>
-    void Map<T>::rotate(const T& costheta, const T& sintheta) {
-
-        // Rotate yzeta in-place about zhat
-        rotatez(costheta, sintheta, yzeta, yzeta);
-
-        // Rotate out of the `zeta` frame
-        for (int l = 0; l < lmax + 1; l++) {
-            y.segment(l * l, 2 * l + 1) = RzetaInv.Real[l] * yzeta.segment(l * l, 2 * l + 1);
-        }
-
-        // Update auxiliary variables
+    void Map<T>::rotate(const Scalar<T>& theta_) {
+        Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
+        W.rotate(cos(theta), sin(theta), y);
         update();
     }
 
-    // Shortcut to rotate the base map in-place given just `theta`
+    /**
+    Limb-darken a polynomial map, and optionally compute the
+    gradient of the resulting map with respect to the input
+    polynomial map and the input limb-darkening map.
+
+    */
     template <class T>
-    void Map<T>::rotate(const T& theta) {
-        rotate(cos(theta), sin(theta));
-    }
+    inline void Map<T>::limbDarken(const T& poly, T& poly_ld, bool gradient) {
+        // Bind references to temporaries for speed
+        Row<T>& rTp(tmp.tmpRow[0]);
+        Row<T>& rTp_ld(tmp.tmpRow[1]);
+        Row<T>& norm(tmp.tmpRow[2]);
+        Matrix<Scalar<T>>& outer_inner(tmp.tmpMatrix[0]);
+        Matrix<Scalar<T>>& grad_norm(tmp.tmpMatrix[1]);
 
-    // Rotate the base map given `costheta` and `sintheta`
-    template <class T>
-    inline void Map<T>::rotate(const T& costheta, const T& sintheta, Vector<T>& yout) {
+        // Multiply a polynomial map by the LD polynomial
+        if (gradient) {
+            polymul(y_deg, poly, u_deg, p_u, lmax, poly_ld, dLDdp, dLDdp_u);
+        } else
+            polymul(y_deg, poly, u_deg, p_u, lmax, poly_ld);
 
-        // Rotate yzeta about zhat and store in yzeta_rot;
-        rotatez(costheta, sintheta, yzeta, yzeta_rot);
+        // Compute the normalization by enforcing that limb darkening does not
+        // change the total disk-integrated flux.
+        rTp = dot(B.rT, poly);
+        if (hasZero(rTp))
+            throw errors::ValueError("The visible map has zero net flux "
+                                     "and cannot be limb-darkened.");
+        rTp_ld = dot(B.rT, poly_ld);
+        norm = cwiseQuotient(rTp, rTp_ld);
 
-        // Rotate out of the `zeta` frame
-        for (int l = 0; l < lmax + 1; l++) {
-            yout.segment(l * l, 2 * l + 1) = RzetaInv.Real[l] * yzeta_rot.segment(l * l, 2 * l + 1);
-        }
-
-    }
-
-    // Shortcut to rotate the base map given just `theta`
-    template <class T>
-    inline void Map<T>::rotate(const T& theta, Vector<T>& yout) {
-        rotate(cos(theta), sin(theta), yout);
-    }
-
-    // Fast rotation about the z axis, skipping the Wigner matrix computation
-    // See https://github.com/rodluger/starry/issues/137#issuecomment-405975092
-    template <class T>
-    inline void Map<T>::rotatez(const T& costheta, const T& sintheta, const Vector<T>& yin, Vector<T>& yout) {
-        cosnt(1) = costheta;
-        sinnt(1) = sintheta;
-        for (int n = 2; n < lmax + 1; n++) {
-            cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
-            sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
-        }
-        int n = 0;
-        for (int l = 0; l < lmax + 1; l++) {
-            for (int m = -l; m < 0; m++) {
-                cosmt(n) = cosnt(-m);
-                sinmt(n) = -sinnt(-m);
-                yrev(n) = yin(l * l + l - m);
-                n++;
-            }
-            for (int m = 0; m < l + 1; m++) {
-                cosmt(n) = cosnt(m);
-                sinmt(n) = sinnt(m);
-                yrev(n) = yin(l * l + l - m);
-                n++;
+        // We need to do a little chain rule to propagate
+        // the normalization to the gradient. There may
+        // exist faster way that avoids the for loop.
+        if (gradient) {
+            for (int n = 0; n < nwav; ++n) {
+                outer_inner = getColumn(poly_ld, n) * B.rT;
+                outer_inner /= getColumn(rTp_ld, n);
+                grad_norm = dLDdp(n) * getColumn(norm, n);
+                dLDdp(n) = grad_norm + outer_inner - outer_inner * grad_norm;
+                grad_norm = dLDdp_u(n) * getColumn(norm, n);
+                dLDdp_u(n) = grad_norm - outer_inner * grad_norm;
             }
         }
-        yout = cosmt.cwiseProduct(yin) - sinmt.cwiseProduct(yrev);
+
+        // Finally, apply the normalization
+        poly_ld = colwiseProduct(poly_ld, norm);
+
+    }
+
+    /**
+    Check whether the map is physical: the spherical harmonic
+    component and the limb darkening components must
+    independently be positive semi-definite, and the limb darkening
+    component must be a monotonically decreasing function toward
+    the limb.
+
+    To ensure positive semi-definiteness...
+
+    To ensure monotonicity, note that the radial profile is
+
+         I = 1 - (1 - mu)^1 u1 - (1 - mu)^2 u2 - ...
+           = x^0 c0 + x^1 c1 + x^2 c2 + ...
+
+    where x = (1 - mu), c = -u, c(0) = 1. We want dI/dx < 0
+    everywhere, so we require the polynomial
+
+         P = x^0 c1 + 2x^1 c2 + 3x^2 c3 + ...
+
+    to have zero roots in the interval [0, 1]. We use Sturm's
+    theorem for this.
+
+    */
+    template <class T>
+    inline RowBool<T> Map<T>::isPhysical(const Scalar<T>& epsilon,
+                                         const int max_iterations) {
+        RowBool<T> physical(nwav);
+        Row<T> center, limb;
+        if (u_deg > 0) {
+            center = (*this)(0, 0, 0);
+            limb = (*this)(0, 1, 0);
+        }
+
+        for (int n = 0; n < nwav; ++n) {
+
+            // 1. Check if the polynomial map is PSD
+            if (y_deg == 0) {
+
+                // Trivial case
+                Row<T> y00 = getRow(y, 0);
+                for (int n = 0; n < nwav; ++n) {
+                    setIndex(physical, n, getColumn(y00, n) >= 0);
+                }
+
+            } else if (y_deg == 1) {
+
+                // Dipole: analytic
+                Row<T> y00 = getRow(y, 0);
+                Row<T> y1m1 = getRow(y, 1);
+                Row<T> y10 = getRow(y, 2);
+                Row<T> y1p1 = getRow(y, 3);
+                setIndex(physical, n,
+                         getColumn(y1m1, n) * getColumn(y1m1, n) +
+                         getColumn(y10, n) * getColumn(y10, n) +
+                         getColumn(y1p1, n) * getColumn(y1p1, n)
+                         <= getColumn(y00, n) / 3.);
+
+            } else {
+
+                // Higher degrees are solved numerically
+                setIndex(physical, n, M.psd(getColumn(p, n),
+                                            epsilon, max_iterations));
+
+            }
+
+            // 2. Check if the LD map is PSD and monotonic
+            if (u_deg > 0) {
+
+                // First of all, ensure the function is *decreasing*
+                // toward the limb
+                if (getIndex(center, n) - getIndex(limb, n) < 0) {
+                    setIndex(physical, n, false);
+                    continue;
+                }
+
+                // Sturm's theorem on the intensity to get PSD
+                Vector<Scalar<T>> c = -getColumn(u, n).reverse();
+                c(c.size() - 1) = 1;
+                // Hack: DFM's Sturm routine doesn't behave when
+                // the linear term is zero. Not sure why.
+                if (c(c.size() - 2) == 0)
+                    c(c.size() - 2) = -mach_eps<Scalar<T>>();
+                int nroots = sturm::polycountroots(c);
+                if (nroots != 0) {
+                    setIndex(physical, n, false);
+                    continue;
+                }
+
+                // Sturm's theorem on the deriv to get monotonicity
+                Vector<Scalar<T>> du = getColumn(u, n).segment(1, lmax);
+                // Another hack
+                if (du(0) == 0)
+                    du(0) = mach_eps<Scalar<T>>();
+                for (int i = 0; i < lmax; ++i)
+                    du(i) *= (i + 1);
+                c = -du.reverse();
+                nroots = sturm::polycountroots(c);
+                if (nroots != 0) {
+                    setIndex(physical, n, false);
+                    continue;
+                }
+
+            }
+
+        }
+
+        return physical;
+
     }
 
 
@@ -423,140 +943,111 @@ namespace maps {
     /*   INTENSITY   */
     /* ------------- */
 
+    /**
+    Compute the polynomial basis at a point; templated for AD capability
 
-    // Evaluate our map at a given (x0, y0) coordinate
-    template <class T>
-    T Map<T>::evaluate(const T& theta, const T& x0, const T& y0) {
-
-        // Rotate the map into view
-        if (theta == 0) {
-            ptrp = &p;
-        } else {
-            if (theta != theta_y_rot) rotate(theta, y_rot);
-            theta_y_rot = theta;
-            p_rot = C.A1 * y_rot;
-            ptrp = &p_rot;
-        }
-
-        // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
-
+    */
+    template <class T> template <typename U>
+    inline void Map<T>::polyBasis(Power<U>& xpow, Power<U>& ypow,
+                                   VectorT<U>& basis) {
         int l, m, mu, nu, n = 0;
-        T z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
-
-        // Evaluate each harmonic
-        T res = 0;
-        for (l=0; l<lmax+1; l++) {
-            for (m=-l; m<l+1; m++) {
-                if (abs((*ptrp)(n)) > 10 * mach_eps<T>()) {
-                    mu = l - m;
-                    nu = l + m;
-                    if ((nu % 2) == 0) {
-                        if ((mu > 0) && (nu > 0))
-                            res += (*ptrp)(n) * pow(x0, mu / 2) * pow(y0, nu / 2);
-                        else if (mu > 0)
-                            res += (*ptrp)(n) * pow(x0, mu / 2);
-                        else if (nu > 0)
-                            res += (*ptrp)(n) * pow(y0, nu / 2);
-                        else
-                            res += (*ptrp)(n);
-                    } else {
-                        if ((mu > 1) && (nu > 1))
-                            res += (*ptrp)(n) * pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
-                        else if (mu > 1)
-                            res += (*ptrp)(n) * pow(x0, (mu - 1) / 2) * z0;
-                        else if (nu > 1)
-                            res += (*ptrp)(n) * pow(y0, (nu - 1) / 2) * z0;
-                        else
-                            res += (*ptrp)(n) * z0;
-                    }
-                }
-                n++;
-            }
-
-        }
-        return res;
-
-    }
-
-    // Evaluate our map at a given (x0, y0) coordinate
-    template <>
-    Grad Map<Grad>::evaluate(const Grad& theta, const Grad& x0, const Grad& y0) {
-
-        // Rotate the map into view
-        if (theta == 0) {
-            ptrp = &p;
-
-            // Compute the rotation matrix explicitly
-            for (int l = 0; l < lmax + 1; l++)
-                R.Real[l] = Matrix<Grad>::Identity(2 * l + 1, 2 * l + 1);
-
-        } else {
-            rotate(theta, y_rot);
-            p_rot = C.A1 * y_rot;
-            ptrp = &p_rot;
-
-            // We need to explicitly compute the rotation matrix to get
-            // the derivatives below. See the explanation in `flux`.
-            for (int l = 0; l < lmax + 1; l++) {
-                for (int j = 0; j < 2 * l + 1; j++)
-                    R.Real[l].col(j) = RzetaInv.Real[l].col(j) * cosmt(l * l + j) +
-                                       RzetaInv.Real[l].col(2 * l - j) * sinmt(l * l + j);
-                R.Real[l] = R.Real[l] * Rzeta.Real[l];
-            }
-
-        }
-
-        // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
-
-        int l, m, mu, nu, n = 0;
-        Grad z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
-
-        // Evaluate each harmonic
-        for (l=0; l<lmax+1; l++) {
-            for (m=-l; m<l+1; m++) {
+        U z = sqrt(1.0 - xpow() * xpow() - ypow() * ypow());
+        for (l=0; l<lmax+1; ++l) {
+            for (m=-l; m<l+1; ++m) {
                 mu = l - m;
                 nu = l + m;
                 if ((nu % 2) == 0) {
                     if ((mu > 0) && (nu > 0))
-                        basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
+                        basis(n) = xpow(mu / 2) * ypow(nu / 2);
                     else if (mu > 0)
-                        basis(n) = pow(x0, mu / 2);
+                        basis(n) = xpow(mu / 2);
                     else if (nu > 0)
-                        basis(n) = pow(y0, nu / 2);
+                        basis(n) = ypow(nu / 2);
                     else
                         basis(n) = 1;
                 } else {
                     if ((mu > 1) && (nu > 1))
-                        basis(n) = pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
+                        basis(n) = xpow((mu - 1) / 2) *
+                                   ypow((nu - 1) / 2) * z;
                     else if (mu > 1)
-                        basis(n) = pow(x0, (mu - 1) / 2) * z0;
+                        basis(n) = xpow((mu - 1) / 2) * z;
                     else if (nu > 1)
-                        basis(n) = pow(y0, (nu - 1) / 2) * z0;
+                        basis(n) = ypow((nu - 1) / 2) * z;
                     else
-                        basis(n) = z0;
+                        basis(n) = z;
                 }
                 n++;
             }
+        }
+    }
 
+    /**
+    Evaluate the map at a given (x, y) coordinate
+
+    */
+    template <class T>
+    inline Row<T> Map<T>::operator()(const Scalar<T>& theta_,
+                                     const Scalar<T>& x_,
+                                     const Scalar<T>& y_) {
+
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+        T& Ry(tmp.tmpT[0]);
+        T& A1Ry(tmp.tmpT[1]);
+        Power<Scalar<T>>& xpow(tmp.tmpPower[0]);
+        Power<Scalar<T>>& ypow(tmp.tmpPower[1]);
+        VectorT<Scalar<T>>& pT(tmp.tmpRowVector[0]);
+        pT.resize(N);
+
+        // Convert to internal types
+        Scalar<T> x0 = x_;
+        Scalar<T> y0 = y_;
+        Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
+
+        // Disable rotation for constant maps
+        if (y_deg == 0) theta = 0;
+
+        // Check if outside the sphere
+        if (x0 * x0 + y0 * y0 > 1.0) {
+            result *= NAN;
+            return result;
         }
 
-        // Compute the map derivs
-        if (theta == 0) {
+        if ((theta == cache.theta) && (cache.oper == cache.EVAL)) {
 
-            dFdy = basis * C.A1;
+            // We use the cached version of the polynomial map
+            A1Ry = cache.p;
 
         } else {
 
-            pTA = basis * C.A1;
-            for (int l = 0; l < lmax + 1; l++)
-                dFdy.segment(l * l, 2 * l + 1) = pTA.segment(l * l, 2 * l + 1) * R.Real[l];
+            // Rotate the spherical harmonic map into view
+            if (y_deg > 0) {
+                W.rotate(cos(theta), sin(theta), Ry);
+                A1Ry = B.A1 * Ry;
+            } else {
+                A1Ry = p;
+            }
+
+            if (u_deg > 0) {
+                // Apply limb darkening
+                limbDarken(A1Ry, p_uy);
+                A1Ry = p_uy;
+            }
+
+            // Cache the polynomial map
+            cache.oper = cache.EVAL;
+            cache.theta = theta;
+            cache.p = A1Ry;
 
         }
 
+        // Compute the polynomial basis
+        xpow.reset(x0);
+        ypow.reset(y0);
+        polyBasis(xpow, ypow, pT);
+
         // Dot the coefficients in to our polynomial map
-        return basis.dot(*ptrp);
+        return pT * A1Ry;
 
     }
 
@@ -565,687 +1056,737 @@ namespace maps {
     /*      FLUX     */
     /* ------------- */
 
+    /**
+    Compute the flux during or outside of an occultation
+    for the general case of a spherical harmonic map
+    with or without limb darkening.
 
-    // Compute the total flux during or outside of an occultation numerically
-    template <class T>
-    T Map<T>::flux_numerical(const T& theta, const T& xo, const T& yo, const T& ro, double tol) {
-
-        // Impact parameter
-        T b = sqrt(xo * xo + yo * yo);
-
-        // Check for complete occultation
-        if (b <= ro - 1) return 0;
-
-        // Rotate the map into view
-        if (theta == 0) {
-            ptrp = &p;
-        } else {
-            if (theta != theta_y_rot) rotate(theta, y_rot);
-            theta_y_rot = theta;
-            p_rot = C.A1 * y_rot;
-            ptrp = &p_rot;
-        }
-
-        // Compute the flux numerically
-        return numeric::flux(xo, yo, ro, lmax, *ptrp, tol);
-
-    }
-
-    // Compute the total flux during or outside of an occultation
-    template <class T>
-    T Map<T>::flux(const T& theta, const T& xo, const T& yo, const T& ro) {
-
-        // Impact parameter
-        T b = sqrt(xo * xo + yo * yo);
-
-        // Check for complete occultation
-        if (b <= ro - 1) return 0;
-
-        // Rotate the map into view
-        if (theta == 0) {
-            ptry = &y;
-        } else {
-            if (theta != theta_y_rot) rotate(theta, y_rot);
-            theta_y_rot = theta;
-            ptry = &y_rot;
-        }
-
-        // No occultation: cake
-        if ((b >= 1 + ro) || (ro == 0)) {
-
-            return C.rTA1 * (*ptry);
-
-        // Occultation
-        } else {
-
-            // Align occultor with the +y axis
-            if ((b > 0) && ((xo != 0) || (yo < 0))) {
-                rotatez(yo / b, xo / b, *ptry, y_rotz);
-                ptry = &y_rotz;
-            }
-
-            // Perform the rotation + change of basis
-            ARRy = C.A * (*ptry);
-
-            // Compute the sT vector
-            solver::computesT(G, b, ro, ARRy);
-
-            // Dot the result in and we're done
-            return G.sT * ARRy;
-
-        }
-
-    }
-
-    /*
-    Compute the total flux & its derivatives during or outside of an occultation.
-    Note that we compute map derivs manually for speed.
-    We've factored stuff so that the flux is
-
-        f = (s^T . A) . (Rz' . RzetaInv . Rz . Rzeta) . y
-
-    The derivative is therefore
-
-        df / dy = (s^T . A) . R
-
-    where
-
-        R = (Rz' . RzetaInv . Rz . Rzeta)
     */
-    template <>
-    Grad Map<Grad>::flux(const Grad& theta, const Grad& xo, const Grad& yo_, const Grad& ro) {
+    template <class T>
+    inline Row<T> Map<T>::flux(const Scalar<T>& theta_,
+                               const Scalar<T>& xo_,
+                               const Scalar<T>& yo_,
+                               const Scalar<T>& ro_,
+                               bool gradient,
+                               bool numerical) {
 
-        // Local copy so we can nudge it away from the unstable point
-        Grad yo = yo_;
-
-        // Impact parameter
-        Grad b = sqrt(xo * xo + yo * yo);
-
-        // Nudge away from point instabilities
-        if (b == 0) {
-            yo += mach_eps<double>();
-            b = sqrt(xo * xo + yo * yo);
-        } else if (b == (1 - ro)) {
-            b -= mach_eps<double>();
-        } else if (b == 1 + ro) {
-            b += mach_eps<double>();
+        if (gradient) {
+            if (numerical)
+                throw errors::NotImplementedError("Numerical gradients of the "
+                                                  "flux have not been implemented.");
+            // If we're computing the gradient as well,
+            // call the specialized functions
+            if (y_deg == 0)
+                return fluxLDWithGradient(xo_, yo_, ro_);
+            else if (u_deg == 0)
+                return fluxYlmWithGradient(theta_, xo_, yo_, ro_);
+            else
+                return fluxWithGradient(theta_, xo_, yo_, ro_);
+        } else if (y_deg == 0) {
+            // If only the Y_{0,0} term is set, call the
+            // faster method for pure limb-darkening
+            return fluxLD(xo_, yo_, ro_);
         }
 
-        // TODO: There are still deriv instabilities in the limits
-        // b --> |1 - r| and b --> 1 + r. They are not terrible
-        // (and only present in dF/db) but should be fixed.
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+        T& Ry(tmp.tmpT[0]);
+        T& A1Ry(tmp.tmpT[1]);
+        T& RRy(tmp.tmpT[2]);
+        T& ARRy(tmp.tmpT[3]);
+        Vector<Scalar<T>>& A1Ryn(tmp.tmpColumnVector[0]);
+
+        // Convert to internal types
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+        Scalar<T> theta = theta_ * (pi<Scalar<T>>() / 180.);
+
+        // Impact parameter
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
 
         // Check for complete occultation
         if (b <= ro - 1) {
-            dFdy = Vector<Grad>::Zero(N);
-            return 0;
+            setZero(result);
+            return result;
         }
 
         // Rotate the map into view
-        if (theta != theta_y_rot) {
-            rotate(theta, y_rot);
-            // Here we compute R = RzetaInv * Rz * Rzeta so we can
-            // analytically compute the map derivs below.
-            // Note that the Rz matrix looks like this:
-            /*
-                ...                             ...
-                    C3                      S3
-                        C2              S2
-                            C1      S1
-                                1
-                           -S1      C1
-                       -S2              C2
-                   -S3                      C3
-                ...                             ...
-            */
-            // where CX = cos(X theta) and SX = sin(X theta).
-            // This is the sum of a diagonal and an anti-diagonal
-            // matrix, so the dot product of RzetaInv and Rz can
-            // be computed efficiently by doing row-wise and col-wise
-            // operations on RzetaInv.
-            for (int l = 0; l < lmax + 1; l++) {
-                for (int j = 0; j < 2 * l + 1; j++)
-                    R.Real[l].col(j) = RzetaInv.Real[l].col(j) * cosmt(l * l + j) +
-                                       RzetaInv.Real[l].col(2 * l - j) * sinmt(l * l + j);
-                R.Real[l] = R.Real[l] * Rzeta.Real[l];
-            }
+        if (y_deg > 0) {
+            W.rotate(cos(theta), sin(theta), Ry);
+        } else {
+            Ry = y;
         }
-        theta_y_rot = theta;
-        ptry = &y_rot;
 
-        // No occultation: cake
+        // No occultation
         if ((b >= 1 + ro) || (ro == 0)) {
 
-            // Compute map derivs
-            for (int l = 0; l < lmax + 1; l++)
-                dFdy.segment(l * l, 2 * l + 1) = C.rTA1.segment(l * l, 2 * l + 1) * R.Real[l];
-
-            return C.rTA1 * (*ptry);
+            // Easy. Note that limb-darkening does not
+            // affect the total disk-integrated flux!
+            return (B.rTA1 * Ry);
 
         // Occultation
         } else {
 
-            // Align occultor with the +y axis
-            // Even if xo = 0, we compute the prime rotation matrix
-            // to correctly propagate all the derivs.
-            if (b > 0) {
+            // Apply limb darkening
+            if (u_deg > 0) {
 
-                // Rotate
-                rotatez(yo / b, xo / b, *ptry, y_rotz);
-                ptry = &y_rotz;
+                if ((theta == cache.theta) && (cache.oper == cache.FLUX)) {
 
-                // Update the rotation matrix for the map derivs
-                // Since we rotated the map, we need to dot Rz' into R
-                // See our note above on what's going on here.
-                for (int l = 0; l < lmax + 1; l++) {
-                    for (int j = 0; j < 2 * l + 1; j++)
-                        RR.Real[l].row(j) = R.Real[l].row(j) * cosmt(l * l + j) -
-                                            R.Real[l].row(2 * l - j) * sinmt(l * l + j);
+                    // Easy. Use the cached rotated map
+                    Ry = cache.y;
+
+                } else {
+
+                    // Transform into the polynomial basis
+                    A1Ry = B.A1 * Ry;
+
+                    // Limb-darken it
+                    limbDarken(A1Ry, p_uy);
+
+                    // Back to the spherical harmonic basis
+                    Ry = B.A1Inv * p_uy;
+
+                    // Cache the map
+                    cache.oper = cache.FLUX;
+                    cache.theta = theta;
+                    cache.y = Ry;
+
                 }
 
             }
 
-            // Perform the rotation + change of basis
-            ARRy = C.A * (*ptry);
+            // Compute the flux numerically.
+            // NOTE: This is VERY SLOW and used exclusively for debugging!
+            if (numerical) {
+                const Scalar<T> tol = 1e-5;
+                for (int n = 0; n < nwav; ++n) {
+                    A1Ryn =  B.A1 * getColumn(Ry, n);
+                    setIndex(result, n,
+                             numeric::flux(xo, yo, ro, lmax, A1Ryn, tol));
+                }
+                return result;
+            }
 
-            // Compute the sT vector
-            solver::computesT(G, b, ro, ARRy);
+            // Rotate the map to align the occultor with the +y axis
+            // Change basis to Green's polynomials
+            if ((y_deg > 0) && (b > 0) && ((xo != 0) || (yo < 0))) {
+                W.rotatez(yo / b, xo / b, Ry, RRy);
+                ARRy = B.A * RRy;
+            } else {
+                ARRy = B.A * Ry;
+            }
 
-            // Compute the derivatives w.r.t. the map coefficients
-            sTA = G.sT * C.A;
-            for (int l = 0; l < lmax + 1; l++)
-                dFdy.segment(l * l, 2 * l + 1) = sTA.segment(l * l, 2 * l + 1) * RR.Real[l];
+            // Compute the sT vector (sparsely)
+            for (int n = 0; n < N; ++n)
+                G.skip(n) = !(ARRy.block(n, 0, 1, nwav).array() != 0.0).any();
+            G.compute(b, ro);
 
-            // Dot the result in to get the flux
+            // Dot the result in and we're done
             return G.sT * ARRy;
 
         }
 
     }
 
+    /**
+    Compute the flux during or outside of an occultation
+    for a pure limb-darkened map (Y_{l,m} = 0 for l > 0).
 
-    /* ---------------- */
-    /*   MINIMIZATION   */
-    /* ---------------- */
-
-
-    // Check whether the map is positive semi-definite
+    */
     template <class T>
-    bool Map<T>::psd(double epsilon, int max_iterations) {
-        if (lmax == 0) {
-            // Trivial case
-            return y(0) >= 0;
-        } else if (lmax == 1) {
-            // Dipole case
-            return y(1) * y(1) + y(2) * y(2) + y(3) * y(3) <= y(0) / 3;
-        } else {
-            // Not analytic! For maps of type `double`, we can
-            // run our numerical search for the minimum (see below)
-            throw errors::MinimumIsNotAnalytic();
-        }
-    }
+    inline Row<T> Map<T>::fluxLD(const Scalar<T>& xo_,
+                                  const Scalar<T>& yo_,
+                                  const Scalar<T>& ro_) {
 
-    // Check whether the map is positive semi-definite
-    // Double override: for l > 1, we do this numerically
-    template <>
-    bool Map<double>::psd(double epsilon, int max_iterations) {
-        if (lmax == 0) {
-            // Trivial case
-            return y(0) >= 0;
-        } else if (lmax == 1) {
-            // Dipole case
-            return y(1) * y(1) + y(2) * y(2) + y(3) * y(3) <= y(0) / 3;
-        } else {
-            // We need to solve this numerically
-            return M.psd(epsilon, max_iterations);
-        }
-    }
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
 
-
-    // ****************************
-    // ----------------------------
-    //
-    // The limb-darkened map class
-    //
-    // ----------------------------
-    // ****************************
-    template <class T>
-    class LimbDarkenedMap {
-
-        protected:
-
-            // Temporary variables
-            Vector<T> tmpvec;
-            Vector<T> tmpy;
-            VectorT<T> sTA;
-
-        public:
-
-            // The map vectors
-            Vector<T> y;
-            Vector<T> p;
-            Vector<T> g;
-            Vector<T> u;
-
-            // Map order
-            int N;
-            int lmax;
-
-            // Derivatives dictionary
-            std::map<string, Eigen::VectorXd> derivs;
-            Vector<T> dFdu;
-            Vector<T> dndu;
-            Matrix<T> dydu;
-            Matrix<T> dpdu;
-            Matrix<T> dgdu;
-
-            // Constant matrices
-            ConstantMatrices<T> C;
-
-            // Greens data
-            solver::Greens<T> G;
-
-            // Constructor: initialize map to zeros
-            LimbDarkenedMap(int lmax=2) :
-                  lmax(lmax), C(lmax),
-                  G(lmax) {
-                N = (lmax + 1) * (lmax + 1);
-                y = Vector<T>::Zero(N);
-                p = Vector<T>::Zero(N);
-                g = Vector<T>::Zero(N);
-                u = Vector<T>::Zero(lmax + 1);
-                tmpy = Vector<T>::Zero(lmax + 1);
-                tmpvec = Vector<T>::Zero(N);
-                sTA = VectorT<T>::Zero(N);
-                dFdu = Vector<T>::Zero(lmax + 1);
-                dndu = Vector<T>::Zero(lmax + 1);
-                dydu = Matrix<T>::Zero(N, lmax + 1);
-                dpdu = Matrix<T>::Zero(N, lmax + 1);
-                dgdu = Matrix<T>::Zero(N, lmax + 1);
-                reset();
-            }
-
-            // Public methods
-            T evaluate(const T& x0=0, const T& y0=0);
-            void update();
-            bool psd();
-            bool mono();
-            void setCoeff(int l, T coeff);
-            T getCoeff(int l);
-            void reset();
-            T flux_numerical(const T& xo=0, const T& yo=0, const T& ro=0, double tol=1e-4);
-            T flux(const T& xo=0, const T& yo=0, const T& ro=0);
-            std::string repr();
-
-    };
-
-    // Update the maps after the coefficients changed
-    template <class T>
-    void LimbDarkenedMap<T>::update() {
-
-        // Update our map vectors
-        T norm;
-        y.setZero(N);
-
-        // Fast relations for constant, linear, and quad limb darkening
-        if (lmax == 0) {
-            norm = PI<T>();
-            y(0) = 2 * SQRT_PI<T>() / norm;
-            p.setZero(N);
-            g.setZero(N);
-            p(0) = 1 / norm;
-            g(0) = p(0);
-
-        } else if (lmax == 1) {
-            norm = PI<T>() * (1 - u(1) / 3.);
-            y(0) = (2. / norm) * SQRT_PI<T>() / 3. * (3 - 3 * u(1));
-            y(2) = (2. / norm) * SQRT_PI<T>() / sqrt(3.) * u(1);
-            p.setZero(N);
-            g.setZero(N);
-            p(0) = (1 - u(1)) / norm;
-            p(2) = u(1) / norm;
-            g(0) = p(0);
-            g(2) = p(2);
-
-        } else if (lmax == 2) {
-            norm = PI<T>() * (1 - u(1) / 3. - u(2) / 6.);
-            y(0) = (2. / norm) * SQRT_PI<T>() / 3. * (3 - 3 * u(1) - 4 * u(2));
-            y(2) = (2. / norm) * SQRT_PI<T>() / sqrt(3.) * (u(1) + 2 * u(2));
-            y(6) = (-4. / 3.) * SQRT_PI<T>() / sqrt(5.) * u(2) / norm;
-            p.setZero(N);
-            g.setZero(N);
-            p(0) = (1 - u(1) - 2 * u(2)) / norm;
-            p(2) = (u(1) + 2 * u(2)) / norm;
-            p(4) = u(2) / norm;
-            p(8) = u(2) / norm;
-            g(0) = p(0);
-            g(2) = p(2);
-            g(4) = p(4) / 3.;
-            g(8) = p(8);
-
-        } else {
-            norm = 1;
-            for (int l = 1; l < lmax + 1; l++)
-                norm -= 2.0 * u(l) / ((l + 1) * (l + 2));
-            norm *= PI<T>();
-            tmpy = C.U * u;
-
-            int n = 0;
-            for (int l = 0; l < lmax + 1; l++)
-                y(l * (l + 1)) = tmpy(n++) / norm;
-
-            p = C.A1 * y;
-            g = C.A * y;
-        }
-    }
-
-    // Update the maps after the coefficients changed
-    // **Overload for autodiff of map coeffs**
-    template <>
-    void LimbDarkenedMap<Grad>::update() {
-
-        // Update our map vectors
-        Grad norm = 1;
-        y.setZero(N);
-        dndu.setZero(lmax + 1);
-        for (int l = 1; l < lmax + 1; l++) {
-            norm -= 2 * u(l) / ((l + 1) * (l + 2));
-            dndu(l) -= 2.0 / ((l + 1) * (l + 2));
-        }
-        norm *= PI<double>();
-        dndu *= PI<double>();
-        tmpy = C.U * u;
-
-        int n = 0;
-        dydu.setZero(N, lmax + 1);
-        for (int l = 0; l < lmax + 1; l++) {
-            y(l * (l + 1)) = tmpy(n) / norm;
-            dydu.row(l * (l + 1)) = ((C.U.row(n).transpose() * norm - tmpy(n) * dndu) / (norm * norm));
-            n++;
-        }
-
-        p = C.A1 * y;
-        g = C.A * y;
-        dpdu = C.A1 * dydu;
-        dgdu = C.A * dydu;
-
-    }
-
-    // Check whether the map is positive semi-definite
-    // using Sturm's theorem
-    template <class T>
-    bool LimbDarkenedMap<T>::psd() {
-        Vector<T> c = -u.reverse();
-        c(c.size() - 1) = 1;
-        int nroots = sturm::polycountroots(c);
-        if (nroots == 0)
-            return true;
-        else
-            return false;
-    }
-
-    // Check whether the map is monotonically decreasing
-    // toward the limb using Sturm's theorem on the derivative
-    template <class T>
-    bool LimbDarkenedMap<T>::mono() {
-        // The radial profile is
-        //      I = 1 - (1 - mu)^1 u1 - (1 - mu)^2 u2 - ...
-        //        = x^0 c0 + x^1 c1 + x^2 c2 + ...
-        // where x = (1 - mu), c = -u, c(0) = 1
-        // We want dI/dx < 0 everywhere, so we want the polynomial
-        //      P = x^0 c1 + 2x^1 c2 + 3x^2 c3 + ...
-        // to have zero roots in the interval [0, 1].
-        Vector<T> du = u.segment(1, lmax);
-        for (int i=0; i<lmax; i++) du(i) *= (i + 1);
-        Vector<T> c = -du.reverse();
-        int nroots = sturm::polycountroots(c);
-        if (nroots == 0)
-            return true;
-        else
-            return false;
-    }
-
-    // Evaluate our map at a given (x0, y0) coordinate
-    template <class T>
-    T LimbDarkenedMap<T>::evaluate(const T& x0, const T& y0) {
-
-        // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
-
-        int l, m, mu, nu, n = 0;
-        T z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
-
-        // Evaluate each harmonic
-        T res = 0;
-        for (l=0; l<lmax+1; l++) {
-            for (m=-l; m<l+1; m++) {
-                if (abs(p(n)) > 10 * mach_eps<T>()) {
-                    mu = l - m;
-                    nu = l + m;
-                    if ((nu % 2) == 0)
-                        res += p(n) * pow(x0, mu / 2) * pow(y0, nu / 2);
-                    else
-                        res += p(n) * pow(x0, (mu - 1) / 2) *
-                                              pow(y0, (nu - 1) / 2) * z0;
-                }
-                n++;
-            }
-        }
-        return res;
-
-    }
-
-    // Evaluate our map at a given (x0, y0) coordinate
-    // **Gradient over-ride: compute map derivs manually for speed**
-    template <>
-    Grad LimbDarkenedMap<Grad>::evaluate(const Grad& x0, const Grad& y0) {
-
-        // Check if outside the sphere
-        if (x0 * x0 + y0 * y0 > 1.0) return NAN * x0;
-
-        int l, m, mu, nu, n = 0;
-        Grad z0 = sqrt(1.0 - x0 * x0 - y0 * y0);
-
-        // Evaluate each harmonic
-        Vector<Grad> basis;
-        basis.resize(N);
-        for (l=0; l<lmax+1; l++) {
-            for (m=-l; m<l+1; m++) {
-                mu = l - m;
-                nu = l + m;
-                if ((nu % 2) == 0)
-                    basis(n) = pow(x0, mu / 2) * pow(y0, nu / 2);
-                else
-                    basis(n) = pow(x0, (mu - 1) / 2) * pow(y0, (nu - 1) / 2) * z0;
-                n++;
-            }
-        }
-
-        dFdu = basis.transpose() * dpdu;
-        return basis.dot(p);
-
-    }
-
-    // Compute the total flux during or outside of an occultation numerically
-    template <class T>
-    T LimbDarkenedMap<T>::flux_numerical(const T& xo, const T& yo, const T& ro, double tol) {
+        // Convert to internal types
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
 
         // Impact parameter
-        T b = sqrt(xo * xo + yo * yo);
-
-        // Check for complete occultation
-        if (b <= ro - 1) return 0;
-
-        // Compute it numerically
-        tmpvec = C.A1 * y;
-        return numeric::flux(xo, yo, ro, lmax, tmpvec, tol);
-
-    }
-
-    // Compute the total flux during or outside of an occultation
-    template <class T>
-    T LimbDarkenedMap<T>::flux(const T& xo, const T& yo, const T& ro) {
-
-        // Impact parameter
-        T b = sqrt(xo * xo + yo * yo);
-
-        // Check for complete occultation
-        if (b <= ro - 1) return 0;
-
-        // If we're doing quadratic limb darkening, let's skip all the overhead
-        if ((lmax <= 2) && (ro < 1)) {
-            if ((b >= 1 + ro) || (ro == 0))
-                return 1.0;
-            else {
-                T s0, s2, s8;
-                if (lmax == 0)
-                    solver::QuadLimbDark<T>(G, b, ro, g(0), 0, 0, s0, s2, s8);
-                else if (lmax == 1)
-                    solver::QuadLimbDark<T>(G, b, ro, g(0), g(2), 0, s0, s2, s8);
-                else
-                    solver::QuadLimbDark<T>(G, b, ro, g(0), g(2), g(8), s0, s2, s8);
-                return s0 * g(0) + s2 * g(2) + s8 * g(8);
-            }
-        }
-
-        // No occultation: cake
-        if ((b >= 1 + ro) || (ro == 0)) {
-
-            return 1.0;
-
-        // Occultation
-        } else {
-
-            // Compute the sT vector
-            solver::computesT(G, b, ro, g);
-
-            // Dot the result in and we're done
-            return G.sT * g;
-
-        }
-
-    }
-
-    // Compute the total flux during or outside of an occultation
-    // **Gradient over-ride: compute map derivs manually for speed**
-    template <>
-    Grad LimbDarkenedMap<Grad>::flux(const Grad& xo, const Grad& yo_, const Grad& ro) {
-
-        // Local copy so we can nudge it away from the
-        // unstable point
-        Grad yo = yo_;
-
-        // Impact parameter
-        Grad b = sqrt(xo * xo + yo * yo);
-
-        // Nudge away from point instabilities
-        if (b == 0) {
-            yo += mach_eps<double>();
-            b = sqrt(xo * xo + yo * yo);
-        } else if (b == (1 - ro)) {
-            b -= mach_eps<double>();
-        } else if (b == 1 + ro) {
-            b += mach_eps<double>();
-        }
-
-        // TODO: There are still instabilities in the limits
-        // b --> |1 - r| and b --> 1 + r. They are not terrible
-        // (and only present in dF/db) but should be fixed.
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
 
         // Check for complete occultation
         if (b <= ro - 1) {
-            dFdu = Vector<Grad>::Zero(lmax + 1);
-            return 0;
+            setZero(result);
+            return result;
         }
 
-        // If we're doing quadratic limb darkening, let's skip all the overhead
-        if ((lmax <= 2) && (ro < 1)) {
-            if ((b >= 1 + ro) || (ro == 0)) {
-                dFdu = Vector<Grad>::Zero(lmax + 1);
-                return 1.0;
-            } else {
-                Grad s0, s2, s8;
-                if (lmax == 0)
-                    solver::QuadLimbDark<Grad>(G, b, ro, g(0), 0, 0, s0, s2, s8);
-                else if (lmax == 1)
-                    solver::QuadLimbDark<Grad>(G, b, ro, g(0), g(2), 0, s0, s2, s8);
-                else
-                    solver::QuadLimbDark<Grad>(G, b, ro, g(0), g(2), g(8), s0, s2, s8);
-                dFdu = (s0 * dgdu.row(0) + s2 * dgdu.row(2) + s8 * dgdu.row(8)).transpose();
-                return s0 * g(0) + s2 * g(2) + s8 * g(8);
-            }
-        }
-
-        // No occultation: cake
+        // No occultation
         if ((b >= 1 + ro) || (ro == 0)) {
 
-            dFdu = Vector<Grad>::Zero(lmax + 1);
-            return 1.0;
+            // Easy: the disk-integrated intensity
+            // is just the Y_{0,0} coefficient
+            return getRow(y, 0);
 
         // Occultation
         } else {
 
-            // Compute the sT vector
-            solver::computesT(G, b, ro, g);
+            if ((u_deg <= 2) && (ro < 1)) {
+
+                // Skip the overhead for quadratic limb darkening
+                G.quad(b, ro);
+                if (u_deg == 0)
+                    return G.sT(0) * getRow(g_u, 0);
+                else if (u_deg == 1)
+                    return G.sT(0) * getRow(g_u, 0) +
+                           G.sT(2) * getRow(g_u, 2);
+                else
+                    return G.sT(0) * getRow(g_u, 0) +
+                           G.sT(2) * getRow(g_u, 2) +
+                           G.sT(8) * getRow(g_u, 8);
+
+            } else {
+
+                // Compute the sT vector (sparsely)
+                for (int n = 0; n < N; ++n)
+                    G.skip(n) = !(g_u.block(n, 0, 1, nwav).array() != 0.0).any();
+                G.compute(b, ro);
+
+                // Dot the result in and we're done
+                return G.sT * g_u;
+
+            }
+
+        }
+
+    }
+
+    /**
+    Compute the flux during or outside of an occultation
+    for a pure limb-darkened map (Y_{l,m} = 0 for l > 0).
+    Also compute the gradient with respect to the orbital
+    parameters and the limb darkening coefficients.
+
+    */
+    template <class T>
+    inline Row<T> Map<T>::fluxLDWithGradient(const Scalar<T>& xo_,
+                                                const Scalar<T>& yo_,
+                                                const Scalar<T>& ro_) {
+
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+        Row<T>& dFdb(tmp.tmpRow[1]);
+        VectorT<Scalar<T>>& dFdu(tmp.tmpRowVector[0]);
+        ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
+        ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
+
+        // Resize the gradients
+        resizeGradient(1, lmax);
+
+        // Convert to internal types
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+
+        // Impact parameter
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+            setZero(dF);
+            setZero(result);
+            return result;
+        }
+
+        // The theta deriv is always zero, since
+        // pure limb-darkened maps can't be rotated.
+        setRow(dF, 0, Scalar<T>(0.0));
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // The x, y, and r derivs are trivial
+            setRow(dF, 1, Scalar<T>(0.0));
+            setRow(dF, 2, Scalar<T>(0.0));
+            setRow(dF, 3, Scalar<T>(0.0));
+
+            // Compute the Y_{0,0} deriv, which is trivial
+            setRow(dF, 4, Scalar<T>(1.0));
+
+            // The limb darkening derivs are zero, since
+            // they don't affect the total flux!
+            for (int i = 0; i < lmax; ++i)
+                setRow(dF, 5 + i, Scalar<T>(0.0));
+
+            // Easy: the disk-integrated intensity
+            // is just the Y_{0,0} coefficient
+            return getRow(y, 0);
+
+        // Occultation
+        } else {
+
+            // Compute the sT vector using AutoDiff
+            b_grad.value() = b;
+            b_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
+            ro_grad.value() = ro;
+            ro_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
+            G_grad.compute(b_grad, ro_grad);
+
+            // Compute the b and ro derivs
+            setZero(dFdb);
+            setRow(dF, 3, Scalar<T>(0.0));
+            for (int i = 0; i < N; ++i) {
+                // dF / db = dsT / db . g_u
+                dFdb += G_grad.sT(i).derivatives()(0) * getRow(g_u, i);
+                // dF / dro = dsT / dro . g_u
+                setRow(dF, 3, Row<T>(getRow(dF, 3) +
+                                     G_grad.sT(i).derivatives()(1) *
+                                     getRow(g_u, i)));
+                // Store the value of s^T
+                G.sT(i) = G_grad.sT(i).value();
+            }
+
+            // Compute the resulting flux
+            result = dot(G.sT, g_u);
+
+            // Compute the x and y derivs (straighforward chain rule)
+            setRow(dF, 1, Row<T>(dFdb * xo / b));
+            setRow(dF, 2, Row<T>(dFdb * yo / b));
+
+            // Compute the Y_{0, 0} deriv (straightforward since it's linear)
+            setRow(dF, 4, cwiseQuotient(result, getRow(y, 0)));
+
+            // Compute the derivs with respect to the limb darkening coeffs
+            // dF / du = s^T . dg_u / du
+            for (int n = 0; n < nwav; ++n) {
+                dFdu = G.sT * dg_udu(n);
+                dF.block(5, n, lmax, 1) = dFdu.segment(1, lmax).transpose();
+            }
+
+            // Return the flux
+            return result;
+
+        }
+
+    }
+
+    /**
+    Compute the flux during or outside of an occultation
+    for a pure spherical harmonic map (u_{l} = 0 for l > 0).
+    Also compute the gradient with respect to the orbital
+    parameters and the spherical harmonic map coefficients.
+
+    */
+    template <class T>
+    inline Row<T> Map<T>::fluxYlmWithGradient(const Scalar<T>& theta_deg,
+                                                 const Scalar<T>& xo_,
+                                                 const Scalar<T>& yo_,
+                                                 const Scalar<T>& ro_) {
+
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+        Row<T>& dFdb(tmp.tmpRow[1]);
+        Row<T>& sTAdRdthetaRy_b(tmp.tmpRow[2]);
+        T& Ry(tmp.tmpT[0]);
+        T& RRy(tmp.tmpT[1]);
+        T& ARRy(tmp.tmpT[2]);
+        T& dRdthetay(tmp.tmpT[3]);
+        VectorT<Scalar<T>>& sTA(tmp.tmpRowVector[0]);
+        VectorT<Scalar<T>>& sTAR(tmp.tmpRowVector[1]);
+        sTAR.resize(N);
+        VectorT<Scalar<T>>& sTARR(tmp.tmpRowVector[2]);
+        sTARR.resize(N);
+        VectorT<Scalar<T>>& sTAdRdtheta(tmp.tmpRowVector[3]);
+        sTAdRdtheta.resize(N);
+        VectorT<Scalar<T>>& rTA1R(tmp.tmpRowVector[4]);
+        rTA1R.resize(N);
+        ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
+        ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
+
+        // Resize the gradients
+        resizeGradient(N, 0);
+
+        // Convert to internal type
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+        Scalar<T> theta = theta_deg * (pi<Scalar<T>>() / 180.);
+
+        // Impact parameter
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+           setZero(dF);
+           setZero(result);
+           return result;
+        }
+
+        // Rotate the map into view
+        W.compute(cos(theta), sin(theta));
+        if (theta == 0) {
+            Ry = y;
+        } else {
+            for (int l = 0; l < lmax + 1; l++)
+                Ry.block(l * l, 0, 2 * l + 1, nwav) =
+                    W.R[l] * y.block(l * l, 0, 2 * l + 1, nwav);
+        }
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // Compute the theta deriv
+            for (int l = 0; l < lmax + 1; l++)
+                dRdthetay.block(l * l, 0, 2 * l + 1, nwav) =
+                    W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, nwav);
+            setRow(dF, 0, Row<T>(dot(B.rTA1, dRdthetay) *
+                                (pi<Scalar<T>>() / 180.)));
+
+            // The x, y, and r derivs are trivial
+            setRow(dF, 1, Scalar<T>(0.0));
+            setRow(dF, 2, Scalar<T>(0.0));
+            setRow(dF, 3, Scalar<T>(0.0));
 
             // Compute the map derivs
-            dFdu = G.sT * dgdu;
+            if (theta == 0) {
+                for (int i = 0; i < N; i++)
+                    setRow(dF, 4 + i, B.rTA1(i));
+            } else {
+                for (int l = 0; l < lmax + 1; l++)
+                    rTA1R.segment(l * l, 2 * l + 1) =
+                        B.rTA1.segment(l * l, 2 * l + 1) * W.R[l];
+                for (int i = 0; i < N; i++)
+                    setRow(dF, 4 + i, rTA1R(i));
+            }
 
-            // Dot the result in
-            return G.sT * g;
+            // We're done!
+            return (B.rTA1 * Ry);
 
-        }
-
-    }
-
-    // Set a limb darkening coefficient
-    template <class T>
-    void LimbDarkenedMap<T>::setCoeff(int l, T u_l) {
-        if ((l <= 0) || (l > lmax)) {
-            throw errors::BadIndex();
-        }
-
-        // Set the limb darkening coefficient
-        set_value(u(l), u_l);
-
-        // Update all the vectors
-        update();
-
-    }
-
-    // Get a limb darkening coefficient
-    template <class T>
-    T LimbDarkenedMap<T>::getCoeff(int l) {
-        if ((l <= 0) || (l > lmax)) {
-            throw errors::BadIndex();
+        // Occultation
         } else {
-            return u(l);
+
+            // Align occultor with the +y axis
+            Scalar<T> xo_b = xo / b;
+            Scalar<T> yo_b = yo / b;
+            if ((b > 0) && ((xo != 0) || (yo < 0))) {
+                W.rotatez(yo_b, xo_b, Ry, RRy);
+            } else {
+                setOnes(W.cosmt);
+                setZero(W.sinmt);
+                RRy = Ry;
+            }
+
+            // Perform the rotation + change of basis
+            ARRy = B.A * RRy;
+
+            // Compute the sT vector using AutoDiff
+            b_grad.value() = b;
+            b_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
+            ro_grad.value() = ro;
+            ro_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
+            G_grad.compute(b_grad, ro_grad);
+
+            // Compute the b and ro derivs
+            setZero(dFdb);
+            setRow(dF, 3, Scalar<T>(0.0));
+            for (int i = 0; i < N; i++) {
+
+                // b deriv
+                dFdb += G_grad.sT(i).derivatives()(0) * getRow(ARRy, i);
+
+                // ro deriv
+                setRow(dF, 3, Row<T>(getRow(dF, 3) +
+                                     G_grad.sT(i).derivatives()(1) *
+                                     getRow(ARRy, i)));
+
+                // Store the value of s^T
+                G.sT(i) = G_grad.sT(i).value();
+
+            }
+
+            // Solution vector in spherical harmonic basis
+            sTA = G.sT * B.A;
+
+            // Compute stuff involving the Rprime rotation matrix
+            int m;
+            for (int l = 0; l < lmax + 1; l++) {
+                for (int j = 0; j < 2 * l + 1; j++) {
+                    m = j - l;
+                    sTAR(l * l + j) = sTA(l * l + j) *
+                                      W.cosmt(l * l + j) +
+                                      sTA(l * l + 2 * l - j) *
+                                      W.sinmt(l * l + j);
+                    sTAdRdtheta(l * l + j) = sTA(l * l + 2 * l - j) * m *
+                                             W.cosmt(l * l + j) -
+                                             sTA(l * l + j) * m *
+                                             W.sinmt(l * l + j);
+                }
+            }
+
+            // Compute the xo and yo derivs using the chain rule
+            sTAdRdthetaRy_b = dot(sTAdRdtheta, Ry) / b;
+            setRow(dF, 1, Row<T>((xo_b * dFdb) + (yo_b * sTAdRdthetaRy_b)));
+            setRow(dF, 2, Row<T>((yo_b * dFdb) - (xo_b * sTAdRdthetaRy_b)));
+
+            // Compute the theta deriv
+            for (int l = 0; l < lmax + 1; l++)
+                dRdthetay.block(l * l, 0, 2 * l + 1, nwav) =
+                    W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, nwav);
+            setRow(dF, 0, Row<T>(dot(sTAR, dRdthetay) *
+                                (pi<Scalar<T>>() / 180.)));
+
+            // Compute the map derivs
+            if (theta == 0) {
+                for (int i = 0; i < N; i++)
+                    setRow(dF, 4 + i, sTAR(i));
+            } else {
+                for (int l = 0; l < lmax + 1; l++)
+                    sTARR.segment(l * l, 2 * l + 1) =
+                        sTAR.segment(l * l, 2 * l + 1) * W.R[l];
+                for (int i = 0; i < N; i++)
+                    setRow(dF, 4 + i, sTARR(i));
+            }
+
+            // Dot the result in and we're done
+            return G.sT * ARRy;
+
         }
+
     }
 
-    // Reset the map
-    template <class T>
-    void LimbDarkenedMap<T>::reset() {
-        u.setZero(lmax + 1);
-        u(0) = -1;
-        update();
-    }
+    /**
+    Compute the flux during or outside of an occultation for the
+    general case of a limb-darkened spherical harmonic map. Also
+    compute the gradient with respect to the orbital parameters,
+    the spherical harmonic map coefficients, and the limb darkening
+    coefficients.
 
-    // Return a human-readable map string
+    */
     template <class T>
-    std::string LimbDarkenedMap<T>::repr() {
-        std::ostringstream os;
-        char buf[30];
-        os << "<STARRY LimbDarkenedMap: ";
-        for (int l = 1; l < lmax + 1; l++) {
-            sprintf(buf, "u%d = %.3f", l, get_value(u(l)));
-            os << buf;
-            if (l < lmax) os << ", ";
+    inline Row<T> Map<T>::fluxWithGradient(const Scalar<T>& theta_deg,
+                                             const Scalar<T>& xo_,
+                                             const Scalar<T>& yo_,
+                                             const Scalar<T>& ro_) {
+
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+        Row<T>& dFdb(tmp.tmpRow[1]);
+        Row<T>& sTAdRdthetaLDRy_b(tmp.tmpRow[2]);
+        T& Ry(tmp.tmpT[0]);
+        T& RLDRy(tmp.tmpT[1]);
+        T& ARLDRy(tmp.tmpT[2]);
+        T& A1Ry(tmp.tmpT[3]);
+        T& LDRy(tmp.tmpT[4]);
+        T& dLDRydtheta(tmp.tmpT[5]);
+        VectorT<Scalar<T>>& sTA(tmp.tmpRowVector[0]);
+        VectorT<Scalar<T>>& sTAR(tmp.tmpRowVector[1]);
+        sTAR.resize(N);
+        VectorT<Scalar<T>>& sTARdLDdpA1(tmp.tmpRowVector[2]);
+        VectorT<Scalar<T>>& sTARdLDdpA1R(tmp.tmpRowVector[3]);
+        sTARdLDdpA1R.resize(N);
+        VectorT<Scalar<T>>& sTAdRdtheta(tmp.tmpRowVector[4]);
+        sTAdRdtheta.resize(N);
+        VectorT<Scalar<T>>& rTA1R(tmp.tmpRowVector[5]);
+        rTA1R.resize(N);
+        VectorT<Scalar<T>>& dFdu(tmp.tmpRowVector[6]);
+        VectorT<Scalar<T>>& dFdp_u(tmp.tmpRowVector[7]);
+        ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
+        ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
+        VectorT<Matrix<Scalar<T>>>& A1dLDdpA1(tmp.tmpRowVectorOfMatrices[0]);
+        A1dLDdpA1.resize(nwav);
+        Matrix<Scalar<T>>& A1dLDdpA1dRdtheta(tmp.tmpMatrix[0]);
+        A1dLDdpA1dRdtheta.resize(N, N);
+
+        // Resize the gradients
+        resizeGradient(N, lmax);
+
+        // Convert to internal type
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+        Scalar<T> theta = theta_deg * (pi<Scalar<T>>() / 180.);
+
+        // Impact parameter
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+            setZero(dF);
+            setZero(result);
+            return result;
         }
-        os << ">";
-        return std::string(os.str());
+
+        // Rotate the map into view
+        // TODO: Cache this operation *here*
+        //       Save W.R, W.dRdtheta, Ry
+        W.compute(cos(theta), sin(theta));
+        if (theta == 0) {
+            Ry = y;
+        } else {
+            for (int l = 0; l < lmax + 1; l++)
+                Ry.block(l * l, 0, 2 * l + 1, nwav) =
+                    W.R[l] * y.block(l * l, 0, 2 * l + 1, nwav);
+        }
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // Compute d(R . y) / dtheta
+            // Since limb darkening doesn't change the total flux,
+            // we don't have to apply it here.
+            for (int n = 0; n < nwav; ++n)
+                for (int l = 0; l < lmax + 1; ++l)
+                    dLDRydtheta.block(l * l, n, 2 * l + 1, 1) =
+                        W.dRdtheta[l] *
+                        y.block(l * l, n, 2 * l + 1, 1);
+
+            // Compute the theta deriv
+            setRow(dF, 0, Row<T>(dot(B.rTA1, dLDRydtheta) *
+                                (pi<Scalar<T>>() / 180.)));
+
+            // The x, y, and r derivs are trivial
+            setRow(dF, 1, Scalar<T>(0.0));
+            setRow(dF, 2, Scalar<T>(0.0));
+            setRow(dF, 3, Scalar<T>(0.0));
+
+            // Compute the map derivs
+            if (theta == 0) {
+                for (int i = 0; i < N; ++i)
+                    setRow(dF, 4 + i, B.rTA1(i));
+            } else {
+                for (int l = 0; l < lmax + 1; ++l)
+                    rTA1R.segment(l * l, 2 * l + 1) =
+                        B.rTA1.segment(l * l, 2 * l + 1) * W.R[l];
+                for (int i = 0; i < N; ++i)
+                    setRow(dF, 4 + i, rTA1R(i));
+            }
+
+            // The limb darkening derivs are zero, since
+            // they don't affect the total flux!
+            for (int i = 0; i < lmax; ++i)
+                setRow(dF, 4 + N + i, Scalar<T>(0.0));
+
+            // We're done!
+            return (B.rTA1 * Ry);
+
+        // Occultation
+        } else {
+
+            // Apply limb darkening
+            // Note that we do this even if there's no limb
+            // darkening set, to get the correct derivs
+            // TODO: Cache these operations for fixed theta. Seriously
+            A1Ry = B.A1 * Ry;
+            limbDarken(A1Ry, p_uy, true);
+            LDRy = B.A1Inv * p_uy;
+            for (int n = 0; n < nwav; ++n)
+                A1dLDdpA1(n) = B.A1Inv * dLDdp(n) * B.A1;
+
+            // Compute the theta deriv of the limb-darkened, rotated map
+            // dLDRy / dtheta = A1^-1 . dLDdp . d(A1 . R . y) / dtheta
+            //                = A1dLDdpA1 . dR / dtheta . y
+            for (int n = 0; n < nwav; ++n) {
+                for (int l = 0; l < lmax + 1; ++l)
+                    A1dLDdpA1dRdtheta.block(0, l * l, N, 2 * l + 1) =
+                        A1dLDdpA1(n).block(0, l * l, N, 2 * l + 1)
+                        * W.dRdtheta[l];
+                dLDRydtheta.col(n) = A1dLDdpA1dRdtheta * getColumn(y, n);
+            }
+
+            // Align occultor with the +y axis
+            Scalar<T> xo_b = xo / b;
+            Scalar<T> yo_b = yo / b;
+            if ((b > 0) && ((xo != 0) || (yo < 0))) {
+                W.rotatez(yo_b, xo_b, LDRy, RLDRy);
+            } else {
+                setOnes(W.cosmt);
+                setZero(W.sinmt);
+                RLDRy = LDRy;
+            }
+
+            // Perform the rotation + change of basis
+            ARLDRy = B.A * RLDRy;
+
+            // Compute the sT vector using AutoDiff
+            b_grad.value() = b;
+            b_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
+            ro_grad.value() = ro;
+            ro_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
+            G_grad.compute(b_grad, ro_grad);
+
+            // Compute the b and ro derivs
+            setZero(dFdb);
+            setRow(dF, 3, Scalar<T>(0.0));
+            for (int i = 0; i < N; i++) {
+
+                // b deriv
+                dFdb += G_grad.sT(i).derivatives()(0) * getRow(ARLDRy, i);
+
+                // ro deriv
+                setRow(dF, 3, Row<T>(getRow(dF, 3) +
+                                     G_grad.sT(i).derivatives()(1) *
+                                     getRow(ARLDRy, i)));
+
+                // Store the value of s^T
+                G.sT(i) = G_grad.sT(i).value();
+
+            }
+
+            // Solution vector in spherical harmonic basis
+            sTA = G.sT * B.A;
+
+            // Compute stuff involving the Rprime rotation matrix
+            int m;
+            for (int l = 0; l < lmax + 1; ++l) {
+                for (int j = 0; j < 2 * l + 1; ++j) {
+                    m = j - l;
+                    sTAR(l * l + j) = sTA(l * l + j) *
+                                      W.cosmt(l * l + j) +
+                                      sTA(l * l + 2 * l - j) *
+                                      W.sinmt(l * l + j);
+                    sTAdRdtheta(l * l + j) = sTA(l * l + 2 * l - j) * m *
+                                             W.cosmt(l * l + j) -
+                                             sTA(l * l + j) * m *
+                                             W.sinmt(l * l + j);
+                }
+            }
+
+            // Compute the xo and yo derivs using the chain rule
+            sTAdRdthetaLDRy_b = dot(sTAdRdtheta, LDRy) / b;
+            setRow(dF, 1, Row<T>((xo_b * dFdb) + (yo_b * sTAdRdthetaLDRy_b)));
+            setRow(dF, 2, Row<T>((yo_b * dFdb) - (xo_b * sTAdRdthetaLDRy_b)));
+
+            // Compute the theta deriv
+            setRow(dF, 0, Row<T>(dot(sTAR, dLDRydtheta) *
+                                (pi<Scalar<T>>() / 180.)));
+
+            // Compute the map derivs
+            // dF / dy = s^T . A . R' . (A1^-1 . dLDdp . A1) . R
+            for (int n = 0; n < nwav; ++n) {
+                sTARdLDdpA1 = sTAR * A1dLDdpA1(n);
+                if (theta == 0) {
+                    for (int i = 0; i < N; ++i)
+                        dF(4 + i, n) = sTARdLDdpA1(i);
+                } else {
+                    for (int l = 0; l < lmax + 1; ++l)
+                        sTARdLDdpA1R.segment(l * l, 2 * l + 1) =
+                            sTARdLDdpA1.segment(l * l, 2 * l + 1) * W.R[l];
+                    for (int i = 0; i < N; ++i)
+                        dF(4 + i, n) = sTARdLDdpA1R(i);
+                }
+            }
+
+            // TODO: Can be sped up
+            // Compute the derivs with respect to the limb darkening coeffs
+            // dF / du = s^T . A . R' . A1^-1 . dLDdp_u . dp_udu
+            for (int n = 0; n < nwav; ++n) {
+                dFdp_u = sTAR * B.A1Inv * dLDdp_u(n);
+                dFdu = dFdp_u * dp_udu(n);
+                dF.block(4 + N, n, lmax, 1) = dFdu.segment(1, lmax).transpose();
+            }
+
+            // Dot the result in and we're done
+            return G.sT * ARLDRy;
+
+        }
+
     }
 
-}; // namespace maps
+} // namespace maps
 
 #endif

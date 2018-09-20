@@ -7,8 +7,8 @@ np.random.seed(1234)
 def test_occultations():
     """Test occultation light curves."""
     # Let's do the l = 3 Earth
-    m = Map(3)
-    m.load_image('earth')
+    map = Map(3)
+    map.load_image('earth')
 
     # Rotate the map about a random axis
     ux = np.random.random()
@@ -24,17 +24,16 @@ def test_occultations():
     yo = 0
 
     # Analytical and numerical fluxes
-    m.axis = axis
-    sF = np.array(m.flux(theta=theta, xo=xo, yo=yo, ro=ro))
-    nF = np.array(m._flux_numerical(theta=theta, xo=xo, yo=yo,
-                                    ro=ro, tol=1e-6))
+    map.axis = axis
+    sF = np.array(map.flux(theta=theta, xo=xo, yo=yo, ro=ro))
+    nF = np.array(map.flux(theta=theta, xo=xo, yo=yo, ro=ro, numerical=True))
 
     # Compute the (relative) error
     error = np.max(np.abs(sF - nF))
 
     # Our numerical integration scheme isn't the most accurate,
     # so let's be lenient here!
-    assert error < 1e-2
+    assert error < 0.03
 
 
 if __name__ == "__main__":

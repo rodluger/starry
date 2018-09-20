@@ -1,52 +1,64 @@
-The starry API
-==============
+API
+===
 
-.. toctree::
-   :maxdepth: 1
+.. hlist::
+    :columns: 1
 
-   starry <starry>
+    * Intro_
+    * Map_
+    * Primary_
+    * Secondary_
+    * System_
 
+.. _Intro:
 
-.. raw:: html
+Introduction
+------------
 
-    <p style="padding-left: 30px;">
-    This is the main starry module. Here you can compute light curves,
-    phase curves, and all the other good stuff. This is probably where you want to
-    start poking around.
-    </p>
+This page documents the :py:mod:`starry` API, which is coded
+in C++ with a :py:mod:`pybind11` Python interface. The API consists
+of a :py:class:`Map` class, which houses all of the surface map photometry
+stuff, and a :py:class:`kepler` module, which connects photometry to
+dynamics via a simple (multi-)Keplerian solver.
 
+There are two broad ways in which users can access
+the core :py:mod:`starry` functionality:
 
-.. toctree::
-   :maxdepth: 1
+    - Users can instantiate a :py:class:`Map` class to compute phase curves
+      and occultation light curves by directly specifying the rotational state
+      of the object and (optionally) the position and size of an occultor.
+      Users can specify spherical harmonic coefficients, limb
+      darkening coefficients, or both. There is also support for both
+      monochromatic and wavelength-dependent maps and light curves.
+      This class may be particularly useful for users who wish to
+      integrate :py:mod:`starry` with their own dynamical code or for users
+      wishing to compute simple light curves without any orbital solutions.
 
-   starry.grad <starry_grad>
+    - Users can instantiate a :py:class:`kepler.Primary` and one or more
+      :py:class:`kepler.Secondary` objects and feed them into a
+      :py:class:`kepler.System` instance for integration
+      with the Keplerian solver. The :py:class:`kepler.Primary`
+      and :py:class:`kepler.Secondary` classes inherit from :py:class:`Map`,
+      so users have access to all of the functionality of the previous
+      method.
 
+At present, :py:mod:`starry` uses a simple Keplerian solver to compute orbits,
+so the second approach listed above is limited to two-body systems or systems
+where the secondary masses are negligible. Stay tuned for the next release
+of the code, which will incorporate an N-body solver.
 
-.. raw:: html
+.. _Map:
 
-    <p style="padding-left: 30px;">
-    This is the autodifferentation-enabled starry interface. It does
-    everything the regular starry module does, but it also analytically
-    computes gradients of the light curve with respect to all of the input
-    parameters. It is in general slower by about an order of magnitude, but can
-    greatly speed up inference and optimization problems that require knowledge
-    of the gradient of your model.
-    </p>
+.. autoclass:: starry.Map
 
+.. _Primary:
 
-.. toctree::
-   :maxdepth: 1
+.. autoclass:: starry.kepler.Primary
 
-   starry.multi <starry_multi>
+.. _Secondary:
 
+.. autoclass:: starry.kepler.Secondary
 
-.. raw:: html
+.. _System:
 
-    <p style="padding-left: 30px;">
-    This is the multiprecision-enabled starry interface. It also does
-    everything the regular starry module does, except it computes everything
-    using multi-precision floating point arithmetic (and is almost certainly overkill).
-    It is also slower than the regular interface by (at least) an order of magnitude.
-    In general this module is used for stability tests and debugging, or if you have
-    a <span style="font-weight:bold;">really</span> high degree map you need to compute light curves for.
-    </p>
+.. autoclass:: starry.kepler.System

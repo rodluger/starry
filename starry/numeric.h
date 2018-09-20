@@ -1,6 +1,9 @@
 /**
 Numerical integration by adaptive mesh refinement.
 
+NOTE: This is a lazily-coded, unoptimized module used
+primarily for debugging. Use at your own risk!
+
 */
 
 #ifndef _STARRY_NUMERIC_H_
@@ -9,7 +12,6 @@ Numerical integration by adaptive mesh refinement.
 #include <iostream>
 #include <cmath>
 #include <Eigen/Core>
-#include "constants.h"
 #include <unsupported/Eigen/AutoDiff>
 #include "utils.h"
 
@@ -17,10 +19,11 @@ namespace numeric {
 
     using std::abs;
     using std::fmod;
+    using namespace utils;
 
     // Evaluate a map `p` at a given (x, y) coordinate during an occultation
     template <typename T>
-    T evaluate(T x, T y, T xo, T yo, T ro, int lmax, Vector<T>& p) {
+    T evaluate(T x, T y, T xo, T yo, T ro, int lmax, const Vector<T>& p) {
 
         // Basis
         Vector<T> basis;
@@ -54,7 +57,8 @@ namespace numeric {
                            basis(n) = 1;
                    } else {
                        if ((mu > 1) && (nu > 1))
-                           basis(n) = pow(x, (mu - 1) / 2) * pow(y, (nu - 1) / 2) * z;
+                           basis(n) = pow(x, (mu - 1) / 2) *
+                                      pow(y, (nu - 1) / 2) * z;
                        else if (mu > 1)
                            basis(n) = pow(x, (mu - 1) / 2) * z;
                        else if (nu > 1)
@@ -74,7 +78,8 @@ namespace numeric {
 
     // Return the flux in a cell
     template <typename T>
-    T fcell(T r1, T r2, T t1, T t2, T xo, T yo, T ro, int lmax, Vector<T>& p) {
+    T fcell(T r1, T r2, T t1, T t2, T xo, T yo, T ro, int lmax,
+            const Vector<T>& p) {
         T numer = t1 + M_PI - t2;
         T denom = 2 * M_PI;
         T modulo = fmod(numer, denom);
@@ -89,7 +94,8 @@ namespace numeric {
 
     // Return the numerically computed flux
     template <typename T>
-    void fnum(T r1, T r2, T t1, T t2, T xo, T yo, T ro, double tol, int lmax, Vector<T>& p, T* f) {
+    void fnum(T r1, T r2, T t1, T t2, T xo, T yo, T ro, T tol, int lmax,
+              const Vector<T>& p, T* f) {
         // Coarse estimate
         T fcoarse = fcell<T>(r1, r2, t1, t2, xo, yo, ro, lmax, p);
 
@@ -117,7 +123,7 @@ namespace numeric {
 
     // Compute the total flux during or outside of an occultation
     template <typename T>
-    T flux(T xo, T yo, T ro, int lmax, Vector<T>& p, double tol) {
+    T flux(T xo, T yo, T ro, int lmax, const Vector<T>& p, T tol) {
         tol /= M_PI;
         T f = 0;
         T b = sqrt(xo * xo + yo * yo);
@@ -134,7 +140,8 @@ namespace numeric {
             deltheta = 0.5;
         } else if (b > 1) {
             rmid = 0.5 * (1 + b - ro);
-            deltheta = 0.95 * abs(acos((b * b - ro * ro + rmid * rmid) / (2 * b * rmid)));
+            deltheta = 0.95 * abs(acos((b * b - ro * ro + rmid * rmid) /
+                       (2 * b * rmid)));
         } else {
             rmid = b;
             deltheta = 0.95 * abs(acos(1 - 0.5 * (ro * ro) / (b * b)));
@@ -165,6 +172,6 @@ namespace numeric {
         return f;
     }
 
-}; // namespace numeric
+} // namespace numeric
 
 #endif

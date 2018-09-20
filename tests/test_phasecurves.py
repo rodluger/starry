@@ -5,7 +5,7 @@ from scipy.integrate import dblquad
 np.random.seed(1234)
 
 
-def NumericalFlux(m, theta):
+def NumericalFlux(map, theta):
     """Compute the flux by numerical integration of the surface integral."""
     # Lower integration limit
     def y1(x):
@@ -17,7 +17,7 @@ def NumericalFlux(m, theta):
 
     # Specific intensity map
     def I(y, x):
-        return m.evaluate(theta=theta, x=x, y=y)
+        return map(theta=theta, x=x, y=y)
 
     # Compute the total flux
     flux, _ = dblquad(I, -1, 1, y1, y2, epsabs=1e-2, epsrel=1e-2)
@@ -27,19 +27,19 @@ def NumericalFlux(m, theta):
 def test_phasecurves():
     """Test transit light curve generation."""
     # Let's do the l = 3 Earth
-    m = Map(3)
-    m.load_image('earth')
+    map = Map(3)
+    map.load_image('earth')
 
     # Compute the starry phase curve about a random axis
     ux = np.random.random()
     uy = np.random.random() * (1 - ux)
     uz = np.sqrt(1 - ux ** 2 - uy ** 2)
-    m.axis = [ux, uy, uz]
+    map.axis = [ux, uy, uz]
     theta = np.linspace(0, 360, 25, endpoint=False)
-    sF = m.flux(theta=theta)
+    sF = map.flux(theta=theta)
 
     # Compute the flux numerically
-    nF = [NumericalFlux(m, t) for t in theta]
+    nF = [NumericalFlux(map, t) for t in theta]
 
     # Compute the error
     error = np.max(np.abs((sF - nF) / sF))

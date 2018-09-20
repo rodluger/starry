@@ -8,181 +8,574 @@ Miscellaneous stuff used throughout the code.
 
 #include <Eigen/Core>
 #include <unsupported/Eigen/AutoDiff>
+#include <boost/multiprecision/cpp_dec_float.hpp>
+#include <boost/math/constants/constants.hpp>
 #include <iostream>
 #include <limits>
-#include <vector>
-#include "constants.h"
+#include <type_traits>
 #include "errors.h"
 
-// Physical constants
-#define BIGG                                    6.67428e-11                     // Gravitational constant in m^3/kg/s^2
-#define DAY                                     86400.                          // Number of seconds in one day
-#define CLIGHT                                  299792458.                      // Speed of light in m / s
-#define REARTH                                  6.3781e6                        // Radius of the Earth in m
-#define PARSEC                                  3.086e16                        // Meters in 1 parsec
-#define MEARTH                                  (3.986004418e14 / BIGG)         // Mass of Earth in kg (from GM)
-#define MSUN                                    (1.32712440018e20 / BIGG)       // Mass of the sun in kg (from GM)
-#define AU                                      149597870700.                   // Astronomical unit in m
-#define RSUN                                    6.957e8                         // Radius of the Sun in m
-#define LSUN                                    3.828e26                        // Solar luminosity in W/m^2
-#define RJUP                                    7.1492e7                        // Radius of Jupiter in m
-#define DEGREE                                  (M_PI / 180.)                   // One degree in radians
-
-// Multiprecision datatype
-#include <boost/multiprecision/cpp_dec_float.hpp>
-typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
-typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off> Multi;
-#if STARRY_NMULTI > 150
-#error "Currently, PI is computed to a maximum of 150 digits of precision. If you **really** need `STARRY_NMULTI` > 150, you will need to re-define PI in `utils.h`."
+//! Number of digits for the multiprecision type in starry.multi
+#ifndef STARRY_NMULTI
+#define STARRY_NMULTI                           32
 #endif
 
-// Some frequently used constants
-static const double PI_DOUBLE = M_PI;
-static const Multi PI_MULTI = Multi("3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067982148086513282306647093844609550582231725359408128");
-template <typename T> inline T PI(){ return T(PI_DOUBLE); }
-template <> inline Multi PI(){ return PI_MULTI; }
+//! Max iterations in elliptic integrals
+#ifndef STARRY_ELLIP_MAX_ITER
+#define STARRY_ELLIP_MAX_ITER                   200
+#endif
 
-static const double SQRT_PI_DOUBLE = sqrt(PI<double>());
-static const Multi SQRT_PI_MULTI = sqrt(PI<Multi>());
-template <typename T> inline T SQRT_PI(){ return T(SQRT_PI_DOUBLE); }
-template <> inline Multi SQRT_PI(){ return SQRT_PI_MULTI; }
+//! Max iterations in computation of I_v and J_v
+#ifndef STARRY_IJ_MAX_ITER
+#define STARRY_IJ_MAX_ITER                      200
+#endif
 
-static const double TWO_OVER_SQRT_PI_DOUBLE = 2.0 / sqrt(PI<double>());
-static const Multi TWO_OVER_SQRT_PI_MULTI = 2.0 / sqrt(PI<Multi>());
-template <typename T> inline T TWO_OVER_SQRT_PI(){ return T(TWO_OVER_SQRT_PI_DOUBLE); }
-template <> inline Multi TWO_OVER_SQRT_PI(){ return TWO_OVER_SQRT_PI_MULTI; }
+//! Max iterations in Kepler solver
+#ifndef STARRY_KEPLER_MAX_ITER
+#define STARRY_KEPLER_MAX_ITER                  100
+#endif
 
-// Our custom vector types
-template <typename T>
-using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-template <typename T>
-using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
-template <typename T>
-using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-template <typename T>
-using UnitVector = Eigen::Matrix<T, 3, 1>;
-using Grad = Eigen::AutoDiffScalar<Eigen::Matrix<double, STARRY_NGRAD, 1>>;
+//! Re-parameterize solution vector when
+//! abs(b - r) < STARRY_EPS_BMR_ZERO
+#ifndef STARRY_EPS_BMR_ZERO
+#define STARRY_EPS_BMR_ZERO                     1e-2
+#endif
 
-// Some useful unit vectors
-static const UnitVector<double> xhat({1, 0, 0});
-static const UnitVector<double> yhat({0, 1, 0});
-static const UnitVector<double> zhat({0, 0, 1});
+//! Re-parameterize solution vector when
+//! 1 - STARRY_EPS_BMR_ONE < abs(b - r) < 1 + STARRY_EPS_BMR_ONE
+#ifndef STARRY_EPS_BMR_ONE
+#define STARRY_EPS_BMR_ONE                      1e-5
+#endif
 
-// Return the value of a scalar MapType variable
-inline double get_value(double x) { return x; }
-inline double get_value(Grad x) { return x.value(); }
-inline double get_value(Multi x) {
-    if ((x > 1e308) || (x < -1e308))
-        return INFINITY;
-    else
-        return (double)x;
-}
-inline Vector<double> get_value(Vector<double> x) { return x; }
-inline Vector<double> get_value(Vector<Multi> x) {
-    Vector<double> vec;
-    vec.resize(x.size());
-    for (int n = 0; n < x.size(); n++) {
-        if ((x(n) > 1e308) || (x(n) < -1e308))
-            vec(n) = INFINITY;
+//! Re-parameterize solution vector when
+//! 1 - STARRY_EPS_BMR_ONE < abs(b + r) < 1 + STARRY_EPS_BPR_ONE
+#ifndef STARRY_EPS_BPR_ONE
+#define STARRY_EPS_BPR_ONE                      1e-5
+#endif
+
+//! Re-parameterize solution vector when
+//! abs(b) < STARRY_EPS_B_ZERO
+#ifndef STARRY_EPS_B_ZERO
+#define STARRY_EPS_B_ZERO                       1e-1
+#endif
+
+namespace utils {
+
+
+    using std::isinf;
+    using std::fmod;
+
+
+    // --------------------------
+    // --------- Aliases --------
+    // --------------------------
+
+
+    //! Multiprecision datatype backend
+    typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
+
+    //! Multiprecision datatype
+    typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off> Multi;
+
+    //! A generic row vector
+    template <typename T>
+    using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
+
+    //! A generic column vector
+    template <typename T>
+    using VectorT = Eigen::Matrix<T, 1, Eigen::Dynamic>;
+
+    //! A generic matrix
+    template <typename T>
+    using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+
+    //! A generic 3-component unit vector
+    template <typename T>
+    using UnitVector = Eigen::Matrix<T, 3, 1>;
+
+    //! A custom AutoDiffScalar type
+    template <typename T, int N>
+    using ADScalar = Eigen::AutoDiffScalar<Eigen::Matrix<T, N, 1>>;
+
+
+    // --------------------------
+    // -- Tag forwarding hacks --
+    // --------------------------
+
+
+    //! @private
+    template <class T> struct tag{};
+
+    //! @private
+    template <class T> inline T pi(tag<T>) { return boost::math::constants::pi<T>(); }
+
+    //! @private
+    template <class T> inline Eigen::AutoDiffScalar<T> pi(tag<Eigen::AutoDiffScalar<T>>) {
+        return boost::math::constants::pi<typename T::Scalar>();
+    }
+
+    //! Pi for current type
+    template <class T> inline T pi() { return pi(tag<T>()); }
+
+    //! @private
+    template <class T> inline T root_pi(tag<T>) { return boost::math::constants::root_pi<T>(); }
+
+    //! @private
+    template <class T> inline Eigen::AutoDiffScalar<T> root_pi(tag<Eigen::AutoDiffScalar<T>>) {
+        return boost::math::constants::root_pi<typename T::Scalar>();
+    }
+
+    //! Square root of pi for current type
+    template <class T> inline T root_pi() { return root_pi(tag<T>()); }
+
+    //! @private
+    template<class T> inline T mach_eps(tag<T>) { return std::numeric_limits<T>::epsilon(); }
+
+    //! @private
+    template<class T> inline Eigen::AutoDiffScalar<T> mach_eps(tag<Eigen::AutoDiffScalar<T>>) {
+        return std::numeric_limits<typename T::Scalar>::epsilon();
+    }
+
+    //! Machine precision for current type
+    template<class T> inline T mach_eps() { return mach_eps(tag<T>()); }
+
+    //! @private
+    template<class T> inline std::string precision(tag<T>) {
+        return "unknown";
+    }
+
+    //! @private
+    template<> inline std::string precision(tag<double>) {
+        return "double";
+    }
+
+    //! @private
+    template<> inline std::string precision(tag<Multi>) {
+        return std::to_string(STARRY_NMULTI) + " digits";
+    }
+
+    //! Scalar type precision descriptor
+    template<class T> inline std::string precision() { return precision(tag<T>()); }
+
+
+    //! @private
+    template<class T> inline bool isMulti(const T& scalar) {
+        return false;
+    }
+
+    //! @private
+    template<> inline bool isMulti(const Multi& scalar) {
+        return true;
+    }
+
+    // --------------------------
+    // ------ Unit Vectors ------
+    // --------------------------
+
+
+    // Some useful unit vectors
+    static const UnitVector<double> xhat_double({1, 0, 0});
+    static const UnitVector<double> yhat_double({0, 1, 0});
+    static const UnitVector<double> zhat_double({0, 0, 1});
+
+    //! Unit vector in the xhat direction
+    template <typename T> inline UnitVector<T> xhat(){
+        return xhat_double.template cast<T>();
+    }
+
+    //! Unit vector in the yhat direction
+    template <typename T> inline UnitVector<T> yhat(){
+        return yhat_double.template cast<T>();
+    }
+
+    //! Unit vector in the zhat direction
+    template <typename T> inline UnitVector<T> zhat(){
+        return zhat_double.template cast<T>();
+    }
+
+    // Normalize a unit vector
+    template <typename T>
+    inline UnitVector<T> norm_unit(const UnitVector<T>& vec) {
+        UnitVector<T> result = vec / sqrt(vec(0) * vec(0) +
+                                          vec(1) * vec(1) +
+                                          vec(2) * vec(2));
+        return result;
+    }
+
+    // --------------------------
+    // ----- Misc utilities -----
+    // --------------------------
+
+
+    //! Check if a number is even (or doubly, triply, quadruply... even)
+    inline bool is_even(int n, int ntimes=1) {
+        for (int i = 0; i < ntimes; i++) {
+            if ((n % 2) != 0) return false;
+            n /= 2;
+        }
+        return true;
+    }
+
+    //! Return the modulo of an angle by 2 pi
+    template <typename T>
+    T mod2pi(const T& numer) {
+        return fmod(numer, T(2 * pi<T>()));
+    }
+
+    //! Manual override of the derivative of `mod2pi`
+    template <typename T>
+    Eigen::AutoDiffScalar<T> mod2pi(const Eigen::AutoDiffScalar<T>& numer) {
+        typename T::Scalar numer_value = numer.value(),
+                           modulo_value = mod2pi(numer_value);
+        return Eigen::AutoDiffScalar<T>(
+          modulo_value,
+          numer.derivatives()
+        );
+    }
+
+    //! Return the modulo of an angle by 360 degrees
+    template <typename T>
+    T mod360(const T& numer) {
+        return fmod(numer, T(360.0));
+    }
+
+    //! Check whether a number is infinite
+    template <typename T>
+    inline bool isInfinite(const T& number) {
+        return isinf(number);
+    }
+
+    //! Check whether an AutoDiffScalar's value is infinite
+    template <typename T>
+    inline bool isInfinite(const Eigen::AutoDiffScalar<T>& number) {
+        return isinf(number.value());
+    }
+
+    //! Figure out the dimensions and types of the coefficients of a map.
+    namespace types {
+
+        template <typename T>
+        struct TypeSelector{ };
+
+        template <typename T>
+        struct TypeSelector <Matrix<T>>{
+            using Column = Vector<T>;
+            using Row = VectorT<T>;
+            using Scalar = T;
+            using MapDouble = Matrix<double>;
+            using ColumnDouble = Vector<double>;
+            using RowDouble = VectorT<double>;
+            using RowBool = VectorT<bool>;
+        };
+
+        template <typename T>
+        struct TypeSelector <Vector<T>>{
+            using Column = T;
+            using Row = T;
+            using Scalar = T;
+            using MapDouble = Vector<double>;
+            using ColumnDouble = double;
+            using RowDouble = double;
+            using RowBool = bool;
+        };
+
+    }
+
+    //! The type of a `Map` row (Vector^T or scalar)
+    template <class MapType>
+    using Row = typename types::TypeSelector<MapType>::Row;
+
+    //! The type of a `Map` column (Vector or scalar)
+    template <class MapType>
+    using Column = typename types::TypeSelector<MapType>::Column;
+
+    //! The scalar type of a `Map` (essentially the same as `MapType::Scalar`)
+    template <class MapType>
+    using Scalar = typename types::TypeSelector<MapType>::Scalar;
+
+    //! The type of a `Map` row cast to double (Vector^T or scalar)
+    template <class MapType>
+    using RowDouble = typename types::TypeSelector<MapType>::RowDouble;
+
+    //! The type of a `Map` column cast to double (Vector or scalar)
+    template <class MapType>
+    using ColumnDouble = typename types::TypeSelector<MapType>::ColumnDouble;
+
+    //! The type of a `Map` cast to double (Matrix or vector)
+    template <class MapType>
+    using MapDouble = typename types::TypeSelector<MapType>::MapDouble;
+
+    //! The type of a `Map` row cast to bool (Vector or scalar)
+    template <class MapType>
+    using RowBool = typename types::TypeSelector<MapType>::RowBool;
+
+
+    // --------------------------
+    // -- Map coefficient utils -
+    // --------------------------
+
+
+    //! Resize a map: Matrix specialization
+    template <class T>
+    inline void resize(Matrix<T>& obj, int N, int NW) {
+        obj.resize(N, NW);
+    }
+
+    //! Resize a map: Vector specialization
+    template <class T>
+    inline void resize(Vector<T>& obj, int N, int NW) {
+        obj.resize(N);
+    }
+
+    //! Resize a map: VectorT specialization
+    template <class T>
+    inline void resize(VectorT<T>& obj, int N, int NW) {
+        obj.resize(NW);
+    }
+
+    //! Resize a map: Scalar specialization (does nothing!)
+    template <class T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    resize(T& obj, int N, int NW) { }
+
+    //! Zero out a map: specialization for all Eigen types
+    template <class T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    setZero(T& obj) {
+        obj.setZero();
+    }
+
+    //! Zero out a map: Scalar specialization
+    template <class T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    setZero(T& obj) {
+        obj = 0;
+    }
+
+    //! Set a map to one: specialization for all Eigen types
+    template <class T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    setOnes(T& obj) {
+        obj.setOnes();
+    }
+
+    //! Set a map to one: Scalar specialization
+    template <class T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, void>::type
+    setOnes(T& obj) {
+        obj = 1;
+    }
+
+    //! Set a row in a map: Vector specialization
+    template <class T, class U>
+    inline void setRow(Vector<T>& vec, int row, U val) {
+        vec(row) = static_cast<T>(val);
+    }
+
+    //! Set a row in a map: Matrix specialization
+    template <class T, class U>
+    inline void setRow(Matrix<T>& vec, int row, const VectorT<U>& val) {
+        if (val.size() != vec.cols())
+            throw errors::ValueError("Size mismatch in the wavelength dimension.");
+        vec.row(row) = val.template cast<T>();
+    }
+
+    //! Set a row in a map to a constant value: specialization for all eigen types
+    template <class T, class U>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<U>, U>::value, void>::type
+    setRow(Matrix<T>& vec, int row, U val) {
+        vec.row(row) = VectorT<T>::Constant(vec.cols(), static_cast<T>(val));
+    }
+
+    //! Return a row in a map: Vector specialization
+    template <class T>
+    inline T getRow(const Vector<T>& vec, int row) {
+        return vec(row);
+    }
+
+    //! Return a row in a map: VectorT specialization
+    template <class T>
+    inline VectorT<T> getRow(const Matrix<T>& vec, int row) {
+        return vec.row(row);
+    }
+
+    //! Set an index of a vector: Row vector specialization
+    template <class T>
+    inline void setIndex(VectorT<T>& vec, int col, T val) {
+        vec(col) = val;
+    }
+
+    //! Set an index of a vector: Column vector specialization
+    template <class T>
+    inline void setIndex(Vector<T>& vec, int row, T val) {
+        vec(row) = val;
+    }
+
+    //! Set an index of a vector: Scalar specialization
+    template <class T>
+    inline void setIndex(T& scalar, int col, T val) {
+        if (col == 0)
+            scalar = val;
         else
-            vec(n) = (double)x(n);
+            throw errors::IndexError("Attempting to index a scalar variable.");
     }
-    return vec;
-}
-inline Vector<double> get_value(Vector<Grad> x) {
-    Vector<double> vec;
-    vec.resize(x.size());
-    for (int n = 0; n < x.size(); n++) {
-        vec(n) = x(n).value();
+
+    //! Get an index of a vector: Row vector specialization
+    template <class T>
+    inline T getIndex(const VectorT<T>& vec, int col) {
+        return vec(col);
     }
-    return vec;
-}
 
-// Set the value of a MapType variable
-template <typename T>
-inline void set_value(T& x, T& y) { x = y; }
-template <>
-inline void set_value(Grad& x, Grad& y) { x.value() = y.value(); }
-
-// Print the derivatives of a MapType variable for debugging
-template <typename T>
-void print_derivs(T x) { std::cout << "None" << std::endl; }
-template <>
-void print_derivs(Grad x) { std::cout << x.derivatives().transpose() << std::endl; }
-
-// Zero out the derivatives of a MapType variable
-template <typename T>
-inline void set_derivs_to_zero(T& x) { }
-template <>
-inline void set_derivs_to_zero(Grad& x) { x.derivatives().setZero(x.derivatives().size()); }
-
-// Normalize a unit vector
-template <typename T>
-inline UnitVector<T> norm_unit(const UnitVector<T>& vec) {
-    UnitVector<T> result = vec / sqrt(vec(0) * vec(0) + vec(1) * vec(1) + vec(2) * vec(2));
-    return result;
-}
-
-// Helper function to figure out if we're using multiprecision
-template <typename T>
-inline bool is_Multi(T x) {
-    return false;
-}
-
-// Helper function to figure out if we're using multiprecision
-template <>
-inline bool is_Multi(Multi x) {
-    return true;
-}
-
-// Helper function to figure out if we're using autodiff
-template <typename T>
-inline bool is_Grad(T x) {
-    return false;
-}
-
-// Helper function to figure out if we're using autodiff
-template <>
-inline bool is_Grad(Grad x) {
-    return true;
-}
-
-// Check if number is even (or doubly, triply, quadruply... even)
-inline bool is_even(int n, int ntimes=1) {
-    for (int i = 0; i < ntimes; i++) {
-        if ((n % 2) != 0) return false;
-        n /= 2;
+    //! Get an index of a vector: Column vector specialization
+    template <class T>
+    inline T getIndex(const Vector<T>& vec, int row) {
+        return vec(row);
     }
-    return true;
-}
 
-// Machine precision at current type
-template <typename T>
-inline T mach_eps() {
-    return std::numeric_limits<T>::epsilon();
-}
+    //! Get an index of a vector: Scalar specialization
+    template <class T>
+    inline T getIndex(const T& scalar, int col) {
+        if (col == 0)
+            return scalar;
+        else
+            throw errors::IndexError("Attempting to index a scalar variable.");
+    }
 
-template <>
-inline Grad mach_eps() {
-    return Grad(mach_eps<double>());
-}
+    //! Return the value at an index: Vector specialization
+    template <class T>
+    inline Vector<T> getColumn(const Vector<T>& vec, int col) {
+        if (col == 0)
+            return vec;
+        else
+            throw errors::IndexError("Attempting to index a scalar variable.");
+    }
 
-// Re-definition of fmod so we can define its derivative below
-using std::fmod;
-template <typename T>
-T mod2pi(const T& numer) {
-    return fmod(numer, T(2 * PI<T>()));
-}
+    //! Return the value at an index: VectorT specialization
+    template <class T>
+    inline T getColumn(const VectorT<T>& vec, int col) {
+        return vec(col);
+    }
 
-// Derivative of the floating point modulo function
-template <typename T>
-Eigen::AutoDiffScalar<T> mod2pi(const Eigen::AutoDiffScalar<T>& numer) {
-    typename T::Scalar numer_value = numer.value(),
-                       modulo_value = mod2pi(numer_value);
-    return Eigen::AutoDiffScalar<T>(
-      modulo_value,
-      numer.derivatives()
-    );
-}
+    //! Return the value at an index: Matrix specialization
+    template <class T>
+    inline Vector<T> getColumn(const Matrix<T>& vec, int col) {
+        return vec.col(col);
+    }
+
+    //! Return the value at an index: Scalar specialization
+    template <class T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
+    getColumn(const T& vec, int col) {
+        if (col == 0)
+            return vec;
+        else
+            throw errors::IndexError("Attempting to index a scalar variable.");
+    }
+
+    //! Does a map tensor have any zero elements? Specialization for all Eigen types
+    template <typename T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    hasZero(const T& v) {
+        return (v.array() == 0.0).any();
+    }
+
+    //! Does a map tensor have any zero elements? Specialization for Scalar
+    template <typename T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    hasZero(const T& v) {
+        return v == 0.0;
+    }
+
+    //! Does a map tensor have *all* zero elements? Specialization for all Eigen types
+    template <typename T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    allZero(const T& v) {
+        return (v.array() == 0.0).all();
+    }
+
+    //! Does a map tensor have *all* zero elements? Specialization for Scalar
+    template <typename T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    allZero(const T& v) {
+        return v == 0.0;
+    }
+
+    //! Does a map tensor have *all* unit elements? Specialization for all Eigen types
+    template <typename T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    allOnes(const T& v) {
+        return (v.array() == 1.0).all();
+    }
+
+    //! Does a map tensor have *all* unit elements? Specialization for Scalar
+    template <typename T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type
+    allOnes(const T& v) {
+        return v == 1.0;
+    }
+
+    //! VectorT-Vector dot product
+    template <typename T>
+    T dot(const VectorT<T>& vT, const Vector<T>& u) {
+        return vT.dot(u);
+    }
+
+    //! VectorT-Matrix dot product
+    template <typename T>
+    VectorT<T> dot(const VectorT<T>& vT, const Matrix<T>& U) {
+        return vT * U;
+    }
+
+    //! Matrix-Vector dot product
+    template <typename T>
+    VectorT<T> dot(const Matrix<T>& U, const Vector<T>& v) {
+        return U * v;
+    }
+
+    //! Eigen-Eigen coeff-wise product
+    template <typename T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
+    cwiseProduct(const T& v, const T& u) {
+        return v.cwiseProduct(u);
+    }
+
+    //! Scalar-scalar product
+    template <typename T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
+    cwiseProduct(const T& v, const T& u) {
+        return v * u;
+    }
+
+    //! Eigen-Eigen coeff-wise quotient
+    template <typename T>
+    inline typename std::enable_if<std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
+    cwiseQuotient(const T& v, const T& u) {
+        return v.cwiseQuotient(u);
+    }
+
+    //! Scalar-scalar quotient
+    template <typename T>
+    inline typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, T>::type
+    cwiseQuotient(const T& v, const T& u) {
+        return v / u;
+    }
+
+    //! Column-wise Matrix-VectorT multiplication
+    template <typename T>
+    inline Matrix<T> colwiseProduct(Matrix<T>& mat, const VectorT<T>& vec) {
+        Matrix<T> out = mat;
+        for (int n = 0; n < mat.cols(); ++n)
+            out.col(n) *= vec(n);
+        return out;
+    }
+
+    //! Column-wise Vector-Scalar multiplication
+    template <typename T>
+    inline Vector<T> colwiseProduct(Vector<T>& vec, const T& scal) {
+        return vec * scal;
+    }
+
+
+} // namespace utils
 
 #endif

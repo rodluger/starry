@@ -18,9 +18,14 @@ Spherical harmonic, polynomial, and Green's basis utilities.
 
 namespace basis {
 
+    using namespace utils;
     using std::abs;
+    using std::min;
 
-    // Contraction coefficient for the Ylms
+    /**
+    Contraction coefficient for the Ylms
+
+    */
     template <typename T>
     T C(int p, int q, int k) {
         if ((p > k) && ((p - k) % 2 == 0)) {
@@ -35,17 +40,23 @@ namespace basis {
         }
     }
 
-    // Return the normalization constant A for a Ylm
+    /**
+    Return the normalization constant A for a Ylm
+
+    */
     template <typename T>
     T Norm(int l, int m) {
-        return sqrt((1. / (4 * PI<T>())) *
+        return sqrt((1. / (4 * pi<T>())) *
                     (2 - (int)(m == 0)) *
                     (2 * l + 1) *
                     tables::factorial<T>(l - abs(m)) /
                     tables::factorial<T>(l + abs(m)));
     }
 
-    // Return the B coefficient for a Ylm
+    /**
+    Return the B coefficient for a Ylm
+
+    */
     template <typename T>
     T B(int l, int m, int j, int k) {
 
@@ -71,7 +82,10 @@ namespace basis {
         return two_l * a * b / (c * d * e * f * g);
     }
 
-    // Return the ijk tensor element of the spherical harmonic Ylm
+    /**
+    Return the ijk tensor element of the spherical harmonic Ylm
+
+    */
     template <typename T>
     T Lijk(int l, int m, int i, int j, int k) {
         if ((i == abs(m) + k) && (j <= abs(m))) {
@@ -93,15 +107,19 @@ namespace basis {
         }
     }
 
-    // Compute the first change of basis matrix, A_1
-    // NOTE: This routine is **not optimized**. We could compute the
-    // elements of the sparse matrix A1 directly, but instead we compute
-    // the elements of the tensors Ylm, contract these tensors to column vectors
-    // in the dense version of A1, then convert it to sparse form.
-    // Fortunately, this routine is only run **once** when a Map class is
-    // instantiated.
+    /**
+    Compute the first change of basis matrix, `A_1`.
+
+    NOTE: This routine is **not optimized**. We could compute the
+    elements of the sparse matrix `A1` directly, but instead we compute
+    the elements of the tensors `Ylm`, contract these tensors to column vectors
+    in the dense version of `A1`, then convert it to sparse form.
+    Fortunately, this routine is only run **once** when a `Map` class is
+    instantiated.
+    */
     template <typename T>
-    void computeA1(int lmax, Eigen::SparseMatrix<T>& A1, T tol=10 * std::numeric_limits<T>::epsilon()) {
+    void computeA1(int lmax, Eigen::SparseMatrix<T>& A1, T norm,
+                   T tol=10 * std::numeric_limits<T>::epsilon()) {
         int l, m;
         int n = 0;
         int i, j, k, p, q, v;
@@ -136,9 +154,11 @@ namespace basis {
                                     for (p=0; p<k+1; p+=2) {
                                         for (q=0; q<p+1; q+=2) {
                                             if ((p / 2) % 2 == 0)
-                                                Ylm0(i - k + p, j + q) += C<T>(p, q, k) * coeff;
+                                                Ylm0(i - k + p, j + q) +=
+                                                    C<T>(p, q, k) * coeff;
                                             else
-                                                Ylm0(i - k + p, j + q) -= C<T>(p, q, k) * coeff;
+                                                Ylm0(i - k + p, j + q) -=
+                                                    C<T>(p, q, k) * coeff;
                                         }
                                     }
                                 } else {
@@ -146,9 +166,11 @@ namespace basis {
                                     for (p=0; p<k+1; p+=2) {
                                         for (q=0; q<p+1; q+=2) {
                                             if ((p / 2) % 2 == 0)
-                                                Ylm1(i - k + p + 1, j + q) += C<T>(p, q, k - 1) * coeff;
+                                                Ylm1(i - k + p + 1, j + q) +=
+                                                    C<T>(p, q, k - 1) * coeff;
                                             else
-                                                Ylm1(i - k + p + 1, j + q) -= C<T>(p, q, k - 1) * coeff;
+                                                Ylm1(i - k + p + 1, j + q) -=
+                                                    C<T>(p, q, k - 1) * coeff;
                                         }
                                     }
                                 }
@@ -177,15 +199,22 @@ namespace basis {
             }
         }
 
+        // Normalize
+        A1Dense *= norm;
+
         // Make sparse
         A1 = A1Dense.sparseView();
 
         return;
     }
 
-    // Compute the full change of basis matrix, A
+    /**
+    Compute the full change of basis matrix, `A`
+
+    */
     template <typename T>
-    void computeA(int lmax, Eigen::SparseMatrix<T>& A1, Eigen::SparseMatrix<T>& A, T tol=10 * std::numeric_limits<T>::epsilon()) {
+    void computeA(int lmax, const Eigen::SparseMatrix<T>& A1,
+                  Eigen::SparseMatrix<T>& A2, Eigen::SparseMatrix<T>& A) {
         int i, n, l, m, mu, nu;
         int N = (lmax + 1) * (lmax + 1);
 
@@ -238,44 +267,296 @@ namespace basis {
         Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
         solver.compute(A2Inv);
         if (solver.info() != Eigen::Success) {
-            throw errors::SparseFail();
+            throw errors::LinearAlgebraError("Error computing the change "
+                                             "of basis matrix `A2`.");
+        }
+        Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
+        A2 = solver.solve(I);
+        if (solver.info() != Eigen::Success) {
+            throw errors::LinearAlgebraError("Error computing the change "
+                                             "of basis matrix `A2`.");
         }
         A = solver.solve(A1);
         if (solver.info() != Eigen::Success) {
-            throw errors::SparseFail();
+            throw errors::LinearAlgebraError("Error computing the change "
+                                             "of basis matrix `A1`.");
         }
 
         return;
     }
 
-    // Compute the change of basis from limb darkening coefficients
-    // to spherical harmonic coefficients
+    /**
+    Compute the inverse of the change of basis matrix `A1`.
+
+    */
     template <typename T>
-    void computeU(int lmax, Matrix<T>& U) {
+    void computeA1Inv(int lmax, const Eigen::SparseMatrix<T>& A1,
+                      Eigen::SparseMatrix<T>& A1Inv) {
+        int N = (lmax + 1) * (lmax + 1);
+        Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
+        solver.compute(A1);
+        if (solver.info() != Eigen::Success)
+            throw errors::LinearAlgebraError(
+                "Error computing the change of basis matrix `A1Inv`.");
+        Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
+        A1Inv = solver.solve(I);
+    }
+
+
+    /**
+    Compute the change of basis matrices from limb darkening coefficients
+    to polynomial and Green's polynomial coefficients.
+
+    */
+    template <typename T>
+    void computeU(int lmax, const Eigen::SparseMatrix<T>& A1,
+                  const Eigen::SparseMatrix<T>& A, Eigen::SparseMatrix<T>& U1,
+                  Eigen::SparseMatrix<T>& U, T norm) {
         T amp;
+        int N = (lmax + 1) * (lmax + 1);
+        Matrix<T> U0;
         Matrix<T> LT, YT;
         LT.setZero(lmax + 1, lmax + 1);
         YT.setZero(lmax + 1, lmax + 1);
 
         // Compute L^T and Y^T
         for (int l = 0; l < lmax + 1; l++) {
-            amp = pow(2, l) * sqrt((2 * l + 1) / (4 * PI<T>())) / tables::factorial<T>(l);
+            amp = pow(2, l) * sqrt((2 * l + 1) / (4 * pi<T>())) /
+                              tables::factorial<T>(l);
             for (int k = 0; k < l + 1; k++) {
                 if ((k + 1) % 2 == 0)
                     LT(k, l) = tables::choose<T>(l, k);
                 else
                     LT(k, l) = -tables::choose<T>(l, k);
-                YT(k, l) = amp * tables::choose<T>(l, k) * tables::half_factorial<T>(k + l - 1) / tables::half_factorial<T>(k - l - 1);
+                YT(k, l) = amp * tables::choose<T>(l, k) *
+                                 tables::half_factorial<T>(k + l - 1) /
+                                 tables::half_factorial<T>(k - l - 1);
             }
         }
 
-        // Compute U
+        // Compute U0
         Eigen::HouseholderQR<Matrix<T>> solver(lmax + 1, lmax + 1);
         solver.compute(YT);
-        U = solver.solve(LT);
+        U0 = solver.solve(LT);
+
+        // Normalize it. Since we compute `U0` from the *inverse*
+        // of `A1`, we must *divide* by the normalization constant
+        U0 /= norm;
+
+        // Compute U1 and U
+        Matrix<T> X(N, lmax + 1);
+        X.setZero();
+        for (int l = 0; l < lmax + 1; ++l)
+            X(l * (l + 1), l) = 1;
+        Eigen::SparseMatrix<T> XU0 = (X * U0).sparseView();
+        U1 = A1 * XU0;
+        U = A * XU0;
 
     }
 
-}; // namespace basis
+    /**
+    Return the n^th term of the `r` phase curve solution vector
+
+    */
+    template <typename T>
+    T rn(int mu, int nu) {
+        T a, b, c;
+        if (is_even(mu, 2) && is_even(nu, 2)) {
+            a = tables::gamma_sup<T>(mu / 4);
+            b = tables::gamma_sup<T>(nu / 4);
+            c = tables::gamma<T>((mu + nu) / 4 + 2);
+            return a * b / c;
+        } else if (is_even(mu - 1, 2) && is_even(nu - 1, 2)) {
+            a = tables::gamma_sup<T>((mu - 1) / 4);
+            b = tables::gamma_sup<T>((nu - 1) / 4);
+            c = tables::gamma_sup<T>((mu + nu - 2) / 4 + 2) * (2.0 / root_pi<T>());
+            return a * b / c;
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+    Compute the `r^T` phase curve solution vector
+
+    */
+    template <typename T>
+    void computerT(int lmax, VectorT<T>& rT) {
+        rT.resize((lmax + 1) * (lmax + 1));
+        int l, m, mu, nu;
+        int n = 0;
+        for (l=0; l<lmax+1; l++) {
+            for (m=-l; m<l+1; m++) {
+                mu = l - m;
+                nu = l + m;
+                rT(n) = rn<T>(mu, nu);
+                n++;
+            }
+        }
+        return;
+    }
+
+    /**
+    Multiply two polynomials
+
+    */
+    template <typename T>
+    inline void polymul(int lmax1, const T& p1, int lmax2,
+                        const T& p2, int lmax12, T& p1p2) {
+        int n1, n2, l1, m1, l2, m2, l, n;
+        bool odd1;
+        resize(p1p2, (lmax12 + 1) * (lmax12 + 1), p1.cols());
+        p1p2.setZero();
+        Row<T> mult;
+        n1 = 0;
+        for (l1 = 0; l1 < lmax1 + 1; ++l1) {
+            for (m1 = -l1; m1 < l1 + 1; ++m1) {
+                odd1 = (l1 + m1) % 2 == 0 ? false : true;
+                n2 = 0;
+                for (l2 = 0; l2 < lmax2 + 1; ++l2) {
+                    if (l1 + l2 > lmax12) break;
+                    for (m2 = -l2; m2 < l2 + 1; ++m2) {
+                        l = l1 + l2;
+                        n = l * l + l + m1 + m2;
+                        mult = cwiseProduct(getRow(p1, n1), getRow(p2, n2));
+                        if (odd1 && ((l2 + m2) % 2 != 0)) {
+                            setRow(p1p2, n - 4 * l + 2,
+                                   Row<T>(getRow(p1p2, n - 4 * l + 2) + mult));
+                            setRow(p1p2, n - 2,
+                                   Row<T>(getRow(p1p2, n - 2) - mult));
+                            setRow(p1p2, n + 2,
+                                   Row<T>(getRow(p1p2, n + 2) - mult));
+                        } else {
+                            setRow(p1p2, n, Row<T>(getRow(p1p2, n) + mult));
+                        }
+                        ++n2;
+                    }
+                }
+                ++n1;
+            }
+        }
+        return;
+    }
+
+    /**
+    Multiply two polynomials and manually compute the gradients
+
+    Since the inputs and outputs are both (in the most general case) matrices,
+    the derivative of `p1p2` with respect to either `p1` or `p2`
+    is a matrix of matrices, which is pretty gnarly. Fortunately,
+    the wavelength bins are all independent of each other, so we can get away
+    with setting each element of the matrix `p1p2` to be a *vector* corresponding
+    to the derivative of the product with respect to the polynomial coefficients
+    *at that particular wavelength*.
+
+    For reference, `grad_p1(i)(j, k)` is the derivative of the j^th
+    polynomial coefficient of `p1p2` with respect to the k^th polynomial
+    coefficient of `p1`, both in the i^th wavelength bin.
+
+    Yuck.
+
+    */
+    template <typename T>
+    inline void polymul(int lmax1, const T& p1, int lmax2,
+                        const T& p2, int lmax12, T& p1p2,
+                        VectorT<Matrix<Scalar<T>>>& grad_p1,
+                        VectorT<Matrix<Scalar<T>>>& grad_p2) {
+        int n1, n2, l1, m1, l2, m2, l, n, i;
+        bool odd1;
+        int nwav = p1.cols();
+        int N = (lmax12 + 1) * (lmax12 + 1);
+        resize(p1p2, N, nwav);
+        p1p2.setZero();
+        Row<T> mult;
+        n1 = 0;
+
+        // Initialize the gradients
+        grad_p1.resize(nwav);
+        grad_p2.resize(nwav);
+        for (i = 0; i < nwav; ++i){
+            grad_p1(i) = Matrix<Scalar<T>>::Zero(N, N);
+            grad_p2(i) = Matrix<Scalar<T>>::Zero(N, N);
+        }
+
+        // Note that our loops go up to `lmax12` for both polynomials
+        // so we can compute the gradients for all coefficients, including
+        // those above `y_deg` and `u_deg`.
+        for (l1 = 0; l1 < lmax12 + 1; ++l1) {
+            for (m1 = -l1; m1 < l1 + 1; ++m1) {
+                odd1 = (l1 + m1) % 2 == 0 ? false : true;
+                n2 = 0;
+                for (l2 = 0; l2 < lmax12 + 1; ++l2) {
+                    if (l1 + l2 > lmax12) break;
+                    for (m2 = -l2; m2 < l2 + 1; ++m2) {
+                        l = l1 + l2;
+                        n = l * l + l + m1 + m2;
+                        mult = cwiseProduct(getRow(p1, n1), getRow(p2, n2));
+                        if (odd1 && ((l2 + m2) % 2 != 0)) {
+                            setRow(p1p2, n - 4 * l + 2,
+                                   Row<T>(getRow(p1p2, n - 4 * l + 2) + mult));
+                            setRow(p1p2, n - 2,
+                                   Row<T>(getRow(p1p2, n - 2) - mult));
+                            setRow(p1p2, n + 2,
+                                   Row<T>(getRow(p1p2, n + 2) - mult));
+                            for (i = 0; i < nwav; ++i) {
+                                grad_p1(i)(n - 4 * l + 2, n1) += p2(n2, i);
+                                grad_p2(i)(n - 4 * l + 2, n2) += p1(n1, i);
+                                grad_p1(i)(n - 2, n1) -= p2(n2, i);
+                                grad_p2(i)(n - 2, n2) -= p1(n1, i);
+                                grad_p1(i)(n + 2, n1) -= p2(n2, i);
+                                grad_p2(i)(n + 2, n2) -= p1(n1, i);
+                            }
+                        } else {
+                            setRow(p1p2, n, Row<T>(getRow(p1p2, n) + mult));
+                            for (i = 0; i < nwav; ++i) {
+                                grad_p1(i)(n, n1) += p2(n2, i);
+                                grad_p2(i)(n, n2) += p1(n1, i);
+                            }
+                        }
+                        ++n2;
+                    }
+                }
+                ++n1;
+            }
+        }
+        return;
+    }
+
+    /**
+    Basis transform matrices
+
+    */
+    template <class T>
+    class Basis {
+
+        public:
+
+            const int lmax;                                                     /**< The highest degree of the map */
+            const double norm;                                                  /**< Map normalization constant */
+            Eigen::SparseMatrix<T> A1;                                          /**< The polynomial change of basis matrix */
+            Eigen::SparseMatrix<T> A1Inv;                                       /**< The inverse of the polynomial change of basis matrix */
+            Eigen::SparseMatrix<T> A2;                                          /**< The Green's change of basis matrix */
+            Eigen::SparseMatrix<T> A;                                           /**< The full change of basis matrix */
+            VectorT<T> rT;                                                      /**< The rotation solution vector */
+            VectorT<T> rTA1;                                                    /**< The rotation vector times the `Ylm` change of basis matrix */
+            VectorT<T> rTU1;                                                    /**< The rotation vector times the LD change of basis matrix */
+            Eigen::SparseMatrix<T> U1;                                          /**< The limb darkening to polynomial change of basis matrix */
+            Eigen::SparseMatrix<T> U;                                           /**< The full limb darkening change of basis matrix */
+
+            // Constructor: compute the matrices
+            explicit Basis(int lmax, T norm=2.0 / root_pi<T>()) :
+                    lmax(lmax), norm(norm) {
+                computeA1(lmax, A1, norm);
+                computeA(lmax, A1, A2, A);
+                computeA1Inv(lmax, A1, A1Inv);
+                computerT(lmax, rT);
+                rTA1 = rT * A1;
+                computeU(lmax, A1, A, U1, U, norm);
+                rTU1 = rT * U1;
+            }
+
+    };
+
+} // namespace basis
 
 #endif

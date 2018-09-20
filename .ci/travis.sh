@@ -25,6 +25,3 @@ fi
 
 # Display some info
 conda info -a
-
-# Build the code
-CC=gcc-4.8 && CXX=g++-4.8 python setup.py develop

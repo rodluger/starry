@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as pl
 import starry
 from tqdm import tqdm
+import os
 
 
 def is_even(n):
@@ -13,47 +14,52 @@ def is_even(n):
         return True
 
 
-def StarryDExact(barr, r, larr, lmax, d='b', tiny=1e-8):
-    """Compute dF/d{b,r} with starry multiprecision."""
-    map = starry.multi.Map(lmax)
+def StarryDExact(barr, r, larr, lmax, d='b'):
+    """Compute F and dF/d{b,r} with starry multiprecision."""
+    map = starry.Map(lmax, multi=True)
     res = np.zeros((lmax + 1, len(barr)))
+    flx = np.zeros((lmax + 1, len(barr)))
     for ll in tqdm(range(lmax + 1)):
         if ll not in larr:
             continue
         map.reset()
+        map[0, 0] = 0
         for mm in range(-ll, ll + 1):
             map[ll, mm] = 1
+        flx[ll], gradient = map.flux(xo=0, yo=barr, ro=r, gradient=True)
         if d == 'b':
-            res[ll] = map._dfluxdyo(xo=0, yo=barr, ro=r)
+            res[ll] = gradient['yo']
         elif d == 'r':
-            res[ll] = map._dfluxdro(xo=0, yo=barr, ro=r)
+            res[ll] = gradient['ro']
         else:
             raise ValueError("Invalid derivative name.")
-    return res
+    return flx, res
 
 
 def StarryD(barr, r, larr, lmax, d='b'):
     """Compute dF/d{b,r} for each degree with starry.grad."""
-    map = starry.grad.Map(lmax)
+    map = starry.Map(lmax)
     res = np.zeros((lmax + 1, len(barr)))
     for ll in tqdm(range(lmax + 1)):
         if ll not in larr:
             continue
         map.reset()
+        map[0, 0] = 0
         for mm in range(-ll, ll + 1):
             map[ll, mm] = 1
-        map.flux(xo=0, yo=barr, ro=r)
+        flux, gradient = map.flux(xo=0, yo=barr, ro=r, gradient=True)
         if d == 'b':
-            res[ll] = map.gradient['yo']
+            res[ll] = gradient['yo']
         elif d == 'r':
-            res[ll] = map.gradient['ro']
+            res[ll] = gradient['ro']
         else:
             raise ValueError("Invalid derivative name.")
     return res
 
 
 def PaperFigure(larr=[0, 1, 2, 3, 5, 8, 10, 13, 15, 18, 20],
-                logdelta=-6, logeps=-12, res=50, d='b'):
+                logdelta=-6, logeps=-12, res=50, d='b',
+                clobber=False):
     """Plot the stability figure for the paper."""
     lmax = np.max(larr)
     delta = 10 ** logdelta
@@ -146,15 +152,32 @@ def PaperFigure(larr=[0, 1, 2, 3, 5, 8, 10, 13, 15, 18, 20],
     ax[1, 0].set_xlabel("Impact parameter", fontsize=12)
     ax[1, 1].set_xlabel("Impact parameter", fontsize=12)
 
+    if not os.path.exists('stability_grad_0.01.txt') or clobber:
+        F_mp = [None, None]
+        dFdb_mp = [None, None]
+        F_mp[0], dFdb_mp[0] = StarryDExact(b0, 0.01, larr, lmax, d=d)
+        np.savetxt('stability_grad_0.01.txt',
+                   np.concatenate([F_mp[0], dFdb_mp[0]]), fmt='%.18e')
+        F_mp[1], dFdb_mp[1] = StarryDExact(b1, 100, larr, lmax, d=d)
+        np.savetxt('stability_grad_100.txt',
+                   np.concatenate([F_mp[1], dFdb_mp[1]]), fmt='%.18e')
+    else:
+        F_mp = [None, None]
+        dFdb_mp = [None, None]
+        X = np.loadtxt('stability_grad_0.01.txt')
+        F_mp[0] = X[:(lmax + 1), :]
+        dFdb_mp[0] = X[(lmax + 1):, :]
+        X = np.loadtxt('stability_grad_100.txt')
+        F_mp[1] = X[:(lmax + 1), :]
+        dFdb_mp[1] = X[(lmax + 1):, :]
+
     # Plot!
     for i, b, r in zip([0, 1], [b0, b1], [0.01, 100]):
         dFdb = StarryD(b, r, larr, lmax, d=d)
-        dFdb_mp = StarryDExact(b, r, larr, lmax, d=d)
-        n = 0
         for l in larr:
-            err_rel = np.abs(dFdb[l] - dFdb_mp[l])
-            err_frac = np.abs((dFdb[l] - dFdb_mp[l]) /
-                              max(1e-9, np.max(np.abs(dFdb_mp[n]))))
+            err_rel = np.abs(dFdb[l] - dFdb_mp[i][l])
+            err_frac = np.abs((dFdb[l] - dFdb_mp[i][l]) /
+                              max(1e-9, np.max(np.abs(F_mp[i][l]))))
             ax[0, i].plot(err_rel, color=cmap(l / (lmax + 2)), lw=1,
                           zorder=-1)
             ax[1, i].plot(err_frac, color=cmap(l / (lmax + 2)), lw=1,

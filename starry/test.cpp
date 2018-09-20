@@ -1,25 +1,47 @@
+// TODO: I get slightly different values here than when calling the Python
+// version. Investigate!
+
 #include <stdlib.h>
-#include "maps.h"
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include "kepler.h"
 #include "utils.h"
+using namespace utils;
+using namespace kepler;
 
 int main() {
 
-  int lmax = 5;
-  double theta, xo, yo, ro;
+    using T = Vector<double>;
 
-  maps::Map<double> map(lmax);
-  for (int l = 0; l < lmax + 1; l++) {
-    for (int m = -l; m < l + 1; m++) {
-      map.setCoeff(l, m, 1.0);
-    }
-  }
+    Vector<double> time(12);
+    time << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1;
 
+    Primary<T> star(2, 1);
+    star.setY(1, 0, 0.1);
+    star.setRotPer(1);
 
-  theta = 0;
-  xo = 0.3;
-  yo = 0.3;
-  ro = 0.1;
-  for (int i = 0; i < 1000; i++)
-    map.flux(theta, xo, yo, ro);
+    Secondary<T> b(2, 1);
+    b.setY(1, 0, 0.5);
+    b.setLuminosity(0.001);
+    b.setRotPer(1.);
+    b.setRefTime(0.3);
+
+    Secondary<T> c(2, 1);
+    c.setY(1, 0, 0.5);
+    c.setLuminosity(0.001);
+    c.setRotPer(1.5);
+    c.setRefTime(0.7);
+
+    std::vector<Secondary<T>*> planets{&b, &c};
+    System<T> system(&star, planets);
+    system.compute(time);
+    std::cout << system.getLightcurve() << std::endl << std::endl;
+
+    std::vector<Secondary<T>*> planets_r{&c, &b};
+    System<T> system_r(&star, planets_r);
+    system_r.compute(time);
+    std::cout << system_r.getLightcurve() << std::endl << std::endl;
+
 
 }

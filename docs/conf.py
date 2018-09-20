@@ -17,7 +17,25 @@ import os
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 print(__file__)
 sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
+if sys.version_info[0] < 3:
+    import __builtin__ as builtins
+else:
+    import builtins
+builtins.__STARRY_DOCS__ = True
 import starry
+
+# Suuuper hacky: clone the hidden classes to beautify their call names
+starry.Map = type('Map', starry._starry_mono_64.Map.__bases__,
+    dict(starry._starry_mono_64.Map.__dict__))
+starry.kepler.Primary = type('Primary',
+    starry._starry_mono_64.kepler.Primary.__bases__,
+    dict(starry._starry_mono_64.kepler.Primary.__dict__))
+starry.kepler.Secondary = type('Secondary',
+    starry._starry_mono_64.kepler.Secondary.__bases__,
+    dict(starry._starry_mono_64.kepler.Secondary.__dict__))
+starry.kepler.System = type('System',
+    starry._starry_mono_64.kepler.System.__bases__,
+    dict(starry._starry_mono_64.kepler.System.__dict__))
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -53,6 +71,8 @@ nbsphinx_prolog = """
 todo_include_todos = True
 
 autosummary_generate = True
+
+autodoc_docstring_signature = True
 
 # Remove jupyter notebook prompt numbers
 nbsphinx_prompt_width = 0

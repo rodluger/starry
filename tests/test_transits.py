@@ -1,5 +1,5 @@
 """Test transit light curve generation."""
-from starry import Star, Planet, System
+from starry.kepler import Primary, Secondary, System
 import numpy as np
 from scipy.integrate import dblquad
 
@@ -107,13 +107,18 @@ def test_transits():
     # The second-order map is optimized for speed and uses different
     # equations, but they should yield identical results.
     for lmax in [2, 3]:
-        star = Star(lmax)
-        star.map[1] = u1
-        star.map[2] = u2
-        planet = Planet(r=rplanet, a=a, inc=inc, porb=P, lambda0=90)
-        system = System([star, planet])
+        star = Primary(lmax)
+        star[1] = u1
+        star[2] = u2
+        planet = Secondary()
+        planet.r = rplanet
+        planet.a = a
+        planet.inc = inc
+        planet.porb = P
+        planet.lambda0 = 90
+        system = System(star, planet)
         system.compute(time)
-        sF = np.array(star.flux)
+        sF = np.array(star.lightcurve)
         sF /= sF[0]
 
         # Compute the error, check that it's better than 1 ppb

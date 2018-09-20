@@ -1,5 +1,30 @@
 .. :changelog:
 
+0.2.1 (2018-09-13)
+++++++++++++++++++
+
+- Second release of the code for resubmission to ApJ and submission to
+  the arXiv.
+- Major code re-write. Redesigned user interface, easier to use,
+  faster, and more flexible.
+- Maps are now instantiated via a single `Map` object that supports
+  both spherical harmonic coefficients and limb darkening coefficients,
+  as well as arbitrary combinations of both.
+- The `Map` class now accepts a `nwav` keyword specifying the number of
+  wavelength bins (default 1). This allows users to easily and efficiently
+  compute wavelength-dependent light curves from spectral surface maps.
+- The `Primary` and `Secondary` classes replaced the old `Star` and
+  `Planet` classes for increased generality. These are now actual subclasses
+  of `Map`, making them even easier to use.
+- Several modifications to the computation of the light curves were made to
+  increase speed. The largest speed improvement is in the computation of
+  gradients. The code is no longer limited by the `STARRY_NGRAD` parameter,
+  and arbitrary number of gradients can now be taken efficiently.
+- Minor changes to the names of some keywords and class properties, and
+  to some call sequences.
+- Minor bug fixes here and there.
+
+
 0.1.2 (2018-07-15)
 ++++++++++++++++++
 

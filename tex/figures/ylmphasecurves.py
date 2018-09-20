@@ -32,19 +32,20 @@ for j, m in enumerate(range(lmax + 1)):
 # Rotate about this vector
 ux = np.array([1., 0., 0.])
 uy = np.array([0., 1., 0.])
-y = Map(lmax)
+map = Map(lmax)
 theta = np.linspace(0, 360, nt, endpoint=False)
 thetan = np.linspace(0, 360, nn, endpoint=False)
 for i, l in enumerate(range(lmax + 1)):
     for j, m in enumerate(range(l + 1)):
         nnull = 0
         for axis, zorder, color in zip([ux, uy], [1, 0], ['C0', 'C1']):
-            y.reset()
-            y.set_coeff(l, m, 1)
-            y.axis = axis
-            flux = y.flux(theta=theta)
+            map.reset()
+            map[0, 0] = 0
+            map[l, m] = 1
+            map.axis = axis
+            flux = map.flux(theta=theta)
             ax[i, j].plot(theta, flux, lw=1, zorder=zorder, color=color)
-            fluxn = y._flux_numerical(theta=thetan, tol=1e-5)
+            fluxn = map.flux(theta=thetan, numerical=True)
             ax[i, j].plot(thetan, fluxn, '.', ms=2, zorder=zorder, color=color)
             if np.max(np.abs(flux)) < 1e-10:
                 nnull += 1

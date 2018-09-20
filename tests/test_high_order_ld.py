@@ -1,5 +1,5 @@
 """Test high order limb darkening."""
-from starry import LimbDarkenedMap
+from starry import Map
 import numpy as np
 from scipy.integrate import dblquad
 
@@ -90,7 +90,7 @@ def test_transits():
         nF[i] = NumericalFlux(b[i], r, u)
 
     # Compute the starry flux
-    map = LimbDarkenedMap(len(u))
+    map = Map(len(u))
     map[:] = u
     sF = map.flux(xo=b, yo=0, ro=r)
 

@@ -1,5 +1,5 @@
 """Starry speed tests."""
-from starry import Star, Planet, System
+from starry.kepler import Primary, Secondary, System
 import time
 import matplotlib.pyplot as pl
 import numpy as np
@@ -37,11 +37,16 @@ for i, N in enumerate(Narr):
     t = np.linspace(-1, 1, N)
 
     # starry
-    star = Star()
-    star.map[1] = u1
-    star.map[2] = u2
-    planet = Planet(r=rplanet, inc=inc, porb=P, a=a, lambda0=90)
-    system = System([star, planet])
+    star = Primary()
+    star[1] = u1
+    star[2] = u2
+    planet = Secondary()
+    planet.r = rplanet
+    planet.inc = inc
+    planet.porb = P
+    planet.a = a
+    planet.lambda0 = 90
+    system = System(star, planet)
     tstart = time.time()
     for k in range(number):
         system.compute(t)

@@ -5,12 +5,11 @@ import sys
 import os
 import glob
 import setuptools
-__version__ = '0.1.2'
+__version__ = '0.2.1'
 
 
 # Custom compiler flags
-macros = dict(STARRY_NGRAD=13,
-              STARRY_NMULTI=32,
+macros = dict(STARRY_NMULTI=32,
               STARRY_IJ_MAX_ITER=200,
               STARRY_ELLIP_MAX_ITER=200,
               STARRY_KEPLER_MAX_ITER=100)
@@ -19,15 +18,14 @@ macros = dict(STARRY_NGRAD=13,
 for key, value in macros.items():
     macros[key] = os.getenv(key, value)
 
-# HACK: We should probably follow the instructions here:
-# https://eigen.tuxfamily.org/dox/group__TopicStructHavingEigenMembers.html
-# but it's easier to require the gradient length to be odd!
-if int(macros['STARRY_NGRAD']) % 2 == 0:
-    macros['STARRY_NGRAD'] = int(macros['STARRY_NGRAD']) + 1
-
 # Compiler optimization flag -O
 optimize = int(os.getenv('STARRY_O', 2))
 assert optimize in [0, 1, 2, 3], "Invalid optimization flag."
+
+# Debug mode?
+debug = bool(int(os.getenv('STARRY_DEBUG', 0)))
+if debug:
+    optimize = 0
 
 
 class get_pybind_include(object):
@@ -49,9 +47,9 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-ext_modules = [
-    Extension(
-        'starry._starry',
+def get_ext(module='starry._starry_mono_64', name='STARRY_MONO_64'):
+    return Extension(
+        module,
         ['starry/pybind_interface.cpp'],
         include_dirs=[
             # Path to pybind11 headers
@@ -67,8 +65,15 @@ ext_modules = [
             "lib/LBFGSpp/include"
         ],
         language='c++',
-        define_macros=[(key, value) for key, value in macros.items()]
-    ),
+        define_macros=[(name, 1)]+
+                      [(key, value) for key, value in macros.items()]
+    )
+
+ext_modules = [
+    get_ext('starry._starry_mono_64', 'STARRY_MONO_64'),
+    get_ext('starry._starry_mono_128', 'STARRY_MONO_128'),
+    get_ext('starry._starry_spectral_64', 'STARRY_SPECTRAL_64'),
+    get_ext('starry._starry_spectral_128', 'STARRY_SPECTRAL_128'),
 ]
 
 
@@ -124,6 +129,12 @@ class BuildExt(build_ext):
         for ext in self.extensions:
             ext.extra_compile_args = list(opts + ext.extra_compile_args)
             ext.extra_compile_args += ["-O%d" % optimize]
+            ext.extra_compile_args += ["-Wextra",
+                                       "-Wno-unused-parameter",
+                                       "-Wpedantic"]
+            if debug:
+                ext.extra_compile_args += ["-g"]
+                ext.extra_compile_args += ["-DSTARRY_DEBUG"]
             if sys.platform == "darwin":
                 ext.extra_compile_args += ["-march=native",
                                            "-mmacosx-version-min=10.9"]

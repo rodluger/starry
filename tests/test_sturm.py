@@ -1,5 +1,5 @@
 """Test Sturm's theorem."""
-from starry import LimbDarkenedMap
+from starry import Map
 import numpy as np
 from scipy.optimize import curve_fit
 
@@ -15,10 +15,9 @@ def test_sturm():
     I = [1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1]
     guess = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     u, _ = curve_fit(IofMu, mu, I, guess)
-    map = LimbDarkenedMap(10)
-    for l in range(1, 11):
-        map[l] = u[l]
-    assert map.psd() is False
+    map = Map(10)
+    map[:] = u[1:]
+    assert map.is_physical() is False
 
 
 if __name__ == "__main__":

@@ -30,19 +30,19 @@ for j, m in enumerate(range(lmax + 1)):
     ax[-1, j].set_xlabel(r"$m = %d$" % m, labelpad=30, fontsize=12)
 
 # Occultation params
-y = Map(lmax)
+map = Map(lmax)
 ro = 0.25
 xo = np.linspace(-1.5, 1.5, nt)
 xon = np.linspace(-1.5, 1.5, nn)
 for yo, zorder, color in zip([0.25, 0.75], [1, 0], ['C0', 'C1']):
     for i, l in enumerate(range(lmax + 1)):
         for j, m in enumerate(range(l + 1)):
-            y.reset()
-            y.set_coeff(l, m, 1)
-            flux = y.flux(theta=0, xo=xo, yo=yo, ro=ro)
+            map.reset()
+            map[0, 0] = 0
+            map[l, m] = 1
+            flux = map.flux(theta=0, xo=xo, yo=yo, ro=ro)
             ax[i, j].plot(xo, flux, lw=1, zorder=zorder, color=color)
-            fluxn = y._flux_numerical(theta=0, xo=xon,
-                                     yo=yo, ro=ro, tol=1e-5)
+            fluxn = map.flux(theta=0, xo=xon, yo=yo, ro=ro, numerical=True)
             ax[i, j].plot(xon, fluxn, '.', ms=2, zorder=zorder, color=color)
 
 # Hack a legend

@@ -112,9 +112,7 @@ def hotspot_offset(p):
 def set_coeffs(p, planet):
     """Set the coefficients of the planet map."""
     y1m1, y10, y11, L = p
-    planet.map[1, -1] = y1m1
-    planet.map[1, 0] = y10
-    planet.map[1, 1] = y11
+    planet[1, :] = [y1m1, y10, y11]
     planet.L = L
 
 
@@ -134,19 +132,6 @@ def gen_coeffs_in_bounds(planet):
         if np.isfinite(lnprior(t0, planet)):
             break
     return t0
-
-
-def lnprior_intensity(p):
-    """
-    Ensure that the minimum intensity from the planet is positive
-
-    This has been replaced with: planet.map.psd()
-    """
-    cmag = np.sqrt(p[0]**2 + p[1]**2 + p[2]**2)
-    if cmag >= np.sqrt(1./3.):
-        return -np.inf
-    else:
-        return 0
 
 
 def lnprior(p, planet):
@@ -169,10 +154,11 @@ def lnprior(p, planet):
     # """
 
     # Ensure that the minimum intensity from the planet is positive
-    #     replaced: lp += lnprior_intensity(p)
     # """
+    if p[-1] < 0:
+        return -np.inf
     set_coeffs(p, planet)
-    if planet.map.psd():
+    if planet.is_physical():
         lp += 0.0
     else:
         lp += -np.inf
@@ -192,10 +178,10 @@ def lnlike(p, time, y, yerr, system, planet):
     system.compute(time)
 
     # Normalize the model so that the *total* flux baseline is unity
-    model = system.flux / system.flux[0]
+    model = system.lightcurve / system.lightcurve[0]
 
     # Compute the chi-squared
-    chisq = np.sum((y - model) ** 2 / yerr ** 2)  # / len(y)
+    chisq = np.sum((y - model) ** 2 / yerr ** 2)
 
     ll += -0.5 * chisq
 
@@ -217,12 +203,12 @@ def lnlike_grad(p, time, y, yerr, system, planet):
 
     # Set the coeffs and compute the flux
     set_coeffs(p, planet)
-    system.compute(time)
+    system.compute(time, gradient=True)
 
-    f0 = system.flux[0]
+    f0 = system.lightcurve[0]
 
     # Normalize the model so that the *total* flux baseline is unity
-    model = system.flux / f0
+    model = system.lightcurve / f0
 
     # Compute the chi-squared
     chisq = np.sum((y - model) ** 2 / yerr ** 2) / len(y)
@@ -230,20 +216,21 @@ def lnlike_grad(p, time, y, yerr, system, planet):
 
     # Get the derivatives of the flux w/ respect to y
     dfdy = np.array([
-        system.gradient['planet1.Y_{1,-1}'],
-        system.gradient['planet1.Y_{1,0}'],
-        system.gradient['planet1.Y_{1,1}'],
-        system.gradient['planet1.L']
+        system.gradient['b.Y_{1,-1}'],
+        system.gradient['b.Y_{1,0}'],
+        system.gradient['b.Y_{1,1}'],
+        system.gradient['b.L']
     ])
 
     # Normalization (chain rule)
     '''
+    # This is the slower version:
     M = np.zeros((len(model), len(model)))
-    M[0,:] = system.flux / system.flux[0] ** 2
-    dmdf = np.eye(len(model)) / system.flux[0] - M
+    M[0,:] = system.lightcurve / system.lightcurve[0] ** 2
+    dmdf = np.eye(len(model)) / system.lightcurve[0] - M
     dmdy = np.dot(dfdy, dmdf)
     '''
-    foo = (dfdy[:, 0] * system.flux.reshape(-1, 1)).transpose()
+    foo = (dfdy[:, 0] * system.lightcurve.reshape(-1, 1)).transpose()
     dmdy = dfdy / f0 - foo / f0 ** 2
 
     # Now compute the gradient of chi-squared with respect to y
@@ -258,15 +245,12 @@ def neglnlike_grad(*args):
     return -ll, -gll
 
 
-def instatiate_HD189(grad=False):
+def instantiate_HD189():
     """
-    Instatiate the HD189733b :class:``starry.Star``, :class:``starry.Planet``
-    and :class:``starry.System`` with or without gradients.
+    instantiate the HD189733b :class:``Primary``,
+    :class:``Secondary``, and :class:``System``
+    with or without gradients.
 
-    Parameters
-    ----------
-    grad : bool
-        Set to use gradients
     """
 
     lmax = 1
@@ -277,45 +261,24 @@ def instatiate_HD189(grad=False):
     a = 8.863
     prot = 2.21858
     porb = 2.21858
-    tref = -2.21858/2.
+    tref = -2.21858 / 2.
 
-    if grad:
+    # Instantiate the star
+    star = starry.kepler.Primary()
 
-        # Instantiate the star
-        star = starry.grad.Star()
+    # Instantiate the planet
+    planet = starry.kepler.Secondary(lmax=lmax)
+    planet.lambda0 = lambda0
+    planet.r = r
+    planet.L = L
+    planet.inc = inc
+    planet.a = a
+    planet.prot = prot
+    planet.porb = porb
+    planet.tref = tref
 
-        # Instantiate the planet
-        planet = starry.grad.Planet(lmax=lmax,
-                                    lambda0=lambda0,
-                                    r=r,
-                                    L=L,
-                                    inc=inc,
-                                    a=a,
-                                    prot=prot,
-                                    porb=porb,
-                                    tref=tref)
-
-        # Instantiate the system
-        system = starry.grad.System([star, planet])
-
-    else:
-
-        # Instantiate the star
-        star = starry.Star()
-
-        # Instantiate the planet
-        planet = starry.Planet(lmax=lmax,
-                               lambda0=lambda0,
-                               r=r,
-                               L=L,
-                               inc=inc,
-                               a=a,
-                               prot=prot,
-                               porb=porb,
-                               tref=tref)
-
-        # Instantiate the system
-        system = starry.System([star, planet])
+    # Instantiate the system
+    system = starry.kepler.System(star, planet)
 
     return star, planet, system
 
@@ -416,7 +379,7 @@ class MaxLikeCartography(object):
 
         set_coeffs(self.res.x, self.planet)
 
-        img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta=0)
+        img = [self.planet(x=xx[j], y=yy[j], theta=0)
                for j in range(300)]
         ax.imshow(img, origin="lower",
                   interpolation="none", cmap="plasma",
@@ -433,8 +396,8 @@ class MaxLikeCartography(object):
         self.system.compute(self.time)
 
         # Plot the true model and our noised data
-        ax2.plot(self.time, self.system.flux / self.system.flux[0], '-',
-                 color='C1', label="model")
+        ax2.plot(self.time, self.system.lightcurve / self.system.lightcurve[0],
+                 '-', color='C1', label="model")
         ax2.plot(data.df_med['time'], data.df_med['flux'],
                  label="rolling median")
 
@@ -464,7 +427,7 @@ class MaxLikeCartography(object):
 
             set_coeffs(res.x, self.planet)
 
-            img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta=0)
+            img = [self.planet(x=xx[j], y=yy[j], theta=0)
                    for j in range(300)]
             ax.imshow(img, origin="lower",
                       interpolation="none", cmap="plasma",
@@ -475,14 +438,14 @@ class MaxLikeCartography(object):
             ax.set_frame_on(False)
             ax.set_xticks([])
             ax.set_yticks([])
-            expr = r"${0}$".format(self.planet.map.__repr__()[12:-1])
+            expr = r"${0}$".format(self.planet.__repr__()[12:-1])
             ax.set_xlabel(expr, fontsize=12)
 
             self.system.compute(data.time)
 
             # Plot the true model and our noised data
-            ax2.plot(data.time, self.system.flux /
-                     self.system.flux[0], '-', color='C1', label="model")
+            ax2.plot(data.time, self.system.lightcurve /
+                     self.system.lightcurve[0], '-', color='C1', label="model")
             ax2.plot(data.df_med['time'], data.df_med['flux'],
                      label="rolling median")
 
@@ -520,7 +483,7 @@ class MCMCCartography(object):
     """
 
     def __init__(self, time, y, yerr, system, planet, p0=None,
-                 chain=None, chain_path="map_chains.npz",
+                 chain=None, chain_path="map_chain.npz",
                  labels=np.array([r"$Y_{1,-1}$", r"$Y_{1,0}$",
                                   r"$Y_{1,1}$", r"$L$"])):
         self.time = time
@@ -642,7 +605,6 @@ class MCMCCartography(object):
         return
 
     def get_hot_spot_samples(self):
-
         # Calculate the latitude and longitude of the hotspot offset
         lat, lon = np.zeros(self.samples.shape[0]), np.zeros(self.samples.shape[0])
         for i in range(self.samples.shape[0]):
@@ -687,20 +649,43 @@ class MCMCCartography(object):
         xx, yy = np.meshgrid(np.linspace(-1, 1, 300), np.linspace(-1, 1, 300))
 
         set_coeffs(medvals, self.planet)
-        img = [self.planet.map.evaluate(x=xx[j], y=yy[j], theta=0)
+        img = [self.planet(x=xx[j], y=yy[j], theta=0)
                for j in range(300)]
+        img /= np.nanmax(img)
         ax.imshow(img, origin="lower",
                   interpolation="none", cmap="plasma",
                   extent=(-1, 1, -1, 1), zorder=-1)
         ax.contour(img, origin="lower",
                    extent=(-1, 1, -1, 1),
-                   colors='k', linewidths=1)
+                   colors='k', linewidths=0.25,
+                   levels=np.linspace(0.0, 1.0, 11))
         ax.set_frame_on(False)
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_xlim(-1.25, 1.25)
         ax.set_ylim(-1.25, 1.25)
         ax.set_rasterization_zorder(0)
+
+        # Latitude lines
+        for lat in [-90, -75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75, 90]:
+            y = np.sin(lat * np.pi / 180)
+            x = np.sqrt(1 - y * y)
+            ax.plot([-x, x], [y, y], 'k--', lw=0.5)
+
+        # Longitude lines
+        for lon in [-90, -75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75, 90]:
+            b = np.sin(lon * np.pi / 180)
+            y = np.linspace(-1, 1, 1000)
+            x = b * np.sqrt(1 - y ** 2)
+            ax.plot(x, y, 'k--', lw=0.5)
+
+        # Mark the max
+        lat, lon = hotspot_offset(self.planet[1, :])
+        y = np.sin(lat * np.pi / 180)
+        b = np.sin(lon * np.pi / 180)
+        x = b * np.sqrt(1 - y ** 2)
+        ax.plot(x, y, 'kx')
+
 
         self.fig_corner = fig
         return
@@ -718,8 +703,8 @@ class MCMCCartography(object):
         fig, ax = plt.subplots(1, figsize=(16, 8))
         ax.plot(self.time, self.y, "o", alpha=1., ms=0.1, color='C0',
                 label="data")
-        ax.plot(self.time, self.system.flux / self.system.flux[0], '-',
-                color='C1', label="model")
+        ax.plot(self.time, self.system.lightcurve / self.system.lightcurve[0],
+                '-', color='C1', label="model")
         ax.plot(data.df_med['time'], data.df_med['flux'],
                 label="rolling median")
 
@@ -752,8 +737,8 @@ class MCMCCartography(object):
                 markeredgecolor='C0', color='C0', zorder=-1)
         ax.plot(data.df_med['time'], data.df_med['flux'],
                 label="rolling median", zorder=10, color="C0", lw=1)
-        ax.plot(self.time, self.system.flux /
-                self.system.flux[0], '-', color='C1')
+        ax.plot(self.time, self.system.lightcurve /
+                self.system.lightcurve[0], '-', color='C1')
         ax.set_ylim(0.9825, 1.0175)
         ax.set_xlim(self.time.min(), self.time.max())
         ax.set_xticks([])
@@ -765,8 +750,8 @@ class MCMCCartography(object):
                  zorder=-1)
         ax2.plot(data.df_med['time'], data.df_med['flux'],
                  label="rolling median", zorder=10, color="C0")
-        ax2.plot(self.time, self.system.flux /
-                 self.system.flux[0], '-', color='C1', label="median model")
+        ax2.plot(self.time, self.system.lightcurve /
+                 self.system.lightcurve[0], '-', color='C1', label="median model")
 
         ax2.set_xlabel('Time [days]', fontsize=14)
         ax2.set_ylabel('Normalized Flux', fontsize=14)
@@ -790,6 +775,7 @@ if __name__ == "__main__":
     grad = True                              # Use gradients in ML fit(s)
     N = 1                                    # Number of ML fits
     nsteps = 1000                            # Number of MCMC steps
+    nburn = 200
     nwalk = 40                               # Number of MCMC walkers
     std_ball = [0.01, 0.01, 0.01, 0.001]     # Gaussian ball for MCMC p0
 
@@ -801,13 +787,13 @@ if __name__ == "__main__":
 
         # Find ML solution
         # Initialize system
-        star, planet, system = instatiate_HD189(grad=grad)
+        star, planet, system = instantiate_HD189()
         results = MaxLikeCartography(data.time, data.y, data.yerr, system,
                                      planet, N=N, jac=grad)
         results.compute()
 
         # Initialize system *without gradients*
-        star, planet, system = instatiate_HD189(grad=False)
+        star, planet, system = instantiate_HD189()
 
         # Initialize MCMC walkers *from maximum likelihood optimized solution*
         p0 = emcee.utils.sample_ball(results.res.x, std_ball, nwalk)
@@ -817,11 +803,12 @@ if __name__ == "__main__":
                                planet, p0=p0,
                                chain_path=chain_path)
         mcmc.run_mcmc(nsteps=nsteps)
+        mcmc.save_chain()
 
     else:
 
         # Initialize system *without gradients*
-        star, planet, system = instatiate_HD189(grad=False)
+        star, planet, system = instantiate_HD189()
 
         # Read-in saved chain
         mcmc = MCMCCartography(data.time, data.y, data.yerr, system, planet,
@@ -831,7 +818,7 @@ if __name__ == "__main__":
     # mcmc.plot_trace()
 
     # Apply a burn-in cut to samples
-    mcmc.apply_burnin(nburn=2000)
+    mcmc.apply_burnin(nburn=nburn)
 
     # Plot the fit to the data
     # mcmc.plot_fit(data)

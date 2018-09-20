@@ -31,7 +31,9 @@ def load_map(image, lmax=10, healpix=False):
 def healpix2map(healpix_map, lmax=10):
     """Return a map vector corresponding to a healpix array."""
     if hp is None:
-        raise ImportError("Please install the `healpy` Python package to enable this feature. See `https://healpy.readthedocs.io`.")
+        raise ImportError("Please install the `healpy` Python package to " +
+                          "enable this feature. See " +
+                          "`https://healpy.readthedocs.io`.")
     # Get the complex spherical harmonic coefficients
     alm = hp.sphtfunc.map2alm(healpix_map, lmax=lmax)
 
@@ -74,7 +76,9 @@ def image2map(image, lmax=10):
 def array2map(image_array, lmax=10):
     """Return a map vector corresponding to a lat-lon map image array."""
     if hp is None:
-        raise ImportError("Please install the `healpy` Python package to enable this feature. See `https://healpy.readthedocs.io`.")
+        raise ImportError("Please install the `healpy` Python package to " +
+                          "enable this feature. See " +
+                          "`https://healpy.readthedocs.io`.")
     # Figure out a reasonable number of sides
     # TODO: Not optimized!
     npix = image_array.shape[0] * image_array.shape[1]
@@ -99,7 +103,12 @@ def gaussian(sigma=0.1, lmax=10, res=500):
     lat = np.linspace(-np.pi / 2, np.pi / 2, res)
     lon, lat = np.meshgrid(lon, lat)
     z = np.cos(lat) * np.cos(lon)
-    w = sigma ** - 2
+    w = sigma ** -2
     norm = np.pi * BesselI(0, w)
     g = norm * np.exp((z - 1) / sigma ** 2)
-    return array2map(g, lmax=lmax)
+    y = array2map(g, lmax=lmax)
+    # NOTE: Force the constant term to zero so we
+    # add no net flux. We need to think carefully
+    # about this.
+    y[0] = 0
+    return y

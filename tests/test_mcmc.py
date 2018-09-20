@@ -1,5 +1,5 @@
 """Test a quick MCMC inference run."""
-from starry import Planet, Star, System
+from starry.kepler import Primary, Secondary, System
 import emcee
 import numpy as np
 from tqdm import tqdm
@@ -7,10 +7,7 @@ from tqdm import tqdm
 
 def set_coeffs(p, planet):
     """Set the coefficients of the planet map."""
-    y1m1, y10, y11 = p
-    planet.map[1, -1] = y1m1
-    planet.map[1, 0] = y10
-    planet.map[1, 1] = y11
+    planet[1, :] = p
 
 
 def gen_coeffs():
@@ -40,7 +37,7 @@ def lnlike(p, time, y, yerr, system, planet):
     system.compute(time)
 
     # Compute the chi-squared
-    chisq = np.sum((y - system.flux) ** 2) / yerr ** 2
+    chisq = np.sum((y - system.lightcurve) ** 2) / yerr ** 2
     ll += -0.5 * chisq
 
     return ll
@@ -49,23 +46,23 @@ def lnlike(p, time, y, yerr, system, planet):
 def generate(x, tstart=1, tend=5.3, npts=100, ning=100, neg=100):
     """Generate a synthetic light curve."""
     # Instantiate the star (params known exactly)
-    star = Star()
-    star.map[1] = 0.4
-    star.map[2] = 0.26
+    star = Primary()
+    star[1] = 0.4
+    star[2] = 0.26
 
     # Instantiate the planet
-    planet = Planet(lmax=1,
-                    lambda0=270,
-                    r=0.0916,
-                    L=5e-3,
-                    inc=87,
-                    a=11.12799,
-                    prot=4.3,
-                    porb=4.3,
-                    tref=2)
+    planet = Secondary(lmax=1)
+    planet.lambda0 = 270
+    planet.r = 0.0916
+    planet.L = 5e-3
+    planet.inc = 87
+    planet.a = 11.12799
+    planet.prot = 4.3
+    planet.porb = 4.3
+    planet.tref = 2.0
 
     # Instantiate the system
-    system = System([star, planet])
+    system = System(star, planet)
 
     # Set the map coeffs
     set_coeffs(x, planet)
@@ -84,7 +81,7 @@ def generate(x, tstart=1, tend=5.3, npts=100, ning=100, neg=100):
 
     # Compute and plot the starry flux
     system.compute(time)
-    flux = np.array(system.flux)
+    flux = np.array(system.lightcurve)
 
     # Noise it
     yerr = 1e-4 * np.nanmedian(flux)
@@ -93,7 +90,7 @@ def generate(x, tstart=1, tend=5.3, npts=100, ning=100, neg=100):
     # Compute the flux at hi res for plotting
     time_hires = np.linspace(tstart, tend, npts * 100)
     system.compute(time_hires)
-    flux_hires = np.array(system.flux)
+    flux_hires = np.array(system.lightcurve)
 
     return time, y, yerr, star, planet, system, time_hires, flux_hires
 
@@ -123,13 +120,13 @@ def test_mcmc():
     for i in tqdm(sampler.sample(p0, iterations=nsteps), total=nsteps):
         pass
 
-    # Check that our posteriors are consistent with the truth at 2 sigma
+    # Check that our posteriors are consistent with the truth at 3 sigma
     c1 = sampler.chain[:, nburn:, 0].flatten()
     c2 = sampler.chain[:, nburn:, 1].flatten()
     c3 = sampler.chain[:, nburn:, 2].flatten()
-    assert np.abs((y1m1 - np.mean(c1)) / np.std(c1) ** 1) < 2
-    assert np.abs((y10 - np.mean(c2)) / np.std(c2) ** 1) < 2
-    assert np.abs((y11 - np.mean(c3)) / np.std(c3) ** 1) < 2
+    assert np.abs((y1m1 - np.mean(c1)) / np.std(c1) ** 1) < 3
+    assert np.abs((y10 - np.mean(c2)) / np.std(c2) ** 1) < 3
+    assert np.abs((y11 - np.mean(c3)) / np.std(c3) ** 1) < 3
 
 
 if __name__ == "__main__":

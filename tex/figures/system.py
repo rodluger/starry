@@ -1,5 +1,5 @@
 """Exoplanet system example."""
-from starry import Star, Planet, System
+from starry.kepler import Primary, Secondary, System
 import matplotlib.pyplot as pl
 import numpy as np
 
@@ -20,35 +20,35 @@ time = np.linspace(0, 20, 10000)
 # ----------------------------------------------------
 
 # Instantiate the star
-star = Star()
+star = Primary()
 
 # Give the star a quadratic limb darkening profile
-star.map[1] = 0.4
-star.map[2] = 0.26
+star[1] = 0.4
+star[2] = 0.26
 
 # Instantiate planet b
-b = Planet(r=0.091679,
-           L=5e-3,
-           inc=90,
-           porb=4.3,
-           prot=4.3,
-           a=11.127991,
-           lambda0=90,
-           tref=2,
-           axis=[0, 1, 0])
+b = Secondary()
+b.r = 0.091679
+b.L = 5e-3
+b.inc = 90
+b.porb = 4.3
+b.prot = 4.3
+b.a = 11.127991
+b.lambda0 = 90
+b.tref = 2
+b.axis = [0, 1, 0]
 
 # Give the planet a simple dipole map
-b.map[1, 0] = 0.5
+b[1, 0] = 0.5
 
 # Rotate the planet map to produce a hotspot offset of 15 degrees
-b.map.rotate(theta=15)
+b.rotate(theta=15)
 
 # Compute and plot the starry flux
 time = np.linspace(0, 20, 10000)
-system = System([star, b])
+system = System(star, b)
 system.compute(time)
-sF = np.array(system.flux)
-sF /= sF[0]
+sF = np.array(system.lightcurve)
 ax[0].plot(time, sF, '-', color='C0')
 
 
@@ -56,49 +56,50 @@ ax[0].plot(time, sF, '-', color='C0')
 # ----------------------------------------------------------------
 
 # Instantiate the star
-star = Star()
+star = Primary()
 
 # Give the star a quadratic limb darkening profile
-star.map[1] = 0.4
-star.map[2] = 0.26
+star[1] = 0.4
+star[2] = 0.26
 
 # Instantiate planet b
-b = Planet(r=0.04584,
-           L=1e-3,
-           inc=89.0,
-           porb=2.1,
-           prot=2.1,
-           a=6.901084,
-           lambda0=90,
-           tref=0.5)
+b = Secondary()
+b.r = 0.04584
+b.L = 1e-3
+b.inc = 89.0
+b.porb = 2.1
+b.prot = 2.1
+b.a = 6.901084
+b.lambda0 = 90
+b.tref = 0.5
 
 # Give the planet a wonky map
-b.map[1, 0] = 0.5
-b.map[2, 1] = 0.5
+b[1, 0] = 0.5
+b[2, 1] = 0.5
 
 # Instantiate planet c
-c = Planet(r=0.07334,
-           L=1e-3,
-           inc=90.0,
-           porb=6.7,
-           prot=6.7,
-           a=14.95619,
-           lambda0=90,
-           tref=3,
-           axis=[0, 1, 0])
+c = Secondary()
+c.r = 0.07334
+c.L = 1e-3
+c.inc = 90.0
+c.porb = 6.7
+c.prot = 6.7
+c.a = 14.95619
+c.lambda0 = 90
+c.tref = 3
+c.axis = [0, 1, 0]
 
 # Give the planet a wonky map
-c.map[1, 0] = 0.5
-c.map[2, -2] = 0.5
+c[1, 0] = 0.5
+c[2, -2] = 0.5
 
 # Rotate the planet map to produce a hotspot offset of 15 degrees
-c.map.rotate(theta=15)
+c.rotate(theta=15)
 
 # Compute and plot the starry flux
-system = System([star, b, c])
+system = System(star, b, c)
 system.compute(time)
-sF = np.array(system.flux)
-sF /= sF[0]
+sF = np.array(system.lightcurve)
 ax[1].plot(time, sF, '-', color='C0')
 
 # Save

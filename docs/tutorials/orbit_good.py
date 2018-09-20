@@ -21,16 +21,21 @@ def R(u, theta):
     return R
 
 
-star = starry.Star()
-planet = starry.Planet(inc=60, Omega=30, porb=1, prot=1, a=50)
-planet.map[1, 0] = 0.5
-system = starry.System([star, planet])
+star = starry.kepler.Primary()
+planet = starry.kepler.Secondary()
+planet.inc=60
+planet.Omega=30
+planet.porb=1
+planet.prot=1
+planet.a=50
+planet[1, 0] = 0.5
+system = starry.kepler.System(star, planet)
 nt = 1000
 system.compute(np.linspace(0, 1, nt))
 
 fig, ax = pl.subplots(1, figsize=(8, 6.5))
 fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
-ax.plot(planet.x, planet.y, color='k')
+ax.plot(planet.X, planet.Y, color='k')
 asini = 50 * np.sin(planet.inc * np.pi / 180)
 acosi = 50 * np.cos(planet.inc * np.pi / 180)
 ax.plot(np.array([-asini, asini]), np.array([-acosi, acosi]), 'k--', alpha=0.5)
@@ -48,19 +53,18 @@ axis = [0, 1, 0]
 axis = np.dot(R((1, 0, 0), np.pi / 2 - planet.inc * np.pi / 180), axis)
 axis = np.dot(R((0, 0, 1), planet.Omega * np.pi / 180), axis)
 
-planet.map.axis = [1, 0, 0]
-planet.map.rotate(theta=90 - planet.inc)
-planet.map.axis = [0, 0, 1]
-planet.map.rotate(theta=planet.Omega)
-planet.map.axis = axis
+planet.axis = [1, 0, 0]
+planet.rotate(theta=90 - planet.inc)
+planet.axis = [0, 0, 1]
+planet.rotate(theta=planet.Omega)
+planet.axis = axis
 
 theta = np.linspace(0, 360, nim, endpoint=False) + 180
 for n in range(nim):
-    x = 0.5 + (planet.x[inds[n]] / 100)
-    y = 0.5 + (planet.y[inds[n]] / 80)
+    x = 0.5 + (planet.X[inds[n]] / 100)
+    y = 0.5 + (planet.Y[inds[n]] / 80)
     ax_im = fig.add_axes([x - axw / 2, y - axw / 2, axw, axw])
-    I = [planet.map.evaluate(theta=theta[n],
-                             x=xim[j], y=yim[j]) for j in range(res)]
+    I = [planet(theta=theta[n], x=xim[j], y=yim[j]) for j in range(res)]
     ax_im.imshow(I, origin='lower', extent=(-1, 1, -1, 1), cmap='plasma')
     ax_im.set_xlim(-1.25, 1.25)
     ax_im.set_ylim(-1.25, 1.25)

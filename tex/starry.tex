@@ -2,6 +2,9 @@
 
 \input{stylez}
 
+% REVISIONS
+\newcommand{\edited}[1]{{\color{blue}{#1}}}
+
 \begin{document}
 
 \setlength{\abovedisplayskip}{1.5em}
@@ -11,7 +14,7 @@
     \textbf{STARRY}: Analytic Occultation Light Curves
 }
 
-\author[0000-0002-0296-3826]{Rodrigo Luger} 
+\author[0000-0002-0296-3826]{Rodrigo Luger}
 \email{rodluger@uw.edu}
 \affil{Department~of~Astronomy, University~of~Washington, Seattle, WA}
 \affil{Virtual~Planetary~Laboratory, University~of~Washington, Seattle, WA}
@@ -1210,7 +1213,9 @@ occultation. As before, the numerical solutions are shown as the small dots.
              Figure~\ref{fig:earth}. The two largest dips are due
              to the occultations of South America (left) and Africa
              (right). Once again, the black dots correspond to the
-             numerical solution.
+             numerical solution. \edited{For reference, the light
+             grey dots correspond to the rotational light curve in
+             the absence of the occultor.}
              \codelink{earthoccultation}
              }
     \end{centering}
@@ -1437,8 +1442,8 @@ light curves of each of the bodies in the system, including the star) is
 stored in \starrySystemflux. The top panel of Figure~\ref{fig:system} shows
 the light curve for the system we instantiated above: both the transits
 and secondary eclipses of the planet are clearly visible. For flair, we added
-a hotspot offset of $15^\circ$ to simulate advection of heat by a
-westward wind, causing the peak of the planet's phase curve to occur slightly
+a hotspot offset of $15^\circ$ to simulate advection of heat by \edited{an
+eastward} wind, causing the peak of the planet's phase curve to occur slightly
 before secondary eclipse (refer to the \Python script for details).
 
 %
@@ -1658,11 +1663,11 @@ per billion everywhere.
     \caption{\label{fig:spidercomp_flux}
              Comparison to a light curve generated using the \spiderman code
              \citep{Louden2018}. The top panel shows a secondary eclipse of a
-             hot Jupiter with an offset dipole computed with \starry (blue)
-             and \spiderman (orange), and the bottom panel shows the absolute
+             hot Jupiter with an offset dipole computed with \starry (solid grey)
+             and \spiderman (dashed blue), and the bottom panel shows the absolute
              value of the difference between the two light curves as the number
              of layers in the \spiderman grid is increased. The \spiderman solution
-             appears to converge linearly to the \starry solution as the number of layers
+             \edited{slowly approaches} the \starry solution as the number of layers
              is increased.
              \codelink{spidercomp}}
     \end{centering}
@@ -1681,7 +1686,7 @@ order of 30 ppm (relative to the \emph{stellar} flux)
 during ingress and egress and is somewhat higher at the peak
 of the phase curve. Relative to the \emph{planet} flux, the error is more significant: $\sim 30 / 0.004 = 7500$ ppm.
 This error decreases linearly as the number of layers increases, and the \spiderman solution
-appears to converge to the \starry solution in the limit $n_\mathrm{layers} \rightarrow \infty$.
+appears to \edited{approach} the \starry solution in the limit $n_\mathrm{layers} \rightarrow \infty$.
 
 % ------------------------------------------------------------------------------
 \subsection{Speed tests}
@@ -1842,7 +1847,11 @@ we are likely underestimating the uncertainty on the map coefficients.
              latitude $\hat{\phi}$ and longitude $\hat{\theta}$
              of the hotspot were calculated from these coefficients. The median
              value of each parameter was used to generate the map of HD189733b
-             shown in the upper right. \codelink{hd189733b}}
+             shown in the upper right. \edited{An \textsf{X} marks the inferred location
+             of the hotspot and contour levels indicate 10\% drops in specific
+             intensity. For reference, a latitude/longitude grid is
+             superimposed with cells measuring $15^\circ$ on a side.}
+             \codelink{hd189733b}}
     \end{centering}
 \end{figure}
 %
@@ -1917,10 +1926,7 @@ a negative specific intensity).
 This method evaluates the surface map on a coarse grid in
 $\uptheta$ and $\upphi$, locates the
 approximate location of the minimum, and performs a gradient-descent
-optimization to locate the global minimum of the map. If the map is
-not P.S.D., users should either scale the $Y_{0,0}$ coefficient up
-or the coefficients of all other harmonics down until the map is
-non-negative everywhere.
+optimization to locate the global minimum of the map.
 
 \subsection{Maps of very large degree}
 For \emph{very} large values of the spherical harmonic degree $l$, the
