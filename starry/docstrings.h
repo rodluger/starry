@@ -72,7 +72,7 @@ namespace docstrings {
             .. automethod:: reset()
             .. autoattribute:: lmax
             .. autoattribute:: nwav
-            .. autoattribuet:: multi
+            .. autoattribute:: multi
             .. autoattribute:: N
             .. autoattribute:: y
             .. autoattribute:: u
@@ -160,11 +160,13 @@ namespace docstrings {
             Return the specific intensity at a point :py:obj:`(x, y)` on the
             map. Users may optionally provide a rotation state. Note that this
             does not rotate the base map.
+
             Args:
                 theta (float or ndarray): Angle of rotation in degrees. \
                     Default 0.
                 x (float or ndarray): Position scalar or vector.
                 y (float or ndarray): Position scalar or vector.
+
             Returns:
                 The specific intensity at :py:obj:`(x, y)`.
         )pbdoc";
