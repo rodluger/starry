@@ -7,6 +7,9 @@ TODO: Add wavelength-dependent radius support
 
 TODO: Spectral add_gaussian
 
+TODO: Bug in add_gaussian when applied to a keplerian body,
+      as it changes Y_{0,0}!
+
 */
 
 #ifndef _STARRY_PYBIND_H_

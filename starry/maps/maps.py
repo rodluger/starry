@@ -103,7 +103,12 @@ def gaussian(sigma=0.1, lmax=10, res=500):
     lat = np.linspace(-np.pi / 2, np.pi / 2, res)
     lon, lat = np.meshgrid(lon, lat)
     z = np.cos(lat) * np.cos(lon)
-    w = sigma ** - 2
+    w = sigma ** -2
     norm = np.pi * BesselI(0, w)
     g = norm * np.exp((z - 1) / sigma ** 2)
-    return array2map(g, lmax=lmax)
+    y = array2map(g, lmax=lmax)
+    # NOTE: Force the constant term to zero so we
+    # add no net flux. We need to think carefully
+    # about this.
+    y[0] = 0
+    return y

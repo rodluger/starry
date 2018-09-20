@@ -358,11 +358,15 @@ namespace maps {
     template <class T>
     inline void Map<T>::checkDegree() {
         if (y_deg + u_deg > lmax) {
+            setZero(y);
+            setRow(y, 0, Scalar<T>(1.0));
+            y_deg = 0;
             setZero(u);
-            setRow(u, 0, Scalar<T>(-1.0));
             u_deg = 0;
+            setRow(u, 0, Scalar<T>(-1.0));
+            update();
             throw errors::ValueError("Degree of the limb-darkened "
-                                     "map exceeds `lmax`. Limb darkening "
+                                     "map exceeds `lmax`. All "
                                      "coefficients have been reset.");
         }
     }
