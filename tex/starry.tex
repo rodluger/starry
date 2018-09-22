@@ -174,6 +174,18 @@ in the paper, with references to the equations defining them.
 % ------------------------------------------------------------------------------
 % ==============================================================================
 
+\edited{
+In this section we discuss the mathematical framework we use to
+express, manipulate, and rotate spherical harmonic surface maps. We also
+introduce two bases, along with corresponding transformations, that
+will come in handy when computing
+light curves in \S\ref{sec:lightcurves}: the \emph{polynomial basis} and
+the \emph{Green's basis}. While it is convenient to express a surface map
+as a set of spherical harmonic coefficients, we will see that it is much
+easier to integrate the map if we first transform to the appropriate
+basis.
+}
+
 % ------------------------------------------------------------------------------
 \subsection{Spherical harmonics}
 \label{sec:spharm}
@@ -486,7 +498,8 @@ rotating about the $y$-axis, computed from \eq{rotation}.
 \label{sec:phasecurves}
 % ------------------------------------------------------------------------------
 
-Consider a body of unit radius centered at the origin, with a surface map
+Consider a body of unit radius centered at the origin, \edited{with an observer
+located along the $z$-axis at $z = \infty$.} The body has a surface map
 given by the spherical harmonic vector $\bvec{y}$ viewed at an orientation
 specified by the rotation matrix $\bvec{R}$, such that
 the specific intensity at a point $(\x, \y)$ on the surface is
@@ -785,7 +798,9 @@ body of radius one.
              Geometry of the occultation problem.
              The occulted body is centered
              at the origin and has unit radius, while the occultor
-             is centered at $(x_o, y_o)$ and has radius $r$. We first rotate
+             is centered at $(x_o, y_o)$ and has radius $r$.
+             \edited{The observer is located at $z = \infty$.}
+             We first rotate
              the two bodies about the origin through an angle
              $\omega = \nicefrac{\pi}{2} - \mathrm{arctan2}(y_o, x_o)$
              so the problem is symmetric about the $y$-axis. In this frame,
@@ -857,7 +872,19 @@ It can be easily shown that one possible solution to \eq{DGg} is
 \end{proof}
 %
 where $l$ and $m$ are given by \eq{lm} and $\mu$ and $\nu$ are given by
-\eq{munu}. Solving the occultation problem is therefore a matter of
+\eq{munu}.
+\footnote{
+\edited{
+It is important to note that our definition of the Green's basis
+(Equation~\ref{eq:bg}) is by no means unique. Rather, we imposed solutions of
+the form
+$\bvec{G}_n = \x^{i}\y^{j}\z^{k} \, \xhat$ and
+$\bvec{G}_n = \x^{i}\y^{j}\z^{k} \, \yhat$ and
+used \eq{DGg} to find each of the terms in the basis, choosing $i$, $j$,
+and $k$ to ensure the basis was complete.
+}
+}
+Solving the occultation problem is therefore a matter of
 evaluating the primitive integrals of $\bvec{G}_n$
 (Equations~\ref{eq:primitiveP} and \ref{eq:primitiveQ}).
 The solutions are in general tedious, but
@@ -878,10 +905,23 @@ rapidly converging series expansion for occultors of large and small radius.
 
 Here we briefly summarize how to analytically compute the flux during
 an occultation of a body whose specific intensity profile is described
-by a sum of spherical harmonics. Given a body of unit radius with a
+by a sum of spherical harmonics.
+\edited{
+The first step is to
+compute the change-of-basis matrix $\bvec{A}$ (\S\ref{sec:basis}) to
+convert our vector of spherical harmonic coefficients to a vector
+of polynomial coefficients in the Green's basis
+(Equation~\ref{eq:bg}). Since $\bvec{A}$ is constant,
+this matrix may be pre-computed for speed.
+}
+
+Then, given a body of unit radius with a
 surface map described by the vector of spherical harmonic coefficients
-$\mathbf{y}$ (Equation~\ref{eq:by}), occulted by another body of radius $r$
-centered at the point $(x_o, y_o)$, we must:
+$\mathbf{y}$ (Equation~\ref{eq:by}),
+occulted by another body of radius $r$
+centered at the point $(x_o, y_o)$,
+\edited{and viewed by an observer located at $z = \infty$,}
+we must:
 %
 \begin{enumerate}
     \item Compute the rotation matrix $\bvec{R}$ to rotate the map to the correct
@@ -894,11 +934,6 @@ centered at the point $(x_o, y_o)$, we must:
           (Equation~\ref{eq:zrot}) so the center of the occultor is a
           distance $b = \sqrt{x_o^2 + y_o^2}$ along the $+y$-axis
           from the center of the occulted body.
-    \item Compute the change-of-basis matrix $\bvec{A}$ (\S\ref{sec:basis}) to
-          convert our vector of spherical harmonic coefficients to a vector
-          of polynomial coefficients in the Green's basis
-          (Equation~\ref{eq:bg}). Since $\bvec{A}$ is constant,
-          this matrix may be pre-computed for speed.
     \item Compute the solution vector $\bvec{s}$ (Equation~\ref{eq:sn}), with
           $\mathcal{P}(\bvec{G}_n)$ and $\mathcal{Q}(\bvec{G}_n)$ given by
           the equations in Appendix~\ref{app:generalterm}.
@@ -915,7 +950,8 @@ Given these quantities, the total flux during an occultation is then just
         F = \bvec{s}^{\boldsymbol{\mathsf{T}}} \bvec{A} \, \bvec{R'} \, \bvec{R} \, \bvec{y}
         }
     \quad.
-\end{equation}   % This is about the nerdiest pun I've ever seen
+\end{equation}
+ % This is about the nerdiest pun I've ever seen
 % (with the exception "It's amazing that 230-220 x 1/2 = 5!")
 
 
@@ -1134,7 +1170,8 @@ up to $l_\mathrm{max} = 6$ for rotation about $\xhat$ (blue curves) and $\yhat$
 evaluation of the flux on an adaptive radial mesh (see \S\ref{sec:starrybenchmarks}).
 As discussed by \citet{CowanFuentesHaggard2013}, harmonics with
 odd $l > 1$ and those with $m < 0$ (not plotted) are in the null space and
-therefore do not exhibit rotational phase variations.
+therefore do not exhibit rotational phase variations
+\edited{when rotated about \xhat or \yhat.}.
 
 %
 
@@ -1322,7 +1359,13 @@ for $u_1 = 0.4, u_2 = 0.26$. The planet/star radius ratio is $r = 0.1$ and
 the planet transits at impact parameter $b = 0.5$. For comparison, we also
 compute the flux with \batman \citep{Kreidberg2015} and with a
 high precision numerical integration of the surface integral of
-\eq{quadraticld}. The relative error on the flux for \starry flux is less
+\eq{quadraticld}
+using
+\edited{
+the \textsf{scipy.integrate.dblquad} \citep{scipy} routine
+with a tolerance of $10^{-14}$
+}
+. The relative error on the flux for \starry flux is less
 than $10^{-7}$ parts per million everywhere in the light curve.
 %
 \begin{figure}[t!]
@@ -1335,7 +1378,7 @@ than $10^{-7}$ parts per million everywhere in the light curve.
              (orange dots) light curves, as well as a light curve generated
              by a high precision direct numerical integration of the surface
              integral (purple dots). The bottom panel shows the relative
-             error on the flux in parts per million compared to the high
+             \edited{error on the flux} compared to the high
              precision numerical solution for \starry (blue) and \batman (orange).
              \codelink{transit}}
     \end{centering}
@@ -1587,7 +1630,7 @@ specific intensity is large and in the vicinity of the limb of the occultor.
 All light curves in Figure~\ref{fig:ylmlightcurves} show the flux computed
 in this way as the small points along each of the curves. We find that our
 analytic light curves agree with the numerical solutions to within the error
-of the latter.
+of the latter, \edited{which is on the order of $10^{-5}$}.
 
 \begin{figure}[p!]
     \begin{centering}
@@ -1598,7 +1641,10 @@ of the latter.
              computed relative to calculations using quadruple
              floating point precision. The error is plotted as a function of impact parameter
              for terms with $\mu$ even (left)
-             and $\mu$ odd (right). The horizontal axis extends from $r - 1$ to $r + 1$ and covers
+             and $\mu$ odd (right). The horizontal axis extends from
+             $0$ to $r + 1$ \edited{(left panel)}
+             $r - 1$ to $r + 1$ \edited{(right panel)}
+             and covers
              the entire range of $b$ during an occultation, with extra resolution near
              potentially unstable regions. The top panel shows the relative error
              and the bottom panel shows the fractional error, scaled to the largest value
@@ -1702,7 +1748,7 @@ brute-force integration on a 300$\times$300 Cartesian grid (green dots),
 and numerical evaluation of the double integral using the
 \textsf{scipy.integrate.dblquad} \citep{scipy} routine (red). The size of each point
 is proportional to the log of the fractional error relative to the
-\starry solution. Light curve computation using \starry is several orders of
+\starry \edited{quadruple floating-point precision} solution. Light curve computation using \starry is several orders of
 magnitude faster and more accurate than any other evaluation technique.
 
 \begin{figure}[t!]
@@ -1902,6 +1948,16 @@ surface integral and use Green's theorem to compute the line integral about
 this elliptical curve. This will be the topic of a future paper and will
 be implemented in future versions of the code.
 
+\subsection{Anisotropic emission}
+\edited{
+It is important to note that the formalism developed here for computing
+light curves (excepting our treatment of limb darkening)
+implicitly assumes isotropic emission from the body's surface.
+While this is usually an appropriate assumption for emission, it could
+break down due to scattering by, say, clouds or hazes in a planet's
+atmosphere.
+}
+
 \subsection{Non-negative surface maps}
 \label{sec:nonnegative}
 While spherical harmonics are a convenient way to approximate surface
@@ -1954,7 +2010,9 @@ computation time by at least an order of magnitude.
 \subsection{Three-body events}
 The occultation formalism developed in this paper applies specifically to the
 case of a single occultor, so \starry cannot at present handle mutual occultations
-involving more than two bodies. However, even for an arbitrary number of bodies
+involving more than two bodies; \edited{if a three-body event occurs, the computed
+flux will be incorrect}
+. However, even for an arbitrary number of bodies
 the problem is still analytic, since Green's theorem may be employed in the same
 way, but instead evaluating the line integrals along the more complex network of
 arcs defining the edges of the visible portion of the body's surface. This was
@@ -2462,7 +2520,8 @@ where
                               }
 \end{proof}
 %
-is the rotation matrix for the complex spherical harmonics of degree $l$ and
+is the $(m, m')$ \edited{index of the}
+rotation matrix for the complex spherical harmonics of degree $l$ and
 %
 \begin{proof*}{R}
     \label{eq:U}
@@ -2486,7 +2545,7 @@ is the rotation matrix for the complex spherical harmonics of degree $l$ and
 %
 describes the transformation from complex to real spherical harmonics. In
 \eq{dl} above, $\alpha$, $\beta$, and $\gamma$ are the (proper) Euler angles
-for rotation in the $z-y-z$ convention.
+for rotation in the $z{-}y{-}z$ convention.
 %
 To obtain a rotation matrix for an arbitrary vector $\bvec{y}$ with spherical
 harmonics of different orders up to $l = l_\mathrm{max}$, we define the
@@ -2578,7 +2637,7 @@ for axis-angle rotations and
 for Euler rotations,
 where $c_{\bigdot} \equiv \cos(\cdot)$
 and $s_{\bigdot} \equiv \sin(\cdot)$.
-Comparison of the two matrices gives us expressions for the Euler
+\edited{Equating the} two matrices gives us expressions for the Euler
 angles in terms of $\bvec{u}$ and $\theta$:
 %
 \begin{proof}{R}
