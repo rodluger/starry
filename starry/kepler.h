@@ -402,7 +402,8 @@ namespace kepler {
             Row<T> flux_tot;                                                    /**< Total flux from the body */
             T dflux_tot;                                                        /**< Gradient of the total flux from the body */
             T dflux_cur;                                                        /**< Gradient of the current flux from the body */
-            int ngrad;
+            size_t ngrad;                                                       /** Number of derivatives to compute */
+            bool computed;                                                      /**< Did the user call `compute()`? */
 
             Matrix<Scalar<T>> lightcurve;                                       /**< The body's full light curve */
             Vector<T> dL;                                                       /**< The gradient of the body's light curve */
@@ -444,6 +445,7 @@ namespace kepler {
                 setRotPer(0.0);
                 setRefTime(0.0);
 
+                computed = false;
             }
 
         public:
@@ -561,12 +563,16 @@ namespace kepler {
     //! Get the body's full light curve
     template <class T>
     const Matrix<Scalar<T>>& Body<T>::getLightcurve() const {
+        if (!computed)
+            throw errors::ValueError("Please call the `compute` method first.");
         return lightcurve;
     }
 
     //! Get the gradient of the body's light curve
     template <class T>
     const Vector<T>& Body<T>::getLightcurveGradient() const {
+        if (!computed)
+            throw errors::ValueError("Please call the `compute` method first.");
         return dL;
     }
 
@@ -1191,6 +1197,7 @@ namespace kepler {
             size_t t;                                                           /** The current index in the time array */
             size_t ngrad;                                                       /** Number of derivatives to compute */
             size_t g;                                                           /** The current gradient index */
+            bool computed;                                                      /** Did the user call `compute()` yet? */
 
             // Protected methods
             inline void step(const S& time_cur, bool gradient);
@@ -1224,6 +1231,7 @@ namespace kepler {
                 setExposureTime(0.0);
                 setExposureTol(sqrt(mach_eps<Scalar<T>>()));
                 setExposureMaxDepth(4);
+                computed = false;
             }
 
             //! Constructor: multiple secondaries
@@ -1235,6 +1243,7 @@ namespace kepler {
                 setExposureTime(0.0);
                 setExposureTol(sqrt(mach_eps<Scalar<T>>()));
                 setExposureMaxDepth(4);
+                computed = false;
             }
 
             // Public methods
@@ -1298,12 +1307,16 @@ namespace kepler {
     //! Return the full system light curve
     template <class T>
     const Matrix<Scalar<T>>& System<T>::getLightcurve() const {
+        if (!computed)
+            throw errors::ValueError("Please call the `compute` method first.");
         return lightcurve;
     }
 
     //! Return the gradient of the light curve
     template <class T>
     const Vector<T>& System<T>::getLightcurveGradient() const {
+        if (!computed)
+            throw errors::ValueError("Please call the `compute` method first.");
         return dL;
     }
 
@@ -1492,12 +1505,14 @@ namespace kepler {
         Vector<Scalar<T>> time = time_ * units::DayToSeconds;
         int iletter = 98;                                                       // This is the ASCII code for 'b'
         std::string letter;                                                     // The secondary letter designation
+        computed = true;
 
         // Primary:
         // - Allocate arrays
         // - Figure out the number and names of derivatives
         lightcurve.resize(NT, primary->nwav);
         primary->lightcurve.resize(NT, primary->nwav);
+        primary->computed = true;
         if (gradient) {
             // Resize the outer arrays and
             // populate the primary gradient names
@@ -1539,6 +1554,7 @@ namespace kepler {
             secondary->lightcurve.resize(NT, primary->nwav);
             secondary->syncSkyMap();
             secondary->c_light = &(primary->c_light);
+            secondary->computed = true;
             if (gradient) {
                 // Resize the outer arrays
                 // and populate the secondary gradient names

@@ -68,7 +68,8 @@ namespace docstrings {
             .. automethod:: rotate(theta=0)
             .. automethod:: show(cmap='plasma', res=300)
             .. automethod:: animate(cmap='plasma', res=150, frames=50, interval=75, gif='')
-            .. automethod:: add_gaussian(sigma=0.1, amp=1, lat=0, lon=0)
+            .. automethod:: load_image(image, lmax=None)
+            .. automethod:: add_gaussian(sigma=0.1, amp=1, lat=0, lon=0, lmax=None)
             .. automethod:: reset()
             .. autoattribute:: lmax
             .. autoattribute:: nwav

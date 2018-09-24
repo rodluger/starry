@@ -135,7 +135,7 @@ namespace pybind_utils {
         std::vector<int> inds;
         if (py::isinstance<py::int_>(l)) {
             n = py::cast<int>(l);
-            if ((n < 0) || (n > lmax))
+            if ((n < 1) || (n > lmax))
                 throw errors::IndexError("Invalid value for `l`.");
             inds.push_back(n);
             return inds;
