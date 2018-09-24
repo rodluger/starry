@@ -695,7 +695,7 @@ namespace kepler {
             multi = "True";
         else
             multi = "False";
-        os << "<starry::kepler::Primary("
+        os << "<starry.kepler.Primary("
            << "lmax=" << this->lmax << ", "
            << "nwav=" << this->nwav << ", "
            << "multi=" << multi
@@ -1094,9 +1094,9 @@ namespace kepler {
     //! Set the inclination
     template <class T>
     void Secondary<T>::setInc(const Scalar<T>& inc_) {
-        if ((inc_ >= 0) && (inc_ < 180.0)) inc = inc_ * pi<Scalar<T>>() / 180.0;
+        if ((inc_ >= 0) && (inc_ <= 180.0)) inc = inc_ * pi<Scalar<T>>() / 180.0;
         else throw errors::ValueError("Inclination must be "
-                                      "in the range [0, 180).");
+                                      "in the range [0, 180].");
         cosi = cos(inc);
         sini = sin(inc);
         cosOcosi = cosO * cosi;
@@ -1203,7 +1203,7 @@ namespace kepler {
             multi = "True";
         else
             multi = "False";
-        os << "<starry::kepler::Secondary("
+        os << "<starry.kepler.Secondary("
            << "lmax=" << this->lmax << ", "
            << "nwav=" << this->nwav << ", "
            << "multi=" << multi
@@ -1334,7 +1334,7 @@ namespace kepler {
     //! Return a human-readable info string
     template <class T>
     std::string System<T>::info() {
-        return "<starry::kepler::System()>";
+        return "<starry.kepler.System()>";
     }
 
     //! Return the full system light curve

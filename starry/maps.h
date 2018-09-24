@@ -745,7 +745,7 @@ namespace maps {
             multi = "True";
         else
             multi = "False";
-        os << "<starry::maps::Map("
+        os << "<starry.Map("
            << "lmax=" << lmax << ", "
            << "nwav=" << nwav << ", "
            << "multi=" << multi

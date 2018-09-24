@@ -1025,8 +1025,6 @@ normalized
 such that the \textbf{average disk-integrated intensity is equal to the
 coefficient of the $Y_{0,0}$ harmonic}. By default, the average amount of
 flux visible from an unocculted map is therefore unity.
-\footnote{Since $F \propto \pi r^2$ and $L \propto 4 \pi r^2$,
-the total \emph{luminosity} of a map is always equal to $4y_0$.}
 
 Say our surface map is given by the function
 %
@@ -1198,7 +1196,7 @@ see \S\ref{sec:starryphotodynamics}.
              Figure~\ref{fig:earth}. The full rotational phase curve is shown in black,
              and the flux due to each of the seven continents is shown as
              the colored curves (see legend). The black dots correspond to the
-             numerical solution.
+             numerical solution (see \S\ref{sec:starrybenchmarks}).
              \codelink{earthphasecurve}
              }
     \end{centering}
@@ -1250,7 +1248,8 @@ occultation. As before, the numerical solutions are shown as the small dots.
              Figure~\ref{fig:earth}. The two largest dips are due
              to the occultations of South America (left) and Africa
              (right). Once again, the black dots correspond to the
-             numerical solution. \edited{For reference, the light
+             numerical solution \edited{(see \S\ref{sec:starrybenchmarks}).
+             For reference, the light
              grey dots correspond to the rotational light curve in
              the absence of the occultor.}
              \codelink{earthoccultation}
@@ -1573,7 +1572,8 @@ class and compute the flux at one point during an occultation:
 \begin{lstlisting}[language=Python,firstnumber=last]
 map = Map(lmax=1)
 map[1, 0] = 0.5
-flux, gradient = map.flux(theta=30, xo=0.1, yo=0.1, ro=0.1, gradient=True)
+flux, gradient = map.flux(theta=30, xo=0.1, yo=0.1, ro=0.1,
+                          gradient=True)
 \end{lstlisting}
 %
 Running the code above returns the value of the flux, \textsf{1.48216...},
@@ -1873,6 +1873,11 @@ timeseries without binning. We first find the maximum likelihood fit to the
 data using \edited{gradient-descent optimization}, then initialize an MCMC sampler in a
 Gaussian ball about this solution and run a chain of 40 walkers for 10,000 steps
 using the \textsf{emcee} package \citep{Foreman-Mackey2013}.
+\edited{At a rate of about one million flux evaluations per second,
+the full calculation took on the order of 10 CPU hours. Note that this is almost certainly
+overkill; given the extremely low signal-to-noise ratio of each measurement,
+binning the dataset in time could allow for runtimes of less than one hour that would yield
+virtually the same results.}
 
 Figure \ref{fig:hd189_mcmc_fit} shows the secondary eclipse light curve and our
 median model fit to the data. Figure \ref{fig:hd189_mcmc_corner}
@@ -2144,6 +2149,18 @@ Agreement number NNA13AA93A.  EA is supported by NSF grant 1615315.
 Some of the results in this paper have been derived using the HEALPix
 \citep{Gorski2005} package.
 
+
+\software{
+starry v0.1.2 (\href{https://doi.org/10.5281/zenodo.1313022}{Luger et al. 2018}),
+HEALPix (Gorski et al. 2005),
+emcee (\href{http://adsabs.harvard.edu/abs/2013ascl.soft03002F}{Foreman-Mackey et al. 2013}),
+corner.py (\href{https://doi.org/10.21105/joss.00024}{Foreman-Mackey 2016}),
+batman (\href{http://adsabs.harvard.edu/abs/2015ascl.soft10002K}{Kreidberg 2015}),
+spiderman (\href{http://adsabs.harvard.edu/abs/2017ascl.soft11019L}{Louden and Kreidberg 2017}),
+pybind11 (Jakob et al. 2017),
+Eigen v3 (Guennebaud et al. 2010),
+scipy (Jones et al. 2001).
+}
 
 
 %

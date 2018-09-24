@@ -622,6 +622,13 @@ class MCMCCartography(object):
         medvals = np.nanmedian(self.samples, axis=0)
         truths = np.nanmedian(self.samples2, axis=0)
 
+        # DEBUG
+        #x: array([0.108422  , 0.54193886, 0.15891935, 0.00206156]) # 0.5015234576635261
+        #x: array([0.10947705, 0.54258004, 0.1563004 , 0.00206134]) # 0.5015234368730368
+        #x: array([0.11145594, 0.54403427, 0.15739444, 0.00205864]) # 0.5015234349100564
+
+        medvals = np.array([0.11145594, 0.54403427, 0.15739444, 0.00205864])
+
         fig = corner.corner(self.samples2, labels=self.labels2,
                             bins=45, show_titles=True, title_fmt='.3f')
         for ax in fig.axes:

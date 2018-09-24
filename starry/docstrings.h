@@ -527,6 +527,8 @@ namespace docstrings {
                 secondaries (:py:class:`Secondary`): The secondary body, or \
                     a sequence of secondaries.
 
+            .. autoattribute:: primary
+            .. autoattribute:: secondaries
             .. automethod:: compute(time, gradient=False)
             .. autoattribute:: lightcurve
             .. autoattribute:: gradient
@@ -534,6 +536,14 @@ namespace docstrings {
             .. autoattribute:: exposure_tol
             .. autoattribute:: exposure_max_depth
 
+        )pbdoc";
+
+        const char* primary = R"pbdoc(
+            The primary body in the Keplerian system.
+        )pbdoc";
+
+        const char* secondaries = R"pbdoc(
+            A list of the secondary bodies in the Keplerian system.
         )pbdoc";
 
         const char* compute = R"pbdoc(

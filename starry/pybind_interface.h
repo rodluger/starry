@@ -808,6 +808,14 @@ namespace pybind_interface {
             .def(py::init<kepler::Primary<T>*,
                           std::vector<kepler::Secondary<T>*>>())
 
+            .def_property_readonly("primary", [](kepler::System<T> &system) {
+                return system.primary;
+            }, docstrings::System::primary)
+
+            .def_property_readonly("secondaries", [](kepler::System<T> &system) {
+                return system.secondaries;
+            }, docstrings::System::secondaries)
+
             // Compute the light curve
             .def("compute", [](kepler::System<T> &system,
                                const Vector<double>& time,
