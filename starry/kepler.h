@@ -641,6 +641,7 @@ namespace kepler {
             void setLuminosity(const S& L_);
             void setRadiusInMeters(const S& r_);
             S getRadiusInMeters() const;
+            std::string info();
 
     };
 
@@ -685,6 +686,22 @@ namespace kepler {
                                               "body is fixed at unity.");
     }
 
+    //! Human-readable string
+    template <class T>
+    std::string Primary<T>::info() {
+        std::ostringstream os;
+        std::string multi;
+        if (isMulti(Scalar<T>(0.)))
+            multi = "True";
+        else
+            multi = "False";
+        os << "<starry::kepler::Primary("
+           << "lmax=" << this->lmax << ", "
+           << "nwav=" << this->nwav << ", "
+           << "multi=" << multi
+           << ")>";
+        return std::string(os.str());
+    }
 
     /* ----------------- */
     /*      SECONDARY    */
@@ -808,6 +825,7 @@ namespace kepler {
             const Vector<Scalar<T>>& getXVector() const;
             const Vector<Scalar<T>>& getYVector() const;
             const Vector<Scalar<T>>& getZVector() const;
+            std::string info();
 
             //! Constructor
             explicit Secondary(int lmax=2, int nwav=1) :
@@ -1176,6 +1194,22 @@ namespace kepler {
         return zvec;
     }
 
+    //! Human-readable string
+    template <class T>
+    std::string Secondary<T>::info() {
+        std::ostringstream os;
+        std::string multi;
+        if (isMulti(Scalar<T>(0.)))
+            multi = "True";
+        else
+            multi = "False";
+        os << "<starry::kepler::Secondary("
+           << "lmax=" << this->lmax << ", "
+           << "nwav=" << this->nwav << ", "
+           << "multi=" << multi
+           << ")>";
+        return std::string(os.str());
+    }
 
     /* ----------------- */
     /*       SYSTEM      */
@@ -1300,8 +1334,7 @@ namespace kepler {
     //! Return a human-readable info string
     template <class T>
     std::string System<T>::info() {
-        return "<Keplerian " + std::to_string(secondaries.size() + 1) +
-               "-body system>";
+        return "<starry::kepler::System()>";
     }
 
     //! Return the full system light curve

@@ -9,6 +9,8 @@ CHECK_RERUN = grep Rerun starry.log
 FIGURES     = $(patsubst %.py,%.pdf,$(wildcard figures/*.py))
 SOURCES     = $(wildcard ../src/*.[ch])
 TECTONIC    = $(shell command -v tectonic >/dev/null && echo true || echo false )
+TEXFILE     = "\def\hideedits{}\input{starry}"
+#TEXFILE     = "\input{starry}"
 
 default: starry.pdf
 
@@ -16,12 +18,16 @@ starry.pdf: starry.tex stylez.tex starry.bib $(FIGURES) $(SOURCES)
 	# Generate links to current git commit
 	python gitlinks.py
 	if [ "${TECTONIC}" = "true" ]; then\
-		tectonic starry.tex --print --keep-logs;\
+	    echo ${TEXFILE} > tmp.tex;\
+		tectonic tmp.tex --print --keep-logs;\
+		mv tmp.log starry.log;\
+		mv tmp.pdf starry.pdf;\
+		rm tmp.tex;\
 	else\
-		${LATEX} starry.tex;\
-		( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done.";\
-		( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done.";\
-		( ${CHECK_RERUN} && ${LATEX} starry.tex ) || echo "Done.";\
+		${LATEX} ${TEXFILE};\
+		( ${CHECK_RERUN} && ${LATEX} ${TEXFILE} ) || echo "Done.";\
+		( ${CHECK_RERUN} && ${LATEX} ${TEXFILE} ) || echo "Done.";\
+		( ${CHECK_RERUN} && ${LATEX} ${TEXFILE} ) || echo "Done.";\
 	fi
 	# Update the proofs page in the docs
 	python genproofs.py

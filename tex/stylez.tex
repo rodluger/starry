@@ -37,6 +37,15 @@
 % Page breaks in long equations
 %\allowdisplaybreaks
 
+% REVISIONS
+\ifdefined\hideedits
+\definecolor{editcolor}{rgb}{0,0,0}
+\newcommand{\edited}[1]{#1}
+\else
+\definecolor{editcolor}{rgb}{0.0216,0.3667,0.6059}
+\newcommand{\edited}[1]{{\color{editcolor}{#1}}}
+\fi
+
 % Bibliography stuff
 \bibliographystyle{aasjournal}
 

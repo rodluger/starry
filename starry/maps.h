@@ -320,7 +320,7 @@ namespace maps {
             virtual VectorT<Scalar<T>> getS() const;
             void setAxis(const UnitVector<Scalar<T>>& axis_);
             UnitVector<Scalar<T>> getAxis() const;
-            std::string info();
+            virtual std::string info();
             inline void resizeGradient();
             const T& getGradient() const;
             const std::vector<std::string>& getGradientNames() const;
@@ -740,26 +740,16 @@ namespace maps {
     template <class T>
     std::string Map<T>::info() {
         std::ostringstream os;
-        os << "<" << precision<Scalar<T>>() << " precision "
-           << "map of "
-           << "degree " << y_deg << " "
-           << "with ";
-        if (nwav == 1)
-            os << "one wavelength bin and ";
+        std::string multi;
+        if (isMulti(Scalar<T>(0.)))
+            multi = "True";
         else
-            os << nwav << " wavelength bins and ";
-        if (u_deg == 0)
-            os << "no ";
-        else if (u_deg == 1)
-            os << "1st order ";
-        else if (u_deg == 2)
-            os << "2nd order ";
-        else if (u_deg == 3)
-            os << "3rd order ";
-        else
-            os << u_deg << "th order ";
-        os << "limb darkening"
-           << ">";
+            multi = "False";
+        os << "<starry::maps::Map("
+           << "lmax=" << lmax << ", "
+           << "nwav=" << nwav << ", "
+           << "multi=" << multi
+           << ")>";
         return std::string(os.str());
     }
 
