@@ -38,11 +38,29 @@ def animate(I, res=300, cmap="plasma", gif="", interval=75, labels=None):
                                   blit=(labels is None),
                                   frames=len(I))
 
+    # Hack to return a gif embedded in HTML if we're
+    # inside a Jupyter notebook
+    try:
+        if 'zmqshell' in str(type(get_ipython())):
+            # We're inside a notebook!
+            from IPython.display import HTML
+            if gif == "":
+                gif = str(id(ani))
+            elif gif.endswith(".gif"):
+                gif = gif[:-4]
+            ani.save('%s.gif' % gif, writer='imagemagick')
+            pl.close()
+            return HTML('<img src="%s.gif">' % gif)
+        else:
+            raise NameError("")
+    except NameError:
+        pass
+
+    # Business as usual
     if gif != "":
         if gif.endswith(".gif"):
             gif = gif[:-4]
         ani.save('%s.gif' % gif, writer='imagemagick')
     else:
         pl.show()
-
     pl.close()

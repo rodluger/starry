@@ -68,7 +68,8 @@ namespace pybind_interface {
             }, docstrings::Map::show, "cmap"_a="plasma", "res"_a=300)
 
             .def("animate", [](maps::Map<T> &map, std::string cmap, int res,
-                               int frames, int interval, std::string& gif) {
+                               int frames, int interval, std::string& gif)
+                               -> py::object{
                 std::cout << "Rendering..." << std::endl;
                 py::object animate =
                     py::module::import("starry.maps").attr("animate");
@@ -85,8 +86,8 @@ namespace pybind_interface {
                         }
                     }
                 }
-                animate(I, "cmap"_a=cmap, "res"_a=res, "gif"_a=gif,
-                        "interval"_a=interval);
+                return animate(I, "cmap"_a=cmap, "res"_a=res, "gif"_a=gif,
+                               "interval"_a=interval);
              }, docstrings::Map::animate, "cmap"_a="plasma", "res"_a=150,
                                   "frames"_a=50, "interval"_a=75, "gif"_a="")
 
