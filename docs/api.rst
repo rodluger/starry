@@ -1,16 +1,20 @@
-API
-===
+The starry Python API
+=====================
+
+Contents
+--------
 
 .. hlist::
     :columns: 1
 
-    * Intro_
-    * Map_
-    * Primary_
-    * Secondary_
-    * System_
+    * Introduction_
+    * The Map_ class
+    * The kepler_ module
+        - The Primary_ body
+        - The Secondary_ body
+        - The System_ class
 
-.. _Intro:
+.. _Introduction:
 
 Introduction
 ------------
@@ -49,7 +53,21 @@ of the code, which will incorporate an N-body solver.
 
 .. _Map:
 
+The Map class
+-------------
+
 .. autoclass:: starry.Map
+
+.. _kepler:
+
+The kepler module
+-----------------
+
+The :py:obj:`starry.kepler` module allows users to incorporate the
+features of the :py:class:`starry.Map` class into a simple Keplerian
+solver to model systems of stars, planets, or moons. The bodies in the
+:py:obj:`starry.kepler` module inherit from :py:class:`starry.Map`, so
+all of the functionality outlined above is also available here.
 
 .. _Primary:
 

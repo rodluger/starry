@@ -1,6 +1,8 @@
 /**
 Spherical harmonic, polynomial, and Green's basis utilities.
 
+TODO: Use legendre polynomial recurrence relation for numerical stability
+
 */
 
 #ifndef _STARRY_BASIS_H_

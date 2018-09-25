@@ -966,11 +966,12 @@ namespace kepler {
     }
 
     /**
-    Initial map rotation angle in degrees. The map is defined at the
+    Map rotation angle in degrees at the reference time.
+    The map is defined at the
     eclipsing configuration (full dayside as seen by an
     observer viewing the system edge-on), so let's find the
     angle by which we need to rotate the map initially to
-    make this happen. This overrides `` in
+    make this happen. This overrides `computeTheta0` in
     the Body class.
 
     */

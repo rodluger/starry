@@ -9,8 +9,8 @@ CHECK_RERUN = grep Rerun starry.log
 FIGURES     = $(patsubst %.py,%.pdf,$(wildcard figures/*.py))
 SOURCES     = $(wildcard ../src/*.[ch])
 TECTONIC    = $(shell command -v tectonic >/dev/null && echo true || echo false )
-TEXFILE     = "\def\hideedits{}\input{starry}"
-#TEXFILE     = "\input{starry}"
+#TEXFILE     = "\def\hideedits{}\input{starry}"
+TEXFILE     = "\input{starry}"
 
 default: starry.pdf
 

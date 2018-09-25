@@ -390,7 +390,8 @@ class MaxLikeCartography(object):
         ax.set_frame_on(False)
         ax.set_xticks([])
         ax.set_yticks([])
-        expr = r"${0}$".format(self.planet.map.__repr__()[12:-1])
+        args = (self.planet.y[1],self.planet.y[2],self.planet.y[3])
+        expr = r"$Y_{0,0}$ + %.2lf$Y_{1,-1}$ + %.2lf$Y_{1,0}$ + %.2lf$Y_{1,1}$" % args
         ax.set_xlabel(expr, fontsize=12)
 
         self.system.compute(self.time)
