@@ -478,8 +478,6 @@ an angle $\theta$ and an arbitrary axis of rotation $\bvec{u}$. Follow the link
 next to Figure~\ref{fig:ylms} to view an animation of the spherical harmonics
 rotating about the $y$-axis, computed from \eq{rotation}.
 
-% HACK
-\pagebreak
 
 % ==============================================================================
 % ------------------------------------------------------------------------------
@@ -1884,7 +1882,7 @@ median model fit to the data. Figure \ref{fig:hd189_mcmc_corner}
 shows the marginalized posteriors and covariances of our four model parameters, as
 well as the latitude ($\hat{\phi}$) and longitude ($\hat{\theta}$) of the hotspot
 relative to the substellar
-point. A map corresponding to the median model is plotted at the top right,
+point. A map corresponding to \edited{the maximum likelihood model} is plotted at the top right,
 showing a statistically significant eastward
 offset in the location of the hotspot in agreement with previous studies
 \citep{Knutson2007, Majeau2012, deWit2012}. There is also evidence for a slight northward offset,
@@ -2064,8 +2062,7 @@ computation time by at least an order of magnitude.
 The occultation formalism developed in this paper applies specifically to the
 case of a single occultor, so \starry cannot at present handle mutual occultations
 involving more than two bodies; \edited{if a three-body event occurs, the computed
-flux will be incorrect}
-. However, even for an arbitrary number of bodies
+flux will be incorrect}. However, even for an arbitrary number of bodies
 the problem is still analytic, since Green's theorem may be employed in the same
 way, but instead evaluating the line integrals along the more complex network of
 arcs defining the edges of the visible portion of the body's surface. This was
