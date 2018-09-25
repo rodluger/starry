@@ -128,11 +128,20 @@ namespace pybind_vectorize {
             // Initialize a dictionary of derivatives
             size_t n = max(theta.size(), max(xo.size(),
                            max(yo.size(), ro.size())));
-            std::map<string, Vector<double>> grad;
+            std::map<string, Matrix<double>> grad;
             map.resizeGradient();
             auto dF_names = map.getGradientNames();
-            for (auto name : dF_names)
-                grad[name].resize(n);
+            int n_ylm = 0, n_ul = 0;
+            for (auto name : dF_names) {
+                if (name == "y")
+                    ++n_ylm;
+                else if (name == "u")
+                    ++n_ul;
+                else
+                    grad[name].resize(n, 1);
+            }
+            grad["y"].resize(n, n_ylm);
+            grad["u"].resize(n, n_ul);
 
             // Nested lambda function;
             // https://github.com/pybind/pybind11/issues/
@@ -146,8 +155,16 @@ namespace pybind_vectorize {
                                                           numerical));
                 // Gather the derivatives
                 auto dF = map.getGradient();
-                for (int j = 0; j < dF.size(); j++)
-                    grad[dF_names[j]](t) = static_cast<double>(dF(j));
+                int n_ylm = 0, n_ul = 0;
+                for (int j = 0; j < dF.size(); j++) {
+                    if (dF_names[j] == "y") {
+                        grad["y"](t, n_ylm++) = static_cast<double>(dF(j));
+                    } else if (dF_names[j] == "u") {
+                        grad["u"](t, n_ul++) = static_cast<double>(dF(j));
+                    } else {
+                        grad[dF_names[j]](t, 0) = static_cast<double>(dF(j));
+                    }
+                }
                 t++;
                 return res;
             })(theta, xo, yo, ro);
@@ -188,8 +205,23 @@ namespace pybind_vectorize {
             std::map<string, Matrix<double>> grad;
             map.resizeGradient();
             auto dF_names = map.getGradientNames();
-            for (auto name : dF_names)
-                grad[name].resize(sz, map.nwav);
+            int n_ylm = 0, n_ul = 0;
+            for (auto name : dF_names) {
+                if (name == "y")
+                    ++n_ylm;
+                else if (name == "u")
+                    ++n_ul;
+                else
+                    grad[name].resize(sz, map.nwav);
+            }
+
+            // Initialize the map coefficient gradients
+            std::vector<Matrix<double>> grad_y(n_ylm);
+            for (int i = 0; i < n_ylm; ++i)
+                grad_y[i].resize(sz, map.nwav);
+            std::vector<Matrix<double>> grad_u(n_ul);
+            for (int i = 0; i < n_ul; ++i)
+                grad_u[i].resize(sz, map.nwav);
 
             // Iterate through the timeseries
             Matrix<double> F(sz, map.nwav);
@@ -202,14 +234,31 @@ namespace pybind_vectorize {
 
                 // Gradient
                 auto dF = map.getGradient();
-                for (int j = 0; j < dF.rows(); ++j)
-                    grad[dF_names[j]].row(i) =
-                        dF.row(j).template cast<double>();
+                int ky = 0, ku = 0;
+                for (int j = 0; j < dF.rows(); ++j) {
+                    if (dF_names[j] == "y") {
+                        grad_y[ky++].row(i) = dF.row(j).template cast<double>();
+                    } else if (dF_names[j] == "u") {
+                        grad_u[ku++].row(i) = dF.row(j).template cast<double>();
+                    } else {
+                        grad[dF_names[j]].row(i) = dF.row(j).template cast<double>();
+                    }
+                }
 
             }
 
+            // Convert to a python dictionary
+            auto pygrad = py::dict();
+            for (std::string name : dF_names) {
+                if ((name != "y") && (name != "u")) {
+                    pygrad[name.c_str()] = grad[name];
+                }
+            }
+            pygrad["y"] = grad_y;
+            pygrad["u"] = grad_u;
+
             // Cast to python object
-            return py::make_tuple(F, grad);
+            return py::make_tuple(F, pygrad);
 
         } else {
 
