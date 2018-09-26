@@ -644,10 +644,58 @@ namespace pybind_interface {
 
         Body
 
-            // TODO!
+            // The gradient of the light curve: a dictionary of matrices/vectors
+            // NOTE: This may be slow because we need to swap some axes here:
+            //      dL(NT)(ngrad, nwav) --> gradient(ngrad)(NT, nwav)
+            // I haven't figured out a way of avoiding this yet...
             .def_property_readonly("gradient", [](kepler::Body<T> &body) -> py::object {
-                throw errors::NotImplementedError("Gradients not yet implemented for spectral mode.");
-            });
+                const Vector<T>& dL = body.getLightcurveGradient();
+                const std::vector<std::string> dL_names = body.getLightcurveGradientNames();
+                size_t sz = dL.size();
+                std::map<std::string, std::vector<Matrix<double>>> gradient;
+                std::string param;
+                int n;
+
+                // Allocate memory
+                for (auto name : dL_names) {
+                    gradient[name].push_back(Matrix<double>(sz, body.nwav));
+                }
+
+                // Populate the dictionary
+                // Loop over all times
+                for (size_t t = 0; t < sz; ++t) {
+                    // Loop over all params
+                    n = 0;
+                    for (size_t i = 0; i < dL_names.size(); ++i) {
+                        if (dL_names[i].substr(1, 2) == ".y") {
+                            if ((i > 0) && (dL_names[i - 1].substr(1, 2) != ".y"))
+                                n = 0;
+                            gradient[dL_names[i]][n++].row(t) = dL(t).row(i).template cast<double>();
+                        } else if (dL_names[i].substr(1, 2) == ".u") {
+                            if ((i > 0) && (dL_names[i - 1].substr(1, 2) != ".u"))
+                                n = 0;
+                            gradient[dL_names[i]][n++].row(t) = dL(t).row(i).template cast<double>();
+                        } else {
+                            gradient[dL_names[i]][0].row(t) = dL(t).row(i).template cast<double>();
+                        }
+                    }
+                }
+
+                // Convert to an actual python dictionary. Necessary so
+                // we can transform 1-element lists of matrices to
+                // straight up matrices
+                // NOTE: All this copying could be slow: not ideal.
+                auto pygrad = py::dict();
+                for (auto& entry : gradient) {
+                    std::string const& name = entry.first;
+                    if ((name.substr(1, 2) != ".y") && (name.substr(1, 2) != ".u"))
+                        pygrad[name.c_str()] = gradient[name][0];
+                    else
+                        pygrad[name.c_str()] = gradient[name];
+                }
+                return pygrad;
+
+            }, docstrings::Body::gradient);
 
     }
 
@@ -968,10 +1016,58 @@ namespace pybind_interface {
 
         System
 
-            // TODO!
+            // The gradient of the light curve: a dictionary of matrices/vectors
+            // NOTE: This may be slow because we need to swap some axes here:
+            //      dL(NT)(ngrad, nwav) --> gradient(ngrad)(NT, nwav)
+            // I haven't figured out a way of avoiding this yet...
             .def_property_readonly("gradient", [](kepler::System<T> &sys) -> py::object {
-                throw errors::NotImplementedError("Gradients not yet implemented for spectral mode.");
-            });
+                const Vector<T>& dL = sys.getLightcurveGradient();
+                const std::vector<std::string> dL_names = sys.getLightcurveGradientNames();
+                size_t sz = dL.size();
+                std::map<std::string, std::vector<Matrix<double>>> gradient;
+                std::string param;
+                int n;
+
+                // Allocate memory
+                for (auto name : dL_names) {
+                    gradient[name].push_back(Matrix<double>(sz, sys.primary->nwav));
+                }
+
+                // Populate the dictionary
+                // Loop over all times
+                for (size_t t = 0; t < sz; ++t) {
+                    // Loop over all params
+                    n = 0;
+                    for (size_t i = 0; i < dL_names.size(); ++i) {
+                        if (dL_names[i].substr(1, 2) == ".y") {
+                            if ((i > 0) && (dL_names[i - 1].substr(1, 2) != ".y"))
+                                n = 0;
+                            gradient[dL_names[i]][n++].row(t) = dL(t).row(i).template cast<double>();
+                        } else if (dL_names[i].substr(1, 2) == ".u") {
+                            if ((i > 0) && (dL_names[i - 1].substr(1, 2) != ".u"))
+                                n = 0;
+                            gradient[dL_names[i]][n++].row(t) = dL(t).row(i).template cast<double>();
+                        } else {
+                            gradient[dL_names[i]][0].row(t) = dL(t).row(i).template cast<double>();
+                        }
+                    }
+                }
+
+                // Convert to an actual python dictionary. Necessary so
+                // we can transform 1-element lists of matrices to
+                // straight up matrices
+                // NOTE: All this copying could be slow: not ideal.
+                auto pygrad = py::dict();
+                for (auto& entry : gradient) {
+                    std::string const& name = entry.first;
+                    if ((name.substr(1, 2) != ".y") && (name.substr(1, 2) != ".u"))
+                        pygrad[name.c_str()] = gradient[name][0];
+                    else
+                        pygrad[name.c_str()] = gradient[name];
+                }
+                return pygrad;
+
+            }, docstrings::System::gradient);
 
     }
 
