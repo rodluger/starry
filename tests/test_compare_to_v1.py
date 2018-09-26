@@ -4,15 +4,7 @@ import numpy as np
 import os
 norm = 0.5 * np.sqrt(np.pi)
 npts = 300
-keys = ['theta', 'xo', 'yo', 'ro',
-        'Y_{0,0}', 'Y_{1,-1}', 'Y_{1,0}', 'Y_{1,1}', 'Y_{2,-1}',
-        'Y_{2,-2}', 'Y_{2,0}', 'Y_{2,1}', 'Y_{2,2}', 'Y_{3,-1}',
-        'Y_{3,-2}', 'Y_{3,-3}', 'Y_{3,0}', 'Y_{3,1}', 'Y_{3,2}',
-        'Y_{3,3}', 'Y_{4,-1}', 'Y_{4,-2}', 'Y_{4,-3}', 'Y_{4,-4}',
-        'Y_{4,0}', 'Y_{4,1}', 'Y_{4,2}', 'Y_{4,3}', 'Y_{4,4}',
-        'Y_{5,-1}', 'Y_{5,-2}', 'Y_{5,-3}', 'Y_{5,-4}', 'Y_{5,-5}',
-        'Y_{5,0}', 'Y_{5,1}', 'Y_{5,2}', 'Y_{5,3}', 'Y_{5,4}',
-        'Y_{5,5}']
+keys = ['theta', 'xo', 'yo', 'ro', 'y']
 # Load the benchmarked values
 v1 = np.loadtxt(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              'v1.txt'))
@@ -81,9 +73,11 @@ def test_occultation_gradient():
     assert np.allclose(v1[4], flux)
 
     # Check the gradients are close
+    j = 0
     for i, key in enumerate(keys):
-        if ('Y_' in key):
-            assert(np.allclose(v1[5 + i], norm * grad[key]))
+        if (key == 'y'):
+            assert(np.allclose(v1[5 + i], norm * grad[key][j]))
+            j += 1
         else:
             assert(np.allclose(v1[5 + i], grad[key]))
 

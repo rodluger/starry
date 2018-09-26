@@ -279,12 +279,11 @@ namespace maps {
                 dF_orbital_names.push_back("ro");
                 for (int l = 0; l < lmax + 1; l++) {
                     for (int m = -l; m < l + 1; m++) {
-                        dF_ylm_names.push_back(string("Y_{" + to_string(l) +
-                                           "," + to_string(m) + "}"));
+                        dF_ylm_names.push_back(string("y"));
                     }
                 }
                 for (int l = 1; l < lmax + 1; l++) {
-                    dF_ul_names.push_back(string("u_{" + to_string(l) + "}"));
+                    dF_ul_names.push_back(string("u"));
                 }
                 dF_n_ul = 0;
                 dF_n_ylm = 0;

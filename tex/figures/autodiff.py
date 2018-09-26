@@ -73,7 +73,24 @@ for i, time in enumerate([time_transit, time_secondary]):
 
     for param, label, n in zip(params, labels, range(5, 5 + len(labels))):
         axg = pl.subplot2grid((20, 2), (n, i))
-        axg.plot(time, grad[param], lw=1, color='C1')
+
+        if param == 'b.Y_{1,0}':
+            axg.plot(time, grad['b.y'][2], lw=1, color='C1')
+        elif param == 'b.Y_{1,1}':
+            axg.plot(time, grad['b.y'][3], lw=1, color='C1')
+        elif param == 'b.Y_{2,0}':
+            axg.plot(time, grad['b.y'][6], lw=1, color='C1')
+        elif param == 'b.Y_{2,1}':
+            axg.plot(time, grad['b.y'][7], lw=1, color='C1')
+        elif param == 'b.Y_{2,2}':
+            axg.plot(time, grad['b.y'][8], lw=1, color='C1')
+        elif param == 'A.u_{1}':
+            axg.plot(time, grad['A.u'][0], lw=1, color='C1')
+        elif param == 'A.u_{2}':
+            axg.plot(time, grad['A.u'][1], lw=1, color='C1')
+        else:
+            axg.plot(time, grad[param], lw=1, color='C1')
+
         axg.margins(None, 0.5)
         axg.set_xticks([])
         axg.set_yticks([])
