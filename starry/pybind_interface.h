@@ -5,6 +5,8 @@ TODO: Add wavelength-dependent radius support
       Two options: arbitrary r(lambda), full computation
       or linear expansion about mean radius using autodiff.
 
+TODO: System gradients for spectral starry
+
 TODO: Spectral add_gaussian
 
 */
@@ -549,6 +551,107 @@ namespace pybind_interface {
     }
 
     /**
+    Add type-specific features to the Body class: single-wavelength starry.
+
+    */
+    template <typename T>
+    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<Row<T>>,
+                                             Row<T>>::value, void>::type
+    addBodyExtras(py::class_<kepler::Body<T>>& Body) {
+
+        Body
+
+            // The gradient of the light curve: a dictionary of matrices/vectors
+            // NOTE: This may be slow because we need to swap some axes here:
+            //      dL(NT)(ngrad, nwav) --> gradient(ngrad)(NT, nwav)
+            // I haven't figured out a way of avoiding this yet...
+            .def_property_readonly("gradient", [](kepler::Body<T> &body) -> py::object {
+                const Vector<T>& dL = body.getLightcurveGradient();
+                const std::vector<std::string> dL_names = body.getLightcurveGradientNames();
+                size_t sz = dL.size();
+                std::map<std::string, Matrix<double>> gradient;
+                std::string param;
+                int n;
+
+                // Allocate memory for non-map coeffs
+                for (auto name : dL_names) {
+                    if ((name.substr(1, 2) != ".y") && (name.substr(1, 2) != ".u"))
+                        gradient[name].resize(sz, 1);
+                }
+
+                // Allocate memory for the Ylms and Uls
+                for (auto var : {".y", ".u"}) {
+                    n = 0;
+                    for (auto name : dL_names) {
+                        if (name.substr(1, 2) == var) {
+                            param = name;
+                            ++n;
+                        } else if (n > 0) {
+                            gradient[param].resize(sz, n);
+                            n = 0;
+                        }
+                    }
+                    if (n > 0)
+                        gradient[param].resize(sz, n);
+                }
+
+                // Populate the dictionary
+                // Loop over all times
+                for (size_t t = 0; t < sz; ++t) {
+                    // Loop over all params
+                    n = 0;
+                    for (size_t i = 0; i < dL_names.size(); ++i) {
+                        if (dL_names[i].substr(1, 2) == ".y") {
+                            if ((i > 0) && (dL_names[i - 1].substr(1, 2) != ".y"))
+                                n = 0;
+                            gradient[dL_names[i]](t, n++) = static_cast<double>(dL(t)(i));
+                        } else if (dL_names[i].substr(1, 2) == ".u") {
+                            if ((i > 0) && (dL_names[i - 1].substr(1, 2) != ".u"))
+                                n = 0;
+                            gradient[dL_names[i]](t, n++) = static_cast<double>(dL(t)(i));
+                        } else {
+                            gradient[dL_names[i]](t, 0) = static_cast<double>(dL(t)(i));
+                        }
+                    }
+                }
+
+                // Convert to an actual python dictionary
+                // Necessary because we're mixing vectors and matrices
+                // among the dictionary items.
+                // NOTE: All this copying could be slow: not ideal.
+                auto pygrad = py::dict();
+                for (auto& entry : gradient) {
+                    std::string const& name = entry.first;
+                    if ((name.substr(1, 2) != ".y") && (name.substr(1, 2) != ".u"))
+                        pygrad[name.c_str()] = gradient[name].col(0);
+                    else
+                        pygrad[name.c_str()] = gradient[name].transpose();
+                }
+                return pygrad;
+
+            }, docstrings::Body::gradient);
+
+    }
+
+    /**
+    Add type-specific features to the Body class: spectral starry.
+
+    */
+    template <typename T>
+    typename std::enable_if<std::is_base_of<Eigen::EigenBase<Row<T>>,
+                                            Row<T>>::value, void>::type
+    addBodyExtras(py::class_<kepler::Body<T>>& Body) {
+
+        Body
+
+            // TODO!
+            .def_property_readonly("gradient", [](kepler::Body<T> &body) -> py::object {
+                throw errors::NotImplementedError("Gradients not yet implemented for spectral mode.");
+            });
+
+    }
+
+    /**
     The pybind wrapper for the Body class.
 
     */
@@ -609,27 +712,10 @@ namespace pybind_interface {
                     return py::cast(
                             body.getLightcurve().template cast<double>());
                 }
-            }, docstrings::Body::lightcurve)
+            }, docstrings::Body::lightcurve);
 
-            // The gradient of the light curve: a dictionary of matrices/vectors
-            // NOTE: This may be slow because we need to swap some axes here:
-            //      dL(NT)(ngrad, nwav) --> gradient(ngrad)(NT, nwav)
-            // I haven't figured out a way of avoiding this yet...
-            .def_property_readonly("gradient", [](kepler::Body<T> &body)
-                    -> py::object{
-                const Vector<T>& dL = body.getLightcurveGradient();
-                const std::vector<std::string> dL_names =
-                    body.getLightcurveGradientNames();
-                std::map<std::string, MapDouble<T>> gradient;
-                for (size_t i = 0; i < dL_names.size(); ++i) {
-                    gradient[dL_names[i]].resize(dL.size(), body.nwav);
-                    for (long t = 0; t < dL.size(); ++t) {
-                        gradient[dL_names[i]].row(t) =
-                            dL(t).row(i).template cast<double>();
-                    }
-                }
-                return py::cast(gradient);
-            }, docstrings::Body::gradient);
+        // Add type-specific attributes & methods
+        addBodyExtras(Body);
 
         return Body;
     }
@@ -789,6 +875,107 @@ namespace pybind_interface {
     }
 
     /**
+    Add type-specific features to the System class: single-wavelength starry.
+
+    */
+    template <typename T>
+    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<Row<T>>,
+                                             Row<T>>::value, void>::type
+    addSystemExtras(py::class_<kepler::System<T>>& System) {
+
+        System
+
+            // The gradient of the light curve: a dictionary of matrices/vectors
+            // NOTE: This may be slow because we need to swap some axes here:
+            //      dL(NT)(ngrad, nwav) --> gradient(ngrad)(NT, nwav)
+            // I haven't figured out a way of avoiding this yet...
+            .def_property_readonly("gradient", [](kepler::System<T> &sys) -> py::object {
+                const Vector<T>& dL = sys.getLightcurveGradient();
+                const std::vector<std::string> dL_names = sys.getLightcurveGradientNames();
+                size_t sz = dL.size();
+                std::map<std::string, Matrix<double>> gradient;
+                std::string param;
+                int n;
+
+                // Allocate memory for non-map coeffs
+                for (auto name : dL_names) {
+                    if ((name.substr(1, 2) != ".y") && (name.substr(1, 2) != ".u"))
+                        gradient[name].resize(sz, 1);
+                }
+
+                // Allocate memory for the Ylms and Uls
+                for (auto var : {".y", ".u"}) {
+                    n = 0;
+                    for (auto name : dL_names) {
+                        if (name.substr(1, 2) == var) {
+                            param = name;
+                            ++n;
+                        } else if (n > 0) {
+                            gradient[param].resize(sz, n);
+                            n = 0;
+                        }
+                    }
+                    if (n > 0)
+                        gradient[param].resize(sz, n);
+                }
+
+                // Populate the dictionary
+                // Loop over all times
+                for (size_t t = 0; t < sz; ++t) {
+                    // Loop over all params
+                    n = 0;
+                    for (size_t i = 0; i < dL_names.size(); ++i) {
+                        if (dL_names[i].substr(1, 2) == ".y") {
+                            if ((i > 0) && (dL_names[i - 1].substr(1, 2) != ".y"))
+                                n = 0;
+                            gradient[dL_names[i]](t, n++) = static_cast<double>(dL(t)(i));
+                        } else if (dL_names[i].substr(1, 2) == ".u") {
+                            if ((i > 0) && (dL_names[i - 1].substr(1, 2) != ".u"))
+                                n = 0;
+                            gradient[dL_names[i]](t, n++) = static_cast<double>(dL(t)(i));
+                        } else {
+                            gradient[dL_names[i]](t, 0) = static_cast<double>(dL(t)(i));
+                        }
+                    }
+                }
+
+                // Convert to an actual python dictionary
+                // Necessary because we're mixing vectors and matrices
+                // among the dictionary items.
+                // NOTE: All this copying could be slow: not ideal.
+                auto pygrad = py::dict();
+                for (auto& entry : gradient) {
+                    std::string const& name = entry.first;
+                    if ((name.substr(1, 2) != ".y") && (name.substr(1, 2) != ".u"))
+                        pygrad[name.c_str()] = gradient[name].col(0);
+                    else
+                        pygrad[name.c_str()] = gradient[name].transpose();
+                }
+                return pygrad;
+
+            }, docstrings::System::gradient);
+
+    }
+
+    /**
+    Add type-specific features to the System class: spectral starry.
+
+    */
+    template <typename T>
+    typename std::enable_if<std::is_base_of<Eigen::EigenBase<Row<T>>,
+                                            Row<T>>::value, void>::type
+    addSystemExtras(py::class_<kepler::System<T>>& System) {
+
+        System
+
+            // TODO!
+            .def_property_readonly("gradient", [](kepler::System<T> &sys) -> py::object {
+                throw errors::NotImplementedError("Gradients not yet implemented for spectral mode.");
+            });
+
+    }
+
+    /**
     The pybind wrapper for the System class.
 
     */
@@ -863,25 +1050,10 @@ namespace pybind_interface {
                 }
             }, docstrings::System::lightcurve)
 
-            // The gradient of the light curve: a dictionary of matrices/vectors
-            // See optimization NOTE in `Body.gradient()` above
-            .def_property_readonly("gradient", [](kepler::System<T> &sys)
-                    -> py::object{
-                const Vector<T>& dL = sys.getLightcurveGradient();
-                const std::vector<std::string> dL_names =
-                    sys.getLightcurveGradientNames();
-                std::map<std::string, MapDouble<T>> gradient;
-                for (size_t i = 0; i < dL_names.size(); ++i) {
-                    gradient[dL_names[i]].resize(dL.size(), sys.primary->nwav);
-                    for (long t = 0; t < dL.size(); ++t) {
-                        gradient[dL_names[i]].row(t) =
-                            dL(t).row(i).template cast<double>();
-                    }
-                }
-                return py::cast(gradient);
-            }, docstrings::System::gradient)
-
             .def("__repr__", &kepler::System<T>::info);
+
+        // Add type-specific attributes & methods
+        addSystemExtras(System);
 
         return System;
 

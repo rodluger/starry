@@ -169,8 +169,21 @@ namespace pybind_vectorize {
                 return res;
             })(theta, xo, yo, ro);
 
+            // Convert to an actual python dictionary
+            // Necessary because we're mixing vectors and matrices
+            // among the dictionary items.
+            // NOTE: All this copying could be slow: not ideal.
+            auto pygrad = py::dict();
+            for (std::string name : dF_names) {
+                if ((name != "y") && (name != "u")) {
+                    pygrad[name.c_str()] = grad[name].col(0);
+                }
+            }
+            pygrad["y"] = grad["y"].transpose();
+            pygrad["u"] = grad["u"].transpose();
+
             // Return a tuple of (F, dict(dF))
-            return py::make_tuple(F, grad);
+            return py::make_tuple(F, pygrad);
 
         } else {
 
