@@ -216,9 +216,9 @@ def lnlike_grad(p, time, y, yerr, system, planet):
 
     # Get the derivatives of the flux w/ respect to y
     dfdy = np.array([
-        system.gradient['b.Y_{1,-1}'],
-        system.gradient['b.Y_{1,0}'],
-        system.gradient['b.Y_{1,1}'],
+        system.gradient['b.y'][1],
+        system.gradient['b.y'][2],
+        system.gradient['b.y'][3],
         system.gradient['b.L']
     ])
 

@@ -1,13 +1,17 @@
 /**
 This defines the main Python interface to the code.
 
+TODO: There is a lot of ugly looping and copying in the
+      routines that transform the gradients into python
+      dictionaries. There are four of them here (two in
+      Body, two in System) and two in `pybind_vectorize.h`.
+      These need to be sped up.
+
 TODO: Add wavelength-dependent radius support
       Two options: arbitrary r(lambda), full computation
       or linear expansion about mean radius using autodiff.
 
-TODO: System gradients for spectral starry
-
-TODO: Spectral add_gaussian
+TODO: Add the `add_gaussian` method to spectral starry.
 
 */
 
@@ -328,7 +332,12 @@ namespace pybind_interface {
                 map.setAxis(yhat<Scalar<T>>());
                 map.rotate(90.0);
                 map.setAxis(map_axis);
-            }, docstrings::Map::load_image, "image"_a, "nwav"_a=0, "lmax"_a=-1);
+            }, docstrings::Map::load_image, "image"_a, "nwav"_a=0, "lmax"_a=-1)
+
+            .def("add_gaussian", [](maps::Map<T> &map, py::args args,
+                                    py::kwargs kwargs) {
+                throw errors::NotImplementedError("This routine has not yet been implemented for maps with nwav > 1.");
+           });
 
     }
 
@@ -653,7 +662,6 @@ namespace pybind_interface {
                 const std::vector<std::string> dL_names = body.getLightcurveGradientNames();
                 size_t sz = dL.size();
                 std::map<std::string, std::vector<Matrix<double>>> gradient;
-                std::string param;
                 int n;
 
                 // Allocate memory
