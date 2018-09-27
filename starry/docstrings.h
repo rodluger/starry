@@ -372,8 +372,7 @@ namespace docstrings {
             :py:obj:`body.parameter`, where :py:obj:`body` is :py:obj:`A`
             for the primary and :py:obj:`b`, :py:obj:`c`, :py:obj:`d`, etc. for
             the secondaries. The :py:obj:`parameter` label is the name of the
-            parameter; for map coefficients, this takes the form
-            :py:obj:`Y_{l,m}` or :py:obj:`u_{l}`.
+            parameter.
 
             .. note:: Users must call the :py:obj:`compute` method of the
                 :py:class:`System` object with :py:obj:`gradient=True`
@@ -606,7 +605,7 @@ namespace docstrings {
         const char* gradient = R"pbdoc(
             The gradient of the systems's light curve. This is a dictionary of
             vectors (:py:obj:`nwav = 1`) or matrices (:py:obj:`nwav > 1`).
-            See the docstring of :py:attr:`Body.gradient` for more details.
+            See the docstring of :py:attr:`Primary.gradient` for more details.
 
             .. note:: Users should call :py:meth:`compute` first.
         )pbdoc";
