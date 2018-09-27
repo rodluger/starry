@@ -20,6 +20,11 @@
   increase speed. The largest speed improvement is in the computation of
   gradients. The code is no longer limited by the `STARRY_NGRAD` parameter,
   and arbitrary number of gradients can now be taken efficiently.
+- Derivatives with respect to the map coefficients are no longer labeled
+  as `Y_{0,0}`, `Y_{1,-1}`, ... Instead, they are labeled by a single key
+  `y`, whose value is a vector of derivatives corresponding to each element
+  in the spherical harmonic vector `y`. The same applies to the limb
+  darkening coefficients, whose derivatives are stored in they key `u`.
 - Minor changes to the names of some keywords and class properties, and
   to some call sequences.
 - Minor bug fixes here and there.
