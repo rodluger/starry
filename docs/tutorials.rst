@@ -16,7 +16,7 @@ The basics
    Limb-darkened maps <tutorials/basics2.ipynb>
    Exoplanet systems <tutorials/basics3.ipynb>
    Light curve gradients <tutorials/basics4.ipynb>
-
+   Multi-wavelength maps <tutorials/basics5.ipynb>
 
 Fitting and inference
 ---------------------
