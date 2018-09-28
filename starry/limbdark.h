@@ -26,7 +26,7 @@ namespace limbdark {
 
     */
     template <class T>
-    class Greens {
+    class GreensLimbDark {
 
         public:
 
@@ -52,15 +52,11 @@ namespace limbdark {
             solver::I<T> I_P;
             solver::J<T> J_P;
 
-            // Coefficient vectors
-            Vector<T> a;
-            Vector<T> c;
-
             // The solution vector
             VectorT<T> S;
 
             // Constructor
-            explicit Greens(int lmax) :
+            explicit GreensLimbDark(int lmax) :
                    lmax(lmax),
                    ksq(T(0.0)),
                    fourbr(T(0.0)),
@@ -70,30 +66,37 @@ namespace limbdark {
                        (*this).kap0),
                    J_P(lmax, (*this).ELL, (*this).ksq, (*this).two, (*this).k,
                        (*this).kc, (*this).invksq),
-                   a(Vector<T>::Zero(lmax + 1)),
-                   c(Vector<T>::Zero(lmax + 1)),
                    S(VectorT<T>::Zero(lmax + 1)) { }
 
-            inline void computeS(const T& b_, const T& r_);
-            inline void computeC(const Vector<T>& u);
-            inline T computeFlux(const T& b_, const T& r_, const Vector<T>& u);
+            inline void compute(const T& b_, const T& r_);
 
     };
 
     /**
-    Transform the u_n coefficients to c_n, which are coefficients
-    of the basis in which the P(G_n) functions are computed.
+    The `c_n` basis normalization constant.
 
     */
     template <class T>
-    inline void Greens<T>::computeC(const Vector<T>& u) {
+    inline T normC(const Vector<T>& c) {
+        return pi<T>() * (c(0) + 2.0 * c(1) / 3.0);
+    }
+
+    /**
+    Transform the `u_n` coefficients to `c_n`, which are coefficients
+    of the basis in which the `P(G_n)` functions are computed.
+
+    */
+    template <class T>
+    inline Vector<T> computeC(const Vector<T>& u) {
         T bcoeff;
         size_t N = u.size();
+        Vector<T> c(N);
+        Vector<T> a(N);
 
         // Compute the a_n coefficients
         a.setZero();
         a(0) = 1.0;
-        for (int i = 1; i < N; ++i) {
+        for (size_t i = 1; i < N; ++i) {
             bcoeff = 1.0;
             int sgn = 1;
             for (int j = 0; j <= i; ++j) {
@@ -104,7 +107,7 @@ namespace limbdark {
         }
 
         // Now, compute the c_n coefficients
-        for (int j = N - 1; j >= 2; --j) {
+        for (size_t j = N - 1; j >= 2; --j) {
             if (j >= N - 2)
                 c(j) = a(j) / (j + 2);
             else
@@ -118,6 +121,75 @@ namespace limbdark {
             c(0) = a(0) + 2 * c(2);
         else
             c(0) = a(0);
+
+        // The total flux is given by `(S . c) / normC`
+        return c;
+
+    }
+
+    /**
+    Transform the u_n coefficients to `c_n`, which are coefficients
+    of the basis in which the `P(G_n)` functions are computed.
+    Also compute the derivative matrix `dc / du`.
+
+    */
+    template <class T>
+    inline Vector<T> computeC(const Vector<T>& u, Matrix<T>& dcdu) {
+        T bcoeff;
+        size_t N = u.size();
+        Vector<T> c(N);
+        Vector<T> a(N);
+        Matrix<T> dadu;
+
+        // Compute the a_n coefficients
+        a.setZero();
+        a(0) = 1.0;
+        dadu.setZero(N, N);
+        for (size_t i = 1; i < N; ++i) {
+            bcoeff = 1.0;
+            int sgn = 1;
+            for (int j = 0; j <= i; ++j) {
+                a(j) -= u(i) * bcoeff * sgn;
+                dadu(j, i) -= bcoeff * sgn;
+                sgn *= -1;
+                bcoeff *= (T(i - j) / (j + 1));
+            }
+        }
+
+        // Now, compute the c_n coefficients
+        dcdu.setZero(N, N);
+        for (size_t j = N - 1; j >= 2; --j) {
+            if (j >= N - 2) {
+                c(j) = a(j) / (j + 2);
+                dcdu.block(j, 0, 1, N) = dadu.block(j, 0, 1, N) / (j + 2);
+            } else {
+                c(j) = a(j) / (j + 2) + c(j + 2);
+                dcdu.block(j, 0, 1, N) = dadu.block(j, 0, 1, N) / (j + 2) +
+                                         dcdu.block(j + 2, 0, 1, N);
+            }
+        }
+
+        if (N >= 4) {
+            c(1) = a(1) + 3 * c(3);
+            dcdu.block(1, 0, 1, N) = dadu.block(1, 0, 1, N) +
+                                     3 * dcdu.block(3, 0, 1, N);
+        } else {
+            c(1) = a(1);
+            dcdu.block(1, 0, 1, N) = dadu.block(1, 0, 1, N);
+        }
+
+        if (N >= 3) {
+            c(0) = a(0) + 2 * c(2);
+            dcdu.block(0, 0, 1, N) = dadu.block(0, 0, 1, N) +
+                                     2 * dcdu.block(2, 0, 1, N);
+        } else {
+            c(0) = a(0);
+            dcdu.block(0, 0, 1, N) = dadu.block(0, 0, 1, N);
+        }
+
+        // The total flux is given by `(S . c) / normC`
+        return c;
+
     }
 
     /**
@@ -125,7 +197,7 @@ namespace limbdark {
 
     */
     template <class T>
-    inline void Greens<T>::computeS(const T& b_, const T& r_) {
+    inline void GreensLimbDark<T>::compute(const T& b_, const T& r_) {
 
         // Initialize the basic variables
         S.setZero();
@@ -167,9 +239,9 @@ namespace limbdark {
                 T kap1 = atan2(kite_area2, (1 - r) * (1 + r) + b * b);
                 T Alens = kap1 + r * r * kap0 - kite_area2 * 0.5;
                 S(0) = pi<T>() - Alens;
-
             }
         }
+
         ksq.reset(ksq_);
         fourbr.reset(4 * b * r);
         I_P.reset(ksq_ < 0.5);
@@ -209,18 +281,6 @@ namespace limbdark {
             S(n) *= -2 * r * pow(1 - (b - r) * (b - r), 1.5) * fourbr(n0);
         }
 
-    }
-
-    /**
-    Compute the flux in occultation.
-
-    */
-    template <class T>
-    inline T Greens<T>::computeFlux(const T& b_, const T& r_, const Vector<T>& u) {
-        // Really simple!
-        computeC(u);
-        computeS(b_, r_);
-        return S.dot(c) / (pi<T>() * (c(0) + 2.0 * c(1) / 3.0));
     }
 
 } // namespace limbdark

@@ -37,6 +37,7 @@ TODO: Speed up limb-darkened map rotations, since
 #include "errors.h"
 #include "utils.h"
 #include "solver.h"
+#include "limbdark.h"
 #include "sturm.h"
 #include "minimize.h"
 #include "numeric.h"
@@ -59,6 +60,7 @@ namespace maps {
     using basis::Basis;
     using basis::polymul;
     using solver::Greens;
+    using limbdark::GreensLimbDark;
     using solver::Power;
     using minimize::Minimizer;
 
@@ -202,6 +204,8 @@ namespace maps {
             Wigner<T> W;                                                        /**< The class controlling rotations */
             Greens<Scalar<T>> G;                                                /**< The occultation integral solver class */
             Greens<ADScalar<Scalar<T>, 2>> G_grad;                              /**< The occultation integral solver class w/ AutoDiff capability */
+            GreensLimbDark<Scalar<T>> L;                                        /**< The occultation integral solver class (optimized for limb darkening) */
+            GreensLimbDark<ADScalar<Scalar<T>, 2>> L_grad;                      /**< The occultation integral solver class (opt. for LD) w/ AutoDiff capability */
             Minimizer<T> M;                                                     /**< Map minimization class */
             Scalar<T> tol;                                                      /**< Machine epsilon */
             std::vector<string> dF_orbital_names;                               /**< Names of each of the orbital params in the flux gradient */
@@ -265,6 +269,8 @@ namespace maps {
                 W(lmax, nwav, (*this).y, (*this).axis),
                 G(lmax),
                 G_grad(lmax),
+                L(lmax),
+                L_grad(lmax),
                 M(lmax),
                 tol(mach_eps<Scalar<T>>()),
                 dp_udu(nwav),
