@@ -5,43 +5,33 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
-#include "kepler.h"
 #include "utils.h"
-using namespace utils;
-using namespace kepler;
+#include "limbdark.h"
+#include "solver.h"
+#include "maps.h"
 
 int main() {
 
-    using T = Vector<double>;
+    using namespace utils;
+    using T = double;
 
-    Vector<double> time(12);
-    time << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1;
+    int lmax = 5;
+    T b = 0.5; //0.1; //3.5;
+    T r = 0.1; // 0.3; // 3;
+    Vector<T> u(lmax + 1);
+    u(0) = NAN;
+    u(1) = 0.2;
+    u(2) = 0.3;
+    u(3) = 0.4;
+    u(4) = 0.5;
+    u(5) = 0.6;
 
-    Primary<T> star(2, 1);
-    star.setY(1, 0, 0.1);
-    star.setRotPer(1);
+    // Agol
+    limbdark::Greens<T> L(lmax);
+    std::cout << std::setprecision(16) << L.computeFlux(b, r, u) << std::endl;
 
-    Secondary<T> b(2, 1);
-    b.setY(1, 0, 0.5);
-    b.setLuminosity(0.001);
-    b.setRotPer(1.);
-    b.setRefTime(0.3);
-
-    Secondary<T> c(2, 1);
-    c.setY(1, 0, 0.5);
-    c.setLuminosity(0.001);
-    c.setRotPer(1.5);
-    c.setRefTime(0.7);
-
-    std::vector<Secondary<T>*> planets{&b, &c};
-    System<T> system(&star, planets);
-    system.compute(time);
-    std::cout << system.getLightcurve() << std::endl << std::endl;
-
-    std::vector<Secondary<T>*> planets_r{&c, &b};
-    System<T> system_r(&star, planets_r);
-    system_r.compute(time);
-    std::cout << system_r.getLightcurve() << std::endl << std::endl;
-
-
+    // Luger
+    /*maps::Map<Vector<T>> map(lmax);
+    map.setU(u.segment(1, lmax));
+    std::cout << map.flux(0, b, 0, r) << std::endl;*/
 }
