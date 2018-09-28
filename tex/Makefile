@@ -30,6 +30,9 @@ starry.pdf: starry.tex stylez.tex starry.bib $(FIGURES) $(SOURCES)
 		( ${CHECK_RERUN} && ${LATEX} ${TEXFILE} ) || echo "Done.";\
 	fi
 	# Update the proofs page in the docs
+	sleep 1
+	echo "<<STARRY.TEX LOGFILE TAIL>>"
+	tail starry.log
 	python genproofs.py
 
 clean:
