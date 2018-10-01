@@ -10,66 +10,100 @@
 int main() {
 
     using namespace utils;
-    using T = double;
-    using A = ADScalar<T, 2>;
+    using T = Matrix<double>;
+    using A = ADScalar<Scalar<T>, 2>;
     using limbdark::GreensLimbDark;
     using limbdark::computeC;
     using limbdark::normC;
 
     int lmax = 5;
-    T b = 0.5;
-    T r = 0.1;
-    Vector<T> u(lmax + 1);
-    u(0) = NAN;
-    u(1) = 0.2;
-    u(2) = 0.3;
-    u(3) = 0.4;
-    u(4) = 0.5;
-    u(5) = 0.6;
+    int nwav = 2;
+    Scalar<T> b = 0.5;
+    Scalar<T> r = 0.1;
+    T u;
+    resize(u, lmax + 1, nwav);
+    setRow(u, 0, NAN);
+    setRow(u, 1, 0.1);
+    setRow(u, 2, 0.2);
+    setRow(u, 3, 0.3);
+    setRow(u, 4, 0.4);
+    setRow(u, 5, 0.5);
 
     // *** Agol ***
-
-    VectorT<T> dFdc(lmax + 1);
-    Matrix<T> dcdu;
-    VectorT<T> dFdu;
+    Vector<Matrix<Scalar<T>>> dagol_cdu(nwav);
+    GreensLimbDark<Scalar<T>> L(lmax);
     GreensLimbDark<A> L_grad(lmax);
-    A b_grad, r_grad, f_grad;
+    A b_grad, r_grad;
+    Row<T> flux;
+    resize(flux, 0, nwav);
+
+    T dFdc(lmax + 1, nwav);
+    T dFdu(lmax, nwav);
+
+    VectorT<Scalar<T>> dSdb(lmax + 1);
+    VectorT<Scalar<T>> dSdr(lmax + 1);
+
+    Row<T> dFdb, dFdr;
+    resize(dFdb, 0, nwav);
+    resize(dFdr, 0, nwav);
 
     // Compute c(u), norm(u), and dc / du
-    Vector<T> c = computeC(u, dcdu);
-    T norm = normC(c);
+    Row<T> agol_norm;
+    resize(agol_norm, 0, nwav);
+    T agol_c(lmax + 1, nwav);
+    for (int n = 0; n < nwav; ++n) {
+        agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
+        agol_norm(n) = normC(getColumn(agol_c, n));
+    }
 
     // Set up AutoDiff
     b_grad.value() = b;
-    b_grad.derivatives() = Vector<T>::Unit(2, 0);
+    b_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
     r_grad.value() = r;
-    r_grad.derivatives() = Vector<T>::Unit(2, 1);
+    r_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
 
-    // Compute F, dF / db, and dF / dr
+    // Compute S, dS / db, and dS / dr
     L_grad.compute(b_grad, r_grad);
-    f_grad = L_grad.S.dot(c) / norm;
+
+    // Store the *value* of the S vector and
+    // its derivatives
+    for (int i = 0; i <= lmax; ++i) {
+        L.S(i) = L_grad.S(i).value();
+        dSdb(i) = L_grad.S(i).derivatives()(0);
+        dSdr(i) = L_grad.S(i).derivatives()(1);
+    }
+
+    // Compute the *value* of the flux and
+    // its derivatives
+    for (int n = 0; n < nwav; ++n) {
+        setIndex(flux, n, L.S.dot(getColumn(agol_c, n)) * getIndex(agol_norm, n));
+        setIndex(dFdb, n, dSdb.dot(getColumn(agol_c, n)) * getIndex(agol_norm, n));
+        setIndex(dFdr, n, dSdr.dot(getColumn(agol_c, n)) * getIndex(agol_norm, n));
+    }
 
     // Compute dF / dc
-    for (int l = 0; l <= lmax; ++l)
-        dFdc(l) = L_grad.S(l).value();
-    dFdc /= norm;
-    dFdc(0) -= f_grad.value() / norm * pi<T>();
-    dFdc(1) -= 2.0 * pi<T>() / 3.0 * f_grad.value() / norm;
+    for (int n = 0; n < nwav; ++n) {
+        dFdc.block(0, n, lmax + 1, 1) = L.S.transpose() * getIndex(agol_norm, n);
+        dFdc(0, n) -= getIndex(flux, n) * getIndex(agol_norm, n) * pi<Scalar<T>>();
+        dFdc(1, n) -= 2.0 * pi<Scalar<T>>() / 3.0 * getIndex(flux, n) * getIndex(agol_norm, n);
+    }
 
     // Chain rule to get dF / du
-    dFdu = dFdc * dcdu.block(0, 1, lmax + 1, lmax);
-
-
+    for (int n = 0; n < nwav; ++n) {
+        dFdu.block(0, n, lmax, 1).transpose() = dFdc.block(0, n, lmax + 1, 1).transpose() * dagol_cdu(n).block(0, 1, lmax + 1, lmax);
+    }
 
     // Print the derivs
-    std::cout << f_grad.derivatives() << std::endl;
-    std::cout << dFdu.transpose() << std::endl;
+    std::cout << dFdb << std::endl;
+    std::cout << dFdr << std::endl;
+    std::cout << dFdu << std::endl;
     std::cout << std::endl;
 
 
+
     // *** Luger ***
-    maps::Map<Vector<T>> map(lmax);
-    map.setU(u.segment(1, lmax));
+    maps::Map<T> map(lmax, nwav);
+    map.setU(u.block(1, 0, lmax, nwav));
     map.flux(0, b, 0, r, true);
     std::cout << map.getGradient() << std::endl;
 

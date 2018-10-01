@@ -218,9 +218,12 @@ namespace maps {
             T u;                                                                /**< The limb darkening coefficients */
             T p_u;                                                              /**< The limb darkening coefficients in the polynomial basis */
             T g_u;                                                              /**< The limb darkening coefficients in the Green's basis */
+            T agol_c;                                                           /**< The Agol `c` limb darkening coefficients */
+            Scalar<T> agol_norm;                                                /**< The Agol normalization */
             int u_deg;                                                          /**< Highest degree set by the user in the limb darkening vector */
             Vector<Matrix<Scalar<T>>> dp_udu;                                   /**< Deriv of limb darkening polynomial w/ respect to limb darkening coeffs */
             Vector<Matrix<Scalar<T>>> dg_udu;                                   /**< Deriv of limb darkening Green's polynomials w/ respect to limb darkening coeffs */
+            Vector<Matrix<Scalar<T>>> dagol_cdu;                                /**< Deriv of Agol `c` coeffs w/ respect to the limb darkening ceoffs */
             VectorT<Matrix<Scalar<T>>> dLDdp;                                   /**< Derivative of the limb-darkened polynomial w.r.t `p` */
             VectorT<Matrix<Scalar<T>>> dLDdp_u;                                 /**< Derivative of the limb-darkened polynomial w.r.t `p_u` */
             T p_uy;                                                             /**< The instantaneous limb-darkened map in the polynomial basis */
@@ -275,6 +278,7 @@ namespace maps {
                 tol(mach_eps<Scalar<T>>()),
                 dp_udu(nwav),
                 dg_udu(nwav),
+                dagol_cdu(nwav),
                 tmp(N, nwav),
                 cache() {
 
@@ -301,6 +305,7 @@ namespace maps {
                 p.resize(N, nwav);
                 g.resize(N, nwav);
                 u.resize(lmax + 1, nwav);
+                agol_c.resize(lmax + 1, nwav);
                 p_u.resize(N, nwav);
                 g_u.resize(N, nwav);
 

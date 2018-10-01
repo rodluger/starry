@@ -78,7 +78,7 @@ namespace limbdark {
     */
     template <class T>
     inline T normC(const Vector<T>& c) {
-        return pi<T>() * (c(0) + 2.0 * c(1) / 3.0);
+        return 1.0 / (pi<T>() * (c(0) + 2.0 * c(1) / 3.0));
     }
 
     /**
@@ -122,7 +122,7 @@ namespace limbdark {
         else
             c(0) = a(0);
 
-        // The total flux is given by `(S . c) / normC`
+        // The total flux is given by `(S . c) * normC`
         return c;
 
     }
@@ -187,7 +187,7 @@ namespace limbdark {
             dcdu.block(0, 0, 1, N) = dadu.block(0, 0, 1, N);
         }
 
-        // The total flux is given by `(S . c) / normC`
+        // The total flux is given by `(S . c) * normC`
         return c;
 
     }
