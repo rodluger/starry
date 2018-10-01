@@ -1,31 +1,37 @@
 Installation
 ============
 
-.. TODO
+Using conda
+-----------
 
-    Using conda
-    -----------
+The easiest way to install :py:obj:`starry` is using
+`conda <https://conda.io/>`_ via `conda-forge <https://conda-forge.org/>`_.
+First, ensure you have the :py:obj:`conda-forge` channel enabled:
 
-    The easiest way to install :py:obj:`starry` is using
-    `conda <https://conda.io/>`_ via `conda-forge <https://conda-forge.org/>`_:
+.. code-block:: bash
 
-    .. code-block:: bash
+    conda config --add channels conda-forge
 
-        conda install -c conda-forge starry
+Once that's done, installing :py:obj:`starry` is easy:
 
-    Using pip
-    ---------
+.. code-block:: bash
 
-    The next easiest way to install :py:obj:`starry` is using the
-    `pip <https://pip.pypa.io/en/stable/installing/>`_ command:
+    conda install starry
 
-    .. code-block:: bash
 
-        pip install starry
+Using pip
+---------
 
-    This will download, compile, and install :py:obj:`starry`. Depending on your machine,
-    compiling may take a couple minutes. Once that's done, open a :py:obj:`python` terminal,
-    :py:obj:`import starry`, and hack away!
+The next easiest way to install :py:obj:`starry` is using the
+`pip <https://pip.pypa.io/en/stable/installing/>`_ command:
+
+.. code-block:: bash
+
+    pip install starry
+
+This will download, compile, and install :py:obj:`starry`. Depending on your machine,
+compiling may take a couple minutes. Once that's done, open a :py:obj:`python` terminal,
+:py:obj:`import starry`, and hack away!
 
 
 Development version
