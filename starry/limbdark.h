@@ -99,7 +99,7 @@ namespace limbdark {
         for (size_t i = 1; i < N; ++i) {
             bcoeff = 1.0;
             int sgn = 1;
-            for (int j = 0; j <= i; ++j) {
+            for (size_t j = 0; j <= i; ++j) {
                 a(j) -= u(i) * bcoeff * sgn;
                 sgn *= -1;
                 bcoeff *= (T(i - j) / (j + 1));
@@ -148,7 +148,7 @@ namespace limbdark {
         for (size_t i = 1; i < N; ++i) {
             bcoeff = 1.0;
             int sgn = 1;
-            for (int j = 0; j <= i; ++j) {
+            for (size_t j = 0; j <= i; ++j) {
                 a(j) -= u(i) * bcoeff * sgn;
                 dadu(j, i) -= bcoeff * sgn;
                 sgn *= -1;
