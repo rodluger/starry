@@ -1,6 +1,6 @@
 .. :changelog:
 
-0.2.1 (2018-09-13)
+0.2.1 (2018-10-01)
 ++++++++++++++++++
 
 - Second release of the code for resubmission to ApJ and submission to
