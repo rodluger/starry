@@ -16,6 +16,12 @@ TODO: Macro for loops involving nwav and specialize for nwav = 1?
 
       and just do {int n = 0; ...} for nwav = 1.
 
+TODO: Can save time in the `update` step if we know
+      the user won't be requesting gradients. Let's
+      set a flag whenever the coeffs change and only
+      update the derivs if the user calls the gradient
+      flux method.
+
 TODO: Speed up limb-darkened map rotations, since
       the effective degree of the map is lower.
       This can easily be implemented in W.rotate
@@ -61,6 +67,8 @@ namespace maps {
     using basis::polymul;
     using solver::Greens;
     using limbdark::GreensLimbDark;
+    using limbdark::computeC;
+    using limbdark::normC;
     using solver::Power;
     using minimize::Minimizer;
 
@@ -113,7 +121,6 @@ namespace maps {
             static constexpr int MLEN = 2;
             static constexpr int VTMLEN = 1;
             static constexpr int ALEN = 2;
-            static constexpr int VTALEN = 1;
             static constexpr int PLEN = 2;
             static constexpr int PALEN = 2;
 
@@ -127,7 +134,6 @@ namespace maps {
             Matrix<Scalar<T>> tmpMatrix[MLEN];
             VectorT<Matrix<Scalar<T>>> tmpRowVectorOfMatrices[VTMLEN];
             ADScalar<Scalar<T>, 2> tmpADScalar2[ALEN];
-            VectorT<ADScalar<Scalar<T>, 2>> tmpRowVectorOfADScalar2[VTALEN];
             Power<Scalar<T>> tmpPower[PLEN];
             Power<ADScalar<Scalar<T>, 2>> tmpPowerOfADScalar2[PALEN];
 
@@ -219,7 +225,7 @@ namespace maps {
             T p_u;                                                              /**< The limb darkening coefficients in the polynomial basis */
             T g_u;                                                              /**< The limb darkening coefficients in the Green's basis */
             T agol_c;                                                           /**< The Agol `c` limb darkening coefficients */
-            Scalar<T> agol_norm;                                                /**< The Agol normalization */
+            Row<T> agol_norm;                                                   /**< The Agol normalization */
             int u_deg;                                                          /**< Highest degree set by the user in the limb darkening vector */
             Vector<Matrix<Scalar<T>>> dp_udu;                                   /**< Deriv of limb darkening polynomial w/ respect to limb darkening coeffs */
             Vector<Matrix<Scalar<T>>> dg_udu;                                   /**< Deriv of limb darkening Green's polynomials w/ respect to limb darkening coeffs */
@@ -306,6 +312,7 @@ namespace maps {
                 g.resize(N, nwav);
                 u.resize(lmax + 1, nwav);
                 agol_c.resize(lmax + 1, nwav);
+                resize(agol_norm, 0, nwav);
                 p_u.resize(N, nwav);
                 g_u.resize(N, nwav);
 
@@ -441,6 +448,12 @@ namespace maps {
 
         // Update the limb darkening Green's map
         g_u = B.A2 * p_u;
+
+        // Pre-compute the Agol `c` basis
+        for (int n = 0; n < nwav; ++n) {
+            agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
+            setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
+        }
 
         // Clear the cache
         cache.clear();
@@ -1193,6 +1206,9 @@ namespace maps {
     Compute the flux during or outside of an occultation
     for a pure limb-darkened map (Y_{l,m} = 0 for l > 0).
 
+    NOTE: This uses the fast parameterization from
+          Agol & Luger (2018).
+
     */
     template <class T>
     inline Row<T> Map<T>::fluxLD(const Scalar<T>& xo_,
@@ -1242,13 +1258,11 @@ namespace maps {
 
             } else {
 
-                // Compute the sT vector (sparsely)
-                for (int n = 0; n < N; ++n)
-                    G.skip(n) = !(g_u.block(n, 0, 1, nwav).array() != 0.0).any();
-                G.compute(b, ro);
+                // Compute the Agol S vector
+                L.compute(b, ro);
 
                 // Dot the result in and we're done
-                return G.sT * g_u;
+                return L.S * colwiseProduct(agol_c, agol_norm);
 
             }
 
@@ -1262,16 +1276,30 @@ namespace maps {
     Also compute the gradient with respect to the orbital
     parameters and the limb darkening coefficients.
 
+    NOTE: This uses the fast parameterization from
+          Agol & Luger (2018).
+
     */
     template <class T>
     inline Row<T> Map<T>::fluxLDWithGradient(const Scalar<T>& xo_,
-                                                const Scalar<T>& yo_,
-                                                const Scalar<T>& ro_) {
+                                             const Scalar<T>& yo_,
+                                             const Scalar<T>& ro_) {
 
         // Bind references to temporaries for speed
         Row<T>& result(tmp.tmpRow[0]);
+        resize(result, 0, nwav);
         Row<T>& dFdb(tmp.tmpRow[1]);
-        VectorT<Scalar<T>>& dFdu(tmp.tmpRowVector[0]);
+        resize(dFdb, 0, nwav);
+        Row<T>& dFdro(tmp.tmpRow[2]);
+        resize(dFdro, 0, nwav);
+        T& dFdu(tmp.tmpT[0]);
+        dFdu.resize(lmax, nwav);
+        T& dFdc(tmp.tmpT[1]);
+        dFdc.resize(lmax + 1, nwav);
+        VectorT<Scalar<T>>& dSdb(tmp.tmpRowVector[0]);
+        dSdb.resize(lmax + 1);
+        VectorT<Scalar<T>>& dSdro(tmp.tmpRowVector[1]);
+        dSdro.resize(lmax + 1);
         ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
         ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
 
@@ -1325,38 +1353,50 @@ namespace maps {
             b_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
             ro_grad.value() = ro;
             ro_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
-            G_grad.compute(b_grad, ro_grad);
 
-            // Compute the b and ro derivs
-            setZero(dFdb);
-            setRow(dF, 3, Scalar<T>(0.0));
-            for (int i = 0; i < N; ++i) {
-                // dF / db = dsT / db . g_u
-                dFdb += G_grad.sT(i).derivatives()(0) * getRow(g_u, i);
-                // dF / dro = dsT / dro . g_u
-                setRow(dF, 3, Row<T>(getRow(dF, 3) +
-                                     G_grad.sT(i).derivatives()(1) *
-                                     getRow(g_u, i)));
-                // Store the value of s^T
-                G.sT(i) = G_grad.sT(i).value();
+            // Compute S, dS / db, and dS / dr
+            L_grad.compute(b_grad, ro_grad);
+
+            // Store the value of the S vector and its derivatives
+            for (int i = 0; i <= lmax; ++i) {
+                L.S(i) = L_grad.S(i).value();
+                dSdb(i) = L_grad.S(i).derivatives()(0);
+                dSdro(i) = L_grad.S(i).derivatives()(1);
             }
 
-            // Compute the resulting flux
-            result = dot(G.sT, g_u);
+            // Compute the value of the flux and its derivatives
+            for (int n = 0; n < nwav; ++n) {
 
-            // Compute the x and y derivs (straighforward chain rule)
+                // F, dF / db and dF / dr
+                setIndex(result, n, L.S.dot(getColumn(agol_c, n)) *
+                                    getIndex(agol_norm, n));
+                setIndex(dFdb, n, dSdb.dot(getColumn(agol_c, n)) *
+                                  getIndex(agol_norm, n));
+                setIndex(dFdro, n, dSdro.dot(getColumn(agol_c, n)) *
+                                   getIndex(agol_norm, n));
+
+                // Compute dF / dc
+                dFdc.block(0, n, lmax + 1, 1) = L.S.transpose() *
+                                                getIndex(agol_norm, n);
+                dFdc(0, n) -= getIndex(result, n) * getIndex(agol_norm, n) *
+                              pi<Scalar<T>>();
+                dFdc(1, n) -= 2.0 * pi<Scalar<T>>() / 3.0 *
+                              getIndex(result, n) * getIndex(agol_norm, n);
+
+                // Chain rule to get dF / du
+                dFdu.block(0, n, lmax, 1).transpose() =
+                    dFdc.block(0, n, lmax + 1, 1).transpose() *
+                    dagol_cdu(n).block(0, 1, lmax + 1, lmax);
+
+            }
+
+            // Update the user-facing derivs
             setRow(dF, 1, Row<T>(dFdb * xo / b));
             setRow(dF, 2, Row<T>(dFdb * yo / b));
-
-            // Compute the Y_{0, 0} deriv (straightforward since it's linear)
+            setRow(dF, 3, dFdro);
             setRow(dF, 4, cwiseQuotient(result, getRow(y, 0)));
-
-            // Compute the derivs with respect to the limb darkening coeffs
-            // dF / du = s^T . dg_u / du
-            for (int n = 0; n < nwav; ++n) {
-                dFdu = G.sT * dg_udu(n);
-                dF.block(5, n, lmax, 1) = dFdu.segment(1, lmax).transpose();
-            }
+            for (int i = 0; i < lmax; ++i)
+                setRow(dF, i + 5, getRow(dFdu, i));
 
             // Return the flux
             return result;
