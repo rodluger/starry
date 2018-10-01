@@ -12,11 +12,11 @@ using namespace utils;
 int main() {
 
 
-    using T = Matrix<double>;
-    int nwav = 3;
+    //using T = Matrix<double>;
+    //int nwav = 3;
 
-    //using T = Vector<double>;
-    //int nwav = 1;
+    using T = Vector<double>;
+    int nwav = 1;
 
     // Class-level
     using A = ADScalar<Scalar<T>, 2>;
@@ -98,19 +98,26 @@ int main() {
     }
 
     // Print the derivs
-    std::cout << dFdb << std::endl;
-    std::cout << dFdr << std::endl;
-    std::cout << dFdu << std::endl;
+    std::cout << flux << std::endl;
+    //std::cout << dFdb << std::endl;
+    //std::cout << dFdr << std::endl;
+    //std::cout << dFdu << std::endl;
     std::cout << std::endl;
 
 
 
     // *** Luger ***
-    maps::Map<T> map(lmax, nwav);
-    map.setU(u.block(1, 0, lmax, nwav));
+    maps::Map<T> map(lmax + 1, nwav);
+    map.setU(1, 0.1);
+    map.setU(2, 0.2);
+    map.setU(3, 0.3);
+    map.setU(4, 0.4);
+    map.setU(5, 0.5);
+
+    map.setY(1, 0, 1.e-13);
     std::cout << map.flux(0, b, 0, r, true) << std::endl;
     std::cout << map.flux(0, b, 0, r, false) << std::endl;
-    std::cout << map.getGradient() << std::endl;
+    //std::cout << map.getGradient() << std::endl;
 
     // *** Luger ***
 

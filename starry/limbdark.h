@@ -246,6 +246,7 @@ namespace limbdark {
         fourbr.reset(4 * b * r);
         I_P.reset(ksq_ < 0.5);
         J_P.reset((ksq_ < 0.5) || (ksq_ > 2));
+        ELL.reset();
 
         // Linear limb darkening term
         S(1) = lld::s2(b, r, ksq(1), ELL.K(), ELL.E());

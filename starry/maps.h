@@ -22,6 +22,9 @@ TODO: Can save time in the `update` step if we know
       update the derivs if the user calls the gradient
       flux method.
 
+TODO: Disable Ylms for lmax > 50 or so? Allow only
+      limb darkening calculations at such high l.
+
 TODO: Speed up limb-darkened map rotations, since
       the effective degree of the map is lower.
       This can easily be implemented in W.rotate
@@ -1212,8 +1215,8 @@ namespace maps {
     */
     template <class T>
     inline Row<T> Map<T>::fluxLD(const Scalar<T>& xo_,
-                                  const Scalar<T>& yo_,
-                                  const Scalar<T>& ro_) {
+                                 const Scalar<T>& yo_,
+                                 const Scalar<T>& ro_) {
 
         // Bind references to temporaries for speed
         Row<T>& result(tmp.tmpRow[0]);
@@ -1260,6 +1263,11 @@ namespace maps {
 
                 // Compute the Agol S vector
                 L.compute(b, ro);
+
+                // DEBUG
+                std::cout << L.S << std::endl;
+                std::cout << agol_c << std::endl;
+                std::cout << agol_norm << std::endl;
 
                 // Dot the result in and we're done
                 return L.S * colwiseProduct(agol_c, agol_norm);
