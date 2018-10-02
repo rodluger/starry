@@ -1264,11 +1264,6 @@ namespace maps {
                 // Compute the Agol S vector
                 L.compute(b, ro);
 
-                // DEBUG
-                std::cout << L.S << std::endl;
-                std::cout << agol_c << std::endl;
-                std::cout << agol_norm << std::endl;
-
                 // Dot the result in and we're done
                 return L.S * colwiseProduct(agol_c, agol_norm);
 

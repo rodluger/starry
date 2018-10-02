@@ -243,13 +243,24 @@ namespace limbdark {
         }
 
         ksq.reset(ksq_);
+        ELL.reset();
         fourbr.reset(4 * b * r);
         I_P.reset(ksq_ < 0.5);
         J_P.reset((ksq_ < 0.5) || (ksq_ > 2));
-        ELL.reset();
 
         // Linear limb darkening term
         S(1) = lld::s2(b, r, ksq(1), ELL.K(), ELL.E());
+
+        // Edge case
+        if (b == 0) {
+            T term = 1 - r * r;
+            T fac = sqrt(term);
+            for (int n = 2; n < lmax + 1; ++n) {
+                S(n) = -term * r * r * 2 * pi<T>();
+                term *= fac;
+            }
+            return;
+        }
 
         // Even higher order terms
         int sgn, n0;
@@ -268,6 +279,7 @@ namespace limbdark {
         }
 
         // Odd higher order terms
+        T fac = pow(1 - (b - r) * (b - r), 1.5);
         for (int n = 3; n < lmax + 1; n += 2) {
             n0 = (n - 3) / 2;
             if (is_even(n0))
@@ -279,7 +291,7 @@ namespace limbdark {
                         ((r - b) * J_P(n0 - i) + 2 * b * J_P(n0 - i + 1));
                 sgn *= -1;
             }
-            S(n) *= -2 * r * pow(1 - (b - r) * (b - r), 1.5) * fourbr(n0);
+            S(n) *= -2 * r * fac * fourbr(n0);
         }
 
     }
