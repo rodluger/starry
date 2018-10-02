@@ -27,6 +27,8 @@ debug = bool(int(os.getenv('STARRY_DEBUG', 0)))
 if debug:
     optimize = 0
 
+# Basic compile (mono64 only)?
+basic = bool(int(os.getenv('STARRY_BASIC', 0)))
 
 class get_pybind_include(object):
     """
@@ -69,12 +71,17 @@ def get_ext(module='starry._starry_mono_64', name='STARRY_MONO_64'):
                       [(key, value) for key, value in macros.items()]
     )
 
-ext_modules = [
-    get_ext('starry._starry_mono_64', 'STARRY_MONO_64'),
-    get_ext('starry._starry_mono_128', 'STARRY_MONO_128'),
-    get_ext('starry._starry_spectral_64', 'STARRY_SPECTRAL_64'),
-    get_ext('starry._starry_spectral_128', 'STARRY_SPECTRAL_128'),
-]
+if basic:
+    ext_modules = [
+        get_ext('starry._starry_mono_64', 'STARRY_MONO_64')
+    ]
+else:
+    ext_modules = [
+        get_ext('starry._starry_mono_64', 'STARRY_MONO_64'),
+        get_ext('starry._starry_mono_128', 'STARRY_MONO_128'),
+        get_ext('starry._starry_spectral_64', 'STARRY_SPECTRAL_64'),
+        get_ext('starry._starry_spectral_128', 'STARRY_SPECTRAL_128'),
+    ]
 
 
 # As of Python 3.6, CCompiler has a `has_flag` method.

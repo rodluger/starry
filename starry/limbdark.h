@@ -204,6 +204,8 @@ namespace limbdark {
         b = b_;
         r = r_;
         T ksq_;
+        T fourbr_ = 4 * b * r;
+        T invfourbr = 1.0 / fourbr_;
         if ((b == 0) || (r == 0)) {
             ksq_ = T(INFINITY);
             k = T(INFINITY);
@@ -213,8 +215,8 @@ namespace limbdark {
             kap0 = 0;
             S(0) = pi<T>() * (1 - r * r);
         } else {
-            ksq_ = (1 - (b - r)) * (1 + (b - r)) / (4 * b * r);
-            invksq = (4 * b * r) / ((1 - (b - r)) * (1 + (b - r)));
+            ksq_ = (1 - (b - r)) * (1 + (b - r)) * invfourbr;
+            invksq = fourbr_ / ((1 - (b - r)) * (1 + (b - r)));
             k = sqrt(ksq_);
             if (ksq_ > 1) {
                 kc = sqrt(1 - invksq);
@@ -222,7 +224,7 @@ namespace limbdark {
                 kap0 = 0; // Not used!
                 S(0) = pi<T>() * (1 - r * r);
             } else {
-                kc = sqrt(abs(((b + r) * (b + r) - 1) / (4 * b * r)));
+                kc = sqrt(abs(((b + r) * (b + r) - 1) * invfourbr));
                 // Eric Agol's "kite" method to compute a stable
                 // version of k * kc and I_0 = kap0
                 // Used to be
@@ -234,7 +236,7 @@ namespace limbdark {
                 if (p0 < p1) swap(p0, p1);
                 T kite_area2 = sqrt((p0 + (p1 + p2)) * (p2 - (p0 - p1)) *
                                     (p2 + (p0 - p1)) * (p0 + (p1 - p2)));
-                kkc = kite_area2 / (4 * b * r);
+                kkc = kite_area2 * invfourbr;
                 kap0 = atan2(kite_area2, (r - 1) * (r + 1) + b * b);
                 T kap1 = atan2(kite_area2, (1 - r) * (1 + r) + b * b);
                 T Alens = kap1 + r * r * kap0 - kite_area2 * 0.5;
@@ -244,7 +246,7 @@ namespace limbdark {
 
         ksq.reset(ksq_);
         ELL.reset();
-        fourbr.reset(4 * b * r);
+        fourbr.reset(fourbr_);
         I_P.reset(ksq_ < 0.5);
         J_P.reset((ksq_ < 0.5) || (ksq_ > 2));
 
@@ -262,36 +264,42 @@ namespace limbdark {
             return;
         }
 
+        T rmb = r - b;
+        T twob = 2 * b;
+        T fac;
+        int n0;
+        int sgn, sgn0;
+
         // Even higher order terms
-        int sgn, n0;
+        fac = -2 * r;
+        n0 = 1;
+        sgn0 = -1;
         for (int n = 2; n < lmax + 1; n += 2) {
-            n0 = n / 2;
-            if (is_even(n0))
-                sgn = 1;
-            else
-                sgn = -1;
+            sgn = sgn0;
             for (int i = 0; i <= n0; ++i) {
                 S(n) += sgn * tables::choose<T>(n0, i) * ksq(i) *
-                        ((r - b) * I_P(n0 - i) + 2 * b * I_P(n0 - i + 1));
+                        (rmb * I_P(n0 - i) + twob * I_P(n0 - i + 1));
                 sgn *= -1;
             }
-            S(n) *= -2 * r * fourbr(n0);
+            S(n) *= fac * fourbr(n0);
+            ++n0;
+            sgn0 *= -1;
         }
 
         // Odd higher order terms
-        T fac = pow(1 - (b - r) * (b - r), 1.5);
+        fac *= pow(1 - (b - r) * (b - r), 1.5);
+        n0 = 0;
+        sgn0 = 1;
         for (int n = 3; n < lmax + 1; n += 2) {
-            n0 = (n - 3) / 2;
-            if (is_even(n0))
-                sgn = 1;
-            else
-                sgn = -1;
+            sgn = sgn0;
             for (int i = 0; i <= n0; ++i) {
                 S(n) += sgn * tables::choose<T>(n0, i) * ksq(i) *
-                        ((r - b) * J_P(n0 - i) + 2 * b * J_P(n0 - i + 1));
+                        (rmb * J_P(n0 - i) + twob * J_P(n0 - i + 1));
                 sgn *= -1;
             }
-            S(n) *= -2 * r * fac * fourbr(n0);
+            S(n) *= fac * fourbr(n0);
+            ++n0;
+            sgn0 *= -1;
         }
 
     }
