@@ -15,6 +15,10 @@ Miscellaneous stuff used throughout the code.
 #include <type_traits>
 #include "errors.h"
 
+//! Compiler branching optimizations
+#define likely(x)    __builtin_expect (!!(x), 1)
+#define unlikely(x)  __builtin_expect (!!(x), 0)
+
 //! Number of digits for the multiprecision type in starry.multi
 #ifndef STARRY_NMULTI
 #define STARRY_NMULTI                           32
