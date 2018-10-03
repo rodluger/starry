@@ -21,61 +21,6 @@ namespace limbdark {
     using std::swap;
     using namespace utils;
 
-
-    /**
-    Greens integration housekeeping data
-
-    */
-    template <class T>
-    class GreensLimbDark {
-
-        public:
-
-            // Indices
-            int lmax;
-
-            // Basic variables
-            T b;
-            T r;
-            T k;
-            T kc;
-            T kkc;
-            T kap0;
-            T invksq;
-
-            // Primitive matrices/vectors
-            std::vector<T> ivgamma;
-            std::vector<T> I;
-            std::vector<T> J;
-            int ivmax;
-            int jvmax;
-
-            // The solution vector
-            VectorT<T> S;
-
-            // Constructor
-            explicit GreensLimbDark(int lmax) :
-                   lmax(lmax),
-                   S(VectorT<T>::Zero(lmax + 1)) {
-
-                       ivmax = 2 * lmax + 2;
-                       I.resize(ivmax + 1);
-                       jvmax = max(1, 2 * lmax - 1);
-                       J.resize(jvmax + 1);
-
-                       // Pre-tabulate I for ksq >= 1
-                       ivgamma.resize(ivmax + 1);
-                       for (int v = 0; v <= ivmax; v++)
-                           ivgamma[v] = root_pi<T>() *
-                                        T(boost::math::tgamma_delta_ratio(
-                                          Multi(v + 0.5), Multi(0.5)));
-
-                   }
-
-            inline void compute(const T& b_, const T& r_);
-
-    };
-
     /**
     The `c_n` basis normalization constant.
 
@@ -197,90 +142,90 @@ namespace limbdark {
     }
 
     /**
-    Compute the `s^T` occultation solution vector
+    Greens integration housekeeping data
 
     */
     template <class T>
-    inline void GreensLimbDark<T>::compute(const T& b, const T& r) {
+    class GreensLimbDark {
 
-        // Initialize the basic variables
-        S.setZero();
-        T ksq;
-        T fourbr = 4 * b * r;
-        T invfourbr = 1.0 / fourbr;
-        if (unlikely((b == 0) || (r == 0))) {
-            ksq = T(INFINITY);
-            k = T(INFINITY);
-            kc = 1;
-            kkc = T(INFINITY);
-            invksq = 0;
-            kap0 = 0;
-            S(0) = pi<T>() * (1 - r * r);
-        } else {
-            ksq = (1 - (b - r)) * (1 + (b - r)) * invfourbr;
-            invksq = fourbr / ((1 - (b - r)) * (1 + (b - r)));
-            k = sqrt(ksq);
-            if (ksq > 1) {
-                kc = sqrt(1 - invksq);
-                kkc = k * kc;
-                kap0 = 0; // Not used!
-                S(0) = pi<T>() * (1 - r * r);
-            } else {
-                kc = sqrt(abs(((b + r) * (b + r) - 1) * invfourbr));
-                // Eric Agol's "kite" method to compute a stable
-                // version of k * kc and I_0 = kap0
-                // Used to be
-                //   G.kkc = G.k * G.kc;
-                //   G.kap0 = 2 * acos(G.kc);
-                T p0 = T(1.0), p1 = b, p2 = r;
-                if (p0 < p1) swap(p0, p1);
-                if (p1 < p2) swap(p1, p2);
-                if (p0 < p1) swap(p0, p1);
-                T kite_area2 = sqrt((p0 + (p1 + p2)) * (p2 - (p0 - p1)) *
-                                    (p2 + (p0 - p1)) * (p0 + (p1 - p2)));
-                kkc = kite_area2 * invfourbr;
-                kap0 = atan2(kite_area2, (r - 1) * (r + 1) + b * b);
-                T kap1 = atan2(kite_area2, (1 - r) * (1 + r) + b * b);
-                T Alens = kap1 + r * r * kap0 - kite_area2 * 0.5;
-                S(0) = pi<T>() - Alens;
+        public:
+
+            // Indices
+            int lmax;
+
+            // Basic variables
+            T b;
+            T r;
+            T k;
+            T ksq;
+            T kc;
+            T kkc;
+            T kap0;
+            T invksq;
+            T fourbr;
+            T invfourbr;
+            T E;
+            T K;
+            T rmb;
+            T twob;
+            T Sn;
+
+            // Primitive matrices/vectors
+            std::vector<T> ivgamma;
+            std::vector<T> I;
+            std::vector<T> J;
+            int ivmax;
+            int jvmax;
+
+            // The solution vector
+            VectorT<T> S;
+
+            // Constructor
+            explicit GreensLimbDark(int lmax) :
+                lmax(lmax),
+                S(VectorT<T>::Zero(lmax + 1)) {
+
+                   ivmax = 2 * lmax + 2;
+                   I.resize(ivmax + 1);
+                   jvmax = max(1, 2 * lmax - 1);
+                   J.resize(jvmax + 1);
+
+                   // Pre-tabulate I for ksq >= 1
+                   ivgamma.resize(ivmax + 1);
+                   for (int v = 0; v <= ivmax; v++)
+                       ivgamma[v] = root_pi<T>() *
+                                    T(boost::math::tgamma_delta_ratio(
+                                      Multi(v + 0.5), Multi(0.5)));
+
             }
-        }
 
-        T E, K;
-        if (unlikely((invksq == 0) || (ksq == 1)))
-            K = 0;
-        else if (ksq < 1)
-            K = ellip::K(ksq);
-        else
-            K = ellip::K(invksq);
-        if (unlikely(invksq == 0))
-            E = 0;
-        else if (unlikely(ksq == 1))
-            E = 1;
-        else if (ksq < 1)
-            E = ellip::E(ksq);
-        else
-            E = ellip::E(invksq);
+            inline void compute(const T& b_, const T& r_);
+            inline void computeI();
+            inline void computeJ();
+            inline void computeEK();
 
+    };
 
-        bool downward = (ksq < 0.5);
+    /**
 
-        // No need to reset anything, as in the ksq >= 1
-        // case we can just use the pre-tabulated values of I_v!
+    */
+    template <class T>
+    inline void GreensLimbDark<T>::computeI() {
+
         if (ksq >= 1) {
 
             I = ivgamma;
 
         } else {
 
-            if (downward) {
+            // Downward recursion
+            if (ksq < 0.5) {
 
-                // Downward recursion: compute I_ivmax
                 T tol = mach_eps<T>() * ksq;
-                T error = INFINITY;
+                T error = T(INFINITY);
 
                 // Computing leading coefficient (n=0):
-                T coeff = 2.0 / (2 * ivmax + 1);
+                T coeff = T(2.0 / (2 * ivmax + 1));
 
                 // Add leading term to I_ivmax:
                 T res = coeff;
@@ -308,9 +253,9 @@ namespace limbdark {
                 for (int v = ivmax - 1; v >= 0; --v)
                     I[v] = 2.0 / (2 * v + 1) * ((v + 1) * I[v + 1] + pow(ksq, v) * kkc);
 
+            // Upward recursion
             } else {
 
-                // Upward recursion: compute I_0
                 I[0] = kap0;
                 for (int v = 1; v <= ivmax; ++v)
                     I[v] = ((2 * v - 1) / 2.0 * I[v - 1] - pow(ksq, v - 1) * kkc) / v;
@@ -319,10 +264,16 @@ namespace limbdark {
 
         }
 
+    }
 
-        downward = (ksq < 0.5) || (ksq > 2);
+    /**
+
+    */
+    template <class T>
+    inline void GreensLimbDark<T>::computeJ() {
+
         // Downward recursion
-        if (downward) {
+        if ((ksq < 0.5) || (ksq > 2)) {
 
             T tol, coeff, res, error, f1, f2, f3;
             int i, n, v;
@@ -351,7 +302,7 @@ namespace limbdark {
                 // Now, compute higher order terms until
                 // desired precision is reached
                 n = 1;
-                error = INFINITY;
+                error = T(INFINITY);
                 while ((abs(error) > tol) && (n < STARRY_IJ_MAX_ITER)) {
                     if (ksq >= 1)
                         coeff *= (1.0 - 2.5 / n) *
@@ -418,11 +369,96 @@ namespace limbdark {
 
         }
 
+    }
 
-        // Linear limb darkening term
+    /**
+
+    */
+    template <class T>
+    inline void GreensLimbDark<T>::computeEK() {
+        if (unlikely((invksq == 0) || (ksq == 1)))
+            K = 0;
+        else if (ksq < 1)
+            K = ellip::K(ksq);
+        else
+            K = ellip::K(invksq);
+        if (unlikely(invksq == 0))
+            E = 0;
+        else if (unlikely(ksq == 1))
+            E = 1;
+        else if (ksq < 1)
+            E = ellip::E(ksq);
+        else
+            E = ellip::E(invksq);
+    }
+
+    /**
+    Compute the `s^T` occultation solution vector
+
+    */
+    template <class T>
+    inline void GreensLimbDark<T>::compute(const T& b, const T& r) {
+
+        // Initialize the basic variables
+        T fac, amp;
+        int n0;
+        int sgn;
+        int i, n;
+        rmb = r - b;
+        twob = 2 * b;
+        fourbr = 4 * b * r;
+        invfourbr = 1.0 / fourbr;
+        if (unlikely((b == 0) || (r == 0))) {
+            ksq = T(INFINITY);
+            k = T(INFINITY);
+            kc = 1;
+            kkc = T(INFINITY);
+            invksq = 0;
+            kap0 = 0;
+            S(0) = pi<T>() * (1 - r * r);
+        } else {
+            ksq = (1 - (b - r)) * (1 + (b - r)) * invfourbr;
+            invksq = fourbr / ((1 - (b - r)) * (1 + (b - r)));
+            k = sqrt(ksq);
+            if (ksq > 1) {
+                kc = sqrt(1 - invksq);
+                kkc = k * kc;
+                kap0 = 0; // Not used!
+                S(0) = pi<T>() * (1 - r * r);
+            } else {
+                kc = sqrt(abs(((b + r) * (b + r) - 1) * invfourbr));
+                // Eric Agol's "kite" method to compute a stable
+                // version of k * kc and I_0 = kap0
+                // Used to be
+                //   G.kkc = G.k * G.kc;
+                //   G.kap0 = 2 * acos(G.kc);
+                T p0 = T(1.0), p1 = b, p2 = r;
+                if (p0 < p1) swap(p0, p1);
+                if (p1 < p2) swap(p1, p2);
+                if (p0 < p1) swap(p0, p1);
+                T kite_area2 = sqrt((p0 + (p1 + p2)) * (p2 - (p0 - p1)) *
+                                    (p2 + (p0 - p1)) * (p0 + (p1 - p2)));
+                kkc = kite_area2 * invfourbr;
+                kap0 = atan2(kite_area2, (r - 1) * (r + 1) + b * b);
+                T kap1 = atan2(kite_area2, (1 - r) * (1 + r) + b * b);
+                T Alens = kap1 + r * r * kap0 - kite_area2 * 0.5;
+                S(0) = pi<T>() - Alens;
+            }
+        }
+
+        // Special case
+        if (lmax == 0) return;
+
+        // Compute the elliptic integrals
+        computeEK();
+
+        // Compute the linear limb darkening term
         S(1) = lld::s2(b, r, ksq, K, E);
 
-        // Edge case
+        // Special case
+        if (lmax == 1) return;
+
+        // Special case
         if (unlikely(b == 0)) {
             T term = 1 - r * r;
             T fac = sqrt(term);
@@ -433,41 +469,40 @@ namespace limbdark {
             return;
         }
 
-        // Higher order terms
-        T rmb(r - b);
-        T twob(2 * b);
-        T fac, amp;
-        int n0;
-        int sgn;
-        int i, n;
-
         // Even higher order terms
+        computeI();
         fac = -2 * r * fourbr;
         n0 = 1;
         sgn = -1;
         for (n = 2; n < lmax + 1; n += 2) {
+            Sn = 0;
             amp = sgn;
             for (i = 0; i <= n0; ++i) {
-                S(n) += amp * (rmb * I[n0 - i] + twob * I[n0 - i + 1]);
+                Sn += amp * (rmb * I[n0 - i] + twob * I[n0 - i + 1]);
                 amp *= -ksq * (n0 - i) / (i + 1.0);
             }
-            S(n) *= fac;
+            S(n) = Sn * fac;
             fac *= fourbr;
             ++n0;
             sgn *= -1;
         }
 
+        // Special case
+        if (lmax == 2) return;
+
         // Odd higher order terms
+        computeJ();
         fac = -2 * r * pow(1 - (b - r) * (b - r), 1.5);
         n0 = 0;
         sgn = 1;
         for (n = 3; n < lmax + 1; n += 2) {
+            Sn = 0;
             amp = sgn;
             for (i = 0; i <= n0; ++i) {
-                S(n) += amp * (rmb * J[n0 - i] + twob * J[n0 - i + 1]);
+                Sn += amp * (rmb * J[n0 - i] + twob * J[n0 - i + 1]);
                 amp *= -ksq * (n0 - i) / (i + 1.0);
             }
-            S(n) *= fac;
+            S(n) = Sn * fac;
             fac *= fourbr;
             ++n0;
             sgn *= -1;

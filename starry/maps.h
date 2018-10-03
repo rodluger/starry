@@ -1245,7 +1245,8 @@ namespace maps {
         // Occultation
         } else {
 
-            if ((u_deg <= 2) && (ro < 1)) {
+            // DEBUG: Disable fast quadratic
+            if ((0) && (u_deg <= 2) && (ro < 1)) {
 
                 // Skip the overhead for quadratic limb darkening
                 G.quad(b, ro);
