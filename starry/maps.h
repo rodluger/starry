@@ -16,15 +16,6 @@ TODO: Macro for loops involving nwav and specialize for nwav = 1?
 
       and just do {int n = 0; ...} for nwav = 1.
 
-TODO: Can save time in the `update` step if we know
-      the user won't be requesting gradients. Let's
-      set a flag whenever the coeffs change and only
-      update the derivs if the user calls the gradient
-      flux method.
-
-TODO: Disable Ylms for lmax > 50 or so? Allow only
-      limb darkening calculations at such high l.
-
 TODO: Speed up limb-darkened map rotations, since
       the effective degree of the map is lower.
       This can easily be implemented in W.rotate
@@ -236,10 +227,13 @@ namespace maps {
             VectorT<Matrix<Scalar<T>>> dLDdp;                                   /**< Derivative of the limb-darkened polynomial w.r.t `p` */
             VectorT<Matrix<Scalar<T>>> dLDdp_u;                                 /**< Derivative of the limb-darkened polynomial w.r.t `p_u` */
             T p_uy;                                                             /**< The instantaneous limb-darkened map in the polynomial basis */
+            Row<T> ld_norm;
 
             // Temporaries and cache
             Temporary<T> tmp;
             Cache<T> cache;
+            bool update_p_u_derivs;
+            bool update_c_basis;
 
             // Private methods
             void update();
@@ -422,7 +416,6 @@ namespace maps {
         // Bind references to temporaries for speed
         Row<T>& Y00(tmp.tmpRow[0]);
         Row<T>& rTp_u(tmp.tmpRow[1]);
-        Row<T>& ld_norm(tmp.tmpRow[2]);
 
         // Check the map degree is valid
         checkDegree();
@@ -436,27 +429,15 @@ namespace maps {
         rTp_u = dot(B.rT, p_u);
         ld_norm = cwiseQuotient(Y00, rTp_u);
 
-        // Compute the derivative of the LD polynomials
-        // with respect to the LD coefficients
-        for (int n = 0; n < nwav; ++n) {
-            dp_udu(n) = -getColumn(p_u, n) * B.rTU1;
-            dp_udu(n) /= dot(B.rT, getColumn(p_u, n));
-            dp_udu(n) += B.U1;
-            dp_udu(n) *= getColumn(ld_norm, n);
-            dg_udu(n) = B.A2 * dp_udu(n);
-        }
-
         // Apply the normalization
         p_u = colwiseProduct(p_u, ld_norm);
 
         // Update the limb darkening Green's map
         g_u = B.A2 * p_u;
 
-        // Pre-compute the Agol `c` basis
-        for (int n = 0; n < nwav; ++n) {
-            agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
-            setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
-        }
+        // Set flags
+        update_c_basis = true;
+        update_p_u_derivs = true;
 
         // Clear the cache
         cache.clear();
@@ -486,6 +467,8 @@ namespace maps {
         u_deg = 0;
         setRow(u, 0, Scalar<T>(-1.0));
         axis = yhat<Scalar<T>>();
+        update_p_u_derivs = false;
+        update_c_basis = false;
         update();
     }
 
@@ -1245,8 +1228,7 @@ namespace maps {
         // Occultation
         } else {
 
-            // DEBUG: Disable fast quadratic
-            if ((0) && (u_deg <= 2) && (ro < 1)) {
+            if ((u_deg <= 2) && (ro < 1)) {
 
                 // Skip the overhead for quadratic limb darkening
                 G.quad(b, ro);
@@ -1264,6 +1246,15 @@ namespace maps {
 
                 // Compute the Agol S vector
                 L.compute(b, ro);
+
+                // Compute the Agol `c` basis
+                if (update_c_basis) {
+                    for (int n = 0; n < nwav; ++n) {
+                        agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
+                        setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
+                    }
+                    update_c_basis = false;
+                }
 
                 // Dot the result in and we're done
                 return L.S * colwiseProduct(agol_c, agol_norm);
@@ -1351,6 +1342,15 @@ namespace maps {
 
         // Occultation
         } else {
+
+            // Compute the Agol `c` basis
+            if (update_c_basis) {
+                for (int n = 0; n < nwav; ++n) {
+                    agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
+                    setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
+                }
+                update_c_basis = false;
+            }
 
             // Compute the sT vector using AutoDiff
             b_grad.value() = b;
@@ -1813,6 +1813,19 @@ namespace maps {
                     for (int i = 0; i < N; ++i)
                         dF(4 + i, n) = sTARdLDdpA1R(i);
                 }
+            }
+
+            // Compute the derivative of the LD polynomials
+            // with respect to the LD coefficients
+            if (update_p_u_derivs) {
+                for (int n = 0; n < nwav; ++n) {
+                    dp_udu(n) = -getColumn(p_u, n) * B.rTU1;
+                    dp_udu(n) /= dot(B.rT, getColumn(p_u, n));
+                    dp_udu(n) += B.U1;
+                    dp_udu(n) *= getColumn(ld_norm, n);
+                    dg_udu(n) = B.A2 * dp_udu(n);
+                }
+                update_p_u_derivs = false;
             }
 
             // TODO: Can be sped up
