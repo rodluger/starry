@@ -1556,7 +1556,8 @@ namespace kepler {
             dL_names.push_back("time");
             for (std::string name : PRIMARY_GRAD_NAMES)
                 dL_names.push_back("A." + name);
-            for (size_t n=4; n < primary->dF_names.size(); ++n)
+            // Note that we skip the Y_{0,0} deriv
+            for (size_t n=5; n < primary->dF_names.size(); ++n)
                 dL_names.push_back("A." + primary->dF_names[n]);
             ngrad = dL_names.size();
         } else {
@@ -1596,7 +1597,8 @@ namespace kepler {
                 secondary->resizeGradient();
                 for (std::string name : SECONDARY_GRAD_NAMES)
                     dL_names.push_back(letter + "." + name);
-                for (size_t n=4; n < secondary->dF_names.size(); ++n)
+                // Note that we skip the Y_{0,0} deriv
+                for (size_t n=5; n < secondary->dF_names.size(); ++n)
                     dL_names.push_back(letter + "." + secondary->dF_names[n]);
                 secondary->g0 = ngrad;
                 ngrad += dL_names.size();
@@ -1682,9 +1684,10 @@ namespace kepler {
                    primary->angvelrot_deg * units::DayToSeconds));
 
         // dF / d{y} and dF / d{u} from the map derivs
-        int sz = primary->dF.rows() - 4;
+        // Note that we skip the Y_{0,0} deriv
+        int sz = primary->dF.rows() - 5;
         primary->dflux_tot.block(g, 0, sz, primary->nwav) =
-            primary->dF.block(4, 0, sz, primary->nwav);
+            primary->dF.block(5, 0, sz, primary->nwav);
 
         // Update current flux derivative
         primary->dflux_cur = primary->dflux_tot;
@@ -1824,9 +1827,10 @@ namespace kepler {
                           units::DayToSeconds));
 
             // dF / d{y} and dF / d{u} from the map derivs
-            int sz = secondary->dF.rows() - 4;
+            // Note that we skip the Y_{0,0} deriv
+            int sz = secondary->dF.rows() - 5;
             secondary->dflux_tot.block(g, 0, sz, secondary->nwav) =
-                secondary->L * secondary->dF.block(4, 0, sz, secondary->nwav);
+                secondary->L * secondary->dF.block(5, 0, sz, secondary->nwav);
 
         }
 
@@ -1879,9 +1883,10 @@ namespace kepler {
         g++;
 
         // dF / d{y} and dF / d{u}
-        int sz = primary->dF.rows() - 4;
+        // Note that we skip the Y_{0,0} deriv
+        int sz = primary->dF.rows() - 5;
         primary->dflux_cur.block(g, 0, sz, primary->nwav) +=
-            primary->dF.block(4, 0, sz, primary->nwav) -
+            primary->dF.block(5, 0, sz, primary->nwav) -
             primary->dflux_tot.block(g, 0, sz, primary->nwav);
 
         // ** Now the derivs with respect to the occultor's properties **
@@ -2201,9 +2206,10 @@ namespace kepler {
             g++;
 
             // dF / d{y} and dF / d{u}
-            int sz = secondary->dF.rows() - 4;
+            // Note that we skip the Y_{0,0} deriv
+            int sz = secondary->dF.rows() - 5;
             secondary->dflux_cur.block(g, 0, sz, secondary->nwav) +=
-                secondary->L * secondary->dF.block(4, 0, sz, secondary->nwav) -
+                secondary->L * secondary->dF.block(5, 0, sz, secondary->nwav) -
                 secondary->dflux_tot.block(g, 0, sz, secondary->nwav);
 
         }

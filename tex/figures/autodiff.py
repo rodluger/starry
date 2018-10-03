@@ -75,15 +75,15 @@ for i, time in enumerate([time_transit, time_secondary]):
         axg = pl.subplot2grid((20, 2), (n, i))
 
         if param == 'b.Y_{1,0}':
-            axg.plot(time, grad['b.y'][2], lw=1, color='C1')
+            axg.plot(time, grad['b.y'][1], lw=1, color='C1')
         elif param == 'b.Y_{1,1}':
-            axg.plot(time, grad['b.y'][3], lw=1, color='C1')
+            axg.plot(time, grad['b.y'][2], lw=1, color='C1')
         elif param == 'b.Y_{2,0}':
-            axg.plot(time, grad['b.y'][6], lw=1, color='C1')
+            axg.plot(time, grad['b.y'][5], lw=1, color='C1')
         elif param == 'b.Y_{2,1}':
-            axg.plot(time, grad['b.y'][7], lw=1, color='C1')
+            axg.plot(time, grad['b.y'][6], lw=1, color='C1')
         elif param == 'b.Y_{2,2}':
-            axg.plot(time, grad['b.y'][8], lw=1, color='C1')
+            axg.plot(time, grad['b.y'][7], lw=1, color='C1')
         elif param == 'A.u_{1}':
             axg.plot(time, grad['A.u'][0], lw=1, color='C1')
         elif param == 'A.u_{2}':
