@@ -1606,8 +1606,6 @@ namespace kepler {
                 ngrad = dL_names.size();
             }
         }
-        for (int i = 0; i < dL_names.size(); ++i)
-        std::cout << dL_names[i] << std::endl;
 
         // Sync the derivs across all bodies
         if (gradient) {
