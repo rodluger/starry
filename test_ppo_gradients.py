@@ -44,18 +44,21 @@ c[1, 0] = 0.4
 system = System(A, b, c)
 system.exposure_time = 0
 
+# Light curves and gradients of this object
+object = c
+
 # Set up the plot
 fig = pl.figure(figsize=(6, 10))
 fig.subplots_adjust(hspace=0, bottom=0.05, top=0.95)
 
 # Run!
 system.compute(time, gradient=True)
-flux = np.array(system.lightcurve)
-grad = dict(system.gradient)
+flux = np.array(object.lightcurve)
+grad = dict(object.gradient)
 
 # Plot it
 ax = pl.subplot2grid((18, 3), (0, 0), rowspan=5, colspan=3)
-ax.plot(time, system.lightcurve, color='C0')
+ax.plot(time, object.lightcurve, color='C0')
 ax.set_yticks([])
 ax.set_xticks([])
 [i.set_linewidth(0.) for i in ax.spines.values()]
@@ -74,7 +77,7 @@ for key in grad.keys():
                 exec(key[0] + "[:, :] = y")
                 system.compute(time)
                 exec(key[0] + "[:, :] = y0")
-                numgrad = (system.lightcurve - flux) / eps
+                numgrad = (object.lightcurve - flux) / eps
                 axg.plot(time, numgrad, lw=1, alpha=0.5, color='C0')
                 axg.set_ylabel(r"$%s_%d$" % (key, i + 1), fontsize=5)
             else:
@@ -84,7 +87,7 @@ for key in grad.keys():
                 exec(key[0] + "[:] = u")
                 system.compute(time)
                 exec(key[0] + "[:] = u0")
-                numgrad = (system.lightcurve - flux) / eps
+                numgrad = (object.lightcurve - flux) / eps
                 axg.plot(time, numgrad, lw=1, alpha=0.5, color='C0')
                 axg.set_ylabel(r"$%s_%d$" % (key, i), fontsize=5)
             axg.margins(None, 0.5)
@@ -102,7 +105,7 @@ for key in grad.keys():
         exec(key + " += eps")
         system.compute(time)
         exec(key + " -= eps")
-        numgrad = (system.lightcurve - flux) / eps
+        numgrad = (object.lightcurve - flux) / eps
         axg.plot(time, numgrad, lw=1, alpha=0.5, color='C0')
         axg.margins(None, 0.5)
         axg.set_xticks([])

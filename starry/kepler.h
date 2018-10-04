@@ -1603,9 +1603,11 @@ namespace kepler {
                 for (size_t n=5; n < secondary->dF_names.size(); ++n)
                     dL_names.push_back(letter + "." + secondary->dF_names[n]);
                 secondary->g0 = ngrad;
-                ngrad += dL_names.size();
+                ngrad = dL_names.size();
             }
         }
+        for (int i = 0; i < dL_names.size(); ++i)
+        std::cout << dL_names[i] << std::endl;
 
         // Sync the derivs across all bodies
         if (gradient) {
