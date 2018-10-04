@@ -12,6 +12,8 @@ TODO: The biggest speedup may come from only computing the total flux
 
 TODO: Code up derivatives of planet-planet occultations
 
+TODO: Error if gradient is requested but not computed
+
 */
 
 #ifndef _STARRY_ORBITAL_H_
@@ -2225,10 +2227,32 @@ namespace kepler {
             Secondary<T>* secondary, Secondary<T>* occultor) {
 
         if (secondary->L != 0) {
-            // TODO! This will be a quite tedious derivation.
-            throw errors::NotImplementedError("Gradients of secondary-secondary "
-                                              "occultations have not yet been "
-                                              "implemented.");
+
+            // ** Pre-compute some stuff **
+
+            // Occultor Radius
+            Scalar<T> ro = occultor->r / secondary->r;
+
+            // Starting index for the secondary's derivs
+            g = secondary->g0;
+
+            // ** First, derivs with respect to the secondary's own props **
+            // t, r, L, prot, a, porb, inc, ecc, w, Omega, lambda0, tref
+
+            // dF / dt
+            setRow(secondary->dflux_cur, 0, Row<T>(
+                   getRow(secondary->dflux_cur, 0) -
+                   getRow(secondary->dflux_tot, 0) +
+                   secondary->L *
+                   (getRow(secondary->dF, 0) * secondary->angvelrot_deg -
+                    getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                        secondary->AD.delay.derivatives()(0) +
+                    ro * getRow(secondary->dF, 1) *
+                        (occultor->AD.x.derivatives()(0) - secondary->AD.x.derivatives()(0)) +
+                    ro * getRow(secondary->dF, 2) *
+                        (occultor->AD.y.derivatives()(0) - secondary->AD.y.derivatives()(0))) *
+                   units::DayToSeconds));
+
         }
     }
 
