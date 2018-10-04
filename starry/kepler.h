@@ -2230,8 +2230,8 @@ namespace kepler {
 
             // ** Pre-compute some stuff **
 
-            // Occultor Radius
-            Scalar<T> ro = occultor->r / secondary->r;
+            // Radius normalization
+            Scalar<T> rb = 1 / secondary->r;
 
             // Starting index for the secondary's derivs
             g = secondary->g0;
@@ -2247,9 +2247,9 @@ namespace kepler {
                    (getRow(secondary->dF, 0) * secondary->angvelrot_deg -
                     getRow(secondary->dF, 0) * secondary->angvelrot_deg *
                         secondary->AD.delay.derivatives()(0) +
-                    ro * getRow(secondary->dF, 1) *
+                    rb * getRow(secondary->dF, 1) *
                         (occultor->AD.x.derivatives()(0) - secondary->AD.x.derivatives()(0)) +
-                    ro * getRow(secondary->dF, 2) *
+                    rb * getRow(secondary->dF, 2) *
                         (occultor->AD.y.derivatives()(0) - secondary->AD.y.derivatives()(0))) *
                    units::DayToSeconds));
 

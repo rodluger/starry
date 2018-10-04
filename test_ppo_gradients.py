@@ -45,7 +45,7 @@ system = System(A, b, c)
 system.exposure_time = 0
 
 # Light curves and gradients of this object
-object = c
+object = system
 
 # Set up the plot
 fig = pl.figure(figsize=(6, 10))
