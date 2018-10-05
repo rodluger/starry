@@ -107,7 +107,7 @@ def compare_to_numerical(lmax=5):
         def fgrad(self):
             f, _ = self.map_64.flux(xo=np.zeros(nstarry),
                                     yo=b, ro=r, gradient=True)
-            self.vgrad = f[0]
+            self.vgrad = f[0] 
 
         def fmesh(self):
             self.vmesh = self.map_64.flux(yo=b, ro=r, numerical=True)
