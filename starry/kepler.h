@@ -2253,6 +2253,212 @@ namespace kepler {
                         (occultor->AD.y.derivatives()(0) - secondary->AD.y.derivatives()(0))) *
                    units::DayToSeconds));
 
+               // dF / dr
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * rb * rb *
+                      ((secondary->x_cur - occultor->x_cur) * getRow(secondary->dF, 1) +
+                       (secondary->y_cur - occultor->y_cur) * getRow(secondary->dF, 2) -
+                       occultor->r * getRow(secondary->dF, 3))));
+               g++;
+
+               // dF / dL
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->flux_cur / secondary->L));
+               g++;
+
+               // dF / dprot
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) -
+                      secondary->L * getRow(secondary->dF, 0) *
+                      (secondary->angvelrot_deg *
+                      (time_cur - secondary->tref - secondary->delay) / secondary->prot +
+                      secondary->theta0_deg / secondary->prot) * units::DayToSeconds));
+               g++;
+
+               // dF / da
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) -
+                      secondary->L * (
+                          getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                               secondary->AD.delay.derivatives()(1) +
+                          getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(1) * rb +
+                          getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(1) * rb)));
+               g++;
+
+               // dF / porb
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) -
+                      secondary->L * units::DayToSeconds * (
+                          getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                               secondary->AD.delay.derivatives()(5) -
+                          getRow(secondary->dF, 0) *
+                               secondary->theta0_deg / secondary->porb +
+                          getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(5) * rb +
+                          getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(5) * rb)));
+               g++;
+
+               // dF / dinc
+               // Tricky because the sky rotation transform depends on I
+               // TODO: This can be sped up a ton
+               /*
+               if (secondary->y_deg > 0) {
+                   Row<T> dFdinc;
+                   resize(dFdinc, secondary->N, secondary->nwav);
+                   for (int n = 0; n < secondary->nwav; ++n) {
+                       Vector<Scalar<T>> dyskydinc(secondary->N);
+                       VectorT<Scalar<T>> dFdysky =
+                           secondary->skyMap.getGradient().
+                               block(4, n, secondary->N, 1).transpose();
+                       for (int l = 0; l < secondary->lmax + 1; ++l) {
+                           dyskydinc.segment(l * l, 2 * l + 1) =
+                               -secondary->W1.dRdtheta[l] *
+                               secondary->W2.R[l] *
+                               secondary->y.block(l * l, n, 2 * l + 1, 1);
+                       }
+                       setIndex(dFdinc, n, dFdysky.dot(dyskydinc));
+                   }
+                   setRow(secondary->dflux_cur, g, Row<T>(
+                          getRow(secondary->dflux_cur, g) -
+                          getRow(secondary->dflux_tot, g) +
+                          secondary->L * pi<Scalar<T>>() / 180. * (
+                          -getRow(secondary->dF, 0) *
+                                  secondary->angvelrot_deg *
+                                  secondary->AD.delay.derivatives()(8) +
+                          dFdinc
+                          - getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(8) * ro
+                          - getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(8) * ro))
+                      );
+               }
+               */
+               g++;
+
+               // dF / decc
+               /*
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) -
+                      secondary->L * (
+                          getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                               secondary->AD.delay.derivatives()(2) -
+                          getRow(secondary->dF, 0) *
+                               secondary->dtheta0_degde +
+                          getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(2) * ro +
+                          getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(2) * ro)));
+               */
+               g++;
+
+               // dF / dw; note that we must account for d / dM0(w)
+               /*
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) -
+                      secondary->L * pi<Scalar<T>>() / 180.0 * (
+                          getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                               (secondary->AD.delay.derivatives()(6) -
+                                secondary->AD.delay.derivatives()(3)) -
+                          getRow(secondary->dF, 0) *
+                               secondary->dtheta0_degdw +
+                          getRow(secondary->dF, 1) *
+                               (secondary->AD.x.derivatives()(6) -
+                                secondary->AD.x.derivatives()(3)) * ro +
+                          getRow(secondary->dF, 2) *
+                               (secondary->AD.y.derivatives()(6) -
+                                secondary->AD.y.derivatives()(3)) * ro)));
+               */
+               g++;
+
+
+               // dF / dOmega
+               // Tricky because the sky rotation transform depends on Omega
+               // TODO: This can be sped up a ton
+               /*
+               if (secondary->y_deg > 0) {
+                   Row<T> dFdOmega;
+                   resize(dFdOmega, secondary->N, secondary->nwav);
+                   for (int n = 0; n < secondary->nwav; ++n) {
+                       Vector<Scalar<T>> dyskydOmega(secondary->N);
+                       VectorT<Scalar<T>> dFdysky =
+                           secondary->skyMap.getGradient().
+                               block(4, n, secondary->N, 1).transpose();
+                       for (int l = 0; l < secondary->lmax + 1; ++l) {
+                           dyskydOmega.segment(l * l, 2 * l + 1) =
+                               secondary->W1.R[l] *
+                               secondary->W2.dRdtheta[l] *
+                               secondary->y.block(l * l, n, 2 * l + 1, 1);
+                       }
+                       setIndex(dFdOmega, n, dFdysky.dot(dyskydOmega));
+                   }
+                   setRow(secondary->dflux_cur, g, Row<T>(
+                          getRow(secondary->dflux_cur, g) -
+                          getRow(secondary->dflux_tot, g) +
+                          secondary->L * pi<Scalar<T>>() / 180. * (
+                          dFdOmega
+                          - getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(7) * ro
+                          - getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(7) * ro))
+                      );
+               }
+               */
+               g++;
+
+               // dF / dlambda0
+               /*
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * pi<Scalar<T>>() / 180.0 * (
+                          getRow(secondary->dF, 0) *
+                               (180.0 / pi<Scalar<T>>() *
+                               secondary->porb / secondary->prot -
+                               secondary->angvelrot_deg *
+                               secondary->AD.delay.derivatives()(3)) -
+                          getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(3) * ro -
+                          getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(3) * ro)));
+               */
+               g++;
+
+               // dF / dtref
+               /*
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) -
+                      secondary->L * units::DayToSeconds * (
+                          getRow(secondary->dF, 0) *
+                               secondary->angvelrot_deg *
+                               (1 + secondary->AD.delay.derivatives()(4)) +
+                          getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(4) * ro +
+                          getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(4) * ro)));
+               */
+               g++;
+
+               // dF / d{y} and dF / d{u}
+               // Note that we skip the Y_{0,0} deriv
+               int sz = secondary->dF.rows() - 5;
+               secondary->dflux_cur.block(g, 0, sz, secondary->nwav) +=
+                   secondary->L * secondary->dF.block(5, 0, sz, secondary->nwav) -
+                   secondary->dflux_tot.block(g, 0, sz, secondary->nwav);
+
+
         }
     }
 
