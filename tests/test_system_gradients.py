@@ -46,26 +46,26 @@ def lightcurve(x, eps=np.zeros(22), gradient=False, delay=False, event="phase"):
         b_grad = np.zeros(22)
         for i, name in enumerate(names):
             if name == "A.Y_{1,-1}":
+                star_grad[i] = star.gradient["A.y"][0]
+                b_grad[i] = b.gradient["A.y"][0]
+            elif name == "A.Y_{1,0}":
                 star_grad[i] = star.gradient["A.y"][1]
                 b_grad[i] = b.gradient["A.y"][1]
-            elif name == "A.Y_{1,0}":
-                star_grad[i] = star.gradient["A.y"][2]
-                b_grad[i] = b.gradient["A.y"][2]
             elif name == "A.Y_{1,1}":
-                star_grad[i] = star.gradient["A.y"][3]
+                star_grad[i] = star.gradient["A.y"][2]
                 b_grad[i] = b.gradient["A.y"][2]
             elif name == "A.u_{1}":
                 star_grad[i] = star.gradient["A.u"][0]
                 b_grad[i] = b.gradient["A.u"][0]
             elif name == "b.Y_{1,-1}":
+                star_grad[i] = star.gradient["b.y"][0]
+                b_grad[i] = b.gradient["b.y"][0]
+            elif name == "b.Y_{1,0}":
                 star_grad[i] = star.gradient["b.y"][1]
                 b_grad[i] = b.gradient["b.y"][1]
-            elif name == "b.Y_{1,0}":
+            elif name == "b.Y_{1,1}":
                 star_grad[i] = star.gradient["b.y"][2]
                 b_grad[i] = b.gradient["b.y"][2]
-            elif name == "b.Y_{1,1}":
-                star_grad[i] = star.gradient["b.y"][3]
-                b_grad[i] = b.gradient["b.y"][3]
             elif name == "b.u_{1}":
                 star_grad[i] = star.gradient["b.u"][0]
                 b_grad[i] = b.gradient["b.u"][0]

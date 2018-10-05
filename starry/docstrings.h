@@ -378,8 +378,15 @@ namespace docstrings {
                 :py:class:`System` object with :py:obj:`gradient=True`
                 before accessing this attribute.
 
+            .. note:: The gradients with respect to map coefficients are
+                stored as vectors in the `y` and `u` attributes of the gradient
+                dictionary, starting with the *first degree* coefficients.
+                The derivatives with respect to the constant terms :math:`Y_{0,0}`
+                and :math:`u_0` are not computed, since those values are
+                constant!
+
             .. note:: Depending on the properties of a body's map, not all map
-                coefficients may be computed. For instance, for purely
+                coefficient gradients may be computed. For instance, for purely
                 limb-darkened maps (whose :math:`Y_{l,m}` coefficients are zero
                 for :math:`l > 1`), the derivatives of the flux with respect
                 to the spherical harmonic coefficients are **not computed**.
