@@ -1075,10 +1075,10 @@ namespace maps {
                                                   "flux have not been implemented.");
             // If we're computing the gradient as well,
             // call the specialized functions
-            if (y_deg == 0)
-                return fluxLDWithGradient(xo_, yo_, ro_);
-            else if (u_deg == 0)
+            if (u_deg == 0)
                 return fluxYlmWithGradient(theta_, xo_, yo_, ro_);
+            else if (y_deg == 0)
+                return fluxLDWithGradient(xo_, yo_, ro_);
             else
                 return fluxWithGradient(theta_, xo_, yo_, ro_);
         } else if (y_deg == 0) {
