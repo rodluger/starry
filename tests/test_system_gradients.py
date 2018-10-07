@@ -1,3 +1,4 @@
+"""An older version that tests the gradients in the `System` class."""
 import starry
 import numpy as np
 
