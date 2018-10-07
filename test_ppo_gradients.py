@@ -69,7 +69,7 @@ for key in grad.keys():
     if key.endswith('.y') or key.endswith('.u'):
         for i, gradient in enumerate(grad[key]):
             axg = pl.subplot2grid((18, 3), (5 + row, col), colspan=1)
-            axg.plot(time, gradient, lw=1, color='C1')
+            axg.plot(time, gradient, lw=1, color='C0')
             if key.endswith('.y'):
                 y0 = eval(key)
                 y = np.array(y0)
@@ -78,7 +78,7 @@ for key in grad.keys():
                 system.compute(time)
                 exec(key[0] + "[:, :] = y0")
                 numgrad = (object.lightcurve - flux) / eps
-                axg.plot(time, numgrad, lw=1, alpha=0.5, color='C0')
+                axg.plot(time, numgrad, lw=1, alpha=0.5, color='C1')
                 axg.set_ylabel(r"$%s_%d$" % (key, i + 1), fontsize=5)
             else:
                 u0 = eval(key)
@@ -88,7 +88,7 @@ for key in grad.keys():
                 system.compute(time)
                 exec(key[0] + "[:] = u0")
                 numgrad = (object.lightcurve - flux) / eps
-                axg.plot(time, numgrad, lw=1, alpha=0.5, color='C0')
+                axg.plot(time, numgrad, lw=1, alpha=0.5, color='C1')
                 axg.set_ylabel(r"$%s_%d$" % (key, i), fontsize=5)
             axg.margins(None, 0.5)
             axg.set_xticks([])
@@ -101,12 +101,12 @@ for key in grad.keys():
                 col += 1
     else:
         axg = pl.subplot2grid((18, 3), (5 + row, col), colspan=1)
-        axg.plot(time, grad[key], lw=1, color='C1')
+        axg.plot(time, grad[key], lw=1, color='C0')
         exec(key + " += eps")
         system.compute(time)
         exec(key + " -= eps")
         numgrad = (object.lightcurve - flux) / eps
-        axg.plot(time, numgrad, lw=1, alpha=0.5, color='C0')
+        axg.plot(time, numgrad, lw=1, alpha=0.5, color='C1')
         axg.margins(None, 0.5)
         axg.set_xticks([])
         axg.set_yticks([])
