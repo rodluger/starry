@@ -1111,9 +1111,9 @@ namespace pybind_interface {
             // Compute the light curve
             .def("compute", [](kepler::System<T> &system,
                                const Vector<double>& time,
-                               bool gradient) {
-                system.compute(time.template cast<Scalar<T>>(), gradient);
-            }, docstrings::System::compute, "time"_a, "gradient"_a=false)
+                               bool gradient, bool numerical) {
+                system.compute(time.template cast<Scalar<T>>(), gradient, numerical);
+            }, docstrings::System::compute, "time"_a, "gradient"_a=false, "numerical"_a=false)
 
             // Exposure time in days
             .def_property("exposure_time",

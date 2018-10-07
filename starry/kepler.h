@@ -10,10 +10,6 @@ TODO: The biggest speedup may come from only computing the total flux
       For exactly one occultation, the occultation flux
       is all we need!
 
-TODO: Code up derivatives of planet-planet occultations
-
-TODO: Error if gradient is requested but not computed
-
 */
 
 #ifndef _STARRY_ORBITAL_H_
@@ -413,14 +409,14 @@ namespace kepler {
 
             // Private methods
             inline S theta_deg(const S& time);
-            void computeTotal(const S& time, bool gradient);
+            void computeTotal(const S& time, bool gradient, bool numerical);
             void occult(const S& time, const S& xo, const S& yo, const S& ro,
-                        bool gradient);
+                        bool gradient, bool numerical);
 
             //! Wrapper to get the flux from the map (overriden in Secondary)
             virtual inline Row<T> getFlux(const S& theta_deg, const S& xo,
-                const S& yo, const S& ro, bool gradient) {
-                return this->flux(theta_deg, xo, yo, ro, gradient);
+                const S& yo, const S& ro, bool gradient, bool numerical) {
+                return this->flux(theta_deg, xo, yo, ro, gradient, numerical);
             }
 
             //! Compute the initial rotation angle (overriden in Secondary)
@@ -484,9 +480,9 @@ namespace kepler {
 
     //! Compute the total flux from the body
     template <class T>
-    inline void Body<T>::computeTotal(const Scalar<T>& time, bool gradient) {
+    inline void Body<T>::computeTotal(const Scalar<T>& time, bool gradient, bool numerical) {
         if (L != 0) {
-            flux_tot = L * getFlux(theta_deg(time), 0, 0, 0, gradient);
+            flux_tot = L * getFlux(theta_deg(time), 0, 0, 0, gradient, numerical);
         } else {
             setZero(flux_tot);
         }
@@ -497,8 +493,8 @@ namespace kepler {
     template <class T>
     inline void Body<T>::occult(const Scalar<T>& time, const Scalar<T>& xo,
                                 const Scalar<T>& yo, const Scalar<T>& ro,
-                                bool gradient) {
-        flux_cur += L * getFlux(theta_deg(time), xo, yo, ro, gradient)
+                                bool gradient, bool numerical) {
+        flux_cur += L * getFlux(theta_deg(time), xo, yo, ro, gradient, numerical)
                     - flux_tot;
     }
 
@@ -799,7 +795,7 @@ namespace kepler {
 
             // Private methods
             inline Row<T> getFlux(const S& theta_deg, const S& xo,
-                const S& yo, const S& ro, bool gradient);
+                const S& yo, const S& ro, bool gradient, bool numerical);
             void computeTheta0();
             inline void syncSkyMap();
             inline void computeXYZ(const S& time, bool gradient);
@@ -937,9 +933,9 @@ namespace kepler {
                                         const Scalar<T>& xo,
                                         const Scalar<T>& yo,
                                         const Scalar<T>& ro,
-                                        bool gradient) {
+                                        bool gradient, bool numerical) {
         // Compute the flux
-        Row<T> F = skyMap.flux(theta_deg, xo, yo, ro, gradient);
+        Row<T> F = skyMap.flux(theta_deg, xo, yo, ro, gradient, numerical);
 
         // Carry over the derivatives from the sky map
         auto sky_dF = skyMap.getGradient();
@@ -1237,12 +1233,12 @@ namespace kepler {
             bool computed;                                                      /** Did the user call `compute()` yet? */
 
             // Protected methods
-            inline void step(const S& time_cur, bool gradient);
-            Exposure<T> step(const S& time_cur, bool gradient, bool store_xyz);
+            inline void step(const S& time_cur, bool gradient, bool numerical);
+            Exposure<T> step(const S& time_cur, bool gradient, bool numerical, bool store_xyz);
             Exposure<T> integrate(const Exposure<T>& f1, const Exposure<T>& f2,
                                   const S& t1, const S& t2,
-                                  int depth, bool gradient);
-            inline void integrate(const S& time_cur, bool gradient);
+                                  int depth, bool gradient, bool numerical);
+            inline void integrate(const S& time_cur, bool gradient, bool numerical);
 
             inline void computePrimaryTotalGradient(const S& time_cur);
             inline void computeSecondaryTotalGradient(const S& time_cur,
@@ -1284,7 +1280,7 @@ namespace kepler {
             }
 
             // Public methods
-            void compute(const Vector<S>& time, bool gradient=false);
+            void compute(const Vector<S>& time, bool gradient=false, bool numerical=false);
             const Matrix<S>& getLightcurve() const;
             const Vector<T>& getLightcurveGradient() const;
             const std::vector<std::string>& getLightcurveGradientNames() const;
@@ -1372,11 +1368,12 @@ namespace kepler {
                                      const Exposure<T>& f2,
                                      const Scalar<T>& t1,
                                      const Scalar<T>& t2,
-                                     int depth, bool gradient) {
+                                     int depth, bool gradient,
+                                     bool numerical) {
         Scalar<T> tmid = (t1 + t2) * 0.5;
         // If this is the first time we're recursing (depth == 0),
         // store the xyz position of the bodies in the output vectors
-        Exposure<T> fmid = step(tmid, gradient, depth == 0);
+        Exposure<T> fmid = step(tmid, gradient, numerical, depth == 0);
         Exposure<T> fapprox = (f1 + f2) * 0.5;
         Exposure<T> d = fmid - fapprox;
         Exposure<T> a(secondaries.size(), gradient);
@@ -1385,8 +1382,8 @@ namespace kepler {
             for (size_t i = 0; i < secondaries.size() + 1; ++i) {
                 for (int n = 0; n < primary->nwav; ++n) {
                     if (abs(getIndex(d.flux[i], n)) > exptol) {
-                        a = integrate(f1, fmid, t1, tmid, depth + 1, gradient);
-                        b = integrate(fmid, f2, tmid, t2, depth + 1, gradient);
+                        a = integrate(f1, fmid, t1, tmid, depth + 1, gradient, numerical);
+                        b = integrate(fmid, f2, tmid, t2, depth + 1, gradient, numerical);
                         return a + b;
                     }
                 }
@@ -1400,15 +1397,15 @@ namespace kepler {
 
     */
     template <class T>
-    inline void System<T>::integrate(const Scalar<T>& time_cur, bool gradient) {
+    inline void System<T>::integrate(const Scalar<T>& time_cur, bool gradient, bool numerical) {
         Exposure<T> exposure(secondaries.size(), gradient);
         Scalar<T> dt = 0.5 * exptime,
                   t1 = time_cur - dt,
                   t2 = time_cur + dt,
                   invdt = 1. / (t2 - t1);
-        exposure = integrate(step(t1, gradient, false),
-                             step(t2, gradient, false),
-                             t1, t2, 0, gradient) * invdt;
+        exposure = integrate(step(t1, gradient, numerical, false),
+                             step(t2, gradient, numerical, false),
+                             t1, t2, 0, gradient, numerical) * invdt;
         primary->flux_cur = exposure.flux[0];
         if (gradient)
             primary->dflux_cur = exposure.gradient[0];
@@ -1424,19 +1421,19 @@ namespace kepler {
 
     */
     template <class T>
-    inline void System<T>::step(const Scalar<T>& time_cur, bool gradient) {
+    inline void System<T>::step(const Scalar<T>& time_cur, bool gradient, bool numerical) {
 
         Scalar<T> xo, yo, ro;
         size_t NS = secondaries.size();
         size_t o, p;
 
         // Compute fluxes and take an orbital step
-        primary->computeTotal(time_cur, gradient);
+        primary->computeTotal(time_cur, gradient, numerical);
         if (gradient)
             computePrimaryTotalGradient(time_cur);
         for (auto secondary : secondaries) {
             secondary->computeXYZ(time_cur, gradient);
-            secondary->computeTotal(time_cur, gradient);
+            secondary->computeTotal(time_cur, gradient, numerical);
             if (gradient)
                 computeSecondaryTotalGradient(time_cur, secondary);
         }
@@ -1449,14 +1446,14 @@ namespace kepler {
                 if (secondary->z_cur > 0) {
                     primary->occult(time_cur, secondary->x_cur,
                                     secondary->y_cur, secondary->r,
-                                    gradient);
+                                    gradient, numerical);
                     if (gradient)
                         computePrimaryOccultationGradient(time_cur, secondary);
                 } else if (secondary->L != 0) {
                     ro = 1. / secondary->r;
                     secondary->occult(time_cur, -ro * secondary->x_cur,
                                       -ro * secondary->y_cur, ro,
-                                      gradient);
+                                      gradient, numerical);
                     if (gradient)
                         computeSecondaryOccultationGradient(time_cur,
                                                             secondary);
@@ -1480,7 +1477,7 @@ namespace kepler {
                     yo = ro * (secondaries[o]->y_cur - secondaries[p]->y_cur);
                     ro = ro * secondaries[o]->r;
                     if (xo * xo + yo * yo < (1 + ro) * (1 + ro)) {
-                        secondaries[p]->occult(time_cur, xo, yo, ro, gradient);
+                        secondaries[p]->occult(time_cur, xo, yo, ro, gradient, numerical);
                         if (gradient)
                             computeSecondaryOccultationGradient(time_cur,
                                                                 secondaries[p],
@@ -1499,10 +1496,10 @@ namespace kepler {
     */
     template <class T>
     inline Exposure<T> System<T>::step(const Scalar<T>& time, bool gradient,
-                                       bool store_xyz) {
+                                       bool numerical, bool store_xyz) {
 
         // Take the step
-        step(time, gradient);
+        step(time, gradient, numerical);
 
         // Collect the current values of the flux for each body
         // We compare them to the previous iteration to determine
@@ -1535,7 +1532,7 @@ namespace kepler {
 
     */
     template <class T>
-    void System<T>::compute(const Vector<Scalar<T>>& time_, bool gradient) {
+    void System<T>::compute(const Vector<Scalar<T>>& time_, bool gradient, bool numerical) {
 
         size_t NT = time_.size();
         Vector<Scalar<T>> time = time_ * units::DayToSeconds;
@@ -1624,9 +1621,9 @@ namespace kepler {
 
             // Take an orbital step and compute the fluxes
             if (exptime == 0)
-                step(time(t), gradient);
+                step(time(t), gradient, numerical);
             else
-                integrate(time(t), gradient);
+                integrate(time(t), gradient, numerical);
 
             // Update the light curves and orbital positions
             for (int n = 0; n < primary->nwav; ++n) {

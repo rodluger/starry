@@ -3,14 +3,15 @@ from starry.kepler import Primary, Secondary, System
 import numpy as np
 import matplotlib.pyplot as pl
 
-
+# Time arrays
 time = np.linspace(-2.6, -2.0, 500)
+time_num = np.linspace(-2.6, -2.0, 50)
 
 # Limb-darkened A
 A = Primary(lmax=2)
 A[1] = 0.4
 A[2] = 0.26
-A.r_m = 0
+A.r_m = 1e11
 
 # Dipole-map hot jupiter
 b = Secondary(lmax=2)
@@ -42,7 +43,7 @@ c[1, 0] = 0.4
 
 # Instantiate the system
 system = System(A, b, c)
-system.exposure_time = 0
+system.exposure_time = 0.02
 
 # Light curves and gradients of this object
 object = system
@@ -56,9 +57,14 @@ system.compute(time, gradient=True)
 flux = np.array(object.lightcurve)
 grad = dict(object.gradient)
 
+# Numerical flux
+system.compute(time_num, gradient=True)
+flux_num = np.array(object.lightcurve)
+
 # Plot it
 ax = pl.subplot2grid((18, 3), (0, 0), rowspan=5, colspan=3)
-ax.plot(time, object.lightcurve, color='C0')
+ax.plot(time, flux, color='C0')
+ax.plot(time_num, flux_num, 'o', ms=3, color='C1')
 ax.set_yticks([])
 ax.set_xticks([])
 [i.set_linewidth(0.) for i in ax.spines.values()]
