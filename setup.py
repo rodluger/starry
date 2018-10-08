@@ -7,6 +7,11 @@ import glob
 import setuptools
 __version__ = '0.2.1'
 
+# Module bits
+STARRY_MONO_64 = 1
+STARRY_MONO_128 = 2
+STARRY_SPECTRAL_64 = 4
+STARRY_SPECTRAL_128 = 8
 
 # Custom compiler flags
 macros = dict(STARRY_NMULTI=32,
@@ -27,8 +32,8 @@ debug = bool(int(os.getenv('STARRY_DEBUG', 0)))
 if debug:
     optimize = 0
 
-# Basic compile (mono64 only)?
-basic = bool(int(os.getenv('STARRY_BASIC', 0)))
+# Module bitsum (1 + 2 + 4 + 8 = 15)
+bitsum = int(os.getenv('STARRY_BITSUM', 15))
 
 class get_pybind_include(object):
     """
@@ -71,18 +76,16 @@ def get_ext(module='starry._starry_mono_64', name='STARRY_MONO_64'):
                       [(key, value) for key, value in macros.items()]
     )
 
-if basic:
-    ext_modules = [
-        get_ext('starry._starry_mono_64', 'STARRY_MONO_64')
-    ]
-else:
-    ext_modules = [
-        get_ext('starry._starry_mono_64', 'STARRY_MONO_64'),
-        get_ext('starry._starry_mono_128', 'STARRY_MONO_128'),
-        get_ext('starry._starry_spectral_64', 'STARRY_SPECTRAL_64'),
-        get_ext('starry._starry_spectral_128', 'STARRY_SPECTRAL_128'),
-    ]
-
+# Figure out which modules to compile (default all)
+ext_modules = []
+if (bitsum & STARRY_MONO_64):
+    ext_modules.append(get_ext('starry._starry_mono_64', 'STARRY_MONO_64'))
+if (bitsum & STARRY_MONO_128):
+    ext_modules.append(get_ext('starry._starry_mono_128', 'STARRY_MONO_128'))
+if (bitsum & STARRY_SPECTRAL_64):
+    ext_modules.append(get_ext('starry._starry_spectral_64', 'STARRY_SPECTRAL_64'))
+if (bitsum & STARRY_SPECTRAL_128):
+    ext_modules.append(get_ext('starry._starry_spectral_128', 'STARRY_SPECTRAL_128'))
 
 # As of Python 3.6, CCompiler has a `has_flag` method.
 # cf http://bugs.python.org/issue26689

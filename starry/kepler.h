@@ -10,8 +10,6 @@ TODO: The biggest speedup may come from only computing the total flux
       For exactly one occultation, the occultation flux
       is all we need!
 
-TODO: Code up derivatives of planet-planet occultations
-
 */
 
 #ifndef _STARRY_ORBITAL_H_
@@ -413,14 +411,14 @@ namespace kepler {
 
             // Private methods
             inline S theta_deg(const S& time);
-            void computeTotal(const S& time, bool gradient);
+            void computeTotal(const S& time, bool gradient, bool numerical);
             void occult(const S& time, const S& xo, const S& yo, const S& ro,
-                        bool gradient);
+                        bool gradient, bool numerical);
 
             //! Wrapper to get the flux from the map (overriden in Secondary)
             virtual inline Row<T> getFlux(const S& theta_deg, const S& xo,
-                const S& yo, const S& ro, bool gradient) {
-                return this->flux(theta_deg, xo, yo, ro, gradient);
+                const S& yo, const S& ro, bool gradient, bool numerical) {
+                return this->flux(theta_deg, xo, yo, ro, gradient, numerical);
             }
 
             //! Compute the initial rotation angle (overriden in Secondary)
@@ -484,9 +482,9 @@ namespace kepler {
 
     //! Compute the total flux from the body
     template <class T>
-    inline void Body<T>::computeTotal(const Scalar<T>& time, bool gradient) {
+    inline void Body<T>::computeTotal(const Scalar<T>& time, bool gradient, bool numerical) {
         if (L != 0) {
-            flux_tot = L * getFlux(theta_deg(time), 0, 0, 0, gradient);
+            flux_tot = L * getFlux(theta_deg(time), 0, 0, 0, gradient, numerical);
         } else {
             setZero(flux_tot);
         }
@@ -497,8 +495,8 @@ namespace kepler {
     template <class T>
     inline void Body<T>::occult(const Scalar<T>& time, const Scalar<T>& xo,
                                 const Scalar<T>& yo, const Scalar<T>& ro,
-                                bool gradient) {
-        flux_cur += L * getFlux(theta_deg(time), xo, yo, ro, gradient)
+                                bool gradient, bool numerical) {
+        flux_cur += L * getFlux(theta_deg(time), xo, yo, ro, gradient, numerical)
                     - flux_tot;
     }
 
@@ -799,7 +797,7 @@ namespace kepler {
 
             // Private methods
             inline Row<T> getFlux(const S& theta_deg, const S& xo,
-                const S& yo, const S& ro, bool gradient);
+                const S& yo, const S& ro, bool gradient, bool numerical);
             void computeTheta0();
             inline void syncSkyMap();
             inline void computeXYZ(const S& time, bool gradient);
@@ -937,9 +935,9 @@ namespace kepler {
                                         const Scalar<T>& xo,
                                         const Scalar<T>& yo,
                                         const Scalar<T>& ro,
-                                        bool gradient) {
+                                        bool gradient, bool numerical) {
         // Compute the flux
-        Row<T> F = skyMap.flux(theta_deg, xo, yo, ro, gradient);
+        Row<T> F = skyMap.flux(theta_deg, xo, yo, ro, gradient, numerical);
 
         // Carry over the derivatives from the sky map
         auto sky_dF = skyMap.getGradient();
@@ -1237,12 +1235,12 @@ namespace kepler {
             bool computed;                                                      /** Did the user call `compute()` yet? */
 
             // Protected methods
-            inline void step(const S& time_cur, bool gradient);
-            Exposure<T> step(const S& time_cur, bool gradient, bool store_xyz);
+            inline void step(const S& time_cur, bool gradient, bool numerical);
+            Exposure<T> step(const S& time_cur, bool gradient, bool numerical, bool store_xyz);
             Exposure<T> integrate(const Exposure<T>& f1, const Exposure<T>& f2,
                                   const S& t1, const S& t2,
-                                  int depth, bool gradient);
-            inline void integrate(const S& time_cur, bool gradient);
+                                  int depth, bool gradient, bool numerical);
+            inline void integrate(const S& time_cur, bool gradient, bool numerical);
 
             inline void computePrimaryTotalGradient(const S& time_cur);
             inline void computeSecondaryTotalGradient(const S& time_cur,
@@ -1284,7 +1282,7 @@ namespace kepler {
             }
 
             // Public methods
-            void compute(const Vector<S>& time, bool gradient=false);
+            void compute(const Vector<S>& time, bool gradient=false, bool numerical=false);
             const Matrix<S>& getLightcurve() const;
             const Vector<T>& getLightcurveGradient() const;
             const std::vector<std::string>& getLightcurveGradientNames() const;
@@ -1372,11 +1370,12 @@ namespace kepler {
                                      const Exposure<T>& f2,
                                      const Scalar<T>& t1,
                                      const Scalar<T>& t2,
-                                     int depth, bool gradient) {
+                                     int depth, bool gradient,
+                                     bool numerical) {
         Scalar<T> tmid = (t1 + t2) * 0.5;
         // If this is the first time we're recursing (depth == 0),
         // store the xyz position of the bodies in the output vectors
-        Exposure<T> fmid = step(tmid, gradient, depth == 0);
+        Exposure<T> fmid = step(tmid, gradient, numerical, depth == 0);
         Exposure<T> fapprox = (f1 + f2) * 0.5;
         Exposure<T> d = fmid - fapprox;
         Exposure<T> a(secondaries.size(), gradient);
@@ -1385,8 +1384,8 @@ namespace kepler {
             for (size_t i = 0; i < secondaries.size() + 1; ++i) {
                 for (int n = 0; n < primary->nwav; ++n) {
                     if (abs(getIndex(d.flux[i], n)) > exptol) {
-                        a = integrate(f1, fmid, t1, tmid, depth + 1, gradient);
-                        b = integrate(fmid, f2, tmid, t2, depth + 1, gradient);
+                        a = integrate(f1, fmid, t1, tmid, depth + 1, gradient, numerical);
+                        b = integrate(fmid, f2, tmid, t2, depth + 1, gradient, numerical);
                         return a + b;
                     }
                 }
@@ -1400,15 +1399,15 @@ namespace kepler {
 
     */
     template <class T>
-    inline void System<T>::integrate(const Scalar<T>& time_cur, bool gradient) {
+    inline void System<T>::integrate(const Scalar<T>& time_cur, bool gradient, bool numerical) {
         Exposure<T> exposure(secondaries.size(), gradient);
         Scalar<T> dt = 0.5 * exptime,
                   t1 = time_cur - dt,
                   t2 = time_cur + dt,
                   invdt = 1. / (t2 - t1);
-        exposure = integrate(step(t1, gradient, false),
-                             step(t2, gradient, false),
-                             t1, t2, 0, gradient) * invdt;
+        exposure = integrate(step(t1, gradient, numerical, false),
+                             step(t2, gradient, numerical, false),
+                             t1, t2, 0, gradient, numerical) * invdt;
         primary->flux_cur = exposure.flux[0];
         if (gradient)
             primary->dflux_cur = exposure.gradient[0];
@@ -1424,19 +1423,19 @@ namespace kepler {
 
     */
     template <class T>
-    inline void System<T>::step(const Scalar<T>& time_cur, bool gradient) {
+    inline void System<T>::step(const Scalar<T>& time_cur, bool gradient, bool numerical) {
 
         Scalar<T> xo, yo, ro;
         size_t NS = secondaries.size();
         size_t o, p;
 
         // Compute fluxes and take an orbital step
-        primary->computeTotal(time_cur, gradient);
+        primary->computeTotal(time_cur, gradient, numerical);
         if (gradient)
             computePrimaryTotalGradient(time_cur);
         for (auto secondary : secondaries) {
             secondary->computeXYZ(time_cur, gradient);
-            secondary->computeTotal(time_cur, gradient);
+            secondary->computeTotal(time_cur, gradient, numerical);
             if (gradient)
                 computeSecondaryTotalGradient(time_cur, secondary);
         }
@@ -1449,14 +1448,14 @@ namespace kepler {
                 if (secondary->z_cur > 0) {
                     primary->occult(time_cur, secondary->x_cur,
                                     secondary->y_cur, secondary->r,
-                                    gradient);
+                                    gradient, numerical);
                     if (gradient)
                         computePrimaryOccultationGradient(time_cur, secondary);
                 } else if (secondary->L != 0) {
                     ro = 1. / secondary->r;
                     secondary->occult(time_cur, -ro * secondary->x_cur,
                                       -ro * secondary->y_cur, ro,
-                                      gradient);
+                                      gradient, numerical);
                     if (gradient)
                         computeSecondaryOccultationGradient(time_cur,
                                                             secondary);
@@ -1480,7 +1479,7 @@ namespace kepler {
                     yo = ro * (secondaries[o]->y_cur - secondaries[p]->y_cur);
                     ro = ro * secondaries[o]->r;
                     if (xo * xo + yo * yo < (1 + ro) * (1 + ro)) {
-                        secondaries[p]->occult(time_cur, xo, yo, ro, gradient);
+                        secondaries[p]->occult(time_cur, xo, yo, ro, gradient, numerical);
                         if (gradient)
                             computeSecondaryOccultationGradient(time_cur,
                                                                 secondaries[p],
@@ -1499,10 +1498,10 @@ namespace kepler {
     */
     template <class T>
     inline Exposure<T> System<T>::step(const Scalar<T>& time, bool gradient,
-                                       bool store_xyz) {
+                                       bool numerical, bool store_xyz) {
 
         // Take the step
-        step(time, gradient);
+        step(time, gradient, numerical);
 
         // Collect the current values of the flux for each body
         // We compare them to the previous iteration to determine
@@ -1535,7 +1534,7 @@ namespace kepler {
 
     */
     template <class T>
-    void System<T>::compute(const Vector<Scalar<T>>& time_, bool gradient) {
+    void System<T>::compute(const Vector<Scalar<T>>& time_, bool gradient, bool numerical) {
 
         size_t NT = time_.size();
         Vector<Scalar<T>> time = time_ * units::DayToSeconds;
@@ -1603,7 +1602,7 @@ namespace kepler {
                 for (size_t n=5; n < secondary->dF_names.size(); ++n)
                     dL_names.push_back(letter + "." + secondary->dF_names[n]);
                 secondary->g0 = ngrad;
-                ngrad += dL_names.size();
+                ngrad = dL_names.size();
             }
         }
 
@@ -1624,9 +1623,9 @@ namespace kepler {
 
             // Take an orbital step and compute the fluxes
             if (exptime == 0)
-                step(time(t), gradient);
+                step(time(t), gradient, numerical);
             else
-                integrate(time(t), gradient);
+                integrate(time(t), gradient, numerical);
 
             // Update the light curves and orbital positions
             for (int n = 0; n < primary->nwav; ++n) {
@@ -2227,10 +2226,320 @@ namespace kepler {
             Secondary<T>* secondary, Secondary<T>* occultor) {
 
         if (secondary->L != 0) {
-            // TODO! This will be a quite tedious derivation.
-            throw errors::NotImplementedError("Gradients of secondary-secondary "
-                                              "occultations have not yet been "
-                                              "implemented.");
+
+            // ** Pre-compute some stuff **
+
+            // Radius normalization
+            Scalar<T> rb = 1 / secondary->r;
+
+            // Starting index for the secondary's derivs
+            g = secondary->g0;
+
+            // ** First, derivs with respect to the secondary's own props **
+            // t, r, L, prot, a, porb, inc, ecc, w, Omega, lambda0, tref
+
+            // dF / dt
+            setRow(secondary->dflux_cur, 0, Row<T>(
+                   getRow(secondary->dflux_cur, 0) -
+                   getRow(secondary->dflux_tot, 0) +
+                   secondary->L *
+                   (getRow(secondary->dF, 0) * secondary->angvelrot_deg -
+                    getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                        secondary->AD.delay.derivatives()(0) +
+                    rb * getRow(secondary->dF, 1) *
+                        (occultor->AD.x.derivatives()(0) - secondary->AD.x.derivatives()(0)) +
+                    rb * getRow(secondary->dF, 2) *
+                        (occultor->AD.y.derivatives()(0) - secondary->AD.y.derivatives()(0))) *
+                   units::DayToSeconds));
+
+               // dF / dr
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * rb * rb *
+                      ((secondary->x_cur - occultor->x_cur) * getRow(secondary->dF, 1) +
+                       (secondary->y_cur - occultor->y_cur) * getRow(secondary->dF, 2) -
+                       occultor->r * getRow(secondary->dF, 3))));
+               g++;
+
+               // dF / dL
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->flux_cur / secondary->L));
+               g++;
+
+               // dF / dprot
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) -
+                      secondary->L * getRow(secondary->dF, 0) *
+                      (secondary->angvelrot_deg *
+                      (time_cur - secondary->tref - secondary->delay) / secondary->prot +
+                      secondary->theta0_deg / secondary->prot) * units::DayToSeconds));
+               g++;
+
+               // dF / da
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) -
+                      secondary->L * (
+                          getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                               secondary->AD.delay.derivatives()(1) +
+                          getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(1) * rb +
+                          getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(1) * rb)));
+               g++;
+
+               // dF / porb
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) -
+                      secondary->L * units::DayToSeconds * (
+                          getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                               secondary->AD.delay.derivatives()(5) -
+                          getRow(secondary->dF, 0) *
+                               secondary->theta0_deg / secondary->porb +
+                          getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(5) * rb +
+                          getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(5) * rb)));
+               g++;
+
+               // dF / dinc
+               // Tricky because the sky rotation transform depends on I
+               // TODO: This can be sped up a ton
+               if (secondary->y_deg > 0) {
+                   Row<T> dFdinc;
+                   resize(dFdinc, secondary->N, secondary->nwav);
+                   for (int n = 0; n < secondary->nwav; ++n) {
+                       Vector<Scalar<T>> dyskydinc(secondary->N);
+                       VectorT<Scalar<T>> dFdysky =
+                           secondary->skyMap.getGradient().
+                               block(4, n, secondary->N, 1).transpose();
+                       for (int l = 0; l < secondary->lmax + 1; ++l) {
+                           dyskydinc.segment(l * l, 2 * l + 1) =
+                               -secondary->W1.dRdtheta[l] *
+                               secondary->W2.R[l] *
+                               secondary->y.block(l * l, n, 2 * l + 1, 1);
+                       }
+                       setIndex(dFdinc, n, dFdysky.dot(dyskydinc));
+                   }
+                   setRow(secondary->dflux_cur, g, Row<T>(
+                          getRow(secondary->dflux_cur, g) -
+                          getRow(secondary->dflux_tot, g) +
+                          secondary->L * pi<Scalar<T>>() / 180. * (
+                          -getRow(secondary->dF, 0) *
+                                  secondary->angvelrot_deg *
+                                  secondary->AD.delay.derivatives()(8) +
+                          dFdinc
+                          - getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(8) * rb
+                          - getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(8) * rb))
+                      );
+               }
+               g++;
+
+               // dF / decc
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) -
+                      secondary->L * (
+                          getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                               secondary->AD.delay.derivatives()(2) -
+                          getRow(secondary->dF, 0) *
+                               secondary->dtheta0_degde +
+                          getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(2) * rb +
+                          getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(2) * rb)));
+               g++;
+
+               // dF / dw; note that we must account for d / dM0(w)
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) -
+                      secondary->L * pi<Scalar<T>>() / 180.0 * (
+                          getRow(secondary->dF, 0) * secondary->angvelrot_deg *
+                               (secondary->AD.delay.derivatives()(6) -
+                                secondary->AD.delay.derivatives()(3)) -
+                          getRow(secondary->dF, 0) *
+                               secondary->dtheta0_degdw +
+                          getRow(secondary->dF, 1) *
+                               (secondary->AD.x.derivatives()(6) -
+                                secondary->AD.x.derivatives()(3)) * rb +
+                          getRow(secondary->dF, 2) *
+                               (secondary->AD.y.derivatives()(6) -
+                                secondary->AD.y.derivatives()(3)) * rb)));
+               g++;
+
+
+               // dF / dOmega
+               // Tricky because the sky rotation transform depends on Omega
+               // TODO: This can be sped up a ton
+               if (secondary->y_deg > 0) {
+                   Row<T> dFdOmega;
+                   resize(dFdOmega, secondary->N, secondary->nwav);
+                   for (int n = 0; n < secondary->nwav; ++n) {
+                       Vector<Scalar<T>> dyskydOmega(secondary->N);
+                       VectorT<Scalar<T>> dFdysky =
+                           secondary->skyMap.getGradient().
+                               block(4, n, secondary->N, 1).transpose();
+                       for (int l = 0; l < secondary->lmax + 1; ++l) {
+                           dyskydOmega.segment(l * l, 2 * l + 1) =
+                               secondary->W1.R[l] *
+                               secondary->W2.dRdtheta[l] *
+                               secondary->y.block(l * l, n, 2 * l + 1, 1);
+                       }
+                       setIndex(dFdOmega, n, dFdysky.dot(dyskydOmega));
+                   }
+                   setRow(secondary->dflux_cur, g, Row<T>(
+                          getRow(secondary->dflux_cur, g) -
+                          getRow(secondary->dflux_tot, g) +
+                          secondary->L * pi<Scalar<T>>() / 180. * (
+                          dFdOmega
+                          - getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(7) * rb
+                          - getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(7) * rb))
+                      );
+               }
+               g++;
+
+               // dF / dlambda0
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * pi<Scalar<T>>() / 180.0 * (
+                          getRow(secondary->dF, 0) *
+                               (180.0 / pi<Scalar<T>>() *
+                               secondary->porb / secondary->prot -
+                               secondary->angvelrot_deg *
+                               secondary->AD.delay.derivatives()(3)) -
+                          getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(3) * rb -
+                          getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(3) * rb)));
+               g++;
+
+               // dF / dtref
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) -
+                      secondary->L * units::DayToSeconds * (
+                          getRow(secondary->dF, 0) *
+                               secondary->angvelrot_deg *
+                               (1 + secondary->AD.delay.derivatives()(4)) +
+                          getRow(secondary->dF, 1) *
+                               secondary->AD.x.derivatives()(4) * rb +
+                          getRow(secondary->dF, 2) *
+                               secondary->AD.y.derivatives()(4) * rb)));
+               g++;
+
+               // dF / d{y} and dF / d{u}
+               // Note that we skip the Y_{0,0} deriv
+               int sz = secondary->dF.rows() - 5;
+               secondary->dflux_cur.block(g, 0, sz, secondary->nwav) +=
+                   secondary->L * secondary->dF.block(5, 0, sz, secondary->nwav) -
+                   secondary->dflux_tot.block(g, 0, sz, secondary->nwav);
+
+               // ** Now the derivs with respect to the occultor's properties **
+               // r, L, prot, a, porb, inc, ecc, w, Omega, lambda0, tref
+
+               // Starting index for the occultor's derivs
+               g = occultor->g0;
+
+               // dF / dr
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * rb * getRow(secondary->dF, 3)));
+               g += 3;                                                          // dF / dL and dF / dprot are zero
+
+               // dF / da
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * rb * (
+                      getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(1) +
+                      getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(1))));
+               g++;
+
+               // dF / dporb
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * rb *
+                      (getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(5) +
+                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(5)) *
+                      units::DayToSeconds));
+               g++;
+
+               // dF / dinc
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * rb *
+                      (getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(8) +
+                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(8)) *
+                      pi<Scalar<T>>() / 180.0));
+               g++;
+
+
+               // dF / decc
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * rb *
+                      (getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(2) +
+                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(2))));
+               g++;
+
+               // dF / dw
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * rb *
+                      (getRow(secondary->dF, 1) * (occultor->AD.x.derivatives()(6) -
+                                                 occultor->AD.x.derivatives()(3)) +
+                       getRow(secondary->dF, 2) * (occultor->AD.y.derivatives()(6) -
+                                                 occultor->AD.y.derivatives()(3))) *
+                      pi<Scalar<T>>() / 180.0));
+               g++;
+
+               // dF / dOmega
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * rb *
+                      (getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(7) +
+                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(7)) *
+                      pi<Scalar<T>>() / 180.0));
+               g++;
+
+               // dF / dlambda0
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * rb *
+                      (getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(3) +
+                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(3)) *
+                      pi<Scalar<T>>() / 180.0));
+               g++;
+
+               // dF / dtref
+               setRow(secondary->dflux_cur, g, Row<T>(
+                      getRow(secondary->dflux_cur, g) -
+                      getRow(secondary->dflux_tot, g) +
+                      secondary->L * rb *
+                      (getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(4) +
+                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(4)) *
+                      units::DayToSeconds));
+               g++;
+
+
         }
     }
 
