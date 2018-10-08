@@ -69,11 +69,13 @@ namespace kepler {
         // Initial condition
         T E = M;
         T tol = 10 * mach_eps<T>();
+        T delta;
         if (ecc > 0) {
             // Iterate
             for (int iter = 0; iter <= STARRY_KEPLER_MAX_ITER; iter++) {
-                E = E - (E - ecc * sin(E) - M) / (1. - ecc * cos(E));
-                if (abs(E - ecc * sin(E) - M) <= tol) return E;
+                delta = ecc * sin(E) + M;
+                E = E - (E - delta) / (1. - ecc * cos(E));
+                if (abs(E - delta) <= tol) return E;
             }
             // Didn't converge!
             throw errors::ConvergenceError("The Kepler solver "
