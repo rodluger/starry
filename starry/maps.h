@@ -481,12 +481,14 @@ namespace maps {
     */
     template <class T>
     inline void Map<T>::resizeGradient() {
-        if (y_deg == 0)
+        if ((u_deg > 0) && (y_deg == 0))
             resizeGradient(1, lmax);
-        else if (u_deg == 0)
+        else if ((y_deg > 0) && (u_deg == 0))
             resizeGradient(N, 0);
-        else
+        else if ((y_deg > 0) && (u_deg > 0))
             resizeGradient(N, lmax);
+        else
+            resizeGradient(1, 0);
     }
 
 
@@ -1075,12 +1077,14 @@ namespace maps {
                                                   "flux have not been implemented.");
             // If we're computing the gradient as well,
             // call the specialized functions
-            if (u_deg == 0)
-                return fluxYlmWithGradient(theta_, xo_, yo_, ro_);
-            else if (y_deg == 0)
+            if ((u_deg > 0) && (y_deg == 0))
                 return fluxLDWithGradient(xo_, yo_, ro_);
-            else
+            else if ((y_deg > 0) && (u_deg == 0))
+                return fluxYlmWithGradient(theta_, xo_, yo_, ro_);
+            else if ((y_deg > 0) && (u_deg > 0))
                 return fluxWithGradient(theta_, xo_, yo_, ro_);
+            else
+                return fluxLDWithGradient(xo_, yo_, ro_);
         } else if (y_deg == 0) {
             // If only the Y_{0,0} term is set, call the
             // faster method for pure limb-darkening
@@ -1299,7 +1303,10 @@ namespace maps {
         ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
 
         // Resize the gradients
-        resizeGradient(1, lmax);
+        if (u_deg > 0)
+            resizeGradient(1, lmax);
+        else
+            resizeGradient(1, 0);
 
         // Convert to internal types
         Scalar<T> xo = xo_;
@@ -1331,10 +1338,12 @@ namespace maps {
             // Compute the Y_{0,0} deriv, which is trivial
             setRow(dF, 4, Scalar<T>(1.0));
 
-            // The limb darkening derivs are zero, since
-            // they don't affect the total flux!
-            for (int i = 0; i < lmax; ++i)
+            if (u_deg > 0) {
+                // The limb darkening derivs are zero, since
+                // they don't affect the total flux!
+                for (int i = 0; i < lmax; ++i)
                 setRow(dF, 5 + i, Scalar<T>(0.0));
+            }
 
             // Easy: the disk-integrated intensity
             // is just the Y_{0,0} coefficient
@@ -1344,7 +1353,7 @@ namespace maps {
         } else {
 
             // Compute the Agol `c` basis
-            if (update_c_basis) {
+            if ((u_deg > 0) && (update_c_basis)) {
                 for (int n = 0; n < nwav; ++n) {
                     agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
                     setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
@@ -1380,17 +1389,19 @@ namespace maps {
                                    getIndex(agol_norm, n));
 
                 // Compute dF / dc
-                dFdc.block(0, n, lmax + 1, 1) = L.S.transpose() *
-                                                getIndex(agol_norm, n);
-                dFdc(0, n) -= getIndex(result, n) * getIndex(agol_norm, n) *
-                              pi<Scalar<T>>();
-                dFdc(1, n) -= 2.0 * pi<Scalar<T>>() / 3.0 *
-                              getIndex(result, n) * getIndex(agol_norm, n);
+                if (u_deg > 0) {
+                    dFdc.block(0, n, lmax + 1, 1) = L.S.transpose() *
+                                                    getIndex(agol_norm, n);
+                    dFdc(0, n) -= getIndex(result, n) * getIndex(agol_norm, n) *
+                                  pi<Scalar<T>>();
+                    dFdc(1, n) -= 2.0 * pi<Scalar<T>>() / 3.0 *
+                                  getIndex(result, n) * getIndex(agol_norm, n);
 
-                // Chain rule to get dF / du
-                dFdu.block(0, n, lmax, 1).transpose() =
-                    dFdc.block(0, n, lmax + 1, 1).transpose() *
-                    dagol_cdu(n).block(0, 1, lmax + 1, lmax);
+                    // Chain rule to get dF / du
+                    dFdu.block(0, n, lmax, 1).transpose() =
+                        dFdc.block(0, n, lmax + 1, 1).transpose() *
+                        dagol_cdu(n).block(0, 1, lmax + 1, lmax);
+                }
 
             }
 
@@ -1399,8 +1410,10 @@ namespace maps {
             setRow(dF, 2, Row<T>(dFdb * yo / b));
             setRow(dF, 3, dFdro);
             setRow(dF, 4, cwiseQuotient(result, getRow(y, 0)));
-            for (int i = 0; i < lmax; ++i)
-                setRow(dF, i + 5, getRow(dFdu, i));
+            if (u_deg > 0) {
+                for (int i = 0; i < lmax; ++i)
+                    setRow(dF, i + 5, getRow(dFdu, i));
+            }
 
             // Return the flux
             return result;
