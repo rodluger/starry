@@ -185,9 +185,13 @@ namespace limbdark {
                 lmax(lmax),
                 S(VectorT<T>::Zero(lmax + 1)) {
 
-                   ivmax = 2 * lmax + 2;
+                   // Figure out I and J dims
+                   if (is_even(lmax + 1))
+                       ivmax = (lmax + 1) / 2 + 2;
+                   else
+                       ivmax = lmax / 2 + 2;
+                   jvmax = ivmax;
                    I.resize(ivmax + 1);
-                   jvmax = max(1, 2 * lmax - 1);
                    J.resize(jvmax + 1);
 
                    // Pre-tabulate I for ksq >= 1
