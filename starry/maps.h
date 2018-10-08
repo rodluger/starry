@@ -260,6 +260,9 @@ namespace maps {
                 const Scalar<T>& xo_,
                 const Scalar<T>& yo_,
                 const Scalar<T>& ro_);
+            inline Row<T> fluxConstantWithGradient(const Scalar<T>& xo_,
+                const Scalar<T>& yo_,
+                const Scalar<T>& ro_);
         public:
 
             /**
@@ -1084,7 +1087,7 @@ namespace maps {
             else if ((y_deg > 0) && (u_deg > 0))
                 return fluxWithGradient(theta_, xo_, yo_, ro_);
             else
-                return fluxLDWithGradient(xo_, yo_, ro_);
+                return fluxConstantWithGradient(xo_, yo_, ro_);
         } else if (y_deg == 0) {
             // If only the Y_{0,0} term is set, call the
             // faster method for pure limb-darkening
@@ -1303,10 +1306,7 @@ namespace maps {
         ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
 
         // Resize the gradients
-        if (u_deg > 0)
-            resizeGradient(1, lmax);
-        else
-            resizeGradient(1, 0);
+        resizeGradient(1, lmax);
 
         // Convert to internal types
         Scalar<T> xo = xo_;
@@ -1338,12 +1338,10 @@ namespace maps {
             // Compute the Y_{0,0} deriv, which is trivial
             setRow(dF, 4, Scalar<T>(1.0));
 
-            if (u_deg > 0) {
-                // The limb darkening derivs are zero, since
-                // they don't affect the total flux!
-                for (int i = 0; i < lmax; ++i)
+            // The limb darkening derivs are zero, since
+            // they don't affect the total flux!
+            for (int i = 0; i < lmax; ++i)
                 setRow(dF, 5 + i, Scalar<T>(0.0));
-            }
 
             // Easy: the disk-integrated intensity
             // is just the Y_{0,0} coefficient
@@ -1353,7 +1351,7 @@ namespace maps {
         } else {
 
             // Compute the Agol `c` basis
-            if ((u_deg > 0) && (update_c_basis)) {
+            if (update_c_basis) {
                 for (int n = 0; n < nwav; ++n) {
                     agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
                     setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
@@ -1389,19 +1387,17 @@ namespace maps {
                                    getIndex(agol_norm, n));
 
                 // Compute dF / dc
-                if (u_deg > 0) {
-                    dFdc.block(0, n, lmax + 1, 1) = L.S.transpose() *
-                                                    getIndex(agol_norm, n);
-                    dFdc(0, n) -= getIndex(result, n) * getIndex(agol_norm, n) *
-                                  pi<Scalar<T>>();
-                    dFdc(1, n) -= 2.0 * pi<Scalar<T>>() / 3.0 *
-                                  getIndex(result, n) * getIndex(agol_norm, n);
+                dFdc.block(0, n, lmax + 1, 1) = L.S.transpose() *
+                                                getIndex(agol_norm, n);
+                dFdc(0, n) -= getIndex(result, n) * getIndex(agol_norm, n) *
+                              pi<Scalar<T>>();
+                dFdc(1, n) -= 2.0 * pi<Scalar<T>>() / 3.0 *
+                              getIndex(result, n) * getIndex(agol_norm, n);
 
-                    // Chain rule to get dF / du
-                    dFdu.block(0, n, lmax, 1).transpose() =
-                        dFdc.block(0, n, lmax + 1, 1).transpose() *
-                        dagol_cdu(n).block(0, 1, lmax + 1, lmax);
-                }
+                // Chain rule to get dF / du
+                dFdu.block(0, n, lmax, 1).transpose() =
+                    dFdc.block(0, n, lmax + 1, 1).transpose() *
+                    dagol_cdu(n).block(0, 1, lmax + 1, lmax);
 
             }
 
@@ -1410,10 +1406,8 @@ namespace maps {
             setRow(dF, 2, Row<T>(dFdb * yo / b));
             setRow(dF, 3, dFdro);
             setRow(dF, 4, cwiseQuotient(result, getRow(y, 0)));
-            if (u_deg > 0) {
-                for (int i = 0; i < lmax; ++i)
-                    setRow(dF, i + 5, getRow(dFdu, i));
-            }
+            for (int i = 0; i < lmax; ++i)
+                setRow(dF, i + 5, getRow(dFdu, i));
 
             // Return the flux
             return result;
@@ -1598,6 +1592,108 @@ namespace maps {
                 for (int i = 0; i < N; i++)
                     setRow(dF, 4 + i, sTARR(i));
             }
+
+            // Dot the result in and we're done
+            return G.sT * ARRy;
+
+        }
+
+    }
+
+    /**
+    Compute the flux during or outside of an occultation
+    for a pure spherical harmonic map (u_{l} = 0 for l > 0).
+    Also compute the gradient with respect to the orbital
+    parameters and the spherical harmonic map coefficients.
+
+    */
+    template <class T>
+    inline Row<T> Map<T>::fluxConstantWithGradient(const Scalar<T>& xo_,
+                                                   const Scalar<T>& yo_,
+                                                   const Scalar<T>& ro_) {
+
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+        Row<T>& dFdb(tmp.tmpRow[1]);
+        T& ARRy(tmp.tmpT[2]);
+        ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
+        ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
+
+        // Resize the gradients
+        resizeGradient(1, 0);
+
+        // Convert to internal type
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+
+        // Impact parameter
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+           setZero(dF);
+           setZero(result);
+           return result;
+        }
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // Theta deriv is zero for constant maps
+            setRow(dF, 0, Scalar<T>(0.0));
+
+            // The x, y, and r derivs are trivial
+            setRow(dF, 1, Scalar<T>(0.0));
+            setRow(dF, 2, Scalar<T>(0.0));
+            setRow(dF, 3, Scalar<T>(0.0));
+
+            // Compute the consant coeff deriv
+            setRow(dF, 4, Scalar<T>(1.0));
+
+            // We're done!
+            return (B.rTA1 * y);
+
+        // Occultation
+        } else {
+
+            // Perform the rotation + change of basis
+            ARRy = B.A * y;
+
+            // Compute the sT vector using AutoDiff
+            b_grad.value() = b;
+            b_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
+            ro_grad.value() = ro;
+            ro_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
+            G_grad.compute(b_grad, ro_grad);
+
+            // Compute the b and ro derivs
+            setZero(dFdb);
+            setRow(dF, 3, Scalar<T>(0.0));
+            for (int i = 0; i < N; i++) {
+
+                // b deriv
+                dFdb += G_grad.sT(i).derivatives()(0) * getRow(ARRy, i);
+
+                // ro deriv
+                setRow(dF, 3, Row<T>(getRow(dF, 3) +
+                                     G_grad.sT(i).derivatives()(1) *
+                                     getRow(ARRy, i)));
+
+                // Store the value of s^T
+                G.sT(i) = G_grad.sT(i).value();
+
+            }
+
+            // Compute the theta deriv (trivial)
+            setRow(dF, 0, Scalar<T>(0.0));
+
+            // Compute the xo and yo derivs using the chain rule
+            setRow(dF, 1, Row<T>(dFdb * xo / b));
+            setRow(dF, 2, Row<T>(dFdb * yo / b));
+
+            // Compute the map deriv
+            setRow(dF, 4, cwiseQuotient(result, getRow(y, 0)));
 
             // Dot the result in and we're done
             return G.sT * ARRy;
