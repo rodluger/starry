@@ -7,9 +7,10 @@ import matplotlib.pyplot as pl
 def test_gradients(plot=False):
     """Test the gradients in the `System` class."""
     # Limb-darkened star
-    A = Primary(lmax=2)
+    A = Primary(lmax=3)
     A[1] = 0.4
     A[2] = 0.26
+    A[3] = -0.25
     A.r_m = 1e11
 
     # Dipole-map hot jupiter
@@ -51,10 +52,10 @@ def test_gradients(plot=False):
     object = system
 
     # Let's plot transit, eclipse, and a PPO
-    for t1, t2, figname in zip([-0.425, 49.35, -2.6], [0.0, 50.2, -2.0],
-                               ["gradients_transit.pdf",
-                                "gradients_eclipse.pdf",
-                                "gradients_ppo.pdf"]):
+    for t1, t2, figname in zip([-0.425, 25.1, -2.6], [0.0, 25.75, -2.0],
+                               ["gradients_transit.png",
+                                "gradients_eclipse.png",
+                                "gradients_ppo.png"]):
 
         # Time arrays
         time = np.linspace(t1, t2, 500)
@@ -147,9 +148,9 @@ def test_gradients(plot=False):
 
         # Save the figure
         if plot:
-            fig.savefig(figname, bbox_inches='tight')
+            fig.savefig(figname, bbox_inches='tight', dpi=300)
             pl.close()
 
 
 if __name__ == "__main__":
-    run(True)
+    test_gradients(True)
