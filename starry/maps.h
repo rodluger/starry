@@ -37,6 +37,7 @@ TODO: Speed up limb-darkened map rotations, since
 #include "errors.h"
 #include "utils.h"
 #include "solver.h"
+#include "limbdark.h"
 #include "sturm.h"
 #include "minimize.h"
 #include "numeric.h"
@@ -59,6 +60,9 @@ namespace maps {
     using basis::Basis;
     using basis::polymul;
     using solver::Greens;
+    using limbdark::GreensLimbDark;
+    using limbdark::computeC;
+    using limbdark::normC;
     using solver::Power;
     using minimize::Minimizer;
 
@@ -111,7 +115,6 @@ namespace maps {
             static constexpr int MLEN = 2;
             static constexpr int VTMLEN = 1;
             static constexpr int ALEN = 2;
-            static constexpr int VTALEN = 1;
             static constexpr int PLEN = 2;
             static constexpr int PALEN = 2;
 
@@ -125,7 +128,6 @@ namespace maps {
             Matrix<Scalar<T>> tmpMatrix[MLEN];
             VectorT<Matrix<Scalar<T>>> tmpRowVectorOfMatrices[VTMLEN];
             ADScalar<Scalar<T>, 2> tmpADScalar2[ALEN];
-            VectorT<ADScalar<Scalar<T>, 2>> tmpRowVectorOfADScalar2[VTALEN];
             Power<Scalar<T>> tmpPower[PLEN];
             Power<ADScalar<Scalar<T>, 2>> tmpPowerOfADScalar2[PALEN];
 
@@ -202,6 +204,8 @@ namespace maps {
             Wigner<T> W;                                                        /**< The class controlling rotations */
             Greens<Scalar<T>> G;                                                /**< The occultation integral solver class */
             Greens<ADScalar<Scalar<T>, 2>> G_grad;                              /**< The occultation integral solver class w/ AutoDiff capability */
+            GreensLimbDark<Scalar<T>> L;                                        /**< The occultation integral solver class (optimized for limb darkening) */
+            GreensLimbDark<ADScalar<Scalar<T>, 2>> L_grad;                      /**< The occultation integral solver class (opt. for LD) w/ AutoDiff capability */
             Minimizer<T> M;                                                     /**< Map minimization class */
             Scalar<T> tol;                                                      /**< Machine epsilon */
             std::vector<string> dF_orbital_names;                               /**< Names of each of the orbital params in the flux gradient */
@@ -214,16 +218,22 @@ namespace maps {
             T u;                                                                /**< The limb darkening coefficients */
             T p_u;                                                              /**< The limb darkening coefficients in the polynomial basis */
             T g_u;                                                              /**< The limb darkening coefficients in the Green's basis */
+            T agol_c;                                                           /**< The Agol `c` limb darkening coefficients */
+            Row<T> agol_norm;                                                   /**< The Agol normalization */
             int u_deg;                                                          /**< Highest degree set by the user in the limb darkening vector */
             Vector<Matrix<Scalar<T>>> dp_udu;                                   /**< Deriv of limb darkening polynomial w/ respect to limb darkening coeffs */
             Vector<Matrix<Scalar<T>>> dg_udu;                                   /**< Deriv of limb darkening Green's polynomials w/ respect to limb darkening coeffs */
+            Vector<Matrix<Scalar<T>>> dagol_cdu;                                /**< Deriv of Agol `c` coeffs w/ respect to the limb darkening ceoffs */
             VectorT<Matrix<Scalar<T>>> dLDdp;                                   /**< Derivative of the limb-darkened polynomial w.r.t `p` */
             VectorT<Matrix<Scalar<T>>> dLDdp_u;                                 /**< Derivative of the limb-darkened polynomial w.r.t `p_u` */
             T p_uy;                                                             /**< The instantaneous limb-darkened map in the polynomial basis */
+            Row<T> ld_norm;
 
             // Temporaries and cache
             Temporary<T> tmp;
             Cache<T> cache;
+            bool update_p_u_derivs;
+            bool update_c_basis;
 
             // Private methods
             void update();
@@ -250,6 +260,9 @@ namespace maps {
                 const Scalar<T>& xo_,
                 const Scalar<T>& yo_,
                 const Scalar<T>& ro_);
+            inline Row<T> fluxConstantWithGradient(const Scalar<T>& xo_,
+                const Scalar<T>& yo_,
+                const Scalar<T>& ro_);
         public:
 
             /**
@@ -265,10 +278,13 @@ namespace maps {
                 W(lmax, nwav, (*this).y, (*this).axis),
                 G(lmax),
                 G_grad(lmax),
+                L(lmax),
+                L_grad(lmax),
                 M(lmax),
                 tol(mach_eps<Scalar<T>>()),
                 dp_udu(nwav),
                 dg_udu(nwav),
+                dagol_cdu(nwav),
                 tmp(N, nwav),
                 cache() {
 
@@ -295,6 +311,8 @@ namespace maps {
                 p.resize(N, nwav);
                 g.resize(N, nwav);
                 u.resize(lmax + 1, nwav);
+                agol_c.resize(lmax + 1, nwav);
+                resize(agol_norm, 0, nwav);
                 p_u.resize(N, nwav);
                 g_u.resize(N, nwav);
 
@@ -401,7 +419,6 @@ namespace maps {
         // Bind references to temporaries for speed
         Row<T>& Y00(tmp.tmpRow[0]);
         Row<T>& rTp_u(tmp.tmpRow[1]);
-        Row<T>& ld_norm(tmp.tmpRow[2]);
 
         // Check the map degree is valid
         checkDegree();
@@ -415,21 +432,15 @@ namespace maps {
         rTp_u = dot(B.rT, p_u);
         ld_norm = cwiseQuotient(Y00, rTp_u);
 
-        // Compute the derivative of the LD polynomials
-        // with respect to the LD coefficients
-        for (int n = 0; n < nwav; ++n) {
-            dp_udu(n) = -getColumn(p_u, n) * B.rTU1;
-            dp_udu(n) /= dot(B.rT, getColumn(p_u, n));
-            dp_udu(n) += B.U1;
-            dp_udu(n) *= getColumn(ld_norm, n);
-            dg_udu(n) = B.A2 * dp_udu(n);
-        }
-
         // Apply the normalization
         p_u = colwiseProduct(p_u, ld_norm);
 
         // Update the limb darkening Green's map
         g_u = B.A2 * p_u;
+
+        // Set flags
+        update_c_basis = true;
+        update_p_u_derivs = true;
 
         // Clear the cache
         cache.clear();
@@ -459,6 +470,8 @@ namespace maps {
         u_deg = 0;
         setRow(u, 0, Scalar<T>(-1.0));
         axis = yhat<Scalar<T>>();
+        update_p_u_derivs = false;
+        update_c_basis = false;
         update();
     }
 
@@ -471,12 +484,14 @@ namespace maps {
     */
     template <class T>
     inline void Map<T>::resizeGradient() {
-        if (y_deg == 0)
+        if ((u_deg > 0) && (y_deg == 0))
             resizeGradient(1, lmax);
-        else if (u_deg == 0)
+        else if ((y_deg > 0) && (u_deg == 0))
             resizeGradient(N, 0);
-        else
+        else if ((y_deg > 0) && (u_deg > 0))
             resizeGradient(N, lmax);
+        else
+            resizeGradient(1, 0);
     }
 
 
@@ -1065,12 +1080,14 @@ namespace maps {
                                                   "flux have not been implemented.");
             // If we're computing the gradient as well,
             // call the specialized functions
-            if (y_deg == 0)
+            if ((u_deg > 0) && (y_deg == 0))
                 return fluxLDWithGradient(xo_, yo_, ro_);
-            else if (u_deg == 0)
+            else if ((y_deg > 0) && (u_deg == 0))
                 return fluxYlmWithGradient(theta_, xo_, yo_, ro_);
-            else
+            else if ((y_deg > 0) && (u_deg > 0))
                 return fluxWithGradient(theta_, xo_, yo_, ro_);
+            else
+                return fluxConstantWithGradient(xo_, yo_, ro_);
         } else if (y_deg == 0) {
             // If only the Y_{0,0} term is set, call the
             // faster method for pure limb-darkening
@@ -1182,11 +1199,14 @@ namespace maps {
     Compute the flux during or outside of an occultation
     for a pure limb-darkened map (Y_{l,m} = 0 for l > 0).
 
+    NOTE: This uses the fast parameterization from
+          Agol & Luger (2018).
+
     */
     template <class T>
     inline Row<T> Map<T>::fluxLD(const Scalar<T>& xo_,
-                                  const Scalar<T>& yo_,
-                                  const Scalar<T>& ro_) {
+                                 const Scalar<T>& yo_,
+                                 const Scalar<T>& ro_) {
 
         // Bind references to temporaries for speed
         Row<T>& result(tmp.tmpRow[0]);
@@ -1231,13 +1251,20 @@ namespace maps {
 
             } else {
 
-                // Compute the sT vector (sparsely)
-                for (int n = 0; n < N; ++n)
-                    G.skip(n) = !(g_u.block(n, 0, 1, nwav).array() != 0.0).any();
-                G.compute(b, ro);
+                // Compute the Agol S vector
+                L.compute(b, ro);
+
+                // Compute the Agol `c` basis
+                if (update_c_basis) {
+                    for (int n = 0; n < nwav; ++n) {
+                        agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
+                        setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
+                    }
+                    update_c_basis = false;
+                }
 
                 // Dot the result in and we're done
-                return G.sT * g_u;
+                return L.S * colwiseProduct(agol_c, agol_norm);
 
             }
 
@@ -1251,16 +1278,30 @@ namespace maps {
     Also compute the gradient with respect to the orbital
     parameters and the limb darkening coefficients.
 
+    NOTE: This uses the fast parameterization from
+          Agol & Luger (2018).
+
     */
     template <class T>
     inline Row<T> Map<T>::fluxLDWithGradient(const Scalar<T>& xo_,
-                                                const Scalar<T>& yo_,
-                                                const Scalar<T>& ro_) {
+                                             const Scalar<T>& yo_,
+                                             const Scalar<T>& ro_) {
 
         // Bind references to temporaries for speed
         Row<T>& result(tmp.tmpRow[0]);
+        resize(result, 0, nwav);
         Row<T>& dFdb(tmp.tmpRow[1]);
-        VectorT<Scalar<T>>& dFdu(tmp.tmpRowVector[0]);
+        resize(dFdb, 0, nwav);
+        Row<T>& dFdro(tmp.tmpRow[2]);
+        resize(dFdro, 0, nwav);
+        T& dFdu(tmp.tmpT[0]);
+        dFdu.resize(lmax, nwav);
+        T& dFdc(tmp.tmpT[1]);
+        dFdc.resize(lmax + 1, nwav);
+        VectorT<Scalar<T>>& dSdb(tmp.tmpRowVector[0]);
+        dSdb.resize(lmax + 1);
+        VectorT<Scalar<T>>& dSdro(tmp.tmpRowVector[1]);
+        dSdro.resize(lmax + 1);
         ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
         ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
 
@@ -1309,43 +1350,64 @@ namespace maps {
         // Occultation
         } else {
 
+            // Compute the Agol `c` basis
+            if (update_c_basis) {
+                for (int n = 0; n < nwav; ++n) {
+                    agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
+                    setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
+                }
+                update_c_basis = false;
+            }
+
             // Compute the sT vector using AutoDiff
             b_grad.value() = b;
             b_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
             ro_grad.value() = ro;
             ro_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
-            G_grad.compute(b_grad, ro_grad);
 
-            // Compute the b and ro derivs
-            setZero(dFdb);
-            setRow(dF, 3, Scalar<T>(0.0));
-            for (int i = 0; i < N; ++i) {
-                // dF / db = dsT / db . g_u
-                dFdb += G_grad.sT(i).derivatives()(0) * getRow(g_u, i);
-                // dF / dro = dsT / dro . g_u
-                setRow(dF, 3, Row<T>(getRow(dF, 3) +
-                                     G_grad.sT(i).derivatives()(1) *
-                                     getRow(g_u, i)));
-                // Store the value of s^T
-                G.sT(i) = G_grad.sT(i).value();
+            // Compute S, dS / db, and dS / dr
+            L_grad.compute(b_grad, ro_grad);
+
+            // Store the value of the S vector and its derivatives
+            for (int i = 0; i <= lmax; ++i) {
+                L.S(i) = L_grad.S(i).value();
+                dSdb(i) = L_grad.S(i).derivatives()(0);
+                dSdro(i) = L_grad.S(i).derivatives()(1);
             }
 
-            // Compute the resulting flux
-            result = dot(G.sT, g_u);
+            // Compute the value of the flux and its derivatives
+            for (int n = 0; n < nwav; ++n) {
 
-            // Compute the x and y derivs (straighforward chain rule)
+                // F, dF / db and dF / dr
+                setIndex(result, n, L.S.dot(getColumn(agol_c, n)) *
+                                    getIndex(agol_norm, n));
+                setIndex(dFdb, n, dSdb.dot(getColumn(agol_c, n)) *
+                                  getIndex(agol_norm, n));
+                setIndex(dFdro, n, dSdro.dot(getColumn(agol_c, n)) *
+                                   getIndex(agol_norm, n));
+
+                // Compute dF / dc
+                dFdc.block(0, n, lmax + 1, 1) = L.S.transpose() *
+                                                getIndex(agol_norm, n);
+                dFdc(0, n) -= getIndex(result, n) * getIndex(agol_norm, n) *
+                              pi<Scalar<T>>();
+                dFdc(1, n) -= 2.0 * pi<Scalar<T>>() / 3.0 *
+                              getIndex(result, n) * getIndex(agol_norm, n);
+
+                // Chain rule to get dF / du
+                dFdu.block(0, n, lmax, 1).transpose() =
+                    dFdc.block(0, n, lmax + 1, 1).transpose() *
+                    dagol_cdu(n).block(0, 1, lmax + 1, lmax);
+
+            }
+
+            // Update the user-facing derivs
             setRow(dF, 1, Row<T>(dFdb * xo / b));
             setRow(dF, 2, Row<T>(dFdb * yo / b));
-
-            // Compute the Y_{0, 0} deriv (straightforward since it's linear)
+            setRow(dF, 3, dFdro);
             setRow(dF, 4, cwiseQuotient(result, getRow(y, 0)));
-
-            // Compute the derivs with respect to the limb darkening coeffs
-            // dF / du = s^T . dg_u / du
-            for (int n = 0; n < nwav; ++n) {
-                dFdu = G.sT * dg_udu(n);
-                dF.block(5, n, lmax, 1) = dFdu.segment(1, lmax).transpose();
-            }
+            for (int i = 0; i < lmax; ++i)
+                setRow(dF, i + 5, getRow(dFdu, i));
 
             // Return the flux
             return result;
@@ -1530,6 +1592,108 @@ namespace maps {
                 for (int i = 0; i < N; i++)
                     setRow(dF, 4 + i, sTARR(i));
             }
+
+            // Dot the result in and we're done
+            return G.sT * ARRy;
+
+        }
+
+    }
+
+    /**
+    Compute the flux during or outside of an occultation
+    for a pure spherical harmonic map (u_{l} = 0 for l > 0).
+    Also compute the gradient with respect to the orbital
+    parameters and the spherical harmonic map coefficients.
+
+    */
+    template <class T>
+    inline Row<T> Map<T>::fluxConstantWithGradient(const Scalar<T>& xo_,
+                                                   const Scalar<T>& yo_,
+                                                   const Scalar<T>& ro_) {
+
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+        Row<T>& dFdb(tmp.tmpRow[1]);
+        T& ARRy(tmp.tmpT[2]);
+        ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
+        ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
+
+        // Resize the gradients
+        resizeGradient(1, 0);
+
+        // Convert to internal type
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+
+        // Impact parameter
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+           setZero(dF);
+           setZero(result);
+           return result;
+        }
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // Theta deriv is zero for constant maps
+            setRow(dF, 0, Scalar<T>(0.0));
+
+            // The x, y, and r derivs are trivial
+            setRow(dF, 1, Scalar<T>(0.0));
+            setRow(dF, 2, Scalar<T>(0.0));
+            setRow(dF, 3, Scalar<T>(0.0));
+
+            // Compute the consant coeff deriv
+            setRow(dF, 4, Scalar<T>(1.0));
+
+            // We're done!
+            return (B.rTA1 * y);
+
+        // Occultation
+        } else {
+
+            // Perform the rotation + change of basis
+            ARRy = B.A * y;
+
+            // Compute the sT vector using AutoDiff
+            b_grad.value() = b;
+            b_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
+            ro_grad.value() = ro;
+            ro_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
+            G_grad.compute(b_grad, ro_grad);
+
+            // Compute the b and ro derivs
+            setZero(dFdb);
+            setRow(dF, 3, Scalar<T>(0.0));
+            for (int i = 0; i < N; i++) {
+
+                // b deriv
+                dFdb += G_grad.sT(i).derivatives()(0) * getRow(ARRy, i);
+
+                // ro deriv
+                setRow(dF, 3, Row<T>(getRow(dF, 3) +
+                                     G_grad.sT(i).derivatives()(1) *
+                                     getRow(ARRy, i)));
+
+                // Store the value of s^T
+                G.sT(i) = G_grad.sT(i).value();
+
+            }
+
+            // Compute the theta deriv (trivial)
+            setRow(dF, 0, Scalar<T>(0.0));
+
+            // Compute the xo and yo derivs using the chain rule
+            setRow(dF, 1, Row<T>(dFdb * xo / b));
+            setRow(dF, 2, Row<T>(dFdb * yo / b));
+
+            // Compute the map deriv
+            setRow(dF, 4, cwiseQuotient(result, getRow(y, 0)));
 
             // Dot the result in and we're done
             return G.sT * ARRy;
@@ -1758,6 +1922,19 @@ namespace maps {
                     for (int i = 0; i < N; ++i)
                         dF(4 + i, n) = sTARdLDdpA1R(i);
                 }
+            }
+
+            // Compute the derivative of the LD polynomials
+            // with respect to the LD coefficients
+            if (update_p_u_derivs) {
+                for (int n = 0; n < nwav; ++n) {
+                    dp_udu(n) = -getColumn(p_u, n) * B.rTU1;
+                    dp_udu(n) /= dot(B.rT, getColumn(p_u, n));
+                    dp_udu(n) += B.U1;
+                    dp_udu(n) *= getColumn(ld_norm, n);
+                    dg_udu(n) = B.A2 * dp_udu(n);
+                }
+                update_p_u_derivs = false;
             }
 
             // TODO: Can be sped up
