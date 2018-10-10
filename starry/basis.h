@@ -548,6 +548,26 @@ namespace basis {
             // Constructor: compute the matrices
             explicit Basis(int lmax, T norm=2.0 / root_pi<T>()) :
                     lmax(lmax), norm(norm) {
+
+                /*
+                TODO: Disable spherical harmonic maps above l = 55,
+                since our current approach to the change of basis goes
+                unstable above this.
+                Pure limb-darkened maps still work in theory, so we
+                could warn the user and only allow them to use those.
+                if (lmax > 55) {
+                    int N = (lmax + 1) * (lmax + 1);
+                    A1.resize(N, N);
+                    A.resize(N, N);
+                    A1Inv.resize(N, N);
+                    rT.resize(N);
+                    rTA1.resize(N);
+                    U.resize(lmax + 1, lmax + 1);
+                    rTU1.resize(N);
+                    return;
+                }
+                */
+
                 computeA1(lmax, A1, norm);
                 computeA(lmax, A1, A2, A);
                 computeA1Inv(lmax, A1, A1Inv);
