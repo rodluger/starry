@@ -50,7 +50,7 @@ for i, N in enumerate(Narr):
     tstart = time.time()
     for k in range(number):
         system.compute(t)
-    starry_time[i] = time.time() - tstart
+    starry_time[i] = (time.time() - tstart) / number
 
     # batman
     params = batman.TransitParams()
@@ -78,7 +78,7 @@ for i, N in enumerate(Narr):
         # re-compute the orbital solution by setting m.t0 = None:
         m.t0 = None
         m.light_curve(params)
-    batman_time[i] = time.time() - tstart
+    batman_time[i] = (time.time() - tstart) / number
 
 # Plot
 fig, ax = pl.subplots(1, figsize=(4, 3))
