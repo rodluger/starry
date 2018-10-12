@@ -15,33 +15,14 @@ from .kepler import Primary, Secondary, System
 _LETTERS = "bcdefghijklmnopqrstuvwxyz"
 
 
-def assign_y(lmax, obj, y):
-    n = 0
-    for l in range(1, lmax+1):
-        dn = 2*l + 1
-        obj[l, :] = y[n:n+dn]
-        n += dn
-
-
 class StarryOp(tt.Op):
 
-    __props__ = (
-        "primary_lmax", "primary_u",
-        "secondary_lmax", "secondary_u",
-    )
+    __props__ = ("primary_lmax", "secondary_lmax", )
 
-    def __init__(self,
-                 primary_lmax=2, primary_u=False,
-                 secondary_lmax=(2, ), secondary_u=(False, )):
+    def __init__(self, primary_lmax=2, secondary_lmax=(2, )):
         # Save the primary information
         self.primary_lmax = int(primary_lmax)
-        self.primary_u = bool(primary_u)
-
-        self.param_names = []
-        if self.primary_u:
-            self.param_names.append("A.u")
-        else:
-            self.param_names.append("A.y")
+        self.param_names = ["A.u", "A.y"]
 
         # Work out the number and info for the secondaries
         try:
@@ -50,30 +31,23 @@ class StarryOp(tt.Op):
             self.n_secondary = 1
             secondary_lmax = (secondary_lmax, )
         self.secondary_lmax = tuple(int(l) for l in secondary_lmax)
-
-        try:
-            len(secondary_u)
-        except TypeError:
-            secondary_u = tuple(secondary_u for _ in range(self.n_secondary))
-        self.secondary_u = tuple(bool(u) for u in secondary_u)
-
-        if len(self.secondary_u) != len(self.secondary_lmax):
-            raise ValueError("the shapes of secondary_lmax and secondary_u "
-                             "must match")
         if self.n_secondary > len(_LETTERS):
             raise ValueError("only <= {0} secondaries are allowed"
                              .format(len(_LETTERS)))
 
         # Save the secondary parameter names
-        for u, l in zip(self.secondary_u, _LETTERS):
-            if u:
-                self.param_names.append("{0}.u".format(l))
-            else:
-                self.param_names.append("{0}.y".format(l))
-            for param in ("L", "r", "a", "porb", "prot", "inc", "ecc", "w",
-                          "lambda0"):
+        for l in _LETTERS[:self.n_secondary]:
+            for param in ("u", "y", "L", "r", "a", "porb", "prot", "inc",
+                          "ecc", "w", "lambda0"):
                 self.param_names.append("{0}.{1}".format(l, param))
 
+        # Pre-initialize the starry objects
+        self.primary = Primary(lmax=self.primary_lmax)
+        self.secondaries = [Secondary(lmax=lmax)
+                            for lmax in self.secondary_lmax]
+        self.system = System(self.primary, *self.secondaries)
+
+        # Set up the gradient operation
         self._grad_op = StarryGradOp(self)
 
     def make_node(self, *args):
@@ -86,32 +60,23 @@ class StarryOp(tt.Op):
         return shapes[-1],
 
     def perform(self, node, inputs, outputs):
-        system = self.build_system(*(inputs[:-1]))
-        system.compute(np.array(inputs[-1]))
-        outputs[0][0] = np.array(system.lightcurve)
+        self.build_system(*(inputs[:-1]))
+        self.system.compute(np.array(inputs[-1]))
+        outputs[0][0] = np.array(self.system.lightcurve)
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
 
-    def build_system(self, primary_u_or_y, *secondary_args):
-        primary = Primary(lmax=self.primary_lmax)
-        if self.primary_u:
-            primary[:] = primary_u_or_y
-        else:
-            assign_y(self.primary_lmax, primary, primary_u_or_y)
+    def build_system(self, primary_u, primary_y, *secondary_args):
+        self.primary[:] = primary_u
+        self.primary[1:, :] = primary_y
 
-        secondaries = []
-        for i, (u, lmax) in enumerate(zip(self.secondary_u,
-                                          self.secondary_lmax)):
-            args = secondary_args[10*i:10*(i+1)]
-            u_or_y, L, r, a, porb, prot, inc, ecc, w, lambda0 = args
+        for i, secondary in enumerate(self.secondaries):
+            args = secondary_args[11*i:11*(i+1)]
+            u, y, L, r, a, porb, prot, inc, ecc, w, lambda0 = args
 
-            secondary = Secondary(lmax=lmax)
-            if u:
-                secondary[:] = u_or_y
-            else:
-                assign_y(lmax, secondary, u_or_y)
-
+            secondary[:] = u
+            secondary[1:, :] = y
             secondary.L = L
             secondary.r = r
             secondary.a = a
@@ -121,10 +86,6 @@ class StarryOp(tt.Op):
             secondary.ecc = ecc
             secondary.w = w
             secondary.lambda0 = lambda0
-
-            secondaries.append(secondary)
-
-        return System(primary, *secondaries)
 
 
 class StarryGradOp(tt.Op):
@@ -144,14 +105,14 @@ class StarryGradOp(tt.Op):
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
-        system = self.base_op.build_system(*(inputs[:-2]))
-        system.compute(np.array(inputs[-2]), gradient=True)
-        grads = system.gradient
+        self.base_op.build_system(*(inputs[:-2]))
+        self.base_op.system.compute(np.array(inputs[-2]), gradient=True)
+        grads = self.base_op.system.gradient
 
         # The gradients with respect to the main parameters
         for i, param in enumerate(self.base_op.param_names):
-            outputs[i][0] = np.array(np.sum(np.array(grads[param]) *
-                                            np.array(inputs[-1]), axis=-1))
+            outputs[i][0] = np.array(np.sum(grads.get(param, 0.0) * inputs[-1],
+                                            axis=-1))
 
         # The gradient with respect to time
-        outputs[-1][0] = np.array(grads["time"]) * np.array(inputs[-1])
+        outputs[-1][0] = np.array(grads.get("time", 0.0) * inputs[-1])
