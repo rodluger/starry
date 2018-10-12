@@ -116,3 +116,41 @@ class StarryGradOp(tt.Op):
 
         # The gradient with respect to time
         outputs[-1][0] = np.array(grads.get("time", 0.0) * inputs[-1])
+
+
+def starry_op(primary_dict, secondary_dicts, time):
+    primary_lmax = primary_dict.get("lmax", 2)
+    args = [
+        primary_dict.get("u", tt.zeros(primary_lmax)),
+        primary_dict.get("y", tt.zeros(primary_lmax**2 + 2*primary_lmax)),
+    ]
+
+    try:
+        secondary_dicts.keys()
+    except AttributeError:
+        pass
+    else:
+        secondary_dicts = [secondary_dicts]
+
+    secondary_lmax = []
+    for secondary in secondary_dicts:
+        lmax = secondary.get("lmax", 2)
+        secondary_lmax.append(lmax)
+        args += [
+            secondary.get("u", tt.zeros(lmax)),
+            secondary.get("y", tt.zeros(lmax**2 + 2*lmax)),
+            secondary.get("L", tt.as_tensor_variable(0.0)),
+            secondary["r"],
+            secondary["a"],
+            secondary["porb"],
+            secondary.get("prot", tt.as_tensor_variable(0.0)),
+            secondary.get("inc", tt.as_tensor_variable(90.0)),
+            secondary.get("ecc", tt.as_tensor_variable(0.0)),
+            secondary.get("w", tt.as_tensor_variable(0.0)),
+            secondary.get("lambda0", tt.as_tensor_variable(0.0)),
+        ]
+
+    args += [tt.as_tensor_variable(time)]
+
+    op = StarryOp(primary_lmax=primary_lmax, secondary_lmax=secondary_lmax)
+    return op(*args)
