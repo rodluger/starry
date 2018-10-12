@@ -1094,11 +1094,13 @@ namespace pybind_interface {
         System
 
             // Constructor: one secondary
-            .def(py::init<kepler::Primary<T>*, kepler::Secondary<T>*>())
+            .def(py::init<kepler::Primary<T>*, kepler::Secondary<T>*>(),
+                 py::keep_alive<1, 2>(), py::keep_alive<1, 3>())
 
             // Constructor: multiple secondaries
             .def(py::init<kepler::Primary<T>*,
-                          std::vector<kepler::Secondary<T>*>>())
+                          std::vector<kepler::Secondary<T>*>>(),
+                 py::keep_alive<1, 2>(), py::keep_alive<1, 3>())
 
             .def_property_readonly("primary", [](kepler::System<T> &system) {
                 return system.primary;
