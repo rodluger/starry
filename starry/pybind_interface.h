@@ -158,6 +158,37 @@ namespace pybind_interface {
                  map.setAxis(map_axis);
              }, docstrings::Map::load_image, "image"_a, "lmax"_a=-1)
 
+             .def("load_healpix", [](maps::Map<T> &map,
+                                     const Matrix<double>& image,
+                                     int lmax) {
+                 py::object load_map =
+                    py::module::import("starry.maps").attr("load_map");
+                 if (lmax == -1)
+                    lmax = map.lmax;
+                 Vector<double> y_double =
+                    load_map(image, map.lmax, true).template cast<Vector<double>>();
+                 T y = y_double.template cast<Scalar<T>>();
+                 y /= y(0);
+                 int n = 0;
+                 for (int l = 0; l < lmax + 1; ++l) {
+                     for (int m = -l; m < l + 1; ++m) {
+                         map.setY(l, m, y(n));
+                         ++n;
+                     }
+                 }
+                 // We need to apply some rotations to get to the
+                 // desired orientation, where the center of the image
+                 // is projected onto the sub-observer point
+                 auto map_axis = map.getAxis();
+                 map.setAxis(xhat<Scalar<T>>());
+                 map.rotate(90.0);
+                 map.setAxis(zhat<Scalar<T>>());
+                 map.rotate(180.0);
+                 map.setAxis(yhat<Scalar<T>>());
+                 map.rotate(90.0);
+                 map.setAxis(map_axis);
+             }, docstrings::Map::load_healpix, "image"_a, "lmax"_a=-1)
+
              .def("add_gaussian", [](maps::Map<T> &map, const double& sigma,
                                      const double& amp, const double& lat,
                                      const double& lon, int lmax) {
@@ -298,9 +329,8 @@ namespace pybind_interface {
                 // right orientation after loading the image. In order
                 // to not screw up the map at other wavelengths, we can
                 // pre-apply the opposite transformation.
-                // NOTE: I can think of far better ways of doing this, but
-                // I don't think there's a pressing need to optimize this
-                // function.
+                // TODO: This is unnecessarily slow b/c of all the rotations.
+                // I can think of far better ways of doing this.
                 auto map_axis = map.getAxis();
                 map.setAxis(yhat<Scalar<T>>());
                 map.rotate(-90.0);
@@ -333,6 +363,51 @@ namespace pybind_interface {
                 map.rotate(90.0);
                 map.setAxis(map_axis);
             }, docstrings::Map::load_image, "image"_a, "nwav"_a=0, "lmax"_a=-1)
+
+            .def("load_healpix", [](maps::Map<T> &map, std::string& image,
+                                  int nwav, int lmax) {
+                py::object load_map =
+                    py::module::import("starry.maps").attr("load_map");
+                if (lmax == -1)
+                    lmax = map.lmax;
+                // Below, we rotate the entire map to get it to the
+                // right orientation after loading the image. In order
+                // to not screw up the map at other wavelengths, we can
+                // pre-apply the opposite transformation.
+                // TODO: This is unnecessarily slow b/c of all the rotations.
+                // I can think of far better ways of doing this.
+                auto map_axis = map.getAxis();
+                map.setAxis(yhat<Scalar<T>>());
+                map.rotate(-90.0);
+                map.setAxis(zhat<Scalar<T>>());
+                map.rotate(-180.0);
+                map.setAxis(xhat<Scalar<T>>());
+                map.rotate(-90.0);
+                map.setAxis(map_axis);
+                Vector<double> y_double =
+                    load_map(image, map.lmax, true).template cast<Vector<double>>();
+                T y = y_double.template cast<Scalar<T>>();
+                Row<T> row;
+                int n = 0;
+                for (int l = 0; l < lmax + 1; ++l) {
+                    for (int m = -l; m < l + 1; ++m) {
+                        row = map.getY(l, m);
+                        row(nwav) = y(n) / y(0);
+                        map.setY(l, m, row);
+                        ++n;
+                    }
+                }
+                // We need to apply some rotations to get to the
+                // desired orientation, where the center of the image
+                // is projected onto the sub-observer point
+                map.setAxis(xhat<Scalar<T>>());
+                map.rotate(90.0);
+                map.setAxis(zhat<Scalar<T>>());
+                map.rotate(180.0);
+                map.setAxis(yhat<Scalar<T>>());
+                map.rotate(90.0);
+                map.setAxis(map_axis);
+            }, docstrings::Map::load_healpix, "image"_a, "nwav"_a=0, "lmax"_a=-1)
 
             .def("add_gaussian", [](maps::Map<T> &map, py::args args,
                                     py::kwargs kwargs) {

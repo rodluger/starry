@@ -5,7 +5,7 @@ import sys
 import os
 import glob
 import setuptools
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
 # Module bits
 STARRY_MONO_64 = 1

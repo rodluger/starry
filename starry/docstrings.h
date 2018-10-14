@@ -87,6 +87,7 @@ namespace docstrings {
             .. automethod:: show(cmap='plasma', res=300)
             .. automethod:: animate(cmap='plasma', res=150, frames=50, interval=75, gif='')
             .. automethod:: load_image(image, lmax=None)
+            .. automethod:: load_healpix(image, lmax=None)
             .. automethod:: add_gaussian(sigma=0.1, amp=1, lat=0, lon=0, lmax=None)
             .. automethod:: reset()
             .. autoattribute:: lmax
@@ -321,6 +322,26 @@ namespace docstrings {
             .. note:: For maps with :py:obj:`nwav > 1`, users may specify a
                 :py:obj:`nwav` keyword argument indicating the wavelength bin
                 into which the image or array will be loaded.
+
+        )pbdoc";
+
+        const char* load_healpix = R"pbdoc(
+            Load a healpix image array.
+            This routine loads a :py:obj:`healpix` array, computes its
+            spherical harmonic
+            expansion up to degree :py:attr:`lmax`, and sets the map vector.
+
+            Args:
+                image (ndarray): The ring-ordered :py:obj:`healpix` array.
+                lmax (int): The maximum degree of the spherical harmonic \
+                    expansion of the image. Default :py:attr:`lmax`.
+
+            .. todo:: This routine has not been tested. If you have any \
+                      problems with it, please submit an issue on GitHub.
+
+            .. note:: For maps with :py:obj:`nwav > 1`, users may specify a
+                      :py:obj:`nwav` keyword argument indicating the wavelength bin
+                      into which the image or array will be loaded.
 
         )pbdoc";
 
