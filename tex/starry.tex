@@ -8,7 +8,7 @@
 \setlength{\belowdisplayskip}{1.5em}
 
 \title{%
-    \textbf{STARRY}: Analytic Occultation Light Curves 
+    \textbf{STARRY}: Analytic Occultation Light Curves
 }
 
 \author[0000-0002-0296-3826]{Rodrigo Luger}\altaffiliation{Flatiron Fellow}
@@ -235,7 +235,7 @@ the right and $\yhat$ up.
 Re-writing Equation~(\ref{eq:ylmtp}) in terms of $\x$, $\y$, and $\z$ leads
 to expressions that are simply polynomials of these variables, a fact we will
 heavily exploit below when computing their integrals.
-We derive the polynomimal representation of the spherical harmonics
+We derive the polynomial representation of the spherical harmonics
 in Appendix~\ref{app:spharm}. The spherical harmonics up to
 degree $l = 5$ are shown in Figure~\ref{fig:ylms}.
 
@@ -288,7 +288,7 @@ to the spherical harmonic of degree and order given by
 \begin{align}
     \label{eq:lm}
     l &= \floor*{\sqrt{n}} \nonumber \\
-    m &= n - \floor*{\sqrt{n}}^2 - \floor*{\sqrt{n}}
+    m &= n - l^2 - l
     \quad,
 \end{align}
 %
@@ -1443,7 +1443,7 @@ planet.prot = 4.3    # Rotational period in days
 %
 These properties, along with their default values, are detailed in full
 in the
-\href{https://rodluger.github.io/starry/starry.html\#starry.Planet}{documentation}.
+\href{https://rodluger.github.io/starry/starry.html\#starry.kepler.Secondary}{documentation}.
 
 Suppose we wish to give the planet a simple
 dipole map ($Y_{1,0}$) with peak brightness at the sub-stellar point.
