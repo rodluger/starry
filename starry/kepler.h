@@ -2049,7 +2049,7 @@ namespace kepler {
             setRow(secondary->dflux_cur, g, Row<T>(
                    getRow(secondary->dflux_cur, g) -
                    getRow(secondary->dflux_tot, g) +
-                   cwiseQuotient(secondary->flux_tot, secondary->L)));
+                   cwiseQuotient(secondary->flux_cur, secondary->L)));
             g++;
 
             // dF / dprot
@@ -2290,7 +2290,7 @@ namespace kepler {
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      cwiseQuotient(secondary->flux_tot, secondary->L)));
+                      cwiseQuotient(secondary->flux_cur, secondary->L)));
                g++;
 
                // dF / dprot
