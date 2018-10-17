@@ -487,7 +487,7 @@ namespace kepler {
     template <class T>
     inline void Body<T>::computeTotal(const Scalar<T>& time, bool gradient, bool numerical) {
         if (!allZero(L)) {
-            flux_tot = L * getFlux(theta_deg(time), 0, 0, 0, gradient, numerical);
+            flux_tot = cwiseProduct(L, getFlux(theta_deg(time), 0, 0, 0, gradient, numerical));
         } else {
             setZero(flux_tot);
         }
@@ -499,7 +499,7 @@ namespace kepler {
     inline void Body<T>::occult(const Scalar<T>& time, const Scalar<T>& xo,
                                 const Scalar<T>& yo, const Scalar<T>& ro,
                                 bool gradient, bool numerical) {
-        flux_cur += L * getFlux(theta_deg(time), xo, yo, ro, gradient, numerical)
+        flux_cur += cwiseProduct(L, getFlux(theta_deg(time), xo, yo, ro, gradient, numerical))
                     - flux_tot;
     }
 
