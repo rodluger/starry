@@ -649,6 +649,15 @@ namespace pybind_interface {
 
         Body
 
+            // Luminosity in units of primary luminosity
+            .def_property("L",
+                [](kepler::Body<T> &body) {
+                    return static_cast<double>(body.getLuminosity());
+                },
+                [](kepler::Body<T> &body, const double& L){
+                    body.setLuminosity(Scalar<T>(L));
+                }, docstrings::Body::L)
+
             // The gradient of the light curve: a dictionary of matrices/vectors
             // NOTE: This may be slow because we need to swap some axes here:
             //      dL(NT)(ngrad, nwav) --> gradient(ngrad)(NT, nwav)
@@ -732,6 +741,15 @@ namespace pybind_interface {
 
         Body
 
+            // Luminosity in units of primary luminosity
+            .def_property("L",
+                [](kepler::Body<T> &body) {
+                    return body.getLuminosity().template cast<double>();
+                },
+                [](kepler::Body<T> &body, const Vector<double>& L){
+                    body.setLuminosity(L.template cast<Scalar<T>>());
+                }, docstrings::Body::L)
+
             // The gradient of the light curve: a dictionary of matrices/vectors
             // NOTE: This may be slow because we need to swap some axes here:
             //      dL(NT)(ngrad, nwav) --> gradient(ngrad)(NT, nwav)
@@ -810,15 +828,6 @@ namespace pybind_interface {
                     body.setRadius(r);
                 }, docstrings::Body::r)
 
-            // Luminosity in units of primary luminosity
-            .def_property("L",
-                [](kepler::Body<T> &body) {
-                    return static_cast<double>(body.getLuminosity());
-                },
-                [](kepler::Body<T> &body, const double& L){
-                    body.setLuminosity(L);
-                }, docstrings::Body::L)
-
             // Rotation period in days
             .def_property("prot",
                 [](kepler::Body<T> &body) {
@@ -856,6 +865,50 @@ namespace pybind_interface {
     }
 
     /**
+    Add type-specific features to the Body class: single-wavelength starry.
+
+    */
+    template <typename T>
+    typename std::enable_if<!std::is_base_of<Eigen::EigenBase<Row<T>>,
+                                            Row<T>>::value, void>::type
+    addPrimaryExtras(py::class_<kepler::Primary<T>>& Primary) {
+
+        Primary
+
+            // Luminosity in units of primary luminosity
+            .def_property("L",
+                [](kepler::Primary<T> &body) {
+                    return static_cast<double>(body.getLuminosity());
+                },
+                [](kepler::Primary<T> &body, const double& L){
+                    body.setLuminosity(Scalar<T>(L));
+                }, docstrings::Primary::L);
+
+    }
+
+    /**
+    Add type-specific features to the Body class: spectral starry.
+
+    */
+    template <typename T>
+    typename std::enable_if<std::is_base_of<Eigen::EigenBase<Row<T>>,
+                                            Row<T>>::value, void>::type
+    addPrimaryExtras(py::class_<kepler::Primary<T>>& Primary) {
+
+        Primary
+
+            // Luminosity in units of primary luminosity
+            .def_property("L",
+                [](kepler::Primary<T> &body) {
+                    return body.getLuminosity().template cast<double>();
+                },
+                [](kepler::Primary<T> &body, const Vector<double>& L){
+                    body.setLuminosity(L.template cast<Scalar<T>>());
+                }, docstrings::Primary::L);
+
+    }
+
+    /**
     The pybind wrapper for the Primary class.
 
     */
@@ -883,15 +936,6 @@ namespace pybind_interface {
                     body.setRadius(r);
                 }, docstrings::Primary::r)
 
-            // Luminosity in units of primary luminosity
-            .def_property("L",
-                [](kepler::Primary<T> &body) {
-                    return static_cast<double>(body.getLuminosity());
-                },
-                [](kepler::Primary<T> &body, const double& L){
-                    body.setLuminosity(L);
-                }, docstrings::Primary::L)
-
             // Radius in meters (sets a scale for light travel time delay)
             .def_property("r_m",
                 [](kepler::Primary<T> &body) {
@@ -900,6 +944,9 @@ namespace pybind_interface {
                 [](kepler::Primary<T> &body, const double& r_m){
                     body.setRadiusInMeters(r_m);
                 }, docstrings::Primary::r_m);
+
+        // Add type-specific attributes & methods
+        addPrimaryExtras(Primary);
 
         return Primary;
 

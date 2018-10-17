@@ -391,7 +391,7 @@ namespace kepler {
             using Map<T>::dF_names;
 
             S r;                                                                /**< Body radius in units of primary radius */
-            S L;                                                                /**< Body luminosity in units of primary luminosity */
+            Row<T> L;                                                           /**< Body luminosity in units of primary luminosity */
             S prot;                                                             /**< Body rotation period in seconds */
             S tref;                                                             /**< Reference time in seconds */
             S theta0_deg;                                                       /**< Body initial rotation angle in degrees */
@@ -441,7 +441,10 @@ namespace kepler {
 
                 // Set the orbital variables to default values
                 setRadius(1.0);
-                setLuminosity(1.0);
+                Row<T> defaultL;
+                resize(defaultL, 1, nwav);
+                setOnes(defaultL);
+                setLuminosity(defaultL);
                 setRotPer(0.0);
                 setRefTime(0.0);
 
@@ -454,8 +457,8 @@ namespace kepler {
             using Map<T>::nwav;
             void setRadius(const S& r_);
             virtual S getRadius() const;
-            void setLuminosity(const S& L_);
-            virtual S getLuminosity() const;
+            void setLuminosity(const Row<T>& L_);
+            virtual Row<T> getLuminosity() const;
             void setRotPer(const S& prot_);
             S getRotPer() const;
             void setRefTime(const S& tref_);
@@ -483,7 +486,7 @@ namespace kepler {
     //! Compute the total flux from the body
     template <class T>
     inline void Body<T>::computeTotal(const Scalar<T>& time, bool gradient, bool numerical) {
-        if (L != 0) {
+        if (!allZero(L)) {
             flux_tot = L * getFlux(theta_deg(time), 0, 0, 0, gradient, numerical);
         } else {
             setZero(flux_tot);
@@ -520,14 +523,17 @@ namespace kepler {
 
     //! Set the body's luminosity
     template <class T>
-    void Body<T>::setLuminosity(const Scalar<T>& L_) {
-        if (L_ >= 0) L = L_;
-        else throw errors::ValueError("Body's luminosity cannot be negative.");
+    void Body<T>::setLuminosity(const Row<T>& L_) {
+        L = L_;
+        for (int n = 0; n < nwav; ++n) {
+            if (getIndex(L_, n) < 0)
+                throw errors::ValueError("Body's luminosity cannot be negative.");
+        }
     }
 
     //! Get the body's luminosity
     template <class T>
-    Scalar<T> Body<T>::getLuminosity() const {
+    Row<T> Body<T>::getLuminosity() const {
         return L;
     }
 
@@ -630,7 +636,10 @@ namespace kepler {
 
                 setRadiusInMeters(0.0);
                 setRadius(1.0);
-                setLuminosity(1.0);
+                Row<T> defaultL;
+                resize(defaultL, 1, nwav);
+                setOnes(defaultL);
+                setLuminosity(defaultL);
                 setRotPer(0.0);
                 setRefTime(0.0);
 
@@ -638,7 +647,7 @@ namespace kepler {
 
             // I/O
             void setRadius(const S& r_);
-            void setLuminosity(const S& L_);
+            void setLuminosity(const Row<T>& L_);
             void setRadiusInMeters(const S& r_);
             S getRadiusInMeters() const;
             std::string info();
@@ -680,10 +689,12 @@ namespace kepler {
 
     //! Set the body's luminosity
     template <class T>
-    void Primary<T>::setLuminosity(const Scalar<T>& L_) {
-        if (L_ != 1.0)
-            throw errors::NotImplementedError("The luminosity of the primary "
-                                              "body is fixed at unity.");
+    void Primary<T>::setLuminosity(const Row<T>& L_) {
+        for (int n = 0; n < this->nwav; ++n) {
+            if (getIndex(L_, n) != 1)
+                throw errors::NotImplementedError("The luminosity of the primary "
+                                                  "body is fixed at unity.");
+        }
     }
 
     //! Human-readable string
@@ -846,7 +857,10 @@ namespace kepler {
 
                 // Set the orbital variables to default values
                 this->setRadius(0.1);
-                this->setLuminosity(0.0);
+                Row<T> defaultL;
+                resize(defaultL, 1, nwav);
+                setZero(defaultL);
+                this->setLuminosity(defaultL);
                 this->setRotPer(0.0);
                 this->setRefTime(0.0);
                 setSemi(50.0);
@@ -1451,7 +1465,7 @@ namespace kepler {
                                     gradient, numerical);
                     if (gradient)
                         computePrimaryOccultationGradient(time_cur, secondary);
-                } else if (secondary->L != 0) {
+                } else if (!allZero(secondary->L)) {
                     ro = 1. / secondary->r;
                     secondary->occult(time_cur, -ro * secondary->x_cur,
                                       -ro * secondary->y_cur, ro,
@@ -1473,7 +1487,7 @@ namespace kepler {
                     o = i;
                     p = j;
                 }
-                if (secondaries[p]->L != 0) {
+                if (!allZero(secondaries[p]->L)) {
                     ro = 1. / secondaries[p]->r;
                     xo = ro * (secondaries[o]->x_cur - secondaries[p]->x_cur);
                     yo = ro * (secondaries[o]->y_cur - secondaries[p]->y_cur);
@@ -1712,7 +1726,7 @@ namespace kepler {
         // just to get this single derivative (which will likely never
         // be used) seems silly. To override this, users can just set the
         // body's luminosity to a very small nonzero value (~1e-15).
-        if (secondary->L != 0) {
+        if (!allZero(secondary->L)) {
 
             // Time delay corrections to the derivatives from
             // the dependence of `theta` on `delay`
@@ -1734,7 +1748,7 @@ namespace kepler {
 
             // dF / dL
             setRow(secondary->dflux_tot, g++,
-                   Row<T>(secondary->flux_tot / secondary->L));
+                   Row<T>(cwiseQuotient(secondary->flux_tot, secondary->L)));
 
             // dF / dprot from dtheta / dt
             setRow(secondary->dflux_tot, g++,
@@ -1993,7 +2007,7 @@ namespace kepler {
             Secondary<T>* secondary) {
 
         // See note in `computeSecondaryTotalGradient()`
-        if (secondary->L != 0) {
+        if (!allZero(secondary->L)) {
 
             // ** Pre-compute some stuff **
 
@@ -2034,7 +2048,7 @@ namespace kepler {
             setRow(secondary->dflux_cur, g, Row<T>(
                    getRow(secondary->dflux_cur, g) -
                    getRow(secondary->dflux_tot, g) +
-                   secondary->flux_cur / secondary->L));
+                   cwiseQuotient(secondary->flux_tot, secondary->L)));
             g++;
 
             // dF / dprot
@@ -2225,7 +2239,7 @@ namespace kepler {
     inline void System<T>::computeSecondaryOccultationGradient(const S& time_cur,
             Secondary<T>* secondary, Secondary<T>* occultor) {
 
-        if (secondary->L != 0) {
+        if (!allZero(secondary->L)) {
 
             // ** Pre-compute some stuff **
 
@@ -2266,7 +2280,7 @@ namespace kepler {
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      secondary->flux_cur / secondary->L));
+                      cwiseQuotient(secondary->flux_tot, secondary->L)));
                g++;
 
                // dF / dprot
