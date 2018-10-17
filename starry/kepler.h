@@ -1730,7 +1730,7 @@ namespace kepler {
 
             // Time delay corrections to the derivatives from
             // the dependence of `theta` on `delay`
-            Row<T> corr = -secondary->L * getRow(secondary->dF, 0) *
+            Row<T> corr = -cwiseProduct(secondary->L, getRow(secondary->dF, 0)) *
                           secondary->angvelrot_deg;
 
             // Starting index for the secondary's derivs
@@ -1738,7 +1738,7 @@ namespace kepler {
 
             // dF / dt from dtheta / dt
             setRow(secondary->dflux_tot, 0,
-                   Row<T>(secondary->L * getRow(secondary->dF, 0) *
+                   Row<T>(cwiseProduct(secondary->L, getRow(secondary->dF, 0)) *
                           secondary->angvelrot_deg * units::DayToSeconds +
                           corr * secondary->AD.delay.derivatives()(0) *
                           units::DayToSeconds));
@@ -1752,7 +1752,7 @@ namespace kepler {
 
             // dF / dprot from dtheta / dt
             setRow(secondary->dflux_tot, g++,
-                   Row<T>(-secondary->L * getRow(secondary->dF, 0) *
+                   Row<T>(-cwiseProduct(secondary->L, getRow(secondary->dF, 0)) *
                          (secondary->angvelrot_deg *
                          (time_cur - secondary->tref - secondary->delay) /
                           secondary->prot +
@@ -1765,7 +1765,7 @@ namespace kepler {
 
             // dF / dporb
             setRow(secondary->dflux_tot, g++,
-                   Row<T>(secondary->L * getRow(secondary->dF, 0) *
+                   Row<T>(cwiseProduct(secondary->L, getRow(secondary->dF, 0)) *
                           secondary->theta0_deg / secondary->porb *
                           units::DayToSeconds +
                           corr * secondary->AD.delay.derivatives()(5) *
@@ -1787,21 +1787,21 @@ namespace kepler {
                     }
                 }
                 setRow(secondary->dflux_tot, g++,
-                       Row<T>(dot(secondary->B.rTA1, y_transf) *
-                              (-secondary->L * pi<Scalar<T>>() / 180.) +
+                       Row<T>(cwiseProduct(secondary->L, dot(secondary->B.rTA1, y_transf)) *
+                              (-pi<Scalar<T>>() / 180.) +
                               corr * secondary->AD.delay.derivatives()(8) *
                               pi<Scalar<T>>() / 180.0));
             }
 
             // dF / decc
             setRow(secondary->dflux_tot, g++,
-                   Row<T>(secondary->L * getRow(secondary->dF, 0) *
+                   Row<T>(cwiseProduct(secondary->L, getRow(secondary->dF, 0)) *
                           secondary->dtheta0_degde +
                           corr * secondary->AD.delay.derivatives()(2)));
 
             // dF / dw; note that we must account for d(delay) / dM0(w)
             setRow(secondary->dflux_tot, g++,
-                   Row<T>(secondary->L * getRow(secondary->dF, 0) *
+                   Row<T>(cwiseProduct(secondary->L, getRow(secondary->dF, 0)) *
                           secondary->dtheta0_degdw * pi<Scalar<T>>() / 180.0 +
                           corr * (secondary->AD.delay.derivatives()(6) -
                                   secondary->AD.delay.derivatives()(3)) *
@@ -1823,20 +1823,20 @@ namespace kepler {
                     }
                 }
                 setRow(secondary->dflux_tot, g++,
-                       Row<T>(dot(secondary->B.rTA1, y_transf) *
-                              (secondary->L * pi<Scalar<T>>() / 180.)));
+                       Row<T>(cwiseProduct(secondary->L, dot(secondary->B.rTA1, y_transf)) *
+                              (pi<Scalar<T>>() / 180.)));
             }
 
             // dF / dlambda0
             setRow(secondary->dflux_tot, g++,
-                   Row<T>(secondary->L * getRow(secondary->dF, 0) *
+                   Row<T>(cwiseProduct(secondary->L, getRow(secondary->dF, 0)) *
                           secondary->porb / secondary->prot +
                           corr * secondary->AD.delay.derivatives()(3) *
                           pi<Scalar<T>>() / 180.0));
 
             // dF / dtref from dtheta / dt
             setRow(secondary->dflux_tot, g++,
-                   Row<T>(-secondary->L * getRow(secondary->dF, 0) *
+                   Row<T>(-cwiseProduct(secondary->L, getRow(secondary->dF, 0)) *
                           secondary->angvelrot_deg * units::DayToSeconds +
                           corr * secondary->AD.delay.derivatives()(4) *
                           units::DayToSeconds));
@@ -1844,9 +1844,9 @@ namespace kepler {
             // dF / d{y} and dF / d{u} from the map derivs
             // Note that we skip the Y_{0,0} deriv
             int sz = secondary->dF.rows() - 5;
-            secondary->dflux_tot.block(g, 0, sz, secondary->nwav) =
-                secondary->L * secondary->dF.block(5, 0, sz, secondary->nwav);
-
+            for (int n = 0; n < secondary->nwav; ++n) {
+                secondary->dflux_tot.block(g, n, sz, n + 1) = getIndex(secondary->L, n) * secondary->dF.block(5, n, sz, n + 1);
+            }
         }
 
         // Update current flux derivative
@@ -2024,24 +2024,25 @@ namespace kepler {
             setRow(secondary->dflux_cur, 0, Row<T>(
                    getRow(secondary->dflux_cur, 0) -
                    getRow(secondary->dflux_tot, 0) +
-                   secondary->L *
+                   cwiseProduct(secondary->L, Row<T>
                    (getRow(secondary->dF, 0) * secondary->angvelrot_deg -
                     getRow(secondary->dF, 0) * secondary->angvelrot_deg *
                         secondary->AD.delay.derivatives()(0) -
                     ro * getRow(secondary->dF, 1) *
                         secondary->AD.x.derivatives()(0) -
                     ro * getRow(secondary->dF, 2) *
-                        secondary->AD.y.derivatives()(0)) *
+                        secondary->AD.y.derivatives()(0))) *
                    units::DayToSeconds));
 
             // dF / dr
             setRow(secondary->dflux_cur, g, Row<T>(
                    getRow(secondary->dflux_cur, g) -
                    getRow(secondary->dflux_tot, g) +
-                   secondary->L * ro * ro *
+                   ro * ro *
+                   cwiseProduct(secondary->L, Row<T>
                    (secondary->x_cur * getRow(secondary->dF, 1) +
                     secondary->y_cur * getRow(secondary->dF, 2) -
-                    getRow(secondary->dF, 3))));
+                    getRow(secondary->dF, 3)))));
             g++;
 
             // dF / dL
@@ -2055,7 +2056,7 @@ namespace kepler {
             setRow(secondary->dflux_cur, g, Row<T>(
                    getRow(secondary->dflux_cur, g) -
                    getRow(secondary->dflux_tot, g) -
-                   secondary->L * getRow(secondary->dF, 0) *
+                   cwiseProduct(secondary->L, getRow(secondary->dF, 0)) *
                    (secondary->angvelrot_deg *
                    (time_cur - secondary->tref - secondary->delay) / secondary->prot +
                    secondary->theta0_deg / secondary->prot) * units::DayToSeconds));
@@ -2065,20 +2066,21 @@ namespace kepler {
             setRow(secondary->dflux_cur, g, Row<T>(
                    getRow(secondary->dflux_cur, g) -
                    getRow(secondary->dflux_tot, g) -
-                   secondary->L * (
+                   cwiseProduct(secondary->L, Row<T>(
                        getRow(secondary->dF, 0) * secondary->angvelrot_deg *
                             secondary->AD.delay.derivatives()(1) +
                        getRow(secondary->dF, 1) *
                             secondary->AD.x.derivatives()(1) * ro +
                        getRow(secondary->dF, 2) *
-                            secondary->AD.y.derivatives()(1) * ro)));
+                            secondary->AD.y.derivatives()(1) * ro))));
             g++;
 
             // dF / porb
             setRow(secondary->dflux_cur, g, Row<T>(
                    getRow(secondary->dflux_cur, g) -
                    getRow(secondary->dflux_tot, g) -
-                   secondary->L * units::DayToSeconds * (
+                   units::DayToSeconds *
+                   cwiseProduct(secondary->L, Row<T>(
                        getRow(secondary->dF, 0) * secondary->angvelrot_deg *
                             secondary->AD.delay.derivatives()(5) -
                        getRow(secondary->dF, 0) *
@@ -2086,7 +2088,7 @@ namespace kepler {
                        getRow(secondary->dF, 1) *
                             secondary->AD.x.derivatives()(5) * ro +
                        getRow(secondary->dF, 2) *
-                            secondary->AD.y.derivatives()(5) * ro)));
+                            secondary->AD.y.derivatives()(5) * ro))));
             g++;
 
             // dF / dinc
@@ -2111,7 +2113,8 @@ namespace kepler {
                 setRow(secondary->dflux_cur, g, Row<T>(
                        getRow(secondary->dflux_cur, g) -
                        getRow(secondary->dflux_tot, g) +
-                       secondary->L * pi<Scalar<T>>() / 180. * (
+                       pi<Scalar<T>>() / 180. *
+                       cwiseProduct(secondary->L, Row<T>(
                        -getRow(secondary->dF, 0) *
                                secondary->angvelrot_deg *
                                secondary->AD.delay.derivatives()(8) +
@@ -2119,7 +2122,7 @@ namespace kepler {
                        - getRow(secondary->dF, 1) *
                             secondary->AD.x.derivatives()(8) * ro
                        - getRow(secondary->dF, 2) *
-                            secondary->AD.y.derivatives()(8) * ro))
+                            secondary->AD.y.derivatives()(8) * ro)))
                    );
             }
             g++;
@@ -2128,7 +2131,7 @@ namespace kepler {
             setRow(secondary->dflux_cur, g, Row<T>(
                    getRow(secondary->dflux_cur, g) -
                    getRow(secondary->dflux_tot, g) -
-                   secondary->L * (
+                   cwiseProduct(secondary->L, Row<T>(
                        getRow(secondary->dF, 0) * secondary->angvelrot_deg *
                             secondary->AD.delay.derivatives()(2) -
                        getRow(secondary->dF, 0) *
@@ -2136,14 +2139,15 @@ namespace kepler {
                        getRow(secondary->dF, 1) *
                             secondary->AD.x.derivatives()(2) * ro +
                        getRow(secondary->dF, 2) *
-                            secondary->AD.y.derivatives()(2) * ro)));
+                            secondary->AD.y.derivatives()(2) * ro))));
             g++;
 
             // dF / dw; note that we must account for d / dM0(w)
             setRow(secondary->dflux_cur, g, Row<T>(
                    getRow(secondary->dflux_cur, g) -
                    getRow(secondary->dflux_tot, g) -
-                   secondary->L * pi<Scalar<T>>() / 180.0 * (
+                   pi<Scalar<T>>() / 180.0 *
+                   cwiseProduct(secondary->L, Row<T>(
                        getRow(secondary->dF, 0) * secondary->angvelrot_deg *
                             (secondary->AD.delay.derivatives()(6) -
                              secondary->AD.delay.derivatives()(3)) -
@@ -2154,7 +2158,7 @@ namespace kepler {
                              secondary->AD.x.derivatives()(3)) * ro +
                        getRow(secondary->dF, 2) *
                             (secondary->AD.y.derivatives()(6) -
-                             secondary->AD.y.derivatives()(3)) * ro)));
+                             secondary->AD.y.derivatives()(3)) * ro))));
             g++;
 
 
@@ -2180,12 +2184,13 @@ namespace kepler {
                 setRow(secondary->dflux_cur, g, Row<T>(
                        getRow(secondary->dflux_cur, g) -
                        getRow(secondary->dflux_tot, g) +
-                       secondary->L * pi<Scalar<T>>() / 180. * (
+                       pi<Scalar<T>>() / 180. *
+                       cwiseProduct(secondary->L, Row<T>(
                        dFdOmega
                        - getRow(secondary->dF, 1) *
                             secondary->AD.x.derivatives()(7) * ro
                        - getRow(secondary->dF, 2) *
-                            secondary->AD.y.derivatives()(7) * ro))
+                            secondary->AD.y.derivatives()(7) * ro)))
                    );
             }
             g++;
@@ -2194,7 +2199,8 @@ namespace kepler {
             setRow(secondary->dflux_cur, g, Row<T>(
                    getRow(secondary->dflux_cur, g) -
                    getRow(secondary->dflux_tot, g) +
-                   secondary->L * pi<Scalar<T>>() / 180.0 * (
+                   pi<Scalar<T>>() / 180.0 *
+                   cwiseProduct(secondary->L, Row<T>(
                        getRow(secondary->dF, 0) *
                             (180.0 / pi<Scalar<T>>() *
                             secondary->porb / secondary->prot -
@@ -2203,29 +2209,32 @@ namespace kepler {
                        getRow(secondary->dF, 1) *
                             secondary->AD.x.derivatives()(3) * ro -
                        getRow(secondary->dF, 2) *
-                            secondary->AD.y.derivatives()(3) * ro)));
+                            secondary->AD.y.derivatives()(3) * ro))));
             g++;
 
             // dF / dtref
             setRow(secondary->dflux_cur, g, Row<T>(
                    getRow(secondary->dflux_cur, g) -
                    getRow(secondary->dflux_tot, g) -
-                   secondary->L * units::DayToSeconds * (
+                   units::DayToSeconds *
+                   cwiseProduct(secondary->L, Row<T>(
                        getRow(secondary->dF, 0) *
                             secondary->angvelrot_deg *
                             (1 + secondary->AD.delay.derivatives()(4)) +
                        getRow(secondary->dF, 1) *
                             secondary->AD.x.derivatives()(4) * ro +
                        getRow(secondary->dF, 2) *
-                            secondary->AD.y.derivatives()(4) * ro)));
+                            secondary->AD.y.derivatives()(4) * ro))));
             g++;
 
             // dF / d{y} and dF / d{u}
             // Note that we skip the Y_{0,0} deriv
             int sz = secondary->dF.rows() - 5;
-            secondary->dflux_cur.block(g, 0, sz, secondary->nwav) +=
-                secondary->L * secondary->dF.block(5, 0, sz, secondary->nwav) -
-                secondary->dflux_tot.block(g, 0, sz, secondary->nwav);
+            for (int n = 0; n < secondary->nwav; ++n) {
+                secondary->dflux_cur.block(g, n, sz, n + 1) +=
+                getIndex(secondary->L, n) * secondary->dF.block(5, n, sz, n + 1) -
+                secondary->dflux_tot.block(g, n, sz, n + 1);
+            }
 
         }
     }
@@ -2256,24 +2265,25 @@ namespace kepler {
             setRow(secondary->dflux_cur, 0, Row<T>(
                    getRow(secondary->dflux_cur, 0) -
                    getRow(secondary->dflux_tot, 0) +
-                   secondary->L *
+                   cwiseProduct(secondary->L, Row<T>
                    (getRow(secondary->dF, 0) * secondary->angvelrot_deg -
                     getRow(secondary->dF, 0) * secondary->angvelrot_deg *
                         secondary->AD.delay.derivatives()(0) +
                     rb * getRow(secondary->dF, 1) *
                         (occultor->AD.x.derivatives()(0) - secondary->AD.x.derivatives()(0)) +
                     rb * getRow(secondary->dF, 2) *
-                        (occultor->AD.y.derivatives()(0) - secondary->AD.y.derivatives()(0))) *
+                        (occultor->AD.y.derivatives()(0) - secondary->AD.y.derivatives()(0)))) *
                    units::DayToSeconds));
 
                // dF / dr
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      secondary->L * rb * rb *
+                      rb * rb *
+                      cwiseProduct(secondary->L, Row<T>
                       ((secondary->x_cur - occultor->x_cur) * getRow(secondary->dF, 1) +
                        (secondary->y_cur - occultor->y_cur) * getRow(secondary->dF, 2) -
-                       occultor->r * getRow(secondary->dF, 3))));
+                       occultor->r * getRow(secondary->dF, 3)))));
                g++;
 
                // dF / dL
@@ -2287,7 +2297,7 @@ namespace kepler {
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) -
-                      secondary->L * getRow(secondary->dF, 0) *
+                      cwiseProduct(secondary->L, getRow(secondary->dF, 0)) *
                       (secondary->angvelrot_deg *
                       (time_cur - secondary->tref - secondary->delay) / secondary->prot +
                       secondary->theta0_deg / secondary->prot) * units::DayToSeconds));
@@ -2297,20 +2307,21 @@ namespace kepler {
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) -
-                      secondary->L * (
+                      cwiseProduct(secondary->L, Row<T>(
                           getRow(secondary->dF, 0) * secondary->angvelrot_deg *
                                secondary->AD.delay.derivatives()(1) +
                           getRow(secondary->dF, 1) *
                                secondary->AD.x.derivatives()(1) * rb +
                           getRow(secondary->dF, 2) *
-                               secondary->AD.y.derivatives()(1) * rb)));
+                               secondary->AD.y.derivatives()(1) * rb))));
                g++;
 
                // dF / porb
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) -
-                      secondary->L * units::DayToSeconds * (
+                      units::DayToSeconds *
+                      cwiseProduct(secondary->L, Row<T>(
                           getRow(secondary->dF, 0) * secondary->angvelrot_deg *
                                secondary->AD.delay.derivatives()(5) -
                           getRow(secondary->dF, 0) *
@@ -2318,7 +2329,7 @@ namespace kepler {
                           getRow(secondary->dF, 1) *
                                secondary->AD.x.derivatives()(5) * rb +
                           getRow(secondary->dF, 2) *
-                               secondary->AD.y.derivatives()(5) * rb)));
+                               secondary->AD.y.derivatives()(5) * rb))));
                g++;
 
                // dF / dinc
@@ -2343,7 +2354,8 @@ namespace kepler {
                    setRow(secondary->dflux_cur, g, Row<T>(
                           getRow(secondary->dflux_cur, g) -
                           getRow(secondary->dflux_tot, g) +
-                          secondary->L * pi<Scalar<T>>() / 180. * (
+                          pi<Scalar<T>>() / 180. *
+                          cwiseProduct(secondary->L, Row<T>(
                           -getRow(secondary->dF, 0) *
                                   secondary->angvelrot_deg *
                                   secondary->AD.delay.derivatives()(8) +
@@ -2351,7 +2363,7 @@ namespace kepler {
                           - getRow(secondary->dF, 1) *
                                secondary->AD.x.derivatives()(8) * rb
                           - getRow(secondary->dF, 2) *
-                               secondary->AD.y.derivatives()(8) * rb))
+                               secondary->AD.y.derivatives()(8) * rb)))
                       );
                }
                g++;
@@ -2360,7 +2372,7 @@ namespace kepler {
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) -
-                      secondary->L * (
+                      cwiseProduct(secondary->L, Row<T>(
                           getRow(secondary->dF, 0) * secondary->angvelrot_deg *
                                secondary->AD.delay.derivatives()(2) -
                           getRow(secondary->dF, 0) *
@@ -2368,14 +2380,15 @@ namespace kepler {
                           getRow(secondary->dF, 1) *
                                secondary->AD.x.derivatives()(2) * rb +
                           getRow(secondary->dF, 2) *
-                               secondary->AD.y.derivatives()(2) * rb)));
+                               secondary->AD.y.derivatives()(2) * rb))));
                g++;
 
                // dF / dw; note that we must account for d / dM0(w)
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) -
-                      secondary->L * pi<Scalar<T>>() / 180.0 * (
+                      pi<Scalar<T>>() / 180.0 *
+                      cwiseProduct(secondary->L, Row<T>(
                           getRow(secondary->dF, 0) * secondary->angvelrot_deg *
                                (secondary->AD.delay.derivatives()(6) -
                                 secondary->AD.delay.derivatives()(3)) -
@@ -2386,7 +2399,7 @@ namespace kepler {
                                 secondary->AD.x.derivatives()(3)) * rb +
                           getRow(secondary->dF, 2) *
                                (secondary->AD.y.derivatives()(6) -
-                                secondary->AD.y.derivatives()(3)) * rb)));
+                                secondary->AD.y.derivatives()(3)) * rb))));
                g++;
 
 
@@ -2412,12 +2425,13 @@ namespace kepler {
                    setRow(secondary->dflux_cur, g, Row<T>(
                           getRow(secondary->dflux_cur, g) -
                           getRow(secondary->dflux_tot, g) +
-                          secondary->L * pi<Scalar<T>>() / 180. * (
+                          pi<Scalar<T>>() / 180. *
+                          cwiseProduct(secondary->L, Row<T>(
                           dFdOmega
                           - getRow(secondary->dF, 1) *
                                secondary->AD.x.derivatives()(7) * rb
                           - getRow(secondary->dF, 2) *
-                               secondary->AD.y.derivatives()(7) * rb))
+                               secondary->AD.y.derivatives()(7) * rb)))
                       );
                }
                g++;
@@ -2426,7 +2440,8 @@ namespace kepler {
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      secondary->L * pi<Scalar<T>>() / 180.0 * (
+                      pi<Scalar<T>>() / 180.0 *
+                      cwiseProduct(secondary->L, Row<T>(
                           getRow(secondary->dF, 0) *
                                (180.0 / pi<Scalar<T>>() *
                                secondary->porb / secondary->prot -
@@ -2435,29 +2450,33 @@ namespace kepler {
                           getRow(secondary->dF, 1) *
                                secondary->AD.x.derivatives()(3) * rb -
                           getRow(secondary->dF, 2) *
-                               secondary->AD.y.derivatives()(3) * rb)));
+                               secondary->AD.y.derivatives()(3) * rb))));
                g++;
 
                // dF / dtref
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) -
-                      secondary->L * units::DayToSeconds * (
+                      units::DayToSeconds *
+                      cwiseProduct(secondary->L, Row<T>(
                           getRow(secondary->dF, 0) *
                                secondary->angvelrot_deg *
                                (1 + secondary->AD.delay.derivatives()(4)) +
                           getRow(secondary->dF, 1) *
                                secondary->AD.x.derivatives()(4) * rb +
                           getRow(secondary->dF, 2) *
-                               secondary->AD.y.derivatives()(4) * rb)));
+                               secondary->AD.y.derivatives()(4) * rb))));
                g++;
 
                // dF / d{y} and dF / d{u}
                // Note that we skip the Y_{0,0} deriv
                int sz = secondary->dF.rows() - 5;
-               secondary->dflux_cur.block(g, 0, sz, secondary->nwav) +=
-                   secondary->L * secondary->dF.block(5, 0, sz, secondary->nwav) -
-                   secondary->dflux_tot.block(g, 0, sz, secondary->nwav);
+               for (int n = 0; n < secondary->nwav; ++n) {
+                   secondary->dflux_cur.block(g, n, sz, n + 1) +=
+                       getIndex(secondary->L, n) * secondary->dF.block(5, n, sz, n + 1) -
+                       secondary->dflux_tot.block(g, n, sz, n + 1);
+               }
+
 
                // ** Now the derivs with respect to the occultor's properties **
                // r, L, prot, a, porb, inc, ecc, w, Omega, lambda0, tref
@@ -2469,25 +2488,28 @@ namespace kepler {
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      secondary->L * rb * getRow(secondary->dF, 3)));
+                      rb *
+                      cwiseProduct(secondary->L, getRow(secondary->dF, 3))));
                g += 3;                                                          // dF / dL and dF / dprot are zero
 
                // dF / da
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      secondary->L * rb * (
+                      rb *
+                      cwiseProduct(secondary->L, Row<T>(
                       getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(1) +
-                      getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(1))));
+                      getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(1)))));
                g++;
 
                // dF / dporb
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      secondary->L * rb *
+                      rb *
+                      cwiseProduct(secondary->L, Row<T>
                       (getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(5) +
-                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(5)) *
+                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(5))) *
                       units::DayToSeconds));
                g++;
 
@@ -2495,9 +2517,10 @@ namespace kepler {
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      secondary->L * rb *
+                      rb *
+                      cwiseProduct(secondary->L, Row<T>
                       (getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(8) +
-                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(8)) *
+                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(8))) *
                       pi<Scalar<T>>() / 180.0));
                g++;
 
@@ -2506,20 +2529,20 @@ namespace kepler {
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      secondary->L * rb *
+                      rb * cwiseProduct(secondary->L, Row<T>
                       (getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(2) +
-                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(2))));
+                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(2)))));
                g++;
 
                // dF / dw
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      secondary->L * rb *
+                      rb * cwiseProduct(secondary->L, Row<T>
                       (getRow(secondary->dF, 1) * (occultor->AD.x.derivatives()(6) -
                                                  occultor->AD.x.derivatives()(3)) +
                        getRow(secondary->dF, 2) * (occultor->AD.y.derivatives()(6) -
-                                                 occultor->AD.y.derivatives()(3))) *
+                                                 occultor->AD.y.derivatives()(3)))) *
                       pi<Scalar<T>>() / 180.0));
                g++;
 
@@ -2527,9 +2550,9 @@ namespace kepler {
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      secondary->L * rb *
+                      rb * cwiseProduct(secondary->L, Row<T>
                       (getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(7) +
-                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(7)) *
+                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(7))) *
                       pi<Scalar<T>>() / 180.0));
                g++;
 
@@ -2537,9 +2560,9 @@ namespace kepler {
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      secondary->L * rb *
+                      rb * cwiseProduct(secondary->L, Row<T>
                       (getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(3) +
-                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(3)) *
+                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(3))) *
                       pi<Scalar<T>>() / 180.0));
                g++;
 
@@ -2547,9 +2570,9 @@ namespace kepler {
                setRow(secondary->dflux_cur, g, Row<T>(
                       getRow(secondary->dflux_cur, g) -
                       getRow(secondary->dflux_tot, g) +
-                      secondary->L * rb *
+                      rb * cwiseProduct(secondary->L, Row<T>
                       (getRow(secondary->dF, 1) * occultor->AD.x.derivatives()(4) +
-                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(4)) *
+                       getRow(secondary->dF, 2) * occultor->AD.y.derivatives()(4))) *
                       units::DayToSeconds));
                g++;
 
