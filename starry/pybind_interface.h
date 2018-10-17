@@ -159,7 +159,7 @@ namespace pybind_interface {
              }, docstrings::Map::load_image, "image"_a, "lmax"_a=-1)
 
              .def("load_healpix", [](maps::Map<T> &map,
-                                     const Matrix<double>& image,
+                                     const Vector<double>& image,
                                      int lmax) {
                  py::object load_map =
                     py::module::import("starry.maps").attr("load_map");
@@ -364,7 +364,7 @@ namespace pybind_interface {
                 map.setAxis(map_axis);
             }, docstrings::Map::load_image, "image"_a, "nwav"_a=0, "lmax"_a=-1)
 
-            .def("load_healpix", [](maps::Map<T> &map, std::string& image,
+            .def("load_healpix", [](maps::Map<T> &map, const Vector<double>& image,
                                   int nwav, int lmax) {
                 py::object load_map =
                     py::module::import("starry.maps").attr("load_map");
