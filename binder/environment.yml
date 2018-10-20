@@ -1,0 +1,16 @@
+dependencies:
+  - numpy
+  - scipy
+  - matplotlib
+  - setuptools
+  - pybind11
+  - healpy
+  - nbsphinx
+  - pip:
+    - Pillow
+    - batman-package
+    - tqdm
+    - emcee
+    - corner
+    - wget
+    - pandas
