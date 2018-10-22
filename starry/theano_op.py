@@ -69,14 +69,16 @@ class StarryOp(tt.Op):
 
     def build_system(self, primary_u, primary_y, *secondary_args):
         self.primary[:] = primary_u
-        self.primary[1:, :] = primary_y
+        if self.primary_lmax > 0:
+            self.primary[1:, :] = primary_y
 
         for i, secondary in enumerate(self.secondaries):
             args = secondary_args[11*i:11*(i+1)]
             u, y, L, r, a, porb, prot, inc, ecc, w, lambda0 = args
 
             secondary[:] = u
-            secondary[1:, :] = y
+            if self.secondary_lmax[i] > 0:
+                secondary[1:, :] = y
             secondary.L = L
             secondary.r = r
             secondary.a = a
@@ -111,7 +113,9 @@ class StarryGradOp(tt.Op):
 
         # The gradients with respect to the main parameters
         for i, param in enumerate(self.base_op.param_names):
-            outputs[i][0] = np.array(np.sum(grads.get(param, 0.0) * inputs[-1],
+            shape = list(inputs[i].shape) + list(inputs[-1].shape)
+            outputs[i][0] = np.array(np.sum(grads.get(param, np.zeros(shape))
+                                            * inputs[-1],
                                             axis=-1))
 
         # The gradient with respect to time
@@ -139,15 +143,15 @@ def starry_op(primary_dict, secondary_dicts, time):
         args += [
             secondary.get("u", tt.zeros(lmax)),
             secondary.get("y", tt.zeros(lmax**2 + 2*lmax)),
-            secondary.get("L", tt.as_tensor_variable(0.0)),
+            secondary.get("L", tt.as_tensor_variable(np.float64(0.0))),
             secondary["r"],
             secondary["a"],
             secondary["porb"],
-            secondary.get("prot", tt.as_tensor_variable(0.0)),
-            secondary.get("inc", tt.as_tensor_variable(90.0)),
-            secondary.get("ecc", tt.as_tensor_variable(0.0)),
-            secondary.get("w", tt.as_tensor_variable(0.0)),
-            secondary.get("lambda0", tt.as_tensor_variable(0.0)),
+            secondary.get("prot", tt.as_tensor_variable(np.float64(0.0))),
+            secondary.get("inc", tt.as_tensor_variable(np.float64(90.0))),
+            secondary.get("ecc", tt.as_tensor_variable(np.float64(0.0))),
+            secondary.get("w", tt.as_tensor_variable(np.float64(0.0))),
+            secondary.get("lambda0", tt.as_tensor_variable(np.float64(0.0))),
         ]
 
     args += [tt.as_tensor_variable(time)]
