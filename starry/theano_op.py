@@ -144,14 +144,14 @@ def starry_op(primary_dict, secondary_dicts, time):
             secondary.get("u", tt.zeros(lmax)),
             secondary.get("y", tt.zeros(lmax**2 + 2*lmax)),
             secondary.get("L", tt.as_tensor_variable(np.float64(0.0))),
-            secondary["r"],
-            secondary["a"],
-            secondary["porb"],
+            secondary.get("r", tt.as_tensor_variable(np.float64(0.1))),
+            secondary.get("a", tt.as_tensor_variable(np.float64(50.0))),
+            secondary.get("porb", tt.as_tensor_variable(np.float64(1.0))),
             secondary.get("prot", tt.as_tensor_variable(np.float64(0.0))),
             secondary.get("inc", tt.as_tensor_variable(np.float64(90.0))),
             secondary.get("ecc", tt.as_tensor_variable(np.float64(0.0))),
             secondary.get("w", tt.as_tensor_variable(np.float64(0.0))),
-            secondary.get("lambda0", tt.as_tensor_variable(np.float64(0.0))),
+            secondary.get("lambda0", tt.as_tensor_variable(np.float64(90.0))),
         ]
 
     args += [tt.as_tensor_variable(time)]
