@@ -9,7 +9,7 @@ if ! command -v conda > /dev/null; then
       conda create --yes -n test python=$PYTHON_VERSION
       conda activate test
       conda install tectonic;
-      conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib setuptools pybind11 pytest pytest-cov pip healpy nbsphinx;
+      conda install -c conda-forge numpy=$NUMPY_VERSION scipy matplotlib setuptools pybind11 pytest pytest-cov pip healpy nbsphinx theano;
       pip install Pillow
       pip install batman-package
       pip install tqdm
