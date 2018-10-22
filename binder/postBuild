@@ -1,0 +1,2 @@
+pip install git+git://github.com/tomlouden/SPIDERMAN.git@69911b042bc46615ec9b39048a69e0d77c8542ad
+pip install -e.
