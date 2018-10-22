@@ -2,6 +2,7 @@
 from starry.kepler import Primary, Secondary, System
 import emcee
 import numpy as np
+np.random.seed(42)
 from tqdm import tqdm
 
 

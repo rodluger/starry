@@ -23,6 +23,7 @@ tex/travis
 *.npz
 *callgrind.out.*
 starry/test
+lib/boost_1_68_0
 
 # Latex
 *.aux
