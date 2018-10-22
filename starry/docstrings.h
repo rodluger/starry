@@ -360,10 +360,12 @@ namespace docstrings {
 
         const char* r = R"pbdoc(
             The radius of the body in units of the primary's radius.
+            Default 0.1.
         )pbdoc";
 
         const char* L = R"pbdoc(
             The luminosity of the body in units of the primary's luminosity.
+            Default 0.0.
         )pbdoc";
 
         const char* tref = R"pbdoc(
