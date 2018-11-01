@@ -18,6 +18,7 @@ from the Wigner-D matrices for complex spherical harmonics.
 #include "utils.h"
 #include "tables.h"
 
+namespace starry {
 namespace rotation {
 
     using namespace utils;
@@ -595,5 +596,6 @@ namespace rotation {
     }
 
 } // namespace rotation
+} // namespace starry
 
 #endif

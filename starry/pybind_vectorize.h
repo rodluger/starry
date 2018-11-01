@@ -14,10 +14,12 @@ Vectorization wrappers for the `Map` methods.
 #include "utils.h"
 #include "errors.h"
 
+
 namespace pybind_vectorize {
 
     using std::max;
     using std::string;
+    using namespace starry;
     using namespace utils;
     namespace py = pybind11;
 

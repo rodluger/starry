@@ -15,6 +15,7 @@ primarily for debugging. Use at your own risk!
 #include <unsupported/Eigen/AutoDiff>
 #include "utils.h"
 
+namespace starry {
 namespace numeric {
 
     using std::abs;
@@ -173,5 +174,6 @@ namespace numeric {
     }
 
 } // namespace numeric
+} // namespace starry
 
 #endif

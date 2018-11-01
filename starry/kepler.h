@@ -27,6 +27,7 @@ TODO: The biggest speedup may come from only computing the total flux
 #include "rotation.h"
 
 
+namespace starry {
 namespace units {
 
     const double DayToSeconds = 86400.0;                                        /**< One day in seconds */
@@ -2581,5 +2582,6 @@ namespace kepler {
     }
 
 } // namespace kepler
+} // namespace starry
 
 #endif

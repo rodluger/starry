@@ -18,6 +18,7 @@ Spherical harmonic integration utilities.
 #include "tables.h"
 #include "lld.h"
 
+namespace starry {
 namespace solver {
 
     using std::abs;
@@ -951,5 +952,6 @@ namespace solver {
     }
 
 } // namespace solver
+} // namespace starry
 
 #endif

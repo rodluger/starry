@@ -36,6 +36,8 @@ TODO: Add the `add_gaussian` method to spectral starry.
 #include "pybind_vectorize.h"
 #include "pybind_utils.h"
 
+using namespace starry;
+
 
 namespace pybind_interface {
 
