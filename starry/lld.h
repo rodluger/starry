@@ -12,6 +12,8 @@ Linear limb darkening (s2) integration utilities.
 #include "ellip.h"
 #include "errors.h"
 
+namespace starry {
+
 //! Re-parameterize solution vector when abs(b - r) < STARRY_EPS_BMR_ZERO
 #define STARRY_EPS_BMR_ZERO 1e-2
 
@@ -216,5 +218,6 @@ namespace lld {
     }
 
 } // namespace lld
+} // namespace starry
 
 #endif

@@ -14,6 +14,7 @@ Limb darkening utilities from Agol & Luger (2018).
 #include "lld.h"
 #include "tables.h"
 
+namespace starry {
 namespace limbdark {
 
     using std::abs;
@@ -515,5 +516,6 @@ namespace limbdark {
     }
 
 } // namespace limbdark
+} // namespace starry
 
 #endif

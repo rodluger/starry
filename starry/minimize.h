@@ -15,6 +15,7 @@ TODO: The `pow()` calls in `evaluate()` and `operator()` are SUPER
 #include "errors.h"
 #include "utils.h"
 
+namespace starry {
 namespace minimize {
 
     using namespace utils;
@@ -265,5 +266,6 @@ namespace minimize {
     };
 
 } // namespace minimize
+} // namespace starry
 
 #endif

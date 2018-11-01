@@ -15,6 +15,8 @@ Miscellaneous stuff used throughout the code.
 #include <type_traits>
 #include "errors.h"
 
+namespace starry {
+
 //! Compiler branching optimizations
 #define likely(x)    __builtin_expect (!!(x), 1)
 #define unlikely(x)  __builtin_expect (!!(x), 0)
@@ -581,5 +583,6 @@ namespace utils {
 
 
 } // namespace utils
+} // namespace starry
 
 #endif

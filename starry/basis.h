@@ -18,6 +18,7 @@ TODO: Use legendre polynomial recurrence relation for numerical stability
 #include "utils.h"
 #include "tables.h"
 
+namespace starry {
 namespace basis {
 
     using namespace utils;
@@ -580,5 +581,6 @@ namespace basis {
     };
 
 } // namespace basis
+} // namespace starry
 
 #endif

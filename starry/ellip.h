@@ -16,6 +16,8 @@ Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
 #include "utils.h"
 #include "errors.h"
 
+namespace starry {
+
 //! Maximum number of iterations in elliptic integral evaluations
 #define STARRY_ELLIP_MAX_ITER 200
 
@@ -213,5 +215,6 @@ namespace ellip {
     }
 
 } // namespace ellip
+} // namespace starry
 
 #endif

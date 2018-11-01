@@ -13,6 +13,8 @@ using good old template metaprogramming (>= C++14)
 #include "errors.h"
 #include "utils.h"
 
+namespace starry {
+
 //! Square root of pi at double precision
 #define SQRTPI 1.772453850905516027298167483341
 
@@ -818,6 +820,7 @@ namespace tables {
         return half_factorial<T>(2 * n - 1);
     }
 
-}
+} // namespace const_tables
+} // namespace starry
 
 #endif

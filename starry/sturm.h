@@ -12,6 +12,7 @@ Adapted from DFM's celerite <https://github.com/dfm/celerite>
 #include <vector>
 #include <Eigen/Core>
 
+namespace starry {
 namespace sturm {
 
 #define POLYTOL 1e-10
@@ -147,5 +148,6 @@ namespace sturm {
     }
 
 } // namespace sturm
+} // namespace starry
 
 #endif
