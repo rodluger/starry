@@ -24,6 +24,7 @@ tex/travis
 *callgrind.out.*
 starry/test
 lib/boost_1_68_0
+*.vscode
 
 # Latex
 *.aux
