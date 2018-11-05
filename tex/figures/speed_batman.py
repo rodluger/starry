@@ -5,7 +5,7 @@ import matplotlib.pyplot as pl
 import numpy as np
 import batman
 
-# Input params
+# Input params 
 u1 = 0.4
 u2 = 0.26
 mstar = 1       # solar masses
