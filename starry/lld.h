@@ -213,7 +213,8 @@ namespace lld {
 
     */
     template <typename T>
-    inline T s2(const T& b, const T& r, const T& ksq, const T& K, const T& E) {
+    inline T s2(const T& b, const T& r, const T& ksq, const T& K, const T& E, bool gradient=false) {
+        // TODO: Gradient
         return (2. * pi<T>() / 3.) * (1.0 - 1.5 * Lambda(b, r, ksq, K, E) - T(r > b));
     }
 

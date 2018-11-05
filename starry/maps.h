@@ -206,7 +206,6 @@ namespace maps {
             Greens<Scalar<T>> G;                                                /**< The occultation integral solver class */
             Greens<ADScalar<Scalar<T>, 2>> G_grad;                              /**< The occultation integral solver class w/ AutoDiff capability */
             GreensLimbDark<Scalar<T>> L;                                        /**< The occultation integral solver class (optimized for limb darkening) */
-            GreensLimbDark<ADScalar<Scalar<T>, 2>> L_grad;                      /**< The occultation integral solver class (opt. for LD) w/ AutoDiff capability */
             Minimizer<T> M;                                                     /**< Map minimization class */
             Scalar<T> tol;                                                      /**< Machine epsilon */
             std::vector<string> dF_orbital_names;                               /**< Names of each of the orbital params in the flux gradient */
@@ -280,7 +279,6 @@ namespace maps {
                 G(lmax),
                 G_grad(lmax),
                 L(lmax),
-                L_grad(lmax),
                 M(lmax),
                 tol(mach_eps<Scalar<T>>()),
                 dp_udu(nwav),
@@ -1299,12 +1297,6 @@ namespace maps {
         dFdu.resize(lmax, nwav);
         T& dFdc(tmp.tmpT[1]);
         dFdc.resize(lmax + 1, nwav);
-        VectorT<Scalar<T>>& dSdb(tmp.tmpRowVector[0]);
-        dSdb.resize(lmax + 1);
-        VectorT<Scalar<T>>& dSdro(tmp.tmpRowVector[1]);
-        dSdro.resize(lmax + 1);
-        ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
-        ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
 
         // Resize the gradients
         resizeGradient(1, lmax);
@@ -1360,21 +1352,8 @@ namespace maps {
                 update_c_basis = false;
             }
 
-            // Compute the sT vector using AutoDiff
-            b_grad.value() = b;
-            b_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
-            ro_grad.value() = ro;
-            ro_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
-
             // Compute S, dS / db, and dS / dr
-            L_grad.compute(b_grad, ro_grad);
-
-            // Store the value of the S vector and its derivatives
-            for (int i = 0; i <= lmax; ++i) {
-                L.S(i) = L_grad.S(i).value();
-                dSdb(i) = L_grad.S(i).derivatives()(0);
-                dSdro(i) = L_grad.S(i).derivatives()(1);
-            }
+            L.compute(b, ro, true);
 
             // Compute the value of the flux and its derivatives
             for (int n = 0; n < nwav; ++n) {
@@ -1382,10 +1361,10 @@ namespace maps {
                 // F, dF / db and dF / dr
                 setIndex(result, n, L.S.dot(getColumn(agol_c, n)) *
                                     getIndex(agol_norm, n));
-                setIndex(dFdb, n, dSdb.dot(getColumn(agol_c, n)) *
-                                  getIndex(agol_norm, n));
-                setIndex(dFdro, n, dSdro.dot(getColumn(agol_c, n)) *
-                                   getIndex(agol_norm, n));
+                setIndex(dFdb, n, L.dSdb.dot(getColumn(agol_c, n)) *
+                                    getIndex(agol_norm, n));
+                setIndex(dFdro, n, L.dSdr.dot(getColumn(agol_c, n)) *
+                                    getIndex(agol_norm, n));
 
                 // Compute dF / dc
                 dFdc.block(0, n, lmax + 1, 1) = L.S.transpose() *
