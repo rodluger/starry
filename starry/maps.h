@@ -1297,6 +1297,7 @@ namespace maps {
         dFdu.resize(lmax, nwav);
         T& dFdc(tmp.tmpT[1]);
         dFdc.resize(lmax + 1, nwav);
+        Vector<Scalar<T>>& agol_cn(tmp.tmpColumnVector[0]);
 
         // Resize the gradients
         resizeGradient(1, lmax);
@@ -1346,8 +1347,20 @@ namespace maps {
             // Compute the Agol `c` basis
             if (update_c_basis) {
                 for (int n = 0; n < nwav; ++n) {
-                    agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
-                    setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
+                    agol_cn = computeC(getColumn(u, n), dagol_cdu(n));
+
+
+                    // DEBUG
+                    /*
+                    std::cout << dagol_cdu(n) << std::endl;
+                    limbdark::computeC_OLD(getColumn(u, n), dagol_cdu(n));
+                    std::cout << std::endl;
+                    std::cout << dagol_cdu(n) << std::endl;
+                    exit(0);
+                    */
+
+                    agol_c.col(n) = agol_cn;
+                    setIndex(agol_norm, n, normC(agol_cn));
                 }
                 update_c_basis = false;
             }
@@ -1359,31 +1372,28 @@ namespace maps {
             for (int n = 0; n < nwav; ++n) {
 
                 // F, dF / db and dF / dr
-                setIndex(result, n, L.S.dot(getColumn(agol_c, n)) *
-                                    getIndex(agol_norm, n));
-                setIndex(dFdb, n, L.dSdb.dot(getColumn(agol_c, n)) *
-                                    getIndex(agol_norm, n));
-                setIndex(dFdro, n, L.dSdr.dot(getColumn(agol_c, n)) *
-                                    getIndex(agol_norm, n));
+                Scalar<T> norm = getIndex(agol_norm, n);
+                agol_cn = getColumn(agol_c, n) * norm;
+                Scalar<T> resn = L.S.dot(agol_cn);
+                setIndex(result, n, resn);
+                setIndex(dFdb, n, L.dSdb.dot(agol_cn));
+                setIndex(dFdro, n, L.dSdr.dot(agol_cn));
 
                 // Compute dF / dc
-                dFdc.block(0, n, lmax + 1, 1) = L.S.transpose() *
-                                                getIndex(agol_norm, n);
-                dFdc(0, n) -= getIndex(result, n) * getIndex(agol_norm, n) *
-                              pi<Scalar<T>>();
-                dFdc(1, n) -= 2.0 * pi<Scalar<T>>() / 3.0 *
-                              getIndex(result, n) * getIndex(agol_norm, n);
+                dFdc.block(0, n, lmax + 1, 1) = L.S.transpose();
+                dFdc(0, n) -= resn * pi<Scalar<T>>();
+                dFdc(1, n) -= 2.0 * pi<Scalar<T>>() / 3.0 * resn;
+                dFdc *= norm;
 
                 // Chain rule to get dF / du
-                dFdu.block(0, n, lmax, 1).transpose() =
-                    dFdc.block(0, n, lmax + 1, 1).transpose() *
-                    dagol_cdu(n).block(0, 1, lmax + 1, lmax);
-
+                dFdu.block(0, n, lmax, 1) = 
+                    dagol_cdu(n) * dFdc.block(0, n, lmax + 1, 1);
             }
 
             // Update the user-facing derivs
-            setRow(dF, 1, Row<T>(dFdb * xo / b));
-            setRow(dF, 2, Row<T>(dFdb * yo / b));
+            Scalar<T> binv = 1.0 / b;
+            setRow(dF, 1, Row<T>(dFdb * xo * binv));
+            setRow(dF, 2, Row<T>(dFdb * yo * binv));
             setRow(dF, 3, dFdro);
             setRow(dF, 4, cwiseQuotient(result, getRow(y, 0)));
             for (int i = 0; i < lmax; ++i)

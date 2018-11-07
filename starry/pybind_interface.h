@@ -22,6 +22,7 @@ TODO: Add the `add_gaussian` method to spectral starry.
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 #include <Eigen/Core>
 #include <unsupported/Eigen/AutoDiff>
 #include <cmath>
@@ -612,14 +613,31 @@ namespace pybind_interface {
                             py::array_t<double>& yo,
                             py::array_t<double>& ro,
                             bool gradient,
-                            bool numerical)
-                            -> py::object {
+                            bool numerical) -> py::object {
                     return vectorize::flux(map, theta, xo, yo, ro,
                                            gradient, numerical);
                 }, docstrings::Map::flux, "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0,
                                    "ro"_a=0.0, "gradient"_a=false,
                                    "numerical"_a=false)
+            
+            /*
+            .def("flux", [](maps::Map<T> &map,
+                            double& theta,
+                            double& xo,
+                            Vector<double>& yo,
+                            double& ro,
+                            bool gradient,
+                            bool numerical) -> py::object {
 
+                    for (int i = 0; i < yo.size(); ++i)
+                        map.flux(0, 0, yo(i), ro, gradient, false);
+                    return py::none();
+
+                }, docstrings::Map::flux, "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0,
+                                   "ro"_a=0.0, "gradient"_a=false,
+                                   "numerical"_a=false)
+            */
+           
             .def("rotate", [](maps::Map<T> &map, double theta) {
                     map.rotate(static_cast<Scalar<T>>(theta));
             }, docstrings::Map::rotate, "theta"_a=0)

@@ -221,34 +221,34 @@ namespace limbdark {
         }
 
         // Now, compute the c_n coefficients
-        dcdu.setZero(N, N);
+        dcdu.setZero(N - 1, N);
         for (size_t j = N - 1; j >= 2; --j) {
             if (j >= N - 2) {
                 c(j) = a(j) / (j + 2);
-                dcdu.block(j, 0, 1, N) = dadu.block(j, 0, 1, N) / (j + 2);
+                dcdu.transpose().block(j, 0, 1, N - 1) = dadu.block(j, 1, 1, N - 1) / (j + 2);
             } else {
                 c(j) = a(j) / (j + 2) + c(j + 2);
-                dcdu.block(j, 0, 1, N) = dadu.block(j, 0, 1, N) / (j + 2) +
-                                         dcdu.block(j + 2, 0, 1, N);
+                dcdu.transpose().block(j, 0, 1, N - 1) = dadu.block(j, 1, 1, N - 1) / (j + 2) +
+                                             dcdu.transpose().block(j + 2, 0, 1, N - 1);
             }
         }
 
         if (N >= 4) {
             c(1) = a(1) + 3 * c(3);
-            dcdu.block(1, 0, 1, N) = dadu.block(1, 0, 1, N) +
-                                     3 * dcdu.block(3, 0, 1, N);
+            dcdu.transpose().block(1, 0, 1, N - 1) = dadu.block(1, 1, 1, N - 1) +
+                                         3 * dcdu.block(3, 0, 1, N - 1);
         } else {
             c(1) = a(1);
-            dcdu.block(1, 0, 1, N) = dadu.block(1, 0, 1, N);
+            dcdu.transpose().block(1, 0, 1, N - 1) = dadu.block(1, 1, 1, N - 1);
         }
 
         if (N >= 3) {
             c(0) = a(0) + 2 * c(2);
-            dcdu.block(0, 0, 1, N) = dadu.block(0, 0, 1, N) +
-                                     2 * dcdu.block(2, 0, 1, N);
+            dcdu.transpose().block(0, 0, 1, N - 1) = dadu.block(0, 1, 1, N - 1) +
+                                         2 * dcdu.transpose().block(2, 0, 1, N - 1);
         } else {
             c(0) = a(0);
-            dcdu.block(0, 0, 1, N) = dadu.block(0, 0, 1, N);
+            dcdu.transpose().block(0, 0, 1, N - 1) = dadu.block(0, 1, 1, N - 1);
         }
 
         // The total flux is given by `(S . c) * normC`
@@ -285,6 +285,9 @@ namespace limbdark {
             T twob;
             T Sn;
 
+            // Powers of ksq
+            std::vector<T> pow_ksq;
+
             // Primitive matrices/vectors
             std::vector<T> ivgamma;
             std::vector<T> I;
@@ -316,26 +319,30 @@ namespace limbdark {
                 dSdb(VectorT<T>::Zero(lmax + 1)),
                 dSdr(VectorT<T>::Zero(lmax + 1)) {
 
-                   // Figure out I and J dims
-                   if (is_even(lmax + 1))
-                       ivmax = (lmax + 1) / 2 + 2;
-                   else
-                       ivmax = lmax / 2 + 2;
-                   jvmax = ivmax;
-                   I.resize(ivmax + 1);
-                   J.resize(jvmax + 1);
-                   dIdk.resize(ivmax + 1);
-                   dJdk.resize(jvmax + 1);
+                    // Figure out I and J dims
+                    if (is_even(lmax + 1))
+                        ivmax = (lmax + 1) / 2 + 2;
+                    else
+                        ivmax = lmax / 2 + 2;
+                    jvmax = ivmax;
+                    I.resize(ivmax + 1);
+                    J.resize(jvmax + 1);
+                    dIdk.resize(ivmax + 1);
+                    dJdk.resize(jvmax + 1);
 
-                   // Pre-tabulate J coeffs
-                   computeJcoeffs();
+                    // Powers of ksq
+                    pow_ksq.resize(jvmax + 1);
+                    pow_ksq[0] = 1;
 
-                   // Pre-tabulate I for ksq >= 1
-                   ivgamma.resize(ivmax + 1);
-                   for (int v = 0; v <= ivmax; v++)
-                       ivgamma[v] = root_pi<T>() *
-                                    T(boost::math::tgamma_delta_ratio(
-                                      Multi(v + 0.5), Multi(0.5)));
+                    // Pre-tabulate J coeffs
+                    computeJcoeffs();
+
+                    // Pre-tabulate I for ksq >= 1
+                    ivgamma.resize(ivmax + 1);
+                    for (int v = 0; v <= ivmax; v++)
+                        ivgamma[v] = root_pi<T>() *
+                                        T(boost::math::tgamma_delta_ratio(
+                                        Multi(v + 0.5), Multi(0.5)));
 
             }
 
@@ -343,7 +350,6 @@ namespace limbdark {
             inline void computeI(bool gradient=false);
             inline void computeJ(bool gradient=false);
             inline void computeJcoeffs();
-            inline void computeEK();
 
     };
 
@@ -358,6 +364,10 @@ namespace limbdark {
             I = ivgamma;
 
         } else {
+
+            // Pre-compute powers of ksq
+            for (int v = 1; v <= jvmax; ++v)
+                pow_ksq[v] = pow_ksq[v - 1] * ksq;
 
             // Downward recursion
             if (ksq < 0.5) {
@@ -388,18 +398,18 @@ namespace limbdark {
                     throw errors::ConvergenceError("Primitive integral "
                                                    "`I` did not converge.");
 
-                I[ivmax] = pow(ksq, ivmax) * k * res;
+                I[ivmax] = pow_ksq[ivmax] * k * res;
 
                 // Remaining terms
                 for (int v = ivmax - 1; v >= 0; --v)
-                    I[v] = 2.0 / (2 * v + 1) * ((v + 1) * I[v + 1] + pow(ksq, v) * kkc);
+                    I[v] = 2.0 / (2 * v + 1) * ((v + 1) * I[v + 1] + pow_ksq[v] * kkc);
 
             // Upward recursion
             } else {
 
                 I[0] = kap0;
                 for (int v = 1; v <= ivmax; ++v)
-                    I[v] = ((2 * v - 1) / 2.0 * I[v - 1] - pow(ksq, v - 1) * kkc) / v;
+                    I[v] = (0.5 * (2 * v - 1) * I[v - 1] - pow_ksq[v - 1] * kkc) / v;
 
             }
 
@@ -535,7 +545,7 @@ namespace limbdark {
                 }
                 J[v] = f1 * J[v + 1] - f3 * J[v + 2];
                 if (gradient)
-                    dJdk[v] = (dJdk[v + 1] + (3.0 / k) * J[v + 1]) * invksq;
+                    dJdk[v] = (dJdk[v + 1] + (3.0 * k * invksq) * J[v + 1]) * invksq;
             }
 
         // Upward recursion
@@ -551,8 +561,8 @@ namespace limbdark {
                 J[1] = (2.0 / 15.0) * ((-3 * ksq + 13 - 8 * invksq) * E +
                                        (1 - invksq) * (3 * ksq - 4) * K);
                 if (gradient) {
-                    dJdk[0] = (2 * (2 - ksq) * E + 2 * (ksq - 1) * K) / (ksq * k);
-                    dJdk[1] = -3.0 / k * J[1] + ksq * dJdk[0];
+                    dJdk[0] = (2 * (2 - ksq) * E + 2 * (ksq - 1) * K) * invksq * invksq * k;
+                    dJdk[1] = -3.0 * k * invksq * J[1] + ksq * dJdk[0];
                 }
             } else {
                 J[0] = 2.0 / (3.0 * ksq * k) * (2 * (2 * ksq - 1) * E +
@@ -561,7 +571,7 @@ namespace limbdark {
                                                 (1 - ksq) * (8 - 9 * ksq) * K);
                 if (gradient) {
                     dJdk[0] = 2.0 * invksq * invksq * ((2 - ksq) * E + 2 * (ksq - 1) * K);
-                    dJdk[1] = -3.0 / k * J[1] + ksq * dJdk[0];
+                    dJdk[1] = -3.0 * k * invksq * J[1] + ksq * dJdk[0];
                 }
             }
 
@@ -571,32 +581,11 @@ namespace limbdark {
                 f2 = ksq * (2 * v - 3);
                 J[v] = (f1 * J[v - 1] - f2 * J[v - 2]) / (2 * v + 3);
                 if (gradient)
-                    dJdk[v] = -3.0 / k * J[v] + ksq * dJdk[v - 1];
+                    dJdk[v] = -3.0 * k * invksq * J[v] + ksq * dJdk[v - 1];
             }
 
         }
 
-    }
-
-    /**
-
-    */
-    template <class T>
-    inline void GreensLimbDark<T>::computeEK() {
-        if (unlikely((invksq == 0) || (ksq == 1)))
-            K = 0;
-        else if (ksq < 1)
-            K = ellip::K(ksq);
-        else
-            K = ellip::K(invksq);
-        if (unlikely(invksq == 0))
-            E = 0;
-        else if (unlikely(ksq == 1))
-            E = 1;
-        else if (ksq < 1)
-            E = ellip::E(ksq);
-        else
-            E = ellip::E(invksq);
     }
 
     /**
@@ -668,10 +657,8 @@ namespace limbdark {
         // Special case
         if (lmax == 0) return;
 
-        // Compute the elliptic integrals
-        computeEK();
-
         // Compute the linear limb darkening term
+        // and the elliptic integrals
         T Eofk, Em1mKdm;
         S(1) = s2(b, r, Eofk, Em1mKdm, dSdb(1), dSdr(1), gradient);
 
@@ -698,11 +685,18 @@ namespace limbdark {
 
         // Derivatives
         if (gradient) {
-            dkdb = (r * r - b * b - 1) / (8 * k * b * b * r);
-            dkdr = (b * b - r * r - 1) / (8 * k * b * r * r);
+            dkdb = 0.125 * (r * r - b * b - 1) * binv * binv * rinv * invksq * k;
+            //dkdb = (r * r - b * b - 1) / (8 * k * b * b * r);
+            dkdr = 0.125 * (b * b - r * r - 1) * binv * rinv * rinv * invksq * k;
+            //dkdr = (b * b - r * r - 1) / (8 * k * b * r * r);
         }
 
-        // Compute I and J integrals for the higher order terms
+        // DEBUG: Phase these out
+        E = Eofk;
+        if (ksq <= 1)
+            K = (ksq * Em1mKdm - Eofk) / (ksq - 1);
+        else
+            K = (invksq * Em1mKdm - Eofk) / (invksq - 1);
         computeI(gradient);
         computeJ(gradient);
         
@@ -715,7 +709,9 @@ namespace limbdark {
         T onembmr2inv = 1.0 / onembmr2; 
         T rmb_on_onembmr2 = (r - b) * onembmr2inv;
         T sqonembmr2 = sqrt(onembmr2);
-        
+        T mfbri = -fourbr; 
+        T mfbrj = 1; 
+
         // Compute the higher order S terms
         for (int n = 2; n < lmax + 1; ++n) {
             pofgn = 0;
@@ -725,7 +721,8 @@ namespace limbdark {
             if (is_even(n)) {
                 // For even values of n, sum over I_v:
                 n0 = n / 2;
-                coeff = pow(-fourbr, n0); // TODO: Speed up
+                coeff = mfbri;
+                mfbri *= -fourbr;
                 // Compute i=0 term
                 Iv1 = I[n0]; 
                 Iv2 = I[n0 + 1];
@@ -749,7 +746,7 @@ namespace limbdark {
                     if (gradient) {
                         dpdr += coeff * Iv1;
                         dpdb += coeff * (-Iv1 + 2.0 * Iv2);
-                        fac1 = i * 2.0 * rmb_on_onembmr2;
+                        fac1 = (2 * i) * rmb_on_onembmr2;
                         dpdr += term * (-fac1 + (nmi + 1) * rinv);
                         dpdb += term * (fac1 + nmi * binv);
                     }
@@ -762,7 +759,8 @@ namespace limbdark {
             } else {
                 // Now do the same for odd n in sum over J_v:
                 n0 = (n - 3) / 2;
-                coeff = pow(-fourbr, n0); // TODO: Speed up
+                coeff = mfbrj;
+                mfbrj *= -fourbr;
                 // Compute i=0 term
                 Jv1 = J[n0]; 
                 Jv2 = J[n0 + 1];
@@ -787,7 +785,7 @@ namespace limbdark {
                     if (gradient) {
                         dpdr += coeff * Jv1;
                         dpdb += coeff * (-Jv1 + 2.0 * Jv2);
-                        fac1 = (i * 2.0 + 3.0) * rmb_on_onembmr2;
+                        fac1 = (2 * i + 3) * rmb_on_onembmr2;
                         dpdr += term * (-fac1 + (nmi + 1) * rinv);
                         dpdb += term * (fac1 + nmi * binv);
                         dpdk += coeff * ((r - b) * dJdk[nmi] + 2 * b * dJdk[nmi + 1]);

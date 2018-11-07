@@ -190,9 +190,9 @@ namespace pybind_vectorize {
         } else {
 
             // Easy! We'll just return F
-            return py::vectorize([&map, &numerical](double theta, double xo,
+            return py::vectorize([&map, &numerical, &gradient](double theta, double xo,
                                         double yo, double ro) {
-                return static_cast<double>(map.flux(theta, xo, yo, ro, false,
+                return static_cast<double>(map.flux(theta, xo, yo, ro, gradient,
                                            numerical));
             })(theta, xo, yo, ro);
 
