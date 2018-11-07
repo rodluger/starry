@@ -1348,17 +1348,6 @@ namespace maps {
             if (update_c_basis) {
                 for (int n = 0; n < nwav; ++n) {
                     agol_cn = computeC(getColumn(u, n), dagol_cdu(n));
-
-
-                    // DEBUG
-                    /*
-                    std::cout << dagol_cdu(n) << std::endl;
-                    limbdark::computeC_OLD(getColumn(u, n), dagol_cdu(n));
-                    std::cout << std::endl;
-                    std::cout << dagol_cdu(n) << std::endl;
-                    exit(0);
-                    */
-
                     agol_c.col(n) = agol_cn;
                     setIndex(agol_norm, n, normC(agol_cn));
                 }

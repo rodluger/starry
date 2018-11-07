@@ -2,8 +2,6 @@
 Limb darkening utilities from Agol & Luger (2018).
 
 TODO: Loop downward in v until J[v] !=0
-TODO: Use reparameterized elliptic integrals everywhere!
-TODO: Replace all pows
 TODO: Test all special cases
 
 */
@@ -28,14 +26,14 @@ namespace limbdark {
 
     /**
     The linear limb darkening flux term.
-
     */
     template <typename T>
-    inline T s2(const T& b, const T& r, T& Eofk, T& Em1mKdm, T& ds2db, T& ds2dr, bool gradient=false) {
-        T third = 1.0 / 3.0;
+    inline T s2(const T& b, const T& r, 
+                const T& third, const T& b2, const T& r2,
+                const T& ksq, const T& kcsq, const T& kc, const T& invksq,
+                const T& onembmr2, const T& onembmr2inv, const T& sqonembmr2,
+                T& Eofk, T& Em1mKdm, T& ds2db, T& ds2dr, bool gradient=false) {
         T Lambda1 = 0;
-        T b2 = b * b;
-        T r2 = r * r; 
         if ((b >= 1.0 + r) ||  (r == 0.0)) {
             // No occultation (Case 1)
             Lambda1 = 0;
@@ -86,36 +84,26 @@ namespace limbdark {
                     }
                 }
             } else {
-                T onembpr2 = (1 - r - b) * (1 + r + b); 
-                T onembmr2 = (r + 1 - b) * (1 - r + b); 
+                T onembpr2 = (1 - r - b) * (1 + r + b);  
                 T fourbr = 4 * b * r; 
-                T fourbrinv = 1.0 / fourbr;
-                T k2 = onembpr2 * fourbrinv + 1;
-                if (k2 < 1) {
+                if (ksq < 1) {
                     // Case 2, Case 8
-                    T kc2 = -onembpr2 * fourbrinv; 
-                    T kc = sqrt(kc2); 
                     T sqbr = sqrt(b * r); 
                     T sqbrinv = 1.0 / sqbr;
                     T Piofk;
-                    ellip::CEL(k2, kc, T((b - r) * (b - r) * kc2), T(0.0), T(1.0), T(1.0), T(3 * kc2 * (b - r) * (b + r)), kc2, T(0.0), Piofk, Eofk, Em1mKdm);
+                    ellip::CEL(ksq, kc, T((b - r) * (b - r) * kcsq), T(0.0), T(1.0), T(1.0), T(3 * kcsq * (b - r) * (b + r)), kcsq, T(0.0), Piofk, Eofk, Em1mKdm);
                     Lambda1 = onembmr2 * (Piofk + (-3 + 6 * r2 + 2 * b * r) * Em1mKdm - fourbr * Eofk) * sqbrinv * third;
                     if (gradient) {
                         ds2db = 2 * r * onembmr2 * (-Em1mKdm + 2 * Eofk) * sqbrinv * third;
                         ds2dr = -2 * r * onembmr2 * Em1mKdm * sqbrinv;
                     }
-                } else if (k2 > 1) {
+                } else if (ksq > 1) {
                     // Case 3, Case 9
-                    T onembmr2inv = 1.0 / onembmr2; 
-                    T k2inv = 1.0 / k2; 
-                    T kc2 = onembpr2 * onembmr2inv; 
-                    T kc = sqrt(kc2);
                     T bmrdbpr = (b - r) / (b + r); 
                     T mu = 3 * bmrdbpr * onembmr2inv;
                     T p = bmrdbpr * bmrdbpr * onembpr2 * onembmr2inv;
                     T Piofk;
-                    ellip::CEL(k2inv, kc, p, T(1 + mu), T(1.0), T(1.0), T(p + mu), kc2, T(0.0), Piofk, Eofk, Em1mKdm);
-                    T sqonembmr2 = sqrt(onembmr2);
+                    ellip::CEL(invksq, kc, p, T(1 + mu), T(1.0), T(1.0), T(p + mu), kcsq, T(0.0), Piofk, Eofk, Em1mKdm);
                     Lambda1 = 2 * sqonembmr2 * (onembpr2 * Piofk - (4 - 7 * r2 - b2) * Eofk) * third;
                     if (gradient) {
                         ds2db = -4 * r * third * sqonembmr2 * (Eofk - 2 * Em1mKdm);
@@ -236,7 +224,7 @@ namespace limbdark {
         if (N >= 4) {
             c(1) = a(1) + 3 * c(3);
             dcdu.transpose().block(1, 0, 1, N - 1) = dadu.block(1, 1, 1, N - 1) +
-                                         3 * dcdu.block(3, 0, 1, N - 1);
+                                         3 * dcdu.transpose().block(3, 0, 1, N - 1);
         } else {
             c(1) = a(1);
             dcdu.transpose().block(1, 0, 1, N - 1) = dadu.block(1, 1, 1, N - 1);
@@ -274,16 +262,28 @@ namespace limbdark {
             T k;
             T ksq;
             T kc;
+            T kcsq;
             T kkc;
             T kap0;
             T invksq;
             T fourbr;
             T invfourbr;
-            T E;
-            T K;
-            T rmb;
-            T twob;
+            T b2;
+            T r2;
+            T invr;
+            T invb;
+            T bmr;
+            T bpr;
+            T onembmr2;
+            T onembmr2inv;
+            T sqonembmr2;
             T Sn;
+            T third;
+            T ds2db;
+            T ds2dr;
+            T Eofk;
+            T Em1mKdm;
+            T Piofk;
 
             // Powers of ksq
             std::vector<T> pow_ksq;
@@ -343,6 +343,9 @@ namespace limbdark {
                         ivgamma[v] = root_pi<T>() *
                                         T(boost::math::tgamma_delta_ratio(
                                         Multi(v + 0.5), Multi(0.5)));
+
+                    // Constants
+                    third = T(1.0) / T(3.0);
 
             }
 
@@ -441,7 +444,7 @@ namespace limbdark {
             dJdkcoeff_largek[j].resize(STARRY_IJ_MAX_ITER + 1); 
             dJdkcoeff_smallk[j].resize(STARRY_IJ_MAX_ITER + 1); 
 
-            // k2 < 1
+            // ksq < 1
             coeff = 0.75 * pi<T>() / tables::factorial<T>(v + 2);
             for (int i = 2; i <= 2 * v; i += 2)
                 coeff *= 0.5 * (i - 1);
@@ -455,7 +458,7 @@ namespace limbdark {
                 dJdkcoeff_smallk[j](i) = coeff * (n + 2 * v + 1);
             }
 
-            // k2 >= 1
+            // ksq >= 1
             coeff = pi<T>();
             for (int i = 2; i <= 2 * v; i += 2)
                 coeff *= (i - 1.0) / i;
@@ -555,22 +558,18 @@ namespace limbdark {
             int v;
 
             // First two values
-            if (ksq >= 1) {
-                J[0] = (2.0 / 3.0) * (2 * (2 - invksq) * E -
-                                      (1 - invksq) * K);
-                J[1] = (2.0 / 15.0) * ((-3 * ksq + 13 - 8 * invksq) * E +
-                                       (1 - invksq) * (3 * ksq - 4) * K);
+            if (ksq < 1) {
+                J[0] = 2.0 / (3.0 * ksq * k) * (ksq * (3.0 * ksq - 2.0) * Em1mKdm + ksq * Eofk);
+                J[1] = 2.0 / (15.0 * ksq * k) * (ksq * (4.0 - 3.0 * ksq) * Eofk + ksq * (9.0 * ksq - 8) * Em1mKdm);
                 if (gradient) {
-                    dJdk[0] = (2 * (2 - ksq) * E + 2 * (ksq - 1) * K) * invksq * invksq * k;
+                    dJdk[0] = 2.0 / ksq * (-Eofk + 2 * Em1mKdm);
                     dJdk[1] = -3.0 * k * invksq * J[1] + ksq * dJdk[0];
                 }
             } else {
-                J[0] = 2.0 / (3.0 * ksq * k) * (2 * (2 * ksq - 1) * E +
-                                               (1 - ksq) * (2 - 3 * ksq) * K);
-                J[1] = 2.0 / (15.0 * ksq * k) * ((-3 * ksq * ksq + 13 * ksq - 8) * E +
-                                                (1 - ksq) * (8 - 9 * ksq) * K);
+                J[0] = (2.0 / 3.0) * ((3.0 - 2.0 * invksq) * Eofk + invksq * Em1mKdm);
+                J[1] = 0.4 * (1.0 / 3.0) * ((-3.0 + 4.0 * invksq) * Em1mKdm + (9.0 - 8.0 * invksq) * Eofk);
                 if (gradient) {
-                    dJdk[0] = 2.0 * invksq * invksq * ((2 - ksq) * E + 2 * (ksq - 1) * K);
+                    dJdk[0] = 2.0 / (ksq * k) * (2.0 * Eofk - Em1mKdm);
                     dJdk[1] = -3.0 * k * invksq * J[1] + ksq * dJdk[0];
                 }
             }
@@ -596,18 +595,23 @@ namespace limbdark {
     inline void GreensLimbDark<T>::compute(const T& b, const T& r, bool gradient) {
 
         // Initialize the basic variables
-        T dkdb, dkdr;
-        T rinv = 1.0 / r;
-        T binv = 1.0 / b;
-        rmb = r - b;
-        twob = 2 * b;
+        b2 = b * b;
+        r2 = r * r;
+        invr = 1.0 / r;
+        invb = 1.0 / b;
+        bmr = b - r;
+        bpr = b + r;
         fourbr = 4 * b * r;
-        invfourbr = 0.25 * rinv * binv;
-        
+        invfourbr = 0.25 * invr * invb;
+        onembmr2 = (1 + bmr) * (1 - bmr);
+        onembmr2inv = 1.0 / onembmr2; 
+        sqonembmr2 = sqrt(onembmr2);
+
         if (unlikely((b == 0) || (r == 0))) {
             ksq = T(INFINITY);
             k = T(INFINITY);
             kc = 1;
+            kcsq = 1;
             kkc = T(INFINITY);
             invksq = 0;
             kap0 = 0;
@@ -617,20 +621,22 @@ namespace limbdark {
                 dSdr(0) = -2 * pi<T>() * r;
             }
         } else {
-            ksq = (1 - (b - r)) * (1 + (b - r)) * invfourbr;
-            invksq = fourbr / ((1 - (b - r)) * (1 + (b - r)));
+            ksq = (1 - bmr) * (1 + bmr) * invfourbr;
+            invksq = fourbr / ((1 - bmr) * (1 + bmr));
             k = sqrt(ksq);
             if (ksq > 1) {
-                kc = sqrt(1 - invksq);
+                kcsq = 1 - invksq;
+                kc = sqrt(kcsq);
                 kkc = k * kc;
                 kap0 = 0; // Not used!
-                S(0) = pi<T>() * (1 - r * r);
+                S(0) = pi<T>() * (1 - r2);
                 if (gradient) {
                     dSdb(0) = 0;
                     dSdr(0) = -2 * pi<T>() * r;
                 }
             } else {
-                kc = sqrt(abs(((b + r) * (b + r) - 1) * invfourbr));
+                kcsq = abs((bpr * bpr - 1) * invfourbr);
+                kc = sqrt(kcsq);
                 // Eric Agol's "kite" method to compute a stable
                 // version of k * kc and I_0 = kap0
                 // Used to be
@@ -643,12 +649,12 @@ namespace limbdark {
                 T kite_area2 = sqrt((p0 + (p1 + p2)) * (p2 - (p0 - p1)) *
                                     (p2 + (p0 - p1)) * (p0 + (p1 - p2)));
                 kkc = kite_area2 * invfourbr;
-                kap0 = atan2(kite_area2, (r - 1) * (r + 1) + b * b);
-                T kap1 = atan2(kite_area2, (1 - r) * (1 + r) + b * b);
-                T Alens = kap1 + r * r * kap0 - kite_area2 * 0.5;
+                kap0 = atan2(kite_area2, (r - 1) * (r + 1) + b2);
+                T kap1 = atan2(kite_area2, (1 - r) * (1 + r) + b2);
+                T Alens = kap1 + r2 * kap0 - kite_area2 * 0.5;
                 S(0) = pi<T>() - Alens;
                 if (gradient) {
-                    dSdb(0) = kite_area2 * binv;
+                    dSdb(0) = kite_area2 * invb;
                     dSdr(0) = -2.0 * r * kap0;
                 }
             }
@@ -659,20 +665,21 @@ namespace limbdark {
 
         // Compute the linear limb darkening term
         // and the elliptic integrals
-        T Eofk, Em1mKdm;
-        S(1) = s2(b, r, Eofk, Em1mKdm, dSdb(1), dSdr(1), gradient);
+        S(1) = s2(b, r, third, b2, r2, ksq, kcsq, kc, invksq, onembmr2, 
+                  onembmr2inv, sqonembmr2, Eofk, Em1mKdm, 
+                  dSdb(1), dSdr(1), gradient);
 
         // Special case
         if (lmax == 1) return;
 
         // Special case
         if (unlikely(b == 0)) {
-            T term = 1 - r * r;
+            T term = 1 - r2;
             T dtermdr = -2 * r;
             T fac = sqrt(term);
             T dfacdr = -r / fac;
             for (int n = 2; n < lmax + 1; ++n) {
-                S(n) = -term * r * r * 2 * pi<T>();
+                S(n) = -term * r2 * 2 * pi<T>();
                 if (gradient) {
                     dSdb(n) = 0;
                     dSdr(n) = -2 * pi<T>() * r * (2 * term + r * dtermdr);
@@ -684,35 +691,24 @@ namespace limbdark {
         }
 
         // Derivatives
+        T dkdb, dkdr;
         if (gradient) {
-            dkdb = 0.125 * (r * r - b * b - 1) * binv * binv * rinv * invksq * k;
-            //dkdb = (r * r - b * b - 1) / (8 * k * b * b * r);
-            dkdr = 0.125 * (b * b - r * r - 1) * binv * rinv * rinv * invksq * k;
-            //dkdr = (b * b - r * r - 1) / (8 * k * b * r * r);
+            dkdb = 0.5 * (r2 - b2 - 1) * invb * invfourbr * invksq * k;
+            dkdr = 0.5 * (b2 - r2 - 1) * invr * invfourbr * invksq * k;
         }
 
-        // DEBUG: Phase these out
-        E = Eofk;
-        if (ksq <= 1)
-            K = (ksq * Em1mKdm - Eofk) / (ksq - 1);
-        else
-            K = (invksq * Em1mKdm - Eofk) / (invksq - 1);
+        // Compute the I and J integrals
         computeI(gradient);
         computeJ(gradient);
         
-        // 
+        // Compute the higher order S terms
         int n0, nmi;
         T norm, fac1, k2n, term, coeff;
         T Iv1, Iv2, Jv1, Jv2;
         T pofgn, dpdr, dpdb, dpdk;
-        T onembmr2 = (r + 1 - b) * (1 - r + b);
-        T onembmr2inv = 1.0 / onembmr2; 
-        T rmb_on_onembmr2 = (r - b) * onembmr2inv;
-        T sqonembmr2 = sqrt(onembmr2);
+        T rmb_on_onembmr2 = -bmr * onembmr2inv;
         T mfbri = -fourbr; 
         T mfbrj = 1; 
-
-        // Compute the higher order S terms
         for (int n = 2; n < lmax + 1; ++n) {
             pofgn = 0;
             dpdr = 0;
@@ -726,12 +722,12 @@ namespace limbdark {
                 // Compute i=0 term
                 Iv1 = I[n0]; 
                 Iv2 = I[n0 + 1];
-                pofgn = coeff * ((r - b) * Iv1 + 2 * b * Iv2);
+                pofgn = coeff * (-bmr * Iv1 + 2 * b * Iv2);
                 if (gradient) {
                     dpdr = coeff * Iv1;
                     dpdb = coeff * (-Iv1 + 2 * Iv2);
-                    dpdr += (n0 + 1) * pofgn * rinv;
-                    dpdb += n0 * pofgn * binv;
+                    dpdr += (n0 + 1) * pofgn * invr;
+                    dpdb += n0 * pofgn * invb;
                 }
                 k2n = coeff;
                 // For even n, compute coefficients for the sum over I_v:
@@ -741,14 +737,14 @@ namespace limbdark {
                     Iv1 = I[nmi];
                     k2n *= -ksq;
                     coeff = tables::choose<T>(n0, i) * k2n;
-                    term = coeff * ((r - b) * Iv1 + 2 * b * Iv2);
+                    term = coeff * (-bmr * Iv1 + 2 * b * Iv2);
                     pofgn += term;
                     if (gradient) {
                         dpdr += coeff * Iv1;
                         dpdb += coeff * (-Iv1 + 2.0 * Iv2);
                         fac1 = (2 * i) * rmb_on_onembmr2;
-                        dpdr += term * (-fac1 + (nmi + 1) * rinv);
-                        dpdb += term * (fac1 + nmi * binv);
+                        dpdr += term * (-fac1 + (nmi + 1) * invr);
+                        dpdb += term * (fac1 + nmi * invb);
                     }
                 }
                 pofgn *= 2 * r;
@@ -764,13 +760,13 @@ namespace limbdark {
                 // Compute i=0 term
                 Jv1 = J[n0]; 
                 Jv2 = J[n0 + 1];
-                pofgn = coeff * ((r - b) * Jv1 + 2 * b * Jv2);
+                pofgn = coeff * (-bmr * Jv1 + 2 * b * Jv2);
                 if (gradient) {
                     dpdr = coeff * Jv1;
                     dpdb = coeff * (-Jv1 + 2 * Jv2);
-                    dpdr += pofgn * (-3 * rmb_on_onembmr2 + (n0 + 1) * rinv);
-                    dpdb += pofgn * (3 * rmb_on_onembmr2 + n0 * binv);
-                    dpdk = coeff * ((r - b) * dJdk[n0] + 2 * b * dJdk[n0 + 1]);
+                    dpdr += pofgn * (-3 * rmb_on_onembmr2 + (n0 + 1) * invr);
+                    dpdb += pofgn * (3 * rmb_on_onembmr2 + n0 * invb);
+                    dpdk = coeff * (-bmr * dJdk[n0] + 2 * b * dJdk[n0 + 1]);
                 }
                 // For odd n, compute coefficients for the sum over J_v:
                 k2n = coeff;
@@ -780,15 +776,15 @@ namespace limbdark {
                     coeff = tables::choose<T>(n0, i) * k2n;
                     Jv2 = Jv1; 
                     Jv1 = J[nmi];
-                    term = coeff * ((r - b) * Jv1 + 2 * b * Jv2);
+                    term = coeff * (-bmr * Jv1 + 2 * b * Jv2);
                     pofgn += term;
                     if (gradient) {
                         dpdr += coeff * Jv1;
                         dpdb += coeff * (-Jv1 + 2.0 * Jv2);
                         fac1 = (2 * i + 3) * rmb_on_onembmr2;
-                        dpdr += term * (-fac1 + (nmi + 1) * rinv);
-                        dpdb += term * (fac1 + nmi * binv);
-                        dpdk += coeff * ((r - b) * dJdk[nmi] + 2 * b * dJdk[nmi + 1]);
+                        dpdr += term * (-fac1 + (nmi + 1) * invr);
+                        dpdb += term * (fac1 + nmi * invb);
+                        dpdk += coeff * (-bmr * dJdk[nmi] + 2 * b * dJdk[nmi + 1]);
                     }
                 }
                 norm = 2 * r * onembmr2 * sqonembmr2;
