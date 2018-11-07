@@ -26,7 +26,7 @@ namespace limbdark {
 
     /**
     The linear limb darkening flux term.
-    
+
     */
     template <typename T>
     inline T s2(const T& b, const T& r, 
@@ -301,6 +301,7 @@ namespace limbdark {
             int jvmax;
 
             // Coefficients
+            Vector<T> Icoeff;
             std::vector<Vector<T>> Jcoeff_largek;
             std::vector<Vector<T>> Jcoeff_smallk;
             std::vector<Vector<T>> dJdkcoeff_largek;
@@ -337,7 +338,8 @@ namespace limbdark {
                     pow_ksq.resize(jvmax + 1);
                     pow_ksq[0] = 1;
 
-                    // Pre-tabulate J coeffs
+                    // Pre-tabulate I and J coeffs
+                    computeIcoeffs();
                     computeJcoeffs();
 
                     // Pre-tabulate I for ksq >= 1
@@ -355,9 +357,25 @@ namespace limbdark {
             inline void compute(const T& b_, const T& r_, bool gradient=false);
             inline void computeI(bool gradient=false);
             inline void computeJ(bool gradient=false);
+            inline void computeIcoeffs();
             inline void computeJcoeffs();
 
     };
+
+    /**
+    Pre-compute the coefficients in the series expansion of
+    the I integral for v = vmax. This is
+    done a single time when the class is instantiated.
+
+    */
+    template <class T>
+    inline void GreensLimbDark<T>::computeIcoeffs() {
+        Icoeff.resize(STARRY_IJ_MAX_ITER + 1);
+        Icoeff[0] = 2.0 / (2 * ivmax + 1);
+        for (int n = 1; n <= STARRY_IJ_MAX_ITER; ++n) {
+            Icoeff[n] = (2.0 * n - 1.0) * 0.5 * (2 * n + 2 * ivmax - 1) / (n * (2 * n + 2 * ivmax + 1));
+        }
+    }
 
     /**
 
@@ -381,19 +399,15 @@ namespace limbdark {
                 T tol = mach_eps<T>() * ksq;
                 T error = T(INFINITY);
 
-                // Computing leading coefficient (n=0):
-                T coeff = T(2.0 / (2 * ivmax + 1));
-
-                // Add leading term to I_ivmax:
+                // Leading coefficient (n=0):
+                T coeff = Icoeff[0];
                 T res = coeff;
 
                 // Now, compute higher order terms until
                 // desired precision is reached
                 int n = 1;
                 while ((n < STARRY_IJ_MAX_ITER) && (abs(error) > tol)) {
-                    coeff *= (2.0 * n - 1.0) * 0.5 *
-                             (2 * n + 2 * ivmax - 1) /
-                             (n * (2 * n + 2 * ivmax + 1)) * ksq;
+                    coeff *= Icoeff[n] * ksq;
                     error = coeff;
                     res += coeff;
                     n++;

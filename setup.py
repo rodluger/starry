@@ -145,6 +145,8 @@ class BuildExt(build_ext):
             if debug:
                 ext.extra_compile_args += ["-g"]
                 ext.extra_compile_args += ["-DSTARRY_DEBUG"]
+            else:
+                ext.extra_compile_args += ["-g0"]
             if sys.platform == "darwin":
                 ext.extra_compile_args += ["-march=native",
                                            "-mmacosx-version-min=10.9"]
