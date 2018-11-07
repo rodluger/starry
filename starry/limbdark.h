@@ -26,6 +26,7 @@ namespace limbdark {
 
     /**
     The linear limb darkening flux term.
+    
     */
     template <typename T>
     inline T s2(const T& b, const T& r, 
@@ -265,6 +266,7 @@ namespace limbdark {
             T kcsq;
             T kkc;
             T kap0;
+            T kap1;
             T invksq;
             T fourbr;
             T invfourbr;
@@ -277,6 +279,7 @@ namespace limbdark {
             T onembmr2;
             T onembmr2inv;
             T sqonembmr2;
+            T kite_area2;
             T Sn;
             T third;
             T ds2db;
@@ -607,6 +610,7 @@ namespace limbdark {
         onembmr2inv = 1.0 / onembmr2; 
         sqonembmr2 = sqrt(onembmr2);
 
+        // Compute the kite area and the k^2 variables
         if (unlikely((b == 0) || (r == 0))) {
             ksq = T(INFINITY);
             k = T(INFINITY);
@@ -614,7 +618,9 @@ namespace limbdark {
             kcsq = 1;
             kkc = T(INFINITY);
             invksq = 0;
-            kap0 = 0;
+            kap0 = 0; // Not used!
+            kap1 = 0; // Not used!
+            kite_area2 = 0; // Not used!
             S(0) = pi<T>() * (1 - r * r);
             if (gradient) {
                 dSdb(0) = 0;
@@ -629,6 +635,8 @@ namespace limbdark {
                 kc = sqrt(kcsq);
                 kkc = k * kc;
                 kap0 = 0; // Not used!
+                kap1 = 0; // Not used!
+                kite_area2 = 0; // Not used!
                 S(0) = pi<T>() * (1 - r2);
                 if (gradient) {
                     dSdb(0) = 0;
@@ -646,11 +654,11 @@ namespace limbdark {
                 if (p0 < p1) swap(p0, p1);
                 if (p1 < p2) swap(p1, p2);
                 if (p0 < p1) swap(p0, p1);
-                T kite_area2 = sqrt((p0 + (p1 + p2)) * (p2 - (p0 - p1)) *
-                                    (p2 + (p0 - p1)) * (p0 + (p1 - p2)));
+                kite_area2 = sqrt((p0 + (p1 + p2)) * (p2 - (p0 - p1)) *
+                                  (p2 + (p0 - p1)) * (p0 + (p1 - p2)));
                 kkc = kite_area2 * invfourbr;
                 kap0 = atan2(kite_area2, (r - 1) * (r + 1) + b2);
-                T kap1 = atan2(kite_area2, (1 - r) * (1 + r) + b2);
+                kap1 = atan2(kite_area2, (1 - r) * (1 + r) + b2);
                 T Alens = kap1 + r2 * kap0 - kite_area2 * 0.5;
                 S(0) = pi<T>() - Alens;
                 if (gradient) {
@@ -686,6 +694,35 @@ namespace limbdark {
                     dtermdr = dfacdr * term + fac * dtermdr;
                 }
                 term *= fac;
+            }
+            return;
+        }
+
+        // Special case
+        if (lmax == 2) {
+            T r2pb2 = (r2 + b2);
+            T eta2 = 0.5 * r2 * (r2pb2 + b2);
+            T four_pi_eta;
+            T detadb, detadr;
+            if (ksq > 1) {
+                four_pi_eta = 4 * pi<T>() * (eta2 - 0.5);
+                if (gradient) {
+                    T deta2dr =  2 * r * r2pb2;
+                    T deta2db = 2 * b * r2;
+                    detadr = 4 * pi<T>() * deta2dr;
+                    detadb = 4 * pi<T>() * deta2db;
+                }
+            } else {
+                four_pi_eta = 2 * (-(pi<T>() - kap1) + 2 * eta2 * kap0 - 0.25 * kite_area2 * (1.0 + 5 * r2 + b2));
+                if (gradient) {
+                    detadr = 8 * r * (r2pb2 * kap0 - kite_area2);
+                    detadb = 2.0 * invb * (4 * b2 * r2 * kap0 - (1 + r2pb2) * kite_area2);
+                }
+            }
+            S(2) = 2 * S(0) + four_pi_eta;
+            if (gradient) {
+                dSdb(2) = 2 * dSdb(0) + detadb;
+                dSdr(2) = 2 * dSdr(0) + detadr;
             }
             return;
         }

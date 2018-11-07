@@ -1234,38 +1234,20 @@ namespace maps {
         // Occultation
         } else {
 
-            if ((u_deg <= 2) && (ro < 1)) {
+            // Compute the Agol S vector
+            L.compute(b, ro);
 
-                // Skip the overhead for quadratic limb darkening
-                G.quad(b, ro);
-                if (u_deg == 0)
-                    return G.sT(0) * getRow(g_u, 0);
-                else if (u_deg == 1)
-                    return G.sT(0) * getRow(g_u, 0) +
-                           G.sT(2) * getRow(g_u, 2);
-                else
-                    return G.sT(0) * getRow(g_u, 0) +
-                           G.sT(2) * getRow(g_u, 2) +
-                           G.sT(8) * getRow(g_u, 8);
-
-            } else {
-
-                // Compute the Agol S vector
-                L.compute(b, ro);
-
-                // Compute the Agol `c` basis
-                if (update_c_basis) {
-                    for (int n = 0; n < nwav; ++n) {
-                        agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
-                        setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
-                    }
-                    update_c_basis = false;
+            // Compute the Agol `c` basis
+            if (update_c_basis) {
+                for (int n = 0; n < nwav; ++n) {
+                    agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
+                    setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
                 }
-
-                // Dot the result in and we're done
-                return L.S * colwiseProduct(agol_c, agol_norm);
-
+                update_c_basis = false;
             }
+
+            // Dot the result in and we're done
+            return L.S * colwiseProduct(agol_c, agol_norm);
 
         }
 
