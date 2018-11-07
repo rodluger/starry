@@ -260,6 +260,9 @@ namespace maps {
                 const Scalar<T>& xo_,
                 const Scalar<T>& yo_,
                 const Scalar<T>& ro_);
+            inline Row<T> fluxConstant(const Scalar<T>& xo_,
+                const Scalar<T>& yo_,
+                const Scalar<T>& ro_);
             inline Row<T> fluxConstantWithGradient(const Scalar<T>& xo_,
                 const Scalar<T>& yo_,
                 const Scalar<T>& ro_);
@@ -1087,10 +1090,13 @@ namespace maps {
                 return fluxWithGradient(theta_, xo_, yo_, ro_);
             else
                 return fluxConstantWithGradient(xo_, yo_, ro_);
-        } else if (y_deg == 0) {
+        } else if ((y_deg == 0) && (!numerical)) {
             // If only the Y_{0,0} term is set, call the
             // faster method for pure limb-darkening
-            return fluxLD(xo_, yo_, ro_);
+            if (u_deg > 0)
+                return fluxLD(xo_, yo_, ro_);
+            else
+                return fluxConstant(xo_, yo_, ro_);
         }
 
         // Bind references to temporaries for speed
@@ -1563,7 +1569,57 @@ namespace maps {
 
     /**
     Compute the flux during or outside of an occultation
-    for a pure spherical harmonic map (u_{l} = 0 for l > 0).
+    for a constant map.
+
+    */
+    template <class T>
+    inline Row<T> Map<T>::fluxConstant(const Scalar<T>& xo_,
+                                       const Scalar<T>& yo_,
+                                       const Scalar<T>& ro_) {
+
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+        T& ARRy(tmp.tmpT[2]);
+
+        // Convert to internal type
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+
+        // Impact parameter
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+           setZero(result);
+           return result;
+        }
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // We're done!
+            return (B.rTA1 * y);
+
+        // Occultation
+        } else {
+
+            // Perform the change of basis
+            ARRy = B.A * y;
+
+            // Compute the sT vector
+            G.compute(b, ro);
+
+            // Dot the result in and we're done
+            return G.sT * ARRy;
+
+        }
+
+    }
+
+    /**
+    Compute the flux during or outside of an occultation
+    for a constant map.
     Also compute the gradient with respect to the orbital
     parameters and the spherical harmonic map coefficients.
 
@@ -1609,7 +1665,7 @@ namespace maps {
             setRow(dF, 2, Scalar<T>(0.0));
             setRow(dF, 3, Scalar<T>(0.0));
 
-            // Compute the consant coeff deriv
+            // Compute the constant coeff deriv
             setRow(dF, 4, Scalar<T>(1.0));
 
             // We're done!
@@ -1618,7 +1674,7 @@ namespace maps {
         // Occultation
         } else {
 
-            // Perform the rotation + change of basis
+            // Perform the change of basis
             ARRy = B.A * y;
 
             // Compute the sT vector using AutoDiff
