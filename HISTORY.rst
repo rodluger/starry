@@ -6,6 +6,8 @@
 
 - Release of the code for the published version of the paper.
 - Sped up gradient I/O for limb-darkened light curves.
+- Fixed bug that led to huge (> 100 MB) binary sizes on Linux
+  machines.
 - Small miscellaneous bugfixes.
 
 0.2.2 (2018-10-14)
