@@ -206,7 +206,6 @@ namespace maps {
             Greens<Scalar<T>> G;                                                /**< The occultation integral solver class */
             Greens<ADScalar<Scalar<T>, 2>> G_grad;                              /**< The occultation integral solver class w/ AutoDiff capability */
             GreensLimbDark<Scalar<T>> L;                                        /**< The occultation integral solver class (optimized for limb darkening) */
-            GreensLimbDark<ADScalar<Scalar<T>, 2>> L_grad;                      /**< The occultation integral solver class (opt. for LD) w/ AutoDiff capability */
             Minimizer<T> M;                                                     /**< Map minimization class */
             Scalar<T> tol;                                                      /**< Machine epsilon */
             std::vector<string> dF_orbital_names;                               /**< Names of each of the orbital params in the flux gradient */
@@ -261,6 +260,9 @@ namespace maps {
                 const Scalar<T>& xo_,
                 const Scalar<T>& yo_,
                 const Scalar<T>& ro_);
+            inline Row<T> fluxConstant(const Scalar<T>& xo_,
+                const Scalar<T>& yo_,
+                const Scalar<T>& ro_);
             inline Row<T> fluxConstantWithGradient(const Scalar<T>& xo_,
                 const Scalar<T>& yo_,
                 const Scalar<T>& ro_);
@@ -280,7 +282,6 @@ namespace maps {
                 G(lmax),
                 G_grad(lmax),
                 L(lmax),
-                L_grad(lmax),
                 M(lmax),
                 tol(mach_eps<Scalar<T>>()),
                 dp_udu(nwav),
@@ -456,6 +457,7 @@ namespace maps {
     inline void Map<T>::update() {
         updateY();
         updateU();
+        G.skip.setZero();
     }
 
     /**
@@ -1089,10 +1091,13 @@ namespace maps {
                 return fluxWithGradient(theta_, xo_, yo_, ro_);
             else
                 return fluxConstantWithGradient(xo_, yo_, ro_);
-        } else if (y_deg == 0) {
+        } else if ((y_deg == 0) && (!numerical)) {
             // If only the Y_{0,0} term is set, call the
             // faster method for pure limb-darkening
-            return fluxLD(xo_, yo_, ro_);
+            if (u_deg > 0)
+                return fluxLD(xo_, yo_, ro_);
+            else
+                return fluxConstant(xo_, yo_, ro_);
         }
 
         // Bind references to temporaries for speed
@@ -1236,38 +1241,21 @@ namespace maps {
         // Occultation
         } else {
 
-            if ((u_deg <= 2) && (ro < 1)) {
+            // Compute the Agol S vector
+            L.compute(b, ro);
 
-                // Skip the overhead for quadratic limb darkening
-                G.quad(b, ro);
-                if (u_deg == 0)
-                    return G.sT(0) * getRow(g_u, 0);
-                else if (u_deg == 1)
-                    return G.sT(0) * getRow(g_u, 0) +
-                           G.sT(2) * getRow(g_u, 2);
-                else
-                    return G.sT(0) * getRow(g_u, 0) +
-                           G.sT(2) * getRow(g_u, 2) +
-                           G.sT(8) * getRow(g_u, 8);
-
-            } else {
-
-                // Compute the Agol S vector
-                L.compute(b, ro);
-
-                // Compute the Agol `c` basis
-                if (update_c_basis) {
-                    for (int n = 0; n < nwav; ++n) {
-                        agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
-                        setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
-                    }
-                    update_c_basis = false;
+            // Compute the Agol `c` basis
+            if (update_c_basis) {
+                for (int n = 0; n < nwav; ++n) {
+                    agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
+                    setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
                 }
-
-                // Dot the result in and we're done
-                return L.S * colwiseProduct(agol_c, agol_norm);
-
+                update_c_basis = false;
             }
+
+            // Dot the result in and we're done
+            auto prod = colwiseProduct(agol_c, agol_norm);
+            return L.S * colwiseProduct(prod, getRow(y, 0));
 
         }
 
@@ -1299,12 +1287,7 @@ namespace maps {
         dFdu.resize(lmax, nwav);
         T& dFdc(tmp.tmpT[1]);
         dFdc.resize(lmax + 1, nwav);
-        VectorT<Scalar<T>>& dSdb(tmp.tmpRowVector[0]);
-        dSdb.resize(lmax + 1);
-        VectorT<Scalar<T>>& dSdro(tmp.tmpRowVector[1]);
-        dSdro.resize(lmax + 1);
-        ADScalar<Scalar<T>, 2>& b_grad(tmp.tmpADScalar2[0]);
-        ADScalar<Scalar<T>, 2>& ro_grad(tmp.tmpADScalar2[1]);
+        Vector<Scalar<T>>& agol_cn(tmp.tmpColumnVector[0]);
 
         // Resize the gradients
         resizeGradient(1, lmax);
@@ -1354,57 +1337,42 @@ namespace maps {
             // Compute the Agol `c` basis
             if (update_c_basis) {
                 for (int n = 0; n < nwav; ++n) {
-                    agol_c.col(n) = computeC(getColumn(u, n), dagol_cdu(n));
-                    setIndex(agol_norm, n, normC(getColumn(agol_c, n)));
+                    agol_cn = computeC(getColumn(u, n), dagol_cdu(n));
+                    agol_c.col(n) = agol_cn;
+                    setIndex(agol_norm, n, normC(agol_cn));
                 }
                 update_c_basis = false;
             }
 
-            // Compute the sT vector using AutoDiff
-            b_grad.value() = b;
-            b_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 0);
-            ro_grad.value() = ro;
-            ro_grad.derivatives() = Vector<Scalar<T>>::Unit(2, 1);
-
             // Compute S, dS / db, and dS / dr
-            L_grad.compute(b_grad, ro_grad);
-
-            // Store the value of the S vector and its derivatives
-            for (int i = 0; i <= lmax; ++i) {
-                L.S(i) = L_grad.S(i).value();
-                dSdb(i) = L_grad.S(i).derivatives()(0);
-                dSdro(i) = L_grad.S(i).derivatives()(1);
-            }
+            L.compute(b, ro, true);
 
             // Compute the value of the flux and its derivatives
             for (int n = 0; n < nwav; ++n) {
 
                 // F, dF / db and dF / dr
-                setIndex(result, n, L.S.dot(getColumn(agol_c, n)) *
-                                    getIndex(agol_norm, n));
-                setIndex(dFdb, n, dSdb.dot(getColumn(agol_c, n)) *
-                                  getIndex(agol_norm, n));
-                setIndex(dFdro, n, dSdro.dot(getColumn(agol_c, n)) *
-                                   getIndex(agol_norm, n));
+                Scalar<T> norm = getIndex(agol_norm, n);
+                agol_cn = getColumn(agol_c, n) * norm;
+                Scalar<T> resn = L.S.dot(agol_cn) * getColumn(getRow(y, 0), n);
+                setIndex(result, n, resn);
+                setIndex(dFdb, n, L.dSdb.dot(agol_cn));
+                setIndex(dFdro, n, L.dSdr.dot(agol_cn));
 
                 // Compute dF / dc
-                dFdc.block(0, n, lmax + 1, 1) = L.S.transpose() *
-                                                getIndex(agol_norm, n);
-                dFdc(0, n) -= getIndex(result, n) * getIndex(agol_norm, n) *
-                              pi<Scalar<T>>();
-                dFdc(1, n) -= 2.0 * pi<Scalar<T>>() / 3.0 *
-                              getIndex(result, n) * getIndex(agol_norm, n);
+                dFdc.block(0, n, lmax + 1, 1) = L.S.transpose();
+                dFdc(0, n) -= resn * pi<Scalar<T>>();
+                dFdc(1, n) -= 2.0 * pi<Scalar<T>>() / 3.0 * resn;
+                dFdc *= norm;
 
                 // Chain rule to get dF / du
-                dFdu.block(0, n, lmax, 1).transpose() =
-                    dFdc.block(0, n, lmax + 1, 1).transpose() *
-                    dagol_cdu(n).block(0, 1, lmax + 1, lmax);
-
+                dFdu.block(0, n, lmax, 1) = 
+                    dagol_cdu(n) * dFdc.block(0, n, lmax + 1, 1);
             }
 
             // Update the user-facing derivs
-            setRow(dF, 1, Row<T>(dFdb * xo / b));
-            setRow(dF, 2, Row<T>(dFdb * yo / b));
+            Scalar<T> binv = 1.0 / b;
+            setRow(dF, 1, Row<T>(dFdb * xo * binv));
+            setRow(dF, 2, Row<T>(dFdb * yo * binv));
             setRow(dF, 3, dFdro);
             setRow(dF, 4, cwiseQuotient(result, getRow(y, 0)));
             for (int i = 0; i < lmax; ++i)
@@ -1603,7 +1571,57 @@ namespace maps {
 
     /**
     Compute the flux during or outside of an occultation
-    for a pure spherical harmonic map (u_{l} = 0 for l > 0).
+    for a constant map.
+
+    */
+    template <class T>
+    inline Row<T> Map<T>::fluxConstant(const Scalar<T>& xo_,
+                                       const Scalar<T>& yo_,
+                                       const Scalar<T>& ro_) {
+
+        // Bind references to temporaries for speed
+        Row<T>& result(tmp.tmpRow[0]);
+        T& ARRy(tmp.tmpT[2]);
+
+        // Convert to internal type
+        Scalar<T> xo = xo_;
+        Scalar<T> yo = yo_;
+        Scalar<T> ro = ro_;
+
+        // Impact parameter
+        Scalar<T> b = sqrt(xo * xo + yo * yo);
+
+        // Check for complete occultation
+        if (b <= ro - 1) {
+           setZero(result);
+           return result;
+        }
+
+        // No occultation
+        if ((b >= 1 + ro) || (ro == 0)) {
+
+            // We're done!
+            return (B.rTA1 * y);
+
+        // Occultation
+        } else {
+
+            // Perform the change of basis
+            ARRy = B.A * y;
+
+            // Compute the sT vector
+            G.compute(b, ro);
+            
+            // Dot the result in and we're done
+            return G.sT * ARRy;
+
+        }
+
+    }
+
+    /**
+    Compute the flux during or outside of an occultation
+    for a constant map.
     Also compute the gradient with respect to the orbital
     parameters and the spherical harmonic map coefficients.
 
@@ -1649,7 +1667,7 @@ namespace maps {
             setRow(dF, 2, Scalar<T>(0.0));
             setRow(dF, 3, Scalar<T>(0.0));
 
-            // Compute the consant coeff deriv
+            // Compute the constant coeff deriv
             setRow(dF, 4, Scalar<T>(1.0));
 
             // We're done!
@@ -1658,7 +1676,7 @@ namespace maps {
         // Occultation
         } else {
 
-            // Perform the rotation + change of basis
+            // Perform the change of basis
             ARRy = B.A * y;
 
             // Compute the sT vector using AutoDiff

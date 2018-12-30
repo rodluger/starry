@@ -140,11 +140,14 @@ class BuildExt(build_ext):
             ext.extra_compile_args = list(opts + ext.extra_compile_args)
             ext.extra_compile_args += ["-O%d" % optimize]
             ext.extra_compile_args += ["-Wextra",
+                                       "-Wpedantic",
                                        "-Wno-unused-parameter",
-                                       "-Wpedantic"]
+                                       "-Wno-delete-non-virtual-dtor"]
             if debug:
                 ext.extra_compile_args += ["-g"]
                 ext.extra_compile_args += ["-DSTARRY_DEBUG"]
+            else:
+                ext.extra_compile_args += ["-g0"]
             if sys.platform == "darwin":
                 ext.extra_compile_args += ["-march=native",
                                            "-mmacosx-version-min=10.9"]
