@@ -50,7 +50,7 @@ namespace limbdark {
                 Em1mKdm = 0.25 * pi<T>();
                 if (gradient) {
                     ds2db = 0;
-                    ds2dr = -2.0 * pi<T>() * sqrt1mr2;
+                    ds2dr = -2.0 * pi<T>() * r * sqrt1mr2;
                 }
             } else if (unlikely(b == r)) {
                 if (unlikely(r == 0.5)) {
@@ -278,6 +278,7 @@ namespace limbdark {
             T bpr;
             T onembmr2;
             T onembmr2inv;
+            T onembpr2; 
             T sqonembmr2;
             T kite_area2;
             T Sn;
@@ -622,6 +623,7 @@ namespace limbdark {
         invfourbr = 0.25 * invr * invb;
         onembmr2 = (1 + bmr) * (1 - bmr);
         onembmr2inv = 1.0 / onembmr2; 
+        onembpr2 = (1 - r - b) * (1 + r + b); 
         sqonembmr2 = sqrt(onembmr2);
 
         // Compute the kite area and the k^2 variables
@@ -641,11 +643,11 @@ namespace limbdark {
                 dSdr(0) = -2 * pi<T>() * r;
             }
         } else {
-            ksq = (1 - bmr) * (1 + bmr) * invfourbr;
-            invksq = fourbr / ((1 - bmr) * (1 + bmr));
+            ksq = onembpr2 * invfourbr + 1.0;
+            invksq = T(1.0) / ksq;
             k = sqrt(ksq);
             if (ksq > 1) {
-                kcsq = 1 - invksq;
+                kcsq = onembpr2 * onembmr2inv;
                 kc = sqrt(kcsq);
                 kkc = k * kc;
                 kap0 = 0; // Not used!
@@ -657,7 +659,7 @@ namespace limbdark {
                     dSdr(0) = -2 * pi<T>() * r;
                 }
             } else {
-                kcsq = abs((bpr * bpr - 1) * invfourbr);
+                kcsq = -onembpr2 * invfourbr;
                 kc = sqrt(kcsq);
                 // Eric Agol's "kite" method to compute a stable
                 // version of k * kc and I_0 = kap0
@@ -668,8 +670,10 @@ namespace limbdark {
                 if (p0 < p1) swap(p0, p1);
                 if (p1 < p2) swap(p1, p2);
                 if (p0 < p1) swap(p0, p1);
-                kite_area2 = sqrt((p0 + (p1 + p2)) * (p2 - (p0 - p1)) *
-                                  (p2 + (p0 - p1)) * (p0 + (p1 - p2)));
+                T term = (p0 + (p1 + p2)) * (p2 - (p0 - p1)) *
+                         (p2 + (p0 - p1)) * (p0 + (p1 - p2));
+                term = max(0.0, term);
+                kite_area2 = sqrt(term);
                 kkc = kite_area2 * invfourbr;
                 kap0 = atan2(kite_area2, (r - 1) * (r + 1) + b2);
                 kap1 = atan2(kite_area2, (1 - r) * (1 + r) + b2);

@@ -619,25 +619,7 @@ namespace pybind_interface {
                 }, docstrings::Map::flux, "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0,
                                    "ro"_a=0.0, "gradient"_a=false,
                                    "numerical"_a=false)
-            
-            /*
-            .def("flux", [](maps::Map<T> &map,
-                            double& theta,
-                            double& xo,
-                            Vector<double>& yo,
-                            double& ro,
-                            bool gradient,
-                            bool numerical) -> py::object {
-
-                    for (int i = 0; i < yo.size(); ++i)
-                        map.flux(0, 0, yo(i), ro, gradient, false);
-                    return py::none();
-
-                }, docstrings::Map::flux, "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0,
-                                   "ro"_a=0.0, "gradient"_a=false,
-                                   "numerical"_a=false)
-            */
-           
+                       
             .def("rotate", [](maps::Map<T> &map, double theta) {
                     map.rotate(static_cast<Scalar<T>>(theta));
             }, docstrings::Map::rotate, "theta"_a=0)
