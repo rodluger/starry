@@ -1,5 +1,13 @@
 .. :changelog:
 
+
+0.3.0 (2018-12-30)
+++++++++++++++++++
+
+- Release of the code for the published version of the paper.
+- Sped up gradient I/O for limb-darkened light curves.
+- Small miscellaneous bugfixes.
+
 0.2.2 (2018-10-14)
 ++++++++++++++++++
 
