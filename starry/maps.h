@@ -457,6 +457,7 @@ namespace maps {
     inline void Map<T>::update() {
         updateY();
         updateU();
+        G.skip.setZero();
     }
 
     /**
@@ -1610,7 +1611,7 @@ namespace maps {
 
             // Compute the sT vector
             G.compute(b, ro);
-
+            
             // Dot the result in and we're done
             return G.sT * ARRy;
 
