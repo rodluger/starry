@@ -1253,7 +1253,8 @@ namespace maps {
             }
 
             // Dot the result in and we're done
-            return L.S * colwiseProduct(agol_c, agol_norm);
+            auto prod = colwiseProduct(agol_c, agol_norm);
+            return L.S * colwiseProduct(prod, getRow(y, 0));
 
         }
 
@@ -1351,7 +1352,7 @@ namespace maps {
                 // F, dF / db and dF / dr
                 Scalar<T> norm = getIndex(agol_norm, n);
                 agol_cn = getColumn(agol_c, n) * norm;
-                Scalar<T> resn = L.S.dot(agol_cn);
+                Scalar<T> resn = L.S.dot(agol_cn) * getColumn(getRow(y, 0), n);
                 setIndex(result, n, resn);
                 setIndex(dFdb, n, L.dSdb.dot(agol_cn));
                 setIndex(dFdro, n, L.dSdr.dot(agol_cn));

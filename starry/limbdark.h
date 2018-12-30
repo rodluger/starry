@@ -672,7 +672,7 @@ namespace limbdark {
                 if (p0 < p1) swap(p0, p1);
                 T term = (p0 + (p1 + p2)) * (p2 - (p0 - p1)) *
                          (p2 + (p0 - p1)) * (p0 + (p1 - p2));
-                term = max(0.0, term);
+                term = max(T(0.0), term);
                 kite_area2 = sqrt(term);
                 kkc = kite_area2 * invfourbr;
                 kap0 = atan2(kite_area2, (r - 1) * (r + 1) + b2);
