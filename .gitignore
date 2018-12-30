@@ -25,6 +25,7 @@ tex/travis
 starry/test
 lib/boost_1_68_0
 *.vscode
+tmp/*
 
 # Latex
 *.aux
