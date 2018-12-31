@@ -1,3 +1,4 @@
 include README.md LICENSE HISTORY.rst
-include starry/*.h
+include include/*.h
+include include/maps/*.h
 graft lib

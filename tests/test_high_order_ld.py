@@ -1,5 +1,5 @@
 """Test high order limb darkening."""
-from starry import Map
+from starry2 import Map
 import numpy as np
 from scipy.integrate import dblquad
 
@@ -76,7 +76,7 @@ def NumericalFlux(b, r, u):
     return 1 - flux
 
 
-def test_transits():
+def test_high_order_ld():
     """Test transit light curve generation for 8th order limb darkening."""
     # Input params
     u = [0.4, 0.26, 0.3, 0.5, -0.2, 0.5, -0.7, 0.3]
@@ -84,15 +84,16 @@ def test_transits():
     r = 0.1
     b = np.linspace(0, 1 + r + 0.1, npts)
 
+    # Compute the starry flux
+    map = Map(len(u))
+    map[0, 0] = 1
+    map[:] = u
+    sF = map.flux(xo=b, yo=0, ro=r)
+
     # Numerical flux
     nF = np.zeros_like(b)
     for i in range(npts):
         nF[i] = NumericalFlux(b[i], r, u)
-
-    # Compute the starry flux
-    map = Map(len(u))
-    map[:] = u
-    sF = map.flux(xo=b, yo=0, ro=r)
 
     # Compute the error, check that it's better than 1 ppb
     error = np.max((np.abs(nF - sF)))
@@ -100,4 +101,4 @@ def test_transits():
 
 
 if __name__ == "__main__":
-    test_transits()
+    test_high_order_ld()

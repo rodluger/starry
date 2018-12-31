@@ -1,5 +1,9 @@
 .. :changelog:
 
+1.0.0 (????-??-??)
+++++++++++++++++++
+
+- Currently working on this release on the `v2` branch.
 
 0.3.0 (2018-12-30)
 ++++++++++++++++++

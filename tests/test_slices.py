@@ -1,12 +1,11 @@
 """Test slice indexing of the map."""
-import starry
+import starry2
 import numpy as np
 
 
-def test_scalar():
-    """Test slice indexing for scalar maps."""
-    # Do the default and the multi maps
-    for map in starry.Map(5), starry.Map(5, multi=True):
+def test_default():
+    """Test slice indexing for default maps."""
+    for map in [starry2.Map(5), starry2.Map(5, multi=True)]:
         # No slice
         map[0, 0] = 1
         assert map.y[0] == 1
@@ -38,52 +37,46 @@ def test_scalar():
         map.reset()
 
 
-def test_spectral():
-    """Test slice indexing for spectral maps."""
-    # Let's do two wavelength bins
-    map = starry.Map(5, 2)
+def test_multicol():
+    """Test slice indexing for multi-column maps."""
+    for map in [starry2.Map(5, nw=2), starry2.Map(5, nw=2, multi=True),
+                starry2.Map(5, nt=2), starry2.Map(5, nt=2, multi=True)]:
+        # No slice
+        map[0, 0] = [1, 2]
+        assert np.allclose(map.y[0], [1, 2])
+        map.reset()
 
-    # No slice
-    map[0, 0] = [1, 2]
-    assert np.allclose(map.y[0], [1, 2])
-    map.reset()
+        # l slice
+        map[:, 0] = [1, 2]
+        assert np.allclose(map[:, 0], [1, 2])
+        assert np.allclose(map[0, 0], [1, 2]) and \
+            np.allclose(map[1, 0], [1, 2]) and \
+            np.allclose(map[2, 0], [1, 2])
+        map.reset()
 
-    # l slice
-    map[:, 0] = [1, 2]
-    assert np.allclose(map[:, 0], [1, 2])
-    assert np.allclose(map[0, 0], [1, 2]) and \
-        np.allclose(map[1, 0], [1, 2]) and \
-        np.allclose(map[2, 0], [1, 2])
-    map.reset()
+        # m slice
+        map[2, :] = [1, 2]
+        assert np.allclose(map[2, :], [1, 2])
+        assert np.allclose(map[2, -2], [1, 2]) and \
+            np.allclose(map[2, -1], [1, 2]) and \
+            np.allclose(map[2, 0], [1, 2]) and \
+            np.allclose(map[2, 1], [1, 2]) and \
+            np.allclose(map[2, 2], [1, 2])
+        map.reset()
 
-    # m slice
-    map[2, :] = [1, 2]
-    assert np.allclose(map[2, :], [1, 2])
-    assert np.allclose(map[2, -2], [1, 2]) and \
-        np.allclose(map[2, -1], [1, 2]) and \
-        np.allclose(map[2, 0], [1, 2]) and \
-        np.allclose(map[2, 1], [1, 2]) and \
-        np.allclose(map[2, 2], [1, 2])
-    map.reset()
+        # Both slices
+        map[:, :] = [1, 2]
+        assert(np.allclose(map[:, :], [1, 2]))
+        assert np.allclose(map.y, [1, 2])
 
-    # Both slices
-    map[:, :] = [1, 2]
-    assert(np.allclose(map[:, :], [1, 2]))
-    assert np.allclose(map.y, [1, 2])
-
-    # Vector assignment
-    map[:, 0] = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]]
-    assert np.allclose(map[:, 0], [[0, 1], [1, 2], [2, 3],
-                                   [3, 4], [4, 5], [5, 6]])
-    assert (np.allclose(map[0, 0], [0, 1])) and \
-        (np.allclose(map[1, 0], [1, 2])) and \
-        (np.allclose(map[2, 0], [2, 3])) and \
-        (np.allclose(map[3, 0], [3, 4])) and \
-        (np.allclose(map[4, 0], [4, 5])) and \
-        (np.allclose(map[5, 0], [5, 6]))
-    map.reset()
-
-
-if __name__ == "__main__":
-    test_scalar()
-    test_spectral()
+        # Vector assignment
+        map[:, 0] = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]]
+        assert np.allclose(map[:, 0], [[0, 1], [1, 2], [2, 3],
+                                    [3, 4], [4, 5], [5, 6]])
+        assert (np.allclose(map[0, 0], [0, 1])) and \
+            (np.allclose(map[1, 0], [1, 2])) and \
+            (np.allclose(map[2, 0], [2, 3])) and \
+            (np.allclose(map[3, 0], [3, 4])) and \
+            (np.allclose(map[4, 0], [4, 5])) and \
+            (np.allclose(map[5, 0], [5, 6]))
+        map.reset()

@@ -1,52 +1,65 @@
 """Test the map evaluation."""
-import starry
+import starry2
 import numpy as np
-norm = 0.5 * np.sqrt(np.pi)
 
 
-def run(multi=False):
+def run(temporal=False, spectral=False, multi=False):
     """Compare the map evaluation to some benchmarks."""
     # Instantiate
     lmax = 2
-    map = starry.Map(lmax, multi=multi)
+    if spectral:
+        nw = 2
+        map = starry2.Map(lmax, multi=multi, nw=nw)
+    elif temporal:
+        nw = 1
+        map = starry2.Map(lmax, multi=multi, nt=2)
+    else:
+        nw = 1
+        map = starry2.Map(lmax, multi=multi)
     map.axis = [0, 1, 0]
-    map[:, :] = norm
+    map[:, :] = 1
 
     # No arguments
     I = map()
-    assert np.allclose(I, 1.4014804341818383)
+    assert np.allclose(I, 1.5814013250227599)
 
     # Scalar evaluation
     I = map(x=0.1, y=0.1)
-    assert np.allclose(I, 1.7026057774431276)
-
-    # Scalar evaluation
-    I = map(x=0.1, y=0.1, theta=30)
-    assert np.allclose(I, 0.7736072493369371)
+    assert np.allclose(I, 1.9211848890432843)
 
     # Vector evaluation
-    I = map(x=[0.1, 0.2, 0.3], y=[0.1, 0.2, 0.3], theta=30)
-    assert np.allclose(I, [0.7736072493369371,
-                           1.0432785526935853,
-                           1.318434613210305])
-    # Rotation caching
-    I = map(x=0.1, y=0.1, theta=[0, 30, 30, 0])
-    assert np.allclose(I, [1.7026057774431276,
-                           0.7736072493369371,
-                           0.7736072493369371,
-                           1.7026057774431276])
+    I = map(x=[0.1, 0.2, 0.3], y=[0.1, 0.2, 0.3])
+    truth = np.repeat([1.9211848890432843, 
+                       2.216308435590377, 
+                       2.44870978566566], nw).reshape(3, -1)
+    assert np.allclose(I, np.squeeze(truth))
 
 
-def test_evaluation_double():
-    """Test the map evaluation against some benchmarks [double]."""
-    return run(multi=False)
+def test_evaluation_single_double():
+    """Test the map evaluation against some benchmarks [single, double]."""
+    return run(temporal=False, spectral=False, multi=False)
 
 
-def test_evaluation_multi():
-    """Test the map evaluation against some benchmarks [multi]."""
-    return run(multi=True)
+def test_evaluation_single_multi():
+    """Test the map evaluation against some benchmarks [single, multi]."""
+    return run(temporal=False, spectral=False, multi=True)
 
 
-if __name__ == "__main__":
-    test_evaluation_double()
-    test_evaluation_multi()
+def test_evaluation_spectral_double():
+    """Test the map evaluation against some benchmarks [spectral, double]."""
+    return run(temporal=False, spectral=True, multi=False)
+
+
+def test_evaluation_spectral_multi():
+    """Test the map evaluation against some benchmarks [spectral, multi]."""
+    return run(temporal=False, spectral=True, multi=True)
+
+
+def test_evaluation_temporal_double():
+    """Test the map evaluation against some benchmarks [temporal, double]."""
+    return run(temporal=True, spectral=False, multi=False)
+
+
+def test_evaluation_temporal_multi():
+    """Test the map evaluation against some benchmarks [temporal, multi]."""
+    return run(temporal=True, spectral=False, multi=True)
