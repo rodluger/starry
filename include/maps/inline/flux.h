@@ -11,7 +11,7 @@ inline void computeIntensity (
     Ref<FluxType> intensity
 ){
     computeIntensity_(0, theta, x_, y_, intensity);
-};
+}
 
 /**
 Render the visible map on a square cartesian grid at given
@@ -26,7 +26,7 @@ inline void renderMap (
     MatrixBase<Derived> const & intensity
 ){
     renderMap_(t, theta, res, intensity);
-};
+}
 
 /**
 Evaluate the map at a given (theta, x, y) coordinate
@@ -42,7 +42,7 @@ inline void computeIntensity (
     Ref<FluxType> intensity
 ){
     computeIntensity_(t, theta, x_, y_, intensity);
-};
+}
 
 /**
 Render the visible map on a square cartesian grid at given
@@ -56,7 +56,7 @@ inline void renderMap (
     MatrixBase<Derived> const & intensity
 ){
     renderMap_(0, theta, res, intensity);
-};
+}
 
 /**
 Compute the flux for a static map.
@@ -71,7 +71,7 @@ inline void computeFlux (
     Ref<FluxType> flux
 ) {
     computeFlux_(0, theta, xo, yo, ro, flux);
-};
+}
 
 /**
 Compute the flux and its gradient for a static map.
@@ -87,7 +87,7 @@ inline void computeFlux (
     Ref<GradType> gradient
 ) {
     computeFlux_(0, theta, xo, yo, ro, flux, gradient);
-};
+}
 
 /**
 Compute the flux for a temporal map.
@@ -103,7 +103,7 @@ inline void computeFlux (
     Ref<FluxType> flux
 ) {
     computeFlux_(t, theta, xo, yo, ro, flux);
-};
+}
 
 /**
 Compute the flux and its gradient for a temporal map.
@@ -120,4 +120,4 @@ inline void computeFlux (
     Ref<GradType> gradient
 ) {
     computeFlux_(t, theta, xo, yo, ro, flux, gradient);
-};
+}

@@ -1,4 +1,5 @@
 include README.md LICENSE HISTORY.rst
 include include/*.h
 include include/maps/*.h
+include include/maps/inline/*.h
 graft lib
