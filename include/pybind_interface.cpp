@@ -1,11 +1,3 @@
-// TODO: Time-variable limb darkening?
-// TODO: freeze_axis default. Gonna have to think about this one.
-// TODO: Add bounds checking for `col` and all inds 
-// TODO: Think about how to deal with indexing of multi-column maps.
-// TODO: Make flux/gradient references in `computeFlux` more flexible
-//       for the C++ interface; currently it's pretty terrible
-// TODO: Large l maps take a while to instantiate! Check this out.
-
 // Enable debug mode?
 #ifdef STARRY_DEBUG
 #undef NDEBUG
@@ -507,16 +499,71 @@ PYBIND11_MODULE(
               "yo"_a=0.0, "ro"_a=0.0, "gradient"_a=false);
 #endif
 
+// Code version
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
 #else
     m.attr("__version__") = "dev";
 #endif
 
-#ifdef STARRY_DEBUG
-    m.attr("__debug__") = true;
+    // A dictionary of all compiler flags
+    PyMap.def_property_readonly(
+        "__compile_flags__", [] (
+            Map<T> &map
+        ) -> py::dict {
+
+            auto flags = py::dict();
+
+#ifdef STARRY_NMULTI
+            flags["STARRY_NMULTI"] = STARRY_NMULTI;
 #else
-    m.attr("__debug__") = false;
+            flags["STARRY_NMULTI"] = py::none();
 #endif
+
+#ifdef STARRY_ELLIP_MAX_ITER
+            flags["STARRY_ELLIP_MAX_ITER"] = STARRY_ELLIP_MAX_ITER;
+#else
+            flags["STARRY_ELLIP_MAX_ITER"] = py::none();
+#endif
+
+#ifdef STARRY_MAX_LMAX
+            flags["STARRY_MAX_LMAX"] = STARRY_MAX_LMAX;
+#else
+            flags["STARRY_MAX_LMAX"] = py::none();
+#endif
+
+#ifdef STARRY_BCUT
+            flags["STARRY_BCUT"] = STARRY_BCUT;
+#else
+            flags["STARRY_BCUT"] = py::none();
+#endif
+
+#ifdef STARRY_MN_MAX_ITER
+            flags["STARRY_MN_MAX_ITER"] = STARRY_MN_MAX_ITER;
+#else
+            flags["STARRY_MN_MAX_ITER"] = py::none();
+#endif
+
+#ifdef STARRY_O
+            flags["STARRY_O"] = STARRY_O;
+#else
+            flags["STARRY_O"] = py::none();
+#endif
+
+#ifdef STARRY_DEBUG
+            flags["STARRY_DEBUG"] = STARRY_DEBUG;
+#else
+            flags["STARRY_DEBUG"] = py::none();
+#endif
+
+#ifdef STARRY_KEEP_DFDU_AS_DFDG
+            flags["STARRY_KEEP_DFDU_AS_DFDG"] = STARRY_KEEP_DFDU_AS_DFDG;
+#else
+            flags["STARRY_KEEP_DFDU_AS_DFDG"] = py::none();
+#endif
+
+            return flags;
+
+    });
 
 }

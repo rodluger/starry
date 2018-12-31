@@ -26,14 +26,22 @@ macros = dict(STARRY_NMULTI=32,
 for key, value in macros.items():
     macros[key] = os.getenv(key, value)
 
+# Don't compute dF/du?
+no_dfdu = int(os.getenv('STARRY_KEEP_DFDU_AS_DFDG', 0))
+if no_dfdu:
+    macros["STARRY_KEEP_DFDU_AS_DFDG"] = 1
+
 # Compiler optimization flag -O
 optimize = int(os.getenv('STARRY_O', 2))
 assert optimize in [0, 1, 2, 3], "Invalid optimization flag."
+macros["STARRY_O"] = optimize
 
 # Debug mode?
 debug = bool(int(os.getenv('STARRY_DEBUG', 0)))
 if debug:
     optimize = 0
+    macros["STARRY_O"] = 0
+    macros["STARRY_DEBUG"] = 1
 
 # Module bitsum (1 + 2 + 4 + 8 + 16 + 32 = 63)
 bitsum = int(os.getenv('STARRY_BITSUM', 63))
@@ -148,7 +156,6 @@ class BuildExt(build_ext):
                                        "-Wpedantic"]
             if debug:
                 ext.extra_compile_args += ["-g"]
-                ext.extra_compile_args += ["-DSTARRY_DEBUG"]
             else:
                 ext.extra_compile_args += ["-g0"]
             if sys.platform == "darwin":

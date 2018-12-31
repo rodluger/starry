@@ -317,29 +317,14 @@ inline void Map<S>::computeFluxLD(
         gradient.row(idx.t) = contract_deriv(flux_, t);
         flux = contract(flux_, t);
 
-        /* 
-        
-        DEBUG DEBUG DEBUG
-
-
         // Derivs with respect to the limb darkening coeffs from dF / dc
-        Vector<Scalar> dFdc = L.s.transpose();
-        // Chain rule to get dF / du
-        for (int n = 0; n < ncol; ++n) {
-            dFdc(0) = L.s(0) - pi<Scalar>() * flux(n);
-            dFdc(1) = L.s(1) - (2.0 / 3.0) * pi<Scalar>() * flux(n);
-            gradient.block(idx.u, n, lmax, 1) = 
-                cache.dcdu.block(n * lmax, 0, lmax, lmax + 1) * dFdc;
-        }
-
-
-        */
+        computeDfDu(flux, gradient);
 
     }
 }
 
 template <class S>
-inline void Map<S>::computeFluxYlm(
+inline void Map<S>::computeFluxYlm (
     const Scalar& t,
     const Scalar& theta,
     const Scalar& xo,

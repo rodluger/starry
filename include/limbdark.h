@@ -231,6 +231,11 @@ namespace limbdark {
         Matrix<T> M_coeff;
         Matrix<T> N_coeff;
 
+        // Helper arrays
+        RowVector<T> n_;
+        RowVector<T> invn;
+        RowVector<T> ndnp2;
+
         // The solution vector
         RowVector<T> s;
         RowVector<T> dsdb;
@@ -245,13 +250,23 @@ namespace limbdark {
             N(lmax + 1),
             M_coeff(4, STARRY_MN_MAX_ITER),
             N_coeff(2, STARRY_MN_MAX_ITER),
+            n_(lmax + 3),
+            invn(lmax + 3),
+            ndnp2(lmax + 3),
             s(RowVector<T>::Zero(lmax + 1)),
             dsdb(RowVector<T>::Zero(lmax + 1)),
             dsdr(RowVector<T>::Zero(lmax + 1)) 
         {
             // Constants
             computeMCoeff();
+            computeNCoeff();
             third = T(1.0) / T(3.0);
+            for (int n = 0; n < lmax + 3; ++n) {
+                n_(n) = n;
+                invn(n) = T(1.0) / n;
+                ndnp2(n) = n / (n + 2.0);
+            }
+
         }
 
         inline void computeS1 (
@@ -460,7 +475,7 @@ namespace limbdark {
         // Recurse upward
         for (int n = 4; n < lmax + 1; ++n)
             M(n) = (2.0 * (n - 1) * onemr2mb2 * M(n - 2) + 
-                    (n - 2) * sqarea * M(n - 4)) / n;
+                    (n - 2) * sqarea * M(n - 4)) * invn(n);
     }
 
     /** 
@@ -512,7 +527,7 @@ namespace limbdark {
         // Recurse downward
         for (int n = lmax - 4; n > 3; --n)
             M(n) = ((n + 4) * M(n + 4) - 2.0 * (n + 3) * onemr2mb2 * M(n + 2)) 
-                    * invsqarea / (n + 2);
+                    * invsqarea * invn(n + 2);
 
         // Compute lowest four exactly
         computeM0123();
@@ -571,7 +586,7 @@ namespace limbdark {
 
         // Recurse upward
         for (int n = 2; n < lmax + 1; ++n)
-            N(n) = (M(n) + n * onembpr2 * N(n - 2)) / (n + 2);
+            N(n) = (M(n) + n * onembpr2 * N(n - 2)) * invn(n + 2);
     }
 
     /** 
@@ -615,7 +630,7 @@ namespace limbdark {
         // Recurse downward
         T onembpr2inv = T(1.0) / onembpr2;
         for (int n = lmax - 2; n > 1; --n)
-            N(n) = ((n + 4) * N(n + 2) - M(n + 2)) * onembpr2inv / (n + 2);
+            N(n) = ((n + 4) * N(n + 2) - M(n + 2)) * onembpr2inv * invn(n + 2);
 
         // Compute lowest two exactly
         computeN01();
@@ -769,38 +784,45 @@ namespace limbdark {
         else
             upwardM();
 
-        // TODO: This can be vectorized so nicely!
-        for (int n = 3; n < lmax + 1; ++n) {
-            s(n) = -(2.0 * r2 * M(n) - n / (n + 2.0) * 
-                     (onemr2mb2 * M(n) + sqarea * M(n - 2)));
-        }
+        // Compute the remaining terms in the `s` vector
+        s.segment(3, lmax - 2) = 
+            -2.0 * r2 * M.segment(3, lmax - 2) + 
+            ndnp2.segment(3, lmax - 2).cwiseProduct(
+                onemr2mb2 * M.segment(3, lmax - 2) + 
+                sqarea * M.segment(1, lmax - 2)
+            );
 
-        // Compute ds/dr
+        // Compute gradients
         if (gradient) {
-            // TODO: This can be vectorized so nicely!
-            for (int n = 3; n < lmax + 1; ++n) {
-                dsdr(n) = -2 * r * ((n + 2) * M(n) - n * M(n - 2));
-            }
+
+            // Compute ds/dr
+            dsdr.segment(3, lmax - 2) = 
+                -2 * r * (
+                    n_.segment(5, lmax - 2).cwiseProduct(M.segment(3, lmax - 2)) - 
+                    n_.segment(3, lmax - 2).cwiseProduct(M.segment(1, lmax - 2))
+                );
         
             if (b > STARRY_BCUT) {
-                // TODO: This can be vectorized so nicely!
-                for (int n = 3; n < lmax + 1; ++n) {
-                    dsdb(n) = -(n * invb * ((M(n) - M(n - 2)) * 
-                                (r2 + b2) + b2mr22 * M(n - 2)));
-                }
+                // Compute ds/db
+                dsdb.segment(3, lmax - 2) = 
+                    (-invb * n_.segment(3, lmax - 2)).cwiseProduct(
+                        (r2 + b2) * (M.segment(3, lmax - 2) - M.segment(1, lmax - 2))
+                        + b2mr22 * M.segment(1, lmax - 2)
+                    );
             } else {
-                // Small b reparametrization
+                // Compute ds/db using the small b reparametrization
                 T r3 = r2 * r;
                 T b3 = b2 * b;
                 if ((ksq < 0.5) && (lmax > 3))
                     downwardN();
                 else
                     upwardN();
-                // TODO: This can be vectorized so nicely!
-                for (int n = 3; n < lmax + 1; ++n) {
-                    dsdb(n) = -(n * (M(n - 2) * (2 * r3 + b3 - b - 3 * r2 * b) 
-                                + b * M(n) - 4 * r3 * N(n - 2)));
-                }
+                dsdb.segment(3, lmax - 2) = 
+                    -n_.segment(3, lmax - 2).cwiseProduct(
+                        (2.0 * r3 + b3 - b - 3.0 * r2 * b) * M.segment(1, lmax - 2) +
+                        b * M.segment(3, lmax - 2) -
+                        4.0 * r3 * N.segment(1, lmax - 2)
+                    );
             }
         
         }

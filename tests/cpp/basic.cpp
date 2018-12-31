@@ -17,6 +17,7 @@ int main() {
     Eigen::VectorXd u(2);
     u(0) = 0.4;
     u(1) = 0.26;
+    map.setY(0, 0, 1.0);
     map.setU(u);
 
     Eigen::VectorXd b(1000); 

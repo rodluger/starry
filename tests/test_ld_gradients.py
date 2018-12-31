@@ -34,6 +34,7 @@ def num_grad_flux(multi, lmax, y_deg, yvec, uvec, axis, theta, xo, yo, ro,
     grad['theta'] = [(F2 - F1) / (2 * eps)]
 
     # map coeffs
+    grad['y'] = []
     for l in range(y_deg + 1):
         for m in range(-l, l + 1):
             map[l, m] -= eps
@@ -41,16 +42,17 @@ def num_grad_flux(multi, lmax, y_deg, yvec, uvec, axis, theta, xo, yo, ro,
             map[l, m] += 2 * eps
             F2 = map.flux(xo=xo, yo=yo, ro=ro, theta=theta)
             map[l, m] -= eps
-            grad['Y_{%d,%d}' % (l, m)] = [(F2 - F1) / (2 * eps)]
+            grad['y'] += [(F2 - F1) / (2 * eps)]
 
     # ld coeffs
+    grad['u'] = []
     for l in range(1, lmax - y_deg + 1):
         map[l] -= eps
         F1 = map.flux(xo=xo, yo=yo, ro=ro, theta=theta)
         map[l] += 2 * eps
         F2 = map.flux(xo=xo, yo=yo, ro=ro, theta=theta)
         map[l] -= eps
-        grad['u_{%d}' % (l)] = [(F2 - F1) / (2 * eps)]
+        grad['u'] += [(F2 - F1) / (2 * eps)]
 
     return grad
 
@@ -58,7 +60,7 @@ def num_grad_flux(multi, lmax, y_deg, yvec, uvec, axis, theta, xo, yo, ro,
 def run_flux(multi=False, case="ld"):
     """Compare the gradients to numerical derivatives."""
     # Instantiate
-    lmax = 3
+    lmax = 4
     map = starry2.Map(lmax, multi=multi)
     map.axis = [0, 1, 0]
     if case == "ld":
@@ -67,13 +69,15 @@ def run_flux(multi=False, case="ld"):
         map[0, 0] = 1
         map[1] = 0.4
         map[2] = 0.26
+        map[3] = 0.5
+        map[4] = -0.3
     elif case == "sph":
         # Spherical harmonics only
-        y_deg = 3
+        y_deg = 4
         map[:, :] = 1
     else:
         # Both!
-        y_deg = 2
+        y_deg = 3
         map[1] = 0.4
         map[:y_deg, :] = 1
 
@@ -84,7 +88,7 @@ def run_flux(multi=False, case="ld"):
     dI_num = num_grad_flux(multi, lmax, y_deg, map.y, map.u,
                            map.axis, 30, 0, 0, 0)
     for key in dI.keys():
-        if (key in dI_num.keys()) and (not np.isnan(dI[key])):
+        if (key in dI_num.keys()):
             assert np.allclose(dI[key], dI_num[key], atol=1e-6)
 
     # Scalar evaluation
@@ -95,7 +99,7 @@ def run_flux(multi=False, case="ld"):
                            map.axis, 0, 0.1, 0.1, 0.1)
 
     for key in dI.keys():
-        if (key in dI_num.keys()) and (not np.isnan(dI[key])):
+        if (key in dI_num.keys()):
             assert np.allclose(dI[key], dI_num[key], atol=1e-6)
 
     # Scalar evaluation
@@ -105,7 +109,7 @@ def run_flux(multi=False, case="ld"):
     dI_num = num_grad_flux(multi, lmax, y_deg, map.y, map.u,
                            map.axis, 30, 0.1, 0.1, 0.1)
     for key in dI.keys():
-        if (key in dI_num.keys()) and (not np.isnan(dI[key])):
+        if (key in dI_num.keys()):
             assert np.allclose(dI[key], dI_num[key], atol=1e-6)
 
     # Vector evaluation
@@ -118,9 +122,13 @@ def run_flux(multi=False, case="ld"):
     dI_num2 = num_grad_flux(multi, lmax, y_deg, map.y, map.u,
                             map.axis, 30, 0.1, 0.1, 0.1)
     for key in dI.keys():
-        if (key in dI_num.keys()) and (not np.any(np.isnan(dI[key]))):
-            assert np.allclose(dI[key][0], dI_num1[key], atol=1e-6)
-            assert np.allclose(dI[key][1], dI_num2[key], atol=1e-6)
+        if (key in dI_num.keys()):
+            if key == 'u' or key == 'y':
+                assert np.allclose(dI[key][:, 0], dI_num1[key], atol=1e-6)
+                assert np.allclose(dI[key][:, 1], dI_num2[key], atol=1e-6)
+            else:
+                assert np.allclose(dI[key][0], dI_num1[key], atol=1e-6)
+                assert np.allclose(dI[key][1], dI_num2[key], atol=1e-6)
 
 
 def test_ld_flux_with_gradients_double():

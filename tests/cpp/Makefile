@@ -11,3 +11,8 @@ all: $(EXECUTABLES)
 clean:
 	@rm -rf *.test
 	@rm -rf *.dSYM
+
+memcheck:
+	$(foreach exe, $(EXECUTABLES), \
+		valgrind --leak-check=yes ./$(exe) \
+	)
