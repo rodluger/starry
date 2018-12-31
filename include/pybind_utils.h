@@ -20,7 +20,6 @@ namespace pybind_utils {
 
 //! Misc stuff we need
 #include <Python.h>
-namespace py = pybind11;
 using namespace pybind11::literals;
 using namespace starry2::utils;
 using starry2::maps::Map;
