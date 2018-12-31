@@ -21,7 +21,6 @@ install:
     - source .ci/travis.sh
     - export CC=gcc-4.8
     - export CXX=g++-4.8
-    - export STARRY_BCUT=-1 # DEBUG
     - export STARRY_DEBUG=1 # DEBUG
     # Let's prevent travis time-outs for 40 minutes
     - travis_wait 40 python setup.py develop

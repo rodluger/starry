@@ -20,7 +20,7 @@ macros = dict(STARRY_NMULTI=32,
               STARRY_ELLIP_MAX_ITER=200,
               STARRY_MAX_LMAX=50,
               STARRY_BCUT=1.e-3,
-              STARRY_M_MAX_ITER=100)
+              STARRY_MN_MAX_ITER=100)
 
 # Override with user values
 for key, value in macros.items():

@@ -41,9 +41,9 @@ namespace py = pybind11;
 #define STARRY_ELLIP_MAX_ITER       200
 #endif
 
-//! Max iterations in computing the M integral
-#ifndef STARRY_M_MAX_ITER
-#define STARRY_M_MAX_ITER           100
+//! Max iterations in computing the M & N integrals
+#ifndef STARRY_MN_MAX_ITER
+#define STARRY_MN_MAX_ITER           100
 #endif
 
 //! Cutoff value for `b` below which we reparametrize LD evaluation

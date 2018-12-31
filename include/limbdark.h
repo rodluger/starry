@@ -228,8 +228,8 @@ namespace limbdark {
         // Helper intergrals
         RowVector<T> M;
         RowVector<T> N;
-        Matrix<T> M_coeff_small_k;
-        Matrix<T> M_coeff_large_k;
+        Matrix<T> M_coeff;
+        Matrix<T> N_coeff;
 
         // The solution vector
         RowVector<T> s;
@@ -243,8 +243,8 @@ namespace limbdark {
             lmax(lmax),
             M(lmax + 1),
             N(lmax + 1),
-            M_coeff_small_k(4, STARRY_M_MAX_ITER),
-            M_coeff_large_k(4, STARRY_M_MAX_ITER),
+            M_coeff(4, STARRY_MN_MAX_ITER),
+            N_coeff(2, STARRY_MN_MAX_ITER),
             s(RowVector<T>::Zero(lmax + 1)),
             dsdb(RowVector<T>::Zero(lmax + 1)),
             dsdr(RowVector<T>::Zero(lmax + 1)) 
@@ -265,6 +265,14 @@ namespace limbdark {
         inline void upwardM ();
 
         inline void downwardM ();
+
+        inline void computeNCoeff ();
+
+        inline void computeN01 ();
+
+        inline void upwardN ();
+
+        inline void downwardN ();
 
         inline void compute (
             const T& b_, 
@@ -400,7 +408,6 @@ namespace limbdark {
     
         T coeff;
         int n;
-        int jmax;
 
         // ksq < 1
         for (int j = 0; j < 4; ++j) {
@@ -408,32 +415,16 @@ namespace limbdark {
             coeff = root_pi<T>() * wallis<T>(n);
 
             // Add leading term to M
-            M_coeff_small_k(j, 0) = coeff;
+            M_coeff(j, 0) = coeff;
             // Now, compute higher order terms until 
             // desired precision is reached
-            for (int i = 1; i < STARRY_M_MAX_ITER; ++i) {
+            for (int i = 1; i < STARRY_MN_MAX_ITER; ++i) {
                 coeff *= T((2 * i - 1) * (2 * i - 1)) / 
                          T(2 * i * (1 + n + 2 * i));
-                M_coeff_small_k(j, i) = coeff;
+                M_coeff(j, i) = coeff;
             }
         }
         
-        // ksq > 1
-        for (int j = 0; j < 4; ++j) {
-            n = lmax - 3 + j;
-            coeff = pi<T>();
-            // Store leading terms
-            M_coeff_large_k(j, 0) = coeff;
-            // If n is even, the series truncates
-            if (is_even(n))
-                jmax = n / 2 + 1;
-            else
-                jmax = STARRY_M_MAX_ITER;
-            for (int i = 1; i < jmax; ++i) {
-                coeff *= T((2 + n - 2 * i) * (1 - 2 * i)) / T(4 * i * i);
-                M_coeff_large_k(j, i) = coeff;
-            }
-        }
     }
 
     /** 
@@ -478,7 +469,7 @@ namespace limbdark {
     */
     template <class T>
     inline void GreensLimbDark<T>::downwardM () {
-        T k2n, tol, fac, term;
+        T val, k2n, tol, fac, term;
         T invsqarea = T(1.0) / sqarea;
 
         // Compute highest four using a series solution
@@ -496,48 +487,25 @@ namespace limbdark {
             // desired precision is reached
             for (int j = 0; j < 4; ++j) {
                 // Add leading term to M
-                M(lmax - 3 + j) = M_coeff_small_k(j, 0);
+                val = M_coeff(j, 0);
                 k2n = 1.0;
 
                 // Compute higher order terms
-                for (int n = 1; n < STARRY_M_MAX_ITER; ++n) {
+                for (int n = 1; n < STARRY_MN_MAX_ITER; ++n) {
                     k2n *= ksq;
-                    term = k2n * M_coeff_small_k(j, n);
-                    M(lmax - 3 + j) += term;
+                    term = k2n * M_coeff(j, n);
+                    val += term;
                     if (abs(term) < tol)
                         break;
                 }
-                M(lmax - 3 + j) *= fac;
+                M(lmax - 3 + j) = val * fac;
                 fac *= sqonembmr2;
             }
 
         } else {
 
-            // Compute leading coefficient (n=0)
-            tol = mach_eps<T>() * invksq;
-            term = 0.0;
-            fac = 1.0;
-            for (int n = 0; n < lmax - 3; ++n)
-                fac *= sqonembmr2;
-
-            // Now, compute higher order terms until 
-            // desired precision is reached
-            for (int j = 0; j < 4; ++j) {
-                // Add leading term to M
-                M(lmax - 3 + j) = M_coeff_large_k(j, 0);
-                k2n = 1.0;
-
-                // Compute higher order terms
-                for (int n = 1; n < STARRY_M_MAX_ITER; ++n) {
-                    k2n *= invksq;
-                    term = k2n * M_coeff_large_k(j, n);
-                    M(lmax - 3 + j) += term;
-                    if (abs(term) < tol)
-                        break;
-                }
-                M(lmax - 3 + j) *= fac;
-                fac *= sqonembmr2;
-            }
+            throw errors::NotImplementedError(
+                "Downward recursion in `M` not implemented for `k^2` >= 1.");
 
         }
 
@@ -548,6 +516,109 @@ namespace limbdark {
 
         // Compute lowest four exactly
         computeM0123();
+    }
+
+    /** 
+    Compute the coefficients of the series expansion
+    for the highest two terms of the `N` integral.
+
+    */
+    template <class T>
+    inline void GreensLimbDark<T>::computeNCoeff () {
+        T coeff = 0.0;
+        int n;
+
+        // ksq < 1
+        for (int j = 0; j < 2; ++j) {
+            n = lmax - 1 + j;
+
+            // Add leading term to N
+            coeff = root_pi<T>() * wallis<T>(n) / (n + 3.0);
+            N_coeff(j, 0) = coeff;
+
+            // Now, compute higher order terms until
+            // desired precision is reached
+            for (int i = 1; i < STARRY_MN_MAX_ITER; ++i) {
+                coeff *= T(4 * i * i - 1) / T(2 * i * (3 + n + 2 * i));
+                N_coeff(j, i) = coeff;
+            }
+        }
+    }
+
+    /** 
+    Compute the first two terms of the N integral.
+
+    */
+    template <class T>
+    inline void GreensLimbDark<T>::computeN01 () {
+        if (ksq <= 1.0) {
+            N(0) = 0.5 * kap0 - k * kc; 
+            N(1) = 4.0 * third * sqbr * ksq * (-Eofk + 2.0 * Em1mKdm);
+        } else {
+            N(0) = 0.5 * pi<T>();
+            N(1) = 4.0 * third * sqbr * k * (2.0 * Eofk - Em1mKdm);
+        }
+    }
+
+    /** 
+    Compute the terms in the N integral by upward recursion.
+
+    */
+    template <class T>
+    inline void GreensLimbDark<T>::upwardN () {
+        // Compute lowest two exactly
+        computeN01();
+
+        // Recurse upward
+        for (int n = 2; n < lmax + 1; ++n)
+            N(n) = (M(n) + n * onembpr2 * N(n - 2)) / (n + 2);
+    }
+
+    /** 
+    Compute the terms in the N integral by downward recursion.
+
+    */
+    template <class T>
+    inline void GreensLimbDark<T>::downwardN () {
+        // Compute highest two using a series solution
+        if (ksq < 1) {
+            // Compute leading coefficient (n=0)
+            T val, k2n;
+            T tol = mach_eps<T>() * ksq; 
+            T term = 0.0;
+            T fac = 1.0;
+            for (int n = 0; n < lmax - 1; ++n)
+                fac *= sqonembmr2;
+            fac *= k * ksq;
+
+            // Now, compute higher order terms until 
+            // desired precision is reached
+            for (int j = 0; j < 2; ++j) {
+                val = N_coeff(j, 0);
+                k2n = 1.0;
+                for (int n = 1; n < STARRY_MN_MAX_ITER; ++n) {
+                    k2n *= ksq;
+                    term = k2n * N_coeff(j, n);
+                    val += term;
+                    if (abs(term) < tol)
+                        break;
+                }
+                N(lmax - 1 + j) = val * fac;
+                fac *= sqonembmr2;
+            }
+
+        } else {
+            throw errors::NotImplementedError(
+                "Downward recursion in `N` not implemented for `k^2` >= 1.");
+        }
+
+        // Recurse downward
+        T onembpr2inv = T(1.0) / onembpr2;
+        for (int n = lmax - 2; n > 1; --n)
+            N(n) = ((n + 4) * N(n + 2) - M(n + 2)) * onembpr2inv / (n + 2);
+
+        // Compute lowest two exactly
+        computeN01();
     }
 
     /**
@@ -693,51 +764,45 @@ namespace limbdark {
         if (lmax == 2) return;
 
         // Now onto the higher order terms...
+        if ((ksq < 0.5) && (lmax > 3))
+            downwardM();
+        else
+            upwardM();
 
-        // Is `b` large enough to be stable?
-        if (b > STARRY_BCUT) {
+        // TODO: This can be vectorized so nicely!
+        for (int n = 3; n < lmax + 1; ++n) {
+            s(n) = -(2.0 * r2 * M(n) - n / (n + 2.0) * 
+                     (onemr2mb2 * M(n) + sqarea * M(n - 2)));
+        }
 
-            // Recurse
-            if ((ksq < 0.5) && (lmax > 3))
-                downwardM();
-            else
-                upwardM();
-
-            // Now loop over the Green's function components:
+        // Compute ds/dr
+        if (gradient) {
+            // TODO: This can be vectorized so nicely!
             for (int n = 3; n < lmax + 1; ++n) {
-                s(n) = -(2.0 * r2 * M(n) - n / (n + 2.0) * 
-                         (onemr2mb2 * M(n) + sqarea * M(n - 2)));
                 dsdr(n) = -2 * r * ((n + 2) * M(n) - n * M(n - 2));
-                dsdb(n) = -(n * invb * ((M(n) - M(n - 2)) * 
-                            (r2 + b2) + b2mr22 * M(n - 2)));
             }
-
-        // Small `b` reparametrization
-        } else {
-
-            T r3 = r2 * r;
-            T b3 = b2 * b;
-
-            // Recurse
-            if ((ksq < 0.5) && (lmax > 3)) {
-                downwardM();
-                throw errors::NotImplementedError("Implement N function.");
-                // TODO Nn_lower!(t)
+        
+            if (b > STARRY_BCUT) {
+                // TODO: This can be vectorized so nicely!
+                for (int n = 3; n < lmax + 1; ++n) {
+                    dsdb(n) = -(n * invb * ((M(n) - M(n - 2)) * 
+                                (r2 + b2) + b2mr22 * M(n - 2)));
+                }
             } else {
-                upwardM();
-                throw errors::NotImplementedError("Implement N function.");
-                // TODO Nn_raise!(t)
+                // Small b reparametrization
+                T r3 = r2 * r;
+                T b3 = b2 * b;
+                if ((ksq < 0.5) && (lmax > 3))
+                    downwardN();
+                else
+                    upwardN();
+                // TODO: This can be vectorized so nicely!
+                for (int n = 3; n < lmax + 1; ++n) {
+                    dsdb(n) = -(n * (M(n - 2) * (2 * r3 + b3 - b - 3 * r2 * b) 
+                                + b * M(n) - 4 * r3 * N(n - 2)));
+                }
             }
-
-            // Now loop over the Green's function components:
-            for (int n = 3; n < lmax + 1; ++n) {
-                s(n) = -(2.0 * r2 * M(n) - n / (n + 2.0) * 
-                         (onemr2mb2 * M(n) + sqarea * M(n - 2)));
-                dsdr(n) = -2 * r * ((n + 2) * M(n) - n * M(n - 2));
-                dsdb(n) = -(n * (M(n - 2) * (2 * r3 + b3 - b - 3 * r2 * b) 
-                            + b * M(n) - 4 * r3 * N(n - 2)));
-            }
-
+        
         }
 
     }
