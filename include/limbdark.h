@@ -719,14 +719,14 @@ namespace limbdark {
         }
 
         // Special case
-        if (lmax == 0) return;
+        if (unlikely(lmax == 0)) return;
 
         // Compute the linear limb darkening term
         // and the elliptic integrals
         computeS1(gradient);
 
         // Special case
-        if (lmax == 1) return;
+        if (unlikely(lmax == 1)) return;
 
         // Special case
         if (unlikely(b == 0)) {
