@@ -1,32 +1,5 @@
-//! Gradient indices
-struct GradientIndices {
-    const int t;
-    const int theta;
-    const int xo;
-    const int yo;
-    const int ro;
-    const int nx;
-    int y;
-    int ny;
-    int u;
-    int nu;
-    int ndim;
-    explicit GradientIndices(const int lmax) :
-        t(0),
-        theta(1),
-        xo(2),
-        yo(3),
-        ro(4),
-        nx(5),
-        y(nx),
-        ny((lmax + 1) * (lmax + 1)),
-        u(y + ny),
-        nu(lmax),
-        ndim(nx + ny + nu) {}
-};
-
 //! The Map class
-template <class S>
+template <class S=Default<double>>
 class Map 
 {
 
@@ -34,56 +7,64 @@ public:
 
     // Types
     using Scalar = typename S::Scalar;
-    using MapType = typename S::MapType;
-    using CoeffType = typename S::CoeffType;
-    using FluxType = typename S::FluxType;
-    using GradType = typename S::GradType;
+    using YType = typename S::YType;
+    using YCoeffType = typename S::YCoeffType;
+    using UType = typename S::UType;
+    using UCoeffType = typename S::UCoeffType;
 
     // Public variables
     const int lmax;
     const int N;
     const int ncol;
     const int nflx;
-    const int expansion;
     Cache<S> cache;
-    GradientIndices idx;
 
 protected:
 
     // Internal methods
+    template <typename T1>
     inline void computeIntensity_ (
         const Scalar& t,
         const Scalar& theta,
         const Scalar& x_,
         const Scalar& y_,
-        Ref<FluxType> intensity
+        MatrixBase<T1> const & intensity
     );
 
-    template <typename Derived>
+    template <typename T1>
     inline void renderMap_ (
         const Scalar& t,
         const Scalar& theta,
         int res,
-        MatrixBase<Derived> const & intensity
+        MatrixBase<T1> const & intensity
     );
 
+    template <typename T1>
     inline void computeFlux_ (
         const Scalar& t,
         const Scalar& theta, 
         const Scalar& xo, 
         const Scalar& yo, 
         const Scalar& ro, 
-        Ref<FluxType> flux
+        MatrixBase<T1> const & flux
     );
 
+    template <typename T1, typename T2, typename T3, typename T4, 
+              typename T5, typename T6, typename T7, typename T8>
     inline void computeFlux_ (
         const Scalar& t,
         const Scalar& theta, 
         const Scalar& xo, 
         const Scalar& yo, 
         const Scalar& ro, 
-        Ref<FluxType> flux, 
-        Ref<GradType> gradient
+        MatrixBase<T1> const & flux, 
+        MatrixBase<T2> const & dt,
+        MatrixBase<T3> const & dtheta,
+        MatrixBase<T4> const & dxo,
+        MatrixBase<T5> const & dyo,
+        MatrixBase<T6> const & dro,
+        MatrixBase<T7> const & dy,
+        MatrixBase<T8> const & du
     );
 
     template <class U>
@@ -93,13 +74,15 @@ protected:
         int col
     );
 
+    template <typename T1>
     inline void computeFluxLD (
         const Scalar& t,
         const Scalar& b, 
         const Scalar& ro, 
-        Ref<FluxType> flux
+        MatrixBase<T1> const & flux
     );
 
+    template <typename T1>
     inline void computeFluxYlm (
         const Scalar& t,
         const Scalar& theta,
@@ -107,9 +90,10 @@ protected:
         const Scalar& yo,   
         const Scalar& b, 
         const Scalar& ro, 
-        Ref<FluxType> flux
+        MatrixBase<T1> const & flux
     );
 
+    template <typename T1>
     inline void computeFluxYlmLD (
         const Scalar& t,
         const Scalar& theta,
@@ -117,19 +101,29 @@ protected:
         const Scalar& yo,   
         const Scalar& b, 
         const Scalar& ro, 
-        Ref<FluxType> flux
+        MatrixBase<T1> const & flux
     );
 
+    template <typename T1, typename T2, typename T3, typename T4, 
+              typename T5, typename T6, typename T7, typename T8>
     inline void computeFluxLD (
         const Scalar& t,
         const Scalar& xo, 
         const Scalar& yo, 
         const Scalar& b, 
         const Scalar& ro, 
-        Ref<FluxType> flux, 
-        Ref<GradType> gradient
+        MatrixBase<T1> const & flux, 
+        MatrixBase<T2> const & dt,
+        MatrixBase<T3> const & dtheta,
+        MatrixBase<T4> const & dxo,
+        MatrixBase<T5> const & dyo,
+        MatrixBase<T6> const & dro,
+        MatrixBase<T7> const & dy,
+        MatrixBase<T8> const & du
     );
 
+    template <typename T1, typename T2, typename T3, typename T4, 
+              typename T5, typename T6, typename T7, typename T8>
     inline void computeFluxYlm (
         const Scalar& t,
         const Scalar& theta,
@@ -137,10 +131,18 @@ protected:
         const Scalar& yo,   
         const Scalar& b, 
         const Scalar& ro, 
-        Ref<FluxType> flux,
-        Ref<GradType> gradient
+        MatrixBase<T1> const & flux, 
+        MatrixBase<T2> const & dt,
+        MatrixBase<T3> const & dtheta,
+        MatrixBase<T4> const & dxo,
+        MatrixBase<T5> const & dyo,
+        MatrixBase<T6> const & dro,
+        MatrixBase<T7> const & dy,
+        MatrixBase<T8> const & du
     );
 
+    template <typename T1, typename T2, typename T3, typename T4, 
+              typename T5, typename T6, typename T7, typename T8>
     inline void computeFluxYlmLD (
         const Scalar& t,
         const Scalar& theta,
@@ -148,8 +150,14 @@ protected:
         const Scalar& yo,   
         const Scalar& b, 
         const Scalar& ro, 
-        Ref<FluxType> flux,
-        Ref<GradType> gradient
+        MatrixBase<T1> const & flux, 
+        MatrixBase<T2> const & dt,
+        MatrixBase<T3> const & dtheta,
+        MatrixBase<T4> const & dxo,
+        MatrixBase<T5> const & dyo,
+        MatrixBase<T6> const & dro,
+        MatrixBase<T7> const & dy,
+        MatrixBase<T8> const & du
     );
 
     inline void checkDegree ();
@@ -164,6 +172,8 @@ protected:
 
     inline void computeLDPolynomial ();
 
+    inline void computeC ();
+
     inline void rotateIntoCache (
         const Scalar& theta,
         bool compute_matrices=false
@@ -173,24 +183,23 @@ protected:
         const UnitVector<Scalar>& axis_,
         const Scalar& costheta,
         const Scalar& sintheta,
-        MapType& y_
+        YType& y_
     );
 
     inline void limbDarken (
-        const MapType& poly, 
-        MapType& poly_ld, 
+        const YType& poly, 
+        YType& poly_ld, 
         bool gradient=false
     );
 
     // Internal variables
-    MapType y;
-    MapType u;
+    YType y;
+    UType u;
     UnitVector<Scalar> axis;                                                   /**< The axis of rotation for the map */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
-    rotation::Wigner<MapType> W;                                               /**< Ylm rotation stuff */
+    rotation::Wigner<YType> W;                                                 /**< Ylm rotation stuff */
     limbdark::GreensLimbDark<Scalar> L;                                        /**< The occultation integral solver class (optimized for limb darkening) */
-    Vector<Scalar> tbasis;
-    Vector<Scalar> dtbasis;
+    Vector<Scalar> taylor;
     int u_deg;                                                                 /**< Highest degree set by the user in the limb darkening vector */
     int y_deg;
     Scalar radian;
@@ -199,52 +208,44 @@ protected:
     explicit Map (
         int lmax,
         int ncol,
-        int nflx,
-        int expansion
+        int nflx
     ) :
         lmax(lmax), 
         N((lmax + 1) * (lmax + 1)), 
         ncol(ncol), 
         nflx(nflx),
-        expansion(expansion),
-        cache(lmax, ncol),
-        idx(lmax),
+        cache(lmax, ncol, nflx),
         B(lmax),
         W(lmax, ncol, (*this).y, (*this).axis),
         L(lmax),
-        tbasis(ncol),
-        dtbasis(ncol)
+        taylor(ncol)
     {
-        if (ncol < 1) throw errors::ValueError(
-            "The number of map columns must be positive.");
+        if ((lmax < 0) || (lmax > STARRY_MAX_LMAX))
+            throw errors::ValueError(
+                "Spherical harmonic degree out of range.");
+        if (ncol < 1) 
+            throw errors::ValueError(
+                "The number of map columns must be positive.");
         radian = pi<Scalar>() / 180.;
-        tbasis(0) = 1.0;
-        dtbasis(0) = 0.0;
+        taylor(0) = 1.0;
         reset();
     };
 
 public:
 
-    //! Constructor for default maps
-    template<typename U=S, typename=IsDefault<U>>
+    //! Constructor for single-column maps
+    template<typename U=S, typename=IsSingleColumn<U>>
     explicit Map (
         int lmax
-    ) : Map(lmax, 1, 1, STARRY_EXPANSION_NONE) {}
+    ) : Map(lmax, 1, 1) {}
 
-    //! Constructor for spectral maps
-    template<typename U=S, typename=IsSpectral<U>>
+    //! Constructor for multi-column maps
+    template<typename U=S, typename=IsMultiColumn<U>>
     explicit Map (
         int lmax,
         int ncol
-    ) : Map(lmax, ncol, ncol, STARRY_EXPANSION_NONE) {}
-
-    //! Constructor for temporal maps
-    template<typename U=S, typename=IsTemporal<U>>
-    explicit Map (
-        int lmax,
-        int ncol,
-        int expansion=STARRY_EXPANSION_TAYLOR
-    ) : Map(lmax, ncol, 1, expansion) {}
+    ) : Map(lmax, ncol, 
+            std::is_same<U, Spectral<Scalar>>::value ? ncol : 1) {}
 
     // Inline declarations. These are methods whose
     // call signature depends on the map type or on
@@ -260,13 +261,13 @@ public:
     }
 
     inline void setY (
-        const MapType& y_
+        const YType& y_
     );
 
     inline void setY (
         int l, 
         int m,
-        const Ref<const CoeffType>& coeff
+        const Ref<const YCoeffType>& coeff
     );
 
     inline void setY (
@@ -275,15 +276,15 @@ public:
         const Scalar& coeff_
     );
 
-    inline MapType getY () const;
+    inline YType getY () const;
 
     inline void setU (
-        const MapType& u_
+        const UType& u_
     );
 
     inline void setU (
         int l, 
-        const Ref<const CoeffType>& coeff
+        const Ref<const UCoeffType>& coeff
     );
 
     inline void setU (
@@ -291,7 +292,7 @@ public:
         const Scalar& coeff
     );
 
-    inline MapType getU () const;
+    inline UType getU () const;
 
     inline void setAxis (
         const UnitVector<Scalar>& axis_
@@ -302,7 +303,7 @@ public:
     inline void reset ();
 
     inline void addSpot (
-        const CoeffType& amp,
+        const YCoeffType& amp,
         const Scalar& sigma,
         const Scalar& lat=0,
         const Scalar& lon=0,

@@ -18,7 +18,7 @@ Set the full spherical harmonic vector/matrix.
 */
 template <class S>
 inline void Map<S>::setY (
-    const MapType& y_
+    const YType& y_
 ) {
     cache.yChanged();
     if ((y_.rows() == y.rows()) && (y_.cols() == y.cols()))
@@ -36,7 +36,7 @@ template <class S>
 inline void Map<S>::setY (
     int l, 
     int m, 
-    const Ref<const CoeffType>& coeff
+    const Ref<const YCoeffType>& coeff
 ) {
     cache.yChanged();
     if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
@@ -69,7 +69,7 @@ Get the full spherical harmonic vector/matrix
 
 */
 template <class S>
-inline typename S::MapType Map<S>::getY () const {
+inline typename S::YType Map<S>::getY () const {
     return y;
 }
 
@@ -79,7 +79,7 @@ Set the full limb darkening vector/matrix.
 */
 template <class S>
 inline void Map<S>::setU (
-    const MapType& u_
+    const UType& u_
 ) 
 {
     cache.uChanged();
@@ -97,7 +97,7 @@ array of coefficients.
 template <class S>
 inline void Map<S>::setU (
     int l, 
-    const Ref<const CoeffType>& coeff
+    const Ref<const UCoeffType>& coeff
 ) {
     cache.uChanged();
     if ((1 <= l) && (l <= lmax))
@@ -129,7 +129,7 @@ Get the full limb darkening vector/matrix.
 
 */
 template <class S>
-inline typename S::MapType Map<S>::getU ()
+inline typename S::UType Map<S>::getU ()
 const {
     return u.block(1, 0, lmax, ncol);
 }

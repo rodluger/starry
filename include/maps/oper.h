@@ -9,8 +9,8 @@ inline void Map<S>::reset ()
     y_deg = 0;
 
     // Reset limb darkening
-    u.setZero(lmax + 1, ncol);
-    u.row(0).setConstant(-1.0);
+    u.setZero(lmax + 1, nflx);
+    setU0();
     u_deg = 0;
 
     // Reset the axis
@@ -29,7 +29,7 @@ inline void Map<S>::checkDegree ()
         y.setZero();
         y_deg = 0;
         u.setZero();
-        u.row(0).setConstant(-1.0);
+        setU0();
         u_deg = 0;
         throw errors::ValueError("Degree of the limb-darkened "
                                  "map exceeds `lmax`. All "
@@ -52,14 +52,6 @@ inline void Map<S>::computeDegreeY ()
         }
         checkDegree();
         cache.compute_degree_y = false;
-
-        // Update gradient indices
-        if (y_deg == 0)
-            idx.ny = 1;
-        else
-            idx.ny = N;
-        idx.u = idx.y + idx.ny;
-        idx.ndim = idx.nx + idx.ny + idx.nu;
     }
 }
 
@@ -77,13 +69,6 @@ inline void Map<S>::computeDegreeU ()
         }
         checkDegree();
         cache.compute_degree_u = false;
-
-        // Update gradient indices
-        if (u_deg == 0)
-            idx.nu = 0;
-        else
-            idx.nu = lmax;
-        idx.ndim = idx.nx + idx.ny + idx.nu;
     }
 }
 
@@ -108,6 +93,21 @@ inline void Map<S>::computeWigner () {
     } else if (cache.compute_YZeta) {
         W.updateYZeta();
         cache.compute_YZeta = false;
+    }
+}
+
+/**
+Compute the Agol `c` basis and its derivative.
+These are both normalized such that the total
+unobscured flux is **unity**.
+
+*/
+template<class S>
+inline void Map<S>::computeC () {
+    if (cache.compute_c) {
+        limbdark::computeC(u, cache.c, cache.dcdu);
+        normalizeC(cache.c, cache.dcdu);
+        cache.compute_c = false;
     }
 }
 
@@ -166,7 +166,7 @@ inline void Map<S>::rotateByAxisAngle (
     const UnitVector<Scalar>& axis_,
     const Scalar& costheta,
     const Scalar& sintheta,
-    MapType& y_
+    YType& y_
 ) {
     Scalar tol = 10 * mach_eps<Scalar>();
     Scalar cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
@@ -201,8 +201,8 @@ That normalization was almost certainly unphysical.
 template <class S>
 inline void Map<S>::computeLDPolynomial () {
     if (cache.compute_p_u) {
-        MapType tmp = B.U1 * u;
-        CoeffType norm = (pi<Scalar>() * y.row(0)).cwiseQuotient(B.rT * tmp);
+        UType tmp = B.U1 * u;
+        UCoeffType norm = (pi<Scalar>() * y.row(0)).cwiseQuotient(B.rT * tmp);
         cache.p_u = tmp.array().rowwise() * norm.array();
         cache.compute_p_u = false;
     }
@@ -216,8 +216,8 @@ polynomial map and the input limb-darkening map.
 */
 template <class S>
 inline void Map<S>::limbDarken (
-    const MapType& poly, 
-    MapType& poly_ld, 
+    const YType& poly, 
+    YType& poly_ld, 
     bool gradient
 ) {
 
@@ -251,20 +251,22 @@ Add a gaussian spot at a given latitude/longitude on the map.
 */
 template <class S>
 inline void Map<S>::addSpot (
-    const CoeffType& amp,
+    const YCoeffType& amp,
     const Scalar& sigma,
     const Scalar& lat,
     const Scalar& lon,
     int l
 ) {
-
     // Default degree is max degree
-    if (l < 0) l = lmax;
+    if (l < 0) 
+        l = lmax;
+    if (l > lmax) 
+        throw errors::ValueError("Invalid value for `l`.");
 
     // Compute the integrals recursively
     Vector<Scalar> IP(l + 1);
     Vector<Scalar> ID(l + 1);
-    MapType coeff(N, ncol);
+    YType coeff(N, ncol);
     coeff.setZero();
 
     // Constants
@@ -317,6 +319,8 @@ inline void Map<S>::random_ (
     int col
 ) {
     int lmax_ = power.size() - 1;
+    if (lmax_ > lmax) 
+        lmax_ = lmax;
     int N_ = (lmax_ + 1) * (lmax_ + 1);
 
     // Generate N_ standard normal variables

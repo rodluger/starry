@@ -12,6 +12,8 @@ docs/_generate
 *.npz
 *callgrind.out.*
 *.vscode
+tmp/*
+tests/cpp/test
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

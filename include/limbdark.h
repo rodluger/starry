@@ -73,27 +73,28 @@ namespace limbdark {
     of the basis in which the `P(G_n)` functions are computed.
     Also compute the derivative matrix `dc / du`.
     
-    This is the single-wavelength case.
+    This is the default map case.
+
+    TODO: This might be faster/cleaner as a linear operation...
 
     */
-    template <typename Derived1, typename Derived2, typename Derived3>
+    template <typename T1, typename T2, typename T3>
     inline void computeC (
-        const MatrixBase<Derived1>& u, 
-        MatrixBase<Derived2>& c,
-        MatrixBase<Derived3>& dcdu,
-        const typename Derived1::Scalar& y00
+        MatrixBase<T1> const & u, 
+        MatrixBase<T2> const & c,
+        MatrixBase<T3> const & dcdu
     ) {
-        using T = typename Derived1::Scalar;
-        T bcoeff;
+        using Scalar = typename T1::Scalar;
+        Scalar bcoeff;
         size_t N = u.rows();
-        Vector<T> a(N);
-        Matrix<T> dadu;
+        Vector<Scalar> a(N);
+        Matrix<Scalar> dadu;
         a.setZero();
         dadu.setZero(N, N);
-        dcdu.setZero();
+        MBCAST(dcdu, T3).setZero();
 
         // Compute the a_n coefficients
-        a(0) = 1.0;
+        a(0) = -u(0);
         for (size_t i = 1; i < N; ++i) {
             bcoeff = 1.0;
             int sgn = 1;
@@ -101,52 +102,45 @@ namespace limbdark {
                 a(j) -= u(i) * bcoeff * sgn;
                 dadu(j, i) -= bcoeff * sgn;
                 sgn *= -1;
-                bcoeff *= ((T)(i - j) / (j + 1));
+                bcoeff *= ((Scalar)(i - j) / (j + 1));
             }
         }
 
         // Now, compute the c_n coefficients
         for (size_t j = N - 1; j >= 2; --j) {
             if (j >= N - 2) {
-                c(j) = a(j) / (j + 2);
-                dcdu.transpose().block(j, 0, 1, N - 1) = 
+                MBCAST(c, T2)(j) = a(j) / (j + 2);
+                MBCAST(dcdu, T3).transpose().block(j, 0, 1, N - 1) = 
                     dadu.block(j, 1, 1, N - 1) / (j + 2);
             } else {
-                c(j) = a(j) / (j + 2) + c(j + 2);
-                dcdu.transpose().block(j, 0, 1, N - 1) = 
+                MBCAST(c, T2)(j) = a(j) / (j + 2) + c(j + 2);
+                MBCAST(dcdu, T3).transpose().block(j, 0, 1, N - 1) = 
                     dadu.block(j, 1, 1, N - 1) / (j + 2) +
                     dcdu.transpose().block(j + 2, 0, 1, N - 1);
             }
         }
 
         if (N >= 4) {
-            c(1) = a(1) + 3 * c(3);
-            dcdu.transpose().block(1, 0, 1, N - 1) = 
+            MBCAST(c, T2)(1) = a(1) + 3 * c(3);
+            MBCAST(dcdu, T3).transpose().block(1, 0, 1, N - 1) = 
                 dadu.block(1, 1, 1, N - 1) +
                 3 * dcdu.transpose().block(3, 0, 1, N - 1);
         } else {
-            c(1) = a(1);
-            dcdu.transpose().block(1, 0, 1, N - 1) = 
+            MBCAST(c, T2)(1) = a(1);
+            MBCAST(dcdu, T3).transpose().block(1, 0, 1, N - 1) = 
                 dadu.block(1, 1, 1, N - 1);
         }
 
         if (N >= 3) {
-            c(0) = a(0) + 2 * c(2);
-            dcdu.transpose().block(0, 0, 1, N - 1) = 
+            MBCAST(c, T2)(0) = a(0) + 2 * c(2);
+            MBCAST(dcdu, T3).transpose().block(0, 0, 1, N - 1) = 
                 dadu.block(0, 1, 1, N - 1) +
                 2 * dcdu.transpose().block(2, 0, 1, N - 1);
         } else {
-            c(0) = a(0);
-            dcdu.transpose().block(0, 0, 1, N - 1) = 
+            MBCAST(c, T2)(0) = a(0);
+            MBCAST(dcdu, T3).transpose().block(0, 0, 1, N - 1) = 
                 dadu.block(0, 1, 1, N - 1);
         }
-
-        // Normalize `c` and `dcdu`
-        // The total flux is given by `(S . c)`
-        T norm = y00 / (pi<T>() * (c(0) + 2.0 * c(1) / 3.0));
-        c *= norm;
-        dcdu *= norm;
-
     }
 
     /**
@@ -154,30 +148,20 @@ namespace limbdark {
     of the basis in which the `P(G_n)` functions are computed.
     Also compute the derivative matrix `dc / du`.
 
-    This is the spectral case.
+    This is the multi-column map case.
 
     */
-    template <class T, typename Derived>
+    template <class T>
     inline void computeC (
         const Matrix<T>& u, 
         Matrix<T>& c,
-        Matrix<T>& dcdu,
-        const MatrixBase<Derived>& y00
+        Matrix<T>& dcdu
     ) {
         int lmax = u.rows() - 1;
         int ncol = u.cols();
-
-        // NOTE: It is *surprisingly* difficult to avoid this
-        // copy operation with Eigen, because Matrix blocks
-        // cannot be passed as lvalues to functions.
-        // See http://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html
-        Matrix<T> dcdu_n(lmax, lmax + 1);
-        for (int n = 0; n < ncol; ++n) {
-            Eigen::Map<const Vector<T>> u_n(u.col(n).data(), u.rows());
-            Eigen::Map<Vector<T>> c_n(c.col(n).data(), c.rows());
-            computeC(u_n, c_n, dcdu_n, y00(n));
-            dcdu.block(n * lmax, 0, lmax, lmax + 1) = dcdu_n;
-        }
+        for (int n = 0; n < ncol; ++n)
+            computeC(u.col(n), c.col(n), 
+                     dcdu.block(n * lmax, 0, lmax, lmax + 1));
     }
 
     /**

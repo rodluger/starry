@@ -56,11 +56,6 @@ namespace py = pybind11;
 #define STARRY_MAX_LMAX             50
 #endif
 
-//! Temporal expansion codes
-#define STARRY_EXPANSION_NONE       0
-#define STARRY_EXPANSION_TAYLOR     1
-#define STARRY_EXPANSION_FOURIER    2
-
 //! Pi
 #ifndef M_PI
 #define M_PI     3.14159265358979323846264338328
@@ -78,6 +73,38 @@ namespace utils {
 using std::abs;
 using std::max;
 using std::isinf;
+
+
+// --------------------------
+// ----- Bounds checks ------
+// --------------------------
+
+
+#ifdef STARRY_DEBUG
+
+// Bounds and shape checking enabled in debug mode
+#define check_shape(MATRIX, ROWS, COLS)\
+    if (!((MATRIX.rows() == ROWS) && (MATRIX.cols() == COLS)))\
+        throw errors::ShapeError("Matrix has incorrect shape.")
+#define check_cols(MATRIX, COLS)\
+    if (MATRIX.cols() != COLS)\
+        throw errors::ShapeError("Matrix has incorrect number of columns.") 
+#define check_rows(MATRIX, ROWS)\
+    if (MATRIX.rows() != ROWS)\
+        throw errors::ShapeError("Matrix has incorrect number of rows.")  
+#define check_bounds(INDEX, IMIN, IMAX)\
+    if ((INDEX < IMIN) || (INDEX > IMAX))\
+        throw errors::IndexError("Index out of bounds.")
+
+#else
+
+// These are compiled out!
+#define check_shape(MATRIX, ROWS, COLS)  do {} while(0)
+#define check_cols(MATRIX, COLS)  do {} while(0)
+#define check_rows(MATRIX, ROWS)  do {} while(0)
+#define check_bounds(INDEX, IMIN, IMAX)  do {} while(0)
+
+#endif
 
 
 // --------------------------
@@ -108,11 +135,19 @@ using RowMatrix = Eigen::Matrix<T, Eigen::Dynamic,
 // --------------------------
 
 
+//! Cast away the const qualifier on a reference to
+//! a MatrixBase variable. See the discussion here:
+//! https://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html
+#define MBCAST(x, T) const_cast<MatrixBase<T>&>(x)
+
+
 //! Multiprecision datatype
 #ifdef STARRY_ENABLE_BOOST
 typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
 typedef boost::multiprecision::number<mp_backend, 
                                       boost::multiprecision::et_off> Multi;
+#else
+typedef void Multi;
 #endif
 
 //! Default single-wavelength, static type
@@ -120,17 +155,17 @@ template <typename T>
 struct Default 
 {
     using Scalar = T;
-    using MapType = Vector<T>;
-    using CoeffType = OneByOne<T>;
-    using FluxType = OneByOne<T>;
-    using GradType = Vector<T>;
+    using YType = Vector<T>;
+    using YCoeffType = OneByOne<T>;
+    using UType = Vector<T>;
+    using UCoeffType = OneByOne<T>;
 
     struct Double {
         using Scalar = double;
-        using MapType = Vector<double>;
-        using CoeffType = OneByOne<double>;
-        using FluxType = OneByOne<double>;
-        using GradType = Vector<double>;
+        using YType = Vector<double>;
+        using YCoeffType = OneByOne<double>;
+        using UType = Vector<double>;
+        using UCoeffType = OneByOne<double>;
     };
 
 };
@@ -140,17 +175,17 @@ template <typename T>
 struct Spectral 
 {
     using Scalar = T;
-    using MapType = Matrix<T>;
-    using CoeffType = RowVector<T>;
-    using FluxType = RowVector<T>;
-    using GradType = RowMatrix<T>;
+    using YType = Matrix<T>;
+    using YCoeffType = RowVector<T>;
+    using UType = Matrix<T>;
+    using UCoeffType = RowVector<T>;
 
     struct Double {
         using Scalar = double;
-        using MapType = Matrix<double>;
-        using CoeffType = RowVector<double>;
-        using FluxType = RowVector<double>;
-        using GradType = RowMatrix<double>;
+        using YType = Matrix<double>;
+        using YCoeffType = RowVector<double>;
+        using UType = Matrix<double>;
+        using UCoeffType = RowVector<double>;
     };
 };
 
@@ -159,17 +194,17 @@ template <typename T>
 struct Temporal 
 {
     using Scalar = T;
-    using MapType = Matrix<T>;
-    using CoeffType = RowVector<T>;
-    using FluxType = OneByOne<T>;
-    using GradType = Vector<T>;
+    using YType = Matrix<T>;
+    using YCoeffType = RowVector<T>;
+    using UType = Vector<T>;
+    using UCoeffType = OneByOne<T>;
 
     struct Double {
         using Scalar = double;
-        using MapType = Matrix<double>;
-        using CoeffType = RowVector<double>;
-        using FluxType = OneByOne<double>;
-        using GradType = Vector<double>;
+        using YType = Matrix<double>;
+        using YCoeffType = RowVector<double>;
+        using UType = Vector<double>;
+        using UCoeffType = OneByOne<double>;
     };
 };
 
@@ -182,6 +217,11 @@ using IsDefault = typename std::enable_if<
 template <typename T, typename U=void>
 using IsSpectral = typename std::enable_if<
                         std::is_same<T, Spectral<typename T::Scalar>>::value, U
+                   >::type;
+
+template <typename T, typename U=void>
+using IsSingleWavelength = typename std::enable_if<
+                        !std::is_same<T, Spectral<typename T::Scalar>>::value, U
                    >::type;
 
 template <typename T, typename U=void>

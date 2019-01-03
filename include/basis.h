@@ -41,49 +41,85 @@ inline void polymulz (
 }
 
 /**
-Multiply two polynomial vectors/matrices.
+Multiply two polynomial vectors/matrices,
+or a matrix (p1) by a vector (p2).
 
 */
-template <typename Derived>
+template <typename T1, typename T2, typename T3>
 inline void polymul (
     int lmax1, 
-    const MatrixBase<Derived>& p1, 
+    const MatrixBase<T1>& p1, 
     int lmax2,
-    const MatrixBase<Derived>& p2,
+    const MatrixBase<T2>& p2,
     int lmax12, 
-    MatrixBase<Derived>& p1p2
+    MatrixBase<T3>& p1p2
 ) {
     bool odd1;
     int l, n;
     int n2, n1 = 0;
-    RowVector<typename Derived::Scalar> fac;
+    RowVector<typename T1::Scalar> fac;
     p1p2.setZero();
-    for (int l1 = 0; l1 < lmax1 + 1; ++l1) {
-        for (int m1 = -l1; m1 < l1 + 1; ++m1) {
-            if (p1.row(n1).any()) {
-                odd1 = (l1 + m1) % 2 == 0 ? false : true;
-                n2 = 0;
-                for (int l2 = 0; l2 < lmax2 + 1; ++l2) {
-                    if (l1 + l2 > lmax12) break;
-                    for (int m2 = -l2; m2 < l2 + 1; ++m2) {
-                        if (p2.row(n2).any()) {
-                            l = l1 + l2;
-                            n = l * l + l + m1 + m2;
-                            fac = p1.row(n1).cwiseProduct(p2.row(n2));
-                            if (odd1 && ((l2 + m2) % 2 != 0)) {
-                                p1p2.row(n - 4 * l + 2) += fac;
-                                p1p2.row(n - 2) -= fac;
-                                p1p2.row(n + 2) -= fac;
-                            } else {
-                                p1p2.row(n) += fac;
+    int ncol1 = p1.cols(), 
+        ncol2 = p2.cols();
+    if (ncol1 == ncol2) {
+        for (int l1 = 0; l1 < lmax1 + 1; ++l1) {
+            for (int m1 = -l1; m1 < l1 + 1; ++m1) {
+                if (p1.row(n1).any()) {
+                    odd1 = (l1 + m1) % 2 == 0 ? false : true;
+                    n2 = 0;
+                    for (int l2 = 0; l2 < lmax2 + 1; ++l2) {
+                        if (l1 + l2 > lmax12) break;
+                        for (int m2 = -l2; m2 < l2 + 1; ++m2) {
+                            if (p2.row(n2).any()) {
+                                l = l1 + l2;
+                                n = l * l + l + m1 + m2;
+                                fac = p1.row(n1).cwiseProduct(p2.row(n2));
+                                if (odd1 && ((l2 + m2) % 2 != 0)) {
+                                    p1p2.row(n - 4 * l + 2) += fac;
+                                    p1p2.row(n - 2) -= fac;
+                                    p1p2.row(n + 2) -= fac;
+                                } else {
+                                    p1p2.row(n) += fac;
+                                }
                             }
+                            ++n2;
                         }
-                        ++n2;
                     }
                 }
+                ++n1;
             }
-            ++n1;
         }
+    } else if ((ncol1 > 1) && (ncol2 == 1)) {
+        for (int l1 = 0; l1 < lmax1 + 1; ++l1) {
+            for (int m1 = -l1; m1 < l1 + 1; ++m1) {
+                if (p1.row(n1).any()) {
+                    odd1 = (l1 + m1) % 2 == 0 ? false : true;
+                    n2 = 0;
+                    for (int l2 = 0; l2 < lmax2 + 1; ++l2) {
+                        if (l1 + l2 > lmax12) break;
+                        for (int m2 = -l2; m2 < l2 + 1; ++m2) {
+                            if (p2.row(n2).any()) {
+                                l = l1 + l2;
+                                n = l * l + l + m1 + m2;
+                                fac = p1.row(n1) * p2(n2, 0);
+                                if (odd1 && ((l2 + m2) % 2 != 0)) {
+                                    p1p2.row(n - 4 * l + 2) += fac;
+                                    p1p2.row(n - 2) -= fac;
+                                    p1p2.row(n + 2) -= fac;
+                                } else {
+                                    p1p2.row(n) += fac;
+                                }
+                            }
+                            ++n2;
+                        }
+                    }
+                }
+                ++n1;
+            }
+        }
+    } else {
+        throw errors::NotImplementedError(
+            "Invalid matrix product in `polymul`.");
     }
 }
 

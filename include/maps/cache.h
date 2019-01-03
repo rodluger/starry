@@ -5,15 +5,14 @@ protected:
 
     // Types
     using Scalar = typename S::Scalar;
-    using MapType = typename S::MapType;
-    using CoeffType = typename S::CoeffType;
-    using FluxType = typename S::FluxType;
-    using GradType = typename S::GradType;
+    using YType = typename S::YType;
+    using UType = typename S::UType;
 
 public:
     
     int lmax;
     int ncol;
+    int nflx;
     int N;
 
     // Flags
@@ -27,17 +26,18 @@ public:
 
     // Cached variables
     int res;
+    Scalar taylort;
     Scalar theta;
     Scalar theta_with_grad;
     Matrix<Scalar> P;                                                          /**< The change of basis matrix from Ylms to pixels */
-    MapType c;
+    UType c;
     Matrix<Scalar> dcdu;                                                       /**< Deriv of Agol `c` coeffs w/ respect to the limb darkening coeffs */
-    MapType p_u;
+    UType p_u;
     RowMatrix<Scalar> gradient;
-    MapType Ry;
-    MapType A1Ry;
-    MapType dRdthetay;
-    MapType p_uy;
+    YType Ry;
+    YType A1Ry;
+    YType dRdthetay;
+    YType p_uy;
     RowVector<Scalar> pT;
     std::vector<Matrix<Scalar>> EulerD;
     std::vector<Matrix<Scalar>> EulerR;
@@ -85,6 +85,7 @@ public:
         compute_P = true;
         compute_p_u = true;
         res = -1;
+        taylort = NAN;
         theta = NAN;
         theta_with_grad = NAN;
     };
@@ -92,14 +93,16 @@ public:
     //! Constructor
     Cache (
         int lmax,
-        int ncol
+        int ncol,
+        int nflx
     ) :
         lmax(lmax),
         ncol(ncol),
+        nflx(nflx),
         N((lmax + 1) * (lmax + 1)),
-        c(lmax + 1, ncol),
-        dcdu(lmax * ncol, lmax + 1),
-        p_u(N, ncol),
+        c(lmax + 1, nflx),
+        dcdu(lmax * nflx, lmax + 1),
+        p_u(N, nflx),
         Ry(N, ncol),
         A1Ry(N, ncol),
         dRdthetay(N, ncol),

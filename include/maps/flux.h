@@ -8,16 +8,20 @@ Evaluate the map at a given (theta, x, y) coordinate.
 
 */
 template <class S>
+template <typename T1>
 inline void Map<S>::computeIntensity_(
     const Scalar& t,
     const Scalar& theta,
     const Scalar& x_,
     const Scalar& y_,
-    Ref<FluxType> intensity
+    MatrixBase<T1> const & intensity
 ) {
+    // Shape checks
+    check_shape(intensity, 1, nflx);
+
     // Check if outside the sphere
     if (x_ * x_ + y_ * y_ > 1.0) {
-        intensity *= NAN;
+        MBCAST(intensity, T1).setConstant(NAN);
         return;
     }
 
@@ -41,7 +45,7 @@ inline void Map<S>::computeIntensity_(
     auto result = cache.pT * cache.A1Ry;
 
     // Contract the map if needed
-    intensity = contract(result, t);
+    MBCAST(intensity, T1) = contract(result, t);
 }
 
 /**
@@ -50,13 +54,16 @@ resolution.
 
 */
 template <class S>
-template <typename Derived>
+template <typename T1>
 inline void Map<S>::renderMap_(
     const Scalar& t,
     const Scalar& theta,
     int res,
-    MatrixBase<Derived> const& intensity
+    MatrixBase<T1> const & intensity
 ) {
+    // Shape checks
+    check_shape(intensity, res * res, nflx);
+
     // Compute the pixelization matrix
     computeP(res);
 
@@ -75,15 +82,7 @@ inline void Map<S>::renderMap_(
 
     // Apply the basis transform
     auto result = cache.P * cache.A1Ry;
-
-    // NOTE: The following line is the hack recommended here:
-    // https://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html.
-    // In general, the `intensity` matrix to which we are assigning will either
-    // be an Eigen Matrix or a **block** of an Eigen Matrix. It is notoriously
-    // difficult to pass a BlockXpr by reference to a function and still allow
-    // it to act as an l-value. The recommended hack is to declare it as const
-    // and cast the `const` qualifier away:
-    const_cast<MatrixBase<Derived>&>(intensity) = contract(result, t);
+    MBCAST(intensity, T1) = contract(result, t);
 }
 
 // --------------------------
@@ -95,14 +94,18 @@ inline void Map<S>::renderMap_(
 
 */
 template <class S>
+template <typename T1>
 inline void Map<S>::computeFlux_(
     const Scalar& t,
     const Scalar& theta, 
     const Scalar& xo, 
     const Scalar& yo, 
     const Scalar& ro, 
-    Ref<FluxType> flux
+    MatrixBase<T1> const & flux
 ) {
+    // Shape checks
+    check_shape(flux, 1, nflx);
+
     // Figure out the degree of the map
     computeDegreeU();
     computeDegreeY();
@@ -112,7 +115,7 @@ inline void Map<S>::computeFlux_(
 
     // Check for complete occultation
     if (b <= ro - 1) {
-        flux.setZero();
+        MBCAST(flux, T1).setZero();
         return;
     }
 
@@ -127,18 +130,19 @@ inline void Map<S>::computeFlux_(
 }
 
 template <class S>
+template <typename T1>
 inline void Map<S>::computeFluxLD(
     const Scalar& t,
     const Scalar& b, 
     const Scalar& ro, 
-    Ref<FluxType> flux
+    MatrixBase<T1> const & flux
 ) {
     // No occultation
     if ((b >= 1 + ro) || (ro == 0)) {
 
         // Easy: the disk-integrated intensity
         // is just the Y_{0,0} coefficient
-        flux = contract(y.row(0), t);
+        MBCAST(flux, T1) = contract(y.row(0), t);
 
     // Occultation
     } else {
@@ -148,14 +152,18 @@ inline void Map<S>::computeFluxLD(
 
         // Compute the Agol `c` basis
         computeC();
-       
+
+        // Normalize by y00
+        UCoeffType norm = contract(y.row(0), t);
+
         // Dot the integral solution in, and we're done!
-        flux = contract(L.s * cache.c, t);
+        MBCAST(flux, T1) = (L.s * cache.c).cwiseProduct(norm);
 
     }
 }
 
 template <class S>
+template <typename T1>
 inline void Map<S>::computeFluxYlm(
     const Scalar& t,
     const Scalar& theta,
@@ -163,7 +171,7 @@ inline void Map<S>::computeFluxYlm(
     const Scalar& yo,  
     const Scalar& b, 
     const Scalar& ro, 
-    Ref<FluxType> flux
+    MatrixBase<T1> const & flux
 ) {
     // Rotate the map into view
     rotateIntoCache(theta);
@@ -172,7 +180,7 @@ inline void Map<S>::computeFluxYlm(
     if ((b >= 1 + ro) || (ro == 0)) {
 
         // Easy
-        flux = contract(B.rTA1 * cache.Ry, t);
+        MBCAST(flux, T1) = contract(B.rTA1 * cache.Ry, t);
 
     // Occultation
     } else {
@@ -184,6 +192,7 @@ inline void Map<S>::computeFluxYlm(
 }
 
 template <class S>
+template <typename T1>
 inline void Map<S>::computeFluxYlmLD(
     const Scalar& t,
     const Scalar& theta,
@@ -191,7 +200,7 @@ inline void Map<S>::computeFluxYlmLD(
     const Scalar& yo,  
     const Scalar& b, 
     const Scalar& ro, 
-    Ref<FluxType> flux
+    MatrixBase<T1> const & flux
 ) {
     // Rotate the map into view
     rotateIntoCache(theta);
@@ -204,7 +213,7 @@ inline void Map<S>::computeFluxYlmLD(
 
         // Apply limb darkening
         limbDarken(cache.A1Ry, cache.p_uy);
-        flux = contract(B.rT * cache.p_uy, t);
+        MBCAST(flux, T1) = contract(B.rT * cache.p_uy, t);
 
     // Occultation
     } else {
@@ -221,15 +230,33 @@ inline void Map<S>::computeFluxYlmLD(
 
 
 template <class S>
+template <typename T1, typename T2, typename T3, typename T4, 
+          typename T5, typename T6, typename T7, typename T8>
 inline void Map<S>::computeFlux_(
     const Scalar& t,
     const Scalar& theta, 
     const Scalar& xo, 
     const Scalar& yo, 
     const Scalar& ro, 
-    Ref<FluxType> flux,
-    Ref<GradType> gradient
+    MatrixBase<T1> const & flux, 
+    MatrixBase<T2> const & dt,
+    MatrixBase<T3> const & dtheta,
+    MatrixBase<T4> const & dxo,
+    MatrixBase<T5> const & dyo,
+    MatrixBase<T6> const & dro,
+    MatrixBase<T7> const & dy,
+    MatrixBase<T8> const & du
 ) {
+    // Shape checks
+    check_shape(flux, 1, nflx);
+    check_shape(dt, 1, nflx);
+    check_shape(dtheta, 1, nflx);
+    check_shape(dxo, 1, nflx);
+    check_shape(dyo, 1, nflx);
+    check_shape(dro, 1, nflx);
+    check_cols(dy, ncol);
+    check_cols(du, nflx);
+
     // Figure out the degree of the map
     computeDegreeU();
     computeDegreeY();
@@ -239,91 +266,132 @@ inline void Map<S>::computeFlux_(
 
     // Check for complete occultation
     if (b <= ro - 1) {
-        flux.setZero();
-        gradient.setZero();
+        MBCAST(flux, T1).setZero();
+        MBCAST(dt, T2).setZero();
+        MBCAST(dtheta, T3).setZero();
+        MBCAST(dxo, T4).setZero();
+        MBCAST(dyo, T5).setZero();
+        MBCAST(dro, T6).setZero();
+        MBCAST(dy, T7).setZero();
+        MBCAST(du, T8).setZero();
         return;
     }
 
     // Compute the flux
     if (y_deg == 0) {
-        computeFluxLD(t, xo, yo, b, ro, flux, gradient);
+        check_rows(du, lmax);
+        computeFluxLD(t, xo, yo, b, ro, flux, dt, 
+                      dtheta, dxo, dyo, dro, dy, du);
     } else if (u_deg == 0) {
-        computeFluxYlm(t, theta, xo, yo, b, ro, flux, gradient);
+        check_rows(dy, N);
+        computeFluxYlm(t, theta, xo, yo, b, ro, flux, dt, 
+                       dtheta, dxo, dyo, dro, dy, du);
     } else {
-        computeFluxYlmLD(t, theta, xo, yo, b, ro, flux, gradient);
+        check_rows(dy, N);
+        check_rows(du, lmax);
+        computeFluxYlmLD(t, theta, xo, yo, b, ro, flux, dt, 
+                         dtheta, dxo, dyo, dro, dy, du);
     }
 }
 
 template <class S>
+template <typename T1, typename T2, typename T3, typename T4, 
+          typename T5, typename T6, typename T7, typename T8>
 inline void Map<S>::computeFluxLD(
     const Scalar& t,
     const Scalar& xo, 
     const Scalar& yo, 
     const Scalar& b, 
     const Scalar& ro, 
-    Ref<FluxType> flux, 
-    Ref<GradType> gradient
+    MatrixBase<T1> const & flux, 
+    MatrixBase<T2> const & dt,
+    MatrixBase<T3> const & dtheta,
+    MatrixBase<T4> const & dxo,
+    MatrixBase<T5> const & dyo,
+    MatrixBase<T6> const & dro,
+    MatrixBase<T7> const & dy,
+    MatrixBase<T8> const & du
 ) {
 
     // No occultation
     if ((b >= 1 + ro) || (ro == 0)) {
 
         // Most of the derivs are zero
-        gradient.setZero();
+        MBCAST(dtheta, T3).setZero();
+        MBCAST(dxo, T4).setZero();
+        MBCAST(dyo, T5).setZero();
+        MBCAST(dro, T6).setZero();
+        MBCAST(du, T8).setZero();
 
-        // The Y_{0,0} deriv is unity
-        gradient.row(idx.y).setConstant(1.0);
-
+        // The Y_{0,0} deriv is unity for static maps and equal to
+        // {1, t, 1/2 t^2 ...} for temporal maps.
         // The other Ylm derivs are not necessarily zero, but we
         // explicitly don't compute them for purely limb-darkened
         // maps to ensure computational efficiency. See the docs
         // for more information.
+        MBCAST(dy, T7).setZero();
+        UCoeffType flux0(ncol);
+        flux0.setOnes();
+        MBCAST(dy, T7).row(0) = dfdy0(flux0, t);
 
         // The time derivative of the flux
-        gradient.row(idx.t) = contract_deriv(y.row(0), t);
+        MBCAST(dt, T2) = contract_deriv(y.row(0), t);
 
         // The flux is easy: the disk-integrated intensity
         // is just the Y_{0,0} coefficient
-        flux = contract(y.row(0), t);
+        MBCAST(flux, T1) = contract(y.row(0), t);
 
     // Occultation
     } else {
 
         // The theta deriv is always zero
-        gradient.row(idx.theta).setConstant(0.0);
+        MBCAST(dtheta, T3).setConstant(0.0);
 
-        // Compute the Agol `S` vector and its derivs
+        // Compute the Agol `s` vector and its derivs
         L.compute(b, ro, true);
 
         // Compute the Agol `c` basis
         computeC();
 
+        // Compute the normalization
+        UCoeffType norm = contract(y.row(0), t);
+
         // Compute the flux
-        auto flux_ = L.s * cache.c;
+        UCoeffType flux0 = (L.s * cache.c);
+        MBCAST(flux, T1) = flux0.cwiseProduct(norm);
 
         // dF / db  ->  dF / dx, dF / dy
-        FluxType dFdb_b(contract(L.dsdb * cache.c, t));
-        dFdb_b /= b;
-        gradient.row(idx.xo) = dFdb_b * xo;
-        gradient.row(idx.yo) = dFdb_b * yo;
+        if (b > 0) {
+            Matrix<Scalar> dFdb_b = (L.dsdb * cache.c).cwiseProduct(norm) / b;
+            MBCAST(dxo, T4) = dFdb_b * xo;
+            MBCAST(dyo, T5) = dFdb_b * yo;
+        } else {
+            Matrix<Scalar> dFdb = (L.dsdb * cache.c).cwiseProduct(norm);
+            MBCAST(dxo, T4) = dFdb;
+            MBCAST(dyo, T5) = dFdb;
+        }
 
         // dF / dr
-        gradient.row(idx.ro) = contract(L.dsdr * cache.c, t);
+        MBCAST(dro, T6) = (L.dsdr * cache.c).cwiseProduct(norm);
 
         // Derivs with respect to the Ylms (see note above)
-        gradient.row(idx.y) = contract(flux_.cwiseQuotient(y.row(0)), t);
+        MBCAST(dy, T7).setZero();
+        MBCAST(dy, T7).row(0) = dfdy0(flux0, t);
 
-        // The flux and its time derivative
-        gradient.row(idx.t) = contract_deriv(flux_, t);
-        flux = contract(flux_, t);
+        // dF / dt
+        UCoeffType norm_deriv = contract_deriv(y.row(0), t);
+        MBCAST(dt, T2) = flux0.cwiseProduct(norm_deriv);
 
         // Derivs with respect to the limb darkening coeffs from dF / dc
-        computeDfDu(flux, gradient);
+        computeDfDu(flux0, du, norm);
 
     }
+
 }
 
 template <class S>
+template <typename T1, typename T2, typename T3, typename T4, 
+          typename T5, typename T6, typename T7, typename T8>
 inline void Map<S>::computeFluxYlm (
     const Scalar& t,
     const Scalar& theta,
@@ -331,8 +399,14 @@ inline void Map<S>::computeFluxYlm (
     const Scalar& yo,  
     const Scalar& b, 
     const Scalar& ro, 
-    Ref<FluxType> flux,
-    Ref<GradType> gradient
+    MatrixBase<T1> const & flux, 
+    MatrixBase<T2> const & dt,
+    MatrixBase<T3> const & dtheta,
+    MatrixBase<T4> const & dxo,
+    MatrixBase<T5> const & dyo,
+    MatrixBase<T6> const & dro,
+    MatrixBase<T7> const & dy,
+    MatrixBase<T8> const & du
 ) {
 
     // Rotate the map into view and explicitly
@@ -343,30 +417,32 @@ inline void Map<S>::computeFluxYlm (
     if ((b >= 1 + ro) || (ro == 0)) {
 
         // Compute the theta deriv
-        gradient.row(idx.theta) = contract(B.rTA1 * cache.dRdthetay, t);
-        gradient.row(idx.theta) *= radian;
+        MBCAST(dtheta, T3) = contract(B.rTA1 * cache.dRdthetay, t);
+        MBCAST(dtheta, T3) *= radian;
 
         // The xo, yo, and ro derivs are trivial
-        gradient.block(idx.xo, 0, 3, ncol).setZero();
+        MBCAST(dxo, T4).setZero();
+        MBCAST(dyo, T5).setZero();
+        MBCAST(dro, T6).setZero();
 
         // Compute the Ylm derivs
         if (theta == 0) {
-            gradient.block(idx.y, 0, idx.ny, ncol) = 
-                B.rTA1.transpose().replicate(1, ncol);
+            MBCAST(dy, T7) = B.rTA1.transpose().replicate(1, ncol);
         } else {
             for (int l = 0; l < lmax + 1; ++l)
-                gradient.block(idx.y + l * l, 0, 2 * l + 1, ncol) = 
+                MBCAST(dy, T7).block(l * l, 0, 2 * l + 1, ncol) = 
                     (B.rTA1.segment(l * l, 2 * l + 1) * W.R[l])
                     .transpose().replicate(1, ncol);
         }
 
         // Note that we do not compute limb darkening 
         // derivatives in this case; see the docs.
+        MBCAST(du, T8).setZero();
 
         // The flux and its time derivative
         auto flux_ = B.rTA1 * cache.Ry;
-        gradient.row(idx.t) = contract_deriv(flux_, t);
-        flux = contract(flux_, t);
+        MBCAST(dt, T2) = contract_deriv(flux_, t);
+        MBCAST(flux, T1) = contract(flux_, t);
 
     // Occultation
     } else {
@@ -379,6 +455,8 @@ inline void Map<S>::computeFluxYlm (
 }
 
 template <class S>
+template <typename T1, typename T2, typename T3, typename T4, 
+          typename T5, typename T6, typename T7, typename T8>
 inline void Map<S>::computeFluxYlmLD(
     const Scalar& t,
     const Scalar& theta,
@@ -386,8 +464,14 @@ inline void Map<S>::computeFluxYlmLD(
     const Scalar& yo,  
     const Scalar& b, 
     const Scalar& ro, 
-    Ref<FluxType> flux,
-    Ref<GradType> gradient
+    MatrixBase<T1> const & flux, 
+    MatrixBase<T2> const & dt,
+    MatrixBase<T3> const & dtheta,
+    MatrixBase<T4> const & dxo,
+    MatrixBase<T5> const & dyo,
+    MatrixBase<T6> const & dro,
+    MatrixBase<T7> const & dy,
+    MatrixBase<T8> const & du
 ) {
 
     // Rotate the map into view and explicitly

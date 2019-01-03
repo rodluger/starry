@@ -133,7 +133,7 @@ PYBIND11_MODULE(
         "__setitem__", [](
             Map<T>& map, 
             py::tuple lm,
-            const typename T::Double::CoeffType& coeff
+            const typename T::Double::YCoeffType& coeff
         ) {
             auto inds = get_Ylm_inds(map.lmax, lm);
             auto y = map.getY();
@@ -147,10 +147,10 @@ PYBIND11_MODULE(
         "__setitem__", [](
             Map<T>& map, 
             py::tuple lm,
-            const typename T::Double::MapType& coeff_
+            const typename T::Double::YType& coeff_
         ) {
             auto inds = get_Ylm_inds(map.lmax, lm);
-            typename T::MapType coeff = coeff_.template cast<typename T::Scalar>();
+            typename T::YType coeff = coeff_.template cast<typename T::Scalar>();
             if (coeff.rows() != static_cast<long>(inds.size()))
                 throw errors::ValueError("Mismatch in slice length and "
                                          "coefficient array size.");
@@ -169,18 +169,18 @@ PYBIND11_MODULE(
         ) -> py::object {
             auto inds = get_Ylm_inds(map.lmax, lm);
             auto y = map.getY();
-            typename T::Double::MapType res;
+            typename T::Double::YType res;
             res.resize(inds.size(), map.ncol);
             int i = 0;
             for (auto n : inds)
                 res.row(i++) = y.row(n).template cast<double>();
             if (inds.size() == 1) {
-                if (T::MapType::ColsAtCompileTime == 1)
+                if (T::YType::ColsAtCompileTime == 1)
                     return py::cast<double>(res(0));
                 else
-                    return py::cast<typename T::Double::CoeffType>(res.row(0));
+                    return py::cast<typename T::Double::YCoeffType>(res.row(0));
             } else {
-                return py::cast<typename T::Double::MapType>(res);
+                return py::cast<typename T::Double::YType>(res);
             }
     });
 
@@ -203,7 +203,7 @@ PYBIND11_MODULE(
         "__setitem__", [](
             Map<T>& map, 
             py::object l,
-            const typename T::Double::CoeffType& coeff
+            const typename T::Double::UCoeffType& coeff
         ) {
             auto inds = get_Ul_inds(map.lmax, l);
             auto u = map.getU();
@@ -217,10 +217,10 @@ PYBIND11_MODULE(
         "__setitem__", [](
             Map<T>& map, 
             py::object l,
-            const typename T::Double::MapType& coeff_
+            const typename T::Double::UType& coeff_
         ) {
             auto inds = get_Ul_inds(map.lmax, l);
-            typename T::MapType coeff = coeff_.template cast<typename T::Scalar>();
+            typename T::UType coeff = coeff_.template cast<typename T::Scalar>();
             if (coeff.rows() != static_cast<long>(inds.size()))
                 throw errors::ValueError("Mismatch in slice length and "
                                          "coefficient array size.");
@@ -239,18 +239,18 @@ PYBIND11_MODULE(
         ) -> py::object {
             auto inds = get_Ul_inds(map.lmax, l);
             auto u = map.getU();
-            typename T::Double::MapType res;
+            typename T::Double::UType res;
             res.resize(inds.size(), map.ncol);
             int i = 0;
             for (auto n : inds)
                 res.row(i++) = u.row(n - 1).template cast<double>();
             if (inds.size() == 1) {
-                if (T::MapType::ColsAtCompileTime == 1)
+                if (T::UType::ColsAtCompileTime == 1)
                     return py::cast<double>(res(0));
                 else
-                    return py::cast<typename T::Double::CoeffType>(res.row(0));
+                    return py::cast<typename T::Double::UCoeffType>(res.row(0));
             } else {
-                return py::cast<typename T::Double::MapType>(res);
+                return py::cast<typename T::Double::UType>(res);
             }
     });
 
@@ -261,7 +261,7 @@ PYBIND11_MODULE(
     PyMap.def_property_readonly(
         "y", [] (
             Map<T> &map
-        ) -> typename T::Double::MapType {
+        ) -> typename T::Double::YType {
             return map.getY().template cast<double>();
     });
 
@@ -269,7 +269,7 @@ PYBIND11_MODULE(
     PyMap.def_property_readonly(
         "u", [] (
             Map<T> &map
-        ) -> typename T::Double::MapType {
+        ) -> typename T::Double::UType {
             return map.getU().template cast<double>();
     });
 
@@ -289,11 +289,29 @@ PYBIND11_MODULE(
     // Rotate the base map
     PyMap.def("rotate", &Map<T>::rotate, "theta"_a=0.0);
 
+#if defined(STARRY_SINGLECOL)
+    // Add a gaussian spot with a scalar amplitude
+    PyMap.def(
+        "add_spot", [](
+            Map<T>& map,
+            const double& amp,
+            const double& sigma,
+            const double& lat,
+            const double& lon,
+            const int l
+        ) {
+            typename T::YCoeffType amp_;
+            amp_(0) = amp;
+            map.addSpot(amp_, 
+                        sigma, lat, lon, l);
+        }, 
+        "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "l"_a=-1);
+#else
     // Add a gaussian spot with a vector amplitude
     PyMap.def(
         "add_spot", [](
             Map<T>& map,
-            const typename T::Double::CoeffType& amp,
+            const typename T::Double::YCoeffType& amp,
             const double& sigma,
             const double& lat,
             const double& lon,
@@ -303,6 +321,7 @@ PYBIND11_MODULE(
                         sigma, lat, lon, l);
         }, 
         "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "l"_a=-1);
+#endif
 
 #if defined(STARRY_SINGLECOL)
     // Generate a random map
@@ -314,7 +333,8 @@ PYBIND11_MODULE(
         ) {
             if (seed_.is(py::none())) {
                 // TODO: We need a better, more thread-safe randomizer seed
-                auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+                auto seed = std::chrono::system_clock::now()
+                            .time_since_epoch().count();
                 map.random(power.template cast<typename T::Scalar>(), seed);
             } else {
                 double seed = py::cast<double>(seed_);
@@ -410,7 +430,7 @@ PYBIND11_MODULE(
             int res
         ) -> py::object {
             auto reshape = py::module::import("numpy").attr("reshape");
-            typename T::MapType intensity;
+            Matrix<typename T::Scalar> intensity;
             map.renderMap(theta, res, intensity);
             return reshape(intensity.template cast<double>(), 
                            py::make_tuple(res, res));
@@ -426,7 +446,7 @@ PYBIND11_MODULE(
             int res
         ) -> py::object {
             auto reshape = py::module::import("numpy").attr("reshape");
-            typename T::MapType intensity;
+            Matrix<typename T::Scalar> intensity;
             map.renderMap(theta, res, intensity);
             return reshape(intensity.template cast<double>(), 
                            py::make_tuple(res, res, map.ncol));
@@ -442,7 +462,7 @@ PYBIND11_MODULE(
             int res
         ) -> py::object {
             auto reshape = py::module::import("numpy").attr("reshape");
-            typename T::MapType intensity;
+            Matrix<typename T::Scalar> intensity;
             map.renderMap(t, theta, res, intensity);
             return reshape(intensity.template cast<double>(), 
                            py::make_tuple(res, res));
@@ -479,6 +499,9 @@ PYBIND11_MODULE(
         "image"_a, "l"_a=-1, "col"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
 #endif
 
+/*
+TODO TODO TODO
+
 #if defined(STARRY_STATIC)
     // Compute the intensity
     PyMap.def("__call__", intensity<T>(), "theta"_a=0.0, 
@@ -489,6 +512,8 @@ PYBIND11_MODULE(
               "x"_a=0.0, "y"_a=0.0);
 #endif
 
+
+
 #if defined(STARRY_STATIC)
     // Compute the flux
     PyMap.def("flux", flux<T>(), "theta"_a=0.0, "xo"_a=0.0, 
@@ -498,6 +523,7 @@ PYBIND11_MODULE(
     PyMap.def("flux", flux<T>(), "t"_a=0.0,"theta"_a=0.0, "xo"_a=0.0, 
               "yo"_a=0.0, "ro"_a=0.0, "gradient"_a=false);
 #endif
+*/
 
 // Code version
 #ifdef VERSION_INFO

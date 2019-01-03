@@ -12,6 +12,7 @@ Entry point for the `starry` C++ interface.
 namespace starry2 {
 
     using maps::Map;
+    using utils::Multi;
     using utils::Default;
     using utils::Spectral;
     using utils::Temporal;

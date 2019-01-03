@@ -17,7 +17,9 @@ py::object Map<S>::show_ (
         fshow = py::module::import("starry2._plotting").attr("show");
     else
         fshow = py::module::import("starry2._plotting").attr("show_spectral");
-    MapType intensity;
+    if (res < 1)
+        throw errors::ValueError("Invalid value for `res`.");
+    Matrix<Scalar> intensity(res * res, nflx);
     renderMap_(t, theta, res, intensity);
     return fshow(intensity.template cast<double>(), res, cmap, gif, interval);
 }
@@ -34,9 +36,11 @@ py::object Map<S>::show_ (
     int interval,
     std::string gif
 ) {
+    if (res < 1)
+        throw errors::ValueError("Invalid value for `res`.");
     size_t res2 = res * res;
     int frames = theta.size();
-    MapType intensity(res2 * frames, nflx);
+    Matrix<Scalar> intensity(res2 * frames, nflx);
     int n = 0;
     for (int j = 0; j < frames; ++j) {
         renderMap_(t(j), theta(j), res, intensity.block(n, 0, res2, nflx));
@@ -60,8 +64,10 @@ void Map<S>::loadImage_ (
     int sampling_factor
 ) {
     py::object fload = py::module::import("starry2._healpy").attr("load_map");
-    if (l == -1)
+    if ((l == -1) || (l > lmax))
         l = lmax;
+    if (col > ncol)
+        throw errors::ValueError("Invalid value for `col`.");
     auto y_double = py::cast<Vector<double>>(fload(image, l, sampling_factor));
     if (normalize)
         y_double /= y_double(0);

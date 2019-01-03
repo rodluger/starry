@@ -103,6 +103,20 @@ namespace errors {
     };
 
     /**
+    Raised when a matrix has the wrong shape.
+
+    */
+    class ShapeError : public exception {
+        string m_msg;
+    public:
+        ShapeError(const string& message) :
+            m_msg(string(message)) { }
+        virtual const char* what() const throw() {
+            return m_msg.c_str();
+        }
+    };
+
+    /**
     Raised when a linear algebra operation, such as
     matrix inversion, fails.
 
