@@ -499,8 +499,6 @@ PYBIND11_MODULE(
         "image"_a, "l"_a=-1, "col"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
 #endif
 
-/*
-TODO TODO TODO
 
 #if defined(STARRY_STATIC)
     // Compute the intensity
@@ -513,6 +511,8 @@ TODO TODO TODO
 #endif
 
 
+/*
+TODO TODO TODO
 
 #if defined(STARRY_STATIC)
     // Compute the flux

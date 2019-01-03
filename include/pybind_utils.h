@@ -195,146 +195,145 @@ std::vector<int> get_Ul_inds (
     }
 }
 
+/**
+Return a lambda function to compute the intensity at a point 
+or a vector of points for a static, single-wavelength map.
+
+*/
+template <typename T, IsDefault<T>* = nullptr>
+std::function<py::object(
+        Map<T> &, 
+        py::array_t<double>&, 
+        py::array_t<double>&, 
+        py::array_t<double>&
+    )> intensity () 
+{
+    return []
+    (
+        Map<T> &map, 
+        py::array_t<double>& theta, 
+        py::array_t<double>& x, 
+        py::array_t<double>& y
+    ) -> py::object {
+        using Scalar = typename T::Scalar;
+        size_t nt = max(max(theta.size(), x.size()), y.size());
+        size_t n = 0;
+        Vector<Scalar> intensity(nt);
+
+        py::vectorize([&map, &intensity, &n](
+            double theta, 
+            double x, 
+            double y
+        ) {
+            map.computeIntensity(static_cast<Scalar>(theta), 
+                                 static_cast<Scalar>(x), 
+                                 static_cast<Scalar>(y), 
+                                 intensity.row(n));
+            ++n;
+            return 0;
+        })(theta, x, y);
+        if (nt > 1)
+            return py::cast(intensity.template cast<double>());
+        else
+            return py::cast(static_cast<double>(intensity(0)));
+    };
+}
+
+/**
+Return a lambda function to compute the intensity at a point 
+or a vector of points for a spectral map.
+
+*/
+template <typename T, IsSpectral<T>* = nullptr>
+std::function<py::object(
+        Map<T> &, 
+        py::array_t<double>&, 
+        py::array_t<double>&, 
+        py::array_t<double>&
+    )> intensity () 
+{
+    return []
+    (
+        Map<T> &map, 
+        py::array_t<double>& theta, 
+        py::array_t<double>& x, 
+        py::array_t<double>& y
+    ) -> py::object {
+        using Scalar = typename T::Scalar;
+        size_t nt = max(max(theta.size(), x.size()), y.size());
+        size_t n = 0;
+        RowMatrix<Scalar> intensity(nt, map.ncol);
+
+        py::vectorize([&map, &intensity, &n](
+            double theta, 
+            double x, 
+            double y
+        ) {
+            map.computeIntensity(static_cast<Scalar>(theta), 
+                                 static_cast<Scalar>(x), 
+                                 static_cast<Scalar>(y), 
+                                 intensity.row(n));
+            ++n;
+            return 0;
+        })(theta, x, y);
+        if (nt > 1)
+            return py::cast(intensity.template cast<double>());
+        else {
+            RowVector<double> f = intensity.row(0).template cast<double>();
+            return py::cast(f);
+        }
+    };
+}
+
+/**
+Return a lambda function to compute the intensity at a point 
+or a vector of points for a temporal map.
+
+*/
+template <typename T, IsTemporal<T>* = nullptr>
+std::function<py::object(
+        Map<T> &, 
+        py::array_t<double>&, 
+        py::array_t<double>&, 
+        py::array_t<double>&,
+        py::array_t<double>&
+    )> intensity () 
+{
+    return []
+    (
+        Map<T> &map, 
+        py::array_t<double>& t,
+        py::array_t<double>& theta, 
+        py::array_t<double>& x, 
+        py::array_t<double>& y
+    ) -> py::object {
+        using Scalar = typename T::Scalar;
+        size_t nt = max(max(max(theta.size(), x.size()), y.size()), t.size());
+        size_t n = 0;
+        Vector<Scalar> intensity(nt);
+
+        py::vectorize([&map, &intensity, &n](
+            double t,
+            double theta, 
+            double x, 
+            double y
+        ) {
+            map.computeIntensity(static_cast<Scalar>(t), 
+                                 static_cast<Scalar>(theta), 
+                                 static_cast<Scalar>(x), 
+                                 static_cast<Scalar>(y), 
+                                 intensity.row(n));
+            ++n;
+            return 0;
+        })(t, theta, x, y);
+        if (nt > 1)
+            return py::cast(intensity.template cast<double>());
+        else
+            return py::cast(static_cast<double>(intensity(0)));
+    };
+}
 
 #ifdef BROKENTODODEBUG
-
-            /**
-            Return a lambda function to compute the intensity at a point 
-            or a vector of points for a static, single-wavelength map.
-
-            */
-            template <typename T, IsDefault<T>* = nullptr>
-            std::function<py::object(
-                    Map<T> &, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&
-                )> intensity () 
-            {
-                return []
-                (
-                    Map<T> &map, 
-                    py::array_t<double>& theta, 
-                    py::array_t<double>& x, 
-                    py::array_t<double>& y
-                ) -> py::object {
-                    using Scalar = typename T::Scalar;
-                    size_t nt = max(max(theta.size(), x.size()), y.size());
-                    size_t n = 0;
-                    Vector<Scalar> intensity(nt);
-
-                    py::vectorize([&map, &intensity, &n](
-                        double theta, 
-                        double x, 
-                        double y
-                    ) {
-                        map.computeIntensity(static_cast<Scalar>(theta), 
-                                            static_cast<Scalar>(x), 
-                                            static_cast<Scalar>(y), 
-                                            intensity.row(n));
-                        ++n;
-                        return 0;
-                    })(theta, x, y);
-                    if (nt > 1)
-                        return py::cast(intensity.template cast<double>());
-                    else
-                        return py::cast(static_cast<double>(intensity(0)));
-                };
-            }
-
-            /**
-            Return a lambda function to compute the intensity at a point 
-            or a vector of points for a spectral map.
-
-            */
-            template <typename T, IsSpectral<T>* = nullptr>
-            std::function<py::object(
-                    Map<T> &, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&
-                )> intensity () 
-            {
-                return []
-                (
-                    Map<T> &map, 
-                    py::array_t<double>& theta, 
-                    py::array_t<double>& x, 
-                    py::array_t<double>& y
-                ) -> py::object {
-                    using Scalar = typename T::Scalar;
-                    size_t nt = max(max(theta.size(), x.size()), y.size());
-                    size_t n = 0;
-                    RowMatrix<Scalar> intensity(nt, map.ncol);
-
-                    py::vectorize([&map, &intensity, &n](
-                        double theta, 
-                        double x, 
-                        double y
-                    ) {
-                        map.computeIntensity(static_cast<Scalar>(theta), 
-                                            static_cast<Scalar>(x), 
-                                            static_cast<Scalar>(y), 
-                                            intensity.row(n));
-                        ++n;
-                        return 0;
-                    })(theta, x, y);
-                    if (nt > 1)
-                        return py::cast(intensity.template cast<double>());
-                    else {
-                        RowVector<double> f = intensity.row(0).template cast<double>();
-                        return py::cast(f);
-                    }
-                };
-            }
-
-            /**
-            Return a lambda function to compute the intensity at a point 
-            or a vector of points for a temporal map.
-
-            */
-            template <typename T, IsTemporal<T>* = nullptr>
-            std::function<py::object(
-                    Map<T> &, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&,
-                    py::array_t<double>&
-                )> intensity () 
-            {
-                return []
-                (
-                    Map<T> &map, 
-                    py::array_t<double>& t,
-                    py::array_t<double>& theta, 
-                    py::array_t<double>& x, 
-                    py::array_t<double>& y
-                ) -> py::object {
-                    using Scalar = typename T::Scalar;
-                    size_t nt = max(max(max(theta.size(), x.size()), y.size()), t.size());
-                    size_t n = 0;
-                    Vector<Scalar> intensity(nt);
-
-                    py::vectorize([&map, &intensity, &n](
-                        double t,
-                        double theta, 
-                        double x, 
-                        double y
-                    ) {
-                        map.computeIntensity(static_cast<Scalar>(t), 
-                                            static_cast<Scalar>(theta), 
-                                            static_cast<Scalar>(x), 
-                                            static_cast<Scalar>(y), 
-                                            intensity.row(n));
-                        ++n;
-                        return 0;
-                    })(t, theta, x, y);
-                    if (nt > 1)
-                        return py::cast(intensity.template cast<double>());
-                    else
-                        return py::cast(static_cast<double>(intensity(0)));
-                };
-            }
 
             /**
             Return a lambda function to compute the flux at a point 
