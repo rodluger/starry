@@ -333,454 +333,362 @@ std::function<py::object(
     };
 }
 
-#ifdef BROKENTODODEBUG
 
-            /**
-            Return a lambda function to compute the flux at a point 
-            or a vector of points for a static, single-wavelength map. Optionally
-            compute and return the gradient.
+/**
+Return a lambda function to compute the flux at a point 
+or a vector of points for a static, single-wavelength map. Optionally
+compute and return the gradient.
 
-            */
-            template <typename T, IsDefault<T>* = nullptr>
-            std::function<py::object(
-                    Map<T> &, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&,
-                    bool
-                )> flux () 
-            {
-                return []
-                (
-                    Map<T> &map, 
-                    py::array_t<double>& theta, 
-                    py::array_t<double>& xo, 
-                    py::array_t<double>& yo, 
-                    py::array_t<double>& ro,
-                    bool compute_gradient
-                ) -> py::object 
-                {
-                    using Scalar = typename T::Scalar;
-                    size_t nt = max(max(max(theta.size(), xo.size()), 
-                                        yo.size()), ro.size());
-                    size_t n = 0;
-                    Vector<Scalar> flux(nt);
+*/
+template <typename T, IsDefault<T>* = nullptr>
+std::function<py::object(
+        Map<T> &, 
+        py::array_t<double>&, 
+        py::array_t<double>&, 
+        py::array_t<double>&, 
+        py::array_t<double>&,
+        bool
+    )> flux () 
+{
+    return []
+    (
+        Map<T> &map, 
+        py::array_t<double>& theta, 
+        py::array_t<double>& xo, 
+        py::array_t<double>& yo, 
+        py::array_t<double>& ro,
+        bool compute_gradient
+    ) -> py::object 
+    {
+        using Scalar = typename T::Scalar;
+        size_t nt = max(max(max(theta.size(), xo.size()), 
+                            yo.size()), ro.size());
+        size_t n = 0;
 
-                    if (compute_gradient) {
+        // Allocate the arrays
+        map.cache.pb_flux.resize(nt);
+        map.cache.pb_theta.resize(nt);
+        map.cache.pb_xo.resize(nt);
+        map.cache.pb_yo.resize(nt);
+        map.cache.pb_ro.resize(nt);
+        if (map.getYDeg_() == 0) {
+            map.cache.pb_y.resize(nt, 1);
+            map.cache.pb_u.resize(nt, map.lmax);
+        } else if (map.getUDeg_() == 0) {
+            map.cache.pb_y.resize(nt, map.N);
+            map.cache.pb_u.resize(nt, 1);
+        } else {
+            map.cache.pb_y.resize(nt, map.N);
+            map.cache.pb_u.resize(nt, map.lmax);
+        }
 
-                        // Allocate storage for the gradient
-                        map.updateIndices_();
-                        map.cache.gradient.resize(nt, map.idx.ndim);
+        if (compute_gradient) {
 
-                        // Vectorize the computation
-                        py::vectorize([&map, &flux, &n](
-                            double theta, 
-                            double xo, 
-                            double yo, 
-                            double ro
-                        ) {
-                            map.computeFlux(static_cast<Scalar>(theta), 
-                                            static_cast<Scalar>(xo), 
-                                            static_cast<Scalar>(yo), 
-                                            static_cast<Scalar>(ro), 
-                                            flux.row(n), 
-                                            map.cache.gradient.row(n).transpose());
-                            ++n;
-                            return 0;
-                        })(theta, xo, yo, ro);
+            // Vectorize the computation
+            py::vectorize([&map, &n](
+                double theta, 
+                double xo, 
+                double yo, 
+                double ro
+            ) {
+                map.computeFlux(
+                    static_cast<Scalar>(theta),
+                    static_cast<Scalar>(xo),
+                    static_cast<Scalar>(yo),
+                    static_cast<Scalar>(ro),
+                    map.cache.pb_flux.row(n),
+                    map.cache.pb_theta.row(n),
+                    map.cache.pb_xo.row(n),
+                    map.cache.pb_yo.row(n),
+                    map.cache.pb_ro.row(n),
+                    map.cache.pb_y.row(n),
+                    map.cache.pb_u.row(n).transpose()
+                );
+                ++n;
+                return 0;
+            })(theta, xo, yo, ro);
 
-                        // Construct the gradient dictionary and
-                        // return a tuple of (flux, gradient)
-                        if (nt > 1) {
-                            py::dict gradient_dict = py::dict(
-                                "theta"_a=map.cache.gradient.col(map.idx.theta)
-                                            .template cast<double>(),
-                                "xo"_a=map.cache.gradient.col(map.idx.xo)
-                                        .template cast<double>(),
-                                "yo"_a=map.cache.gradient.col(map.idx.yo)
-                                        .template cast<double>(),
-                                "ro"_a=map.cache.gradient.col(map.idx.ro)
-                                        .template cast<double>(),
-                                "y"_a=map.cache.gradient
-                                        .block(0, map.idx.y, nt, map.idx.ny)
-                                        .transpose().template cast<double>(),
-                                "u"_a=map.cache.gradient
-                                        .block(0, map.idx.u, nt, map.idx.nu)
-                                        .transpose().template cast<double>()
-                            );
-                            return py::make_tuple(flux.template cast<double>(), 
-                                                gradient_dict);
-                        } else {
-                            Vector<double> grad_y = 
-                                map.cache.gradient.block(0, map.idx.y, nt, map.idx.ny)
-                                                .transpose().template cast<double>();
-                            Vector<double> grad_u = 
-                                map.cache.gradient.block(0, map.idx.u, nt, map.idx.nu)
-                                                .transpose().template cast<double>();
-                            py::dict gradient_dict = py::dict(
-                                "theta"_a=static_cast<double>(
-                                    map.cache.gradient(0, map.idx.theta)),
-                                "xo"_a=static_cast<double>(
-                                    map.cache.gradient(0, map.idx.xo)),
-                                "yo"_a=static_cast<double>(
-                                    map.cache.gradient(0, map.idx.yo)),
-                                "ro"_a=static_cast<double>(
-                                    map.cache.gradient(0, map.idx.ro)),
-                                "y"_a=grad_y,
-                                "u"_a=grad_u
-                            );
-                            return py::make_tuple(static_cast<double>(flux(0)), 
-                                                gradient_dict);
-                        }
-
-                    } else {
-                        
-                        // Trivial!
-                        py::vectorize([&map, &flux, &n](
-                            double theta, 
-                            double xo, 
-                            double yo, 
-                            double ro
-                        ) {
-                            map.computeFlux(static_cast<Scalar>(theta), 
-                                            static_cast<Scalar>(xo), 
-                                            static_cast<Scalar>(yo), 
-                                            static_cast<Scalar>(ro), 
-                                            flux.row(n));
-                            ++n;
-                            return 0;
-                        })(theta, xo, yo, ro);
-                        if (nt > 1)
-                            return py::cast(flux.template cast<double>());
-                        else
-                            return py::cast(static_cast<double>(flux(0)));
-
-                    }
-
-                };
+            // Construct the gradient dictionary and
+            // return a tuple of (flux, gradient)
+            if (nt > 1) {
+                py::dict gradient_dict = py::dict(
+                    "theta"_a=map.cache.pb_theta.template cast<double>(),
+                    "xo"_a=map.cache.pb_xo.template cast<double>(),
+                    "yo"_a=map.cache.pb_yo.template cast<double>(),
+                    "ro"_a=map.cache.pb_ro.template cast<double>(),
+                    "y"_a=map.cache.pb_y.template cast<double>(),
+                    "u"_a=map.cache.pb_u.template cast<double>()
+                );
+                return py::make_tuple(
+                    map.cache.pb_flux.template cast<double>(), 
+                    gradient_dict
+                );
+            } else {
+                py::dict gradient_dict = py::dict(
+                    "theta"_a=static_cast<double>(map.cache.pb_theta(0)),
+                    "xo"_a=static_cast<double>(map.cache.pb_xo(0)),
+                    "yo"_a=static_cast<double>(map.cache.pb_yo(0)),
+                    "ro"_a=static_cast<double>(map.cache.pb_ro(0)),
+                    "y"_a=map.cache.pb_y.row(0).template cast<double>(),
+                    "u"_a=map.cache.pb_u.row(0).template cast<double>()
+                );
+                return py::make_tuple(
+                    static_cast<double>(map.cache.pb_flux(0)), 
+                    gradient_dict
+                );
             }
 
-            /**
-            Return a lambda function to compute the flux at a point 
-            or a vector of points for a spectral map. Optionally
-            compute and return the gradient.
+        } else {
+            
+            // Trivial!
+            py::vectorize([&map, &n](
+                double theta, 
+                double xo, 
+                double yo, 
+                double ro
+            ) {
+                map.computeFlux(
+                    static_cast<Scalar>(theta), 
+                    static_cast<Scalar>(xo), 
+                    static_cast<Scalar>(yo), 
+                    static_cast<Scalar>(ro), 
+                    map.cache.pb_flux.row(n)
+                );
+                ++n;
+                return 0;
+            })(theta, xo, yo, ro);
+            if (nt > 1)
+                return py::cast(map.cache.pb_flux.template cast<double>());
+            else
+                return py::cast(static_cast<double>(map.cache.pb_flux(0)));
 
-            */
-            template <typename T, IsSpectral<T>* = nullptr>
-            std::function<py::object(
-                    Map<T> &, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&,
-                    bool
-                )> flux ()
-            {
+        }
 
-                return [] 
-                (
-                    Map<T> &map, 
-                    py::array_t<double>& theta, 
-                    py::array_t<double>& xo, 
-                    py::array_t<double>& yo, 
-                    py::array_t<double>& ro,
-                    bool compute_gradient
-                ) -> py::object {
-                    using Scalar = typename T::Scalar;
-                    size_t nt = max(max(max(theta.size(), xo.size()), yo.size()), 
-                                    ro.size());
-                    size_t n = 0;
-                    RowMatrix<Scalar> flux(nt, map.ncol);
+    };
+}
 
-                    // Numpy hacks
-                    auto numpy = py::module::import("numpy");
-                    auto swapaxes = numpy.attr("swapaxes");
-                    auto reshape = numpy.attr("reshape");
+/**
+Return a lambda function to compute the flux at a point 
+or a vector of points for a spectral map. Optionally
+compute and return the gradient.
 
-                    if (compute_gradient) {
-                        
-                        // Allocate storage for the gradient
-                        map.updateIndices_();
-                        map.cache.gradient.resize(nt, map.idx.ndim * map.ncol);
+*/
+template <typename T, IsSpectral<T>* = nullptr>
+std::function<py::object(
+        Map<T> &, 
+        py::array_t<double>&, 
+        py::array_t<double>&, 
+        py::array_t<double>&, 
+        py::array_t<double>&,
+        bool
+    )> flux ()
+{
 
-                        // Vectorize the computation
-                        py::vectorize([&map, &flux, &n](
-                            double theta, 
-                            double xo, 
-                            double yo, 
-                            double ro
-                        ) {
-                            // Map the current row of the gradient tensor 
-                            // (the full gradient at this timestep)
-                            // to a row-major matrix of shape (ndim, ncol) 
-                            // so we can pass it to `computeFlux`
-                            Eigen::Map<RowMatrix<Scalar>> 
-                                grad_row(map.cache.gradient.data() + 
-                                        n * map.idx.ndim * map.ncol, 
-                                        map.idx.ndim, map.ncol);
-                            map.computeFlux(static_cast<Scalar>(theta), 
-                                            static_cast<Scalar>(xo), 
-                                            static_cast<Scalar>(yo), 
-                                            static_cast<Scalar>(ro), 
-                                            flux.row(n), grad_row);
-                            ++n;
-                            return 0;
-                        })(theta, xo, yo, ro);
+    return [] 
+    (
+        Map<T> &map, 
+        py::array_t<double>& theta, 
+        py::array_t<double>& xo, 
+        py::array_t<double>& yo, 
+        py::array_t<double>& ro,
+        bool compute_gradient
+    ) -> py::object {
+        using Scalar = typename T::Scalar;
+        size_t nt = max(max(max(theta.size(), xo.size()), yo.size()), 
+                        ro.size());
+        size_t n = 0;
+        RowMatrix<Scalar> flux(nt, map.ncol);
 
-                        if (nt > 1) {
-                            // Use Eigen::Map to get a view of each gradient direction
-                            // for the orbital params without any copying
-                            using GradStrideO = Eigen::Stride<1, Eigen::Dynamic>;
-                            using GradViewO = Eigen::Map<Matrix<Scalar>, 0, GradStrideO>;
-                            GradStrideO stride_o(1, map.idx.ndim * map.ncol);
-                            GradViewO grad_theta(map.cache.gradient.data() 
-                                                + map.idx.theta * map.ncol, 
-                                                nt, map.ncol, stride_o);
-                            GradViewO grad_xo(map.cache.gradient.data() 
-                                            + map.idx.xo * map.ncol, 
-                                            nt, map.ncol, stride_o);
-                            GradViewO grad_yo(map.cache.gradient.data() 
-                                            + map.idx.yo * map.ncol, 
-                                            nt, map.ncol, stride_o);
-                            GradViewO grad_ro(map.cache.gradient.data() 
-                                            + map.idx.ro * map.ncol, 
-                                            nt, map.ncol, stride_o);
+        // Numpy hacks
+        //auto numpy = py::module::import("numpy");
+        //auto swapaxes = numpy.attr("swapaxes");
+        //auto reshape = numpy.attr("reshape");
 
-                            // Do the same for the map gradients, except we need to do 
-                            // a little magic to shape them into a 3-tensor
-                            // HACK: We're using numpy.reshape; there must be a better way!
-                            using GradStrideY = Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>;
-                            using GradViewY = Eigen::Map<Matrix<Scalar>, 0, GradStrideY>;
-                            GradStrideY stride_y(1, map.idx.ndim * map.ncol);
-                            GradViewY grad_y(map.cache.gradient.data() 
-                                            + map.idx.y * map.ncol, 
-                                            nt, map.idx.ny * map.ncol, stride_y);
-                            auto grad_y_3dT = reshape(grad_y.template cast<double>(), 
-                                                    py::make_tuple(nt, map.idx.ny, map.ncol));
-                            auto grad_y_3d = swapaxes(grad_y_3dT, 0, 1);
-                            GradViewY grad_u(map.cache.gradient.data() + 
-                                            map.idx.u * map.ncol, 
-                                            nt, map.idx.nu * map.ncol, stride_y);
-                            auto grad_u_3dT = reshape(grad_u.template cast<double>(), 
-                                                    py::make_tuple(nt, map.idx.nu, 
-                                                                    map.ncol));
-                            auto grad_u_3d = swapaxes(grad_u_3dT, 0, 1);
+        if (compute_gradient) {
+            
+            // Allocate storage for the gradient
+            // TODO: use cache for each deriv
 
-                            // Construct the gradient dictionary and
-                            // return a tuple of (flux, gradient)
-                            py::dict gradient_dict = py::dict(
-                                "theta"_a=grad_theta.template cast<double>(),
-                                "xo"_a=grad_xo.template cast<double>(),
-                                "yo"_a=grad_yo.template cast<double>(),
-                                "ro"_a=grad_ro.template cast<double>(),
-                                "y"_a=grad_y_3d,
-                                "u"_a=grad_u_3d
-                            );
-                            return py::make_tuple(flux.template cast<double>(), 
-                                                gradient_dict);
-                        } else {
-                            Eigen::Map<Vector<Scalar>> 
-                                grad_theta(map.cache.gradient.data() + 
-                                        map.idx.theta * map.ncol, map.ncol);
-                            Eigen::Map<Vector<Scalar>> 
-                                grad_xo(map.cache.gradient.data() + 
-                                        map.idx.xo * map.ncol, map.ncol);
-                            Eigen::Map<Vector<Scalar>> 
-                                grad_yo(map.cache.gradient.data() + 
-                                        map.idx.yo * map.ncol, map.ncol);
-                            Eigen::Map<Vector<Scalar>> 
-                                grad_ro(map.cache.gradient.data() + 
-                                        map.idx.ro * map.ncol, map.ncol);
-                            Eigen::Map<Vector<Scalar>> 
-                                grad_y(map.cache.gradient.data() + map.idx.y * map.ncol, 
-                                    map.idx.ny * map.ncol);
-                            Eigen::Map<Vector<Scalar>> 
-                                grad_u(map.cache.gradient.data() + map.idx.u * map.ncol, 
-                                    map.idx.nu * map.ncol);
-                            auto grad_y2d = reshape(grad_y.template cast<double>(), 
-                                                    py::make_tuple(map.idx.ny, map.ncol));
-                            auto grad_u2d = reshape(grad_u.template cast<double>(), 
-                                                    py::make_tuple(map.idx.nu, map.ncol));
-                            // Construct the gradient dictionary and
-                            // return a tuple of (flux, gradient)
-                            py::dict gradient_dict = py::dict(
-                                "theta"_a=grad_theta.template cast<double>(),
-                                "xo"_a=grad_xo.template cast<double>(),
-                                "yo"_a=grad_yo.template cast<double>(),
-                                "ro"_a=grad_ro.template cast<double>(),
-                                "y"_a=grad_y2d,
-                                "u"_a=grad_u2d
-                            );
-                            RowVector<double> f = flux.row(0).template cast<double>();
-                            return py::make_tuple(f, gradient_dict);
-                        }
+            // Vectorize the computation
+            py::vectorize([&map, &flux, &n](
+                double theta, 
+                double xo, 
+                double yo, 
+                double ro
+            ) {
+                // TODO
+                // map.computeFlux(...)
+                ++n;
+                return 0;
+            })(theta, xo, yo, ro);
 
-                    } else {
-
-                        // Trivial!
-                        py::vectorize([&map, &flux, &n](
-                            double theta, 
-                            double xo, 
-                            double yo, 
-                            double ro
-                        ) {
-                            map.computeFlux(static_cast<Scalar>(theta), 
-                                            static_cast<Scalar>(xo), 
-                                            static_cast<Scalar>(yo), 
-                                            static_cast<Scalar>(ro), 
-                                            flux.row(n));
-                            ++n;
-                            return 0;
-                        })(theta, xo, yo, ro);
-                        if (nt > 1)
-                            return py::cast(flux.template cast<double>());
-                        else {
-                            RowVector<double> f = flux.row(0).template cast<double>();
-                            return py::cast(f);
-                        }
-                    }
-
-                };
+            // Construct the gradient dictionary and
+            // return a tuple of (flux, gradient)
+            if (nt > 1) {
+                py::dict gradient_dict = py::dict(
+                    // TODO
+                    "theta"_a=0,
+                    "xo"_a=0,
+                    "yo"_a=0,
+                    "ro"_a=0,
+                    "y"_a=0,
+                    "u"_a=0
+                );
+                return py::make_tuple(flux.template cast<double>(), 
+                                      gradient_dict);
+            } else {
+                py::dict gradient_dict = py::dict(
+                    // TODO
+                    "theta"_a=0,
+                    "xo"_a=0,
+                    "yo"_a=0,
+                    "ro"_a=0,
+                    "y"_a=0,
+                    "u"_a=0
+                );
+                return py::make_tuple(static_cast<double>(flux(0)), 
+                                      gradient_dict);
             }
 
-            /**
-            Return a lambda function to compute the flux at a point 
-            or a vector of points for a temporal map. Optionally
-            compute and return the gradient.
+        } else {
 
-            */
-            template <typename T, IsTemporal<T>* = nullptr>
-            std::function<py::object(
-                    Map<T> &, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&, 
-                    py::array_t<double>&,
-                    py::array_t<double>&,
-                    bool
-                )> flux () 
-            {
-                return []
-                (
-                    Map<T> &map, 
-                    py::array_t<double>& t,
-                    py::array_t<double>& theta, 
-                    py::array_t<double>& xo, 
-                    py::array_t<double>& yo, 
-                    py::array_t<double>& ro, 
-                    bool compute_gradient
-                ) -> py::object 
-                {
-                    using Scalar = typename T::Scalar;
-                    size_t nt = max(max(max(max(theta.size(), xo.size()), 
-                                        yo.size()), ro.size()), t.size());
-                    size_t n = 0;
-                    Vector<Scalar> flux(nt);
+            // Trivial!
+            py::vectorize([&map, &flux, &n](
+                double theta, 
+                double xo, 
+                double yo, 
+                double ro
+            ) {
+                map.computeFlux(static_cast<Scalar>(theta), 
+                                static_cast<Scalar>(xo), 
+                                static_cast<Scalar>(yo), 
+                                static_cast<Scalar>(ro), 
+                                flux.row(n));
+                ++n;
+                return 0;
+            })(theta, xo, yo, ro);
+            if (nt > 1)
+                return py::cast(flux.template cast<double>());
+            else {
+                RowVector<double> f = flux.row(0).template cast<double>();
+                return py::cast(f);
+            }
+        }
 
-                    if (compute_gradient) {
+    };
+}
 
-                        // Allocate storage for the gradient
-                        map.updateIndices_();
-                        map.cache.gradient.resize(nt, map.idx.ndim);
+/**
+Return a lambda function to compute the flux at a point 
+or a vector of points for a temporal map. Optionally
+compute and return the gradient.
 
-                        // Vectorize the computation
-                        py::vectorize([&map, &flux, &n](
-                            double t,
-                            double theta, 
-                            double xo, 
-                            double yo, 
-                            double ro
-                        ) {
-                            map.computeFlux(static_cast<Scalar>(t),
-                                            static_cast<Scalar>(theta), 
-                                            static_cast<Scalar>(xo), 
-                                            static_cast<Scalar>(yo), 
-                                            static_cast<Scalar>(ro), 
-                                            flux.row(n), 
-                                            map.cache.gradient.row(n).transpose());
-                            ++n;
-                            return 0;
-                        })(t, theta, xo, yo, ro);
+*/
+template <typename T, IsTemporal<T>* = nullptr>
+std::function<py::object(
+        Map<T> &, 
+        py::array_t<double>&, 
+        py::array_t<double>&, 
+        py::array_t<double>&, 
+        py::array_t<double>&,
+        py::array_t<double>&,
+        bool
+    )> flux () 
+{
+    return []
+    (
+        Map<T> &map, 
+        py::array_t<double>& t,
+        py::array_t<double>& theta, 
+        py::array_t<double>& xo, 
+        py::array_t<double>& yo, 
+        py::array_t<double>& ro, 
+        bool compute_gradient
+    ) -> py::object 
+    {
+        using Scalar = typename T::Scalar;
+        size_t nt = max(max(max(max(theta.size(), xo.size()), 
+                            yo.size()), ro.size()), t.size());
+        size_t n = 0;
+        Vector<Scalar> flux(nt);
 
-                        // Construct the gradient dictionary and
-                        // return a tuple of (flux, gradient)
-                        if (nt > 1) {
-                            py::dict gradient_dict = py::dict(
-                                "t"_a=map.cache.gradient.col(map.idx.t)
-                                        .template cast<double>(),
-                                "theta"_a=map.cache.gradient.col(map.idx.theta)
-                                            .template cast<double>(),
-                                "xo"_a=map.cache.gradient.col(map.idx.xo)
-                                        .template cast<double>(),
-                                "yo"_a=map.cache.gradient.col(map.idx.yo)
-                                        .template cast<double>(),
-                                "ro"_a=map.cache.gradient.col(map.idx.ro)
-                                        .template cast<double>(),
-                                "y"_a=map.cache.gradient
-                                        .block(0, map.idx.y, nt, map.idx.ny).transpose()
-                                        .template cast<double>(),
-                                "u"_a=map.cache.gradient
-                                        .block(0, map.idx.u, nt, map.idx.nu)
-                                        .transpose().template cast<double>()
-                            );
-                            return py::make_tuple(flux.template cast<double>(), 
-                                                gradient_dict);
-                        } else {
-                            Vector<double> grad_y = 
-                                map.cache.gradient.block(0, map.idx.y, nt, map.idx.ny)
-                                                .transpose().template cast<double>();
-                            Vector<double> grad_u = 
-                                map.cache.gradient.block(0, map.idx.u, nt, map.idx.nu)
-                                                .transpose().template cast<double>();
-                            py::dict gradient_dict = py::dict(
-                                "t"_a=static_cast<double>(
-                                    map.cache.gradient(0, map.idx.t)),
-                                "theta"_a=static_cast<double>(
-                                    map.cache.gradient(0, map.idx.theta)),
-                                "xo"_a=static_cast<double>(
-                                    map.cache.gradient(0, map.idx.xo)),
-                                "yo"_a=static_cast<double>(
-                                    map.cache.gradient(0, map.idx.yo)),
-                                "ro"_a=static_cast<double>(
-                                    map.cache.gradient(0, map.idx.ro)),
-                                "y"_a=grad_y,
-                                "u"_a=grad_u
-                            );
-                            return py::make_tuple(static_cast<double>(flux(0)), 
-                                                gradient_dict);
-                        }
+        if (compute_gradient) {
 
-                    } else {
-                        
-                        // Trivial!
-                        py::vectorize([&map, &flux, &n](
-                            double t,
-                            double theta, 
-                            double xo, 
-                            double yo, 
-                            double ro
-                        ) {
-                            map.computeFlux(static_cast<Scalar>(t), 
-                                            static_cast<Scalar>(theta), 
-                                            static_cast<Scalar>(xo), 
-                                            static_cast<Scalar>(yo), 
-                                            static_cast<Scalar>(ro), 
-                                            flux.row(n));
-                            ++n;
-                            return 0;
-                        })(t, theta, xo, yo, ro);
-                        if (nt > 1)
-                            return py::cast(flux.template cast<double>());
-                        else
-                            return py::cast(static_cast<double>(flux(0)));
+            // Allocate storage for the gradient
+            // TODO: use cache for each deriv
 
-                    }
+            // Vectorize the computation
+            py::vectorize([&map, &flux, &n](
+                double t,
+                double theta, 
+                double xo, 
+                double yo, 
+                double ro
+            ) {
+                // TODO
+                // map.computeFlux(...)
+                ++n;
+                return 0;
+            })(t, theta, xo, yo, ro);
 
-                };
+            // Construct the gradient dictionary and
+            // return a tuple of (flux, gradient)
+            if (nt > 1) {
+                py::dict gradient_dict = py::dict(
+                    // TODO
+                    "t"_a=0,
+                    "theta"_a=0,
+                    "xo"_a=0,
+                    "yo"_a=0,
+                    "ro"_a=0,
+                    "y"_a=0,
+                    "u"_a=0
+                );
+                return py::make_tuple(flux.template cast<double>(), 
+                                      gradient_dict);
+            } else {
+                py::dict gradient_dict = py::dict(
+                    // TODO
+                    "t"_a=0,
+                    "theta"_a=0,
+                    "xo"_a=0,
+                    "yo"_a=0,
+                    "ro"_a=0,
+                    "y"_a=0,
+                    "u"_a=0
+                );
+                return py::make_tuple(static_cast<double>(flux(0)), 
+                                      gradient_dict);
             }
 
-#endif
+        } else {
+            
+            // Trivial!
+            py::vectorize([&map, &flux, &n](
+                double t,
+                double theta, 
+                double xo, 
+                double yo, 
+                double ro
+            ) {
+                map.computeFlux(static_cast<Scalar>(t), 
+                                static_cast<Scalar>(theta), 
+                                static_cast<Scalar>(xo), 
+                                static_cast<Scalar>(yo), 
+                                static_cast<Scalar>(ro), 
+                                flux.row(n));
+                ++n;
+                return 0;
+            })(t, theta, xo, yo, ro);
+            if (nt > 1)
+                return py::cast(flux.template cast<double>());
+            else
+                return py::cast(static_cast<double>(flux(0)));
+
+        }
+
+    };
+}
 
 } // namespace pybind_utils
 

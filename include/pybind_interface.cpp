@@ -499,7 +499,6 @@ PYBIND11_MODULE(
         "image"_a, "l"_a=-1, "col"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
 #endif
 
-
 #if defined(STARRY_STATIC)
     // Compute the intensity
     PyMap.def("__call__", intensity<T>(), "theta"_a=0.0, 
@@ -510,10 +509,6 @@ PYBIND11_MODULE(
               "x"_a=0.0, "y"_a=0.0);
 #endif
 
-
-/*
-TODO TODO TODO
-
 #if defined(STARRY_STATIC)
     // Compute the flux
     PyMap.def("flux", flux<T>(), "theta"_a=0.0, "xo"_a=0.0, 
@@ -523,7 +518,6 @@ TODO TODO TODO
     PyMap.def("flux", flux<T>(), "t"_a=0.0,"theta"_a=0.0, "xo"_a=0.0, 
               "yo"_a=0.0, "ro"_a=0.0, "gradient"_a=false);
 #endif
-*/
 
 // Code version
 #ifdef VERSION_INFO

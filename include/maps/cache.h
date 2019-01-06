@@ -33,7 +33,6 @@ public:
     UType c;
     Matrix<Scalar> dcdu;                                                       /**< Deriv of Agol `c` coeffs w/ respect to the limb darkening coeffs */
     UType p_u;
-    RowMatrix<Scalar> gradient;
     YType Ry;
     YType A1Ry;
     YType dRdthetay;
@@ -41,6 +40,15 @@ public:
     RowVector<Scalar> pT;
     std::vector<Matrix<Scalar>> EulerD;
     std::vector<Matrix<Scalar>> EulerR;
+
+    // Pybind cache
+    Vector<Scalar> pb_flux;
+    Vector<Scalar> pb_theta;
+    Vector<Scalar> pb_xo;
+    Vector<Scalar> pb_yo;
+    Vector<Scalar> pb_ro;
+    Matrix<Scalar> pb_y;
+    Matrix<Scalar> pb_u;
 
     //
     inline void yChanged () {

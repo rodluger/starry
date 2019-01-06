@@ -18,6 +18,28 @@ inline void Map<S>::reset ()
 }
 
 /**
+Return the current highest spherical 
+harmonic degree of the map.
+
+*/
+template <class S>
+inline int Map<S>::getYDeg_ () const
+{
+    return y_deg;
+}
+
+/**
+Return the current highest limb darkening
+degree of the map.
+
+*/
+template <class S>
+inline int Map<S>::getUDeg_ () const
+{
+    return u_deg;
+}
+
+/**
 Check if the total degree of the map is valid.
 
 */

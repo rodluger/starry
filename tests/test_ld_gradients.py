@@ -123,12 +123,8 @@ def run_flux(multi=False, case="ld"):
                             map.axis, 30, 0.1, 0.1, 0.1)
     for key in dI.keys():
         if (key in dI_num.keys()):
-            if key == 'u' or key == 'y':
-                assert np.allclose(dI[key][:, 0], dI_num1[key], atol=1e-6)
-                assert np.allclose(dI[key][:, 1], dI_num2[key], atol=1e-6)
-            else:
-                assert np.allclose(dI[key][0], dI_num1[key], atol=1e-6)
-                assert np.allclose(dI[key][1], dI_num2[key], atol=1e-6)
+            assert np.allclose(dI[key][0], dI_num1[key], atol=1e-6)
+            assert np.allclose(dI[key][1], dI_num2[key], atol=1e-6)
 
 
 def test_ld_flux_with_gradients_double():

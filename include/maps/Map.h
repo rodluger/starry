@@ -255,11 +255,17 @@ public:
     #include "inline/flux.h"
     #include "inline/python_interface.h"
 
+    // Public methods not really meant for user access
     inline void updateIndices_ () {
         computeDegreeY();
         computeDegreeU();
     }
 
+    inline int getYDeg_ () const;
+
+    inline int getUDeg_ () const;
+
+    // I/O
     inline void setY (
         const YType& y_
     );
@@ -300,7 +306,14 @@ public:
     
     inline UnitVector<Scalar> getAxis () const;
 
+    std::string info ();
+
+    // Miscellaneous operations
     inline void reset ();
+
+    inline void rotate (
+        const Scalar& theta
+    );
 
     inline void addSpot (
         const YCoeffType& amp,
@@ -309,12 +322,6 @@ public:
         const Scalar& lon=0,
         int l=-1
     );
-
-    inline void rotate (
-        const Scalar& theta
-    );
-
-    std::string info ();
 
 }; // class Map
 
