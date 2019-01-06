@@ -411,20 +411,24 @@ std::function<py::object(
             // Construct the gradient dictionary and
             // return a tuple of (flux, gradient)
             if (nt > 1) {
-                py::dict gradient_dict = py::dict(
-                    "theta"_a=map.cache.pb_theta.template cast<double>(),
-                    "xo"_a=map.cache.pb_xo.template cast<double>(),
-                    "yo"_a=map.cache.pb_yo.template cast<double>(),
-                    "ro"_a=map.cache.pb_ro.template cast<double>(),
-                    "y"_a=map.cache.pb_y.template cast<double>(),
-                    "u"_a=map.cache.pb_u.template cast<double>()
+                auto flux = Ref<Vector<Scalar>>(map.cache.pb_flux);
+                auto dtheta = Ref<Vector<Scalar>>(map.cache.pb_theta);
+                auto dxo = Ref<Vector<Scalar>>(map.cache.pb_xo);
+                auto dyo = Ref<Vector<Scalar>>(map.cache.pb_yo);
+                auto dro = Ref<Vector<Scalar>>(map.cache.pb_ro);
+                auto dy = Ref<Matrix<Scalar>>(map.cache.pb_y);
+                auto du = Ref<Matrix<Scalar>>(map.cache.pb_u);
+                py::dict gradient = py::dict(
+                    "theta"_a=dtheta.template cast<double>(),
+                    "xo"_a=dxo.template cast<double>(),
+                    "yo"_a=dyo.template cast<double>(),
+                    "ro"_a=dro.template cast<double>(),
+                    "y"_a=dy.template cast<double>(),
+                    "u"_a=du.template cast<double>()
                 );
-                return py::make_tuple(
-                    map.cache.pb_flux.template cast<double>(), 
-                    gradient_dict
-                );
+                return py::make_tuple(flux.template cast<double>(), gradient);
             } else {
-                py::dict gradient_dict = py::dict(
+                py::dict gradient = py::dict(
                     "theta"_a=static_cast<double>(map.cache.pb_theta(0)),
                     "xo"_a=static_cast<double>(map.cache.pb_xo(0)),
                     "yo"_a=static_cast<double>(map.cache.pb_yo(0)),
@@ -434,7 +438,7 @@ std::function<py::object(
                 );
                 return py::make_tuple(
                     static_cast<double>(map.cache.pb_flux(0)), 
-                    gradient_dict
+                    gradient
                 );
             }
 
@@ -457,10 +461,15 @@ std::function<py::object(
                 ++n;
                 return 0;
             })(theta, xo, yo, ro);
-            if (nt > 1)
+            if (nt > 1) {
+#ifdef STARRY_MULTI
                 return py::cast(map.cache.pb_flux.template cast<double>());
-            else
+#else
+                return py::cast(&map.cache.pb_flux);          
+#endif
+            } else {
                 return py::cast(static_cast<double>(map.cache.pb_flux(0)));
+            }
 
         }
 

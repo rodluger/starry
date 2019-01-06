@@ -4,17 +4,6 @@ import numpy as np
 import pytest
 
 
-@pytest.mark.xfail
-def test_cel_convergence():
-    """The elliptic integral doesn't converge in this case."""
-    map = starry2.Map()
-    map[0, 0] = 1
-    map[:] = 1
-    flux0 = map.flux(xo=0, ro=0.01)
-    flux = map.flux(xo=1e-16, ro=0.01)
-    assert np.isclose(flux, flux0)
-
-
 def test_small_b():
     """Test df/db near b = 0."""
     b = np.logspace(-18, 0, 100)
