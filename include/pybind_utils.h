@@ -365,24 +365,33 @@ std::function<py::object(
                             yo.size()), ro.size());
         size_t n = 0;
 
-        // Allocate the arrays
+        // Allocate the flux
         map.cache.pb_flux.resize(nt);
-        map.cache.pb_theta.resize(nt);
-        map.cache.pb_xo.resize(nt);
-        map.cache.pb_yo.resize(nt);
-        map.cache.pb_ro.resize(nt);
-        if (map.getYDeg_() == 0) {
-            map.cache.pb_y.resize(nt, 1);
-            map.cache.pb_u.resize(nt, map.lmax);
-        } else if (map.getUDeg_() == 0) {
-            map.cache.pb_y.resize(nt, map.N);
-            map.cache.pb_u.resize(nt, 1);
-        } else {
-            map.cache.pb_y.resize(nt, map.N);
-            map.cache.pb_u.resize(nt, map.lmax);
-        }
+        auto flux = Ref<Vector<Scalar>>(map.cache.pb_flux);
 
         if (compute_gradient) {
+
+            // Allocate the gradient
+            map.cache.pb_theta.resize(nt);
+            map.cache.pb_xo.resize(nt);
+            map.cache.pb_yo.resize(nt);
+            map.cache.pb_ro.resize(nt);
+            if (map.getYDeg_() == 0) {
+                map.cache.pb_y.resize(nt, 1);
+                map.cache.pb_u.resize(nt, map.lmax);
+            } else if (map.getUDeg_() == 0) {
+                map.cache.pb_y.resize(nt, map.N);
+                map.cache.pb_u.resize(nt, 1);
+            } else {
+                map.cache.pb_y.resize(nt, map.N);
+                map.cache.pb_u.resize(nt, map.lmax);
+            }
+            auto dtheta = Ref<Vector<Scalar>>(map.cache.pb_theta);
+            auto dxo = Ref<Vector<Scalar>>(map.cache.pb_xo);
+            auto dyo = Ref<Vector<Scalar>>(map.cache.pb_yo);
+            auto dro = Ref<Vector<Scalar>>(map.cache.pb_ro);
+            auto dy = Ref<Matrix<Scalar>>(map.cache.pb_y);
+            auto du = Ref<Matrix<Scalar>>(map.cache.pb_u);
 
             // Vectorize the computation
             py::vectorize([&map, &n](
@@ -411,13 +420,6 @@ std::function<py::object(
             // Construct the gradient dictionary and
             // return a tuple of (flux, gradient)
             if (nt > 1) {
-                auto flux = Ref<Vector<Scalar>>(map.cache.pb_flux);
-                auto dtheta = Ref<Vector<Scalar>>(map.cache.pb_theta);
-                auto dxo = Ref<Vector<Scalar>>(map.cache.pb_xo);
-                auto dyo = Ref<Vector<Scalar>>(map.cache.pb_yo);
-                auto dro = Ref<Vector<Scalar>>(map.cache.pb_ro);
-                auto dy = Ref<Matrix<Scalar>>(map.cache.pb_y);
-                auto du = Ref<Matrix<Scalar>>(map.cache.pb_u);
                 py::dict gradient = py::dict(
                     "theta"_a=dtheta.template cast<double>(),
                     "xo"_a=dxo.template cast<double>(),
