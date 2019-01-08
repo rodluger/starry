@@ -5,6 +5,8 @@ Current bugs/issues in starry.
 
 import starry2
 import pytest
+import numpy as np
+import subprocess
 
 
 @pytest.mark.xfail
@@ -20,7 +22,6 @@ def test_hysteresis():
         pass
     map[1, 0] = 0
     f, g = map.flux(xo=[0.1, 0.2], ro=0.25, gradient=True)
-    return 0
 
 
 @pytest.mark.xfail

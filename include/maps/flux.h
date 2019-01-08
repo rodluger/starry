@@ -361,7 +361,7 @@ inline void Map<S>::computeFluxLD(
         MBCAST(flux, T1) = flux0.cwiseProduct(norm);
 
         // dF / db  ->  dF / dx, dF / dy
-        if (b > 0) {
+        if (likely(b > 0)) {
             Matrix<Scalar> dFdb_b = (L.dsdb * cache.c).cwiseProduct(norm) / b;
             MBCAST(dxo, T4) = dFdb_b * xo;
             MBCAST(dyo, T5) = dFdb_b * yo;

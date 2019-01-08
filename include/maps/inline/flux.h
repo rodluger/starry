@@ -169,19 +169,19 @@ inline IsSingleWavelength<U, void> computeDfDu (
     MatrixBase<T2> const & du,
     const UCoeffType & norm
 ) {
+    if (likely(lmax > 0)) {
 #ifdef STARRY_KEEP_DFDU_AS_DFDG
-    MBCAST(du, T2) = L.s.transpose();
-    MBCAST(du, T2)(0) -= pi<Scalar>() * flux(0);
-    if (lmax > 0)
+        MBCAST(du, T2) = L.s.transpose();
+        MBCAST(du, T2)(0) -= pi<Scalar>() * flux(0);
         MBCAST(du, T2)(1) -= (2.0 / 3.0) * pi<Scalar>() * flux(0);
-    MBCAST(du, T2) = du * norm(0);
+        MBCAST(du, T2) = du * norm(0);
 #else
-    Vector<Scalar> dFdc = L.s.transpose();
-    dFdc(0) -= pi<Scalar>() * flux(0);
-    if (lmax > 0)
+        Vector<Scalar> dFdc = L.s.transpose();
+        dFdc(0) -= pi<Scalar>() * flux(0);
         dFdc(1) -= (2.0 / 3.0) * pi<Scalar>() * flux(0);
-    MBCAST(du, T2) = cache.dcdu * dFdc * norm(0);
+        MBCAST(du, T2) = cache.dcdu * dFdc * norm(0);
 #endif
+    }
 }
 
 /**
@@ -199,23 +199,23 @@ inline IsSpectral<U, void> computeDfDu (
     MatrixBase<T2> const & du,
     const UCoeffType & norm
 ) {
-    Scalar twothirdspi = (2.0 / 3.0) * pi<Scalar>();
+    if (likely(lmax > 0)) {
+        Scalar twothirdspi = (2.0 / 3.0) * pi<Scalar>();
 #ifdef STARRY_KEEP_DFDU_AS_DFDG
-    Vector<Scalar> dFdc = L.s.transpose();
-    for (int n = 0; n < ncol; ++n) {
-        dFdc(0) = L.s(0) - pi<Scalar>() * flux(n);
-        if (lmax > 0)
+        Vector<Scalar> dFdc = L.s.transpose();
+        for (int n = 0; n < ncol; ++n) {
+            dFdc(0) = L.s(0) - pi<Scalar>() * flux(n);
             dFdc(1) = L.s(1) - twothirdspi * flux(n);
-        MBCAST(du, T2).col(n) = dFdc * norm(n);
-    }
+            MBCAST(du, T2).col(n) = dFdc * norm(n);
+        }
 #else
-    Vector<Scalar> dFdc = L.s.transpose();
-    for (int n = 0; n < ncol; ++n) {
-        dFdc(0) = L.s(0) - pi<Scalar>() * flux(n);
-        if (lmax > 0)
+        Vector<Scalar> dFdc = L.s.transpose();
+        for (int n = 0; n < ncol; ++n) {
+            dFdc(0) = L.s(0) - pi<Scalar>() * flux(n);
             dFdc(1) = L.s(1) - twothirdspi * flux(n);
-        MBCAST(du, T2).col(n) = 
-            cache.dcdu.block(n * lmax, 0, lmax, lmax + 1) * dFdc * norm(n);
-    }
+            MBCAST(du, T2).col(n) = 
+                cache.dcdu.block(n * lmax, 0, lmax, lmax + 1) * dFdc * norm(n);
+        }
 #endif
+    }
 }

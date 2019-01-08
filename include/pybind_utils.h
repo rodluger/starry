@@ -390,8 +390,8 @@ std::function<py::object(
             auto dxo = Ref<Vector<Scalar>>(map.cache.pb_xo);
             auto dyo = Ref<Vector<Scalar>>(map.cache.pb_yo);
             auto dro = Ref<Vector<Scalar>>(map.cache.pb_ro);
-            auto dy = Ref<Matrix<Scalar>>(map.cache.pb_y);
-            auto du = Ref<Matrix<Scalar>>(map.cache.pb_u);
+            auto dy = Ref<RowMatrix<Scalar>>(map.cache.pb_y);
+            auto du = Ref<RowMatrix<Scalar>>(map.cache.pb_u);
 
             // Vectorize the computation
             py::vectorize([&map, &n](

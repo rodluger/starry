@@ -125,7 +125,7 @@ namespace limbdark {
             MBCAST(dcdu, T3).transpose().block(1, 0, 1, N - 1) = 
                 dadu.block(1, 1, 1, N - 1) +
                 3 * dcdu.transpose().block(3, 0, 1, N - 1);
-        } else {
+        } else if (N >= 2) {
             MBCAST(c, T2)(1) = a(1);
             MBCAST(dcdu, T3).transpose().block(1, 0, 1, N - 1) = 
                 dadu.block(1, 1, 1, N - 1);

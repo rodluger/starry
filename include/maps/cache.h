@@ -47,8 +47,8 @@ public:
     Vector<Scalar> pb_xo;
     Vector<Scalar> pb_yo;
     Vector<Scalar> pb_ro;
-    Matrix<Scalar> pb_y;
-    Matrix<Scalar> pb_u;
+    RowMatrix<Scalar> pb_y;
+    RowMatrix<Scalar> pb_u;
 
     //
     inline void yChanged () {
