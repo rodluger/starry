@@ -138,7 +138,7 @@ using RowMatrix = Eigen::Matrix<T, Eigen::Dynamic,
 //! Cast away the const qualifier on a reference to
 //! a MatrixBase variable. See the discussion here:
 //! https://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html
-#define MBCAST(x, T) const_cast<MatrixBase<T>&>(x)
+#define MBCAST(x, T) x //DEBUG const_cast<MatrixBase<T>&>(x)
 
 
 //! Multiprecision datatype

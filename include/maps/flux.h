@@ -334,18 +334,17 @@ inline void Map<S>::computeFluxLD(
         flux0.setOnes();
         MBCAST(dy, T7).row(0) = dfdy0(flux0, t);
 
-        // The time derivative of the flux
-        MBCAST(dt, T2) = contract_deriv(y.row(0), t);
-
+        // dF / dt
+        if (std::is_same<S, Temporal<Scalar>>::value) {
+            MBCAST(dt, T2) = contract_deriv(y.row(0), t);
+        }
+        
         // The flux is easy: the disk-integrated intensity
         // is just the Y_{0,0} coefficient
         MBCAST(flux, T1) = contract(y.row(0), t);
 
     // Occultation
     } else {
-
-        // The theta deriv is always zero
-        MBCAST(dtheta, T3).setConstant(0.0);
 
         // Compute the Agol `s` vector and its derivs
         L.compute(b, ro, true);
@@ -360,27 +359,35 @@ inline void Map<S>::computeFluxLD(
         UCoeffType flux0 = (L.s * cache.c);
         MBCAST(flux, T1) = flux0.cwiseProduct(norm);
 
+        // The theta deriv is always zero
+        MBCAST(dtheta, T3).setConstant(0.0);
+
         // dF / db  ->  dF / dx, dF / dy
         if (likely(b > 0)) {
-            Matrix<Scalar> dFdb_b = (L.dsdb * cache.c).cwiseProduct(norm) / b;
-            MBCAST(dxo, T4) = dFdb_b * xo;
-            MBCAST(dyo, T5) = dFdb_b * yo;
+            MBCAST(dxo, T4) = (L.dsdb * cache.c) / b;
+            MBCAST(dyo, T5) = dxo;
+            MBCAST(dxo, T4) *= xo;
+            MBCAST(dyo, T5) *= yo;
+            MBCAST(dxo, T4) = dxo.cwiseProduct(norm);
+            MBCAST(dyo, T5) = dyo.cwiseProduct(norm);
         } else {
-            Matrix<Scalar> dFdb = (L.dsdb * cache.c).cwiseProduct(norm);
-            MBCAST(dxo, T4) = dFdb;
-            MBCAST(dyo, T5) = dFdb;
+            MBCAST(dxo, T4) = L.dsdb * cache.c;
+            MBCAST(dxo, T4) = dxo.cwiseProduct(norm);
+            MBCAST(dyo, T5) = dxo;
         }
 
         // dF / dr
-        MBCAST(dro, T6) = (L.dsdr * cache.c).cwiseProduct(norm);
+        MBCAST(dro, T6) = (L.dsdr * cache.c);
 
         // Derivs with respect to the Ylms (see note above)
         MBCAST(dy, T7).setZero();
         MBCAST(dy, T7).row(0) = dfdy0(flux0, t);
 
         // dF / dt
-        UCoeffType norm_deriv = contract_deriv(y.row(0), t);
-        MBCAST(dt, T2) = flux0.cwiseProduct(norm_deriv);
+        if (std::is_same<S, Temporal<Scalar>>::value) {
+            UCoeffType norm_deriv = contract_deriv(y.row(0), t);
+            MBCAST(dt, T2) = flux0.cwiseProduct(norm_deriv);
+        }
 
         // Derivs with respect to the limb darkening coeffs from dF / dc
         computeDfDu(flux0, du, norm);
