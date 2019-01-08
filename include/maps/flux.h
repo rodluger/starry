@@ -279,7 +279,11 @@ inline void Map<S>::computeFlux_(
 
     // Compute the flux
     if (y_deg == 0) {
+#ifdef STARRY_KEEP_DFDU_AS_DFDG
+        check_rows(du, lmax + 1);
+#else
         check_rows(du, lmax);
+#endif
         computeFluxLD(t, xo, yo, b, ro, flux, dt, 
                       dtheta, dxo, dyo, dro, dy, du);
     } else if (u_deg == 0) {
@@ -288,7 +292,11 @@ inline void Map<S>::computeFlux_(
                        dtheta, dxo, dyo, dro, dy, du);
     } else {
         check_rows(dy, N);
+#ifdef STARRY_KEEP_DFDU_AS_DFDG
+        check_rows(du, lmax + 1);
+#else
         check_rows(du, lmax);
+#endif
         computeFluxYlmLD(t, theta, xo, yo, b, ro, flux, dt, 
                          dtheta, dxo, dyo, dro, dy, du);
     }
@@ -364,7 +372,8 @@ inline void Map<S>::computeFluxLD(
 
         // dF / db  ->  dF / dx, dF / dy
         if (likely(b > 0)) {
-            MBCAST(dxo, T4) = (L.dsdb * cache.c) / b;
+            MBCAST(dxo, T4) = (L.dsdb * cache.c);
+            MBCAST(dxo, T4) /= b;
             MBCAST(dyo, T5) = dxo;
             MBCAST(dxo, T4) *= xo;
             MBCAST(dyo, T5) *= yo;

@@ -378,13 +378,21 @@ std::function<py::object(
             map.cache.pb_ro.resize(nt);
             if (map.getYDeg_() == 0) {
                 map.cache.pb_y.resize(nt, 1);
+#ifdef STARRY_KEEP_DFDU_AS_DFDG
+                map.cache.pb_u.resize(nt, map.lmax + 1);
+#else
                 map.cache.pb_u.resize(nt, map.lmax);
+#endif
             } else if (map.getUDeg_() == 0) {
                 map.cache.pb_y.resize(nt, map.N);
                 map.cache.pb_u.resize(nt, 1);
             } else {
                 map.cache.pb_y.resize(nt, map.N);
+#ifdef STARRY_KEEP_DFDU_AS_DFDG
+                map.cache.pb_u.resize(nt, map.lmax + 1);
+#else
                 map.cache.pb_u.resize(nt, map.lmax);
+#endif
             }
             auto dtheta = Ref<Vector<Scalar>>(map.cache.pb_theta);
             auto dxo = Ref<Vector<Scalar>>(map.cache.pb_xo);
