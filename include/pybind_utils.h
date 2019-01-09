@@ -16,6 +16,23 @@ Miscellaneous utilities used for the pybind interface.
 #include "utils.h"
 #include "maps.h"
 
+
+#ifdef STARRY_MULTI
+#define ENSURE_DOUBLE(X)               static_cast<double>(X)
+#define ENSURE_DOUBLE_ARR(X)           X.template cast<double>()
+#define PYOBJECT_CAST(X)               py::cast(static_cast<double>(X))
+#define PYOBJECT_CAST_ARR(X)           py::cast(X.template cast<double>())
+#else
+#define ENSURE_DOUBLE(X)               X
+#define ENSURE_DOUBLE_ARR(X)           X
+#define PYOBJECT_CAST(X)               py::cast(X)
+#define PYOBJECT_CAST_ARR(X)           py::cast(&X)
+#endif
+
+#define MAXSIZE4(A, B, C, D) max(max(max(A.size(), B.size()), C.size()), D.size())
+#define MAXSIZE5(A, B, C, D, E) max(max(max(max(A.size(), B.size()), C.size()), D.size()), E.size())
+
+
 namespace pybind_utils {
 
 //! Misc stuff we need
@@ -333,6 +350,35 @@ std::function<py::object(
     };
 }
 
+/**
+Allocate space for the gradient vectors.
+
+*/
+template <typename T>
+inline void alloc_arrays(
+    Map<T>& map, 
+    int nt,
+    bool compute_gradient
+) {
+    map.cache.pb_flux.resize(nt);
+    if (compute_gradient) {
+        map.cache.pb_theta.resize(nt);
+        map.cache.pb_xo.resize(nt);
+        map.cache.pb_yo.resize(nt);
+        map.cache.pb_ro.resize(nt);
+        if (map.getYDeg_() == 0) {
+            map.cache.pb_y.resize(nt, 1);
+            map.cache.pb_u.resize(nt, map.lmax + STARRY_DFDU_DELTA);
+        } else if (map.getUDeg_() == 0) {
+            map.cache.pb_y.resize(nt, map.N);
+            map.cache.pb_u.resize(nt, 1);
+        } else {
+            map.cache.pb_y.resize(nt, map.N);
+            map.cache.pb_u.resize(nt, map.lmax + STARRY_DFDU_DELTA);
+        } 
+    }
+}
+
 
 /**
 Return a lambda function to compute the flux at a point 
@@ -361,45 +407,13 @@ std::function<py::object(
     ) -> py::object 
     {
         using Scalar = typename T::Scalar;
-        size_t nt = max(max(max(theta.size(), xo.size()), 
-                            yo.size()), ro.size());
+        size_t nt = MAXSIZE4(theta, xo, yo, ro);
         size_t n = 0;
 
-        // Allocate the flux
-        map.cache.pb_flux.resize(nt);
-        auto flux = Ref<Vector<Scalar>>(map.cache.pb_flux);
+        // Allocate space for the arrays
+        alloc_arrays(map, nt, compute_gradient);
 
         if (compute_gradient) {
-
-            // Allocate the gradient
-            map.cache.pb_theta.resize(nt);
-            map.cache.pb_xo.resize(nt);
-            map.cache.pb_yo.resize(nt);
-            map.cache.pb_ro.resize(nt);
-            if (map.getYDeg_() == 0) {
-                map.cache.pb_y.resize(nt, 1);
-#ifdef STARRY_KEEP_DFDU_AS_DFDG
-                map.cache.pb_u.resize(nt, map.lmax + 1);
-#else
-                map.cache.pb_u.resize(nt, map.lmax);
-#endif
-            } else if (map.getUDeg_() == 0) {
-                map.cache.pb_y.resize(nt, map.N);
-                map.cache.pb_u.resize(nt, 1);
-            } else {
-                map.cache.pb_y.resize(nt, map.N);
-#ifdef STARRY_KEEP_DFDU_AS_DFDG
-                map.cache.pb_u.resize(nt, map.lmax + 1);
-#else
-                map.cache.pb_u.resize(nt, map.lmax);
-#endif
-            }
-            auto dtheta = Ref<Vector<Scalar>>(map.cache.pb_theta);
-            auto dxo = Ref<Vector<Scalar>>(map.cache.pb_xo);
-            auto dyo = Ref<Vector<Scalar>>(map.cache.pb_yo);
-            auto dro = Ref<Vector<Scalar>>(map.cache.pb_ro);
-            auto dy = Ref<RowMatrix<Scalar>>(map.cache.pb_y);
-            auto du = Ref<RowMatrix<Scalar>>(map.cache.pb_u);
 
             // Vectorize the computation
             py::vectorize([&map, &n](
@@ -428,26 +442,38 @@ std::function<py::object(
             // Construct the gradient dictionary and
             // return a tuple of (flux, gradient)
             if (nt > 1) {
+                
+                auto flux = Ref<Vector<Scalar>>(map.cache.pb_flux);
+                auto dtheta = Ref<Vector<Scalar>>(map.cache.pb_theta);
+                auto dxo = Ref<Vector<Scalar>>(map.cache.pb_xo);
+                auto dyo = Ref<Vector<Scalar>>(map.cache.pb_yo);
+                auto dro = Ref<Vector<Scalar>>(map.cache.pb_ro);
+                auto dy = Ref<RowMatrix<Scalar>>(map.cache.pb_y);
+                auto du = Ref<RowMatrix<Scalar>>(map.cache.pb_u);
+
                 py::dict gradient = py::dict(
-                    "theta"_a=dtheta.template cast<double>(),
-                    "xo"_a=dxo.template cast<double>(),
-                    "yo"_a=dyo.template cast<double>(),
-                    "ro"_a=dro.template cast<double>(),
-                    "y"_a=dy.template cast<double>(),
-                    "u"_a=du.template cast<double>()
-                );
-                return py::make_tuple(flux.template cast<double>(), gradient);
-            } else {
-                py::dict gradient = py::dict(
-                    "theta"_a=static_cast<double>(map.cache.pb_theta(0)),
-                    "xo"_a=static_cast<double>(map.cache.pb_xo(0)),
-                    "yo"_a=static_cast<double>(map.cache.pb_yo(0)),
-                    "ro"_a=static_cast<double>(map.cache.pb_ro(0)),
-                    "y"_a=map.cache.pb_y.row(0).template cast<double>(),
-                    "u"_a=map.cache.pb_u.row(0).template cast<double>()
+                    "theta"_a=ENSURE_DOUBLE_ARR(dtheta),
+                    "xo"_a=ENSURE_DOUBLE_ARR(dxo),
+                    "yo"_a=ENSURE_DOUBLE_ARR(dyo),
+                    "ro"_a=ENSURE_DOUBLE_ARR(dro),
+                    "y"_a=ENSURE_DOUBLE_ARR(dy),
+                    "u"_a=ENSURE_DOUBLE_ARR(du)
                 );
                 return py::make_tuple(
-                    static_cast<double>(map.cache.pb_flux(0)), 
+                    ENSURE_DOUBLE_ARR(flux), 
+                    gradient
+                );
+            } else {
+                py::dict gradient = py::dict(
+                    "theta"_a=ENSURE_DOUBLE(map.cache.pb_theta(0)),
+                    "xo"_a=ENSURE_DOUBLE(map.cache.pb_xo(0)),
+                    "yo"_a=ENSURE_DOUBLE(map.cache.pb_yo(0)),
+                    "ro"_a=ENSURE_DOUBLE(map.cache.pb_ro(0)),
+                    "y"_a=ENSURE_DOUBLE_ARR(map.cache.pb_y.row(0)),
+                    "u"_a=ENSURE_DOUBLE_ARR(map.cache.pb_u.row(0))
+                );
+                return py::make_tuple(
+                    ENSURE_DOUBLE(map.cache.pb_flux(0)), 
                     gradient
                 );
             }
@@ -472,13 +498,9 @@ std::function<py::object(
                 return 0;
             })(theta, xo, yo, ro);
             if (nt > 1) {
-#ifdef STARRY_MULTI
-                return py::cast(map.cache.pb_flux.template cast<double>());
-#else
-                return py::cast(&map.cache.pb_flux);          
-#endif
+                return PYOBJECT_CAST_ARR(map.cache.pb_flux);
             } else {
-                return py::cast(static_cast<double>(map.cache.pb_flux(0)));
+                return PYOBJECT_CAST(map.cache.pb_flux(0));
             }
 
         }

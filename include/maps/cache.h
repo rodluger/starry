@@ -43,6 +43,7 @@ public:
 
     // Pybind cache
     Vector<Scalar> pb_flux;
+    Vector<Scalar> pb_time;
     Vector<Scalar> pb_theta;
     Vector<Scalar> pb_xo;
     Vector<Scalar> pb_yo;

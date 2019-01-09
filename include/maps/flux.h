@@ -393,6 +393,7 @@ inline void Map<S>::computeFluxLD(
         MBCAST(dy, T7).row(0) = dfdy0(flux0, t);
 
         // dF / dt
+        // TODO: Template this?
         if (std::is_same<S, Temporal<Scalar>>::value) {
             UCoeffType norm_deriv = contract_deriv(y.row(0), t);
             MBCAST(dt, T2) = flux0.cwiseProduct(norm_deriv);
