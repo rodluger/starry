@@ -30,8 +30,8 @@ def test_shapes():
     flux, grad = map.flux(theta, xo, yo, ro, True)       
     assert(flux.shape == grad['theta'].shape == grad['xo'].shape == 
            grad['yo'].shape == grad['ro'].shape == (npts,))
-    assert(grad['y'].shape == (npts, 1))
-    assert(grad['u'].shape == (npts, lmax))
+    assert(grad['y'].shape == (1, npts))
+    assert(grad['u'].shape == (lmax, npts))
 
     # Single wavelength, Ylm (with gradient)
     # TODO: Occultations not yet implemented on the C++ side
@@ -40,9 +40,6 @@ def test_shapes():
     flux, grad = map.flux(theta, xo, yo + 10.0, ro, True)       
     assert(flux.shape == grad['theta'].shape == grad['xo'].shape == 
            grad['yo'].shape == grad['ro'].shape == (npts,))
-
-    print(grad['y'].shape) # DEBUG
-    
     assert(grad['y'].shape == ((lmax + 1) ** 2, npts))
     assert(len(grad['u']) == 0)
 

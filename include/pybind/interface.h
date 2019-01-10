@@ -349,22 +349,22 @@ std::function<py::object(
                 nu = map.lmax + STARRY_DFDU_DELTA;
             } else if (map.getUDeg_() == 0) {
                 ny = map.N;
-                nu = 1;
+                nu = 0;
             } else {
                 ny = map.N;
                 nu = map.lmax + STARRY_DFDU_DELTA;
             } 
 
 #if defined(STARRY_DEFAULT)
-            map.cache.pb_y.resize(nt, ny);
-            map.cache.pb_u.resize(nt, nu);
+            map.cache.pb_y.resize(ny, nt);
+            map.cache.pb_u.resize(nu, nt);
 #elif defined(STARRY_SPECTRAL)
-            map.cache.pb_y.resize(nt * ny, map.ncol);
-            map.cache.pb_u.resize(nt * nu, map.ncol);
+            map.cache.pb_y.resize(ny * nt, map.ncol);
+            map.cache.pb_u.resize(nu * nt, map.ncol);
 #elif defined(STARRY_TEMPORAL)
             map.cache.pb_time.resize(nt, map.nflx);
-            map.cache.pb_y.resize(nt * ny, map.ncol);
-            map.cache.pb_u.resize(nt, nu);
+            map.cache.pb_y.resize(ny * nt, map.ncol);
+            map.cache.pb_u.resize(nu, nt);
 #endif
 
             // Vectorize the computation
@@ -394,8 +394,8 @@ std::function<py::object(
                     map.cache.pb_yo.row(n),
                     map.cache.pb_ro.row(n),
 #if defined(STARRY_DEFAULT)
-                    map.cache.pb_y.row(n).transpose(),
-                    map.cache.pb_u.row(n).transpose()
+                    map.cache.pb_y.col(n),
+                    map.cache.pb_u.col(n)
 #elif defined(STARRY_SPECTRAL)
                     map.cache.pb_y.block(n * ny, 0, ny, map.ncol),
                     map.cache.pb_u.block(n * nu, 0, nu, map.ncol)
