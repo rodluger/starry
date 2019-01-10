@@ -26,17 +26,18 @@ inline void random (
 
 /**
 Compute the Taylor expansion basis at a point in time.
-Specialization for static maps: does nothing!
+Static specialization (does nothing).
 
 */
 template<typename U=S>
 inline IsStatic<U, void> computeTaylor (
     const Scalar & t
-) { 
+) {
 }
 
 /**
 Compute the Taylor expansion basis at a point in time.
+Temporal specialization.
 
 */
 template<typename U=S>
@@ -52,14 +53,13 @@ inline IsTemporal<U, void> computeTaylor (
 
 /**
 Temporal contraction operation for static maps: 
-effectively does nothing, and returns a
-reference to the original map.
+does nothing, and returns a reference to the 
+original map.
 
 */
 template<typename U=S, typename T1>
 inline IsStatic<U, MatrixBase<T1>&> contract (
-    MatrixBase<T1> const & mat, 
-    const Scalar& t
+    MatrixBase<T1> const & mat
 ) {
     return MBCAST(mat, T1);
 }
@@ -71,61 +71,9 @@ Taylor expansion basis.
 */
 template<typename U=S>
 inline IsTemporal<U, Vector<Scalar>> contract (
-    const Matrix<Scalar> & mat, 
-    const Scalar & t
+    const Matrix<Scalar> & mat
 ) {
-    computeTaylor(t);
     return mat * taylor;
-}
-
-/**
-Derivative of the contraction operation for static maps: 
-returns a matrix of zeros in the same shape as the input.
-
-*/
-template<typename U=S, typename T1>
-inline IsStatic<U, Matrix<Scalar>> contract_deriv (
-    MatrixBase<T1> const & mat, 
-    const Scalar& t
-) {
-    Matrix<Scalar> res(mat.rows(), mat.cols());
-    res.setZero();
-    return res;
-}
-
-/**
-Contracts a temporal map by dotting the map matrix with the
-derivative of the Taylor expansion basis.
-
-*/
-template<typename U=S>
-inline IsTemporal<U, Vector<Scalar>> contract_deriv (
-    const Matrix<Scalar> & mat,
-    const Scalar& t
-) {
-    computeTaylor(t);
-    return mat.block(0, 1, mat.rows(), ncol - 1) * 
-           taylor.segment(0, ncol - 1);
-}
-
-
-// TODO: document this; can maybe return a reference?
-template<typename U=S>
-inline IsStatic<U, UCoeffType> dfdy0 (
-    const UCoeffType & f, 
-    const Scalar & t
-){
-    return f;
-}
-
-// TODO: document this
-template<typename U=S>
-inline IsTemporal<U, RowVector<Scalar>> dfdy0 (
-    const UCoeffType & f, 
-    const Scalar & t
-){
-    computeTaylor(t);
-    return f(0) * taylor.transpose();
 }
 
 /**

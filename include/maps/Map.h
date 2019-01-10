@@ -24,7 +24,6 @@ protected:
     // Internal methods
     template <typename T1>
     inline void computeIntensity_ (
-        const Scalar& t,
         const Scalar& theta,
         const Scalar& x_,
         const Scalar& y_,
@@ -33,7 +32,6 @@ protected:
 
     template <typename T1>
     inline void renderMap_ (
-        const Scalar& t,
         const Scalar& theta,
         int res,
         MatrixBase<T1> const & intensity
@@ -41,7 +39,6 @@ protected:
 
     template <typename T1>
     inline void computeFlux_ (
-        const Scalar& t,
         const Scalar& theta, 
         const Scalar& xo, 
         const Scalar& yo, 
@@ -52,7 +49,6 @@ protected:
     template <typename T1, typename T2, typename T3, typename T4, 
               typename T5, typename T6, typename T7, typename T8>
     inline void computeFlux_ (
-        const Scalar& t,
         const Scalar& theta, 
         const Scalar& xo, 
         const Scalar& yo, 
@@ -76,7 +72,6 @@ protected:
 
     template <typename T1>
     inline void computeFluxLD (
-        const Scalar& t,
         const Scalar& b, 
         const Scalar& ro, 
         MatrixBase<T1> const & flux
@@ -84,7 +79,6 @@ protected:
 
     template <typename T1>
     inline void computeFluxYlm (
-        const Scalar& t,
         const Scalar& theta,
         const Scalar& xo,
         const Scalar& yo,   
@@ -95,7 +89,6 @@ protected:
 
     template <typename T1>
     inline void computeFluxYlmLD (
-        const Scalar& t,
         const Scalar& theta,
         const Scalar& xo,
         const Scalar& yo,   
@@ -107,7 +100,6 @@ protected:
     template <typename T1, typename T2, typename T3, typename T4, 
               typename T5, typename T6, typename T7, typename T8>
     inline void computeFluxLD (
-        const Scalar& t,
         const Scalar& xo, 
         const Scalar& yo, 
         const Scalar& b, 
@@ -125,7 +117,6 @@ protected:
     template <typename T1, typename T2, typename T3, typename T4, 
               typename T5, typename T6, typename T7, typename T8>
     inline void computeFluxYlm (
-        const Scalar& t,
         const Scalar& theta,
         const Scalar& xo,
         const Scalar& yo,   
@@ -144,7 +135,6 @@ protected:
     template <typename T1, typename T2, typename T3, typename T4, 
               typename T5, typename T6, typename T7, typename T8>
     inline void computeFluxYlmLD (
-        const Scalar& t,
         const Scalar& theta,
         const Scalar& xo,
         const Scalar& yo,   
@@ -252,6 +242,7 @@ public:
     // macros, and must be declared inline.
     #include "inline/io.h"
     #include "inline/oper.h"
+    #include "inline/deriv.h"
     #include "inline/flux.h"
     #include "inline/python_interface.h"
 

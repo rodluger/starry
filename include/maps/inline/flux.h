@@ -11,7 +11,7 @@ inline void computeIntensity (
     const Scalar& y_,
     MatrixBase<T1> const & intensity
 ){
-    computeIntensity_(0, theta, x_, y_, intensity);
+    computeIntensity_(theta, x_, y_, intensity);
 }
 
 /**
@@ -27,7 +27,8 @@ inline void renderMap (
     int res,
     MatrixBase<T1> const & intensity
 ){
-    renderMap_(t, theta, res, intensity);
+    computeTaylor(t);
+    renderMap_(theta, res, intensity);
 }
 
 /**
@@ -44,7 +45,8 @@ inline void computeIntensity (
     const Scalar& y_,
     MatrixBase<T1> const & intensity
 ){
-    computeIntensity_(t, theta, x_, y_, intensity);
+    computeTaylor(t);
+    computeIntensity_(theta, x_, y_, intensity);
 }
 
 /**
@@ -59,7 +61,7 @@ inline void renderMap (
     int res,
     MatrixBase<T1> const & intensity
 ){
-    renderMap_(0, theta, res, intensity);
+    renderMap_(theta, res, intensity);
 }
 
 /**
@@ -75,7 +77,7 @@ inline void computeFlux (
     const Scalar& ro, 
     MatrixBase<T1> const & flux
 ) {
-    computeFlux_(0, theta, xo, yo, ro, flux);
+    computeFlux_(theta, xo, yo, ro, flux);
 }
 
 /**
@@ -99,7 +101,7 @@ inline void computeFlux (
     MatrixBase<T7> const & du
 ) {
     Matrix<Scalar> dt(1, ncol);
-    computeFlux_(0, theta, xo, yo, ro, flux, 
+    computeFlux_(theta, xo, yo, ro, flux, 
                  dt, dtheta, dxo, dyo, dro, dy, du);
 }
 
@@ -117,7 +119,8 @@ inline void computeFlux (
     const Scalar& ro, 
     MatrixBase<T1> const & flux
 ) {
-    computeFlux_(t, theta, xo, yo, ro, flux);
+    computeTaylor(t);
+    computeFlux_(theta, xo, yo, ro, flux);
 }
 
 /**
@@ -142,7 +145,8 @@ inline void computeFlux (
     MatrixBase<T7> const & dy,
     MatrixBase<T8> const & du
 ) {
-    computeFlux_(t, theta, xo, yo, ro, flux,
+    computeTaylor(t);
+    computeFlux_(theta, xo, yo, ro, flux,
                  dt, dtheta, dxo, dyo, dro, dy, du);
 }
 

@@ -30,8 +30,8 @@ def test_shapes():
     flux, grad = map.flux(theta, xo, yo, ro, True)       
     assert(flux.shape == grad['theta'].shape == grad['xo'].shape == 
            grad['yo'].shape == grad['ro'].shape == (npts,))
-    assert(grad['y'].shape == (1, npts))
-    assert(grad['u'].shape == (lmax, npts))
+    assert(grad['y'].shape == (npts, 1))
+    assert(grad['u'].shape == (npts, lmax))
 
     # Single wavelength, Ylm (with gradient)
     # TODO: Not yet implemented on the C++ side

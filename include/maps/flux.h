@@ -10,7 +10,6 @@ Evaluate the map at a given (theta, x, y) coordinate.
 template <class S>
 template <typename T1>
 inline void Map<S>::computeIntensity_(
-    const Scalar& t,
     const Scalar& theta,
     const Scalar& x_,
     const Scalar& y_,
@@ -45,7 +44,7 @@ inline void Map<S>::computeIntensity_(
     auto result = cache.pT * cache.A1Ry;
 
     // Contract the map if needed
-    MBCAST(intensity, T1) = contract(result, t);
+    MBCAST(intensity, T1) = contract(result);
 }
 
 /**
@@ -56,7 +55,6 @@ resolution.
 template <class S>
 template <typename T1>
 inline void Map<S>::renderMap_(
-    const Scalar& t,
     const Scalar& theta,
     int res,
     MatrixBase<T1> const & intensity
@@ -82,7 +80,7 @@ inline void Map<S>::renderMap_(
 
     // Apply the basis transform
     auto result = cache.P * cache.A1Ry;
-    MBCAST(intensity, T1) = contract(result, t);
+    MBCAST(intensity, T1) = contract(result);
 }
 
 // --------------------------
@@ -96,7 +94,6 @@ inline void Map<S>::renderMap_(
 template <class S>
 template <typename T1>
 inline void Map<S>::computeFlux_(
-    const Scalar& t,
     const Scalar& theta, 
     const Scalar& xo, 
     const Scalar& yo, 
@@ -121,18 +118,17 @@ inline void Map<S>::computeFlux_(
 
     // Compute the flux
     if (y_deg == 0) {
-        computeFluxLD(t, b, ro, flux);
+        computeFluxLD(b, ro, flux);
     } else if (u_deg == 0) {
-        computeFluxYlm(t, theta, xo, yo, b, ro, flux);
+        computeFluxYlm(theta, xo, yo, b, ro, flux);
     } else {
-        computeFluxYlmLD(t, theta, xo, yo, b, ro, flux);
+        computeFluxYlmLD(theta, xo, yo, b, ro, flux);
     }
 }
 
 template <class S>
 template <typename T1>
 inline void Map<S>::computeFluxLD(
-    const Scalar& t,
     const Scalar& b, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux
@@ -142,7 +138,7 @@ inline void Map<S>::computeFluxLD(
 
         // Easy: the disk-integrated intensity
         // is just the Y_{0,0} coefficient
-        MBCAST(flux, T1) = contract(y.row(0), t);
+        MBCAST(flux, T1) = contract(y.row(0));
 
     // Occultation
     } else {
@@ -154,7 +150,7 @@ inline void Map<S>::computeFluxLD(
         computeC();
 
         // Normalize by y00
-        UCoeffType norm = contract(y.row(0), t);
+        UCoeffType norm = contract(y.row(0));
 
         // Dot the integral solution in, and we're done!
         MBCAST(flux, T1) = (L.s * cache.c).cwiseProduct(norm);
@@ -165,7 +161,6 @@ inline void Map<S>::computeFluxLD(
 template <class S>
 template <typename T1>
 inline void Map<S>::computeFluxYlm(
-    const Scalar& t,
     const Scalar& theta,
     const Scalar& xo,
     const Scalar& yo,  
@@ -180,7 +175,7 @@ inline void Map<S>::computeFluxYlm(
     if ((b >= 1 + ro) || (ro == 0)) {
 
         // Easy
-        MBCAST(flux, T1) = contract(B.rTA1 * cache.Ry, t);
+        MBCAST(flux, T1) = contract(B.rTA1 * cache.Ry);
 
     // Occultation
     } else {
@@ -194,7 +189,6 @@ inline void Map<S>::computeFluxYlm(
 template <class S>
 template <typename T1>
 inline void Map<S>::computeFluxYlmLD(
-    const Scalar& t,
     const Scalar& theta,
     const Scalar& xo,
     const Scalar& yo,  
@@ -213,7 +207,7 @@ inline void Map<S>::computeFluxYlmLD(
 
         // Apply limb darkening
         limbDarken(cache.A1Ry, cache.p_uy);
-        MBCAST(flux, T1) = contract(B.rT * cache.p_uy, t);
+        MBCAST(flux, T1) = contract(B.rT * cache.p_uy);
 
     // Occultation
     } else {
@@ -233,7 +227,6 @@ template <class S>
 template <typename T1, typename T2, typename T3, typename T4, 
           typename T5, typename T6, typename T7, typename T8>
 inline void Map<S>::computeFlux_(
-    const Scalar& t,
     const Scalar& theta, 
     const Scalar& xo, 
     const Scalar& yo, 
@@ -279,25 +272,17 @@ inline void Map<S>::computeFlux_(
 
     // Compute the flux
     if (y_deg == 0) {
-#ifdef STARRY_KEEP_DFDU_AS_DFDG
-        check_rows(du, lmax + 1);
-#else
-        check_rows(du, lmax);
-#endif
-        computeFluxLD(t, xo, yo, b, ro, flux, dt, 
+        check_rows(du, lmax + STARRY_DFDU_DELTA);
+        computeFluxLD(xo, yo, b, ro, flux, dt, 
                       dtheta, dxo, dyo, dro, dy, du);
     } else if (u_deg == 0) {
         check_rows(dy, N);
-        computeFluxYlm(t, theta, xo, yo, b, ro, flux, dt, 
+        computeFluxYlm(theta, xo, yo, b, ro, flux, dt, 
                        dtheta, dxo, dyo, dro, dy, du);
     } else {
         check_rows(dy, N);
-#ifdef STARRY_KEEP_DFDU_AS_DFDG
-        check_rows(du, lmax + 1);
-#else
-        check_rows(du, lmax);
-#endif
-        computeFluxYlmLD(t, theta, xo, yo, b, ro, flux, dt, 
+        check_rows(du, lmax + STARRY_DFDU_DELTA);
+        computeFluxYlmLD(theta, xo, yo, b, ro, flux, dt, 
                          dtheta, dxo, dyo, dro, dy, du);
     }
 }
@@ -306,7 +291,6 @@ template <class S>
 template <typename T1, typename T2, typename T3, typename T4, 
           typename T5, typename T6, typename T7, typename T8>
 inline void Map<S>::computeFluxLD(
-    const Scalar& t,
     const Scalar& xo, 
     const Scalar& yo, 
     const Scalar& b, 
@@ -331,25 +315,15 @@ inline void Map<S>::computeFluxLD(
         MBCAST(dro, T6).setZero();
         MBCAST(du, T8).setZero();
 
-        // The Y_{0,0} deriv is unity for static maps and equal to
-        // {1, t, 1/2 t^2 ...} for temporal maps.
-        // The other Ylm derivs are not necessarily zero, but we
-        // explicitly don't compute them for purely limb-darkened
-        // maps to ensure computational efficiency. See the docs
-        // for more information.
-        MBCAST(dy, T7).setZero();
-        UCoeffType flux0(ncol);
-        flux0.setOnes();
-        MBCAST(dy, T7).row(0) = dfdy0(flux0, t);
+        // dF / dy
+        computeDfDyLimbDarkenedNoOccultation(dy);
 
         // dF / dt
-        if (std::is_same<S, Temporal<Scalar>>::value) {
-            MBCAST(dt, T2) = contract_deriv(y.row(0), t);
-        }
+        computeDfDtLimbDarkenedNoOccultation(dt);
         
         // The flux is easy: the disk-integrated intensity
         // is just the Y_{0,0} coefficient
-        MBCAST(flux, T1) = contract(y.row(0), t);
+        MBCAST(flux, T1) = contract(y.row(0));
 
     // Occultation
     } else {
@@ -361,7 +335,7 @@ inline void Map<S>::computeFluxLD(
         computeC();
 
         // Compute the normalization
-        UCoeffType norm = contract(y.row(0), t);
+        UCoeffType norm = contract(y.row(0));
 
         // Compute the flux
         UCoeffType flux0 = (L.s * cache.c);
@@ -388,18 +362,13 @@ inline void Map<S>::computeFluxLD(
         // dF / dr
         MBCAST(dro, T6) = (L.dsdr * cache.c);
 
-        // Derivs with respect to the Ylms (see note above)
-        MBCAST(dy, T7).setZero();
-        MBCAST(dy, T7).row(0) = dfdy0(flux0, t);
+        // dF / dy
+        computeDfDyLimbDarkenedOccultation(dy, flux0);
 
         // dF / dt
-        // TODO: Template this?
-        if (std::is_same<S, Temporal<Scalar>>::value) {
-            UCoeffType norm_deriv = contract_deriv(y.row(0), t);
-            MBCAST(dt, T2) = flux0.cwiseProduct(norm_deriv);
-        }
+        computeDfDtLimbDarkenedOccultation(dt, flux0);
 
-        // Derivs with respect to the limb darkening coeffs from dF / dc
+        // dF / du from dF / dc
         computeDfDu(flux0, du, norm);
 
     }
@@ -410,7 +379,6 @@ template <class S>
 template <typename T1, typename T2, typename T3, typename T4, 
           typename T5, typename T6, typename T7, typename T8>
 inline void Map<S>::computeFluxYlm (
-    const Scalar& t,
     const Scalar& theta,
     const Scalar& xo,
     const Scalar& yo,  
@@ -434,32 +402,27 @@ inline void Map<S>::computeFluxYlm (
     if ((b >= 1 + ro) || (ro == 0)) {
 
         // Compute the theta deriv
-        MBCAST(dtheta, T3) = contract(B.rTA1 * cache.dRdthetay, t);
+        MBCAST(dtheta, T3) = contract(B.rTA1 * cache.dRdthetay);
         MBCAST(dtheta, T3) *= radian;
 
         // The xo, yo, and ro derivs are trivial
         MBCAST(dxo, T4).setZero();
         MBCAST(dyo, T5).setZero();
         MBCAST(dro, T6).setZero();
-
-        // Compute the Ylm derivs
-        if (theta == 0) {
-            MBCAST(dy, T7) = B.rTA1.transpose().replicate(1, ncol);
-        } else {
-            for (int l = 0; l < lmax + 1; ++l)
-                MBCAST(dy, T7).block(l * l, 0, 2 * l + 1, ncol) = 
-                    (B.rTA1.segment(l * l, 2 * l + 1) * W.R[l])
-                    .transpose().replicate(1, ncol);
-        }
+        
+        // Compute derivs with respect to y
+        computeDfDyNoOccultation(dy, theta);
 
         // Note that we do not compute limb darkening 
         // derivatives in this case; see the docs.
         MBCAST(du, T8).setZero();
 
-        // The flux and its time derivative
-        auto flux_ = B.rTA1 * cache.Ry;
-        MBCAST(dt, T2) = contract_deriv(flux_, t);
-        MBCAST(flux, T1) = contract(flux_, t);
+        // Compute the flux
+        auto flux0 = B.rTA1 * cache.Ry;
+        MBCAST(flux, T1) = contract(flux0);
+
+        // Compute the time deriv
+        computeDfDtNoOccultation(dt, flux0);
 
     // Occultation
     } else {
@@ -475,7 +438,6 @@ template <class S>
 template <typename T1, typename T2, typename T3, typename T4, 
           typename T5, typename T6, typename T7, typename T8>
 inline void Map<S>::computeFluxYlmLD(
-    const Scalar& t,
     const Scalar& theta,
     const Scalar& xo,
     const Scalar& yo,  

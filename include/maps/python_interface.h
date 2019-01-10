@@ -20,7 +20,8 @@ py::object Map<S>::show_ (
     if (res < 1)
         throw errors::ValueError("Invalid value for `res`.");
     Matrix<Scalar> intensity(res * res, nflx);
-    renderMap_(t, theta, res, intensity);
+    computeTaylor(t);
+    renderMap_(theta, res, intensity);
     return fshow(intensity.template cast<double>(), res, cmap, gif, interval);
 }
 
@@ -43,7 +44,8 @@ py::object Map<S>::show_ (
     Matrix<Scalar> intensity(res2 * frames, nflx);
     int n = 0;
     for (int j = 0; j < frames; ++j) {
-        renderMap_(t(j), theta(j), res, intensity.block(n, 0, res2, nflx));
+        computeTaylor(t(j));
+        renderMap_(theta(j), res, intensity.block(n, 0, res2, nflx));
         n += res2;
     }
     py::object fshow = py::module::import("starry2._plotting").attr("animate");

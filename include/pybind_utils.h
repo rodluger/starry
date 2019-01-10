@@ -12,7 +12,7 @@ Miscellaneous utilities used for the pybind interface.
 #include <cmath>
 #include <stdlib.h>
 #include <vector>
-#include "errors.h"
+#include <include/errors.h>
 #include "utils.h"
 #include "maps.h"
 
@@ -29,6 +29,7 @@ Miscellaneous utilities used for the pybind interface.
 #define PYOBJECT_CAST_ARR(X)           py::cast(&X)
 #endif
 
+#define MAXSIZE3(A, B, C) max(max(A.size(), B.size()), C.size())
 #define MAXSIZE4(A, B, C, D) max(max(max(A.size(), B.size()), C.size()), D.size())
 #define MAXSIZE5(A, B, C, D, E) max(max(max(max(A.size(), B.size()), C.size()), D.size()), E.size())
 
@@ -214,12 +215,15 @@ std::vector<int> get_Ul_inds (
 
 /**
 Return a lambda function to compute the intensity at a point 
-or a vector of points for a static, single-wavelength map.
+or a vector of points.
 
 */
-template <typename T, IsDefault<T>* = nullptr>
+template <typename T>
 std::function<py::object(
         Map<T> &, 
+#ifdef STARRY_TEMPORAL
+        py::array_t<double>&, 
+#endif
         py::array_t<double>&, 
         py::array_t<double>&, 
         py::array_t<double>&
@@ -228,167 +232,77 @@ std::function<py::object(
     return []
     (
         Map<T> &map, 
+#ifdef STARRY_TEMPORAL
+        py::array_t<double>& t, 
+#endif
         py::array_t<double>& theta, 
         py::array_t<double>& x, 
         py::array_t<double>& y
     ) -> py::object {
         using Scalar = typename T::Scalar;
-        size_t nt = max(max(theta.size(), x.size()), y.size());
+#ifdef STARRY_TEMPORAL
+        size_t nt = MAXSIZE4(t, theta, x, y);
+#else
+        size_t nt = MAXSIZE3(theta, x, y);
+#endif
         size_t n = 0;
-        Vector<Scalar> intensity(nt);
-
-        py::vectorize([&map, &intensity, &n](
-            double theta, 
-            double x, 
-            double y
-        ) {
-            map.computeIntensity(static_cast<Scalar>(theta), 
-                                 static_cast<Scalar>(x), 
-                                 static_cast<Scalar>(y), 
-                                 intensity.row(n));
-            ++n;
-            return 0;
-        })(theta, x, y);
-        if (nt > 1)
-            return py::cast(intensity.template cast<double>());
-        else
-            return py::cast(static_cast<double>(intensity(0)));
-    };
-}
-
-/**
-Return a lambda function to compute the intensity at a point 
-or a vector of points for a spectral map.
-
-*/
-template <typename T, IsSpectral<T>* = nullptr>
-std::function<py::object(
-        Map<T> &, 
-        py::array_t<double>&, 
-        py::array_t<double>&, 
-        py::array_t<double>&
-    )> intensity () 
-{
-    return []
-    (
-        Map<T> &map, 
-        py::array_t<double>& theta, 
-        py::array_t<double>& x, 
-        py::array_t<double>& y
-    ) -> py::object {
-        using Scalar = typename T::Scalar;
-        size_t nt = max(max(theta.size(), x.size()), y.size());
-        size_t n = 0;
+#ifdef STARRY_SPECTRAL
         RowMatrix<Scalar> intensity(nt, map.ncol);
-
+#else
+        Vector<Scalar> intensity(nt);
+#endif
         py::vectorize([&map, &intensity, &n](
+#ifdef STARRY_TEMPORAL
+            double t,
+#endif
             double theta, 
             double x, 
             double y
         ) {
-            map.computeIntensity(static_cast<Scalar>(theta), 
-                                 static_cast<Scalar>(x), 
-                                 static_cast<Scalar>(y), 
-                                 intensity.row(n));
+            map.computeIntensity(
+#ifdef STARRY_TEMPORAL
+                static_cast<Scalar>(t), 
+#endif
+                static_cast<Scalar>(theta), 
+                static_cast<Scalar>(x), 
+                static_cast<Scalar>(y), 
+                intensity.row(n)
+            );
             ++n;
             return 0;
-        })(theta, x, y);
-        if (nt > 1)
+        })(
+#ifdef STARRY_TEMPORAL
+            t, 
+#endif
+            theta, 
+            x, 
+            y
+        );
+        if (nt > 1) {
             return py::cast(intensity.template cast<double>());
-        else {
+        } else {
+#ifdef STARRY_SPECTRAL
             RowVector<double> f = intensity.row(0).template cast<double>();
             return py::cast(f);
+#else
+            return py::cast(static_cast<double>(intensity(0)));
+#endif
         }
     };
 }
 
 /**
-Return a lambda function to compute the intensity at a point 
-or a vector of points for a temporal map.
-
-*/
-template <typename T, IsTemporal<T>* = nullptr>
-std::function<py::object(
-        Map<T> &, 
-        py::array_t<double>&, 
-        py::array_t<double>&, 
-        py::array_t<double>&,
-        py::array_t<double>&
-    )> intensity () 
-{
-    return []
-    (
-        Map<T> &map, 
-        py::array_t<double>& t,
-        py::array_t<double>& theta, 
-        py::array_t<double>& x, 
-        py::array_t<double>& y
-    ) -> py::object {
-        using Scalar = typename T::Scalar;
-        size_t nt = max(max(max(theta.size(), x.size()), y.size()), t.size());
-        size_t n = 0;
-        Vector<Scalar> intensity(nt);
-
-        py::vectorize([&map, &intensity, &n](
-            double t,
-            double theta, 
-            double x, 
-            double y
-        ) {
-            map.computeIntensity(static_cast<Scalar>(t), 
-                                 static_cast<Scalar>(theta), 
-                                 static_cast<Scalar>(x), 
-                                 static_cast<Scalar>(y), 
-                                 intensity.row(n));
-            ++n;
-            return 0;
-        })(t, theta, x, y);
-        if (nt > 1)
-            return py::cast(intensity.template cast<double>());
-        else
-            return py::cast(static_cast<double>(intensity(0)));
-    };
-}
-
-/**
-Allocate space for the gradient vectors.
+Return a lambda function to compute the flux at a point 
+or a vector of points. Optionally compute and return 
+the gradient.
 
 */
 template <typename T>
-inline void alloc_arrays(
-    Map<T>& map, 
-    int nt,
-    bool compute_gradient
-) {
-    map.cache.pb_flux.resize(nt);
-    if (compute_gradient) {
-        map.cache.pb_theta.resize(nt);
-        map.cache.pb_xo.resize(nt);
-        map.cache.pb_yo.resize(nt);
-        map.cache.pb_ro.resize(nt);
-        if (map.getYDeg_() == 0) {
-            map.cache.pb_y.resize(nt, 1);
-            map.cache.pb_u.resize(nt, map.lmax + STARRY_DFDU_DELTA);
-        } else if (map.getUDeg_() == 0) {
-            map.cache.pb_y.resize(nt, map.N);
-            map.cache.pb_u.resize(nt, 1);
-        } else {
-            map.cache.pb_y.resize(nt, map.N);
-            map.cache.pb_u.resize(nt, map.lmax + STARRY_DFDU_DELTA);
-        } 
-    }
-}
-
-
-/**
-Return a lambda function to compute the flux at a point 
-or a vector of points for a static, single-wavelength map. Optionally
-compute and return the gradient.
-
-*/
-template <typename T, IsDefault<T>* = nullptr>
 std::function<py::object(
         Map<T> &, 
+#ifdef STARRY_TEMPORAL
+        py::array_t<double>&, 
+#endif
         py::array_t<double>&, 
         py::array_t<double>&, 
         py::array_t<double>&, 
@@ -399,6 +313,9 @@ std::function<py::object(
     return []
     (
         Map<T> &map, 
+#ifdef STARRY_TEMPORAL
+        py::array_t<double>& t, 
+#endif
         py::array_t<double>& theta, 
         py::array_t<double>& xo, 
         py::array_t<double>& yo, 
@@ -407,42 +324,116 @@ std::function<py::object(
     ) -> py::object 
     {
         using Scalar = typename T::Scalar;
+#ifdef STARRY_TEMPORAL
+        size_t nt = MAXSIZE5(t, theta, xo, yo, ro); 
+#else
         size_t nt = MAXSIZE4(theta, xo, yo, ro);
+#endif
         size_t n = 0;
 
-        // Allocate space for the arrays
-        alloc_arrays(map, nt, compute_gradient);
+        // Allocate space for the flux
+        map.cache.pb_flux.resize(nt, map.nflx);
 
         if (compute_gradient) {
 
+            // Allocate space for the gradient
+            map.cache.pb_theta.resize(nt, map.nflx);
+            map.cache.pb_xo.resize(nt, map.nflx);
+            map.cache.pb_yo.resize(nt, map.nflx);
+            map.cache.pb_ro.resize(nt, map.nflx);
+
+#if defined(STARRY_DEFAULT)
+            if (map.getYDeg_() == 0) {
+                map.cache.pb_y.resize(nt, 1);
+                map.cache.pb_u.resize(nt, map.lmax + STARRY_DFDU_DELTA);
+            } else if (map.getUDeg_() == 0) {
+                map.cache.pb_y.resize(nt, map.N);
+                map.cache.pb_u.resize(nt, 1);
+            } else {
+                map.cache.pb_y.resize(nt, map.N);
+                map.cache.pb_u.resize(nt, map.lmax + STARRY_DFDU_DELTA);
+            }
+#elif defined(STARRY_SPECTRAL)
+            if (map.getYDeg_() == 0) {
+                map.cache.pb_y.resize(nt, map.ncol);
+                map.cache.pb_u.resize(nt * (map.lmax + STARRY_DFDU_DELTA), 
+                                      map.ncol);
+            } else if (map.getUDeg_() == 0) {
+                map.cache.pb_y.resize(nt * map.N, map.ncol);
+                map.cache.pb_u.resize(nt, map.ncol);
+            } else {
+                map.cache.pb_y.resize(nt * map.N, map.ncol);
+                map.cache.pb_u.resize(nt * (map.lmax + STARRY_DFDU_DELTA), 
+                                      map.ncol);
+            } 
+#elif defined(STARRY_TEMPORAL)
+            map.cache.pb_time.resize(nt, map.nflx);
+            if (map.getYDeg_() == 0) {
+                map.cache.pb_y.resize(nt, map.ncol);
+                map.cache.pb_u.resize(nt, map.lmax + STARRY_DFDU_DELTA);
+            } else if (map.getUDeg_() == 0) {
+                map.cache.pb_y.resize(nt * map.N, map.ncol);
+                map.cache.pb_u.resize(nt, 1);
+            } else {
+                map.cache.pb_y.resize(nt * map.N, map.ncol);
+                map.cache.pb_u.resize(nt, map.lmax + STARRY_DFDU_DELTA);
+            } 
+#endif
+
             // Vectorize the computation
             py::vectorize([&map, &n](
+#ifdef STARRY_TEMPORAL
+                double t, 
+#endif
                 double theta, 
                 double xo, 
                 double yo, 
                 double ro
             ) {
                 map.computeFlux(
+#ifdef STARRY_TEMPORAL
+                    static_cast<Scalar>(t),
+#endif
                     static_cast<Scalar>(theta),
                     static_cast<Scalar>(xo),
                     static_cast<Scalar>(yo),
                     static_cast<Scalar>(ro),
                     map.cache.pb_flux.row(n),
+#ifdef STARRY_TEMPORAL
+                    map.cache.pb_time.row(n),
+#endif
                     map.cache.pb_theta.row(n),
                     map.cache.pb_xo.row(n),
                     map.cache.pb_yo.row(n),
                     map.cache.pb_ro.row(n),
+#if defined(STARRY_DEFAULT)
                     map.cache.pb_y.row(n),
                     map.cache.pb_u.row(n).transpose()
+#elif defined(STARRY_SPECTRAL)
+                    map.cache.pb_y.row(n), // TODO
+                    map.cache.pb_u.row(n).transpose() // TODO
+#elif defined(STARRY_TEMPORAL)
+                    map.cache.pb_y.row(n), // TODO
+                    map.cache.pb_u.row(n).transpose()
+#endif
                 );
                 ++n;
                 return 0;
-            })(theta, xo, yo, ro);
+            })(
+#ifdef STARRY_TEMPORAL
+                t,
+#endif
+                theta, 
+                xo, 
+                yo, 
+                ro
+            );
 
             // Construct the gradient dictionary and
             // return a tuple of (flux, gradient)
             if (nt > 1) {
                 
+#if defined(STARRY_DEFAULT)
                 auto flux = Ref<Vector<Scalar>>(map.cache.pb_flux);
                 auto dtheta = Ref<Vector<Scalar>>(map.cache.pb_theta);
                 auto dxo = Ref<Vector<Scalar>>(map.cache.pb_xo);
@@ -450,7 +441,6 @@ std::function<py::object(
                 auto dro = Ref<Vector<Scalar>>(map.cache.pb_ro);
                 auto dy = Ref<RowMatrix<Scalar>>(map.cache.pb_y);
                 auto du = Ref<RowMatrix<Scalar>>(map.cache.pb_u);
-
                 py::dict gradient = py::dict(
                     "theta"_a=ENSURE_DOUBLE_ARR(dtheta),
                     "xo"_a=ENSURE_DOUBLE_ARR(dxo),
@@ -459,11 +449,39 @@ std::function<py::object(
                     "y"_a=ENSURE_DOUBLE_ARR(dy),
                     "u"_a=ENSURE_DOUBLE_ARR(du)
                 );
+#elif defined(STARRY_SPECTRAL)
+                // TODO
+                auto flux = Ref<Vector<Scalar>>(map.cache.pb_flux);
+                py::dict gradient = py::dict(
+                    "theta"_a = py::none()
+                );
+#elif defined(STARRY_TEMPORAL)
+                auto flux = Ref<Vector<Scalar>>(map.cache.pb_flux);
+                auto dt = Ref<Vector<Scalar>>(map.cache.pb_time);
+                auto dtheta = Ref<Vector<Scalar>>(map.cache.pb_theta);
+                auto dxo = Ref<Vector<Scalar>>(map.cache.pb_xo);
+                auto dyo = Ref<Vector<Scalar>>(map.cache.pb_yo);
+                auto dro = Ref<Vector<Scalar>>(map.cache.pb_ro);
+                auto dy = Ref<RowMatrix<Scalar>>(map.cache.pb_y);
+                auto du = Ref<RowMatrix<Scalar>>(map.cache.pb_u);
+                py::dict gradient = py::dict(
+                    "t"_a=ENSURE_DOUBLE_ARR(dt),
+                    "theta"_a=ENSURE_DOUBLE_ARR(dtheta),
+                    "xo"_a=ENSURE_DOUBLE_ARR(dxo),
+                    "yo"_a=ENSURE_DOUBLE_ARR(dyo),
+                    "ro"_a=ENSURE_DOUBLE_ARR(dro),
+                    "y"_a=ENSURE_DOUBLE_ARR(dy), // TODO
+                    "u"_a=ENSURE_DOUBLE_ARR(du)
+                );
+#endif
+
                 return py::make_tuple(
                     ENSURE_DOUBLE_ARR(flux), 
                     gradient
                 );
+
             } else {
+#if defined(STARRY_DEFAULT)
                 py::dict gradient = py::dict(
                     "theta"_a=ENSURE_DOUBLE(map.cache.pb_theta(0)),
                     "xo"_a=ENSURE_DOUBLE(map.cache.pb_xo(0)),
@@ -472,8 +490,29 @@ std::function<py::object(
                     "y"_a=ENSURE_DOUBLE_ARR(map.cache.pb_y.row(0)),
                     "u"_a=ENSURE_DOUBLE_ARR(map.cache.pb_u.row(0))
                 );
+#elif defined(STARRY_SPECTRAL)
+                // TODO
+                py::dict gradient = py::dict(
+                    "theta"_a = py::none()
+                );
+#elif defined(STARRY_TEMPORAL)
+                py::dict gradient = py::dict(
+                    "t"_a=ENSURE_DOUBLE_ARR(map.cache.pb_time(0)),
+                    "theta"_a=ENSURE_DOUBLE(map.cache.pb_theta(0)),
+                    "xo"_a=ENSURE_DOUBLE(map.cache.pb_xo(0)),
+                    "yo"_a=ENSURE_DOUBLE(map.cache.pb_yo(0)),
+                    "ro"_a=ENSURE_DOUBLE(map.cache.pb_ro(0)),
+                    "y"_a=ENSURE_DOUBLE_ARR(map.cache.pb_y.row(0)), // TODO
+                    "u"_a=ENSURE_DOUBLE_ARR(map.cache.pb_u.row(0))
+                );
+#endif
+
                 return py::make_tuple(
+#ifdef STARRY_SPECTRAL
+                    ENSURE_DOUBLE_ARR(map.cache.pb_flux.row(0)), 
+#else
                     ENSURE_DOUBLE(map.cache.pb_flux(0)), 
+#endif
                     gradient
                 );
             }
@@ -482,12 +521,18 @@ std::function<py::object(
             
             // Trivial!
             py::vectorize([&map, &n](
+#ifdef STARRY_TEMPORAL
+                double t, 
+#endif
                 double theta, 
                 double xo, 
                 double yo, 
                 double ro
             ) {
                 map.computeFlux(
+#ifdef STARRY_TEMPORAL
+                    static_cast<Scalar>(t), 
+#endif
                     static_cast<Scalar>(theta), 
                     static_cast<Scalar>(xo), 
                     static_cast<Scalar>(yo), 
@@ -496,235 +541,24 @@ std::function<py::object(
                 );
                 ++n;
                 return 0;
-            })(theta, xo, yo, ro);
+            })(
+#ifdef STARRY_TEMPORAL
+                t,
+#endif
+                theta, 
+                xo, 
+                yo, 
+                ro
+            );
             if (nt > 1) {
                 return PYOBJECT_CAST_ARR(map.cache.pb_flux);
             } else {
+#ifdef STARRY_SPECTRAL
+                return PYOBJECT_CAST(ENSURE_DOUBLE_ARR(map.cache.pb_flux.row(0)));
+#else
                 return PYOBJECT_CAST(map.cache.pb_flux(0));
+#endif
             }
-
-        }
-
-    };
-}
-
-/**
-Return a lambda function to compute the flux at a point 
-or a vector of points for a spectral map. Optionally
-compute and return the gradient.
-
-*/
-template <typename T, IsSpectral<T>* = nullptr>
-std::function<py::object(
-        Map<T> &, 
-        py::array_t<double>&, 
-        py::array_t<double>&, 
-        py::array_t<double>&, 
-        py::array_t<double>&,
-        bool
-    )> flux ()
-{
-
-    return [] 
-    (
-        Map<T> &map, 
-        py::array_t<double>& theta, 
-        py::array_t<double>& xo, 
-        py::array_t<double>& yo, 
-        py::array_t<double>& ro,
-        bool compute_gradient
-    ) -> py::object {
-        using Scalar = typename T::Scalar;
-        size_t nt = max(max(max(theta.size(), xo.size()), yo.size()), 
-                        ro.size());
-        size_t n = 0;
-        RowMatrix<Scalar> flux(nt, map.ncol);
-
-        // Numpy hacks
-        //auto numpy = py::module::import("numpy");
-        //auto swapaxes = numpy.attr("swapaxes");
-        //auto reshape = numpy.attr("reshape");
-
-        if (compute_gradient) {
-            
-            // Allocate storage for the gradient
-            // TODO: use cache for each deriv
-
-            // Vectorize the computation
-            py::vectorize([&map, &flux, &n](
-                double theta, 
-                double xo, 
-                double yo, 
-                double ro
-            ) {
-                // TODO
-                // map.computeFlux(...)
-                ++n;
-                return 0;
-            })(theta, xo, yo, ro);
-
-            // Construct the gradient dictionary and
-            // return a tuple of (flux, gradient)
-            if (nt > 1) {
-                py::dict gradient_dict = py::dict(
-                    // TODO
-                    "theta"_a=0,
-                    "xo"_a=0,
-                    "yo"_a=0,
-                    "ro"_a=0,
-                    "y"_a=0,
-                    "u"_a=0
-                );
-                return py::make_tuple(flux.template cast<double>(), 
-                                      gradient_dict);
-            } else {
-                py::dict gradient_dict = py::dict(
-                    // TODO
-                    "theta"_a=0,
-                    "xo"_a=0,
-                    "yo"_a=0,
-                    "ro"_a=0,
-                    "y"_a=0,
-                    "u"_a=0
-                );
-                return py::make_tuple(static_cast<double>(flux(0)), 
-                                      gradient_dict);
-            }
-
-        } else {
-
-            // Trivial!
-            py::vectorize([&map, &flux, &n](
-                double theta, 
-                double xo, 
-                double yo, 
-                double ro
-            ) {
-                map.computeFlux(static_cast<Scalar>(theta), 
-                                static_cast<Scalar>(xo), 
-                                static_cast<Scalar>(yo), 
-                                static_cast<Scalar>(ro), 
-                                flux.row(n));
-                ++n;
-                return 0;
-            })(theta, xo, yo, ro);
-            if (nt > 1)
-                return py::cast(flux.template cast<double>());
-            else {
-                RowVector<double> f = flux.row(0).template cast<double>();
-                return py::cast(f);
-            }
-        }
-
-    };
-}
-
-/**
-Return a lambda function to compute the flux at a point 
-or a vector of points for a temporal map. Optionally
-compute and return the gradient.
-
-*/
-template <typename T, IsTemporal<T>* = nullptr>
-std::function<py::object(
-        Map<T> &, 
-        py::array_t<double>&, 
-        py::array_t<double>&, 
-        py::array_t<double>&, 
-        py::array_t<double>&,
-        py::array_t<double>&,
-        bool
-    )> flux () 
-{
-    return []
-    (
-        Map<T> &map, 
-        py::array_t<double>& t,
-        py::array_t<double>& theta, 
-        py::array_t<double>& xo, 
-        py::array_t<double>& yo, 
-        py::array_t<double>& ro, 
-        bool compute_gradient
-    ) -> py::object 
-    {
-        using Scalar = typename T::Scalar;
-        size_t nt = max(max(max(max(theta.size(), xo.size()), 
-                            yo.size()), ro.size()), t.size());
-        size_t n = 0;
-        Vector<Scalar> flux(nt);
-
-        if (compute_gradient) {
-
-            // Allocate storage for the gradient
-            // TODO: use cache for each deriv
-
-            // Vectorize the computation
-            py::vectorize([&map, &flux, &n](
-                double t,
-                double theta, 
-                double xo, 
-                double yo, 
-                double ro
-            ) {
-                // TODO
-                // map.computeFlux(...)
-                ++n;
-                return 0;
-            })(t, theta, xo, yo, ro);
-
-            // Construct the gradient dictionary and
-            // return a tuple of (flux, gradient)
-            if (nt > 1) {
-                py::dict gradient_dict = py::dict(
-                    // TODO
-                    "t"_a=0,
-                    "theta"_a=0,
-                    "xo"_a=0,
-                    "yo"_a=0,
-                    "ro"_a=0,
-                    "y"_a=0,
-                    "u"_a=0
-                );
-                return py::make_tuple(flux.template cast<double>(), 
-                                      gradient_dict);
-            } else {
-                py::dict gradient_dict = py::dict(
-                    // TODO
-                    "t"_a=0,
-                    "theta"_a=0,
-                    "xo"_a=0,
-                    "yo"_a=0,
-                    "ro"_a=0,
-                    "y"_a=0,
-                    "u"_a=0
-                );
-                return py::make_tuple(static_cast<double>(flux(0)), 
-                                      gradient_dict);
-            }
-
-        } else {
-            
-            // Trivial!
-            py::vectorize([&map, &flux, &n](
-                double t,
-                double theta, 
-                double xo, 
-                double yo, 
-                double ro
-            ) {
-                map.computeFlux(static_cast<Scalar>(t), 
-                                static_cast<Scalar>(theta), 
-                                static_cast<Scalar>(xo), 
-                                static_cast<Scalar>(yo), 
-                                static_cast<Scalar>(ro), 
-                                flux.row(n));
-                ++n;
-                return 0;
-            })(t, theta, xo, yo, ro);
-            if (nt > 1)
-                return py::cast(flux.template cast<double>());
-            else
-                return py::cast(static_cast<double>(flux(0)));
 
         }
 
