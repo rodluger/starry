@@ -76,6 +76,8 @@ namespace test_spectral {
     Compare the spherical harmonic flux in double precision to
     the flux using multiprecision.
 
+    TODO: Also compute the occultation flux.
+
     */
     int test_flux_ylm(int nt=100) {
 
@@ -257,13 +259,10 @@ namespace test_spectral {
     Compare the spherical harmonic flux in double precision to
     the flux using multiprecision. Also compute and compare derivatives.
 
+    TODO: Also compute the occultation flux.
+
     */
     int test_grad_ylm(int nt=100) {
-
-
-        return 0;
-        // TODO
-
 
         using namespace starry2;
 
@@ -284,13 +283,15 @@ namespace test_spectral {
         Matrix<double> dxo(nt, nw);
         Matrix<double> dyo(nt, nw);
         Matrix<double> dro(nt, nw);
-        Matrix<double> dy(nt, nw);
-        Matrix<double> du(nt * lmax, nw);
+        Matrix<double> dy(nt * (lmax + 1) * (lmax + 1), nw);
+        Matrix<double> du(nt, nw);
         for (int t = 0; t < nt; ++t)
             map.computeFlux(theta(t), -1.0, -1.0, 0.1, flux.row(t),
                             dtheta.row(t), dxo.row(t), dyo.row(t), 
-                            dro.row(t), dy.row(t), 
-                            du.block(t * lmax, 0, lmax, nw));
+                            dro.row(t), 
+                            dy.block(t * (lmax + 1) * (lmax + 1), 0, 
+                                     (lmax + 1) * (lmax + 1), nw), 
+                            du.row(t));
 
         // -- Now compute the derivatives numerically --
 
@@ -316,8 +317,8 @@ namespace test_spectral {
             map_multi.computeFlux(Multi(theta(t) + eps), -1.0, -1.0, 0.1, f2);
             dtheta_multi.row(t) = (f2 - f1) / (2 * eps);
 
-            map_multi.computeFlux(Multi(theta(t)), -1.0 - eps, 0.0, 0.1, f1);
-            map_multi.computeFlux(Multi(theta(t)), -1.0 + eps, 0.0, 0.1, f2);
+            map_multi.computeFlux(Multi(theta(t)), -1.0 - eps, -1.0, 0.1, f1);
+            map_multi.computeFlux(Multi(theta(t)), -1.0 + eps, -1.0, 0.1, f2);
             dxo_multi.row(t) = (f2 - f1) / (2 * eps);
 
             map_multi.computeFlux(Multi(theta(t)), -1.0, -1.0 - eps, 0.1, f1);
@@ -336,7 +337,7 @@ namespace test_spectral {
                     map_multi.setY(l, m, y.row(n).template cast<Multi>() + eps3.transpose());
                     map_multi.computeFlux(Multi(theta(t)), -1.0, -1.0, 0.1, f2);
                     map_multi.setY(l, m, y.row(n).template cast<Multi>());
-                    dy_multi.block(t * (lmax + 1) * (lmax + 1), 0, 1, nw) = 
+                    dy_multi.block(t * (lmax + 1) * (lmax + 1) + n, 0, 1, nw) = 
                         (f2 - f1) / (2 * eps);
                     ++n;
                 }
@@ -362,6 +363,10 @@ namespace test_spectral {
             ++nerr;
         }
         if (!dy.isApprox(dy_multi.template cast<double>())) {
+
+            std::cout << dy << std::endl << std::endl;
+            std::cout << dy_multi << std::endl << std::endl;
+
             std::cout << "Wrong y deriv in `test_flux_with_grad`." << std::endl;
             ++nerr;
         }

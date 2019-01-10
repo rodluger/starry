@@ -6,7 +6,7 @@ outside of an occultation. Static specialization.
 template<typename U=S, typename T1>
 inline IsStatic<U, void> computeDfDtNoOccultation (
     MatrixBase<T1> const & dt,
-    const UCoeffType & flux0
+    const YCoeffType & flux0
 ){
 }
 
@@ -43,9 +43,9 @@ outside of an occultation. Temporal specialization.
 template<typename U=S, typename T1>
 inline IsTemporal<U, void> computeDfDtNoOccultation (
     MatrixBase<T1> const & dt,
-    const UCoeffType & flux0
+    const YCoeffType & flux0
 ){
-    MBCAST(dt, T1) = flux0.segment(0, ncol - 1) * taylor.segment(0, ncol - 1);
+    MBCAST(dt, T1) = flux0.segment(1, ncol - 1) * taylor.segment(0, ncol - 1);
 }
 
 /**

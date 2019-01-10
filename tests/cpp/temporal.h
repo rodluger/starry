@@ -12,11 +12,11 @@ during an occultation.
 namespace test_temporal {
 
     /**
-    Compare the flux in double precision to
+    Compare the limb-darkened flux in double precision to
     the flux using multiprecision.
 
     */
-    int test_flux(int nb=100) {
+    int test_flux_ld(int nb=100) {
 
         using namespace starry2;
 
@@ -91,12 +91,85 @@ namespace test_temporal {
     }
 
     /**
-    Compare the flux in double precision to
-    the flux using multiprecision. Also
-    compute and compare derivatives.
+    Compare the spherical harmonic flux in double precision to
+    the flux using multiprecision.
+
+    TODO: Also compute the occultation flux.
 
     */
-    int test_flux_with_grad(int nb=100) {
+    int test_flux_ylm(int nb=100) {
+
+        using namespace starry2;
+
+        // Instantiate a temporal map with 3 time columns
+        int lmax = 2;
+        int nt = 3;
+        Map<Temporal<double>> map(lmax, nt);
+        
+        // Give the star a time-variable Ylm flux
+        Matrix<double> y((lmax + 1) * (lmax + 1), nt);
+        y << 1.0, -0.5, 0.25,
+               1.5, -0.3, 0.15,
+               -0.1, 0.1, 0.3,
+               0.3, 0.25, -0.1,
+               1.0, -0.5, 0.25,
+               1.7, -0.3, 0.15,
+               -0.1, 0.1, 0.2,
+               0.4, -0.15, 0.1,
+               0.2, 0.15, -0.1;
+        map.setY(y);
+
+        // Compute the flux at t = 0.5, but for a varying theta
+        double t = 0.5;
+        Vector<double> theta = Vector<double>::LinSpaced(nb, 0, 360);
+        Vector<double> flux(nb);
+        for (int i = 0; i < nb; ++i)
+            map.computeFlux(t, theta(i), -1.0, -1.0, 0.1, flux.row(i));
+
+        // -- Compare to a static map --
+
+        // At time t, the ylm vector should be...
+        Vector<double> yt = y.col(0) + y.col(1) * t + 0.5 * y.col(2) * t * t;
+
+        // Let's check that we get the same flux from a static map:
+        Map<Default<double>> map_static(lmax);
+        map_static.setY(yt);
+        Vector<double> flux_static(nb);
+        for (int i = 0; i < nb; ++i)
+            map_static.computeFlux(theta(i), -1.0, -1.0, 0.1, flux_static.row(i));
+
+        // -- Now evaluate stuff in multiprecision --
+
+        // Instantiate the default map
+        Map<Temporal<Multi>> map_multi(lmax, nt);
+        
+        // Set the coeffs
+        map_multi.setY(y.template cast<Multi>());
+
+        // Compute the flux
+        Vector<Multi> flux_multi(nb);
+        for (int i = 0; i < nb; ++i)
+            map_multi.computeFlux(Multi(t), Multi(theta(i)), -1.0, -1.0, 0.1, flux_multi.row(i));
+
+        // Compare
+        int nerr = 0;
+        if (!flux.isApprox(flux_static.template cast<double>())) {
+            std::cout << "Flux does not match static flux in `test_flux`." << std::endl;
+            ++nerr;
+        }
+        if (!flux.isApprox(flux_multi.template cast<double>())) {
+            std::cout << "Flux does not match Multi flux in `test_flux`." << std::endl;
+            ++nerr;
+        }
+        return nerr;
+    }
+
+    /**
+    Compare the limb-darkened flux in double precision to
+    the flux using multiprecision. Also compute and compare derivatives.
+
+    */
+    int test_grad_ld(int nb=100) {
 
         using namespace starry2;
 
@@ -256,9 +329,157 @@ namespace test_temporal {
         return nerr;
     }
 
+    /**
+    Compare the spherical harmonic flux in double precision to
+    the flux using multiprecision. Also compute and compare derivatives.
+
+    TODO: Also compute the occultation flux.
+
+    */
+    int test_grad_ylm(int nb=100) {
+
+        using namespace starry2;
+
+        // Instantiate a temporal map with 3 time columns
+        int lmax = 2;
+        int nt = 3;
+        Map<Temporal<double>> map(lmax, nt);
+        
+        // Give the star a time-variable Ylm flux
+        Matrix<double> y((lmax + 1) * (lmax + 1), nt);
+        y << 1.0, -0.5, 0.25,
+               1.5, -0.3, 0.15,
+               -0.1, 0.1, 0.3,
+               0.3, 0.25, -0.1,
+               1.0, -0.5, 0.25,
+               1.7, -0.3, 0.15,
+               -0.1, 0.1, 0.2,
+               0.4, -0.15, 0.1,
+               0.2, 0.15, -0.1;
+        map.setY(y);
+
+        // Compute the flux and the derivatives at t = 0.5
+        double t = 0.5;
+        Vector<double> theta = Vector<double>::LinSpaced(nb, 0, 360);
+        Vector<double> flux(nb);
+        Vector<double> dt(nb);
+        Vector<double> dtheta(nb);
+        Vector<double> dxo(nb);
+        Vector<double> dyo(nb);
+        Vector<double> dro(nb);
+        Matrix<double> dy(nb * (lmax + 1) * (lmax + 1), nt);
+        Vector<double> du(nb);
+        for (int i = 0; i < nb; ++i)
+            map.computeFlux(t, theta(i), -1.0, -1.0, 0.1, flux.row(i), dt.row(i),
+                            dtheta.row(i), dxo.row(i), dyo.row(i), 
+                            dro.row(i), 
+                            dy.block(i * (lmax + 1) * (lmax + 1), 0, 
+                                     (lmax + 1) * (lmax + 1), nt), 
+                            du.row(i));
+
+        // -- Now compute the derivatives numerically --
+
+        // Instantiate the default map
+        Map<Temporal<Multi>> map_multi(lmax, nt);
+        
+        // Give the star unit flux
+        map_multi.setY(y.template cast<Multi>());
+
+        // Compute the derivatives
+        Multi eps = 1.e-15;
+        Matrix<Multi> epsm((lmax + 1) * (lmax + 1), nt);
+        Vector<Multi> f1(1), f2(1);
+        Vector<Multi> dt_multi(nb),
+                    dtheta_multi(nb),
+                    dxo_multi(nb),
+                    dyo_multi(nb),
+                    dro_multi(nb),
+                    du_multi(nb);
+        Matrix<Multi> dy_multi(nb * (lmax + 1) * (lmax + 1), nt);
+        for (int i = 0; i < nb; ++i) {
+            map_multi.computeFlux(t - eps, Multi(theta(i)), -1.0, -1.0, 0.1, f1);
+            map_multi.computeFlux(t + eps, Multi(theta(i)), -1.0, -1.0, 0.1, f2);
+            dt_multi(i) = (f2(0) - f1(0)) / (2 * eps);
+            
+            map_multi.computeFlux(t, Multi(theta(i)) - eps, -1.0, -1.0, 0.1, f1);
+            map_multi.computeFlux(t, Multi(theta(i)) + eps, -1.0, -1.0, 0.1, f2);
+            dtheta_multi(i) = (f2(0) - f1(0)) / (2 * eps);
+
+            map_multi.computeFlux(t, Multi(theta(i)), -1.0 - eps, -1.0, 0.1, f1);
+            map_multi.computeFlux(t, Multi(theta(i)), -1.0 + eps, -1.0, 0.1, f2);
+            dxo_multi(i) = (f2(0) - f1(0)) / (2 * eps);
+
+            map_multi.computeFlux(t, Multi(theta(i)), -1.0, -1.0 - eps, 0.1, f1);
+            map_multi.computeFlux(t, Multi(theta(i)), -1.0, -1.0 + eps, 0.1, f2);
+            dyo_multi(i) = (f2(0) - f1(0)) / (2 * eps);
+
+            map_multi.computeFlux(t, Multi(theta(i)), -1.0, -1.0, 0.1 - eps, f1);
+            map_multi.computeFlux(t, Multi(theta(i)), -1.0, -1.0, 0.1 + eps, f2);
+            dro_multi(i) = (f2(0) - f1(0)) / (2 * eps);
+
+            int n = 0;
+            for (int l = 0; l < lmax + 1; ++l) {
+                for (int m = -l; m < l + 1; ++m) {
+                    for (int j = 0; j < nt; ++j) {
+                        epsm.setZero();
+                        epsm(n, j) = eps;
+                        map_multi.setY(y.template cast<Multi>() - epsm);
+                        map_multi.computeFlux(t, Multi(theta(i)), -1.0, -1.0, 0.1, f1);
+                        map_multi.setY(y.template cast<Multi>() + epsm);
+                        map_multi.computeFlux(t, Multi(theta(i)), -1.0, -1.0, 0.1, f2);
+                        map_multi.setY(y.template cast<Multi>());
+                        dy_multi(i * (lmax + 1) * (lmax + 1) + n, j) = 
+                            (f2(0) - f1(0)) / (2 * eps);
+                    }
+                    ++n;
+                }
+            }
+        }
+
+        // Compare
+        int nerr = 0;
+        if (!dt.isApprox(dt_multi.template cast<double>())) {
+            std::cout << "Wrong t deriv in `test_flux_with_grad`." << std::endl;
+
+                        
+            std::cout << dt.transpose() << std::endl << std::endl;
+            std::cout << dt_multi.transpose() << std::endl;
+
+
+            ++nerr;
+        }
+        if (!dtheta.isApprox(dtheta_multi.template cast<double>())) {
+            std::cout << "Wrong theta deriv in `test_flux_with_grad`." << std::endl;
+            ++nerr;
+        }
+        if (!dxo.isApprox(dxo_multi.template cast<double>())) {
+            std::cout << "Wrong xo deriv in `test_flux_with_grad`." << std::endl;
+            ++nerr;
+        }
+        if (!dyo.isApprox(dyo_multi.template cast<double>())) {
+            std::cout << "Wrong yo deriv in `test_flux_with_grad`." << std::endl;
+            ++nerr;
+        }
+        if (!dro.isApprox(dro_multi.template cast<double>())) {
+            std::cout << "Wrong ro deriv in `test_flux_with_grad`." << std::endl;
+            ++nerr;
+        }
+        if (!dy.isApprox(dy_multi.template cast<double>())) {
+            std::cout << "Wrong y deriv in `test_flux_with_grad`." << std::endl;
+            ++nerr;
+        }
+        if (!du.isApprox(du_multi.template cast<double>())) {
+            std::cout << "Wrong u deriv in `test_flux_with_grad`." << std::endl;
+            ++nerr;
+        }
+        return nerr;
+    }
+
     int test () {
-        return test_flux() + 
-               test_flux_with_grad();
+        return test_flux_ld() + 
+               test_grad_ld() +
+               test_flux_ylm() +
+               test_grad_ylm();
     }
 
 } // namespace test_temporal
