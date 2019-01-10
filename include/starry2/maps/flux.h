@@ -134,7 +134,7 @@ inline void Map<S>::computeFluxLD(
     MatrixBase<T1> const & flux
 ) {
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0)) {
+    if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Easy: the disk-integrated intensity
         // is just the Y_{0,0} coefficient
@@ -172,7 +172,7 @@ inline void Map<S>::computeFluxYlm(
     rotateIntoCache(theta);
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0)) {
+    if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Easy
         MBCAST(flux, T1) = contract(B.rTA1 * cache.Ry);
@@ -200,7 +200,7 @@ inline void Map<S>::computeFluxYlmLD(
     rotateIntoCache(theta);
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0)) {
+    if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Change basis to polynomials
         cache.A1Ry = B.A1 * cache.Ry;
@@ -306,7 +306,7 @@ inline void Map<S>::computeFluxLD(
 ) {
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0)) {
+    if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Most of the derivs are zero
         MBCAST(dtheta, T3).setZero();
@@ -361,6 +361,7 @@ inline void Map<S>::computeFluxLD(
 
         // dF / dr
         MBCAST(dro, T6) = (L.dsdr * cache.c);
+        MBCAST(dro, T6) = dro.cwiseProduct(norm);
 
         // dF / dy
         computeDfDyLimbDarkenedOccultation(dy, flux0);
@@ -399,7 +400,7 @@ inline void Map<S>::computeFluxYlm (
     rotateIntoCache(theta, true);
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0)) {
+    if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Compute the theta deriv
         MBCAST(dtheta, T3) = contract(B.rTA1 * cache.dRdthetay);
@@ -458,7 +459,7 @@ inline void Map<S>::computeFluxYlmLD(
     rotateIntoCache(theta, true);
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0)) {
+    if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // TODO!
         // NOTE: Recall that with our new normalization,
