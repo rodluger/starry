@@ -77,7 +77,7 @@ def get_ext(module='starry2._starry_default_double', name='STARRY_DEFAULT_DOUBLE
         include_dirs += ["lib/boost_1_66_0"]
     return Extension(
         module,
-        ['include/pybind_interface.cpp'],
+        ['include/pybind/interface.cpp'],
         include_dirs=include_dirs,
         language='c++',
         define_macros=[(name, 1)] +

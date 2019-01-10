@@ -12,9 +12,9 @@ Miscellaneous utilities used for the pybind interface.
 #include <cmath>
 #include <stdlib.h>
 #include <vector>
-#include <include/errors.h>
-#include "utils.h"
-#include "maps.h"
+#include <starry2/errors.h>
+#include <starry2/utils.h>
+#include <starry2/maps.h>
 
 
 #ifdef STARRY_MULTI
@@ -34,7 +34,7 @@ Miscellaneous utilities used for the pybind interface.
 #define MAXSIZE5(A, B, C, D, E) max(max(max(max(A.size(), B.size()), C.size()), D.size()), E.size())
 
 
-namespace pybind_utils {
+namespace interface {
 
 //! Misc stuff we need
 #include <Python.h>
@@ -565,6 +565,6 @@ std::function<py::object(
     };
 }
 
-} // namespace pybind_utils
+} // namespace interface
 
 #endif

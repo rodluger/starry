@@ -64,8 +64,8 @@ static_assert(false, "Invalid or missing STARRY module type.");
 
 //! Includes
 #include <pybind11/embed.h>
-#include "pybind_utils.h"
-using namespace pybind_utils;
+#include "interface.h"
+using namespace interface;
 
 //! Register the Python module
 PYBIND11_MODULE(
