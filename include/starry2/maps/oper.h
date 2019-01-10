@@ -23,8 +23,9 @@ harmonic degree of the map.
 
 */
 template <class S>
-inline int Map<S>::getYDeg_ () const
+inline int Map<S>::getYDeg_ ()
 {
+    computeDegreeY();
     return y_deg;
 }
 
@@ -34,8 +35,9 @@ degree of the map.
 
 */
 template <class S>
-inline int Map<S>::getUDeg_ () const
+inline int Map<S>::getUDeg_ ()
 {
+    computeDegreeU();
     return u_deg;
 }
 

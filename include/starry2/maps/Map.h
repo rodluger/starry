@@ -252,9 +252,9 @@ public:
         computeDegreeU();
     }
 
-    inline int getYDeg_ () const;
+    inline int getYDeg_ ();
 
-    inline int getUDeg_ () const;
+    inline int getUDeg_ ();
 
     // I/O
     inline void setY (

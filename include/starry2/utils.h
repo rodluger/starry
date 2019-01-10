@@ -167,6 +167,7 @@ struct Default
     using YCoeffType = OneByOne<T>;
     using UType = Vector<T>;
     using UCoeffType = OneByOne<T>;
+    using FType = Vector<T>;
 
     struct Double {
         using Scalar = double;
@@ -174,6 +175,7 @@ struct Default
         using YCoeffType = OneByOne<double>;
         using UType = Vector<double>;
         using UCoeffType = OneByOne<double>;
+        using FType = Vector<double>;
     };
 
 };
@@ -187,6 +189,7 @@ struct Spectral
     using YCoeffType = RowVector<T>;
     using UType = Matrix<T>;
     using UCoeffType = RowVector<T>;
+    using FType = RowMatrix<T>;
 
     struct Double {
         using Scalar = double;
@@ -194,6 +197,7 @@ struct Spectral
         using YCoeffType = RowVector<double>;
         using UType = Matrix<double>;
         using UCoeffType = RowVector<double>;
+        using FType = RowMatrix<double>;
     };
 };
 
@@ -206,6 +210,7 @@ struct Temporal
     using YCoeffType = RowVector<T>;
     using UType = Vector<T>;
     using UCoeffType = OneByOne<T>;
+    using FType = Vector<T>;
 
     struct Double {
         using Scalar = double;
@@ -213,6 +218,7 @@ struct Temporal
         using YCoeffType = RowVector<double>;
         using UType = Vector<double>;
         using UCoeffType = OneByOne<double>;
+        using FType = Vector<double>;
     };
 };
 

@@ -143,7 +143,7 @@ inline void Map<S>::computeFluxLD(
     // Occultation
     } else {
 
-        // Compute the Agol `S` vector
+        // Compute the Agol `s` vector
         L.compute(b, ro);
 
         // Compute the Agol `c` basis

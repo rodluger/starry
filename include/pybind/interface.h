@@ -342,46 +342,33 @@ std::function<py::object(
             map.cache.pb_yo.resize(nt, map.nflx);
             map.cache.pb_ro.resize(nt, map.nflx);
 
-#if defined(STARRY_DEFAULT)
+            // The y and u derivs have variable shapes
+            int ny, nu;
             if (map.getYDeg_() == 0) {
-                map.cache.pb_y.resize(nt, 1);
-                map.cache.pb_u.resize(nt, map.lmax + STARRY_DFDU_DELTA);
+                ny = 1;
+                nu = map.lmax + STARRY_DFDU_DELTA;
             } else if (map.getUDeg_() == 0) {
-                map.cache.pb_y.resize(nt, map.N);
-                map.cache.pb_u.resize(nt, 1);
+                ny = map.N;
+                nu = 1;
             } else {
-                map.cache.pb_y.resize(nt, map.N);
-                map.cache.pb_u.resize(nt, map.lmax + STARRY_DFDU_DELTA);
-            }
-#elif defined(STARRY_SPECTRAL)
-            if (map.getYDeg_() == 0) {
-                map.cache.pb_y.resize(nt, map.ncol);
-                map.cache.pb_u.resize(nt * (map.lmax + STARRY_DFDU_DELTA), 
-                                      map.ncol);
-            } else if (map.getUDeg_() == 0) {
-                map.cache.pb_y.resize(nt * map.N, map.ncol);
-                map.cache.pb_u.resize(nt, map.ncol);
-            } else {
-                map.cache.pb_y.resize(nt * map.N, map.ncol);
-                map.cache.pb_u.resize(nt * (map.lmax + STARRY_DFDU_DELTA), 
-                                      map.ncol);
+                ny = map.N;
+                nu = map.lmax + STARRY_DFDU_DELTA;
             } 
+
+#if defined(STARRY_DEFAULT)
+            map.cache.pb_y.resize(nt, ny);
+            map.cache.pb_u.resize(nt, nu);
+#elif defined(STARRY_SPECTRAL)
+            map.cache.pb_y.resize(nt * ny, map.ncol);
+            map.cache.pb_u.resize(nt * nu, map.ncol);
 #elif defined(STARRY_TEMPORAL)
             map.cache.pb_time.resize(nt, map.nflx);
-            if (map.getYDeg_() == 0) {
-                map.cache.pb_y.resize(nt, map.ncol);
-                map.cache.pb_u.resize(nt, map.lmax + STARRY_DFDU_DELTA);
-            } else if (map.getUDeg_() == 0) {
-                map.cache.pb_y.resize(nt * map.N, map.ncol);
-                map.cache.pb_u.resize(nt, 1);
-            } else {
-                map.cache.pb_y.resize(nt * map.N, map.ncol);
-                map.cache.pb_u.resize(nt, map.lmax + STARRY_DFDU_DELTA);
-            } 
+            map.cache.pb_y.resize(nt * ny, map.ncol);
+            map.cache.pb_u.resize(nt, nu);
 #endif
 
             // Vectorize the computation
-            py::vectorize([&map, &n](
+            py::vectorize([&map, &n, &ny, &nu](
 #ifdef STARRY_TEMPORAL
                 double t, 
 #endif
@@ -407,11 +394,11 @@ std::function<py::object(
                     map.cache.pb_yo.row(n),
                     map.cache.pb_ro.row(n),
 #if defined(STARRY_DEFAULT)
-                    map.cache.pb_y.row(n),
+                    map.cache.pb_y.row(n).transpose(),
                     map.cache.pb_u.row(n).transpose()
 #elif defined(STARRY_SPECTRAL)
-                    map.cache.pb_y.row(n), // TODO
-                    map.cache.pb_u.row(n).transpose() // TODO
+                    map.cache.pb_y.block(n * ny, 0, ny, map.ncol),
+                    map.cache.pb_u.block(n * nu, 0, nu, map.ncol)
 #elif defined(STARRY_TEMPORAL)
                     map.cache.pb_y.row(n), // TODO
                     map.cache.pb_u.row(n).transpose()
@@ -451,9 +438,10 @@ std::function<py::object(
                 );
 #elif defined(STARRY_SPECTRAL)
                 // TODO
-                auto flux = Ref<Vector<Scalar>>(map.cache.pb_flux);
+                auto flux = Ref<RowMatrix<Scalar>>(map.cache.pb_flux);
+                auto dtheta = Ref<RowMatrix<Scalar>>(map.cache.pb_theta);
                 py::dict gradient = py::dict(
-                    "theta"_a = py::none()
+                    "theta"_a=ENSURE_DOUBLE_ARR(dtheta)
                 );
 #elif defined(STARRY_TEMPORAL)
                 auto flux = Ref<Vector<Scalar>>(map.cache.pb_flux);
@@ -493,7 +481,7 @@ std::function<py::object(
 #elif defined(STARRY_SPECTRAL)
                 // TODO
                 py::dict gradient = py::dict(
-                    "theta"_a = py::none()
+                    "theta"_a=ENSURE_DOUBLE(map.cache.pb_theta.row(0))
                 );
 #elif defined(STARRY_TEMPORAL)
                 py::dict gradient = py::dict(

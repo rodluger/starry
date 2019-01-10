@@ -34,16 +34,17 @@ def test_shapes():
     assert(grad['u'].shape == (npts, lmax))
 
     # Single wavelength, Ylm (with gradient)
-    # TODO: Not yet implemented on the C++ side
-    '''
+    # TODO: Occultations not yet implemented on the C++ side
     map = starry2.Map(lmax)
     map[:, :] = 1
-    flux, grad = map.flux(theta, xo, yo, ro, True)       
+    flux, grad = map.flux(theta, xo, yo + 10.0, ro, True)       
     assert(flux.shape == grad['theta'].shape == grad['xo'].shape == 
            grad['yo'].shape == grad['ro'].shape == (npts,))
+
+    print(grad['y'].shape) # DEBUG
+    
     assert(grad['y'].shape == ((lmax + 1) ** 2, npts))
     assert(len(grad['u']) == 0)
-    '''
 
     # Single wavelength, Ylm + LD (with gradient)
     # TODO: Not yet implemented on the C++ side
@@ -76,16 +77,14 @@ def test_shapes():
     assert(grad['u'].shape == (lmax, npts, nw))
 
     # Spectral, Ylm (with gradient)
-    # TODO: Not yet implemented on the C++ side
-    '''
+    # TODO: Occultations not yet implemented on the C++ side
     map = starry2.Map(lmax, nw=nw)
     map[:, :] = 1
-    flux, grad = map.flux(theta, xo, yo, ro, True)
+    flux, grad = map.flux(theta, xo, yo + 10.0, ro, True)
     assert(flux.shape == grad['theta'].shape == grad['xo'].shape == 
            grad['yo'].shape == grad['ro'].shape == (npts, nw))
     assert(grad['y'].shape == ((lmax + 1) ** 2, npts, nw))
     assert(len(grad['u']) == 0)
-    '''
 
     # Spectral, Ylm + LD (with gradient)
     # TODO: Not yet implemented on the C++ side
@@ -108,27 +107,24 @@ def test_shapes():
     assert(intensity.shape == (npts,))
 
     # Temporal, limb darkened (with gradient)
-    # TODO: Not yet implemented on the C++ side
-    '''
     map = starry2.Map(lmax, nt=nt)
     map[0, 0] = 1
     map[:] = 1
     flux, grad = map.flux(t, theta, xo, yo, ro, True)    
     assert(flux.shape == grad['theta'].shape == grad['xo'].shape == 
         grad['yo'].shape == grad['ro'].shape == (npts,))
-    assert(grad['y'].shape == (1, npts))
+    assert(grad['y'].shape == (1, npts, nt))
     assert(grad['u'].shape == (lmax, npts))
-    '''
 
     # Temporal, Ylm (with gradient)
-    # TODO: Not yet implemented on the C++ side
+    # TODO: Occultations not yet implemented on the C++ side
     '''
-    map = starry2.Map(lmax)
+    map = starry2.Map(lmax, nt=nt)
     map[:, :] = 1
-    flux, grad = map.flux(t, theta, xo, yo, ro, True)       
+    flux, grad = map.flux(t, theta, xo, yo + 10.0, ro, True)       
     assert(flux.shape == grad['theta'].shape == grad['xo'].shape == 
         grad['yo'].shape == grad['ro'].shape == (npts,))
-    assert(grad['y'].shape == ((lmax + 1) ** 2, npts))
+    assert(grad['y'].shape == ((lmax + 1) ** 2, npts, nt))
     assert(len(grad['u']) == 0)
     '''
 
@@ -175,16 +171,14 @@ def test_shapes_single_cadence():
     assert(grad['u'].shape == (lmax,))
 
     # Single wavelength, Ylm (with gradient)
-    # TODO: Not yet implemented on the C++ side
-    '''
+    # TODO: Occultations not yet implemented on the C++ side
     map = starry2.Map(lmax)
     map[:, :] = 1
-    flux, grad = map.flux(theta, xo, yo, ro, True)       
+    flux, grad = map.flux(theta, xo, yo + 10.0, ro, True)       
     assert(type(flux) == type(grad['theta']) == type(grad['xo']) == 
            type(grad['yo']) == type(grad['ro']) == float)
     assert(grad['y'].shape == ((lmax + 1) ** 2,))
     assert(len(grad['u']) == 0)
-    '''
 
     # Single wavelength, Ylm + LD (with gradient)
     # TODO: Not yet implemented on the C++ side
@@ -217,16 +211,14 @@ def test_shapes_single_cadence():
     assert(grad['u'].shape == (lmax, nw))
 
     # Spectral, Ylm (with gradient)
-    # TODO: Not yet implemented on the C++ side
-    '''
+    # TODO: Occultations not yet implemented on the C++ side
     map = starry2.Map(lmax, nw=nw)
     map[:, :] = 1
-    flux, grad = map.flux(theta, xo, yo, ro, True)
+    flux, grad = map.flux(theta, xo, yo + 10.0, ro, True)
     assert(flux.shape == grad['theta'].shape == grad['xo'].shape == 
            grad['yo'].shape == grad['ro'].shape == (nw,))
     assert(grad['y'].shape == ((lmax + 1) ** 2, nw))
     assert(len(grad['u']) == 0)
-    '''
 
     # Spectral, Ylm + LD (with gradient)
     # TODO: Not yet implemented on the C++ side
@@ -249,27 +241,24 @@ def test_shapes_single_cadence():
     assert(type(intensity) is float)
 
     # Temporal, limb darkened (with gradient)
-    # TODO: Not yet implemented on the C++ side
-    '''
     map = starry2.Map(lmax, nt=nt)
     map[0, 0] = 1
     map[:] = 1
     flux, grad = map.flux(t, theta, xo, yo, ro, True)       
     assert(type(flux) == type(grad['theta']) == type(grad['xo']) == 
            type(grad['yo']) == type(grad['ro']) == float)
-    assert(grad['y'].shape == (1,))
+    assert(grad['y'].shape == (1, nt))
     assert(grad['u'].shape == (lmax,))
-    '''
 
     # Temporal, Ylm (with gradient)
-    # TODO: Not yet implemented on the C++ side
+    # TODO: Occultations not yet implemented on the C++ side
     '''
     map = starry2.Map(lmax, nt=nt)
     map[:, :] = 1
-    flux, grad = map.flux(t, theta, xo, yo, ro, True)       
+    flux, grad = map.flux(t, theta, xo, yo + 10.0, ro, True)       
     assert(type(flux) == type(grad['theta']) == type(grad['xo']) == 
            type(grad['yo']) == type(grad['ro']) == float)
-    assert(grad['y'].shape == ((lmax + 1) ** 2,))
+    assert(grad['y'].shape == ((lmax + 1) ** 2, nt))
     assert(len(grad['u']) == 0)
     '''
 

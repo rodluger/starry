@@ -7,6 +7,7 @@ protected:
     using Scalar = typename S::Scalar;
     using YType = typename S::YType;
     using UType = typename S::UType;
+    using FType = typename S::FType;
 
 public:
     
@@ -42,12 +43,12 @@ public:
     std::vector<Matrix<Scalar>> EulerR;
 
     // Pybind cache
-    Vector<Scalar> pb_flux;
-    Vector<Scalar> pb_time;
-    Vector<Scalar> pb_theta;
-    Vector<Scalar> pb_xo;
-    Vector<Scalar> pb_yo;
-    Vector<Scalar> pb_ro;
+    FType pb_flux;
+    FType pb_time;
+    FType pb_theta;
+    FType pb_xo;
+    FType pb_yo;
+    FType pb_ro;
     RowMatrix<Scalar> pb_y;
     RowMatrix<Scalar> pb_u;
 
