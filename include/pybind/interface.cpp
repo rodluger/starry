@@ -541,35 +541,16 @@ PYBIND11_MODULE(
         ) -> py::dict {
 
             auto flags = py::dict();
-
-#ifdef STARRY_NMULTI
             flags["STARRY_NMULTI"] = STARRY_NMULTI;
-#else
-            flags["STARRY_NMULTI"] = py::none();
-#endif
-
-#ifdef STARRY_ELLIP_MAX_ITER
             flags["STARRY_ELLIP_MAX_ITER"] = STARRY_ELLIP_MAX_ITER;
-#else
-            flags["STARRY_ELLIP_MAX_ITER"] = py::none();
-#endif
-
-#ifdef STARRY_MAX_LMAX
             flags["STARRY_MAX_LMAX"] = STARRY_MAX_LMAX;
-#else
-            flags["STARRY_MAX_LMAX"] = py::none();
-#endif
-
-#ifdef STARRY_BCUT
             flags["STARRY_BCUT"] = STARRY_BCUT;
-#else
-            flags["STARRY_BCUT"] = py::none();
-#endif
-
-#ifdef STARRY_MN_MAX_ITER
             flags["STARRY_MN_MAX_ITER"] = STARRY_MN_MAX_ITER;
+
+#ifdef STARRY_KEEP_DFDU_AS_DFDG
+            flags["STARRY_KEEP_DFDU_AS_DFDG"] = STARRY_KEEP_DFDU_AS_DFDG;
 #else
-            flags["STARRY_MN_MAX_ITER"] = py::none();
+            flags["STARRY_KEEP_DFDU_AS_DFDG"] = 0;
 #endif
 
 #ifdef STARRY_O
@@ -581,13 +562,7 @@ PYBIND11_MODULE(
 #ifdef STARRY_DEBUG
             flags["STARRY_DEBUG"] = STARRY_DEBUG;
 #else
-            flags["STARRY_DEBUG"] = py::none();
-#endif
-
-#ifdef STARRY_KEEP_DFDU_AS_DFDG
-            flags["STARRY_KEEP_DFDU_AS_DFDG"] = STARRY_KEEP_DFDU_AS_DFDG;
-#else
-            flags["STARRY_KEEP_DFDU_AS_DFDG"] = py::none();
+            flags["STARRY_DEBUG"] = 0;
 #endif
 
             return flags;

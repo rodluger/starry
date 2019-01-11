@@ -11,7 +11,7 @@ import subprocess
 
 @pytest.mark.xfail
 def test_hysteresis():
-    """Something is wrong with the map degree here."""
+    """Something is wrong with the map degree here. [FIXED]"""
     map = starry2.Map()
     map[0,0] = 1
     map[1] = 1
