@@ -90,12 +90,20 @@ PYBIND11_MODULE(
     // String representation of the map
     PyMap.def("__repr__", &Map<T>::info);
 
-    // Number of map columns
+    // Number of Ylm map columns
     PyMap.def_property_readonly(
-        "ncol", [] (
+        "ncoly", [] (
             Map<T> &map
         ) {
-            return map.ncol;
+            return map.ncoly;
+    });
+
+    // Number of Ul map columns
+    PyMap.def_property_readonly(
+        "ncolu", [] (
+            Map<T> &map
+        ) {
+            return map.ncolu;
     });
 
     // Highest degree of the map
@@ -170,7 +178,7 @@ PYBIND11_MODULE(
             auto inds = get_Ylm_inds(map.lmax, lm);
             auto y = map.getY();
             typename T::Double::YType res;
-            res.resize(inds.size(), map.ncol);
+            res.resize(inds.size(), map.ncoly);
             int i = 0;
             for (auto n : inds)
                 res.row(i++) = y.row(n).template cast<double>();
@@ -240,7 +248,7 @@ PYBIND11_MODULE(
             auto inds = get_Ul_inds(map.lmax, l);
             auto u = map.getU();
             typename T::Double::UType res;
-            res.resize(inds.size(), map.ncol);
+            res.resize(inds.size(), map.ncolu);
             int i = 0;
             for (auto n : inds)
                 res.row(i++) = u.row(n - 1).template cast<double>();
@@ -449,7 +457,7 @@ PYBIND11_MODULE(
             Matrix<typename T::Scalar> intensity;
             map.renderMap(theta, res, intensity);
             return reshape(intensity.template cast<double>(), 
-                           py::make_tuple(res, res, map.ncol));
+                           py::make_tuple(res, res, map.nflx));
         }, 
         "theta"_a=0.0, "res"_a=300);
 #elif defined(STARRY_TEMPORAL)

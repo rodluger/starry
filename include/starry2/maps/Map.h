@@ -15,7 +15,8 @@ public:
     // Public variables
     const int lmax;
     const int N;
-    const int ncol;
+    const int ncoly;
+    const int ncolu;
     const int nflx;
     Cache<S> cache;
 
@@ -197,23 +198,25 @@ protected:
     //! Constructor for all map types
     explicit Map (
         int lmax,
-        int ncol,
+        int ncoly,
+        int ncolu,
         int nflx
     ) :
         lmax(lmax), 
         N((lmax + 1) * (lmax + 1)), 
-        ncol(ncol), 
+        ncoly(ncoly), 
+        ncolu(ncolu),
         nflx(nflx),
-        cache(lmax, ncol, nflx),
+        cache(lmax, ncoly, ncolu, nflx),
         B(lmax),
-        W(lmax, ncol, (*this).y, (*this).axis),
+        W(lmax, ncoly, (*this).y, (*this).axis),
         L(lmax),
-        taylor(ncol)
+        taylor(ncoly)
     {
         if ((lmax < 0) || (lmax > STARRY_MAX_LMAX))
             throw errors::ValueError(
                 "Spherical harmonic degree out of range.");
-        if (ncol < 1) 
+        if ((ncoly < 1) || (ncolu < 1))
             throw errors::ValueError(
                 "The number of map columns must be positive.");
         radian = pi<Scalar>() / 180.;
@@ -227,7 +230,7 @@ public:
     template<typename U=S, typename=IsSingleColumn<U>>
     explicit Map (
         int lmax
-    ) : Map(lmax, 1, 1) {}
+    ) : Map(lmax, 1, 1, 1) {}
 
     //! Constructor for multi-column maps
     template<typename U=S, typename=IsMultiColumn<U>>
@@ -235,6 +238,7 @@ public:
         int lmax,
         int ncol
     ) : Map(lmax, ncol, 
+            std::is_same<U, Spectral<Scalar>>::value ? ncol : 1,
             std::is_same<U, Spectral<Scalar>>::value ? ncol : 1) {}
 
     // Inline declarations. These are methods whose

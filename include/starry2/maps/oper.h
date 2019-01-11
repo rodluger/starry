@@ -5,11 +5,11 @@ inline void Map<S>::reset ()
     cache.reset();
 
     // Reset Ylms
-    y.setZero(N, ncol);
+    y.setZero(N, ncoly);
     y_deg = 0;
 
     // Reset limb darkening
-    u.setZero(lmax + 1, nflx);
+    u.setZero(lmax + 1, ncolu);
     setU0();
     u_deg = 0;
 
@@ -68,7 +68,7 @@ inline void Map<S>::computeDegreeY ()
     if (cache.compute_degree_y) {
         y_deg = 0;
         for (int l = lmax; l >= 0; --l) {
-            if ((y.block(l * l, 0, 2 * l + 1, ncol).array() 
+            if ((y.block(l * l, 0, 2 * l + 1, ncoly).array() 
                     != 0.0).any()) {
                 y_deg = l;
                 break;
@@ -171,10 +171,10 @@ inline void Map<S>::rotateIntoCache (
     } else if (compute_matrices && (cache.theta_with_grad != theta)) {
         W.compute(cos(theta_rad), sin(theta_rad));
         for (int l = 0; l < lmax + 1; ++l) {
-            cache.Ry.block(l * l, 0, 2 * l + 1, ncol) =
-                W.R[l] * y.block(l * l, 0, 2 * l + 1, ncol);
-            cache.dRdthetay.block(l * l, 0, 2 * l + 1, ncol) =
-                W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, ncol);
+            cache.Ry.block(l * l, 0, 2 * l + 1, ncoly) =
+                W.R[l] * y.block(l * l, 0, 2 * l + 1, ncoly);
+            cache.dRdthetay.block(l * l, 0, 2 * l + 1, ncoly) =
+                W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, ncoly);
         }
         cache.theta_with_grad = theta;
     }
@@ -204,8 +204,8 @@ inline void Map<S>::rotateByAxisAngle (
         cosgamma, singamma, tol, 
         cache.EulerD, cache.EulerR);
     for (int l = 0; l < lmax + 1; ++l) {
-        y_.block(l * l, 0, 2 * l + 1, ncol) =
-            cache.EulerR[l] * y_.block(l * l, 0, 2 * l + 1, ncol);
+        y_.block(l * l, 0, 2 * l + 1, ncoly) =
+            cache.EulerR[l] * y_.block(l * l, 0, 2 * l + 1, ncoly);
     }
 }
 
@@ -290,7 +290,7 @@ inline void Map<S>::addSpot (
     // Compute the integrals recursively
     Vector<Scalar> IP(l + 1);
     Vector<Scalar> ID(l + 1);
-    YType coeff(N, ncol);
+    YType coeff(N, ncoly);
     coeff.setZero();
 
     // Constants
@@ -365,7 +365,7 @@ inline void Map<S>::random_ (
 
     // Set the vector
     if (col == -1) {
-        y.block(0, 0, N_, ncol) = vec.replicate(1, ncol);
+        y.block(0, 0, N_, ncoly) = vec.replicate(1, ncoly);
     } else {
         y.block(0, col, N_, 1) = vec;
     }

@@ -45,7 +45,7 @@ inline IsTemporal<U, void> computeDfDtNoOccultation (
     MatrixBase<T1> const & dt,
     const YCoeffType & flux0
 ){
-    MBCAST(dt, T1) = flux0.segment(1, ncol - 1) * taylor.segment(0, ncol - 1);
+    MBCAST(dt, T1) = flux0.segment(1, ncoly - 1) * taylor.segment(0, ncoly - 1);
 }
 
 /**
@@ -58,7 +58,7 @@ template<typename U=S, typename T1>
 inline IsTemporal<U, void> computeDfDtLimbDarkenedNoOccultation (
     MatrixBase<T1> const & dt
 ){
-    MBCAST(dt, T1) = y.block(0, 1, 1, ncol - 1) * taylor.segment(0, ncol - 1);
+    MBCAST(dt, T1) = y.block(0, 1, 1, ncoly - 1) * taylor.segment(0, ncoly - 1);
 }
 
 /**
@@ -72,8 +72,8 @@ inline IsTemporal<U, void> computeDfDtLimbDarkenedOccultation (
     MatrixBase<T1> const & dt,
     const UCoeffType & flux0
 ){
-    UCoeffType norm_deriv = y.block(0, 1, 1, ncol - 1) * 
-                            taylor.segment(0, ncol - 1);
+    UCoeffType norm_deriv = y.block(0, 1, 1, ncoly - 1) * 
+                            taylor.segment(0, ncoly - 1);
     MBCAST(dt, T1) = flux0.cwiseProduct(norm_deriv);
 }
 
@@ -192,12 +192,12 @@ inline IsSpectral<U, void> computeDfDyNoOccultation (
     const Scalar& theta
 ){
     if (theta == 0) {
-        MBCAST(dy, T1) = B.rTA1.transpose().replicate(1, ncol);
+        MBCAST(dy, T1) = B.rTA1.transpose().replicate(1, ncoly);
     } else {
         for (int l = 0; l < lmax + 1; ++l)
-            MBCAST(dy, T1).block(l * l, 0, 2 * l + 1, ncol) = 
+            MBCAST(dy, T1).block(l * l, 0, 2 * l + 1, ncoly) = 
                 (B.rTA1.segment(l * l, 2 * l + 1) * W.R[l])
-                .transpose().replicate(1, ncol);
+                .transpose().replicate(1, ncoly);
     }
 }
 
@@ -216,7 +216,7 @@ inline IsTemporal<U, void> computeDfDyNoOccultation (
         MBCAST(dy, T1) = (taylor * B.rTA1).transpose();
     } else {
         for (int l = 0; l < lmax + 1; ++l)
-            MBCAST(dy, T1).block(l * l, 0, 2 * l + 1, ncol) = 
+            MBCAST(dy, T1).block(l * l, 0, 2 * l + 1, ncoly) = 
                 (taylor * (B.rTA1.segment(l * l, 2 * l + 1) * W.R[l]))
                 .transpose();
     }

@@ -55,12 +55,8 @@ inline py::object show (
     int interval=75,
     std::string gif=std::string()
 ) {
-    if (ncol > 1) {
-        throw errors::NotImplementedError("Spectral maps cannot be animated.");
-    } else {
-        Vector<Scalar> t = Vector<Scalar>::Zero(theta.size());
-        return show_(t, theta, cmap, res, interval, gif);
-    }
+    Vector<Scalar> t = Vector<Scalar>::Zero(theta.size());
+    return show_(t, theta, cmap, res, interval, gif);
 }
 
 /**

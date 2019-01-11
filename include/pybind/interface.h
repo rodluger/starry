@@ -247,7 +247,7 @@ std::function<py::object(
 #endif
         size_t n = 0;
 #ifdef STARRY_SPECTRAL
-        RowMatrix<Scalar> intensity(nt, map.ncol);
+        RowMatrix<Scalar> intensity(nt, map.nflx);
 #else
         Vector<Scalar> intensity(nt);
 #endif
@@ -326,7 +326,7 @@ std::function<py::object(
         using Scalar = typename T::Scalar;
         using FType = typename T::FType;
 
-#ifdef STARRY_SPECTRAL
+#if defined(STARRY_SPECTRAL) || defined(STARRY_TEMPORAL)
         // We need our old friend numpy to reshape
         // matrices into 3-tensors on the Python side
         auto numpy = py::module::import("numpy");
@@ -368,11 +368,11 @@ std::function<py::object(
             map.cache.pb_y.resize(ny, nt);
             map.cache.pb_u.resize(nu, nt);
 #elif defined(STARRY_SPECTRAL)
-            map.cache.pb_y.resize(ny * nt, map.ncol);
-            map.cache.pb_u.resize(nu * nt, map.ncol);
+            map.cache.pb_y.resize(ny * nt, map.ncoly);
+            map.cache.pb_u.resize(nu * nt, map.ncolu);
 #elif defined(STARRY_TEMPORAL)
             map.cache.pb_time.resize(nt, map.nflx);
-            map.cache.pb_y.resize(ny * nt, map.ncol);
+            map.cache.pb_y.resize(ny * nt, map.ncoly);
             map.cache.pb_u.resize(nu, nt);
 #endif
 
@@ -406,10 +406,10 @@ std::function<py::object(
                     map.cache.pb_y.col(n),
                     map.cache.pb_u.col(n)
 #elif defined(STARRY_SPECTRAL)
-                    map.cache.pb_y.block(n * ny, 0, ny, map.ncol),
-                    map.cache.pb_u.block(n * nu, 0, nu, map.ncol)
+                    map.cache.pb_y.block(n * ny, 0, ny, map.ncoly),
+                    map.cache.pb_u.block(n * nu, 0, nu, map.ncolu)
 #elif defined(STARRY_TEMPORAL)
-                    map.cache.pb_y.block(n * ny, 0, ny, map.ncol),
+                    map.cache.pb_y.block(n * ny, 0, ny, map.ncoly),
                     map.cache.pb_u.col(n)
 #endif
                 );
@@ -449,9 +449,9 @@ std::function<py::object(
                     "u"_a=ENSURE_DOUBLE_ARR(du)
                 );
 #elif defined(STARRY_SPECTRAL)
-                auto dy_shape = py::make_tuple(ny, nt, map.ncol);
+                auto dy_shape = py::make_tuple(ny, nt, map.ncoly);
                 auto dy_reshaped = reshape(ENSURE_DOUBLE_ARR(dy), dy_shape);
-                auto du_shape = py::make_tuple(nu, nt, map.ncol);
+                auto du_shape = py::make_tuple(nu, nt, map.ncolu);
                 auto du_reshaped = reshape(ENSURE_DOUBLE_ARR(du), du_shape);
                 py::dict gradient = py::dict(
                     "theta"_a=ENSURE_DOUBLE_ARR(dtheta),
@@ -462,13 +462,16 @@ std::function<py::object(
                     "u"_a=du_reshaped
                 );
 #elif defined(STARRY_TEMPORAL)
-                // TODO: y deriv
+                auto dt = Ref<FType>(map.cache.pb_time);
+                auto dy_shape = py::make_tuple(ny, nt, map.ncoly);
+                auto dy_reshaped = reshape(ENSURE_DOUBLE_ARR(dy), dy_shape);
                 py::dict gradient = py::dict(
                     "t"_a=ENSURE_DOUBLE_ARR(dt),
                     "theta"_a=ENSURE_DOUBLE_ARR(dtheta),
                     "xo"_a=ENSURE_DOUBLE_ARR(dxo),
                     "yo"_a=ENSURE_DOUBLE_ARR(dyo),
                     "ro"_a=ENSURE_DOUBLE_ARR(dro),
+                    "y"_a=dy_reshaped,
                     "u"_a=ENSURE_DOUBLE_ARR(du)
                 );
 #endif
@@ -490,21 +493,21 @@ std::function<py::object(
                 );
 #elif defined(STARRY_SPECTRAL)
                 py::dict gradient = py::dict(
-                    "theta"_a=ENSURE_DOUBLE(map.cache.pb_theta.row(0)),
-                    "xo"_a=ENSURE_DOUBLE(map.cache.pb_xo.row(0)),
-                    "yo"_a=ENSURE_DOUBLE(map.cache.pb_yo.row(0)),
-                    "ro"_a=ENSURE_DOUBLE(map.cache.pb_ro.row(0)),
-                    "y"_a=ENSURE_DOUBLE(map.cache.pb_y),
-                    "u"_a=ENSURE_DOUBLE(map.cache.pb_u)
+                    "theta"_a=ENSURE_DOUBLE_ARR(map.cache.pb_theta.row(0)),
+                    "xo"_a=ENSURE_DOUBLE_ARR(map.cache.pb_xo.row(0)),
+                    "yo"_a=ENSURE_DOUBLE_ARR(map.cache.pb_yo.row(0)),
+                    "ro"_a=ENSURE_DOUBLE_ARR(map.cache.pb_ro.row(0)),
+                    "y"_a=ENSURE_DOUBLE_ARR(map.cache.pb_y),
+                    "u"_a=ENSURE_DOUBLE_ARR(map.cache.pb_u)
                 );
 #elif defined(STARRY_TEMPORAL)
-                // TODO: y deriv
                 py::dict gradient = py::dict(
-                    "t"_a=ENSURE_DOUBLE_ARR(map.cache.pb_time(0)),
+                    "t"_a=ENSURE_DOUBLE(map.cache.pb_time(0)),
                     "theta"_a=ENSURE_DOUBLE(map.cache.pb_theta(0)),
                     "xo"_a=ENSURE_DOUBLE(map.cache.pb_xo(0)),
                     "yo"_a=ENSURE_DOUBLE(map.cache.pb_yo(0)),
                     "ro"_a=ENSURE_DOUBLE(map.cache.pb_ro(0)),
+                    "y"_a=ENSURE_DOUBLE_ARR(map.cache.pb_y),
                     "u"_a=ENSURE_DOUBLE_ARR(map.cache.pb_u.col(0))
                 );
 #endif
@@ -556,7 +559,7 @@ std::function<py::object(
                 return PYOBJECT_CAST_ARR(map.cache.pb_flux);
             } else {
 #ifdef STARRY_SPECTRAL
-                return PYOBJECT_CAST(ENSURE_DOUBLE_ARR(map.cache.pb_flux.row(0)));
+                return py::cast(ENSURE_DOUBLE_ARR(map.cache.pb_flux.row(0)));
 #else
                 return PYOBJECT_CAST(map.cache.pb_flux(0));
 #endif

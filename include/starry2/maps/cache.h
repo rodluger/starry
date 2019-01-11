@@ -12,7 +12,8 @@ protected:
 public:
     
     int lmax;
-    int ncol;
+    int ncoly;
+    int ncolu;
     int nflx;
     int N;
 
@@ -103,20 +104,22 @@ public:
     //! Constructor
     Cache (
         int lmax,
-        int ncol,
+        int ncoly,
+        int ncolu,
         int nflx
     ) :
         lmax(lmax),
-        ncol(ncol),
+        ncoly(ncoly),
+        ncolu(ncolu),
         nflx(nflx),
         N((lmax + 1) * (lmax + 1)),
-        c(lmax + 1, nflx),
-        dcdu(lmax * nflx, lmax + 1),
-        p_u(N, nflx),
-        Ry(N, ncol),
-        A1Ry(N, ncol),
-        dRdthetay(N, ncol),
-        p_uy(N, ncol),
+        c(lmax + 1, ncolu),
+        dcdu(lmax * ncolu, lmax + 1),
+        p_u(N, ncolu),
+        Ry(N, ncoly),
+        A1Ry(N, ncoly),
+        dRdthetay(N, ncoly),
+        p_uy(N, ncoly),
         pT(N),
         EulerD(lmax + 1),
         EulerR(lmax + 1)

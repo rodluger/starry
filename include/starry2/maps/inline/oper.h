@@ -45,7 +45,7 @@ inline IsTemporal<U, void> computeTaylor (
     const Scalar & t
 ) {
     if (t != cache.taylort) {
-        for (int n = 1; n < ncol; ++n)
+        for (int n = 1; n < ncoly; ++n)
             taylor(n) = taylor(n - 1) * t / n;
         cache.taylort = t;
     }
@@ -126,7 +126,7 @@ inline IsSpectral<U, void> normalizeC (
     MatrixBase<T2> const & dcdu
 ) {
     // The total flux is given by `y00 * (s . c)`
-    for (int n = 0; n < ncol; ++n) {
+    for (int n = 0; n < ncoly; ++n) {
         Scalar norm = Scalar(1.0) / (pi<Scalar>() * (c(0, n) + 2.0 * c(1, n) / 3.0));
         MBCAST(c, T1).col(n) = c.col(n) * norm;
         MBCAST(dcdu, T2).block(n * lmax, 0, lmax, lmax + 1) = 

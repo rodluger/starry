@@ -100,7 +100,7 @@ inline void computeFlux (
     MatrixBase<T6> const & dy,
     MatrixBase<T7> const & du
 ) {
-    Matrix<Scalar> dt(1, ncol);
+    OneByOne<Scalar> dt;
     computeFlux_(theta, xo, yo, ro, flux, 
                  dt, dtheta, dxo, dyo, dro, dy, du);
 }
@@ -207,14 +207,14 @@ inline IsSpectral<U, void> computeDfDu (
         Scalar twothirdspi = (2.0 / 3.0) * pi<Scalar>();
 #ifdef STARRY_KEEP_DFDU_AS_DFDG
         Vector<Scalar> dFdc = L.s.transpose();
-        for (int n = 0; n < ncol; ++n) {
+        for (int n = 0; n < ncoly; ++n) {
             dFdc(0) = L.s(0) - pi<Scalar>() * flux(n);
             dFdc(1) = L.s(1) - twothirdspi * flux(n);
             MBCAST(du, T2).col(n) = dFdc * norm(n);
         }
 #else
         Vector<Scalar> dFdc = L.s.transpose();
-        for (int n = 0; n < ncol; ++n) {
+        for (int n = 0; n < ncoly; ++n) {
             dFdc(0) = L.s(0) - pi<Scalar>() * flux(n);
             dFdc(1) = L.s(1) - twothirdspi * flux(n);
             MBCAST(du, T2).col(n) = 

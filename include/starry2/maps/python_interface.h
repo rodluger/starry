@@ -13,10 +13,10 @@ py::object Map<S>::show_ (
     std::string gif
 ) {
     py::object fshow;
-    if (ncol == 1)
-        fshow = py::module::import("starry2._plotting").attr("show");
-    else
+    if (std::is_same<S, Spectral<Scalar>>::value)
         fshow = py::module::import("starry2._plotting").attr("show_spectral");
+    else
+        fshow = py::module::import("starry2._plotting").attr("show");
     if (res < 1)
         throw errors::ValueError("Invalid value for `res`.");
     Matrix<Scalar> intensity(res * res, nflx);
@@ -68,16 +68,16 @@ void Map<S>::loadImage_ (
     py::object fload = py::module::import("starry2._healpy").attr("load_map");
     if ((l == -1) || (l > lmax))
         l = lmax;
-    if (col > ncol)
+    if (col > ncoly)
         throw errors::ValueError("Invalid value for `col`.");
     auto y_double = py::cast<Vector<double>>(fload(image, l, sampling_factor));
     if (normalize)
         y_double /= y_double(0);
-    if (ncol == 1) {
+    if (ncoly == 1) {
         y.block(0, 0, (l + 1) * (l + 1), 1) = y_double.cast<Scalar>();
     } else if (col == -1) {
-        y.block(0, 0, (l + 1) * (l + 1), ncol) = 
-            y_double.cast<Scalar>().replicate(1, ncol);
+        y.block(0, 0, (l + 1) * (l + 1), ncoly) = 
+            y_double.cast<Scalar>().replicate(1, ncoly);
     } else {
         y.block(0, col, (l + 1) * (l + 1), 1) = y_double.cast<Scalar>();
     }

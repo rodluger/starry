@@ -5,10 +5,24 @@ Return a human-readable map string.
 template <class S>
 std::string Map<S>::info () {
     std::ostringstream os;
-    os << "<starry.Map("
-        << "lmax=" << lmax << ", "
-        << "ncol=" << ncol
-        << ")>";
+    if (std::is_same<S, Default<Scalar>>::value) {
+        os << "<starry.Map("
+            << "lmax=" << lmax
+            << ")>";
+    } else if (std::is_same<S, Spectral<Scalar>>::value) {
+        os << "<starry.Map("
+            << "lmax=" << lmax << ", "
+            << "nw=" << ncoly
+            << ")>";
+    } else if (std::is_same<S, Temporal<Scalar>>::value) {
+        os << "<starry.Map("
+            << "lmax=" << lmax << ", "
+            << "nt=" << ncoly
+            << ")>";
+    } else {
+        // ??
+        os << "<starry.Map>";
+    }
     return std::string(os.str());
 }
 
@@ -84,7 +98,7 @@ inline void Map<S>::setU (
 {
     cache.uChanged();
     if ((u_.rows() == u.rows() - 1) && (u_.cols() == u.cols()))
-        u.block(1, 0, lmax, ncol) = u_;
+        u.block(1, 0, lmax, u.cols()) = u_;
     else
         throw errors::ValueError("Dimension mismatch in `u`.");
 }
@@ -131,7 +145,7 @@ Get the full limb darkening vector/matrix.
 template <class S>
 inline typename S::UType Map<S>::getU ()
 const {
-    return u.block(1, 0, lmax, ncol);
+    return u.block(1, 0, lmax, u.cols());
 }
 
 /**

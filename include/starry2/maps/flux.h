@@ -247,8 +247,8 @@ inline void Map<S>::computeFlux_(
     check_shape(dxo, 1, nflx);
     check_shape(dyo, 1, nflx);
     check_shape(dro, 1, nflx);
-    check_cols(dy, ncol);
-    check_cols(du, nflx);
+    check_cols(dy, ncoly);
+    check_cols(du, ncolu);
 
     // Figure out the degree of the map
     computeDegreeU();

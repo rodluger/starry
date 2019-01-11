@@ -96,9 +96,6 @@ def test_shapes():
     assert(grad['u'].shape == (lmax, npts, nw))
     '''
 
-    # DEBUG
-    return
-
     # Temporal
     map = starry2.Map(lmax, nt=nt)
     flux = map.flux(theta, xo, yo, ro, False)
@@ -232,9 +229,6 @@ def test_shapes_single_cadence():
     assert(grad['y'].shape == ((lmax + 1) ** 2, nw))
     assert(grad['u'].shape == (lmax, nw))
     '''
-
-    # DEBUG
-    return
 
     # Temporal
     map = starry2.Map(lmax, nt=nt)
