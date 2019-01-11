@@ -324,6 +324,15 @@ std::function<py::object(
     ) -> py::object 
     {
         using Scalar = typename T::Scalar;
+        using FType = typename T::FType;
+
+#ifdef STARRY_SPECTRAL
+        // We need our old friend numpy to reshape
+        // matrices into 3-tensors on the Python side
+        auto numpy = py::module::import("numpy");
+        auto reshape = numpy.attr("reshape");
+#endif
+
 #ifdef STARRY_TEMPORAL
         size_t nt = MAXSIZE5(t, theta, xo, yo, ro); 
 #else
@@ -400,8 +409,8 @@ std::function<py::object(
                     map.cache.pb_y.block(n * ny, 0, ny, map.ncol),
                     map.cache.pb_u.block(n * nu, 0, nu, map.ncol)
 #elif defined(STARRY_TEMPORAL)
-                    map.cache.pb_y.row(n), // TODO
-                    map.cache.pb_u.row(n).transpose()
+                    map.cache.pb_y.block(n * ny, 0, ny, map.ncol),
+                    map.cache.pb_u.col(n)
 #endif
                 );
                 ++n;
@@ -419,15 +428,18 @@ std::function<py::object(
             // Construct the gradient dictionary and
             // return a tuple of (flux, gradient)
             if (nt > 1) {
-                
-#if defined(STARRY_DEFAULT)
-                auto flux = Ref<Vector<Scalar>>(map.cache.pb_flux);
-                auto dtheta = Ref<Vector<Scalar>>(map.cache.pb_theta);
-                auto dxo = Ref<Vector<Scalar>>(map.cache.pb_xo);
-                auto dyo = Ref<Vector<Scalar>>(map.cache.pb_yo);
-                auto dro = Ref<Vector<Scalar>>(map.cache.pb_ro);
+
+                // Get Eigen references to the arrays, as these
+                // are automatically passed by ref to the Python side
+                auto flux = Ref<FType>(map.cache.pb_flux);
+                auto dtheta = Ref<FType>(map.cache.pb_theta);
+                auto dxo = Ref<FType>(map.cache.pb_xo);
+                auto dyo = Ref<FType>(map.cache.pb_yo);
+                auto dro = Ref<FType>(map.cache.pb_ro);
                 auto dy = Ref<RowMatrix<Scalar>>(map.cache.pb_y);
                 auto du = Ref<RowMatrix<Scalar>>(map.cache.pb_u);
+
+#if defined(STARRY_DEFAULT)
                 py::dict gradient = py::dict(
                     "theta"_a=ENSURE_DOUBLE_ARR(dtheta),
                     "xo"_a=ENSURE_DOUBLE_ARR(dxo),
@@ -437,28 +449,26 @@ std::function<py::object(
                     "u"_a=ENSURE_DOUBLE_ARR(du)
                 );
 #elif defined(STARRY_SPECTRAL)
-                // TODO
-                auto flux = Ref<RowMatrix<Scalar>>(map.cache.pb_flux);
-                auto dtheta = Ref<RowMatrix<Scalar>>(map.cache.pb_theta);
+                auto dy_shape = py::make_tuple(ny, nt, map.ncol);
+                auto dy_reshaped = reshape(ENSURE_DOUBLE_ARR(dy), dy_shape);
+                auto du_shape = py::make_tuple(nu, nt, map.ncol);
+                auto du_reshaped = reshape(ENSURE_DOUBLE_ARR(du), du_shape);
                 py::dict gradient = py::dict(
-                    "theta"_a=ENSURE_DOUBLE_ARR(dtheta)
+                    "theta"_a=ENSURE_DOUBLE_ARR(dtheta),
+                    "xo"_a=ENSURE_DOUBLE_ARR(dxo),
+                    "yo"_a=ENSURE_DOUBLE_ARR(dyo),
+                    "ro"_a=ENSURE_DOUBLE_ARR(dro),
+                    "y"_a=dy_reshaped,
+                    "u"_a=du_reshaped
                 );
 #elif defined(STARRY_TEMPORAL)
-                auto flux = Ref<Vector<Scalar>>(map.cache.pb_flux);
-                auto dt = Ref<Vector<Scalar>>(map.cache.pb_time);
-                auto dtheta = Ref<Vector<Scalar>>(map.cache.pb_theta);
-                auto dxo = Ref<Vector<Scalar>>(map.cache.pb_xo);
-                auto dyo = Ref<Vector<Scalar>>(map.cache.pb_yo);
-                auto dro = Ref<Vector<Scalar>>(map.cache.pb_ro);
-                auto dy = Ref<RowMatrix<Scalar>>(map.cache.pb_y);
-                auto du = Ref<RowMatrix<Scalar>>(map.cache.pb_u);
+                // TODO: y deriv
                 py::dict gradient = py::dict(
                     "t"_a=ENSURE_DOUBLE_ARR(dt),
                     "theta"_a=ENSURE_DOUBLE_ARR(dtheta),
                     "xo"_a=ENSURE_DOUBLE_ARR(dxo),
                     "yo"_a=ENSURE_DOUBLE_ARR(dyo),
                     "ro"_a=ENSURE_DOUBLE_ARR(dro),
-                    "y"_a=ENSURE_DOUBLE_ARR(dy), // TODO
                     "u"_a=ENSURE_DOUBLE_ARR(du)
                 );
 #endif
@@ -475,23 +485,27 @@ std::function<py::object(
                     "xo"_a=ENSURE_DOUBLE(map.cache.pb_xo(0)),
                     "yo"_a=ENSURE_DOUBLE(map.cache.pb_yo(0)),
                     "ro"_a=ENSURE_DOUBLE(map.cache.pb_ro(0)),
-                    "y"_a=ENSURE_DOUBLE_ARR(map.cache.pb_y.row(0)),
-                    "u"_a=ENSURE_DOUBLE_ARR(map.cache.pb_u.row(0))
+                    "y"_a=ENSURE_DOUBLE_ARR(map.cache.pb_y.col(0)),
+                    "u"_a=ENSURE_DOUBLE_ARR(map.cache.pb_u.col(0))
                 );
 #elif defined(STARRY_SPECTRAL)
-                // TODO
                 py::dict gradient = py::dict(
-                    "theta"_a=ENSURE_DOUBLE(map.cache.pb_theta.row(0))
+                    "theta"_a=ENSURE_DOUBLE(map.cache.pb_theta.row(0)),
+                    "xo"_a=ENSURE_DOUBLE(map.cache.pb_xo.row(0)),
+                    "yo"_a=ENSURE_DOUBLE(map.cache.pb_yo.row(0)),
+                    "ro"_a=ENSURE_DOUBLE(map.cache.pb_ro.row(0)),
+                    "y"_a=ENSURE_DOUBLE(map.cache.pb_y),
+                    "u"_a=ENSURE_DOUBLE(map.cache.pb_u)
                 );
 #elif defined(STARRY_TEMPORAL)
+                // TODO: y deriv
                 py::dict gradient = py::dict(
                     "t"_a=ENSURE_DOUBLE_ARR(map.cache.pb_time(0)),
                     "theta"_a=ENSURE_DOUBLE(map.cache.pb_theta(0)),
                     "xo"_a=ENSURE_DOUBLE(map.cache.pb_xo(0)),
                     "yo"_a=ENSURE_DOUBLE(map.cache.pb_yo(0)),
                     "ro"_a=ENSURE_DOUBLE(map.cache.pb_ro(0)),
-                    "y"_a=ENSURE_DOUBLE_ARR(map.cache.pb_y.row(0)), // TODO
-                    "u"_a=ENSURE_DOUBLE_ARR(map.cache.pb_u.row(0))
+                    "u"_a=ENSURE_DOUBLE_ARR(map.cache.pb_u.col(0))
                 );
 #endif
 
