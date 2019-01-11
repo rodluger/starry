@@ -1,5 +1,5 @@
 /**
-Limb darkening utilities from Agol & Luger (2018).
+Limb darkening utilities from Agol, Luger & Foreman-Mackey (2019).
 
 TODO: Loop downward in v until J[v] !=0
 TODO: Test all special cases
@@ -69,9 +69,9 @@ namespace limbdark {
     }
 
     /**
-    Transform the u_n coefficients to `c_n`, which are coefficients
+    Transform the u_n coefficients to `g_n`, which are coefficients
     of the basis in which the `P(G_n)` functions are computed.
-    Also compute the derivative matrix `dc / du`.
+    Also compute the derivative matrix `dg / du`.
     
     This is the default map case.
 
@@ -79,89 +79,89 @@ namespace limbdark {
 
     */
     template <typename T1, typename T2, typename T3>
-    inline void computeC (
+    inline void computeAgolGBasis (
         MatrixBase<T1> const & u, 
-        MatrixBase<T2> const & c,
-        MatrixBase<T3> const & dcdu
+        MatrixBase<T2> const & g,
+        MatrixBase<T3> const & dAgolGdu
     ) {
         using Scalar = typename T1::Scalar;
         Scalar bcoeff;
         size_t N = u.rows();
-        Vector<Scalar> a(N);
-        Matrix<Scalar> dadu;
-        a.setZero();
-        dadu.setZero(N, N);
-        MBCAST(dcdu, T3).setZero();
+        Vector<Scalar> p(N);
+        Matrix<Scalar> dpdu;
+        p.setZero();
+        dpdu.setZero(N, N);
+        MBCAST(dAgolGdu, T3).setZero();
 
-        // Compute the a_n coefficients
-        a(0) = -u(0);
+        // Compute the p_n coefficients
+        p(0) = -u(0);
         for (size_t i = 1; i < N; ++i) {
             bcoeff = 1.0;
             int sgn = 1;
             for (size_t j = 0; j <= i; ++j) {
-                a(j) -= u(i) * bcoeff * sgn;
-                dadu(j, i) -= bcoeff * sgn;
+                p(j) -= u(i) * bcoeff * sgn;
+                dpdu(j, i) -= bcoeff * sgn;
                 sgn *= -1;
                 bcoeff *= ((Scalar)(i - j) / (j + 1));
             }
         }
 
-        // Now, compute the c_n coefficients
+        // Now, compute the g_n coefficients
         for (size_t j = N - 1; j >= 2; --j) {
             if (j >= N - 2) {
-                MBCAST(c, T2)(j) = a(j) / (j + 2);
-                MBCAST(dcdu, T3).transpose().block(j, 0, 1, N - 1) = 
-                    dadu.block(j, 1, 1, N - 1) / (j + 2);
+                MBCAST(g, T2)(j) = p(j) / (j + 2);
+                MBCAST(dAgolGdu, T3).transpose().block(j, 0, 1, N - 1) = 
+                    dpdu.block(j, 1, 1, N - 1) / (j + 2);
             } else {
-                MBCAST(c, T2)(j) = a(j) / (j + 2) + c(j + 2);
-                MBCAST(dcdu, T3).transpose().block(j, 0, 1, N - 1) = 
-                    dadu.block(j, 1, 1, N - 1) / (j + 2) +
-                    dcdu.transpose().block(j + 2, 0, 1, N - 1);
+                MBCAST(g, T2)(j) = p(j) / (j + 2) + g(j + 2);
+                MBCAST(dAgolGdu, T3).transpose().block(j, 0, 1, N - 1) = 
+                    dpdu.block(j, 1, 1, N - 1) / (j + 2) +
+                    dAgolGdu.transpose().block(j + 2, 0, 1, N - 1);
             }
         }
 
         if (N >= 4) {
-            MBCAST(c, T2)(1) = a(1) + 3 * c(3);
-            MBCAST(dcdu, T3).transpose().block(1, 0, 1, N - 1) = 
-                dadu.block(1, 1, 1, N - 1) +
-                3 * dcdu.transpose().block(3, 0, 1, N - 1);
+            MBCAST(g, T2)(1) = p(1) + 3 * g(3);
+            MBCAST(dAgolGdu, T3).transpose().block(1, 0, 1, N - 1) = 
+                dpdu.block(1, 1, 1, N - 1) +
+                3 * dAgolGdu.transpose().block(3, 0, 1, N - 1);
         } else if (N >= 2) {
-            MBCAST(c, T2)(1) = a(1);
-            MBCAST(dcdu, T3).transpose().block(1, 0, 1, N - 1) = 
-                dadu.block(1, 1, 1, N - 1);
+            MBCAST(g, T2)(1) = p(1);
+            MBCAST(dAgolGdu, T3).transpose().block(1, 0, 1, N - 1) = 
+                dpdu.block(1, 1, 1, N - 1);
         }
 
         if (N >= 3) {
-            MBCAST(c, T2)(0) = a(0) + 2 * c(2);
-            MBCAST(dcdu, T3).transpose().block(0, 0, 1, N - 1) = 
-                dadu.block(0, 1, 1, N - 1) +
-                2 * dcdu.transpose().block(2, 0, 1, N - 1);
+            MBCAST(g, T2)(0) = p(0) + 2 * g(2);
+            MBCAST(dAgolGdu, T3).transpose().block(0, 0, 1, N - 1) = 
+                dpdu.block(0, 1, 1, N - 1) +
+                2 * dAgolGdu.transpose().block(2, 0, 1, N - 1);
         } else {
-            MBCAST(c, T2)(0) = a(0);
-            MBCAST(dcdu, T3).transpose().block(0, 0, 1, N - 1) = 
-                dadu.block(0, 1, 1, N - 1);
+            MBCAST(g, T2)(0) = p(0);
+            MBCAST(dAgolGdu, T3).transpose().block(0, 0, 1, N - 1) = 
+                dpdu.block(0, 1, 1, N - 1);
         }
     }
 
     /**
-    Transform the u_n coefficients to `c_n`, which are coefficients
+    Transform the u_n coefficients to `g_n`, which are coefficients
     of the basis in which the `P(G_n)` functions are computed.
-    Also compute the derivative matrix `dc / du`.
+    Also compute the derivative matrix `dg / du`.
 
     This is the multi-column map case.
 
     */
     template <class T>
-    inline void computeC (
+    inline void computeAgolGBasis (
         const Matrix<T>& u, 
-        Matrix<T>& c,
-        Matrix<T>& dcdu
+        Matrix<T>& g,
+        Matrix<T>& dAgolGdu
     ) {
         int lmax = u.rows() - 1;
         int ncol = u.cols();
         for (int n = 0; n < ncol; ++n)
-            computeC(u.col(n), c.col(n), 
-                     dcdu.block(n * lmax, 0, lmax, lmax + 1));
+            computeAgolGBasis(u.col(n), g.col(n), 
+                     dAgolGdu.block(n * lmax, 0, lmax, lmax + 1));
     }
 
     /**

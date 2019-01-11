@@ -146,14 +146,14 @@ inline void Map<S>::computeFluxLD(
         // Compute the Agol `s` vector
         L.compute(b, ro);
 
-        // Compute the Agol `c` basis
-        computeC();
+        // Compute the Agol `g` basis
+        computeAgolGBasis();
 
         // Normalize by y00
         UCoeffType norm = contract(y.row(0));
 
         // Dot the integral solution in, and we're done!
-        MBCAST(flux, T1) = (L.s * cache.c).cwiseProduct(norm);
+        MBCAST(flux, T1) = (L.s * cache.agol_g).cwiseProduct(norm);
 
     }
 }
@@ -331,14 +331,14 @@ inline void Map<S>::computeFluxLD(
         // Compute the Agol `s` vector and its derivs
         L.compute(b, ro, true);
 
-        // Compute the Agol `c` basis
-        computeC();
+        // Compute the Agol `g` basis
+        computeAgolGBasis();
 
         // Compute the normalization
         UCoeffType norm = contract(y.row(0));
 
         // Compute the flux
-        UCoeffType flux0 = (L.s * cache.c);
+        UCoeffType flux0 = (L.s * cache.agol_g);
         MBCAST(flux, T1) = flux0.cwiseProduct(norm);
 
         // The theta deriv is always zero
@@ -346,7 +346,7 @@ inline void Map<S>::computeFluxLD(
 
         // dF / db  ->  dF / dx, dF / dy
         if (likely(b > 0)) {
-            MBCAST(dxo, T4) = (L.dsdb * cache.c);
+            MBCAST(dxo, T4) = (L.dsdb * cache.agol_g);
             MBCAST(dxo, T4) /= b;
             MBCAST(dyo, T5) = dxo;
             MBCAST(dxo, T4) *= xo;
@@ -354,13 +354,13 @@ inline void Map<S>::computeFluxLD(
             MBCAST(dxo, T4) = dxo.cwiseProduct(norm);
             MBCAST(dyo, T5) = dyo.cwiseProduct(norm);
         } else {
-            MBCAST(dxo, T4) = L.dsdb * cache.c;
+            MBCAST(dxo, T4) = L.dsdb * cache.agol_g;
             MBCAST(dxo, T4) = dxo.cwiseProduct(norm);
             MBCAST(dyo, T5) = dxo;
         }
 
         // dF / dr
-        MBCAST(dro, T6) = (L.dsdr * cache.c);
+        MBCAST(dro, T6) = (L.dsdr * cache.agol_g);
         MBCAST(dro, T6) = dro.cwiseProduct(norm);
 
         // dF / dy

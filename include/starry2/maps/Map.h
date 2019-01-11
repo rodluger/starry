@@ -163,7 +163,7 @@ protected:
 
     inline void computeLDPolynomial ();
 
-    inline void computeC ();
+    inline void computeAgolGBasis ();
 
     inline void rotateIntoCache (
         const Scalar& theta,

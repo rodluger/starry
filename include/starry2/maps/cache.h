@@ -18,13 +18,13 @@ public:
     int N;
 
     // Flags
-    bool compute_c;
+    bool compute_agol_g;
     bool compute_Zeta;
     bool compute_YZeta;
     bool compute_degree_y;
     bool compute_degree_u;
     bool compute_P;
-    bool compute_p_u;
+    bool compute_agol_p;
 
     // Cached variables
     int res;
@@ -32,9 +32,9 @@ public:
     Scalar theta;
     Scalar theta_with_grad;
     Matrix<Scalar> P;                                                          /**< The change of basis matrix from Ylms to pixels */
-    UType c;
-    Matrix<Scalar> dcdu;                                                       /**< Deriv of Agol `c` coeffs w/ respect to the limb darkening coeffs */
-    UType p_u;
+    UType agol_g;
+    Matrix<Scalar> dAgolGdu;                                                   /**< Deriv of Agol `c` coeffs w/ respect to the limb darkening coeffs */
+    UType agol_p;
     YType Ry;
     YType A1Ry;
     YType dRdthetay;
@@ -62,14 +62,14 @@ public:
         theta_with_grad = NAN;
         // Recall that the normalization of the LD
         // polynomial depends on Y_{0,0}
-        compute_p_u = true;
-        compute_c = true;
+        compute_agol_p = true;
+        compute_agol_g = true;
     }
 
     inline void uChanged () {
         compute_degree_u = true;
-        compute_p_u = true;
-        compute_c = true;
+        compute_agol_p = true;
+        compute_agol_g = true;
     }
 
     inline void axisChanged () {
@@ -88,13 +88,13 @@ public:
     //! Reset all flags
     inline void reset () 
     {
-        compute_c = true;
+        compute_agol_g = true;
         compute_Zeta = true;
         compute_YZeta = true;
         compute_degree_y = true;
         compute_degree_u = true;
         compute_P = true;
-        compute_p_u = true;
+        compute_agol_p = true;
         res = -1;
         taylort = NAN;
         theta = NAN;
@@ -113,9 +113,9 @@ public:
         ncolu(ncolu),
         nflx(nflx),
         N((lmax + 1) * (lmax + 1)),
-        c(lmax + 1, ncolu),
-        dcdu(lmax * ncolu, lmax + 1),
-        p_u(N, ncolu),
+        agol_g(lmax + 1, ncolu),
+        dAgolGdu(lmax * ncolu, lmax + 1),
+        agol_p(N, ncolu),
         Ry(N, ncoly),
         A1Ry(N, ncoly),
         dRdthetay(N, ncoly),

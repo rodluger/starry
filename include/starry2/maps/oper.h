@@ -127,11 +127,11 @@ unobscured flux is **unity**.
 
 */
 template<class S>
-inline void Map<S>::computeC () {
-    if (cache.compute_c) {
-        limbdark::computeC(u, cache.c, cache.dcdu);
-        normalizeC(cache.c, cache.dcdu);
-        cache.compute_c = false;
+inline void Map<S>::computeAgolGBasis () {
+    if (cache.compute_agol_g) {
+        limbdark::computeAgolGBasis(u, cache.agol_g, cache.dAgolGdu);
+        normalizeAgolG(cache.agol_g, cache.dAgolGdu);
+        cache.compute_agol_g = false;
     }
 }
 
@@ -210,7 +210,7 @@ inline void Map<S>::rotateByAxisAngle (
 }
 
 /** 
-Compute the limb darkening polynomial `p_u`
+Compute the limb darkening polynomial `agol_p`
 
 NOTE: This is the **normalized** xyz polynomial corresponding
 to the limb darkening vector `u`. The normalization is such 
@@ -224,11 +224,11 @@ That normalization was almost certainly unphysical.
 */
 template <class S>
 inline void Map<S>::computeLDPolynomial () {
-    if (cache.compute_p_u) {
+    if (cache.compute_agol_p) {
         UType tmp = B.U1 * u;
         UCoeffType norm = (pi<Scalar>() * y.row(0)).cwiseQuotient(B.rT * tmp);
-        cache.p_u = tmp.array().rowwise() * norm.array();
-        cache.compute_p_u = false;
+        cache.agol_p = tmp.array().rowwise() * norm.array();
+        cache.compute_agol_p = false;
     }
 }
 
@@ -256,7 +256,7 @@ inline void Map<S>::limbDarken (
         throw errors::NotImplementedError("");
         // polymul(y_deg, poly, u_deg, p_u, lmax, poly_ld, dLDdp, dLDdp_u);
     } else {
-        basis::polymul(y_deg, poly, u_deg, cache.p_u, lmax, poly_ld);
+        basis::polymul(y_deg, poly, u_deg, cache.agol_p, lmax, poly_ld);
     }
 
     // Compute the gradient of the limb-darkened polynomial

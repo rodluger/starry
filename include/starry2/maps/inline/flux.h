@@ -180,10 +180,10 @@ inline IsSingleWavelength<U, void> computeDfDu (
         MBCAST(du, T2)(1) -= (2.0 / 3.0) * pi<Scalar>() * flux(0);
         MBCAST(du, T2) = du * norm(0);
 #else
-        Vector<Scalar> dFdc = L.s.transpose();
-        dFdc(0) -= pi<Scalar>() * flux(0);
-        dFdc(1) -= (2.0 / 3.0) * pi<Scalar>() * flux(0);
-        MBCAST(du, T2) = cache.dcdu * dFdc * norm(0);
+        Vector<Scalar> dFdAgolG = L.s.transpose();
+        dFdAgolG(0) -= pi<Scalar>() * flux(0);
+        dFdAgolG(1) -= (2.0 / 3.0) * pi<Scalar>() * flux(0);
+        MBCAST(du, T2) = cache.dAgolGdu * dFdAgolG * norm(0);
 #endif
     }
 }
@@ -206,19 +206,20 @@ inline IsSpectral<U, void> computeDfDu (
     if (likely(lmax > 0)) {
         Scalar twothirdspi = (2.0 / 3.0) * pi<Scalar>();
 #ifdef STARRY_KEEP_DFDU_AS_DFDG
-        Vector<Scalar> dFdc = L.s.transpose();
+        Vector<Scalar> dFdAgolG = L.s.transpose();
         for (int n = 0; n < ncoly; ++n) {
-            dFdc(0) = L.s(0) - pi<Scalar>() * flux(n);
-            dFdc(1) = L.s(1) - twothirdspi * flux(n);
-            MBCAST(du, T2).col(n) = dFdc * norm(n);
+            dFdAgolG(0) = L.s(0) - pi<Scalar>() * flux(n);
+            dFdAgolG(1) = L.s(1) - twothirdspi * flux(n);
+            MBCAST(du, T2).col(n) = dFdAgolG * norm(n);
         }
 #else
-        Vector<Scalar> dFdc = L.s.transpose();
+        Vector<Scalar> dFdAgolG = L.s.transpose();
         for (int n = 0; n < ncoly; ++n) {
-            dFdc(0) = L.s(0) - pi<Scalar>() * flux(n);
-            dFdc(1) = L.s(1) - twothirdspi * flux(n);
+            dFdAgolG(0) = L.s(0) - pi<Scalar>() * flux(n);
+            dFdAgolG(1) = L.s(1) - twothirdspi * flux(n);
             MBCAST(du, T2).col(n) = 
-                cache.dcdu.block(n * lmax, 0, lmax, lmax + 1) * dFdc * norm(n);
+                cache.dAgolGdu.block(n * lmax, 0, lmax, lmax + 1) * 
+                dFdAgolG * norm(n);
         }
 #endif
     }

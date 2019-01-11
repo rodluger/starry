@@ -105,14 +105,14 @@ Default map specialization.
 
 */
 template<typename U=S, typename T1, typename T2>
-inline IsDefault<U, void> normalizeC (
-    MatrixBase<T1> const & c,
-    MatrixBase<T2> const & dcdu
+inline IsDefault<U, void> normalizeAgolG (
+    MatrixBase<T1> const & g,
+    MatrixBase<T2> const & dAgolGdu
 ) {
-    // The total flux is given by `y00 * (s . c)`
-    Scalar norm = Scalar(1.0) / (pi<Scalar>() * (c(0) + 2.0 * c(1) / 3.0));
-    MBCAST(c, T1) = c * norm;
-    MBCAST(dcdu, T2) = dcdu * norm;
+    // The total flux is given by `y00 * (s . g)`
+    Scalar norm = Scalar(1.0) / (pi<Scalar>() * (g(0) + 2.0 * g(1) / 3.0));
+    MBCAST(g, T1) = g * norm;
+    MBCAST(dAgolGdu, T2) = dAgolGdu * norm;
 }
 
 /**
@@ -121,16 +121,16 @@ Spectral map specialization.
 
 */
 template<typename U=S, typename T1, typename T2>
-inline IsSpectral<U, void> normalizeC (
-    MatrixBase<T1> const & c,
-    MatrixBase<T2> const & dcdu
+inline IsSpectral<U, void> normalizeAgolG (
+    MatrixBase<T1> const & g,
+    MatrixBase<T2> const & dAgolGdu
 ) {
-    // The total flux is given by `y00 * (s . c)`
+    // The total flux is given by `y00 * (s . g)`
     for (int n = 0; n < ncoly; ++n) {
-        Scalar norm = Scalar(1.0) / (pi<Scalar>() * (c(0, n) + 2.0 * c(1, n) / 3.0));
-        MBCAST(c, T1).col(n) = c.col(n) * norm;
-        MBCAST(dcdu, T2).block(n * lmax, 0, lmax, lmax + 1) = 
-            dcdu.block(n * lmax, 0, lmax, lmax + 1) * norm;
+        Scalar norm = Scalar(1.0) / (pi<Scalar>() * (g(0, n) + 2.0 * g(1, n) / 3.0));
+        MBCAST(g, T1).col(n) = g.col(n) * norm;
+        MBCAST(dAgolGdu, T2).block(n * lmax, 0, lmax, lmax + 1) = 
+            dAgolGdu.block(n * lmax, 0, lmax, lmax + 1) * norm;
     }
 }
 
@@ -140,13 +140,13 @@ Temporal map specialization.
 
 */
 template<typename U=S, typename T1, typename T2>
-inline IsTemporal<U, void> normalizeC (
-    MatrixBase<T1> const & c,
-    MatrixBase<T2> const & dcdu
+inline IsTemporal<U, void> normalizeAgolG (
+    MatrixBase<T1> const & g,
+    MatrixBase<T2> const & dAgolGdu
 ) {
     // The total flux is given by `y00 * (s . c)`
-    Scalar norm = Scalar(1.0) / (pi<Scalar>() * (c(0) + 2.0 * c(1) / 3.0));
-    MBCAST(c, T1) = c * norm;
-    MBCAST(dcdu, T2) = dcdu * norm;
+    Scalar norm = Scalar(1.0) / (pi<Scalar>() * (g(0) + 2.0 * g(1) / 3.0));
+    MBCAST(g, T1) = g * norm;
+    MBCAST(dAgolGdu, T2) = dAgolGdu * norm;
 
 }
