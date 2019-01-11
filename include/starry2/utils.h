@@ -91,26 +91,26 @@ using std::isinf;
 #ifdef STARRY_DEBUG
 
 // Bounds and shape checking enabled in debug mode
-#define check_shape(MATRIX, ROWS, COLS)\
+#define CHECK_SHAPE(MATRIX, ROWS, COLS)\
     if (!((MATRIX.rows() == ROWS) && (MATRIX.cols() == COLS)))\
         throw errors::ShapeError("Matrix has incorrect shape.")
-#define check_cols(MATRIX, COLS)\
+#define CHECK_COLS(MATRIX, COLS)\
     if (MATRIX.cols() != COLS)\
         throw errors::ShapeError("Matrix has incorrect number of columns.") 
-#define check_rows(MATRIX, ROWS)\
+#define CHECK_ROWS(MATRIX, ROWS)\
     if (MATRIX.rows() != ROWS)\
         throw errors::ShapeError("Matrix has incorrect number of rows.")  
-#define check_bounds(INDEX, IMIN, IMAX)\
+#define CHECK_BOUNDS(INDEX, IMIN, IMAX)\
     if ((INDEX < IMIN) || (INDEX > IMAX))\
         throw errors::IndexError("Index out of bounds.")
 
 #else
 
 // These are compiled out!
-#define check_shape(MATRIX, ROWS, COLS)  do {} while(0)
-#define check_cols(MATRIX, COLS)  do {} while(0)
-#define check_rows(MATRIX, ROWS)  do {} while(0)
-#define check_bounds(INDEX, IMIN, IMAX)  do {} while(0)
+#define CHECK_SHAPE(MATRIX, ROWS, COLS)  do {} while(0)
+#define CHECK_COLS(MATRIX, COLS)  do {} while(0)
+#define CHECK_ROWS(MATRIX, ROWS)  do {} while(0)
+#define CHECK_BOUNDS(INDEX, IMIN, IMAX)  do {} while(0)
 
 #endif
 

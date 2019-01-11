@@ -100,7 +100,7 @@ inline void computeFlux (
     MatrixBase<T6> const & dy,
     MatrixBase<T7> const & du
 ) {
-    OneByOne<Scalar> dt;
+    Matrix<Scalar> dt(1, nflx);
     computeFlux_(theta, xo, yo, ro, flux, 
                  dt, dtheta, dxo, dyo, dro, dy, du);
 }

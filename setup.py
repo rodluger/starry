@@ -8,12 +8,12 @@ import setuptools
 __version__ = '1.0.0'
 
 # Module bits
-STARRY_DEFAULT_DOUBLE =  1
-STARRY_DEFAULT_MULTI =   2
-STARRY_SPECTRAL_DOUBLE = 4
-STARRY_SPECTRAL_MULTI =  8
-STARRY_TEMPORAL_DOUBLE = 16
-STARRY_TEMPORAL_MULTI =  32
+_STARRY_DEFAULT_DOUBLE_ =  1
+_STARRY_DEFAULT_MULTI_ =   2
+_STARRY_SPECTRAL_DOUBLE_ = 4
+_STARRY_SPECTRAL_MULTI_ =  8
+_STARRY_TEMPORAL_DOUBLE_ = 16
+_STARRY_TEMPORAL_MULTI_ =  32
 
 # Custom compiler flags
 macros = dict(STARRY_NMULTI=32,
@@ -65,7 +65,7 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-def get_ext(module='starry2._starry_default_double', name='STARRY_DEFAULT_DOUBLE'):
+def get_ext(module='starry2._starry_default_double', name='_STARRY_DEFAULT_DOUBLE_'):
     include_dirs = [
         get_pybind_include(),
         get_pybind_include(user=True),
@@ -86,18 +86,18 @@ def get_ext(module='starry2._starry_default_double', name='STARRY_DEFAULT_DOUBLE
 
 # Figure out which modules to compile (default all)
 ext_modules = []
-if (bitsum & STARRY_DEFAULT_DOUBLE):
-    ext_modules.append(get_ext('starry2._starry_default_double', 'STARRY_DEFAULT_DOUBLE'))
-if (bitsum & STARRY_DEFAULT_MULTI):
-    ext_modules.append(get_ext('starry2._starry_default_multi', 'STARRY_DEFAULT_MULTI'))
-if (bitsum & STARRY_SPECTRAL_DOUBLE):
-    ext_modules.append(get_ext('starry2._starry_spectral_double', 'STARRY_SPECTRAL_DOUBLE'))
-if (bitsum & STARRY_SPECTRAL_MULTI):
-    ext_modules.append(get_ext('starry2._starry_spectral_multi', 'STARRY_SPECTRAL_MULTI'))
-if (bitsum & STARRY_TEMPORAL_DOUBLE):
-    ext_modules.append(get_ext('starry2._starry_temporal_double', 'STARRY_TEMPORAL_DOUBLE'))
-if (bitsum & STARRY_TEMPORAL_MULTI):
-    ext_modules.append(get_ext('starry2._starry_temporal_multi', 'STARRY_TEMPORAL_MULTI'))
+if (bitsum & _STARRY_DEFAULT_DOUBLE_):
+    ext_modules.append(get_ext('starry2._starry_default_double', '_STARRY_DEFAULT_DOUBLE_'))
+if (bitsum & _STARRY_DEFAULT_MULTI_):
+    ext_modules.append(get_ext('starry2._starry_default_multi', '_STARRY_DEFAULT_MULTI_'))
+if (bitsum & _STARRY_SPECTRAL_DOUBLE_):
+    ext_modules.append(get_ext('starry2._starry_spectral_double', '_STARRY_SPECTRAL_DOUBLE_'))
+if (bitsum & _STARRY_SPECTRAL_MULTI_):
+    ext_modules.append(get_ext('starry2._starry_spectral_multi', '_STARRY_SPECTRAL_MULTI_'))
+if (bitsum & _STARRY_TEMPORAL_DOUBLE_):
+    ext_modules.append(get_ext('starry2._starry_temporal_double', '_STARRY_TEMPORAL_DOUBLE_'))
+if (bitsum & _STARRY_TEMPORAL_MULTI_):
+    ext_modules.append(get_ext('starry2._starry_temporal_multi', '_STARRY_TEMPORAL_MULTI_'))
 
 # As of Python 3.6, CCompiler has a `has_flag` method.
 # cf http://bugs.python.org/issue26689

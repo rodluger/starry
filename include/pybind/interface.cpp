@@ -9,54 +9,54 @@
 #endif
 
 // Select which module to build
-#if defined(STARRY_DEFAULT_DOUBLE)
-#define STARRY_NAME _starry_default_double
-#define STARRY_DEFAULT
-#define STARRY_DOUBLE
-#define STARRY_STATIC
-#define STARRY_SINGLECOL
-#define STARRY_TYPE Default<double>
+#if defined(_STARRY_DEFAULT_DOUBLE_)
+#define _STARRY_NAME_ _starry_default_double
+#define _STARRY_DEFAULT_
+#define _STARRY_DOUBLE_
+#define _STARRY_STATIC_
+#define _STARRY_SINGLECOL_
+#define _STARRY_TYPE_ Default<double>
 
-#elif defined(STARRY_DEFAULT_MULTI)
-#define STARRY_NAME _starry_default_multi
-#define STARRY_DEFAULT
-#define STARRY_MULTI
-#define STARRY_STATIC
-#define STARRY_SINGLECOL
+#elif defined(_STARRY_DEFAULT_MULTI_)
+#define _STARRY_NAME_ _starry_default_multi
+#define _STARRY_DEFAULT_
+#define _STARRY_MULTI_
+#define _STARRY_STATIC_
+#define _STARRY_SINGLECOL_
 #define STARRY_ENABLE_BOOST
-#define STARRY_TYPE Default<Multi>
+#define _STARRY_TYPE_ Default<Multi>
 
-#elif defined(STARRY_SPECTRAL_DOUBLE)
-#define STARRY_NAME _starry_spectral_double
-#define STARRY_SPECTRAL
-#define STARRY_DOUBLE
-#define STARRY_STATIC
-#define STARRY_MULTICOL
-#define STARRY_TYPE Spectral<double>
+#elif defined(_STARRY_SPECTRAL_DOUBLE_)
+#define _STARRY_NAME_ _starry_spectral_double
+#define _STARRY_SPECTRAL_
+#define _STARRY_DOUBLE_
+#define _STARRY_STATIC_
+#define _STARRY_MULTI_COL
+#define _STARRY_TYPE_ Spectral<double>
 
-#elif defined(STARRY_SPECTRAL_MULTI)
-#define STARRY_NAME _starry_spectral_multi
-#define STARRY_SPECTRAL
-#define STARRY_MULTI
-#define STARRY_STATIC
-#define STARRY_MULTICOL
+#elif defined(_STARRY_SPECTRAL_MULTI_)
+#define _STARRY_NAME_ _starry_spectral_multi
+#define _STARRY_SPECTRAL_
+#define _STARRY_MULTI_
+#define _STARRY_STATIC_
+#define _STARRY_MULTI_COL
 #define STARRY_ENABLE_BOOST
-#define STARRY_TYPE Spectral<Multi>
+#define _STARRY_TYPE_ Spectral<Multi>
 
-#elif defined(STARRY_TEMPORAL_DOUBLE)
-#define STARRY_NAME _starry_temporal_double
-#define STARRY_TEMPORAL
-#define STARRY_DOUBLE
-#define STARRY_MULTICOL
-#define STARRY_TYPE Temporal<double>
+#elif defined(_STARRY_TEMPORAL_DOUBLE_)
+#define _STARRY_NAME_ _starry_temporal_double
+#define _STARRY_TEMPORAL_
+#define _STARRY_DOUBLE_
+#define _STARRY_MULTI_COL
+#define _STARRY_TYPE_ Temporal<double>
 
-#elif defined(STARRY_TEMPORAL_MULTI)
-#define STARRY_NAME _starry_temporal_multi
-#define STARRY_TEMPORAL
-#define STARRY_MULTI
-#define STARRY_MULTICOL
+#elif defined(_STARRY_TEMPORAL_MULTI_)
+#define _STARRY_NAME_ _starry_temporal_multi
+#define _STARRY_TEMPORAL_
+#define _STARRY_MULTI_
+#define _STARRY_MULTI_COL
 #define STARRY_ENABLE_BOOST
-#define STARRY_TYPE Temporal<Multi>
+#define _STARRY_TYPE_ Temporal<Multi>
 
 #else
 static_assert(false, "Invalid or missing STARRY module type.");
@@ -69,17 +69,17 @@ using namespace interface;
 
 //! Register the Python module
 PYBIND11_MODULE(
-    STARRY_NAME, 
+    _STARRY_NAME_, 
     m
 ) {
 
     // Current Map Type
-    using T = STARRY_TYPE;
+    using T = _STARRY_TYPE_;
 
     // Declare the Map class
     py::class_<Map<T>> PyMap(m, "Map");
 
-#if defined(STARRY_SINGLECOL) 
+#if defined(_STARRY_SINGLECOL_) 
     // Constructor for vector maps
     PyMap.def(py::init<int>(), "lmax"_a=2);
 #else
@@ -297,7 +297,7 @@ PYBIND11_MODULE(
     // Rotate the base map
     PyMap.def("rotate", &Map<T>::rotate, "theta"_a=0.0);
 
-#if defined(STARRY_SINGLECOL)
+#if defined(_STARRY_SINGLECOL_)
     // Add a gaussian spot with a scalar amplitude
     PyMap.def(
         "add_spot", [](
@@ -331,7 +331,7 @@ PYBIND11_MODULE(
         "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "l"_a=-1);
 #endif
 
-#if defined(STARRY_SINGLECOL)
+#if defined(_STARRY_SINGLECOL_)
     // Generate a random map
     PyMap.def(
         "random", [](
@@ -371,7 +371,7 @@ PYBIND11_MODULE(
         "power"_a, "seed"_a=py::none(), "col"_a=-1);
 #endif
 
-#if defined(STARRY_STATIC)
+#if defined(_STARRY_STATIC_)
     // Show an image/animation of the map
     PyMap.def(
         "show", [](
@@ -429,7 +429,7 @@ PYBIND11_MODULE(
         "cmap"_a="plasma", "res"_a=300, "interval"_a=75, "gif"_a="");
 #endif
 
-#if defined(STARRY_DEFAULT)
+#if defined(_STARRY_DEFAULT_)
     // Render the visible map on a square grid
     PyMap.def(
         "render", [](
@@ -445,7 +445,7 @@ PYBIND11_MODULE(
 
         }, 
         "theta"_a=0.0, "res"_a=300);
-#elif defined(STARRY_SPECTRAL)
+#elif defined(_STARRY_SPECTRAL_)
     // Render the visible map on a square grid
     PyMap.def(
         "render", [](
@@ -460,7 +460,7 @@ PYBIND11_MODULE(
                            py::make_tuple(res, res, map.nflx));
         }, 
         "theta"_a=0.0, "res"_a=300);
-#elif defined(STARRY_TEMPORAL)
+#elif defined(_STARRY_TEMPORAL_)
     // Render the visible map on a square grid
     PyMap.def(
         "render", [](
@@ -478,7 +478,7 @@ PYBIND11_MODULE(
         "t"_a=0.0, "theta"_a=0.0, "res"_a=300);
 #endif
 
-#if defined(STARRY_SINGLECOL)
+#if defined(_STARRY_SINGLECOL_)
     // Load an image from a file
     PyMap.def(
         "load_image", [](
@@ -507,7 +507,7 @@ PYBIND11_MODULE(
         "image"_a, "l"_a=-1, "col"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
 #endif
 
-#if defined(STARRY_STATIC)
+#if defined(_STARRY_STATIC_)
     // Compute the intensity
     PyMap.def("__call__", intensity<T>(), "theta"_a=0.0, 
               "x"_a=0.0, "y"_a=0.0);
@@ -517,7 +517,7 @@ PYBIND11_MODULE(
               "x"_a=0.0, "y"_a=0.0);
 #endif
 
-#if defined(STARRY_STATIC)
+#if defined(_STARRY_STATIC_)
     // Compute the flux
     PyMap.def("flux", flux<T>(), "theta"_a=0.0, "xo"_a=0.0, 
               "yo"_a=0.0, "ro"_a=0.0, "gradient"_a=false);

@@ -16,7 +16,7 @@ inline void Map<S>::computeIntensity_(
     MatrixBase<T1> const & intensity
 ) {
     // Shape checks
-    check_shape(intensity, 1, nflx);
+    CHECK_SHAPE(intensity, 1, nflx);
 
     // Check if outside the sphere
     if (x_ * x_ + y_ * y_ > 1.0) {
@@ -60,7 +60,7 @@ inline void Map<S>::renderMap_(
     MatrixBase<T1> const & intensity
 ) {
     // Shape checks
-    check_shape(intensity, res * res, nflx);
+    CHECK_SHAPE(intensity, res * res, nflx);
 
     // Compute the pixelization matrix
     computeP(res);
@@ -101,7 +101,7 @@ inline void Map<S>::computeFlux_(
     MatrixBase<T1> const & flux
 ) {
     // Shape checks
-    check_shape(flux, 1, nflx);
+    CHECK_SHAPE(flux, 1, nflx);
 
     // Figure out the degree of the map
     computeDegreeU();
@@ -241,14 +241,14 @@ inline void Map<S>::computeFlux_(
     MatrixBase<T8> const & du
 ) {
     // Shape checks
-    check_shape(flux, 1, nflx);
-    check_shape(dt, 1, nflx);
-    check_shape(dtheta, 1, nflx);
-    check_shape(dxo, 1, nflx);
-    check_shape(dyo, 1, nflx);
-    check_shape(dro, 1, nflx);
-    check_cols(dy, ncoly);
-    check_cols(du, ncolu);
+    CHECK_SHAPE(flux, 1, nflx);
+    CHECK_SHAPE(dt, 1, nflx);
+    CHECK_SHAPE(dtheta, 1, nflx);
+    CHECK_SHAPE(dxo, 1, nflx);
+    CHECK_SHAPE(dyo, 1, nflx);
+    CHECK_SHAPE(dro, 1, nflx);
+    CHECK_COLS(dy, ncoly);
+    CHECK_COLS(du, ncolu);
 
     // Figure out the degree of the map
     computeDegreeU();
@@ -272,16 +272,16 @@ inline void Map<S>::computeFlux_(
 
     // Compute the flux
     if (y_deg == 0) {
-        check_rows(du, lmax + STARRY_DFDU_DELTA);
+        CHECK_ROWS(du, lmax + STARRY_DFDU_DELTA);
         computeFluxLD(xo, yo, b, ro, flux, dt, 
                       dtheta, dxo, dyo, dro, dy, du);
     } else if (u_deg == 0) {
-        check_rows(dy, N);
+        CHECK_ROWS(dy, N);
         computeFluxYlm(theta, xo, yo, b, ro, flux, dt, 
                        dtheta, dxo, dyo, dro, dy, du);
     } else {
-        check_rows(dy, N);
-        check_rows(du, lmax + STARRY_DFDU_DELTA);
+        CHECK_ROWS(dy, N);
+        CHECK_ROWS(du, lmax + STARRY_DFDU_DELTA);
         computeFluxYlmLD(theta, xo, yo, b, ro, flux, dt, 
                          dtheta, dxo, dyo, dro, dy, du);
     }

@@ -115,7 +115,6 @@ def test_shapes():
 
     # Temporal, Ylm (with gradient)
     # TODO: Occultations not yet implemented on the C++ side
-    '''
     map = starry2.Map(lmax, nt=nt)
     map[:, :] = 1
     flux, grad = map.flux(t, theta, xo, yo + 10.0, ro, True)       
@@ -123,7 +122,6 @@ def test_shapes():
         grad['yo'].shape == grad['ro'].shape == (npts,))
     assert(grad['y'].shape == ((lmax + 1) ** 2, npts, nt))
     assert(len(grad['u']) == 0)
-    '''
 
     # Temporal, Ylm + LD (with gradient)
     # TODO: Not yet implemented on the C++ side
@@ -249,7 +247,6 @@ def test_shapes_single_cadence():
 
     # Temporal, Ylm (with gradient)
     # TODO: Occultations not yet implemented on the C++ side
-    '''
     map = starry2.Map(lmax, nt=nt)
     map[:, :] = 1
     flux, grad = map.flux(t, theta, xo, yo + 10.0, ro, True)       
@@ -257,7 +254,6 @@ def test_shapes_single_cadence():
            type(grad['yo']) == type(grad['ro']) == float)
     assert(grad['y'].shape == ((lmax + 1) ** 2, nt))
     assert(len(grad['u']) == 0)
-    '''
 
     # Temporal, Ylm + LD (with gradient)
     # TODO: Not yet implemented on the C++ side

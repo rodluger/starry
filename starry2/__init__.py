@@ -62,32 +62,32 @@ def Map(lmax=2, nw=None, nt=None, multi=False):
         if _starry_default_double is not None:
             return _starry_default_double.Map(lmax)
         else:
-            raise ImportError("Module not available: STARRY_DEFAULT_DOUBLE.")
+            raise ImportError("Module not available: _STARRY_DEFAULT_DOUBLE_.")
     elif (nw is None) and (nt is None) and (multi):
         if _starry_default_multi is not None:
             return _starry_default_multi.Map(lmax)
         else:
-            raise ImportError("Module not available: STARRY_DEFAULT_MULTI.")
+            raise ImportError("Module not available: _STARRY_DEFAULT_MULTI_.")
     elif (nw is not None) and (nw > 0) and (nt is None) and (not multi):
         if _starry_spectral_double is not None:
             return _starry_spectral_double.Map(lmax, nw)
         else:
-            raise ImportError("Module not available: STARRY_SPECTRAL_DOUBLE.")
+            raise ImportError("Module not available: _STARRY_SPECTRAL_DOUBLE_.")
     elif (nw is not None) and (nw > 0) and (nt is None) and (multi):
         if _starry_spectral_multi is not None:
             return _starry_spectral_multi.Map(lmax, nw)
         else:
-            raise ImportError("Module not available: STARRY_SPECTRAL_MULTI.")
+            raise ImportError("Module not available: _STARRY_SPECTRAL_MULTI_.")
     elif (nt is not None) and (nt > 0) and (nw is None) and (not multi):
         if _starry_temporal_double is not None:
             return _starry_temporal_double.Map(lmax, nt)
         else:
-            raise ImportError("Module not available: STARRY_TEMPORAL_DOUBLE.")
+            raise ImportError("Module not available: _STARRY_TEMPORAL_DOUBLE_.")
     elif (nt is not None) and (nt > 0) and (nw is None) and (multi):
         if _starry_temporal_multi is not None:
             return _starry_temporal_multi.Map(lmax, nt)
         else:
-            raise ImportError("Module not available: STARRY_TEMPORAL_MULTI.")
+            raise ImportError("Module not available: _STARRY_TEMPORAL_MULTI_.")
     else:
         raise ValueError("Invalid argument(s) to `Map`.")
 
