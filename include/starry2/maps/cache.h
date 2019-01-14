@@ -9,6 +9,7 @@ protected:
     using YCoeffType = typename S::YCoeffType;
     using UType = typename S::UType;
     using FType = typename S::FType;
+    using CtrYType = typename S::CtrYType;
 
 public:
     
@@ -37,10 +38,11 @@ public:
     UType agol_g;
     Matrix<Scalar> dAgolGdu;                                                   /**< Deriv of Agol `g` coeffs w/ respect to the limb darkening coeffs */
     UType agol_p;
-    YType Ry;
-    YType A1Ry;
-    YType dRdthetay;
-    YType p_uy;
+    YType RyUncontracted;
+    CtrYType Ry;
+    CtrYType A1Ry;
+    CtrYType dRdthetay;
+    CtrYType p_uy;
     RowVector<Scalar> pT;
     std::vector<Matrix<Scalar>> EulerD;
     std::vector<Matrix<Scalar>> EulerR;
@@ -128,10 +130,11 @@ public:
         agol_g(lmax + 1, ncolu),
         dAgolGdu(lmax * ncolu, lmax + 1),
         agol_p(N, ncolu),
-        Ry(N, ncoly),
-        A1Ry(N, ncoly),
-        dRdthetay(N, ncoly),
-        p_uy(N, ncoly),
+        RyUncontracted(N, ncoly),
+        Ry(N, nflx),
+        A1Ry(N, nflx),
+        dRdthetay(N, nflx),
+        p_uy(N, nflx),
         pT(N),
         EulerD(lmax + 1),
         EulerR(lmax + 1),
@@ -152,6 +155,7 @@ public:
             dLDdy[i].resize(N, N);
         }
         for (int i = 0; i < ncolu; ++i) {
+            // TODO: CHECK THESE SHAPES
             dLDdagol_p[i].resize(N, N);
             dAgolPdu[i].resize(N, N);
             dAgolPdy[i].resize(N, N);

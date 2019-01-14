@@ -41,10 +41,7 @@ inline void Map<S>::computeIntensity_(
     B.computePolyBasis(x_, y_, cache.pT);
 
     // Dot the coefficients in to our polynomial map
-    auto result = cache.pT * cache.A1Ry;
-
-    // Contract the map if needed
-    MBCAST(intensity, T1) = contract(result);
+    MBCAST(intensity, T1) = cache.pT * cache.A1Ry;
 }
 
 /**
@@ -79,8 +76,7 @@ inline void Map<S>::renderMap_(
     }
 
     // Apply the basis transform
-    auto result = cache.P * cache.A1Ry;
-    MBCAST(intensity, T1) = contract(result);
+    MBCAST(intensity, T1) = cache.P * cache.A1Ry;
 }
 
 // --------------------------
@@ -175,7 +171,7 @@ inline void Map<S>::computeFluxYlm(
     if (1) { // DEBUG ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Easy
-        MBCAST(flux, T1) = contract(B.rTA1 * cache.Ry);
+        MBCAST(flux, T1) = B.rTA1 * cache.Ry;
 
     // Occultation
     } else {
@@ -207,7 +203,7 @@ inline void Map<S>::computeFluxYlmLD(
 
         // Apply limb darkening
         limbDarken(cache.A1Ry, cache.p_uy);
-        MBCAST(flux, T1) = contract(B.rT * cache.p_uy);
+        MBCAST(flux, T1) = B.rT * cache.p_uy;
 
     // Occultation
     } else {
@@ -403,7 +399,7 @@ inline void Map<S>::computeFluxYlm (
     if (1) { // DEBUG ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Compute the theta deriv
-        MBCAST(dtheta, T3) = contract(B.rTA1 * cache.dRdthetay);
+        MBCAST(dtheta, T3) = B.rTA1 * cache.dRdthetay;
         MBCAST(dtheta, T3) *= radian;
 
         // The xo, yo, and ro derivs are trivial
@@ -419,7 +415,7 @@ inline void Map<S>::computeFluxYlm (
         MBCAST(du, T8).setZero();
 
         // Compute the flux
-        auto flux0 = B.rTA1 * cache.Ry;
+        auto flux0 = B.rTA1 * cache.RyUncontracted;
         MBCAST(flux, T1) = contract(flux0);
 
         // Compute the time deriv
@@ -466,8 +462,7 @@ inline void Map<S>::computeFluxYlmLD(
 
         // Apply limb darkening
         limbDarken(cache.A1Ry, cache.p_uy, true);
-        auto flux0 = B.rTA1 * cache.p_uy;
-        MBCAST(flux, T1) = contract(flux0);
+        MBCAST(flux, T1) = B.rT * cache.p_uy;
 
         // Compute the map derivs
         computeDfDyYlmLDNoOccultation(dy);
@@ -478,11 +473,11 @@ inline void Map<S>::computeFluxYlmLD(
         MBCAST(dyo, T5).setZero();
         MBCAST(dro, T6).setZero();
 
-        // Compute the theta deriv
+        // Compute the theta deriv TODO
         computeDfDthetaYlmLDNoOccultation(dtheta);
 
         // Compute the time deriv
-        computeDfDtYlmLDNoOccultation(dt, flux0);
+        // TODO computeDfDtYlmLDNoOccultation(dt, flux0);
 
     // Occultation
     } else {

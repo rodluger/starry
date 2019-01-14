@@ -3,10 +3,18 @@ import numpy as np
 np.random.seed(44)
 formatter = {'float_kind':lambda x: "%.6f" % x}
 
-def compare(kind="default", ydeg=2, udeg=4, nw=2, nt=2, eps=1.e-8, 
-            t=0.5, theta=10.0, xo=0.3, yo=0.5, ro=0.1):
+def compare(ydeg=2, udeg=0, nw=1, nt=1, eps=1.e-8, axis=[0, 1, 0],
+            t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1):
     """Test the analytic gradients."""
     # Settings
+    if nw > 1:
+        kind = "spectral"
+    elif nt > 1:
+        kind = "temporal"
+    elif nw == 1 and nt == 1:
+        kind = "default"
+    else:
+        raise ValueError()
     lmax = ydeg + udeg
     N = (lmax + 1) ** 2
     Ny = (ydeg + 1) ** 2
@@ -26,8 +34,6 @@ def compare(kind="default", ydeg=2, udeg=4, nw=2, nt=2, eps=1.e-8,
         sy2 = (N - Ny, nt)
         su1 = (udeg,)
         su2 = (lmax - udeg,)
-    else:
-        raise ValueError("Invalid `kind`.")
     coeffs['y'] = np.concatenate((np.random.randn(*sy1), np.zeros(sy2)))
     coeffs['u'] = np.concatenate((np.random.randn(*su1), np.zeros(su2)))
     params = {}
@@ -45,6 +51,7 @@ def compare(kind="default", ydeg=2, udeg=4, nw=2, nt=2, eps=1.e-8,
         map = starry2.Map(lmax, nw=nw)
     elif kind == "temporal":
         map = starry2.Map(lmax, nt=nt)
+    map.axis = axis
     map[:, :] = np.array(coeffs['y'])
     map[:] = np.array(coeffs['u'])
 
@@ -67,12 +74,23 @@ def compare(kind="default", ydeg=2, udeg=4, nw=2, nt=2, eps=1.e-8,
     n = 0
     for l in range(ydeg + 1):
         for m in range(-l, l + 1):
-            map[l, m] = coeffs['y'][n] - eps
-            f1 = map.flux(**params)
-            map[l, m] = coeffs['y'][n] + eps
-            f2 = map.flux(**params)
-            map[l, m] = coeffs['y'][n]
-            grad_num['y'][n] = (f2 - f1) / (2 * eps)
+            if kind == "temporal":
+                for t in range(nt):
+                    epsv = np.zeros(nt)
+                    epsv[t] = eps
+                    map[l, m] = coeffs['y'][n] - epsv
+                    f1 = map.flux(**params)
+                    map[l, m] = coeffs['y'][n] + epsv
+                    f2 = map.flux(**params)
+                    map[l, m] = coeffs['y'][n]
+                    grad_num['y'][n, t] = (f2 - f1) / (2 * eps)
+            else:
+                map[l, m] = coeffs['y'][n] - eps
+                f1 = map.flux(**params)
+                map[l, m] = coeffs['y'][n] + eps
+                f2 = map.flux(**params)
+                map[l, m] = coeffs['y'][n]
+                grad_num['y'][n] = (f2 - f1) / (2 * eps)
             n += 1
     grad_num['u'] = np.zeros(su1)
     n = 0
@@ -100,6 +118,75 @@ def compare(kind="default", ydeg=2, udeg=4, nw=2, nt=2, eps=1.e-8,
             )
         # raise AssertionError()
 
-#compare("default")
-#compare("spectral")
-compare("temporal")
+
+def test_default():
+    """Test the Default map."""
+    # Spherical harmonic phase curve
+    compare(ydeg=2, udeg=0, nw=1, nt=1, theta=15.0, xo=10.0)
+
+    # Spherical harmonic occultation
+    compare(ydeg=2, udeg=0, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+    # Limb darkening phase curve
+    compare(ydeg=0, udeg=2, nw=1, nt=1, theta=15.0, xo=10.0)
+
+    # Limb darkening occultation
+    compare(ydeg=0, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+    # Spherical harmonic + limb darkening phase curve
+    compare(ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=10.0)
+
+    # Spherical harmonic + limb darkening occultation
+    compare(ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+def test_spectral():
+    """Test the Spectral map."""
+    # Spherical harmonic phase curve
+    compare(ydeg=2, udeg=0, nw=3, nt=1, theta=15.0, xo=10.0)
+
+    # Spherical harmonic occultation
+    compare(ydeg=2, udeg=0, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+    # Limb darkening phase curve
+    compare(ydeg=0, udeg=2, nw=3, nt=1, theta=15.0, xo=10.0)
+
+    # Limb darkening occultation
+    compare(ydeg=0, udeg=2, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+    # Spherical harmonic + limb darkening phase curve
+    compare(ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=10.0)
+
+    # Spherical harmonic + limb darkening occultation
+    compare(ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+def test_temporal():
+    """Test the Temporal map."""
+    # Spherical harmonic phase curve
+    compare(ydeg=2, udeg=0, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0)
+
+    # Spherical harmonic occultation
+    compare(ydeg=2, udeg=0, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+    # Limb darkening phase curve
+    compare(ydeg=0, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0)
+
+    # Limb darkening occultation
+    compare(ydeg=0, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+    # Spherical harmonic + limb darkening phase curve
+    compare(ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0)
+
+    # Spherical harmonic + limb darkening occultation
+    compare(ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+if __name__ == "__main__":
+
+    # DEBUG
+    compare(ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0, axis=[1,1,1])
+
+    #test_default()
+    #test_spectral()
+    #test_temporal()

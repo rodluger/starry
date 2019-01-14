@@ -100,6 +100,68 @@ inline IsTemporal<U, void> setU0 () {
 }
 
 /**
+Rotate the map by an angle `theta` and store
+the result in `cache.Ry`. Optionally compute
+and cache the Wigner rotation matrices and
+their derivatives. Static map specialization.
+
+*/
+template<typename U=S>
+inline IsStatic<U, void> rotateIntoCache (
+    const Scalar& theta,
+    bool compute_matrices=false
+) 
+{
+    Scalar theta_rad = theta * radian;
+    computeWigner();
+    if ((!compute_matrices) && (cache.theta != theta)) {
+        W.rotate(cos(theta_rad), sin(theta_rad), cache.Ry);
+        cache.theta = theta;
+    } else if (compute_matrices && (cache.theta_with_grad != theta)) {
+        W.compute(cos(theta_rad), sin(theta_rad));
+        for (int l = 0; l < lmax + 1; ++l) {
+            cache.Ry.block(l * l, 0, 2 * l + 1, ncoly) =
+                W.R[l] * y.block(l * l, 0, 2 * l + 1, ncoly);
+            cache.dRdthetay.block(l * l, 0, 2 * l + 1, ncoly) =
+                W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, ncoly);
+        }
+        cache.theta_with_grad = theta;
+    }
+}
+
+/**
+Rotate the map by an angle `theta` and store
+the result in `cache.Ry`. Optionally compute
+and cache the Wigner rotation matrices and
+their derivatives. Temporal map specialization.
+
+*/
+template<typename U=S>
+inline IsTemporal<U, void> rotateIntoCache (
+    const Scalar& theta,
+    bool compute_matrices=false
+) 
+{
+    Scalar theta_rad = theta * radian;
+    computeWigner();
+    if ((!compute_matrices) && (cache.theta != theta)) {
+        W.rotate(cos(theta_rad), sin(theta_rad), cache.RyUncontracted);
+        cache.Ry = contract(cache.RyUncontracted);
+        cache.theta = theta;
+    } else if (compute_matrices && (cache.theta_with_grad != theta)) {
+        W.compute(cos(theta_rad), sin(theta_rad));
+        for (int l = 0; l < lmax + 1; ++l) {
+            cache.RyUncontracted.block(l * l, 0, 2 * l + 1, ncoly) =
+                W.R[l] * y.block(l * l, 0, 2 * l + 1, ncoly);
+            cache.Ry = contract(cache.RyUncontracted);
+            cache.dRdthetay.block(l * l, 0, 2 * l + 1, nflx) =
+                contract(W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, ncoly));
+        }
+        cache.theta_with_grad = theta;
+    }
+}
+
+/**
 Normalize the Agol g basis and its derivatives. 
 Default map specialization.
 

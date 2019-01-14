@@ -333,16 +333,7 @@ inline IsTemporal<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & dy
 ){
     for (int i = 0; i < ncoly; ++i)
-        MBCAST(dy, T1).col(i) = B.rT * cache.dLDdy[i] * taylor(i);
-
-    /*
-    TODO!
-
-    f(t) = rT . (L[0] + L[1] * t + ...)
-
-    dfdy.col(i) = rT . dLdy[i] * 
-    */
-
+        MBCAST(dy, T1).col(i) = B.rT * cache.dLDdy[i];
 }
 
 /**
@@ -457,6 +448,5 @@ inline IsTemporal<U, void> computeDfDtYlmLDNoOccultation (
     MatrixBase<T1> const & dt,
     const YCoeffType & flux0
 ){
-    // TODO: Check this
     MBCAST(dt, T1) = flux0.segment(1, ncoly - 1) * taylor.segment(0, ncoly - 1);
 }

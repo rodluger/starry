@@ -11,6 +11,7 @@ public:
     using YCoeffType = typename S::YCoeffType;
     using UType = typename S::UType;
     using UCoeffType = typename S::UCoeffType;
+    using CtrYType = typename S::CtrYType;
 
     // Public variables
     const int lmax;
@@ -167,11 +168,6 @@ protected:
 
     inline void computeAgolGBasis ();
 
-    inline void rotateIntoCache (
-        const Scalar& theta,
-        bool compute_matrices=false
-    );
-
     inline void rotateByAxisAngle (
         const UnitVector<Scalar>& axis_,
         const Scalar& costheta,
@@ -180,8 +176,8 @@ protected:
     );
 
     inline void limbDarken (
-        const YType& poly, 
-        YType& poly_ld, 
+        const CtrYType& poly, 
+        CtrYType& poly_ld, 
         bool gradient=false
     );
 

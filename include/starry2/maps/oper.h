@@ -151,36 +151,6 @@ inline void Map<S>::rotate (
 }
 
 /**
-Rotate the map by an angle `theta` and store
-the result in `cache.Ry`. Optionally compute
-and cache the Wigner rotation matrices and
-their derivatives.
-
-*/
-template <class S>
-inline void Map<S>::rotateIntoCache (
-    const Scalar& theta,
-    bool compute_matrices
-) 
-{
-    Scalar theta_rad = theta * radian;
-    computeWigner();
-    if ((!compute_matrices) && (cache.theta != theta)) {
-        W.rotate(cos(theta_rad), sin(theta_rad), cache.Ry);
-        cache.theta = theta;
-    } else if (compute_matrices && (cache.theta_with_grad != theta)) {
-        W.compute(cos(theta_rad), sin(theta_rad));
-        for (int l = 0; l < lmax + 1; ++l) {
-            cache.Ry.block(l * l, 0, 2 * l + 1, ncoly) =
-                W.R[l] * y.block(l * l, 0, 2 * l + 1, ncoly);
-            cache.dRdthetay.block(l * l, 0, 2 * l + 1, ncoly) =
-                W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, ncoly);
-        }
-        cache.theta_with_grad = theta;
-    }
-}
-
-/**
 Rotate an arbitrary map vector in place
 given an axis and an angle.
 
@@ -251,7 +221,6 @@ inline void Map<S>::computeLDPolynomial (bool gradient) {
             cache.dAgolPdy[i].setZero();
             cache.dAgolPdy[i].col(0) = tmp.col(i) * norm0;
             
-
         }
         cache.compute_agol_p_grad = false;
     }
@@ -262,39 +231,61 @@ Limb-darken a polynomial map, and optionally compute the
 gradient of the resulting map with respect to the input
 polynomial map and the input limb-darkening map.
 
+TODO: Template this function for speed.
+
 */
 template <class S>
 inline void Map<S>::limbDarken (
-    const YType& poly, 
-    YType& poly_ld, 
+    const CtrYType& poly, 
+    CtrYType& poly_ld, 
     bool gradient
 ) {
-
     // Compute the limb darkening polynomial
     computeLDPolynomial(gradient);
 
-    // Multiply a polynomial map by the LD polynomial
-    computeDegreeY();
-    computeDegreeU();
-    if (gradient) {
-        basis::polymul(y_deg, poly, u_deg, cache.agol_p, lmax, poly_ld, 
-                       cache.dLDdp, cache.dLDdagol_p);
-    } else {
-        basis::polymul(y_deg, poly, u_deg, cache.agol_p, lmax, poly_ld);
-    }
-
     // Compute the gradient of the limb-darkened polynomial
-    // with respect to `y` and `u`. Tricky: make sure to get
-    // the normalization correct.
+    // with respect to `y` and `u`.
+    //
+    //    dLDdu = dp_uy / du 
+    //          = dLDdagol_p * dAgolPdu
+    //
+    //    dLDdy = dp_uy / dy 
+    //          = dLDdp * dp / dy + dLDdagol_p * dAgolPdy
+    //          = dLDdp * A1 * R + dLDdagol_p * dAgolPdy
+    //
     if (gradient) {
 
-        // TODO: This all appears to be working for Default and Spectral
-        //       maps, but there are issues with Temporal.
+
+        basis::polymul(y_deg, poly, u_deg, cache.agol_p, lmax, poly_ld, 
+                        cache.dLDdp, cache.dLDdagol_p);
 
         for (int i = 0; i < ncolu; ++i) {
             cache.dLDdu[i] = cache.dLDdagol_p[i] * cache.dAgolPdu[i];
         }
 
+        // TODO: Template this!
+#ifdef _STARRY_TEMPORAL_
+
+        Matrix<Scalar> R(N, N);
+        R.setZero();
+        for (int l = 0; l < lmax + 1; ++l)
+            R.block(l * l, l * l, 2 * l + 1, 2 * l + 1) = W.R[l];
+        Matrix<Scalar> A1R = B.A1 * R;
+        for (int i = 0; i < ncoly; ++i) {
+            auto dAgolPdy = cache.dAgolPdy[0];
+
+            UType tmp = B.U1 * u;
+            UCoeffType rTU1u = B.rT * tmp;
+            Scalar norm0 = pi<Scalar>() / rTU1u(0);
+            dAgolPdy.setZero();
+
+            dAgolPdy.col(0) = tmp.col(0) * norm0 * taylor(i);
+
+            cache.dLDdy[i] = cache.dLDdp[0] * A1R * taylor(i) + cache.dLDdagol_p[0] * dAgolPdy;
+        }
+
+
+#else 
         // TODO: This can be sped up SO much. This is for DEBUG only.
         // TODO: Cache rTdLdy, not dLdy, so we're never dealing with matrices.
         Matrix<Scalar> R(N, N);
@@ -309,20 +300,11 @@ inline void Map<S>::limbDarken (
             else
                 cache.dLDdy[i] += cache.dLDdagol_p[0] * cache.dAgolPdy[0];
         }
+#endif
 
-
-        // Compute 
-        //
-        //    dLDdu = dp_uy / du 
-        //          = dLDdagol_p * dAgolPdu
-        //
-        // and
-        //
-        //    dLDdy = dp_uy / dy 
-        //          = dLDdp * dp / dy + dLDdagol_p * dAgolPdy
-        //          = dLDdp * A1 * R + dLDdagol_p * dAgolPdy
-
-
+    } else {
+        // Multiply the polynomials
+        basis::polymul(y_deg, poly, u_deg, cache.agol_p, lmax, poly_ld);
     }
 
 }
