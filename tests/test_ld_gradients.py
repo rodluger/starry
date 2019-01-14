@@ -129,13 +129,13 @@ def run_flux(multi=False, case="ld"):
 
 def test_ld_flux_with_gradients_double():
     """Test the flux with gradients [double]."""
-    for case in ["ld"]: # TODO, "sph", "ld+sph"]:
+    for case in ["ld", "sph", "ld+sph"]:
         run_flux(multi=False, case=case)
 
 
 def test_ld_flux_with_gradients_multi():
     """Test the flux with gradients [multi]."""
-    for case in ["ld"]: # TODO, "sph", "ld+sph"]:
+    for case in ["ld", "sph", "ld+sph"]:
         run_flux(multi=True, case=case)
 
 

@@ -161,7 +161,9 @@ protected:
 
     inline void computeWigner ();
 
-    inline void computeLDPolynomial ();
+    inline void computeLDPolynomial (
+        bool gradient=false
+    );
 
     inline void computeAgolGBasis ();
 

@@ -172,7 +172,7 @@ inline void Map<S>::computeFluxYlm(
     rotateIntoCache(theta);
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0.0)) {
+    if (1) { // DEBUG ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Easy
         MBCAST(flux, T1) = contract(B.rTA1 * cache.Ry);
@@ -200,7 +200,7 @@ inline void Map<S>::computeFluxYlmLD(
     rotateIntoCache(theta);
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0.0)) {
+    if (1) { // DEBUG ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Change basis to polynomials
         cache.A1Ry = B.A1 * cache.Ry;
@@ -316,12 +316,12 @@ inline void Map<S>::computeFluxLD(
         MBCAST(du, T8).setZero();
 
         // dF / dy
-        computeDfDyLimbDarkenedNoOccultation(dy);
+        computeDfDyLDNoOccultation(dy);
 
         // dF / dt
-        computeDfDtLimbDarkenedNoOccultation(dt);
+        computeDfDtLDNoOccultation(dt);
         
-        // The flux is easy: the disk-integrated intensity
+        // The disk-integrated intensity
         // is just the Y_{0,0} coefficient
         MBCAST(flux, T1) = contract(y.row(0));
 
@@ -364,13 +364,13 @@ inline void Map<S>::computeFluxLD(
         MBCAST(dro, T6) = dro.cwiseProduct(norm);
 
         // dF / dy
-        computeDfDyLimbDarkenedOccultation(dy, flux0);
+        computeDfDyLDOccultation(dy, flux0);
 
         // dF / dt
-        computeDfDtLimbDarkenedOccultation(dt, flux0);
+        computeDfDtLDOccultation(dt, flux0);
 
         // dF / du from dF / dc
-        computeDfDu(flux0, du, norm);
+        computeDfDuLDOccultation(flux0, du, norm);
 
     }
 
@@ -400,7 +400,7 @@ inline void Map<S>::computeFluxYlm (
     rotateIntoCache(theta, true);
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0.0)) {
+    if (1) { // DEBUG ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Compute the theta deriv
         MBCAST(dtheta, T3) = contract(B.rTA1 * cache.dRdthetay);
@@ -412,7 +412,7 @@ inline void Map<S>::computeFluxYlm (
         MBCAST(dro, T6).setZero();
         
         // Compute derivs with respect to y
-        computeDfDyNoOccultation(dy, theta);
+        computeDfDyYlmNoOccultation(dy, theta);
 
         // Note that we do not compute limb darkening 
         // derivatives in this case; see the docs.
@@ -423,7 +423,7 @@ inline void Map<S>::computeFluxYlm (
         MBCAST(flux, T1) = contract(flux0);
 
         // Compute the time deriv
-        computeDfDtNoOccultation(dt, flux0);
+        computeDfDtYlmNoOccultation(dt, flux0);
 
     // Occultation
     } else {
@@ -459,12 +459,20 @@ inline void Map<S>::computeFluxYlmLD(
     rotateIntoCache(theta, true);
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0.0)) {
+    if (1) { // DEBUG ((b >= 1 + ro) || (ro == 0.0)) {
 
-        // TODO!
-        // NOTE: Recall that with our new normalization,
-        // limb darkening CAN affect the total flux!
-        throw errors::NotImplementedError("Not yet implemented.");
+        // Change basis to polynomials
+        cache.A1Ry = B.A1 * cache.Ry;
+
+        // Apply limb darkening
+        limbDarken(cache.A1Ry, cache.p_uy, true);
+        MBCAST(flux, T1) = contract(B.rT * cache.p_uy);
+
+        // Compute the map derivs
+        computeDfDyYlmLDNoOccultation(dy);
+        computeDfDuYlmLDNoOccultation(du);
+
+        // TODO: Add in other derivs
 
     // Occultation
     } else {
@@ -475,4 +483,3 @@ inline void Map<S>::computeFluxYlmLD(
     }
 
 }
-

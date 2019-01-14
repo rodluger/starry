@@ -6,6 +6,7 @@ protected:
     // Types
     using Scalar = typename S::Scalar;
     using YType = typename S::YType;
+    using YCoeffType = typename S::YCoeffType;
     using UType = typename S::UType;
     using FType = typename S::FType;
 
@@ -25,6 +26,7 @@ public:
     bool compute_degree_u;
     bool compute_P;
     bool compute_agol_p;
+    bool compute_agol_p_grad;
 
     // Cached variables
     int res;
@@ -33,7 +35,7 @@ public:
     Scalar theta_with_grad;
     Matrix<Scalar> P;                                                          /**< The change of basis matrix from Ylms to pixels */
     UType agol_g;
-    Matrix<Scalar> dAgolGdu;                                                   /**< Deriv of Agol `c` coeffs w/ respect to the limb darkening coeffs */
+    Matrix<Scalar> dAgolGdu;                                                   /**< Deriv of Agol `g` coeffs w/ respect to the limb darkening coeffs */
     UType agol_p;
     YType Ry;
     YType A1Ry;
@@ -42,6 +44,13 @@ public:
     RowVector<Scalar> pT;
     std::vector<Matrix<Scalar>> EulerD;
     std::vector<Matrix<Scalar>> EulerR;
+    std::vector<Matrix<Scalar>> dLDdp;
+    std::vector<Matrix<Scalar>> dLDdagol_p;
+    std::vector<Matrix<Scalar>> dAgolPdu;
+    std::vector<Matrix<Scalar>> dAgolPdy; // TODO: This is sparse
+
+    std::vector<Matrix<Scalar>> dLDdu;
+    std::vector<Matrix<Scalar>> dLDdy;
 
     // Pybind cache
     FType pb_flux;
@@ -63,12 +72,14 @@ public:
         // Recall that the normalization of the LD
         // polynomial depends on Y_{0,0}
         compute_agol_p = true;
+        compute_agol_p_grad = true;
         compute_agol_g = true;
     }
 
     inline void uChanged () {
         compute_degree_u = true;
         compute_agol_p = true;
+        compute_agol_p_grad = true;
         compute_agol_g = true;
     }
 
@@ -95,6 +106,7 @@ public:
         compute_degree_u = true;
         compute_P = true;
         compute_agol_p = true;
+        compute_agol_p_grad = true;
         res = -1;
         taylort = NAN;
         theta = NAN;
@@ -122,12 +134,28 @@ public:
         p_uy(N, ncoly),
         pT(N),
         EulerD(lmax + 1),
-        EulerR(lmax + 1)
+        EulerR(lmax + 1),
+        dLDdp(ncoly),
+        dLDdagol_p(ncolu),
+        dAgolPdu(ncolu),
+        dAgolPdy(ncolu),
+        dLDdu(ncolu),
+        dLDdy(ncoly)
     {
         for (int l = 0; l < lmax + 1; ++l) {
             int sz = 2 * l + 1;
             EulerD[l].resize(sz, sz);
             EulerR[l].resize(sz, sz);
+        }
+        for (int i = 0; i < ncoly; ++i) {
+            dLDdp[i].resize(N, N);
+            dLDdy[i].resize(N, N);
+        }
+        for (int i = 0; i < ncolu; ++i) {
+            dLDdagol_p[i].resize(N, N);
+            dAgolPdu[i].resize(N, N);
+            dAgolPdy[i].resize(N, N);
+            dLDdu[i].resize(N, N);
         }
         reset();
     };

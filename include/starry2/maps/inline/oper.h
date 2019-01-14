@@ -100,7 +100,7 @@ inline IsTemporal<U, void> setU0 () {
 }
 
 /**
-Normalize the Agol C basis and its derivatives. 
+Normalize the Agol g basis and its derivatives. 
 Default map specialization.
 
 */
@@ -116,7 +116,7 @@ inline IsDefault<U, void> normalizeAgolG (
 }
 
 /**
-Normalize the Agol C basis and its derivatives. 
+Normalize the Agol g basis and its derivatives. 
 Spectral map specialization.
 
 */
@@ -135,7 +135,7 @@ inline IsSpectral<U, void> normalizeAgolG (
 }
 
 /**
-Normalize the Agol C basis and its derivatives. 
+Normalize the Agol g basis and its derivatives. 
 Temporal map specialization.
 
 */

@@ -124,6 +124,139 @@ inline void polymul (
 }
 
 /**
+Multiply two polynomial vectors/matrices, or a matrix (p1) 
+by a vector (p2). Also propagate the gradient.
+
+Since the inputs and outputs are both (in the most general case) matrices,
+the derivative of `p1p2` with respect to either `p1` or `p2`
+is a matrix of matrices, which is pretty gnarly. Fortunately, the columns of 
+each matrix (representing wavelength or time components) are all independent 
+of each other, so we can get away with setting each element of the matrix 
+`p1p2` to be a *vector* corresponding to the derivative of the product with 
+respect to the polynomial coefficients *at that particular column*.
+
+For definiteness, let `dp1(i, j, k)` be the derivative of the j^th
+polynomial coefficient of `p1p2` with respect to the k^th polynomial
+coefficient of `p1`, both in the i^th map column.
+
+*/
+template <typename T1, typename T2, typename T3>
+inline void polymul (
+    int lmax1, 
+    const MatrixBase<T1>& p1, 
+    int lmax2,
+    const MatrixBase<T2>& p2,
+    int lmax12, 
+    MatrixBase<T3>& p1p2,
+    std::vector<Matrix<typename T3::Scalar>>& dp1,
+    std::vector<Matrix<typename T3::Scalar>>& dp2
+) {
+    using Scalar = typename T3::Scalar;
+    bool odd1;
+    int l, n;
+    int n2, n1 = 0;
+    RowVector<Scalar> fac;
+    p1p2.setZero();
+    int ncol1 = p1.cols(), 
+        ncol2 = p2.cols();
+
+    // Reset the gradients
+    for (int i = 0; i < ncol1; ++i)
+        dp1[i].setZero();
+    for (int i = 0; i < ncol2; ++i)
+        dp2[i].setZero();
+
+    // The maps have the same shape
+    if (ncol1 == ncol2) {
+        for (int l1 = 0; l1 < lmax1 + 1; ++l1) {
+            for (int m1 = -l1; m1 < l1 + 1; ++m1) {
+                if (p1.row(n1).any()) {
+                    odd1 = (l1 + m1) % 2 == 0 ? false : true;
+                    n2 = 0;
+                    for (int l2 = 0; l2 < lmax2 + 1; ++l2) {
+                        if (l1 + l2 > lmax12) break;
+                        for (int m2 = -l2; m2 < l2 + 1; ++m2) {
+                            if (p2.row(n2).any()) {
+                                l = l1 + l2;
+                                n = l * l + l + m1 + m2;
+                                fac = p1.row(n1).cwiseProduct(p2.row(n2));
+                                if (odd1 && ((l2 + m2) % 2 != 0)) {
+                                    p1p2.row(n - 4 * l + 2) += fac;
+                                    p1p2.row(n - 2) -= fac;
+                                    p1p2.row(n + 2) -= fac;
+                                    for (int i = 0; i < ncol1; ++i) {
+                                        dp1[i](n - 4 * l + 2, n1) += p2(n2, i);
+                                        dp2[i](n - 4 * l + 2, n2) += p1(n1, i);
+                                        dp1[i](n - 2, n1) -= p2(n2, i);
+                                        dp2[i](n - 2, n2) -= p1(n1, i);
+                                        dp1[i](n + 2, n1) -= p2(n2, i);
+                                        dp2[i](n + 2, n2) -= p1(n1, i);
+                                    }
+                                } else {
+                                    p1p2.row(n) += fac;
+                                    for (int i = 0; i < ncol1; ++i) {
+                                        dp1[i](n, n1) += p2(n2, i);
+                                        dp2[i](n, n2) += p1(n1, i);
+                                    }
+                                }
+                            }
+                            ++n2;
+                        }
+                    }
+                }
+                ++n1;
+            }
+        }
+    
+    // The first map is a matrix, the second a vector
+    // TODO: Check this case.
+    } else if ((ncol1 > 1) && (ncol2 == 1)) {
+        for (int l1 = 0; l1 < lmax1 + 1; ++l1) {
+            for (int m1 = -l1; m1 < l1 + 1; ++m1) {
+                if (p1.row(n1).any()) {
+                    odd1 = (l1 + m1) % 2 == 0 ? false : true;
+                    n2 = 0;
+                    for (int l2 = 0; l2 < lmax2 + 1; ++l2) {
+                        if (l1 + l2 > lmax12) break;
+                        for (int m2 = -l2; m2 < l2 + 1; ++m2) {
+                            if (p2.row(n2).any()) {
+                                l = l1 + l2;
+                                n = l * l + l + m1 + m2;
+                                fac = p1.row(n1) * p2(n2, 0);
+                                if (odd1 && ((l2 + m2) % 2 != 0)) {
+                                    p1p2.row(n - 4 * l + 2) += fac;
+                                    p1p2.row(n - 2) -= fac;
+                                    p1p2.row(n + 2) -= fac;
+                                    for (int i = 0; i < ncol1; ++i) {
+                                        dp1[i](n - 4 * l + 2, n1) += p2(n2, 0);
+                                        dp1[i](n - 2, n1) -= p2(n2, 0);
+                                        dp1[i](n + 2, n1) -= p2(n2, 0);
+                                    }
+                                    dp2[0](n - 4 * l + 2, n2) += p1(n1, 0);
+                                    dp2[0](n - 2, n2) -= p1(n1, 0);
+                                    dp2[0](n + 2, n2) -= p1(n1, 0);
+                                } else {
+                                    p1p2.row(n) += fac;
+                                    for (int i = 0; i < ncol1; ++i)
+                                        dp1[i](n, n1) += p2(n2, 0);
+                                    dp2[0](n, n2) += p1(n1, 0);
+                                }
+                            }
+                            ++n2;
+                        }
+                    }
+                }
+                ++n1;
+            }
+        }
+    // This case shouldn't be encountered!
+    } else {
+        throw errors::NotImplementedError(
+            "Invalid matrix product in `polymul`.");
+    }
+}
+
+/**
 Compute the `P(z)` part of the Ylm vectors.
 
 */

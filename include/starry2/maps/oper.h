@@ -210,7 +210,7 @@ inline void Map<S>::rotateByAxisAngle (
 }
 
 /** 
-Compute the limb darkening polynomial `agol_p`
+Compute the limb darkening polynomial `agol_p`.
 
 NOTE: This is the **normalized** xyz polynomial corresponding
 to the limb darkening vector `u`. The normalization is such 
@@ -221,14 +221,39 @@ This is significantly different from the beta version of the
 code, which normalized it such that the FLUX remained unchanged.
 That normalization was almost certainly unphysical.
 
+If `gradient=true`, `dAgolPdu(i, j, k)` is the derivative of the j^th
+polynomial coefficient of `agol_p` with respect to the k^th polynomial
+coefficient of `u`, both in the i^th map column.
+
+
+TODO: This currently only works if ncoly == ncolu! 
+      Need to contract y.row(0) correctly
+
 */
 template <class S>
-inline void Map<S>::computeLDPolynomial () {
-    if (cache.compute_agol_p) {
+inline void Map<S>::computeLDPolynomial (bool gradient) {
+    if (!gradient && cache.compute_agol_p) {
         UType tmp = B.U1 * u;
-        UCoeffType norm = (pi<Scalar>() * y.row(0)).cwiseQuotient(B.rT * tmp);
+        UCoeffType norm = pi<Scalar>() * contract(y.row(0)).cwiseQuotient(B.rT * tmp);
         cache.agol_p = tmp.array().rowwise() * norm.array();
         cache.compute_agol_p = false;
+    } else if (gradient && cache.compute_agol_p_grad) {
+        UType tmp = B.U1 * u;
+        UCoeffType rTU1u = B.rT * tmp;
+        for (int i = 0; i < ncolu; ++i) {
+            Scalar norm0 = pi<Scalar>() / rTU1u(i);
+            Scalar norm = norm0 * contract(y.row(0))(i);
+            RowVector<Scalar> dnormdu = -(norm / rTU1u(i)) * B.rTU1;
+            cache.agol_p.col(i) = tmp.col(i) * norm;
+            cache.dAgolPdu[i] = B.U1 * norm + tmp.col(i) * dnormdu;
+
+            // TODO: This matrix is sparse; exploit this!
+            cache.dAgolPdy[i].setZero();
+            cache.dAgolPdy[i].col(0) = tmp.col(i) * norm0;
+            
+
+        }
+        cache.compute_agol_p_grad = false;
     }
 }
 
@@ -246,15 +271,14 @@ inline void Map<S>::limbDarken (
 ) {
 
     // Compute the limb darkening polynomial
-    computeLDPolynomial();
+    computeLDPolynomial(gradient);
 
     // Multiply a polynomial map by the LD polynomial
     computeDegreeY();
     computeDegreeU();
     if (gradient) {
-        // TODO!
-        throw errors::NotImplementedError("");
-        // polymul(y_deg, poly, u_deg, p_u, lmax, poly_ld, dLDdp, dLDdp_u);
+        basis::polymul(y_deg, poly, u_deg, cache.agol_p, lmax, poly_ld, 
+                       cache.dLDdp, cache.dLDdagol_p);
     } else {
         basis::polymul(y_deg, poly, u_deg, cache.agol_p, lmax, poly_ld);
     }
@@ -263,8 +287,41 @@ inline void Map<S>::limbDarken (
     // with respect to `y` and `u`. Tricky: make sure to get
     // the normalization correct.
     if (gradient) {
-        // TODO!
-        throw errors::NotImplementedError("");
+
+        // TODO: This all appears to be working for Default and Spectral
+        //       maps, but there are issues with Temporal.
+
+        for (int i = 0; i < ncolu; ++i) {
+            cache.dLDdu[i] = cache.dLDdagol_p[i] * cache.dAgolPdu[i];
+        }
+
+        // TODO: This can be sped up so much.
+        Matrix<Scalar> A1R(N, N);
+        A1R.setZero();
+        for (int l = 0; l < lmax + 1; ++l)
+            A1R.block(l * l, l * l, 2 * l + 1, 2 * l + 1) = 
+                B.A1.block(l * l, l * l, 2 * l + 1, 2 * l + 1) * W.R[l];
+        for (int i = 0; i < ncoly; ++i) {
+            cache.dLDdy[i] = cache.dLDdp[i] * A1R;
+            if (ncoly == ncolu)
+                cache.dLDdy[i] += cache.dLDdagol_p[i] * cache.dAgolPdy[i];
+            else
+                cache.dLDdy[i] += cache.dLDdagol_p[0] * cache.dAgolPdy[0];
+        }
+
+
+        // Compute 
+        //
+        //    dLDdu = dp_uy / du 
+        //          = dLDdagol_p * dAgolPdu
+        //
+        // and
+        //
+        //    dLDdy = dp_uy / dy 
+        //          = dLDdp * dp / dy + dLDdagol_p * dAgolPdy
+        //          = dLDdp * A1 * R + dLDdagol_p * dAgolPdy
+
+
     }
 
 }
