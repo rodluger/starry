@@ -295,12 +295,13 @@ inline void Map<S>::limbDarken (
             cache.dLDdu[i] = cache.dLDdagol_p[i] * cache.dAgolPdu[i];
         }
 
-        // TODO: This can be sped up so much.
-        Matrix<Scalar> A1R(N, N);
-        A1R.setZero();
+        // TODO: This can be sped up SO much. This is for DEBUG only.
+        // TODO: Cache rTdLdy, not dLdy, so we're never dealing with matrices.
+        Matrix<Scalar> R(N, N);
+        R.setZero();
         for (int l = 0; l < lmax + 1; ++l)
-            A1R.block(l * l, l * l, 2 * l + 1, 2 * l + 1) = 
-                B.A1.block(l * l, l * l, 2 * l + 1, 2 * l + 1) * W.R[l];
+            R.block(l * l, l * l, 2 * l + 1, 2 * l + 1) = W.R[l];
+        Matrix<Scalar> A1R = B.A1 * R;
         for (int i = 0; i < ncoly; ++i) {
             cache.dLDdy[i] = cache.dLDdp[i] * A1R;
             if (ncoly == ncolu)

@@ -332,8 +332,17 @@ template<typename U=S, typename T1>
 inline IsTemporal<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & dy
 ){
-    // TODO
-    throw errors::ToDoError("TODO: Temporal dfdy for Ylm + LD.");
+    for (int i = 0; i < ncoly; ++i)
+        MBCAST(dy, T1).col(i) = B.rT * cache.dLDdy[i] * taylor(i);
+
+    /*
+    TODO!
+
+    f(t) = rT . (L[0] + L[1] * t + ...)
+
+    dfdy.col(i) = rT . dLdy[i] * 
+    */
+
 }
 
 /**
@@ -374,4 +383,80 @@ inline IsTemporal<U, void> computeDfDuYlmLDNoOccultation (
     MatrixBase<T1> const & du
 ){
     MBCAST(du, T1) = (B.rT * cache.dLDdu[0]).segment(1, lmax).transpose();
+}
+
+/**
+The derivative of the flux with respect to theta
+for a limb-darkened spherical harmonic map.
+Default case.
+
+*/
+template<typename U=S, typename T1>
+inline IsDefault<U, void> computeDfDthetaYlmLDNoOccultation (
+    MatrixBase<T1> const & dtheta
+){
+    MBCAST(dtheta, T1) = B.rT * cache.dLDdp[0] * B.A1 * cache.dRdthetay * radian;
+}
+
+/**
+The derivative of the flux with respect to theta
+for a limb-darkened spherical harmonic map.
+Spectral case.
+
+*/
+template<typename U=S, typename T1>
+inline IsSpectral<U, void> computeDfDthetaYlmLDNoOccultation (
+    MatrixBase<T1> const & dtheta
+){
+    for (int i = 0; i < ncoly; ++i)
+        MBCAST(dtheta, T1).col(i) = B.rT * cache.dLDdp[i] * B.A1 * cache.dRdthetay.col(i);
+    MBCAST(dtheta, T1) *= radian;
+}
+
+/**
+The derivative of the flux with respect to theta
+for a limb-darkened spherical harmonic map.
+Temporal case.
+
+*/
+template<typename U=S, typename T1>
+inline IsTemporal<U, void> computeDfDthetaYlmLDNoOccultation (
+    MatrixBase<T1> const & dtheta
+){
+    // TODO!
+    /*
+    for (int i = 0; i < ncoly; ++i)
+        MBCAST(dtheta, T1).col(i) = B.rT * cache.dLDdp[i] * B.A1 * cache.dRdthetay.col(i);
+    MBCAST(dtheta, T1) *= radian;
+    */
+}
+
+/**
+The derivative of the flux with respect to time
+outside of an occultation for a limb-darkened
+spherical harmonic map. 
+Static specialization.
+
+*/
+template<typename U=S, typename T1>
+inline IsStatic<U, void> computeDfDtYlmLDNoOccultation (
+    MatrixBase<T1> const & dt,
+    const YCoeffType & flux0
+){
+}
+
+/**
+The derivative of the flux with respect to time
+outside of an occultation for a limb-darkened 
+spherical harmonic map. 
+Temporal specialization.
+
+*/
+template<typename U=S, typename T1>
+inline IsTemporal<U, void> computeDfDtYlmLDNoOccultation (
+    MatrixBase<T1> const & dt,
+    const YCoeffType & flux0
+){
+    // TODO: Check this
+    MBCAST(dt, T1) = flux0.segment(1, ncoly - 1) * taylor.segment(0, ncoly - 1);
 }

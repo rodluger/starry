@@ -466,13 +466,23 @@ inline void Map<S>::computeFluxYlmLD(
 
         // Apply limb darkening
         limbDarken(cache.A1Ry, cache.p_uy, true);
-        MBCAST(flux, T1) = contract(B.rT * cache.p_uy);
+        auto flux0 = B.rTA1 * cache.p_uy;
+        MBCAST(flux, T1) = contract(flux0);
 
         // Compute the map derivs
         computeDfDyYlmLDNoOccultation(dy);
         computeDfDuYlmLDNoOccultation(du);
 
-        // TODO: Add in other derivs
+        // The xo, yo, and ro derivs are trivial
+        MBCAST(dxo, T4).setZero();
+        MBCAST(dyo, T5).setZero();
+        MBCAST(dro, T6).setZero();
+
+        // Compute the theta deriv
+        computeDfDthetaYlmLDNoOccultation(dtheta);
+
+        // Compute the time deriv
+        computeDfDtYlmLDNoOccultation(dt, flux0);
 
     // Occultation
     } else {
