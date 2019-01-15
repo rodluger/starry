@@ -196,8 +196,7 @@ polynomial coefficient of `agol_p` with respect to the k^th polynomial
 coefficient of `u`, both in the i^th map column.
 
 
-TODO: This currently only works if ncoly == ncolu! 
-      Need to contract y.row(0) correctly
+TODO: This can be sped up a TON.
 
 */
 template <class S>
@@ -255,37 +254,13 @@ inline void Map<S>::limbDarken (
     //
     if (gradient) {
 
-
         basis::polymul(y_deg, poly, u_deg, cache.agol_p, lmax, poly_ld, 
-                        cache.dLDdp, cache.dLDdagol_p);
+                       cache.dLDdp, cache.dLDdagol_p);
 
         for (int i = 0; i < ncolu; ++i) {
             cache.dLDdu[i] = cache.dLDdagol_p[i] * cache.dAgolPdu[i];
         }
 
-        // TODO: Template this!
-#ifdef _STARRY_TEMPORAL_
-
-        Matrix<Scalar> R(N, N);
-        R.setZero();
-        for (int l = 0; l < lmax + 1; ++l)
-            R.block(l * l, l * l, 2 * l + 1, 2 * l + 1) = W.R[l];
-        Matrix<Scalar> A1R = B.A1 * R;
-        for (int i = 0; i < ncoly; ++i) {
-            auto dAgolPdy = cache.dAgolPdy[0];
-
-            UType tmp = B.U1 * u;
-            UCoeffType rTU1u = B.rT * tmp;
-            Scalar norm0 = pi<Scalar>() / rTU1u(0);
-            dAgolPdy.setZero();
-
-            dAgolPdy.col(0) = tmp.col(0) * norm0 * taylor(i);
-
-            cache.dLDdy[i] = cache.dLDdp[0] * A1R * taylor(i) + cache.dLDdagol_p[0] * dAgolPdy;
-        }
-
-
-#else 
         // TODO: This can be sped up SO much. This is for DEBUG only.
         // TODO: Cache rTdLdy, not dLdy, so we're never dealing with matrices.
         Matrix<Scalar> R(N, N);
@@ -293,14 +268,13 @@ inline void Map<S>::limbDarken (
         for (int l = 0; l < lmax + 1; ++l)
             R.block(l * l, l * l, 2 * l + 1, 2 * l + 1) = W.R[l];
         Matrix<Scalar> A1R = B.A1 * R;
-        for (int i = 0; i < ncoly; ++i) {
-            cache.dLDdy[i] = cache.dLDdp[i] * A1R;
-            if (ncoly == ncolu)
-                cache.dLDdy[i] += cache.dLDdagol_p[i] * cache.dAgolPdy[i];
-            else
-                cache.dLDdy[i] += cache.dLDdagol_p[0] * cache.dAgolPdy[0];
+        if (ncoly == ncolu) {
+            for (int i = 0; i < ncoly; ++i)
+                cache.dLDdy[i] = cache.dLDdp[i] * A1R + cache.dLDdagol_p[i] * cache.dAgolPdy[i];
+        } else {
+            for (int i = 0; i < ncoly; ++i)
+                cache.dLDdy[i] = cache.dLDdp[0] * A1R + cache.dLDdagol_p[0] * cache.dAgolPdy[0];
         }
-#endif
 
     } else {
         // Multiply the polynomials

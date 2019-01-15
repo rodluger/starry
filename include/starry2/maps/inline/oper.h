@@ -142,12 +142,16 @@ inline IsTemporal<U, void> rotateIntoCache (
     bool compute_matrices=false
 ) 
 {
+
+    // TODO: Caching is broken below for same theta, different t
+    throw errors::ToDoError("TODO");
+    
     Scalar theta_rad = theta * radian;
     computeWigner();
     if ((!compute_matrices) && (cache.theta != theta)) {
         W.rotate(cos(theta_rad), sin(theta_rad), cache.RyUncontracted);
-        cache.Ry = contract(cache.RyUncontracted);
         cache.theta = theta;
+        cache.Ry = contract(cache.RyUncontracted);
     } else if (compute_matrices && (cache.theta_with_grad != theta)) {
         W.compute(cos(theta_rad), sin(theta_rad));
         for (int l = 0; l < lmax + 1; ++l) {

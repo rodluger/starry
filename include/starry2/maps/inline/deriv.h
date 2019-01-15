@@ -333,7 +333,7 @@ inline IsTemporal<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & dy
 ){
     for (int i = 0; i < ncoly; ++i)
-        MBCAST(dy, T1).col(i) = B.rT * cache.dLDdy[i];
+        MBCAST(dy, T1).col(i) = B.rT * cache.dLDdy[i] * taylor(i);
 }
 
 /**

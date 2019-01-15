@@ -184,9 +184,6 @@ def test_temporal():
 
 if __name__ == "__main__":
 
-    # DEBUG
-    compare(ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0, axis=[1,1,1])
-
-    #test_default()
-    #test_spectral()
-    #test_temporal()
+    test_default()
+    test_spectral()
+    test_temporal()
