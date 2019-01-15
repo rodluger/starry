@@ -7,7 +7,7 @@ from scipy.integrate import dblquad
 def NumericalFlux(b, r, u):
     """Compute the flux by numerical integration of the surface integral."""
     # I'm only coding up a specific case here
-    assert (b >= 0) and (r <= 1), "Invalid range."
+    assert (b >= 0) and (r <= 1), "Invalid range for `r` and/or `b`."
 
     if b >= 1 + r:
         return 1
@@ -97,7 +97,7 @@ def test_high_order_ld():
 
     # Compute the error, check that it's better than 1 ppb
     error = np.max((np.abs(nF - sF)))
-    assert error < 1e-9
+    assert error < 1e-9, "Error in flux exceeds 1 ppb (= %.3e)." % error
 
 
 if __name__ == "__main__":

@@ -1,7 +1,26 @@
+"""
+Test gradient computation.
+
+"""
 import starry2
 import numpy as np
+import pytest
 np.random.seed(44)
-formatter = {'float_kind':lambda x: "%.6f" % x}
+
+
+def assert_allclose(name, expected, got, fmt="%.6f", atol=1e-6, rtol=1e-5):
+    """Raise an assertion error if two arrays differ."""
+    expected = np.atleast_1d(expected)
+    got = np.atleast_1d(got)
+    if not np.allclose(expected, got, atol=1e-6):
+        formatter = {'float_kind': lambda x: fmt % x}
+        msg = "Mismatch in %s: \nexpected \n%s, \ngot \n%s" % (
+                name, 
+                np.array2string(expected, formatter=formatter), 
+                np.array2string(got, formatter=formatter)
+            )
+        raise AssertionError(msg)
+
 
 def compare(ydeg=2, udeg=0, nw=1, nt=1, eps=1.e-8, axis=[0, 1, 0],
             t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1):
@@ -56,9 +75,12 @@ def compare(ydeg=2, udeg=0, nw=1, nt=1, eps=1.e-8, axis=[0, 1, 0],
     map[:] = np.array(coeffs['u'])
 
     # Compute the gradient analytically
-    _, grad = map.flux(**params, gradient=True)
+    flux, grad = map.flux(**params, gradient=True)
     grad['y'] = grad['y'][:Ny]
     grad['u'] = grad['u'][:udeg]
+
+    # Check that we get the same flux from the non-gradient call
+    assert_allclose("flux", map.flux(**params), flux)
 
     # Compute it numerically
     grad_num = {}
@@ -105,85 +127,82 @@ def compare(ydeg=2, udeg=0, nw=1, nt=1, eps=1.e-8, axis=[0, 1, 0],
 
     # Compare
     for key in grad.keys():
-        if not np.allclose(grad[key], grad_num[key], atol=1e-6):
-            print("Mismatch in %s: \nexpected \n%s, \ngot \n%s" % (
-                    key, 
-                    np.array2string(
-                        np.atleast_1d(grad_num[key]), formatter=formatter
-                    ), 
-                    np.array2string(
-                        np.atleast_1d(grad[key]), formatter=formatter
-                    )
-                )
-            )
-        # raise AssertionError()
+        assert_allclose(key, grad_num[key], grad[key])
 
 
-def test_default():
-    """Test the Default map."""
-    # Spherical harmonic phase curve
+def test_default_ylm_phase():
     compare(ydeg=2, udeg=0, nw=1, nt=1, theta=15.0, xo=10.0)
 
-    # Spherical harmonic occultation
+
+@pytest.mark.xfail
+def test_default_ylm_occ():
     compare(ydeg=2, udeg=0, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
-    # Limb darkening phase curve
+
+def test_default_ld_phase():
     compare(ydeg=0, udeg=2, nw=1, nt=1, theta=15.0, xo=10.0)
 
-    # Limb darkening occultation
+
+def test_default_ld_occ():
     compare(ydeg=0, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
-    # Spherical harmonic + limb darkening phase curve
+
+def test_default_ylmld_phase():
     compare(ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=10.0)
 
-    # Spherical harmonic + limb darkening occultation
+
+@pytest.mark.xfail
+def test_default_ylmld_occ():
     compare(ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
 
-def test_spectral():
-    """Test the Spectral map."""
-    # Spherical harmonic phase curve
+def test_spectral_ylm_phase():
     compare(ydeg=2, udeg=0, nw=3, nt=1, theta=15.0, xo=10.0)
 
-    # Spherical harmonic occultation
+
+@pytest.mark.xfail
+def test_spectral_ylm_occ():
     compare(ydeg=2, udeg=0, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
-    # Limb darkening phase curve
+
+def test_spectral_ld_phase():
     compare(ydeg=0, udeg=2, nw=3, nt=1, theta=15.0, xo=10.0)
 
-    # Limb darkening occultation
+
+def test_spectral_ld_occ():
     compare(ydeg=0, udeg=2, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
-    # Spherical harmonic + limb darkening phase curve
+
+def test_spectral_ylmld_phase():
     compare(ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=10.0)
 
-    # Spherical harmonic + limb darkening occultation
+
+@pytest.mark.xfail
+def test_spectral_ylmld_occ():
     compare(ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
 
-def test_temporal():
-    """Test the Temporal map."""
-    # Spherical harmonic phase curve
+def test_temporal_ylm_phase():
     compare(ydeg=2, udeg=0, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0)
 
-    # Spherical harmonic occultation
+
+@pytest.mark.xfail
+def test_temporal_ylm_occ():
     compare(ydeg=2, udeg=0, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
-    # Limb darkening phase curve
+
+def test_temporal_ld_phase():
     compare(ydeg=0, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0)
 
-    # Limb darkening occultation
+
+def test_temporal_ld_occ():
     compare(ydeg=0, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
-    # Spherical harmonic + limb darkening phase curve
+
+def test_temporal_ylmld_phase():
     compare(ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0)
 
-    # Spherical harmonic + limb darkening occultation
+
+@pytest.mark.xfail
+def test_temporal_ylmld_occ():
     compare(ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
-
-
-if __name__ == "__main__":
-
-    test_default()
-    test_spectral()
-    test_temporal()

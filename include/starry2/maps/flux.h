@@ -415,11 +415,10 @@ inline void Map<S>::computeFluxYlm (
         MBCAST(du, T8).setZero();
 
         // Compute the flux
-        auto flux0 = B.rTA1 * cache.RyUncontracted;
-        MBCAST(flux, T1) = contract(flux0);
+        MBCAST(flux, T1) = B.rTA1 * cache.Ry;
 
         // Compute the time deriv
-        computeDfDtYlmNoOccultation(dt, flux0);
+        computeDfDtYlmNoOccultation(dt);
 
     // Occultation
     } else {
@@ -473,11 +472,11 @@ inline void Map<S>::computeFluxYlmLD(
         MBCAST(dyo, T5).setZero();
         MBCAST(dro, T6).setZero();
 
-        // Compute the theta deriv TODO
+        // Compute the theta deriv
         computeDfDthetaYlmLDNoOccultation(dtheta);
 
         // Compute the time deriv
-        // TODO computeDfDtYlmLDNoOccultation(dt, flux0);
+        computeDfDtYlmLDNoOccultation(dt);
 
     // Occultation
     } else {

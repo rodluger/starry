@@ -1,4 +1,7 @@
-"""Test the map evaluation."""
+"""
+Test the map evaluation against some benchmarks.
+
+"""
 import starry2
 import numpy as np
 

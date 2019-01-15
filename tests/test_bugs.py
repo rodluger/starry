@@ -1,8 +1,7 @@
 """
-Current bugs/issues in starry.
+Test current bugs/issues in starry.
 
 """
-
 import starry2
 import pytest
 import numpy as np
@@ -11,17 +10,13 @@ import subprocess
 
 @pytest.mark.xfail
 def test_hysteresis():
-    """Something is wrong with the map degree here. [FIXED]"""
-    map = starry2.Map()
-    map[0,0] = 1
+    """Something is wrong with the map degree here."""
+    map = starry2.Map(4)
+    map[:, :] = 1
+    map.flux(theta=30.0)
+    map[4:, :] = 0
     map[1] = 1
-    map[1, 0] = 1
-    try:
-        f, g = map.flux(xo=[0.1, 0.2], ro=0.25, gradient=True)
-    except RuntimeError:
-        pass
-    map[1, 0] = 0
-    f, g = map.flux(xo=[0.1, 0.2], ro=0.25, gradient=True)
+    map.flux(theta=30.0)
 
 
 @pytest.mark.xfail

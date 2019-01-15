@@ -81,8 +81,7 @@ Static specialization.
 */
 template<typename U=S, typename T1>
 inline IsStatic<U, void> computeDfDtYlmNoOccultation (
-    MatrixBase<T1> const & dt,
-    const YCoeffType & flux0
+    MatrixBase<T1> const & dt
 ){
 }
 
@@ -94,10 +93,10 @@ Temporal specialization.
 */
 template<typename U=S, typename T1>
 inline IsTemporal<U, void> computeDfDtYlmNoOccultation (
-    MatrixBase<T1> const & dt,
-    const YCoeffType & flux0
+    MatrixBase<T1> const & dt
 ){
-    MBCAST(dt, T1) = flux0.segment(1, ncoly - 1) * taylor.segment(0, ncoly - 1);
+    MBCAST(dt, T1) = (B.rTA1 * cache.RyUncontracted).block(0, 1, 1, ncoly - 1) 
+                     * taylor.segment(0, ncoly - 1);
 }
 
 /**
@@ -379,14 +378,16 @@ inline IsTemporal<U, void> computeDfDuYlmLDNoOccultation (
 /**
 The derivative of the flux with respect to theta
 for a limb-darkened spherical harmonic map.
-Default case.
+Single-wavelength case.
 
 */
 template<typename U=S, typename T1>
-inline IsDefault<U, void> computeDfDthetaYlmLDNoOccultation (
+inline IsSingleWavelength<U, void> computeDfDthetaYlmLDNoOccultation (
     MatrixBase<T1> const & dtheta
 ){
-    MBCAST(dtheta, T1) = B.rT * cache.dLDdp[0] * B.A1 * cache.dRdthetay * radian;
+    MBCAST(dtheta, T1) = RowVector<Scalar>(B.rT * cache.dLDdp[0]) * 
+                         Vector<Scalar>(B.A1 * cache.dRdthetay);
+    MBCAST(dtheta, T1) *= radian;
 }
 
 /**
@@ -400,26 +401,9 @@ inline IsSpectral<U, void> computeDfDthetaYlmLDNoOccultation (
     MatrixBase<T1> const & dtheta
 ){
     for (int i = 0; i < ncoly; ++i)
-        MBCAST(dtheta, T1).col(i) = B.rT * cache.dLDdp[i] * B.A1 * cache.dRdthetay.col(i);
+        MBCAST(dtheta, T1).col(i) = RowVector<Scalar>(B.rT * cache.dLDdp[i]) * 
+                                    Vector<Scalar>(B.A1 * cache.dRdthetay.col(i));
     MBCAST(dtheta, T1) *= radian;
-}
-
-/**
-The derivative of the flux with respect to theta
-for a limb-darkened spherical harmonic map.
-Temporal case.
-
-*/
-template<typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDthetaYlmLDNoOccultation (
-    MatrixBase<T1> const & dtheta
-){
-    // TODO!
-    /*
-    for (int i = 0; i < ncoly; ++i)
-        MBCAST(dtheta, T1).col(i) = B.rT * cache.dLDdp[i] * B.A1 * cache.dRdthetay.col(i);
-    MBCAST(dtheta, T1) *= radian;
-    */
 }
 
 /**
@@ -431,8 +415,7 @@ Static specialization.
 */
 template<typename U=S, typename T1>
 inline IsStatic<U, void> computeDfDtYlmLDNoOccultation (
-    MatrixBase<T1> const & dt,
-    const YCoeffType & flux0
+    MatrixBase<T1> const & dt
 ){
 }
 
@@ -445,8 +428,12 @@ Temporal specialization.
 */
 template<typename U=S, typename T1>
 inline IsTemporal<U, void> computeDfDtYlmLDNoOccultation (
-    MatrixBase<T1> const & dt,
-    const YCoeffType & flux0
+    MatrixBase<T1> const & dt
 ){
-    MBCAST(dt, T1) = flux0.segment(1, ncoly - 1) * taylor.segment(0, ncoly - 1);
+    MBCAST(dt, T1).setZero();
+    auto A1Ry = B.A1 * cache.RyUncontracted;
+    for (int i = 0; i < ncoly - 1; ++i) {
+        limbDarken(A1Ry.col(i + 1), cache.p_uy, false);
+        MBCAST(dt, T1) += OneByOne<Scalar>(B.rT * cache.p_uy) * taylor(i);
+    }
 }
