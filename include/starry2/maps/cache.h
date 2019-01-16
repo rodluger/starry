@@ -8,8 +8,9 @@ protected:
     using YType = typename S::YType;
     using YCoeffType = typename S::YCoeffType;
     using UType = typename S::UType;
-    using FType = typename S::FType;
+    using TSType = typename S::TSType;
     using CtrYType = typename S::CtrYType;
+    using FluxType = typename S::FluxType;
 
 public:
     
@@ -42,26 +43,31 @@ public:
     CtrYType Ry;
     CtrYType RRy;
     CtrYType A1Ry;
+    CtrYType ARRy;
     CtrYType DRDthetay;
     CtrYType pupy;
+    FluxType sTADRDphiRy_b;
+    FluxType dFdb;
     RowVector<Scalar> pT;
+    RowVector<Scalar> sTA;
+    RowVector<Scalar> sTAR;
+    RowVector<Scalar> sTADRDphi;
     std::vector<Matrix<Scalar>> EulerD;
     std::vector<Matrix<Scalar>> EulerR;
     std::vector<Matrix<Scalar>> DpupyDpy;
     std::vector<Matrix<Scalar>> DpupyDpu;
     std::vector<Matrix<Scalar>> DpuDu;
     std::vector<Matrix<Scalar>> DpuDy; // TODO: This is sparse
-
     std::vector<Matrix<Scalar>> DpupyDu;
     std::vector<Matrix<Scalar>> DpupyDy;
 
     // Pybind cache
-    FType pb_flux;
-    FType pb_Dt;
-    FType pb_Dtheta;
-    FType pb_Dxo;
-    FType pb_Dyo;
-    FType pb_Dro;
+    TSType pb_flux;
+    TSType pb_Dt;
+    TSType pb_Dtheta;
+    TSType pb_Dxo;
+    TSType pb_Dyo;
+    TSType pb_Dro;
     RowMatrix<Scalar> pb_Dy;
     RowMatrix<Scalar> pb_Du;
 
@@ -135,9 +141,15 @@ public:
         Ry(N, nflx),
         RRy(N, nflx),
         A1Ry(N, nflx),
+        ARRy(N, nflx),
         DRDthetay(N, nflx),
         pupy(N, nflx),
+        sTADRDphiRy_b(nflx),
+        dFdb(nflx),
         pT(N),
+        sTA(N),
+        sTAR(N),
+        sTADRDphi(N),
         EulerD(lmax + 1),
         EulerR(lmax + 1),
         DpupyDpy(ncoly),

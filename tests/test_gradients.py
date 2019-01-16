@@ -19,8 +19,9 @@ def assert_allclose(name, expected, got, fmt="%.6f", atol=1e-6, rtol=1e-5):
                 np.array2string(expected, formatter=formatter), 
                 np.array2string(got, formatter=formatter)
             )
+        #print(msg)
         raise AssertionError(msg)
-
+        
 
 def compare(ydeg=2, udeg=0, nw=1, nt=1, eps=1.e-8, axis=[0, 1, 0],
             t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1):
@@ -134,7 +135,6 @@ def test_default_ylm_phase():
     compare(ydeg=2, udeg=0, nw=1, nt=1, theta=15.0, xo=10.0)
 
 
-@pytest.mark.xfail
 def test_default_ylm_occ():
     compare(ydeg=2, udeg=0, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
@@ -160,7 +160,6 @@ def test_spectral_ylm_phase():
     compare(ydeg=2, udeg=0, nw=3, nt=1, theta=15.0, xo=10.0)
 
 
-@pytest.mark.xfail
 def test_spectral_ylm_occ():
     compare(ydeg=2, udeg=0, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
@@ -186,7 +185,6 @@ def test_temporal_ylm_phase():
     compare(ydeg=2, udeg=0, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0)
 
 
-@pytest.mark.xfail
 def test_temporal_ylm_occ():
     compare(ydeg=2, udeg=0, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 

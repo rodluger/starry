@@ -245,12 +245,12 @@ inline IsDefault<U, void> computeDfDyYlmNoOccultation (
     MatrixBase<T1> const & Dy,
     const Scalar& theta
 ){
-    if (theta == 0) {
-        MBCAST(Dy, T1) = B.rTA1.transpose();
-    } else {
+    if (theta != 0) {
         for (int l = 0; l < lmax + 1; ++l)
             MBCAST(Dy, T1).segment(l * l, 2 * l + 1) = 
                 (B.rTA1.segment(l * l, 2 * l + 1) * W.R[l]).transpose();
+    } else {
+        MBCAST(Dy, T1) = B.rTA1.transpose();
     }
 }
 
@@ -264,13 +264,13 @@ inline IsSpectral<U, void> computeDfDyYlmNoOccultation (
     MatrixBase<T1> const & Dy,
     const Scalar& theta
 ){
-    if (theta == 0) {
-        MBCAST(Dy, T1) = B.rTA1.transpose().replicate(1, ncoly);
-    } else {
+    if (theta != 0) {
         for (int l = 0; l < lmax + 1; ++l)
             MBCAST(Dy, T1).block(l * l, 0, 2 * l + 1, ncoly) = 
                 (B.rTA1.segment(l * l, 2 * l + 1) * W.R[l])
                 .transpose().replicate(1, ncoly);
+    } else {
+        MBCAST(Dy, T1) = B.rTA1.transpose().replicate(1, ncoly);
     }
 }
 
@@ -284,13 +284,13 @@ inline IsTemporal<U, void> computeDfDyYlmNoOccultation (
     MatrixBase<T1> const & Dy,
     const Scalar& theta
 ){
-    if (theta == 0) {
-        MBCAST(Dy, T1) = (taylor * B.rTA1).transpose();
-    } else {
+    if (theta != 0) {
         for (int l = 0; l < lmax + 1; ++l)
             MBCAST(Dy, T1).block(l * l, 0, 2 * l + 1, ncoly) = 
                 (taylor * (B.rTA1.segment(l * l, 2 * l + 1) * W.R[l]))
                 .transpose();
+    } else {
+        MBCAST(Dy, T1) = (taylor * B.rTA1).transpose();
     }
 }
 
@@ -435,5 +435,94 @@ inline IsTemporal<U, void> computeDfDtYlmLDNoOccultation (
     for (int i = 0; i < ncoly - 1; ++i) {
         limbDarken(A1Ry.col(i + 1), cache.pupy, false);
         MBCAST(Dt, T1) += OneByOne<Scalar>(B.rT * cache.pupy) * taylor(i);
+    }
+}
+
+/**
+The derivative of the flux with respect to time
+during an occultation for a spherical harmonic map. 
+Static specialization.
+
+*/
+template<typename U=S, typename T1>
+inline IsStatic<U, void> computeDfDtYlmOccultation (
+    MatrixBase<T1> const & Dt
+){
+}
+
+/**
+The derivative of the flux with respect to time
+during an occultation for a spherical harmonic map. 
+Temporal specialization.
+
+*/
+template<typename U=S, typename T1>
+inline IsTemporal<U, void> computeDfDtYlmOccultation (
+    MatrixBase<T1> const & Dt
+){
+    MBCAST(Dt, T1) = (cache.sTAR * cache.RyUncontracted)
+                     .block(0, 1, 1, ncoly - 1) 
+                     * taylor.segment(0, ncoly - 1);
+}
+
+/**
+The derivative of the flux with respect to the spherical harmonic 
+coefficients for a spherical harmonic map during an occultation.
+Default case.
+
+*/
+template<typename U=S, typename T1>
+inline IsDefault<U, void> computeDfDyYlmOccultation (
+    MatrixBase<T1> const & Dy,
+    const Scalar& theta
+) {
+    if (theta != 0) {
+        for (int l = 0; l < lmax + 1; ++l)
+            MBCAST(Dy, T1).segment(l * l, 2 * l + 1) = 
+                (cache.sTAR.segment(l * l, 2 * l + 1) * W.R[l]);
+    } else {
+        MBCAST(Dy, T1) = cache.sTAR;
+    }
+}
+
+/**
+The derivative of the flux with respect to the spherical harmonic 
+coefficients for a spherical harmonic map during an occultation.
+Spectral case.
+
+*/
+template<typename U=S, typename T1>
+inline IsSpectral<U, void> computeDfDyYlmOccultation (
+    MatrixBase<T1> const & Dy,
+    const Scalar& theta
+) {
+    if (theta != 0) {
+        for (int l = 0; l < lmax + 1; ++l)
+            MBCAST(Dy, T1).block(l * l, 0, 2 * l + 1, ncoly) = 
+                (cache.sTAR.segment(l * l, 2 * l + 1) * W.R[l])
+                .transpose().replicate(1, ncoly);
+    } else {
+        MBCAST(Dy, T1) = cache.sTAR.transpose().replicate(1, ncoly);
+    }
+}
+
+/**
+The derivative of the flux with respect to the spherical harmonic 
+coefficients for a spherical harmonic map during an occultation.
+Temporal case.
+
+*/
+template<typename U=S, typename T1>
+inline IsTemporal<U, void> computeDfDyYlmOccultation (
+    MatrixBase<T1> const & Dy,
+    const Scalar& theta
+){
+    if (theta != 0) {
+        for (int l = 0; l < lmax + 1; ++l)
+            MBCAST(Dy, T1).block(l * l, 0, 2 * l + 1, ncoly) = 
+                (taylor * (cache.sTAR.segment(l * l, 2 * l + 1) * W.R[l]))
+                .transpose();
+    } else {
+        MBCAST(Dy, T1) = (taylor * cache.sTAR).transpose();
     }
 }

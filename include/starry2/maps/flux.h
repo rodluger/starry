@@ -451,8 +451,64 @@ inline void Map<S>::computeFluxYlm (
     // Occultation
     } else {
 
-        // TODO!
-        throw errors::NotImplementedError("computeFluxYlm(gradient=true) not yet implemented.");
+        // Compute the solution vector and its gradient
+        G.compute(b, ro, true);
+
+        // Transform the solution vector into Ylms
+        cache.sTA = G.sT * B.A;
+
+        // The normalized occultor position
+        Scalar xo_b = xo / b,
+               yo_b = yo / b;
+
+        // Align the occultor with the y axis
+        if (likely((b > 0) && ((xo != 0) || (yo < 0)))) {
+            // Compute the rotation matrix and its derivative
+            W.rotate_about_z(yo_b, xo_b, cache.Ry, cache.RRy, 
+                            cache.sTA, cache.sTAR, cache.sTADRDphi);
+        
+            // The Green's polynomial of the rotated map
+            cache.ARRy = B.A * cache.RRy;
+
+            // Compute the contribution to the xo and yo
+            // derivs from the occultor rotation matrix
+            cache.sTADRDphiRy_b = cache.sTADRDphi * cache.Ry;
+            cache.sTADRDphiRy_b /= b;
+            MBCAST(Dxo, T4) = yo_b * cache.sTADRDphiRy_b;
+            MBCAST(Dyo, T4) = -xo_b * cache.sTADRDphiRy_b;
+        } else {
+            cache.ARRy = B.A * cache.Ry;
+            MBCAST(Dxo, T4).setZero();
+            MBCAST(Dyo, T5).setZero();
+        }   
+
+        // Compute the contribution to the xo and yo
+        // derivs from the solution vector
+        if (likely(b > 0)) {
+            cache.dFdb = G.dsTdb * cache.ARRy;
+            MBCAST(Dxo, T4) += cache.dFdb * xo_b;
+            MBCAST(Dyo, T5) += cache.dFdb * yo_b;
+        }
+
+        // Compute the flux
+        MBCAST(flux, T1) = G.sT * cache.ARRy;
+    
+        // Theta derivative
+        MBCAST(Dtheta, T3) = cache.sTAR * cache.DRDthetay;
+        MBCAST(Dtheta, T3) *= radian;
+
+        // Occultor radius derivative
+        MBCAST(Dro, T5) = G.dsTdr * cache.ARRy;
+
+        // Compute derivs with respect to y
+        computeDfDyYlmOccultation(Dy, theta);
+
+        // Note that we do not compute limb darkening 
+        // derivatives in this case; see the docs.
+        MBCAST(Du, T8).setZero();
+
+        // Compute the time deriv
+        computeDfDtYlmOccultation(Dt);
 
     }
 

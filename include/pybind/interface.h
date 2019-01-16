@@ -328,7 +328,7 @@ std::function<py::object(
     ) -> py::object 
     {
         using Scalar = typename T::Scalar;
-        using FType = typename T::FType;
+        using TSType = typename T::TSType;
 
 #if defined(_STARRY_SPECTRAL_) || defined(_STARRY_TEMPORAL_)
         // We need our old friend numpy to reshape
@@ -435,11 +435,11 @@ std::function<py::object(
 
                 // Get Eigen references to the arrays, as these
                 // are automatically passed by ref to the Python side
-                auto flux = Ref<FType>(map.cache.pb_flux);
-                auto Dtheta = Ref<FType>(map.cache.pb_Dtheta);
-                auto Dxo = Ref<FType>(map.cache.pb_Dxo);
-                auto Dyo = Ref<FType>(map.cache.pb_Dyo);
-                auto Dro = Ref<FType>(map.cache.pb_Dro);
+                auto flux = Ref<TSType>(map.cache.pb_flux);
+                auto Dtheta = Ref<TSType>(map.cache.pb_Dtheta);
+                auto Dxo = Ref<TSType>(map.cache.pb_Dxo);
+                auto Dyo = Ref<TSType>(map.cache.pb_Dyo);
+                auto Dro = Ref<TSType>(map.cache.pb_Dro);
                 auto Dy = Ref<RowMatrix<Scalar>>(map.cache.pb_Dy);
                 auto Du = Ref<RowMatrix<Scalar>>(map.cache.pb_Du);
 
@@ -466,7 +466,7 @@ std::function<py::object(
                     "u"_a=du_reshaped
                 );
 #elif defined(_STARRY_TEMPORAL_)
-                auto Dt = Ref<FType>(map.cache.pb_Dt);
+                auto Dt = Ref<TSType>(map.cache.pb_Dt);
                 auto dy_shape = py::make_tuple(ny, nt, map.ncoly);
                 auto dy_reshaped = reshape(ENSURE_DOUBLE_ARR(Dy), dy_shape);
                 py::dict gradient = py::dict(

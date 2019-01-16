@@ -12,6 +12,7 @@ public:
     using UType = typename S::UType;
     using UCoeffType = typename S::UCoeffType;
     using CtrYType = typename S::CtrYType;
+    using FluxType = typename S::FluxType;
 
     // Public variables
     const int lmax;

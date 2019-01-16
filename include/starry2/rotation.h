@@ -370,6 +370,17 @@ public:
         MatrixBase<T>& yout
     );
 
+    template <typename T>
+    inline void rotate_about_z (
+        const Scalar& costheta,
+        const Scalar& sintheta,
+        const MatrixBase<T>& yin, 
+        MatrixBase<T>& yout,
+        const RowVector<Scalar>& v,
+        RowVector<Scalar>& vR,
+        RowVector<Scalar>& vDRDtheta
+    );
+
     inline void compute (
         const Scalar& costheta, 
         const Scalar& sintheta
@@ -499,6 +510,37 @@ inline void Wigner<MapType>::rotate_about_z (
     ).transpose();
 }
 
+
+/**
+Compute the same fast rotation about the z axis as above.
+Additionally, pre-multiply the rotation matrix `R`
+by a row vector `v` and return `v . R`. Also compute the derivative
+of `R` with respect to `theta` and return `v . dR / dtheta`. This 
+is handy for computing gradients of the occultation flux.
+
+*/
+template <class MapType>
+template <typename T>
+inline void Wigner<MapType>::rotate_about_z (
+    const Scalar& costheta,
+    const Scalar& sintheta,
+    const MatrixBase<T>& yin, 
+    MatrixBase<T>& yout,
+    const RowVector<Scalar>& v,
+    RowVector<Scalar>& vR,
+    RowVector<Scalar>& vDRDtheta
+) {
+    rotate_about_z(costheta, sintheta, yin, yout);
+    for (int l = 0; l < lmax + 1; ++l) {
+        for (int j = 0; j < 2 * l + 1; ++j) {
+            int m = j - l;
+            vR(l * l + j) = v(l * l + j) * cosmt(l * l + j) +
+                            v(l * l + 2 * l - j) * sinmt(l * l + j);
+            vDRDtheta(l * l + j) = v(l * l + 2 * l - j) * m * cosmt(l * l + j) -
+                                   v(l * l + j) * m * sinmt(l * l + j);
+        }
+    }
+}
 
 /**
 Explicitly compute the full rotation matrix and its derivative.
