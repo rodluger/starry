@@ -39,15 +39,15 @@ namespace solver {
         inline void compute_ (
             const T1& b,
             const T1& r,
-            T2& s
+            T2& sT
         );
 
     public:
 
         // Solutions
-        RowVector<T> s;
-        RowVector<T> dsdb;
-        RowVector<T> dsdr;
+        RowVector<T> sT;
+        RowVector<T> dsTdb;
+        RowVector<T> dsTdr;
 
         // Constructor
         explicit Greens(
@@ -58,9 +58,9 @@ namespace solver {
             b_g(0.0, Vector<T>::Unit(2, 0)),
             r_g(0.0, Vector<T>::Unit(2, 1)),
             s_g(N),
-            s(RowVector<T>::Zero(N)),
-            dsdb(RowVector<T>::Zero(N)),
-            dsdr(RowVector<T>::Zero(N))
+            sT(RowVector<T>::Zero(N)),
+            dsTdb(RowVector<T>::Zero(N)),
+            dsTdr(RowVector<T>::Zero(N))
         {
 
         }
@@ -85,13 +85,13 @@ namespace solver {
     inline void Greens<T>::compute_ (
         const T1& b, 
         const T1& r,
-        T2& s
+        T2& sT
     ) {
 
         // TODO
         // Dummy calculations for now!
         for (int n = 0; n < N; ++n) {
-            s(n) = pow(b, n) + n * r;
+            sT(n) = pow(b, n) + n * r;
         }
 
     }
@@ -108,15 +108,15 @@ namespace solver {
         bool gradient
     ) {
         if (!gradient) {
-            compute_(b, r, s);
+            compute_(b, r, sT);
         } else {
             b_g.value() = b;
             r_g.value() = r;
             compute_(b_g, r_g, s_g);
             for (int n = 0; n < N; ++n) {
-                s(n) = s_g(n).value();
-                dsdb(n) = s_g(n).derivatives()(0);
-                dsdr(n) = s_g(n).derivatives()(1);
+                sT(n) = s_g(n).value();
+                dsTdb(n) = s_g(n).derivatives()(0);
+                dsTdr(n) = s_g(n).derivatives()(1);
             }
         }
     }

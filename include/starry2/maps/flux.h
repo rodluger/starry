@@ -149,7 +149,7 @@ inline void Map<S>::computeFluxLD(
         UCoeffType norm = contract(y.row(0));
 
         // Dot the integral solution in, and we're done!
-        MBCAST(flux, T1) = (L.s * cache.agol_g).cwiseProduct(norm);
+        MBCAST(flux, T1) = (L.sT * cache.agol_g).cwiseProduct(norm);
 
     }
 }
@@ -176,8 +176,18 @@ inline void Map<S>::computeFluxYlm(
     // Occultation
     } else {
 
-        // TODO!
-        throw errors::NotImplementedError("computeFluxYlm not yet implemented.");
+        // Compute the solution vector
+        G.compute(b, ro);
+
+        // Rotate the occultor onto the y axis if needed
+        // and dot the solution vector into the map
+        // Recall that f = sTARRy!
+        if (likely((b > 0) && ((xo != 0) || (yo < 0)))) {
+            W.rotate_about_z(yo / b, xo / b, cache.Ry, cache.RRy);
+            MBCAST(flux, T1) = G.sT * B.A * cache.RRy;
+        } else {
+            MBCAST(flux, T1) = G.sT * B.A * cache.Ry;
+        }
 
     }
 }
@@ -203,13 +213,31 @@ inline void Map<S>::computeFluxYlmLD(
 
         // Apply limb darkening
         limbDarken(cache.A1Ry, cache.p_uy);
+
+        // Dot the rotation solution vector in
         MBCAST(flux, T1) = B.rT * cache.p_uy;
 
     // Occultation
     } else {
 
-        // TODO!
-        throw errors::NotImplementedError("computeFluxYlmLD not yet implemented.");
+        // Compute the solution vector
+        G.compute(b, ro);
+
+        // Rotate the occultor onto the y axis if needed
+        // and change basis to polynomials so we can
+        // apply the limb darkening
+        if (likely((b > 0) && ((xo != 0) || (yo < 0)))) {
+            W.rotate_about_z(yo / b, xo / b, cache.Ry, cache.RRy);
+            cache.A1Ry = B.A1 * cache.RRy;
+        } else {
+            cache.A1Ry = B.A1 * cache.Ry;
+        }
+
+        // Apply limb darkening
+        limbDarken(cache.A1Ry, cache.p_uy);
+
+        // Transform to the Greens basis and dot the solution in
+        MBCAST(flux, T1) = G.sT * B.A2 * cache.p_uy;
 
     }
 }
@@ -334,7 +362,7 @@ inline void Map<S>::computeFluxLD(
         UCoeffType norm = contract(y.row(0));
 
         // Compute the flux
-        UCoeffType flux0 = (L.s * cache.agol_g);
+        UCoeffType flux0 = (L.sT * cache.agol_g);
         MBCAST(flux, T1) = flux0.cwiseProduct(norm);
 
         // The theta deriv is always zero
@@ -342,7 +370,7 @@ inline void Map<S>::computeFluxLD(
 
         // dF / db  ->  dF / dx, dF / dy
         if (likely(b > 0)) {
-            MBCAST(dxo, T4) = (L.dsdb * cache.agol_g);
+            MBCAST(dxo, T4) = (L.dsTdb * cache.agol_g);
             MBCAST(dxo, T4) /= b;
             MBCAST(dyo, T5) = dxo;
             MBCAST(dxo, T4) *= xo;
@@ -350,13 +378,13 @@ inline void Map<S>::computeFluxLD(
             MBCAST(dxo, T4) = dxo.cwiseProduct(norm);
             MBCAST(dyo, T5) = dyo.cwiseProduct(norm);
         } else {
-            MBCAST(dxo, T4) = L.dsdb * cache.agol_g;
+            MBCAST(dxo, T4) = L.dsTdb * cache.agol_g;
             MBCAST(dxo, T4) = dxo.cwiseProduct(norm);
             MBCAST(dyo, T5) = dxo;
         }
 
         // dF / dr
-        MBCAST(dro, T6) = (L.dsdr * cache.agol_g);
+        MBCAST(dro, T6) = (L.dsTdr * cache.agol_g);
         MBCAST(dro, T6) = dro.cwiseProduct(norm);
 
         // dF / dy

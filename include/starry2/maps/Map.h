@@ -208,7 +208,7 @@ protected:
         nflx(nflx),
         cache(lmax, ncoly, ncolu, nflx),
         B(lmax),
-        W(lmax, ncoly, (*this).y, (*this).axis),
+        W(lmax, ncoly, nflx, (*this).y, (*this).axis),
         G(lmax),
         L(lmax),
         taylor(ncoly)

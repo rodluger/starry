@@ -305,7 +305,8 @@ protected:
 
     const int lmax;                                                            /**< Highest degree of the map */
     const int N;                                                               /**< Number of map coefficients */
-    const int ncol;                                                            /**< Number of wavelengths */
+    const int ncol;                                                            /**< Number of map columns */
+    const int nflx;                                                            /**< Number of contracted map columns */
     const Scalar tol;                                                          /**< Numerical tolerance used to prevent division-by-zero errors */
 
     // References to the base map and the rotation axis
@@ -320,6 +321,7 @@ protected:
     // Temporaries
     MapType y_zeta_rot;                                                        /**< The base map in the `zeta` frame after a `zhat` rotation */
     MapType y_rev;                                                             /**< Degree-wise reverse of the spherical harmonic map */
+    Matrix<Scalar> y_rev_ctr;                                                  /**< Degree-wise reverse of the contracted spherical harmonic map */
     Vector<Scalar> cosmt;                                                      /**< Vector of cos(m theta) values */
     Vector<Scalar> sinmt;                                                      /**< Vector of sin(m theta) values */
     Vector<Scalar> cosnt;                                                      /**< Vector of cos(n theta) values */
@@ -360,6 +362,14 @@ public:
         MapType& yout
     );
 
+    template <typename T>
+    inline void rotate_about_z (
+        const Scalar& costheta, 
+        const Scalar& sintheta,
+        const MatrixBase<T>& yin, 
+        MatrixBase<T>& yout
+    );
+
     inline void compute (
         const Scalar& costheta, 
         const Scalar& sintheta
@@ -368,12 +378,14 @@ public:
     Wigner(
         int lmax, 
         int ncol, 
+        int nflx,
         MapType& y, 
         UnitVector<Scalar>& axis
     ) : 
         lmax(lmax), 
         N((lmax + 1) * (lmax + 1)), 
         ncol(ncol),
+        nflx(nflx),
         tol(10 * mach_eps<Scalar>()), 
         y(y), 
         axis(axis),
@@ -402,6 +414,7 @@ public:
         cosmt.resize(N);
         sinmt.resize(N);
         y_rev.resize(N, ncol);
+        y_rev_ctr.resize(N, nflx);
     }
 
 };
@@ -443,6 +456,49 @@ inline void Wigner<MapType>::rotate (
             RZeta[l] * y.block(l * l, 0, 2 * l + 1, ncol);
     }
 }
+
+
+/**
+Perform a fast rotation about the z axis, skipping the Wigner matrix computation.
+See https://github.com/rodluger/starry/issues/137#issuecomment-405975092
+This is the user-facing version of the `computez` method below.
+
+*/
+template <class MapType>
+template <typename T>
+inline void Wigner<MapType>::rotate_about_z (
+    const Scalar& costheta,
+    const Scalar& sintheta,
+    const MatrixBase<T>& yin, 
+    MatrixBase<T>& yout
+) {
+    cosnt(1) = costheta;
+    sinnt(1) = sintheta;
+    for (int n = 2; n < lmax + 1; ++n) {
+        cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
+        sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
+    }
+    int n = 0;
+    for (int l = 0; l < lmax + 1; ++l) {
+        for (int m = -l; m < 0; ++m) {
+            cosmt(n) = cosnt(-m);
+            sinmt(n) = -sinnt(-m);
+            y_rev_ctr.row(n) = yin.row(l * l + l - m);
+            ++n;
+        }
+        for (int m = 0; m < l + 1; ++m) {
+            cosmt(n) = cosnt(m);
+            sinmt(n) = sinnt(m);
+            y_rev_ctr.row(n) = yin.row(l * l + l - m);
+            ++n;
+        }
+    }
+    yout = (
+        yin.transpose().array().rowwise() * cosmt.array().transpose() -
+        y_rev_ctr.transpose().array().rowwise() * sinmt.array().transpose()
+    ).transpose();
+}
+
 
 /**
 Explicitly compute the full rotation matrix and its derivative.

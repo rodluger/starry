@@ -221,9 +221,9 @@ namespace limbdark {
         RowVector<T> ndnp2;
 
         // The solution vector
-        RowVector<T> s;
-        RowVector<T> dsdb;
-        RowVector<T> dsdr;
+        RowVector<T> sT;
+        RowVector<T> dsTdb;
+        RowVector<T> dsTdr;
 
         // Constructor
         explicit GreensLimbDark(
@@ -237,9 +237,9 @@ namespace limbdark {
             n_(lmax + 3),
             invn(lmax + 3),
             ndnp2(lmax + 3),
-            s(RowVector<T>::Zero(lmax + 1)),
-            dsdb(RowVector<T>::Zero(lmax + 1)),
-            dsdr(RowVector<T>::Zero(lmax + 1)) 
+            sT(RowVector<T>::Zero(lmax + 1)),
+            dsTdb(RowVector<T>::Zero(lmax + 1)),
+            dsTdr(RowVector<T>::Zero(lmax + 1)) 
         {
             // Constants
             computeMCoeff();
@@ -292,15 +292,15 @@ namespace limbdark {
         if ((b >= 1.0 + r) ||  (r == 0.0)) {
             // No occultation (Case 1)
             Lambda1 = 0;
-            dsdb(1) = 0;
-            dsdr(1) = 0;
+            dsTdb(1) = 0;
+            dsTdr(1) = 0;
             Eofk = 0; // Check
             Em1mKdm = 0; // Check
         } else if (b <= r - 1.0) {
             // Full occultation (Case 11)
             Lambda1 = 0;
-            dsdb(1) = 0;
-            dsdr(1) = 0;
+            dsTdb(1) = 0;
+            dsTdr(1) = 0;
             Eofk = 0; // Check
             Em1mKdm = 0; // Check
         } else {
@@ -311,8 +311,8 @@ namespace limbdark {
                 Eofk = 0.5 * pi<T>();
                 Em1mKdm = 0.25 * pi<T>();
                 if (gradient) {
-                    dsdb(1) = 0;
-                    dsdr(1) = -2.0 * pi<T>() * r * sqrt1mr2;
+                    dsTdb(1) = 0;
+                    dsTdr(1) = -2.0 * pi<T>() * r * sqrt1mr2;
                 }
             } else if (unlikely(b == r)) {
                 if (unlikely(r == 0.5)) {
@@ -321,8 +321,8 @@ namespace limbdark {
                     Eofk = 1.0;
                     Em1mKdm = 1.0;
                     if (gradient) {
-                        dsdb(1) = 2.0 * third;
-                        dsdr(1) = -2.0;
+                        dsTdb(1) = 2.0 * third;
+                        dsTdr(1) = -2.0;
                     }
                 } else if (r < 0.5) {
                     // Case 5
@@ -332,8 +332,8 @@ namespace limbdark {
                     Lambda1 = pi<T>() + 2.0 * third * 
                               ((2 * m - 3) * Eofk - m * Em1mKdm);
                     if (gradient) {
-                        dsdb(1) = -4.0 * r * third * (Eofk - 2 * Em1mKdm);
-                        dsdr(1) = -4.0 * r * Eofk;
+                        dsTdb(1) = -4.0 * r * third * (Eofk - 2 * Em1mKdm);
+                        dsTdr(1) = -4.0 * r * Eofk;
                     }
                 } else {
                     // Case 7
@@ -344,8 +344,8 @@ namespace limbdark {
                     Lambda1 = pi<T>() + third * invr * 
                               (-m * Eofk + (2 * m - 3) * Em1mKdm);
                     if (gradient) {
-                        dsdb(1) = 2 * third * (2 * Eofk - Em1mKdm);
-                        dsdr(1) = -2 * Em1mKdm;
+                        dsTdb(1) = 2 * third * (2 * Eofk - Em1mKdm);
+                        dsTdr(1) = -2 * Em1mKdm;
                     }
                 }
             } else { 
@@ -359,9 +359,9 @@ namespace limbdark {
                     Lambda1 = onembmr2 * (Piofk + (-3 + 6 * r2 + 2 * b * r) * 
                               Em1mKdm - fourbr * Eofk) * sqbrinv * third;
                     if (gradient) {
-                        dsdb(1) = 2 * r * onembmr2 * (-Em1mKdm + 2 * Eofk) * 
+                        dsTdb(1) = 2 * r * onembmr2 * (-Em1mKdm + 2 * Eofk) * 
                                 sqbrinv * third;
-                        dsdr(1) = -2 * r * onembmr2 * Em1mKdm * sqbrinv;
+                        dsTdr(1) = -2 * r * onembmr2 * Em1mKdm * sqbrinv;
                     }
                 } else if (ksq > 1) {
                     // Case 3, Case 9
@@ -375,9 +375,9 @@ namespace limbdark {
                               (onembpr2 * Piofk - (4 - 7 * r2 - b2) * Eofk) * 
                               third;
                     if (gradient) {
-                        dsdb(1) = -4 * r * third * sqonembmr2 * 
+                        dsTdb(1) = -4 * r * third * sqonembmr2 * 
                                 (Eofk - 2 * Em1mKdm);
-                        dsdr(1) = -4 * r * sqonembmr2 * Eofk;
+                        dsTdr(1) = -4 * r * sqonembmr2 * Eofk;
                     }
                 } else {
                     // Case 4
@@ -388,13 +388,13 @@ namespace limbdark {
                     Eofk = 1.0;
                     Em1mKdm = 1.0;
                     if (gradient) {
-                        dsdr(1) = -8 * r * rootr1mr;
-                        dsdb(1) = -dsdr(1) * third;
+                        dsTdr(1) = -8 * r * rootr1mr;
+                        dsTdb(1) = -dsTdr(1) * third;
                     }
                 }
             }
         }
-        s(1) = ((1.0 - int(r > b)) * 2 * pi<T>() - Lambda1) * third;
+        sT(1) = ((1.0 - int(r > b)) * 2 * pi<T>() - Lambda1) * third;
     }
 
     /** 
@@ -621,7 +621,7 @@ namespace limbdark {
     }
 
     /**
-    Compute the `s^T` occultation solution vector
+    Compute the `sT^T` occultation solution vector
 
     */
     template <class T>
@@ -667,10 +667,10 @@ namespace limbdark {
             invksq = 0;
             kap0 = 0; // Not used!
             kap1 = 0; // Not used!
-            s(0) = pi<T>() * (1 - r * r);
+            sT(0) = pi<T>() * (1 - r * r);
             if (gradient) {
-                dsdb(0) = 0;
-                dsdr(0) = -2 * pi<T>() * r;
+                dsTdb(0) = 0;
+                dsTdr(0) = -2 * pi<T>() * r;
             }
         } else {
             ksq = onembpr2 * invfourbr + 1.0;
@@ -682,10 +682,10 @@ namespace limbdark {
                 kkc = k * kc;
                 kap0 = 0; // Not used!
                 kap1 = 0; // Not used!
-                s(0) = pi<T>() * (1 - r2);
+                sT(0) = pi<T>() * (1 - r2);
                 if (gradient) {
-                    dsdb(0) = 0;
-                    dsdr(0) = -2 * pi<T>() * r;
+                    dsTdb(0) = 0;
+                    dsTdr(0) = -2 * pi<T>() * r;
                 }
             } else {
                 kcsq = -onembpr2 * invfourbr;
@@ -694,10 +694,10 @@ namespace limbdark {
                 kap0 = atan2(kite_area2, (r - 1) * (r + 1) + b2);
                 kap1 = atan2(kite_area2, (1 - r) * (1 + r) + b2);
                 T Alens = kap1 + r2 * kap0 - kite_area2 * 0.5;
-                s(0) = pi<T>() - Alens;
+                sT(0) = pi<T>() - Alens;
                 if (gradient) {
-                    dsdb(0) = kite_area2 * invb;
-                    dsdr(0) = -2.0 * r * kap0;
+                    dsTdb(0) = kite_area2 * invb;
+                    dsTdr(0) = -2.0 * r * kap0;
                 }
             }
         }
@@ -719,10 +719,10 @@ namespace limbdark {
             T fac = sqrt(term);
             T dfacdr = -r / fac;
             for (int n = 2; n < lmax + 1; ++n) {
-                s(n) = -term * r2 * 2 * pi<T>();
+                sT(n) = -term * r2 * 2 * pi<T>();
                 if (gradient) {
-                    dsdb(n) = 0;
-                    dsdr(n) = -2 * pi<T>() * r * (2 * term + r * dtermdr);
+                    dsTdb(n) = 0;
+                    dsTdr(n) = -2 * pi<T>() * r * (2 * term + r * dtermdr);
                     dtermdr = dfacdr * term + fac * dtermdr;
                 }
                 term *= fac;
@@ -754,10 +754,10 @@ namespace limbdark {
                             (1 + r2pb2) * kite_area2);
             }
         }
-        s(2) = 2 * s(0) + four_pi_eta;
+        sT(2) = 2 * sT(0) + four_pi_eta;
         if (gradient) {
-            dsdb(2) = 2 * dsdb(0) + detadb;
-            dsdr(2) = 2 * dsdr(0) + detadr;
+            dsTdb(2) = 2 * dsTdb(0) + detadb;
+            dsTdr(2) = 2 * dsTdr(0) + detadr;
         }
 
         if (lmax == 2) return;
@@ -768,8 +768,8 @@ namespace limbdark {
         else
             upwardM();
 
-        // Compute the remaining terms in the `s` vector
-        s.segment(3, lmax - 2) = 
+        // Compute the remaining terms in the `sT` vector
+        sT.segment(3, lmax - 2) = 
             -2.0 * r2 * M.segment(3, lmax - 2) + 
             ndnp2.segment(3, lmax - 2).cwiseProduct(
                 onemr2mb2 * M.segment(3, lmax - 2) + 
@@ -780,7 +780,7 @@ namespace limbdark {
         if (gradient) {
 
             // Compute ds/dr
-            dsdr.segment(3, lmax - 2) = 
+            dsTdr.segment(3, lmax - 2) = 
                 -2 * r * (
                     n_.segment(5, lmax - 2).cwiseProduct(M.segment(3, lmax - 2)) - 
                     n_.segment(3, lmax - 2).cwiseProduct(M.segment(1, lmax - 2))
@@ -788,7 +788,7 @@ namespace limbdark {
         
             if (b > STARRY_BCUT) {
                 // Compute ds/db
-                dsdb.segment(3, lmax - 2) = 
+                dsTdb.segment(3, lmax - 2) = 
                     (-invb * n_.segment(3, lmax - 2)).cwiseProduct(
                         (r2 + b2) * (M.segment(3, lmax - 2) - M.segment(1, lmax - 2))
                         + b2mr22 * M.segment(1, lmax - 2)
@@ -801,7 +801,7 @@ namespace limbdark {
                     downwardN();
                 else
                     upwardN();
-                dsdb.segment(3, lmax - 2) = 
+                dsTdb.segment(3, lmax - 2) = 
                     -n_.segment(3, lmax - 2).cwiseProduct(
                         (2.0 * r3 + b3 - b - 3.0 * r2 * b) * M.segment(1, lmax - 2) +
                         b * M.segment(3, lmax - 2) -

@@ -40,6 +40,7 @@ public:
     UType agol_p;
     YType RyUncontracted;
     CtrYType Ry;
+    CtrYType RRy;
     CtrYType A1Ry;
     CtrYType dRdthetay;
     CtrYType p_uy;
@@ -132,6 +133,7 @@ public:
         agol_p(N, ncolu),
         RyUncontracted(N, ncoly),
         Ry(N, nflx),
+        RRy(N, nflx),
         A1Ry(N, nflx),
         dRdthetay(N, nflx),
         p_uy(N, nflx),
