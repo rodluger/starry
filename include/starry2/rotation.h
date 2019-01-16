@@ -521,9 +521,9 @@ where Rz has the form
 with CX = cos(X theta) and SX = sin(X theta). The derivative of R with
 respect to theta is
 
-    dR/dtheta = RZetaInv . dRz/dtheta . RZeta
+    dR/Dtheta = RZetaInv . dRz/Dtheta . RZeta
 
-where dRz/dtheta has the form
+where dRz/Dtheta has the form
 
         ...                                 ...
             -3 S3                      3 C3

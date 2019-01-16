@@ -256,23 +256,23 @@ inline void Map<S>::computeFlux_(
     const Scalar& yo, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux, 
-    MatrixBase<T2> const & dt,
-    MatrixBase<T3> const & dtheta,
-    MatrixBase<T4> const & dxo,
-    MatrixBase<T5> const & dyo,
-    MatrixBase<T6> const & dro,
-    MatrixBase<T7> const & dy,
-    MatrixBase<T8> const & du
+    MatrixBase<T2> const & Dt,
+    MatrixBase<T3> const & Dtheta,
+    MatrixBase<T4> const & Dxo,
+    MatrixBase<T5> const & Dyo,
+    MatrixBase<T6> const & Dro,
+    MatrixBase<T7> const & Dy,
+    MatrixBase<T8> const & Du
 ) {
     // Shape checks
     CHECK_SHAPE(flux, 1, nflx);
-    CHECK_SHAPE(dt, 1, nflx);
-    CHECK_SHAPE(dtheta, 1, nflx);
-    CHECK_SHAPE(dxo, 1, nflx);
-    CHECK_SHAPE(dyo, 1, nflx);
-    CHECK_SHAPE(dro, 1, nflx);
-    CHECK_COLS(dy, ncoly);
-    CHECK_COLS(du, ncolu);
+    CHECK_SHAPE(Dt, 1, nflx);
+    CHECK_SHAPE(Dtheta, 1, nflx);
+    CHECK_SHAPE(Dxo, 1, nflx);
+    CHECK_SHAPE(Dyo, 1, nflx);
+    CHECK_SHAPE(Dro, 1, nflx);
+    CHECK_COLS(Dy, ncoly);
+    CHECK_COLS(Du, ncolu);
 
     // Figure out the degree of the map
     computeDegreeU();
@@ -284,30 +284,30 @@ inline void Map<S>::computeFlux_(
     // Check for complete occultation
     if (b <= ro - 1) {
         MBCAST(flux, T1).setZero();
-        MBCAST(dt, T2).setZero();
-        MBCAST(dtheta, T3).setZero();
-        MBCAST(dxo, T4).setZero();
-        MBCAST(dyo, T5).setZero();
-        MBCAST(dro, T6).setZero();
-        MBCAST(dy, T7).setZero();
-        MBCAST(du, T8).setZero();
+        MBCAST(Dt, T2).setZero();
+        MBCAST(Dtheta, T3).setZero();
+        MBCAST(Dxo, T4).setZero();
+        MBCAST(Dyo, T5).setZero();
+        MBCAST(Dro, T6).setZero();
+        MBCAST(Dy, T7).setZero();
+        MBCAST(Du, T8).setZero();
         return;
     }
 
     // Compute the flux
     if (y_deg == 0) {
-        CHECK_ROWS(du, lmax + STARRY_DFDU_DELTA);
-        computeFluxLD(xo, yo, b, ro, flux, dt, 
-                      dtheta, dxo, dyo, dro, dy, du);
+        CHECK_ROWS(Du, lmax + STARRY_DFDU_DELTA);
+        computeFluxLD(xo, yo, b, ro, flux, Dt, 
+                      Dtheta, Dxo, Dyo, Dro, Dy, Du);
     } else if (u_deg == 0) {
-        CHECK_ROWS(dy, N);
-        computeFluxYlm(theta, xo, yo, b, ro, flux, dt, 
-                       dtheta, dxo, dyo, dro, dy, du);
+        CHECK_ROWS(Dy, N);
+        computeFluxYlm(theta, xo, yo, b, ro, flux, Dt, 
+                       Dtheta, Dxo, Dyo, Dro, Dy, Du);
     } else {
-        CHECK_ROWS(dy, N);
-        CHECK_ROWS(du, lmax + STARRY_DFDU_DELTA);
-        computeFluxYlmLD(theta, xo, yo, b, ro, flux, dt, 
-                         dtheta, dxo, dyo, dro, dy, du);
+        CHECK_ROWS(Dy, N);
+        CHECK_ROWS(Du, lmax + STARRY_DFDU_DELTA);
+        computeFluxYlmLD(theta, xo, yo, b, ro, flux, Dt, 
+                         Dtheta, Dxo, Dyo, Dro, Dy, Du);
     }
 }
 
@@ -320,30 +320,30 @@ inline void Map<S>::computeFluxLD(
     const Scalar& b, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux, 
-    MatrixBase<T2> const & dt,
-    MatrixBase<T3> const & dtheta,
-    MatrixBase<T4> const & dxo,
-    MatrixBase<T5> const & dyo,
-    MatrixBase<T6> const & dro,
-    MatrixBase<T7> const & dy,
-    MatrixBase<T8> const & du
+    MatrixBase<T2> const & Dt,
+    MatrixBase<T3> const & Dtheta,
+    MatrixBase<T4> const & Dxo,
+    MatrixBase<T5> const & Dyo,
+    MatrixBase<T6> const & Dro,
+    MatrixBase<T7> const & Dy,
+    MatrixBase<T8> const & Du
 ) {
 
     // No occultation
     if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Most of the derivs are zero
-        MBCAST(dtheta, T3).setZero();
-        MBCAST(dxo, T4).setZero();
-        MBCAST(dyo, T5).setZero();
-        MBCAST(dro, T6).setZero();
-        MBCAST(du, T8).setZero();
+        MBCAST(Dtheta, T3).setZero();
+        MBCAST(Dxo, T4).setZero();
+        MBCAST(Dyo, T5).setZero();
+        MBCAST(Dro, T6).setZero();
+        MBCAST(Du, T8).setZero();
 
-        // dF / dy
-        computeDfDyLDNoOccultation(dy);
+        // dF / Dy
+        computeDfDyLDNoOccultation(Dy);
 
-        // dF / dt
-        computeDfDtLDNoOccultation(dt);
+        // dF / Dt
+        computeDfDtLDNoOccultation(Dt);
         
         // The disk-integrated intensity
         // is just the Y_{0,0} coefficient
@@ -366,35 +366,35 @@ inline void Map<S>::computeFluxLD(
         MBCAST(flux, T1) = flux0.cwiseProduct(norm);
 
         // The theta deriv is always zero
-        MBCAST(dtheta, T3).setConstant(0.0);
+        MBCAST(Dtheta, T3).setConstant(0.0);
 
-        // dF / db  ->  dF / dx, dF / dy
+        // dF / db  ->  dF / dx, dF / Dy
         if (likely(b > 0)) {
-            MBCAST(dxo, T4) = (L.dsTdb * cache.g);
-            MBCAST(dxo, T4) /= b;
-            MBCAST(dyo, T5) = dxo;
-            MBCAST(dxo, T4) *= xo;
-            MBCAST(dyo, T5) *= yo;
-            MBCAST(dxo, T4) = dxo.cwiseProduct(norm);
-            MBCAST(dyo, T5) = dyo.cwiseProduct(norm);
+            MBCAST(Dxo, T4) = (L.dsTdb * cache.g);
+            MBCAST(Dxo, T4) /= b;
+            MBCAST(Dyo, T5) = Dxo;
+            MBCAST(Dxo, T4) *= xo;
+            MBCAST(Dyo, T5) *= yo;
+            MBCAST(Dxo, T4) = Dxo.cwiseProduct(norm);
+            MBCAST(Dyo, T5) = Dyo.cwiseProduct(norm);
         } else {
-            MBCAST(dxo, T4) = L.dsTdb * cache.g;
-            MBCAST(dxo, T4) = dxo.cwiseProduct(norm);
-            MBCAST(dyo, T5) = dxo;
+            MBCAST(Dxo, T4) = L.dsTdb * cache.g;
+            MBCAST(Dxo, T4) = Dxo.cwiseProduct(norm);
+            MBCAST(Dyo, T5) = Dxo;
         }
 
         // dF / dr
-        MBCAST(dro, T6) = (L.dsTdr * cache.g);
-        MBCAST(dro, T6) = dro.cwiseProduct(norm);
+        MBCAST(Dro, T6) = (L.dsTdr * cache.g);
+        MBCAST(Dro, T6) = Dro.cwiseProduct(norm);
 
-        // dF / dy
-        computeDfDyLDOccultation(dy, flux0);
+        // dF / Dy
+        computeDfDyLDOccultation(Dy, flux0);
 
-        // dF / dt
-        computeDfDtLDOccultation(dt, flux0);
+        // dF / Dt
+        computeDfDtLDOccultation(Dt, flux0);
 
-        // dF / du from dF / dc
-        computeDfDuLDOccultation(flux0, du, norm);
+        // dF / Du from dF / dc
+        computeDfDuLDOccultation(flux0, Du, norm);
 
     }
 
@@ -410,13 +410,13 @@ inline void Map<S>::computeFluxYlm (
     const Scalar& b, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux, 
-    MatrixBase<T2> const & dt,
-    MatrixBase<T3> const & dtheta,
-    MatrixBase<T4> const & dxo,
-    MatrixBase<T5> const & dyo,
-    MatrixBase<T6> const & dro,
-    MatrixBase<T7> const & dy,
-    MatrixBase<T8> const & du
+    MatrixBase<T2> const & Dt,
+    MatrixBase<T3> const & Dtheta,
+    MatrixBase<T4> const & Dxo,
+    MatrixBase<T5> const & Dyo,
+    MatrixBase<T6> const & Dro,
+    MatrixBase<T7> const & Dy,
+    MatrixBase<T8> const & Du
 ) {
 
     // Rotate the map into view and explicitly
@@ -427,26 +427,26 @@ inline void Map<S>::computeFluxYlm (
     if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Compute the theta deriv
-        MBCAST(dtheta, T3) = B.rTA1 * cache.DRDthetay;
-        MBCAST(dtheta, T3) *= radian;
+        MBCAST(Dtheta, T3) = B.rTA1 * cache.DRDthetay;
+        MBCAST(Dtheta, T3) *= radian;
 
         // The xo, yo, and ro derivs are trivial
-        MBCAST(dxo, T4).setZero();
-        MBCAST(dyo, T5).setZero();
-        MBCAST(dro, T6).setZero();
+        MBCAST(Dxo, T4).setZero();
+        MBCAST(Dyo, T5).setZero();
+        MBCAST(Dro, T6).setZero();
         
         // Compute derivs with respect to y
-        computeDfDyYlmNoOccultation(dy, theta);
+        computeDfDyYlmNoOccultation(Dy, theta);
 
         // Note that we do not compute limb darkening 
         // derivatives in this case; see the docs.
-        MBCAST(du, T8).setZero();
+        MBCAST(Du, T8).setZero();
 
         // Compute the flux
         MBCAST(flux, T1) = B.rTA1 * cache.Ry;
 
         // Compute the time deriv
-        computeDfDtYlmNoOccultation(dt);
+        computeDfDtYlmNoOccultation(Dt);
 
     // Occultation
     } else {
@@ -468,13 +468,13 @@ inline void Map<S>::computeFluxYlmLD(
     const Scalar& b, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux, 
-    MatrixBase<T2> const & dt,
-    MatrixBase<T3> const & dtheta,
-    MatrixBase<T4> const & dxo,
-    MatrixBase<T5> const & dyo,
-    MatrixBase<T6> const & dro,
-    MatrixBase<T7> const & dy,
-    MatrixBase<T8> const & du
+    MatrixBase<T2> const & Dt,
+    MatrixBase<T3> const & Dtheta,
+    MatrixBase<T4> const & Dxo,
+    MatrixBase<T5> const & Dyo,
+    MatrixBase<T6> const & Dro,
+    MatrixBase<T7> const & Dy,
+    MatrixBase<T8> const & Du
 ) {
 
     // Rotate the map into view and explicitly
@@ -492,19 +492,19 @@ inline void Map<S>::computeFluxYlmLD(
         MBCAST(flux, T1) = B.rT * cache.pupy;
 
         // Compute the map derivs
-        computeDfDyYlmLDNoOccultation(dy);
-        computeDfDuYlmLDNoOccultation(du);
+        computeDfDyYlmLDNoOccultation(Dy);
+        computeDfDuYlmLDNoOccultation(Du);
 
         // The xo, yo, and ro derivs are trivial
-        MBCAST(dxo, T4).setZero();
-        MBCAST(dyo, T5).setZero();
-        MBCAST(dro, T6).setZero();
+        MBCAST(Dxo, T4).setZero();
+        MBCAST(Dyo, T5).setZero();
+        MBCAST(Dro, T6).setZero();
 
         // Compute the theta deriv
-        computeDfDthetaYlmLDNoOccultation(dtheta);
+        computeDfDthetaYlmLDNoOccultation(Dtheta);
 
         // Compute the time deriv
-        computeDfDtYlmLDNoOccultation(dt);
+        computeDfDtYlmLDNoOccultation(Dt);
 
     // Occultation
     } else {

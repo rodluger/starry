@@ -56,7 +56,7 @@ namespace py = pybind11;
 #define STARRY_MAX_LMAX             50
 #endif
 
-// If we're keeping dF/du as dF/dg, we need to increase the size of 
+// If we're keeping dF/Du as dF/dg, we need to increase the size of 
 // the array containing the derivative by 1
 #ifdef STARRY_KEEP_DFDU_AS_DFDG
 #define STARRY_DFDU_DELTA	        1

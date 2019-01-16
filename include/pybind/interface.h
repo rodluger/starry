@@ -436,47 +436,47 @@ std::function<py::object(
                 // Get Eigen references to the arrays, as these
                 // are automatically passed by ref to the Python side
                 auto flux = Ref<FType>(map.cache.pb_flux);
-                auto dtheta = Ref<FType>(map.cache.pb_Dtheta);
-                auto dxo = Ref<FType>(map.cache.pb_Dxo);
-                auto dyo = Ref<FType>(map.cache.pb_Dyo);
-                auto dro = Ref<FType>(map.cache.pb_Dro);
-                auto dy = Ref<RowMatrix<Scalar>>(map.cache.pb_Dy);
-                auto du = Ref<RowMatrix<Scalar>>(map.cache.pb_Du);
+                auto Dtheta = Ref<FType>(map.cache.pb_Dtheta);
+                auto Dxo = Ref<FType>(map.cache.pb_Dxo);
+                auto Dyo = Ref<FType>(map.cache.pb_Dyo);
+                auto Dro = Ref<FType>(map.cache.pb_Dro);
+                auto Dy = Ref<RowMatrix<Scalar>>(map.cache.pb_Dy);
+                auto Du = Ref<RowMatrix<Scalar>>(map.cache.pb_Du);
 
 #if defined(_STARRY_DEFAULT_)
                 py::dict gradient = py::dict(
-                    "theta"_a=ENSURE_DOUBLE_ARR(dtheta),
-                    "xo"_a=ENSURE_DOUBLE_ARR(dxo),
-                    "yo"_a=ENSURE_DOUBLE_ARR(dyo),
-                    "ro"_a=ENSURE_DOUBLE_ARR(dro),
-                    "y"_a=ENSURE_DOUBLE_ARR(dy),
-                    "u"_a=ENSURE_DOUBLE_ARR(du)
+                    "theta"_a=ENSURE_DOUBLE_ARR(Dtheta),
+                    "xo"_a=ENSURE_DOUBLE_ARR(Dxo),
+                    "yo"_a=ENSURE_DOUBLE_ARR(Dyo),
+                    "ro"_a=ENSURE_DOUBLE_ARR(Dro),
+                    "y"_a=ENSURE_DOUBLE_ARR(Dy),
+                    "u"_a=ENSURE_DOUBLE_ARR(Du)
                 );
 #elif defined(_STARRY_SPECTRAL_)
                 auto dy_shape = py::make_tuple(ny, nt, map.ncoly);
-                auto dy_reshaped = reshape(ENSURE_DOUBLE_ARR(dy), dy_shape);
+                auto dy_reshaped = reshape(ENSURE_DOUBLE_ARR(Dy), dy_shape);
                 auto du_shape = py::make_tuple(nu, nt, map.ncolu);
-                auto du_reshaped = reshape(ENSURE_DOUBLE_ARR(du), du_shape);
+                auto du_reshaped = reshape(ENSURE_DOUBLE_ARR(Du), du_shape);
                 py::dict gradient = py::dict(
-                    "theta"_a=ENSURE_DOUBLE_ARR(dtheta),
-                    "xo"_a=ENSURE_DOUBLE_ARR(dxo),
-                    "yo"_a=ENSURE_DOUBLE_ARR(dyo),
-                    "ro"_a=ENSURE_DOUBLE_ARR(dro),
+                    "theta"_a=ENSURE_DOUBLE_ARR(Dtheta),
+                    "xo"_a=ENSURE_DOUBLE_ARR(Dxo),
+                    "yo"_a=ENSURE_DOUBLE_ARR(Dyo),
+                    "ro"_a=ENSURE_DOUBLE_ARR(Dro),
                     "y"_a=dy_reshaped,
                     "u"_a=du_reshaped
                 );
 #elif defined(_STARRY_TEMPORAL_)
-                auto dt = Ref<FType>(map.cache.pb_Dt);
+                auto Dt = Ref<FType>(map.cache.pb_Dt);
                 auto dy_shape = py::make_tuple(ny, nt, map.ncoly);
-                auto dy_reshaped = reshape(ENSURE_DOUBLE_ARR(dy), dy_shape);
+                auto dy_reshaped = reshape(ENSURE_DOUBLE_ARR(Dy), dy_shape);
                 py::dict gradient = py::dict(
-                    "t"_a=ENSURE_DOUBLE_ARR(dt),
-                    "theta"_a=ENSURE_DOUBLE_ARR(dtheta),
-                    "xo"_a=ENSURE_DOUBLE_ARR(dxo),
-                    "yo"_a=ENSURE_DOUBLE_ARR(dyo),
-                    "ro"_a=ENSURE_DOUBLE_ARR(dro),
+                    "t"_a=ENSURE_DOUBLE_ARR(Dt),
+                    "theta"_a=ENSURE_DOUBLE_ARR(Dtheta),
+                    "xo"_a=ENSURE_DOUBLE_ARR(Dxo),
+                    "yo"_a=ENSURE_DOUBLE_ARR(Dyo),
+                    "ro"_a=ENSURE_DOUBLE_ARR(Dro),
                     "y"_a=dy_reshaped,
-                    "u"_a=ENSURE_DOUBLE_ARR(du)
+                    "u"_a=ENSURE_DOUBLE_ARR(Du)
                 );
 #endif
 

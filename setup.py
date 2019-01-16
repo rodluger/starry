@@ -26,7 +26,7 @@ macros = dict(STARRY_NMULTI=32,
 for key, value in macros.items():
     macros[key] = os.getenv(key, value)
 
-# Don't compute dF/du?
+# Don't compute dF/Du?
 no_dfdu = int(os.getenv('STARRY_KEEP_DFDU_AS_DFDG', 0))
 if no_dfdu:
     macros["STARRY_KEEP_DFDU_AS_DFDG"] = 1

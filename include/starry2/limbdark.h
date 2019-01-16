@@ -71,7 +71,7 @@ namespace limbdark {
     /**
     Transform the u_n coefficients to `g_n`, which are coefficients
     of the basis in which the `P(G_n)` functions are computed.
-    Also compute the derivative matrix `dg / du`.
+    Also compute the derivative matrix `dg / Du`.
     
     This is the default map case.
 
@@ -146,7 +146,7 @@ namespace limbdark {
     /**
     Transform the u_n coefficients to `g_n`, which are coefficients
     of the basis in which the `P(G_n)` functions are computed.
-    Also compute the derivative matrix `dg / du`.
+    Also compute the derivative matrix `dg / Du`.
 
     This is the multi-column map case.
 

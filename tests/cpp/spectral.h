@@ -151,17 +151,17 @@ namespace test_spectral {
         Vector<double> b(nt); 
         b = Vector<double>::LinSpaced(nt, -1.5, 1.5);
         Matrix<double> flux(nt, nw);
-        Matrix<double> dtheta(nt, nw);
-        Matrix<double> dxo(nt, nw);
-        Matrix<double> dyo(nt, nw);
-        Matrix<double> dro(nt, nw);
-        Matrix<double> dy(nt, nw);
-        Matrix<double> du(nt * lmax, nw);
+        Matrix<double> Dtheta(nt, nw);
+        Matrix<double> Dxo(nt, nw);
+        Matrix<double> Dyo(nt, nw);
+        Matrix<double> Dro(nt, nw);
+        Matrix<double> Dy(nt, nw);
+        Matrix<double> Du(nt * lmax, nw);
         for (int t = 0; t < nt; ++t)
             map.computeFlux(0.0, b(t), 0.0, 0.1, flux.row(t),
-                            dtheta.row(t), dxo.row(t), dyo.row(t), 
-                            dro.row(t), dy.row(t), 
-                            du.block(t * lmax, 0, lmax, nw));
+                            Dtheta.row(t), Dxo.row(t), Dyo.row(t), 
+                            Dro.row(t), Dy.row(t), 
+                            Du.block(t * lmax, 0, lmax, nw));
 
         // -- Now compute the derivatives numerically --
 
@@ -228,27 +228,27 @@ namespace test_spectral {
 
         // Compare
         int nerr = 0;
-        if (!dtheta.isApprox(dtheta_multi.template cast<double>())) {
+        if (!Dtheta.isApprox(dtheta_multi.template cast<double>())) {
             std::cout << "Wrong theta deriv in `test_flux_with_grad`." << std::endl;
             ++nerr;
         }
-        if (!dxo.isApprox(dxo_multi.template cast<double>())) {
+        if (!Dxo.isApprox(dxo_multi.template cast<double>())) {
             std::cout << "Wrong xo deriv in `test_flux_with_grad`." << std::endl;
             ++nerr;
         }
-        if (!dyo.isApprox(dyo_multi.template cast<double>())) {
+        if (!Dyo.isApprox(dyo_multi.template cast<double>())) {
             std::cout << "Wrong yo deriv in `test_flux_with_grad`." << std::endl;
             ++nerr;
         }
-        if (!dro.isApprox(dro_multi.template cast<double>())) {
+        if (!Dro.isApprox(dro_multi.template cast<double>())) {
             std::cout << "Wrong ro deriv in `test_flux_with_grad`." << std::endl;
             ++nerr;
         }
-        if (!dy.isApprox(dy_multi.template cast<double>())) {
+        if (!Dy.isApprox(dy_multi.template cast<double>())) {
             std::cout << "Wrong y deriv in `test_flux_with_grad`." << std::endl;
             ++nerr;
         }
-        if (!du.isApprox(du_multi.template cast<double>())) {
+        if (!Du.isApprox(du_multi.template cast<double>())) {
             std::cout << "Wrong u deriv in `test_flux_with_grad`." << std::endl;
             ++nerr;
         }
@@ -279,19 +279,19 @@ namespace test_spectral {
         // Compute the flux and its derivatives
         Vector<double> theta = Vector<double>::LinSpaced(nt, 0, 360);
         Matrix<double> flux(nt, nw);
-        Matrix<double> dtheta(nt, nw);
-        Matrix<double> dxo(nt, nw);
-        Matrix<double> dyo(nt, nw);
-        Matrix<double> dro(nt, nw);
-        Matrix<double> dy(nt * (lmax + 1) * (lmax + 1), nw);
-        Matrix<double> du(nt, nw);
+        Matrix<double> Dtheta(nt, nw);
+        Matrix<double> Dxo(nt, nw);
+        Matrix<double> Dyo(nt, nw);
+        Matrix<double> Dro(nt, nw);
+        Matrix<double> Dy(nt * (lmax + 1) * (lmax + 1), nw);
+        Matrix<double> Du(nt, nw);
         for (int t = 0; t < nt; ++t)
             map.computeFlux(theta(t), -1.0, -1.0, 0.1, flux.row(t),
-                            dtheta.row(t), dxo.row(t), dyo.row(t), 
-                            dro.row(t), 
-                            dy.block(t * (lmax + 1) * (lmax + 1), 0, 
+                            Dtheta.row(t), Dxo.row(t), Dyo.row(t), 
+                            Dro.row(t), 
+                            Dy.block(t * (lmax + 1) * (lmax + 1), 0, 
                                      (lmax + 1) * (lmax + 1), nw), 
-                            du.row(t));
+                            Du.row(t));
 
         // -- Now compute the derivatives numerically --
 
@@ -346,25 +346,25 @@ namespace test_spectral {
 
         // Compare
         int nerr = 0;
-        if (!dtheta.isApprox(dtheta_multi.template cast<double>())) {
+        if (!Dtheta.isApprox(dtheta_multi.template cast<double>())) {
             std::cout << "Wrong theta deriv in `test_flux_with_grad`." << std::endl;
             ++nerr;
         }
-        if (!dxo.isApprox(dxo_multi.template cast<double>())) {
+        if (!Dxo.isApprox(dxo_multi.template cast<double>())) {
             std::cout << "Wrong xo deriv in `test_flux_with_grad`." << std::endl;
             ++nerr;
         }
-        if (!dyo.isApprox(dyo_multi.template cast<double>())) {
+        if (!Dyo.isApprox(dyo_multi.template cast<double>())) {
             std::cout << "Wrong yo deriv in `test_flux_with_grad`." << std::endl;
             ++nerr;
         }
-        if (!dro.isApprox(dro_multi.template cast<double>())) {
+        if (!Dro.isApprox(dro_multi.template cast<double>())) {
             std::cout << "Wrong ro deriv in `test_flux_with_grad`." << std::endl;
             ++nerr;
         }
-        if (!dy.isApprox(dy_multi.template cast<double>())) {
+        if (!Dy.isApprox(dy_multi.template cast<double>())) {
 
-            std::cout << dy << std::endl << std::endl;
+            std::cout << Dy << std::endl << std::endl;
             std::cout << dy_multi << std::endl << std::endl;
 
             std::cout << "Wrong y deriv in `test_flux_with_grad`." << std::endl;

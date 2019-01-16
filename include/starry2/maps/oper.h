@@ -245,11 +245,11 @@ inline void Map<S>::limbDarken (
     // Compute the gradient of the limb-darkened polynomial
     // with respect to `y` and `u`.
     //
-    //    DpupyDu = dpupy / du 
+    //    DpupyDu = dpupy / Du 
     //          = DpupyDpu * DpuDu
     //
-    //    DpupyDy = dpupy / dy 
-    //          = DpupyDpy * dp / dy + DpupyDpu * DpuDy
+    //    DpupyDy = dpupy / Dy 
+    //          = DpupyDpy * dp / Dy + DpupyDpu * DpuDy
     //          = DpupyDpy * A1 * R + DpupyDpu * DpuDy
     //
     if (gradient) {

@@ -56,13 +56,13 @@ protected:
         const Scalar& yo, 
         const Scalar& ro, 
         MatrixBase<T1> const & flux, 
-        MatrixBase<T2> const & dt,
-        MatrixBase<T3> const & dtheta,
-        MatrixBase<T4> const & dxo,
-        MatrixBase<T5> const & dyo,
-        MatrixBase<T6> const & dro,
-        MatrixBase<T7> const & dy,
-        MatrixBase<T8> const & du
+        MatrixBase<T2> const & Dt,
+        MatrixBase<T3> const & Dtheta,
+        MatrixBase<T4> const & Dxo,
+        MatrixBase<T5> const & Dyo,
+        MatrixBase<T6> const & Dro,
+        MatrixBase<T7> const & Dy,
+        MatrixBase<T8> const & Du
     );
 
     template <class U>
@@ -107,13 +107,13 @@ protected:
         const Scalar& b, 
         const Scalar& ro, 
         MatrixBase<T1> const & flux, 
-        MatrixBase<T2> const & dt,
-        MatrixBase<T3> const & dtheta,
-        MatrixBase<T4> const & dxo,
-        MatrixBase<T5> const & dyo,
-        MatrixBase<T6> const & dro,
-        MatrixBase<T7> const & dy,
-        MatrixBase<T8> const & du
+        MatrixBase<T2> const & Dt,
+        MatrixBase<T3> const & Dtheta,
+        MatrixBase<T4> const & Dxo,
+        MatrixBase<T5> const & Dyo,
+        MatrixBase<T6> const & Dro,
+        MatrixBase<T7> const & Dy,
+        MatrixBase<T8> const & Du
     );
 
     template <typename T1, typename T2, typename T3, typename T4, 
@@ -125,13 +125,13 @@ protected:
         const Scalar& b, 
         const Scalar& ro, 
         MatrixBase<T1> const & flux, 
-        MatrixBase<T2> const & dt,
-        MatrixBase<T3> const & dtheta,
-        MatrixBase<T4> const & dxo,
-        MatrixBase<T5> const & dyo,
-        MatrixBase<T6> const & dro,
-        MatrixBase<T7> const & dy,
-        MatrixBase<T8> const & du
+        MatrixBase<T2> const & Dt,
+        MatrixBase<T3> const & Dtheta,
+        MatrixBase<T4> const & Dxo,
+        MatrixBase<T5> const & Dyo,
+        MatrixBase<T6> const & Dro,
+        MatrixBase<T7> const & Dy,
+        MatrixBase<T8> const & Du
     );
 
     template <typename T1, typename T2, typename T3, typename T4, 
@@ -143,13 +143,13 @@ protected:
         const Scalar& b, 
         const Scalar& ro, 
         MatrixBase<T1> const & flux, 
-        MatrixBase<T2> const & dt,
-        MatrixBase<T3> const & dtheta,
-        MatrixBase<T4> const & dxo,
-        MatrixBase<T5> const & dyo,
-        MatrixBase<T6> const & dro,
-        MatrixBase<T7> const & dy,
-        MatrixBase<T8> const & du
+        MatrixBase<T2> const & Dt,
+        MatrixBase<T3> const & Dtheta,
+        MatrixBase<T4> const & Dxo,
+        MatrixBase<T5> const & Dyo,
+        MatrixBase<T6> const & Dro,
+        MatrixBase<T7> const & Dy,
+        MatrixBase<T8> const & Du
     );
 
     inline void checkDegree ();

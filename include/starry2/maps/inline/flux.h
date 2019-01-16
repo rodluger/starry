@@ -93,16 +93,16 @@ inline void computeFlux (
     const Scalar& yo, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux,
-    MatrixBase<T2> const & dtheta,
-    MatrixBase<T3> const & dxo,
-    MatrixBase<T4> const & dyo,
-    MatrixBase<T5> const & dro,
-    MatrixBase<T6> const & dy,
-    MatrixBase<T7> const & du
+    MatrixBase<T2> const & Dtheta,
+    MatrixBase<T3> const & Dxo,
+    MatrixBase<T4> const & Dyo,
+    MatrixBase<T5> const & Dro,
+    MatrixBase<T6> const & Dy,
+    MatrixBase<T7> const & Du
 ) {
-    Matrix<Scalar> dt(1, nflx);
+    Matrix<Scalar> Dt(1, nflx);
     computeFlux_(theta, xo, yo, ro, flux, 
-                 dt, dtheta, dxo, dyo, dro, dy, du);
+                 Dt, Dtheta, Dxo, Dyo, Dro, Dy, Du);
 }
 
 /**
@@ -137,15 +137,15 @@ inline void computeFlux (
     const Scalar& yo, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux, 
-    MatrixBase<T2> const & dt,
-    MatrixBase<T3> const & dtheta,
-    MatrixBase<T4> const & dxo,
-    MatrixBase<T5> const & dyo,
-    MatrixBase<T6> const & dro,
-    MatrixBase<T7> const & dy,
-    MatrixBase<T8> const & du
+    MatrixBase<T2> const & Dt,
+    MatrixBase<T3> const & Dtheta,
+    MatrixBase<T4> const & Dxo,
+    MatrixBase<T5> const & Dyo,
+    MatrixBase<T6> const & Dro,
+    MatrixBase<T7> const & Dy,
+    MatrixBase<T8> const & Du
 ) {
     computeTaylor(t);
     computeFlux_(theta, xo, yo, ro, flux,
-                 dt, dtheta, dxo, dyo, dro, dy, du);
+                 Dt, Dtheta, Dxo, Dyo, Dro, Dy, Du);
 }
