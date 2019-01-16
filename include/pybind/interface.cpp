@@ -106,6 +106,30 @@ PYBIND11_MODULE(
             return map.ncolu;
     });
 
+    // Number of wavelength bins
+    PyMap.def_property_readonly(
+        "nw", [] (
+            Map<T> &map
+        ) {
+#if defined(_STARRY_SPECTRAL_)
+            return map.ncoly;
+#else
+            return 1;
+#endif
+    });
+
+    // Number of temporal bins
+    PyMap.def_property_readonly(
+        "nt", [] (
+            Map<T> &map
+        ) {
+#if defined(_STARRY_TEMPORAL_)
+            return map.ncoly;
+#else
+            return 1;
+#endif
+    });
+
     // Highest degree of the map
     PyMap.def_property_readonly(
         "lmax", [] (
@@ -183,12 +207,17 @@ PYBIND11_MODULE(
             for (auto n : inds)
                 res.row(i++) = y.row(n).template cast<double>();
             if (inds.size() == 1) {
-                if (T::YType::ColsAtCompileTime == 1)
-                    return py::cast<double>(res(0));
-                else
-                    return py::cast<typename T::Double::YCoeffType>(res.row(0));
+#ifdef _STARRY_SINGLECOL_
+                return py::cast<double>(res(0));
+#else
+                auto coeff = py::cast(res.row(0).template cast<double>());
+                MAKE_READ_ONLY(coeff);
+                return coeff;
+#endif
             } else {
-                return py::cast<typename T::Double::YType>(res);
+                auto coeff = py::cast(res.template cast<double>());
+                MAKE_READ_ONLY(coeff);
+                return coeff;
             }
     });
 
@@ -253,12 +282,17 @@ PYBIND11_MODULE(
             for (auto n : inds)
                 res.row(i++) = u.row(n - 1).template cast<double>();
             if (inds.size() == 1) {
-                if (T::UType::ColsAtCompileTime == 1)
-                    return py::cast<double>(res(0));
-                else
-                    return py::cast<typename T::Double::UCoeffType>(res.row(0));
+#if defined(_STARRY_DEFAULT_) || defined(_STARRY_TEMPORAL_)
+                return py::cast<double>(res(0));
+#else
+                auto coeff = py::cast(res.row(0).template cast<double>());
+                MAKE_READ_ONLY(coeff);
+                return coeff;
+#endif
             } else {
-                return py::cast<typename T::Double::UType>(res);
+                auto coeff = py::cast(res.template cast<double>());
+                MAKE_READ_ONLY(coeff);
+                return coeff;
             }
     });
 
@@ -269,16 +303,20 @@ PYBIND11_MODULE(
     PyMap.def_property_readonly(
         "y", [] (
             Map<T> &map
-        ) -> typename T::Double::YType {
-            return map.getY().template cast<double>();
+        ) {
+            auto y = py::cast(map.getY().template cast<double>());
+            MAKE_READ_ONLY(y);
+            return y;
     });
 
     // Vector of limb darkening coefficients
     PyMap.def_property_readonly(
         "u", [] (
             Map<T> &map
-        ) -> typename T::Double::UType {
-            return map.getU().template cast<double>();
+        ) {
+            auto u = py::cast(map.getU().template cast<double>());
+            MAKE_READ_ONLY(u);
+            return u;
     });
 
     // Get/set the rotation axis

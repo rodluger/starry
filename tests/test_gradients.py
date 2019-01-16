@@ -59,7 +59,7 @@ def compare(ydeg=2, udeg=0, nw=1, nt=1, eps=1.e-8, axis=[0, 1, 0],
     if kind == "temporal":
         params['t'] = t
     params['theta'] = theta
-    params['xo'] = theta
+    params['xo'] = xo
     params['yo'] = yo
     params['ro'] = ro
 

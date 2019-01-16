@@ -10,6 +10,7 @@ import subprocess
 import os
 PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cpp")
 
+
 def test_cpp():
     """Run the C++ tests."""
     nerr = subprocess.check_call(["./test"], cwd=PATH)

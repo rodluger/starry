@@ -168,7 +168,7 @@ inline void Map<S>::computeFluxYlm(
     rotateIntoCache(theta);
 
     // No occultation
-    if (1) { // DEBUG ((b >= 1 + ro) || (ro == 0.0)) {
+    if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Easy
         MBCAST(flux, T1) = B.rTA1 * cache.Ry;
@@ -177,7 +177,7 @@ inline void Map<S>::computeFluxYlm(
     } else {
 
         // TODO!
-        throw errors::NotImplementedError("Not yet implemented.");
+        throw errors::NotImplementedError("computeFluxYlm not yet implemented.");
 
     }
 }
@@ -196,7 +196,7 @@ inline void Map<S>::computeFluxYlmLD(
     rotateIntoCache(theta);
 
     // No occultation
-    if (1) { // DEBUG ((b >= 1 + ro) || (ro == 0.0)) {
+    if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Change basis to polynomials
         cache.A1Ry = B.A1 * cache.Ry;
@@ -209,7 +209,7 @@ inline void Map<S>::computeFluxYlmLD(
     } else {
 
         // TODO!
-        throw errors::NotImplementedError("Not yet implemented.");
+        throw errors::NotImplementedError("computeFluxYlmLD not yet implemented.");
 
     }
 }
@@ -396,7 +396,7 @@ inline void Map<S>::computeFluxYlm (
     rotateIntoCache(theta, true);
 
     // No occultation
-    if (1) { // DEBUG ((b >= 1 + ro) || (ro == 0.0)) {
+    if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Compute the theta deriv
         MBCAST(dtheta, T3) = B.rTA1 * cache.dRdthetay;
@@ -424,7 +424,7 @@ inline void Map<S>::computeFluxYlm (
     } else {
 
         // TODO!
-        throw errors::NotImplementedError("Not yet implemented.");
+        throw errors::NotImplementedError("computeFluxYlm(gradient=true) not yet implemented.");
 
     }
 
@@ -454,7 +454,7 @@ inline void Map<S>::computeFluxYlmLD(
     rotateIntoCache(theta, true);
 
     // No occultation
-    if (1) { // DEBUG ((b >= 1 + ro) || (ro == 0.0)) {
+    if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Change basis to polynomials
         cache.A1Ry = B.A1 * cache.Ry;
@@ -482,7 +482,7 @@ inline void Map<S>::computeFluxYlmLD(
     } else {
 
         // TODO!
-        throw errors::NotImplementedError("Not yet implemented.");
+        throw errors::NotImplementedError("computeFluxYlmLD(gradient=true) not yet implemented.");
 
     }
 

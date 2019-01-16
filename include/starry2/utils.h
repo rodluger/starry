@@ -136,7 +136,8 @@ using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 template <typename T>
 using RowMatrix = Eigen::Matrix<T, Eigen::Dynamic, 
                                 Eigen::Dynamic, Eigen::RowMajor>;
-
+template <typename T, int N>
+using ADScalar = Eigen::AutoDiffScalar<Eigen::Matrix<T, N, 1>>;
 
 // --------------------------
 // ------- Data Types -------

@@ -187,6 +187,7 @@ protected:
     UnitVector<Scalar> axis;                                                   /**< The axis of rotation for the map */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
     rotation::Wigner<YType> W;                                                 /**< Ylm rotation stuff */
+    solver::Greens<Scalar> G;                                                  /**< The occultation integral solver class */
     limbdark::GreensLimbDark<Scalar> L;                                        /**< The occultation integral solver class (optimized for limb darkening) */
     Vector<Scalar> taylor;
     int u_deg;                                                                 /**< Highest degree set by the user in the limb darkening vector */
@@ -208,6 +209,7 @@ protected:
         cache(lmax, ncoly, ncolu, nflx),
         B(lmax),
         W(lmax, ncoly, (*this).y, (*this).axis),
+        G(lmax),
         L(lmax),
         taylor(ncoly)
     {
@@ -275,7 +277,7 @@ public:
         const Scalar& coeff_
     );
 
-    inline YType getY () const;
+    inline const YType getY () const;
 
     inline void setU (
         const UType& u_
@@ -291,13 +293,13 @@ public:
         const Scalar& coeff
     );
 
-    inline UType getU () const;
+    inline const UType getU () const;
 
     inline void setAxis (
         const UnitVector<Scalar>& axis_
     );
     
-    inline UnitVector<Scalar> getAxis () const;
+    inline const UnitVector<Scalar> getAxis () const;
 
     std::string info ();
 

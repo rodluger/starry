@@ -29,6 +29,9 @@ Miscellaneous utilities used for the pybind interface.
 #define PYOBJECT_CAST_ARR(X)           py::cast(&X)
 #endif
 
+#define MAKE_READ_ONLY(X)              reinterpret_cast<py::detail::PyArray_Proxy*>(X.ptr())->flags &= \
+                                       ~py::detail::npy_api::NPY_ARRAY_WRITEABLE_;
+
 #define MAXSIZE3(A, B, C) max(max(A.size(), B.size()), C.size())
 #define MAXSIZE4(A, B, C, D) max(max(max(A.size(), B.size()), C.size()), D.size())
 #define MAXSIZE5(A, B, C, D, E) max(max(max(max(A.size(), B.size()), C.size()), D.size()), E.size())
@@ -42,6 +45,7 @@ using namespace pybind11::literals;
 using namespace starry2::utils;
 using starry2::maps::Map;
 static const auto integer = py::module::import("numpy").attr("integer");
+
 
 /**
 Re-interpret the `start`, `stop`, and `step` attributes of a `py::slice`,

@@ -8,6 +8,7 @@ Defines the surface map class.
 
 #include "utils.h"
 #include "errors.h"
+#include "solver.h"
 #include "limbdark.h"
 #include "basis.h"
 #include "rotation.h"

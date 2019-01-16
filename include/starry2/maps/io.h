@@ -83,7 +83,7 @@ Get the full spherical harmonic vector/matrix
 
 */
 template <class S>
-inline typename S::YType Map<S>::getY () const {
+inline const typename S::YType Map<S>::getY () const {
     return y;
 }
 
@@ -143,8 +143,7 @@ Get the full limb darkening vector/matrix.
 
 */
 template <class S>
-inline typename S::UType Map<S>::getU ()
-const {
+inline const typename S::UType Map<S>::getU () const {
     return u.block(1, 0, lmax, u.cols());
 }
 
@@ -170,6 +169,6 @@ Return a copy of the axis.
 
 */
 template <class S>
-UnitVector<typename S::Scalar> Map<S>::getAxis () const {
+inline const UnitVector<typename S::Scalar> Map<S>::getAxis () const {
     return axis;
 }
