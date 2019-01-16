@@ -33,8 +33,8 @@ inline void Map<S>::computeIntensity_(
     // Apply limb darkening
     computeDegreeU();
     if (u_deg > 0) {
-        limbDarken(cache.A1Ry, cache.p_uy);
-        cache.A1Ry = cache.p_uy;
+        limbDarken(cache.A1Ry, cache.pupy);
+        cache.A1Ry = cache.pupy;
     }
 
     // Compute the polynomial basis
@@ -71,8 +71,8 @@ inline void Map<S>::renderMap_(
     // Apply limb darkening
     computeDegreeU();
     if (u_deg > 0) {
-        limbDarken(cache.A1Ry, cache.p_uy);
-        cache.A1Ry = cache.p_uy;
+        limbDarken(cache.A1Ry, cache.pupy);
+        cache.A1Ry = cache.pupy;
     }
 
     // Apply the basis transform
@@ -149,7 +149,7 @@ inline void Map<S>::computeFluxLD(
         UCoeffType norm = contract(y.row(0));
 
         // Dot the integral solution in, and we're done!
-        MBCAST(flux, T1) = (L.sT * cache.agol_g).cwiseProduct(norm);
+        MBCAST(flux, T1) = (L.sT * cache.g).cwiseProduct(norm);
 
     }
 }
@@ -212,10 +212,10 @@ inline void Map<S>::computeFluxYlmLD(
         cache.A1Ry = B.A1 * cache.Ry;
 
         // Apply limb darkening
-        limbDarken(cache.A1Ry, cache.p_uy);
+        limbDarken(cache.A1Ry, cache.pupy);
 
         // Dot the rotation solution vector in
-        MBCAST(flux, T1) = B.rT * cache.p_uy;
+        MBCAST(flux, T1) = B.rT * cache.pupy;
 
     // Occultation
     } else {
@@ -234,10 +234,10 @@ inline void Map<S>::computeFluxYlmLD(
         }
 
         // Apply limb darkening
-        limbDarken(cache.A1Ry, cache.p_uy);
+        limbDarken(cache.A1Ry, cache.pupy);
 
         // Transform to the Greens basis and dot the solution in
-        MBCAST(flux, T1) = G.sT * B.A2 * cache.p_uy;
+        MBCAST(flux, T1) = G.sT * B.A2 * cache.pupy;
 
     }
 }
@@ -362,7 +362,7 @@ inline void Map<S>::computeFluxLD(
         UCoeffType norm = contract(y.row(0));
 
         // Compute the flux
-        UCoeffType flux0 = (L.sT * cache.agol_g);
+        UCoeffType flux0 = (L.sT * cache.g);
         MBCAST(flux, T1) = flux0.cwiseProduct(norm);
 
         // The theta deriv is always zero
@@ -370,7 +370,7 @@ inline void Map<S>::computeFluxLD(
 
         // dF / db  ->  dF / dx, dF / dy
         if (likely(b > 0)) {
-            MBCAST(dxo, T4) = (L.dsTdb * cache.agol_g);
+            MBCAST(dxo, T4) = (L.dsTdb * cache.g);
             MBCAST(dxo, T4) /= b;
             MBCAST(dyo, T5) = dxo;
             MBCAST(dxo, T4) *= xo;
@@ -378,13 +378,13 @@ inline void Map<S>::computeFluxLD(
             MBCAST(dxo, T4) = dxo.cwiseProduct(norm);
             MBCAST(dyo, T5) = dyo.cwiseProduct(norm);
         } else {
-            MBCAST(dxo, T4) = L.dsTdb * cache.agol_g;
+            MBCAST(dxo, T4) = L.dsTdb * cache.g;
             MBCAST(dxo, T4) = dxo.cwiseProduct(norm);
             MBCAST(dyo, T5) = dxo;
         }
 
         // dF / dr
-        MBCAST(dro, T6) = (L.dsTdr * cache.agol_g);
+        MBCAST(dro, T6) = (L.dsTdr * cache.g);
         MBCAST(dro, T6) = dro.cwiseProduct(norm);
 
         // dF / dy
@@ -427,7 +427,7 @@ inline void Map<S>::computeFluxYlm (
     if ((b >= 1 + ro) || (ro == 0.0)) {
 
         // Compute the theta deriv
-        MBCAST(dtheta, T3) = B.rTA1 * cache.dRdthetay;
+        MBCAST(dtheta, T3) = B.rTA1 * cache.DRDthetay;
         MBCAST(dtheta, T3) *= radian;
 
         // The xo, yo, and ro derivs are trivial
@@ -488,8 +488,8 @@ inline void Map<S>::computeFluxYlmLD(
         cache.A1Ry = B.A1 * cache.Ry;
 
         // Apply limb darkening
-        limbDarken(cache.A1Ry, cache.p_uy, true);
-        MBCAST(flux, T1) = B.rT * cache.p_uy;
+        limbDarken(cache.A1Ry, cache.pupy, true);
+        MBCAST(flux, T1) = B.rT * cache.pupy;
 
         // Compute the map derivs
         computeDfDyYlmLDNoOccultation(dy);

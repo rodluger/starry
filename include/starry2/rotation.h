@@ -345,7 +345,7 @@ protected:
 public:
 
     std::vector<Matrix<Scalar>> R;                                             /**< The full rotation matrix for real spherical harmonics */
-    std::vector<Matrix<Scalar>> dRdtheta;                                      /**< The derivative of the rotation matrix with respect to theta */
+    std::vector<Matrix<Scalar>> DRDtheta;                                      /**< The derivative of the rotation matrix with respect to theta */
     
     inline void updateZeta ();
 
@@ -394,7 +394,7 @@ public:
         RZetaInv(lmax + 1),
         y_zeta(N, ncol),
         R(lmax + 1),
-        dRdtheta(lmax + 1)
+        DRDtheta(lmax + 1)
     {
         // Allocate the Wigner matrices
         for (int l = 0; l < lmax + 1; ++l) {
@@ -403,7 +403,7 @@ public:
             RZeta[l].resize(sz, sz);
             RZetaInv[l].resize(sz, sz);
             R[l].resize(sz, sz);
-            dRdtheta[l].resize(sz, sz);
+            DRDtheta[l].resize(sz, sz);
         }
 
         // Initialize our z rotation vectors
@@ -570,11 +570,11 @@ inline void Wigner<MapType>::compute (
             m = j - l;
             R[l].col(j) = RZetaInv[l].col(j) * cosmt(l * l + j) +
                           RZetaInv[l].col(2 * l - j) * sinmt(l * l + j);
-            dRdtheta[l].col(j) = RZetaInv[l].col(2 * l - j) * m * cosmt(l * l + j) -
+            DRDtheta[l].col(j) = RZetaInv[l].col(2 * l - j) * m * cosmt(l * l + j) -
                                  RZetaInv[l].col(j) * m * sinmt(l * l + j);
         }
         R[l] = R[l] * RZeta[l];
-        dRdtheta[l] = dRdtheta[l] * RZeta[l];
+        DRDtheta[l] = DRDtheta[l] * RZeta[l];
     }
 
 }

@@ -128,10 +128,10 @@ unobscured flux is **unity**.
 */
 template<class S>
 inline void Map<S>::computeAgolGBasis () {
-    if (cache.compute_agol_g) {
-        limbdark::computeAgolGBasis(u, cache.agol_g, cache.dAgolGdu);
-        normalizeAgolG(cache.agol_g, cache.dAgolGdu);
-        cache.compute_agol_g = false;
+    if (cache.compute_g) {
+        limbdark::computeAgolGBasis(u, cache.g, cache.DgDu);
+        normalizeAgolGBasis(cache.g, cache.DgDu);
+        cache.compute_g = false;
     }
 }
 
@@ -180,7 +180,7 @@ inline void Map<S>::rotateByAxisAngle (
 }
 
 /** 
-Compute the limb darkening polynomial `agol_p`.
+Compute the limb darkening polynomial `p`.
 
 NOTE: This is the **normalized** xyz polynomial corresponding
 to the limb darkening vector `u`. The normalization is such 
@@ -191,8 +191,8 @@ This is significantly different from the beta version of the
 code, which normalized it such that the FLUX remained unchanged.
 That normalization was almost certainly unphysical.
 
-If `gradient=true`, `dAgolPdu(i, j, k)` is the derivative of the j^th
-polynomial coefficient of `agol_p` with respect to the k^th polynomial
+If `gradient=true`, `DpuDu(i, j, k)` is the derivative of the j^th
+polynomial coefficient of `p` with respect to the k^th polynomial
 coefficient of `u`, both in the i^th map column.
 
 
@@ -201,27 +201,27 @@ TODO: This can be sped up a TON.
 */
 template <class S>
 inline void Map<S>::computeLDPolynomial (bool gradient) {
-    if (!gradient && cache.compute_agol_p) {
+    if (!gradient && cache.compute_p) {
         UType tmp = B.U1 * u;
         UCoeffType norm = pi<Scalar>() * contract(y.row(0)).cwiseQuotient(B.rT * tmp);
-        cache.agol_p = tmp.array().rowwise() * norm.array();
-        cache.compute_agol_p = false;
-    } else if (gradient && cache.compute_agol_p_grad) {
+        cache.p = tmp.array().rowwise() * norm.array();
+        cache.compute_p = false;
+    } else if (gradient && cache.compute_p_grad) {
         UType tmp = B.U1 * u;
         UCoeffType rTU1u = B.rT * tmp;
         for (int i = 0; i < ncolu; ++i) {
             Scalar norm0 = pi<Scalar>() / rTU1u(i);
             Scalar norm = norm0 * contract(y.row(0))(i);
             RowVector<Scalar> dnormdu = -(norm / rTU1u(i)) * B.rTU1;
-            cache.agol_p.col(i) = tmp.col(i) * norm;
-            cache.dAgolPdu[i] = B.U1 * norm + tmp.col(i) * dnormdu;
+            cache.p.col(i) = tmp.col(i) * norm;
+            cache.DpuDu[i] = B.U1 * norm + tmp.col(i) * dnormdu;
 
             // TODO: This matrix is sparse; exploit this!
-            cache.dAgolPdy[i].setZero();
-            cache.dAgolPdy[i].col(0) = tmp.col(i) * norm0;
+            cache.DpuDy[i].setZero();
+            cache.DpuDy[i].col(0) = tmp.col(i) * norm0;
             
         }
-        cache.compute_agol_p_grad = false;
+        cache.compute_p_grad = false;
     }
 }
 
@@ -245,20 +245,20 @@ inline void Map<S>::limbDarken (
     // Compute the gradient of the limb-darkened polynomial
     // with respect to `y` and `u`.
     //
-    //    dLDdu = dp_uy / du 
-    //          = dLDdagol_p * dAgolPdu
+    //    DpupyDu = dpupy / du 
+    //          = DpupyDpu * DpuDu
     //
-    //    dLDdy = dp_uy / dy 
-    //          = dLDdp * dp / dy + dLDdagol_p * dAgolPdy
-    //          = dLDdp * A1 * R + dLDdagol_p * dAgolPdy
+    //    DpupyDy = dpupy / dy 
+    //          = DpupyDpy * dp / dy + DpupyDpu * DpuDy
+    //          = DpupyDpy * A1 * R + DpupyDpu * DpuDy
     //
     if (gradient) {
 
-        basis::polymul(y_deg, poly, u_deg, cache.agol_p, lmax, poly_ld, 
-                       cache.dLDdp, cache.dLDdagol_p);
+        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, 
+                       cache.DpupyDpy, cache.DpupyDpu);
 
         for (int i = 0; i < ncolu; ++i) {
-            cache.dLDdu[i] = cache.dLDdagol_p[i] * cache.dAgolPdu[i];
+            cache.DpupyDu[i] = cache.DpupyDpu[i] * cache.DpuDu[i];
         }
 
         // TODO: This can be sped up SO much. This is for DEBUG only.
@@ -270,15 +270,15 @@ inline void Map<S>::limbDarken (
         Matrix<Scalar> A1R = B.A1 * R;
         if (ncoly == ncolu) {
             for (int i = 0; i < ncoly; ++i)
-                cache.dLDdy[i] = cache.dLDdp[i] * A1R + cache.dLDdagol_p[i] * cache.dAgolPdy[i];
+                cache.DpupyDy[i] = cache.DpupyDpy[i] * A1R + cache.DpupyDpu[i] * cache.DpuDy[i];
         } else {
             for (int i = 0; i < ncoly; ++i)
-                cache.dLDdy[i] = cache.dLDdp[0] * A1R + cache.dLDdagol_p[0] * cache.dAgolPdy[0];
+                cache.DpupyDy[i] = cache.DpupyDpy[0] * A1R + cache.DpupyDpu[0] * cache.DpuDy[0];
         }
 
     } else {
         // Multiply the polynomials
-        basis::polymul(y_deg, poly, u_deg, cache.agol_p, lmax, poly_ld);
+        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld);
     }
 
 }

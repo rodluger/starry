@@ -122,8 +122,8 @@ inline IsStatic<U, void> rotateIntoCache (
         for (int l = 0; l < lmax + 1; ++l) {
             cache.Ry.block(l * l, 0, 2 * l + 1, ncoly) =
                 W.R[l] * y.block(l * l, 0, 2 * l + 1, ncoly);
-            cache.dRdthetay.block(l * l, 0, 2 * l + 1, ncoly) =
-                W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, ncoly);
+            cache.DRDthetay.block(l * l, 0, 2 * l + 1, ncoly) =
+                W.DRDtheta[l] * y.block(l * l, 0, 2 * l + 1, ncoly);
         }
         cache.theta_with_grad = theta;
     }
@@ -161,8 +161,8 @@ inline IsTemporal<U, void> rotateIntoCache (
         }
         cache.Ry = contract(cache.RyUncontracted);
         for (int l = 0; l < lmax + 1; ++l) {
-            cache.dRdthetay.block(l * l, 0, 2 * l + 1, nflx) =
-                contract(W.dRdtheta[l] * y.block(l * l, 0, 2 * l + 1, ncoly));
+            cache.DRDthetay.block(l * l, 0, 2 * l + 1, nflx) =
+                contract(W.DRDtheta[l] * y.block(l * l, 0, 2 * l + 1, ncoly));
         }
 
     }
@@ -174,14 +174,14 @@ Default map specialization.
 
 */
 template<typename U=S, typename T1, typename T2>
-inline IsDefault<U, void> normalizeAgolG (
+inline IsDefault<U, void> normalizeAgolGBasis (
     MatrixBase<T1> const & g,
-    MatrixBase<T2> const & dAgolGdu
+    MatrixBase<T2> const & DgDu
 ) {
     // The total flux is given by `y00 * (s . g)`
     Scalar norm = Scalar(1.0) / (pi<Scalar>() * (g(0) + 2.0 * g(1) / 3.0));
     MBCAST(g, T1) = g * norm;
-    MBCAST(dAgolGdu, T2) = dAgolGdu * norm;
+    MBCAST(DgDu, T2) = DgDu * norm;
 }
 
 /**
@@ -190,16 +190,16 @@ Spectral map specialization.
 
 */
 template<typename U=S, typename T1, typename T2>
-inline IsSpectral<U, void> normalizeAgolG (
+inline IsSpectral<U, void> normalizeAgolGBasis (
     MatrixBase<T1> const & g,
-    MatrixBase<T2> const & dAgolGdu
+    MatrixBase<T2> const & DgDu
 ) {
     // The total flux is given by `y00 * (s . g)`
     for (int n = 0; n < ncoly; ++n) {
         Scalar norm = Scalar(1.0) / (pi<Scalar>() * (g(0, n) + 2.0 * g(1, n) / 3.0));
         MBCAST(g, T1).col(n) = g.col(n) * norm;
-        MBCAST(dAgolGdu, T2).block(n * lmax, 0, lmax, lmax + 1) = 
-            dAgolGdu.block(n * lmax, 0, lmax, lmax + 1) * norm;
+        MBCAST(DgDu, T2).block(n * lmax, 0, lmax, lmax + 1) = 
+            DgDu.block(n * lmax, 0, lmax, lmax + 1) * norm;
     }
 }
 
@@ -209,13 +209,13 @@ Temporal map specialization.
 
 */
 template<typename U=S, typename T1, typename T2>
-inline IsTemporal<U, void> normalizeAgolG (
+inline IsTemporal<U, void> normalizeAgolGBasis (
     MatrixBase<T1> const & g,
-    MatrixBase<T2> const & dAgolGdu
+    MatrixBase<T2> const & DgDu
 ) {
     // The total flux is given by `y00 * (s . c)`
     Scalar norm = Scalar(1.0) / (pi<Scalar>() * (g(0) + 2.0 * g(1) / 3.0));
     MBCAST(g, T1) = g * norm;
-    MBCAST(dAgolGdu, T2) = dAgolGdu * norm;
+    MBCAST(DgDu, T2) = DgDu * norm;
 
 }

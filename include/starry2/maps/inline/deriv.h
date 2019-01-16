@@ -28,10 +28,10 @@ inline IsSingleWavelength<U, void> computeDfDuLDOccultation (
         MBCAST(du, T2)(1) -= (2.0 / 3.0) * pi<Scalar>() * flux(0);
         MBCAST(du, T2) = du * norm(0);
 #else
-        Vector<Scalar> dFdAgolG = L.sT.transpose();
-        dFdAgolG(0) -= pi<Scalar>() * flux(0);
-        dFdAgolG(1) -= (2.0 / 3.0) * pi<Scalar>() * flux(0);
-        MBCAST(du, T2) = cache.dAgolGdu * dFdAgolG * norm(0);
+        Vector<Scalar> DfDg = L.sT.transpose();
+        DfDg(0) -= pi<Scalar>() * flux(0);
+        DfDg(1) -= (2.0 / 3.0) * pi<Scalar>() * flux(0);
+        MBCAST(du, T2) = cache.DgDu * DfDg * norm(0);
 #endif
     }
 }
@@ -54,20 +54,20 @@ inline IsSpectral<U, void> computeDfDuLDOccultation (
     if (likely(lmax > 0)) {
         Scalar twothirdspi = (2.0 / 3.0) * pi<Scalar>();
 #ifdef STARRY_KEEP_DFDU_AS_DFDG
-        Vector<Scalar> dFdAgolG = L.sT.transpose();
+        Vector<Scalar> DfDg = L.sT.transpose();
         for (int n = 0; n < ncoly; ++n) {
-            dFdAgolG(0) = L.sT(0) - pi<Scalar>() * flux(n);
-            dFdAgolG(1) = L.sT(1) - twothirdspi * flux(n);
-            MBCAST(du, T2).col(n) = dFdAgolG * norm(n);
+            DfDg(0) = L.sT(0) - pi<Scalar>() * flux(n);
+            DfDg(1) = L.sT(1) - twothirdspi * flux(n);
+            MBCAST(du, T2).col(n) = DfDg * norm(n);
         }
 #else
-        Vector<Scalar> dFdAgolG = L.sT.transpose();
+        Vector<Scalar> DfDg = L.sT.transpose();
         for (int n = 0; n < ncoly; ++n) {
-            dFdAgolG(0) = L.sT(0) - pi<Scalar>() * flux(n);
-            dFdAgolG(1) = L.sT(1) - twothirdspi * flux(n);
+            DfDg(0) = L.sT(0) - pi<Scalar>() * flux(n);
+            DfDg(1) = L.sT(1) - twothirdspi * flux(n);
             MBCAST(du, T2).col(n) = 
-                cache.dAgolGdu.block(n * lmax, 0, lmax, lmax + 1) * 
-                dFdAgolG * norm(n);
+                cache.DgDu.block(n * lmax, 0, lmax, lmax + 1) * 
+                DfDg * norm(n);
         }
 #endif
     }
@@ -304,7 +304,7 @@ template<typename U=S, typename T1>
 inline IsDefault<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & dy
 ) {
-    MBCAST(dy, T1) = (B.rT * cache.dLDdy[0]).transpose();
+    MBCAST(dy, T1) = (B.rT * cache.DpupyDy[0]).transpose();
 }
 
 /**
@@ -318,7 +318,7 @@ inline IsSpectral<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & dy
 ) {
     for (int i = 0; i < ncoly; ++i)
-        MBCAST(dy, T1).col(i) = B.rT * cache.dLDdy[i];
+        MBCAST(dy, T1).col(i) = B.rT * cache.DpupyDy[i];
 }
 
 /**
@@ -332,7 +332,7 @@ inline IsTemporal<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & dy
 ){
     for (int i = 0; i < ncoly; ++i)
-        MBCAST(dy, T1).col(i) = B.rT * cache.dLDdy[i] * taylor(i);
+        MBCAST(dy, T1).col(i) = B.rT * cache.DpupyDy[i] * taylor(i);
 }
 
 /**
@@ -345,7 +345,7 @@ template<typename U=S, typename T1>
 inline IsDefault<U, void> computeDfDuYlmLDNoOccultation (
     MatrixBase<T1> const & du
 ) {
-    MBCAST(du, T1) = (B.rT * cache.dLDdu[0]).segment(1, lmax).transpose();
+    MBCAST(du, T1) = (B.rT * cache.DpupyDu[0]).segment(1, lmax).transpose();
 }
 
 /**
@@ -359,7 +359,7 @@ inline IsSpectral<U, void> computeDfDuYlmLDNoOccultation (
     MatrixBase<T1> const & du
 ) {
     for (int i = 0; i < ncolu; ++i)
-        MBCAST(du, T1).col(i) = (B.rT * cache.dLDdu[i]).segment(1, lmax);
+        MBCAST(du, T1).col(i) = (B.rT * cache.DpupyDu[i]).segment(1, lmax);
 }
 
 /**
@@ -372,7 +372,7 @@ template<typename U=S, typename T1>
 inline IsTemporal<U, void> computeDfDuYlmLDNoOccultation (
     MatrixBase<T1> const & du
 ){
-    MBCAST(du, T1) = (B.rT * cache.dLDdu[0]).segment(1, lmax).transpose();
+    MBCAST(du, T1) = (B.rT * cache.DpupyDu[0]).segment(1, lmax).transpose();
 }
 
 /**
@@ -385,8 +385,8 @@ template<typename U=S, typename T1>
 inline IsSingleWavelength<U, void> computeDfDthetaYlmLDNoOccultation (
     MatrixBase<T1> const & dtheta
 ){
-    MBCAST(dtheta, T1) = RowVector<Scalar>(B.rT * cache.dLDdp[0]) * 
-                         Vector<Scalar>(B.A1 * cache.dRdthetay);
+    MBCAST(dtheta, T1) = RowVector<Scalar>(B.rT * cache.DpupyDpy[0]) * 
+                         Vector<Scalar>(B.A1 * cache.DRDthetay);
     MBCAST(dtheta, T1) *= radian;
 }
 
@@ -401,8 +401,8 @@ inline IsSpectral<U, void> computeDfDthetaYlmLDNoOccultation (
     MatrixBase<T1> const & dtheta
 ){
     for (int i = 0; i < ncoly; ++i)
-        MBCAST(dtheta, T1).col(i) = RowVector<Scalar>(B.rT * cache.dLDdp[i]) * 
-                                    Vector<Scalar>(B.A1 * cache.dRdthetay.col(i));
+        MBCAST(dtheta, T1).col(i) = RowVector<Scalar>(B.rT * cache.DpupyDpy[i]) * 
+                                    Vector<Scalar>(B.A1 * cache.DRDthetay.col(i));
     MBCAST(dtheta, T1) *= radian;
 }
 
@@ -433,7 +433,7 @@ inline IsTemporal<U, void> computeDfDtYlmLDNoOccultation (
     MBCAST(dt, T1).setZero();
     auto A1Ry = B.A1 * cache.RyUncontracted;
     for (int i = 0; i < ncoly - 1; ++i) {
-        limbDarken(A1Ry.col(i + 1), cache.p_uy, false);
-        MBCAST(dt, T1) += OneByOne<Scalar>(B.rT * cache.p_uy) * taylor(i);
+        limbDarken(A1Ry.col(i + 1), cache.pupy, false);
+        MBCAST(dt, T1) += OneByOne<Scalar>(B.rT * cache.pupy) * taylor(i);
     }
 }

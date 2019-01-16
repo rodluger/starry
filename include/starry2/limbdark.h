@@ -82,7 +82,7 @@ namespace limbdark {
     inline void computeAgolGBasis (
         MatrixBase<T1> const & u, 
         MatrixBase<T2> const & g,
-        MatrixBase<T3> const & dAgolGdu
+        MatrixBase<T3> const & DgDu
     ) {
         using Scalar = typename T1::Scalar;
         Scalar bcoeff;
@@ -91,7 +91,7 @@ namespace limbdark {
         Matrix<Scalar> dpdu;
         p.setZero();
         dpdu.setZero(N, N);
-        MBCAST(dAgolGdu, T3).setZero();
+        MBCAST(DgDu, T3).setZero();
 
         // Compute the p_n coefficients
         p(0) = -u(0);
@@ -110,35 +110,35 @@ namespace limbdark {
         for (size_t j = N - 1; j >= 2; --j) {
             if (j >= N - 2) {
                 MBCAST(g, T2)(j) = p(j) / (j + 2);
-                MBCAST(dAgolGdu, T3).transpose().block(j, 0, 1, N - 1) = 
+                MBCAST(DgDu, T3).transpose().block(j, 0, 1, N - 1) = 
                     dpdu.block(j, 1, 1, N - 1) / (j + 2);
             } else {
                 MBCAST(g, T2)(j) = p(j) / (j + 2) + g(j + 2);
-                MBCAST(dAgolGdu, T3).transpose().block(j, 0, 1, N - 1) = 
+                MBCAST(DgDu, T3).transpose().block(j, 0, 1, N - 1) = 
                     dpdu.block(j, 1, 1, N - 1) / (j + 2) +
-                    dAgolGdu.transpose().block(j + 2, 0, 1, N - 1);
+                    DgDu.transpose().block(j + 2, 0, 1, N - 1);
             }
         }
 
         if (N >= 4) {
             MBCAST(g, T2)(1) = p(1) + 3 * g(3);
-            MBCAST(dAgolGdu, T3).transpose().block(1, 0, 1, N - 1) = 
+            MBCAST(DgDu, T3).transpose().block(1, 0, 1, N - 1) = 
                 dpdu.block(1, 1, 1, N - 1) +
-                3 * dAgolGdu.transpose().block(3, 0, 1, N - 1);
+                3 * DgDu.transpose().block(3, 0, 1, N - 1);
         } else if (N >= 2) {
             MBCAST(g, T2)(1) = p(1);
-            MBCAST(dAgolGdu, T3).transpose().block(1, 0, 1, N - 1) = 
+            MBCAST(DgDu, T3).transpose().block(1, 0, 1, N - 1) = 
                 dpdu.block(1, 1, 1, N - 1);
         }
 
         if (N >= 3) {
             MBCAST(g, T2)(0) = p(0) + 2 * g(2);
-            MBCAST(dAgolGdu, T3).transpose().block(0, 0, 1, N - 1) = 
+            MBCAST(DgDu, T3).transpose().block(0, 0, 1, N - 1) = 
                 dpdu.block(0, 1, 1, N - 1) +
-                2 * dAgolGdu.transpose().block(2, 0, 1, N - 1);
+                2 * DgDu.transpose().block(2, 0, 1, N - 1);
         } else {
             MBCAST(g, T2)(0) = p(0);
-            MBCAST(dAgolGdu, T3).transpose().block(0, 0, 1, N - 1) = 
+            MBCAST(DgDu, T3).transpose().block(0, 0, 1, N - 1) = 
                 dpdu.block(0, 1, 1, N - 1);
         }
     }
@@ -155,13 +155,13 @@ namespace limbdark {
     inline void computeAgolGBasis (
         const Matrix<T>& u, 
         Matrix<T>& g,
-        Matrix<T>& dAgolGdu
+        Matrix<T>& DgDu
     ) {
         int lmax = u.rows() - 1;
         int ncol = u.cols();
         for (int n = 0; n < ncol; ++n)
             computeAgolGBasis(u.col(n), g.col(n), 
-                     dAgolGdu.block(n * lmax, 0, lmax, lmax + 1));
+                     DgDu.block(n * lmax, 0, lmax, lmax + 1));
     }
 
     /**
