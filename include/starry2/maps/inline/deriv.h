@@ -383,9 +383,7 @@ template<typename U=S, typename T1>
 inline IsSingleWavelength<U, void> computeDfDthetaYlmLDNoOccultation (
     MatrixBase<T1> const & Dtheta
 ){
-    // TODO maybe transpose the definition of rTDpupyDpy?
-    MBCAST(Dtheta, T1) = RowVector<Scalar>(cache.rTDpupyDpy) * 
-                         Vector<Scalar>(B.A1 * cache.DRDthetay);
+    MBCAST(Dtheta, T1) = cache.rTDpupyDpy * Vector<Scalar>(B.A1 * cache.DRDthetay);
     MBCAST(Dtheta, T1) *= radian;
 }
 
@@ -399,8 +397,8 @@ template<typename U=S, typename T1>
 inline IsSpectral<U, void> computeDfDthetaYlmLDNoOccultation (
     MatrixBase<T1> const & Dtheta
 ){
-    // TODO see note above
-    MBCAST(Dtheta, T1) = (cache.rTDpupyDpy.cwiseProduct(B.A1 * cache.DRDthetay)).colwise().sum();
+    // TODO simplify
+    MBCAST(Dtheta, T1) = (cache.rTDpupyDpy.transpose().cwiseProduct(B.A1 * cache.DRDthetay)).colwise().sum();
     MBCAST(Dtheta, T1) *= radian;
 }
 

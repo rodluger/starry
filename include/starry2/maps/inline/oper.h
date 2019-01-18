@@ -318,7 +318,7 @@ inline void limbDarken (
         cache.rTDpupyDu = cache.rTDpupyDpu * cache.DpuDu;
 #endif
 
-        cache.rTDpupyDpyA1R = cache.rTDpupyDpy.transpose() * B.A1;
+        cache.rTDpupyDpyA1R = cache.rTDpupyDpy * B.A1;
 
 #if defined(_STARRY_SPECTRAL_)
 
