@@ -431,7 +431,7 @@ inline IsTemporal<U, void> computeDfDtYlmLDNoOccultation (
     MBCAST(Dt, T1).setZero();
     auto A1Ry = B.A1 * cache.RyUncontracted;
     for (int i = 0; i < ncoly - 1; ++i) {
-        limbDarken(A1Ry.col(i + 1), cache.pupy, false);
+        limbDarken(A1Ry.col(i + 1), cache.pupy);
         MBCAST(Dt, T1) += OneByOne<Scalar>(B.rT * cache.pupy) * taylor(i);
     }
 }

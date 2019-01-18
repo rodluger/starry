@@ -54,21 +54,34 @@ public:
     RowVector<Scalar> sTADRDphi;
     std::vector<Matrix<Scalar>> EulerD;
     std::vector<Matrix<Scalar>> EulerR;
-    std::vector<Matrix<Scalar>> DpupyDpy;
-    std::vector<Matrix<Scalar>> DpupyDpu;
-    std::vector<Matrix<Scalar>> DpuDu;
-    std::vector<Matrix<Scalar>> DpuDy; // TODO: This is sparse
 
-    Matrix<Scalar> rTDpupyDy;
-    Matrix<Scalar> rTDpupyDu;
 
-// TODO template these
-#if defined(_STARRY_DEFAULT_) || defined(_STARRY_TEMPORAL_)
+// TODO template these and maybe transpose them
+#if defined(_STARRY_DEFAULT_)
+    Matrix<Scalar> DpuDu;
+    Vector<Scalar> DpuDy0;
+    Vector<Scalar> rTDpupyDy;
+    Vector<Scalar> rTDpupyDu;
     Vector<Scalar> rTDpupyDpu;
     Vector<Scalar> rTDpupyDpy;
-#else
+    RowVector<Scalar> rTDpupyDpyA1R;
+#elif defined(_STARRY_SPECTRAL_)
+    std::vector<Matrix<Scalar>> DpuDu;
+    Matrix<Scalar> DpuDy0;
+    Matrix<Scalar> rTDpupyDy;
+    Matrix<Scalar> rTDpupyDu;
     Matrix<Scalar> rTDpupyDpu;
     Matrix<Scalar> rTDpupyDpy;
+    Matrix<Scalar> rTDpupyDpyA1R;
+#else
+    Matrix<Scalar> DpuDu;
+    Vector<Scalar> DpuDy0;
+    Matrix<Scalar> rTDpupyDy;
+    Vector<Scalar> rTDpupyDu;
+    Vector<Scalar> rTDpupyDpu;
+    Vector<Scalar> rTDpupyDpy;
+    RowVector<Scalar> rTDpupyDpyA1R;
+
 #endif
 
     // Pybind cache
@@ -162,19 +175,32 @@ public:
         sTADRDphi(N),
         EulerD(lmax + 1),
         EulerR(lmax + 1),
-        DpupyDpy(ncoly),
-        DpupyDpu(ncolu),
+
+// TODO template these
+#if defined(_STARRY_DEFAULT_)
+        DpuDu(lmax + 1, N),
+        DpuDy0(N),
+        rTDpupyDy(N),
+        rTDpupyDu(lmax + 1),
+        rTDpupyDpu(N),
+        rTDpupyDpy(N),
+        rTDpupyDpyA1R(N)
+#elif defined(_STARRY_SPECTRAL_)
         DpuDu(ncolu),
-        DpuDy(ncolu),
+        DpuDy0(N, ncolu),
         rTDpupyDy(N, ncoly),
         rTDpupyDu(lmax + 1, ncolu),
-// TODO template these
-#if defined(_STARRY_DEFAULT_) || defined(_STARRY_TEMPORAL_)
-        rTDpupyDpu(N),
-        rTDpupyDpy(N)
-#else
         rTDpupyDpu(N, ncolu),
-        rTDpupyDpy(N, ncoly)
+        rTDpupyDpy(N, ncoly),
+        rTDpupyDpyA1R(ncoly, N)
+#else
+        DpuDu(lmax + 1, N),
+        DpuDy0(N),
+        rTDpupyDy(N, ncoly),
+        rTDpupyDu(lmax + 1),
+        rTDpupyDpu(N),
+        rTDpupyDpy(N),
+        rTDpupyDpyA1R(N)
 #endif
     {
         for (int l = 0; l < lmax + 1; ++l) {
@@ -182,15 +208,13 @@ public:
             EulerD[l].resize(sz, sz);
             EulerR[l].resize(sz, sz);
         }
-        for (int i = 0; i < ncoly; ++i) {
-            DpupyDpy[i].resize(N, N);
-        }
+
+#if defined(_STARRY_SPECTRAL_)
         for (int i = 0; i < ncolu; ++i) {
-            // TODO: CHECK THESE SHAPES
-            DpupyDpu[i].resize(N, N);
-            DpuDu[i].resize(N, N); // wrong
-            DpuDy[i].resize(N, N);
+            DpuDu[i].resize(lmax + 1, N);
         }
+#endif
+
         reset();
     };
 

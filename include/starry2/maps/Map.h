@@ -176,12 +176,6 @@ protected:
         YType& y_
     );
 
-    inline void limbDarken (
-        const CtrYType& poly, 
-        CtrYType& poly_ld, 
-        bool gradient=false
-    );
-
     // Internal variables
     YType y;
     UType u;

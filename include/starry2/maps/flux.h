@@ -548,7 +548,7 @@ inline void Map<S>::computeFluxYlmLD(
         cache.A1Ry = B.A1 * cache.Ry;
 
         // Apply limb darkening
-        limbDarken(cache.A1Ry, cache.pupy, true);
+        limbDarken<true>(cache.A1Ry, cache.pupy);
         MBCAST(flux, T1) = B.rT * cache.pupy;
 
         // Compute the map derivs
@@ -602,7 +602,7 @@ inline void Map<S>::computeFluxYlmLD(
 
             // Apply the limb darkening
             cache.A1Ry = B.A1 * cache.RRy;
-            limbDarken(cache.A1Ry, cache.pupy, true);
+            limbDarken<true>(cache.A1Ry, cache.pupy);
 
             // The Green's polynomial of the rotated map
             cache.ARRy = B.A2 * cache.pupy;
