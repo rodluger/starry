@@ -101,7 +101,7 @@ inline void polymul (
     Vector<Scalar>& p1p2,
     const RowVector<Scalar>& vT,
     Vector<Scalar>& vTDp1p2Dp1,
-    Vector<Scalar>& vTDp1p2Dp2
+    RowVector<Scalar>& vTDp1p2Dp2
 ) {
     bool odd1;
     int l, n;
@@ -233,12 +233,12 @@ inline void polymul (
                                 p1p2.row(n + 2) -= fac1;
                                 fac2 = vT(n - 4 * l + 2) - vT(n - 2) - vT(n - 2);
                                 vTDp1p2Dp1.row(n1) += fac2 * p2.row(n2);
-                                vTDp1p2Dp2.row(n1) += fac2 * p1.row(n2);
+                                vTDp1p2Dp2.col(n1) += fac2 * p1.row(n2);
 
                             } else {
                                 p1p2.row(n) += fac1;
                                 vTDp1p2Dp1.row(n1) += vT(n) * p2.row(n2);
-                                vTDp1p2Dp2.row(n2) += vT(n) * p1.row(n1);
+                                vTDp1p2Dp2.col(n2) += vT(n) * p1.row(n1);
                             }
                         }
                         ++n2;

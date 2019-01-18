@@ -62,7 +62,7 @@ public:
     Vector<Scalar> DpuDy0;
     Vector<Scalar> rTDpupyDy;
     Vector<Scalar> rTDpupyDu;
-    Vector<Scalar> rTDpupyDpu;
+    RowVector<Scalar> rTDpupyDpu;
     Vector<Scalar> rTDpupyDpy;
     RowVector<Scalar> rTDpupyDpyA1R;
 #elif defined(_STARRY_SPECTRAL_)
@@ -78,7 +78,7 @@ public:
     Vector<Scalar> DpuDy0;
     Matrix<Scalar> rTDpupyDy;
     Vector<Scalar> rTDpupyDu;
-    Vector<Scalar> rTDpupyDpu;
+    RowVector<Scalar> rTDpupyDpu;
     Vector<Scalar> rTDpupyDpy;
     RowVector<Scalar> rTDpupyDpyA1R;
 
@@ -190,7 +190,7 @@ public:
         DpuDy0(N, ncolu),
         rTDpupyDy(N, ncoly),
         rTDpupyDu(lmax + 1, ncolu),
-        rTDpupyDpu(N, ncolu),
+        rTDpupyDpu(ncolu, N),
         rTDpupyDpy(N, ncoly),
         rTDpupyDpyA1R(ncoly, N)
 #else

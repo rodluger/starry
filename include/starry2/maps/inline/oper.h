@@ -312,10 +312,10 @@ inline void limbDarken (
 
 #if defined(_STARRY_SPECTRAL_)
         for (int i = 0; i < ncolu; ++i) {
-            cache.rTDpupyDu.col(i) = cache.rTDpupyDpu.col(i).transpose() * cache.DpuDu[i];
+            cache.rTDpupyDu.col(i) = cache.rTDpupyDpu.row(i) * cache.DpuDu[i];
         }
 #else
-        cache.rTDpupyDu = cache.rTDpupyDpu.transpose() * cache.DpuDu;
+        cache.rTDpupyDu = cache.rTDpupyDpu * cache.DpuDu;
 #endif
 
         cache.rTDpupyDpyA1R = cache.rTDpupyDpy.transpose() * B.A1;
@@ -327,7 +327,7 @@ inline void limbDarken (
 
         for (int i = 0; i < ncoly; ++i) {
             cache.rTDpupyDy.col(i) = cache.rTDpupyDpyA1R.row(i);
-            cache.rTDpupyDy(0, i) += cache.rTDpupyDpu.col(i).transpose() * cache.DpuDy0.col(i);
+            cache.rTDpupyDy(0, i) += cache.rTDpupyDpu.row(i) * cache.DpuDy0.col(i);
         }
 
 #elif defined(_STARRY_TEMPORAL_)
@@ -336,7 +336,7 @@ inline void limbDarken (
             cache.rTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
 
         cache.rTDpupyDy.transpose() = cache.rTDpupyDpyA1R.replicate(ncoly, 1);
-        cache.rTDpupyDy.transpose().col(0) += (cache.rTDpupyDpu.transpose() * cache.DpuDy0).replicate(ncoly, 1);
+        cache.rTDpupyDy.transpose().col(0) += (cache.rTDpupyDpu * cache.DpuDy0).replicate(ncoly, 1);
 
 #else
 
@@ -344,7 +344,7 @@ inline void limbDarken (
             cache.rTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
 
         cache.rTDpupyDy.transpose() = cache.rTDpupyDpyA1R;
-        cache.rTDpupyDy.transpose()(0) += cache.rTDpupyDpu.transpose() * cache.DpuDy0;
+        cache.rTDpupyDy.transpose()(0) += cache.rTDpupyDpu * cache.DpuDy0;
 
 #endif
 
