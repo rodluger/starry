@@ -56,7 +56,7 @@ public:
     std::vector<Matrix<Scalar>> EulerR;
 
 
-// TODO template these and maybe transpose them
+// TODO template these
 #if defined(_STARRY_DEFAULT_)
     Matrix<Scalar> DpuDu;
     Vector<Scalar> DpuDy0;
@@ -145,6 +145,42 @@ public:
         theta_with_grad = NAN;
     };
 
+    template<typename U=S>
+    inline IsDefault<U, void> resizeDerivs () {
+        DpuDu.resize(lmax + 1, N);
+        DpuDy0.resize(N);
+        rTDpupyDy.resize(N);
+        rTDpupyDu.resize(lmax + 1);
+        rTDpupyDpu.resize(N);
+        rTDpupyDpy.resize(N);
+        rTDpupyDpyA1R.resize(N);
+    }
+
+    template<typename U=S>
+    inline IsSpectral<U, void> resizeDerivs () {
+        DpuDu.resize(ncolu);
+        DpuDy0.resize(N, ncolu);
+        rTDpupyDy.resize(N, ncoly);
+        rTDpupyDu.resize(lmax + 1, ncolu);
+        rTDpupyDpu.resize(ncolu, N);
+        rTDpupyDpy.resize(ncoly, N);
+        rTDpupyDpyA1R.resize(ncoly, N);
+        for (int i = 0; i < ncolu; ++i) {
+            DpuDu[i].resize(lmax + 1, N);
+        }
+    }
+
+    template<typename U=S>
+    inline IsTemporal<U, void> resizeDerivs () {
+        DpuDu.resize(lmax + 1, N);
+        DpuDy0.resize(N);
+        rTDpupyDy.resize(N, ncoly);
+        rTDpupyDu.resize(lmax + 1);
+        rTDpupyDpu.resize(N);
+        rTDpupyDpy.resize(N);
+        rTDpupyDpyA1R.resize(N);
+    }
+
     //! Constructor
     Cache (
         int lmax,
@@ -174,47 +210,14 @@ public:
         sTAR(N),
         sTADRDphi(N),
         EulerD(lmax + 1),
-        EulerR(lmax + 1),
-
-// TODO template these
-#if defined(_STARRY_DEFAULT_)
-        DpuDu(lmax + 1, N),
-        DpuDy0(N),
-        rTDpupyDy(N),
-        rTDpupyDu(lmax + 1),
-        rTDpupyDpu(N),
-        rTDpupyDpy(N),
-        rTDpupyDpyA1R(N)
-#elif defined(_STARRY_SPECTRAL_)
-        DpuDu(ncolu),
-        DpuDy0(N, ncolu),
-        rTDpupyDy(N, ncoly),
-        rTDpupyDu(lmax + 1, ncolu),
-        rTDpupyDpu(ncolu, N),
-        rTDpupyDpy(ncoly, N),
-        rTDpupyDpyA1R(ncoly, N)
-#else
-        DpuDu(lmax + 1, N),
-        DpuDy0(N),
-        rTDpupyDy(N, ncoly),
-        rTDpupyDu(lmax + 1),
-        rTDpupyDpu(N),
-        rTDpupyDpy(N),
-        rTDpupyDpyA1R(N)
-#endif
+        EulerR(lmax + 1)
     {
         for (int l = 0; l < lmax + 1; ++l) {
             int sz = 2 * l + 1;
             EulerD[l].resize(sz, sz);
             EulerR[l].resize(sz, sz);
         }
-
-#if defined(_STARRY_SPECTRAL_)
-        for (int i = 0; i < ncolu; ++i) {
-            DpuDu[i].resize(lmax + 1, N);
-        }
-#endif
-
+        resizeDerivs();
         reset();
     };
 
