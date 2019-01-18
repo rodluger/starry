@@ -27,7 +27,7 @@ def assert_allclose(name, expected, got, fmt="%.6f", atol=1e-6, rtol=1e-5):
         
 
 def compare(ydeg=2, udeg=0, nw=1, nt=1, eps=1.e-8, axis=[0, 1, 0],
-            t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1):
+            multi=False, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1):
     """Test the analytic gradients."""
     # Settings
     if nw > 1:
@@ -69,11 +69,11 @@ def compare(ydeg=2, udeg=0, nw=1, nt=1, eps=1.e-8, axis=[0, 1, 0],
 
     # Instantiate
     if kind == "default":
-        map = starry2.Map(lmax)
+        map = starry2.Map(lmax, multi=multi)
     elif kind == "spectral":
-        map = starry2.Map(lmax, nw=nw)
+        map = starry2.Map(lmax, nw=nw, multi=multi)
     elif kind == "temporal":
-        map = starry2.Map(lmax, nt=nt)
+        map = starry2.Map(lmax, nt=nt, multi=multi)
     map.axis = axis
     map[:, :] = np.array(coeffs['y'])
     map[:] = np.array(coeffs['u'])
@@ -207,6 +207,81 @@ def test_temporal_ylmld_phase():
 @pytest.mark.xfail
 def test_temporal_ylmld_occ():
     compare(ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+def test_default_ylm_phase_multi():
+    compare(multi=True, ydeg=2, udeg=0, nw=1, nt=1, theta=15.0, xo=10.0)
+
+
+def test_default_ylm_occ_multi():
+    compare(multi=True, ydeg=2, udeg=0, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+def test_default_ld_phase_multi():
+    compare(multi=True, ydeg=0, udeg=2, nw=1, nt=1, theta=15.0, xo=10.0)
+
+
+def test_default_ld_occ_multi():
+    compare(multi=True, ydeg=0, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+def test_default_ylmld_phase_multi():
+    compare(multi=True, ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=10.0)
+
+
+@pytest.mark.xfail
+def test_default_ylmld_occ_multi():
+    compare(multi=True, ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+def test_spectral_ylm_phase_multi():
+    compare(multi=True, ydeg=2, udeg=0, nw=3, nt=1, theta=15.0, xo=10.0)
+
+
+def test_spectral_ylm_occ_multi():
+    compare(multi=True, ydeg=2, udeg=0, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+def test_spectral_ld_phase_multi():
+    compare(multi=True, ydeg=0, udeg=2, nw=3, nt=1, theta=15.0, xo=10.0)
+
+
+def test_spectral_ld_occ_multi():
+    compare(multi=True, ydeg=0, udeg=2, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+def test_spectral_ylmld_phase_multi():
+    compare(multi=True, ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=10.0)
+
+
+@pytest.mark.xfail
+def test_spectral_ylmld_occ_multi():
+    compare(multi=True, ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+def test_temporal_ylm_phase_multi():
+    compare(multi=True, ydeg=2, udeg=0, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0)
+
+
+def test_temporal_ylm_occ_multi():
+    compare(multi=True, ydeg=2, udeg=0, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+def test_temporal_ld_phase_multi():
+    compare(multi=True, ydeg=0, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0)
+
+
+def test_temporal_ld_occ_multi():
+    compare(multi=True, ydeg=0, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+def test_temporal_ylmld_phase_multi():
+    compare(multi=True, ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0)
+
+
+@pytest.mark.xfail
+def test_temporal_ylmld_occ_multi():
+    compare(multi=True, ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
 
 if __name__ == "__main__":

@@ -164,7 +164,6 @@ inline IsTemporal<U, void> rotateIntoCache (
             cache.DRDthetay.block(l * l, 0, 2 * l + 1, nflx) =
                 contract(W.DRDtheta[l] * y.block(l * l, 0, 2 * l + 1, ncoly));
         }
-
     }
 }
 
@@ -217,36 +216,49 @@ inline IsTemporal<U, void> normalizeAgolGBasis (
     Scalar norm = Scalar(1.0) / (pi<Scalar>() * (g(0) + 2.0 * g(1) / 3.0));
     MBCAST(g, T1) = g * norm;
     MBCAST(DgDu, T2) = DgDu * norm;
-
 }
 
-
 /** 
-Compute the limb darkening polynomial `p`.
-
-NOTE: This is the **normalized** xyz polynomial corresponding
-to the limb darkening vector `u`. The normalization is such 
-that the total LUMINOSITY of the map remains unchanged. Note
-that this could mean that the FLUX at any given viewing angle 
-will be different from the non-limb-darkened version of the map.
-This is significantly different from the beta version of the
-code, which normalized it such that the FLUX remained unchanged.
-That normalization was almost certainly unphysical.
-
-If `gradient=true`, `DpuDu(i, j, k)` is the derivative of the j^th
-polynomial coefficient of `p` with respect to the k^th polynomial
-coefficient of `u`, both in the i^th map column.
-
-
-TODO: Template this. This can be sped up a TON.
+Compute the limb darkening polynomial `p` and optionally
+propagate gradients. Default specialization.
 
 */
-template <bool GRADIENT=false>
-inline void computeLDPolynomial () {
+template<bool GRADIENT=false, typename U=S>
+inline IsDefault<U, void> computeLDPolynomial () {
     if (!GRADIENT) {
         if (cache.compute_p) {
             UType tmp = B.U1 * u;
-            UCoeffType norm = pi<Scalar>() * contract(y.row(0)).cwiseQuotient(B.rT * tmp);
+            Scalar norm = pi<Scalar>() * y(0) / B.rT.dot(tmp);
+            cache.p = tmp * norm;
+            cache.compute_p = false;
+        }
+    } else {
+        if (cache.compute_p_grad) {
+            UType tmp = B.U1 * u;
+            Scalar rTU1u = B.rT.dot(tmp);
+            Scalar norm0 = pi<Scalar>() / rTU1u;
+            Scalar norm = norm0 * y(0);
+            RowVector<Scalar> dnormdu = -(norm / rTU1u) * B.rTU1;
+            cache.p = tmp * norm;
+            cache.DpuDu = B.U1 * norm + tmp * dnormdu;
+            cache.DpuDy0 = tmp * norm0;
+            cache.compute_p_grad = false;
+        }
+    }
+}
+
+/** 
+Compute the limb darkening polynomial `p` and optionally
+propagate gradients. Spectral specialization.
+
+*/
+template<bool GRADIENT=false, typename U=S>
+inline IsSpectral<U, void> computeLDPolynomial () {
+    if (!GRADIENT) {
+        if (cache.compute_p) {
+            UType tmp = B.U1 * u;
+            UCoeffType norm = pi<Scalar>() * 
+                              y.row(0).cwiseQuotient(B.rT * tmp);
             cache.p = tmp.array().rowwise() * norm.array();
             cache.compute_p = false;
         }
@@ -256,23 +268,41 @@ inline void computeLDPolynomial () {
             UCoeffType rTU1u = B.rT * tmp;
             for (int i = 0; i < ncolu; ++i) {
                 Scalar norm0 = pi<Scalar>() / rTU1u(i);
-                Scalar norm = norm0 * contract(y.row(0))(i);
+                Scalar norm = norm0 * y(0, i);
                 RowVector<Scalar> dnormdu = -(norm / rTU1u(i)) * B.rTU1;
                 cache.p.col(i) = tmp.col(i) * norm;
-
-#if defined(_STARRY_SPECTRAL_)
                 cache.DpuDu[i] = B.U1 * norm + tmp.col(i) * dnormdu;
-#else
-                cache.DpuDu = B.U1 * norm + tmp.col(i) * dnormdu;
-#endif
-
-#if defined(_STARRY_SPECTRAL_)
                 cache.DpuDy0.col(i) = tmp.col(i) * norm0;
-#else
-                cache.DpuDy0 = tmp.col(i) * norm0;
-#endif
             }
+            cache.compute_p_grad = false;
+        }
+    }
+}
 
+/** 
+Compute the limb darkening polynomial `p` and optionally
+propagate gradients. Temporal specialization.
+
+*/
+template<bool GRADIENT=false, typename U=S>
+inline IsTemporal<U, void> computeLDPolynomial () {
+    if (!GRADIENT) {
+        if (cache.compute_p) {
+            UType tmp = B.U1 * u;
+            Scalar norm = pi<Scalar>() * contract(y.row(0))(0) / B.rT.dot(tmp);
+            cache.p = tmp * norm;
+            cache.compute_p = false;
+        }
+    } else {
+        if (cache.compute_p_grad) {
+            UType tmp = B.U1 * u;
+            Scalar rTU1u = B.rT.dot(tmp);
+            Scalar norm0 = pi<Scalar>() / rTU1u;
+            Scalar norm = norm0 * contract(y.row(0))(0);
+            RowVector<Scalar> dnormdu = -(norm / rTU1u) * B.rTU1;
+            cache.p = tmp * norm;
+            cache.DpuDu = B.U1 * norm + tmp * dnormdu;
+            cache.DpuDy0 = tmp * norm0;
             cache.compute_p_grad = false;
         }
     }
@@ -282,75 +312,105 @@ inline void computeLDPolynomial () {
 Limb-darken a polynomial map, and optionally compute the
 gradient of the resulting map with respect to the input
 polynomial map and the input limb-darkening map.
-
-TODO: Template this function for speed.
+Default specialization.
 
 */
-template <bool GRADIENT=false>
-inline void limbDarken (
+template<bool GRADIENT=false, typename U=S>
+inline IsDefault<U, void> limbDarken (
     const CtrYType& poly, 
     CtrYType& poly_ld
 ) {
     // Compute the limb darkening polynomial
     computeLDPolynomial<GRADIENT>();
 
-    // Compute the gradient of the limb-darkened polynomial
-    // with respect to `y` and `u`.
-    //
-    //    DpupyDu = dpupy / Du 
-    //          = DpupyDpu * DpuDu
-    //
-    //    DpupyDy = dpupy / Dy 
-    //          = DpupyDpy * dp / Dy + DpupyDpu * DpuDy
-    //          = DpupyDpy * A1 * R + DpupyDpu * DpuDy
-    //
+    // Compute the gradient
     if (GRADIENT) {
-
-
+        // Multiply the polynomials
         basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
                        cache.rTDpupyDpy, cache.rTDpupyDpu);
-
-#if defined(_STARRY_SPECTRAL_)
-        for (int i = 0; i < ncolu; ++i) {
-            cache.rTDpupyDu.col(i) = cache.rTDpupyDpu.row(i) * cache.DpuDu[i];
-        }
-#else
+        // Propagate the gradient to d(polynomial) / du
+        // and d(polynomial) / dy 
         cache.rTDpupyDu = cache.rTDpupyDpu * cache.DpuDu;
-#endif
-
         cache.rTDpupyDpyA1R = cache.rTDpupyDpy * B.A1;
-
-#if defined(_STARRY_SPECTRAL_)
-
-        for (int l = 0; l < lmax + 1; ++l)
-            cache.rTDpupyDpyA1R.block(0, l * l, nflx, 2 * l + 1) *= W.R[l];
-
-        for (int i = 0; i < ncoly; ++i) {
-            cache.rTDpupyDy.col(i) = cache.rTDpupyDpyA1R.row(i);
-            cache.rTDpupyDy(0, i) += cache.rTDpupyDpu.row(i) * cache.DpuDy0.col(i);
-        }
-
-#elif defined(_STARRY_TEMPORAL_)
-
         for (int l = 0; l < lmax + 1; ++l)
             cache.rTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
-
-        cache.rTDpupyDy.transpose() = cache.rTDpupyDpyA1R.replicate(ncoly, 1);
-        cache.rTDpupyDy.transpose().col(0) += (cache.rTDpupyDpu * cache.DpuDy0).replicate(ncoly, 1);
-
-#else
-
-        for (int l = 0; l < lmax + 1; ++l)
-            cache.rTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
-
-        cache.rTDpupyDy.transpose() = cache.rTDpupyDpyA1R;
-        cache.rTDpupyDy.transpose()(0) += cache.rTDpupyDpu * cache.DpuDy0;
-
-#endif
-
+        cache.rTDpupyDy = cache.rTDpupyDpyA1R.transpose();
+        cache.rTDpupyDy(0) += (cache.rTDpupyDpu * cache.DpuDy0)(0);
     } else {
         // Multiply the polynomials
         basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld);
     }
+}
 
+/**
+Limb-darken a polynomial map, and optionally compute the
+gradient of the resulting map with respect to the input
+polynomial map and the input limb-darkening map.
+Spectral specialization.
+
+*/
+template<bool GRADIENT=false, typename U=S>
+inline IsSpectral<U, void> limbDarken (
+    const CtrYType& poly, 
+    CtrYType& poly_ld
+) {
+    // Compute the limb darkening polynomial
+    computeLDPolynomial<GRADIENT>();
+
+    // Compute the gradient
+    if (GRADIENT) {
+        // Multiply the polynomials
+        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
+                       cache.rTDpupyDpy, cache.rTDpupyDpu);
+        // Propagate the gradient to d(polynomial) / du
+        // and d(polynomial) / dy 
+        for (int i = 0; i < ncolu; ++i)
+            cache.rTDpupyDu.col(i) = cache.rTDpupyDpu.row(i) * cache.DpuDu[i];
+        cache.rTDpupyDpyA1R = cache.rTDpupyDpy * B.A1;
+        for (int l = 0; l < lmax + 1; ++l)
+            cache.rTDpupyDpyA1R.block(0, l * l, nflx, 2 * l + 1) *= W.R[l];
+        for (int i = 0; i < ncoly; ++i) {
+            cache.rTDpupyDy.col(i) = cache.rTDpupyDpyA1R.row(i);
+            cache.rTDpupyDy(0, i) += (cache.rTDpupyDpu.row(i) * 
+                                      cache.DpuDy0.col(i))(0);
+        }
+    } else {
+        // Multiply the polynomials
+        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld);
+    }
+}
+
+/**
+Limb-darken a polynomial map, and optionally compute the
+gradient of the resulting map with respect to the input
+polynomial map and the input limb-darkening map.
+Temporal specialization.
+
+*/
+template<bool GRADIENT=false, typename U=S>
+inline IsTemporal<U, void> limbDarken (
+    const CtrYType& poly, 
+    CtrYType& poly_ld
+) {
+    // Compute the limb darkening polynomial
+    computeLDPolynomial<GRADIENT>();
+
+    // Compute the gradient
+    if (GRADIENT) {
+        // Multiply the polynomials
+        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
+                       cache.rTDpupyDpy, cache.rTDpupyDpu);
+        // Propagate the gradient to d(polynomial) / du
+        // and d(polynomial) / dy 
+        cache.rTDpupyDu = cache.rTDpupyDpu * cache.DpuDu;
+        cache.rTDpupyDpyA1R = cache.rTDpupyDpy * B.A1;
+        for (int l = 0; l < lmax + 1; ++l)
+            cache.rTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
+        cache.rTDpupyDy = cache.rTDpupyDpyA1R.replicate(ncoly, 1).transpose();
+        cache.rTDpupyDy.row(0) += (cache.rTDpupyDpu * cache.DpuDy0)
+                                  .replicate(ncoly, 1).transpose();
+    } else {
+        // Multiply the polynomials
+        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld);
+    }
 }
