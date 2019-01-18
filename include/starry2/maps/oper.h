@@ -196,7 +196,7 @@ polynomial coefficient of `p` with respect to the k^th polynomial
 coefficient of `u`, both in the i^th map column.
 
 
-TODO: This can be sped up a TON.
+TODO: Template this. This can be sped up a TON.
 
 */
 template <class S>
@@ -254,27 +254,34 @@ inline void Map<S>::limbDarken (
     //
     if (gradient) {
 
-        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, 
-                       cache.DpupyDpy, cache.DpupyDpu);
 
+        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
+                       cache.rTDpupyDpy, cache.rTDpupyDpu);
+
+        // TODO: Template this
         for (int i = 0; i < ncolu; ++i) {
-            cache.DpupyDu[i] = cache.DpupyDpu[i] * cache.DpuDu[i];
+            cache.rTDpupyDu.col(i) = cache.rTDpupyDpu.col(i).transpose() * cache.DpuDu[i];
         }
 
-        // TODO: This can be sped up SO much. This is for DEBUG only.
-        // TODO: Cache rTdLdy, not dLdy, so we're never dealing with matrices.
-        Matrix<Scalar> R(N, N);
-        R.setZero();
+        // TODO: Template all this
+        Matrix<Scalar> rTDpupyDpyA1(N, ncoly);
+        Matrix<Scalar> rTDpupyDpyA1R(N, ncoly);
+
+        rTDpupyDpyA1 = (cache.rTDpupyDpy.transpose() * B.A1).transpose();
+
+
         for (int l = 0; l < lmax + 1; ++l)
-            R.block(l * l, l * l, 2 * l + 1, 2 * l + 1) = W.R[l];
-        Matrix<Scalar> A1R = B.A1 * R;
-        if (ncoly == ncolu) {
+            rTDpupyDpyA1R.block(l * l, 0, 2 * l + 1, nflx).transpose() = 
+                rTDpupyDpyA1.block(l * l, 0, 2 * l + 1, nflx).transpose() * W.R[l];
+
+
+#if defined(_STARRY_SPECTRAL_)
             for (int i = 0; i < ncoly; ++i)
-                cache.DpupyDy[i] = cache.DpupyDpy[i] * A1R + cache.DpupyDpu[i] * cache.DpuDy[i];
-        } else {
+                cache.rTDpupyDy.col(i) = rTDpupyDpyA1R.col(i).transpose() + cache.rTDpupyDpu.col(i).transpose() * cache.DpuDy[i];
+#else
             for (int i = 0; i < ncoly; ++i)
-                cache.DpupyDy[i] = cache.DpupyDpy[0] * A1R + cache.DpupyDpu[0] * cache.DpuDy[0];
-        }
+                cache.rTDpupyDy.col(i) = rTDpupyDpyA1R.col(0).transpose() + cache.rTDpupyDpu.col(0).transpose() * cache.DpuDy[0];
+#endif
 
     } else {
         // Multiply the polynomials

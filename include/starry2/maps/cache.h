@@ -58,8 +58,18 @@ public:
     std::vector<Matrix<Scalar>> DpupyDpu;
     std::vector<Matrix<Scalar>> DpuDu;
     std::vector<Matrix<Scalar>> DpuDy; // TODO: This is sparse
-    std::vector<Matrix<Scalar>> DpupyDu;
-    std::vector<Matrix<Scalar>> DpupyDy;
+
+    Matrix<Scalar> rTDpupyDy;
+    Matrix<Scalar> rTDpupyDu;
+
+// TODO template these
+#if defined(_STARRY_DEFAULT_) || defined(_STARRY_TEMPORAL_)
+    Vector<Scalar> rTDpupyDpu;
+    Vector<Scalar> rTDpupyDpy;
+#else
+    Matrix<Scalar> rTDpupyDpu;
+    Matrix<Scalar> rTDpupyDpy;
+#endif
 
     // Pybind cache
     TSType pb_flux;
@@ -156,8 +166,16 @@ public:
         DpupyDpu(ncolu),
         DpuDu(ncolu),
         DpuDy(ncolu),
-        DpupyDu(ncolu),
-        DpupyDy(ncoly)
+        rTDpupyDy(N, ncoly),
+        rTDpupyDu(lmax + 1, ncolu),
+// TODO template these
+#if defined(_STARRY_DEFAULT_) || defined(_STARRY_TEMPORAL_)
+        rTDpupyDpu(N),
+        rTDpupyDpy(N)
+#else
+        rTDpupyDpu(N, ncolu),
+        rTDpupyDpy(N, ncoly)
+#endif
     {
         for (int l = 0; l < lmax + 1; ++l) {
             int sz = 2 * l + 1;
@@ -166,14 +184,12 @@ public:
         }
         for (int i = 0; i < ncoly; ++i) {
             DpupyDpy[i].resize(N, N);
-            DpupyDy[i].resize(N, N);
         }
         for (int i = 0; i < ncolu; ++i) {
             // TODO: CHECK THESE SHAPES
             DpupyDpu[i].resize(N, N);
-            DpuDu[i].resize(N, N);
+            DpuDu[i].resize(N, N); // wrong
             DpuDy[i].resize(N, N);
-            DpupyDu[i].resize(N, N);
         }
         reset();
     };

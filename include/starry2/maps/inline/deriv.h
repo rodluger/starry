@@ -304,7 +304,7 @@ template<typename U=S, typename T1>
 inline IsDefault<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & Dy
 ) {
-    MBCAST(Dy, T1) = (B.rT * cache.DpupyDy[0]).transpose();
+    MBCAST(Dy, T1) = cache.rTDpupyDy.col(0);
 }
 
 /**
@@ -317,8 +317,7 @@ template<typename U=S, typename T1>
 inline IsSpectral<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & Dy
 ) {
-    for (int i = 0; i < ncoly; ++i)
-        MBCAST(Dy, T1).col(i) = B.rT * cache.DpupyDy[i];
+    MBCAST(Dy, T1) = cache.rTDpupyDy;
 }
 
 /**
@@ -331,8 +330,8 @@ template<typename U=S, typename T1>
 inline IsTemporal<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & Dy
 ){
-    for (int i = 0; i < ncoly; ++i)
-        MBCAST(Dy, T1).col(i) = B.rT * cache.DpupyDy[i] * taylor(i);
+    MBCAST(Dy, T1) = cache.rTDpupyDy.array().rowwise() * 
+                     taylor.transpose().array();
 }
 
 /**
@@ -345,7 +344,7 @@ template<typename U=S, typename T1>
 inline IsDefault<U, void> computeDfDuYlmLDNoOccultation (
     MatrixBase<T1> const & Du
 ) {
-    MBCAST(Du, T1) = (B.rT * cache.DpupyDu[0]).segment(1, lmax).transpose();
+    MBCAST(Du, T1) = cache.rTDpupyDu.block(1, 0, lmax, 1);
 }
 
 /**
@@ -358,8 +357,7 @@ template<typename U=S, typename T1>
 inline IsSpectral<U, void> computeDfDuYlmLDNoOccultation (
     MatrixBase<T1> const & Du
 ) {
-    for (int i = 0; i < ncolu; ++i)
-        MBCAST(Du, T1).col(i) = (B.rT * cache.DpupyDu[i]).segment(1, lmax);
+    MBCAST(Du, T1) = cache.rTDpupyDu.block(1, 0, lmax, ncolu);
 }
 
 /**
@@ -372,7 +370,7 @@ template<typename U=S, typename T1>
 inline IsTemporal<U, void> computeDfDuYlmLDNoOccultation (
     MatrixBase<T1> const & Du
 ){
-    MBCAST(Du, T1) = (B.rT * cache.DpupyDu[0]).segment(1, lmax).transpose();
+    MBCAST(Du, T1) = cache.rTDpupyDu.block(1, 0, lmax, 1);
 }
 
 /**
@@ -385,7 +383,8 @@ template<typename U=S, typename T1>
 inline IsSingleWavelength<U, void> computeDfDthetaYlmLDNoOccultation (
     MatrixBase<T1> const & Dtheta
 ){
-    MBCAST(Dtheta, T1) = RowVector<Scalar>(B.rT * cache.DpupyDpy[0]) * 
+    // TODO maybe transpose the definition of rTDpupyDpy?
+    MBCAST(Dtheta, T1) = RowVector<Scalar>(cache.rTDpupyDpy) * 
                          Vector<Scalar>(B.A1 * cache.DRDthetay);
     MBCAST(Dtheta, T1) *= radian;
 }
@@ -400,9 +399,8 @@ template<typename U=S, typename T1>
 inline IsSpectral<U, void> computeDfDthetaYlmLDNoOccultation (
     MatrixBase<T1> const & Dtheta
 ){
-    for (int i = 0; i < ncoly; ++i)
-        MBCAST(Dtheta, T1).col(i) = RowVector<Scalar>(B.rT * cache.DpupyDpy[i]) * 
-                                    Vector<Scalar>(B.A1 * cache.DRDthetay.col(i));
+    // TODO see note above
+    MBCAST(Dtheta, T1) = (cache.rTDpupyDpy.cwiseProduct(B.A1 * cache.DRDthetay)).colwise().sum();
     MBCAST(Dtheta, T1) *= radian;
 }
 

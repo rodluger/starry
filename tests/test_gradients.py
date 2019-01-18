@@ -6,6 +6,7 @@ import starry2
 import numpy as np
 import pytest
 np.random.seed(44)
+debug = False
 
 
 def assert_allclose(name, expected, got, fmt="%.6f", atol=1e-6, rtol=1e-5):
@@ -19,8 +20,10 @@ def assert_allclose(name, expected, got, fmt="%.6f", atol=1e-6, rtol=1e-5):
                 np.array2string(expected, formatter=formatter), 
                 np.array2string(got, formatter=formatter)
             )
-        #print(msg)
-        raise AssertionError(msg)
+        if debug:
+            print(msg)
+        else:
+            raise AssertionError(msg)
         
 
 def compare(ydeg=2, udeg=0, nw=1, nt=1, eps=1.e-8, axis=[0, 1, 0],
@@ -204,3 +207,10 @@ def test_temporal_ylmld_phase():
 @pytest.mark.xfail
 def test_temporal_ylmld_occ():
     compare(ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+
+
+if __name__ == "__main__":
+    debug = True
+    test_default_ylmld_phase()
+    test_spectral_ylmld_phase()
+    test_temporal_ylmld_phase()
