@@ -7,3 +7,4 @@ import pytest
 # TODO: load_image
 # TODO: rotate
 # TODO: add_spot
+# TODO: random

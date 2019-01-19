@@ -16,7 +16,7 @@ for more info.
 
 */
 template<typename U=S, typename T1, typename T2>
-inline IsSingleWavelength<U, void> computeDfDuLDOccultation (
+inline IsDefaultOrTemporal<U, void> computeDfDuLDOccultation (
     MatrixBase<T1> const & flux,
     MatrixBase<T2> const & Du,
     const UCoeffType & norm
@@ -80,7 +80,7 @@ Static specialization.
 
 */
 template<typename U=S, typename T1>
-inline IsStatic<U, void> computeDfDtYlmNoOccultation (
+inline IsDefaultOrSpectral<U, void> computeDfDtYlmNoOccultation (
     MatrixBase<T1> const & Dt
 ){
 }
@@ -106,7 +106,7 @@ Static specialization.
 
 */
 template<typename U=S, typename T1>
-inline IsStatic<U, void> computeDfDtLDNoOccultation (
+inline IsDefaultOrSpectral<U, void> computeDfDtLDNoOccultation (
     MatrixBase<T1> const & Dt
 ){
 }
@@ -131,7 +131,7 @@ Static specialization.
 
 */
 template<typename U=S, typename T1>
-inline IsStatic<U, void> computeDfDtLDOccultation (
+inline IsDefaultOrSpectral<U, void> computeDfDtLDOccultation (
     MatrixBase<T1> const & Dt,
     const UCoeffType & flux0
 ){
@@ -166,7 +166,7 @@ efficiency. See the docs for more information.
 
 */
 template<typename U=S, typename T1>
-inline IsStatic<U, void> computeDfDyLDNoOccultation (
+inline IsDefaultOrSpectral<U, void> computeDfDyLDNoOccultation (
     MatrixBase<T1> const & Dy
 ){
     MBCAST(Dy, T1).setZero();
@@ -206,7 +206,7 @@ efficiency. See the docs for more information.
 
 */
 template<typename U=S, typename T1>
-inline IsStatic<U, void> computeDfDyLDOccultation (
+inline IsDefaultOrSpectral<U, void> computeDfDyLDOccultation (
     MatrixBase<T1> const & Dy, 
     const UCoeffType & flux0
 ){
@@ -304,7 +304,7 @@ template<typename U=S, typename T1>
 inline IsDefault<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & Dy
 ) {
-    MBCAST(Dy, T1) = cache.rTDpupyDy.col(0);
+    MBCAST(Dy, T1) = cache.vTDpupyDy.col(0);
 }
 
 /**
@@ -317,7 +317,7 @@ template<typename U=S, typename T1>
 inline IsSpectral<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & Dy
 ) {
-    MBCAST(Dy, T1) = cache.rTDpupyDy;
+    MBCAST(Dy, T1) = cache.vTDpupyDy;
 }
 
 /**
@@ -330,7 +330,7 @@ template<typename U=S, typename T1>
 inline IsTemporal<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & Dy
 ){
-    MBCAST(Dy, T1) = cache.rTDpupyDy.array().rowwise() * 
+    MBCAST(Dy, T1) = cache.vTDpupyDy.array().rowwise() * 
                      taylor.transpose().array();
 }
 
@@ -344,7 +344,7 @@ template<typename U=S, typename T1>
 inline IsDefault<U, void> computeDfDuYlmLDNoOccultation (
     MatrixBase<T1> const & Du
 ) {
-    MBCAST(Du, T1) = cache.rTDpupyDu.block(1, 0, lmax, 1);
+    MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, 1);
 }
 
 /**
@@ -357,7 +357,7 @@ template<typename U=S, typename T1>
 inline IsSpectral<U, void> computeDfDuYlmLDNoOccultation (
     MatrixBase<T1> const & Du
 ) {
-    MBCAST(Du, T1) = cache.rTDpupyDu.block(1, 0, lmax, ncolu);
+    MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, ncolu);
 }
 
 /**
@@ -370,7 +370,7 @@ template<typename U=S, typename T1>
 inline IsTemporal<U, void> computeDfDuYlmLDNoOccultation (
     MatrixBase<T1> const & Du
 ){
-    MBCAST(Du, T1) = cache.rTDpupyDu.block(1, 0, lmax, 1);
+    MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, 1);
 }
 
 /**
@@ -380,10 +380,10 @@ Single-wavelength case.
 
 */
 template<typename U=S, typename T1>
-inline IsSingleWavelength<U, void> computeDfDthetaYlmLDNoOccultation (
+inline IsDefaultOrTemporal<U, void> computeDfDthetaYlmLDNoOccultation (
     MatrixBase<T1> const & Dtheta
 ){
-    MBCAST(Dtheta, T1) = cache.rTDpupyDpy * (B.A1 * cache.DRDthetay);
+    MBCAST(Dtheta, T1) = cache.vTDpupyDpy * (B.A1 * cache.DRDthetay);
     MBCAST(Dtheta, T1) *= radian;
 }
 
@@ -399,7 +399,7 @@ inline IsSpectral<U, void> computeDfDthetaYlmLDNoOccultation (
 ){
     // This is a little nasty because `DpupyDpy` is a tensor
     // and we're doing a sneaky contraction
-    MBCAST(Dtheta, T1) = (cache.rTDpupyDpy.transpose()
+    MBCAST(Dtheta, T1) = (cache.vTDpupyDpy.transpose()
                             .cwiseProduct(B.A1 * cache.DRDthetay)
                          ).colwise().sum();
     MBCAST(Dtheta, T1) *= radian;
@@ -413,7 +413,7 @@ Static specialization.
 
 */
 template<typename U=S, typename T1>
-inline IsStatic<U, void> computeDfDtYlmLDNoOccultation (
+inline IsDefaultOrSpectral<U, void> computeDfDtYlmLDNoOccultation (
     MatrixBase<T1> const & Dt
 ){
 }
@@ -444,7 +444,7 @@ Static specialization.
 
 */
 template<typename U=S, typename T1>
-inline IsStatic<U, void> computeDfDtYlmOccultation (
+inline IsDefaultOrSpectral<U, void> computeDfDtYlmOccultation (
     MatrixBase<T1> const & Dt
 ){
 }

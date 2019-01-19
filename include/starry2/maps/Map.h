@@ -162,10 +162,6 @@ protected:
 
     inline void computeWigner ();
 
-    inline void computeLDPolynomial (
-        bool gradient=false
-    );
-
     inline void computeAgolGBasis ();
 
     inline void rotateByAxisAngle (
@@ -222,13 +218,13 @@ protected:
 public:
 
     //! Constructor for single-column maps
-    template<typename U=S, typename=IsSingleColumn<U>>
+    template<typename U=S, typename=IsDefault<U>>
     explicit Map (
         int lmax
     ) : Map(lmax, 1, 1, 1) {}
 
     //! Constructor for multi-column maps
-    template<typename U=S, typename=IsMultiColumn<U>>
+    template<typename U=S, typename=IsSpectralOrTemporal<U>>
     explicit Map (
         int lmax,
         int ncol

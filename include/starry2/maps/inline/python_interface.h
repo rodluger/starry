@@ -34,7 +34,7 @@ public:
 Display the map (static case).
 
 */  
-template<typename U=S, typename=IsStatic<U>>
+template<typename U=S, typename=IsDefaultOrSpectral<U>>
 inline py::object show (
     const Scalar& theta=0.0,
     std::string cmap="plasma",
@@ -47,7 +47,7 @@ inline py::object show (
 Display an animation of the map as it rotates (static case).
 
 */  
-template<typename U=S, typename=IsStatic<U>>
+template<typename U=S, typename=IsDefaultOrSpectral<U>>
 inline py::object show (
     const Vector<Scalar>& theta,
     std::string cmap="plasma",
@@ -95,7 +95,7 @@ inline py::object show (
 Load an image (single-column case).
 
 */  
-template<typename U=S, typename=IsSingleColumn<U>>
+template<typename U=S, typename=IsDefault<U>>
 void loadImage (
     std::string image,
     int l=-1,
@@ -109,7 +109,7 @@ void loadImage (
 Load an image (multi-column case).
 
 */  
-template<typename U=S, typename=IsMultiColumn<U>>
+template<typename U=S, typename=IsSpectralOrTemporal<U>>
 void loadImage (
     std::string image,
     int l=-1,

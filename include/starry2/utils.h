@@ -145,7 +145,11 @@ using ADScalar = Eigen::AutoDiffScalar<Eigen::Matrix<T, N, 1>>;
 
 
 //! Cast away the const qualifier on a reference to
-//! a MatrixBase variable. See the discussion here:
+//! a MatrixBase variable. This is the recommended
+//! way of passing arbitrary matrix block expressions
+//! to functions as l-values, and helps make the code
+//! as general as possible, at the expense of a bit of
+//! hacking. See the discussion here:
 //! https://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html
 #define MBCAST(x, T) const_cast<MatrixBase<T>&>(x)
 
@@ -231,41 +235,43 @@ struct Temporal
 
 // Some sneaky hacks to enable/disable things depending on their type
 template <typename T, typename U=void>
-using IsDefault = typename std::enable_if<
-                    std::is_same<T, Default<typename T::Scalar>>::value, U
-                  >::type;
+using IsDefault = 
+    typename std::enable_if<
+        std::is_same<T, Default<typename T::Scalar>>::value, U
+    >::type;
 
 template <typename T, typename U=void>
-using IsSpectral = typename std::enable_if<
-                        std::is_same<T, Spectral<typename T::Scalar>>::value, U
-                   >::type;
+using IsSpectral = 
+    typename std::enable_if<
+        std::is_same<T, Spectral<typename T::Scalar>>::value, U
+    >::type;
 
 template <typename T, typename U=void>
-using IsSingleWavelength = typename std::enable_if<
-                        !std::is_same<T, Spectral<typename T::Scalar>>::value, U
-                   >::type;
+using IsDefaultOrTemporal = 
+    typename std::enable_if<
+        std::is_same<T, Default<typename T::Scalar>>::value || 
+        std::is_same<T, Temporal<typename T::Scalar>>::value, U
+    >::type;
 
 template <typename T, typename U=void>
-using IsTemporal = typename std::enable_if<
-                        std::is_same<T, Temporal<typename T::Scalar>>::value, U
-                   >::type;
+using IsTemporal = 
+    typename std::enable_if<
+        std::is_same<T, Temporal<typename T::Scalar>>::value, U
+    >::type;
 
 template <typename T, typename U=void>
-using IsStatic = typename std::enable_if<
-                    std::is_same<T, Default<typename T::Scalar>>::value || 
-                    std::is_same<T, Spectral<typename T::Scalar>>::value, U
-                 >::type;
+using IsDefaultOrSpectral = 
+    typename std::enable_if<
+        std::is_same<T, Default<typename T::Scalar>>::value || 
+        std::is_same<T, Spectral<typename T::Scalar>>::value, U
+    >::type;
 
 template <typename T, typename U=void>
-using IsSingleColumn = typename std::enable_if<
-                          std::is_same<T, Default<typename T::Scalar>>::value, U
-                       >::type;
-
-template <typename T, typename U=void>
-using IsMultiColumn = typename std::enable_if<
-                        std::is_same<T, Spectral<typename T::Scalar>>::value || 
-                        std::is_same<T, Temporal<typename T::Scalar>>::value, U
-                      >::type;
+using IsSpectralOrTemporal = 
+    typename std::enable_if<
+        std::is_same<T, Spectral<typename T::Scalar>>::value || 
+        std::is_same<T, Temporal<typename T::Scalar>>::value, U
+    >::type;
 
 // --------------------------
 // -------- Constants -------

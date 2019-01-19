@@ -19,11 +19,11 @@ public:
     Vector<Scalar> DRDthetay;
     Matrix<Scalar> DpuDu;
     Vector<Scalar> DpuDy0;
-    Vector<Scalar> rTDpupyDy;
-    Vector<Scalar> rTDpupyDu;
-    RowVector<Scalar> rTDpupyDpu;
-    RowVector<Scalar> rTDpupyDpy;
-    RowVector<Scalar> rTDpupyDpyA1R;
+    Vector<Scalar> vTDpupyDy;
+    Vector<Scalar> vTDpupyDu;
+    RowVector<Scalar> vTDpupyDpu;
+    RowVector<Scalar> vTDpupyDpy;
+    RowVector<Scalar> vTDpupyDpyA1R;
 
     Cache_ (
         int lmax,
@@ -40,11 +40,11 @@ public:
         DRDthetay.resize(N);
         DpuDu.resize(lmax + 1, N);
         DpuDy0.resize(N);
-        rTDpupyDy.resize(N);
-        rTDpupyDu.resize(lmax + 1);
-        rTDpupyDpu.resize(N);
-        rTDpupyDpy.resize(N);
-        rTDpupyDpyA1R.resize(N);
+        vTDpupyDy.resize(N);
+        vTDpupyDu.resize(lmax + 1);
+        vTDpupyDpu.resize(N);
+        vTDpupyDpy.resize(N);
+        vTDpupyDpyA1R.resize(N);
     }
 
 };
@@ -67,11 +67,11 @@ public:
     Matrix<Scalar> DRDthetay;
     std::vector<Matrix<Scalar>> DpuDu;
     Matrix<Scalar> DpuDy0;
-    Matrix<Scalar> rTDpupyDy;
-    Matrix<Scalar> rTDpupyDu;
-    Matrix<Scalar> rTDpupyDpu;
-    Matrix<Scalar> rTDpupyDpy;
-    Matrix<Scalar> rTDpupyDpyA1R;
+    Matrix<Scalar> vTDpupyDy;
+    Matrix<Scalar> vTDpupyDu;
+    Matrix<Scalar> vTDpupyDpu;
+    Matrix<Scalar> vTDpupyDpy;
+    Matrix<Scalar> vTDpupyDpyA1R;
 
     Cache_ (
         int lmax,
@@ -91,11 +91,11 @@ public:
             DpuDu[i].resize(lmax + 1, N);
         }
         DpuDy0.resize(N, ncolu);
-        rTDpupyDy.resize(N, ncoly);
-        rTDpupyDu.resize(lmax + 1, ncolu);
-        rTDpupyDpu.resize(ncolu, N);
-        rTDpupyDpy.resize(ncoly, N);
-        rTDpupyDpyA1R.resize(ncoly, N);   
+        vTDpupyDy.resize(N, ncoly);
+        vTDpupyDu.resize(lmax + 1, ncolu);
+        vTDpupyDpu.resize(ncolu, N);
+        vTDpupyDpy.resize(ncoly, N);
+        vTDpupyDpyA1R.resize(ncoly, N);   
     }
 
 };
@@ -119,11 +119,11 @@ public:
     Vector<Scalar> DRDthetay;
     Matrix<Scalar> DpuDu;
     Vector<Scalar> DpuDy0;
-    Matrix<Scalar> rTDpupyDy;
-    Vector<Scalar> rTDpupyDu;
-    RowVector<Scalar> rTDpupyDpu;
-    RowVector<Scalar> rTDpupyDpy;
-    RowVector<Scalar> rTDpupyDpyA1R;
+    Matrix<Scalar> vTDpupyDy;
+    Vector<Scalar> vTDpupyDu;
+    RowVector<Scalar> vTDpupyDpu;
+    RowVector<Scalar> vTDpupyDpy;
+    RowVector<Scalar> vTDpupyDpyA1R;
 
     Cache_ (
         int lmax,
@@ -141,11 +141,11 @@ public:
         DRDthetay.resize(N);
         DpuDu.resize(lmax + 1, N);
         DpuDy0.resize(N);
-        rTDpupyDy.resize(N, ncoly);
-        rTDpupyDu.resize(lmax + 1);
-        rTDpupyDpu.resize(N);
-        rTDpupyDpy.resize(N);
-        rTDpupyDpyA1R.resize(N);
+        vTDpupyDy.resize(N, ncoly);
+        vTDpupyDu.resize(lmax + 1);
+        vTDpupyDpu.resize(N);
+        vTDpupyDpy.resize(N);
+        vTDpupyDpyA1R.resize(N);
     }
 
 };

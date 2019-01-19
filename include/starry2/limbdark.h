@@ -622,7 +622,8 @@ namespace limbdark {
 
     /**
     Compute the `sT^T` occultation solution vector
-
+    TODO: Make gradient a template parameter
+    
     */
     template <class T>
     inline void GreensLimbDark<T>::compute (

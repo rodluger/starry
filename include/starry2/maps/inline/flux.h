@@ -3,7 +3,7 @@ Evaluate the map at a given (theta, x, y) coordinate
 for a static map.
 
 */  
-template<typename U=S, typename=IsStatic<U>, 
+template<typename U=S, typename=IsDefaultOrSpectral<U>, 
          typename T1>
 inline void computeIntensity (
     const Scalar& theta,
@@ -54,7 +54,7 @@ Render the visible map on a square cartesian grid at given
 resolution for a static map.
 
 */
-template<typename U=S, typename=IsStatic<U>,
+template<typename U=S, typename=IsDefaultOrSpectral<U>,
          typename T1>
 inline void renderMap (
     const Scalar& theta,
@@ -68,7 +68,7 @@ inline void renderMap (
 Compute the flux for a static map.
 
 */
-template<typename U=S, typename=IsStatic<U>,
+template<typename U=S, typename=IsDefaultOrSpectral<U>,
          typename T1>
 inline void computeFlux (
     const Scalar& theta, 
@@ -84,7 +84,7 @@ inline void computeFlux (
 Compute the flux and its gradient for a static map.
 
 */
-template<typename U=S, typename=IsStatic<U>,
+template<typename U=S, typename=IsDefaultOrSpectral<U>,
          typename T1, typename T2, typename T3, typename T4, 
          typename T5, typename T6, typename T7>
 inline void computeFlux (

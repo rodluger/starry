@@ -548,7 +548,7 @@ inline void Map<S>::computeFluxYlmLD(
         cache.A1Ry = B.A1 * cache.Ry;
 
         // Apply limb darkening
-        limbDarken<true>(cache.A1Ry, cache.pupy);
+        limbDarken(cache.A1Ry, cache.pupy, B.rT);
         MBCAST(flux, T1) = B.rT * cache.pupy;
 
         // Compute the map derivs
@@ -569,16 +569,9 @@ inline void Map<S>::computeFluxYlmLD(
     // Occultation
     } else {
 
-        // TODO!
-        throw errors::NotImplementedError("computeFluxYlmLD(gradient=true) not yet implemented.");
+        throw errors::NotImplementedError("foo");
 
-        // WIP
-        
 #if 0
-        // Transform to the Greens basis and dot the solution in
-        //MBCAST(flux, T1) = G.sT * B.A2 * cache.pupy;
-
-
         // Compute the solution vector and its gradient
         G.compute(b, ro, true);
 
@@ -595,14 +588,13 @@ inline void Map<S>::computeFluxYlmLD(
             // Compute the rotation matrix and its derivative
             W.rotateAboutZ(yo_b, xo_b, cache.Ry, cache.RRy);
             
-            // W.rightMultiplyR(); // TODO
-            // cache.sTA2, cache.sTAR, cache.sTADRDphi); // TODO: Check this
-            W.leftMultiplyRz(cache.sTA, cache.sTAR);
-            W.leftMultiplyDRz(cache.sTA, cache.sTADRDphi);
+
+            //W.leftMultiplyRz(cache.sTA, cache.sTAR);
+            //W.leftMultiplyDRz(cache.sTA, cache.sTADRDphi);
 
             // Apply the limb darkening
             cache.A1Ry = B.A1 * cache.RRy;
-            limbDarken<true>(cache.A1Ry, cache.pupy);
+            limbDarken(cache.A1Ry, cache.pupy, cache_sTA2);
 
             // The Green's polynomial of the rotated map
             cache.ARRy = B.A2 * cache.pupy;
@@ -633,7 +625,7 @@ inline void Map<S>::computeFluxYlmLD(
         }
 
         // Compute the flux
-        MBCAST(flux, T1) = G.sT * cache.ARRy;
+        MBCAST(flux, T1) = cache_sTA2 * cache.pupy;
     
         // Theta derivative (TODO)
         MBCAST(Dtheta, T3).setZero();
@@ -643,14 +635,13 @@ inline void Map<S>::computeFluxYlmLD(
         MBCAST(Dro, T5) = G.dsTdr * cache.ARRy;
 
         // Compute derivs with respect to y (TODO)
-        computeDfDyYlmOccultation(Dy, theta);
+        MBCAST(Du, T7).setZero();
 
         // Compute derivs with respect to u (TODO)
         MBCAST(Du, T8).setZero();
 
         // Compute the time deriv (TODO)
-        computeDfDtYlmOccultation(Dt);
-
+        MBCAST(Dt, T2).setZero();
 #endif
 
     }

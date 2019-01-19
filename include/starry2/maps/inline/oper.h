@@ -2,7 +2,7 @@
 Generate a random isotropic map with a given power spectrum.
 
 */
-template<typename V, typename U=S, typename=IsSingleColumn<U>>
+template<typename V, typename U=S, typename=IsDefault<U>>
 inline void random (
     const Vector<Scalar>& power,
     const V& seed
@@ -15,7 +15,7 @@ Generate a random isotropic map with a given power spectrum.
 NOTE: If `col = -1`, sets all columns to the same map.
 
 */
-template<typename V, typename U=S, typename=IsMultiColumn<U>>
+template<typename V, typename U=S, typename=IsSpectralOrTemporal<U>>
 inline void random (
     const Vector<Scalar>& power,
     const V& seed,
@@ -30,7 +30,7 @@ Static specialization (does nothing).
 
 */
 template<typename U=S>
-inline IsStatic<U, void> computeTaylor (
+inline IsDefaultOrSpectral<U, void> computeTaylor (
     const Scalar & t
 ) {
 }
@@ -58,7 +58,7 @@ original map.
 
 */
 template<typename U=S, typename T1>
-inline IsStatic<U, MatrixBase<T1>&> contract (
+inline IsDefaultOrSpectral<U, MatrixBase<T1>&> contract (
     MatrixBase<T1> const & mat
 ) {
     return MBCAST(mat, T1);
@@ -83,7 +83,7 @@ I(mu = 0) / I0 = 1.
 
 */
 template<typename U=S>
-inline IsStatic<U, void> setU0 () {
+inline IsDefaultOrSpectral<U, void> setU0 () {
     u.row(0).setConstant(-1.0);
 }
 
@@ -107,7 +107,7 @@ their derivatives. Static map specialization.
 
 */
 template<typename U=S>
-inline IsStatic<U, void> rotateIntoCache (
+inline IsDefaultOrSpectral<U, void> rotateIntoCache (
     const Scalar& theta,
     bool compute_matrices=false
 ) 
@@ -195,7 +195,8 @@ inline IsSpectral<U, void> normalizeAgolGBasis (
 ) {
     // The total flux is given by `y00 * (s . g)`
     for (int n = 0; n < ncoly; ++n) {
-        Scalar norm = Scalar(1.0) / (pi<Scalar>() * (g(0, n) + 2.0 * g(1, n) / 3.0));
+        Scalar norm = Scalar(1.0) / 
+                      (pi<Scalar>() * (g(0, n) + 2.0 * g(1, n) / 3.0));
         MBCAST(g, T1).col(n) = g.col(n) * norm;
         MBCAST(DgDu, T2).block(n * lmax, 0, lmax, lmax + 1) = 
             DgDu.block(n * lmax, 0, lmax, lmax + 1) * norm;
@@ -309,108 +310,123 @@ inline IsTemporal<U, void> computeLDPolynomial () {
 }
 
 /**
-Limb-darken a polynomial map, and optionally compute the
+Limb-darken a polynomial map. Static specialization.
+
+*/
+template<typename U=S>
+inline IsDefaultOrSpectral<U, void> limbDarken (
+    const YType& poly, 
+    YType& poly_ld
+) {
+    computeLDPolynomial();
+    basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld);
+}
+
+/**
+Limb-darken a polynomial map. Temporal specialization;
+here we limb-darken the *contracted* map.
+
+*/
+template<typename U=S>
+inline IsTemporal<U, void> limbDarken (
+    const Vector<typename S::Scalar>& poly, 
+    Vector<typename S::Scalar>& poly_ld
+) {
+    computeLDPolynomial();
+    basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld);
+}
+
+/**
+Limb-darken a polynomial map and compute the
 gradient of the resulting map with respect to the input
 polynomial map and the input limb-darkening map.
 Default specialization.
 
 */
-template<bool GRADIENT=false, typename U=S>
+template<typename U=S>
 inline IsDefault<U, void> limbDarken (
     const YType& poly, 
-    YType& poly_ld
+    YType& poly_ld,
+    RowVector<Scalar> vT
 ) {
     // Compute the limb darkening polynomial
-    computeLDPolynomial<GRADIENT>();
+    computeLDPolynomial<true>();
 
-    // Compute the gradient
-    if (GRADIENT) {
-        // Multiply the polynomials
-        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
-                       cache.rTDpupyDpy, cache.rTDpupyDpu);
-        // Propagate the gradient to d(polynomial) / du
-        // and d(polynomial) / dy 
-        cache.rTDpupyDu = cache.rTDpupyDpu * cache.DpuDu;
-        cache.rTDpupyDpyA1R = cache.rTDpupyDpy * B.A1;
-        for (int l = 0; l < lmax + 1; ++l)
-            cache.rTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
-        cache.rTDpupyDy = cache.rTDpupyDpyA1R.transpose();
-        cache.rTDpupyDy(0) += (cache.rTDpupyDpu * cache.DpuDy0)(0);
-    } else {
-        // Multiply the polynomials
-        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld);
-    }
+    // Multiply the polynomials
+    basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
+                    cache.vTDpupyDpy, cache.vTDpupyDpu);
+
+    // Propagate the gradient to d(polynomial) / du
+    // and d(polynomial) / dy 
+    cache.vTDpupyDu = cache.vTDpupyDpu * cache.DpuDu;
+    cache.vTDpupyDpyA1R = cache.vTDpupyDpy * B.A1;
+    for (int l = 0; l < lmax + 1; ++l)
+        cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
+    cache.vTDpupyDy = cache.vTDpupyDpyA1R.transpose();
+    cache.vTDpupyDy(0) += (cache.vTDpupyDpu * cache.DpuDy0)(0);
 }
 
 /**
-Limb-darken a polynomial map, and optionally compute the
+Limb-darken a polynomial map and compute the
 gradient of the resulting map with respect to the input
 polynomial map and the input limb-darkening map.
 Spectral specialization.
 
 */
-template<bool GRADIENT=false, typename U=S>
+template<typename U=S>
 inline IsSpectral<U, void> limbDarken (
     const YType& poly, 
-    YType& poly_ld
+    YType& poly_ld,
+    RowVector<Scalar> vT
 ) {
     // Compute the limb darkening polynomial
-    computeLDPolynomial<GRADIENT>();
+    computeLDPolynomial<true>();
 
-    // Compute the gradient
-    if (GRADIENT) {
-        // Multiply the polynomials
-        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
-                       cache.rTDpupyDpy, cache.rTDpupyDpu);
-        // Propagate the gradient to d(polynomial) / du
-        // and d(polynomial) / dy 
-        for (int i = 0; i < ncolu; ++i)
-            cache.rTDpupyDu.col(i) = cache.rTDpupyDpu.row(i) * cache.DpuDu[i];
-        cache.rTDpupyDpyA1R = cache.rTDpupyDpy * B.A1;
-        for (int l = 0; l < lmax + 1; ++l)
-            cache.rTDpupyDpyA1R.block(0, l * l, nflx, 2 * l + 1) *= W.R[l];
-        for (int i = 0; i < ncoly; ++i) {
-            cache.rTDpupyDy.col(i) = cache.rTDpupyDpyA1R.row(i);
-            cache.rTDpupyDy(0, i) += (cache.rTDpupyDpu.row(i) * 
-                                      cache.DpuDy0.col(i))(0);
-        }
-    } else {
-        // Multiply the polynomials
-        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld);
+    // Multiply the polynomials
+    basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
+                    cache.vTDpupyDpy, cache.vTDpupyDpu);
+
+    // Propagate the gradient to d(polynomial) / du
+    // and d(polynomial) / dy 
+    for (int i = 0; i < ncolu; ++i)
+        cache.vTDpupyDu.col(i) = cache.vTDpupyDpu.row(i) * cache.DpuDu[i];
+    cache.vTDpupyDpyA1R = cache.vTDpupyDpy * B.A1;
+    for (int l = 0; l < lmax + 1; ++l)
+        cache.vTDpupyDpyA1R.block(0, l * l, nflx, 2 * l + 1) *= W.R[l];
+    for (int i = 0; i < ncoly; ++i) {
+        cache.vTDpupyDy.col(i) = cache.vTDpupyDpyA1R.row(i);
+        cache.vTDpupyDy(0, i) += (cache.vTDpupyDpu.row(i) * 
+                                    cache.DpuDy0.col(i))(0);
     }
 }
 
 /**
-Limb-darken a polynomial map, and optionally compute the
+Limb-darken a polynomial map and compute the
 gradient of the resulting map with respect to the input
 polynomial map and the input limb-darkening map.
 Temporal specialization.
 
 */
-template<bool GRADIENT=false, typename U=S>
+template<typename U=S>
 inline IsTemporal<U, void> limbDarken (
     const Vector<typename S::Scalar>& poly, 
-    Vector<typename S::Scalar>& poly_ld
+    Vector<typename S::Scalar>& poly_ld,
+    RowVector<Scalar> vT
 ) {
     // Compute the limb darkening polynomial
-    computeLDPolynomial<GRADIENT>();
+    computeLDPolynomial<true>();
 
-    // Compute the gradient
-    if (GRADIENT) {
-        // Multiply the polynomials
-        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
-                       cache.rTDpupyDpy, cache.rTDpupyDpu);
-        // Propagate the gradient to d(polynomial) / du
-        // and d(polynomial) / dy 
-        cache.rTDpupyDu = cache.rTDpupyDpu * cache.DpuDu;
-        cache.rTDpupyDpyA1R = cache.rTDpupyDpy * B.A1;
-        for (int l = 0; l < lmax + 1; ++l)
-            cache.rTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
-        cache.rTDpupyDy = cache.rTDpupyDpyA1R.replicate(ncoly, 1).transpose();
-        cache.rTDpupyDy.row(0) += (cache.rTDpupyDpu * cache.DpuDy0)
-                                  .replicate(ncoly, 1).transpose();
-    } else {
-        // Multiply the polynomials
-        basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld);
-    }
+    // Multiply the polynomials
+    basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
+                    cache.vTDpupyDpy, cache.vTDpupyDpu);
+                    
+    // Propagate the gradient to d(polynomial) / du
+    // and d(polynomial) / dy 
+    cache.vTDpupyDu = cache.vTDpupyDpu * cache.DpuDu;
+    cache.vTDpupyDpyA1R = cache.vTDpupyDpy * B.A1;
+    for (int l = 0; l < lmax + 1; ++l)
+        cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
+    cache.vTDpupyDy = cache.vTDpupyDpyA1R.replicate(ncoly, 1).transpose();
+    cache.vTDpupyDy.row(0) += (cache.vTDpupyDpu * cache.DpuDy0)
+                                .replicate(ncoly, 1).transpose();
 }

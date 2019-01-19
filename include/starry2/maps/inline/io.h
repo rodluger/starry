@@ -2,7 +2,7 @@
 Get the (l, m) row of the spherical harmonic coefficient *matrix*
 
 */
-template<typename U=S, typename=IsMultiColumn<U>>
+template<typename U=S, typename=IsSpectralOrTemporal<U>>
 inline YCoeffType getY (
     int l,
     int m
@@ -17,7 +17,7 @@ inline YCoeffType getY (
 Get the (l, m) index of the spherical harmonic coefficient *vector*
 
 */
-template<typename U=S, typename=IsSingleColumn<U>>
+template<typename U=S, typename=IsDefault<U>>
 inline Scalar getY (
     int l, 
     int m
@@ -46,7 +46,7 @@ inline UCoeffType getU (
 Get the `l`th index of the limb darkening coefficient *vector*
 
 */
-template<typename U=S, typename=IsSingleWavelength<U>>
+template<typename U=S, typename=IsDefaultOrTemporal<U>>
 inline Scalar getU (
     int l
 ) const {
