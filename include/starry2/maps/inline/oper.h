@@ -347,19 +347,22 @@ template<typename U=S>
 inline IsDefault<U, void> limbDarken (
     const YType& poly, 
     YType& poly_ld,
-    RowVector<Scalar> vT
+    const RowVector<Scalar>& vT
 ) {
     // Compute the limb darkening polynomial
     computeLDPolynomial<true>();
 
     // Multiply the polynomials
-    basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
-                    cache.vTDpupyDpy, cache.vTDpupyDpu);
+    basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, vT,
+                   cache.vTDpupyDpy, cache.vTDpupyDpu);
 
     // Propagate the gradient to d(polynomial) / du
     // and d(polynomial) / dy 
     cache.vTDpupyDu = cache.vTDpupyDpu * cache.DpuDu;
     cache.vTDpupyDpyA1R = cache.vTDpupyDpy * B.A1;
+
+    // TODO DEBUG: Need to multiply vTDpupyDpyA1R by R' for occultations
+
     for (int l = 0; l < lmax + 1; ++l)
         cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
     cache.vTDpupyDy = cache.vTDpupyDpyA1R.transpose();
@@ -377,13 +380,13 @@ template<typename U=S>
 inline IsSpectral<U, void> limbDarken (
     const YType& poly, 
     YType& poly_ld,
-    RowVector<Scalar> vT
+    const RowVector<Scalar>& vT
 ) {
     // Compute the limb darkening polynomial
     computeLDPolynomial<true>();
 
     // Multiply the polynomials
-    basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
+    basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, vT,
                     cache.vTDpupyDpy, cache.vTDpupyDpu);
 
     // Propagate the gradient to d(polynomial) / du
@@ -411,13 +414,13 @@ template<typename U=S>
 inline IsTemporal<U, void> limbDarken (
     const Vector<typename S::Scalar>& poly, 
     Vector<typename S::Scalar>& poly_ld,
-    RowVector<Scalar> vT
+    const RowVector<Scalar>& vT
 ) {
     // Compute the limb darkening polynomial
     computeLDPolynomial<true>();
 
     // Multiply the polynomials
-    basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, B.rT,
+    basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld, vT,
                     cache.vTDpupyDpy, cache.vTDpupyDpu);
                     
     // Propagate the gradient to d(polynomial) / du

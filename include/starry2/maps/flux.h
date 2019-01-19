@@ -463,7 +463,7 @@ inline void Map<S>::computeFluxYlm (
 
         // Align the occultor with the y axis
         if (likely((b > 0) && ((xo != 0) || (yo < 0)))) {
-            // Compute the rotation matrix and its derivative
+            // Compute the occultor rotation matrix and its derivative
             W.rotateAboutZ(yo_b, xo_b, cache.Ry, cache.RRy);
 
             // Dot sTA into R and dRdphi 
@@ -569,14 +569,11 @@ inline void Map<S>::computeFluxYlmLD(
     // Occultation
     } else {
 
-        throw errors::NotImplementedError("foo");
-
-#if 0
         // Compute the solution vector and its gradient
         G.compute(b, ro, true);
 
         // Transform the solution vector into polynomials
-        RowVector<Scalar> cache_sTA2 = G.sT * B.A2; // TODO: Add to cache
+        RowVector<Scalar> cache_sTA2 = G.sT * B.A2; // TODO: Add to cache?
 
         // The normalized occultor position
         Scalar xo_b = xo / b,
@@ -585,13 +582,9 @@ inline void Map<S>::computeFluxYlmLD(
         // Align the occultor with the y axis
         // and limb darken it
         if (likely((b > 0) && ((xo != 0) || (yo < 0)))) {
-            // Compute the rotation matrix and its derivative
+            // Compute the occultor rotation matrix and its derivative
             W.rotateAboutZ(yo_b, xo_b, cache.Ry, cache.RRy);
             
-
-            //W.leftMultiplyRz(cache.sTA, cache.sTAR);
-            //W.leftMultiplyDRz(cache.sTA, cache.sTADRDphi);
-
             // Apply the limb darkening
             cache.A1Ry = B.A1 * cache.RRy;
             limbDarken(cache.A1Ry, cache.pupy, cache_sTA2);
@@ -602,11 +595,10 @@ inline void Map<S>::computeFluxYlmLD(
             // Compute the contribution to the xo and yo
             // derivs from the occultor rotation matrix
             // TODO Template this and clean it up
-            RowVector<Scalar> foo = (cache_sTA2 * cache.DpupyDpy[0]) * B.A1;
+            RowVector<Scalar> foo = cache.vTDpupyDpy * B.A1;
             RowVector<Scalar> bar(N);
             W.leftMultiplyDRz(foo, bar);
             FluxType cache_DfDphi = bar * cache.Ry;
-
             MBCAST(Dxo, T4) = cache_DfDphi * yo_b / b;
             MBCAST(Dyo, T5) = -cache_DfDphi * xo_b / b;
         } else {
@@ -614,7 +606,6 @@ inline void Map<S>::computeFluxYlmLD(
             MBCAST(Dxo, T4).setZero();
             MBCAST(Dyo, T5).setZero();
         }   
-
 
         // Compute the contribution to the xo and yo
         // derivs from the solution vector
@@ -625,7 +616,7 @@ inline void Map<S>::computeFluxYlmLD(
         }
 
         // Compute the flux
-        MBCAST(flux, T1) = cache_sTA2 * cache.pupy;
+        MBCAST(flux, T1) = G.sT * cache.ARRy; //cache_sTA2 * cache.pupy; EITHER ONE
     
         // Theta derivative (TODO)
         MBCAST(Dtheta, T3).setZero();
@@ -642,7 +633,6 @@ inline void Map<S>::computeFluxYlmLD(
 
         // Compute the time deriv (TODO)
         MBCAST(Dt, T2).setZero();
-#endif
 
     }
 

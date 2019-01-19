@@ -126,7 +126,7 @@ inline void polymul (
                                 p1p2(n - 4 * l + 2) += fac1;
                                 p1p2(n - 2) -= fac1;
                                 p1p2(n + 2) -= fac1;
-                                fac2 = vT(n - 4 * l + 2) - vT(n - 2) - vT(n - 2);
+                                fac2 = vT(n - 4 * l + 2) - vT(n - 2) - vT(n + 2);
                                 vTDp1p2Dp1(n1) += fac2 * p2(n2);
                                 vTDp1p2Dp2(n1) += fac2 * p1(n2);
                             } else {
@@ -231,7 +231,7 @@ inline void polymul (
                                 p1p2.row(n - 4 * l + 2) += fac1;
                                 p1p2.row(n - 2) -= fac1;
                                 p1p2.row(n + 2) -= fac1;
-                                fac2 = vT(n - 4 * l + 2) - vT(n - 2) - vT(n - 2);
+                                fac2 = vT(n - 4 * l + 2) - vT(n - 2) - vT(n + 2);
                                 vTDp1p2Dp1.col(n1) += fac2 * p2.row(n2);
                                 vTDp1p2Dp2.col(n1) += fac2 * p1.row(n2);
 

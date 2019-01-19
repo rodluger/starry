@@ -286,4 +286,4 @@ def test_temporal_ylmld_occ_multi():
 
 if __name__ == "__main__":
     debug = True
-    test_default_ylmld_occ()
+    compare(ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
