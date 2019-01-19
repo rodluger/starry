@@ -1,5 +1,107 @@
+template <class S, typename T=void> 
+class Cache_;
+
+template <class S> 
+class Cache_<S, IsDefault<S>> 
+{
+public:
+
+    using Scalar = typename S::Scalar;
+    Matrix<Scalar> DpuDu;
+    Vector<Scalar> DpuDy0;
+    Vector<Scalar> rTDpupyDy;
+    Vector<Scalar> rTDpupyDu;
+    RowVector<Scalar> rTDpupyDpu;
+    RowVector<Scalar> rTDpupyDpy;
+    RowVector<Scalar> rTDpupyDpyA1R;
+
+    Cache_ (
+        int lmax,
+        int ncoly,
+        int ncolu,
+        int nflx
+    ) {
+        int N = (lmax + 1) * (lmax + 1);
+        DpuDu.resize(lmax + 1, N);
+        DpuDy0.resize(N);
+        rTDpupyDy.resize(N);
+        rTDpupyDu.resize(lmax + 1);
+        rTDpupyDpu.resize(N);
+        rTDpupyDpy.resize(N);
+        rTDpupyDpyA1R.resize(N);
+    }
+
+};
+
+template <class S> 
+class Cache_<S, IsSpectral<S>> 
+{
+public:
+
+    using Scalar = typename S::Scalar;
+    std::vector<Matrix<Scalar>> DpuDu;
+    Matrix<Scalar> DpuDy0;
+    Matrix<Scalar> rTDpupyDy;
+    Matrix<Scalar> rTDpupyDu;
+    Matrix<Scalar> rTDpupyDpu;
+    Matrix<Scalar> rTDpupyDpy;
+    Matrix<Scalar> rTDpupyDpyA1R;
+
+    Cache_ (
+        int lmax,
+        int ncoly,
+        int ncolu,
+        int nflx
+    ) {
+        int N = (lmax + 1) * (lmax + 1);
+        DpuDu.resize(ncolu);
+        DpuDy0.resize(N, ncolu);
+        rTDpupyDy.resize(N, ncoly);
+        rTDpupyDu.resize(lmax + 1, ncolu);
+        rTDpupyDpu.resize(ncolu, N);
+        rTDpupyDpy.resize(ncoly, N);
+        rTDpupyDpyA1R.resize(ncoly, N);
+        for (int i = 0; i < ncolu; ++i) {
+            DpuDu[i].resize(lmax + 1, N);
+        }
+    }
+
+};
+
+template <class S> 
+class Cache_<S, IsTemporal<S>> 
+{
+public:
+
+    using Scalar = typename S::Scalar;
+    Matrix<Scalar> DpuDu;
+    Vector<Scalar> DpuDy0;
+    Matrix<Scalar> rTDpupyDy;
+    Vector<Scalar> rTDpupyDu;
+    RowVector<Scalar> rTDpupyDpu;
+    RowVector<Scalar> rTDpupyDpy;
+    RowVector<Scalar> rTDpupyDpyA1R;
+
+    Cache_ (
+        int lmax,
+        int ncoly,
+        int ncolu,
+        int nflx
+    ) {
+        int N = (lmax + 1) * (lmax + 1);
+        DpuDu.resize(lmax + 1, N);
+        DpuDy0.resize(N);
+        rTDpupyDy.resize(N, ncoly);
+        rTDpupyDu.resize(lmax + 1);
+        rTDpupyDpu.resize(N);
+        rTDpupyDpy.resize(N);
+        rTDpupyDpyA1R.resize(N);
+    }
+
+};
+
 template <class S>
-class Cache
+class Cache : public Cache_<S>
 {
 protected:
 
@@ -55,34 +157,13 @@ public:
     std::vector<Matrix<Scalar>> EulerD;
     std::vector<Matrix<Scalar>> EulerR;
 
-
-// TODO template these
-#if defined(_STARRY_DEFAULT_)
-    Matrix<Scalar> DpuDu;
-    Vector<Scalar> DpuDy0;
-    Vector<Scalar> rTDpupyDy;
-    Vector<Scalar> rTDpupyDu;
-    RowVector<Scalar> rTDpupyDpu;
-    RowVector<Scalar> rTDpupyDpy;
-    RowVector<Scalar> rTDpupyDpyA1R;
-#elif defined(_STARRY_SPECTRAL_)
-    std::vector<Matrix<Scalar>> DpuDu;
-    Matrix<Scalar> DpuDy0;
-    Matrix<Scalar> rTDpupyDy;
-    Matrix<Scalar> rTDpupyDu;
-    Matrix<Scalar> rTDpupyDpu;
-    Matrix<Scalar> rTDpupyDpy;
-    Matrix<Scalar> rTDpupyDpyA1R;
-#else
-    Matrix<Scalar> DpuDu;
-    Vector<Scalar> DpuDy0;
-    Matrix<Scalar> rTDpupyDy;
-    Vector<Scalar> rTDpupyDu;
-    RowVector<Scalar> rTDpupyDpu;
-    RowVector<Scalar> rTDpupyDpy;
-    RowVector<Scalar> rTDpupyDpyA1R;
-
-#endif
+    using Cache_<S>::DpuDu;
+    using Cache_<S>::DpuDy0;
+    using Cache_<S>::rTDpupyDy;
+    using Cache_<S>::rTDpupyDu;
+    using Cache_<S>::rTDpupyDpu;
+    using Cache_<S>::rTDpupyDpy;
+    using Cache_<S>::rTDpupyDpyA1R;
 
     // Pybind cache
     TSType pb_flux;
@@ -145,42 +226,6 @@ public:
         theta_with_grad = NAN;
     };
 
-    template<typename U=S>
-    inline IsDefault<U, void> resizeDerivs () {
-        DpuDu.resize(lmax + 1, N);
-        DpuDy0.resize(N);
-        rTDpupyDy.resize(N);
-        rTDpupyDu.resize(lmax + 1);
-        rTDpupyDpu.resize(N);
-        rTDpupyDpy.resize(N);
-        rTDpupyDpyA1R.resize(N);
-    }
-
-    template<typename U=S>
-    inline IsSpectral<U, void> resizeDerivs () {
-        DpuDu.resize(ncolu);
-        DpuDy0.resize(N, ncolu);
-        rTDpupyDy.resize(N, ncoly);
-        rTDpupyDu.resize(lmax + 1, ncolu);
-        rTDpupyDpu.resize(ncolu, N);
-        rTDpupyDpy.resize(ncoly, N);
-        rTDpupyDpyA1R.resize(ncoly, N);
-        for (int i = 0; i < ncolu; ++i) {
-            DpuDu[i].resize(lmax + 1, N);
-        }
-    }
-
-    template<typename U=S>
-    inline IsTemporal<U, void> resizeDerivs () {
-        DpuDu.resize(lmax + 1, N);
-        DpuDy0.resize(N);
-        rTDpupyDy.resize(N, ncoly);
-        rTDpupyDu.resize(lmax + 1);
-        rTDpupyDpu.resize(N);
-        rTDpupyDpy.resize(N);
-        rTDpupyDpyA1R.resize(N);
-    }
-
     //! Constructor
     Cache (
         int lmax,
@@ -188,6 +233,7 @@ public:
         int ncolu,
         int nflx
     ) :
+        Cache_<S>(lmax, ncoly, ncolu, nflx),
         lmax(lmax),
         ncoly(ncoly),
         ncolu(ncolu),
@@ -217,7 +263,6 @@ public:
             EulerD[l].resize(sz, sz);
             EulerR[l].resize(sz, sz);
         }
-        resizeDerivs();
         reset();
     };
 
