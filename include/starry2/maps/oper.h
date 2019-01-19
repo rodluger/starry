@@ -152,7 +152,9 @@ inline void Map<S>::rotate (
 
 /**
 Rotate an arbitrary map vector in place
-given an axis and an angle.
+given an axis and an angle. If `col = -1`,
+rotate all columns of the map, otherwise
+rotate only the column with index `col`.
 
 */
 template <class S>
@@ -160,7 +162,8 @@ inline void Map<S>::rotateByAxisAngle (
     const UnitVector<Scalar>& axis_,
     const Scalar& costheta,
     const Scalar& sintheta,
-    YType& y_
+    YType& y_,
+    int col
 ) {
     Scalar tol = 10 * mach_eps<Scalar>();
     Scalar cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
@@ -173,9 +176,16 @@ inline void Map<S>::rotateByAxisAngle (
         cosbeta, sinbeta, 
         cosgamma, singamma, tol, 
         cache.EulerD, cache.EulerR);
-    for (int l = 0; l < lmax + 1; ++l) {
-        y_.block(l * l, 0, 2 * l + 1, ncoly) =
-            cache.EulerR[l] * y_.block(l * l, 0, 2 * l + 1, ncoly);
+    if (col == -1) {
+        for (int l = 0; l < lmax + 1; ++l) {
+            y_.block(l * l, 0, 2 * l + 1, ncoly) =
+                cache.EulerR[l] * y_.block(l * l, 0, 2 * l + 1, ncoly);
+        }
+    } else {
+        for (int l = 0; l < lmax + 1; ++l) {
+            y_.block(l * l, col, 2 * l + 1, 1) =
+                cache.EulerR[l] * y_.block(l * l, col, 2 * l + 1, 1);
+        }
     }
 }
 

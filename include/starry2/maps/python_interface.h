@@ -81,9 +81,9 @@ void Map<S>::loadImage_ (
     } else {
         y.block(0, col, (l + 1) * (l + 1), 1) = y_double.cast<Scalar>();
     }
-    rotateByAxisAngle(xhat<Scalar>(), 0.0, 1.0, y);
-    rotateByAxisAngle(zhat<Scalar>(), -1.0, 0.0, y);
-    rotateByAxisAngle(yhat<Scalar>(), 0.0, -1.0, y);
+    rotateByAxisAngle(xhat<Scalar>(), 0.0, 1.0, y, col);
+    rotateByAxisAngle(zhat<Scalar>(), -1.0, 0.0, y, col);
+    rotateByAxisAngle(yhat<Scalar>(), 0.0, -1.0, y, col);
     cache.yChanged();
 }
 

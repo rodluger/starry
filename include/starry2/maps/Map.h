@@ -11,7 +11,6 @@ public:
     using YCoeffType = typename S::YCoeffType;
     using UType = typename S::UType;
     using UCoeffType = typename S::UCoeffType;
-    using CtrYType = typename S::CtrYType;
     using FluxType = typename S::FluxType;
 
     // Public variables
@@ -173,7 +172,8 @@ protected:
         const UnitVector<Scalar>& axis_,
         const Scalar& costheta,
         const Scalar& sintheta,
-        YType& y_
+        YType& y_,
+        int col=-1
     );
 
     // Internal variables

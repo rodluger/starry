@@ -169,7 +169,6 @@ struct Default
     using UType = Vector<T>;
     using UCoeffType = OneByOne<T>;
     using TSType = Vector<T>;
-    using CtrYType = YType;
     using FluxType = OneByOne<T>;
 
     struct Double {
@@ -179,7 +178,6 @@ struct Default
         using UType = Vector<double>;
         using UCoeffType = OneByOne<double>;
         using TSType = Vector<double>;
-        using CtrYType = YType;
         using FluxType = OneByOne<double>;
     };
 
@@ -195,7 +193,6 @@ struct Spectral
     using UType = Matrix<T>;
     using UCoeffType = RowVector<T>;
     using TSType = RowMatrix<T>;
-    using CtrYType = YType;
     using FluxType = RowVector<T>;
 
     struct Double {
@@ -205,7 +202,6 @@ struct Spectral
         using UType = Matrix<double>;
         using UCoeffType = RowVector<double>;
         using TSType = RowMatrix<double>;
-        using CtrYType = YType;
         using FluxType = RowVector<double>;
     };
 };
@@ -220,7 +216,6 @@ struct Temporal
     using UType = Vector<T>;
     using UCoeffType = OneByOne<T>;
     using TSType = Vector<T>;
-    using CtrYType = Vector<T>;
     using FluxType = OneByOne<T>;
 
     struct Double {
@@ -230,7 +225,6 @@ struct Temporal
         using UType = Vector<double>;
         using UCoeffType = OneByOne<double>;
         using TSType = Vector<double>;
-        using CtrYType = Vector<double>;
         using FluxType = OneByOne<double>;
     };
 };

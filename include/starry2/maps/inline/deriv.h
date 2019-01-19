@@ -95,7 +95,7 @@ template<typename U=S, typename T1>
 inline IsTemporal<U, void> computeDfDtYlmNoOccultation (
     MatrixBase<T1> const & Dt
 ){
-    MBCAST(Dt, T1) = (B.rTA1 * cache.RyUncontracted).block(0, 1, 1, ncoly - 1) 
+    MBCAST(Dt, T1) = (B.rTA1 * cache.RY).block(0, 1, 1, ncoly - 1) 
                      * taylor.segment(0, ncoly - 1);
 }
 
@@ -430,7 +430,7 @@ inline IsTemporal<U, void> computeDfDtYlmLDNoOccultation (
     MatrixBase<T1> const & Dt
 ){
     MBCAST(Dt, T1).setZero();
-    auto A1Ry = B.A1 * cache.RyUncontracted;
+    auto A1Ry = B.A1 * cache.RY;
     for (int i = 0; i < ncoly - 1; ++i) {
         limbDarken(A1Ry.col(i + 1), cache.pupy);
         MBCAST(Dt, T1) += OneByOne<Scalar>(B.rT * cache.pupy) * taylor(i);
@@ -459,7 +459,7 @@ template<typename U=S, typename T1>
 inline IsTemporal<U, void> computeDfDtYlmOccultation (
     MatrixBase<T1> const & Dt
 ){
-    MBCAST(Dt, T1) = (cache.sTAR * cache.RyUncontracted)
+    MBCAST(Dt, T1) = (cache.sTAR * cache.RY)
                      .block(0, 1, 1, ncoly - 1) 
                      * taylor.segment(0, ncoly - 1);
 }

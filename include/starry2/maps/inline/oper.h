@@ -146,20 +146,20 @@ inline IsTemporal<U, void> rotateIntoCache (
     computeWigner();
     if (!compute_matrices) {
         if (cache.theta != theta) {
-            W.rotate(cos(theta_rad), sin(theta_rad), cache.RyUncontracted);
+            W.rotate(cos(theta_rad), sin(theta_rad), cache.RY);
             cache.theta = theta;
         }
-        cache.Ry = contract(cache.RyUncontracted);
+        cache.Ry = contract(cache.RY);
     } else { 
         if (cache.theta_with_grad != theta) {
             W.compute(cos(theta_rad), sin(theta_rad));
             for (int l = 0; l < lmax + 1; ++l) {
-                cache.RyUncontracted.block(l * l, 0, 2 * l + 1, ncoly) =
+                cache.RY.block(l * l, 0, 2 * l + 1, ncoly) =
                     W.R[l] * y.block(l * l, 0, 2 * l + 1, ncoly);
             }
             cache.theta_with_grad = theta;
         }
-        cache.Ry = contract(cache.RyUncontracted);
+        cache.Ry = contract(cache.RY);
         for (int l = 0; l < lmax + 1; ++l) {
             cache.DRDthetay.block(l * l, 0, 2 * l + 1, nflx) =
                 contract(W.DRDtheta[l] * y.block(l * l, 0, 2 * l + 1, ncoly));
@@ -317,8 +317,8 @@ Default specialization.
 */
 template<bool GRADIENT=false, typename U=S>
 inline IsDefault<U, void> limbDarken (
-    const CtrYType& poly, 
-    CtrYType& poly_ld
+    const YType& poly, 
+    YType& poly_ld
 ) {
     // Compute the limb darkening polynomial
     computeLDPolynomial<GRADIENT>();
@@ -351,8 +351,8 @@ Spectral specialization.
 */
 template<bool GRADIENT=false, typename U=S>
 inline IsSpectral<U, void> limbDarken (
-    const CtrYType& poly, 
-    CtrYType& poly_ld
+    const YType& poly, 
+    YType& poly_ld
 ) {
     // Compute the limb darkening polynomial
     computeLDPolynomial<GRADIENT>();
@@ -389,8 +389,8 @@ Temporal specialization.
 */
 template<bool GRADIENT=false, typename U=S>
 inline IsTemporal<U, void> limbDarken (
-    const CtrYType& poly, 
-    CtrYType& poly_ld
+    const Vector<typename S::Scalar>& poly, 
+    Vector<typename S::Scalar>& poly_ld
 ) {
     // Compute the limb darkening polynomial
     computeLDPolynomial<GRADIENT>();

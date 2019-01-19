@@ -7,6 +7,16 @@ class Cache_<S, IsDefault<S>>
 public:
 
     using Scalar = typename S::Scalar;
+
+    // Map vectors
+    Vector<Scalar> Ry;
+    Vector<Scalar> RRy;
+    Vector<Scalar> A1Ry;
+    Vector<Scalar> ARRy;
+    Vector<Scalar> pupy;
+
+    // Derivatives
+    Vector<Scalar> DRDthetay;
     Matrix<Scalar> DpuDu;
     Vector<Scalar> DpuDy0;
     Vector<Scalar> rTDpupyDy;
@@ -22,6 +32,12 @@ public:
         int nflx
     ) {
         int N = (lmax + 1) * (lmax + 1);
+        Ry.resize(N);
+        RRy.resize(N);
+        A1Ry.resize(N);
+        ARRy.resize(N);
+        pupy.resize(N);
+        DRDthetay.resize(N);
         DpuDu.resize(lmax + 1, N);
         DpuDy0.resize(N);
         rTDpupyDy.resize(N);
@@ -39,6 +55,16 @@ class Cache_<S, IsSpectral<S>>
 public:
 
     using Scalar = typename S::Scalar;
+
+    // Map matrices
+    Matrix<Scalar> Ry;
+    Matrix<Scalar> RRy;
+    Matrix<Scalar> A1Ry;
+    Matrix<Scalar> ARRy;
+    Matrix<Scalar> pupy;
+
+    // Derivatives
+    Matrix<Scalar> DRDthetay;
     std::vector<Matrix<Scalar>> DpuDu;
     Matrix<Scalar> DpuDy0;
     Matrix<Scalar> rTDpupyDy;
@@ -54,16 +80,22 @@ public:
         int nflx
     ) {
         int N = (lmax + 1) * (lmax + 1);
+        Ry.resize(N, ncoly);
+        RRy.resize(N, ncoly);
+        A1Ry.resize(N, ncoly);
+        ARRy.resize(N, ncoly);
+        pupy.resize(N, ncoly);
+        DRDthetay.resize(N, ncoly);
         DpuDu.resize(ncolu);
+        for (int i = 0; i < ncolu; ++i) {
+            DpuDu[i].resize(lmax + 1, N);
+        }
         DpuDy0.resize(N, ncolu);
         rTDpupyDy.resize(N, ncoly);
         rTDpupyDu.resize(lmax + 1, ncolu);
         rTDpupyDpu.resize(ncolu, N);
         rTDpupyDpy.resize(ncoly, N);
-        rTDpupyDpyA1R.resize(ncoly, N);
-        for (int i = 0; i < ncolu; ++i) {
-            DpuDu[i].resize(lmax + 1, N);
-        }
+        rTDpupyDpyA1R.resize(ncoly, N);   
     }
 
 };
@@ -74,6 +106,17 @@ class Cache_<S, IsTemporal<S>>
 public:
 
     using Scalar = typename S::Scalar;
+
+    // Contracted map vectors
+    Vector<Scalar> Ry;
+    Matrix<Scalar> RY;                                                         /**< Uncontracted R . Y matrix */
+    Vector<Scalar> RRy;
+    Vector<Scalar> A1Ry;
+    Vector<Scalar> ARRy;
+    Vector<Scalar> pupy;
+
+    // Derivatives
+    Vector<Scalar> DRDthetay;
     Matrix<Scalar> DpuDu;
     Vector<Scalar> DpuDy0;
     Matrix<Scalar> rTDpupyDy;
@@ -89,6 +132,13 @@ public:
         int nflx
     ) {
         int N = (lmax + 1) * (lmax + 1);
+        Ry.resize(N);
+        RY.resize(N, ncoly);
+        RRy.resize(N);
+        A1Ry.resize(N);
+        ARRy.resize(N);
+        pupy.resize(N);
+        DRDthetay.resize(N);
         DpuDu.resize(lmax + 1, N);
         DpuDy0.resize(N);
         rTDpupyDy.resize(N, ncoly);
@@ -111,7 +161,6 @@ protected:
     using YCoeffType = typename S::YCoeffType;
     using UType = typename S::UType;
     using TSType = typename S::TSType;
-    using CtrYType = typename S::CtrYType;
     using FluxType = typename S::FluxType;
 
 public:
@@ -141,13 +190,6 @@ public:
     UType g;
     Matrix<Scalar> DgDu;                                                       /**< Deriv of Agol `g` coeffs w/ respect to the limb darkening coeffs */
     UType p;
-    YType RyUncontracted;
-    CtrYType Ry;
-    CtrYType RRy;
-    CtrYType A1Ry;
-    CtrYType ARRy;
-    CtrYType DRDthetay;
-    CtrYType pupy;
     FluxType sTADRDphiRy_b;
     FluxType dFdb;
     RowVector<Scalar> pT;
@@ -156,14 +198,6 @@ public:
     RowVector<Scalar> sTADRDphi;
     std::vector<Matrix<Scalar>> EulerD;
     std::vector<Matrix<Scalar>> EulerR;
-
-    using Cache_<S>::DpuDu;
-    using Cache_<S>::DpuDy0;
-    using Cache_<S>::rTDpupyDy;
-    using Cache_<S>::rTDpupyDu;
-    using Cache_<S>::rTDpupyDpu;
-    using Cache_<S>::rTDpupyDpy;
-    using Cache_<S>::rTDpupyDpyA1R;
 
     // Pybind cache
     TSType pb_flux;
@@ -241,14 +275,7 @@ public:
         N((lmax + 1) * (lmax + 1)),
         g(lmax + 1, ncolu),
         DgDu(lmax * ncolu, lmax + 1),
-        p(N, ncolu),
-        RyUncontracted(N, ncoly),
-        Ry(N, nflx),
-        RRy(N, nflx),
-        A1Ry(N, nflx),
-        ARRy(N, nflx),
-        DRDthetay(N, nflx),
-        pupy(N, nflx),
+        p(N, ncolu),        
         sTADRDphiRy_b(nflx),
         dFdb(nflx),
         pT(N),
