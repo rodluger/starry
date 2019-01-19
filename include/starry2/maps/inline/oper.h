@@ -359,12 +359,13 @@ inline IsDefault<U, void> limbDarken (
     // Propagate the gradient to d(polynomial) / du
     // and d(polynomial) / dy 
     cache.vTDpupyDu = cache.vTDpupyDpu * cache.DpuDu;
-    cache.vTDpupyDpyA1R = cache.vTDpupyDpy * B.A1;
+    cache.vTDpupyDpyA1 = cache.vTDpupyDpy * B.A1;
 
     // TODO DEBUG: Need to multiply vTDpupyDpyA1R by R' for occultations
 
     for (int l = 0; l < lmax + 1; ++l)
-        cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
+        cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) =
+            cache.vTDpupyDpyA1.segment(l * l, 2 * l + 1) * W.R[l];
     cache.vTDpupyDy = cache.vTDpupyDpyA1R.transpose();
     cache.vTDpupyDy(0) += (cache.vTDpupyDpu * cache.DpuDy0)(0);
 }
@@ -393,9 +394,10 @@ inline IsSpectral<U, void> limbDarken (
     // and d(polynomial) / dy 
     for (int i = 0; i < ncolu; ++i)
         cache.vTDpupyDu.col(i) = cache.vTDpupyDpu.row(i) * cache.DpuDu[i];
-    cache.vTDpupyDpyA1R = cache.vTDpupyDpy * B.A1;
+    cache.vTDpupyDpyA1 = cache.vTDpupyDpy * B.A1;
     for (int l = 0; l < lmax + 1; ++l)
-        cache.vTDpupyDpyA1R.block(0, l * l, nflx, 2 * l + 1) *= W.R[l];
+        cache.vTDpupyDpyA1R.block(0, l * l, nflx, 2 * l + 1) = 
+            cache.vTDpupyDpyA1.block(0, l * l, nflx, 2 * l + 1) * W.R[l];
     for (int i = 0; i < ncoly; ++i) {
         cache.vTDpupyDy.col(i) = cache.vTDpupyDpyA1R.row(i);
         cache.vTDpupyDy(0, i) += (cache.vTDpupyDpu.row(i) * 
@@ -426,9 +428,10 @@ inline IsTemporal<U, void> limbDarken (
     // Propagate the gradient to d(polynomial) / du
     // and d(polynomial) / dy 
     cache.vTDpupyDu = cache.vTDpupyDpu * cache.DpuDu;
-    cache.vTDpupyDpyA1R = cache.vTDpupyDpy * B.A1;
+    cache.vTDpupyDpyA1 = cache.vTDpupyDpy * B.A1;
     for (int l = 0; l < lmax + 1; ++l)
-        cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
+        cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) = 
+            cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) * W.R[l];
     cache.vTDpupyDy = cache.vTDpupyDpyA1R.replicate(ncoly, 1).transpose();
     cache.vTDpupyDy.row(0) += (cache.vTDpupyDpu * cache.DpuDy0)
                                 .replicate(ncoly, 1).transpose();

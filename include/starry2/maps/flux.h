@@ -573,7 +573,7 @@ inline void Map<S>::computeFluxYlmLD(
         G.compute(b, ro, true);
 
         // Transform the solution vector into polynomials
-        RowVector<Scalar> cache_sTA2 = G.sT * B.A2; // TODO: Add to cache?
+        RowVector<Scalar> cache_sTA2 = G.sT * B.A2; // TODO: Add to cache
 
         // The normalized occultor position
         Scalar xo_b = xo / b,
@@ -602,6 +602,9 @@ inline void Map<S>::computeFluxYlmLD(
             MBCAST(Dxo, T4) = cache_DfDphi * yo_b / b;
             MBCAST(Dyo, T5) = -cache_DfDphi * xo_b / b;
         } else {
+
+            // TODO: limb darken here
+
             cache.ARRy = B.A * cache.Ry;
             MBCAST(Dxo, T4).setZero();
             MBCAST(Dyo, T5).setZero();
@@ -618,18 +621,17 @@ inline void Map<S>::computeFluxYlmLD(
         // Compute the flux
         MBCAST(flux, T1) = G.sT * cache.ARRy; //cache_sTA2 * cache.pupy; EITHER ONE
     
-        // Theta derivative (TODO)
-        MBCAST(Dtheta, T3).setZero();
-        MBCAST(Dtheta, T3) *= radian;
+        // Theta derivative
+        computeDfDthetaYlmLDOccultation(Dtheta);
 
         // Occultor radius derivative
         MBCAST(Dro, T5) = G.dsTdr * cache.ARRy;
 
         // Compute derivs with respect to y (TODO)
-        MBCAST(Du, T7).setZero();
+        MBCAST(Dy, T7).setZero();
 
-        // Compute derivs with respect to u (TODO)
-        MBCAST(Du, T8).setZero();
+        // Compute derivs with respect to u
+        computeDfDuYlmLDOccultation(Du);
 
         // Compute the time deriv (TODO)
         MBCAST(Dt, T2).setZero();

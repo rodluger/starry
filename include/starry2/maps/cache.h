@@ -23,6 +23,7 @@ public:
     Vector<Scalar> vTDpupyDu;
     RowVector<Scalar> vTDpupyDpu;
     RowVector<Scalar> vTDpupyDpy;
+    RowVector<Scalar> vTDpupyDpyA1;
     RowVector<Scalar> vTDpupyDpyA1R;
 
     Cache_ (
@@ -44,6 +45,7 @@ public:
         vTDpupyDu.resize(lmax + 1);
         vTDpupyDpu.resize(N);
         vTDpupyDpy.resize(N);
+        vTDpupyDpyA1.resize(N);
         vTDpupyDpyA1R.resize(N);
     }
 
@@ -71,6 +73,7 @@ public:
     Matrix<Scalar> vTDpupyDu;
     Matrix<Scalar> vTDpupyDpu;
     Matrix<Scalar> vTDpupyDpy;
+    Matrix<Scalar> vTDpupyDpyA1;
     Matrix<Scalar> vTDpupyDpyA1R;
 
     Cache_ (
@@ -95,6 +98,7 @@ public:
         vTDpupyDu.resize(lmax + 1, ncolu);
         vTDpupyDpu.resize(ncolu, N);
         vTDpupyDpy.resize(ncoly, N);
+        vTDpupyDpyA1.resize(ncoly, N); 
         vTDpupyDpyA1R.resize(ncoly, N);   
     }
 
@@ -123,6 +127,7 @@ public:
     Vector<Scalar> vTDpupyDu;
     RowVector<Scalar> vTDpupyDpu;
     RowVector<Scalar> vTDpupyDpy;
+    RowVector<Scalar> vTDpupyDpyA1;
     RowVector<Scalar> vTDpupyDpyA1R;
 
     Cache_ (
@@ -145,6 +150,7 @@ public:
         vTDpupyDu.resize(lmax + 1);
         vTDpupyDpu.resize(N);
         vTDpupyDpy.resize(N);
+        vTDpupyDpyA1.resize(N);
         vTDpupyDpyA1R.resize(N);
     }
 

@@ -525,3 +525,74 @@ inline IsTemporal<U, void> computeDfDyYlmOccultation (
         MBCAST(Dy, T1) = (taylor * cache.sTAR).transpose();
     }
 }
+
+/**
+The derivative of the flux with respect to theta
+for a limb-darkened spherical harmonic map.
+Single-wavelength case.
+
+*/
+template<typename U=S, typename T1>
+inline IsDefaultOrTemporal<U, void> computeDfDthetaYlmLDOccultation (
+    MatrixBase<T1> const & Dtheta
+){
+    W.leftMultiplyRz(cache.vTDpupyDpyA1, cache.vTDpupyDpyA1R);
+    MBCAST(Dtheta, T1) = cache.vTDpupyDpyA1R * cache.DRDthetay;
+    MBCAST(Dtheta, T1) *= radian;
+}
+
+/**
+The derivative of the flux with respect to theta
+for a limb-darkened spherical harmonic map.
+Spectral case.
+
+*/
+template<typename U=S, typename T1>
+inline IsSpectral<U, void> computeDfDthetaYlmLDOccultation (
+    MatrixBase<T1> const & Dtheta
+){
+    // This is a little nasty because `DpupyDpy` is a tensor
+    // and we're doing a sneaky contraction
+    // TODO!
+    MBCAST(Dtheta, T1).setZero();
+    MBCAST(Dtheta, T1) *= radian;
+}
+
+/**
+The derivative of the flux with respect to the limb darkening
+coefficients for a limb-darkened spherical harmonic map.
+Default case.
+
+*/
+template<typename U=S, typename T1>
+inline IsDefault<U, void> computeDfDuYlmLDOccultation (
+    MatrixBase<T1> const & Du
+) {
+    MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, 1);
+}
+
+/**
+The derivative of the flux with respect to the limb darkening
+coefficients for a limb-darkened spherical harmonic map.
+Spectral case.
+
+*/
+template<typename U=S, typename T1>
+inline IsSpectral<U, void> computeDfDuYlmLDOccultation (
+    MatrixBase<T1> const & Du
+) {
+    MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, ncolu);
+}
+
+/**
+The derivative of the flux with respect to the limb darkening
+coefficients for a limb-darkened spherical harmonic map.
+Temporal case.
+
+*/
+template<typename U=S, typename T1>
+inline IsTemporal<U, void> computeDfDuYlmLDOccultation (
+    MatrixBase<T1> const & Du
+){
+    MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, 1);
+}
