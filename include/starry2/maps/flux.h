@@ -353,7 +353,7 @@ inline void Map<S>::computeFluxLD(
     } else {
 
         // Compute the Agol `s` vector and its derivs
-        L.compute(b, ro, true);
+        L.template compute<true>(b, ro);
 
         // Compute the Agol `g` basis
         computeAgolGBasis();
@@ -452,7 +452,7 @@ inline void Map<S>::computeFluxYlm (
     } else {
 
         // Compute the solution vector and its gradient
-        G.compute(b, ro, true);
+        G.template compute<true>(b, ro);
 
         // Transform the solution vector into Ylms
         cache.sTA = G.sT * B.A;
@@ -570,65 +570,32 @@ inline void Map<S>::computeFluxYlmLD(
     } else {
 
         // Compute the solution vector and its gradient
-        G.compute(b, ro, true);
+        G.template compute<true>(b, ro);
 
         // Transform the solution vector into polynomials
         cache.sTA2 = G.sT * B.A2;
 
         // The normalized occultor position
+        // Investigate what happens as b --> 0. Could be unstable.
         Scalar xo_b = xo / b,
                yo_b = yo / b;
 
-        // Align the occultor with the y axis
-        // and limb darken it
+        // Compute the occultor rotation matrix and its derivative
         if (likely((b > 0) && ((xo != 0) || (yo < 0)))) {
-            
-            // Compute the occultor rotation matrix and its derivative
             W.rotateAboutZ(yo_b, xo_b, cache.Ry, cache.RRy);
-            
-            // Apply the limb darkening
-            cache.A1Ry = B.A1 * cache.RRy;
-            limbDarkenWithGradient<true>(cache.A1Ry, cache.pupy);
-
-            // The Green's polynomial of the rotated map
-            cache.ARRy = B.A2 * cache.pupy;
-
-            // Compute the contribution to the xo and yo
-            // derivs from the occultor rotation matrix
-            // TODO Template this and clean it up
-#ifdef _STARRY_SPECTRAL_
-            Matrix<Scalar> foo = cache.vTDpupyDpy * B.A1;
-            Matrix<Scalar> bar(ncoly, N);
-            W.leftMultiplyDRz(foo, bar);
-            FluxType cache_DfDphi(ncoly);
-            for (int i = 0; i < ncoly; ++i)
-                cache_DfDphi(i) = (bar.row(i) * cache.Ry.col(i))(0);
-#else
-            RowVector<Scalar> foo = cache.vTDpupyDpy * B.A1;
-            RowVector<Scalar> bar(N);
-            W.leftMultiplyDRz(foo, bar);
-            FluxType cache_DfDphi = bar * cache.Ry;
-#endif
-            MBCAST(Dxo, T4) = cache_DfDphi * yo_b / b;
-            MBCAST(Dyo, T5) = -cache_DfDphi * xo_b / b;
-
         } else {
-
-            W.resetRz();
-            cache.A1Ry = B.A1 * cache.Ry;
-            limbDarkenWithGradient<true>(cache.A1Ry, cache.pupy);
-            cache.ARRy = B.A * cache.Ry;
-            MBCAST(Dxo, T4).setZero();
-            MBCAST(Dyo, T5).setZero();
-        }   
-
-        // Compute the contribution to the xo and yo
-        // derivs from the solution vector
-        if (likely(b > 0)) {
-            cache.dFdb = G.dsTdb * cache.ARRy;
-            MBCAST(Dxo, T4) += cache.dFdb * xo_b;
-            MBCAST(Dyo, T5) += cache.dFdb * yo_b;
+            W.rotateAboutZ(1.0, 0.0, cache.Ry, cache.RRy);
         }
+
+        // Apply the limb darkening
+        cache.A1Ry = B.A1 * cache.RRy;
+        limbDarkenWithGradient<true>(cache.A1Ry, cache.pupy);
+
+        // The Green's polynomial of the rotated map
+        cache.ARRy = B.A2 * cache.pupy;
+
+        // Compute derivs with respect to occultor position
+        computeDfDxoyoYlmLDOccultation(Dxo, Dyo, xo_b, yo_b, b);
 
         // Compute the flux 
         // Could also do `cache.sTA2 * cache.pupy`

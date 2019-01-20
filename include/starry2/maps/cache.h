@@ -25,6 +25,8 @@ public:
     RowVector<Scalar> vTDpupyDpy;
     RowVector<Scalar> vTDpupyDpyA1;
     RowVector<Scalar> vTDpupyDpyA1R;
+    RowVector<Scalar> vTDpupyDpyA1RR;
+    RowVector<Scalar> vTDpupyDpyA1DRDomega;
 
     Cache_ (
         int lmax,
@@ -47,6 +49,8 @@ public:
         vTDpupyDpy.resize(N);
         vTDpupyDpyA1.resize(N);
         vTDpupyDpyA1R.resize(N);
+        vTDpupyDpyA1RR.resize(N);
+        vTDpupyDpyA1DRDomega.resize(N);
     }
 
 };
@@ -75,6 +79,8 @@ public:
     Matrix<Scalar> vTDpupyDpy;
     Matrix<Scalar> vTDpupyDpyA1;
     Matrix<Scalar> vTDpupyDpyA1R;
+    Matrix<Scalar> vTDpupyDpyA1RR;
+    Matrix<Scalar> vTDpupyDpyA1DRDomega;
 
     Cache_ (
         int lmax,
@@ -100,6 +106,8 @@ public:
         vTDpupyDpy.resize(ncoly, N);
         vTDpupyDpyA1.resize(ncoly, N); 
         vTDpupyDpyA1R.resize(ncoly, N);   
+        vTDpupyDpyA1RR.resize(ncoly, N); 
+        vTDpupyDpyA1DRDomega.resize(ncoly, N);
     }
 
 };
@@ -116,6 +124,7 @@ public:
     Matrix<Scalar> RY;                                                         /**< Uncontracted R . Y matrix */
     Vector<Scalar> RRy;
     Vector<Scalar> A1Ry;
+    Matrix<Scalar> A1RY;
     Vector<Scalar> ARRy;
     Vector<Scalar> pupy;
 
@@ -129,6 +138,8 @@ public:
     RowVector<Scalar> vTDpupyDpy;
     RowVector<Scalar> vTDpupyDpyA1;
     RowVector<Scalar> vTDpupyDpyA1R;
+    RowVector<Scalar> vTDpupyDpyA1RR;
+    RowVector<Scalar> vTDpupyDpyA1DRDomega;
 
     Cache_ (
         int lmax,
@@ -141,6 +152,7 @@ public:
         RY.resize(N, ncoly);
         RRy.resize(N);
         A1Ry.resize(N);
+        A1RY.resize(N, ncoly);
         ARRy.resize(N);
         pupy.resize(N);
         DRDthetay.resize(N);
@@ -152,6 +164,8 @@ public:
         vTDpupyDpy.resize(N);
         vTDpupyDpyA1.resize(N);
         vTDpupyDpyA1R.resize(N);
+        vTDpupyDpyA1RR.resize(N);
+        vTDpupyDpyA1DRDomega.resize(N);
     }
 
 };

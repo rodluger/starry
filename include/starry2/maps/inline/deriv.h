@@ -297,24 +297,11 @@ inline IsTemporal<U, void> computeDfDyYlmNoOccultation (
 /**
 The derivative of the flux with respect to the spherical harmonic 
 coefficients for a limb-darkened spherical harmonic map.
-Default case.
+Static case.
 
 */
 template<typename U=S, typename T1>
-inline IsDefault<U, void> computeDfDyYlmLDNoOccultation (
-    MatrixBase<T1> const & Dy
-) {
-    MBCAST(Dy, T1) = cache.vTDpupyDy;
-}
-
-/**
-The derivative of the flux with respect to the spherical harmonic 
-coefficients for a limb-darkened spherical harmonic map.
-Spectral case.
-
-*/
-template<typename U=S, typename T1>
-inline IsSpectral<U, void> computeDfDyYlmLDNoOccultation (
+inline IsDefaultOrSpectral<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & Dy
 ) {
     MBCAST(Dy, T1) = cache.vTDpupyDy;
@@ -337,40 +324,13 @@ inline IsTemporal<U, void> computeDfDyYlmLDNoOccultation (
 /**
 The derivative of the flux with respect to the limb darkening
 coefficients for a limb-darkened spherical harmonic map.
-Default case.
 
 */
 template<typename U=S, typename T1>
-inline IsDefault<U, void> computeDfDuYlmLDNoOccultation (
-    MatrixBase<T1> const & Du
-) {
-    MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, 1);
-}
-
-/**
-The derivative of the flux with respect to the limb darkening
-coefficients for a limb-darkened spherical harmonic map.
-Spectral case.
-
-*/
-template<typename U=S, typename T1>
-inline IsSpectral<U, void> computeDfDuYlmLDNoOccultation (
+inline IsDefaultOrSpectralOrTemporal<U, void> computeDfDuYlmLDNoOccultation (
     MatrixBase<T1> const & Du
 ) {
     MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, ncolu);
-}
-
-/**
-The derivative of the flux with respect to the limb darkening
-coefficients for a limb-darkened spherical harmonic map.
-Temporal case.
-
-*/
-template<typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDuYlmLDNoOccultation (
-    MatrixBase<T1> const & Du
-){
-    MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, 1);
 }
 
 /**
@@ -430,9 +390,9 @@ inline IsTemporal<U, void> computeDfDtYlmLDNoOccultation (
     MatrixBase<T1> const & Dt
 ){
     MBCAST(Dt, T1).setZero();
-    auto A1Ry = B.A1 * cache.RY; // TODO CACHE THIS
+    cache.A1RY = B.A1 * cache.RY;
     for (int i = 0; i < ncoly - 1; ++i) {
-        limbDarken(A1Ry.col(i + 1), cache.pupy);
+        limbDarken(cache.A1RY.col(i + 1), cache.pupy);
         MBCAST(Dt, T1) += OneByOne<Scalar>(B.rT * cache.pupy) * taylor(i);
     }
 }
@@ -536,7 +496,6 @@ template<typename U=S, typename T1>
 inline IsDefaultOrTemporal<U, void> computeDfDthetaYlmLDOccultation (
     MatrixBase<T1> const & Dtheta
 ){
-    W.leftMultiplyRz(cache.vTDpupyDpyA1, cache.vTDpupyDpyA1R);
     MBCAST(Dtheta, T1) = cache.vTDpupyDpyA1R * cache.DRDthetay;
     MBCAST(Dtheta, T1) *= radian;
 }
@@ -553,7 +512,6 @@ inline IsSpectral<U, void> computeDfDthetaYlmLDOccultation (
 ){
     // This is a little nasty because `DpupyDpy` is a tensor
     // and we're doing a sneaky contraction
-    W.leftMultiplyRz(cache.vTDpupyDpyA1, cache.vTDpupyDpyA1R);
     MBCAST(Dtheta, T1) = (cache.vTDpupyDpyA1R.transpose()
                             .cwiseProduct(cache.DRDthetay)
                          ).colwise().sum();
@@ -563,63 +521,23 @@ inline IsSpectral<U, void> computeDfDthetaYlmLDOccultation (
 /**
 The derivative of the flux with respect to the limb darkening
 coefficients for a limb-darkened spherical harmonic map.
-Default case.
 
 */
 template<typename U=S, typename T1>
-inline IsDefault<U, void> computeDfDuYlmLDOccultation (
-    MatrixBase<T1> const & Du
-) {
-    MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, 1);
-}
-
-/**
-The derivative of the flux with respect to the limb darkening
-coefficients for a limb-darkened spherical harmonic map.
-Spectral case.
-
-*/
-template<typename U=S, typename T1>
-inline IsSpectral<U, void> computeDfDuYlmLDOccultation (
+inline IsDefaultOrSpectralOrTemporal<U, void> computeDfDuYlmLDOccultation (
     MatrixBase<T1> const & Du
 ) {
     MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, ncolu);
 }
 
 /**
-The derivative of the flux with respect to the limb darkening
-coefficients for a limb-darkened spherical harmonic map.
-Temporal case.
-
-*/
-template<typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDuYlmLDOccultation (
-    MatrixBase<T1> const & Du
-){
-    MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, 1);
-}
-
-/**
 The derivative of the flux with respect to the spherical harmonic 
 coefficients for a limb-darkened spherical harmonic map.
-Default case.
+Static case.
 
 */
 template<typename U=S, typename T1>
-inline IsDefault<U, void> computeDfDyYlmLDOccultation (
-    MatrixBase<T1> const & Dy
-) {
-    MBCAST(Dy, T1) = cache.vTDpupyDy;
-}
-
-/**
-The derivative of the flux with respect to the spherical harmonic 
-coefficients for a limb-darkened spherical harmonic map.
-Spectral case.
-
-*/
-template<typename U=S, typename T1>
-inline IsSpectral<U, void> computeDfDyYlmLDOccultation (
+inline IsDefaultOrSpectral<U, void> computeDfDyYlmLDOccultation (
     MatrixBase<T1> const & Dy
 ) {
     MBCAST(Dy, T1) = cache.vTDpupyDy;
@@ -667,12 +585,78 @@ inline IsTemporal<U, void> computeDfDtYlmLDOccultation (
     const Scalar& xo_b,
     const Scalar& yo_b
 ){
-    // TODO: Speed this up a bit
     MBCAST(Dt, T1).setZero();
     for (int i = 0; i < ncoly - 1; ++i) {
         W.rotateAboutZ(yo_b, xo_b, cache.RY.col(i + 1), cache.RRy);
         cache.A1Ry = B.A1 * cache.RRy;
         limbDarken(cache.A1Ry, cache.pupy);
         MBCAST(Dt, T1) += OneByOne<Scalar>(cache.sTA2 * cache.pupy) * taylor(i);
+    }
+}
+
+/**
+The derivative of the flux with respect to
+the position of the occultor `xo` and `yo`.
+Single-column specialization.
+
+*/
+template<typename U=S, typename T1, typename T2>
+inline IsDefaultOrTemporal<U, void> computeDfDxoyoYlmLDOccultation (
+    MatrixBase<T1> const & Dxo,
+    MatrixBase<T2> const & Dyo,
+    const Scalar& xo_b,
+    const Scalar& yo_b,
+    const Scalar& b
+){
+    if (likely(b > 0)) {
+        // Compute the contribution to the xo and yo
+        // derivs from the occultor rotation matrix
+        W.leftMultiplyDRz(cache.vTDpupyDpyA1, cache.vTDpupyDpyA1DRDomega);
+        FluxType DfDomega = cache.vTDpupyDpyA1DRDomega * cache.Ry;
+        MBCAST(Dxo, T1) = DfDomega * yo_b / b;
+        MBCAST(Dyo, T2) = -DfDomega * xo_b / b;
+
+        // Compute the contribution to the xo and yo
+        // derivs from the solution vector
+        cache.dFdb = G.dsTdb * cache.ARRy;
+        MBCAST(Dxo, T1) += cache.dFdb * xo_b;
+        MBCAST(Dyo, T2) += cache.dFdb * yo_b;
+    } else {
+        MBCAST(Dxo, T1).setZero();
+        MBCAST(Dyo, T2).setZero();
+    }
+}
+
+/**
+The derivative of the flux with respect to
+the position of the occultor `xo` and `yo`.
+Spectral specialization.
+
+*/
+template<typename U=S, typename T1, typename T2>
+inline IsSpectral<U, void> computeDfDxoyoYlmLDOccultation (
+    MatrixBase<T1> const & Dxo,
+    MatrixBase<T2> const & Dyo,
+    const Scalar& xo_b,
+    const Scalar& yo_b,
+    const Scalar& b
+){
+    if (likely(b > 0)) {
+        // Compute the contribution to the xo and yo
+        // derivs from the occultor rotation matrix
+        W.leftMultiplyDRz(cache.vTDpupyDpyA1, cache.vTDpupyDpyA1DRDomega);
+        FluxType DfDomega(ncoly);
+        DfDomega = (cache.vTDpupyDpyA1DRDomega * cache.Ry).diagonal();
+        MBCAST(Dxo, T1) = DfDomega * yo_b / b;
+        MBCAST(Dyo, T2) = -DfDomega * xo_b / b;
+
+        // Compute the contribution to the xo and yo
+        // derivs from the solution vector
+        cache.dFdb = G.dsTdb * cache.ARRy;
+        MBCAST(Dxo, T1) += cache.dFdb * xo_b;
+        MBCAST(Dyo, T2) += cache.dFdb * yo_b;
+    } else {
+        MBCAST(Dxo, T1).setZero();
+        MBCAST(Dyo, T2).setZero();
     }
 }

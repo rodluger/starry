@@ -367,14 +367,16 @@ inline IsDefault<U, void> limbDarkenWithGradient (
     if (OCCULTATION) {
         W.leftMultiplyRz(cache.vTDpupyDpyA1, cache.vTDpupyDpyA1R);
         for (int l = 0; l < lmax + 1; ++l)
-            cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
+            cache.vTDpupyDpyA1RR.segment(l * l, 2 * l + 1) = 
+                cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) * W.R[l];
+        cache.vTDpupyDy = cache.vTDpupyDpyA1RR.transpose();
     } else {
         for (int l = 0; l < lmax + 1; ++l)
             cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) =
                 cache.vTDpupyDpyA1.segment(l * l, 2 * l + 1) * W.R[l];
+        cache.vTDpupyDy = cache.vTDpupyDpyA1R.transpose();
     }
     
-    cache.vTDpupyDy = cache.vTDpupyDpyA1R.transpose();
     cache.vTDpupyDy(0) += (cache.vTDpupyDpu * cache.DpuDy0)(0);
 }
 
@@ -410,18 +412,24 @@ inline IsSpectral<U, void> limbDarkenWithGradient (
     if (OCCULTATION) {
         W.leftMultiplyRz(cache.vTDpupyDpyA1, cache.vTDpupyDpyA1R);
         for (int l = 0; l < lmax + 1; ++l)
-            cache.vTDpupyDpyA1R.block(0, l * l, nflx, 2 * l + 1) *= W.R[l];
+            cache.vTDpupyDpyA1RR.block(0, l * l, nflx, 2 * l + 1) =
+                cache.vTDpupyDpyA1R.block(0, l * l, nflx, 2 * l + 1) * W.R[l];
+        for (int i = 0; i < ncoly; ++i) {
+            cache.vTDpupyDy.col(i) = cache.vTDpupyDpyA1RR.row(i);
+            cache.vTDpupyDy(0, i) += (cache.vTDpupyDpu.row(i) * 
+                                        cache.DpuDy0.col(i))(0);
+        }
     } else {
         for (int l = 0; l < lmax + 1; ++l)
             cache.vTDpupyDpyA1R.block(0, l * l, nflx, 2 * l + 1) =
                 cache.vTDpupyDpyA1.block(0, l * l, nflx, 2 * l + 1) * W.R[l];
+        for (int i = 0; i < ncoly; ++i) {
+            cache.vTDpupyDy.col(i) = cache.vTDpupyDpyA1R.row(i);
+            cache.vTDpupyDy(0, i) += (cache.vTDpupyDpu.row(i) * 
+                                        cache.DpuDy0.col(i))(0);
+        }
     }
-
-    for (int i = 0; i < ncoly; ++i) {
-        cache.vTDpupyDy.col(i) = cache.vTDpupyDpyA1R.row(i);
-        cache.vTDpupyDy(0, i) += (cache.vTDpupyDpu.row(i) * 
-                                    cache.DpuDy0.col(i))(0);
-    }
+    
 }
 
 /**
@@ -455,14 +463,16 @@ inline IsTemporal<U, void> limbDarkenWithGradient (
     if (OCCULTATION) {
         W.leftMultiplyRz(cache.vTDpupyDpyA1, cache.vTDpupyDpyA1R);
         for (int l = 0; l < lmax + 1; ++l)
-            cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) *= W.R[l];
+            cache.vTDpupyDpyA1RR.segment(l * l, 2 * l + 1) =
+                cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) * W.R[l];
+        cache.vTDpupyDy = cache.vTDpupyDpyA1RR.replicate(ncoly, 1).transpose();
     } else {
         for (int l = 0; l < lmax + 1; ++l)
             cache.vTDpupyDpyA1R.segment(l * l, 2 * l + 1) =
                 cache.vTDpupyDpyA1.segment(l * l, 2 * l + 1) * W.R[l];
+        cache.vTDpupyDy = cache.vTDpupyDpyA1R.replicate(ncoly, 1).transpose();
     }
     
-    cache.vTDpupyDy = cache.vTDpupyDpyA1R.replicate(ncoly, 1).transpose();
     cache.vTDpupyDy.row(0) += (cache.vTDpupyDpu * cache.DpuDy0)
                                 .replicate(ncoly, 1).transpose();
 }

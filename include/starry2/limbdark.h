@@ -253,9 +253,8 @@ namespace limbdark {
 
         }
 
-        inline void computeS1 (
-            bool gradient=false
-        );
+        template <bool GRADIENT=false>
+        inline void computeS1 ();
 
         inline void computeMCoeff ();
 
@@ -273,10 +272,10 @@ namespace limbdark {
 
         inline void downwardN ();
 
+        template <bool GRADIENT=false>
         inline void compute (
             const T& b_, 
-            const T& r_, 
-            bool gradient=false
+            const T& r_
         );
     };
 
@@ -285,9 +284,8 @@ namespace limbdark {
 
     */
     template <class T>
-    inline void GreensLimbDark<T>::computeS1 (
-        bool gradient
-    ) {
+    template <bool GRADIENT>
+    inline void GreensLimbDark<T>::computeS1 () {
         T Lambda1 = 0;
         if ((b >= 1.0 + r) ||  (r == 0.0)) {
             // No occultation (Case 1)
@@ -310,7 +308,7 @@ namespace limbdark {
                 Lambda1 = -2.0 * pi<T>() * sqrt1mr2 * sqrt1mr2 * sqrt1mr2; 
                 Eofk = 0.5 * pi<T>();
                 Em1mKdm = 0.25 * pi<T>();
-                if (gradient) {
+                if (GRADIENT) {
                     dsTdb(1) = 0;
                     dsTdr(1) = -2.0 * pi<T>() * r * sqrt1mr2;
                 }
@@ -320,7 +318,7 @@ namespace limbdark {
                     Lambda1 = pi<T>() - 4.0 * third;
                     Eofk = 1.0;
                     Em1mKdm = 1.0;
-                    if (gradient) {
+                    if (GRADIENT) {
                         dsTdb(1) = 2.0 * third;
                         dsTdr(1) = -2.0;
                     }
@@ -331,7 +329,7 @@ namespace limbdark {
                     Em1mKdm = ellip::CEL(m, T(1.0), T(1.0), T(0.0));
                     Lambda1 = pi<T>() + 2.0 * third * 
                               ((2 * m - 3) * Eofk - m * Em1mKdm);
-                    if (gradient) {
+                    if (GRADIENT) {
                         dsTdb(1) = -4.0 * r * third * (Eofk - 2 * Em1mKdm);
                         dsTdr(1) = -4.0 * r * Eofk;
                     }
@@ -343,7 +341,7 @@ namespace limbdark {
                     Em1mKdm = ellip::CEL(minv, T(1.0), T(1.0), T(0.0));
                     Lambda1 = pi<T>() + third * invr * 
                               (-m * Eofk + (2 * m - 3) * Em1mKdm);
-                    if (gradient) {
+                    if (GRADIENT) {
                         dsTdb(1) = 2 * third * (2 * Eofk - Em1mKdm);
                         dsTdr(1) = -2 * Em1mKdm;
                     }
@@ -358,7 +356,7 @@ namespace limbdark {
                                kcsq, T(0.0), Piofk, Eofk, Em1mKdm);
                     Lambda1 = onembmr2 * (Piofk + (-3 + 6 * r2 + 2 * b * r) * 
                               Em1mKdm - fourbr * Eofk) * sqbrinv * third;
-                    if (gradient) {
+                    if (GRADIENT) {
                         dsTdb(1) = 2 * r * onembmr2 * (-Em1mKdm + 2 * Eofk) * 
                                 sqbrinv * third;
                         dsTdr(1) = -2 * r * onembmr2 * Em1mKdm * sqbrinv;
@@ -374,7 +372,7 @@ namespace limbdark {
                     Lambda1 = 2 * sqonembmr2 * 
                               (onembpr2 * Piofk - (4 - 7 * r2 - b2) * Eofk) * 
                               third;
-                    if (gradient) {
+                    if (GRADIENT) {
                         dsTdb(1) = -4 * r * third * sqonembmr2 * 
                                 (Eofk - 2 * Em1mKdm);
                         dsTdr(1) = -4 * r * sqonembmr2 * Eofk;
@@ -387,7 +385,7 @@ namespace limbdark {
                               rootr1mr - 2 * pi<T>() * int(r > 0.5);
                     Eofk = 1.0;
                     Em1mKdm = 1.0;
-                    if (gradient) {
+                    if (GRADIENT) {
                         dsTdr(1) = -8 * r * rootr1mr;
                         dsTdb(1) = -dsTdr(1) * third;
                     }
@@ -622,14 +620,13 @@ namespace limbdark {
 
     /**
     Compute the `sT^T` occultation solution vector
-    TODO: Make gradient a template parameter
     
     */
     template <class T>
+    template <bool GRADIENT>
     inline void GreensLimbDark<T>::compute (
         const T& b_, 
-        const T& r_, 
-        bool gradient
+        const T& r_
     ) {
         // Initialize the basic variables
         b = b_;
@@ -669,7 +666,7 @@ namespace limbdark {
             kap0 = 0; // Not used!
             kap1 = 0; // Not used!
             sT(0) = pi<T>() * (1 - r * r);
-            if (gradient) {
+            if (GRADIENT) {
                 dsTdb(0) = 0;
                 dsTdr(0) = -2 * pi<T>() * r;
             }
@@ -684,7 +681,7 @@ namespace limbdark {
                 kap0 = 0; // Not used!
                 kap1 = 0; // Not used!
                 sT(0) = pi<T>() * (1 - r2);
-                if (gradient) {
+                if (GRADIENT) {
                     dsTdb(0) = 0;
                     dsTdr(0) = -2 * pi<T>() * r;
                 }
@@ -696,7 +693,7 @@ namespace limbdark {
                 kap1 = atan2(kite_area2, (1 - r) * (1 + r) + b2);
                 T Alens = kap1 + r2 * kap0 - kite_area2 * 0.5;
                 sT(0) = pi<T>() - Alens;
-                if (gradient) {
+                if (GRADIENT) {
                     dsTdb(0) = kite_area2 * invb;
                     dsTdr(0) = -2.0 * r * kap0;
                 }
@@ -708,7 +705,7 @@ namespace limbdark {
 
         // Compute the linear limb darkening term
         // and the elliptic integrals
-        computeS1(gradient);
+        computeS1<GRADIENT>();
 
         // Special case
         if (unlikely(lmax == 1)) return;
@@ -721,7 +718,7 @@ namespace limbdark {
             T dfacdr = -r / fac;
             for (int n = 2; n < lmax + 1; ++n) {
                 sT(n) = -term * r2 * 2 * pi<T>();
-                if (gradient) {
+                if (GRADIENT) {
                     dsTdb(n) = 0;
                     dsTdr(n) = -2 * pi<T>() * r * (2 * term + r * dtermdr);
                     dtermdr = dfacdr * term + fac * dtermdr;
@@ -740,7 +737,7 @@ namespace limbdark {
         T detadb, detadr;
         if (ksq > 1) {
             four_pi_eta = 4 * pi<T>() * (eta2 - 0.5);
-            if (gradient) {
+            if (GRADIENT) {
                 T deta2dr =  2 * r * r2pb2;
                 T deta2db = 2 * b * r2;
                 detadr = 4 * pi<T>() * deta2dr;
@@ -749,14 +746,14 @@ namespace limbdark {
         } else {
             four_pi_eta = 2 * (-(pi<T>() - kap1) + 2 * eta2 * 
                             kap0 - 0.25 * kite_area2 * (1.0 + 5 * r2 + b2));
-            if (gradient) {
+            if (GRADIENT) {
                 detadr = 8 * r * (r2pb2 * kap0 - kite_area2);
                 detadb = 2.0 * invb * (4 * b2 * r2 * kap0 - 
                             (1 + r2pb2) * kite_area2);
             }
         }
         sT(2) = 2 * sT(0) + four_pi_eta;
-        if (gradient) {
+        if (GRADIENT) {
             dsTdb(2) = 2 * dsTdb(0) + detadb;
             dsTdr(2) = 2 * dsTdr(0) + detadr;
         }
@@ -778,7 +775,7 @@ namespace limbdark {
             );
 
         // Compute gradients
-        if (gradient) {
+        if (GRADIENT) {
 
             // Compute ds/dr
             dsTdr.segment(3, lmax - 2) = 

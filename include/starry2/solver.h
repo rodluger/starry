@@ -66,10 +66,10 @@ namespace solver {
         }
 
         // Methods
+        template <bool GRADIENT=false>
         inline void compute (
             const T& b,
-            const T& r,
-            bool gradient=false
+            const T& r
         );
 
     };
@@ -102,12 +102,12 @@ namespace solver {
 
     */
     template <class T>
+    template <bool GRADIENT>
     inline void Greens<T>::compute (
         const T& b, 
-        const T& r,
-        bool gradient
+        const T& r
     ) {
-        if (!gradient) {
+        if (!GRADIENT) {
             compute_(b, r, sT);
         } else {
             b_g.value() = b;

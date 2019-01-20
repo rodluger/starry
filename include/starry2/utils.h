@@ -273,6 +273,14 @@ using IsSpectralOrTemporal =
         std::is_same<T, Temporal<typename T::Scalar>>::value, U
     >::type;
 
+template <typename T, typename U=void>
+using IsDefaultOrSpectralOrTemporal = 
+    typename std::enable_if<
+        std::is_same<T, Default<typename T::Scalar>>::value || 
+        std::is_same<T, Spectral<typename T::Scalar>>::value || 
+        std::is_same<T, Temporal<typename T::Scalar>>::value, U
+    >::type;
+
 // --------------------------
 // -------- Constants -------
 // --------------------------
