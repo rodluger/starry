@@ -17,39 +17,6 @@ namespace solver {
     using namespace starry2::utils;
 
     /**
-    Return the s(0) term. Scalar specialization.
-    TODO!
-
-    */
-    template <class Scalar>
-    inline Scalar s0 (
-        const Scalar& b, 
-        const Scalar& r
-    ) {
-        return sqrt(b) + sqrt(r);
-    }
-
-    /**
-    Return the s(0) term. AutoDiff specialization.
-    TODO!
-    
-    */
-    template <class Scalar>
-    inline ADScalar<Scalar, 2> s0 (
-        const ADScalar<Scalar, 2>& b_g, 
-        const ADScalar<Scalar, 2>& r_g
-    ) {
-        Scalar b = b_g.value();
-        Scalar r = r_g.value();
-        ADScalar<Scalar, 2> s0_g;
-        s0_g.value() = s0(b, r);
-        s0_g.derivatives() = 0.5 * pow(b, -0.5) * b_g.derivatives() +
-                             0.5 * pow(r, -0.5) * r_g.derivatives();
-        return s0_g;
-    }
-
-
-    /**
     Greens integration housekeeping data
 
     */
@@ -74,6 +41,12 @@ namespace solver {
             const T& b,
             const T& r,
             RowVector<T>& sT
+        );
+
+        template <bool GRADIENT=false>
+        inline void computeS0AndS2_ (
+            const Scalar& b,
+            const Scalar& r
         );
 
     public:
@@ -108,6 +81,31 @@ namespace solver {
 
     };
 
+    template <class Scalar>
+    template <bool GRADIENT>
+    inline void Greens<Scalar>::computeS0AndS2_ (
+        const Scalar& b, 
+        const Scalar& r
+    ) {
+
+        // TODO: Dummy calculations for now!
+
+        // s0
+        sT(0) = sqrt(b) + sqrt(r);
+        if (GRADIENT) {
+            dsTdb(0) = 0.5 * pow(b, -0.5);
+            dsTdr(0) = 0.5 * pow(r, -0.5);
+        }
+
+        // s2
+        sT(2) = b * b + r * r;
+        if (GRADIENT) {
+            dsTdb(2) = 2 * b;
+            dsTdr(2) = 2 * r;
+        }
+
+    }
+
     /**
     Compute the `s^T` occultation solution vector;
     internal templated function for scalar/ADScalar
@@ -122,12 +120,11 @@ namespace solver {
         RowVector<T>& sT
     ) {
 
-        // Compute the constant term separately
-        sT(0) = s0(b, r);
-
-        // TODO
-        // Dummy calculations for now!
-        for (int n = 1; n < N; ++n) {
+        // TODO: Dummy calculations for now!
+        if (N > 0) {
+            sT(1) = b + r;
+        }
+        for (int n = 3; n < N; ++n) {
             sT(n) = pow(b, n) + n * r;
         }
 
@@ -144,13 +141,22 @@ namespace solver {
         const Scalar& b, 
         const Scalar& r
     ) {
+        // Compute the special terms
+        computeS0AndS2_<GRADIENT>(b, r);
+        
+        // Compute the rest
         if (!GRADIENT) {
             compute_(b, r, sT);
         } else {
             b_g.value() = b;
             r_g.value() = r;
             compute_(b_g, r_g, s_g);
-            for (int n = 0; n < N; ++n) {
+            if (N > 0) {
+                sT(1) = s_g(1).value();
+                dsTdb(1) = s_g(1).derivatives()(0);
+                dsTdr(1) = s_g(1).derivatives()(1);
+            }
+            for (int n = 3; n < N; ++n) {
                 sT(n) = s_g(n).value();
                 dsTdb(n) = s_g(n).derivatives()(0);
                 dsTdr(n) = s_g(n).derivatives()(1);

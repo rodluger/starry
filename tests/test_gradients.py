@@ -280,4 +280,4 @@ def test_temporal_ylmld_occ_multi():
 
 if __name__ == "__main__":
     debug = True
-    test_default_ylmld_occ_multi()
+    test_default_ylmld_occ()
