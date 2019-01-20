@@ -11,7 +11,6 @@ TODO: Test all special cases
 
 #include <iostream>
 #include <cmath>
-#include <Eigen/Core>
 #include "utils.h"
 #include "ellip.h"
 #include "errors.h"
@@ -619,7 +618,7 @@ namespace limbdark {
     }
 
     /**
-    Compute the `sT^T` occultation solution vector
+    Compute the `s^T` occultation solution vector
     
     */
     template <class T>

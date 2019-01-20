@@ -8,18 +8,52 @@ harmonic map during a single-body occultation using Green's theorem.
 #define _STARRY_SOLVER_H_
 
 #include "utils.h"
+#include "ellip.h"
+#include "errors.h"
 
 namespace starry2 {
 namespace solver {
 
     using namespace starry2::utils;
 
+    /**
+    Return the s(0) term. Scalar specialization.
+    TODO!
+
+    */
+    template <class Scalar>
+    inline Scalar s0 (
+        const Scalar& b, 
+        const Scalar& r
+    ) {
+        return sqrt(b) + sqrt(r);
+    }
+
+    /**
+    Return the s(0) term. AutoDiff specialization.
+    TODO!
+    
+    */
+    template <class Scalar>
+    inline ADScalar<Scalar, 2> s0 (
+        const ADScalar<Scalar, 2>& b_g, 
+        const ADScalar<Scalar, 2>& r_g
+    ) {
+        Scalar b = b_g.value();
+        Scalar r = r_g.value();
+        ADScalar<Scalar, 2> s0_g;
+        s0_g.value() = s0(b, r);
+        s0_g.derivatives() = 0.5 * pow(b, -0.5) * b_g.derivatives() +
+                             0.5 * pow(r, -0.5) * r_g.derivatives();
+        return s0_g;
+    }
+
 
     /**
     Greens integration housekeeping data
 
     */
-    template <class T>
+    template <class Scalar>
     class Greens
     {
 
@@ -30,24 +64,24 @@ namespace solver {
         int N;
 
         // Autodiff stuff
-        ADScalar<T, 2> b_g;
-        ADScalar<T, 2> r_g;
-        RowVector<ADScalar<T, 2>> s_g;
+        ADScalar<Scalar, 2> b_g;
+        ADScalar<Scalar, 2> r_g;
+        RowVector<ADScalar<Scalar, 2>> s_g;
 
         // Internal methods
-        template <typename T1, typename T2>
+        template <typename T>
         inline void compute_ (
-            const T1& b,
-            const T1& r,
-            T2& sT
+            const T& b,
+            const T& r,
+            RowVector<T>& sT
         );
 
     public:
 
         // Solutions
-        RowVector<T> sT;
-        RowVector<T> dsTdb;
-        RowVector<T> dsTdr;
+        RowVector<Scalar> sT;
+        RowVector<Scalar> dsTdb;
+        RowVector<Scalar> dsTdr;
 
         // Constructor
         explicit Greens(
@@ -55,12 +89,12 @@ namespace solver {
         ) :
             lmax(lmax),
             N((lmax + 1) * (lmax + 1)),
-            b_g(0.0, Vector<T>::Unit(2, 0)),
-            r_g(0.0, Vector<T>::Unit(2, 1)),
+            b_g(0.0, Vector<Scalar>::Unit(2, 0)),
+            r_g(0.0, Vector<Scalar>::Unit(2, 1)),
             s_g(N),
-            sT(RowVector<T>::Zero(N)),
-            dsTdb(RowVector<T>::Zero(N)),
-            dsTdr(RowVector<T>::Zero(N))
+            sT(RowVector<Scalar>::Zero(N)),
+            dsTdb(RowVector<Scalar>::Zero(N)),
+            dsTdr(RowVector<Scalar>::Zero(N))
         {
 
         }
@@ -68,8 +102,8 @@ namespace solver {
         // Methods
         template <bool GRADIENT=false>
         inline void compute (
-            const T& b,
-            const T& r
+            const Scalar& b,
+            const Scalar& r
         );
 
     };
@@ -80,17 +114,20 @@ namespace solver {
     capability.
 
     */
-    template <class T>
-    template <typename T1, typename T2>
-    inline void Greens<T>::compute_ (
-        const T1& b, 
-        const T1& r,
-        T2& sT
+    template <class Scalar>
+    template <typename T>
+    inline void Greens<Scalar>::compute_ (
+        const T& b, 
+        const T& r,
+        RowVector<T>& sT
     ) {
+
+        // Compute the constant term separately
+        sT(0) = s0(b, r);
 
         // TODO
         // Dummy calculations for now!
-        for (int n = 0; n < N; ++n) {
+        for (int n = 1; n < N; ++n) {
             sT(n) = pow(b, n) + n * r;
         }
 
@@ -101,11 +138,11 @@ namespace solver {
     with or without the gradient.
 
     */
-    template <class T>
+    template <class Scalar>
     template <bool GRADIENT>
-    inline void Greens<T>::compute (
-        const T& b, 
-        const T& r
+    inline void Greens<Scalar>::compute (
+        const Scalar& b, 
+        const Scalar& r
     ) {
         if (!GRADIENT) {
             compute_(b, r, sT);
