@@ -304,7 +304,7 @@ template<typename U=S, typename T1>
 inline IsDefault<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & Dy
 ) {
-    MBCAST(Dy, T1) = cache.vTDpupyDy.col(0);
+    MBCAST(Dy, T1) = cache.vTDpupyDy;
 }
 
 /**
@@ -430,7 +430,7 @@ inline IsTemporal<U, void> computeDfDtYlmLDNoOccultation (
     MatrixBase<T1> const & Dt
 ){
     MBCAST(Dt, T1).setZero();
-    auto A1Ry = B.A1 * cache.RY;
+    auto A1Ry = B.A1 * cache.RY; // TODO CACHE THIS
     for (int i = 0; i < ncoly - 1; ++i) {
         limbDarken(A1Ry.col(i + 1), cache.pupy);
         MBCAST(Dt, T1) += OneByOne<Scalar>(B.rT * cache.pupy) * taylor(i);
@@ -553,8 +553,10 @@ inline IsSpectral<U, void> computeDfDthetaYlmLDOccultation (
 ){
     // This is a little nasty because `DpupyDpy` is a tensor
     // and we're doing a sneaky contraction
-    // TODO!
-    MBCAST(Dtheta, T1).setZero();
+    W.leftMultiplyRz(cache.vTDpupyDpyA1, cache.vTDpupyDpyA1R);
+    MBCAST(Dtheta, T1) = (cache.vTDpupyDpyA1R.transpose()
+                            .cwiseProduct(cache.DRDthetay)
+                         ).colwise().sum();
     MBCAST(Dtheta, T1) *= radian;
 }
 
@@ -595,4 +597,82 @@ inline IsTemporal<U, void> computeDfDuYlmLDOccultation (
     MatrixBase<T1> const & Du
 ){
     MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, 1);
+}
+
+/**
+The derivative of the flux with respect to the spherical harmonic 
+coefficients for a limb-darkened spherical harmonic map.
+Default case.
+
+*/
+template<typename U=S, typename T1>
+inline IsDefault<U, void> computeDfDyYlmLDOccultation (
+    MatrixBase<T1> const & Dy
+) {
+    MBCAST(Dy, T1) = cache.vTDpupyDy;
+}
+
+/**
+The derivative of the flux with respect to the spherical harmonic 
+coefficients for a limb-darkened spherical harmonic map.
+Spectral case.
+
+*/
+template<typename U=S, typename T1>
+inline IsSpectral<U, void> computeDfDyYlmLDOccultation (
+    MatrixBase<T1> const & Dy
+) {
+    MBCAST(Dy, T1) = cache.vTDpupyDy;
+}
+
+/**
+The derivative of the flux with respect to the spherical harmonic 
+coefficients for a limb-darkened spherical harmonic map.
+Temporal case.
+
+*/
+template<typename U=S, typename T1>
+inline IsTemporal<U, void> computeDfDyYlmLDOccultation (
+    MatrixBase<T1> const & Dy
+){
+    MBCAST(Dy, T1) = cache.vTDpupyDy.array().rowwise() * 
+                     taylor.transpose().array();
+}
+
+/**
+The derivative of the flux with respect to time
+during an occultation for a limb-darkened
+spherical harmonic map. 
+Static specialization.
+
+*/
+template<typename U=S, typename T1>
+inline IsDefaultOrSpectral<U, void> computeDfDtYlmLDOccultation (
+    MatrixBase<T1> const & Dt,
+    const Scalar& xo_b,
+    const Scalar& yo_b
+){
+}
+
+/**
+The derivative of the flux with respect to time
+during an occultation for a limb-darkened 
+spherical harmonic map. 
+Temporal specialization.
+
+*/
+template<typename U=S, typename T1>
+inline IsTemporal<U, void> computeDfDtYlmLDOccultation (
+    MatrixBase<T1> const & Dt,
+    const Scalar& xo_b,
+    const Scalar& yo_b
+){
+    // TODO: Speed this up a bit
+    MBCAST(Dt, T1).setZero();
+    for (int i = 0; i < ncoly - 1; ++i) {
+        W.rotateAboutZ(yo_b, xo_b, cache.RY.col(i + 1), cache.RRy);
+        cache.A1Ry = B.A1 * cache.RRy;
+        limbDarken(cache.A1Ry, cache.pupy);
+        MBCAST(Dt, T1) += OneByOne<Scalar>(cache.sTA2 * cache.pupy) * taylor(i);
+    }
 }

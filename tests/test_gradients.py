@@ -154,7 +154,6 @@ def test_default_ylmld_phase():
     compare(ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=10.0)
 
 
-@pytest.mark.xfail
 def test_default_ylmld_occ():
     compare(ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
@@ -179,7 +178,6 @@ def test_spectral_ylmld_phase():
     compare(ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=10.0)
 
 
-@pytest.mark.xfail
 def test_spectral_ylmld_occ():
     compare(ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
@@ -204,7 +202,6 @@ def test_temporal_ylmld_phase():
     compare(ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0)
 
 
-@pytest.mark.xfail
 def test_temporal_ylmld_occ():
     compare(ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
@@ -229,7 +226,6 @@ def test_default_ylmld_phase_multi():
     compare(multi=True, ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=10.0)
 
 
-@pytest.mark.xfail
 def test_default_ylmld_occ_multi():
     compare(multi=True, ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
@@ -254,7 +250,6 @@ def test_spectral_ylmld_phase_multi():
     compare(multi=True, ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=10.0)
 
 
-@pytest.mark.xfail
 def test_spectral_ylmld_occ_multi():
     compare(multi=True, ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
@@ -279,11 +274,10 @@ def test_temporal_ylmld_phase_multi():
     compare(multi=True, ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=10.0)
 
 
-@pytest.mark.xfail
 def test_temporal_ylmld_occ_multi():
     compare(multi=True, ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
 
 
 if __name__ == "__main__":
     debug = True
-    compare(ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    test_temporal_ylmld_occ()

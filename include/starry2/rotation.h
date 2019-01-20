@@ -342,38 +342,6 @@ protected:
         MapType& yout
     );
 
-    inline void leftMultiplyRz (
-        int l,
-        int j,
-        RowVector<Scalar>& vT, 
-        RowVector<Scalar>& uT
-    );
-
-    template <typename... Args>
-    inline void leftMultiplyRz (
-        int l,
-        int j,
-        RowVector<Scalar>& vT, 
-        RowVector<Scalar>& uT, 
-        Args& ... args
-    );
-
-    inline void leftMultiplyDRz (
-        int l,
-        int j,
-        RowVector<Scalar>& vT, 
-        RowVector<Scalar>& uT
-    );
-
-    template <typename... Args>
-    inline void leftMultiplyDRz (
-        int l,
-        int j,
-        RowVector<Scalar>& vT, 
-        RowVector<Scalar>& uT, 
-        Args& ... args
-    );
-
 public:
 
     std::vector<Matrix<Scalar>> R;                                             /**< The full rotation matrix for real spherical harmonics */
@@ -394,23 +362,27 @@ public:
         MapType& yout
     );
 
-    template <typename T>
+    template <typename T1, typename T2>
     inline void rotateAboutZ (
         const Scalar& costheta, 
         const Scalar& sintheta,
-        const MatrixBase<T>& yin, 
-        MatrixBase<T>& yout
+        const MatrixBase<T1>& yin, 
+        MatrixBase<T2>& yout
     );
 
-    template <typename... Args>
+    template <typename Derived>
     inline void leftMultiplyRz (
-        Args& ... args
+        const MatrixBase<Derived>& vT, 
+        MatrixBase<Derived>& uT
     );
 
-    template <typename... Args>
+    template <typename Derived>
     inline void leftMultiplyDRz (
-        Args& ... args
+        const MatrixBase<Derived>& vT, 
+        MatrixBase<Derived>& uT
     );
+
+    inline void resetRz ();
 
     inline void compute (
         const Scalar& costheta, 
@@ -507,12 +479,12 @@ This is the user-facing version of the `computez` method below.
 
 */
 template <class MapType>
-template <typename T>
+template <typename T1, typename T2>
 inline void Wigner<MapType>::rotateAboutZ (
     const Scalar& costheta,
     const Scalar& sintheta,
-    const MatrixBase<T>& yin, 
-    MatrixBase<T>& yout
+    const MatrixBase<T1>& yin, 
+    MatrixBase<T2>& yout
 ) {
     cosnt(1) = costheta;
     sinnt(1) = sintheta;
@@ -541,29 +513,10 @@ inline void Wigner<MapType>::rotateAboutZ (
     ).transpose();
 }
 
-
 template <class MapType>
-inline void Wigner<MapType>::leftMultiplyRz (
-    int l,
-    int j,
-    RowVector<Scalar>& vT, 
-    RowVector<Scalar>& uT
-) {
-    uT(l * l + j) = vT(l * l + j) * cosmt(l * l + j) +
-                    vT(l * l + 2 * l - j) * sinmt(l * l + j);
-}
-
-template <class MapType>
-template <typename... Args>
-inline void Wigner<MapType>::leftMultiplyRz (
-    int l,
-    int j,
-    RowVector<Scalar>& vT, 
-    RowVector<Scalar>& uT, 
-    Args& ... args
-) {
-    leftMultiplyRz(l, j, vT, uT);
-    leftMultiplyRz(l, j, args...);
+inline void Wigner<MapType>::resetRz () {
+    cosmt.setOnes();
+    sinmt.setZero();
 }
 
 /* 
@@ -571,40 +524,17 @@ Computes the dot product uT = vT . Rz.
 
 */
 template <class MapType>
-template <typename... Args>
+template <typename Derived>
 inline void Wigner<MapType>::leftMultiplyRz (
-    Args& ... args
+    const MatrixBase<Derived>& vT, 
+    MatrixBase<Derived>& uT
 ) {
     for (int l = 0; l < lmax + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
-            leftMultiplyRz(l, j, args...);
+            uT.col(l * l + j) = vT.col(l * l + j) * cosmt(l * l + j) +
+                                vT.col(l * l + 2 * l - j) * sinmt(l * l + j);
         }
     }
-}
-
-template <class MapType>
-inline void Wigner<MapType>::leftMultiplyDRz (
-    int l,
-    int j,
-    RowVector<Scalar>& vT, 
-    RowVector<Scalar>& uT
-) {
-    int m = j - l;
-    uT(l * l + j) = vT(l * l + 2 * l - j) * m * cosmt(l * l + j) -
-                    vT(l * l + j) * m * sinmt(l * l + j);
-}
-
-template <class MapType>
-template <typename... Args>
-inline void Wigner<MapType>::leftMultiplyDRz (
-    int l,
-    int j,
-    RowVector<Scalar>& vT, 
-    RowVector<Scalar>& uT, 
-    Args& ... args
-) {
-    leftMultiplyDRz(l, j, vT, uT);
-    leftMultiplyDRz(l, j, args...);
 }
 
 /* 
@@ -612,13 +542,16 @@ Computes the dot product uT = vT . dRz / dtheta.
 
 */
 template <class MapType>
-template <typename... Args>
+template <typename Derived>
 inline void Wigner<MapType>::leftMultiplyDRz (
-    Args& ... args
+    const MatrixBase<Derived>& vT, 
+    MatrixBase<Derived>& uT
 ) {
     for (int l = 0; l < lmax + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
-            leftMultiplyDRz(l, j, args...);
+            int m = j - l;
+            uT.col(l * l + j) = vT.col(l * l + 2 * l - j) * m * cosmt(l * l + j) -
+                                vT.col(l * l + j) * m * sinmt(l * l + j);
         }
     }
 }

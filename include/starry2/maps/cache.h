@@ -200,6 +200,7 @@ public:
     FluxType dFdb;
     RowVector<Scalar> pT;
     RowVector<Scalar> sTA;
+    RowVector<Scalar> sTA2;
     RowVector<Scalar> sTAR;
     RowVector<Scalar> sTADRDphi;
     std::vector<Matrix<Scalar>> EulerD;
@@ -286,6 +287,7 @@ public:
         dFdb(nflx),
         pT(N),
         sTA(N),
+        sTA2(N),
         sTAR(N),
         sTADRDphi(N),
         EulerD(lmax + 1),
