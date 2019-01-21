@@ -21,7 +21,6 @@ namespace limbdark {
 
     using std::abs;
     using std::max;
-    using std::swap;
     using namespace utils;
 
     /**
@@ -289,15 +288,19 @@ namespace limbdark {
         if ((b >= 1.0 + r) ||  (r == 0.0)) {
             // No occultation (Case 1)
             Lambda1 = 0;
-            dsTdb(1) = 0;
-            dsTdr(1) = 0;
+            if (GRADIENT) {
+                dsTdb(1) = 0;
+                dsTdr(1) = 0;
+            }
             Eofk = 0; // Check
             Em1mKdm = 0; // Check
         } else if (b <= r - 1.0) {
             // Full occultation (Case 11)
             Lambda1 = 0;
-            dsTdb(1) = 0;
-            dsTdr(1) = 0;
+            if (GRADIENT) {
+                dsTdb(1) = 0;
+                dsTdr(1) = 0;
+            }
             Eofk = 0; // Check
             Em1mKdm = 0; // Check
         } else {
@@ -335,7 +338,7 @@ namespace limbdark {
                 } else {
                     // Case 7
                     T m = 4 * r2; 
-                    T minv = 1.0 / m; 
+                    T minv = T(1.0) / m; 
                     Eofk = ellip::CEL(minv, T(1.0), T(1.0), T(1.0 - minv));
                     Em1mKdm = ellip::CEL(minv, T(1.0), T(1.0), T(0.0));
                     Lambda1 = pi<T>() + third * invr * 
@@ -348,7 +351,7 @@ namespace limbdark {
             } else { 
                 if (ksq < 1) {
                     // Case 2, Case 8
-                    T sqbrinv = 1.0 / sqbr;
+                    T sqbrinv = T(1.0) / sqbr;
                     T Piofk;
                     ellip::CEL(ksq, kc, T((b - r) * (b - r) * kcsq), T(0.0), 
                                T(1.0), T(1.0), T(3 * kcsq * (b - r) * (b + r)), 
@@ -632,15 +635,15 @@ namespace limbdark {
         r = r_;
         b2 = b * b;
         r2 = r * r;
-        invr = 1.0 / r;
-        invb = 1.0 / b;
+        invr = T(1.0) / r;
+        invb = T(1.0) / b;
         bmr = b - r;
         bpr = b + r;
         fourbr = 4 * b * r;
         invfourbr = 0.25 * invr * invb;
         onembmr2 = (1.0 + bmr) * (1.0 - bmr);
-        onembmr2inv = 1.0 / onembmr2; 
-        onembpr2 = (1 - r - b) * (1 + r + b); 
+        onembmr2inv = T(1.0) / onembmr2; 
+        onembpr2 = (1.0 + bpr) * (1.0 - bpr);
         sqonembmr2 = sqrt(onembmr2);
         b2mr22 = (b2 - r2) * (b2 - r2);
         onemr2mb2 = (1.0 - r) * (1.0 + r) - b2;
@@ -664,7 +667,7 @@ namespace limbdark {
             invksq = 0;
             kap0 = 0; // Not used!
             kap1 = 0; // Not used!
-            sT(0) = pi<T>() * (1 - r * r);
+            sT(0) = pi<T>() * (1 - r2);
             if (GRADIENT) {
                 dsTdb(0) = 0;
                 dsTdr(0) = -2 * pi<T>() * r;

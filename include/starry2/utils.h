@@ -77,10 +77,12 @@ namespace py = pybind11;
 namespace starry2 { 
 namespace utils {
 
+
 //! Commonly used stuff throughout starry
 using std::abs;
 using std::max;
 using std::isinf;
+using std::swap;
 
 
 // --------------------------
