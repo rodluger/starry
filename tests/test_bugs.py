@@ -38,7 +38,8 @@ def test_small_b():
     This test occasionally fails, probably due to a memory
     initialization issue...
 
-    EDIT: Now I'm finding CEL doesn't converge. Investigate.
+    EDIT: As of 18b4809e08f2037d6fdcb853dccc690cbf0a3bad,
+    I'm finding CEL doesn't converge. Investigate.
     """
     b = np.logspace(-18, 0, 100)
     ro = 0.1
