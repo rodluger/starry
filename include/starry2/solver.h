@@ -17,10 +17,112 @@ namespace solver {
     using namespace starry2::utils;
 
     // DEBUG DEBUG DEBUG
-    double A(int i, int j, int k) {return 0.0;}
-    double I(int i) {return 0.0;}
-    double J(int i) {return 0.0;}
-    double H(int i, int j) {return 0.0;}
+    double I(int i) {return 1.0;}
+    double J(int i) {return 1.0;}
+    double H(int i, int j) {return 1.0;}
+
+    /**
+    Vieta's theorem coefficient A_{i,u,v}
+
+    */
+    template <class T>
+    class Vieta {
+
+    protected:
+
+        int umax;
+        int vmax;
+        int j, j1, j2, c;
+        T res;
+        Vector<T> delta;
+        Matrix<Vector<bool>> set;
+        Matrix<Vector<T>> vec;
+
+        //! Compute the double-binomial coefficient A_{i,u,v}
+        inline T compute(int i, int u, int v) {
+            res = 0;
+            j1 = u - i;
+            if (j1 < 0) j1 = 0;
+            j2 = u + v - i;
+            if (j2 > u) j2 = u;
+            for (j = j1; j <= j2; ++j) {
+                c = u + v - i - j;
+                if (c < 0)
+                    break;
+                if (is_even(u + j))
+                    //res += tables::choose<T>(u, j) * tables::choose<T>(v, c) * delta(c); DEBUG
+                    res += delta(c);
+                else
+                    //res -= tables::choose<T>(u, j) * tables::choose<T>(v, c) * delta(c); DEBUG
+                    res -= delta(c);
+            }
+            return res;
+        }
+
+        //! Getter function
+        inline T get_value(
+            int i, 
+            int u, 
+            int v
+        ) {
+            CHECK_BOUNDS(i, 0, u + v);
+            CHECK_BOUNDS(u, 0, umax);
+            CHECK_BOUNDS(v, 0, vmax);
+            if (set(u, v)(i)) {
+                return vec(u, v)(i);
+            } else {
+                vec(u, v)(i) = compute(i, u, v);
+                set(u, v)(i) = true;
+                return vec(u, v)(i);
+            }
+        }
+
+    public:
+
+        //! Constructor
+        Vieta (
+            int lmax
+        ) : 
+            umax(is_even(lmax) ? (lmax + 2) / 2 : (lmax + 3) / 2),
+            vmax(lmax > 0 ? lmax : 1),
+            delta(vmax + 1),
+            set(umax + 1, vmax + 1),
+            vec(umax + 1, vmax + 1) 
+        {
+            delta(0) = 1;
+            for (int u = 0; u < umax + 1; ++u) {
+                for (int v = 0; v < vmax + 1; ++v) {
+                    vec(u, v).resize(u + v + 1);
+                    set(u, v).setZero(u + v + 1);
+                }
+            }
+        }
+
+        //! Overload () to get the function value without calling value()
+        inline T operator() (
+            int i, 
+            int u, 
+            int v
+        ) {
+            return get_value(i, u, v);
+        }
+
+        //! Resetter
+        void reset(
+            const T& delta_
+        ) {
+            for (int u = 0; u < umax + 1; ++u) {
+                set(u, 0).setZero();
+            }
+            for (int v = 1; v < vmax + 1; ++v) {
+                delta(v) = delta(v - 1) * delta_;
+                for (int u = 0; u < umax + 1; ++u) {
+                    set(u, v).setZero();
+                }
+            }
+        }
+
+    };
 
     template <typename T>
     inline void computeKVariables (
@@ -298,6 +400,9 @@ namespace solver {
         T third;
         T dummy;
 
+        // Integrals
+        Vieta<T> A;
+
         // The solution vector
         RowVector<T> sT;
 
@@ -306,6 +411,7 @@ namespace solver {
         ) :
             lmax(lmax),
             N((lmax + 1) * (lmax + 1)),
+            A(lmax),
             sT(RowVector<T>::Zero(N))
         { 
             third = T(1.0) / T(3.0);
@@ -412,6 +518,7 @@ namespace solver {
             b = b_;
             r = r_;
             T twor = 2 * r;
+            T delta = (b - r) / twor;
             T tworlp2 = (2.0 * r) * (2.0 * r) * (2.0 * r);
             
             // Compute the family of k^2 variables
@@ -424,6 +531,9 @@ namespace solver {
             // Break if lmax = 0
             if (unlikely(N == 0)) return;
 
+            // Compute our matrices
+            A.reset(delta);
+
             // The l = 1, m = -1 is zero by symmetry
             sT(1) = 0;
             
@@ -431,7 +541,7 @@ namespace solver {
             computeS2();
 
             // The l = 1, m = 1 term
-            sT(3) = H(2, 1) - 2 * tworlp2 * K(1, 1); // TODO: Check this
+            sT(3) = H(2, 1) - 2 * tworlp2 * K(1, 1); // TODO: Check this and compute A, H, I explicitly for speed
 
             // Break if lmax = 1
             if (N == 4) return;
@@ -442,7 +552,7 @@ namespace solver {
             T lfac = pow(1 - bmr * bmr, 1.5);
             bool qcond = ((abs(T(1.0) - r) >= b) || (bmr >= T(1.0)));
 
-            // Compute the othr terms of the solution vector
+            // Compute the other terms of the solution vector
             int n = 4;
             for (int l = 2; l < lmax + 1; ++l) {
                 
@@ -522,9 +632,13 @@ namespace solver {
         int lmax;
         int N;
 
-        // All variables
+        // Solvers
         Solver<Scalar, false> ScalarSolver;
         Solver<ADType, true> ADTypeSolver;
+
+        // AutoDiff
+        ADType b_ad;
+        ADType r_ad;
 
     public:
 
@@ -541,6 +655,8 @@ namespace solver {
             N((lmax + 1) * (lmax + 1)),
             ScalarSolver(lmax),
             ADTypeSolver(lmax),
+            b_ad(ADType(0.0, Vector<Scalar>::Unit(2, 0))),
+            r_ad(ADType(0.0, Vector<Scalar>::Unit(2, 1))),
             sT(ScalarSolver.sT),
             dsTdb(RowVector<Scalar>::Zero(N)),
             dsTdr(RowVector<Scalar>::Zero(N))
@@ -563,8 +679,10 @@ namespace solver {
                 ScalarSolver.compute(b, r);
 
             } else {
-
-                ADTypeSolver.compute(b, r);
+                
+                b_ad.value() = b;
+                r_ad.value() = r;
+                ADTypeSolver.compute(b_ad, r_ad);
                 for (int n = 0; n < N; ++n) {
                     sT(n) = ADTypeSolver.sT(n).value();
                     dsTdb(n) = ADTypeSolver.sT(n).derivatives()(0);
