@@ -17,8 +17,6 @@ namespace solver {
     using namespace starry2::utils;
 
     // DEBUG DEBUG DEBUG
-    double I(int i) {return 1.0;}
-    double J(int i) {return 1.0;}
     double H(int i, int j) {return 1.0;}
 
     /**
@@ -32,48 +30,60 @@ namespace solver {
 
         int umax;
         int vmax;
-        int j, j1, j2, c;
         T res;
+        T u_choose_j1;
+        T v_choose_c0;
+        T fac;
         Vector<T> delta;
-        Matrix<Vector<bool>> set;
+        Matrix<bool> set;
         Matrix<Vector<T>> vec;
 
         //! Compute the double-binomial coefficient A_{i,u,v}
-        inline T compute(int i, int u, int v) {
-            res = 0;
-            j1 = u - i;
-            if (j1 < 0) j1 = 0;
-            j2 = u + v - i;
-            if (j2 > u) j2 = u;
-            for (j = j1; j <= j2; ++j) {
-                c = u + v - i - j;
-                if (c < 0)
-                    break;
-                if (is_even(u + j))
-                    //res += tables::choose<T>(u, j) * tables::choose<T>(v, c) * delta(c); DEBUG
-                    res += delta(c);
-                else
-                    //res -= tables::choose<T>(u, j) * tables::choose<T>(v, c) * delta(c); DEBUG
-                    res -= delta(c);
+        inline void compute(int u, int v) {
+            int j1 = u;
+            int j2 = u;
+            int c0 = v;
+            int sgn0 = 1;
+            u_choose_j1 = 1.0;
+            v_choose_c0 = 1.0;
+            for (int i = 0; i < u + v + 1; ++i) {
+                res = 0;
+                int c = c0;
+                fac = sgn0 * u_choose_j1 * v_choose_c0;
+                for (int j = j1; j < j2 + 1; ++j) {
+                    res += fac * delta(c);
+                    --c;
+                    fac *= -((u - j) * (c + 1.0)) / ((j + 1.0) * (v - c));
+                }
+                if (i >= v) --j2;
+                if (i < u) {
+                    --j1;
+                    sgn0 *= -1;
+                    u_choose_j1 *= (j1 + 1.0) / (u - j1);
+                } else {
+                    --c0;
+                    if (c0 < v)
+                        v_choose_c0 *= (c0 + 1.0) / (v - c0);
+                    else
+                        v_choose_c0 = 1.0;
+                }
+                vec(u, v)(i) = res;
             }
-            return res;
+            set(u, v) = true;
         }
 
         //! Getter function
-        inline T get_value(
-            int i, 
+        inline Vector<T>& get_value (
             int u, 
             int v
         ) {
-            CHECK_BOUNDS(i, 0, u + v);
             CHECK_BOUNDS(u, 0, umax);
             CHECK_BOUNDS(v, 0, vmax);
-            if (set(u, v)(i)) {
-                return vec(u, v)(i);
+            if (set(u, v)) {
+                return vec(u, v);
             } else {
-                vec(u, v)(i) = compute(i, u, v);
-                set(u, v)(i) = true;
-                return vec(u, v)(i);
+                compute(u, v);
+                return vec(u, v);
             }
         }
 
@@ -90,35 +100,29 @@ namespace solver {
             vec(umax + 1, vmax + 1) 
         {
             delta(0) = 1;
+            set.setZero();
             for (int u = 0; u < umax + 1; ++u) {
                 for (int v = 0; v < vmax + 1; ++v) {
                     vec(u, v).resize(u + v + 1);
-                    set(u, v).setZero(u + v + 1);
                 }
             }
         }
 
-        //! Overload () to get the function value without calling value()
-        inline T operator() (
-            int i, 
+        //! Overload () to get the function value without calling `get_value()`
+        inline Vector<T>& operator() (
             int u, 
             int v
         ) {
-            return get_value(i, u, v);
+            return get_value(u, v);
         }
 
         //! Resetter
         void reset(
             const T& delta_
         ) {
-            for (int u = 0; u < umax + 1; ++u) {
-                set(u, 0).setZero();
-            }
+            set.setZero();
             for (int v = 1; v < vmax + 1; ++v) {
                 delta(v) = delta(v - 1) * delta_;
-                for (int u = 0; u < umax + 1; ++u) {
-                    set(u, v).setZero();
-                }
             }
         }
 
@@ -402,6 +406,8 @@ namespace solver {
 
         // Integrals
         Vieta<T> A;
+        Vector<T> I;
+        Vector<T> J;
 
         // The solution vector
         RowVector<T> sT;
@@ -412,6 +418,8 @@ namespace solver {
             lmax(lmax),
             N((lmax + 1) * (lmax + 1)),
             A(lmax),
+            I(lmax + 3),
+            J(lmax > 0 ? lmax: 1),
             sT(RowVector<T>::Zero(N))
         { 
             third = T(1.0) / T(3.0);
@@ -419,18 +427,32 @@ namespace solver {
         }
 
         /**
+        The helper primitive integral I_{v}.
+        TODO!
+
+        */
+        inline void computeI () {
+            I.setOnes();
+        }
+
+        /**
+        The helper primitive integral J_{v}.
+        TODO!
+
+        */
+        inline void computeJ () {
+            J.setOnes();
+        }
+
+        /**
         The helper primitive integral K_{u,v}.
-        TODO: This should be made into a dot product.
 
         */
         inline T K (
             int u, 
             int v
         ) {
-            T res(0.0);
-            for (int i = 0; i < u + v + 1; ++i)
-                res += A(i, u, v) * I(i + u);
-            return res;
+            return A(u, v).dot(I.segment(u, u + v + 1)); 
         }
 
         /**
@@ -443,10 +465,7 @@ namespace solver {
             int v, 
             int t
         ) {
-            T res(0.0);
-            for (int i = 0; i < u + v + 1; ++i)
-                res += A(i, u, v) * J(i + u + t);
-            return res;
+            return A(u, v).dot(I.segment(u + t, u + v + 1)); 
         }
 
         /**
@@ -533,6 +552,7 @@ namespace solver {
 
             // Compute our matrices
             A.reset(delta);
+            computeI();
 
             // The l = 1, m = -1 is zero by symmetry
             sT(1) = 0;
@@ -541,10 +561,15 @@ namespace solver {
             computeS2();
 
             // The l = 1, m = 1 term
-            sT(3) = H(2, 1) - 2 * tworlp2 * K(1, 1); // TODO: Check this and compute A, H, I explicitly for speed
+            // TODO: Check this and compute A, H, I explicitly 
+            // for this term for speed
+            sT(3) = H(2, 1) - 2 * tworlp2 * K(1, 1); 
 
             // Break if lmax = 1
             if (N == 4) return;
+
+            // TODO: Compute the matrices A, I, and H **here** eventually.
+            computeJ();
 
             // Some more basic variables
             T Q, P;
