@@ -358,7 +358,6 @@ namespace solver {
         }
     }
 
-    // TODO: Compute elliptic derivs
     template <class Scalar, bool GRADIENT=false>
     inline void computeS2_ (
         const Scalar& b,
@@ -373,8 +372,8 @@ namespace solver {
         Scalar& EllipticEK,
         Scalar& ds2db,
         Scalar& ds2dr,
-        Scalar& dEllipticEdksq,
-        Scalar& dEllipticEKdksq
+        Scalar& dEllipticEdm,
+        Scalar& dEllipticEKdm
     ) {
         // Initialize some useful quantities
         Scalar r2 = r * r;
@@ -393,6 +392,8 @@ namespace solver {
             if (GRADIENT) {
                 ds2db = 0;
                 ds2dr = 0;
+                dEllipticEdm = 0;
+                dEllipticEKdm = 0;
             }
         } else if (b <= r - 1.0) {
             // Full occultation (Case 11)
@@ -402,6 +403,8 @@ namespace solver {
             if (GRADIENT) {
                 ds2db = 0;
                 ds2dr = 0;
+                dEllipticEdm = 0;
+                dEllipticEKdm = 0;
             }
         } else {
             if (unlikely(b == 0)) {
@@ -413,6 +416,8 @@ namespace solver {
                 if (GRADIENT) {
                     ds2db = 0;
                     ds2dr = -2.0 * pi<Scalar>() * r * sqrt1mr2;
+                    dEllipticEdm = 0;
+                    dEllipticEKdm = 0;
                 }
             } else if (unlikely(b == r)) {
                 if (unlikely(r == 0.5)) {
@@ -423,6 +428,8 @@ namespace solver {
                     if (GRADIENT) {
                         ds2db = 2.0 * third;
                         ds2dr = -2.0;
+                        dEllipticEdm = 0;
+                        dEllipticEKdm = Scalar(INFINITY);
                     }
                 } else if (r < 0.5) {
                     // Case 5
@@ -434,6 +441,9 @@ namespace solver {
                     if (GRADIENT) {
                         ds2db = -4.0 * r * third * (EllipticE - 2 * EllipticEK);
                         ds2dr = -4.0 * r * EllipticE;
+                        dEllipticEdm = 0.5 * (EllipticEK - EllipticE) / (1 - m);
+                        dEllipticEKdm = 0.5 * ((m - Scalar(2.0)) * EllipticEK + EllipticE) / 
+                                          (m * (1.0 - Scalar(m)));
                     }
                 } else {
                     // Case 7
@@ -446,6 +456,9 @@ namespace solver {
                     if (GRADIENT) {
                         ds2db = 2 * third * (2 * EllipticE - EllipticEK);
                         ds2dr = -2 * EllipticEK;
+                        dEllipticEdm = 0.5 * (EllipticEK - EllipticE) / (1 - minv);
+                        dEllipticEKdm = 0.5 * ((minv - Scalar(2.0)) * EllipticEK + EllipticE) / 
+                                              (minv * (1.0 - Scalar(minv)));
                     }
                 }
             } else { 
@@ -463,6 +476,9 @@ namespace solver {
                         ds2db = 2 * r * onembmr2 * (-EllipticEK + 2 * EllipticE) * 
                                 sqbrinv * third;
                         ds2dr = -2 * r * onembmr2 * EllipticEK * sqbrinv;
+                        dEllipticEdm = 0.5 * (EllipticEK - EllipticE) / (1 - ksq);
+                        dEllipticEKdm = 0.5 * ((ksq - Scalar(2.0)) * EllipticEK + EllipticE) / 
+                                          (ksq * (1.0 - Scalar(ksq)));
                     }
                 } else if (ksq > 1) {
                     // Case 3, Case 9
@@ -482,6 +498,9 @@ namespace solver {
                         ds2db = -4 * r * third * sqonembmr2 * 
                                 (EllipticE - 2 * EllipticEK);
                         ds2dr = -4 * r * sqonembmr2 * EllipticE;
+                        dEllipticEdm = 0.5 * (EllipticEK - EllipticE) / (1 - invksq);
+                        dEllipticEKdm = 0.5 * ((invksq - Scalar(2.0)) * EllipticEK + EllipticE) / 
+                                               (invksq * (1.0 - Scalar(invksq)));
                     }
                 } else {
                     // Case 4
@@ -494,6 +513,8 @@ namespace solver {
                     if (GRADIENT) {
                         ds2dr = -8 * r * rootr1mr;
                         ds2db = -ds2dr * third;
+                        dEllipticEdm = 0;
+                        dEllipticEKdm = Scalar(INFINITY);
                     }
                 }
             }
@@ -565,7 +586,7 @@ namespace solver {
 
         */
         inline void computeI () {
-            I.setOnes();
+            I.setConstant(EllipticE);
         }
 
         /**
@@ -574,7 +595,7 @@ namespace solver {
 
         */
         inline void computeJ () {
-            J.setOnes();
+            J.setConstant(EllipticEK);
         }
 
         /**
@@ -590,7 +611,6 @@ namespace solver {
 
         /**
         The helper primitive integral L_{u,v}^(t).
-        TODO: This should be made into a dot product.
 
         */
         inline T L (
@@ -655,8 +675,13 @@ namespace solver {
                 sT(2).derivatives()(0), sT(2).derivatives()(1),
                 dEdksq, dEKdksq
             );
-            EllipticE.derivatives() = dEdksq * ksq.derivatives();
-            EllipticEK.derivatives() = dEKdksq * ksq.derivatives();
+            if (ksq < 1) {
+                EllipticE.derivatives() = dEdksq * ksq.derivatives();
+                EllipticEK.derivatives() = dEKdksq * ksq.derivatives();
+            } else {
+                EllipticE.derivatives() = dEdksq * invksq.derivatives();
+                EllipticEK.derivatives() = dEKdksq * invksq.derivatives();
+            }
         }
 
         /**
@@ -689,16 +714,17 @@ namespace solver {
             // Break if lmax = 0
             if (unlikely(N == 0)) return;
 
-            // Compute the helper integrals
-            A.reset(delta);
-            H.reset(coslam, sinlam);
-            computeI();
-
             // The l = 1, m = -1 is zero by symmetry
             sT(1) = 0;
             
             // Compute the linear limb darkening term
+            // and the elliptic integrals
             computeS2();
+
+            // Compute the helper integrals
+            A.reset(delta);
+            H.reset(coslam, sinlam);
+            computeI();
 
             // The l = 1, m = 1 term
             // TODO: Check this and compute A, H, I explicitly 
