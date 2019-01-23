@@ -280,4 +280,6 @@ def test_temporal_ylmld_occ_multi():
 
 if __name__ == "__main__":
     debug = True
-    compare(ydeg=10, udeg=0, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(ydeg=10, udeg=0, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1) # ksq > 1
+    compare(ydeg=10, udeg=0, nw=1, nt=1, theta=15.0, xo=0.8, yo=0.5, ro=0.1) # 0.5 < ksq < 1
+    compare(ydeg=10, udeg=0, nw=1, nt=1, theta=15.0, xo=0.9, yo=0.5, ro=0.1) # ksq < 0.5

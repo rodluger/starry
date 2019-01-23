@@ -138,8 +138,8 @@ namespace solver {
         int vmax;
         Matrix<bool> set;
         Matrix<T> value;
-        Vector<T> coslam;
-        Vector<T> sinlam;
+        Vector<T> pow_coslam;
+        Vector<T> pow_sinlam;
         bool coslam_is_zero;
 
         //! Getter function
@@ -165,10 +165,10 @@ namespace solver {
                 }
             } else {
                 if (u >= 2)
-                    value(u, v) = (2.0 * coslam(u - 1) * sinlam(v + 1) +
+                    value(u, v) = (2.0 * pow_coslam(u - 1) * pow_sinlam(v + 1) +
                                   (u - 1) * get_value(u - 2, v)) / (u + v);
                 else
-                    value(u, v) = (-2.0 * coslam(u + 1) * sinlam(v - 1) +
+                    value(u, v) = (-2.0 * pow_coslam(u + 1) * pow_sinlam(v - 1) +
                                   (v - 1) * get_value(u, v - 2)) / (u + v);
                 set(u, v) = true;
                 return value(u, v);
@@ -185,38 +185,38 @@ namespace solver {
             vmax(max(1, lmax)),
             set(umax + 1, vmax + 1),
             value(umax + 1, vmax + 1),
-            coslam(umax + 1),
-            sinlam(vmax + 1)
+            pow_coslam(umax + 2),
+            pow_sinlam(vmax + 2)
         {
             set.setZero();
-            coslam(0) = 1.0;
-            sinlam(0) = 1.0;
+            pow_coslam(0) = 1.0;
+            pow_sinlam(0) = 1.0;
             coslam_is_zero = false;
         }
 
         //! Reset flags and compute `H_00` and `H_01`
         inline void reset(
-            const T& coslam_,
-            const T& sinlam_
+            const T& coslam,
+            const T& sinlam
         ) {
             set.setZero();
-            if (coslam_ == 0) {
+            if (coslam == 0) {
                 coslam_is_zero = true;
                 value(0, 0) = 2.0 * pi<T>();
                 value(0, 1) = 0.0;
             } else {
                 coslam_is_zero = false;
-                for (int u = 1; u < umax + 1; ++u) {
-                    coslam(u) = coslam(u - 1) * coslam_;
+                for (int u = 1; u < umax + 2; ++u) {
+                    pow_coslam(u) = pow_coslam(u - 1) * coslam;
                 }
-                for (int v = 1; v < vmax + 1; ++v) {
-                    sinlam(v) = sinlam(v - 1) * sinlam_;
+                for (int v = 1; v < vmax + 2; ++v) {
+                    pow_sinlam(v) = pow_sinlam(v - 1) * sinlam;
                 }
-                if (sinlam_ < 0.5)
-                    value(0, 0) = 2.0 * asin(sinlam_) + pi<T>();
+                if (sinlam < 0.5)
+                    value(0, 0) = 2.0 * asin(sinlam) + pi<T>();
                 else
-                    value(0, 0) = 2.0 * acos(coslam_) + pi<T>();
-                value(0, 1) = -2.0 * coslam_;
+                    value(0, 0) = 2.0 * acos(coslam) + pi<T>();
+                value(0, 1) = -2.0 * coslam;
             }
             set(0, 0) = true;
             set(0, 1) = true;
@@ -531,6 +531,8 @@ namespace solver {
         // Indices
         int lmax;
         int N;
+        int ivmax;
+        int jvmax;
 
         // Variables
         T b;
@@ -555,11 +557,16 @@ namespace solver {
         T third;
         T dummy;
         bool qcond;
+        Vector<T> pow_ksq;
+        Vector<T> cjlow;
+        Vector<T> cjhigh;
+        std::vector<int> jvseries;
 
         // Integrals
         Vieta<T> A;
         HIntegral<T> H;
         Vector<T> I;
+        Vector<T> IGamma;
         Vector<T> J;
 
         // The solution vector
@@ -570,32 +577,235 @@ namespace solver {
         ) :
             lmax(lmax),
             N((lmax + 1) * (lmax + 1)),
+            ivmax(lmax + 2),
+            jvmax(lmax > 0 ? lmax - 1: 0),
+            pow_ksq(ivmax + 1),
+            cjlow(Vector<T>::Zero(jvmax + 1)),
+            cjhigh(Vector<T>::Zero(jvmax + 1)),
             A(lmax),
             H(lmax),
-            I(lmax + 3),
-            J(lmax > 0 ? lmax: 1),
+            I(ivmax + 1),
+            IGamma(ivmax + 1),
+            J(jvmax + 1),
             sT(RowVector<T>::Zero(N))
         { 
             third = T(1.0) / T(3.0);
             dummy = 0.0;
+            pow_ksq(0) = 1.0;
+            precomputeIGamma();
+            precomputeJCoeffs();
+        }
+
+#ifdef STARRY_ENABLE_BOOST
+
+        /**
+        The helper primitive integral I_{v} when k^2 >= 1.
+        This is pre-computed when the class is instantiated.
+        AutoDiff specialization.
+
+        */
+        template <typename U=T, bool A=AUTODIFF>
+        inline typename std::enable_if<A, void>::type precomputeIGamma () {
+            for (int v = 0; v <= ivmax; v++) {
+                IGamma(v) = root_pi<T>() * 
+                    boost::math::tgamma_delta_ratio<typename U::Scalar>(v + 0.5, 0.5);
+            }
         }
 
         /**
-        The helper primitive integral I_{v}.
-        TODO!
+        The helper primitive integral I_{v} when k^2 >= 1.
+        This is pre-computed when the class is instantiated.
+        Scalar specialization.
 
         */
-        inline void computeI () {
-            I.setConstant(EllipticE);
+        template <typename U=T, bool A=AUTODIFF>
+        inline typename std::enable_if<!A, void>::type precomputeIGamma () {
+            for (int v = 0; v <= ivmax; v++) {
+                IGamma(v) = root_pi<T>() * 
+                    boost::math::tgamma_delta_ratio<U>(v + 0.5, 0.5);
+            }
+        }
+
+#else
+
+        /**
+        The helper primitive integral I_{v} when k^2 >= 1.
+        This is pre-computed when the class is instantiated.
+
+        */
+        inline void precomputeIGamma () {
+            T term;
+            for (int v = 0; v <= ivmax; v++) {
+                term = pi<T>();
+                for (int i = 1; i < v; ++i)
+                    term *= (i - T(0.5)) / (i + T(1.0));
+                for (int i = max(1, v); i < v + 1; ++i)
+                    term *= i - T(0.5);
+                IGamma(v) = term;
+            }
+        }
+
+#endif
+
+        /**
+        Pre-compute some useful coefficients in the series
+        expansion of the high-degree J terms.
+
+        */
+        inline void precomputeJCoeffs () {
+            // This vector contains the indices of `J` for which
+            // we explicitly compute the integral via the series
+            // expression when doing downward recursion. The top
+            // index is the only one we *have* to compute, but I've 
+            // found that the recursion loses precision every ~25 degrees 
+            // or so. Therefore we force the series evaluation every 
+            // `STARRY_REFINE_J_AT` indices by including the indices in 
+            // this vector.
+            for (int v = jvmax; v >= 0; v -= STARRY_REFINE_J_AT) {
+                jvseries.push_back(v);
+            }
+
+            // Pre-compute the factors we'll need for the series evaluation
+            for (int vtop : jvseries) {
+                for (int v = vtop; v > vtop - 2; --v) {
+                    T term0 = 3 * pi<T>();
+                    T term1 = T(8.0);
+                    for (int i = 1; i <= v; ++i) {
+                        term1 *= 2.0 * (i + 2);
+                        term0 *= (2.0 * i - 1);
+                    }
+                    cjlow(v) = term0 / term1;
+                    term0 = pi<T>();
+                    for (int i = 1; i <= v; ++i) 
+                        term0 *= (T(1.0) - T(0.5) / i);
+                    cjhigh(v) = term0;
+                }
+            }
+        }
+
+
+        /**
+        The helper primitive integral I_{v}, computed
+        by downward recursion.
+
+        */
+        inline void computeIDownward () {
+            // Track the error
+            T tol = mach_eps<T>() * ksq;
+            T error = T(INFINITY);
+
+            // Computing leading coefficient
+            T coeff = T(2.0) / T(2.0 * ivmax + 1.0);
+            T res = coeff;
+
+            // Compute higher order terms
+            int n = 1;
+            while ((n < STARRY_IJ_MAX_ITER) && (abs(error) > tol)) {
+                coeff *= (2.0 * n - 1.0) * 0.5 * T(2 * n + 2 * ivmax - 1) /
+                         T(n * (2.0 * n + 2.0 * ivmax + 1)) * ksq;
+                error = coeff;
+                res += coeff;
+                ++n;
+            }
+            if (unlikely(n == STARRY_IJ_MAX_ITER))
+                throw errors::ConvergenceError(
+                    "Primitive integral `I` did not converge."
+                );
+
+            // This is I_{ivmax}
+            I(ivmax) = pow_ksq(ivmax) * k * res;
+
+            // Now compute the remaining terms
+            for (int v = ivmax - 1; v >= 0; --v) {
+                I(v) = T(2.0) / T(2.0 * v + 1.0) * 
+                       ((v + 1.0) * I(v + 1) + pow_ksq(v) * kkc);
+            }
+
         }
 
         /**
-        The helper primitive integral J_{v}.
-        TODO!
+        The helper primitive integral I_{v}, computed
+        by upward recursion.
 
         */
-        inline void computeJ () {
+        inline void computeIUpward () {
+            I(0) = kap0;
+            for (int v = 1; v < ivmax + 1; ++v) {
+                I(v) = (0.5 * (2.0 * v - 1.0) * I(v - 1) - 
+                        pow_ksq(v - 1) * kkc) / v;
+            }
+        }
+
+        /**
+        The helper primitive integral J_{v}, computed
+        by downward recursion for ksq < 0.5.
+
+        */
+        inline void computeJDownwardLow () {
+            // Track the error
+            T tol = mach_eps<T>() * ksq;
+            T coeff, res, error;
+            T f1, f2;
+            int vtop, vbot;
+            
+            // Compute our initial terms via the series expansion
+            for (size_t i = 0; i < jvseries.size(); ++i) {
+                vtop = jvseries[i];
+                // Top two terms
+                for (int v = vtop; v > vtop - 2; --v) {
+                    error = T(INFINITY);
+                    coeff = cjlow(v);
+                    res = coeff;
+                    int n = 1;
+                    while ((n < STARRY_IJ_MAX_ITER) && (abs(error) > tol)) {
+                        coeff *= (2.0 * n - 1.0) * (2.0 * (n + v) - 1.0) * 0.25 / 
+                                T(n * (n + v + 2.0)) * ksq;
+                        error = coeff;
+                        res += coeff;
+                        ++n;
+                    }
+                    if (unlikely(n == STARRY_IJ_MAX_ITER))
+                        throw errors::ConvergenceError(
+                            "Primitive integral `J` did not converge."
+                        );
+                    J(v) = pow_ksq(v) * k * res;
+                }
+                // Recurse downward
+                if (i < jvseries.size() - 1)
+                    vbot = jvseries[i + 1];
+                else
+                    vbot = -1;
+                for (int v = vtop - 2; v > vbot; --v) {
+                    f2 = T(2.0 * v + 7.0) / T(2.0 * v + 1) * invksq;
+                    f1 = T(2.0 / T(2.0 * v + 1)) * ((3 + v) * invksq + T(1 + v));
+                    J(v) = f1 * J(v + 1) - f2 * J(v + 2);
+                }
+            }
+
+        }
+
+        /**
+        The helper primitive integral J_{v}, computed
+        by downward recursion for ksq > 2.
+
+        */
+        inline void computeJDownwardHigh () {
+
+            // TODO
+            J.setOnes();
+
+        }
+
+        /**
+        The helper primitive integral J_{v}, computed
+        by Upward recursion.
+
+        */
+        inline void computeJUpward () {
+
+            // TODO
             J.setConstant(EllipticEK);
+
         }
 
         /**
@@ -606,7 +816,10 @@ namespace solver {
             int u, 
             int v
         ) {
-            return A(u, v).dot(I.segment(u, u + v + 1)); 
+            if (ksq >= 1)
+                return A(u, v).dot(IGamma.segment(u, u + v + 1)); 
+            else
+                return A(u, v).dot(I.segment(u, u + v + 1)); 
         }
 
         /**
@@ -724,7 +937,22 @@ namespace solver {
             // Compute the helper integrals
             A.reset(delta);
             H.reset(coslam, sinlam);
-            computeI();
+
+
+            // Compute powers of ksq
+            // TODO: This isn't always needed!
+            for (int v = 1; v < ivmax + 1; ++v) {
+                pow_ksq(v) = pow_ksq(v - 1) * ksq;
+            }
+
+
+            if (ksq < 0.5)
+                computeIDownward();
+            else if (ksq < 1.0)
+                computeIUpward();
+            // else we use `IGamma`
+
+
 
             // The l = 1, m = 1 term
             // TODO: Check this and compute A, H, I explicitly 
@@ -735,7 +963,14 @@ namespace solver {
             if (N == 4) return;
 
             // TODO: Compute the matrices A, I, and H **here** eventually.
-            computeJ();
+            if (unlikely(ksq == 0))
+                J = IGamma;
+            else if (ksq < 0.5)
+                computeJDownwardLow();
+            else if (ksq > 2.0)
+                computeJDownwardHigh();
+            else
+                computeJUpward();
 
             // Some more basic variables
             T Q, P;

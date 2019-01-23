@@ -46,6 +46,16 @@ namespace py = pybind11;
 #define STARRY_MN_MAX_ITER           100
 #endif
 
+//! Max iterations in computing the I & J integrals
+#ifndef STARRY_IJ_MAX_ITER
+#define STARRY_IJ_MAX_ITER           200
+#endif
+
+//! Refine the downward recursion in the J integral at this index
+#ifndef STARRY_REFINE_J_AT
+#define STARRY_REFINE_J_AT           25
+#endif
+
 //! Cutoff value for `b` below which we reparametrize LD evaluation
 #ifndef STARRY_BCUT
 #define STARRY_BCUT                 1.0e-3
