@@ -151,10 +151,10 @@ namespace solver {
             if (set(u, v)) {
                 return value(u, v);
             } else if (!is_even(u)) {
-                return 0.0;
+                return T(0.0);
             } else if (coslam_is_zero) {
                 if (!is_even(v)) {
-                    return 0.0;
+                    return T(0.0);
                 } else {
                     if (u >= 2)
                         value(u, v) = (u - 1) * get_value(u - 2, v) / (u + v);
