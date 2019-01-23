@@ -16,9 +16,6 @@ namespace solver {
 
     using namespace starry2::utils;
 
-    // DEBUG DEBUG DEBUG
-    double H(int i, int j) {return 1.0;}
-
     /**
     Vieta's theorem coefficient A_{i,u,v}
 
@@ -90,7 +87,7 @@ namespace solver {
     public:
 
         //! Constructor
-        Vieta (
+        explicit Vieta (
             int lmax
         ) : 
             umax(is_even(lmax) ? (lmax + 2) / 2 : (lmax + 3) / 2),
@@ -99,7 +96,7 @@ namespace solver {
             set(umax + 1, vmax + 1),
             vec(umax + 1, vmax + 1) 
         {
-            delta(0) = 1;
+            delta(0) = 1.0;
             set.setZero();
             for (int u = 0; u < umax + 1; ++u) {
                 for (int v = 0; v < vmax + 1; ++v) {
@@ -128,6 +125,113 @@ namespace solver {
 
     };
 
+    /**
+    The helper primitive integral H_{u,v}.
+
+    */
+    template <class T>
+    class HIntegral {
+    
+    protected:
+
+        int umax;
+        int vmax;
+        Matrix<bool> set;
+        Matrix<T> value;
+        Vector<T> coslam;
+        Vector<T> sinlam;
+        bool coslam_is_zero;
+
+        //! Getter function
+        // TODO: Get rid of all the branching: it's probably killing us
+        // on the recursion!
+        inline T get_value(int u, int v) {
+            CHECK_BOUNDS(u, 0, umax);
+            CHECK_BOUNDS(v, 0, vmax);
+            if (set(u, v)) {
+                return value(u, v);
+            } else if (!is_even(u)) {
+                return 0.0;
+            } else if (coslam_is_zero) {
+                if (!is_even(v)) {
+                    return 0.0;
+                } else {
+                    if (u >= 2)
+                        value(u, v) = (u - 1) * get_value(u - 2, v) / (u + v);
+                    else
+                        value(u, v) = (v - 1) * get_value(u, v - 2) / (u + v);
+                    set(u, v) = true;
+                    return value(u, v);
+                }
+            } else {
+                if (u >= 2)
+                    value(u, v) = (2.0 * coslam(u - 1) * sinlam(v + 1) +
+                                  (u - 1) * get_value(u - 2, v)) / (u + v);
+                else
+                    value(u, v) = (-2.0 * coslam(u + 1) * sinlam(v - 1) +
+                                  (v - 1) * get_value(u, v - 2)) / (u + v);
+                set(u, v) = true;
+                return value(u, v);
+            }
+        }
+
+    public:
+
+        //! Constructor
+        explicit HIntegral (
+            int lmax
+        ) :
+            umax(lmax + 2), 
+            vmax(max(1, lmax)),
+            set(umax + 1, vmax + 1),
+            value(umax + 1, vmax + 1),
+            coslam(umax + 1),
+            sinlam(vmax + 1)
+        {
+            set.setZero();
+            coslam(0) = 1.0;
+            sinlam(0) = 1.0;
+            coslam_is_zero = false;
+        }
+
+        //! Reset flags and compute `H_00` and `H_01`
+        inline void reset(
+            const T& coslam_,
+            const T& sinlam_
+        ) {
+            set.setZero();
+            if (coslam_ == 0) {
+                coslam_is_zero = true;
+                value(0, 0) = 2.0 * pi<T>();
+                value(0, 1) = 0.0;
+            } else {
+                coslam_is_zero = false;
+                for (int u = 1; u < umax + 1; ++u) {
+                    coslam(u) = coslam(u - 1) * coslam_;
+                }
+                for (int v = 1; v < vmax + 1; ++v) {
+                    sinlam(v) = sinlam(v - 1) * sinlam_;
+                }
+                if (sinlam_ < 0.5)
+                    value(0, 0) = 2.0 * asin(sinlam_) + pi<T>();
+                else
+                    value(0, 0) = 2.0 * acos(coslam_) + pi<T>();
+                value(0, 1) = -2.0 * coslam_;
+            }
+            set(0, 0) = true;
+            set(0, 1) = true;
+        }
+
+        //! Overload () to get the function value without calling `get_value()`
+        inline T operator() (
+            int u, 
+            int v
+        ) { 
+            return get_value(u, v); 
+        }
+
+    };
+
     template <typename T>
     inline void computeKVariables (
         const T& b,
@@ -140,14 +244,37 @@ namespace solver {
         T& invksq,   
         T& kite_area2,     
         T& kap0,
-        T& kap1
+        T& kap1,
+        T& invb,
+        T& invr,
+        T& coslam,
+        T& sinlam,
+        bool& qcond
     ) {
         // Initialize some useful quantities
-        T invr = T(1.0) / r;
-        T invb = T(1.0) / b;
+        invr = T(1.0) / r;
+        invb = T(1.0) / b;
+        T bmr = b - r;
         T bpr = b + r;
         T invfourbr = 0.25 * invr * invb;
         T onembpr2 = (T(1.0) + bpr) * (T(1.0) - bpr); 
+
+        // Compute cos(lambda) and sin(lambda)
+        qcond = ((abs(T(1.0) - r) >= b) || (bmr >= T(1.0)));
+        if (qcond) {
+            sinlam = 1.0;
+            coslam = 0.0;
+        } else {
+            sinlam = 0.5 * (invb + bmr * (T(1.0) + r * invb));
+            if (sinlam > 0.5) {
+                T del = T(1.0) - (b + r);
+                T eps = del * invb * (r + (0.5 * del));
+                sinlam = T(1.0) + eps;
+                coslam = sqrt(-eps * (T(2.0) + eps));
+            } else {
+                coslam = sqrt(T(1.0) - sinlam * sinlam);
+            }
+        }
 
         // Compute the kite area and the k^2 variables
         if (unlikely((b == 0) || (r == 0))) {
@@ -201,7 +328,8 @@ namespace solver {
         const Scalar& ksq, 
         const Scalar& kite_area2, 
         const Scalar& kap0, 
-        const Scalar& kap1,  
+        const Scalar& kap1, 
+        const Scalar& invb, 
         Scalar& s0,
         Scalar& ds0db,
         Scalar& ds0dr
@@ -223,7 +351,7 @@ namespace solver {
                 Scalar Alens = kap1 + r * r * kap0 - kite_area2 * 0.5;
                 s0 = pi<Scalar>() - Alens;
                 if (GRADIENT) {
-                    ds0db = kite_area2 / b;
+                    ds0db = kite_area2 * invb;
                     ds0dr = -2.0 * r * kap0;
                 }
             }
@@ -241,14 +369,12 @@ namespace solver {
         const Scalar& invksq,
         const Scalar& third,        
         Scalar& s2,
-        Scalar& Eofk,
-        Scalar& Em1mKdm,
+        Scalar& EllipticE,
+        Scalar& EllipticEK,
         Scalar& ds2db,
         Scalar& ds2dr,
-        Scalar& dEofkdb,
-        Scalar& dEofkdr,
-        Scalar& dEm1mKdmdb,
-        Scalar& dEm1mKdmdr
+        Scalar& dEllipticEdksq,
+        Scalar& dEllipticEKdksq
     ) {
         // Initialize some useful quantities
         Scalar r2 = r * r;
@@ -262,8 +388,8 @@ namespace solver {
         if ((b >= 1.0 + r) ||  (r == 0.0)) {
             // No occultation (Case 1)
             Lambda1 = 0;
-            Eofk = 0;
-            Em1mKdm = 0;
+            EllipticE = 0;
+            EllipticEK = 0;
             if (GRADIENT) {
                 ds2db = 0;
                 ds2dr = 0;
@@ -271,8 +397,8 @@ namespace solver {
         } else if (b <= r - 1.0) {
             // Full occultation (Case 11)
             Lambda1 = 0;
-            Eofk = 0;
-            Em1mKdm = 0;
+            EllipticE = 0;
+            EllipticEK = 0;
             if (GRADIENT) {
                 ds2db = 0;
                 ds2dr = 0;
@@ -282,8 +408,8 @@ namespace solver {
                 // Case 10
                 Scalar sqrt1mr2 = sqrt(1.0 - r2);
                 Lambda1 = -2.0 * pi<Scalar>() * sqrt1mr2 * sqrt1mr2 * sqrt1mr2; 
-                Eofk = 0.5 * pi<Scalar>();
-                Em1mKdm = 0.25 * pi<Scalar>();
+                EllipticE = 0.5 * pi<Scalar>();
+                EllipticEK = 0.25 * pi<Scalar>();
                 if (GRADIENT) {
                     ds2db = 0;
                     ds2dr = -2.0 * pi<Scalar>() * r * sqrt1mr2;
@@ -292,8 +418,8 @@ namespace solver {
                 if (unlikely(r == 0.5)) {
                     // Case 6
                     Lambda1 = pi<Scalar>() - 4.0 * third;
-                    Eofk = 1.0;
-                    Em1mKdm = 1.0;
+                    EllipticE = 1.0;
+                    EllipticEK = 1.0;
                     if (GRADIENT) {
                         ds2db = 2.0 * third;
                         ds2dr = -2.0;
@@ -301,25 +427,25 @@ namespace solver {
                 } else if (r < 0.5) {
                     // Case 5
                     Scalar m = 4 * r2;
-                    Eofk = ellip::CEL(m, Scalar(1.0), Scalar(1.0), Scalar(1.0 - m));
-                    Em1mKdm = ellip::CEL(m, Scalar(1.0), Scalar(1.0), Scalar(0.0));
+                    EllipticE = ellip::CEL(m, Scalar(1.0), Scalar(1.0), Scalar(1.0 - m));
+                    EllipticEK = ellip::CEL(m, Scalar(1.0), Scalar(1.0), Scalar(0.0));
                     Lambda1 = pi<Scalar>() + 2.0 * third * 
-                              ((2 * m - 3) * Eofk - m * Em1mKdm);
+                              ((2 * m - 3) * EllipticE - m * EllipticEK);
                     if (GRADIENT) {
-                        ds2db = -4.0 * r * third * (Eofk - 2 * Em1mKdm);
-                        ds2dr = -4.0 * r * Eofk;
+                        ds2db = -4.0 * r * third * (EllipticE - 2 * EllipticEK);
+                        ds2dr = -4.0 * r * EllipticE;
                     }
                 } else {
                     // Case 7
                     Scalar m = 4 * r2; 
                     Scalar minv = Scalar(1.0) / m; 
-                    Eofk = ellip::CEL(minv, Scalar(1.0), Scalar(1.0), Scalar(1.0 - minv));
-                    Em1mKdm = ellip::CEL(minv, Scalar(1.0), Scalar(1.0), Scalar(0.0));
+                    EllipticE = ellip::CEL(minv, Scalar(1.0), Scalar(1.0), Scalar(1.0 - minv));
+                    EllipticEK = ellip::CEL(minv, Scalar(1.0), Scalar(1.0), Scalar(0.0));
                     Lambda1 = pi<Scalar>() + third / r * 
-                              (-m * Eofk + (2 * m - 3) * Em1mKdm);
+                              (-m * EllipticE + (2 * m - 3) * EllipticEK);
                     if (GRADIENT) {
-                        ds2db = 2 * third * (2 * Eofk - Em1mKdm);
-                        ds2dr = -2 * Em1mKdm;
+                        ds2db = 2 * third * (2 * EllipticE - EllipticEK);
+                        ds2dr = -2 * EllipticEK;
                     }
                 }
             } else { 
@@ -330,13 +456,13 @@ namespace solver {
                     Scalar Piofk;
                     ellip::CEL(ksq, kc, Scalar((b - r) * (b - r) * kcsq), Scalar(0.0), 
                                Scalar(1.0), Scalar(1.0), Scalar(3 * kcsq * (b - r) * (b + r)), 
-                               kcsq, Scalar(0.0), Piofk, Eofk, Em1mKdm);
+                               kcsq, Scalar(0.0), Piofk, EllipticE, EllipticEK);
                     Lambda1 = onembmr2 * (Piofk + (-3 + 6 * r2 + 2 * b * r) * 
-                              Em1mKdm - fourbr * Eofk) * sqbrinv * third;
+                              EllipticEK - fourbr * EllipticE) * sqbrinv * third;
                     if (GRADIENT) {
-                        ds2db = 2 * r * onembmr2 * (-Em1mKdm + 2 * Eofk) * 
+                        ds2db = 2 * r * onembmr2 * (-EllipticEK + 2 * EllipticE) * 
                                 sqbrinv * third;
-                        ds2dr = -2 * r * onembmr2 * Em1mKdm * sqbrinv;
+                        ds2dr = -2 * r * onembmr2 * EllipticEK * sqbrinv;
                     }
                 } else if (ksq > 1) {
                     // Case 3, Case 9
@@ -348,14 +474,14 @@ namespace solver {
                     Scalar p = bmrdbpr * bmrdbpr * onembpr2 * onembmr2inv;
                     Scalar Piofk;
                     ellip::CEL(invksq, kc, p, Scalar(1 + mu), Scalar(1.0), Scalar(1.0), 
-                               Scalar(p + mu), kcsq, Scalar(0.0), Piofk, Eofk, Em1mKdm);
+                               Scalar(p + mu), kcsq, Scalar(0.0), Piofk, EllipticE, EllipticEK);
                     Lambda1 = 2 * sqonembmr2 * 
-                              (onembpr2 * Piofk - (4 - 7 * r2 - b2) * Eofk) * 
+                              (onembpr2 * Piofk - (4 - 7 * r2 - b2) * EllipticE) * 
                               third;
                     if (GRADIENT) {
                         ds2db = -4 * r * third * sqonembmr2 * 
-                                (Eofk - 2 * Em1mKdm);
-                        ds2dr = -4 * r * sqonembmr2 * Eofk;
+                                (EllipticE - 2 * EllipticEK);
+                        ds2dr = -4 * r * sqonembmr2 * EllipticE;
                     }
                 } else {
                     // Case 4
@@ -363,8 +489,8 @@ namespace solver {
                     Lambda1 = 2 * acos(1.0 - 2.0 * r) - 4 * third * 
                               (3 + 2 * r - 8 * r2) * 
                               rootr1mr - 2 * pi<Scalar>() * int(r > 0.5);
-                    Eofk = 1.0;
-                    Em1mKdm = 1.0;
+                    EllipticE = 1.0;
+                    EllipticEK = 1.0;
                     if (GRADIENT) {
                         ds2dr = -8 * r * rootr1mr;
                         ds2db = -ds2dr * third;
@@ -397,15 +523,21 @@ namespace solver {
         T kite_area2;
         T kap0;
         T kap1;
-        T Eofk;
-        T Em1mKdm;
+        T invb;
+        T invr;
+        T coslam;
+        T sinlam;
+        T EllipticE;
+        T EllipticEK;
 
         // Miscellaneous
         T third;
         T dummy;
+        bool qcond;
 
         // Integrals
         Vieta<T> A;
+        HIntegral<T> H;
         Vector<T> I;
         Vector<T> J;
 
@@ -418,6 +550,7 @@ namespace solver {
             lmax(lmax),
             N((lmax + 1) * (lmax + 1)),
             A(lmax),
+            H(lmax),
             I(lmax + 3),
             J(lmax > 0 ? lmax: 1),
             sT(RowVector<T>::Zero(N))
@@ -475,7 +608,7 @@ namespace solver {
         template <bool A=AUTODIFF>
         inline typename std::enable_if<!A, void>::type computeS0 () {
             computeS0_<T, false>(
-                b, r, ksq, kite_area2, kap0, kap1, sT(0), dummy, dummy
+                b, r, ksq, kite_area2, kap0, kap1, invb, sT(0), dummy, dummy
             );
         }
 
@@ -489,7 +622,7 @@ namespace solver {
         inline typename std::enable_if<A, void>::type computeS0 () {
             computeS0_<typename T::Scalar, true>(
                 b.value(), r.value(), ksq.value(), kite_area2.value(), 
-                kap0.value(), kap1.value(), sT(0).value(), 
+                kap0.value(), kap1.value(), invb.value(), sT(0).value(), 
                 sT(0).derivatives()(0), sT(0).derivatives()(1)
             );
         }
@@ -501,8 +634,8 @@ namespace solver {
         template <bool A=AUTODIFF>
         inline typename std::enable_if<!A, void>::type computeS2 () {
             computeS2_<T, false>(
-                b, r, ksq, kc, kcsq, invksq, third, sT(2), Eofk, 
-                Em1mKdm, dummy, dummy, dummy, dummy, dummy, dummy
+                b, r, ksq, kc, kcsq, invksq, third, sT(2), EllipticE, 
+                EllipticEK, dummy, dummy, dummy, dummy
             );
         }
 
@@ -514,14 +647,16 @@ namespace solver {
         */
         template <bool A=AUTODIFF>
         inline typename std::enable_if<A, void>::type computeS2 () {
+            typename T::Scalar dEdksq, dEKdksq;
             computeS2_<typename T::Scalar, true>(
                 b.value(), r.value(), ksq.value(), kc.value(), 
                 kcsq.value(), invksq.value(), third.value(), 
-                sT(2).value(), Eofk.value(), Em1mKdm.value(), 
+                sT(2).value(), EllipticE.value(), EllipticEK.value(), 
                 sT(2).derivatives()(0), sT(2).derivatives()(1),
-                Eofk.derivatives()(0), Eofk.derivatives()(1),
-                Em1mKdm.derivatives()(0), Em1mKdm.derivatives()(1)
+                dEdksq, dEKdksq
             );
+            EllipticE.derivatives() = dEdksq * ksq.derivatives();
+            EllipticEK.derivatives() = dEKdksq * ksq.derivatives();
         }
 
         /**
@@ -533,25 +668,30 @@ namespace solver {
             const T& r_
         ) {
 
-            // Some basic variables
+            // Initialize b and r
             b = b_;
             r = r_;
-            T twor = 2 * r;
-            T delta = (b - r) / twor;
-            T tworlp2 = (2.0 * r) * (2.0 * r) * (2.0 * r);
-            
-            // Compute the family of k^2 variables
-            computeKVariables(b, r, ksq, k, kc, kcsq, kkc, invksq, 
-                              kite_area2, kap0, kap1);
 
+            // Compute the k^2 terms and angular variables
+            computeKVariables(b, r, ksq, k, kc, kcsq, kkc, invksq, 
+                              kite_area2, kap0, kap1, invb, invr,
+                              coslam, sinlam, qcond);
+
+            // Some useful quantities
+            T twor = 2 * r;
+            T bmr = b - r;
+            T delta = 0.5 * bmr * invr;
+            T tworlp2 = twor * twor * twor;
+            
             // Compute the constant term
             computeS0();
 
             // Break if lmax = 0
             if (unlikely(N == 0)) return;
 
-            // Compute our matrices
+            // Compute the helper integrals
             A.reset(delta);
+            H.reset(coslam, sinlam);
             computeI();
 
             // The l = 1, m = -1 is zero by symmetry
@@ -573,10 +713,8 @@ namespace solver {
 
             // Some more basic variables
             T Q, P;
-            T bmr = b - r;
             T lfac = pow(1 - bmr * bmr, 1.5);
-            bool qcond = ((abs(T(1.0) - r) >= b) || (bmr >= T(1.0)));
-
+            
             // Compute the other terms of the solution vector
             int n = 4;
             for (int l = 2; l < lmax + 1; ++l) {

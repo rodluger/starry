@@ -94,17 +94,13 @@ using std::swap;
 
 // Bounds and shape checking enabled in debug mode
 #define CHECK_SHAPE(MATRIX, ROWS, COLS)\
-    if (!((MATRIX.rows() == ROWS) && (MATRIX.cols() == COLS)))\
-        throw errors::ShapeError("Matrix has incorrect shape.")
+    assert((MATRIX.cols() == COLS) && (MATRIX.rows() == ROWS))
 #define CHECK_COLS(MATRIX, COLS)\
-    if (MATRIX.cols() != COLS)\
-        throw errors::ShapeError("Matrix has incorrect number of columns.") 
+    assert(MATRIX.cols() == COLS)
 #define CHECK_ROWS(MATRIX, ROWS)\
-    if (MATRIX.rows() != ROWS)\
-        throw errors::ShapeError("Matrix has incorrect number of rows.")  
+    assert(MATRIX.rows() == ROWS)
 #define CHECK_BOUNDS(INDEX, IMIN, IMAX)\
-    if ((INDEX < IMIN) || (INDEX > IMAX))\
-        throw errors::IndexError("Index out of bounds.")
+    assert((INDEX >= IMIN) && (INDEX <= IMAX))
 
 #else
 
