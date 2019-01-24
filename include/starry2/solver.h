@@ -820,8 +820,8 @@ namespace solver {
                 J(0) = fac * (EllipticE + (3.0 * ksq - T(2.0)) * EllipticEK);
                 J(1) = 0.2 * fac * ((T(4.0) - 3.0 * ksq) * EllipticE + (9.0 * ksq - T(8.0)) * EllipticEK);
             } else {
-                J(0) = 2.0 * third * (T(3.0) - 2.0 * invksq) * EllipticE + invksq * EllipticEK;
-                J(1) = 0.4 * third * ((T(9.0) - 8.0 * invksq) * EllipticE + invksq * (T(4.0) - 3 * invksq) * EllipticEK);
+                J(0) = 2.0 * third * ((T(3.0) - 2.0 * invksq) * EllipticE + invksq * EllipticEK);
+                J(1) = 0.4 * third * ((T(9.0) - 8.0 * invksq) * EllipticE + (4.0 * invksq - T(3.0)) * EllipticEK);
             }
             for (int v = 2; v < jvmax + 1; ++v) {
                 f1 = 2.0 * (T(v + 1) + (v - 1) * ksq);
@@ -992,7 +992,7 @@ namespace solver {
                 if (ksq > 2.0)
                     computeJDownward<false>();
                 else
-                    computeJUpward<false>();
+                    computeJUpward<false>(); // TODO ISSUE here
             }
 
             // Some more basic variables
