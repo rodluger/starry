@@ -738,14 +738,19 @@ namespace solver {
 
         /**
         The helper primitive integral J_{v}, computed
-        by downward recursion for ksq < 0.5.
+        by downward recursion.
 
         */
-        inline void computeJDownwardLow () {
+        template <bool KSQLESSTHANONE>
+        inline void computeJDownward () {
             // Track the error
-            T tol = mach_eps<T>() * ksq;
+            T tol;
+            if (KSQLESSTHANONE)
+                tol = mach_eps<T>() * ksq;
+            else
+                tol = mach_eps<T>() * invksq;
             T coeff, res, error;
-            T f1, f2;
+            T f1, f2, f3;
             int vtop, vbot;
             
             // Compute our initial terms via the series expansion
@@ -754,12 +759,20 @@ namespace solver {
                 // Top two terms
                 for (int v = vtop; v > vtop - 2; --v) {
                     error = T(INFINITY);
-                    coeff = cjlow(v);
+                    if (KSQLESSTHANONE)
+                        coeff = cjlow(v);
+                    else
+                        coeff = cjhigh(v);
                     res = coeff;
                     int n = 1;
                     while ((n < STARRY_IJ_MAX_ITER) && (abs(error) > tol)) {
-                        coeff *= (2.0 * n - 1.0) * (2.0 * (n + v) - 1.0) * 0.25 / 
-                                T(n * (n + v + 2.0)) * ksq;
+                        if (KSQLESSTHANONE)
+                            coeff *= (2.0 * n - 1.0) * 
+                                     (2.0 * (n + v) - 1.0) * 0.25 / 
+                                     T(n * (n + v + 2.0)) * ksq;
+                        else
+                            coeff *= (T(1.0) - T(2.5 / n)) *
+                                     (T(1.0) - T(0.5 / (n + v))) * invksq;
                         error = coeff;
                         res += coeff;
                         ++n;
@@ -768,7 +781,10 @@ namespace solver {
                         throw errors::ConvergenceError(
                             "Primitive integral `J` did not converge."
                         );
-                    J(v) = pow_ksq(v) * k * res;
+                    if (KSQLESSTHANONE)
+                        J(v) = pow_ksq(v) * k * res;
+                    else
+                        J(v) = res;
                 }
                 // Recurse downward
                 if (i < jvseries.size() - 1)
@@ -776,36 +792,42 @@ namespace solver {
                 else
                     vbot = -1;
                 for (int v = vtop - 2; v > vbot; --v) {
-                    f2 = T(2.0 * v + 7.0) / T(2.0 * v + 1) * invksq;
-                    f1 = T(2.0 / T(2.0 * v + 1)) * ((3 + v) * invksq + T(1 + v));
-                    J(v) = f1 * J(v + 1) - f2 * J(v + 2);
+                    if (KSQLESSTHANONE) {
+                        f2 = T(1.0) / (ksq * (2 * v + 1));
+                        f1 = 2 * (T(3 + v) + ksq * (1 + v)) * f2;
+                        f3 = T(2 * v + 7) * f2;
+                        J(v) = f1 * J(v + 1) - f3 * J(v + 2);
+                    } else {
+                        f3 = T(1.0) / T(2 * v + 1);
+                        f2 = T(2 * v + 7) * f3 * invksq;
+                        f1 = 2.0 * f3 * ((3 + v) * invksq + T(1 + v));
+                        J(v) = f1 * J(v + 1) - f2 * J(v + 2);
+                    }
                 }
             }
-
         }
 
         /**
         The helper primitive integral J_{v}, computed
-        by downward recursion for ksq > 2.
+        by upward recursion.
 
         */
-        inline void computeJDownwardHigh () {
-
-            // TODO
-            J.setOnes();
-
-        }
-
-        /**
-        The helper primitive integral J_{v}, computed
-        by Upward recursion.
-
-        */
+        template <bool KSQLESSTHANONE>
         inline void computeJUpward () {
-
-            // TODO
-            J.setConstant(EllipticEK);
-
+            T f1, f2;
+            if (KSQLESSTHANONE) {
+                T fac = 2.0 * third / k;
+                J(0) = fac * (EllipticE + (3.0 * ksq - T(2.0)) * EllipticEK);
+                J(1) = 0.2 * fac * ((T(4.0) - 3.0 * ksq) * EllipticE + (9.0 * ksq - T(8.0)) * EllipticEK);
+            } else {
+                J(0) = 2.0 * third * (T(3.0) - 2.0 * invksq) * EllipticE + invksq * EllipticEK;
+                J(1) = 0.4 * third * ((T(9.0) - 8.0 * invksq) * EllipticE + invksq * (T(4.0) - 3 * invksq) * EllipticEK);
+            }
+            for (int v = 2; v < jvmax + 1; ++v) {
+                f1 = 2.0 * (T(v + 1) + (v - 1) * ksq);
+                f2 = ksq * (2 * v - 3);
+                J(v) = (f1 * J(v - 1) - f2 * J(v - 2)) / T(2 * v + 3);
+            }
         }
 
         /**
@@ -831,7 +853,7 @@ namespace solver {
             int v, 
             int t
         ) {
-            return A(u, v).dot(I.segment(u + t, u + v + 1)); 
+            return A(u, v).dot(J.segment(u + t, u + v + 1)); 
         }
 
         /**
@@ -938,21 +960,17 @@ namespace solver {
             A.reset(delta);
             H.reset(coslam, sinlam);
 
-
             // Compute powers of ksq
             // TODO: This isn't always needed!
             for (int v = 1; v < ivmax + 1; ++v) {
                 pow_ksq(v) = pow_ksq(v - 1) * ksq;
             }
 
-
             if (ksq < 0.5)
                 computeIDownward();
             else if (ksq < 1.0)
                 computeIUpward();
             // else we use `IGamma`
-
-
 
             // The l = 1, m = 1 term
             // TODO: Check this and compute A, H, I explicitly 
@@ -963,14 +981,19 @@ namespace solver {
             if (N == 4) return;
 
             // TODO: Compute the matrices A, I, and H **here** eventually.
-            if (unlikely(ksq == 0))
-                J = IGamma;
-            else if (ksq < 0.5)
-                computeJDownwardLow();
-            else if (ksq > 2.0)
-                computeJDownwardHigh();
-            else
-                computeJUpward();
+            if (ksq < 1.0) {
+                if (unlikely(ksq == 0))
+                    J = IGamma;
+                else if (ksq < 0.5)
+                    computeJDownward<true>();
+                else
+                    computeJUpward<true>();
+            } else {
+                if (ksq > 2.0)
+                    computeJDownward<false>();
+                else
+                    computeJUpward<false>();
+            }
 
             // Some more basic variables
             T Q, P;

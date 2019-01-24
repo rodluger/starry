@@ -14,7 +14,7 @@ using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 #include "starry2.h"
 using namespace starry2;
 
-void compute_default() {
+void compute_default_limb_darkened() {
 
     // Instantiate a default map
     int lmax = 2;
@@ -58,5 +58,5 @@ void compute_default() {
 }
 
 int main() {
-    compute_default();
+    compute_default_limb_darkened();
 }
