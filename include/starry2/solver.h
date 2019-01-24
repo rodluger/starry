@@ -818,10 +818,13 @@ namespace solver {
             if (KSQLESSTHANONE) {
                 T fac = 2.0 * third / k;
                 J(0) = fac * (EllipticE + (3.0 * ksq - T(2.0)) * EllipticEK);
-                J(1) = 0.2 * fac * ((T(4.0) - 3.0 * ksq) * EllipticE + (9.0 * ksq - T(8.0)) * EllipticEK);
+                J(1) = 0.2 * fac * ((T(4.0) - 3.0 * ksq) * 
+                       EllipticE + (9.0 * ksq - T(8.0)) * EllipticEK);
             } else {
-                J(0) = 2.0 * third * ((T(3.0) - 2.0 * invksq) * EllipticE + invksq * EllipticEK);
-                J(1) = 0.4 * third * ((T(9.0) - 8.0 * invksq) * EllipticE + (4.0 * invksq - T(3.0)) * EllipticEK);
+                J(0) = 2.0 * third * ((T(3.0) - 2.0 * invksq) * 
+                       EllipticE + invksq * EllipticEK);
+                J(1) = 0.4 * third * ((T(9.0) - 8.0 * invksq) * 
+                       EllipticE + (4.0 * invksq - T(3.0)) * EllipticEK);
             }
             for (int v = 2; v < jvmax + 1; ++v) {
                 f1 = 2.0 * (T(v + 1) + (v - 1) * ksq);
@@ -956,31 +959,33 @@ namespace solver {
             // and the elliptic integrals
             computeS2();
 
+            // The l = 1, m = 1 term, written out explicitly for speed
+            T K11;
+            if (ksq >= 1) {
+                K11 = pi<T>() * (2 * delta + 1) / 16.;
+            } else {
+                T fac = T(3.0) + 6 * delta;
+                K11 = 0.0625 * third * (2.0 * kkc * (2.0 * ksq * 
+                      (6.0 * delta + 4.0 * ksq - T(1.0)) - fac) + kap0 * fac);
+            }
+            sT(3) = -2.0 * third * coslam * coslam * coslam - 2 * tworlp2 * K11; 
+
+            // Break if lmax = 1
+            if (N == 4) return;
+
+            // Compute powers of ksq
+            for (int v = 1; v < ivmax + 1; ++v)
+                pow_ksq(v) = pow_ksq(v - 1) * ksq;
+
             // Compute the helper integrals
             A.reset(delta);
             H.reset(coslam, sinlam);
-
-            // Compute powers of ksq
-            // TODO: This isn't always needed!
-            for (int v = 1; v < ivmax + 1; ++v) {
-                pow_ksq(v) = pow_ksq(v - 1) * ksq;
-            }
-
             if (ksq < 0.5)
                 computeIDownward();
             else if (ksq < 1.0)
                 computeIUpward();
             // else we use `IGamma`
 
-            // The l = 1, m = 1 term
-            // TODO: Check this and compute A, H, I explicitly 
-            // for this term for speed
-            sT(3) = H(2, 1) - 2 * tworlp2 * K(1, 1); 
-
-            // Break if lmax = 1
-            if (N == 4) return;
-
-            // TODO: Compute the matrices A, I, and H **here** eventually.
             if (ksq < 1.0) {
                 if (unlikely(ksq == 0))
                     J = IGamma;
@@ -992,7 +997,7 @@ namespace solver {
                 if (ksq > 2.0)
                     computeJDownward<false>();
                 else
-                    computeJUpward<false>(); // TODO ISSUE here
+                    computeJUpward<false>();
             }
 
             // Some more basic variables
