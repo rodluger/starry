@@ -962,7 +962,7 @@ namespace solver {
             // The l = 1, m = 1 term, written out explicitly for speed
             T K11;
             if (ksq >= 1) {
-                K11 = pi<T>() * (2 * delta + 1) / 16.;
+                K11 = pi<T>() * (2 * delta + T(1.0)) / 16.;
             } else {
                 T fac = T(3.0) + 6 * delta;
                 K11 = 0.0625 * third * (2.0 * kkc * (2.0 * ksq * 
