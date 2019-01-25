@@ -6,63 +6,81 @@ import starry2
 import numpy as np
 
 
-def run(temporal=False, spectral=False, multi=False):
-    """Compare the map evaluation to some benchmarks."""
-    # Instantiate
-    lmax = 2
-    if spectral:
-        nw = 2
-        map = starry2.Map(lmax, multi=multi, nw=nw)
-    elif temporal:
-        nw = 1
-        map = starry2.Map(lmax, multi=multi, nt=2)
-    else:
-        nw = 1
-        map = starry2.Map(lmax, multi=multi)
-    map.axis = [0, 1, 0]
+def test_default_scalar():
+    map = starry2.Map(1)
     map[:, :] = 1
-
-    # No arguments
-    I = map()
-    assert np.allclose(I, 1.5814013250227599)
-
-    # Scalar evaluation
-    I = map(x=0.1, y=0.1)
-    assert np.allclose(I, 1.9211848890432843)
-
-    # Vector evaluation
-    I = map(x=[0.1, 0.2, 0.3], y=[0.1, 0.2, 0.3])
-    truth = np.repeat([1.9211848890432843, 
-                       2.216308435590377, 
-                       2.44870978566566], nw).reshape(3, -1)
-    assert np.allclose(I, np.squeeze(truth))
+    x = 0.3
+    y = 0.4
+    z = np.sqrt(1 - x ** 2 - y ** 2)
+    assert np.allclose(
+        map(x=x, y=y), 
+        (1.0 + np.sqrt(3) * (y + z + x)) / np.pi
+    )
 
 
-def test_evaluation_single_double():
-    """Test the map evaluation against some benchmarks [single, double]."""
-    return run(temporal=False, spectral=False, multi=False)
+def test_default_vector():
+    map = starry2.Map(1)
+    map[:, :] = 1
+    x = np.array([0.3, 0.4])
+    y = np.array([0.4, 0.5])
+    z = np.sqrt(1 - x ** 2 - y ** 2)
+    assert np.allclose(
+        map(x=x, y=y), 
+        (1.0 + np.sqrt(3) * (y + z + x)) / np.pi
+    )
 
 
-def test_evaluation_single_multi():
-    """Test the map evaluation against some benchmarks [single, multi]."""
-    return run(temporal=False, spectral=False, multi=True)
+def test_spectral_scalar():
+    map = starry2.Map(1, nw=2)
+    map[:, :] = [1.0, 2.0]
+    x = 0.3
+    y = 0.4
+    z = np.sqrt(1 - x ** 2 - y ** 2)
+    assert np.allclose(
+        map(x=x, y=y), 
+        np.array([
+            1.0 * (1.0 + np.sqrt(3) * (y + z + x)) / np.pi,
+            2.0 * (1.0 + np.sqrt(3) * (y + z + x)) / np.pi
+        ])
+    )
+    
+
+def test_spectral_vector():
+    map = starry2.Map(1, nw=2)
+    map[:, :] = [1.0, 2.0]
+    x = np.array([0.3, 0.4])
+    y = np.array([0.4, 0.5])
+    z = np.sqrt(1 - x ** 2 - y ** 2)
+    assert np.allclose(
+        map(x=x, y=y), 
+        np.array([
+            1.0 * (1.0 + np.sqrt(3) * (y + z + x)) / np.pi,
+            2.0 * (1.0 + np.sqrt(3) * (y + z + x)) / np.pi
+        ]).transpose()
+    )
 
 
-def test_evaluation_spectral_double():
-    """Test the map evaluation against some benchmarks [spectral, double]."""
-    return run(temporal=False, spectral=True, multi=False)
+def test_temporal_scalar():
+    map = starry2.Map(1, nt=2)
+    map[:, :] = [1.0, 0.5]
+    t = 1.0
+    x = 0.3
+    y = 0.4
+    z = np.sqrt(1 - x ** 2 - y ** 2)
+    assert np.allclose(
+        map(t=t, x=x, y=y), 
+        (1 + 0.5 * t) * (1.0 + np.sqrt(3) * (y + z + x)) / np.pi
+    )
 
 
-def test_evaluation_spectral_multi():
-    """Test the map evaluation against some benchmarks [spectral, multi]."""
-    return run(temporal=False, spectral=True, multi=True)
-
-
-def test_evaluation_temporal_double():
-    """Test the map evaluation against some benchmarks [temporal, double]."""
-    return run(temporal=True, spectral=False, multi=False)
-
-
-def test_evaluation_temporal_multi():
-    """Test the map evaluation against some benchmarks [temporal, multi]."""
-    return run(temporal=True, spectral=False, multi=True)
+def test_temporal_vector():
+    map = starry2.Map(1, nt=2)
+    map[:, :] = [1.0, 0.5]
+    t = np.array([1.0, 2.0])
+    x = 0.3
+    y = 0.4
+    z = np.sqrt(1 - x ** 2 - y ** 2)
+    assert np.allclose(
+        map(t=t, x=x, y=y), 
+        (1 + 0.5 * t) * (1.0 + np.sqrt(3) * (y + z + x)) / np.pi
+    )

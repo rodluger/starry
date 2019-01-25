@@ -652,7 +652,7 @@ public:
     Eigen::SparseMatrix<T> A2;                                                 /**< The Green's change of basis matrix */
     Eigen::SparseMatrix<T> A;                                                  /**< The full change of basis matrix */
     RowVector<T> rT;                                                           /**< The rotation solution vector */
-    RowVector<T> rTA1;                                                         /**< The rotation vector times the `Ylm` change of basis matrix */
+    RowVector<T> rTA1;                                                         /**< The rotation vector in Ylm space */
     RowVector<T> rTU1;                                                         /**< The rotation vector times the LD change of basis matrix */
     Eigen::SparseMatrix<T> U1;                                                 /**< The limb darkening to polynomial change of basis matrix */
     Eigen::SparseMatrix<T> U;                                                  /**< The full limb darkening change of basis matrix */

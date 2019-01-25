@@ -589,8 +589,8 @@ namespace solver {
             ivmax(lmax + 2),
             jvmax(lmax > 0 ? lmax - 1: 0),
             pow_ksq(ivmax + 1),
-            cjlow(Vector<T>::Zero(jvmax + 1)),
-            cjhigh(Vector<T>::Zero(jvmax + 1)),
+            cjlow(Vector<T>::Zero(jvmax + 2)),
+            cjhigh(Vector<T>::Zero(jvmax + 2)),
             A(lmax),
             H(lmax),
             I(ivmax + 1),
@@ -670,7 +670,7 @@ namespace solver {
             // or so. Therefore we force the series evaluation every 
             // `STARRY_REFINE_J_AT` indices by including the indices in 
             // this vector.
-            for (int v = jvmax; v >= 0; v -= STARRY_REFINE_J_AT) {
+            for (int v = jvmax > 1 ? jvmax : 1; v >= 0; v -= STARRY_REFINE_J_AT) {
                 jvseries.push_back(v);
             }
 
