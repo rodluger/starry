@@ -76,11 +76,45 @@ def NumericalFlux(map, xo=0.0, yo=0.5, ro=0.1, epsabs=1e-8, epsrel=1e-8):
     return total - flux
 
 
-if __name__ == "__main__":
-    # TODO
+def test_ksq_gtr_two():
     lmax = 3
     map = Map(lmax)
-    map.random(np.ones(lmax), seed=12)
-    yo = 0.5
+    map[:, :] = 1
     ro = 0.1
-    print(NumericalFlux(map, yo=yo, ro=ro))
+    yo = 0.5
+    f = map.flux(yo=yo, ro=ro)
+    fnum = NumericalFlux(map, yo=yo, ro=ro)
+    assert np.isclose(f, fnum)
+
+
+def test_ksq_gtr_one():
+    lmax = 3
+    map = Map(lmax)
+    map[:, :] = 1
+    ro = 0.1
+    yo = 0.8
+    f = map.flux(yo=yo, ro=ro)
+    fnum = NumericalFlux(map, yo=yo, ro=ro)
+    assert np.isclose(f, fnum)
+
+
+def test_ksq_gtr_half():
+    lmax = 3
+    map = Map(lmax)
+    map[:, :] = 1
+    ro = 0.1
+    yo = 0.95
+    f = map.flux(yo=yo, ro=ro)
+    fnum = NumericalFlux(map, yo=yo, ro=ro)
+    assert np.isclose(f, fnum)
+
+
+def test_ksq_gtr_zero():
+    lmax = 3
+    map = Map(lmax)
+    map[:, :] = 1
+    ro = 0.1
+    yo = 1.05
+    f = map.flux(yo=yo, ro=ro)
+    fnum = NumericalFlux(map, yo=yo, ro=ro)
+    assert np.isclose(f, fnum)
