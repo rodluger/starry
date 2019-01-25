@@ -14,8 +14,9 @@ docs/_generate
 *.vscode
 tmp/*
 tests/cpp/test
-include/examples/example
-include/examples/test
+include/examples/default
+include/examples/spectral
+include/examples/temporal
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

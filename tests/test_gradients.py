@@ -139,7 +139,7 @@ def test_default_ylm_phase():
 
 
 def test_default_ylm_occ():
-    compare(ydeg=2, udeg=0, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(ydeg=2, udeg=0, nw=1, nt=1, theta=15.0, xo=0.4, yo=0.5, ro=0.1)
 
 
 def test_default_ld_phase():
@@ -147,7 +147,7 @@ def test_default_ld_phase():
 
 
 def test_default_ld_occ():
-    compare(ydeg=0, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(ydeg=0, udeg=2, nw=1, nt=1, theta=15.0, xo=0.8, yo=0.5, ro=0.1)
 
 
 def test_default_ylmld_phase():
@@ -155,7 +155,7 @@ def test_default_ylmld_phase():
 
 
 def test_default_ylmld_occ():
-    compare(ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=0.9, yo=0.5, ro=0.1)
 
 
 def test_spectral_ylm_phase():
@@ -163,7 +163,7 @@ def test_spectral_ylm_phase():
 
 
 def test_spectral_ylm_occ():
-    compare(ydeg=2, udeg=0, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(ydeg=2, udeg=0, nw=3, nt=1, theta=15.0, xo=0.4, yo=0.5, ro=0.1)
 
 
 def test_spectral_ld_phase():
@@ -171,7 +171,7 @@ def test_spectral_ld_phase():
 
 
 def test_spectral_ld_occ():
-    compare(ydeg=0, udeg=2, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(ydeg=0, udeg=2, nw=3, nt=1, theta=15.0, xo=0.8, yo=0.5, ro=0.1)
 
 
 def test_spectral_ylmld_phase():
@@ -179,7 +179,7 @@ def test_spectral_ylmld_phase():
 
 
 def test_spectral_ylmld_occ():
-    compare(ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=0.9, yo=0.5, ro=0.1)
 
 
 def test_temporal_ylm_phase():
@@ -187,7 +187,7 @@ def test_temporal_ylm_phase():
 
 
 def test_temporal_ylm_occ():
-    compare(ydeg=2, udeg=0, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(ydeg=2, udeg=0, nw=1, nt=3, t=0.75, theta=15.0, xo=0.4, yo=0.5, ro=0.1)
 
 
 def test_temporal_ld_phase():
@@ -195,7 +195,7 @@ def test_temporal_ld_phase():
 
 
 def test_temporal_ld_occ():
-    compare(ydeg=0, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(ydeg=0, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.8, yo=0.5, ro=0.1)
 
 
 def test_temporal_ylmld_phase():
@@ -203,7 +203,7 @@ def test_temporal_ylmld_phase():
 
 
 def test_temporal_ylmld_occ():
-    compare(ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.9, yo=0.5, ro=0.1)
 
 
 def test_default_ylm_phase_multi():
@@ -211,7 +211,7 @@ def test_default_ylm_phase_multi():
 
 
 def test_default_ylm_occ_multi():
-    compare(multi=True, ydeg=2, udeg=0, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(multi=True, ydeg=2, udeg=0, nw=1, nt=1, theta=15.0, xo=0.4, yo=0.5, ro=0.1)
 
 
 def test_default_ld_phase_multi():
@@ -219,7 +219,7 @@ def test_default_ld_phase_multi():
 
 
 def test_default_ld_occ_multi():
-    compare(multi=True, ydeg=0, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(multi=True, ydeg=0, udeg=2, nw=1, nt=1, theta=15.0, xo=0.8, yo=0.5, ro=0.1)
 
 
 def test_default_ylmld_phase_multi():
@@ -227,7 +227,7 @@ def test_default_ylmld_phase_multi():
 
 
 def test_default_ylmld_occ_multi():
-    compare(multi=True, ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(multi=True, ydeg=2, udeg=2, nw=1, nt=1, theta=15.0, xo=0.9, yo=0.5, ro=0.1)
 
 
 def test_spectral_ylm_phase_multi():
@@ -235,7 +235,7 @@ def test_spectral_ylm_phase_multi():
 
 
 def test_spectral_ylm_occ_multi():
-    compare(multi=True, ydeg=2, udeg=0, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(multi=True, ydeg=2, udeg=0, nw=3, nt=1, theta=15.0, xo=0.4, yo=0.5, ro=0.1)
 
 
 def test_spectral_ld_phase_multi():
@@ -243,7 +243,7 @@ def test_spectral_ld_phase_multi():
 
 
 def test_spectral_ld_occ_multi():
-    compare(multi=True, ydeg=0, udeg=2, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(multi=True, ydeg=0, udeg=2, nw=3, nt=1, theta=15.0, xo=0.8, yo=0.5, ro=0.1)
 
 
 def test_spectral_ylmld_phase_multi():
@@ -251,7 +251,7 @@ def test_spectral_ylmld_phase_multi():
 
 
 def test_spectral_ylmld_occ_multi():
-    compare(multi=True, ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(multi=True, ydeg=2, udeg=2, nw=3, nt=1, theta=15.0, xo=0.9, yo=0.5, ro=0.1)
 
 
 def test_temporal_ylm_phase_multi():
@@ -259,7 +259,7 @@ def test_temporal_ylm_phase_multi():
 
 
 def test_temporal_ylm_occ_multi():
-    compare(multi=True, ydeg=2, udeg=0, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(multi=True, ydeg=2, udeg=0, nw=1, nt=3, t=0.75, theta=15.0, xo=0.9, yo=0.5, ro=0.1)
 
 
 def test_temporal_ld_phase_multi():
@@ -267,7 +267,7 @@ def test_temporal_ld_phase_multi():
 
 
 def test_temporal_ld_occ_multi():
-    compare(multi=True, ydeg=0, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(multi=True, ydeg=0, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.8, yo=0.5, ro=0.1)
 
 
 def test_temporal_ylmld_phase_multi():
@@ -275,7 +275,7 @@ def test_temporal_ylmld_phase_multi():
 
 
 def test_temporal_ylmld_occ_multi():
-    compare(multi=True, ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.3, yo=0.5, ro=0.1)
+    compare(multi=True, ydeg=2, udeg=2, nw=1, nt=3, t=0.75, theta=15.0, xo=0.4, yo=0.5, ro=0.1)
 
 
 if __name__ == "__main__":

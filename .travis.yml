@@ -24,7 +24,6 @@ install:
     - export STARRY_DEBUG=1 # DEBUG
     # Let's prevent travis time-outs for 40 minutes
     - travis_wait 40 python setup.py develop
-    - make -C tests/cpp
 
 cache:
     directories:

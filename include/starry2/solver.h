@@ -142,34 +142,43 @@ namespace solver {
         Vector<T> pow_sinlam;
         bool coslam_is_zero;
 
-        //! Getter function
-        // TODO: Get rid of all the branching: it's probably killing us
-        // on the recursion!
+        //! Getter function, templated so we can optimize out
+        //! most of the branching at compile time.
+        template <bool COSLAMZERO=false, bool UODD=false, 
+                  bool VODD=false, bool ULT2=false>
         inline T get_value(int u, int v) {
             CHECK_BOUNDS(u, 0, umax);
             CHECK_BOUNDS(v, 0, vmax);
             if (set(u, v)) {
                 return value(u, v);
-            } else if (!is_even(u)) {
+            } else if ((UODD) || (!is_even(u))) {
                 return T(0.0);
-            } else if (coslam_is_zero) {
-                if (!is_even(v)) {
+            } else if ((COSLAMZERO) || (coslam_is_zero)) {
+                if ((VODD) || (!is_even(v))) {
                     return T(0.0);
                 } else {
-                    if (u >= 2)
-                        value(u, v) = (u - 1) * get_value(u - 2, v) / (u + v);
+                    if ((ULT2) || (u < 2))
+                        value(u, v) = (v - 1) * 
+                            get_value<true, false, false, true>(u, v - 2) 
+                            / (u + v);
                     else
-                        value(u, v) = (v - 1) * get_value(u, v - 2) / (u + v);
+                        value(u, v) = (u - 1) * 
+                            get_value<true, false, false, false>(u - 2, v) 
+                            / (u + v);
                     set(u, v) = true;
                     return value(u, v);
                 }
             } else {
-                if (u >= 2)
-                    value(u, v) = (2.0 * pow_coslam(u - 1) * pow_sinlam(v + 1) +
-                                  (u - 1) * get_value(u - 2, v)) / (u + v);
+                if ((ULT2) || (u < 2))
+                    value(u, v) = (-2.0 * pow_coslam(u + 1) * 
+                        pow_sinlam(v - 1) +
+                        (v - 1) * get_value<false, false, false, true>(u, v - 2)) 
+                        / (u + v);
                 else
-                    value(u, v) = (-2.0 * pow_coslam(u + 1) * pow_sinlam(v - 1) +
-                                  (v - 1) * get_value(u, v - 2)) / (u + v);
+                    value(u, v) = (2.0 * pow_coslam(u - 1) * 
+                        pow_sinlam(v + 1) +
+                        (u - 1) * get_value<false, false, false, false>(u - 2, v)) 
+                        / (u + v);
                 set(u, v) = true;
                 return value(u, v);
             }
