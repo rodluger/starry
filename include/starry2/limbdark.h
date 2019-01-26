@@ -77,7 +77,7 @@ namespace limbdark {
 
     */
     template <typename T1, typename T2, typename T3>
-    inline void computeAgolGBasis (
+    inline void computeAgolGBasis_ (
         MatrixBase<T1> const & u, 
         MatrixBase<T2> const & g,
         MatrixBase<T3> const & DgDu
@@ -150,7 +150,7 @@ namespace limbdark {
 
     */
     template <class T>
-    inline void computeAgolGBasis (
+    inline void computeAgolGBasis_ (
         const Matrix<T>& u, 
         Matrix<T>& g,
         Matrix<T>& DgDu
@@ -158,7 +158,7 @@ namespace limbdark {
         int lmax = u.rows() - 1;
         int ncol = u.cols();
         for (int n = 0; n < ncol; ++n)
-            computeAgolGBasis(u.col(n), g.col(n), 
+            computeAgolGBasis_(u.col(n), g.col(n), 
                      DgDu.block(n * lmax, 0, lmax, lmax + 1));
     }
 

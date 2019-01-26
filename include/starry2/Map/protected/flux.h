@@ -1,95 +1,9 @@
-// --------------------------
-// ------- Intensity --------
-// --------------------------
-
-
 /**
-Evaluate the map at a given (theta, x, y) coordinate.
+Compute the flux. Internal method.
 
 */
-template <class S>
 template <typename T1>
-inline void Map<S>::computeIntensity_(
-    const Scalar& theta,
-    const Scalar& x_,
-    const Scalar& y_,
-    MatrixBase<T1> const & intensity
-) {
-    // Shape checks
-    CHECK_SHAPE(intensity, 1, nflx);
-
-    // Check if outside the sphere
-    if (x_ * x_ + y_ * y_ > 1.0) {
-        MBCAST(intensity, T1).setConstant(NAN);
-        return;
-    }
-
-    // Rotate the map into view
-    rotateIntoCache(theta);
-
-    // Change basis to polynomials
-    cache.A1Ry = B.A1 * cache.Ry;
-
-    // Apply limb darkening
-    computeDegreeU();
-    if (u_deg > 0) {
-        limbDarken(cache.A1Ry, cache.pupy);
-        cache.A1Ry = cache.pupy;
-    }
-
-    // Compute the polynomial basis
-    B.computePolyBasis(x_, y_, cache.pT);
-
-    // Dot the coefficients in to our polynomial map
-    MBCAST(intensity, T1) = cache.pT * cache.A1Ry;
-}
-
-/**
-Render the visible map on a square cartesian grid at given
-resolution. 
-
-*/
-template <class S>
-template <typename T1>
-inline void Map<S>::renderMap_(
-    const Scalar& theta,
-    int res,
-    MatrixBase<T1> const & intensity
-) {
-    // Shape checks
-    CHECK_SHAPE(intensity, res * res, nflx);
-
-    // Compute the pixelization matrix
-    computeP(res);
-
-    // Rotate the map into view
-    rotateIntoCache(theta);
-
-    // Change basis to polynomials
-    cache.A1Ry = B.A1 * cache.Ry;
-
-    // Apply limb darkening
-    computeDegreeU();
-    if (u_deg > 0) {
-        limbDarken(cache.A1Ry, cache.pupy);
-        cache.A1Ry = cache.pupy;
-    }
-
-    // Apply the basis transform
-    MBCAST(intensity, T1) = cache.P * cache.A1Ry;
-}
-
-// --------------------------
-// ---------- Flux ----------
-// --------------------------
-
-
-/**
-
-*/
-template <class S>
-template <typename T1>
-inline void Map<S>::computeFlux_(
+inline void computeFlux_(
     const Scalar& theta, 
     const Scalar& xo, 
     const Scalar& yo, 
@@ -100,8 +14,8 @@ inline void Map<S>::computeFlux_(
     CHECK_SHAPE(flux, 1, nflx);
 
     // Figure out the degree of the map
-    computeDegreeU();
-    computeDegreeY();
+    computeDegreeU_();
+    computeDegreeY_();
 
     // Impact parameter
     Scalar b = sqrt(xo * xo + yo * yo);
@@ -114,17 +28,20 @@ inline void Map<S>::computeFlux_(
 
     // Compute the flux
     if (y_deg == 0) {
-        computeFluxLD(b, ro, flux);
+        computeFluxLD_(b, ro, flux);
     } else if (u_deg == 0) {
-        computeFluxYlm(theta, xo, yo, b, ro, flux);
+        computeFluxYlm_(theta, xo, yo, b, ro, flux);
     } else {
-        computeFluxYlmLD(theta, xo, yo, b, ro, flux);
+        computeFluxYlmLD_(theta, xo, yo, b, ro, flux);
     }
 }
 
-template <class S>
+/**
+Compute the flux for a limb-darkened map. Internal method.
+
+*/
 template <typename T1>
-inline void Map<S>::computeFluxLD(
+inline void computeFluxLD_(
     const Scalar& b, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux
@@ -134,7 +51,7 @@ inline void Map<S>::computeFluxLD(
 
         // Easy: the disk-integrated intensity
         // is just the Y_{0,0} coefficient
-        MBCAST(flux, T1) = contract(y.row(0));
+        MBCAST(flux, T1) = contract_(y.row(0));
 
     // Occultation
     } else {
@@ -143,10 +60,10 @@ inline void Map<S>::computeFluxLD(
         L.compute(b, ro);
 
         // Compute the Agol `g` basis
-        computeAgolGBasis();
+        computeAgolGBasis_();
 
         // Normalize by y00
-        UCoeffType norm = contract(y.row(0));
+        UCoeffType norm = contract_(y.row(0));
 
         // Dot the integral solution in, and we're done!
         MBCAST(flux, T1) = (L.sT * cache.g).cwiseProduct(norm);
@@ -154,9 +71,12 @@ inline void Map<S>::computeFluxLD(
     }
 }
 
-template <class S>
+/**
+Compute the flux for a spherical harmonic map. Internal method.
+
+*/
 template <typename T1>
-inline void Map<S>::computeFluxYlm(
+inline void computeFluxYlm_(
     const Scalar& theta,
     const Scalar& xo,
     const Scalar& yo,  
@@ -165,7 +85,7 @@ inline void Map<S>::computeFluxYlm(
     MatrixBase<T1> const & flux
 ) {
     // Rotate the map into view
-    rotateIntoCache(theta);
+    rotateIntoCache_(theta);
 
     // No occultation
     if ((b >= 1 + ro) || (ro == 0.0)) {
@@ -192,9 +112,12 @@ inline void Map<S>::computeFluxYlm(
     }
 }
 
-template <class S>
+/**
+Compute the flux for a limb-darkened spherical harmonic map. Internal method.
+
+*/
 template <typename T1>
-inline void Map<S>::computeFluxYlmLD(
+inline void computeFluxYlmLD_(
     const Scalar& theta,
     const Scalar& xo,
     const Scalar& yo,  
@@ -203,7 +126,7 @@ inline void Map<S>::computeFluxYlmLD(
     MatrixBase<T1> const & flux
 ) {
     // Rotate the map into view
-    rotateIntoCache(theta);
+    rotateIntoCache_(theta);
 
     // No occultation
     if ((b >= 1 + ro) || (ro == 0.0)) {
@@ -212,7 +135,7 @@ inline void Map<S>::computeFluxYlmLD(
         cache.A1Ry = B.A1 * cache.Ry;
 
         // Apply limb darkening
-        limbDarken(cache.A1Ry, cache.pupy);
+        limbDarken_(cache.A1Ry, cache.pupy);
 
         // Dot the rotation solution vector in
         MBCAST(flux, T1) = B.rT * cache.pupy;
@@ -234,7 +157,7 @@ inline void Map<S>::computeFluxYlmLD(
         }
 
         // Apply limb darkening
-        limbDarken(cache.A1Ry, cache.pupy);
+        limbDarken_(cache.A1Ry, cache.pupy);
 
         // Transform to the Greens basis and dot the solution in
         MBCAST(flux, T1) = G.sT * B.A2 * cache.pupy;
@@ -242,15 +165,13 @@ inline void Map<S>::computeFluxYlmLD(
     }
 }
 
-// --------------------------
-// ---- Flux + gradients ----
-// --------------------------
+/**
+Compute the flux and the gradient. Internal method.
 
-
-template <class S>
+*/
 template <typename T1, typename T2, typename T3, typename T4, 
           typename T5, typename T6, typename T7, typename T8>
-inline void Map<S>::computeFlux_(
+inline void computeFlux_(
     const Scalar& theta, 
     const Scalar& xo, 
     const Scalar& yo, 
@@ -275,8 +196,8 @@ inline void Map<S>::computeFlux_(
     CHECK_COLS(Du, ncolu);
 
     // Figure out the degree of the map
-    computeDegreeU();
-    computeDegreeY();
+    computeDegreeU_();
+    computeDegreeY_();
 
     // Impact parameter
     Scalar b = sqrt(xo * xo + yo * yo);
@@ -297,24 +218,27 @@ inline void Map<S>::computeFlux_(
     // Compute the flux
     if (y_deg == 0) {
         CHECK_ROWS(Du, lmax + STARRY_DFDU_DELTA);
-        computeFluxLD(xo, yo, b, ro, flux, Dt, 
+        computeFluxLD_(xo, yo, b, ro, flux, Dt, 
                       Dtheta, Dxo, Dyo, Dro, Dy, Du);
     } else if (u_deg == 0) {
         CHECK_ROWS(Dy, N);
-        computeFluxYlm(theta, xo, yo, b, ro, flux, Dt, 
+        computeFluxYlm_(theta, xo, yo, b, ro, flux, Dt, 
                        Dtheta, Dxo, Dyo, Dro, Dy, Du);
     } else {
         CHECK_ROWS(Dy, N);
         CHECK_ROWS(Du, lmax + STARRY_DFDU_DELTA);
-        computeFluxYlmLD(theta, xo, yo, b, ro, flux, Dt, 
+        computeFluxYlmLD_(theta, xo, yo, b, ro, flux, Dt, 
                          Dtheta, Dxo, Dyo, Dro, Dy, Du);
     }
 }
 
-template <class S>
+/**
+Compute the flux and the gradient for a limb-darkened map. Internal method.
+
+*/
 template <typename T1, typename T2, typename T3, typename T4, 
           typename T5, typename T6, typename T7, typename T8>
-inline void Map<S>::computeFluxLD(
+inline void computeFluxLD_(
     const Scalar& xo, 
     const Scalar& yo, 
     const Scalar& b, 
@@ -340,14 +264,14 @@ inline void Map<S>::computeFluxLD(
         MBCAST(Du, T8).setZero();
 
         // dF / Dy
-        computeDfDyLDNoOccultation(Dy);
+        computeDfDyLDNoOccultation_(Dy);
 
         // dF / Dt
-        computeDfDtLDNoOccultation(Dt);
+        computeDfDtLDNoOccultation_(Dt);
         
         // The disk-integrated intensity
         // is just the Y_{0,0} coefficient
-        MBCAST(flux, T1) = contract(y.row(0));
+        MBCAST(flux, T1) = contract_(y.row(0));
 
     // Occultation
     } else {
@@ -356,10 +280,10 @@ inline void Map<S>::computeFluxLD(
         L.template compute<true>(b, ro);
 
         // Compute the Agol `g` basis
-        computeAgolGBasis();
+        computeAgolGBasis_();
 
         // Compute the normalization
-        UCoeffType norm = contract(y.row(0));
+        UCoeffType norm = contract_(y.row(0));
 
         // Compute the flux
         UCoeffType flux0 = (L.sT * cache.g);
@@ -388,22 +312,26 @@ inline void Map<S>::computeFluxLD(
         MBCAST(Dro, T6) = Dro.cwiseProduct(norm);
 
         // dF / Dy
-        computeDfDyLDOccultation(Dy, flux0);
+        computeDfDyLDOccultation_(Dy, flux0);
 
         // dF / Dt
-        computeDfDtLDOccultation(Dt, flux0);
+        computeDfDtLDOccultation_(Dt, flux0);
 
         // dF / Du from dF / dc
-        computeDfDuLDOccultation(flux0, Du, norm);
+        computeDfDuLDOccultation_(flux0, Du, norm);
 
     }
 
 }
 
-template <class S>
+/**
+Compute the flux and the gradient for a spherical harmonic map. 
+Internal method.
+
+*/
 template <typename T1, typename T2, typename T3, typename T4, 
           typename T5, typename T6, typename T7, typename T8>
-inline void Map<S>::computeFluxYlm (
+inline void computeFluxYlm_ (
     const Scalar& theta,
     const Scalar& xo,
     const Scalar& yo,  
@@ -421,7 +349,7 @@ inline void Map<S>::computeFluxYlm (
 
     // Rotate the map into view and explicitly
     // compute the Wigner matrices
-    rotateIntoCache(theta, true);
+    rotateIntoCache_(theta, true);
 
     // No occultation
     if ((b >= 1 + ro) || (ro == 0.0)) {
@@ -436,7 +364,7 @@ inline void Map<S>::computeFluxYlm (
         MBCAST(Dro, T6).setZero();
         
         // Compute derivs with respect to y
-        computeDfDyYlmNoOccultation(Dy, theta);
+        computeDfDyYlmNoOccultation_(Dy, theta);
 
         // Note that we do not compute limb darkening 
         // derivatives in this case; see the docs.
@@ -446,7 +374,7 @@ inline void Map<S>::computeFluxYlm (
         MBCAST(flux, T1) = B.rTA1 * cache.Ry;
 
         // Compute the time deriv
-        computeDfDtYlmNoOccultation(Dt);
+        computeDfDtYlmNoOccultation_(Dt);
 
     // Occultation
     } else {
@@ -505,23 +433,27 @@ inline void Map<S>::computeFluxYlm (
         MBCAST(Dro, T5) = G.dsTdr * cache.ARRy;
 
         // Compute derivs with respect to y
-        computeDfDyYlmOccultation(Dy, theta);
+        computeDfDyYlmOccultation_(Dy, theta);
 
         // Note that we do not compute limb darkening 
         // derivatives in this case; see the docs.
         MBCAST(Du, T8).setZero();
 
         // Compute the time deriv
-        computeDfDtYlmOccultation(Dt);
+        computeDfDtYlmOccultation_(Dt);
 
     }
 
 }
 
-template <class S>
+/**
+Compute the flux and the gradient for a limb-darkened spherical harmonic map. 
+Internal method.
+
+*/
 template <typename T1, typename T2, typename T3, typename T4, 
           typename T5, typename T6, typename T7, typename T8>
-inline void Map<S>::computeFluxYlmLD(
+inline void computeFluxYlmLD_(
     const Scalar& theta,
     const Scalar& xo,
     const Scalar& yo,  
@@ -539,7 +471,7 @@ inline void Map<S>::computeFluxYlmLD(
 
     // Rotate the map into view and explicitly
     // compute the Wigner matrices
-    rotateIntoCache(theta, true);
+    rotateIntoCache_(theta, true);
 
     // No occultation
     if ((b >= 1 + ro) || (ro == 0.0)) {
@@ -548,12 +480,12 @@ inline void Map<S>::computeFluxYlmLD(
         cache.A1Ry = B.A1 * cache.Ry;
 
         // Apply limb darkening
-        limbDarkenWithGradient<false>(cache.A1Ry, cache.pupy);
+        limbDarkenWithGradient_<false>(cache.A1Ry, cache.pupy);
         MBCAST(flux, T1) = B.rT * cache.pupy;
 
         // Compute the map derivs
-        computeDfDyYlmLDNoOccultation(Dy);
-        computeDfDuYlmLDNoOccultation(Du);
+        computeDfDyYlmLDNoOccultation_(Dy);
+        computeDfDuYlmLDNoOccultation_(Du);
 
         // The xo, yo, and ro derivs are trivial
         MBCAST(Dxo, T4).setZero();
@@ -561,10 +493,10 @@ inline void Map<S>::computeFluxYlmLD(
         MBCAST(Dro, T6).setZero();
 
         // Compute the theta deriv
-        computeDfDthetaYlmLDNoOccultation(Dtheta);
+        computeDfDthetaYlmLDNoOccultation_(Dtheta);
 
         // Compute the time deriv
-        computeDfDtYlmLDNoOccultation(Dt);
+        computeDfDtYlmLDNoOccultation_(Dt);
 
     // Occultation
     } else {
@@ -589,33 +521,34 @@ inline void Map<S>::computeFluxYlmLD(
 
         // Apply the limb darkening
         cache.A1Ry = B.A1 * cache.RRy;
-        limbDarkenWithGradient<true>(cache.A1Ry, cache.pupy);
+        limbDarkenWithGradient_<true>(cache.A1Ry, cache.pupy);
 
         // The Green's polynomial of the rotated map
         cache.ARRy = B.A2 * cache.pupy;
 
         // Compute derivs with respect to occultor position
-        computeDfDxoyoYlmLDOccultation(Dxo, Dyo, xo_b, yo_b, b);
+        computeDfDxoyoYlmLDOccultation_(Dxo, Dyo, xo_b, yo_b, b);
 
         // Compute the flux 
         // Could also do `cache.sTA2 * cache.pupy`
         MBCAST(flux, T1) = G.sT * cache.ARRy;
     
         // Compute derivs with respect to y
-        computeDfDyYlmLDOccultation(Dy);
+        computeDfDyYlmLDOccultation_(Dy);
 
         // Compute derivs with respect to u
-        computeDfDuYlmLDOccultation(Du);
+        computeDfDuYlmLDOccultation_(Du);
 
         // Occultor radius derivative
         MBCAST(Dro, T5) = G.dsTdr * cache.ARRy;
 
         // Theta derivative
-        computeDfDthetaYlmLDOccultation(Dtheta);
+        computeDfDthetaYlmLDOccultation_(Dtheta);
 
         // Compute the time deriv
-        computeDfDtYlmLDOccultation(Dt, xo_b, yo_b);
+        computeDfDtYlmLDOccultation_(Dt, xo_b, yo_b);
 
     }
 
 }
+

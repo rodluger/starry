@@ -18,12 +18,8 @@ namespace maps {
 
 using namespace utils;
 
-#include "maps/cache.h"
-#include "maps/Map.h"
-#include "maps/io.h"
-#include "maps/oper.h"
-#include "maps/flux.h"
-#include "maps/python_interface.h"
+#include "cache.h"
+#include "Map/Map.h"
 
 } // namespace maps
 } // namespace starry2

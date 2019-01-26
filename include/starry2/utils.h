@@ -349,17 +349,17 @@ inline T root_pi() {
 #endif
 
 //! Machine precision for current type
-template<class T> 
+template <class T> 
 inline T mach_eps(tag<T>) { 
     return std::numeric_limits<T>::epsilon(); 
 }
-template<class T> 
+template <class T> 
 inline Eigen::AutoDiffScalar<T> mach_eps(
     tag<Eigen::AutoDiffScalar<T>>
 ) {
     return std::numeric_limits<typename T::Scalar>::epsilon();
 }
-template<class T> 
+template <class T> 
 inline T mach_eps() { 
     return mach_eps(tag<T>()); 
 }

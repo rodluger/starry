@@ -2,8 +2,7 @@
 Return a human-readable map string.
 
 */
-template <class S>
-std::string Map<S>::info () {
+std::string info () {
     std::ostringstream os;
     if (std::is_same<S, Default<Scalar>>::value) {
         os << "<starry.Map("
@@ -30,8 +29,7 @@ std::string Map<S>::info () {
 Set the full spherical harmonic vector/matrix.
 
 */
-template <class S>
-inline void Map<S>::setY (
+inline void setY (
     const YType& y_
 ) {
     cache.yChanged();
@@ -46,8 +44,7 @@ Set the (l, m) row of the spherical harmonic coefficient *matrix* to an
 array of coefficients.
 
 */
-template <class S>
-inline void Map<S>::setY (
+inline void setY (
     int l, 
     int m, 
     const Ref<const YCoeffType>& coeff
@@ -65,8 +62,7 @@ the entire (l, m) row of the spherical harmonic coefficient matrix, to a
 single value.
 
 */
-template <class S>
-inline void Map<S>::setY (
+inline void setY (
     int l, 
     int m, 
     const Scalar& coeff
@@ -82,8 +78,7 @@ inline void Map<S>::setY (
 Get the full spherical harmonic vector/matrix
 
 */
-template <class S>
-inline const typename S::YType Map<S>::getY () const {
+inline const YType getY () const {
     return y;
 }
 
@@ -91,8 +86,7 @@ inline const typename S::YType Map<S>::getY () const {
 Set the full limb darkening vector/matrix.
 
 */
-template <class S>
-inline void Map<S>::setU (
+inline void setU (
     const UType& u_
 ) 
 {
@@ -108,8 +102,7 @@ Set the `l`th index of the limb darkening coefficient *matrix* to an
 array of coefficients.
 
 */
-template <class S>
-inline void Map<S>::setU (
+inline void setU (
     int l, 
     const Ref<const UCoeffType>& coeff
 ) {
@@ -126,8 +119,7 @@ the entire `l`th row of the limb darkening coefficient matrix, to a
 single value.
 
 */
-template <class S>
-inline void Map<S>::setU (
+inline void setU (
     int l, 
     const Scalar& coeff
 ) {
@@ -142,8 +134,7 @@ inline void Map<S>::setU (
 Get the full limb darkening vector/matrix.
 
 */
-template <class S>
-inline const typename S::UType Map<S>::getU () const {
+inline const UType getU () const {
     return u.block(1, 0, lmax, u.cols());
 }
 
@@ -151,8 +142,7 @@ inline const typename S::UType Map<S>::getU () const {
 Set the axis of rotation for the map.
 
 */
-template <class S>
-inline void Map<S>::setAxis (
+inline void setAxis (
     const UnitVector<Scalar>& axis_
 ) {
     cache.axisChanged();
@@ -168,7 +158,64 @@ inline void Map<S>::setAxis (
 Return a copy of the axis.
 
 */
-template <class S>
-inline const UnitVector<typename S::Scalar> Map<S>::getAxis () const {
+inline const UnitVector<Scalar> getAxis () const {
     return axis;
+}
+
+/**
+Get the (l, m) row of the spherical harmonic coefficient *matrix*
+
+*/
+template <typename U=S, typename=IsSpectralOrTemporal<U>>
+inline YCoeffType getY (
+    int l,
+    int m
+) const {
+    if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
+        return y.row(l * l + l + m);
+    else
+        throw errors::IndexError("Invalid value for `l` and/or `m`.");
+}
+
+/**
+Get the (l, m) index of the spherical harmonic coefficient *vector*
+
+*/
+template <typename U=S, typename=IsDefault<U>>
+inline Scalar getY (
+    int l, 
+    int m
+) const {
+    if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
+        return y(l * l + l + m);
+    else
+        throw errors::IndexError("Invalid value for `l` and/or `m`.");
+}
+
+/**
+Get the `l`th row of the limb darkening coefficient *matrix*
+
+*/
+template <typename U=S, typename=IsSpectral<U>>
+inline UCoeffType getU (
+    int l
+) const {
+    if ((1 <= l) && (l <= lmax))
+        return u.row(l);
+    else
+        throw errors::IndexError("Invalid value for `l`.");
+}
+
+/**
+Get the `l`th index of the limb darkening coefficient *vector*
+
+*/
+template <typename U=S, typename=IsDefaultOrTemporal<U>>
+inline Scalar getU (
+    int l
+) const {
+    if ((1 <= l) && (l <= lmax))
+        return u(l);
+    else
+        throw errors::IndexError("Invalid value for `l`.");
 }

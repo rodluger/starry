@@ -357,10 +357,10 @@ std::function<py::object(
 
             // The y and u derivs have variable shapes
             int ny, nu;
-            if (map.getYDeg_() == 0) {
+            if (map.getYDeg() == 0) {
                 ny = 1;
                 nu = map.lmax + STARRY_DFDU_DELTA;
-            } else if (map.getUDeg_() == 0) {
+            } else if (map.getUDeg() == 0) {
                 ny = map.N;
                 nu = 0;
             } else {

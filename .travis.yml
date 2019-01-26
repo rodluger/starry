@@ -22,8 +22,8 @@ install:
     - export CC=gcc-4.8
     - export CXX=g++-4.8
     - export STARRY_DEBUG=1 # DEBUG
-    # Let's prevent travis time-outs for 40 minutes
     - travis_wait 40 python setup.py develop
+    - travis_wait 40 make -C include/examples
 
 cache:
     directories:
