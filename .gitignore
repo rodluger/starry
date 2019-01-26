@@ -17,6 +17,7 @@ tests/cpp/test
 include/examples/default
 include/examples/spectral
 include/examples/temporal
+scripts/*.pdf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
