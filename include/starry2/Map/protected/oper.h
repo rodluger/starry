@@ -319,7 +319,11 @@ inline IsDefault<U, void> normalizeAgolGBasis_ (
     MatrixBase<T2> const & DgDu
 ) {
     // The total flux is given by `y00 * (s . g)`
-    Scalar norm = Scalar(1.0) / (pi<Scalar>() * (g(0) + 2.0 * g(1) / 3.0));
+    Scalar norm;
+    if (likely(lmax > 0))
+       norm = Scalar(1.0) / (pi<Scalar>() * (g(0) + 2.0 * g(1) / 3.0));
+    else
+        norm = Scalar(1.0) / (pi<Scalar>() * g(0));
     MBCAST(g, T1) = g * norm;
     MBCAST(DgDu, T2) = DgDu * norm;
 }
@@ -335,9 +339,12 @@ inline IsSpectral<U, void> normalizeAgolGBasis_ (
     MatrixBase<T2> const & DgDu
 ) {
     // The total flux is given by `y00 * (s . g)`
+    Scalar norm;
     for (int n = 0; n < ncoly; ++n) {
-        Scalar norm = Scalar(1.0) / 
-                      (pi<Scalar>() * (g(0, n) + 2.0 * g(1, n) / 3.0));
+        if (likely(lmax > 0))
+            norm = Scalar(1.0) / (pi<Scalar>() * (g(0, n) + 2.0 * g(1, n) / 3.0));
+        else
+            norm = Scalar(1.0) / (pi<Scalar>() * g(0, n));
         MBCAST(g, T1).col(n) = g.col(n) * norm;
         MBCAST(DgDu, T2).block(n * lmax, 0, lmax, lmax + 1) = 
             DgDu.block(n * lmax, 0, lmax, lmax + 1) * norm;
@@ -355,7 +362,11 @@ inline IsTemporal<U, void> normalizeAgolGBasis_ (
     MatrixBase<T2> const & DgDu
 ) {
     // The total flux is given by `y00 * (s . c)`
-    Scalar norm = Scalar(1.0) / (pi<Scalar>() * (g(0) + 2.0 * g(1) / 3.0));
+    Scalar norm;
+    if (likely(lmax > 0))
+       norm = Scalar(1.0) / (pi<Scalar>() * (g(0) + 2.0 * g(1) / 3.0));
+    else
+        norm = Scalar(1.0) / (pi<Scalar>() * g(0));
     MBCAST(g, T1) = g * norm;
     MBCAST(DgDu, T2) = DgDu * norm;
 }

@@ -31,15 +31,6 @@ def test_cel_convergence():
 
 
 @pytest.mark.xfail
-def test_spectral_zero_degree():
-    """Spectral maps with lmax=0 are not normalized correctly."""
-    map = starry2.Map(0, nw=2)
-    map[0, 0] = 1
-    flux = map.flux(xo=np.linspace(-1.1, 1.1, 20), yo=0.2, ro=0.1)
-    assert np.isclose(flux[:, 0], flux[:, 1])
-
-
-@pytest.mark.xfail
 def test_small_b():
     """
     Test df/db near b = 0. 
@@ -69,3 +60,15 @@ def test_small_b():
 
     # Compare
     assert(np.max(np.abs(dfdb - dfdb_multi)) < 1.e-11)
+
+
+# -- FIXED -- 
+
+
+@pytest.mark.xfail
+def test_spectral_zero_degree():
+    """Spectral maps with lmax=0 are not normalized correctly."""
+    map = starry2.Map(0, nw=2)
+    map[0, 0] = 1
+    flux = map.flux(xo=np.linspace(-1.1, 1.1, 20), yo=0.2, ro=0.1)
+    assert np.allclose(flux[:, 0], flux[:, 1])
