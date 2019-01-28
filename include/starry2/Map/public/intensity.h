@@ -10,7 +10,7 @@ inline void computeIntensity (
     const Scalar& y_,
     MatrixBase<T1> const & intensity
 ){
-    computeIntensity_(theta, x_, y_, intensity);
+    computeIntensityInternal(theta, x_, y_, intensity);
 }
 
 /**
@@ -26,8 +26,8 @@ inline void computeIntensity (
     const Scalar& y_,
     MatrixBase<T1> const & intensity
 ){
-    computeTaylor_(t);
-    computeIntensity_(theta, x_, y_, intensity);
+    computeTaylor(t);
+    computeIntensityInternal(theta, x_, y_, intensity);
 }
 
 /**
@@ -41,7 +41,7 @@ inline void renderMap (
     int res,
     MatrixBase<T1> const & intensity
 ){
-    renderMap_(theta, res, intensity);
+    renderMapInternal(theta, res, intensity);
 }
 
 /**
@@ -56,6 +56,6 @@ inline void renderMap (
     int res,
     MatrixBase<T1> const & intensity
 ){
-    computeTaylor_(t);
-    renderMap_(theta, res, intensity);
+    computeTaylor(t);
+    renderMapInternal(theta, res, intensity);
 }

@@ -146,9 +146,9 @@ inline void setAxis (
     const UnitVector<Scalar>& axis_
 ) {
     cache.axisChanged();
-    axis(0) = axis_(0);
-    axis(1) = axis_(1);
-    axis(2) = axis_(2);
+    axis(0) = axis(0);
+    axis(1) = axis(1);
+    axis(2) = axis(2);
     axis = axis / sqrt(axis(0) * axis(0) +
                        axis(1) * axis(1) +
                        axis(2) * axis(2));

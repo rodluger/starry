@@ -4,7 +4,7 @@ Internal method.
 
 */
 template <typename T1>
-inline void computeIntensity_(
+inline void computeIntensityInternal (
     const Scalar& theta,
     const Scalar& x_,
     const Scalar& y_,
@@ -20,15 +20,15 @@ inline void computeIntensity_(
     }
 
     // Rotate the map into view
-    rotateIntoCache_(theta);
+    rotateIntoCache(theta);
 
     // Change basis to polynomials
     cache.A1Ry = B.A1 * cache.Ry;
 
     // Apply limb darkening
-    computeDegreeU_();
+    computeDegreeU();
     if (u_deg > 0) {
-        limbDarken_(cache.A1Ry, cache.pupy);
+        limbDarken(cache.A1Ry, cache.pupy);
         cache.A1Ry = cache.pupy;
     }
 
@@ -45,7 +45,7 @@ resolution. Internal method.
 
 */
 template <typename T1>
-inline void renderMap_(
+inline void renderMapInternal (
     const Scalar& theta,
     int res,
     MatrixBase<T1> const & intensity
@@ -54,18 +54,18 @@ inline void renderMap_(
     CHECK_SHAPE(intensity, res * res, nflx);
 
     // Compute the pixelization matrix
-    computeP_(res);
+    computeP(res);
 
     // Rotate the map into view
-    rotateIntoCache_(theta);
+    rotateIntoCache(theta);
 
     // Change basis to polynomials
     cache.A1Ry = B.A1 * cache.Ry;
 
     // Apply limb darkening
-    computeDegreeU_();
+    computeDegreeU();
     if (u_deg > 0) {
-        limbDarken_(cache.A1Ry, cache.pupy);
+        limbDarken(cache.A1Ry, cache.pupy);
         cache.A1Ry = cache.pupy;
     }
 

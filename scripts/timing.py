@@ -19,11 +19,11 @@ t = np.zeros((2, 2, len(lmax_arr))) * np.nan
 e = np.zeros((2, 2, len(lmax_arr))) * np.nan
 
 for i, lmax in tqdm(enumerate(lmax_arr), total=len(lmax_arr)):
-    map = starry.Map(lmax, multi=True, nwav=10)
-    map[:, :] = np.ones(10)
+    map = starry.Map(lmax, multi=True)
+    map[:, :] = 1
     truth = map.flux(xo=xo, yo=0.2, ro=0.1)
-    for version, map in zip([0, 1], [starry.Map(lmax, nwav=10), starry2.Map(lmax, nw=10)]):
-        map[:, :] = np.ones(10)
+    for version, map in zip([0, 1], [starry.Map(lmax), starry2.Map(lmax)]):
+        map[:, :] = 1
         tk = np.zeros(nsamples) * np.nan
         for gradient in [False, True]:
             for k in range(nsamples):

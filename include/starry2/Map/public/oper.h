@@ -14,7 +14,7 @@ inline void reset ()
 
     // Reset limb darkening
     u.setZero(lmax + 1, ncolu);
-    setU0_();
+    setU0();
     u_deg = 0;
 
     // Reset the axis
@@ -28,7 +28,7 @@ harmonic degree of the map.
 */
 inline int getYDeg ()
 {
-    computeDegreeY_();
+    computeDegreeY();
     return y_deg;
 }
 
@@ -39,7 +39,7 @@ degree of the map.
 */
 inline int getUDeg ()
 {
-    computeDegreeU_();
+    computeDegreeU();
     return u_deg;
 }
 
@@ -53,7 +53,7 @@ inline void rotate (
 ) 
 {
     Scalar theta_rad = theta * radian;
-    computeWigner_();
+    computeWigner();
     W.rotate(cos(theta_rad), sin(theta_rad));
     cache.mapRotated();
 }
@@ -111,8 +111,8 @@ inline void addSpot (
     // TODO: Speed this up with a single compound rotation
     Scalar lat_rad = lat * radian;
     Scalar lon_rad = lon * radian;
-    rotateByAxisAngle_(xhat<Scalar>(), cos(lat_rad), -sin(lat_rad), coeff);
-    rotateByAxisAngle_(yhat<Scalar>(), cos(lon_rad), sin(lon_rad), coeff);
+    rotateByAxisAngle(xhat<Scalar>(), cos(lat_rad), -sin(lat_rad), coeff);
+    rotateByAxisAngle(yhat<Scalar>(), cos(lon_rad), sin(lon_rad), coeff);
 
     // Add this to the map
     cache.yChanged();
@@ -128,7 +128,7 @@ inline void random (
     const Vector<Scalar>& power,
     const V& seed
 ) {
-    random_(power, seed, 0);
+    randomInternal(power, seed, 0);
 }
 
 /**
@@ -142,5 +142,5 @@ inline void random (
     const V& seed,
     int col=-1
 ) {
-    random_(power, seed, col);
+    randomInternal(power, seed, col);
 }

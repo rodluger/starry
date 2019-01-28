@@ -2,14 +2,14 @@
 Check if the total degree of the map is valid.
 
 */
-inline void checkDegree_ () 
+inline void checkDegree () 
 {
     if (y_deg + u_deg > lmax) {
         cache.reset();
         y.setZero();
         y_deg = 0;
         u.setZero();
-        setU0_();
+        setU0();
         u_deg = 0;
         throw errors::ValueError("Degree of the limb-darkened "
                                  "map exceeds `lmax`. All "
@@ -18,7 +18,7 @@ inline void checkDegree_ ()
 }
 
 //! Compute the degree of the Ylm map.
-inline void computeDegreeY_ () 
+inline void computeDegreeY () 
 {
     if (cache.compute_degree_y) {
         y_deg = 0;
@@ -29,13 +29,13 @@ inline void computeDegreeY_ ()
                 break;
             }
         }
-        checkDegree_();
+        checkDegree();
         cache.compute_degree_y = false;
     }
 }
 
 //! Compute the degree of the Ul map.
-inline void computeDegreeU_ () 
+inline void computeDegreeU () 
 {
     if (cache.compute_degree_u) {
         u_deg = 0;
@@ -45,13 +45,13 @@ inline void computeDegreeU_ ()
                 break;
             }
         }
-        checkDegree_();
+        checkDegree();
         cache.compute_degree_u = false;
     }
 }
 
 //! Compute the change of basis matrix from Ylms to pixels
-inline void computeP_ (int res) {
+inline void computeP (int res) {
     if (cache.compute_P || (cache.res != res)) {
         B.computePolyMatrix(res, cache.P);
         cache.res = res;
@@ -60,7 +60,7 @@ inline void computeP_ (int res) {
 }
 
 //! Compute the zeta frame transform for Ylm rotations
-inline void computeWigner_ () {
+inline void computeWigner () {
     if (cache.compute_Zeta) {
         W.updateZeta();
         W.updateYZeta();
@@ -78,10 +78,10 @@ These are both normalized such that the total
 unobscured flux is **unity**.
 
 */
-inline void computeAgolGBasis_ () {
+inline void computeAgolGBasis () {
     if (cache.compute_g) {
-        limbdark::computeAgolGBasis_(u, cache.g, cache.DgDu);
-        normalizeAgolGBasis_(cache.g, cache.DgDu);
+        limbdark::computeAgolGBasis(u, cache.g, cache.DgDu);
+        normalizeAgolGBasis(cache.g, cache.DgDu);
         cache.compute_g = false;
     }
 }
@@ -93,7 +93,7 @@ rotate all columns of the map, otherwise
 rotate only the column with index `col`.
 
 */
-inline void rotateByAxisAngle_ (
+inline void rotateByAxisAngle (
     const UnitVector<Scalar>& axis_,
     const Scalar& costheta,
     const Scalar& sintheta,
@@ -103,7 +103,7 @@ inline void rotateByAxisAngle_ (
     Scalar tol = 10 * mach_eps<Scalar>();
     Scalar cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
     rotation::axisAngleToEuler(
-        axis_(0), axis_(1), costheta, sintheta, tol,
+        axis(0), axis(1), costheta, sintheta, tol,
         cosalpha, sinalpha, cosbeta, sinbeta, 
         cosgamma, singamma);
     rotation::rotar(
@@ -129,7 +129,7 @@ Generate a random isotropic map with a given power spectrum.
 
 */
 template <class V>
-inline void random_ (
+inline void randomInternal (
     const Vector<Scalar>& power,
     const V& seed,
     int col
@@ -171,7 +171,7 @@ Static specialization (does nothing).
 
 */
 template <typename U=S>
-inline IsDefaultOrSpectral<U, void> computeTaylor_ (
+inline IsDefaultOrSpectral<U, void> computeTaylor (
     const Scalar & t
 ) {
 }
@@ -182,7 +182,7 @@ Temporal specialization.
 
 */
 template <typename U=S>
-inline IsTemporal<U, void> computeTaylor_ (
+inline IsTemporal<U, void> computeTaylor (
     const Scalar & t
 ) {
     if (t != cache.taylort) {
@@ -199,7 +199,7 @@ original map.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectral<U, MatrixBase<T1>&> contract_ (
+inline IsDefaultOrSpectral<U, MatrixBase<T1>&> contract (
     MatrixBase<T1> const & mat
 ) {
     return MBCAST(mat, T1);
@@ -211,7 +211,7 @@ Taylor expansion basis.
 
 */
 template <typename U=S>
-inline IsTemporal<U, Vector<Scalar>> contract_ (
+inline IsTemporal<U, Vector<Scalar>> contract (
     const Matrix<Scalar> & mat
 ) {
     return mat * taylor;
@@ -224,7 +224,7 @@ I(mu = 0) / I0 = 1.
 
 */
 template <typename U=S>
-inline IsDefaultOrSpectral<U, void> setU0_ () {
+inline IsDefaultOrSpectral<U, void> setU0 () {
     u.row(0).setConstant(-1.0);
 }
 
@@ -235,7 +235,7 @@ zero.
 
 */
 template <typename U=S>
-inline IsTemporal<U, void> setU0_ () {
+inline IsTemporal<U, void> setU0 () {
     u.row(0).setZero();
     u(0, 0) = -1.0;
 }
@@ -248,13 +248,13 @@ their derivatives. Static map specialization.
 
 */
 template <typename U=S>
-inline IsDefaultOrSpectral<U, void> rotateIntoCache_ (
+inline IsDefaultOrSpectral<U, void> rotateIntoCache (
     const Scalar& theta,
     bool compute_matrices=false
 ) 
 {
     Scalar theta_rad = theta * radian;
-    computeWigner_();
+    computeWigner();
     if ((!compute_matrices) && (cache.theta != theta)) {
         W.rotate(cos(theta_rad), sin(theta_rad), cache.Ry);
         cache.theta = theta;
@@ -278,19 +278,19 @@ their derivatives. Temporal map specialization.
 
 */
 template <typename U=S>
-inline IsTemporal<U, void> rotateIntoCache_ (
+inline IsTemporal<U, void> rotateIntoCache (
     const Scalar& theta,
     bool compute_matrices=false
 ) 
 {    
     Scalar theta_rad = theta * radian;
-    computeWigner_();
+    computeWigner();
     if (!compute_matrices) {
         if (cache.theta != theta) {
             W.rotate(cos(theta_rad), sin(theta_rad), cache.RY);
             cache.theta = theta;
         }
-        cache.Ry = contract_(cache.RY);
+        cache.Ry = contract(cache.RY);
     } else { 
         if (cache.theta_with_grad != theta) {
             W.compute(cos(theta_rad), sin(theta_rad));
@@ -300,10 +300,10 @@ inline IsTemporal<U, void> rotateIntoCache_ (
             }
             cache.theta_with_grad = theta;
         }
-        cache.Ry = contract_(cache.RY);
+        cache.Ry = contract(cache.RY);
         for (int l = 0; l < lmax + 1; ++l) {
             cache.DRDthetay.block(l * l, 0, 2 * l + 1, nflx) =
-                contract_(W.DRDtheta[l] * y.block(l * l, 0, 2 * l + 1, ncoly));
+                contract(W.DRDtheta[l] * y.block(l * l, 0, 2 * l + 1, ncoly));
         }
     }
 }
@@ -314,7 +314,7 @@ Default map specialization.
 
 */
 template <typename U=S, typename T1, typename T2>
-inline IsDefault<U, void> normalizeAgolGBasis_ (
+inline IsDefault<U, void> normalizeAgolGBasis (
     MatrixBase<T1> const & g,
     MatrixBase<T2> const & DgDu
 ) {
@@ -334,7 +334,7 @@ Spectral map specialization.
 
 */
 template <typename U=S, typename T1, typename T2>
-inline IsSpectral<U, void> normalizeAgolGBasis_ (
+inline IsSpectral<U, void> normalizeAgolGBasis (
     MatrixBase<T1> const & g,
     MatrixBase<T2> const & DgDu
 ) {
@@ -357,7 +357,7 @@ Temporal map specialization.
 
 */
 template <typename U=S, typename T1, typename T2>
-inline IsTemporal<U, void> normalizeAgolGBasis_ (
+inline IsTemporal<U, void> normalizeAgolGBasis (
     MatrixBase<T1> const & g,
     MatrixBase<T2> const & DgDu
 ) {
@@ -377,7 +377,7 @@ propagate gradients. Default specialization.
 
 */
 template <bool GRADIENT=false, typename U=S>
-inline IsDefault<U, void> computeLDPolynomial_ () {
+inline IsDefault<U, void> computeLDPolynomial () {
     if (!GRADIENT) {
         if (cache.compute_p) {
             UType tmp = B.U1 * u;
@@ -406,7 +406,7 @@ propagate gradients. Spectral specialization.
 
 */
 template <bool GRADIENT=false, typename U=S>
-inline IsSpectral<U, void> computeLDPolynomial_ () {
+inline IsSpectral<U, void> computeLDPolynomial () {
     if (!GRADIENT) {
         if (cache.compute_p) {
             UType tmp = B.U1 * u;
@@ -438,11 +438,11 @@ propagate gradients. Temporal specialization.
 
 */
 template <bool GRADIENT=false, typename U=S>
-inline IsTemporal<U, void> computeLDPolynomial_ () {
+inline IsTemporal<U, void> computeLDPolynomial () {
     if (!GRADIENT) {
         if (cache.compute_p) {
             UType tmp = B.U1 * u;
-            Scalar norm = pi<Scalar>() * contract_(y.row(0))(0) / B.rT.dot(tmp);
+            Scalar norm = pi<Scalar>() * contract(y.row(0))(0) / B.rT.dot(tmp);
             cache.p = tmp * norm;
             cache.compute_p = false;
         }
@@ -451,7 +451,7 @@ inline IsTemporal<U, void> computeLDPolynomial_ () {
             UType tmp = B.U1 * u;
             Scalar rTU1u = B.rT.dot(tmp);
             Scalar norm0 = pi<Scalar>() / rTU1u;
-            Scalar norm = norm0 * contract_(y.row(0))(0);
+            Scalar norm = norm0 * contract(y.row(0))(0);
             RowVector<Scalar> dnormdu = -(norm / rTU1u) * B.rTU1;
             cache.p = tmp * norm;
             cache.DpuDu = B.U1 * norm + tmp * dnormdu;
@@ -466,11 +466,11 @@ Limb-darken a polynomial map. Static specialization.
 
 */
 template <typename U=S>
-inline IsDefaultOrSpectral<U, void> limbDarken_ (
+inline IsDefaultOrSpectral<U, void> limbDarken (
     const YType& poly, 
     YType& poly_ld
 ) {
-    computeLDPolynomial_();
+    computeLDPolynomial();
     basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld);
 }
 
@@ -480,11 +480,11 @@ here we limb-darken the *contracted* map.
 
 */
 template <typename U=S>
-inline IsTemporal<U, void> limbDarken_ (
+inline IsTemporal<U, void> limbDarken (
     const Vector<Scalar>& poly, 
     Vector<Scalar>& poly_ld
 ) {
-    computeLDPolynomial_();
+    computeLDPolynomial();
     basis::polymul(y_deg, poly, u_deg, cache.p, lmax, poly_ld);
 }
 
@@ -496,12 +496,12 @@ Default specialization.
 
 */
 template <bool OCCULTATION=false, typename U=S>
-inline IsDefault<U, void> limbDarkenWithGradient_ (
+inline IsDefault<U, void> limbDarkenWithGradient (
     const YType& poly, 
     YType& poly_ld
 ) {
     // Compute the limb darkening polynomial
-    computeLDPolynomial_<true>();
+    computeLDPolynomial<true>();
 
     // Multiply the polynomials
     if (OCCULTATION)
@@ -540,12 +540,12 @@ Spectral specialization.
 
 */
 template <bool OCCULTATION=false, typename U=S>
-inline IsSpectral<U, void> limbDarkenWithGradient_ (
+inline IsSpectral<U, void> limbDarkenWithGradient (
     const YType& poly, 
     YType& poly_ld
 ) {
     // Compute the limb darkening polynomial
-    computeLDPolynomial_<true>();
+    computeLDPolynomial<true>();
 
     // Multiply the polynomials
     if (OCCULTATION)
@@ -592,12 +592,12 @@ Temporal specialization.
 
 */
 template <bool OCCULTATION=false, typename U=S>
-inline IsTemporal<U, void> limbDarkenWithGradient_ (
+inline IsTemporal<U, void> limbDarkenWithGradient (
     const Vector<Scalar>& poly, 
     Vector<Scalar>& poly_ld
 ) {
     // Compute the limb darkening polynomial
-    computeLDPolynomial_<true>();
+    computeLDPolynomial<true>();
 
     // Multiply the polynomials
     if (OCCULTATION)

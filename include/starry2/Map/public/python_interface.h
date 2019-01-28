@@ -10,7 +10,7 @@ inline py::object show (
     std::string cmap="plasma",
     size_t res=300
 ) {
-    return show_(0, theta, cmap, res);
+    return showInternal(0, theta, cmap, res);
 }
 
 /**
@@ -26,7 +26,7 @@ inline py::object show (
     std::string gif=std::string()
 ) {
     Vector<Scalar> t = Vector<Scalar>::Zero(theta.size());
-    return show_(t, theta, cmap, res, interval, gif);
+    return showInternal(t, theta, cmap, res, interval, gif);
 }
 
 /**
@@ -42,7 +42,7 @@ inline py::object show (
     int interval=75,
     std::string gif=std::string()
 ) {
-    return show_(t, theta, cmap, res, interval, gif);
+    return showInternal(t, theta, cmap, res, interval, gif);
 }
 
 /**
@@ -58,7 +58,7 @@ inline py::object show (
     int interval=75,
     std::string gif=std::string()
 ) {
-    return show_(t, theta, cmap, res, interval, gif);
+    return showInternal(t, theta, cmap, res, interval, gif);
 }
 
 /**
@@ -72,7 +72,7 @@ void loadImage (
     bool normalize=true,
     int sampling_factor=8
 ) {
-    loadImage_(image, l, 0, normalize, sampling_factor);
+    loadImageInternal(image, l, 0, normalize, sampling_factor);
 }
 
 /**
@@ -87,7 +87,7 @@ void loadImage (
     bool normalize=true,
     int sampling_factor=8
 ) {
-    loadImage_(image, l, col, normalize, sampling_factor);
+    loadImageInternal(image, l, col, normalize, sampling_factor);
 }
 
 #endif

@@ -16,7 +16,7 @@ for more info.
 
 */
 template <typename U=S, typename T1, typename T2>
-inline IsDefaultOrTemporal<U, void> computeDfDuLDOccultation_ (
+inline IsDefaultOrTemporal<U, void> computeDfDuLDOccultation (
     MatrixBase<T1> const & flux,
     MatrixBase<T2> const & Du,
     const UCoeffType & norm
@@ -46,7 +46,7 @@ See note above.
 
 */
 template <typename U=S, typename T1, typename T2>
-inline IsSpectral<U, void> computeDfDuLDOccultation_ (
+inline IsSpectral<U, void> computeDfDuLDOccultation (
     MatrixBase<T1> const & flux,
     MatrixBase<T2> const & Du,
     const UCoeffType & norm
@@ -80,7 +80,7 @@ Static specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectral<U, void> computeDfDtYlmNoOccultation_ (
+inline IsDefaultOrSpectral<U, void> computeDfDtYlmNoOccultation (
     MatrixBase<T1> const & Dt
 ){
 }
@@ -92,7 +92,7 @@ Temporal specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDtYlmNoOccultation_ (
+inline IsTemporal<U, void> computeDfDtYlmNoOccultation (
     MatrixBase<T1> const & Dt
 ){
     MBCAST(Dt, T1) = (B.rTA1 * cache.RY).block(0, 1, 1, ncoly - 1) 
@@ -106,7 +106,7 @@ Static specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectral<U, void> computeDfDtLDNoOccultation_ (
+inline IsDefaultOrSpectral<U, void> computeDfDtLDNoOccultation (
     MatrixBase<T1> const & Dt
 ){
 }
@@ -118,7 +118,7 @@ Temporal specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDtLDNoOccultation_ (
+inline IsTemporal<U, void> computeDfDtLDNoOccultation (
     MatrixBase<T1> const & Dt
 ){
     MBCAST(Dt, T1) = y.block(0, 1, 1, ncoly - 1) * taylor.segment(0, ncoly - 1);
@@ -131,7 +131,7 @@ Static specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectral<U, void> computeDfDtLDOccultation_ (
+inline IsDefaultOrSpectral<U, void> computeDfDtLDOccultation (
     MatrixBase<T1> const & Dt,
     const UCoeffType & flux0
 ){
@@ -144,7 +144,7 @@ Temporal specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDtLDOccultation_ (
+inline IsTemporal<U, void> computeDfDtLDOccultation (
     MatrixBase<T1> const & Dt,
     const UCoeffType & flux0
 ){
@@ -166,7 +166,7 @@ efficiency. See the docs for more information.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectral<U, void> computeDfDyLDNoOccultation_ (
+inline IsDefaultOrSpectral<U, void> computeDfDyLDNoOccultation (
     MatrixBase<T1> const & Dy
 ){
     MBCAST(Dy, T1).setZero();
@@ -186,7 +186,7 @@ efficiency. See the docs for more information.
 
 */
 template <typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDyLDNoOccultation_ (
+inline IsTemporal<U, void> computeDfDyLDNoOccultation (
     MatrixBase<T1> const & Dy
 ){
     MBCAST(Dy, T1).setZero();
@@ -206,7 +206,7 @@ efficiency. See the docs for more information.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectral<U, void> computeDfDyLDOccultation_ (
+inline IsDefaultOrSpectral<U, void> computeDfDyLDOccultation (
     MatrixBase<T1> const & Dy, 
     const UCoeffType & flux0
 ){
@@ -227,7 +227,7 @@ efficiency. See the docs for more information.
 
 */
 template <typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDyLDOccultation_ (
+inline IsTemporal<U, void> computeDfDyLDOccultation (
     MatrixBase<T1> const & Dy, 
     const UCoeffType & flux0
 ){
@@ -241,7 +241,7 @@ when there is no occultation. Default specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsDefault<U, void> computeDfDyYlmNoOccultation_ (
+inline IsDefault<U, void> computeDfDyYlmNoOccultation (
     MatrixBase<T1> const & Dy,
     const Scalar& theta
 ){
@@ -260,7 +260,7 @@ when there is no occultation. Spectral specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsSpectral<U, void> computeDfDyYlmNoOccultation_ (
+inline IsSpectral<U, void> computeDfDyYlmNoOccultation (
     MatrixBase<T1> const & Dy,
     const Scalar& theta
 ){
@@ -280,7 +280,7 @@ when there is no occultation. Temporal specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDyYlmNoOccultation_ (
+inline IsTemporal<U, void> computeDfDyYlmNoOccultation (
     MatrixBase<T1> const & Dy,
     const Scalar& theta
 ){
@@ -301,7 +301,7 @@ Static specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectral<U, void> computeDfDyYlmLDNoOccultation_ (
+inline IsDefaultOrSpectral<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & Dy
 ) {
     MBCAST(Dy, T1) = cache.vTDpupyDy;
@@ -314,7 +314,7 @@ Temporal specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDyYlmLDNoOccultation_ (
+inline IsTemporal<U, void> computeDfDyYlmLDNoOccultation (
     MatrixBase<T1> const & Dy
 ){
     MBCAST(Dy, T1) = cache.vTDpupyDy.array().rowwise() * 
@@ -327,7 +327,7 @@ coefficients for a limb-darkened spherical harmonic map.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectralOrTemporal<U, void> computeDfDuYlmLDNoOccultation_ (
+inline IsDefaultOrSpectralOrTemporal<U, void> computeDfDuYlmLDNoOccultation (
     MatrixBase<T1> const & Du
 ) {
     MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, ncolu);
@@ -340,7 +340,7 @@ Single-wavelength specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrTemporal<U, void> computeDfDthetaYlmLDNoOccultation_ (
+inline IsDefaultOrTemporal<U, void> computeDfDthetaYlmLDNoOccultation (
     MatrixBase<T1> const & Dtheta
 ){
     MBCAST(Dtheta, T1) = cache.vTDpupyDpy * (B.A1 * cache.DRDthetay);
@@ -354,7 +354,7 @@ Spectral specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsSpectral<U, void> computeDfDthetaYlmLDNoOccultation_ (
+inline IsSpectral<U, void> computeDfDthetaYlmLDNoOccultation (
     MatrixBase<T1> const & Dtheta
 ){
     // This is a little nasty because `DpupyDpy` is a tensor
@@ -373,7 +373,7 @@ Static specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectral<U, void> computeDfDtYlmLDNoOccultation_ (
+inline IsDefaultOrSpectral<U, void> computeDfDtYlmLDNoOccultation (
     MatrixBase<T1> const & Dt
 ){
 }
@@ -386,13 +386,13 @@ Temporal specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDtYlmLDNoOccultation_ (
+inline IsTemporal<U, void> computeDfDtYlmLDNoOccultation (
     MatrixBase<T1> const & Dt
 ){
     MBCAST(Dt, T1).setZero();
     cache.A1RY = B.A1 * cache.RY;
     for (int i = 0; i < ncoly - 1; ++i) {
-        limbDarken_(cache.A1RY.col(i + 1), cache.pupy);
+        limbDarken(cache.A1RY.col(i + 1), cache.pupy);
         MBCAST(Dt, T1) += OneByOne<Scalar>(B.rT * cache.pupy) * taylor(i);
     }
 }
@@ -404,7 +404,7 @@ Static specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectral<U, void> computeDfDtYlmOccultation_ (
+inline IsDefaultOrSpectral<U, void> computeDfDtYlmOccultation (
     MatrixBase<T1> const & Dt
 ){
 }
@@ -416,7 +416,7 @@ Temporal specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDtYlmOccultation_ (
+inline IsTemporal<U, void> computeDfDtYlmOccultation (
     MatrixBase<T1> const & Dt
 ){
     MBCAST(Dt, T1) = (cache.sTAR * cache.RY)
@@ -431,7 +431,7 @@ Default specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsDefault<U, void> computeDfDyYlmOccultation_ (
+inline IsDefault<U, void> computeDfDyYlmOccultation (
     MatrixBase<T1> const & Dy,
     const Scalar& theta
 ) {
@@ -451,7 +451,7 @@ Spectral specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsSpectral<U, void> computeDfDyYlmOccultation_ (
+inline IsSpectral<U, void> computeDfDyYlmOccultation (
     MatrixBase<T1> const & Dy,
     const Scalar& theta
 ) {
@@ -472,7 +472,7 @@ Temporal specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDyYlmOccultation_ (
+inline IsTemporal<U, void> computeDfDyYlmOccultation (
     MatrixBase<T1> const & Dy,
     const Scalar& theta
 ){
@@ -493,7 +493,7 @@ Single-wavelength specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrTemporal<U, void> computeDfDthetaYlmLDOccultation_ (
+inline IsDefaultOrTemporal<U, void> computeDfDthetaYlmLDOccultation (
     MatrixBase<T1> const & Dtheta
 ){
     MBCAST(Dtheta, T1) = cache.vTDpupyDpyA1R * cache.DRDthetay;
@@ -507,7 +507,7 @@ Spectral specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsSpectral<U, void> computeDfDthetaYlmLDOccultation_ (
+inline IsSpectral<U, void> computeDfDthetaYlmLDOccultation (
     MatrixBase<T1> const & Dtheta
 ){
     // This is a little nasty because `DpupyDpy` is a tensor
@@ -524,7 +524,7 @@ coefficients for a limb-darkened spherical harmonic map.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectralOrTemporal<U, void> computeDfDuYlmLDOccultation_ (
+inline IsDefaultOrSpectralOrTemporal<U, void> computeDfDuYlmLDOccultation (
     MatrixBase<T1> const & Du
 ) {
     MBCAST(Du, T1) = cache.vTDpupyDu.block(1, 0, lmax, ncolu);
@@ -537,7 +537,7 @@ Static specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectral<U, void> computeDfDyYlmLDOccultation_ (
+inline IsDefaultOrSpectral<U, void> computeDfDyYlmLDOccultation (
     MatrixBase<T1> const & Dy
 ) {
     MBCAST(Dy, T1) = cache.vTDpupyDy;
@@ -550,7 +550,7 @@ Temporal specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDyYlmLDOccultation_ (
+inline IsTemporal<U, void> computeDfDyYlmLDOccultation (
     MatrixBase<T1> const & Dy
 ){
     MBCAST(Dy, T1) = cache.vTDpupyDy.array().rowwise() * 
@@ -565,7 +565,7 @@ Static specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsDefaultOrSpectral<U, void> computeDfDtYlmLDOccultation_ (
+inline IsDefaultOrSpectral<U, void> computeDfDtYlmLDOccultation (
     MatrixBase<T1> const & Dt,
     const Scalar& xo_b,
     const Scalar& yo_b
@@ -580,7 +580,7 @@ Temporal specialization.
 
 */
 template <typename U=S, typename T1>
-inline IsTemporal<U, void> computeDfDtYlmLDOccultation_ (
+inline IsTemporal<U, void> computeDfDtYlmLDOccultation (
     MatrixBase<T1> const & Dt,
     const Scalar& xo_b,
     const Scalar& yo_b
@@ -589,7 +589,7 @@ inline IsTemporal<U, void> computeDfDtYlmLDOccultation_ (
     for (int i = 0; i < ncoly - 1; ++i) {
         W.rotateAboutZ(yo_b, xo_b, cache.RY.col(i + 1), cache.RRy);
         cache.A1Ry = B.A1 * cache.RRy;
-        limbDarken_(cache.A1Ry, cache.pupy);
+        limbDarken(cache.A1Ry, cache.pupy);
         MBCAST(Dt, T1) += OneByOne<Scalar>(cache.sTA2 * cache.pupy) * taylor(i);
     }
 }
@@ -601,7 +601,7 @@ Single-column specialization.
 
 */
 template <typename U=S, typename T1, typename T2>
-inline IsDefaultOrTemporal<U, void> computeDfDxoyoYlmLDOccultation_ (
+inline IsDefaultOrTemporal<U, void> computeDfDxoyoYlmLDOccultation (
     MatrixBase<T1> const & Dxo,
     MatrixBase<T2> const & Dyo,
     const Scalar& xo_b,
@@ -634,7 +634,7 @@ Spectral specialization.
 
 */
 template <typename U=S, typename T1, typename T2>
-inline IsSpectral<U, void> computeDfDxoyoYlmLDOccultation_ (
+inline IsSpectral<U, void> computeDfDxoyoYlmLDOccultation (
     MatrixBase<T1> const & Dxo,
     MatrixBase<T2> const & Dyo,
     const Scalar& xo_b,

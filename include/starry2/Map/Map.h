@@ -6,20 +6,20 @@ class Map
 public:
 
     // Types
-    using Scalar = typename S::Scalar;
-    using YType = typename S::YType;
-    using YCoeffType = typename S::YCoeffType;
-    using UType = typename S::UType;
-    using UCoeffType = typename S::UCoeffType;
-    using FluxType = typename S::FluxType;
+    using Scalar = typename S::Scalar;                                         /**< The scalar type of the map */
+    using YType = typename S::YType;                                           /**< The type of the spherical harmonic coefficient object (vector/matrix) */
+    using YCoeffType = typename S::YCoeffType;                                 /**< The type of the spherical harmonic coefficients (scalar/row vector) */
+    using UType = typename S::UType;                                           /**< The type of the limb darkening coefficient object (vector/matrix) */
+    using UCoeffType = typename S::UCoeffType;                                 /**< The type of the limb darkening coefficients (scalar/row vector) */
+    using FluxType = typename S::FluxType;                                     /**< The type of the output flux (scalar/row vector) */
 
     // Public variables
-    const int lmax;
-    const int N;
-    const int ncoly;
-    const int ncolu;
-    const int nflx;
-    Cache<S> cache;
+    const int lmax;                                                            /**< Maximum spherical harmonic degree of the map */
+    const int N;                                                               /**< Number of spherical harmonic `(l, m)` coefficients */
+    const int ncoly;                                                           /**< Number of columns in the `y` matrix */
+    const int ncolu;                                                           /**< Number of columns in the `u` matrix */
+    const int nflx;                                                            /**< Number of columns in the output flux */
+    Cache<S> cache;                                                            /**< Internal cache & storage class */
 
 protected:
 
@@ -31,17 +31,17 @@ protected:
     #include "protected/python_interface.h"
 
     // Internal variables
-    YType y;
-    UType u;
+    YType y;                                                                   /**< Vector/matrix of spherical harmonic coefficients */
+    UType u;                                                                   /**< Vector/matrix of limb darkening coefficients */
     UnitVector<Scalar> axis;                                                   /**< The axis of rotation for the map */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
     rotation::Wigner<YType> W;                                                 /**< Ylm rotation stuff */
     solver::Greens<Scalar> G;                                                  /**< The occultation integral solver class */
     limbdark::GreensLimbDark<Scalar> L;                                        /**< The occultation integral solver class (optimized for limb darkening) */
-    Vector<Scalar> taylor;
+    Vector<Scalar> taylor;                                                     /**< Vector of Taylor expansion coefficients for a given `t` */
     int u_deg;                                                                 /**< Highest degree set by the user in the limb darkening vector */
-    int y_deg;
-    Scalar radian;
+    int y_deg;                                                                 /**< Highest degree set by the user in the spherical harmonic vector */
+    Scalar radian;                                                             /**< Conversion factor from degrees to radians */
      
     //! Constructor for all map types
     explicit Map (
