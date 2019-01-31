@@ -18,6 +18,7 @@ include/examples/default
 include/examples/spectral
 include/examples/temporal
 scripts/*.pdf
+include/starry2/extensions/modelgrid.h
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

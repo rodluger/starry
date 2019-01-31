@@ -5,6 +5,7 @@ __mapdoc__ = None
 # Import Python routines
 from . import _plotting
 from . import kepler
+from .extensions import *
 
 # Import all available C++ modules
 try:

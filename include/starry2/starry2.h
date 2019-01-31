@@ -8,6 +8,7 @@ Entry point for the `starry` C++ interface.
 
 #include "utils.h"
 #include "maps.h"
+#include "extensions/extensions.h"
 
 namespace starry2 {
 

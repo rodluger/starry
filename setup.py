@@ -14,6 +14,7 @@ _STARRY_SPECTRAL_DOUBLE_ = 4
 _STARRY_SPECTRAL_MULTI_ =  8
 _STARRY_TEMPORAL_DOUBLE_ = 16
 _STARRY_TEMPORAL_MULTI_ =  32
+_STARRY_EXTENSIONS_ = 64
 
 # Custom compiler flags
 macros = dict(STARRY_NMULTI=32,
@@ -45,8 +46,8 @@ if debug:
     macros["STARRY_O"] = 0
     macros["STARRY_DEBUG"] = 1
 
-# Module bitsum (1 + 2 + 4 + 8 + 16 + 32 = 63)
-bitsum = int(os.getenv('STARRY_BITSUM', 63))
+# Module bitsum (1 + 2 + 4 + 8 + 16 + 32 + 64 = 127)
+bitsum = int(os.getenv('STARRY_BITSUM', 127))
 
 class get_pybind_include(object):
     """
@@ -100,6 +101,24 @@ if (bitsum & _STARRY_TEMPORAL_DOUBLE_):
     ext_modules.append(get_ext('starry2._starry_temporal_double', '_STARRY_TEMPORAL_DOUBLE_'))
 if (bitsum & _STARRY_TEMPORAL_MULTI_):
     ext_modules.append(get_ext('starry2._starry_temporal_multi', '_STARRY_TEMPORAL_MULTI_'))
+
+# Build extensions?
+if (bitsum & _STARRY_EXTENSIONS_):
+    ext_modules.append(
+        Extension(
+            'starry2._starry_extensions',
+            ['include/starry2/extensions/extensions.cpp'],
+            include_dirs=[
+                get_pybind_include(),
+                get_pybind_include(user=True),
+                "include",
+                "lib/eigen_3.3.5"
+            ],
+            language='c++',
+            define_macros=[("_STARRY_EXTENSIONS_", 1)] +
+                          [(key, value) for key, value in macros.items()]
+        )
+    )
 
 # As of Python 3.6, CCompiler has a `has_flag` method.
 # cf http://bugs.python.org/issue26689
