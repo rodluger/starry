@@ -28,7 +28,7 @@ harmonic degree of the map.
 */
 inline int getYDeg ()
 {
-    computeDegreeY();
+    computeDegree();
     return y_deg;
 }
 
@@ -39,7 +39,7 @@ degree of the map.
 */
 inline int getUDeg ()
 {
-    computeDegreeU();
+    computeDegree();
     return u_deg;
 }
 

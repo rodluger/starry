@@ -144,12 +144,14 @@ namespace ellip {
         T& Em1mKdm
     ) {
         // Bounds checks
-        if (k2 > 1) 
+        if (unlikely(k2 > 1))
             throw errors::ValueError(
                     "Invalid value of `k2` passed to `ellip::CEL`.");
-        else if ((k2 == 1.0) || (kc == 0.0)) 
+        else if (unlikely((k2 == 1.0) || (kc == 0.0)))
             kc = mach_eps<T>() * k2;
-        
+        else if (unlikely(k2 < mach_eps<T>()))
+            k2 = mach_eps<T>();
+
         // Tolerance
         T ca = sqrt(mach_eps<T>() * k2);
 

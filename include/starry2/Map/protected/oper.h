@@ -17,36 +17,32 @@ inline void checkDegree ()
     }
 }
 
-//! Compute the degree of the Ylm map.
-inline void computeDegreeY () 
+//! Compute the degree of the Ylm and Ul maps.
+inline void computeDegree () 
 {
-    if (cache.compute_degree_y) {
-        y_deg = 0;
-        for (int l = lmax; l >= 0; --l) {
-            if ((y.block(l * l, 0, 2 * l + 1, ncoly).array() 
-                    != 0.0).any()) {
-                y_deg = l;
-                break;
+    if ((cache.compute_degree_y) || (cache.compute_degree_u)) {
+        if (cache.compute_degree_y) {
+            y_deg = 0;
+            for (int l = lmax; l >= 0; --l) {
+                if ((y.block(l * l, 0, 2 * l + 1, ncoly).array() 
+                        != 0.0).any()) {
+                    y_deg = l;
+                    break;
+                }
             }
+            cache.compute_degree_y = false;
+        }
+        if (cache.compute_degree_u) {
+            u_deg = 0;
+            for (int l = lmax; l > 0; --l) {
+                if (u.row(l).any()) {
+                    u_deg = l;
+                    break;
+                }
+            }
+            cache.compute_degree_u = false;
         }
         checkDegree();
-        cache.compute_degree_y = false;
-    }
-}
-
-//! Compute the degree of the Ul map.
-inline void computeDegreeU () 
-{
-    if (cache.compute_degree_u) {
-        u_deg = 0;
-        for (int l = lmax; l > 0; --l) {
-            if (u.row(l).any()) {
-                u_deg = l;
-                break;
-            }
-        }
-        checkDegree();
-        cache.compute_degree_u = false;
     }
 }
 

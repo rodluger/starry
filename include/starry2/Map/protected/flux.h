@@ -14,8 +14,7 @@ inline void computeFluxInternal (
     CHECK_SHAPE(flux, 1, nflx);
 
     // Figure out the degree of the map
-    computeDegreeU();
-    computeDegreeY();
+    computeDegree();
 
     // Impact parameter
     Scalar b = sqrt(xo * xo + yo * yo);
@@ -196,8 +195,7 @@ inline void computeFluxInternal (
     CHECK_COLS(Du, ncolu);
 
     // Figure out the degree of the map
-    computeDegreeU();
-    computeDegreeY();
+    computeDegree();
 
     // Impact parameter
     Scalar b = sqrt(xo * xo + yo * yo);

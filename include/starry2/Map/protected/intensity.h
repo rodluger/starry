@@ -26,7 +26,7 @@ inline void computeIntensityInternal (
     cache.A1Ry = B.A1 * cache.Ry;
 
     // Apply limb darkening
-    computeDegreeU();
+    computeDegree();
     if (u_deg > 0) {
         limbDarken(cache.A1Ry, cache.pupy);
         cache.A1Ry = cache.pupy;
@@ -63,7 +63,7 @@ inline void renderMapInternal (
     cache.A1Ry = B.A1 * cache.Ry;
 
     // Apply limb darkening
-    computeDegreeU();
+    computeDegree();
     if (u_deg > 0) {
         limbDarken(cache.A1Ry, cache.pupy);
         cache.A1Ry = cache.pupy;
