@@ -1,5 +1,6 @@
 /**
-Miscellaneous utilities used for the pybind interface.
+\file interface.h
+\brief Miscellaneous utilities used for the `pybind` interface.
 
 */
 
@@ -42,6 +43,7 @@ namespace interface {
 //! Misc stuff we need
 #include <Python.h>
 using namespace pybind11::literals;
+using namespace starry2;
 using namespace starry2::utils;
 using starry2::maps::Map;
 static const auto integer = py::module::import("numpy").attr("integer");

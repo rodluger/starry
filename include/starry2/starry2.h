@@ -1,5 +1,13 @@
 /**
-Entry point for the `starry` C++ interface.
+\file starry2.h
+\brief Entry point to the `starry` C++ interface.
+
+*/
+
+/**
+\mainpage starry documentation
+
+Welcome to the starry C++ API documentation.
 
 */
 

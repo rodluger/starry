@@ -1,3 +1,9 @@
+/**
+\file extensions.h
+\brief Implements custom extensions to the code.
+
+*/
+
 #ifndef _STARRY_EXTENSIONS_H_
 #define _STARRY_EXTENSIONS_H_
 

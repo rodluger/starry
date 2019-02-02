@@ -1,3 +1,9 @@
+/**
+\file basis.h
+\brief Miscellaneous utilities related to basis transformations.
+
+*/
+
 #ifndef _STARRY_BASIS_H_
 #define _STARRY_BASIS_H_
 

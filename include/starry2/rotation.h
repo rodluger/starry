@@ -1,9 +1,11 @@
 /**
-Spherical harmonic rotation matrices. These are adapted from the Fortran
-code of
+\file rotation.h
+\brief Implements the spherical harmonic rotation matrices.
+
+These are adapted from the Fortran code of
 
     Alvarez Collado  et al. (1989) "Rotation of real spherical harmonics".
-    compute Physics Communications 52, 3.
+    Physics Communications 52, 3.
     https://doi.org/10.1016/0010-4655(89)90107-0
 
 who computed the Euleriean rotation matrices for real spherical harmonics

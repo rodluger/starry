@@ -1,11 +1,17 @@
 /**
-Elliptic integrals computed following:
+\file ellip.h
+\brief Elliptic integral computation.
+    
+Elliptic integrals computed following
 
-            Bulirsch 1965, Numerische Mathematik, 7, 78
-            Bulirsch 1965, Numerische Mathematik, 7, 353
+    Bulirsch 1965, Numerische Mathematik, 7, 78
+    Bulirsch 1965, Numerische Mathematik, 7, 353
 
-and the implementation by E. Agol (private communication).
-Adapted from DFM's AstroFlow: https://github.com/dfm/AstroFlow/
+adapted from the implementation by E. Agol in
+<a href="https://github.com/rodluger/limbdark/">limbdark</a>.
+Based in part on Daniel Foreman-Mackey's 
+<a href="https://github.com/dfm/AstroFlow/">AstroFlow</a>.
+
 */
 
 #ifndef _STARRY_ELLIP_H_

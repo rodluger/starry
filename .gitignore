@@ -12,6 +12,9 @@ docs/_generate
 *.npz
 *callgrind.out.*
 *.vscode
+docs/doxyxml
+docs/.build
+
 tmp/*
 tests/cpp/test
 include/examples/default

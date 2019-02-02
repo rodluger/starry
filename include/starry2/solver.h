@@ -1,4 +1,7 @@
 /**
+\file solver.h
+\brief Integration of the occulted portion of the map.
+
 Solutions to the surface integral over the visible region of a spherical 
 harmonic map during a single-body occultation using Green's theorem.
 

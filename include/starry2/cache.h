@@ -1,3 +1,9 @@
+/**
+\file cache.h
+\brief Defines classes used for caching of temporary map variables.
+
+*/
+
 template <class S, typename T=void> 
 class Cache_;
 

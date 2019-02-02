@@ -1,5 +1,6 @@
 /**
-Defines the surface map class.
+\file maps.h
+\brief Defines the surface map classes.
 
 */
 

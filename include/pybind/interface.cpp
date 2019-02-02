@@ -1,3 +1,9 @@
+/**
+\file interface.cpp
+\brief Defines the entry point for the C++ API.
+
+*/
+
 // Enable debug mode?
 #ifdef STARRY_DEBUG
 #undef NDEBUG

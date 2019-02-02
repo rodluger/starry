@@ -1,3 +1,9 @@
+/**
+\file utils.h
+\brief Miscellaneous utilities and definitions used throughout the code.
+
+*/
+
 #ifndef _STARRY_UTILS_H_
 #define _STARRY_UTILS_H_
 
@@ -27,8 +33,10 @@
 namespace py = pybind11;
 #endif
 
-//! Compiler branching optimizations
+//! Compiler branching optimization: likely branch
 #define likely(x)                   __builtin_expect (!!(x), 1)
+
+//! Compiler branching optimization: unlikely branch
 #define unlikely(x)                 __builtin_expect (!!(x), 0)
 
 //! Default number of digits in multiprecision mode
@@ -66,22 +74,48 @@ namespace py = pybind11;
 #define STARRY_MAX_LMAX             50
 #endif
 
-// If we're keeping dF/Du as dF/dg, we need to increase the size of 
-// the array containing the derivative by 1
+//! If we're keeping `df / du` as `df / dg`, we need to increase 
+//! the size of the array containing the derivative by 1
 #ifdef STARRY_KEEP_DFDU_AS_DFDG
 #define STARRY_DFDU_DELTA	        1
 #else
 #define STARRY_DFDU_DELTA	        0
 #endif
 
-//! Pi
+//! The value of `pi` in double precision
 #ifndef M_PI
 #define M_PI     3.14159265358979323846264338328
 #endif
 
-//! Square root of Pi
+//! Square root of `pi` in double precision
 #ifndef M_SQRTPI
 #define M_SQRTPI 1.77245385090551602729816748334
+#endif
+
+// Bounds checks
+#ifdef STARRY_DEBUG
+//! Check matrix shape (debug mode only)
+#define CHECK_SHAPE(MATRIX, ROWS, COLS)\
+    assert((MATRIX.cols() == COLS) && (MATRIX.rows() == ROWS))
+//! Check matrix columns (debug mode only)
+#define CHECK_COLS(MATRIX, COLS)\
+    assert(MATRIX.cols() == COLS)
+//! Check matrix rows (debug mode only)
+#define CHECK_ROWS(MATRIX, ROWS)\
+    assert(MATRIX.rows() == ROWS)
+//! Check index bounds (debug mode only)
+#define CHECK_BOUNDS(INDEX, IMIN, IMAX)\
+    assert((INDEX >= IMIN) && (INDEX <= IMAX))
+#else
+//! Check matrix shape (debug mode only)
+#define CHECK_SHAPE(MATRIX, ROWS, COLS)  do {} while(0)
+//! Check matrix columns (debug mode only)
+#define CHECK_COLS(MATRIX, COLS)  do {} while(0)
+//! Check matrix rows (debug mode only)
+#define CHECK_ROWS(MATRIX, ROWS)  do {} while(0)
+//! Check index bounds (debug mode only)
+#define CHECK_BOUNDS(INDEX, IMIN, IMAX)  do {} while(0)
+
 #endif
 
 namespace starry2 { 
@@ -93,34 +127,6 @@ using std::abs;
 using std::max;
 using std::isinf;
 using std::swap;
-
-
-// --------------------------
-// ----- Bounds checks ------
-// --------------------------
-
-
-#ifdef STARRY_DEBUG
-
-// Bounds and shape checking enabled in debug mode
-#define CHECK_SHAPE(MATRIX, ROWS, COLS)\
-    assert((MATRIX.cols() == COLS) && (MATRIX.rows() == ROWS))
-#define CHECK_COLS(MATRIX, COLS)\
-    assert(MATRIX.cols() == COLS)
-#define CHECK_ROWS(MATRIX, ROWS)\
-    assert(MATRIX.rows() == ROWS)
-#define CHECK_BOUNDS(INDEX, IMIN, IMAX)\
-    assert((INDEX >= IMIN) && (INDEX <= IMAX))
-
-#else
-
-// These are compiled out!
-#define CHECK_SHAPE(MATRIX, ROWS, COLS)  do {} while(0)
-#define CHECK_COLS(MATRIX, COLS)  do {} while(0)
-#define CHECK_ROWS(MATRIX, ROWS)  do {} while(0)
-#define CHECK_BOUNDS(INDEX, IMIN, IMAX)  do {} while(0)
-
-#endif
 
 
 // --------------------------
@@ -147,6 +153,7 @@ using RowMatrix = Eigen::Matrix<T, Eigen::Dynamic,
 template <typename T, int N>
 using ADScalar = Eigen::AutoDiffScalar<Eigen::Matrix<T, N, 1>>;
 
+
 // --------------------------
 // ------- Data Types -------
 // --------------------------
@@ -157,8 +164,9 @@ using ADScalar = Eigen::AutoDiffScalar<Eigen::Matrix<T, N, 1>>;
 //! way of passing arbitrary matrix block expressions
 //! to functions as l-values, and helps make the code
 //! as general as possible, at the expense of a bit of
-//! hacking. See the discussion here:
-//! https://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html
+//! hacking. See the discussion <a href=
+//! "https://eigen.tuxfamily.org/dox/TopicFunctionTakingEigenTypes.html"
+//! >here</a>.
 #define MBCAST(x, T) const_cast<MatrixBase<T>&>(x)
 
 
@@ -289,6 +297,7 @@ using IsDefaultOrSpectralOrTemporal =
         std::is_same<T, Temporal<typename T::Scalar>>::value, U
     >::type;
 
+
 // --------------------------
 // -------- Constants -------
 // --------------------------
@@ -381,6 +390,7 @@ inline bool is_even (
     }
     return true;
 }
+
 
 // --------------------------
 // ------ Unit Vectors ------

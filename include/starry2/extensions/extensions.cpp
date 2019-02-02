@@ -1,3 +1,9 @@
+/**
+\file extensions.cpp
+\brief Python bindings for custom C++ extensions to the code.
+
+*/
+
 // Enable debug mode?
 #ifdef STARRY_DEBUG
 #undef NDEBUG

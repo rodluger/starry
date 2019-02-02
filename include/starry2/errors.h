@@ -1,5 +1,6 @@
 /**
-Custom exceptions for starry.
+\file errors.h
+\brief Implements custom errors and exceptions.
 
 */
 
@@ -10,6 +11,7 @@ Custom exceptions for starry.
 #include <exception>
 #include <string>
 
+namespace starry2 {
 namespace errors {
 
     using namespace std;
@@ -156,5 +158,6 @@ namespace errors {
     };
 
 } // namespace errors
+} // namespace starry2
 
 #endif
