@@ -19,7 +19,7 @@
 import sys
 import os
 import shlex
-import planetplanet
+import subprocess
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('.'))
@@ -53,6 +53,11 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.ifconfig'
 ]
+
+# Build Doxygen docs
+subprocess.call(['doxygen', 'Doxyfile'])
+os.rename('.doxyxml/html/index.html', '.doxyxml/html/cpp.html')
+html_extra_path = ['.doxyxml/html/']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['.templates']

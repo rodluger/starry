@@ -12,7 +12,7 @@ docs/_generate
 *.npz
 *callgrind.out.*
 *.vscode
-docs/doxyxml
+docs/.doxyxml
 docs/.build
 
 tmp/*

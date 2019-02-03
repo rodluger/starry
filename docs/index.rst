@@ -1,11 +1,13 @@
-Welcome to starry's documentation!
-==================================
+starry documentation
+====================
+
+Coming soon!
 
 .. toctree::
    :maxdepth: 1
    :caption: Contents:
 
-    C++ API <cpp>
+    C++ API <files.html#://>
 
 
 Indices and tables
