@@ -7,6 +7,7 @@ Coming soon!
    :maxdepth: 1
    :caption: Contents:
 
+    Python API <api>
     C++ API <files.html#://>
 
 

@@ -8,3 +8,8 @@ import pytest
 # TODO: rotate
 # TODO: add_spot
 # TODO: random
+
+# These have not yet been implemented:
+# TODO: load_image (load numpy array)
+# TODO: load_healpix
+# TODO: is_physical

@@ -1,9 +1,0 @@
-name: starry2
-
-channels:
-  - conda-forge
-
-dependencies:
-  - python=3.5
-  - numpy
-  - pybind11>=2.2

@@ -71,6 +71,7 @@ static_assert(false, "Invalid or missing STARRY module type.");
 //! Includes
 #include <pybind11/embed.h>
 #include "interface.h"
+#include "docstrings.h"
 using namespace interface;
 
 //! Register the Python module
@@ -79,11 +80,16 @@ PYBIND11_MODULE(
     m
 ) {
 
+    // Module docs
+    py::options options;
+    options.disable_function_signatures();
+    m.doc() = docstrings::starry::doc;
+
     // Current Map Type
     using T = _STARRY_TYPE_;
 
     // Declare the Map class
-    py::class_<Map<T>> PyMap(m, "Map");
+    py::class_<Map<T>> PyMap(m, "Map", docstrings::Map::doc);
 
 #if defined(_STARRY_SINGLECOL_) 
     // Constructor for vector maps
@@ -102,7 +108,7 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.ncoly;
-    });
+    }, docstrings::Map::ncoly);
 
     // Number of Ul map columns
     PyMap.def_property_readonly(
@@ -110,7 +116,7 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.ncolu;
-    });
+    }, docstrings::Map::ncolu);
 
     // Number of wavelength bins
     PyMap.def_property_readonly(
@@ -122,7 +128,7 @@ PYBIND11_MODULE(
 #else
             return 1;
 #endif
-    });
+    }, docstrings::Map::nw);
 
     // Number of temporal bins
     PyMap.def_property_readonly(
@@ -134,7 +140,7 @@ PYBIND11_MODULE(
 #else
             return 1;
 #endif
-    });
+    }, docstrings::Map::nt);
 
     // Highest degree of the map
     PyMap.def_property_readonly(
@@ -142,7 +148,7 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.lmax;
-    });
+    }, docstrings::Map::lmax);
 
     // Number of spherical harmonic coefficients
     PyMap.def_property_readonly(
@@ -150,7 +156,19 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.N;
-    });
+    }, docstrings::Map::N);
+
+    // Multiprecision enabled?
+    PyMap.def_property_readonly(
+        "multi", [] (
+            Map<T> &map
+        ) {
+#if defined(_STARRY_MULTI_)
+            return true;
+#else
+            return false;
+#endif
+    }, docstrings::Map::multi);
 
     // Set one or more spherical harmonic coefficients to the same scalar value
     PyMap.def(
@@ -164,7 +182,7 @@ PYBIND11_MODULE(
             for (auto n : inds)
                 y.row(n).setConstant(static_cast<typename T::Scalar>(coeff));
             map.setY(y);
-    });
+    }, docstrings::Map::setitem);
 
     // Set one or more spherical harmonic coefficients to the same vector value
     PyMap.def(
@@ -225,7 +243,7 @@ PYBIND11_MODULE(
                 MAKE_READ_ONLY(coeff);
                 return coeff;
             }
-    });
+    }, docstrings::Map::getitem);
 
     // Set one or more limb darkening coefficients to the same scalar value
     PyMap.def(
@@ -303,7 +321,7 @@ PYBIND11_MODULE(
     });
 
     // Reset the map
-    PyMap.def("reset", &Map<T>::reset);
+    PyMap.def("reset", &Map<T>::reset, docstrings::Map::reset);
     
     // Vector of spherical harmonic coefficients
     PyMap.def_property_readonly(
@@ -313,7 +331,7 @@ PYBIND11_MODULE(
             auto y = py::cast(map.getY().template cast<double>());
             MAKE_READ_ONLY(y);
             return y;
-    });
+    }, docstrings::Map::y);
 
     // Vector of limb darkening coefficients
     PyMap.def_property_readonly(
@@ -323,7 +341,7 @@ PYBIND11_MODULE(
             auto u = py::cast(map.getU().template cast<double>());
             MAKE_READ_ONLY(u);
             return u;
-    });
+    }, docstrings::Map::u);
 
     // Get/set the rotation axis
     PyMap.def_property(
@@ -336,10 +354,10 @@ PYBIND11_MODULE(
             UnitVector<double>& axis
         ) {
             map.setAxis(axis.template cast<typename T::Scalar>());
-    });
+    }, docstrings::Map::axis);
 
     // Rotate the base map
-    PyMap.def("rotate", &Map<T>::rotate, "theta"_a=0.0);
+    PyMap.def("rotate", &Map<T>::rotate, "theta"_a=0.0, docstrings::Map::rotate);
 
 #if defined(_STARRY_SINGLECOL_)
     // Add a gaussian spot with a scalar amplitude
@@ -350,14 +368,15 @@ PYBIND11_MODULE(
             const double& sigma,
             const double& lat,
             const double& lon,
-            const int l
+            const int lmax
         ) {
             typename T::YCoeffType amp_;
             amp_(0) = amp;
             map.addSpot(amp_, 
-                        sigma, lat, lon, l);
+                        sigma, lat, lon, lmax);
         }, 
-        "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "l"_a=-1);
+        docstrings::Map::add_spot,
+        "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
 #else
     // Add a gaussian spot with a vector amplitude
     PyMap.def(
@@ -367,12 +386,13 @@ PYBIND11_MODULE(
             const double& sigma,
             const double& lat,
             const double& lon,
-            const int l
+            const int lmax
         ) {
             map.addSpot(amp.template cast<typename T::Scalar>(), 
-                        sigma, lat, lon, l);
+                        sigma, lat, lon, lmax);
         }, 
-        "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "l"_a=-1);
+        docstrings::Map::add_spot,
+        "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
 #endif
 
 #if defined(_STARRY_SINGLECOL_)
@@ -393,6 +413,7 @@ PYBIND11_MODULE(
                 map.random(power.template cast<typename T::Scalar>(), seed);
             }
         }, 
+        docstrings::Map::random,
         "power"_a, "seed"_a=py::none());
 #else
     // Generate a random map
@@ -412,6 +433,7 @@ PYBIND11_MODULE(
                 map.random(power.template cast<typename T::Scalar>(), seed, col);
             }
         }, 
+        docstrings::Map::random,
         "power"_a, "seed"_a=py::none(), "col"_a=-1);
 #endif
 
@@ -436,6 +458,7 @@ PYBIND11_MODULE(
                                 cmap, res, interval, gif);
             }
         }, 
+        docstrings::Map::show,
         "theta"_a=py::array_t<double>(), "cmap"_a="plasma", "res"_a=300,
         "interval"_a=75, "gif"_a="");
 #else
@@ -469,6 +492,7 @@ PYBIND11_MODULE(
                             theta.template cast<typename T::Scalar>(), 
                             cmap, res, interval, gif);
         }, 
+        docstrings::Map::show,
         "t"_a=0.0, "theta"_a=0.0, 
         "cmap"_a="plasma", "res"_a=300, "interval"_a=75, "gif"_a="");
 #endif
@@ -488,6 +512,7 @@ PYBIND11_MODULE(
                            py::make_tuple(res, res));
 
         }, 
+        docstrings::Map::render,
         "theta"_a=0.0, "res"_a=300);
 #elif defined(_STARRY_SPECTRAL_)
     // Render the visible map on a square grid
@@ -503,6 +528,7 @@ PYBIND11_MODULE(
             return reshape(intensity.template cast<double>(), 
                            py::make_tuple(res, res, map.nflx));
         }, 
+        docstrings::Map::render,
         "theta"_a=0.0, "res"_a=300);
 #elif defined(_STARRY_TEMPORAL_)
     // Render the visible map on a square grid
@@ -519,6 +545,7 @@ PYBIND11_MODULE(
             return reshape(intensity.template cast<double>(), 
                            py::make_tuple(res, res));
         }, 
+        docstrings::Map::render,
         "t"_a=0.0, "theta"_a=0.0, "res"_a=300);
 #endif
 
@@ -528,46 +555,48 @@ PYBIND11_MODULE(
         "load_image", [](
             Map<T>& map,
             std::string image,
-            int l,
+            int lmax,
             bool normalize,
             int sampling_factor
         ) {
-            map.loadImage(image, l, normalize, sampling_factor);
+            map.loadImage(image, lmax, normalize, sampling_factor);
         },
-        "image"_a, "l"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
+        docstrings::Map::load_image,
+        "image"_a, "lmax"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
 #else
     // Load an image from a file
     PyMap.def(
         "load_image", [](
             Map<T>& map,
             std::string image,
-            int l,
+            int lmax,
             int col,
             bool normalize,
             int sampling_factor
         ) {
-            map.loadImage(image, l, col, normalize, sampling_factor);
+            map.loadImage(image, lmax, col, normalize, sampling_factor);
         },
-        "image"_a, "l"_a=-1, "col"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
+        docstrings::Map::load_image,
+        "image"_a, "lmax"_a=-1, "col"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
 #endif
 
 #if defined(_STARRY_STATIC_)
     // Compute the intensity
-    PyMap.def("__call__", intensity<T>(), "theta"_a=0.0, 
-              "x"_a=0.0, "y"_a=0.0);
+    PyMap.def("__call__", intensity<T>(), docstrings::Map::call, 
+              "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
 #else
     // Compute the intensity
-    PyMap.def("__call__", intensity<T>(), "t"_a=0.0, "theta"_a=0.0, 
-              "x"_a=0.0, "y"_a=0.0);
+    PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, "t"_a=0.0, 
+              "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
 #endif
 
 #if defined(_STARRY_STATIC_)
     // Compute the flux
-    PyMap.def("flux", flux<T>(), "theta"_a=0.0, "xo"_a=0.0, 
+    PyMap.def("flux", flux<T>(), docstrings::Map::flux, "theta"_a=0.0, "xo"_a=0.0, 
               "yo"_a=0.0, "ro"_a=0.0, "gradient"_a=false);
 #else
     // Compute the flux
-    PyMap.def("flux", flux<T>(), "t"_a=0.0,"theta"_a=0.0, "xo"_a=0.0, 
+    PyMap.def("flux", flux<T>(), docstrings::Map::flux, "t"_a=0.0,"theta"_a=0.0, "xo"_a=0.0, 
               "yo"_a=0.0, "ro"_a=0.0, "gradient"_a=false);
 #endif
 
@@ -611,6 +640,6 @@ PYBIND11_MODULE(
 
             return flags;
 
-    });
+    }, docstrings::Map::compile_flags);
 
 }

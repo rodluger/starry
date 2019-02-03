@@ -25,6 +25,13 @@ sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('.'))
 import sphinx_rtd_theme
 
+# Hack: obscure the ugly module names for the docs
+import starry2
+starry2.Map = type('Map', 
+                   starry2._starry_default_double.Map.__bases__,
+                   dict(starry2._starry_default_double.Map.__dict__)
+                  )
+
 # -- Project information -----------------------------------------------------
 
 project = 'starry2'
@@ -48,16 +55,38 @@ release = '1.0.0'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.autosummary',
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
-    'sphinx.ext.ifconfig'
+    'sphinx.ext.ifconfig',
+    'matplotlib.sphinxext.plot_directive',
+    'nbsphinx'
 ]
 
 # Build Doxygen docs
 subprocess.call(['doxygen', 'Doxyfile'])
 os.rename('.doxyxml/html/index.html', '.doxyxml/html/cpp.html')
 html_extra_path = ['.doxyxml/html/']
+
+# NBSphinx
+nbsphinx_prolog = """
+{% set docname = env.doc2path(env.docname, base=None) %}
+
+.. note:: This tutorial was generated from an Jupyter notebook that can be
+          downloaded `here <https://github.com/rodluger/starry/blob/master/docs/{{ docname }}>`_.
+"""
+
+# Autosummary
+autosummary_generate = True
+
+# Autodoc
+autodoc_docstring_signature = True
+
+# Remove jupyter notebook prompt numbers
+nbsphinx_prompt_width = 0
+napoleon_use_ivar = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['.templates']
