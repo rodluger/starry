@@ -637,7 +637,7 @@ namespace limbdark {
 
         // HACK: Fix an instability that exists *really* close to b = r = 0.5
         if (unlikely(abs(b - r) < 5 * mach_eps<T>())) {
-            if (unlikely(abs(r - 0.5) < 5 * mach_eps<T>())) {
+            if (unlikely(abs(r - T(0.5)) < 5 * mach_eps<T>())) {
                 b += 5 * mach_eps<T>();
             }
         }
