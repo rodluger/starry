@@ -3,6 +3,7 @@ set -e
 
 # Make the docs
 cd $TRAVIS_BUILD_DIR/docs
+doxygen -v
 make html
 
 # Begin
@@ -18,12 +19,7 @@ rev=$(git rev-parse --short HEAD)
 cd $TRAVIS_BUILD_DIR/docs/.build/html
 git init
 touch .nojekyll
-git add -f .nojekyll
-git add -f *.html
-git add -f *.js
-git add -f _sources
-git add -f _static
-#git add -f _images
+git add -f *
 git -c user.name='sphinx' -c user.email='sphinx' commit -m "rebuild gh-pages at ${rev}"
 git push -q -f https://$GITHUB_USER:$GITHUB_API_KEY@github.com/rodluger/starry2 HEAD:gh-pages
 
