@@ -13,6 +13,12 @@ try:
 except ImportError:
     starry_op = None
 
+# Exoplanet
+try:
+    from .exoplanet_op import StarryLightCurve
+except ImportError:
+    StarryLightCurve = None
+
 # Import all available C++ modules
 try:
     from . import _starry_default_double
