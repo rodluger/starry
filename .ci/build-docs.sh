@@ -21,11 +21,6 @@ git init
 touch .nojekyll
 git add -f .nojekyll
 git add -f *
-
-# DEBUG
-doxygen -l
-git add -f DoxygenLayout.xml
-
 git -c user.name='sphinx' -c user.email='sphinx' commit -m "rebuild gh-pages at ${rev}"
 git push -q -f https://$GITHUB_USER:$GITHUB_API_KEY@github.com/rodluger/starry2 HEAD:gh-pages
 
