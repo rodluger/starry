@@ -3,25 +3,25 @@ from __future__ import division, print_function
 import numpy as np
 import theano
 import theano.tensor as tt
-from ._starry_default_double import Map
+from .._starry_default_double import Map
 
-__all__ = ["starry_op"]
+__all__ = ["TheanoOp"]
 
 
-class StarryOp(tt.Op):
+class TheanoOp(tt.Op):
 
     __props__ = ("lmax", )
 
     def __init__(self, lmax=2):
         # Save the primary information
         self.lmax = int(lmax)
-        self.param_names = ["y", "u", "theta", "xo", "yo", "ro"]
+        self.param_names = ["y", "u", "theta", "xo", "yo", "ro", "zo"]
 
         # Pre-initialize the Map object
         self.map = Map(lmax=self.lmax)
 
         # Set up the gradient operation
-        self._grad_op = StarryGradOp(self)
+        self._grad_op = TheanoGradOp(self)
 
     def make_node(self, *args):
         if len(args) != len(self.param_names):
@@ -33,16 +33,22 @@ class StarryOp(tt.Op):
         return shapes[-1],
 
     def perform(self, node, inputs, outputs):
-        y, u, theta, xo, yo, ro = inputs
+        y, u, theta, xo, yo, ro, zo = inputs
         self.map[:, :] = y
         self.map[:] = u
-        outputs[0][0] = self.map.flux(theta=theta, xo=xo, yo=yo, ro=ro)
+        ro_ = tt.switch(tt.lt(zo, 0.0), ro, 0.0).eval()
+        outputs[0][0] = self.map.flux(theta=theta, xo=xo, yo=yo, ro=ro_)
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
 
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return eval_points
+        return self.grad(inputs, eval_points)
 
-class StarryGradOp(tt.Op):
+
+class TheanoGradOp(tt.Op):
 
     __props__ = ("base_op", )
 
@@ -59,11 +65,13 @@ class StarryGradOp(tt.Op):
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
-        y, u, theta, xo, yo, ro, DDf = inputs
+        y, u, theta, xo, yo, ro, zo, DDf = inputs
         self.base_op.map[:, :] = y
         self.base_op.map[:] = u
+
+        ro_ = tt.switch(tt.lt(zo, 0.0), ro, 0.0).eval()
         _, grads = self.base_op.map.flux(theta=theta, xo=xo, yo=yo, 
-                                         ro=ro, gradient=True)
+                                         ro=ro_, gradient=True)
 
         # The gradients with respect to the static parameters
         for i, param in enumerate(["y", "u"]):
@@ -73,14 +81,3 @@ class StarryGradOp(tt.Op):
         # The gradients with respect to the time-dependent parameters
         for i, param in enumerate(["theta", "xo", "yo", "ro"]):
             outputs[i + 2][0] = np.array(grads.get(param, 0.0) * DDf)
-
-
-def starry_op(lmax, y, u, theta, xo, yo, ro):
-    args = [tt.as_tensor_variable(y),
-            tt.as_tensor_variable(u),
-            tt.as_tensor_variable(theta),
-            tt.as_tensor_variable(xo),
-            tt.as_tensor_variable(yo),
-            tt.as_tensor_variable(ro)]
-    op = StarryOp(lmax)
-    return op(*args)

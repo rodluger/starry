@@ -6,18 +6,8 @@ __mapdoc__ = None
 from . import _plotting
 from . import kepler
 from .extensions import *
+from . import ops
 
-# Theano
-try:
-    from .theano_op import starry_op
-except ImportError:
-    starry_op = None
-
-# Exoplanet
-try:
-    from .exoplanet_op import StarryLightCurve
-except ImportError:
-    StarryLightCurve = None
 
 # Import all available C++ modules
 try:

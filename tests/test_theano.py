@@ -3,7 +3,22 @@ from __future__ import division, print_function
 import numpy as np
 import theano
 import theano.tensor as tt
-import starry2
+from starry2 import Map
+from starry2.ops import TheanoOp
+
+
+def starry_op(lmax, y, u, theta, xo, yo, ro, zo=None):
+    if zo is None:
+        zo = -tt.ones_like(xo)
+    args = [tt.as_tensor_variable(y),
+            tt.as_tensor_variable(u),
+            tt.as_tensor_variable(theta),
+            tt.as_tensor_variable(xo),
+            tt.as_tensor_variable(yo),
+            tt.as_tensor_variable(ro),
+            tt.as_tensor_variable(zo)]
+    op = TheanoOp(lmax)
+    return op(*args)
 
 
 def test_specific():
@@ -14,15 +29,15 @@ def test_specific():
     xo = tt.dvector(name="xo")
     yo = tt.dvector(name="yo")
     ro = tt.dvector(name="ro")
-    lc = starry2.starry_op(lmax, y, u, theta, xo, yo, ro)
+    lc = starry_op(lmax, y, u, theta, xo, yo, ro)
 
     args = {
         u: np.array([0.25, 0]),
         y: np.array([1.0, 0.1, 0.05, 0.01, 0, 0, 0, 0, 0]),
-        theta: np.zeros(1000),
-        xo: np.linspace(-1.5, 1.5, 1000),
-        yo: np.zeros(1000),
-        ro: 0.1 * np.ones(1000)
+        theta: np.zeros(100),
+        xo: np.linspace(-1.5, 1.5, 100),
+        yo: np.zeros(100),
+        ro: 0.1 * np.ones(100)
     }
 
     var, val = zip(*args.items())
@@ -33,7 +48,7 @@ def test_specific():
     lc_val = func(*val)
     grad_val = grad(*val)
 
-    map = starry2.Map(lmax=lmax)
+    map = Map(lmax=lmax)
     map[:, :] = args[y]
     map[:] = args[u]
     starry_flux, starry_grad = map.flux(theta=args[theta], xo=args[xo], yo=args[yo], ro=args[ro], gradient=True)
