@@ -18,7 +18,8 @@ if [ ! -f $HOME/miniconda-cache/bin/conda ]; then
             pytest-cov \
             pip \
             healpy\
-            nbsphinx;
+            nbsphinx \
+            theano;
       pip install Pillow
       pip install ipython
       pip install jupyter

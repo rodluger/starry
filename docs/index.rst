@@ -8,7 +8,7 @@ Coming soon!
    :caption: Contents:
 
     Python API <api>
-    C++ API <files.html#://>
+    C++ API <html/files.html#://>
 
 
 Indices and tables

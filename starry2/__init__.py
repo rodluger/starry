@@ -7,6 +7,12 @@ from . import _plotting
 from . import kepler
 from .extensions import *
 
+# Theano
+try:
+    from .theano_op import starry_op
+except ImportError:
+    starry_op = None
+
 # Import all available C++ modules
 try:
     from . import _starry_default_double

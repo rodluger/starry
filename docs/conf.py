@@ -67,8 +67,7 @@ extensions = [
 
 # Build Doxygen docs
 subprocess.call(['doxygen', 'Doxyfile'])
-os.rename('.doxyxml/html/index.html', '.doxyxml/html/cpp.html')
-html_extra_path = ['.doxyxml/html/']
+html_extra_path = ['.doxyxml/']
 
 # NBSphinx
 nbsphinx_prolog = """
