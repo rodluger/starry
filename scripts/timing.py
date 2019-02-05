@@ -1,5 +1,5 @@
 import starry
-import starry
+import starry_beta
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,7 +22,7 @@ for i, lmax in tqdm(enumerate(lmax_arr), total=len(lmax_arr)):
     map = starry.Map(lmax, multi=True)
     map[:, :] = 1
     truth = map.flux(xo=xo, yo=0.2, ro=0.1)
-    for version, map in zip([0, 1], [starry.Map(lmax), starry.Map(lmax)]):
+    for version, map in zip([0, 1], [starry_beta.Map(lmax), starry.Map(lmax)]):
         map[:, :] = 1
         tk = np.zeros(nsamples) * np.nan
         for gradient in [False, True]:

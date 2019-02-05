@@ -5,10 +5,10 @@ import theano
 import theano.tensor as tt
 from .._starry_default_double import Map
 
-__all__ = ["TheanoOp"]
+__all__ = ["StarryOp"]
 
 
-class TheanoOp(tt.Op):
+class StarryOp(tt.Op):
 
     __props__ = ("lmax", )
 
@@ -21,7 +21,7 @@ class TheanoOp(tt.Op):
         self.map = Map(lmax=self.lmax)
 
         # Set up the gradient operation
-        self._grad_op = TheanoGradOp(self)
+        self._grad_op = StarryGradOp(self)
 
     def make_node(self, *args):
         if len(args) != len(self.param_names):
@@ -48,7 +48,7 @@ class TheanoOp(tt.Op):
         return self.grad(inputs, eval_points)
 
 
-class TheanoGradOp(tt.Op):
+class StarryGradOp(tt.Op):
 
     __props__ = ("base_op", )
 

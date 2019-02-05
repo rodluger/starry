@@ -3,7 +3,7 @@
 from __future__ import division, print_function
 import numpy as np
 import theano.tensor as tt
-from .theano_op import TheanoOp
+from .theano_op import StarryOp
 
 
 __all__ = ["LightCurve"]
@@ -16,7 +16,7 @@ class LightCurve(object):
     __citations__ = ("starry", )
 
     def __init__(self, lmax, model=None):
-        self.starry_op = TheanoOp(lmax)
+        self.starry_op = StarryOp(lmax)
 
     def get_light_curve(self, y=None, u=None, orbit=None, r=None, t=None,
         theta0=0.0, t0=0.0, per=None):

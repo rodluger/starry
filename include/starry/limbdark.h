@@ -38,7 +38,12 @@ namespace limbdark {
 
 #ifdef STARRY_ENABLE_BOOST
 
-        return boost::math::tgamma_delta_ratio<T>(1 + 0.5 * n, 0.5);
+        if (n == -3)
+            return root_pi<T>();
+        else if (n == -2)
+            return T(1.0) / root_pi<T>();
+        else
+            return boost::math::tgamma_delta_ratio<T>(1 + 0.5 * n, 0.5);
 
 #else
 
