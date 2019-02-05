@@ -7,6 +7,7 @@ inline void computeFluxInternal (
     const Scalar& theta, 
     const Scalar& xo, 
     const Scalar& yo, 
+    const Scalar& zo, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux
 ) {
@@ -27,11 +28,11 @@ inline void computeFluxInternal (
 
     // Compute the flux
     if (y_deg == 0) {
-        computeFluxLD(b, ro, flux);
+        computeFluxLD(zo, b, ro, flux);
     } else if (u_deg == 0) {
-        computeFluxYlm(theta, xo, yo, b, ro, flux);
+        computeFluxYlm(theta, xo, yo, zo, b, ro, flux);
     } else {
-        computeFluxYlmLD(theta, xo, yo, b, ro, flux);
+        computeFluxYlmLD(theta, xo, yo, zo, b, ro, flux);
     }
 }
 
@@ -41,12 +42,13 @@ Compute the flux for a limb-darkened map. Internal method.
 */
 template <typename T1>
 inline void computeFluxLD (
+    const Scalar& zo, 
     const Scalar& b, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux
 ) {
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0.0)) {
+    if ((zo < 0) || (b >= 1 + ro) || (ro == 0.0)) {
 
         // Easy: the disk-integrated intensity
         // is just the Y_{0,0} coefficient
@@ -79,6 +81,7 @@ inline void computeFluxYlm (
     const Scalar& theta,
     const Scalar& xo,
     const Scalar& yo,  
+    const Scalar& zo, 
     const Scalar& b, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux
@@ -87,7 +90,7 @@ inline void computeFluxYlm (
     rotateIntoCache(theta);
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0.0)) {
+    if ((zo < 0) || (b >= 1 + ro) || (ro == 0.0)) {
 
         // Easy
         MBCAST(flux, T1) = B.rTA1 * cache.Ry;
@@ -120,6 +123,7 @@ inline void computeFluxYlmLD (
     const Scalar& theta,
     const Scalar& xo,
     const Scalar& yo,  
+    const Scalar& zo, 
     const Scalar& b, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux
@@ -128,7 +132,7 @@ inline void computeFluxYlmLD (
     rotateIntoCache(theta);
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0.0)) {
+    if ((zo < 0) || (b >= 1 + ro) || (ro == 0.0)) {
 
         // Change basis to polynomials
         cache.A1Ry = B.A1 * cache.Ry;
@@ -174,6 +178,7 @@ inline void computeFluxInternal (
     const Scalar& theta, 
     const Scalar& xo, 
     const Scalar& yo, 
+    const Scalar& zo, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux, 
     MatrixBase<T2> const & Dt,
@@ -216,16 +221,16 @@ inline void computeFluxInternal (
     // Compute the flux
     if (y_deg == 0) {
         CHECK_ROWS(Du, lmax + STARRY_DFDU_DELTA);
-        computeFluxLD(xo, yo, b, ro, flux, Dt, 
+        computeFluxLD(xo, yo, zo, b, ro, flux, Dt, 
                       Dtheta, Dxo, Dyo, Dro, Dy, Du);
     } else if (u_deg == 0) {
         CHECK_ROWS(Dy, N);
-        computeFluxYlm(theta, xo, yo, b, ro, flux, Dt, 
+        computeFluxYlm(theta, xo, yo, zo, b, ro, flux, Dt, 
                        Dtheta, Dxo, Dyo, Dro, Dy, Du);
     } else {
         CHECK_ROWS(Dy, N);
         CHECK_ROWS(Du, lmax + STARRY_DFDU_DELTA);
-        computeFluxYlmLD(theta, xo, yo, b, ro, flux, Dt, 
+        computeFluxYlmLD(theta, xo, yo, zo, b, ro, flux, Dt, 
                          Dtheta, Dxo, Dyo, Dro, Dy, Du);
     }
 }
@@ -239,6 +244,7 @@ template <typename T1, typename T2, typename T3, typename T4,
 inline void computeFluxLD (
     const Scalar& xo, 
     const Scalar& yo, 
+    const Scalar& zo, 
     const Scalar& b, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux, 
@@ -252,7 +258,7 @@ inline void computeFluxLD (
 ) {
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0.0)) {
+    if ((zo < 0) || (b >= 1 + ro) || (ro == 0.0)) {
 
         // Most of the derivs are zero
         MBCAST(Dtheta, T3).setZero();
@@ -333,6 +339,7 @@ inline void computeFluxYlm (
     const Scalar& theta,
     const Scalar& xo,
     const Scalar& yo,  
+    const Scalar& zo, 
     const Scalar& b, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux, 
@@ -350,7 +357,7 @@ inline void computeFluxYlm (
     rotateIntoCache(theta, true);
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0.0)) {
+    if ((zo < 0) || (b >= 1 + ro) || (ro == 0.0)) {
 
         // Compute the theta deriv
         MBCAST(Dtheta, T3) = B.rTA1 * cache.DRDthetay;
@@ -455,6 +462,7 @@ inline void computeFluxYlmLD (
     const Scalar& theta,
     const Scalar& xo,
     const Scalar& yo,  
+    const Scalar& zo, 
     const Scalar& b, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux, 
@@ -472,7 +480,7 @@ inline void computeFluxYlmLD (
     rotateIntoCache(theta, true);
 
     // No occultation
-    if ((b >= 1 + ro) || (ro == 0.0)) {
+    if ((zo < 0) || (b >= 1 + ro) || (ro == 0.0)) {
 
         // Change basis to polynomials
         cache.A1Ry = B.A1 * cache.Ry;

@@ -69,6 +69,7 @@ void spherical_harmonic_transit() {
             theta(t), 
             xo(t), 
             yo, 
+            1.0,
             ro, 
             flux.row(t),
             Dtime.row(t),

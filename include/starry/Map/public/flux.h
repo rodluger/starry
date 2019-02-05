@@ -7,10 +7,11 @@ inline void computeFlux (
     const Scalar& theta, 
     const Scalar& xo, 
     const Scalar& yo, 
+    const Scalar& zo, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux
 ) {
-    computeFluxInternal(theta, xo, yo, ro, flux);
+    computeFluxInternal(theta, xo, yo, zo, ro, flux);
 }
 
 /**
@@ -24,6 +25,7 @@ inline void computeFlux (
     const Scalar& theta, 
     const Scalar& xo, 
     const Scalar& yo, 
+    const Scalar& zo, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux,
     MatrixBase<T2> const & Dtheta,
@@ -34,7 +36,7 @@ inline void computeFlux (
     MatrixBase<T7> const & Du
 ) {
     Matrix<Scalar> Dt(1, nflx);
-    computeFluxInternal(theta, xo, yo, ro, flux, 
+    computeFluxInternal(theta, xo, yo, zo, ro, flux, 
                     Dt, Dtheta, Dxo, Dyo, Dro, Dy, Du);
 }
 
@@ -48,11 +50,12 @@ inline void computeFlux (
     const Scalar& theta, 
     const Scalar& xo, 
     const Scalar& yo, 
+    const Scalar& zo, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux
 ) {
     computeTaylor(t);
-    computeFluxInternal(theta, xo, yo, ro, flux);
+    computeFluxInternal(theta, xo, yo, zo, ro, flux);
 }
 
 /**
@@ -67,6 +70,7 @@ inline void computeFlux (
     const Scalar& theta, 
     const Scalar& xo, 
     const Scalar& yo, 
+    const Scalar& zo, 
     const Scalar& ro, 
     MatrixBase<T1> const & flux, 
     MatrixBase<T2> const & Dt,
@@ -78,6 +82,6 @@ inline void computeFlux (
     MatrixBase<T8> const & Du
 ) {
     computeTaylor(t);
-    computeFluxInternal(theta, xo, yo, ro, flux,
+    computeFluxInternal(theta, xo, yo, zo, ro, flux,
                     Dt, Dtheta, Dxo, Dyo, Dro, Dy, Du);
 }

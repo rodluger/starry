@@ -593,11 +593,11 @@ PYBIND11_MODULE(
 #if defined(_STARRY_STATIC_)
     // Compute the flux
     PyMap.def("flux", flux<T>(), docstrings::Map::flux, "theta"_a=0.0, "xo"_a=0.0, 
-              "yo"_a=0.0, "ro"_a=0.0, "gradient"_a=false);
+              "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
 #else
     // Compute the flux
     PyMap.def("flux", flux<T>(), docstrings::Map::flux, "t"_a=0.0,"theta"_a=0.0, "xo"_a=0.0, 
-              "yo"_a=0.0, "ro"_a=0.0, "gradient"_a=false);
+              "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
 #endif
 
 // Code version

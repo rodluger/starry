@@ -4,7 +4,7 @@ import numpy as np
 import theano
 import theano.tensor as tt
 from starry import Map
-from starry.ops import TheanoOp
+from starry.ops import StarryOp
 
 
 def starry_op(lmax, y, u, theta, xo, yo, ro, zo=None):
@@ -17,7 +17,7 @@ def starry_op(lmax, y, u, theta, xo, yo, ro, zo=None):
             tt.as_tensor_variable(yo),
             tt.as_tensor_variable(ro),
             tt.as_tensor_variable(zo)]
-    op = TheanoOp(lmax)
+    op = StarryOp(lmax)
     return op(*args)
 
 

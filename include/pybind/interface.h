@@ -33,11 +33,6 @@
 #define MAKE_READ_ONLY(X)              reinterpret_cast<py::detail::PyArray_Proxy*>(X.ptr())->flags &= \
                                        ~py::detail::npy_api::NPY_ARRAY_WRITEABLE_;
 
-#define MAXSIZE3(A, B, C) max(max(A.size(), B.size()), C.size())
-#define MAXSIZE4(A, B, C, D) max(max(max(A.size(), B.size()), C.size()), D.size())
-#define MAXSIZE5(A, B, C, D, E) max(max(max(max(A.size(), B.size()), C.size()), D.size()), E.size())
-
-
 namespace interface {
 
 //! Misc stuff we need
@@ -247,10 +242,11 @@ std::function<py::object(
     ) -> py::object {
         using Scalar = typename T::Scalar;
 #ifdef _STARRY_TEMPORAL_
-        size_t nt = MAXSIZE4(t, theta, x, y);
+        std::vector<long> v{t.size(), theta.size(), x.size(), y.size()};
 #else
-        size_t nt = MAXSIZE3(theta, x, y);
+        std::vector<long> v{theta.size(), x.size(), y.size()};
 #endif
+        size_t nt = *std::max_element(v.begin(), v.end());
         size_t n = 0;
 #ifdef _STARRY_SPECTRAL_
         RowMatrix<Scalar> intensity(nt, map.nflx);
@@ -313,6 +309,7 @@ std::function<py::object(
         py::array_t<double>&, 
         py::array_t<double>&, 
         py::array_t<double>&,
+        py::array_t<double>&,
         bool
     )> flux () 
 {
@@ -325,6 +322,7 @@ std::function<py::object(
         py::array_t<double>& theta, 
         py::array_t<double>& xo, 
         py::array_t<double>& yo, 
+        py::array_t<double>& zo,
         py::array_t<double>& ro,
         bool compute_gradient
     ) -> py::object 
@@ -340,10 +338,11 @@ std::function<py::object(
 #endif
 
 #ifdef _STARRY_TEMPORAL_
-        size_t nt = MAXSIZE5(t, theta, xo, yo, ro); 
+        std::vector<long> v{t.size(), theta.size(), xo.size(), yo.size(), zo.size(), ro.size()};
 #else
-        size_t nt = MAXSIZE4(theta, xo, yo, ro);
+        std::vector<long> v{theta.size(), xo.size(), yo.size(), zo.size(), ro.size()};
 #endif
+        size_t nt = *std::max_element(v.begin(), v.end());
         size_t n = 0;
 
         // Allocate space for the flux
@@ -390,6 +389,7 @@ std::function<py::object(
                 double theta, 
                 double xo, 
                 double yo, 
+                double zo,
                 double ro
             ) {
                 map.computeFlux(
@@ -399,6 +399,7 @@ std::function<py::object(
                     static_cast<Scalar>(theta),
                     static_cast<Scalar>(xo),
                     static_cast<Scalar>(yo),
+                    static_cast<Scalar>(zo),
                     static_cast<Scalar>(ro),
                     map.cache.pb_flux.row(n),
 #ifdef _STARRY_TEMPORAL_
@@ -428,6 +429,7 @@ std::function<py::object(
                 theta, 
                 xo, 
                 yo, 
+                zo,
                 ro
             );
 
@@ -538,6 +540,7 @@ std::function<py::object(
                 double theta, 
                 double xo, 
                 double yo, 
+                double zo,
                 double ro
             ) {
                 map.computeFlux(
@@ -547,6 +550,7 @@ std::function<py::object(
                     static_cast<Scalar>(theta), 
                     static_cast<Scalar>(xo), 
                     static_cast<Scalar>(yo), 
+                    static_cast<Scalar>(zo),
                     static_cast<Scalar>(ro), 
                     map.cache.pb_flux.row(n)
                 );
@@ -559,6 +563,7 @@ std::function<py::object(
                 theta, 
                 xo, 
                 yo, 
+                zo,
                 ro
             );
             if (nt > 1) {
