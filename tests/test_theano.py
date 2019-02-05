@@ -53,7 +53,7 @@ def test_specific():
     assert np.allclose(lc_val, starry_flux)
 
     for i, v in enumerate(var):
-        if v.name in ["theta", "xo", "yo", "ro"]:
+        if v.name in ["theta", "xo", "yo"]:
             assert np.allclose(starry_grad[v.name], grad_val[i]), v.name
         elif v.name == "zo":
             pass
