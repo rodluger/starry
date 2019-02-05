@@ -7,15 +7,15 @@ from starry.ops import LightCurve
 orbit = xo.orbits.KeplerianOrbit(period=3.456)
 
 # Params
-t = np.linspace(-0.1, 0.1, 100)
+t = np.linspace(-0.1, 0.1, 500)
 lmax = 2
-u = [0.3, 0.2]
-y = np.zeros(9)
-y[0] = 1
+np.random.seed(41)
+y = 0.1 * np.random.randn((lmax + 1) ** 2)
+y[0] = 1.0
 
 # Instantiate and compute
 op = LightCurve(lmax)
-light_curve = op.get_light_curve(orbit=orbit, r=0.1, t=t, y=y, u=u).eval()
+light_curve = op.get_light_curve(orbit=orbit, r=0.1, t=t, y=y).eval()
 
 # Plot
 plt.plot(t, light_curve, color="C0", lw=2)

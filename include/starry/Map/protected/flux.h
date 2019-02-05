@@ -48,7 +48,7 @@ inline void computeFluxLD (
     MatrixBase<T1> const & flux
 ) {
     // No occultation
-    if ((zo < 0) || (b >= 1 + ro) || (ro == 0.0)) {
+    if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
 
         // Easy: the disk-integrated intensity
         // is just the Y_{0,0} coefficient
@@ -90,7 +90,7 @@ inline void computeFluxYlm (
     rotateIntoCache(theta);
 
     // No occultation
-    if ((zo < 0) || (b >= 1 + ro) || (ro == 0.0)) {
+    if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
 
         // Easy
         MBCAST(flux, T1) = B.rTA1 * cache.Ry;
@@ -132,7 +132,7 @@ inline void computeFluxYlmLD (
     rotateIntoCache(theta);
 
     // No occultation
-    if ((zo < 0) || (b >= 1 + ro) || (ro == 0.0)) {
+    if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
 
         // Change basis to polynomials
         cache.A1Ry = B.A1 * cache.Ry;
@@ -258,7 +258,7 @@ inline void computeFluxLD (
 ) {
 
     // No occultation
-    if ((zo < 0) || (b >= 1 + ro) || (ro == 0.0)) {
+    if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
 
         // Most of the derivs are zero
         MBCAST(Dtheta, T3).setZero();
@@ -357,7 +357,7 @@ inline void computeFluxYlm (
     rotateIntoCache(theta, true);
 
     // No occultation
-    if ((zo < 0) || (b >= 1 + ro) || (ro == 0.0)) {
+    if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
 
         // Compute the theta deriv
         MBCAST(Dtheta, T3) = B.rTA1 * cache.DRDthetay;
@@ -480,7 +480,7 @@ inline void computeFluxYlmLD (
     rotateIntoCache(theta, true);
 
     // No occultation
-    if ((zo < 0) || (b >= 1 + ro) || (ro == 0.0)) {
+    if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
 
         // Change basis to polynomials
         cache.A1Ry = B.A1 * cache.Ry;

@@ -5,23 +5,23 @@ import theano
 import theano.tensor as tt
 from .._starry_default_double import Map
 
-__all__ = ["StarryOp"]
+__all__ = ["DefaultYlmOp"]
 
 
-class StarryOp(tt.Op):
+class DefaultYlmOp(tt.Op):
 
     __props__ = ("lmax", )
 
     def __init__(self, lmax=2):
         # Save the primary information
         self.lmax = int(lmax)
-        self.param_names = ["y", "u", "theta", "xo", "yo", "ro", "zo"]
+        self.param_names = ["y", "theta", "xo", "yo", "zo", "ro"]
 
         # Pre-initialize the Map object
         self.map = Map(lmax=self.lmax)
 
         # Set up the gradient operation
-        self._grad_op = StarryGradOp(self)
+        self._grad_op = DefaultYlmGradOp(self)
 
     def make_node(self, *args):
         if len(args) != len(self.param_names):
@@ -33,12 +33,14 @@ class StarryOp(tt.Op):
         return shapes[-1],
 
     def perform(self, node, inputs, outputs):
-        y, u, theta, xo, yo, ro, zo = inputs
+        y, theta, xo, yo, zo, ro = inputs
         self.map[:, :] = y
-        self.map[:] = u
-        ro_ = tt.switch(tt.lt(zo, 0.0), ro, 0.0).eval()
-        outputs[0][0] = self.map.flux(theta=theta, xo=xo, yo=yo, ro=ro_)
-
+        # HACK: nudge at least one ylm away from zero
+        # to force starry to compute all derivatives
+        if (len(y) > 2) and (y[2] == 0):
+            self.map[1, 0] = 1.e-15
+        outputs[0][0] = self.map.flux(theta=theta, xo=xo, yo=yo, zo=zo, ro=ro)
+            
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
 
@@ -48,7 +50,7 @@ class StarryOp(tt.Op):
         return self.grad(inputs, eval_points)
 
 
-class StarryGradOp(tt.Op):
+class DefaultYlmGradOp(tt.Op):
 
     __props__ = ("base_op", )
 
@@ -65,19 +67,23 @@ class StarryGradOp(tt.Op):
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
-        y, u, theta, xo, yo, ro, zo, DDf = inputs
+        y, theta, xo, yo, zo, ro, DDf = inputs
         self.base_op.map[:, :] = y
-        self.base_op.map[:] = u
+        # HACK: nudge at least one ylm away from zero
+        # to force starry to compute all derivatives
+        if (len(y) > 2) and (y[2] == 0):
+            self.base_op.map[1, 0] = 1.e-15
+        _, grads = self.base_op.map.flux(theta=theta, xo=xo, yo=yo, zo=zo,
+                                         ro=ro, gradient=True)
 
-        ro_ = tt.switch(tt.lt(zo, 0.0), ro, 0.0).eval()
-        _, grads = self.base_op.map.flux(theta=theta, xo=xo, yo=yo, 
-                                         ro=ro_, gradient=True)
-
-        # The gradients with respect to the static parameters
-        for i, param in enumerate(["y", "u"]):
-            shape = list(inputs[i].shape) + list(DDf.shape)
-            outputs[i][0] = np.array(np.sum(grads.get(param, np.zeros(shape)) * DDf, axis=-1))
+        # The map gradient
+        shape = list(inputs[0].shape) + list(DDf.shape)
+        outputs[0][0] = np.array(np.sum(grads.get("y", np.zeros(shape)) * DDf, axis=-1))
 
         # The gradients with respect to the time-dependent parameters
-        for i, param in enumerate(["theta", "xo", "yo", "ro"]):
-            outputs[i + 2][0] = np.array(grads.get(param, 0.0) * DDf)
+        for i, param in enumerate(["theta", "xo", "yo", "zo"]):
+            outputs[i + 1][0] = np.array(grads.get(param, 0.0) * DDf)
+        
+        # The radius gradient
+        shape = list(inputs[5].shape) + list(DDf.shape)
+        outputs[5][0] = np.atleast_1d(np.array(np.sum(grads.get("ro", np.zeros(shape)) * DDf, axis=-1)))
