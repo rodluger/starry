@@ -2,12 +2,12 @@
 Test the map evaluation against some benchmarks.
 
 """
-import starry2
+import starry
 import numpy as np
 
 
 def test_default_scalar():
-    map = starry2.Map(1)
+    map = starry.Map(1)
     map[:, :] = 1
     x = 0.3
     y = 0.4
@@ -19,7 +19,7 @@ def test_default_scalar():
 
 
 def test_default_vector():
-    map = starry2.Map(1)
+    map = starry.Map(1)
     map[:, :] = 1
     x = np.array([0.3, 0.4])
     y = np.array([0.4, 0.5])
@@ -31,7 +31,7 @@ def test_default_vector():
 
 
 def test_spectral_scalar():
-    map = starry2.Map(1, nw=2)
+    map = starry.Map(1, nw=2)
     map[:, :] = [1.0, 2.0]
     x = 0.3
     y = 0.4
@@ -46,7 +46,7 @@ def test_spectral_scalar():
     
 
 def test_spectral_vector():
-    map = starry2.Map(1, nw=2)
+    map = starry.Map(1, nw=2)
     map[:, :] = [1.0, 2.0]
     x = np.array([0.3, 0.4])
     y = np.array([0.4, 0.5])
@@ -61,7 +61,7 @@ def test_spectral_vector():
 
 
 def test_temporal_scalar():
-    map = starry2.Map(1, nt=2)
+    map = starry.Map(1, nt=2)
     map[:, :] = [1.0, 0.5]
     t = 1.0
     x = 0.3
@@ -74,7 +74,7 @@ def test_temporal_scalar():
 
 
 def test_temporal_vector():
-    map = starry2.Map(1, nt=2)
+    map = starry.Map(1, nt=2)
     map[:, :] = [1.0, 0.5]
     t = np.array([1.0, 2.0])
     x = 0.3

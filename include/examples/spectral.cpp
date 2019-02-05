@@ -11,8 +11,8 @@ template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 
 // Import starry
-#include "starry2.h"
-using namespace starry2;
+#include "starry.h"
+using namespace starry;
 
 /**
 Compute the light curve for a transit across a

@@ -14,10 +14,10 @@ harmonic map during a single-body occultation using Green's theorem.
 #include "ellip.h"
 #include "errors.h"
 
-namespace starry2 {
+namespace starry {
 namespace solver {
 
-    using namespace starry2::utils;
+    using namespace starry::utils;
 
     /**
     Vieta's theorem coefficient A_{i,u,v}
@@ -1167,6 +1167,6 @@ namespace solver {
     };
 
 } // namespace solver
-} // namespace starry2
+} // namespace starry
 
 #endif

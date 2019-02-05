@@ -1,15 +1,15 @@
 """Test coefficient getters/setters."""
-import starry2
+import starry
 import numpy as np
 
 # Instatiate all the map types
 lmax = 3
-map_default_double = starry2.Map(lmax)
-map_default_multi = starry2.Map(lmax, multi=True)
-map_spectral_double = starry2.Map(lmax, nw=3)
-map_spectral_multi = starry2.Map(lmax, nw=3, multi=True)
-map_temporal_double = starry2.Map(lmax, nt=3)
-map_temporal_multi = starry2.Map(lmax, nt=3, multi=True)
+map_default_double = starry.Map(lmax)
+map_default_multi = starry.Map(lmax, multi=True)
+map_spectral_double = starry.Map(lmax, nw=3)
+map_spectral_multi = starry.Map(lmax, nw=3, multi=True)
+map_temporal_double = starry.Map(lmax, nt=3)
+map_temporal_multi = starry.Map(lmax, nt=3, multi=True)
 
 
 def test_default_flags():

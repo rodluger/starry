@@ -10,7 +10,7 @@
 #include "utils.h"
 #include "errors.h"
 
-namespace starry2 { 
+namespace starry { 
 namespace basis {
 
 using namespace utils;
@@ -847,5 +847,5 @@ inline void Basis<T>::computePolyMatrix (
 }
 
 } // namespace basis
-} // namespace starry2
+} // namespace starry
 #endif

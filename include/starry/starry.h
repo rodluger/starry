@@ -1,5 +1,5 @@
 /**
-\file starry2.h
+\file starry.h
 \brief Entry point to the `starry` C++ interface.
 
 */
@@ -18,7 +18,7 @@ Welcome to the starry C++ API documentation.
 #include "maps.h"
 #include "extensions/extensions.h"
 
-namespace starry2 {
+namespace starry {
 
     using maps::Map;
     using utils::Multi;
@@ -26,6 +26,6 @@ namespace starry2 {
     using utils::Spectral;
     using utils::Temporal;
 
-} // namespace starry2
+} // namespace starry
 
 #endif

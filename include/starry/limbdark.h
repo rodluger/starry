@@ -17,7 +17,7 @@
 #include "errors.h"
 
 
-namespace starry2 {
+namespace starry {
 namespace limbdark {
 
     using std::abs;
@@ -823,6 +823,6 @@ namespace limbdark {
     }
 
 } // namespace limbdark
-} // namespace starry2
+} // namespace starry
 
 #endif

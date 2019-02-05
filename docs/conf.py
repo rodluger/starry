@@ -26,15 +26,15 @@ sys.path.insert(0, os.path.abspath('.'))
 import sphinx_rtd_theme
 
 # Hack: obscure the ugly module names for the docs
-import starry2
-starry2.Map = type('Map', 
-                   starry2._starry_default_double.Map.__bases__,
-                   dict(starry2._starry_default_double.Map.__dict__)
+import starry
+starry.Map = type('Map', 
+                   starry._starry_default_double.Map.__bases__,
+                   dict(starry._starry_default_double.Map.__dict__)
                   )
 
 # -- Project information -----------------------------------------------------
 
-project = 'starry2'
+project = 'starry'
 copyright = '2019, Rodrigo Luger'
 author = 'Rodrigo Luger'
 
@@ -149,7 +149,7 @@ html_static_path = ['.static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'starry2doc'
+htmlhelp_basename = 'starrydoc'
 
 # -- Extension configuration -------------------------------------------------
 

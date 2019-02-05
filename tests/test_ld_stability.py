@@ -1,13 +1,13 @@
 """Test the stability of the limb darkening calculations near singular points."""
-import starry2
+import starry
 import numpy as np
 import pytest
 
 # We'll run all tests on tenth degree maps
-map = starry2.Map(10)
+map = starry.Map(10)
 map[0, 0] = 1
 map[:] = 1
-map_multi = starry2.Map(10, multi=True)
+map_multi = starry.Map(10, multi=True)
 map_multi[0, 0] = 1
 map_multi[:] = 1
 

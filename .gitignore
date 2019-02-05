@@ -5,7 +5,7 @@
 .DS_Store
 build/
 dist/
-starry2.egg-info/
+starry.egg-info/
 docs/_build
 docs/_generate
 *.pytest_cache/
@@ -21,7 +21,7 @@ include/examples/default
 include/examples/spectral
 include/examples/temporal
 scripts/*.pdf
-include/starry2/extensions/modelgrid.h
+include/starry/extensions/modelgrid.h
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

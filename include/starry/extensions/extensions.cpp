@@ -21,10 +21,10 @@
 using namespace pybind11::literals;
 
 //! Import starry
-#include <starry2/starry2.h>
+#include <starry/starry.h>
 #include "extensions.h"
-using namespace starry2::utils;
-using namespace starry2::extensions;
+using namespace starry::utils;
+using namespace starry::extensions;
 
 //! Register the Python module
 PYBIND11_MODULE(

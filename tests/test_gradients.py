@@ -2,7 +2,7 @@
 Test gradient computation.
 
 """
-import starry2
+import starry
 import numpy as np
 import pytest
 np.random.seed(44)
@@ -69,11 +69,11 @@ def compare(ydeg=2, udeg=0, nw=1, nt=1, eps=1.e-8, axis=[0, 1, 0],
 
     # Instantiate
     if kind == "default":
-        map = starry2.Map(lmax, multi=multi)
+        map = starry.Map(lmax, multi=multi)
     elif kind == "spectral":
-        map = starry2.Map(lmax, nw=nw, multi=multi)
+        map = starry.Map(lmax, nw=nw, multi=multi)
     elif kind == "temporal":
-        map = starry2.Map(lmax, nt=nt, multi=multi)
+        map = starry.Map(lmax, nt=nt, multi=multi)
     map.axis = axis
     map[:, :] = np.array(coeffs['y'])
     map[:] = np.array(coeffs['u'])

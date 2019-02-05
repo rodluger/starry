@@ -3,8 +3,8 @@ from __future__ import division, print_function
 import numpy as np
 import theano
 import theano.tensor as tt
-from starry2 import Map
-from starry2.ops import TheanoOp
+from starry import Map
+from starry.ops import TheanoOp
 
 
 def starry_op(lmax, y, u, theta, xo, yo, ro, zo=None):

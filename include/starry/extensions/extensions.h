@@ -9,10 +9,10 @@
 
 // Include (#include) custom extensions here.
 
-namespace starry2 { 
+namespace starry { 
 namespace extensions {
     
 } // namespace extensions
-} // namespace starry2
+} // namespace starry
 
 #endif

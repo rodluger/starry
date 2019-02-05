@@ -1,5 +1,5 @@
 """Test miscellaneous user operations."""
-import starry2
+import starry
 import numpy as np
 import pytest
 

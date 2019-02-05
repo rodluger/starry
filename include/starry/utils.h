@@ -118,7 +118,7 @@ namespace py = pybind11;
 
 #endif
 
-namespace starry2 { 
+namespace starry { 
 namespace utils {
 
 
@@ -430,5 +430,5 @@ inline UnitVector<T> norm_unit(const UnitVector<T>& vec) {
 }
 
 } // namespace utils
-} // namespace starry2
+} // namespace starry
 #endif

@@ -13,9 +13,9 @@ py::object showInternal (
 ) {
     py::object fshow;
     if (std::is_same<S, Spectral<Scalar>>::value)
-        fshow = py::module::import("starry2._plotting").attr("show_spectral");
+        fshow = py::module::import("starry._plotting").attr("show_spectral");
     else
-        fshow = py::module::import("starry2._plotting").attr("show");
+        fshow = py::module::import("starry._plotting").attr("show");
     if (res < 1)
         throw errors::ValueError("Invalid value for `res`.");
     Matrix<Scalar> intensity(res * res, nflx);
@@ -46,7 +46,7 @@ py::object showInternal (
         renderMapInternal(theta(j), res, intensity.block(n, 0, res2, nflx));
         n += res2;
     }
-    py::object fshow = py::module::import("starry2._plotting").attr("animate");
+    py::object fshow = py::module::import("starry._plotting").attr("animate");
     return fshow(intensity.template cast<double>(), res, cmap, gif, interval);
 }
 
@@ -62,7 +62,7 @@ void loadImageInternal (
     bool normalize=true,
     int sampling_factor=8
 ) {
-    py::object fload = py::module::import("starry2._healpy").attr("load_map");
+    py::object fload = py::module::import("starry._healpy").attr("load_map");
     if ((l == -1) || (l > lmax))
         l = lmax;
     if (col > ncoly)

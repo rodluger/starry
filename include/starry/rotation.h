@@ -18,10 +18,10 @@ from the Wigner-D matrices for complex spherical harmonics.
 
 #include "utils.h"
 
-namespace starry2 {
+namespace starry {
 namespace rotation {
 
-using namespace starry2::utils;
+using namespace starry::utils;
 
 /**
 Axis-angle rotation matrix, used to rotate Cartesian
@@ -756,6 +756,6 @@ inline void Wigner<MapType>::computeZeta (
 }
 
 } // namespace rotation
-} // namespace starry2
+} // namespace starry
 
 #endif

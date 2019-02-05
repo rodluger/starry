@@ -14,7 +14,7 @@
 #include "basis.h"
 #include "rotation.h"
 
-namespace starry2 { 
+namespace starry { 
 namespace maps {
 
 using namespace utils;
@@ -23,5 +23,5 @@ using namespace utils;
 #include "Map/Map.h"
 
 } // namespace maps
-} // namespace starry2
+} // namespace starry
 #endif

@@ -1,4 +1,4 @@
-"""starry2 install script."""
+"""starry install script."""
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import sys
@@ -68,7 +68,7 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-def get_ext(module='starry2._starry_default_double', name='_STARRY_DEFAULT_DOUBLE_'):
+def get_ext(module='starry._starry_default_double', name='_STARRY_DEFAULT_DOUBLE_'):
     include_dirs = [
         get_pybind_include(),
         get_pybind_include(user=True),
@@ -90,24 +90,24 @@ def get_ext(module='starry2._starry_default_double', name='_STARRY_DEFAULT_DOUBL
 # Figure out which modules to compile (default all)
 ext_modules = []
 if (bitsum & _STARRY_DEFAULT_DOUBLE_):
-    ext_modules.append(get_ext('starry2._starry_default_double', '_STARRY_DEFAULT_DOUBLE_'))
+    ext_modules.append(get_ext('starry._starry_default_double', '_STARRY_DEFAULT_DOUBLE_'))
 if (bitsum & _STARRY_DEFAULT_MULTI_):
-    ext_modules.append(get_ext('starry2._starry_default_multi', '_STARRY_DEFAULT_MULTI_'))
+    ext_modules.append(get_ext('starry._starry_default_multi', '_STARRY_DEFAULT_MULTI_'))
 if (bitsum & _STARRY_SPECTRAL_DOUBLE_):
-    ext_modules.append(get_ext('starry2._starry_spectral_double', '_STARRY_SPECTRAL_DOUBLE_'))
+    ext_modules.append(get_ext('starry._starry_spectral_double', '_STARRY_SPECTRAL_DOUBLE_'))
 if (bitsum & _STARRY_SPECTRAL_MULTI_):
-    ext_modules.append(get_ext('starry2._starry_spectral_multi', '_STARRY_SPECTRAL_MULTI_'))
+    ext_modules.append(get_ext('starry._starry_spectral_multi', '_STARRY_SPECTRAL_MULTI_'))
 if (bitsum & _STARRY_TEMPORAL_DOUBLE_):
-    ext_modules.append(get_ext('starry2._starry_temporal_double', '_STARRY_TEMPORAL_DOUBLE_'))
+    ext_modules.append(get_ext('starry._starry_temporal_double', '_STARRY_TEMPORAL_DOUBLE_'))
 if (bitsum & _STARRY_TEMPORAL_MULTI_):
-    ext_modules.append(get_ext('starry2._starry_temporal_multi', '_STARRY_TEMPORAL_MULTI_'))
+    ext_modules.append(get_ext('starry._starry_temporal_multi', '_STARRY_TEMPORAL_MULTI_'))
 
 # Build extensions?
 if (bitsum & _STARRY_EXTENSIONS_):
     ext_modules.append(
         Extension(
-            'starry2._starry_extensions',
-            ['include/starry2/extensions/extensions.cpp'],
+            'starry._starry_extensions',
+            ['include/starry/extensions/extensions.cpp'],
             include_dirs=[
                 get_pybind_include(),
                 get_pybind_include(user=True),
@@ -189,14 +189,14 @@ class BuildExt(build_ext):
 
 
 setup(
-    name='starry2',
+    name='starry',
     version=__version__,
     author='Rodrigo Luger',
     author_email='rodluger@gmail.com',
     url='https://github.com/rodluger/starry',
     description='Analytic occultation light curves for astronomy.',
     license='GPL',
-    packages=['starry2'],
+    packages=['starry'],
     ext_modules=ext_modules,
     install_requires=['pybind11>=2.2'],
     cmdclass={'build_ext': BuildExt},

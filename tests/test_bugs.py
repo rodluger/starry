@@ -2,7 +2,7 @@
 Test current bugs/issues in starry.
 
 """
-import starry2
+import starry
 import pytest
 import numpy as np
 

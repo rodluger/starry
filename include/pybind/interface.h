@@ -13,9 +13,9 @@
 #include <cmath>
 #include <stdlib.h>
 #include <vector>
-#include <starry2/errors.h>
-#include <starry2/utils.h>
-#include <starry2/maps.h>
+#include <starry/errors.h>
+#include <starry/utils.h>
+#include <starry/maps.h>
 
 
 #ifdef _STARRY_MULTI_
@@ -43,9 +43,9 @@ namespace interface {
 //! Misc stuff we need
 #include <Python.h>
 using namespace pybind11::literals;
-using namespace starry2;
-using namespace starry2::utils;
-using starry2::maps::Map;
+using namespace starry;
+using namespace starry::utils;
+using starry::maps::Map;
 static const auto integer = py::module::import("numpy").attr("integer");
 
 

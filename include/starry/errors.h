@@ -11,7 +11,7 @@
 #include <exception>
 #include <string>
 
-namespace starry2 {
+namespace starry {
 namespace errors {
 
     using namespace std;
@@ -158,6 +158,6 @@ namespace errors {
     };
 
 } // namespace errors
-} // namespace starry2
+} // namespace starry
 
 #endif

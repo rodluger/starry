@@ -21,7 +21,7 @@ Based in part on Daniel Foreman-Mackey's
 #include "utils.h"
 #include "errors.h"
 
-namespace starry2 {
+namespace starry {
 namespace ellip {
 
     using std::abs;
@@ -242,6 +242,6 @@ namespace ellip {
     }
 
 } // namespace ellip
-} // namespace starry2
+} // namespace starry
 
 #endif

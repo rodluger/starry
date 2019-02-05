@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import exoplanet as xo
-from starry2.ops import LightCurve
+from starry.ops import LightCurve
 
 # The light curve calculation requires an orbit
 orbit = xo.orbits.KeplerianOrbit(period=3.456)
