@@ -606,13 +606,13 @@ PYBIND11_MODULE(
         "MAP", [](
             Map<T>& map,
             py::array_t<double>& flux_,
-            py::array_t<double>& flux_err_,
+            py::array_t<double>& C_,
+            py::array_t<double>& L_,
             py::array_t<double>& theta_,
             py::array_t<double>& xo_,
             py::array_t<double>& yo_,
             py::array_t<double>& zo_,
-            py::array_t<double>& ro_,
-            py::array_t<double>& L_
+            py::array_t<double>& ro_
         ) {
             // Map the flux to an Eigen type and figure
             // out the size of our vectors
@@ -622,19 +622,50 @@ PYBIND11_MODULE(
             double *ptr = (double *) buf.ptr;
             Eigen::Map<Vector<double>> flux(ptr, nt, 1);
 
-            // The remaining vectors/matrices
-            Eigen::Map<Vector<double>> flux_err(NULL, nt, 1);
-            Vector<double> tmp_flux_err;
-            buf = flux_err_.request();
+            Eigen::Map<Vector<double>> C(NULL, nt, 1);
+            Vector<double> tmp_C;
+            buf = C_.request();
             ptr = (double *) buf.ptr;
             if (buf.ndim == 0) {
-                tmp_flux_err = ptr[0] * Vector<double>::Ones(nt);
-                new (&flux_err) Eigen::Map<Vector<double>>(&tmp_flux_err(0), nt, 1);
+                tmp_C = ptr[0] * Vector<double>::Ones(nt);
+                new (&C) Eigen::Map<Vector<double>>(&tmp_C(0), nt, 1);
             } else if ((buf.ndim == 1) && (buf.size == nt)) {
-                new (&flux_err) Eigen::Map<Vector<double>>(ptr, nt, 1);
+                new (&C) Eigen::Map<Vector<double>>(ptr, nt, 1);
             } else {
-                throw errors::ShapeError("Vector `flux_err` has the incorrect shape.");
+                throw errors::ShapeError("Vector `C` has the incorrect shape.");
             }
+
+            Eigen::Map<Vector<double>> L(NULL, map.N, 1);
+            Vector<double> tmp_L;
+            buf = L_.request();
+            ptr = (double *) buf.ptr;
+            if (buf.ndim == 0) {
+                tmp_L = ptr[0] * Vector<double>::Ones(map.N);
+                new (&L) Eigen::Map<Vector<double>>(&tmp_L(0), map.N, 1);
+            } else if ((buf.ndim == 1) && (buf.size == map.N)) {
+                new (&L) Eigen::Map<Vector<double>>(ptr, map.N, 1);
+            } else {
+                throw errors::ShapeError("Vector `L` has the incorrect shape.");
+            }
+
+            /* This is how we would handle 2D L and C:
+            Eigen::Map<Matrix<double>> L(NULL, map.N, map.N);
+            Matrix<double> tmp_L;
+            buf = L_.request();
+            ptr = (double *) buf.ptr;
+            if (buf.ndim == 0) {
+                tmp_L = ptr[0] * Matrix<double>::Identity(map.N, map.N);
+                new (&L) Eigen::Map<Matrix<double>>(&tmp_L(0), map.N, map.N);
+            } else if ((buf.ndim == 1) && (buf.size == map.N)) {
+                Eigen::Map<Vector<double>> L_diag(ptr, nt, 1);
+                tmp_L = Matrix<double>(L_diag.asDiagonal());
+                new (&L) Eigen::Map<Matrix<double>>(ptr, nt, 1);
+            } else if ((buf.ndim == 2) && (buf.shape[0] == map.N) && (buf.shape[1] == map.N)) {
+                new (&L) Eigen::Map<Matrix<double>>(ptr, map.N, map.N);
+            } else {
+                throw errors::ShapeError("Matrix `L` has the incorrect shape.");
+            }
+            */
 
             Eigen::Map<Vector<double>> theta(NULL, nt, 1);
             Vector<double> tmp_theta;
@@ -701,31 +732,19 @@ PYBIND11_MODULE(
                 throw errors::ShapeError("Vector `ro` has the incorrect shape.");
             }
 
-            Eigen::Map<Matrix<double>> L(NULL, map.N, map.N);
-            Matrix<double> tmp_L;
-            buf = L_.request();
-            ptr = (double *) buf.ptr;
-            if (buf.ndim == 0) {
-                tmp_L = ptr[0] * Matrix<double>::Identity(map.N, map.N);
-                new (&L) Eigen::Map<Matrix<double>>(&tmp_L(0), map.N, map.N);
-            } else if ((buf.ndim == 1) && (buf.size == map.N)) {
-                Eigen::Map<Vector<double>> L_diag(ptr, nt, 1);
-                tmp_L = Matrix<double>(L_diag.asDiagonal());
-                new (&L) Eigen::Map<Matrix<double>>(ptr, nt, 1);
-            } else if ((buf.ndim == 2) && (buf.shape[0] == map.N) && (buf.shape[1] == map.N)) {
-                new (&L) Eigen::Map<Matrix<double>>(ptr, map.N, map.N);
-            } else {
-                throw errors::ShapeError("Matrix `L` has the incorrect shape.");
-            }
-
-            //
+            // Instantiate the output matrices
+            Matrix<double> A(nt, map.N);
             Vector<double> yhat(map.N, 1);
             Matrix<double> yvar(map.N, map.N);
-            map.computeMaxLikeMap(flux, flux_err, theta, xo, yo, zo, ro, L, yhat, yvar);
+            map.computeMaxLikeMap(flux, C, L, theta, xo, yo, 
+                                  zo, ro, A, yhat, yvar);
+
+            // TODO
+            return A;
 
         },
-        "flux"_a, "flux_err"_a, "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, 
-        "zo"_a=0.0, "ro"_a=0.0, "L"_a=0.0);
+        "flux"_a, "C"_a, "L"_a=INFINITY, "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, 
+        "zo"_a=1.0, "ro"_a=0.0);
 #endif
 
 // Code version
