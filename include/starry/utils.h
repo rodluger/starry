@@ -96,16 +96,18 @@ namespace py = pybind11;
 #ifdef STARRY_DEBUG
 //! Check matrix shape (debug mode only)
 #define CHECK_SHAPE(MATRIX, ROWS, COLS)\
-    assert((MATRIX.cols() == COLS) && (MATRIX.rows() == ROWS))
+    assert((static_cast<size_t>(MATRIX.cols()) == static_cast<size_t>(COLS)) && \
+    (static_cast<size_t>(MATRIX.rows()) == static_cast<size_t>(ROWS)))
 //! Check matrix columns (debug mode only)
 #define CHECK_COLS(MATRIX, COLS)\
-    assert(MATRIX.cols() == COLS)
+    assert(static_cast<size_t>(MATRIX.cols()) == static_cast<size_t>(COLS))
 //! Check matrix rows (debug mode only)
 #define CHECK_ROWS(MATRIX, ROWS)\
-    assert(MATRIX.rows() == ROWS)
+    assert(static_cast<size_t>(MATRIX.rows()) == static_cast<size_t>(ROWS))
 //! Check index bounds (debug mode only)
 #define CHECK_BOUNDS(INDEX, IMIN, IMAX)\
-    assert((INDEX >= IMIN) && (INDEX <= IMAX))
+    assert((static_cast<size_t>(INDEX) >= static_cast<size_t>(IMIN)) && \
+    (static_cast<size_t>(INDEX) <= static_cast<size_t>(IMAX)))
 #else
 //! Check matrix shape (debug mode only)
 #define CHECK_SHAPE(MATRIX, ROWS, COLS)  do {} while(0)

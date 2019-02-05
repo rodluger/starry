@@ -372,19 +372,36 @@ public:
         MatrixBase<T2>& yout
     );
 
-    template <typename Derived>
+    template <typename T1, typename T2>
     inline void leftMultiplyRz (
-        const MatrixBase<Derived>& vT, 
-        MatrixBase<Derived>& uT
+        const MatrixBase<T1>& vT, 
+        MatrixBase<T2> const & uT
     );
 
-    template <typename Derived>
+    template <typename T1, typename T2>
     inline void leftMultiplyDRz (
-        const MatrixBase<Derived>& vT, 
-        MatrixBase<Derived>& uT
+        const MatrixBase<T1>& vT, 
+        MatrixBase<T2> const & uT
+    );
+
+    template <typename T1, typename T2>
+    inline void leftMultiplyRZeta (
+        const MatrixBase<T1>& vT, 
+        MatrixBase<T2> const & uT
+    );
+
+    template <typename T1, typename T2>
+    inline void leftMultiplyRZetaInv (
+        const MatrixBase<T1>& vT, 
+        MatrixBase<T2> const & uT
     );
 
     inline void resetRz ();
+
+    inline void computeFourierTerms (
+        const Scalar& costheta, 
+        const Scalar& sintheta
+    );
 
     inline void compute (
         const Scalar& costheta, 
@@ -526,14 +543,14 @@ Computes the dot product uT = vT . Rz.
 
 */
 template <class MapType>
-template <typename Derived>
+template <typename T1, typename T2>
 inline void Wigner<MapType>::leftMultiplyRz (
-    const MatrixBase<Derived>& vT, 
-    MatrixBase<Derived>& uT
+    const MatrixBase<T1>& vT, 
+    MatrixBase<T2> const & uT
 ) {
     for (int l = 0; l < lmax + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
-            uT.col(l * l + j) = vT.col(l * l + j) * cosmt(l * l + j) +
+            MBCAST(uT, T2).col(l * l + j) = vT.col(l * l + j) * cosmt(l * l + j) +
                                 vT.col(l * l + 2 * l - j) * sinmt(l * l + j);
         }
     }
@@ -544,16 +561,75 @@ Computes the dot product uT = vT . dRz / dtheta.
 
 */
 template <class MapType>
-template <typename Derived>
+template <typename T1, typename T2>
 inline void Wigner<MapType>::leftMultiplyDRz (
-    const MatrixBase<Derived>& vT, 
-    MatrixBase<Derived>& uT
+    const MatrixBase<T1>& vT, 
+    MatrixBase<T2> const & uT
 ) {
     for (int l = 0; l < lmax + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
             int m = j - l;
-            uT.col(l * l + j) = vT.col(l * l + 2 * l - j) * m * cosmt(l * l + j) -
+            MBCAST(uT, T2).col(l * l + j) = vT.col(l * l + 2 * l - j) * m * cosmt(l * l + j) -
                                 vT.col(l * l + j) * m * sinmt(l * l + j);
+        }
+    }
+}
+
+/* 
+Computes the dot product uT = vT . RZeta.
+
+*/
+template <class MapType>
+template <typename T1, typename T2>
+inline void Wigner<MapType>::leftMultiplyRZeta (
+    const MatrixBase<T1>& vT, 
+    MatrixBase<T2> const & uT
+) {
+    for (int l = 0; l < lmax + 1; ++l) {
+        MBCAST(uT, T2).segment(l * l, 2 * l + 1) =
+            vT.segment(l * l, 2 * l + 1) * RZeta[l];
+    }
+}
+
+/* 
+Computes the dot product uT = vT . RZetaInv.
+
+*/
+template <class MapType>
+template <typename T1, typename T2>
+inline void Wigner<MapType>::leftMultiplyRZetaInv (
+    const MatrixBase<T1>& vT, 
+    MatrixBase<T2> const & uT
+) {
+    for (int l = 0; l < lmax + 1; ++l) {
+        MBCAST(uT, T2).segment(l * l, 2 * l + 1) =
+            vT.segment(l * l, 2 * l + 1) * RZetaInv[l];
+    }
+}
+
+template <class MapType>
+inline void Wigner<MapType>::computeFourierTerms (
+    const Scalar& costheta,
+    const Scalar& sintheta
+) {
+    // Compute the cos and sin vectors for the zhat rotation
+    cosnt(1) = costheta;
+    sinnt(1) = sintheta;
+    for (int n = 2; n < lmax + 1; ++n) {
+        cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
+        sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
+    }
+    int n = 0;
+    for (int l = 0; l < lmax + 1; ++l) {
+        for (int m = -l; m < 0; ++m) {
+            cosmt(n) = cosnt(-m);
+            sinmt(n) = -sinnt(-m);
+            ++n;
+        }
+        for (int m = 0; m < l + 1; ++m) {
+            cosmt(n) = cosnt(m);
+            sinmt(n) = sinnt(m);
+            ++n;
         }
     }
 }
@@ -601,25 +677,7 @@ inline void Wigner<MapType>::compute (
 ) {
 
     // Compute the cos and sin vectors for the zhat rotation
-    cosnt(1) = costheta;
-    sinnt(1) = sintheta;
-    for (int n = 2; n < lmax + 1; ++n) {
-        cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
-        sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
-    }
-    int n = 0;
-    for (int l = 0; l < lmax + 1; ++l) {
-        for (int m = -l; m < 0; ++m) {
-            cosmt(n) = cosnt(-m);
-            sinmt(n) = -sinnt(-m);
-            ++n;
-        }
-        for (int m = 0; m < l + 1; ++m) {
-            cosmt(n) = cosnt(m);
-            sinmt(n) = sinnt(m);
-            ++n;
-        }
-    }
+    computeFourierTerms(costheta, sintheta);
 
     // Now compute the full rotation matrix
     int m;
@@ -681,6 +739,8 @@ inline void Wigner<MapType>::updateYZeta ()
             RZeta[l] * y.block(l * l, 0, 2 * l + 1, ncol);
     }
 }
+
+
 
 /**
 Perform a fast rotation about the z axis, skipping the Wigner matrix computation.

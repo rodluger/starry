@@ -26,6 +26,7 @@ protected:
     // Internal methods
     #include "protected/intensity.h"
     #include "protected/flux.h"
+    #include "protected/maxlike.h"
     #include "protected/deriv.h"
     #include "protected/oper.h"
     #include "protected/python_interface.h"
@@ -95,6 +96,7 @@ public:
     #include "public/oper.h"
     #include "public/intensity.h"
     #include "public/flux.h"
+    #include "public/maxlike.h"
     #include "public/python_interface.h"
 
 }; // class Map
