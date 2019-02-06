@@ -600,28 +600,128 @@ PYBIND11_MODULE(
               "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
 #endif
 
-#if defined(_STARRY_DEFAULT_) && defined(_STARRY_DOUBLE_)
-    // Compute the MAP map coefficients
+#if defined(_STARRY_STATIC_) && defined(_STARRY_DOUBLE_)
+    // Compute the linear Ylm model
     PyMap.def(
-        "MAP", [](
+        "LinearModel", [](
             Map<T>& map,
-            py::array_t<double>& flux_,
-            py::array_t<double>& C_,
-            py::array_t<double>& L_,
             py::array_t<double>& theta_,
             py::array_t<double>& xo_,
             py::array_t<double>& yo_,
             py::array_t<double>& zo_,
             py::array_t<double>& ro_
         ) {
-            // Map the flux to an Eigen type and figure
-            // out the size of our vectors
+            // Figure out the length of the timeseries
+            std::vector<long> v{theta_.request().size,
+                                xo_.request().size,
+                                yo_.request().size,
+                                zo_.request().size,
+                                ro_.request().size};
+            py::ssize_t nt = *std::max_element(v.begin(), v.end());
+            py::buffer_info buf;
+            double *ptr;
+
+            // Map `theta` to an Eigen vector
+            Eigen::Map<Vector<double>> theta(NULL, nt, 1);
+            Vector<double> tmp_theta;
+            buf = theta_.request();
+            ptr = (double *) buf.ptr;
+            if (buf.ndim == 0) {
+                tmp_theta = ptr[0] * Vector<double>::Ones(nt);
+                new (&theta) Eigen::Map<Vector<double>>(&tmp_theta(0), nt, 1);
+            } else if ((buf.ndim == 1) && (buf.size == nt)) {
+                new (&theta) Eigen::Map<Vector<double>>(ptr, nt, 1);
+            } else {
+                throw errors::ShapeError("Vector `theta` has the incorrect shape.");
+            }
+
+            // Map `xo` to an Eigen vector
+            Eigen::Map<Vector<double>> xo(NULL, nt, 1);
+            Vector<double> tmp_xo;
+            buf = xo_.request();
+            ptr = (double *) buf.ptr;
+            if (buf.ndim == 0) {
+                tmp_xo = ptr[0] * Vector<double>::Ones(nt);
+                new (&xo) Eigen::Map<Vector<double>>(&tmp_xo(0), nt, 1);
+            } else if ((buf.ndim == 1) && (buf.size == nt)) {
+                new (&xo) Eigen::Map<Vector<double>>(ptr, nt, 1);
+            } else {
+                throw errors::ShapeError("Vector `xo` has the incorrect shape.");
+            }
+
+            // Map `yo` to an Eigen vector
+            Eigen::Map<Vector<double>> yo(NULL, nt, 1);
+            Vector<double> tmp_yo;
+            buf = yo_.request();
+            ptr = (double *) buf.ptr;
+            if (buf.ndim == 0) {
+                tmp_yo = ptr[0] * Vector<double>::Ones(nt);
+                new (&yo) Eigen::Map<Vector<double>>(&tmp_yo(0), nt, 1);
+            } else if ((buf.ndim == 1) && (buf.size == nt)) {
+                new (&yo) Eigen::Map<Vector<double>>(ptr, nt, 1);
+            } else {
+                throw errors::ShapeError("Vector `yo` has the incorrect shape.");
+            }
+
+            // Map `zo` to an Eigen vector
+            Eigen::Map<Vector<double>> zo(NULL, nt, 1);
+            Vector<double> tmp_zo;
+            buf = zo_.request();
+            ptr = (double *) buf.ptr;
+            if (buf.ndim == 0) {
+                tmp_zo = ptr[0] * Vector<double>::Ones(nt);
+                new (&zo) Eigen::Map<Vector<double>>(&tmp_zo(0), nt, 1);
+            } else if ((buf.ndim == 1) && (buf.size == nt)) {
+                new (&zo) Eigen::Map<Vector<double>>(ptr, nt, 1);
+            } else {
+                throw errors::ShapeError("Vector `zo` has the incorrect shape.");
+            }
+
+            // Map `ro` to an Eigen vector
+            Eigen::Map<Vector<double>> ro(NULL, nt, 1);
+            Vector<double> tmp_ro;
+            buf = ro_.request();
+            ptr = (double *) buf.ptr;
+            if (buf.ndim == 0) {
+                tmp_ro = ptr[0] * Vector<double>::Ones(nt);
+                new (&ro) Eigen::Map<Vector<double>>(&tmp_ro(0), nt, 1);
+            } else if ((buf.ndim == 1) && (buf.size == nt)) {
+                new (&ro) Eigen::Map<Vector<double>>(ptr, nt, 1);
+            } else {
+                throw errors::ShapeError("Vector `ro` has the incorrect shape.");
+            }
+
+            // Compute and return the model
+            Matrix<double> A;
+            map.computeLinearModel(theta, xo, yo, zo, ro, A);
+            return A;
+
+        },
+        "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0);
+#endif
+
+#if defined(_STARRY_DEFAULT_) && defined(_STARRY_DOUBLE_)
+    // Compute the MAP map coefficients
+    PyMap.def(
+        "MAP", [](
+            Map<T>& map,
+            const Matrix<double>& A,
+            py::array_t<double>& flux_,
+            py::array_t<double>& C_,
+            py::array_t<double>& L_
+        ) {
+            // Check the dimensions of A
+            py::ssize_t nt = A.rows();
+            assert(A.cols() == map.N);
+
+            // Map the flux to an Eigen type
             py::buffer_info buf = flux_.request();
             assert(buf.ndim == 1);
-            py::ssize_t nt = buf.size;
+            assert(buf.size == nt);
             double *ptr = (double *) buf.ptr;
             Eigen::Map<Vector<double>> flux(ptr, nt, 1);
 
+            // Map the covariance to an Eigen type
             Eigen::Map<Vector<double>> C(NULL, nt, 1);
             Vector<double> tmp_C;
             buf = C_.request();
@@ -635,6 +735,7 @@ PYBIND11_MODULE(
                 throw errors::ShapeError("Vector `C` has the incorrect shape.");
             }
 
+            // Map the prior weights to an Eigen type
             Eigen::Map<Vector<double>> L(NULL, map.N, 1);
             Vector<double> tmp_L;
             buf = L_.request();
@@ -667,84 +768,19 @@ PYBIND11_MODULE(
             }
             */
 
-            Eigen::Map<Vector<double>> theta(NULL, nt, 1);
-            Vector<double> tmp_theta;
-            buf = theta_.request();
-            ptr = (double *) buf.ptr;
-            if (buf.ndim == 0) {
-                tmp_theta = ptr[0] * Vector<double>::Ones(nt);
-                new (&theta) Eigen::Map<Vector<double>>(&tmp_theta(0), nt, 1);
-            } else if ((buf.ndim == 1) && (buf.size == nt)) {
-                new (&theta) Eigen::Map<Vector<double>>(ptr, nt, 1);
-            } else {
-                throw errors::ShapeError("Vector `theta` has the incorrect shape.");
-            }
-
-            Eigen::Map<Vector<double>> xo(NULL, nt, 1);
-            Vector<double> tmp_xo;
-            buf = xo_.request();
-            ptr = (double *) buf.ptr;
-            if (buf.ndim == 0) {
-                tmp_xo = ptr[0] * Vector<double>::Ones(nt);
-                new (&xo) Eigen::Map<Vector<double>>(&tmp_xo(0), nt, 1);
-            } else if ((buf.ndim == 1) && (buf.size == nt)) {
-                new (&xo) Eigen::Map<Vector<double>>(ptr, nt, 1);
-            } else {
-                throw errors::ShapeError("Vector `xo` has the incorrect shape.");
-            }
-
-            Eigen::Map<Vector<double>> yo(NULL, nt, 1);
-            Vector<double> tmp_yo;
-            buf = yo_.request();
-            ptr = (double *) buf.ptr;
-            if (buf.ndim == 0) {
-                tmp_yo = ptr[0] * Vector<double>::Ones(nt);
-                new (&yo) Eigen::Map<Vector<double>>(&tmp_yo(0), nt, 1);
-            } else if ((buf.ndim == 1) && (buf.size == nt)) {
-                new (&yo) Eigen::Map<Vector<double>>(ptr, nt, 1);
-            } else {
-                throw errors::ShapeError("Vector `yo` has the incorrect shape.");
-            }
-
-            Eigen::Map<Vector<double>> zo(NULL, nt, 1);
-            Vector<double> tmp_zo;
-            buf = zo_.request();
-            ptr = (double *) buf.ptr;
-            if (buf.ndim == 0) {
-                tmp_zo = ptr[0] * Vector<double>::Ones(nt);
-                new (&zo) Eigen::Map<Vector<double>>(&tmp_zo(0), nt, 1);
-            } else if ((buf.ndim == 1) && (buf.size == nt)) {
-                new (&zo) Eigen::Map<Vector<double>>(ptr, nt, 1);
-            } else {
-                throw errors::ShapeError("Vector `zo` has the incorrect shape.");
-            }
-
-            Eigen::Map<Vector<double>> ro(NULL, nt, 1);
-            Vector<double> tmp_ro;
-            buf = ro_.request();
-            ptr = (double *) buf.ptr;
-            if (buf.ndim == 0) {
-                tmp_ro = ptr[0] * Vector<double>::Ones(nt);
-                new (&ro) Eigen::Map<Vector<double>>(&tmp_ro(0), nt, 1);
-            } else if ((buf.ndim == 1) && (buf.size == nt)) {
-                new (&ro) Eigen::Map<Vector<double>>(ptr, nt, 1);
-            } else {
-                throw errors::ShapeError("Vector `ro` has the incorrect shape.");
-            }
-
-            // Instantiate the output matrices
-            Matrix<double> A(nt, map.N);
+            // Compute the max like model
             Vector<double> yhat(map.N, 1);
             Matrix<double> yvar(map.N, map.N);
-            map.computeMaxLikeMap(flux, C, L, theta, xo, yo, 
-                                  zo, ro, A, yhat, yvar);
+            map.computeMaxLikeMap(A, flux, C, L, yhat, yvar);
 
-            // TODO
-            return A;
+            // Set the map coefficients
+            map.setU(Vector<typename T::Scalar>::Zero(map.lmax));
+            map.setY(yhat);
 
-        },
-        "flux"_a, "C"_a, "L"_a=INFINITY, "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, 
-        "zo"_a=1.0, "ro"_a=0.0);
+            // Return the variance
+            return yvar;
+
+        }, "A"_a, "flux"_a, "C"_a, "L"_a=INFINITY);
 #endif
 
 // Code version

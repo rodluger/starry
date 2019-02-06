@@ -1,36 +1,25 @@
 /**
-Compute the max like map coefficients. Internal method.
+Compute the linear spherical harmonic model. Internal method.
 
 \todo We need to think about caching some of these rotations.
-\todo We should eventually allow for off-diagonal elements in C and L
 
 
 */
-inline void computeMaxLikeMapInternal (
-    const Vector<Scalar>& flux, 
-    const Vector<Scalar>& C, 
-    const Vector<Scalar>& L,
+inline void computeLinearModelInternal (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
-    Matrix<Scalar>& A,
-    Vector<Scalar>& yhat,
-    Matrix<Scalar>& yvar
+    Matrix<Scalar>& A
 ) {
 
     // Shape checks
-    size_t nt = flux.rows();
-    CHECK_SHAPE(C, nt, 1);
-    CHECK_SHAPE(L, N, 1);
-    CHECK_SHAPE(theta, nt, 1);
+    size_t nt = theta.rows();
     CHECK_SHAPE(xo, nt, 1);
     CHECK_SHAPE(yo, nt, 1);
     CHECK_SHAPE(zo, nt, 1);
     CHECK_SHAPE(ro, nt, 1);
-    CHECK_SHAPE(yhat, N, 1);
-    CHECK_SHAPE(yvar, N, N);
 
     // Pre-compute the Wigner matrices
     computeWigner();
@@ -92,24 +81,46 @@ inline void computeMaxLikeMapInternal (
 
         }
     }
+}
+
+/**
+Compute the maximum likelihood map coefficients. Internal method.
+This method computes the MAP matrix,
+
+   M = W^-1 . A^T . C^-1
+
+where
+
+  W^-1 = (A^T . C^-1 . A + L^-1)^-1
+
+The MAP map coefficients are then just
+
+   y = M . f
+
+and the variance is
+
+   var(y) = M . A . W^-1
+          = M . (W^-1 . A^T)^T
 
 
-    // Now compute the MAP matrix,
-    //    M = (A^T . C^-1 . A + L^-1)^-1 . A^T . C^-1
+\todo We should eventually allow for off-diagonal elements in C and L
+
+*/
+inline void computeMaxLikeMapInternal (
+    const Matrix<Scalar>& A,
+    const Vector<Scalar>& flux, 
+    const Vector<Scalar>& C, 
+    const Vector<Scalar>& L,
+    Vector<Scalar>& yhat,
+    Matrix<Scalar>& yvar
+) {
     Eigen::HouseholderQR<Matrix<double>> solver(N, N);
     Vector<double> CInv = C.cwiseInverse();
-    Matrix<double> K = A.transpose() * CInv.asDiagonal() * A;
-    Matrix<double> KReg = K;
-    KReg.diagonal() += L.cwiseInverse();
-    solver.compute(KReg);
-    Matrix<double> M = solver.solve(A.transpose() * CInv.asDiagonal());
-
-    // The MAP map coefficients are then just
-    //    y = M . f
+    Matrix<double> W = A.transpose() * CInv.asDiagonal() * A;
+    W.diagonal() += L.cwiseInverse();
+    solver.compute(W);
+    Matrix<double> WInvAT = solver.solve(A.transpose());
+    Matrix<double> M = WInvAT * CInv.asDiagonal();
     yhat = M * flux;
-
-    // The MAP variance is just
-    //   var(y) = K^-1
-    solver.compute(K);
-    yvar = solver.solve(Matrix<double>::Identity(N, N));
+    yvar = M * WInvAT.transpose();
 }
