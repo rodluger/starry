@@ -6,10 +6,11 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 rcParams["savefig.dpi"] = 100
 rcParams["figure.dpi"] = 100
+rcParams["figure.figsize"] = 12, 4
 rcParams["font.size"] = 16
 rcParams["text.usetex"] = False
 rcParams["font.family"] = ["sans-serif"]
-rcParams["font.sans-serif"] = ["cmss10"]
+#rcParams["font.sans-serif"] = ["cmss10"]
 rcParams["axes.unicode_minus"] = False
 
 # Hide deprecation warnings from Theano
@@ -30,3 +31,6 @@ print("pymc3 version: {0}".format(pymc3.__version__))
 
 import exoplanet
 print("exoplanet version: {0}".format(exoplanet.__version__))
+
+import starry
+print("starry version: {0}".format(starry.__version__))

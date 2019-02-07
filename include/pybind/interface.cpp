@@ -506,7 +506,7 @@ PYBIND11_MODULE(
             int res
         ) -> py::object {
             auto reshape = py::module::import("numpy").attr("reshape");
-            Matrix<typename T::Scalar> intensity;
+            Vector<typename T::Scalar> intensity(res * res);
             map.renderMap(theta, res, intensity);
             return reshape(intensity.template cast<double>(), 
                            py::make_tuple(res, res));
@@ -523,7 +523,7 @@ PYBIND11_MODULE(
             int res
         ) -> py::object {
             auto reshape = py::module::import("numpy").attr("reshape");
-            Matrix<typename T::Scalar> intensity;
+            Matrix<typename T::Scalar> intensity(res * res, map.ncoly);
             map.renderMap(theta, res, intensity);
             return reshape(intensity.template cast<double>(), 
                            py::make_tuple(res, res, map.nflx));
@@ -540,7 +540,7 @@ PYBIND11_MODULE(
             int res
         ) -> py::object {
             auto reshape = py::module::import("numpy").attr("reshape");
-            Matrix<typename T::Scalar> intensity;
+            Vector<typename T::Scalar> intensity(res * res);
             map.renderMap(t, theta, res, intensity);
             return reshape(intensity.template cast<double>(), 
                            py::make_tuple(res, res));

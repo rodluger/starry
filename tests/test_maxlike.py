@@ -3,9 +3,6 @@ import starry
 import numpy as np
 import pytest
 
-# We'll run all tests on fifth degree default maps
-
-
 
 def test_linear_model():
     lmax = 5
