@@ -142,13 +142,9 @@ inline void randomInternal (
     for (int n = 0; n < N_; ++n)
         vec(n) = static_cast<Scalar>(normal(gen));
 
-    // Zero degree
-    vec(0) = sqrt(abs(power(0)));
-
-    // Higher degrees
-    for (int l = 1; l < lmax_ + 1; ++l) {
-        vec.segment(l * l, 2 * l + 1) *=
-            sqrt(abs(power(l)) / vec.segment(l * l, 2 * l + 1).squaredNorm());
+    // Weight them by sqrt(power) at each l
+    for (int l = 0; l < lmax_ + 1; ++l) {
+        vec.segment(l * l, 2 * l + 1) *= sqrt(abs(power(l)));
     }
 
     // Set the vector
