@@ -7,4 +7,12 @@ import pytest
 import numpy as np
 
 
-# None for now!
+@pytest.mark.xfail
+def test_bad_lm():
+    map = starry.Map(5)
+    try:
+        map[3, 4] = 1.0
+        error_thrown = False
+    except:
+        error_thrown = True
+    assert error_thrown
