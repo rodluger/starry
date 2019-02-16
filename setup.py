@@ -14,7 +14,13 @@ _STARRY_SPECTRAL_DOUBLE_ = 4
 _STARRY_SPECTRAL_MULTI_ =  8
 _STARRY_TEMPORAL_DOUBLE_ = 16
 _STARRY_TEMPORAL_MULTI_ =  32
-_STARRY_EXTENSIONS_ = 64
+_STARRY_DEFAULT_REFL_DOUBLE_ =  64
+_STARRY_DEFAULT_REFL_MULTI_ =   128
+_STARRY_SPECTRAL_REFL_DOUBLE_ = 256
+_STARRY_SPECTRAL_REFL_MULTI_ =  512
+_STARRY_TEMPORAL_REFL_DOUBLE_ = 1024
+_STARRY_TEMPORAL_REFL_MULTI_ =  2048
+_STARRY_EXTENSIONS_ = 4096
 
 # Custom compiler flags
 macros = dict(STARRY_NMULTI=32,
@@ -46,8 +52,8 @@ if debug:
     macros["STARRY_O"] = 0
     macros["STARRY_DEBUG"] = 1
 
-# Module bitsum (1 + 2 + 4 + 8 + 16 + 32 + 64 = 127)
-bitsum = int(os.getenv('STARRY_BITSUM', 127))
+# Module bitsum
+bitsum = int(os.getenv('STARRY_BITSUM', 8191))
 
 class get_pybind_include(object):
     """
@@ -101,6 +107,18 @@ if (bitsum & _STARRY_TEMPORAL_DOUBLE_):
     ext_modules.append(get_ext('starry._starry_temporal_double', '_STARRY_TEMPORAL_DOUBLE_'))
 if (bitsum & _STARRY_TEMPORAL_MULTI_):
     ext_modules.append(get_ext('starry._starry_temporal_multi', '_STARRY_TEMPORAL_MULTI_'))
+if (bitsum & _STARRY_DEFAULT_REFL_DOUBLE_):
+    ext_modules.append(get_ext('starry._starry_default_refl_double', '_STARRY_DEFAULT_REFL_DOUBLE_'))
+if (bitsum & _STARRY_DEFAULT_REFL_MULTI_):
+    ext_modules.append(get_ext('starry._starry_default_refl_multi', '_STARRY_DEFAULT_REFL_MULTI_'))
+if (bitsum & _STARRY_SPECTRAL_REFL_DOUBLE_):
+    ext_modules.append(get_ext('starry._starry_spectral_refl_double', '_STARRY_SPECTRAL_REFL_DOUBLE_'))
+if (bitsum & _STARRY_SPECTRAL_REFL_MULTI_):
+    ext_modules.append(get_ext('starry._starry_spectral_refl_multi', '_STARRY_SPECTRAL_REFL_MULTI_'))
+if (bitsum & _STARRY_TEMPORAL_REFL_DOUBLE_):
+    ext_modules.append(get_ext('starry._starry_temporal_refl_double', '_STARRY_TEMPORAL_REFL_DOUBLE_'))
+if (bitsum & _STARRY_TEMPORAL_REFL_MULTI_):
+    ext_modules.append(get_ext('starry._starry_temporal_refl_multi', '_STARRY_TEMPORAL_REFL_MULTI_'))
 
 # Build extensions?
 if (bitsum & _STARRY_EXTENSIONS_):

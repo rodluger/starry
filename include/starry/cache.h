@@ -235,6 +235,7 @@ public:
     TSType pb_Dro;
     RowMatrix<Scalar> pb_Dy;
     RowMatrix<Scalar> pb_Du;
+    RowMatrix<Scalar> pb_Dsource;
 
     //
     inline void yChanged () {

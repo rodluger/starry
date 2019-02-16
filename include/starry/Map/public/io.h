@@ -6,17 +6,20 @@ std::string info () {
     std::ostringstream os;
     if (std::is_same<S, Default<Scalar>>::value) {
         os << "<starry.Map("
-            << "lmax=" << lmax
+            << "lmax=" << lmax << ", "
+            << "reflected=" << !EMISSION
             << ")>";
     } else if (std::is_same<S, Spectral<Scalar>>::value) {
         os << "<starry.Map("
             << "lmax=" << lmax << ", "
-            << "nw=" << ncoly
+            << "nw=" << ncoly << ", "
+            << "reflected=" << !EMISSION
             << ")>";
     } else if (std::is_same<S, Temporal<Scalar>>::value) {
         os << "<starry.Map("
             << "lmax=" << lmax << ", "
-            << "nt=" << ncoly
+            << "nt=" << ncoly << ", "
+            << "reflected=" << !EMISSION
             << ")>";
     } else {
         // ??

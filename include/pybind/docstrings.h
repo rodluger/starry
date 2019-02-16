@@ -255,8 +255,6 @@ namespace Map {
                 in degrees. Default 0.
             lon (float): The longitude of the center of the gaussian \
                 in degrees. Default 0.
-            lon (float): The longitude of the center of the gaussian \
-                in degrees. Default 0.
         )pbdoc";
 
     const char* flux = R"pbdoc(

@@ -299,6 +299,12 @@ using IsDefaultOrSpectralOrTemporal =
         std::is_same<T, Temporal<typename T::Scalar>>::value, U
     >::type;
 
+template <typename T, typename U=void>
+using IsEmission = 
+    typename std::enable_if<
+        std::is_same<T, Default<typename T::Scalar>>::value, U
+    >::type;
+
 
 // --------------------------
 // -------- Constants -------

@@ -15,54 +15,90 @@
 #endif
 
 // Select which module to build
-#if defined(_STARRY_DEFAULT_DOUBLE_)
-#define _STARRY_NAME_ _starry_default_double
+#if defined(_STARRY_DEFAULT_DOUBLE_) || defined(_STARRY_DEFAULT_REFL_DOUBLE_)
 #define _STARRY_DEFAULT_
 #define _STARRY_DOUBLE_
 #define _STARRY_STATIC_
 #define _STARRY_SINGLECOL_
 #define _STARRY_TYPE_ Default<double>
+#if defined(_STARRY_DEFAULT_DOUBLE_)
+#define _STARRY_NAME_ _starry_default_double
+#define _STARRY_EMISSION_
+#else
+#define _STARRY_NAME_ _starry_default_refl_double
+#define _STARRY_REFLECTION_
+#endif
 
-#elif defined(_STARRY_DEFAULT_MULTI_)
-#define _STARRY_NAME_ _starry_default_multi
+#elif defined(_STARRY_DEFAULT_MULTI_) || defined(_STARRY_DEFAULT_REFL_MULTI_)
 #define _STARRY_DEFAULT_
 #define _STARRY_MULTI_
 #define _STARRY_STATIC_
 #define _STARRY_SINGLECOL_
 #define STARRY_ENABLE_BOOST
 #define _STARRY_TYPE_ Default<Multi>
+#if defined(_STARRY_DEFAULT_MULTI_)
+#define _STARRY_NAME_ _starry_default_multi
+#define _STARRY_EMISSION_
+#else
+#define _STARRY_NAME_ _starry_default_refl_multi
+#define _STARRY_REFLECTION_
+#endif
 
-#elif defined(_STARRY_SPECTRAL_DOUBLE_)
-#define _STARRY_NAME_ _starry_spectral_double
+#elif defined(_STARRY_SPECTRAL_DOUBLE_) || defined(_STARRY_SPECTRAL_REFL_DOUBLE_)
 #define _STARRY_SPECTRAL_
 #define _STARRY_DOUBLE_
 #define _STARRY_STATIC_
 #define _STARRY_MULTI_COL
 #define _STARRY_TYPE_ Spectral<double>
+#if defined(_STARRY_SPECTRAL_DOUBLE_)
+#define _STARRY_NAME_ _starry_spectral_double
+#define _STARRY_EMISSION_
+#else
+#define _STARRY_NAME_ _starry_spectral_refl_double
+#define _STARRY_REFLECTION_
+#endif
 
-#elif defined(_STARRY_SPECTRAL_MULTI_)
-#define _STARRY_NAME_ _starry_spectral_multi
+#elif defined(_STARRY_SPECTRAL_MULTI_) || defined(_STARRY_SPECTRAL_REFL_MULTI_)
 #define _STARRY_SPECTRAL_
 #define _STARRY_MULTI_
 #define _STARRY_STATIC_
 #define _STARRY_MULTI_COL
 #define STARRY_ENABLE_BOOST
 #define _STARRY_TYPE_ Spectral<Multi>
+#if defined(_STARRY_SPECTRAL_MULTI_)
+#define _STARRY_NAME_ _starry_spectral_multi
+#define _STARRY_EMISSION_
+#else
+#define _STARRY_NAME_ _starry_spectral_refl_multi
+#define _STARRY_REFLECTION_
+#endif
 
-#elif defined(_STARRY_TEMPORAL_DOUBLE_)
-#define _STARRY_NAME_ _starry_temporal_double
+#elif defined(_STARRY_TEMPORAL_DOUBLE_) || defined(_STARRY_TEMPORAL_REFL_DOUBLE_)
 #define _STARRY_TEMPORAL_
 #define _STARRY_DOUBLE_
 #define _STARRY_MULTI_COL
 #define _STARRY_TYPE_ Temporal<double>
+#if defined(_STARRY_TEMPORAL_DOUBLE_)
+#define _STARRY_NAME_ _starry_temporal_double
+#define _STARRY_EMISSION_
+#else
+#define _STARRY_NAME_ _starry_temporal_refl_double
+#define _STARRY_REFLECTION_
+#endif
 
-#elif defined(_STARRY_TEMPORAL_MULTI_)
-#define _STARRY_NAME_ _starry_temporal_multi
+#elif defined(_STARRY_TEMPORAL_MULTI_) || defined(_STARRY_TEMPORAL_REFL_MULTI_)
 #define _STARRY_TEMPORAL_
 #define _STARRY_MULTI_
 #define _STARRY_MULTI_COL
 #define STARRY_ENABLE_BOOST
 #define _STARRY_TYPE_ Temporal<Multi>
+#if defined(_STARRY_TEMPORAL_MULTI_)
+#define _STARRY_NAME_ _starry_temporal_multi
+#define _STARRY_EMISSION_
+#else
+#define _STARRY_NAME_ _starry_temporal_refl_multi
+#define _STARRY_REFLECTION_
+#endif
 
 #else
 static_assert(false, "Invalid or missing STARRY module type.");
@@ -87,9 +123,14 @@ PYBIND11_MODULE(
 
     // Current Map Type
     using T = _STARRY_TYPE_;
+#if defined(_STARRY_EMISSION_) 
+    constexpr bool E = true;
+#else
+    constexpr bool E = false;
+#endif
 
     // Declare the Map class
-    py::class_<Map<T>> PyMap(m, "Map", docstrings::Map::doc);
+    py::class_<Map<T, E>> PyMap(m, "Map", docstrings::Map::doc);
 
 #if defined(_STARRY_SINGLECOL_) 
     // Constructor for vector maps
@@ -100,12 +141,12 @@ PYBIND11_MODULE(
 #endif
 
     // String representation of the map
-    PyMap.def("__repr__", &Map<T>::info);
+    PyMap.def("__repr__", &Map<T, E>::info);
 
     // Number of Ylm map columns
     PyMap.def_property_readonly(
         "ncoly", [] (
-            Map<T> &map
+            Map<T, E> &map
         ) {
             return map.ncoly;
     }, docstrings::Map::ncoly);
@@ -113,7 +154,7 @@ PYBIND11_MODULE(
     // Number of Ul map columns
     PyMap.def_property_readonly(
         "ncolu", [] (
-            Map<T> &map
+            Map<T, E> &map
         ) {
             return map.ncolu;
     }, docstrings::Map::ncolu);
@@ -121,7 +162,7 @@ PYBIND11_MODULE(
     // Number of wavelength bins
     PyMap.def_property_readonly(
         "nw", [] (
-            Map<T> &map
+            Map<T, E> &map
         ) {
 #if defined(_STARRY_SPECTRAL_)
             return map.ncoly;
@@ -133,7 +174,7 @@ PYBIND11_MODULE(
     // Number of temporal bins
     PyMap.def_property_readonly(
         "nt", [] (
-            Map<T> &map
+            Map<T, E> &map
         ) {
 #if defined(_STARRY_TEMPORAL_)
             return map.ncoly;
@@ -145,7 +186,7 @@ PYBIND11_MODULE(
     // Highest degree of the map
     PyMap.def_property_readonly(
         "lmax", [] (
-            Map<T> &map
+            Map<T, E> &map
         ) {
             return map.lmax;
     }, docstrings::Map::lmax);
@@ -153,7 +194,7 @@ PYBIND11_MODULE(
     // Number of spherical harmonic coefficients
     PyMap.def_property_readonly(
         "N", [] (
-            Map<T> &map
+            Map<T, E> &map
         ) {
             return map.N;
     }, docstrings::Map::N);
@@ -161,7 +202,7 @@ PYBIND11_MODULE(
     // Multiprecision enabled?
     PyMap.def_property_readonly(
         "multi", [] (
-            Map<T> &map
+            Map<T, E> &map
         ) {
 #if defined(_STARRY_MULTI_)
             return true;
@@ -173,7 +214,7 @@ PYBIND11_MODULE(
     // Set one or more spherical harmonic coefficients to the same scalar value
     PyMap.def(
         "__setitem__", [](
-            Map<T>& map, 
+            Map<T, E>& map, 
             py::tuple lm,
             const double& coeff
         ) {
@@ -187,7 +228,7 @@ PYBIND11_MODULE(
     // Set one or more spherical harmonic coefficients to the same vector value
     PyMap.def(
         "__setitem__", [](
-            Map<T>& map, 
+            Map<T, E>& map, 
             py::tuple lm,
             const typename T::Double::YCoeffType& coeff
         ) {
@@ -201,7 +242,7 @@ PYBIND11_MODULE(
     // Set multiple spherical harmonic coefficients at once
     PyMap.def(
         "__setitem__", [](
-            Map<T>& map, 
+            Map<T, E>& map, 
             py::tuple lm,
             const typename T::Double::YType& coeff_
         ) {
@@ -220,7 +261,7 @@ PYBIND11_MODULE(
     // Retrieve one or more spherical harmonic coefficients
     PyMap.def(
         "__getitem__", [](
-            Map<T>& map,
+            Map<T, E>& map,
             py::tuple lm
         ) -> py::object {
             auto inds = get_Ylm_inds(map.lmax, lm);
@@ -248,7 +289,7 @@ PYBIND11_MODULE(
     // Set one or more limb darkening coefficients to the same scalar value
     PyMap.def(
         "__setitem__", [](
-            Map<T>& map, 
+            Map<T, E>& map, 
             py::object l,
             const double& coeff
         ) {
@@ -262,7 +303,7 @@ PYBIND11_MODULE(
     // Set one or more limb darkening coefficients to the same vector value
     PyMap.def(
         "__setitem__", [](
-            Map<T>& map, 
+            Map<T, E>& map, 
             py::object l,
             const typename T::Double::UCoeffType& coeff
         ) {
@@ -276,7 +317,7 @@ PYBIND11_MODULE(
     // Set multiple limb darkening coefficients at once
     PyMap.def(
         "__setitem__", [](
-            Map<T>& map, 
+            Map<T, E>& map, 
             py::object l,
             const typename T::Double::UType& coeff_
         ) {
@@ -295,7 +336,7 @@ PYBIND11_MODULE(
     // Retrieve one or more limb darkening coefficients
     PyMap.def(
         "__getitem__", [](
-            Map<T>& map,
+            Map<T, E>& map,
             py::object l
         ) -> py::object {
             auto inds = get_Ul_inds(map.lmax, l);
@@ -321,12 +362,12 @@ PYBIND11_MODULE(
     });
 
     // Reset the map
-    PyMap.def("reset", &Map<T>::reset, docstrings::Map::reset);
+    PyMap.def("reset", &Map<T, E>::reset, docstrings::Map::reset);
     
     // Vector of spherical harmonic coefficients
     PyMap.def_property_readonly(
         "y", [] (
-            Map<T> &map
+            Map<T, E> &map
         ) {
             auto y = py::cast(map.getY().template cast<double>());
             MAKE_READ_ONLY(y);
@@ -336,7 +377,7 @@ PYBIND11_MODULE(
     // Vector of limb darkening coefficients
     PyMap.def_property_readonly(
         "u", [] (
-            Map<T> &map
+            Map<T, E> &map
         ) {
             auto u = py::cast(map.getU().template cast<double>());
             MAKE_READ_ONLY(u);
@@ -346,24 +387,24 @@ PYBIND11_MODULE(
     // Get/set the rotation axis
     PyMap.def_property(
         "axis", [] (
-            Map<T> &map
+            Map<T, E> &map
         ) -> UnitVector<double> {
             return map.getAxis().template cast<double>();
         }, [] (
-            Map<T> &map, 
+            Map<T, E> &map, 
             UnitVector<double>& axis
         ) {
             map.setAxis(axis.template cast<typename T::Scalar>());
     }, docstrings::Map::axis);
 
     // Rotate the base map
-    PyMap.def("rotate", &Map<T>::rotate, "theta"_a=0.0, docstrings::Map::rotate);
+    PyMap.def("rotate", &Map<T, E>::rotate, "theta"_a=0.0, docstrings::Map::rotate);
 
 #if defined(_STARRY_SINGLECOL_)
     // Add a gaussian spot with a scalar amplitude
     PyMap.def(
         "add_spot", [](
-            Map<T>& map,
+            Map<T, E>& map,
             const double& amp,
             const double& sigma,
             const double& lat,
@@ -381,7 +422,7 @@ PYBIND11_MODULE(
     // Add a gaussian spot with a vector amplitude
     PyMap.def(
         "add_spot", [](
-            Map<T>& map,
+            Map<T, E>& map,
             const typename T::Double::YCoeffType& amp,
             const double& sigma,
             const double& lat,
@@ -399,7 +440,7 @@ PYBIND11_MODULE(
     // Generate a random map
     PyMap.def(
         "random", [](
-            Map<T>& map,
+            Map<T, E>& map,
             const Vector<double>& power,
             py::object seed_
         ) {
@@ -419,7 +460,7 @@ PYBIND11_MODULE(
     // Generate a random map
     PyMap.def(
         "random", [](
-            Map<T>& map,
+            Map<T, E>& map,
             const Vector<double>& power,
             py::object seed_,
             int col
@@ -441,7 +482,7 @@ PYBIND11_MODULE(
     // Show an image/animation of the map
     PyMap.def(
         "show", [](
-            Map<T>& map,
+            Map<T, E>& map,
             py::array_t<double> theta_,
             std::string cmap,
             int res,
@@ -465,7 +506,7 @@ PYBIND11_MODULE(
     // Show an image/animation of the map
     PyMap.def(
         "show", [](
-            Map<T>& map,
+            Map<T, E>& map,
             py::array_t<double> t_,
             py::array_t<double> theta_,
             std::string cmap,
@@ -501,7 +542,7 @@ PYBIND11_MODULE(
     // Render the visible map on a square grid
     PyMap.def(
         "render", [](
-            Map<T>& map,
+            Map<T, E>& map,
             double theta,
             int res
         ) -> py::object {
@@ -518,7 +559,7 @@ PYBIND11_MODULE(
     // Render the visible map on a square grid
     PyMap.def(
         "render", [](
-            Map<T>& map,
+            Map<T, E>& map,
             double theta,
             int res
         ) -> py::object {
@@ -534,7 +575,7 @@ PYBIND11_MODULE(
     // Render the visible map on a square grid
     PyMap.def(
         "render", [](
-            Map<T>& map,
+            Map<T, E>& map,
             double t,
             double theta,
             int res
@@ -553,7 +594,7 @@ PYBIND11_MODULE(
     // Load an image from a file
     PyMap.def(
         "load_image", [](
-            Map<T>& map,
+            Map<T, E>& map,
             std::string image,
             int lmax,
             bool normalize,
@@ -567,7 +608,7 @@ PYBIND11_MODULE(
     // Load an image from a file
     PyMap.def(
         "load_image", [](
-            Map<T>& map,
+            Map<T, E>& map,
             std::string image,
             int lmax,
             int col,
@@ -582,29 +623,43 @@ PYBIND11_MODULE(
 
 #if defined(_STARRY_STATIC_)
     // Compute the intensity
-    PyMap.def("__call__", intensity<T>(), docstrings::Map::call, 
+    PyMap.def("__call__", intensity<T, E>(), docstrings::Map::call, 
               "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
 #else
     // Compute the intensity
-    PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, "t"_a=0.0, 
+    PyMap.def("__call__", intensity<T, E>(),  docstrings::Map::call, "t"_a=0.0, 
               "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
 #endif
 
 #if defined(_STARRY_STATIC_)
+#if defined(_STARRY_EMISSION_)
     // Compute the flux
-    PyMap.def("flux", flux<T>(), docstrings::Map::flux, "theta"_a=0.0, "xo"_a=0.0, 
+    PyMap.def("flux", flux<T, E>(), docstrings::Map::flux, "theta"_a=0.0, "xo"_a=0.0, 
               "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
 #else
     // Compute the flux
-    PyMap.def("flux", flux<T>(), docstrings::Map::flux, "t"_a=0.0,"theta"_a=0.0, "xo"_a=0.0, 
+    PyMap.def("flux", flux<T, E>(), docstrings::Map::flux, "theta"_a=0.0, "xo"_a=0.0, 
+              "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "source"_a=-xhat<double>(), 
+              "gradient"_a=false);
+#endif
+#else
+#if defined(_STARRY_EMISSION_)
+    // Compute the flux
+    PyMap.def("flux", flux<T, E>(), docstrings::Map::flux, "t"_a=0.0, "theta"_a=0.0, "xo"_a=0.0, 
               "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
+#else
+    // Compute the flux
+    PyMap.def("flux", flux<T, E>(), docstrings::Map::flux, "t"_a=0.0, "theta"_a=0.0, "xo"_a=0.0, 
+              "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "source"_a=-xhat<double>(), 
+              "gradient"_a=false);
+#endif
 #endif
 
 #if defined(_STARRY_STATIC_) && defined(_STARRY_DOUBLE_)
     // Compute the linear Ylm model
     PyMap.def(
         "LinearModel", [](
-            Map<T>& map,
+            Map<T, E>& map,
             py::array_t<double>& theta_,
             py::array_t<double>& xo_,
             py::array_t<double>& yo_,
@@ -704,7 +759,7 @@ PYBIND11_MODULE(
     // Compute the MAP map coefficients
     PyMap.def(
         "MAP", [](
-            Map<T>& map,
+            Map<T, E>& map,
             const Matrix<double>& A,
             py::array_t<double>& flux_,
             py::array_t<double>& C_,
@@ -793,7 +848,7 @@ PYBIND11_MODULE(
     // A dictionary of all compiler flags
     PyMap.def_property_readonly(
         "__compile_flags__", [] (
-            Map<T> &map
+            Map<T, E> &map
         ) -> py::dict {
 
             auto flags = py::dict();
