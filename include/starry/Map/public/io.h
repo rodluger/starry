@@ -4,22 +4,25 @@ Return a human-readable map string.
 */
 std::string info () {
     std::ostringstream os;
-    if (std::is_same<S, Default<Scalar>>::value) {
+    if (std::is_same<S, Default<Scalar, S::Reflected>>::value) {
         os << "<starry.Map("
             << "lmax=" << lmax << ", "
-            << "reflected=" << !EMISSION
+            << "reflected=" << S::Reflected << ", "
+            << "multi=" << !std::is_same<Scalar, double>::value
             << ")>";
-    } else if (std::is_same<S, Spectral<Scalar>>::value) {
+    } else if (std::is_same<S, Spectral<Scalar, S::Reflected>>::value) {
         os << "<starry.Map("
             << "lmax=" << lmax << ", "
             << "nw=" << ncoly << ", "
-            << "reflected=" << !EMISSION
+            << "reflected=" << S::Reflected << ", "
+            << "multi=" << !std::is_same<Scalar, double>::value
             << ")>";
-    } else if (std::is_same<S, Temporal<Scalar>>::value) {
+    } else if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
         os << "<starry.Map("
             << "lmax=" << lmax << ", "
             << "nt=" << ncoly << ", "
-            << "reflected=" << !EMISSION
+            << "reflected=" << S::Reflected << ", "
+            << "multi=" << !std::is_same<Scalar, double>::value
             << ")>";
     } else {
         // ??

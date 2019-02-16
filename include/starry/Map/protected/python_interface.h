@@ -12,7 +12,7 @@ py::object showInternal (
     std::string gif=std::string()
 ) {
     py::object fshow;
-    if (std::is_same<S, Spectral<Scalar>>::value)
+    if (std::is_same<S, Spectral<Scalar, S::Reflected>>::value)
         fshow = py::module::import("starry._plotting").attr("show_spectral");
     else
         fshow = py::module::import("starry._plotting").attr("show");

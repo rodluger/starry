@@ -103,7 +103,10 @@ and the variance is
           = M . (W^-1 . A^T)^T
 
 
-\todo We should eventually allow for off-diagonal elements in C and L
+\todo The expression for the variance above is not what we want; we
+      want the uncertainty on the coefficients, not the variance
+      of the MAP estimator!
+\todo We should allow for off-diagonal elements in C and L. Use MatrixBase
 
 */
 inline void computeMaxLikeMapInternal (

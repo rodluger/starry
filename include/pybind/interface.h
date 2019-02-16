@@ -220,9 +220,9 @@ Return a lambda function to compute the intensity at a point
 or a vector of points.
 
 */
-template <typename T, bool E>
+template <typename T>
 std::function<py::object(
-        Map<T, E> &, 
+        Map<T> &, 
 #ifdef _STARRY_TEMPORAL_
         py::array_t<double>&, 
 #endif
@@ -233,7 +233,7 @@ std::function<py::object(
 {
     return []
     (
-        Map<T, E> &map, 
+        Map<T> &map, 
 #ifdef _STARRY_TEMPORAL_
         py::array_t<double>& t, 
 #endif
@@ -300,9 +300,9 @@ or a vector of points. Optionally compute and return
 the gradient.
 
 */
-template <typename T, bool E>
+template <typename T>
 std::function<py::object(
-        Map<T, E> &, 
+        Map<T> &, 
 #ifdef _STARRY_TEMPORAL_
         py::array_t<double>&, 
 #endif
@@ -311,7 +311,7 @@ std::function<py::object(
         py::array_t<double>&, 
         py::array_t<double>&,
         py::array_t<double>&,
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
         py::array_t<double>&, 
 #endif
         bool
@@ -319,7 +319,7 @@ std::function<py::object(
 {
     return []
     (
-        Map<T, E> &map, 
+        Map<T> &map, 
 #ifdef _STARRY_TEMPORAL_
         py::array_t<double>& t, 
 #endif
@@ -328,7 +328,7 @@ std::function<py::object(
         py::array_t<double>& yo, 
         py::array_t<double>& zo,
         py::array_t<double>& ro,
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
         py::array_t<double>& source_, 
 #endif
         bool compute_gradient
@@ -344,7 +344,7 @@ std::function<py::object(
         auto reshape = numpy.attr("reshape");
 #endif
 
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
         // Convert the `source` to an Eigen unit vector
         py::buffer_info buf = source_.request();
         assert(buf.ndim == 1);
@@ -399,13 +399,13 @@ std::function<py::object(
             map.cache.pb_Du.resize(nu, nt);
 #endif
 
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
             map.cache.pb_Dsource.resize(3, nt);
 #endif
 
             // Vectorize the computation
             py::vectorize([&map, 
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
                            &source,
 #endif            
                            &n, &ny, &nu](
@@ -428,7 +428,7 @@ std::function<py::object(
                     static_cast<Scalar>(yo),
                     static_cast<Scalar>(zo),
                     static_cast<Scalar>(ro),
-#ifdef _STARRY_REFLECTION_
+#ifdef _STARRY_REFLECTED_
                     source,
 #endif
                     map.cache.pb_flux.row(n),
@@ -449,7 +449,7 @@ std::function<py::object(
                     map.cache.pb_Dy.block(n * ny, 0, ny, map.ncoly),
                     map.cache.pb_Du.col(n)
 #endif
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
                     , map.cache.pb_Dsource.col(n)
 #endif
                 );
@@ -480,7 +480,7 @@ std::function<py::object(
                 auto Dy = Ref<RowMatrix<Scalar>>(map.cache.pb_Dy);
                 auto Du = Ref<RowMatrix<Scalar>>(map.cache.pb_Du);
 
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
                 auto Dsource = Ref<RowMatrix<Scalar>>(map.cache.pb_Dsource);
 #endif
 
@@ -492,7 +492,7 @@ std::function<py::object(
                     "ro"_a=ENSURE_DOUBLE_ARR(Dro),
                     "y"_a=ENSURE_DOUBLE_ARR(Dy),
                     "u"_a=ENSURE_DOUBLE_ARR(Du)
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
                     , "source"_a=ENSURE_DOUBLE_ARR(Dsource)
 #endif
                 );
@@ -508,7 +508,7 @@ std::function<py::object(
                     "ro"_a=ENSURE_DOUBLE_ARR(Dro),
                     "y"_a=dy_reshaped,
                     "u"_a=du_reshaped
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
                     , "source"_a=ENSURE_DOUBLE_ARR(Dsource)
 #endif
                 );
@@ -524,7 +524,7 @@ std::function<py::object(
                     "ro"_a=ENSURE_DOUBLE_ARR(Dro),
                     "y"_a=dy_reshaped,
                     "u"_a=ENSURE_DOUBLE_ARR(Du)
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
                     , "source"_a=ENSURE_DOUBLE_ARR(Dsource)
 #endif
                 );
@@ -544,7 +544,7 @@ std::function<py::object(
                     "ro"_a=ENSURE_DOUBLE(map.cache.pb_Dro(0)),
                     "y"_a=ENSURE_DOUBLE_ARR(map.cache.pb_Dy.col(0)),
                     "u"_a=ENSURE_DOUBLE_ARR(map.cache.pb_Du.col(0))
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
                     , "source"_a=ENSURE_DOUBLE_ARR(map.cache.pb_Dsource.col(0))
 #endif
                 );
@@ -556,7 +556,7 @@ std::function<py::object(
                     "ro"_a=ENSURE_DOUBLE_ARR(map.cache.pb_Dro.row(0)),
                     "y"_a=ENSURE_DOUBLE_ARR(map.cache.pb_Dy),
                     "u"_a=ENSURE_DOUBLE_ARR(map.cache.pb_Du)
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
                     , "source"_a=ENSURE_DOUBLE_ARR(map.cache.pb_Dsource.col(0))
 #endif
                 );
@@ -569,7 +569,7 @@ std::function<py::object(
                     "ro"_a=ENSURE_DOUBLE(map.cache.pb_Dro(0)),
                     "y"_a=ENSURE_DOUBLE_ARR(map.cache.pb_Dy),
                     "u"_a=ENSURE_DOUBLE_ARR(map.cache.pb_Du.col(0))
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
                     , "source"_a=ENSURE_DOUBLE_ARR(map.cache.pb_Dsource.col(0))
 #endif
                 );
@@ -589,7 +589,7 @@ std::function<py::object(
             
             // Trivial!
             py::vectorize([&map, 
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
                            &source,
 #endif              
                            &n](
@@ -611,7 +611,7 @@ std::function<py::object(
                     static_cast<Scalar>(yo), 
                     static_cast<Scalar>(zo),
                     static_cast<Scalar>(ro), 
-#if defined(_STARRY_REFLECTION_)
+#if defined(_STARRY_REFLECTED_)
                     source,
 #endif
                     map.cache.pb_flux.row(n)

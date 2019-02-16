@@ -1,5 +1,5 @@
 //! The Map class
-template <class S=Default<double>, bool EMISSION=true>
+template <class S=Default<double, false>>
 class Map 
 {
 
@@ -89,8 +89,8 @@ public:
         int lmax,
         int ncol
     ) : Map(lmax, ncol, 
-            std::is_same<U, Spectral<Scalar>>::value ? ncol : 1,
-            std::is_same<U, Spectral<Scalar>>::value ? ncol : 1) {}
+            std::is_same<U, Spectral<Scalar, S::Reflected>>::value ? ncol : 1,
+            std::is_same<U, Spectral<Scalar, S::Reflected>>::value ? ncol : 1) {}
 
     // Public methods
     #include "public/io.h"

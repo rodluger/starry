@@ -182,10 +182,11 @@ typedef void Multi;
 #endif
 
 //! Default single-wavelength, static type
-template <typename T>
+template <typename T, bool REFLECTED=false>
 struct Default 
 {
     using Scalar = T;
+    static constexpr bool Reflected = REFLECTED;
     using YType = Vector<T>;
     using YCoeffType = OneByOne<T>;
     using UType = Vector<T>;
@@ -206,10 +207,11 @@ struct Default
 };
 
 //! Spectral type
-template <typename T>
+template <typename T, bool REFLECTED=false>
 struct Spectral 
 {
     using Scalar = T;
+    static constexpr bool Reflected = REFLECTED;
     using YType = Matrix<T>;
     using YCoeffType = RowVector<T>;
     using UType = Matrix<T>;
@@ -229,10 +231,11 @@ struct Spectral
 };
 
 //! Temporal type
-template <typename T>
+template <typename T, bool REFLECTED=false>
 struct Temporal 
 {
     using Scalar = T;
+    static constexpr bool Reflected = REFLECTED;
     using YType = Matrix<T>;
     using YCoeffType = RowVector<T>;
     using UType = Vector<T>;
@@ -255,56 +258,57 @@ struct Temporal
 template <typename T, typename U=void>
 using IsDefault = 
     typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar>>::value, U
+        std::is_same<T, Default<typename T::Scalar, T::Reflected>>::value, U
     >::type;
 
 template <typename T, typename U=void>
 using IsSpectral = 
     typename std::enable_if<
-        std::is_same<T, Spectral<typename T::Scalar>>::value, U
+        std::is_same<T, Spectral<typename T::Scalar, T::Reflected>>::value, U
     >::type;
 
 template <typename T, typename U=void>
 using IsDefaultOrTemporal = 
     typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar>>::value || 
-        std::is_same<T, Temporal<typename T::Scalar>>::value, U
+        std::is_same<T, Default<typename T::Scalar, T::Reflected>>::value || 
+        std::is_same<T, Temporal<typename T::Scalar, T::Reflected>>::value, U
     >::type;
 
 template <typename T, typename U=void>
 using IsTemporal = 
     typename std::enable_if<
-        std::is_same<T, Temporal<typename T::Scalar>>::value, U
+        std::is_same<T, Temporal<typename T::Scalar, T::Reflected>>::value, U
     >::type;
 
 template <typename T, typename U=void>
 using IsDefaultOrSpectral = 
     typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar>>::value || 
-        std::is_same<T, Spectral<typename T::Scalar>>::value, U
+        std::is_same<T, Default<typename T::Scalar, T::Reflected>>::value || 
+        std::is_same<T, Spectral<typename T::Scalar, T::Reflected>>::value, U
     >::type;
 
 template <typename T, typename U=void>
 using IsSpectralOrTemporal = 
     typename std::enable_if<
-        std::is_same<T, Spectral<typename T::Scalar>>::value || 
-        std::is_same<T, Temporal<typename T::Scalar>>::value, U
+        std::is_same<T, Spectral<typename T::Scalar, T::Reflected>>::value || 
+        std::is_same<T, Temporal<typename T::Scalar, T::Reflected>>::value, U
     >::type;
 
 template <typename T, typename U=void>
 using IsDefaultOrSpectralOrTemporal = 
     typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar>>::value || 
-        std::is_same<T, Spectral<typename T::Scalar>>::value || 
-        std::is_same<T, Temporal<typename T::Scalar>>::value, U
+        std::is_same<T, Default<typename T::Scalar, T::Reflected>>::value || 
+        std::is_same<T, Spectral<typename T::Scalar, T::Reflected>>::value || 
+        std::is_same<T, Temporal<typename T::Scalar, T::Reflected>>::value, U
     >::type;
 
 template <typename T, typename U=void>
-using IsEmission = 
-    typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar>>::value, U
-    >::type;
+using IsEmitted = 
+    typename std::enable_if<!T::Reflected, U>::type;
 
+template <typename T, typename U=void>
+using IsReflected = 
+    typename std::enable_if<T::Reflected, U>::type;
 
 // --------------------------
 // -------- Constants -------

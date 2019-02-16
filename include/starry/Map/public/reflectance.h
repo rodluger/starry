@@ -2,8 +2,8 @@
 Compute the reflectance. Static specialization.
 
 */
-template <typename U=S, typename=IsDefaultOrSpectral<U>, typename T1, 
-          bool E=EMISSION, typename=typename std::enable_if<!E>::type>
+template <typename U=S, typename=IsDefaultOrSpectral<U>, 
+          typename=IsReflected<U>, typename T1>
 inline void computeFlux (
     const Scalar& theta, 
     const Scalar& xo, 
@@ -21,7 +21,7 @@ Compute the flux and its gradient. Static specialization.
 
 */
 template <typename U=S, typename=IsDefaultOrSpectral<U>, 
-          bool E=EMISSION, typename=typename std::enable_if<!E>::type,
+          typename=IsReflected<U>,
           typename T1, typename T2, typename T3, typename T4, 
           typename T5, typename T6, typename T7, typename T8>
 inline void computeFlux (
@@ -48,8 +48,8 @@ inline void computeFlux (
 Compute the flux. Temporal specialization.
 
 */
-template <typename U=S, typename=IsTemporal<U>, typename T1, 
-          bool E=EMISSION, typename=typename std::enable_if<!E>::type>
+template <typename U=S, typename=IsTemporal<U>, 
+          typename=IsReflected<U>, typename T1>
 inline void computeFlux (
     const Scalar& t,
     const Scalar& theta, 
@@ -69,7 +69,7 @@ Compute the flux and its gradient. Temporal specialization.
 
 */
 template <typename U=S, typename=IsTemporal<U>, 
-          bool E=EMISSION, typename=typename std::enable_if<!E>::type,
+          typename=IsReflected<U>,
           typename T1, typename T2, typename T3, typename T4, 
           typename T5, typename T6, typename T7, typename T8,
           typename T9>
