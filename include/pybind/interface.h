@@ -248,14 +248,15 @@ std::function<py::object(
 #endif
     ) -> py::object {
         using Scalar = typename T::Scalar;
-
 #ifdef _STARRY_REFLECTED_
-        // Pick out the columns of the `source_`
-        // numpy array so we can vectorize it
-        // easily.
-        // \todo: Add dimension checks.
+        // Pick out the columns of the `source_` numpy array so we 
+        // can vectorize it easily.
         py::buffer_info buf = source_.request();
         double *ptr = (double *) buf.ptr;
+        assert(
+            ((buf.ndim == 1) && (buf.size == 3)) ||
+            ((buf.ndim == 2) && (buf.shape[1] == 3))
+        );
         auto sx = py::array_t<double>(buf.size / 3);
         py::buffer_info bufx = sx.request();
         double *ptrx = (double *) bufx.ptr;
@@ -271,19 +272,18 @@ std::function<py::object(
             ptrz[i] = ptr[3 * i + 2];
         }
 #endif
-
 #ifdef _STARRY_TEMPORAL_
-#ifdef _STARRY_EMITTED_
+#  ifdef _STARRY_EMITTED_
         std::vector<long> v{t.size(), theta.size(), x.size(), y.size()};
-#else
+#  else
         std::vector<long> v{t.size(), theta.size(), x.size(), y.size(), sx.size()};
-#endif
+#  endif
 #else
-#ifdef _STARRY_EMITTED_
+#  ifdef _STARRY_EMITTED_
         std::vector<long> v{theta.size(), x.size(), y.size()};
-#else
+#  else
         std::vector<long> v{theta.size(), x.size(), y.size(), sx.size()};
-#endif
+#  endif
 #endif
         size_t nt = *std::max_element(v.begin(), v.end());
         size_t n = 0;
@@ -368,7 +368,7 @@ std::function<py::object(
         py::array_t<double>&, 
         py::array_t<double>&,
         py::array_t<double>&,
-#if defined(_STARRY_REFLECTED_)
+#ifdef _STARRY_REFLECTED_
         py::array_t<double>&, 
 #endif
         bool
@@ -385,7 +385,7 @@ std::function<py::object(
         py::array_t<double>& yo, 
         py::array_t<double>& zo,
         py::array_t<double>& ro,
-#if defined(_STARRY_REFLECTED_)
+#ifdef _STARRY_REFLECTED_
         py::array_t<double>& source_, 
 #endif
         bool compute_gradient
@@ -394,6 +394,31 @@ std::function<py::object(
         using Scalar = typename T::Scalar;
         using TSType = typename T::TSType;
 
+#ifdef _STARRY_REFLECTED_
+        // Pick out the columns of the `source_` numpy array so we 
+        // can vectorize it easily.
+        py::buffer_info buf = source_.request();
+        double *ptr = (double *) buf.ptr;
+        assert(
+            ((buf.ndim == 1) && (buf.size == 3)) ||
+            ((buf.ndim == 2) && (buf.shape[1] == 3))
+        );
+        auto sx = py::array_t<double>(buf.size / 3);
+        py::buffer_info bufx = sx.request();
+        double *ptrx = (double *) bufx.ptr;
+        auto sy = py::array_t<double>(buf.size / 3);
+        py::buffer_info bufy = sy.request();
+        double *ptry = (double *) bufy.ptr;
+        auto sz = py::array_t<double>(buf.size / 3);
+        py::buffer_info bufz = sz.request();
+        double *ptrz = (double *) bufz.ptr;
+        for (int i = 0; i < sx.size(); ++i) {
+            ptrx[i] = ptr[3 * i];
+            ptry[i] = ptr[3 * i + 1];
+            ptrz[i] = ptr[3 * i + 2];
+        }
+#endif
+
 #if defined(_STARRY_SPECTRAL_) || defined(_STARRY_TEMPORAL_)
         // We need our old friend numpy to reshape
         // matrices into 3-tensors on the Python side
@@ -401,21 +426,18 @@ std::function<py::object(
         auto reshape = numpy.attr("reshape");
 #endif
 
-#if defined(_STARRY_REFLECTED_)
-        // Convert the `source` to an Eigen unit vector
-        py::buffer_info buf = source_.request();
-        assert(buf.ndim == 1);
-        assert(buf.size == 3);
-        double *ptr = (double *) buf.ptr;
-        UnitVector<Scalar> source(3);
-        for (int i = 0; i < 3; ++i)
-            source(i) = ptr[i];
-#endif
-
 #ifdef _STARRY_TEMPORAL_
+#  ifdef _STARRY_EMITTED_
         std::vector<long> v{t.size(), theta.size(), xo.size(), yo.size(), zo.size(), ro.size()};
+#  else
+        std::vector<long> v{t.size(), theta.size(), xo.size(), yo.size(), zo.size(), ro.size(), sx.size()};
+#  endif
 #else
+#  ifdef _STARRY_EMITTED_
         std::vector<long> v{theta.size(), xo.size(), yo.size(), zo.size(), ro.size()};
+#  else
+        std::vector<long> v{theta.size(), xo.size(), yo.size(), zo.size(), ro.size(), sx.size()};
+#  endif
 #endif
         size_t nt = *std::max_element(v.begin(), v.end());
         size_t n = 0;
@@ -461,11 +483,7 @@ std::function<py::object(
 #endif
 
             // Vectorize the computation
-            py::vectorize([&map, 
-#if defined(_STARRY_REFLECTED_)
-                           &source,
-#endif            
-                           &n, &ny, &nu](
+            py::vectorize([&map, &n, &ny, &nu](
 
 #ifdef _STARRY_TEMPORAL_
                 double t, 
@@ -475,7 +493,16 @@ std::function<py::object(
                 double yo, 
                 double zo,
                 double ro
+#ifdef _STARRY_REFLECTED_
+                , double sx,
+                double sy,
+                double sz 
+#endif
             ) {
+#ifdef _STARRY_REFLECTED_
+                    UnitVector<Scalar> source(3);
+                    source << sx, sy, sz;
+#endif
                 map.computeFlux(
 #ifdef _STARRY_TEMPORAL_
                     static_cast<Scalar>(t),
@@ -521,6 +548,11 @@ std::function<py::object(
                 yo, 
                 zo,
                 ro
+#ifdef _STARRY_REFLECTED_
+                , sx,
+                sy,
+                sz
+#endif
             );
 
             // Construct the gradient dictionary and
@@ -645,11 +677,7 @@ std::function<py::object(
         } else {
             
             // Trivial!
-            py::vectorize([&map, 
-#if defined(_STARRY_REFLECTED_)
-                           &source,
-#endif              
-                           &n](
+            py::vectorize([&map, &n](
 #ifdef _STARRY_TEMPORAL_
                 double t, 
 #endif
@@ -658,7 +686,16 @@ std::function<py::object(
                 double yo, 
                 double zo,
                 double ro
+#if defined(_STARRY_REFLECTED_)
+                , double sx,
+                double sy,
+                double sz
+#endif              
             ) {
+#if defined(_STARRY_REFLECTED_)
+                UnitVector<Scalar> source(3);
+                source << sx, sy, sz;
+#endif
                 map.computeFlux(
 #ifdef _STARRY_TEMPORAL_
                     static_cast<Scalar>(t), 
@@ -684,6 +721,11 @@ std::function<py::object(
                 yo, 
                 zo,
                 ro
+#ifdef _STARRY_REFLECTED_
+                , sx,
+                sy,
+                sz
+#endif
             );
             if (nt > 1) {
                 return PYOBJECT_CAST_ARR(map.cache.pb_flux);

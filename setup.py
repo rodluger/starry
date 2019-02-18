@@ -8,28 +8,32 @@ import setuptools
 __version__ = '1.0.0'
 
 # Module bits
-_STARRY_DEFAULT_DOUBLE_ =  1
-_STARRY_DEFAULT_MULTI_ =   2
-_STARRY_SPECTRAL_DOUBLE_ = 4
-_STARRY_SPECTRAL_MULTI_ =  8
-_STARRY_TEMPORAL_DOUBLE_ = 16
-_STARRY_TEMPORAL_MULTI_ =  32
-_STARRY_DEFAULT_REFL_DOUBLE_ =  64
-_STARRY_DEFAULT_REFL_MULTI_ =   128
-_STARRY_SPECTRAL_REFL_DOUBLE_ = 256
-_STARRY_SPECTRAL_REFL_MULTI_ =  512
-_STARRY_TEMPORAL_REFL_DOUBLE_ = 1024
-_STARRY_TEMPORAL_REFL_MULTI_ =  2048
-_STARRY_EXTENSIONS_ = 4096
+modules = dict(
+    _STARRY_DEFAULT_DOUBLE_=1,
+    _STARRY_DEFAULT_MULTI_=2,
+    _STARRY_SPECTRAL_DOUBLE_=4,
+    _STARRY_SPECTRAL_MULTI_=8,
+    _STARRY_TEMPORAL_DOUBLE_=16,
+    _STARRY_TEMPORAL_MULTI_=32,
+    _STARRY_DEFAULT_REFL_DOUBLE_=64,
+    _STARRY_DEFAULT_REFL_MULTI_=128,
+    _STARRY_SPECTRAL_REFL_DOUBLE_=256,
+    _STARRY_SPECTRAL_REFL_MULTI_=512,
+    _STARRY_TEMPORAL_REFL_DOUBLE_=1024,
+    _STARRY_TEMPORAL_REFL_MULTI_=2048,
+    _STARRY_EXTENSIONS_=4096
+)
 
 # Custom compiler flags
-macros = dict(STARRY_NMULTI=32,
-              STARRY_ELLIP_MAX_ITER=200,
-              STARRY_MAX_LMAX=50,
-              STARRY_BCUT=1.e-3,
-              STARRY_MN_MAX_ITER=100,
-              STARRY_IJ_MAX_ITER=200,
-              STARRY_REFINE_J_AT=25)
+macros = dict(
+    STARRY_NMULTI=32,
+    STARRY_ELLIP_MAX_ITER=200,
+    STARRY_MAX_LMAX=50,
+    STARRY_BCUT=1.e-3,
+    STARRY_MN_MAX_ITER=100,
+    STARRY_IJ_MAX_ITER=200,
+    STARRY_REFINE_J_AT=25
+)
 
 # Override with user values
 for key, value in macros.items():
@@ -52,7 +56,7 @@ if debug:
     macros["STARRY_O"] = 0
     macros["STARRY_DEBUG"] = 1
 
-# Module bitsum
+# Module bitsum (default all)
 bitsum = int(os.getenv('STARRY_BITSUM', 8191))
 
 class get_pybind_include(object):
@@ -74,7 +78,8 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-def get_ext(module='starry._starry_default_double', name='_STARRY_DEFAULT_DOUBLE_'):
+def get_ext(module='starry._starry_default_double', 
+            name='_STARRY_DEFAULT_DOUBLE_'):
     include_dirs = [
         get_pybind_include(),
         get_pybind_include(user=True),
@@ -95,33 +100,14 @@ def get_ext(module='starry._starry_default_double', name='_STARRY_DEFAULT_DOUBLE
 
 # Figure out which modules to compile (default all)
 ext_modules = []
-if (bitsum & _STARRY_DEFAULT_DOUBLE_):
-    ext_modules.append(get_ext('starry._starry_default_double', '_STARRY_DEFAULT_DOUBLE_'))
-if (bitsum & _STARRY_DEFAULT_MULTI_):
-    ext_modules.append(get_ext('starry._starry_default_multi', '_STARRY_DEFAULT_MULTI_'))
-if (bitsum & _STARRY_SPECTRAL_DOUBLE_):
-    ext_modules.append(get_ext('starry._starry_spectral_double', '_STARRY_SPECTRAL_DOUBLE_'))
-if (bitsum & _STARRY_SPECTRAL_MULTI_):
-    ext_modules.append(get_ext('starry._starry_spectral_multi', '_STARRY_SPECTRAL_MULTI_'))
-if (bitsum & _STARRY_TEMPORAL_DOUBLE_):
-    ext_modules.append(get_ext('starry._starry_temporal_double', '_STARRY_TEMPORAL_DOUBLE_'))
-if (bitsum & _STARRY_TEMPORAL_MULTI_):
-    ext_modules.append(get_ext('starry._starry_temporal_multi', '_STARRY_TEMPORAL_MULTI_'))
-if (bitsum & _STARRY_DEFAULT_REFL_DOUBLE_):
-    ext_modules.append(get_ext('starry._starry_default_refl_double', '_STARRY_DEFAULT_REFL_DOUBLE_'))
-if (bitsum & _STARRY_DEFAULT_REFL_MULTI_):
-    ext_modules.append(get_ext('starry._starry_default_refl_multi', '_STARRY_DEFAULT_REFL_MULTI_'))
-if (bitsum & _STARRY_SPECTRAL_REFL_DOUBLE_):
-    ext_modules.append(get_ext('starry._starry_spectral_refl_double', '_STARRY_SPECTRAL_REFL_DOUBLE_'))
-if (bitsum & _STARRY_SPECTRAL_REFL_MULTI_):
-    ext_modules.append(get_ext('starry._starry_spectral_refl_multi', '_STARRY_SPECTRAL_REFL_MULTI_'))
-if (bitsum & _STARRY_TEMPORAL_REFL_DOUBLE_):
-    ext_modules.append(get_ext('starry._starry_temporal_refl_double', '_STARRY_TEMPORAL_REFL_DOUBLE_'))
-if (bitsum & _STARRY_TEMPORAL_REFL_MULTI_):
-    ext_modules.append(get_ext('starry._starry_temporal_refl_multi', '_STARRY_TEMPORAL_REFL_MULTI_'))
+
+for module, bit in modules.items():
+    if (bitsum & bit) and (module != "_STARRY_EXTENSIONS_"):
+        ext_modules.append(
+            get_ext('starry.{0}'.format(module.lower()[:-1]), module))
 
 # Build extensions?
-if (bitsum & _STARRY_EXTENSIONS_):
+if (bitsum & modules["_STARRY_EXTENSIONS_"]):
     ext_modules.append(
         Extension(
             'starry._starry_extensions',
@@ -218,7 +204,7 @@ setup(
     ext_modules=ext_modules,
     install_requires=['pybind11>=2.2'],
     cmdclass={'build_ext': BuildExt},
-    data_files=[], #glob.glob('starry/maps/*.jpg')],
+    data_files=[glob.glob('starry/maps/*.jpg')],
     include_package_data=True,
     zip_safe=False,
 )

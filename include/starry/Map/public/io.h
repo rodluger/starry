@@ -108,6 +108,7 @@ Set the `l`th index of the limb darkening coefficient *matrix* to an
 array of coefficients.
 
 */
+template <typename U=S, typename=IsEmitted<U>>
 inline void setU (
     int l, 
     const Ref<const UCoeffType>& coeff
@@ -125,6 +126,7 @@ the entire `l`th row of the limb darkening coefficient matrix, to a
 single value.
 
 */
+template <typename U=S, typename=IsEmitted<U>>
 inline void setU (
     int l, 
     const Scalar& coeff
@@ -140,6 +142,7 @@ inline void setU (
 Get the full limb darkening vector/matrix.
 
 */
+template <typename U=S, typename=IsEmitted<U>>
 inline const UType getU () const {
     return u.block(1, 0, lmax, u.cols());
 }
@@ -202,7 +205,7 @@ inline Scalar getY (
 Get the `l`th row of the limb darkening coefficient *matrix*
 
 */
-template <typename U=S, typename=IsSpectral<U>>
+template <typename U=S, typename=IsSpectral<U>, typename=IsEmitted<U>>
 inline UCoeffType getU (
     int l
 ) const {
@@ -216,7 +219,7 @@ inline UCoeffType getU (
 Get the `l`th index of the limb darkening coefficient *vector*
 
 */
-template <typename U=S, typename=IsDefaultOrTemporal<U>>
+template <typename U=S, typename=IsDefaultOrTemporal<U>, typename=IsEmitted<U>>
 inline Scalar getU (
     int l
 ) const {

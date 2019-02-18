@@ -152,6 +152,7 @@ PYBIND11_MODULE(
             return map.ncoly;
     }, docstrings::Map::ncoly);
 
+#ifdef _STARRY_EMITTED_
     // Number of Ul map columns
     PyMap.def_property_readonly(
         "ncolu", [] (
@@ -159,6 +160,7 @@ PYBIND11_MODULE(
         ) {
             return map.ncolu;
     }, docstrings::Map::ncolu);
+#endif
 
     // Number of wavelength bins
     PyMap.def_property_readonly(
@@ -287,6 +289,7 @@ PYBIND11_MODULE(
             }
     }, docstrings::Map::getitem);
 
+#ifdef _STARRY_EMITTED_
     // Set one or more limb darkening coefficients to the same scalar value
     PyMap.def(
         "__setitem__", [](
@@ -348,19 +351,21 @@ PYBIND11_MODULE(
             for (auto n : inds)
                 res.row(i++) = u.row(n - 1).template cast<double>();
             if (inds.size() == 1) {
-#if defined(_STARRY_DEFAULT_) || defined(_STARRY_TEMPORAL_)
+#  if defined(_STARRY_DEFAULT_) || defined(_STARRY_TEMPORAL_)
                 return py::cast<double>(res(0));
-#else
+#  else
                 auto coeff = py::cast(res.row(0).template cast<double>());
                 MAKE_READ_ONLY(coeff);
                 return coeff;
-#endif
+#  endif
             } else {
                 auto coeff = py::cast(res.template cast<double>());
                 MAKE_READ_ONLY(coeff);
                 return coeff;
             }
     });
+
+#endif
 
     // Reset the map
     PyMap.def("reset", &Map<T>::reset, docstrings::Map::reset);
@@ -375,6 +380,7 @@ PYBIND11_MODULE(
             return y;
     }, docstrings::Map::y);
 
+#ifdef _STARRY_EMITTED_
     // Vector of limb darkening coefficients
     PyMap.def_property_readonly(
         "u", [] (
@@ -384,6 +390,7 @@ PYBIND11_MODULE(
             MAKE_READ_ONLY(u);
             return u;
     }, docstrings::Map::u);
+#endif
 
     // Get/set the rotation axis
     PyMap.def_property(
