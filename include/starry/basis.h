@@ -864,9 +864,9 @@ inline void Basis<T>::computeIlluminationMatrix (
 ) {
     // Define our grid
     RowVector<T> pts(RowVector<T>::LinSpaced(res, -1.0, 1.0));
-    RowVector<T> y = pts.replicate(1, res);
-    Matrix<T> tmp = y.replicate(res, 1);
-    Eigen::Map<RowVector<T>> x(tmp.data(), res * res);
+    RowVector<T> x = pts.replicate(1, res);
+    Matrix<T> tmp = x.replicate(res, 1);
+    Eigen::Map<RowVector<T>> y(tmp.data(), res * res);
     I.resize(res * res);
 
     // Get the source vector components

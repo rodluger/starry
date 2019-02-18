@@ -104,8 +104,6 @@ given an axis and an angle. If `col = -1`,
 rotate all columns of the map, otherwise
 rotate only the column with index `col`.
 
-\todo This routine is BROKEN.
-
 */
 inline void rotateByAxisAngle (
     const UnitVector<Scalar>& axis_,
@@ -117,7 +115,7 @@ inline void rotateByAxisAngle (
     Scalar tol = 10 * mach_eps<Scalar>();
     Scalar cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
     rotation::axisAngleToEuler(
-        axis(0), axis(1), costheta, sintheta, tol,
+        axis_(0), axis_(1), costheta, sintheta, tol,
         cosalpha, sinalpha, cosbeta, sinbeta, 
         cosgamma, singamma);
     rotation::rotar(
