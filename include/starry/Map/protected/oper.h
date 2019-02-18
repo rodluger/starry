@@ -47,11 +47,27 @@ inline void computeDegree ()
 }
 
 //! Compute the change of basis matrix from Ylms to pixels
-inline void computeP (int res) {
+inline void computeP (
+    int res
+) {
     if (cache.compute_P || (cache.res != res)) {
         B.computePolyMatrix(res, cache.P);
         cache.res = res;
         cache.compute_P = false;
+    }
+}
+
+//! Compute the illumination matrix
+inline void computeI (
+    int res, 
+    const UnitVector<Scalar>& source
+) {
+    if ((cache.sx != source(0)) || (cache.sy != source(1)) || (cache.sz != source(2)) || (cache.res != res)) {
+        B.computeIlluminationMatrix(res, source, cache.I);
+        cache.res = res;
+        cache.sx = source(0);
+        cache.sy = source(1);
+        cache.sz = source(2);
     }
 }
 
@@ -87,6 +103,8 @@ Rotate an arbitrary map vector in place
 given an axis and an angle. If `col = -1`,
 rotate all columns of the map, otherwise
 rotate only the column with index `col`.
+
+\todo This routine is BROKEN.
 
 */
 inline void rotateByAxisAngle (

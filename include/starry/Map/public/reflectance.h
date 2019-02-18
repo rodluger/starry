@@ -1,5 +1,5 @@
 /**
-Compute the reflectance. Static specialization.
+Compute the reflected flux. Static specialization.
 
 */
 template <typename U=S, typename=IsDefaultOrSpectral<U>, 
@@ -13,11 +13,11 @@ inline void computeFlux (
     const UnitVector<Scalar>& source,
     MatrixBase<T1> const & flux
 ) {
-    computeReflectanceInternal(theta, xo, yo, zo, ro, source, flux);
+    computeReflectedFluxInternal(theta, xo, yo, zo, ro, source.normalized(), flux);
 }
 
 /**
-Compute the flux and its gradient. Static specialization.
+Compute the reflected flux and its gradient. Static specialization.
 
 */
 template <typename U=S, typename=IsDefaultOrSpectral<U>, 
@@ -45,7 +45,7 @@ inline void computeFlux (
 }
 
 /**
-Compute the flux. Temporal specialization.
+Compute the reflected flux. Temporal specialization.
 
 */
 template <typename U=S, typename=IsTemporal<U>, 
@@ -61,11 +61,11 @@ inline void computeFlux (
     MatrixBase<T1> const & flux
 ) {
     computeTaylor(t);
-    computeReflectanceInternal(theta, xo, yo, zo, ro, source, flux);
+    computeReflectedFluxInternal(theta, xo, yo, zo, ro, source.normalized(), flux);
 }
 
 /**
-Compute the flux and its gradient. Temporal specialization.
+Compute the reflected flux and its gradient. Temporal specialization.
 
 */
 template <typename U=S, typename=IsTemporal<U>, 
@@ -93,4 +93,74 @@ inline void computeFlux (
 ) {
     // \todo Implement gradient of reflectance for temporal maps
     throw errors::NotImplementedError("Gradient of reflectance not yet implemented.");
+}
+
+/**
+Evaluate the reflected map at a given (theta, x, y) coordinate.
+Static specialization.
+
+*/  
+template <typename U=S, typename=IsDefaultOrSpectral<U>, 
+          typename=IsReflected<U>, typename T1>
+inline void computeIntensity (
+    const Scalar& theta,
+    const Scalar& x_,
+    const Scalar& y_,
+    const UnitVector<Scalar>& source,
+    MatrixBase<T1> const & intensity
+){
+    computeReflectedIntensityInternal(theta, x_, y_, source.normalized(), intensity);
+}
+
+/**
+Evaluate the reflected map at a given (theta, x, y) coordinate.
+Temporal specialization.
+
+*/  
+template <typename U=S, typename=IsTemporal<U>, 
+          typename=IsReflected<U>, typename T1>
+inline void computeIntensity (
+    const Scalar& t,
+    const Scalar& theta,
+    const Scalar& x_,
+    const Scalar& y_,
+    const UnitVector<Scalar>& source,
+    MatrixBase<T1> const & intensity
+){
+    computeTaylor(t);
+    computeReflectedIntensityInternal(theta, x_, y_, source.normalized(), intensity);
+}
+
+/**
+Render the reflected map on a square cartesian grid at given
+resolution. Static specialization.
+
+*/
+template <typename U=S, typename=IsDefaultOrSpectral<U>, 
+          typename=IsReflected<U>, typename T1>
+inline void renderMap (
+    const Scalar& theta,
+    const UnitVector<Scalar>& source,
+    int res,
+    MatrixBase<T1> const & intensity
+){
+    renderReflectedMapInternal(theta, source.normalized(), res, intensity);
+}
+
+/**
+Render the reflected map on a square cartesian grid at given
+resolution. Temporal specialization.
+
+*/
+template <typename U=S, typename=IsTemporal<U>, 
+          typename=IsReflected<U>, typename T1>
+inline void renderMap (
+    const Scalar& t,
+    const Scalar& theta,
+    const UnitVector<Scalar>& source,
+    int res,
+    MatrixBase<T1> const & intensity
+){
+    computeTaylor(t);
+    renderReflectedMapInternal(theta, source.normalized(), res, intensity);
 }

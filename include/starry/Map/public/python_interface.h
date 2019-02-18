@@ -4,7 +4,7 @@
 Display the map (static case).
 
 */  
-template <typename U=S, typename=IsDefaultOrSpectral<U>>
+template <typename U=S, typename=IsDefaultOrSpectral<U>, typename=IsEmitted<U>>
 inline py::object show (
     const Scalar& theta=0.0,
     std::string cmap="plasma",
@@ -17,7 +17,7 @@ inline py::object show (
 Display an animation of the map as it rotates (static case).
 
 */  
-template <typename U=S, typename=IsDefaultOrSpectral<U>>
+template <typename U=S, typename=IsDefaultOrSpectral<U>, typename=IsEmitted<U>>
 inline py::object show (
     const Vector<Scalar>& theta,
     std::string cmap="plasma",
@@ -33,7 +33,7 @@ inline py::object show (
 Display the map (temporal case).
 
 */  
-template <typename U=S, typename=IsTemporal<U>>
+template <typename U=S, typename=IsTemporal<U>, typename=IsEmitted<U>>
 inline py::object show (
     const Scalar& t=0.0,
     const Scalar& theta=0.0,
@@ -49,7 +49,7 @@ inline py::object show (
 Display an animation of the map as it rotates (temporal case).
 
 */  
-template <typename U=S, typename=IsTemporal<U>>
+template <typename U=S, typename=IsTemporal<U>, typename=IsEmitted<U>>
 inline py::object show (
     const Vector<Scalar>& t,
     const Vector<Scalar>& theta,
@@ -59,6 +59,71 @@ inline py::object show (
     std::string gif=std::string()
 ) {
     return showInternal(t, theta, cmap, res, interval, gif);
+}
+
+/**
+Display the map (static case).
+
+*/  
+template <typename U=S, typename=IsDefaultOrSpectral<U>, typename=IsReflected<U>>
+inline py::object show (
+    const Scalar& theta=0.0,
+    const UnitVector<Scalar>& source=-xhat<Scalar>(),
+    std::string cmap="plasma",
+    size_t res=300
+) {
+    return showInternal(0, theta, source.normalized(), cmap, res);
+}
+
+/**
+Display an animation of the map as it rotates (static case).
+
+*/  
+template <typename U=S, typename=IsDefaultOrSpectral<U>, typename=IsReflected<U>>
+inline py::object show (
+    const Vector<Scalar>& theta,
+    const Matrix<Scalar>& source,
+    std::string cmap="plasma",
+    size_t res=300,
+    int interval=75,
+    std::string gif=std::string()
+) {
+    Vector<Scalar> t = Vector<Scalar>::Zero(theta.size());
+    return showInternal(t, theta, source, cmap, res, interval, gif);
+}
+
+/**
+Display the map (temporal case).
+
+*/  
+template <typename U=S, typename=IsTemporal<U>, typename=IsReflected<U>>
+inline py::object show (
+    const Scalar& t=0.0,
+    const Scalar& theta=0.0,
+    const UnitVector<Scalar>& source=-xhat<Scalar>(),
+    std::string cmap="plasma",
+    size_t res=300,
+    int interval=75,
+    std::string gif=std::string()
+) {
+    return showInternal(t, theta, source.normalized(), cmap, res, interval, gif);
+}
+
+/**
+Display an animation of the map as it rotates (temporal case).
+
+*/  
+template <typename U=S, typename=IsTemporal<U>, typename=IsReflected<U>>
+inline py::object show (
+    const Vector<Scalar>& t,
+    const Vector<Scalar>& theta,
+    const Matrix<Scalar>& source,
+    std::string cmap="plasma",
+    size_t res=300,
+    int interval=75,
+    std::string gif=std::string()
+) {
+    return showInternal(t, theta, source, cmap, res, interval, gif);
 }
 
 /**

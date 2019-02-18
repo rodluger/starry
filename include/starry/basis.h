@@ -700,6 +700,12 @@ public:
         Matrix<T>& P
     );
 
+    inline void computeIlluminationMatrix (
+        size_t res,
+        const UnitVector<T>& source,
+        Vector<T>& I
+    );
+
 };
 
 /**
@@ -844,6 +850,51 @@ inline void Basis<T>::computePolyMatrix (
     Eigen::Map<RowVector<T>> x(tmp.data(), res * res);
     P.resize(res * res, (lmax + 1) * (lmax + 1));
     computePolyBasis(y, x, P);
+}
+
+/**
+Compute the illumination matrix (actually a vector) at a given resolution.
+
+*/
+template <typename T>
+inline void Basis<T>::computeIlluminationMatrix (
+    size_t res,
+    const UnitVector<T>& source,
+    Vector<T>& I
+) {
+    // Define our grid
+    RowVector<T> pts(RowVector<T>::LinSpaced(res, -1.0, 1.0));
+    RowVector<T> y = pts.replicate(1, res);
+    Matrix<T> tmp = y.replicate(res, 1);
+    Eigen::Map<RowVector<T>> x(tmp.data(), res * res);
+    I.resize(res * res);
+
+    // Get the source vector components
+    T sx = source(0);
+    T sy = source(1);
+    T sz = source(2);
+
+    // Compute the illumination matrix
+    T b = -sz;
+    RowVector<T> yrot(res * res);
+    RowVector<T> Ones = RowVector<T>::Ones(res * res);
+    if (unlikely((sx == 0) && (sy == 0))) {
+        if (sz < 0) {
+            I.setZero();
+            return;
+        }
+        yrot = y;
+    } else {
+        T invsr = T(1.0) / sqrt(sx * sx + sy * sy);
+        T cosw = sy * invsr;
+        T sinw = -sx * invsr;
+        yrot = -x * sinw + y * cosw;
+    }
+    RowVector<T> z = (Ones - x.cwiseProduct(x) - y.cwiseProduct(y)).cwiseSqrt();
+    I = sqrt(T(1.0) - T(b * b)) * yrot - b * z;
+
+    // Mask the night side
+    I = (I.array() < 0).select(0, I);
 }
 
 } // namespace basis

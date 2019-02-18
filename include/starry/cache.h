@@ -213,6 +213,10 @@ public:
     Scalar theta;
     Scalar theta_with_grad;
     Matrix<Scalar> P;                                                          /**< The change of basis matrix from Ylms to pixels */
+    Vector<Scalar> I;                                                          /**< The illumination matrix (reflecte light maps only) */
+    Scalar sx;
+    Scalar sy;
+    Scalar sz;
     UType g;
     Matrix<Scalar> DgDu;                                                       /**< Deriv of Agol `g` coeffs w/ respect to the limb darkening coeffs */
     UType p;
@@ -283,6 +287,9 @@ public:
         compute_p = true;
         compute_p_grad = true;
         res = -1;
+        sx = 0;
+        sy = 0;
+        sz = 0;
         taylort = NAN;
         theta = NAN;
         theta_with_grad = NAN;

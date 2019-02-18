@@ -3,7 +3,8 @@ Evaluate the map at a given (theta, x, y) coordinate.
 Static specialization.
 
 */  
-template <typename U=S, typename=IsDefaultOrSpectral<U>, typename T1>
+template <typename U=S, typename=IsDefaultOrSpectral<U>, 
+          typename=IsEmitted<U>, typename T1>
 inline void computeIntensity (
     const Scalar& theta,
     const Scalar& x_,
@@ -18,7 +19,8 @@ Evaluate the map at a given (theta, x, y) coordinate.
 Temporal specialization.
 
 */  
-template <typename U=S, typename=IsTemporal<U>, typename T1>
+template <typename U=S, typename=IsTemporal<U>, 
+          typename=IsEmitted<U>, typename T1>
 inline void computeIntensity (
     const Scalar& t,
     const Scalar& theta,
@@ -35,7 +37,8 @@ Render the visible map on a square cartesian grid at given
 resolution. Static specialization.
 
 */
-template <typename U=S, typename=IsDefaultOrSpectral<U>, typename T1>
+template <typename U=S, typename=IsDefaultOrSpectral<U>, 
+          typename=IsEmitted<U>, typename T1>
 inline void renderMap (
     const Scalar& theta,
     int res,
@@ -49,7 +52,8 @@ Render the visible map on a square cartesian grid at given
 resolution. Temporal specialization.
 
 */
-template <typename U=S, typename=IsTemporal<U>, typename T1>
+template <typename U=S, typename=IsTemporal<U>, 
+          typename=IsEmitted<U>, typename T1>
 inline void renderMap (
     const Scalar& t,
     const Scalar& theta,

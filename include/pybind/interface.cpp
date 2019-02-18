@@ -480,6 +480,7 @@ PYBIND11_MODULE(
 #endif
 
 #if defined(_STARRY_STATIC_)
+#if defined(_STARRY_EMITTED_)
     // Show an image/animation of the map
     PyMap.def(
         "show", [](
@@ -504,6 +505,44 @@ PYBIND11_MODULE(
         "theta"_a=py::array_t<double>(), "cmap"_a="plasma", "res"_a=300,
         "interval"_a=75, "gif"_a="");
 #else
+    // Show an image/animation of the map
+    PyMap.def(
+        "show", [](
+            Map<T>& map,
+            py::array_t<double> theta_,
+            py::array_t<double> source_,
+            std::string cmap,
+            int res,
+            int interval,
+            std::string gif
+        ) -> py::object {
+            auto atleast_1d = py::module::import("numpy").attr("atleast_1d");
+            auto atleast_2d = py::module::import("numpy").attr("atleast_2d");
+            Vector<double> theta = py::cast<Vector<double>>(atleast_1d(theta_));
+            RowMatrix<double> source = py::cast<RowMatrix<double>>(atleast_2d(source_));
+            assert(source.cols() == 3);
+            int sz = max(theta.rows(), source.rows());
+            if ((theta.rows() == 0) || (source.rows() == 0)) {
+                throw errors::ValueError(
+                    "Invalid dimensions for `theta` and/or `source`.");
+            } else if (theta.rows() == 1) {
+                theta.setConstant(sz, theta(0));
+            } else if (source.rows() == 1) {
+                source = source.replicate(sz, 1);
+            } else if (theta.rows() != source.rows()){
+                throw errors::ValueError(
+                    "Invalid dimensions for `theta` and/or `source`.");
+            }
+            return map.show(theta.template cast<typename T::Scalar>(),
+                            source.template cast<typename T::Scalar>(),
+                            cmap, res, interval, gif);
+        }, 
+        docstrings::Map::show,
+        "theta"_a=Vector<double>::Zero(1), "source"_a=-xhat<double>(), 
+        "cmap"_a="plasma", "res"_a=300, "interval"_a=75, "gif"_a="");
+#endif
+#else
+#if defined(_STARRY_EMITTED_)
     // Show an image/animation of the map
     PyMap.def(
         "show", [](
@@ -537,6 +576,9 @@ PYBIND11_MODULE(
         docstrings::Map::show,
         "t"_a=0.0, "theta"_a=0.0, 
         "cmap"_a="plasma", "res"_a=300, "interval"_a=75, "gif"_a="");
+#else
+    // \todo: temporal, reflected show()
+#endif
 #endif
 
 #if defined(_STARRY_DEFAULT_)
@@ -545,33 +587,57 @@ PYBIND11_MODULE(
         "render", [](
             Map<T>& map,
             double theta,
+#if defined(_STARRY_REFLECTED_)
+            UnitVector<double> source,
+#endif
             int res
         ) -> py::object {
             auto reshape = py::module::import("numpy").attr("reshape");
             Vector<typename T::Scalar> intensity(res * res);
+#if defined(_STARRY_EMITTED_)
             map.renderMap(theta, res, intensity);
+#else
+            map.renderMap(theta, source.template cast<typename T::Scalar>(), 
+                          res, intensity);
+#endif
             return reshape(intensity.template cast<double>(), 
                            py::make_tuple(res, res));
 
         }, 
         docstrings::Map::render,
-        "theta"_a=0.0, "res"_a=300);
+        "theta"_a=0.0, 
+#if defined(_STARRY_REFLECTED_)
+        "source"_a=-xhat<double>(),
+#endif
+        "res"_a=300);
 #elif defined(_STARRY_SPECTRAL_)
     // Render the visible map on a square grid
     PyMap.def(
         "render", [](
             Map<T>& map,
             double theta,
+#if defined(_STARRY_REFLECTED_)
+            UnitVector<double> source,
+#endif
             int res
         ) -> py::object {
             auto reshape = py::module::import("numpy").attr("reshape");
             Matrix<typename T::Scalar> intensity(res * res, map.ncoly);
+#if defined(_STARRY_EMITTED_)
             map.renderMap(theta, res, intensity);
+#else
+            map.renderMap(theta, source.template cast<typename T::Scalar>(), 
+                          res, intensity);
+#endif
             return reshape(intensity.template cast<double>(), 
                            py::make_tuple(res, res, map.nflx));
         }, 
         docstrings::Map::render,
-        "theta"_a=0.0, "res"_a=300);
+        "theta"_a=0.0, 
+#if defined(_STARRY_REFLECTED_)
+        "source"_a=-xhat<double>(),
+#endif        
+        "res"_a=300);
 #elif defined(_STARRY_TEMPORAL_)
     // Render the visible map on a square grid
     PyMap.def(
@@ -579,16 +645,28 @@ PYBIND11_MODULE(
             Map<T>& map,
             double t,
             double theta,
+#if defined(_STARRY_REFLECTED_)
+            UnitVector<double> source,
+#endif
             int res
         ) -> py::object {
             auto reshape = py::module::import("numpy").attr("reshape");
             Vector<typename T::Scalar> intensity(res * res);
+#if defined(_STARRY_EMITTED_)
             map.renderMap(t, theta, res, intensity);
+#else
+            map.renderMap(t, theta, source.template cast<typename T::Scalar>(), 
+                          res, intensity);
+#endif
             return reshape(intensity.template cast<double>(), 
                            py::make_tuple(res, res));
         }, 
         docstrings::Map::render,
-        "t"_a=0.0, "theta"_a=0.0, "res"_a=300);
+        "t"_a=0.0, "theta"_a=0.0, 
+#if defined(_STARRY_REFLECTED_)
+        "source"_a=-xhat<double>(),
+#endif        
+        "res"_a=300);
 #endif
 
 #if defined(_STARRY_SINGLECOL_)
@@ -623,13 +701,25 @@ PYBIND11_MODULE(
 #endif
 
 #if defined(_STARRY_STATIC_)
+#if defined(_STARRY_EMITTED_)
     // Compute the intensity
     PyMap.def("__call__", intensity<T>(), docstrings::Map::call, 
               "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
 #else
     // Compute the intensity
+    PyMap.def("__call__", intensity<T>(), docstrings::Map::call, 
+              "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "source"_a=-xhat<double>());
+#endif
+#else
+#if defined(_STARRY_EMITTED_)
+    // Compute the intensity
     PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, "t"_a=0.0, 
               "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
+#else
+    // Compute the intensity
+    PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, "t"_a=0.0, 
+              "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "source"_a=-xhat<double>());
+#endif
 #endif
 
 #if defined(_STARRY_STATIC_)
@@ -656,7 +746,8 @@ PYBIND11_MODULE(
 #endif
 #endif
 
-#if defined(_STARRY_STATIC_) && defined(_STARRY_DOUBLE_)
+// \todo Work on the linear model
+#if defined(_STARRY_STATIC_) && defined(_STARRY_DOUBLE_) && defined(_STARRY_EMITTED_)
     // Compute the linear Ylm model
     PyMap.def(
         "LinearModel", [](
@@ -756,7 +847,7 @@ PYBIND11_MODULE(
         "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0);
 #endif
 
-#if defined(_STARRY_DEFAULT_) && defined(_STARRY_DOUBLE_)
+#if defined(_STARRY_DEFAULT_) && defined(_STARRY_DOUBLE_) && defined(_STARRY_EMITTED_)
     // Compute the MAP map coefficients
     PyMap.def(
         "MAP", [](

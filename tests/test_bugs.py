@@ -16,3 +16,9 @@ def test_bad_lm():
     except:
         error_thrown = True
     assert error_thrown
+
+
+@pytest.mark.xfail
+def test_load_image():
+    # todo
+    raise Exception("Wrong orientation of maps with `load_image`.")
