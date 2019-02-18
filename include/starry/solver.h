@@ -1091,8 +1091,16 @@ namespace solver {
     Greens integral solver wrapper class.
 
     */
+    template <class Scalar, bool REFLECTED>
+    class Greens { };
+
+    /**
+    Greens integral solver wrapper class.
+    Emitted light specialization.
+
+    */
     template <class Scalar>
-    class Greens
+    class Greens<Scalar, false>
     {
 
     protected:

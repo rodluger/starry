@@ -38,8 +38,8 @@ protected:
     UnitVector<Scalar> axis;                                                   /**< The axis of rotation for the map */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
     rotation::Wigner<YType> W;                                                 /**< Ylm rotation stuff */
-    solver::Greens<Scalar> G;                                                  /**< The occultation integral solver class */
-    limbdark::GreensLimbDark<Scalar> L;                                        /**< The occultation integral solver class (optimized for limb darkening) */
+    solver::Greens<Scalar, S::Reflected> G;                                    /**< The occultation integral solver class */
+    limbdark::GreensLimbDark<Scalar, S::Reflected> L;                          /**< The occultation integral solver class (optimized for limb darkening) */
     Vector<Scalar> taylor;                                                     /**< Vector of Taylor expansion coefficients for a given `t` */
     int u_deg;                                                                 /**< Highest degree set by the user in the limb darkening vector */
     int y_deg;                                                                 /**< Highest degree set by the user in the spherical harmonic vector */

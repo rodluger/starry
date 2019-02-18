@@ -79,7 +79,7 @@ namespace limbdark {
     
     This is the default map case.
 
-    TODO: This might be faster/cleaner as a linear operation...
+    \todo This might be faster/cleaner as a linear operation...
 
     */
     template <typename T1, typename T2, typename T3>
@@ -169,11 +169,37 @@ namespace limbdark {
     }
 
     /**
-    Greens integration housekeeping data
+    Greens integration housekeeping data.
+
+    */
+    template <class T, bool REFLECTED>
+    class GreensLimbDark { };
+
+    /**
+    Greens integral solver wrapper class. Reflected
+    light specialization for limb-darkened maps. This
+    class does nothing, since `starry` does not
+    implement limb darkening in reflected light.
 
     */
     template <class T>
-    class GreensLimbDark 
+    class GreensLimbDark<T, true>
+    {
+    public:
+        explicit GreensLimbDark (
+            int lmax
+        ) {
+            // nothing
+        }
+    };
+
+    /**
+    Greens integration housekeeping data.
+    Emitted light specialization.
+
+    */
+    template <class T>
+    class GreensLimbDark<T, false>
     {
 
     public:
@@ -289,7 +315,7 @@ namespace limbdark {
     */
     template <class T>
     template <bool GRADIENT>
-    inline void GreensLimbDark<T>::computeS1 () {
+    inline void GreensLimbDark<T, false>::computeS1 () {
         T Lambda1 = 0;
         if ((b >= 1.0 + r) ||  (r == 0.0)) {
             // No occultation (Case 1)
@@ -409,7 +435,7 @@ namespace limbdark {
 
     */
     template <class T>
-    inline void GreensLimbDark<T>::computeMCoeff () {
+    inline void GreensLimbDark<T, false>::computeMCoeff () {
     
         T coeff;
         int n;
@@ -437,7 +463,7 @@ namespace limbdark {
 
     */
     template <class T>
-    inline void GreensLimbDark<T>::computeM0123 () {
+    inline void GreensLimbDark<T, false>::computeM0123 () {
         if (ksq < 1.0) {
             M(0) = kap0;
             M(1) = 2 * sqbr * 2 * ksq * Em1mKdm;
@@ -458,7 +484,7 @@ namespace limbdark {
 
     */
     template <class T>
-    inline void GreensLimbDark<T>::upwardM () {
+    inline void GreensLimbDark<T, false>::upwardM () {
         // Compute lowest four exactly
         computeM0123();
 
@@ -473,7 +499,7 @@ namespace limbdark {
 
     */
     template <class T>
-    inline void GreensLimbDark<T>::downwardM () {
+    inline void GreensLimbDark<T, false>::downwardM () {
         T val, k2n, tol, fac, term;
         T invsqarea = T(1.0) / sqarea;
 
@@ -529,7 +555,7 @@ namespace limbdark {
 
     */
     template <class T>
-    inline void GreensLimbDark<T>::computeNCoeff () {
+    inline void GreensLimbDark<T, false>::computeNCoeff () {
         T coeff = 0.0;
         int n;
 
@@ -555,7 +581,7 @@ namespace limbdark {
 
     */
     template <class T>
-    inline void GreensLimbDark<T>::computeN01 () {
+    inline void GreensLimbDark<T, false>::computeN01 () {
         if (ksq <= 1.0) {
             N(0) = 0.5 * kap0 - k * kc; 
             N(1) = 4.0 * third * sqbr * ksq * (-Eofk + 2.0 * Em1mKdm);
@@ -570,7 +596,7 @@ namespace limbdark {
 
     */
     template <class T>
-    inline void GreensLimbDark<T>::upwardN () {
+    inline void GreensLimbDark<T, false>::upwardN () {
         // Compute lowest two exactly
         computeN01();
 
@@ -584,7 +610,7 @@ namespace limbdark {
 
     */
     template <class T>
-    inline void GreensLimbDark<T>::downwardN () {
+    inline void GreensLimbDark<T, false>::downwardN () {
         // Compute highest two using a series solution
         if (ksq < 1) {
             // Compute leading coefficient (n=0)
@@ -632,7 +658,7 @@ namespace limbdark {
     */
     template <class T>
     template <bool GRADIENT>
-    inline void GreensLimbDark<T>::compute (
+    inline void GreensLimbDark<T, false>::compute (
         const T& b_, 
         const T& r_
     ) {

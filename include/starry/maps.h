@@ -10,6 +10,7 @@
 #include "utils.h"
 #include "errors.h"
 #include "solver.h"
+#include "solver_refl.h"
 #include "limbdark.h"
 #include "basis.h"
 #include "rotation.h"
