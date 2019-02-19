@@ -240,6 +240,10 @@ public:
     RowMatrix<Scalar> pb_Dy;
     RowMatrix<Scalar> pb_Du;
     RowMatrix<Scalar> pb_Dsource;
+    RowMatrix<Scalar> pb_DADtheta;
+    RowMatrix<Scalar> pb_DADxo;
+    RowMatrix<Scalar> pb_DADyo;
+    RowMatrix<Scalar> pb_DADro;
 
     //
     inline void yChanged () {

@@ -27,7 +27,7 @@ protected:
     #include "protected/intensity.h"
     #include "protected/flux.h"
     #include "protected/reflectance.h"
-    #include "protected/maxlike.h"
+    #include "protected/linear.h"
     #include "protected/deriv.h"
     #include "protected/oper.h"
     #include "protected/python_interface.h"
@@ -98,7 +98,7 @@ public:
     #include "public/intensity.h"
     #include "public/flux.h"
     #include "public/reflectance.h"
-    #include "public/maxlike.h"
+    #include "public/linear.h"
     #include "public/python_interface.h"
 
 }; // class Map

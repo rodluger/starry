@@ -33,6 +33,8 @@ namespace solver {
         Vector<Scalar> I;
         Matrix<Scalar> J;
         Matrix<Scalar> K;
+
+        Scalar bterm;
        
         /**
         Computes the matrices
@@ -80,26 +82,26 @@ namespace solver {
 
         */
         inline void computeHI (
-            const Scalar& b
+            const Scalar& bterm
         ) {
             H.setZero();
             I.setZero();
-            Scalar fac0 = sqrt(Scalar(1.0) - b * b);
-            Scalar fac1 = (Scalar(1.0) - b * b) * fac0;
-            I(0) = 0.5 * (acos(b) - b * fac0);
+            Scalar fac0 = sqrt(Scalar(1.0) - bterm * bterm);
+            Scalar fac1 = (Scalar(1.0) - bterm * bterm) * fac0;
+            I(0) = 0.5 * (acos(bterm) - bterm * fac0);
             I(1) = fac1 / Scalar(3.0);
-            Scalar fac2 = b;
+            Scalar fac2 = bterm;
             H(0) = 0.5 * (Scalar(1.0) - fac2);
-            fac2 *= b;
+            fac2 *= bterm;
             H(1) = 0.5 * (Scalar(1.0) - fac2);
-            fac1 *= b;
-            fac2 *= b;
+            fac1 *= bterm;
+            fac2 *= bterm;
             for (int j = 0; j < lmax + 1; ++j) {
                 I(j + 2) = Scalar(1.0) / Scalar(j + 4.0) * 
                            (fac1 + (j + 1) * I(j));
                 H(j + 2) = 0.5 * (Scalar(1.0) - fac2);
-                fac1 *= b;
-                fac2 *= b;
+                fac1 *= bterm;
+                fac2 *= bterm;
             }
         }
 
@@ -112,11 +114,16 @@ namespace solver {
 
         */
         inline void compute( 
-            const Scalar& b
+            const Scalar& bterm_
         ) {
-            computeHI(b);
+            // Use cached result if available
+            if (bterm_ == bterm)
+                return;
+            else
+                bterm = bterm_;
+            computeHI(bterm);
             rT.setZero();
-            Scalar fac = sqrt(Scalar(1.0) - b * b);
+            Scalar fac = sqrt(Scalar(1.0) - bterm * bterm);
             int n = 0;
             int i, j;
             int mu, nu;
@@ -128,12 +135,12 @@ namespace solver {
                         i = mu / 2;
                         j = nu / 2;
                         rT(n) = fac * H(j + 1) * J(i, j + 1) - 
-                                b * I(j) * K(i, j);
+                                bterm * I(j) * K(i, j);
                     } else {
                         i = (mu - 1) / 2;
                         j = (nu - 1) / 2;
                         rT(n) = fac * I(j + 1) * K(i, j + 1) - 
-                                b * (H(j) * J(i, j) - H(j) * J(i + 2, j) - 
+                                bterm * (H(j) * J(i, j) - H(j) * J(i + 2, j) - 
                                     H(j + 2) * J(i, j + 2));
                     }
                     ++n;
@@ -150,8 +157,10 @@ namespace solver {
             I(lmax + 3),
             J(lmax + 3, lmax + 3),
             K(lmax + 3, lmax + 3),
+            bterm(NAN),
             rT(N)
         {
+            // Pre-compute the J and K matrices
             computeJK();
         }
 

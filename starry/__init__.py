@@ -3,4 +3,4 @@ from . import _plotting
 from . import kepler
 from .extensions import *
 from . import ops
-from .maps import Map
+from .maps import Map, __version__

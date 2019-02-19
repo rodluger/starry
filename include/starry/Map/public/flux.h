@@ -2,8 +2,12 @@
 Compute the flux. Static specialization.
 
 */
-template <typename U=S, typename=IsDefaultOrSpectral<U>, 
-          typename=IsEmitted<U>, typename T1>
+template <
+    typename U=S, 
+    typename=IsDefaultOrSpectral<U>, 
+    typename=IsEmitted<U>, 
+    typename T1
+>
 inline void computeFlux (
     const Scalar& theta, 
     const Scalar& xo, 
@@ -19,10 +23,18 @@ inline void computeFlux (
 Compute the flux and its gradient. Static specialization.
 
 */
-template <typename U=S, typename=IsDefaultOrSpectral<U>,
-          typename=IsEmitted<U>,
-          typename T1, typename T2, typename T3, typename T4, 
-          typename T5, typename T6, typename T7>
+template <
+    typename U=S, 
+    typename=IsDefaultOrSpectral<U>,
+    typename=IsEmitted<U>,
+    typename T1, 
+    typename T2, 
+    typename T3, 
+    typename T4, 
+    typename T5, 
+    typename T6, 
+    typename T7
+>
 inline void computeFlux (
     const Scalar& theta, 
     const Scalar& xo, 
@@ -46,9 +58,12 @@ inline void computeFlux (
 Compute the flux. Temporal specialization.
 
 */
-template <typename U=S, typename=IsTemporal<U>, 
-          typename=IsEmitted<U>,
-          typename T1>
+template <
+    typename U=S, 
+    typename=IsTemporal<U>, 
+    typename=IsEmitted<U>,
+    typename T1
+>
 inline void computeFlux (
     const Scalar& t,
     const Scalar& theta, 
@@ -66,10 +81,19 @@ inline void computeFlux (
 Compute the flux and its gradient. Temporal specialization.
 
 */
-template <typename U=S, typename=IsTemporal<U>,
-          typename=IsEmitted<U>,
-          typename T1, typename T2, typename T3, typename T4, 
-          typename T5, typename T6, typename T7, typename T8>
+template <
+    typename U=S, 
+    typename=IsTemporal<U>,
+    typename=IsEmitted<U>,
+    typename T1, 
+    typename T2, 
+    typename T3, 
+    typename T4, 
+    typename T5, 
+    typename T6, 
+    typename T7, 
+    typename T8
+>
 inline void computeFlux (
     const Scalar& t,
     const Scalar& theta, 

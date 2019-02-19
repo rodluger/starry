@@ -56,8 +56,8 @@ if debug:
     macros["STARRY_O"] = 0
     macros["STARRY_DEBUG"] = 1
 
-# Module bitsum (default all)
-bitsum = int(os.getenv('STARRY_BITSUM', 8191))
+# Module bitsum (default all except extensions)
+bitsum = int(os.getenv('STARRY_BITSUM', 4095))
 
 class get_pybind_include(object):
     """

@@ -354,8 +354,6 @@ Return a lambda function to compute the flux at a point
 or a vector of points. Optionally compute and return 
 the gradient.
 
-\todo `source` should also be vectorized!
-
 */
 template <typename T>
 std::function<py::object(
@@ -736,6 +734,198 @@ std::function<py::object(
                 return PYOBJECT_CAST(map.cache.pb_flux(0));
 #endif
             }
+
+        }
+
+    };
+}
+
+/**
+Return a lambda function to compute the linear model at a point 
+or a vector of points. Optionally compute and return 
+the gradient.
+
+\todo Implement this for temporal & all reflected types
+
+*/
+template <typename T>
+std::function<py::object (
+        Map<T> &, 
+        py::array_t<double>&, 
+        py::array_t<double>&, 
+        py::array_t<double>&, 
+        py::array_t<double>&,
+        py::array_t<double>&,
+        bool
+    )> linear_model () 
+{
+    return []
+    (
+        Map<T> &map, 
+        py::array_t<double>& theta_, 
+        py::array_t<double>& xo_, 
+        py::array_t<double>& yo_, 
+        py::array_t<double>& zo_,
+        py::array_t<double>& ro_,
+        bool compute_gradient
+    ) -> py::object 
+    {
+        using Scalar = typename T::Scalar;
+
+        // Figure out the length of the timeseries
+        std::vector<long> v{theta_.request().size,
+                            xo_.request().size,
+                            yo_.request().size,
+                            zo_.request().size,
+                            ro_.request().size};
+        py::ssize_t nt = *std::max_element(v.begin(), v.end());
+        py::buffer_info buf;
+        double *ptr;
+
+        // Map `theta` to an Eigen vector
+        Eigen::Map<Vector<Scalar>> theta(NULL, nt, 1);
+        Vector<Scalar> tmp_theta;
+        buf = theta_.request();
+        ptr = (double *) buf.ptr;
+        if (buf.ndim == 0) {
+            tmp_theta = ptr[0] * Vector<Scalar>::Ones(nt);
+            new (&theta) Eigen::Map<Vector<Scalar>>(&tmp_theta(0), nt, 1);
+        } else if ((buf.ndim == 1) && (buf.size == nt)) {
+#ifdef _STARRY_DOUBLE_
+            new (&theta) Eigen::Map<Vector<Scalar>>(ptr, nt, 1);
+#else
+            // We need to make a copy
+            tmp_theta = (py::cast<Vector<double>>(theta_)).template cast<Scalar>();
+            new (&theta) Eigen::Map<Vector<Scalar>>(&tmp_theta(0), nt, 1);
+#endif
+        } else {
+            throw errors::ShapeError("Vector `theta` has the incorrect shape.");
+        }
+
+        // Map `xo` to an Eigen vector
+        Eigen::Map<Vector<Scalar>> xo(NULL, nt, 1);
+        Vector<Scalar> tmp_xo;
+        buf = xo_.request();
+        ptr = (double *) buf.ptr;
+        if (buf.ndim == 0) {
+            tmp_xo = ptr[0] * Vector<Scalar>::Ones(nt);
+            new (&xo) Eigen::Map<Vector<Scalar>>(&tmp_xo(0), nt, 1);
+        } else if ((buf.ndim == 1) && (buf.size == nt)) {
+#ifdef _STARRY_DOUBLE_
+            new (&xo) Eigen::Map<Vector<Scalar>>(ptr, nt, 1);
+#else
+            // We need to make a copy
+            tmp_xo = (py::cast<Vector<double>>(xo_)).template cast<Scalar>();
+            new (&xo) Eigen::Map<Vector<Scalar>>(&tmp_xo(0), nt, 1);
+#endif
+        } else {
+            throw errors::ShapeError("Vector `xo` has the incorrect shape.");
+        }
+
+        // Map `yo` to an Eigen vector
+        Eigen::Map<Vector<Scalar>> yo(NULL, nt, 1);
+        Vector<Scalar> tmp_yo;
+        buf = yo_.request();
+        ptr = (double *) buf.ptr;
+        if (buf.ndim == 0) {
+            tmp_yo = ptr[0] * Vector<Scalar>::Ones(nt);
+            new (&yo) Eigen::Map<Vector<Scalar>>(&tmp_yo(0), nt, 1);
+        } else if ((buf.ndim == 1) && (buf.size == nt)) {
+#ifdef _STARRY_DOUBLE_
+            new (&yo) Eigen::Map<Vector<Scalar>>(ptr, nt, 1);
+#else
+            // We need to make a copy
+            tmp_yo = (py::cast<Vector<double>>(yo_)).template cast<Scalar>();
+            new (&yo) Eigen::Map<Vector<Scalar>>(&tmp_yo(0), nt, 1);
+#endif
+        } else {
+            throw errors::ShapeError("Vector `yo` has the incorrect shape.");
+        }
+
+        // Map `zo` to an Eigen vector
+        Eigen::Map<Vector<Scalar>> zo(NULL, nt, 1);
+        Vector<Scalar> tmp_zo;
+        buf = zo_.request();
+        ptr = (double *) buf.ptr;
+        if (buf.ndim == 0) {
+            tmp_zo = ptr[0] * Vector<Scalar>::Ones(nt);
+            new (&zo) Eigen::Map<Vector<Scalar>>(&tmp_zo(0), nt, 1);
+        } else if ((buf.ndim == 1) && (buf.size == nt)) {
+#ifdef _STARRY_DOUBLE_
+            new (&zo) Eigen::Map<Vector<Scalar>>(ptr, nt, 1);
+#else
+            // We need to make a copy
+            tmp_zo = (py::cast<Vector<double>>(zo_)).template cast<Scalar>();
+            new (&zo) Eigen::Map<Vector<Scalar>>(&tmp_zo(0), nt, 1);
+#endif
+        } else {
+            throw errors::ShapeError("Vector `zo` has the incorrect shape.");
+        }
+
+        // Map `ro` to an Eigen vector
+        Eigen::Map<Vector<Scalar>> ro(NULL, nt, 1);
+        Vector<Scalar> tmp_ro;
+        buf = ro_.request();
+        ptr = (double *) buf.ptr;
+        if (buf.ndim == 0) {
+            tmp_ro = ptr[0] * Vector<Scalar>::Ones(nt);
+            new (&ro) Eigen::Map<Vector<Scalar>>(&tmp_ro(0), nt, 1);
+        } else if ((buf.ndim == 1) && (buf.size == nt)) {
+#ifdef _STARRY_DOUBLE_
+            new (&ro) Eigen::Map<Vector<Scalar>>(ptr, nt, 1);
+#else
+            // We need to make a copy
+            tmp_ro = (py::cast<Vector<double>>(ro_)).template cast<Scalar>();
+            new (&ro) Eigen::Map<Vector<Scalar>>(&tmp_ro(0), nt, 1);
+#endif
+        } else {
+            throw errors::ShapeError("Vector `ro` has the incorrect shape.");
+        }
+
+        // The linear model matrix
+        RowMatrix<Scalar> A;
+
+        if (!compute_gradient) {
+
+            // Compute and return
+            map.computeLinearModel(theta, xo, yo, zo, ro, A);
+            return PYOBJECT_CAST_ARR(A);
+
+        } else {
+
+            // Allocate space for the gradient
+            map.cache.pb_DADtheta.resize(nt, map.N);
+            map.cache.pb_DADxo.resize(nt, map.N);
+            map.cache.pb_DADyo.resize(nt, map.N);
+            map.cache.pb_DADro.resize(nt, map.N);
+
+            // Compute the model + gradient
+            map.computeLinearModel(
+                theta, xo, yo, zo, ro, A, 
+                map.cache.pb_DADtheta, map.cache.pb_DADxo, 
+                map.cache.pb_DADyo, map.cache.pb_DADro
+            );
+
+            // Get Eigen references to the arrays, as these
+            // are automatically passed by ref to the Python side
+            auto Dtheta = Ref<RowMatrix<Scalar>>(map.cache.pb_DADtheta);
+            auto Dxo = Ref<RowMatrix<Scalar>>(map.cache.pb_DADxo);
+            auto Dyo = Ref<RowMatrix<Scalar>>(map.cache.pb_DADyo);
+            auto Dro = Ref<RowMatrix<Scalar>>(map.cache.pb_DADro);
+
+            // Construct a dictionary
+            py::dict gradient = py::dict(
+                "theta"_a=ENSURE_DOUBLE_ARR(Dtheta),
+                "xo"_a=ENSURE_DOUBLE_ARR(Dxo),
+                "yo"_a=ENSURE_DOUBLE_ARR(Dyo),
+                "ro"_a=ENSURE_DOUBLE_ARR(Dro)
+            );
+
+            // Return
+            return py::make_tuple(
+                ENSURE_DOUBLE_ARR(A), 
+                gradient
+            );
 
         }
 

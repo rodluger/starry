@@ -106,6 +106,7 @@ namespace Map {
         .. automethod:: __setitem__(index, value)
         .. automethod:: add_spot(amp=1, sigma=0.1, lat=0, lon=0, lmax=-1)
         .. automethod:: flux(t=0, theta=0, xo=0, yo=0, ro=0, gradient=False)
+        .. automethod:: linear_model(theta=0, xo=0, yo=0, ro=0, gradient=False)
         .. automethod:: load_image(image, lmax=-1, col=-1, normalize=True, sampling_factor=8)
         .. automethod:: random(power, seed=None, col=-1)
         .. automethod:: render(t=0, theta=0, res=300)
@@ -282,6 +283,30 @@ namespace Map {
             a dictionary containing the derivatives with respect to \
             each of the input parameters \
             and each of the map coefficients.
+    )pbdoc";
+
+    const char* linear_model = R"pbdoc(
+        Return the `starry` linear model.
+
+        ..note:: This routine is currently only implemented for \
+            `Default`, `double`-precision maps.
+            
+        Args:
+            theta (float or ndarray): Angle of rotation. Default 0.
+            xo (float or ndarray): The :py:obj:`x` position of the \
+                occultor (if any). Default 0.
+            yo (float or ndarray): The :py:obj:`y` position of the \
+                occultor (if any). Default 0.
+            ro (float): The radius of the occultor in units of this \
+                body's radius. Default 0 (no occultation).
+            gradient (bool): Compute and return the gradient of the \
+                modeel as well? Default :py:obj:`False`.
+
+        Returns:
+            A matrix `M`. When `M` is dotted into a spherical harmonic \
+            vector `y`, the result is the light curve predicted by the \
+            model.
+
     )pbdoc";
 
     const char* rotate = R"pbdoc(

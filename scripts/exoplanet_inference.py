@@ -5,7 +5,7 @@ import exoplanet as xo
 from starry.ops import LightCurve
 
 
-# Compute a limb-darkened light curve using starry
+# Compute a light curve using starry
 lmax = 2
 t = np.linspace(-0.1, 0.1, 1000)
 np.random.seed(41)

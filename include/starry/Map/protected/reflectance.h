@@ -33,12 +33,12 @@ inline void computeReflectedFluxInternal (
         Scalar bterm = -source(2);
 
         // Compute the phase curve integrals
-        // \todo Cache it!
         G.compute(bterm);
 
         // Rotate the map so the terminator is symmetric about the x axis
         if (likely(abs(bterm) != 1.0)) {
-            Scalar norm = Scalar(1.0) / sqrt(source(0) * source(0) + source(1) * source(1));
+            Scalar norm = Scalar(1.0) / 
+                sqrt(source(0) * source(0) + source(1) * source(1));
             Scalar cosw = source(1) * norm;
             Scalar sinw = source(0) * norm;
             W.rotateAboutZ(cosw, sinw, cache.Ry, cache.RRy);
@@ -51,7 +51,9 @@ inline void computeReflectedFluxInternal (
     } else {
 
         // \todo Implement occultations in reflected light
-        throw errors::NotImplementedError("Occultations in reflected light not yet implemented.");
+        throw errors::NotImplementedError(
+            "Occultations in reflected light not yet implemented."
+        );
 
     }
 }

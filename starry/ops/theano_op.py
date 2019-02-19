@@ -15,7 +15,6 @@ class DefaultYlmOp(tt.Op):
     def __init__(self, lmax=2):
         # Save the primary information
         self.lmax = int(lmax)
-        self.param_names = ["y", "theta", "xo", "yo", "zo", "ro"]
 
         # Pre-initialize the Map object
         self.map = Map(lmax=self.lmax)
@@ -24,10 +23,11 @@ class DefaultYlmOp(tt.Op):
         self._grad_op = DefaultYlmGradOp(self)
 
     def make_node(self, *args):
-        if len(args) != len(self.param_names):
+        if len(args) != 6:
             raise ValueError("Incorrect number of inputs.")
         args = [tt.as_tensor_variable(a) for a in args]
-        return theano.Apply(self, args, [args[-1].type()])
+        out_args = [args[-1].type() for i in range(7)]
+        return theano.Apply(self, args, out_args)
 
     def infer_shape(self, node, shapes):
         return shapes[-1],
