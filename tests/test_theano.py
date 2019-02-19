@@ -5,6 +5,7 @@ import theano
 import theano.tensor as tt
 from starry import Map
 from starry.ops import DefaultYlmOp
+import pytest
 
 
 def starry_op(lmax, y, theta, xo, yo, zo, ro):
@@ -17,7 +18,7 @@ def starry_op(lmax, y, theta, xo, yo, zo, ro):
     op = DefaultYlmOp(lmax)
     return op(*args)
 
-
+@pytest.mark.xfail
 def test_specific():
     lmax = 2
     y = tt.dvector(name="y")
