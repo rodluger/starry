@@ -29,9 +29,23 @@ inline void computeReflectedFluxInternal (
 
     // No occultation
     if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
+        // The semi-minor axis of the terminator ellipse
+        Scalar bterm = -source(2);
 
-        // \todo Implement phase curves in reflected light
-        throw errors::NotImplementedError("Phase curves in reflected light not yet implemented.");
+        // Compute the phase curve integrals
+        // \todo Cache it!
+        G.compute(bterm);
+
+        // Rotate the map so the terminator is symmetric about the x axis
+        if (likely(abs(bterm) != 1.0)) {
+            Scalar norm = Scalar(1.0) / sqrt(source(0) * source(0) + source(1) * source(1));
+            Scalar cosw = source(1) * norm;
+            Scalar sinw = source(0) * norm;
+            W.rotateAboutZ(cosw, sinw, cache.Ry, cache.RRy);
+            MBCAST(flux, T1) = G.rT * B.A1 * cache.RRy;
+        } else {
+            MBCAST(flux, T1) = G.rT * B.A1 * cache.Ry;
+        }
 
     // Occultation
     } else {

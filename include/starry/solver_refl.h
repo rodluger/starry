@@ -105,7 +105,7 @@ namespace solver {
 
     public:
 
-        Vector<Scalar> r;
+        RowVector<Scalar> rT;
 
         /**
         Computes the complete reflectance integrals.
@@ -115,7 +115,7 @@ namespace solver {
             const Scalar& b
         ) {
             computeHI(b);
-            r.setZero();
+            rT.setZero();
             Scalar fac = sqrt(Scalar(1.0) - b * b);
             int n = 0;
             int i, j;
@@ -127,13 +127,13 @@ namespace solver {
                     if (is_even(nu)) {
                         i = mu / 2;
                         j = nu / 2;
-                        r(n) = fac * H(j + 1) * J(i, j + 1) - 
-                               b * I(j) * K(i, j);
+                        rT(n) = fac * H(j + 1) * J(i, j + 1) - 
+                                b * I(j) * K(i, j);
                     } else {
                         i = (mu - 1) / 2;
                         j = (nu - 1) / 2;
-                        r(n) = fac * I(j + 1) * K(i, j + 1) - 
-                               b * (H(j) * J(i, j) - H(j) * J(i + 2, j) - 
+                        rT(n) = fac * I(j + 1) * K(i, j + 1) - 
+                                b * (H(j) * J(i, j) - H(j) * J(i + 2, j) - 
                                     H(j + 2) * J(i, j + 2));
                     }
                     ++n;
@@ -150,7 +150,7 @@ namespace solver {
             I(lmax + 3),
             J(lmax + 3, lmax + 3),
             K(lmax + 3, lmax + 3),
-            r(N)
+            rT(N)
         {
             computeJK();
         }
