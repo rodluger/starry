@@ -38,9 +38,6 @@ def test_linear_model_gradients():
     zo = 1
     ro = 0.1
 
-    # DEBUG
-    yo = -99
-
     # Compute the flux the usual way
     flux, grad = map.flux(theta=theta, xo=xo, yo=yo, ro=ro, zo=zo, gradient=True)
 
@@ -48,8 +45,15 @@ def test_linear_model_gradients():
     A, dA = map.linear_model(theta=theta, xo=xo, yo=yo, ro=ro, zo=zo, gradient=True)
     flux_linear = np.dot(A, map.y)
     dfdtheta = np.dot(dA['theta'], map.y)
+    dfdxo = np.dot(dA['xo'], map.y)
+    dfdyo = np.dot(dA['yo'], map.y)
+    dfdro = np.dot(dA['ro'], map.y)
+
     assert np.allclose(flux, flux_linear)
     assert np.allclose(dfdtheta, grad['theta'])
+    assert np.allclose(dfdxo, grad['xo'])
+    assert np.allclose(dfdyo, grad['yo'])
+    assert np.allclose(dfdro, grad['ro'])
 
 
 if __name__ == "__main__":

@@ -113,9 +113,22 @@ inline void computeLinearModelInternal (
     computeWigner();
     RowVector<Scalar> rTA1RZetaInv(N);
     RowVector<Scalar> rTA1RZetaInvRz(N);
+    RowVector<Scalar> rTA1RZetaInvDRzDtheta(N);
+    RowVector<Scalar> sTA(N);
     RowVector<Scalar> sTARz(N);
+    RowVector<Scalar> dsTdrARz(N);
+    RowVector<Scalar> dsTdbARz(N);
+    RowVector<Scalar> sTADRzDw(N);
     RowVector<Scalar> sTARzRZetaInv(N);
+    RowVector<Scalar> dsTdrARzRZetaInv(N);
+    RowVector<Scalar> dsTdbARzRZetaInv(N);
+    RowVector<Scalar> sTADRzDwRZetaInv(N);
     RowVector<Scalar> sTARzRZetaInvRz(N);
+    RowVector<Scalar> sTARzRZetaInvDRzDtheta(N);
+    RowVector<Scalar> dsTdrARzRZetaInvRz(N);
+    RowVector<Scalar> dsTdbARzRZetaInvRz(N);
+    RowVector<Scalar> sTADRzDwRZetaInvRz(N);
+    RowVector<Scalar> sTADRzDwRZetaInvRzRZeta(N);
 
     W.leftMultiplyRZetaInv(B.rTA1, rTA1RZetaInv);
     Vector<Scalar> theta_rad = theta * radian;
@@ -124,7 +137,7 @@ inline void computeLinearModelInternal (
     A.resize(nt, N);
 
     // Loop over the timeseries and compute the model
-    Scalar b;
+    Scalar b, invb;
     for (size_t n = 0; n < nt; ++n) {
 
         // Impact parameter
@@ -150,8 +163,8 @@ inline void computeLinearModelInternal (
             W.leftMultiplyRZeta(rTA1RZetaInvRz, A.row(n));
 
             // Theta deriv
-            W.leftMultiplyDRz(rTA1RZetaInv, rTA1RZetaInvRz);
-            W.leftMultiplyRZeta(rTA1RZetaInvRz, Dtheta.row(n));
+            W.leftMultiplyDRz(rTA1RZetaInv, rTA1RZetaInvDRzDtheta);
+            W.leftMultiplyRZeta(rTA1RZetaInvDRzDtheta, Dtheta.row(n));
             Dtheta.row(n) *= radian;
 
             // Occultor derivs are zero
@@ -163,14 +176,22 @@ inline void computeLinearModelInternal (
         } else {
 
             // Compute the solution vector
-            G.compute(b, ro(n));
+            G.template compute<true>(b, ro(n));
+            sTA = G.sT * B.A;
+            invb = Scalar(1.0) / b;
 
             // Compute the occultor rotation matrix Rz
-            W.computeFourierTerms(yo(n) / b, xo(n) / b);
+            W.computeFourierTerms(yo(n) * invb, xo(n) * invb);
 
             // Dot stuff in
-            W.leftMultiplyRz(G.sT * B.A, sTARz);
+            W.leftMultiplyRz(sTA, sTARz);
             W.leftMultiplyRZetaInv(sTARz, sTARzRZetaInv);
+            W.leftMultiplyRz(G.dsTdr * B.A, dsTdrARz);
+            W.leftMultiplyRZetaInv(dsTdrARz, dsTdrARzRZetaInv);
+            W.leftMultiplyRz(G.dsTdb * B.A, dsTdbARz);
+            W.leftMultiplyRZetaInv(dsTdbARz, dsTdbARzRZetaInv);
+            W.leftMultiplyDRz(sTA, sTADRzDw);
+            W.leftMultiplyRZetaInv(sTADRzDw, sTADRzDwRZetaInv);
 
             // Compute the Rz rotation matrix
             W.computeFourierTerms(cos(theta_rad(n)), sin(theta_rad(n)));
@@ -179,7 +200,26 @@ inline void computeLinearModelInternal (
             W.leftMultiplyRz(sTARzRZetaInv, sTARzRZetaInvRz);
             W.leftMultiplyRZeta(sTARzRZetaInvRz, A.row(n));
 
-            // \todo: Derivatives
+            // Theta deriv
+            W.leftMultiplyDRz(sTARzRZetaInv, sTARzRZetaInvDRzDtheta);
+            W.leftMultiplyRZeta(sTARzRZetaInvDRzDtheta, Dtheta.row(n));
+            Dtheta.row(n) *= radian;
+
+            // Radius deriv
+            W.leftMultiplyRz(dsTdrARzRZetaInv, dsTdrARzRZetaInvRz);
+            W.leftMultiplyRZeta(dsTdrARzRZetaInvRz, Dro.row(n));
+
+            // xo and yo derivatives
+            W.leftMultiplyRz(dsTdbARzRZetaInv, dsTdbARzRZetaInvRz);
+            W.leftMultiplyRZeta(dsTdbARzRZetaInvRz, Dxo.row(n));
+            Dyo.row(n) = Dxo.row(n);
+            Dxo.row(n) *= xo(n) * invb;
+            Dyo.row(n) *= yo(n) * invb;
+            W.leftMultiplyRz(sTADRzDwRZetaInv, sTADRzDwRZetaInvRz);
+            W.leftMultiplyRZeta(sTADRzDwRZetaInvRz, sTADRzDwRZetaInvRzRZeta);
+            sTADRzDwRZetaInvRzRZeta *= invb * invb;
+            Dxo.row(n) += yo(n) * sTADRzDwRZetaInvRzRZeta;
+            Dyo.row(n) -= xo(n) * sTADRzDwRZetaInvRzRZeta;
 
         }
     }
