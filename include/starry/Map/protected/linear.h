@@ -25,6 +25,7 @@ inline void computeLinearModelInternal (
     computeWigner();
     RowVector<Scalar> rTA1RZetaInv(N);
     RowVector<Scalar> rTA1RZetaInvRz(N);
+    RowVector<Scalar> sTA(N);
     RowVector<Scalar> sTARz(N);
     RowVector<Scalar> sTARzRZetaInv(N);
     RowVector<Scalar> sTARzRZetaInvRz(N);
@@ -36,7 +37,7 @@ inline void computeLinearModelInternal (
     A.resize(nt, N);
 
     // Loop over the timeseries and compute the model
-    Scalar b;
+    Scalar b, invb;
     Scalar theta_cache = NAN;
     for (size_t n = 0; n < nt; ++n) {
 
@@ -64,12 +65,14 @@ inline void computeLinearModelInternal (
 
             // Compute the solution vector
             G.compute(b, ro(n));
+            invb = Scalar(1.0) / b;
 
             // Compute the occultor rotation matrix Rz
-            W.computeFourierTerms(yo(n) / b, xo(n) / b);
+            W.computeFourierTerms(yo(n) * invb, xo(n) * invb);
 
             // Dot stuff in
-            W.leftMultiplyRz(G.sT * B.A, sTARz);
+            sTA = G.sT * B.A;
+            W.leftMultiplyRz(sTA, sTARz);
             W.leftMultiplyRZetaInv(sTARz, sTARzRZetaInv);
 
             // Compute the Rz rotation matrix
@@ -186,9 +189,9 @@ inline void computeLinearModelInternal (
             // Dot stuff in
             W.leftMultiplyRz(sTA, sTARz);
             W.leftMultiplyRZetaInv(sTARz, sTARzRZetaInv);
-            W.leftMultiplyRz(G.dsTdr * B.A, dsTdrARz);
+            W.leftMultiplyRz((G.dsTdr * B.A).eval(), dsTdrARz);
             W.leftMultiplyRZetaInv(dsTdrARz, dsTdrARzRZetaInv);
-            W.leftMultiplyRz(G.dsTdb * B.A, dsTdbARz);
+            W.leftMultiplyRz((G.dsTdb * B.A).eval(), dsTdbARz);
             W.leftMultiplyRZetaInv(dsTdbARz, dsTdbARzRZetaInv);
             W.leftMultiplyDRz(sTA, sTADRzDw);
             W.leftMultiplyRZetaInv(sTADRzDw, sTADRzDwRZetaInv);
