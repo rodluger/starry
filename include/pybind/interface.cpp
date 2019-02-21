@@ -750,7 +750,10 @@ PYBIND11_MODULE(
     // Compute the flux (temporal map)
     PyMap.def("flux", flux<T>(), docstrings::Map::flux, "t"_a=0.0, "theta"_a=0.0, "xo"_a=0.0, 
               "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
-    // \todo: Implement linear model
+
+    // Compute the linear model
+    PyMap.def("linear_model", linear_model<T>(), docstrings::Map::linear_model, "t"_a=0.0, 
+              "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
 #else
     // Compute the reflected flux (temporal map)
     PyMap.def("flux", flux<T>(), docstrings::Map::flux, "t"_a=0.0, "theta"_a=0.0, "xo"_a=0.0, 

@@ -1,4 +1,4 @@
-"""Test the maximum likelihood map solver."""
+"""Test the linear model method."""
 import starry
 import numpy as np
 import pytest
@@ -23,6 +23,28 @@ def test_linear_model():
     A = map.linear_model(theta=theta, xo=xo, yo=yo, ro=ro, zo=zo)
     flux_linear = np.dot(A, map.y)
 
+    assert np.allclose(flux, flux_linear)
+
+
+def test_linear_model_temporal():
+    lmax = 1
+    nt = 10
+    map = starry.Map(lmax, nt=2)
+    np.random.seed(43)
+    map[:, :] = np.random.randn(map.N, 2)
+    theta = np.linspace(0, 30, nt)
+    xo = np.linspace(-1.5, 1.5, nt)
+    yo = np.linspace(-0.1, 0.3, nt)
+    zo = 1
+    ro = 0.5
+    t = np.linspace(0.0, 1.0, nt)
+
+    # Compute the flux the usual way
+    flux = np.array(map.flux(t=t, theta=theta, xo=xo, yo=yo, ro=ro, zo=zo))
+
+    # Compute it via the `linear_model` framework
+    A = np.array(map.linear_model(t=t, theta=theta, xo=xo, yo=yo, ro=ro, zo=zo))
+    flux_linear = np.dot(A, map.y.transpose().reshape(-1))
     assert np.allclose(flux, flux_linear)
 
 
@@ -54,7 +76,3 @@ def test_linear_model_gradients():
     assert np.allclose(dfdxo, grad['xo'])
     assert np.allclose(dfdyo, grad['yo'])
     assert np.allclose(dfdro, grad['ro'])
-
-
-if __name__ == "__main__":
-    test_linear_model_gradients()

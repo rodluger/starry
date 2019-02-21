@@ -586,8 +586,8 @@ inline void Wigner<MapType>::leftMultiplyRZeta (
     MatrixBase<T2> const & uT
 ) {
     for (int l = 0; l < lmax + 1; ++l) {
-        MBCAST(uT, T2).segment(l * l, 2 * l + 1) =
-            vT.segment(l * l, 2 * l + 1) * RZeta[l];
+        MBCAST(uT, T2).block(0, l * l, 1, 2 * l + 1) =
+            vT.block(0, l * l, 1, 2 * l + 1) * RZeta[l];
     }
 }
 
@@ -602,8 +602,8 @@ inline void Wigner<MapType>::leftMultiplyRZetaInv (
     MatrixBase<T2> const & uT
 ) {
     for (int l = 0; l < lmax + 1; ++l) {
-        MBCAST(uT, T2).segment(l * l, 2 * l + 1) =
-            vT.segment(l * l, 2 * l + 1) * RZetaInv[l];
+        MBCAST(uT, T2).block(0, l * l, 1, 2 * l + 1) =
+            vT.block(0, l * l, 1, 2 * l + 1) * RZetaInv[l];
     }
 }
 

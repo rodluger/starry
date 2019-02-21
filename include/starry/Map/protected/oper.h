@@ -201,6 +201,21 @@ inline IsTemporal<U, void> computeTaylor (
 }
 
 /**
+Compute the Taylor expansion basis at a vector of times.
+Temporal specialization.
+
+*/
+template <typename U=S>
+inline IsTemporal<U, void> computeTaylorMatrix (
+    const Vector<Scalar> & t
+) {
+    taylor_matrix.resize(t.rows(), ncoly);
+    taylor_matrix.col(0).setOnes();
+    for (int i = 1; i < ncoly; ++i)
+        taylor_matrix.col(i) = taylor_matrix.col(i - 1).cwiseProduct(t) / i;
+}
+
+/**
 Temporal contraction operation for static maps: 
 does nothing, and returns a reference to the 
 original map.

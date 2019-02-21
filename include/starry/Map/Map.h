@@ -41,6 +41,7 @@ protected:
     solver::Greens<Scalar, S::Reflected> G;                                    /**< The occultation integral solver class */
     limbdark::GreensLimbDark<Scalar, S::Reflected> L;                          /**< The occultation integral solver class (optimized for limb darkening) */
     Vector<Scalar> taylor;                                                     /**< Vector of Taylor expansion coefficients for a given `t` */
+    Matrix<Scalar> taylor_matrix;
     int u_deg;                                                                 /**< Highest degree set by the user in the limb darkening vector */
     int y_deg;                                                                 /**< Highest degree set by the user in the spherical harmonic vector */
     Scalar radian;                                                             /**< Conversion factor from degrees to radians */

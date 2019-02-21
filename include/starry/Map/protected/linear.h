@@ -1,10 +1,12 @@
 /**
-Compute the linear spherical harmonic model. Internal method.
+Compute the linear spherical harmonic model for default / spectral maps
+in emitted light. Internal method.
 
 \todo We need to think about caching some of these rotations.
 
 
 */
+template <bool TEMPORAL=false>
 inline void computeLinearModelInternal (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
@@ -34,7 +36,10 @@ inline void computeLinearModelInternal (
     Vector<Scalar> theta_rad = theta * radian;
 
     // Our model matrix, f = A . y
-    A.resize(nt, N);
+    if (TEMPORAL)
+        A.resize(nt, N * ncoly);
+    else
+        A.resize(nt, N);
 
     // Loop over the timeseries and compute the model
     Scalar b, invb;
@@ -54,12 +59,21 @@ inline void computeLinearModelInternal (
 
             // Compute the Rz rotation matrix
             W.computeFourierTerms(cos(theta_rad(n)), sin(theta_rad(n)));
-
-            // Dot everything together to get the model
-            W.leftMultiplyRz(rTA1RZetaInv, rTA1RZetaInvRz);
-            W.leftMultiplyRZeta(rTA1RZetaInvRz, A.row(n));
             theta_cache = theta_rad(n);
-            
+
+            // Dot it in
+            W.leftMultiplyRz(rTA1RZetaInv, rTA1RZetaInvRz);
+
+            // Transform back to the sky plane and we're done
+            if (TEMPORAL) {
+                W.leftMultiplyRZeta(rTA1RZetaInvRz, A.block(n, 0, 1, N));
+                for (int i = 1; i < ncoly; ++i) {
+                    A.block(n, i * N, 1, N) = A.block(n, 0, 1, N) * taylor_matrix(n, i);
+                }
+            } else {
+                W.leftMultiplyRZeta(rTA1RZetaInvRz, A.row(n));
+            }
+
         // Occultation
         } else {
 
@@ -78,18 +92,29 @@ inline void computeLinearModelInternal (
             // Compute the Rz rotation matrix
             W.computeFourierTerms(cos(theta_rad(n)), sin(theta_rad(n)));
 
-            // Dot everything together to get the model
+            // Dot it in
             W.leftMultiplyRz(sTARzRZetaInv, sTARzRZetaInvRz);
-            W.leftMultiplyRZeta(sTARzRZetaInvRz, A.row(n));
+
+            // Transform back to the sky plane and we're done
+            if (TEMPORAL) {
+                W.leftMultiplyRZeta(sTARzRZetaInvRz, A.block(n, 0, 1, N));
+                for (int i = 1; i < ncoly; ++i) {
+                    A.block(n, i * N, 1, N) = A.block(n, 0, 1, N) * taylor_matrix(n, i);
+                }
+            } else {
+                W.leftMultiplyRZeta(sTARzRZetaInvRz, A.row(n));
+            }
 
         }
     }
+
 }
 
 /**
 Compute the linear spherical harmonic model and its gradient. Internal method.
 
-\todo Occultation gradients
+\todo Call to `computeWigner` should also compute the derivative with
+      respect to the `axis` using autodiff. Propagate and return this derivative.
 
 */
 inline void computeLinearModelInternal (
