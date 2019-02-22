@@ -1,11 +1,18 @@
-"""starry install script."""
+"""Install script for `starry`."""
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import sys
 import os
 import glob
 import setuptools
-__version__ = '1.0.0'
+
+# Figure out the current version
+if sys.version_info[0] < 3:
+    import __builtin__ as builtins
+else:
+    import builtins
+builtins.__STARRY_SETUP__ = True
+from starry import __version__
 
 # Module bits
 modules = dict(

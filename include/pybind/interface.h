@@ -34,6 +34,36 @@
 #define MAKE_READ_ONLY(X)              reinterpret_cast<py::detail::PyArray_Proxy*>(X.ptr())->flags &= \
                                        ~py::detail::npy_api::NPY_ARRAY_WRITEABLE_;
 
+#ifdef _STARRY_DOUBLE_
+#   define MAP_TO_EIGEN(PYX, X, T, N) \
+        Eigen::Map<Vector<T>> X(NULL, N, 1); \
+        Vector<T> tmp##X; \
+        buf = PYX.request(); \
+        ptr = (double *) buf.ptr; \
+        if (buf.ndim == 0) { \
+            tmp##X = ptr[0] * Vector<T>::Ones(N); \
+            new (&X) Eigen::Map<Vector<T>>(&tmp##X(0), N, 1); \
+        } else if ((buf.ndim == 1) && (buf.size == N)) { \
+            new (&X) Eigen::Map<Vector<T>>(ptr, N, 1); \
+        } else { \
+            throw errors::ShapeError("A vector has the incorrect shape."); \
+        }
+#else
+#   define MAP_TO_EIGEN(PYX, X, T, N) \
+        Eigen::Map<Vector<T>> X(NULL, N, 1); \
+        Vector<T> tmp##X; \
+        buf = PYX.request(); \
+        ptr = (double *) buf.ptr; \
+        if (buf.ndim == 0) { \
+            tmp##X = ptr[0] * Vector<T>::Ones(N); \
+            new (&X) Eigen::Map<Vector<T>>(&tmp##X(0), N, 1); \
+        } else if ((buf.ndim == 1) && (buf.size == N)) { \
+            tmp##X = (py::cast<Vector<double>>(PYX)).template cast<T>(); \
+            new (&X) Eigen::Map<Vector<T>>(&tmp##X(0), N, 1); \
+        } else { \
+            throw errors::ShapeError("A vector has the incorrect shape."); \
+        }
+#endif
 namespace interface {
 
 //! Misc stuff we need
@@ -793,133 +823,15 @@ std::function<py::object (
         py::buffer_info buf;
         double *ptr;
 
+        // Get Eigen references to the Python arrays
 #       ifdef _STARRY_TEMPORAL_
-            // Map `t` to an Eigen vector
-            Eigen::Map<Vector<Scalar>> t(NULL, nt, 1);
-            Vector<Scalar> tmp_t;
-            buf = t_.request();
-            ptr = (double *) buf.ptr;
-            if (buf.ndim == 0) {
-                tmp_t = ptr[0] * Vector<Scalar>::Ones(nt);
-                new (&t) Eigen::Map<Vector<Scalar>>(&tmp_t(0), nt, 1);
-            } else if ((buf.ndim == 1) && (buf.size == nt)) {
-#               ifdef _STARRY_DOUBLE_
-                    // We can get away with a reference
-                    new (&t) Eigen::Map<Vector<Scalar>>(ptr, nt, 1);
-#               else
-                    // We need to make a copy
-                    tmp_t = (py::cast<Vector<double>>(t_)).template cast<Scalar>();
-                    new (&t) Eigen::Map<Vector<Scalar>>(&tmp_t(0), nt, 1);
-#               endif
-            } else {
-                throw errors::ShapeError("Vector `t` has the incorrect shape.");
-            }
+            MAP_TO_EIGEN(t_, t, Scalar, nt);
 #       endif
-
-        // Map `theta` to an Eigen vector
-        Eigen::Map<Vector<Scalar>> theta(NULL, nt, 1);
-        Vector<Scalar> tmp_theta;
-        buf = theta_.request();
-        ptr = (double *) buf.ptr;
-        if (buf.ndim == 0) {
-            tmp_theta = ptr[0] * Vector<Scalar>::Ones(nt);
-            new (&theta) Eigen::Map<Vector<Scalar>>(&tmp_theta(0), nt, 1);
-        } else if ((buf.ndim == 1) && (buf.size == nt)) {
-#           ifdef _STARRY_DOUBLE_
-                // We can get away with a reference
-                new (&theta) Eigen::Map<Vector<Scalar>>(ptr, nt, 1);
-#           else
-                // We need to make a copy
-                tmp_theta = (py::cast<Vector<double>>(theta_)).template cast<Scalar>();
-                new (&theta) Eigen::Map<Vector<Scalar>>(&tmp_theta(0), nt, 1);
-#           endif
-        } else {
-            throw errors::ShapeError("Vector `theta` has the incorrect shape.");
-        }
-
-        // Map `xo` to an Eigen vector
-        Eigen::Map<Vector<Scalar>> xo(NULL, nt, 1);
-        Vector<Scalar> tmp_xo;
-        buf = xo_.request();
-        ptr = (double *) buf.ptr;
-        if (buf.ndim == 0) {
-            tmp_xo = ptr[0] * Vector<Scalar>::Ones(nt);
-            new (&xo) Eigen::Map<Vector<Scalar>>(&tmp_xo(0), nt, 1);
-        } else if ((buf.ndim == 1) && (buf.size == nt)) {
-#           ifdef _STARRY_DOUBLE_
-                // We can get away with a reference
-                new (&xo) Eigen::Map<Vector<Scalar>>(ptr, nt, 1);
-#           else
-                // We need to make a copy
-                tmp_xo = (py::cast<Vector<double>>(xo_)).template cast<Scalar>();
-                new (&xo) Eigen::Map<Vector<Scalar>>(&tmp_xo(0), nt, 1);
-#           endif
-        } else {
-            throw errors::ShapeError("Vector `xo` has the incorrect shape.");
-        }
-
-        // Map `yo` to an Eigen vector
-        Eigen::Map<Vector<Scalar>> yo(NULL, nt, 1);
-        Vector<Scalar> tmp_yo;
-        buf = yo_.request();
-        ptr = (double *) buf.ptr;
-        if (buf.ndim == 0) {
-            tmp_yo = ptr[0] * Vector<Scalar>::Ones(nt);
-            new (&yo) Eigen::Map<Vector<Scalar>>(&tmp_yo(0), nt, 1);
-        } else if ((buf.ndim == 1) && (buf.size == nt)) {
-#           ifdef _STARRY_DOUBLE_
-                // We can get away with a reference
-                new (&yo) Eigen::Map<Vector<Scalar>>(ptr, nt, 1);
-#           else
-                // We need to make a copy
-                tmp_yo = (py::cast<Vector<double>>(yo_)).template cast<Scalar>();
-                new (&yo) Eigen::Map<Vector<Scalar>>(&tmp_yo(0), nt, 1);
-#           endif
-        } else {
-            throw errors::ShapeError("Vector `yo` has the incorrect shape.");
-        }
-
-        // Map `zo` to an Eigen vector
-        Eigen::Map<Vector<Scalar>> zo(NULL, nt, 1);
-        Vector<Scalar> tmp_zo;
-        buf = zo_.request();
-        ptr = (double *) buf.ptr;
-        if (buf.ndim == 0) {
-            tmp_zo = ptr[0] * Vector<Scalar>::Ones(nt);
-            new (&zo) Eigen::Map<Vector<Scalar>>(&tmp_zo(0), nt, 1);
-        } else if ((buf.ndim == 1) && (buf.size == nt)) {
-#           ifdef _STARRY_DOUBLE_
-                // We can get away with a reference
-                new (&zo) Eigen::Map<Vector<Scalar>>(ptr, nt, 1);
-#           else
-                // We need to make a copy
-                tmp_zo = (py::cast<Vector<double>>(zo_)).template cast<Scalar>();
-                new (&zo) Eigen::Map<Vector<Scalar>>(&tmp_zo(0), nt, 1);
-#           endif
-        } else {
-            throw errors::ShapeError("Vector `zo` has the incorrect shape.");
-        }
-
-        // Map `ro` to an Eigen vector
-        Eigen::Map<Vector<Scalar>> ro(NULL, nt, 1);
-        Vector<Scalar> tmp_ro;
-        buf = ro_.request();
-        ptr = (double *) buf.ptr;
-        if (buf.ndim == 0) {
-            tmp_ro = ptr[0] * Vector<Scalar>::Ones(nt);
-            new (&ro) Eigen::Map<Vector<Scalar>>(&tmp_ro(0), nt, 1);
-        } else if ((buf.ndim == 1) && (buf.size == nt)) {
-#           ifdef _STARRY_DOUBLE_
-                // We can get away with a reference
-                new (&ro) Eigen::Map<Vector<Scalar>>(ptr, nt, 1);
-#           else
-                // We need to make a copy
-                tmp_ro = (py::cast<Vector<double>>(ro_)).template cast<Scalar>();
-                new (&ro) Eigen::Map<Vector<Scalar>>(&tmp_ro(0), nt, 1);
-#           endif
-        } else {
-            throw errors::ShapeError("Vector `ro` has the incorrect shape.");
-        }
+        MAP_TO_EIGEN(theta_, theta, Scalar, nt);
+        MAP_TO_EIGEN(xo_, xo, Scalar, nt);
+        MAP_TO_EIGEN(yo_, yo, Scalar, nt);
+        MAP_TO_EIGEN(zo_, zo, Scalar, nt);
+        MAP_TO_EIGEN(ro_, ro, Scalar, nt);
 
         if (!compute_gradient) {
 
@@ -993,3 +905,6 @@ std::function<py::object (
 } // namespace interface
 
 #endif
+
+
+

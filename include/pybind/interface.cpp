@@ -6,117 +6,111 @@
 
 // Enable debug mode?
 #ifdef STARRY_DEBUG
-#undef NDEBUG
+#   undef NDEBUG
 #endif
 
 // Enable the Python interface
 #ifndef STARRY_ENABLE_PYTHON_INTERFACE
-#define STARRY_ENABLE_PYTHON_INTERFACE
+#   define STARRY_ENABLE_PYTHON_INTERFACE
 #endif
 
 // Select which module to build
 #if defined(_STARRY_DEFAULT_DOUBLE_) || defined(_STARRY_DEFAULT_REFL_DOUBLE_)
-#define _STARRY_DEFAULT_
-#define _STARRY_DOUBLE_
-#define _STARRY_STATIC_
-#define _STARRY_SINGLECOL_
-#if defined(_STARRY_DEFAULT_DOUBLE_)
-#define _STARRY_NAME_ _starry_default_double
-#define _STARRY_TYPE_ Default<double, false>
-#define _STARRY_EMITTED_
-#else
-#define _STARRY_NAME_ _starry_default_refl_double
-#define _STARRY_TYPE_ Default<double, true>
-#define _STARRY_REFLECTED_
-#endif
-
+#   define _STARRY_DEFAULT_
+#   define _STARRY_DOUBLE_
+#   define _STARRY_STATIC_
+#   define _STARRY_SINGLECOL_
+#   if defined(_STARRY_DEFAULT_DOUBLE_)
+#       define _STARRY_NAME_ _starry_default_double
+#       define _STARRY_TYPE_ Default<double, false>
+#       define _STARRY_EMITTED_
+#   else
+#       define _STARRY_NAME_ _starry_default_refl_double
+#       define _STARRY_TYPE_ Default<double, true>
+#       define _STARRY_REFLECTED_
+#   endif
 #elif defined(_STARRY_DEFAULT_MULTI_) || defined(_STARRY_DEFAULT_REFL_MULTI_)
-#define _STARRY_DEFAULT_
-#define _STARRY_MULTI_
-#define _STARRY_STATIC_
-#define _STARRY_SINGLECOL_
-#define STARRY_ENABLE_BOOST
-#if defined(_STARRY_DEFAULT_MULTI_)
-#define _STARRY_NAME_ _starry_default_multi
-#define _STARRY_TYPE_ Default<Multi, false>
-#define _STARRY_EMITTED_
-#else
-#define _STARRY_NAME_ _starry_default_refl_multi
-#define _STARRY_TYPE_ Default<Multi, true>
-#define _STARRY_REFLECTED_
-#endif
-
+#   define _STARRY_DEFAULT_
+#   define _STARRY_MULTI_
+#   define _STARRY_STATIC_
+#   define _STARRY_SINGLECOL_
+#   define STARRY_ENABLE_BOOST
+#   if defined(_STARRY_DEFAULT_MULTI_)
+#       define _STARRY_NAME_ _starry_default_multi
+#       define _STARRY_TYPE_ Default<Multi, false>
+#       define _STARRY_EMITTED_
+#   else
+#       define _STARRY_NAME_ _starry_default_refl_multi
+#       define _STARRY_TYPE_ Default<Multi, true>
+#       define _STARRY_REFLECTED_
+#   endif
 #elif defined(_STARRY_SPECTRAL_DOUBLE_) || defined(_STARRY_SPECTRAL_REFL_DOUBLE_)
-#define _STARRY_SPECTRAL_
-#define _STARRY_DOUBLE_
-#define _STARRY_STATIC_
-#define _STARRY_MULTI_COL
-#if defined(_STARRY_SPECTRAL_DOUBLE_)
-#define _STARRY_NAME_ _starry_spectral_double
-#define _STARRY_TYPE_ Spectral<double, false>
-#define _STARRY_EMITTED_
-#else
-#define _STARRY_NAME_ _starry_spectral_refl_double
-#define _STARRY_TYPE_ Spectral<double, true>
-#define _STARRY_REFLECTED_
-#endif
-
+#   define _STARRY_SPECTRAL_
+#   define _STARRY_DOUBLE_
+#   define _STARRY_STATIC_
+#   define _STARRY_MULTI_COL
+#   if defined(_STARRY_SPECTRAL_DOUBLE_)
+#       define _STARRY_NAME_ _starry_spectral_double
+#       define _STARRY_TYPE_ Spectral<double, false>
+#       define _STARRY_EMITTED_
+#   else
+#       define _STARRY_NAME_ _starry_spectral_refl_double
+#       define _STARRY_TYPE_ Spectral<double, true>
+#       define _STARRY_REFLECTED_
+#   endif
 #elif defined(_STARRY_SPECTRAL_MULTI_) || defined(_STARRY_SPECTRAL_REFL_MULTI_)
-#define _STARRY_SPECTRAL_
-#define _STARRY_MULTI_
-#define _STARRY_STATIC_
-#define _STARRY_MULTI_COL
-#define STARRY_ENABLE_BOOST
-#if defined(_STARRY_SPECTRAL_MULTI_)
-#define _STARRY_NAME_ _starry_spectral_multi
-#define _STARRY_TYPE_ Spectral<Multi, false>
-#define _STARRY_EMITTED_
-#else
-#define _STARRY_NAME_ _starry_spectral_refl_multi
-#define _STARRY_TYPE_ Spectral<Multi, true>
-#define _STARRY_REFLECTED_
-#endif
-
+#   define _STARRY_SPECTRAL_
+#   define _STARRY_MULTI_
+#   define _STARRY_STATIC_
+#   define _STARRY_MULTI_COL
+#   define STARRY_ENABLE_BOOST
+#   if defined(_STARRY_SPECTRAL_MULTI_)
+#       define _STARRY_NAME_ _starry_spectral_multi
+#       define _STARRY_TYPE_ Spectral<Multi, false>
+#       define _STARRY_EMITTED_
+#   else
+#       define _STARRY_NAME_ _starry_spectral_refl_multi
+#       define _STARRY_TYPE_ Spectral<Multi, true>
+#       define _STARRY_REFLECTED_
+#   endif
 #elif defined(_STARRY_TEMPORAL_DOUBLE_) || defined(_STARRY_TEMPORAL_REFL_DOUBLE_)
-#define _STARRY_TEMPORAL_
-#define _STARRY_DOUBLE_
-#define _STARRY_MULTI_COL
-#if defined(_STARRY_TEMPORAL_DOUBLE_)
-#define _STARRY_NAME_ _starry_temporal_double
-#define _STARRY_TYPE_ Temporal<double, false>
-#define _STARRY_EMITTED_
-#else
-#define _STARRY_NAME_ _starry_temporal_refl_double
-#define _STARRY_TYPE_ Temporal<double, true>
-#define _STARRY_REFLECTED_
-#endif
-
+#   define _STARRY_TEMPORAL_
+#   define _STARRY_DOUBLE_
+#   define _STARRY_MULTI_COL
+#   if defined(_STARRY_TEMPORAL_DOUBLE_)
+#       define _STARRY_NAME_ _starry_temporal_double
+#       define _STARRY_TYPE_ Temporal<double, false>
+#       define _STARRY_EMITTED_
+#   else
+#       define _STARRY_NAME_ _starry_temporal_refl_double
+#       define _STARRY_TYPE_ Temporal<double, true>
+#       define _STARRY_REFLECTED_
+#   endif
 #elif defined(_STARRY_TEMPORAL_MULTI_) || defined(_STARRY_TEMPORAL_REFL_MULTI_)
-#define _STARRY_TEMPORAL_
-#define _STARRY_MULTI_
-#define _STARRY_MULTI_COL
-#define STARRY_ENABLE_BOOST
-#if defined(_STARRY_TEMPORAL_MULTI_)
-#define _STARRY_NAME_ _starry_temporal_multi
-#define _STARRY_TYPE_ Temporal<Multi, false>
-#define _STARRY_EMITTED_
+#   define _STARRY_TEMPORAL_
+#   define _STARRY_MULTI_
+#   define _STARRY_MULTI_COL
+#   define STARRY_ENABLE_BOOST
+#   if defined(_STARRY_TEMPORAL_MULTI_)
+#       define _STARRY_NAME_ _starry_temporal_multi
+#       define _STARRY_TYPE_ Temporal<Multi, false>
+#       define _STARRY_EMITTED_
+#   else
+#       define _STARRY_NAME_ _starry_temporal_refl_multi
+#       define _STARRY_TYPE_ Temporal<Multi, true>
+#       define _STARRY_REFLECTED_
+#endif
 #else
-#define _STARRY_NAME_ _starry_temporal_refl_multi
-#define _STARRY_TYPE_ Temporal<Multi, true>
-#define _STARRY_REFLECTED_
+    static_assert(false, "Invalid or missing `starry` module type.");
 #endif
 
-#else
-static_assert(false, "Invalid or missing STARRY module type.");
-#endif
-
-//! Includes
+// Includes
 #include <pybind11/embed.h>
 #include "interface.h"
 #include "docstrings.h"
 using namespace interface;
 
-//! Register the Python module
+// Register the Python module
 PYBIND11_MODULE(
     _STARRY_NAME_, 
     m
@@ -133,13 +127,12 @@ PYBIND11_MODULE(
     // Declare the Map class
     py::class_<Map<T>> PyMap(m, "Map", docstrings::Map::doc);
 
-#if defined(_STARRY_SINGLECOL_) 
-    // Constructor for vector maps
-    PyMap.def(py::init<int>(), "lmax"_a=2);
-#else
-    // Constructor for matrix maps
-    PyMap.def(py::init<int, int>(), "lmax"_a=2, "ncol"_a=1);
-#endif
+    // Constructor
+#   if defined(_STARRY_SINGLECOL_) 
+        PyMap.def(py::init<int>(), "lmax"_a=2);
+#   else
+        PyMap.def(py::init<int, int>(), "lmax"_a=2, "ncol"_a=1);
+#   endif
 
     // String representation of the map
     PyMap.def("__repr__", &Map<T>::info);
@@ -152,26 +145,26 @@ PYBIND11_MODULE(
             return map.ncoly;
     }, docstrings::Map::ncoly);
 
-#ifdef _STARRY_EMITTED_
-    // Number of Ul map columns
-    PyMap.def_property_readonly(
-        "ncolu", [] (
-            Map<T> &map
-        ) {
-            return map.ncolu;
-    }, docstrings::Map::ncolu);
-#endif
+    // Number of limb darkening map columns
+#   ifdef _STARRY_EMITTED_
+        PyMap.def_property_readonly(
+            "ncolu", [] (
+                Map<T> &map
+            ) {
+                return map.ncolu;
+        }, docstrings::Map::ncolu);
+#   endif
 
     // Number of wavelength bins
     PyMap.def_property_readonly(
         "nw", [] (
             Map<T> &map
         ) {
-#if defined(_STARRY_SPECTRAL_)
-            return map.ncoly;
-#else
-            return 1;
-#endif
+#           if defined(_STARRY_SPECTRAL_)
+                return map.ncoly;
+#           else
+                return 1;
+#           endif
     }, docstrings::Map::nw);
 
     // Number of temporal bins
@@ -179,11 +172,11 @@ PYBIND11_MODULE(
         "nt", [] (
             Map<T> &map
         ) {
-#if defined(_STARRY_TEMPORAL_)
-            return map.ncoly;
-#else
-            return 1;
-#endif
+#           if defined(_STARRY_TEMPORAL_)
+                return map.ncoly;
+#           else
+                return 1;
+#           endif
     }, docstrings::Map::nt);
 
     // Highest degree of the map
@@ -207,11 +200,11 @@ PYBIND11_MODULE(
         "multi", [] (
             Map<T> &map
         ) {
-#if defined(_STARRY_MULTI_)
-            return true;
-#else
-            return false;
-#endif
+#           if defined(_STARRY_MULTI_)
+                return true;
+#           else
+                return false;
+#           endif
     }, docstrings::Map::multi);
 
     // Set one or more spherical harmonic coefficients to the same scalar value
@@ -275,13 +268,13 @@ PYBIND11_MODULE(
             for (auto n : inds)
                 res.row(i++) = y.row(n).template cast<double>();
             if (inds.size() == 1) {
-#ifdef _STARRY_SINGLECOL_
-                return py::cast<double>(res(0));
-#else
-                auto coeff = py::cast(res.row(0).template cast<double>());
-                MAKE_READ_ONLY(coeff);
-                return coeff;
-#endif
+#               ifdef _STARRY_SINGLECOL_
+                    return py::cast<double>(res(0));
+#               else
+                    auto coeff = py::cast(res.row(0).template cast<double>());
+                    MAKE_READ_ONLY(coeff);
+                    return coeff;
+#               endif
             } else {
                 auto coeff = py::cast(res.template cast<double>());
                 MAKE_READ_ONLY(coeff);
@@ -289,83 +282,84 @@ PYBIND11_MODULE(
             }
     }, docstrings::Map::getitem);
 
-#ifdef _STARRY_EMITTED_
-    // Set one or more limb darkening coefficients to the same scalar value
-    PyMap.def(
-        "__setitem__", [](
-            Map<T>& map, 
-            py::object l,
-            const double& coeff
-        ) {
-            auto inds = get_Ul_inds(map.lmax, l);
-            auto u = map.getU();
-            for (auto n : inds)
-                u.row(n - 1).setConstant(static_cast<typename T::Scalar>(coeff));
-            map.setU(u);
-    });
+    // Limb darkening I/O
+#   ifdef _STARRY_EMITTED_
+        // Set one or more limb darkening coefficients to the same scalar value
+        PyMap.def(
+            "__setitem__", [](
+                Map<T>& map, 
+                py::object l,
+                const double& coeff
+            ) {
+                auto inds = get_Ul_inds(map.lmax, l);
+                auto u = map.getU();
+                for (auto n : inds)
+                    u.row(n - 1).setConstant(static_cast<typename T::Scalar>(coeff));
+                map.setU(u);
+        });
 
-    // Set one or more limb darkening coefficients to the same vector value
-    PyMap.def(
-        "__setitem__", [](
-            Map<T>& map, 
-            py::object l,
-            const typename T::Double::UCoeffType& coeff
-        ) {
-            auto inds = get_Ul_inds(map.lmax, l);
-            auto u = map.getU();
-            for (auto n : inds)
-                u.row(n - 1) = coeff.template cast<typename T::Scalar>();
-            map.setU(u);
-    });
+        // Set one or more limb darkening coefficients to the same vector value
+        PyMap.def(
+            "__setitem__", [](
+                Map<T>& map, 
+                py::object l,
+                const typename T::Double::UCoeffType& coeff
+            ) {
+                auto inds = get_Ul_inds(map.lmax, l);
+                auto u = map.getU();
+                for (auto n : inds)
+                    u.row(n - 1) = coeff.template cast<typename T::Scalar>();
+                map.setU(u);
+        });
 
-    // Set multiple limb darkening coefficients at once
-    PyMap.def(
-        "__setitem__", [](
-            Map<T>& map, 
-            py::object l,
-            const typename T::Double::UType& coeff_
-        ) {
-            auto inds = get_Ul_inds(map.lmax, l);
-            typename T::UType coeff = coeff_.template cast<typename T::Scalar>();
-            if (coeff.rows() != static_cast<long>(inds.size()))
-                throw errors::ValueError("Mismatch in slice length and "
-                                         "coefficient array size.");
-            auto u = map.getU();
-            int i = 0;
-            for (auto n : inds)
-                u.row(n - 1) = coeff.row(i++);
-            map.setU(u);
-    });
+        // Set multiple limb darkening coefficients at once
+        PyMap.def(
+            "__setitem__", [](
+                Map<T>& map, 
+                py::object l,
+                const typename T::Double::UType& coeff_
+            ) {
+                auto inds = get_Ul_inds(map.lmax, l);
+                typename T::UType coeff = coeff_.template cast<typename T::Scalar>();
+                if (coeff.rows() != static_cast<long>(inds.size()))
+                    throw errors::ValueError("Mismatch in slice length and "
+                                            "coefficient array size.");
+                auto u = map.getU();
+                int i = 0;
+                for (auto n : inds)
+                    u.row(n - 1) = coeff.row(i++);
+                map.setU(u);
+        });
 
-    // Retrieve one or more limb darkening coefficients
-    PyMap.def(
-        "__getitem__", [](
-            Map<T>& map,
-            py::object l
-        ) -> py::object {
-            auto inds = get_Ul_inds(map.lmax, l);
-            auto u = map.getU();
-            typename T::Double::UType res;
-            res.resize(inds.size(), map.ncolu);
-            int i = 0;
-            for (auto n : inds)
-                res.row(i++) = u.row(n - 1).template cast<double>();
-            if (inds.size() == 1) {
-#  if defined(_STARRY_DEFAULT_) || defined(_STARRY_TEMPORAL_)
-                return py::cast<double>(res(0));
-#  else
-                auto coeff = py::cast(res.row(0).template cast<double>());
-                MAKE_READ_ONLY(coeff);
-                return coeff;
-#  endif
-            } else {
-                auto coeff = py::cast(res.template cast<double>());
-                MAKE_READ_ONLY(coeff);
-                return coeff;
-            }
-    });
+        // Retrieve one or more limb darkening coefficients
+        PyMap.def(
+            "__getitem__", [](
+                Map<T>& map,
+                py::object l
+            ) -> py::object {
+                auto inds = get_Ul_inds(map.lmax, l);
+                auto u = map.getU();
+                typename T::Double::UType res;
+                res.resize(inds.size(), map.ncolu);
+                int i = 0;
+                for (auto n : inds)
+                    res.row(i++) = u.row(n - 1).template cast<double>();
+                if (inds.size() == 1) {
+#                   if defined(_STARRY_DEFAULT_) || defined(_STARRY_TEMPORAL_)
+                        return py::cast<double>(res(0));
+#                   else
+                        auto coeff = py::cast(res.row(0).template cast<double>());
+                        MAKE_READ_ONLY(coeff);
+                        return coeff;
+#                   endif
+                } else {
+                    auto coeff = py::cast(res.template cast<double>());
+                    MAKE_READ_ONLY(coeff);
+                    return coeff;
+                }
+        });
 
-#endif
+#   endif
 
     // Reset the map
     PyMap.def("reset", &Map<T>::reset, docstrings::Map::reset);
@@ -380,17 +374,17 @@ PYBIND11_MODULE(
             return y;
     }, docstrings::Map::y);
 
-#ifdef _STARRY_EMITTED_
     // Vector of limb darkening coefficients
-    PyMap.def_property_readonly(
-        "u", [] (
-            Map<T> &map
-        ) {
-            auto u = py::cast(map.getU().template cast<double>());
-            MAKE_READ_ONLY(u);
-            return u;
-    }, docstrings::Map::u);
-#endif
+#   ifdef _STARRY_EMITTED_
+        PyMap.def_property_readonly(
+            "u", [] (
+                Map<T> &map
+            ) {
+                auto u = py::cast(map.getU().template cast<double>());
+                MAKE_READ_ONLY(u);
+                return u;
+        }, docstrings::Map::u);
+#   endif
 
     // Get/set the rotation axis
     PyMap.def_property(
@@ -408,326 +402,354 @@ PYBIND11_MODULE(
     // Rotate the base map
     PyMap.def("rotate", &Map<T>::rotate, "theta"_a=0.0, docstrings::Map::rotate);
 
-#if defined(_STARRY_SINGLECOL_)
-    // Add a gaussian spot with a scalar amplitude
-    PyMap.def(
-        "add_spot", [](
-            Map<T>& map,
-            const double& amp,
-            const double& sigma,
-            const double& lat,
-            const double& lon,
-            const int lmax
-        ) {
-            typename T::YCoeffType amp_;
-            amp_(0) = amp;
-            map.addSpot(amp_, 
-                        sigma, lat, lon, lmax);
-        }, 
-        docstrings::Map::add_spot,
-        "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
-#else
     // Add a gaussian spot with a vector amplitude
-    PyMap.def(
-        "add_spot", [](
-            Map<T>& map,
-            const typename T::Double::YCoeffType& amp,
-            const double& sigma,
-            const double& lat,
-            const double& lon,
-            const int lmax
-        ) {
-            map.addSpot(amp.template cast<typename T::Scalar>(), 
-                        sigma, lat, lon, lmax);
-        }, 
-        docstrings::Map::add_spot,
-        "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
-#endif
+#   if defined(_STARRY_SINGLECOL_)
+        PyMap.def(
+            "add_spot", [](
+                Map<T>& map,
+                const double& amp,
+                const double& sigma,
+                const double& lat,
+                const double& lon,
+                const int lmax
+            ) {
+                typename T::YCoeffType amp_;
+                amp_(0) = amp;
+                map.addSpot(amp_, 
+                            sigma, lat, lon, lmax);
+            }, 
+            docstrings::Map::add_spot,
+            "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
+#   else
+        PyMap.def(
+            "add_spot", [](
+                Map<T>& map,
+                const typename T::Double::YCoeffType& amp,
+                const double& sigma,
+                const double& lat,
+                const double& lon,
+                const int lmax
+            ) {
+                map.addSpot(amp.template cast<typename T::Scalar>(), 
+                            sigma, lat, lon, lmax);
+            }, 
+            docstrings::Map::add_spot,
+            "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
+#   endif
 
-#if defined(_STARRY_SINGLECOL_)
     // Generate a random map
-    PyMap.def(
-        "random", [](
-            Map<T>& map,
-            const Vector<double>& power,
-            py::object seed_
-        ) {
-            if (seed_.is(py::none())) {
-                // TODO: We need a better, more thread-safe randomizer seed
-                auto seed = std::chrono::system_clock::now()
-                            .time_since_epoch().count();
-                map.random(power.template cast<typename T::Scalar>(), seed);
-            } else {
-                double seed = py::cast<double>(seed_);
-                map.random(power.template cast<typename T::Scalar>(), seed);
-            }
-        }, 
-        docstrings::Map::random,
-        "power"_a, "seed"_a=py::none());
-#else
-    // Generate a random map
-    PyMap.def(
-        "random", [](
-            Map<T>& map,
-            const Vector<double>& power,
-            py::object seed_,
-            int col
-        ) {
-            if (seed_.is(py::none())) {
-                // TODO: We need a better, more thread-safe randomizer seed
-                auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-                map.random(power.template cast<typename T::Scalar>(), seed, col);
-            } else {
-                double seed = py::cast<double>(seed_);
-                map.random(power.template cast<typename T::Scalar>(), seed, col);
-            }
-        }, 
-        docstrings::Map::random,
-        "power"_a, "seed"_a=py::none(), "col"_a=-1);
-#endif
+#   if defined(_STARRY_SINGLECOL_)
+        PyMap.def(
+            "random", [](
+                Map<T>& map,
+                const Vector<double>& power,
+                py::object seed_
+            ) {
+                if (seed_.is(py::none())) {
+                    // \todo Find a better, more thread-safe randomizer seed
+                    auto seed = std::chrono::system_clock::now()
+                                .time_since_epoch().count();
+                    map.random(power.template cast<typename T::Scalar>(), seed);
+                } else {
+                    double seed = py::cast<double>(seed_);
+                    map.random(power.template cast<typename T::Scalar>(), seed);
+                }
+            }, 
+            docstrings::Map::random,
+            "power"_a, "seed"_a=py::none());
+#   else
+        PyMap.def(
+            "random", [](
+                Map<T>& map,
+                const Vector<double>& power,
+                py::object seed_,
+                int col
+            ) {
+                if (seed_.is(py::none())) {
+                    // \todo Find a better, more thread-safe randomizer seed
+                    auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+                    map.random(power.template cast<typename T::Scalar>(), seed, col);
+                } else {
+                    double seed = py::cast<double>(seed_);
+                    map.random(power.template cast<typename T::Scalar>(), seed, col);
+                }
+            }, 
+            docstrings::Map::random,
+            "power"_a, "seed"_a=py::none(), "col"_a=-1);
+#   endif
 
-#if defined(_STARRY_STATIC_)
-#if defined(_STARRY_EMITTED_)
     // Show an image/animation of the map
-    PyMap.def(
-        "show", [](
-            Map<T>& map,
-            py::array_t<double> theta_,
-            std::string cmap,
-            int res,
-            int interval,
-            std::string gif
-        ) -> py::object {
-            auto theta = py::cast<Vector<double>>(theta_);
-            if (theta.size() == 0) {
-                return map.show(0.0, cmap, res);
-            } else if (theta.size() == 1) {
-                return map.show(theta(0), cmap, res);
-            } else {
-                return map.show(theta.template cast<typename T::Scalar>(), 
-                                cmap, res, interval, gif);
-            }
-        }, 
-        docstrings::Map::show,
-        "theta"_a=py::array_t<double>(), "cmap"_a="plasma", "res"_a=300,
-        "interval"_a=75, "gif"_a="");
-#else
-    // Show an image/animation of the map
-    PyMap.def(
-        "show", [](
-            Map<T>& map,
-            py::array_t<double> theta_,
-            py::array_t<double> source_,
-            std::string cmap,
-            int res,
-            int interval,
-            std::string gif
-        ) -> py::object {
-            auto atleast_1d = py::module::import("numpy").attr("atleast_1d");
-            auto atleast_2d = py::module::import("numpy").attr("atleast_2d");
-            Vector<double> theta = py::cast<Vector<double>>(atleast_1d(theta_));
-            RowMatrix<double> source = py::cast<RowMatrix<double>>(atleast_2d(source_));
-            assert(source.cols() == 3);
-            int sz = max(theta.rows(), source.rows());
-            if ((theta.rows() == 0) || (source.rows() == 0)) {
-                throw errors::ValueError(
-                    "Invalid dimensions for `theta` and/or `source`.");
-            } else if (theta.rows() == 1) {
-                theta.setConstant(sz, theta(0));
-            } else if (source.rows() == 1) {
-                source = source.replicate(sz, 1);
-            } else if (theta.rows() != source.rows()){
-                throw errors::ValueError(
-                    "Invalid dimensions for `theta` and/or `source`.");
-            }
-            return map.show(theta.template cast<typename T::Scalar>(),
-                            source.template cast<typename T::Scalar>(),
-                            cmap, res, interval, gif);
-        }, 
-        docstrings::Map::show,
-        "theta"_a=Vector<double>::Zero(1), "source"_a=-xhat<double>(), 
-        "cmap"_a="plasma", "res"_a=300, "interval"_a=75, "gif"_a="");
-#endif
-#else
-#if defined(_STARRY_EMITTED_)
-    // Show an image/animation of the map
-    PyMap.def(
-        "show", [](
-            Map<T>& map,
-            py::array_t<double> t_,
-            py::array_t<double> theta_,
-            std::string cmap,
-            int res,
-            int interval,
-            std::string gif
-        ) -> py::object {
-            auto atleast_1d = py::module::import("numpy").attr("atleast_1d");
-            Vector<double> t = py::cast<Vector<double>>(atleast_1d(t_));
-            Vector<double> theta = py::cast<Vector<double>>(atleast_1d(theta_));
-            int sz = max(t.size(), theta.size());
-            if ((t.size() == 0) || (theta.size() == 0)) {
-                throw errors::ValueError(
-                    "Invalid dimensions for `t` and/or `theta`.");
-            } else if (t.size() == 1) {
-                t.setConstant(sz, t(0));
-            } else if (theta.size() == 1) {
-                theta.setConstant(sz, theta(0));
-            } else if (t.size() != theta.size()){
-                throw errors::ValueError(
-                    "Invalid dimensions for `t` and/or `theta`.");
-            }
-            return map.show(t.template cast<typename T::Scalar>(), 
-                            theta.template cast<typename T::Scalar>(), 
-                            cmap, res, interval, gif);
-        }, 
-        docstrings::Map::show,
-        "t"_a=0.0, "theta"_a=0.0, 
-        "cmap"_a="plasma", "res"_a=300, "interval"_a=75, "gif"_a="");
-#else
-    // \todo: temporal, reflected show()
-#endif
-#endif
+#   if defined(_STARRY_STATIC_)
+#       if defined(_STARRY_EMITTED_)
+            PyMap.def(
+                "show", [](
+                    Map<T>& map,
+                    py::array_t<double> theta_,
+                    std::string cmap,
+                    int res,
+                    int interval,
+                    std::string gif
+                ) -> py::object {
+                    auto theta = py::cast<Vector<double>>(theta_);
+                    if (theta.size() == 0) {
+                        return map.show(0.0, cmap, res);
+                    } else if (theta.size() == 1) {
+                        return map.show(theta(0), cmap, res);
+                    } else {
+                        return map.show(theta.template cast<typename T::Scalar>(), 
+                                        cmap, res, interval, gif);
+                    }
+                }, 
+                docstrings::Map::show,
+                "theta"_a=py::array_t<double>(), "cmap"_a="plasma", "res"_a=300,
+                "interval"_a=75, "gif"_a="");
+#       else
+            PyMap.def(
+                "show", [](
+                    Map<T>& map,
+                    py::array_t<double> theta_,
+                    py::array_t<double> source_,
+                    std::string cmap,
+                    int res,
+                    int interval,
+                    std::string gif
+                ) -> py::object {
+                    auto atleast_1d = py::module::import("numpy").attr("atleast_1d");
+                    auto atleast_2d = py::module::import("numpy").attr("atleast_2d");
+                    Vector<double> theta = py::cast<Vector<double>>(atleast_1d(theta_));
+                    RowMatrix<double> source = py::cast<RowMatrix<double>>(atleast_2d(source_));
+                    assert(source.cols() == 3);
+                    int sz = max(theta.rows(), source.rows());
+                    if ((theta.rows() == 0) || (source.rows() == 0)) {
+                        throw errors::ValueError(
+                            "Invalid dimensions for `theta` and/or `source`.");
+                    } else if (theta.rows() == 1) {
+                        theta.setConstant(sz, theta(0));
+                    } else if (source.rows() == 1) {
+                        source = source.replicate(sz, 1);
+                    } else if (theta.rows() != source.rows()){
+                        throw errors::ValueError(
+                            "Invalid dimensions for `theta` and/or `source`.");
+                    }
+                    return map.show(theta.template cast<typename T::Scalar>(),
+                                    source.template cast<typename T::Scalar>(),
+                                    cmap, res, interval, gif);
+                }, 
+                docstrings::Map::show,
+                "theta"_a=Vector<double>::Zero(1), "source"_a=-xhat<double>(), 
+                "cmap"_a="plasma", "res"_a=300, "interval"_a=75, "gif"_a="");
+#       endif
+#   else
+#       if defined(_STARRY_EMITTED_)
+            PyMap.def(
+                "show", [](
+                    Map<T>& map,
+                    py::array_t<double> t_,
+                    py::array_t<double> theta_,
+                    std::string cmap,
+                    int res,
+                    int interval,
+                    std::string gif
+                ) -> py::object {
+                    auto atleast_1d = py::module::import("numpy").attr("atleast_1d");
+                    Vector<double> t = py::cast<Vector<double>>(atleast_1d(t_));
+                    Vector<double> theta = py::cast<Vector<double>>(atleast_1d(theta_));
+                    int sz = max(t.size(), theta.size());
+                    if ((t.size() == 0) || (theta.size() == 0)) {
+                        throw errors::ValueError(
+                            "Invalid dimensions for `t` and/or `theta`.");
+                    } else if (t.size() == 1) {
+                        t.setConstant(sz, t(0));
+                    } else if (theta.size() == 1) {
+                        theta.setConstant(sz, theta(0));
+                    } else if (t.size() != theta.size()){
+                        throw errors::ValueError(
+                            "Invalid dimensions for `t` and/or `theta`.");
+                    }
+                    return map.show(t.template cast<typename T::Scalar>(), 
+                                    theta.template cast<typename T::Scalar>(), 
+                                    cmap, res, interval, gif);
+                }, 
+                docstrings::Map::show,
+                "t"_a=0.0, "theta"_a=0.0, 
+                "cmap"_a="plasma", "res"_a=300, "interval"_a=75, "gif"_a="");
+#       else
+            PyMap.def(
+                "show", [](
+                    Map<T>& map,
+                    py::array_t<double> t_,
+                    py::array_t<double> theta_,
+                    py::array_t<double> source_,
+                    std::string cmap,
+                    int res,
+                    int interval,
+                    std::string gif
+                ) -> py::object {
+                    auto atleast_1d = py::module::import("numpy").attr("atleast_1d");
+                    auto atleast_2d = py::module::import("numpy").attr("atleast_2d");
+                    Vector<double> t = py::cast<Vector<double>>(atleast_1d(t_));
+                    Vector<double> theta = py::cast<Vector<double>>(atleast_1d(theta_));
+                    RowMatrix<double> source = py::cast<RowMatrix<double>>(atleast_2d(source_));
+                    assert(source.cols() == 3);
+                    int sz = max(t.rows(), max(theta.rows(), source.rows()));
+                    if ((t.rows() == 0) || (theta.rows() == 0) || (source.rows() == 0)) {
+                        throw errors::ValueError(
+                            "Invalid dimensions for `t`, `theta` and/or `source`.");
+                    } 
+                    if (t.rows() == 1)
+                        t.setConstant(sz, t(0));
+                    if (theta.rows() == 1)
+                        theta.setConstant(sz, theta(0));
+                    if (source.rows() == 1)
+                        source = source.replicate(sz, 1);
+                    if ((t.rows() != source.rows()) || (theta.rows() != source.rows())) {
+                        throw errors::ValueError(
+                            "Invalid dimensions for `t`, `theta` and/or `source`.");
+                    }
+                    return map.show(t.template cast<typename T::Scalar>(), 
+                                    theta.template cast<typename T::Scalar>(),
+                                    source.template cast<typename T::Scalar>(),
+                                    cmap, res, interval, gif);
+                }, 
+                docstrings::Map::show, "t"_a=Vector<double>::Zero(1),
+                "theta"_a=Vector<double>::Zero(1), "source"_a=-xhat<double>(), 
+                "cmap"_a="plasma", "res"_a=300, "interval"_a=75, "gif"_a="");
+#       endif
+#   endif
 
-#if defined(_STARRY_DEFAULT_)
     // Render the visible map on a square grid
-    PyMap.def(
-        "render", [](
-            Map<T>& map,
-            double theta,
-#if defined(_STARRY_REFLECTED_)
-            UnitVector<double> source,
-#endif
-            int res
-        ) -> py::object {
-            auto reshape = py::module::import("numpy").attr("reshape");
-            Vector<typename T::Scalar> intensity(res * res);
-#if defined(_STARRY_EMITTED_)
-            map.renderMap(theta, res, intensity);
-#else
-            map.renderMap(theta, source.template cast<typename T::Scalar>(), 
-                          res, intensity);
-#endif
-            return reshape(intensity.template cast<double>(), 
-                           py::make_tuple(res, res));
+#   if defined(_STARRY_DEFAULT_)
+        PyMap.def(
+            "render", [](
+                Map<T>& map,
+                double theta,
+#               if defined(_STARRY_REFLECTED_)
+                    UnitVector<double> source,
+#               endif
+                int res
+            ) -> py::object {
+                auto reshape = py::module::import("numpy").attr("reshape");
+                Vector<typename T::Scalar> intensity(res * res);
+#               if defined(_STARRY_EMITTED_)
+                    map.renderMap(theta, res, intensity);
+#               else
+                    map.renderMap(theta, source.template cast<typename T::Scalar>(), 
+                                  res, intensity);
+#               endif
+                return reshape(intensity.template cast<double>(), 
+                            py::make_tuple(res, res));
+            }, 
+            docstrings::Map::render,
+            "theta"_a=0.0, 
+#           if defined(_STARRY_REFLECTED_)
+                "source"_a=-xhat<double>(),
+#           endif
+            "res"_a=300);
+#   elif defined(_STARRY_SPECTRAL_)
+        PyMap.def(
+            "render", [](
+                Map<T>& map,
+                double theta,
+#               if defined(_STARRY_REFLECTED_)
+                    UnitVector<double> source,
+#               endif
+                int res
+            ) -> py::object {
+                auto reshape = py::module::import("numpy").attr("reshape");
+                Matrix<typename T::Scalar> intensity(res * res, map.ncoly);
+#               if defined(_STARRY_EMITTED_)
+                    map.renderMap(theta, res, intensity);
+#               else
+                    map.renderMap(theta, source.template cast<typename T::Scalar>(), 
+                                  res, intensity);
+#               endif
+                return reshape(intensity.template cast<double>(), 
+                            py::make_tuple(res, res, map.nflx));
+            }, 
+            docstrings::Map::render,
+            "theta"_a=0.0, 
+#            if defined(_STARRY_REFLECTED_)
+                "source"_a=-xhat<double>(),
+#            endif        
+            "res"_a=300);
+#   elif defined(_STARRY_TEMPORAL_)
+        PyMap.def(
+            "render", [](
+                Map<T>& map,
+                double t,
+                double theta,
+#               if defined(_STARRY_REFLECTED_)
+                    UnitVector<double> source,
+#               endif
+                int res
+            ) -> py::object {
+                auto reshape = py::module::import("numpy").attr("reshape");
+                Vector<typename T::Scalar> intensity(res * res);
+#               if defined(_STARRY_EMITTED_)
+                    map.renderMap(t, theta, res, intensity);
+#               else
+                    map.renderMap(t, theta, source.template cast<typename T::Scalar>(), 
+                                  res, intensity);
+#               endif
+                return reshape(intensity.template cast<double>(), 
+                            py::make_tuple(res, res));
+            }, 
+            docstrings::Map::render,
+            "t"_a=0.0, "theta"_a=0.0, 
+#           if defined(_STARRY_REFLECTED_)
+                "source"_a=-xhat<double>(),
+#           endif        
+            "res"_a=300);
+#   endif
 
-        }, 
-        docstrings::Map::render,
-        "theta"_a=0.0, 
-#if defined(_STARRY_REFLECTED_)
-        "source"_a=-xhat<double>(),
-#endif
-        "res"_a=300);
-#elif defined(_STARRY_SPECTRAL_)
-    // Render the visible map on a square grid
-    PyMap.def(
-        "render", [](
-            Map<T>& map,
-            double theta,
-#if defined(_STARRY_REFLECTED_)
-            UnitVector<double> source,
-#endif
-            int res
-        ) -> py::object {
-            auto reshape = py::module::import("numpy").attr("reshape");
-            Matrix<typename T::Scalar> intensity(res * res, map.ncoly);
-#if defined(_STARRY_EMITTED_)
-            map.renderMap(theta, res, intensity);
-#else
-            map.renderMap(theta, source.template cast<typename T::Scalar>(), 
-                          res, intensity);
-#endif
-            return reshape(intensity.template cast<double>(), 
-                           py::make_tuple(res, res, map.nflx));
-        }, 
-        docstrings::Map::render,
-        "theta"_a=0.0, 
-#if defined(_STARRY_REFLECTED_)
-        "source"_a=-xhat<double>(),
-#endif        
-        "res"_a=300);
-#elif defined(_STARRY_TEMPORAL_)
-    // Render the visible map on a square grid
-    PyMap.def(
-        "render", [](
-            Map<T>& map,
-            double t,
-            double theta,
-#if defined(_STARRY_REFLECTED_)
-            UnitVector<double> source,
-#endif
-            int res
-        ) -> py::object {
-            auto reshape = py::module::import("numpy").attr("reshape");
-            Vector<typename T::Scalar> intensity(res * res);
-#if defined(_STARRY_EMITTED_)
-            map.renderMap(t, theta, res, intensity);
-#else
-            map.renderMap(t, theta, source.template cast<typename T::Scalar>(), 
-                          res, intensity);
-#endif
-            return reshape(intensity.template cast<double>(), 
-                           py::make_tuple(res, res));
-        }, 
-        docstrings::Map::render,
-        "t"_a=0.0, "theta"_a=0.0, 
-#if defined(_STARRY_REFLECTED_)
-        "source"_a=-xhat<double>(),
-#endif        
-        "res"_a=300);
-#endif
+    // Load an image from file
+#   if defined(_STARRY_SINGLECOL_)
+        PyMap.def(
+            "load_image", [](
+                Map<T>& map,
+                std::string image,
+                int lmax,
+                bool normalize,
+                int sampling_factor
+            ) {
+                map.loadImage(image, lmax, normalize, sampling_factor);
+            },
+            docstrings::Map::load_image,
+            "image"_a, "lmax"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
+#   else
+        PyMap.def(
+            "load_image", [](
+                Map<T>& map,
+                std::string image,
+                int lmax,
+                int col,
+                bool normalize,
+                int sampling_factor
+            ) {
+                map.loadImage(image, lmax, col, normalize, sampling_factor);
+            },
+            docstrings::Map::load_image,
+            "image"_a, "lmax"_a=-1, "col"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
+#   endif
 
-#if defined(_STARRY_SINGLECOL_)
-    // Load an image from a file
-    PyMap.def(
-        "load_image", [](
-            Map<T>& map,
-            std::string image,
-            int lmax,
-            bool normalize,
-            int sampling_factor
-        ) {
-            map.loadImage(image, lmax, normalize, sampling_factor);
-        },
-        docstrings::Map::load_image,
-        "image"_a, "lmax"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
-#else
-    // Load an image from a file
-    PyMap.def(
-        "load_image", [](
-            Map<T>& map,
-            std::string image,
-            int lmax,
-            int col,
-            bool normalize,
-            int sampling_factor
-        ) {
-            map.loadImage(image, lmax, col, normalize, sampling_factor);
-        },
-        docstrings::Map::load_image,
-        "image"_a, "lmax"_a=-1, "col"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
-#endif
-
-#if defined(_STARRY_STATIC_)
-#if defined(_STARRY_EMITTED_)
     // Compute the intensity
-    PyMap.def("__call__", intensity<T>(), docstrings::Map::call, 
-              "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
-#else
-    // Compute the intensity
-    PyMap.def("__call__", intensity<T>(), docstrings::Map::call, 
-              "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "source"_a=-xhat<double>());
-#endif
-#else
-#if defined(_STARRY_EMITTED_)
-    // Compute the intensity
-    PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, "t"_a=0.0, 
-              "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
-#else
-    // Compute the intensity
-    PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, "t"_a=0.0, 
-              "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "source"_a=-xhat<double>());
-#endif
-#endif
+#   if defined(_STARRY_STATIC_)
+#       if defined(_STARRY_EMITTED_)
+            PyMap.def("__call__", intensity<T>(), docstrings::Map::call, 
+                      "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
+#       else
+            PyMap.def("__call__", intensity<T>(), docstrings::Map::call, 
+                    "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "source"_a=-xhat<double>());
+#       endif
+#   else
+#       if defined(_STARRY_EMITTED_)
+            PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, "t"_a=0.0, 
+                    "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
+#       else
+            PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, "t"_a=0.0, 
+                    "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "source"_a=-xhat<double>());
+#       endif
+#   endif
 
 #if defined(_STARRY_STATIC_)
 #if defined(_STARRY_EMITTED_)
@@ -763,46 +785,40 @@ PYBIND11_MODULE(
 #endif
 #endif
 
-// Code version
-#ifdef VERSION_INFO
-    m.attr("__version__") = VERSION_INFO;
-#else
-    m.attr("__version__") = "dev";
-#endif
+    // Code version
+#   ifdef VERSION_INFO
+        m.attr("__version__") = VERSION_INFO;
+#   else
+        m.attr("__version__") = "dev";
+#   endif
 
     // A dictionary of all compiler flags
     PyMap.def_property_readonly(
         "__compile_flags__", [] (
             Map<T> &map
         ) -> py::dict {
-
             auto flags = py::dict();
             flags["STARRY_NMULTI"] = STARRY_NMULTI;
             flags["STARRY_ELLIP_MAX_ITER"] = STARRY_ELLIP_MAX_ITER;
             flags["STARRY_MAX_LMAX"] = STARRY_MAX_LMAX;
             flags["STARRY_BCUT"] = STARRY_BCUT;
             flags["STARRY_MN_MAX_ITER"] = STARRY_MN_MAX_ITER;
-
-#ifdef STARRY_KEEP_DFDU_AS_DFDG
-            flags["STARRY_KEEP_DFDU_AS_DFDG"] = STARRY_KEEP_DFDU_AS_DFDG;
-#else
-            flags["STARRY_KEEP_DFDU_AS_DFDG"] = 0;
-#endif
-
-#ifdef STARRY_O
-            flags["STARRY_O"] = STARRY_O;
-#else
-            flags["STARRY_O"] = py::none();
-#endif
-
-#ifdef STARRY_DEBUG
-            flags["STARRY_DEBUG"] = STARRY_DEBUG;
-#else
-            flags["STARRY_DEBUG"] = 0;
-#endif
-
+#           ifdef STARRY_KEEP_DFDU_AS_DFDG
+                flags["STARRY_KEEP_DFDU_AS_DFDG"] = STARRY_KEEP_DFDU_AS_DFDG;
+#           else
+                flags["STARRY_KEEP_DFDU_AS_DFDG"] = 0;
+#           endif
+#           ifdef STARRY_O
+                flags["STARRY_O"] = STARRY_O;
+#           else
+                flags["STARRY_O"] = py::none();
+#           endif
+#           ifdef STARRY_DEBUG
+                flags["STARRY_DEBUG"] = STARRY_DEBUG;
+#           else
+                flags["STARRY_DEBUG"] = 0;
+#           endif
             return flags;
-
     }, docstrings::Map::compile_flags);
 
 }

@@ -113,6 +113,9 @@ inline void computeLinearModelInternal (
 /**
 Compute the linear spherical harmonic model and its gradient. Internal method.
 
+
+\todo Temporal.
+
 \todo Call to `computeWigner` should also compute the derivative with
       respect to the `axis` using autodiff. Propagate and return this derivative.
 
