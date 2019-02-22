@@ -39,7 +39,8 @@ inline void computeLinearModel (
     RowMatrix<Scalar>& Dyo,
     RowMatrix<Scalar>& Dro
 ) {
-    computeLinearModelInternal(theta, xo, yo, zo, ro, A, Dtheta, Dxo, Dyo, Dro);
+    RowMatrix<Scalar> Dt; // Dummy!
+    computeLinearModelInternal(theta, xo, yo, zo, ro, A, Dt, Dtheta, Dxo, Dyo, Dro);
 }
 
 /**
@@ -61,7 +62,7 @@ inline void computeLinearModel (
     RowMatrix<Scalar>& A
 ) {
     computeTaylorMatrix(t);
-    computeLinearModelInternal<true>(theta, xo, yo, zo, ro, A);
+    computeLinearModelInternal(theta, xo, yo, zo, ro, A);
 }
 
 /**
@@ -88,6 +89,5 @@ inline void computeLinearModel (
     RowMatrix<Scalar>& Dro
 ) {
     computeTaylorMatrix(t);
-    // \todo: Gradient of temporal linear model.
-    throw errors::NotImplementedError("Gradient of temporal map not yet implemented.");
+    computeLinearModelInternal(theta, xo, yo, zo, ro, A, Dt, Dtheta, Dxo, Dyo, Dro);
 }

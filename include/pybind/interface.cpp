@@ -633,7 +633,8 @@ PYBIND11_MODULE(
 #               if defined(_STARRY_EMITTED_)
                     map.renderMap(theta, res, intensity);
 #               else
-                    map.renderMap(theta, source.template cast<typename T::Scalar>(), 
+                    map.renderMap(theta, 
+                                  source.template cast<typename T::Scalar>(), 
                                   res, intensity);
 #               endif
                 return reshape(intensity.template cast<double>(), 
@@ -660,7 +661,8 @@ PYBIND11_MODULE(
 #               if defined(_STARRY_EMITTED_)
                     map.renderMap(theta, res, intensity);
 #               else
-                    map.renderMap(theta, source.template cast<typename T::Scalar>(), 
+                    map.renderMap(theta, 
+                                  source.template cast<typename T::Scalar>(), 
                                   res, intensity);
 #               endif
                 return reshape(intensity.template cast<double>(), 
@@ -688,7 +690,8 @@ PYBIND11_MODULE(
 #               if defined(_STARRY_EMITTED_)
                     map.renderMap(t, theta, res, intensity);
 #               else
-                    map.renderMap(t, theta, source.template cast<typename T::Scalar>(), 
+                    map.renderMap(t, theta, 
+                                  source.template cast<typename T::Scalar>(), 
                                   res, intensity);
 #               endif
                 return reshape(intensity.template cast<double>(), 
@@ -729,7 +732,8 @@ PYBIND11_MODULE(
                 map.loadImage(image, lmax, col, normalize, sampling_factor);
             },
             docstrings::Map::load_image,
-            "image"_a, "lmax"_a=-1, "col"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
+            "image"_a, "lmax"_a=-1, "col"_a=-1, "normalize"_a=true, 
+            "sampling_factor"_a=8);
 #   endif
 
     // Compute the intensity
@@ -739,51 +743,56 @@ PYBIND11_MODULE(
                       "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
 #       else
             PyMap.def("__call__", intensity<T>(), docstrings::Map::call, 
-                    "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "source"_a=-xhat<double>());
+                      "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
+                      "source"_a=-xhat<double>());
 #       endif
 #   else
 #       if defined(_STARRY_EMITTED_)
-            PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, "t"_a=0.0, 
-                    "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
+            PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, 
+                      "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
 #       else
-            PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, "t"_a=0.0, 
-                    "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, "source"_a=-xhat<double>());
+            PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, 
+                      "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
+                      "source"_a=-xhat<double>());
 #       endif
 #   endif
 
-#if defined(_STARRY_STATIC_)
-#if defined(_STARRY_EMITTED_)
-    // Compute the flux
-    PyMap.def("flux", flux<T>(), docstrings::Map::flux, "theta"_a=0.0, "xo"_a=0.0, 
-              "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
-    
-    // Compute the linear model
-    PyMap.def("linear_model", linear_model<T>(), docstrings::Map::linear_model, 
-              "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
-#else
-    // Compute the reflected flux
-    PyMap.def("flux", flux<T>(), docstrings::Map::flux, "theta"_a=0.0, "xo"_a=0.0, 
-              "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "source"_a=-xhat<double>(), 
-              "gradient"_a=false);
-    // \todo: Implement linear model
-#endif
-#else
-#if defined(_STARRY_EMITTED_)
-    // Compute the flux (temporal map)
-    PyMap.def("flux", flux<T>(), docstrings::Map::flux, "t"_a=0.0, "theta"_a=0.0, "xo"_a=0.0, 
-              "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
+// Compute the flux
+#   if defined(_STARRY_STATIC_)
+#       if defined(_STARRY_EMITTED_)
+            PyMap.def("flux", flux<T>(), docstrings::Map::flux, "theta"_a=0.0, 
+                      "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, 
+                      "gradient"_a=false);
 
-    // Compute the linear model
-    PyMap.def("linear_model", linear_model<T>(), docstrings::Map::linear_model, "t"_a=0.0, 
-              "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
-#else
-    // Compute the reflected flux (temporal map)
-    PyMap.def("flux", flux<T>(), docstrings::Map::flux, "t"_a=0.0, "theta"_a=0.0, "xo"_a=0.0, 
-              "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "source"_a=-xhat<double>(), 
-              "gradient"_a=false);
-    // \todo: Implement linear model
-#endif
-#endif
+            PyMap.def("linear_model", linear_model<T>(), 
+                      docstrings::Map::linear_model, "theta"_a=0.0, "xo"_a=0.0, 
+                      "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
+#       else
+            PyMap.def("flux", flux<T>(), docstrings::Map::flux, "theta"_a=0.0, 
+                      "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, 
+                      "source"_a=-xhat<double>(), "gradient"_a=false);
+
+            // \todo Implement linear model
+#       endif
+#   else
+#       if defined(_STARRY_EMITTED_)
+            PyMap.def("flux", flux<T>(), docstrings::Map::flux, "t"_a=0.0, 
+                      "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
+                      "ro"_a=0.0, "gradient"_a=false);
+
+            PyMap.def("linear_model", linear_model<T>(), 
+                      docstrings::Map::linear_model, "t"_a=0.0, 
+                      "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
+                      "ro"_a=0.0, "gradient"_a=false);
+#       else
+            PyMap.def("flux", flux<T>(), docstrings::Map::flux, "t"_a=0.0, 
+                      "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
+                      "ro"_a=0.0, "source"_a=-xhat<double>(), 
+                      "gradient"_a=false);
+
+            // \todo Implement linear model
+#       endif
+#   endif
 
     // Code version
 #   ifdef VERSION_INFO

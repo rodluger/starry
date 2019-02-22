@@ -20,17 +20,17 @@
 
 // Boost support
 #ifdef STARRY_ENABLE_BOOST
-#include <boost/multiprecision/cpp_dec_float.hpp>
-#include <boost/math/special_functions/gamma.hpp>
+#   include <boost/multiprecision/cpp_dec_float.hpp>
+#   include <boost/math/special_functions/gamma.hpp>
 #endif
 
 // Python interface via pybind11
 #ifdef STARRY_ENABLE_PYTHON_INTERFACE
-#include <pybind11/pybind11.h>
-#include <pybind11/eigen.h>
-#include <pybind11/stl.h>
-#include <pybind11/numpy.h>
-namespace py = pybind11;
+#   include <pybind11/pybind11.h>
+#   include <pybind11/eigen.h>
+#   include <pybind11/stl.h>
+#   include <pybind11/numpy.h>
+    namespace py = pybind11;
 #endif
 
 //! Compiler branching optimization: likely branch
@@ -41,82 +41,82 @@ namespace py = pybind11;
 
 //! Default number of digits in multiprecision mode
 #ifndef STARRY_NMULTI
-#define STARRY_NMULTI               32
+#   define STARRY_NMULTI               32
 #endif
 
 //! Max iterations in elliptic integrals
 #ifndef STARRY_ELLIP_MAX_ITER
-#define STARRY_ELLIP_MAX_ITER       200
+#   define STARRY_ELLIP_MAX_ITER       200
 #endif
 
 //! Max iterations in computing the M & N integrals
 #ifndef STARRY_MN_MAX_ITER
-#define STARRY_MN_MAX_ITER           100
+#   define STARRY_MN_MAX_ITER           100
 #endif
 
 //! Max iterations in computing the I & J integrals
 #ifndef STARRY_IJ_MAX_ITER
-#define STARRY_IJ_MAX_ITER           200
+#   define STARRY_IJ_MAX_ITER           200
 #endif
 
 //! Refine the downward recursion in the J integral at this index
 #ifndef STARRY_REFINE_J_AT
-#define STARRY_REFINE_J_AT           25
+#   define STARRY_REFINE_J_AT           25
 #endif
 
 //! Cutoff value for `b` below which we reparametrize LD evaluation
 #ifndef STARRY_BCUT
-#define STARRY_BCUT                 1.0e-3
+#   define STARRY_BCUT                 1.0e-3
 #endif
 
 //! Things currently go numerically unstable in our bases for high `l`
 #ifndef STARRY_MAX_LMAX
-#define STARRY_MAX_LMAX             50
+#   define STARRY_MAX_LMAX             50
 #endif
 
 //! If we're keeping `df / du` as `df / dg`, we need to increase 
 //! the size of the array containing the derivative by 1
 #ifdef STARRY_KEEP_DFDU_AS_DFDG
-#define STARRY_DFDU_DELTA	        1
+#   define STARRY_DFDU_DELTA	        1
 #else
-#define STARRY_DFDU_DELTA	        0
+#   define STARRY_DFDU_DELTA	        0
 #endif
 
 //! The value of `pi` in double precision
 #ifndef M_PI
-#define M_PI     3.14159265358979323846264338328
+#   define M_PI     3.14159265358979323846264338328
 #endif
 
 //! Square root of `pi` in double precision
 #ifndef M_SQRTPI
-#define M_SQRTPI 1.77245385090551602729816748334
+#   define M_SQRTPI 1.77245385090551602729816748334
 #endif
 
 // Bounds checks
 #ifdef STARRY_DEBUG
-//! Check matrix shape (debug mode only)
-#define CHECK_SHAPE(MATRIX, ROWS, COLS)\
-    assert((static_cast<size_t>(MATRIX.cols()) == static_cast<size_t>(COLS)) && \
-    (static_cast<size_t>(MATRIX.rows()) == static_cast<size_t>(ROWS)))
-//! Check matrix columns (debug mode only)
-#define CHECK_COLS(MATRIX, COLS)\
-    assert(static_cast<size_t>(MATRIX.cols()) == static_cast<size_t>(COLS))
-//! Check matrix rows (debug mode only)
-#define CHECK_ROWS(MATRIX, ROWS)\
-    assert(static_cast<size_t>(MATRIX.rows()) == static_cast<size_t>(ROWS))
-//! Check index bounds (debug mode only)
-#define CHECK_BOUNDS(INDEX, IMIN, IMAX)\
-    assert((static_cast<size_t>(INDEX) >= static_cast<size_t>(IMIN)) && \
-    (static_cast<size_t>(INDEX) <= static_cast<size_t>(IMAX)))
+    //! Check matrix shape (debug mode only)
+#   define CHECK_SHAPE(MATRIX, ROWS, COLS)\
+        assert((static_cast<size_t>(MATRIX.cols()) == static_cast<size_t>(COLS)) && \
+        (static_cast<size_t>(MATRIX.rows()) == static_cast<size_t>(ROWS)))
+    //! Check matrix columns (debug mode only)
+#   define CHECK_COLS(MATRIX, COLS)\
+        assert(static_cast<size_t>(MATRIX.cols()) == static_cast<size_t>(COLS))
+    //! Check matrix rows (debug mode only)
+#   define CHECK_ROWS(MATRIX, ROWS)\
+        assert(static_cast<size_t>(MATRIX.rows()) == static_cast<size_t>(ROWS))
+    //! Check index bounds (debug mode only)
+#   define CHECK_BOUNDS(INDEX, IMIN, IMAX)\
+        assert((static_cast<size_t>(INDEX) >= static_cast<size_t>(IMIN)) && \
+        (static_cast<size_t>(INDEX) <= static_cast<size_t>(IMAX)))
 #else
-//! Check matrix shape (debug mode only)
-#define CHECK_SHAPE(MATRIX, ROWS, COLS)  do {} while(0)
-//! Check matrix columns (debug mode only)
-#define CHECK_COLS(MATRIX, COLS)  do {} while(0)
-//! Check matrix rows (debug mode only)
-#define CHECK_ROWS(MATRIX, ROWS)  do {} while(0)
-//! Check index bounds (debug mode only)
-#define CHECK_BOUNDS(INDEX, IMIN, IMAX)  do {} while(0)
+    //! Check matrix shape (debug mode only)
+#   define CHECK_SHAPE(MATRIX, ROWS, COLS)  do {} while(0)
+    //! Check matrix columns (debug mode only)
+#   define CHECK_COLS(MATRIX, COLS)  do {} while(0)
+    //! Check matrix rows (debug mode only)
+#   define CHECK_ROWS(MATRIX, ROWS)  do {} while(0)
+    //! Check index bounds (debug mode only)
+#   define CHECK_BOUNDS(INDEX, IMIN, IMAX)  do {} while(0)
 
 #endif
 

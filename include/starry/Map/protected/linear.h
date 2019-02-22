@@ -6,7 +6,6 @@ in emitted light. Internal method.
 
 
 */
-template <bool TEMPORAL=false>
 inline void computeLinearModelInternal (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
@@ -23,8 +22,7 @@ inline void computeLinearModelInternal (
     CHECK_SHAPE(zo, nt, 1);
     CHECK_SHAPE(ro, nt, 1);
 
-    // Pre-compute the Wigner matrices
-    computeWigner();
+    // \todo: Cache these
     RowVector<Scalar> rTA1RZetaInv(N);
     RowVector<Scalar> rTA1RZetaInvRz(N);
     RowVector<Scalar> sTA(N);
@@ -32,11 +30,13 @@ inline void computeLinearModelInternal (
     RowVector<Scalar> sTARzRZetaInv(N);
     RowVector<Scalar> sTARzRZetaInvRz(N);
 
+    // Pre-compute the Wigner matrices
+    computeWigner();
     W.leftMultiplyRZetaInv(B.rTA1, rTA1RZetaInv);
     Vector<Scalar> theta_rad = theta * radian;
 
     // Our model matrix, f = A . y
-    if (TEMPORAL)
+    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value)
         A.resize(nt, N * ncoly);
     else
         A.resize(nt, N);
@@ -65,7 +65,7 @@ inline void computeLinearModelInternal (
             W.leftMultiplyRz(rTA1RZetaInv, rTA1RZetaInvRz);
 
             // Transform back to the sky plane and we're done
-            if (TEMPORAL) {
+            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
                 W.leftMultiplyRZeta(rTA1RZetaInvRz, A.block(n, 0, 1, N));
                 for (int i = 1; i < ncoly; ++i) {
                     A.block(n, i * N, 1, N) = A.block(n, 0, 1, N) * taylor_matrix(n, i);
@@ -96,7 +96,7 @@ inline void computeLinearModelInternal (
             W.leftMultiplyRz(sTARzRZetaInv, sTARzRZetaInvRz);
 
             // Transform back to the sky plane and we're done
-            if (TEMPORAL) {
+            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
                 W.leftMultiplyRZeta(sTARzRZetaInvRz, A.block(n, 0, 1, N));
                 for (int i = 1; i < ncoly; ++i) {
                     A.block(n, i * N, 1, N) = A.block(n, 0, 1, N) * taylor_matrix(n, i);
@@ -113,9 +113,6 @@ inline void computeLinearModelInternal (
 /**
 Compute the linear spherical harmonic model and its gradient. Internal method.
 
-
-\todo Temporal.
-
 \todo Call to `computeWigner` should also compute the derivative with
       respect to the `axis` using autodiff. Propagate and return this derivative.
 
@@ -127,6 +124,7 @@ inline void computeLinearModelInternal (
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
     RowMatrix<Scalar>& A,
+    RowMatrix<Scalar>& Dt,
     RowMatrix<Scalar>& Dtheta,
     RowMatrix<Scalar>& Dxo,
     RowMatrix<Scalar>& Dyo,
@@ -140,8 +138,14 @@ inline void computeLinearModelInternal (
     CHECK_SHAPE(zo, nt, 1);
     CHECK_SHAPE(ro, nt, 1);
 
-    // Pre-compute the Wigner matrices
-    computeWigner();
+    // Number of columns in `A`
+    int K = N;
+    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+        K *= ncoly;
+        Dt.resize(nt, K);
+    }
+
+    // \todo: Cache these
     RowVector<Scalar> rTA1RZetaInv(N);
     RowVector<Scalar> rTA1RZetaInvRz(N);
     RowVector<Scalar> rTA1RZetaInvDRzDtheta(N);
@@ -161,11 +165,18 @@ inline void computeLinearModelInternal (
     RowVector<Scalar> sTADRzDwRZetaInvRz(N);
     RowVector<Scalar> sTADRzDwRZetaInvRzRZeta(N);
 
+    // Pre-compute the Wigner matrices
+    computeWigner();
+
     W.leftMultiplyRZetaInv(B.rTA1, rTA1RZetaInv);
     Vector<Scalar> theta_rad = theta * radian;
 
-    // Our model matrix, f = A . y
-    A.resize(nt, N);
+    // Our model matrix, f = A . y, and its derivatives
+    A.resize(nt, K);
+    Dtheta.resize(nt, K);
+    Dxo.resize(nt, K);
+    Dyo.resize(nt, K);
+    Dro.resize(nt, K);
 
     // Loop over the timeseries and compute the model
     Scalar b, invb;
@@ -189,14 +200,26 @@ inline void computeLinearModelInternal (
             // Compute the Rz rotation matrix
             W.computeFourierTerms(cos(theta_rad(n)), sin(theta_rad(n)));
 
-            // Dot everything together to get the model
+            // Dot it in
             W.leftMultiplyRz(rTA1RZetaInv, rTA1RZetaInvRz);
-            W.leftMultiplyRZeta(rTA1RZetaInvRz, A.row(n));
+
+            // Transform back to the sky plane
+            W.leftMultiplyRZeta(rTA1RZetaInvRz, A.block(n, 0, 1, N));
 
             // Theta deriv
             W.leftMultiplyDRz(rTA1RZetaInv, rTA1RZetaInvDRzDtheta);
-            W.leftMultiplyRZeta(rTA1RZetaInvDRzDtheta, Dtheta.row(n));
-            Dtheta.row(n) *= radian;
+            W.leftMultiplyRZeta(rTA1RZetaInvDRzDtheta, Dtheta.block(n, 0, 1, N));
+            Dtheta.block(n, 0, 1, N) *= radian;
+
+            // Apply the Taylor expansion?
+            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+                Dt.block(n, 0, 1, N).setZero();
+                for (int i = 1; i < ncoly; ++i) {
+                    A.block(n, i * N, 1, N) = A.block(n, 0, 1, N) * taylor_matrix(n, i);
+                    Dt.block(n, i * N, 1, N) = A.block(n, 0, 1, N) * taylor_matrix(n, i - 1);
+                    Dtheta.block(n, i * N, 1, N) = Dtheta.block(n, 0, 1, N) * taylor_matrix(n, i);
+                } 
+            }
 
             // Occultor derivs are zero
             Dxo.row(n).setZero();
@@ -227,30 +250,45 @@ inline void computeLinearModelInternal (
             // Compute the Rz rotation matrix
             W.computeFourierTerms(cos(theta_rad(n)), sin(theta_rad(n)));
 
-            // Dot everything together to get the model
+            // Dot it in
             W.leftMultiplyRz(sTARzRZetaInv, sTARzRZetaInvRz);
-            W.leftMultiplyRZeta(sTARzRZetaInvRz, A.row(n));
+
+            // Transform back to the sky plane
+            W.leftMultiplyRZeta(sTARzRZetaInvRz, A.block(n, 0, 1, N));
 
             // Theta deriv
             W.leftMultiplyDRz(sTARzRZetaInv, sTARzRZetaInvDRzDtheta);
-            W.leftMultiplyRZeta(sTARzRZetaInvDRzDtheta, Dtheta.row(n));
-            Dtheta.row(n) *= radian;
+            W.leftMultiplyRZeta(sTARzRZetaInvDRzDtheta, Dtheta.block(n, 0, 1, N));
+            Dtheta.block(n, 0, 1, N) *= radian;
 
             // Radius deriv
             W.leftMultiplyRz(dsTdrARzRZetaInv, dsTdrARzRZetaInvRz);
-            W.leftMultiplyRZeta(dsTdrARzRZetaInvRz, Dro.row(n));
+            W.leftMultiplyRZeta(dsTdrARzRZetaInvRz, Dro.block(n, 0, 1, N));
 
             // xo and yo derivatives
             W.leftMultiplyRz(dsTdbARzRZetaInv, dsTdbARzRZetaInvRz);
-            W.leftMultiplyRZeta(dsTdbARzRZetaInvRz, Dxo.row(n));
-            Dyo.row(n) = Dxo.row(n);
-            Dxo.row(n) *= xo(n) * invb;
-            Dyo.row(n) *= yo(n) * invb;
+            W.leftMultiplyRZeta(dsTdbARzRZetaInvRz, Dxo.block(n, 0, 1, N));
+            Dyo.block(n, 0, 1, N) = Dxo.block(n, 0, 1, N);
+            Dxo.block(n, 0, 1, N) *= xo(n) * invb;
+            Dyo.block(n, 0, 1, N) *= yo(n) * invb;
             W.leftMultiplyRz(sTADRzDwRZetaInv, sTADRzDwRZetaInvRz);
             W.leftMultiplyRZeta(sTADRzDwRZetaInvRz, sTADRzDwRZetaInvRzRZeta);
             sTADRzDwRZetaInvRzRZeta *= invb * invb;
-            Dxo.row(n) += yo(n) * sTADRzDwRZetaInvRzRZeta;
-            Dyo.row(n) -= xo(n) * sTADRzDwRZetaInvRzRZeta;
+            Dxo.block(n, 0, 1, N) += yo(n) * sTADRzDwRZetaInvRzRZeta;
+            Dyo.block(n, 0, 1, N) -= xo(n) * sTADRzDwRZetaInvRzRZeta;
+
+            // Apply the Taylor expansion?
+            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+                Dt.block(n, 0, 1, N).setZero();
+                for (int i = 1; i < ncoly; ++i) {
+                    A.block(n, i * N, 1, N) = A.block(n, 0, 1, N) * taylor_matrix(n, i);
+                    Dt.block(n, i * N, 1, N) = A.block(n, 0, 1, N) * taylor_matrix(n, i - 1);
+                    Dtheta.block(n, i * N, 1, N) = Dtheta.block(n, 0, 1, N) * taylor_matrix(n, i);
+                    Dxo.block(n, i * N, 1, N) = Dxo.block(n, 0, 1, N) * taylor_matrix(n, i);
+                    Dyo.block(n, i * N, 1, N) = Dyo.block(n, 0, 1, N) * taylor_matrix(n, i);
+                    Dro.block(n, i * N, 1, N) = Dro.block(n, 0, 1, N) * taylor_matrix(n, i);
+                } 
+            }
 
         }
     }
