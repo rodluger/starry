@@ -1,116 +1,93 @@
 /**
-Compute the flux. Static specialization.
+Compute the linear Ylm model. Default / Spectral specialization.
 
 */
 template <
     typename U=S, 
     typename=IsDefaultOrSpectral<U>, 
-    typename=IsEmitted<U>, 
-    typename T1
+    typename=IsEmitted<U>
 >
-inline void computeFlux (
-    const Scalar& theta, 
-    const Scalar& xo, 
-    const Scalar& yo, 
-    const Scalar& zo, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux
+inline void computeLinearFluxModel (
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    RowMatrix<Scalar>& A
 ) {
-    computeFluxInternal(theta, xo, yo, zo, ro, flux);
+    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, A);
 }
 
 /**
-Compute the flux and its gradient. Static specialization.
+Compute the linear Ylm model and its gradient. Default / Spectral specialization.
 
 */
 template <
     typename U=S, 
-    typename=IsDefaultOrSpectral<U>,
-    typename=IsEmitted<U>,
-    typename T1, 
-    typename T2, 
-    typename T3, 
-    typename T4, 
-    typename T5, 
-    typename T6, 
-    typename T7
+    typename=IsDefaultOrSpectral<U>, 
+    typename=IsEmitted<U>
 >
-inline void computeFlux (
-    const Scalar& theta, 
-    const Scalar& xo, 
-    const Scalar& yo, 
-    const Scalar& zo, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux,
-    MatrixBase<T2> const & Dtheta,
-    MatrixBase<T3> const & Dxo,
-    MatrixBase<T4> const & Dyo,
-    MatrixBase<T5> const & Dro,
-    MatrixBase<T6> const & Dy,
-    MatrixBase<T7> const & Du
+inline void computeLinearFluxModel (
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    RowMatrix<Scalar>& A,
+    RowMatrix<Scalar>& Dtheta,
+    RowMatrix<Scalar>& Dxo,
+    RowMatrix<Scalar>& Dyo,
+    RowMatrix<Scalar>& Dro
 ) {
-    Matrix<Scalar> Dt(1, nflx);
-    computeFluxInternal(theta, xo, yo, zo, ro, flux, 
-                    Dt, Dtheta, Dxo, Dyo, Dro, Dy, Du);
+    RowMatrix<Scalar> Dt; // Dummy!
+    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, A, Dt, Dtheta, Dxo, Dyo, Dro);
 }
 
 /**
-Compute the flux. Temporal specialization.
+Compute the linear Ylm model. Temporal specialization.
 
 */
 template <
     typename U=S, 
     typename=IsTemporal<U>, 
-    typename=IsEmitted<U>,
-    typename T1
+    typename=IsEmitted<U>
 >
-inline void computeFlux (
-    const Scalar& t,
-    const Scalar& theta, 
-    const Scalar& xo, 
-    const Scalar& yo, 
-    const Scalar& zo, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux
+inline void computeLinearFluxModel (
+    const Vector<Scalar>& t,
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    RowMatrix<Scalar>& A
 ) {
     computeTaylor(t);
-    computeFluxInternal(theta, xo, yo, zo, ro, flux);
+    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, A);
 }
 
 /**
-Compute the flux and its gradient. Temporal specialization.
+Compute the linear Ylm model and its gradient. Temporal specialization.
 
 */
 template <
     typename U=S, 
-    typename=IsTemporal<U>,
-    typename=IsEmitted<U>,
-    typename T1, 
-    typename T2, 
-    typename T3, 
-    typename T4, 
-    typename T5, 
-    typename T6, 
-    typename T7, 
-    typename T8
+    typename=IsTemporal<U>, 
+    typename=IsEmitted<U>
 >
-inline void computeFlux (
-    const Scalar& t,
-    const Scalar& theta, 
-    const Scalar& xo, 
-    const Scalar& yo, 
-    const Scalar& zo, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux, 
-    MatrixBase<T2> const & Dt,
-    MatrixBase<T3> const & Dtheta,
-    MatrixBase<T4> const & Dxo,
-    MatrixBase<T5> const & Dyo,
-    MatrixBase<T6> const & Dro,
-    MatrixBase<T7> const & Dy,
-    MatrixBase<T8> const & Du
+inline void computeLinearFluxModel (
+    const Vector<Scalar>& t, 
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    RowMatrix<Scalar>& A,
+    RowMatrix<Scalar>& Dt,
+    RowMatrix<Scalar>& Dtheta,
+    RowMatrix<Scalar>& Dxo,
+    RowMatrix<Scalar>& Dyo,
+    RowMatrix<Scalar>& Dro
 ) {
     computeTaylor(t);
-    computeFluxInternal(theta, xo, yo, zo, ro, flux,
-                    Dt, Dtheta, Dxo, Dyo, Dro, Dy, Du);
+    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, A, Dt, Dtheta, Dxo, Dyo, Dro);
 }

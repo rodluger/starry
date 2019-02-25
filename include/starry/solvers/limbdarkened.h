@@ -1,5 +1,5 @@
 /**
-\file limbdark.h
+\file limbdarkened.h
 \brief Limb darkening utilities from Agol, Luger & Foreman-Mackey (2019).
 
 \todo Loop downward in `v` until `J[v] != 0`
@@ -12,9 +12,9 @@
 
 #include <iostream>
 #include <cmath>
-#include "utils.h"
-#include "ellip.h"
-#include "errors.h"
+#include "../utils.h"
+#include "../ellip.h"
+#include "../errors.h"
 
 
 namespace starry {

@@ -1,5 +1,5 @@
 /**
-\file solver.h
+\file emitted.h
 \brief Integration of the occulted portion of the map.
 
 Solutions to the surface integral over the visible region of a spherical 
@@ -10,9 +10,9 @@ harmonic map during a single-body occultation using Green's theorem.
 #ifndef _STARRY_SOLVER_H_
 #define _STARRY_SOLVER_H_
 
-#include "utils.h"
-#include "ellip.h"
-#include "errors.h"
+#include "../utils.h"
+#include "../ellip.h"
+#include "../errors.h"
 
 namespace starry {
 namespace solver {

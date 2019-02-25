@@ -1,5 +1,5 @@
 /**
-\file rotation.h
+\file wigner.h
 \brief Implements the spherical harmonic rotation matrices.
 
 These are adapted from the Fortran code of
@@ -13,13 +13,13 @@ from the Wigner-D matrices for complex spherical harmonics.
 
 */
 
-#ifndef _STARRY_ROT_H_
-#define _STARRY_ROT_H_
+#ifndef _STARRY_WIGNER_H_
+#define _STARRY_WIGNER_H_
 
 #include "utils.h"
 
 namespace starry {
-namespace rotation {
+namespace wigner {
 
 using namespace starry::utils;
 
@@ -298,79 +298,35 @@ inline void axisAngleToEuler (
 Rotation matrix class for the spherical harmonics.
 
 */
-template <class MapType>
+template <class Scalar>
 class Wigner {
 
 protected:
 
-    using Scalar = typename MapType::Scalar;
-
     const int lmax;                                                            /**< Highest degree of the map */
     const int N;                                                               /**< Number of map coefficients */
-    const int ncol;                                                            /**< Number of map columns */
-    const int nflx;                                                            /**< Number of contracted map columns */
     const Scalar tol;                                                          /**< Numerical tolerance used to prevent division-by-zero errors */
 
-    // References to the base map and the rotation axis
-    MapType& y;                                                                /**< Reference to the spherical harmonic map to be rotated */
-    UnitVector<Scalar>& axis;                                                  /**< Reference to the rotation axis */
-
+    // The rotation matrices
     std::vector<Matrix<Scalar>> DZeta;                                         /**< The complex Wigner matrix in the `zeta` frame */
     std::vector<Matrix<Scalar>> RZeta;                                         /**< The real Wigner matrix in the `zeta` frame */
     std::vector<Matrix<Scalar>> RZetaInv;                                      /**< The inverse of the real Wigner matrix in the `zeta` frame */
-    MapType y_zeta;                                                            /**< The base map in the `zeta` frame */
     
-    // Temporaries
-    MapType y_zeta_rot;                                                        /**< The base map in the `zeta` frame after a `zhat` rotation */
-    MapType y_rev;                                                             /**< Degree-wise reverse of the spherical harmonic map */
-    Matrix<Scalar> y_rev_ctr;                                                  /**< Degree-wise reverse of the contracted spherical harmonic map */
+    // Their derivatives
+    using ADType = ADScalar<Scalar, 2>;                                        /**< AutoDiffScalar type for derivs w.r.t. the rotation axis */
+    std::vector<Matrix<ADType>> DZeta_ad;                                      /**< [AutoDiffScalar] The complex Wigner matrix in the `zeta` frame */
+    std::vector<Matrix<ADType>> RZeta_ad;                                      /**< [AutoDiffScalar] The real Wigner matrix in the `zeta` frame */
+    std::vector<Matrix<Scalar>> DRZetaDtheta;
+    std::vector<Matrix<Scalar>> DRZetaInvDtheta;
+    std::vector<Matrix<Scalar>> DRZetaDphi;
+    std::vector<Matrix<Scalar>> DRZetaInvDphi;
+
     Vector<Scalar> cosmt;                                                      /**< Vector of cos(m theta) values */
     Vector<Scalar> sinmt;                                                      /**< Vector of sin(m theta) values */
     Vector<Scalar> cosnt;                                                      /**< Vector of cos(n theta) values */
     Vector<Scalar> sinnt;                                                      /**< Vector of sin(n theta) values */
 
-    // Methods
-    inline void computeZeta (
-        const Scalar& axis_x,
-        const Scalar& axis_y,
-        const Scalar& costheta,
-        const Scalar& sintheta
-    );
-
-    inline void rotatez (
-        const Scalar& costheta, 
-        const Scalar& sintheta,
-        const MapType& yin, 
-        MapType& yout
-    );
-
 public:
-
-    std::vector<Matrix<Scalar>> R;                                             /**< The full rotation matrix for real spherical harmonics */
-    std::vector<Matrix<Scalar>> DRDtheta;                                      /**< The derivative of the rotation matrix with respect to theta */
-    
-    inline void updateZeta ();
-
-    inline void updateYZeta ();
-
-    inline void rotate (
-        const Scalar& costheta, 
-        const Scalar& sintheta
-    );
-
-    inline void rotate (
-        const Scalar& costheta, 
-        const Scalar& sintheta,
-        MapType& yout
-    );
-
-    template <typename T1, typename T2>
-    inline void rotateAboutZ (
-        const Scalar& costheta, 
-        const Scalar& sintheta,
-        const MatrixBase<T1>& yin, 
-        MatrixBase<T2>& yout
-    );
 
     template <typename T1, typename T2>
     inline void leftMultiplyRz (
@@ -396,38 +352,43 @@ public:
         MatrixBase<T2> const & uT
     );
 
-    inline void resetRz ();
-
-    inline void computeFourierTerms (
-        const Scalar& costheta, 
-        const Scalar& sintheta
-    );
-
     inline void compute (
         const Scalar& costheta, 
         const Scalar& sintheta
     );
 
+    template <typename T1>
+    inline void rotate (
+        const MatrixBase<T1>& y,
+        const Scalar& costheta,
+        const Scalar& sintheta,
+        MatrixBase<T1>& Ry
+    );
+
+    inline void updateAxis (
+        const UnitVector<Scalar>& axis
+    );
+
+    inline void updateAxisAndGradient (
+        const UnitVector<Scalar>& axis
+    );
+
     Wigner(
         int lmax, 
-        int ncol, 
-        int nflx,
-        MapType& y, 
-        UnitVector<Scalar>& axis
+        const UnitVector<Scalar>& axis
     ) : 
         lmax(lmax), 
         N((lmax + 1) * (lmax + 1)), 
-        ncol(ncol),
-        nflx(nflx),
         tol(10 * mach_eps<Scalar>()), 
-        y(y), 
-        axis(axis),
         DZeta(lmax + 1),
         RZeta(lmax + 1),
         RZetaInv(lmax + 1),
-        y_zeta(N, ncol),
-        R(lmax + 1),
-        DRDtheta(lmax + 1)
+        DZeta_ad(lmax + 1),
+        RZeta_ad(lmax + 1),
+        DRZetaDtheta(lmax + 1),
+        DRZetaInvDtheta(lmax + 1),
+        DRZetaDphi(lmax + 1),
+        DRZetaInvDphi(lmax + 1)
     {
         // Allocate the Wigner matrices
         for (int l = 0; l < lmax + 1; ++l) {
@@ -435,8 +396,12 @@ public:
             DZeta[l].resize(sz, sz);
             RZeta[l].resize(sz, sz);
             RZetaInv[l].resize(sz, sz);
-            R[l].resize(sz, sz);
-            DRDtheta[l].resize(sz, sz);
+            DZeta_ad[l].resize(sz, sz);
+            RZeta_ad[l].resize(sz, sz);
+            DRZetaDphi[l].resize(sz, sz);
+            DRZetaInvDphi[l].resize(sz, sz);
+            DRZetaDtheta[l].resize(sz, sz);
+            DRZetaInvDtheta[l].resize(sz, sz);
         }
 
         // Initialize our z rotation vectors
@@ -446,105 +411,20 @@ public:
         sinnt(0) = 0.0;
         cosmt.resize(N);
         sinmt.resize(N);
-        y_rev.resize(N, ncol);
-        y_rev_ctr.resize(N, nflx);
+
+        // Update the Zeta matrices
+        updateAxis(axis);
     }
 
 };
-
-/**
-Rotate the base map about the current axis
-given `costheta` and `sintheta`
-
-*/
-template <class MapType>
-inline void Wigner<MapType>::rotate (
-    const Scalar& costheta,
-    const Scalar& sintheta,
-    MapType& yout
-) {
-    // Rotate `yzeta` about `zhat` and store in `yzeta_rot`
-    rotatez(costheta, sintheta, y_zeta, y_zeta_rot);
-
-    // Rotate out of the `zeta` frame
-    for (int l = 0; l < lmax + 1; l++) {
-        yout.block(l * l, 0, 2 * l + 1, ncol) =
-            RZetaInv[l] * y_zeta_rot.block(l * l, 0, 2 * l + 1, ncol);
-    }
-}
-
-/**
-Rotate the base map *in place* about the current axis
-given `costheta` and `sintheta`.
-
-*/
-template <class MapType>
-inline void Wigner<MapType>::rotate (
-    const Scalar& costheta,
-    const Scalar& sintheta
-) {
-    rotate(costheta, sintheta, y);
-    for (int l = 0; l < lmax + 1; ++l) {
-        y_zeta.block(l * l, 0, 2 * l + 1, ncol) =
-            RZeta[l] * y.block(l * l, 0, 2 * l + 1, ncol);
-    }
-}
-
-
-/**
-Perform a fast rotation about the z axis, skipping the Wigner matrix computation.
-See https://github.com/rodluger/starry/issues/137#issuecomment-405975092
-This is the user-facing version of the `computez` method below.
-
-*/
-template <class MapType>
-template <typename T1, typename T2>
-inline void Wigner<MapType>::rotateAboutZ (
-    const Scalar& costheta,
-    const Scalar& sintheta,
-    const MatrixBase<T1>& yin, 
-    MatrixBase<T2>& yout
-) {
-    cosnt(1) = costheta;
-    sinnt(1) = sintheta;
-    for (int n = 2; n < lmax + 1; ++n) {
-        cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
-        sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
-    }
-    int n = 0;
-    for (int l = 0; l < lmax + 1; ++l) {
-        for (int m = -l; m < 0; ++m) {
-            cosmt(n) = cosnt(-m);
-            sinmt(n) = -sinnt(-m);
-            y_rev_ctr.row(n) = yin.row(l * l + l - m);
-            ++n;
-        }
-        for (int m = 0; m < l + 1; ++m) {
-            cosmt(n) = cosnt(m);
-            sinmt(n) = sinnt(m);
-            y_rev_ctr.row(n) = yin.row(l * l + l - m);
-            ++n;
-        }
-    }
-    yout = (
-        yin.transpose().array().rowwise() * cosmt.array().transpose() -
-        y_rev_ctr.transpose().array().rowwise() * sinmt.array().transpose()
-    ).transpose();
-}
-
-template <class MapType>
-inline void Wigner<MapType>::resetRz () {
-    cosmt.setOnes();
-    sinmt.setZero();
-}
 
 /* 
 Computes the dot product uT = vT . Rz.
 
 */
-template <class MapType>
+template <class Scalar>
 template <typename T1, typename T2>
-inline void Wigner<MapType>::leftMultiplyRz (
+inline void Wigner<Scalar>::leftMultiplyRz (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
@@ -560,9 +440,9 @@ inline void Wigner<MapType>::leftMultiplyRz (
 Computes the dot product uT = vT . dRz / dtheta.
 
 */
-template <class MapType>
+template <class Scalar>
 template <typename T1, typename T2>
-inline void Wigner<MapType>::leftMultiplyDRz (
+inline void Wigner<Scalar>::leftMultiplyDRz (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
@@ -579,9 +459,9 @@ inline void Wigner<MapType>::leftMultiplyDRz (
 Computes the dot product uT = vT . RZeta.
 
 */
-template <class MapType>
+template <class Scalar>
 template <typename T1, typename T2>
-inline void Wigner<MapType>::leftMultiplyRZeta (
+inline void Wigner<Scalar>::leftMultiplyRZeta (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
@@ -595,9 +475,9 @@ inline void Wigner<MapType>::leftMultiplyRZeta (
 Computes the dot product uT = vT . RZetaInv.
 
 */
-template <class MapType>
+template <class Scalar>
 template <typename T1, typename T2>
-inline void Wigner<MapType>::leftMultiplyRZetaInv (
+inline void Wigner<Scalar>::leftMultiplyRZetaInv (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
@@ -607,8 +487,8 @@ inline void Wigner<MapType>::leftMultiplyRZetaInv (
     }
 }
 
-template <class MapType>
-inline void Wigner<MapType>::computeFourierTerms (
+template <class Scalar>
+inline void Wigner<Scalar>::compute (
     const Scalar& costheta,
     const Scalar& sintheta
 ) {
@@ -635,76 +515,36 @@ inline void Wigner<MapType>::computeFourierTerms (
 }
 
 /**
-Explicitly compute the full rotation matrix and its derivative.
-The full rotation matrix is factored as
+Rotates a spherical harmonic vector `y`. 
+Returns the rotated vector `R(theta) . y`.
 
-    R = RZetaInv . Rz . RZeta
-
-where Rz has the form
-
-        ...                             ...
-            C3                      S3
-                C2              S2
-                    C1      S1
-                         1
-                    -S1      C1
-                -S2              C2
-            -S3                      C3
-        ...                             ...
-
-with CX = cos(X theta) and SX = sin(X theta). The derivative of R with
-respect to theta is
-
-    dR/Dtheta = RZetaInv . dRz/Dtheta . RZeta
-
-where dRz/Dtheta has the form
-
-        ...                                 ...
-            -3 S3                      3 C3
-                -2 S2             2 C2
-                      -S1      C1
-                           0
-                    -C1      -S1
-                -2 C2             -2 S2
-            -3 C3                      -3 S3
-        ...                                 ...
+\todo Untested!
 
 */
-template <class MapType>
-inline void Wigner<MapType>::compute (
+template <class Scalar>
+template <typename T1>
+inline void Wigner<Scalar>::rotate (
+    const MatrixBase<T1>& y,
     const Scalar& costheta,
-    const Scalar& sintheta
+    const Scalar& sintheta,
+    MatrixBase<T1>& Ry
 ) {
-
-    // Compute the cos and sin vectors for the zhat rotation
-    computeFourierTerms(costheta, sintheta);
-
-    // Now compute the full rotation matrix
-    int m;
-    for (int l = 0; l < lmax + 1; ++l) {
-        for (int j = 0; j < 2 * l + 1; ++j) {
-            m = j - l;
-            R[l].col(j) = RZetaInv[l].col(j) * cosmt(l * l + j) +
-                          RZetaInv[l].col(2 * l - j) * sinmt(l * l + j);
-            DRDtheta[l].col(j) = RZetaInv[l].col(2 * l - j) * m * cosmt(l * l + j) -
-                                 RZetaInv[l].col(j) * m * sinmt(l * l + j);
-        }
-        R[l] = R[l] * RZeta[l];
-        DRDtheta[l] = DRDtheta[l] * RZeta[l];
-    }
-
+    compute(costheta, -sintheta);
+    leftMultiplyRZetaInv(y.transpose(), Ry.transpose());
+    leftMultiplyRz(y.transpose(), Ry.transpose());
+    leftMultiplyRZeta(y.transpose(), Ry.transpose());
 }
 
 /**
 Update the zeta rotation matrix.
 
 */
-template <class MapType>
-inline void Wigner<MapType>::updateZeta () 
+template <class Scalar>
+inline void Wigner<Scalar>::updateAxis (
+    const UnitVector<Scalar>& axis
+) 
 {
     // Compute the rotation transformation into and out of the `zeta` frame
-    Scalar cos_zeta = axis(2);
-    Scalar sin_zeta = sqrt(1 - axis(2) * axis(2));
     Scalar norm = sqrt(axis(0) * axis(0) + axis(1) * axis(1));
     if (abs(norm) < tol) {
         // The rotation axis is zhat, so our zeta transform
@@ -718,104 +558,108 @@ inline void Wigner<MapType>::updateZeta ()
                 RZetaInv[l] = -Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
             }
         }
-    } else {
-        // We need to compute the actual Wigner matrices
-        Scalar axis_x = axis(1) / norm;
-        Scalar axis_y = -axis(0) / norm;
-        computeZeta(axis_x, axis_y, cos_zeta, sin_zeta);
-    }
-}
-
-/**
-Update the base map in the zeta frame.
-
-*/
-template <class MapType>
-inline void Wigner<MapType>::updateYZeta () 
-{
-    // Update the map in the `zeta` frame
-    for (int l = 0; l < lmax + 1; ++l) {
-        y_zeta.block(l * l, 0, 2 * l + 1, ncol) =
-            RZeta[l] * y.block(l * l, 0, 2 * l + 1, ncol);
-    }
-}
-
-
-
-/**
-Perform a fast rotation about the z axis, skipping the Wigner matrix computation.
-See https://github.com/rodluger/starry/issues/137#issuecomment-405975092
-
-*/
-template <class MapType>
-inline void Wigner<MapType>::rotatez (
-    const Scalar& costheta,
-    const Scalar& sintheta,
-    const MapType& yin, 
-    MapType& yout
-) {
-    cosnt(1) = costheta;
-    sinnt(1) = sintheta;
-    for (int n = 2; n < lmax + 1; ++n) {
-        cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
-        sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
-    }
-    int n = 0;
-    for (int l = 0; l < lmax + 1; ++l) {
-        for (int m = -l; m < 0; ++m) {
-            cosmt(n) = cosnt(-m);
-            sinmt(n) = -sinnt(-m);
-            y_rev.row(n) = yin.row(l * l + l - m);
-            ++n;
-        }
-        for (int m = 0; m < l + 1; ++m) {
-            cosmt(n) = cosnt(m);
-            sinmt(n) = sinnt(m);
-            y_rev.row(n) = yin.row(l * l + l - m);
-            ++n;
-        }
-    }
-    yout = (
-        yin.transpose().array().rowwise() * cosmt.array().transpose() -
-        y_rev.transpose().array().rowwise() * sinmt.array().transpose()
-    ).transpose();
-}
-
-/**
-Compute the axis-angle rotation matrix for real spherical 
-harmonics up to order lmax.
-
-*/
-template <class MapType>
-inline void Wigner<MapType>::computeZeta (
-    const Scalar& axis_x,
-    const Scalar& axis_y,
-    const Scalar& costheta,
-    const Scalar& sintheta
-) {
-    // Trivial case
-    if (lmax == 0) {
+    } else if (lmax == 0) {
+        // Trivial case
         RZeta[0](0, 0) = 1;
         RZetaInv[0](0, 0) = 1;
-        return;
+    } else {
+        // We need to compute the actual Wigner matrices
+        Scalar coszeta = axis(2);
+        Scalar sinzeta = sqrt(1 - axis(2) * axis(2));
+        Scalar axis_x = axis(1) / norm;
+        Scalar axis_y = -axis(0) / norm;
+        
+        // Get Euler angles
+        Scalar cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
+        axisAngleToEuler(axis_x, axis_y, coszeta, sinzeta, tol,
+                         cosalpha, sinalpha, cosbeta, sinbeta, 
+                         cosgamma, singamma);
+
+        // Call the Eulerian rotation function
+        rotar(lmax, cosalpha, sinalpha, cosbeta, sinbeta, 
+              cosgamma, singamma, tol, DZeta, RZeta);
+
+        // Compute the inverse transform (trivial!)
+        for (int l = 0; l < lmax + 1; ++l)
+            RZetaInv[l] = RZeta[l].transpose();
     }
-
-    // Get Euler angles
-    Scalar cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
-    axisAngleToEuler(axis_x, axis_y, costheta, sintheta, tol,
-                     cosalpha, sinalpha, cosbeta, sinbeta, 
-                     cosgamma, singamma);
-
-    // Call the eulerian rotation function
-    rotar(lmax, cosalpha, sinalpha, cosbeta, sinbeta, 
-          cosgamma, singamma, tol, DZeta, RZeta);
-
-    // Compute the inverse transform (trivial!)
-    for (int l = 0; l < lmax + 1; ++l)
-        RZetaInv[l] = RZeta[l].transpose();
 }
 
-} // namespace rotation
+/**
+Update the zeta rotation matrix and compute its gradient
+with respect to the axis of rotation.
+
+*/
+template <class Scalar>
+inline void Wigner<Scalar>::updateAxisAndGradient (
+    const UnitVector<Scalar>& axis
+) 
+{
+    // Compute the rotation transformation into and out of the `zeta` frame
+    Scalar norm = sqrt(axis(0) * axis(0) + axis(1) * axis(1));
+    if (abs(norm) < tol) {
+        // The rotation axis is zhat, so our zeta transform
+        // is just the identity matrix.
+        for (int l = 0; l < lmax + 1; l++) {
+            if (axis(2) > 0) {
+                RZeta[l] = Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
+                RZetaInv[l] = Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
+            } else {
+                RZeta[l] = -Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
+                RZetaInv[l] = -Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
+            }
+            DRZetaDphi[l].setZero();
+            DRZetaInvDphi[l].setZero();
+        }
+    } else if (lmax == 0) {
+        // Trivial case
+        RZeta[0](0, 0) = 1;
+        RZetaInv[0](0, 0) = 1;
+    } else {
+        // We need to compute the actual Wigner matrices
+        ADType theta = atan2(norm, axis(2));
+        theta.derivatives() = Vector<Scalar>::Unit(2, 0);
+        ADType phi = atan2(axis(1) / norm, axis(0) / norm);
+        phi.derivatives() = Vector<Scalar>::Unit(2, 1);
+        
+        // Get Euler angles
+        ADType tol_ad = tol;
+        ADType cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
+
+        ADType arg0 = sin(phi),
+               arg1 = -cos(phi),
+               arg2 = cos(theta),
+               arg3 = sin(theta);
+        axisAngleToEuler(arg0, arg1, arg2, arg3, tol_ad,
+                         cosalpha, sinalpha, cosbeta, sinbeta, 
+                         cosgamma, singamma);
+
+        // Call the Rulerian rotation function
+        rotar(lmax, cosalpha, sinalpha, cosbeta, sinbeta, 
+              cosgamma, singamma, tol_ad, DZeta_ad, RZeta_ad);
+
+        // Extract the matrices and their derivatives
+        for (int l = 0; l < lmax + 1; ++l) {
+            // \todo This data copy is *very* slow
+            for (int i = 0; i < 2 * l + 1; ++i) {
+                for (int j = 0; j < 2 * l + 1; ++j) {
+                    RZeta[l](i, j) = RZeta_ad[l](i, j).value();
+                    DRZetaDtheta[l](i, j) = RZeta_ad[l](i, j).derivatives()(0);
+                    DRZetaDphi[l](i, j) = RZeta_ad[l](i, j).derivatives()(1);
+                }
+            }
+            RZetaInv[l] = RZeta[l].transpose();
+            DRZetaInvDtheta[l] = DRZetaDtheta[l].transpose();
+            DRZetaInvDphi[l] = DRZetaDphi[l].transpose();
+        }
+
+        // \todo DRZetaDx = DRZetaDtheta * DthetaDx + DRZetaDphi * DthetaDphi
+        //       and so forth. Implement all the necessary `leftMultiply` funcs
+
+    }
+}
+
+} // namespace wigner
 } // namespace starry
 
 #endif

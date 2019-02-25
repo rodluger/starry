@@ -5,44 +5,16 @@ and all cached variables.
 */
 inline void reset () 
 {
-    // Reset the cache
-    cache.reset();
-
     // Reset Ylms
-    y.setZero(N, ncoly);
-    y_deg = 0;
+    y.setZero();
 
     // Reset limb darkening
-    u.setZero(lmax + 1, ncolu);
+    u.setZero();
     setU0();
-    u_deg = 0;
 
     // Reset the axis
     axis = yhat<Scalar>();
 }
-
-/**
-Return the current highest spherical 
-harmonic degree of the map.
-
-*/
-inline int getYDeg ()
-{
-    computeDegree();
-    return y_deg;
-}
-
-/**
-Return the current highest limb darkening
-degree of the map.
-
-*/
-inline int getUDeg ()
-{
-    computeDegree();
-    return u_deg;
-}
-
 
 /**
 Rotate the map *in place* by an angle `theta`.
@@ -53,9 +25,8 @@ inline void rotate (
 ) 
 {
     Scalar theta_rad = theta * radian;
-    computeWigner();
-    W.rotate(cos(theta_rad), sin(theta_rad));
-    cache.mapRotated();
+    YType y_in = y;
+    W.rotate(y_in, cos(theta_rad), sin(theta_rad), y);
 }
 
 /**
@@ -71,8 +42,8 @@ inline void addSpot (
 ) {
     // Default degree is max degree
     if (l < 0) 
-        l = lmax;
-    if (l > lmax) 
+        l = ydeg;
+    if (l > ydeg) 
         throw errors::ValueError("Invalid value for `l`.");
 
     // Compute the integrals recursively
@@ -108,14 +79,13 @@ inline void addSpot (
         coeff.row(n * n + n) = 0.25 * amp * sqrt(2 * n + 1) * (IP(n) / IP(0));
 
     // Rotate the spot to the correct lat/lon
-    // TODO: Speed this up with a single compound rotation
+    // \todo Speed this up with a single compound rotation
     Scalar lat_rad = lat * radian;
     Scalar lon_rad = lon * radian;
     rotateByAxisAngle(xhat<Scalar>(), cos(lat_rad), -sin(lat_rad), coeff);
     rotateByAxisAngle(yhat<Scalar>(), cos(lon_rad), sin(lon_rad), coeff);
 
     // Add this to the map
-    cache.yChanged();
     y += coeff;
 }
 

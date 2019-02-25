@@ -1,560 +1,357 @@
 /**
-Compute the flux. Internal method.
+Compute the linear spherical harmonic model for default / spectral maps
+in emitted light. Internal method.
+
+\todo We need to think about caching some of these rotations.
+
 
 */
-template <typename T1>
-inline void computeFluxInternal (
-    const Scalar& theta, 
-    const Scalar& xo, 
-    const Scalar& yo, 
-    const Scalar& zo, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux
+inline void computeLinearFluxModelInternal (
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    RowMatrix<Scalar>& X
 ) {
+
     // Shape checks
-    CHECK_SHAPE(flux, 1, nflx);
+    size_t nt = theta.rows();
+    CHECK_SHAPE(xo, nt, 1);
+    CHECK_SHAPE(yo, nt, 1);
+    CHECK_SHAPE(zo, nt, 1);
+    CHECK_SHAPE(ro, nt, 1);
 
-    // Figure out the degree of the map
-    computeDegree();
+    // Convert to radians
+    Vector<Scalar> theta_rad = theta * radian;
 
-    // Impact parameter
-    Scalar b = sqrt(xo * xo + yo * yo);
+    // \todo: Cache these
+    RowVector<Scalar> rTA1RZetaInv(Ny);
+    RowVector<Scalar> rTA1RZetaInvRz(Ny);
+    RowVector<Scalar> sTA(Ny);
+    RowVector<Scalar> sTARz(Ny);
+    RowVector<Scalar> sTARzRZetaInv(Ny);
+    RowVector<Scalar> sTARzRZetaInvRz(Ny);
+    Matrix<Scalar> LA1;
+    Eigen::SparseMatrix<Scalar> A2LA1;
+    RowVector<Scalar> rTLA1;
 
-    // Check for complete occultation
-    if (b <= ro - 1) {
-        MBCAST(flux, T1).setZero();
-        return;
+    // Pre-compute the limb darkening operator (\todo: cache it)
+    if (udeg > 0) {
+        UType tmp = B.U1 * u;
+        Scalar norm = pi<Scalar>() * y(0) / B.rT.dot(tmp);
+        Vector<Scalar> pu = tmp * norm;
+        Matrix<Scalar> L;
+        Vector<Matrix<Scalar>> dLdp; // not used
+        computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
+        LA1 = (L * B.big.A1);
+        A2LA1 = (B.big.A2 * LA1).sparseView();
+        rTLA1 = B.big.rT * LA1;
     }
+    Eigen::SparseMatrix<Scalar>& A = (udeg > 0) ? A2LA1 : B.A;
+    RowVector<Scalar>& rTA1 = (udeg > 0) ? rTLA1 : B.rTA1;
 
-    // Compute the flux
-    if (y_deg == 0) {
-        computeFluxLD(zo, b, ro, flux);
-    } else if (u_deg == 0) {
-        computeFluxYlm(theta, xo, yo, zo, b, ro, flux);
-    } else {
-        computeFluxYlmLD(theta, xo, yo, zo, b, ro, flux);
-    }
-}
+    // Pre-compute the rotation
+    W.leftMultiplyRZetaInv(rTA1, rTA1RZetaInv);
 
-/**
-Compute the flux for a limb-darkened map. Internal method.
+    // Our model matrix, f = A . y
+    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value)
+        X.resize(nt, Ny * ncoly);
+    else
+        X.resize(nt, Ny);
 
-*/
-template <typename T1>
-inline void computeFluxLD (
-    const Scalar& zo, 
-    const Scalar& b, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux
-) {
-    // No occultation
-    if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
+    // Loop over the timeseries and compute the model
+    Scalar b, invb;
+    for (size_t n = 0; n < nt; ++n) {
 
-        // Easy: the disk-integrated intensity
-        // is just the Y_{0,0} coefficient
-        MBCAST(flux, T1) = contract(y.row(0));
+        // Impact parameter
+        b = sqrt(xo(n) * xo(n) + yo(n) * yo(n));
 
-    // Occultation
-    } else {
+        // Complete occultation?
+        if (b <= ro(n) - 1) {
 
-        // Compute the Agol `s` vector
-        L.compute(b, ro);
+            X.row(n).setZero();
 
-        // Compute the Agol `g` basis
-        computeAgolGBasis();
+        // No occultation
+        } else if ((zo(n) < 0) || (b >= 1 + ro(n)) || (ro(n) <= 0.0)) {
 
-        // Normalize by y00
-        UCoeffType norm = contract(y.row(0));
+            // Compute the Rz rotation matrix
+            W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
 
-        // Dot the integral solution in, and we're done!
-        MBCAST(flux, T1) = (L.sT * cache.g).cwiseProduct(norm);
+            // Dot it in
+            W.leftMultiplyRz(rTA1RZetaInv, rTA1RZetaInvRz);
 
-    }
-}
+            // Transform back to the sky plane and we're done
+            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+                W.leftMultiplyRZeta(rTA1RZetaInvRz, X.block(n, 0, 1, Ny));
+                for (int i = 1; i < ncoly; ++i) {
+                    X.block(n, i * Ny, 1, Ny) = X.block(n, 0, 1, Ny) * taylor(n, i);
+                }
+            } else {
+                W.leftMultiplyRZeta(rTA1RZetaInvRz, X.row(n));
+            }
 
-/**
-Compute the flux for a spherical harmonic map. Internal method.
-
-*/
-template <typename T1>
-inline void computeFluxYlm (
-    const Scalar& theta,
-    const Scalar& xo,
-    const Scalar& yo,  
-    const Scalar& zo, 
-    const Scalar& b, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux
-) {
-    // Rotate the map into view
-    rotateIntoCache(theta);
-
-    // No occultation
-    if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
-
-        // Easy
-        MBCAST(flux, T1) = B.rTA1 * cache.Ry;
-
-    // Occultation
-    } else {
-
-        // Compute the solution vector
-        G.compute(b, ro);
-
-        // Rotate the occultor onto the y axis if needed
-        // and dot the solution vector into the map
-        // Recall that f = sTARRy!
-        if (likely((b > 0) && ((xo != 0) || (yo < 0)))) {
-            W.rotateAboutZ(yo / b, xo / b, cache.Ry, cache.RRy);
-            MBCAST(flux, T1) = G.sT * B.A * cache.RRy;
+        // Occultation
         } else {
-            MBCAST(flux, T1) = G.sT * B.A * cache.Ry;
-        }
 
+            // Compute the solution vector
+            G.compute(b, ro(n));
+            invb = Scalar(1.0) / b;
+
+            // Compute the occultor rotation matrix Rz
+            W.compute(yo(n) * invb, xo(n) * invb);
+
+            // Dot stuff in
+            sTA = G.sT * A;
+            W.leftMultiplyRz(sTA, sTARz);
+            W.leftMultiplyRZetaInv(sTARz, sTARzRZetaInv);
+
+            // Compute the Rz rotation matrix
+            W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
+
+            // Dot it in
+            W.leftMultiplyRz(sTARzRZetaInv, sTARzRZetaInvRz);
+
+            // Transform back to the sky plane and we're done
+            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+                W.leftMultiplyRZeta(sTARzRZetaInvRz, X.block(n, 0, 1, Ny));
+                for (int i = 1; i < ncoly; ++i) {
+                    X.block(n, i * Ny, 1, Ny) = X.block(n, 0, 1, Ny) * taylor(n, i);
+                }
+            } else {
+                W.leftMultiplyRZeta(sTARzRZetaInvRz, X.row(n));
+            }
+
+        }
     }
+
 }
 
 /**
-Compute the flux for a limb-darkened spherical harmonic map. Internal method.
+Compute the linear spherical harmonic model and its gradient. Internal method.
+
+\todo Call to `computeW` should also compute the derivative with
+      respect to the `axis` using autodiff. Propagate and return this derivative.
 
 */
-template <typename T1>
-inline void computeFluxYlmLD (
-    const Scalar& theta,
-    const Scalar& xo,
-    const Scalar& yo,  
-    const Scalar& zo, 
-    const Scalar& b, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux
+inline void computeLinearFluxModelInternal (
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    RowMatrix<Scalar>& X,
+    RowMatrix<Scalar>& Dt,
+    RowMatrix<Scalar>& Dtheta,
+    RowMatrix<Scalar>& Dxo,
+    RowMatrix<Scalar>& Dyo,
+    RowMatrix<Scalar>& Dro
+    // TODO: Du, Daxis
 ) {
-    // Rotate the map into view
-    rotateIntoCache(theta);
 
-    // No occultation
-    if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
+    /* \todo
 
-        // Change basis to polynomials
-        cache.A1Ry = B.A1 * cache.Ry;
-
-        // Apply limb darkening
-        limbDarken(cache.A1Ry, cache.pupy);
-
-        // Dot the rotation solution vector in
-        MBCAST(flux, T1) = B.rT * cache.pupy;
-
-    // Occultation
-    } else {
-
-        // Compute the solution vector
-        G.compute(b, ro);
-
-        // Rotate the occultor onto the y axis if needed
-        // and change basis to polynomials so we can
-        // apply the limb darkening
-        if (likely((b > 0) && ((xo != 0) || (yo < 0)))) {
-            W.rotateAboutZ(yo / b, xo / b, cache.Ry, cache.RRy);
-            cache.A1Ry = B.A1 * cache.RRy;
-        } else {
-            cache.A1Ry = B.A1 * cache.Ry;
-        }
-
-        // Apply limb darkening
-        limbDarken(cache.A1Ry, cache.pupy);
-
-        // Transform to the Greens basis and dot the solution in
-        MBCAST(flux, T1) = G.sT * B.A2 * cache.pupy;
-
-    }
-}
-
-/**
-Compute the flux and the gradient. Internal method.
-
-*/
-template <typename T1, typename T2, typename T3, typename T4, 
-          typename T5, typename T6, typename T7, typename T8>
-inline void computeFluxInternal (
-    const Scalar& theta, 
-    const Scalar& xo, 
-    const Scalar& yo, 
-    const Scalar& zo, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux, 
-    MatrixBase<T2> const & Dt,
-    MatrixBase<T3> const & Dtheta,
-    MatrixBase<T4> const & Dxo,
-    MatrixBase<T5> const & Dyo,
-    MatrixBase<T6> const & Dro,
-    MatrixBase<T7> const & Dy,
-    MatrixBase<T8> const & Du
-) {
     // Shape checks
-    CHECK_SHAPE(flux, 1, nflx);
-    CHECK_SHAPE(Dt, 1, nflx);
-    CHECK_SHAPE(Dtheta, 1, nflx);
-    CHECK_SHAPE(Dxo, 1, nflx);
-    CHECK_SHAPE(Dyo, 1, nflx);
-    CHECK_SHAPE(Dro, 1, nflx);
-    CHECK_COLS(Dy, ncoly);
-    CHECK_COLS(Du, ncolu);
+    size_t nt = theta.rows();
+    CHECK_SHAPE(xo, nt, 1);
+    CHECK_SHAPE(yo, nt, 1);
+    CHECK_SHAPE(zo, nt, 1);
+    CHECK_SHAPE(ro, nt, 1);
 
-    // Figure out the degree of the map
-    computeDegree();
+    // Convert to radians
+    Vector<Scalar> theta_rad = theta * radian;
 
-    // Impact parameter
-    Scalar b = sqrt(xo * xo + yo * yo);
-
-    // Check for complete occultation
-    if (b <= ro - 1) {
-        MBCAST(flux, T1).setZero();
-        MBCAST(Dt, T2).setZero();
-        MBCAST(Dtheta, T3).setZero();
-        MBCAST(Dxo, T4).setZero();
-        MBCAST(Dyo, T5).setZero();
-        MBCAST(Dro, T6).setZero();
-        MBCAST(Dy, T7).setZero();
-        MBCAST(Du, T8).setZero();
-        return;
+    // Number of columns in `A`
+    int K = Ny;
+    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+        K *= ncoly;
+        Dt.resize(nt, K);
     }
 
-    // Compute the flux
-    if (y_deg == 0) {
-        CHECK_ROWS(Du, lmax + STARRY_DFDU_DELTA);
-        computeFluxLD(xo, yo, zo, b, ro, flux, Dt, 
-                      Dtheta, Dxo, Dyo, Dro, Dy, Du);
-    } else if (u_deg == 0) {
-        CHECK_ROWS(Dy, N);
-        computeFluxYlm(theta, xo, yo, zo, b, ro, flux, Dt, 
-                       Dtheta, Dxo, Dyo, Dro, Dy, Du);
-    } else {
-        CHECK_ROWS(Dy, N);
-        CHECK_ROWS(Du, lmax + STARRY_DFDU_DELTA);
-        computeFluxYlmLD(theta, xo, yo, zo, b, ro, flux, Dt, 
-                         Dtheta, Dxo, Dyo, Dro, Dy, Du);
-    }
-}
+    // \todo: Cache these
+    RowVector<Scalar> rTA1RZetaInv(Ny);
+    RowVector<Scalar> rTA1RZetaInvRz(Ny);
+    RowVector<Scalar> rTA1RZetaInvDRzDtheta(Ny);
+    RowVector<Scalar> sTA(Ny);
+    RowVector<Scalar> dsTdrA(Ny);
+    RowVector<Scalar> dsTdbA(Ny);
+    RowVector<Scalar> sTARz(Ny);
+    RowVector<Scalar> dsTdrARz(Ny);
+    RowVector<Scalar> dsTdbARz(Ny);
+    RowVector<Scalar> sTADRzDw(Ny);
+    RowVector<Scalar> sTARzRZetaInv(Ny);
+    RowVector<Scalar> dsTdrARzRZetaInv(Ny);
+    RowVector<Scalar> dsTdbARzRZetaInv(Ny);
+    RowVector<Scalar> sTADRzDwRZetaInv(Ny);
+    RowVector<Scalar> sTARzRZetaInvRz(Ny);
+    RowVector<Scalar> sTARzRZetaInvDRzDtheta(Ny);
+    RowVector<Scalar> dsTdrARzRZetaInvRz(Ny);
+    RowVector<Scalar> dsTdbARzRZetaInvRz(Ny);
+    RowVector<Scalar> sTADRzDwRZetaInvRz(Ny);
+    RowVector<Scalar> sTADRzDwRZetaInvRzRZeta(Ny);
 
-/**
-Compute the flux and the gradient for a limb-darkened map. Internal method.
+    // Pre-compute the limb darkening matrix
+    UType tmp = B.U1 * u;
+    Scalar norm = pi<Scalar>() * y(0) / B.rT.dot(tmp);
+    Vector<Scalar> pu = tmp * norm;
+    Matrix<Scalar> L;
+    Vector<Matrix<Scalar>> dLdp;
+    computePolynomialProductMatrix<true>(udeg, pu, L, dLdp);
+    Matrix<Scalar> LA1 = (L * B.A1).block(0, 0, Ny, Ny);
+    Matrix<Scalar> A2LA1 = B.A2 * LA1;
 
-*/
-template <typename T1, typename T2, typename T3, typename T4, 
-          typename T5, typename T6, typename T7, typename T8>
-inline void computeFluxLD (
-    const Scalar& xo, 
-    const Scalar& yo, 
-    const Scalar& zo, 
-    const Scalar& b, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux, 
-    MatrixBase<T2> const & Dt,
-    MatrixBase<T3> const & Dtheta,
-    MatrixBase<T4> const & Dxo,
-    MatrixBase<T5> const & Dyo,
-    MatrixBase<T6> const & Dro,
-    MatrixBase<T7> const & Dy,
-    MatrixBase<T8> const & Du
-) {
+    // Limb darkening derivatives (TODO)
+    //Matrix<Scalar> dLdu1 = (dLdp[0] * B.U);
+    //RowMatrix<Scalar> Du1;
+    //Du1.resize(nt, K);
 
-    // No occultation
-    if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
+    // Pre-compute the W matrices
+    if (udeg == 0)
+        W.leftMultiplyRZetaInv(B.rTA1, rTA1RZetaInv);
+    else
+        W.leftMultiplyRZetaInv((B.rT * LA1).eval(), rTA1RZetaInv);
 
-        // Most of the derivs are zero
-        MBCAST(Dtheta, T3).setZero();
-        MBCAST(Dxo, T4).setZero();
-        MBCAST(Dyo, T5).setZero();
-        MBCAST(Dro, T6).setZero();
-        MBCAST(Du, T8).setZero();
+    // Our model matrix, f = A . y, and its derivatives
+    X.resize(nt, K);
+    Dtheta.resize(nt, K);
+    Dxo.resize(nt, K);
+    Dyo.resize(nt, K);
+    Dro.resize(nt, K);
 
-        // dF / Dy
-        computeDfDyLDNoOccultation(Dy);
+    // Loop over the timeseries and compute the model
+    Scalar b, invb;
+    for (size_t n = 0; n < nt; ++n) {
 
-        // dF / Dt
-        computeDfDtLDNoOccultation(Dt);
-        
-        // The disk-integrated intensity
-        // is just the Y_{0,0} coefficient
-        MBCAST(flux, T1) = contract(y.row(0));
+        // Impact parameter
+        b = sqrt(xo(n) * xo(n) + yo(n) * yo(n));
 
-    // Occultation
-    } else {
+        // Complete occultation?
+        if (b <= ro(n) - 1) {
 
-        // Compute the Agol `s` vector and its derivs
-        L.template compute<true>(b, ro);
+            X.row(n).setZero();
+            Dtheta.row(n).setZero();
+            Dxo.row(n).setZero();
+            Dyo.row(n).setZero();
+            Dro.row(n).setZero();
 
-        // Compute the Agol `g` basis
-        computeAgolGBasis();
+        // No occultation
+        } else if ((zo(n) < 0) || (b >= 1 + ro(n)) || (ro(n) <= 0.0)) {
 
-        // Compute the normalization
-        UCoeffType norm = contract(y.row(0));
+            // Compute the Rz rotation matrix
+            W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
 
-        // Compute the flux
-        UCoeffType flux0 = (L.sT * cache.g);
-        MBCAST(flux, T1) = flux0.cwiseProduct(norm);
+            // Dot it in
+            W.leftMultiplyRz(rTA1RZetaInv, rTA1RZetaInvRz);
 
-        // The theta deriv is always zero
-        MBCAST(Dtheta, T3).setConstant(0.0);
+            // Transform back to the sky plane
+            W.leftMultiplyRZeta(rTA1RZetaInvRz, X.block(n, 0, 1, Ny));
 
-        // dF / db  ->  dF / dx, dF / Dy
-        if (likely(b > 0)) {
-            MBCAST(Dxo, T4) = (L.dsTdb * cache.g);
-            MBCAST(Dxo, T4) /= b;
-            MBCAST(Dyo, T5) = Dxo;
-            MBCAST(Dxo, T4) *= xo;
-            MBCAST(Dyo, T5) *= yo;
-            MBCAST(Dxo, T4) = Dxo.cwiseProduct(norm);
-            MBCAST(Dyo, T5) = Dyo.cwiseProduct(norm);
+            // Theta deriv
+            W.leftMultiplyDRz(rTA1RZetaInv, rTA1RZetaInvDRzDtheta);
+            W.leftMultiplyRZeta(rTA1RZetaInvDRzDtheta, Dtheta.block(n, 0, 1, Ny));
+            Dtheta.block(n, 0, 1, Ny) *= radian;
+
+            // Apply the Taylor expansion?
+            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+                Dt.block(n, 0, 1, Ny).setZero();
+                for (int i = 1; i < ncoly; ++i) {
+                    X.block(n, i * Ny, 1, Ny) = X.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dt.block(n, i * Ny, 1, Ny) = X.block(n, 0, 1, Ny) * taylor(n, i - 1);
+                    Dtheta.block(n, i * Ny, 1, Ny) = Dtheta.block(n, 0, 1, Ny) * taylor(n, i);
+                } 
+            }
+
+            // Occultor derivs are zero
+            Dxo.row(n).setZero();
+            Dyo.row(n).setZero();
+            Dro.row(n).setZero();
+            
+        // Occultation
         } else {
-            MBCAST(Dxo, T4) = L.dsTdb * cache.g;
-            MBCAST(Dxo, T4) = Dxo.cwiseProduct(norm);
-            MBCAST(Dyo, T5) = Dxo;
+
+            // Compute the solution vector
+            G.template compute<true>(b, ro(n));
+            if (udeg == 0) {
+                sTA = G.sT * B.A;
+                dsTdrA = G.dsTdr * B.A;
+                dsTdbA = G.dsTdb * B.A;
+            } else {
+                sTA = G.sT * A2LA1;
+                dsTdrA = G.dsTdr * A2LA1;
+                dsTdbA = G.dsTdb * A2LA1;
+            }
+            invb = Scalar(1.0) / b;
+
+            // Compute the occultor rotation matrix Rz
+            W.compute(yo(n) * invb, xo(n) * invb);
+
+            // Dot stuff in
+            W.leftMultiplyRz(sTA, sTARz);
+            W.leftMultiplyRZetaInv(sTARz, sTARzRZetaInv);
+            W.leftMultiplyRz(dsTdrA, dsTdrARz);
+            W.leftMultiplyRZetaInv(dsTdrARz, dsTdrARzRZetaInv);
+            W.leftMultiplyRz(dsTdbA, dsTdbARz);
+            W.leftMultiplyRZetaInv(dsTdbARz, dsTdbARzRZetaInv);
+            W.leftMultiplyDRz(sTA, sTADRzDw);
+            W.leftMultiplyRZetaInv(sTADRzDw, sTADRzDwRZetaInv);
+
+            // DEBUG
+            //RowVector<Scalar> foo(Ny), bar(Ny);
+            //foo = G.sT * B.A2 * dLdu1 * B.A1;
+            //W.leftMultiplyRz(foo, bar);
+            //W.leftMultiplyRZetaInv(bar, foo);
+
+            // Compute the Rz rotation matrix
+            W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
+
+            // DEBUG
+            //W.leftMultiplyRz(foo, bar);
+            //W.leftMultiplyRZeta(bar, Du1.block(n, 0, 1, Ny));
+            //std::cout << Du1.block(n, 0, 1, Ny) * y << std::endl;
+
+            // Dot it in
+            W.leftMultiplyRz(sTARzRZetaInv, sTARzRZetaInvRz);
+
+            // Transform back to the sky plane
+            W.leftMultiplyRZeta(sTARzRZetaInvRz, X.block(n, 0, 1, Ny));
+
+            // Theta deriv
+            W.leftMultiplyDRz(sTARzRZetaInv, sTARzRZetaInvDRzDtheta);
+            W.leftMultiplyRZeta(sTARzRZetaInvDRzDtheta, Dtheta.block(n, 0, 1, Ny));
+            Dtheta.block(n, 0, 1, Ny) *= radian;
+
+            // Radius deriv
+            W.leftMultiplyRz(dsTdrARzRZetaInv, dsTdrARzRZetaInvRz);
+            W.leftMultiplyRZeta(dsTdrARzRZetaInvRz, Dro.block(n, 0, 1, Ny));
+
+            // xo and yo derivatives
+            W.leftMultiplyRz(dsTdbARzRZetaInv, dsTdbARzRZetaInvRz);
+            W.leftMultiplyRZeta(dsTdbARzRZetaInvRz, Dxo.block(n, 0, 1, Ny));
+            Dyo.block(n, 0, 1, Ny) = Dxo.block(n, 0, 1, Ny);
+            Dxo.block(n, 0, 1, Ny) *= xo(n) * invb;
+            Dyo.block(n, 0, 1, Ny) *= yo(n) * invb;
+            W.leftMultiplyRz(sTADRzDwRZetaInv, sTADRzDwRZetaInvRz);
+            W.leftMultiplyRZeta(sTADRzDwRZetaInvRz, sTADRzDwRZetaInvRzRZeta);
+            sTADRzDwRZetaInvRzRZeta *= invb * invb;
+            Dxo.block(n, 0, 1, Ny) += yo(n) * sTADRzDwRZetaInvRzRZeta;
+            Dyo.block(n, 0, 1, Ny) -= xo(n) * sTADRzDwRZetaInvRzRZeta;
+
+            // Apply the Taylor expansion?
+            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+                Dt.block(n, 0, 1, Ny).setZero();
+                for (int i = 1; i < ncoly; ++i) {
+                    X.block(n, i * Ny, 1, Ny) = X.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dt.block(n, i * Ny, 1, Ny) = X.block(n, 0, 1, Ny) * taylor(n, i - 1);
+                    Dtheta.block(n, i * Ny, 1, Ny) = Dtheta.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dxo.block(n, i * Ny, 1, Ny) = Dxo.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dyo.block(n, i * Ny, 1, Ny) = Dyo.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dro.block(n, i * Ny, 1, Ny) = Dro.block(n, 0, 1, Ny) * taylor(n, i);
+                } 
+            }
+
         }
-
-        // dF / dr
-        MBCAST(Dro, T6) = (L.dsTdr * cache.g);
-        MBCAST(Dro, T6) = Dro.cwiseProduct(norm);
-
-        // dF / Dy
-        computeDfDyLDOccultation(Dy, flux0);
-
-        // dF / Dt
-        computeDfDtLDOccultation(Dt, flux0);
-
-        // dF / Du from dF / dc
-        computeDfDuLDOccultation(flux0, Du, norm);
-
     }
-
-}
-
-/**
-Compute the flux and the gradient for a spherical harmonic map. 
-Internal method.
-
-*/
-template <typename T1, typename T2, typename T3, typename T4, 
-          typename T5, typename T6, typename T7, typename T8>
-inline void computeFluxYlm (
-    const Scalar& theta,
-    const Scalar& xo,
-    const Scalar& yo,  
-    const Scalar& zo, 
-    const Scalar& b, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux, 
-    MatrixBase<T2> const & Dt,
-    MatrixBase<T3> const & Dtheta,
-    MatrixBase<T4> const & Dxo,
-    MatrixBase<T5> const & Dyo,
-    MatrixBase<T6> const & Dro,
-    MatrixBase<T7> const & Dy,
-    MatrixBase<T8> const & Du
-) {
-
-    // Rotate the map into view and explicitly
-    // compute the Wigner matrices
-    rotateIntoCache(theta, true);
-
-    // No occultation
-    if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
-
-        // Compute the theta deriv
-        MBCAST(Dtheta, T3) = B.rTA1 * cache.DRDthetay;
-        MBCAST(Dtheta, T3) *= radian;
-
-        // The xo, yo, and ro derivs are trivial
-        MBCAST(Dxo, T4).setZero();
-        MBCAST(Dyo, T5).setZero();
-        MBCAST(Dro, T6).setZero();
-        
-        // Compute derivs with respect to y
-        computeDfDyYlmNoOccultation(Dy, theta);
-
-        // Note that we do not compute limb darkening 
-        // derivatives in this case; see the docs.
-        MBCAST(Du, T8).setZero();
-
-        // Compute the flux
-        MBCAST(flux, T1) = B.rTA1 * cache.Ry;
-
-        // Compute the time deriv
-        computeDfDtYlmNoOccultation(Dt);
-
-    // Occultation
-    } else {
-
-        // Compute the solution vector and its gradient
-        G.template compute<true>(b, ro);
-
-        // Transform the solution vector into Ylms
-        cache.sTA = G.sT * B.A;
-
-        // The normalized occultor position
-        Scalar xo_b = xo / b,
-               yo_b = yo / b;
-
-        // Align the occultor with the y axis
-        if (likely((b > 0) && ((xo != 0) || (yo < 0)))) {
-            // Compute the occultor rotation matrix and its derivative
-            W.rotateAboutZ(yo_b, xo_b, cache.Ry, cache.RRy);
-
-            // Dot sTA into R and dRdphi 
-            W.leftMultiplyRz(cache.sTA, cache.sTAR);
-            W.leftMultiplyDRz(cache.sTA, cache.sTADRDphi);
-        
-            // The Green's polynomial of the rotated map
-            cache.ARRy = B.A * cache.RRy;
-
-            // Compute the contribution to the xo and yo
-            // derivs from the occultor rotation matrix
-            cache.sTADRDphiRy_b = cache.sTADRDphi * cache.Ry;
-            cache.sTADRDphiRy_b /= b;
-            MBCAST(Dxo, T4) = yo_b * cache.sTADRDphiRy_b;
-            MBCAST(Dyo, T4) = -xo_b * cache.sTADRDphiRy_b;
-        } else {
-            cache.sTAR = cache.sTA;
-            cache.ARRy = B.A * cache.Ry;
-            MBCAST(Dxo, T4).setZero();
-            MBCAST(Dyo, T5).setZero();
-        }   
-
-        // Compute the contribution to the xo and yo
-        // derivs from the solution vector
-        if (likely(b > 0)) {
-            cache.dFdb = G.dsTdb * cache.ARRy;
-            MBCAST(Dxo, T4) += cache.dFdb * xo_b;
-            MBCAST(Dyo, T5) += cache.dFdb * yo_b;
-        }
-
-        // Compute the flux
-        MBCAST(flux, T1) = G.sT * cache.ARRy;
     
-        // Theta derivative
-        MBCAST(Dtheta, T3) = cache.sTAR * cache.DRDthetay;
-        MBCAST(Dtheta, T3) *= radian;
-
-        // Occultor radius derivative
-        MBCAST(Dro, T5) = G.dsTdr * cache.ARRy;
-
-        // Compute derivs with respect to y
-        computeDfDyYlmOccultation(Dy, theta);
-
-        // Note that we do not compute limb darkening 
-        // derivatives in this case; see the docs.
-        MBCAST(Du, T8).setZero();
-
-        // Compute the time deriv
-        computeDfDtYlmOccultation(Dt);
-
-    }
+    */
 
 }
-
-/**
-Compute the flux and the gradient for a limb-darkened spherical harmonic map. 
-Internal method.
-
-*/
-template <typename T1, typename T2, typename T3, typename T4, 
-          typename T5, typename T6, typename T7, typename T8>
-inline void computeFluxYlmLD (
-    const Scalar& theta,
-    const Scalar& xo,
-    const Scalar& yo,  
-    const Scalar& zo, 
-    const Scalar& b, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux, 
-    MatrixBase<T2> const & Dt,
-    MatrixBase<T3> const & Dtheta,
-    MatrixBase<T4> const & Dxo,
-    MatrixBase<T5> const & Dyo,
-    MatrixBase<T6> const & Dro,
-    MatrixBase<T7> const & Dy,
-    MatrixBase<T8> const & Du
-) {
-
-    // Rotate the map into view and explicitly
-    // compute the Wigner matrices
-    rotateIntoCache(theta, true);
-
-    // No occultation
-    if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
-
-        // Change basis to polynomials
-        cache.A1Ry = B.A1 * cache.Ry;
-
-        // Apply limb darkening
-        limbDarkenWithGradient<false>(cache.A1Ry, cache.pupy);
-        MBCAST(flux, T1) = B.rT * cache.pupy;
-
-        // Compute the map derivs
-        computeDfDyYlmLDNoOccultation(Dy);
-        computeDfDuYlmLDNoOccultation(Du);
-
-        // The xo, yo, and ro derivs are trivial
-        MBCAST(Dxo, T4).setZero();
-        MBCAST(Dyo, T5).setZero();
-        MBCAST(Dro, T6).setZero();
-
-        // Compute the theta deriv
-        computeDfDthetaYlmLDNoOccultation(Dtheta);
-
-        // Compute the time deriv
-        computeDfDtYlmLDNoOccultation(Dt);
-
-    // Occultation
-    } else {
-
-        // Compute the solution vector and its gradient
-        G.template compute<true>(b, ro);
-
-        // Transform the solution vector into polynomials
-        cache.sTA2 = G.sT * B.A2;
-
-        // The normalized occultor position
-        // Investigate what happens as b --> 0. Could be unstable.
-        Scalar xo_b = xo / b,
-               yo_b = yo / b;
-
-        // Compute the occultor rotation matrix and its derivative
-        if (likely((b > 0) && ((xo != 0) || (yo < 0)))) {
-            W.rotateAboutZ(yo_b, xo_b, cache.Ry, cache.RRy);
-        } else {
-            W.rotateAboutZ(1.0, 0.0, cache.Ry, cache.RRy);
-        }
-
-        // Apply the limb darkening
-        cache.A1Ry = B.A1 * cache.RRy;
-        limbDarkenWithGradient<true>(cache.A1Ry, cache.pupy);
-
-        // The Green's polynomial of the rotated map
-        cache.ARRy = B.A2 * cache.pupy;
-
-        // Compute derivs with respect to occultor position
-        computeDfDxoyoYlmLDOccultation(Dxo, Dyo, xo_b, yo_b, b);
-
-        // Compute the flux 
-        // Could also do `cache.sTA2 * cache.pupy`
-        MBCAST(flux, T1) = G.sT * cache.ARRy;
-    
-        // Compute derivs with respect to y
-        computeDfDyYlmLDOccultation(Dy);
-
-        // Compute derivs with respect to u
-        computeDfDuYlmLDOccultation(Du);
-
-        // Occultor radius derivative
-        MBCAST(Dro, T5) = G.dsTdr * cache.ARRy;
-
-        // Theta derivative
-        computeDfDthetaYlmLDOccultation(Dtheta);
-
-        // Compute the time deriv
-        computeDfDtYlmLDOccultation(Dt, xo_b, yo_b);
-
-    }
-
-}
-

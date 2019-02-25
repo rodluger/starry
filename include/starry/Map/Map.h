@@ -14,65 +14,72 @@ public:
     using FluxType = typename S::FluxType;                                     /**< The type of the output flux (scalar/row vector) */
 
     // Public variables
-    const int lmax;                                                            /**< Maximum spherical harmonic degree of the map */
-    const int N;                                                               /**< Number of spherical harmonic `(l, m)` coefficients */
+    const int ydeg;                                                            /**< Maximum degree of the spherical harmonic map */
+    const int udeg;                                                            /**< Maximum degree of the limb darkening map */
+    const int Ny;                                                              /**< Number of spherical harmonic `(l, m)` coefficients */
+    const int Nu;                                                              /**< Number of limb darkening coefficients */
+    const int N;                                                               /**< Total number of spherical harmonic `(l, m)` coefficients after limb darkening */
     const int ncoly;                                                           /**< Number of columns in the `y` matrix */
     const int ncolu;                                                           /**< Number of columns in the `u` matrix */
-    const int nflx;                                                            /**< Number of columns in the output flux */
-    Cache<S> cache;                                                            /**< Internal cache & storage class */
+    const int nflx;
+    Data<Scalar> data;                                                         /**< Internal storage class */
 
 protected:
 
     // Internal methods
     #include "protected/intensity.h"
     #include "protected/flux.h"
-    #include "protected/reflectance.h"
-    #include "protected/linear.h"
-    #include "protected/deriv.h"
     #include "protected/oper.h"
-    #include "protected/python_interface.h"
 
     // Internal variables
     YType y;                                                                   /**< Vector/matrix of spherical harmonic coefficients */
     UType u;                                                                   /**< Vector/matrix of limb darkening coefficients */
     UnitVector<Scalar> axis;                                                   /**< The axis of rotation for the map */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
-    rotation::Wigner<YType> W;                                                 /**< Ylm rotation stuff */
+    wigner::Wigner<Scalar> W;                                                  /**< Ylm rotation stuff */
     solver::Greens<Scalar, S::Reflected> G;                                    /**< The occultation integral solver class */
     limbdark::GreensLimbDark<Scalar, S::Reflected> L;                          /**< The occultation integral solver class (optimized for limb darkening) */
-    Vector<Scalar> taylor;                                                     /**< Vector of Taylor expansion coefficients for a given `t` */
-    Matrix<Scalar> taylor_matrix;
-    int u_deg;                                                                 /**< Highest degree set by the user in the limb darkening vector */
-    int y_deg;                                                                 /**< Highest degree set by the user in the spherical harmonic vector */
+    Matrix<Scalar> taylor;
     Scalar radian;                                                             /**< Conversion factor from degrees to radians */
      
     //! Constructor for all map types
     explicit Map (
-        int lmax,
+        int ydeg,
+        int udeg,
         int ncoly,
         int ncolu,
         int nflx
     ) :
-        lmax(lmax), 
-        N((lmax + 1) * (lmax + 1)), 
+        ydeg(ydeg), 
+        udeg(udeg),
+        Ny((ydeg + 1) * (ydeg + 1)), 
+        Nu(udeg + 1),
+        N((ydeg + udeg + 1) * (ydeg + udeg + 1)),
         ncoly(ncoly), 
         ncolu(ncolu),
         nflx(nflx),
-        cache(lmax, ncoly, ncolu, nflx),
-        B(lmax),
-        W(lmax, ncoly, nflx, (*this).y, (*this).axis),
-        G(lmax),
-        L(lmax),
-        taylor(ncoly)
+        data(ydeg),
+        y(Ny, ncoly),
+        u(Nu, ncolu),
+        axis(yhat<Scalar>()),
+        B(ydeg, udeg),
+        W(ydeg, axis),
+        G(ydeg + udeg),
+        L(udeg)
     {
-        if ((lmax < 0) || (lmax > STARRY_MAX_LMAX))
+        if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))
             throw errors::ValueError(
                 "Spherical harmonic degree out of range.");
+        if ((udeg < 0) || (udeg > STARRY_MAX_LMAX))
+            throw errors::ValueError(
+                "Limb darkening degree out of range.");
+        if ((ydeg + udeg > STARRY_MAX_LMAX))
+            throw errors::ValueError(
+                "Total map degree out of range.");
         if ((ncoly < 1) || (ncolu < 1))
             throw errors::ValueError(
                 "The number of map columns must be positive.");
         radian = pi<Scalar>() / 180.;
-        taylor(0) = 1.0;
         reset();
     };
 
@@ -81,15 +88,17 @@ public:
     //! Constructor for single-column maps
     template <typename U=S, typename=IsDefault<U>>
     explicit Map (
-        int lmax
-    ) : Map(lmax, 1, 1, 1) {}
+        int ydeg,
+        int udeg
+    ) : Map(ydeg, udeg, 1, 1, 1) {}
 
     //! Constructor for multi-column maps
     template <typename U=S, typename=IsSpectralOrTemporal<U>>
     explicit Map (
-        int lmax,
+        int ydeg,
+        int udeg,
         int ncol
-    ) : Map(lmax, ncol, 
+    ) : Map(ydeg, udeg, ncol, 
             std::is_same<U, Spectral<Scalar, S::Reflected>>::value ? ncol : 1,
             std::is_same<U, Spectral<Scalar, S::Reflected>>::value ? ncol : 1) {}
 
@@ -98,9 +107,6 @@ public:
     #include "public/oper.h"
     #include "public/intensity.h"
     #include "public/flux.h"
-    #include "public/reflectance.h"
-    #include "public/linear.h"
-    #include "public/python_interface.h"
 
 }; // class Map
 

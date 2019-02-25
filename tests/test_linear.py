@@ -10,6 +10,32 @@ def test_linear_model():
     map = starry.Map(lmax)
     np.random.seed(43)
     map[:, :] = np.random.randn(map.N)
+    map.axis = np.random.randn(3)
+    theta = np.linspace(0, 30, npts)
+    xo = np.linspace(-1.5, 1.5, npts)
+    yo = np.linspace(-0.1, 0.3, npts)
+    zo = 1
+    ro = 0.1
+
+    # Compute the flux the usual way
+    flux = map.flux(theta=theta, xo=xo, yo=yo, ro=ro, zo=zo)
+
+    # Compute it via the `linear_model` framework
+    A = map.linear_model(theta=theta, xo=xo, yo=yo, ro=ro, zo=zo)
+    flux_linear = np.dot(A, map.y)
+
+    assert np.allclose(flux, flux_linear)
+
+
+def test_linear_model_limb_darkened():
+    lmax = 5
+    npts = 100
+    map = starry.Map(lmax)
+    np.random.seed(43)
+    map[:lmax, :] = np.random.randn(lmax ** 2)
+    map[0, 0] = 1
+    map[1] = 0.5
+    map.axis = np.random.randn(3)
     theta = np.linspace(0, 30, npts)
     xo = np.linspace(-1.5, 1.5, npts)
     yo = np.linspace(-0.1, 0.3, npts)
@@ -33,6 +59,7 @@ def test_linear_model_temporal():
     map = starry.Map(lmax, nt=nt)
     np.random.seed(43)
     map[:, :] = np.random.randn(map.N, nt)
+    map.axis = np.random.randn(3)
     theta = np.linspace(0, 30, npts)
     xo = np.linspace(-1.5, 1.5, npts)
     yo = np.linspace(-0.1, 0.3, npts)
@@ -56,6 +83,40 @@ def test_linear_model_gradients():
     map = starry.Map(lmax)
     np.random.seed(43)
     map[:, :] = np.random.randn(map.N)
+    map.axis = np.random.randn(3)
+    theta = np.linspace(0, 30, npts)
+    xo = np.linspace(-1.5, 1.5, npts)
+    yo = np.linspace(-0.1, 0.3, npts)
+    zo = 1
+    ro = 0.1
+
+    # Compute the flux the usual way
+    flux, grad = map.flux(theta=theta, xo=xo, yo=yo, ro=ro, zo=zo, gradient=True)
+
+    # Compute it via the `linear_model` framework
+    A, dA = map.linear_model(theta=theta, xo=xo, yo=yo, ro=ro, zo=zo, gradient=True)
+    flux_linear = np.dot(A, map.y)
+    dfdtheta = np.dot(dA['theta'], map.y)
+    dfdxo = np.dot(dA['xo'], map.y)
+    dfdyo = np.dot(dA['yo'], map.y)
+    dfdro = np.dot(dA['ro'], map.y)
+
+    assert np.allclose(flux, flux_linear)
+    assert np.allclose(dfdtheta, grad['theta'])
+    assert np.allclose(dfdxo, grad['xo'])
+    assert np.allclose(dfdyo, grad['yo'])
+    assert np.allclose(dfdro, grad['ro'])
+
+
+def test_linear_model_limb_darkened_gradients():
+    lmax = 5
+    npts = 100
+    map = starry.Map(lmax)
+    np.random.seed(43)
+    map[:lmax, :] = np.random.randn(lmax ** 2)
+    map[0, 0] = 1
+    map[1] = 0.5
+    map.axis = np.random.randn(3)
     theta = np.linspace(0, 30, npts)
     xo = np.linspace(-1.5, 1.5, npts)
     yo = np.linspace(-0.1, 0.3, npts)
@@ -87,6 +148,7 @@ def test_linear_model_temporal_gradients():
     map = starry.Map(lmax, nt=nt)
     np.random.seed(43)
     map[:, :] = np.random.randn(map.N, nt)
+    map.axis = np.random.randn(3)
     theta = np.linspace(0, 30, npts)
     xo = np.linspace(-1.5, 1.5, npts)
     yo = np.linspace(-0.1, 0.3, npts)
@@ -114,4 +176,5 @@ def test_linear_model_temporal_gradients():
     assert np.allclose(dfdro, grad['ro'])
 
 
-test_linear_model_temporal_gradients()
+if __name__ == "__main__":
+    test_linear_model_limb_darkened_gradients()

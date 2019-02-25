@@ -9,18 +9,18 @@
 
 #include "utils.h"
 #include "errors.h"
-#include "solver.h"
-#include "solver_refl.h"
-#include "limbdark.h"
+#include "solvers/emitted.h"
+#include "solvers/reflected.h"
+#include "solvers/limbdarkened.h"
 #include "basis.h"
-#include "rotation.h"
+#include "wigner.h"
 
 namespace starry { 
 namespace maps {
 
 using namespace utils;
 
-#include "cache.h"
+#include "data.h"
 #include "Map/Map.h"
 
 } // namespace maps

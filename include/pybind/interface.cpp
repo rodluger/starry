@@ -129,9 +129,9 @@ PYBIND11_MODULE(
 
     // Constructor
 #   if defined(_STARRY_SINGLECOL_) 
-        PyMap.def(py::init<int>(), "lmax"_a=2);
+        PyMap.def(py::init<int, int>(), "ydeg"_a=2, "udeg"_a=2);
 #   else
-        PyMap.def(py::init<int, int>(), "lmax"_a=2, "ncol"_a=1);
+        PyMap.def(py::init<int, int, int>(), "ydeg"_a=2, "udeg"_a=2, "ncol"_a=1);
 #   endif
 
     // String representation of the map
@@ -181,11 +181,19 @@ PYBIND11_MODULE(
 
     // Highest degree of the map
     PyMap.def_property_readonly(
-        "lmax", [] (
+        "ydeg", [] (
             Map<T> &map
         ) {
-            return map.lmax;
-    }, docstrings::Map::lmax);
+            return map.ydeg;
+    });
+
+    // Highest degree of the map
+    PyMap.def_property_readonly(
+        "udeg", [] (
+            Map<T> &map
+        ) {
+            return map.udeg;
+    });
 
     // Number of spherical harmonic coefficients
     PyMap.def_property_readonly(
@@ -193,7 +201,23 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.N;
-    }, docstrings::Map::N);
+    });
+
+    // Number of spherical harmonic coefficients
+    PyMap.def_property_readonly(
+        "Ny", [] (
+            Map<T> &map
+        ) {
+            return map.Ny;
+    });
+
+    // Number of spherical harmonic coefficients
+    PyMap.def_property_readonly(
+        "Nu", [] (
+            Map<T> &map
+        ) {
+            return map.Nu;
+    });
 
     // Multiprecision enabled?
     PyMap.def_property_readonly(
@@ -214,7 +238,7 @@ PYBIND11_MODULE(
             py::tuple lm,
             const double& coeff
         ) {
-            auto inds = get_Ylm_inds(map.lmax, lm);
+            auto inds = get_Ylm_inds(map.ydeg, lm);
             auto y = map.getY();
             for (auto n : inds)
                 y.row(n).setConstant(static_cast<typename T::Scalar>(coeff));
@@ -228,7 +252,7 @@ PYBIND11_MODULE(
             py::tuple lm,
             const typename T::Double::YCoeffType& coeff
         ) {
-            auto inds = get_Ylm_inds(map.lmax, lm);
+            auto inds = get_Ylm_inds(map.ydeg, lm);
             auto y = map.getY();
             for (auto n : inds)
                 y.row(n) = coeff.template cast<typename T::Scalar>();
@@ -242,7 +266,7 @@ PYBIND11_MODULE(
             py::tuple lm,
             const typename T::Double::YType& coeff_
         ) {
-            auto inds = get_Ylm_inds(map.lmax, lm);
+            auto inds = get_Ylm_inds(map.ydeg, lm);
             typename T::YType coeff = coeff_.template cast<typename T::Scalar>();
             if (coeff.rows() != static_cast<long>(inds.size()))
                 throw errors::ValueError("Mismatch in slice length and "
@@ -260,7 +284,7 @@ PYBIND11_MODULE(
             Map<T>& map,
             py::tuple lm
         ) -> py::object {
-            auto inds = get_Ylm_inds(map.lmax, lm);
+            auto inds = get_Ylm_inds(map.ydeg, lm);
             auto y = map.getY();
             typename T::Double::YType res;
             res.resize(inds.size(), map.ncoly);
@@ -291,7 +315,7 @@ PYBIND11_MODULE(
                 py::object l,
                 const double& coeff
             ) {
-                auto inds = get_Ul_inds(map.lmax, l);
+                auto inds = get_Ul_inds(map.udeg, l);
                 auto u = map.getU();
                 for (auto n : inds)
                     u.row(n - 1).setConstant(static_cast<typename T::Scalar>(coeff));
@@ -305,7 +329,7 @@ PYBIND11_MODULE(
                 py::object l,
                 const typename T::Double::UCoeffType& coeff
             ) {
-                auto inds = get_Ul_inds(map.lmax, l);
+                auto inds = get_Ul_inds(map.udeg, l);
                 auto u = map.getU();
                 for (auto n : inds)
                     u.row(n - 1) = coeff.template cast<typename T::Scalar>();
@@ -319,7 +343,7 @@ PYBIND11_MODULE(
                 py::object l,
                 const typename T::Double::UType& coeff_
             ) {
-                auto inds = get_Ul_inds(map.lmax, l);
+                auto inds = get_Ul_inds(map.udeg, l);
                 typename T::UType coeff = coeff_.template cast<typename T::Scalar>();
                 if (coeff.rows() != static_cast<long>(inds.size()))
                     throw errors::ValueError("Mismatch in slice length and "
@@ -337,7 +361,7 @@ PYBIND11_MODULE(
                 Map<T>& map,
                 py::object l
             ) -> py::object {
-                auto inds = get_Ul_inds(map.lmax, l);
+                auto inds = get_Ul_inds(map.udeg, l);
                 auto u = map.getU();
                 typename T::Double::UType res;
                 res.resize(inds.size(), map.ncolu);
@@ -415,8 +439,7 @@ PYBIND11_MODULE(
             ) {
                 typename T::YCoeffType amp_;
                 amp_(0) = amp;
-                map.addSpot(amp_, 
-                            sigma, lat, lon, lmax);
+                map.addSpot(amp_, sigma, lat, lon, lmax);
             }, 
             docstrings::Map::add_spot,
             "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
@@ -478,264 +501,7 @@ PYBIND11_MODULE(
             "power"_a, "seed"_a=py::none(), "col"_a=-1);
 #   endif
 
-    // Show an image/animation of the map
-#   if defined(_STARRY_STATIC_)
-#       if defined(_STARRY_EMITTED_)
-            PyMap.def(
-                "show", [](
-                    Map<T>& map,
-                    py::array_t<double> theta_,
-                    std::string cmap,
-                    int res,
-                    int interval,
-                    std::string gif
-                ) -> py::object {
-                    auto theta = py::cast<Vector<double>>(theta_);
-                    if (theta.size() == 0) {
-                        return map.show(0.0, cmap, res);
-                    } else if (theta.size() == 1) {
-                        return map.show(theta(0), cmap, res);
-                    } else {
-                        return map.show(theta.template cast<typename T::Scalar>(), 
-                                        cmap, res, interval, gif);
-                    }
-                }, 
-                docstrings::Map::show,
-                "theta"_a=py::array_t<double>(), "cmap"_a="plasma", "res"_a=300,
-                "interval"_a=75, "gif"_a="");
-#       else
-            PyMap.def(
-                "show", [](
-                    Map<T>& map,
-                    py::array_t<double> theta_,
-                    py::array_t<double> source_,
-                    std::string cmap,
-                    int res,
-                    int interval,
-                    std::string gif
-                ) -> py::object {
-                    auto atleast_1d = py::module::import("numpy").attr("atleast_1d");
-                    auto atleast_2d = py::module::import("numpy").attr("atleast_2d");
-                    Vector<double> theta = py::cast<Vector<double>>(atleast_1d(theta_));
-                    RowMatrix<double> source = py::cast<RowMatrix<double>>(atleast_2d(source_));
-                    assert(source.cols() == 3);
-                    int sz = max(theta.rows(), source.rows());
-                    if ((theta.rows() == 0) || (source.rows() == 0)) {
-                        throw errors::ValueError(
-                            "Invalid dimensions for `theta` and/or `source`.");
-                    } else if (theta.rows() == 1) {
-                        theta.setConstant(sz, theta(0));
-                    } else if (source.rows() == 1) {
-                        source = source.replicate(sz, 1);
-                    } else if (theta.rows() != source.rows()){
-                        throw errors::ValueError(
-                            "Invalid dimensions for `theta` and/or `source`.");
-                    }
-                    return map.show(theta.template cast<typename T::Scalar>(),
-                                    source.template cast<typename T::Scalar>(),
-                                    cmap, res, interval, gif);
-                }, 
-                docstrings::Map::show,
-                "theta"_a=Vector<double>::Zero(1), "source"_a=-xhat<double>(), 
-                "cmap"_a="plasma", "res"_a=300, "interval"_a=75, "gif"_a="");
-#       endif
-#   else
-#       if defined(_STARRY_EMITTED_)
-            PyMap.def(
-                "show", [](
-                    Map<T>& map,
-                    py::array_t<double> t_,
-                    py::array_t<double> theta_,
-                    std::string cmap,
-                    int res,
-                    int interval,
-                    std::string gif
-                ) -> py::object {
-                    auto atleast_1d = py::module::import("numpy").attr("atleast_1d");
-                    Vector<double> t = py::cast<Vector<double>>(atleast_1d(t_));
-                    Vector<double> theta = py::cast<Vector<double>>(atleast_1d(theta_));
-                    int sz = max(t.size(), theta.size());
-                    if ((t.size() == 0) || (theta.size() == 0)) {
-                        throw errors::ValueError(
-                            "Invalid dimensions for `t` and/or `theta`.");
-                    } else if (t.size() == 1) {
-                        t.setConstant(sz, t(0));
-                    } else if (theta.size() == 1) {
-                        theta.setConstant(sz, theta(0));
-                    } else if (t.size() != theta.size()){
-                        throw errors::ValueError(
-                            "Invalid dimensions for `t` and/or `theta`.");
-                    }
-                    return map.show(t.template cast<typename T::Scalar>(), 
-                                    theta.template cast<typename T::Scalar>(), 
-                                    cmap, res, interval, gif);
-                }, 
-                docstrings::Map::show,
-                "t"_a=0.0, "theta"_a=0.0, 
-                "cmap"_a="plasma", "res"_a=300, "interval"_a=75, "gif"_a="");
-#       else
-            PyMap.def(
-                "show", [](
-                    Map<T>& map,
-                    py::array_t<double> t_,
-                    py::array_t<double> theta_,
-                    py::array_t<double> source_,
-                    std::string cmap,
-                    int res,
-                    int interval,
-                    std::string gif
-                ) -> py::object {
-                    auto atleast_1d = py::module::import("numpy").attr("atleast_1d");
-                    auto atleast_2d = py::module::import("numpy").attr("atleast_2d");
-                    Vector<double> t = py::cast<Vector<double>>(atleast_1d(t_));
-                    Vector<double> theta = py::cast<Vector<double>>(atleast_1d(theta_));
-                    RowMatrix<double> source = py::cast<RowMatrix<double>>(atleast_2d(source_));
-                    assert(source.cols() == 3);
-                    int sz = max(t.rows(), max(theta.rows(), source.rows()));
-                    if ((t.rows() == 0) || (theta.rows() == 0) || (source.rows() == 0)) {
-                        throw errors::ValueError(
-                            "Invalid dimensions for `t`, `theta` and/or `source`.");
-                    } 
-                    if (t.rows() == 1)
-                        t.setConstant(sz, t(0));
-                    if (theta.rows() == 1)
-                        theta.setConstant(sz, theta(0));
-                    if (source.rows() == 1)
-                        source = source.replicate(sz, 1);
-                    if ((t.rows() != source.rows()) || (theta.rows() != source.rows())) {
-                        throw errors::ValueError(
-                            "Invalid dimensions for `t`, `theta` and/or `source`.");
-                    }
-                    return map.show(t.template cast<typename T::Scalar>(), 
-                                    theta.template cast<typename T::Scalar>(),
-                                    source.template cast<typename T::Scalar>(),
-                                    cmap, res, interval, gif);
-                }, 
-                docstrings::Map::show, "t"_a=Vector<double>::Zero(1),
-                "theta"_a=Vector<double>::Zero(1), "source"_a=-xhat<double>(), 
-                "cmap"_a="plasma", "res"_a=300, "interval"_a=75, "gif"_a="");
-#       endif
-#   endif
-
-    // Render the visible map on a square grid
-#   if defined(_STARRY_DEFAULT_)
-        PyMap.def(
-            "render", [](
-                Map<T>& map,
-                double theta,
-#               if defined(_STARRY_REFLECTED_)
-                    UnitVector<double> source,
-#               endif
-                int res
-            ) -> py::object {
-                auto reshape = py::module::import("numpy").attr("reshape");
-                Vector<typename T::Scalar> intensity(res * res);
-#               if defined(_STARRY_EMITTED_)
-                    map.renderMap(theta, res, intensity);
-#               else
-                    map.renderMap(theta, 
-                                  source.template cast<typename T::Scalar>(), 
-                                  res, intensity);
-#               endif
-                return reshape(intensity.template cast<double>(), 
-                            py::make_tuple(res, res));
-            }, 
-            docstrings::Map::render,
-            "theta"_a=0.0, 
-#           if defined(_STARRY_REFLECTED_)
-                "source"_a=-xhat<double>(),
-#           endif
-            "res"_a=300);
-#   elif defined(_STARRY_SPECTRAL_)
-        PyMap.def(
-            "render", [](
-                Map<T>& map,
-                double theta,
-#               if defined(_STARRY_REFLECTED_)
-                    UnitVector<double> source,
-#               endif
-                int res
-            ) -> py::object {
-                auto reshape = py::module::import("numpy").attr("reshape");
-                Matrix<typename T::Scalar> intensity(res * res, map.ncoly);
-#               if defined(_STARRY_EMITTED_)
-                    map.renderMap(theta, res, intensity);
-#               else
-                    map.renderMap(theta, 
-                                  source.template cast<typename T::Scalar>(), 
-                                  res, intensity);
-#               endif
-                return reshape(intensity.template cast<double>(), 
-                            py::make_tuple(res, res, map.nflx));
-            }, 
-            docstrings::Map::render,
-            "theta"_a=0.0, 
-#            if defined(_STARRY_REFLECTED_)
-                "source"_a=-xhat<double>(),
-#            endif        
-            "res"_a=300);
-#   elif defined(_STARRY_TEMPORAL_)
-        PyMap.def(
-            "render", [](
-                Map<T>& map,
-                double t,
-                double theta,
-#               if defined(_STARRY_REFLECTED_)
-                    UnitVector<double> source,
-#               endif
-                int res
-            ) -> py::object {
-                auto reshape = py::module::import("numpy").attr("reshape");
-                Vector<typename T::Scalar> intensity(res * res);
-#               if defined(_STARRY_EMITTED_)
-                    map.renderMap(t, theta, res, intensity);
-#               else
-                    map.renderMap(t, theta, 
-                                  source.template cast<typename T::Scalar>(), 
-                                  res, intensity);
-#               endif
-                return reshape(intensity.template cast<double>(), 
-                            py::make_tuple(res, res));
-            }, 
-            docstrings::Map::render,
-            "t"_a=0.0, "theta"_a=0.0, 
-#           if defined(_STARRY_REFLECTED_)
-                "source"_a=-xhat<double>(),
-#           endif        
-            "res"_a=300);
-#   endif
-
-    // Load an image from file
-#   if defined(_STARRY_SINGLECOL_)
-        PyMap.def(
-            "load_image", [](
-                Map<T>& map,
-                std::string image,
-                int lmax,
-                bool normalize,
-                int sampling_factor
-            ) {
-                map.loadImage(image, lmax, normalize, sampling_factor);
-            },
-            docstrings::Map::load_image,
-            "image"_a, "lmax"_a=-1, "normalize"_a=true, "sampling_factor"_a=8);
-#   else
-        PyMap.def(
-            "load_image", [](
-                Map<T>& map,
-                std::string image,
-                int lmax,
-                int col,
-                bool normalize,
-                int sampling_factor
-            ) {
-                map.loadImage(image, lmax, col, normalize, sampling_factor);
-            },
-            docstrings::Map::load_image,
-            "image"_a, "lmax"_a=-1, "col"_a=-1, "normalize"_a=true, 
-            "sampling_factor"_a=8);
-#   endif
-
+/* \todo
     // Compute the intensity
 #   if defined(_STARRY_STATIC_)
 #       if defined(_STARRY_EMITTED_)
@@ -756,40 +522,24 @@ PYBIND11_MODULE(
                       "source"_a=-xhat<double>());
 #       endif
 #   endif
+*/
 
 // Compute the flux
 #   if defined(_STARRY_STATIC_)
 #       if defined(_STARRY_EMITTED_)
-            PyMap.def("flux", flux<T>(), docstrings::Map::flux, "theta"_a=0.0, 
-                      "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, 
-                      "gradient"_a=false);
-
-            PyMap.def("linear_model", linear_model<T>(), 
-                      docstrings::Map::linear_model, "theta"_a=0.0, "xo"_a=0.0, 
+            PyMap.def("linear_flux_model", linear_flux_model<T>(), 
+                      "theta"_a=0.0, "xo"_a=0.0, 
                       "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
 #       else
-            PyMap.def("flux", flux<T>(), docstrings::Map::flux, "theta"_a=0.0, 
-                      "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, 
-                      "source"_a=-xhat<double>(), "gradient"_a=false);
-
             // \todo Implement linear model
 #       endif
 #   else
 #       if defined(_STARRY_EMITTED_)
-            PyMap.def("flux", flux<T>(), docstrings::Map::flux, "t"_a=0.0, 
-                      "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
-                      "ro"_a=0.0, "gradient"_a=false);
-
-            PyMap.def("linear_model", linear_model<T>(), 
-                      docstrings::Map::linear_model, "t"_a=0.0, 
+            PyMap.def("linear_flux_model", linear_flux_model<T>(), 
+                      "t"_a=0.0, 
                       "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
                       "ro"_a=0.0, "gradient"_a=false);
 #       else
-            PyMap.def("flux", flux<T>(), docstrings::Map::flux, "t"_a=0.0, 
-                      "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
-                      "ro"_a=0.0, "source"_a=-xhat<double>(), 
-                      "gradient"_a=false);
-
             // \todo Implement linear model
 #       endif
 #   endif

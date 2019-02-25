@@ -504,8 +504,7 @@ void computeU(
     int lmax, 
     const Eigen::SparseMatrix<T>& A1,
     const Eigen::SparseMatrix<T>& A, 
-    Eigen::SparseMatrix<T>& U1,
-    Eigen::SparseMatrix<T>& U, 
+    Eigen::SparseMatrix<T>& U1, 
     T norm
 ) {
     T twol, amp, lfac, lchoosek, fac0, fac;
@@ -572,15 +571,13 @@ void computeU(
     // of `A1`, we must *divide* by the normalization constant
     U0 /= norm;
 
-    // Compute U1 and U
+    // Compute U1
     Matrix<T> X(N, lmax + 1);
     X.setZero();
     for (int l = 0; l < lmax + 1; ++l)
         X(l * (l + 1), l) = 1;
     Eigen::SparseMatrix<T> XU0 = (X * U0).sparseView();
-
     U1 = A1 * XU0;
-    U = A * XU0;
 }
 
 /**
@@ -651,33 +648,54 @@ class Basis {
 
 public:
 
-    const int lmax;                                                            /**< The highest degree of the map */
+    const int ydeg;                                                            /**< The highest degree of the spherical harmonic map */
+    const int udeg;                                                            /**< The highest degree of the limb darkening map */
     const double norm;                                                         /**< Map normalization constant */
     Eigen::SparseMatrix<T> A1;                                                 /**< The polynomial change of basis matrix */
-    Eigen::SparseMatrix<T> A1Inv;                                              /**< The inverse of the polynomial change of basis matrix */
     Eigen::SparseMatrix<T> A2;                                                 /**< The Green's change of basis matrix */
     Eigen::SparseMatrix<T> A;                                                  /**< The full change of basis matrix */
     RowVector<T> rT;                                                           /**< The rotation solution vector */
     RowVector<T> rTA1;                                                         /**< The rotation vector in Ylm space */
-    RowVector<T> rTU1;                                                         /**< The rotation vector times the LD change of basis matrix */
     Eigen::SparseMatrix<T> U1;                                                 /**< The limb darkening to polynomial change of basis matrix */
-    Eigen::SparseMatrix<T> U;                                                  /**< The full limb darkening change of basis matrix */
+
+    // Larger (size `ydeg + udeg`)
+    struct Big {
+        Eigen::SparseMatrix<T> A1;                                             /**< The polynomial change of basis matrix */
+        Eigen::SparseMatrix<T> A2;                                             /**< The Green's change of basis matrix */
+        Eigen::SparseMatrix<T> A;                                              /**< The full change of basis matrix */
+        RowVector<T> rT;                                                       /**< The rotation solution vector */
+        RowVector<T> rTA1;                                                     /**< The rotation vector in Ylm space */
+        Eigen::SparseMatrix<T> U1;                                             /**< The limb darkening to polynomial change of basis matrix */
+    };
+    Big big;
 
     // Constructor: compute the matrices
     explicit Basis(
-        int lmax, 
+        int ydeg,
+        int udeg, 
         T norm=2.0 / root_pi<T>() 
     ) :
-        lmax(lmax), 
-        norm(norm)
+        ydeg(ydeg),
+        udeg(udeg), 
+        norm(norm),
+        big()
     {
-        computeA1(lmax, A1, norm);
-        computeA(lmax, A1, A2, A);
-        computeA1Inv(lmax, A1, A1Inv);
-        computerT(lmax, rT);
-        rTA1 = rT * A1;
-        computeU(lmax, A1, A, U1, U, norm);
-        rTU1 = rT * U1;
+        // Compute the large matrices
+        computeA1(ydeg + udeg, big.A1, norm);
+        computeA(ydeg + udeg, big.A1, big.A2, big.A);
+        computerT(ydeg + udeg, big.rT);
+        big.rTA1 = big.rT * big.A1;
+        computeU(ydeg + udeg, big.A1, big.A, big.U1, norm);
+
+        // Compute the smaller blocks of size `ydeg`
+        int Ny = (ydeg + 1) * (ydeg + 1);
+        A1 = big.A1.block(0, 0, Ny, Ny);
+        A2 = big.A2.block(0, 0, Ny, Ny);
+        A = big.A.block(0, 0, Ny, Ny);
+        rT = big.rT.segment(0, Ny);
+        rTA1 = big.rTA1.segment(0, Ny);
+        U1 = big.U1.block(0, 0, Ny, udeg + 1);
+
     }
 
     // Public methods
@@ -718,6 +736,7 @@ inline void Basis<T>::computePolyBasis (
     const T& y, 
     RowVector<T>& basis
 ) {
+    /* \todo
     T r2 = x * x + y * y;
     if (r2 > 1) {
         basis.setConstant(T(NAN));
@@ -768,6 +787,7 @@ inline void Basis<T>::computePolyBasis (
             ++n;
         }
     }
+    */
 }
 
 /**
@@ -781,6 +801,7 @@ inline void Basis<T>::computePolyBasis (
     const MatrixBase<T2>& y,
     Matrix<T>& basis
 ) {
+    /* \todo
     int N = (lmax + 1) * (lmax + 1);
     int npts = x.cols();
     RowVector<T> x2 = x.cwiseProduct(x);
@@ -831,6 +852,7 @@ inline void Basis<T>::computePolyBasis (
             ++n;
         }
     }
+    */
 }
 
 /**
@@ -844,12 +866,14 @@ inline void Basis<T>::computePolyMatrix (
     size_t res,
     Matrix<T>& P
 ) {
+    /* \todo
     RowVector<T> pts(RowVector<T>::LinSpaced(res, -1.0, 1.0));
     RowVector<T> y = pts.replicate(1, res);
     Matrix<T> tmp = y.replicate(res, 1);
     Eigen::Map<RowVector<T>> x(tmp.data(), res * res);
     P.resize(res * res, (lmax + 1) * (lmax + 1));
     computePolyBasis(y, x, P);
+    */
 }
 
 /**

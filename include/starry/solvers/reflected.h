@@ -1,5 +1,5 @@
 /**
-\file solver_refl.h
+\file reflected.h
 \brief Computes surface integrals over reflected-light maps.
 
 */
@@ -7,9 +7,9 @@
 #ifndef _STARRY_SOLVER_REFL_H_
 #define _STARRY_SOLVER_REFL_H_
 
-#include "utils.h"
-#include "ellip.h"
-#include "errors.h"
+#include "../utils.h"
+#include "../ellip.h"
+#include "../errors.h"
 
 namespace starry {
 namespace solver {
