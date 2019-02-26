@@ -13,9 +13,9 @@ inline void computeLinearFluxModel (
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
-    RowMatrix<Scalar>& A
+    RowMatrix<Scalar>& X
 ) {
-    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, A);
+    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, X);
 }
 
 /**
@@ -33,14 +33,14 @@ inline void computeLinearFluxModel (
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
-    RowMatrix<Scalar>& A,
+    RowMatrix<Scalar>& X,
     RowMatrix<Scalar>& Dtheta,
     RowMatrix<Scalar>& Dxo,
     RowMatrix<Scalar>& Dyo,
     RowMatrix<Scalar>& Dro
 ) {
     RowMatrix<Scalar> Dt; // Dummy!
-    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, A, Dt, Dtheta, Dxo, Dyo, Dro);
+    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro);
 }
 
 /**
@@ -59,10 +59,10 @@ inline void computeLinearFluxModel (
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
-    RowMatrix<Scalar>& A
+    RowMatrix<Scalar>& X
 ) {
     computeTaylor(t);
-    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, A);
+    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, X);
 }
 
 /**
@@ -81,7 +81,7 @@ inline void computeLinearFluxModel (
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
-    RowMatrix<Scalar>& A,
+    RowMatrix<Scalar>& X,
     RowMatrix<Scalar>& Dt,
     RowMatrix<Scalar>& Dtheta,
     RowMatrix<Scalar>& Dxo,
@@ -89,5 +89,5 @@ inline void computeLinearFluxModel (
     RowMatrix<Scalar>& Dro
 ) {
     computeTaylor(t);
-    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, A, Dt, Dtheta, Dxo, Dyo, Dro);
+    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro);
 }

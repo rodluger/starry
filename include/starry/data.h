@@ -17,7 +17,7 @@ public:
     RowMatrix<Scalar> DADxo;
     RowMatrix<Scalar> DADyo;
     RowMatrix<Scalar> DADro;
-    RowMatrix<Scalar> A;
+    RowMatrix<Scalar> X;
 
     // Cache
     std::vector<Matrix<Scalar>> EulerD;

@@ -16,12 +16,14 @@ public:
     // Public variables
     const int ydeg;                                                            /**< Maximum degree of the spherical harmonic map */
     const int udeg;                                                            /**< Maximum degree of the limb darkening map */
+    const int deg;                                                             /**< Maximum degree of the combined Ylm + limb darkening map */
     const int Ny;                                                              /**< Number of spherical harmonic `(l, m)` coefficients */
-    const int Nu;                                                              /**< Number of limb darkening coefficients */
+    const int Nu;                                                              /**< Number of limb darkening coefficients in the `u` basis */
+    const int Np;                                                              /**< Number of limb darkening coefficients in the `p` basis*/
+    const int Nw;                                                              /**< Number of spectral components */
+    const int Nt;                                                              /**< Number of temporal components */
+    const int Nf;                                                              /**< Number of flux components per timestep */
     const int N;                                                               /**< Total number of spherical harmonic `(l, m)` coefficients after limb darkening */
-    const int ncoly;                                                           /**< Number of columns in the `y` matrix */
-    const int ncolu;                                                           /**< Number of columns in the `u` matrix */
-    const int nflx;
     Data<Scalar> data;                                                         /**< Internal storage class */
 
 protected:
@@ -46,25 +48,27 @@ protected:
     explicit Map (
         int ydeg,
         int udeg,
-        int ncoly,
-        int ncolu,
-        int nflx
+        int Nw,
+        int Nt,
+        int Nf
     ) :
         ydeg(ydeg), 
         udeg(udeg),
+        deg(ydeg + udeg),
         Ny((ydeg + 1) * (ydeg + 1)), 
         Nu(udeg + 1),
-        N((ydeg + udeg + 1) * (ydeg + udeg + 1)),
-        ncoly(ncoly), 
-        ncolu(ncolu),
-        nflx(nflx),
+        Np((udeg + 1) * (udeg + 1)),
+        Nw(Nw),
+        Nt(Nt),
+        Nf(Nf),
+        N((deg + 1) * (deg + 1)),
         data(ydeg),
-        y(Ny, ncoly),
-        u(Nu, ncolu),
+        y(Ny * Nt, Nw),
+        u(Nu, Nw),
         axis(yhat<Scalar>()),
         B(ydeg, udeg),
         W(ydeg, axis),
-        G(ydeg + udeg),
+        G(ydeg),
         L(udeg)
     {
         if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))
@@ -73,34 +77,35 @@ protected:
         if ((udeg < 0) || (udeg > STARRY_MAX_LMAX))
             throw errors::ValueError(
                 "Limb darkening degree out of range.");
-        if ((ydeg + udeg > STARRY_MAX_LMAX))
+        if ((deg > STARRY_MAX_LMAX))
             throw errors::ValueError(
                 "Total map degree out of range.");
-        if ((ncoly < 1) || (ncolu < 1))
+        if ((Nw < 1) || (Nt < 1))
             throw errors::ValueError(
-                "The number of map columns must be positive.");
+                "The number of temporal / spectral terms must be positive.");
         radian = pi<Scalar>() / 180.;
         reset();
     };
 
 public:
 
-    //! Constructor for single-column maps
+    //! Constructor for the default map
     template <typename U=S, typename=IsDefault<U>>
     explicit Map (
         int ydeg,
         int udeg
     ) : Map(ydeg, udeg, 1, 1, 1) {}
 
-    //! Constructor for multi-column maps
+    //! Constructor for spectral & temporal maps
     template <typename U=S, typename=IsSpectralOrTemporal<U>>
     explicit Map (
         int ydeg,
         int udeg,
-        int ncol
-    ) : Map(ydeg, udeg, ncol, 
-            std::is_same<U, Spectral<Scalar, S::Reflected>>::value ? ncol : 1,
-            std::is_same<U, Spectral<Scalar, S::Reflected>>::value ? ncol : 1) {}
+        int nterms
+    ) : Map(ydeg, udeg, 
+            std::is_same<U, Spectral<Scalar, S::Reflected>>::value ? nterms : 1,
+            std::is_same<U, Temporal<Scalar, S::Reflected>>::value ? nterms : 1,
+            std::is_same<U, Spectral<Scalar, S::Reflected>>::value ? nterms : 1) {}
 
     // Public methods
     #include "public/io.h"

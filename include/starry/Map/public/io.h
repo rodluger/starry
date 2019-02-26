@@ -15,7 +15,7 @@ std::string info () {
         os << "<starry.Map("
             << "ydeg=" << ydeg << ", "
             << "udeg=" << udeg << ", "
-            << "nw=" << ncoly << ", "
+            << "nw=" << Nw << ", "
             << "reflected=" << S::Reflected << ", "
             << "multi=" << !std::is_same<Scalar, double>::value
             << ")>";
@@ -23,7 +23,7 @@ std::string info () {
         os << "<starry.Map("
             << "ydeg=" << ydeg << ", "
             << "udeg=" << udeg << ", "
-            << "nt=" << ncoly << ", "
+            << "nt=" << Nt << ", "
             << "reflected=" << S::Reflected << ", "
             << "multi=" << !std::is_same<Scalar, double>::value
             << ")>";

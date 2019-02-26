@@ -49,7 +49,7 @@ inline void addSpot (
     // Compute the integrals recursively
     Vector<Scalar> IP(l + 1);
     Vector<Scalar> ID(l + 1);
-    YType coeff(N, ncoly);
+    YType coeff(Ny * Nt, Nw);
     coeff.setZero();
 
     // Constants

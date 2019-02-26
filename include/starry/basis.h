@@ -650,6 +650,7 @@ public:
 
     const int ydeg;                                                            /**< The highest degree of the spherical harmonic map */
     const int udeg;                                                            /**< The highest degree of the limb darkening map */
+    const int lmax;
     const double norm;                                                         /**< Map normalization constant */
     Eigen::SparseMatrix<T> A1;                                                 /**< The polynomial change of basis matrix */
     Eigen::SparseMatrix<T> A2;                                                 /**< The Green's change of basis matrix */
@@ -657,17 +658,6 @@ public:
     RowVector<T> rT;                                                           /**< The rotation solution vector */
     RowVector<T> rTA1;                                                         /**< The rotation vector in Ylm space */
     Eigen::SparseMatrix<T> U1;                                                 /**< The limb darkening to polynomial change of basis matrix */
-
-    // Larger (size `ydeg + udeg`)
-    struct Big {
-        Eigen::SparseMatrix<T> A1;                                             /**< The polynomial change of basis matrix */
-        Eigen::SparseMatrix<T> A2;                                             /**< The Green's change of basis matrix */
-        Eigen::SparseMatrix<T> A;                                              /**< The full change of basis matrix */
-        RowVector<T> rT;                                                       /**< The rotation solution vector */
-        RowVector<T> rTA1;                                                     /**< The rotation vector in Ylm space */
-        Eigen::SparseMatrix<T> U1;                                             /**< The limb darkening to polynomial change of basis matrix */
-    };
-    Big big;
 
     // Constructor: compute the matrices
     explicit Basis(
@@ -677,45 +667,27 @@ public:
     ) :
         ydeg(ydeg),
         udeg(udeg), 
-        norm(norm),
-        big()
+        lmax(ydeg + udeg),
+        norm(norm)
     {
-        // Compute the large matrices
-        computeA1(ydeg + udeg, big.A1, norm);
-        computeA(ydeg + udeg, big.A1, big.A2, big.A);
-        computerT(ydeg + udeg, big.rT);
-        big.rTA1 = big.rT * big.A1;
-        computeU(ydeg + udeg, big.A1, big.A, big.U1, norm);
+        // Compute the matrices
+        computeA1(lmax, A1, norm);
+        computeA(lmax, A1, A2, A);
+        computerT(lmax, rT);
+        rTA1 = rT * A1;
+        computeU(lmax, A1, A, U1, norm);
 
-        // Compute the smaller blocks of size `ydeg`
-        int Ny = (ydeg + 1) * (ydeg + 1);
-        A1 = big.A1.block(0, 0, Ny, Ny);
-        A2 = big.A2.block(0, 0, Ny, Ny);
-        A = big.A.block(0, 0, Ny, Ny);
-        rT = big.rT.segment(0, Ny);
-        rTA1 = big.rTA1.segment(0, Ny);
-        U1 = big.U1.block(0, 0, Ny, udeg + 1);
-
+        // Shorten U1, as we never need the full matrix
+        U1 = U1.block(0, 0, (ydeg + 1) * (ydeg + 1), udeg + 1);
     }
 
     // Public methods
-
-    inline void computePolyBasis ( 
-        const T& x, 
-        const T& y, 
-        RowVector<T>& basis
-    );
 
     template <typename T1, typename T2> 
     inline void computePolyBasis ( 
         const MatrixBase<T1>& x,
         const MatrixBase<T2>& y,
-        Matrix<T>& basis
-    );
-
-    inline void computePolyMatrix (
-        size_t res,
-        Matrix<T>& P
+        RowMatrix<T>& basis
     );
 
     inline void computeIlluminationMatrix (
@@ -727,70 +699,6 @@ public:
 };
 
 /**
-Compute the polynomial basis at a point.
-
-*/
-template <typename T> 
-inline void Basis<T>::computePolyBasis ( 
-    const T& x, 
-    const T& y, 
-    RowVector<T>& basis
-) {
-    /* \todo
-    T r2 = x * x + y * y;
-    if (r2 > 1) {
-        basis.setConstant(T(NAN));
-        return;
-    }
-    int N = (lmax + 1) * (lmax + 1);
-    RowVector<T> xarr(N), yarr(N);
-    T xterm = 1, yterm = 1;
-    T z = sqrt(1 - r2);
-    int i0 = 0,
-        di0 = 3,
-        j0 = 0,
-        dj0 = 2;
-    int i, j, di, dj, n;
-    for (n = 0; n < lmax + 1; ++n) {
-        i = i0;
-        di = di0;
-        xarr(i) = xterm;
-        j = j0;
-        dj = dj0;
-        yarr(j) = yterm;
-        i = i0 + di - 1;
-        j = j0 + dj - 1;
-        while (i + 1 < N) {
-            xarr(i) = xterm;
-            xarr(i + 1) = xterm;
-            di += 2;
-            i += di;
-            yarr(j) = yterm;
-            yarr(j + 1) = yterm;
-            dj += 2;
-            j += dj - 1;
-        }
-        xterm *= x;
-        i0 += 2 * n + 1;
-        di0 += 2;
-        yterm *= y;
-        j0 += 2 * (n + 1) + 1;
-        dj0 += 2;
-    }
-    n = 0;
-    for (int l = 0; l < lmax + 1; ++l) {
-        for (int m = -l; m < l + 1; ++m) {
-            if ((l + m) % 2 == 0)
-                basis(n) = xarr(n) * yarr(n);
-            else
-                basis(n) = xarr(n) * yarr(n) * z;
-            ++n;
-        }
-    }
-    */
-}
-
-/**
 Compute the polynomial basis at a vector of points.
 
 */
@@ -799,19 +707,18 @@ template <typename T1, typename T2>
 inline void Basis<T>::computePolyBasis ( 
     const MatrixBase<T1>& x,
     const MatrixBase<T2>& y,
-    Matrix<T>& basis
+    RowMatrix<T>& basis
 ) {
-    /* \todo
     int N = (lmax + 1) * (lmax + 1);
-    int npts = x.cols();
-    RowVector<T> x2 = x.cwiseProduct(x);
+    int npts = y.cols();
     RowVector<T> y2 = y.cwiseProduct(y);
-    RowVector<T> z2 = RowVector<T>::Ones(npts) - x2 - y2;
+    RowVector<T> x2 = x.cwiseProduct(x);
+    RowVector<T> z2 = RowVector<T>::Ones(npts) - y2 - x2;
     RowVector<T> z = z2.cwiseSqrt();
-    Matrix<T> xarr(npts, N), yarr(npts, N);
-    RowVector<T> xterm(npts), yterm(npts);
-    xterm.setOnes();
+    Matrix<T> yarr(npts, N), xarr(npts, N);
+    RowVector<T> yterm(npts), xterm(npts);
     yterm.setOnes();
+    xterm.setOnes();
     int i0 = 0,
         di0 = 3,
         j0 = 0,
@@ -820,60 +727,38 @@ inline void Basis<T>::computePolyBasis (
     for (n = 0; n < lmax + 1; ++n) {
         i = i0;
         di = di0;
-        xarr.col(i) = xterm;
+        yarr.col(i) = yterm;
         j = j0;
         dj = dj0;
-        yarr.col(j) = yterm;
+        xarr.col(j) = xterm;
         i = i0 + di - 1;
         j = j0 + dj - 1;
         while (i + 1 < N) {
-            xarr.col(i) = xterm;
-            xarr.col(i + 1) = xterm;
+            yarr.col(i) = yterm;
+            yarr.col(i + 1) = yterm;
             di += 2;
             i += di;
-            yarr.col(j) = yterm;
-            yarr.col(j + 1) = yterm;
+            xarr.col(j) = xterm;
+            xarr.col(j + 1) = xterm;
             dj += 2;
             j += dj - 1;
         }
-        xterm = xterm.cwiseProduct(x);
+        yterm = yterm.cwiseProduct(y);
         i0 += 2 * n + 1;
         di0 += 2;
-        yterm = yterm.cwiseProduct(y);
+        xterm = xterm.cwiseProduct(x);
         j0 += 2 * (n + 1) + 1;
         dj0 += 2;
     }
     n = 0;
     for (int l = 0; l < lmax + 1; ++l) {
         for (int m = -l; m < l + 1; ++m) {
-            basis.col(n) = xarr.col(n).cwiseProduct(yarr.col(n));
+            basis.col(n) = yarr.col(n).cwiseProduct(xarr.col(n));
             if ((l + m) % 2 != 0)
                 basis.col(n) = basis.col(n).cwiseProduct(z.transpose());
             ++n;
         }
     }
-    */
-}
-
-/**
-Compute the polynomial basis over the visible disk at a given
-resolution. This is effectively a change of basis matrix from spherical
-harmonic coefficients to pixel values on a grid.
-
-*/
-template <typename T>
-inline void Basis<T>::computePolyMatrix (
-    size_t res,
-    Matrix<T>& P
-) {
-    /* \todo
-    RowVector<T> pts(RowVector<T>::LinSpaced(res, -1.0, 1.0));
-    RowVector<T> y = pts.replicate(1, res);
-    Matrix<T> tmp = y.replicate(res, 1);
-    Eigen::Map<RowVector<T>> x(tmp.data(), res * res);
-    P.resize(res * res, (lmax + 1) * (lmax + 1));
-    computePolyBasis(y, x, P);
-    */
 }
 
 /**

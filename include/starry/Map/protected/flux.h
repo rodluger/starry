@@ -39,14 +39,14 @@ inline void computeLinearFluxModelInternal (
     // Pre-compute the limb darkening operator (\todo: cache it)
     if (udeg > 0) {
         UType tmp = B.U1 * u;
-        Scalar norm = pi<Scalar>() * y(0) / B.rT.dot(tmp);
+        Scalar norm = pi<Scalar>() / B.rT.dot(tmp);
         Vector<Scalar> pu = tmp * norm;
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
-        LA1 = (L * B.big.A1);
-        A2LA1 = (B.big.A2 * LA1).sparseView();
-        rTLA1 = B.big.rT * LA1;
+        LA1 = (L * B.A1);
+        A2LA1 = (B.A2 * LA1).sparseView();
+        rTLA1 = B.rT * LA1;
     }
     Eigen::SparseMatrix<Scalar>& A = (udeg > 0) ? A2LA1 : B.A;
     RowVector<Scalar>& rTA1 = (udeg > 0) ? rTLA1 : B.rTA1;
@@ -54,11 +54,8 @@ inline void computeLinearFluxModelInternal (
     // Pre-compute the rotation
     W.leftMultiplyRZetaInv(rTA1, rTA1RZetaInv);
 
-    // Our model matrix, f = A . y
-    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value)
-        X.resize(nt, Ny * ncoly);
-    else
-        X.resize(nt, Ny);
+    // Our model matrix, f = X . y
+    X.resize(nt, Ny * Nt);
 
     // Loop over the timeseries and compute the model
     Scalar b, invb;
@@ -84,7 +81,7 @@ inline void computeLinearFluxModelInternal (
             // Transform back to the sky plane and we're done
             if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
                 W.leftMultiplyRZeta(rTA1RZetaInvRz, X.block(n, 0, 1, Ny));
-                for (int i = 1; i < ncoly; ++i) {
+                for (int i = 1; i < Nt; ++i) {
                     X.block(n, i * Ny, 1, Ny) = X.block(n, 0, 1, Ny) * taylor(n, i);
                 }
             } else {
@@ -115,7 +112,7 @@ inline void computeLinearFluxModelInternal (
             // Transform back to the sky plane and we're done
             if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
                 W.leftMultiplyRZeta(sTARzRZetaInvRz, X.block(n, 0, 1, Ny));
-                for (int i = 1; i < ncoly; ++i) {
+                for (int i = 1; i < Nt; ++i) {
                     X.block(n, i * Ny, 1, Ny) = X.block(n, 0, 1, Ny) * taylor(n, i);
                 }
             } else {
@@ -161,12 +158,7 @@ inline void computeLinearFluxModelInternal (
     // Convert to radians
     Vector<Scalar> theta_rad = theta * radian;
 
-    // Number of columns in `A`
-    int K = Ny;
-    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
-        K *= ncoly;
-        Dt.resize(nt, K);
-    }
+
 
     // \todo: Cache these
     RowVector<Scalar> rTA1RZetaInv(Ny);
@@ -192,7 +184,7 @@ inline void computeLinearFluxModelInternal (
 
     // Pre-compute the limb darkening matrix
     UType tmp = B.U1 * u;
-    Scalar norm = pi<Scalar>() * y(0) / B.rT.dot(tmp);
+    Scalar norm = pi<Scalar>() / B.rT.dot(tmp);
     Vector<Scalar> pu = tmp * norm;
     Matrix<Scalar> L;
     Vector<Matrix<Scalar>> dLdp;
@@ -203,7 +195,7 @@ inline void computeLinearFluxModelInternal (
     // Limb darkening derivatives (TODO)
     //Matrix<Scalar> dLdu1 = (dLdp[0] * B.U);
     //RowMatrix<Scalar> Du1;
-    //Du1.resize(nt, K);
+    //Du1.resize(nt, Ny);
 
     // Pre-compute the W matrices
     if (udeg == 0)
@@ -212,11 +204,15 @@ inline void computeLinearFluxModelInternal (
         W.leftMultiplyRZetaInv((B.rT * LA1).eval(), rTA1RZetaInv);
 
     // Our model matrix, f = A . y, and its derivatives
-    X.resize(nt, K);
-    Dtheta.resize(nt, K);
-    Dxo.resize(nt, K);
-    Dyo.resize(nt, K);
-    Dro.resize(nt, K);
+    X.resize(nt, Ny);
+    Dtheta.resize(nt, Ny);
+    Dxo.resize(nt, Ny);
+    Dyo.resize(nt, Ny);
+    Dro.resize(nt, Ny);
+
+    // 
+    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value)
+        Dt.resize(nt, Ny);
 
     // Loop over the timeseries and compute the model
     Scalar b, invb;

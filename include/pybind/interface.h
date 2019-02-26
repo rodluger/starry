@@ -247,17 +247,17 @@ std::vector<int> get_Ul_inds (
 }
 
 /**
-Return a lambda function to compute the intensity at a point 
-or a vector of points.
+Return a lambda function to compute the linear intensity model
+on a grid.
 
 */
 template <typename T>
 std::function<py::object(
         Map<T> &, 
 #       ifdef _STARRY_TEMPORAL_
-            py::array_t<double>&, 
+            const double&, 
 #       endif
-        py::array_t<double>&, 
+        const double&, 
         py::array_t<double>&, 
 #       ifdef _STARRY_REFLECTED_
             py::array_t<double>&,
@@ -265,136 +265,111 @@ std::function<py::object(
 #       else
             py::array_t<double>&
 #       endif
-    )> intensity () 
+    )> linear_intensity_model () 
 {
     return []
     (
         Map<T> &map, 
 #ifdef _STARRY_TEMPORAL_
-        py::array_t<double>& t, 
+        const double& t, 
 #endif
-        py::array_t<double>& theta, 
-        py::array_t<double>& x, 
+        const double& theta, 
+        py::array_t<double>& x_, 
 #ifdef _STARRY_REFLECTED_
-        py::array_t<double>& y,
+        py::array_t<double>& y_,
         py::array_t<double>& source_
 #else
-        py::array_t<double>& y
+        py::array_t<double>& y_
 #endif
     ) -> py::object {
         using Scalar = typename T::Scalar;
 #       ifdef _STARRY_REFLECTED_
-            // Pick out the columns of the `source_` numpy array so we 
-            // can vectorize it easily.
-            py::buffer_info buf = source_.request();
-            double *ptr = (double *) buf.ptr;
-            assert(
-                ((buf.ndim == 1) && (buf.size == 3)) ||
-                ((buf.ndim == 2) && (buf.shape[1] == 3))
-            );
-            auto sx = py::array_t<double>(buf.size / 3);
-            py::buffer_info bufx = sx.request();
-            double *ptrx = (double *) bufx.ptr;
-            auto sy = py::array_t<double>(buf.size / 3);
-            py::buffer_info bufy = sy.request();
-            double *ptry = (double *) bufy.ptr;
-            auto sz = py::array_t<double>(buf.size / 3);
-            py::buffer_info bufz = sz.request();
-            double *ptrz = (double *) bufz.ptr;
-            for (int i = 0; i < sx.size(); ++i) {
-                ptrx[i] = ptr[3 * i];
-                ptry[i] = ptr[3 * i + 1];
-                ptrz[i] = ptr[3 * i + 2];
-            }
+            UnitVector<Scalar> source = 
+                py::cast<UnitVector<double>>(source_).template cast<Scalar>();
+            assert(source.rows() == 3);
 #       endif
-#       ifdef _STARRY_TEMPORAL_
-#           ifdef _STARRY_EMITTED_
-                std::vector<long> v{t.size(), theta.size(), 
-                                    x.size(), y.size()};
+
+        // Map `x` to an Eigen matrix
+        py::buffer_info bufx = x_.request();
+        double *ptrx = (double *) bufx.ptr;
+        Matrix<double> tmpx;
+        Eigen::Map<RowMatrix<Scalar>> x(NULL, 
+                                     bufx.ndim > 0 ? bufx.shape[0] : 1, 
+                                     bufx.ndim > 1 ? bufx.shape[1] : 1);
+        if (bufx.ndim == 0) {
+            tmpx = ptrx[0] * Matrix<Scalar>::Ones(1, 1);
+            new (&x) Eigen::Map<Matrix<Scalar>>(&tmpx(0), 1, 1);
+        } else if (bufx.ndim == 1) {
+#           ifdef _STARRY_DOUBLE
+                new (&x) Eigen::Map<Matrix<Scalar>>(ptrx, bufx.shape[0], 1);
 #           else
-                std::vector<long> v{t.size(), theta.size(), x.size(), 
-                                    y.size(), sx.size()};
+                tmpx = (py::cast<Matrix<double>>(x_)).template cast<Scalar>();
+                new (&x) Eigen::Map<Matrix<Scalar>>(&tmpx(0), bufx.shape[0], 1);
 #           endif
-#       else
-#           ifdef _STARRY_EMITTED_
-                std::vector<long> v{theta.size(), x.size(), y.size()};
+        } else if (bufx.ndim == 2) {
+#           ifdef _STARRY_DOUBLE
+                new (&x) Eigen::Map<Matrix<Scalar>>(ptrx, bufx.shape[0], bufx.shape[1]);
 #           else
-                std::vector<long> v{theta.size(), x.size(), 
-                                    y.size(), sx.size()};
+                tmpx = (py::cast<Matrix<double>>(x_)).template cast<Scalar>();
+                new (&x) Eigen::Map<Matrix<Scalar>>(&tmpx(0), bufx.shape[0], bufx.shape[1]);
 #           endif
-#       endif
-        size_t nt = *std::max_element(v.begin(), v.end());
-        size_t n = 0;
-#       ifdef _STARRY_SPECTRAL_
-            RowMatrix<Scalar> intensity(nt, map.nflx);
-#       else
-            Vector<Scalar> intensity(nt);
-#       endif
-        py::vectorize([&map, &intensity, &n](
-#           ifdef _STARRY_TEMPORAL_
-                double t,
-#           endif
-            double theta, 
-            double x, 
-#           ifdef _STARRY_REFLECTED_
-                double y,
-                double sx, 
-                double sy, 
-                double sz
-#           else
-                double y
-#           endif
-        ) {
-#           ifdef _STARRY_REFLECTED_
-                UnitVector<Scalar> source(3);
-                source << sx, sy, sz;
-#           endif
-            map.computeIntensity(
-#               ifdef _STARRY_TEMPORAL_
-                    static_cast<Scalar>(t), 
-#               endif
-                static_cast<Scalar>(theta), 
-                static_cast<Scalar>(x), 
-                static_cast<Scalar>(y), 
-#               ifdef _STARRY_REFLECTED_
-                    source,
-#               endif
-                intensity.row(n)
-            );
-            ++n;
-            return 0;
-        })(
-#           ifdef _STARRY_TEMPORAL_
-                t, 
-#           endif
-            theta, 
-            x, 
-#           ifdef _STARRY_REFLECTED_
-                y,
-                sx,
-                sy,
-                sz
-#           else
-                y
-#           endif
-        );
-        if (nt > 1) {
-            return py::cast(intensity.template cast<double>());
         } else {
-#           ifdef _STARRY_SPECTRAL_
-                RowVector<double> f = intensity.row(0).template cast<double>();
-                return py::cast(f);
-#           else
-                return py::cast(static_cast<double>(intensity(0)));
-#           endif
+            throw errors::ValueError("Argument `x` has the wrong shape.");
         }
+
+        // Map `y` to an Eigen Matrix
+        py::buffer_info bufy = y_.request();
+        double *ptry = (double *) bufy.ptr;
+        Matrix<double> tmpy;
+        Eigen::Map<RowMatrix<Scalar>> y(NULL, 
+                                     bufy.ndim > 0 ? bufy.shape[0] : 1, 
+                                     bufy.ndim > 1 ? bufy.shape[1] : 1);
+        if (bufy.ndim == 0) {
+            tmpy = ptry[0] * Matrix<Scalar>::Ones(1, 1);
+            new (&y) Eigen::Map<Matrix<Scalar>>(&tmpy(0), 1, 1);
+        } else if (bufy.ndim == 1) {
+#           ifdef _STARRY_DOUBLE
+                new (&y) Eigen::Map<Matrix<Scalar>>(ptry, bufy.shape[0], 1);
+#           else
+                tmpy = (py::cast<Matrix<double>>(y_)).template cast<Scalar>();
+                new (&y) Eigen::Map<Matrix<Scalar>>(&tmpy(0), bufy.shape[0], 1);
+#           endif
+        } else if (bufy.ndim == 2) {
+#           ifdef _STARRY_DOUBLE
+                new (&y) Eigen::Map<Matrix<Scalar>>(ptry, bufy.shape[0], bufy.shape[1]);
+#           else
+                tmpy = (py::cast<Matrix<double>>(y_)).template cast<Scalar>();
+                new (&y) Eigen::Map<Matrix<Scalar>>(&tmpy(0), bufy.shape[0], bufy.shape[1]);
+#           endif
+        } else {
+            throw errors::ValueError("Argument `y` has the wrong shape.");
+        }
+
+        // Ensure their shapes match
+        assert((x.rows() == y.rows()) && (x.cols() == y.cols()));
+
+        // Compute the model
+        map.computeLinearIntensityModel(
+#           ifdef _STARRY_TEMPORAL_
+                Scalar(t),
+#           endif
+            Scalar(theta), 
+            x, 
+            y, 
+#           ifdef _STARRY_REFLECTED_
+                source,
+#           endif
+            map.data.X
+        );
+
+        return PYOBJECT_CAST_ARR(map.data.X);
+
     };
 }
 
 /**
-Return a lambda function to compute the linear model at a point 
-or a vector of points. Optionally compute and return 
-the gradient.
+Return a lambda function to compute the linear flux model. 
+Optionally compute and return the gradient.
 
 \todo Implement this for reflected types
 
@@ -458,11 +433,11 @@ std::function<py::object (
 
             // Compute the model and return
 #           ifdef _STARRY_TEMPORAL_
-                map.computeLinearFluxModel(t, theta, xo, yo, zo, ro, map.data.A);
+                map.computeLinearFluxModel(t, theta, xo, yo, zo, ro, map.data.X);
 #           else
-                map.computeLinearFluxModel(theta, xo, yo, zo, ro, map.data.A);
+                map.computeLinearFluxModel(theta, xo, yo, zo, ro, map.data.X);
 #           endif
-            return PYOBJECT_CAST_ARR(map.data.A);
+            return PYOBJECT_CAST_ARR(map.data.X);
 
         } else {
 
@@ -471,7 +446,7 @@ std::function<py::object (
 #               ifdef _STARRY_TEMPORAL_
                     t,
 #               endif
-                theta, xo, yo, zo, ro, map.data.A, 
+                theta, xo, yo, zo, ro, map.data.X, 
 #               ifdef _STARRY_TEMPORAL_
                     map.data.DADt,
 #               endif
@@ -502,7 +477,7 @@ std::function<py::object (
 
             // Return
             return py::make_tuple(
-                ENSURE_DOUBLE_ARR(map.data.A), 
+                ENSURE_DOUBLE_ARR(map.data.X), 
                 gradient
             );
 

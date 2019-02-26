@@ -352,6 +352,12 @@ public:
         MatrixBase<T2> const & uT
     );
 
+    template <typename T1, typename T2>
+    inline void leftMultiplyR (
+        const MatrixBase<T1>& vT, 
+        MatrixBase<T2> const & uT
+    );
+
     inline void compute (
         const Scalar& costheta, 
         const Scalar& sintheta
@@ -430,8 +436,9 @@ inline void Wigner<Scalar>::leftMultiplyRz (
 ) {
     for (int l = 0; l < lmax + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
-            MBCAST(uT, T2).col(l * l + j) = vT.col(l * l + j) * cosmt(l * l + j) +
-                                vT.col(l * l + 2 * l - j) * sinmt(l * l + j);
+            MBCAST(uT, T2).col(l * l + j) = 
+                vT.col(l * l + j) * cosmt(l * l + j) +
+                vT.col(l * l + 2 * l - j) * sinmt(l * l + j);
         }
     }
 }
@@ -449,8 +456,9 @@ inline void Wigner<Scalar>::leftMultiplyDRz (
     for (int l = 0; l < lmax + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
             int m = j - l;
-            MBCAST(uT, T2).col(l * l + j) = vT.col(l * l + 2 * l - j) * m * cosmt(l * l + j) -
-                                vT.col(l * l + j) * m * sinmt(l * l + j);
+            MBCAST(uT, T2).col(l * l + j) = 
+                vT.col(l * l + 2 * l - j) * m * cosmt(l * l + j) -
+                vT.col(l * l + j) * m * sinmt(l * l + j);
         }
     }
 }
@@ -466,8 +474,8 @@ inline void Wigner<Scalar>::leftMultiplyRZeta (
     MatrixBase<T2> const & uT
 ) {
     for (int l = 0; l < lmax + 1; ++l) {
-        MBCAST(uT, T2).block(0, l * l, 1, 2 * l + 1) =
-            vT.block(0, l * l, 1, 2 * l + 1) * RZeta[l];
+        MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
+            vT.block(0, l * l, uT.rows(), 2 * l + 1) * RZeta[l];
     }
 }
 
@@ -482,9 +490,25 @@ inline void Wigner<Scalar>::leftMultiplyRZetaInv (
     MatrixBase<T2> const & uT
 ) {
     for (int l = 0; l < lmax + 1; ++l) {
-        MBCAST(uT, T2).block(0, l * l, 1, 2 * l + 1) =
-            vT.block(0, l * l, 1, 2 * l + 1) * RZetaInv[l];
+        MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
+            vT.block(0, l * l, uT.rows(), 2 * l + 1) * RZetaInv[l];
     }
+}
+
+/* 
+Computes the dot product uT = vT . R.
+
+*/
+template <class Scalar>
+template <typename T1, typename T2>
+inline void Wigner<Scalar>::leftMultiplyR (
+    const MatrixBase<T1>& vT, 
+    MatrixBase<T2> const & uT
+) {
+    typename T1::PlainObject tmp(uT.rows(), uT.cols());
+    leftMultiplyRZetaInv(vT, uT);
+    leftMultiplyRz(uT, tmp);
+    leftMultiplyRZeta(tmp, uT);
 }
 
 template <class Scalar>
@@ -530,9 +554,7 @@ inline void Wigner<Scalar>::rotate (
     MatrixBase<T1>& Ry
 ) {
     compute(costheta, -sintheta);
-    leftMultiplyRZetaInv(y.transpose(), Ry.transpose());
-    leftMultiplyRz(y.transpose(), Ry.transpose());
-    leftMultiplyRZeta(y.transpose(), Ry.transpose());
+    leftMultiplyR(y.transpose(), Ry.transpose());
 }
 
 /**

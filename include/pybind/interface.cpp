@@ -131,53 +131,11 @@ PYBIND11_MODULE(
 #   if defined(_STARRY_SINGLECOL_) 
         PyMap.def(py::init<int, int>(), "ydeg"_a=2, "udeg"_a=2);
 #   else
-        PyMap.def(py::init<int, int, int>(), "ydeg"_a=2, "udeg"_a=2, "ncol"_a=1);
+        PyMap.def(py::init<int, int, int>(), "ydeg"_a=2, "udeg"_a=2, "nterms"_a=1);
 #   endif
 
     // String representation of the map
     PyMap.def("__repr__", &Map<T>::info);
-
-    // Number of Ylm map columns
-    PyMap.def_property_readonly(
-        "ncoly", [] (
-            Map<T> &map
-        ) {
-            return map.ncoly;
-    }, docstrings::Map::ncoly);
-
-    // Number of limb darkening map columns
-#   ifdef _STARRY_EMITTED_
-        PyMap.def_property_readonly(
-            "ncolu", [] (
-                Map<T> &map
-            ) {
-                return map.ncolu;
-        }, docstrings::Map::ncolu);
-#   endif
-
-    // Number of wavelength bins
-    PyMap.def_property_readonly(
-        "nw", [] (
-            Map<T> &map
-        ) {
-#           if defined(_STARRY_SPECTRAL_)
-                return map.ncoly;
-#           else
-                return 1;
-#           endif
-    }, docstrings::Map::nw);
-
-    // Number of temporal bins
-    PyMap.def_property_readonly(
-        "nt", [] (
-            Map<T> &map
-        ) {
-#           if defined(_STARRY_TEMPORAL_)
-                return map.ncoly;
-#           else
-                return 1;
-#           endif
-    }, docstrings::Map::nt);
 
     // Highest degree of the map
     PyMap.def_property_readonly(
@@ -195,7 +153,7 @@ PYBIND11_MODULE(
             return map.udeg;
     });
 
-    // Number of spherical harmonic coefficients
+    // Total number of spherical harmonic coefficients after limb-darkening
     PyMap.def_property_readonly(
         "N", [] (
             Map<T> &map
@@ -211,7 +169,7 @@ PYBIND11_MODULE(
             return map.Ny;
     });
 
-    // Number of spherical harmonic coefficients
+    // Number of limb darkening coefficients
     PyMap.def_property_readonly(
         "Nu", [] (
             Map<T> &map
@@ -287,7 +245,7 @@ PYBIND11_MODULE(
             auto inds = get_Ylm_inds(map.ydeg, lm);
             auto y = map.getY();
             typename T::Double::YType res;
-            res.resize(inds.size(), map.ncoly);
+            res.resize(inds.size(), map.Nw);
             int i = 0;
             for (auto n : inds)
                 res.row(i++) = y.row(n).template cast<double>();
@@ -364,7 +322,7 @@ PYBIND11_MODULE(
                 auto inds = get_Ul_inds(map.udeg, l);
                 auto u = map.getU();
                 typename T::Double::UType res;
-                res.resize(inds.size(), map.ncolu);
+                res.resize(inds.size(), map.Nw);
                 int i = 0;
                 for (auto n : inds)
                     res.row(i++) = u.row(n - 1).template cast<double>();
@@ -501,28 +459,26 @@ PYBIND11_MODULE(
             "power"_a, "seed"_a=py::none(), "col"_a=-1);
 #   endif
 
-/* \todo
     // Compute the intensity
 #   if defined(_STARRY_STATIC_)
 #       if defined(_STARRY_EMITTED_)
-            PyMap.def("__call__", intensity<T>(), docstrings::Map::call, 
+            PyMap.def("linear_intensity_model", linear_intensity_model<T>(), 
                       "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
 #       else
-            PyMap.def("__call__", intensity<T>(), docstrings::Map::call, 
+            PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
                       "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
                       "source"_a=-xhat<double>());
 #       endif
 #   else
 #       if defined(_STARRY_EMITTED_)
-            PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, 
+            PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
                       "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
 #       else
-            PyMap.def("__call__", intensity<T>(),  docstrings::Map::call, 
+            PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
                       "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
                       "source"_a=-xhat<double>());
 #       endif
 #   endif
-*/
 
 // Compute the flux
 #   if defined(_STARRY_STATIC_)

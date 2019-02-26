@@ -39,8 +39,8 @@ inline void rotateByAxisAngle (
         data.EulerD, data.EulerR);
     if (col == -1) {
         for (int l = 0; l < ydeg + 1; ++l) {
-            y_.block(l * l, 0, 2 * l + 1, ncoly) =
-                data.EulerR[l] * y_.block(l * l, 0, 2 * l + 1, ncoly);
+            y_.block(l * l, 0, 2 * l + 1, Nw) =
+                data.EulerR[l] * y_.block(l * l, 0, 2 * l + 1, Nw);
         }
     } else {
         for (int l = 0; l < ydeg + 1; ++l) {
@@ -79,7 +79,7 @@ inline void randomInternal (
 
     // Set the vector
     if (col == -1) {
-        y.block(0, 0, N_, ncoly) = vec.replicate(1, ncoly);
+        y.block(0, 0, N_, Nw) = vec.replicate(1, Nw);
     } else {
         y.block(0, col, N_, 1) = vec;
     }
@@ -96,9 +96,9 @@ template <typename U=S>
 inline IsTemporal<U, void> computeTaylor (
     const Vector<Scalar> & t
 ) {
-    taylor.resize(t.rows(), ncoly);
+    taylor.resize(t.rows(), Nt);
     taylor.col(0).setOnes();
-    for (int i = 1; i < ncoly; ++i)
+    for (int i = 1; i < Nt; ++i)
         taylor.col(i) = taylor.col(i - 1).cwiseProduct(t) / i;
 }
 
@@ -139,11 +139,11 @@ inline void computePolynomialProductMatrix (
     bool odd1;
     int l, n;
     int n1 = 0, n2 = 0;
-    M.setZero((plmax + ydeg + 1) * (plmax + ydeg + 1), N);
+    M.setZero((plmax + ydeg + 1) * (plmax + ydeg + 1), Ny);
     if (GRADIENT) {
         dMdp.resize((plmax + 1) * (plmax + 1));
         for (n = 0; n < (plmax + 1) * (plmax + 1); ++n)
-            dMdp(n).setZero((plmax + ydeg + 1) * (plmax + ydeg + 1), N);
+            dMdp(n).setZero((plmax + ydeg + 1) * (plmax + ydeg + 1), Ny);
     }
     for (int l1 = 0; l1 < ydeg + 1; ++l1) {
         for (int m1 = -l1; m1 < l1 + 1; ++m1) {
