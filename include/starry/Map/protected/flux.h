@@ -39,8 +39,7 @@ inline void computeLinearFluxModelInternal (
     // Pre-compute the limb darkening operator (\todo: cache it)
     if (udeg > 0) {
         UType tmp = B.U1 * u;
-        Scalar norm = pi<Scalar>() / B.rT.dot(tmp);
-        Vector<Scalar> pu = tmp * norm;
+        Vector<Scalar> pu = tmp * pi<Scalar>() * (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);

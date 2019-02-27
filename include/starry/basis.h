@@ -678,7 +678,7 @@ public:
         computeU(lmax, A1, A, U1, norm);
 
         // Shorten U1, as we never need the full matrix
-        U1 = U1.block(0, 0, (ydeg + 1) * (ydeg + 1), udeg + 1);
+        U1 = U1.block(0, 0, (udeg + 1) * (udeg + 1), udeg + 1);
     }
 
     // Public methods

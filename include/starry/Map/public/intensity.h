@@ -13,7 +13,8 @@ inline void computeLinearIntensityModel (
     const RowMatrix<Scalar>& y,
     RowMatrix<Scalar>& X
 ) {
-    computeLinearIntensityModelInternal(theta, x, y, X);
+    UnitVector<Scalar> source; // dummy
+    computeLinearIntensityModelInternal(theta, x, y, source, X);
 }
 
 /**
@@ -32,8 +33,11 @@ inline void computeLinearIntensityModel (
     const RowMatrix<Scalar>& y,
     RowMatrix<Scalar>& X
 ) {
-    computeTaylor(t);
-    computeLinearIntensityModelInternal(theta, x, y, X);
+    UnitVector<Scalar> source; // dummy
+    Vector<Scalar> tvec(1);
+    tvec << t;
+    computeTaylor(tvec);
+    computeLinearIntensityModelInternal(theta, x, y, source, X);
 }
 
 /**
@@ -72,6 +76,8 @@ inline void computeLinearIntensityModel (
     const UnitVector<Scalar>& source,
     RowMatrix<Scalar>& X
 ) {
-    computeTaylor(t);
+    Vector<Scalar> tvec(1);
+    tvec << t;
+    computeTaylor(tvec);
     computeLinearIntensityModelInternal(theta, x, y, source, X);
 }

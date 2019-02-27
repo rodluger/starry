@@ -120,15 +120,13 @@ std::vector<int> get_Ylm_inds (
     if (lm.size() != 2)
         throw errors::IndexError("Invalid `l`, `m` tuple.");
     std::vector<int> inds;
-    if ((py::isinstance<py::int_>(lm[0]) || 
-         py::isinstance(lm[0], integer)) && 
-        (py::isinstance<py::int_>(lm[1]) || 
-         py::isinstance(lm[1], integer))) {
+    if ((py::isinstance<py::int_>(lm[0]) || py::isinstance(lm[0], integer)) && 
+        (py::isinstance<py::int_>(lm[1]) || py::isinstance(lm[1], integer))) {
         // User provided `(l, m)`
         int l = py::cast<int>(lm[0]);
         int m = py::cast<int>(lm[1]);
         n = l * l + l + m;
-        if ((n < 0) || (n >= N))
+        if ((n < 0) || (n >= N) || (m > l) || (m < -l))
             throw errors::IndexError("Invalid value for `l` and/or `m`.");
         inds.push_back(n);
         return inds;
@@ -150,7 +148,7 @@ std::vector<int> get_Ylm_inds (
                 mstop = l;
             for (int m = mstart; m < mstop + 1; m += mstep) {
                 n = l * l + l + m;
-                if ((n < 0) || (n >= N))
+                if ((n < 0) || (n >= N) || (m > l) || (m < -l))
                     throw errors::IndexError(
                         "Invalid value for `l` and/or `m`.");
                 inds.push_back(n);
@@ -171,7 +169,7 @@ std::vector<int> get_Ylm_inds (
             mstop = l;
         for (int m = mstart; m < mstop + 1; m += mstep) {
             n = l * l + l + m;
-            if ((n < 0) || (n >= N))
+            if ((n < 0) || (n >= N) || (m > l) || (m < -l))
                 throw errors::IndexError("Invalid value for `l` and/or `m`.");
             inds.push_back(n);
         }
@@ -190,7 +188,7 @@ std::vector<int> get_Ylm_inds (
             if ((m < -l) || (m > l))
                 continue;
             n = l * l + l + m;
-            if ((n < 0) || (n >= N))
+            if ((n < 0) || (n >= N) || (m > l) || (m < -l))
                 throw errors::IndexError("Invalid value for `l` and/or `m`.");
             inds.push_back(n);
         }
@@ -198,6 +196,108 @@ std::vector<int> get_Ylm_inds (
     } else {
         // User provided something silly
         throw errors::IndexError("Unsupported input type for `l` and/or `m`.");
+    }
+}
+
+/**
+Parse a user-provided `(l, m, t)` tuple into spherical harmonic map indices.
+
+*/
+std::tuple<std::vector<int>, int> get_Ylmt_inds (
+    const int lmax, 
+    const int Nt,
+    const py::tuple& lmt
+) {
+    int Ny = (lmax + 1) * (lmax + 1);
+    if (lmt.size() == 3) {
+        std::vector<int> inds0 = get_Ylm_inds(lmax, py::make_tuple(lmt[0], lmt[1]));
+        std::vector<int> inds;
+        if ((py::isinstance<py::int_>(lmt[2]) || py::isinstance(lmt[2], integer))) {
+            // User provided an integer time
+            int t = py::cast<int>(lmt[2]);
+            if ((t < 0) || (t >= Nt))
+                throw errors::IndexError("Invalid value for `t`.");
+            for (int n: inds0)
+                inds.push_back(n + t * Ny);
+            return std::make_tuple(inds, 1);
+        } else if (py::isinstance<py::slice>(lmt[2])) {
+            // User provided a time slice
+            py::slice slice = py::cast<py::slice>(lmt[2]);
+            ssize_t start, stop, step, slicelength;
+            if(!slice.compute(Nt,
+                              reinterpret_cast<size_t*>(&start),
+                              reinterpret_cast<size_t*>(&stop),
+                              reinterpret_cast<size_t*>(&step),
+                              reinterpret_cast<size_t*>(&slicelength)))
+                throw pybind11::error_already_set();
+            if ((start < 0) || (start >= Nt)) {
+                throw errors::IndexError("Invalid value for `t`.");
+            } else if (step < 0) {
+                throw errors::ValueError(
+                    "Slices with negative steps are not supported.");
+            }
+            for (int n: inds0) {
+                for (ssize_t t = start; t < stop; t += step) {
+                    inds.push_back(n + t * Ny);
+                }
+            }
+            int ncols = 0;
+            for (ssize_t t = start; t < stop; t += step) ++ncols;
+            return std::make_tuple(inds, ncols);
+        } else {
+            // User provided something silly
+            throw errors::IndexError("Unsupported input type for `t`.");
+        }
+    } else {
+        throw errors::IndexError("Invalid `l`, `m`, `t` tuple.");
+    }
+}
+
+/**
+Parse a user-provided `(l, m, w)` tuple into spherical harmonic map indices.
+
+*/
+std::tuple<std::vector<int>, std::vector<int>> get_Ylmw_inds (
+    const int lmax, 
+    const int Nw,
+    const py::tuple& lmw
+) {
+    if (lmw.size() == 3) {
+        std::vector<int> rows = get_Ylm_inds(lmax, py::make_tuple(lmw[0], lmw[1]));
+        std::vector<int> cols;
+        if ((py::isinstance<py::int_>(lmw[2]) || py::isinstance(lmw[2], integer))) {
+            // User provided an integer wavelength bin
+            int w = py::cast<int>(lmw[2]);
+            if ((w < 0) || (w >= Nw))
+                throw errors::IndexError("Invalid value for `w`.");
+            cols.push_back(w);
+            return std::make_tuple(rows, cols);
+        } else if (py::isinstance<py::slice>(lmw[2])) {
+            // User provided a wavelength slice
+            py::slice slice = py::cast<py::slice>(lmw[2]);
+            ssize_t start, stop, step, slicelength;
+            if(!slice.compute(Nw,
+                              reinterpret_cast<size_t*>(&start),
+                              reinterpret_cast<size_t*>(&stop),
+                              reinterpret_cast<size_t*>(&step),
+                              reinterpret_cast<size_t*>(&slicelength)))
+                throw pybind11::error_already_set();
+            if ((start < 0) || (start >= Nw)) {
+                throw errors::IndexError("Invalid value for `w`.");
+            } else if (step < 0) {
+                throw errors::ValueError(
+                    "Slices with negative steps are not supported.");
+            }
+            for (ssize_t w = start; w < stop; w += step) {
+                cols.push_back(w);
+            }
+            return std::make_tuple(rows, cols);
+        } else {
+            // User provided something silly
+            throw errors::IndexError("Unsupported input type for `t`.");
+        }
+    } else {
+        throw errors::IndexError("Invalid `l`, `m`, `t` tuple.");
     }
 }
 
@@ -213,7 +313,7 @@ std::vector<int> get_Ul_inds (
     std::vector<int> inds;
     if (py::isinstance<py::int_>(l) || py::isinstance(l, integer)) {
         n = py::cast<int>(l);
-        if ((n < 1) || (n > lmax))
+        if ((n < 0) || (n > lmax))
             throw errors::IndexError("Invalid value for `l`.");
         inds.push_back(n);
         return inds;
@@ -231,9 +331,6 @@ std::vector<int> get_Ul_inds (
         } else if (step < 0) {
             throw errors::ValueError(
                 "Slices with negative steps are not supported.");
-        } else if (start == 0) {
-            // Let's give the user the benefit of the doubt here
-            start = 1;
         }
         std::vector<int> inds;
         for (ssize_t i = start; i < stop; i += step) {
@@ -292,10 +389,10 @@ std::function<py::object(
         // Map `x` to an Eigen matrix
         py::buffer_info bufx = x_.request();
         double *ptrx = (double *) bufx.ptr;
-        Matrix<double> tmpx;
+        Matrix<Scalar> tmpx;
         Eigen::Map<RowMatrix<Scalar>> x(NULL, 
-                                     bufx.ndim > 0 ? bufx.shape[0] : 1, 
-                                     bufx.ndim > 1 ? bufx.shape[1] : 1);
+                                        bufx.ndim > 0 ? bufx.shape[0] : 1, 
+                                        bufx.ndim > 1 ? bufx.shape[1] : 1);
         if (bufx.ndim == 0) {
             tmpx = ptrx[0] * Matrix<Scalar>::Ones(1, 1);
             new (&x) Eigen::Map<Matrix<Scalar>>(&tmpx(0), 1, 1);
@@ -320,10 +417,10 @@ std::function<py::object(
         // Map `y` to an Eigen Matrix
         py::buffer_info bufy = y_.request();
         double *ptry = (double *) bufy.ptr;
-        Matrix<double> tmpy;
+        Matrix<Scalar> tmpy;
         Eigen::Map<RowMatrix<Scalar>> y(NULL, 
-                                     bufy.ndim > 0 ? bufy.shape[0] : 1, 
-                                     bufy.ndim > 1 ? bufy.shape[1] : 1);
+                                        bufy.ndim > 0 ? bufy.shape[0] : 1, 
+                                        bufy.ndim > 1 ? bufy.shape[1] : 1);
         if (bufy.ndim == 0) {
             tmpy = ptry[0] * Matrix<Scalar>::Ones(1, 1);
             new (&y) Eigen::Map<Matrix<Scalar>>(&tmpy(0), 1, 1);

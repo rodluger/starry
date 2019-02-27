@@ -76,11 +76,11 @@ inline void dlmn (
     // Compute the D[l;m',m) matrix.
     // First row by recurrence (Eq. 19 and 20 in Alvarez Collado et al.)
     D[l](2 * l, 2 * l) = 0.5 * D[l - 1](isup + l - 1, isup + l - 1) 
-                                 * (1. + c2);
+                             * (Scalar(1.0) + c2);
     D[l](2 * l, 0) = 0.5 * D[l - 1](isup + l - 1, -isup + l - 1) 
-                             * (1. - c2);
+                         * (Scalar(1.0) - c2);
     for (m = isup; m > iinf - 1; --m)
-        D[l](2 * l, m + l) = -tgbet2 * sqrt((l + m + 1.0) / (l - m)) 
+        D[l](2 * l, m + l) = -tgbet2 * sqrt(Scalar(l + m + 1) / (l - m)) 
                                          * D[l](2 * l, m + 1 + l);
 
     // The rows of the upper quarter triangle of the D[l;m',m) matrix
@@ -88,24 +88,24 @@ inline void dlmn (
     al = l;
     al1 = al - 1;
     tal1 = al + al1;
-    ali = 1.0 / al1;
+    ali = Scalar(1.0) / al1;
     cosaux = c2 * al * al1;
     for (mp = l - 1; mp > -1; --mp) {
         amp = mp;
         laux = l + mp;
         lbux = l - mp;
-        aux = ali / sqrt(laux * lbux);
-        cux = sqrt((laux - 1) * (lbux - 1)) * al;
+        aux = ali / sqrt(Scalar(laux * lbux));
+        cux = sqrt(Scalar((laux - 1) * (lbux - 1))) * al;
         for (m = isup; m > iinf - 1; --m) {
             am = m;
             lauz = l + m;
             lbuz = l - m;
-            auz = 1.0 / sqrt(lauz * lbuz);
+            auz = Scalar(1.0) / sqrt(Scalar(lauz * lbuz));
             fact = aux * auz;
-            term = tal1 * (cosaux - am * amp) 
+            term = tal1 * (cosaux - Scalar(am * amp)) 
                         * D[l - 1](mp + l - 1, m + l - 1);
             if ((lbuz != 1) && (lbux != 1)) {
-                cuz = sqrt((lauz - 1) * (lbuz - 1));
+                cuz = sqrt(Scalar((lauz - 1) * (lbuz - 1)));
                 term = term - D[l - 2](mp + l - 2, m + l - 2) * cux * cuz;
             }
             D[l](mp + l, m + l) = fact * term;
@@ -149,7 +149,7 @@ inline void dlmn (
     cosmal = c1;
     sinmal = s1;
     sign = -1;
-    Scalar root_two = sqrt(2.0);
+    Scalar root_two = sqrt(Scalar(2.0));
     for (mp = 1; mp < l + 1; ++mp) {
         cosmga = c3;
         sinmga = s3;
@@ -199,14 +199,14 @@ inline void rotar (
     std::vector<Matrix<Scalar>>& R
 ) {
     Scalar cosag, cosamg, sinag, sinamg, tgbet2;
-    Scalar root_two = sqrt(2.0);
+    Scalar root_two = sqrt(Scalar(2.0));
 
     // Compute the initial matrices D0, R0, D1 and R1
     D[0](0, 0) = 1.0;
     R[0](0, 0) = 1.0;
-    D[1](2, 2) = 0.5 * (1.0 + c2);
+    D[1](2, 2) = 0.5 * (Scalar(1.0) + c2);
     D[1](2, 1) = -s2 / root_two;
-    D[1](2, 0) = 0.5 * (1.0 - c2);
+    D[1](2, 0) = 0.5 * (Scalar(1.0) - c2);
     D[1](1, 2) = -D[1](2, 1);
     D[1](1, 1) = D[1](2, 2) - D[1](2, 0);
     D[1](1, 0) = D[1](2, 1);
@@ -232,7 +232,7 @@ inline void rotar (
     if (abs(s2) < tol)
         tgbet2 = s2; // = 0
     else
-        tgbet2 = (1.0 - c2) / s2;
+        tgbet2 = (Scalar(1.0) - c2) / s2;
 
     for (int l = 2; l < lmax + 1; ++l)
         dlmn(l, s1, c1, c2, tgbet2, s3, c3, D, R);
@@ -258,9 +258,9 @@ inline void axisAngleToEuler (
     Scalar& singamma
 ) {
     // Construct the axis-angle rotation matrix R_A
-    Scalar RA01 = axis_x * axis_y * (1 - costheta);
+    Scalar RA01 = axis_x * axis_y * (Scalar(1.0) - costheta);
     Scalar RA02 = axis_y * sintheta;
-    Scalar RA11 = costheta + axis_y * axis_y * (1 - costheta);
+    Scalar RA11 = costheta + axis_y * axis_y * (Scalar(1.0) - costheta);
     Scalar RA12 = -axis_x * sintheta;
     Scalar RA20 = -axis_y * sintheta;
     Scalar RA21 = axis_x * sintheta;
@@ -268,23 +268,23 @@ inline void axisAngleToEuler (
 
     // Determine the Euler angles
     Scalar norm1, norm2;
-    if ((RA22 < -1 + tol) && (RA22 > -1 - tol)) {
+    if ((RA22 < Scalar(-1.0) + tol) && (RA22 > Scalar(-1.0) - tol)) {
         cosbeta = RA22; // = -1
-        sinbeta = 1 + RA22; // = 0
+        sinbeta = Scalar(1.0) + RA22; // = 0
         cosgamma = RA11;
         singamma = RA01;
         cosalpha = -RA22; // = 1
-        sinalpha = 1 + RA22; // = 0
-    } else if ((RA22 < 1 + tol) && (RA22 > 1 - tol)) {
+        sinalpha = Scalar(1.0) + RA22; // = 0
+    } else if ((RA22 < Scalar(1.0) + tol) && (RA22 > Scalar(1.0) - tol)) {
         cosbeta = RA22; // = 1
-        sinbeta = 1 - RA22; // = 0
+        sinbeta = Scalar(1.0) - RA22; // = 0
         cosgamma = RA11;
         singamma = -RA01;
         cosalpha = RA22; // = 1
-        sinalpha = 1 - RA22; // = 0
+        sinalpha = Scalar(1.0) - RA22; // = 0
     } else {
         cosbeta = RA22;
-        sinbeta = sqrt(1 - cosbeta * cosbeta);
+        sinbeta = sqrt(Scalar(1.0) - cosbeta * cosbeta);
         norm1 = sqrt(RA20 * RA20 + RA21 * RA21);
         norm2 = sqrt(RA02 * RA02 + RA12 * RA12);
         cosgamma = -RA20 / norm1;
@@ -325,6 +325,9 @@ protected:
     Vector<Scalar> sinmt;                                                      /**< Vector of sin(m theta) values */
     Vector<Scalar> cosnt;                                                      /**< Vector of cos(n theta) values */
     Vector<Scalar> sinnt;                                                      /**< Vector of sin(n theta) values */
+
+    Scalar cache_costheta;
+    Scalar cache_sintheta;
 
 public:
 
@@ -375,10 +378,6 @@ public:
         const UnitVector<Scalar>& axis
     );
 
-    inline void updateAxisAndGradient (
-        const UnitVector<Scalar>& axis
-    );
-
     Wigner(
         int lmax, 
         const UnitVector<Scalar>& axis
@@ -417,6 +416,10 @@ public:
         sinnt(0) = 0.0;
         cosmt.resize(N);
         sinmt.resize(N);
+
+        // Reset the cache
+        cache_costheta = NAN;
+        cache_sintheta = NAN;
 
         // Update the Zeta matrices
         updateAxis(axis);
@@ -516,6 +519,12 @@ inline void Wigner<Scalar>::compute (
     const Scalar& costheta,
     const Scalar& sintheta
 ) {
+    // Did we do this already?
+    if ((costheta == cache_costheta) && (sintheta == cache_sintheta))
+        return;
+    cache_costheta = costheta;
+    cache_sintheta = sintheta;
+
     // Compute the cos and sin vectors for the zhat rotation
     cosnt(1) = costheta;
     sinnt(1) = sintheta;
@@ -542,8 +551,6 @@ inline void Wigner<Scalar>::compute (
 Rotates a spherical harmonic vector `y`. 
 Returns the rotated vector `R(theta) . y`.
 
-\todo Untested!
-
 */
 template <class Scalar>
 template <typename T1>
@@ -558,7 +565,8 @@ inline void Wigner<Scalar>::rotate (
 }
 
 /**
-Update the zeta rotation matrix.
+Update the zeta rotation matrix and compute its gradient
+with respect to the axis of rotation.
 
 */
 template <class Scalar>
@@ -566,57 +574,10 @@ inline void Wigner<Scalar>::updateAxis (
     const UnitVector<Scalar>& axis
 ) 
 {
-    // Compute the rotation transformation into and out of the `zeta` frame
-    Scalar norm = sqrt(axis(0) * axis(0) + axis(1) * axis(1));
-    if (abs(norm) < tol) {
-        // The rotation axis is zhat, so our zeta transform
-        // is just the identity matrix.
-        for (int l = 0; l < lmax + 1; l++) {
-            if (axis(2) > 0) {
-                RZeta[l] = Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
-                RZetaInv[l] = Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
-            } else {
-                RZeta[l] = -Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
-                RZetaInv[l] = -Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
-            }
-        }
-    } else if (lmax == 0) {
-        // Trivial case
-        RZeta[0](0, 0) = 1;
-        RZetaInv[0](0, 0) = 1;
-    } else {
-        // We need to compute the actual Wigner matrices
-        Scalar coszeta = axis(2);
-        Scalar sinzeta = sqrt(1 - axis(2) * axis(2));
-        Scalar axis_x = axis(1) / norm;
-        Scalar axis_y = -axis(0) / norm;
-        
-        // Get Euler angles
-        Scalar cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
-        axisAngleToEuler(axis_x, axis_y, coszeta, sinzeta, tol,
-                         cosalpha, sinalpha, cosbeta, sinbeta, 
-                         cosgamma, singamma);
+    // Reset the cache
+    cache_costheta = NAN;
+    cache_sintheta = NAN;
 
-        // Call the Eulerian rotation function
-        rotar(lmax, cosalpha, sinalpha, cosbeta, sinbeta, 
-              cosgamma, singamma, tol, DZeta, RZeta);
-
-        // Compute the inverse transform (trivial!)
-        for (int l = 0; l < lmax + 1; ++l)
-            RZetaInv[l] = RZeta[l].transpose();
-    }
-}
-
-/**
-Update the zeta rotation matrix and compute its gradient
-with respect to the axis of rotation.
-
-*/
-template <class Scalar>
-inline void Wigner<Scalar>::updateAxisAndGradient (
-    const UnitVector<Scalar>& axis
-) 
-{
     // Compute the rotation transformation into and out of the `zeta` frame
     Scalar norm = sqrt(axis(0) * axis(0) + axis(1) * axis(1));
     if (abs(norm) < tol) {

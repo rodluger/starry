@@ -11,7 +11,6 @@ public:
     using YCoeffType = typename S::YCoeffType;                                 /**< The type of the spherical harmonic coefficients (scalar/row vector) */
     using UType = typename S::UType;                                           /**< The type of the limb darkening coefficient object (vector/matrix) */
     using UCoeffType = typename S::UCoeffType;                                 /**< The type of the limb darkening coefficients (scalar/row vector) */
-    using FluxType = typename S::FluxType;                                     /**< The type of the output flux (scalar/row vector) */
 
     // Public variables
     const int ydeg;                                                            /**< Maximum degree of the spherical harmonic map */
@@ -34,8 +33,8 @@ protected:
     #include "protected/oper.h"
 
     // Internal variables
-    YType y;                                                                   /**< Vector/matrix of spherical harmonic coefficients */
-    UType u;                                                                   /**< Vector/matrix of limb darkening coefficients */
+    YType y;                                                                   /**< Vector of spherical harmonic coefficients */
+    UType u;                                                                   /**< Vector of limb darkening coefficients */
     UnitVector<Scalar> axis;                                                   /**< The axis of rotation for the map */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
     wigner::Wigner<Scalar> W;                                                  /**< Ylm rotation stuff */
@@ -64,7 +63,7 @@ protected:
         N((deg + 1) * (deg + 1)),
         data(ydeg),
         y(Ny * Nt, Nw),
-        u(Nu, Nw),
+        u(Nu),
         axis(yhat<Scalar>()),
         B(ydeg, udeg),
         W(ydeg, axis),

@@ -191,8 +191,6 @@ struct Default
     using YCoeffType = OneByOne<T>;
     using UType = Vector<T>;
     using UCoeffType = OneByOne<T>;
-    using TSType = Vector<T>;
-    using FluxType = OneByOne<T>;
 
     struct Double {
         using Scalar = double;
@@ -200,8 +198,6 @@ struct Default
         using YCoeffType = OneByOne<double>;
         using UType = Vector<double>;
         using UCoeffType = OneByOne<double>;
-        using TSType = Vector<double>;
-        using FluxType = OneByOne<double>;
     };
 
 };
@@ -214,19 +210,15 @@ struct Spectral
     static constexpr bool Reflected = REFLECTED;
     using YType = Matrix<T>;
     using YCoeffType = RowVector<T>;
-    using UType = Matrix<T>;
-    using UCoeffType = RowVector<T>;
-    using TSType = RowMatrix<T>;
-    using FluxType = RowVector<T>;
+    using UType = Vector<T>;
+    using UCoeffType = OneByOne<T>;
 
     struct Double {
         using Scalar = double;
         using YType = Matrix<double>;
         using YCoeffType = RowVector<double>;
-        using UType = Matrix<double>;
-        using UCoeffType = RowVector<double>;
-        using TSType = RowMatrix<double>;
-        using FluxType = RowVector<double>;
+        using UType = Vector<double>;
+        using UCoeffType = OneByOne<double>;
     };
 };
 
@@ -236,21 +228,17 @@ struct Temporal
 {
     using Scalar = T;
     static constexpr bool Reflected = REFLECTED;
-    using YType = Matrix<T>;
+    using YType = Vector<T>;
     using YCoeffType = RowVector<T>;
     using UType = Vector<T>;
     using UCoeffType = OneByOne<T>;
-    using TSType = Vector<T>;
-    using FluxType = OneByOne<T>;
 
     struct Double {
         using Scalar = double;
-        using YType = Matrix<double>;
+        using YType = Vector<double>;
         using YCoeffType = RowVector<double>;
         using UType = Vector<double>;
         using UCoeffType = OneByOne<double>;
-        using TSType = Vector<double>;
-        using FluxType = OneByOne<double>;
     };
 };
 
