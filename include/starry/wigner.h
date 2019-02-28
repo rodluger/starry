@@ -366,12 +366,12 @@ public:
         const Scalar& sintheta
     );
 
-    template <typename T1>
+    template <typename T1, typename T2>
     inline void rotate (
         const MatrixBase<T1>& y,
         const Scalar& costheta,
         const Scalar& sintheta,
-        MatrixBase<T1>& Ry
+        MatrixBase<T2>& Ry
     );
 
     inline void updateAxis (
@@ -553,12 +553,12 @@ Returns the rotated vector `R(theta) . y`.
 
 */
 template <class Scalar>
-template <typename T1>
+template <typename T1, typename T2>
 inline void Wigner<Scalar>::rotate (
     const MatrixBase<T1>& y,
     const Scalar& costheta,
     const Scalar& sintheta,
-    MatrixBase<T1>& Ry
+    MatrixBase<T2>& Ry
 ) {
     compute(costheta, -sintheta);
     leftMultiplyR(y.transpose(), Ry.transpose());

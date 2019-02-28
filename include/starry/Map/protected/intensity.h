@@ -119,7 +119,8 @@ inline void computeLinearIntensityModelInternal (
 
             }
             X.block(npts * n, 0, npts, Ny) = 
-                X.block(npts * n, 0, npts, Ny).array().colwise() * I.transpose().array();
+                X.block(npts * n, 0, npts, Ny).array().colwise() * 
+                    I.transpose().array();
         }
 
         // Apply the Taylor expansion

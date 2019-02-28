@@ -132,7 +132,8 @@ PYBIND11_MODULE(
 #   if defined(_STARRY_SINGLECOL_) 
         PyMap.def(py::init<int, int>(), "ydeg"_a=2, "udeg"_a=2);
 #   else
-        PyMap.def(py::init<int, int, int>(), "ydeg"_a=2, "udeg"_a=2, "nterms"_a=1);
+        PyMap.def(py::init<int, int, int>(), 
+                  "ydeg"_a=2, "udeg"_a=2, "nterms"_a=1);
 #   endif
 
     // String representation of the map
@@ -215,7 +216,8 @@ PYBIND11_MODULE(
         ) {
             // Figure out the indices we're setting
 #           if defined(_STARRY_TEMPORAL_)
-                std::vector<int> rows = std::get<0>(get_Ylmt_inds(map.ydeg, map.Nt, lm));
+                std::vector<int> rows = 
+                    std::get<0>(get_Ylmt_inds(map.ydeg, map.Nt, lm));
                 std::vector<int> cols(1, 0);
 #           elif defined(_STARRY_SPECTRAL_)
                 auto inds = get_Ylmw_inds(map.ydeg, map.Nw, lm);
@@ -236,19 +238,23 @@ PYBIND11_MODULE(
             } else if (buf.ndim == 1) {
                 if (cols.size() == 1) {
                     // Set an array of indices to an array of values
-                    coeff = py::cast<Matrix<double>>(coeff_).template cast<Scalar>();
+                    coeff = py::cast<Matrix<double>>(coeff_).template 
+                                cast<Scalar>();
                 } else {
                     if (rows.size() == 1) {
                         // Set a row to an array of values
-                        coeff = (py::cast<Matrix<double>>(coeff_).template cast<Scalar>()).transpose();
+                        coeff = (py::cast<Matrix<double>>(coeff_).template 
+                                    cast<Scalar>()).transpose();
                     } else {
                         // ?
-                        throw errors::ValueError("Invalid coefficient array shape.");
+                        throw errors::ValueError("Invalid coefficient "
+                                                 "array shape.");
                     }
                 }
             } else if (buf.ndim == 2) {
                 // Set a matrix of (row, column) indices to a matrix of values
-                coeff = py::cast<Matrix<double>>(coeff_).template cast<Scalar>();
+                coeff = py::cast<Matrix<double>>(coeff_).template 
+                            cast<Scalar>();
             } else {
                 // ?
                 throw errors::ValueError("Invalid coefficient array shape.");
@@ -257,7 +263,8 @@ PYBIND11_MODULE(
 #           if defined(_STARRY_TEMPORAL_)
                 // Flatten the input array if needed
                 Matrix<Scalar> tmpcoeff = coeff.transpose();
-                coeff = Eigen::Map<Matrix<Scalar>>(tmpcoeff.data(), coeff.size(), 1);
+                coeff = Eigen::Map<Matrix<Scalar>>(tmpcoeff.data(), 
+                                                   coeff.size(), 1);
 #           endif
 
             // Check shape
@@ -339,16 +346,19 @@ PYBIND11_MODULE(
             }
     }, docstrings::Map::getitem);
 
-    // Limb darkening I/O
-#   ifdef _STARRY_EMITTED_
-
-        // Set one or more limb darkening coefficients
-        PyMap.def(
-            "__setitem__", [](
-                Map<T>& map, 
-                py::object l,
-                py::array_t<double>& coeff_
-            ) {
+    // Set one or more limb darkening coefficients
+    PyMap.def(
+        "__setitem__", [](
+            Map<T>& map, 
+            py::object l,
+            py::array_t<double>& coeff_
+        ) {
+#           ifdef _STARRY_REFLECTED_
+                // Limb darkening not yet implemented for this case
+                throw errors::NotImplementedError("Limb darkening not yet " 
+                                                  "implemented for reflected "
+                                                  "light maps.");
+#           else
                 // Figure out the indices we're setting
                 std::vector<int> rows = get_Ul_inds(map.udeg, l);
 
@@ -357,14 +367,16 @@ PYBIND11_MODULE(
                 double *ptr = (double *) buf.ptr;
                 Vector<Scalar> coeff(rows.size());
                 if (buf.ndim == 0) {
-                    // Set an array of indices (or rows/columns) to the same value
+                    // Set an array of indices (or rows/columns) to same value
                     coeff.setConstant(ptr[0]);
                 } else if (buf.ndim == 1) {
                     // Set an array of indices to an array of values
-                    coeff = py::cast<Vector<double>>(coeff_).template cast<Scalar>();
+                    coeff = py::cast<Vector<double>>(coeff_).template 
+                                cast<Scalar>();
                 } else {
                     // ?
-                    throw errors::ValueError("Invalid coefficient array shape.");
+                    throw errors::ValueError("Invalid coefficient "
+                                             "array shape.");
                 }
 
                 // Check shape
@@ -380,19 +392,26 @@ PYBIND11_MODULE(
                     ++i;
                 }
                 map.setU(u);
-        }, docstrings::Map::setitem);
+#           endif
+    }, docstrings::Map::setitem);
 
-        // Retrieve one or more limb darkening coefficients
-        PyMap.def(
-            "__getitem__", [](
-                Map<T>& map,
-                py::object l
-            ) -> py::object {
+    // Retrieve one or more limb darkening coefficients
+    PyMap.def(
+        "__getitem__", [](
+            Map<T>& map,
+            py::object l
+        ) -> py::object {
+#           ifdef _STARRY_REFLECTED_
+                // Limb darkening not yet implemented for this case
+                throw errors::NotImplementedError("Limb darkening not yet " 
+                                                  "implemented for reflected "
+                                                  "light maps.");
+#           else
                 // Figure out the indices we're accessing
                 std::vector<int> rows = get_Ul_inds(map.udeg, l);
                 Vector<double> coeff_(rows.size());
 
-                // Grab the map vector and update the output vector term by term
+                // Grab the map vector and update the output term by term
                 auto u = map.getU();
                 int i = 0;
                 for (int row : rows) {
@@ -408,9 +427,8 @@ PYBIND11_MODULE(
                     MAKE_READ_ONLY(coeff);
                     return coeff;
                 }
-        }, docstrings::Map::getitem);
-
-#   endif
+#           endif
+    }, docstrings::Map::getitem);
 
     // Reset the map
     PyMap.def("reset", &Map<T>::reset, docstrings::Map::reset);
@@ -451,7 +469,13 @@ PYBIND11_MODULE(
     }, docstrings::Map::axis);
 
     // Rotate the base map
-    PyMap.def("rotate", &Map<T>::rotate, "theta"_a=0.0, docstrings::Map::rotate);
+    PyMap.def(
+        "rotate", [](
+            Map<T>& map,
+            const double& theta
+        ) {
+            map.rotate(theta);
+    }, "theta"_a=0.0, docstrings::Map::rotate);
 
     // Add a gaussian spot with a vector amplitude
 #   if defined(_STARRY_SINGLECOL_)
@@ -517,7 +541,8 @@ PYBIND11_MODULE(
             ) {
                 if (seed_.is(py::none())) {
                     // \todo Find a better, more thread-safe randomizer seed
-                    auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+                    auto seed = std::chrono::system_clock::now()
+                                .time_since_epoch().count();
                     map.random(power.template cast<Scalar>(), seed, col);
                 } else {
                     double seed = py::cast<double>(seed_);

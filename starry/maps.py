@@ -8,21 +8,20 @@ class PythonMapBase(object):
 
     """
 
-    def show(self, theta=0, res=300, cmap="plasma", **kwargs):
+    def show(self, theta=0, res=300, cmap="plasma", flat=False, **kwargs):
         """
 
-        """
-        # Create a grid of X and Y
-        x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
-        
-        # Check input dimensions
-        if hasattr(theta, "__len__"):
-            npts = len(theta)
-        else:
-            npts = 1
-        
+        """        
         # Type-specific kwargs
-        model_kwargs = {}
+        if flat:
+            npts = 1
+            model_kwargs = dict()
+        else:
+            if hasattr(theta, "__len__"):
+                npts = len(theta)
+            else:
+                npts = 1
+            model_kwargs = dict(theta=theta)
 
         # Are we modeling time variability?
         if self._temporal:
@@ -38,27 +37,100 @@ class PythonMapBase(object):
                 npts = max(npts, len(source))
             model_kwargs["source"] = source
 
-        # Construct the linear model
+        # Are we doing wavelength dependence?
         if self._spectral:
             animated = True
             assert npts == 1, "Spectral map rotation cannot be animated."
-            X = self.linear_intensity_model(theta=theta, x=x, y=y, **model_kwargs)
-            Z = np.moveaxis(np.dot(X, self.y).reshape(res, res, self.nw), -1, 0)
         else:
             animated = (npts > 1)
-            X = self.linear_intensity_model(theta=theta, x=x, y=y, **model_kwargs)
-            Z = np.dot(X, self.y).reshape(npts, res, res)
 
-        # Set up the plot
-        vmin = np.nanmin(Z)
-        vmax = np.nanmax(Z)
-        fig, ax = plt.subplots(1, figsize=(3, 3))
+        if flat:
+
+            # Generate the lat/lon grid for one hemisphere
+            lon = np.linspace(-np.pi, np.pi, res)
+            lat = np.linspace(1e-3, np.pi / 2, res // 2)
+            lon, lat = np.meshgrid(lon, lat)
+            x = np.sin(np.pi / 2 - lat) * np.cos(lon - np.pi / 2)
+            y = np.sin(np.pi / 2 - lat) * np.sin(lon - np.pi / 2)
+
+            # Compute the linear model
+            X = self.linear_intensity_model(x=x, y=y, **model_kwargs)
+
+            # Rotate so we're looking down the north pole
+            map_axis = np.array(self.axis)
+            sinalpha = np.sqrt(self.axis[0] ** 2 + self.axis[1] ** 2)
+            cosalpha = self.axis[2]
+            u = np.array([self.axis[1], self.axis[0], 0]) / sinalpha
+            alpha = (180 / np.pi) * np.arctan2(sinalpha, cosalpha)
+            self.axis = u
+            self.rotate(alpha)
+
+            # Compute the northern hemisphere map
+            if self._spectral:
+                Z_north = np.dot(X, self.y).reshape(res, res // 2, self.nw)
+                Z_north = np.moveaxis(Z_north, -1, 0)
+                Z_north = np.rot90(Z_north, axes=(1, 2), k=3)
+                Z_north = np.roll(Z_north, -res // 4, axis=2)
+            else:
+                Z_north = np.dot(X, self.y).reshape(npts, res // 2, res)
+
+            # Flip the planet around
+            self.axis = [1, 0, 0]
+            self.rotate(180)
+            
+            # Compute the southern hemisphere map
+            if self._spectral:
+                Z_south = np.dot(X, self.y).reshape(res, res // 2, self.nw)
+                Z_south = np.moveaxis(Z_south, -1, 0)
+                Z_south = np.flip(Z_south, axis=(1, 2))
+                Z_south = np.rot90(Z_south, axes=(1, 2), k=3)
+                Z_south = np.roll(Z_south, -res // 4, axis=2)
+            else:
+                self.axis = [0, 0, 1]
+                self.rotate(180)
+                Z_south = np.dot(X, self.y).reshape(npts, res // 2, res)
+                Z_south = np.flip(Z_south, axis=(1, 2))
+                self.rotate(-180)
+                self.axis = [1, 0, 0]
+
+            # Join them
+            Z = np.concatenate((Z_south, Z_north), axis=1)
+
+            # Undo all the rotations
+            self.rotate(-180)
+            self.axis = u
+            self.rotate(-alpha)
+            self.axis = map_axis
+
+            # Set up the plot
+            fig, ax = plt.subplots(1, figsize=(6, 3))
+            extent = (-180, 180, -90, 90)
+
+        else:
+
+            # Create a grid of X and Y and construct the linear model
+            x, y = np.meshgrid(np.linspace(-1, 1, res), 
+                               np.linspace(-1, 1, res))
+            X = self.linear_intensity_model(x=x, y=y, **model_kwargs)
+            if self._spectral:
+                Z = np.moveaxis(
+                        np.dot(X, self.y).reshape(res, res, self.nw), 
+                        -1, 0)
+            else:
+                Z = np.dot(X, self.y).reshape(npts, res, res)
+
+            # Set up the plot
+            fig, ax = plt.subplots(1, figsize=(3, 3))
+            ax.axis('off')
+            extent = (-1, 1, -1, 1)
+
+        # Plot the first frame of the image
         img = ax.imshow(Z[0], origin="lower", 
-                        extent=(-1, 1, -1, 1), cmap=cmap,
+                        extent=extent, cmap=cmap,
                         interpolation="none",
-                        vmin=vmin, vmax=vmax, animated=animated)
-        ax.axis('off')
-
+                        vmin=np.nanmin(Z), vmax=np.nanmax(Z), 
+                        animated=animated)
+        
         # Display or save the image / animation
         if animated:
             interval = kwargs.pop("interval", 75)

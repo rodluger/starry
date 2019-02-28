@@ -20,7 +20,8 @@ inline void reset ()
 Rotate the map *in place* by an angle `theta`.
 
 */
-inline void rotate (
+template <typename U=S>
+inline IsDefaultOrSpectral<U, void> rotate (
     const Scalar& theta
 ) 
 {
@@ -28,6 +29,28 @@ inline void rotate (
     YType y_in = y;
     W.rotate(y_in, cos(theta_rad), sin(theta_rad), y);
 }
+
+/**
+Rotate the map *in place* by an angle `theta`.
+
+*/
+template <typename U=S>
+inline IsTemporal<U, void> rotate (
+    const Scalar& theta
+) 
+{
+    Scalar theta_rad = theta * radian;
+    Matrix<Scalar> y_in = Eigen::Map<Matrix<Scalar>>(y.data(), Ny, Nt);
+
+    Eigen::Map<Matrix<Scalar>> y_out = 
+        Eigen::Map<Matrix<Scalar>>(y.data(), Ny, Nt);
+    
+    W.rotate(y_in, cos(theta_rad), sin(theta_rad), y_out);
+
+
+
+}
+
 
 /**
 Add a gaussian spot at a given latitude/longitude on the map.
