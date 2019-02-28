@@ -8,20 +8,25 @@ class PythonMapBase(object):
 
     """
 
-    def show(self, theta=0, res=300, cmap="plasma", flat=False, **kwargs):
+    def show(self, theta=0, res=300, cmap="plasma", projection="ortho", **kwargs):
         """
 
         """        
         # Type-specific kwargs
-        if flat:
+        if projection.lower().startswith("rect"):
+            projection = "rect"
             npts = 1
             model_kwargs = dict()
-        else:
+        elif projection.lower().startswith("ortho"):
+            projection = "ortho"
             if hasattr(theta, "__len__"):
                 npts = len(theta)
             else:
                 npts = 1
             model_kwargs = dict(theta=theta)
+        else:
+            raise ValueError("Invalid projection. Allowed projections are " +
+                             "`rectangular` and `orthographic` (default).")
 
         # Are we modeling time variability?
         if self._temporal:
@@ -44,7 +49,7 @@ class PythonMapBase(object):
         else:
             animated = (npts > 1)
 
-        if flat:
+        if projection == "rect":
 
             # Generate the lat/lon grid for one hemisphere
             lon = np.linspace(-np.pi, np.pi, res)
