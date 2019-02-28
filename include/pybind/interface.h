@@ -35,33 +35,95 @@
         ~py::detail::npy_api::NPY_ARRAY_WRITEABLE_;
 
 #ifdef _STARRY_DOUBLE_
-#   define MAP_TO_EIGEN(PYX, X, T, N) \
+#   define MAP_TO_EIGEN_VECTOR(PYX, X, T, N) \
         Eigen::Map<Vector<T>> X(NULL, N, 1); \
         Vector<T> tmp##X; \
-        buf = PYX.request(); \
-        ptr = (double *) buf.ptr; \
-        if (buf.ndim == 0) { \
-            tmp##X = ptr[0] * Vector<T>::Ones(N); \
+        auto buf##X = PYX.request(); \
+        double* ptr##X = (double *) buf##X.ptr; \
+        if (buf##X.ndim == 0) { \
+            tmp##X = ptr##X[0] * Vector<T>::Ones(N); \
             new (&X) Eigen::Map<Vector<T>>(&tmp##X(0), N, 1); \
-        } else if ((buf.ndim == 1) && (buf.size == N)) { \
-            new (&X) Eigen::Map<Vector<T>>(ptr, N, 1); \
+        } else if ((buf##X.ndim == 1) && (buf##X.size == N)) { \
+            new (&X) Eigen::Map<Vector<T>>(ptr##X, N, 1); \
         } else { \
-            throw errors::ShapeError("A vector has the incorrect shape."); \
+            throw errors::ShapeError("Argument `" #X "` has the wrong shape."); \
+        }
+#   define MAP_TO_EIGEN_ROW_MATRIX(PYX, X, T) \
+        py::buffer_info buf##X = PYX.request(); \
+        double *ptr##X = (double *) buf##X.ptr; \
+        Eigen::Map<RowMatrix<T>> X(NULL, \
+                                   buf##X.ndim > 0 ? buf##X.shape[0] : 1, \
+                                   buf##X.ndim > 1 ? buf##X.shape[1] : 1); \
+        RowMatrix<T> tmp##X; \
+        if (buf##X.ndim == 0) { \
+            tmp##X = ptr##X[0] * RowMatrix<T>::Ones(1, 1); \
+            new (&X) Eigen::Map<RowMatrix<T>>(&tmp##X(0), 1, 1); \
+        } else if (buf##X.ndim == 1) { \
+            new (&X) Eigen::Map<RowMatrix<T>>(ptr##X, buf##X.shape[0], 1); \
+        } else if (buf##X.ndim == 2) { \
+            new (&X) Eigen::Map<RowMatrix<T>>(ptr##X, buf##X.shape[0], buf##X.shape[1]); \
+        } else { \
+            throw errors::ValueError("Argument `" #X "` has the wrong shape."); \
+        }
+#   define MAP_TO_EIGEN_ROW_MATRIX_OF_UNIT_VECTORS(PYX, X, T, N) \
+        Eigen::Map<RowMatrix<T>> X(NULL, N, 3); \
+        RowMatrix<T> tmp##X; \
+        auto buf##X = PYX.request(); \
+        double* ptr##X = (double *) buf##X.ptr; \
+        if ((buf##X.ndim == 1) && (buf##X.size == 3)) { \
+            tmp##X = (Eigen::Map<RowMatrix<T>>(ptr##X, 1, 3)).replicate(nt, 1);\
+            new (&X) Eigen::Map<RowMatrix<T>>(&tmp##X(0), N, 3); \
+        } else if ((buf##X.ndim == 2) && (buf##X.size == 3 * N)) { \
+            new (&X) Eigen::Map<RowMatrix<T>>(ptr##X, N, 3); \
+        } else { \
+            throw errors::ShapeError("Argument `" #X "` has the wrong shape."); \
         }
 #else
-#   define MAP_TO_EIGEN(PYX, X, T, N) \
+#   define MAP_TO_EIGEN_VECTOR(PYX, X, T, N) \
         Eigen::Map<Vector<T>> X(NULL, N, 1); \
         Vector<T> tmp##X; \
-        buf = PYX.request(); \
-        ptr = (double *) buf.ptr; \
-        if (buf.ndim == 0) { \
-            tmp##X = ptr[0] * Vector<T>::Ones(N); \
+        auto buf##X = PYX.request(); \
+        double* ptr##X = (double *) buf##X.ptr; \
+        if (buf##X.ndim == 0) { \
+            tmp##X = ptr##X[0] * Vector<T>::Ones(N); \
             new (&X) Eigen::Map<Vector<T>>(&tmp##X(0), N, 1); \
-        } else if ((buf.ndim == 1) && (buf.size == N)) { \
+        } else if ((buf##X.ndim == 1) && (buf##X.size == N)) { \
             tmp##X = (py::cast<Vector<double>>(PYX)).template cast<T>(); \
             new (&X) Eigen::Map<Vector<T>>(&tmp##X(0), N, 1); \
         } else { \
-            throw errors::ShapeError("A vector has the incorrect shape."); \
+            throw errors::ShapeError("Argument `" #X "` has the wrong shape."); \
+        }
+#   define MAP_TO_EIGEN_ROW_MATRIX(PYX, X, T) \
+        py::buffer_info buf##X = PYX.request(); \
+        double *ptr##X = (double *) buf##X.ptr; \
+        Eigen::Map<RowMatrix<T>> X(NULL, \
+                                   buf##X.ndim > 0 ? buf##X.shape[0] : 1, \
+                                   buf##X.ndim > 1 ? buf##X.shape[1] : 1); \
+        RowMatrix<T> tmp##X; \
+        if (buf##X.ndim == 0) { \
+            tmp##X = ptr##X[0] * RowMatrix<T>::Ones(1, 1); \
+            new (&X) Eigen::Map<RowMatrix<T>>(&tmp##X(0), 1, 1); \
+        } else if (buf##X.ndim == 1) { \
+            tmp##X = (py::cast<RowMatrix<double>>(PYX)).template cast<T>(); \
+            new (&X) Eigen::Map<RowMatrix<T>>(&tmp##X(0), buf##X.shape[0], 1); \
+        } else if (buf##X.ndim == 2) { \
+            tmp##X = (py::cast<RowMatrix<double>>(PYX)).template cast<T>(); \
+            new (&X) Eigen::Map<RowMatrix<T>>(&tmp##X(0), buf##X.shape[0], buf##X.shape[1]); \
+        } else { \
+            throw errors::ValueError("Argument `" #X "` has the wrong shape."); \
+        }
+#   define MAP_TO_EIGEN_ROW_MATRIX_OF_UNIT_VECTORS(PYX, X, T, N) \
+        Eigen::Map<RowMatrix<T>> X(NULL, N, 3); \
+        RowMatrix<T> tmp##X; \
+        auto buf##X = PYX.request(); \
+        if ((buf##X.ndim == 1) && (buf##X.size == 3)) { \
+            tmp##X = ((py::cast<RowMatrix<double>>(PYX)).template cast<T>()).replicate(nt, 1);\
+            new (&X) Eigen::Map<RowMatrix<T>>(&tmp##X(0), N, 3); \
+        } else if ((buf##X.ndim == 2) && (buf##X.size == 3 * N)) { \
+            tmp##X = (py::cast<RowMatrix<double>>(PYX)).template cast<T>();\
+            new (&X) Eigen::Map<RowMatrix<T>>(&tmp##X(0), N, 3); \
+        } else { \
+            throw errors::ShapeError("Argument `" #X "` has the wrong shape."); \
         }
 #endif
 
@@ -352,9 +414,9 @@ template <typename T>
 std::function<py::object(
         Map<T> &, 
 #       ifdef _STARRY_TEMPORAL_
-            const double&, 
+            py::array_t<double>&, 
 #       endif
-        const double&, 
+        py::array_t<double>&,
         py::array_t<double>&, 
 #       ifdef _STARRY_REFLECTED_
             py::array_t<double>&,
@@ -368,9 +430,9 @@ std::function<py::object(
     (
         Map<T> &map, 
 #ifdef _STARRY_TEMPORAL_
-        const double& t, 
+        py::array_t<double>& t_, 
 #endif
-        const double& theta, 
+        py::array_t<double>& theta_, 
         py::array_t<double>& x_, 
 #ifdef _STARRY_REFLECTED_
         py::array_t<double>& y_,
@@ -380,77 +442,43 @@ std::function<py::object(
 #endif
     ) -> py::object {
         using Scalar = typename T::Scalar;
-#       ifdef _STARRY_REFLECTED_
-            UnitVector<Scalar> source = 
-                py::cast<UnitVector<double>>(source_).template cast<Scalar>();
-            assert(source.rows() == 3);
-#       endif
 
-        // Map `x` to an Eigen matrix
-        py::buffer_info bufx = x_.request();
-        double *ptrx = (double *) bufx.ptr;
-        Matrix<Scalar> tmpx;
-        Eigen::Map<RowMatrix<Scalar>> x(NULL, 
-                                        bufx.ndim > 0 ? bufx.shape[0] : 1, 
-                                        bufx.ndim > 1 ? bufx.shape[1] : 1);
-        if (bufx.ndim == 0) {
-            tmpx = ptrx[0] * Matrix<Scalar>::Ones(1, 1);
-            new (&x) Eigen::Map<Matrix<Scalar>>(&tmpx(0), 1, 1);
-        } else if (bufx.ndim == 1) {
-#           ifdef _STARRY_DOUBLE
-                new (&x) Eigen::Map<Matrix<Scalar>>(ptrx, bufx.shape[0], 1);
-#           else
-                tmpx = (py::cast<Matrix<double>>(x_)).template cast<Scalar>();
-                new (&x) Eigen::Map<Matrix<Scalar>>(&tmpx(0), bufx.shape[0], 1);
-#           endif
-        } else if (bufx.ndim == 2) {
-#           ifdef _STARRY_DOUBLE
-                new (&x) Eigen::Map<Matrix<Scalar>>(ptrx, bufx.shape[0], bufx.shape[1]);
-#           else
-                tmpx = (py::cast<Matrix<double>>(x_)).template cast<Scalar>();
-                new (&x) Eigen::Map<Matrix<Scalar>>(&tmpx(0), bufx.shape[0], bufx.shape[1]);
-#           endif
-        } else {
-            throw errors::ValueError("Argument `x` has the wrong shape.");
-        }
-
-        // Map `y` to an Eigen Matrix
-        py::buffer_info bufy = y_.request();
-        double *ptry = (double *) bufy.ptr;
-        Matrix<Scalar> tmpy;
-        Eigen::Map<RowMatrix<Scalar>> y(NULL, 
-                                        bufy.ndim > 0 ? bufy.shape[0] : 1, 
-                                        bufy.ndim > 1 ? bufy.shape[1] : 1);
-        if (bufy.ndim == 0) {
-            tmpy = ptry[0] * Matrix<Scalar>::Ones(1, 1);
-            new (&y) Eigen::Map<Matrix<Scalar>>(&tmpy(0), 1, 1);
-        } else if (bufy.ndim == 1) {
-#           ifdef _STARRY_DOUBLE
-                new (&y) Eigen::Map<Matrix<Scalar>>(ptry, bufy.shape[0], 1);
-#           else
-                tmpy = (py::cast<Matrix<double>>(y_)).template cast<Scalar>();
-                new (&y) Eigen::Map<Matrix<Scalar>>(&tmpy(0), bufy.shape[0], 1);
-#           endif
-        } else if (bufy.ndim == 2) {
-#           ifdef _STARRY_DOUBLE
-                new (&y) Eigen::Map<Matrix<Scalar>>(ptry, bufy.shape[0], bufy.shape[1]);
-#           else
-                tmpy = (py::cast<Matrix<double>>(y_)).template cast<Scalar>();
-                new (&y) Eigen::Map<Matrix<Scalar>>(&tmpy(0), bufy.shape[0], bufy.shape[1]);
-#           endif
-        } else {
-            throw errors::ValueError("Argument `y` has the wrong shape.");
-        }
+        // Get Eigen references to the Python arrays
+        MAP_TO_EIGEN_ROW_MATRIX(x_, x, Scalar);
+        MAP_TO_EIGEN_ROW_MATRIX(y_, y, Scalar);
 
         // Ensure their shapes match
         assert((x.rows() == y.rows()) && (x.cols() == y.cols()));
 
+        // Figure out the length of the timeseries
+        std::vector<long> v{
+#           ifdef _STARRY_TEMPORAL_
+                t_.request().size,
+#           endif
+            theta_.request().size
+        };
+        py::ssize_t nt = *std::max_element(v.begin(), v.end());
+#       ifdef _STARRY_REFLECTED_
+            auto buf = source_.request();
+            if ((buf.ndim == 2) && (buf.shape[0] > nt))
+                nt = buf.shape[0];
+#       endif
+
+        // Get Eigen references to the Python arrays
+#       ifdef _STARRY_TEMPORAL_
+            MAP_TO_EIGEN_VECTOR(t_, t, Scalar, nt);
+#       endif
+        MAP_TO_EIGEN_VECTOR(theta_, theta, Scalar, nt);
+#       ifdef _STARRY_REFLECTED_
+            MAP_TO_EIGEN_ROW_MATRIX_OF_UNIT_VECTORS(source_, source, Scalar, nt);
+#       endif
+
         // Compute the model
         map.computeLinearIntensityModel(
 #           ifdef _STARRY_TEMPORAL_
-                Scalar(t),
+                t,
 #           endif
-            Scalar(theta), 
+            theta, 
             x, 
             y, 
 #           ifdef _STARRY_REFLECTED_
@@ -513,18 +541,16 @@ std::function<py::object (
             ro_.request().size
         };
         py::ssize_t nt = *std::max_element(v.begin(), v.end());
-        py::buffer_info buf;
-        double *ptr;
 
         // Get Eigen references to the Python arrays
 #       ifdef _STARRY_TEMPORAL_
-            MAP_TO_EIGEN(t_, t, Scalar, nt);
+            MAP_TO_EIGEN_VECTOR(t_, t, Scalar, nt);
 #       endif
-        MAP_TO_EIGEN(theta_, theta, Scalar, nt);
-        MAP_TO_EIGEN(xo_, xo, Scalar, nt);
-        MAP_TO_EIGEN(yo_, yo, Scalar, nt);
-        MAP_TO_EIGEN(zo_, zo, Scalar, nt);
-        MAP_TO_EIGEN(ro_, ro, Scalar, nt);
+        MAP_TO_EIGEN_VECTOR(theta_, theta, Scalar, nt);
+        MAP_TO_EIGEN_VECTOR(xo_, xo, Scalar, nt);
+        MAP_TO_EIGEN_VECTOR(yo_, yo, Scalar, nt);
+        MAP_TO_EIGEN_VECTOR(zo_, zo, Scalar, nt);
+        MAP_TO_EIGEN_VECTOR(ro_, ro, Scalar, nt);
 
         if (!compute_gradient) {
 

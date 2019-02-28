@@ -79,7 +79,8 @@ inline const UType getU () const {
 }
 
 /**
-Set the axis of rotation for the map.
+Set the axis of rotation for the map and update
+the pre-computed Wigner matrices.
 
 */
 inline void setAxis (

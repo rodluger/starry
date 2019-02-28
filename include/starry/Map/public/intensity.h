@@ -8,12 +8,12 @@ template <
     typename=IsEmitted<U>
 >
 inline void computeLinearIntensityModel (
-    const Scalar& theta, 
+    const Vector<Scalar>& theta, 
     const RowMatrix<Scalar>& x, 
     const RowMatrix<Scalar>& y,
     RowMatrix<Scalar>& X
 ) {
-    UnitVector<Scalar> source; // dummy
+    RowMatrix<Scalar> source; // dummy
     computeLinearIntensityModelInternal(theta, x, y, source, X);
 }
 
@@ -27,16 +27,14 @@ template <
     typename=IsEmitted<U>
 >
 inline void computeLinearIntensityModel (
-    const Scalar& t,
-    const Scalar& theta, 
+    const Vector<Scalar>& t,
+    const Vector<Scalar>& theta, 
     const RowMatrix<Scalar>& x, 
     const RowMatrix<Scalar>& y,
     RowMatrix<Scalar>& X
 ) {
-    UnitVector<Scalar> source; // dummy
-    Vector<Scalar> tvec(1);
-    tvec << t;
-    computeTaylor(tvec);
+    RowMatrix<Scalar> source; // dummy
+    computeTaylor(t);
     computeLinearIntensityModelInternal(theta, x, y, source, X);
 }
 
@@ -50,10 +48,10 @@ template <
     typename=IsReflected<U>
 >
 inline void computeLinearIntensityModel (
-    const Scalar& theta, 
+    const Vector<Scalar>& theta, 
     const RowMatrix<Scalar>& x, 
     const RowMatrix<Scalar>& y,
-    const UnitVector<Scalar>& source,
+    const RowMatrix<Scalar>& source,
     RowMatrix<Scalar>& X
 ) {
     computeLinearIntensityModelInternal(theta, x, y, source, X);
@@ -69,15 +67,13 @@ template <
     typename=IsReflected<U>
 >
 inline void computeLinearIntensityModel (
-    const Scalar& t,
-    const Scalar& theta, 
+    const Vector<Scalar>& t,
+    const Vector<Scalar>& theta, 
     const RowMatrix<Scalar>& x, 
     const RowMatrix<Scalar>& y,
-    const UnitVector<Scalar>& source,
+    const RowMatrix<Scalar>& source,
     RowMatrix<Scalar>& X
 ) {
-    Vector<Scalar> tvec(1);
-    tvec << t;
-    computeTaylor(tvec);
+    computeTaylor(t);
     computeLinearIntensityModelInternal(theta, x, y, source, X);
 }

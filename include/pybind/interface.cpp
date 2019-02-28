@@ -318,8 +318,8 @@ PYBIND11_MODULE(
 
 #           if defined(_STARRY_TEMPORAL_)
                 // Reshape the coefficients into a matrix
-                Matrix<Scalar> tmpcoeff = coeff_;
-                coeff_ = Eigen::Map<Matrix<Scalar>>(tmpcoeff.data(), 
+                Matrix<double> tmpcoeff = coeff_;
+                coeff_ = Eigen::Map<Matrix<double>>(tmpcoeff.data(), 
                             ncols, coeff_.size() / ncols).transpose();
 #           endif
 

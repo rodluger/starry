@@ -710,15 +710,15 @@ inline void Basis<T>::computePolyBasis (
     RowMatrix<T>& basis
 ) {
     int N = (lmax + 1) * (lmax + 1);
-    int npts = y.cols();
-    RowVector<T> y2 = y.cwiseProduct(y);
+    int npts = x.cols();
     RowVector<T> x2 = x.cwiseProduct(x);
-    RowVector<T> z2 = RowVector<T>::Ones(npts) - y2 - x2;
+    RowVector<T> y2 = y.cwiseProduct(y);
+    RowVector<T> z2 = RowVector<T>::Ones(npts) - x2 - y2;
     RowVector<T> z = z2.cwiseSqrt();
-    Matrix<T> yarr(npts, N), xarr(npts, N);
-    RowVector<T> yterm(npts), xterm(npts);
-    yterm.setOnes();
+    Matrix<T> xarr(npts, N), yarr(npts, N);
+    RowVector<T> xterm(npts), yterm(npts);
     xterm.setOnes();
+    yterm.setOnes();
     int i0 = 0,
         di0 = 3,
         j0 = 0,
@@ -727,33 +727,33 @@ inline void Basis<T>::computePolyBasis (
     for (n = 0; n < lmax + 1; ++n) {
         i = i0;
         di = di0;
-        yarr.col(i) = yterm;
+        xarr.col(i) = xterm;
         j = j0;
         dj = dj0;
-        xarr.col(j) = xterm;
+        yarr.col(j) = yterm;
         i = i0 + di - 1;
         j = j0 + dj - 1;
         while (i + 1 < N) {
-            yarr.col(i) = yterm;
-            yarr.col(i + 1) = yterm;
+            xarr.col(i) = xterm;
+            xarr.col(i + 1) = xterm;
             di += 2;
             i += di;
-            xarr.col(j) = xterm;
-            xarr.col(j + 1) = xterm;
+            yarr.col(j) = yterm;
+            yarr.col(j + 1) = yterm;
             dj += 2;
             j += dj - 1;
         }
-        yterm = yterm.cwiseProduct(y);
+        xterm = xterm.cwiseProduct(x);
         i0 += 2 * n + 1;
         di0 += 2;
-        xterm = xterm.cwiseProduct(x);
+        yterm = yterm.cwiseProduct(y);
         j0 += 2 * (n + 1) + 1;
         dj0 += 2;
     }
     n = 0;
     for (int l = 0; l < lmax + 1; ++l) {
         for (int m = -l; m < l + 1; ++m) {
-            basis.col(n) = yarr.col(n).cwiseProduct(xarr.col(n));
+            basis.col(n) = xarr.col(n).cwiseProduct(yarr.col(n));
             if ((l + m) % 2 != 0)
                 basis.col(n) = basis.col(n).cwiseProduct(z.transpose());
             ++n;

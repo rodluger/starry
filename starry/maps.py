@@ -16,37 +16,38 @@ class PythonMapBase(object):
         x, y = np.meshgrid(np.linspace(-1, 1, res), np.linspace(-1, 1, res))
         
         # Check input dimensions
-        theta = np.atleast_1d(theta)
-        assert len(theta.shape) == 1, "Invalid shape for keyword `theta`."
+        if hasattr(theta, "__len__"):
+            npts = len(theta)
+        else:
+            npts = 1
         
+        # Type-specific kwargs
+        model_kwargs = {}
+
         # Are we modeling time variability?
         if self._temporal:
-            t = np.atleast_1d(kwargs.pop("t", 0.0))
-            assert len(t.shape) == 1, "Invalid shape for keyword `t`."
-            if len(t) == 1:
-                t = np.ones_like(theta) * t[0]
-            else:
-                if len(theta) == 1:
-                    theta = np.ones_like(t) * theta[0]
-                assert len(t) == len(theta), "Invalid size for keyword `t`."
+            t = kwargs.pop("t", 0.0)
+            if hasattr(t, "__len__"):
+                npts = max(npts, len(t))
+            model_kwargs["t"] = t
+
+        # Are we modeling reflected light?
+        if self._reflected:
+            source = np.array(kwargs.pop("source", [-1.0, 0.0, 0.0]))
+            if len(source.shape) == 2:
+                npts = max(npts, len(source))
+            model_kwargs["source"] = source
 
         # Construct the linear model
         if self._spectral:
             animated = True
-            Z = np.empty((self.nw, res, res))
-            assert len(theta) == 1, "Spectral map rotation cannot be animated."
-            X = self.linear_intensity_model(theta=theta[0], x=x, y=y)
-            for i in range(self.nw):
-                Z[i] = np.dot(X, self.y[:, i]).reshape(res, res)
+            assert npts == 1, "Spectral map rotation cannot be animated."
+            X = self.linear_intensity_model(theta=theta, x=x, y=y, **model_kwargs)
+            Z = np.moveaxis(np.dot(X, self.y).reshape(res, res, self.nw), -1, 0)
         else:
-            animated = (len(theta) > 1)
-            Z = np.empty((len(theta), res, res))
-            for i in range(len(theta)):
-                if self._temporal:
-                    X = self.linear_intensity_model(t=t[i], theta=theta[i], x=x, y=y)
-                else:
-                    X = self.linear_intensity_model(theta=theta[i], x=x, y=y)
-                Z[i] = np.dot(X, self.y).reshape(res, res)
+            animated = (npts > 1)
+            X = self.linear_intensity_model(theta=theta, x=x, y=y, **model_kwargs)
+            Z = np.dot(X, self.y).reshape(npts, res, res)
 
         # Set up the plot
         vmin = np.nanmin(Z)
@@ -98,39 +99,87 @@ def Map(*args, **kwargs):
         if (nt is None):
             if (not reflected):
                 if (not multi):
-                    from ._starry_default_double import Map as CMapBase
+                    try:
+                        from ._starry_default_double import Map as CMapBase
+                    except ModuleNotFoundError:
+                        raise ModuleNotFoundError("Requested module not found. " + 
+                            "Please re-compile `starry` with bit 1 enabled.")
                 else:
-                    from ._starry_default_multi import Map as CMapBase
+                    try:
+                        from ._starry_default_multi import Map as CMapBase
+                    except ModuleNotFoundError:
+                        raise ModuleNotFoundError("Requested module not found. " + 
+                            "Please re-compile `starry` with bit 2 enabled.")
             else:
                 if (not multi):
-                    from ._starry_default_refl_double import Map as CMapBase
+                    try:
+                        from ._starry_default_refl_double import Map as CMapBase
+                    except ModuleNotFoundError:
+                        raise ModuleNotFoundError("Requested module not found. " + 
+                            "Please re-compile `starry` with bit 64 enabled.")
                 else:
-                    from ._starry_default_refl_multi import Map as CMapBase
+                    try:
+                        from ._starry_default_refl_multi import Map as CMapBase
+                    except ModuleNotFoundError:
+                        raise ModuleNotFoundError("Requested module not found. " + 
+                            "Please re-compile `starry` with bit 128 enabled.")
         else:
             kwargs['nterms'] = nt
             if (not reflected):
                 if (not multi):
-                    from ._starry_temporal_double import Map as CMapBase
+                    try:
+                        from ._starry_temporal_double import Map as CMapBase
+                    except ModuleNotFoundError:
+                        raise ModuleNotFoundError("Requested module not found. " + 
+                            "Please re-compile `starry` with bit 16 enabled.")
                 else:
-                    from ._starry_temporal_multi import Map as CMapBase
+                    try:
+                        from ._starry_temporal_multi import Map as CMapBase
+                    except ModuleNotFoundError:
+                        raise ModuleNotFoundError("Requested module not found. " + 
+                            "Please re-compile `starry` with bit 32 enabled.")
             else:
                 if (not multi):
-                    from ._starry_temporal_refl_double import Map as CMapBase
+                    try:
+                        from ._starry_temporal_refl_double import Map as CMapBase
+                    except ModuleNotFoundError:
+                        raise ModuleNotFoundError("Requested module not found. " + 
+                            "Please re-compile `starry` with bit 1024 enabled.")
                 else:
-                    from ._starry_temporal_refl_multi import Map as CMapBase
+                    try:
+                        from ._starry_temporal_refl_multi import Map as CMapBase
+                    except ModuleNotFoundError:
+                        raise ModuleNotFoundError("Requested module not found. " + 
+                            "Please re-compile `starry` with bit 2048 enabled.")
     else:
         if (nt is None):
             kwargs['nterms'] = nw
             if (not reflected):
                 if (not multi):
-                    from ._starry_spectral_double import Map as CMapBase
+                    try:
+                        from ._starry_spectral_double import Map as CMapBase
+                    except ModuleNotFoundError:
+                        raise ModuleNotFoundError("Requested module not found. " + 
+                            "Please re-compile `starry` with bit 4 enabled.")
                 else:
-                    from ._starry_spectral_multi import Map as CMapBase
+                    try:
+                        from ._starry_spectral_multi import Map as CMapBase
+                    except ModuleNotFoundError:
+                        raise ModuleNotFoundError("Requested module not found. " + 
+                            "Please re-compile `starry` with bit 8 enabled.")
             else:
                 if (not multi):
-                    from ._starry_spectral_refl_double import Map as CMapBase
+                    try:
+                        from ._starry_spectral_refl_double import Map as CMapBase
+                    except ModuleNotFoundError:
+                        raise ModuleNotFoundError("Requested module not found. " + 
+                            "Please re-compile `starry` with bit 256 enabled.")
                 else:
-                    from ._starry_spectral_refl_multi import Map as CMapBase
+                    try:
+                        from ._starry_spectral_refl_multi import Map as CMapBase
+                    except ModuleNotFoundError:
+                        raise ModuleNotFoundError("Requested module not found. " + 
+                            "Please re-compile `starry` with bit 512 enabled.")
         else:
             raise ValueError("Spectral maps cannot have temporal variability.")
 

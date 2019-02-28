@@ -9,7 +9,6 @@ except NameError:
 
 # Import all modules
 if not __STARRY_SETUP__:
-    from . import _plotting
     from . import kepler
     from .extensions import *
     from . import ops
