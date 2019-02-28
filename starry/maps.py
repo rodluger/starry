@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-
+from .extensions import RAxisAngle
 
 class PythonMapBase(object):
     """
@@ -58,9 +58,6 @@ class PythonMapBase(object):
             x = np.sin(np.pi / 2 - lat) * np.cos(lon - np.pi / 2)
             y = np.sin(np.pi / 2 - lat) * np.sin(lon - np.pi / 2)
 
-            # Compute the linear model
-            X = self.linear_intensity_model(x=x, y=y, **model_kwargs)
-
             # Rotate so we're looking down the north pole
             map_axis = np.array(self.axis)
             sinalpha = np.sqrt(self.axis[0] ** 2 + self.axis[1] ** 2)
@@ -69,6 +66,17 @@ class PythonMapBase(object):
             alpha = (180 / np.pi) * np.arctan2(sinalpha, cosalpha)
             self.axis = u
             self.rotate(alpha)
+
+            # We need to rotate the light source as well
+            if self._reflected:
+                R = RAxisAngle(u, alpha)
+                source = np.atleast_2d(model_kwargs["source"])
+                for i in range(len(source)):
+                    source[i] = np.dot(R, source[i])
+                model_kwargs["source"] = source
+
+            # Compute the linear model
+            X = self.linear_intensity_model(x=x, y=y, **model_kwargs)
 
             # Compute the northern hemisphere map
             if self._spectral:
@@ -82,7 +90,17 @@ class PythonMapBase(object):
             # Flip the planet around
             self.axis = [1, 0, 0]
             self.rotate(180)
-            
+
+            # We need to rotate the light source as well
+            # (and re-compute the model)
+            if self._reflected:
+                R = RAxisAngle([1, 0, 0], 180)
+                source = np.atleast_2d(model_kwargs["source"])
+                for i in range(len(source)):
+                    source[i] = np.dot(R, source[i])
+                model_kwargs["source"] = source
+                X = self.linear_intensity_model(x=x, y=y, **model_kwargs)
+
             # Compute the southern hemisphere map
             if self._spectral:
                 Z_south = np.dot(X, self.y).reshape(res, res // 2, self.nw)
@@ -91,12 +109,9 @@ class PythonMapBase(object):
                 Z_south = np.rot90(Z_south, axes=(1, 2), k=3)
                 Z_south = np.roll(Z_south, -res // 4, axis=2)
             else:
-                self.axis = [0, 0, 1]
-                self.rotate(180)
                 Z_south = np.dot(X, self.y).reshape(npts, res // 2, res)
                 Z_south = np.flip(Z_south, axis=(1, 2))
-                self.rotate(-180)
-                self.axis = [1, 0, 0]
+                Z_south = np.roll(Z_south, -res // 2, axis=2)
 
             # Join them
             Z = np.concatenate((Z_south, Z_north), axis=1)

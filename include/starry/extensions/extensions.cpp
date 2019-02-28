@@ -22,6 +22,7 @@ using namespace pybind11::literals;
 
 //! Import starry
 #include <starry/starry.h>
+#include <starry/wigner.h>
 #include "extensions.h"
 using namespace starry::utils;
 using namespace starry::extensions;
@@ -33,5 +34,16 @@ PYBIND11_MODULE(
 ) {
 
     // Add bindings for custom extensions here.
+
+    // Axis-angle rotation matrix in 3-space
+    m.def(
+        "RAxisAngle", [](
+            const UnitVector<double>& axis,
+            const double& angle
+        ) {
+            return starry::wigner::AxisAngle(axis.normalized(), 
+                                             pi<double>() / 180. * angle);
+        }, 
+        "axis"_a, "angle"_a);
 
 }
