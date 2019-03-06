@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 try:
     from ._starry_extensions import *
 except ImportError:

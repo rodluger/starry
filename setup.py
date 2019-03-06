@@ -12,24 +12,7 @@ if sys.version_info[0] < 3:
 else:
     import builtins
 builtins.__STARRY_SETUP__ = True
-from starry import __version__
-
-# Module bits
-modules = dict(
-    _STARRY_DEFAULT_DOUBLE_=1,
-    _STARRY_DEFAULT_MULTI_=2,
-    _STARRY_SPECTRAL_DOUBLE_=4,
-    _STARRY_SPECTRAL_MULTI_=8,
-    _STARRY_TEMPORAL_DOUBLE_=16,
-    _STARRY_TEMPORAL_MULTI_=32,
-    _STARRY_DEFAULT_REFL_DOUBLE_=64,
-    _STARRY_DEFAULT_REFL_MULTI_=128,
-    _STARRY_SPECTRAL_REFL_DOUBLE_=256,
-    _STARRY_SPECTRAL_REFL_MULTI_=512,
-    _STARRY_TEMPORAL_REFL_DOUBLE_=1024,
-    _STARRY_TEMPORAL_REFL_MULTI_=2048,
-    _STARRY_EXTENSIONS_=4096
-)
+from starry import __version__, modules
 
 # Custom compiler flags
 macros = dict(

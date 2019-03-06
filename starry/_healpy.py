@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Healpy-based utilities for starry."""
 import numpy as np
 try:
