@@ -36,6 +36,7 @@ std::string info () {
 
 /**
 Set the full spherical harmonic vector.
+\todo: Ensure y(0) = 1
 
 */
 inline void setY (
@@ -57,6 +58,7 @@ inline const YType getY () const {
 
 /**
 Set the full limb darkening vector.
+\todo: Ensure u(0) = -1
 
 */
 inline void setU (

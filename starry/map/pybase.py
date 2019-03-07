@@ -50,7 +50,7 @@ class PythonMapBase(object):
 
         # Are we modeling reflected light?
         if self._reflected:
-            source = np.array(kwargs.pop("source", [-1.0, 0.0, 0.0]))
+            source = np.ascontiguousarray(kwargs.pop("source", [-1.0, 0.0, 0.0]))
             if len(source.shape) == 2:
                 nframes = max(nframes, len(source))
             model_kwargs["source"] = source

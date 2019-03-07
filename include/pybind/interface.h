@@ -30,6 +30,8 @@
 #   define PYOBJECT_CAST_ARR(X)           py::cast(&X)
 #endif
 
+#define PY_ARRAY py::array_t<double, py::array::c_style | py::array::forcecast>
+
 #define MAKE_READ_ONLY(X) \
     reinterpret_cast<py::detail::PyArray_Proxy*>(X.ptr())->flags &= \
         ~py::detail::npy_api::NPY_ARRAY_WRITEABLE_;
@@ -414,15 +416,15 @@ template <typename T>
 std::function<py::object(
         Map<T> &, 
 #       ifdef _STARRY_TEMPORAL_
-            py::array_t<double>&, 
+            PY_ARRAY&, 
 #       endif
-        py::array_t<double>&,
-        py::array_t<double>&, 
+        PY_ARRAY&,
+        PY_ARRAY&, 
 #       ifdef _STARRY_REFLECTED_
-            py::array_t<double>&,
-            py::array_t<double>& 
+            PY_ARRAY&,
+            PY_ARRAY& 
 #       else
-            py::array_t<double>&
+            PY_ARRAY&
 #       endif
     )> linear_intensity_model () 
 {
@@ -430,15 +432,15 @@ std::function<py::object(
     (
         Map<T> &map, 
 #ifdef _STARRY_TEMPORAL_
-        py::array_t<double>& t_, 
+        PY_ARRAY& t_, 
 #endif
-        py::array_t<double>& theta_, 
-        py::array_t<double>& x_, 
+        PY_ARRAY& theta_, 
+        PY_ARRAY& x_, 
 #ifdef _STARRY_REFLECTED_
-        py::array_t<double>& y_,
-        py::array_t<double>& source_
+        PY_ARRAY& y_,
+        PY_ARRAY& source_
 #else
-        py::array_t<double>& y_
+        PY_ARRAY& y_
 #endif
     ) -> py::object {
         using Scalar = typename T::Scalar;
@@ -503,13 +505,16 @@ template <typename T>
 std::function<py::object (
         Map<T> &, 
 #       ifdef _STARRY_TEMPORAL_
-            py::array_t<double>&,
+            PY_ARRAY&,
 #       endif
-        py::array_t<double>&, 
-        py::array_t<double>&, 
-        py::array_t<double>&, 
-        py::array_t<double>&,
-        py::array_t<double>&,
+        PY_ARRAY&, 
+        PY_ARRAY&, 
+        PY_ARRAY&, 
+        PY_ARRAY&,
+        PY_ARRAY&,
+#       ifdef _STARRY_REFLECTED_
+            PY_ARRAY&,
+#       endif
         bool
     )> linear_flux_model () 
 {
@@ -517,20 +522,23 @@ std::function<py::object (
     (
         Map<T> &map, 
 #       ifdef _STARRY_TEMPORAL_
-            py::array_t<double>& t_,
+            PY_ARRAY& t_,
 #       endif
-        py::array_t<double>& theta_, 
-        py::array_t<double>& xo_, 
-        py::array_t<double>& yo_, 
-        py::array_t<double>& zo_,
-        py::array_t<double>& ro_,
+        PY_ARRAY& theta_, 
+        PY_ARRAY& xo_, 
+        PY_ARRAY& yo_, 
+        PY_ARRAY& zo_,
+        PY_ARRAY& ro_,
+#       ifdef _STARRY_REFLECTED_
+            PY_ARRAY& source_,
+#       endif
         bool compute_gradient
     ) -> py::object 
     {
         using Scalar = typename T::Scalar;
 
         // Figure out the length of the timeseries
-        std::vector<long> v{
+        std::vector<long> v {
 #           ifdef _STARRY_TEMPORAL_
                 t_.request().size,
 #           endif
@@ -541,6 +549,11 @@ std::function<py::object (
             ro_.request().size
         };
         py::ssize_t nt = *std::max_element(v.begin(), v.end());
+#       ifdef _STARRY_REFLECTED_
+            auto buf = source_.request();
+            if ((buf.ndim == 2) && (buf.shape[0] > nt))
+                nt = buf.shape[0];
+#       endif
 
         // Get Eigen references to the Python arrays
 #       ifdef _STARRY_TEMPORAL_
@@ -551,15 +564,28 @@ std::function<py::object (
         MAP_TO_EIGEN_VECTOR(yo_, yo, Scalar, nt);
         MAP_TO_EIGEN_VECTOR(zo_, zo, Scalar, nt);
         MAP_TO_EIGEN_VECTOR(ro_, ro, Scalar, nt);
+#       ifdef _STARRY_REFLECTED_
+            MAP_TO_EIGEN_ROW_MATRIX_OF_UNIT_VECTORS(source_, source, Scalar, nt);
+#       endif
 
         if (!compute_gradient) {
 
             // Compute the model and return
-#           ifdef _STARRY_TEMPORAL_
-                map.computeLinearFluxModel(t, theta, xo, yo, zo, ro, map.data.X);
-#           else
-                map.computeLinearFluxModel(theta, xo, yo, zo, ro, map.data.X);
-#           endif
+            map.computeLinearFluxModel(
+#               ifdef _STARRY_TEMPORAL_
+                    t, 
+#               endif
+                theta, 
+                xo, 
+                yo, 
+                zo, 
+                ro, 
+#               ifdef _STARRY_REFLECTED_
+                    source, 
+#               endif
+                map.data.X
+            );
+
             return PYOBJECT_CAST_ARR(map.data.X);
 
         } else {
@@ -569,12 +595,27 @@ std::function<py::object (
 #               ifdef _STARRY_TEMPORAL_
                     t,
 #               endif
-                theta, xo, yo, zo, ro, map.data.X, 
+                theta, 
+                xo, 
+                yo, 
+                zo, 
+                ro,
+#               ifdef _STARRY_REFLECTED_
+                    source, 
+#               endif 
+                map.data.X, 
 #               ifdef _STARRY_TEMPORAL_
                     map.data.DADt,
 #               endif
-                map.data.DADtheta, map.data.DADxo, 
-                map.data.DADyo, map.data.DADro
+                map.data.DADtheta, 
+                map.data.DADxo, 
+                map.data.DADyo, 
+                map.data.DADro,
+#               ifdef _STARRY_REFLECTED_
+                    map.data.DADsource, 
+#               endif   
+                map.data.DADu, 
+                map.data.DADaxis
             );
 
             // Get Eigen references to the arrays, as these
@@ -586,6 +627,11 @@ std::function<py::object (
             auto Dxo = Ref<RowMatrix<Scalar>>(map.data.DADxo);
             auto Dyo = Ref<RowMatrix<Scalar>>(map.data.DADyo);
             auto Dro = Ref<RowMatrix<Scalar>>(map.data.DADro);
+#           ifdef _STARRY_REFLECTED_
+                auto Dsource = Ref<RowMatrix<Scalar>>(map.data.DADsource);
+#           endif
+            auto Du = Ref<RowMatrix<Scalar>>(map.data.DADu);
+            auto Daxis = Ref<RowMatrix<Scalar>>(map.data.DADaxis);
 
             // Construct a dictionary
             py::dict gradient = py::dict(
@@ -595,7 +641,12 @@ std::function<py::object (
                 "theta"_a=ENSURE_DOUBLE_ARR(Dtheta),
                 "xo"_a=ENSURE_DOUBLE_ARR(Dxo),
                 "yo"_a=ENSURE_DOUBLE_ARR(Dyo),
-                "ro"_a=ENSURE_DOUBLE_ARR(Dro)
+                "ro"_a=ENSURE_DOUBLE_ARR(Dro),
+#               ifdef _STARRY_REFLECTED_
+                    "source"_a=ENSURE_DOUBLE_ARR(Dsource),
+#               endif    
+                "u"_a=ENSURE_DOUBLE_ARR(Du),
+                "axis"_a=ENSURE_DOUBLE_ARR(Daxis)         
             );
 
             // Return

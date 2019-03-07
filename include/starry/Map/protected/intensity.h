@@ -23,6 +23,9 @@ inline void computeLinearIntensityModelInternal (
     Eigen::Map<const RowVector<Scalar>> y(y_.data(), y_.size());
     size_t npts = x.size();
 
+    // Convert to radians
+    Vector<Scalar> theta_rad = theta * radian;
+
     // Number of time points
     size_t ntimes = theta.size();
 
@@ -72,17 +75,16 @@ inline void computeLinearIntensityModelInternal (
         RowVector<Scalar> y2 = y.array().square();
         z = (Ones - x2 - y2).cwiseSqrt();
     }
+    RowMatrix<Scalar> XR(npts, Ny);
+    RowMatrix<Scalar> X0R(npts, Ny);
+    RowMatrix<Scalar> X0RR(npts, Ny);
     for (size_t n = 0; n < ntimes; ++n) {
 
         // Rotate the map
-        RowMatrix<Scalar> XR(npts, Ny);
-        RowMatrix<Scalar> X0R(npts, Ny);
-        RowMatrix<Scalar> X0RR(npts, Ny);
         W.leftMultiplyRZetaInv(X0, X0R);
-        Scalar theta_rad = theta(n) * radian;
-        if (theta_rad != theta_cache) {
-            theta_cache = theta_rad;
-            W.compute(cos(theta_rad), sin(theta_rad));
+        if (theta_rad(n) != theta_cache) {
+            theta_cache = theta_rad(n);
+            W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
             W.leftMultiplyRz(X0R, X0RR);
             W.leftMultiplyRZeta(X0RR, XR);
         }

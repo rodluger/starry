@@ -17,6 +17,9 @@ public:
     RowMatrix<Scalar> DADxo;
     RowMatrix<Scalar> DADyo;
     RowMatrix<Scalar> DADro;
+    RowMatrix<Scalar> DADsource;
+    RowMatrix<Scalar> DADu;
+    RowMatrix<Scalar> DADaxis;
     RowMatrix<Scalar> X;
 
     // Cache

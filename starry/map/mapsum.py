@@ -91,6 +91,14 @@ class MapSum(object):
             raise ValueError("Incorrect dimensions for `theta`.")
         return theta
 
+    def linear_intensity_model(self, theta=0, **kwargs):
+        """
+
+        """
+        theta = self._reshape_theta(theta)
+        return np.hstack([self.maps[n].linear_intensity_model(theta=theta[n], **kwargs)
+                          for n in range(len(self.maps))])
+
     def render(self, theta=0, **kwargs):
         """
 

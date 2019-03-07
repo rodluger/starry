@@ -130,10 +130,10 @@ PYBIND11_MODULE(
 
     // Constructor
 #   if defined(_STARRY_SINGLECOL_) 
-        PyMap.def(py::init<int, int>(), "ydeg"_a=2, "udeg"_a=2);
+        PyMap.def(py::init<int, int>(), "ydeg"_a=2, "udeg"_a=0);
 #   else
         PyMap.def(py::init<int, int, int>(), 
-                  "ydeg"_a=2, "udeg"_a=2, "nterms"_a=1);
+                  "ydeg"_a=2, "udeg"_a=0, "nterms"_a=1);
 #   endif
 
     // String representation of the map
@@ -581,7 +581,10 @@ PYBIND11_MODULE(
                       "theta"_a=0.0, "xo"_a=0.0, 
                       "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
 #       else
-            // \todo Implement linear model
+            PyMap.def("linear_flux_model", linear_flux_model<T>(), 
+                      "theta"_a=0.0, "xo"_a=0.0, 
+                      "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, 
+                      "source"_a=-xhat<double>(), "gradient"_a=false);
 #       endif
 #   else
 #       if defined(_STARRY_EMITTED_)
@@ -590,7 +593,11 @@ PYBIND11_MODULE(
                       "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
                       "ro"_a=0.0, "gradient"_a=false);
 #       else
-            // \todo Implement linear model
+            PyMap.def("linear_flux_model", linear_flux_model<T>(), 
+                      "t"_a=0.0, 
+                      "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
+                      "ro"_a=0.0, "source"_a=-xhat<double>(), 
+                      "gradient"_a=false);
 #       endif
 #   endif
 

@@ -41,14 +41,9 @@ inline IsTemporal<U, void> rotate (
 {
     Scalar theta_rad = theta * radian;
     Matrix<Scalar> y_in = Eigen::Map<Matrix<Scalar>>(y.data(), Ny, Nt);
-
     Eigen::Map<Matrix<Scalar>> y_out = 
         Eigen::Map<Matrix<Scalar>>(y.data(), Ny, Nt);
-    
     W.rotate(y_in, cos(theta_rad), sin(theta_rad), y_out);
-
-
-
 }
 
 

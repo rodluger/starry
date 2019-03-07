@@ -54,7 +54,7 @@ inline void computeLinearIntensityModel (
     const RowMatrix<Scalar>& source,
     RowMatrix<Scalar>& X
 ) {
-    computeLinearIntensityModelInternal(theta, x, y, source, X);
+    computeLinearIntensityModelInternal(theta, x, y, source.rowwise().normalized(), X);
 }
 
 /**
@@ -75,5 +75,5 @@ inline void computeLinearIntensityModel (
     RowMatrix<Scalar>& X
 ) {
     computeTaylor(t);
-    computeLinearIntensityModelInternal(theta, x, y, source, X);
+    computeLinearIntensityModelInternal(theta, x, y, source.rowwise().normalized(), X);
 }
