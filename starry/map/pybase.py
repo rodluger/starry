@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from ..extensions import RAxisAngle
 from .mapsum import MapSum
+from IPython.display import HTML
+
 
 __all__ = ["PythonMapBase"]
 
@@ -38,9 +40,6 @@ class PythonMapBase(object):
             raise ValueError("Invalid projection. Allowed projections are " +
                              "`rectangular` and `orthographic` (default).")
 
-        # Adjust `res` so that it's divisible by 4
-        res += (4 - (res % 4))
-
         # Are we modeling time variability?
         if self._temporal:
             t = kwargs.pop("t", 0.0)
@@ -50,10 +49,40 @@ class PythonMapBase(object):
 
         # Are we modeling reflected light?
         if self._reflected:
-            source = np.ascontiguousarray(kwargs.pop("source", [-1.0, 0.0, 0.0]))
-            if len(source.shape) == 2:
-                nframes = max(nframes, len(source))
-            model_kwargs["source"] = source
+            source = kwargs.pop("source", [-1.0, 0.0, 0.0])
+            if source is None:
+                # If explicitly set to `None`, re-run this
+                # function on an *emitted* light map!
+                from .. import Map
+                if self._temporal:
+                    map = Map(ydeg=self.ydeg, udeg=self.udeg, 
+                              multi=self.multi, nt=self.nt)
+                    map[:, :, :] = self[:, :, :]
+                    map.axis = self.axis
+                    return map.render(theta=theta, res=res, 
+                                      projection=projection, 
+                                      rotate_if_rect=rotate_if_rect, t=t)
+                elif self._spectral:
+                    map = Map(ydeg=self.ydeg, udeg=self.udeg, 
+                              multi=self.multi, nw=self.nw)
+                    map[:, :, :] = self[:, :, :]
+                    map.axis = self.axis
+                    return map.render(theta=theta, res=res, 
+                                      projection=projection, 
+                                      rotate_if_rect=rotate_if_rect)
+                else:
+                    map = Map(ydeg=self.ydeg, udeg=self.udeg, 
+                              multi=self.multi)
+                    map[:, :] = self[:, :]
+                    map.axis = self.axis
+                    return map.render(theta=theta, res=res, 
+                                      projection=projection, 
+                                      rotate_if_rect=rotate_if_rect)
+            else:
+                source = np.ascontiguousarray(source)
+                if len(source.shape) == 2:
+                    nframes = max(nframes, len(source))
+                model_kwargs["source"] = source
 
         # Are we doing wavelength dependence?
         if self._spectral:
@@ -183,7 +212,7 @@ class PythonMapBase(object):
         # Display or save the image / animation
         if animated:
             interval = kwargs.pop("interval", 75)
-            gif = kwargs.pop("gif", None)
+            mp4 = kwargs.pop("mp4", None)
             
             def updatefig(i):
                 img.set_array(Z[i])
@@ -192,16 +221,22 @@ class PythonMapBase(object):
             ani = FuncAnimation(fig, updatefig, interval=interval,
                                 blit=False, frames=len(Z))
 
-            # TODO: Jupyter override
-
             # Business as usual
-            if (gif is not None) and (gif != ""):
-                if gif.endswith(".gif"):
-                    gif = gif[:-4]
-                ani.save('%s.gif' % gif, writer='imagemagick')
+            if (mp4 is not None) and (mp4 != ""):
+                if mp4.endswith(".mp4"):
+                    mp4 = mp4[:-4]
+                ani.save('%s.mp4' % mp4, writer='ffmpeg')
+                plt.close()
             else:
-                plt.show()
-            plt.close()
+                try:
+                    if 'zmqshell' in str(type(get_ipython())):
+                        plt.close()
+                        display(HTML(ani.to_jshtml()))
+                    else:
+                        raise NameError("")
+                except NameError:
+                    plt.show()
+                    plt.close()
         else:
             plt.show()
     

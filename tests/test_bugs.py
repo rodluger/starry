@@ -23,6 +23,11 @@ def test_z_rotation():
     raise Exception("")
 
 @pytest.mark.xfail
+def test_z_source():
+    # source = [0, 0, 1] erroneously gives zero flux!
+    raise Exception("")
+
+@pytest.mark.xfail
 def test_show_reflected():
     # Things go to NaN for some source positions
     map1 = starry.Map(ydeg=2, udeg=0, reflected=True)
