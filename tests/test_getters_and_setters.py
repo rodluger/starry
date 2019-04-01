@@ -13,12 +13,12 @@ import pytest
         (None, None, True, False),
         (3, None, True, False),
         (None, 3, True, False),
-        #(None, None, False, True),
-        #(3, None, False, True),
-        #(None, 3, False, True),
-        #(None, None, True, True),
-        #(3, None, True, True),
-        #(None, 3, True, True),
+        (None, None, False, True),
+        (3, None, False, True),
+        (None, 3, False, True),
+        (None, None, True, True),
+        (3, None, True, True),
+        (None, 3, True, True),
     ],
 )
 def map(request):

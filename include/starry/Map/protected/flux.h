@@ -172,6 +172,20 @@ inline void computeLinearFluxModelInternal (
     RowVector<Scalar> rTA1Rz(Ny);
     RowVector<Scalar> rTA1RzRZetaInv(Ny);
     RowVector<Scalar> rTA1RzRZetaInvRz(Ny);
+    Eigen::SparseMatrix<Scalar> LA1;
+
+    // Pre-compute the limb darkening operator (\todo: cache it)
+    if (udeg > 0) {
+        UType tmp = B.U1 * u;
+        Vector<Scalar> pu = tmp * pi<Scalar>() * 
+            (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
+        Matrix<Scalar> L;
+        Vector<Matrix<Scalar>> dLdp; // not used
+        computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
+        LA1 = (L * B.A1).sparseView();
+    } else {
+        LA1 = B.A1;
+    }
 
     // Our model matrix, f = X . y
     X.resize(nt, Ny * Nt);
@@ -208,7 +222,7 @@ inline void computeLinearFluxModelInternal (
                 // transform them into the polynomial basis
                 if (source(n, 2) != sz_cache) {
                     G.compute(bterm);
-                    rTA1 = G.rT * B.A1;
+                    rTA1 = G.rT * LA1;
                 }
 
                 // Rotate into the correct frame on the sky plane

@@ -93,7 +93,6 @@ inline void setU (
 Get the full limb darkening vector.
 
 */
-template <typename U=S, typename=IsEmitted<U>>
 inline const UType getU () const {
     return u;
 }
