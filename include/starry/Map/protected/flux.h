@@ -48,7 +48,7 @@ inline void computeLinearFluxModelInternal (
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
-        LA1 = (L * B.A1);
+        LA1 = (L * B.A1.block(0, 0, Ny, Ny));
         A2LA1 = (B.A2 * LA1).sparseView();
         rTLA1 = B.rT * LA1;
     }
@@ -182,7 +182,7 @@ inline void computeLinearFluxModelInternal (
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
-        LA1 = (L * B.A1).sparseView();
+        LA1 = (L * B.A1.block(0, 0, Ny, Ny)).sparseView();
     } else {
         LA1 = B.A1;
     }

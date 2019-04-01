@@ -56,7 +56,7 @@ if __name__ == "__main__":
     theta = np.linspace(0, 180, 100)
 
     # Compute the flux analytically
-    flux = map.flux(theta=theta, source=source)
+    flux = map.flux(theta=theta) #, source=source)
     flux /= np.nanmedian(flux)
 
     # Compute it numerically
