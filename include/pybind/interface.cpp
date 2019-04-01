@@ -247,8 +247,8 @@ PYBIND11_MODULE(
                                     cast<Scalar>()).transpose();
                     } else {
                         // ?
-                        throw errors::ValueError("Invalid coefficient "
-                                                 "array shape.");
+                        throw std::length_error("Invalid coefficient "
+                                                "array shape.");
                     }
                 }
             } else if (buf.ndim == 2) {
@@ -257,7 +257,7 @@ PYBIND11_MODULE(
                             cast<Scalar>();
             } else {
                 // ?
-                throw errors::ValueError("Invalid coefficient array shape.");
+                throw std::length_error("Invalid coefficient array shape.");
             }
 
 #           if defined(_STARRY_TEMPORAL_)
@@ -270,8 +270,8 @@ PYBIND11_MODULE(
             // Check shape
             if (!((size_t(coeff.rows()) == size_t(rows.size())) && 
                   (size_t(coeff.cols()) == size_t(cols.size()))))
-                throw errors::ValueError("Mismatch in index array and " 
-                                         "coefficient array sizes.");
+                throw std::length_error("Mismatch in index array and " 
+                                        "coefficient array sizes.");
 
             // Grab the map vector and update it term by term
             auto y = map.getY();
@@ -355,9 +355,9 @@ PYBIND11_MODULE(
         ) {
 #           ifdef _STARRY_REFLECTED_
                 // Limb darkening not yet implemented for this case
-                throw errors::NotImplementedError("Limb darkening not yet " 
-                                                  "implemented for reflected "
-                                                  "light maps.");
+                throw std::runtime_error("Limb darkening not yet " 
+                                     "implemented for reflected "
+                                     "light maps.");
 #           else
                 // Figure out the indices we're setting
                 std::vector<int> rows = get_Ul_inds(map.udeg, l);
@@ -375,14 +375,14 @@ PYBIND11_MODULE(
                                 cast<Scalar>();
                 } else {
                     // ?
-                    throw errors::ValueError("Invalid coefficient "
-                                             "array shape.");
+                    throw std::length_error("Invalid coefficient "
+                                            "array shape.");
                 }
 
                 // Check shape
                 if (!(size_t(coeff.rows()) == size_t(rows.size())))
-                    throw errors::ValueError("Mismatch in index array and " 
-                                             "coefficient array sizes.");
+                    throw std::length_error("Mismatch in index array and " 
+                                            "coefficient array sizes.");
 
                 // Grab the map vector and update it term by term
                 auto u = map.getU();
@@ -403,9 +403,9 @@ PYBIND11_MODULE(
         ) -> py::object {
 #           ifdef _STARRY_REFLECTED_
                 // Limb darkening not yet implemented for this case
-                throw errors::NotImplementedError("Limb darkening not yet " 
-                                                  "implemented for reflected "
-                                                  "light maps.");
+                throw std::runtime_error("Limb darkening not yet " 
+                                     "implemented for reflected "
+                                     "light maps.");
 #           else
                 // Figure out the indices we're accessing
                 std::vector<int> rows = get_Ul_inds(map.udeg, l);

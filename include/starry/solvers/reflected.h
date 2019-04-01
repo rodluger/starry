@@ -9,7 +9,6 @@
 
 #include "../utils.h"
 #include "../ellip.h"
-#include "../errors.h"
 
 namespace starry {
 namespace solver {

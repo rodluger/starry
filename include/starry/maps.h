@@ -8,7 +8,6 @@
 #define _STARRY_MAPS_H_
 
 #include "utils.h"
-#include "errors.h"
 #include "solvers/emitted.h"
 #include "solvers/reflected.h"
 #include "solvers/limbdarkened.h"

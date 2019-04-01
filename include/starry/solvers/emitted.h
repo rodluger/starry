@@ -12,7 +12,6 @@ harmonic map during a single-body occultation using Green's theorem.
 
 #include "../utils.h"
 #include "../ellip.h"
-#include "../errors.h"
 
 namespace starry {
 namespace solver {
@@ -720,7 +719,7 @@ namespace solver {
                 ++n;
             }
             if (unlikely(n == STARRY_IJ_MAX_ITER))
-                throw errors::ConvergenceError(
+                throw std::runtime_error(
                     "Primitive integral `I` did not converge."
                 );
 
@@ -790,7 +789,7 @@ namespace solver {
                         ++n;
                     }
                     if (unlikely(n == STARRY_IJ_MAX_ITER))
-                        throw errors::ConvergenceError(
+                        throw std::runtime_error(
                             "Primitive integral `J` did not converge."
                         );
                     if (KSQLESSTHANONE)

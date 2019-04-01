@@ -249,7 +249,7 @@ inline void computeLinearFluxModelInternal (
         } else {
 
             // \todo Implement occultations in reflected light
-            throw errors::NotImplementedError(
+            throw std::runtime_error (
                 "Occultations in reflected light not yet implemented."
             );
 
@@ -283,7 +283,8 @@ inline void computeLinearFluxModelInternal (
     RowMatrix<Scalar>& Du,
     RowMatrix<Scalar>& Daxis
 ) {
-    throw errors::ToDoError("Gradients not yet implemented.");
+    // \todo
+    throw std::runtime_error("Gradients not yet implemented.");
 }
 
 /**
@@ -311,7 +312,8 @@ inline void computeLinearFluxModelInternal (
     RowMatrix<Scalar>& Du,
     RowMatrix<Scalar>& Daxis
 ) {
-    throw errors::ToDoError("Gradients not yet implemented.");
+    // \todo
+    throw std::runtime_error("Gradients not yet implemented.");
 }
 
 /* \todo

@@ -71,16 +71,16 @@ protected:
         L(udeg)
     {
         if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))
-            throw errors::ValueError(
+            throw std::out_of_range(
                 "Spherical harmonic degree out of range.");
         if ((udeg < 0) || (udeg > STARRY_MAX_LMAX))
-            throw errors::ValueError(
+            throw std::out_of_range(
                 "Limb darkening degree out of range.");
         if ((deg > STARRY_MAX_LMAX))
-            throw errors::ValueError(
+            throw std::out_of_range(
                 "Total map degree out of range.");
         if ((Nw < 1) || (Nt < 1))
-            throw errors::ValueError(
+            throw std::out_of_range(
                 "The number of temporal / spectral terms must be positive.");
         radian = pi<Scalar>() / 180.;
         reset();

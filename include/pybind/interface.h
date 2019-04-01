@@ -14,7 +14,6 @@
 #include <cmath>
 #include <stdlib.h>
 #include <vector>
-#include <starry/errors.h>
 #include <starry/utils.h>
 #include <starry/maps.h>
 
@@ -48,7 +47,7 @@
         } else if ((buf##X.ndim == 1) && (buf##X.size == N)) { \
             new (&X) Eigen::Map<Vector<T>>(ptr##X, N, 1); \
         } else { \
-            throw errors::ShapeError("Argument `" #X "` has the wrong shape."); \
+            throw std::length_error("Argument `" #X "` has the wrong shape."); \
         }
 #   define MAP_TO_EIGEN_ROW_MATRIX(PYX, X, T) \
         py::buffer_info buf##X = PYX.request(); \
@@ -65,7 +64,7 @@
         } else if (buf##X.ndim == 2) { \
             new (&X) Eigen::Map<RowMatrix<T>>(ptr##X, buf##X.shape[0], buf##X.shape[1]); \
         } else { \
-            throw errors::ValueError("Argument `" #X "` has the wrong shape."); \
+            throw std::invalid_argument("Argument `" #X "` has the wrong shape."); \
         }
 #   define MAP_TO_EIGEN_ROW_MATRIX_OF_UNIT_VECTORS(PYX, X, T, N) \
         Eigen::Map<RowMatrix<T>> X(NULL, N, 3); \
@@ -78,7 +77,7 @@
         } else if ((buf##X.ndim == 2) && (buf##X.size == 3 * N)) { \
             new (&X) Eigen::Map<RowMatrix<T>>(ptr##X, N, 3); \
         } else { \
-            throw errors::ShapeError("Argument `" #X "` has the wrong shape."); \
+            throw std::length_error("Argument `" #X "` has the wrong shape."); \
         }
 #else
 #   define MAP_TO_EIGEN_VECTOR(PYX, X, T, N) \
@@ -93,7 +92,7 @@
             tmp##X = (py::cast<Vector<double>>(PYX)).template cast<T>(); \
             new (&X) Eigen::Map<Vector<T>>(&tmp##X(0), N, 1); \
         } else { \
-            throw errors::ShapeError("Argument `" #X "` has the wrong shape."); \
+            throw std::length_error("Argument `" #X "` has the wrong shape."); \
         }
 #   define MAP_TO_EIGEN_ROW_MATRIX(PYX, X, T) \
         py::buffer_info buf##X = PYX.request(); \
@@ -112,7 +111,7 @@
             tmp##X = (py::cast<RowMatrix<double>>(PYX)).template cast<T>(); \
             new (&X) Eigen::Map<RowMatrix<T>>(&tmp##X(0), buf##X.shape[0], buf##X.shape[1]); \
         } else { \
-            throw errors::ValueError("Argument `" #X "` has the wrong shape."); \
+            throw std::invalid_argument("Argument `" #X "` has the wrong shape."); \
         }
 #   define MAP_TO_EIGEN_ROW_MATRIX_OF_UNIT_VECTORS(PYX, X, T, N) \
         Eigen::Map<RowMatrix<T>> X(NULL, N, 3); \
@@ -125,7 +124,7 @@
             tmp##X = (py::cast<RowMatrix<double>>(PYX)).template cast<T>();\
             new (&X) Eigen::Map<RowMatrix<T>>(&tmp##X(0), N, 3); \
         } else { \
-            throw errors::ShapeError("Argument `" #X "` has the wrong shape."); \
+            throw std::length_error("Argument `" #X "` has the wrong shape."); \
         }
 #endif
 
@@ -167,7 +166,7 @@ void reinterpret_slice (
     if ((r->step == Py_None) || (PyLong_AsSsize_t(r->step) == 1))
         step = 1;
     else
-        throw errors::ValueError("Slices with steps different from "
+        throw std::invalid_argument("Slices with steps different from "
                                  "one are not supported.");
 }
 
@@ -182,7 +181,7 @@ std::vector<int> get_Ylm_inds (
     int N = (lmax + 1) * (lmax + 1);
     int n;
     if (lm.size() != 2)
-        throw errors::IndexError("Invalid `l`, `m` tuple.");
+        throw std::out_of_range("Invalid `l`, `m` tuple.");
     std::vector<int> inds;
     if ((py::isinstance<py::int_>(lm[0]) || py::isinstance(lm[0], integer)) && 
         (py::isinstance<py::int_>(lm[1]) || py::isinstance(lm[1], integer))) {
@@ -191,7 +190,7 @@ std::vector<int> get_Ylm_inds (
         int m = py::cast<int>(lm[1]);
         n = l * l + l + m;
         if ((n < 0) || (n >= N) || (m > l) || (m < -l))
-            throw errors::IndexError("Invalid value for `l` and/or `m`.");
+            throw std::out_of_range("Invalid value for `l` and/or `m`.");
         inds.push_back(n);
         return inds;
     } else if ((py::isinstance<py::slice>(lm[0])) && 
@@ -203,7 +202,7 @@ std::vector<int> get_Ylm_inds (
         int mstart, mstop, mstep;
         reinterpret_slice(lslice, 0, lmax, lstart, lstop, lstep);
         if ((lstart < 0) || (lstart > lmax))
-            throw errors::IndexError("Invalid value for `l`.");
+            throw std::out_of_range("Invalid value for `l`.");
         for (int l = lstart; l < lstop + 1; l += lstep) {
             reinterpret_slice(mslice, -l, l, mstart, mstop, mstep);
             if (mstart < -l)
@@ -213,7 +212,7 @@ std::vector<int> get_Ylm_inds (
             for (int m = mstart; m < mstop + 1; m += mstep) {
                 n = l * l + l + m;
                 if ((n < 0) || (n >= N) || (m > l) || (m < -l))
-                    throw errors::IndexError(
+                    throw std::out_of_range(
                         "Invalid value for `l` and/or `m`.");
                 inds.push_back(n);
             }
@@ -234,7 +233,7 @@ std::vector<int> get_Ylm_inds (
         for (int m = mstart; m < mstop + 1; m += mstep) {
             n = l * l + l + m;
             if ((n < 0) || (n >= N) || (m > l) || (m < -l))
-                throw errors::IndexError("Invalid value for `l` and/or `m`.");
+                throw std::out_of_range("Invalid value for `l` and/or `m`.");
             inds.push_back(n);
         }
         return inds;
@@ -247,19 +246,19 @@ std::vector<int> get_Ylm_inds (
         int lstart, lstop, lstep;
         reinterpret_slice(lslice, 0, lmax, lstart, lstop, lstep);
         if ((lstart < 0) || (lstart > lmax))
-            throw errors::IndexError("Invalid value for `l`.");
+            throw std::out_of_range("Invalid value for `l`.");
         for (int l = lstart; l < lstop + 1; l += lstep) {
             if ((m < -l) || (m > l))
                 continue;
             n = l * l + l + m;
             if ((n < 0) || (n >= N) || (m > l) || (m < -l))
-                throw errors::IndexError("Invalid value for `l` and/or `m`.");
+                throw std::out_of_range("Invalid value for `l` and/or `m`.");
             inds.push_back(n);
         }
         return inds;
     } else {
         // User provided something silly
-        throw errors::IndexError("Unsupported input type for `l` and/or `m`.");
+        throw std::out_of_range("Unsupported input type for `l` and/or `m`.");
     }
 }
 
@@ -280,7 +279,7 @@ std::tuple<std::vector<int>, int> get_Ylmt_inds (
             // User provided an integer time
             int t = py::cast<int>(lmt[2]);
             if ((t < 0) || (t >= Nt))
-                throw errors::IndexError("Invalid value for `t`.");
+                throw std::out_of_range("Invalid value for `t`.");
             for (int n: inds0)
                 inds.push_back(n + t * Ny);
             return std::make_tuple(inds, 1);
@@ -295,9 +294,9 @@ std::tuple<std::vector<int>, int> get_Ylmt_inds (
                               reinterpret_cast<size_t*>(&slicelength)))
                 throw pybind11::error_already_set();
             if ((start < 0) || (start >= Nt)) {
-                throw errors::IndexError("Invalid value for `t`.");
+                throw std::out_of_range("Invalid value for `t`.");
             } else if (step < 0) {
-                throw errors::ValueError(
+                throw std::invalid_argument(
                     "Slices with negative steps are not supported.");
             }
             for (int n: inds0) {
@@ -310,10 +309,10 @@ std::tuple<std::vector<int>, int> get_Ylmt_inds (
             return std::make_tuple(inds, ncols);
         } else {
             // User provided something silly
-            throw errors::IndexError("Unsupported input type for `t`.");
+            throw std::out_of_range("Unsupported input type for `t`.");
         }
     } else {
-        throw errors::IndexError("Invalid `l`, `m`, `t` tuple.");
+        throw std::out_of_range("Invalid `l`, `m`, `t` tuple.");
     }
 }
 
@@ -333,7 +332,7 @@ std::tuple<std::vector<int>, std::vector<int>> get_Ylmw_inds (
             // User provided an integer wavelength bin
             int w = py::cast<int>(lmw[2]);
             if ((w < 0) || (w >= Nw))
-                throw errors::IndexError("Invalid value for `w`.");
+                throw std::out_of_range("Invalid value for `w`.");
             cols.push_back(w);
             return std::make_tuple(rows, cols);
         } else if (py::isinstance<py::slice>(lmw[2])) {
@@ -347,9 +346,9 @@ std::tuple<std::vector<int>, std::vector<int>> get_Ylmw_inds (
                               reinterpret_cast<size_t*>(&slicelength)))
                 throw pybind11::error_already_set();
             if ((start < 0) || (start >= Nw)) {
-                throw errors::IndexError("Invalid value for `w`.");
+                throw std::out_of_range("Invalid value for `w`.");
             } else if (step < 0) {
-                throw errors::ValueError(
+                throw std::invalid_argument(
                     "Slices with negative steps are not supported.");
             }
             for (ssize_t w = start; w < stop; w += step) {
@@ -358,10 +357,10 @@ std::tuple<std::vector<int>, std::vector<int>> get_Ylmw_inds (
             return std::make_tuple(rows, cols);
         } else {
             // User provided something silly
-            throw errors::IndexError("Unsupported input type for `t`.");
+            throw std::out_of_range("Unsupported input type for `t`.");
         }
     } else {
-        throw errors::IndexError("Invalid `l`, `m`, `t` tuple.");
+        throw std::out_of_range("Invalid `l`, `m`, `t` tuple.");
     }
 }
 
@@ -378,7 +377,7 @@ std::vector<int> get_Ul_inds (
     if (py::isinstance<py::int_>(l) || py::isinstance(l, integer)) {
         n = py::cast<int>(l);
         if ((n < 0) || (n > lmax))
-            throw errors::IndexError("Invalid value for `l`.");
+            throw std::out_of_range("Invalid value for `l`.");
         inds.push_back(n);
         return inds;
     } else if (py::isinstance<py::slice>(l)) {
@@ -391,9 +390,9 @@ std::vector<int> get_Ul_inds (
                           reinterpret_cast<size_t*>(&slicelength)))
             throw pybind11::error_already_set();
         if ((start < 0) || (start > lmax)) {
-            throw errors::IndexError("Invalid value for `l`.");
+            throw std::out_of_range("Invalid value for `l`.");
         } else if (step < 0) {
-            throw errors::ValueError(
+            throw std::invalid_argument(
                 "Slices with negative steps are not supported.");
         }
         std::vector<int> inds;
@@ -403,7 +402,7 @@ std::vector<int> get_Ul_inds (
         return inds;
     } else {
         // User provided something silly
-        throw errors::IndexError("Unsupported input type for `l`.");
+        throw std::out_of_range("Unsupported input type for `l`.");
     }
 }
 

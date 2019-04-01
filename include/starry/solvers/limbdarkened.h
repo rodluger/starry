@@ -14,7 +14,6 @@
 #include <cmath>
 #include "../utils.h"
 #include "../ellip.h"
-#include "../errors.h"
 
 
 namespace starry {
@@ -535,7 +534,7 @@ namespace limbdark {
 
         } else {
 
-            throw errors::NotImplementedError(
+            throw std::runtime_error(
                 "Downward recursion in `M` not implemented for `k^2` >= 1.");
 
         }
@@ -639,7 +638,7 @@ namespace limbdark {
             }
 
         } else {
-            throw errors::NotImplementedError(
+            throw std::runtime_error(
                 "Downward recursion in `N` not implemented for `k^2` >= 1.");
         }
 

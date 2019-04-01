@@ -86,7 +86,6 @@ inline void randomInternal (
 
 }
 
-
 /**
 Compute the Taylor expansion basis at a vector of times.
 Temporal specialization.
@@ -108,21 +107,32 @@ This is a **constant** whose value ensures that
 I(mu = 0) / I0 = 1.
 
 */
-template <typename U=S>
-inline IsDefaultOrSpectral<U, void> setU0 () {
+inline void setU0 () {
     u.row(0).setConstant(-1.0);
 }
 
 /**
-Set the zeroth order limb darkening coefficient
+Set the zeroth order spherical harmonic coefficient.
+This is a **constant** fixed at unity.
+
+*/
+template <typename U=S>
+inline IsDefaultOrSpectral<U, void> setY00 () {
+    y.row(0).setConstant(1.0);
+}
+
+/**
+Set the zeroth order spherical harmonic coefficient
 for a temporal map. All derivatives are set to
 zero.
 
 */
 template <typename U=S>
-inline IsTemporal<U, void> setU0 () {
-    u.row(0).setZero();
-    u(0, 0) = -1.0;
+inline IsTemporal<U, void> setY00 () {
+    y(0) = 1.0;
+    for (int i = 1; i < Nt; ++i) {
+        y(i * Ny) = 0.0;
+    }
 }
 
 /**

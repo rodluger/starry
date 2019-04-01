@@ -289,3 +289,40 @@ class TestGettersAndSetters:
         assert np.allclose(map[1:], [1, 2])
         assert np.allclose(map.u[1:], [1, 2])
         map.reset()
+    
+    def test_yl_set_constant_coeff(self, map):
+        if map._spectral:
+            map[0, 0, :] = 1.0
+            try:
+                map[0, 0, :] = 2.0
+                raise Exception("")
+            except ValueError:
+                pass
+        elif map._temporal:
+            map[0, 0, 0] = 1.0
+            map[0, 0, 1:] = 0.0
+            try:
+                map[0, 0, 0] = 2.0
+                raise Exception("")
+            except ValueError:
+                pass
+            try:
+                map[0, 0, 1:] = 1.0
+                raise Exception("")
+            except ValueError:
+                pass
+        else:
+            map[0, 0] = 1.0
+            try:
+                map[0, 0] = 2.0
+                raise Exception("")
+            except ValueError:
+                pass
+
+    def test_ul_set_constant_coeff(self, map):
+        map[0] = -1.0
+        try:
+            map[0] = 0.0
+            raise Exception("")
+        except ValueError:
+            pass

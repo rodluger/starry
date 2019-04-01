@@ -7,6 +7,7 @@ inline void reset ()
 {
     // Reset Ylms
     y.setZero();
+    setY00();
 
     // Reset limb darkening
     u.setZero();
@@ -62,7 +63,7 @@ inline void addSpot (
     if (l < 0) 
         l = ydeg;
     if (l > ydeg) 
-        throw errors::ValueError("Invalid value for `l`.");
+        throw std::invalid_argument("Invalid value for `l`.");
 
     // Compute the integrals recursively
     Vector<Scalar> IP(l + 1);

@@ -36,7 +36,6 @@ std::string info () {
 
 /**
 Set the full spherical harmonic vector.
-\todo: Ensure y(0) = 1
 
 */
 inline void setY (
@@ -45,7 +44,21 @@ inline void setY (
     if ((y_.rows() == y.rows()) && (y_.cols() == y.cols()))
         y = y_;
     else
-        throw errors::ValueError("Dimension mismatch in `y`.");
+        throw std::length_error("Dimension mismatch in `y`.");
+    // Check that y(0) == 1
+    if (!(y.row(0) == RowVector<Scalar>::Ones(y.row(0).size()))) {
+        y.row(0).setConstant(1.0);
+        throw std::invalid_argument("The coefficient of the Y_{0,0} " 
+                                    "term must be fixed at unity.");
+    }
+    // Check that the derivatives of y(0) == 0
+    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+        for (int i = 1; i < Nt; ++i) {
+            if (y(i * Ny) != 0)
+                throw std::invalid_argument("The Y_{0,0} term cannot "
+                                            "have time dependence.");
+        }
+    }
 }
 
 /**
@@ -58,7 +71,6 @@ inline const YType getY () const {
 
 /**
 Set the full limb darkening vector.
-\todo: Ensure u(0) = -1
 
 */
 inline void setU (
@@ -68,7 +80,13 @@ inline void setU (
     if ((u_.rows() == u.rows()) && (u_.cols() == u.cols()))
         u = u_;
     else
-        throw errors::ValueError("Dimension mismatch in `u`.");
+        throw std::length_error("Dimension mismatch in `u`.");
+    // Check that u(0) == -1
+    if (!(u.row(0) == -RowVector<Scalar>::Ones(u.row(0).size()))) {
+        u.row(0).setConstant(-1.0);
+        throw std::invalid_argument("The coefficient of the u_0 " 
+                                    "term must be fixed at -1.0.");
+    }
 }
 
 /**

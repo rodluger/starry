@@ -8,7 +8,6 @@
 #define _STARRY_BASIS_H_
 
 #include "utils.h"
-#include "errors.h"
 
 namespace starry { 
 namespace basis {
@@ -409,7 +408,7 @@ void computeA1Inv (
     Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
     solver.compute(A1);
     if (solver.info() != Eigen::Success)
-        throw errors::LinearAlgebraError(
+        throw std::runtime_error(
             "Error computing the change of basis matrix `A1Inv`.");
     Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
     A1Inv = solver.solve(I);
@@ -478,19 +477,19 @@ void computeA(
     Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
     solver.compute(A2Inv);
     if (solver.info() != Eigen::Success) {
-        throw errors::LinearAlgebraError("Error computing the change "
-                                         "of basis matrix `A2`.");
+        throw std::runtime_error("Error computing the change "
+                             "of basis matrix `A2`.");
     }
     Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
     A2 = solver.solve(I);
     if (solver.info() != Eigen::Success) {
-        throw errors::LinearAlgebraError("Error computing the change "
-                                         "of basis matrix `A2`.");
+        throw std::runtime_error("Error computing the change "
+                             "of basis matrix `A2`.");
     }
     A = solver.solve(A1);
     if (solver.info() != Eigen::Success) {
-        throw errors::LinearAlgebraError("Error computing the change "
-                                         "of basis matrix `A1`.");
+        throw std::runtime_error("Error computing the change "
+                             "of basis matrix `A1`.");
     }
 }
 
