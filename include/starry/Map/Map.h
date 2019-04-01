@@ -67,7 +67,7 @@ protected:
         axis(yhat<Scalar>()),
         B(ydeg, udeg),
         W(ydeg, axis),
-        G(ydeg),
+        G(deg),
         L(udeg)
     {
         if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))
