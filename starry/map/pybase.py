@@ -172,7 +172,7 @@ class PythonMapBase(object):
             else:
                 Z = np.dot(X, self.y).reshape(nframes, res, res)
 
-        return Z
+        return np.squeeze(Z)
 
     def show(self, Z=None, cmap="plasma", projection="ortho", **kwargs):
         """
