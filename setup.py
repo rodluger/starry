@@ -197,4 +197,7 @@ setup(
     data_files=glob.glob('starry/maps/*.jpg'),
     include_package_data=True,
     zip_safe=False,
+    extras_require={
+        'healpy':  ['healpy>=1.12.8']
+    }
 )

@@ -31,19 +31,20 @@ protected:
     #include "protected/intensity.h"
     #include "protected/flux.h"
     #include "protected/oper.h"
+    #include "protected/arrays.h"
 
     // Internal variables
     YType y;                                                                   /**< Vector of spherical harmonic coefficients */
     UType u;                                                                   /**< Vector of limb darkening coefficients */
-    Scalar inc;
-    Scalar obl;
+    Scalar inc;                                                                /**< Inclination of the rotation axis in degrees */
+    Scalar obl;                                                                /**< Obliquity of the rotation axis in degrees */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
     wigner::Wigner<Scalar> W;                                                  /**< Ylm rotation stuff */
     solver::Greens<Scalar, S::Reflected> G;                                    /**< The occultation integral solver class */
     limbdark::GreensLimbDark<Scalar, S::Reflected> L;                          /**< The occultation integral solver class (optimized for limb darkening) */
-    Matrix<Scalar> taylor;
+    Matrix<Scalar> taylor;                                                     /**< Temporal expansion basis */
     Scalar radian;                                                             /**< Conversion factor from degrees to radians */
-     
+    
     //! Constructor for all map types
     explicit Map (
         int ydeg,
@@ -86,6 +87,7 @@ protected:
                 "The number of temporal / spectral terms must be positive.");
         radian = pi<Scalar>() / 180.;
         reset();
+        resize_arrays();
     };
 
 public:

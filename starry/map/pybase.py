@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from ..extensions import RAxisAngle
 from .mapsum import MapSum
+from .sht import image2map, healpix2map, array2map
 from IPython.display import HTML
 
 
@@ -185,6 +186,7 @@ class PythonMapBase(object):
             nframes = Z.shape[0]
         else:
             nframes = 1
+            Z = [Z]
 
         # Are we doing wavelength dependence?
         if self._spectral:
@@ -265,11 +267,12 @@ class PythonMapBase(object):
             lgtr0 = np.ones(self.Ny * self.nt, dtype=bool)
             for i in range(self.nt):
                 lgtr0[i * self.Ny] = False
-            grad['y'] = X[:, lgtr0]
+            grad['y'] = X[:, lgtr0].T
 
             # Copy df/dy to each wavelength bin
             if self._spectral:
-                grad['y'] = np.tile(grad['y'], (self.nw, 1)).T
+                grad['y'] = np.tile(grad['y'][:, :, np.newaxis], 
+                                    (1, 1, self.nw))
 
             return f, grad
         else:
@@ -288,3 +291,31 @@ class PythonMapBase(object):
 
         """
         return self.intensity(**kwargs)
+    
+    def load(self, image, ydeg=None, healpix=False, col=0, **kwargs):
+        """Load an image, array, or healpix map."""
+        # Check the degree
+        if ydeg is None:
+            ydeg = self.ydeg
+        assert (ydeg <= self.ydeg) and (ydeg > 0), \
+            "Invalid spherical harmonic degree."
+        
+        # Is this a file name?
+        if type(image) is str:
+            y = image2map(image, lmax=ydeg, **kwargs)
+        # or is it an array?
+        elif (type(image) is np.ndarray):
+            if healpix:
+                y = healpix2map(image, lmax=ydeg, **kwargs)
+            else:
+                y = array2map(image, lmax=ydeg, **kwargs)
+        else:
+            raise ValueError("Invalid `image` value.")
+        
+        # Ingest the coefficients
+        if self._spectral or self._temporal:
+            self[1:, :, :] = 0
+            self[:ydeg + 1, :, col] = y
+        else:
+            self[1:, :] = 0
+            self[:ydeg + 1, :] = y

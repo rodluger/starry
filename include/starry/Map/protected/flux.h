@@ -29,17 +29,6 @@ inline void computeLinearFluxModelInternal (
     // Convert to radians
     Vector<Scalar> theta_rad = theta * radian;
 
-    // \todo: Cache these
-    RowVector<Scalar> rTA1RZetaInv(Ny);
-    RowVector<Scalar> rTA1RZetaInvRz(Ny);
-    RowVector<Scalar> sTA(Ny);
-    RowVector<Scalar> sTARz(Ny);
-    RowVector<Scalar> sTARzRZetaInv(Ny);
-    RowVector<Scalar> sTARzRZetaInvRz(Ny);
-    Matrix<Scalar> LA1;
-    Eigen::SparseMatrix<Scalar> A2LA1;
-    RowVector<Scalar> rTLA1;
-
     // Pre-compute the limb darkening operator
     if (udeg > 0) {
         UType tmp = B.U1 * u;
@@ -168,13 +157,6 @@ inline void computeLinearFluxModelInternal (
 
     // Convert to radians
     Vector<Scalar> theta_rad = theta * radian;
-
-    // \todo: Cache these
-    RowVector<Scalar> rTA1(Ny);
-    RowVector<Scalar> rTA1Rz(Ny);
-    RowVector<Scalar> rTA1RzRZetaInv(Ny);
-    RowVector<Scalar> rTA1RzRZetaInvRz(Ny);
-    Eigen::SparseMatrix<Scalar> LA1_;
 
     // Pre-compute the limb darkening operator
     if (udeg > 0) {
@@ -313,43 +295,6 @@ inline void computeLinearFluxModelInternal (
     // Convert to radians
     Vector<Scalar> theta_rad = theta * radian;
 
-    // \todo: Cache these
-    RowVector<Scalar> rTA1RZetaInv(Ny);
-    RowVector<Scalar> rTA1RZetaInvRz(Ny);
-    RowVector<Scalar> rTA1RZetaInvDRzDtheta(Ny);
-    RowVector<Scalar> sTA(Ny);
-    RowVector<Scalar> dsTdrA(Ny);
-    RowVector<Scalar> dsTdbA(Ny);
-    RowVector<Scalar> sTARz(Ny);
-    RowVector<Scalar> dsTdrARz(Ny);
-    RowVector<Scalar> dsTdbARz(Ny);
-    RowVector<Scalar> sTADRzDw(Ny);
-    RowVector<Scalar> sTARzRZetaInv(Ny);
-    RowVector<Scalar> dsTdrARzRZetaInv(Ny);
-    RowVector<Scalar> dsTdbARzRZetaInv(Ny);
-    RowVector<Scalar> sTADRzDwRZetaInv(Ny);
-    RowVector<Scalar> sTARzRZetaInvRz(Ny);
-    RowVector<Scalar> sTARzRZetaInvDRzDtheta(Ny);
-    RowVector<Scalar> dsTdrARzRZetaInvRz(Ny);
-    RowVector<Scalar> dsTdbARzRZetaInvRz(Ny);
-    RowVector<Scalar> sTADRzDwRZetaInvRz(Ny);
-    RowVector<Scalar> sTADRzDwRZetaInvRzRZeta(Ny);
-    RowVector<Scalar> rTA1DRZetaInvDAngle(Ny);
-    RowVector<Scalar> rTA1DRZetaInvDAngleRz(Ny);
-    RowVector<Scalar> rTA1DRZetaInvDAngleRzRZeta(Ny);
-    RowVector<Scalar> rTA1RZetaInvRzDRZetaDAngle(Ny);
-    RowVector<Scalar> sTARzDRZetaInvDAngle(Ny);
-    RowVector<Scalar> sTARzDRZetaInvDAngleRz(Ny);
-    RowVector<Scalar> sTARzDRZetaInvDAngleRzRZeta(Ny);
-    RowVector<Scalar> sTARzRZetaInvRzDRZetaDAngle(Ny);
-    Matrix<Scalar> LA1;
-    Eigen::SparseMatrix<Scalar> A2LA1;
-    RowVector<Scalar> rTLA1;
-    Vector<Matrix<Scalar>> dLdu(udeg + 1);
-    Matrix<Scalar> rTdLduA1(udeg + 1, Ny);
-    Matrix<Scalar> sTA2dLduA1(udeg + 1, Ny);
-    Matrix<Scalar> sTA2dLduA1Rz(udeg + 1, Ny);
-
     // Pre-compute the limb darkening operator
     if (udeg > 0) {
         UType tmp = B.U1 * u;
@@ -474,7 +419,8 @@ inline void computeLinearFluxModelInternal (
                     if (udeg > 0) {
                         for (int l = 1; l < udeg + 1; ++l) {
                             Du.block((l - 1) * nt + n, i * Ny, 1, Ny) = 
-                                Du.block((l - 1) * nt + n, 0, 1, Ny) * taylor(n, i);
+                                Du.block((l - 1) * nt + n, 0, 1, Ny) * 
+                                taylor(n, i);
                         } 
                     }
                 } 
@@ -548,7 +494,8 @@ inline void computeLinearFluxModelInternal (
                 Dxo.block(n, 0, 1, Ny) *= xo(n) * invb;
                 Dyo.block(n, 0, 1, Ny) *= yo(n) * invb;
                 W.leftMultiplyRz(sTADRzDwRZetaInv, sTADRzDwRZetaInvRz);
-                W.leftMultiplyRZeta(sTADRzDwRZetaInvRz, sTADRzDwRZetaInvRzRZeta);
+                W.leftMultiplyRZeta(sTADRzDwRZetaInvRz, 
+                                    sTADRzDwRZetaInvRzRZeta);
                 sTADRzDwRZetaInvRzRZeta *= invb * invb;
                 Dxo.block(n, 0, 1, Ny) += yo(n) * sTADRzDwRZetaInvRzRZeta;
                 Dyo.block(n, 0, 1, Ny) -= xo(n) * sTADRzDwRZetaInvRzRZeta;
@@ -607,7 +554,8 @@ inline void computeLinearFluxModelInternal (
                     if (udeg > 0) {
                         for (int l = 1; l < udeg + 1; ++l) {
                             Du.block((l - 1) * nt + n, i * Ny, 1, Ny) = 
-                                Du.block((l - 1) * nt + n, 0, 1, Ny) * taylor(n, i);
+                                Du.block((l - 1) * nt + n, 0, 1, Ny) * 
+                                taylor(n, i);
                         } 
                     }
                 } 
