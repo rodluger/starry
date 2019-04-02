@@ -105,8 +105,10 @@ the pre-computed Wigner matrices.
 inline void setAxis (
     const UnitVector<Scalar>& axis_
 ) {
-    axis = axis_.normalized();
-    W.updateAxis(axis);
+    UnitVector<Scalar> axis = axis_.normalized();
+    obl = atan2(axis(0), axis(1)) * 180.0 / pi<Scalar>();
+    inc = atan2(axis(0) / sin(obl * pi<Scalar>() / 180.0), axis(2)) * 180.0 / pi<Scalar>();
+    W.updateAxis(inc, obl);
 }
 
 /**
@@ -114,5 +116,53 @@ Return a copy of the axis.
 
 */
 inline const UnitVector<Scalar> getAxis () const {
+    UnitVector<Scalar> axis;
+    axis << sin(obl * pi<Scalar>() / 180.) * sin(inc * pi<Scalar>() / 180.),
+            cos(obl * pi<Scalar>() / 180.) * sin(inc * pi<Scalar>() / 180.),
+            cos(inc * pi<Scalar>() / 180.);
     return axis;
+}
+
+/**
+Set the inclination the map and update
+the pre-computed Wigner matrices.
+
+*/
+inline void setInclination (
+    const Scalar& inc_
+) {
+    if ((inc_ < 0) || (inc_ > 180))
+        throw std::out_of_range("Inclination must be between 0 and 180 degrees.");
+    inc = inc_;
+    W.updateAxis(inc, obl);
+}
+
+/**
+Return the inclination of the map.
+
+*/
+inline const Scalar getInclination () const {
+    return inc;
+}
+
+/**
+Set the obliquity the map and update
+the pre-computed Wigner matrices.
+
+*/
+inline void setObliquity (
+    const Scalar& obl_
+) {
+    if ((obl_ < -180) || (obl_ > 180))
+        throw std::out_of_range("Obliquity must be between -180 and 180 degrees.");
+    obl = obl_;
+    W.updateAxis(inc, obl);
+}
+
+/**
+Return the obliquity of the map.
+
+*/
+inline const Scalar getObliquity () const {
+    return obl;
 }

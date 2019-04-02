@@ -35,7 +35,8 @@ protected:
     // Internal variables
     YType y;                                                                   /**< Vector of spherical harmonic coefficients */
     UType u;                                                                   /**< Vector of limb darkening coefficients */
-    UnitVector<Scalar> axis;                                                   /**< The axis of rotation for the map */
+    Scalar inc;
+    Scalar obl;
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
     wigner::Wigner<Scalar> W;                                                  /**< Ylm rotation stuff */
     solver::Greens<Scalar, S::Reflected> G;                                    /**< The occultation integral solver class */
@@ -64,9 +65,10 @@ protected:
         data(ydeg),
         y(Ny * Nt, Nw),
         u(Nu),
-        axis(yhat<Scalar>()),
+        inc(90.0),
+        obl(0.0),
         B(ydeg, udeg),
-        W(ydeg, axis),
+        W(ydeg, inc, obl),
         G(deg),
         L(udeg)
     {

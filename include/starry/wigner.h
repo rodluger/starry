@@ -316,10 +316,10 @@ protected:
     using ADType = ADScalar<Scalar, 2>;                                        /**< AutoDiffScalar type for derivs w.r.t. the rotation axis */
     std::vector<Matrix<ADType>> DZeta_ad;                                      /**< [AutoDiffScalar] The complex Wigner matrix in the `zeta` frame */
     std::vector<Matrix<ADType>> RZeta_ad;                                      /**< [AutoDiffScalar] The real Wigner matrix in the `zeta` frame */
-    std::vector<Matrix<Scalar>> DRZetaDtheta;
-    std::vector<Matrix<Scalar>> DRZetaInvDtheta;
-    std::vector<Matrix<Scalar>> DRZetaDphi;
-    std::vector<Matrix<Scalar>> DRZetaInvDphi;
+    std::vector<Matrix<Scalar>> DRZetaDInc;
+    std::vector<Matrix<Scalar>> DRZetaInvDInc;
+    std::vector<Matrix<Scalar>> DRZetaDObl;
+    std::vector<Matrix<Scalar>> DRZetaInvDObl;
 
     Vector<Scalar> cosmt;                                                      /**< Vector of cos(m theta) values */
     Vector<Scalar> sinmt;                                                      /**< Vector of sin(m theta) values */
@@ -356,6 +356,30 @@ public:
     );
 
     template <typename T1, typename T2>
+    inline void leftMultiplyDRZetaDInc (
+        const MatrixBase<T1>& vT, 
+        MatrixBase<T2> const & uT
+    );
+
+    template <typename T1, typename T2>
+    inline void leftMultiplyDRZetaInvDInc (
+        const MatrixBase<T1>& vT, 
+        MatrixBase<T2> const & uT
+    );
+
+    template <typename T1, typename T2>
+    inline void leftMultiplyDRZetaDObl (
+        const MatrixBase<T1>& vT, 
+        MatrixBase<T2> const & uT
+    );
+
+    template <typename T1, typename T2>
+    inline void leftMultiplyDRZetaInvDObl (
+        const MatrixBase<T1>& vT, 
+        MatrixBase<T2> const & uT
+    );
+
+    template <typename T1, typename T2>
     inline void leftMultiplyR (
         const MatrixBase<T1>& vT, 
         MatrixBase<T2> const & uT
@@ -375,12 +399,14 @@ public:
     );
 
     inline void updateAxis (
-        const UnitVector<Scalar>& axis
+        const Scalar& inc_,
+        const Scalar& obl_
     );
 
     Wigner(
         int lmax, 
-        const UnitVector<Scalar>& axis
+        const Scalar& inc_,
+        const Scalar& obl_
     ) : 
         lmax(lmax), 
         N((lmax + 1) * (lmax + 1)), 
@@ -390,10 +416,10 @@ public:
         RZetaInv(lmax + 1),
         DZeta_ad(lmax + 1),
         RZeta_ad(lmax + 1),
-        DRZetaDtheta(lmax + 1),
-        DRZetaInvDtheta(lmax + 1),
-        DRZetaDphi(lmax + 1),
-        DRZetaInvDphi(lmax + 1)
+        DRZetaDInc(lmax + 1),
+        DRZetaInvDInc(lmax + 1),
+        DRZetaDObl(lmax + 1),
+        DRZetaInvDObl(lmax + 1)
     {
         // Allocate the Wigner matrices
         for (int l = 0; l < lmax + 1; ++l) {
@@ -403,10 +429,10 @@ public:
             RZetaInv[l].resize(sz, sz);
             DZeta_ad[l].resize(sz, sz);
             RZeta_ad[l].resize(sz, sz);
-            DRZetaDphi[l].resize(sz, sz);
-            DRZetaInvDphi[l].resize(sz, sz);
-            DRZetaDtheta[l].resize(sz, sz);
-            DRZetaInvDtheta[l].resize(sz, sz);
+            DRZetaDObl[l].resize(sz, sz);
+            DRZetaInvDObl[l].resize(sz, sz);
+            DRZetaDInc[l].resize(sz, sz);
+            DRZetaInvDInc[l].resize(sz, sz);
         }
 
         // Initialize our z rotation vectors
@@ -422,7 +448,7 @@ public:
         cache_sintheta = NAN;
 
         // Update the Zeta matrices
-        updateAxis(axis);
+        updateAxis(inc_, obl_);
     }
 
 };
@@ -499,6 +525,70 @@ inline void Wigner<Scalar>::leftMultiplyRZetaInv (
 }
 
 /* 
+Computes the dot product uT = vT . dRZeta / dInc.
+
+*/
+template <class Scalar>
+template <typename T1, typename T2>
+inline void Wigner<Scalar>::leftMultiplyDRZetaDInc (
+    const MatrixBase<T1>& vT, 
+    MatrixBase<T2> const & uT
+) {
+    for (int l = 0; l < lmax + 1; ++l) {
+        MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
+            vT.block(0, l * l, uT.rows(), 2 * l + 1) * DRZetaDInc[l];
+    }
+}
+
+/* 
+Computes the dot product uT = vT . dRZetaInv / dInc.
+
+*/
+template <class Scalar>
+template <typename T1, typename T2>
+inline void Wigner<Scalar>::leftMultiplyDRZetaInvDInc (
+    const MatrixBase<T1>& vT, 
+    MatrixBase<T2> const & uT
+) {
+    for (int l = 0; l < lmax + 1; ++l) {
+        MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
+            vT.block(0, l * l, uT.rows(), 2 * l + 1) * DRZetaInvDInc[l];
+    }
+}
+
+/* 
+Computes the dot product uT = vT . dRZeta / dObl.
+
+*/
+template <class Scalar>
+template <typename T1, typename T2>
+inline void Wigner<Scalar>::leftMultiplyDRZetaDObl (
+    const MatrixBase<T1>& vT, 
+    MatrixBase<T2> const & uT
+) {
+    for (int l = 0; l < lmax + 1; ++l) {
+        MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
+            vT.block(0, l * l, uT.rows(), 2 * l + 1) * DRZetaDObl[l];
+    }
+}
+
+/* 
+Computes the dot product uT = vT . dRZetaInv / dObl.
+
+*/
+template <class Scalar>
+template <typename T1, typename T2>
+inline void Wigner<Scalar>::leftMultiplyDRZetaInvDObl (
+    const MatrixBase<T1>& vT, 
+    MatrixBase<T2> const & uT
+) {
+    for (int l = 0; l < lmax + 1; ++l) {
+        MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
+            vT.block(0, l * l, uT.rows(), 2 * l + 1) * DRZetaInvDObl[l];
+    }
+}
+
+/* 
 Computes the dot product uT = vT . R.
 
 */
@@ -571,28 +661,40 @@ with respect to the axis of rotation.
 */
 template <class Scalar>
 inline void Wigner<Scalar>::updateAxis (
-    const UnitVector<Scalar>& axis
+    const Scalar& inc_,
+    const Scalar& obl_
 ) 
 {
     // Reset the cache
     cache_costheta = NAN;
     cache_sintheta = NAN;
 
+    // Convert to radians & ADType
+    ADType inc = inc_ * pi<Scalar>() / 180.;
+    ADType obl = obl_ * pi<Scalar>() / 180.;
+    inc.derivatives() = Vector<Scalar>::Unit(2, 0);
+    obl.derivatives() = Vector<Scalar>::Unit(2, 1);
+    ADType sini = sin(inc),
+           cosi = cos(inc),
+           neg_sino = -sin(obl),
+           coso = cos(obl);
+
     // Compute the rotation transformation into and out of the `zeta` frame
-    Scalar norm = sqrt(axis(0) * axis(0) + axis(1) * axis(1));
-    if (abs(norm) < tol) {
+    if (abs(sini.value()) < tol) {
         // The rotation axis is zhat, so our zeta transform
         // is just the identity matrix.
         for (int l = 0; l < lmax + 1; l++) {
-            if (axis(2) > 0) {
+            if (cosi.value() > 0) {
                 RZeta[l] = Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
                 RZetaInv[l] = Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
             } else {
                 RZeta[l] = -Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
                 RZetaInv[l] = -Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
             }
-            DRZetaDphi[l].setZero();
-            DRZetaInvDphi[l].setZero();
+            DRZetaDInc[l].setZero();
+            DRZetaInvDInc[l].setZero();
+            DRZetaDObl[l].setZero();
+            DRZetaInvDObl[l].setZero();
         }
     } else if (lmax == 0) {
         // Trivial case
@@ -600,20 +702,9 @@ inline void Wigner<Scalar>::updateAxis (
         RZetaInv[0](0, 0) = 1;
     } else {
         // We need to compute the actual Wigner matrices
-        ADType theta = atan2(norm, axis(2));
-        theta.derivatives() = Vector<Scalar>::Unit(2, 0);
-        ADType phi = atan2(axis(1) / norm, axis(0) / norm);
-        phi.derivatives() = Vector<Scalar>::Unit(2, 1);
-        
-        // Get Euler angles
         ADType tol_ad = tol;
         ADType cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
-
-        ADType arg0 = sin(phi),
-               arg1 = -cos(phi),
-               arg2 = cos(theta),
-               arg3 = sin(theta);
-        axisAngleToEuler(arg0, arg1, arg2, arg3, tol_ad,
+        axisAngleToEuler(coso, neg_sino, cosi, sini, tol_ad,
                          cosalpha, sinalpha, cosbeta, sinbeta, 
                          cosgamma, singamma);
 
@@ -627,17 +718,14 @@ inline void Wigner<Scalar>::updateAxis (
             for (int i = 0; i < 2 * l + 1; ++i) {
                 for (int j = 0; j < 2 * l + 1; ++j) {
                     RZeta[l](i, j) = RZeta_ad[l](i, j).value();
-                    DRZetaDtheta[l](i, j) = RZeta_ad[l](i, j).derivatives()(0);
-                    DRZetaDphi[l](i, j) = RZeta_ad[l](i, j).derivatives()(1);
+                    DRZetaDInc[l](i, j) = RZeta_ad[l](i, j).derivatives()(0);
+                    DRZetaDObl[l](i, j) = RZeta_ad[l](i, j).derivatives()(1);
                 }
             }
             RZetaInv[l] = RZeta[l].transpose();
-            DRZetaInvDtheta[l] = DRZetaDtheta[l].transpose();
-            DRZetaInvDphi[l] = DRZetaDphi[l].transpose();
+            DRZetaInvDInc[l] = DRZetaDInc[l].transpose();
+            DRZetaInvDObl[l] = DRZetaDObl[l].transpose();
         }
-
-        // \todo DRZetaDx = DRZetaDtheta * DthetaDx + DRZetaDphi * DthetaDphi
-        //       and so forth. Implement all the necessary `leftMultiply` funcs
 
     }
 }

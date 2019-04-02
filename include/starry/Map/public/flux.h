@@ -105,11 +105,12 @@ inline void computeLinearFluxModel (
     RowMatrix<Scalar>& Dyo,
     RowMatrix<Scalar>& Dro,
     RowMatrix<Scalar>& Du,
-    RowMatrix<Scalar>& Daxis
+    RowMatrix<Scalar>& Dinc,
+    RowMatrix<Scalar>& Dobl
 ) {
     RowMatrix<Scalar> Dt; // Dummy!
     computeLinearFluxModelInternal(
-        theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro, Du, Daxis
+        theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro, Du, Dinc, Dobl
     );
 }
 
@@ -136,11 +137,12 @@ inline void computeLinearFluxModel (
     RowMatrix<Scalar>& Dyo,
     RowMatrix<Scalar>& Dro,
     RowMatrix<Scalar>& Du,
-    RowMatrix<Scalar>& Daxis
+    RowMatrix<Scalar>& Dinc,
+    RowMatrix<Scalar>& Dobl
 ) {
     computeTaylor(t);
     computeLinearFluxModelInternal(
-        theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro, Du, Daxis
+        theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro, Du, Dinc, Dobl
     );
 }
 
@@ -167,11 +169,12 @@ inline void computeLinearFluxModel (
     RowMatrix<Scalar>& Dro,
     RowMatrix<Scalar>& Dsource,
     RowMatrix<Scalar>& Du,
-    RowMatrix<Scalar>& Daxis
+    RowMatrix<Scalar>& Dinc,
+    RowMatrix<Scalar>& Dobl
 ) {
     RowMatrix<Scalar> Dt; // Dummy!
     computeLinearFluxModelInternal(
-        theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, Dtheta, Dxo, Dyo, Dro, Dsource, Du, Daxis
+        theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, Dtheta, Dxo, Dyo, Dro, Dsource, Du, Dinc, Dobl
     );
 }
 
@@ -200,10 +203,11 @@ inline void computeLinearFluxModel (
     RowMatrix<Scalar>& Dro,
     RowMatrix<Scalar>& Dsource,
     RowMatrix<Scalar>& Du,
-    RowMatrix<Scalar>& Daxis
+    RowMatrix<Scalar>& Dinc,
+    RowMatrix<Scalar>& Dobl
 ) {
     computeTaylor(t);
     computeLinearFluxModelInternal(
-        theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, Dtheta, Dxo, Dyo, Dro, Dsource, Du, Daxis
+        theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, Dtheta, Dxo, Dyo, Dro, Dsource, Du, Dinc, Dobl
     );
 }

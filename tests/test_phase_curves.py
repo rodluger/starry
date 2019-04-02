@@ -26,7 +26,7 @@ def map(request):
 class TestPhaseCurves:
     """Test the analytic phase curve calculations."""
 
-    def test_phase_curve(self, map):
+    def test_phase_curve_static_single_wav(self, map):
         # Rotate the map and the source over time
         source = np.array([[np.sin(3 * t), np.cos(4 * t), np.sin(t)] 
                         for t in np.linspace(0, 5, 100)])

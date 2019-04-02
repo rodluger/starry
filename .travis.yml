@@ -30,7 +30,7 @@ cache:
         - $HOME/miniconda-cache
 
 script:
-    - py.test -v -s
+    - py.test -v -s tests/test_*.py
 
 after_success:
     # DEBUG: dev --> master

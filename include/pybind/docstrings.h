@@ -115,6 +115,8 @@ namespace Map {
         .. automethod:: show(t=0, theta=0, cmap='plasma', res=300, interval=75, gif='')
         .. autoattribute:: __compile_flags__
         .. autoattribute:: axis
+        .. autoattribute:: inc
+        .. autoattribute:: obl
         .. autoattribute:: lmax
         .. autoattribute:: multi
         .. autoattribute:: N
@@ -183,6 +185,16 @@ namespace Map {
     const char* axis = R"pbdoc(
         A *normalized* unit vector specifying the default axis of
         rotation for the map. Default :math:`\hat{y} = (0, 1, 0)`.
+    )pbdoc";
+
+    const char* inc = R"pbdoc(
+        The inclination of the map in degrees. 
+        Setting this value overrides :py:attr:`axis`. Default :math:`90^\circ`.
+    )pbdoc";
+
+    const char* obl = R"pbdoc(
+        The obliquity of the map in degrees. 
+        Setting this value overrides :py:attr:`axis`. Default :math:`0^\circ`.
     )pbdoc";
 
     const char* compile_flags = R"pbdoc(

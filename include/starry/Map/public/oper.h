@@ -14,7 +14,8 @@ inline void reset ()
     setU0();
 
     // Reset the axis
-    axis = yhat<Scalar>();
+    inc = 90.0;
+    obl = 0.0;
 }
 
 /**

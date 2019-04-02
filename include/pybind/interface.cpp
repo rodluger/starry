@@ -452,6 +452,32 @@ PYBIND11_MODULE(
             map.setAxis(axis.template cast<Scalar>());
     }, docstrings::Map::axis);
 
+    // Get/set the map inclination
+    PyMap.def_property(
+        "inc", [] (
+            Map<T> &map
+        ) -> double {
+            return static_cast<double>(map.getInclination());
+        }, [] (
+            Map<T> &map, 
+            double& inc
+        ) {
+            map.setInclination(static_cast<Scalar>(inc));
+    }, docstrings::Map::inc);
+
+    // Get/set the map obliquity
+    PyMap.def_property(
+        "obl", [] (
+            Map<T> &map
+        ) -> double {
+            return static_cast<double>(map.getObliquity());
+        }, [] (
+            Map<T> &map, 
+            double& obl
+        ) {
+            map.setObliquity(static_cast<Scalar>(obl));
+    }, docstrings::Map::obl);
+
     // Rotate the base map
     PyMap.def(
         "rotate", [](

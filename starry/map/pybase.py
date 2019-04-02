@@ -247,8 +247,29 @@ class PythonMapBase(object):
         return MapSum(self) + other
     
 
-    def flux(self, **kwargs):
+    def flux(self, gradient=False, **kwargs):
         """
 
         """
-        return np.dot(self.linear_flux_model(**kwargs), self.y)
+        if gradient:
+            # Get the design matrix and its gradient
+            X, grad = self.linear_flux_model(gradient=True, **kwargs)
+            
+            # The dot product with `y` gives us the flux
+            f = np.dot(X, self.y)
+            for key in grad.keys():
+                grad[key] = np.dot(grad[key], self.y)
+
+            # Remove inds where l = m = 0 from the gradient
+            lgtr0 = np.ones(self.Ny * self.nt, dtype=bool)
+            for i in range(self.nt):
+                lgtr0[i * self.Ny] = False
+            grad['y'] = X[:, lgtr0]
+
+            # Remove the l = 0 limb darkening term from the gradient
+            grad['u'] = grad['u'][1:]
+
+            return f, grad
+        else:
+            # The flux is just the dot product with the design matrix
+            return np.dot(self.linear_flux_model(**kwargs), self.y)

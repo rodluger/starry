@@ -136,8 +136,6 @@ using namespace pybind11::literals;
 using namespace starry;
 using namespace starry::utils;
 using starry::maps::Map;
-static const auto integer = py::module::import("numpy").attr("integer");
-
 
 /**
 Re-interpret the `start`, `stop`, and `step` attributes of a `py::slice`,
@@ -178,6 +176,7 @@ std::vector<int> get_Ylm_inds (
     const int lmax, 
     const py::tuple& lm
 ) {
+    auto integer = py::module::import("numpy").attr("integer");
     int N = (lmax + 1) * (lmax + 1);
     int n;
     if (lm.size() != 2)
@@ -271,6 +270,7 @@ std::tuple<std::vector<int>, int> get_Ylmt_inds (
     const int Nt,
     const py::tuple& lmt
 ) {
+    auto integer = py::module::import("numpy").attr("integer");
     int Ny = (lmax + 1) * (lmax + 1);
     if (lmt.size() == 3) {
         std::vector<int> inds0 = get_Ylm_inds(lmax, py::make_tuple(lmt[0], lmt[1]));
@@ -325,6 +325,7 @@ std::tuple<std::vector<int>, std::vector<int>> get_Ylmw_inds (
     const int Nw,
     const py::tuple& lmw
 ) {
+    auto integer = py::module::import("numpy").attr("integer");
     if (lmw.size() == 3) {
         std::vector<int> rows = get_Ylm_inds(lmax, py::make_tuple(lmw[0], lmw[1]));
         std::vector<int> cols;
@@ -372,6 +373,7 @@ std::vector<int> get_Ul_inds (
     int lmax, 
     const py::object& l
 ) {
+    auto integer = py::module::import("numpy").attr("integer");
     int n;
     std::vector<int> inds;
     if (py::isinstance<py::int_>(l) || py::isinstance(l, integer)) {
@@ -497,8 +499,6 @@ std::function<py::object(
 Return a lambda function to compute the linear flux model. 
 Optionally compute and return the gradient.
 
-\todo Implement this for reflected types
-
 */
 template <typename T>
 std::function<py::object (
@@ -535,6 +535,7 @@ std::function<py::object (
     ) -> py::object 
     {
         using Scalar = typename T::Scalar;
+        auto reshape = py::module::import("numpy").attr("reshape");
 
         // Figure out the length of the timeseries
         std::vector<long> v {
@@ -614,7 +615,8 @@ std::function<py::object (
                     map.data.DADsource, 
 #               endif   
                 map.data.DADu, 
-                map.data.DADaxis
+                map.data.DADinc,
+                map.data.DADobl
             );
 
             // Get Eigen references to the arrays, as these
@@ -630,7 +632,8 @@ std::function<py::object (
                 auto Dsource = Ref<RowMatrix<Scalar>>(map.data.DADsource);
 #           endif
             auto Du = Ref<RowMatrix<Scalar>>(map.data.DADu);
-            auto Daxis = Ref<RowMatrix<Scalar>>(map.data.DADaxis);
+            auto Dinc = Ref<RowMatrix<Scalar>>(map.data.DADinc);
+            auto Dobl = Ref<RowMatrix<Scalar>>(map.data.DADobl);
 
             // Construct a dictionary
             py::dict gradient = py::dict(
@@ -644,8 +647,10 @@ std::function<py::object (
 #               ifdef _STARRY_REFLECTED_
                     "source"_a=ENSURE_DOUBLE_ARR(Dsource),
 #               endif    
-                "u"_a=ENSURE_DOUBLE_ARR(Du),
-                "axis"_a=ENSURE_DOUBLE_ARR(Daxis)         
+                "u"_a=reshape(ENSURE_DOUBLE_ARR(Du), 
+                              py::make_tuple(map.Nu, nt, map.Ny)),
+                "inc"_a=ENSURE_DOUBLE_ARR(Dinc),
+                "obl"_a=ENSURE_DOUBLE_ARR(Dobl)           
             );
 
             // Return
