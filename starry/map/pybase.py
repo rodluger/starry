@@ -260,14 +260,12 @@ class PythonMapBase(object):
             for key in grad.keys():
                 grad[key] = np.dot(grad[key], self.y)
 
-            # Remove inds where l = m = 0 from the gradient
+            # Add in the gradient with respect to `y`, but
+            # first remove inds where `l = m = 0`
             lgtr0 = np.ones(self.Ny * self.nt, dtype=bool)
             for i in range(self.nt):
                 lgtr0[i * self.Ny] = False
             grad['y'] = X[:, lgtr0]
-
-            # Remove the l = 0 limb darkening term from the gradient
-            grad['u'] = grad['u'][1:]
 
             return f, grad
         else:

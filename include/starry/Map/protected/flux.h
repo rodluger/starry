@@ -369,7 +369,7 @@ inline void computeLinearFluxModelInternal (
                 rTdLduA1.row(l) = B.rT * dLdu(l) * B.A1.block(0, 0, Ny, Ny);
             }
         }
-        Du.resize(Nu * nt, Ny);
+        Du.resize((Nu - 1) * nt, Ny);
     }
     Eigen::SparseMatrix<Scalar>& A = (udeg > 0) ? A2LA1 : B.A;
     RowVector<Scalar>& rTA1 = (udeg > 0) ? rTLA1 : B.rTA1;
@@ -443,8 +443,8 @@ inline void computeLinearFluxModelInternal (
 
             // Limb darkening derivs
             if (udeg > 0) {
-                for (int l = 0; l < udeg + 1; ++l) {
-                    W.leftMultiplyR(rTdLduA1.row(l), Du.block(l * nt + n, 0, 1, Ny));
+                for (int l = 1; l < udeg + 1; ++l) {
+                    W.leftMultiplyR(rTdLduA1.row(l), Du.block((l - 1) * nt + n, 0, 1, Ny));
                 } 
             }
 
