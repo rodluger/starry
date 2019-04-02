@@ -23,7 +23,6 @@ install:
     - export CC=gcc-4.8
     - export CXX=g++-4.8
     - travis_wait 40 python setup.py develop
-    - travis_wait 40 make -C include/examples
 
 cache:
     directories:

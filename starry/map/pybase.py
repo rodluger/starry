@@ -267,6 +267,10 @@ class PythonMapBase(object):
                 lgtr0[i * self.Ny] = False
             grad['y'] = X[:, lgtr0]
 
+            # Copy df/dy to each wavelength bin
+            if self._spectral:
+                grad['y'] = np.tile(grad['y'], (self.nw, 1)).T
+
             return f, grad
         else:
             # The flux is just the dot product with the design matrix

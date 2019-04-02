@@ -648,7 +648,7 @@ std::function<py::object (
                     "source"_a=ENSURE_DOUBLE_ARR(Dsource),
 #               endif    
                 "u"_a=reshape(ENSURE_DOUBLE_ARR(Du), 
-                              py::make_tuple(map.Nu - 1, nt, map.Ny)),
+                              py::make_tuple(map.Nu - 1, nt, map.Ny * map.Nt)),
                 "inc"_a=ENSURE_DOUBLE_ARR(Dinc),
                 "obl"_a=ENSURE_DOUBLE_ARR(Dobl)           
             );

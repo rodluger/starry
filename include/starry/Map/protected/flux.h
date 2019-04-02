@@ -40,7 +40,7 @@ inline void computeLinearFluxModelInternal (
     Eigen::SparseMatrix<Scalar> A2LA1;
     RowVector<Scalar> rTLA1;
 
-    // Pre-compute the limb darkening operator (\todo: cache it)
+    // Pre-compute the limb darkening operator
     if (udeg > 0) {
         UType tmp = B.U1 * u;
         Vector<Scalar> pu = tmp * pi<Scalar>() * 
@@ -174,7 +174,7 @@ inline void computeLinearFluxModelInternal (
     RowVector<Scalar> rTA1RzRZetaInvRz(Ny);
     Eigen::SparseMatrix<Scalar> LA1_;
 
-    // Pre-compute the limb darkening operator (\todo: cache it)
+    // Pre-compute the limb darkening operator
     if (udeg > 0) {
         UType tmp = B.U1 * u;
         Vector<Scalar> pu = tmp * pi<Scalar>() * 
@@ -274,7 +274,7 @@ inline void computeLinearFluxModelInternal (
 
 
 /**
-\todo Compute the linear spherical harmonic model and its gradient. Internal method.
+Compute the linear spherical harmonic model and its gradient. Internal method.
 
 */
 template <
@@ -332,20 +332,23 @@ inline void computeLinearFluxModelInternal (
     RowVector<Scalar> dsTdbARzRZetaInvRz(Ny);
     RowVector<Scalar> sTADRzDwRZetaInvRz(Ny);
     RowVector<Scalar> sTADRzDwRZetaInvRzRZeta(Ny);
-
     RowVector<Scalar> rTA1DRZetaInvDAngle(Ny);
     RowVector<Scalar> rTA1DRZetaInvDAngleRz(Ny);
     RowVector<Scalar> rTA1DRZetaInvDAngleRzRZeta(Ny);
     RowVector<Scalar> rTA1RZetaInvRzDRZetaDAngle(Ny);
-
+    RowVector<Scalar> sTARzDRZetaInvDAngle(Ny);
+    RowVector<Scalar> sTARzDRZetaInvDAngleRz(Ny);
+    RowVector<Scalar> sTARzDRZetaInvDAngleRzRZeta(Ny);
+    RowVector<Scalar> sTARzRZetaInvRzDRZetaDAngle(Ny);
     Matrix<Scalar> LA1;
     Eigen::SparseMatrix<Scalar> A2LA1;
     RowVector<Scalar> rTLA1;
     Vector<Matrix<Scalar>> dLdu(udeg + 1);
     Matrix<Scalar> rTdLduA1(udeg + 1, Ny);
+    Matrix<Scalar> sTA2dLduA1(udeg + 1, Ny);
+    Matrix<Scalar> sTA2dLduA1Rz(udeg + 1, Ny);
 
-
-    // Pre-compute the limb darkening operator (\todo: cache it)
+    // Pre-compute the limb darkening operator
     if (udeg > 0) {
         UType tmp = B.U1 * u;
         Scalar norm = 1.0 / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
@@ -366,10 +369,10 @@ inline void computeLinearFluxModelInternal (
         for (int j = 0; j < Np; ++j) {
             for (int l = 0; l < udeg + 1; ++l) {
                 dLdu(l) += dLdp(j) * DpDu(j, l);
-                rTdLduA1.row(l) = B.rT * dLdu(l) * B.A1.block(0, 0, Ny, Ny);
+                rTdLduA1.row(l) = (B.rT * dLdu(l)) * B.A1.block(0, 0, Ny, Ny);
             }
         }
-        Du.resize((Nu - 1) * nt, Ny);
+        Du.resize((Nu - 1) * nt, Ny * Nt);
     }
     Eigen::SparseMatrix<Scalar>& A = (udeg > 0) ? A2LA1 : B.A;
     RowVector<Scalar>& rTA1 = (udeg > 0) ? rTLA1 : B.rTA1;
@@ -390,8 +393,6 @@ inline void computeLinearFluxModelInternal (
 
     // Loop over the timeseries and compute the model
     Scalar b, invb;
-    Scalar theta_cache = NAN,
-           theta_occ_cache = NAN;
     for (size_t n = 0; n < nt; ++n) {
 
         // Impact parameter
@@ -413,8 +414,6 @@ inline void computeLinearFluxModelInternal (
         // No occultation
         } else if ((zo(n) < 0) || (b >= 1 + ro(n)) || (ro(n) <= 0.0)) {
 
-            // \todo: Theta caching
-
             // Compute the Rz rotation matrix
             W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
 
@@ -426,25 +425,33 @@ inline void computeLinearFluxModelInternal (
 
             // Theta deriv
             W.leftMultiplyDRz(rTA1RZetaInv, rTA1RZetaInvDRzDtheta);
-            W.leftMultiplyRZeta(rTA1RZetaInvDRzDtheta, Dtheta.block(n, 0, 1, Ny));
+            W.leftMultiplyRZeta(rTA1RZetaInvDRzDtheta, 
+                                Dtheta.block(n, 0, 1, Ny));
             Dtheta.block(n, 0, 1, Ny) *= radian;
 
             // Axis derivs
             W.leftMultiplyDRZetaInvDInc(rTA1, rTA1DRZetaInvDAngle);
             W.leftMultiplyRz(rTA1DRZetaInvDAngle, rTA1DRZetaInvDAngleRz);
-            W.leftMultiplyRZeta(rTA1DRZetaInvDAngleRz, rTA1DRZetaInvDAngleRzRZeta);
-            W.leftMultiplyDRZetaDInc(rTA1RZetaInvRz, rTA1RZetaInvRzDRZetaDAngle);
-            Dinc.block(n, 0, 1, Ny) = (rTA1DRZetaInvDAngleRzRZeta + rTA1RZetaInvRzDRZetaDAngle) * radian;
+            W.leftMultiplyRZeta(rTA1DRZetaInvDAngleRz, 
+                                rTA1DRZetaInvDAngleRzRZeta);
+            W.leftMultiplyDRZetaDInc(rTA1RZetaInvRz, 
+                                     rTA1RZetaInvRzDRZetaDAngle);
+            Dinc.block(n, 0, 1, Ny) = (rTA1DRZetaInvDAngleRzRZeta + 
+                                       rTA1RZetaInvRzDRZetaDAngle) * radian;
             W.leftMultiplyDRZetaInvDObl(rTA1, rTA1DRZetaInvDAngle);
             W.leftMultiplyRz(rTA1DRZetaInvDAngle, rTA1DRZetaInvDAngleRz);
-            W.leftMultiplyRZeta(rTA1DRZetaInvDAngleRz, rTA1DRZetaInvDAngleRzRZeta);
-            W.leftMultiplyDRZetaDObl(rTA1RZetaInvRz, rTA1RZetaInvRzDRZetaDAngle);
-            Dobl.block(n, 0, 1, Ny) = (rTA1DRZetaInvDAngleRzRZeta + rTA1RZetaInvRzDRZetaDAngle) * radian;
+            W.leftMultiplyRZeta(rTA1DRZetaInvDAngleRz, 
+                                rTA1DRZetaInvDAngleRzRZeta);
+            W.leftMultiplyDRZetaDObl(rTA1RZetaInvRz, 
+                                     rTA1RZetaInvRzDRZetaDAngle);
+            Dobl.block(n, 0, 1, Ny) = (rTA1DRZetaInvDAngleRzRZeta + 
+                                       rTA1RZetaInvRzDRZetaDAngle) * radian;
 
             // Limb darkening derivs
             if (udeg > 0) {
                 for (int l = 1; l < udeg + 1; ++l) {
-                    W.leftMultiplyR(rTdLduA1.row(l), Du.block((l - 1) * nt + n, 0, 1, Ny));
+                    W.leftMultiplyR(rTdLduA1.row(l), 
+                                    Du.block((l - 1) * nt + n, 0, 1, Ny));
                 } 
             }
 
@@ -452,11 +459,22 @@ inline void computeLinearFluxModelInternal (
             if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
                 Dt.block(n, 0, 1, Ny).setZero();
                 for (int i = 1; i < Nt; ++i) {
-                    X.block(n, i * Ny, 1, Ny) = X.block(n, 0, 1, Ny) * taylor(n, i);
-                    Dt.block(n, i * Ny, 1, Ny) = X.block(n, 0, 1, Ny) * taylor(n, i - 1);
-                    Dtheta.block(n, i * Ny, 1, Ny) = Dtheta.block(n, 0, 1, Ny) * taylor(n, i);
-                    Dinc.block(n, i * Ny, 1, Ny) = Dinc.block(n, 0, 1, Ny) * taylor(n, i);
-                    Dobl.block(n, i * Ny, 1, Ny) = Dobl.block(n, 0, 1, Ny) * taylor(n, i);
+                    X.block(n, i * Ny, 1, Ny) = 
+                        X.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dt.block(n, i * Ny, 1, Ny) = 
+                        X.block(n, 0, 1, Ny) * taylor(n, i - 1);
+                    Dtheta.block(n, i * Ny, 1, Ny) = 
+                        Dtheta.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dinc.block(n, i * Ny, 1, Ny) = 
+                        Dinc.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dobl.block(n, i * Ny, 1, Ny) = 
+                        Dobl.block(n, 0, 1, Ny) * taylor(n, i);
+                    if (udeg > 0) {
+                        for (int l = 1; l < udeg + 1; ++l) {
+                            Du.block((l - 1) * nt + n, i * Ny, 1, Ny) = 
+                                Du.block((l - 1) * nt + n, 0, 1, Ny) * taylor(n, i);
+                        } 
+                    }
                 } 
             }
 
@@ -468,21 +486,11 @@ inline void computeLinearFluxModelInternal (
         // Occultation
         } else {
 
-            throw std::runtime_error("Gradients of occultations not yet implemented.");
-
-            /* DEBUG TODO
-
             // Compute the solution vector
             G.template compute<true>(b, ro(n));
-            if (udeg == 0) {
-                sTA = G.sT * B.A;
-                dsTdrA = G.dsTdr * B.A;
-                dsTdbA = G.dsTdb * B.A;
-            } else {
-                sTA = G.sT * A2LA1;
-                dsTdrA = G.dsTdr * A2LA1;
-                dsTdbA = G.dsTdb * A2LA1;
-            }
+            sTA = G.sT * A;
+            dsTdrA = G.dsTdr * A;
+            dsTdbA = G.dsTdb * A;
             invb = Scalar(1.0) / b;
 
             // Compute the occultor rotation matrix Rz
@@ -497,22 +505,20 @@ inline void computeLinearFluxModelInternal (
             W.leftMultiplyRZetaInv(dsTdbARz, dsTdbARzRZetaInv);
             W.leftMultiplyDRz(sTA, sTADRzDw);
             W.leftMultiplyRZetaInv(sTADRzDw, sTADRzDwRZetaInv);
-
-            // DEBUG
-            //RowVector<Scalar> foo(Ny), bar(Ny);
-            //foo = G.sT * B.A2 * dLdu1 * B.A1;
-            //W.leftMultiplyRz(foo, bar);
-            //W.leftMultiplyRZetaInv(bar, foo);
+            if (udeg > 0) {
+                for (int j = 0; j < Np; ++j) {
+                    for (int l = 0; l < udeg + 1; ++l) {
+                        sTA2dLduA1.row(l) = ((G.sT * B.A2) * dLdu(l)) * 
+                                             B.A1.block(0, 0, Ny, Ny);
+                    }
+                }
+                W.leftMultiplyRz(sTA2dLduA1, sTA2dLduA1Rz);
+            }
 
             // Compute the Rz rotation matrix
             W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
-
-            // DEBUG
-            //W.leftMultiplyRz(foo, bar);
-            //W.leftMultiplyRZeta(bar, Du1.block(n, 0, 1, Ny));
-            //std::cout << Du1.block(n, 0, 1, Ny) * y << std::endl;
-
-            // Dot it in
+            
+            // Dot Rz in
             W.leftMultiplyRz(sTARzRZetaInv, sTARzRZetaInvRz);
 
             // Transform back to the sky plane
@@ -520,7 +526,8 @@ inline void computeLinearFluxModelInternal (
 
             // Theta deriv
             W.leftMultiplyDRz(sTARzRZetaInv, sTARzRZetaInvDRzDtheta);
-            W.leftMultiplyRZeta(sTARzRZetaInvDRzDtheta, Dtheta.block(n, 0, 1, Ny));
+            W.leftMultiplyRZeta(sTARzRZetaInvDRzDtheta, 
+                                Dtheta.block(n, 0, 1, Ny));
             Dtheta.block(n, 0, 1, Ny) *= radian;
 
             // Radius deriv
@@ -539,27 +546,68 @@ inline void computeLinearFluxModelInternal (
             Dxo.block(n, 0, 1, Ny) += yo(n) * sTADRzDwRZetaInvRzRZeta;
             Dyo.block(n, 0, 1, Ny) -= xo(n) * sTADRzDwRZetaInvRzRZeta;
 
+            // Axis derivs
+            W.leftMultiplyDRZetaInvDInc(sTARz, sTARzDRZetaInvDAngle);
+            W.leftMultiplyRz(sTARzDRZetaInvDAngle, sTARzDRZetaInvDAngleRz);
+            W.leftMultiplyRZeta(sTARzDRZetaInvDAngleRz, 
+                                sTARzDRZetaInvDAngleRzRZeta);
+            W.leftMultiplyDRZetaDInc(sTARzRZetaInvRz, 
+                                     sTARzRZetaInvRzDRZetaDAngle);
+            Dinc.block(n, 0, 1, Ny) = (sTARzDRZetaInvDAngleRzRZeta + 
+                                       sTARzRZetaInvRzDRZetaDAngle) * radian;
+            W.leftMultiplyDRZetaInvDObl(sTARz, sTARzDRZetaInvDAngle);
+            W.leftMultiplyRz(sTARzDRZetaInvDAngle, sTARzDRZetaInvDAngleRz);
+            W.leftMultiplyRZeta(sTARzDRZetaInvDAngleRz, 
+                                sTARzDRZetaInvDAngleRzRZeta);
+            W.leftMultiplyDRZetaDObl(sTARzRZetaInvRz, 
+                                     sTARzRZetaInvRzDRZetaDAngle);
+            Dobl.block(n, 0, 1, Ny) = (sTARzDRZetaInvDAngleRzRZeta + 
+                                       sTARzRZetaInvRzDRZetaDAngle) * radian;
+
+            // Limb darkening derivs
+            if (udeg > 0) {
+                for (int l = 1; l < udeg + 1; ++l) {
+                    W.leftMultiplyR(sTA2dLduA1Rz.row(l), 
+                                    Du.block((l - 1) * nt + n, 0, 1, Ny));
+                }
+            }
+
             // Apply the Taylor expansion?
             if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
                 Dt.block(n, 0, 1, Ny).setZero();
-                for (int i = 1; i < ncoly; ++i) {
-                    X.block(n, i * Ny, 1, Ny) = X.block(n, 0, 1, Ny) * taylor(n, i);
-                    Dt.block(n, i * Ny, 1, Ny) = X.block(n, 0, 1, Ny) * taylor(n, i - 1);
-                    Dtheta.block(n, i * Ny, 1, Ny) = Dtheta.block(n, 0, 1, Ny) * taylor(n, i);
-                    Dxo.block(n, i * Ny, 1, Ny) = Dxo.block(n, 0, 1, Ny) * taylor(n, i);
-                    Dyo.block(n, i * Ny, 1, Ny) = Dyo.block(n, 0, 1, Ny) * taylor(n, i);
-                    Dro.block(n, i * Ny, 1, Ny) = Dro.block(n, 0, 1, Ny) * taylor(n, i);
+                for (int i = 1; i < Nt; ++i) {
+                    X.block(n, i * Ny, 1, Ny) = 
+                        X.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dt.block(n, i * Ny, 1, Ny) = 
+                        X.block(n, 0, 1, Ny) * taylor(n, i - 1);
+                    Dtheta.block(n, i * Ny, 1, Ny) = 
+                        Dtheta.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dxo.block(n, i * Ny, 1, Ny) = 
+                        Dxo.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dyo.block(n, i * Ny, 1, Ny) = 
+                        Dyo.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dro.block(n, i * Ny, 1, Ny) = 
+                        Dro.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dinc.block(n, i * Ny, 1, Ny) = 
+                        Dinc.block(n, 0, 1, Ny) * taylor(n, i);
+                    Dobl.block(n, i * Ny, 1, Ny) = 
+                        Dobl.block(n, 0, 1, Ny) * taylor(n, i);
+                    if (udeg > 0) {
+                        for (int l = 1; l < udeg + 1; ++l) {
+                            Du.block((l - 1) * nt + n, i * Ny, 1, Ny) = 
+                                Du.block((l - 1) * nt + n, 0, 1, Ny) * taylor(n, i);
+                        } 
+                    }
                 } 
             }
-
-            */
 
         }
     }
 }
 
 /**
-\todo Compute the linear spherical harmonic model and its gradient. Internal method.
+\todo Compute the linear spherical harmonic model and its gradient. 
+Internal method.
 
 */
 template <
@@ -584,6 +632,5 @@ inline void computeLinearFluxModelInternal (
     RowMatrix<Scalar>& Dinc,
     RowMatrix<Scalar>& Dobl
 ) {
-    // \todo
-    throw std::runtime_error("Gradients not yet implemented.");
+    throw std::runtime_error("Gradients not yet implemented in reflected light.");
 }
