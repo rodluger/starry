@@ -178,7 +178,7 @@ namespace limbdark {
     Greens integral solver wrapper class. Reflected
     light specialization for limb-darkened maps. This
     class does nothing, since `starry` does not
-    implement limb darkening in reflected light.
+    implement a pure limb darkening solver in reflected light.
 
     */
     template <class T>

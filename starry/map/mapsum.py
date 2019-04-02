@@ -93,7 +93,7 @@ class MapSum(object):
 
     def linear_intensity_model(self, theta=0, **kwargs):
         """
-
+        
         """
         theta = self._reshape_theta(theta)
         return np.hstack([self.maps[n].linear_intensity_model(theta=theta[n], **kwargs)
@@ -117,7 +117,7 @@ class MapSum(object):
 
     def linear_flux_model(self, theta=0, **kwargs):
         """
-
+        .. todo:: gradients!
         """
         theta = self._reshape_theta(theta)
         return np.hstack([self.maps[n].linear_flux_model(theta=theta[n], **kwargs)
@@ -125,7 +125,7 @@ class MapSum(object):
 
     def flux(self, theta=0, **kwargs):
         """
-
+        .. todo:: gradients!
         """
         theta = self._reshape_theta(theta)
         return np.sum([self.maps[n].flux(theta=theta[n], **kwargs) 

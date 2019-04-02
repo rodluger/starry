@@ -244,8 +244,8 @@ class PythonMapBase(object):
         """
 
         """
-        return MapSum(self) + other
-    
+        raise NotImplementedError("Map addition coming soon.")
+        #return MapSum(self) + other
 
     def flux(self, gradient=False, **kwargs):
         """
@@ -275,3 +275,16 @@ class PythonMapBase(object):
         else:
             # The flux is just the dot product with the design matrix
             return np.dot(self.linear_flux_model(**kwargs), self.y)
+
+    def intensity(self, **kwargs):
+        """
+
+        """
+        # The intensity is just the dot product with the design matrix
+        return np.dot(self.linear_intensity_model(**kwargs), self.y)
+
+    def __call__(self, **kwargs):
+        """
+
+        """
+        return self.intensity(**kwargs)

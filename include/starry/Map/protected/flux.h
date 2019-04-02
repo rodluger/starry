@@ -84,6 +84,8 @@ inline void computeLinearFluxModelInternal (
                 W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
                 W.leftMultiplyRz(rTA1RZetaInv, rTA1RZetaInvRz);
                 W.leftMultiplyRZeta(rTA1RZetaInvRz, X.block(n, 0, 1, Ny));
+            } else {
+                 X.block(n, 0, 1, Ny) =  X.block(n - 1, 0, 1, Ny);
             }
 
             // Apply the Taylor expansion
@@ -117,9 +119,9 @@ inline void computeLinearFluxModelInternal (
             if (theta_rad(n) != theta_occ_cache) {
                 theta_occ_cache = theta_rad(n);
                 W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
-                W.leftMultiplyRz(sTARzRZetaInv, sTARzRZetaInvRz);
-                W.leftMultiplyRZeta(sTARzRZetaInvRz, X.block(n, 0, 1, Ny));
             }
+            W.leftMultiplyRz(sTARzRZetaInv, sTARzRZetaInvRz);
+            W.leftMultiplyRZeta(sTARzRZetaInvRz, X.block(n, 0, 1, Ny));
 
             // Apply the Taylor expansion
             if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
@@ -491,10 +493,14 @@ inline void computeLinearFluxModelInternal (
             sTA = G.sT * A;
             dsTdrA = G.dsTdr * A;
             dsTdbA = G.dsTdb * A;
-            invb = Scalar(1.0) / b;
-
+            
             // Compute the occultor rotation matrix Rz
-            W.compute(yo(n) * invb, xo(n) * invb);
+            if (likely(b != 0)) {
+                invb = Scalar(1.0) / b;
+                W.compute(yo(n) * invb, xo(n) * invb);
+            } else {
+                W.compute(1.0, 0.0);
+            }
 
             // Dot stuff in
             W.leftMultiplyRz(sTA, sTARz);
@@ -534,17 +540,23 @@ inline void computeLinearFluxModelInternal (
             W.leftMultiplyRz(dsTdrARzRZetaInv, dsTdrARzRZetaInvRz);
             W.leftMultiplyRZeta(dsTdrARzRZetaInvRz, Dro.block(n, 0, 1, Ny));
 
-            // xo and yo derivatives
-            W.leftMultiplyRz(dsTdbARzRZetaInv, dsTdbARzRZetaInvRz);
-            W.leftMultiplyRZeta(dsTdbARzRZetaInvRz, Dxo.block(n, 0, 1, Ny));
-            Dyo.block(n, 0, 1, Ny) = Dxo.block(n, 0, 1, Ny);
-            Dxo.block(n, 0, 1, Ny) *= xo(n) * invb;
-            Dyo.block(n, 0, 1, Ny) *= yo(n) * invb;
-            W.leftMultiplyRz(sTADRzDwRZetaInv, sTADRzDwRZetaInvRz);
-            W.leftMultiplyRZeta(sTADRzDwRZetaInvRz, sTADRzDwRZetaInvRzRZeta);
-            sTADRzDwRZetaInvRzRZeta *= invb * invb;
-            Dxo.block(n, 0, 1, Ny) += yo(n) * sTADRzDwRZetaInvRzRZeta;
-            Dyo.block(n, 0, 1, Ny) -= xo(n) * sTADRzDwRZetaInvRzRZeta;
+            // xo and yo derivatives            
+            if (likely(b != 0)) {    
+                W.leftMultiplyRz(dsTdbARzRZetaInv, dsTdbARzRZetaInvRz);
+                W.leftMultiplyRZeta(dsTdbARzRZetaInvRz, Dxo.block(n, 0, 1, Ny));
+                Dyo.block(n, 0, 1, Ny) = Dxo.block(n, 0, 1, Ny);
+                Dxo.block(n, 0, 1, Ny) *= xo(n) * invb;
+                Dyo.block(n, 0, 1, Ny) *= yo(n) * invb;
+                W.leftMultiplyRz(sTADRzDwRZetaInv, sTADRzDwRZetaInvRz);
+                W.leftMultiplyRZeta(sTADRzDwRZetaInvRz, sTADRzDwRZetaInvRzRZeta);
+                sTADRzDwRZetaInvRzRZeta *= invb * invb;
+                Dxo.block(n, 0, 1, Ny) += yo(n) * sTADRzDwRZetaInvRzRZeta;
+                Dyo.block(n, 0, 1, Ny) -= xo(n) * sTADRzDwRZetaInvRzRZeta;
+            } else {
+                // \todo Need to compute these in the limit b-->0
+                Dxo.block(n, 0, 1, Ny).setConstant(NAN);
+                Dyo.block(n, 0, 1, Ny).setConstant(NAN);
+            }
 
             // Axis derivs
             W.leftMultiplyDRZetaInvDInc(sTARz, sTARzDRZetaInvDAngle);

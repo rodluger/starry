@@ -28,6 +28,12 @@ def test_z_source():
     raise Exception("")
 
 @pytest.mark.xfail
+def test_xo_yo_derivs():
+    # There's some weird stuff going on in grad['xo'] when the occultor
+    # touches the limb of the occulted...
+    raise Exception("")
+
+@pytest.mark.xfail
 def test_show_reflected():
     # Things go to NaN for some source positions
     map1 = starry.Map(ydeg=2, udeg=0, reflected=True)

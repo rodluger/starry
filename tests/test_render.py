@@ -10,7 +10,7 @@ np.random.randn(41)
 def test_reflected():
     lmax = 5
     map = starry.Map(lmax, reflected=True)
-    map[:, :] = np.random.randn((lmax + 1) ** 2)
+    map[1:, :] = np.random.randn((lmax + 1) ** 2 - 1)
     source = [-1, -0.5, 0.3]
     res = 50
 
@@ -37,7 +37,7 @@ def test_reflected():
 def test_emitted():
     lmax = 5
     map = starry.Map(lmax)
-    map[:, :] = np.random.randn((lmax + 1) ** 2)
+    map[1:, :] = np.random.randn((lmax + 1) ** 2 - 1)
     res = 50
 
     # Compute using `render`
