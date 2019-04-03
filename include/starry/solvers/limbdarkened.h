@@ -76,7 +76,8 @@ namespace limbdark {
     of the basis in which the `P(G_n)` functions are computed.
     Also compute the derivative matrix `dg / Du`.
     
-    This is the default map case.
+    This function is templated with MBCAST stuff so that we can
+    eventually re-introduce wavelength dependence to this function.
 
     \todo This might be faster/cleaner as a linear operation...
 
@@ -144,27 +145,16 @@ namespace limbdark {
             MBCAST(DgDu, T3).transpose().block(0, 0, 1, N - 1) = 
                 dpdu.block(0, 1, 1, N - 1);
         }
-    }
 
-    /**
-    Transform the u_n coefficients to `g_n`, which are coefficients
-    of the basis in which the `P(G_n)` functions are computed.
-    Also compute the derivative matrix `dg / Du`.
+        // Normalize it
+        Scalar norm;
+        if (likely(N > 1))
+            norm = Scalar(1.0) / (pi<Scalar>() * (g(0) + 2.0 * g(1) / 3.0));
+        else
+            norm = Scalar(1.0) / (pi<Scalar>() * g(0));
+        MBCAST(g, T2) = g * norm;
+        MBCAST(DgDu, T3) = DgDu * norm;
 
-    This is the multi-column map case.
-
-    */
-    template <class T>
-    inline void computeAgolGBasis (
-        const Matrix<T>& u, 
-        Matrix<T>& g,
-        Matrix<T>& DgDu
-    ) {
-        int lmax = u.rows() - 1;
-        int ncol = u.cols();
-        for (int n = 0; n < ncol; ++n)
-            computeAgolGBasis(u.col(n), g.col(n), 
-                     DgDu.block(n * lmax, 0, lmax, lmax + 1));
     }
 
     /**
@@ -238,6 +228,11 @@ namespace limbdark {
         T Eofk;
         T Em1mKdm;
 
+        // Agol `g` basis
+        Vector<T> u;
+        Vector<T> g;
+        Matrix<T> DgDu;
+
         // Helper intergrals
         RowVector<T> M;
         RowVector<T> N;
@@ -259,6 +254,9 @@ namespace limbdark {
             int lmax
         ) :
             lmax(lmax),
+            u(lmax + 1),
+            g(lmax + 1),
+            DgDu(lmax, lmax + 1),
             M(lmax + 1),
             N(lmax + 1),
             M_coeff(4, STARRY_MN_MAX_ITER),
@@ -301,12 +299,27 @@ namespace limbdark {
 
         inline void downwardN ();
 
+        inline void computeBasis (
+            const Vector<T>& u_
+        );
+
         template <bool GRADIENT=false>
         inline void compute (
             const T& b_, 
             const T& r_
         );
     };
+
+    template <class T>
+    inline void GreensLimbDark<T, false>::computeBasis (
+        const Vector<T>& u_
+    ) {
+        // Simple caching
+        if (u != u_) {
+            u = u_;
+            computeAgolGBasis(u, g, DgDu);
+        }
+    }
 
     /**
     The linear limb darkening flux term.

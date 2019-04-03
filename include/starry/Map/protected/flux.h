@@ -594,3 +594,72 @@ inline void computeLinearFluxModelInternal (
 ) {
     throw std::runtime_error("Gradients not yet implemented in reflected light.");
 }
+
+/**
+Compute the flux from a purely limb-darkened map.
+
+*/
+template <
+    typename U=S, 
+    typename=IsEmitted<U>,
+    typename=IsDefault<U>
+>
+inline void computeLimbDarkenedFluxInternal (
+    const Vector<Scalar>& b, 
+    const Vector<Scalar>& zo,
+    const Vector<Scalar>& ro, 
+    Vector<Scalar>& flux
+) {
+    // Shape checks
+    size_t nt = b.rows();
+    CHECK_SHAPE(zo, nt, 1);
+    CHECK_SHAPE(ro, nt, 1);
+    flux.resize(nt);
+    
+    // Compute the Agol `g` basis
+    L.computeBasis(u);
+
+    // Loop through the timeseries
+    for (size_t n = 0; n < nt; ++n) {
+
+        // No occultation
+        if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
+
+            // Easy!
+            flux(n) = 1.0;
+
+        // Occultation
+        } else {
+
+            // Compute the Agol `s` vector
+            L.compute(b, ro);
+
+            // Dot the integral solution in, and we're done!
+            flux(n) = L.sT * L.g;
+
+        }
+
+    }
+}
+
+/**
+Compute the flux from a purely limb-darkened map.
+Also compute the gradient.
+
+*/
+template <
+    typename U=S, 
+    typename=IsEmitted<U>,
+    typename=IsDefault<U>
+>
+inline void computeLimbDarkenedFluxInternal (
+    const Vector<Scalar>& b, 
+    const Vector<Scalar>& zo,
+    const Vector<Scalar>& ro,
+    Vector<Scalar>& flux,
+    Vector<Scalar> Db,
+    Vector<Scalar> Dr,
+    RowMatrix<Scalar>& Du
+) {
+    // todo
+}

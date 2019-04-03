@@ -1,5 +1,6 @@
 /**
-Compute the linear Ylm model. Default / Spectral specialization.
+Compute the linear Ylm model in emitted light. 
+Default / Spectral specialization.
 
 */
 template <
@@ -19,7 +20,7 @@ inline void computeLinearFluxModel (
 }
 
 /**
-Compute the linear Ylm model. Temporal specialization.
+Compute the linear Ylm model in emitted light. Temporal specialization.
 
 */
 template <
@@ -41,7 +42,8 @@ inline void computeLinearFluxModel (
 }
 
 /**
-Compute the linear Ylm model. Default / Spectral specialization.
+Compute the linear Ylm model in reflected light. 
+Default / Spectral specialization.
 
 */
 template <
@@ -58,11 +60,12 @@ inline void computeLinearFluxModel (
     const RowMatrix<Scalar>& source,
     RowMatrix<Scalar>& X
 ) {
-    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, source.rowwise().normalized(), X);
+    computeLinearFluxModelInternal(theta, xo, yo, zo, 
+                                   ro, source.rowwise().normalized(), X);
 }
 
 /**
-Compute the linear Ylm model. Temporal specialization.
+Compute the linear Ylm model in reflected light. Temporal specialization.
 
 */
 template <
@@ -81,11 +84,13 @@ inline void computeLinearFluxModel (
     RowMatrix<Scalar>& X
 ) {
     computeTaylor(t);
-    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, source.rowwise().normalized(), X);
+    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, 
+                                   source.rowwise().normalized(), X);
 }
 
 /**
-Compute the linear Ylm model and its gradient. Default / Spectral specialization.
+Compute the linear Ylm model in emitted light and its gradient. 
+Default / Spectral specialization.
 
 */
 template <
@@ -115,7 +120,8 @@ inline void computeLinearFluxModel (
 }
 
 /**
-Compute the linear Ylm model and its gradient. Temporal specialization.
+Compute the linear Ylm model in emitted light and its gradient. 
+Temporal specialization.
 
 */
 template <
@@ -147,7 +153,8 @@ inline void computeLinearFluxModel (
 }
 
 /**
-Compute the linear Ylm model and its gradient. Default / Spectral specialization.
+Compute the linear Ylm model in reflected light and its gradient. 
+Default / Spectral specialization.
 
 */
 template <
@@ -174,12 +181,14 @@ inline void computeLinearFluxModel (
 ) {
     RowMatrix<Scalar> Dt; // Dummy!
     computeLinearFluxModelInternal(
-        theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, Dtheta, Dxo, Dyo, Dro, Dsource, Du, Dinc, Dobl
+        theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, 
+        Dtheta, Dxo, Dyo, Dro, Dsource, Du, Dinc, Dobl
     );
 }
 
 /**
-Compute the linear Ylm model and its gradient. Temporal specialization.
+Compute the linear Ylm model in reflected light and its gradient. 
+Temporal specialization.
 
 */
 template <
@@ -208,6 +217,53 @@ inline void computeLinearFluxModel (
 ) {
     computeTaylor(t);
     computeLinearFluxModelInternal(
-        theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, Dtheta, Dxo, Dyo, Dro, Dsource, Du, Dinc, Dobl
+        theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, 
+        Dtheta, Dxo, Dyo, Dro, Dsource, Du, Dinc, Dobl
     );
+}
+
+/**
+Compute the flux from a purely limb-darkened map.
+
+*/
+template <
+    typename U=S, 
+    typename=IsEmitted<U>,
+    typename=IsDefault<U>
+>
+inline void computeLimbDarkenedFlux (
+    const Vector<Scalar>& b, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    Vector<Scalar>& flux
+) {
+    if (ydeg > 0)
+        throw std::runtime_error(
+            "This method is for purely limb-darkened maps only.");
+    computeLimbDarkenedFluxInternal(b, zo, ro, flux);
+}
+
+/**
+Compute the flux from a purely limb-darkened map.
+Also compute the gradient.
+
+*/
+template <
+    typename U=S, 
+    typename=IsEmitted<U>,
+    typename=IsDefault<U>
+>
+inline void computeLimbDarkenedFlux (
+    const Vector<Scalar>& b, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    Vector<Scalar>& flux,
+    Vector<Scalar> Db,
+    Vector<Scalar> Dr,
+    RowMatrix<Scalar>& Du
+) {
+    if (ydeg > 0)
+        throw std::runtime_error(
+            "This method is for purely limb-darkened maps only.");
+    computeLimbDarkenedFluxInternal(b, zo, ro, flux, Db, Dr, Du);
 }
