@@ -116,7 +116,7 @@ class PythonMapBase(object):
                 model_kwargs["source"] = source
 
             # Compute the linear model
-            self.axis = [0, 0, 1]
+            self.axis = [1e-10, 1e-10, 1] # TODO: Bug when axis = [0, 0, 1]
             X = self.linear_intensity_model(x=x, y=y, **model_kwargs)
 
             # Compute the northern hemisphere map
@@ -139,7 +139,7 @@ class PythonMapBase(object):
                 model_kwargs["source"] = source
             
             # Compute the linear model
-            self.axis = [0, 1e-10, -1] # TODO: Bug when axis = [0, 0, -1]
+            self.axis = [1e-10, 1e-10, -1] # TODO: Bug when axis = [0, 0, -1]
             X = self.linear_intensity_model(x=-x, y=-y, **model_kwargs)
 
             # Compute the southern hemisphere map

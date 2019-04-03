@@ -101,6 +101,8 @@ inline const UType getU () const {
 Set the axis of rotation for the map and update
 the pre-computed Wigner matrices.
 
+\todo There are singularities here!
+
 */
 inline void setAxis (
     const UnitVector<Scalar>& axis_

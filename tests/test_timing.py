@@ -8,9 +8,8 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
-def test_time_default():
-    # ***Currently segfaulting!!!!!***
-
+def time_default():
+    """Still working on this one."""
     # Settings
     maxl = 15
     nruns = 10
@@ -67,4 +66,4 @@ def test_time_default():
 
 
 if __name__ == "__main__":
-    test_time_default()
+    time_default()

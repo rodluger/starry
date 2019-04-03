@@ -968,7 +968,7 @@ namespace solver {
             computeS0();
 
             // Break if lmax = 0
-            if (unlikely(N == 0)) return;
+            if (unlikely(N == 1)) return;
 
             // The l = 1, m = -1 is zero by symmetry
             sT(1) = 0;
