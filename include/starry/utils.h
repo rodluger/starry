@@ -202,7 +202,7 @@ struct MapType<T, true, false, REFLECTED, false>
     static constexpr bool LimbDarkened = false;
     using Scalar = T;
     using YType = Matrix<T>;
-    using UType = Matrix<T>; 
+    using UType = Vector<T>; 
 };
 
 // Single-wavelength limb-darkened map
@@ -218,7 +218,7 @@ struct MapType<T, false, false, false, true>
     using UType = Vector<T>; 
 };
 
-// \todo Spectral limb-darkened map
+// Spectral limb-darkened map
 template <typename T>
 struct MapType<T, true, false, false, true> 
 {

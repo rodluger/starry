@@ -15,83 +15,115 @@
 #endif
 
 // Select which module to build
-#if defined(_STARRY_DEFAULT_DOUBLE_) || defined(_STARRY_DEFAULT_REFL_DOUBLE_)
+#if defined(_STARRY_DEFAULT_DOUBLE_) || defined(_STARRY_DEFAULT_REFLECTED_DOUBLE_)
 #   define _STARRY_DOUBLE_
+#   define _STARRY_YDIM_ 2
+#   define _STARRY_UDIM_ 1
 #   if defined(_STARRY_DEFAULT_DOUBLE_)
 #       define _STARRY_NAME_ _starry_default_double
 #       define _STARRY_TYPE_ MapType<double, false, false, false, false>
 #   else
-#       define _STARRY_NAME_ _starry_default_refl_double
+#       define _STARRY_NAME_ _starry_default_REFLECTED_double
 #       define _STARRY_TYPE_ MapType<double, false, false, true, false>
 #       define _STARRY_REFLECTED_
 #   endif
-#elif defined(_STARRY_DEFAULT_MULTI_) || defined(_STARRY_DEFAULT_REFL_MULTI_)
+#elif defined(_STARRY_DEFAULT_MULTI_) || defined(_STARRY_DEFAULT_REFLECTED_MULTI_)
 #   define _STARRY_MULTI_
 #   define STARRY_ENABLE_BOOST
+#   define _STARRY_YDIM_ 2
+#   define _STARRY_UDIM_ 1
 #   if defined(_STARRY_DEFAULT_MULTI_)
 #       define _STARRY_NAME_ _starry_default_multi
 #       define _STARRY_TYPE_ MapType<Multi, false, false, false, false>
 #   else
-#       define _STARRY_NAME_ _starry_default_refl_multi
+#       define _STARRY_NAME_ _starry_default_REFLECTED_multi
 #       define _STARRY_TYPE_ MapType<Multi, false, false, true, false>
 #       define _STARRY_REFLECTED_
 #   endif
-#elif defined(_STARRY_SPECTRAL_DOUBLE_) || defined(_STARRY_SPECTRAL_REFL_DOUBLE_)
+#elif defined(_STARRY_SPECTRAL_DOUBLE_) || defined(_STARRY_SPECTRAL_REFLECTED_DOUBLE_)
 #   define _STARRY_SPECTRAL_
 #   define _STARRY_DOUBLE_
+#   define _STARRY_YDIM_ 3
+#   define _STARRY_UDIM_ 1
 #   if defined(_STARRY_SPECTRAL_DOUBLE_)
 #       define _STARRY_NAME_ _starry_spectral_double
 #       define _STARRY_TYPE_ MapType<double, true, false, false, false>
 #   else
-#       define _STARRY_NAME_ _starry_spectral_refl_double
+#       define _STARRY_NAME_ _starry_spectral_REFLECTED_double
 #       define _STARRY_TYPE_ MapType<double, true, false, true, false>
 #       define _STARRY_REFLECTED_
 #   endif
-#elif defined(_STARRY_SPECTRAL_MULTI_) || defined(_STARRY_SPECTRAL_REFL_MULTI_)
+#elif defined(_STARRY_SPECTRAL_MULTI_) || defined(_STARRY_SPECTRAL_REFLECTED_MULTI_)
 #   define _STARRY_SPECTRAL_
 #   define _STARRY_MULTI_
 #   define STARRY_ENABLE_BOOST
+#   define _STARRY_YDIM_ 3
+#   define _STARRY_UDIM_ 1
 #   if defined(_STARRY_SPECTRAL_MULTI_)
 #       define _STARRY_NAME_ _starry_spectral_multi
 #       define _STARRY_TYPE_ MapType<Multi, true, false, false, false>
 #   else
-#       define _STARRY_NAME_ _starry_spectral_refl_multi
+#       define _STARRY_NAME_ _starry_spectral_REFLECTED_multi
 #       define _STARRY_TYPE_ MapType<Multi, true, false, true, false>
 #       define _STARRY_REFLECTED_
 #   endif
-#elif defined(_STARRY_TEMPORAL_DOUBLE_) || defined(_STARRY_TEMPORAL_REFL_DOUBLE_)
+#elif defined(_STARRY_TEMPORAL_DOUBLE_) || defined(_STARRY_TEMPORAL_REFLECTED_DOUBLE_)
 #   define _STARRY_TEMPORAL_
 #   define _STARRY_DOUBLE_
+#   define _STARRY_YDIM_ 3
+#   define _STARRY_UDIM_ 1
 #   if defined(_STARRY_TEMPORAL_DOUBLE_)
 #       define _STARRY_NAME_ _starry_temporal_double
 #       define _STARRY_TYPE_ MapType<double, false, true, false, false>
 #   else
-#       define _STARRY_NAME_ _starry_temporal_refl_double
+#       define _STARRY_NAME_ _starry_temporal_REFLECTED_double
 #       define _STARRY_TYPE_ MapType<double, false, true, true, false>
 #       define _STARRY_REFLECTED_
 #   endif
-#elif defined(_STARRY_TEMPORAL_MULTI_) || defined(_STARRY_TEMPORAL_REFL_MULTI_)
+#elif defined(_STARRY_TEMPORAL_MULTI_) || defined(_STARRY_TEMPORAL_REFLECTED_MULTI_)
 #   define _STARRY_TEMPORAL_
 #   define _STARRY_MULTI_
+#   define _STARRY_YDIM_ 3
+#   define _STARRY_UDIM_ 1
 #   define STARRY_ENABLE_BOOST
 #   if defined(_STARRY_TEMPORAL_MULTI_)
 #       define _STARRY_NAME_ _starry_temporal_multi
 #       define _STARRY_TYPE_ MapType<Multi, false, true, false, false>
 #   else
-#       define _STARRY_NAME_ _starry_temporal_refl_multi
+#       define _STARRY_NAME_ _starry_temporal_REFLECTED_multi
 #       define _STARRY_TYPE_ MapType<Multi, false, true, true, false>
 #       define _STARRY_REFLECTED_
 #   endif
-#elif defined(_STARRY_LIMBDARKENED_DOUBLE_)
+#elif defined(_STARRY_DEFAULT_LIMBDARKENED_DOUBLE_)
 #   define _STARRY_LIMBDARKENED_
 #   define _STARRY_DOUBLE_
-#   define _STARRY_NAME_ _starry_limbdarkened_double
+#   define _STARRY_YDIM_ 0
+#   define _STARRY_UDIM_ 1
+#   define _STARRY_NAME_ _starry_default_limbdarkened_double
 #   define _STARRY_TYPE_ MapType<double, false, false, false, true>
-#elif defined(_STARRY_LIMBDARKENED_MULTI_)
+#elif defined(_STARRY_DEFAULT_LIMBDARKENED_MULTI_)
 #   define _STARRY_LIMBDARKENED_
 #   define _STARRY_MULTI_
-#   define _STARRY_NAME_ _starry_limbdarkened_multi
+#   define _STARRY_YDIM_ 0
+#   define _STARRY_UDIM_ 1
+#   define _STARRY_NAME_ _starry_default_limbdarkened_multi
 #   define _STARRY_TYPE_ MapType<Multi, false, false, false, true>
+#elif defined(_STARRY_SPECTRAL_LIMBDARKENED_DOUBLE_)
+#   define _STARRY_SPECTRAL_
+#   define _STARRY_LIMBDARKENED_
+#   define _STARRY_DOUBLE_
+#   define _STARRY_YDIM_ 0
+#   define _STARRY_UDIM_ 2
+#   define _STARRY_NAME_ _starry_spectral_limbdarkened_double
+#   define _STARRY_TYPE_ MapType<double, true, false, false, true>
+#elif defined(_STARRY_SPECTRAL_LIMBDARKENED_MULTI_)
+#   define _STARRY_SPECTRAL_
+#   define _STARRY_LIMBDARKENED_
+#   define _STARRY_MULTI_
+#   define _STARRY_YDIM_ 0
+#   define _STARRY_UDIM_ 2
+#   define _STARRY_NAME_ _starry_spectral_limbdarkened_multi
+#   define _STARRY_TYPE_ MapType<Multi, true, false, false, true>
 #else
     static_assert(false, "Invalid or missing `starry` module type.");
 #endif
@@ -122,7 +154,11 @@ PYBIND11_MODULE(
 
     // Constructor
 #   if defined(_STARRY_LIMBDARKENED_)
-        PyMap.def(py::init<int>(), "udeg"_a=2);
+#       if defined(_STARRY_SPECTRAL_)
+            PyMap.def(py::init<int, int>(), "udeg"_a=2, "nterms"_a=1);
+#       else
+            PyMap.def(py::init<int>(), "udeg"_a=2);
+#       endif
 #   elif defined(_STARRY_TEMPORAL_) || defined(_STARRY_SPECTRAL_) 
         PyMap.def(py::init<int, int, int>(), 
                   "ydeg"_a=2, "udeg"_a=0, "nterms"_a=1);
@@ -205,25 +241,43 @@ PYBIND11_MODULE(
     PyMap.def(
         "__setitem__", [](
             Map<T>& map,
-            py::tuple inds,
+            const py::object& inds,
             py::array_t<double>& coeff
         ) {
-            if (inds.size() == 2)
-                return set_Ul(map, inds, coeff);
+            int size;
+            if (py::isinstance<py::tuple>(inds))
+                size = py::cast<py::tuple>(inds).size();
             else
+                size = 1;
+            if (size == _STARRY_UDIM_)
+                return set_Ul(map, inds, coeff);
+            else if (size == _STARRY_YDIM_)
                 return set_Ylm(map, inds, coeff);
+            else
+                throw std::invalid_argument(
+                    "Incorrect coefficient index shape for this type of map."
+                );
     }, docstrings::Map::setitem);
 
     // Item getter
     PyMap.def(
         "__getitem__", [](
             Map<T>& map,
-            py::tuple inds
+            const py::object& inds
         ) -> py::object {
-            if (inds.size() == 2)
-                return get_Ul(map, inds);
+            int size;
+            if (py::isinstance<py::tuple>(inds))
+                size = py::cast<py::tuple>(inds).size();
             else
+                size = 1;
+            if (size == _STARRY_UDIM_)
+                return get_Ul(map, inds);
+            else if (size == _STARRY_YDIM_)
                 return get_Ylm(map, inds);
+            else
+                throw std::invalid_argument(
+                    "Incorrect coefficient index shape for this type of map."
+                );
     }, docstrings::Map::getitem);
 
     // Reset the map

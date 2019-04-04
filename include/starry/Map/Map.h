@@ -63,7 +63,7 @@ protected:
         N((deg + 1) * (deg + 1)),
         data(ydeg),
         y(Ny * Nt, Nw),
-        u(Nu, Nw),
+        u(Nu, S::LimbDarkened ? Nw : 1),
         inc(90.0),
         obl(0.0),
         B(ydeg, udeg),

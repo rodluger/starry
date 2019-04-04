@@ -464,7 +464,7 @@ Set one or more spherical harmonic coefficients
 template <typename T>
 void set_Ylm(
     Map<T>& map, 
-    py::tuple lm,
+    const py::tuple& lm,
     py::array_t<double>& coeff_
 ) {
     using Scalar = typename T::Scalar;
@@ -548,12 +548,12 @@ Set one or more limb darkening coefficients
 template <typename T>
 void set_Ul(
     Map<T>& map, 
-    py::tuple l,
+    const py::object& l,
     py::array_t<double>& coeff_
 ) {
     using Scalar = typename T::Scalar;
     // Figure out the indices we're setting
-#   if defined(_STARRY_SPECTRAL_)
+#   if defined(_STARRY_SPECTRAL_) && defined(_STARRY_LIMBDARKENED_)
         auto inds = get_Ulw_inds(map.udeg, map.Nw, l);
         std::vector<int> rows = std::get<0>(inds);
         std::vector<int> cols = std::get<1>(inds);
@@ -621,7 +621,7 @@ Retrieve one or more spherical harmonic coefficients
 template <typename T>
 py::object get_Ylm (
     Map<T>& map,
-    py::tuple lm
+    const py::tuple& lm
 ) {
     // Figure out the indices we're accessing
 #   if defined(_STARRY_TEMPORAL_)
@@ -683,10 +683,10 @@ Retrieve one or more limb darkening coefficients
 template <typename T>
 py::object get_Ul(
     Map<T>& map, 
-    py::tuple l
+    const py::object& l
 ) {
     // Figure out the indices we're accessing
-#   if defined(_STARRY_SPECTRAL_)
+#   if defined(_STARRY_SPECTRAL_) && defined(_STARRY_LIMBDARKENED_)
         auto inds = get_Ulw_inds(map.udeg, map.Nw, l);
         std::vector<int> rows = std::get<0>(inds);
         std::vector<int> cols = std::get<1>(inds);
@@ -711,7 +711,7 @@ py::object get_Ul(
 
     // Squeeze the output and cast to a py::array
     if (coeff_.size() == 1) {
-#       if defined(_STARRY_SPECTRAL_) 
+#   if defined(_STARRY_SPECTRAL_) && defined(_STARRY_LIMBDARKENED_)
             auto coeff = py::cast(coeff_.row(0));
             MAKE_READ_ONLY(coeff);
             return coeff;

@@ -43,6 +43,10 @@ inline void computeLinearIntensityModelInternal (
 
     } else {
 
+        // Compute the polynomial basis matrix
+        RowMatrix<Scalar> XLD(npts, N);
+        B.computePolyBasis(x, y, XLD);
+
         // Compute the limb darkening operator
         UType tmp = B.U1 * u;
         RowVector<Scalar> norm = (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
@@ -50,11 +54,7 @@ inline void computeLinearIntensityModelInternal (
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
-
-        // Compute the polynomial basis matrix
-        RowMatrix<Scalar> XLD(npts, N);
-        B.computePolyBasis(x, y, XLD);
-
+        
         // Rotate it into Ylm land
         X0 = XLD * L * B.A1.block(0, 0, Ny, Ny);
 

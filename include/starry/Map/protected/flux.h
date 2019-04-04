@@ -4,7 +4,7 @@ in emitted light. Internal method.
 
 */
 template <typename U=S>
-inline EnableIf<!U::Reflected, void> computeLinearFluxModelInternal (
+inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelInternal (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
@@ -128,7 +128,7 @@ in reflected light. Internal method.
 
 */
 template <typename U=S>
-inline EnableIf<U::Reflected, void> computeLinearFluxModelInternal (
+inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelInternal (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
@@ -256,7 +256,7 @@ Compute the linear spherical harmonic model and its gradient. Internal method.
 
 */
 template <typename U=S>
-inline EnableIf<!U::Reflected, void> computeLinearFluxModelInternal (
+inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelInternal (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
@@ -562,7 +562,7 @@ Internal method.
 
 */
 template <typename U=S>
-inline EnableIf<U::Reflected, void> computeLinearFluxModelInternal (
+inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelInternal (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 

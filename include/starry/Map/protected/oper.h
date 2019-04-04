@@ -3,15 +3,6 @@ Check if the total degree of the map is valid.
 
 */
 
-
-//! Compute the illumination matrix
-inline void computeI (
-    int res, 
-    const UnitVector<Scalar>& source
-) {
-    // \todo B.computeIlluminationMatrix(res, source, I);
-}
-
 /**
 Rotate an arbitrary ylm vector in place
 given an axis and an angle.
