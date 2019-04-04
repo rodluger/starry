@@ -28,8 +28,8 @@ import sphinx_rtd_theme
 # Hack: obscure the ugly module names for the docs
 import starry
 starry.Map = type('Map', 
-                   starry._starry_default_double.Map.__bases__,
-                   dict(starry._starry_default_double.Map.__dict__)
+                   starry._starry_default_ylm_double.Map.__bases__,
+                   dict(starry._starry_default_ylm_double.Map.__dict__)
                   )
 
 # -- Project information -----------------------------------------------------

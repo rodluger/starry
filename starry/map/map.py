@@ -6,11 +6,15 @@ from .. import modules
 __all__ = ["Map"]
 
 
-def module_not_found(name):
-    """Throw an error if a module is not found."""
-    bit = modules[name]
-    raise ModuleNotFoundError("Requested module not found. " + 
-        "Please re-compile `starry` with bit %d enabled." % bit)
+def import_by_name(name):
+    """Import a module by name."""
+    name = "_starry_" + name
+    try:
+        exec("from ..%s import Map as CMapBase" % name, globals())
+    except ModuleNotFoundError:
+        bit = modules[(name + "_").upper()]
+        raise ModuleNotFoundError("Requested module not found. " + 
+            "Please re-compile `starry` with bit %d enabled." % bit)
 
 
 def Map(ydeg, udeg=0, **kwargs):
@@ -22,117 +26,47 @@ def Map(ydeg, udeg=0, **kwargs):
     multi = kwargs.pop('multi', False)
     reflected = kwargs.pop('reflected', False)
     nw = kwargs.pop('nw', None)
+    spectral = (nw is not None)
     nt = kwargs.pop('nt', None)
+    temporal = (nt is not None)
     if (ydeg == 0) and (udeg > 0):
         limbdarkened = True
         kwargs["udeg"] = udeg
-        if nt is not None:
-            raise NotImplementedError("Pure limb darkening is not implemented " + 
-                                      "for temporal maps.")
     else:
         limbdarkened = False
         kwargs["ydeg"] = ydeg
         kwargs["udeg"] = udeg
-    if (nw is None):
-        if (nt is None):
-            if (not reflected):
-                if (not multi):
-                    if (limbdarkened):
-                        try:
-                            from .._starry_default_limbdarkened_double import Map as CMapBase
-                        except ModuleNotFoundError:
-                            module_not_found("_STARRY_DEFAULT_LIMBDARKENED_DOUBLE_")
-                    else:
-                        try:
-                            from .._starry_default_double import Map as CMapBase
-                        except ModuleNotFoundError:
-                            module_not_found("_STARRY_DEFAULT_DOUBLE_")
-                else:
-                    if (limbdarkened):
-                        try:
-                            from .._starry_default_limbdarkened_multi import Map as CMapBase
-                        except ModuleNotFoundError:
-                            module_not_found("_STARRY_DEFAULT_LIMBDARKENED_MULTI_")
-                    else:
-                        try:
-                            from .._starry_default_multi import Map as CMapBase
-                        except ModuleNotFoundError:
-                            module_not_found("_STARRY_DEFAULT_MULTI_")
-            else:
-                if (not multi):
-                    try:
-                        from .._starry_default_reflected_double import Map as CMapBase
-                    except ModuleNotFoundError:
-                        module_not_found("_STARRY_DEFAULT_REFLECTED_DOUBLE_")
-                else:
-                    try:
-                        from .._starry_default_reflected_multi import Map as CMapBase
-                    except ModuleNotFoundError:
-                        module_not_found("_STARRY_DEFAULT_REFLECTED_MULTI_")
-        else:
-            kwargs['nterms'] = nt
-            if (not reflected):
-                if (not multi):
-                    try:
-                        from .._starry_temporal_double import Map as CMapBase
-                    except ModuleNotFoundError:
-                        module_not_found("_STARRY_TEMPORAL_DOUBLE_")
-                else:
-                    try:
-                        from .._starry_temporal_multi import Map as CMapBase
-                    except ModuleNotFoundError:
-                        module_not_found("_STARRY_TEMPORAL_MULTI_")
-            else:
-                if (not multi):
-                    try:
-                        from .._starry_temporal_reflected_double import Map as CMapBase
-                    except ModuleNotFoundError:
-                        module_not_found("_STARRY_TEMPORAL_REFLECTED_DOUBLE_")
-                else:
-                    try:
-                        from .._starry_temporal_reflected_multi import Map as CMapBase
-                    except ModuleNotFoundError:
-                        module_not_found("_STARRY_TEMPORAL_REFLECTED_MULTI_")
-    else:
-        if (nt is None):
-            kwargs['nterms'] = nw
-            if (not reflected):
-                if (not multi):
-                    if (limbdarkened):
-                        try:
-                            from .._starry_spectral_limbdarkened_double import Map as CMapBase
-                        except ModuleNotFoundError:
-                            module_not_found("_STARRY_SPECTRAL_LIMBDARKENED_DOUBLE_")
-                    else:
-                        try:
-                            from .._starry_spectral_double import Map as CMapBase
-                        except ModuleNotFoundError:
-                            module_not_found("_STARRY_SPECTRAL_DOUBLE_")
-                else:
-                    if (limbdarkened):
-                        try:
-                            from .._starry_spectral_limbdarkened_multi import Map as CMapBase
-                        except ModuleNotFoundError:
-                            module_not_found("_STARRY_SPECTRAL_LIMBDARKENED_MULTI_")
-                    else:
-                        try:
-                            from .._starry_spectral_multi import Map as CMapBase
-                        except ModuleNotFoundError:
-                            module_not_found("_STARRY_SPECTRAL_MULTI_")
-            else:
-                if (not multi):
-                    try:
-                        from .._starry_spectral_reflected_double import Map as CMapBase
-                    except ModuleNotFoundError:
-                        module_not_found("_STARRY_SPECTRAL_REFLECTED_DOUBLE_")
-                else:
-                    try:
-                        from .._starry_spectral_reflected_multi import Map as CMapBase
-                    except ModuleNotFoundError:
-                        module_not_found("_STARRY_SPECTRAL_REFLECTED_MULTI_")
-        else:
-            raise ValueError("Spectral maps cannot have temporal variability.")
 
+    # Disallowed combinations
+    if limbdarkened and temporal:
+        raise NotImplementedError("Pure limb darkening is not implemented " + 
+                                  "for temporal maps.")
+    elif limbdarkened and reflected:
+        raise NotImplementedError("Pure limb darkening is not implemented " + 
+                                  "in reflected light.") 
+    elif spectral and temporal:
+        raise NotImplementedError("Spectral maps cannot have time dependence.")
+
+    # Figure out the module flags
+    if spectral:
+        kind = "spectral"
+    elif temporal:
+        kind = "temporal"
+    else:
+        kind = "default"
+    if limbdarkened:
+        flag = "ld"
+    elif reflected:
+        flag = "reflected"
+    else:
+        flag = "ylm"
+    if multi:
+        dtype = "multi"
+    else:
+        dtype = "double"
+
+    # Import it
+    import_by_name('%s_%s_%s' % (kind, flag, dtype))
 
     # Subclass it
     class Map(CMapBase, PythonMapBase):
@@ -140,8 +74,8 @@ def Map(ydeg, udeg=0, **kwargs):
         def __init__(self, *init_args, **init_kwargs):
             self._multi = multi
             self._reflected = reflected
-            self._temporal = (nt is not None)
-            self._spectral = (nw is not None)
+            self._temporal = temporal
+            self._spectral = spectral
             self._limbdarkened = limbdarkened
             super(Map, self).__init__(*init_args, **init_kwargs)
 

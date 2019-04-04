@@ -553,7 +553,7 @@ void set_Ul(
 ) {
     using Scalar = typename T::Scalar;
     // Figure out the indices we're setting
-#   if defined(_STARRY_SPECTRAL_) && defined(_STARRY_LIMBDARKENED_)
+#   if defined(_STARRY_SPECTRAL_) && defined(_STARRY_LD_)
         auto inds = get_Ulw_inds(map.udeg, map.Nw, l);
         std::vector<int> rows = std::get<0>(inds);
         std::vector<int> cols = std::get<1>(inds);
@@ -686,7 +686,7 @@ py::object get_Ul(
     const py::object& l
 ) {
     // Figure out the indices we're accessing
-#   if defined(_STARRY_SPECTRAL_) && defined(_STARRY_LIMBDARKENED_)
+#   if defined(_STARRY_SPECTRAL_) && defined(_STARRY_LD_)
         auto inds = get_Ulw_inds(map.udeg, map.Nw, l);
         std::vector<int> rows = std::get<0>(inds);
         std::vector<int> cols = std::get<1>(inds);
@@ -711,7 +711,7 @@ py::object get_Ul(
 
     // Squeeze the output and cast to a py::array
     if (coeff_.size() == 1) {
-#   if defined(_STARRY_SPECTRAL_) && defined(_STARRY_LIMBDARKENED_)
+#   if defined(_STARRY_SPECTRAL_) && defined(_STARRY_LD_)
             auto coeff = py::cast(coeff_.row(0));
             MAKE_READ_ONLY(coeff);
             return coeff;

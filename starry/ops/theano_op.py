@@ -3,7 +3,7 @@ from __future__ import division, print_function
 import numpy as np
 import theano
 import theano.tensor as tt
-from .._starry_default_double import Map
+from .._starry_default_ylm_double import Map
 
 __all__ = ["DefaultYlmOp"]
 

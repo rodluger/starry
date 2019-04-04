@@ -64,8 +64,8 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-def get_ext(module='starry._starry_default_double', 
-            name='_STARRY_DEFAULT_DOUBLE_'):
+def get_ext(module='starry._starry_default_ylm_double', 
+            name='_STARRY_DEFAULT_YLM_DOUBLE_'):
     include_dirs = [
         get_pybind_include(),
         get_pybind_include(user=True),
