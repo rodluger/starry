@@ -74,14 +74,6 @@
 #   define STARRY_MAX_LMAX             50
 #endif
 
-//! If we're keeping `df / du` as `df / dg`, we need to increase 
-//! the size of the array containing the derivative by 1
-#ifdef STARRY_KEEP_DFDU_AS_DFDG
-#   define STARRY_DFDU_DELTA	        1
-#else
-#   define STARRY_DFDU_DELTA	        0
-#endif
-
 //! The value of `pi` in double precision
 #ifndef M_PI
 #   define M_PI     3.14159265358979323846264338328
@@ -130,6 +122,9 @@ using std::max;
 using std::isinf;
 using std::swap;
 
+//! This is an alias for `enable_if_t`
+template <bool B, class T=void>
+using EnableIf = typename std::enable_if<B, T>::type;
 
 // --------------------------
 // ----- Linear Algebra -----
@@ -174,129 +169,70 @@ using ADScalar = Eigen::AutoDiffScalar<Eigen::Matrix<T, N, 1>>;
 
 //! Multiprecision datatype
 #ifdef STARRY_ENABLE_BOOST
-typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
-typedef boost::multiprecision::number<mp_backend, 
-                                      boost::multiprecision::et_off> Multi;
+    typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
+    typedef boost::multiprecision::number<mp_backend, 
+                                        boost::multiprecision::et_off> Multi;
 #else
-typedef void Multi;
+    typedef void Multi;
 #endif
 
-//! Default single-wavelength, static type
-template <typename T, bool REFLECTED=false>
-struct Default 
+template <typename T, bool SPECTRAL, bool TEMPORAL, bool REFLECTED, bool LIMBDARKENED>
+struct MapType { };
+
+// Single-wavelength map in emitted/reflected light with optional time-dependence
+template <typename T, bool TEMPORAL, bool REFLECTED>
+struct MapType<T, false, TEMPORAL, REFLECTED, false> 
 {
-    using Scalar = T;
+    static constexpr bool Spectral = false;
+    static constexpr bool Temporal = TEMPORAL;
     static constexpr bool Reflected = REFLECTED;
+    static constexpr bool LimbDarkened = false;
+    using Scalar = T;
     using YType = Vector<T>;
-    using YCoeffType = OneByOne<T>;
     using UType = Vector<T>;
-    using UCoeffType = OneByOne<T>;
-
-    struct Double {
-        using Scalar = double;
-        using YType = Vector<double>;
-        using YCoeffType = OneByOne<double>;
-        using UType = Vector<double>;
-        using UCoeffType = OneByOne<double>;
-    };
-
 };
 
-//! Spectral type
-template <typename T, bool REFLECTED=false>
-struct Spectral 
+// Spectral map in emitted/reflected light
+template <typename T, bool REFLECTED>
+struct MapType<T, true, false, REFLECTED, false> 
 {
-    using Scalar = T;
+    static constexpr bool Spectral = true;
+    static constexpr bool Temporal = false;
     static constexpr bool Reflected = REFLECTED;
+    static constexpr bool LimbDarkened = false;
+    using Scalar = T;
     using YType = Matrix<T>;
-    using YCoeffType = RowVector<T>;
-    using UType = Vector<T>;
-    using UCoeffType = OneByOne<T>;
-
-    struct Double {
-        using Scalar = double;
-        using YType = Matrix<double>;
-        using YCoeffType = RowVector<double>;
-        using UType = Vector<double>;
-        using UCoeffType = OneByOne<double>;
-    };
+    // \todo Add wavelength-dependent limb darkening
+    using UType = Vector<T>; 
 };
 
-//! Temporal type
-template <typename T, bool REFLECTED=false>
-struct Temporal 
+// Single-wavelength limb-darkened map
+template <typename T>
+struct MapType<T, false, false, false, true> 
 {
+    static constexpr bool Spectral = false;
+    static constexpr bool Temporal = false;
+    static constexpr bool Reflected = false;
+    static constexpr bool LimbDarkened = true;
     using Scalar = T;
-    static constexpr bool Reflected = REFLECTED;
     using YType = Vector<T>;
-    using YCoeffType = RowVector<T>;
-    using UType = Vector<T>;
-    using UCoeffType = OneByOne<T>;
-
-    struct Double {
-        using Scalar = double;
-        using YType = Vector<double>;
-        using YCoeffType = RowVector<double>;
-        using UType = Vector<double>;
-        using UCoeffType = OneByOne<double>;
-    };
+    using UType = Vector<T>; 
 };
 
-// Some sneaky hacks to enable/disable things depending on their type
-template <typename T, typename U=void>
-using IsDefault = 
-    typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
+// \todo Spectral limb-darkened map
+template <typename T>
+struct MapType<T, true, false, false, true> 
+{
+    static constexpr bool Spectral = true;
+    static constexpr bool Temporal = false;
+    static constexpr bool Reflected = false;
+    static constexpr bool LimbDarkened = true;
+    using Scalar = T;
+    using YType = Vector<T>;
+    using UType = Matrix<T>; 
+};
 
-template <typename T, typename U=void>
-using IsSpectral = 
-    typename std::enable_if<
-        std::is_same<T, Spectral<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
 
-template <typename T, typename U=void>
-using IsDefaultOrTemporal = 
-    typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar, T::Reflected>>::value || 
-        std::is_same<T, Temporal<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
-
-template <typename T, typename U=void>
-using IsTemporal = 
-    typename std::enable_if<
-        std::is_same<T, Temporal<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
-
-template <typename T, typename U=void>
-using IsDefaultOrSpectral = 
-    typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar, T::Reflected>>::value || 
-        std::is_same<T, Spectral<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
-
-template <typename T, typename U=void>
-using IsSpectralOrTemporal = 
-    typename std::enable_if<
-        std::is_same<T, Spectral<typename T::Scalar, T::Reflected>>::value || 
-        std::is_same<T, Temporal<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
-
-template <typename T, typename U=void>
-using IsDefaultOrSpectralOrTemporal = 
-    typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar, T::Reflected>>::value || 
-        std::is_same<T, Spectral<typename T::Scalar, T::Reflected>>::value || 
-        std::is_same<T, Temporal<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
-
-template <typename T, typename U=void>
-using IsEmitted = 
-    typename std::enable_if<!T::Reflected, U>::type;
-
-template <typename T, typename U=void>
-using IsReflected = 
-    typename std::enable_if<T::Reflected, U>::type;
 
 // --------------------------
 // -------- Constants -------
@@ -309,52 +245,52 @@ struct tag {};
 
 //! Pi for current type
 #ifdef STARRY_ENABLE_BOOST
-template <class T> 
-inline T pi(
-    tag<T>
-) { 
-    return boost::math::constants::pi<T>(); 
-}
-template <class T> 
-inline Eigen::AutoDiffScalar<T> pi(
-    tag<Eigen::AutoDiffScalar<T>>
-) {
-    return boost::math::constants::pi<typename T::Scalar>();
-}
-template <class T> 
-inline T pi() { 
-    return pi(tag<T>()); 
-}
+    template <class T> 
+    inline T pi(
+        tag<T>
+    ) { 
+        return boost::math::constants::pi<T>(); 
+    }
+    template <class T> 
+    inline Eigen::AutoDiffScalar<T> pi(
+        tag<Eigen::AutoDiffScalar<T>>
+    ) {
+        return boost::math::constants::pi<typename T::Scalar>();
+    }
+    template <class T> 
+    inline T pi() { 
+        return pi(tag<T>()); 
+    }
 #else
-template <class T> 
-inline T pi() { 
-    return static_cast<T>(M_PI); 
-}
+    template <class T> 
+    inline T pi() { 
+        return static_cast<T>(M_PI); 
+    }
 #endif
 
 //! Square root of pi for current type
 #ifdef STARRY_ENABLE_BOOST
-template <class T> 
-inline T root_pi(
-    tag<T>
-) { 
-    return boost::math::constants::root_pi<T>(); 
-}
-template <class T> 
-inline Eigen::AutoDiffScalar<T> root_pi (
-    tag<Eigen::AutoDiffScalar<T>>
-) {
-    return boost::math::constants::root_pi<typename T::Scalar>();
-}
-template <class T> 
-inline T root_pi() { 
-    return root_pi(tag<T>()); 
-}
+    template <class T> 
+    inline T root_pi(
+        tag<T>
+    ) { 
+        return boost::math::constants::root_pi<T>(); 
+    }
+    template <class T> 
+    inline Eigen::AutoDiffScalar<T> root_pi (
+        tag<Eigen::AutoDiffScalar<T>>
+    ) {
+        return boost::math::constants::root_pi<typename T::Scalar>();
+    }
+    template <class T> 
+    inline T root_pi() { 
+        return root_pi(tag<T>()); 
+    }
 #else
-template <class T> 
-inline T root_pi() { 
-    return static_cast<T>(M_SQRTPI); 
-}
+    template <class T> 
+    inline T root_pi() { 
+        return static_cast<T>(M_SQRTPI); 
+    }
 #endif
 
 //! Machine precision for current type

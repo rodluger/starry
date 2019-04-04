@@ -27,13 +27,11 @@ def test_default_no_grad():
     assert(intensity.shape == (npts,))
 
 
-def test_default_ld():
+def test_limbdarkened():
     map = starry.Map(ydeg=0, udeg=udeg)
     map[1:] = 1
-    flux, grad = map.flux(theta=theta, xo=xo, yo=yo, ro=ro, gradient=True)       
-    assert(flux.shape == grad['theta'].shape == grad['xo'].shape == 
-           grad['yo'].shape == grad['ro'].shape == (npts,))
-    assert(grad['y'].shape == (0, npts))
+    flux, grad = map.flux(b=np.linspace(-1, 1, npts), ro=ro, gradient=True)       
+    assert(flux.shape == grad['b'].shape == grad['ro'].shape == (npts,))
     assert(grad['u'].shape == (udeg, npts))
 
 
@@ -66,16 +64,6 @@ def test_spectral_no_grad():
     assert(intensity.shape == (npts, nw))
 
 
-def test_spectral_ld():
-    map = starry.Map(ydeg=0, udeg=udeg, nw=nw)
-    map[1:] = 1
-    flux, grad = map.flux(theta=theta, xo=xo, yo=yo, ro=ro, gradient=True)
-    assert(flux.shape == grad['theta'].shape == grad['xo'].shape == 
-           grad['yo'].shape == grad['ro'].shape == (npts, nw))
-    assert(grad['y'].shape == (0, npts, nw))
-    assert(grad['u'].shape == (udeg, npts, nw))
-
-
 def test_spectral_ylm():
     map = starry.Map(ydeg=ydeg, udeg=0, nw=nw)
     map[:, :, :] = 1
@@ -104,16 +92,6 @@ def test_temporal_no_grad():
     assert(flux.shape == (npts,))
     intensity = map(t=t, theta=theta, x=xo, y=yo)
     assert(intensity.shape == (npts,))
-
-
-def test_temporal_ld():
-    map = starry.Map(ydeg=0, udeg=udeg, nt=nt)
-    map[1:] = 1
-    flux, grad = map.flux(t=t, theta=theta, xo=xo, yo=yo, ro=ro, gradient=True)    
-    assert(flux.shape == grad['theta'].shape == grad['xo'].shape == 
-        grad['yo'].shape == grad['ro'].shape == (npts,))
-    assert(grad['y'].shape == (0, npts))
-    assert(grad['u'].shape == (udeg, npts))
 
 
 def test_temporal_ylm():

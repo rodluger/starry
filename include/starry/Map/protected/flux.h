@@ -3,11 +3,8 @@ Compute the linear spherical harmonic model for default / spectral maps
 in emitted light. Internal method.
 
 */
-template <
-    typename U=S, 
-    typename=IsEmitted<U>
->
-inline void computeLinearFluxModelInternal (
+template <typename U=S>
+inline EnableIf<!U::Reflected, void> computeLinearFluxModelInternal (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
@@ -22,7 +19,7 @@ inline void computeLinearFluxModelInternal (
     CHECK_SHAPE(yo, nt, 1);
     CHECK_SHAPE(zo, nt, 1);
     CHECK_SHAPE(ro, nt, 1);
-    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+    if (S::Temporal) {
         CHECK_ROWS(taylor, nt);
     }
 
@@ -31,7 +28,7 @@ inline void computeLinearFluxModelInternal (
 
     // Pre-compute the limb darkening operator
     if (udeg > 0) {
-        UType tmp = B.U1 * u;
+        auto tmp = (B.U1 * u).eval();
         Vector<Scalar> pu = tmp * pi<Scalar>() * 
             (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
         Matrix<Scalar> L;
@@ -78,7 +75,7 @@ inline void computeLinearFluxModelInternal (
             }
 
             // Apply the Taylor expansion
-            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+            if (S::Temporal) {
                 for (int i = 1; i < Nt; ++i) {
                     X.block(n, i * Ny, 1, Ny) = 
                         X.block(n, 0, 1, Ny) * taylor(n, i);
@@ -113,7 +110,7 @@ inline void computeLinearFluxModelInternal (
             W.leftMultiplyRZeta(sTARzRZetaInvRz, X.block(n, 0, 1, Ny));
 
             // Apply the Taylor expansion
-            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+            if (S::Temporal) {
                 for (int i = 1; i < Nt; ++i) {
                     X.block(n, i * Ny, 1, Ny) = 
                         X.block(n, 0, 1, Ny) * taylor(n, i);
@@ -130,11 +127,8 @@ Compute the linear spherical harmonic model for default / spectral maps
 in reflected light. Internal method.
 
 */
-template <
-    typename U=S, 
-    typename=IsReflected<U>
->
-inline void computeLinearFluxModelInternal (
+template <typename U=S>
+inline EnableIf<U::Reflected, void> computeLinearFluxModelInternal (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
@@ -151,7 +145,7 @@ inline void computeLinearFluxModelInternal (
     CHECK_SHAPE(zo, nt, 1);
     CHECK_SHAPE(ro, nt, 1);
     CHECK_SHAPE(source, nt, 3);
-    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+    if (S::Temporal) {
         CHECK_ROWS(taylor, nt);
     }
 
@@ -160,7 +154,7 @@ inline void computeLinearFluxModelInternal (
 
     // Pre-compute the limb darkening operator
     if (udeg > 0) {
-        UType tmp = B.U1 * u;
+        auto tmp = (B.U1 * u).eval();
         Vector<Scalar> pu = tmp * pi<Scalar>() * 
             (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
         Matrix<Scalar> L;
@@ -235,7 +229,7 @@ inline void computeLinearFluxModelInternal (
             W.leftMultiplyRZeta(rTA1RzRZetaInvRz, X.block(n, 0, 1, Ny));
 
             // Apply the Taylor expansion
-            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+            if (S::Temporal) {
                 for (int i = 1; i < Nt; ++i) {
                     X.block(n, i * Ny, 1, Ny) = 
                         X.block(n, 0, 1, Ny) * taylor(n, i);
@@ -261,11 +255,8 @@ inline void computeLinearFluxModelInternal (
 Compute the linear spherical harmonic model and its gradient. Internal method.
 
 */
-template <
-    typename U=S, 
-    typename=IsEmitted<U>
->
-inline void computeLinearFluxModelInternal (
+template <typename U=S>
+inline EnableIf<!U::Reflected, void> computeLinearFluxModelInternal (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
@@ -288,7 +279,7 @@ inline void computeLinearFluxModelInternal (
     CHECK_SHAPE(yo, nt, 1);
     CHECK_SHAPE(zo, nt, 1);
     CHECK_SHAPE(ro, nt, 1);
-    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+    if (S::Temporal) {
         CHECK_ROWS(taylor, nt);
     }
 
@@ -297,7 +288,7 @@ inline void computeLinearFluxModelInternal (
 
     // Pre-compute the limb darkening operator
     if (udeg > 0) {
-        UType tmp = B.U1 * u;
+        auto tmp = (B.U1 * u).eval();
         Scalar norm = 1.0 / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
         Vector<Scalar> pu = tmp * pi<Scalar>() * norm;
         Matrix<Scalar> L;
@@ -335,7 +326,7 @@ inline void computeLinearFluxModelInternal (
     Dro.resize(nt, Ny * Nt);
     Dinc.resize(nt, Ny * Nt);
     Dobl.resize(nt, Ny * Nt);
-    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value)
+    if (S::Temporal)
         Dt.resize(nt, Ny * Nt);
 
     // Loop over the timeseries and compute the model
@@ -355,7 +346,7 @@ inline void computeLinearFluxModelInternal (
             Dro.row(n).setZero();
             Dinc.row(n).setZero();
             Dobl.row(n).setZero();
-            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value)
+            if (S::Temporal)
                 Dt.row(n).setZero();
 
         // No occultation
@@ -403,7 +394,7 @@ inline void computeLinearFluxModelInternal (
             }
 
             // Apply the Taylor expansion?
-            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+            if (S::Temporal) {
                 Dt.block(n, 0, 1, Ny).setZero();
                 for (int i = 1; i < Nt; ++i) {
                     X.block(n, i * Ny, 1, Ny) = 
@@ -532,7 +523,7 @@ inline void computeLinearFluxModelInternal (
             }
 
             // Apply the Taylor expansion?
-            if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+            if (S::Temporal) {
                 Dt.block(n, 0, 1, Ny).setZero();
                 for (int i = 1; i < Nt; ++i) {
                     X.block(n, i * Ny, 1, Ny) = 
@@ -570,11 +561,8 @@ inline void computeLinearFluxModelInternal (
 Internal method.
 
 */
-template <
-    typename U=S, 
-    typename=IsReflected<U>
->
-inline void computeLinearFluxModelInternal (
+template <typename U=S>
+inline EnableIf<U::Reflected, void> computeLinearFluxModelInternal (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
@@ -599,12 +587,8 @@ inline void computeLinearFluxModelInternal (
 Compute the flux from a purely limb-darkened map.
 
 */
-template <
-    typename U=S, 
-    typename=IsEmitted<U>,
-    typename=IsDefault<U>
->
-inline void computeLimbDarkenedFluxInternal (
+template <typename U=S>
+inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     const Vector<Scalar>& b, 
     const Vector<Scalar>& zo,
     const Vector<Scalar>& ro, 
@@ -623,7 +607,7 @@ inline void computeLimbDarkenedFluxInternal (
     for (size_t n = 0; n < nt; ++n) {
 
         // No occultation
-        if ((zo < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
+        if ((zo(n) < 0) || (b(n) >= 1 + ro(n)) || (ro(n) <= 0.0)) {
 
             // Easy!
             flux(n) = 1.0;
@@ -632,7 +616,7 @@ inline void computeLimbDarkenedFluxInternal (
         } else {
 
             // Compute the Agol `s` vector
-            L.compute(b, ro);
+            L.compute(b(n), ro(n));
 
             // Dot the integral solution in, and we're done!
             flux(n) = L.sT * L.g;
@@ -647,19 +631,68 @@ Compute the flux from a purely limb-darkened map.
 Also compute the gradient.
 
 */
-template <
-    typename U=S, 
-    typename=IsEmitted<U>,
-    typename=IsDefault<U>
->
-inline void computeLimbDarkenedFluxInternal (
+template <typename U=S>
+inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     const Vector<Scalar>& b, 
     const Vector<Scalar>& zo,
     const Vector<Scalar>& ro,
     Vector<Scalar>& flux,
-    Vector<Scalar> Db,
-    Vector<Scalar> Dr,
-    RowMatrix<Scalar>& Du
+    Vector<Scalar>& Db,
+    Vector<Scalar>& Dro,
+    Matrix<Scalar>& Du
 ) {
-    // todo
+
+    // Shape checks
+    size_t nt = b.rows();
+    CHECK_SHAPE(zo, nt, 1);
+    CHECK_SHAPE(ro, nt, 1);
+    flux.resize(nt);
+    Db.resize(nt);
+    Dro.resize(nt);
+    Du.resize(udeg, nt);
+    Matrix<Scalar> Dg(udeg + 1, nt);
+
+    // Compute the Agol `g` basis
+    L.computeBasis(u);
+
+    // Loop through the timeseries
+    for (size_t n = 0; n < nt; ++n) {
+
+        // No occultation
+        if ((zo(n) < 0) || (b(n) >= 1 + ro(n)) || (ro(n) <= 0.0)) {
+
+            // Most of the derivs are zero
+            Db(n) = 0;
+            Dro(n) = 0;
+            Du.col(n).setZero();
+            flux(n) = 1.0;
+
+        // Occultation
+        } else {
+
+            // Compute the Agol `s` vector and its derivs
+            L.template compute<true>(b(n), ro(n));
+
+            // Compute the flux
+            flux(n) = L.sT * L.g;
+
+            // b and ro derivs
+            Db(n) = L.dsTdb * L.g;
+            Dro(n) = L.dsTdr * L.g;
+
+            // dF / Du from dF / dg
+            if (likely(udeg > 0)) {
+                Dg.col(n) = L.sT;
+                Dg(0, n) -= pi<Scalar>() * flux(n);
+                Dg(1, n) -= (2.0 / 3.0) * pi<Scalar>() * flux(n);
+            }
+
+        }
+
+    }
+
+    // Change basis to `u`
+    if (likely(udeg > 0))
+        Du = L.DgDu * Dg;
+
 }

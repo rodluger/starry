@@ -87,7 +87,7 @@ def test_high_order_ld():
     # Compute the starry flux
     map = Map(ydeg=0, udeg=len(u))
     map[1:] = u
-    sF = map.flux(xo=b, yo=0, ro=r)
+    sF = map.flux(b=b, ro=r)
 
     # Numerical flux
     nF = np.zeros_like(b)

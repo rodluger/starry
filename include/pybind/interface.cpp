@@ -16,90 +16,82 @@
 
 // Select which module to build
 #if defined(_STARRY_DEFAULT_DOUBLE_) || defined(_STARRY_DEFAULT_REFL_DOUBLE_)
-#   define _STARRY_DEFAULT_
 #   define _STARRY_DOUBLE_
-#   define _STARRY_STATIC_
-#   define _STARRY_SINGLECOL_
 #   if defined(_STARRY_DEFAULT_DOUBLE_)
 #       define _STARRY_NAME_ _starry_default_double
-#       define _STARRY_TYPE_ Default<double, false>
-#       define _STARRY_EMITTED_
+#       define _STARRY_TYPE_ MapType<double, false, false, false, false>
 #   else
 #       define _STARRY_NAME_ _starry_default_refl_double
-#       define _STARRY_TYPE_ Default<double, true>
+#       define _STARRY_TYPE_ MapType<double, false, false, true, false>
 #       define _STARRY_REFLECTED_
 #   endif
 #elif defined(_STARRY_DEFAULT_MULTI_) || defined(_STARRY_DEFAULT_REFL_MULTI_)
-#   define _STARRY_DEFAULT_
 #   define _STARRY_MULTI_
-#   define _STARRY_STATIC_
-#   define _STARRY_SINGLECOL_
 #   define STARRY_ENABLE_BOOST
 #   if defined(_STARRY_DEFAULT_MULTI_)
 #       define _STARRY_NAME_ _starry_default_multi
-#       define _STARRY_TYPE_ Default<Multi, false>
-#       define _STARRY_EMITTED_
+#       define _STARRY_TYPE_ MapType<Multi, false, false, false, false>
 #   else
 #       define _STARRY_NAME_ _starry_default_refl_multi
-#       define _STARRY_TYPE_ Default<Multi, true>
+#       define _STARRY_TYPE_ MapType<Multi, false, false, true, false>
 #       define _STARRY_REFLECTED_
 #   endif
 #elif defined(_STARRY_SPECTRAL_DOUBLE_) || defined(_STARRY_SPECTRAL_REFL_DOUBLE_)
 #   define _STARRY_SPECTRAL_
 #   define _STARRY_DOUBLE_
-#   define _STARRY_STATIC_
-#   define _STARRY_MULTI_COL
 #   if defined(_STARRY_SPECTRAL_DOUBLE_)
 #       define _STARRY_NAME_ _starry_spectral_double
-#       define _STARRY_TYPE_ Spectral<double, false>
-#       define _STARRY_EMITTED_
+#       define _STARRY_TYPE_ MapType<double, true, false, false, false>
 #   else
 #       define _STARRY_NAME_ _starry_spectral_refl_double
-#       define _STARRY_TYPE_ Spectral<double, true>
+#       define _STARRY_TYPE_ MapType<double, true, false, true, false>
 #       define _STARRY_REFLECTED_
 #   endif
 #elif defined(_STARRY_SPECTRAL_MULTI_) || defined(_STARRY_SPECTRAL_REFL_MULTI_)
 #   define _STARRY_SPECTRAL_
 #   define _STARRY_MULTI_
-#   define _STARRY_STATIC_
-#   define _STARRY_MULTI_COL
 #   define STARRY_ENABLE_BOOST
 #   if defined(_STARRY_SPECTRAL_MULTI_)
 #       define _STARRY_NAME_ _starry_spectral_multi
-#       define _STARRY_TYPE_ Spectral<Multi, false>
-#       define _STARRY_EMITTED_
+#       define _STARRY_TYPE_ MapType<Multi, true, false, false, false>
 #   else
 #       define _STARRY_NAME_ _starry_spectral_refl_multi
-#       define _STARRY_TYPE_ Spectral<Multi, true>
+#       define _STARRY_TYPE_ MapType<Multi, true, false, true, false>
 #       define _STARRY_REFLECTED_
 #   endif
 #elif defined(_STARRY_TEMPORAL_DOUBLE_) || defined(_STARRY_TEMPORAL_REFL_DOUBLE_)
 #   define _STARRY_TEMPORAL_
 #   define _STARRY_DOUBLE_
-#   define _STARRY_MULTI_COL
 #   if defined(_STARRY_TEMPORAL_DOUBLE_)
 #       define _STARRY_NAME_ _starry_temporal_double
-#       define _STARRY_TYPE_ Temporal<double, false>
-#       define _STARRY_EMITTED_
+#       define _STARRY_TYPE_ MapType<double, false, true, false, false>
 #   else
 #       define _STARRY_NAME_ _starry_temporal_refl_double
-#       define _STARRY_TYPE_ Temporal<double, true>
+#       define _STARRY_TYPE_ MapType<double, false, true, true, false>
 #       define _STARRY_REFLECTED_
 #   endif
 #elif defined(_STARRY_TEMPORAL_MULTI_) || defined(_STARRY_TEMPORAL_REFL_MULTI_)
 #   define _STARRY_TEMPORAL_
 #   define _STARRY_MULTI_
-#   define _STARRY_MULTI_COL
 #   define STARRY_ENABLE_BOOST
 #   if defined(_STARRY_TEMPORAL_MULTI_)
 #       define _STARRY_NAME_ _starry_temporal_multi
-#       define _STARRY_TYPE_ Temporal<Multi, false>
-#       define _STARRY_EMITTED_
+#       define _STARRY_TYPE_ MapType<Multi, false, true, false, false>
 #   else
 #       define _STARRY_NAME_ _starry_temporal_refl_multi
-#       define _STARRY_TYPE_ Temporal<Multi, true>
+#       define _STARRY_TYPE_ MapType<Multi, false, true, true, false>
 #       define _STARRY_REFLECTED_
-#endif
+#   endif
+#elif defined(_STARRY_LIMBDARKENED_DOUBLE_)
+#   define _STARRY_LIMBDARKENED_
+#   define _STARRY_DOUBLE_
+#   define _STARRY_NAME_ _starry_limbdarkened_double
+#   define _STARRY_TYPE_ MapType<double, false, false, false, true>
+#elif defined(_STARRY_LIMBDARKENED_MULTI_)
+#   define _STARRY_LIMBDARKENED_
+#   define _STARRY_MULTI_
+#   define _STARRY_NAME_ _starry_limbdarkened_multi
+#   define _STARRY_TYPE_ MapType<Multi, false, false, false, true>
 #else
     static_assert(false, "Invalid or missing `starry` module type.");
 #endif
@@ -129,11 +121,13 @@ PYBIND11_MODULE(
     py::class_<Map<T>> PyMap(m, "Map", docstrings::Map::doc);
 
     // Constructor
-#   if defined(_STARRY_SINGLECOL_) 
-        PyMap.def(py::init<int, int>(), "ydeg"_a=2, "udeg"_a=0);
-#   else
+#   if defined(_STARRY_LIMBDARKENED_)
+        PyMap.def(py::init<int>(), "udeg"_a=2);
+#   elif defined(_STARRY_TEMPORAL_) || defined(_STARRY_SPECTRAL_) 
         PyMap.def(py::init<int, int, int>(), 
                   "ydeg"_a=2, "udeg"_a=0, "nterms"_a=1);
+#   else
+        PyMap.def(py::init<int, int>(), "ydeg"_a=2, "udeg"_a=0);
 #   endif
 
     // String representation of the map
@@ -332,12 +326,12 @@ PYBIND11_MODULE(
 
             // Squeeze the output and cast to a py::array
             if (coeff_.size() == 1) {
-#               ifdef _STARRY_DEFAULT_
-                    return py::cast<double>(coeff_(0));
-#               else
+#               if defined(_STARRY_TEMPORAL_) || defined(_STARRY_SPECTRAL_) 
                     auto coeff = py::cast(coeff_.row(0));
                     MAKE_READ_ONLY(coeff);
                     return coeff;
+#               else
+                    return py::cast<double>(coeff_(0));
 #               endif
             } else {
                 auto coeff = py::cast(coeff_);
@@ -439,177 +433,188 @@ PYBIND11_MODULE(
             return u;
     }, docstrings::Map::u);
 
-    // Get/set the rotation axis
-    PyMap.def_property(
-        "axis", [] (
-            Map<T> &map
-        ) -> UnitVector<double> {
-            return map.getAxis().template cast<double>();
-        }, [] (
-            Map<T> &map, 
-            UnitVector<double>& axis
-        ) {
-            map.setAxis(axis.template cast<Scalar>());
-    }, docstrings::Map::axis);
+// Ylm map methods
+#   if !defined(_STARRY_LIMBDARKENED_)
 
-    // Get/set the map inclination
-    PyMap.def_property(
-        "inc", [] (
-            Map<T> &map
-        ) -> double {
-            return static_cast<double>(map.getInclination());
-        }, [] (
-            Map<T> &map, 
-            double& inc
-        ) {
-            map.setInclination(static_cast<Scalar>(inc));
-    }, docstrings::Map::inc);
-
-    // Get/set the map obliquity
-    PyMap.def_property(
-        "obl", [] (
-            Map<T> &map
-        ) -> double {
-            return static_cast<double>(map.getObliquity());
-        }, [] (
-            Map<T> &map, 
-            double& obl
-        ) {
-            map.setObliquity(static_cast<Scalar>(obl));
-    }, docstrings::Map::obl);
-
-    // Rotate the base map
-    PyMap.def(
-        "rotate", [](
-            Map<T>& map,
-            const double& theta
-        ) {
-            map.rotate(theta);
-    }, "theta"_a=0.0, docstrings::Map::rotate);
-
-    // Add a gaussian spot with a vector amplitude
-#   if defined(_STARRY_SINGLECOL_)
-        PyMap.def(
-            "add_spot", [](
-                Map<T>& map,
-                const double& amp,
-                const double& sigma,
-                const double& lat,
-                const double& lon,
-                const int lmax
+        // Get/set the rotation axis
+        PyMap.def_property(
+            "axis", [] (
+                Map<T> &map
+            ) -> UnitVector<double> {
+                return map.getAxis().template cast<double>();
+            }, [] (
+                Map<T> &map, 
+                UnitVector<double>& axis
             ) {
-                typename T::YCoeffType amp_;
-                amp_(0) = amp;
-                map.addSpot(amp_, sigma, lat, lon, lmax);
-            }, 
-            docstrings::Map::add_spot,
-            "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
-#   else
-        PyMap.def(
-            "add_spot", [](
-                Map<T>& map,
-                const typename T::Double::YCoeffType& amp,
-                const double& sigma,
-                const double& lat,
-                const double& lon,
-                const int lmax
-            ) {
-                map.addSpot(amp.template cast<Scalar>(), 
-                            sigma, lat, lon, lmax);
-            }, 
-            docstrings::Map::add_spot,
-            "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
-#   endif
+                map.setAxis(axis.template cast<Scalar>());
+        }, docstrings::Map::axis);
 
-    // Generate a random map
-#   if defined(_STARRY_SINGLECOL_)
-        PyMap.def(
-            "random", [](
-                Map<T>& map,
-                const Vector<double>& power,
-                py::object seed_
+        // Get/set the map inclination
+        PyMap.def_property(
+            "inc", [] (
+                Map<T> &map
+            ) -> double {
+                return static_cast<double>(map.getInclination());
+            }, [] (
+                Map<T> &map, 
+                double& inc
             ) {
-                if (seed_.is(py::none())) {
-                    // \todo Find a better, more thread-safe randomizer seed
-                    auto seed = std::chrono::system_clock::now()
-                                .time_since_epoch().count();
-                    map.random(power.template cast<Scalar>(), seed);
-                } else {
-                    double seed = py::cast<double>(seed_);
-                    map.random(power.template cast<Scalar>(), seed);
-                }
-            }, 
-            docstrings::Map::random,
-            "power"_a, "seed"_a=py::none());
-#   else
-        PyMap.def(
-            "random", [](
-                Map<T>& map,
-                const Vector<double>& power,
-                py::object seed_,
-                int col
+                map.setInclination(static_cast<Scalar>(inc));
+        }, docstrings::Map::inc);
+
+        // Get/set the map obliquity
+        PyMap.def_property(
+            "obl", [] (
+                Map<T> &map
+            ) -> double {
+                return static_cast<double>(map.getObliquity());
+            }, [] (
+                Map<T> &map, 
+                double& obl
             ) {
-                if (seed_.is(py::none())) {
-                    // \todo Find a better, more thread-safe randomizer seed
-                    auto seed = std::chrono::system_clock::now()
-                                .time_since_epoch().count();
-                    map.random(power.template cast<Scalar>(), seed, col);
-                } else {
-                    double seed = py::cast<double>(seed_);
-                    map.random(power.template cast<Scalar>(), seed, col);
-                }
-            }, 
-            docstrings::Map::random,
-            "power"_a, "seed"_a=py::none(), "col"_a=-1);
-#   endif
+                map.setObliquity(static_cast<Scalar>(obl));
+        }, docstrings::Map::obl);
 
-    // Compute the intensity
-#   if defined(_STARRY_STATIC_)
-#       if defined(_STARRY_EMITTED_)
-            PyMap.def("linear_intensity_model", linear_intensity_model<T>(), 
-                      "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
-#       else
-            PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
-                      "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                      "source"_a=-xhat<double>());
-#       endif
-#   else
-#       if defined(_STARRY_EMITTED_)
-            PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
-                      "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
-#       else
-            PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
-                      "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                      "source"_a=-xhat<double>());
-#       endif
-#   endif
+        // Rotate the base map
+        PyMap.def(
+            "rotate", [](
+                Map<T>& map,
+                const double& theta
+            ) {
+                map.rotate(theta);
+        }, "theta"_a=0.0, docstrings::Map::rotate);
 
-// Compute the flux
-#   if defined(_STARRY_STATIC_)
-#       if defined(_STARRY_EMITTED_)
-            PyMap.def("linear_flux_model", linear_flux_model<T>(), 
-                      "theta"_a=0.0, "xo"_a=0.0, 
-                      "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
-#       else
-            PyMap.def("linear_flux_model", linear_flux_model<T>(), 
-                      "theta"_a=0.0, "xo"_a=0.0, 
-                      "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, 
-                      "source"_a=-xhat<double>(), "gradient"_a=false);
-#       endif
-#   else
-#       if defined(_STARRY_EMITTED_)
-            PyMap.def("linear_flux_model", linear_flux_model<T>(), 
-                      "t"_a=0.0, 
-                      "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
-                      "ro"_a=0.0, "gradient"_a=false);
-#       else
-            PyMap.def("linear_flux_model", linear_flux_model<T>(), 
-                      "t"_a=0.0, 
-                      "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
-                      "ro"_a=0.0, "source"_a=-xhat<double>(), 
-                      "gradient"_a=false);
-#       endif
-#   endif
+        // Add a gaussian spot
+#       if defined(_STARRY_TEMPORAL_) || defined(_STARRY_SPECTRAL_) 
+            PyMap.def(
+                "add_spot", [](
+                    Map<T>& map,
+                    const RowVector<double>& amp,
+                    const double& sigma,
+                    const double& lat,
+                    const double& lon,
+                    const int lmax
+                ) {
+                    map.addSpot(amp.template cast<Scalar>(), 
+                                sigma, lat, lon, lmax);
+                }, 
+                docstrings::Map::add_spot,
+                "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
+#      else
+            PyMap.def(
+                "add_spot", [](
+                    Map<T>& map,
+                    const double& amp,
+                    const double& sigma,
+                    const double& lat,
+                    const double& lon,
+                    const int lmax
+                ) {
+                    RowVector<Scalar> amp_(1);
+                    amp_(0) = amp;
+                    map.addSpot(amp_, sigma, lat, lon, lmax);
+                }, 
+                docstrings::Map::add_spot,
+                "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
+#      endif
+
+        // Generate a random map
+#      if defined(_STARRY_TEMPORAL_) || defined(_STARRY_SPECTRAL_) 
+            PyMap.def(
+                "random", [](
+                    Map<T>& map,
+                    const Vector<double>& power,
+                    py::object seed_,
+                    int col
+                ) {
+                    if (seed_.is(py::none())) {
+                        // \todo Find a better, more thread-safe randomizer seed
+                        auto seed = std::chrono::system_clock::now()
+                                    .time_since_epoch().count();
+                        map.random(power.template cast<Scalar>(), seed, col);
+                    } else {
+                        double seed = py::cast<double>(seed_);
+                        map.random(power.template cast<Scalar>(), seed, col);
+                    }
+                }, 
+                docstrings::Map::random,
+                "power"_a, "seed"_a=py::none(), "col"_a=-1);
+#      else
+            PyMap.def(
+                "random", [](
+                    Map<T>& map,
+                    const Vector<double>& power,
+                    py::object seed_
+                ) {
+                    if (seed_.is(py::none())) {
+                        // \todo Find a better, more thread-safe randomizer seed
+                        auto seed = std::chrono::system_clock::now()
+                                    .time_since_epoch().count();
+                        map.random(power.template cast<Scalar>(), seed);
+                    } else {
+                        double seed = py::cast<double>(seed_);
+                        map.random(power.template cast<Scalar>(), seed);
+                    }
+                }, 
+                docstrings::Map::random,
+                "power"_a, "seed"_a=py::none());
+#      endif
+
+        // Compute the linear intensity model
+#      if defined(_STARRY_TEMPORAL_)
+#          if defined(_STARRY_REFLECTED_)
+                PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
+                        "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
+                        "source"_a=-xhat<double>());
+#          else
+                PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
+                        "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
+#          endif
+#      else
+#          if defined(_STARRY_REFLECTED_)
+                PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
+                        "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
+                        "source"_a=-xhat<double>());
+#          else
+                PyMap.def("linear_intensity_model", linear_intensity_model<T>(), 
+                        "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
+#          endif
+#      endif
+
+        // Compute the linear flux model
+#      if defined(_STARRY_TEMPORAL_)
+#          if defined(_STARRY_REFLECTED_)
+                PyMap.def("linear_flux_model", linear_flux_model<T>(), 
+                        "t"_a=0.0, 
+                        "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
+                        "ro"_a=0.0, "source"_a=-xhat<double>(), 
+                        "gradient"_a=false);
+#          else
+                PyMap.def("linear_flux_model", linear_flux_model<T>(), 
+                        "t"_a=0.0, 
+                        "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
+                        "ro"_a=0.0, "gradient"_a=false);
+#          endif
+#      else
+#          if defined(_STARRY_REFLECTED_)
+                PyMap.def("linear_flux_model", linear_flux_model<T>(), 
+                        "theta"_a=0.0, "xo"_a=0.0, 
+                        "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, 
+                        "source"_a=-xhat<double>(), "gradient"_a=false);
+#          else
+                PyMap.def("linear_flux_model", linear_flux_model<T>(), 
+                        "theta"_a=0.0, "xo"_a=0.0, 
+                        "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
+#          endif
+#      endif
+
+// Limb darkened map methods
+#else
+
+    PyMap.def("flux", ld_flux<T>(),
+              "b"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
+
+#endif
 
     // Code version
 #   ifdef VERSION_INFO
@@ -629,11 +634,6 @@ PYBIND11_MODULE(
             flags["STARRY_MAX_LMAX"] = STARRY_MAX_LMAX;
             flags["STARRY_BCUT"] = STARRY_BCUT;
             flags["STARRY_MN_MAX_ITER"] = STARRY_MN_MAX_ITER;
-#           ifdef STARRY_KEEP_DFDU_AS_DFDG
-                flags["STARRY_KEEP_DFDU_AS_DFDG"] = STARRY_KEEP_DFDU_AS_DFDG;
-#           else
-                flags["STARRY_KEEP_DFDU_AS_DFDG"] = 0;
-#           endif
 #           ifdef STARRY_O
                 flags["STARRY_O"] = STARRY_O;
 #           else

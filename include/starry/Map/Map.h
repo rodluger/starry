@@ -1,5 +1,5 @@
 //! The Map class
-template <class S=Default<double, false>>
+template <class S=MapType<double, false, false, false, false>>
 class Map 
 {
 
@@ -7,10 +7,6 @@ public:
 
     // Types
     using Scalar = typename S::Scalar;                                         /**< The scalar type of the map */
-    using YType = typename S::YType;                                           /**< The type of the spherical harmonic coefficient object (vector/matrix) */
-    using YCoeffType = typename S::YCoeffType;                                 /**< The type of the spherical harmonic coefficients (scalar/row vector) */
-    using UType = typename S::UType;                                           /**< The type of the limb darkening coefficient object (vector/matrix) */
-    using UCoeffType = typename S::UCoeffType;                                 /**< The type of the limb darkening coefficients (scalar/row vector) */
 
     // Public variables
     const int ydeg;                                                            /**< Maximum degree of the spherical harmonic map */
@@ -34,8 +30,8 @@ protected:
     #include "protected/arrays.h"
 
     // Internal variables
-    YType y;                                                                   /**< Vector of spherical harmonic coefficients */
-    UType u;                                                                   /**< Vector of limb darkening coefficients */
+    typename S::YType y;                                                       /**< Vector of spherical harmonic coefficients */
+    typename S::UType u;                                                       /**< Vector of limb darkening coefficients */
     Scalar inc;                                                                /**< Inclination of the rotation axis in degrees */
     Scalar obl;                                                                /**< Obliquity of the rotation axis in degrees */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
@@ -71,8 +67,9 @@ protected:
         B(ydeg, udeg),
         W(ydeg, inc, obl),
         G(deg),
-        L(udeg)
+        L(udeg, Nw)
     {
+        // Bounds checks
         if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))
             throw std::out_of_range(
                 "Spherical harmonic degree out of range.");
@@ -93,22 +90,47 @@ protected:
 public:
 
     //! Constructor for the default map
-    template <typename U=S, typename=IsDefault<U>>
+    template <
+        typename U=S, 
+        typename=EnableIf<!(U::Spectral || U::Temporal || U::LimbDarkened)>
+    >
     explicit Map (
         int ydeg,
         int udeg
     ) : Map(ydeg, udeg, 1, 1, 1) {}
 
     //! Constructor for spectral & temporal maps
-    template <typename U=S, typename=IsSpectralOrTemporal<U>>
+    template <
+        typename U=S, 
+        typename=EnableIf<(U::Spectral || U::Temporal) && !U::LimbDarkened>
+    >
     explicit Map (
         int ydeg,
         int udeg,
         int nterms
     ) : Map(ydeg, udeg, 
-            std::is_same<U, Spectral<Scalar, S::Reflected>>::value ? nterms : 1,
-            std::is_same<U, Temporal<Scalar, S::Reflected>>::value ? nterms : 1,
-            std::is_same<U, Spectral<Scalar, S::Reflected>>::value ? nterms : 1) {}
+            U::Spectral ? nterms : 1,
+            U::Temporal ? nterms : 1,
+            U::Spectral ? nterms : 1) {}
+
+    //! Constructor for the single-wavelength limb-darkened map
+    template <
+        typename U=S, 
+        typename=EnableIf<U::LimbDarkened && !U::Spectral>
+    >
+    explicit Map (
+        int udeg
+    ) : Map(0, udeg, 1, 1, 1) {}
+
+    //! Constructor for the spectral limb-darkened map
+    // Note that we need to hack SFINAE a little differently
+    // to avoid re-declaration of the <int, int> specialization
+    template <typename U=S>
+    explicit Map (
+        int udeg,
+        int nterms,
+        EnableIf<U::LimbDarkened && U::Spectral>* = 0
+    ) : Map(0, udeg, nterms, 1, nterms) {}
 
     // Public methods
     #include "public/io.h"

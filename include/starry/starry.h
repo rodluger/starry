@@ -22,7 +22,7 @@ namespace starry {
 
     using maps::Map;
     using utils::Multi;
-    using utils::Default;
+    using utils::Basic;
     using utils::Spectral;
     using utils::Temporal;
 

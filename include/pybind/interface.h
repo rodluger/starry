@@ -605,35 +605,35 @@ std::function<py::object (
 #               endif 
                 map.data.X, 
 #               ifdef _STARRY_TEMPORAL_
-                    map.data.DADt,
+                    map.data.DXDt,
 #               endif
-                map.data.DADtheta, 
-                map.data.DADxo, 
-                map.data.DADyo, 
-                map.data.DADro,
+                map.data.DXDtheta, 
+                map.data.DXDxo, 
+                map.data.DXDyo, 
+                map.data.DXDro,
 #               ifdef _STARRY_REFLECTED_
-                    map.data.DADsource, 
+                    map.data.DXDsource, 
 #               endif   
-                map.data.DADu, 
-                map.data.DADinc,
-                map.data.DADobl
+                map.data.DXDu, 
+                map.data.DXDinc,
+                map.data.DXDobl
             );
 
             // Get Eigen references to the arrays, as these
             // are automatically passed by ref to the Python side
 #           ifdef _STARRY_TEMPORAL_
-                auto Dt = Ref<RowMatrix<Scalar>>(map.data.DADt);
+                auto Dt = Ref<RowMatrix<Scalar>>(map.data.DXDt);
 #           endif
-            auto Dtheta = Ref<RowMatrix<Scalar>>(map.data.DADtheta);
-            auto Dxo = Ref<RowMatrix<Scalar>>(map.data.DADxo);
-            auto Dyo = Ref<RowMatrix<Scalar>>(map.data.DADyo);
-            auto Dro = Ref<RowMatrix<Scalar>>(map.data.DADro);
+            auto Dtheta = Ref<RowMatrix<Scalar>>(map.data.DXDtheta);
+            auto Dxo = Ref<RowMatrix<Scalar>>(map.data.DXDxo);
+            auto Dyo = Ref<RowMatrix<Scalar>>(map.data.DXDyo);
+            auto Dro = Ref<RowMatrix<Scalar>>(map.data.DXDro);
 #           ifdef _STARRY_REFLECTED_
-                auto Dsource = Ref<RowMatrix<Scalar>>(map.data.DADsource);
+                auto Dsource = Ref<RowMatrix<Scalar>>(map.data.DXDsource);
 #           endif
-            auto Du = Ref<RowMatrix<Scalar>>(map.data.DADu);
-            auto Dinc = Ref<RowMatrix<Scalar>>(map.data.DADinc);
-            auto Dobl = Ref<RowMatrix<Scalar>>(map.data.DADobl);
+            auto Du = Ref<RowMatrix<Scalar>>(map.data.DXDu);
+            auto Dinc = Ref<RowMatrix<Scalar>>(map.data.DXDinc);
+            auto Dobl = Ref<RowMatrix<Scalar>>(map.data.DXDobl);
 
             // Construct a dictionary
             py::dict gradient = py::dict(
@@ -656,6 +656,93 @@ std::function<py::object (
             // Return
             return py::make_tuple(
                 ENSURE_DOUBLE_ARR(map.data.X), 
+                gradient
+            );
+
+        }
+
+    };
+}
+
+/**
+Return a lambda function to compute the limb-darkened flux.
+Optionally compute and return the gradient.
+
+*/
+template <typename T>
+std::function<py::object (
+        Map<T> &,
+        PY_ARRAY&, 
+        PY_ARRAY&, 
+        PY_ARRAY&, 
+        bool
+    )> ld_flux () 
+{
+    return []
+    (
+        Map<T> &map, 
+        PY_ARRAY& b_, 
+        PY_ARRAY& zo_,
+        PY_ARRAY& ro_,
+        bool compute_gradient
+    ) -> py::object 
+    {
+        using Scalar = typename T::Scalar;
+
+        // Figure out the length of the timeseries
+        std::vector<long> v {
+            b_.request().size,
+            zo_.request().size,
+            ro_.request().size
+        };
+        py::ssize_t nt = *std::max_element(v.begin(), v.end());
+
+        // Get Eigen references to the Python arrays
+        MAP_TO_EIGEN_VECTOR(b_, b, Scalar, nt);
+        MAP_TO_EIGEN_VECTOR(zo_, zo, Scalar, nt);
+        MAP_TO_EIGEN_VECTOR(ro_, ro, Scalar, nt);
+
+        if (!compute_gradient) {
+
+            // Compute the model and return
+            map.computeLimbDarkenedFlux(
+                b, 
+                zo, 
+                ro, 
+                map.data.flux
+            );
+
+            return PYOBJECT_CAST_ARR(map.data.flux);
+
+        } else {
+
+            // Compute the model + gradient
+            map.computeLimbDarkenedFlux(
+                b, 
+                zo, 
+                ro,
+                map.data.flux, 
+                map.data.DfDb, 
+                map.data.DfDro,
+                map.data.DfDu
+            );
+
+            // Get Eigen references to the arrays, as these
+            // are automatically passed by ref to the Python side
+            auto Db = Ref<Vector<Scalar>>(map.data.DfDb);
+            auto Dro = Ref<Vector<Scalar>>(map.data.DfDro);
+            auto Du = Ref<Matrix<Scalar>>(map.data.DfDu);
+
+            // Construct a dictionary
+            py::dict gradient = py::dict(
+                "b"_a=ENSURE_DOUBLE_ARR(Db),
+                "ro"_a=ENSURE_DOUBLE_ARR(Dro),  
+                "u"_a=ENSURE_DOUBLE_ARR(Du)          
+            );
+
+            // Return
+            return py::make_tuple(
+                ENSURE_DOUBLE_ARR(map.data.flux), 
                 gradient
             );
 

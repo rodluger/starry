@@ -1,13 +1,9 @@
 /**
-Compute the linear Ylm model. Default / Spectral specialization.
+Compute the linear Ylm model. Basic / Spectral specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsDefaultOrSpectral<U>, 
-    typename=IsEmitted<U>
->
-inline void computeLinearIntensityModel (
+template <typename U=S>
+inline EnableIf<!U::Reflected && !U::Temporal, void> computeLinearIntensityModel (
     const Vector<Scalar>& theta, 
     const RowMatrix<Scalar>& x, 
     const RowMatrix<Scalar>& y,
@@ -21,12 +17,8 @@ inline void computeLinearIntensityModel (
 Compute the linear Ylm model. Temporal specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsTemporal<U>, 
-    typename=IsEmitted<U>
->
-inline void computeLinearIntensityModel (
+template <typename U=S>
+inline EnableIf<!U::Reflected && U::Temporal, void> computeLinearIntensityModel (
     const Vector<Scalar>& t,
     const Vector<Scalar>& theta, 
     const RowMatrix<Scalar>& x, 
@@ -39,15 +31,11 @@ inline void computeLinearIntensityModel (
 }
 
 /**
-Compute the linear Ylm model. Default / Spectral specialization.
+Compute the linear Ylm model. Basic / Spectral specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsDefaultOrSpectral<U>, 
-    typename=IsReflected<U>
->
-inline void computeLinearIntensityModel (
+template <typename U=S>
+inline EnableIf<U::Reflected && !U::Temporal, void> computeLinearIntensityModel (
     const Vector<Scalar>& theta, 
     const RowMatrix<Scalar>& x, 
     const RowMatrix<Scalar>& y,
@@ -61,12 +49,8 @@ inline void computeLinearIntensityModel (
 Compute the linear Ylm model. Temporal specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsTemporal<U>, 
-    typename=IsReflected<U>
->
-inline void computeLinearIntensityModel (
+template <typename U=S>
+inline EnableIf<U::Reflected && U::Temporal, void> computeLinearIntensityModel (
     const Vector<Scalar>& t,
     const Vector<Scalar>& theta, 
     const RowMatrix<Scalar>& x, 

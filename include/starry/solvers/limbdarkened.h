@@ -76,8 +76,8 @@ namespace limbdark {
     of the basis in which the `P(G_n)` functions are computed.
     Also compute the derivative matrix `dg / Du`.
     
-    This function is templated with MBCAST stuff so that we can
-    eventually re-introduce wavelength dependence to this function.
+    This function is templated with MBCAST to enable
+    the spectral specialization below.
 
     \todo This might be faster/cleaner as a linear operation...
 
@@ -158,6 +158,27 @@ namespace limbdark {
     }
 
     /**
+    Transform the u_n coefficients to `g_n`, which are coefficients
+    of the basis in which the `P(G_n)` functions are computed.
+    Also compute the derivative matrix `dg / Du`.
+
+    This is the spectral case.
+
+    */
+    template <class T>
+    inline void computeAgolGBasis (
+        const Matrix<T>& u, 
+        Matrix<T>& g,
+        Matrix<T>& DgDu
+    ) {
+        int lmax = u.rows() - 1;
+        int ncol = u.cols();
+        for (int n = 0; n < ncol; ++n)
+            computeAgolGBasis(u.col(n), g.col(n), 
+                     DgDu.block(n * lmax, 0, lmax, lmax + 1));
+    }
+
+    /**
     Greens integration housekeeping data.
 
     */
@@ -176,7 +197,8 @@ namespace limbdark {
     {
     public:
         explicit GreensLimbDark (
-            int lmax
+            int lmax,
+            int Nw
         ) {
             // nothing
         }
@@ -251,12 +273,13 @@ namespace limbdark {
 
         // Constructor
         explicit GreensLimbDark(
-            int lmax
+            int lmax,
+            int Nw
         ) :
             lmax(lmax),
             u(lmax + 1),
             g(lmax + 1),
-            DgDu(lmax, lmax + 1),
+            DgDu(lmax * Nw, lmax + 1),
             M(lmax + 1),
             N(lmax + 1),
             M_coeff(4, STARRY_MN_MAX_ITER),

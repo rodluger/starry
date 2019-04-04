@@ -12,16 +12,21 @@ protected:
 public:
     
     // Pybind cache
-    RowMatrix<Scalar> DADt;
-    RowMatrix<Scalar> DADtheta;
-    RowMatrix<Scalar> DADxo;
-    RowMatrix<Scalar> DADyo;
-    RowMatrix<Scalar> DADro;
-    RowMatrix<Scalar> DADsource;
-    RowMatrix<Scalar> DADu;
-    RowMatrix<Scalar> DADinc;
-    RowMatrix<Scalar> DADobl;
+    RowMatrix<Scalar> DXDt;
+    RowMatrix<Scalar> DXDtheta;
+    RowMatrix<Scalar> DXDxo;
+    RowMatrix<Scalar> DXDyo;
+    RowMatrix<Scalar> DXDro;
+    RowMatrix<Scalar> DXDsource;
+    RowMatrix<Scalar> DXDu;
+    RowMatrix<Scalar> DXDinc;
+    RowMatrix<Scalar> DXDobl;
     RowMatrix<Scalar> X;
+
+    Vector<Scalar> flux;
+    Vector<Scalar> DfDb;
+    Vector<Scalar> DfDro;
+    Matrix<Scalar> DfDu;
 
     // Cache
     std::vector<Matrix<Scalar>> EulerD;

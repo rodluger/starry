@@ -28,12 +28,7 @@ macros = dict(
 # Override with user values
 for key, value in macros.items():
     macros[key] = os.getenv(key, value)
-
-# Don't compute dF/Du?
-no_dfdu = int(os.getenv('STARRY_KEEP_DFDU_AS_DFDG', 0))
-if no_dfdu:
-    macros["STARRY_KEEP_DFDU_AS_DFDG"] = 1
-
+    
 # Compiler optimization flag -O
 optimize = int(os.getenv('STARRY_O', 2))
 assert optimize in [0, 1, 2, 3], "Invalid optimization flag."
@@ -47,7 +42,8 @@ if debug:
     macros["STARRY_DEBUG"] = 1
 
 # Module bitsum (default all)
-bitsum = int(os.getenv('STARRY_BITSUM', 8191))
+allbits = max(modules.values()) * 2 - 1
+bitsum = int(os.getenv('STARRY_BITSUM', allbits))
 
 class get_pybind_include(object):
     """

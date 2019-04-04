@@ -13,40 +13,33 @@ inline void computeI (
 }
 
 /**
-Rotate an arbitrary map vector in place
-given an axis and an angle. If `col = -1`,
-rotate all columns of the map, otherwise
-rotate only the column with index `col`.
+Rotate an arbitrary ylm vector in place
+given an axis and an angle.
 
 */
+template <typename T1>
 inline void rotateByAxisAngle (
     const UnitVector<Scalar>& axis_,
     const Scalar& costheta,
     const Scalar& sintheta,
-    YType& y_,
-    int col=-1
+    MatrixBase<T1>& y_
 ) {
     Scalar tol = 10 * mach_eps<Scalar>();
     Scalar cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
     wigner::axisAngleToEuler(
         axis_(0), axis_(1), costheta, sintheta, tol,
         cosalpha, sinalpha, cosbeta, sinbeta, 
-        cosgamma, singamma);
+        cosgamma, singamma
+    );
     wigner::rotar(
         ydeg, cosalpha, sinalpha, 
         cosbeta, sinbeta, 
         cosgamma, singamma, tol, 
-        data.EulerD, data.EulerR);
-    if (col == -1) {
-        for (int l = 0; l < ydeg + 1; ++l) {
-            y_.block(l * l, 0, 2 * l + 1, Nw) =
-                data.EulerR[l] * y_.block(l * l, 0, 2 * l + 1, Nw);
-        }
-    } else {
-        for (int l = 0; l < ydeg + 1; ++l) {
-            y_.block(l * l, col, 2 * l + 1, 1) =
-                data.EulerR[l] * y_.block(l * l, col, 2 * l + 1, 1);
-        }
+        data.EulerD, data.EulerR
+    );
+    for (int l = 0; l < ydeg + 1; ++l) {
+        y_.block(l * l, 0, 2 * l + 1, y_.cols()) =
+            data.EulerR[l] * y_.block(l * l, 0, 2 * l + 1, y_.cols());
     }
 }
 
@@ -92,7 +85,7 @@ Temporal specialization.
 
 */
 template <typename U=S>
-inline IsTemporal<U, void> computeTaylor (
+inline EnableIf<U::Temporal, void> computeTaylor (
     const Vector<Scalar> & t
 ) {
     taylor.resize(t.rows(), Nt);
@@ -117,7 +110,7 @@ This is a **constant** fixed at unity.
 
 */
 template <typename U=S>
-inline IsDefaultOrSpectral<U, void> setY00 () {
+inline EnableIf<!U::Temporal, void> setY00 () {
     y.row(0).setConstant(1.0);
 }
 
@@ -128,7 +121,7 @@ zero.
 
 */
 template <typename U=S>
-inline IsTemporal<U, void> setY00 () {
+inline EnableIf<U::Temporal, void> setY00 () {
     y(0) = 1.0;
     for (int i = 1; i < Nt; ++i) {
         y(i * Ny) = 0.0;

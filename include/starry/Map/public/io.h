@@ -4,14 +4,7 @@ Return a human-readable map string.
 */
 std::string info () {
     std::ostringstream os;
-    if (std::is_same<S, Default<Scalar, S::Reflected>>::value) {
-        os << "<starry.Map("
-            << "ydeg=" << ydeg << ", "
-            << "udeg=" << udeg << ", "
-            << "reflected=" << S::Reflected << ", "
-            << "multi=" << !std::is_same<Scalar, double>::value
-            << ")>";
-    } else if (std::is_same<S, Spectral<Scalar, S::Reflected>>::value) {
+    if (S::Spectral) {
         os << "<starry.Map("
             << "ydeg=" << ydeg << ", "
             << "udeg=" << udeg << ", "
@@ -19,7 +12,7 @@ std::string info () {
             << "reflected=" << S::Reflected << ", "
             << "multi=" << !std::is_same<Scalar, double>::value
             << ")>";
-    } else if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+    } else if (S::Temporal) {
         os << "<starry.Map("
             << "ydeg=" << ydeg << ", "
             << "udeg=" << udeg << ", "
@@ -27,9 +20,18 @@ std::string info () {
             << "reflected=" << S::Reflected << ", "
             << "multi=" << !std::is_same<Scalar, double>::value
             << ")>";
+    } else if (S::LimbDarkened) {
+        os << "<starry.Map("
+            << "udeg=" << udeg << ", "
+            << "multi=" << !std::is_same<Scalar, double>::value
+            << ")>";
     } else {
-        // ??
-        os << "<starry.Map>";
+        os << "<starry.Map("
+            << "ydeg=" << ydeg << ", "
+            << "udeg=" << udeg << ", "
+            << "reflected=" << S::Reflected << ", "
+            << "multi=" << !std::is_same<Scalar, double>::value
+            << ")>";
     }
     return std::string(os.str());
 }
@@ -38,8 +40,9 @@ std::string info () {
 Set the full spherical harmonic vector.
 
 */
+template <typename T1>
 inline void setY (
-    const YType& y_
+    const MatrixBase<T1>& y_
 ) {
     if ((y_.rows() == y.rows()) && (y_.cols() == y.cols()))
         y = y_;
@@ -52,7 +55,7 @@ inline void setY (
                                     "term must be fixed at unity.");
     }
     // Check that the derivatives of y(0) == 0
-    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+    if (S::Temporal) {
         for (int i = 1; i < Nt; ++i) {
             if (y(i * Ny) != 0)
                 throw std::invalid_argument("The Y_{0,0} term cannot "
@@ -65,7 +68,7 @@ inline void setY (
 Get the full spherical harmonic vector.
 
 */
-inline const YType getY () const {
+inline auto getY () -> const decltype(y) {
     return y;
 }
 
@@ -73,8 +76,9 @@ inline const YType getY () const {
 Set the full limb darkening vector.
 
 */
+template <typename T1>
 inline void setU (
-    const UType& u_
+    const MatrixBase<T1>& u_
 ) 
 {
     if ((u_.rows() == u.rows()) && (u_.cols() == u.cols()))
@@ -93,7 +97,7 @@ inline void setU (
 Get the full limb darkening vector.
 
 */
-inline const UType getU () const {
+inline auto getU () -> const decltype(u) {
     return u;
 }
 
@@ -101,15 +105,19 @@ inline const UType getU () const {
 Set the axis of rotation for the map and update
 the pre-computed Wigner matrices.
 
-\todo There are singularities here!
-
 */
 inline void setAxis (
     const UnitVector<Scalar>& axis_
 ) {
     UnitVector<Scalar> axis = axis_.normalized();
     obl = atan2(axis(0), axis(1)) * 180.0 / pi<Scalar>();
-    inc = atan2(axis(0) / sin(obl * pi<Scalar>() / 180.0), axis(2)) * 180.0 / pi<Scalar>();
+    Scalar sino = sin(obl * pi<Scalar>() / 180.0);
+    if (abs(sino) < 1e-10) {
+        Scalar coso = cos(obl * pi<Scalar>() / 180.0);
+        inc = atan2(axis(1) / coso, axis(2)) * 180.0 / pi<Scalar>();
+    } else {
+        inc = atan2(axis(0) / sino, axis(2)) * 180.0 / pi<Scalar>();
+    }
     W.updateAxis(inc, obl);
 }
 

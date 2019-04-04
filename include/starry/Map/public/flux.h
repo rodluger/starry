@@ -1,14 +1,10 @@
 /**
 Compute the linear Ylm model in emitted light. 
-Default / Spectral specialization.
+Basic / Spectral specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsDefaultOrSpectral<U>, 
-    typename=IsEmitted<U>
->
-inline void computeLinearFluxModel (
+template <typename U=S>
+inline EnableIf<!U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
@@ -23,12 +19,8 @@ inline void computeLinearFluxModel (
 Compute the linear Ylm model in emitted light. Temporal specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsTemporal<U>, 
-    typename=IsEmitted<U>
->
-inline void computeLinearFluxModel (
+template <typename U=S>
+inline EnableIf<!U::Reflected && U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& t,
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
@@ -43,15 +35,11 @@ inline void computeLinearFluxModel (
 
 /**
 Compute the linear Ylm model in reflected light. 
-Default / Spectral specialization.
+Basic / Spectral specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsDefaultOrSpectral<U>, 
-    typename=IsReflected<U>
->
-inline void computeLinearFluxModel (
+template <typename U=S>
+inline EnableIf<U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
@@ -68,12 +56,8 @@ inline void computeLinearFluxModel (
 Compute the linear Ylm model in reflected light. Temporal specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsTemporal<U>, 
-    typename=IsReflected<U>
->
-inline void computeLinearFluxModel (
+template <typename U=S>
+inline EnableIf<U::Reflected && U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& t,
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
@@ -90,15 +74,11 @@ inline void computeLinearFluxModel (
 
 /**
 Compute the linear Ylm model in emitted light and its gradient. 
-Default / Spectral specialization.
+Basic / Spectral specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsDefaultOrSpectral<U>, 
-    typename=IsEmitted<U>
->
-inline void computeLinearFluxModel (
+template <typename U=S>
+inline EnableIf<!U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
@@ -124,12 +104,8 @@ Compute the linear Ylm model in emitted light and its gradient.
 Temporal specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsTemporal<U>, 
-    typename=IsEmitted<U>
->
-inline void computeLinearFluxModel (
+template <typename U=S>
+inline EnableIf<!U::Reflected && U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& t, 
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
@@ -154,15 +130,11 @@ inline void computeLinearFluxModel (
 
 /**
 Compute the linear Ylm model in reflected light and its gradient. 
-Default / Spectral specialization.
+Basic / Spectral specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsDefaultOrSpectral<U>, 
-    typename=IsReflected<U>
->
-inline void computeLinearFluxModel ( 
+template <typename U=S>
+inline EnableIf<U::Reflected && !U::Temporal, void> computeLinearFluxModel ( 
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
@@ -191,12 +163,8 @@ Compute the linear Ylm model in reflected light and its gradient.
 Temporal specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsTemporal<U>, 
-    typename=IsReflected<U>
->
-inline void computeLinearFluxModel (
+template <typename U=S>
+inline EnableIf<U::Reflected && U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& t, 
     const Vector<Scalar>& theta, 
     const Vector<Scalar>& xo, 
@@ -226,12 +194,8 @@ inline void computeLinearFluxModel (
 Compute the flux from a purely limb-darkened map.
 
 */
-template <
-    typename U=S, 
-    typename=IsEmitted<U>,
-    typename=IsDefault<U>
->
-inline void computeLimbDarkenedFlux (
+template <typename U=S>
+inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFlux (
     const Vector<Scalar>& b, 
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
@@ -239,7 +203,8 @@ inline void computeLimbDarkenedFlux (
 ) {
     if (ydeg > 0)
         throw std::runtime_error(
-            "This method is for purely limb-darkened maps only.");
+            "This method is for purely limb-darkened maps only."
+        );
     computeLimbDarkenedFluxInternal(b, zo, ro, flux);
 }
 
@@ -248,22 +213,19 @@ Compute the flux from a purely limb-darkened map.
 Also compute the gradient.
 
 */
-template <
-    typename U=S, 
-    typename=IsEmitted<U>,
-    typename=IsDefault<U>
->
-inline void computeLimbDarkenedFlux (
+template <typename U=S>
+inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFlux (
     const Vector<Scalar>& b, 
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
     Vector<Scalar>& flux,
-    Vector<Scalar> Db,
-    Vector<Scalar> Dr,
-    RowMatrix<Scalar>& Du
+    Vector<Scalar>& Db,
+    Vector<Scalar>& Dro,
+    Matrix<Scalar>& Du
 ) {
     if (ydeg > 0)
         throw std::runtime_error(
-            "This method is for purely limb-darkened maps only.");
-    computeLimbDarkenedFluxInternal(b, zo, ro, flux, Db, Dr, Du);
+            "This method is for purely limb-darkened maps only."
+        );
+    computeLimbDarkenedFluxInternal(b, zo, ro, flux, Db, Dro, Du);
 }

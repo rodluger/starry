@@ -23,12 +23,12 @@ Rotate the map *in place* by an angle `theta`.
 
 */
 template <typename U=S>
-inline IsDefaultOrSpectral<U, void> rotate (
+inline EnableIf<!U::Temporal, void> rotate (
     const Scalar& theta
 ) 
 {
     Scalar theta_rad = theta * radian;
-    YType y_in = y;
+    auto y_in = y;
     W.rotate(y_in, cos(theta_rad), sin(theta_rad), y);
 }
 
@@ -37,7 +37,7 @@ Rotate the map *in place* by an angle `theta`.
 
 */
 template <typename U=S>
-inline IsTemporal<U, void> rotate (
+inline EnableIf<U::Temporal, void> rotate (
     const Scalar& theta
 ) 
 {
@@ -54,22 +54,26 @@ Add a gaussian spot at a given latitude/longitude on the map.
 
 */
 inline void addSpot (
-    const YCoeffType& amp,
+    const RowVector<Scalar>& amp,
     const Scalar& sigma,
     const Scalar& lat=0,
     const Scalar& lon=0,
     int l=-1
 ) {
-    // Default degree is max degree
+    // Basic degree is max degree
     if (l < 0) 
         l = ydeg;
     if (l > ydeg) 
         throw std::invalid_argument("Invalid value for `l`.");
 
+    // Check `amp` dims
+    if (amp.cols() != Nw * Nt)
+        throw std::invalid_argument("Argument `amp` has the wrong shape.");
+
     // Compute the integrals recursively
     Vector<Scalar> IP(l + 1);
     Vector<Scalar> ID(l + 1);
-    YType coeff(Ny * Nt, Nw);
+    Matrix<Scalar> coeff(Ny, Nw);
     coeff.setZero();
 
     // Constants
@@ -106,15 +110,22 @@ inline void addSpot (
     rotateByAxisAngle(yhat<Scalar>(), cos(lon_rad), sin(lon_rad), coeff);
 
     // Add this to the map
-    y += coeff;
+    if (S::Temporal) {
+        for (int i = 1; i < Nt; ++i) {
+            y.block(i * Ny, 0, Ny, 1) += coeff.col(i);
+        }
+    } else {
+        y += coeff;
+    }
+    
 }
 
 /**
 Generate a random isotropic map with a given power spectrum.
 
 */
-template <typename V, typename U=S, typename=IsDefault<U>>
-inline void random (
+template <typename V, typename U=S>
+inline EnableIf<!(U::Spectral || U::Temporal), void> random (
     const Vector<Scalar>& power,
     const V& seed
 ) {
@@ -126,8 +137,8 @@ Generate a random isotropic map with a given power spectrum.
 NOTE: If `col = -1`, sets all columns to the same map.
 
 */
-template <typename V, typename U=S, typename=IsSpectralOrTemporal<U>>
-inline void random (
+template <typename V, typename U=S>
+inline EnableIf<(U::Spectral || U::Temporal), void> random (
     const Vector<Scalar>& power,
     const V& seed,
     int col=-1

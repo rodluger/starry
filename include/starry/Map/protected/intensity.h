@@ -14,7 +14,7 @@ inline void computeLinearIntensityModelInternal (
     if (S::Reflected) {
         CHECK_SHAPE(source, theta.rows(), 3);
     }
-    if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+    if (S::Temporal) {
         CHECK_ROWS(taylor, theta.rows());
     }
 
@@ -44,7 +44,7 @@ inline void computeLinearIntensityModelInternal (
     } else {
 
         // Compute the limb darkening operator
-        UType tmp = B.U1 * u;
+        auto tmp = (B.U1 * u).eval();
         Vector<Scalar> pu = tmp * pi<Scalar>() * 
             (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
         Matrix<Scalar> L;
@@ -126,7 +126,7 @@ inline void computeLinearIntensityModelInternal (
         }
 
         // Apply the Taylor expansion
-        if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+        if (S::Temporal) {
             for (int i = 0; i < Nt; ++i) {
                 X.block(npts * n, i * Ny, npts, Ny) = 
                     X.block(npts * n, 0, npts, Ny) * taylor(n, i);

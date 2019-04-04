@@ -249,13 +249,17 @@ class PythonMapBase(object):
         raise NotImplementedError("Map addition coming soon.")
         #return MapSum(self) + other
 
-    def flux(self, gradient=False, **kwargs):
+    def flux(self, *args, **kwargs):
         """
 
         """
-        if gradient:
+        # This is already implemented for limb-darkened maps
+        if (self._limbdarkened):
+            return super(PythonMapBase, self).flux(*args, **kwargs)
+
+        if kwargs.get("gradient", False):
             # Get the design matrix and its gradient
-            X, grad = self.linear_flux_model(gradient=True, **kwargs)
+            X, grad = self.linear_flux_model(*args, **kwargs)
             
             # The dot product with `y` gives us the flux
             f = np.dot(X, self.y)
@@ -277,14 +281,14 @@ class PythonMapBase(object):
             return f, grad
         else:
             # The flux is just the dot product with the design matrix
-            return np.dot(self.linear_flux_model(**kwargs), self.y)
+            return np.dot(self.linear_flux_model(*args, **kwargs), self.y)
 
-    def intensity(self, **kwargs):
+    def intensity(self, *args, **kwargs):
         """
 
         """
         # The intensity is just the dot product with the design matrix
-        return np.dot(self.linear_intensity_model(**kwargs), self.y)
+        return np.dot(self.linear_intensity_model(*args, **kwargs), self.y)
 
     def __call__(self, **kwargs):
         """
@@ -294,6 +298,10 @@ class PythonMapBase(object):
     
     def load(self, image, ydeg=None, healpix=False, col=0, **kwargs):
         """Load an image, array, or healpix map."""
+        if self._limbdarkened:
+            raise NotImplementedError("The `load` method is not " + 
+                                      "implemented for limb-darkened maps.")
+
         # Check the degree
         if ydeg is None:
             ydeg = self.ydeg
