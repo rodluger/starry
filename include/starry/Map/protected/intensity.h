@@ -44,9 +44,9 @@ inline void computeLinearIntensityModelInternal (
     } else {
 
         // Compute the limb darkening operator
-        auto tmp = (B.U1 * u).eval();
-        Vector<Scalar> pu = tmp * pi<Scalar>() * 
-            (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
+        UType tmp = B.U1 * u;
+        RowVector<Scalar> norm = (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
+        UType pu = (tmp.array().rowwise() * norm.array()) * pi<Scalar>();
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);

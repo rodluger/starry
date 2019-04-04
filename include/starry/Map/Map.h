@@ -7,6 +7,8 @@ public:
 
     // Types
     using Scalar = typename S::Scalar;                                         /**< The scalar type of the map */
+    using YType = typename S::YType;
+    using UType = typename S::UType;
 
     // Public variables
     const int ydeg;                                                            /**< Maximum degree of the spherical harmonic map */
@@ -30,8 +32,8 @@ protected:
     #include "protected/arrays.h"
 
     // Internal variables
-    typename S::YType y;                                                       /**< Vector of spherical harmonic coefficients */
-    typename S::UType u;                                                       /**< Vector of limb darkening coefficients */
+    YType y;                                                                   /**< Vector of spherical harmonic coefficients */
+    UType u;                                                                   /**< Vector of limb darkening coefficients */
     Scalar inc;                                                                /**< Inclination of the rotation axis in degrees */
     Scalar obl;                                                                /**< Obliquity of the rotation axis in degrees */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
@@ -61,7 +63,7 @@ protected:
         N((deg + 1) * (deg + 1)),
         data(ydeg),
         y(Ny * Nt, Nw),
-        u(Nu),
+        u(Nu, Nw),
         inc(90.0),
         obl(0.0),
         B(ydeg, udeg),

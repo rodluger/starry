@@ -28,9 +28,9 @@ inline EnableIf<!U::Reflected, void> computeLinearFluxModelInternal (
 
     // Pre-compute the limb darkening operator
     if (udeg > 0) {
-        auto tmp = (B.U1 * u).eval();
-        Vector<Scalar> pu = tmp * pi<Scalar>() * 
-            (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
+        UType tmp = B.U1 * u;
+        RowVector<Scalar> norm = (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
+        UType pu = (tmp.array().rowwise() * norm.array()) * pi<Scalar>();
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
@@ -154,9 +154,9 @@ inline EnableIf<U::Reflected, void> computeLinearFluxModelInternal (
 
     // Pre-compute the limb darkening operator
     if (udeg > 0) {
-        auto tmp = (B.U1 * u).eval();
-        Vector<Scalar> pu = tmp * pi<Scalar>() * 
-            (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
+        UType tmp = B.U1 * u;
+        RowVector<Scalar> norm = (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
+        UType pu = (tmp.array().rowwise() * norm.array()) * pi<Scalar>();
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
@@ -288,9 +288,9 @@ inline EnableIf<!U::Reflected, void> computeLinearFluxModelInternal (
 
     // Pre-compute the limb darkening operator
     if (udeg > 0) {
-        auto tmp = (B.U1 * u).eval();
-        Scalar norm = 1.0 / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
-        Vector<Scalar> pu = tmp * pi<Scalar>() * norm;
+        UType tmp = B.U1 * u;
+        RowVector<Scalar> norm = (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
+        UType pu = (tmp.array().rowwise() * norm.array()) * pi<Scalar>();
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp;
         computePolynomialProductMatrix<true>(udeg, pu, L, dLdp);

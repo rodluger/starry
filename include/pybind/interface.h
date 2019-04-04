@@ -358,10 +358,10 @@ std::tuple<std::vector<int>, std::vector<int>> get_Ylmw_inds (
             return std::make_tuple(rows, cols);
         } else {
             // User provided something silly
-            throw std::out_of_range("Unsupported input type for `t`.");
+            throw std::out_of_range("Unsupported input type for `w`.");
         }
     } else {
-        throw std::out_of_range("Invalid `l`, `m`, `t` tuple.");
+        throw std::out_of_range("Invalid `l`, `m`, `w` tuple.");
     }
 }
 
@@ -405,6 +405,323 @@ std::vector<int> get_Ul_inds (
     } else {
         // User provided something silly
         throw std::out_of_range("Unsupported input type for `l`.");
+    }
+}
+
+/**
+Parse a user-provided `(l, w)` tuple into limb darkening map indices.
+
+*/
+std::tuple<std::vector<int>, std::vector<int>> get_Ulw_inds (
+    const int lmax, 
+    const int Nw,
+    const py::tuple& lw
+) {
+    auto integer = py::module::import("numpy").attr("integer");
+    if (lw.size() == 2) {
+        std::vector<int> rows = get_Ul_inds(lmax, lw[0]);
+        std::vector<int> cols;
+        if ((py::isinstance<py::int_>(lw[1]) || py::isinstance(lw[1], integer))) {
+            // User provided an integer wavelength bin
+            int w = py::cast<int>(lw[1]);
+            if ((w < 0) || (w >= Nw))
+                throw std::out_of_range("Invalid value for `w`.");
+            cols.push_back(w);
+            return std::make_tuple(rows, cols);
+        } else if (py::isinstance<py::slice>(lw[1])) {
+            // User provided a wavelength slice
+            py::slice slice = py::cast<py::slice>(lw[1]);
+            ssize_t start, stop, step, slicelength;
+            if(!slice.compute(Nw,
+                              reinterpret_cast<size_t*>(&start),
+                              reinterpret_cast<size_t*>(&stop),
+                              reinterpret_cast<size_t*>(&step),
+                              reinterpret_cast<size_t*>(&slicelength)))
+                throw pybind11::error_already_set();
+            if ((start < 0) || (start >= Nw)) {
+                throw std::out_of_range("Invalid value for `w`.");
+            } else if (step < 0) {
+                throw std::invalid_argument(
+                    "Slices with negative steps are not supported.");
+            }
+            for (ssize_t w = start; w < stop; w += step) {
+                cols.push_back(w);
+            }
+            return std::make_tuple(rows, cols);
+        } else {
+            // User provided something silly
+            throw std::out_of_range("Unsupported input type for `w`.");
+        }
+    } else {
+        throw std::out_of_range("Invalid `l`, `w` tuple.");
+    }
+}
+
+/**
+Set one or more spherical harmonic coefficients
+
+*/
+template <typename T>
+void set_Ylm(
+    Map<T>& map, 
+    py::tuple lm,
+    py::array_t<double>& coeff_
+) {
+    using Scalar = typename T::Scalar;
+    // Figure out the indices we're setting
+#   if defined(_STARRY_TEMPORAL_)
+        std::vector<int> rows = 
+            std::get<0>(get_Ylmt_inds(map.ydeg, map.Nt, lm));
+        std::vector<int> cols(1, 0);
+#   elif defined(_STARRY_SPECTRAL_)
+        auto inds = get_Ylmw_inds(map.ydeg, map.Nw, lm);
+        std::vector<int> rows = std::get<0>(inds);
+        std::vector<int> cols = std::get<1>(inds);
+#   else
+        std::vector<int> rows = get_Ylm_inds(map.ydeg, lm);
+        std::vector<int> cols(1, 0);
+#   endif
+
+    // Reshape coeff into (rows, cols)
+    py::buffer_info buf = coeff_.request();
+    double *ptr = (double *) buf.ptr;
+    Matrix<Scalar> coeff(rows.size(), cols.size());
+    if (buf.ndim == 0) {
+        // Set an array of indices (or rows/columns) to the same value
+        coeff.setConstant(ptr[0]);
+    } else if (buf.ndim == 1) {
+        if (cols.size() == 1) {
+            // Set an array of indices to an array of values
+            coeff = py::cast<Matrix<double>>(coeff_).template 
+                        cast<Scalar>();
+        } else {
+            if (rows.size() == 1) {
+                // Set a row to an array of values
+                coeff = (py::cast<Matrix<double>>(coeff_).template 
+                            cast<Scalar>()).transpose();
+            } else {
+                // ?
+                throw std::length_error("Invalid coefficient "
+                                        "array shape.");
+            }
+        }
+    } else if (buf.ndim == 2) {
+        // Set a matrix of (row, column) indices to a matrix of values
+        coeff = py::cast<Matrix<double>>(coeff_).template 
+                    cast<Scalar>();
+    } else {
+        // ?
+        throw std::length_error("Invalid coefficient array shape.");
+    }
+
+#   if defined(_STARRY_TEMPORAL_)
+        // Flatten the input array if needed
+        Matrix<Scalar> tmpcoeff = coeff.transpose();
+        coeff = Eigen::Map<Matrix<Scalar>>(tmpcoeff.data(), 
+                                            coeff.size(), 1);
+#   endif
+
+    // Check shape
+    if (!((size_t(coeff.rows()) == size_t(rows.size())) && 
+            (size_t(coeff.cols()) == size_t(cols.size()))))
+        throw std::length_error("Mismatch in index array and " 
+                                "coefficient array sizes.");
+
+    // Grab the map vector and update it term by term
+    auto y = map.getY();
+    int i = 0;
+    for (int row : rows) {
+        int j = 0;
+        for (int col : cols) {
+            y(row, col) = static_cast<Scalar>(coeff(i, j));
+            ++j;
+        }
+        ++i;
+    }
+    map.setY(y);
+}
+
+/** 
+Set one or more limb darkening coefficients
+
+*/
+template <typename T>
+void set_Ul(
+    Map<T>& map, 
+    py::tuple l,
+    py::array_t<double>& coeff_
+) {
+    using Scalar = typename T::Scalar;
+    // Figure out the indices we're setting
+#   if defined(_STARRY_SPECTRAL_)
+        auto inds = get_Ulw_inds(map.udeg, map.Nw, l);
+        std::vector<int> rows = std::get<0>(inds);
+        std::vector<int> cols = std::get<1>(inds);
+#   else
+        std::vector<int> rows = get_Ul_inds(map.udeg, l);
+        std::vector<int> cols(1, 0);
+#   endif
+
+    // Reshape coeff if necessary
+    py::buffer_info buf = coeff_.request();
+    double *ptr = (double *) buf.ptr;
+    Matrix<Scalar> coeff(rows.size(), cols.size());
+    if (buf.ndim == 0) {
+        // Set an array of indices (or rows/columns) to the same value
+        coeff.setConstant(ptr[0]);
+    } else if (buf.ndim == 1) {
+        if (cols.size() == 1) {
+            // Set an array of indices to an array of values
+            coeff = py::cast<Matrix<double>>(coeff_).template 
+                        cast<Scalar>();
+        } else {
+            if (rows.size() == 1) {
+                // Set a row to an array of values
+                coeff = (py::cast<Matrix<double>>(coeff_).template 
+                            cast<Scalar>()).transpose();
+            } else {
+                // ?
+                throw std::length_error("Invalid coefficient "
+                                        "array shape.");
+            }
+        }
+    } else if (buf.ndim == 2) {
+        // Set a matrix of (row, column) indices to a matrix of values
+        coeff = py::cast<Matrix<double>>(coeff_).template 
+                    cast<Scalar>();
+    } else {
+        // ?
+        throw std::length_error("Invalid coefficient array shape.");
+    }
+
+    // Check shape
+    if (!((size_t(coeff.rows()) == size_t(rows.size())) && 
+            (size_t(coeff.cols()) == size_t(cols.size()))))
+        throw std::length_error("Mismatch in index array and " 
+                                "coefficient array sizes.");
+
+    // Grab the map vector and update it term by term
+    auto u = map.getU();
+    int i = 0;
+    for (int row : rows) {
+        int j = 0;
+        for (int col : cols) {
+            u(row, col) = static_cast<Scalar>(coeff(i, j));
+            ++j;
+        }
+        ++i;
+    }
+    map.setU(u);
+}
+
+/** 
+Retrieve one or more spherical harmonic coefficients
+
+*/
+template <typename T>
+py::object get_Ylm (
+    Map<T>& map,
+    py::tuple lm
+) {
+    // Figure out the indices we're accessing
+#   if defined(_STARRY_TEMPORAL_)
+        auto rows_ncols = get_Ylmt_inds(map.ydeg, map.Nt, lm);
+        std::vector<int> rows = std::get<0>(rows_ncols);
+        int ncols = std::get<1>(rows_ncols);
+        std::vector<int> cols(1, 0);
+        Matrix<double> coeff_(rows.size(), cols.size());
+#   elif defined(_STARRY_SPECTRAL_)
+        auto inds = get_Ylmw_inds(map.ydeg, map.Nw, lm);
+        std::vector<int> rows = std::get<0>(inds);
+        std::vector<int> cols = std::get<1>(inds);
+        Matrix<double> coeff_(rows.size(), cols.size());
+#   else
+        std::vector<int> rows = get_Ylm_inds(map.ydeg, lm);
+        std::vector<int> cols(1, 0);
+        Vector<double> coeff_(rows.size());
+#   endif
+
+    // Grab the map vector and update the output vector term by term
+    auto y = map.getY();
+    int i = 0;
+    for (int row : rows) {
+        int j = 0;
+        for (int col : cols) {
+            coeff_(i, j) = static_cast<double>(y(row, col));
+            ++j;
+        }
+        ++i;
+    }
+
+#   if defined(_STARRY_TEMPORAL_)
+        // Reshape the coefficients into a matrix
+        Matrix<double> tmpcoeff = coeff_;
+        coeff_ = Eigen::Map<Matrix<double>>(tmpcoeff.data(), 
+                    ncols, coeff_.size() / ncols).transpose();
+#   endif
+
+    // Squeeze the output and cast to a py::array
+    if (coeff_.size() == 1) {
+#       if defined(_STARRY_TEMPORAL_) || defined(_STARRY_SPECTRAL_) 
+            auto coeff = py::cast(coeff_.row(0));
+            MAKE_READ_ONLY(coeff);
+            return coeff;
+#       else
+            return py::cast<double>(coeff_(0));
+#       endif
+    } else {
+        auto coeff = py::cast(coeff_);
+        MAKE_READ_ONLY(coeff);
+        return coeff;
+    }
+}
+
+/**
+Retrieve one or more limb darkening coefficients
+
+*/
+template <typename T>
+py::object get_Ul(
+    Map<T>& map, 
+    py::tuple l
+) {
+    // Figure out the indices we're accessing
+#   if defined(_STARRY_SPECTRAL_)
+        auto inds = get_Ulw_inds(map.udeg, map.Nw, l);
+        std::vector<int> rows = std::get<0>(inds);
+        std::vector<int> cols = std::get<1>(inds);
+        Matrix<double> coeff_(rows.size(), cols.size());
+#   else
+        std::vector<int> rows = get_Ul_inds(map.udeg, l);
+        std::vector<int> cols(1, 0);
+        Vector<double> coeff_(rows.size());
+#   endif
+
+    // Grab the map vector and update the output term by term
+    auto u = map.getU();
+    int i = 0;
+    for (int row : rows) {
+        int j = 0;
+        for (int col : cols) {
+            coeff_(i, j) = static_cast<double>(u(row, col));
+            ++j;
+        }
+        ++i;
+    }
+
+    // Squeeze the output and cast to a py::array
+    if (coeff_.size() == 1) {
+#       if defined(_STARRY_SPECTRAL_) 
+            auto coeff = py::cast(coeff_.row(0));
+            MAKE_READ_ONLY(coeff);
+            return coeff;
+#       else
+            return py::cast<double>(coeff_(0));
+#       endif
+    } else {
+        auto coeff = py::cast(coeff_);
+        MAKE_READ_ONLY(coeff);
+        return coeff;
     }
 }
 
