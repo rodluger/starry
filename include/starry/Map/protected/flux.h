@@ -619,11 +619,12 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
             L.compute(b(n), ro(n));
 
             // Dot the integral solution in, and we're done!
-            flux.row(n) = L.sT * L.g;
+            flux.row(n) = (L.sT * L.g).cwiseProduct(L.I0);
 
         }
 
     }
+
 }
 
 /**
@@ -649,8 +650,8 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     flux.resize(nt, Nw);
     Db.resize(nt, Nw);
     Dro.resize(nt, Nw);
-    Du.resize(udeg, nt); // \todo resize this Nw
-    Matrix<Scalar> Dg(udeg + 1, nt);
+    Du.resize(udeg, nt * Nw);
+    Matrix<Scalar> Dg(udeg + 1, nt * Nw);
 
     // Compute the Agol `g` basis
     L.computeBasis(u);
@@ -664,7 +665,8 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
             // Most of the derivs are zero
             Db.row(n).setZero();
             Dro.row(n).setZero();
-            Du.col(n).setZero();
+            for (int w = 0; w < Nw; ++w)
+                Dg.col(Nw * n + w).setZero();
             flux.row(n).setOnes();
 
         // Occultation
@@ -674,17 +676,19 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
             L.template compute<true>(b(n), ro(n));
 
             // Compute the flux
-            flux.row(n) = L.sT * L.g;
+            flux.row(n) = (L.sT * L.g).cwiseProduct(L.I0);
 
             // b and ro derivs
-            Db.row(n) = L.dsTdb * L.g;
-            Dro.row(n) = L.dsTdr * L.g;
+            Db.row(n) = (L.dsTdb * L.g).cwiseProduct(L.I0);
+            Dro.row(n) = (L.dsTdr * L.g).cwiseProduct(L.I0);
 
-            // dF / Du from dF / dg
+            // Compute df / dg
             if (likely(udeg > 0)) {
-                Dg.col(n) = L.sT;
-                Dg(0, n) -= pi<Scalar>() * flux(n);
-                Dg(1, n) -= (2.0 / 3.0) * pi<Scalar>() * flux(n);
+                for (int w = 0; w < Nw; ++w) {
+                    Dg.col(Nw * n + w) = L.sT * L.I0(w);
+                    Dg(0, Nw * n + w) -= pi<Scalar>() * flux(n, w) * L.I0(w);
+                    Dg(1, Nw * n + w) -= (2.0 / 3.0) * pi<Scalar>() * flux(w) * L.I0(w);
+                }
             }
 
         }

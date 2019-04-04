@@ -1005,6 +1005,7 @@ std::function<py::object (
     ) -> py::object 
     {
         using Scalar = typename T::Scalar;
+        auto reshape = py::module::import("numpy").attr("reshape");
 
         // Figure out the length of the timeseries
         std::vector<long> v {
@@ -1033,8 +1034,12 @@ std::function<py::object (
 #               endif
             );
 
-            return PYOBJECT_CAST_ARR(map.data.flux);
-
+#           if defined(_STARRY_SPECTRAL_)
+                return PYOBJECT_CAST_ARR(map.data.flux_spectral);
+#           else
+                return PYOBJECT_CAST_ARR(map.data.flux);
+#           endif
+            
         } else {
 
             // Compute the model + gradient
@@ -1071,7 +1076,12 @@ std::function<py::object (
             py::dict gradient = py::dict(
                 "b"_a=ENSURE_DOUBLE_ARR(Db),
                 "ro"_a=ENSURE_DOUBLE_ARR(Dro),  
-                "u"_a=ENSURE_DOUBLE_ARR(Du)          
+#           if defined(_STARRY_SPECTRAL_)
+                "u"_a=reshape(ENSURE_DOUBLE_ARR(Du), 
+                              py::make_tuple(map.udeg, nt, map.Nw))
+#           else
+                "u"_a=ENSURE_DOUBLE_ARR(Du)   
+#           endif
             );
 
             // Return
