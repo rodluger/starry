@@ -1026,7 +1026,11 @@ std::function<py::object (
                 b, 
                 zo, 
                 ro, 
-                map.data.flux
+#               if defined(_STARRY_SPECTRAL_)
+                    map.data.flux_spectral
+#               else
+                    map.data.flux
+#               endif
             );
 
             return PYOBJECT_CAST_ARR(map.data.flux);
@@ -1038,16 +1042,29 @@ std::function<py::object (
                 b, 
                 zo, 
                 ro,
-                map.data.flux, 
-                map.data.DfDb, 
-                map.data.DfDro,
+#               if defined(_STARRY_SPECTRAL_)
+                    map.data.flux_spectral,
+                    map.data.DfDb_spectral, 
+                    map.data.DfDro_spectral,
+#               else
+                    map.data.flux,
+                    map.data.DfDb, 
+                    map.data.DfDro,
+#               endif
                 map.data.DfDu
             );
 
+            // \todo RESHAPE FOR SPECTRAL
+
             // Get Eigen references to the arrays, as these
             // are automatically passed by ref to the Python side
-            auto Db = Ref<Vector<Scalar>>(map.data.DfDb);
-            auto Dro = Ref<Vector<Scalar>>(map.data.DfDro);
+#           if defined(_STARRY_SPECTRAL_)
+                auto Db = Ref<Matrix<Scalar>>(map.data.DfDb_spectral);
+                auto Dro = Ref<Matrix<Scalar>>(map.data.DfDro_spectral);
+#           else
+                auto Db = Ref<Vector<Scalar>>(map.data.DfDb);
+                auto Dro = Ref<Vector<Scalar>>(map.data.DfDro);
+#           endif
             auto Du = Ref<Matrix<Scalar>>(map.data.DfDu);
 
             // Construct a dictionary
@@ -1059,7 +1076,11 @@ std::function<py::object (
 
             // Return
             return py::make_tuple(
-                ENSURE_DOUBLE_ARR(map.data.flux), 
+#               if defined(_STARRY_SPECTRAL_)
+                    ENSURE_DOUBLE_ARR(map.data.flux_spectral),
+#               else
+                    ENSURE_DOUBLE_ARR(map.data.flux),
+#               endif
                 gradient
             );
 

@@ -9,7 +9,8 @@ public:
     using Scalar = typename S::Scalar;                                         /**< The scalar type of the map */
     using YType = typename S::YType;
     using UType = typename S::UType;
-
+    using FType = typename S::FType;
+    
     // Public variables
     const int ydeg;                                                            /**< Maximum degree of the spherical harmonic map */
     const int udeg;                                                            /**< Maximum degree of the limb darkening map */
@@ -62,7 +63,7 @@ protected:
         Nf(Nf),
         N((deg + 1) * (deg + 1)),
         data(ydeg),
-        y(Ny * Nt, Nw),
+        y(Ny * Nt, S::LimbDarkened ? 1 : Nw),
         u(Nu, S::LimbDarkened ? Nw : 1),
         inc(90.0),
         obl(0.0),

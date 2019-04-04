@@ -28,6 +28,10 @@ public:
     Vector<Scalar> DfDro;
     Matrix<Scalar> DfDu;
 
+    Matrix<Scalar> flux_spectral;
+    Matrix<Scalar> DfDb_spectral;
+    Matrix<Scalar> DfDro_spectral;
+
     // Cache
     std::vector<Matrix<Scalar>> EulerD;
     std::vector<Matrix<Scalar>> EulerR;

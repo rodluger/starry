@@ -199,7 +199,7 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFlux (
     const Vector<Scalar>& b, 
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
-    Vector<Scalar>& flux
+    FType& flux
 ) {
     if (ydeg > 0)
         throw std::runtime_error(
@@ -218,9 +218,9 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFlux (
     const Vector<Scalar>& b, 
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
-    Vector<Scalar>& flux,
-    Vector<Scalar>& Db,
-    Vector<Scalar>& Dro,
+    FType& flux,
+    FType& Db,
+    FType& Dro,
     Matrix<Scalar>& Du
 ) {
     if (ydeg > 0)

@@ -592,13 +592,13 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     const Vector<Scalar>& b, 
     const Vector<Scalar>& zo,
     const Vector<Scalar>& ro, 
-    Vector<Scalar>& flux
+    FType& flux
 ) {
     // Shape checks
     size_t nt = b.rows();
     CHECK_SHAPE(zo, nt, 1);
     CHECK_SHAPE(ro, nt, 1);
-    flux.resize(nt);
+    flux.resize(nt, Nw);
     
     // Compute the Agol `g` basis
     L.computeBasis(u);
@@ -610,7 +610,7 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
         if ((zo(n) < 0) || (b(n) >= 1 + ro(n)) || (ro(n) <= 0.0)) {
 
             // Easy!
-            flux(n) = 1.0;
+            flux.row(n).setOnes();
 
         // Occultation
         } else {
@@ -619,7 +619,7 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
             L.compute(b(n), ro(n));
 
             // Dot the integral solution in, and we're done!
-            flux(n) = L.sT * L.g;
+            flux.row(n) = L.sT * L.g;
 
         }
 
@@ -636,9 +636,9 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     const Vector<Scalar>& b, 
     const Vector<Scalar>& zo,
     const Vector<Scalar>& ro,
-    Vector<Scalar>& flux,
-    Vector<Scalar>& Db,
-    Vector<Scalar>& Dro,
+    FType& flux,
+    FType& Db,
+    FType& Dro,
     Matrix<Scalar>& Du
 ) {
 
@@ -646,10 +646,10 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     size_t nt = b.rows();
     CHECK_SHAPE(zo, nt, 1);
     CHECK_SHAPE(ro, nt, 1);
-    flux.resize(nt);
-    Db.resize(nt);
-    Dro.resize(nt);
-    Du.resize(udeg, nt);
+    flux.resize(nt, Nw);
+    Db.resize(nt, Nw);
+    Dro.resize(nt, Nw);
+    Du.resize(udeg, nt); // \todo resize this Nw
     Matrix<Scalar> Dg(udeg + 1, nt);
 
     // Compute the Agol `g` basis
@@ -662,10 +662,10 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
         if ((zo(n) < 0) || (b(n) >= 1 + ro(n)) || (ro(n) <= 0.0)) {
 
             // Most of the derivs are zero
-            Db(n) = 0;
-            Dro(n) = 0;
+            Db.row(n).setZero();
+            Dro.row(n).setZero();
             Du.col(n).setZero();
-            flux(n) = 1.0;
+            flux.row(n).setOnes();
 
         // Occultation
         } else {
@@ -674,11 +674,11 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
             L.template compute<true>(b(n), ro(n));
 
             // Compute the flux
-            flux(n) = L.sT * L.g;
+            flux.row(n) = L.sT * L.g;
 
             // b and ro derivs
-            Db(n) = L.dsTdb * L.g;
-            Dro(n) = L.dsTdr * L.g;
+            Db.row(n) = L.dsTdb * L.g;
+            Dro.row(n) = L.dsTdr * L.g;
 
             // dF / Du from dF / dg
             if (likely(udeg > 0)) {

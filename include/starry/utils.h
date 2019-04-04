@@ -190,6 +190,7 @@ struct MapType<T, false, TEMPORAL, REFLECTED, false>
     using Scalar = T;
     using YType = Vector<T>;
     using UType = Vector<T>;
+    using FType = Vector<T>;
 };
 
 // Spectral map in emitted/reflected light
@@ -203,6 +204,7 @@ struct MapType<T, true, false, REFLECTED, false>
     using Scalar = T;
     using YType = Matrix<T>;
     using UType = Vector<T>; 
+    using FType = Matrix<T>;
 };
 
 // Single-wavelength limb-darkened map
@@ -216,6 +218,7 @@ struct MapType<T, false, false, false, true>
     using Scalar = T;
     using YType = OneByOne<T>;
     using UType = Vector<T>; 
+    using FType = Vector<T>;
 };
 
 // Spectral limb-darkened map
@@ -229,6 +232,7 @@ struct MapType<T, true, false, false, true>
     using Scalar = T;
     using YType = OneByOne<T>;
     using UType = Matrix<T>; 
+    using FType = Matrix<T>;
 };
 
 
