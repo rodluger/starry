@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-try:
-    from ._starry_extensions import *
-except ImportError:
-    pass
 import numpy as np
 from scipy.linalg import cho_factor, cho_solve
+from . import modules
+try:
+    from ._starry_extensions import RAxisAngle
+except ImportError:
+    def RAxisAngle(*args, **kwargs):
+        bit = modules["_STARRY_EXTENSIONS_"]
+        raise ModuleNotFoundError("Please re-compile `starry` " + 
+                                  "with bit %d enabled." % bit)
 
 
 def MAP(A, L, C, flux, return_cov=False, return_cho_W=False):

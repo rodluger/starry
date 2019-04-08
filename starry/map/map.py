@@ -50,8 +50,10 @@ def Map(ydeg, udeg=0, **kwargs):
     # Figure out the module flags
     if spectral:
         kind = "spectral"
+        kwargs["nterms"] = nw
     elif temporal:
         kind = "temporal"
+        kwargs["nterms"] = nt
     else:
         kind = "default"
     if limbdarkened:
