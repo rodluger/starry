@@ -807,7 +807,12 @@ std::function<py::object(
             map.data.X
         );
 
-        return PYOBJECT_CAST_ARR(map.data.X);
+        if (CONTRACT_Y) {
+            auto squeeze = py::module::import("numpy").attr("squeeze");
+            return squeeze(PYOBJECT_CAST_ARR(map.data.X));
+        } else {
+            return PYOBJECT_CAST_ARR(map.data.X);
+        }
 
     };
 }

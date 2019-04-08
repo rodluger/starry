@@ -32,7 +32,7 @@ inline void computeLinearIntensityModelInternal (
 
     // Compute the polynomial basis matrix
     if ((Xp.rows() != long(npts)) || (xv - x_cache).any() || (yv - y_cache).any()) {
-        Xp.resize(npts, Ny);
+        Xp.resize(npts, N);
         B.computePolyBasis(xv, yv, Xp);
         X0 = Xp * B.A1;
         x_cache = xv;
@@ -55,10 +55,10 @@ inline void computeLinearIntensityModelInternal (
     }
 
     if (CONTRACT_Y) {
-        // The design matrix
+        // The actual intensity
         X.resize(npts * ntimes, Nw);
     } else {
-        // The actual intensity
+        // The design matrix
         X.resize(npts * ntimes, Ny * Nt);
     }
 
@@ -89,9 +89,11 @@ inline void computeLinearIntensityModelInternal (
 
         if (CONTRACT_Y) {
             // Rotate the map
-            if (theta_rad(n) != theta_cache) { // todo broken for temporal
+            if (theta_rad(n) != theta_cache) {
                 theta_cache = theta_rad(n);
-                W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
+                // Note that we're computing the transpose of the rotated map,
+                // so we need to do theta --> -theta!
+                W.compute(cos(theta_rad(n)), -sin(theta_rad(n)));
                 if (!S::Temporal) {
                     W.leftMultiplyR(y.transpose(), Ry.transpose());
                     X0Ry = X0 * Ry;
@@ -149,8 +151,9 @@ inline void computeLinearIntensityModelInternal (
 
             }
             if (CONTRACT_Y) {
-                // TODO!
-                throw std::runtime_error("Not yet implemented."); 
+                X.block(npts * n, 0, npts, Nw) = 
+                    X.block(npts * n, 0, npts, Nw).array().colwise() * 
+                        I.transpose().array();
             } else {
                 X.block(npts * n, 0, npts, Ny) = 
                     X.block(npts * n, 0, npts, Ny).array().colwise() * 

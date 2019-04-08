@@ -94,5 +94,5 @@ void resize_arrays() {
     sTA2dLduA1.resize(Nu, Ny);
     sTA2dLduA1Rz.resize(Nu, Ny);
     X0.resize(0, Ny);
-    Xp.resize(0, Ny);
+    Xp.resize(0, N);
 }

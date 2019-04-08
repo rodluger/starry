@@ -50,7 +50,7 @@ class PythonMapBase(object):
 
         # Are we modeling reflected light?
         if self._reflected:
-            source = kwargs.pop("source", [-1.0, 0.0, 0.0])
+            source = kwargs.pop("source", [[-1.0, 0.0, 0.0] for n in range(nframes)])
             if source is None:
                 # If explicitly set to `None`, re-run this
                 # function on an *emitted* light map!
@@ -115,16 +115,14 @@ class PythonMapBase(object):
                     source[i] = np.dot(R, source[i])
                 model_kwargs["source"] = source
 
-            # Compute the linear model
-            self.axis = [1e-10, 1e-10, 1] # TODO: Bug when axis = [0, 0, 1]
-            X = self.linear_intensity_model(x=x, y=y, **model_kwargs)
-
             # Compute the northern hemisphere map
+            self.axis = [1e-10, 1e-10, 1] # TODO: Bug when axis = [0, 0, 1]
+            Z_north = np.array(self.intensity(x=x, y=y, **model_kwargs))
             if self._spectral:
-                Z_north = np.array([np.dot(X, self.y[:, n]).reshape(res // 2, res) 
-                                    for n in range(self.nw)])
+                Z_north = Z_north.reshape(res // 2, res, self.nw)
+                Z_north = np.moveaxis(Z_north, -1, 0)
             else:
-                Z_north = np.dot(X, self.y).reshape(nframes, res // 2, res)
+                Z_north = Z_north.reshape(nframes, res // 2, res)
 
             # Flip the planet around
             self.axis = [1, 0, 0]
@@ -138,16 +136,14 @@ class PythonMapBase(object):
                     source[i] = np.dot(R, source[i])
                 model_kwargs["source"] = source
             
-            # Compute the linear model
-            self.axis = [1e-10, 1e-10, -1] # TODO: Bug when axis = [0, 0, -1]
-            X = self.linear_intensity_model(x=-x, y=-y, **model_kwargs)
-
             # Compute the southern hemisphere map
+            self.axis = [1e-10, 1e-10, -1] # TODO: Bug when axis = [0, 0, -1]
+            Z_south = np.array(self.intensity(x=-x, y=-y, **model_kwargs))
             if self._spectral:
-                Z_south = np.array([np.dot(X, self.y[:, n]).reshape(res // 2, res) 
-                                    for n in range(self.nw)])
+                Z_south = Z_south.reshape(res // 2, res, self.nw)
+                Z_south = np.moveaxis(Z_south, -1, 0)
             else:
-                Z_south = np.dot(X, self.y).reshape(nframes, res // 2, res)
+                Z_south = Z_south.reshape(nframes, res // 2, res)
             Z_south = np.flip(Z_south, axis=(1, 2))
 
             # Join them
@@ -165,13 +161,12 @@ class PythonMapBase(object):
             # Create a grid of X and Y and construct the linear model
             x, y = np.meshgrid(np.linspace(-1, 1, res), 
                                np.linspace(-1, 1, res))
-            X = self.linear_intensity_model(x=x, y=y, **model_kwargs)
+            Z = np.array(self.intensity(x=x, y=y, **model_kwargs))
             if self._spectral:
-                Z = np.moveaxis(
-                        np.dot(X, self.y).reshape(res, res, self.nw), 
-                        -1, 0)
+                Z = Z.reshape(res, res, self.nw)
+                Z = np.moveaxis(Z, -1, 0)
             else:
-                Z = np.dot(X, self.y).reshape(nframes, res, res)
+                Z = Z.reshape(nframes, res, res)
 
         return np.squeeze(Z)
 
@@ -282,14 +277,6 @@ class PythonMapBase(object):
         else:
             # The flux is just the dot product with the design matrix
             return np.dot(self.linear_flux_model(*args, **kwargs), self.y)
-
-    def _intensity(self, *args, **kwargs):
-        """
-
-        """
-        # DEBUG phase out
-        # The intensity is just the dot product with the design matrix
-        return np.dot(self.linear_intensity_model(*args, **kwargs), self.y)
 
     def __call__(self, *args, **kwargs):
         """
