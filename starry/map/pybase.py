@@ -283,18 +283,19 @@ class PythonMapBase(object):
             # The flux is just the dot product with the design matrix
             return np.dot(self.linear_flux_model(*args, **kwargs), self.y)
 
-    def intensity(self, *args, **kwargs):
+    def _intensity(self, *args, **kwargs):
         """
 
         """
+        # DEBUG phase out
         # The intensity is just the dot product with the design matrix
         return np.dot(self.linear_intensity_model(*args, **kwargs), self.y)
 
-    def __call__(self, **kwargs):
+    def __call__(self, *args, **kwargs):
         """
 
         """
-        return self.intensity(**kwargs)
+        return self.intensity(*args, **kwargs)
     
     def load(self, image, ydeg=None, healpix=False, col=0, **kwargs):
         """Load an image, array, or healpix map."""

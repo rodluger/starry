@@ -727,10 +727,10 @@ py::object get_Ul(
 
 /**
 Return a lambda function to compute the linear intensity model
-on a grid.
+(or the intensity itself, if `CONTRACT_Y=true`) on a grid.
 
 */
-template <typename T>
+template <typename T, bool CONTRACT_Y=false>
 std::function<py::object(
         Map<T> &, 
 #       ifdef _STARRY_TEMPORAL_
@@ -794,7 +794,7 @@ std::function<py::object(
 #       endif
 
         // Compute the model
-        map.computeLinearIntensityModel(
+        map.template computeLinearIntensityModel<CONTRACT_Y>(
 #           ifdef _STARRY_TEMPORAL_
                 t,
 #           endif

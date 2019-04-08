@@ -56,10 +56,10 @@ inline void computeLinearIntensityModelInternal (
 
     if (CONTRACT_Y) {
         // The design matrix
-        X.resize(npts * ntimes, Ny * Nt);
+        X.resize(npts * ntimes, Nw);
     } else {
         // The actual intensity
-        X.resize(npts * ntimes, Nw);
+        X.resize(npts * ntimes, Ny * Nt);
     }
 
     // Apply the time evolution (moving source, changing theta, or Taylor)
@@ -74,20 +74,49 @@ inline void computeLinearIntensityModelInternal (
         RowVector<Scalar> y2 = y.array().square();
         z = (Ones - x2 - y2).cwiseSqrt();
     }
-    RowMatrix<Scalar> XR(npts, Ny);
-    RowMatrix<Scalar> X0R(npts, Ny);
-    RowMatrix<Scalar> X0RR(npts, Ny);
+    RowMatrix<Scalar> XR, X0R, X0RR; 
+    YType Ry;
+    RowMatrix<Scalar> X0Ry;
+    if (CONTRACT_Y) {
+        Ry.resize(Ny, Nw);
+        X0Ry.resize(npts, Nw);
+    } else {
+        XR.resize(npts, Ny);
+        X0R.resize(npts, Ny);
+        X0RR.resize(npts, Ny);
+    }
     for (size_t n = 0; n < ntimes; ++n) {
 
-        // Rotate the map
-        W.leftMultiplyRZetaInv(X0, X0R);
-        if (theta_rad(n) != theta_cache) {
-            theta_cache = theta_rad(n);
-            W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
-            W.leftMultiplyRz(X0R, X0RR);
-            W.leftMultiplyRZeta(X0RR, XR);
+        if (CONTRACT_Y) {
+            // Rotate the map
+            if (theta_rad(n) != theta_cache) { // todo broken for temporal
+                theta_cache = theta_rad(n);
+                W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
+                if (!S::Temporal) {
+                    W.leftMultiplyR(y.transpose(), Ry.transpose());
+                    X0Ry = X0 * Ry;
+                }
+            }
+            // Temporal expansion
+            if (S::Temporal) {
+                X0Ry.setZero();
+                for (int i = 0; i < Nt; ++i) {
+                    W.leftMultiplyR(y.block(i * Ny, 0, Ny, Nw).transpose(), Ry.transpose());
+                    X0Ry += X0 * Ry * taylor(n, i);
+                }
+            }
+            X.block(npts * n, 0, npts, Nw) = X0Ry;
+        } else {
+            // Rotate the design matrix
+            W.leftMultiplyRZetaInv(X0, X0R);
+            if (theta_rad(n) != theta_cache) {
+                theta_cache = theta_rad(n);
+                W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
+                W.leftMultiplyRz(X0R, X0RR);
+                W.leftMultiplyRZeta(X0RR, XR);
+            }
+            X.block(npts * n, 0, npts, Ny) = XR;
         }
-        X.block(npts * n, 0, npts, Ny) = XR;
 
         // Illuminate the map
         if (S::Reflected) {
@@ -119,13 +148,18 @@ inline void computeLinearIntensityModelInternal (
                 I = (yrot.array() > yterm.array()).select(I, 0.0);
 
             }
-            X.block(npts * n, 0, npts, Ny) = 
-                X.block(npts * n, 0, npts, Ny).array().colwise() * 
-                    I.transpose().array();
+            if (CONTRACT_Y) {
+                // TODO!
+                throw std::runtime_error("Not yet implemented."); 
+            } else {
+                X.block(npts * n, 0, npts, Ny) = 
+                    X.block(npts * n, 0, npts, Ny).array().colwise() * 
+                        I.transpose().array();
+            }
         }
 
         // Apply the Taylor expansion
-        if (S::Temporal) {
+        if ((!CONTRACT_Y) && (S::Temporal)) {
             for (int i = 0; i < Nt; ++i) {
                 X.block(npts * n, i * Ny, npts, Ny) = 
                     X.block(npts * n, 0, npts, Ny) * taylor(n, i);
