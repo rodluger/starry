@@ -54,7 +54,7 @@ inline void computeLinearIntensityModelInternal (
         X0 = Xp * L * B.A1.block(0, 0, Ny, Ny);
     }
 
-    if (APPLY_CONTRACTION) {
+    if (CONTRACT_Y) {
         // The design matrix
         X.resize(npts * ntimes, Ny * Nt);
     } else {
