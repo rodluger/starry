@@ -20,9 +20,9 @@ inline void computeLinearIntensityModelInternal (
     }
 
     // Flatten x and y
-    Eigen::Map<const RowVector<Scalar>> x(x_.data(), x_.size());
-    Eigen::Map<const RowVector<Scalar>> y(y_.data(), y_.size());
-    size_t npts = x.size();
+    Eigen::Map<const RowVector<Scalar>> xv(x_.data(), x_.size());
+    Eigen::Map<const RowVector<Scalar>> yv(y_.data(), y_.size());
+    size_t npts = xv.size();
 
     // Convert to radians
     Vector<Scalar> theta_rad = theta * radian;
@@ -31,12 +31,12 @@ inline void computeLinearIntensityModelInternal (
     size_t ntimes = theta.size();
 
     // Compute the polynomial basis matrix
-    if ((Xp.rows() != long(npts)) || (x - x_cache).any() || (y - y_cache).any()) {
+    if ((Xp.rows() != long(npts)) || (xv - x_cache).any() || (yv - y_cache).any()) {
         Xp.resize(npts, Ny);
-        B.computePolyBasis(x, y, Xp);
+        B.computePolyBasis(xv, yv, Xp);
         X0 = Xp * B.A1;
-        x_cache = x;
-        y_cache = y;
+        x_cache = xv;
+        y_cache = yv;
     }
     
     // Apply limb darkening
@@ -69,9 +69,9 @@ inline void computeLinearIntensityModelInternal (
            sz_cache = NAN;
     RowVector<Scalar> xrot, xrot2, yrot, yterm, z, I, Ones;
     if (S::Reflected) {
-        Ones = RowVector<Scalar>::Ones(x.cols());
-        RowVector<Scalar> x2 = x.array().square();
-        RowVector<Scalar> y2 = y.array().square();
+        Ones = RowVector<Scalar>::Ones(xv.cols());
+        RowVector<Scalar> x2 = xv.array().square();
+        RowVector<Scalar> y2 = yv.array().square();
         z = (Ones - x2 - y2).cwiseSqrt();
     }
     RowMatrix<Scalar> XR, X0R, X0RR; 
@@ -138,9 +138,9 @@ inline void computeLinearIntensityModelInternal (
                 Scalar invsr = Scalar(1.0) / sqrt(sx * sx + sy * sy);
                 Scalar cosw = sy * invsr;
                 Scalar sinw = -sx * invsr;
-                xrot = x * cosw + y * sinw;
+                xrot = xv * cosw + yv * sinw;
                 xrot2 = xrot.array().square();
-                yrot = -x * sinw + y * cosw;
+                yrot = -xv * sinw + yv * cosw;
                 yterm = b * (Ones - xrot2).cwiseSqrt();
 
                 // Compute the illumination
