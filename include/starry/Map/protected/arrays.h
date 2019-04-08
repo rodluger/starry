@@ -42,6 +42,10 @@ Vector<Matrix<Scalar>> dLdu;
 Matrix<Scalar> rTdLduA1;
 Matrix<Scalar> sTA2dLduA1;
 Matrix<Scalar> sTA2dLduA1Rz;
+RowMatrix<Scalar> X0;
+RowMatrix<Scalar> Xp;
+RowVector<Scalar> x_cache;
+RowVector<Scalar> y_cache;
 
 /**
 Allocate the temporary vectors and matrices 
@@ -89,4 +93,6 @@ void resize_arrays() {
     rTdLduA1.resize(Nu, Ny);
     sTA2dLduA1.resize(Nu, Ny);
     sTA2dLduA1Rz.resize(Nu, Ny);
+    X0.resize(0, Ny);
+    Xp.resize(0, Ny);
 }

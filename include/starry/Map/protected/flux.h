@@ -29,8 +29,8 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     // Pre-compute the limb darkening operator
     if (udeg > 0) {
         UType tmp = B.U1 * u;
-        RowVector<Scalar> norm = (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
-        UType pu = (tmp.array().rowwise() * norm.array()) * pi<Scalar>();
+        Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
+        UType pu = tmp * norm * pi<Scalar>();
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
@@ -155,8 +155,8 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
     // Pre-compute the limb darkening operator
     if (udeg > 0) {
         UType tmp = B.U1 * u;
-        RowVector<Scalar> norm = (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
-        UType pu = (tmp.array().rowwise() * norm.array()) * pi<Scalar>();
+        Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
+        UType pu = tmp * norm * pi<Scalar>();
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);

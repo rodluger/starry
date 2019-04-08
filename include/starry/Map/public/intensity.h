@@ -1,5 +1,5 @@
 /**
-Compute the linear Ylm model. Basic / Spectral specialization.
+Compute the linear Ylm model. Basic / Spectral specialization. Emitted light.
 
 */
 template <typename U=S>
@@ -14,7 +14,7 @@ inline EnableIf<!U::Reflected && !U::Temporal, void> computeLinearIntensityModel
 }
 
 /**
-Compute the linear Ylm model. Temporal specialization.
+Compute the linear Ylm model. Temporal specialization. Emitted light.
 
 */
 template <typename U=S>
@@ -31,7 +31,7 @@ inline EnableIf<!U::Reflected && U::Temporal, void> computeLinearIntensityModel 
 }
 
 /**
-Compute the linear Ylm model. Basic / Spectral specialization.
+Compute the linear Ylm model. Basic / Spectral specialization. Reflected light.
 
 */
 template <typename U=S>
@@ -46,7 +46,7 @@ inline EnableIf<U::Reflected && !U::Temporal, void> computeLinearIntensityModel 
 }
 
 /**
-Compute the linear Ylm model. Temporal specialization.
+Compute the linear Ylm model. Temporal specialization. Reflected light.
 
 */
 template <typename U=S>

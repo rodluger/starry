@@ -1,6 +1,7 @@
 /**
 
 */
+template <bool CONTRACT_Y=false>
 inline void computeLinearIntensityModelInternal (
     const Vector<Scalar>& theta, 
     const RowMatrix<Scalar>& x_, 
@@ -29,39 +30,37 @@ inline void computeLinearIntensityModelInternal (
     // Number of time points
     size_t ntimes = theta.size();
 
-    // Our model matrix for the first timestep, f0 = X0 . y
-    RowMatrix<Scalar> X0;
-    
-    if (udeg == 0) {
-
-        // Compute the polynomial basis matrix
-        RowMatrix<Scalar> Xp(npts, Ny);
+    // Compute the polynomial basis matrix
+    if ((Xp.rows() != long(npts)) || (x - x_cache).any() || (y - y_cache).any()) {
+        Xp.resize(npts, Ny);
         B.computePolyBasis(x, y, Xp);
-
-        // Rotate it into Ylm land
         X0 = Xp * B.A1;
-
-    } else {
-
-        // Compute the polynomial basis matrix
-        RowMatrix<Scalar> XLD(npts, N);
-        B.computePolyBasis(x, y, XLD);
+        x_cache = x;
+        y_cache = y;
+    }
+    
+    // Apply limb darkening
+    if (udeg > 0) {
 
         // Compute the limb darkening operator
         UType tmp = B.U1 * u;
-        RowVector<Scalar> norm = (B.rT.segment(0, (udeg + 1) * (udeg + 1)) * tmp).cwiseInverse();
-        UType pu = (tmp.array().rowwise() * norm.array()) * pi<Scalar>();
+        Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
+        UType pu = tmp * norm * pi<Scalar>();
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
         
         // Rotate it into Ylm land
-        X0 = XLD * L * B.A1.block(0, 0, Ny, Ny);
-
+        X0 = Xp * L * B.A1.block(0, 0, Ny, Ny);
     }
 
-    // Our full matrix, f = X . y
-    X.resize(npts * ntimes, Ny * Nt);
+    if (APPLY_CONTRACTION) {
+        // The design matrix
+        X.resize(npts * ntimes, Ny * Nt);
+    } else {
+        // The actual intensity
+        X.resize(npts * ntimes, Nw);
+    }
 
     // Apply the time evolution (moving source, changing theta, or Taylor)
     Scalar theta_cache = NAN;

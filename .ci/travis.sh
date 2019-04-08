@@ -27,5 +27,7 @@ if [ ! -f $HOME/miniconda-cache/bin/conda ]; then
       pip install git+git://github.com/rodluger/starry_beta.git
 fi
 
+pip install tqdm
+
 # Display some info
 conda info -a
