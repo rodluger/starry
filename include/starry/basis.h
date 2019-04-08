@@ -708,7 +708,7 @@ inline void Basis<T>::computePolyBasis (
     const MatrixBase<T2>& y,
     RowMatrix<T>& basis
 ) {
-    int N = (lmax + 1) * (lmax + 1);
+    int N = (ydeg + 1) * (ydeg + 1);
     int npts = x.cols();
     RowVector<T> x2 = x.cwiseProduct(x);
     RowVector<T> y2 = y.cwiseProduct(y);
@@ -723,7 +723,7 @@ inline void Basis<T>::computePolyBasis (
         j0 = 0,
         dj0 = 2;
     int i, j, di, dj, n;
-    for (n = 0; n < lmax + 1; ++n) {
+    for (n = 0; n < ydeg + 1; ++n) {
         i = i0;
         di = di0;
         xarr.col(i) = xterm;
@@ -750,7 +750,7 @@ inline void Basis<T>::computePolyBasis (
         dj0 += 2;
     }
     n = 0;
-    for (int l = 0; l < lmax + 1; ++l) {
+    for (int l = 0; l < ydeg + 1; ++l) {
         for (int m = -l; m < l + 1; ++m) {
             basis.col(n) = xarr.col(n).cwiseProduct(yarr.col(n));
             if ((l + m) % 2 != 0)
