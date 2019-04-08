@@ -700,6 +700,10 @@ inline void Wigner<Scalar>::updateAxis (
         // Trivial case
         RZeta[0](0, 0) = 1;
         RZetaInv[0](0, 0) = 1;
+        DRZetaDInc[0].setZero();
+        DRZetaInvDInc[0].setZero();
+        DRZetaDObl[0].setZero();
+        DRZetaInvDObl[0].setZero();
     } else {
         // We need to compute the actual Wigner matrices
         ADType tol_ad = tol;

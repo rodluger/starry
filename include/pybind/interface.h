@@ -1059,8 +1059,6 @@ std::function<py::object (
                 map.data.DfDu
             );
 
-            // \todo RESHAPE FOR SPECTRAL
-
             // Get Eigen references to the arrays, as these
             // are automatically passed by ref to the Python side
 #           if defined(_STARRY_SPECTRAL_)
