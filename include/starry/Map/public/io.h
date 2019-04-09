@@ -105,7 +105,7 @@ inline auto getU () -> const decltype(u) {
 }
 
 /**
-Set the full filter spherical harmonic vector.
+Set the full filter vector.
 
 */
 template <typename T1>
@@ -116,12 +116,6 @@ inline void setF (
         f = f_;
     else
         throw std::length_error("Dimension mismatch in `f`.");
-    // Check that f(0) == 1
-    if (!(f.row(0) == RowVector<Scalar>::Ones(f.row(0).size()))) {
-        f.row(0).setConstant(1.0);
-        throw std::invalid_argument("The coefficient of the constant " 
-                                    "term of the filter must be fixed at unity.");
-    }
 }
 
 /**
@@ -206,4 +200,23 @@ Return the obliquity of the map.
 */
 inline const Scalar getObliquity () const {
     return obl;
+}
+
+/**
+Return whether or not the filter is on.
+
+*/
+inline bool filterOn () const {
+    return filter_on;
+}
+
+/**
+Toggle the filter on/off.
+
+*/
+inline void toggleFilter () {
+    if (fdeg > 0)
+        filter_on = !filter_on;
+    else
+        throw std::runtime_error("Filter not available because `fdeg = 0`.");
 }

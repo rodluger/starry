@@ -34,6 +34,7 @@ def assert_allclose(name, expected, got, fmt="%.12f", atol=1e-6, rtol=1e-5):
     params=itertools.product(
         (0, 2),                 # ydeg
         (0, 2),                 # udeg
+        (0,),                   # fdeg (TODO)
         (False,),               # reflected (TODO)
         (1, 2),                 # nw
         (1, 2),                 # nt
@@ -49,7 +50,7 @@ def assert_allclose(name, expected, got, fmt="%.12f", atol=1e-6, rtol=1e-5):
     )
 )
 def settings(request):
-    ydeg, udeg, reflected, nw, nt, multi, \
+    ydeg, udeg, fdeg, reflected, nw, nt, multi, \
         t, theta, xo, yo, ro, inc, obl, eps = request.param
     # Disallowed combinations
     if nw > 1 and nt > 1:
@@ -63,13 +64,13 @@ def settings(request):
 
     # Allowed combinations
     elif nw > 1:
-        map = starry.Map(ydeg=ydeg, udeg=udeg, nw=nw, multi=multi, 
+        map = starry.Map(ydeg=ydeg, udeg=udeg, fdeg=fdeg, nw=nw, multi=multi, 
                          reflected=reflected)
     elif nt > 1:
-        map = starry.Map(ydeg=ydeg, udeg=udeg, nt=nt, multi=multi, 
+        map = starry.Map(ydeg=ydeg, udeg=udeg, fdeg=fdeg, nt=nt, multi=multi, 
                          reflected=reflected)
     else:
-        map = starry.Map(ydeg=ydeg, udeg=udeg, multi=multi, 
+        map = starry.Map(ydeg=ydeg, udeg=udeg, fdeg=fdeg, multi=multi, 
                          reflected=reflected)
     np.random.seed(41)
     if ydeg > 0:

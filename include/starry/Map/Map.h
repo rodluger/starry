@@ -37,6 +37,7 @@ protected:
     YType y;                                                                   /**< Vector of spherical harmonic coefficients */
     UType u;                                                                   /**< Vector of limb darkening coefficients */
     Vector<Scalar> f;                                                          /**< Vector of multiplicative filter spherical harmonic coefficients */
+    bool filter_on;                                                            /**< Filter enabled? */
     Scalar inc;                                                                /**< Inclination of the rotation axis in degrees */
     Scalar obl;                                                                /**< Obliquity of the rotation axis in degrees */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
@@ -69,6 +70,7 @@ protected:
         y(Ny * Nt, S::LimbDarkened ? 1 : Nw),
         u(Nu, S::LimbDarkened ? Nw : 1),
         f(Nf),
+        filter_on(fdeg > 0),
         inc(90.0),
         obl(0.0),
         B(ydeg, udeg, fdeg),
@@ -92,6 +94,14 @@ protected:
         if ((Nw < 1) || (Nt < 1))
             throw std::out_of_range(
                 "The number of temporal / spectral terms must be positive.");
+        
+        // \todo There appear to be flux normalization issues for reflected-light
+        // maps with non-limb darkening filters. Look into these before enabling
+        // this feature.
+        if ((S::Reflected) && (fdeg > 0))
+            throw std::runtime_error(
+                "Filters are not yet available for reflected light maps.");
+        
         radian = pi<Scalar>() / 180.;
         reset();
         resize_arrays();

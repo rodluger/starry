@@ -625,7 +625,7 @@ void set_Flm(
     py::array_t<double>& coeff_
 ) {
     using Scalar = typename T::Scalar;
-    std::vector<int> rows = get_Ylm_inds(map.ydeg, lm);
+    std::vector<int> rows = get_Ylm_inds(map.fdeg, lm);
     std::vector<int> cols(1, 0);
 
     // Reshape coeff into (rows, cols)
@@ -801,7 +801,7 @@ py::object get_Flm (
     const py::tuple& lm
 ) {
     // Figure out the indices we're accessing
-    std::vector<int> rows = get_Ylm_inds(map.ydeg, lm);
+    std::vector<int> rows = get_Ylm_inds(map.fdeg, lm);
     std::vector<int> cols(1, 0);
     Vector<double> coeff_(rows.size());
 

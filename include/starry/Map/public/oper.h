@@ -11,7 +11,6 @@ inline void reset ()
 
     // Reset the filter
     f.setZero();
-    setF00();
 
     // Reset limb darkening
     u.setZero();

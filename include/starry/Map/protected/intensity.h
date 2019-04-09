@@ -36,12 +36,12 @@ inline void computeLinearIntensityModelInternal (
         B.computePolyBasis(xv, yv, Xp);
         x_cache = xv;
         y_cache = yv;
-        if ((udeg == 0) && (fdeg == 0))
-            X0 = Xp * B.A1;
+        if ((udeg == 0) && ((fdeg == 0) || (!filter_on)))
+            X0 = Xp * B.A1.block(0, 0, N, Ny);
     }
     
     // Apply limb darkening / filter
-    if ((udeg > 0) || (fdeg > 0) ){
+    if ((udeg > 0) || (filter_on && (fdeg > 0))) {
 
         // Compute the two polynomials
         Vector<Scalar> tmp = B.U1 * u;
@@ -53,7 +53,7 @@ inline void computeLinearIntensityModelInternal (
         Vector<Scalar> p;
         Matrix<Scalar> dpdpu; // not used
         Matrix<Scalar> dpdpf; // not used
-        if (fdeg == 0)
+        if ((fdeg == 0) || !filter_on)
             p = pu;
         else if (udeg == 0)
             p = pf;

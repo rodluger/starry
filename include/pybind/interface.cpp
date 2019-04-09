@@ -190,7 +190,15 @@ PYBIND11_MODULE(
             return map.udeg;
     });
 
-    // Total number of spherical harmonic coefficients after limb-darkening
+    // Highest degree of the filter
+    PyMap.def_property_readonly(
+        "fdeg", [] (
+            Map<T> &map
+        ) {
+            return map.fdeg;
+    });
+
+    // Total number of spherical harmonic coefficients after limb-darkening + filter
     PyMap.def_property_readonly(
         "N", [] (
             Map<T> &map
@@ -212,6 +220,14 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.Nu;
+    });
+
+    // Number of filter coefficients
+    PyMap.def_property_readonly(
+        "Nf", [] (
+            Map<T> &map
+        ) {
+            return map.Nf;
     });
 
     // Number of temporal components
@@ -322,6 +338,20 @@ PYBIND11_MODULE(
                 throw std::invalid_argument(
                     "Incorrect coefficient index shape for this type of map."
                 );
+    });
+
+    // Filter enabled? Internal use only.
+    PyMap.def_property(
+        "_filter_is_active", [] (
+            Map<T> &map
+        ) {
+            return map.filterOn();
+        }, [] (
+            Map<T> &map, 
+            bool on
+        ) {
+            if (map.filterOn() ^ on)
+                map.toggleFilter();
     });
 
     // Reset the map

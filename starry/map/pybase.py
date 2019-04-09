@@ -11,17 +11,6 @@ from IPython.display import HTML
 __all__ = ["PythonMapBase"]
 
 
-class Filter(object):
-    def __init__(self, parent):
-        self.parent = parent
-    def __getitem__(self, inds):
-        return self.parent._get_filter(inds)
-    def __setitem__(self, inds, vals):
-        return self.parent._set_filter(inds, vals)
-    def __repr__(self):
-        return str(self.parent.f)
-
-
 class PythonMapBase(object):
     """
 
@@ -68,24 +57,39 @@ class PythonMapBase(object):
                 from .. import Map
                 if self._temporal:
                     map = Map(ydeg=self.ydeg, udeg=self.udeg, 
+                              fdeg=self.fdeg,
                               multi=self.multi, nt=self.nt)
                     map[:, :, :] = self[:, :, :]
+                    if (self.udeg):
+                        map[:] = self[:]
+                    if (self.fdeg):
+                        map.filter[:, :] = self.filter[:, :]
                     map.axis = self.axis
                     return map.render(theta=theta, res=res, 
                                       projection=projection, 
                                       rotate_if_rect=rotate_if_rect, t=t)
                 elif self._spectral:
                     map = Map(ydeg=self.ydeg, udeg=self.udeg, 
+                              fdeg=self.fdeg,
                               multi=self.multi, nw=self.nw)
                     map[:, :, :] = self[:, :, :]
+                    if (self.udeg):
+                        map[:] = self[:]
+                    if (self.fdeg):
+                        map.filter[:, :] = self.filter[:, :]
                     map.axis = self.axis
                     return map.render(theta=theta, res=res, 
                                       projection=projection, 
                                       rotate_if_rect=rotate_if_rect)
                 else:
                     map = Map(ydeg=self.ydeg, udeg=self.udeg, 
+                              fdeg=self.fdeg,
                               multi=self.multi)
                     map[:, :] = self[:, :]
+                    if (self.udeg):
+                        map[:] = self[:]
+                    if (self.fdeg):
+                        map.filter[:, :] = self.filter[:, :]
                     map.axis = self.axis
                     return map.render(theta=theta, res=res, 
                                       projection=projection, 
@@ -326,7 +330,3 @@ class PythonMapBase(object):
         else:
             self[1:, :] = 0
             self[:ydeg + 1, :] = y
-    
-    @property
-    def filter(self):
-        return Filter(self)

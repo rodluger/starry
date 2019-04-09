@@ -27,7 +27,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     Vector<Scalar> theta_rad = theta * radian;
 
     // Pre-compute the limb darkening / filter operator
-    if ((udeg > 0) || (fdeg > 0)) {
+    if ((udeg > 0) || (filter_on && (fdeg > 0))) {
         
         // Compute the two polynomials
         Vector<Scalar> tmp = B.U1 * u;
@@ -39,7 +39,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         Vector<Scalar> p;
         Matrix<Scalar> dpdpu; // not used
         Matrix<Scalar> dpdpf; // not used
-        if (fdeg == 0)
+        if ((fdeg == 0) || !filter_on)
             p = pu;
         else if (udeg == 0)
             p = pf;
@@ -55,9 +55,16 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         LA1 = (L * B.A1.block(0, 0, Ny, Ny));
         A2LA1 = (B.A2 * LA1).sparseView();
         rTLA1 = B.rT * LA1;
+
+        // DEBUG
+        std::cout << (LA1 * y).transpose() << std::endl;
+        Vector<Scalar> yprime(4);
+        yprime << 0, 0, 0, 1.0 / pi<Scalar>();
+        std::cout << (B.A1.block(0, 0, 4, 4) * yprime).transpose() << std::endl;
+
     }
-    Eigen::SparseMatrix<Scalar>& A = (udeg > 0) ? A2LA1 : B.A;
-    RowVector<Scalar>& rTA1 = (udeg > 0) ? rTLA1 : B.rTA1;
+    Eigen::SparseMatrix<Scalar>& A = ((udeg > 0) || (filter_on && (fdeg > 0))) ? A2LA1 : B.A;
+    RowVector<Scalar>& rTA1 = ((udeg > 0) || (filter_on && (fdeg > 0))) ? rTLA1 : B.rTA1;
 
     // Pre-compute the rotation
     W.leftMultiplyRZetaInv(rTA1, rTA1RZetaInv);
@@ -171,7 +178,7 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
     Vector<Scalar> theta_rad = theta * radian;
 
     // Pre-compute the limb darkening / filter operator
-    if ((udeg > 0) || (fdeg > 0)) {
+    if ((udeg > 0) || (filter_on && (fdeg > 0))) {
 
         // Compute the two polynomials
         Vector<Scalar> tmp = B.U1 * u;
@@ -183,7 +190,7 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
         Vector<Scalar> p;
         Matrix<Scalar> dpdpu; // not used
         Matrix<Scalar> dpdpf; // not used
-        if (fdeg == 0)
+        if ((fdeg == 0) || !filter_on)
             p = pu;
         else if (udeg == 0)
             p = pf;
@@ -198,7 +205,7 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
         computePolynomialProductMatrix<false>(udeg + fdeg, p, L, dLdp);
         LA1_ = (L * B.A1.block(0, 0, Ny, Ny)).sparseView();
     }
-    Eigen::SparseMatrix<Scalar>& LA1 = (udeg > 0) ? LA1_ : B.A1;
+    Eigen::SparseMatrix<Scalar>& LA1 = ((udeg > 0) || (filter_on && (fdeg > 0))) ? LA1_ : B.A1;
 
     // Our model matrix, f = X . y
     X.resize(nt, Ny * Nt);
@@ -323,7 +330,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     Vector<Scalar> theta_rad = theta * radian;
 
     // Pre-compute the limb darkening / filter operator
-    if ((udeg > 0) || (fdeg > 0)) {
+    if ((udeg > 0) || (filter_on && (fdeg > 0))) {
         // Compute the two polynomials
         Vector<Scalar> tmp = B.U1 * u;
         Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
@@ -334,7 +341,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         Vector<Scalar> p;
         Matrix<Scalar> dpdpu; // todo
         Matrix<Scalar> dpdpf; // todo
-        if (fdeg == 0)
+        if ((fdeg == 0) || !filter_on)
             p = pu;
         else if (udeg == 0)
             p = pf;
@@ -351,7 +358,8 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         A2LA1 = (B.A2 * LA1).sparseView();
         rTLA1 = B.rT * LA1;
 
-        throw std::runtime_error("TODO: Implement filter derivatives.");
+        if (fdeg > 0)
+            throw std::runtime_error("TODO: Implement filter derivatives.");
 
         // Pre-compute its derivatives
         Matrix<Scalar> DpDu = pi<Scalar>() * norm * B.U1 - 
@@ -367,8 +375,8 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         }
         Du.resize((Nu - 1) * nt, Ny * Nt);
     }
-    Eigen::SparseMatrix<Scalar>& A = (udeg > 0) ? A2LA1 : B.A;
-    RowVector<Scalar>& rTA1 = (udeg > 0) ? rTLA1 : B.rTA1;
+    Eigen::SparseMatrix<Scalar>& A = ((udeg > 0) || (filter_on && (fdeg > 0))) ? A2LA1 : B.A;
+    RowVector<Scalar>& rTA1 = ((udeg > 0) || (filter_on && (fdeg > 0))) ? rTLA1 : B.rTA1;
 
     // Pre-compute the rotation
     W.leftMultiplyRZetaInv(rTA1, rTA1RZetaInv);

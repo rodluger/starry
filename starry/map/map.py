@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from .pybase import PythonMapBase
+from .filters import FilterBase
 from .. import modules
 
 
@@ -71,8 +72,13 @@ def Map(ydeg, udeg=0, fdeg=0, **kwargs):
     # Import it
     import_by_name('%s_%s_%s' % (kind, flag, dtype))
 
+    # Figure out the base classes
+    bases = (CMapBase, PythonMapBase)
+    if (fdeg > 0) and not limbdarkened:
+        bases += (FilterBase,)
+
     # Subclass it
-    class Map(CMapBase, PythonMapBase):
+    class Map(*bases):
         __doc__ = CMapBase.__doc__
         def __init__(self, *init_args, **init_kwargs):
             self._multi = multi
