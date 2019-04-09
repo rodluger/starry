@@ -34,13 +34,14 @@ inline void computeLinearIntensityModelInternal (
     if ((Xp.rows() != long(npts)) || (xv - x_cache).any() || (yv - y_cache).any()) {
         Xp.resize(npts, N);
         B.computePolyBasis(xv, yv, Xp);
-        X0 = Xp * B.A1;
         x_cache = xv;
         y_cache = yv;
+        if ((udeg == 0) && (fdeg == 0))
+            X0 = Xp * B.A1;
     }
     
-    // Apply limb darkening
-    if (udeg > 0) {
+    // Apply limb darkening / filter
+    if ((udeg > 0) || (fdeg > 0) ){
 
         // Compute the limb darkening operator
         UType tmp = B.U1 * u;
@@ -50,8 +51,20 @@ inline void computeLinearIntensityModelInternal (
         Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
         
+        // Compute the filter operator
+        Vector<Scalar> pf = B.A1.block(0, Nf, 0, Nf) * f;
+        Matrix<Scalar> F;
+        Vector<Matrix<Scalar>> dFdp; // not used
+        computePolynomialProductMatrix<false>(fdeg, pf, F, dFdp);
+
+        std::cout << Xp.rows() << ", " << Xp.cols() << std::endl;
+        std::cout << L.rows() << ", " << L.cols() << std::endl;
+        std::cout << F.rows() << ", " << F.cols() << std::endl;
+        std::cout << Ny << ", " << Ny << std::endl;
+
         // Rotate it into Ylm land
-        X0 = Xp * L * B.A1.block(0, 0, Ny, Ny);
+        X0 = Xp * L * F * B.A1.block(0, 0, Ny, Ny);
+
     }
 
     if (CONTRACT_Y) {
