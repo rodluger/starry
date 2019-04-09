@@ -26,14 +26,32 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     // Convert to radians
     Vector<Scalar> theta_rad = theta * radian;
 
-    // Pre-compute the limb darkening operator
-    if (udeg > 0) {
-        UType tmp = B.U1 * u;
+    // Pre-compute the limb darkening / filter operator
+    if ((udeg > 0) || (fdeg > 0)) {
+        
+        // Compute the two polynomials
+        Vector<Scalar> tmp = B.U1 * u;
         Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
-        UType pu = tmp * norm * pi<Scalar>();
+        Vector<Scalar> pu = tmp * norm * pi<Scalar>();
+        Vector<Scalar> pf = B.A1.block(0, 0, Nf, Nf) * f;
+        
+        // Multiply them
+        Vector<Scalar> p;
+        Matrix<Scalar> dpdpu; // not used
+        Matrix<Scalar> dpdpf; // not used
+        if (fdeg == 0)
+            p = pu;
+        else if (udeg == 0)
+            p = pf;
+        else if (udeg > fdeg) 
+            computePolynomialProduct<false>(udeg, pu, fdeg, pf, p, dpdpu, dpdpf);
+        else
+            computePolynomialProduct<false>(fdeg, pf, udeg, pu, p, dpdpf, dpdpu);
+
+        // Compute the operator
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
-        computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
+        computePolynomialProductMatrix<false>(udeg + fdeg, p, L, dLdp);
         LA1 = (L * B.A1.block(0, 0, Ny, Ny));
         A2LA1 = (B.A2 * LA1).sparseView();
         rTLA1 = B.rT * LA1;
@@ -152,14 +170,32 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
     // Convert to radians
     Vector<Scalar> theta_rad = theta * radian;
 
-    // Pre-compute the limb darkening operator
-    if (udeg > 0) {
-        UType tmp = B.U1 * u;
+    // Pre-compute the limb darkening / filter operator
+    if ((udeg > 0) || (fdeg > 0)) {
+
+        // Compute the two polynomials
+        Vector<Scalar> tmp = B.U1 * u;
         Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
-        UType pu = tmp * norm * pi<Scalar>();
+        Vector<Scalar> pu = tmp * norm * pi<Scalar>();
+        Vector<Scalar> pf = B.A1.block(0, 0, Nf, Nf) * f;
+        
+        // Multiply them
+        Vector<Scalar> p;
+        Matrix<Scalar> dpdpu; // not used
+        Matrix<Scalar> dpdpf; // not used
+        if (fdeg == 0)
+            p = pu;
+        else if (udeg == 0)
+            p = pf;
+        else if (udeg > fdeg) 
+            computePolynomialProduct<false>(udeg, pu, fdeg, pf, p, dpdpu, dpdpf);
+        else
+            computePolynomialProduct<false>(fdeg, pf, udeg, pu, p, dpdpf, dpdpu);
+
+        // Compute the operator
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
-        computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
+        computePolynomialProductMatrix<false>(udeg + fdeg, p, L, dLdp);
         LA1_ = (L * B.A1.block(0, 0, Ny, Ny)).sparseView();
     }
     Eigen::SparseMatrix<Scalar>& LA1 = (udeg > 0) ? LA1_ : B.A1;
@@ -286,17 +322,36 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     // Convert to radians
     Vector<Scalar> theta_rad = theta * radian;
 
-    // Pre-compute the limb darkening operator
-    if (udeg > 0) {
-        UType tmp = B.U1 * u;
+    // Pre-compute the limb darkening / filter operator
+    if ((udeg > 0) || (fdeg > 0)) {
+        // Compute the two polynomials
+        Vector<Scalar> tmp = B.U1 * u;
         Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
-        UType pu = tmp * norm * pi<Scalar>();
+        Vector<Scalar> pu = tmp * norm * pi<Scalar>();
+        Vector<Scalar> pf = B.A1.block(0, 0, Nf, Nf) * f;
+
+        // Multiply them
+        Vector<Scalar> p;
+        Matrix<Scalar> dpdpu; // todo
+        Matrix<Scalar> dpdpf; // todo
+        if (fdeg == 0)
+            p = pu;
+        else if (udeg == 0)
+            p = pf;
+        else if (udeg > fdeg) 
+            computePolynomialProduct<true>(udeg, pu, fdeg, pf, p, dpdpu, dpdpf);
+        else
+            computePolynomialProduct<true>(fdeg, pf, udeg, pu, p, dpdpf, dpdpu);
+
+        // Compute the operator
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp;
-        computePolynomialProductMatrix<true>(udeg, pu, L, dLdp);
+        computePolynomialProductMatrix<true>(udeg + fdeg, p, L, dLdp);
         LA1 = (L * B.A1.block(0, 0, Ny, Ny));
         A2LA1 = (B.A2 * LA1).sparseView();
         rTLA1 = B.rT * LA1;
+
+        throw std::runtime_error("TODO: Implement filter derivatives.");
 
         // Pre-compute its derivatives
         Matrix<Scalar> DpDu = pi<Scalar>() * norm * B.U1 - 

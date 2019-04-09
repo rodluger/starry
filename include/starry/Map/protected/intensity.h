@@ -53,10 +53,14 @@ inline void computeLinearIntensityModelInternal (
         Vector<Scalar> p;
         Matrix<Scalar> dpdpu; // not used
         Matrix<Scalar> dpdpf; // not used
-        if (udeg > fdeg) 
-            computePolynomialProduct(udeg, pu, fdeg, pf, p, dpdpu, dpdpf);
+        if (fdeg == 0)
+            p = pu;
+        else if (udeg == 0)
+            p = pf;
+        else if (udeg > fdeg) 
+            computePolynomialProduct<false>(udeg, pu, fdeg, pf, p, dpdpu, dpdpf);
         else
-            computePolynomialProduct(fdeg, pf, udeg, pu, p, dpdpf, dpdpu);
+            computePolynomialProduct<false>(fdeg, pf, udeg, pu, p, dpdpf, dpdpu);
 
         // Compute the operator
         Matrix<Scalar> L;
