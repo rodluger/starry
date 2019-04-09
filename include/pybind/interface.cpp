@@ -136,6 +136,9 @@
 #include "docstrings.h"
 using namespace interface;
 
+class Filter {
+};
+
 // Register the Python module
 PYBIND11_MODULE(
     _STARRY_NAME_, 
@@ -162,10 +165,10 @@ PYBIND11_MODULE(
             PyMap.def(py::init<int>(), "udeg"_a=2);
 #       endif
 #   elif defined(_STARRY_TEMPORAL_) || defined(_STARRY_SPECTRAL_) 
-        PyMap.def(py::init<int, int, int>(), 
-                  "ydeg"_a=2, "udeg"_a=0, "nterms"_a=1);
+        PyMap.def(py::init<int, int, int, int>(), 
+                  "ydeg"_a=2, "udeg"_a=0, "fdeg"_a=0, "nterms"_a=1);
 #   else
-        PyMap.def(py::init<int, int>(), "ydeg"_a=2, "udeg"_a=0);
+        PyMap.def(py::init<int, int, int>(), "ydeg"_a=2, "udeg"_a=0, "fdeg"_a=0);
 #   endif
 
     // String representation of the map
@@ -282,6 +285,45 @@ PYBIND11_MODULE(
                 );
     }, docstrings::Map::getitem);
 
+    // Filter setter
+    PyMap.def(
+        "_set_filter", [](
+            Map<T>& map,
+            const py::object& inds,
+            py::array_t<double>& coeff
+        ) {
+            int size;
+            if (py::isinstance<py::tuple>(inds))
+                size = py::cast<py::tuple>(inds).size();
+            else
+                size = 1;
+            if (size == 2)
+                return set_Flm(map, inds, coeff);
+            else
+                throw std::invalid_argument(
+                    "Incorrect coefficient index shape for this type of map."
+                );
+    });
+
+    // Filter getter
+    PyMap.def(
+        "_get_filter", [](
+            Map<T>& map,
+            const py::object& inds
+        ) -> py::object {
+            int size;
+            if (py::isinstance<py::tuple>(inds))
+                size = py::cast<py::tuple>(inds).size();
+            else
+                size = 1;
+            if (size == 2)
+                return get_Flm(map, inds);
+            else
+                throw std::invalid_argument(
+                    "Incorrect coefficient index shape for this type of map."
+                );
+    });
+
     // Reset the map
     PyMap.def("reset", &Map<T>::reset, docstrings::Map::reset);
     
@@ -304,6 +346,16 @@ PYBIND11_MODULE(
             MAKE_READ_ONLY(u);
             return u;
     }, docstrings::Map::u);
+
+    // Vector of filter spherical harmonic coefficients
+    PyMap.def_property_readonly(
+        "f", [] (
+            Map<T> &map
+        ) {
+            auto f = py::cast(map.getF().template cast<double>());
+            MAKE_READ_ONLY(f);
+            return f;
+    });
 
 // Ylm map methods
 #   if !defined(_STARRY_LD_)

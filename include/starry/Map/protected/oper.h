@@ -120,6 +120,15 @@ inline EnableIf<U::Temporal, void> setY00 () {
 }
 
 /**
+Set the zeroth order filter spherical harmonic coefficient.
+This is a **constant** fixed at unity.
+
+*/
+inline void setF00 () {
+    f.row(0).setConstant(1.0);
+}
+
+/**
 
 
 */

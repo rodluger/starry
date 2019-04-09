@@ -9,6 +9,10 @@ inline void reset ()
     y.setZero();
     setY00();
 
+    // Reset the filter
+    f.setZero();
+    setF00();
+
     // Reset limb darkening
     u.setZero();
     setU0();

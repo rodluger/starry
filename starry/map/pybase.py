@@ -11,6 +11,17 @@ from IPython.display import HTML
 __all__ = ["PythonMapBase"]
 
 
+class Filter(object):
+    def __init__(self, parent):
+        self.parent = parent
+    def __getitem__(self, inds):
+        return self.parent._get_filter(inds)
+    def __setitem__(self, inds, vals):
+        return self.parent._set_filter(inds, vals)
+    def __repr__(self):
+        return str(self.parent.f)
+
+
 class PythonMapBase(object):
     """
 
@@ -315,3 +326,7 @@ class PythonMapBase(object):
         else:
             self[1:, :] = 0
             self[:ydeg + 1, :] = y
+    
+    @property
+    def filter(self):
+        return Filter(self)

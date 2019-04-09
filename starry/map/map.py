@@ -17,7 +17,7 @@ def import_by_name(name):
             "Please re-compile `starry` with bit %d enabled." % bit)
 
 
-def Map(ydeg, udeg=0, **kwargs):
+def Map(ydeg, udeg=0, fdeg=0, **kwargs):
     """
     Figures out which `Map` class the user wants and instantiates it.
 
@@ -36,6 +36,7 @@ def Map(ydeg, udeg=0, **kwargs):
         limbdarkened = False
         kwargs["ydeg"] = ydeg
         kwargs["udeg"] = udeg
+        kwargs["fdeg"] = fdeg
 
     # Disallowed combinations
     if limbdarkened and temporal:

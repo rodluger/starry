@@ -14,13 +14,14 @@ public:
     // Public variables
     const int ydeg;                                                            /**< Maximum degree of the spherical harmonic map */
     const int udeg;                                                            /**< Maximum degree of the limb darkening map */
+    const int fdeg;                                                            /**< Maximum degree of the multiplicative filter */
     const int deg;                                                             /**< Maximum degree of the combined Ylm + limb darkening map */
     const int Ny;                                                              /**< Number of spherical harmonic `(l, m)` coefficients */
     const int Nu;                                                              /**< Number of limb darkening coefficients in the `u` basis */
+    const int Nf;                                                              /**< Number of filter coefficients */
     const int Np;                                                              /**< Number of limb darkening coefficients in the `p` basis*/
     const int Nw;                                                              /**< Number of spectral components */
     const int Nt;                                                              /**< Number of temporal components */
-    const int Nf;                                                              /**< Number of flux components per timestep */
     const int N;                                                               /**< Total number of spherical harmonic `(l, m)` coefficients after limb darkening */
     Data<Scalar> data;                                                         /**< Internal storage class */
 
@@ -35,6 +36,7 @@ protected:
     // Internal variables
     YType y;                                                                   /**< Vector of spherical harmonic coefficients */
     UType u;                                                                   /**< Vector of limb darkening coefficients */
+    Vector<Scalar> f;                                                          /**< Vector of multiplicative filter spherical harmonic coefficients */
     Scalar inc;                                                                /**< Inclination of the rotation axis in degrees */
     Scalar obl;                                                                /**< Obliquity of the rotation axis in degrees */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
@@ -48,26 +50,28 @@ protected:
     explicit Map (
         int ydeg,
         int udeg,
+        int fdeg,
         int Nw,
-        int Nt,
-        int Nf
+        int Nt
     ) :
         ydeg(ydeg), 
         udeg(udeg),
-        deg(ydeg + udeg),
+        fdeg(fdeg),
+        deg(ydeg + udeg + fdeg),
         Ny((ydeg + 1) * (ydeg + 1)), 
         Nu(udeg + 1),
+        Nf((fdeg + 1) * (fdeg + 1)),
         Np((udeg + 1) * (udeg + 1)),
         Nw(Nw),
         Nt(Nt),
-        Nf(Nf),
         N((deg + 1) * (deg + 1)),
         data(ydeg),
         y(Ny * Nt, S::LimbDarkened ? 1 : Nw),
         u(Nu, S::LimbDarkened ? Nw : 1),
+        f(Nf),
         inc(90.0),
         obl(0.0),
-        B(ydeg, udeg),
+        B(ydeg, udeg, fdeg),
         W(ydeg, inc, obl),
         G(deg),
         L(udeg, Nw)
@@ -79,6 +83,9 @@ protected:
         if ((udeg < 0) || (udeg > STARRY_MAX_LMAX))
             throw std::out_of_range(
                 "Limb darkening degree out of range.");
+        if ((fdeg < 0) || (fdeg > STARRY_MAX_LMAX))
+            throw std::out_of_range(
+                "Filter degree out of range.");
         if ((deg > STARRY_MAX_LMAX))
             throw std::out_of_range(
                 "Total map degree out of range.");
@@ -99,8 +106,9 @@ public:
     >
     explicit Map (
         int ydeg,
-        int udeg
-    ) : Map(ydeg, udeg, 1, 1, 1) {}
+        int udeg,
+        int fdeg
+    ) : Map(ydeg, udeg, fdeg, 1, 1) {}
 
     //! Constructor for spectral & temporal maps
     template <
@@ -110,11 +118,11 @@ public:
     explicit Map (
         int ydeg,
         int udeg,
+        int fdeg,
         int nterms
-    ) : Map(ydeg, udeg, 
+    ) : Map(ydeg, udeg, fdeg,
             U::Spectral ? nterms : 1,
-            U::Temporal ? nterms : 1,
-            U::Spectral ? nterms : 1) {}
+            U::Temporal ? nterms : 1) {}
 
     //! Constructor for the single-wavelength limb-darkened map
     template <
@@ -123,7 +131,7 @@ public:
     >
     explicit Map (
         int udeg
-    ) : Map(0, udeg, 1, 1, 1) {}
+    ) : Map(0, udeg, 0, 1, 1) {}
 
     //! Constructor for the spectral limb-darkened map
     // Note that we need to hack SFINAE a little differently
@@ -133,7 +141,7 @@ public:
         int udeg,
         int nterms,
         EnableIf<U::LimbDarkened && U::Spectral>* = 0
-    ) : Map(0, udeg, nterms, 1, nterms) {}
+    ) : Map(0, udeg, 0, nterms, 1) {}
 
     // Public methods
     #include "public/io.h"

@@ -8,6 +8,7 @@ std::string info () {
         os << "<starry.Map("
             << "ydeg=" << ydeg << ", "
             << "udeg=" << udeg << ", "
+            << "fdeg=" << fdeg << ", "
             << "nw=" << Nw << ", "
             << "reflected=" << S::Reflected << ", "
             << "multi=" << !std::is_same<Scalar, double>::value
@@ -16,6 +17,7 @@ std::string info () {
         os << "<starry.Map("
             << "ydeg=" << ydeg << ", "
             << "udeg=" << udeg << ", "
+            << "fdeg=" << fdeg << ", "
             << "nt=" << Nt << ", "
             << "reflected=" << S::Reflected << ", "
             << "multi=" << !std::is_same<Scalar, double>::value
@@ -29,6 +31,7 @@ std::string info () {
         os << "<starry.Map("
             << "ydeg=" << ydeg << ", "
             << "udeg=" << udeg << ", "
+            << "fdeg=" << fdeg << ", "
             << "reflected=" << S::Reflected << ", "
             << "multi=" << !std::is_same<Scalar, double>::value
             << ")>";
@@ -99,6 +102,34 @@ Get the full limb darkening vector.
 */
 inline auto getU () -> const decltype(u) {
     return u;
+}
+
+/**
+Set the full filter spherical harmonic vector.
+
+*/
+template <typename T1>
+inline void setF (
+    const MatrixBase<T1>& f_
+) {
+    if ((f_.rows() == f.rows()) && (f_.cols() == f.cols()))
+        f = f_;
+    else
+        throw std::length_error("Dimension mismatch in `f`.");
+    // Check that f(0) == 1
+    if (!(f.row(0) == RowVector<Scalar>::Ones(f.row(0).size()))) {
+        f.row(0).setConstant(1.0);
+        throw std::invalid_argument("The coefficient of the constant " 
+                                    "term of the filter must be fixed at unity.");
+    }
+}
+
+/**
+Get the full filter spherical harmonic vector.
+
+*/
+inline auto getF () -> const decltype(f) {
+    return f;
 }
 
 /**

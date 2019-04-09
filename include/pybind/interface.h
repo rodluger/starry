@@ -614,6 +614,72 @@ void set_Ul(
     map.setU(u);
 }
 
+/**
+Set one or more filter coefficients
+
+*/
+template <typename T>
+void set_Flm(
+    Map<T>& map, 
+    const py::tuple& lm,
+    py::array_t<double>& coeff_
+) {
+    using Scalar = typename T::Scalar;
+    std::vector<int> rows = get_Ylm_inds(map.ydeg, lm);
+    std::vector<int> cols(1, 0);
+
+    // Reshape coeff into (rows, cols)
+    py::buffer_info buf = coeff_.request();
+    double *ptr = (double *) buf.ptr;
+    Matrix<Scalar> coeff(rows.size(), cols.size());
+    if (buf.ndim == 0) {
+        // Set an array of indices (or rows/columns) to the same value
+        coeff.setConstant(ptr[0]);
+    } else if (buf.ndim == 1) {
+        if (cols.size() == 1) {
+            // Set an array of indices to an array of values
+            coeff = py::cast<Matrix<double>>(coeff_).template 
+                        cast<Scalar>();
+        } else {
+            if (rows.size() == 1) {
+                // Set a row to an array of values
+                coeff = (py::cast<Matrix<double>>(coeff_).template 
+                            cast<Scalar>()).transpose();
+            } else {
+                // ?
+                throw std::length_error("Invalid coefficient "
+                                        "array shape.");
+            }
+        }
+    } else if (buf.ndim == 2) {
+        // Set a matrix of (row, column) indices to a matrix of values
+        coeff = py::cast<Matrix<double>>(coeff_).template 
+                    cast<Scalar>();
+    } else {
+        // ?
+        throw std::length_error("Invalid coefficient array shape.");
+    }
+
+    // Check shape
+    if (!((size_t(coeff.rows()) == size_t(rows.size())) && 
+            (size_t(coeff.cols()) == size_t(cols.size()))))
+        throw std::length_error("Mismatch in index array and " 
+                                "coefficient array sizes.");
+
+    // Grab the map vector and update it term by term
+    auto f = map.getF();
+    int i = 0;
+    for (int row : rows) {
+        int j = 0;
+        for (int col : cols) {
+            f(row, col) = static_cast<Scalar>(coeff(i, j));
+            ++j;
+        }
+        ++i;
+    }
+    map.setF(f);
+}
+
 /** 
 Retrieve one or more spherical harmonic coefficients
 
@@ -718,6 +784,42 @@ py::object get_Ul(
 #       else
             return py::cast<double>(coeff_(0));
 #       endif
+    } else {
+        auto coeff = py::cast(coeff_);
+        MAKE_READ_ONLY(coeff);
+        return coeff;
+    }
+}
+
+/** 
+Retrieve one or more filter coefficients
+
+*/
+template <typename T>
+py::object get_Flm (
+    Map<T>& map,
+    const py::tuple& lm
+) {
+    // Figure out the indices we're accessing
+    std::vector<int> rows = get_Ylm_inds(map.ydeg, lm);
+    std::vector<int> cols(1, 0);
+    Vector<double> coeff_(rows.size());
+
+    // Grab the map vector and update the output vector term by term
+    auto f = map.getF();
+    int i = 0;
+    for (int row : rows) {
+        int j = 0;
+        for (int col : cols) {
+            coeff_(i, j) = static_cast<double>(f(row, col));
+            ++j;
+        }
+        ++i;
+    }
+
+    // Squeeze the output and cast to a py::array
+    if (coeff_.size() == 1) {
+        return py::cast<double>(coeff_(0));
     } else {
         auto coeff = py::cast(coeff_);
         MAKE_READ_ONLY(coeff);

@@ -649,6 +649,7 @@ public:
 
     const int ydeg;                                                            /**< The highest degree of the spherical harmonic map */
     const int udeg;                                                            /**< The highest degree of the limb darkening map */
+    const int fdeg;                                                            /**< The highest degree of the filter map */
     const int lmax;
     const double norm;                                                         /**< Map normalization constant */
     Eigen::SparseMatrix<T> A1;                                                 /**< The polynomial change of basis matrix */
@@ -662,11 +663,13 @@ public:
     explicit Basis(
         int ydeg,
         int udeg, 
+        int fdeg,
         T norm=2.0 / root_pi<T>() 
     ) :
         ydeg(ydeg),
         udeg(udeg), 
-        lmax(ydeg + udeg),
+        fdeg(fdeg),
+        lmax(ydeg + udeg + fdeg),
         norm(norm)
     {
         // Compute the matrices
