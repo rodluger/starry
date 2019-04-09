@@ -180,3 +180,61 @@ inline void computePolynomialProductMatrix (
         }
     }  
 }
+
+template <bool GRADIENT=false>
+inline void computePolynomialProduct(
+    const int lmax1, 
+    const Vector<Scalar>& p1, 
+    const int lmax2,
+    const Vector<Scalar>& p2, 
+    Vector<Scalar>& p1p2,
+    Matrix<Scalar>& grad_p1,
+    Matrix<Scalar>& grad_p2
+) {
+    int n1, n2, l1, m1, l2, m2, l, n;
+    bool odd1;
+    int N1 = (lmax1 + 1) * (lmax1 + 1);
+    int N2 = (lmax2 + 1) * (lmax2 + 1);
+    int N12 = (lmax1 + lmax2 + 1) * (lmax1 + lmax2 + 1);
+    p1p2.setZero(N);
+    Scalar mult;
+    n1 = 0;
+    if (GRADIENT) {
+        grad_p1.setZero(N12, N1);
+        grad_p2.setZero(N12, N2);
+    }
+    for (l1 = 0; l1 < lmax1 + 1; ++l1) {
+        for (m1 = -l1; m1 < l1 + 1; ++m1) {
+            odd1 = (l1 + m1) % 2 == 0 ? false : true;
+            n2 = 0;
+            for (l2 = 0; l2 < lmax2 + 1; ++l2) {
+                for (m2 = -l2; m2 < l2 + 1; ++m2) {
+                    l = l1 + l2;
+                    n = l * l + l + m1 + m2;
+                    mult = p1(n1) * p2(n2);
+                    if (odd1 && ((l2 + m2) % 2 != 0)) {
+                        p1p2(n - 4 * l + 2) += mult;
+                        p1p2(n - 2) -= mult;
+                        p1p2(n + 2) -= mult;
+                        if (GRADIENT) {
+                            grad_p1(n - 4 * l + 2, n1) += p2(n2);
+                            grad_p2(n - 4 * l + 2, n2) += p1(n1);
+                            grad_p1(n - 2, n1) -= p2(n2);
+                            grad_p2(n - 2, n2) -= p1(n1);
+                            grad_p1(n + 2, n1) -= p2(n2);
+                            grad_p2(n + 2, n2) -= p1(n1);
+                        }  
+                    } else {
+                        p1p2(n) += mult;
+                        if (GRADIENT) {
+                            grad_p1(n, n1) += p2(n2);
+                            grad_p2(n, n2) += p1(n1);
+                        }
+                    }
+                    ++n2;
+                }
+            }
+            ++n1;
+        }
+    }
+}

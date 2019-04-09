@@ -43,27 +43,28 @@ inline void computeLinearIntensityModelInternal (
     // Apply limb darkening / filter
     if ((udeg > 0) || (fdeg > 0) ){
 
-        // Compute the limb darkening operator
-        UType tmp = B.U1 * u;
+        // Compute the two polynomials
+        Vector<Scalar> tmp = B.U1 * u;
         Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
-        UType pu = tmp * norm * pi<Scalar>();
+        Vector<Scalar> pu = tmp * norm * pi<Scalar>();
+        Vector<Scalar> pf = B.A1.block(0, 0, Nf, Nf) * f;
+        
+        // Multiply them
+        Vector<Scalar> p;
+        Matrix<Scalar> dpdpu; // not used
+        Matrix<Scalar> dpdpf; // not used
+        if (udeg > fdeg) 
+            computePolynomialProduct(udeg, pu, fdeg, pf, p, dpdpu, dpdpf);
+        else
+            computePolynomialProduct(fdeg, pf, udeg, pu, p, dpdpf, dpdpu);
+
+        // Compute the operator
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp; // not used
-        computePolynomialProductMatrix<false>(udeg, pu, L, dLdp);
-        
-        // Compute the filter operator
-        Vector<Scalar> pf = B.A1.block(0, Nf, 0, Nf) * f;
-        Matrix<Scalar> F;
-        Vector<Matrix<Scalar>> dFdp; // not used
-        computePolynomialProductMatrix<false>(fdeg, pf, F, dFdp);
-
-        std::cout << Xp.rows() << ", " << Xp.cols() << std::endl;
-        std::cout << L.rows() << ", " << L.cols() << std::endl;
-        std::cout << F.rows() << ", " << F.cols() << std::endl;
-        std::cout << Ny << ", " << Ny << std::endl;
+        computePolynomialProductMatrix<false>(udeg + fdeg, p, L, dLdp);
 
         // Rotate it into Ylm land
-        X0 = Xp * L * F * B.A1.block(0, 0, Ny, Ny);
+        X0 = Xp * L * B.A1.block(0, 0, Ny, Ny);
 
     }
 
