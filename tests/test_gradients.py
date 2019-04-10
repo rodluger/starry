@@ -51,7 +51,7 @@ def assert_allclose(name, expected, got, fmt="%.12f", atol=1e-6, rtol=1e-5):
 )
 def settings(request):
     ydeg, udeg, fdeg, reflected, nw, nt, multi, \
-        t, theta, xo, yo, ro, inc, obl, eps = request.param
+        t, theta, xo, yo, ro, inc, obl, eps = request.param    
     # Disallowed combinations
     if nw > 1 and nt > 1:
         return None
@@ -219,3 +219,30 @@ class TestGradients:
         # Compare
         for key in grad.keys():
             assert_allclose(key, np.squeeze(grad_num[key]), np.squeeze(grad[key]))
+
+
+if __name__ == "__main__":
+    test = TestGradients()
+    ydeg = 2
+    udeg = 2
+    fdeg = 0
+    reflected = False
+    nw = 1
+    nt = 1
+    multi = False
+    t = 0
+    theta = 0
+    xo = 0.3
+    yo = 0.3
+    ro = 0.1
+    inc = 90
+    obl = 0
+    eps = 1e-8
+    map = starry.Map(ydeg=ydeg, udeg=udeg, fdeg=fdeg, multi=multi, 
+                     reflected=reflected)
+    np.random.seed(41)
+    map[1:, :] = np.random.randn((ydeg + 1) ** 2 - 1)
+    map[1:] = np.random.randn(udeg)
+    map.inc = inc
+    map.obl = obl
+    test.test_gradients((map, eps, t, theta, xo, yo, ro))

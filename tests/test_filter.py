@@ -28,7 +28,9 @@ class TestFilter:
     """Test the filter operator."""
 
     def test_getter_setter(self, map):
-        pass # TODO
+        map.filter[:, :] = 1
+        assert np.allclose(map.f, np.ones(map.Nf))
+        assert np.allclose(map.f, map.filter[:, :])
 
     def test_phase_curve_static_single_wav(self, map):
         theta = np.linspace(0, 180, 100)
