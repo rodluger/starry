@@ -121,7 +121,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
 
             // Dot them together
             sTA = G.sT * B.A;
-            W.leftMultiplyRz(sTA, sTARz);
+            W.leftMultiplyRzAugmented(sTA, sTARz);
 
             // Apply the filter operator
             if (apply_filter) sTARz = sTARz * L;

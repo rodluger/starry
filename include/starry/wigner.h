@@ -340,7 +340,19 @@ public:
     );
 
     template <typename T1, typename T2>
+    inline void leftMultiplyRzAugmented (
+        const MatrixBase<T1>& vT, 
+        MatrixBase<T2> const & uT
+    );
+
+    template <typename T1, typename T2>
     inline void leftMultiplyDRz (
+        const MatrixBase<T1>& vT, 
+        MatrixBase<T2> const & uT
+    );
+
+    template <typename T1, typename T2>
+    inline void leftMultiplyDRzAugmented (
         const MatrixBase<T1>& vT, 
         MatrixBase<T2> const & uT
     );
@@ -469,7 +481,7 @@ inline void Wigner<Scalar>::leftMultiplyRz (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
-    for (int l = 0; l < ydeg + ufdeg + 1; ++l) {
+    for (int l = 0; l < ydeg + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
             MBCAST(uT, T2).col(l * l + j) = 
                 vT.col(l * l + j) * cosmt(l * l + j) +
@@ -489,6 +501,45 @@ inline void Wigner<Scalar>::leftMultiplyDRz (
     MatrixBase<T2> const & uT
 ) {
     for (int l = 0; l < ydeg + 1; ++l) {
+        for (int j = 0; j < 2 * l + 1; ++j) {
+            int m = j - l;
+            MBCAST(uT, T2).col(l * l + j) = 
+                vT.col(l * l + 2 * l - j) * m * cosmt(l * l + j) -
+                vT.col(l * l + j) * m * sinmt(l * l + j);
+        }
+    }
+}
+
+/* 
+Computes the dot product uT = vT . Rz.
+
+*/
+template <class Scalar>
+template <typename T1, typename T2>
+inline void Wigner<Scalar>::leftMultiplyRzAugmented (
+    const MatrixBase<T1>& vT, 
+    MatrixBase<T2> const & uT
+) {
+    for (int l = 0; l < ydeg + ufdeg + 1; ++l) {
+        for (int j = 0; j < 2 * l + 1; ++j) {
+            MBCAST(uT, T2).col(l * l + j) = 
+                vT.col(l * l + j) * cosmt(l * l + j) +
+                vT.col(l * l + 2 * l - j) * sinmt(l * l + j);
+        }
+    }
+}
+
+/* 
+Computes the dot product uT = vT . dRz / dtheta.
+
+*/
+template <class Scalar>
+template <typename T1, typename T2>
+inline void Wigner<Scalar>::leftMultiplyDRzAugmented (
+    const MatrixBase<T1>& vT, 
+    MatrixBase<T2> const & uT
+) {
+    for (int l = 0; l < ydeg + ufdeg + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
             int m = j - l;
             MBCAST(uT, T2).col(l * l + j) = 

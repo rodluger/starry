@@ -55,12 +55,11 @@ used throughout the code.
 void resize_arrays() {
     rTA1RZetaInv.resize(Ny);
     rTA1RZetaInvRz.resize(Ny);
-    sTA.resize(Ny);
-    sTARz.resize(Ny);
+    sTA.resize(N);
+    sTARz.resize(N);
     sTARzRZetaInv.resize(Ny);
     sTARzRZetaInvRz.resize(Ny);
     LA1.resize(N, Ny);
-    A2LA1.resize(Ny, Ny);
     rTLA1.resize(Ny);
     rTA1.resize(Ny);
     rTA1Rz.resize(Ny);
@@ -68,11 +67,11 @@ void resize_arrays() {
     rTA1RzRZetaInvRz.resize(Ny);
     LA1_.resize(N, Ny);
     rTA1RZetaInvDRzDtheta.resize(Ny);
-    dsTdrA.resize(Ny);
-    dsTdbA.resize(Ny);
-    dsTdrARz.resize(Ny);
-    dsTdbARz.resize(Ny);
-    sTADRzDw.resize(Ny);
+    dsTdrA.resize(N);
+    dsTdbA.resize(N);
+    dsTdrARz.resize(N);
+    dsTdbARz.resize(N);
+    sTADRzDw.resize(N);
     dsTdrARzRZetaInv.resize(Ny);
     dsTdbARzRZetaInv.resize(Ny);
     sTADRzDwRZetaInv.resize(Ny);
