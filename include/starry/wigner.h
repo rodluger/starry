@@ -442,9 +442,9 @@ public:
         }
 
         // Initialize our z rotation vectors
-        cosnt.resize(max(2, ydeg + 1));
+        cosnt.resize(max(2, ydeg + ufdeg + 1));
         cosnt(0) = 1.0;
-        sinnt.resize(max(2, ydeg + 1));
+        sinnt.resize(max(2, ydeg + ufdeg + 1));
         sinnt(0) = 0.0;
         cosmt.resize(N);
         sinmt.resize(N);
