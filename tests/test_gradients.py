@@ -9,6 +9,7 @@ import itertools
 np.random.seed(44)
 debug = False
 
+ntimes = 0
 
 def assert_allclose(name, expected, got, fmt="%.12f", atol=1e-6, rtol=1e-5):
     """Raise an assertion error if two arrays differ."""
@@ -222,27 +223,5 @@ class TestGradients:
 
 
 if __name__ == "__main__":
-    test = TestGradients()
-    ydeg = 2
-    udeg = 2
-    fdeg = 0
-    reflected = False
-    nw = 1
-    nt = 1
-    multi = False
-    t = 0
-    theta = 0
-    xo = 0.3
-    yo = 0.3
-    ro = 0.1
-    inc = 90
-    obl = 0
-    eps = 1e-8
-    map = starry.Map(ydeg=ydeg, udeg=udeg, fdeg=fdeg, multi=multi, 
-                     reflected=reflected)
-    np.random.seed(41)
-    map[1:, :] = np.random.randn((ydeg + 1) ** 2 - 1)
-    map[1:] = np.random.randn(udeg)
-    map.inc = inc
-    map.obl = obl
-    test.test_gradients((map, eps, t, theta, xo, yo, ro))
+    map = starry.Map(ydeg=2, udeg=2, fdeg=0)
+    map.flux(gradient=True)

@@ -19,7 +19,7 @@ public:
     const int Ny;                                                              /**< Number of spherical harmonic `(l, m)` coefficients */
     const int Nu;                                                              /**< Number of limb darkening coefficients in the `u` basis */
     const int Nf;                                                              /**< Number of filter coefficients */
-    const int Np;                                                              /**< Number of limb darkening coefficients in the `p` basis*/
+    const int Npu;                                                              /**< Number of limb darkening coefficients in the `p` basis*/
     const int Nw;                                                              /**< Number of spectral components */
     const int Nt;                                                              /**< Number of temporal components */
     const int N;                                                               /**< Total number of spherical harmonic `(l, m)` coefficients after limb darkening */
@@ -62,7 +62,7 @@ protected:
         Ny((ydeg + 1) * (ydeg + 1)), 
         Nu(udeg + 1),
         Nf((fdeg + 1) * (fdeg + 1)),
-        Np((udeg + 1) * (udeg + 1)),
+        Npu((udeg + 1) * (udeg + 1)),
         Nw(Nw),
         Nt(Nt),
         N((deg + 1) * (deg + 1)),
