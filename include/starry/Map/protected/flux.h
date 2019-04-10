@@ -121,6 +121,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
 
             // Dot them together
             sTA = G.sT * B.A;
+            sTARz.resize(N);
             W.leftMultiplyRzAugmented(sTA, sTARz);
 
             // Apply the filter operator
@@ -180,6 +181,10 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
 
     // Pre-compute the limb darkening / filter operator
     if ((udeg > 0) || (filter_on && (fdeg > 0))) {
+
+        // \todo
+        if (fdeg > 0)
+            throw std::runtime_error("TODO: This routine needs to be updated.");
 
         // Compute the two polynomials
         Vector<Scalar> tmp = B.U1 * u;
@@ -360,7 +365,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         rTLA1 = B.rT * LA1;
 
         if (fdeg > 0)
-            throw std::runtime_error("TODO: Implement filter derivatives.");
+            throw std::runtime_error("TODO: Update this function. Implement filter derivatives.");
 
         // Pre-compute its derivatives
         Matrix<Scalar> DpDu = pi<Scalar>() * norm * B.U1 - 

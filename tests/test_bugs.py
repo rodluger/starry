@@ -24,27 +24,3 @@ def test_memleak():
 def test_source_noon():
     map = starry.Map(2, reflected=True)
     assert np.nansum(map.render(source=[0, 0, 1])) != 0
-
-
-# Occultation flux is wrong when using filters
-@pytest.mark.xfail
-def test_filter_flux():
-    map = starry.Map(1, fdeg=1)
-    map.filter[1, 1] = 1
-    f1 = np.array(map.flux(xo=0.1, ro=0.1))[0]
-
-    # Note that the first term of the design matrix
-    # is ZERO: this is the source of the problem!
-    print(map.linear_flux_model(xo=0.1, ro=0.1))
-
-    map = starry.Map(1)
-    fbase = np.array(map.flux(xo=0.1, ro=0.1))[0]
-    map[1, 1] = 1 / np.pi
-    f2 = np.array(map.flux(xo=0.1, ro=0.1))[0] - fbase
-
-    print(f1, f2)
-    assert f1 == f2
-
-
-if __name__ == "__main__":
-    test_filter_flux()

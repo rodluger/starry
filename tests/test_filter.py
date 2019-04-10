@@ -43,3 +43,20 @@ class TestFilter:
 
         # Compare
         assert np.allclose(flux_num, flux, atol=1e-2, rtol=1e-2)
+
+
+def test_filter_flux_exact():
+    # Occultation flux for a zero-degree map with the filter `Y_{1, 1}`
+    map = starry.Map(0, fdeg=1)
+    map.filter[1, 1] = 1
+    f1 = np.array(map.flux(xo=0.1, ro=0.1))[0]
+
+    # The operation above corresponds to the flux from a map
+    # with just the `Y_{1, 1}` term set, normalized by the
+    # amplitude of the `Y_{0, 0}` term.
+    map = starry.Map(1)
+    fbase = np.array(map.flux(xo=0.1, ro=0.1))[0]
+    map[1, 1] = 1 / np.pi
+    f2 = np.array(map.flux(xo=0.1, ro=0.1))[0] - fbase
+
+    assert np.allclose(f1, f2)
