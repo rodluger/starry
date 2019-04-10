@@ -653,6 +653,7 @@ public:
     const int lmax;
     const double norm;                                                         /**< Map normalization constant */
     Eigen::SparseMatrix<T> A1;                                                 /**< The polynomial change of basis matrix */
+    Eigen::SparseMatrix<T> A1Inv;                                              /**< The inverse of the polynomial change of basis matrix */
     Eigen::SparseMatrix<T> A2;                                                 /**< The Green's change of basis matrix */
     Eigen::SparseMatrix<T> A;                                                  /**< The full change of basis matrix */
     RowVector<T> rT;                                                           /**< The rotation solution vector */
@@ -674,6 +675,7 @@ public:
     {
         // Compute the matrices
         computeA1(lmax, A1, norm);
+        computeA1Inv(lmax, A1, A1Inv);
         computeA(lmax, A1, A2, A);
         computerT(lmax, rT);
         rTA1 = rT * A1;

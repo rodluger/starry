@@ -42,6 +42,7 @@ def test_filter_flux():
     map[1, 1] = 1 / np.pi
     f2 = np.array(map.flux(xo=0.1, ro=0.1))[0] - fbase
 
+    print(f1, f2)
     assert f1 == f2
 
 

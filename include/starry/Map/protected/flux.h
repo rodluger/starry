@@ -27,7 +27,12 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     Vector<Scalar> theta_rad = theta * radian;
 
     // Pre-compute the limb darkening / filter operator
-    if ((udeg > 0) || (filter_on && (fdeg > 0))) {
+    Matrix<Scalar> L;
+    Vector<Matrix<Scalar>> dLdp; // not used
+    Matrix<Scalar> dpdpu; // not used
+    Matrix<Scalar> dpdpf; // not used
+    bool apply_filter = (udeg > 0) || (filter_on && (fdeg > 0));
+    if (apply_filter) {
         
         // Compute the two polynomials
         Vector<Scalar> tmp = B.U1 * u;
@@ -37,8 +42,6 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         
         // Multiply them
         Vector<Scalar> p;
-        Matrix<Scalar> dpdpu; // not used
-        Matrix<Scalar> dpdpf; // not used
         if ((fdeg == 0) || !filter_on)
             p = pu;
         else if (udeg == 0)
@@ -48,23 +51,18 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         else
             computePolynomialProduct<false>(fdeg, pf, udeg, pu, p, dpdpf, dpdpu);
 
-        // Compute the operator
-        Matrix<Scalar> L;
-        Vector<Matrix<Scalar>> dLdp; // not used
+        // Compute the polynomial filter operator
         computePolynomialProductMatrix<false>(udeg + fdeg, p, L, dLdp);
-        LA1 = (L * B.A1.block(0, 0, Ny, Ny));
-        A2LA1 = (B.A2 * LA1).sparseView();
-        rTLA1 = B.rT * LA1;
 
-        // DEBUG
-        std::cout << (LA1 * y).transpose() << std::endl;
-        Vector<Scalar> yprime(4);
-        yprime << 0, 0, 0, 1.0 / pi<Scalar>();
-        std::cout << (B.A1.block(0, 0, 4, 4) * yprime).transpose() << std::endl;
+        // Compute the phase curve integral operator
+        LA1 = (L * B.A1.block(0, 0, Ny, Ny));
+        rTLA1 = B.rT * LA1;
+        
+        // Rotate the filter operator fully into Ylm space
+        L = B.A1Inv * LA1;
 
     }
-    Eigen::SparseMatrix<Scalar>& A = ((udeg > 0) || (filter_on && (fdeg > 0))) ? A2LA1 : B.A;
-    RowVector<Scalar>& rTA1 = ((udeg > 0) || (filter_on && (fdeg > 0))) ? rTLA1 : B.rTA1;
+    RowVector<Scalar>& rTA1 = apply_filter ? rTLA1 : B.rTA1;
 
     // Pre-compute the rotation
     W.leftMultiplyRZetaInv(rTA1, rTA1RZetaInv);
@@ -121,12 +119,15 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                 W.compute(1.0, 0.0);
             }
 
-            // Dot stuff in
-            sTA = G.sT * A;
+            // Dot them together
+            sTA = G.sT * B.A;
             W.leftMultiplyRz(sTA, sTARz);
-            W.leftMultiplyRZetaInv(sTARz, sTARzRZetaInv);
+
+            // Apply the filter operator
+            if (apply_filter) sTARz = sTARz * L;
 
             // Rotate the map
+            W.leftMultiplyRZetaInv(sTARz, sTARzRZetaInv);
             if (theta_rad(n) != theta_occ_cache) {
                 theta_occ_cache = theta_rad(n);
                 W.compute(cos(theta_rad(n)), sin(theta_rad(n)));

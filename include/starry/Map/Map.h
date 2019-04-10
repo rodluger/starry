@@ -74,7 +74,7 @@ protected:
         inc(90.0),
         obl(0.0),
         B(ydeg, udeg, fdeg),
-        W(ydeg, inc, obl),
+        W(ydeg, udeg, fdeg, inc, obl),
         G(deg),
         L(udeg, Nw)
     {
@@ -97,7 +97,9 @@ protected:
         
         // \todo There appear to be flux normalization issues for reflected-light
         // maps with non-limb darkening filters. Look into these before enabling
-        // this feature.
+        // this feature. EDIT: I know why this is happening. The new filtering
+        // formalism has likely fixed this, so we can disable this once I
+        // write some unit tests.
         if ((S::Reflected) && (fdeg > 0))
             throw std::runtime_error(
                 "Filters are not yet available for reflected light maps.");

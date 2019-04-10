@@ -187,7 +187,7 @@ Compute the Wigner D matrices.
 */
 template <class Scalar>
 inline void rotar (
-    const int lmax,
+    const int ydeg,
     const Scalar& c1,
     const Scalar& s1,
     const Scalar& c2,
@@ -234,7 +234,7 @@ inline void rotar (
     else
         tgbet2 = (Scalar(1.0) - c2) / s2;
 
-    for (int l = 2; l < lmax + 1; ++l)
+    for (int l = 2; l < ydeg + 1; ++l)
         dlmn(l, s1, c1, c2, tgbet2, s3, c3, D, R);
 
     return;
@@ -303,8 +303,10 @@ class Wigner {
 
 protected:
 
-    const int lmax;                                                            /**< Highest degree of the map */
-    const int N;                                                               /**< Number of map coefficients */
+    const int ydeg;                                                            /**< Highest degree of the map */
+    const int ufdeg;                                                           /**< Degree of limb darkening + filter map */
+    const int Ny;                                                              /**< Number of map coefficients */
+    const int N;                                                               /**< Total number of coefficients */
     const Scalar tol;                                                          /**< Numerical tolerance used to prevent division-by-zero errors */
 
     // The rotation matrices
@@ -404,25 +406,29 @@ public:
     );
 
     Wigner(
-        int lmax, 
+        int ydeg, 
+        int udeg,
+        int fdeg,
         const Scalar& inc_,
         const Scalar& obl_
     ) : 
-        lmax(lmax), 
-        N((lmax + 1) * (lmax + 1)), 
+        ydeg(ydeg), 
+        ufdeg(udeg + fdeg),
+        Ny((ydeg + 1) * (ydeg + 1)), 
+        N((ydeg + ufdeg + 1) * (ydeg + ufdeg + 1)),
         tol(10 * mach_eps<Scalar>()), 
-        DZeta(lmax + 1),
-        RZeta(lmax + 1),
-        RZetaInv(lmax + 1),
-        DZeta_ad(lmax + 1),
-        RZeta_ad(lmax + 1),
-        DRZetaDInc(lmax + 1),
-        DRZetaInvDInc(lmax + 1),
-        DRZetaDObl(lmax + 1),
-        DRZetaInvDObl(lmax + 1)
+        DZeta(ydeg + 1),
+        RZeta(ydeg + 1),
+        RZetaInv(ydeg + 1),
+        DZeta_ad(ydeg + 1),
+        RZeta_ad(ydeg + 1),
+        DRZetaDInc(ydeg + 1),
+        DRZetaInvDInc(ydeg + 1),
+        DRZetaDObl(ydeg + 1),
+        DRZetaInvDObl(ydeg + 1)
     {
         // Allocate the Wigner matrices
-        for (int l = 0; l < lmax + 1; ++l) {
+        for (int l = 0; l < ydeg + 1; ++l) {
             int sz = 2 * l + 1;
             DZeta[l].resize(sz, sz);
             RZeta[l].resize(sz, sz);
@@ -436,9 +442,9 @@ public:
         }
 
         // Initialize our z rotation vectors
-        cosnt.resize(max(2, lmax + 1));
+        cosnt.resize(max(2, ydeg + 1));
         cosnt(0) = 1.0;
-        sinnt.resize(max(2, lmax + 1));
+        sinnt.resize(max(2, ydeg + 1));
         sinnt(0) = 0.0;
         cosmt.resize(N);
         sinmt.resize(N);
@@ -463,7 +469,7 @@ inline void Wigner<Scalar>::leftMultiplyRz (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
-    for (int l = 0; l < lmax + 1; ++l) {
+    for (int l = 0; l < ydeg + ufdeg + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
             MBCAST(uT, T2).col(l * l + j) = 
                 vT.col(l * l + j) * cosmt(l * l + j) +
@@ -482,7 +488,7 @@ inline void Wigner<Scalar>::leftMultiplyDRz (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
-    for (int l = 0; l < lmax + 1; ++l) {
+    for (int l = 0; l < ydeg + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
             int m = j - l;
             MBCAST(uT, T2).col(l * l + j) = 
@@ -502,7 +508,7 @@ inline void Wigner<Scalar>::leftMultiplyRZeta (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
-    for (int l = 0; l < lmax + 1; ++l) {
+    for (int l = 0; l < ydeg + 1; ++l) {
         MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
             vT.block(0, l * l, uT.rows(), 2 * l + 1) * RZeta[l];
     }
@@ -518,7 +524,7 @@ inline void Wigner<Scalar>::leftMultiplyRZetaInv (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
-    for (int l = 0; l < lmax + 1; ++l) {
+    for (int l = 0; l < ydeg + 1; ++l) {
         MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
             vT.block(0, l * l, uT.rows(), 2 * l + 1) * RZetaInv[l];
     }
@@ -534,7 +540,7 @@ inline void Wigner<Scalar>::leftMultiplyDRZetaDInc (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
-    for (int l = 0; l < lmax + 1; ++l) {
+    for (int l = 0; l < ydeg + 1; ++l) {
         MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
             vT.block(0, l * l, uT.rows(), 2 * l + 1) * DRZetaDInc[l];
     }
@@ -550,7 +556,7 @@ inline void Wigner<Scalar>::leftMultiplyDRZetaInvDInc (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
-    for (int l = 0; l < lmax + 1; ++l) {
+    for (int l = 0; l < ydeg + 1; ++l) {
         MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
             vT.block(0, l * l, uT.rows(), 2 * l + 1) * DRZetaInvDInc[l];
     }
@@ -566,7 +572,7 @@ inline void Wigner<Scalar>::leftMultiplyDRZetaDObl (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
-    for (int l = 0; l < lmax + 1; ++l) {
+    for (int l = 0; l < ydeg + 1; ++l) {
         MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
             vT.block(0, l * l, uT.rows(), 2 * l + 1) * DRZetaDObl[l];
     }
@@ -582,7 +588,7 @@ inline void Wigner<Scalar>::leftMultiplyDRZetaInvDObl (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
-    for (int l = 0; l < lmax + 1; ++l) {
+    for (int l = 0; l < ydeg + 1; ++l) {
         MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
             vT.block(0, l * l, uT.rows(), 2 * l + 1) * DRZetaInvDObl[l];
     }
@@ -618,12 +624,12 @@ inline void Wigner<Scalar>::compute (
     // Compute the cos and sin vectors for the zhat rotation
     cosnt(1) = costheta;
     sinnt(1) = sintheta;
-    for (int n = 2; n < lmax + 1; ++n) {
+    for (int n = 2; n < ydeg + ufdeg + 1; ++n) {
         cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
         sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
     }
     int n = 0;
-    for (int l = 0; l < lmax + 1; ++l) {
+    for (int l = 0; l < ydeg + ufdeg + 1; ++l) {
         for (int m = -l; m < 0; ++m) {
             cosmt(n) = cosnt(-m);
             sinmt(n) = -sinnt(-m);
@@ -683,7 +689,7 @@ inline void Wigner<Scalar>::updateAxis (
     if (abs(sini.value()) < tol) {
         // The rotation axis is zhat, so our zeta transform
         // is just the identity matrix.
-        for (int l = 0; l < lmax + 1; l++) {
+        for (int l = 0; l < ydeg + 1; l++) {
             if (cosi.value() > 0) {
                 RZeta[l] = Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
                 RZetaInv[l] = Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
@@ -696,7 +702,7 @@ inline void Wigner<Scalar>::updateAxis (
             DRZetaDObl[l].setZero();
             DRZetaInvDObl[l].setZero();
         }
-    } else if (lmax == 0) {
+    } else if (ydeg == 0) {
         // Trivial case
         RZeta[0](0, 0) = 1;
         RZetaInv[0](0, 0) = 1;
@@ -713,11 +719,11 @@ inline void Wigner<Scalar>::updateAxis (
                          cosgamma, singamma);
 
         // Call the Rulerian rotation function
-        rotar(lmax, cosalpha, sinalpha, cosbeta, sinbeta, 
+        rotar(ydeg, cosalpha, sinalpha, cosbeta, sinbeta, 
               cosgamma, singamma, tol_ad, DZeta_ad, RZeta_ad);
 
         // Extract the matrices and their derivatives
-        for (int l = 0; l < lmax + 1; ++l) {
+        for (int l = 0; l < ydeg + 1; ++l) {
             // \todo This data copy is *very* slow
             for (int i = 0; i < 2 * l + 1; ++i) {
                 for (int j = 0; j < 2 * l + 1; ++j) {
