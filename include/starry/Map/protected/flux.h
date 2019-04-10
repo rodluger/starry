@@ -332,6 +332,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     RowMatrix<Scalar>& Dyo,
     RowMatrix<Scalar>& Dro,
     RowMatrix<Scalar>& Du,
+    RowMatrix<Scalar>& Df,
     RowMatrix<Scalar>& Dinc,
     RowMatrix<Scalar>& Dobl
 ) {
@@ -387,11 +388,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         // Rotate the filter operator fully into Ylm space
         L = B.A1Inv * LA1;
 
-        // \todo
-        if (fdeg > 0)
-            std::cout << "WARNING: Filter derivatives not yet implemented." << std::endl;
-
-        // Pre-compute its derivatives
+        // Pre-compute the limb darkening derivatives
         Matrix<Scalar> DpuDu = pi<Scalar>() * norm * B.U1 - 
             pu * B.rT.segment(0, (udeg + 1) * (udeg + 1)) * B.U1 * norm;
         for (int l = 0; l < udeg + 1; ++l) {
@@ -404,16 +401,37 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                 rTDLDuA1.row(l) = (B.rT * DLDu(l)) * B.A1.block(0, 0, Ny, Ny);
             }
         }
-
         // Rotate DLDu fully into Ylm space
         for (int l = 0; l < udeg + 1; ++l) {
             DLDu(l) = B.A1Inv * DLDu(l) * B.A1.block(0, 0, Ny, Ny);
         }
-
         Du.resize((Nu - 1) * nt, Ny * Nt);
 
+        // Pre-compute the filter derivatives
+        Matrix<Scalar> DpfDf = B.A1.block(0, 0, Nf, Nf);
+        for (int l = 0; l < fdeg + 1; ++l) {
+            DLDf(l).setZero(N, Ny);
+        }
+        Matrix<Scalar> DpDf = DpDpf * DpfDf;
+        for (int j = 0; j < (udeg + fdeg + 1) * (udeg + fdeg + 1); ++j) {
+            for (int l = 0; l < fdeg + 1; ++l) {
+                DLDf(l) += DLDp(j) * DpDf(j, l);
+                rTDLDfA1.row(l) = (B.rT * DLDf(l)) * B.A1.block(0, 0, Ny, Ny);
+            }
+        }
+        // Rotate DLDf fully into Ylm space
+        for (int l = 0; l < fdeg + 1; ++l) {
+            DLDf(l) = B.A1Inv * DLDf(l) * B.A1.block(0, 0, Ny, Ny);
+        }
+        Df.resize(Nf * nt, Ny * Nt);
+
     } else {
-        rTLA1 = B.rTA1;
+
+        // Life is so much easier!
+        rTLA1 = B.rTA1.segment(0, Ny);
+        Du.resize(0, 0);
+        Df.resize(0, 0);
+
     }
 
     // Pre-compute the rotation
@@ -494,6 +512,14 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                 } 
             }
 
+            // Filter derivs
+            if ((fdeg > 0) && (filter_on)) {
+                for (int l = 0; l < fdeg + 1; ++l) {
+                    W.leftMultiplyR(rTDLDfA1.row(l), 
+                                    Df.block(l * nt + n, 0, 1, Ny));
+                } 
+            }
+
             // Apply the Taylor expansion?
             if (S::Temporal) {
                 Dt.block(n, 0, 1, Ny).setZero();
@@ -512,6 +538,13 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                         for (int l = 1; l < udeg + 1; ++l) {
                             Du.block((l - 1) * nt + n, i * Ny, 1, Ny) = 
                                 Du.block((l - 1) * nt + n, 0, 1, Ny) * 
+                                taylor(n, i);
+                        } 
+                    }
+                    if ((fdeg > 0) && (filter_on)) {
+                        for (int l = 0; l < fdeg + 1; ++l) {
+                            Df.block(l * nt + n, i * Ny, 1, Ny) = 
+                                Df.block(l * nt + n, 0, 1, Ny) * 
                                 taylor(n, i);
                         } 
                     }
@@ -630,6 +663,14 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                 }
             }
 
+            // Filter derivs
+            if ((fdeg > 0) && (filter_on)) {
+                for (int l = 0; l < fdeg + 1; ++l) {
+                    W.leftMultiplyR(sTARzDLDf.row(l), 
+                                    Df.block(l * nt + n, 0, 1, Ny));
+                }
+            }
+
             // Apply the Taylor expansion?
             if (S::Temporal) {
                 Dt.block(n, 0, 1, Ny).setZero();
@@ -654,6 +695,13 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                         for (int l = 1; l < udeg + 1; ++l) {
                             Du.block((l - 1) * nt + n, i * Ny, 1, Ny) = 
                                 Du.block((l - 1) * nt + n, 0, 1, Ny) * 
+                                taylor(n, i);
+                        } 
+                    }
+                    if ((fdeg > 0) && (filter_on)) {
+                        for (int l = 0; l < fdeg + 1; ++l) {
+                            Df.block(l * nt + n, i * Ny, 1, Ny) = 
+                                Df.block(l * nt + n, 0, 1, Ny) * 
                                 taylor(n, i);
                         } 
                     }
@@ -686,6 +734,7 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
     RowMatrix<Scalar>& Dro,
     RowMatrix<Scalar>& Dsource,
     RowMatrix<Scalar>& Du,
+    RowMatrix<Scalar>& Df,
     RowMatrix<Scalar>& Dinc,
     RowMatrix<Scalar>& Dobl
 ) {

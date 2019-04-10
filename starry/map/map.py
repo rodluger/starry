@@ -30,7 +30,7 @@ def Map(ydeg, udeg=0, fdeg=0, **kwargs):
     spectral = (nw is not None)
     nt = kwargs.pop('nt', None)
     temporal = (nt is not None)
-    if (ydeg == 0) and (udeg > 0):
+    if (ydeg == 0) and (fdeg == 0) and (udeg > 0):
         limbdarkened = True
         kwargs["udeg"] = udeg
     else:

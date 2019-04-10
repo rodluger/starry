@@ -90,12 +90,13 @@ inline EnableIf<!U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     RowMatrix<Scalar>& Dyo,
     RowMatrix<Scalar>& Dro,
     RowMatrix<Scalar>& Du,
+    RowMatrix<Scalar>& Df,
     RowMatrix<Scalar>& Dinc,
     RowMatrix<Scalar>& Dobl
 ) {
     RowMatrix<Scalar> Dt; // Dummy!
     computeLinearFluxModelInternal(
-        theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro, Du, Dinc, Dobl
+        theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro, Du, Df, Dinc, Dobl
     );
 }
 
@@ -119,12 +120,13 @@ inline EnableIf<!U::Reflected && U::Temporal, void> computeLinearFluxModel (
     RowMatrix<Scalar>& Dyo,
     RowMatrix<Scalar>& Dro,
     RowMatrix<Scalar>& Du,
+    RowMatrix<Scalar>& Df,
     RowMatrix<Scalar>& Dinc,
     RowMatrix<Scalar>& Dobl
 ) {
     computeTaylor(t);
     computeLinearFluxModelInternal(
-        theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro, Du, Dinc, Dobl
+        theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro, Du, Df, Dinc, Dobl
     );
 }
 
@@ -148,13 +150,14 @@ inline EnableIf<U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     RowMatrix<Scalar>& Dro,
     RowMatrix<Scalar>& Dsource,
     RowMatrix<Scalar>& Du,
+    RowMatrix<Scalar>& Df,
     RowMatrix<Scalar>& Dinc,
     RowMatrix<Scalar>& Dobl
 ) {
     RowMatrix<Scalar> Dt; // Dummy!
     computeLinearFluxModelInternal(
         theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, 
-        Dtheta, Dxo, Dyo, Dro, Dsource, Du, Dinc, Dobl
+        Dtheta, Dxo, Dyo, Dro, Dsource, Du, Df, Dinc, Dobl
     );
 }
 
@@ -180,13 +183,14 @@ inline EnableIf<U::Reflected && U::Temporal, void> computeLinearFluxModel (
     RowMatrix<Scalar>& Dro,
     RowMatrix<Scalar>& Dsource,
     RowMatrix<Scalar>& Du,
+    RowMatrix<Scalar>& Df,
     RowMatrix<Scalar>& Dinc,
     RowMatrix<Scalar>& Dobl
 ) {
     computeTaylor(t);
     computeLinearFluxModelInternal(
         theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, 
-        Dtheta, Dxo, Dyo, Dro, Dsource, Du, Dinc, Dobl
+        Dtheta, Dxo, Dyo, Dro, Dsource, Du, Df, Dinc, Dobl
     );
 }
 

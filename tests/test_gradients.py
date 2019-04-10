@@ -62,7 +62,7 @@ def settings(request):
         return None
     elif (ydeg == 0) and ((theta != 0) or (obl != 0) or (inc != 90)):
         return None
-    elif ((fdeg == 0) or (ydeg == 0)) and (filter_is_active):
+    elif (fdeg == 0) and (filter_is_active):
         return None
 
     # Allowed combinations
@@ -84,13 +84,15 @@ def settings(request):
         else:
             map[1:, :] = np.random.randn((ydeg + 1) ** 2 - 1)
     if udeg > 0:
-        if nw == 1:
+        if (nw == 1) or not map._limbdarkened:
             map[1:] = np.random.randn(udeg)
         else:
             map[1:, :] = np.random.randn(udeg, nw)
+    if fdeg > 0:
+        map.filter[:, :] = np.random.randn((fdeg + 1) ** 2)
     map.inc = inc
     map.obl = obl
-    if fdeg > 0 and ydeg > 0:
+    if fdeg > 0:
         map._filter_is_active = filter_is_active
     return map, eps, t, theta, xo, yo, ro
 
@@ -115,16 +117,18 @@ class TestGradients:
         else:
             coeffs['y'] = []
         if map.udeg > 0:
-            if map._spectral:
+            if map._limbdarkened and map._spectral:
                 coeffs['u'] = map[1:, :]
             else:
                 coeffs['u'] = map[1:]
         else:
             coeffs['u'] = []
+        if map.fdeg > 0:
+            coeffs['f'] = map.filter[:, :]
         params = {}
         if map._temporal:
             params['t'] = t
-        if (map.ydeg == 0) and (map.udeg > 0):
+        if map._limbdarkened:
             params['b'] = np.sqrt(xo ** 2 + yo ** 2)
             params['ro'] = ro
         else:
@@ -154,6 +158,8 @@ class TestGradients:
             f2 = np.array(map.flux(**params))
             params[key] = param
             grad_num[key] = (f2 - f1) / (2 * eps)
+        
+        # Spherical harmonic coeffs
         grad_num['y'] = np.zeros_like(coeffs['y'])
         n = 0
         for l in range(1, map.ydeg + 1):
@@ -186,8 +192,10 @@ class TestGradients:
                 n += 1
         if map._temporal:
             grad_num['y'] = grad_num['y'].T.reshape(-1)
+        
+        # Limb darkening coeffs
         grad_num['u'] = np.zeros((map.udeg, map.nw))
-        if map._spectral:
+        if map._spectral and map._limbdarkened:
             for w in range(map.nw):
                 n = 0
                 for l in range(1, map.udeg + 1):
@@ -221,10 +229,23 @@ class TestGradients:
         map.obl = obl
         grad_num['obl'] = (f2 - f1) / (2 * eps)
 
+        # Filter coeffs
+        if (map.fdeg > 0):
+            grad_num['f'] = np.zeros((map.Nf, map.nw))
+            n = 0
+            for l in range(map.fdeg + 1):
+                for m in range(-l, l + 1):
+                    map.filter[l, m] = coeffs['f'][n] - eps
+                    f1 = np.array(map.flux(**params))
+                    map.filter[l, m] = coeffs['f'][n] + eps
+                    f2 = np.array(map.flux(**params))
+                    map.filter[l, m] = coeffs['f'][n]
+                    grad_num['f'][n] = (f2 - f1) / (2 * eps)
+                    n += 1
+
         # Compare
         for key in grad.keys():
             assert_allclose(key, np.squeeze(grad_num[key]), np.squeeze(grad[key]))
-
 
 if __name__ == "__main__":
     map = starry.Map(ydeg=2, udeg=2, fdeg=1)

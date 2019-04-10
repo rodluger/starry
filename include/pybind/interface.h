@@ -1038,7 +1038,8 @@ std::function<py::object (
 #               ifdef _STARRY_REFLECTED_
                     map.data.DXDsource, 
 #               endif   
-                map.data.DXDu, 
+                map.data.DXDu,
+                map.data.DXDf, 
                 map.data.DXDinc,
                 map.data.DXDobl
             );
@@ -1056,6 +1057,7 @@ std::function<py::object (
                 auto Dsource = Ref<RowMatrix<Scalar>>(map.data.DXDsource);
 #           endif
             auto Du = Ref<RowMatrix<Scalar>>(map.data.DXDu);
+            auto Df = Ref<RowMatrix<Scalar>>(map.data.DXDf);
             auto Dinc = Ref<RowMatrix<Scalar>>(map.data.DXDinc);
             auto Dobl = Ref<RowMatrix<Scalar>>(map.data.DXDobl);
 
@@ -1076,6 +1078,11 @@ std::function<py::object (
                 "inc"_a=ENSURE_DOUBLE_ARR(Dinc),
                 "obl"_a=ENSURE_DOUBLE_ARR(Dobl)           
             );
+            // Derivative w.r.t. the filter map
+            if (map.filterOn()) {
+                gradient["f"] = reshape(ENSURE_DOUBLE_ARR(Df), 
+                                py::make_tuple(map.Nf, nt, map.Ny * map.Nt));
+            }
 
             // Return
             return py::make_tuple(

@@ -21,7 +21,9 @@ RowVector<Scalar> rTA1RzL;
 RowVector<Scalar> rTA1RzLRZetaInv;
 RowVector<Scalar> rTA1RzLRZetaInvRz;
 Vector<Matrix<Scalar>> DLDu;
+Vector<Matrix<Scalar>> DLDf;
 Matrix<Scalar> rTDLDuA1;
+Matrix<Scalar> rTDLDfA1;
 RowVector<Scalar> rTLA1RZetaInvDRzDtheta;
 RowVector<Scalar> rTLA1DRZetaInvDAngle;
 RowVector<Scalar> rTLA1DRZetaInvDAngleRz;
@@ -48,6 +50,7 @@ RowVector<Scalar> sTARzLDRZetaInvDAngleRz;
 RowVector<Scalar> sTARzLDRZetaInvDAngleRzRZeta;
 RowVector<Scalar> sTARzLRZetaInvRzDRZetaDAngle;
 Matrix<Scalar> sTARzDLDu;
+Matrix<Scalar> sTARzDLDf;
 
 /**
 Allocate the temporary vectors and matrices 
@@ -72,7 +75,9 @@ void resize_arrays() {
     rTA1RzLRZetaInv.resize(Ny);
     rTA1RzLRZetaInvRz.resize(Ny);
     DLDu.resize(Nu);
+    DLDf.resize(Nf);
     rTDLDuA1.resize(Nu, Ny);
+    rTDLDfA1.resize(Nf, Ny);
     rTLA1RZetaInvDRzDtheta.resize(Ny);
     rTLA1DRZetaInvDAngle.resize(Ny);
     rTLA1DRZetaInvDAngleRz.resize(Ny);
@@ -98,16 +103,6 @@ void resize_arrays() {
     sTARzLDRZetaInvDAngleRz.resize(Ny);
     sTARzLDRZetaInvDAngleRzRZeta.resize(Ny);
     sTARzLRZetaInvRzDRZetaDAngle.resize(Ny);
-
-
     sTARzDLDu.resize(Nu, Ny);
-
-    /*
-    dsTdrARzRZetaInvRz.resize(Ny);
-    dsTdbARzRZetaInvRz.resize(Ny);
-    sTADRzDwRZetaInvRz.resize(Ny);
-    sTADRzDwRZetaInvRzRZeta.resize(Ny);
-    sTA2dLduA1.resize(Nu, Ny);
-    sTA2dLduA1Rz.resize(Nu, Ny);
-    */
+    sTARzDLDf.resize(Nf, Ny);
 }

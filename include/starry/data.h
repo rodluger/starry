@@ -19,6 +19,7 @@ public:
     RowMatrix<Scalar> DXDro;
     RowMatrix<Scalar> DXDsource;
     RowMatrix<Scalar> DXDu;
+    RowMatrix<Scalar> DXDf;
     RowMatrix<Scalar> DXDinc;
     RowMatrix<Scalar> DXDobl;
     RowMatrix<Scalar> X;
