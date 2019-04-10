@@ -75,6 +75,7 @@ def settings(request):
     else:
         map = starry.Map(ydeg=ydeg, udeg=udeg, fdeg=fdeg, multi=multi, 
                          reflected=reflected)
+
     np.random.seed(41)
     if ydeg > 0:
         if map._temporal:

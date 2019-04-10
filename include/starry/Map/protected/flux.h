@@ -409,18 +409,20 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
 
         // Pre-compute the filter derivatives
         Matrix<Scalar> DpfDf = B.A1.block(0, 0, Nf, Nf);
-        for (int l = 0; l < fdeg + 1; ++l) {
+        if (!filter_on)
+            DpfDf.setZero();
+        for (int l = 0; l < Nf; ++l) {
             DLDf(l).setZero(N, Ny);
         }
         Matrix<Scalar> DpDf = DpDpf * DpfDf;
         for (int j = 0; j < (udeg + fdeg + 1) * (udeg + fdeg + 1); ++j) {
-            for (int l = 0; l < fdeg + 1; ++l) {
+            for (int l = 0; l < Nf; ++l) {
                 DLDf(l) += DLDp(j) * DpDf(j, l);
                 rTDLDfA1.row(l) = (B.rT * DLDf(l)) * B.A1.block(0, 0, Ny, Ny);
             }
         }
         // Rotate DLDf fully into Ylm space
-        for (int l = 0; l < fdeg + 1; ++l) {
+        for (int l = 0; l < Nf; ++l) {
             DLDf(l) = B.A1Inv * DLDf(l) * B.A1.block(0, 0, Ny, Ny);
         }
         Df.resize(Nf * nt, Ny * Nt);
@@ -514,7 +516,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
 
             // Filter derivs
             if ((fdeg > 0) && (filter_on)) {
-                for (int l = 0; l < fdeg + 1; ++l) {
+                for (int l = 0; l < Nf; ++l) {
                     W.leftMultiplyR(rTDLDfA1.row(l), 
                                     Df.block(l * nt + n, 0, 1, Ny));
                 } 
@@ -598,6 +600,11 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                     sTARzDLDu.row(l) = sTARz * DLDu(l);
                 }
             }
+            if ((fdeg > 0) && (filter_on)) {
+                for (int l = 0; l < Nf; ++l) {
+                    sTARzDLDf.row(l) = sTARz * DLDf(l);
+                }
+            }
 
             // Compute the Rz rotation matrix in the zeta frame
             W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
@@ -665,7 +672,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
 
             // Filter derivs
             if ((fdeg > 0) && (filter_on)) {
-                for (int l = 0; l < fdeg + 1; ++l) {
+                for (int l = 0; l < Nf; ++l) {
                     W.leftMultiplyR(sTARzDLDf.row(l), 
                                     Df.block(l * nt + n, 0, 1, Ny));
                 }
