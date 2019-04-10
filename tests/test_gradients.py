@@ -9,7 +9,6 @@ import itertools
 np.random.seed(44)
 debug = False
 
-ntimes = 0
 
 def assert_allclose(name, expected, got, fmt="%.12f", atol=1e-6, rtol=1e-5):
     """Raise an assertion error if two arrays differ."""
@@ -35,7 +34,8 @@ def assert_allclose(name, expected, got, fmt="%.12f", atol=1e-6, rtol=1e-5):
     params=itertools.product(
         (0, 2),                 # ydeg
         (0, 2),                 # udeg
-        (0,),                   # fdeg (TODO)
+        (0, 2),                 # fdeg
+        (True, False),          # filter_is_active
         (False,),               # reflected (TODO)
         (1, 2),                 # nw
         (1, 2),                 # nt
@@ -51,7 +51,7 @@ def assert_allclose(name, expected, got, fmt="%.12f", atol=1e-6, rtol=1e-5):
     )
 )
 def settings(request):
-    ydeg, udeg, fdeg, reflected, nw, nt, multi, \
+    ydeg, udeg, fdeg, filter_is_active, reflected, nw, nt, multi, \
         t, theta, xo, yo, ro, inc, obl, eps = request.param    
     # Disallowed combinations
     if nw > 1 and nt > 1:
@@ -61,6 +61,8 @@ def settings(request):
     elif (ydeg > 0) and (udeg > 0) and nw > 1:
         return None
     elif (ydeg == 0) and ((theta != 0) or (obl != 0) or (inc != 90)):
+        return None
+    elif ((fdeg == 0) or (ydeg == 0)) and (filter_is_active):
         return None
 
     # Allowed combinations
@@ -88,6 +90,8 @@ def settings(request):
             map[1:, :] = np.random.randn(udeg, nw)
     map.inc = inc
     map.obl = obl
+    if fdeg > 0 and ydeg > 0:
+        map._filter_is_active = filter_is_active
     return map, eps, t, theta, xo, yo, ro
 
 
@@ -223,5 +227,6 @@ class TestGradients:
 
 
 if __name__ == "__main__":
-    map = starry.Map(ydeg=2, udeg=2, fdeg=0)
-    map.flux(gradient=True)
+    map = starry.Map(ydeg=2, udeg=2, fdeg=1)
+    map._filter_is_active = False
+    map.flux(ro=0.1, xo=0.3, gradient=True)

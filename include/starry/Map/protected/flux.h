@@ -389,7 +389,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
 
         // \todo
         if (fdeg > 0)
-            throw std::runtime_error("Filter derivatives not yet implemented.");
+            std::cout << "WARNING: Filter derivatives not yet implemented." << std::endl;
 
         // Pre-compute its derivatives
         Matrix<Scalar> DpuDu = pi<Scalar>() * norm * B.U1 - 
@@ -398,7 +398,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
             DLDu(l).setZero(N, Ny);
         }
         Matrix<Scalar> DpDu = DpDpu * DpuDu;
-        for (int j = 0; j < Npu + Nf; ++j) {
+        for (int j = 0; j < (udeg + fdeg + 1) * (udeg + fdeg + 1); ++j) {
             for (int l = 0; l < udeg + 1; ++l) {
                 DLDu(l) += DLDp(j) * DpDu(j, l);
                 rTDLDuA1.row(l) = (B.rT * DLDu(l)) * B.A1.block(0, 0, Ny, Ny);
