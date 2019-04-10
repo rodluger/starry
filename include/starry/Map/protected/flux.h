@@ -55,7 +55,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         computePolynomialProductMatrix<false>(udeg + fdeg, p, L, dLdp);
 
         // Compute the phase curve integral operator
-        LA1 = (L * B.A1.block(0, 0, Ny, Ny));
+        LA1 = (L * B.A1.block(0, 0, Ny, Ny)).sparseView();
         rTLA1 = B.rT * LA1;
         
         // Rotate the filter operator fully into Ylm space
@@ -121,10 +121,10 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
 
             // Dot them together
             sTA = G.sT * B.A;
-            sTARz.resize(N);
             W.leftMultiplyRzAugmented(sTA, sTARz);
 
             // Apply the filter operator
+            // \todo This is SLOW because `sTARz` changes shape each iteration
             if (apply_filter) sTARz = sTARz * L;
 
             // Rotate the map
@@ -180,11 +180,12 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
     Vector<Scalar> theta_rad = theta * radian;
 
     // Pre-compute the limb darkening / filter operator
-    if ((udeg > 0) || (filter_on && (fdeg > 0))) {
-
-        // \todo
-        if (fdeg > 0)
-            throw std::runtime_error("TODO: This routine needs to be updated.");
+    Matrix<Scalar> L;
+    Vector<Matrix<Scalar>> dLdp; // not used
+    Matrix<Scalar> dpdpu; // not used
+    Matrix<Scalar> dpdpf; // not used
+    bool apply_filter = (udeg > 0) || (filter_on && (fdeg > 0));
+    if (apply_filter) {
 
         // Compute the two polynomials
         Vector<Scalar> tmp = B.U1 * u;
@@ -194,8 +195,6 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
         
         // Multiply them
         Vector<Scalar> p;
-        Matrix<Scalar> dpdpu; // not used
-        Matrix<Scalar> dpdpf; // not used
         if ((fdeg == 0) || !filter_on)
             p = pu;
         else if (udeg == 0)
@@ -206,12 +205,12 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
             computePolynomialProduct<false>(fdeg, pf, udeg, pu, p, dpdpf, dpdpu);
 
         // Compute the operator
-        Matrix<Scalar> L;
-        Vector<Matrix<Scalar>> dLdp; // not used
         computePolynomialProductMatrix<false>(udeg + fdeg, p, L, dLdp);
-        LA1_ = (L * B.A1.block(0, 0, Ny, Ny)).sparseView();
+        LA1 = (L * B.A1.block(0, 0, Ny, Ny)).sparseView();
+
+        // Rotate the filter operator fully into Ylm space
+        L = B.A1Inv * LA1;
     }
-    Eigen::SparseMatrix<Scalar>& LA1 = ((udeg > 0) || (filter_on && (fdeg > 0))) ? LA1_ : B.A1;
 
     // Our model matrix, f = X . y
     X.resize(nt, Ny * Nt);
@@ -248,7 +247,7 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
                 // transform them into the polynomial basis
                 if (source(n, 2) != sz_cache) {
                     G.compute(bterm);
-                    rTA1 = G.rT * LA1;
+                    rTA1 = G.rT * B.A1;
                 }
 
                 // Rotate into the correct frame on the sky plane
@@ -262,7 +261,11 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
                     sinw = 0.0;
                 }
                 W.compute(cosw, sinw);
-                W.leftMultiplyRz(rTA1, rTA1Rz);
+                W.leftMultiplyRzAugmented(rTA1, rTA1Rz);
+
+                // Apply the filter operator
+                // \todo: This vector keeps changing size each iteration; speed this up!
+                if (apply_filter) rTA1Rz = rTA1Rz * L;
 
                 // Cache the source position
                 sx_cache = source(n, 0);
@@ -335,6 +338,8 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     // Convert to radians
     Vector<Scalar> theta_rad = theta * radian;
 
+    Eigen::SparseMatrix<Scalar> A2LA1; // \todo: phase out
+
     // Pre-compute the limb darkening / filter operator
     if ((udeg > 0) || (filter_on && (fdeg > 0))) {
         // Compute the two polynomials
@@ -360,8 +365,8 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         Matrix<Scalar> L;
         Vector<Matrix<Scalar>> dLdp;
         computePolynomialProductMatrix<true>(udeg + fdeg, p, L, dLdp);
-        LA1 = (L * B.A1.block(0, 0, Ny, Ny));
-        A2LA1 = (B.A2 * LA1).sparseView();
+        LA1 = (L * B.A1.block(0, 0, Ny, Ny)).sparseView();
+        A2LA1 = B.A2 * LA1;
         rTLA1 = B.rT * LA1;
 
         if (fdeg > 0)

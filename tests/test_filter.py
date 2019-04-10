@@ -8,15 +8,15 @@ np.random.seed(43)
 @pytest.fixture(
     scope="class",
     params=[
-        (5, 0),
-        (5, 2),
-        (5, 0),
-        (5, 2)
+        (5, 0, False),
+        (5, 2, False),
+        (5, 0, True),
+        (5, 2, True)
     ],
 )
 def map(request):
-    ydeg, udeg = request.param
-    map = starry.Map(ydeg=ydeg, udeg=udeg, fdeg=2)
+    ydeg, udeg, reflected = request.param
+    map = starry.Map(ydeg=ydeg, udeg=udeg, fdeg=2, reflected=reflected)
     map[1:, :] = 0.05 * np.random.randn(map.Ny - 1)
     if udeg > 0:
         map[1:] = 0.1 * np.random.randn(map.udeg)

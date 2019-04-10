@@ -481,6 +481,7 @@ inline void Wigner<Scalar>::leftMultiplyRz (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
+    MBCAST(uT, T2).resize(Ny);
     for (int l = 0; l < ydeg + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
             MBCAST(uT, T2).col(l * l + j) = 
@@ -500,6 +501,7 @@ inline void Wigner<Scalar>::leftMultiplyDRz (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
+    MBCAST(uT, T2).resize(Ny);
     for (int l = 0; l < ydeg + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
             int m = j - l;
@@ -520,6 +522,7 @@ inline void Wigner<Scalar>::leftMultiplyRzAugmented (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
+    MBCAST(uT, T2).resize(N);
     for (int l = 0; l < ydeg + ufdeg + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
             MBCAST(uT, T2).col(l * l + j) = 
@@ -539,6 +542,7 @@ inline void Wigner<Scalar>::leftMultiplyDRzAugmented (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
+    MBCAST(uT, T2).resize(N);
     for (int l = 0; l < ydeg + ufdeg + 1; ++l) {
         for (int j = 0; j < 2 * l + 1; ++j) {
             int m = j - l;
@@ -559,6 +563,7 @@ inline void Wigner<Scalar>::leftMultiplyRZeta (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
+    MBCAST(uT, T2).resize(Ny);
     for (int l = 0; l < ydeg + 1; ++l) {
         MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
             vT.block(0, l * l, uT.rows(), 2 * l + 1) * RZeta[l];
@@ -575,6 +580,7 @@ inline void Wigner<Scalar>::leftMultiplyRZetaInv (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
+    MBCAST(uT, T2).resize(Ny);
     for (int l = 0; l < ydeg + 1; ++l) {
         MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
             vT.block(0, l * l, uT.rows(), 2 * l + 1) * RZetaInv[l];
@@ -591,6 +597,7 @@ inline void Wigner<Scalar>::leftMultiplyDRZetaDInc (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
+    MBCAST(uT, T2).resize(Ny);
     for (int l = 0; l < ydeg + 1; ++l) {
         MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
             vT.block(0, l * l, uT.rows(), 2 * l + 1) * DRZetaDInc[l];
@@ -607,6 +614,7 @@ inline void Wigner<Scalar>::leftMultiplyDRZetaInvDInc (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
+    MBCAST(uT, T2).resize(Ny);
     for (int l = 0; l < ydeg + 1; ++l) {
         MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
             vT.block(0, l * l, uT.rows(), 2 * l + 1) * DRZetaInvDInc[l];
@@ -623,6 +631,7 @@ inline void Wigner<Scalar>::leftMultiplyDRZetaDObl (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
+    MBCAST(uT, T2).resize(Ny);
     for (int l = 0; l < ydeg + 1; ++l) {
         MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
             vT.block(0, l * l, uT.rows(), 2 * l + 1) * DRZetaDObl[l];
@@ -639,6 +648,7 @@ inline void Wigner<Scalar>::leftMultiplyDRZetaInvDObl (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
+    MBCAST(uT, T2).resize(Ny);
     for (int l = 0; l < ydeg + 1; ++l) {
         MBCAST(uT, T2).block(0, l * l, uT.rows(), 2 * l + 1) =
             vT.block(0, l * l, uT.rows(), 2 * l + 1) * DRZetaInvDObl[l];
@@ -655,6 +665,7 @@ inline void Wigner<Scalar>::leftMultiplyR (
     const MatrixBase<T1>& vT, 
     MatrixBase<T2> const & uT
 ) {
+    MBCAST(uT, T2).resize(Ny);
     typename T1::PlainObject tmp(uT.rows(), uT.cols());
     leftMultiplyRZetaInv(vT, uT);
     leftMultiplyRz(uT, tmp);
@@ -707,6 +718,7 @@ inline void Wigner<Scalar>::rotate (
     const Scalar& sintheta,
     MatrixBase<T2>& Ry
 ) {
+    Ry.resize(Ny);
     compute(costheta, -sintheta);
     leftMultiplyR(y.transpose(), Ry.transpose());
 }
