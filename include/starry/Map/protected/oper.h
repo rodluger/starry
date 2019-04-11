@@ -145,23 +145,21 @@ inline void computePolynomialProductMatrix (
             n2 = 0;
             for (int l2 = 0; l2 < plmax + 1; ++l2) {
                 for (int m2 = -l2; m2 < l2 + 1; ++m2) {
-                    if (p(n2)) {
-                        l = l1 + l2;
-                        n = l * l + l + m1 + m2;
-                        if (odd1 && ((l2 + m2) % 2 != 0)) {
-                            M(n - 4 * l + 2, n1) += p(n2);
-                            M(n - 2, n1) -= p(n2);
-                            M(n + 2, n1) -= p(n2);
-                            if (GRADIENT) {
-                                dMdp[n2](n - 4 * l + 2, n1) += 1;
-                                dMdp[n2](n - 2, n1) -= 1;
-                                dMdp[n2](n + 2, n1) -= 1;
-                            }
-                        } else {
-                            M(n, n1) += p(n2);
-                            if (GRADIENT) {
-                                dMdp[n2](n, n1) += 1;
-                            }
+                    l = l1 + l2;
+                    n = l * l + l + m1 + m2;
+                    if (odd1 && ((l2 + m2) % 2 != 0)) {
+                        M(n - 4 * l + 2, n1) += p(n2);
+                        M(n - 2, n1) -= p(n2);
+                        M(n + 2, n1) -= p(n2);
+                        if (GRADIENT) {
+                            dMdp[n2](n - 4 * l + 2, n1) += 1;
+                            dMdp[n2](n - 2, n1) -= 1;
+                            dMdp[n2](n + 2, n1) -= 1;
+                        }
+                    } else {
+                        M(n, n1) += p(n2);
+                        if (GRADIENT) {
+                            dMdp[n2](n, n1) += 1;
                         }
                     }
                     ++n2;

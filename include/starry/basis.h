@@ -228,23 +228,20 @@ inline void polymul (
                 for (int l2 = 0; l2 < lmax2 + 1; ++l2) {
                     if (l1 + l2 > lmax12) break;
                     for (int m2 = -l2; m2 < l2 + 1; ++m2) {
-                        if (p2.row(n2).any()) {
-                            l = l1 + l2;
-                            n = l * l + l + m1 + m2;
-                            fac1 = p1.row(n1).cwiseProduct(p2.row(n2));
-                            if (odd1 && ((l2 + m2) % 2 != 0)) {
-                                p1p2.row(n - 4 * l + 2) += fac1;
-                                p1p2.row(n - 2) -= fac1;
-                                p1p2.row(n + 2) -= fac1;
-                                fac2 = vT(n - 4 * l + 2) - vT(n - 2) - vT(n + 2);
-                                vTDp1p2Dp1.col(n1) += fac2 * p2.row(n2);
-                                vTDp1p2Dp2.col(n2) += fac2 * p1.row(n1);
-
-                            } else {
-                                p1p2.row(n) += fac1;
-                                vTDp1p2Dp1.col(n1) += vT(n) * p2.row(n2);
-                                vTDp1p2Dp2.col(n2) += vT(n) * p1.row(n1);
-                            }
+                        l = l1 + l2;
+                        n = l * l + l + m1 + m2;
+                        fac1 = p1.row(n1).cwiseProduct(p2.row(n2));
+                        if (odd1 && ((l2 + m2) % 2 != 0)) {
+                            p1p2.row(n - 4 * l + 2) += fac1;
+                            p1p2.row(n - 2) -= fac1;
+                            p1p2.row(n + 2) -= fac1;
+                            fac2 = vT(n - 4 * l + 2) - vT(n - 2) - vT(n + 2);
+                            vTDp1p2Dp1.col(n1) += fac2 * p2.row(n2);
+                            vTDp1p2Dp2.col(n2) += fac2 * p1.row(n1);
+                        } else {
+                            p1p2.row(n) += fac1;
+                            vTDp1p2Dp1.col(n1) += vT(n) * p2.row(n2);
+                            vTDp1p2Dp2.col(n2) += vT(n) * p1.row(n1);
                         }
                         ++n2;
                     }

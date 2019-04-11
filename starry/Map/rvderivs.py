@@ -2,7 +2,33 @@ import numpy as np
 
 
 def DfDveq(f, A, B, C, alpha, veq):
-    return f / veq
+    if veq == 0:
+        if alpha == 0:
+            DfDveq = np.zeros(16)
+            DfDveq[1] = np.sqrt(3) * B / 3
+            DfDveq[3] = np.sqrt(3) * A / 3
+            return DfDveq
+        else:
+            return np.array([
+                    0,
+                    np.sqrt(3) * B * (-A ** 2 - B ** 2 - C ** 2 + 5 / alpha) / 15,
+                    0,
+                    np.sqrt(3) * A * (-A ** 2 - B ** 2 - C ** 2 + 5 / alpha) / 15,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    np.sqrt(70) * B * (3 * A ** 2 - B ** 2) / 70,
+                    2 * np.sqrt(105) * C * (-A ** 2 + B ** 2) / 105,
+                    np.sqrt(42) * B * (A ** 2 + B ** 2 - 4 * C ** 2) / 210,
+                    0,
+                    np.sqrt(42) * A * (A ** 2 + B ** 2 - 4 * C ** 2) / 210,
+                    4 * np.sqrt(105) * A * B * C / 105,
+                    np.sqrt(70) * A * (A ** 2 - 3 * B ** 2) / 70
+                ]) * alpha
+    else:
+        return f / veq
 
 
 def DfDalpha(f, A, B, C, alpha, veq):

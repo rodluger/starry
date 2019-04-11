@@ -29,6 +29,10 @@ class DopplerBase(object):
 
     def _set_rv_filter(self, gradient=False):
         """Set the filter coefficients to the RV field of the star."""
+        # Parameters
+        obl = self.obl
+        alpha = self.alpha
+        
         # Define some angular quantities
         cosi = np.cos(self.inc * np.pi / 180)
         sini = np.sin(self.inc * np.pi / 180)
@@ -64,7 +68,7 @@ class DopplerBase(object):
                 4 * np.sqrt(105) * A * B * C / 105,
                 np.sqrt(70) * A * (A ** 2 - 3 * B ** 2) / 70
             ]) * self.veq * self.alpha
-        
+
         # Compute the derivs
         if gradient:
             DADi = cosi * cosl
