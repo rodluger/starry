@@ -544,7 +544,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                         } 
                     }
                     if ((fdeg > 0) && (filter_on)) {
-                        for (int l = 0; l < fdeg + 1; ++l) {
+                        for (int l = 0; l < Nf; ++l) {
                             Df.block(l * nt + n, i * Ny, 1, Ny) = 
                                 Df.block(l * nt + n, 0, 1, Ny) * 
                                 taylor(n, i);
@@ -706,7 +706,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                         } 
                     }
                     if ((fdeg > 0) && (filter_on)) {
-                        for (int l = 0; l < fdeg + 1; ++l) {
+                        for (int l = 0; l < Nf; ++l) {
                             Df.block(l * nt + n, i * Ny, 1, Ny) = 
                                 Df.block(l * nt + n, 0, 1, Ny) * 
                                 taylor(n, i);
