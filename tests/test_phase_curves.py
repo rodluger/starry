@@ -43,6 +43,6 @@ class TestPhaseCurves:
         flux_num = np.nansum(map.render(res=50, theta=theta, 
                              source=source), axis=(1, 2))
         flux_num /= np.nanmedian(flux_num)
-
+        
         # Compare
         assert np.allclose(flux_num, flux, atol=1e-2, rtol=1e-2)

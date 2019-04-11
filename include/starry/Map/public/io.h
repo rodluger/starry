@@ -201,22 +201,3 @@ Return the obliquity of the map.
 inline const Scalar getObliquity () const {
     return obl;
 }
-
-/**
-Return whether or not the filter is on.
-
-*/
-inline bool filterOn () const {
-    return filter_on;
-}
-
-/**
-Toggle the filter on/off.
-
-*/
-inline void toggleFilter () {
-    if (fdeg > 0)
-        filter_on = !filter_on;
-    else
-        throw std::runtime_error("Filter not available because `fdeg = 0`.");
-}

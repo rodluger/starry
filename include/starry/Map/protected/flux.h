@@ -31,7 +31,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     Vector<Matrix<Scalar>> DLDp; // not used
     Matrix<Scalar> DpDpu; // not used
     Matrix<Scalar> DpDpf; // not used
-    bool apply_filter = (udeg > 0) || (filter_on && (fdeg > 0));
+    bool apply_filter = (udeg > 0) || (fdeg > 0);
     if (apply_filter) {
         
         // Compute the two polynomials
@@ -39,12 +39,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
         Vector<Scalar> pu = tmp * norm * pi<Scalar>();
         Vector<Scalar> pf;
-        if (filter_on) {
-            pf = B.A1.block(0, 0, Nf, Nf) * f;
-        } else {
-            pf = Vector<Scalar>::Zero(Nf);
-            pf(0) = 1.0;
-        }
+        pf = B.A1.block(0, 0, Nf, Nf) * f;
 
         // Multiply them
         Vector<Scalar> p;
@@ -189,7 +184,7 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
     Vector<Matrix<Scalar>> DLDp; // not used
     Matrix<Scalar> DpDpu; // not used
     Matrix<Scalar> DpDpf; // not used
-    bool apply_filter = (udeg > 0) || (filter_on && (fdeg > 0));
+    bool apply_filter = (udeg > 0) || (fdeg > 0);
     if (apply_filter) {
 
         // Compute the two polynomials
@@ -197,12 +192,7 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
         Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
         Vector<Scalar> pu = tmp * norm * pi<Scalar>();
         Vector<Scalar> pf;
-        if (filter_on) {
-            pf = B.A1.block(0, 0, Nf, Nf) * f;
-        } else {
-            pf = Vector<Scalar>::Zero(Nf);
-            pf(0) = 1.0;
-        }
+        pf = B.A1.block(0, 0, Nf, Nf) * f;
 
         // Multiply them
         Vector<Scalar> p;
@@ -355,7 +345,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     Vector<Matrix<Scalar>> DLDp;
     Matrix<Scalar> DpDpu;
     Matrix<Scalar> DpDpf;
-    bool apply_filter = (udeg > 0) || (filter_on && (fdeg > 0));
+    bool apply_filter = (udeg > 0) || (fdeg > 0);
     if (apply_filter) {
         
         // Compute the two polynomials
@@ -363,12 +353,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
         Vector<Scalar> pu = tmp * norm * pi<Scalar>();
         Vector<Scalar> pf;
-        if (filter_on) {
-            pf = B.A1.block(0, 0, Nf, Nf) * f;
-        } else {
-            pf = Vector<Scalar>::Zero(Nf);
-            pf(0) = 1.0;
-        }
+        pf = B.A1.block(0, 0, Nf, Nf) * f;
 
         // Multiply them
         Vector<Scalar> p;
@@ -409,8 +394,6 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
 
         // Pre-compute the filter derivatives
         Matrix<Scalar> DpfDf = B.A1.block(0, 0, Nf, Nf);
-        if (!filter_on)
-            DpfDf.setZero();
         for (int l = 0; l < Nf; ++l) {
             DLDf(l).setZero(N, Ny);
         }
@@ -515,7 +498,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
             }
 
             // Filter derivs
-            if ((fdeg > 0) && (filter_on)) {
+            if (fdeg > 0) {
                 for (int l = 0; l < Nf; ++l) {
                     W.leftMultiplyR(rTDLDfA1.row(l), 
                                     Df.block(l * nt + n, 0, 1, Ny));
@@ -543,7 +526,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                                 taylor(n, i);
                         } 
                     }
-                    if ((fdeg > 0) && (filter_on)) {
+                    if (fdeg > 0) {
                         for (int l = 0; l < Nf; ++l) {
                             Df.block(l * nt + n, i * Ny, 1, Ny) = 
                                 Df.block(l * nt + n, 0, 1, Ny) * 
@@ -600,7 +583,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                     sTARzDLDu.row(l) = sTARz * DLDu(l);
                 }
             }
-            if ((fdeg > 0) && (filter_on)) {
+            if (fdeg > 0) {
                 for (int l = 0; l < Nf; ++l) {
                     sTARzDLDf.row(l) = sTARz * DLDf(l);
                 }
@@ -671,7 +654,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
             }
 
             // Filter derivs
-            if ((fdeg > 0) && (filter_on)) {
+            if (fdeg > 0) {
                 for (int l = 0; l < Nf; ++l) {
                     W.leftMultiplyR(sTARzDLDf.row(l), 
                                     Df.block(l * nt + n, 0, 1, Ny));
@@ -705,7 +688,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                                 taylor(n, i);
                         } 
                     }
-                    if ((fdeg > 0) && (filter_on)) {
+                    if (fdeg > 0) {
                         for (int l = 0; l < Nf; ++l) {
                             Df.block(l * nt + n, i * Ny, 1, Ny) = 
                                 Df.block(l * nt + n, 0, 1, Ny) * 

@@ -37,7 +37,6 @@ protected:
     YType y;                                                                   /**< Vector of spherical harmonic coefficients */
     UType u;                                                                   /**< Vector of limb darkening coefficients */
     Vector<Scalar> f;                                                          /**< Vector of multiplicative filter spherical harmonic coefficients */
-    bool filter_on;                                                            /**< Filter enabled? */
     Scalar inc;                                                                /**< Inclination of the rotation axis in degrees */
     Scalar obl;                                                                /**< Obliquity of the rotation axis in degrees */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
@@ -70,7 +69,6 @@ protected:
         y(Ny * Nt, S::LimbDarkened ? 1 : Nw),
         u(Nu, S::LimbDarkened ? Nw : 1),
         f(Nf),
-        filter_on(fdeg > 0),
         inc(90.0),
         obl(0.0),
         B(ydeg, udeg, fdeg),

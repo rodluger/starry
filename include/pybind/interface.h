@@ -1079,7 +1079,7 @@ std::function<py::object (
                 "obl"_a=ENSURE_DOUBLE_ARR(Dobl)           
             );
             // Derivative w.r.t. the filter map
-            if (map.filterOn()) {
+            if (map.fdeg > 0) {
                 gradient["f"] = reshape(ENSURE_DOUBLE_ARR(Df), 
                                 py::make_tuple(map.Nf, nt, map.Ny * map.Nt));
             }

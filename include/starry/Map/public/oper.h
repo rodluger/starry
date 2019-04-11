@@ -11,6 +11,10 @@ inline void reset ()
 
     // Reset the filter
     f.setZero();
+    // If there's no filter, set it to a constant
+    // so we don't zero out the limb darkening operator!
+    if (fdeg == 0)
+        f(0) = 1.0;
 
     // Reset limb darkening
     u.setZero();

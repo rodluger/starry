@@ -136,8 +136,6 @@
 #include "docstrings.h"
 using namespace interface;
 
-class Filter {
-};
 
 // Register the Python module
 PYBIND11_MODULE(
@@ -338,20 +336,6 @@ PYBIND11_MODULE(
                 throw std::invalid_argument(
                     "Incorrect coefficient index shape for this type of map."
                 );
-    });
-
-    // Filter enabled? Internal use only.
-    PyMap.def_property(
-        "_filter_is_active", [] (
-            Map<T> &map
-        ) {
-            return map.filterOn();
-        }, [] (
-            Map<T> &map, 
-            bool on
-        ) {
-            if (map.filterOn() ^ on)
-                map.toggleFilter();
     });
 
     // Reset the map
