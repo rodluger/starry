@@ -75,8 +75,8 @@ class DopplerBase(object):
             DfDA = rvderivs.DfDA(f, A, B, C, self.alpha, self.veq)
             DfDB = rvderivs.DfDB(f, A, B, C, self.alpha, self.veq)
             DfDC = rvderivs.DfDC(f, A, B, C, self.alpha, self.veq)
-            self.DfDinc = (DfDA * DADi + DfDB * DBDi + DfDC * DCDi) * 180. / np.pi
-            self.DfDobl = (DfDA * DADl + DfDB * DBDl) * 180. / np.pi
+            self.DfDinc = (DfDA * DADi + DfDB * DBDi + DfDC * DCDi) * np.pi / 180
+            self.DfDobl = (DfDA * DADl + DfDB * DBDl) * np.pi / 180
             self.DfDalpha = rvderivs.DfDalpha(f, A, B, C, self.alpha, self.veq)
             self.DfDveq = rvderivs.DfDveq(f, A, B, C, self.alpha, self.veq)
 
