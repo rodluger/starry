@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from ..extensions import RAxisAngle
-from .mapsum import MapSum
 from .sht import image2map, healpix2map, array2map
 from IPython.display import HTML
 
@@ -251,13 +250,6 @@ class PythonMapBase(object):
                     plt.close()
         else:
             plt.show()
-    
-    def __add__(self, other):
-        """
-
-        """
-        raise NotImplementedError("Map addition coming soon.")
-        #return MapSum(self) + other
 
     def flux(self, *args, **kwargs):
         """

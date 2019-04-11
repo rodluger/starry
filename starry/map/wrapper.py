@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from .pybase import PythonMapBase
-from .filters import FilterBase
+from .filterbase import FilterBase
+from .rmbase import RMBase
 from .. import modules
 
 
@@ -73,9 +74,9 @@ def Map(ydeg, udeg=0, fdeg=0, **kwargs):
     import_by_name('%s_%s_%s' % (kind, flag, dtype))
 
     # Figure out the base classes
-    bases = (CMapBase, PythonMapBase)
+    bases = (PythonMapBase, CMapBase,)
     if (fdeg > 0) and not limbdarkened:
-        bases += (FilterBase,)
+        bases = (FilterBase,) + bases
 
     # Subclass it
     class Map(*bases):
@@ -93,3 +94,60 @@ def Map(ydeg, udeg=0, fdeg=0, **kwargs):
 
     # Return an instance
     return Map(**kwargs)
+
+
+def RMMap(ydeg=0, udeg=0, **kwargs):
+    """
+    Figures out which `Map` class the user wants and instantiates it.
+
+    """
+    # Figure out the correct base class
+    multi = kwargs.pop('multi', False)
+    nw = kwargs.pop('nw', None)
+    spectral = (nw is not None)
+    nt = kwargs.pop('nt', None)
+    temporal = (nt is not None)
+    kwargs["ydeg"] = ydeg
+    kwargs["udeg"] = udeg
+    kwargs["fdeg"] = 3
+
+    # Disallowed combinations
+    if spectral and temporal:
+        raise NotImplementedError("Spectral maps cannot have time dependence.")
+
+    # Figure out the module flags
+    if spectral:
+        kind = "spectral"
+        kwargs["nterms"] = nw
+    elif temporal:
+        kind = "temporal"
+        kwargs["nterms"] = nt
+    else:
+        kind = "default"
+    if multi:
+        dtype = "multi"
+    else:
+        dtype = "double"
+
+    # Import it
+    import_by_name('%s_ylm_%s' % (kind, dtype))
+
+    # Figure out the base classes
+    bases = (RMBase, PythonMapBase, CMapBase,)
+
+    # Subclass it
+    class RMMap(*bases):
+        __doc__ = CMapBase.__doc__
+        def __init__(self, *init_args, **init_kwargs):
+            self._multi = multi
+            self._reflected = False
+            self._temporal = temporal
+            self._spectral = spectral
+            self._limbdarkened = False
+            super(RMMap, self).__init__(*init_args, **init_kwargs)
+
+    # Hack this function's docstring
+    __doc__ = RMMap.__doc__
+
+    # Return an instance
+    return RMMap(**kwargs)

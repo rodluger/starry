@@ -33,4 +33,4 @@ if not __STARRY_SETUP__:
     from . import kepler
     from .extensions import *
     from . import ops
-    from .map import Map
+    from .Map import Map, RMMap

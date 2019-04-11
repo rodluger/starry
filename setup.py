@@ -191,7 +191,7 @@ setup(
     ext_modules=ext_modules,
     install_requires=['pybind11>=2.2'],
     cmdclass={'build_ext': BuildExt},
-    data_files=glob.glob('starry/maps/*.jpg'),
+    data_files=glob.glob('starry/img/*.jpg'),
     include_package_data=True,
     zip_safe=False,
     extras_require={

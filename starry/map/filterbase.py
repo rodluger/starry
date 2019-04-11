@@ -24,10 +24,3 @@ class FilterBase(object):
     @property
     def filter(self):
         return Filter(self)
-
-    def rv(self, *args, **kwargs):
-        self._filter_is_active = False
-        I = np.array(self.flux(*args, **kwargs))
-        self._filter_is_active = True
-        Iv = np.array(self.flux(*args, **kwargs))
-        return Iv / I

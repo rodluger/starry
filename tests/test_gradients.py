@@ -54,14 +54,6 @@ def settings(request):
     ydeg, udeg, fdeg, filter_is_active, reflected, nw, nt, multi, \
         t, theta, xo, yo, ro, inc, obl, eps = request.param 
 
-    # DEBUG
-    if (ydeg == 2) and (udeg == 0) and (fdeg == 2) and (filter_is_active) and \
-        nw == 1 and nt == 2 and (multi is False) and theta == 0 and xo == 0.3 and \
-            ro == 0.1 and inc == 90 and obl == 30:
-        pass
-    else:
-        return None
-
     # Disallowed combinations
     if nw > 1 and nt > 1:
         return None

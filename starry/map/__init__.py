@@ -1,2 +1,2 @@
 # -*- coding: utf-8 -*-
-from .map import Map
+from .wrapper import Map, RMMap
