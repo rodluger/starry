@@ -35,7 +35,7 @@ class RMBase(object):
         cosl = np.cos(self.obl * np.pi / 180)
         sinl = np.sin(self.obl * np.pi / 180)
         A = sini * cosl
-        B = sini * sinl
+        B = -sini * sinl
         C = cosi
 
         # Compute the Ylm expansion of the RV field
@@ -69,8 +69,8 @@ class RMBase(object):
         if gradient:
             DADi = cosi * cosl
             DADl = -sini * sinl
-            DBDi = cosi * sinl
-            DBDl = sini * cosl
+            DBDi = -cosi * sinl
+            DBDl = -sini * cosl
             DCDi = -sini
             DfDA = rvderivs.DfDA(f, A, B, C, self.alpha, self.veq)
             DfDB = rvderivs.DfDB(f, A, B, C, self.alpha, self.veq)
