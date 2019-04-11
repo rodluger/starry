@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from .pybase import PythonMapBase
 from .filterbase import FilterBase
-from .rmbase import RMBase
+from .dopplerbase import DopplerBase
 from .. import modules
 
 
@@ -96,7 +96,7 @@ def Map(ydeg, udeg=0, fdeg=0, **kwargs):
     return Map(**kwargs)
 
 
-def RMMap(ydeg=0, udeg=0, **kwargs):
+def DopplerMap(ydeg=0, udeg=0, **kwargs):
     """
     Figures out which `Map` class the user wants and instantiates it.
 
@@ -133,10 +133,10 @@ def RMMap(ydeg=0, udeg=0, **kwargs):
     import_by_name('%s_ylm_%s' % (kind, dtype))
 
     # Figure out the base classes
-    bases = (RMBase, PythonMapBase, CMapBase,)
+    bases = (DopplerBase, PythonMapBase, CMapBase,)
 
     # Subclass it
-    class RMMap(*bases):
+    class DopplerMap(*bases):
         __doc__ = CMapBase.__doc__
         def __init__(self, *init_args, **init_kwargs):
             self._multi = multi
@@ -144,10 +144,10 @@ def RMMap(ydeg=0, udeg=0, **kwargs):
             self._temporal = temporal
             self._spectral = spectral
             self._limbdarkened = False
-            super(RMMap, self).__init__(*init_args, **init_kwargs)
+            super(DopplerMap, self).__init__(*init_args, **init_kwargs)
 
     # Hack this function's docstring
-    __doc__ = RMMap.__doc__
+    __doc__ = DopplerMap.__doc__
 
     # Return an instance
-    return RMMap(**kwargs)
+    return DopplerMap(**kwargs)

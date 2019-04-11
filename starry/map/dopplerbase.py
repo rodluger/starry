@@ -3,16 +3,16 @@ import numpy as np
 from . import rvderivs
 
 
-__all__ = ["RMBase"]
+__all__ = ["DopplerBase"]
 
 
-class RMBase(object):
+class DopplerBase(object):
     """
-    Rossiter-McLaughlin map base.
+    Doppler map base.
 
     """
     def __init__(self, *args, **kwargs):
-        super(RMBase, self).__init__(*args, **kwargs)
+        super(DopplerBase, self).__init__(*args, **kwargs)
         self._alpha = 0.0
         self._veq = 0.0
         self._unset_rv_filter()
@@ -141,7 +141,7 @@ class RMBase(object):
         """Render the image of the star, optionally weighted by the RV."""
         if rv:
             self._set_rv_filter()
-        res = super(RMBase, self).render(*args, **kwargs)
+        res = super(DopplerBase, self).render(*args, **kwargs)
         if rv:
             self._unset_rv_filter()
         return res
