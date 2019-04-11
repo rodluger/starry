@@ -3,87 +3,92 @@ from __future__ import division, print_function
 import numpy as np
 import theano
 import theano.tensor as tt
-from .._starry_default_ylm_double import Map
+from ..Map import DopplerMap
 
-__all__ = ["DefaultYlmOp"]
+__all__ = ["DopplerMapOp"]
 
 
-class DefaultYlmOp(tt.Op):
+def _to_tensor_type(shape):
+    return tt.TensorType(dtype="float64", broadcastable=[False] * len(shape))
 
-    __props__ = ("lmax", )
 
-    def __init__(self, lmax=2):
-        # Save the primary information
-        self.lmax = int(lmax)
+class DopplerMapOp(tt.Op):
 
-        # Pre-initialize the Map object
-        self.map = Map(lmax=self.lmax)
+    itypes = [tt.dvector, tt.dvector, tt.dscalar, tt.dscalar, tt.dscalar,
+              tt.dscalar, tt.dvector, tt.dvector, tt.dvector, tt.dvector,
+              tt.dvector]
+    otypes = [theano.tensor.dvector]
 
-        # Set up the gradient operation
-        self._grad_op = DefaultYlmGradOp(self)
-
-    def make_node(self, *args):
-        if len(args) != 6:
-            raise ValueError("Incorrect number of inputs.")
-        args = [tt.as_tensor_variable(a) for a in args]
-        out_args = [args[-1].type() for i in range(7)]
-        return theano.Apply(self, args, out_args)
-
-    def infer_shape(self, node, shapes):
-        return shapes[-1],
-
-    def perform(self, node, inputs, outputs):
-        y, theta, xo, yo, zo, ro = inputs
-        self.map[:, :] = y
-        # HACK: nudge at least one ylm away from zero
-        # to force starry to compute all derivatives
-        if (len(y) > 2) and (y[2] == 0):
-            self.map[1, 0] = 1.e-15
-        outputs[0][0] = self.map.flux(theta=theta, xo=xo, yo=yo, zo=zo, ro=ro)
-            
-    def grad(self, inputs, gradients):
-        return self._grad_op(*(inputs + gradients))
+    def __init__(self, ydeg=0, udeg=0):
+        self.ydeg = ydeg
+        self.udeg = udeg
+        self.map = DopplerMap(ydeg=self.ydeg, udeg=self.udeg)
+        self.nargs = 11
+        self._grad_op = DopplerMapOpGradient(self)
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
             return eval_points
         return self.grad(inputs, eval_points)
 
+    def perform(self, node, inputs, outputs):
+        y, u, inc, obl, veq, alpha, theta, xo, yo, zo, ro = inputs
+        if self.ydeg:
+            self.map[1:, :] = y
+        if self.udeg:
+            self.map[:] = u
+        self.map.inc = inc
+        self.map.obl = obl
+        self.map.veq = veq
+        self.map.alpha = alpha
+        outputs[0][0] = self.map.rv(theta=theta, xo=xo, yo=yo, zo=zo, ro=ro)
 
-class DefaultYlmGradOp(tt.Op):
+    def grad(self, inputs, gradients):
+        return self._grad_op(*(inputs + gradients))
 
-    __props__ = ("base_op", )
+
+class DopplerMapOpGradient(tt.Op):
+
+    itypes = [tt.dvector, tt.dvector, tt.dscalar, tt.dscalar, tt.dscalar,
+              tt.dscalar, tt.dvector, tt.dvector, tt.dvector, tt.dvector,
+              tt.dvector, tt.dvector]
+    otypes = [tt.dvector, tt.dvector, tt.dscalar, tt.dscalar, tt.dscalar,
+              tt.dscalar, tt.dvector, tt.dvector, tt.dvector, tt.dvector,
+              tt.dvector]
 
     def __init__(self, base_op):
         self.base_op = base_op
 
-    def make_node(self, *args):
-        if len(args) != len(self.base_op.param_names) + 1:
-            raise ValueError("Incorrect number of inputs.")
-        args = [tt.as_tensor_variable(a) for a in args]
-        return theano.Apply(self, args, [a.type() for a in args[:-1]])
-
-    def infer_shape(self, node, shapes):
-        return shapes[:-1]
-
     def perform(self, node, inputs, outputs):
-        y, theta, xo, yo, zo, ro, DDf = inputs
-        self.base_op.map[:, :] = y
-        # HACK: nudge at least one ylm away from zero
-        # to force starry to compute all derivatives
-        if (len(y) > 2) and (y[2] == 0):
-            self.base_op.map[1, 0] = 1.e-15
-        _, grads = self.base_op.map.flux(theta=theta, xo=xo, yo=yo, zo=zo,
-                                         ro=ro, gradient=True)
-
-        # The map gradient
-        shape = list(inputs[0].shape) + list(DDf.shape)
-        outputs[0][0] = np.array(np.sum(grads.get("y", np.zeros(shape)) * DDf, axis=-1))
-
-        # The gradients with respect to the time-dependent parameters
-        for i, param in enumerate(["theta", "xo", "yo", "zo"]):
-            outputs[i + 1][0] = np.array(grads.get(param, 0.0) * DDf)
+        y, u, inc, obl, veq, alpha, theta, xo, yo, zo, ro, bf = inputs
+        if self.base_op.ydeg:
+            self.base_op.map[1:, :] = y
+        if self.base_op.udeg:
+            self.base_op.map[:] = u
+        self.base_op.map.inc = inc
+        self.base_op.map.obl = obl
+        self.base_op.map.veq = veq
+        self.base_op.map.alpha = alpha
+        _, grad = self.base_op.map.rv(theta=theta, xo=xo, yo=yo, 
+                                      zo=zo, ro=ro, gradient=True)
         
-        # The radius gradient
-        shape = list(inputs[5].shape) + list(DDf.shape)
-        outputs[5][0] = np.atleast_1d(np.array(np.sum(grads.get("ro", np.zeros(shape)) * DDf, axis=-1)))
+        # Spherical harmonics gradient
+        outputs[0][0] = np.array(np.sum(grad["y"] * bf, axis=-1))
+
+        # Limb darkening gradient
+        outputs[1][0] = np.array(np.sum(grad["u"] * bf, axis=-1))
+
+        # RV field gradients
+        outputs[2][0] = np.atleast_1d(np.array(np.sum(grad["inc"] * bf, axis=-1)))
+        outputs[3][0] = np.atleast_1d(np.array(np.sum(grad["obl"] * bf, axis=-1)))
+        outputs[4][0] = np.atleast_1d(np.array(np.sum(grad["veq"] * bf, axis=-1)))
+        outputs[5][0] = np.atleast_1d(np.array(np.sum(grad["alpha"] * bf, axis=-1)))
+
+        # Orbital gradients
+        outputs[6][0] = np.array(grad["theta"] * bf)
+        outputs[7][0] = np.array(grad["xo"] * bf)
+        outputs[8][0] = np.array(grad["yo"] * bf)
+        outputs[9][0] = np.zeros_like(outputs[8][0])
+
+        # Radius gradient
+        outputs[10][0] = np.atleast_1d(np.array(np.sum(grad["ro"] * bf, axis=-1)))

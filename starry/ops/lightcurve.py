@@ -3,7 +3,10 @@
 from __future__ import division, print_function
 import numpy as np
 import theano.tensor as tt
-from .theano_op import DefaultYlmOp
+from .theano_op import DopplerMapOp
+
+
+# TODO TODO TODO TODO This routine needs a lot of work
 
 
 __all__ = ["LightCurve"]
@@ -15,8 +18,8 @@ class LightCurve(object):
 
     __citations__ = ("starry", )
 
-    def __init__(self, lmax, model=None):
-        self.starry_op = DefaultYlmOp(lmax)
+    def __init__(self, ydeg=0, udeg=0):
+        self.starry_op = DopplerMapOp(ydeg=ydeg, udeg=udeg)
 
     def get_light_curve(self, y=None, orbit=None, r=None, t=None,
                         theta0=0.0, t0=0.0, per=None):
