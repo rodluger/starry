@@ -8,10 +8,6 @@ from ..Map import DopplerMap
 __all__ = ["DopplerMapOp"]
 
 
-def _to_tensor_type(shape):
-    return tt.TensorType(dtype="float64", broadcastable=[False] * len(shape))
-
-
 class DopplerMapOp(tt.Op):
 
     itypes = [tt.dvector, tt.dvector, tt.dscalar, tt.dscalar, tt.dscalar,
@@ -23,8 +19,7 @@ class DopplerMapOp(tt.Op):
         self.ydeg = ydeg
         self.udeg = udeg
         self.map = DopplerMap(ydeg=self.ydeg, udeg=self.udeg)
-        self.nargs = 11
-        self._grad_op = DopplerMapOpGradient(self)
+        self._grad_op = DopplerMapGradientOp(self)
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -47,7 +42,7 @@ class DopplerMapOp(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class DopplerMapOpGradient(tt.Op):
+class DopplerMapGradientOp(tt.Op):
 
     itypes = [tt.dvector, tt.dvector, tt.dscalar, tt.dscalar, tt.dscalar,
               tt.dscalar, tt.dvector, tt.dvector, tt.dvector, tt.dvector,
