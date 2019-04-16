@@ -66,11 +66,12 @@ with pm.Model() as model:
 
     # We're not fitting for theta
     # @dfm: How do I prevent pymc3 from fitting for it?
-    theta = np.ones_like(t) * pm.Uniform("theta", 0, 1)
+    theta = np.ones_like(t)  # np.ones_like(t) * pm.Uniform("theta", 0, 1)
     
     # The map Ylm degree is zero, so there are no Ylms to fit
-    y = tt.as_tensor_variable([], name='y')
-    y.name = 'y'
+    y = np.empty(0)
+    # y = tt.as_tensor_variable([], name='y')
+    # y.name = 'y'
 
     # Vectorize the occultor radius
     rs = np.ones_like(t) * r
@@ -85,17 +86,17 @@ with pm.Model() as model:
 
     # Compute the model light curve using starry
     rv_model = starry_op(
-        tt.as_tensor_variable(y),
-        tt.as_tensor_variable(u),
-        tt.as_tensor_variable(inc),
-        tt.as_tensor_variable(obl),
-        tt.as_tensor_variable(veq), 
-        tt.as_tensor_variable(alpha),
-        tt.as_tensor_variable(theta),
-        tt.as_tensor_variable(_x),
-        tt.as_tensor_variable(_y),
-        tt.as_tensor_variable(_z), 
-        tt.as_tensor_variable(rs)
+        y,
+        u,
+        inc,
+        obl,
+        veq, 
+        alpha,
+        theta,
+        _x,
+        _y,
+        _z, 
+        rs
     )
 
     # Here we track the value of the model light curve for plotting later
