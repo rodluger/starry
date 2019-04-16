@@ -31,7 +31,7 @@ class DopplerMapOp(tt.Op):
         if self.ydeg:
             self.map[1:, :] = y
         if self.udeg:
-            self.map[:] = u
+            self.map[1:] = u
         self.map.inc = inc
         self.map.obl = obl
         self.map.veq = veq
@@ -59,7 +59,7 @@ class DopplerMapGradientOp(tt.Op):
         if self.base_op.ydeg:
             self.base_op.map[1:, :] = y
         if self.base_op.udeg:
-            self.base_op.map[:] = u
+            self.base_op.map[1:] = u
         self.base_op.map.inc = inc
         self.base_op.map.obl = obl
         self.base_op.map.veq = veq
