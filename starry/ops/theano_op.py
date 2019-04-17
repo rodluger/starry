@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, print_function
 import numpy as np
-import theano
+from theano import gof
 import theano.tensor as tt
 from ..Map import DopplerMap
 
@@ -10,16 +10,19 @@ __all__ = ["DopplerMapOp"]
 
 class DopplerMapOp(tt.Op):
 
-    itypes = [tt.dvector, tt.dvector, tt.dscalar, tt.dscalar, tt.dscalar,
-              tt.dscalar, tt.dvector, tt.dvector, tt.dvector, tt.dvector,
-              tt.dvector]
-    otypes = [theano.tensor.dvector]
-
     def __init__(self, ydeg=0, udeg=0):
         self.ydeg = ydeg
         self.udeg = udeg
         self.map = DopplerMap(ydeg=self.ydeg, udeg=self.udeg)
         self._grad_op = DopplerMapGradientOp(self)
+
+    def make_node(self, *inputs):
+        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        outputs = [inputs[-1].type()]
+        return gof.Apply(self, inputs, outputs)
+
+    def infer_shape(self, node, shapes):
+        return shapes[-1],
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -44,15 +47,16 @@ class DopplerMapOp(tt.Op):
 
 class DopplerMapGradientOp(tt.Op):
 
-    itypes = [tt.dvector, tt.dvector, tt.dscalar, tt.dscalar, tt.dscalar,
-              tt.dscalar, tt.dvector, tt.dvector, tt.dvector, tt.dvector,
-              tt.dvector, tt.dvector]
-    otypes = [tt.dvector, tt.dvector, tt.dscalar, tt.dscalar, tt.dscalar,
-              tt.dscalar, tt.dvector, tt.dvector, tt.dvector, tt.dvector,
-              tt.dvector]
-
     def __init__(self, base_op):
         self.base_op = base_op
+
+    def make_node(self, *inputs):
+        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        outputs = [i.type() for i in inputs[:11]]
+        return gof.Apply(self, inputs, outputs)
+
+    def infer_shape(self, node, shapes):
+        return shapes[:11]
 
     def perform(self, node, inputs, outputs):
         y, u, inc, obl, veq, alpha, theta, xo, yo, zo, ro, bf = inputs
@@ -64,9 +68,9 @@ class DopplerMapGradientOp(tt.Op):
         self.base_op.map.obl = obl
         self.base_op.map.veq = veq
         self.base_op.map.alpha = alpha
-        _, grad = self.base_op.map.rv(theta=theta, xo=xo, yo=yo, 
+        _, grad = self.base_op.map.rv(theta=theta, xo=xo, yo=yo,
                                       zo=zo, ro=ro, gradient=True)
-        
+
         # Spherical harmonics gradient
         outputs[0][0] = np.array(np.sum(grad["y"] * bf, axis=-1))
 
@@ -86,4 +90,8 @@ class DopplerMapGradientOp(tt.Op):
         outputs[9][0] = np.zeros_like(outputs[8][0])
 
         # Radius gradient
-        outputs[10][0] = np.atleast_1d(np.array(np.sum(grad["ro"] * bf, axis=-1)))
+        # outputs[10][0] = np.atleast_1d(np.array(np.sum(grad["ro"] * bf, axis=-1)))
+        outputs[10][0] = np.array(grad["ro"] * bf)
+
+        for i in range(11):
+            outputs[i][0] = outputs[i][0].reshape(np.shape(inputs[i]))

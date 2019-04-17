@@ -75,7 +75,7 @@ def test_specific():
 
     # Check that the gradients match
     for i, v in enumerate(var):
-        if v.name in ["theta", "xo", "yo"]:
+        if v.name in ["theta", "xo", "yo", "ro"]:
             assert np.allclose(starry_grad[v.name], grad_val[i]), v.name
         elif v.name == "zo":
             pass
