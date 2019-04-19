@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from .pybase import PythonMapBase
-from .filterbase import FilterBase
-from .dopplerbase import DopplerBase
+from .pymap import PythonMapBase
+from .filter import FilterBase
+from .doppler import DopplerBase
 from .. import modules
 
 

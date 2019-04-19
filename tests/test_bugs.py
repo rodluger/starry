@@ -25,13 +25,8 @@ def test_source_noon():
     map = starry.Map(2, reflected=True)
     assert np.nansum(map.render(source=[0, 0, 1])) != 0
 
-# Not sure what's happening here.
-def test_rv_hysteresis():
-    map = starry.DopplerMap()
-    map.veq = 1
-    xo = np.linspace(-1.5, 1.5, 10)
-    f1 = map.rv(xo=xo, ro=0.1)
-    f2, _ = map.rv(xo=xo, ro=0.1, gradient=True)
-    assert np.allclose(f1, f2)
-
-# TODO: Gradient of RV when xo = 0 is NAN
+# Gradient of flux when xo = 0 is NAN
+@pytest.mark.xfail
+def test_gradient_xo_zero():
+    map = starry.Map(2)
+    assert np.isfinite(map.flux(xo=0, ro=0.1, gradient=True)[1]["xo"])

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from . import rvderivs
+from ..ops import DopplerMapOp
+import theano.tensor as tt
 
 
 __all__ = ["DopplerBase"]
@@ -16,6 +18,7 @@ class DopplerBase(object):
         self._alpha = 0.0
         self._veq = 0.0
         self._unset_rv_filter()
+        self._op = DopplerMapOp(self)
 
     def _unset_rv_filter(self):
         """Remove the RV filter."""
@@ -95,7 +98,8 @@ class DopplerBase(object):
     @alpha.setter
     def alpha(self, val):
         """The rotational shear coefficient."""
-        assert (val >= 0) and (val <= 1), "The rotational shear coefficient must be between 0 and 1."
+        assert (val >= 0) and (val <= 1), \
+            "The rotational shear coefficient must be between 0 and 1."
         self._alpha = val
 
     @property
@@ -149,3 +153,63 @@ class DopplerBase(object):
         if rv:
             self._unset_rv_filter()
         return res
+    
+    def rv_op(self, y=None, u=None, inc=None, obl=None, veq=None, alpha=None,
+              theta=0, orbit=None, t=None, xo=None, yo=None, zo=1, ro=0.1):
+        """
+        
+        """
+        # TODO!
+        if self._spectral or self._temporal:
+            raise NotImplementedError("Op not yet implemented for this map type.")
+
+        # Map coefficients
+        if y is None:
+            y = np.array(self.y[1:])
+        if u is None:
+            u = np.array(self.u[1:])
+
+        # Misc properties
+        if inc is None:
+            inc = self.inc
+        if obl is None:
+            obl = self.obl
+        if veq is None:
+            veq = self.veq
+        if alpha is None:
+            alpha = self.alpha
+
+        # Orbital coords
+        if orbit is not None:
+            assert t is not None, "Please provide a set of times `t`."
+            coords = orbit.get_relative_position(t)
+            xo = coords[0]
+            yo = coords[1]
+            zo = -coords[2]
+        else:
+            assert (xo is not None) and (yo is not None), \
+                "Please provide the occultor `xo` and `yo` positions."
+        
+        # Ensure these are all vectors
+        # TODO: If the user provides a vector of `theta`s or `ro`s but
+        # constant orbital coords, this method will fail.
+        theta = tt.as_tensor_variable(theta)
+        if (theta.ndim == 0):
+            theta = tt.ones_like(xo) * theta
+        zo = tt.as_tensor_variable(zo)
+        if (zo.ndim == 0):
+            zo = tt.ones_like(xo) * zo
+        ro = tt.as_tensor_variable(ro)
+        if (ro.ndim == 0):
+            ro = tt.ones_like(xo) * ro
+
+        # Now ensure everything is `floatX`
+        args = [y, u, inc, obl, veq, alpha, theta, xo, yo, zo, ro]
+        for i, arg in enumerate(args):
+            if hasattr(arg, 'astype'):
+                args[i] = arg.astype(tt.config.floatX)
+            else:
+                args[i] = getattr(np, tt.config.floatX)(arg)
+
+        # Call the op
+        return self._op(*args)

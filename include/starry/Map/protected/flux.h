@@ -93,7 +93,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                 W.leftMultiplyRz(rTLA1RZetaInv, rTLA1RZetaInvRz);
                 W.leftMultiplyRZeta(rTLA1RZetaInvRz, X.block(n, 0, 1, Ny));
             } else {
-                 X.block(n, 0, 1, Ny) =  X.block(n - 1, 0, 1, Ny);
+                W.leftMultiplyRZeta(rTLA1RZetaInvRz, X.block(n, 0, 1, Ny));
             }
 
             // Apply the Taylor expansion
