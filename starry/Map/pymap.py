@@ -105,6 +105,11 @@ class PythonMapBase(object):
 
         if projection == "rect":
 
+            # Disable limb darkening
+            if self.udeg:
+                u_copy = np.array(self[1:])
+                self[1:] = 0
+
             # Generate the lat/lon grid for one hemisphere
             lon = np.linspace(-np.pi, np.pi, res)
             lat = np.linspace(1e-3, np.pi / 2, res // 2)
@@ -169,6 +174,10 @@ class PythonMapBase(object):
             self.axis = u
             self.rotate(-alpha)
             self.axis = map_axis
+
+            # Re-enable limb darkening
+            if self.udeg:
+                self[1:] = u_copy
 
         else:
 
@@ -323,7 +332,7 @@ class PythonMapBase(object):
             self[1:, :] = 0
             self[:ydeg + 1, :] = y
         
-        # Rotate the pole of the map onto the axis
+        # [New!] Rotate the pole of the map onto the axis
         axis = np.array(self.axis)
         theta = np.arccos(np.dot([0, 1, 0], axis)) * 180 / np.pi
         self.axis = np.cross([0, 1, 0], axis)
