@@ -739,16 +739,18 @@ inline void Wigner<Scalar>::updateAxis (
 
     // Compute the rotation transformation into and out of the `zeta` frame
     if (abs(sini.value()) < tol) {
-        // The rotation axis is zhat, so our zeta transform
-        // is just the identity matrix.
-        for (int l = 0; l < ydeg + 1; l++) {
-            if (cosi.value() > 0) {
+        // The rotation axis is about +/- zhat
+        if (cosi.value() > 0) {
+            // Trivial: the zeta frame is the current frame
+            for (int l = 0; l < ydeg + 1; l++) {
                 RZeta[l] = Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
-                RZetaInv[l] = Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
-            } else {
-                RZeta[l] = -Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
-                RZetaInv[l] = -Matrix<Scalar>::Identity(2 * l + 1, 2 * l + 1);
-            }
+            } 
+        } else {
+            // We must flip the body around, since the axis is -zhat
+            rotar(ydeg, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0, tol, DZeta, RZeta);
+        }
+        for (int l = 0; l < ydeg + 1; l++) {
+            RZetaInv[l] = RZeta[l].transpose();
             DRZetaDInc[l].setZero();
             DRZetaInvDInc[l].setZero();
             DRZetaDObl[l].setZero();
@@ -770,7 +772,7 @@ inline void Wigner<Scalar>::updateAxis (
                          cosalpha, sinalpha, cosbeta, sinbeta, 
                          cosgamma, singamma);
 
-        // Call the Rulerian rotation function
+        // Call the Eulerian rotation function
         rotar(ydeg, cosalpha, sinalpha, cosbeta, sinbeta, 
               cosgamma, singamma, tol_ad, DZeta_ad, RZeta_ad);
 

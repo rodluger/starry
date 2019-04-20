@@ -322,3 +322,10 @@ class PythonMapBase(object):
         else:
             self[1:, :] = 0
             self[:ydeg + 1, :] = y
+        
+        # Rotate the pole of the map onto the axis
+        axis = np.array(self.axis)
+        theta = np.arccos(np.dot([0, 1, 0], axis)) * 180 / np.pi
+        self.axis = np.cross([0, 1, 0], axis)
+        self.rotate(theta)
+        self.axis = axis

@@ -20,10 +20,13 @@ def healpix2map(healpix_map, lmax=10, **kwargs):
                           "enable this feature. See " +
                           "`https://healpy.readthedocs.io`.")
     # Get the complex spherical harmonic coefficients
-    # We need to do a rotation to get our axes aligned correctly,
-    # since we use a different convention than `healpy`
     alm = hp.sphtfunc.map2alm(healpix_map, lmax=lmax)
+    
+    # We first need to do a rotation to get our axes aligned correctly,
+    # since we use a different convention than `healpy`
     alm = hp.rotator.Rotator((-90, 0, -90)).rotate_alm(alm)
+
+    # Smooth the map?
     if kwargs.get("sigma", None) is not None:
         alm = hp.sphtfunc.smoothalm(alm, sigma=kwargs.get("sigma"), verbose=False)
 
