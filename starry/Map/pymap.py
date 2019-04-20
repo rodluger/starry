@@ -119,10 +119,8 @@ class PythonMapBase(object):
 
             # Rotate so we're looking down the north pole
             map_axis = np.array(self.axis)
-            sinalpha = np.sqrt(self.axis[0] ** 2 + self.axis[1] ** 2)
-            cosalpha = self.axis[2]
-            u = np.array([self.axis[1], self.axis[0], 0]) / sinalpha
-            alpha = (180 / np.pi) * np.arctan2(sinalpha, cosalpha)
+            alpha = np.arccos(np.dot(map_axis, [0, 0, 1])) * 180 / np.pi
+            u = np.cross(map_axis, [0, 0, 1])
             self.axis = u
             self.rotate(alpha)
 
@@ -135,7 +133,7 @@ class PythonMapBase(object):
                 model_kwargs["source"] = source
 
             # Compute the northern hemisphere map
-            self.axis = [1e-10, 1e-10, 1] # TODO: Bug when axis = [0, 0, 1]
+            self.axis = [0, 0, 1]
             Z_north = np.array(self.intensity(x=x, y=y, **model_kwargs))
             if self._spectral:
                 Z_north = Z_north.reshape(res // 2, res, self.nw)
@@ -156,7 +154,7 @@ class PythonMapBase(object):
                 model_kwargs["source"] = source
             
             # Compute the southern hemisphere map
-            self.axis = [1e-10, 1e-10, -1] # TODO: Bug when axis = [0, 0, -1]
+            self.axis = [0, 0, -1]
             Z_south = np.array(self.intensity(x=-x, y=-y, **model_kwargs))
             if self._spectral:
                 Z_south = Z_south.reshape(res // 2, res, self.nw)
