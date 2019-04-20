@@ -153,19 +153,26 @@ inline void computeLinearIntensityModelInternal (
                 sy_cache = sy;
                 sz_cache = sz;
 
-                // Compute the terminator curve
                 Scalar b = -sz;
-                Scalar invsr = Scalar(1.0) / sqrt(sx * sx + sy * sy);
-                Scalar cosw = sy * invsr;
-                Scalar sinw = -sx * invsr;
-                xrot = xv * cosw + yv * sinw;
-                xrot2 = xrot.array().square();
-                yrot = -xv * sinw + yv * cosw;
-                yterm = b * (Ones - xrot2).cwiseSqrt();
-
-                // Compute the illumination
-                I = sqrt(Scalar(1.0) - Scalar(b * b)) * yrot - b * z;
-                I = (yrot.array() > yterm.array()).select(I, 0.0);
+                if (likely(abs(b) < 1.0)) {
+                    // Compute the terminator curve
+                    Scalar invsr = Scalar(1.0) / sqrt(sx * sx + sy * sy);
+                    Scalar cosw = sy * invsr;
+                    Scalar sinw = -sx * invsr;
+                    xrot = xv * cosw + yv * sinw;
+                    xrot2 = xrot.array().square();
+                    yrot = -xv * sinw + yv * cosw;
+                    yterm = b * (Ones - xrot2).cwiseSqrt();
+                    // Compute the illumination
+                    I = sqrt(Scalar(1.0) - Scalar(b * b)) * yrot - b * z;
+                    I = (yrot.array() > yterm.array()).select(I, 0.0);
+                } else if (b < 0) {
+                    // Noon
+                    I = z;
+                } else {
+                    // Midnight
+                    I = z * 0.0;
+                }
 
             }
             if (CONTRACT_Y) {
