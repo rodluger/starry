@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from ..extensions import RAxisAngle
 from .sht import image2map, healpix2map, array2map
 from IPython.display import HTML
@@ -15,20 +16,15 @@ class PythonMapBase(object):
 
     """
 
-    def render(self, theta=0, res=300, projection="ortho", 
-               rotate_if_rect=False, **kwargs):
+    def render(self, theta=0, res=300, projection="ortho", **kwargs):
         """
 
         """
         # Type-specific kwargs
         if projection.lower().startswith("rect"):
             projection = "rect"
-            if rotate_if_rect and hasattr(theta, "__len__"):
-                nframes = len(theta)
-                model_kwargs = dict(theta=theta)
-            else:
-                nframes = 1
-                model_kwargs = dict()
+            nframes = 1
+            model_kwargs = dict()
         elif projection.lower().startswith("ortho"):
             projection = "ortho"
             if hasattr(theta, "__len__"):
@@ -65,8 +61,7 @@ class PythonMapBase(object):
                         map.filter[:, :] = self.filter[:, :]
                     map.axis = self.axis
                     return map.render(theta=theta, res=res, 
-                                      projection=projection, 
-                                      rotate_if_rect=rotate_if_rect, t=t)
+                                      projection=projection, t=t)
                 elif self._spectral:
                     map = Map(ydeg=self.ydeg, udeg=self.udeg, 
                               fdeg=self.fdeg,
@@ -78,8 +73,7 @@ class PythonMapBase(object):
                         map.filter[:, :] = self.filter[:, :]
                     map.axis = self.axis
                     return map.render(theta=theta, res=res, 
-                                      projection=projection, 
-                                      rotate_if_rect=rotate_if_rect)
+                                      projection=projection)
                 else:
                     map = Map(ydeg=self.ydeg, udeg=self.udeg, 
                               fdeg=self.fdeg,
@@ -91,8 +85,7 @@ class PythonMapBase(object):
                         map.filter[:, :] = self.filter[:, :]
                     map.axis = self.axis
                     return map.render(theta=theta, res=res, 
-                                      projection=projection, 
-                                      rotate_if_rect=rotate_if_rect)
+                                      projection=projection)
             else:
                 source = np.ascontiguousarray(source)
                 if len(source.shape) == 2:
@@ -211,10 +204,25 @@ class PythonMapBase(object):
         else:
             animated = (nframes > 1)
 
+        # Latitude grid lines
+        latlines = [-60, -30, 0, 30, 60]
+        lonlines = np.linspace(-180, 180, 13)
+
         if projection == "rect":
             # Set up the plot
-            fig, ax = plt.subplots(1, figsize=(6, 3))
+            fig, ax = plt.subplots(1, figsize=(7, 3.75))
             extent = (-180, 180, -90, 90)
+
+            if grid:
+                for lat in latlines:
+                    ax.axhline(lat, color="k", lw=0.5, alpha=0.5, zorder=100)
+                for lon in lonlines:
+                    ax.axvline(lon, color="k", lw=0.5, alpha=0.5, zorder=100)
+            ax.set_xticks(lonlines)
+            ax.set_yticks(latlines)
+            ax.set_xlabel("Longitude [deg]")
+            ax.set_ylabel("Latitude [deg]")
+
         else:
             # Set up the plot
             fig, ax = plt.subplots(1, figsize=(3, 3))
@@ -248,7 +256,7 @@ class PythonMapBase(object):
                 ax.plot(x, y, 'ko', ms=2, alpha=0.5)
 
                 # Latitude lines
-                for lat in [-60, -30, 0, 30, 60]:
+                for lat in latlines:
 
                     # Figure out the equation of the ellipse
                     y0 = np.sin(lat * np.pi / 180) * si
@@ -278,7 +286,7 @@ class PythonMapBase(object):
                         ax.plot(xr, yr, 'k-', lw=0.5, alpha=0.5, zorder=100)
 
                 # Longitude lines
-                for lon in np.linspace(-180, 180, 13):
+                for lon in lonlines:
                     # Viewed at i = 90
                     b = np.sin(lon * np.pi / 180)
                     y = np.linspace(-1, 1, 1000)
@@ -311,14 +319,17 @@ class PythonMapBase(object):
                         yr = x * so + y * co
                         ax.plot(xr, yr, 'k-', lw=0.5, alpha=0.5, zorder=100)
 
-
         # Plot the first frame of the image
         img = ax.imshow(Z[0], origin="lower", 
                         extent=extent, cmap=cmap,
                         interpolation="none",
                         vmin=np.nanmin(Z), vmax=np.nanmax(Z), 
                         animated=animated)
-        
+        if projection == "rect":
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes('right', size='3%', pad=0.1)
+            plt.colorbar(img, ax=ax, cax=cax)
+
         # Display or save the image / animation
         if animated:
             interval = kwargs.pop("interval", 75)
