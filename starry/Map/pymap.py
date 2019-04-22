@@ -191,7 +191,8 @@ class PythonMapBase(object):
 
         return np.squeeze(Z)
 
-    def show(self, Z=None, cmap="plasma", projection="ortho", **kwargs):
+    def show(self, Z=None, cmap="plasma", projection="ortho", 
+             grid=True, **kwargs):
         """
 
         """
@@ -218,7 +219,98 @@ class PythonMapBase(object):
             # Set up the plot
             fig, ax = plt.subplots(1, figsize=(3, 3))
             ax.axis('off')
+            ax.set_xlim(-1.05, 1.05)
+            ax.set_ylim(-1.05, 1.05)
             extent = (-1, 1, -1, 1)
+
+            # Plot the lat/lon grid lines
+            if grid:
+                
+                # Body outline
+                x = np.linspace(-1, 1, 10000)
+                y = np.sqrt(1 - x ** 2)
+                ax.plot(x, y, 'k-', alpha=1, lw=1)
+                ax.plot(x, -y, 'k-', alpha=1, lw=1)
+
+                # Angular quantities
+                ci = np.cos(self.inc * np.pi / 180)
+                si = np.sin(self.inc * np.pi / 180)
+                co = np.cos(self.obl * np.pi / 180)
+                so = np.sin(self.obl * np.pi / 180)
+
+                # Mark the pole
+                if self.inc < 90:
+                    x = si * so
+                    y = si * co
+                elif self.inc > 90:
+                    x = -si * so
+                    y = -si * co
+                ax.plot(x, y, 'ko', ms=2, alpha=0.5)
+
+                # Latitude lines
+                for lat in [-60, -30, 0, 30, 60]:
+
+                    # Figure out the equation of the ellipse
+                    y0 = np.sin(lat * np.pi / 180) * si
+                    a = np.cos(lat * np.pi / 180)
+                    b = a * ci
+                    x = np.linspace(-a, a, 10000)
+                    y1 = y0 - b * np.sqrt(1 - (x / a) ** 2)
+                    y2 = y0 + b * np.sqrt(1 - (x / a) ** 2)
+
+                    # Mask lines on the backside
+                    if (si != 0):
+                        if self.inc > 90:
+                            ymax = y1[np.argmax(x ** 2 + y1 ** 2)]
+                            y1[y1 < ymax] = np.nan
+                            ymax = y2[np.argmax(x ** 2 + y2 ** 2)]
+                            y2[y2 < ymax] = np.nan
+                        else:
+                            ymax = y1[np.argmax(x ** 2 + y1 ** 2)]
+                            y1[y1 > ymax] = np.nan
+                            ymax = y2[np.argmax(x ** 2 + y2 ** 2)]
+                            y2[y2 > ymax] = np.nan
+
+                    # Rotate them
+                    for y in (y1, y2):
+                        xr = -x * co + y * so
+                        yr = x * so + y * co
+                        ax.plot(xr, yr, 'k-', lw=0.5, alpha=0.5, zorder=100)
+
+                # Longitude lines
+                for lon in np.linspace(-180, 180, 13):
+                    # Viewed at i = 90
+                    b = np.sin(lon * np.pi / 180)
+                    y = np.linspace(-1, 1, 1000)
+                    x = b * np.sqrt(1 - y ** 2)
+                    z = np.sqrt(np.abs(1 - x ** 2 - y ** 2))
+
+                    # Rotate by the inclination
+                    R = RAxisAngle([1, 0, 0], 90 - self.inc)
+                    v = np.vstack((x.reshape(1, -1), y.reshape(1, -1), z.reshape(1, -1)))
+                    x, y1, _ = np.dot(R, v)
+                    v[2] *= -1
+                    _, y2, _ = np.dot(R, v)
+
+                    # Mask lines on the backside
+                    if (si != 0):
+                        if self.inc < 90:
+                            imax = np.argmax(x ** 2 + y1 ** 2)
+                            y1[:imax + 1] = np.nan
+                            imax = np.argmax(x ** 2 + y2 ** 2)
+                            y2[:imax + 1] = np.nan
+                        else:
+                            imax = np.argmax(x ** 2 + y1 ** 2)
+                            y1[imax:] = np.nan
+                            imax = np.argmax(x ** 2 + y2 ** 2)
+                            y2[imax:] = np.nan
+
+                    # Rotate them
+                    for y in (y1, y2):
+                        xr = -x * co + y * so
+                        yr = x * so + y * co
+                        ax.plot(xr, yr, 'k-', lw=0.5, alpha=0.5, zorder=100)
+
 
         # Plot the first frame of the image
         img = ax.imshow(Z[0], origin="lower", 
@@ -329,10 +421,25 @@ class PythonMapBase(object):
         else:
             self[1:, :] = 0
             self[:ydeg + 1, :] = y
-        
-        # [New!] Rotate the pole of the map onto the axis
+    
+    def project(self):
+        """
+        TODO: NOT A PERMANENT SOLUTION...
+
+        """
         axis = np.array(self.axis)
         theta = np.arccos(np.dot([0, 1, 0], axis)) * 180 / np.pi
         self.axis = np.cross([0, 1, 0], axis)
         self.rotate(theta)
+        self.axis = axis
+    
+    def deproject(self):
+        """
+        TODO: NOT A PERMANENT SOLUTION...
+
+        """
+        axis = np.array(self.axis)
+        theta = np.arccos(np.dot([0, 1, 0], axis)) * 180 / np.pi
+        self.axis = np.cross([0, 1, 0], axis)
+        self.rotate(-theta)
         self.axis = axis
