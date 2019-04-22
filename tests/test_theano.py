@@ -46,7 +46,7 @@ def test_doppler():
             continue
         assert np.allclose(
             np.squeeze(grad[key]),
-            np.squeeze(theano.grad(model, theano_kwargs[key]).eval())
+            np.squeeze(theano.grad(model[0], theano_kwargs[key]).eval())
         ), key
 
 
@@ -97,5 +97,5 @@ def test_doppler_broken():
         # to the sum of each of the gradients. Why??
         assert np.allclose(
             np.squeeze(grad[key]),
-            np.squeeze(theano.grad(model, theano_kwargs[key]).eval())
+            np.squeeze(theano.grad(model[0], theano_kwargs[key]).eval())
         ), key

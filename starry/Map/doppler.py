@@ -159,17 +159,21 @@ class DopplerBase(object):
         """
         
         """
-        # TODO!
+        # TODO: Implement this op for spectral and temporal types.
         if self._spectral or self._temporal:
-            raise NotImplementedError("Op not yet implemented for this map type.")
+            raise NotImplementedError(
+                "Op not yet implemented for this map type."
+            )
 
-        # Map coefficients
+        # Map coefficients. If not set, default to the
+        # values of the Map instance itself.
         if y is None:
             y = np.array(self.y[1:])
         if u is None:
             u = np.array(self.u[1:])
 
-        # Misc properties
+        # Misc properties. If not set, default to the
+        # values of the Map instance itself.
         if inc is None:
             inc = self.inc
         if obl is None:
@@ -179,31 +183,84 @@ class DopplerBase(object):
         if alpha is None:
             alpha = self.alpha
 
-        # Orbital coords
+        # Orbital coords.
         if orbit is not None:
-            assert t is not None, "Please provide a set of times `t`."
+
+            # Compute the orbit
+            assert t is not None, \
+                "Please provide a set of times `t` at which to compute the orbit."
+            try:
+                npts = len(t)
+            except TypeError:
+                npts = tt.as_tensor(t).shape.eval()[0]
             coords = orbit.get_relative_position(t)
             xo = coords[0]
             yo = coords[1]
+            # Note that `exoplanet` uses a slightly different coord system!
             zo = -coords[2]
-        else:
-            assert (xo is not None) and (yo is not None), \
-                "Please provide the occultor `xo` and `yo` positions."
-        
-        # Ensure these are all vectors
-        # TODO: If the user provides a vector of `theta`s or `ro`s but
-        # constant orbital coords, this method will fail.
-        theta = tt.as_tensor_variable(theta)
-        if (theta.ndim == 0):
-            theta = tt.ones_like(xo) * theta
-        zo = tt.as_tensor_variable(zo)
-        if (zo.ndim == 0):
-            zo = tt.ones_like(xo) * zo
-        ro = tt.as_tensor_variable(ro)
-        if (ro.ndim == 0):
-            ro = tt.ones_like(xo) * ro
 
-        # Now ensure everything is `floatX`
+            # Vectorize `theta` and `ro`
+            theta = tt.as_tensor_variable(theta)
+            if (theta.ndim == 0):
+                theta = tt.ones(npts) * theta
+            ro = tt.as_tensor_variable(ro)
+            if (ro.ndim == 0):
+                ro = tt.ones(npts) * ro
+
+        else:
+
+            if (xo is None) or (yo is None) or (zo is None) or (ro is None):
+
+                # No occultation
+                theta = tt.as_tensor_variable(theta)
+                if (theta.ndim == 0):
+                    npts = 1
+                else:
+                    npts = theta.shape.eval()[0]
+                theta = tt.ones(npts) * theta
+                xo = tt.zeros(npts)
+                yo = tt.zeros(npts)
+                zo = tt.zeros(npts)
+                ro = tt.zeros(npts)
+            
+            else:
+
+                # Occultation with manually specified coords
+                xo = tt.as_tensor_variable(xo)
+                yo = tt.as_tensor_variable(yo)
+                zo = tt.as_tensor_variable(zo)
+                ro = tt.as_tensor_variable(ro)
+                theta = tt.as_tensor_variable(theta)
+
+                # Figure out the length of the timeseries
+                if (xo.ndim != 0):
+                    npts = xo.shape.eval()[0]
+                elif (yo.ndim != 0):
+                    npts = yo.shape.eval()[0]
+                elif (zo.ndim != 0):
+                    npts = zo.shape.eval()[0]
+                elif (ro.ndim != 0):
+                    npts = ro.shape.eval()[0]
+                elif (theta.ndim != 0):
+                    npts = theta.shape.eval()[0]
+                else:
+                    npts = 1 
+
+                # Vectorize everything
+                if (xo.ndim == 0):
+                    xo = tt.ones(npts) * xo
+                if (yo.ndim == 0):
+                    yo = tt.ones(npts) * yo
+                if (zo.ndim == 0):
+                    zo = tt.ones(npts) * zo
+                if (ro.ndim == 0):
+                    ro = tt.ones(npts) * ro
+                if (theta.ndim == 0):
+                    theta = tt.ones(npts) * theta
+
+        # Now ensure everything is `floatX`.
+        # This is necessary because Theano will try to cast things
+        # to float32 if they can be exactly represented with 32 bits.
         args = [y, u, inc, obl, veq, alpha, theta, xo, yo, zo, ro]
         for i, arg in enumerate(args):
             if hasattr(arg, 'astype'):
