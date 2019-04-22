@@ -28,6 +28,7 @@ if [ ! -f $HOME/miniconda-cache/bin/conda ]; then
 fi
 
 pip install tqdm
+pip install exoplanet
 
 # Display some info
 conda info -a
