@@ -246,15 +246,6 @@ class PythonMapBase(object):
                 co = np.cos(self.obl * np.pi / 180)
                 so = np.sin(self.obl * np.pi / 180)
 
-                # Mark the pole
-                if self.inc < 90:
-                    x = si * so
-                    y = si * co
-                elif self.inc > 90:
-                    x = -si * so
-                    y = -si * co
-                ax.plot(x, y, 'ko', ms=2, alpha=0.5)
-
                 # Latitude lines
                 for lat in latlines:
 
@@ -293,25 +284,29 @@ class PythonMapBase(object):
                     x = b * np.sqrt(1 - y ** 2)
                     z = np.sqrt(np.abs(1 - x ** 2 - y ** 2))
 
-                    # Rotate by the inclination
-                    R = RAxisAngle([1, 0, 0], 90 - self.inc)
-                    v = np.vstack((x.reshape(1, -1), y.reshape(1, -1), z.reshape(1, -1)))
-                    x, y1, _ = np.dot(R, v)
-                    v[2] *= -1
-                    _, y2, _ = np.dot(R, v)
+                    if (self.inc > 88) and (self.inc < 92):
+                        y1 = y
+                        y2 = np.nan * y
+                    else:
+                        # Rotate by the inclination
+                        R = RAxisAngle([1, 0, 0], 90 - self.inc)
+                        v = np.vstack((x.reshape(1, -1), y.reshape(1, -1), z.reshape(1, -1)))
+                        x, y1, _ = np.dot(R, v)
+                        v[2] *= -1
+                        _, y2, _ = np.dot(R, v)
 
-                    # Mask lines on the backside
-                    if (si != 0):
-                        if self.inc < 90:
-                            imax = np.argmax(x ** 2 + y1 ** 2)
-                            y1[:imax + 1] = np.nan
-                            imax = np.argmax(x ** 2 + y2 ** 2)
-                            y2[:imax + 1] = np.nan
-                        else:
-                            imax = np.argmax(x ** 2 + y1 ** 2)
-                            y1[imax:] = np.nan
-                            imax = np.argmax(x ** 2 + y2 ** 2)
-                            y2[imax:] = np.nan
+                        # Mask lines on the backside
+                        if (si != 0):
+                            if self.inc < 90:
+                                imax = np.argmax(x ** 2 + y1 ** 2)
+                                y1[:imax + 1] = np.nan
+                                imax = np.argmax(x ** 2 + y2 ** 2)
+                                y2[:imax + 1] = np.nan
+                            else:
+                                imax = np.argmax(x ** 2 + y1 ** 2)
+                                y1[imax:] = np.nan
+                                imax = np.argmax(x ** 2 + y2 ** 2)
+                                y2[imax:] = np.nan
 
                     # Rotate them
                     for y in (y1, y2):
