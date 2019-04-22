@@ -71,7 +71,7 @@ inline void addSpot (
     if (l < 0) 
         l = ydeg;
     if (l > ydeg) 
-        throw std::invalid_argument("Invalid value for `l`.");
+        throw std::invalid_argument("Invalid value for the map degree.");
 
     // Check `amp` dims
     if (amp.cols() != Nw * Nt)

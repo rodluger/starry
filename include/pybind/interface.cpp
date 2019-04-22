@@ -178,7 +178,7 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.ydeg;
-    });
+    }, docstrings::Map::ydeg);
 
     // Highest degree of the map
     PyMap.def_property_readonly(
@@ -186,7 +186,7 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.udeg;
-    });
+    }, docstrings::Map::udeg);
 
     // Highest degree of the filter
     PyMap.def_property_readonly(
@@ -194,7 +194,7 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.fdeg;
-    });
+    }, docstrings::Map::fdeg);
 
     // Total number of spherical harmonic coefficients after limb-darkening + filter
     PyMap.def_property_readonly(
@@ -202,7 +202,7 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.N;
-    });
+    }, docstrings::Map::N);
 
     // Number of spherical harmonic coefficients
     PyMap.def_property_readonly(
@@ -210,7 +210,7 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.Ny;
-    });
+    }, docstrings::Map::Ny);
 
     // Number of limb darkening coefficients
     PyMap.def_property_readonly(
@@ -218,7 +218,7 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.Nu;
-    });
+    }, docstrings::Map::Nu);
 
     // Number of filter coefficients
     PyMap.def_property_readonly(
@@ -226,7 +226,7 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.Nf;
-    });
+    }, docstrings::Map::Nf);
 
     // Number of temporal components
     PyMap.def_property_readonly(
@@ -234,7 +234,7 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.Nt;
-    });
+    }, docstrings::Map::nt);
 
     // Number of spectral components
     PyMap.def_property_readonly(
@@ -242,7 +242,7 @@ PYBIND11_MODULE(
             Map<T> &map
         ) {
             return map.Nw;
-    });
+    }, docstrings::Map::nw);
 
     // Multiprecision enabled?
     PyMap.def_property_readonly(
@@ -369,7 +369,7 @@ PYBIND11_MODULE(
             auto f = py::cast(map.getF().template cast<double>());
             MAKE_READ_ONLY(f);
             return f;
-    });
+    }, docstrings::Map::f);
 
 // Ylm map methods
 #   if !defined(_STARRY_LD_)
@@ -417,10 +417,21 @@ PYBIND11_MODULE(
         PyMap.def(
             "rotate", [](
                 Map<T>& map,
-                const double& theta
+                const double& theta,
+                py::object axis
             ) {
-                map.rotate(theta);
-        }, "theta"_a=0.0, docstrings::Map::rotate);
+                if (axis.is(py::none())) {
+                    map.rotate(theta);
+                } else {
+                    UnitVector<Scalar> cur_axis = map.getAxis();
+                    map.setAxis(
+                        py::cast<UnitVector<double>>(axis).template cast<Scalar>()
+                    );
+                    map.rotate(theta);
+                    map.setAxis(cur_axis);
+                }
+        }, "theta"_a=0.0, "axis"_a=py::none(),
+        docstrings::Map::rotate);
 
         // Add a gaussian spot
 #       if defined(_STARRY_TEMPORAL_) || defined(_STARRY_SPECTRAL_) 
@@ -430,14 +441,13 @@ PYBIND11_MODULE(
                     const RowVector<double>& amp,
                     const double& sigma,
                     const double& lat,
-                    const double& lon,
-                    const int lmax
+                    const double& lon
                 ) {
                     map.addSpot(amp.template cast<Scalar>(), 
-                                sigma, lat, lon, lmax);
+                                sigma, lat, lon, map.ydeg);
                 }, 
                 docstrings::Map::add_spot,
-                "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
+                "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0);
 #      else
             PyMap.def(
                 "add_spot", [](
@@ -445,15 +455,14 @@ PYBIND11_MODULE(
                     const double& amp,
                     const double& sigma,
                     const double& lat,
-                    const double& lon,
-                    const int lmax
+                    const double& lon
                 ) {
                     RowVector<Scalar> amp_(1);
                     amp_(0) = amp;
-                    map.addSpot(amp_, sigma, lat, lon, lmax);
+                    map.addSpot(amp_, sigma, lat, lon, map.ydeg);
                 }, 
                 docstrings::Map::add_spot,
-                "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0, "lmax"_a=-1);
+                "amp"_a, "sigma"_a=0.1, "lat"_a=0.0, "lon"_a=0.0);
 #      endif
 
         // Generate a random map
@@ -463,8 +472,13 @@ PYBIND11_MODULE(
                     Map<T>& map,
                     const Vector<double>& power,
                     py::object seed_,
-                    int col
+                    py:object col_
                 ) {
+                    if col_.is(py::none()) {
+                        col = -1;
+                    } else {
+                        col = py::cast<int>(col_);
+                    }
                     if (seed_.is(py::none())) {
                         // \todo Find a better, more thread-safe randomizer seed
                         auto seed = std::chrono::system_clock::now()
@@ -476,7 +490,7 @@ PYBIND11_MODULE(
                     }
                 }, 
                 docstrings::Map::random,
-                "power"_a, "seed"_a=py::none(), "col"_a=-1);
+                "power"_a, "seed"_a=py::none(), "col"_a=py::none());
 #      else
             PyMap.def(
                 "random", [](
@@ -503,29 +517,37 @@ PYBIND11_MODULE(
 #          if defined(_STARRY_REFLECTED_)
                 PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
                         "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                        "source"_a=-xhat<double>());
+                        "source"_a=-xhat<double>(), 
+                        docstrings::Map::linear_intensity_model);
                 PyMap.def("intensity", linear_intensity_model<T, true>(),
                           "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                          "source"_a=-xhat<double>());
+                          "source"_a=-xhat<double>(), 
+                          docstrings::Map::linear_intensity_model);
 #          else
                 PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
-                          "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
+                          "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
+                          docstrings::Map::linear_intensity_model);
                 PyMap.def("intensity", linear_intensity_model<T, true>(),
-                          "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
+                          "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
+                          docstrings::Map::linear_intensity_model);
 #          endif
 #      else
 #          if defined(_STARRY_REFLECTED_)
                 PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
                           "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                          "source"_a=-xhat<double>());
+                          "source"_a=-xhat<double>(), 
+                          docstrings::Map::linear_intensity_model);
                 PyMap.def("intensity", linear_intensity_model<T, true>(),
                           "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                          "source"_a=-xhat<double>());
+                          "source"_a=-xhat<double>(), 
+                          docstrings::Map::linear_intensity_model);
 #          else
                 PyMap.def("linear_intensity_model", linear_intensity_model<T>(), 
-                          "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
+                          "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
+                          docstrings::Map::linear_intensity_model);
                 PyMap.def("intensity", linear_intensity_model<T, true>(), 
-                          "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0);
+                          "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
+                          docstrings::Map::linear_intensity_model);
 #          endif
 #      endif
 
@@ -536,23 +558,27 @@ PYBIND11_MODULE(
                         "t"_a=0.0, 
                         "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
                         "ro"_a=0.0, "source"_a=-xhat<double>(), 
-                        "gradient"_a=false);
+                        "gradient"_a=false, 
+                        docstrings::Map::linear_intensity_model);
 #          else
                 PyMap.def("linear_flux_model", linear_flux_model<T>(), 
                         "t"_a=0.0, 
                         "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
-                        "ro"_a=0.0, "gradient"_a=false);
+                        "ro"_a=0.0, "gradient"_a=false, 
+                        docstrings::Map::linear_intensity_model);
 #          endif
 #      else
 #          if defined(_STARRY_REFLECTED_)
                 PyMap.def("linear_flux_model", linear_flux_model<T>(), 
                         "theta"_a=0.0, "xo"_a=0.0, 
                         "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, 
-                        "source"_a=-xhat<double>(), "gradient"_a=false);
+                        "source"_a=-xhat<double>(), "gradient"_a=false, 
+                        docstrings::Map::linear_intensity_model);
 #          else
                 PyMap.def("linear_flux_model", linear_flux_model<T>(), 
                         "theta"_a=0.0, "xo"_a=0.0, 
-                        "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
+                        "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false, 
+                        docstrings::Map::linear_intensity_model);
 #          endif
 #      endif
 
@@ -560,7 +586,8 @@ PYBIND11_MODULE(
 #else
 
     PyMap.def("flux", ld_flux<T>(),
-              "b"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false);
+              "b"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false, 
+              docstrings::Map::ld_flux);
 
 #endif
 

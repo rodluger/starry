@@ -10,9 +10,34 @@ __all__ = ["DopplerBase"]
 
 class DopplerBase(object):
     """
-    Doppler map base.
-
+    .. autoattribute:: alpha
+    .. autoattribute:: veq
+    .. automethod:: rv(*args, **kwargs)
+    .. automethod:: rv_op(y=None, u=None, inc=None, obl=None, veq=None, alpha=None, \
+            theta=0, orbit=None, t=None, xo=None, yo=None, zo=1, ro=0.1)
     """
+
+    @staticmethod
+    def __descr__():
+        return (
+            "Instantiate a :py:mod:`starry` Doppler map. This map behaves the same " +
+            "as a regular :py:mod:`starry.Map` instance, except it implements the custom " +
+            ":py:meth:`rv()` and :py:meth:`rv_op()` methods for computing the net radial velocity " +
+            "imparted by occultations or the darkening due to surface features such as spots. It " +
+            "also implements new attributes, including :py:attr:`alpha()` and :py:meth:`veq()` " +
+            "for specifying additional map properties.\n\n" +
+            "Args:\n" +
+            "    ydeg (int): Largest spherical harmonic degree of the surface map.\n" +
+            "    udeg (int): Largest limb darkening degree of the surface map. Default 0.\n" +
+            "    fdeg (int): Largest spherical harmonic filter degree. Default 0.\n" +
+            "    nw (int): Number of map wavelength bins. Default :py:obj:`None`.\n" +
+            "    nt (int): Number of map temporal bins. Default :py:obj:`None`.\n" +
+            "    multi (bool): Use multi-precision to perform all " +
+            "        calculations? Default :py:obj:`False`. If :py:obj:`True`, " +
+            "        defaults to 32-digit (approximately 128-bit) floating " +
+            "        point precision. This can be adjusted by changing the " +
+            "        :py:obj:`STARRY_NMULTI` compiler macro.\n\n")
+
     def __init__(self, *args, **kwargs):
         super(DopplerBase, self).__init__(*args, **kwargs)
         self._alpha = 0.0

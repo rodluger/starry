@@ -24,13 +24,30 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('.'))
 import sphinx_rtd_theme
-
-# Hack: obscure the ugly module names for the docs
+import re
+import numpy as np
 import starry
-starry.Map = type('Map', 
-                   starry._starry_default_ylm_double.Map.__bases__,
-                   dict(starry._starry_default_ylm_double.Map.__dict__)
-                  )
+
+
+def sort_props(doc):
+    """Sort the attributes and methods in a docstring."""
+    attributes = re.findall('(.. autoattribute:: .*?)\n', doc)
+    methods = re.findall('(.. automethod:: .*?)\n', doc)
+    props = attributes + methods
+    props.sort(key=lambda x: x[x.index(':'):].lower())
+    props = "\n".join(props)
+    return props
+
+
+# Hack: instantiate some Maps to fudge their docstrings
+map = starry.Map(ydeg=1, udeg=1)
+starry.Map = type('Map', map.__class__.__bases__, dict(map.__class__.__dict__))
+starry.Map.__doc__ = starry.Map.__descr__() + sort_props(starry.Map.__doc__)
+
+map = starry.DopplerMap(ydeg=1, udeg=1)
+starry.DopplerMap = type('DopplerMap', map.__class__.__bases__, dict(map.__class__.__dict__))
+starry.DopplerMap.__doc__ = starry.DopplerMap.__descr__() + sort_props(starry.DopplerMap.__doc__)
+
 
 # -- Project information -----------------------------------------------------
 
@@ -41,7 +58,7 @@ author = 'Rodrigo Luger'
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '1.0.0'
+release = starry.__version__
 
 
 # -- General configuration ---------------------------------------------------

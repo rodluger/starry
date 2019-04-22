@@ -21,7 +21,8 @@ def import_by_name(name):
 
 def Map(ydeg, udeg=0, fdeg=0, **kwargs):
     """
-    Figures out which `Map` class the user wants and instantiates it.
+    A wrapper that figures out which `Map` class the user 
+    wants and instantiates it.
 
     """
     # Figure out the correct base class
@@ -80,7 +81,7 @@ def Map(ydeg, udeg=0, fdeg=0, **kwargs):
 
     # Subclass it
     class Map(*bases):
-        __doc__ = CMapBase.__doc__
+        __doc__ = "".join([base.__doc__ for base in bases])
         def __init__(self, *init_args, **init_kwargs):
             self._multi = multi
             self._reflected = reflected
@@ -98,7 +99,8 @@ def Map(ydeg, udeg=0, fdeg=0, **kwargs):
 
 def DopplerMap(ydeg=0, udeg=0, **kwargs):
     """
-    Figures out which `Map` class the user wants and instantiates it.
+    A wrapper that figures out which `Map` class the user 
+    wants and instantiates it.
 
     """
     # Figure out the correct base class
@@ -137,7 +139,7 @@ def DopplerMap(ydeg=0, udeg=0, **kwargs):
 
     # Subclass it
     class DopplerMap(*bases):
-        __doc__ = CMapBase.__doc__
+        __doc__ = "".join([base.__doc__ for base in bases])
         def __init__(self, *init_args, **init_kwargs):
             self._multi = multi
             self._reflected = False

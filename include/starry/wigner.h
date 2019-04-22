@@ -747,7 +747,8 @@ inline void Wigner<Scalar>::updateAxis (
             } 
         } else {
             // We must flip the body around, since the axis is -zhat
-            rotar(ydeg, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0, tol, DZeta, RZeta);
+            rotar(ydeg, Scalar(1.0), Scalar(0.0), Scalar(-1.0), 
+                  Scalar(0.0), Scalar(1.0), Scalar(0.0), tol, DZeta, RZeta);
         }
         for (int l = 0; l < ydeg + 1; l++) {
             RZetaInv[l] = RZeta[l].transpose();

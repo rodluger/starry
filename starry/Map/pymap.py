@@ -13,8 +13,42 @@ __all__ = ["PythonMapBase"]
 
 class PythonMapBase(object):
     """
-
+    .. automethod:: render(theta=0, res=300, projection='ortho', **kwargs)
+    .. automethod:: show(Z=None, cmap='plasma', projection='ortho', grid=True, **kwargs)
+    .. automethod:: flux(*args, **kwargs)
+    .. automethod:: __call__(*args, **kwargs)
+    .. automethod:: load(image, ydeg=None, healpix=False, col=None, **kwargs)
     """
+
+    @staticmethod
+    def __descr__():
+        return (
+            "Instantiate a :py:mod:`starry` surface map. The map is described " +
+            "as an expansion in spherical harmonics, with optional arbitrary " +
+            "order limb darkening and an optional multiplicative spherical " +
+            "harmonic filter. Support for wavelength-dependent and time-dependent " +
+            "maps is included, as well as flux and intensity calculation in " +
+            "reflected light.\n\n" +
+            ".. note:: Map instances are normalized such that the " +
+            "**average disk-integrated intensity is equal to unity**. The " +
+            "total luminosity over all :math:`4\pi` steradians is therefore " +
+            ":math:`4`. This normalization " +
+            "is particularly convenient for constant or purely limb-darkened " +
+            "maps, whose disk-integrated intensity is always equal to unity.\n\n"
+            "Args:\n" +
+            "    ydeg (int): Largest spherical harmonic degree of the surface map.\n" +
+            "    udeg (int): Largest limb darkening degree of the surface map. Default 0.\n" +
+            "    fdeg (int): Largest spherical harmonic filter degree. Default 0.\n" +
+            "    nw (int): Number of map wavelength bins. Default :py:obj:`None`.\n" +
+            "    nt (int): Number of map temporal bins. Default :py:obj:`None`.\n" +
+            "    reflected (bool): If :py:obj:`True`, performs all computations in " +
+            "        reflected light. Map coefficients represent albedos rather " +
+            "        than intensities. Default :py:obj:`False`.\n" +
+            "    multi (bool): Use multi-precision to perform all " +
+            "        calculations? Default :py:obj:`False`. If :py:obj:`True`, " +
+            "        defaults to 32-digit (approximately 128-bit) floating " +
+            "        point precision. This can be adjusted by changing the " +
+            "        :py:obj:`STARRY_NMULTI` compiler macro.\n\n")
 
     def render(self, theta=0, res=300, projection="ortho", **kwargs):
         """
@@ -358,6 +392,7 @@ class PythonMapBase(object):
 
     def flux(self, *args, **kwargs):
         """
+        .. note:: If limb darkened, call sequence is different.
 
         """
         # This is already implemented for limb-darkened maps
@@ -396,11 +431,13 @@ class PythonMapBase(object):
         """
         return self.intensity(*args, **kwargs)
     
-    def load(self, image, ydeg=None, healpix=False, col=0, **kwargs):
+    def load(self, image, ydeg=None, healpix=False, col=None, **kwargs):
         """Load an image, array, or healpix map."""
         if self._limbdarkened:
             raise NotImplementedError("The `load` method is not " + 
                                       "implemented for limb-darkened maps.")
+        if col is None:
+            col = 0
 
         # Check the degree
         if ydeg is None:
