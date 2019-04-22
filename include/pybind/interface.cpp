@@ -472,9 +472,10 @@ PYBIND11_MODULE(
                     Map<T>& map,
                     const Vector<double>& power,
                     py::object seed_,
-                    py:object col_
+                    py::object col_
                 ) {
-                    if col_.is(py::none()) {
+                    int col;
+                    if (col_.is(py::none())) {
                         col = -1;
                     } else {
                         col = py::cast<int>(col_);

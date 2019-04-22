@@ -11,10 +11,11 @@ inline void reset ()
 
     // Reset the filter
     f.setZero();
-    // If there's no filter, set it to a constant
-    // so we don't zero out the limb darkening operator!
+    // If there's no filter, set it to `pi`, which
+    // (because of the 1/pi starry Ylm normalization)
+    // ensures there's no effect on the flux or intensity
     if (fdeg == 0)
-        f(0) = 1.0;
+        f(0) = pi<Scalar>();
 
     // Reset limb darkening
     u.setZero();
