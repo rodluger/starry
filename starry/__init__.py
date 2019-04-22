@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__version__ = '1.0.0.dev0'
+__version__ = '1.0.0.dev1'
 
 # Was `starry` imported from setup.py?
 try:

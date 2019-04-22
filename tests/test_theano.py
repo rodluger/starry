@@ -4,81 +4,98 @@ import numpy as np
 import theano
 import theano.tensor as tt
 from starry import DopplerMap
-from starry.ops import DopplerMapOp
 import pytest
+import exoplanet as exo
 
 
-def mini_op(y, u, inc, obl, veq, alpha, theta, xo, yo, zo, ro):
-    args = [tt.as_tensor_variable(y),
-            tt.as_tensor_variable(u),
-            tt.as_tensor_variable(inc),
-            tt.as_tensor_variable(obl),
-            tt.as_tensor_variable(veq),
-            tt.as_tensor_variable(alpha),
-            tt.as_tensor_variable(theta),
-            tt.as_tensor_variable(xo),
-            tt.as_tensor_variable(yo),
-            tt.as_tensor_variable(zo),
-            tt.as_tensor_variable(ro)]
-    op = DopplerMapOp()
-    return op(*args)
-
-
-def test_specific():
-    # All our parameters
-    y = tt.dvector(name="y")
-    u = tt.dvector(name="u")
-    inc = tt.dscalar(name="inc")
-    obl = tt.dscalar(name="obl")
-    veq = tt.dscalar(name="veq")
-    alpha = tt.dscalar(name="alpha")
-    theta = tt.dvector(name="theta")
-    xo = tt.dvector(name="xo")
-    yo = tt.dvector(name="yo")
-    zo = tt.dvector(name="zo")
-    ro = tt.dvector(name="ro")
-    lc = mini_op(y, u, inc, obl, veq, alpha, theta, xo, yo, zo, ro)
-
-    # Test arguments
-    args = {
-        y: [],
-        u: [],
-        inc: 90.,
-        obl: 0.,
-        veq: 1.,
-        alpha: 0.,
-        theta: np.zeros(10),
-        xo: np.linspace(0.1, 1.5, 10),
-        yo: np.zeros(10),
-        zo: np.ones(10),
-        ro: 0.1 * np.ones(10)
+def test_doppler():
+    # Define all arguments
+    kwargs = {
+        "y":        [0.25, 0.25, 0.25],
+        "theta":    30.0,
+        "inc":      75.0,
+        "obl":      30.0,
+        "alpha":    0.40,
+        "veq":      3.00,
+        "xo":       0.15,
+        "yo":       0.2,
+        "zo":       1.0,
+        "ro":       0.1,
+        "u":        [0.4, 0.26]
     }
+    theano_kwargs = {}
+    for key in kwargs.keys():
+        theano_kwargs[key] = tt.as_tensor_variable(np.float64(kwargs[key]), name=key)
 
-    # Compute using theano
-    var, val = zip(*args.items())
-    func = theano.function(var, lc)
-    lc_val = func(*val)
-    grad = theano.function(var, theano.grad(tt.sum(lc), var))
-    grad_val = grad(*val)
+    # Compute the rv and its gradient using starry
+    map = DopplerMap(ydeg=1, udeg=2) 
+    map.inc = kwargs.pop("inc")
+    map.obl = kwargs.pop("obl")
+    map.alpha = kwargs.pop("alpha")
+    map.veq = kwargs.pop("veq")
+    map[1:, :] = kwargs.pop("y")
+    map[1:] = kwargs.pop("u")
+    rv, grad = map.rv(gradient=True, **kwargs)
 
-    # Compute the light curve directly using `DopplerMap`
-    map = DopplerMap()
-    map.inc = args[inc]
-    map.obl = args[obl]
-    map.veq = args[veq]
-    map.alpha = args[alpha]
-    starry_flux, starry_grad = map.rv(theta=args[theta], xo=args[xo], 
-        yo=args[yo], zo=args[zo], ro=args[ro], gradient=True)
-    
-    # Check that the values match
-    assert np.allclose(lc_val, starry_flux)
+    # Instantiate the theano op
+    model = map.rv_op(**theano_kwargs)
 
-    # Check that the gradients match
-    for i, v in enumerate(var):
-        if v.name in ["theta", "xo", "yo", "ro"]:
-            assert np.allclose(starry_grad[v.name], grad_val[i]), v.name
-        elif v.name == "zo":
-            pass
-        else:
-            assert np.allclose(np.sum(starry_grad[v.name], axis=-1), 
-                grad_val[i]), v.name
+    # Compare
+    for key in theano_kwargs.keys():
+        if key == "zo":
+            continue
+        assert np.allclose(
+            np.squeeze(grad[key]),
+            np.squeeze(theano.grad(model, theano_kwargs[key]).eval())
+        ), key
+
+
+@pytest.mark.xfail
+def test_doppler_broken():
+    """
+    If we give two variables the same value, theano *sums* over their
+    gradients, and yields the *same value* for the gradient with respect
+    to both one of them. Why is that??
+
+    """
+    # Define all arguments
+    kwargs = {
+        "y":        [0.25, 0.25, 0.25],
+        "theta":    30.0,
+        "inc":      75.0,
+        "obl":      30.0,
+        "alpha":    0.40, # NOTE: If we give two variables the same value, 
+        "veq":      0.40, # theano computes their gradients incorrectly.
+        "xo":       0.15,
+        "yo":       0.2,
+        "zo":       1.0,
+        "ro":       0.1,
+        "u":        [0.4, 0.26]
+    }
+    theano_kwargs = {}
+    for key in kwargs.keys():
+        theano_kwargs[key] = tt.as_tensor_variable(np.float64(kwargs[key]), name=key)
+
+    # Compute the rv and its gradient using starry
+    map = DopplerMap(ydeg=1, udeg=2) 
+    map.inc = kwargs.pop("inc")
+    map.obl = kwargs.pop("obl")
+    map.alpha = kwargs.pop("alpha")
+    map.veq = kwargs.pop("veq")
+    map[1:, :] = kwargs.pop("y")
+    map[1:] = kwargs.pop("u")
+    rv, grad = map.rv(gradient=True, **kwargs)
+
+    # Instantiate the theano op
+    model = map.rv_op(**theano_kwargs)
+
+    # Compare
+    for key in theano_kwargs.keys():
+        if key == "zo":
+            continue
+        # The gradient wrt to `alpha` and `veq` is the same, and is equal
+        # to the sum of each of the gradients. Why??
+        assert np.allclose(
+            np.squeeze(grad[key]),
+            np.squeeze(theano.grad(model, theano_kwargs[key]).eval())
+        ), key
