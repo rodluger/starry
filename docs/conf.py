@@ -56,7 +56,7 @@ copyright = '2019, Rodrigo Luger'
 author = 'Rodrigo Luger'
 
 # The short X.Y version
-version = ''
+version = starry.__version__
 # The full version, including alpha/beta/rc tags
 release = starry.__version__
 

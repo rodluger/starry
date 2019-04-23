@@ -555,6 +555,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                 invb = Scalar(1.0) / b;
                 W.compute(yo(n) * invb, xo(n) * invb);
             } else {
+                invb = INFINITY;
                 W.compute(1.0, 0.0);
             }
 
