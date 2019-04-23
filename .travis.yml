@@ -36,7 +36,7 @@ before_script:
     - sleep 3
 
 script:
-    - py.test -v -s
+    - py.test -v -s tests/test_slices.py # DEBUG!
 
 after_success:
     - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-paper.sh; fi
