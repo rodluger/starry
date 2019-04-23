@@ -183,6 +183,13 @@ class DopplerBase(object):
             self._unset_rv_filter()
         return res
     
+    def show(self, *args, **kwargs):
+        # Override the `projection` kwarg if we're
+        # plotting the radial velocity.
+        if kwargs.get("rv", True):
+            kwargs.pop("projection")
+        return super(DopplerBase, self).show(*args, **kwargs)
+
     def rv_op(self, y=None, u=None, inc=None, obl=None, veq=None, alpha=None,
               theta=0, orbit=None, t=None, xo=None, yo=None, zo=1, ro=0.1):
         """
