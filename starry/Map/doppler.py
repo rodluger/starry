@@ -219,10 +219,10 @@ class DopplerBase(object):
             except TypeError:
                 npts = tt.as_tensor(t).shape.eval()[0]
             coords = orbit.get_relative_position(t)
-            xo = coords[0]
-            yo = coords[1]
+            xo = coords[0] / orbit.r_star
+            yo = coords[1] / orbit.r_star
             # Note that `exoplanet` uses a slightly different coord system!
-            zo = -coords[2]
+            zo = -coords[2] / orbit.r_star
 
             # Vectorize `theta` and `ro`
             theta = tt.as_tensor_variable(theta)

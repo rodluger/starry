@@ -18,3 +18,5 @@ def test_xo_yo_derivs():
     # There may be weird stuff going on in grad['xo'] when the occultor
     # touches the limb of the occulted...
     raise Exception("")
+
+# TODO: map.show(projection="rect") breaks things for DopplerMap!
