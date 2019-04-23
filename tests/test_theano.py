@@ -4,8 +4,6 @@ import numpy as np
 import theano
 import theano.tensor as tt
 from starry import DopplerMap
-import pytest
-import exoplanet as exo
 
 
 def test_doppler():
@@ -50,8 +48,7 @@ def test_doppler():
         ), key
 
 
-@pytest.mark.xfail
-def test_doppler_broken():
+def test_doppler_no_longer_broken():
     """
     If we give two variables the same value, theano *sums* over their
     gradients, and yields the *same value* for the gradient with respect
@@ -64,8 +61,8 @@ def test_doppler_broken():
         "theta":    30.0,
         "inc":      75.0,
         "obl":      30.0,
-        "alpha":    0.40, # NOTE: If we give two variables the same value, 
-        "veq":      0.40, # theano computes their gradients incorrectly.
+        "alpha":    0.40,
+        "veq":      0.40,
         "xo":       0.15,
         "yo":       0.2,
         "zo":       1.0,
@@ -74,10 +71,10 @@ def test_doppler_broken():
     }
     theano_kwargs = {}
     for key in kwargs.keys():
-        theano_kwargs[key] = tt.as_tensor_variable(np.float64(kwargs[key]), name=key)
+        theano_kwargs[key] = theano.shared(np.float64(kwargs[key]), name=key)
 
     # Compute the rv and its gradient using starry
-    map = DopplerMap(ydeg=1, udeg=2) 
+    map = DopplerMap(ydeg=1, udeg=2)
     map.inc = kwargs.pop("inc")
     map.obl = kwargs.pop("obl")
     map.alpha = kwargs.pop("alpha")
@@ -85,17 +82,19 @@ def test_doppler_broken():
     map[1:, :] = kwargs.pop("y")
     map[1:] = kwargs.pop("u")
     rv, grad = map.rv(gradient=True, **kwargs)
+    print(grad["alpha"], grad["veq"])
 
     # Instantiate the theano op
     model = map.rv_op(**theano_kwargs)
+
+    # Compute the gradient using Theano
+    varnames = sorted(theano_kwargs.keys())
+    vars = [theano_kwargs[k] for k in varnames]
+    computed = dict(zip(varnames,
+                        theano.function([], theano.grad(model[0], vars))()))
 
     # Compare
     for key in theano_kwargs.keys():
         if key == "zo":
             continue
-        # The gradient wrt to `alpha` and `veq` is the same, and is equal
-        # to the sum of each of the gradients. Why??
-        assert np.allclose(
-            np.squeeze(grad[key]),
-            np.squeeze(theano.grad(model[0], theano_kwargs[key]).eval())
-        ), key
+        assert np.allclose(np.squeeze(grad[key]), np.squeeze(computed[key]))
