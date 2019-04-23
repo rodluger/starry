@@ -39,5 +39,5 @@ script:
     - py.test -v -s tests/test_slices.py # DEBUG!
 
 after_success:
-    - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-paper.sh; fi
+    # DEBUG - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-paper.sh; fi
     - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
