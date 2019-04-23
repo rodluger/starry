@@ -151,24 +151,28 @@ class DopplerBase(object):
             # Compute the integral of I
             self._unset_rv_filter()
             I, I_grad = np.array(self.flux(*args, gradient=True, **kwargs))
+            invI = 1.0 / I
+            invI[np.isinf(invI)] = 0.0
             # Chain rule for the gradient
             grad = {}
             for key in Iv_grad.keys():
                 if key == "f":
                     continue
-                grad[key] = (Iv_grad[key] * I - Iv * I_grad[key]) / I ** 2
+                grad[key] = (Iv_grad[key] * I - Iv * I_grad[key]) * invI ** 2
             # Compute RV field gradients
-            grad["alpha"] = np.dot(Iv_grad["f"].T, DfDalpha) / I
-            grad["veq"] = np.dot(Iv_grad["f"].T, DfDveq) / I
-            grad["inc"] += np.dot(Iv_grad["f"].T, DfDinc) / I
-            grad["obl"] += np.dot(Iv_grad["f"].T, DfDobl) / I
-            return Iv / I, grad
+            grad["alpha"] = np.dot(Iv_grad["f"].T, DfDalpha) * invI
+            grad["veq"] = np.dot(Iv_grad["f"].T, DfDveq) * invI
+            grad["inc"] += np.dot(Iv_grad["f"].T, DfDinc) * invI
+            grad["obl"] += np.dot(Iv_grad["f"].T, DfDobl) * invI
+            return Iv * invI, grad
         else:
             self._set_rv_filter(False)
             Iv = np.array(self.flux(*args, **kwargs))
             self._unset_rv_filter()
             I = np.array(self.flux(*args, **kwargs))
-            return Iv / I
+            invI = 1.0 / I
+            invI[np.isinf(invI)] = 0.0
+            return Iv * invI
     
     def render(self, rv=True, *args, **kwargs):
         """Render the image of the star, optionally weighted by the RV."""

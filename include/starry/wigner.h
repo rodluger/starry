@@ -738,7 +738,15 @@ inline void Wigner<Scalar>::updateAxis (
            coso = cos(obl);
 
     // Compute the rotation transformation into and out of the `zeta` frame
-    if (abs(sini.value()) < tol) {
+    if (ydeg == 0) {
+        // Trivial case
+        RZeta[0](0, 0) = 1;
+        RZetaInv[0](0, 0) = 1;
+        DRZetaDInc[0].setZero();
+        DRZetaInvDInc[0].setZero();
+        DRZetaDObl[0].setZero();
+        DRZetaInvDObl[0].setZero();
+    } else if (abs(sini.value()) < tol) {
         // The rotation axis is about +/- zhat
         if (cosi.value() > 0) {
             // Trivial: the zeta frame is the current frame
@@ -757,14 +765,6 @@ inline void Wigner<Scalar>::updateAxis (
             DRZetaDObl[l].setZero();
             DRZetaInvDObl[l].setZero();
         }
-    } else if (ydeg == 0) {
-        // Trivial case
-        RZeta[0](0, 0) = 1;
-        RZetaInv[0](0, 0) = 1;
-        DRZetaDInc[0].setZero();
-        DRZetaInvDInc[0].setZero();
-        DRZetaDObl[0].setZero();
-        DRZetaInvDObl[0].setZero();
     } else {
         // We need to compute the actual Wigner matrices
         ADType tol_ad = tol;

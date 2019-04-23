@@ -20,3 +20,6 @@ def test_xo_yo_derivs():
     raise Exception("")
 
 # TODO: map.show(projection="rect") breaks things for DopplerMap!
+
+# TODO: If veq < 0, inc < -180, etc., don't throw error in theano Op;
+#       instead, return 0 prob!
