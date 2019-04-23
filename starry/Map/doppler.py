@@ -187,7 +187,7 @@ class DopplerBase(object):
         # Override the `projection` kwarg if we're
         # plotting the radial velocity.
         if kwargs.get("rv", True):
-            kwargs.pop("projection")
+            kwargs.pop("projection", None)
         return super(DopplerBase, self).show(*args, **kwargs)
 
     def rv_op(self, y=None, u=None, inc=None, obl=None, veq=None, alpha=None,
