@@ -688,7 +688,7 @@ class PythonMapBase(object):
         else:
             return max(res_f.fun, res_b.fun)
 
-    def min(self, **kwargs):
+    def min(self):
         """
         Return the global minimum of the intensity.
 

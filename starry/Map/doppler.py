@@ -117,24 +117,32 @@ class DopplerBase(object):
 
     @property
     def alpha(self):
-        """The rotational shear coefficient."""
+        r"""
+        The rotational shear coefficient, a float in the range [0, 1].
+        
+        The parameter :math:`\alpha` is used to model linear differential
+        rotation. The angular velocity at a given latitude :math:`\theta`
+        is
+
+        :math:`\omega = \omega_{eq}(1 - \alpha \sin^2\theta)`
+
+        where :math:`\omega_{eq}` is the equatorial angular velocity.
+        """
         return self._alpha
     
     @alpha.setter
     def alpha(self, val):
-        """The rotational shear coefficient."""
         assert (val >= 0) and (val <= 1), \
             "The rotational shear coefficient must be between 0 and 1."
         self._alpha = val
 
     @property
     def veq(self):
-        """The equatorial velocity in arbitrary units."""
+        """The equatorial velocity of the object in arbitrary units."""
         return self._veq
     
     @veq.setter
     def veq(self, val):
-        """The equatorial velocity in arbitrary units."""
         assert (val >= 0), "The equatorial velocity must be non-negative."
         self._veq = val
 
@@ -295,7 +303,48 @@ class DopplerBase(object):
     def rv_op(self, y=None, u=None, inc=None, obl=None, veq=None, alpha=None,
               theta=0, orbit=None, t=None, xo=None, yo=None, zo=1, ro=0.1):
         """
-        
+        Returns a 
+        `Theano Op <http://deeplearning.net/software/theano/extending/extending_theano.html>`_ 
+        for the RV computation.
+
+        This method is similar to :py:meth:`rv` but it does not return a
+        light curve / radial velocity curve! Instead, it returns a 
+        :py:obj:`Theano` Op used for symbolic (lazy) gradient-based
+        computations useful for integration with :py:obj:`exoplanet`
+        and :py:obj:`pymc3`.
+
+        The arguments below can either be normal Python or :py:obj:`numpy`
+        types, in which case they are assumed to be constant, or :py:obj:`Theano`
+        tensor variables. They can also be set to :py:obj:`None` (default), in 
+        which case they take on the constant values set in the :py:obj:`Map`
+        object (or their default values, if they are not :py:obj:`Map`
+        attributes). As usual, the parameters :py:obj:`theta`, :py:obj:`theta`,
+        :py:obj:`xo`, :py:obj:`yo`, :py:obj:`zo`, and :py:obj:`ro` may
+        be either scalars or vectors. Note that if an :py:obj:`orbit` instance
+        is provided, :py:obj:`xo`, :py:obj:`yo`, and :py:obj:`zo` are
+        ignored.
+
+
+        Args:
+            y: The full vector of spherical harmonic coefficients, \
+                (skipping the :math:`Y_{0,0}` term).
+            u: The full vector of limb darkening coefficients,  \
+                starting with :math:`u_{1}`.
+            inc: The map inclination in degrees.
+            obl: The map obliquity in degrees.
+            veq: The equatorial velocity (arbitrary units).
+            alpha: The rotational shear coefficient.
+            theta: The map rotation angle in degrees.
+            orbit: An :py:obj:`exoplanet` :py:obj:`orbit` instance.
+            t: The times at which to evaluate the :py:obj:`orbit`.
+            xo: The occultor x position.
+            yo: The occultor y position.
+            zo: The occultor z position.
+            ro: The occultor radius.
+
+        Returns:
+            A :py:obj:`Theano` Op defining the graph for the radial velocity computation.
+
         """
         # TODO: Implement this op for spectral and temporal types.
         if self._spectral or self._temporal:
