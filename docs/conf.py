@@ -48,7 +48,6 @@ map = starry.DopplerMap(ydeg=1, udeg=1)
 starry.DopplerMap = type('DopplerMap', map.__class__.__bases__, dict(map.__class__.__dict__))
 starry.DopplerMap.__doc__ = starry.DopplerMap.__descr__() + sort_props(starry.DopplerMap.__doc__)
 
-
 # -- Project information -----------------------------------------------------
 
 project = 'starry'

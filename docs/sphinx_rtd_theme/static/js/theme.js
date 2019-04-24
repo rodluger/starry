@@ -200,17 +200,29 @@ version_selector.onchange = function()
 }
 
 // @rodluger: Add parent commit info
-var commit_url = "none";
-var branch_url = "none";
-var branch_name = "none";
+var commit_url = "https://github.com/rodluger/starry/tree/unknown";
+var branch_url = "https://github.com/rodluger/starry/tree/unknown";
+var branch_name = "unknown";
 var d = new Date();
 var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 var full_date = months[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
-
-footer_div = document.getElementsByTagName("footer")[0];
-footer_div.innerHTML += 
-    "Auto-generated on <a href='https://travis-ci.org'>Travis</a> from <a href='" + 
-    commit_url + "'>this commit</a> on the <a href='" + 
-    branch_url + "'>" + branch_name + "</a> branch on " + full_date + ".";
+if (branch_name != "unknown") {
+    footer_div = document.getElementsByTagName("footer")[0];
+    footer_div.innerHTML += 
+        "Auto-generated on <a href='https://travis-ci.org'>Travis</a> from <a href='" + 
+        commit_url + "'>this commit</a> on the <a href='" + 
+        branch_url + "'>" + branch_name + "</a> branch on " + full_date + ".";
+}
 
 },{"jquery":"jquery"}]},{},["sphinx-rtd-theme"]);
+
+
+
+
+
+
+
+
+
+
+
