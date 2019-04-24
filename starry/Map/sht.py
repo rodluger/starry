@@ -1,4 +1,5 @@
-"""Healpy-based utilities for starry."""
+# -*- coding: utf-8 -*-
+"""Healpy-based spherical harmonic transform utilities for starry."""
 import numpy as np
 try:
     import healpy as hp
@@ -9,22 +10,7 @@ from matplotlib.image import pil_to_array
 import os
 
 
-__all__ = ["load_map", "image2map", "healpix2map"]
-
-
-def load_map(image, lmax=10, healpix=False, **kwargs):
-    """Allow the user to specify an image, array, or healpix map."""
-    if type(image) is str:
-        y = image2map(image, lmax=lmax, **kwargs)
-    # Or is this an array?
-    elif (type(image) is np.ndarray):
-        if healpix:
-            y = healpix2map(image, lmax=lmax, **kwargs)
-        else:
-            y = array2map(image, lmax=lmax, **kwargs)
-    else:
-        raise ValueError("Invalid `image` value.")
-    return y
+__all__ = ["image2map", "healpix2map", "array2map"]
 
 
 def healpix2map(healpix_map, lmax=10, **kwargs):
@@ -35,6 +21,14 @@ def healpix2map(healpix_map, lmax=10, **kwargs):
                           "`https://healpy.readthedocs.io`.")
     # Get the complex spherical harmonic coefficients
     alm = hp.sphtfunc.map2alm(healpix_map, lmax=lmax)
+    
+    # We first need to do a rotation to get our axes aligned correctly,
+    # since we use a different convention than `healpy`
+    alm = hp.rotator.Rotator((-90, 0, -90)).rotate_alm(alm)
+
+    # Smooth the map?
+    if kwargs.get("sigma", None) is not None:
+        alm = hp.sphtfunc.smoothalm(alm, sigma=kwargs.get("sigma"), verbose=False)
 
     # Convert them to real coefficients
     ylm = np.zeros(lmax ** 2 + 2 * lmax + 1, dtype='float')
@@ -50,15 +44,18 @@ def healpix2map(healpix_map, lmax=10, **kwargs):
                 ylm[i] = np.sqrt(2) * (-1) ** m * alm[j].real
             i += 1
 
+    # Normalize and return
+    ylm /= ylm[0]
+
     return ylm
 
 
 def image2map(image, lmax=10, **kwargs):
     """Return a map vector corresponding to a lat-long map image."""
-    # If image doesn't exist, check for it in maps directory
+    # If image doesn't exist, check for it in `img` directory
     if not os.path.exists(image):
         dn = os.path.dirname
-        image = os.path.join(dn(os.path.abspath(__file__)), "maps", image)
+        image = os.path.join(dn(dn(os.path.abspath(__file__))), "img", image)
         if not image.endswith(".jpg"):
             image += ".jpg"
         if not os.path.exists(image):

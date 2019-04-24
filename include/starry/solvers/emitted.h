@@ -1,5 +1,5 @@
 /**
-\file solver.h
+\file emitted.h
 \brief Integration of the occulted portion of the map.
 
 Solutions to the surface integral over the visible region of a spherical 
@@ -10,9 +10,8 @@ harmonic map during a single-body occultation using Green's theorem.
 #ifndef _STARRY_SOLVER_H_
 #define _STARRY_SOLVER_H_
 
-#include "utils.h"
-#include "ellip.h"
-#include "errors.h"
+#include "../utils.h"
+#include "../ellip.h"
 
 namespace starry {
 namespace solver {
@@ -720,7 +719,7 @@ namespace solver {
                 ++n;
             }
             if (unlikely(n == STARRY_IJ_MAX_ITER))
-                throw errors::ConvergenceError(
+                throw std::runtime_error(
                     "Primitive integral `I` did not converge."
                 );
 
@@ -790,7 +789,7 @@ namespace solver {
                         ++n;
                     }
                     if (unlikely(n == STARRY_IJ_MAX_ITER))
-                        throw errors::ConvergenceError(
+                        throw std::runtime_error(
                             "Primitive integral `J` did not converge."
                         );
                     if (KSQLESSTHANONE)
@@ -969,7 +968,7 @@ namespace solver {
             computeS0();
 
             // Break if lmax = 0
-            if (unlikely(N == 0)) return;
+            if (unlikely(N == 1)) return;
 
             // The l = 1, m = -1 is zero by symmetry
             sT(1) = 0;

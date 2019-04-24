@@ -19,7 +19,6 @@ Based in part on Daniel Foreman-Mackey's
 
 #include <cmath>
 #include "utils.h"
-#include "errors.h"
 
 namespace starry {
 namespace ellip {
@@ -56,8 +55,8 @@ namespace ellip {
         // I haven't encountered cases where k^2 > 1 due to
         // roundoff error, but they could happen. If so, change the
         // line below to avoid an exception
-        if (ksq > 1) throw errors::ValueError("Elliptic integral `CEL` "
-                                              "was called with `ksq` > 1.");
+        if (ksq > 1) throw std::out_of_range("Elliptic integral `CEL` "
+                                             "was called with `ksq` > 1.");
         T ca = sqrt(mach_eps<T>() * ksq);
 
         if (ca <= 0) ca = std::numeric_limits<T>::min();
@@ -102,8 +101,7 @@ namespace ellip {
             if (abs(g - kc) < g * ca)
                 return 0.5 * pi<T>() * (a * m + b) / (m * (m + p));
         }
-        throw errors::ConvergenceError(
-            "Elliptic integral CEL did not converge.");
+        throw std::runtime_error("Elliptic integral CEL did not converge.");
     }
 
     /**
@@ -151,7 +149,7 @@ namespace ellip {
     ) {
         // Bounds checks
         if (unlikely(k2 > 1))
-            throw errors::ValueError(
+            throw std::invalid_argument(
                     "Invalid value of `k2` passed to `ellip::CEL`.");
         else if (unlikely((k2 == 1.0) || (kc == 0.0)))
             kc = mach_eps<T>() * k2;
@@ -234,7 +232,7 @@ namespace ellip {
             ++iter;
         }
         if (iter == STARRY_ELLIP_MAX_ITER)
-            throw errors::ConvergenceError(
+            throw std::runtime_error(
                 "Elliptic integral CEL did not converge.");
         Piofk = 0.5 * pi<T>() * (a1 * m + b1) / (m * (m + p));
         Eofk = 0.5 * pi<T>() * (a2 * m + b2) / (m * (m + p1));

@@ -1,116 +1,235 @@
 /**
-Compute the flux. Static specialization.
+Compute the linear Ylm model in emitted light. 
+Basic / Spectral specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsDefaultOrSpectral<U>, 
-    typename=IsEmitted<U>, 
-    typename T1
->
-inline void computeFlux (
-    const Scalar& theta, 
-    const Scalar& xo, 
-    const Scalar& yo, 
-    const Scalar& zo, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux
+template <typename U=S>
+inline EnableIf<!U::Reflected && !U::Temporal, void> computeLinearFluxModel (
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    RowMatrix<Scalar>& X
 ) {
-    computeFluxInternal(theta, xo, yo, zo, ro, flux);
+    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, X);
 }
 
 /**
-Compute the flux and its gradient. Static specialization.
+Compute the linear Ylm model in emitted light. Temporal specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsDefaultOrSpectral<U>,
-    typename=IsEmitted<U>,
-    typename T1, 
-    typename T2, 
-    typename T3, 
-    typename T4, 
-    typename T5, 
-    typename T6, 
-    typename T7
->
-inline void computeFlux (
-    const Scalar& theta, 
-    const Scalar& xo, 
-    const Scalar& yo, 
-    const Scalar& zo, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux,
-    MatrixBase<T2> const & Dtheta,
-    MatrixBase<T3> const & Dxo,
-    MatrixBase<T4> const & Dyo,
-    MatrixBase<T5> const & Dro,
-    MatrixBase<T6> const & Dy,
-    MatrixBase<T7> const & Du
-) {
-    Matrix<Scalar> Dt(1, nflx);
-    computeFluxInternal(theta, xo, yo, zo, ro, flux, 
-                    Dt, Dtheta, Dxo, Dyo, Dro, Dy, Du);
-}
-
-/**
-Compute the flux. Temporal specialization.
-
-*/
-template <
-    typename U=S, 
-    typename=IsTemporal<U>, 
-    typename=IsEmitted<U>,
-    typename T1
->
-inline void computeFlux (
-    const Scalar& t,
-    const Scalar& theta, 
-    const Scalar& xo, 
-    const Scalar& yo, 
-    const Scalar& zo, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux
+template <typename U=S>
+inline EnableIf<!U::Reflected && U::Temporal, void> computeLinearFluxModel (
+    const Vector<Scalar>& t,
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    RowMatrix<Scalar>& X
 ) {
     computeTaylor(t);
-    computeFluxInternal(theta, xo, yo, zo, ro, flux);
+    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, X);
 }
 
 /**
-Compute the flux and its gradient. Temporal specialization.
+Compute the linear Ylm model in reflected light. 
+Basic / Spectral specialization.
 
 */
-template <
-    typename U=S, 
-    typename=IsTemporal<U>,
-    typename=IsEmitted<U>,
-    typename T1, 
-    typename T2, 
-    typename T3, 
-    typename T4, 
-    typename T5, 
-    typename T6, 
-    typename T7, 
-    typename T8
->
-inline void computeFlux (
-    const Scalar& t,
-    const Scalar& theta, 
-    const Scalar& xo, 
-    const Scalar& yo, 
-    const Scalar& zo, 
-    const Scalar& ro, 
-    MatrixBase<T1> const & flux, 
-    MatrixBase<T2> const & Dt,
-    MatrixBase<T3> const & Dtheta,
-    MatrixBase<T4> const & Dxo,
-    MatrixBase<T5> const & Dyo,
-    MatrixBase<T6> const & Dro,
-    MatrixBase<T7> const & Dy,
-    MatrixBase<T8> const & Du
+template <typename U=S>
+inline EnableIf<U::Reflected && !U::Temporal, void> computeLinearFluxModel (
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    const RowMatrix<Scalar>& source,
+    RowMatrix<Scalar>& X
+) {
+    computeLinearFluxModelInternal(theta, xo, yo, zo, 
+                                   ro, source.rowwise().normalized(), X);
+}
+
+/**
+Compute the linear Ylm model in reflected light. Temporal specialization.
+
+*/
+template <typename U=S>
+inline EnableIf<U::Reflected && U::Temporal, void> computeLinearFluxModel (
+    const Vector<Scalar>& t,
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    const RowMatrix<Scalar>& source,
+    RowMatrix<Scalar>& X
 ) {
     computeTaylor(t);
-    computeFluxInternal(theta, xo, yo, zo, ro, flux,
-                    Dt, Dtheta, Dxo, Dyo, Dro, Dy, Du);
+    computeLinearFluxModelInternal(theta, xo, yo, zo, ro, 
+                                   source.rowwise().normalized(), X);
+}
+
+/**
+Compute the linear Ylm model in emitted light and its gradient. 
+Basic / Spectral specialization.
+
+*/
+template <typename U=S>
+inline EnableIf<!U::Reflected && !U::Temporal, void> computeLinearFluxModel (
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    RowMatrix<Scalar>& X,
+    RowMatrix<Scalar>& Dtheta,
+    RowMatrix<Scalar>& Dxo,
+    RowMatrix<Scalar>& Dyo,
+    RowMatrix<Scalar>& Dro,
+    RowMatrix<Scalar>& Du,
+    RowMatrix<Scalar>& Df,
+    RowMatrix<Scalar>& Dinc,
+    RowMatrix<Scalar>& Dobl
+) {
+    RowMatrix<Scalar> Dt; // Dummy!
+    computeLinearFluxModelInternal(
+        theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro, Du, Df, Dinc, Dobl
+    );
+}
+
+/**
+Compute the linear Ylm model in emitted light and its gradient. 
+Temporal specialization.
+
+*/
+template <typename U=S>
+inline EnableIf<!U::Reflected && U::Temporal, void> computeLinearFluxModel (
+    const Vector<Scalar>& t, 
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    RowMatrix<Scalar>& X,
+    RowMatrix<Scalar>& Dt,
+    RowMatrix<Scalar>& Dtheta,
+    RowMatrix<Scalar>& Dxo,
+    RowMatrix<Scalar>& Dyo,
+    RowMatrix<Scalar>& Dro,
+    RowMatrix<Scalar>& Du,
+    RowMatrix<Scalar>& Df,
+    RowMatrix<Scalar>& Dinc,
+    RowMatrix<Scalar>& Dobl
+) {
+    computeTaylor(t);
+    computeLinearFluxModelInternal(
+        theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro, Du, Df, Dinc, Dobl
+    );
+}
+
+/**
+Compute the linear Ylm model in reflected light and its gradient. 
+Basic / Spectral specialization.
+
+*/
+template <typename U=S>
+inline EnableIf<U::Reflected && !U::Temporal, void> computeLinearFluxModel ( 
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    const RowMatrix<Scalar>& source,
+    RowMatrix<Scalar>& X,
+    RowMatrix<Scalar>& Dtheta,
+    RowMatrix<Scalar>& Dxo,
+    RowMatrix<Scalar>& Dyo,
+    RowMatrix<Scalar>& Dro,
+    RowMatrix<Scalar>& Dsource,
+    RowMatrix<Scalar>& Du,
+    RowMatrix<Scalar>& Df,
+    RowMatrix<Scalar>& Dinc,
+    RowMatrix<Scalar>& Dobl
+) {
+    RowMatrix<Scalar> Dt; // Dummy!
+    computeLinearFluxModelInternal(
+        theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, 
+        Dtheta, Dxo, Dyo, Dro, Dsource, Du, Df, Dinc, Dobl
+    );
+}
+
+/**
+Compute the linear Ylm model in reflected light and its gradient. 
+Temporal specialization.
+
+*/
+template <typename U=S>
+inline EnableIf<U::Reflected && U::Temporal, void> computeLinearFluxModel (
+    const Vector<Scalar>& t, 
+    const Vector<Scalar>& theta, 
+    const Vector<Scalar>& xo, 
+    const Vector<Scalar>& yo, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    const RowMatrix<Scalar>& source,
+    RowMatrix<Scalar>& X,
+    RowMatrix<Scalar>& Dt,
+    RowMatrix<Scalar>& Dtheta,
+    RowMatrix<Scalar>& Dxo,
+    RowMatrix<Scalar>& Dyo,
+    RowMatrix<Scalar>& Dro,
+    RowMatrix<Scalar>& Dsource,
+    RowMatrix<Scalar>& Du,
+    RowMatrix<Scalar>& Df,
+    RowMatrix<Scalar>& Dinc,
+    RowMatrix<Scalar>& Dobl
+) {
+    computeTaylor(t);
+    computeLinearFluxModelInternal(
+        theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, 
+        Dtheta, Dxo, Dyo, Dro, Dsource, Du, Df, Dinc, Dobl
+    );
+}
+
+/**
+Compute the flux from a purely limb-darkened map.
+
+*/
+template <typename U=S>
+inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFlux (
+    const Vector<Scalar>& b, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    FType& flux
+) {
+    if (ydeg > 0)
+        throw std::runtime_error(
+            "This method is for purely limb-darkened maps only."
+        );
+    computeLimbDarkenedFluxInternal(b, zo, ro, flux);
+}
+
+/**
+Compute the flux from a purely limb-darkened map.
+Also compute the gradient.
+
+*/
+template <typename U=S>
+inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFlux (
+    const Vector<Scalar>& b, 
+    const Vector<Scalar>& zo, 
+    const Vector<Scalar>& ro, 
+    FType& flux,
+    FType& Db,
+    FType& Dro,
+    Matrix<Scalar>& Du
+) {
+    if (ydeg > 0)
+        throw std::runtime_error(
+            "This method is for purely limb-darkened maps only."
+        );
+    computeLimbDarkenedFluxInternal(b, zo, ro, flux, Db, Dro, Du);
 }

@@ -20,17 +20,17 @@
 
 // Boost support
 #ifdef STARRY_ENABLE_BOOST
-#include <boost/multiprecision/cpp_dec_float.hpp>
-#include <boost/math/special_functions/gamma.hpp>
+#   include <boost/multiprecision/cpp_dec_float.hpp>
+#   include <boost/math/special_functions/gamma.hpp>
 #endif
 
 // Python interface via pybind11
 #ifdef STARRY_ENABLE_PYTHON_INTERFACE
-#include <pybind11/pybind11.h>
-#include <pybind11/eigen.h>
-#include <pybind11/stl.h>
-#include <pybind11/numpy.h>
-namespace py = pybind11;
+#   include <pybind11/pybind11.h>
+#   include <pybind11/eigen.h>
+#   include <pybind11/stl.h>
+#   include <pybind11/numpy.h>
+    namespace py = pybind11;
 #endif
 
 //! Compiler branching optimization: likely branch
@@ -41,82 +41,74 @@ namespace py = pybind11;
 
 //! Default number of digits in multiprecision mode
 #ifndef STARRY_NMULTI
-#define STARRY_NMULTI               32
+#   define STARRY_NMULTI               32
 #endif
 
 //! Max iterations in elliptic integrals
 #ifndef STARRY_ELLIP_MAX_ITER
-#define STARRY_ELLIP_MAX_ITER       200
+#   define STARRY_ELLIP_MAX_ITER       200
 #endif
 
 //! Max iterations in computing the M & N integrals
 #ifndef STARRY_MN_MAX_ITER
-#define STARRY_MN_MAX_ITER           100
+#   define STARRY_MN_MAX_ITER           100
 #endif
 
 //! Max iterations in computing the I & J integrals
 #ifndef STARRY_IJ_MAX_ITER
-#define STARRY_IJ_MAX_ITER           200
+#   define STARRY_IJ_MAX_ITER           200
 #endif
 
 //! Refine the downward recursion in the J integral at this index
 #ifndef STARRY_REFINE_J_AT
-#define STARRY_REFINE_J_AT           25
+#   define STARRY_REFINE_J_AT           25
 #endif
 
 //! Cutoff value for `b` below which we reparametrize LD evaluation
 #ifndef STARRY_BCUT
-#define STARRY_BCUT                 1.0e-3
+#   define STARRY_BCUT                 1.0e-3
 #endif
 
 //! Things currently go numerically unstable in our bases for high `l`
 #ifndef STARRY_MAX_LMAX
-#define STARRY_MAX_LMAX             50
-#endif
-
-//! If we're keeping `df / du` as `df / dg`, we need to increase 
-//! the size of the array containing the derivative by 1
-#ifdef STARRY_KEEP_DFDU_AS_DFDG
-#define STARRY_DFDU_DELTA	        1
-#else
-#define STARRY_DFDU_DELTA	        0
+#   define STARRY_MAX_LMAX             50
 #endif
 
 //! The value of `pi` in double precision
 #ifndef M_PI
-#define M_PI     3.14159265358979323846264338328
+#   define M_PI     3.14159265358979323846264338328
 #endif
 
 //! Square root of `pi` in double precision
 #ifndef M_SQRTPI
-#define M_SQRTPI 1.77245385090551602729816748334
+#   define M_SQRTPI 1.77245385090551602729816748334
 #endif
 
 // Bounds checks
 #ifdef STARRY_DEBUG
-//! Check matrix shape (debug mode only)
-#define CHECK_SHAPE(MATRIX, ROWS, COLS)\
-    assert((static_cast<size_t>(MATRIX.cols()) == static_cast<size_t>(COLS)) && \
-    (static_cast<size_t>(MATRIX.rows()) == static_cast<size_t>(ROWS)))
-//! Check matrix columns (debug mode only)
-#define CHECK_COLS(MATRIX, COLS)\
-    assert(static_cast<size_t>(MATRIX.cols()) == static_cast<size_t>(COLS))
-//! Check matrix rows (debug mode only)
-#define CHECK_ROWS(MATRIX, ROWS)\
-    assert(static_cast<size_t>(MATRIX.rows()) == static_cast<size_t>(ROWS))
-//! Check index bounds (debug mode only)
-#define CHECK_BOUNDS(INDEX, IMIN, IMAX)\
-    assert((static_cast<size_t>(INDEX) >= static_cast<size_t>(IMIN)) && \
-    (static_cast<size_t>(INDEX) <= static_cast<size_t>(IMAX)))
+    //! Check matrix shape (debug mode only)
+#   define CHECK_SHAPE(MATRIX, ROWS, COLS)\
+        assert((static_cast<size_t>(MATRIX.cols()) == static_cast<size_t>(COLS)) && \
+        (static_cast<size_t>(MATRIX.rows()) == static_cast<size_t>(ROWS)))
+    //! Check matrix columns (debug mode only)
+#   define CHECK_COLS(MATRIX, COLS)\
+        assert(static_cast<size_t>(MATRIX.cols()) == static_cast<size_t>(COLS))
+    //! Check matrix rows (debug mode only)
+#   define CHECK_ROWS(MATRIX, ROWS)\
+        assert(static_cast<size_t>(MATRIX.rows()) == static_cast<size_t>(ROWS))
+    //! Check index bounds (debug mode only)
+#   define CHECK_BOUNDS(INDEX, IMIN, IMAX)\
+        assert((static_cast<size_t>(INDEX) >= static_cast<size_t>(IMIN)) && \
+        (static_cast<size_t>(INDEX) <= static_cast<size_t>(IMAX)))
 #else
-//! Check matrix shape (debug mode only)
-#define CHECK_SHAPE(MATRIX, ROWS, COLS)  do {} while(0)
-//! Check matrix columns (debug mode only)
-#define CHECK_COLS(MATRIX, COLS)  do {} while(0)
-//! Check matrix rows (debug mode only)
-#define CHECK_ROWS(MATRIX, ROWS)  do {} while(0)
-//! Check index bounds (debug mode only)
-#define CHECK_BOUNDS(INDEX, IMIN, IMAX)  do {} while(0)
+    //! Check matrix shape (debug mode only)
+#   define CHECK_SHAPE(MATRIX, ROWS, COLS)  do {} while(0)
+    //! Check matrix columns (debug mode only)
+#   define CHECK_COLS(MATRIX, COLS)  do {} while(0)
+    //! Check matrix rows (debug mode only)
+#   define CHECK_ROWS(MATRIX, ROWS)  do {} while(0)
+    //! Check index bounds (debug mode only)
+#   define CHECK_BOUNDS(INDEX, IMIN, IMAX)  do {} while(0)
 
 #endif
 
@@ -130,6 +122,9 @@ using std::max;
 using std::isinf;
 using std::swap;
 
+//! This is an alias for `enable_if_t`
+template <bool B, class T=void>
+using EnableIf = typename std::enable_if<B, T>::type;
 
 // --------------------------
 // ----- Linear Algebra -----
@@ -174,141 +169,73 @@ using ADScalar = Eigen::AutoDiffScalar<Eigen::Matrix<T, N, 1>>;
 
 //! Multiprecision datatype
 #ifdef STARRY_ENABLE_BOOST
-typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
-typedef boost::multiprecision::number<mp_backend, 
-                                      boost::multiprecision::et_off> Multi;
+    typedef boost::multiprecision::cpp_dec_float<STARRY_NMULTI> mp_backend;
+    typedef boost::multiprecision::number<mp_backend, 
+                                        boost::multiprecision::et_off> Multi;
 #else
-typedef void Multi;
+    typedef void Multi;
 #endif
 
-//! Default single-wavelength, static type
-template <typename T, bool REFLECTED=false>
-struct Default 
+template <typename T, bool SPECTRAL, bool TEMPORAL, bool REFLECTED, bool LIMBDARKENED>
+struct MapType { };
+
+// Single-wavelength map in emitted/reflected light with optional time-dependence
+template <typename T, bool TEMPORAL, bool REFLECTED>
+struct MapType<T, false, TEMPORAL, REFLECTED, false> 
 {
-    using Scalar = T;
+    static constexpr bool Spectral = false;
+    static constexpr bool Temporal = TEMPORAL;
     static constexpr bool Reflected = REFLECTED;
+    static constexpr bool LimbDarkened = false;
+    using Scalar = T;
     using YType = Vector<T>;
-    using YCoeffType = OneByOne<T>;
     using UType = Vector<T>;
-    using UCoeffType = OneByOne<T>;
-    using TSType = Vector<T>;
-    using FluxType = OneByOne<T>;
-
-    struct Double {
-        using Scalar = double;
-        using YType = Vector<double>;
-        using YCoeffType = OneByOne<double>;
-        using UType = Vector<double>;
-        using UCoeffType = OneByOne<double>;
-        using TSType = Vector<double>;
-        using FluxType = OneByOne<double>;
-    };
-
+    using FType = Vector<T>;
 };
 
-//! Spectral type
-template <typename T, bool REFLECTED=false>
-struct Spectral 
+// Spectral map in emitted/reflected light
+template <typename T, bool REFLECTED>
+struct MapType<T, true, false, REFLECTED, false> 
 {
-    using Scalar = T;
+    static constexpr bool Spectral = true;
+    static constexpr bool Temporal = false;
     static constexpr bool Reflected = REFLECTED;
+    static constexpr bool LimbDarkened = false;
+    using Scalar = T;
     using YType = Matrix<T>;
-    using YCoeffType = RowVector<T>;
-    using UType = Matrix<T>;
-    using UCoeffType = RowVector<T>;
-    using TSType = RowMatrix<T>;
-    using FluxType = RowVector<T>;
-
-    struct Double {
-        using Scalar = double;
-        using YType = Matrix<double>;
-        using YCoeffType = RowVector<double>;
-        using UType = Matrix<double>;
-        using UCoeffType = RowVector<double>;
-        using TSType = RowMatrix<double>;
-        using FluxType = RowVector<double>;
-    };
+    using UType = Vector<T>; 
+    using FType = Matrix<T>;
 };
 
-//! Temporal type
-template <typename T, bool REFLECTED=false>
-struct Temporal 
+// Single-wavelength limb-darkened map
+template <typename T>
+struct MapType<T, false, false, false, true> 
 {
+    static constexpr bool Spectral = false;
+    static constexpr bool Temporal = false;
+    static constexpr bool Reflected = false;
+    static constexpr bool LimbDarkened = true;
     using Scalar = T;
-    static constexpr bool Reflected = REFLECTED;
-    using YType = Matrix<T>;
-    using YCoeffType = RowVector<T>;
-    using UType = Vector<T>;
-    using UCoeffType = OneByOne<T>;
-    using TSType = Vector<T>;
-    using FluxType = OneByOne<T>;
-
-    struct Double {
-        using Scalar = double;
-        using YType = Matrix<double>;
-        using YCoeffType = RowVector<double>;
-        using UType = Vector<double>;
-        using UCoeffType = OneByOne<double>;
-        using TSType = Vector<double>;
-        using FluxType = OneByOne<double>;
-    };
+    using YType = OneByOne<T>;
+    using UType = Vector<T>; 
+    using FType = Vector<T>;
 };
 
-// Some sneaky hacks to enable/disable things depending on their type
-template <typename T, typename U=void>
-using IsDefault = 
-    typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
+// Spectral limb-darkened map
+template <typename T>
+struct MapType<T, true, false, false, true> 
+{
+    static constexpr bool Spectral = true;
+    static constexpr bool Temporal = false;
+    static constexpr bool Reflected = false;
+    static constexpr bool LimbDarkened = true;
+    using Scalar = T;
+    using YType = OneByOne<T>;
+    using UType = Matrix<T>; 
+    using FType = Matrix<T>;
+};
 
-template <typename T, typename U=void>
-using IsSpectral = 
-    typename std::enable_if<
-        std::is_same<T, Spectral<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
 
-template <typename T, typename U=void>
-using IsDefaultOrTemporal = 
-    typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar, T::Reflected>>::value || 
-        std::is_same<T, Temporal<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
-
-template <typename T, typename U=void>
-using IsTemporal = 
-    typename std::enable_if<
-        std::is_same<T, Temporal<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
-
-template <typename T, typename U=void>
-using IsDefaultOrSpectral = 
-    typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar, T::Reflected>>::value || 
-        std::is_same<T, Spectral<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
-
-template <typename T, typename U=void>
-using IsSpectralOrTemporal = 
-    typename std::enable_if<
-        std::is_same<T, Spectral<typename T::Scalar, T::Reflected>>::value || 
-        std::is_same<T, Temporal<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
-
-template <typename T, typename U=void>
-using IsDefaultOrSpectralOrTemporal = 
-    typename std::enable_if<
-        std::is_same<T, Default<typename T::Scalar, T::Reflected>>::value || 
-        std::is_same<T, Spectral<typename T::Scalar, T::Reflected>>::value || 
-        std::is_same<T, Temporal<typename T::Scalar, T::Reflected>>::value, U
-    >::type;
-
-template <typename T, typename U=void>
-using IsEmitted = 
-    typename std::enable_if<!T::Reflected, U>::type;
-
-template <typename T, typename U=void>
-using IsReflected = 
-    typename std::enable_if<T::Reflected, U>::type;
 
 // --------------------------
 // -------- Constants -------
@@ -321,52 +248,52 @@ struct tag {};
 
 //! Pi for current type
 #ifdef STARRY_ENABLE_BOOST
-template <class T> 
-inline T pi(
-    tag<T>
-) { 
-    return boost::math::constants::pi<T>(); 
-}
-template <class T> 
-inline Eigen::AutoDiffScalar<T> pi(
-    tag<Eigen::AutoDiffScalar<T>>
-) {
-    return boost::math::constants::pi<typename T::Scalar>();
-}
-template <class T> 
-inline T pi() { 
-    return pi(tag<T>()); 
-}
+    template <class T> 
+    inline T pi(
+        tag<T>
+    ) { 
+        return boost::math::constants::pi<T>(); 
+    }
+    template <class T> 
+    inline Eigen::AutoDiffScalar<T> pi(
+        tag<Eigen::AutoDiffScalar<T>>
+    ) {
+        return boost::math::constants::pi<typename T::Scalar>();
+    }
+    template <class T> 
+    inline T pi() { 
+        return pi(tag<T>()); 
+    }
 #else
-template <class T> 
-inline T pi() { 
-    return static_cast<T>(M_PI); 
-}
+    template <class T> 
+    inline T pi() { 
+        return static_cast<T>(M_PI); 
+    }
 #endif
 
 //! Square root of pi for current type
 #ifdef STARRY_ENABLE_BOOST
-template <class T> 
-inline T root_pi(
-    tag<T>
-) { 
-    return boost::math::constants::root_pi<T>(); 
-}
-template <class T> 
-inline Eigen::AutoDiffScalar<T> root_pi (
-    tag<Eigen::AutoDiffScalar<T>>
-) {
-    return boost::math::constants::root_pi<typename T::Scalar>();
-}
-template <class T> 
-inline T root_pi() { 
-    return root_pi(tag<T>()); 
-}
+    template <class T> 
+    inline T root_pi(
+        tag<T>
+    ) { 
+        return boost::math::constants::root_pi<T>(); 
+    }
+    template <class T> 
+    inline Eigen::AutoDiffScalar<T> root_pi (
+        tag<Eigen::AutoDiffScalar<T>>
+    ) {
+        return boost::math::constants::root_pi<typename T::Scalar>();
+    }
+    template <class T> 
+    inline T root_pi() { 
+        return root_pi(tag<T>()); 
+    }
 #else
-template <class T> 
-inline T root_pi() { 
-    return static_cast<T>(M_SQRTPI); 
-}
+    template <class T> 
+    inline T root_pi() { 
+        return static_cast<T>(M_SQRTPI); 
+    }
 #endif
 
 //! Machine precision for current type

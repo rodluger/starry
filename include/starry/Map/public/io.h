@@ -4,163 +4,146 @@ Return a human-readable map string.
 */
 std::string info () {
     std::ostringstream os;
-    if (std::is_same<S, Default<Scalar, S::Reflected>>::value) {
+    if (S::Spectral) {
         os << "<starry.Map("
-            << "lmax=" << lmax << ", "
+            << "ydeg=" << ydeg << ", "
+            << "udeg=" << udeg << ", "
+            << "fdeg=" << fdeg << ", "
+            << "nw=" << Nw << ", "
             << "reflected=" << S::Reflected << ", "
             << "multi=" << !std::is_same<Scalar, double>::value
             << ")>";
-    } else if (std::is_same<S, Spectral<Scalar, S::Reflected>>::value) {
+    } else if (S::Temporal) {
         os << "<starry.Map("
-            << "lmax=" << lmax << ", "
-            << "nw=" << ncoly << ", "
+            << "ydeg=" << ydeg << ", "
+            << "udeg=" << udeg << ", "
+            << "fdeg=" << fdeg << ", "
+            << "nt=" << Nt << ", "
             << "reflected=" << S::Reflected << ", "
             << "multi=" << !std::is_same<Scalar, double>::value
             << ")>";
-    } else if (std::is_same<S, Temporal<Scalar, S::Reflected>>::value) {
+    } else if (S::LimbDarkened) {
         os << "<starry.Map("
-            << "lmax=" << lmax << ", "
-            << "nt=" << ncoly << ", "
-            << "reflected=" << S::Reflected << ", "
+            << "udeg=" << udeg << ", "
             << "multi=" << !std::is_same<Scalar, double>::value
             << ")>";
     } else {
-        // ??
-        os << "<starry.Map>";
+        os << "<starry.Map("
+            << "ydeg=" << ydeg << ", "
+            << "udeg=" << udeg << ", "
+            << "fdeg=" << fdeg << ", "
+            << "reflected=" << S::Reflected << ", "
+            << "multi=" << !std::is_same<Scalar, double>::value
+            << ")>";
     }
     return std::string(os.str());
 }
 
 /**
-Set the full spherical harmonic vector/matrix.
+Set the full spherical harmonic vector.
 
 */
+template <typename T1>
 inline void setY (
-    const YType& y_
+    const MatrixBase<T1>& y_
 ) {
-    cache.yChanged();
     if ((y_.rows() == y.rows()) && (y_.cols() == y.cols()))
         y = y_;
     else
-        throw errors::ValueError("Dimension mismatch in `y`.");
+        throw std::length_error("Dimension mismatch in `y`.");
+    // Check that y(0) == 1
+    if (!(y.row(0) == RowVector<Scalar>::Ones(y.row(0).size()))) {
+        y.row(0).setConstant(1.0);
+        throw std::invalid_argument("The coefficient of the Y_{0,0} " 
+                                    "term must be fixed at unity.");
+    }
+    // Check that the derivatives of y(0) == 0
+    if (S::Temporal) {
+        for (int i = 1; i < Nt; ++i) {
+            if (y(i * Ny) != 0)
+                throw std::invalid_argument("The Y_{0,0} term cannot "
+                                            "have time dependence.");
+        }
+    }
 }
 
 /**
-Set the (l, m) row of the spherical harmonic coefficient *matrix* to an
-array of coefficients.
+Get the full spherical harmonic vector.
 
 */
-inline void setY (
-    int l, 
-    int m, 
-    const Ref<const YCoeffType>& coeff
-) {
-    cache.yChanged();
-    if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
-        y.row(l * l + l + m) = coeff;
-    else
-        throw errors::IndexError("Invalid value for `l` and/or `m`.");
-}
-
-/**
-Set the (l, m) index of the spherical harmonic coefficient vector, or
-the entire (l, m) row of the spherical harmonic coefficient matrix, to a
-single value.
-
-*/
-inline void setY (
-    int l, 
-    int m, 
-    const Scalar& coeff
-) {
-    cache.yChanged();
-    if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
-        y.row(l * l + l + m).setConstant(coeff);
-    else
-        throw errors::IndexError("Invalid value for `l` and/or `m`.");
-}
-
-/**
-Get the full spherical harmonic vector/matrix
-
-*/
-inline const YType getY () const {
+inline auto getY () -> const decltype(y) {
     return y;
 }
 
 /**
-Set the full limb darkening vector/matrix.
+Set the full limb darkening vector.
 
 */
+template <typename T1>
 inline void setU (
-    const UType& u_
+    const MatrixBase<T1>& u_
 ) 
 {
-    cache.uChanged();
-    if ((u_.rows() == u.rows() - 1) && (u_.cols() == u.cols()))
-        u.block(1, 0, lmax, u.cols()) = u_;
+    if ((u_.rows() == u.rows()) && (u_.cols() == u.cols()))
+        u = u_;
     else
-        throw errors::ValueError("Dimension mismatch in `u`.");
+        throw std::length_error("Dimension mismatch in `u`.");
+    // Check that u(0) == -1
+    if (!(u.row(0) == -RowVector<Scalar>::Ones(u.row(0).size()))) {
+        u.row(0).setConstant(-1.0);
+        throw std::invalid_argument("The coefficient of the u_0 " 
+                                    "term must be fixed at -1.0.");
+    }
 }
 
 /**
-Set the `l`th index of the limb darkening coefficient *matrix* to an
-array of coefficients.
+Get the full limb darkening vector.
 
 */
-template <typename U=S, typename=IsEmitted<U>>
-inline void setU (
-    int l, 
-    const Ref<const UCoeffType>& coeff
+inline auto getU () -> const decltype(u) {
+    return u;
+}
+
+/**
+Set the full filter vector.
+
+*/
+template <typename T1>
+inline void setF (
+    const MatrixBase<T1>& f_
 ) {
-    cache.uChanged();
-    if ((1 <= l) && (l <= lmax))
-        u.row(l) = coeff;
+    if ((f_.rows() == f.rows()) && (f_.cols() == f.cols()))
+        f = f_;
     else
-        throw errors::IndexError("Invalid value for `l`.");
+        throw std::length_error("Dimension mismatch in `f`.");
 }
 
 /**
-Set the `l`th index of the limb darkening coefficient vector, or
-the entire `l`th row of the limb darkening coefficient matrix, to a
-single value.
+Get the full filter spherical harmonic vector.
 
 */
-template <typename U=S, typename=IsEmitted<U>>
-inline void setU (
-    int l, 
-    const Scalar& coeff
-) {
-    cache.uChanged();
-    if ((1 <= l) && (l <= lmax))
-        u.row(l).setConstant(coeff);
-    else
-        throw errors::IndexError("Invalid value for `l`.");
+inline auto getF () -> const decltype(f) {
+    return f;
 }
 
 /**
-Get the full limb darkening vector/matrix.
-
-*/
-template <typename U=S, typename=IsEmitted<U>>
-inline const UType getU () const {
-    return u.block(1, 0, lmax, u.cols());
-}
-
-/**
-Set the axis of rotation for the map.
+Set the axis of rotation for the map and update
+the pre-computed Wigner matrices.
 
 */
 inline void setAxis (
     const UnitVector<Scalar>& axis_
 ) {
-    cache.axisChanged();
-    axis(0) = axis_(0);
-    axis(1) = axis_(1);
-    axis(2) = axis_(2);
-    axis = axis / sqrt(axis(0) * axis(0) +
-                       axis(1) * axis(1) +
-                       axis(2) * axis(2));
+    UnitVector<Scalar> axis = axis_.normalized();
+    obl = atan2(axis(0), axis(1)) * 180.0 / pi<Scalar>();
+    Scalar sino = sin(obl * pi<Scalar>() / 180.0);
+    if (abs(sino) < 1e-10) {
+        Scalar coso = cos(obl * pi<Scalar>() / 180.0);
+        inc = atan2(axis(1) / coso, axis(2)) * 180.0 / pi<Scalar>();
+    } else {
+        inc = atan2(axis(0) / sino, axis(2)) * 180.0 / pi<Scalar>();
+    }
+    W.updateAxis(inc, obl);
 }
 
 /**
@@ -168,63 +151,53 @@ Return a copy of the axis.
 
 */
 inline const UnitVector<Scalar> getAxis () const {
+    UnitVector<Scalar> axis;
+    axis << sin(obl * pi<Scalar>() / 180.) * sin(inc * pi<Scalar>() / 180.),
+            cos(obl * pi<Scalar>() / 180.) * sin(inc * pi<Scalar>() / 180.),
+            cos(inc * pi<Scalar>() / 180.);
     return axis;
 }
 
 /**
-Get the (l, m) row of the spherical harmonic coefficient *matrix*
+Set the inclination the map and update
+the pre-computed Wigner matrices.
 
 */
-template <typename U=S, typename=IsSpectralOrTemporal<U>>
-inline YCoeffType getY (
-    int l,
-    int m
-) const {
-    if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
-        return y.row(l * l + l + m);
-    else
-        throw errors::IndexError("Invalid value for `l` and/or `m`.");
+inline void setInclination (
+    const Scalar& inc_
+) {
+    if ((inc_ < 0) || (inc_ > 180))
+        throw std::out_of_range("Inclination must be between 0 and 180 degrees.");
+    inc = inc_;
+    W.updateAxis(inc, obl);
 }
 
 /**
-Get the (l, m) index of the spherical harmonic coefficient *vector*
+Return the inclination of the map.
 
 */
-template <typename U=S, typename=IsDefault<U>>
-inline Scalar getY (
-    int l, 
-    int m
-) const {
-    if ((0 <= l) && (l <= lmax) && (-l <= m) && (m <= l))
-        return y(l * l + l + m);
-    else
-        throw errors::IndexError("Invalid value for `l` and/or `m`.");
+inline const Scalar getInclination () const {
+    return inc;
 }
 
 /**
-Get the `l`th row of the limb darkening coefficient *matrix*
+Set the obliquity the map and update
+the pre-computed Wigner matrices.
 
 */
-template <typename U=S, typename=IsSpectral<U>, typename=IsEmitted<U>>
-inline UCoeffType getU (
-    int l
-) const {
-    if ((1 <= l) && (l <= lmax))
-        return u.row(l);
-    else
-        throw errors::IndexError("Invalid value for `l`.");
+inline void setObliquity (
+    const Scalar& obl_
+) {
+    if ((obl_ < -180) || (obl_ > 180))
+        throw std::out_of_range("Obliquity must be between -180 and 180 degrees.");
+    obl = obl_;
+    W.updateAxis(inc, obl);
 }
 
 /**
-Get the `l`th index of the limb darkening coefficient *vector*
+Return the obliquity of the map.
 
 */
-template <typename U=S, typename=IsDefaultOrTemporal<U>, typename=IsEmitted<U>>
-inline Scalar getU (
-    int l
-) const {
-    if ((1 <= l) && (l <= lmax))
-        return u(l);
-    else
-        throw errors::IndexError("Invalid value for `l`.");
+inline const Scalar getObliquity () const {
+    return obl;
 }

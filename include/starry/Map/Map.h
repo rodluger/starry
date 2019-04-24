@@ -1,5 +1,5 @@
 //! The Map class
-template <class S=Default<double, false>>
+template <class S=MapType<double, false, false, false, false>>
 class Map 
 {
 
@@ -7,100 +7,148 @@ public:
 
     // Types
     using Scalar = typename S::Scalar;                                         /**< The scalar type of the map */
-    using YType = typename S::YType;                                           /**< The type of the spherical harmonic coefficient object (vector/matrix) */
-    using YCoeffType = typename S::YCoeffType;                                 /**< The type of the spherical harmonic coefficients (scalar/row vector) */
-    using UType = typename S::UType;                                           /**< The type of the limb darkening coefficient object (vector/matrix) */
-    using UCoeffType = typename S::UCoeffType;                                 /**< The type of the limb darkening coefficients (scalar/row vector) */
-    using FluxType = typename S::FluxType;                                     /**< The type of the output flux (scalar/row vector) */
-
+    using YType = typename S::YType;
+    using UType = typename S::UType;
+    using FType = typename S::FType;
+    
     // Public variables
-    const int lmax;                                                            /**< Maximum spherical harmonic degree of the map */
-    const int N;                                                               /**< Number of spherical harmonic `(l, m)` coefficients */
-    const int ncoly;                                                           /**< Number of columns in the `y` matrix */
-    const int ncolu;                                                           /**< Number of columns in the `u` matrix */
-    const int nflx;                                                            /**< Number of columns in the output flux */
-    Cache<S> cache;                                                            /**< Internal cache & storage class */
+    const int ydeg;                                                            /**< Maximum degree of the spherical harmonic map */
+    const int udeg;                                                            /**< Maximum degree of the limb darkening map */
+    const int fdeg;                                                            /**< Maximum degree of the multiplicative filter */
+    const int deg;                                                             /**< Maximum degree of the combined Ylm + limb darkening map */
+    const int Ny;                                                              /**< Number of spherical harmonic `(l, m)` coefficients */
+    const int Nu;                                                              /**< Number of limb darkening coefficients in the `u` basis */
+    const int Nf;                                                              /**< Number of filter coefficients */
+    const int Npu;                                                              /**< Number of limb darkening coefficients in the `p` basis*/
+    const int Nw;                                                              /**< Number of spectral components */
+    const int Nt;                                                              /**< Number of temporal components */
+    const int N;                                                               /**< Total number of spherical harmonic `(l, m)` coefficients after limb darkening */
+    Data<Scalar> data;                                                         /**< Internal storage class */
 
 protected:
 
     // Internal methods
     #include "protected/intensity.h"
     #include "protected/flux.h"
-    #include "protected/reflectance.h"
-    #include "protected/linear.h"
-    #include "protected/deriv.h"
     #include "protected/oper.h"
-    #include "protected/python_interface.h"
+    #include "protected/arrays.h"
 
     // Internal variables
-    YType y;                                                                   /**< Vector/matrix of spherical harmonic coefficients */
-    UType u;                                                                   /**< Vector/matrix of limb darkening coefficients */
-    UnitVector<Scalar> axis;                                                   /**< The axis of rotation for the map */
+    YType y;                                                                   /**< Vector of spherical harmonic coefficients */
+    UType u;                                                                   /**< Vector of limb darkening coefficients */
+    Vector<Scalar> f;                                                          /**< Vector of multiplicative filter spherical harmonic coefficients */
+    Scalar inc;                                                                /**< Inclination of the rotation axis in degrees */
+    Scalar obl;                                                                /**< Obliquity of the rotation axis in degrees */
     basis::Basis<Scalar> B;                                                    /**< Basis transform stuff */
-    rotation::Wigner<YType> W;                                                 /**< Ylm rotation stuff */
+    wigner::Wigner<Scalar> W;                                                  /**< Ylm rotation stuff */
     solver::Greens<Scalar, S::Reflected> G;                                    /**< The occultation integral solver class */
     limbdark::GreensLimbDark<Scalar, S::Reflected> L;                          /**< The occultation integral solver class (optimized for limb darkening) */
-    Vector<Scalar> taylor;                                                     /**< Vector of Taylor expansion coefficients for a given `t` */
-    Matrix<Scalar> taylor_matrix;
-    int u_deg;                                                                 /**< Highest degree set by the user in the limb darkening vector */
-    int y_deg;                                                                 /**< Highest degree set by the user in the spherical harmonic vector */
+    Matrix<Scalar> taylor;                                                     /**< Temporal expansion basis */
     Scalar radian;                                                             /**< Conversion factor from degrees to radians */
-     
+    
     //! Constructor for all map types
     explicit Map (
-        int lmax,
-        int ncoly,
-        int ncolu,
-        int nflx
+        int ydeg,
+        int udeg,
+        int fdeg,
+        int Nw,
+        int Nt
     ) :
-        lmax(lmax), 
-        N((lmax + 1) * (lmax + 1)), 
-        ncoly(ncoly), 
-        ncolu(ncolu),
-        nflx(nflx),
-        cache(lmax, ncoly, ncolu, nflx),
-        B(lmax),
-        W(lmax, ncoly, nflx, (*this).y, (*this).axis),
-        G(lmax),
-        L(lmax),
-        taylor(ncoly)
+        ydeg(ydeg), 
+        udeg(udeg),
+        fdeg(fdeg),
+        deg(ydeg + udeg + fdeg),
+        Ny((ydeg + 1) * (ydeg + 1)), 
+        Nu(udeg + 1),
+        Nf((fdeg + 1) * (fdeg + 1)),
+        Npu((udeg + 1) * (udeg + 1)),
+        Nw(Nw),
+        Nt(Nt),
+        N((deg + 1) * (deg + 1)),
+        data(ydeg),
+        y(Ny * Nt, S::LimbDarkened ? 1 : Nw),
+        u(Nu, S::LimbDarkened ? Nw : 1),
+        f(Nf),
+        inc(90.0),
+        obl(0.0),
+        B(ydeg, udeg, fdeg),
+        W(ydeg, udeg, fdeg, inc, obl),
+        G(deg),
+        L(udeg, Nw)
     {
-        if ((lmax < 0) || (lmax > STARRY_MAX_LMAX))
-            throw errors::ValueError(
+        // Bounds checks
+        if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))
+            throw std::out_of_range(
                 "Spherical harmonic degree out of range.");
-        if ((ncoly < 1) || (ncolu < 1))
-            throw errors::ValueError(
-                "The number of map columns must be positive.");
+        if ((udeg < 0) || (udeg > STARRY_MAX_LMAX))
+            throw std::out_of_range(
+                "Limb darkening degree out of range.");
+        if ((fdeg < 0) || (fdeg > STARRY_MAX_LMAX))
+            throw std::out_of_range(
+                "Filter degree out of range.");
+        if ((deg > STARRY_MAX_LMAX))
+            throw std::out_of_range(
+                "Total map degree out of range.");
+        if ((Nw < 1) || (Nt < 1))
+            throw std::out_of_range(
+                "The number of temporal / spectral terms must be positive.");
+        
         radian = pi<Scalar>() / 180.;
-        taylor(0) = 1.0;
         reset();
+        resize_arrays();
     };
 
 public:
 
-    //! Constructor for single-column maps
-    template <typename U=S, typename=IsDefault<U>>
+    //! Constructor for the default map
+    template <
+        typename U=S, 
+        typename=EnableIf<!(U::Spectral || U::Temporal || U::LimbDarkened)>
+    >
     explicit Map (
-        int lmax
-    ) : Map(lmax, 1, 1, 1) {}
+        int ydeg,
+        int udeg,
+        int fdeg
+    ) : Map(ydeg, udeg, fdeg, 1, 1) {}
 
-    //! Constructor for multi-column maps
-    template <typename U=S, typename=IsSpectralOrTemporal<U>>
+    //! Constructor for spectral & temporal maps
+    template <
+        typename U=S, 
+        typename=EnableIf<(U::Spectral || U::Temporal) && !U::LimbDarkened>
+    >
     explicit Map (
-        int lmax,
-        int ncol
-    ) : Map(lmax, ncol, 
-            std::is_same<U, Spectral<Scalar, S::Reflected>>::value ? ncol : 1,
-            std::is_same<U, Spectral<Scalar, S::Reflected>>::value ? ncol : 1) {}
+        int ydeg,
+        int udeg,
+        int fdeg,
+        int nterms
+    ) : Map(ydeg, udeg, fdeg,
+            U::Spectral ? nterms : 1,
+            U::Temporal ? nterms : 1) {}
+
+    //! Constructor for the single-wavelength limb-darkened map
+    template <
+        typename U=S, 
+        typename=EnableIf<U::LimbDarkened && !U::Spectral>
+    >
+    explicit Map (
+        int udeg
+    ) : Map(0, udeg, 0, 1, 1) {}
+
+    //! Constructor for the spectral limb-darkened map
+    // Note that we need to hack SFINAE a little differently
+    // to avoid re-declaration of the <int, int> specialization
+    template <typename U=S>
+    explicit Map (
+        int udeg,
+        int nterms,
+        EnableIf<U::LimbDarkened && U::Spectral>* = 0
+    ) : Map(0, udeg, 0, nterms, 1) {}
 
     // Public methods
     #include "public/io.h"
     #include "public/oper.h"
     #include "public/intensity.h"
     #include "public/flux.h"
-    #include "public/reflectance.h"
-    #include "public/linear.h"
-    #include "public/python_interface.h"
 
 }; // class Map
 

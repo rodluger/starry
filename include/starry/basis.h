@@ -8,7 +8,6 @@
 #define _STARRY_BASIS_H_
 
 #include "utils.h"
-#include "errors.h"
 
 namespace starry { 
 namespace basis {
@@ -229,23 +228,20 @@ inline void polymul (
                 for (int l2 = 0; l2 < lmax2 + 1; ++l2) {
                     if (l1 + l2 > lmax12) break;
                     for (int m2 = -l2; m2 < l2 + 1; ++m2) {
-                        if (p2.row(n2).any()) {
-                            l = l1 + l2;
-                            n = l * l + l + m1 + m2;
-                            fac1 = p1.row(n1).cwiseProduct(p2.row(n2));
-                            if (odd1 && ((l2 + m2) % 2 != 0)) {
-                                p1p2.row(n - 4 * l + 2) += fac1;
-                                p1p2.row(n - 2) -= fac1;
-                                p1p2.row(n + 2) -= fac1;
-                                fac2 = vT(n - 4 * l + 2) - vT(n - 2) - vT(n + 2);
-                                vTDp1p2Dp1.col(n1) += fac2 * p2.row(n2);
-                                vTDp1p2Dp2.col(n2) += fac2 * p1.row(n1);
-
-                            } else {
-                                p1p2.row(n) += fac1;
-                                vTDp1p2Dp1.col(n1) += vT(n) * p2.row(n2);
-                                vTDp1p2Dp2.col(n2) += vT(n) * p1.row(n1);
-                            }
+                        l = l1 + l2;
+                        n = l * l + l + m1 + m2;
+                        fac1 = p1.row(n1).cwiseProduct(p2.row(n2));
+                        if (odd1 && ((l2 + m2) % 2 != 0)) {
+                            p1p2.row(n - 4 * l + 2) += fac1;
+                            p1p2.row(n - 2) -= fac1;
+                            p1p2.row(n + 2) -= fac1;
+                            fac2 = vT(n - 4 * l + 2) - vT(n - 2) - vT(n + 2);
+                            vTDp1p2Dp1.col(n1) += fac2 * p2.row(n2);
+                            vTDp1p2Dp2.col(n2) += fac2 * p1.row(n1);
+                        } else {
+                            p1p2.row(n) += fac1;
+                            vTDp1p2Dp1.col(n1) += vT(n) * p2.row(n2);
+                            vTDp1p2Dp2.col(n2) += vT(n) * p1.row(n1);
                         }
                         ++n2;
                     }
@@ -409,7 +405,7 @@ void computeA1Inv (
     Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
     solver.compute(A1);
     if (solver.info() != Eigen::Success)
-        throw errors::LinearAlgebraError(
+        throw std::runtime_error(
             "Error computing the change of basis matrix `A1Inv`.");
     Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
     A1Inv = solver.solve(I);
@@ -478,19 +474,19 @@ void computeA(
     Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
     solver.compute(A2Inv);
     if (solver.info() != Eigen::Success) {
-        throw errors::LinearAlgebraError("Error computing the change "
-                                         "of basis matrix `A2`.");
+        throw std::runtime_error("Error computing the change "
+                             "of basis matrix `A2`.");
     }
     Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
     A2 = solver.solve(I);
     if (solver.info() != Eigen::Success) {
-        throw errors::LinearAlgebraError("Error computing the change "
-                                         "of basis matrix `A2`.");
+        throw std::runtime_error("Error computing the change "
+                             "of basis matrix `A2`.");
     }
     A = solver.solve(A1);
     if (solver.info() != Eigen::Success) {
-        throw errors::LinearAlgebraError("Error computing the change "
-                                         "of basis matrix `A1`.");
+        throw std::runtime_error("Error computing the change "
+                             "of basis matrix `A1`.");
     }
 }
 
@@ -504,8 +500,7 @@ void computeU(
     int lmax, 
     const Eigen::SparseMatrix<T>& A1,
     const Eigen::SparseMatrix<T>& A, 
-    Eigen::SparseMatrix<T>& U1,
-    Eigen::SparseMatrix<T>& U, 
+    Eigen::SparseMatrix<T>& U1, 
     T norm
 ) {
     T twol, amp, lfac, lchoosek, fac0, fac;
@@ -572,15 +567,13 @@ void computeU(
     // of `A1`, we must *divide* by the normalization constant
     U0 /= norm;
 
-    // Compute U1 and U
+    // Compute U1
     Matrix<T> X(N, lmax + 1);
     X.setZero();
     for (int l = 0; l < lmax + 1; ++l)
         X(l * (l + 1), l) = 1;
     Eigen::SparseMatrix<T> XU0 = (X * U0).sparseView();
-
     U1 = A1 * XU0;
-    U = A * XU0;
 }
 
 /**
@@ -651,7 +644,10 @@ class Basis {
 
 public:
 
-    const int lmax;                                                            /**< The highest degree of the map */
+    const int ydeg;                                                            /**< The highest degree of the spherical harmonic map */
+    const int udeg;                                                            /**< The highest degree of the limb darkening map */
+    const int fdeg;                                                            /**< The highest degree of the filter map */
+    const int lmax;
     const double norm;                                                         /**< Map normalization constant */
     Eigen::SparseMatrix<T> A1;                                                 /**< The polynomial change of basis matrix */
     Eigen::SparseMatrix<T> A1Inv;                                              /**< The inverse of the polynomial change of basis matrix */
@@ -659,45 +655,40 @@ public:
     Eigen::SparseMatrix<T> A;                                                  /**< The full change of basis matrix */
     RowVector<T> rT;                                                           /**< The rotation solution vector */
     RowVector<T> rTA1;                                                         /**< The rotation vector in Ylm space */
-    RowVector<T> rTU1;                                                         /**< The rotation vector times the LD change of basis matrix */
     Eigen::SparseMatrix<T> U1;                                                 /**< The limb darkening to polynomial change of basis matrix */
-    Eigen::SparseMatrix<T> U;                                                  /**< The full limb darkening change of basis matrix */
 
     // Constructor: compute the matrices
     explicit Basis(
-        int lmax, 
+        int ydeg,
+        int udeg, 
+        int fdeg,
         T norm=2.0 / root_pi<T>() 
     ) :
-        lmax(lmax), 
+        ydeg(ydeg),
+        udeg(udeg), 
+        fdeg(fdeg),
+        lmax(ydeg + udeg + fdeg),
         norm(norm)
     {
+        // Compute the matrices
         computeA1(lmax, A1, norm);
-        computeA(lmax, A1, A2, A);
         computeA1Inv(lmax, A1, A1Inv);
+        computeA(lmax, A1, A2, A);
         computerT(lmax, rT);
         rTA1 = rT * A1;
-        computeU(lmax, A1, A, U1, U, norm);
-        rTU1 = rT * U1;
+        computeU(lmax, A1, A, U1, norm);
+
+        // Shorten U1, as we never need the full matrix
+        U1 = U1.block(0, 0, (udeg + 1) * (udeg + 1), udeg + 1);
     }
 
     // Public methods
-
-    inline void computePolyBasis ( 
-        const T& x, 
-        const T& y, 
-        RowVector<T>& basis
-    );
 
     template <typename T1, typename T2> 
     inline void computePolyBasis ( 
         const MatrixBase<T1>& x,
         const MatrixBase<T2>& y,
-        Matrix<T>& basis
-    );
-
-    inline void computePolyMatrix (
-        size_t res,
-        Matrix<T>& P
+        RowMatrix<T>& basis
     );
 
     inline void computeIlluminationMatrix (
@@ -709,68 +700,6 @@ public:
 };
 
 /**
-Compute the polynomial basis at a point.
-
-*/
-template <typename T> 
-inline void Basis<T>::computePolyBasis ( 
-    const T& x, 
-    const T& y, 
-    RowVector<T>& basis
-) {
-    T r2 = x * x + y * y;
-    if (r2 > 1) {
-        basis.setConstant(T(NAN));
-        return;
-    }
-    int N = (lmax + 1) * (lmax + 1);
-    RowVector<T> xarr(N), yarr(N);
-    T xterm = 1, yterm = 1;
-    T z = sqrt(1 - r2);
-    int i0 = 0,
-        di0 = 3,
-        j0 = 0,
-        dj0 = 2;
-    int i, j, di, dj, n;
-    for (n = 0; n < lmax + 1; ++n) {
-        i = i0;
-        di = di0;
-        xarr(i) = xterm;
-        j = j0;
-        dj = dj0;
-        yarr(j) = yterm;
-        i = i0 + di - 1;
-        j = j0 + dj - 1;
-        while (i + 1 < N) {
-            xarr(i) = xterm;
-            xarr(i + 1) = xterm;
-            di += 2;
-            i += di;
-            yarr(j) = yterm;
-            yarr(j + 1) = yterm;
-            dj += 2;
-            j += dj - 1;
-        }
-        xterm *= x;
-        i0 += 2 * n + 1;
-        di0 += 2;
-        yterm *= y;
-        j0 += 2 * (n + 1) + 1;
-        dj0 += 2;
-    }
-    n = 0;
-    for (int l = 0; l < lmax + 1; ++l) {
-        for (int m = -l; m < l + 1; ++m) {
-            if ((l + m) % 2 == 0)
-                basis(n) = xarr(n) * yarr(n);
-            else
-                basis(n) = xarr(n) * yarr(n) * z;
-            ++n;
-        }
-    }
-}
-
-/**
 Compute the polynomial basis at a vector of points.
 
 */
@@ -779,7 +708,7 @@ template <typename T1, typename T2>
 inline void Basis<T>::computePolyBasis ( 
     const MatrixBase<T1>& x,
     const MatrixBase<T2>& y,
-    Matrix<T>& basis
+    RowMatrix<T>& basis
 ) {
     int N = (lmax + 1) * (lmax + 1);
     int npts = x.cols();
@@ -831,25 +760,6 @@ inline void Basis<T>::computePolyBasis (
             ++n;
         }
     }
-}
-
-/**
-Compute the polynomial basis over the visible disk at a given
-resolution. This is effectively a change of basis matrix from spherical
-harmonic coefficients to pixel values on a grid.
-
-*/
-template <typename T>
-inline void Basis<T>::computePolyMatrix (
-    size_t res,
-    Matrix<T>& P
-) {
-    RowVector<T> pts(RowVector<T>::LinSpaced(res, -1.0, 1.0));
-    RowVector<T> y = pts.replicate(1, res);
-    Matrix<T> tmp = y.replicate(res, 1);
-    Eigen::Map<RowVector<T>> x(tmp.data(), res * res);
-    P.resize(res * res, (lmax + 1) * (lmax + 1));
-    computePolyBasis(y, x, P);
 }
 
 /**

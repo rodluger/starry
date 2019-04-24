@@ -1,65 +1,63 @@
 /**
-Evaluate the map at a given (theta, x, y) coordinate.
-Static specialization.
-
-*/  
-template <typename U=S, typename=IsDefaultOrSpectral<U>, 
-          typename=IsEmitted<U>, typename T1>
-inline void computeIntensity (
-    const Scalar& theta,
-    const Scalar& x_,
-    const Scalar& y_,
-    MatrixBase<T1> const & intensity
-){
-    computeIntensityInternal(theta, x_, y_, intensity);
-}
-
-/**
-Evaluate the map at a given (theta, x, y) coordinate.
-Temporal specialization.
-
-*/  
-template <typename U=S, typename=IsTemporal<U>, 
-          typename=IsEmitted<U>, typename T1>
-inline void computeIntensity (
-    const Scalar& t,
-    const Scalar& theta,
-    const Scalar& x_,
-    const Scalar& y_,
-    MatrixBase<T1> const & intensity
-){
-    computeTaylor(t);
-    computeIntensityInternal(theta, x_, y_, intensity);
-}
-
-/**
-Render the visible map on a square cartesian grid at given
-resolution. Static specialization.
+Compute the linear Ylm model. Basic / Spectral specialization. Emitted light.
 
 */
-template <typename U=S, typename=IsDefaultOrSpectral<U>, 
-          typename=IsEmitted<U>, typename T1>
-inline void renderMap (
-    const Scalar& theta,
-    int res,
-    MatrixBase<T1> const & intensity
-){
-    renderMapInternal(theta, res, intensity);
+template <bool CONTRACT_Y=false, typename U=S>
+inline EnableIf<!U::Reflected && !U::Temporal, void> computeLinearIntensityModel (
+    const Vector<Scalar>& theta, 
+    const RowMatrix<Scalar>& x, 
+    const RowMatrix<Scalar>& y,
+    RowMatrix<Scalar>& X
+) {
+    RowMatrix<Scalar> source; // dummy
+    computeLinearIntensityModelInternal<CONTRACT_Y>(theta, x, y, source, X);
 }
 
 /**
-Render the visible map on a square cartesian grid at given
-resolution. Temporal specialization.
+Compute the linear Ylm model. Temporal specialization. Emitted light.
 
 */
-template <typename U=S, typename=IsTemporal<U>, 
-          typename=IsEmitted<U>, typename T1>
-inline void renderMap (
-    const Scalar& t,
-    const Scalar& theta,
-    int res,
-    MatrixBase<T1> const & intensity
-){
+template <bool CONTRACT_Y=false, typename U=S>
+inline EnableIf<!U::Reflected && U::Temporal, void> computeLinearIntensityModel (
+    const Vector<Scalar>& t,
+    const Vector<Scalar>& theta, 
+    const RowMatrix<Scalar>& x, 
+    const RowMatrix<Scalar>& y,
+    RowMatrix<Scalar>& X
+) {
+    RowMatrix<Scalar> source; // dummy
     computeTaylor(t);
-    renderMapInternal(theta, res, intensity);
+    computeLinearIntensityModelInternal<CONTRACT_Y>(theta, x, y, source, X);
+}
+
+/**
+Compute the linear Ylm model. Basic / Spectral specialization. Reflected light.
+
+*/
+template <bool CONTRACT_Y=false, typename U=S>
+inline EnableIf<U::Reflected && !U::Temporal, void> computeLinearIntensityModel (
+    const Vector<Scalar>& theta, 
+    const RowMatrix<Scalar>& x, 
+    const RowMatrix<Scalar>& y,
+    const RowMatrix<Scalar>& source,
+    RowMatrix<Scalar>& X
+) {
+    computeLinearIntensityModelInternal<CONTRACT_Y>(theta, x, y, source.rowwise().normalized(), X);
+}
+
+/**
+Compute the linear Ylm model. Temporal specialization. Reflected light.
+
+*/
+template <bool CONTRACT_Y=false, typename U=S>
+inline EnableIf<U::Reflected && U::Temporal, void> computeLinearIntensityModel (
+    const Vector<Scalar>& t,
+    const Vector<Scalar>& theta, 
+    const RowMatrix<Scalar>& x, 
+    const RowMatrix<Scalar>& y,
+    const RowMatrix<Scalar>& source,
+    RowMatrix<Scalar>& X
+) {
+    computeTaylor(t);
+    computeLinearIntensityModelInternal<CONTRACT_Y>(theta, x, y, source.rowwise().normalized(), X);
 }

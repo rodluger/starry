@@ -23,15 +23,14 @@ install:
     - export CC=gcc-4.8
     - export CXX=g++-4.8
     - travis_wait 40 python setup.py develop
-    - travis_wait 40 make -C include/examples
 
 cache:
     directories:
         - $HOME/miniconda-cache
 
 script:
-    - py.test -v -s
+    - py.test -v -s tests/test_*.py
 
 after_success:
-    # DEBUG: dev --> master
-    - if [ "$TRAVIS_BRANCH" = "dev" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
+    # DEBUG: linear --> dev --> master
+    - if [ "$TRAVIS_BRANCH" = "linear" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi

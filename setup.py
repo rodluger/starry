@@ -1,28 +1,18 @@
-"""starry install script."""
+"""Install script for `starry`."""
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import sys
 import os
 import glob
 import setuptools
-__version__ = '1.0.0'
 
-# Module bits
-modules = dict(
-    _STARRY_DEFAULT_DOUBLE_=1,
-    _STARRY_DEFAULT_MULTI_=2,
-    _STARRY_SPECTRAL_DOUBLE_=4,
-    _STARRY_SPECTRAL_MULTI_=8,
-    _STARRY_TEMPORAL_DOUBLE_=16,
-    _STARRY_TEMPORAL_MULTI_=32,
-    _STARRY_DEFAULT_REFL_DOUBLE_=64,
-    _STARRY_DEFAULT_REFL_MULTI_=128,
-    _STARRY_SPECTRAL_REFL_DOUBLE_=256,
-    _STARRY_SPECTRAL_REFL_MULTI_=512,
-    _STARRY_TEMPORAL_REFL_DOUBLE_=1024,
-    _STARRY_TEMPORAL_REFL_MULTI_=2048,
-    _STARRY_EXTENSIONS_=4096
-)
+# Figure out the current version
+if sys.version_info[0] < 3:
+    import __builtin__ as builtins
+else:
+    import builtins
+builtins.__STARRY_SETUP__ = True
+from starry import __version__, modules
 
 # Custom compiler flags
 macros = dict(
@@ -38,12 +28,7 @@ macros = dict(
 # Override with user values
 for key, value in macros.items():
     macros[key] = os.getenv(key, value)
-
-# Don't compute dF/Du?
-no_dfdu = int(os.getenv('STARRY_KEEP_DFDU_AS_DFDG', 0))
-if no_dfdu:
-    macros["STARRY_KEEP_DFDU_AS_DFDG"] = 1
-
+    
 # Compiler optimization flag -O
 optimize = int(os.getenv('STARRY_O', 2))
 assert optimize in [0, 1, 2, 3], "Invalid optimization flag."
@@ -56,8 +41,9 @@ if debug:
     macros["STARRY_O"] = 0
     macros["STARRY_DEBUG"] = 1
 
-# Module bitsum (default all except extensions)
-bitsum = int(os.getenv('STARRY_BITSUM', 4095))
+# Module bitsum (default all)
+allbits = max(modules.values()) * 2 - 1
+bitsum = int(os.getenv('STARRY_BITSUM', allbits))
 
 class get_pybind_include(object):
     """
@@ -78,8 +64,8 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-def get_ext(module='starry._starry_default_double', 
-            name='_STARRY_DEFAULT_DOUBLE_'):
+def get_ext(module='starry._starry_default_ylm_double', 
+            name='_STARRY_DEFAULT_YLM_DOUBLE_'):
     include_dirs = [
         get_pybind_include(),
         get_pybind_include(user=True),
@@ -177,9 +163,10 @@ class BuildExt(build_ext):
             ext.extra_compile_args = list(opts + ext.extra_compile_args)
             ext.extra_compile_args += ["-O%d" % optimize]
             ext.extra_compile_args += ["-Wextra",
-                                       "-Wno-unused-parameter",
+                                       "-Wpedantic",
+                                       "-Wno-unused-parameter",  # DEBUG disable this
                                        "-Wno-unused-lambda-capture",
-                                       "-Wpedantic"]
+                                       "-Wno-unused-local-typedef"]
             if debug:
                 ext.extra_compile_args += ["-g"]
             else:
@@ -202,9 +189,13 @@ setup(
     license='GPL',
     packages=['starry'],
     ext_modules=ext_modules,
-    install_requires=['pybind11>=2.2'],
+    install_requires=['pybind11>=2.2', 
+                      'theano>=1.0.4'],
     cmdclass={'build_ext': BuildExt},
-    data_files=glob.glob('starry/maps/*.jpg'),
+    data_files=glob.glob('starry/img/*.jpg'),
     include_package_data=True,
     zip_safe=False,
+    extras_require={
+        'healpy':  ['healpy>=1.12.8']
+    }
 )

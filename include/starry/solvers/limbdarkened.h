@@ -1,5 +1,5 @@
 /**
-\file limbdark.h
+\file limbdarkened.h
 \brief Limb darkening utilities from Agol, Luger & Foreman-Mackey (2019).
 
 \todo Loop downward in `v` until `J[v] != 0`
@@ -12,9 +12,8 @@
 
 #include <iostream>
 #include <cmath>
-#include "utils.h"
-#include "ellip.h"
-#include "errors.h"
+#include "../utils.h"
+#include "../ellip.h"
 
 
 namespace starry {
@@ -77,13 +76,14 @@ namespace limbdark {
     of the basis in which the `P(G_n)` functions are computed.
     Also compute the derivative matrix `dg / Du`.
     
-    This is the default map case.
+    This function is templated with MBCAST to enable
+    the spectral specialization below.
 
     \todo This might be faster/cleaner as a linear operation...
 
     */
     template <typename T1, typename T2, typename T3>
-    inline void computeAgolGBasis (
+    inline void computeAgolGBasisColumn (
         MatrixBase<T1> const & u, 
         MatrixBase<T2> const & g,
         MatrixBase<T3> const & DgDu
@@ -145,6 +145,58 @@ namespace limbdark {
             MBCAST(DgDu, T3).transpose().block(0, 0, 1, N - 1) = 
                 dpdu.block(0, 1, 1, N - 1);
         }
+
+    }
+
+    /**
+    Specialization of the function above with
+    no gradient computation.
+
+    */
+    template <typename T1, typename T2>
+    inline void computeAgolGBasisColumn (
+        MatrixBase<T1> const & u, 
+        MatrixBase<T2> const & g
+    ) {
+        using Scalar = typename T1::Scalar;
+        Scalar bcoeff;
+        size_t N = u.rows();
+        Vector<Scalar> p(N);
+        p.setZero();
+
+        // Compute the p_n coefficients
+        p(0) = -u(0);
+        for (size_t i = 1; i < N; ++i) {
+            bcoeff = 1.0;
+            int sgn = 1;
+            for (size_t j = 0; j <= i; ++j) {
+                p(j) -= u(i) * bcoeff * sgn;
+                sgn *= -1;
+                bcoeff *= ((Scalar)(i - j) / (j + 1));
+            }
+        }
+
+        // Now, compute the g_n coefficients
+        for (size_t j = N - 1; j >= 2; --j) {
+            if (j >= N - 2) {
+                MBCAST(g, T2)(j) = p(j) / (j + 2);
+            } else {
+                MBCAST(g, T2)(j) = p(j) / (j + 2) + g(j + 2);
+            }
+        }
+
+        if (N >= 4) {
+            MBCAST(g, T2)(1) = p(1) + 3 * g(3);
+        } else if (N >= 2) {
+            MBCAST(g, T2)(1) = p(1);
+        }
+
+        if (N >= 3) {
+            MBCAST(g, T2)(0) = p(0) + 2 * g(2);
+        } else {
+            MBCAST(g, T2)(0) = p(0);
+        }
+
     }
 
     /**
@@ -152,7 +204,7 @@ namespace limbdark {
     of the basis in which the `P(G_n)` functions are computed.
     Also compute the derivative matrix `dg / Du`.
 
-    This is the multi-column map case.
+    This is the general case for any number of map columns.
 
     */
     template <class T>
@@ -161,11 +213,10 @@ namespace limbdark {
         Matrix<T>& g,
         Matrix<T>& DgDu
     ) {
-        int lmax = u.rows() - 1;
-        int ncol = u.cols();
-        for (int n = 0; n < ncol; ++n)
-            computeAgolGBasis(u.col(n), g.col(n), 
-                     DgDu.block(n * lmax, 0, lmax, lmax + 1));
+        computeAgolGBasisColumn(u.col(0), g.col(0), DgDu);
+        // For spectral maps, compute the remaining columns
+        for (int n = 1; n < u.cols(); ++n)
+            computeAgolGBasisColumn(u.col(n), g.col(n));
     }
 
     /**
@@ -179,7 +230,7 @@ namespace limbdark {
     Greens integral solver wrapper class. Reflected
     light specialization for limb-darkened maps. This
     class does nothing, since `starry` does not
-    implement limb darkening in reflected light.
+    implement a pure limb darkening solver in reflected light.
 
     */
     template <class T>
@@ -187,7 +238,8 @@ namespace limbdark {
     {
     public:
         explicit GreensLimbDark (
-            int lmax
+            int lmax,
+            int Nw
         ) {
             // nothing
         }
@@ -239,6 +291,12 @@ namespace limbdark {
         T Eofk;
         T Em1mKdm;
 
+        // Agol `g` basis
+        Matrix<T> u;
+        Matrix<T> g;
+        Matrix<T> DgDu;
+        RowVector<T> I0;
+
         // Helper intergrals
         RowVector<T> M;
         RowVector<T> N;
@@ -257,9 +315,14 @@ namespace limbdark {
 
         // Constructor
         explicit GreensLimbDark(
-            int lmax
+            int lmax,
+            int Nw
         ) :
             lmax(lmax),
+            u(lmax + 1, Nw),
+            g(lmax + 1, Nw),
+            DgDu(lmax, lmax + 1),
+            I0(Nw),
             M(lmax + 1),
             N(lmax + 1),
             M_coeff(4, STARRY_MN_MAX_ITER),
@@ -302,12 +365,31 @@ namespace limbdark {
 
         inline void downwardN ();
 
+        inline void computeBasis (
+            const Matrix<T>& u_
+        );
+
         template <bool GRADIENT=false>
         inline void compute (
             const T& b_, 
             const T& r_
         );
     };
+
+    template <class T>
+    inline void GreensLimbDark<T, false>::computeBasis (
+        const Matrix<T>& u_
+    ) {
+        // Simple caching
+        if (u != u_) {
+            u = u_;
+            computeAgolGBasis(u, g, DgDu);
+            if (likely(lmax > 0))
+                I0 = (pi<T>() * (g.row(0) + 2.0 * g.row(1) / 3.0)).cwiseInverse();
+            else
+                I0 = (pi<T>() * g.row(0)).cwiseInverse();
+        }
+    }
 
     /**
     The linear limb darkening flux term.
@@ -535,7 +617,7 @@ namespace limbdark {
 
         } else {
 
-            throw errors::NotImplementedError(
+            throw std::runtime_error(
                 "Downward recursion in `M` not implemented for `k^2` >= 1.");
 
         }
@@ -639,7 +721,7 @@ namespace limbdark {
             }
 
         } else {
-            throw errors::NotImplementedError(
+            throw std::runtime_error(
                 "Downward recursion in `N` not implemented for `k^2` >= 1.");
         }
 
