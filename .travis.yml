@@ -32,5 +32,5 @@ script:
     - py.test -v -s tests/test_*.py
 
 after_success:
-    # DEBUG: linear --> dev --> master
-    - if [ "$TRAVIS_BRANCH" = "linear" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
+    # DEBUG: Change from dev --> master when merging
+    - if [ "$TRAVIS_BRANCH" = "dev" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi

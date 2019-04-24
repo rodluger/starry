@@ -196,6 +196,8 @@ setup(
     include_package_data=True,
     zip_safe=False,
     extras_require={
-        'healpy':  ['healpy>=1.12.8']
+        'healpy':  ['healpy>=1.12.8'],
+        'exoplanet': ['exoplanet>=0.1.4'],
+        'pymc3': ['pymc3>=3.6']
     }
 )
