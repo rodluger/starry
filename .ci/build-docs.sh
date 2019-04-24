@@ -17,7 +17,7 @@ rev=$(git rev-parse --short HEAD)
 STARRY_VERSION=$(python -c "import starry; print('v' + starry.__version__)")
 
 # Go to the html build
-cd $TRAVIS_BUILD_DIR/docs/_build/
+cd $TRAVIS_BUILD_DIR/docs/.build/
 
 # Clone the `gh-pages` branch
 mkdir gh-pages
