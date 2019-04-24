@@ -26,6 +26,7 @@ git clone -b gh-pages --single-branch https://github.com/rodluger/starry.git .
 
 # Reset git tracking & update the current version's docs
 rm -rf .git
+mkdir -p $STARRY_VERSION
 rm -rf $STARRY_VERSION/*
 mv ../html/* $STARRY_VERSION/
 
