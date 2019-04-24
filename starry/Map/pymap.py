@@ -6,6 +6,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from ..extensions import RAxisAngle
 from .sht import image2map, healpix2map, array2map
 from IPython.display import HTML
+from scipy.optimize import minimize
 
 
 __all__ = ["PythonMapBase"]
@@ -18,6 +19,10 @@ class PythonMapBase(object):
     .. automethod:: flux(*args, **kwargs)
     .. automethod:: __call__(*args, **kwargs)
     .. automethod:: load(image, ydeg=None, healpix=False, col=None, **kwargs)
+    .. automethod:: align
+    .. automethod:: max
+    .. automethod:: min
+    .. automethod:: is_physical
     """
 
     @staticmethod
@@ -48,7 +53,8 @@ class PythonMapBase(object):
             "        calculations? Default :py:obj:`False`. If :py:obj:`True`, " +
             "        defaults to 32-digit (approximately 128-bit) floating " +
             "        point precision. This can be adjusted by changing the " +
-            "        :py:obj:`STARRY_NMULTI` compiler macro.\n\n")
+            "        :py:obj:`STARRY_NMULTI` compiler macro.\n\n"
+        )
 
     def render(self, theta=0, res=300, projection="ortho", **kwargs):
         """
@@ -152,10 +158,13 @@ class PythonMapBase(object):
 
         if projection == "rect":
 
-            # Disable limb darkening
+            # Disable limb darkening & filter
             if self.udeg:
                 u_copy = np.array(self[1:])
                 self[1:] = 0
+            if self.fdeg:
+                f_copy = np.array(self.filter[:, :])
+                self.filter[:, :] = 0
 
             # Generate the lat/lon grid for one hemisphere
             lon = np.linspace(-np.pi, np.pi, res)
@@ -220,9 +229,11 @@ class PythonMapBase(object):
             self.rotate(-alpha)
             self.axis = map_axis
 
-            # Re-enable limb darkening
+            # Re-enable limb darkening & filter
             if self.udeg:
                 self[1:] = u_copy
+            if self.fdeg:
+                self.filter[:, :] = f_copy
 
         else:
 
@@ -525,7 +536,7 @@ class PythonMapBase(object):
 
         """
         return self.intensity(*args, **kwargs)
-    
+
     def load(self, image, ydeg=None, healpix=False, col=None, **kwargs):
         """
         Load an image, array, or :py:obj:`healpix` map. 
@@ -593,24 +604,132 @@ class PythonMapBase(object):
             self[1:, :] = 0
             self[:ydeg + 1, :] = y
     
-    def project(self):
+    def align(self, source=None, dest=None):
         """
-        TODO: NOT A PERMANENT SOLUTION...
+        Rotate the map to align the :py:obj:`source` point/axis with the
+        :py:obj:`dest` point/axis.
+
+        The standard way of rotating maps in :py:obj:`starry` is to
+        provide the axis and angle of rotation, but this isn't always
+        convenient. In some cases, it is easier to specify a source
+        point/axis and a destination point/axis, and rotate the map such that the
+        source aligns with the destination. This is particularly useful for
+        changing map projections. For instance, to view the map pole-on,
+
+        .. code-block:: python
+
+            map.align(source=map.axis, dest=[0, 0, 1])
+
+        This rotates the map axis to align with the z-axis, which points
+        toward the observer.
+
+        Args:
+            source (ndarray): A unit vector describing the source position. \
+                This point will be rotated onto :py:obj:`dest`. Default \
+                is the current map axis.
+            dest (ndarray): A unit vector describing the destination position. \
+                The :py:obj:`source` point will be rotated onto this point. Default \
+                is the current map axis.
 
         """
-        axis = np.array(self.axis)
-        theta = np.arccos(np.dot([0, 1, 0], axis)) * 180 / np.pi
-        self.axis = np.cross([0, 1, 0], axis)
-        self.rotate(theta)
-        self.axis = axis
+        if source is None:
+            source = self.axis
+        if dest is None:
+            dest = self.axis
+        self.rotate(axis=np.cross(source, dest), 
+                    theta=np.arccos(np.dot(source, dest)) * 180 / np.pi)
     
-    def deproject(self):
+    def _extremum(self, minimum=True):
         """
-        TODO: NOT A PERMANENT SOLUTION...
+        Find a global extremum of the map.
 
+        .. todo:: Speed this up with gradients and remove the overhead \
+            of calling `linear_model` every time. Set up unit tests for \
+            this method.
         """
-        axis = np.array(self.axis)
-        theta = np.arccos(np.dot([0, 1, 0], axis)) * 180 / np.pi
-        self.axis = np.cross([0, 1, 0], axis)
-        self.rotate(-theta)
-        self.axis = axis
+        # Keep the minimizer on the unit disk
+        cons = [{'type': 'ineq', 
+                 'fun':  lambda x: 1 - x[0] ** 2 - x[1] ** 2}]
+        
+        # Start in the center
+        x0 = [0, 0]
+
+        # The objective function
+        if minimum:
+            def func(x, theta):
+                # Beware the caching!
+                return np.float64(self(theta=theta, x=x[0], y=x[1]))
+        else:
+            def func(x, theta):
+                # Beware the caching!
+                return -np.float64(self(theta=theta, x=x[0], y=x[1]))
+
+        # Disable limb darkening & filter
+        if self.udeg:
+            u_copy = np.array(self[1:])
+            self[1:] = 0
+        if self.fdeg:
+            f_copy = np.array(self.filter[:, :])
+            self.filter[:, :] = 0
+
+        # Front side, then back side
+        res_f = minimize(func, x0, args=(0))
+        res_b = minimize(func, x0, args=(180))
+        
+        # Re-enable limb darkening & filter
+        if self.udeg:
+            self[1:] = u_copy
+        if self.fdeg:
+            self.filter[:, :] = f_copy
+
+        # Return the extremum
+        if minimum:
+            return min(res_f.fun, res_b.fun)
+        else:
+            return max(res_f.fun, res_b.fun)
+
+    def min(self, **kwargs):
+        """
+        Return the global minimum of the intensity.
+
+        This routine uses `scipy.optimize.minimize` to attempt to find
+        the global minimum. Note that both the limb darkening and the
+        multiplicative filter are disabled for this method.
+
+        .. warning:: This routine is not yet optimized and has not been \
+            fully tested. It may be \
+            unnecessarily slow and may not always find the global \
+            minimum. This will be fixed in an upcoming version of the code.
+        """
+        return self._extremum(True)
+    
+    def max(self):
+        """
+        Return the global maximum of the intensity.
+
+        This routine uses `scipy.optimize.minimize` to attempt to find
+        the global maximum. Note that both the limb darkening and the
+        multiplicative filter are disabled for this method.
+
+        .. warning:: This routine is not yet optimized and has not been \
+            fully tested. It may be \
+            unnecessarily slow and may not always find the global \
+            maximum. This will be fixed in an upcoming version of the code.
+        """
+        return self._extremum(False)
+    
+    def is_physical(self):
+        """
+        Returns :py:obj:`True` if the map intensity is non-negative
+        everywhere. 
+        
+        This routine uses `scipy.optimize.minimize` to attempt to find
+        the global minimum. Note that both the limb darkening and the
+        multiplicative filter are ignored.
+
+        .. warning:: This routine is not yet optimized and has not been \
+            fully tested. It may be \
+            unnecessarily slow and may not always find the global \
+            minimum. This will be fixed in an upcoming version of the code.
+        """
+        return self.min() >= 0

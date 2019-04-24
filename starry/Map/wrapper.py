@@ -2,6 +2,7 @@
 from .pymap import PythonMapBase
 from .filter import FilterBase
 from .doppler import DopplerBase
+from .deprecated import DeprecationBase
 from .. import modules
 
 
@@ -75,7 +76,7 @@ def Map(ydeg, udeg=0, fdeg=0, **kwargs):
     import_by_name('%s_%s_%s' % (kind, flag, dtype))
 
     # Figure out the base classes
-    bases = (PythonMapBase, CMapBase,)
+    bases = (PythonMapBase, CMapBase, DeprecationBase)
     if (fdeg > 0) and not limbdarkened:
         bases = (FilterBase,) + bases
 
@@ -135,7 +136,7 @@ def DopplerMap(ydeg=0, udeg=0, **kwargs):
     import_by_name('%s_ylm_%s' % (kind, dtype))
 
     # Figure out the base classes
-    bases = (DopplerBase, PythonMapBase, CMapBase,)
+    bases = (DopplerBase, PythonMapBase, CMapBase, DeprecationBase)
 
     # Subclass it
     class DopplerMap(*bases):
