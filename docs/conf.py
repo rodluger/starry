@@ -18,6 +18,7 @@
 
 import sys
 import os
+import shutil
 import shlex
 import subprocess
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
@@ -26,8 +27,12 @@ sys.path.insert(0, os.path.abspath('.'))
 import sphinx_rtd_theme
 import re
 import numpy as np
+import glob
+import json
 import starry
 
+
+# -- Custom hacks -------------------------------------------------------------
 
 def sort_props(doc):
     """Sort the attributes and methods in a docstring."""
@@ -38,15 +43,56 @@ def sort_props(doc):
     props = "\n".join(props)
     return props
 
-
 # Hack: instantiate some Maps to fudge their docstrings
 map = starry.Map(ydeg=1, udeg=1, fdeg=1)
 starry.Map = type('Map', map.__class__.__bases__, dict(map.__class__.__dict__))
 starry.Map.__doc__ = starry.Map.__descr__() + sort_props(starry.Map.__doc__)
-
 map = starry.DopplerMap(ydeg=1, udeg=1)
-starry.DopplerMap = type('DopplerMap', map.__class__.__bases__, dict(map.__class__.__dict__))
-starry.DopplerMap.__doc__ = starry.DopplerMap.__descr__() + sort_props(starry.DopplerMap.__doc__)
+starry.DopplerMap = type('DopplerMap', map.__class__.__bases__, 
+                         dict(map.__class__.__dict__))
+starry.DopplerMap.__doc__ = starry.DopplerMap.__descr__() + \
+    sort_props(starry.DopplerMap.__doc__)
+
+# Hack: copy over the notebooks containing a `tutorial` flag to a subfolder
+if not os.path.exists("notebooks"):
+    os.mkdir("notebooks")
+for file in glob.glob("../notebooks/*"):
+    if file.endswith(".ipynb"):
+        with open(file, "r") as f:
+            obj = json.load(f)
+            if obj['cells'][0]['metadata'].get('tutorial', False):
+                shutil.copy(file, "notebooks/")
+    elif file.endswith(".gif"):
+        # Copy gifs directly to the build dir
+        for path in [".build", ".build/html", ".build/html/notebooks"]:
+            if not os.path.exists(path):
+                os.mkdir(path)
+        shutil.copy(file, ".build/html/notebooks/")
+
+# Hack: Update the current version number in Doxygen
+with open("Doxyfile", "r") as f:
+    file = f.read()
+file = re.sub('PROJECT_NUMBER\s*?= "(.*?)"\n', 
+              'PROJECT_NUMBER = "%s"\n' % starry.__version__, file)
+with open("Doxyfile", "w") as f:
+    print(file, file=f)
+
+# Hack: Update the commit and branch in the Sphinx footer
+commit = os.getenv("TRAVIS_COMMIT", "unknown")
+commit_url = "https://github.com/rodluger/starry/tree/%s" % commit
+branch_name = os.getenv("TRAVIS_BRANCH", "unknown")
+branch_url = "https://github.com/rodluger/starry/tree/%s" % branch_name
+with open("sphinx_rtd_theme/static/js/theme.js", "r") as f:
+    file = f.read()
+file = re.sub('var commit_url = "(.*?)";\n', 
+              'var commit_url = "%s";\n' % commit_url, file)
+file = re.sub('var branch_url = "(.*?)";\n', 
+              'var branch_url = "%s";\n' % branch_url, file)
+file = re.sub('var branch_name = "(.*?)";\n', 
+              'var branch_name = "%s";\n' % branch_name, file)
+with open("sphinx_rtd_theme/static/js/theme.js", "w") as f:
+    print(file, file=f)
+
 
 # -- Project information -----------------------------------------------------
 
@@ -89,7 +135,7 @@ html_extra_path = ['.doxyxml/']
 nbsphinx_prolog = """
 {% set docname = env.doc2path(env.docname, base=None) %}
 
-.. note:: This tutorial was generated from an Jupyter notebook that can be
+.. note:: This tutorial was generated from a Jupyter notebook that can be
           downloaded `here <https://github.com/rodluger/starry/blob/master/docs/{{ docname }}>`_.
 """
 

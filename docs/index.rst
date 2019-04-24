@@ -24,5 +24,11 @@ API, and more.
 .. toctree::
    :maxdepth: 1
 
+    Installation <install>    
+    Changelog <changelog>
+    Examples & tutorials <tutorials>
     Python API <api>
     C++ API <html/index.html#://>
+    Github <https://github.com/rodluger/starry>
+    Submit an issue <https://github.com/rodluger/starry/issues>
+    Read the paper <http://adsabs.harvard.edu/abs/2019AJ....157...64L>

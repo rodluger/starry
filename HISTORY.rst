@@ -3,7 +3,7 @@
 1.0.0 (????-??-??)
 ++++++++++++++++++
 
-- Currently working on this release on the `v2` branch.
+- Currently working on this release on the `dev` branch. Stay tuned.
 
 0.3.0 (2018-12-30)
 ++++++++++++++++++
