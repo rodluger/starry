@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+This module provides custom extensions to :py:obj:`starry`.
+
+.. autofunction:: MAP
+.. autofunction:: log_likelihood
+.. autofunction:: RAxisAngle(axis, angle)
+
+"""
+
 import numpy as np
 from scipy.linalg import cho_factor, cho_solve
 from . import modules
@@ -6,32 +15,54 @@ try:
     from ._starry_extensions import RAxisAngle
 except ImportError:
     def RAxisAngle(*args, **kwargs):
-        bit = modules["_STARRY_EXTENSIONS_"]
+        bit = modules["_STXRRY_EXTENSIONS_"]
         raise ModuleNotFoundError("Please re-compile `starry` " + 
                                   "with bit %d enabled." % bit)
 
 
-def MAP(A, L, C, flux, return_cov=False, return_cho_W=False):
+def MAP(X, L, C, flux, return_cov=False, return_cho_W=False):
     """
+    Compute the maximum a posteriori (MAP) prediction for the
+    spherical harmonic coefficients of a map given a flux timeseries.
+
+    Args:
+        X (ndarray): The design matrix returned by \
+            :py:meth:`Map.linear_flux_model`, shape (ntime, nregressors).
+        L: The prior covariance of the spherical harmonic coefficients. \
+            This may be a scalar, a vector, a matrix, or the Cholesky \
+            factorization of the covariance matrix (a tuple returned by \
+            :py:obj:`scipy.linalg.cho_factor`).
+        C: The data covariance. This may be a scalar, a vector, a matrix, \
+            or the Cholesky factorization of the covariance matrix (a tuple \
+            returned by :py:obj:`scipy.linalg.cho_factor`).
+        flux (ndarray): The flux timeseries.
+        return_cov (bool): Return the covariance matrix of the solution? Default :py:obj:`False`.
+        return_cho_W (bool): Return the Cholesky factorization of the \
+            quantity :math:`W = X^T C^{-1} X + L^{-1}`? Default :py:obj:`False`.
+
+    Returns:
+        The vector of spherical harmonic coefficients corresponding to the
+        MAP solution, and optionally the covariance of the solution and the
+        Cholesky factorization of :math:`W` (see above).
 
     """
-    nt, nr = A.shape
+    nt, nr = X.shape
     assert flux.shape == (nt,), "Invalid shape for `flux`."
     
-    # Compute C^-1 . A
+    # Compute C^-1 . X
     if type(C) is tuple:
-        CInvA = cho_solve(C, A)
+        CInvX = cho_solve(C, X)
     elif not hasattr(C, "__len__"):
-        CInvA = (1.0 / C) * A
+        CInvX = (1.0 / C) * X
     elif C.shape == (1,):
-        CInvA = (1.0 / C[0]) * A
+        CInvX = (1.0 / C[0]) * X
     elif (C.shape == (nt,)):
-        CInvA = (1.0 / C)[:, None] * A
+        CInvX = (1.0 / C)[:, None] * X
     elif (C.shape == (nt, nt)):
-        CInvA = np.linalg.solve(C, A)
+        CInvX = np.linalg.solve(C, X)
 
-    # Compute W = A^T . C^-1 . A + L^-1
-    W = np.dot(A.T, CInvA)
+    # Compute W = X^T . C^-1 . X + L^-1
+    W = np.dot(X.T, CInvX)
     if type(L) is tuple:
         W += cho_solve(L, np.eye(nr))
     elif not hasattr(L, "__len__"):
@@ -47,10 +78,10 @@ def MAP(A, L, C, flux, return_cov=False, return_cho_W=False):
 
     # Compute the max like y and its covariance matrix
     cho_W = cho_factor(W)
-    M = cho_solve(cho_W, CInvA.T)
+    M = cho_solve(cho_W, CInvX.T)
     yhat = np.dot(M, flux)
     if return_cov:
-        yvar = cho_solve(W, np.eye(nr))
+        yvar = cho_solve(cho_W, np.eye(nr))
         if return_cho_W:
             return yhat, yvar, cho_W
         else:
@@ -62,16 +93,38 @@ def MAP(A, L, C, flux, return_cov=False, return_cho_W=False):
             return yhat
     
 
-def likelihood(A, L, C, flux, yhat=None):
+def log_likelihood(X, L, C, flux, yhat=None):
     """
+    Compute the log likelihood of the linear model given
+    a flux timeseries.
+
+    Args:
+        X (ndarray): The design matrix returned by \
+            :py:meth:`Map.linear_flux_model`, shape (ntime, nregressors).
+        L: The prior covariance of the spherical harmonic coefficients. \
+            This may be a scalar, a vector, a matrix, or the Cholesky \
+            factorization of the covariance matrix (a tuple returned by \
+            :py:obj:`scipy.linalg.cho_factor`).
+        C: The data covariance. This may be a scalar, a vector, a matrix, \
+            or the Cholesky factorization of the covariance matrix (a tuple \
+            returned by :py:obj:`scipy.linalg.cho_factor`).
+        flux (ndarray): The flux timeseries.
+        yhat (ndarray): If not :py:obj:`None`, computes the log likelihood \
+            of the model specified by the spherical harmonic vector :py:obj:`yhat`. If \
+            :py:obj:`yhat` is not provided, instead computes the *marginal \
+            log likelihood* of the model, marginalizing over all values \
+            of :py:obj:`yhat`.
+
+    Returns: 
+        The log likelihood (optionally the marginal log likelihood), a scalar.
 
     """
     # Infer shapes
-    nt, nr = A.shape
+    nt, nr = X.shape
 
     # If `yhat` is not provided, compute the *marginal* likelihood
     if yhat is None:
-        yhat, cho_W = MAP(A, L, C, flux, return_cho_W=True)
+        yhat, cho_W = MAP(X, L, C, flux, return_cho_W=True)
         logL = -np.sum(np.log(np.diag(cho_W[0])))
     else:
         logL = 0.0
@@ -81,7 +134,7 @@ def likelihood(A, L, C, flux, yhat=None):
     assert yhat.shape == (nr,), "Invalid shape for `yhat`."
 
     # Residual vector
-    model = np.dot(A, yhat)
+    model = np.dot(X, yhat)
     r = flux - model
 
     # Data likelihood
@@ -130,30 +183,3 @@ def likelihood(A, L, C, flux, yhat=None):
             raise ValueError("One of the matrices has the wrong shape.")
     
     return logL
-
-
-if __name__ == "__main__":
-    # TODO: Make this into a unit test.
-    nt = 10
-    nr = 5
-    A = np.random.randn(nt, nr)
-    flux = np.random.randn(nt)
-    C = 1.0
-    L = 1.0
-    yhat, yvar = MAP(A, L, C, flux)
-
-    yhat_, yvar_ = MAP(A, np.ones(nr) * L, C, flux)
-    assert np.allclose(yhat, yhat_)
-    assert np.allclose(yvar, yvar_)
-
-    yhat_, yvar_ = MAP(A, np.diag(np.ones(nr) * L), C, flux)
-    assert np.allclose(yhat, yhat_)
-    assert np.allclose(yvar, yvar_)
-
-    yhat_, yvar_ = MAP(A, L, np.ones(nt) * C, flux)
-    assert np.allclose(yhat, yhat_)
-    assert np.allclose(yvar, yvar_)
-
-    yhat_, yvar_ = MAP(A, L, np.diag(np.ones(nt)) * C, flux)
-    assert np.allclose(yhat, yhat_)
-    assert np.allclose(yvar, yvar_)

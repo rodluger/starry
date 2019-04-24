@@ -523,14 +523,14 @@ PYBIND11_MODULE(
                 PyMap.def("intensity", linear_intensity_model<T, true>(),
                           "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
                           "source"_a=-xhat<double>(), 
-                          docstrings::Map::linear_intensity_model);
+                          docstrings::Map::intensity);
 #          else
                 PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
                           "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
                           docstrings::Map::linear_intensity_model);
                 PyMap.def("intensity", linear_intensity_model<T, true>(),
                           "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                          docstrings::Map::linear_intensity_model);
+                          docstrings::Map::intensity);
 #          endif
 #      else
 #          if defined(_STARRY_REFLECTED_)
@@ -541,14 +541,14 @@ PYBIND11_MODULE(
                 PyMap.def("intensity", linear_intensity_model<T, true>(),
                           "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
                           "source"_a=-xhat<double>(), 
-                          docstrings::Map::linear_intensity_model);
+                          docstrings::Map::intensity);
 #          else
                 PyMap.def("linear_intensity_model", linear_intensity_model<T>(), 
                           "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
                           docstrings::Map::linear_intensity_model);
                 PyMap.def("intensity", linear_intensity_model<T, true>(), 
                           "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                          docstrings::Map::linear_intensity_model);
+                          docstrings::Map::intensity);
 #          endif
 #      endif
 

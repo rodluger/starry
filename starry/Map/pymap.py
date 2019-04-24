@@ -52,7 +52,27 @@ class PythonMapBase(object):
 
     def render(self, theta=0, res=300, projection="ortho", **kwargs):
         """
+        Render the map on a grid and return the pixel intensities as a 
+        two-dimensional array (with time as an optional third dimension).
 
+        Args:
+            theta (float): Angle of rotation of the map in degrees. Default 0.
+            res (int): Map resolution, corresponding to the number of pixels \
+                on a side (for the orthographic projection) or the number of \
+                pixels in latitude (for the rectangular projection; the number \
+                of pixels in longitude is twice this value). Default 300.
+            projection (str): One of "orthographic" or "rectangular". The former \
+                results in a map of the disk as seen on the plane of the sky, \
+                padded by :py:obj:`NaN` outside of the disk. The latter results \
+                in an equirectangular (geographic, equidistant cylindrical) \
+                view of the entire surface of the map in latitude-longitude space. \
+                Default "orthographic".
+            t (float or ndarray): The time(s) at which to evaluate the map. \
+                *Temporal maps only*. Default 0.
+            source (ndarray): A unit vector corresponding to the direction to the \
+                light source. This may optionally be a vector of unit vectors. \
+                *Reflected light maps only*. Default :math:`-\hat{x}`.
+            
         """
         # Type-specific kwargs
         if projection.lower().startswith("rect"):
@@ -221,6 +241,26 @@ class PythonMapBase(object):
     def show(self, Z=None, cmap="plasma", projection="ortho", 
              grid=True, **kwargs):
         """
+        Render and plot an image of the map; optionally display an animation.
+
+        If running in a Jupyter Notebook, animations will be displayed
+        in the notebook using javascript.
+        Refer to the docstring of :py:meth:`render` for additional kwargs
+        accepted by this method.
+
+        Args:
+            Z (ndarray): The array of pixel intensities returned by a call \
+                to :py:meth:`render`. Default :py:obj:`None`, in which case \
+                this routine will call :py:meth:`render` with any additional \
+                kwargs provided by the user.
+            cmap: The colormap used for plotting (a string or a \
+                :py:obj:`matplotlib` colormap object). Default "plasma".
+            grid (bool): Overplot static grid lines? Default :py:obj:`True`.
+            interval (int): Interval in ms between frames (animated maps only). \
+                Default 75.
+            mp4 (str): Name of the mp4 file to save the animation to \
+                (animated maps only). Default :py:obj:`None`.
+            kwargs: Any additional kwargs accepted by :py:meth:`render`.
 
         """
         # Render the map
@@ -324,7 +364,9 @@ class PythonMapBase(object):
                     else:
                         # Rotate by the inclination
                         R = RAxisAngle([1, 0, 0], 90 - self.inc)
-                        v = np.vstack((x.reshape(1, -1), y.reshape(1, -1), z.reshape(1, -1)))
+                        v = np.vstack((x.reshape(1, -1), 
+                                       y.reshape(1, -1), 
+                                       z.reshape(1, -1)))
                         x, y1, _ = np.dot(R, v)
                         v[2] *= -1
                         _, y2, _ = np.dot(R, v)
@@ -392,7 +434,44 @@ class PythonMapBase(object):
 
     def flux(self, *args, **kwargs):
         """
-        .. note:: If limb darkened, call sequence is different.
+        Compute the flux visible from the map.
+
+        Args:
+            t (float or ndarray): Time at which to evaluate. Default 0. \
+                *Temporal maps only.*
+            theta (float or ndarray): Angle of rotation. Default 0. \
+                *Not available for pure limb darkening.*
+            xo (float or ndarray): The :py:obj:`x` position of the \
+                occultor (if any). Default 0. \
+                *Not available for pure limb darkening.*
+            yo (float or ndarray): The :py:obj:`y` position of the \
+                occultor (if any). Default 0. \
+                *Not available for pure limb darkening.*
+            zo (float or ndarray): The :py:obj:`z` position of the \
+                occultor (if any). Default 1.0 (on the side closest to \
+                the observer).
+            b (float or ndarray): The impact parameter of the \
+                occultor. Default 0. *Purely limb-darkened maps only.*
+            ro (float): The radius of the occultor in units of this \
+                body's radius. Default 0 (no occultation).
+            gradient (bool): Compute and return the gradient of the \
+                flux as well? Default :py:obj:`False`.
+            source (ndarray): The source position, a unit vector or a
+                vector of unit vectors. Default :math:`-\hat{x} = (-1, 0, 0)`.
+                *Reflected light maps only.*
+
+        Returns:
+            A vector of fluxes. If :py:obj:`gradient` is enabled, also returns a \
+            dictionary whose keys are the derivatives of `flux` with respect \
+            to all model parameters.
+
+        .. note:: As noted above, the call sequence for this is different if \
+            the map is purely limb-darkened (purely limb-darkened \
+            maps are those with :py:obj:`ydeg = 0`, :py:obj:`fdeg = 0`, \
+            and :py:obj:`udeg > 0`). In this case, rather than providing the \
+            :py:obj:`x` and :py:obj:`y` positions of the occultor, the user \
+            should only provide the impact paramter :py:obj:`b` (since the \
+            map is invariant to rotations about the line of sight).
 
         """
         # This is already implemented for limb-darkened maps
@@ -427,12 +506,61 @@ class PythonMapBase(object):
 
     def __call__(self, *args, **kwargs):
         """
+        Return the intensity of the map at a point or on a grid of surface points.
+
+        Args:
+            t (float or ndarray): Time at which to evaluate. Default 0. \
+                *Temporal maps only.*
+            theta (float or ndarray): Angle of rotation. Default 0.
+            x (float or ndarray): The :py:obj:`x` position on the \
+                surface. Default 0.
+            y (float or ndarray): The :py:obj:`y` position on the \
+                surface. Default 0.
+            source (ndarray): The source position, a unit vector or a
+                vector of unit vectors. Default :math:`-\hat{x} = (-1, 0, 0)`.
+                *Reflected light maps only.*
+
+        Returns:
+            A vector of intensities at the corresponding surface point(s).
 
         """
         return self.intensity(*args, **kwargs)
     
     def load(self, image, ydeg=None, healpix=False, col=None, **kwargs):
-        """Load an image, array, or healpix map."""
+        """
+        Load an image, array, or :py:obj:`healpix` map. 
+        
+        This routine uses
+        various routines in :py:obj:`healpix` to compute the spherical
+        harmonic expansion of the input image and sets the map's :py:attr:`y`
+        coefficients accordingly.
+
+        Args:
+            image: A path to an image file, a two-dimensional :py:obj:`numpy` \
+                array, or a :py:obj:`healpix` map array \
+                (if :py:obj:`healpix = True`).
+            ydeg (int): The degree of the spherical harmonic expansion of the \
+                image. Default :py:obj:`None`, in which case the expansion is \
+                performed up to :py:obj:`self.ydeg`.
+            healpix (bool): Treat :py:obj:`image` as a :py:obj:`healpix` array? \
+                Default :py:obj:`False`.
+            col: The map column into which the image will be loaded. Can be \
+                an :py:obj:`int`, :py:obj:`slice`, or :py:obj:`None`. \
+                Default :py:obj:`None`, in which case the image is loaded into \
+                the first map column. This option is ignored for scalar maps.
+            sampling_factor (int): Oversampling factor when computing the \
+                :py:obj:`healpix` representation of an input image or array. \
+                Default 8. Increasing this number may improve the fidelity of \
+                the expanded map, but the calculation will take longer.
+            sigma (float): If not :py:obj:`None`, apply gaussian smoothing \
+                with standard deviation :py:obj:`sigma` to smooth over \
+                spurious ringing features. Smoothing is performed with \
+                the :py:obj:`healpix.sphtfunc.smoothalm` method. \
+                Default :py:obj:`None`.
+
+        .. note:: Method not available for purely limb-darkened maps.
+        
+        """
         if self._limbdarkened:
             raise NotImplementedError("The `load` method is not " + 
                                       "implemented for limb-darkened maps.")

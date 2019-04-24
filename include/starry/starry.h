@@ -7,7 +7,9 @@
 /**
 \mainpage starry documentation
 
-Welcome to the starry C++ API documentation.
+Welcome to the starry C++ API documentation. This
+page is still under development, and docstrings are
+still missing for several routines.
 
 */
 

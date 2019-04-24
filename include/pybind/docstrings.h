@@ -109,8 +109,8 @@ namespace Map {
 
         .. code-block:: python
 
-            map[1] = 0.5            # Set the u_1 limb darkening coefficient
-            map[1:] = [...]         # Set all limb darkening coefficients
+            map[1] = 0.5               # Set the u_1 limb darkening coefficient
+            map[1:] = [...]            # Set all limb darkening coefficients
         
         For a spectral or temporal map, an extra index must be provided.
         For example:
@@ -124,15 +124,15 @@ namespace Map {
 
         .. code-block:: python
 
-            map[1, 0] = 0.5         # Set the u_{1,0} limb darkening coefficient
-            map[1:, :] = [...]      # Set all limb darkening coefficients
+            map[1, 0] = 0.5            # Set the u_{1,0} limb darkening coefficient
+            map[1:, :] = [...]         # Set all limb darkening coefficients
 
     )pbdoc";
 
     const char* getitem = R"pbdoc(
         Retrieve a spherical harmonic or limb darkening coefficient or
         array of coefficients. Indexing is the same as in the :py:meth:`__setitem__`
-        method above.
+        method.
 
         Returns:
             A spherical harmonic or limb darkening coefficient, or an array \
@@ -176,19 +176,22 @@ namespace Map {
     const char* axis = R"pbdoc(
         A *normalized* unit vector specifying the default axis of
         rotation for the map. Default :math:`\hat{y} = (0, 1, 0)`.
-        *Not available for purely limb-darkened maps.*
+        
+        .. note:: Attribute not available for purely limb-darkened maps.
     )pbdoc";
 
     const char* inc = R"pbdoc(
         The inclination of the map in degrees. 
         Setting this value overrides :py:attr:`axis`. Default :math:`90^\circ`.
-        *Not available for purely limb-darkened maps.*
+        
+        .. note:: Attribute not available for purely limb-darkened maps.
     )pbdoc";
 
     const char* obl = R"pbdoc(
         The obliquity of the map in degrees. 
         Setting this value overrides :py:attr:`axis`. Default :math:`0^\circ`.
-        *Not available for purely limb-darkened maps.*
+        
+        .. note:: Attribute not available for purely limb-darkened maps.
     )pbdoc";
 
     const char* rotate = R"pbdoc(
@@ -196,13 +199,14 @@ namespace Map {
         This performs a permanent rotation to the base map. Subsequent
         rotations and calculations will be performed relative to this
         rotational state.
-        *Not available for purely limb-darkened maps.*
-
+        
         Args:
             theta (float): Angle of rotation in degrees. \
                 Default 0.
             axis (ndarray): Axis of rotation. \
                 Default is the current map axis.
+
+        .. note:: Method not available for purely limb-darkened maps.
 
     )pbdoc";
 
@@ -213,7 +217,6 @@ namespace Map {
         constrained to the surface of the sphere. This is useful for, say,
         modeling star spots or other discrete, localized features on a
         body's surface.
-        *Not available for purely limb-darkened maps.*
 
         Args:
             amp (float or ndarray): The amplitude. Default 1.0, resulting \
@@ -226,6 +229,9 @@ namespace Map {
                 in degrees. Default 0.
             lon (float): The longitude of the center of the gaussian \
                 in degrees. Default 0.
+
+        .. note:: Method not available for purely limb-darkened maps.
+
         )pbdoc";
 
     const char* random = R"pbdoc(
@@ -238,6 +244,9 @@ namespace Map {
             col (int): The map column into which the random map will be placed.\
                 Default :py:obj:`None` (in which case the map is replicated into all \
                 columns). *Spectral / temporal maps only.*
+        
+        .. note:: Method not available for purely limb-darkened maps.
+
     )pbdoc";
 
     const char* linear_intensity_model = R"pbdoc(
@@ -260,6 +269,28 @@ namespace Map {
             A matrix `X`. When `X` is dotted into a spherical harmonic \
             vector `y`, the result is the vector of intensities at the
             corresponding surface points.
+
+        .. note:: Method not available for purely limb-darkened maps.
+
+    )pbdoc";
+
+    const char* intensity = R"pbdoc(
+        Return the intensity of the map at a point or on a grid of surface points.
+
+        Args:
+            t (float or ndarray): Time at which to evaluate. Default 0. \
+                *Temporal maps only.*
+            theta (float or ndarray): Angle of rotation. Default 0.
+            x (float or ndarray): The :py:obj:`x` position on the \
+                surface. Default 0.
+            y (float or ndarray): The :py:obj:`y` position on the \
+                surface. Default 0.
+            source (ndarray): The source position, a unit vector or a
+                vector of unit vectors. Default :math:`-\hat{x} = (-1, 0, 0)`.
+                *Reflected light maps only.*
+
+        Returns:
+            A vector of intensities at the corresponding surface point(s).
 
     )pbdoc";
 
@@ -293,6 +324,8 @@ namespace Map {
             dictionary whose keys are the derivatives of `X` with respect \
             to all model parameters.
 
+        .. note:: Method not available for purely limb-darkened maps.
+
     )pbdoc";
 
     const char* ld_flux = R"pbdoc(
@@ -315,7 +348,7 @@ namespace Map {
     )pbdoc";
 
     const char* compile_flags = R"pbdoc(
-        A dictionary of flags set at compile time.
+        A dictionary of informational flags about the Map set at compile time.
     )pbdoc";
 
 }

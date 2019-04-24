@@ -40,7 +40,7 @@ def sort_props(doc):
 
 
 # Hack: instantiate some Maps to fudge their docstrings
-map = starry.Map(ydeg=1, udeg=1)
+map = starry.Map(ydeg=1, udeg=1, fdeg=1)
 starry.Map = type('Map', map.__class__.__bases__, dict(map.__class__.__dict__))
 starry.Map.__doc__ = starry.Map.__descr__() + sort_props(starry.Map.__doc__)
 

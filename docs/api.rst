@@ -1,6 +1,9 @@
 The starry Python API
 =====================
 
+.. contents:: :local:
+
+
 The Map class
 -------------
 
@@ -11,3 +14,8 @@ The DopplerMap class
 --------------------
 
 .. autoclass:: starry.DopplerMap
+
+The extensions module
+---------------------
+
+.. automodule:: starry.extensions
