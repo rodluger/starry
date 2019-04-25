@@ -48,8 +48,7 @@ class LinearGradientOp(tt.Op):
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [tt.TensorType(i.dtype, (False, False))() for i in inputs[:8]]
-        # USED TO BE: outputs = [i.type() for i in inputs[:8]]
+        outputs = [i.type() for i in inputs[:8]]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
@@ -65,21 +64,21 @@ class LinearGradientOp(tt.Op):
             theta=theta, xo=xo, yo=yo, zo=zo, ro=ro, gradient=True)
 
         # Limb darkening gradient
-        outputs[0][0] = np.array(np.sum(grad["u"] * bf, axis=1))
+        outputs[0][0] = np.array(np.sum(grad["u"] * bf, axis=(1, 2)))
 
         # Orientation gradients
-        outputs[1][0] = np.atleast_1d(np.array(np.sum(grad["inc"] * bf, axis=0)))
-        outputs[2][0] = np.atleast_1d(np.array(np.sum(grad["obl"] * bf, axis=0)))
+        outputs[1][0] = np.atleast_1d(np.array(np.sum(grad["inc"] * bf)))
+        outputs[2][0] = np.atleast_1d(np.array(np.sum(grad["obl"] * bf)))
 
         # Orbital gradients
-        outputs[3][0] = np.array(grad["theta"] * bf)
-        outputs[4][0] = np.array(grad["xo"] * bf)
-        outputs[5][0] = np.array(grad["yo"] * bf)
+        outputs[3][0] = np.array(np.sum(grad["theta"] * bf, axis=-1))
+        outputs[4][0] = np.array(np.sum(grad["xo"] * bf, axis=-1))
+        outputs[5][0] = np.array(np.sum(grad["yo"] * bf, axis=-1))
         outputs[6][0] = np.zeros_like(outputs[5][0])
 
         # Radius gradient
-        outputs[7][0] = np.array(grad["ro"] * bf)
+        outputs[7][0] = np.array(np.sum(grad["ro"] * bf, axis=-1))
 
         # Reshape
         for i in range(8):
-            outputs[i][0] = outputs[i][0].reshape(np.shape(inputs[i]) + (self.base_op.map.Ny,))
+            outputs[i][0] = outputs[i][0].reshape(np.shape(inputs[i]))
