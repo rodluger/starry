@@ -415,11 +415,18 @@ class PythonMapBase(object):
                         interpolation="none",
                         vmin=np.nanmin(Z), vmax=np.nanmax(Z), 
                         animated=animated)
+        
+        # Show a colorbar
+        # TODO: This isn't working on the Linux machine I tested it on...
+        # The colorbar takes up the entire figure!
+        # Disabled for now.
+        '''
         if projection == "rect":
             divider = make_axes_locatable(ax)
             cax = divider.append_axes('right', size='3%', pad=0.1)
             plt.colorbar(img, ax=ax, cax=cax)
-
+        '''
+        
         # Display or save the image / animation
         if animated:
             interval = kwargs.pop("interval", 75)
