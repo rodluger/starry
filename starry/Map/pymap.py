@@ -7,6 +7,8 @@ from ..extensions import RAxisAngle
 from .sht import image2map, healpix2map, array2map
 from IPython.display import HTML
 from scipy.optimize import minimize
+from ..ops import FluxOp, LinearOp, infer_size
+import theano.tensor as tt
 
 
 __all__ = ["PythonMapBase"]
@@ -23,7 +25,13 @@ class PythonMapBase(object):
     .. automethod:: max
     .. automethod:: min
     .. automethod:: is_physical
+    .. automethod:: flux_op
     """
+
+    def __init__(self, *args, **kwargs):
+        super(PythonMapBase, self).__init__(*args, **kwargs)
+        self._flux_op = FluxOp(self)
+        self._linear_op = LinearOp(self)
 
     @staticmethod
     def __descr__():
@@ -733,3 +741,303 @@ class PythonMapBase(object):
             minimum. This will be fixed in an upcoming version of the code.
         """
         return self.min() >= 0
+    
+    def flux_op(self, y=None, u=None, inc=None, obl=None,
+              theta=0, orbit=None, t=None, xo=None, yo=None, zo=1, ro=0.1):
+        """
+        Returns a 
+        `Theano Op <http://deeplearning.net/software/theano/extending/extending_theano.html>`_ 
+        for the flux computation.
+
+        This method is similar to :py:meth:`flux` but it does not return a
+        light curve! Instead, it returns a 
+        :py:obj:`Theano` Op used for symbolic (lazy) gradient-based
+        computations useful for integration with :py:obj:`exoplanet`
+        and :py:obj:`pymc3`.
+
+        The arguments below can either be normal Python or :py:obj:`numpy`
+        types, in which case they are assumed to be constant, or :py:obj:`Theano`
+        tensor variables. They can also be set to :py:obj:`None` (default), in 
+        which case they take on the constant values set in the :py:obj:`Map`
+        object (or their default values, if they are not :py:obj:`Map`
+        attributes). As usual, the parameters :py:obj:`theta`,
+        :py:obj:`xo`, :py:obj:`yo`, :py:obj:`zo`, and :py:obj:`ro` may
+        be either scalars or vectors. Note that if an :py:obj:`orbit` instance
+        is provided, :py:obj:`xo`, :py:obj:`yo`, and :py:obj:`zo` are
+        ignored.
+
+
+        Args:
+            y: The full vector of spherical harmonic coefficients, \
+                (skipping the :math:`Y_{0,0}` term).
+            u: The full vector of limb darkening coefficients,  \
+                starting with :math:`u_{1}`.
+            inc: The map inclination in degrees.
+            obl: The map obliquity in degrees.
+            theta: The map rotation angle in degrees.
+            orbit: An :py:obj:`exoplanet` :py:obj:`orbit` instance.
+            t: The times at which to evaluate the :py:obj:`orbit`.
+            xo: The occultor x position.
+            yo: The occultor y position.
+            zo: The occultor z position.
+            ro: The occultor radius.
+
+        Returns:
+            A :py:obj:`Theano` Op defining the graph for the light curve computation.
+
+        """
+        # TODO: Implement this op for spectral and temporal types.
+        if self._spectral or self._temporal or self.fdeg:
+            raise NotImplementedError(
+                "Op not yet implemented for this map type."
+            )
+
+        # Map coefficients. If not set, default to the
+        # values of the Map instance itself.
+        if y is None:
+            y = np.array(self.y[1:])
+        if u is None:
+            u = np.array(self.u[1:])
+
+        # Misc properties. If not set, default to the
+        # values of the Map instance itself.
+        if inc is None:
+            inc = self.inc
+        if obl is None:
+            obl = self.obl
+
+        # Orbital coords.
+        if orbit is not None:
+
+            # Compute the orbit
+            assert t is not None, \
+                "Please provide a set of times `t` at which to compute the orbit."
+            try:
+                npts = len(t)
+            except TypeError:
+                npts = tt.as_tensor(t).tag.test_value.shape[0]
+            coords = orbit.get_relative_position(t)
+            xo = coords[0] / orbit.r_star
+            yo = coords[1] / orbit.r_star
+            # Note that `exoplanet` uses a slightly different coord system!
+            zo = -coords[2] / orbit.r_star
+
+            # Vectorize `theta` and `ro`
+            theta = tt.as_tensor_variable(theta)
+            if (theta.ndim == 0):
+                theta = tt.ones(npts) * theta
+            ro = tt.as_tensor_variable(ro)
+            if (ro.ndim == 0):
+                ro = tt.ones(npts) * ro
+
+        else:
+
+            if (xo is None) or (yo is None) or (zo is None) or (ro is None):
+
+                # No occultation
+                theta = tt.as_tensor_variable(theta)
+                if (theta.ndim == 0):
+                    npts = 1
+                else:
+                    npts = infer_size(theta)
+                theta = tt.ones(npts) * theta
+                xo = tt.zeros(npts)
+                yo = tt.zeros(npts)
+                zo = tt.zeros(npts)
+                ro = tt.zeros(npts)
+            
+            else:
+
+                # Occultation with manually specified coords
+                xo = tt.as_tensor_variable(xo)
+                yo = tt.as_tensor_variable(yo)
+                zo = tt.as_tensor_variable(zo)
+                ro = tt.as_tensor_variable(ro)
+                theta = tt.as_tensor_variable(theta)
+
+                # Figure out the length of the timeseries
+                if (xo.ndim != 0):
+                    npts = infer_size(xo)
+                elif (yo.ndim != 0):
+                    npts = infer_size(yo)
+                elif (zo.ndim != 0):
+                    npts = infer_size(zo)
+                elif (ro.ndim != 0):
+                    npts = infer_size(ro)
+                elif (theta.ndim != 0):
+                    npts = infer_size(theta)
+                else:
+                    npts = 1 
+
+                # Vectorize everything
+                if (xo.ndim == 0):
+                    xo = tt.ones(npts) * xo
+                if (yo.ndim == 0):
+                    yo = tt.ones(npts) * yo
+                if (zo.ndim == 0):
+                    zo = tt.ones(npts) * zo
+                if (ro.ndim == 0):
+                    ro = tt.ones(npts) * ro
+                if (theta.ndim == 0):
+                    theta = tt.ones(npts) * theta
+
+        # Now ensure everything is `floatX`.
+        # This is necessary because Theano will try to cast things
+        # to float32 if they can be exactly represented with 32 bits.
+        args = [y, u, inc, obl, theta, xo, yo, zo, ro]
+        for i, arg in enumerate(args):
+            if hasattr(arg, 'astype'):
+                args[i] = arg.astype(tt.config.floatX)
+            else:
+                args[i] = getattr(np, tt.config.floatX)(arg)
+
+        # Call the op
+        return self._flux_op(*args)
+
+    def linear_op(self, u=None, inc=None, obl=None,
+                  theta=0, orbit=None, t=None, xo=None, yo=None, zo=1, ro=0.1):
+        """
+        Returns a 
+        `Theano Op <http://deeplearning.net/software/theano/extending/extending_theano.html>`_ 
+        for the computation of the linear flux model.
+
+        This method is similar to :py:meth:`linear_flux_model` but it does not return a
+        design matrix! Instead, it returns a 
+        :py:obj:`Theano` Op used for symbolic (lazy) gradient-based
+        computations useful for integration with :py:obj:`exoplanet`
+        and :py:obj:`pymc3`.
+
+        The arguments below can either be normal Python or :py:obj:`numpy`
+        types, in which case they are assumed to be constant, or :py:obj:`Theano`
+        tensor variables. They can also be set to :py:obj:`None` (default), in 
+        which case they take on the constant values set in the :py:obj:`Map`
+        object (or their default values, if they are not :py:obj:`Map`
+        attributes). As usual, the parameters :py:obj:`theta`,
+        :py:obj:`xo`, :py:obj:`yo`, :py:obj:`zo`, and :py:obj:`ro` may
+        be either scalars or vectors. Note that if an :py:obj:`orbit` instance
+        is provided, :py:obj:`xo`, :py:obj:`yo`, and :py:obj:`zo` are
+        ignored.
+
+
+        Args:
+            u: The full vector of limb darkening coefficients,  \
+                starting with :math:`u_{1}`.
+            inc: The map inclination in degrees.
+            obl: The map obliquity in degrees.
+            theta: The map rotation angle in degrees.
+            orbit: An :py:obj:`exoplanet` :py:obj:`orbit` instance.
+            t: The times at which to evaluate the :py:obj:`orbit`.
+            xo: The occultor x position.
+            yo: The occultor y position.
+            zo: The occultor z position.
+            ro: The occultor radius.
+
+        Returns:
+            A :py:obj:`Theano` Op defining the graph for the linear model computation.
+
+        """
+        # TODO: Implement this op for spectral and temporal types.
+        if self._spectral or self._temporal or self.fdeg:
+            raise NotImplementedError(
+                "Op not yet implemented for this map type."
+            )
+
+        # Map coefficients. If not set, default to the
+        # values of the Map instance itself.
+        if u is None:
+            u = np.array(self.u[1:])
+
+        # Misc properties. If not set, default to the
+        # values of the Map instance itself.
+        if inc is None:
+            inc = self.inc
+        if obl is None:
+            obl = self.obl
+
+        # Orbital coords.
+        if orbit is not None:
+
+            # Compute the orbit
+            assert t is not None, \
+                "Please provide a set of times `t` at which to compute the orbit."
+            try:
+                npts = len(t)
+            except TypeError:
+                npts = tt.as_tensor(t).tag.test_value.shape[0]
+            coords = orbit.get_relative_position(t)
+            xo = coords[0] / orbit.r_star
+            yo = coords[1] / orbit.r_star
+            # Note that `exoplanet` uses a slightly different coord system!
+            zo = -coords[2] / orbit.r_star
+
+            # Vectorize `theta` and `ro`
+            theta = tt.as_tensor_variable(theta)
+            if (theta.ndim == 0):
+                theta = tt.ones(npts) * theta
+            ro = tt.as_tensor_variable(ro)
+            if (ro.ndim == 0):
+                ro = tt.ones(npts) * ro
+
+        else:
+
+            if (xo is None) or (yo is None) or (zo is None) or (ro is None):
+
+                # No occultation
+                theta = tt.as_tensor_variable(theta)
+                if (theta.ndim == 0):
+                    npts = 1
+                else:
+                    npts = infer_size(theta)
+                theta = tt.ones(npts) * theta
+                xo = tt.zeros(npts)
+                yo = tt.zeros(npts)
+                zo = tt.zeros(npts)
+                ro = tt.zeros(npts)
+            
+            else:
+
+                # Occultation with manually specified coords
+                xo = tt.as_tensor_variable(xo)
+                yo = tt.as_tensor_variable(yo)
+                zo = tt.as_tensor_variable(zo)
+                ro = tt.as_tensor_variable(ro)
+                theta = tt.as_tensor_variable(theta)
+
+                # Figure out the length of the timeseries
+                if (xo.ndim != 0):
+                    npts = infer_size(xo)
+                elif (yo.ndim != 0):
+                    npts = infer_size(yo)
+                elif (zo.ndim != 0):
+                    npts = infer_size(zo)
+                elif (ro.ndim != 0):
+                    npts = infer_size(ro)
+                elif (theta.ndim != 0):
+                    npts = infer_size(theta)
+                else:
+                    npts = 1 
+
+                # Vectorize everything
+                if (xo.ndim == 0):
+                    xo = tt.ones(npts) * xo
+                if (yo.ndim == 0):
+                    yo = tt.ones(npts) * yo
+                if (zo.ndim == 0):
+                    zo = tt.ones(npts) * zo
+                if (ro.ndim == 0):
+                    ro = tt.ones(npts) * ro
+                if (theta.ndim == 0):
+                    theta = tt.ones(npts) * theta
+
+        # Now ensure everything is `floatX`.
+        # This is necessary because Theano will try to cast things
+        # to float32 if they can be exactly represented with 32 bits.
+        args = [u, inc, obl, theta, xo, yo, zo, ro]
+        for i, arg in enumerate(args):
+            if hasattr(arg, 'astype'):
+                args[i] = arg.astype(tt.config.floatX)
+            else:
+                args[i] = getattr(np, tt.config.floatX)(arg)
+
+        # Call the op
+        return self._linear_op(*args)

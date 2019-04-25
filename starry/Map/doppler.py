@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from . import rvderivs
-from ..ops import DopplerMapOp
+from ..ops import DopplerOp, infer_size
 import theano.tensor as tt
 
 
@@ -43,7 +43,7 @@ class DopplerBase(object):
         self._alpha = 0.0
         self._veq = 0.0
         self._unset_rv_filter()
-        self._op = DopplerMapOp(self)
+        self._op = DopplerOp(self)
 
     def _unset_rv_filter(self):
         """Remove the RV filter."""
@@ -318,7 +318,7 @@ class DopplerBase(object):
         tensor variables. They can also be set to :py:obj:`None` (default), in 
         which case they take on the constant values set in the :py:obj:`Map`
         object (or their default values, if they are not :py:obj:`Map`
-        attributes). As usual, the parameters :py:obj:`theta`, :py:obj:`theta`,
+        attributes). As usual, the parameters :py:obj:`theta`,
         :py:obj:`xo`, :py:obj:`yo`, :py:obj:`zo`, and :py:obj:`ro` may
         be either scalars or vectors. Note that if an :py:obj:`orbit` instance
         is provided, :py:obj:`xo`, :py:obj:`yo`, and :py:obj:`zo` are
@@ -403,7 +403,7 @@ class DopplerBase(object):
                 if (theta.ndim == 0):
                     npts = 1
                 else:
-                    npts = theta.shape.eval()[0]
+                    npts = infer_size(theta)
                 theta = tt.ones(npts) * theta
                 xo = tt.zeros(npts)
                 yo = tt.zeros(npts)
@@ -421,15 +421,15 @@ class DopplerBase(object):
 
                 # Figure out the length of the timeseries
                 if (xo.ndim != 0):
-                    npts = xo.shape.eval()[0]
+                    npts = infer_size(xo)
                 elif (yo.ndim != 0):
-                    npts = yo.shape.eval()[0]
+                    npts = infer_size(yo)
                 elif (zo.ndim != 0):
-                    npts = zo.shape.eval()[0]
+                    npts = infer_size(zo)
                 elif (ro.ndim != 0):
-                    npts = ro.shape.eval()[0]
+                    npts = infer_size(ro)
                 elif (theta.ndim != 0):
-                    npts = theta.shape.eval()[0]
+                    npts = infer_size(theta)
                 else:
                     npts = 1 
 
