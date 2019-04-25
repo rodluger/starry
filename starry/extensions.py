@@ -154,7 +154,7 @@ def log_likelihood(X, L, C, flux, yhat=None):
 
     # L2 penalty
     if type(L) is tuple:
-        wTLw = np.dot(r.T, cho_solve(L, r))
+        wTLw = np.dot(yhat.T, cho_solve(L, yhat))
     elif not hasattr(L, "__len__"):
         wTLw = (1.0 / L) * np.dot(yhat.T, yhat)
     elif L.shape == (1,):
