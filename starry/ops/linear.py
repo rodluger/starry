@@ -73,7 +73,7 @@ class LinearGradientOp(tt.Op):
         outputs[3][0] = np.array(np.sum(grad["theta"] * bf, axis=-1))
 
         # Occultation gradients
-        if self.occultation:
+        if self.base_op.occultation:
             outputs[4][0] = np.array(np.sum(grad["xo"] * bf, axis=-1))
             outputs[5][0] = np.array(np.sum(grad["yo"] * bf, axis=-1))
             outputs[6][0] = np.zeros_like(outputs[5][0])
