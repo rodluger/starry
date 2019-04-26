@@ -965,6 +965,7 @@ class PythonMapBase(object):
         if orbit is not None:
 
             # Compute the orbit
+            self._linear_op.occultation = True
             assert t is not None, \
                 "Please provide a set of times `t` at which to compute the orbit."
             try:
@@ -990,6 +991,7 @@ class PythonMapBase(object):
             if (xo is None) or (yo is None) or (zo is None) or (ro is None):
 
                 # No occultation
+                self._linear_op.occultation = False
                 theta = tt.as_tensor_variable(theta)
                 if (theta.ndim == 0):
                     npts = 1
@@ -1004,6 +1006,7 @@ class PythonMapBase(object):
             else:
 
                 # Occultation with manually specified coords
+                self._linear_op.occultation = True
                 xo = tt.as_tensor_variable(xo)
                 yo = tt.as_tensor_variable(yo)
                 zo = tt.as_tensor_variable(zo)

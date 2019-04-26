@@ -12,6 +12,7 @@ class LinearOp(tt.Op):
     def __init__(self, map):
         self.map = map
         self._grad_op = LinearGradientOp(self)
+        self.occultation = True
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
@@ -69,15 +70,19 @@ class LinearGradientOp(tt.Op):
         # Orientation gradients
         outputs[1][0] = np.atleast_1d(np.array(np.sum(grad["inc"] * bf)))
         outputs[2][0] = np.atleast_1d(np.array(np.sum(grad["obl"] * bf)))
-
-        # Orbital gradients
         outputs[3][0] = np.array(np.sum(grad["theta"] * bf, axis=-1))
-        outputs[4][0] = np.array(np.sum(grad["xo"] * bf, axis=-1))
-        outputs[5][0] = np.array(np.sum(grad["yo"] * bf, axis=-1))
-        outputs[6][0] = np.zeros_like(outputs[5][0])
 
-        # Radius gradient
-        outputs[7][0] = np.array(np.sum(grad["ro"] * bf, axis=-1))
+        # Occultation gradients
+        if self.occultation:
+            outputs[4][0] = np.array(np.sum(grad["xo"] * bf, axis=-1))
+            outputs[5][0] = np.array(np.sum(grad["yo"] * bf, axis=-1))
+            outputs[6][0] = np.zeros_like(outputs[5][0])
+            outputs[7][0] = np.array(np.sum(grad["ro"] * bf, axis=-1))
+        else:
+            outputs[4][0] = np.empty_like(inputs[4])
+            outputs[5][0] = np.empty_like(inputs[5])
+            outputs[6][0] = np.empty_like(inputs[6])
+            outputs[7][0] = np.empty_like(inputs[7])
 
         # Reshape
         for i in range(8):
