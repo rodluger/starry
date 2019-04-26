@@ -12,17 +12,18 @@ class LinearOp(tt.Op):
     def __init__(self, map):
         self.map = map
         self._grad_op = LinearGradientOp(self)
-        self.occultation = True
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
         outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
-        # USED TO BE: outputs = [inputs[-1].type()]
+        # Note that the line above used to read: 
+        #   outputs = [inputs[-1].type()]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
         return [shapes[-1] + (tt.as_tensor(self.map.Ny),)]
-        # USED TO BE: return shapes[-1],
+        # Note that the line above used to read: 
+        #   return shapes[-1],
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -73,16 +74,10 @@ class LinearGradientOp(tt.Op):
         outputs[3][0] = np.array(np.sum(grad["theta"] * bf, axis=-1))
 
         # Occultation gradients
-        if self.base_op.occultation:
-            outputs[4][0] = np.array(np.sum(grad["xo"] * bf, axis=-1))
-            outputs[5][0] = np.array(np.sum(grad["yo"] * bf, axis=-1))
-            outputs[6][0] = np.zeros_like(outputs[5][0])
-            outputs[7][0] = np.array(np.sum(grad["ro"] * bf, axis=-1))
-        else:
-            outputs[4][0] = np.empty_like(inputs[4])
-            outputs[5][0] = np.empty_like(inputs[5])
-            outputs[6][0] = np.empty_like(inputs[6])
-            outputs[7][0] = np.empty_like(inputs[7])
+        outputs[4][0] = np.array(np.sum(grad["xo"] * bf, axis=-1))
+        outputs[5][0] = np.array(np.sum(grad["yo"] * bf, axis=-1))
+        outputs[6][0] = np.zeros_like(outputs[5][0])
+        outputs[7][0] = np.array(np.sum(grad["ro"] * bf, axis=-1))
 
         # Reshape
         for i in range(8):

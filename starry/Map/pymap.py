@@ -902,7 +902,8 @@ class PythonMapBase(object):
         return self._flux_op(*args)
 
     def linear_op(self, u=None, inc=None, obl=None,
-                  theta=0, orbit=None, t=None, xo=None, yo=None, zo=1, ro=0.1):
+                  theta=0, orbit=None, t=None, xo=None, 
+                  yo=None, zo=1, ro=0.1):
         """
         Returns a 
         `Theano Op <http://deeplearning.net/software/theano/extending/extending_theano.html>`_ 
@@ -924,7 +925,6 @@ class PythonMapBase(object):
         be either scalars or vectors. Note that if an :py:obj:`orbit` instance
         is provided, :py:obj:`xo`, :py:obj:`yo`, and :py:obj:`zo` are
         ignored.
-
 
         Args:
             u: The full vector of limb darkening coefficients,  \
@@ -965,7 +965,6 @@ class PythonMapBase(object):
         if orbit is not None:
 
             # Compute the orbit
-            self._linear_op.occultation = True
             assert t is not None, \
                 "Please provide a set of times `t` at which to compute the orbit."
             try:
@@ -991,7 +990,6 @@ class PythonMapBase(object):
             if (xo is None) or (yo is None) or (zo is None) or (ro is None):
 
                 # No occultation
-                self._linear_op.occultation = False
                 theta = tt.as_tensor_variable(theta)
                 if (theta.ndim == 0):
                     npts = 1
@@ -1006,7 +1004,6 @@ class PythonMapBase(object):
             else:
 
                 # Occultation with manually specified coords
-                self._linear_op.occultation = True
                 xo = tt.as_tensor_variable(xo)
                 yo = tt.as_tensor_variable(yo)
                 zo = tt.as_tensor_variable(zo)
