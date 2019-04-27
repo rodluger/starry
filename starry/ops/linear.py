@@ -36,8 +36,8 @@ class LinearOp(tt.Op):
             self.map[1:] = u
         self.map.inc = inc
         self.map.obl = obl
-        outputs[0][0] = self.map.linear_flux_model(
-            theta=theta, xo=xo, yo=yo, zo=zo, ro=ro)
+        outputs[0][0] = np.array(self.map.linear_flux_model(
+            theta=theta, xo=xo, yo=yo, zo=zo, ro=ro))
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
