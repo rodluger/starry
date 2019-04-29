@@ -214,7 +214,7 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFlux (
 
 /**
 Compute the flux from a purely limb-darkened map.
-Also compute the gradient.
+Also compute the (backprop) gradient.
 
 */
 template <typename U=S>
@@ -223,13 +223,15 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFlux (
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
     FType& flux,
-    FType& Db,
-    FType& Dro,
-    Matrix<Scalar>& Du
+    const FType& bf,
+    Scalar& bb,
+    Scalar& bro,
+    Matrix<Scalar>& bu
 ) {
     if (ydeg > 0)
         throw std::runtime_error(
             "This method is for purely limb-darkened maps only."
         );
-    computeLimbDarkenedFluxInternal(b, zo, ro, flux, Db, Dro, Du);
+    computeLimbDarkenedFluxInternal(b, zo, ro, flux, 
+                                    bf, bb, bro, bu);
 }

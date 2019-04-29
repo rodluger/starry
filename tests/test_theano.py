@@ -3,7 +3,8 @@ from __future__ import division, print_function
 import numpy as np
 import theano
 import theano.tensor as tt
-from starry import DopplerMap
+import starry
+import starry_beta
 
 
 def test_doppler():
@@ -30,7 +31,7 @@ def test_doppler():
         theano_kwargs[key] = theano.shared(np.float64(kwargs[key]), name=key)
 
     # Compute the rv and its gradient using starry
-    map = DopplerMap(ydeg=1, udeg=2)
+    map = starry.DopplerMap(ydeg=1, udeg=2)
     map.inc = kwargs.pop("inc")
     map.obl = kwargs.pop("obl")
     map.alpha = kwargs.pop("alpha")
@@ -47,6 +48,84 @@ def test_doppler():
     vars = [theano_kwargs[k] for k in varnames]
     computed = dict(zip(varnames,
                         theano.function([], theano.grad(model[0], vars))()))
+
+    # Compare
+    for key in theano_kwargs.keys():
+        if key == "zo":
+            continue
+        assert np.allclose(np.squeeze(grad[key]), np.squeeze(computed[key]))
+
+
+def test_limb_darkened():
+    # Define all arguments
+    kwargs = {
+        "u":        [0.4, 0.2],
+        "b":        0.15,
+        "zo":       1.0,
+        "ro":       0.1
+    }
+    theano_kwargs = {}
+    for key in kwargs.keys():
+        theano_kwargs[key] = theano.shared(np.float64(kwargs[key]), name=key)
+    udeg = len(kwargs["u"])
+
+    # Compute the rv and its gradient using starry
+    map_beta = starry_beta.Map(udeg)
+    map_beta[1:] = kwargs.pop("u")
+    kwargs["xo"] = kwargs.pop("b")
+    kwargs.pop("zo")
+    flux, grad = map_beta.flux(gradient=True, **kwargs)
+    grad["b"] = grad.pop("xo")
+
+    # Instantiate the theano op
+    map = starry.Map(0, udeg)
+    model = map.flux_op(**theano_kwargs)
+
+    # Compute the gradient using Theano
+    varnames = sorted(theano_kwargs.keys())
+    vars = [theano_kwargs[k] for k in varnames]
+    computed = dict(zip(varnames, theano.function([], 
+        theano.grad(model[0], vars))()))
+
+    # Compare
+    for key in theano_kwargs.keys():
+        if key == "zo":
+            continue
+        assert np.allclose(np.squeeze(grad[key]), np.squeeze(computed[key]))
+
+
+def test_limb_darkened_spectral():
+    # Define all arguments
+    kwargs = {
+        "u":        [[0.4, 0.2], [0.26, 0.13]],
+        "b":        0.15,
+        "zo":       1.0,
+        "ro":       0.1
+    }
+    theano_kwargs = {}
+    for key in kwargs.keys():
+        theano_kwargs[key] = theano.shared(np.float64(kwargs[key]), name=key)
+    udeg = len(kwargs["u"])
+
+    # Compute the rv and its gradient using starry
+    map_beta = starry_beta.Map(udeg, nwav=2)
+    map_beta[1:] = kwargs.pop("u")
+    kwargs["xo"] = kwargs.pop("b")
+    kwargs.pop("zo")
+    flux, grad = map_beta.flux(gradient=True, **kwargs)
+    grad["b"] = grad.pop("xo")
+
+    # Instantiate the theano op
+    map = starry.Map(0, udeg, nw=2)
+    model = map.flux_op(**theano_kwargs)
+
+    # Compute the gradient using Theano
+    varnames = sorted(theano_kwargs.keys())
+    vars = [theano_kwargs[k] for k in varnames]
+    computed = dict(zip(varnames, 
+        [np.array([theano.function([], theano.grad(model[0, i], var))() 
+            for i in range(udeg)]) for var in vars]))
+    computed['u'] = np.sum(computed['u'], axis=0)
 
     # Compare
     for key in theano_kwargs.keys():

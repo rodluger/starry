@@ -15,11 +15,17 @@ class LimbDarkenedOp(tt.Op):
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [inputs[-1].type()]
+        if self.map._spectral:
+            outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
+        else:
+            outputs = [inputs[-1].type()]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return shapes[-1],
+        if self.map._spectral:
+            return [shapes[-1] + (tt.as_tensor(self.map.nw),)]
+        else:
+            return shapes[-1],
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -28,7 +34,10 @@ class LimbDarkenedOp(tt.Op):
 
     def perform(self, node, inputs, outputs):
         u, b, zo, ro = inputs
-        self.map[1:] = u
+        if self.map._spectral:
+            self.map[1:, :] = u
+        else:
+            self.map[1:] = u
         outputs[0][0] = np.array(self.map.flux(b=b, zo=zo, ro=ro))
 
     def grad(self, inputs, gradients):
@@ -50,18 +59,21 @@ class LimbDarkenedOpGradientOp(tt.Op):
 
     def perform(self, node, inputs, outputs):
         u, b, zo, ro, bf = inputs
-        self.base_op.map[1:] = u
-        _, grad = self.base_op.map.flux(b=b, zo=zo, ro=ro, gradient=True)
+        if self.base_op.map._spectral:
+            self.base_op.map[1:, :] = u
+        else:
+            self.base_op.map[1:] = u
+        _, grad = self.base_op.map.flux(b=b, zo=zo, ro=ro, bf=bf)
 
         # Limb darkening gradient
-        outputs[0][0] = np.array(np.sum(grad["u"] * bf, axis=-1))
+        outputs[0][0] = np.array(grad["u"])
 
         # Orbital gradients
-        outputs[1][0] = np.array(grad["b"] * bf)
+        outputs[1][0] = np.array(grad["b"])
         outputs[2][0] = np.zeros_like(outputs[1][0])
 
         # Radius gradient
-        outputs[3][0] = np.array(grad["ro"] * bf)
+        outputs[3][0] = np.array(grad["ro"])
 
         # Reshape
         for i in range(4):

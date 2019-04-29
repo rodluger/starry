@@ -807,7 +807,7 @@ class PythonMapBase(object):
 
         """
         # TODO: Implement this op for spectral and temporal types.
-        if self._spectral or self._temporal or self.fdeg:
+        if (self._spectral and not self._limbdarkened) or self._temporal or self.fdeg:
             raise NotImplementedError(
                 "Op not yet implemented for this map type."
             )

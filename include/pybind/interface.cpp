@@ -587,7 +587,7 @@ PYBIND11_MODULE(
 #else
 
     PyMap.def("flux", ld_flux<T>(),
-              "b"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false, 
+              "b"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "bf"_a=py::array_t<double>({}), 
               docstrings::Map::ld_flux);
 
 #endif

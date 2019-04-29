@@ -778,7 +778,7 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
 
 /**
 Compute the flux from a purely limb-darkened map.
-Also compute the gradient.
+Also compute the (backprop) gradient.
 
 */
 template <typename U=S>
@@ -787,20 +787,25 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     const Vector<Scalar>& zo,
     const Vector<Scalar>& ro,
     FType& flux,
-    FType& Db,
-    FType& Dro,
-    Matrix<Scalar>& Du
+    const FType& bf,
+    Scalar& bb,
+    Scalar& bro,
+    Matrix<Scalar>& bu
 ) {
 
     // Shape checks
     size_t nt = b.rows();
     CHECK_SHAPE(zo, nt, 1);
     CHECK_SHAPE(ro, nt, 1);
+    CHECK_SHAPE(bf, nt, Nw);
     flux.resize(nt, Nw);
-    Db.resize(nt, Nw);
-    Dro.resize(nt, Nw);
-    Du.resize(udeg, nt * Nw);
-    Matrix<Scalar> Dg(udeg + 1, nt * Nw);
+    
+    // Initialize derivs
+    bb = 0.0;
+    bro = 0.0;
+    Matrix<Scalar> bg(udeg + 1, Nw);
+    bg.setZero();
+    RowVector<Scalar> I0bf, piI0fbf;
 
     // Compute the Agol `g` basis
     L.computeBasis(u);
@@ -811,11 +816,6 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
         // No occultation
         if ((zo(n) < 0) || (b(n) >= 1 + ro(n)) || (ro(n) <= 0.0)) {
 
-            // Most of the derivs are zero
-            Db.row(n).setZero();
-            Dro.row(n).setZero();
-            for (int w = 0; w < Nw; ++w)
-                Dg.col(Nw * n + w).setZero();
             flux.row(n).setOnes();
 
         // Occultation
@@ -828,16 +828,16 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
             flux.row(n) = (L.sT * L.g).cwiseProduct(L.I0);
 
             // b and ro derivs
-            Db.row(n) = (L.dsTdb * L.g).cwiseProduct(L.I0);
-            Dro.row(n) = (L.dsTdr * L.g).cwiseProduct(L.I0);
+            I0bf = (L.I0).cwiseProduct(bf.row(n));
+            bb += (L.dsTdb * L.g).dot(I0bf);
+            bro += (L.dsTdr * L.g).dot(I0bf);
 
             // Compute df / dg
             if (likely(udeg > 0)) {
-                for (int w = 0; w < Nw; ++w) {
-                    Dg.col(Nw * n + w) = L.sT * L.I0(w);
-                    Dg(0, Nw * n + w) -= pi<Scalar>() * flux(n, w) * L.I0(w);
-                    Dg(1, Nw * n + w) -= (2.0 / 3.0) * pi<Scalar>() * flux(w) * L.I0(w);
-                }
+                bg += L.sT.transpose() * I0bf;
+                piI0fbf = pi<Scalar>() * I0bf.cwiseProduct(flux.row(n));
+                bg.row(0) -= piI0fbf;
+                bg.row(1) -= (2.0 / 3.0) * piI0fbf;
             }
 
         }
@@ -846,6 +846,8 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
 
     // Change basis to `u`
     if (likely(udeg > 0))
-        Du = L.DgDu * Dg;
+        bu = L.DgDu * bg;
+    else
+        bu.setZero(udeg, Nw);
 
 }

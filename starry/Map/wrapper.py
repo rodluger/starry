@@ -146,6 +146,7 @@ def DopplerMap(ydeg=0, udeg=0, **kwargs):
             self._reflected = False
             self._temporal = temporal
             self._spectral = spectral
+            self._scalar = not (self._temporal or self._spectral)
             self._limbdarkened = False
             super(DopplerMap, self).__init__(*init_args, **init_kwargs)
 

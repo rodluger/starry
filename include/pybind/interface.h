@@ -49,6 +49,23 @@
         } else { \
             throw std::length_error("Argument `" #X "` has the wrong shape."); \
         }
+#   define MAP_TO_EIGEN_MATRIX(PYX, X, T) \
+        py::buffer_info buf##X = PYX.request(); \
+        double *ptr##X = (double *) buf##X.ptr; \
+        Eigen::Map<Matrix<T>> X(NULL, \
+                                buf##X.ndim > 0 ? buf##X.shape[0] : 1, \
+                                buf##X.ndim > 1 ? buf##X.shape[1] : 1); \
+        Matrix<T> tmp##X; \
+        if (buf##X.ndim == 0) { \
+            tmp##X = ptr##X[0] * Matrix<T>::Ones(1, 1); \
+            new (&X) Eigen::Map<Matrix<T>>(&tmp##X(0), 1, 1); \
+        } else if (buf##X.ndim == 1) { \
+            new (&X) Eigen::Map<Matrix<T>>(ptr##X, buf##X.shape[0], 1); \
+        } else if (buf##X.ndim == 2) { \
+            new (&X) Eigen::Map<Matrix<T>>(ptr##X, buf##X.shape[0], buf##X.shape[1]); \
+        } else { \
+            throw std::invalid_argument("Argument `" #X "` has the wrong shape."); \
+        }
 #   define MAP_TO_EIGEN_ROW_MATRIX(PYX, X, T) \
         py::buffer_info buf##X = PYX.request(); \
         double *ptr##X = (double *) buf##X.ptr; \
@@ -93,6 +110,25 @@
             new (&X) Eigen::Map<Vector<T>>(&tmp##X(0), N, 1); \
         } else { \
             throw std::length_error("Argument `" #X "` has the wrong shape."); \
+        }
+#   define MAP_TO_EIGEN_MATRIX(PYX, X, T) \
+        py::buffer_info buf##X = PYX.request(); \
+        double *ptr##X = (double *) buf##X.ptr; \
+        Eigen::Map<Matrix<T>> X(NULL, \
+                                   buf##X.ndim > 0 ? buf##X.shape[0] : 1, \
+                                   buf##X.ndim > 1 ? buf##X.shape[1] : 1); \
+        Matrix<T> tmp##X; \
+        if (buf##X.ndim == 0) { \
+            tmp##X = ptr##X[0] * Matrix<T>::Ones(1, 1); \
+            new (&X) Eigen::Map<Matrix<T>>(&tmp##X(0), 1, 1); \
+        } else if (buf##X.ndim == 1) { \
+            tmp##X = (py::cast<Matrix<double>>(PYX)).template cast<T>(); \
+            new (&X) Eigen::Map<Matrix<T>>(&tmp##X(0), buf##X.shape[0], 1); \
+        } else if (buf##X.ndim == 2) { \
+            tmp##X = (py::cast<Matrix<double>>(PYX)).template cast<T>(); \
+            new (&X) Eigen::Map<Matrix<T>>(&tmp##X(0), buf##X.shape[0], buf##X.shape[1]); \
+        } else { \
+            throw std::invalid_argument("Argument `" #X "` has the wrong shape."); \
         }
 #   define MAP_TO_EIGEN_ROW_MATRIX(PYX, X, T) \
         py::buffer_info buf##X = PYX.request(); \
@@ -1097,7 +1133,7 @@ std::function<py::object (
 
 /**
 Return a lambda function to compute the limb-darkened flux.
-Optionally compute and return the gradient.
+Optionally compute and return the (backprop) gradient.
 
 */
 template <typename T>
@@ -1106,7 +1142,7 @@ std::function<py::object (
         PY_ARRAY&, 
         PY_ARRAY&, 
         PY_ARRAY&, 
-        bool
+        PY_ARRAY&
     )> ld_flux () 
 {
     return []
@@ -1115,7 +1151,7 @@ std::function<py::object (
         PY_ARRAY& b_, 
         PY_ARRAY& zo_,
         PY_ARRAY& ro_,
-        bool compute_gradient
+        PY_ARRAY& bf_
     ) -> py::object 
     {
         using Scalar = typename T::Scalar;
@@ -1133,6 +1169,23 @@ std::function<py::object (
         MAP_TO_EIGEN_VECTOR(b_, b, Scalar, nt);
         MAP_TO_EIGEN_VECTOR(zo_, zo, Scalar, nt);
         MAP_TO_EIGEN_VECTOR(ro_, ro, Scalar, nt);
+        
+        // Backprop
+        bool compute_gradient;
+        auto buf = bf_.request();
+        if (buf.size == 0) {
+            compute_gradient = false;
+        } else {
+#           ifdef _STARRY_SPECTRAL_
+                if ((buf.ndim == 2) && (buf.size == nt * map.Nw))
+                    compute_gradient = true;
+#           else
+                if ((buf.ndim == 1) && (buf.size == nt))
+                    compute_gradient = true;
+#           endif           
+            else
+                throw std::length_error("Argument `bf` has the wrong shape.");
+        }
 
         if (!compute_gradient) {
 
@@ -1156,6 +1209,10 @@ std::function<py::object (
             
         } else {
 
+            MAP_TO_EIGEN_MATRIX(bf_, bf, Scalar);
+            Scalar bb, bro;
+            Matrix<Scalar> bu;
+
             // Compute the model + gradient
             map.computeLimbDarkenedFlux(
                 b, 
@@ -1163,37 +1220,20 @@ std::function<py::object (
                 ro,
 #               if defined(_STARRY_SPECTRAL_)
                     map.data.flux_spectral,
-                    map.data.DfDb_spectral, 
-                    map.data.DfDro_spectral,
 #               else
                     map.data.flux,
-                    map.data.DfDb, 
-                    map.data.DfDro,
 #               endif
-                map.data.DfDu
+                bf,
+                bb,
+                bro,
+                bu
             );
 
-            // Get Eigen references to the arrays, as these
-            // are automatically passed by ref to the Python side
-#           if defined(_STARRY_SPECTRAL_)
-                auto Db = Ref<Matrix<Scalar>>(map.data.DfDb_spectral);
-                auto Dro = Ref<Matrix<Scalar>>(map.data.DfDro_spectral);
-#           else
-                auto Db = Ref<Vector<Scalar>>(map.data.DfDb);
-                auto Dro = Ref<Vector<Scalar>>(map.data.DfDro);
-#           endif
-            auto Du = Ref<Matrix<Scalar>>(map.data.DfDu);
-
             // Construct a dictionary
-            py::dict gradient = py::dict(
-                "b"_a=ENSURE_DOUBLE_ARR(Db),
-                "ro"_a=ENSURE_DOUBLE_ARR(Dro),  
-#           if defined(_STARRY_SPECTRAL_)
-                "u"_a=reshape(ENSURE_DOUBLE_ARR(Du), 
-                              py::make_tuple(map.udeg, nt, map.Nw))
-#           else
-                "u"_a=ENSURE_DOUBLE_ARR(Du)   
-#           endif
+            py::dict grad_dict = py::dict(
+                "b"_a=ENSURE_DOUBLE(bb),
+                "ro"_a=ENSURE_DOUBLE(bro),  
+                "u"_a=ENSURE_DOUBLE_ARR(bu)   
             );
 
             // Return
@@ -1203,7 +1243,7 @@ std::function<py::object (
 #               else
                     ENSURE_DOUBLE_ARR(map.data.flux),
 #               endif
-                gradient
+                grad_dict
             );
 
         }
