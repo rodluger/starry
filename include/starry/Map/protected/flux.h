@@ -756,7 +756,7 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     for (size_t n = 0; n < nt; ++n) {
 
         // No occultation
-        if ((zo(n) < 0) || (b(n) >= 1 + ro(n)) || (ro(n) <= 0.0)) {
+        if ((zo(n) < 0) || (abs(b(n)) >= 1 + ro(n)) || (ro(n) <= 0.0)) {
 
             // Easy!
             flux.row(n).setOnes();
@@ -765,7 +765,7 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
         } else {
 
             // Compute the Agol `s` vector
-            L.compute(b(n), ro(n));
+            L.compute(abs(b(n)), ro(n));
 
             // Dot the integral solution in, and we're done!
             flux.row(n) = (L.sT * L.g).cwiseProduct(L.I0);
@@ -814,7 +814,7 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     for (size_t n = 0; n < nt; ++n) {
 
         // No occultation
-        if ((zo(n) < 0) || (b(n) >= 1 + ro(n)) || (ro(n) <= 0.0)) {
+        if ((zo(n) < 0) || (abs(b(n)) >= 1 + ro(n)) || (ro(n) <= 0.0)) {
 
             flux.row(n).setOnes();
 
@@ -822,7 +822,7 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
         } else {
 
             // Compute the Agol `s` vector and its derivs
-            L.template compute<true>(b(n), ro(n));
+            L.template compute<true>(abs(b(n)), ro(n));
 
             // Compute the flux
             flux.row(n) = (L.sT * L.g).cwiseProduct(L.I0);
