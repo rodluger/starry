@@ -7,7 +7,7 @@ from ..extensions import RAxisAngle
 from .sht import image2map, healpix2map, array2map
 from IPython.display import HTML
 from scipy.optimize import minimize
-from ..ops import FluxOp, LinearOp, infer_size
+from ..ops import FluxOp, LinearOp, LimbDarkenedOp, infer_size
 import theano.tensor as tt
 
 
@@ -25,13 +25,16 @@ class PythonMapBase(object):
     .. automethod:: max
     .. automethod:: min
     .. automethod:: is_physical
-    .. automethod:: flux_op
+    .. automethod:: flux_op(**kwargs)
     """
 
     def __init__(self, *args, **kwargs):
         super(PythonMapBase, self).__init__(*args, **kwargs)
-        self._flux_op = FluxOp(self)
-        self._linear_op = LinearOp(self)
+        if self._limbdarkened:
+            self._ld_op = LimbDarkenedOp(self)
+        else:
+            self._flux_op = FluxOp(self)
+            self._linear_op = LinearOp(self)
 
     @staticmethod
     def __descr__():
@@ -750,7 +753,8 @@ class PythonMapBase(object):
         return self.min() >= 0
     
     def flux_op(self, y=None, u=None, inc=None, obl=None,
-              theta=0, orbit=None, t=None, xo=None, yo=None, zo=1, ro=0.1):
+                theta=0, orbit=None, t=None, 
+                b=None, xo=None, yo=None, zo=1, ro=0.1):
         """
         Returns a 
         `Theano Op <http://deeplearning.net/software/theano/extending/extending_theano.html>`_ 
@@ -784,6 +788,7 @@ class PythonMapBase(object):
             theta: The map rotation angle in degrees.
             orbit: An :py:obj:`exoplanet` :py:obj:`orbit` instance.
             t: The times at which to evaluate the :py:obj:`orbit`.
+            b: The occultor impact parameter. *Purely limb-darkened maps only.*
             xo: The occultor x position.
             yo: The occultor y position.
             zo: The occultor z position.
@@ -792,6 +797,14 @@ class PythonMapBase(object):
         Returns:
             A :py:obj:`Theano` Op defining the graph for the light curve computation.
 
+        .. note:: As noted above, the call sequence for this is different if \
+            the map is purely limb-darkened (purely limb-darkened \
+            maps are those with :py:obj:`ydeg = 0`, :py:obj:`fdeg = 0`, \
+            and :py:obj:`udeg > 0`). In this case, rather than providing the \
+            :py:obj:`x` and :py:obj:`y` positions of the occultor, the user \
+            should only provide the impact paramter :py:obj:`b` (since the \
+            map is invariant to rotations about the line of sight).
+
         """
         # TODO: Implement this op for spectral and temporal types.
         if self._spectral or self._temporal or self.fdeg:
@@ -799,19 +812,36 @@ class PythonMapBase(object):
                 "Op not yet implemented for this map type."
             )
 
+        # The call sequence for limb-darkened maps is different
+        if self._limbdarkened:
+            assert (y is None) and (inc is None) and (obl is None) and \
+                (theta == 0) and (xo is None) and (yo is None), \
+                    "Invalid argument(s) to `flux_op`."
+            assert (orbit is not None and t is not None) or (b is not None), \
+                "Please provide an impact parameter."
+        else:
+            assert b is None, "Invalid argument(s) to `flux_op`."
+
         # Map coefficients. If not set, default to the
         # values of the Map instance itself.
         if y is None:
-            y = np.array(self.y[1:])
+            if self.ydeg:
+                y = np.array(self.y[1:])
+            else:
+                y = []
         if u is None:
-            u = np.array(self.u[1:])
+            if self.udeg:
+                u = np.array(self.u[1:])
+            else:
+                u = []
 
         # Misc properties. If not set, default to the
         # values of the Map instance itself.
-        if inc is None:
-            inc = self.inc
-        if obl is None:
-            obl = self.obl
+        if not self._limbdarkened:
+            if inc is None:
+                inc = self.inc
+            if obl is None:
+                obl = self.obl
 
         # Orbital coords.
         if orbit is not None:
@@ -828,6 +858,8 @@ class PythonMapBase(object):
             yo = coords[1] / orbit.r_star
             # Note that `exoplanet` uses a slightly different coord system!
             zo = -coords[2] / orbit.r_star
+            if self._limbdarkened:
+                b = tt.sqrt(xo * xo + yo * yo)
 
             # Vectorize `theta` and `ro`
             theta = tt.as_tensor_variable(theta)
@@ -839,7 +871,26 @@ class PythonMapBase(object):
 
         else:
 
-            if (xo is None) or (yo is None) or (zo is None) or (ro is None):
+            if self._limbdarkened:
+
+                b = tt.as_tensor_variable(b)
+                ro = tt.as_tensor_variable(ro)
+
+                # Figure out the length of the timeseries
+                if (b.ndim != 0):
+                    npts = infer_size(b)
+                elif (ro.ndim != 0):
+                    npts = infer_size(ro)
+                else:
+                    npts = 1
+
+                # Vectorize everything
+                if (b.ndim == 0):
+                    b = tt.ones(npts) * b
+                if (ro.ndim == 0):
+                    ro = tt.ones(npts) * ro
+
+            elif (xo is None) or (yo is None) or (zo is None) or (ro is None):
 
                 # No occultation
                 theta = tt.as_tensor_variable(theta)
@@ -891,15 +942,26 @@ class PythonMapBase(object):
         # Now ensure everything is `floatX`.
         # This is necessary because Theano will try to cast things
         # to float32 if they can be exactly represented with 32 bits.
-        args = [y, u, inc, obl, theta, xo, yo, zo, ro]
-        for i, arg in enumerate(args):
-            if hasattr(arg, 'astype'):
-                args[i] = arg.astype(tt.config.floatX)
-            else:
-                args[i] = getattr(np, tt.config.floatX)(arg)
+        if self._limbdarkened:
+            args = [u, b, zo, ro]
+            for i, arg in enumerate(args):
+                if hasattr(arg, 'astype'):
+                    args[i] = arg.astype(tt.config.floatX)
+                else:
+                    args[i] = getattr(np, tt.config.floatX)(arg)
 
-        # Call the op
-        return self._flux_op(*args)
+            # Call the op
+            return self._ld_op(*args)
+        else:
+            args = [y, u, inc, obl, theta, xo, yo, zo, ro]
+            for i, arg in enumerate(args):
+                if hasattr(arg, 'astype'):
+                    args[i] = arg.astype(tt.config.floatX)
+                else:
+                    args[i] = getattr(np, tt.config.floatX)(arg)
+
+            # Call the op
+            return self._flux_op(*args)
 
     def linear_op(self, u=None, inc=None, obl=None,
                   theta=0, orbit=None, t=None, xo=None, 
@@ -948,11 +1010,18 @@ class PythonMapBase(object):
             raise NotImplementedError(
                 "Op not yet implemented for this map type."
             )
+        if self._limbdarkened:
+            raise NotImplementedError(
+                "Op not implemented for purely limb-darkened maps."
+            )
 
         # Map coefficients. If not set, default to the
         # values of the Map instance itself.
         if u is None:
-            u = np.array(self.u[1:])
+            if self.udeg:
+                u = np.array(self.u[1:])
+            else:
+                u = []
 
         # Misc properties. If not set, default to the
         # values of the Map instance itself.

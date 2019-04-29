@@ -38,7 +38,6 @@ def test_doppler():
     map[1:, :] = kwargs.pop("y")
     map[1:] = kwargs.pop("u")
     rv, grad = map.rv(gradient=True, **kwargs)
-    print(grad["alpha"], grad["veq"])
 
     # Instantiate the theano op
     model = map.rv_op(**theano_kwargs)
