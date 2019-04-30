@@ -30,6 +30,7 @@ import numpy as np
 import glob
 import json
 import starry
+import datetime
 
 
 # -- Custom hacks -------------------------------------------------------------
@@ -82,6 +83,7 @@ commit = os.getenv("TRAVIS_COMMIT", "unknown")
 commit_url = "https://github.com/rodluger/starry/tree/%s" % commit
 branch_name = os.getenv("TRAVIS_BRANCH", "unknown")
 branch_url = "https://github.com/rodluger/starry/tree/%s" % branch_name
+full_date = datetime.datetime.now().strftime("%B %d, %Y")
 with open("sphinx_rtd_theme/static/js/theme.js", "r") as f:
     file = f.read()
 file = re.sub('var commit_url = "(.*?)";\n', 
@@ -90,6 +92,8 @@ file = re.sub('var branch_url = "(.*?)";\n',
               'var branch_url = "%s";\n' % branch_url, file)
 file = re.sub('var branch_name = "(.*?)";\n', 
               'var branch_name = "%s";\n' % branch_name, file)
+file = re.sub('var full_date = "(.*?)";\n', 
+              'var full_date = "%s";\n' % full_date, file)
 with open("sphinx_rtd_theme/static/js/theme.js", "w") as f:
     print(file, file=f)
 
