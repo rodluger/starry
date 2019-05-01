@@ -296,7 +296,7 @@ class YlmBase(object):
 
         # Render the map
         if Z is None:
-            Z = self.render(projection=projection, **kwargs)
+            Z = self.render(**kwargs)
         if len(Z.shape) == 3:
             nframes = Z.shape[0]
         else:
@@ -315,6 +315,8 @@ class YlmBase(object):
             extent = (-180, 180, -90, 90)
 
             if grid:
+                latlines = np.linspace(-90, 90, 7)[1:-1]
+                lonlines = np.linspace(-180, 180, 13)
                 for lat in latlines:
                     ax.axhline(lat, color="k", lw=0.5, alpha=0.5, zorder=100)
                 for lon in lonlines:
