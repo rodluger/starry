@@ -54,6 +54,8 @@ starry.DopplerMap = type('DopplerMap', map.__class__.__bases__,
 starry.DopplerMap.__doc__ = starry.DopplerMap.__descr__() + \
     sort_props(starry.DopplerMap.__doc__)
 
+# TODO: inspect.cleandoc() if needed
+
 # Hack: copy over the notebooks containing a `tutorial` flag to a subfolder
 if not os.path.exists("notebooks"):
     os.mkdir("notebooks")

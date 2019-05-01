@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from .pymap import PythonMapBase
+from .ylm import YlmBase
+from .ld import LimbDarkenedBase
 from .filter import FilterBase
 from .doppler import DopplerBase
 from .deprecated import DeprecationBase
@@ -13,14 +14,14 @@ def import_by_name(name):
     """Import a module by name."""
     name = "_starry_" + name
     try:
-        exec("from ..%s import Map as CMapBase" % name, globals())
+        exec("from ..%s import Map as CBase" % name, globals())
     except ModuleNotFoundError:
         bit = modules[(name + "_").upper()]
         raise ModuleNotFoundError("Requested module not found. " + 
             "Please re-compile `starry` with bit %d enabled." % bit)
 
 
-def Map(ydeg, udeg=0, fdeg=0, **kwargs):
+def Map(ydeg=0, udeg=0, fdeg=0, **kwargs):
     """
     A wrapper that figures out which `Map` class the user 
     wants and instantiates it.
@@ -76,9 +77,13 @@ def Map(ydeg, udeg=0, fdeg=0, **kwargs):
     import_by_name('%s_%s_%s' % (kind, flag, dtype))
 
     # Figure out the base classes
-    bases = (PythonMapBase, CMapBase, DeprecationBase)
-    if (fdeg > 0) and not limbdarkened:
-        bases = (FilterBase,) + bases
+    bases = (CBase, DeprecationBase)
+    if limbdarkened:
+        bases = (LimbDarkenedBase,) + bases
+    else:
+        bases = (YlmBase,) + bases
+        if (fdeg > 0):
+            bases = (FilterBase,) + bases
 
     # Subclass it
     class Map(*bases):
@@ -136,7 +141,7 @@ def DopplerMap(ydeg=0, udeg=0, **kwargs):
     import_by_name('%s_ylm_%s' % (kind, dtype))
 
     # Figure out the base classes
-    bases = (DopplerBase, PythonMapBase, CMapBase, DeprecationBase)
+    bases = (DopplerBase, YlmBase, CBase, DeprecationBase)
 
     # Subclass it
     class DopplerMap(*bases):

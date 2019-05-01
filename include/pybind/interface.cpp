@@ -151,6 +151,7 @@ PYBIND11_MODULE(
     // Current Map Type
     using T = _STARRY_TYPE_;
     using Scalar = typename T::Scalar;
+    using FType = typename T::FType;
 
     // Declare the Map class
     py::class_<Map<T>> PyMap(m, "Map", docstrings::Map::doc);
@@ -513,7 +514,6 @@ PYBIND11_MODULE(
                 "power"_a, "seed"_a=py::none());
 #      endif
 
-        // Compute the linear intensity model
 #      if defined(_STARRY_TEMPORAL_)
 #          if defined(_STARRY_REFLECTED_)
                 PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
@@ -586,9 +586,49 @@ PYBIND11_MODULE(
 // Limb darkened map methods
 #else
 
-    PyMap.def("flux", ld_flux<T>(),
-              "b"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "bf"_a=py::array_t<double>({}), 
-              docstrings::Map::ld_flux);
+    //PyMap.def("_intensity", &Map<T>::computeLinearIntensityModel<true>);
+
+    PyMap.def(
+        "_intensity", [](
+            Map<T>& map,
+            const Vector<Scalar>& b
+        ) {
+            RowMatrix<Scalar> intensity;
+            Vector<Scalar> zeros;
+            OneByOne<Scalar> theta;
+            theta.setZero();
+            zeros.setZero(b.size());
+            map.template computeLinearIntensityModel<true>(theta, b, zeros, intensity);
+            return intensity;
+    });
+
+    PyMap.def(
+        "_flux", [](
+            Map<T>& map,
+            const Vector<Scalar>& b,
+            const Vector<Scalar>& zo,
+            const Vector<Scalar>& ro
+        ) {
+            FType flux;
+            map.computeLimbDarkenedFlux(b, zo, ro, flux);
+            return flux;
+    });
+
+    PyMap.def(
+        "_grad", [](
+            Map<T>& map,
+            const Vector<Scalar>& b,
+            const Vector<Scalar>& zo,
+            const Vector<Scalar>& ro,
+            const FType& bf
+        ) {
+            FType flux;
+            Scalar bb;
+            Scalar bro;
+            Matrix<Scalar> bu;
+            map.computeLimbDarkenedFlux(b, zo, ro, flux, bf, bb, bro, bu);
+            return py::make_tuple(bb, bro, bu);
+    });
 
 #endif
 

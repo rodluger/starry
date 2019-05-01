@@ -38,7 +38,9 @@ class LimbDarkenedOp(tt.Op):
             self.map[1:, :] = u
         else:
             self.map[1:] = u
-        outputs[0][0] = np.array(self.map.flux(b=b, zo=zo, ro=ro))
+        outputs[0][0] = self.map._flux(np.atleast_1d(b), 
+                                       np.atleast_1d(zo), 
+                                       np.atleast_1d(ro))
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
@@ -63,17 +65,20 @@ class LimbDarkenedOpGradientOp(tt.Op):
             self.base_op.map[1:, :] = u
         else:
             self.base_op.map[1:] = u
-        _, grad = self.base_op.map.flux(b=b, zo=zo, ro=ro, bf=bf)
+        bb, bro, bu = self.base_op.map._grad(np.atleast_1d(b), 
+                                             np.atleast_1d(zo), 
+                                             np.atleast_1d(ro),
+                                             np.atleast_1d(bf))
 
         # Limb darkening gradient
-        outputs[0][0] = np.array(grad["u"])
+        outputs[0][0] = np.atleast_1d(bu)
 
         # Orbital gradients
-        outputs[1][0] = np.array(grad["b"])
+        outputs[1][0] = np.atleast_1d(bb)
         outputs[2][0] = np.zeros_like(outputs[1][0])
 
         # Radius gradient
-        outputs[3][0] = np.array(grad["ro"])
+        outputs[3][0] = np.atleast_1d(bro)
 
         # Reshape
         for i in range(4):

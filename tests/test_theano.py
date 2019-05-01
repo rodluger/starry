@@ -5,9 +5,10 @@ import theano
 import theano.tensor as tt
 import starry
 import starry_beta
+import pytest
 
 
-def test_doppler():
+def t3st_doppler():
     # Define all arguments
     kwargs = {
         "y":        [0.25, 0.25, 0.25],
@@ -66,7 +67,7 @@ def test_limb_darkened():
     }
     theano_kwargs = {}
     for key in kwargs.keys():
-        theano_kwargs[key] = theano.shared(np.float64(kwargs[key]), name=key)
+        theano_kwargs[key] = theano.shared(np.atleast_1d(kwargs[key]), name=key)
     udeg = len(kwargs["u"])
 
     # Compute the rv and its gradient using starry
@@ -79,13 +80,13 @@ def test_limb_darkened():
 
     # Instantiate the theano op
     map = starry.Map(0, udeg)
-    model = map.flux_op(**theano_kwargs)
+    model = map.flux(**theano_kwargs)
 
     # Compute the gradient using Theano
     varnames = sorted(theano_kwargs.keys())
     vars = [theano_kwargs[k] for k in varnames]
     computed = dict(zip(varnames, theano.function([], 
-        theano.grad(model[0], vars))()))
+                                                  theano.grad(model[0], vars))()))
 
     # Compare
     for key in theano_kwargs.keys():
@@ -104,7 +105,7 @@ def test_limb_darkened_spectral():
     }
     theano_kwargs = {}
     for key in kwargs.keys():
-        theano_kwargs[key] = theano.shared(np.float64(kwargs[key]), name=key)
+        theano_kwargs[key] = theano.shared(np.atleast_1d(kwargs[key]), name=key)
     udeg = len(kwargs["u"])
 
     # Compute the rv and its gradient using starry
@@ -117,7 +118,7 @@ def test_limb_darkened_spectral():
 
     # Instantiate the theano op
     map = starry.Map(0, udeg, nw=2)
-    model = map.flux_op(**theano_kwargs)
+    model = map.flux(**theano_kwargs)
 
     # Compute the gradient using Theano
     varnames = sorted(theano_kwargs.keys())
