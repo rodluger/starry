@@ -79,7 +79,3 @@ class LimbDarkenedOpGradientOp(tt.Op):
 
         # Radius gradient
         outputs[3][0] = bro
-
-        # Reshape
-        for i in range(4):
-            outputs[i][0] = outputs[i][0].reshape(np.shape(inputs[i]))

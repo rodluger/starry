@@ -73,7 +73,7 @@ inline EnableIf<U::Reflected && U::Temporal, void> computeLinearFluxModel (
 }
 
 /**
-Compute the linear Ylm model in emitted light and its gradient. 
+Compute the linear Ylm model in emitted light and its (backprop) gradient. 
 Basic / Spectral specialization.
 
 */
@@ -95,8 +95,11 @@ inline EnableIf<!U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     Scalar& binc,
     Scalar& bobl
 ) {
-    Scalar bt; // Dummy!
-    // DEBUG TODO
+    Vector<Scalar> bt; // Dummy!
+    computeLinearFluxModelInternal(
+        theta, xo, yo, zo, ro, X, bX, bt, btheta, 
+        bxo, byo, bro, bu, bf, binc, bobl
+    );
 }
 
 /**
@@ -153,7 +156,7 @@ inline EnableIf<U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     Scalar& binc,
     Scalar& bobl
 ) {
-    Scalar bt; // Dummy!
+    Vector<Scalar> bt; // Dummy!
     // DEBUG TODO
 }
 

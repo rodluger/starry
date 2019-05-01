@@ -316,16 +316,28 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
     RowMatrix<Scalar>& X,
-    RowMatrix<Scalar>& Dt,
-    RowMatrix<Scalar>& Dtheta,
-    RowMatrix<Scalar>& Dxo,
-    RowMatrix<Scalar>& Dyo,
-    RowMatrix<Scalar>& Dro,
-    RowMatrix<Scalar>& Du,
-    RowMatrix<Scalar>& Df,
-    RowMatrix<Scalar>& Dinc,
-    RowMatrix<Scalar>& Dobl
+    const RowMatrix<Scalar>& bX,
+    Vector<Scalar>& bt,
+    Vector<Scalar>& btheta, 
+    Vector<Scalar>& bxo,
+    Vector<Scalar>& byo,
+    Vector<Scalar>& bro,
+    UType& bu,
+    Vector<Scalar>& bf,
+    Scalar& binc,
+    Scalar& bobl
 ) {
+
+    // TODO: PHASE THESE OUT
+    RowMatrix<Scalar> Dt;
+    RowMatrix<Scalar> Dtheta;
+    RowMatrix<Scalar> Dxo;
+    RowMatrix<Scalar> Dyo;
+    RowMatrix<Scalar> Dro;
+    RowMatrix<Scalar> Du;
+    RowMatrix<Scalar> Df;
+    RowMatrix<Scalar> Dinc;
+    RowMatrix<Scalar> Dobl;
 
     // Shape checks
     size_t nt = theta.rows();
@@ -702,6 +714,27 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         }
     }
 
+    // Backprop (TODO: compute these directly)
+    bu.resize(udeg);
+    if (udeg > 0) {
+        for (int l = 0; l < udeg; ++l) {
+            bu(l) = Du.block(l * nt, 0, nt, Ny).cwiseProduct(bX).sum();
+        }
+    }
+    if (fdeg > 0) {
+        bf.resize(Nf);
+        for (int l = 0; l < udeg; ++l) {
+            bf(l) = Df.block(l * nt, 0, nt, Ny).cwiseProduct(bX).sum();
+        }
+    } else {
+        bf.resize(0);
+    }
+    binc = Dinc.cwiseProduct(bX).sum();
+    bobl = Dobl.cwiseProduct(bX).sum();
+    btheta = Dtheta.cwiseProduct(bX).rowwise().sum();
+    bxo = Dxo.cwiseProduct(bX).rowwise().sum();
+    byo = Dyo.cwiseProduct(bX).rowwise().sum();
+    bro = Dro.cwiseProduct(bX).rowwise().sum();
 }
 
 /**

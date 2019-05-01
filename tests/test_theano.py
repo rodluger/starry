@@ -25,10 +25,6 @@ def t3st_doppler():
     }
     theano_kwargs = {}
     for key in kwargs.keys():
-        # NOTE: Use `theano.shared` instead of `as_tensor_variable` 
-        # to prevent theano from treating variables whose values
-        # are the same as the same variable! See
-        # https://github.com/rodluger/starry/pull/195
         theano_kwargs[key] = theano.shared(np.float64(kwargs[key]), name=key)
 
     # Compute the rv and its gradient using starry
@@ -71,7 +67,7 @@ def test_limb_darkened():
         theano_kwargs[key] = theano.shared(np.atleast_1d(kwargs[key]), name=key)
     udeg = len(kwargs["u"])
 
-    # Compute the rv and its gradient using starry
+    # Compute the flux and its gradient using starry beta
     map_beta = starry_beta.Map(udeg)
     map_beta[1:] = kwargs.pop("u")
     kwargs["xo"] = kwargs.pop("b")
@@ -117,7 +113,7 @@ def test_limb_darkened_spectral():
         theano_kwargs[key] = theano.shared(np.atleast_1d(kwargs[key]), name=key)
     udeg = len(kwargs["u"])
 
-    # Compute the rv and its gradient using starry
+    # Compute the flux and its gradient using starry beta
     map_beta = starry_beta.Map(udeg, nwav=2)
     map_beta[1:] = kwargs.pop("u")
     kwargs["xo"] = kwargs.pop("b")
@@ -146,6 +142,53 @@ def test_limb_darkened_spectral():
                                        theano_kwargs[var]))()[i] 
                                        for j in range(udeg)] 
                                        for i in range(npts)])
+
+    # Compare
+    for key in theano_kwargs.keys():
+        if key == "zo":
+            continue
+        assert np.allclose(np.squeeze(grad[key]), np.squeeze(computed[key]))
+
+
+def test_X():
+    # Define all arguments
+    npts = 2
+    ydeg = 1
+    kwargs = {
+        "y":        [1, 0.1, 0.2, 0.3],
+        "theta":    [0., 30.],
+        "xo":       [0.15, 0.15],
+        "yo":       [0., 0.1],
+        "zo":       [1.0, 1.0],
+        "ro":       [0.1, 0.1]
+    }
+    theano_kwargs = {}
+    for key in kwargs.keys():
+        theano_kwargs[key] = theano.shared(np.atleast_1d(kwargs[key]), name=key)
+    
+    # Compute the flux and its gradient using starry
+    map_beta = starry_beta.Map(ydeg)
+    map_beta[:, :] = kwargs.pop("y")
+    kwargs.pop("zo")
+    flux, grad = map_beta.flux(gradient=True, **kwargs)
+
+    # Instantiate the theano op
+    map = starry.Map(ydeg)
+    X = map.X(**theano_kwargs)
+    model = tt.dot(X, theano_kwargs["y"])
+
+    # Compute the gradient using Theano
+    varnames = sorted(theano_kwargs.keys())
+    vars = [theano_kwargs[k] for k in varnames]
+    computed = {}
+    for var in varnames:
+        deriv = [theano.function([], 
+                 theano.grad(model[i], theano_kwargs[var]))() 
+                 for i in range(npts)]
+        if var == "y":
+            computed[var] = np.transpose(deriv)
+        else:
+            computed[var] = np.sum(deriv, axis=0)
 
     # Compare
     for key in theano_kwargs.keys():

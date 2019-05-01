@@ -7,7 +7,7 @@ from ...extensions import RAxisAngle
 from ..sht import image2map, healpix2map, array2map
 from ..utils import is_theano, to_tensor, vectorize, \
                     get_ortho_latitude_lines, get_ortho_longitude_lines
-from ..ops import YlmFluxOp, YlmXOp
+from ..ops import YlmXOp
 from IPython.display import HTML
 from scipy.optimize import minimize
 import theano.tensor as tt
@@ -31,7 +31,6 @@ class YlmBase(object):
 
     def __init__(self, *args, **kwargs):
         super(YlmBase, self).__init__(*args, **kwargs)
-        # TODO self._flux_op = YlmFluxOp(self)
         self._X_op = YlmXOp(self)
 
     @staticmethod
@@ -478,6 +477,54 @@ class YlmBase(object):
             if obl is not None:
                 self.obl = obl
             return np.squeeze(self._X(*vectorize(theta, xo, yo, zo, ro)))
+
+    def flux(self, **kwargs):
+        r"""
+        Compute the flux.
+
+        Kwargs:
+            theta (float or ndarray): Angle of rotation. Default 0.
+            xo (float or ndarray): The :py:obj:`x` position of the \
+                occultor (if any). Default 0.
+            yo (float or ndarray): The :py:obj:`y` position of the \
+                occultor (if any). Default 0.
+            zo (float or ndarray): The :py:obj:`z` position of the \
+                occultor (if any). Default 1.0 (on the side closest to \
+                the observer).
+            ro (float): The radius of the occultor in units of this \
+                body's radius. Default 0 (no occultation).
+        
+        Kwargs (temporal maps or if :py:obj:`orbit` is provided):
+            t: Time at which to evaluate the map and/or orbit. Default 0. 
+
+        Kwargs (reflected light maps):
+            source: The source position, a unit vector or a
+                vector of unit vectors. Default :math:`-\hat{x} = (-1, 0, 0)`.
+
+        Additional kwargs accepted by this method:
+            y: The vector of spherical harmonic coefficients. Default \
+                is the map's current spherical harmonic vector.
+            u: The vector of limb darkening coefficients. Default \
+                is the map's current limb darkening vector.
+            f: The vector of filter coefficients. Default \
+                is the map's current filter vector.
+            inc: The map inclination in degrees. Default is the map's current \
+                inclination.
+            obl: The map obliquity in degrees. Default is the map's current \
+                obliquity. 
+            orbit: And :py:obj:`exoplanet.orbits.KeplerianOrbit` instance. \
+                This will override the :py:obj:`b` and :py:obj:`zo` keywords \
+                above as long as a time vector :py:obj:`t` is also provided \
+                (see above). Default :py:obj:`None`.
+
+        Returns:
+            The flux timeseries.
+        """
+        X = self.X(**kwargs)
+        if is_theano(X):
+            return tt.dot(X, kwargs.get("y", self[:, :]))
+        else:
+            return np.dot(X, kwargs.get("y", self[:, :]))
 
     def __call__(self, *args, **kwargs):
         r"""
