@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from . import rvderivs
-from ..ops import DopplerOp, infer_size
+from .. import rvderivs
+from ..ops import DopplerOp
 import theano.tensor as tt
 
 

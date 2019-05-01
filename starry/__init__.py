@@ -31,5 +31,4 @@ modules = dict(
 # Import all modules
 if not __STARRY_SETUP__:
     from .extensions import *
-    from . import ops
     from .Map import Map, DopplerMap

@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-from .ylm import YlmBase
-from .ld import LimbDarkenedBase
-from .filter import FilterBase
-from .doppler import DopplerBase
-from .deprecated import DeprecationBase
+from .bases import *
 from .. import modules
 
 
