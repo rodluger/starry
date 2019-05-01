@@ -152,6 +152,7 @@ PYBIND11_MODULE(
     using T = _STARRY_TYPE_;
     using Scalar = typename T::Scalar;
     using FType = typename T::FType;
+    using UType = typename T::UType;
 
     // Declare the Map class
     py::class_<Map<T>> PyMap(m, "Map", docstrings::Map::doc);
@@ -197,7 +198,8 @@ PYBIND11_MODULE(
             return map.fdeg;
     }, docstrings::Map::fdeg);
 
-    // Total number of spherical harmonic coefficients after limb-darkening + filter
+    // Total number of spherical harmonic 
+    // coefficients after limb-darkening + filter
     PyMap.def_property_readonly(
         "N", [] (
             Map<T> &map
@@ -514,79 +516,157 @@ PYBIND11_MODULE(
                 "power"_a, "seed"_a=py::none());
 #      endif
 
-#      if defined(_STARRY_TEMPORAL_)
-#          if defined(_STARRY_REFLECTED_)
-                PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
-                        "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                        "source"_a=-xhat<double>(), 
-                        docstrings::Map::linear_intensity_model);
-                PyMap.def("intensity", linear_intensity_model<T, true>(),
-                          "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                          "source"_a=-xhat<double>(), 
-                          docstrings::Map::intensity);
-#          else
-                PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
-                          "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                          docstrings::Map::linear_intensity_model);
-                PyMap.def("intensity", linear_intensity_model<T, true>(),
-                          "t"_a=0.0, "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                          docstrings::Map::intensity);
-#          endif
-#      else
-#          if defined(_STARRY_REFLECTED_)
-                PyMap.def("linear_intensity_model", linear_intensity_model<T>(),
-                          "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                          "source"_a=-xhat<double>(), 
-                          docstrings::Map::linear_intensity_model);
-                PyMap.def("intensity", linear_intensity_model<T, true>(),
-                          "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                          "source"_a=-xhat<double>(), 
-                          docstrings::Map::intensity);
-#          else
-                PyMap.def("linear_intensity_model", linear_intensity_model<T>(), 
-                          "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                          docstrings::Map::linear_intensity_model);
-                PyMap.def("intensity", linear_intensity_model<T, true>(), 
-                          "theta"_a=0.0, "x"_a=0.0, "y"_a=0.0, 
-                          docstrings::Map::intensity);
-#          endif
-#      endif
 
-        // Compute the linear flux model
-#      if defined(_STARRY_TEMPORAL_)
-#          if defined(_STARRY_REFLECTED_)
-                PyMap.def("linear_flux_model", linear_flux_model<T>(), 
-                        "t"_a=0.0, 
-                        "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
-                        "ro"_a=0.0, "source"_a=-xhat<double>(), 
-                        "gradient"_a=false, 
-                        docstrings::Map::linear_intensity_model);
-#          else
-                PyMap.def("linear_flux_model", linear_flux_model<T>(), 
-                        "t"_a=0.0, 
-                        "theta"_a=0.0, "xo"_a=0.0, "yo"_a=0.0, "zo"_a=1.0, 
-                        "ro"_a=0.0, "gradient"_a=false, 
-                        docstrings::Map::linear_intensity_model);
-#          endif
-#      else
-#          if defined(_STARRY_REFLECTED_)
-                PyMap.def("linear_flux_model", linear_flux_model<T>(), 
-                        "theta"_a=0.0, "xo"_a=0.0, 
-                        "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, 
-                        "source"_a=-xhat<double>(), "gradient"_a=false, 
-                        docstrings::Map::linear_intensity_model);
-#          else
-                PyMap.def("linear_flux_model", linear_flux_model<T>(), 
-                        "theta"_a=0.0, "xo"_a=0.0, 
-                        "yo"_a=0.0, "zo"_a=1.0, "ro"_a=0.0, "gradient"_a=false, 
-                        docstrings::Map::linear_intensity_model);
-#          endif
-#      endif
+    // Compute the intensity
+    PyMap.def(
+        "_intensity", [](
+            Map<T>& map,
+#           if defined(_STARRY_TEMPORAL_)
+                const Vector<Scalar>& t,
+#           endif
+            const Vector<Scalar>& theta, 
+            const RowMatrix<Scalar>& x, 
+#           if defined(_STARRY_REFLECTED_)
+                const Vector<Scalar>& y,
+                const RowMatrix<Scalar>& source
+#           else
+                const RowMatrix<Scalar>& y
+#           endif
+        ) {
+            RowMatrix<Scalar> intensity;
+            map.template computeLinearIntensityModel<true>(
+#               if defined(_STARRY_TEMPORAL_)
+                    t, 
+#               endif
+                theta,
+                x, 
+                y,
+#               if defined(_STARRY_REFLECTED_)
+                    source,
+#               endif
+                intensity
+            );
+            return intensity;
+    });
+
+    // Compute the starry design matrix
+    PyMap.def(
+        "_X", [](
+            Map<T>& map,
+#           if defined(_STARRY_TEMPORAL_)
+                const Vector<Scalar>& t,
+#           endif
+            const Vector<Scalar>& theta, 
+            const Vector<Scalar>& xo, 
+            const Vector<Scalar>& yo,
+            const Vector<Scalar>& zo,
+#           if defined(_STARRY_REFLECTED_)
+                const Vector<Scalar>& ro,
+                const RowMatrix<Scalar>& source
+#           else
+                const RowMatrix<Scalar>& ro
+#           endif
+        ) {
+            RowMatrix<Scalar> X;
+            map.computeLinearFluxModel(
+#               if defined(_STARRY_TEMPORAL_)
+                    t, 
+#               endif
+                theta,
+                xo, 
+                yo,
+                zo,
+                ro,
+#               if defined(_STARRY_REFLECTED_)
+                    source,
+#               endif
+                X
+            );
+            return X;
+    });
+
+    // Compute the starry design matrix gradient
+    PyMap.def(
+        "_grad", [](
+            Map<T>& map,
+#           if defined(_STARRY_TEMPORAL_)
+                const Vector<Scalar>& t,
+#           endif
+            const Vector<Scalar>& theta, 
+            const Vector<Scalar>& xo, 
+            const Vector<Scalar>& yo,
+            const Vector<Scalar>& zo,
+            const Vector<Scalar>& ro,
+#           if defined(_STARRY_REFLECTED_)
+                const RowMatrix<Scalar>& source
+#           endif
+            const RowMatrix<Scalar>& bX
+        ) {
+            RowMatrix<Scalar> X;
+#           if defined(_STARRY_TEMPORAL_)
+                Vector<Scalar> bt;
+#           endif
+            Vector<Scalar> btheta;
+            Vector<Scalar> bxo;
+            Vector<Scalar> byo;
+            Vector<Scalar> bro;
+#           if defined(_STARRY_REFLECTED_)
+                RowMatrix<Scalar> bsource;
+#           endif
+            UType bu;
+            Vector<Scalar> bf;
+            Scalar binc;
+            Scalar bobl;
+            map.computeLinearFluxModel(
+#               if defined(_STARRY_TEMPORAL_)
+                    t, 
+#               endif
+                theta,
+                xo, 
+                yo,
+                zo,
+                ro,
+#               if defined(_STARRY_SPECTRAL_)
+                    source,
+#               endif
+                X,
+                bX,
+#               if defined(_STARRY_TEMPORAL_)
+                    bt, 
+#               endif
+                btheta,
+                bxo, 
+                byo,
+                bro,
+#               if defined(_STARRY_REFLECTED_)
+                    bsource,
+#               endif
+                bu,
+                bf,
+                binc,
+                bobl
+            );
+            return py::make_tuple(
+#               if defined(_STARRY_TEMPORAL_)
+                    bt, 
+#               endif
+                btheta,
+                bxo, 
+                byo,
+                bro,
+#               if defined(_STARRY_REFLECTED_)
+                    bsource,
+#               endif
+                bu,
+                bf,
+                binc,
+                bobl
+            );
+    });
+
 
 // Limb darkened map methods
 #else
-
-    //PyMap.def("_intensity", &Map<T>::computeLinearIntensityModel<true>);
 
     PyMap.def(
         "_intensity", [](
@@ -598,7 +678,12 @@ PYBIND11_MODULE(
             OneByOne<Scalar> theta;
             theta.setZero();
             zeros.setZero(b.size());
-            map.template computeLinearIntensityModel<true>(theta, b, zeros, intensity);
+            map.template computeLinearIntensityModel<true>(
+                theta, 
+                b, 
+                zeros, 
+                intensity
+            );
             return intensity;
     });
 
@@ -623,9 +708,9 @@ PYBIND11_MODULE(
             const FType& bf
         ) {
             FType flux;
-            Scalar bb;
-            Scalar bro;
-            Matrix<Scalar> bu;
+            Vector<Scalar> bb;
+            Vector<Scalar> bro;
+            UType bu;
             map.computeLimbDarkenedFlux(b, zo, ro, flux, bf, bb, bro, bu);
             return py::make_tuple(bb, bro, bu);
     });

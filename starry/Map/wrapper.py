@@ -73,7 +73,7 @@ def Map(ydeg=0, udeg=0, fdeg=0, **kwargs):
     import_by_name('%s_%s_%s' % (kind, flag, dtype))
 
     # Figure out the base classes
-    bases = (CBase, DeprecationBase)
+    bases = (CBase,)
     if limbdarkened:
         bases = (LimbDarkenedBase,) + bases
     else:
@@ -137,7 +137,7 @@ def DopplerMap(ydeg=0, udeg=0, **kwargs):
     import_by_name('%s_ylm_%s' % (kind, dtype))
 
     # Figure out the base classes
-    bases = (DopplerBase, YlmBase, CBase, DeprecationBase)
+    bases = (DopplerBase, YlmBase, CBase,)
 
     # Subclass it
     class DopplerMap(*bases):

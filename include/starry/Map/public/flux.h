@@ -85,19 +85,18 @@ inline EnableIf<!U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
     RowMatrix<Scalar>& X,
-    RowMatrix<Scalar>& Dtheta,
-    RowMatrix<Scalar>& Dxo,
-    RowMatrix<Scalar>& Dyo,
-    RowMatrix<Scalar>& Dro,
-    RowMatrix<Scalar>& Du,
-    RowMatrix<Scalar>& Df,
-    RowMatrix<Scalar>& Dinc,
-    RowMatrix<Scalar>& Dobl
+    const RowMatrix<Scalar>& bX,
+    Vector<Scalar>& btheta, 
+    Vector<Scalar>& bxo,
+    Vector<Scalar>& byo,
+    Vector<Scalar>& bro,
+    UType& bu,
+    Vector<Scalar>& bf,
+    Scalar& binc,
+    Scalar& bobl
 ) {
-    RowMatrix<Scalar> Dt; // Dummy!
-    computeLinearFluxModelInternal(
-        theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro, Du, Df, Dinc, Dobl
-    );
+    Scalar bt; // Dummy!
+    // DEBUG TODO
 }
 
 /**
@@ -114,20 +113,19 @@ inline EnableIf<!U::Reflected && U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& zo, 
     const Vector<Scalar>& ro, 
     RowMatrix<Scalar>& X,
-    RowMatrix<Scalar>& Dt,
-    RowMatrix<Scalar>& Dtheta,
-    RowMatrix<Scalar>& Dxo,
-    RowMatrix<Scalar>& Dyo,
-    RowMatrix<Scalar>& Dro,
-    RowMatrix<Scalar>& Du,
-    RowMatrix<Scalar>& Df,
-    RowMatrix<Scalar>& Dinc,
-    RowMatrix<Scalar>& Dobl
+    const RowMatrix<Scalar>& bX,
+    Vector<Scalar>& bt, 
+    Vector<Scalar>& btheta, 
+    Vector<Scalar>& bxo,
+    Vector<Scalar>& byo,
+    Vector<Scalar>& bro,
+    UType& bu,
+    Vector<Scalar>& bf,
+    Scalar& binc,
+    Scalar& bobl
 ) {
     computeTaylor(t);
-    computeLinearFluxModelInternal(
-        theta, xo, yo, zo, ro, X, Dt, Dtheta, Dxo, Dyo, Dro, Du, Df, Dinc, Dobl
-    );
+    // DEBUG TODO
 }
 
 /**
@@ -144,21 +142,19 @@ inline EnableIf<U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& ro, 
     const RowMatrix<Scalar>& source,
     RowMatrix<Scalar>& X,
-    RowMatrix<Scalar>& Dtheta,
-    RowMatrix<Scalar>& Dxo,
-    RowMatrix<Scalar>& Dyo,
-    RowMatrix<Scalar>& Dro,
-    RowMatrix<Scalar>& Dsource,
-    RowMatrix<Scalar>& Du,
-    RowMatrix<Scalar>& Df,
-    RowMatrix<Scalar>& Dinc,
-    RowMatrix<Scalar>& Dobl
+    const RowMatrix<Scalar>& bX,
+    Vector<Scalar>& btheta, 
+    Vector<Scalar>& bxo,
+    Vector<Scalar>& byo,
+    Vector<Scalar>& bro,
+    RowMatrix<Scalar>& bsource,
+    UType& bu,
+    Vector<Scalar>& bf,
+    Scalar& binc,
+    Scalar& bobl
 ) {
-    RowMatrix<Scalar> Dt; // Dummy!
-    computeLinearFluxModelInternal(
-        theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, 
-        Dtheta, Dxo, Dyo, Dro, Dsource, Du, Df, Dinc, Dobl
-    );
+    Scalar bt; // Dummy!
+    // DEBUG TODO
 }
 
 /**
@@ -176,22 +172,20 @@ inline EnableIf<U::Reflected && U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& ro, 
     const RowMatrix<Scalar>& source,
     RowMatrix<Scalar>& X,
-    RowMatrix<Scalar>& Dt,
-    RowMatrix<Scalar>& Dtheta,
-    RowMatrix<Scalar>& Dxo,
-    RowMatrix<Scalar>& Dyo,
-    RowMatrix<Scalar>& Dro,
-    RowMatrix<Scalar>& Dsource,
-    RowMatrix<Scalar>& Du,
-    RowMatrix<Scalar>& Df,
-    RowMatrix<Scalar>& Dinc,
-    RowMatrix<Scalar>& Dobl
+    const RowMatrix<Scalar>& bX,
+    Vector<Scalar>& bt, 
+    Vector<Scalar>& btheta, 
+    Vector<Scalar>& bxo,
+    Vector<Scalar>& byo,
+    Vector<Scalar>& bro,
+    RowMatrix<Scalar>& bsource,
+    UType& bu,
+    Vector<Scalar>& bf,
+    Scalar& binc,
+    Scalar& bobl
 ) {
     computeTaylor(t);
-    computeLinearFluxModelInternal(
-        theta, xo, yo, zo, ro, source.rowwise().normalized(), X, Dt, 
-        Dtheta, Dxo, Dyo, Dro, Dsource, Du, Df, Dinc, Dobl
-    );
+    // DEBUG TODO
 }
 
 /**
@@ -205,10 +199,6 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFlux (
     const Vector<Scalar>& ro, 
     FType& flux
 ) {
-    if (ydeg > 0)
-        throw std::runtime_error(
-            "This method is for purely limb-darkened maps only."
-        );
     computeLimbDarkenedFluxInternal(b, zo, ro, flux);
 }
 
@@ -224,14 +214,10 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFlux (
     const Vector<Scalar>& ro, 
     FType& flux,
     const FType& bf,
-    Scalar& bb,
-    Scalar& bro,
-    Matrix<Scalar>& bu
+    Vector<Scalar>& bb,
+    Vector<Scalar>& bro,
+    UType& bu
 ) {
-    if (ydeg > 0)
-        throw std::runtime_error(
-            "This method is for purely limb-darkened maps only."
-        );
     computeLimbDarkenedFluxInternal(b, zo, ro, flux, 
                                     bf, bb, bro, bu);
 }

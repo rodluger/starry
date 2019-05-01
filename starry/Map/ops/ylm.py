@@ -4,26 +4,26 @@ import numpy as np
 from theano import gof
 import theano.tensor as tt
 
-__all__ = ["LinearOp"]
+__all__ = ["YlmFluxOp", "YlmXOp"]
 
 
-class LinearOp(tt.Op):
+class YlmFluxOp(tt.Op):
+    def __init__(self):
+        raise NotImplementedError("TODO!")
+
+class YlmXOp(tt.Op):
 
     def __init__(self, map):
         self.map = map
-        self._grad_op = LinearGradientOp(self)
+        self._grad_op = YlmXGradientOp(self)
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
         outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
-        # Note that the line above used to read: 
-        #   outputs = [inputs[-1].type()]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
         return [shapes[-1] + (tt.as_tensor(self.map.Ny),)]
-        # Note that the line above used to read: 
-        #   return shapes[-1],
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -31,19 +31,20 @@ class LinearOp(tt.Op):
         return self.grad(inputs, eval_points)
 
     def perform(self, node, inputs, outputs):
-        u, inc, obl, theta, xo, yo, zo, ro = inputs
+        u, f, inc, obl, theta, xo, yo, zo, ro = inputs
         if self.map.udeg:
             self.map[1:] = u
+        if self.map.fdeg:
+            self.map.filter[:, :] = f
         self.map.inc = inc
         self.map.obl = obl
-        outputs[0][0] = np.array(self.map.linear_flux_model(
-            theta=theta, xo=xo, yo=yo, zo=zo, ro=ro))
+        outputs[0][0] = np.array(self.map._X(theta, xo, yo, zo, ro))
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
 
 
-class LinearGradientOp(tt.Op):
+class YlmXGradientOp(tt.Op):
 
     def __init__(self, base_op):
         self.base_op = base_op
@@ -54,31 +55,35 @@ class LinearGradientOp(tt.Op):
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return shapes[:8]
+        return shapes[:9]
 
     def perform(self, node, inputs, outputs):
-        u, inc, obl, theta, xo, yo, zo, ro, bf = inputs
+        u, f, inc, obl, theta, xo, yo, zo, ro, bf = inputs
         if self.base_op.map.udeg:
             self.base_op.map[1:] = u
+        if self.map.fdeg:
+            self.base_op.map.filter[:, :] = f
         self.base_op.map.inc = inc
         self.base_op.map.obl = obl
-        _, grad = self.base_op.map.linear_flux_model(
-            theta=theta, xo=xo, yo=yo, zo=zo, ro=ro, gradient=True)
 
-        # Limb darkening gradient
-        outputs[0][0] = np.array(np.sum(grad["u"] * bf, axis=(1, 2)))
-
-        # Orientation gradients
-        outputs[1][0] = np.atleast_1d(np.array(np.sum(grad["inc"] * bf)))
-        outputs[2][0] = np.atleast_1d(np.array(np.sum(grad["obl"] * bf)))
-        outputs[3][0] = np.array(np.sum(grad["theta"] * bf, axis=-1))
-
-        # Occultation gradients
-        outputs[4][0] = np.array(np.sum(grad["xo"] * bf, axis=-1))
-        outputs[5][0] = np.array(np.sum(grad["yo"] * bf, axis=-1))
-        outputs[6][0] = np.zeros_like(outputs[5][0])
-        outputs[7][0] = np.array(np.sum(grad["ro"] * bf, axis=-1))
+        # Compute
+        btheta, bxo, byo, bro, bu, bf, binc, bobl = \
+            self.base_op.map._grad(np.atleast_1d(theta), 
+                                   np.atleast_1d(xo), 
+                                   np.atleast_1d(yo), 
+                                   np.atleast_1d(zo), 
+                                   np.atleast_1d(ro),
+                                   np.atleast_1d(bf))
+        outputs[0][0] = bu
+        outputs[1][0] = bf
+        outputs[2][0] = binc
+        outputs[3][0] = bobl
+        outputs[4][0] = btheta
+        outputs[5][0] = bxo
+        outputs[6][0] = byo
+        outputs[7][0] = np.zeros_like(outputs[6][0])
+        outputs[8][0] = bro
 
         # Reshape
-        for i in range(8):
+        for i in range(9):
             outputs[i][0] = outputs[i][0].reshape(np.shape(inputs[i]))

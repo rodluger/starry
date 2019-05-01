@@ -38,7 +38,7 @@ def vectorize(*args):
     if is_theano(*args):
         ones = tt.ones_like(np.sum([arg if is_theano(arg) 
                                     else np.atleast_1d(arg) 
-                                    for arg in args], axis=0)).astype(tt.config.floatX)
+                                    for arg in args], axis=0)).astype(tt.config.floatX).reshape([-1])
         args = tuple([arg.astype(tt.config.floatX) * ones for arg in args])
     else:
         ones = np.ones_like(np.sum([np.atleast_1d(arg) for arg in args], axis=0))

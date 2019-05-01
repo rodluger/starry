@@ -788,9 +788,9 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     const Vector<Scalar>& ro,
     FType& flux,
     const FType& bf,
-    Scalar& bb,
-    Scalar& bro,
-    Matrix<Scalar>& bu
+    Vector<Scalar>& bb,
+    Vector<Scalar>& bro,
+    UType& bu
 ) {
 
     // Shape checks
@@ -801,9 +801,9 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     flux.resize(nt, Nw);
     
     // Initialize derivs
-    bb = 0.0;
-    bro = 0.0;
-    Matrix<Scalar> bg(udeg + 1, Nw);
+    bb.resize(nt);
+    bro.resize(nt);
+    UType bg(udeg + 1, Nw);
     bg.setZero();
     RowVector<Scalar> I0bf, piI0fbf;
 
@@ -829,8 +829,8 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
 
             // b and ro derivs
             I0bf = (L.I0).cwiseProduct(bf.row(n));
-            bb += (L.dsTdb * L.g).dot(I0bf);
-            bro += (L.dsTdr * L.g).dot(I0bf);
+            bb(n) = (L.dsTdb * L.g).dot(I0bf);
+            bro(n) = (L.dsTdr * L.g).dot(I0bf);
 
             // Compute df / dg
             if (likely(udeg > 0)) {

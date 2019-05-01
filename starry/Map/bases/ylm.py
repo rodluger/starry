@@ -5,9 +5,11 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from ...extensions import RAxisAngle
 from ..sht import image2map, healpix2map, array2map
+from ..utils import is_theano, to_tensor, vectorize, \
+                    get_ortho_latitude_lines, get_ortho_longitude_lines
+from ..ops import YlmFluxOp, YlmXOp
 from IPython.display import HTML
 from scipy.optimize import minimize
-from ..ops import FluxOp, LinearOp
 import theano.tensor as tt
 
 
@@ -16,60 +18,61 @@ __all__ = ["YlmBase"]
 
 class YlmBase(object):
     """
-    .. automethod:: render(theta=0, res=300, projection='ortho', **kwargs)
-    .. automethod:: show(Z=None, cmap='plasma', projection='ortho', grid=True, **kwargs)
-    .. automethod:: flux(*args, **kwargs)
-    .. automethod:: __call__(*args, **kwargs)
-    .. automethod:: load(image, ydeg=None, healpix=False, col=None, **kwargs)
+    .. automethod:: render
+    .. automethod:: show
+    .. automethod:: flux
+    .. automethod:: __call__
+    .. automethod:: load
     .. automethod:: align
     .. automethod:: max
     .. automethod:: min
     .. automethod:: is_physical
-    .. automethod:: flux_op(**kwargs)
     """
 
     def __init__(self, *args, **kwargs):
-        super(PythonMapBase, self).__init__(*args, **kwargs)
-        self._flux_op = FluxOp(self)
-        self._linear_op = LinearOp(self)
+        super(YlmBase, self).__init__(*args, **kwargs)
+        # TODO self._flux_op = YlmFluxOp(self)
+        self._X_op = YlmXOp(self)
 
     @staticmethod
     def __descr__():
-        return (
-            "Instantiate a :py:mod:`starry` surface map. The map is described " +
-            "as an expansion in spherical harmonics, with optional arbitrary " +
-            "order limb darkening and an optional multiplicative spherical " +
-            "harmonic filter. Support for wavelength-dependent and time-dependent " +
-            "maps is included, as well as flux and intensity calculation in " +
-            "reflected light.\n\n" +
-            ".. note:: Map instances are normalized such that the " +
-            "**average disk-integrated intensity is equal to unity**. The " +
-            "total luminosity over all :math:`4\pi` steradians is therefore " +
-            ":math:`4`. This normalization " +
-            "is particularly convenient for constant or purely limb-darkened " +
-            "maps, whose disk-integrated intensity is always equal to unity.\n\n"
-            "Args:\n" +
-            "    ydeg (int): Largest spherical harmonic degree of the surface map.\n" +
-            "    udeg (int): Largest limb darkening degree of the surface map. Default 0.\n" +
-            "    fdeg (int): Largest spherical harmonic filter degree. Default 0.\n" +
-            "    nw (int): Number of map wavelength bins. Default :py:obj:`None`.\n" +
-            "    nt (int): Number of map temporal bins. Default :py:obj:`None`.\n" +
-            "    reflected (bool): If :py:obj:`True`, performs all computations in " +
-            "        reflected light. Map coefficients represent albedos rather " +
-            "        than intensities. Default :py:obj:`False`.\n" +
-            "    multi (bool): Use multi-precision to perform all " +
-            "        calculations? Default :py:obj:`False`. If :py:obj:`True`, " +
-            "        defaults to 32-digit (approximately 128-bit) floating " +
-            "        point precision. This can be adjusted by changing the " +
-            "        :py:obj:`STARRY_NMULTI` compiler macro.\n\n"
-        )
+        return r"""
+            Instantiate a :py:mod:`starry` surface map. The map is described
+            as an expansion in spherical harmonics, with optional arbitrary
+            order limb darkening and an optional multiplicative spherical
+            harmonic filter. Support for wavelength-dependent and time-dependent
+            maps is included, as well as flux and intensity calculation in
+            reflected light.
 
-    def render(self, theta=0, res=300, projection="ortho", **kwargs):
+            .. note:: Map instances are normalized such that the
+                **average disk-integrated intensity is equal to unity**. The
+                total luminosity over all :math:`4\pi` steradians is therefore
+                :math:`4`. This normalization
+                is particularly convenient for constant or purely limb-darkened
+                maps, whose disk-integrated intensity is always equal to unity.
+
+            Args:
+                ydeg (int): Largest spherical harmonic degree of the surface map.
+                udeg (int): Largest limb darkening degree of the surface map. Default 0.
+                fdeg (int): Largest spherical harmonic filter degree. Default 0.
+                nw (int): Number of map wavelength bins. Default :py:obj:`None`.
+                nt (int): Number of map temporal bins. Default :py:obj:`None`.
+                reflected (bool): If :py:obj:`True`, performs all computations in
+                    reflected light. Map coefficients represent albedos rather
+                    than intensities. Default :py:obj:`False`.
+                multi (bool): Use multi-precision to perform all
+                    calculations? Default :py:obj:`False`. If :py:obj:`True`,
+                    defaults to 32-digit (approximately 128-bit) floating
+                    point precision. This can be adjusted by changing the
+                    :py:obj:`STARRY_NMULTI` compiler macro.
         """
+
+    def render(self, **kwargs):
+        r"""
         Render the map on a grid and return the pixel intensities as a 
         two-dimensional array (with time as an optional third dimension).
 
-        Args:
+        Kwargs:
             theta (float): Angle of rotation of the map in degrees. Default 0.
             res (int): Map resolution, corresponding to the number of pixels \
                 on a side (for the orthographic projection) or the number of \
@@ -81,14 +84,21 @@ class YlmBase(object):
                 in an equirectangular (geographic, equidistant cylindrical) \
                 view of the entire surface of the map in latitude-longitude space. \
                 Default "orthographic".
+        
+        Kwargs (temporal maps):
             t (float or ndarray): The time(s) at which to evaluate the map. \
-                *Temporal maps only*. Default 0.
+                Default 0.
+        
+        Kwargs (reflected light maps):
             source (ndarray): A unit vector corresponding to the direction to the \
                 light source. This may optionally be a vector of unit vectors. \
-                *Reflected light maps only*. Default :math:`-\hat{x}`.
+                Default :math:`-\hat{x}`.
             
         """
-        # Type-specific kwargs
+        # Get kwargs
+        res = kwargs.get("res", 300)
+        projection = kwargs.get("projection", "ortho")
+        theta = kwargs.get("theta", 0.0)
         if projection.lower().startswith("rect"):
             projection = "rect"
             nframes = 1
@@ -101,7 +111,7 @@ class YlmBase(object):
                 nframes = 1
             model_kwargs = dict(theta=theta)
         else:
-            raise ValueError("Invalid projection. Allowed projections are " +
+            raise ValueError("Invalid projection. Allowed projections are" +
                              "`rectangular` and `orthographic` (default).")
 
         # Are we modeling time variability?
@@ -113,15 +123,15 @@ class YlmBase(object):
 
         # Are we modeling reflected light?
         if self._reflected:
-            source = kwargs.pop("source", [[-1.0, 0.0, 0.0] for n in range(nframes)])
+            source = kwargs.pop("source", 
+                                [[-1.0, 0.0, 0.0] for n in range(nframes)])
             if source is None:
                 # If explicitly set to `None`, re-run this
                 # function on an *emitted* light map!
                 from .. import Map
                 if self._temporal:
                     map = Map(ydeg=self.ydeg, udeg=self.udeg, 
-                              fdeg=self.fdeg,
-                              multi=self.multi, nt=self.nt)
+                              fdeg=self.fdeg, multi=self.multi, nt=self.nt)
                     map[:, :, :] = self[:, :, :]
                     if (self.udeg):
                         map[:] = self[:]
@@ -132,8 +142,7 @@ class YlmBase(object):
                                       projection=projection, t=t)
                 elif self._spectral:
                     map = Map(ydeg=self.ydeg, udeg=self.udeg, 
-                              fdeg=self.fdeg,
-                              multi=self.multi, nw=self.nw)
+                              fdeg=self.fdeg, multi=self.multi, nw=self.nw)
                     map[:, :, :] = self[:, :, :]
                     if (self.udeg):
                         map[:] = self[:]
@@ -144,8 +153,7 @@ class YlmBase(object):
                                       projection=projection)
                 else:
                     map = Map(ydeg=self.ydeg, udeg=self.udeg, 
-                              fdeg=self.fdeg,
-                              multi=self.multi)
+                              fdeg=self.fdeg, multi=self.multi)
                     map[:, :] = self[:, :]
                     if (self.udeg):
                         map[:] = self[:]
@@ -198,7 +206,7 @@ class YlmBase(object):
 
             # Compute the northern hemisphere map
             self.axis = [0, 0, 1]
-            Z_north = np.array(self.intensity(x=x, y=y, **model_kwargs))
+            Z_north = np.array(self(x=x, y=y, **model_kwargs))
             if self._spectral:
                 Z_north = Z_north.reshape(res // 2, res, self.nw)
                 Z_north = np.moveaxis(Z_north, -1, 0)
@@ -219,7 +227,7 @@ class YlmBase(object):
             
             # Compute the southern hemisphere map
             self.axis = [0, 0, -1]
-            Z_south = np.array(self.intensity(x=-x, y=-y, **model_kwargs))
+            Z_south = np.array(self(x=-x, y=-y, **model_kwargs))
             if self._spectral:
                 Z_south = Z_south.reshape(res // 2, res, self.nw)
                 Z_south = np.moveaxis(Z_south, -1, 0)
@@ -248,7 +256,7 @@ class YlmBase(object):
             # Create a grid of X and Y and construct the linear model
             x, y = np.meshgrid(np.linspace(-1, 1, res), 
                                np.linspace(-1, 1, res))
-            Z = np.array(self.intensity(x=x, y=y, **model_kwargs))
+            Z = np.array(self(x=x, y=y, **model_kwargs))
             if self._spectral:
                 Z = Z.reshape(res, res, self.nw)
                 Z = np.moveaxis(Z, -1, 0)
@@ -257,8 +265,7 @@ class YlmBase(object):
 
         return np.squeeze(Z)
 
-    def show(self, Z=None, cmap="plasma", projection="ortho", 
-             grid=True, **kwargs):
+    def show(self, **kwargs):
         """
         Render and plot an image of the map; optionally display an animation.
 
@@ -282,6 +289,12 @@ class YlmBase(object):
             kwargs: Any additional kwargs accepted by :py:meth:`render`.
 
         """
+        # Get kwargs
+        Z = kwargs.get("Z", None)
+        cmap = kwargs.get("cmap", "plasma")
+        projection = kwargs.get("projection", "ortho")
+        grid = kwargs.get("grid", True)
+
         # Render the map
         if Z is None:
             Z = self.render(projection=projection, **kwargs)
@@ -296,10 +309,6 @@ class YlmBase(object):
             animated = True
         else:
             animated = (nframes > 1)
-
-        # Latitude grid lines
-        latlines = [-60, -30, 0, 30, 60]
-        lonlines = np.linspace(-180, 180, 13)
 
         if projection == "rect":
             # Set up the plot
@@ -324,90 +333,16 @@ class YlmBase(object):
             ax.set_ylim(-1.05, 1.05)
             extent = (-1, 1, -1, 1)
 
-            # Plot the lat/lon grid lines
+            # Grid lines
             if grid:
-                
-                # Body outline
                 x = np.linspace(-1, 1, 10000)
                 y = np.sqrt(1 - x ** 2)
                 ax.plot(x, y, 'k-', alpha=1, lw=1)
                 ax.plot(x, -y, 'k-', alpha=1, lw=1)
-
-                # Angular quantities
-                ci = np.cos(self.inc * np.pi / 180)
-                si = np.sin(self.inc * np.pi / 180)
-                co = np.cos(self.obl * np.pi / 180)
-                so = np.sin(self.obl * np.pi / 180)
-
-                # Latitude lines
-                for lat in latlines:
-
-                    # Figure out the equation of the ellipse
-                    y0 = np.sin(lat * np.pi / 180) * si
-                    a = np.cos(lat * np.pi / 180)
-                    b = a * ci
-                    x = np.linspace(-a, a, 10000)
-                    y1 = y0 - b * np.sqrt(1 - (x / a) ** 2)
-                    y2 = y0 + b * np.sqrt(1 - (x / a) ** 2)
-
-                    # Mask lines on the backside
-                    if (si != 0):
-                        if self.inc > 90:
-                            ymax = y1[np.argmax(x ** 2 + y1 ** 2)]
-                            y1[y1 < ymax] = np.nan
-                            ymax = y2[np.argmax(x ** 2 + y2 ** 2)]
-                            y2[y2 < ymax] = np.nan
-                        else:
-                            ymax = y1[np.argmax(x ** 2 + y1 ** 2)]
-                            y1[y1 > ymax] = np.nan
-                            ymax = y2[np.argmax(x ** 2 + y2 ** 2)]
-                            y2[y2 > ymax] = np.nan
-
-                    # Rotate them
-                    for y in (y1, y2):
-                        xr = -x * co + y * so
-                        yr = x * so + y * co
-                        ax.plot(xr, yr, 'k-', lw=0.5, alpha=0.5, zorder=100)
-
-                # Longitude lines
-                for lon in lonlines:
-                    # Viewed at i = 90
-                    b = np.sin(lon * np.pi / 180)
-                    y = np.linspace(-1, 1, 1000)
-                    x = b * np.sqrt(1 - y ** 2)
-                    z = np.sqrt(np.abs(1 - x ** 2 - y ** 2))
-
-                    if (self.inc > 88) and (self.inc < 92):
-                        y1 = y
-                        y2 = np.nan * y
-                    else:
-                        # Rotate by the inclination
-                        R = RAxisAngle([1, 0, 0], 90 - self.inc)
-                        v = np.vstack((x.reshape(1, -1), 
-                                       y.reshape(1, -1), 
-                                       z.reshape(1, -1)))
-                        x, y1, _ = np.dot(R, v)
-                        v[2] *= -1
-                        _, y2, _ = np.dot(R, v)
-
-                        # Mask lines on the backside
-                        if (si != 0):
-                            if self.inc < 90:
-                                imax = np.argmax(x ** 2 + y1 ** 2)
-                                y1[:imax + 1] = np.nan
-                                imax = np.argmax(x ** 2 + y2 ** 2)
-                                y2[:imax + 1] = np.nan
-                            else:
-                                imax = np.argmax(x ** 2 + y1 ** 2)
-                                y1[imax:] = np.nan
-                                imax = np.argmax(x ** 2 + y2 ** 2)
-                                y2[imax:] = np.nan
-
-                    # Rotate them
-                    for y in (y1, y2):
-                        xr = -x * co + y * so
-                        yr = x * so + y * co
-                        ax.plot(xr, yr, 'k-', lw=0.5, alpha=0.5, zorder=100)
+                lat_lines = get_ortho_latitude_lines(inc=self.inc, obl=self.obl)
+                lon_lines = get_ortho_longitude_lines(inc=self.inc, obl=self.obl)
+                for x, y in lat_lines + lon_lines:
+                    ax.plot(x, y, 'k-', lw=0.5, alpha=0.5, zorder=100)
 
         # Plot the first frame of the image
         img = ax.imshow(Z[0], origin="lower", 
@@ -415,17 +350,6 @@ class YlmBase(object):
                         interpolation="none",
                         vmin=np.nanmin(Z), vmax=np.nanmax(Z), 
                         animated=animated)
-        
-        # Show a colorbar
-        # TODO: This isn't working on the Linux machine I tested it on...
-        # The colorbar takes up the entire figure!
-        # Disabled for now.
-        '''
-        if projection == "rect":
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes('right', size='3%', pad=0.1)
-            plt.colorbar(img, ax=ax, cax=cax)
-        '''
         
         # Display or save the image / animation
         if animated:
@@ -458,99 +382,143 @@ class YlmBase(object):
         else:
             plt.show()
 
-    def flux(self, *args, **kwargs):
-        """
-        Compute the flux visible from the map.
+    def X(self, *args, **kwargs):
+        r"""
+        Compute the flux design matrix.
 
-        Args:
-            t (float or ndarray): Time at which to evaluate. Default 0. \
-                *Temporal maps only.*
-            theta (float or ndarray): Angle of rotation. Default 0. \
-                *Not available for pure limb darkening.*
+        Kwargs:
+            theta (float or ndarray): Angle of rotation. Default 0.
             xo (float or ndarray): The :py:obj:`x` position of the \
-                occultor (if any). Default 0. \
-                *Not available for pure limb darkening.*
+                occultor (if any). Default 0.
             yo (float or ndarray): The :py:obj:`y` position of the \
-                occultor (if any). Default 0. \
-                *Not available for pure limb darkening.*
+                occultor (if any). Default 0.
             zo (float or ndarray): The :py:obj:`z` position of the \
                 occultor (if any). Default 1.0 (on the side closest to \
                 the observer).
-            b (float or ndarray): The impact parameter of the \
-                occultor. Default 0. *Purely limb-darkened maps only.*
             ro (float): The radius of the occultor in units of this \
                 body's radius. Default 0 (no occultation).
-            gradient (bool): Compute and return the gradient of the \
-                flux as well? Default :py:obj:`False`.
-            source (ndarray): The source position, a unit vector or a
+        
+        Kwargs (temporal maps or if :py:obj:`orbit` is provided):
+            t: Time at which to evaluate the map and/or orbit. Default 0. 
+
+        Kwargs (reflected light maps):
+            source: The source position, a unit vector or a
                 vector of unit vectors. Default :math:`-\hat{x} = (-1, 0, 0)`.
-                *Reflected light maps only.*
+
+        Additional kwargs accepted by this method:
+            u: The vector of limb darkening coefficients. Default \
+                is the map's current limb darkening vector.
+            f: The vector of filter coefficients. Default \
+                is the map's current filter vector.
+            inc: The map inclination in degrees. Default is the map's current \
+                inclination.
+            obl: The map obliquity in degrees. Default is the map's current \
+                obliquity. 
+            orbit: And :py:obj:`exoplanet.orbits.KeplerianOrbit` instance. \
+                This will override the :py:obj:`b` and :py:obj:`zo` keywords \
+                above as long as a time vector :py:obj:`t` is also provided \
+                (see above). Default :py:obj:`None`.
 
         Returns:
-            A vector of fluxes. If :py:obj:`gradient` is enabled, also returns a \
-            dictionary whose keys are the derivatives of `flux` with respect \
-            to all model parameters.
-
-        .. note:: As noted above, the call sequence for this is different if \
-            the map is purely limb-darkened (purely limb-darkened \
-            maps are those with :py:obj:`ydeg = 0`, :py:obj:`fdeg = 0`, \
-            and :py:obj:`udeg > 0`). In this case, rather than providing the \
-            :py:obj:`x` and :py:obj:`y` positions of the occultor, the user \
-            should only provide the impact paramter :py:obj:`b` (since the \
-            map is invariant to rotations about the line of sight).
-
+            The design matrix :py:obj:`X`.
         """
-        # This is already implemented for limb-darkened maps
-        if (self._limbdarkened):
-            return super(PythonMapBase, self).flux(*args, **kwargs)
+        # TODO!
+        if self._spectral or self._temporal:
+            raise NotImplementedError("Not yet implemented!")
 
-        if kwargs.get("gradient", False):
-            # Get the design matrix and its gradient
-            X, grad = self.linear_flux_model(*args, **kwargs)
-            
-            # The dot product with `y` gives us the flux
-            f = np.dot(X, self.y)
-            for key in grad.keys():
-                grad[key] = np.dot(grad[key], self.y)
-
-            # Add in the gradient with respect to `y`, but
-            # first remove inds where `l = m = 0`
-            lgtr0 = np.ones(self.Ny * self.nt, dtype=bool)
-            for i in range(self.nt):
-                lgtr0[i * self.Ny] = False
-            grad['y'] = X[:, lgtr0].T
-
-            # Copy df/dy to each wavelength bin
-            if self._spectral:
-                grad['y'] = np.tile(grad['y'][:, :, np.newaxis], 
-                                    (1, 1, self.nw))
-
-            return f, grad
+        # Get the orbital coords
+        orbit = kwargs.get("orbit", None)
+        t = kwargs.get("t", None)
+        if orbit is not None and t is not None:
+            coords = orbit.get_relative_position(t)
+            xo = coords[0] / orbit.r_star
+            yo = coords[1] / orbit.r_star
+            # Note that `exoplanet` uses a slightly different coord system!
+            zo = -coords[2] / orbit.r_star
         else:
-            # The flux is just the dot product with the design matrix
-            return np.dot(self.linear_flux_model(*args, **kwargs), self.y)
+            xo = kwargs.get("xo", 0.0)
+            yo = kwargs.get("yo", 0.0)
+            zo = kwargs.get("zo", 1.0)
+        theta = kwargs.get("theta", 0.0)
+        ro = kwargs.get("ro", 0.0)
+
+        # Additional kwargs
+        u = kwargs.get("u", None)
+        f = kwargs.get("f", None)
+        inc = kwargs.get("inc", None)
+        obl = kwargs.get("obl", None)
+
+        # Figure out if this is a Theano Op call
+        if is_theano(u, f, inc, obl, theta, xo, yo, zo, ro):
+            if u is None:
+                if self.udeg == 0:
+                    u = []
+                else:
+                    u = self[1:]
+            if f is None:
+                if self.fdeg == 0:
+                    f = []
+                else:
+                    f = self.filter[:, :]
+            if inc is None:
+                inc = self.inc
+            if obl is None:
+                obl = self.obl
+            u, f, inc, obl, theta, xo, yo, zo, ro = \
+                to_tensor(u, f, inc, obl, theta, xo, yo, zo, ro)
+            theta, xo, yo, zo, ro = vectorize(theta, xo, yo, zo, ro)
+            return self._X_op(u, f, inc, obl, theta, xo, yo, zo, ro)
+        else:
+            if u is not None:
+                self[1:] = u
+            if f is not None:
+                self.filter[:, :] = f
+            if inc is not None:
+                self.inc = inc
+            if obl is not None:
+                self.obl = obl
+            return np.squeeze(self._X(*vectorize(theta, xo, yo, zo, ro)))
 
     def __call__(self, *args, **kwargs):
-        """
+        r"""
         Return the intensity of the map at a point or on a grid of surface points.
 
-        Args:
-            t (float or ndarray): Time at which to evaluate. Default 0. \
-                *Temporal maps only.*
+        Kwargs:
             theta (float or ndarray): Angle of rotation. Default 0.
             x (float or ndarray): The :py:obj:`x` position on the \
                 surface. Default 0.
             y (float or ndarray): The :py:obj:`y` position on the \
                 surface. Default 0.
-            source (ndarray): The source position, a unit vector or a
+
+        Kwargs (temporal maps):
+            t: Time at which to evaluate. Default 0. 
+
+        Kwargs (reflected light maps):
+            source: The source position, a unit vector or a
                 vector of unit vectors. Default :math:`-\hat{x} = (-1, 0, 0)`.
-                *Reflected light maps only.*
 
         Returns:
             A vector of intensities at the corresponding surface point(s).
 
         """
-        return self.intensity(*args, **kwargs)
+        theta = np.atleast_1d(kwargs.get("theta", 0.0))
+        x = np.atleast_1d(kwargs.get("x", 0.0))
+        y = np.atleast_1d(kwargs.get("y", 0.0))
+        x, y = vectorize(x, y)
+        if self._temporal:
+            t = np.atleast_1d(kwargs.get("t", 0.0))
+            t, theta = vectorize(t, theta)
+            args = [t, theta, x, y]
+        elif self._spectral:
+            source = np.atleast_1d(kwargs.get("source", [-1.0, 0.0, 0.0]))
+            if source.ndim == 1:
+                source = [source for i in theta]
+            elif theta.ndim == 1:
+                theta = [theta for s in source]
+            args = [theta, x, y, source]
+        else:
+            args = [theta, x, y]
+        return np.squeeze(self._intensity(*args).reshape(len(theta), -1))
 
     def load(self, image, ydeg=None, healpix=False, col=None, **kwargs):
         """
@@ -587,9 +555,6 @@ class YlmBase(object):
         .. note:: Method not available for purely limb-darkened maps.
         
         """
-        if self._limbdarkened:
-            raise NotImplementedError("The `load` method is not " + 
-                                      "implemented for limb-darkened maps.")
         if col is None:
             col = 0
 
@@ -701,7 +666,7 @@ class YlmBase(object):
         if minimum:
             return min(res_f.fun, res_b.fun)
         else:
-            return max(res_f.fun, res_b.fun)
+            return -min(res_f.fun, res_b.fun)
 
     def min(self):
         """
@@ -748,359 +713,3 @@ class YlmBase(object):
             minimum. This will be fixed in an upcoming version of the code.
         """
         return self.min() >= 0
-    
-    def flux_op(self, **kwargs):
-        """
-        Returns a 
-        `Theano Op <http://deeplearning.net/software/theano/extending/extending_theano.html>`_ 
-        for the flux computation.
-
-        This method is similar to :py:meth:`flux` but it does not return a
-        light curve! Instead, it returns a 
-        :py:obj:`Theano` Op used for symbolic (lazy) gradient-based
-        computations useful for integration with :py:obj:`exoplanet`
-        and :py:obj:`pymc3`.
-
-        The arguments below can either be normal Python or :py:obj:`numpy`
-        types, in which case they are assumed to be constant, or :py:obj:`Theano`
-        tensor variables.
-
-        Args (spherical harmonic maps):
-            y: The full vector of spherical harmonic coefficients, \
-                (skipping the :math:`Y_{0,0}` term). Default is the map's \
-                spherical harmonic coefficient vector.
-            u: The full vector of limb darkening coefficients,  \
-                starting with :math:`u_{1}`. Default is the map's \
-                limb darkening coefficient vector.
-            inc: The map inclination in degrees. Default is the map's \
-                current inclination.
-            obl: The map obliquity in degrees. Default is the map's \
-                current obliquity.
-            theta: The map rotation angle in degrees. Default 0.
-            orbit: An :py:obj:`exoplanet` :py:obj:`orbit` instance. Default \
-                :py:obj:`None`.
-            t: The times at which to evaluate the :py:obj:`orbit`. Default \
-                :py:obj:`None`.
-            xo: The occultor x position. Default :py:obj:`None`.
-            yo: The occultor y position. Default :py:obj:`None`.
-            zo: The occultor z position. Default 1.0.
-            ro: The occultor radius. Default :py:obj:`None`.
-
-        Args (limb-darkened maps):
-            u: The full vector of limb darkening coefficients,  \
-                starting with :math:`u_{1}`.
-            orbit: An :py:obj:`exoplanet` :py:obj:`orbit` instance.
-            t: The times at which to evaluate the :py:obj:`orbit`.
-            b: The occultor impact parameter.
-            zo: The occultor z position.
-            ro: The occultor radius.
-
-        Returns:
-            A :py:obj:`Theano` Op defining the graph for the light curve computation.
-
-        """
-        y = kwargs.get("y", [] if self.ydeg == 0 else np.array(self.y[1:]))
-        u = kwargs.get("u", [] if self.udeg == 0 else np.array(self.u[1:]))
-        inc = kwargs.get("inc", None if self._limbdarkened else self.inc)
-        obl = kwargs.get("obl", None if self._limbdarkened else self.obl)
-        theta = kwargs.get("theta", 0.0)
-        orbit = kwargs.get("orbit", None)
-        t = kwargs.get("t", 0.0)
-        b = kwargs.get("b", 0.0)
-        xo = kwargs.get("xo", 0.0)
-        yo = kwargs.get("yo", 0.0)
-        zo = kwargs.get("zo", 1.0)
-        ro = kwargs.get("ro", 0.0)
-
-        # TODO: Implement this op for spectral and temporal types.
-        if (self._spectral and not self._limbdarkened) or self._temporal or self.fdeg:
-            raise NotImplementedError(
-                "Op not yet implemented for this map type."
-            )
-
-        # The call sequence for limb-darkened maps is different
-        if self._limbdarkened:
-            assert (y is None) and (inc is None) and (obl is None) and \
-                (theta == 0) and (xo is None) and (yo is None), \
-                    "Invalid argument(s) to `flux_op`."
-            assert (orbit is not None and t is not None) or (b is not None), \
-                "Please provide an impact parameter."
-        else:
-            assert b is None, "Invalid argument(s) to `flux_op`."
-
-        # Orbital coords.
-        if orbit is not None:
-
-            # Compute the orbit
-            assert t is not None, \
-                "Please provide a set of times `t` at which to compute the orbit."
-            try:
-                npts = len(t)
-            except TypeError:
-                npts = tt.as_tensor(t).tag.test_value.shape[0]
-            coords = orbit.get_relative_position(t)
-            xo = coords[0] / orbit.r_star
-            yo = coords[1] / orbit.r_star
-            # Note that `exoplanet` uses a slightly different coord system!
-            zo = -coords[2] / orbit.r_star
-            if self._limbdarkened:
-                b = tt.sqrt(xo * xo + yo * yo)
-
-            # Vectorize `theta` and `ro`
-            theta = tt.as_tensor_variable(theta)
-            if (theta.ndim == 0):
-                theta = tt.ones(npts) * theta
-            ro = tt.as_tensor_variable(ro)
-            if (ro.ndim == 0):
-                ro = tt.ones(npts) * ro
-
-        else:
-
-            if self._limbdarkened:
-
-                b = tt.as_tensor_variable(b)
-                ro = tt.as_tensor_variable(ro)
-
-                # Figure out the length of the timeseries
-                if (b.ndim != 0):
-                    npts = infer_size(b)
-                elif (ro.ndim != 0):
-                    npts = infer_size(ro)
-                else:
-                    npts = 1
-
-                # Vectorize everything
-                if (b.ndim == 0):
-                    b = tt.ones(npts) * b
-                if (ro.ndim == 0):
-                    ro = tt.ones(npts) * ro
-
-            elif (xo is None) or (yo is None) or (zo is None) or (ro is None):
-
-                # No occultation
-                theta = tt.as_tensor_variable(theta)
-                if (theta.ndim == 0):
-                    npts = 1
-                else:
-                    npts = infer_size(theta)
-                theta = tt.ones(npts) * theta
-                xo = tt.zeros(npts)
-                yo = tt.zeros(npts)
-                zo = tt.zeros(npts)
-                ro = tt.zeros(npts)
-            
-            else:
-
-                # Occultation with manually specified coords
-                xo = tt.as_tensor_variable(xo)
-                yo = tt.as_tensor_variable(yo)
-                zo = tt.as_tensor_variable(zo)
-                ro = tt.as_tensor_variable(ro)
-                theta = tt.as_tensor_variable(theta)
-
-                # Figure out the length of the timeseries
-                if (xo.ndim != 0):
-                    npts = infer_size(xo)
-                elif (yo.ndim != 0):
-                    npts = infer_size(yo)
-                elif (zo.ndim != 0):
-                    npts = infer_size(zo)
-                elif (ro.ndim != 0):
-                    npts = infer_size(ro)
-                elif (theta.ndim != 0):
-                    npts = infer_size(theta)
-                else:
-                    npts = 1 
-
-                # Vectorize everything
-                if (xo.ndim == 0):
-                    xo = tt.ones(npts) * xo
-                if (yo.ndim == 0):
-                    yo = tt.ones(npts) * yo
-                if (zo.ndim == 0):
-                    zo = tt.ones(npts) * zo
-                if (ro.ndim == 0):
-                    ro = tt.ones(npts) * ro
-                if (theta.ndim == 0):
-                    theta = tt.ones(npts) * theta
-
-        # Now ensure everything is `floatX`.
-        # This is necessary because Theano will try to cast things
-        # to float32 if they can be exactly represented with 32 bits.
-        if self._limbdarkened:
-            args = [u, b, zo, ro]
-            for i, arg in enumerate(args):
-                if hasattr(arg, 'astype'):
-                    args[i] = arg.astype(tt.config.floatX)
-                else:
-                    args[i] = getattr(np, tt.config.floatX)(arg)
-
-            # Call the op
-            return self._ld_op(*args)
-        else:
-            args = [y, u, inc, obl, theta, xo, yo, zo, ro]
-            for i, arg in enumerate(args):
-                if hasattr(arg, 'astype'):
-                    args[i] = arg.astype(tt.config.floatX)
-                else:
-                    args[i] = getattr(np, tt.config.floatX)(arg)
-
-            # Call the op
-            return self._flux_op(*args)
-
-    def linear_op(self, u=None, inc=None, obl=None,
-                  theta=0, orbit=None, t=None, xo=None, 
-                  yo=None, zo=1, ro=0.1):
-        """
-        Returns a 
-        `Theano Op <http://deeplearning.net/software/theano/extending/extending_theano.html>`_ 
-        for the computation of the linear flux model.
-
-        This method is similar to :py:meth:`linear_flux_model` but it does not return a
-        design matrix! Instead, it returns a 
-        :py:obj:`Theano` Op used for symbolic (lazy) gradient-based
-        computations useful for integration with :py:obj:`exoplanet`
-        and :py:obj:`pymc3`.
-
-        The arguments below can either be normal Python or :py:obj:`numpy`
-        types, in which case they are assumed to be constant, or :py:obj:`Theano`
-        tensor variables. They can also be set to :py:obj:`None` (default), in 
-        which case they take on the constant values set in the :py:obj:`Map`
-        object (or their default values, if they are not :py:obj:`Map`
-        attributes). As usual, the parameters :py:obj:`theta`,
-        :py:obj:`xo`, :py:obj:`yo`, :py:obj:`zo`, and :py:obj:`ro` may
-        be either scalars or vectors. Note that if an :py:obj:`orbit` instance
-        is provided, :py:obj:`xo`, :py:obj:`yo`, and :py:obj:`zo` are
-        ignored.
-
-        Args:
-            u: The full vector of limb darkening coefficients,  \
-                starting with :math:`u_{1}`.
-            inc: The map inclination in degrees.
-            obl: The map obliquity in degrees.
-            theta: The map rotation angle in degrees.
-            orbit: An :py:obj:`exoplanet` :py:obj:`orbit` instance.
-            t: The times at which to evaluate the :py:obj:`orbit`.
-            xo: The occultor x position.
-            yo: The occultor y position.
-            zo: The occultor z position.
-            ro: The occultor radius.
-
-        Returns:
-            A :py:obj:`Theano` Op defining the graph for the linear model computation.
-
-        """
-        raise NotImplementedError("This needs work!")
-        
-        # TODO: Implement this op for spectral and temporal types.
-        if self._spectral or self._temporal or self.fdeg:
-            raise NotImplementedError(
-                "Op not yet implemented for this map type."
-            )
-        if self._limbdarkened:
-            raise NotImplementedError(
-                "Op not implemented for purely limb-darkened maps."
-            )
-
-        # Map coefficients. If not set, default to the
-        # values of the Map instance itself.
-        if u is None:
-            if self.udeg:
-                u = np.array(self.u[1:])
-            else:
-                u = []
-
-        # Misc properties. If not set, default to the
-        # values of the Map instance itself.
-        if inc is None:
-            inc = self.inc
-        if obl is None:
-            obl = self.obl
-
-        # Orbital coords.
-        if orbit is not None:
-
-            # Compute the orbit
-            assert t is not None, \
-                "Please provide a set of times `t` at which to compute the orbit."
-            try:
-                npts = len(t)
-            except TypeError:
-                npts = tt.as_tensor(t).tag.test_value.shape[0]
-            coords = orbit.get_relative_position(t)
-            xo = coords[0] / orbit.r_star
-            yo = coords[1] / orbit.r_star
-            # Note that `exoplanet` uses a slightly different coord system!
-            zo = -coords[2] / orbit.r_star
-
-            # Vectorize `theta` and `ro`
-            theta = tt.as_tensor_variable(theta)
-            if (theta.ndim == 0):
-                theta = tt.ones(npts) * theta
-            ro = tt.as_tensor_variable(ro)
-            if (ro.ndim == 0):
-                ro = tt.ones(npts) * ro
-
-        else:
-
-            if (xo is None) or (yo is None) or (zo is None) or (ro is None):
-
-                # No occultation
-                theta = tt.as_tensor_variable(theta)
-                if (theta.ndim == 0):
-                    npts = 1
-                else:
-                    npts = infer_size(theta)
-                theta = tt.ones(npts) * theta
-                xo = tt.zeros(npts)
-                yo = tt.zeros(npts)
-                zo = tt.zeros(npts)
-                ro = tt.zeros(npts)
-            
-            else:
-
-                # Occultation with manually specified coords
-                xo = tt.as_tensor_variable(xo)
-                yo = tt.as_tensor_variable(yo)
-                zo = tt.as_tensor_variable(zo)
-                ro = tt.as_tensor_variable(ro)
-                theta = tt.as_tensor_variable(theta)
-
-                # Figure out the length of the timeseries
-                if (xo.ndim != 0):
-                    npts = infer_size(xo)
-                elif (yo.ndim != 0):
-                    npts = infer_size(yo)
-                elif (zo.ndim != 0):
-                    npts = infer_size(zo)
-                elif (ro.ndim != 0):
-                    npts = infer_size(ro)
-                elif (theta.ndim != 0):
-                    npts = infer_size(theta)
-                else:
-                    npts = 1 
-
-                # Vectorize everything
-                if (xo.ndim == 0):
-                    xo = tt.ones(npts) * xo
-                if (yo.ndim == 0):
-                    yo = tt.ones(npts) * yo
-                if (zo.ndim == 0):
-                    zo = tt.ones(npts) * zo
-                if (ro.ndim == 0):
-                    ro = tt.ones(npts) * ro
-                if (theta.ndim == 0):
-                    theta = tt.ones(npts) * theta
-
-        # Now ensure everything is `floatX`.
-        # This is necessary because Theano will try to cast things
-        # to float32 if they can be exactly represented with 32 bits.
-        args = [u, inc, obl, theta, xo, yo, zo, ro]
-        for i, arg in enumerate(args):
-            if hasattr(arg, 'astype'):
-                args[i] = arg.astype(tt.config.floatX)
-            else:
-                args[i] = getattr(np, tt.config.floatX)(arg)
-
-        # Call the op
-        return self._linear_op(*args)

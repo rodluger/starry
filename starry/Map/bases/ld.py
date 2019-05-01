@@ -46,19 +46,24 @@ class LimbDarkenedBase(object):
         )
         """
 
-    def render(self, res=300, **kwargs):
+    def render(self, **kwargs):
         """
         Render the map on a grid and return the pixel intensities as a 
         two-dimensional array (with time as an optional third dimension).
 
-        Args:
+        Kwargs:
             res (int): Map resolution, corresponding to the number of pixels \
                 on a side. Default 300.
         """
-        # Create a grid of X and Y and construct the linear model
+        # Get kwargs
+        res = kwargs.get("res", 300)
+
+        # Render the map
         x, y = np.meshgrid(np.linspace(-1, 1, res), 
                            np.linspace(-1, 1, res))
         Z = np.array(self._intensity(np.sqrt(x ** 2 + y ** 2).flatten()))
+        
+        # Fix shape
         if self._spectral:
             Z = Z.reshape(res, res, self.nw)
             Z = np.moveaxis(Z, -1, 0)
@@ -67,7 +72,7 @@ class LimbDarkenedBase(object):
 
         return np.squeeze(Z)
 
-    def show(self, Z=None, cmap="plasma", grid=True, **kwargs):
+    def show(self, **kwargs):
         """
         Render and plot an image of the map; optionally display an animation.
 
@@ -76,7 +81,7 @@ class LimbDarkenedBase(object):
         Refer to the docstring of :py:meth:`render` for additional kwargs
         accepted by this method.
 
-        Args:
+        Kwargs:
             Z (ndarray): The array of pixel intensities returned by a call \
                 to :py:meth:`render`. Default :py:obj:`None`, in which case \
                 this routine will call :py:meth:`render` with any additional \
@@ -91,6 +96,11 @@ class LimbDarkenedBase(object):
             kwargs: Any additional kwargs accepted by :py:meth:`render`.
 
         """
+        # Get kwargs
+        Z = kwargs.get("Z", None)
+        cmap = kwargs.get("cmap", "plasma")
+        grid = kwargs.get("grid", True)
+
         # Render the map
         if Z is None:
             Z = self.render(**kwargs)
@@ -156,27 +166,31 @@ class LimbDarkenedBase(object):
         else:
             plt.show()
 
-    def flux(self, *args, **kwargs):
+    def flux(self, **kwargs):
         """
         Compute the flux visible from the map.
 
-        Args:
+        Kwargs:
             b: The impact parameter of the occultor. Default 0.
             zo: The position of the occultor along \
                 the line of sight. Default 1.0 (on the side closest to \
                 the observer).
             ro: The radius of the occultor in units \
                 of this body's radius. Default 0 (no occultation).
+        
+        Additional kwargs accepted by this method:
             u: The vector of limb darkening coefficients. Default \
                 is the map's current limb darkening vector.
-        
-        Optionally, instead of :py:obj:`b` and :py:obj:`zo`, users may provide an 
-        :py:obj:`exoplanet.orbits.KeplerianOrbit` instance and a vector of
-        times via the :py:obj:`orbit` and :py:obj:`t` keywords, respectively.
+            orbit: And :py:obj:`exoplanet.orbits.KeplerianOrbit` instance. \
+                This will override the :py:obj:`b` and :py:obj:`zo` keywords \
+                above as long as a time vector :py:obj:`t` is also provided \
+                (see below). Default :py:obj:`None`.
+            t: A vector of times at which to evaluate the orbit. Default :py:obj:`None`.
 
         Returns:
             A vector of fluxes.
         """
+        # Get the orbital coords
         orbit = kwargs.get("orbit", None)
         t = kwargs.get("t", None)
         if orbit is not None and t is not None:
@@ -190,9 +204,10 @@ class LimbDarkenedBase(object):
             b = kwargs.get("b", 0.0)
             zo = kwargs.get("zo", 1.0)
         ro = kwargs.get("ro", 0.0)
-        args = (b, zo, ro)
-        if is_theano(*args):
-            u = kwargs.get("u", None)
+        u = kwargs.get("u", None)
+
+        # Figure out if this is a Theano Op call
+        if is_theano(u, b, zo, ro):
             if u is None:
                 if self.udeg == 0:
                     u = []
@@ -201,23 +216,22 @@ class LimbDarkenedBase(object):
                         u = self[1:, :]
                     else:
                         u = self[1:]
-            u, *args = to_tensor(u, *args)
-            return self._flux_op(u, *args)
+            u, b, zo, ro = to_tensor(u, b, zo, ro)
+            b, zo, ro = vectorize(b, zo, ro)
+            return self._flux_op(u, b, zo, ro)
         else:
-            u = kwargs.get("u", None)
             if u is not None:
                 if self._spectral:
                     self[1:, :] = u
                 else:
                     self[1:] = u
-            args = vectorize(*args)
-            return np.squeeze(self._flux(*args))
+            return np.squeeze(self._flux(*vectorize(b, zo, ro)))
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, **kwargs):
         """
         Return the intensity of the map at a point or on a grid of surface points.
 
-        Args:
+        Kwargs:
             b (float or ndarray): The impact parameter at the evaluation point.
 
         Returns:

@@ -59,11 +59,12 @@ def t3st_doppler():
 
 def test_limb_darkened():
     # Define all arguments
+    npts = 3
     kwargs = {
         "u":        [0.4, 0.2],
-        "b":        0.15,
-        "zo":       1.0,
-        "ro":       0.1
+        "b":        [0.15, 0.2, 0.25],
+        "zo":       [1.0, 1.0, 1.0],
+        "ro":       [0.1, 0.1, 0.1]
     }
     theano_kwargs = {}
     for key in kwargs.keys():
@@ -85,8 +86,15 @@ def test_limb_darkened():
     # Compute the gradient using Theano
     varnames = sorted(theano_kwargs.keys())
     vars = [theano_kwargs[k] for k in varnames]
-    computed = dict(zip(varnames, theano.function([], 
-                                                  theano.grad(model[0], vars))()))
+    computed = {}
+    for var in varnames:
+        deriv = [theano.function([], 
+                 theano.grad(model[i], theano_kwargs[var]))() 
+                 for i in range(npts)]
+        if var == "u":
+            computed[var] = np.transpose(deriv)
+        else:
+            computed[var] = np.sum(deriv, axis=0)
 
     # Compare
     for key in theano_kwargs.keys():
@@ -97,11 +105,12 @@ def test_limb_darkened():
 
 def test_limb_darkened_spectral():
     # Define all arguments
+    npts = 3
     kwargs = {
         "u":        [[0.4, 0.2], [0.26, 0.13]],
-        "b":        0.15,
-        "zo":       1.0,
-        "ro":       0.1
+        "b":        [0.15, 0.2, 0.25],
+        "zo":       [1.0, 1.0, 1.0],
+        "ro":       [0.1, 0.1, 0.1]
     }
     theano_kwargs = {}
     for key in kwargs.keys():
@@ -123,10 +132,20 @@ def test_limb_darkened_spectral():
     # Compute the gradient using Theano
     varnames = sorted(theano_kwargs.keys())
     vars = [theano_kwargs[k] for k in varnames]
-    computed = dict(zip(varnames, 
-        [np.array([theano.function([], theano.grad(model[0, i], var))() 
-            for i in range(udeg)]) for var in vars]))
-    computed['u'] = np.sum(computed['u'], axis=0)
+    computed = {}
+    for var in varnames:
+        if var == "u":
+            deriv = np.array([[theano.function([], 
+                               theano.grad(model[i, j], theano_kwargs[var]))() 
+                               for j in range(udeg)] 
+                               for i in range(npts)])
+            computed[var] = np.sum(deriv, axis=1).swapaxes(0, 1)
+        else:
+            computed[var] = np.array([[theano.function([], 
+                                       theano.grad(model[i, j], 
+                                       theano_kwargs[var]))()[i] 
+                                       for j in range(udeg)] 
+                                       for i in range(npts)])
 
     # Compare
     for key in theano_kwargs.keys():
