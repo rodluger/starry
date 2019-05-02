@@ -507,12 +507,21 @@ class YlmBase(object):
             The flux timeseries.
         """
         # Ingest the map coefficients
-        y = kwargs.get("y", None)
-        if y is None:
-            y = self[1:, :]
-        elif not is_theano(y):
-            self[1:, :] = y
-
+        if self.ydeg:
+            y = kwargs.get("y", None)
+            if y is None:
+                if self._scalar:
+                    y = self[1:, :]
+                else:
+                    y = self[1:, :, :]
+            elif not is_theano(y):
+                if self._scalar:
+                    self[1:, :] = y
+                else:
+                    self[1:, :, :] = y
+        else:
+            y = []
+            
         # Compute the design matrix
         X = self.X(**kwargs)
 

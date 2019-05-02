@@ -626,7 +626,7 @@ PYBIND11_MODULE(
                 yo,
                 zo,
                 ro,
-#               if defined(_STARRY_SPECTRAL_)
+#               if defined(_STARRY_REFLECTED_)
                     source,
 #               endif
                 X,
