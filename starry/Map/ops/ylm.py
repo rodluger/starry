@@ -31,7 +31,7 @@ class YlmXOp(tt.Op):
         if self.map.udeg:
             self.map[1:] = u
         if self.map.fdeg:
-            self.map.filter[:, :] = f
+            self.map._set_filter((slice(None), slice(None)), f)
         self.map.inc = inc
         self.map.obl = obl
         outputs[0][0] = self.map._X(theta, xo, yo, zo, ro)
@@ -58,7 +58,7 @@ class YlmXGradientOp(tt.Op):
         if self.base_op.map.udeg:
             self.base_op.map[1:] = u
         if self.base_op.map.fdeg:
-            self.base_op.map.filter[:, :] = f
+            self.base_op.map._set_filter((slice(None), slice(None)), f)
         self.base_op.map.inc = inc
         self.base_op.map.obl = obl
         # Compute

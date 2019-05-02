@@ -1,2 +1,2 @@
 # -*- coding: utf-8 -*-
-from .wrapper import Map, DopplerMap
+from .wrapper import Map

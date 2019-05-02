@@ -27,23 +27,7 @@ class LimbDarkenedBase(object):
     @staticmethod
     def __descr__():
         return r"""
-        Instantiate a :py:mod:`starry` limb-darkened surface map with
-        optional wavelength dependence.
-
-        .. note:: Map instances are normalized such that the
-            **average disk-integrated intensity is equal to unity**. The
-            total luminosity over all :math:`4\pi` steradians is therefore
-            :math:`4`.
-
-        Args:
-            udeg (int): Largest limb darkening degree of the surface map. Default 2.
-            nw (int): Number of map wavelength bins. Default :py:obj:`None`.
-            multi (bool): Use multi-precision to perform all
-                calculations? Default :py:obj:`False`. If :py:obj:`True`,
-                defaults to 32-digit (approximately 128-bit) floating
-                point precision. This can be adjusted by changing the
-                :py:obj:`STARRY_NMULTI` compiler macro.
-        )
+        A limb-darkened surface map with optional wavelength dependence.
         """
 
     def render(self, **kwargs):

@@ -30,7 +30,16 @@ def Map(ydeg=0, udeg=0, fdeg=0, **kwargs):
     spectral = (nw is not None)
     nt = kwargs.pop('nt', None)
     temporal = (nt is not None)
-    if (ydeg == 0) and (fdeg == 0) and (udeg > 0):
+    doppler = kwargs.pop('doppler', False)
+
+    if doppler:
+        assert reflected is False, \
+            "Doppler maps are not implemented in reflected light."
+        limbdarkened = False
+        kwargs["ydeg"] = ydeg
+        kwargs["udeg"] = udeg
+        kwargs["fdeg"] = 3
+    elif (ydeg == 0) and (fdeg == 0) and (udeg > 0):
         limbdarkened = True
         kwargs["udeg"] = udeg
     else:
@@ -74,7 +83,9 @@ def Map(ydeg=0, udeg=0, fdeg=0, **kwargs):
 
     # Figure out the base classes
     bases = (CBase,)
-    if limbdarkened:
+    if doppler:
+        bases = (DopplerBase, YlmBase,) + bases
+    elif limbdarkened:
         bases = (LimbDarkenedBase,) + bases
     else:
         bases = (YlmBase,) + bases
@@ -89,6 +100,7 @@ def Map(ydeg=0, udeg=0, fdeg=0, **kwargs):
             self._reflected = reflected
             self._temporal = temporal
             self._spectral = spectral
+            self._scalar = not (self._temporal or self._spectral)
             self._limbdarkened = limbdarkened
             super(Map, self).__init__(*init_args, **init_kwargs)
 
@@ -97,62 +109,3 @@ def Map(ydeg=0, udeg=0, fdeg=0, **kwargs):
 
     # Return an instance
     return Map(**kwargs)
-
-
-def DopplerMap(ydeg=0, udeg=0, **kwargs):
-    """
-    A wrapper that figures out which `Map` class the user 
-    wants and instantiates it.
-
-    """
-    # Figure out the correct base class
-    multi = kwargs.pop('multi', False)
-    nw = kwargs.pop('nw', None)
-    spectral = (nw is not None)
-    nt = kwargs.pop('nt', None)
-    temporal = (nt is not None)
-    kwargs["ydeg"] = ydeg
-    kwargs["udeg"] = udeg
-    kwargs["fdeg"] = 3
-
-    # Disallowed combinations
-    if spectral and temporal:
-        raise NotImplementedError("Spectral maps cannot have time dependence.")
-
-    # Figure out the module flags
-    if spectral:
-        kind = "spectral"
-        kwargs["nterms"] = nw
-    elif temporal:
-        kind = "temporal"
-        kwargs["nterms"] = nt
-    else:
-        kind = "default"
-    if multi:
-        dtype = "multi"
-    else:
-        dtype = "double"
-
-    # Import it
-    import_by_name('%s_ylm_%s' % (kind, dtype))
-
-    # Figure out the base classes
-    bases = (DopplerBase, YlmBase, CBase,)
-
-    # Subclass it
-    class DopplerMap(*bases):
-        __doc__ = "".join([base.__doc__ for base in bases])
-        def __init__(self, *init_args, **init_kwargs):
-            self._multi = multi
-            self._reflected = False
-            self._temporal = temporal
-            self._spectral = spectral
-            self._scalar = not (self._temporal or self._spectral)
-            self._limbdarkened = False
-            super(DopplerMap, self).__init__(*init_args, **init_kwargs)
-
-    # Hack this function's docstring
-    __doc__ = DopplerMap.__doc__
-
-    # Return an instance
-    return DopplerMap(**kwargs)

@@ -36,34 +36,19 @@ class YlmBase(object):
     @staticmethod
     def __descr__():
         return r"""
-            Instantiate a :py:mod:`starry` surface map. The map is described
-            as an expansion in spherical harmonics, with optional arbitrary
-            order limb darkening and an optional multiplicative spherical
-            harmonic filter. Support for wavelength-dependent and time-dependent
-            maps is included, as well as flux and intensity calculation in
-            reflected light.
+        A basic :py:mod:`starry` surface map. The map is described
+        as an expansion in spherical harmonics, with optional arbitrary
+        order limb darkening and an optional multiplicative spherical
+        harmonic filter. Support for wavelength-dependent and time-dependent
+        maps is included, as well as flux and intensity calculation in
+        reflected light.
 
-            .. note:: Map instances are normalized such that the
-                **average disk-integrated intensity is equal to unity**. The
-                total luminosity over all :math:`4\pi` steradians is therefore
-                :math:`4`. This normalization
-                is particularly convenient for constant or purely limb-darkened
-                maps, whose disk-integrated intensity is always equal to unity.
-
-            Args:
-                ydeg (int): Largest spherical harmonic degree of the surface map.
-                udeg (int): Largest limb darkening degree of the surface map. Default 0.
-                fdeg (int): Largest spherical harmonic filter degree. Default 0.
-                nw (int): Number of map wavelength bins. Default :py:obj:`None`.
-                nt (int): Number of map temporal bins. Default :py:obj:`None`.
-                reflected (bool): If :py:obj:`True`, performs all computations in
-                    reflected light. Map coefficients represent albedos rather
-                    than intensities. Default :py:obj:`False`.
-                multi (bool): Use multi-precision to perform all
-                    calculations? Default :py:obj:`False`. If :py:obj:`True`,
-                    defaults to 32-digit (approximately 128-bit) floating
-                    point precision. This can be adjusted by changing the
-                    :py:obj:`STARRY_NMULTI` compiler macro.
+        .. note:: Map instances are normalized such that the
+            **average disk-integrated intensity is equal to unity**. The
+            total luminosity over all :math:`4\pi` steradians is therefore
+            :math:`4`. This normalization
+            is particularly convenient for constant or purely limb-darkened
+            maps, whose disk-integrated intensity is always equal to unity.
         """
 
     def render(self, **kwargs):
@@ -92,7 +77,6 @@ class YlmBase(object):
             source (ndarray): A unit vector corresponding to the direction to the \
                 light source. This may optionally be a vector of unit vectors. \
                 Default :math:`-\hat{x}`.
-            
         """
         # Get kwargs
         res = kwargs.get("res", 300)
@@ -383,7 +367,7 @@ class YlmBase(object):
         else:
             plt.show()
 
-    def X(self, *args, **kwargs):
+    def X(self, **kwargs):
         r"""
         Compute the flux design matrix.
 
@@ -460,7 +444,7 @@ class YlmBase(object):
                 if self.fdeg == 0:
                     f = []
                 else:
-                    f = self.filter[:, :]
+                    f = self.f
             if inc is None:
                 inc = self.inc
             if obl is None:
@@ -473,7 +457,7 @@ class YlmBase(object):
             if u is not None:
                 self[1:] = u
             if f is not None:
-                self.filter[:, :] = f
+                self._set_filter((slice(None), slice(None)), f)
             if inc is not None:
                 self.inc = inc
             if obl is not None:
@@ -528,7 +512,7 @@ class YlmBase(object):
         else:
             return np.dot(X, kwargs.get("y", self[:, :]))
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, **kwargs):
         r"""
         Return the intensity of the map at a point or on a grid of surface points.
 
@@ -698,8 +682,8 @@ class YlmBase(object):
             u_copy = np.array(self[1:])
             self[1:] = 0
         if self.fdeg:
-            f_copy = np.array(self.filter[:, :])
-            self.filter[:, :] = 0
+            f_copy = np.array(self.f)
+            self._set_filter((slice(None), slice(None)), np.zeros(self.Nf))
 
         # Front side, then back side
         res_f = minimize(func, x0, args=(0))
@@ -709,7 +693,7 @@ class YlmBase(object):
         if self.udeg:
             self[1:] = u_copy
         if self.fdeg:
-            self.filter[:, :] = f_copy
+            self._set_filter((slice(None), slice(None)), f_copy)
 
         # Return the extremum
         if minimum:

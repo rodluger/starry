@@ -56,6 +56,34 @@ class DopplerGradientOp(tt.Op):
         return shapes[:11]
 
     def perform(self, node, inputs, outputs):
+
+        # TODO
+        # Compute the integral of Iv
+        self._set_rv_filter(True)
+        DfDalpha = np.array(self.DfDalpha)
+        DfDveq= np.array(self.DfDveq)
+        DfDinc = np.array(self.DfDinc)
+        DfDobl = np.array(self.DfDobl)
+        Iv, Iv_grad = np.array(self.flux(*args, gradient=True, **kwargs))
+        # Compute the integral of I
+        self._unset_rv_filter()
+        I, I_grad = np.array(self.flux(*args, gradient=True, **kwargs))
+        invI = 1.0 / I
+        invI[np.isinf(invI)] = 0.0
+        # Chain rule for the gradient
+        grad = {}
+        for key in Iv_grad.keys():
+            if key == "f":
+                continue
+            grad[key] = (Iv_grad[key] * I - Iv * I_grad[key]) * invI ** 2
+        # Compute RV field gradients
+        grad["alpha"] = np.dot(Iv_grad["f"].T, DfDalpha) * invI
+        grad["veq"] = np.dot(Iv_grad["f"].T, DfDveq) * invI
+        grad["inc"] += np.dot(Iv_grad["f"].T, DfDinc) * invI
+        grad["obl"] += np.dot(Iv_grad["f"].T, DfDobl) * invI
+        return Iv * invI, grad
+
+
         y, u, inc, obl, veq, alpha, theta, xo, yo, zo, ro, bf = inputs
         if self.base_op.map.ydeg:
             self.base_op.map[1:, :] = y
