@@ -598,7 +598,7 @@ PYBIND11_MODULE(
             const Vector<Scalar>& zo,
             const Vector<Scalar>& ro,
 #           if defined(_STARRY_REFLECTED_)
-                const RowMatrix<Scalar>& source
+                const RowMatrix<Scalar>& source,
 #           endif
             const RowMatrix<Scalar>& bX
         ) {
