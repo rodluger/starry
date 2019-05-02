@@ -62,18 +62,24 @@ class DopplerBase(object):
         C = cosi
 
         # Compute the Ylm expansion of the RV field
-        # NOTE: We implicitly apply the `starry` Ylm normalization 
-        # in the equation below, so the factors of `pi` all go away!
-        # TODO, BUG?: We may have to add this normalization back in. CHECK!
-        f = math.zeros(16)
-        f[1] = veq * np.sqrt(3) * B * (-A ** 2 * alpha - B ** 2 * alpha - C ** 2 + 5) / 15 
-        f[3] = veq * np.sqrt(3) * A * (-A ** 2 * alpha - B ** 2 * alpha - C ** 2 + 5) / 15
-        f[9] = veq * alpha * np.sqrt(70) * B * (3 * A ** 2 - B ** 2) / 70
-        f[10] = veq * alpha * 2 * np.sqrt(105) * C * (-A ** 2 + B ** 2) / 105
-        f[11] = veq * alpha * np.sqrt(42) * B * (A ** 2 + B ** 2 - 4 * C ** 2) / 210
-        f[13] = veq * alpha * np.sqrt(42) * A * (A ** 2 + B ** 2 - 4 * C ** 2) / 210
-        f[14] = veq * alpha * 4 * np.sqrt(105) * A * B * C / 105
-        f[15] = veq * alpha * np.sqrt(70) * A * (A ** 2 - 3 * B ** 2) / 70
+        f = math.reshape([
+             0,
+             veq * np.sqrt(3) * B * (-A ** 2 * alpha - B ** 2 * alpha - C ** 2 * alpha + 5) / 15,
+             0,
+             veq * np.sqrt(3) * A * (-A ** 2 * alpha - B ** 2 * alpha - C ** 2 * alpha + 5) / 15,
+             0,
+             0,
+             0,
+             0,
+             0,
+             veq * alpha * np.sqrt(70) * B * (3 * A ** 2 - B ** 2) / 70,
+             veq * alpha * 2 * np.sqrt(105) * C * (-A ** 2 + B ** 2) / 105,
+             veq * alpha * np.sqrt(42) * B * (A ** 2 + B ** 2 - 4 * C ** 2) / 210,
+             0,
+             veq * alpha * np.sqrt(42) * A * (A ** 2 + B ** 2 - 4 * C ** 2) / 210,
+             veq * alpha * 4 * np.sqrt(105) * A * B * C / 105,
+             veq * alpha * np.sqrt(70) * A * (A ** 2 - 3 * B ** 2) / 70
+            ], [-1]) * np.pi
         return f
 
     @property

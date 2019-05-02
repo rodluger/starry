@@ -11,7 +11,7 @@ import pytest
 def t3st_doppler():
     # Define all arguments
     kwargs = {
-        "y":        [0.25, 0.25, 0.25],
+        "y":        [1, 0.25, 0.25, 0.25],
         "theta":    30.0,
         "inc":      75.0,
         "obl":      30.0,
@@ -27,18 +27,10 @@ def t3st_doppler():
     for key in kwargs.keys():
         theano_kwargs[key] = theano.shared(np.float64(kwargs[key]), name=key)
 
-    # Compute the rv and its gradient using starry
-    map = starry.DopplerMap(ydeg=1, udeg=2)
-    map.inc = kwargs.pop("inc")
-    map.obl = kwargs.pop("obl")
-    map.alpha = kwargs.pop("alpha")
-    map.veq = kwargs.pop("veq")
-    map[1:, :] = kwargs.pop("y")
-    map[1:] = kwargs.pop("u")
-    rv, grad = map.rv(gradient=True, **kwargs)
+    theano.config.optimizer="fast_compile"
 
-    # Instantiate the theano op
-    model = map.rv_op(**theano_kwargs)
+    map = starry.Map(ydeg=1, udeg=2, doppler=True)
+    model = map.rv(**theano_kwargs)
 
     # Compute the gradient using Theano
     varnames = sorted(theano_kwargs.keys())
@@ -46,11 +38,7 @@ def t3st_doppler():
     computed = dict(zip(varnames,
                         theano.function([], theano.grad(model[0], vars))()))
 
-    # Compare
-    for key in theano_kwargs.keys():
-        if key == "zo":
-            continue
-        assert np.allclose(np.squeeze(grad[key]), np.squeeze(computed[key]))
+    import pdb; pdb.set_trace()
 
 
 def test_limb_darkened():
