@@ -522,31 +522,31 @@ PYBIND11_MODULE(
         "_intensity", [](
             Map<T>& map,
 #           if defined(_STARRY_TEMPORAL_)
-                const Vector<Scalar>& t,
+                const Vector<double>& t,
 #           endif
-            const Vector<Scalar>& theta, 
-            const RowMatrix<Scalar>& x, 
+            const Vector<double>& theta, 
+            const RowMatrix<double>& x, 
 #           if defined(_STARRY_REFLECTED_)
-                const Vector<Scalar>& y,
-                const RowMatrix<Scalar>& source
+                const Vector<double>& y,
+                const RowMatrix<double>& source
 #           else
-                const RowMatrix<Scalar>& y
+                const RowMatrix<double>& y
 #           endif
         ) {
             RowMatrix<Scalar> intensity;
             map.template computeLinearIntensityModel<true>(
 #               if defined(_STARRY_TEMPORAL_)
-                    t, 
+                    t.template cast<Scalar>(), 
 #               endif
-                theta,
-                x, 
-                y,
+                theta.template cast<Scalar>(),
+                x.template cast<Scalar>(), 
+                y.template cast<Scalar>(),
 #               if defined(_STARRY_REFLECTED_)
-                    source,
+                    source.template cast<Scalar>(),
 #               endif
                 intensity
             );
-            return intensity;
+            return intensity.template cast<double>();
     });
 
     // Compute the starry design matrix
@@ -554,35 +554,35 @@ PYBIND11_MODULE(
         "_X", [](
             Map<T>& map,
 #           if defined(_STARRY_TEMPORAL_)
-                const Vector<Scalar>& t,
+                const Vector<double>& t,
 #           endif
-            const Vector<Scalar>& theta, 
-            const Vector<Scalar>& xo, 
-            const Vector<Scalar>& yo,
-            const Vector<Scalar>& zo,
+            const Vector<double>& theta, 
+            const Vector<double>& xo, 
+            const Vector<double>& yo,
+            const Vector<double>& zo,
 #           if defined(_STARRY_REFLECTED_)
-                const Vector<Scalar>& ro,
-                const RowMatrix<Scalar>& source
+                const Vector<double>& ro,
+                const RowMatrix<double>& source
 #           else
-                const RowMatrix<Scalar>& ro
+                const RowMatrix<double>& ro
 #           endif
         ) {
             RowMatrix<Scalar> X;
             map.computeLinearFluxModel(
 #               if defined(_STARRY_TEMPORAL_)
-                    t, 
+                    t.template cast<Scalar>(), 
 #               endif
-                theta,
-                xo, 
-                yo,
-                zo,
-                ro,
+                theta.template cast<Scalar>(),
+                xo.template cast<Scalar>(), 
+                yo.template cast<Scalar>(),
+                zo.template cast<Scalar>(),
+                ro.template cast<Scalar>(),
 #               if defined(_STARRY_REFLECTED_)
-                    source,
+                    source.template cast<Scalar>(),
 #               endif
                 X
             );
-            return X;
+            return X.template cast<double>();
     });
 
     // Compute the starry design matrix gradient
@@ -590,17 +590,17 @@ PYBIND11_MODULE(
         "_grad", [](
             Map<T>& map,
 #           if defined(_STARRY_TEMPORAL_)
-                const Vector<Scalar>& t,
+                const Vector<double>& t,
 #           endif
-            const Vector<Scalar>& theta, 
-            const Vector<Scalar>& xo, 
-            const Vector<Scalar>& yo,
-            const Vector<Scalar>& zo,
-            const Vector<Scalar>& ro,
+            const Vector<double>& theta, 
+            const Vector<double>& xo, 
+            const Vector<double>& yo,
+            const Vector<double>& zo,
+            const Vector<double>& ro,
 #           if defined(_STARRY_REFLECTED_)
-                const RowMatrix<Scalar>& source,
+                const RowMatrix<double>& source,
 #           endif
-            const RowMatrix<Scalar>& bX
+            const RowMatrix<double>& bX
         ) {
             RowMatrix<Scalar> X;
 #           if defined(_STARRY_TEMPORAL_)
@@ -619,18 +619,18 @@ PYBIND11_MODULE(
             Scalar bobl;
             map.computeLinearFluxModel(
 #               if defined(_STARRY_TEMPORAL_)
-                    t, 
+                    t.template cast<Scalar>(), 
 #               endif
-                theta,
-                xo, 
-                yo,
-                zo,
-                ro,
+                theta.template cast<Scalar>(),
+                xo.template cast<Scalar>(), 
+                yo.template cast<Scalar>(),
+                zo.template cast<Scalar>(),
+                ro.template cast<Scalar>(),
 #               if defined(_STARRY_REFLECTED_)
-                    source,
+                    source.template cast<Scalar>(),
 #               endif
                 X,
-                bX,
+                bX.template cast<Scalar>(),
 #               if defined(_STARRY_TEMPORAL_)
                     bt, 
 #               endif
@@ -648,19 +648,19 @@ PYBIND11_MODULE(
             );
             return py::make_tuple(
 #               if defined(_STARRY_TEMPORAL_)
-                    bt, 
+                    bt.template cast<double>(), 
 #               endif
-                btheta,
-                bxo, 
-                byo,
-                bro,
+                btheta.template cast<double>(),
+                bxo.template cast<double>(), 
+                byo.template cast<double>(),
+                bro.template cast<double>(),
 #               if defined(_STARRY_REFLECTED_)
-                    bsource,
+                    bsource.template cast<double>(),
 #               endif
-                bu,
-                bf,
-                binc,
-                bobl
+                bu.template cast<double>(),
+                bf.template cast<double>(),
+                double(binc),
+                double(bobl)
             );
     });
 
@@ -671,7 +671,7 @@ PYBIND11_MODULE(
     PyMap.def(
         "_intensity", [](
             Map<T>& map,
-            const Vector<Scalar>& b
+            const Vector<double>& b
         ) {
             RowMatrix<Scalar> intensity;
             Vector<Scalar> zeros;
@@ -680,39 +680,53 @@ PYBIND11_MODULE(
             zeros.setZero(b.size());
             map.template computeLinearIntensityModel<true>(
                 theta, 
-                b, 
+                b.template cast<Scalar>(), 
                 zeros, 
                 intensity
             );
-            return intensity;
+            return intensity.template cast<double>();
     });
 
     PyMap.def(
         "_flux", [](
             Map<T>& map,
-            const Vector<Scalar>& b,
-            const Vector<Scalar>& zo,
-            const Vector<Scalar>& ro
+            const Vector<double>& b,
+            const Vector<double>& zo,
+            const Vector<double>& ro
         ) {
             FType flux;
-            map.computeLimbDarkenedFlux(b, zo, ro, flux);
-            return flux;
+            map.computeLimbDarkenedFlux(b.template cast<Scalar>(), 
+                                        zo.template cast<Scalar>(), 
+                                        ro.template cast<Scalar>(), 
+                                        flux);
+            return flux.template cast<double>();
     });
 
     PyMap.def(
         "_grad", [](
             Map<T>& map,
-            const Vector<Scalar>& b,
-            const Vector<Scalar>& zo,
-            const Vector<Scalar>& ro,
-            const FType& bf
+            const Vector<double>& b,
+            const Vector<double>& zo,
+            const Vector<double>& ro,
+#           if defined(_STARRY_SPECTRAL_)
+                const Matrix<double>& bf
+#           else
+                const Vector<double>& bf
+#           endif
         ) {
             FType flux;
             Vector<Scalar> bb;
             Vector<Scalar> bro;
             UType bu;
-            map.computeLimbDarkenedFlux(b, zo, ro, flux, bf, bb, bro, bu);
-            return py::make_tuple(bb, bro, bu);
+            map.computeLimbDarkenedFlux(b.template cast<Scalar>(), 
+                                        zo.template cast<Scalar>(), 
+                                        ro.template cast<Scalar>(), 
+                                        flux, 
+                                        bf.template cast<Scalar>(), 
+                                        bb, bro, bu);
+            return py::make_tuple(bb.template cast<double>(), 
+                                  bro.template cast<double>(), 
+                                  bu.template cast<double>());
     });
 
 #endif
