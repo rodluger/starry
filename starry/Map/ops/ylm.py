@@ -63,18 +63,18 @@ class YlmXGradientOp(tt.Op):
         self.base_op.map.obl = obl
         # Compute
         btheta, bxo, byo, bro, bu, bf, binc, bobl = \
-            self.base_op.map._grad(np.atleast_1d(theta), 
-                                   np.atleast_1d(xo), 
-                                   np.atleast_1d(yo), 
-                                   np.atleast_1d(zo), 
+            self.base_op.map._grad(np.atleast_1d(theta),
+                                   np.atleast_1d(xo),
+                                   np.atleast_1d(yo),
+                                   np.atleast_1d(zo),
                                    np.atleast_1d(ro),
-                                   np.atleast_1d(bX))        
-        outputs[0][0] = bu
-        outputs[1][0] = bf
-        outputs[2][0] = np.float64(binc)
-        outputs[3][0] = np.float64(bobl)
-        outputs[4][0] = btheta
-        outputs[5][0] = bxo
-        outputs[6][0] = byo
-        outputs[7][0] = np.zeros_like(outputs[6][0])
-        outputs[8][0] = bro
+                                   np.atleast_1d(bX))
+        outputs[0][0] = np.reshape(bu, np.shape(u))
+        outputs[1][0] = np.reshape(bf, np.shape(f))
+        outputs[2][0] = np.reshape(binc, np.shape(inc))
+        outputs[3][0] = np.reshape(bobl, np.shape(obl))
+        outputs[4][0] = np.reshape(btheta, np.shape(theta))
+        outputs[5][0] = np.reshape(bxo, np.shape(xo))
+        outputs[6][0] = np.reshape(byo, np.shape(yo))
+        outputs[7][0] = np.zeros_like(zo)
+        outputs[8][0] = np.reshape(bro, np.shape(ro))
