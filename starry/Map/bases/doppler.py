@@ -263,7 +263,7 @@ class DopplerBase(object):
         # Compute the velocity-weighted intensity
         kwargs["f"] = self._get_rv_filter(inc, obl, alpha, veq)
         Iv = self.flux(**kwargs)
-        
+
         # Compute the inverse of the intensity
         kwargs["f"] = np.append([np.pi], np.zeros(self.Nf - 1))
         invI = np.array([1.0]) / self.flux(**kwargs)

@@ -65,10 +65,7 @@ def test_doppler():
 
     # Compare
     for key in varnames:
-        if np.allclose(grad[key], grad_num[key]):
-            print(key, "OKAY")
-        else:
-            print(key, "ERROR: ", grad[key], grad_num[key])
+        assert np.allclose(grad[key], grad_num[key])
 
 
 def test_limb_darkened():

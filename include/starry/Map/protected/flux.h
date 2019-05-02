@@ -723,7 +723,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     }
     if (fdeg > 0) {
         bf.resize(Nf);
-        for (int l = 0; l < udeg; ++l) {
+        for (int l = 0; l < Nf; ++l) {
             bf(l) = Df.block(l * nt, 0, nt, Ny).cwiseProduct(bX).sum();
         }
     } else {
