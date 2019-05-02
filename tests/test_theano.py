@@ -8,10 +8,12 @@ import starry_beta
 import pytest
 
 
-def t3st_doppler():
-    # Define all arguments
+def test_doppler():
+    """
+
+    """
     kwargs = {
-        "y":        [1, 0.25, 0.25, 0.25],
+        "y":        np.array([0.25, 0.25, 0.25]),
         "theta":    30.0,
         "inc":      75.0,
         "obl":      30.0,
@@ -21,24 +23,52 @@ def t3st_doppler():
         "yo":       0.2,
         "zo":       1.0,
         "ro":       0.1,
-        "u":        [0.4, 0.26]
+        "u":        np.array([0.4, 0.26])
     }
     theano_kwargs = {}
     for key in kwargs.keys():
         theano_kwargs[key] = theano.shared(np.float64(kwargs[key]), name=key)
 
-    theano.config.optimizer="fast_compile"
-
+    # Instantiate the map
     map = starry.Map(ydeg=1, udeg=2, doppler=True)
     model = map.rv(**theano_kwargs)
 
     # Compute the gradient using Theano
     varnames = sorted(theano_kwargs.keys())
     vars = [theano_kwargs[k] for k in varnames]
-    computed = dict(zip(varnames,
-                        theano.function([], theano.grad(model[0], vars))()))
+    grad = dict(zip(varnames,
+                    theano.function([], 
+                    theano.grad(model[0], vars))()))
 
-    import pdb; pdb.set_trace()
+    # Compute the gradient numerically
+    eps = 1e-8
+    grad_num = {}
+    for key in varnames:
+        if key in ["y", "u"]:
+            grad_num[key] = np.zeros_like(kwargs[key])
+            for i in range(len(kwargs[key])):
+                val = kwargs[key][i]
+                kwargs[key][i] = val - eps
+                f1 = map.rv(**kwargs)
+                kwargs[key][i] = val + eps
+                f2 = map.rv(**kwargs)
+                kwargs[key][i] = val
+                grad_num[key][i] = (f2 - f1) / (2 * eps)
+        else:
+            val = kwargs[key]
+            kwargs[key] = val - eps
+            f1 = map.rv(**kwargs)
+            kwargs[key] = val + eps
+            f2 = map.rv(**kwargs)
+            kwargs[key] = val
+            grad_num[key] = np.squeeze((f2 - f1) / (2 * eps))
+
+    # Compare
+    for key in varnames:
+        if np.allclose(grad[key], grad_num[key]):
+            print(key, "OKAY")
+        else:
+            print(key, "ERROR: ", grad[key], grad_num[key])
 
 
 def test_limb_darkened():
@@ -138,12 +168,12 @@ def test_limb_darkened_spectral():
         assert np.allclose(np.squeeze(grad[key]), np.squeeze(computed[key]))
 
 
-def test_X():
+def test_ylm():
     # Define all arguments
     npts = 2
     ydeg = 1
     kwargs = {
-        "y":        [1, 0.1, 0.2, 0.3],
+        "y":        [0.1, 0.2, 0.3],
         "theta":    [0., 30.],
         "xo":       [0.15, 0.15],
         "yo":       [0., 0.1],
@@ -156,14 +186,15 @@ def test_X():
     
     # Compute the flux and its gradient using starry
     map_beta = starry_beta.Map(ydeg)
-    map_beta[:, :] = kwargs.pop("y")
+    map_beta[0, 0] = 1
+    map_beta[1:, :] = kwargs.pop("y")
     kwargs.pop("zo")
     flux, grad = map_beta.flux(gradient=True, **kwargs)
+    grad["y"] = grad["y"][1:, :]
 
     # Instantiate the theano op
     map = starry.Map(ydeg)
-    X = map.X(**theano_kwargs)
-    model = tt.dot(X, theano_kwargs["y"])
+    model = map.flux(**theano_kwargs)
 
     # Compute the gradient using Theano
     varnames = sorted(theano_kwargs.keys())

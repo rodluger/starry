@@ -506,11 +506,21 @@ class YlmBase(object):
         Returns:
             The flux timeseries.
         """
+        # Ingest the map coefficients
+        y = kwargs.get("y", None)
+        if y is None:
+            y = self[1:, :]
+        elif not is_theano(y):
+            self[1:, :] = y
+
+        # Compute the design matrix
         X = self.X(**kwargs)
+
+        # Dot it into the map
         if is_theano(X):
-            return tt.dot(X, kwargs.get("y", self[:, :]))
+            return tt.dot(X, tt.join(0, [1.0], y))
         else:
-            return np.dot(X, kwargs.get("y", self[:, :]))
+            return np.dot(X, np.append([1.0], y))
 
     def __call__(self, **kwargs):
         r"""
