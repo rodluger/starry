@@ -850,6 +850,8 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
         if ((zo(n) < 0) || (abs(b(n)) >= 1 + ro(n)) || (ro(n) <= 0.0)) {
 
             flux.row(n).setOnes();
+            bb(n) = 0.0;
+            bro(n) = 0.0;
 
         // Occultation
         } else {

@@ -71,11 +71,12 @@ class LimbDarkenedOpGradientOp(tt.Op):
                                              np.atleast_1d(bf))
 
         # Limb darkening gradient
-        outputs[0][0] = bu
+        outputs[0][0] = np.reshape(bu, u.shape)
 
         # Orbital gradients
-        outputs[1][0] = bb
+        outputs[1][0] = np.reshape(bb, b.shape)
         outputs[2][0] = np.zeros_like(outputs[1][0])
 
         # Radius gradient
-        outputs[3][0] = bro
+        outputs[3][0] = np.reshape(bro, ro.shape)
+
