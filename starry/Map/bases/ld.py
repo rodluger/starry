@@ -275,6 +275,7 @@ class LimbDarkenedBase(object):
                         dt = texp * dt
                     else:
                         dt = tt.shape_padright(texp) * dt
+
                     tgrid = tt.shape_padright(t) + dt
                     tgrid = tt.reshape(tgrid, [-1])
 

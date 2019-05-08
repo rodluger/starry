@@ -2,6 +2,7 @@
 import exoplanet as exo
 import starry
 import numpy as np
+import pytest
 
 
 def moving_average(a, n):
@@ -31,6 +32,21 @@ def test_ld():
     fluence_starry = map.flux(t=t, orbit=orbit, ro=0.1, 
                               texp=texp, oversample=30).eval()
     assert np.allclose(fluence_mavg, fluence_starry)
+
+
+@pytest.mark.xfail
+def test_vectorize_exp():
+    """
+    See this issue in exoplanet:
+    https://github.com/dfm/exoplanet/issues/40
+    """
+    texp = 0.05
+    map = starry.Map(udeg=2)
+    map[1:] = [0.4, 0.26]
+    orbit = exo.orbits.KeplerianOrbit(period=1.0, m_star=1.0, r_star=1.0)
+    t = np.linspace(-0.2, 0.2, 10000)
+    flux = map.flux(t=t, orbit=orbit, ro=0.1, 
+                    texp=np.ones_like(t) * texp).eval()
 
 
 if __name__ == "__main__":
