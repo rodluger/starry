@@ -737,6 +737,7 @@ PYBIND11_MODULE(
 #   else
         m.attr("__version__") = "dev";
 #   endif
+    m.attr("__date__") = __DATE__;
 
     // A dictionary of all compiler flags
     PyMap.def_property_readonly(

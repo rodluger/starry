@@ -28,7 +28,10 @@ def to_tensor(*args):
     """
 
     """
-    return [tt.as_tensor_variable(arg).astype(tt.config.floatX) for arg in args]
+    if len(args) == 1:
+        return tt.as_tensor_variable(args[0]).astype(tt.config.floatX)
+    else:
+        return [tt.as_tensor_variable(arg).astype(tt.config.floatX) for arg in args]
 
 
 def vectorize(*args):
@@ -39,7 +42,7 @@ def vectorize(*args):
         ones = tt.ones_like(np.sum([arg if is_theano(arg) 
                                     else np.atleast_1d(arg) 
                                     for arg in args], axis=0)).astype(tt.config.floatX).reshape([-1])
-        args = tuple([arg.astype(tt.config.floatX) * ones for arg in args])
+        args = tuple([to_tensor(arg).astype(tt.config.floatX) * ones for arg in args])
     else:
         ones = np.ones_like(np.sum([np.atleast_1d(arg) for arg in args], axis=0))
         args = tuple([arg * ones for arg in args])

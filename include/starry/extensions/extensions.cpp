@@ -49,4 +49,12 @@ PYBIND11_MODULE(
         }, 
         "axis"_a, "angle"_a, docstrings::extensions::RAxisAngle);
 
+    // Code version
+#   ifdef VERSION_INFO
+        m.attr("__version__") = VERSION_INFO;
+#   else
+        m.attr("__version__") = "dev";
+#   endif
+    m.attr("__date__") = __DATE__;
+
 }

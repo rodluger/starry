@@ -32,3 +32,13 @@ modules = dict(
 if not __STARRY_SETUP__:
     from .extensions import *
     from .Map import Map
+
+# Get compile dates
+dates = []
+for module in modules.keys():
+    try:
+        exec("from .%s import __date__" % module.lower()[:-1])
+    except:
+        __date__ = "unknown"
+    dates.append("%s%s" % (("%s:" % module[8:-1]).ljust(30), __date__))
+__date__ = "\n".join(dates)

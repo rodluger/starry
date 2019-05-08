@@ -169,29 +169,57 @@ class LimbDarkenedBase(object):
                 This will override the :py:obj:`b` and :py:obj:`zo` keywords \
                 above as long as a time vector :py:obj:`t` is also provided \
                 (see below). Default :py:obj:`None`.
+            texp: The exposure time of each observation. \
+                This can be a scalar or a vector/tensor with the same shape as ``t``. \
+                If ``texp`` is provided, ``t`` is assumed to indicate the \
+                timestamp at the *middle* of an exposure of length ``texp``. \
+                Only applies if :py:obj:`orbit` is provided. Default :py:obj:`None`.
+            use_in_transit (bool): If :py:obj:`True`, the model will only \
+                be evaluated for the data points expected to be in transit \
+                as computed using the :py:obj:`in_transit` method on :py:obj:`orbit`. \
+                Only applies if :py:obj:`orbit` is provided. Default :py:obj:`True`.
+            oversample (int): The number of function evaluations to \
+                use when numerically integrating the exposure time. \
+                Only applies if :py:obj:`orbit` is provided. Default ``7``.
+            order (int): The order of the numerical integration \
+                scheme. This must be one of the following: ``0`` for a \
+                centered Riemann sum (equivalent to the "resampling" procedure \
+                suggested by Kipping 2010), ``1`` for the trapezoid rule, or \
+                ``2`` for Simpson's rule. \
+                Only applies if :py:obj:`orbit` is provided. Default ``0``.
             t: A vector of times at which to evaluate the orbit. Default :py:obj:`None`.
 
         Returns:
-            A vector of fluxes.
+            A vector of fluxes or a ``Theano`` Op corresponding to the flux \
+            computation.
         """
-        # Get the orbital coords
-        orbit = kwargs.get("orbit", None)
-        t = kwargs.get("t", None)
-        if orbit is not None and t is not None:
-            coords = orbit.get_relative_position(t)
-            xo = coords[0] / orbit.r_star
-            yo = coords[1] / orbit.r_star
-            b = tt.sqrt(xo * xo + yo * yo)
-            # Note that `exoplanet` uses a slightly different coord system!
-            zo = -coords[2] / orbit.r_star
-        else:
-            b = kwargs.get("b", 0.0)
-            zo = kwargs.get("zo", 1.0)
-        ro = kwargs.get("ro", 0.0)
-        u = kwargs.get("u", None)
+        # Ingest kwargs
+        u = kwargs.pop("u", None)
+        b = kwargs.pop("b", 0.0)
+        zo = kwargs.pop("zo", kwargs.pop("z", 1.0)) # Lenient! User can provide `z`
+        ro = kwargs.pop("ro", kwargs.pop("r", 0.0)) # Lenient! User can provide `r`
+        orbit = kwargs.pop("orbit", None)
+        t = kwargs.pop("t", None)
+        use_in_transit = kwargs.pop("use_in_transit", True)
+        texp = kwargs.pop("texp", None)
+        oversample = kwargs.pop("oversample", 7)
+        order = kwargs.pop("order", 0)
+
+        # Raise warnings for some combinations
+        if (orbit is not None) and (t is None):
+            raise ValueError("Please provide a set of times `t`.")
+        if (orbit is None or t is None):
+            use_in_transit = False
+            if texp is not None:
+                raise Warning("Exposure time integration enabled only " +
+                              "when an `orbit` instance is provided.") 
+        for kwarg in kwargs.keys():
+            raise Warning("Unrecognized kwarg: %s. Ignoring..." % kwarg)
 
         # Figure out if this is a Theano Op call
-        if is_theano(u, b, zo, ro):
+        if (orbit is not None and t is not None) or is_theano(u, b, zo, ro):
+
+            # Limb darkening coeffs
             if u is None:
                 if self.udeg == 0:
                     u = []
@@ -200,10 +228,91 @@ class LimbDarkenedBase(object):
                         u = self[1:, :]
                     else:
                         u = self[1:]
-            u, b, zo, ro = to_tensor(u, b, zo, ro)
-            b, zo, ro = vectorize(b, zo, ro)
-            return self._flux_op(u, b, zo, ro)
+            u = to_tensor(u)
+
+            # Figure out the coords from the orbit
+            if orbit is not None and t is not None:
+                
+                # Tensorize the time array
+                t = to_tensor(t)
+                
+                # Only compute during transit?
+                if use_in_transit:
+                    transit_model = tt.ones_like(t)
+                    transit_inds = orbit.in_transit(t, r=ro, texp=texp)
+                    t = t[transit_inds]
+
+                # Exposure time grid
+                if texp is None:
+                    
+                    # Easy
+                    tgrid = t
+                    rgrid, _ = vectorize(ro, t)
+                
+                else:
+                    
+                    # From DFM's exoplanet
+                    texp = to_tensor(texp)
+                    oversample = int(oversample)
+                    oversample += 1 - oversample % 2
+                    stencil = np.ones(oversample)
+
+                    # Construct the exposure time integration stencil
+                    if order == 0:
+                        dt = np.linspace(-0.5, 0.5, 2*oversample+1)[1:-1:2]
+                    elif order == 1:
+                        dt = np.linspace(-0.5, 0.5, oversample)
+                        stencil[1:-1] = 2
+                    elif order == 2:
+                        dt = np.linspace(-0.5, 0.5, oversample)
+                        stencil[1:-1:2] = 4
+                        stencil[2:-1:2] = 2
+                    else:
+                        raise ValueError("Keyword `order` must be <= 2.")
+                    stencil /= np.sum(stencil)
+
+                    if texp.ndim == 0:
+                        dt = texp * dt
+                    else:
+                        dt = tt.shape_padright(texp) * dt
+                    tgrid = tt.shape_padright(t) + dt
+                    tgrid = tt.reshape(tgrid, [-1])
+
+                    # Madness to get the shapes to work out...
+                    rgrid = tt.shape_padleft(ro, tgrid.ndim) + tt.zeros_like(tgrid)
+
+                # Compute coords
+                coords = orbit.get_relative_position(tgrid)
+                xo = coords[0] / orbit.r_star
+                yo = coords[1] / orbit.r_star
+                b = tt.sqrt(xo * xo + yo * yo)
+                # Note that `exoplanet` uses a slightly different coord system!
+                zo = -coords[2] / orbit.r_star
+
+            else:
+
+                # Tensorize & vectorize
+                b, zo, rgrid = vectorize(b, zo, ro)
+
+            # Compute the light curve
+            lc = self._flux_op(u, b, zo, rgrid)
+
+            # Integrate it
+            if texp is not None:
+                stencil = tt.shape_padleft(stencil, t.ndim)
+                lc = tt.squeeze(tt.sum(stencil * tt.reshape(lc, 
+                                [-1, oversample]), axis=t.ndim))
+
+            # Return the full model
+            if use_in_transit:
+                transit_model = tt.set_subtensor(transit_model[transit_inds], lc)
+                return transit_model
+            else:
+                return lc
+
         else:
+
+            # No Theano nonsense!
             if u is not None:
                 if self._spectral:
                     self[1:, :] = u
