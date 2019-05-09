@@ -241,8 +241,8 @@ class DopplerBase(object):
         # Other kwargs get ingested in call to `flux` below
         inc = kwargs.get("inc", None)
         obl = kwargs.get("obl", None)
-        veq = kwargs.get("veq", None)
-        alpha = kwargs.get("alpha", None)
+        veq = kwargs.pop("veq", None)
+        alpha = kwargs.pop("alpha", None)
         if inc is None:
             inc = self.inc
         elif not is_theano(inc):

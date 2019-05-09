@@ -11,6 +11,7 @@ from ..ops import YlmXOp
 from IPython.display import HTML
 from scipy.optimize import minimize
 import theano.tensor as tt
+import warnings
 
 
 __all__ = ["YlmBase"]
@@ -432,10 +433,9 @@ class YlmBase(object):
             raise ValueError("Please provide a set of times `t`.")
         if (orbit is None or t is None):
             if texp is not None:
-                raise Warning("Exposure time integration enabled only " +
-                              "when an `orbit` instance is provided.") 
+                warnings.warn("Exposure time integration enabled only when an `orbit` instance is provided.") 
         for kwarg in kwargs.keys():
-            raise Warning("Unrecognized kwarg: %s. Ignoring..." % kwarg)
+            warnings.warn("Unrecognized kwarg: %s. Ignoring..." % kwarg)
 
         # Figure out if this is a Theano Op call
         if (orbit is not None and t is not None) or \
@@ -517,9 +517,17 @@ class YlmBase(object):
                 # Note that `exoplanet` uses a slightly different coord system!
                 zo = -coords[2] / orbit.r_star
 
-                # TODO TODO TODO TODO TODO
-                theta = tt.zeros_like(zo)
-
+                # Vectorize `theta`
+                theta = to_tensor(theta)
+                if theta.ndim == 0:
+                    theta = tt.ones_like(zo) * theta
+                elif texp is not None:
+                    # Linearly interpolate to a higher resolution grid
+                    # TODO: We should really be doing a centered difference here...
+                    omega = (theta[1:] - theta[:-1]) / (t[1:] - t[:-1])
+                    omega = tt.shape_padright(tt.concatenate([omega, [omega[-1]]]))
+                    theta = tt.reshape(tt.shape_padright(theta) + dt * omega, [-1])
+                    
             else:
 
                 # Tensorize & vectorize
