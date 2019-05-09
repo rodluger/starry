@@ -22,6 +22,7 @@ class YlmBase(object):
     .. automethod:: render
     .. automethod:: show
     .. automethod:: flux
+    .. automethod:: X
     .. automethod:: __call__
     .. automethod:: load
     .. automethod:: align
@@ -30,54 +31,63 @@ class YlmBase(object):
     .. automethod:: is_physical
     """
 
+    __descr__ = \
+    """
+    A basic :py:mod:`starry` surface map. Instantiate by calling
+    
+    .. code-block:: python
+
+        starry.Map(ydeg=ydeg, **kwargs)
+
+    with ``ydeg > 0`` (or ``ydeg==0`` as long as ``udeg==0``).
+
+    This map is described as an expansion in spherical harmonics, with optional 
+    arbitrary order limb darkening and an optional multiplicative spherical
+    harmonic filter. Support for wavelength-dependent and time-dependent
+    maps is included, as well as flux and intensity calculation in
+    reflected light.
+
+    .. note:: 
+        
+        Map instances are normalized such that the
+        **average disk-integrated intensity is equal to unity**. The
+        total luminosity over all :math:`4\\pi` steradians is therefore
+        :math:`4`. This normalization
+        is particularly convenient for constant or purely limb-darkened
+        maps, whose disk-integrated intensity is always equal to unity.
+    """
+
     def __init__(self, *args, **kwargs):
         super(YlmBase, self).__init__(*args, **kwargs)
         self._X_op = YlmXOp(self)
 
-    @staticmethod
-    def __descr__():
-        return r"""
-        A basic :py:mod:`starry` surface map. The map is described
-        as an expansion in spherical harmonics, with optional arbitrary
-        order limb darkening and an optional multiplicative spherical
-        harmonic filter. Support for wavelength-dependent and time-dependent
-        maps is included, as well as flux and intensity calculation in
-        reflected light.
-
-        .. note:: Map instances are normalized such that the
-            **average disk-integrated intensity is equal to unity**. The
-            total luminosity over all :math:`4\pi` steradians is therefore
-            :math:`4`. This normalization
-            is particularly convenient for constant or purely limb-darkened
-            maps, whose disk-integrated intensity is always equal to unity.
-        """
-
     def render(self, **kwargs):
-        r"""
+        """
         Render the map on a grid and return the pixel intensities as a 
         two-dimensional array (with time as an optional third dimension).
 
-        Kwargs:
+        Keyword Arguments:
             theta (float): Angle of rotation of the map in degrees. Default 0.
-            res (int): Map resolution, corresponding to the number of pixels \
-                on a side (for the orthographic projection) or the number of \
-                pixels in latitude (for the rectangular projection; the number \
+            res (int): Map resolution, corresponding to the number of pixels 
+                on a side (for the orthographic projection) or the number of 
+                pixels in latitude (for the rectangular projection; the number 
                 of pixels in longitude is twice this value). Default 300.
-            projection (str): One of "orthographic" or "rectangular". The former \
-                results in a map of the disk as seen on the plane of the sky, \
-                padded by :py:obj:`NaN` outside of the disk. The latter results \
-                in an equirectangular (geographic, equidistant cylindrical) \
-                view of the entire surface of the map in latitude-longitude space. \
+            projection (str): One of "orthographic" or "rectangular". The former 
+                results in a map of the disk as seen on the plane of the sky, 
+                padded by ``NaN`` outside of the disk. The latter results 
+                in an equirectangular (geographic, equidistant cylindrical) 
+                view of the entire surface of the map in latitude-longitude space. 
                 Default "orthographic".
         
-        Kwargs (temporal maps):
-            t (float or ndarray): The time(s) at which to evaluate the map. \
+        The following arguments are also accepted for specific map types:
+
+        Keyword Arguments:
+            t (float or ndarray; temporal maps only): Time at which to evaluate. 
                 Default 0.
-        
-        Kwargs (reflected light maps):
-            source (ndarray): A unit vector corresponding to the direction to the \
-                light source. This may optionally be a vector of unit vectors. \
-                Default :math:`-\hat{x}`.
+            source (ndarray; reflected light maps only): The source position, a unit
+                vector or a vector of unit vectors. Default 
+                :math:`-\\hat{x} = (-1, 0, 0)`.
+
         """
         # Get kwargs
         res = kwargs.get("res", 300)
@@ -258,18 +268,18 @@ class YlmBase(object):
         Refer to the docstring of :py:meth:`render` for additional kwargs
         accepted by this method.
 
-        Args:
-            Z (ndarray): The array of pixel intensities returned by a call \
-                to :py:meth:`render`. Default :py:obj:`None`, in which case \
-                this routine will call :py:meth:`render` with any additional \
+        Keyword Arguments:
+            Z (ndarray): The array of pixel intensities returned by a call 
+                to :py:meth:`render`. Default ``None``, in which case 
+                this routine will call :py:meth:`render` with any additional 
                 kwargs provided by the user.
-            cmap: The colormap used for plotting (a string or a \
-                :py:obj:`matplotlib` colormap object). Default "plasma".
-            grid (bool): Overplot static grid lines? Default :py:obj:`True`.
-            interval (int): Interval in ms between frames (animated maps only). \
+            cmap (string or ``matplotlib`` colormap): The colormap used 
+                for plotting. Default "plasma".
+            grid (bool): Overplot static grid lines? Default ``True``.
+            interval (int): Interval in ms between frames (animated maps only). 
                 Default 75.
-            mp4 (str): Name of the mp4 file to save the animation to \
-                (animated maps only). Default :py:obj:`None`.
+            mp4 (str): Name of the mp4 file to save the animation to 
+                (animated maps only). Default ``None``.
             kwargs: Any additional kwargs accepted by :py:meth:`render`.
 
         """
@@ -369,64 +379,68 @@ class YlmBase(object):
             plt.show()
 
     def X(self, **kwargs):
-        r"""
+        """
         Compute the flux design matrix.
 
-        Kwargs:
+        Keyword Arguments:
             theta: Angle of rotation. Default 0.
-            xo: The :py:obj:`x` position of the \
+            xo: The ``x`` position of the 
                 occultor (if any). Default 0.
-            yo: The :py:obj:`y` position of the \
+            yo: The ``y`` position of the 
                 occultor (if any). Default 0.
-            zo: The :py:obj:`z` position of the \
-                occultor (if any). Default 1.0 (on the side closest to \
+            zo: The ``z`` position of the 
+                occultor (if any). Default 1.0 (on the side closest to 
                 the observer).
-            ro: The radius of the occultor in units of this \
+            ro: The radius of the occultor in units of this 
                 body's radius. Default 0 (no occultation).
-        
-        Kwargs (temporal maps or if :py:obj:`orbit` is provided):
-            t: Time at which to evaluate the map and/or orbit. Default 0. 
 
-        Kwargs (reflected light maps):
-            source: The source position, a unit vector or a
-                vector of unit vectors. Default :math:`-\hat{x} = (-1, 0, 0)`.
+        The following arguments are also accepted:
 
-        Additional kwargs accepted by this method:
-            u: The vector of limb darkening coefficients. Default \
+        Keyword Arguments:
+            u: The vector of limb darkening coefficients. Default 
                 is the map's current limb darkening vector.
-            f: The vector of filter coefficients. Default \
+            f: The vector of filter coefficients. Default 
                 is the map's current filter vector.
-            inc: The map inclination in degrees. Default is the map's current \
+            inc: The map inclination in degrees. Default is the map's current 
                 inclination.
-            obl: The map obliquity in degrees. Default is the map's current \
+            obl: The map obliquity in degrees. Default is the map's current 
                 obliquity. 
-            orbit: And :py:obj:`exoplanet.orbits.KeplerianOrbit` instance. \
-                This will override the :py:obj:`xo`, :py:obj:`yo`, and :py:obj:`zo` keywords \
-                above as long as a time vector :py:obj:`t` is also provided \
-                (see below). Default :py:obj:`None`.
-            texp: The exposure time of each observation. \
-                This can be a scalar or a vector/tensor with the same shape as ``t``. \
-                If ``texp`` is provided, ``t`` is assumed to indicate the \
-                timestamp at the *middle* of an exposure of length ``texp``. \
-                Only applies if :py:obj:`orbit` is provided. Default :py:obj:`None`.
-            use_in_transit (bool): If :py:obj:`True`, the model will only \
-                be evaluated for the data points expected to be in transit \
-                as computed using the :py:obj:`in_transit` method on :py:obj:`orbit`. \
-                Only applies if :py:obj:`orbit` is provided and ``theta`` is constant. \
-                Default :py:obj:`True`.
-            oversample (int): The number of function evaluations to \
-                use when numerically integrating the exposure time. \
-                Only applies if :py:obj:`orbit` is provided. Default ``7``.
-            order (int): The order of the numerical integration \
-                scheme. This must be one of the following: ``0`` for a \
-                centered Riemann sum (equivalent to the "resampling" procedure \
-                suggested by Kipping 2010), ``1`` for the trapezoid rule, or \
-                ``2`` for Simpson's rule. \
-                Only applies if :py:obj:`orbit` is provided. Default ``0``.
-            t: A vector of times at which to evaluate the orbit. Default :py:obj:`None`.
+            orbit: And ``exoplanet.orbits.KeplerianOrbit`` instance. 
+                This will override the ``xo``, ``yo``, and ``zo`` keywords 
+                above as long as a time vector ``t`` is also provided 
+                (see below). Default ``None``.
+            texp: The exposure time of each observation. 
+                This can be a scalar or a vector/tensor with the same shape as ``t``. 
+                If ``texp`` is provided, ``t`` is assumed to indicate the 
+                timestamp at the *middle* of an exposure of length ``texp``. 
+                Only applies if ``orbit`` is provided. Default ``None``.
+            use_in_transit (bool): If ``True``, the model will only 
+                be evaluated for the data points expected to be in transit 
+                as computed using the ``in_transit`` method on ``orbit``. 
+                Only applies if ``orbit`` is provided and ``theta`` is constant. 
+                Default ``True``.
+            oversample (int): The number of function evaluations to 
+                use when numerically integrating the exposure time. 
+                Only applies if ``orbit`` is provided. Default ``7``.
+            order (int): The order of the numerical integration 
+                scheme. This must be one of the following: ``0`` for a 
+                centered Riemann sum (equivalent to the "resampling" procedure 
+                suggested by Kipping 2010), ``1`` for the trapezoid rule, or 
+                ``2`` for Simpson's rule. 
+                Only applies if ``orbit`` is provided. Default ``0``.
+            t: A vector of times at which to evaluate the orbit. Default ``None``.
+
+        The following arguments are also accepted for specific map types:
+
+        Keyword Arguments:
+            t (temporal maps only): Time at which to evaluate. 
+                Default 0.
+            source (reflected light maps only): The source position, a unit
+                vector or a vector of unit vectors. Default 
+                :math:`-\\hat{x} = (-1, 0, 0)`.
 
         Returns:
-            The design matrix :py:obj:`X`, either a ``numpy`` 2D array or a ``Theano`` op.
+            The design matrix ``X``, either a ``numpy`` 2D array or a ``Theano`` op.
         """
         # TODO!
         if self._spectral or self._temporal:
@@ -604,10 +618,10 @@ class YlmBase(object):
     def flux(self, **kwargs):
         r"""
         Compute the flux. This method accepts all arguments accepted by
-        :py:meth:`X`.
+        :py:meth:`X`, as well as the following keywords:
         
-        Additional kwargs accepted by this method:
-            y: The vector of spherical harmonic coefficients. Default \
+        Keyword Arguments:
+            y: The vector of spherical harmonic coefficients. Default 
                 is the map's current spherical harmonic vector.
 
         Returns:
@@ -645,26 +659,27 @@ class YlmBase(object):
                 return X[tuple((slice(None), 0))]
 
     def __call__(self, **kwargs):
-        r"""
+        """
         Return the intensity of the map at a point or on a grid of surface points.
 
-        Kwargs:
+        Keyword Arguments:
             theta (float or ndarray): Angle of rotation. Default 0.
-            x (float or ndarray): The :py:obj:`x` position on the \
+            x (float or ndarray): The ``x`` position on the
                 surface. Default 0.
-            y (float or ndarray): The :py:obj:`y` position on the \
+            y (float or ndarray): The ``y`` position on the
                 surface. Default 0.
+        
+        The following arguments are also accepted for specific map types:
 
-        Kwargs (temporal maps):
-            t: Time at which to evaluate. Default 0. 
-
-        Kwargs (reflected light maps):
-            source: The source position, a unit vector or a
-                vector of unit vectors. Default :math:`-\hat{x} = (-1, 0, 0)`.
+        Keyword Arguments:
+            t (float or ndarray; temporal maps only): Time at which to evaluate. 
+                Default 0.
+            source (ndarray; reflected light maps only): The source position, a unit
+                vector or a vector of unit vectors. Default 
+                :math:`-\\hat{x} = (-1, 0, 0)`.
 
         Returns:
             A vector of intensities at the corresponding surface point(s).
-
         """
         theta = np.atleast_1d(kwargs.get("theta", 0.0))
         x = np.atleast_1d(kwargs.get("x", 0.0))
@@ -687,38 +702,35 @@ class YlmBase(object):
 
     def load(self, image, ydeg=None, healpix=False, col=None, **kwargs):
         """
-        Load an image, array, or :py:obj:`healpix` map. 
+        Load an image, array, or ``healpix`` map. 
         
-        This routine uses
-        various routines in :py:obj:`healpix` to compute the spherical
+        This routine uses various routines in ``healpix`` to compute the spherical
         harmonic expansion of the input image and sets the map's :py:attr:`y`
         coefficients accordingly.
 
         Args:
-            image: A path to an image file, a two-dimensional :py:obj:`numpy` \
-                array, or a :py:obj:`healpix` map array \
-                (if :py:obj:`healpix = True`).
-            ydeg (int): The degree of the spherical harmonic expansion of the \
-                image. Default :py:obj:`None`, in which case the expansion is \
-                performed up to :py:obj:`self.ydeg`.
-            healpix (bool): Treat :py:obj:`image` as a :py:obj:`healpix` array? \
-                Default :py:obj:`False`.
-            col: The map column into which the image will be loaded. Can be \
-                an :py:obj:`int`, :py:obj:`slice`, or :py:obj:`None`. \
-                Default :py:obj:`None`, in which case the image is loaded into \
-                the first map column. This option is ignored for scalar maps.
-            sampling_factor (int): Oversampling factor when computing the \
-                :py:obj:`healpix` representation of an input image or array. \
-                Default 8. Increasing this number may improve the fidelity of \
-                the expanded map, but the calculation will take longer.
-            sigma (float): If not :py:obj:`None`, apply gaussian smoothing \
-                with standard deviation :py:obj:`sigma` to smooth over \
-                spurious ringing features. Smoothing is performed with \
-                the :py:obj:`healpix.sphtfunc.smoothalm` method. \
-                Default :py:obj:`None`.
-
-        .. note:: Method not available for purely limb-darkened maps.
+            image: A path to an image file, a two-dimensional ``numpy`` 
+                array, or a ``healpix`` map array (if ``healpix==True``).
         
+        Keyword arguments:
+            ydeg (int): The degree of the spherical harmonic expansion of the 
+                image. Default ``None``, in which case the expansion is 
+                performed up to ``self.ydeg``.
+            healpix (bool): Treat ``image`` as a ``healpix`` array? 
+                Default ``False``.
+            col: The map column into which the image will be loaded. Can be 
+                an ``int``, ``slice``, or ``None``. 
+                Default ``None``, in which case the image is loaded into 
+                the first map column. This option is ignored for scalar maps.
+            sampling_factor (int): Oversampling factor when computing the 
+                ``healpix`` representation of an input image or array. 
+                Default 8. Increasing this number may improve the fidelity of 
+                the expanded map, but the calculation will take longer.
+            sigma (float): If not ``None``, apply gaussian smoothing 
+                with standard deviation ``sigma`` to smooth over 
+                spurious ringing features. Smoothing is performed with 
+                the ``healpix.sphtfunc.smoothalm`` method. 
+                Default ``None``.
         """
         if col is None:
             col = 0
@@ -751,10 +763,10 @@ class YlmBase(object):
     
     def align(self, source=None, dest=None):
         """
-        Rotate the map to align the :py:obj:`source` point/axis with the
-        :py:obj:`dest` point/axis.
+        Rotate the map to align the ``source`` point/axis with the
+        ``dest`` point/axis.
 
-        The standard way of rotating maps in :py:obj:`starry` is to
+        The standard way of rotating maps in ``starry`` is to
         provide the axis and angle of rotation, but this isn't always
         convenient. In some cases, it is easier to specify a source
         point/axis and a destination point/axis, and rotate the map such that the
@@ -769,11 +781,11 @@ class YlmBase(object):
         toward the observer.
 
         Args:
-            source (ndarray): A unit vector describing the source position. \
-                This point will be rotated onto :py:obj:`dest`. Default \
+            source (ndarray): A unit vector describing the source position. 
+                This point will be rotated onto ``dest``. Default 
                 is the current map axis.
-            dest (ndarray): A unit vector describing the destination position. \
-                The :py:obj:`source` point will be rotated onto this point. Default \
+            dest (ndarray): A unit vector describing the destination position. 
+                The ``source`` point will be rotated onto this point. Default 
                 is the current map axis.
 
         """
@@ -788,8 +800,8 @@ class YlmBase(object):
         """
         Find a global extremum of the map.
 
-        .. todo:: Speed this up with gradients and remove the overhead \
-            of calling `linear_model` every time. Set up unit tests for \
+        .. todo:: Speed this up with gradients and remove the overhead 
+            of calling `linear_model` every time. Set up unit tests for 
             this method.
         """
         # Keep the minimizer on the unit disk
@@ -837,13 +849,13 @@ class YlmBase(object):
         """
         Return the global minimum of the intensity.
 
-        This routine uses `scipy.optimize.minimize` to attempt to find
+        This routine uses ``scipy.optimize.minimize`` to attempt to find
         the global minimum. Note that both the limb darkening and the
         multiplicative filter are disabled for this method.
 
-        .. warning:: This routine is not yet optimized and has not been \
-            fully tested. It may be \
-            unnecessarily slow and may not always find the global \
+        .. warning:: This routine is not yet optimized and has not been 
+            fully tested. It may be 
+            unnecessarily slow and may not always find the global 
             minimum. This will be fixed in an upcoming version of the code.
         """
         return self._extremum(True)
@@ -852,29 +864,29 @@ class YlmBase(object):
         """
         Return the global maximum of the intensity.
 
-        This routine uses `scipy.optimize.minimize` to attempt to find
+        This routine uses ``scipy.optimize.minimize`` to attempt to find
         the global maximum. Note that both the limb darkening and the
         multiplicative filter are disabled for this method.
 
-        .. warning:: This routine is not yet optimized and has not been \
-            fully tested. It may be \
-            unnecessarily slow and may not always find the global \
+        .. warning:: This routine is not yet optimized and has not been 
+            fully tested. It may be 
+            unnecessarily slow and may not always find the global 
             maximum. This will be fixed in an upcoming version of the code.
         """
         return self._extremum(False)
     
     def is_physical(self):
         """
-        Returns :py:obj:`True` if the map intensity is non-negative
+        Returns ``True`` if the map intensity is non-negative
         everywhere. 
         
-        This routine uses `scipy.optimize.minimize` to attempt to find
+        This routine uses ``scipy.optimize.minimize`` to attempt to find
         the global minimum. Note that both the limb darkening and the
         multiplicative filter are ignored.
 
-        .. warning:: This routine is not yet optimized and has not been \
-            fully tested. It may be \
-            unnecessarily slow and may not always find the global \
+        .. warning:: This routine is not yet optimized and has not been 
+            fully tested. It may be 
+            unnecessarily slow and may not always find the global 
             minimum. This will be fixed in an upcoming version of the code.
         """
         return self.min() >= 0

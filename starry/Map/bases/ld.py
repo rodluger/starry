@@ -21,23 +21,32 @@ class LimbDarkenedBase(object):
     .. automethod:: __call__
     """
 
+    __descr__ = \
+    """
+    A limb-darkened surface map with optional wavelength dependence.
+    Instantiate by calling
+    
+    .. code-block:: python
+
+        starry.Map(udeg=udeg, **kwargs)
+
+    with ``udeg > 0``. Note that limb-darkened maps cannot
+    (currently) have temporal dependence and must be in emitted
+    light only, although users can instantiate a :py:class:`SphericalHarmonicMap`
+    in reflected light and add limb darkening.
+    """
+
     def __init__(self, *args, **kwargs):
         super(LimbDarkenedBase, self).__init__(*args, **kwargs)
         self._flux_op = LimbDarkenedOp(self)
-
-    @staticmethod
-    def __descr__():
-        return r"""
-        A limb-darkened surface map with optional wavelength dependence.
-        """
 
     def render(self, **kwargs):
         """
         Render the map on a grid and return the pixel intensities as a 
         two-dimensional array (with time as an optional third dimension).
 
-        Kwargs:
-            res (int): Map resolution, corresponding to the number of pixels \
+        Keyword Arguments:
+            res (int): Map resolution, corresponding to the number of pixels
                 on a side. Default 300.
         """
         # Get kwargs
@@ -66,18 +75,18 @@ class LimbDarkenedBase(object):
         Refer to the docstring of :py:meth:`render` for additional kwargs
         accepted by this method.
 
-        Kwargs:
-            Z (ndarray): The array of pixel intensities returned by a call \
-                to :py:meth:`render`. Default :py:obj:`None`, in which case \
-                this routine will call :py:meth:`render` with any additional \
+        Keyword Arguments:
+            Z (ndarray): The array of pixel intensities returned by a call 
+                to :py:meth:`render`. Default ``None``, in which case 
+                this routine will call :py:meth:`render` with any additional 
                 kwargs provided by the user.
-            cmap: The colormap used for plotting (a string or a \
-                :py:obj:`matplotlib` colormap object). Default "plasma".
-            grid (bool): Overplot static grid lines? Default :py:obj:`True`.
-            interval (int): Interval in ms between frames (animated maps only). \
+            cmap: The colormap used for plotting (a string or a 
+                ``matplotlib`` colormap object). Default "plasma".
+            grid (bool): Overplot static grid lines? Default ``True``.
+            interval (int): Interval in ms between frames (animated maps only). 
                 Default 75.
-            mp4 (str): Name of the mp4 file to save the animation to \
-                (animated maps only). Default :py:obj:`None`.
+            mp4 (str): Name of the mp4 file to save the animation to 
+                (animated maps only). Default ``None``.
             kwargs: Any additional kwargs accepted by :py:meth:`render`.
 
         """
@@ -155,43 +164,45 @@ class LimbDarkenedBase(object):
         """
         Compute the flux visible from the map.
 
-        Kwargs:
+        Keyword Arguments:
             b: The impact parameter of the occultor. Default 0.
-            zo: The position of the occultor along \
-                the line of sight. Default 1.0 (on the side closest to \
+            zo: The position of the occultor along 
+                the line of sight. Default 1.0 (on the side closest to 
                 the observer).
-            ro: The radius of the occultor in units \
+            ro: The radius of the occultor in units 
                 of this body's radius. Default 0 (no occultation).
         
-        Additional kwargs accepted by this method:
-            u: The vector of limb darkening coefficients. Default \
+        The following arguments are also accepted:
+
+        Keyword Arguments:
+            u: The vector of limb darkening coefficients. Default 
                 is the map's current limb darkening vector.
-            orbit: And :py:obj:`exoplanet.orbits.KeplerianOrbit` instance. \
-                This will override the :py:obj:`b` and :py:obj:`zo` keywords \
-                above as long as a time vector :py:obj:`t` is also provided \
-                (see below). Default :py:obj:`None`.
-            texp: The exposure time of each observation. \
-                This can be a scalar or a vector/tensor with the same shape as ``t``. \
-                If ``texp`` is provided, ``t`` is assumed to indicate the \
-                timestamp at the *middle* of an exposure of length ``texp``. \
-                Only applies if :py:obj:`orbit` is provided. Default :py:obj:`None`.
-            use_in_transit (bool): If :py:obj:`True`, the model will only \
-                be evaluated for the data points expected to be in transit \
-                as computed using the :py:obj:`in_transit` method on :py:obj:`orbit`. \
-                Only applies if :py:obj:`orbit` is provided. Default :py:obj:`True`.
-            oversample (int): The number of function evaluations to \
-                use when numerically integrating the exposure time. \
-                Only applies if :py:obj:`orbit` is provided. Default ``7``.
-            order (int): The order of the numerical integration \
-                scheme. This must be one of the following: ``0`` for a \
-                centered Riemann sum (equivalent to the "resampling" procedure \
-                suggested by Kipping 2010), ``1`` for the trapezoid rule, or \
-                ``2`` for Simpson's rule. \
-                Only applies if :py:obj:`orbit` is provided. Default ``0``.
-            t: A vector of times at which to evaluate the orbit. Default :py:obj:`None`.
+            orbit: And ``exoplanet.orbits.KeplerianOrbit`` instance. 
+                This will override the ``b`` and ``zo`` keywords 
+                above as long as a time vector ``t`` is also provided 
+                (see below). Default ``None``.
+            texp: The exposure time of each observation. 
+                This can be a scalar or a vector/tensor with the same shape as ``t``. 
+                If ``texp`` is provided, ``t`` is assumed to indicate the 
+                timestamp at the *middle* of an exposure of length ``texp``. 
+                Only applies if ``orbit`` is provided. Default ``None``.
+            use_in_transit (bool): If ``True``, the model will only 
+                be evaluated for the data points expected to be in transit 
+                as computed using the ``in_transit`` method on ``orbit``. 
+                Only applies if ``orbit`` is provided. Default ``True``.
+            oversample (int): The number of function evaluations to 
+                use when numerically integrating the exposure time. 
+                Only applies if ``orbit`` is provided. Default ``7``.
+            order (int): The order of the numerical integration 
+                scheme. This must be one of the following: ``0`` for a 
+                centered Riemann sum (equivalent to the "resampling" procedure 
+                suggested by Kipping 2010), ``1`` for the trapezoid rule, or 
+                ``2`` for Simpson's rule. 
+                Only applies if ``orbit`` is provided. Default ``0``.
+            t: A vector of times at which to evaluate the orbit. Default ``None``.
 
         Returns:
-            A vector of fluxes or a ``Theano`` Op corresponding to the flux \
+            A vector of fluxes or a ``Theano`` Op corresponding to the flux 
             computation.
         """
         # Ingest kwargs
@@ -325,7 +336,7 @@ class LimbDarkenedBase(object):
         """
         Return the intensity of the map at a point or on a grid of surface points.
 
-        Kwargs:
+        Keyword Arguments:
             b (float or ndarray): The impact parameter at the evaluation point.
 
         Returns:

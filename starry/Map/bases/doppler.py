@@ -14,15 +14,20 @@ class DopplerBase(object):
     .. automethod:: rv
     """
 
-    @staticmethod
-    def __descr__():
-        return r"""
-        This class implements the custom
-        :py:meth:`rv()` method for computing the net radial velocity
-        imparted by occultations or the darkening due to surface features such as spots. It
-        also implements new attributes, including :py:attr:`alpha()` and :py:meth:`veq()`
-        for specifying additional map properties.
-        """
+    __descr__ = \
+    """
+    A radial velocity map class. Instantiate by calling
+    
+    .. code-block:: python
+
+        starry.Map(doppler=True, **kwargs)
+
+    This class implements the custom
+    :py:meth:`rv()` method for computing the net radial velocity
+    imparted by occultations or the darkening due to surface features such as spots. It
+    also implements new attributes, including :py:attr:`alpha` and :py:attr:`veq`
+    for specifying additional map properties.
+    """
 
     def __init__(self, *args, **kwargs):
         super(DopplerBase, self).__init__(*args, **kwargs)
@@ -84,16 +89,17 @@ class DopplerBase(object):
 
     @property
     def alpha(self):
-        r"""
-        The rotational shear coefficient, a float in the range [0, 1].
+        """
+        The rotational shear coefficient, a float in the range ``[0, 1]``.
         
-        The parameter :math:`\alpha` is used to model linear differential
-        rotation. The angular velocity at a given latitude :math:`\theta`
+        The parameter :math:`\\alpha` is used to model linear differential
+        rotation. The angular velocity at a given latitude :math:`\\theta`
         is
 
-        :math:`\omega = \omega_{eq}(1 - \alpha \sin^2\theta)`
+        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
 
-        where :math:`\omega_{eq}` is the equatorial angular velocity.
+        where :math:`\\omega_{eq}` is the equatorial angular velocity of
+        the object.
         """
         return self._alpha
     
@@ -114,34 +120,37 @@ class DopplerBase(object):
         self._veq = val
 
     def render(self, rv=True, **kwargs):
-        r"""
+        """
         Render the map on a grid and return the pixel intensities (or
         velocity-weighted intensities) as a two-dimensional array 
         (with time as an optional third dimension).
 
-        Kwargs:
-            rv (bool): Compute the intensity-weighted radial velocity field of \
-                the map? Default :py:obj:`True`. If :py:obj:`False`, computes \
+        Keyword Arguments:
+            rv (bool): Compute the intensity-weighted radial velocity field of 
+                the map? Default ``True``. If ``False``, computes 
                 just the intensity map.
             theta (float): Angle of rotation of the map in degrees. Default 0.
-            res (int): Map resolution, corresponding to the number of pixels \
-                on a side (for the orthographic projection) or the number of \
-                pixels in latitude (for the rectangular projection; the number \
+            res (int): Map resolution, corresponding to the number of pixels 
+                on a side (for the orthographic projection) or the number of 
+                pixels in latitude (for the rectangular projection; the number 
                 of pixels in longitude is twice this value). Default 300.
-            projection (str): One of "orthographic" or "rectangular". The former \
-                results in a map of the disk as seen on the plane of the sky, \
-                padded by :py:obj:`NaN` outside of the disk. The latter results \
-                in an equirectangular (geographic, equidistant cylindrical) \
-                view of the entire surface of the map in latitude-longitude space. \
+            projection (str): One of "orthographic" or "rectangular". The former 
+                results in a map of the disk as seen on the plane of the sky, 
+                padded by ``NaN`` outside of the disk. The latter results 
+                in an equirectangular (geographic, equidistant cylindrical) 
+                view of the entire surface of the map in latitude-longitude space. 
                 Default "orthographic".
         
-        Kwargs (temporal maps):
-            t (float or ndarray): The time(s) at which to evaluate the map. \
+        The following arguments are also accepted for specific map types:
+
+        Keyword Arguments:
+            t (float or ndarray): The time(s) at which to evaluate the map. 
                 Default 0.
         
-        .. note:: If :py:obj:`rv = True`, the :py:obj:`projection` kwarg is \
-                ignored and the map can only be plotted in the orthographic \
-                projection.
+        .. note:: 
+            If ``rv==True``, the ``projection`` kwarg is 
+            ignored and the map can only be plotted in the orthographic 
+            projection.
         """
         if rv:
             kwargs.pop("projection", None)
@@ -162,25 +171,26 @@ class DopplerBase(object):
         accepted by this method.
 
         Args:
-            Z (ndarray): The array of pixel intensities returned by a call \
-                to :py:meth:`render`. Default :py:obj:`None`, in which case \
-                this routine will call :py:meth:`render` with any additional \
+            Z (ndarray): The array of pixel intensities returned by a call 
+                to :py:meth:`render`. Default ``None``, in which case 
+                this routine will call :py:meth:`render` with any additional 
                 kwargs provided by the user.
-            rv (bool): Plot the intensity-weighted radial velocity field of \
-                the map? Default :py:obj:`True`. If :py:obj:`False`, plots just the \
+            rv (bool): Plot the intensity-weighted radial velocity field of 
+                the map? Default ``True``. If ``False``, plots just the 
                 intensity map.
-            cmap: The colormap used for plotting (a string or a \
-                :py:obj:`matplotlib` colormap object). Default "plasma".
-            grid (bool): Overplot static grid lines? Default :py:obj:`True`.
-            interval (int): Interval in ms between frames (animated maps only). \
+            cmap: The colormap used for plotting (a string or a 
+                ``matplotlib`` colormap object). Default "plasma".
+            grid (bool): Overplot static grid lines? Default ``True``.
+            interval (int): Interval in ms between frames (animated maps only). 
                 Default 75.
-            mp4 (str): Name of the mp4 file to save the animation to \
-                (animated maps only). Default :py:obj:`None`.
+            mp4 (str): Name of the mp4 file to save the animation to 
+                (animated maps only). Default ``None``.
             kwargs: Any additional kwargs accepted by :py:meth:`render`.
         
-        .. note:: If :py:obj:`rv = True`, the :py:obj:`projection` kwarg is \
-                ignored and the map can only be plotted in the orthographic \
-                projection.
+        .. note:: 
+            If ``rv==True``, the ``projection`` kwarg is 
+            ignored and the map can only be plotted in the orthographic 
+            projection.
         """
         # Override the `projection` kwarg if we're
         # plotting the radial velocity.
@@ -189,12 +199,12 @@ class DopplerBase(object):
         return super(DopplerBase, self).show(**kwargs)
 
     def rv(self, **kwargs):
-        r"""
+        """
         Compute the net radial velocity one would measure from the object.
 
         The radial velocity is computed as the ratio
 
-            :math:`\Delta RV = \frac{\int Iv \mathrm{d}A}{\int I \mathrm{d}A}`
+            :math:`\\Delta RV = \\frac{\\int Iv \\mathrm{d}A}{\\int I \\mathrm{d}A}`
 
         where both integrals are taken over the visible portion of the 
         projected disk. :math:`I` is the intensity field (described by the
@@ -202,12 +212,13 @@ class DopplerBase(object):
         is the radial velocity field (computed based on the equatorial velocity
         of the star, its orientation, etc.)
 
-        This method accepts all arguments accepted by :py:meth:`X`.
+        This method accepts all arguments accepted by :py:meth:`X`, as well
+        as the following arguments:
         
-        Additional kwargs accepted by this method:
-            y: The vector of spherical harmonic coefficients. Default \
+        Keyword Arguments:
+            y: The vector of spherical harmonic coefficients. Default 
                 is the map's current spherical harmonic vector.
-            veq: The equatorial velocity of the object in arbitrary units. \
+            veq: The equatorial velocity of the object in arbitrary units. 
                 Default is the map's current velocity.
             alpha: The rotational shear. Default is the map's current shear.
 
@@ -251,3 +262,33 @@ class DopplerBase(object):
 
         # The RV signal is just the product        
         return Iv * invI
+
+    def __call__(self, **kwargs):
+        """
+        Return the intensity of the map at a point or on a grid of surface points.
+
+        Keyword Arguments:
+            theta (float or ndarray): Angle of rotation. Default 0.
+            x (float or ndarray): The ``x`` position on the
+                surface. Default 0.
+            y (float or ndarray): The ``y`` position on the
+                surface. Default 0.
+            rv (bool): Plot the intensity-weighted radial velocity field of 
+                the map? Default ``True``. If ``False``, plots just the 
+                intensity map.
+        The following arguments are also accepted for specific map types:
+
+        Keyword Arguments:
+            t (float or ndarray; temporal maps only): Time at which to evaluate. 
+                Default 0.
+
+        Returns:
+            A vector of intensities at the corresponding surface point(s).
+        """
+        rv = kwargs.pop("rv", True)
+        if rv:
+            self._set_rv_filter()
+        res = super(DopplerBase, self).__call__(**kwargs)
+        if rv:
+            self._unset_rv_filter()
+        return res

@@ -31,6 +31,7 @@ import glob
 import json
 import starry
 import datetime
+from inspect import cleandoc
 
 
 # -- Custom hacks -------------------------------------------------------------
@@ -45,16 +46,18 @@ def sort_props(doc):
     return props
 
 # Hack: instantiate some Maps to fudge their docstrings
-map = starry.Map(ydeg=1, udeg=1, fdeg=1)
-starry.Map = type('Map', map.__class__.__bases__, dict(map.__class__.__dict__))
-starry.Map.__doc__ = starry.Map.__descr__() + sort_props(starry.Map.__doc__)
-map = starry.DopplerMap(ydeg=1, udeg=1)
-starry.DopplerMap = type('DopplerMap', map.__class__.__bases__, 
-                         dict(map.__class__.__dict__))
-starry.DopplerMap.__doc__ = starry.DopplerMap.__descr__() + \
-    sort_props(starry.DopplerMap.__doc__)
+map1 = starry.Map(ydeg=1, udeg=1, fdeg=1)
+map2 = starry.Map(udeg=1)
+map3 = starry.Map(doppler=True)
 
-# TODO: inspect.cleandoc() if needed
+starry.SphericalHarmonicMap = type('SphericalHarmonicMap', map1.__class__.__bases__, dict(map1.__class__.__dict__))
+starry.SphericalHarmonicMap.__doc__ = cleandoc(starry.SphericalHarmonicMap.__descr__) + "\n\n" + sort_props(starry.SphericalHarmonicMap.__doc__)
+
+starry.LimbDarkenedMap = type('LimbDarkenedMap', map2.__class__.__bases__, dict(map2.__class__.__dict__))
+starry.LimbDarkenedMap.__doc__ = cleandoc(starry.LimbDarkenedMap.__descr__) + "\n\n" + sort_props(starry.LimbDarkenedMap.__doc__)
+
+starry.DopplerMap = type('DopplerMap', map3.__class__.__bases__, dict(map3.__class__.__dict__))
+starry.DopplerMap.__doc__ = cleandoc(starry.DopplerMap.__descr__) + "\n\n" + sort_props(starry.DopplerMap.__doc__)
 
 # Hack: copy over the notebooks containing a `tutorial` flag to a subfolder
 if not os.path.exists("notebooks"):

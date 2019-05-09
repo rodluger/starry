@@ -104,8 +104,5 @@ def Map(ydeg=0, udeg=0, fdeg=0, **kwargs):
             self._limbdarkened = limbdarkened
             super(Map, self).__init__(*init_args, **init_kwargs)
 
-    # Hack this function's docstring
-    __doc__ = Map.__doc__
-
     # Return an instance
     return Map(**kwargs)

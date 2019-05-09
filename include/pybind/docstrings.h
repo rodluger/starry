@@ -25,31 +25,34 @@ namespace Map {
 
     const char* doc = R"pbdoc(
         .. autoattribute:: __compile_flags__
-        .. autoattribute:: ydeg
         .. autoattribute:: udeg
-        .. autoattribute:: fdeg
-        .. autoattribute:: N
-        .. autoattribute:: Ny
         .. autoattribute:: Nu
-        .. autoattribute:: Nf
-        .. autoattribute:: nt
         .. autoattribute:: nw
         .. autoattribute:: multi
-        .. autoattribute:: y
         .. autoattribute:: u
-        .. autoattribute:: f
-        .. autoattribute:: axis
-        .. autoattribute:: inc
-        .. autoattribute:: obl
         .. automethod:: __setitem__(inds, val)
         .. automethod:: __getitem__(inds)
         .. automethod:: reset()
-        .. automethod:: rotate(theta=0, axis=None)
-        .. automethod:: add_spot(amp, sigma=0.1, lat=0.0, lon=0.0)
-        .. automethod:: random(power, seed=None, col=None)
-        .. automethod:: linear_intensity_model(t=0.0, theta=0.0, x=0.0, y=0.0, source=[-1, 0, 0])
-        .. automethod:: linear_flux_model(t=0.0, theta=0.0, xo=0.0, yo=0.0, zo=1.0, ro=0.0, source=[-1, 0, 0], gradient=False)
-    )pbdoc";
+    )pbdoc"
+#   if !defined(_STARRY_LD_)
+        R"pbdoc(
+            .. autoattribute:: ydeg
+            .. autoattribute:: fdeg
+            .. autoattribute:: N
+            .. autoattribute:: Ny
+            .. autoattribute:: Nf
+            .. autoattribute:: nt
+            .. autoattribute:: y
+            .. autoattribute:: f
+            .. autoattribute:: axis
+            .. autoattribute:: inc
+            .. autoattribute:: obl
+            .. automethod:: rotate(theta=0, axis=None)
+            .. automethod:: add_spot(amp, sigma=0.1, lat=0.0, lon=0.0)
+            .. automethod:: random(power, seed=None, col=None)
+        )pbdoc"
+#   endif
+;
 
     const char* ydeg = R"pbdoc(
         The highest spherical harmonic degree of the map. *Read-only.*
@@ -176,22 +179,16 @@ namespace Map {
     const char* axis = R"pbdoc(
         A *normalized* unit vector specifying the default axis of
         rotation for the map. Default :math:`\hat{y} = (0, 1, 0)`.
-        
-        .. note:: Attribute not available for purely limb-darkened maps.
     )pbdoc";
 
     const char* inc = R"pbdoc(
         The inclination of the map in degrees. 
         Setting this value overrides :py:attr:`axis`. Default :math:`90^\circ`.
-        
-        .. note:: Attribute not available for purely limb-darkened maps.
     )pbdoc";
 
     const char* obl = R"pbdoc(
         The obliquity of the map in degrees. 
         Setting this value overrides :py:attr:`axis`. Default :math:`0^\circ`.
-        
-        .. note:: Attribute not available for purely limb-darkened maps.
     )pbdoc";
 
     const char* rotate = R"pbdoc(
@@ -200,14 +197,11 @@ namespace Map {
         rotations and calculations will be performed relative to this
         rotational state.
         
-        Args:
+        Arguments:
             theta (float): Angle of rotation in degrees. \
                 Default 0.
             axis (ndarray): Axis of rotation. \
                 Default is the current map axis.
-
-        .. note:: Method not available for purely limb-darkened maps.
-
     )pbdoc";
 
     const char* add_spot = R"pbdoc(
@@ -218,137 +212,38 @@ namespace Map {
         modeling star spots or other discrete, localized features on a
         body's surface.
 
-        Args:
+        Arguments:
             amp (float or ndarray): The amplitude. Default 1.0, resulting \
                 in a gaussian whose integral over the sphere is unity. For \
                 spectral and temporal maps, this should be a vector \
                 corresponding to the amplitude in each map column.
+        
+        Keyword Arguments:
             sigma (float): The standard deviation of the gaussian. \
                 Default 0.1
             lat (float): The latitude of the center of the gaussian \
                 in degrees. Default 0.
             lon (float): The longitude of the center of the gaussian \
                 in degrees. Default 0.
-
-        .. note:: Method not available for purely limb-darkened maps.
-
         )pbdoc";
 
     const char* random = R"pbdoc(
         Draw a map from an isotropic distribution with a given power
         spectrum in :math:`l` and set the map coefficients.
 
-        Args:
+        Arguments:
             power (ndarray): The power at each degree, starting at :code:`l=0`.
+            
+        Keyword Arguments:
             seed (int): Randomizer seed. Default :py:obj:`None`.
             col (int): The map column into which the random map will be placed.\
                 Default :py:obj:`None` (in which case the map is replicated into all \
                 columns). *Spectral / temporal maps only.*
-        
-        .. note:: Method not available for purely limb-darkened maps.
-
-    )pbdoc";
-
-    const char* linear_intensity_model = R"pbdoc(
-        Return the `starry` linear intensity model, the design matrix
-        used to compute the intensity on a grid of surface points.
-
-        Args:
-            t (float or ndarray): Time at which to evaluate. Default 0. \
-                *Temporal maps only.*
-            theta (float or ndarray): Angle of rotation. Default 0.
-            x (float or ndarray): The :py:obj:`x` position on the \
-                surface. Default 0.
-            y (float or ndarray): The :py:obj:`y` position on the \
-                surface. Default 0.
-            source (ndarray): The source position, a unit vector or a
-                vector of unit vectors. Default :math:`-\hat{x} = (-1, 0, 0)`.
-                *Reflected light maps only.*
-
-        Returns:
-            A matrix `X`. When `X` is dotted into a spherical harmonic \
-            vector `y`, the result is the vector of intensities at the
-            corresponding surface points.
-
-        .. note:: Method not available for purely limb-darkened maps.
-
-    )pbdoc";
-
-    const char* intensity = R"pbdoc(
-        Return the intensity of the map at a point or on a grid of surface points.
-
-        Args:
-            t (float or ndarray): Time at which to evaluate. Default 0. \
-                *Temporal maps only.*
-            theta (float or ndarray): Angle of rotation. Default 0.
-            x (float or ndarray): The :py:obj:`x` position on the \
-                surface. Default 0.
-            y (float or ndarray): The :py:obj:`y` position on the \
-                surface. Default 0.
-            source (ndarray): The source position, a unit vector or a
-                vector of unit vectors. Default :math:`-\hat{x} = (-1, 0, 0)`.
-                *Reflected light maps only.*
-
-        Returns:
-            A vector of intensities at the corresponding surface point(s).
-
-    )pbdoc";
-
-    const char* linear_flux_model = R"pbdoc(
-        Return the `starry` linear flux model, the design matrix
-        used to compute the flux over a series of times.
-
-        Args:
-            t (float or ndarray): Time at which to evaluate. Default 0. \
-                *Temporal maps only.*
-            theta (float or ndarray): Angle of rotation. Default 0.
-            xo (float or ndarray): The :py:obj:`x` position of the \
-                occultor (if any). Default 0.
-            yo (float or ndarray): The :py:obj:`y` position of the \
-                occultor (if any). Default 0.
-            zo (float or ndarray): The :py:obj:`z` position of the \
-                occultor (if any). Default 1.0 (on the side closest to \
-                the observer).
-            ro (float): The radius of the occultor in units of this \
-                body's radius. Default 0 (no occultation).
-            gradient (bool): Compute and return the gradient of the \
-                model as well? Default :py:obj:`False`.
-            source (ndarray): The source position, a unit vector or a
-                vector of unit vectors. Default :math:`-\hat{x} = (-1, 0, 0)`.
-                *Reflected light maps only.*
-
-        Returns:
-            A matrix `X`. When `X` is dotted into a spherical harmonic \
-            vector `y`, the result is the light curve predicted by the \
-            model. If :py:obj:`gradient` is enabled, also returns a \
-            dictionary whose keys are the derivatives of `X` with respect \
-            to all model parameters.
-
-        .. note:: Method not available for purely limb-darkened maps.
-
-    )pbdoc";
-
-    const char* ld_flux = R"pbdoc(
-        Compute and return the flux during or outside of an occultation
-        for a purely limb-darkened map.
-
-        Args:
-            b (float or ndarray): The impact parameter of the occultor. Default 0.
-            ro (float): The radius of the occultor in units of this \
-                body's radius. Default 0 (no occultation).
-            zo (float or ndarray): The :py:obj:`z` position of the \
-                occultor (if any). Default 1.0 (on the side closest to \
-                the observer).
-            gradient (bool): Compute and return the gradient of the \
-                flux as well? Default :py:obj:`False`.
-
-        Returns:
-            The flux vector and optionally its gradient (a dictionary).
 
     )pbdoc";
 
     const char* compile_flags = R"pbdoc(
-        A dictionary of informational flags about the Map set at compile time.
+        A dictionary of informational flags about the ``Map`` set at compile time.
     )pbdoc";
 
 }
