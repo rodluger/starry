@@ -29,7 +29,7 @@ cache:
         - $HOME/miniconda-cache
 
 script:
-    - py.test -v -s tests/test_theano.py # DEBUG!!!
+    - py.test -v -s tests/*.py
 
 after_success:
     # DEBUG: Change from dev --> master when merging
