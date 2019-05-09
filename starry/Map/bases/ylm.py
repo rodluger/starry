@@ -637,12 +637,12 @@ class YlmBase(object):
             if self.ydeg > 0:
                 return tt.dot(X, tt.join(0, [1.0], y))
             else:
-                return X
+                return X[tuple((slice(None), 0))]
         else:
             if self.ydeg > 0:
                 return np.dot(X, np.append([1.0], y))
             else:
-                return X
+                return X[tuple((slice(None), 0))]
 
     def __call__(self, **kwargs):
         r"""

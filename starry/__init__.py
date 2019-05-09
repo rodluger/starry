@@ -34,11 +34,11 @@ if not __STARRY_SETUP__:
     from .Map import Map
 
 # Get compile dates
-dates = []
+__date__ = {}
 for module in modules.keys():
     try:
-        exec("from .%s import __date__" % module.lower()[:-1])
+        exec("from .%s import __date__ as date" % module.lower()[:-1])
     except:
-        __date__ = "unknown"
-    dates.append("%s%s" % (("%s:" % module[8:-1]).ljust(30), __date__))
-__date__ = "\n".join(dates)
+        date = "unknown"
+    __date__[module[8:-1]] = date
+del date
