@@ -39,29 +39,19 @@ def test_ld():
 def test_ylm():
     texp = 0.05
     map = starry.Map(ydeg=2)
-    np.random.seed(12)
-    map[1:, :] = np.random.randn(8)
+    np.random.seed(11)
+    map[1:, :] = 0.1 * np.random.randn(8)
     orbit = exo.orbits.KeplerianOrbit(period=1.0, m_star=1.0, r_star=1.0)
     t = np.linspace(-0.2, 0.2, 10000)
     flux = map.flux(t=t, orbit=orbit, ro=0.1).eval()
-
     xo = orbit.get_relative_position(t)[0].eval()
     yo = orbit.get_relative_position(t)[1].eval()
     flux = map.flux(xo=xo, yo=yo, ro=0.1)
-
     fluence_mavg = moving_average(flux, int(texp / (t[1] - t[0])))
     fluence_starry = map.flux(t=t, orbit=orbit, ro=0.1, 
                               texp=texp, oversample=30).eval()
     fluence_starry_vec = map.flux(t=t, orbit=orbit, ro=0.1, 
                               texp=np.ones_like(t) * texp, oversample=30).eval()
-    
-    import matplotlib.pyplot as plt
-    plt.switch_backend("Qt5Agg")
-    plt.plot(t, flux)
-    plt.plot(t, fluence_mavg)
-    plt.plot(t, fluence_starry)
-    plt.show()
-    
     assert np.allclose(fluence_mavg, fluence_starry, fluence_starry_vec)
 
 
