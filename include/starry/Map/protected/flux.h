@@ -71,8 +71,6 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
 
     // Loop over the timeseries and compute the model
     Scalar b, invb;
-    Scalar theta_cache = NAN,
-           theta_occ_cache = NAN;
     for (size_t n = 0; n < nt; ++n) {
 
         // Impact parameter
@@ -87,14 +85,9 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         } else if ((zo(n) < 0) || (b >= 1 + ro(n)) || (ro(n) <= 0.0)) {
 
             // Rotate the map
-            if (theta_rad(n) != theta_cache) {
-                theta_cache = theta_rad(n);
-                W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
-                W.leftMultiplyRz(rTLA1RZetaInv, rTLA1RZetaInvRz);
-                W.leftMultiplyRZeta(rTLA1RZetaInvRz, X.block(n, 0, 1, Ny));
-            } else {
-                W.leftMultiplyRZeta(rTLA1RZetaInvRz, X.block(n, 0, 1, Ny));
-            }
+            W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
+            W.leftMultiplyRz(rTLA1RZetaInv, rTLA1RZetaInvRz);
+            W.leftMultiplyRZeta(rTLA1RZetaInvRz, X.block(n, 0, 1, Ny));
 
             // Apply the Taylor expansion
             if (S::Temporal) {
@@ -129,10 +122,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
 
             // Rotate the map
             W.leftMultiplyRZetaInv(sTARzL, sTARzLRZetaInv);
-            if (theta_rad(n) != theta_occ_cache) {
-                theta_occ_cache = theta_rad(n);
-                W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
-            }
+            W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
             W.leftMultiplyRz(sTARzLRZetaInv, sTARzLRZetaInvRz);
             W.leftMultiplyRZeta(sTARzLRZetaInvRz, X.block(n, 0, 1, Ny));
 
