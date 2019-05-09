@@ -247,7 +247,6 @@ class LimbDarkenedBase(object):
                     
                     # Easy
                     tgrid = t
-                    rgrid, _ = vectorize(ro, t)
                 
                 else:
                     
@@ -282,9 +281,6 @@ class LimbDarkenedBase(object):
                     tgrid = tt.shape_padright(t) + dt
                     tgrid = tt.reshape(tgrid, [-1])
 
-                    # Madness to get the shapes to work out...
-                    rgrid = tt.shape_padleft(ro, tgrid.ndim) + tt.zeros_like(tgrid)
-
                 # Compute coords
                 coords = orbit.get_relative_position(tgrid)
                 xo = coords[0] / orbit.r_star
@@ -296,10 +292,10 @@ class LimbDarkenedBase(object):
             else:
 
                 # Tensorize & vectorize
-                b, zo, rgrid = vectorize(b, zo, ro)
+                b, zo = vectorize(b, zo)
 
             # Compute the light curve
-            lc = self._flux_op(u, b, zo, rgrid)
+            lc = self._flux_op(u, b, zo, ro)
 
             # Integrate it
             if texp is not None:
@@ -322,7 +318,7 @@ class LimbDarkenedBase(object):
                     self[1:, :] = u
                 else:
                     self[1:] = u
-            return np.squeeze(self._flux(*vectorize(b, zo, ro)))
+            return np.squeeze(self._flux(*vectorize(b, zo), ro))
 
     def __call__(self, **kwargs):
         """

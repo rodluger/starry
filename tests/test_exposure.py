@@ -36,7 +36,7 @@ def test_ld():
     assert np.allclose(fluence_mavg, fluence_starry, fluence_starry_vec)
 
 
-def test_ylm():
+def test_ylm_occ():
     texp = 0.05
     map = starry.Map(ydeg=2)
     np.random.seed(11)
@@ -55,5 +55,29 @@ def test_ylm():
     assert np.allclose(fluence_mavg, fluence_starry, fluence_starry_vec)
 
 
+def test_ylm_phase():
+    texp = 0.05
+    map = starry.Map(ydeg=2)
+    np.random.seed(11)
+    map[1:, :] = 0.1 * np.random.randn(8)
+    theta = np.linspace(0, 360, 10000)
+    t = np.linspace(-0.2, 0.2, 10000)
+
+    flux = map.flux(theta=theta)
+    fluence_mavg = moving_average(flux, int(texp / (t[1] - t[0])))
+
+    orbit = exo.orbits.KeplerianOrbit(period=1.0)
+    fluence_starry = map.flux(t=t, orbit=orbit, theta=theta, texp=texp, ro=0.1, oversample=30).eval()
+
+    import matplotlib.pyplot as plt
+    plt.switch_backend("Qt5Agg")
+    plt.plot(flux)
+    plt.plot(fluence_starry)
+    plt.plot(fluence_mavg)
+    plt.show()
+
+    assert np.allclose(fluence_mavg, fluence_starry)
+
+
 if __name__ == "__main__":
-    test_ylm()
+    test_ylm_occ()

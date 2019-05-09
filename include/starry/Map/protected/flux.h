@@ -9,7 +9,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro,
+    const Scalar& ro,
     RowMatrix<Scalar>& X
 ) {
 
@@ -18,7 +18,6 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     CHECK_SHAPE(xo, nt, 1);
     CHECK_SHAPE(yo, nt, 1);
     CHECK_SHAPE(zo, nt, 1);
-    CHECK_SHAPE(ro, nt, 1);
     if (S::Temporal) {
         CHECK_ROWS(taylor, nt);
     }
@@ -77,12 +76,12 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         b = sqrt(xo(n) * xo(n) + yo(n) * yo(n));
 
         // Complete occultation?
-        if (b <= ro(n) - 1) {
+        if (b <= ro - 1) {
 
             X.row(n).setZero();
 
         // No occultation
-        } else if ((zo(n) < 0) || (b >= 1 + ro(n)) || (ro(n) <= 0.0)) {
+        } else if ((zo(n) < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
 
             // Rotate the map
             W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
@@ -101,7 +100,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         } else {
 
             // Compute the solution vector
-            G.compute(b, ro(n));
+            G.compute(b, ro);
             sTA = G.sT * B.A;
 
             // Compute the occultor rotation matrix Rz
@@ -150,7 +149,7 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     const RowMatrix<Scalar>& source,
     RowMatrix<Scalar>& X
 ) {
@@ -160,7 +159,6 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
     CHECK_SHAPE(xo, nt, 1);
     CHECK_SHAPE(yo, nt, 1);
     CHECK_SHAPE(zo, nt, 1);
-    CHECK_SHAPE(ro, nt, 1);
     CHECK_SHAPE(source, nt, 3);
     if (S::Temporal) {
         CHECK_ROWS(taylor, nt);
@@ -215,12 +213,12 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
         b = sqrt(xo(n) * xo(n) + yo(n) * yo(n));
 
         // Complete occultation?
-        if (b <= ro(n) - 1) {
+        if (b <= ro - 1) {
 
             X.row(n).setZero();
 
         // No occultation
-        } else if ((zo(n) < 0) || (b >= 1 + ro(n)) || (ro(n) <= 0.0)) {
+        } else if ((zo(n) < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
 
             // Compute the reflectance integrals
             if ((source(n, 0) != sx_cache) ||
@@ -304,14 +302,14 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     RowMatrix<Scalar>& X,
     const RowMatrix<Scalar>& bX,
     Vector<Scalar>& bt,
     Vector<Scalar>& btheta, 
     Vector<Scalar>& bxo,
     Vector<Scalar>& byo,
-    Vector<Scalar>& bro,
+    Scalar& bro,
     UType& bu,
     Vector<Scalar>& bf,
     Scalar& binc,
@@ -334,7 +332,6 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     CHECK_SHAPE(xo, nt, 1);
     CHECK_SHAPE(yo, nt, 1);
     CHECK_SHAPE(zo, nt, 1);
-    CHECK_SHAPE(ro, nt, 1);
     if (S::Temporal) {
         CHECK_ROWS(taylor, nt);
     }
@@ -443,7 +440,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         b = sqrt(xo(n) * xo(n) + yo(n) * yo(n));
 
         // Complete occultation?
-        if (b <= ro(n) - 1) {
+        if (b <= ro - 1) {
 
             X.row(n).setZero();
             Dtheta.row(n).setZero();
@@ -456,7 +453,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
                 Dt.row(n).setZero();
 
         // No occultation
-        } else if ((zo(n) < 0) || (b >= 1 + ro(n)) || (ro(n) <= 0.0)) {
+        } else if ((zo(n) < 0) || (b >= 1 + ro) || (ro <= 0.0)) {
 
             // Compute the Rz rotation matrix
             W.compute(cos(theta_rad(n)), sin(theta_rad(n)));
@@ -547,7 +544,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
         } else {
 
             // Compute the solution vector
-            G.template compute<true>(b, ro(n));
+            G.template compute<true>(b, ro);
             sTA = G.sT * B.A;
             DsTDrA = G.dsTdr * B.A;
             DsTDbA = G.dsTdb * B.A;
@@ -724,7 +721,7 @@ inline EnableIf<!U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelI
     btheta = Dtheta.cwiseProduct(bX).rowwise().sum();
     bxo = Dxo.cwiseProduct(bX).rowwise().sum();
     byo = Dyo.cwiseProduct(bX).rowwise().sum();
-    bro = Dro.cwiseProduct(bX).rowwise().sum();
+    bro = Dro.cwiseProduct(bX).sum();
 }
 
 /**
@@ -738,7 +735,7 @@ inline EnableIf<U::Reflected && !U::LimbDarkened, void> computeLinearFluxModelIn
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     const RowMatrix<Scalar>& source,
     RowMatrix<Scalar>& X,
     RowMatrix<Scalar>& Dt,
@@ -763,13 +760,12 @@ template <typename U=S>
 inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     const Vector<Scalar>& b, 
     const Vector<Scalar>& zo,
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     FType& flux
 ) {
     // Shape checks
     size_t nt = b.rows();
     CHECK_SHAPE(zo, nt, 1);
-    CHECK_SHAPE(ro, nt, 1);
     flux.resize(nt, Nw);
     
     // Compute the Agol `g` basis
@@ -779,7 +775,7 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     for (size_t n = 0; n < nt; ++n) {
 
         // No occultation
-        if ((zo(n) < 0) || (abs(b(n)) >= 1 + ro(n)) || (ro(n) <= 0.0)) {
+        if ((zo(n) < 0) || (abs(b(n)) >= 1 + ro) || (ro <= 0.0)) {
 
             // Easy!
             flux.row(n).setOnes();
@@ -788,7 +784,7 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
         } else {
 
             // Compute the Agol `s` vector
-            L.compute(abs(b(n)), ro(n));
+            L.compute(abs(b(n)), ro);
 
             // Dot the integral solution in, and we're done!
             flux.row(n) = (L.sT * L.g).cwiseProduct(L.I0);
@@ -808,24 +804,23 @@ template <typename U=S>
 inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     const Vector<Scalar>& b, 
     const Vector<Scalar>& zo,
-    const Vector<Scalar>& ro,
+    const Scalar& ro,
     FType& flux,
     const FType& bf,
     Vector<Scalar>& bb,
-    Vector<Scalar>& bro,
+    Scalar& bro,
     UType& bu
 ) {
 
     // Shape checks
     size_t nt = b.rows();
     CHECK_SHAPE(zo, nt, 1);
-    CHECK_SHAPE(ro, nt, 1);
     CHECK_SHAPE(bf, nt, Nw);
     flux.resize(nt, Nw);
     
     // Initialize derivs
     bb.resize(nt);
-    bro.resize(nt);
+    bro = 0.0;
     UType bg(udeg + 1, Nw);
     bg.setZero();
     RowVector<Scalar> I0bf, piI0fbf;
@@ -837,17 +832,16 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
     for (size_t n = 0; n < nt; ++n) {
 
         // No occultation
-        if ((zo(n) < 0) || (abs(b(n)) >= 1 + ro(n)) || (ro(n) <= 0.0)) {
+        if ((zo(n) < 0) || (abs(b(n)) >= 1 + ro) || (ro <= 0.0)) {
 
             flux.row(n).setOnes();
             bb(n) = 0.0;
-            bro(n) = 0.0;
 
         // Occultation
         } else {
 
             // Compute the Agol `s` vector and its derivs
-            L.template compute<true>(abs(b(n)), ro(n));
+            L.template compute<true>(abs(b(n)), ro);
 
             // Compute the flux
             flux.row(n) = (L.sT * L.g).cwiseProduct(L.I0);
@@ -855,7 +849,7 @@ inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFluxInternal (
             // b and ro derivs
             I0bf = (L.I0).cwiseProduct(bf.row(n));
             bb(n) = (L.dsTdb * L.g).dot(I0bf);
-            bro(n) = (L.dsTdr * L.g).dot(I0bf);
+            bro += (L.dsTdr * L.g).dot(I0bf); // TODO: CHECK THIS
 
             // Compute df / dg
             if (likely(udeg > 0)) {

@@ -16,16 +16,16 @@ class LimbDarkenedOp(tt.Op):
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
         if self.map._spectral:
-            outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
+            outputs = [tt.TensorType(inputs[-2].dtype, (False, False))()]
         else:
-            outputs = [inputs[-1].type()]
+            outputs = [inputs[-2].type()]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
         if self.map._spectral:
-            return [shapes[-1] + (tt.as_tensor(self.map.nw),)]
+            return [shapes[-2] + (tt.as_tensor(self.map.nw),)]
         else:
-            return shapes[-1],
+            return shapes[-2],
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -40,7 +40,7 @@ class LimbDarkenedOp(tt.Op):
             self.map[1:] = u
         outputs[0][0] = self.map._flux(np.atleast_1d(b), 
                                        np.atleast_1d(zo), 
-                                       np.atleast_1d(ro))
+                                       ro)
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
@@ -67,7 +67,7 @@ class LimbDarkenedOpGradientOp(tt.Op):
             self.base_op.map[1:] = u
         bb, bro, bu = self.base_op.map._grad(np.atleast_1d(b), 
                                              np.atleast_1d(zo), 
-                                             np.atleast_1d(ro),
+                                             ro,
                                              np.atleast_1d(bf))
 
         # Limb darkening gradient

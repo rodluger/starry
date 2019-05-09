@@ -478,7 +478,6 @@ class YlmBase(object):
                     
                     # Easy
                     tgrid = t
-                    rgrid, thetagrid, _ = vectorize(ro, theta, t)
                 
                 else:
                     
@@ -510,10 +509,6 @@ class YlmBase(object):
                     tgrid = tt.shape_padright(t) + dt
                     tgrid = tt.reshape(tgrid, [-1])
 
-                    # Madness to get the shapes to work out...
-                    rgrid = tt.shape_padleft(ro, tgrid.ndim) + tt.zeros_like(tgrid)
-                    thetagrid = tt.shape_padleft(theta, tgrid.ndim) + tt.zeros_like(tgrid)
-
                 # Compute coords
                 coords = orbit.get_relative_position(tgrid)
                 xo = coords[0] / orbit.r_star
@@ -522,13 +517,16 @@ class YlmBase(object):
                 # Note that `exoplanet` uses a slightly different coord system!
                 zo = -coords[2] / orbit.r_star
 
+                # TODO TODO TODO TODO TODO
+                theta = tt.zeros_like(zo)
+
             else:
 
                 # Tensorize & vectorize
-                xo, yo, zo, rgrid, thetagrid = vectorize(xo, yo, zo, ro, theta)
+                xo, yo, zo, theta = vectorize(xo, yo, zo, theta)
 
             # Compute the light curve
-            lc = self._X_op(u, f, inc, obl, thetagrid, xo, yo, zo, rgrid)
+            lc = self._X_op(u, f, inc, obl, theta, xo, yo, zo, ro)
 
             # Integrate it
             if texp is not None:
@@ -553,7 +551,7 @@ class YlmBase(object):
                 self.inc = inc
             if obl is not None:
                 self.obl = obl
-            return np.squeeze(self._X(*vectorize(theta, xo, yo, zo, ro)))
+            return np.squeeze(self._X(*vectorize(theta, xo, yo, zo), ro))
 
     def flux(self, **kwargs):
         r"""

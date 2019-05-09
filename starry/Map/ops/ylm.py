@@ -15,11 +15,11 @@ class YlmXOp(tt.Op):
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
+        outputs = [tt.TensorType(inputs[-2].dtype, (False, False))()]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return [shapes[-1] + (tt.as_tensor(self.map.Ny),)]
+        return [shapes[-2] + (tt.as_tensor(self.map.Ny),)]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -67,7 +67,7 @@ class YlmXGradientOp(tt.Op):
                                    np.atleast_1d(xo),
                                    np.atleast_1d(yo),
                                    np.atleast_1d(zo),
-                                   np.atleast_1d(ro),
+                                   ro,
                                    np.atleast_1d(bX))
         outputs[0][0] = np.reshape(bu, np.shape(u))
         outputs[1][0] = np.reshape(bf, np.shape(f))

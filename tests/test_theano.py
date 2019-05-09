@@ -121,3 +121,7 @@ def test_ld_spectral():
         "ro":       0.1
     }
     run(**kwargs)
+
+
+if __name__ == "__main__":
+    test_ylm()

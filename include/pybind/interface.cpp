@@ -561,10 +561,10 @@ PYBIND11_MODULE(
             const Vector<double>& yo,
             const Vector<double>& zo,
 #           if defined(_STARRY_REFLECTED_)
-                const Vector<double>& ro,
+                const double& ro,
                 const RowMatrix<double>& source
 #           else
-                const RowMatrix<double>& ro
+                const double& ro
 #           endif
         ) {
             RowMatrix<Scalar> X;
@@ -576,7 +576,7 @@ PYBIND11_MODULE(
                 xo.template cast<Scalar>(), 
                 yo.template cast<Scalar>(),
                 zo.template cast<Scalar>(),
-                ro.template cast<Scalar>(),
+                Scalar(ro),
 #               if defined(_STARRY_REFLECTED_)
                     source.template cast<Scalar>(),
 #               endif
@@ -593,10 +593,10 @@ PYBIND11_MODULE(
                 const Vector<double>& t,
 #           endif
             const Vector<double>& theta, 
-            const Vector<double>& xo, 
+            const Vector<double>& xo,
             const Vector<double>& yo,
             const Vector<double>& zo,
-            const Vector<double>& ro,
+            const double& ro,
 #           if defined(_STARRY_REFLECTED_)
                 const RowMatrix<double>& source,
 #           endif
@@ -609,7 +609,7 @@ PYBIND11_MODULE(
             Vector<Scalar> btheta;
             Vector<Scalar> bxo;
             Vector<Scalar> byo;
-            Vector<Scalar> bro;
+            Scalar bro;
 #           if defined(_STARRY_REFLECTED_)
                 RowMatrix<Scalar> bsource;
 #           endif
@@ -625,7 +625,7 @@ PYBIND11_MODULE(
                 xo.template cast<Scalar>(), 
                 yo.template cast<Scalar>(),
                 zo.template cast<Scalar>(),
-                ro.template cast<Scalar>(),
+                Scalar(ro),
 #               if defined(_STARRY_REFLECTED_)
                     source.template cast<Scalar>(),
 #               endif
@@ -653,7 +653,7 @@ PYBIND11_MODULE(
                 btheta.template cast<double>(),
                 bxo.template cast<double>(), 
                 byo.template cast<double>(),
-                bro.template cast<double>(),
+                double(bro),
 #               if defined(_STARRY_REFLECTED_)
                     bsource.template cast<double>(),
 #               endif
@@ -692,12 +692,12 @@ PYBIND11_MODULE(
             Map<T>& map,
             const Vector<double>& b,
             const Vector<double>& zo,
-            const Vector<double>& ro
+            const double& ro
         ) {
             FType flux;
             map.computeLimbDarkenedFlux(b.template cast<Scalar>(), 
                                         zo.template cast<Scalar>(), 
-                                        ro.template cast<Scalar>(), 
+                                        Scalar(ro), 
                                         flux);
             return flux.template cast<double>();
     });
@@ -707,7 +707,7 @@ PYBIND11_MODULE(
             Map<T>& map,
             const Vector<double>& b,
             const Vector<double>& zo,
-            const Vector<double>& ro,
+            const double& ro,
 #           if defined(_STARRY_SPECTRAL_)
                 const Matrix<double>& bf
 #           else
@@ -716,16 +716,16 @@ PYBIND11_MODULE(
         ) {
             FType flux;
             Vector<Scalar> bb;
-            Vector<Scalar> bro;
+            Scalar bro;
             UType bu;
             map.computeLimbDarkenedFlux(b.template cast<Scalar>(), 
                                         zo.template cast<Scalar>(), 
-                                        ro.template cast<Scalar>(), 
+                                        Scalar(ro), 
                                         flux, 
                                         bf.template cast<Scalar>(), 
                                         bb, bro, bu);
             return py::make_tuple(bb.template cast<double>(), 
-                                  bro.template cast<double>(), 
+                                  double(bro), 
                                   bu.template cast<double>());
     });
 

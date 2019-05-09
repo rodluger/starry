@@ -9,7 +9,7 @@ inline EnableIf<!U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     RowMatrix<Scalar>& X
 ) {
     computeLinearFluxModelInternal(theta, xo, yo, zo, ro, X);
@@ -26,7 +26,7 @@ inline EnableIf<!U::Reflected && U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     RowMatrix<Scalar>& X
 ) {
     computeTaylor(t);
@@ -44,7 +44,7 @@ inline EnableIf<U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     const RowMatrix<Scalar>& source,
     RowMatrix<Scalar>& X
 ) {
@@ -63,7 +63,7 @@ inline EnableIf<U::Reflected && U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     const RowMatrix<Scalar>& source,
     RowMatrix<Scalar>& X
 ) {
@@ -83,13 +83,13 @@ inline EnableIf<!U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     RowMatrix<Scalar>& X,
     const RowMatrix<Scalar>& bX,
     Vector<Scalar>& btheta, 
     Vector<Scalar>& bxo,
     Vector<Scalar>& byo,
-    Vector<Scalar>& bro,
+    Scalar& bro,
     UType& bu,
     Vector<Scalar>& bf,
     Scalar& binc,
@@ -114,14 +114,14 @@ inline EnableIf<!U::Reflected && U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     RowMatrix<Scalar>& X,
     const RowMatrix<Scalar>& bX,
     Vector<Scalar>& bt, 
     Vector<Scalar>& btheta, 
     Vector<Scalar>& bxo,
     Vector<Scalar>& byo,
-    Vector<Scalar>& bro,
+    Scalar& bro,
     UType& bu,
     Vector<Scalar>& bf,
     Scalar& binc,
@@ -142,14 +142,14 @@ inline EnableIf<U::Reflected && !U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     const RowMatrix<Scalar>& source,
     RowMatrix<Scalar>& X,
     const RowMatrix<Scalar>& bX,
     Vector<Scalar>& btheta, 
     Vector<Scalar>& bxo,
     Vector<Scalar>& byo,
-    Vector<Scalar>& bro,
+    Scalar& bro,
     RowMatrix<Scalar>& bsource,
     UType& bu,
     Vector<Scalar>& bf,
@@ -172,7 +172,7 @@ inline EnableIf<U::Reflected && U::Temporal, void> computeLinearFluxModel (
     const Vector<Scalar>& xo, 
     const Vector<Scalar>& yo, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     const RowMatrix<Scalar>& source,
     RowMatrix<Scalar>& X,
     const RowMatrix<Scalar>& bX,
@@ -180,7 +180,7 @@ inline EnableIf<U::Reflected && U::Temporal, void> computeLinearFluxModel (
     Vector<Scalar>& btheta, 
     Vector<Scalar>& bxo,
     Vector<Scalar>& byo,
-    Vector<Scalar>& bro,
+    Scalar& bro,
     RowMatrix<Scalar>& bsource,
     UType& bu,
     Vector<Scalar>& bf,
@@ -199,7 +199,7 @@ template <typename U=S>
 inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFlux (
     const Vector<Scalar>& b, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     FType& flux
 ) {
     computeLimbDarkenedFluxInternal(b, zo, ro, flux);
@@ -214,11 +214,11 @@ template <typename U=S>
 inline EnableIf<U::LimbDarkened, void> computeLimbDarkenedFlux (
     const Vector<Scalar>& b, 
     const Vector<Scalar>& zo, 
-    const Vector<Scalar>& ro, 
+    const Scalar& ro, 
     FType& flux,
     const FType& bf,
     Vector<Scalar>& bb,
-    Vector<Scalar>& bro,
+    Scalar& bro,
     UType& bu
 ) {
     computeLimbDarkenedFluxInternal(b, zo, ro, flux, 
