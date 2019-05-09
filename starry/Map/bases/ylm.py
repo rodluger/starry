@@ -373,15 +373,15 @@ class YlmBase(object):
         Compute the flux design matrix.
 
         Kwargs:
-            theta (float or ndarray): Angle of rotation. Default 0.
-            xo (float or ndarray): The :py:obj:`x` position of the \
+            theta: Angle of rotation. Default 0.
+            xo: The :py:obj:`x` position of the \
                 occultor (if any). Default 0.
-            yo (float or ndarray): The :py:obj:`y` position of the \
+            yo: The :py:obj:`y` position of the \
                 occultor (if any). Default 0.
-            zo (float or ndarray): The :py:obj:`z` position of the \
+            zo: The :py:obj:`z` position of the \
                 occultor (if any). Default 1.0 (on the side closest to \
                 the observer).
-            ro (float): The radius of the occultor in units of this \
+            ro: The radius of the occultor in units of this \
                 body's radius. Default 0 (no occultation).
         
         Kwargs (temporal maps or if :py:obj:`orbit` is provided):
@@ -401,9 +401,29 @@ class YlmBase(object):
             obl: The map obliquity in degrees. Default is the map's current \
                 obliquity. 
             orbit: And :py:obj:`exoplanet.orbits.KeplerianOrbit` instance. \
-                This will override the :py:obj:`b` and :py:obj:`zo` keywords \
+                This will override the :py:obj:`xo`, :py:obj:`yo`, and :py:obj:`zo` keywords \
                 above as long as a time vector :py:obj:`t` is also provided \
-                (see above). Default :py:obj:`None`.
+                (see below). Default :py:obj:`None`.
+            texp: The exposure time of each observation. \
+                This can be a scalar or a vector/tensor with the same shape as ``t``. \
+                If ``texp`` is provided, ``t`` is assumed to indicate the \
+                timestamp at the *middle* of an exposure of length ``texp``. \
+                Only applies if :py:obj:`orbit` is provided. Default :py:obj:`None`.
+            use_in_transit (bool): If :py:obj:`True`, the model will only \
+                be evaluated for the data points expected to be in transit \
+                as computed using the :py:obj:`in_transit` method on :py:obj:`orbit`. \
+                Only applies if :py:obj:`orbit` is provided and ``theta`` is constant. \
+                Default :py:obj:`True`.
+            oversample (int): The number of function evaluations to \
+                use when numerically integrating the exposure time. \
+                Only applies if :py:obj:`orbit` is provided. Default ``7``.
+            order (int): The order of the numerical integration \
+                scheme. This must be one of the following: ``0`` for a \
+                centered Riemann sum (equivalent to the "resampling" procedure \
+                suggested by Kipping 2010), ``1`` for the trapezoid rule, or \
+                ``2`` for Simpson's rule. \
+                Only applies if :py:obj:`orbit` is provided. Default ``0``.
+            t: A vector of times at which to evaluate the orbit. Default :py:obj:`None`.
 
         Returns:
             The design matrix :py:obj:`X`.
@@ -424,6 +444,7 @@ class YlmBase(object):
         ro = kwargs.pop("ro", kwargs.pop("r", 0.0)) # Lenient! Can provide `r`
         orbit = kwargs.pop("orbit", None)
         t = kwargs.pop("t", None)
+        use_in_transit = kwargs.pop("use_in_transit", True)
         texp = kwargs.pop("texp", None)
         oversample = kwargs.pop("oversample", 7)
         order = kwargs.pop("order", 0)
@@ -432,8 +453,11 @@ class YlmBase(object):
         if (orbit is not None) and (t is None):
             raise ValueError("Please provide a set of times `t`.")
         if (orbit is None or t is None):
+            use_in_transit = False
             if texp is not None:
                 warnings.warn("Exposure time integration enabled only when an `orbit` instance is provided.") 
+        if (to_tensor(theta).ndim != 0):
+            use_in_transit = False
         for kwarg in kwargs.keys():
             warnings.warn("Unrecognized kwarg: %s. Ignoring..." % kwarg)
 
@@ -473,6 +497,15 @@ class YlmBase(object):
                 # Tensorize the time array
                 t = to_tensor(t)
 
+                # Only compute during transit?
+                if use_in_transit:
+                    zero = to_tensor([0.])
+                    theta0 = tt.reshape(to_tensor(theta), [1])
+                    X0 = self._X_op(u, f, inc, obl, theta0, zero, zero, zero, zero)
+                    transit_model = tt.tile(X0, tt.shape_padright(t).shape, ndim=2)
+                    transit_inds = orbit.in_transit(t, r=ro, texp=texp)
+                    t = t[transit_inds]
+
                 # Exposure time grid
                 if texp is None:
                     
@@ -504,7 +537,10 @@ class YlmBase(object):
                     if texp.ndim == 0:
                         dt = texp * dt
                     else:
-                        dt = tt.shape_padright(texp) * dt
+                        if use_in_transit:
+                            dt = tt.shape_padright(texp[transit_inds]) * dt
+                        else:
+                            dt = tt.shape_padright(texp) * dt
 
                     tgrid = tt.shape_padright(t) + dt
                     tgrid = tt.reshape(tgrid, [-1])
@@ -534,16 +570,20 @@ class YlmBase(object):
                 xo, yo, zo, theta = vectorize(xo, yo, zo, theta)
 
             # Compute the light curve
-            lc = self._X_op(u, f, inc, obl, theta, xo, yo, zo, ro)
+            X = self._X_op(u, f, inc, obl, theta, xo, yo, zo, ro)
 
             # Integrate it
             if texp is not None:
                 stencil = tt.shape_padright(tt.shape_padleft(stencil, t.ndim), 1)
-                lc = tt.squeeze(tt.sum(stencil * tt.reshape(lc, 
-                                [t.shape[0], oversample, -1]), axis=t.ndim))
+                X = tt.squeeze(tt.sum(stencil * tt.reshape(X, 
+                               [t.shape[0], oversample, -1]), axis=t.ndim))
 
             # Return the full model
-            return lc
+            if use_in_transit:
+                transit_model = tt.set_subtensor(transit_model[tuple((transit_inds, slice(None)))], X)
+                return transit_model
+            else:
+                return X
 
         else:
 
@@ -563,42 +603,12 @@ class YlmBase(object):
 
     def flux(self, **kwargs):
         r"""
-        Compute the flux.
-
-        Kwargs:
-            theta (float or ndarray): Angle of rotation. Default 0.
-            xo (float or ndarray): The :py:obj:`x` position of the \
-                occultor (if any). Default 0.
-            yo (float or ndarray): The :py:obj:`y` position of the \
-                occultor (if any). Default 0.
-            zo (float or ndarray): The :py:obj:`z` position of the \
-                occultor (if any). Default 1.0 (on the side closest to \
-                the observer).
-            ro (float): The radius of the occultor in units of this \
-                body's radius. Default 0 (no occultation).
+        Compute the flux. This method accepts all arguments accepted by
+        :py:meth:`X`.
         
-        Kwargs (temporal maps or if :py:obj:`orbit` is provided):
-            t: Time at which to evaluate the map and/or orbit. Default 0. 
-
-        Kwargs (reflected light maps):
-            source: The source position, a unit vector or a
-                vector of unit vectors. Default :math:`-\hat{x} = (-1, 0, 0)`.
-
         Additional kwargs accepted by this method:
             y: The vector of spherical harmonic coefficients. Default \
                 is the map's current spherical harmonic vector.
-            u: The vector of limb darkening coefficients. Default \
-                is the map's current limb darkening vector.
-            f: The vector of filter coefficients. Default \
-                is the map's current filter vector.
-            inc: The map inclination in degrees. Default is the map's current \
-                inclination.
-            obl: The map obliquity in degrees. Default is the map's current \
-                obliquity. 
-            orbit: And :py:obj:`exoplanet.orbits.KeplerianOrbit` instance. \
-                This will override the :py:obj:`b` and :py:obj:`zo` keywords \
-                above as long as a time vector :py:obj:`t` is also provided \
-                (see above). Default :py:obj:`None`.
 
         Returns:
             The flux timeseries.

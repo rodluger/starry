@@ -67,7 +67,7 @@ def test_ylm_phase():
     window = int(texp / (t[1] - t[0]))
     fluence_mavg = moving_average(flux, window)
     fluence_starry = map.flux(t=t, orbit=orbit, theta=theta, 
-                              texp=texp, oversample=50) #.eval()
+                              texp=texp, oversample=50).eval()
 
     # The error is primarily coming from our moving average
     # integrator, so let's be lenient
