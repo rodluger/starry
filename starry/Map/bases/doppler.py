@@ -202,40 +202,17 @@ class DopplerBase(object):
         is the radial velocity field (computed based on the equatorial velocity
         of the star, its orientation, etc.)
 
-        Kwargs:
-            theta (float or ndarray): Angle of rotation. Default 0.
-            xo (float or ndarray): The :py:obj:`x` position of the \
-                occultor (if any). Default 0.
-            yo (float or ndarray): The :py:obj:`y` position of the \
-                occultor (if any). Default 0.
-            zo (float or ndarray): The :py:obj:`z` position of the \
-                occultor (if any). Default 1.0 (on the side closest to \
-                the observer).
-            ro (float): The radius of the occultor in units of this \
-                body's radius. Default 0 (no occultation).
+        This method accepts all arguments accepted by :py:meth:`X`.
         
-        Kwargs (temporal maps or if :py:obj:`orbit` is provided):
-            t: Time at which to evaluate the map and/or orbit. Default 0.
-
         Additional kwargs accepted by this method:
             y: The vector of spherical harmonic coefficients. Default \
                 is the map's current spherical harmonic vector.
-            u: The vector of limb darkening coefficients. Default \
-                is the map's current limb darkening vector.
-            inc: The map inclination in degrees. Default is the map's current \
-                inclination.
-            obl: The map obliquity in degrees. Default is the map's current \
-                obliquity. 
             veq: The equatorial velocity of the object in arbitrary units. \
                 Default is the map's current velocity.
             alpha: The rotational shear. Default is the map's current shear.
-            orbit: And :py:obj:`exoplanet.orbits.KeplerianOrbit` instance. \
-                This will override the :py:obj:`b` and :py:obj:`zo` keywords \
-                above as long as a time vector :py:obj:`t` is also provided \
-                (see above). Default :py:obj:`None`.
 
         Returns:
-            The radial velocity timeseries.
+            The radial velocity, either a timeseries or a ``Theano`` op.
         """
         # Ingest op-specific kwargs
         # Other kwargs get ingested in call to `flux` below

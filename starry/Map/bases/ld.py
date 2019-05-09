@@ -7,6 +7,7 @@ from ..utils import is_theano, to_tensor, vectorize, \
                     get_ortho_latitude_lines, get_ortho_longitude_lines
 from ..ops import LimbDarkenedOp
 import theano.tensor as tt
+import warnings
 
 
 __all__ = ["LimbDarkenedBase"]
@@ -211,10 +212,10 @@ class LimbDarkenedBase(object):
         if (orbit is None or t is None):
             use_in_transit = False
             if texp is not None:
-                raise Warning("Exposure time integration enabled only " +
+                warnings.warn("Exposure time integration enabled only " +
                               "when an `orbit` instance is provided.") 
         for kwarg in kwargs.keys():
-            raise Warning("Unrecognized kwarg: %s. Ignoring..." % kwarg)
+            warnings.warn("Unrecognized kwarg: %s. Ignoring..." % kwarg)
 
         # Figure out if this is a Theano Op call
         if (orbit is not None and t is not None) or is_theano(u, b, zo, ro):

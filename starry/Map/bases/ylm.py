@@ -426,7 +426,7 @@ class YlmBase(object):
             t: A vector of times at which to evaluate the orbit. Default :py:obj:`None`.
 
         Returns:
-            The design matrix :py:obj:`X`.
+            The design matrix :py:obj:`X`, either a ``numpy`` 2D array or a ``Theano`` op.
         """
         # TODO!
         if self._spectral or self._temporal:
@@ -611,7 +611,7 @@ class YlmBase(object):
                 is the map's current spherical harmonic vector.
 
         Returns:
-            The flux timeseries.
+            The flux, either a timeseries or a ``Theano`` op.
         """
         # Ingest the map coefficients
         if self.ydeg:
@@ -634,9 +634,15 @@ class YlmBase(object):
 
         # Dot it into the map
         if is_theano(X):
-            return tt.dot(X, tt.join(0, [1.0], y))
+            if self.ydeg > 0:
+                return tt.dot(X, tt.join(0, [1.0], y))
+            else:
+                return X
         else:
-            return np.dot(X, np.append([1.0], y))
+            if self.ydeg > 0:
+                return np.dot(X, np.append([1.0], y))
+            else:
+                return X
 
     def __call__(self, **kwargs):
         r"""
