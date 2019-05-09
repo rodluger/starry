@@ -18,6 +18,11 @@ matrix:
         - os: linux
           env: PYTHON_VERSION=3.6 NUMPY_VERSION=1.14
 
+before_install:
+    # See https://github.com/diana-hep/pyhf/pull/381
+    - sudo apt-get install libtcmalloc-minimal4
+    - export LD_PRELOAD="/usr/lib/libtcmalloc_minimal.so.4"
+
 install:
     - source .ci/travis.sh
     - export CC=gcc-4.8
