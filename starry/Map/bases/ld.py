@@ -196,8 +196,8 @@ class LimbDarkenedBase(object):
         # Ingest kwargs
         u = kwargs.pop("u", None)
         b = kwargs.pop("b", 0.0)
-        zo = kwargs.pop("zo", kwargs.pop("z", 1.0)) # Lenient! User can provide `z`
-        ro = kwargs.pop("ro", kwargs.pop("r", 0.0)) # Lenient! User can provide `r`
+        zo = kwargs.pop("zo", kwargs.pop("z", 1.0)) # Lenient! Can provide `z`
+        ro = kwargs.pop("ro", kwargs.pop("r", 0.0)) # Lenient! Can provide `r`
         orbit = kwargs.pop("orbit", None)
         t = kwargs.pop("t", None)
         use_in_transit = kwargs.pop("use_in_transit", True)

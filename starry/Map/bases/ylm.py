@@ -411,51 +411,142 @@ class YlmBase(object):
         if self._spectral or self._temporal:
             raise NotImplementedError("Not yet implemented!")
 
-        # Get the orbital coords
-        orbit = kwargs.get("orbit", None)
-        t = kwargs.get("t", None)
-        if orbit is not None and t is not None:
-            coords = orbit.get_relative_position(t)
-            xo = coords[0] / orbit.r_star
-            yo = coords[1] / orbit.r_star
-            # Note that `exoplanet` uses a slightly different coord system!
-            zo = -coords[2] / orbit.r_star
-        else:
-            xo = kwargs.get("xo", 0.0)
-            yo = kwargs.get("yo", 0.0)
-            zo = kwargs.get("zo", 1.0)
-        theta = kwargs.get("theta", 0.0)
-        ro = kwargs.get("ro", 0.0)
+        # Ingest kwargs
+        u = kwargs.pop("u", None)
+        f = kwargs.pop("f", None)
+        inc = kwargs.pop("inc", None)
+        obl = kwargs.pop("obl", None)
+        theta = kwargs.pop("theta", 0.0)
+        xo = kwargs.pop("xo", kwargs.pop("x", 0.0)) # Lenient! Can provide `x`
+        yo = kwargs.pop("yo", kwargs.pop("y", 0.0)) # Lenient! Can provide `y`
+        zo = kwargs.pop("zo", kwargs.pop("z", 1.0)) # Lenient! Can provide `z`
+        ro = kwargs.pop("ro", kwargs.pop("r", 0.0)) # Lenient! Can provide `r`
+        orbit = kwargs.pop("orbit", None)
+        t = kwargs.pop("t", None)
+        texp = kwargs.pop("texp", None)
+        oversample = kwargs.pop("oversample", 7)
+        order = kwargs.pop("order", 0)
 
-        # Additional kwargs
-        u = kwargs.get("u", None)
-        f = kwargs.get("f", None)
-        inc = kwargs.get("inc", None)
-        obl = kwargs.get("obl", None)
+        # Raise warnings for some combinations
+        if (orbit is not None) and (t is None):
+            raise ValueError("Please provide a set of times `t`.")
+        if (orbit is None or t is None):
+            if texp is not None:
+                raise Warning("Exposure time integration enabled only " +
+                              "when an `orbit` instance is provided.") 
+        for kwarg in kwargs.keys():
+            raise Warning("Unrecognized kwarg: %s. Ignoring..." % kwarg)
 
         # Figure out if this is a Theano Op call
-        if is_theano(u, f, inc, obl, theta, xo, yo, zo, ro):
+        if (orbit is not None and t is not None) or \
+            is_theano(u, f, inc, obl, theta, xo, yo, zo, ro):
+
+            # Limb darkening coeffs
             if u is None:
                 if self.udeg == 0:
                     u = []
                 else:
-                    u = self[1:]
+                    if self._spectral:
+                        u = self[1:, :]
+                    else:
+                        u = self[1:]
+            u = to_tensor(u)
+
+            # Filter coeffs
             if f is None:
                 if self.fdeg == 0:
                     f = []
                 else:
                     f = self.f
+            f = to_tensor(f)
+
+            # Angles
             if inc is None:
                 inc = self.inc
             if obl is None:
                 obl = self.obl
-            u, f, inc, obl, theta, xo, yo, zo, ro = \
-                to_tensor(u, f, inc, obl, theta, xo, yo, zo, ro)
-            theta, xo, yo, zo, ro = vectorize(theta, xo, yo, zo, ro)
-            return self._X_op(u, f, inc, obl, theta, xo, yo, zo, ro)
+            inc, obl = to_tensor(inc, obl)
+
+            # Figure out the coords from the orbit
+            if orbit is not None and t is not None:
+                
+                # Tensorize the time array
+                t = to_tensor(t)
+
+                # Exposure time grid
+                if texp is None:
+                    
+                    # Easy
+                    tgrid = t
+                    rgrid, thetagrid, _ = vectorize(ro, theta, t)
+                
+                else:
+                    
+                    # From DFM's exoplanet
+                    texp = to_tensor(texp)
+                    oversample = int(oversample)
+                    oversample += 1 - oversample % 2
+                    stencil = np.ones(oversample)
+
+                    # Construct the exposure time integration stencil
+                    if order == 0:
+                        dt = np.linspace(-0.5, 0.5, 2*oversample+1)[1:-1:2]
+                    elif order == 1:
+                        dt = np.linspace(-0.5, 0.5, oversample)
+                        stencil[1:-1] = 2
+                    elif order == 2:
+                        dt = np.linspace(-0.5, 0.5, oversample)
+                        stencil[1:-1:2] = 4
+                        stencil[2:-1:2] = 2
+                    else:
+                        raise ValueError("Keyword `order` must be <= 2.")
+                    stencil /= np.sum(stencil)
+
+                    if texp.ndim == 0:
+                        dt = texp * dt
+                    else:
+                        dt = tt.shape_padright(texp) * dt
+
+                    tgrid = tt.shape_padright(t) + dt
+                    tgrid = tt.reshape(tgrid, [-1])
+
+                    # Madness to get the shapes to work out...
+                    rgrid = tt.shape_padleft(ro, tgrid.ndim) + tt.zeros_like(tgrid)
+                    thetagrid = tt.shape_padleft(theta, tgrid.ndim) + tt.zeros_like(tgrid)
+
+                # Compute coords
+                coords = orbit.get_relative_position(tgrid)
+                xo = coords[0] / orbit.r_star
+                yo = coords[1] / orbit.r_star
+                b = tt.sqrt(xo * xo + yo * yo)
+                # Note that `exoplanet` uses a slightly different coord system!
+                zo = -coords[2] / orbit.r_star
+
+            else:
+
+                # Tensorize & vectorize
+                xo, yo, zo, rgrid, thetagrid = vectorize(xo, yo, zo, ro, theta)
+
+            # Compute the light curve
+            lc = self._X_op(u, f, inc, obl, thetagrid, xo, yo, zo, rgrid)
+
+            # Integrate it
+            if texp is not None:
+                stencil = tt.shape_padright(tt.shape_padleft(stencil, t.ndim), 1)
+                lc = tt.squeeze(tt.sum(stencil * tt.reshape(lc, 
+                                [t.shape[0], oversample, -1]), axis=t.ndim))
+
+            # Return the full model
+            return lc
+
         else:
+
+            # No Theano nonsense!
             if u is not None:
-                self[1:] = u
+                if self._spectral:
+                    self[1:, :] = u
+                else:
+                    self[1:] = u
             if f is not None:
                 self._set_filter((slice(None), slice(None)), f)
             if inc is not None:
