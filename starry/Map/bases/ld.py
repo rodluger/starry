@@ -313,7 +313,7 @@ class LimbDarkenedBase(object):
             if texp is not None:
                 stencil = tt.shape_padleft(stencil, t.ndim)
                 lc = tt.squeeze(tt.sum(stencil * tt.reshape(lc, 
-                                [-1, oversample]), axis=t.ndim))
+                                [t.shape[0], oversample]), axis=t.ndim))
 
             # Return the full model
             if use_in_transit:

@@ -443,7 +443,7 @@ class YlmBase(object):
             The design matrix ``X``, either a ``numpy`` 2D array or a ``Theano`` op.
         """
         # TODO!
-        if self._spectral or self._temporal:
+        if self._spectral or self._temporal or self._reflected:
             raise NotImplementedError("Not yet implemented!")
 
         # Ingest kwargs
@@ -590,7 +590,7 @@ class YlmBase(object):
             if texp is not None:
                 stencil = tt.shape_padright(tt.shape_padleft(stencil, t.ndim), 1)
                 X = tt.squeeze(tt.sum(stencil * tt.reshape(X, 
-                               [t.shape[0], oversample, -1]), axis=t.ndim))
+                               [t.shape[0], oversample, X.shape[1]]), axis=t.ndim))
 
             # Return the full model
             if use_in_transit:

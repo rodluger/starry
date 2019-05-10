@@ -17,43 +17,61 @@ def run(map=None, func=None, **kwargs):
     for key in kwargs.keys():
         theano_kwargs[key] = theano.shared(np.float64(kwargs[key]), name=key)
 
-    # Compute the model
-    model = getattr(map, func)(**theano_kwargs)
+    # Compute the flattened model
+    model = tt.flatten(getattr(map, func)(**theano_kwargs))
 
     # Compute the gradient using Theano
     varnames = sorted(theano_kwargs.keys())
     vars = [theano_kwargs[k] for k in varnames]
-    grad = dict(zip(varnames,
-                    theano.function([], 
-                    theano.grad(tt.sum(model), vars))()))
 
-    # Compute the gradient numerically
-    eps = 1e-8
-    grad_num = {}
+    # Loop over all indices of the model
+    for k in range(len(model.shape.eval())):
+        grad = dict(zip(varnames,
+                        theano.function([], 
+                        theano.grad(model[k], vars))()))
 
-    for key in varnames:
-        if key in ["y", "u"]:
-            grad_num[key] = np.zeros_like(kwargs[key])
-            for i in range(len(kwargs[key])):
-                val = kwargs[key][i]
-                kwargs[key][i] = val - eps
-                f1 = getattr(map, func)(**kwargs)
-                kwargs[key][i] = val + eps
-                f2 = getattr(map, func)(**kwargs)
-                kwargs[key][i] = val
-                grad_num[key][i] = (f2 - f1) / (2 * eps)
-        else:
-            val = kwargs[key]
-            kwargs[key] = val - eps
-            f1 = getattr(map, func)(**kwargs)
-            kwargs[key] = val + eps
-            f2 = getattr(map, func)(**kwargs)
-            kwargs[key] = val
-            grad_num[key] = np.sum((f2 - f1) / (2 * eps))
+        # Fudge some shapes
+        if grad["u"].ndim == 2:
+            grad["u"] = grad["u"][:, k]
 
-    # Compare
-    for key in varnames:
-        assert np.allclose(grad[key], grad_num[key])
+        # Compute the gradient numerically
+        eps = 1e-8
+        grad_num = {}
+
+        for key in varnames:
+            if key in ["y", "u"]:
+                N = map.udeg if key == "u" else map.Ny - 1
+                grad_num[key] = np.zeros(N)
+                for i in range(N):
+                    if map._limbdarkened and map._spectral:
+                        inds = tuple((i, k))
+                    else:
+                        inds = i
+                    val = kwargs[key][inds]
+                    kwargs[key][inds] = val - eps
+                    f1 = np.atleast_1d(getattr(map, func)(**kwargs))[k]
+                    kwargs[key][inds] = val + eps
+                    f2 = np.atleast_1d(getattr(map, func)(**kwargs))[k]
+                    kwargs[key][inds] = val
+                    grad_num[key][i] = (f2 - f1) / (2 * eps)
+            else:
+                val = kwargs[key]
+                kwargs[key] = val - eps
+                f1 = np.atleast_1d(getattr(map, func)(**kwargs))[k]
+                kwargs[key] = val + eps
+                f2 = np.atleast_1d(getattr(map, func)(**kwargs))[k]
+                kwargs[key] = val
+                grad_num[key] = (f2 - f1) / (2 * eps)
+
+        # Compare
+        for key in varnames:
+            try:
+                assert np.allclose(grad[key], grad_num[key], atol=1e-5, rtol=1e-5)
+            except:
+                print("Mismatch in %s:" % (key))
+                print("Expected ", grad_num[key])
+                print("Got      ", grad[key])
+                assert np.allclose(grad[key], grad_num[key], atol=1e-5, rtol=1e-5)
 
 
 def test_doppler():
@@ -104,7 +122,6 @@ def test_ld():
     run(**kwargs)
 
 
-@pytest.mark.xfail
 def test_ld_spectral():
     """
     TODO: The limb darkening derivs are always off
@@ -124,4 +141,7 @@ def test_ld_spectral():
 
 
 if __name__ == "__main__":
+    test_doppler()
     test_ylm()
+    test_ld()
+    test_ld_spectral()
