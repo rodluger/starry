@@ -15,14 +15,6 @@ __all__ = ["LimbDarkenedBase"]
 
 class LimbDarkenedBase(object):
     """
-    .. automethod:: render
-    .. automethod:: show
-    .. automethod:: flux
-    .. automethod:: __call__
-    """
-
-    __descr__ = \
-    """
     A limb-darkened surface map with optional wavelength dependence.
     Instantiate by calling
     
@@ -32,7 +24,8 @@ class LimbDarkenedBase(object):
 
     with ``udeg > 0``. Note that limb-darkened maps cannot
     (currently) have temporal dependence and must be in emitted
-    light only, although users can instantiate a :py:class:`SphericalHarmonicMap`
+    light only, although users can instantiate a 
+    :py:class:`SphericalHarmonicMap`
     in reflected light and add limb darkening.
     """
 
@@ -305,6 +298,7 @@ class LimbDarkenedBase(object):
 
                 # Tensorize & vectorize
                 b, zo = vectorize(b, zo)
+                b = tt.abs_(b)
 
             # Compute the light curve
             lc = self._flux_op(u, b, zo, ro)

@@ -2,10 +2,6 @@
 """
 This module provides custom extensions to :py:obj:`starry`.
 
-.. autofunction:: MAP
-.. autofunction:: log_likelihood
-.. autofunction:: RAxisAngle(axis, angle)
-
 """
 
 import numpy as np
@@ -18,6 +14,9 @@ except ImportError:
         bit = modules["_STXRRY_EXTENSIONS_"]
         raise ModuleNotFoundError("Please re-compile `starry` " + 
                                   "with bit %d enabled." % bit)
+
+
+__all__ = ["MAP", "log_likelihood", "RAxisAngle"]
 
 
 def MAP(X, L, C, flux, return_cov=False, return_cho_W=False):

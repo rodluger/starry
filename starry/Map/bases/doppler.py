@@ -9,13 +9,6 @@ __all__ = ["DopplerBase"]
 
 class DopplerBase(object):
     """
-    .. autoattribute:: alpha
-    .. autoattribute:: veq
-    .. automethod:: rv
-    """
-
-    __descr__ = \
-    """
     A radial velocity map class. Instantiate by calling
     
     .. code-block:: python
@@ -24,9 +17,10 @@ class DopplerBase(object):
 
     This class implements the custom
     :py:meth:`rv()` method for computing the net radial velocity
-    imparted by occultations or the darkening due to surface features such as spots. It
-    also implements new attributes, including :py:attr:`alpha` and :py:attr:`veq`
-    for specifying additional map properties.
+    imparted by occultations or the darkening due to surface features 
+    such as spots. It also implements new attributes, including 
+    :py:attr:`alpha` and :py:attr:`veq` for specifying additional map 
+    properties.
     """
 
     def __init__(self, *args, **kwargs):

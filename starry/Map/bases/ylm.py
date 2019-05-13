@@ -19,20 +19,6 @@ __all__ = ["YlmBase"]
 
 class YlmBase(object):
     """
-    .. automethod:: render
-    .. automethod:: show
-    .. automethod:: flux
-    .. automethod:: X
-    .. automethod:: __call__
-    .. automethod:: load
-    .. automethod:: align
-    .. automethod:: max
-    .. automethod:: min
-    .. automethod:: is_physical
-    """
-
-    __descr__ = \
-    """
     A basic :py:mod:`starry` surface map. Instantiate by calling
     
     .. code-block:: python
@@ -55,6 +41,7 @@ class YlmBase(object):
         :math:`4`. This normalization
         is particularly convenient for constant or purely limb-darkened
         maps, whose disk-integrated intensity is always equal to unity.
+
     """
 
     def __init__(self, *args, **kwargs):
@@ -78,16 +65,15 @@ class YlmBase(object):
                 in an equirectangular (geographic, equidistant cylindrical) 
                 view of the entire surface of the map in latitude-longitude space. 
                 Default "orthographic".
-        
+
         The following arguments are also accepted for specific map types:
 
         Keyword Arguments:
-            t (float or ndarray; temporal maps only): Time at which to evaluate. 
+            t (temporal maps only): Time at which to evaluate. 
                 Default 0.
-            source (ndarray; reflected light maps only): The source position, a unit
+            source (reflected light maps only): The source position, a unit
                 vector or a vector of unit vectors. Default 
                 :math:`-\\hat{x} = (-1, 0, 0)`.
-
         """
         # Get kwargs
         res = kwargs.get("res", 300)

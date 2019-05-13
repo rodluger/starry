@@ -12,47 +12,7 @@ namespace docstrings {
 
 using namespace std;
 
-namespace starry {
-
-    const char* doc = R"pbdoc(
-        A code to compute analytic occultation light curves in C++,
-        with a sleek Python interface.
-    )pbdoc";
-
-}
-
 namespace Map {
-
-    const char* doc = R"pbdoc(
-        .. autoattribute:: __compile_flags__
-        .. autoattribute:: udeg
-        .. autoattribute:: Nu
-        .. autoattribute:: nw
-        .. autoattribute:: multi
-        .. autoattribute:: u
-        .. automethod:: __setitem__(inds, val)
-        .. automethod:: __getitem__(inds)
-        .. automethod:: reset()
-    )pbdoc"
-#   if !defined(_STARRY_LD_)
-        R"pbdoc(
-            .. autoattribute:: ydeg
-            .. autoattribute:: fdeg
-            .. autoattribute:: N
-            .. autoattribute:: Ny
-            .. autoattribute:: Nf
-            .. autoattribute:: nt
-            .. autoattribute:: y
-            .. autoattribute:: f
-            .. autoattribute:: axis
-            .. autoattribute:: inc
-            .. autoattribute:: obl
-            .. automethod:: rotate(theta=0, axis=None)
-            .. automethod:: add_spot(amp, sigma=0.1, lat=0.0, lon=0.0)
-            .. automethod:: random(power, seed=None, col=None)
-        )pbdoc"
-#   endif
-;
 
     const char* ydeg = R"pbdoc(
         The highest spherical harmonic degree of the map. *Read-only.*

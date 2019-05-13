@@ -17,36 +17,61 @@ def import_by_name(name):
             "Please re-compile `starry` with bit %d enabled." % bit)
 
 
-def Map(ydeg=0, udeg=0, fdeg=0, **kwargs):
+def Map(ydeg=0, udeg=0, fdeg=0, nt=None, nw=None, 
+        reflected=False, doppler=False, multi=False):
     """
-    A wrapper that figures out which `Map` class the user 
-    wants and instantiates it.
+    The main interface to ``starry``, representing a generalized 
+    celestial body surface map.
+    
+    Keyword Arguments:
+        ydeg (int): The highest spherical harmonic degree of the map.
+        udeg (int): The highest limb darkening degree of the map.
+        fdeg (int): The highest degree of the custom multiplicative 
+            filter applied to the map.
+        nt (int): The number of temporal components in the map. 
+            Cannot be set simultaneously with ``nw``.
+        nw (int): The number of spectral components in the map. 
+            Cannot be set simultaneously with ``nt``.
+        reflected (bool): If ``True``, performs all calculations in 
+            reflected light. The spherical harmonic expansion now 
+            corresponds to the *albedo* of the surface
+        doppler (bool): If ``True``, enables Doppler mode. 
+            See :py:class:`DopplerMap` for details.
+        multi (bool): If ``True``, performs all calculations using 
+            multi-precision floating point arithmetic. The number of 
+            digits of the multi-precision type is controlled by the 
+            ``STARRY_NMULTI`` compile-time constant.
 
+    Instances returned by ``Map`` are spherical bodies whose surfaces are 
+    described by spherical harmonics. In the default case, a vector
+    of spherical harmonic coefficients describes the specific intensity
+    everywhere on the surface, although it may also describe the
+    albedo (for maps in reflected light) or the brightness-weighted
+    radial velocity (for Doppler maps). ``Map`` allows
+    users to easily and efficiently manipulate the surface representation
+    and compute intensities and fluxes (light curves) as the object
+    rotates and becomes occulted by other spherical bodies.
     """
     # Figure out the correct base class
-    multi = kwargs.pop('multi', False)
-    reflected = kwargs.pop('reflected', False)
-    nw = kwargs.pop('nw', None)
     spectral = (nw is not None)
-    nt = kwargs.pop('nt', None)
     temporal = (nt is not None)
-    doppler = kwargs.pop('doppler', False)
+    map_kwargs = {}
 
     if doppler:
-        assert reflected is False, \
-            "Doppler maps are not implemented in reflected light."
+        if reflected:
+            raise NotImplementedError("Doppler maps are not implemented in reflected light.")
         limbdarkened = False
-        kwargs["ydeg"] = ydeg
-        kwargs["udeg"] = udeg
-        kwargs["fdeg"] = 3
+        map_kwargs["ydeg"] = ydeg
+        map_kwargs["udeg"] = udeg
+        map_kwargs["fdeg"] = 3
     elif (ydeg == 0) and (fdeg == 0) and (udeg > 0):
         limbdarkened = True
-        kwargs["udeg"] = udeg
+        map_kwargs["udeg"] = udeg
     else:
         limbdarkened = False
-        kwargs["ydeg"] = ydeg
-        kwargs["udeg"] = udeg
-        kwargs["fdeg"] = fdeg
+        map_kwargs["ydeg"] = ydeg
+        map_kwargs["udeg"] = udeg
+        map_kwargs["fdeg"] = fdeg
 
     # Disallowed combinations
     if limbdarkened and temporal:
@@ -61,10 +86,10 @@ def Map(ydeg=0, udeg=0, fdeg=0, **kwargs):
     # Figure out the module flags
     if spectral:
         kind = "spectral"
-        kwargs["nterms"] = nw
+        map_kwargs["nterms"] = nw
     elif temporal:
         kind = "temporal"
-        kwargs["nterms"] = nt
+        map_kwargs["nterms"] = nt
     else:
         kind = "default"
     if limbdarkened:
@@ -94,15 +119,16 @@ def Map(ydeg=0, udeg=0, fdeg=0, **kwargs):
 
     # Subclass it
     class Map(*bases):
-        __doc__ = "".join([base.__doc__ for base in bases])
-        def __init__(self, *init_args, **init_kwargs):
+        __doc__ = "".join([base.__doc__ if base.__doc__ is not None else "" 
+                           for base in bases])
+        def __init__(self, **kwargs):
             self._multi = multi
             self._reflected = reflected
             self._temporal = temporal
             self._spectral = spectral
             self._scalar = not (self._temporal or self._spectral)
             self._limbdarkened = limbdarkened
-            super(Map, self).__init__(*init_args, **init_kwargs)
+            super(Map, self).__init__(**kwargs)
 
     # Return an instance
-    return Map(**kwargs)
+    return Map(**map_kwargs)

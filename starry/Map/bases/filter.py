@@ -17,9 +17,6 @@ class Filter(object):
 
 
 class FilterBase(object):
-    """
-    .. autoattribute:: filter
-    """
 
     @property
     def filter(self):

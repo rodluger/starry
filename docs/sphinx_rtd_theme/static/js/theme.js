@@ -203,7 +203,7 @@ version_selector.onchange = function()
 var commit_url = "https://github.com/rodluger/starry/tree/unknown";
 var branch_url = "https://github.com/rodluger/starry/tree/unknown";
 var branch_name = "unknown";
-var full_date = "May 09, 2019";
+var full_date = "May 12, 2019";
 if (branch_name != "unknown") {
     footer_div = document.getElementsByTagName("footer")[0];
     footer_div.innerHTML += 
@@ -213,6 +213,56 @@ if (branch_name != "unknown") {
 }
 
 },{"jquery":"jquery"}]},{},["sphinx-rtd-theme"]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

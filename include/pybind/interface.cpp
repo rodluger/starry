@@ -146,7 +146,6 @@ PYBIND11_MODULE(
     // Module docs
     py::options options;
     options.disable_function_signatures();
-    m.doc() = docstrings::starry::doc;
 
     // Current Map Type
     using T = _STARRY_TYPE_;
@@ -155,7 +154,7 @@ PYBIND11_MODULE(
     using UType = typename T::UType;
 
     // Declare the Map class
-    py::class_<Map<T>> PyMap(m, "Map", docstrings::Map::doc);
+    py::class_<Map<T>> PyMap(m, "Map");
 
     // Constructor
 #   if defined(_STARRY_LD_)

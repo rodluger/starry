@@ -31,33 +31,23 @@ import glob
 import json
 import starry
 import datetime
-from inspect import cleandoc
+import itertools
+from types import ModuleType
 
 
 # -- Custom hacks -------------------------------------------------------------
-
-def sort_props(doc):
-    """Sort the attributes and methods in a docstring."""
-    attributes = re.findall('(.. autoattribute:: .*?)\n', doc)
-    methods = re.findall('(.. automethod:: .*?)\n', doc)
-    props = attributes + methods
-    props.sort(key=lambda x: x[x.index(':'):].lower())
-    props = "\n".join(props)
-    return props
 
 # Hack: instantiate some Maps to fudge their docstrings
 map1 = starry.Map(ydeg=1, udeg=1, fdeg=1)
 map2 = starry.Map(udeg=1)
 map3 = starry.Map(doppler=True)
+starry.SphericalHarmonicMap = type('SphericalHarmonicMap', 
+    map1.__class__.__bases__, dict(map1.__class__.__dict__))
+starry.LimbDarkenedMap = type('LimbDarkenedMap', 
+    map2.__class__.__bases__, dict(map2.__class__.__dict__))
+starry.DopplerMap = type('DopplerMap', 
+    map3.__class__.__bases__, dict(map3.__class__.__dict__))
 
-starry.SphericalHarmonicMap = type('SphericalHarmonicMap', map1.__class__.__bases__, dict(map1.__class__.__dict__))
-starry.SphericalHarmonicMap.__doc__ = cleandoc(starry.SphericalHarmonicMap.__descr__) + "\n\n" + sort_props(starry.SphericalHarmonicMap.__doc__)
-
-starry.LimbDarkenedMap = type('LimbDarkenedMap', map2.__class__.__bases__, dict(map2.__class__.__dict__))
-starry.LimbDarkenedMap.__doc__ = cleandoc(starry.LimbDarkenedMap.__descr__) + "\n\n" + sort_props(starry.LimbDarkenedMap.__doc__)
-
-starry.DopplerMap = type('DopplerMap', map3.__class__.__bases__, dict(map3.__class__.__dict__))
-starry.DopplerMap.__doc__ = cleandoc(starry.DopplerMap.__descr__) + "\n\n" + sort_props(starry.DopplerMap.__doc__)
 
 # Hack: copy over the notebooks containing a `tutorial` flag to a subfolder
 if not os.path.exists("notebooks"):
@@ -75,6 +65,7 @@ for file in glob.glob("../notebooks/*"):
                 os.mkdir(path)
         shutil.copy(file, ".build/html/notebooks/")
 
+
 # Hack: Update the current version number in Doxygen
 with open("Doxyfile", "r") as f:
     file = f.read()
@@ -82,6 +73,7 @@ file = re.sub('PROJECT_NUMBER\s*?= "(.*?)"\n',
               'PROJECT_NUMBER = "%s"\n' % starry.__version__, file)
 with open("Doxyfile", "w") as f:
     print(file, file=f)
+
 
 # Hack: Update the commit and branch in the Sphinx footer
 commit = os.getenv("TRAVIS_COMMIT", "unknown")
@@ -152,6 +144,7 @@ nbsphinx_prolog = """
 autosummary_generate = True
 
 # Autodoc
+autodoc_default_flags = ['members']
 autodoc_docstring_signature = True
 
 # Remove jupyter notebook prompt numbers

@@ -29,6 +29,7 @@ fi
 
 pip install tqdm
 pip install exoplanet
+pip install parameterized
 
 # Display some info
 conda info -a
