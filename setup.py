@@ -12,11 +12,11 @@ if sys.version_info[0] < 3:
 else:
     import builtins
 builtins.__STARRY_SETUP__ = True
-from starry import __version__, modules
+from starry import __version__
 
 # Custom compiler flags
 macros = dict(
-    STARRY_NMULTI=32,
+    STARRY_NDIGITS=16,
     STARRY_ELLIP_MAX_ITER=200,
     STARRY_MAX_LMAX=50,
     STARRY_BCUT=1.e-3,
@@ -41,9 +41,6 @@ if debug:
     macros["STARRY_O"] = 0
     macros["STARRY_DEBUG"] = 1
 
-# Module bitsum (default all)
-allbits = max(modules.values()) * 2 - 1
-bitsum = int(os.getenv('STARRY_BITSUM', allbits))
 
 class get_pybind_include(object):
     """
@@ -64,51 +61,25 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-def get_ext(module='starry._starry_default_ylm_double', 
-            name='_STARRY_DEFAULT_YLM_DOUBLE_'):
+# Get C extension
+def get_ext():
     include_dirs = [
         get_pybind_include(),
         get_pybind_include(user=True),
         "include",
-        "lib/eigen_3.3.5",
-        # "lib/LBFGSpp/include" TODO
+        "lib/eigen_3.3.5"
     ]
-    if 'MULTI' in name:
+    if macros["STARRY_NDIGITS"] > 16:
         include_dirs += ["lib/boost_1_66_0"]
     return Extension(
-        module,
-        ['include/pybind/interface.cpp'],
+        'starry._c_ops',
+        ['include/interface.cpp'],
         include_dirs=include_dirs,
         language='c++',
-        define_macros=[(name, 1)] +
-                      [(key, value) for key, value in macros.items()]
+        define_macros=[(key, value) for key, value in macros.items()]
     )
+ext_modules = [get_ext()]
 
-# Figure out which modules to compile (default all)
-ext_modules = []
-
-for module, bit in modules.items():
-    if (bitsum & bit) and (module != "_STARRY_EXTENSIONS_"):
-        ext_modules.append(
-            get_ext('starry.{0}'.format(module.lower()[:-1]), module))
-
-# Build extensions?
-if (bitsum & modules["_STARRY_EXTENSIONS_"]):
-    ext_modules.append(
-        Extension(
-            'starry._starry_extensions',
-            ['include/starry/extensions/extensions.cpp'],
-            include_dirs=[
-                get_pybind_include(),
-                get_pybind_include(user=True),
-                "include",
-                "lib/eigen_3.3.5"
-            ],
-            language='c++',
-            define_macros=[("_STARRY_EXTENSIONS_", 1)] +
-                          [(key, value) for key, value in macros.items()]
-        )
-    )
 
 # As of Python 3.6, CCompiler has a `has_flag` method.
 # cf http://bugs.python.org/issue26689
