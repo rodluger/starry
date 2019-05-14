@@ -50,7 +50,7 @@ PYBIND11_MODULE(
             return ops.N;
     });
 
-    // Solution vector (actually a matrix)
+    // Occultation solution in emitted light
     Ops.def(
         "sT", [](
             starry::Ops<Scalar>& ops,
@@ -67,7 +67,7 @@ PYBIND11_MODULE(
         return sT;
     });
 
-    // Gradient of solution vector
+    // Gradient of occultation solution in emitted light
     Ops.def(
         "sT", [](
             starry::Ops<Scalar>& ops,
@@ -112,6 +112,24 @@ PYBIND11_MODULE(
         )
     {
         return ops.B.A;
+    });
+
+    // Rotation solution in emitted light
+    Ops.def(
+        "rT", [](
+            starry::Ops<Scalar>& ops
+        )
+    {
+        return ops.B.rT;
+    });
+
+    // Rotation solution in emitted light dotted into Ylm space
+    Ops.def(
+        "rTA1", [](
+            starry::Ops<Scalar>& ops
+        )
+    {
+        return ops.B.rTA1;
     });
 
     // Zhat rotation operator

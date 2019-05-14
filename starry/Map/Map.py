@@ -18,13 +18,27 @@ class Map(object):
 
     def flux(self, xo, yo, ro):
         b = tt.sqrt(xo ** 2 + yo ** 2)
+        theta_z = tt.arctan2(xo, yo) * (180.0 / np.pi)
+
         sT = self._ops.sT(b, ro)
         A = self._ops.A
 
+        # Rotation
+        # DEBUG!
+        rTA1 = tt.tile(self._ops.rTA1, [1000, 1])
+
+        # Occultation
         sTA = ts.dot(sT, A)
+        sTARz = self._ops.dotRz(sTA, theta_z)
+        # TODO: Phase rotation
+        sTARzR = sTARz
 
-        theta = tt.arctan2(xo, yo) * 180.0 / np.pi
-        sTARz = self._ops.dotRz(sTA, theta)
+        # Compute the design matrix
+        X = tt.switch(
+            (tt.ge(b, 1 + ro) | tt.eq(ro, 0.0))[:, None],
+            rTA1,
+            sTARzR
+        )
 
-        return tt.dot(sTARz, self.y)
+        return tt.dot(X, self.y)
 

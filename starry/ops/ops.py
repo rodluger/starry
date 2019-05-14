@@ -11,14 +11,18 @@ class Ops(object):
     """
 
     def __init__(self, ydeg=0, udeg=0, fdeg=0):
+
         # Instantiate the C++ Ops
         self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
 
-        # Solution vector
+        # Solution vectors
         self.sT = sT(self._c_ops)
+        self.rT = tt.as_tensor_variable(self._c_ops.rT())
+        self.rTA1 = tt.as_tensor_variable(self._c_ops.rTA1())
 
         # Change of basis
         self.A = ts.as_sparse_variable(self._c_ops.A())
+        self.A1 = ts.as_sparse_variable(self._c_ops.A1())
 
         # Rz rotation
         self.dotRz = dotRz(self._c_ops)
