@@ -28,8 +28,7 @@ class dotRz(tt.Op):
         return self.grad(inputs, eval_points)
 
     def perform(self, node, inputs, outputs):
-        outputs[0][0] = self.c_ops.dotRz(inputs[0], np.cos(inputs[1]), np.sin(inputs[1]))
-        # DEBUG outputs[0][0] = self.c_ops.dotRz(*inputs)
+        outputs[0][0] = self.c_ops.dotRz(*inputs)
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
@@ -49,14 +48,8 @@ class dotRzGradient(tt.Op):
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
-        # DEBUG bM, btheta = self.base_op.c_ops.dotRz(*inputs)
-        # DEBUG outputs[0][0] = np.reshape(bM, np.shape(inputs[0]))
-        # DEBUG outputs[1][0] = np.reshape(-btheta / inputs[2], np.shape(inputs[1]))
-        # DEBUG outputs[2][0] = np.reshape(btheta / inputs[1], np.shape(inputs[2]))
-        
-        bM, btheta = self.base_op.c_ops.dotRz(inputs[0], np.cos(inputs[1]), np.sin(inputs[1]), inputs[2])
+        bM, btheta = self.base_op.c_ops.dotRz(inputs[0], inputs[1], inputs[2])
         outputs[0][0] = np.reshape(bM, np.shape(inputs[0]))
         outputs[1][0] = np.reshape(btheta, np.shape(inputs[1]))
-
 
         

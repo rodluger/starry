@@ -23,12 +23,8 @@ class Map(object):
 
         sTA = ts.dot(sT, A)
 
-        # TODO Rz = ?
-
-        sTARz, _ = theano.scan(
-            fn=lambda sTA, Rz: tt.dot(sTA, Rz), 
-            sequences=[sTA, Rz]
-        )
+        theta = tt.arctan2(xo, yo) * 180.0 / np.pi
+        sTARz = self._ops.dotRz(sTA, theta)
 
         return tt.dot(sTARz, self.y)
 

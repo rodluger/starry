@@ -119,14 +119,11 @@ PYBIND11_MODULE(
         "dotRz", [](
             starry::Ops<Scalar>& ops,
             const Matrix<double>& M,
-            const Vector<double>& costheta,
-            const Vector<double>& sintheta
+            const Vector<double>& theta
         )
     {
-        Matrix<double> MRz(M.rows(), M.cols());
-        MRz.setZero();
-        ops.W.dotRz(M, costheta, sintheta, MRz);
-        return MRz;
+        ops.W.dotRz(M, theta);
+        return ops.W.dotRz_result;
     });
 
     // Gradient of zhat rotation matrix
@@ -134,15 +131,12 @@ PYBIND11_MODULE(
         "dotRz", [](
             starry::Ops<Scalar>& ops,
             const Matrix<double>& M,
-            const Vector<double>& costheta,
-            const Vector<double>& sintheta,
+            const Vector<double>& theta,
             const Matrix<double>& bMRz
         )
     {
-        Matrix<double> MRz(M.rows(), M.cols());
-        MRz.setZero();
-        ops.W.template dotRz<true>(M, costheta, sintheta, MRz, bMRz);
-        return py::make_tuple(ops.W.bM, ops.W.btheta);
+        ops.W.dotRz(M, theta, bMRz);
+        return py::make_tuple(ops.W.dotRz_bM, ops.W.dotRz_btheta);
     });
 
 }

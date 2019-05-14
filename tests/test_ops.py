@@ -11,10 +11,8 @@ def test_sT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 def test_dotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     map = starry.Map(ydeg=2)
-    M = np.ones((3, 9))
-    theta = np.array([0.1, 0.3, 0.5])
-    costheta = np.cos(theta)
-    sintheta = np.sin(theta)
+    M = np.ones((7, 9))
+    theta = np.array([0., 15., 30., 45., 60., 75., 90.])
     verify_grad(map._ops.dotRz, (M, theta), 
                 abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
