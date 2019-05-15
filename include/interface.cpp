@@ -186,6 +186,60 @@ PYBIND11_MODULE(
         return py::make_tuple(ops.W.dotRxy_bM, ops.W.dotRxy_binc, ops.W.dotRxy_bobl);
     });
 
+    // Transpose of XY rotation operator (vectors)
+    Ops.def(
+        "dotRxyT", [](
+            starry::Ops<Scalar>& ops,
+            const RowVector<double>& M,
+            const double& inc,
+            const double& obl
+        )
+    {
+        ops.W.dotRxyT(M, inc, obl);
+        return ops.W.dotRxyT_result;
+    });
+
+    // Transpose of XY rotation operator (matrices)
+    Ops.def(
+        "dotRxyT", [](
+            starry::Ops<Scalar>& ops,
+            const Matrix<double>& M,
+            const double& inc,
+            const double& obl
+        )
+    {
+        ops.W.dotRxyT(M, inc, obl);
+        return ops.W.dotRxyT_result;
+    });
+
+    // Gradient of transpose of XY rotation matrix (vectors)
+    Ops.def(
+        "dotRxyT", [](
+            starry::Ops<Scalar>& ops,
+            const RowVector<double>& M,
+            const double& inc,
+            const double& obl,
+            const Matrix<double>& bMRxyT
+        )
+    {
+        ops.W.dotRxyT(M, inc, obl, bMRxyT);
+        return py::make_tuple(ops.W.dotRxyT_bM, ops.W.dotRxyT_binc, ops.W.dotRxyT_bobl);
+    });
+
+    // Gradient of transpose of XY rotation matrix (matrices)
+    Ops.def(
+        "dotRxyT", [](
+            starry::Ops<Scalar>& ops,
+            const Matrix<double>& M,
+            const double& inc,
+            const double& obl,
+            const Matrix<double>& bMRxyT
+        )
+    {
+        ops.W.dotRxyT(M, inc, obl, bMRxyT);
+        return py::make_tuple(ops.W.dotRxyT_bM, ops.W.dotRxyT_binc, ops.W.dotRxyT_bobl);
+    });
+
     // Z rotation operator (vectors)
     Ops.def(
         "dotRz", [](

@@ -313,6 +313,11 @@ public:
     Scalar dotRxy_bobl;
     Matrix<Scalar> dotRxy_bM;
 
+    Matrix<Scalar> dotRxyT_result;
+    Scalar dotRxyT_binc;
+    Scalar dotRxyT_bobl;
+    Matrix<Scalar> dotRxyT_bM;
+
     Wigner(
         int ydeg, 
         int udeg,
@@ -567,6 +572,81 @@ public:
         // Unit changes
         dotRxy_binc *= radian;
         dotRxy_bobl *= radian;
+
+    }
+
+    /* 
+    Computes the dot product M . Rxy^T(theta).
+
+    */
+    template <typename T1, bool M_IS_ROW_VECTOR=(T1::RowsAtCompileTime==1)>
+    inline void dotRxyT (
+        const MatrixBase<T1>& M, 
+        const Scalar& inc,
+        const Scalar& obl
+    ) {
+        
+        // Shape checks
+        size_t npts = M.rows();
+
+        // Compute the Wigner matrices
+        computeRxy(inc, obl);
+
+        // Init result
+        dotRxyT_result.resize(npts, Ny);
+
+        // Dot them in
+        for (int l = 0; l < ydeg + 1; ++l) {
+            dotRxyT_result.block(0, l * l, npts, 2 * l + 1) =
+                M.block(0, l * l, npts, 2 * l + 1) * Rxy[l].transpose();
+        }
+
+    }
+
+    /* 
+    Computes the gradient of the dot product M . Rxy^T(theta).
+
+    */
+    template <typename T1, bool M_IS_ROW_VECTOR=(T1::RowsAtCompileTime==1)>
+    inline void dotRxyT (
+        const MatrixBase<T1>& M, 
+        const Scalar& inc,
+        const Scalar& obl,
+        const Matrix<Scalar>& bMRxyT
+    ) {
+        
+        // Shape checks
+        size_t npts = M.rows();
+
+        // Compute the Wigner matrices
+        computeRxy(inc, obl);
+
+        // Init grads
+        dotRxyT_binc = 0.0;
+        dotRxyT_bobl = 0.0;
+        dotRxyT_bM.setZero(M.rows(), N);
+
+        // Dot them in
+        // \todo: There must be a more efficient way of doing this.
+        for (int l = 0; l < ydeg + 1; ++l) {
+
+            // d / dinc & d / dobl
+            dotRxyT_binc += (M.block(0, l * l, npts, 2 * l + 1) * DRxyDinc[l].transpose())
+                            .cwiseProduct(bMRxyT.block(0, l * l, npts, 2 * l + 1))
+                            .sum();
+            dotRxyT_bobl+= (M.block(0, l * l, npts, 2 * l + 1) * DRxyDobl[l].transpose())
+                            .cwiseProduct(bMRxyT.block(0, l * l, npts, 2 * l + 1))
+                            .sum();
+
+            // d / dM
+            dotRxyT_bM.block(0, l * l, npts, 2 * l + 1) =
+                bMRxyT.block(0, l * l, npts, 2 * l + 1) * Rxy[l];
+
+        }
+
+        // Unit changes
+        dotRxyT_binc *= radian;
+        dotRxyT_bobl *= radian;
 
     }
 
