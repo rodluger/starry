@@ -121,6 +121,9 @@ using std::max;
 using std::isinf;
 using std::swap;
 
+//! This is an alias for `enable_if_t`
+template <bool B, class T=void>
+using EnableIf = typename std::enable_if<B, T>::type;
 
 // --------------------------
 // ----- Linear Algebra -----

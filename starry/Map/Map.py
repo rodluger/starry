@@ -22,10 +22,10 @@ class Map(object):
 
         sT = self._ops.sT(b, ro)
         A = self._ops.A
+        rTA1 = self._ops.rTA1
 
         # Rotation
-        # DEBUG!
-        rTA1 = tt.tile(self._ops.rTA1, [1000, 1])
+        rTA1R = self._ops.dotRz(rTA1, theta_z)
 
         # Occultation
         sTA = ts.dot(sT, A)
@@ -36,9 +36,8 @@ class Map(object):
         # Compute the design matrix
         X = tt.switch(
             (tt.ge(b, 1 + ro) | tt.eq(ro, 0.0))[:, None],
-            rTA1,
+            rTA1R,
             sTARzR
         )
 
         return tt.dot(X, self.y)
-

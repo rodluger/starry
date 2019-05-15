@@ -132,7 +132,73 @@ PYBIND11_MODULE(
         return ops.B.rTA1;
     });
 
-    // Zhat rotation operator
+    // XY rotation operator (vectors)
+    Ops.def(
+        "dotRxy", [](
+            starry::Ops<Scalar>& ops,
+            const RowVector<double>& M,
+            const double& inc,
+            const double& obl
+        )
+    {
+        ops.W.dotRxy(M, inc, obl);
+        return ops.W.dotRxy_result;
+    });
+
+    // XY rotation operator (matrices)
+    Ops.def(
+        "dotRxy", [](
+            starry::Ops<Scalar>& ops,
+            const Matrix<double>& M,
+            const double& inc,
+            const double& obl
+        )
+    {
+        ops.W.dotRxy(M, inc, obl);
+        return ops.W.dotRxy_result;
+    });
+
+    // Gradient of XY rotation matrix (vectors)
+    Ops.def(
+        "dotRxy", [](
+            starry::Ops<Scalar>& ops,
+            const RowVector<double>& M,
+            const double& inc,
+            const double& obl,
+            const Matrix<double>& bMRxy
+        )
+    {
+        ops.W.dotRxy(M, inc, obl, bMRxy);
+        return py::make_tuple(ops.W.dotRxy_bM, ops.W.dotRxy_binc, ops.W.dotRxy_bobl);
+    });
+
+    // Gradient of XY rotation matrix (matrices)
+    Ops.def(
+        "dotRxy", [](
+            starry::Ops<Scalar>& ops,
+            const Matrix<double>& M,
+            const double& inc,
+            const double& obl,
+            const Matrix<double>& bMRxy
+        )
+    {
+        ops.W.dotRxy(M, inc, obl, bMRxy);
+        return py::make_tuple(ops.W.dotRxy_bM, ops.W.dotRxy_binc, ops.W.dotRxy_bobl);
+    });
+
+    // Z rotation operator (vectors)
+    Ops.def(
+        "dotRz", [](
+            starry::Ops<Scalar>& ops,
+            const RowVector<double>& M,
+            const Vector<double>& theta
+        )
+    {
+        ops.W.dotRz(M, theta);
+        return ops.W.dotRz_result;
+    });
+
+    // Z rotation operator (matrices)
     Ops.def(
         "dotRz", [](
             starry::Ops<Scalar>& ops,
@@ -144,7 +210,20 @@ PYBIND11_MODULE(
         return ops.W.dotRz_result;
     });
 
-    // Gradient of zhat rotation matrix
+    // Gradient of Z rotation matrix (vectors)
+    Ops.def(
+        "dotRz", [](
+            starry::Ops<Scalar>& ops,
+            const RowVector<double>& M,
+            const Vector<double>& theta,
+            const Matrix<double>& bMRz
+        )
+    {
+        ops.W.dotRz(M, theta, bMRz);
+        return py::make_tuple(ops.W.dotRz_bM, ops.W.dotRz_btheta);
+    });
+
+    // Gradient of Z rotation matrix (matrices)
     Ops.def(
         "dotRz", [](
             starry::Ops<Scalar>& ops,

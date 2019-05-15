@@ -17,5 +17,17 @@ def test_dotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
                 abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
 
+def test_dotRxy(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    map = starry.Map(ydeg=2)
+    M = np.ones((7, 9))
+    inc = 85.0
+    obl = 30.0
+    verify_grad(map._ops.dotRxy, (M, inc, obl), 
+                abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
+
+
 if __name__ == "__main__":
+    test_dotRxy()
+    quit()
     test_dotRz()
+    test_sT()

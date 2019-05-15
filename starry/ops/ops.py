@@ -1,6 +1,7 @@
 from .. import _c_ops
 from .sT import sT
 from .dotRz import dotRz
+from .dotRxy import dotRxy
 import theano.tensor as tt
 import theano.sparse as ts
 
@@ -24,5 +25,6 @@ class Ops(object):
         self.A = ts.as_sparse_variable(self._c_ops.A())
         self.A1 = ts.as_sparse_variable(self._c_ops.A1())
 
-        # Rz rotation
+        # Rotations
         self.dotRz = dotRz(self._c_ops)
+        self.dotRxy = dotRxy(self._c_ops)
