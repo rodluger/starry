@@ -18,14 +18,14 @@ class Ops(object):
 
         # Solution vectors
         self.sT = sT(self._c_ops)
-        self.rT = tt.as_tensor_variable(self._c_ops.rT())
-        self.rTA1 = tt.as_tensor_variable(self._c_ops.rTA1())
+        self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT()))
+        self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1()))
 
-        # Change of basis
+        # Change of basis matrices
         self.A = ts.as_sparse_variable(self._c_ops.A())
         self.A1 = ts.as_sparse_variable(self._c_ops.A1())
 
-        # Rotations
+        # Rotation left-multiply operations
         self.dotRz = dotRz(self._c_ops)
         self.dotRxy = dotRxy(self._c_ops)
         self.dotRxyT = dotRxyT(self._c_ops)

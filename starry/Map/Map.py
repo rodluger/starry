@@ -30,24 +30,25 @@ class Map(object):
         rTA1 = self._ops.rTA1
         dotRz = self._ops.dotRz
         dotRxy = self._ops.dotRxy
+        dotRxyT = self._ops.dotRxyT
 
-        # Rotation
+        # Rotation only
         rTA1R = dotRxyT(rTA1, self.inc, self.obl)
         rTA1R = dotRz(rTA1R, theta)
         rTA1R = dotRxy(rTA1R, self.inc, self.obl)
 
-
-        # Occultation
+        # Occultation + rotation
         sTA = ts.dot(sT, A)
-        sTARz = dotRz(sTA, theta_z)
-        # TODO: Phase rotation
-        sTARzR = sTARz
+        sTAR = dotRz(sTA, theta_z)
+        sTARR = dotRxyT(sTAR, self.inc, self.obl)
+        sTARR = dotRz(sTARR, theta)
+        sTARR = dotRxy(sTARR, self.inc, self.obl)
 
         # Compute the design matrix
         X = tt.switch(
             (tt.ge(b, 1 + ro) | tt.eq(ro, 0.0))[:, None],
             rTA1R,
-            sTARzR
+            sTARR
         )
 
         return tt.dot(X, self.y)
