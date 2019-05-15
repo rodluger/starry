@@ -2,7 +2,7 @@
   <img width = "450" src="https://github.com/rodluger/starry/blob/master/docs/starry.png?raw=true"/>
   <br>
   <br>
-  This is the completely re-written version of `starry` written in `Theano` with some `C++` help.
+  This is the completely re-written version of starry written in Theano with some help from C++.
   Still no docs and functionality is very limited, but this will hopefully transform into the next release!
   <p align="center">
     <a href="https://travis-ci.org/rodluger/starry/">
