@@ -1,4 +1,5 @@
 from theano.tests.unittest_tools import verify_grad
+import theano.tensor as tt
 import starry
 import numpy as np
 
@@ -58,22 +59,32 @@ def test_dotRxyT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     map = starry.Map(ydeg=2)
-    map.inc = 85.0
-    map.obl = 30.0
     theta = np.linspace(0, 30, 10)
     xo = np.linspace(-1.5, 1.5, len(theta))
     yo = np.ones_like(xo) * 0.3
+    zo = 1.0
     ro = 0.1
+    inc = 85.0
+    obl = 30.0
+    y = np.ones(9)
 
-    verify_grad(map.flux, (theta, xo, yo, ro), 
+    func = lambda *args: tt.dot(map.ops.X(*args), y)
+
+    # Just rotation
+    verify_grad(func, (theta, xo, yo, zo, 0.0, inc, obl), 
+                abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
+
+    # Just occultation
+    verify_grad(func, (theta, xo / 3, yo, zo, ro, inc, obl), 
+                abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
+
+    # Rotation + occultation
+    verify_grad(func, (theta, xo, yo, zo, ro, inc, obl), 
                 abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
 
 if __name__ == "__main__":
-    import theano
-    print(theano.config.optimizer)
     test_flux()
-    quit()
     test_dotRxyT()
     test_dotRxy()
     test_dotRz()

@@ -9,4 +9,10 @@ except NameError:
 
 # Import all modules
 if not __STARRY_SETUP__:
+
+    # Import the main interface
     from .Map import Map
+
+    # Force double precision
+    import theano.tensor as tt
+    tt.config.floatX = "float64"

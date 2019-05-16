@@ -11,7 +11,7 @@ class Ops(object):
 
     """
 
-    def __init__(self, ydeg=0, udeg=0, fdeg=0):
+    def __init__(self, ydeg, udeg, fdeg):
         """
 
         """
@@ -45,19 +45,14 @@ class Ops(object):
         return res
 
 
-    def X(self, theta, xo, yo, ro, inc, obl):
+    def X(self, theta, xo, yo, zo, ro, inc, obl):
         """
 
         """
-
-        # TODO: Handle shapes & types, etc.
-        theta = tt.as_tensor_variable(theta)
-        xo = tt.as_tensor_variable(xo)
-        yo = tt.as_tensor_variable(yo)
 
         # Compute the occultation mask
         b = tt.sqrt(xo ** 2 + yo ** 2)
-        b_rot = (tt.ge(b, 1 + ro) | tt.eq(ro, 0.0))
+        b_rot = (tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0))
         b_occ = tt.invert(b_rot)
         i_rot = tt.arange(b.size)[b_rot]
         i_occ = tt.arange(b.size)[b_occ]
