@@ -67,32 +67,16 @@ class Map(object):
             raise ValueError("Invalid map index.")
 
     def _set_y0(self):
-        """
-
-        """
-
         self._y[0] = 1.0
 
     def _check_y0(self):
-        """
-
-        """
-        
         assert self._y[0] == 1.0, \
             "The coefficient of the `Y_{0,0}` harmonic is fixed at unity."
 
     def _set_u0(self):
-        """
-
-        """
-
         self._u[0] = -1.0
 
     def _check_u0(self):
-        """
-
-        """
-        
         assert self._u[0] == -1.0, \
             "The limb darkening coefficient `u_0` cannot be set."
 
