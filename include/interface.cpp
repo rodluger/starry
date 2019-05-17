@@ -42,13 +42,15 @@ PYBIND11_MODULE(
     // Constructor
     Ops.def(py::init<int, int, int>());
 
-    // Total number of map coeffs
-    Ops.def_property_readonly(
-        "N", [] (
-            starry::Ops<Scalar>& ops
-        ) {
-            return ops.N;
-    });
+    // Map dimensions
+    Ops.def_property_readonly("ydeg", [](starry::Ops<Scalar>& ops){return ops.ydeg;});
+    Ops.def_property_readonly("Ny", [](starry::Ops<Scalar>& ops){return ops.Ny;});
+    Ops.def_property_readonly("udeg", [](starry::Ops<Scalar>& ops){return ops.udeg;});
+    Ops.def_property_readonly("Nu", [](starry::Ops<Scalar>& ops){return ops.Nu;});
+    Ops.def_property_readonly("fdeg", [](starry::Ops<Scalar>& ops){return ops.fdeg;});
+    Ops.def_property_readonly("Nf", [](starry::Ops<Scalar>& ops){return ops.Nf;});
+    Ops.def_property_readonly("deg", [](starry::Ops<Scalar>& ops){return ops.deg;});
+    Ops.def_property_readonly("N", [](starry::Ops<Scalar>& ops){return ops.N;});
 
     // Occultation solution in emitted light
     Ops.def(
@@ -88,7 +90,7 @@ PYBIND11_MODULE(
     });
 
     // Change of basis matrix: Ylm to poly
-    Ops.def(
+    Ops.def_property_readonly(
         "A1", [](
             starry::Ops<Scalar>& ops
         )
@@ -97,7 +99,7 @@ PYBIND11_MODULE(
     });
 
     // Change of basis matrix: poly to Ylm
-    Ops.def(
+    Ops.def_property_readonly(
         "A1Inv", [](
             starry::Ops<Scalar>& ops
         )
@@ -106,7 +108,7 @@ PYBIND11_MODULE(
     });
 
     // Change of basis matrix: Ylm to greens
-    Ops.def(
+    Ops.def_property_readonly(
         "A", [](
             starry::Ops<Scalar>& ops
         )
@@ -115,7 +117,7 @@ PYBIND11_MODULE(
     });
 
     // Rotation solution in emitted light
-    Ops.def(
+    Ops.def_property_readonly(
         "rT", [](
             starry::Ops<Scalar>& ops
         )
@@ -124,7 +126,7 @@ PYBIND11_MODULE(
     });
 
     // Rotation solution in emitted light dotted into Ylm space
-    Ops.def(
+    Ops.def_property_readonly(
         "rTA1", [](
             starry::Ops<Scalar>& ops
         )
@@ -288,6 +290,31 @@ PYBIND11_MODULE(
     {
         ops.W.dotRz(M, theta, bMRz);
         return py::make_tuple(ops.W.dotRz_bM, ops.W.dotRz_btheta);
+    });
+
+    // Filter operator
+    Ops.def(
+        "F", [](
+            starry::Ops<Scalar>& ops,
+            const Vector<double>& u,
+            const Vector<double>& f
+        )
+    {
+        ops.F.compute(u, f);
+        return ops.F.F;
+    });
+
+    // Gradient of filter operator
+    Ops.def(
+        "F", [](
+            starry::Ops<Scalar>& ops,
+            const Vector<double>& u,
+            const Vector<double>& f,
+            const Matrix<double>& bF
+        )
+    {
+        ops.F.compute(u, f, bF);
+        return py::make_tuple(ops.F.bu, ops.F.bf);
     });
 
 }

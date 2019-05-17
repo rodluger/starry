@@ -1,6 +1,7 @@
 from .. import _c_ops
 from .integration import sT
 from .rotation import dotRxy, dotRxyT, dotRz
+from .filter import F
 import theano.tensor as tt
 import theano.sparse as ts
 import numpy as np
@@ -20,18 +21,21 @@ class Ops(object):
         self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
 
         # Solution vectors
-        self.sT = sT(self._c_ops)
-        self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT()))
-        self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1()))
+        self.sT = sT(self._c_ops.sT, self._c_ops.N)
+        self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
+        self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))
 
         # Change of basis matrices
-        self.A = ts.as_sparse_variable(self._c_ops.A())
-        self.A1 = ts.as_sparse_variable(self._c_ops.A1())
+        self.A = ts.as_sparse_variable(self._c_ops.A)
+        self.A1 = ts.as_sparse_variable(self._c_ops.A1)
 
         # Rotation left-multiply operations
-        self.dotRz = dotRz(self._c_ops)
-        self.dotRxy = dotRxy(self._c_ops)
-        self.dotRxyT = dotRxyT(self._c_ops)
+        self.dotRz = dotRz(self._c_ops.dotRz)
+        self.dotRxy = dotRxy(self._c_ops.dotRxy)
+        self.dotRxyT = dotRxyT(self._c_ops.dotRxyT)
+
+        # Filter
+        self.F = F(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
 
     
     def dotR(self, M, inc, obl, theta):

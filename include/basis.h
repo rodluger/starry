@@ -490,7 +490,7 @@ public:
     const int ydeg;                                                            /**< The highest degree of the spherical harmonic map */
     const int udeg;                                                            /**< The highest degree of the limb darkening map */
     const int fdeg;                                                            /**< The highest degree of the filter map */
-    const int lmax;
+    const int deg;
     const double norm;                                                         /**< Map normalization constant */
     Eigen::SparseMatrix<T> A1;                                                 /**< The polynomial change of basis matrix */
     Eigen::SparseMatrix<T> A1Inv;                                              /**< The inverse of the polynomial change of basis matrix */
@@ -510,16 +510,16 @@ public:
         ydeg(ydeg),
         udeg(udeg), 
         fdeg(fdeg),
-        lmax(ydeg + udeg + fdeg),
+        deg(ydeg + udeg + fdeg),
         norm(norm)
     {
         // Compute the matrices
-        computeA1(lmax, A1, norm);
-        computeA1Inv(lmax, A1, A1Inv);
-        computeA(lmax, A1, A2, A);
-        computerT(lmax, rT);
+        computeA1(deg, A1, norm);
+        computeA1Inv(deg, A1, A1Inv);
+        computeA(deg, A1, A2, A);
+        computerT(deg, rT);
         rTA1 = rT * A1;
-        computeU(lmax, A1, A, U1, norm);
+        computeU(deg, A1, A, U1, norm);
 
         // Shorten U1, as we never need the full matrix
         U1 = U1.block(0, 0, (udeg + 1) * (udeg + 1), udeg + 1);

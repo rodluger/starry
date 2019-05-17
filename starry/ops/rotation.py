@@ -10,8 +10,8 @@ __all__ = ["dotRxy", "dotRxyT", "dotRz"]
 
 class dotRxy(tt.Op):
 
-    def __init__(self, c_ops):
-        self.c_ops = c_ops
+    def __init__(self, func):
+        self.func = func
         self._grad_op = dotRxyGradient(self)
 
     def make_node(self, *inputs):
@@ -28,7 +28,7 @@ class dotRxy(tt.Op):
         return self.grad(inputs, eval_points)
 
     def perform(self, node, inputs, outputs):
-        outputs[0][0] = self.c_ops.dotRxy(*inputs)
+        outputs[0][0] = self.func(*inputs)
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
@@ -48,7 +48,7 @@ class dotRxyGradient(tt.Op):
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
-        bM, binc, bobl = self.base_op.c_ops.dotRxy(*inputs)
+        bM, binc, bobl = self.base_op.func(*inputs)
         outputs[0][0] = np.reshape(bM, np.shape(inputs[0]))
         outputs[1][0] = np.reshape(binc, np.shape(inputs[1]))
         outputs[2][0] = np.reshape(bobl, np.shape(inputs[2]))
@@ -56,8 +56,8 @@ class dotRxyGradient(tt.Op):
 
 class dotRxyT(tt.Op):
 
-    def __init__(self, c_ops):
-        self.c_ops = c_ops
+    def __init__(self, func):
+        self.func = func
         self._grad_op = dotRxyTGradient(self)
 
     def make_node(self, *inputs):
@@ -74,7 +74,7 @@ class dotRxyT(tt.Op):
         return self.grad(inputs, eval_points)
 
     def perform(self, node, inputs, outputs):
-        outputs[0][0] = self.c_ops.dotRxyT(*inputs)
+        outputs[0][0] = self.func(*inputs)
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
@@ -94,7 +94,7 @@ class dotRxyTGradient(tt.Op):
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
-        bM, binc, bobl = self.base_op.c_ops.dotRxyT(*inputs)
+        bM, binc, bobl = self.base_op.func(*inputs)
         outputs[0][0] = np.reshape(bM, np.shape(inputs[0]))
         outputs[1][0] = np.reshape(binc, np.shape(inputs[1]))
         outputs[2][0] = np.reshape(bobl, np.shape(inputs[2]))
@@ -102,8 +102,8 @@ class dotRxyTGradient(tt.Op):
 
 class dotRz(tt.Op):
 
-    def __init__(self, c_ops):
-        self.c_ops = c_ops
+    def __init__(self, func):
+        self.func = func
         self._grad_op = dotRzGradient(self)
 
     def make_node(self, *inputs):
@@ -120,7 +120,7 @@ class dotRz(tt.Op):
         return self.grad(inputs, eval_points)
 
     def perform(self, node, inputs, outputs):
-        outputs[0][0] = self.c_ops.dotRz(*inputs)
+        outputs[0][0] = self.func(*inputs)
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
@@ -140,6 +140,6 @@ class dotRzGradient(tt.Op):
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
-        bM, btheta = self.base_op.c_ops.dotRz(*inputs)
+        bM, btheta = self.base_op.func(*inputs)
         outputs[0][0] = np.reshape(bM, np.shape(inputs[0]))
         outputs[1][0] = np.reshape(btheta, np.shape(inputs[1]))

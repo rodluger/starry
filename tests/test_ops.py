@@ -57,6 +57,15 @@ def test_dotRxyT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
                 abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
 
+def test_F(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    map = starry.Map(ydeg=2, udeg=2, fdeg=2)
+    np.random.seed(11)
+    u = np.random.randn(3)
+    u[0] = -1
+    f = np.random.randn(9)
+    verify_grad(map.ops.F, (u, f), abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
+
+
 def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     map = starry.Map(ydeg=2)
     theta = np.linspace(0, 30, 10)
@@ -84,6 +93,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 if __name__ == "__main__":
+    test_F()
     test_flux()
     test_dotRxyT()
     test_dotRxy()

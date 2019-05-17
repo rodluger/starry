@@ -11,10 +11,17 @@ class Map(object):
 
     """
 
-    def __init__(self, ydeg=0, udeg=0, fdeg=0):
+    def __init__(self, ydeg=0, udeg=0, doppler=False):
         """
 
         """
+
+        # Doppler filter?
+        self._doppler = doppler
+        if self._doppler:
+            fdeg = 3
+        else:
+            fdeg = 0
 
         # Instantiate the Theano ops class
         self.ops = Ops(ydeg, udeg, fdeg)
@@ -126,7 +133,7 @@ class Map(object):
         yo = kwargs.pop("yo", 0.0)
         zo = kwargs.pop("zo", 1.0)
         ro = kwargs.pop("ro", 0.0)
-        theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
+        theta, xo, yo, zo = to_tensor(*vectorize(theta, xo, yo, zo))
 
         # Other kwargs
         inc = to_tensor(kwargs.pop("inc", self.inc))

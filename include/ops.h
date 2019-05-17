@@ -1,5 +1,5 @@
 /**
-\file ops.cpp
+\file ops.h
 \brief Class housing all map operations.
 
 */
@@ -7,6 +7,7 @@
 #include "solver_emitted.h"
 #include "basis.h"
 #include "wigner.h"
+#include "filter.h"
 
 namespace starry {
 
@@ -29,7 +30,7 @@ public:
     basis::Basis<Scalar> B;
     wigner::Wigner<Scalar> W;
     solver::GreensEmitted<Scalar> G;                                           /**< The occultation integral solver class */
-    
+    filter::Filter<Scalar> F;
 
     // Constructor
     explicit Ops (
@@ -47,7 +48,8 @@ public:
         N((deg + 1) * (deg + 1)),
         B(ydeg, udeg, fdeg),
         W(ydeg, udeg, fdeg),
-        G(deg)
+        G(deg),
+        F(B)
     {
         // Bounds checks
         if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))

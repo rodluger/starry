@@ -4,15 +4,16 @@ import numpy as np
 from theano import gof
 import theano.tensor as tt
 
-__all__ = ["sT"]
+__all__ = ["F"]
 
 
-class sT(tt.Op):
+class F(tt.Op):
 
-    def __init__(self, func, N):
+    def __init__(self, func, N, Ny):
         self.func = func
         self.N = N
-        self._grad_op = sTGradient(self)
+        self.Ny = Ny
+        self._grad_op = FGradient(self)
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
@@ -20,7 +21,7 @@ class sT(tt.Op):
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return [shapes[0] + (tt.as_tensor(self.N),)]
+        return [(self.N, self.Ny)]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -34,7 +35,7 @@ class sT(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class sTGradient(tt.Op):
+class FGradient(tt.Op):
 
     def __init__(self, base_op):
         self.base_op = base_op
@@ -48,6 +49,6 @@ class sTGradient(tt.Op):
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
-        bb, br = self.base_op.func(*inputs)
-        outputs[0][0] = np.reshape(bb, np.shape(inputs[0]))
-        outputs[1][0] = np.reshape(br, np.shape(inputs[1]))
+        bu, bf = self.base_op.func(*inputs)
+        outputs[0][0] = np.reshape(bu, np.shape(inputs[0]))
+        outputs[1][0] = np.reshape(bf, np.shape(inputs[1]))
