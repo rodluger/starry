@@ -37,7 +37,7 @@ protected:
 
 public:
 
-    Matrix<Scalar> F;                                                          /**< The filter operator in the polynomial basis */
+    Matrix<Scalar> F;                                                          /**< The filter operator in the polynomial basis. TODO: Make sparse? */
     Vector<Scalar> bu;
     Vector<Scalar> bf;
 
@@ -189,7 +189,7 @@ public:
         Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
         Vector<Scalar> pu = tmp * norm * pi<Scalar>();
         Vector<Scalar> pf;
-        pf = B.A1.block(0, 0, Nf, Nf) * f;
+        pf = B.A1_f * f;
 
         // Multiply them
         Vector<Scalar> p;
@@ -223,7 +223,7 @@ public:
         Scalar norm = Scalar(1.0) / B.rT.segment(0, (udeg + 1) * (udeg + 1)).dot(tmp);
         Vector<Scalar> pu = tmp * norm * pi<Scalar>();
         Vector<Scalar> pf;
-        pf = B.A1.block(0, 0, Nf, Nf) * f;
+        pf = B.A1_f * f;
 
         // Multiply them
         Vector<Scalar> p;
@@ -252,7 +252,7 @@ public:
 
         // Compute the filter derivatives
         Vector<Matrix<Scalar>> DFDf(Nf);
-        Matrix<Scalar> DpfDf = B.A1.block(0, 0, Nf, Nf);
+        Matrix<Scalar> DpfDf = B.A1_f;
         for (int l = 0; l < Nf; ++l) {
             DFDf(l).setZero(N, Ny);
         }

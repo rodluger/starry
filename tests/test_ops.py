@@ -77,25 +77,24 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     obl = 30.0
     y = np.ones(9)
     u = [-1.0]
+    f = [np.pi]
 
     func = lambda *args: tt.dot(map.ops.X(*args), y)
 
     # Just rotation
-    verify_grad(func, (theta, xo, yo, zo, 0.0, inc, obl, u), 
+    verify_grad(func, (theta, xo, yo, zo, 0.0, inc, obl, u, f), 
                 abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
     # Just occultation
-    verify_grad(func, (theta, xo / 3, yo, zo, ro, inc, obl, u), 
+    verify_grad(func, (theta, xo / 3, yo, zo, ro, inc, obl, u, f), 
                 abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
     # Rotation + occultation
-    verify_grad(func, (theta, xo, yo, zo, ro, inc, obl, u), 
+    verify_grad(func, (theta, xo, yo, zo, ro, inc, obl, u, f), 
                 abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
 
 if __name__ == "__main__":
-    test_F()
-    quit()
     test_F()
     test_flux()
     test_dotRxyT()

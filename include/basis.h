@@ -493,6 +493,7 @@ public:
     const int deg;
     const double norm;                                                         /**< Map normalization constant */
     Eigen::SparseMatrix<T> A1;                                                 /**< The polynomial change of basis matrix */
+    Eigen::SparseMatrix<T> A1_f;                                               /**< The polynomial change of basis matrix for the filter operator */
     Eigen::SparseMatrix<T> A1Inv;                                              /**< The inverse of the polynomial change of basis matrix */
     Eigen::SparseMatrix<T> A2;                                                 /**< The Green's change of basis matrix */
     Eigen::SparseMatrix<T> A;                                                  /**< The full change of basis matrix */
@@ -526,7 +527,9 @@ public:
         // Resize to the shapes actually used
         // in the code
         int Ny = (ydeg + 1) * (ydeg + 1);
+        int Nf = (fdeg + 1) * (fdeg + 1);
         A1 = A1_.block(0, 0, Ny, Ny);
+        A1_f = A1_.block(0, 0, Nf, Nf);
         A1Inv = A1Inv_;
         A2 = A2_.block(0, 0, Ny, Ny);
         A = A_;

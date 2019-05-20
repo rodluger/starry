@@ -18,6 +18,10 @@ class Ops(object):
         """
 
         # Instantiate the C++ Ops
+        self.ydeg = ydeg
+        self.udeg = udeg
+        self.fdeg = fdeg
+        self.filter = (fdeg > 0) or (udeg > 0)
         self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
 
         # Solution vectors
@@ -28,6 +32,7 @@ class Ops(object):
         # Change of basis matrices
         self.A = ts.as_sparse_variable(self._c_ops.A)
         self.A1 = ts.as_sparse_variable(self._c_ops.A1)
+        self.A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv)
 
         # Rotation left-multiply operations
         self.dotRz = dotRz(self._c_ops.dotRz)
@@ -49,7 +54,7 @@ class Ops(object):
         return res
 
 
-    def X(self, theta, xo, yo, zo, ro, inc, obl, u):
+    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f):
         """
 
         """
@@ -65,13 +70,19 @@ class Ops(object):
         rows = theta.shape[0]
         cols = self.rTA1.shape[1]
 
-        # TODO: Filter (u, f)
+        # Compute filter operator
+        if self.filter:
+            F = self.F(u, f)
 
         # Rotation operator
+        if self.filter:
+            rTA1 = ts.dot(tt.dot(self.rT, F), self.A1)
+        else:
+            rTA1 = self.rTA1
         X_rot = tt.zeros((rows, cols))
         X_rot = tt.set_subtensor(
             X_rot[i_rot], 
-            self.dotR(self.rTA1, inc, obl, theta[i_rot])
+            self.dotR(rTA1, inc, obl, theta[i_rot])
         )
 
         # Occultation + rotation operator
@@ -80,6 +91,9 @@ class Ops(object):
         sTA = ts.dot(sT, self.A)
         theta_z = tt.arctan2(xo[i_occ], yo[i_occ]) * (180.0 / np.pi)
         sTAR = self.dotRz(sTA, theta_z)
+        if self.filter:
+            A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+            sTAR = tt.dot(sTAR, A1InvFA1)
         X_occ = tt.set_subtensor(
             X_occ[i_occ], 
             self.dotR(sTAR, inc, obl, theta[i_occ])

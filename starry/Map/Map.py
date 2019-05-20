@@ -120,6 +120,10 @@ class Map(object):
         u[0] = -1.0
         self._u = to_tensor(u)
 
+        f = np.zeros(self.Nf)
+        f[0] = np.pi
+        self._f = to_tensor(f)
+
         self._inc = to_tensor(90.0)
         self._obl = to_tensor(0.0)
 
@@ -138,7 +142,8 @@ class Map(object):
         theta, xo, yo, zo, ro = to_tensor(theta, xo, yo, zo, ro)
 
         # Compute & return
-        return self.ops.X(theta, xo, yo, zo, ro, self.inc, self.obl, self.u)
+        return self.ops.X(theta, xo, yo, zo, ro, 
+                          self._inc, self._obl, self._u, self._f)
 
     def flux(self, **kwargs):
         """
