@@ -493,13 +493,11 @@ public:
     const int deg;
     const double norm;                                                         /**< Map normalization constant */
     Eigen::SparseMatrix<T> A1;                                                 /**< The polynomial change of basis matrix */
-    Eigen::SparseMatrix<T> A1Inv_;                                             /**< The *augmented* inverse of the polynomial change of basis matrix */
+    Eigen::SparseMatrix<T> A1Inv;                                              /**< The inverse of the polynomial change of basis matrix */
     Eigen::SparseMatrix<T> A2;                                                 /**< The Green's change of basis matrix */
     Eigen::SparseMatrix<T> A;                                                  /**< The full change of basis matrix */
-    Eigen::SparseMatrix<T> A_;                                                 /**< The *augmented* full change of basis matrix */
     RowVector<T> rT;                                                           /**< The rotation solution vector */
     RowVector<T> rTA1;                                                         /**< The rotation vector in Ylm space */
-    RowVector<T> rT_;                                                          /**< The *augmented* rotation solution vector */
     Eigen::SparseMatrix<T> U1;                                                 /**< The limb darkening to polynomial change of basis matrix */
 
     // Constructor: compute the matrices
@@ -516,21 +514,26 @@ public:
         norm(norm)
     {
         // Compute the augmented matrices
-        Eigen::SparseMatrix<T> A1_, A2_, U1_;
+        Eigen::SparseMatrix<T> A1_, A1Inv_, A2_, A_, U1_;
+        RowVector<T> rT_, rTA1_;
         computeA1(deg, A1_, norm);
         computeA1Inv(deg, A1_, A1Inv_);
         computeA(deg, A1_, A2_, A_);
         computerT(deg, rT_);
+        rTA1_ = rT_ * A1_;
         computeU(deg, A1_, A_, U1_, norm);
-
-        // Compute the contracted versions
+        
+        // Resize to the shapes actually used
+        // in the code
         int Ny = (ydeg + 1) * (ydeg + 1);
         A1 = A1_.block(0, Ny, 0, Ny);
+        A1Inv = A1Inv_;
         A2 = A2_.block(0, Ny, 0, Ny);
-        A = A_.block(0, Ny, 0, Ny);
-        rT = rT_.segment(0, Ny);
-        rTA1 = rT * A1;
+        A = A_;
+        rT = rT_;
+        rTA1 = rTA1_.block(0, Ny, 0, Ny);
         U1 = U1_.block(0, 0, (udeg + 1) * (udeg + 1), udeg + 1);
+
     }
 
 };
