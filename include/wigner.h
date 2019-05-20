@@ -286,9 +286,8 @@ protected:
     Matrix<Scalar> cosnt;                                                      /**< Matrix of cos(n theta) values */
     Matrix<Scalar> sinnt;                                                      /**< Matrix of sin(n theta) values */
     Vector<Scalar> tmp_c, tmp_s;
-    Vector<Scalar> theta_Rz_cache, theta_rad, costheta, sintheta;
+    Vector<Scalar> theta_Rz_cache, costheta, sintheta;
     Scalar obl_cache, inc_cache;
-    Scalar radian, degree;
     Scalar tol;
 
     // The full XY rotation matrices
@@ -353,9 +352,7 @@ public:
             DRxyDinc[l].resize(sz, sz);
         }
 
-        // Units & misc
-        radian = (pi<Scalar>() / 180.0);
-        degree = 1.0 / radian;
+        // Misc
         tol = 10 * mach_eps<Scalar>();
 
     }
@@ -365,26 +362,26 @@ public:
     
     */
     inline void computeRxy(
-        const Scalar& inc,
-        const Scalar& obl
+        const Scalar& inc_,
+        const Scalar& obl_
     ) {
         
         // Check the cache
-        if ((inc == inc_cache) && (obl == obl_cache)) {
+        if ((inc_ == inc_cache) && (obl_ == obl_cache)) {
             return;
         }
-        inc_cache = inc;
-        obl_cache = obl;
+        inc_cache = inc_;
+        obl_cache = obl_;
 
-        // Convert to radians & ADType
-        ADType inc_rad = inc * radian;
-        ADType obl_rad = obl * radian;
-        inc_rad.derivatives() = Vector<Scalar>::Unit(2, 0);
-        obl_rad.derivatives() = Vector<Scalar>::Unit(2, 1);
-        ADType sini = sin(inc_rad),
-               cosi = cos(inc_rad),
-               neg_sino = -sin(obl_rad),
-               coso = cos(obl_rad);
+        // Convert to ADType
+        ADType inc = inc_;
+        ADType obl = obl_;
+        inc.derivatives() = Vector<Scalar>::Unit(2, 0);
+        obl.derivatives() = Vector<Scalar>::Unit(2, 1);
+        ADType sini = sin(inc),
+               cosi = cos(inc),
+               neg_sino = -sin(obl),
+               coso = cos(obl);
 
         // Compute the rotation transformation into and out of the `xy` frame
         if (ydeg == 0) {
@@ -466,9 +463,8 @@ public:
         theta_Rz_cache = theta;
 
         // Compute sin & cos
-        theta_rad = theta * radian;
-        costheta = theta_rad.array().cos();
-        sintheta = theta_rad.array().sin();
+        costheta = theta.array().cos();
+        sintheta = theta.array().sin();
 
         // Initialize our z rotation vectors
         cosnt.resize(npts, max(2, deg + 1));
@@ -573,10 +569,6 @@ public:
 
         }
 
-        // Unit changes
-        dotRxy_binc *= radian;
-        dotRxy_bobl *= radian;
-
     }
 
     /* 
@@ -649,10 +641,6 @@ public:
                 bMRxyT.block(0, l * l, npts, 2 * l + 1) * Rxy[l];
 
         }
-
-        // Unit changes
-        dotRxyT_binc *= radian;
-        dotRxyT_bobl *= radian;
 
     }
 
@@ -751,9 +739,6 @@ public:
 
             }
         }
-
-        // Unit change for theta
-        dotRz_btheta *= radian;
 
     }
 

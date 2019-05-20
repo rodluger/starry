@@ -89,7 +89,7 @@ class Ops(object):
         X_occ = tt.zeros((rows, cols))
         sT = self.sT(b[i_occ], ro)
         sTA = ts.dot(sT, self.A)
-        theta_z = tt.arctan2(xo[i_occ], yo[i_occ]) * (180.0 / np.pi)
+        theta_z = tt.arctan2(xo[i_occ], yo[i_occ])
         sTAR = self.dotRz(sTA, theta_z)
         if self.filter:
             A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)

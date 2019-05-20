@@ -141,6 +141,9 @@ class Map(object):
         theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
         theta, xo, yo, zo, ro = to_tensor(theta, xo, yo, zo, ro)
 
+        # To radians
+        theta *= np.pi / 180.
+
         # Compute & return
         return self.ops.X(theta, xo, yo, zo, ro, 
                           self._inc, self._obl, self._u, self._f)
