@@ -1,9 +1,9 @@
 from .. import _c_ops
 from .integration import sT
-from .sht import pT, pT_point
+from .sht import pT
 from .rotation import dotRxy, dotRxyT, dotRz
 from .filter import F
-from ..Map.utils import RAxisAngle
+from .utils import RAxisAngle
 import theano
 import theano.tensor as tt
 import theano.sparse as ts
@@ -31,8 +31,9 @@ class Ops(object):
         self.sT = sT(self._c_ops.sT, self._c_ops.N)
         self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
         self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))
-        self.pT = pT(self._c_ops.pT, self._c_ops.N)
-        self.pT_point = pT_point(self._c_ops.pT, self._c_ops.N)
+        
+        # TODO: This may be faster, but is not differentiable.
+        #self.pT = pT(self._c_ops.pT, self._c_ops.N)
 
         # Change of basis matrices
         self.A = ts.as_sparse_variable(self._c_ops.A)
@@ -51,6 +52,38 @@ class Ops(object):
         self.rect_res = 0
         self.ortho_res = 0
 
+        # mu, nu arrays
+        deg = self.ydeg + self.udeg + self.fdeg
+        N = (deg + 1) ** 2
+        self._mu = np.zeros(N, dtype=int)
+        self._nu = np.zeros(N, dtype=int)
+        n = 0
+        for l in range(deg + 1):
+            for m in range(-l, l + 1):
+                self._mu[n] = l - m
+                self._nu[n] = l + m
+                n += 1
+        self._mu = tt.as_tensor_variable(self._mu)
+        self._nu = tt.as_tensor_variable(self._nu)
+
+    def _pT_step(self, mu, nu, x, y, z):
+        return tt.switch(
+            tt.eq((nu % 2), 0), 
+            x ** (mu / 2) * y ** (nu / 2), 
+            x ** ((mu - 1) / 2) * y ** ((nu - 1) / 2) * z
+        )
+
+    def pT(self, xpt, ypt, zpt):
+        """
+        TODO: Can probably be sped up with recursion.
+
+        """
+        pT, updates = theano.scan(fn=self._pT_step,
+                                  sequences=[self._mu, self._nu],
+                                  non_sequences=[xpt, ypt, zpt]
+        )
+        return tt.transpose(pT)
+
     def dotR(self, M, inc, obl, theta):
         """
 
@@ -60,7 +93,6 @@ class Ops(object):
         res = self.dotRz(res, theta)
         res = self.dotRxy(res, inc, obl)
         return res
-
 
     def X(self, theta, xo, yo, zo, ro, inc, obl, u, f):
         """
@@ -108,8 +140,7 @@ class Ops(object):
 
         return X_rot + X_occ
 
-
-    def intensity(self, theta, xpt, ypt, zpt, inc, obl, y, u, f):
+    def intensity(self, xpt, ypt, zpt, y, u, f):
         """
 
         """
@@ -117,24 +148,22 @@ class Ops(object):
         if self.filter:
             F = self.F(u, f)
 
-        # Compute the polynomial basis
+        # Compute the polynomial basis at the point
         pT = self.pT(xpt, ypt, zpt)
 
-        # Rotate the map and transform to polynomial
-        yT = tt.tile(y, [theta.size, 1])
-        Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
-        A1Ry = ts.dot(self.A1, Ry)
+        # Transform the map to the polynomial basis
+        A1y = ts.dot(self.A1, y)
 
         # Apply the filter
         if self.filter:
-            A1Ry = ts.dot(F, A1Ry)
+            A1y = ts.dot(F, A1y)
 
         # Dot the polynomial into the basis
-        return tt.reshape(tt.dot(pT, A1Ry), [xpt.shape[0], theta.shape[0]])
+        return tt.dot(pT, A1y)
     
-
     def render(self, res, projection, theta, inc, obl, y, u, f):
         """
+        TODO: Need to rotate map to equator-on for rect projection!!!!
 
         """
         # Compute filter operator
@@ -143,22 +172,28 @@ class Ops(object):
 
         # Compute the polynomial basis
         if (projection == "rect") and (res != self.rect_res):
-                self.rect_res = res
-                lon = np.linspace(-np.pi, np.pi, 2 * res) - np.pi / 2
-                lat = np.linspace(-np.pi / 2, np.pi / 2, res)
-                lon, lat = np.meshgrid(lon, lat)
-                xg = (np.cos(lat) * np.cos(lon)).reshape(1, -1)
-                yg = (np.cos(lat) * np.sin(lon)).reshape(1, -1)
-                zg = np.sin(lat).reshape(1, -1)
-                R = RAxisAngle([1, 0, 0], -90)
-                xg, yg, zg = np.dot(R, np.vstack((xg, yg, zg)))
-                self.rect_pT = self.pT(xg.flatten(), yg.flatten(), zg.flatten()).eval()
+            self.rect_res = res
+            lon = np.linspace(-np.pi, np.pi, 2 * res) - np.pi / 2
+            lat = np.linspace(-np.pi / 2, np.pi / 2, res)
+            lon, lat = np.meshgrid(lon, lat)
+            xg = (np.cos(lat) * np.cos(lon)).reshape(1, -1)
+            yg = (np.cos(lat) * np.sin(lon)).reshape(1, -1)
+            zg = np.sin(lat).reshape(1, -1)
+            R = RAxisAngle([1, 0, 0], -90)[0] # TODO: Squeeze!!!
+            xyz = tt.dot(R, tt.concatenate((xg, yg, zg)))
+            xg = xyz[0]
+            yg = xyz[1]
+            zg = xyz[2]
+
+            # TODO: ROTATE according to inc and obl!
+
+            self.rect_pT = self.pT(xg, yg, zg).eval()
         elif (projection == "ortho") and (res != self.ortho_res):
-                self.ortho_res = res
-                arr = np.linspace(-1, 1, self.ortho_res)
-                xg, yg = np.meshgrid(arr, arr)
-                zg = np.sqrt(1 - xg ** 2 - yg ** 2)
-                self.ortho_pT = self.pT(xg.flatten(), yg.flatten(), zg.flatten()).eval()
+            self.ortho_res = res
+            arr = np.linspace(-1, 1, self.ortho_res)
+            xg, yg = np.meshgrid(arr, arr)
+            zg = np.sqrt(1 - xg ** 2 - yg ** 2)
+            self.ortho_pT = self.pT(xg.flatten(), yg.flatten(), zg.flatten()).eval()
 
         # Rotate the map and transform to polynomial
         yT = tt.tile(y, [theta.shape[0], 1])
@@ -174,4 +209,3 @@ class Ops(object):
             return tt.reshape(tt.dot(self.rect_pT, A1Ry), [res, 2 * res, theta.shape[0]])
         else:
             return tt.reshape(tt.dot(self.ortho_pT, A1Ry), [res, res, theta.shape[0]])
-    

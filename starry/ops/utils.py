@@ -7,7 +7,8 @@ import numpy as np
 
 __all__ = ["is_theano",
            "to_tensor",
-           "vectorize"]
+           "vectorize",
+           "RAxisAngle"]
 
 
 def is_theano(*objs):
@@ -47,3 +48,31 @@ def vectorize(*args):
         ones = np.ones_like(np.sum([np.atleast_1d(arg) for arg in args], axis=0))
         args = tuple([arg * ones for arg in args])
     return args
+
+
+def RAxisAngle(axis=[0, 1, 0], theta=0):
+    """
+    TODO: Need to squeeze this for scalar theta. But how?
+
+    """
+    theta = theta * tt.ones(1)
+    cost = tt.cos(theta * np.pi / 180.)
+    sint = tt.sin(theta * np.pi / 180.)
+
+    def step(cost, sint, axis):
+        return tt.reshape(tt.as_tensor_variable([
+            cost + axis[0] * axis[0] * (1 - cost),
+            axis[0] * axis[1] * (1 - cost) - axis[2] * sint,
+            axis[0] * axis[2] * (1 - cost) + axis[1] * sint,
+            axis[1] * axis[0] * (1 - cost) + axis[2] * sint,
+            cost + axis[1] * axis[1] * (1 - cost),
+            axis[1] * axis[2] * (1 - cost) - axis[0] * sint,
+            axis[2] * axis[0] * (1 - cost) - axis[1] * sint,
+            axis[2] * axis[1] * (1 - cost) + axis[0] * sint,
+            cost + axis[2] * axis[2] * (1 - cost)
+        ]), [3, 3])
+
+    R, _ = theano.scan(fn=step, sequences=[cost, sint], non_sequences=[axis])
+    return R
+
+    

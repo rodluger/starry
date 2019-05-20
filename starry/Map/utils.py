@@ -2,28 +2,8 @@
 import numpy as np
 
 
-__all__ = ["RAxisAngle",
-           "get_ortho_latitude_lines", 
+__all__ = ["get_ortho_latitude_lines", 
            "get_ortho_longitude_lines"]
-
-
-def RAxisAngle(axis=[0, 1, 0], theta=0):
-    """
-
-    """
-    R = np.zeros((3, 3))
-    cost = np.cos(theta * np.pi / 180.)
-    sint = np.sin(theta * np.pi / 180.)
-    R[0, 0] = cost + axis[0] * axis[0] * (1 - cost)
-    R[0, 1] = axis[0] * axis[1] * (1 - cost) - axis[2] * sint
-    R[0, 2] = axis[0] * axis[2] * (1 - cost) + axis[1] * sint
-    R[1, 0] = axis[1] * axis[0] * (1 - cost) + axis[2] * sint
-    R[1, 1] = cost + axis[1] * axis[1] * (1 - cost)
-    R[1, 2] = axis[1] * axis[2] * (1 - cost) - axis[0] * sint
-    R[2, 0] = axis[2] * axis[0] * (1 - cost) - axis[1] * sint
-    R[2, 1] = axis[2] * axis[1] * (1 - cost) + axis[0] * sint
-    R[2, 2] = cost + axis[2] * axis[2] * (1 - cost)
-    return R
 
 
 def get_ortho_latitude_lines(inc=90, obl=0, nlines=5, npts=1000):

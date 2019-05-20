@@ -504,9 +504,6 @@ public:
     // Poly basis
     RowVector<T> x_cache, y_cache, z_cache;
     Matrix<T, RowMajor> pT;
-    RowVector<T> pT_point;
-    Vector<T> xpow, ypow;
-    T bx, by, bz;
 
     // Constructor: compute the matrices
     explicit Basis(
@@ -522,10 +519,7 @@ public:
         norm(norm),
         x_cache(0),
         y_cache(0),
-        z_cache(0),
-        pT_point((deg + 1) * (deg + 1)),
-        xpow(deg + 1),
-        ypow(deg + 1)
+        z_cache(0)
     {
         // Compute the augmented matrices
         Eigen::SparseMatrix<T> A1_, A1Inv_, A2_, A_, U1_;
@@ -621,91 +615,6 @@ public:
                 ++n;
             }
         }
-    }
-
-    /**
-    Compute the polynomial basis at a single point.
-
-    */ 
-    inline void computePolyBasis ( 
-        const T& x,
-        const T& y,
-        const T& z
-    ) {
-        int l, m, mu, nu, n = 0;
-        xpow(0) = 1.0;
-        ypow(0) = 1.0;
-        pT_point(0) = 1.0;
-        for (l = 1; l < deg + 1; ++l) {
-            xpow(l) = xpow(l - 1) * x;
-            ypow(l) = ypow(l - 1) * y;
-            for (m = -l; m < l + 1; ++m) {
-                mu = l - m;
-                nu = l + m;
-                if ((nu % 2) == 0) {
-                    pT_point(n) = xpow(mu / 2) * ypow(nu / 2);
-                } else {
-                    pT_point(n) = xpow((mu - 1) / 2) *
-                                  ypow((nu - 1) / 2) * z;
-                }
-                ++n;
-            }
-        }
-    }
-
-    /**
-    Compute the gradient of the polynomial basis at a single point.
-
-    */ 
-    inline void computePolyBasis ( 
-        const T& x,
-        const T& y,
-        const T& z,
-        const RowVector<T>& bpT
-    ) {
-        int l, m, mu, nu, n = 0;
-        xpow(0) = 1.0;
-        ypow(0) = 1.0;
-        pT_point(0) = 1.0;
-
-        RowVector<T> dpTdx;
-        RowVector<T> dpTdy;
-        RowVector<T> dpTdz;
-        dpTdx.setZero((deg + 1) * (deg + 1));
-        dpTdy.setZero((deg + 1) * (deg + 1));
-        dpTdz.setZero((deg + 1) * (deg + 1));
-
-        for (l = 1; l < deg + 1; ++l) {
-            xpow(l) = xpow(l - 1) * x;
-            ypow(l) = ypow(l - 1) * y;
-            for (m = -l; m < l + 1; ++m) {
-                mu = l - m;
-                nu = l + m;
-                if ((nu % 2) == 0) {
-
-                    if (mu > 0)
-                        dpTdx(n) = (mu / 2) * xpow(mu / 2 - 1) * ypow(nu / 2);
-                    if (nu > 0)
-                        dpTdy(n) = (nu / 2) * xpow(mu / 2) * ypow(nu / 2 - 1);
-
-                } else {
-
-                    if (mu > 1)
-                        dpTdx(n) = ((mu - 1) / 2) * xpow((mu - 1) / 2 - 1) * ypow((nu - 1) / 2) * z;
-                    if (nu > 1)
-                        dpTdy(n) = ((nu - 1) / 2) * xpow((mu - 1) / 2) * ypow((nu - 1) / 2 - 1) * z;
-
-                    dpTdz(n) = xpow((mu - 1) / 2) * ypow((nu - 1) / 2);
-
-                }
-                ++n;
-            }
-        }
-
-        bx = dpTdx.dot(bpT);
-        by = dpTdy.dot(bpT);
-        bz = dpTdz.dot(bpT);
-
     }
 
 };

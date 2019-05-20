@@ -1,4 +1,4 @@
-from ..ops import Ops, vectorize, to_tensor, is_theano
+from ..ops import Ops, vectorize, to_tensor, is_theano, RAxisAngle
 from .indices import get_ylm_inds, get_ul_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
@@ -221,24 +221,35 @@ class YlmBase(object):
 
     def intensity(self, **kwargs):
         """
-        Compute and return the intensity of the map.
+        Compute and return the intensity of the map
+        at a given ``(lat, lon)`` or ``(x, y, z)``
+        point on the surface.
         
         """
-        theta = kwargs.pop("theta", 0.0)
-        x = kwargs.pop("x", 0.0)
-        y = kwargs.pop("y", 0.0)
-        x, y = vectorize(x, y)
-        x, y = to_tensor(x, y)
-        theta = tt.reshape(vectorize(theta), [-1])
+        # Get the Cartesian points
+        lat = kwargs.pop("lat", None)
+        lon = kwargs.pop("lon", None)
+        if lat is None and lon is None:
+            x = kwargs.pop("x", 0.0)
+            y = kwargs.pop("y", 0.0)
+            z = kwargs.pop("z", 1.0)
+            x, y, z = vectorize(*to_tensor(x, y, z))
+        else:
+            
+            lat, lon = vectorize(*to_tensor(lat, lon))
 
-        # Convert angles radians
-        inc = self._inc * radian
-        obl = self._obl * radian
-        theta *= radian
+            # TODO: inclination and obliquity must matter!
+
+            R1 = RAxisAngle([1.0, 0.0, 0.0], -lat)
+            R2 = RAxisAngle([0.0, 1.0, 0.0], lon)
+            R = tt.batched_dot(R2, R1)
+            xyz = tt.dot(R, [0.0, 0.0, 1.0])
+            x = xyz[:, 0]
+            y = xyz[:, 1]
+            z = xyz[:, 2]
 
         # Compute & return
-        return self.ops.intensity(theta, x, y, inc, obl, 
-                                  self._y, self._u, self._f)
+        return self.ops.intensity(x, y, z, self._y, self._u, self._f)
 
     def render(self, **kwargs):
         """

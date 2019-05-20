@@ -108,5 +108,3 @@ def compare_times():
     for i in [0, 2, 4]:
         ax[i].set_ylabel("Time [seconds]", fontsize=14)
     plt.show()
-
-

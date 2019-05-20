@@ -66,13 +66,13 @@ def test_F(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     verify_grad(map.ops.F, (u, f), abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
 
-def test_pT_point(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+def test_pT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     map = starry.Map(ydeg=2)
     map[1:, :] = 1
     x = 0.13
     y = 0.25
     z = np.sqrt(1 - x ** 2 - y ** 2)
-    verify_grad(map.ops.pT_point, (x, y, z), abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
+    verify_grad(map.ops.pT, (x, y, z), abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
 
 def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
@@ -104,7 +104,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 if __name__ == "__main__":
-    test_pT_point()
+    test_pT()
     quit()
     test_F()
     test_flux()
