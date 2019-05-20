@@ -1,9 +1,13 @@
 from ..ops import Ops, vectorize, to_tensor, is_theano
 from .indices import get_ylm_inds, get_ul_inds
+from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 import numpy as np
 import theano
 import theano.tensor as tt
 import theano.sparse as ts
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from IPython.display import HTML
 radian = np.pi / 180.0
 
 
@@ -214,6 +218,146 @@ class YlmBase(object):
         # Dot it into the map to get the flux
         return tt.dot(X, self.y)
 
+    def intensity(self, **kwargs):
+        """
+        Compute and return the intensity of the map.
+        
+        """
+        theta = kwargs.pop("theta", 0.0)
+        x = kwargs.pop("x", 0.0)
+        y = kwargs.pop("y", 0.0)
+        x, y = vectorize(x, y)
+        x, y = to_tensor(x, y)
+        theta = tt.reshape(vectorize(theta), [-1])
+
+        # Convert angles radians
+        inc = self._inc * radian
+        obl = self._obl * radian
+        theta *= radian
+
+        # Compute & return
+        return self.ops.intensity(theta, x, y, inc, obl, 
+                                  self._y, self._u, self._f)
+
+    def render(self, **kwargs):
+        """
+        Compute and return the sky-projected intensity of 
+        the map on a square Cartesian grid.
+        
+        """
+        res = kwargs.pop("res", 300)
+        theta = kwargs.pop("theta", 0.0)
+        theta = tt.reshape(vectorize(theta), [-1])
+
+        # Convert angles radians
+        inc = self._inc * radian
+        obl = self._obl * radian
+        theta *= radian
+
+        # Compute & return
+        return self.ops.render(res, theta, inc, obl, 
+                               self._y, self._u, self._f)
+
+    def show(self, **kwargs):
+        """
+
+        """
+        # Get kwargs
+        cmap = kwargs.pop("cmap", "plasma")
+        projection = kwargs.get("projection", "ortho")
+        grid = kwargs.pop("grid", True)
+        interval = kwargs.pop("interval", 75)
+        mp4 = kwargs.pop("mp4", None)
+
+        # Render the map
+        image = kwargs.pop("image", self.render(**kwargs))
+        if is_theano(image):
+            image = image.eval()
+        if len(image.shape) == 3:
+            nframes = image.shape[-1]
+        else:
+            nframes = 1
+            image = np.reshape(image, image.shape + (1,))
+
+        # Animation
+        animated = (nframes > 1)
+
+        if projection == "rect":
+            # Set up the plot
+            fig, ax = plt.subplots(1, figsize=(7, 3.75))
+            extent = (-180, 180, -90, 90)
+
+            # Grid lines
+            if grid:
+                latlines = np.linspace(-90, 90, 7)[1:-1]
+                lonlines = np.linspace(-180, 180, 13)
+                for lat in latlines:
+                    ax.axhline(lat, color="k", lw=0.5, alpha=0.5, zorder=100)
+                for lon in lonlines:
+                    ax.axvline(lon, color="k", lw=0.5, alpha=0.5, zorder=100)
+            ax.set_xticks(lonlines)
+            ax.set_yticks(latlines)
+            ax.set_xlabel("Longitude [deg]")
+            ax.set_ylabel("Latitude [deg]")
+
+        else:
+            # Set up the plot
+            fig, ax = plt.subplots(1, figsize=(3, 3))
+            ax.axis('off')
+            ax.set_xlim(-1.05, 1.05)
+            ax.set_ylim(-1.05, 1.05)
+            extent = (-1, 1, -1, 1)
+
+            # Grid lines
+            if grid:
+                x = np.linspace(-1, 1, 10000)
+                y = np.sqrt(1 - x ** 2)
+                ax.plot(x, y, 'k-', alpha=1, lw=1)
+                ax.plot(x, -y, 'k-', alpha=1, lw=1)
+                inc = self.inc.eval()
+                obl = self.obl.eval()
+                lat_lines = get_ortho_latitude_lines(inc=inc, obl=obl)
+                lon_lines = get_ortho_longitude_lines(inc=inc, obl=obl)
+                for x, y in lat_lines + lon_lines:
+                    ax.plot(x, y, 'k-', lw=0.5, alpha=0.5, zorder=100)
+
+        # Plot the first frame of the image
+        img = ax.imshow(image[:, :, 0], origin="lower", 
+                        extent=extent, cmap=cmap,
+                        interpolation="none",
+                        vmin=np.nanmin(image), vmax=np.nanmax(image), 
+                        animated=animated)
+
+        # Display or save the image / animation
+        if animated:
+            interval = kwargs.pop("interval", 75)
+            mp4 = kwargs.pop("mp4", None)
+            
+            def updatefig(i):
+                img.set_array(image[:, :, i])
+                return img,
+
+            ani = FuncAnimation(fig, updatefig, interval=interval,
+                                blit=False, frames=image.shape[-1])
+
+            # Business as usual
+            if (mp4 is not None) and (mp4 != ""):
+                if mp4.endswith(".mp4"):
+                    mp4 = mp4[:-4]
+                ani.save('%s.mp4' % mp4, writer='ffmpeg')
+                plt.close()
+            else:
+                try:
+                    if 'zmqshell' in str(type(get_ipython())):
+                        plt.close()
+                        display(HTML(ani.to_jshtml()))
+                    else:
+                        raise NameError("")
+                except NameError:
+                    plt.show()
+                    plt.close()
+        else:
+            plt.show()
 
 class DopplerBase(object):
     """

@@ -7,8 +7,7 @@ import numpy as np
 
 __all__ = ["is_theano",
            "to_tensor",
-           "vectorize",
-           "autoeval"]
+           "vectorize"]
 
 
 def is_theano(*objs):
@@ -48,17 +47,3 @@ def vectorize(*args):
         ones = np.ones_like(np.sum([np.atleast_1d(arg) for arg in args], axis=0))
         args = tuple([arg * ones for arg in args])
     return args
-
-
-def autoeval(func):
-    """
-    Magic wrapper to auto-evaluate functions if none
-    of the arguments is a Theano variable.
-    
-    """
-    def wrapper(*args, **kwargs):
-        if is_theano(*args) or is_theano(*kwargs.values()):
-            return func(*args, **kwargs)
-        else:
-            return func(*args, **kwargs).eval()
-    return wrapper

@@ -1,52 +1,29 @@
 # -*- coding: utf-8 -*-
-from inspect import getmro
-import theano
-import theano.tensor as tt
 import numpy as np
-from ..extensions import RAxisAngle
 
 
-__all__ = ["is_theano",
-           "to_tensor",
-           "vectorize", 
+__all__ = ["RAxisAngle",
            "get_ortho_latitude_lines", 
            "get_ortho_longitude_lines"]
 
 
-def is_theano(*objs):
+def RAxisAngle(axis=[0, 1, 0], theta=0):
     """
 
     """
-    for obj in objs:
-        for c in getmro(type(obj)):
-            if c is theano.gof.graph.Node:
-                return True
-    return False
-
-
-def to_tensor(*args):
-    """
-
-    """
-    if len(args) == 1:
-        return tt.as_tensor_variable(args[0]).astype(tt.config.floatX)
-    else:
-        return [tt.as_tensor_variable(arg).astype(tt.config.floatX) for arg in args]
-
-
-def vectorize(*args):
-    """
-
-    """
-    if is_theano(*args):
-        ones = tt.ones_like(np.sum([arg if is_theano(arg) 
-                                    else np.atleast_1d(arg) 
-                                    for arg in args], axis=0)).astype(tt.config.floatX).reshape([-1])
-        args = tuple([to_tensor(arg).astype(tt.config.floatX) * ones for arg in args])
-    else:
-        ones = np.ones_like(np.sum([np.atleast_1d(arg) for arg in args], axis=0))
-        args = tuple([arg * ones for arg in args])
-    return args
+    R = np.zeros((3, 3))
+    cost = np.cos(theta * np.pi / 180.)
+    sint = np.sin(theta * np.pi / 180.)
+    R[0, 0] = cost + axis[0] * axis[0] * (1 - cost)
+    R[0, 1] = axis[0] * axis[1] * (1 - cost) - axis[2] * sint
+    R[0, 2] = axis[0] * axis[2] * (1 - cost) + axis[1] * sint
+    R[1, 0] = axis[1] * axis[0] * (1 - cost) + axis[2] * sint
+    R[1, 1] = cost + axis[1] * axis[1] * (1 - cost)
+    R[1, 2] = axis[1] * axis[2] * (1 - cost) - axis[0] * sint
+    R[2, 0] = axis[2] * axis[0] * (1 - cost) - axis[1] * sint
+    R[2, 1] = axis[2] * axis[1] * (1 - cost) + axis[0] * sint
+    R[2, 2] = cost + axis[2] * axis[2] * (1 - cost)
+    return R
 
 
 def get_ortho_latitude_lines(inc=90, obl=0, nlines=5, npts=1000):

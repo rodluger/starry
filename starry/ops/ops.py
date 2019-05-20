@@ -1,5 +1,6 @@
 from .. import _c_ops
 from .integration import sT
+from .sht import pT
 from .rotation import dotRxy, dotRxyT, dotRz
 from .filter import F
 import theano.tensor as tt
@@ -28,6 +29,7 @@ class Ops(object):
         self.sT = sT(self._c_ops.sT, self._c_ops.N)
         self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
         self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))
+        self.pT = pT(self._c_ops.pT, self._c_ops.N)
 
         # Change of basis matrices
         self.A = ts.as_sparse_variable(self._c_ops.A)
@@ -42,6 +44,8 @@ class Ops(object):
         # Filter
         self.F = F(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
 
+        # Map rendering
+        self.res = 0
     
     def dotR(self, M, inc, obl, theta):
         """
@@ -99,3 +103,56 @@ class Ops(object):
         )
 
         return X_rot + X_occ
+
+
+    def intensity(self, theta, xpt, ypt, inc, obl, y, u, f):
+        """
+
+        """
+        # Compute filter operator
+        if self.filter:
+            F = self.F(u, f)
+
+        # Compute the polynomial basis
+        pT = self.pT(xpt, ypt)
+
+        # Rotate the map and transform to polynomial
+        yT = tt.tile(y, [theta.size, 1])
+        Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
+        A1Ry = ts.dot(self.A1, Ry)
+
+        # Apply the filter
+        if self.filter:
+            A1Ry = ts.dot(F, A1Ry)
+
+        # Dot the polynomial into the basis
+        return tt.reshape(tt.dot(pT, A1Ry), [xpt.shape[0], theta.shape[0]])
+    
+
+    def render(self, res, theta, inc, obl, y, u, f):
+        """
+
+        """
+        # Compute filter operator
+        if self.filter:
+            F = self.F(u, f)
+
+        # Compute the polynomial basis
+        if res != self.res:
+            self.res = res
+            arr = np.linspace(-1, 1, self.res)
+            xg, yg = np.meshgrid(arr, arr)
+            self.pTgrid = self.pT(xg.flatten(), yg.flatten()).eval()
+
+        # Rotate the map and transform to polynomial
+        yT = tt.tile(y, [theta.shape[0], 1])
+        Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
+        A1Ry = ts.dot(self.A1, Ry)
+
+        # Apply the filter
+        if self.filter:
+            A1Ry = ts.dot(F, A1Ry)
+
+        # Dot the polynomial into the basis
+        return tt.reshape(tt.dot(self.pTgrid, A1Ry), [res, res, theta.shape[0]])
+    

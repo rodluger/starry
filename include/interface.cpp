@@ -23,6 +23,7 @@ namespace py = pybind11;
 // Multiprecision?
 #if STARRY_NDIGITS > 16
     using Scalar = Multi;
+    // TODO: Cast things as needed below.
 #else
     using Scalar = double;
 #endif
@@ -132,6 +133,30 @@ PYBIND11_MODULE(
         )
     {
         return ops.B.rTA1;
+    });
+
+    // Polynomial basis
+    Ops.def(
+        "pT", [](
+            starry::Ops<Scalar>& ops,
+            const RowVector<double>& x,
+            const RowVector<double>& y
+        )
+    {
+        ops.B.computePolyBasis(x, y);
+        return ops.B.poly_basis;
+    });
+
+    // Gradient of the polynomial basis
+    Ops.def(
+        "pT", [](
+            starry::Ops<Scalar>& ops,
+            const RowVector<double>& x,
+            const RowVector<double>& y,
+            const Matrix<double>& bpT
+        )
+    {
+        // TODO TODO TODO
     });
 
     // XY rotation operator (vectors)
