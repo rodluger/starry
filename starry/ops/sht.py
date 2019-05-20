@@ -4,7 +4,7 @@ import numpy as np
 from theano import gof
 import theano.tensor as tt
 
-__all__ = ["pT"]
+__all__ = ["pT", "pT_point"]
 
 
 class pT(tt.Op):
@@ -12,7 +12,6 @@ class pT(tt.Op):
     def __init__(self, func, N):
         self.func = func
         self.N = N
-        self._grad_op = pTGradient(self)
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
@@ -30,11 +29,35 @@ class pT(tt.Op):
     def perform(self, node, inputs, outputs):
         outputs[0][0] = self.func(*inputs)
 
+
+class pT_point(tt.Op):
+
+    def __init__(self, func, N):
+        self.func = func
+        self.N = N
+        self._grad_op = pT_pointGradient(self)
+
+    def make_node(self, *inputs):
+        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        outputs = [tt.TensorType(inputs[-1].dtype, (False,))()]
+        return gof.Apply(self, inputs, outputs)
+
+    def infer_shape(self, node, shapes):
+        return [(tt.as_tensor(self.N),)]
+
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return eval_points
+        return self.grad(inputs, eval_points)
+
+    def perform(self, node, inputs, outputs):
+        outputs[0][0] = self.func(*inputs)
+
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
 
 
-class pTGradient(tt.Op):
+class pT_pointGradient(tt.Op):
 
     def __init__(self, base_op):
         self.base_op = base_op

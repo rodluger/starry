@@ -1,9 +1,10 @@
 from .. import _c_ops
 from .integration import sT
-from .sht import pT
+from .sht import pT, pT_point
 from .rotation import dotRxy, dotRxyT, dotRz
 from .filter import F
 from ..Map.utils import RAxisAngle
+import theano
 import theano.tensor as tt
 import theano.sparse as ts
 import numpy as np
@@ -31,6 +32,7 @@ class Ops(object):
         self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
         self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))
         self.pT = pT(self._c_ops.pT, self._c_ops.N)
+        self.pT_point = pT_point(self._c_ops.pT, self._c_ops.N)
 
         # Change of basis matrices
         self.A = ts.as_sparse_variable(self._c_ops.A)

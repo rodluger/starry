@@ -135,7 +135,7 @@ PYBIND11_MODULE(
         return ops.B.rTA1;
     });
 
-    // Polynomial basis
+    // Polynomial basis at a vector of points
     Ops.def(
         "pT", [](
             starry::Ops<Scalar>& ops,
@@ -145,20 +145,34 @@ PYBIND11_MODULE(
         )
     {
         ops.B.computePolyBasis(x, y, z);
-        return ops.B.poly_basis;
+        return ops.B.pT;
     });
 
-    // Gradient of the polynomial basis
+    // Polynomial basis at a point
     Ops.def(
         "pT", [](
             starry::Ops<Scalar>& ops,
-            const RowVector<double>& x,
-            const RowVector<double>& y,
-            const RowVector<double>& z,
-            const Matrix<double>& bpT
+            const double& x,
+            const double& y,
+            const double& z
         )
     {
-        // TODO TODO TODO
+        ops.B.computePolyBasis(x, y, z);
+        return ops.B.pT_point;
+    });
+
+    // Gradient of the polynomial basis at a point
+    Ops.def(
+        "pT", [](
+            starry::Ops<Scalar>& ops,
+            const double& x,
+            const double& y,
+            const double& z,
+            const RowVector<double>& bpT
+        )
+    {
+        ops.B.computePolyBasis(x, y, z, bpT);
+        return py::make_tuple(ops.B.bx, ops.B.by, ops.B.bz);
     });
 
     // XY rotation operator (vectors)

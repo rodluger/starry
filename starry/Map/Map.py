@@ -515,6 +515,31 @@ class DopplerBase(object):
         # The RV signal is just the product        
         return Iv * invI
 
+    def intensity(self, **kwargs):
+        rv = kwargs.pop("rv", True)
+        if rv:
+            self._set_doppler_filter()
+        res = super(DopplerBase, self).intensity(**kwargs)
+        if rv:
+            self._unset_doppler_filter()
+        return res
+
+    def render(self, **kwargs):
+        rv = kwargs.pop("rv", True)
+        if rv:
+            self._set_doppler_filter()
+        res = super(DopplerBase, self).render(**kwargs)
+        if rv:
+            self._unset_doppler_filter()
+        return res
+
+    def show(self, **kwargs):
+        # Override the `projection` kwarg if we're
+        # plotting the radial velocity.
+        if kwargs.get("rv", True):
+            kwargs.pop("projection", None)
+        return super(DopplerBase, self).show(**kwargs)
+
 
 def Map(ydeg=0, udeg=0, doppler=False):
     """
