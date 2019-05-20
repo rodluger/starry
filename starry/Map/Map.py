@@ -15,7 +15,6 @@ class Map(object):
         """
 
         """
-
         # Doppler filter?
         self._doppler = doppler
         if self._doppler:
@@ -28,13 +27,13 @@ class Map(object):
 
         # Dimensions
         self.ydeg = ydeg
-        self.Ny = (self.ydeg + 1) ** 2 
+        self.Ny = (ydeg + 1) ** 2 
         self.udeg = udeg
-        self.Nu = self.udeg + 1
+        self.Nu = udeg + 1
         self.fdeg = fdeg
-        self.Nf = (self.fdeg + 1) ** 2
-        self.deg = self.ydeg + self.udeg + self.fdeg
-        self.N = (self.deg + 1) ** 2
+        self.Nf = (fdeg + 1) ** 2
+        self.deg = ydeg + udeg + fdeg
+        self.N = (ydeg + udeg + fdeg + 1) ** 2
 
         # Initialize
         self.reset()
@@ -43,7 +42,6 @@ class Map(object):
         """
 
         """
-
         if isinstance(idx, tuple) and len(idx) == 2:
             # User is accessing a Ylm index
             inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
@@ -59,40 +57,26 @@ class Map(object):
         """
 
         """
-
         if isinstance(idx, tuple) and len(idx) == 2:
             # User is accessing a Ylm index
             inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
-            self._y[inds] = val
-            self._check_y0()
+            if 0 in inds:
+                raise ValueError("The Y_{0,0} coefficient cannot be set.")
+            self._y = tt.set_subtensor(self._y[inds], val * tt.ones(len(inds)))
         elif isinstance(idx, (int, np.int, slice)):
             # User is accessing a limb darkening index
             inds = get_ul_inds(self.udeg, idx)
-            self._u[inds] = val
-            self._check_u0()
+            if 0 in inds:
+                raise ValueError("The u_0 coefficient cannot be set.")
+            self._u = tt.set_subtensor(self._u[inds], val * tt.ones(len(inds)))
         else:
             raise ValueError("Invalid map index.")
-
-    def _set_y0(self):
-        self._y[0] = 1.0
-
-    def _check_y0(self):
-        assert self._y[0] == 1.0, \
-            "The coefficient of the `Y_{0,0}` harmonic is fixed at unity."
-
-    def _set_u0(self):
-        self._u[0] = -1.0
-
-    def _check_u0(self):
-        assert self._u[0] == -1.0, \
-            "The limb darkening coefficient `u_0` cannot be set."
 
     @property
     def y(self):
         """
 
         """
-
         return self._y
 
     @property
@@ -100,70 +84,69 @@ class Map(object):
         """
 
         """
-
         return self._u
+
+    @property
+    def inc(self):
+        """
+
+        """
+        return self._inc
+
+    @inc.setter
+    def inc(self, value):
+        self._inc = to_tensor(value)
+
+    @property
+    def obl(self):
+        """
+
+        """
+        return self._obl
+    
+    @obl.setter
+    def obl(self, value):
+        self._obl = to_tensor(value)
 
     def reset(self):
         """
 
         """
+        y = np.zeros(self.Ny)
+        y[0] = 1.0
+        self._y = to_tensor(y)
 
-        self._y = np.zeros(self.Ny)
-        self._set_y0()
-        self._u = np.zeros(self.Nu)
-        self._set_u0()
-        self.inc = 90.0
-        self.obl = 0.0
+        u = np.zeros(self.Nu)
+        u[0] = -1.0
+        self._u = to_tensor(u)
+
+        self._inc = to_tensor(90.0)
+        self._obl = to_tensor(0.0)
 
     def X(self, **kwargs):
         """
         Compute and return the light curve design matrix.
 
         """
-
-        # Should we eval at the end?
-        if is_theano(*kwargs.values()):
-            evaluate = False
-        else:
-            evaluate = True
-
         # Orbital kwargs
         theta = kwargs.pop("theta", 0.0)
         xo = kwargs.pop("xo", 0.0)
         yo = kwargs.pop("yo", 0.0)
         zo = kwargs.pop("zo", 1.0)
         ro = kwargs.pop("ro", 0.0)
-        theta, xo, yo, zo = to_tensor(*vectorize(theta, xo, yo, zo))
-
-        # Other kwargs
-        inc = to_tensor(kwargs.pop("inc", self.inc))
-        obl = to_tensor(kwargs.pop("obl", self.obl))
+        theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
+        theta, xo, yo, zo, ro = to_tensor(theta, xo, yo, zo, ro)
 
         # Compute & return
-        X = self.ops.X(theta, xo, yo, zo, ro, inc, obl)
-        if evaluate:
-            return X.eval()
-        else:
-            return X
+        return self.ops.X(theta, xo, yo, zo, ro, self.inc, self.obl, self.u)
 
-    def flux(self, *args, **kwargs):
+    def flux(self, **kwargs):
         """
         Compute and return the light curve.
         
         """
+        # Compute the design matrix
+        X = self.X(**kwargs)
 
-        # Should we eval at the end?
-        if is_theano(*kwargs.values()):
-            evaluate = False
-        else:
-            evaluate = True
-
-        # Did the user provide map coefficients?
-        y = to_tensor(kwargs.pop("y", self.y))
-
-        # Compute & return
-        flux = tt.dot(self.X(*args, **kwargs), y)
-        if evaluate:
-            return flux.eval()
-        else:
-            return flux
+        # Dot it into the map to get the flux
+        return tt.dot(X, self.y)

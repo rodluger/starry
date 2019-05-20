@@ -49,7 +49,7 @@ class Ops(object):
         return res
 
 
-    def X(self, theta, xo, yo, zo, ro, inc, obl):
+    def X(self, theta, xo, yo, zo, ro, inc, obl, u):
         """
 
         """
@@ -64,6 +64,8 @@ class Ops(object):
         # Shapes
         rows = theta.shape[0]
         cols = self.rTA1.shape[1]
+
+        # TODO: Filter (u, f)
 
         # Rotation operator
         X_rot = tt.zeros((rows, cols))

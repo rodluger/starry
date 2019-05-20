@@ -334,6 +334,61 @@ void computeA(
 }
 
 /**
+Compute the `r^T` phase curve solution vector.
+
+*/
+template <typename T>
+void computerT (
+    int lmax, 
+    RowVector<T>& rT
+) {
+    T amp0, amp, lfac1, lfac2;
+    int mu, nu;
+    rT.resize((lmax + 1) * (lmax + 1));
+    rT.setZero();
+    amp0 = pi<T>();
+    lfac1 = 1.0;
+    lfac2 = 2.0 / 3.0;
+    for (int l = 0; l < lmax + 1; l += 4) {
+        amp = amp0;
+        for (int m = 0; m < l + 1; m += 4) {
+            mu = l - m;
+            nu = l + m;
+            rT(l * l + l + m) = amp * lfac1;
+            rT(l * l + l - m) = amp * lfac1;
+            if (l < lmax) {
+                rT((l + 1) * (l + 1) + l + m + 1) = amp * lfac2;
+                rT((l + 1) * (l + 1) + l - m + 1) = amp * lfac2;
+            }
+            amp *= (nu + 2.0) / (mu - 2.0);
+        }
+        lfac1 /= (l / 2 + 2) * (l / 2 + 3);
+        lfac2 /= (l / 2 + 2.5) * (l / 2 + 3.5);
+        amp0 *= 0.0625 * (l + 2) * (l + 2);
+    }
+    amp0 = 0.5 * pi<T>();
+    lfac1 = 0.5;
+    lfac2 = 4.0 / 15.0;
+    for (int l = 2; l < lmax + 1; l += 4) {
+        amp = amp0;
+        for (int m = 2; m < l + 1; m += 4) {
+            mu = l - m;
+            nu = l + m;
+            rT(l * l + l + m) = amp * lfac1;
+            rT(l * l + l - m) = amp * lfac1;
+            if (l < lmax) {
+                rT((l + 1) * (l + 1) + l + m + 1) = amp * lfac2;
+                rT((l + 1) * (l + 1) + l - m + 1) = amp * lfac2;
+            }
+            amp *= (nu + 2.0) / (mu - 2.0);
+        }
+        lfac1 /= (l / 2 + 2) * (l / 2 + 3);
+        lfac2 /= (l / 2 + 2.5) * (l / 2 + 3.5);
+        amp0 *= 0.0625 * l * (l + 4);
+    }
+}
+
+/**
 Compute the change of basis matrices from limb darkening coefficients
 to polynomial and Green's polynomial coefficients.
 
@@ -419,61 +474,6 @@ void computeU(
     U1 = A1 * XU0;
 }
 
-/**
-Compute the `r^T` phase curve solution vector.
-
-*/
-template <typename T>
-void computerT (
-    int lmax, 
-    RowVector<T>& rT
-) {
-    T amp0, amp, lfac1, lfac2;
-    int mu, nu;
-    rT.resize((lmax + 1) * (lmax + 1));
-    rT.setZero();
-    amp0 = pi<T>();
-    lfac1 = 1.0;
-    lfac2 = 2.0 / 3.0;
-    for (int l = 0; l < lmax + 1; l += 4) {
-        amp = amp0;
-        for (int m = 0; m < l + 1; m += 4) {
-            mu = l - m;
-            nu = l + m;
-            rT(l * l + l + m) = amp * lfac1;
-            rT(l * l + l - m) = amp * lfac1;
-            if (l < lmax) {
-                rT((l + 1) * (l + 1) + l + m + 1) = amp * lfac2;
-                rT((l + 1) * (l + 1) + l - m + 1) = amp * lfac2;
-            }
-            amp *= (nu + 2.0) / (mu - 2.0);
-        }
-        lfac1 /= (l / 2 + 2) * (l / 2 + 3);
-        lfac2 /= (l / 2 + 2.5) * (l / 2 + 3.5);
-        amp0 *= 0.0625 * (l + 2) * (l + 2);
-    }
-    amp0 = 0.5 * pi<T>();
-    lfac1 = 0.5;
-    lfac2 = 4.0 / 15.0;
-    for (int l = 2; l < lmax + 1; l += 4) {
-        amp = amp0;
-        for (int m = 2; m < l + 1; m += 4) {
-            mu = l - m;
-            nu = l + m;
-            rT(l * l + l + m) = amp * lfac1;
-            rT(l * l + l - m) = amp * lfac1;
-            if (l < lmax) {
-                rT((l + 1) * (l + 1) + l + m + 1) = amp * lfac2;
-                rT((l + 1) * (l + 1) + l - m + 1) = amp * lfac2;
-            }
-            amp *= (nu + 2.0) / (mu - 2.0);
-        }
-        lfac1 /= (l / 2 + 2) * (l / 2 + 3);
-        lfac2 /= (l / 2 + 2.5) * (l / 2 + 3.5);
-        amp0 *= 0.0625 * l * (l + 4);
-    }
-}
-
 
 // --
 
@@ -493,11 +493,13 @@ public:
     const int deg;
     const double norm;                                                         /**< Map normalization constant */
     Eigen::SparseMatrix<T> A1;                                                 /**< The polynomial change of basis matrix */
-    Eigen::SparseMatrix<T> A1Inv;                                              /**< The inverse of the polynomial change of basis matrix */
+    Eigen::SparseMatrix<T> A1Inv_;                                             /**< The *augmented* inverse of the polynomial change of basis matrix */
     Eigen::SparseMatrix<T> A2;                                                 /**< The Green's change of basis matrix */
     Eigen::SparseMatrix<T> A;                                                  /**< The full change of basis matrix */
+    Eigen::SparseMatrix<T> A_;                                                 /**< The *augmented* full change of basis matrix */
     RowVector<T> rT;                                                           /**< The rotation solution vector */
     RowVector<T> rTA1;                                                         /**< The rotation vector in Ylm space */
+    RowVector<T> rT_;                                                          /**< The *augmented* rotation solution vector */
     Eigen::SparseMatrix<T> U1;                                                 /**< The limb darkening to polynomial change of basis matrix */
 
     // Constructor: compute the matrices
@@ -513,16 +515,22 @@ public:
         deg(ydeg + udeg + fdeg),
         norm(norm)
     {
-        // Compute the matrices
-        computeA1(deg, A1, norm);
-        computeA1Inv(deg, A1, A1Inv);
-        computeA(deg, A1, A2, A);
-        computerT(deg, rT);
-        rTA1 = rT * A1;
-        computeU(deg, A1, A, U1, norm);
+        // Compute the augmented matrices
+        Eigen::SparseMatrix<T> A1_, A2_, U1_;
+        computeA1(deg, A1_, norm);
+        computeA1Inv(deg, A1_, A1Inv_);
+        computeA(deg, A1_, A2_, A_);
+        computerT(deg, rT_);
+        computeU(deg, A1_, A_, U1_, norm);
 
-        // Shorten U1, as we never need the full matrix
-        U1 = U1.block(0, 0, (udeg + 1) * (udeg + 1), udeg + 1);
+        // Compute the contracted versions
+        int Ny = (ydeg + 1) * (ydeg + 1);
+        A1 = A1_.block(0, Ny, 0, Ny);
+        A2 = A2_.block(0, Ny, 0, Ny);
+        A = A_.block(0, Ny, 0, Ny);
+        rT = rT_.segment(0, Ny);
+        rTA1 = rT * A1;
+        U1 = U1_.block(0, 0, (udeg + 1) * (udeg + 1), udeg + 1);
     }
 
 };

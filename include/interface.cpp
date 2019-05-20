@@ -98,13 +98,13 @@ PYBIND11_MODULE(
         return ops.B.A1;
     });
 
-    // Change of basis matrix: poly to Ylm
+    // Augmented change of basis matrix: poly to Ylm
     Ops.def_property_readonly(
-        "A1Inv", [](
+        "A1Inv_", [](
             starry::Ops<Scalar>& ops
         )
     {
-        return ops.B.A1Inv;
+        return ops.B.A1Inv_;
     });
 
     // Change of basis matrix: Ylm to greens
@@ -116,6 +116,15 @@ PYBIND11_MODULE(
         return ops.B.A;
     });
 
+    // Augmented change of basis matrix: Ylm to greens
+    Ops.def_property_readonly(
+        "A_", [](
+            starry::Ops<Scalar>& ops
+        )
+    {
+        return ops.B.A_;
+    });
+
     // Rotation solution in emitted light
     Ops.def_property_readonly(
         "rT", [](
@@ -123,6 +132,15 @@ PYBIND11_MODULE(
         )
     {
         return ops.B.rT;
+    });
+
+    // Augmented rotation solution in emitted light
+    Ops.def_property_readonly(
+        "rT", [](
+            starry::Ops<Scalar>& ops
+        )
+    {
+        return ops.B.rT_;
     });
 
     // Rotation solution in emitted light dotted into Ylm space

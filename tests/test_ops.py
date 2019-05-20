@@ -58,11 +58,11 @@ def test_dotRxyT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_F(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
-    map = starry.Map(ydeg=2, udeg=2, fdeg=2)
+    map = starry.Map(ydeg=2, udeg=2, doppler=True)
     np.random.seed(11)
     u = np.random.randn(3)
     u[0] = -1
-    f = np.random.randn(9)
+    f = np.random.randn(16)
     verify_grad(map.ops.F, (u, f), abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
 
@@ -76,19 +76,20 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     inc = 85.0
     obl = 30.0
     y = np.ones(9)
+    u = [-1.0]
 
     func = lambda *args: tt.dot(map.ops.X(*args), y)
 
     # Just rotation
-    verify_grad(func, (theta, xo, yo, zo, 0.0, inc, obl), 
+    verify_grad(func, (theta, xo, yo, zo, 0.0, inc, obl, u), 
                 abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
     # Just occultation
-    verify_grad(func, (theta, xo / 3, yo, zo, ro, inc, obl), 
+    verify_grad(func, (theta, xo / 3, yo, zo, ro, inc, obl, u), 
                 abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
     # Rotation + occultation
-    verify_grad(func, (theta, xo, yo, zo, ro, inc, obl), 
+    verify_grad(func, (theta, xo, yo, zo, ro, inc, obl, u), 
                 abs_tol=abs_tol, rel_tol=rel_tol, eps=eps)
 
 

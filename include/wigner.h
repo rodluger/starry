@@ -460,6 +460,8 @@ public:
         // Check the cache
         if ((npts == size_t(theta_Rz_cache.size())) && (theta == theta_Rz_cache)) {
             return;
+        } else if (npts == 0) {
+            return;
         }
         theta_Rz_cache = theta;
 
@@ -519,6 +521,7 @@ public:
 
         // Init result
         dotRxy_result.resize(npts, Ny);
+        if (unlikely(npts == 0)) return;
 
         // Dot them in
         for (int l = 0; l < ydeg + 1; ++l) {
@@ -549,7 +552,8 @@ public:
         // Init grads
         dotRxy_binc = 0.0;
         dotRxy_bobl = 0.0;
-        dotRxy_bM.setZero(M.rows(), N);
+        dotRxy_bM.setZero(npts, N);
+        if (unlikely(npts == 0)) return;
 
         // Dot them in
         // \todo: There must be a more efficient way of doing this.
@@ -594,6 +598,7 @@ public:
 
         // Init result
         dotRxyT_result.resize(npts, Ny);
+        if (unlikely(npts == 0)) return;
 
         // Dot them in
         for (int l = 0; l < ydeg + 1; ++l) {
@@ -624,7 +629,8 @@ public:
         // Init grads
         dotRxyT_binc = 0.0;
         dotRxyT_bobl = 0.0;
-        dotRxyT_bM.setZero(M.rows(), N);
+        dotRxyT_bM.setZero(npts, N);
+        if (unlikely(npts == 0)) return;
 
         // Dot them in
         // \todo: There must be a more efficient way of doing this.
@@ -668,6 +674,7 @@ public:
 
         // Init result
         dotRz_result.resize(npts, N);
+        if (unlikely(npts == 0)) return;
 
         // Dot them in
         for (int l = 0; l < deg + 1; ++l) {
@@ -706,6 +713,7 @@ public:
         // Init grads
         dotRz_btheta.setZero(npts);
         dotRz_bM.setZero(M.rows(), N);
+        if (unlikely((npts == 0) || (M.rows() == 0))) return;
 
         // Dot the sines and cosines in
         for (int l = 0; l < deg + 1; ++l) {
