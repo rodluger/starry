@@ -141,12 +141,14 @@ class Map(object):
         theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
         theta, xo, yo, zo, ro = to_tensor(theta, xo, yo, zo, ro)
 
-        # To radians
+        # Convert angles radians
+        inc = self._inc * np.pi / 180.
+        obl = self._obl * np.pi / 180.
         theta *= np.pi / 180.
 
         # Compute & return
         return self.ops.X(theta, xo, yo, zo, ro, 
-                          self._inc, self._obl, self._u, self._f)
+                          inc, obl, self._u, self._f)
 
     def flux(self, **kwargs):
         """

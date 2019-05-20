@@ -27,8 +27,8 @@ def test_dotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 def test_dotRxy(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     map = starry.Map(ydeg=2)
-    inc = 85.0
-    obl = 30.0
+    inc = 85.0 * np.pi / 180.
+    obl = 30.0 * np.pi / 180.
 
     # Matrix M
     M = np.ones((7, 9))
@@ -43,8 +43,8 @@ def test_dotRxy(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 def test_dotRxyT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     map = starry.Map(ydeg=2)
-    inc = 85.0
-    obl = 30.0
+    inc = 85.0 * np.pi / 180.
+    obl = 30.0 * np.pi / 180.
 
     # Matrix M
     M = np.ones((7, 9))
@@ -73,8 +73,8 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     yo = np.ones_like(xo) * 0.3
     zo = 1.0
     ro = 0.1
-    inc = 85.0
-    obl = 30.0
+    inc = 85.0 * np.pi / 180.
+    obl = 30.0 * np.pi / 180.
     y = np.ones(9)
     u = [-1.0]
     f = [np.pi]

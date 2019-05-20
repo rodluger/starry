@@ -58,7 +58,6 @@ class Ops(object):
         """
 
         """
-
         # Compute the occultation mask
         b = tt.sqrt(xo ** 2 + yo ** 2)
         b_rot = (tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0))
@@ -66,7 +65,7 @@ class Ops(object):
         i_rot = tt.arange(b.size)[b_rot]
         i_occ = tt.arange(b.size)[b_occ]
 
-        # Shapes
+        # Determine shapes
         rows = theta.shape[0]
         cols = self.rTA1.shape[1]
 
