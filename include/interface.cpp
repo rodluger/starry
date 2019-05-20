@@ -140,10 +140,11 @@ PYBIND11_MODULE(
         "pT", [](
             starry::Ops<Scalar>& ops,
             const RowVector<double>& x,
-            const RowVector<double>& y
+            const RowVector<double>& y,
+            const RowVector<double>& z
         )
     {
-        ops.B.computePolyBasis(x, y);
+        ops.B.computePolyBasis(x, y, z);
         return ops.B.poly_basis;
     });
 
@@ -153,6 +154,7 @@ PYBIND11_MODULE(
             starry::Ops<Scalar>& ops,
             const RowVector<double>& x,
             const RowVector<double>& y,
+            const RowVector<double>& z,
             const Matrix<double>& bpT
         )
     {

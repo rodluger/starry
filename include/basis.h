@@ -549,10 +549,10 @@ public:
     Compute the polynomial basis at a vector of points.
 
     */ 
-    template <typename T1, typename T2> 
     inline void computePolyBasis ( 
-        const RowVector<T1>& x,
-        const RowVector<T2>& y
+        const RowVector<T>& x,
+        const RowVector<T>& y,
+        const RowVector<T>& z
     ) {
         // Dimensions
         size_t npts = x.cols();
@@ -570,10 +570,6 @@ public:
 
         // Optimized polynomial basis computation
         // A little opaque, sorry...
-        RowVector<T> x2 = x.cwiseProduct(x);
-        RowVector<T> y2 = y.cwiseProduct(y);
-        RowVector<T> z2 = RowVector<T>::Ones(npts) - x2 - y2;
-        RowVector<T> z = z2.cwiseSqrt();
         Matrix<T> xarr(npts, N), yarr(npts, N);
         RowVector<T> xterm(npts), yterm(npts);
         xterm.setOnes();

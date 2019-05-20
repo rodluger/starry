@@ -3,6 +3,7 @@ from .integration import sT
 from .sht import pT
 from .rotation import dotRxy, dotRxyT, dotRz
 from .filter import F
+from ..Map.utils import RAxisAngle
 import theano.tensor as tt
 import theano.sparse as ts
 import numpy as np
@@ -45,8 +46,9 @@ class Ops(object):
         self.F = F(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
 
         # Map rendering
-        self.res = 0
-    
+        self.rect_res = 0
+        self.ortho_res = 0
+
     def dotR(self, M, inc, obl, theta):
         """
 
@@ -105,7 +107,7 @@ class Ops(object):
         return X_rot + X_occ
 
 
-    def intensity(self, theta, xpt, ypt, inc, obl, y, u, f):
+    def intensity(self, theta, xpt, ypt, zpt, inc, obl, y, u, f):
         """
 
         """
@@ -114,7 +116,7 @@ class Ops(object):
             F = self.F(u, f)
 
         # Compute the polynomial basis
-        pT = self.pT(xpt, ypt)
+        pT = self.pT(xpt, ypt, zpt)
 
         # Rotate the map and transform to polynomial
         yT = tt.tile(y, [theta.size, 1])
@@ -129,7 +131,7 @@ class Ops(object):
         return tt.reshape(tt.dot(pT, A1Ry), [xpt.shape[0], theta.shape[0]])
     
 
-    def render(self, res, theta, inc, obl, y, u, f):
+    def render(self, res, projection, theta, inc, obl, y, u, f):
         """
 
         """
@@ -138,11 +140,23 @@ class Ops(object):
             F = self.F(u, f)
 
         # Compute the polynomial basis
-        if res != self.res:
-            self.res = res
-            arr = np.linspace(-1, 1, self.res)
-            xg, yg = np.meshgrid(arr, arr)
-            self.pTgrid = self.pT(xg.flatten(), yg.flatten()).eval()
+        if (projection == "rect") and (res != self.rect_res):
+                self.rect_res = res
+                lon = np.linspace(-np.pi, np.pi, 2 * res) - np.pi / 2
+                lat = np.linspace(-np.pi / 2, np.pi / 2, res)
+                lon, lat = np.meshgrid(lon, lat)
+                xg = (np.cos(lat) * np.cos(lon)).reshape(1, -1)
+                yg = (np.cos(lat) * np.sin(lon)).reshape(1, -1)
+                zg = np.sin(lat).reshape(1, -1)
+                R = RAxisAngle([1, 0, 0], -90)
+                xg, yg, zg = np.dot(R, np.vstack((xg, yg, zg)))
+                self.rect_pT = self.pT(xg.flatten(), yg.flatten(), zg.flatten()).eval()
+        elif (projection == "ortho") and (res != self.ortho_res):
+                self.ortho_res = res
+                arr = np.linspace(-1, 1, self.ortho_res)
+                xg, yg = np.meshgrid(arr, arr)
+                zg = np.sqrt(1 - xg ** 2 - yg ** 2)
+                self.ortho_pT = self.pT(xg.flatten(), yg.flatten(), zg.flatten()).eval()
 
         # Rotate the map and transform to polynomial
         yT = tt.tile(y, [theta.shape[0], 1])
@@ -154,5 +168,8 @@ class Ops(object):
             A1Ry = ts.dot(F, A1Ry)
 
         # Dot the polynomial into the basis
-        return tt.reshape(tt.dot(self.pTgrid, A1Ry), [res, res, theta.shape[0]])
+        if projection == "rect":
+            return tt.reshape(tt.dot(self.rect_pT, A1Ry), [res, 2 * res, theta.shape[0]])
+        else:
+            return tt.reshape(tt.dot(self.ortho_pT, A1Ry), [res, res, theta.shape[0]])
     

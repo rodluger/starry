@@ -1,6 +1,7 @@
 from ..ops import Ops, vectorize, to_tensor, is_theano
 from .indices import get_ylm_inds, get_ul_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
+from .sht import image2map, healpix2map, array2map
 import numpy as np
 import theano
 import theano.tensor as tt
@@ -246,6 +247,7 @@ class YlmBase(object):
         
         """
         res = kwargs.pop("res", 300)
+        projection = kwargs.pop("projection", "ortho")
         theta = kwargs.pop("theta", 0.0)
         theta = tt.reshape(vectorize(theta), [-1])
 
@@ -255,11 +257,12 @@ class YlmBase(object):
         theta *= radian
 
         # Compute & return
-        return self.ops.render(res, theta, inc, obl, 
+        return self.ops.render(res, projection, theta, inc, obl, 
                                self._y, self._u, self._f)
 
     def show(self, **kwargs):
         """
+        Display an image of the map, with optional animation.
 
         """
         # Get kwargs
@@ -358,6 +361,47 @@ class YlmBase(object):
                     plt.close()
         else:
             plt.show()
+
+    def load(self, image, healpix=False, **kwargs):
+        """
+        Load an image, array, or ``healpix`` map. 
+        
+        This routine uses various routines in ``healpix`` to compute the spherical
+        harmonic expansion of the input image and sets the map's :py:attr:`y`
+        coefficients accordingly.
+
+        Args:
+            image: A path to an image file, a two-dimensional ``numpy`` 
+                array, or a ``healpix`` map array (if ``healpix==True``).
+        
+        Keyword arguments:
+            healpix (bool): Treat ``image`` as a ``healpix`` array? 
+                Default ``False``.
+            sampling_factor (int): Oversampling factor when computing the 
+                ``healpix`` representation of an input image or array. 
+                Default 8. Increasing this number may improve the fidelity of 
+                the expanded map, but the calculation will take longer.
+            sigma (float): If not ``None``, apply gaussian smoothing 
+                with standard deviation ``sigma`` to smooth over 
+                spurious ringing features. Smoothing is performed with 
+                the ``healpix.sphtfunc.smoothalm`` method. 
+                Default ``None``.
+        """
+        # Is this a file name?
+        if type(image) is str:
+            y = image2map(image, lmax=self.ydeg, **kwargs)
+        # or is it an array?
+        elif (type(image) is np.ndarray):
+            if healpix:
+                y = healpix2map(image, lmax=self.ydeg, **kwargs)
+            else:
+                y = array2map(image, lmax=self.ydeg, **kwargs)
+        else:
+            raise ValueError("Invalid `image` value.")
+        
+        # Ingest the coefficients
+        self._y = to_tensor(y)
+
 
 class DopplerBase(object):
     """

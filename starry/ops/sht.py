@@ -48,6 +48,7 @@ class pTGradient(tt.Op):
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
-        bx, by = self.base_op.func(*inputs)
+        bx, by, bz = self.base_op.func(*inputs)
         outputs[0][0] = np.reshape(bx, np.shape(inputs[0]))
         outputs[1][0] = np.reshape(by, np.shape(inputs[1]))
+        outputs[2][0] = np.reshape(bz, np.shape(inputs[2]))
