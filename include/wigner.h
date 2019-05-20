@@ -552,7 +552,7 @@ public:
         // Init grads
         dotRxy_binc = 0.0;
         dotRxy_bobl = 0.0;
-        dotRxy_bM.setZero(npts, N);
+        dotRxy_bM.setZero(npts, Ny);
         if (unlikely(npts == 0)) return;
 
         // Dot them in
@@ -668,16 +668,18 @@ public:
         
         // Shape checks
         size_t npts = theta.size();
+        size_t Nr = M.cols();
+        int degr = sqrt(Nr) - 1;
 
         // Compute the sin & cos matrices
         computeRz(theta);
 
         // Init result
-        dotRz_result.resize(npts, N);
+        dotRz_result.resize(npts, Nr);
         if (unlikely(npts == 0)) return;
 
         // Dot them in
-        for (int l = 0; l < deg + 1; ++l) {
+        for (int l = 0; l < degr + 1; ++l) {
             for (int j = 0; j < 2 * l + 1; ++j) {
                 if (M_IS_ROW_VECTOR) {
                     dotRz_result.col(l * l + j) = 
@@ -706,17 +708,19 @@ public:
         
         // Shape checks
         size_t npts = theta.size();
+        size_t Nr = M.cols();
+        int degr = sqrt(Nr) - 1;
 
         // Compute the sin & cos matrices
         computeRz(theta);
 
         // Init grads
         dotRz_btheta.setZero(npts);
-        dotRz_bM.setZero(M.rows(), N);
+        dotRz_bM.setZero(M.rows(), Nr);
         if (unlikely((npts == 0) || (M.rows() == 0))) return;
 
         // Dot the sines and cosines in
-        for (int l = 0; l < deg + 1; ++l) {
+        for (int l = 0; l < degr + 1; ++l) {
             for (int j = 0; j < 2 * l + 1; ++j) {
 
                 // Pre-compute these guys

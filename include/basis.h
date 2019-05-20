@@ -526,12 +526,12 @@ public:
         // Resize to the shapes actually used
         // in the code
         int Ny = (ydeg + 1) * (ydeg + 1);
-        A1 = A1_.block(0, Ny, 0, Ny);
+        A1 = A1_.block(0, 0, Ny, Ny);
         A1Inv = A1Inv_;
-        A2 = A2_.block(0, Ny, 0, Ny);
+        A2 = A2_.block(0, 0, Ny, Ny);
         A = A_;
         rT = rT_;
-        rTA1 = rTA1_.block(0, Ny, 0, Ny);
+        rTA1 = rTA1_.segment(0, Ny);
         U1 = U1_.block(0, 0, (udeg + 1) * (udeg + 1), udeg + 1);
 
     }
