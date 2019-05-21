@@ -28,7 +28,7 @@ macros = dict(
 # Override with user values
 for key, value in macros.items():
     macros[key] = os.getenv(key, value)
-    
+
 # Compiler optimization flag -O
 optimize = int(os.getenv('STARRY_O', 2))
 assert optimize in [0, 1, 2, 3], "Invalid optimization flag."
@@ -66,14 +66,14 @@ def get_ext():
     include_dirs = [
         get_pybind_include(),
         get_pybind_include(user=True),
-        "include",
+        "starry/include",
         "lib/eigen_3.3.5"
     ]
     if macros["STARRY_NDIGITS"] > 16:
         include_dirs += ["lib/boost_1_66_0"]
     return Extension(
         'starry._c_ops',
-        ['include/interface.cpp'],
+        ['starry/include/interface.cpp'],
         include_dirs=include_dirs,
         language='c++',
         define_macros=[(key, value) for key, value in macros.items()]
@@ -160,7 +160,7 @@ setup(
     license='GPL',
     packages=['starry'],
     ext_modules=ext_modules,
-    install_requires=['pybind11>=2.2', 
+    install_requires=['pybind11>=2.2',
                       'theano>=1.0.4',
                       'pillow',
                       'ipython'],
