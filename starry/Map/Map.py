@@ -1,4 +1,4 @@
-from ..ops import Ops, vectorize, to_tensor, is_theano, RAxisAngle
+from ..ops import Ops, vectorize, to_tensor, is_theano, VectorRAxisAngle, cross
 from .indices import get_ylm_inds, get_ul_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
 radian = np.pi / 180.0
+degree = 1.0 / radian
 
 
 __all__ = ["Map"]
@@ -132,6 +133,39 @@ class YlmBase(object):
     def obl(self, value):
         self._obl = to_tensor(value)
 
+    @property
+    def axis(self):
+        """
+
+        """
+        axis = tt.zeros(3)
+        sino = tt.sin(self._obl * radian)
+        coso = tt.cos(self._obl * radian)
+        sini = tt.sin(self._inc * radian)
+        cosi = tt.cos(self._inc * radian)
+        axis = tt.set_subtensor(axis[0], sino * sini)
+        axis = tt.set_subtensor(axis[1], coso * sini)
+        axis = tt.set_subtensor(axis[2], cosi)
+        return axis
+
+    @axis.setter
+    def axis(self, value):
+        """
+
+        """
+        value = to_tensor(value)
+        value /= value.norm(2)
+        obl = tt.arctan2(value[0], value[1])
+        sino = tt.sin(obl)
+        coso = tt.cos(obl)
+        inc = tt.switch(
+            tt.lt(tt.abs_(sino), 1e-10),
+            tt.arctan2(value[1] / coso, value[2]),
+            tt.arctan2(value[0] / sino, value[2])
+        )
+        self._obl = obl * degree
+        self._inc = inc * degree
+
     def __getitem__(self, idx):
         """
 
@@ -239,9 +273,10 @@ class YlmBase(object):
             lat, lon = vectorize(*to_tensor(lat, lon))
 
             # TODO: inclination and obliquity must matter!
+            # TODO: check this rotation
 
-            R1 = RAxisAngle([1.0, 0.0, 0.0], -lat)
-            R2 = RAxisAngle([0.0, 1.0, 0.0], lon)
+            R1 = VectorRAxisAngle([1.0, 0.0, 0.0], -lat)
+            R2 = VectorRAxisAngle([0.0, 1.0, 0.0], lon)
             R = tt.batched_dot(R2, R1)
             xyz = tt.dot(R, [0.0, 0.0, 1.0])
             x = xyz[:, 0]
@@ -412,6 +447,66 @@ class YlmBase(object):
         
         # Ingest the coefficients
         self._y = to_tensor(y)
+
+    def rotate(self, theta, axis=None):
+        """
+
+        """
+        if axis is None:
+            inc = self._inc * radian
+            obl = self._obl * radian
+        else:
+            axis = to_tensor(axis)
+            axis /= axis.norm(2)
+            obl = tt.arctan2(axis[0], axis[1])
+            sino = tt.sin(obl)
+            coso = tt.cos(obl)
+            inc = tt.switch(
+                tt.lt(tt.abs_(sino), 1e-10),
+                tt.arctan2(axis[1] / coso, axis[2]),
+                tt.arctan2(axis[0] / sino, axis[2])
+            )
+        self._y = tt.reshape(self.ops.dotR(self._y.reshape([1, -1]), 
+            inc, obl, tt.reshape(-theta * radian, [1])), [-1])
+
+    def align(self, source=None, dest=None):
+        """
+        Rotate the map to align the ``source`` point/axis with the
+        ``dest`` point/axis.
+
+        The standard way of rotating maps in ``starry`` is to
+        provide the axis and angle of rotation, but this isn't always
+        convenient. In some cases, it is easier to specify a source
+        point/axis and a destination point/axis, and rotate the map such that the
+        source aligns with the destination. This is particularly useful for
+        changing map projections. For instance, to view the map pole-on,
+
+        .. code-block:: python
+
+            map.align(source=map.axis, dest=[0, 0, 1])
+
+        This rotates the map axis to align with the z-axis, which points
+        toward the observer.
+
+        Args:
+            source: A unit vector describing the source position. 
+                This point will be rotated onto ``dest``. Default 
+                is the current map axis.
+            dest: A unit vector describing the destination position. 
+                The ``source`` point will be rotated onto this point. Default 
+                is the current map axis.
+
+        """
+        if source is None:
+            source = self.axis
+        if dest is None:
+            dest = self.axis
+        source = to_tensor(source)
+        source /= source.norm(2)
+        dest = to_tensor(dest)
+        dest /= dest.norm(2)
+        self.rotate(axis=cross(source, dest), 
+                    theta=tt.arccos(tt.dot(source, dest)) * degree)
 
 
 class DopplerBase(object):

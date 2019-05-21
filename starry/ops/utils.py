@@ -8,7 +8,9 @@ import numpy as np
 __all__ = ["is_theano",
            "to_tensor",
            "vectorize",
-           "RAxisAngle"]
+           "cross",
+           "RAxisAngle",
+           "VectorRAxisAngle"]
 
 
 def is_theano(*objs):
@@ -50,29 +52,45 @@ def vectorize(*args):
     return args
 
 
+def cross(x, y):
+    """
+    Cross product of two 3-vectors.
+
+    Based on ``https://github.com/Theano/Theano/pull/3008``
+    """
+    eijk = np.zeros((3, 3, 3))
+    eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
+    eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
+    result = tt.as_tensor_variable(
+        tt.dot(tt.dot(eijk, y), x)
+    )
+    return result
+
+
 def RAxisAngle(axis=[0, 1, 0], theta=0):
     """
-    TODO: Need to squeeze this for scalar theta. But how?
 
     """
-    theta = theta * tt.ones(1)
     cost = tt.cos(theta * np.pi / 180.)
     sint = tt.sin(theta * np.pi / 180.)
 
-    def step(cost, sint, axis):
-        return tt.reshape(tt.as_tensor_variable([
-            cost + axis[0] * axis[0] * (1 - cost),
-            axis[0] * axis[1] * (1 - cost) - axis[2] * sint,
-            axis[0] * axis[2] * (1 - cost) + axis[1] * sint,
-            axis[1] * axis[0] * (1 - cost) + axis[2] * sint,
-            cost + axis[1] * axis[1] * (1 - cost),
-            axis[1] * axis[2] * (1 - cost) - axis[0] * sint,
-            axis[2] * axis[0] * (1 - cost) - axis[1] * sint,
-            axis[2] * axis[1] * (1 - cost) + axis[0] * sint,
-            cost + axis[2] * axis[2] * (1 - cost)
-        ]), [3, 3])
+    return tt.reshape(tt.as_tensor_variable([
+        cost + axis[0] * axis[0] * (1 - cost),
+        axis[0] * axis[1] * (1 - cost) - axis[2] * sint,
+        axis[0] * axis[2] * (1 - cost) + axis[1] * sint,
+        axis[1] * axis[0] * (1 - cost) + axis[2] * sint,
+        cost + axis[1] * axis[1] * (1 - cost),
+        axis[1] * axis[2] * (1 - cost) - axis[0] * sint,
+        axis[2] * axis[0] * (1 - cost) - axis[1] * sint,
+        axis[2] * axis[1] * (1 - cost) + axis[0] * sint,
+        cost + axis[2] * axis[2] * (1 - cost)
+    ]), [3, 3])
 
-    R, _ = theano.scan(fn=step, sequences=[cost, sint], non_sequences=[axis])
+
+def VectorRAxisAngle(axis=[0, 1, 0], theta=0):
+    """
+
+    """
+    fn = lambda theta, axis: RAxisAngle(axis=axis, theta=theta)
+    R, _ = theano.scan(fn=fn, sequences=[theta], non_sequences=[axis])
     return R
-
-    

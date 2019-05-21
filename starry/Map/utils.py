@@ -6,6 +6,26 @@ __all__ = ["get_ortho_latitude_lines",
            "get_ortho_longitude_lines"]
 
 
+def RAxisAngle(axis=[0, 1, 0], theta=0):
+    """
+
+    """
+    cost = np.cos(theta * np.pi / 180.)
+    sint = np.sin(theta * np.pi / 180.)
+
+    return np.reshape([
+        cost + axis[0] * axis[0] * (1 - cost),
+        axis[0] * axis[1] * (1 - cost) - axis[2] * sint,
+        axis[0] * axis[2] * (1 - cost) + axis[1] * sint,
+        axis[1] * axis[0] * (1 - cost) + axis[2] * sint,
+        cost + axis[1] * axis[1] * (1 - cost),
+        axis[1] * axis[2] * (1 - cost) - axis[0] * sint,
+        axis[2] * axis[0] * (1 - cost) - axis[1] * sint,
+        axis[2] * axis[1] * (1 - cost) + axis[0] * sint,
+        cost + axis[2] * axis[2] * (1 - cost)
+    ], [3, 3])
+
+
 def get_ortho_latitude_lines(inc=90, obl=0, nlines=5, npts=1000):
     """
 

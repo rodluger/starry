@@ -163,7 +163,6 @@ class Ops(object):
     
     def render(self, res, projection, theta, inc, obl, y, u, f):
         """
-        TODO: Need to rotate map to equator-on for rect projection!!!!
 
         """
         # Compute filter operator
@@ -173,39 +172,50 @@ class Ops(object):
         # Compute the polynomial basis
         if (projection == "rect") and (res != self.rect_res):
             self.rect_res = res
+
+            # Compute a lat/lon grid in Cartesian coords
             lon = np.linspace(-np.pi, np.pi, 2 * res) - np.pi / 2
             lat = np.linspace(-np.pi / 2, np.pi / 2, res)
             lon, lat = np.meshgrid(lon, lat)
             xg = (np.cos(lat) * np.cos(lon)).reshape(1, -1)
             yg = (np.cos(lat) * np.sin(lon)).reshape(1, -1)
             zg = np.sin(lat).reshape(1, -1)
-            R = RAxisAngle([1, 0, 0], -90)[0] # TODO: Squeeze!!!
+            R = RAxisAngle([1, 0, 0], -90)
             xyz = tt.dot(R, tt.concatenate((xg, yg, zg)))
             xg = xyz[0]
             yg = xyz[1]
             zg = xyz[2]
 
-            # TODO: ROTATE according to inc and obl!
+            # Rotate the map so that north points up
+            yT = tt.reshape(y, [1, -1])
+            yT = self.dotRz(yT, tt.reshape(-obl, [1]))
+            y = tt.reshape(self.dotRxy(yT, np.pi / 2 - inc, 0), [-1])
 
+            # Compute the polynomial basis
             self.rect_pT = self.pT(xg, yg, zg).eval()
+
         elif (projection == "ortho") and (res != self.ortho_res):
             self.ortho_res = res
+
+            # Compute a grid on the plane of the sky
             arr = np.linspace(-1, 1, self.ortho_res)
             xg, yg = np.meshgrid(arr, arr)
             zg = np.sqrt(1 - xg ** 2 - yg ** 2)
             self.ortho_pT = self.pT(xg.flatten(), yg.flatten(), zg.flatten()).eval()
 
-        # Rotate the map and transform to polynomial
+        # Rotate the map and transform into the polynomial basis
         yT = tt.tile(y, [theta.shape[0], 1])
         Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
         A1Ry = ts.dot(self.A1, Ry)
 
         # Apply the filter
-        if self.filter:
+        if self.filter and projection != "rect":
             A1Ry = ts.dot(F, A1Ry)
 
         # Dot the polynomial into the basis
         if projection == "rect":
-            return tt.reshape(tt.dot(self.rect_pT, A1Ry), [res, 2 * res, theta.shape[0]])
+            return tt.reshape(tt.dot(self.rect_pT, A1Ry), 
+                              [res, 2 * res, theta.shape[0]])
         else:
-            return tt.reshape(tt.dot(self.ortho_pT, A1Ry), [res, res, theta.shape[0]])
+            return tt.reshape(tt.dot(self.ortho_pT, A1Ry), 
+                              [res, res, theta.shape[0]])
