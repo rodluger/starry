@@ -180,7 +180,7 @@ class Ops(object):
             xg = (np.cos(lat) * np.cos(lon)).reshape(1, -1)
             yg = (np.cos(lat) * np.sin(lon)).reshape(1, -1)
             zg = np.sin(lat).reshape(1, -1)
-            R = RAxisAngle([1, 0, 0], -90)
+            R = RAxisAngle([1, 0, 0], -np.pi / 2)
             xyz = tt.dot(R, tt.concatenate((xg, yg, zg)))
             xg = xyz[0]
             yg = xyz[1]

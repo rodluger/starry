@@ -69,10 +69,12 @@ def cross(x, y):
 
 def RAxisAngle(axis=[0, 1, 0], theta=0):
     """
-
+    
     """
-    cost = tt.cos(theta * np.pi / 180.)
-    sint = tt.sin(theta * np.pi / 180.)
+    axis = tt.as_tensor_variable(axis)
+    axis /= axis.norm(2)
+    cost = tt.cos(theta)
+    sint = tt.sin(theta)
 
     return tt.reshape(tt.as_tensor_variable([
         cost + axis[0] * axis[0] * (1 - cost),

@@ -1,4 +1,4 @@
-from ..ops import Ops, vectorize, to_tensor, is_theano, VectorRAxisAngle, cross
+from ..ops import Ops, vectorize, to_tensor, is_theano, RAxisAngle, VectorRAxisAngle, cross
 from .indices import get_ylm_inds, get_ul_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
@@ -272,13 +272,17 @@ class YlmBase(object):
             
             lat, lon = vectorize(*to_tensor(lat, lon))
 
-            # TODO: inclination and obliquity must matter!
-            # TODO: check this rotation
+            # Get the `lat = 0, lon = 0` point
+            u = [self.axis[1], -self.axis[0], 0]
+            theta = tt.arccos(self.axis[2])
+            R0 = RAxisAngle(u, theta)
+            origin = tt.dot(R0, [0.0, 0.0, 1.0])
 
-            R1 = VectorRAxisAngle([1.0, 0.0, 0.0], -lat)
-            R2 = VectorRAxisAngle([0.0, 1.0, 0.0], lon)
+            # Now rotate it to `lat, lon`
+            R1 = VectorRAxisAngle([1.0, 0.0, 0.0], -lat * radian)
+            R2 = VectorRAxisAngle([0.0, 1.0, 0.0], lon * radian)
             R = tt.batched_dot(R2, R1)
-            xyz = tt.dot(R, [0.0, 0.0, 1.0])
+            xyz = tt.dot(R, origin)
             x = xyz[:, 0]
             y = xyz[:, 1]
             z = xyz[:, 2]
@@ -647,18 +651,58 @@ class DopplerBase(object):
         return super(DopplerBase, self).show(**kwargs)
 
 
-def Map(ydeg=0, udeg=0, doppler=False):
+class ReflectedBase(object):
+    """
+
+    """
+
+    def render(self, **kwargs):
+        source = kwargs.pop("source", [-1, 0, 0])
+        res = super(ReflectedBase, self).render(**kwargs)
+
+        # TODO!
+
+        '''
+        Scalar b = -sz
+        if (likely(abs(b) < 1.0)) {
+            # Compute the terminator curve
+            Scalar invsr = Scalar(1.0) / sqrt(sx * sx + sy * sy);
+            Scalar cosw = sy * invsr;
+            Scalar sinw = -sx * invsr;
+            xrot = xv * cosw + yv * sinw;
+            xrot2 = xrot.array().square();
+            yrot = -xv * sinw + yv * cosw;
+            yterm = b * (Ones - xrot2).cwiseSqrt();
+            # Compute the illumination
+            I = sqrt(Scalar(1.0) - Scalar(b * b)) * yrot - b * z;
+            I = (yrot.array() > yterm.array()).select(I, 0.0);
+        } else if (b < 0) {
+            # Noon
+            I = z;
+        } else {
+            # Midnight
+            I = z * 0.0;
+        }
+        '''
+
+
+def Map(ydeg=0, udeg=0, doppler=False, reflected=False):
     """
 
     """
 
     Bases = (YlmBase,)
 
+    # Doppler mode?
     if doppler:
         Bases = (DopplerBase,) + Bases
         fdeg = 3
     else:
         fdeg = 0
+    
+    # Reflected light?
+    if reflected:
+        Bases = (ReflectedBase,) + Bases
 
     class Map(*Bases): 
         pass
