@@ -1,2 +1,2 @@
-lib/* linguist-vendored
+starry/lib/* linguist-vendored
 notebooks/* linguist-documentation
