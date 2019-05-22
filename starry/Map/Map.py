@@ -324,22 +324,53 @@ class YlmBase(object):
         # Get kwargs
         cmap = kwargs.pop("cmap", "plasma")
         projection = kwargs.get("projection", "ortho")
+        if projection.lower().startswith("rect"):
+            projection = STARRY_RECTANGULAR_PROJECTION
+        elif projection.lower().startswith("ortho"):
+            projection = STARRY_ORTHOGRAPHIC_PROJECTION
+        else:
+            raise ValueError("Unknown map projection.")
         grid = kwargs.pop("grid", True)
         interval = kwargs.pop("interval", 75)
         mp4 = kwargs.pop("mp4", None)
 
-        # Render the map
-        image = kwargs.pop("image", self.render(**kwargs))
-
-        # TODO: We should pre-compile this function for lazy maps
-        # rather than running `eval()`
+        # Get the map orientation
         if self.lazy:
-            image = image.eval()
             inc = self.inc.eval()
             obl = self.obl.eval()
         else:
             inc = self.inc
             obl = self.obl
+
+        # Render the map if needed
+        image = kwargs.pop("image", None)
+        if image is None:
+
+            # We need to evaluate the variables so we can
+            # plot the map!
+            if self.lazy:
+
+                # Get kwargs
+                res = kwargs.get("res", 300)
+                theta = vectorize(kwargs.pop("theta", 0.0))
+
+                # Evaluate the variables
+                inc = self._inc.eval()
+                obl = self._obl.eval()
+                y = self._y.eval()
+                u = self._u.eval()
+                f = self._f.eval()
+
+                # Explicitly call the compiled version of `render`
+                image = self.ops._compiled_render(
+                    res, projection, theta * radian, inc * radian, 
+                    obl * radian, y, u, f
+                )
+
+            else:
+
+                # Easy!
+                image = self.render(**kwargs)
 
         if len(image.shape) == 3:
             nframes = image.shape[-1]
@@ -350,7 +381,7 @@ class YlmBase(object):
         # Animation
         animated = (nframes > 1)
 
-        if projection == "rect":
+        if projection == STARRY_RECTANGULAR_PROJECTION:
             # Set up the plot
             fig, ax = plt.subplots(1, figsize=(7, 3.75))
             extent = (-180, 180, -90, 90)

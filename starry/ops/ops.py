@@ -13,6 +13,24 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
 
+class CompileLogMessage:
+    """
+    Log a brief message saying what method is currently
+    being compiled and print `Done` when finished.
+
+    """
+    def __init__(self, name):
+        self.name = name
+
+    def __enter__(self):
+        logger.handlers[0].terminator = ""
+        logger.info("Compiling `{0}`... ".format(self.name))
+
+    def __exit__(self, type, value, traceback):
+        logger.handlers[0].terminator = "\n"
+        logger.info("Done.")
+
+
 __all__ = ["STARRY_ORTHOGRAPHIC_PROJECTION",
            "STARRY_RECTANGULAR_PROJECTION",
            "Ops"]
@@ -46,29 +64,30 @@ class autocompile(object):
         Wrap the method `func` and return a compiled version if `lazy==False`.
         
         """
-        def wrapper(instance, *args, no_compile=False):
+        def wrapper(instance, *args):
             """
             The magic happens in here.
 
             """
-            if instance.lazy or no_compile:
+            if instance.lazy:
                 # Just return the function as is
                 return func(instance, *args)
             else:
                 # Compile the function if needed & cache it
                 if not hasattr(instance, self.compiled_name):
-                    logger.handlers[0].terminator = ""
-                    logger.info("Compiling method `{0}`... ".format(self.name))
-                    compiled_func = theano.function(
-                        [*self.args], 
-                        func(instance, *self.args), 
-                        on_unused_input='ignore'
-                    )
-                    setattr(instance, self.compiled_name, compiled_func)
-                    logger.handlers[0].terminator = "\n"
-                    logger.info("Done.")
+                    with CompileLogMessage(self.name):
+                        compiled_func = theano.function(
+                            [*self.args], 
+                            func(instance, *self.args), 
+                            on_unused_input='ignore'
+                        )
+                        setattr(instance, self.compiled_name, compiled_func)
                 # Return the compiled version
                 return getattr(instance, self.compiled_name)(*args)
+
+        # Store the function info
+        wrapper.args = self.args
+        wrapper.func = func
         return wrapper
 
 
@@ -118,10 +137,6 @@ class Ops(object):
         # Filter
         self.F = F(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
 
-        # Map rendering
-        self.rect_res = 0
-        self.ortho_res = 0
-
         # mu, nu arrays
         deg = self.ydeg + self.udeg + self.fdeg
         N = (deg + 1) ** 2
@@ -136,6 +151,10 @@ class Ops(object):
         self._mu = tt.as_tensor_variable(self._mu)
         self._nu = tt.as_tensor_variable(self._nu)
 
+        # Map rendering
+        self.rect_res = 0
+        self.ortho_res = 0
+    
     def compute_ortho_pT(self, res):
         """
         Compute the polynomial basis on the plane of the sky.
@@ -193,16 +212,9 @@ class Ops(object):
         return res
 
     @autocompile(
-        "X",
-        tt.dvector("theta"), 
-        tt.dvector("xo"), 
-        tt.dvector("yo"), 
-        tt.dvector("zo"), 
-        tt.dscalar("ro"), 
-        tt.dscalar("inc"),
-        tt.dscalar("obl"),
-        tt.dvector("u"), 
-        tt.dvector("f")
+        "X", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
+             tt.dscalar(), tt.dscalar(), tt.dscalar(), tt.dvector(), 
+             tt.dvector()
     )
     def X(self, theta, xo, yo, zo, ro, inc, obl, u, f):
         """
@@ -251,32 +263,19 @@ class Ops(object):
         return X_rot + X_occ
 
     @autocompile(
-        "flux",
-        tt.dvector("theta"), 
-        tt.dvector("xo"), 
-        tt.dvector("yo"), 
-        tt.dvector("zo"), 
-        tt.dscalar("ro"), 
-        tt.dscalar("inc"),
-        tt.dscalar("obl"),
-        tt.dvector("y"), 
-        tt.dvector("u"), 
-        tt.dvector("f")
+        "flux", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
+                tt.dscalar(), tt.dscalar(), tt.dscalar(), tt.dvector(), 
+                tt.dvector(), tt.dvector()
     )
     def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f):
         """
 
         """
-        return tt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, u, f, no_compile=True), y)
+        return tt.dot(self.X.func(self, theta, xo, yo, zo, ro, inc, obl, u, f), y)
 
     @autocompile(
-        "intensity",
-        tt.dvector("xpt"), 
-        tt.dvector("ypt"), 
-        tt.dvector("zpt"), 
-        tt.dvector("y"), 
-        tt.dvector("u"), 
-        tt.dvector("f")
+        "intensity", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
+                     tt.dvector(), tt.dvector()
     )
     def intensity(self, xpt, ypt, zpt, y, u, f):
         """
@@ -296,15 +295,8 @@ class Ops(object):
         return tt.dot(pT, A1y)
     
     @autocompile(
-        "render",
-        tt.iscalar("res"), 
-        tt.iscalar("projection"), 
-        tt.dvector("theta"), 
-        tt.dscalar("inc"), 
-        tt.dscalar("obl"), 
-        tt.dvector("y"), 
-        tt.dvector("u"), 
-        tt.dvector("f")
+        "render", tt.iscalar(), tt.iscalar(), tt.dvector(), tt.dscalar(), 
+                  tt.dscalar(), tt.dvector(), tt.dvector(), tt.dvector()
     )
     def render(self, res, projection, theta, inc, obl, y, u, f):
         """
@@ -346,9 +338,24 @@ class Ops(object):
         # Dot the polynomial into the basis
         return tt.reshape(tt.dot(pT, A1Ry), [res, -1, theta.shape[0]])
     
+    def _compiled_render(self, *args):
+        """
+        A workaround to allow the `render` function to be
+        compiled for lazy maps. Necessary if the user wants
+        to actually view an image of the map using `show`!
+
+        """
+        if not hasattr(self, "_compiled_render_detail"):
+            with CompileLogMessage("render"):
+                self._compiled_render_detail = theano.function(
+                    self.render.args, 
+                    self.render.func(self, *self.render.args), 
+                    on_unused_input='ignore'
+                )
+        return self._compiled_render_detail(*args)
+
     @autocompile(
-        "get_inc_obl",
-        tt.dvector("axis")
+        "get_inc_obl", tt.dvector()
     )
     def get_inc_obl(self, axis):
         """
@@ -369,9 +376,7 @@ class Ops(object):
         return inc_obl
     
     @autocompile(
-        "get_axis",
-        tt.dscalar("inc"),
-        tt.dscalar("obl")
+        "get_axis", tt.dscalar(), tt.dscalar()
     )
     def get_axis(self, inc, obl):
         """
@@ -394,10 +399,7 @@ class Ops(object):
         return tt.set_subtensor(vector[inds], vals * tt.ones(len(inds)))
 
     @autocompile(
-        "latlon_to_xyz",
-        tt.dvector("axis"),
-        tt.dvector("lat"),
-        tt.dvector("lon")
+        "latlon_to_xyz", tt.dvector(), tt.dvector(), tt.dvector()
     )
     def latlon_to_xyz(self, axis, lat, lon):
         """
@@ -417,11 +419,7 @@ class Ops(object):
         return xyz
     
     @autocompile(
-        "rotate",
-        tt.dvector("y"),
-        tt.dvector("theta"),
-        tt.dscalar("inc"),
-        tt.dscalar("obl")
+        "rotate", tt.dvector(), tt.dvector(), tt.dscalar(), tt.dscalar()
     )
     def rotate(self, y, theta, inc, obl):
         """
@@ -430,10 +428,7 @@ class Ops(object):
         return tt.reshape(self.dotR(y.reshape([1, -1]), inc, obl, -theta), [-1])
     
     @autocompile(
-        "align",
-        tt.dvector("y"),
-        tt.dvector("source"),
-        tt.dvector("dest")
+        "align", tt.dvector(), tt.dvector(), tt.dvector()
     )
     def align(self, y, source, dest):
         """
@@ -442,12 +437,12 @@ class Ops(object):
         source /= source.norm(2)
         dest /= dest.norm(2)
         axis = cross(source, dest)
-        inc_obl = self.get_inc_obl(axis, no_compile=True)
+        inc_obl = self.get_inc_obl.func(self, axis)
         inc = inc_obl[0]
         obl = inc_obl[1]
         theta = tt.reshape(tt.arccos(tt.dot(source, dest)), [1])
         return ifelse(
             tt.all(tt.eq(source, dest)),
             y,
-            self.rotate(y, theta, inc, obl, no_compile=True)
+            self.rotate.func(self, y, theta, inc, obl)
         )
