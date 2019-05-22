@@ -1,11 +1,9 @@
-from ..ops import Ops, vectorize, to_tensor, is_theano, RAxisAngle, VectorRAxisAngle, cross
+from ..ops import Ops, vectorize, STARRY_RECTANGULAR_PROJECTION, STARRY_ORTHOGRAPHIC_PROJECTION
 from .indices import get_ylm_inds, get_ul_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
 import numpy as np
-import theano
 import theano.tensor as tt
-import theano.sparse as ts
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
@@ -16,17 +14,20 @@ degree = 1.0 / radian
 __all__ = ["Map"]
 
 
+
 class YlmBase(object):
     """
 
     """
 
-    def __init__(self, ydeg, udeg, fdeg):
+    def __init__(self, ydeg, udeg, fdeg, lazy, quiet=False):
         """
 
         """
         # Instantiate the Theano ops class
-        self.ops = Ops(ydeg, udeg, fdeg)
+        self._lazy = lazy
+        self.ops = Ops(ydeg, udeg, fdeg, lazy, quiet=quiet)
+        self.cast = self.ops.cast
 
         # Dimensions
         self._ydeg = ydeg
@@ -40,6 +41,13 @@ class YlmBase(object):
 
         # Initialize
         self.reset()
+
+    @property
+    def lazy(self):
+        """
+
+        """
+        return self._lazy
 
     @property
     def ydeg(self):
@@ -120,7 +128,7 @@ class YlmBase(object):
 
     @inc.setter
     def inc(self, value):
-        self._inc = to_tensor(value)
+        self._inc = self.cast(value)
 
     @property
     def obl(self):
@@ -131,41 +139,25 @@ class YlmBase(object):
     
     @obl.setter
     def obl(self, value):
-        self._obl = to_tensor(value)
+        self._obl = self.cast(value)
 
     @property
     def axis(self):
         """
 
         """
-        axis = tt.zeros(3)
-        sino = tt.sin(self._obl * radian)
-        coso = tt.cos(self._obl * radian)
-        sini = tt.sin(self._inc * radian)
-        cosi = tt.cos(self._inc * radian)
-        axis = tt.set_subtensor(axis[0], sino * sini)
-        axis = tt.set_subtensor(axis[1], coso * sini)
-        axis = tt.set_subtensor(axis[2], cosi)
-        return axis
+        return self.ops.get_axis(self._inc * radian, self._obl * radian)
 
     @axis.setter
-    def axis(self, value):
+    def axis(self, axis):
         """
 
         """
-        value = to_tensor(value)
-        value /= value.norm(2)
-        obl = tt.arctan2(value[0], value[1])
-        sino = tt.sin(obl)
-        coso = tt.cos(obl)
-        inc = tt.switch(
-            tt.lt(tt.abs_(sino), 1e-10),
-            tt.arctan2(value[1] / coso, value[2]),
-            tt.arctan2(value[0] / sino, value[2])
-        )
-        self._obl = obl * degree
-        self._inc = inc * degree
-
+        axis = self.cast(axis)
+        inc_obl = self.ops.get_inc_obl(axis)
+        self._inc = inc_obl[0] * degree
+        self._obl = inc_obl[1] * degree
+        
     def __getitem__(self, idx):
         """
 
@@ -190,13 +182,19 @@ class YlmBase(object):
             inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
             if 0 in inds:
                 raise ValueError("The Y_{0,0} coefficient cannot be set.")
-            self._y = tt.set_subtensor(self._y[inds], val * tt.ones(len(inds)))
+            if self._lazy:
+                self._y = self.ops.set_map_vector(self._y, inds, val)
+            else:
+                self._y[inds] = val
         elif isinstance(idx, (int, np.int, slice)):
             # User is accessing a limb darkening index
             inds = get_ul_inds(self.udeg, idx)
             if 0 in inds:
                 raise ValueError("The u_0 coefficient cannot be set.")
-            self._u = tt.set_subtensor(self._u[inds], val * tt.ones(len(inds)))
+            if self._lazy:
+                self._u = self.ops.set_map_vector(self._u, inds, val)
+            else:
+                self._u[inds] = val
         else:
             raise ValueError("Invalid map index.")
 
@@ -206,18 +204,18 @@ class YlmBase(object):
         """
         y = np.zeros(self.Ny)
         y[0] = 1.0
-        self._y = to_tensor(y)
+        self._y = self.cast(y)
 
         u = np.zeros(self.Nu)
         u[0] = -1.0
-        self._u = to_tensor(u)
+        self._u = self.cast(u)
 
         f = np.zeros(self.Nf)
         f[0] = np.pi
-        self._f = to_tensor(f)
+        self._f = self.cast(f)
 
-        self._inc = to_tensor(90.0)
-        self._obl = to_tensor(0.0)
+        self._inc = self.cast(90.0)
+        self._obl = self.cast(0.0)
 
     def X(self, **kwargs):
         """
@@ -231,7 +229,7 @@ class YlmBase(object):
         zo = kwargs.pop("zo", 1.0)
         ro = kwargs.pop("ro", 0.0)
         theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
-        theta, xo, yo, zo, ro = to_tensor(theta, xo, yo, zo, ro)
+        theta, xo, yo, zo, ro = self.cast(theta, xo, yo, zo, ro)
 
         # Convert angles radians
         inc = self._inc * radian
@@ -240,18 +238,30 @@ class YlmBase(object):
 
         # Compute & return
         return self.ops.X(theta, xo, yo, zo, ro, 
-                        inc, obl, self._u, self._f)
+                          inc, obl, self._u, self._f)
 
     def flux(self, **kwargs):
         """
         Compute and return the light curve.
         
         """
-        # Compute the design matrix
-        X = self.X(**kwargs)
+        # Orbital kwargs
+        theta = kwargs.pop("theta", 0.0)
+        xo = kwargs.pop("xo", 0.0)
+        yo = kwargs.pop("yo", 0.0)
+        zo = kwargs.pop("zo", 1.0)
+        ro = kwargs.pop("ro", 0.0)
+        theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
+        theta, xo, yo, zo, ro = self.cast(theta, xo, yo, zo, ro)
 
-        # Dot it into the map to get the flux
-        return tt.dot(X, self.y)
+        # Convert angles radians
+        inc = self._inc * radian
+        obl = self._obl * radian
+        theta *= radian
+
+        # Compute & return
+        return self.ops.flux(theta, xo, yo, zo, ro, 
+                             inc, obl, self._y, self._u, self._f)
 
     def intensity(self, **kwargs):
         """
@@ -267,25 +277,15 @@ class YlmBase(object):
             x = kwargs.pop("x", 0.0)
             y = kwargs.pop("y", 0.0)
             z = kwargs.pop("z", 1.0)
-            x, y, z = vectorize(*to_tensor(x, y, z))
+            x, y, z = vectorize(*self.cast(x, y, z))
         else:
-            
-            lat, lon = vectorize(*to_tensor(lat, lon))
-
-            # Get the `lat = 0, lon = 0` point
-            u = [self.axis[1], -self.axis[0], 0]
-            theta = tt.arccos(self.axis[2])
-            R0 = RAxisAngle(u, theta)
-            origin = tt.dot(R0, [0.0, 0.0, 1.0])
-
-            # Now rotate it to `lat, lon`
-            R1 = VectorRAxisAngle([1.0, 0.0, 0.0], -lat * radian)
-            R2 = VectorRAxisAngle([0.0, 1.0, 0.0], lon * radian)
-            R = tt.batched_dot(R2, R1)
-            xyz = tt.dot(R, origin)
-            x = xyz[:, 0]
-            y = xyz[:, 1]
-            z = xyz[:, 2]
+            lat, lon = vectorize(*self.cast(lat, lon))
+            lat *= radian
+            lon *= radian
+            xyz = self.ops.latlon_to_xyz(self.axis, lat, lon)
+            x = xyz[0]
+            y = xyz[1]
+            z = xyz[2]
 
         # Compute & return
         return self.ops.intensity(x, y, z, self._y, self._u, self._f)
@@ -298,8 +298,14 @@ class YlmBase(object):
         """
         res = kwargs.pop("res", 300)
         projection = kwargs.pop("projection", "ortho")
+        if projection.lower().startswith("rect"):
+            projection = STARRY_RECTANGULAR_PROJECTION
+        elif projection.lower().startswith("ortho"):
+            projection = STARRY_ORTHOGRAPHIC_PROJECTION
+        else:
+            raise ValueError("Unknown map projection.")
         theta = kwargs.pop("theta", 0.0)
-        theta = tt.reshape(vectorize(theta), [-1])
+        theta = vectorize(theta)
 
         # Convert angles radians
         inc = self._inc * radian
@@ -324,8 +330,17 @@ class YlmBase(object):
 
         # Render the map
         image = kwargs.pop("image", self.render(**kwargs))
-        if is_theano(image):
+
+        # TODO: We should pre-compile this function for lazy maps
+        # rather than running `eval()`
+        if self.lazy:
             image = image.eval()
+            inc = self.inc.eval()
+            obl = self.obl.eval()
+        else:
+            inc = self.inc
+            obl = self.obl
+
         if len(image.shape) == 3:
             nframes = image.shape[-1]
         else:
@@ -367,8 +382,6 @@ class YlmBase(object):
                 y = np.sqrt(1 - x ** 2)
                 ax.plot(x, y, 'k-', alpha=1, lw=1)
                 ax.plot(x, -y, 'k-', alpha=1, lw=1)
-                inc = self.inc.eval()
-                obl = self.obl.eval()
                 lat_lines = get_ortho_latitude_lines(inc=inc, obl=obl)
                 lon_lines = get_ortho_longitude_lines(inc=inc, obl=obl)
                 for x, y in lat_lines + lon_lines:
@@ -450,28 +463,29 @@ class YlmBase(object):
             raise ValueError("Invalid `image` value.")
         
         # Ingest the coefficients
-        self._y = to_tensor(y)
+        self._y = self.cast(y)
 
     def rotate(self, theta, axis=None):
         """
 
         """
+        # Get inc and obl
         if axis is None:
             inc = self._inc * radian
             obl = self._obl * radian
         else:
-            axis = to_tensor(axis)
-            axis /= axis.norm(2)
-            obl = tt.arctan2(axis[0], axis[1])
-            sino = tt.sin(obl)
-            coso = tt.cos(obl)
-            inc = tt.switch(
-                tt.lt(tt.abs_(sino), 1e-10),
-                tt.arctan2(axis[1] / coso, axis[2]),
-                tt.arctan2(axis[0] / sino, axis[2])
-            )
-        self._y = tt.reshape(self.ops.dotR(self._y.reshape([1, -1]), 
-            inc, obl, tt.reshape(-theta * radian, [1])), [-1])
+            axis = self.cast(axis)
+            inc_obl = self.ops.get_inc_obl(axis)
+            inc = inc_obl[0]
+            obl = inc_obl[1]
+
+        # Reshape theta & convert to radians
+        theta = self.cast(theta)
+        theta = vectorize(theta)
+        theta *= radian
+
+        # Rotate
+        self._y = self.ops.rotate(self._y, theta, inc, obl)
 
     def align(self, source=None, dest=None):
         """
@@ -505,17 +519,14 @@ class YlmBase(object):
             source = self.axis
         if dest is None:
             dest = self.axis
-        source = to_tensor(source)
-        source /= source.norm(2)
-        dest = to_tensor(dest)
-        dest /= dest.norm(2)
-        self.rotate(axis=cross(source, dest), 
-                    theta=tt.arccos(tt.dot(source, dest)) * degree)
+        source = self.cast(source)
+        dest = self.cast(dest)
+        self._y = self.ops.align(self._y, source, dest)
 
 
 class DopplerBase(object):
     """
-
+    TODO: Move all theano operations to `Ops`. Get rid of `to_tensor` calls.
     """
 
     def reset(self):
@@ -686,7 +697,7 @@ class ReflectedBase(object):
         '''
 
 
-def Map(ydeg=0, udeg=0, doppler=False, reflected=False):
+def Map(ydeg=0, udeg=0, doppler=False, reflected=False, lazy=True, quiet=False):
     """
 
     """
@@ -707,4 +718,4 @@ def Map(ydeg=0, udeg=0, doppler=False, reflected=False):
     class Map(*Bases): 
         pass
 
-    return Map(ydeg, udeg, fdeg)
+    return Map(ydeg, udeg, fdeg, lazy, quiet=quiet)

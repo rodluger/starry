@@ -1,2 +1,2 @@
 from .utils import *
-from .ops import Ops
+from .ops import *

@@ -7,6 +7,7 @@ import numpy as np
 
 __all__ = ["is_theano",
            "to_tensor",
+           "to_array",
            "vectorize",
            "cross",
            "RAxisAngle",
@@ -36,6 +37,17 @@ def to_tensor(*args):
         return [tt.as_tensor_variable(arg).astype(tt.config.floatX) for arg in args]
 
 
+def to_array(*args):
+    """
+    Convert all ``args`` to numpy arrays.
+
+    """
+    if len(args) == 1:
+        return np.array(args[0], dtype=tt.config.floatX)
+    else:
+        return [np.array(arg, dtype=tt.config.floatX) for arg in args]
+
+
 def vectorize(*args):
     """
     Vectorize all scalar ``args``.
@@ -49,7 +61,10 @@ def vectorize(*args):
     else:
         ones = np.ones_like(np.sum([np.atleast_1d(arg) for arg in args], axis=0))
         args = tuple([arg * ones for arg in args])
-    return args
+    if len(args) == 1:
+        return args[0]
+    else:
+        return args
 
 
 def cross(x, y):

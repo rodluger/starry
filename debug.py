@@ -15,10 +15,10 @@ def compare_plot():
     yo = np.zeros_like(xo) + 0.1
     ro = 0.1
 
-    map = starry.Map(1, 1)
+    map = starry.Map(1, 1, lazy=False)
     map[1, 0] = 0.5
     map.inc = 45
-    plt.plot(xo, map.flux(theta=theta, xo=xo, yo=yo, ro=ro).eval(), label="dev", lw=3)
+    plt.plot(xo, map.flux(theta=theta, xo=xo, yo=yo, ro=ro), label="dev", lw=3)
 
     map_beta = starry_beta.Map(1)
     map_beta[1, 0] = 0.5
@@ -108,3 +108,6 @@ def compare_times():
     for i in [0, 2, 4]:
         ax[i].set_ylabel("Time [seconds]", fontsize=14)
     plt.show()
+
+
+compare_plot()
