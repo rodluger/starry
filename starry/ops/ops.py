@@ -9,80 +9,9 @@ import theano.sparse as ts
 from theano.ifelse import ifelse
 import numpy as np
 import logging
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
 
 
 __all__ = ["Ops"]
-
-
-class CompileLogMessage:
-    """
-    Log a brief message saying what method is currently
-    being compiled and print `Done` when finished.
-
-    """
-    def __init__(self, name):
-        self.name = name
-
-    def __enter__(self):
-        logger.handlers[0].terminator = ""
-        logger.info("Compiling `{0}`... ".format(self.name))
-
-    def __exit__(self, type, value, traceback):
-        logger.handlers[0].terminator = "\n"
-        logger.info("Done.")
-
-
-class autocompile(object):
-    """
-    A decorator used to automatically compile methods into Theano functions
-    if the user disables lazy evaluation.
-
-    """
-    def __init__(self, name, *args):
-        """
-        Initialize the decorator.
-
-        Arguments:
-            name (str): The name of the decorated method
-            *args (tuple): Theano types corresponding to each of the
-                arguments of the method.
-        """
-        self.args = args
-        self.name = name
-        self.compiled_name = "_compiled_{0}".format(name)
-
-    def __call__(self, func):
-        """
-        Wrap the method `func` and return a compiled version if `lazy==False`.
-        
-        """
-        def wrapper(instance, *args, force_compile=False):
-            """
-            The magic happens in here.
-
-            """
-            if (not instance.lazy) or (force_compile):
-                # Compile the function if needed & cache it
-                if not hasattr(instance, self.compiled_name):
-                    with CompileLogMessage(self.name):
-                        compiled_func = theano.function(
-                            [*self.args], 
-                            func(instance, *self.args), 
-                            on_unused_input='ignore'
-                        )
-                        setattr(instance, self.compiled_name, compiled_func)
-                # Return the compiled version
-                return getattr(instance, self.compiled_name)(*args)
-            else:
-                # Just return the function as is
-                return func(instance, *args)
-
-        # Store the function info
-        wrapper.args = self.args
-        wrapper.func = func
-        return wrapper
 
 
 class Ops(object):

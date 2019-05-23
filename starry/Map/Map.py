@@ -541,7 +541,7 @@ class DopplerBase(object):
     @property
     def alpha(self):
         """
-        The rotational shear coefficient, a float in the range ``[0, 1]``.
+        The rotational shear coefficient, a number in the range ``[0, 1]``.
         
         The parameter :math:`\\alpha` is used to model linear differential
         rotation. The angular velocity at a given latitude :math:`\\theta`
