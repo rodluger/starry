@@ -557,7 +557,7 @@ class YlmBase(object):
 
 class DopplerBase(object):
     """
-    TODO: Move all theano operations to `Ops`. Get rid of `to_tensor` calls.
+    
     """
 
     def reset(self):
@@ -565,8 +565,8 @@ class DopplerBase(object):
 
         """
         super(DopplerBase, self).reset()
-        self._alpha = to_tensor(0.0)
-        self._veq = to_tensor(0.0)
+        self._alpha = self.cast(0.0)
+        self._veq = self.cast(0.0)
 
     @property
     def alpha(self):
@@ -586,7 +586,7 @@ class DopplerBase(object):
     
     @alpha.setter
     def alpha(self, value):
-        self._alpha = to_tensor(value)
+        self._alpha = self.cast(value)
 
     @property
     def veq(self):
@@ -595,51 +595,17 @@ class DopplerBase(object):
     
     @veq.setter
     def veq(self, value):
-        self._veq = to_tensor(value)
+        self._veq = self.cast(value)
 
     def _unset_doppler_filter(self):
         f = np.zeros(self.Nf)
         f[0] = np.pi
-        self._f = to_tensor(f)
+        self._f = self.cast(f)
 
     def _set_doppler_filter(self):
-        # Define some angular quantities
-        cosi = tt.cos(self._inc * radian)
-        sini = tt.sin(self._inc * radian)
-        cosl = tt.cos(self._obl * radian)
-        sinl = tt.sin(self._obl * radian)
-        A = sini * cosl
-        B = -sini * sinl
-        C = cosi
-
-        # Compute the Ylm expansion of the RV field
-        self._f = tt.reshape([
-             0,
-             self._veq * np.sqrt(3) * B * 
-                (-A ** 2 * self._alpha - B ** 2 * self._alpha - 
-                 C ** 2 * self._alpha + 5) / 15,
-             0,
-             self._veq * np.sqrt(3) * A * 
-                (-A ** 2 * self._alpha - B ** 2 * self._alpha - 
-                 C ** 2 * self._alpha + 5) / 15,
-             0,
-             0,
-             0,
-             0,
-             0,
-             self._veq * self._alpha * np.sqrt(70) * B * 
-                (3 * A ** 2 - B ** 2) / 70,
-             self._veq * self._alpha * 2 * np.sqrt(105) * C * 
-                (-A ** 2 + B ** 2) / 105,
-             self._veq * self._alpha * np.sqrt(42) * B * 
-                (A ** 2 + B ** 2 - 4 * C ** 2) / 210,
-             0,
-             self._veq * self._alpha * np.sqrt(42) * A * 
-                (A ** 2 + B ** 2 - 4 * C ** 2) / 210,
-             self._veq * self._alpha * 4 * np.sqrt(105) * A * B * C / 105,
-             self._veq * self._alpha * np.sqrt(70) * A * 
-                (A ** 2 - 3 * B ** 2) / 70
-            ], [-1]) * np.pi
+        self._f = self.ops.compute_doppler_filter(
+            self._inc * radian, self._obl * radian, self._veq, self._alpha
+        )
 
     def rv(self, **kwargs):
         """
@@ -655,19 +621,28 @@ class DopplerBase(object):
         is the radial velocity field (computed based on the equatorial velocity
         of the star, its orientation, etc.)
         """
-        # Compute the velocity-weighted intensity
-        self._set_doppler_filter()
-        Iv = self.flux(**kwargs)
+        # Orbital kwargs
+        theta = kwargs.pop("theta", 0.0)
+        xo = kwargs.pop("xo", 0.0)
+        yo = kwargs.pop("yo", 0.0)
+        zo = kwargs.pop("zo", 1.0)
+        ro = kwargs.pop("ro", 0.0)
+        theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
+        theta, xo, yo, zo, ro = self.cast(theta, xo, yo, zo, ro)
 
-        # Compute the inverse of the intensity
-        self._unset_doppler_filter()
-        invI = np.array([1.0]) / self.flux(**kwargs)
-        invI = tt.where(tt.isinf(invI), 0.0, invI)
+        # Convert angles radians
+        inc = self._inc * radian
+        obl = self._obl * radian
+        theta *= radian
 
-        # The RV signal is just the product        
-        return Iv * invI
+        # Compute
+        return self.ops.rv(
+            theta, xo, yo, zo, ro, inc, obl, self._y, 
+            self._u, self._veq, self._alpha
+        )
 
     def intensity(self, **kwargs):
+        # Compute the velocity-weighted intensity if `rv==True`
         rv = kwargs.pop("rv", True)
         if rv:
             self._set_doppler_filter()
@@ -677,6 +652,7 @@ class DopplerBase(object):
         return res
 
     def render(self, **kwargs):
+        # Render the velocity map if `rv==True`
         rv = kwargs.pop("rv", True)
         if rv:
             self._set_doppler_filter()
@@ -688,9 +664,14 @@ class DopplerBase(object):
     def show(self, **kwargs):
         # Override the `projection` kwarg if we're
         # plotting the radial velocity.
-        if kwargs.get("rv", True):
+        rv = kwargs.pop("rv", True)
+        if rv:
             kwargs.pop("projection", None)
-        return super(DopplerBase, self).show(**kwargs)
+            self._set_doppler_filter()
+        res = super(DopplerBase, self).show(**kwargs)
+        if rv:
+            self._unset_doppler_filter()
+        return res
 
 
 class ReflectedBase(object):

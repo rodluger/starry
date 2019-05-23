@@ -13,6 +13,16 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
 
+__all__ = ["STARRY_ORTHOGRAPHIC_PROJECTION",
+           "STARRY_RECTANGULAR_PROJECTION",
+           "Ops"]
+
+
+# Constants
+STARRY_ORTHOGRAPHIC_PROJECTION = 0
+STARRY_RECTANGULAR_PROJECTION = 1
+
+
 class CompileLogMessage:
     """
     Log a brief message saying what method is currently
@@ -29,15 +39,6 @@ class CompileLogMessage:
     def __exit__(self, type, value, traceback):
         logger.handlers[0].terminator = "\n"
         logger.info("Done.")
-
-
-__all__ = ["STARRY_ORTHOGRAPHIC_PROJECTION",
-           "STARRY_RECTANGULAR_PROJECTION",
-           "Ops"]
-
-
-STARRY_ORTHOGRAPHIC_PROJECTION = 0
-STARRY_RECTANGULAR_PROJECTION = 1
 
 
 class autocompile(object):
@@ -94,6 +95,7 @@ class autocompile(object):
 class Ops(object):
     """
     Everything in radians here.
+    Everything is a Theano operation.
 
     """
 
@@ -137,7 +139,7 @@ class Ops(object):
         # Filter
         self.F = F(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
 
-        # mu, nu arrays
+        # mu, nu arrays for computing `pT`
         deg = self.ydeg + self.udeg + self.fdeg
         N = (deg + 1) ** 2
         self._mu = np.zeros(N, dtype=int)
@@ -271,7 +273,9 @@ class Ops(object):
         """
 
         """
-        return tt.dot(self.X.func(self, theta, xo, yo, zo, ro, inc, obl, u, f), y)
+        return tt.dot(
+            self.X.func(self, theta, xo, yo, zo, ro, inc, obl, u, f), y
+        )
 
     @autocompile(
         "intensity", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
@@ -289,7 +293,7 @@ class Ops(object):
 
         # Apply the filter
         if self.filter:
-            A1y = ts.dot(self.F(u, f), A1y)
+            A1y = tt.dot(self.F(u, f), A1y)
 
         # Dot the polynomial into the basis
         return tt.dot(pT, A1y)
@@ -329,10 +333,12 @@ class Ops(object):
 
         # Apply the filter
         if self.filter:
+            f0 = tt.zeros_like(f)
+            f0 = tt.set_subtensor(f0[0], np.pi)
             A1Ry = tt.switch(
                 tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                ts.dot(self.F(u, f), A1Ry),
-                A1Ry
+                tt.dot(self.F(u, f), A1Ry),
+                tt.dot(self.F(u, f0), A1Ry),
             )
 
         # Dot the polynomial into the basis
@@ -443,6 +449,76 @@ class Ops(object):
         theta = tt.reshape(tt.arccos(tt.dot(source, dest)), [1])
         return ifelse(
             tt.all(tt.eq(source, dest)),
-            y,
+            tt.reshape(y, [-1]),
             self.rotate.func(self, y, theta, inc, obl)
         )
+
+    @autocompile(
+        "compute_doppler_filter", tt.dscalar(), tt.dscalar(), 
+                                  tt.dscalar(), tt.dscalar()
+    )
+    def compute_doppler_filter(self, inc, obl, veq, alpha):
+        """
+
+        """
+        # Define some angular quantities
+        cosi = tt.cos(inc)
+        sini = tt.sin(inc)
+        cosl = tt.cos(obl)
+        sinl = tt.sin(obl)
+        A = sini * cosl
+        B = -sini * sinl
+        C = cosi
+
+        # Compute the Ylm expansion of the RV field
+        return tt.reshape([
+             0,
+             veq * np.sqrt(3) * B * 
+                (-A ** 2 * alpha - B ** 2 * alpha - 
+                 C ** 2 * alpha + 5) / 15,
+             0,
+             veq * np.sqrt(3) * A * 
+                (-A ** 2 * alpha - B ** 2 * alpha - 
+                 C ** 2 * alpha + 5) / 15,
+             0,
+             0,
+             0,
+             0,
+             0,
+             veq * alpha * np.sqrt(70) * B * 
+                (3 * A ** 2 - B ** 2) / 70,
+             veq * alpha * 2 * np.sqrt(105) * C * 
+                (-A ** 2 + B ** 2) / 105,
+             veq * alpha * np.sqrt(42) * B * 
+                (A ** 2 + B ** 2 - 4 * C ** 2) / 210,
+             0,
+             veq * alpha * np.sqrt(42) * A * 
+                (A ** 2 + B ** 2 - 4 * C ** 2) / 210,
+             veq * alpha * 4 * np.sqrt(105) * A * B * C / 105,
+             veq * alpha * np.sqrt(70) * A * 
+                (A ** 2 - 3 * B ** 2) / 70], [-1]
+        ) * np.pi
+    
+
+    @autocompile(
+        "rv", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
+              tt.dscalar(), tt.dscalar(), tt.dscalar(), tt.dvector(), 
+              tt.dvector(), tt.dscalar(), tt.dscalar()
+    )
+    def rv(self, theta, xo, yo, zo, ro, inc, obl, y, u, veq, alpha):
+        """
+
+        """
+        # Compute the velocity-weighted intensity
+        f = self.compute_doppler_filter.func(self, inc, obl, veq, alpha)
+        Iv = self.flux.func(self, theta, xo, yo, zo, ro, inc, obl, y, u, f)
+
+        # Compute the inverse of the intensity
+        f0 = tt.zeros_like(f)
+        f0 = tt.set_subtensor(f0[0], np.pi)
+        I = self.flux.func(self, theta, xo, yo, zo, ro, inc, obl, y, u, f0)
+        invI = tt.ones((1,)) / I
+        invI = tt.where(tt.isinf(invI), 0.0, invI)
+
+        # The RV signal is just the product        
+        return Iv * invI
