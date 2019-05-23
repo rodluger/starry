@@ -397,12 +397,13 @@ class Ops(object):
         invsr = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
         cosw = source[:, 1] * invsr
         sinw = -source[:, 0] * invsr
-        xrot = tt.shape_padright(xyz[0]) * cosw + tt.shape_padright(xyz[1]) * sinw
-        yrot = -tt.shape_padright(xyz[0]) * sinw + tt.shape_padright(xyz[1]) * cosw
+        xrot = tt.shape_padright(xyz[0]) * cosw + \
+               tt.shape_padright(xyz[1]) * sinw
+        yrot = -tt.shape_padright(xyz[0]) * sinw + \
+                tt.shape_padright(xyz[1]) * cosw
         yterm = b * tt.sqrt(1.0 - xrot ** 2)
         I = tt.sqrt(1.0 - b ** 2) * yrot - b * tt.shape_padright(xyz[2])
         I = tt.where(yrot > yterm, I, tt.zeros_like(I))
-        
         I = tt.switch(
                 tt.eq(tt.abs_(b), 1.0),
                 tt.switch(

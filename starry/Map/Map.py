@@ -123,29 +123,29 @@ class YlmBase(object):
         """
 
         """
-        return self._inc
+        return self._inc * degree
 
     @inc.setter
     def inc(self, value):
-        self._inc = self.cast(value)
+        self._inc = self.cast(value * radian)
 
     @property
     def obl(self):
         """
 
         """
-        return self._obl
+        return self._obl * degree
     
     @obl.setter
     def obl(self, value):
-        self._obl = self.cast(value)
+        self._obl = self.cast(value * radian)
 
     @property
     def axis(self):
         """
 
         """
-        return self.ops.get_axis(self._inc * radian, self._obl * radian)
+        return self.ops.get_axis(self._inc, self._obl)
 
     @axis.setter
     def axis(self, axis):
@@ -154,8 +154,8 @@ class YlmBase(object):
         """
         axis = self.cast(axis)
         inc_obl = self.ops.get_inc_obl(axis)
-        self._inc = inc_obl[0] * degree
-        self._obl = inc_obl[1] * degree
+        self._inc = inc_obl[0]
+        self._obl = inc_obl[1]
         
     def __getitem__(self, idx):
         """
@@ -197,6 +197,21 @@ class YlmBase(object):
         else:
             raise ValueError("Invalid map index.")
 
+    def _get_orbit(self, **kwargs):
+        """
+        TODO: Accept an exoplanet `orbit` instance
+        
+        """
+        # Orbital kwargs
+        theta = kwargs.pop("theta", 0.0)
+        xo = kwargs.pop("xo", 0.0)
+        yo = kwargs.pop("yo", 0.0)
+        zo = kwargs.pop("zo", 1.0)
+        ro = kwargs.pop("ro", 0.0)
+        theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
+        theta, xo, yo, zo, ro = self.cast(theta, xo, yo, zo, ro)
+        return theta * radian, xo, yo, zo, ro
+
     def reset(self):
         """
 
@@ -213,7 +228,7 @@ class YlmBase(object):
         f[0] = np.pi
         self._f = self.cast(f)
 
-        self._inc = self.cast(90.0)
+        self._inc = self.cast(np.pi / 2)
         self._obl = self.cast(0.0)
 
     def X(self, **kwargs):
@@ -222,22 +237,11 @@ class YlmBase(object):
 
         """
         # Orbital kwargs
-        theta = kwargs.pop("theta", 0.0)
-        xo = kwargs.pop("xo", 0.0)
-        yo = kwargs.pop("yo", 0.0)
-        zo = kwargs.pop("zo", 1.0)
-        ro = kwargs.pop("ro", 0.0)
-        theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
-        theta, xo, yo, zo, ro = self.cast(theta, xo, yo, zo, ro)
-
-        # Convert angles radians
-        inc = self._inc * radian
-        obl = self._obl * radian
-        theta *= radian
+        theta, xo, yo, zo, ro = self.get_orbit(**kwargs)
 
         # Compute & return
         return self.ops.X(theta, xo, yo, zo, ro, 
-                          inc, obl, self._u, self._f)
+                          self._inc, self._obl, self._u, self._f)
 
     def flux(self, **kwargs):
         """
@@ -245,22 +249,11 @@ class YlmBase(object):
         
         """
         # Orbital kwargs
-        theta = kwargs.pop("theta", 0.0)
-        xo = kwargs.pop("xo", 0.0)
-        yo = kwargs.pop("yo", 0.0)
-        zo = kwargs.pop("zo", 1.0)
-        ro = kwargs.pop("ro", 0.0)
-        theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
-        theta, xo, yo, zo, ro = self.cast(theta, xo, yo, zo, ro)
-
-        # Convert angles radians
-        inc = self._inc * radian
-        obl = self._obl * radian
-        theta *= radian
+        theta, xo, yo, zo, ro = self.get_orbit(**kwargs)
 
         # Compute & return
         return self.ops.flux(theta, xo, yo, zo, ro, 
-                             inc, obl, self._y, self._u, self._f)
+                             self._inc, self._obl, self._y, self._u, self._f)
 
     def intensity(self, **kwargs):
         """
@@ -278,9 +271,7 @@ class YlmBase(object):
             z = kwargs.pop("z", 1.0)
             x, y, z = vectorize(*self.cast(x, y, z))
         else:
-            lat, lon = vectorize(*self.cast(lat, lon))
-            lat *= radian
-            lon *= radian
+            lat, lon = vectorize(*self.cast(lat * radian, lon * radian))
             xyz = self.ops.latlon_to_xyz(self.axis, lat, lon)
             x = xyz[0]
             y = xyz[1]
@@ -297,16 +288,10 @@ class YlmBase(object):
         """
         res = kwargs.pop("res", 300)
         projection = get_projection(kwargs.pop("projection", "ortho"))
-        theta = self.cast(kwargs.pop("theta", 0.0))
-        theta = vectorize(theta)
-
-        # Convert angles radians
-        inc = self._inc * radian
-        obl = self._obl * radian
-        theta *= radian
+        theta = vectorize(self.cast(kwargs.pop("theta", 0.0)) * radian)
 
         # Compute & return
-        return self.ops.render(res, projection, theta, inc, obl, 
+        return self.ops.render(res, projection, theta, self._inc, self._obl, 
                                self._y, self._u, self._f)
 
     def show(self, **kwargs):
@@ -323,11 +308,11 @@ class YlmBase(object):
 
         # Get the map orientation
         if self.lazy:
-            inc = self.inc.eval()
-            obl = self.obl.eval()
+            inc = self._inc.eval()
+            obl = self._obl.eval()
         else:
-            inc = self.inc
-            obl = self.obl
+            inc = self._inc
+            obl = self._obl
 
         # Render the map if needed
         image = kwargs.pop("image", None)
@@ -339,7 +324,7 @@ class YlmBase(object):
 
                 # Get kwargs
                 res = kwargs.get("res", 300)
-                theta = vectorize(self.cast(kwargs.pop("theta", 0.0))).eval()
+                theta = vectorize(self.cast(kwargs.pop("theta", 0.0)) * radian).eval()
 
                 # Evaluate the variables
                 inc = self._inc.eval()
@@ -350,8 +335,8 @@ class YlmBase(object):
 
                 # Explicitly call the compiled version of `render`
                 image = self.ops.render(
-                    res, projection, theta * radian, inc * radian, 
-                    obl * radian, y, u, f, force_compile=True
+                    res, projection, theta, inc, 
+                    obl, y, u, f, force_compile=True
                 )
 
             else:
@@ -489,8 +474,8 @@ class YlmBase(object):
         """
         # Get inc and obl
         if axis is None:
-            inc = self._inc * radian
-            obl = self._obl * radian
+            inc = self._inc
+            obl = self._obl
         else:
             axis = self.cast(axis)
             inc_obl = self.ops.get_inc_obl(axis)
@@ -498,9 +483,7 @@ class YlmBase(object):
             obl = inc_obl[1]
 
         # Reshape theta & convert to radians
-        theta = self.cast(theta)
-        theta = vectorize(theta)
-        theta *= radian
+        theta = vectorize(self.cast(theta * radian))
 
         # Rotate
         self._y = self.ops.rotate(self._y, theta, inc, obl)
@@ -591,7 +574,7 @@ class DopplerBase(object):
 
     def _set_doppler_filter(self):
         self._f = self.ops.compute_doppler_filter(
-            self._inc * radian, self._obl * radian, self._veq, self._alpha
+            self._inc, self._obl, self._veq, self._alpha
         )
 
     def rv(self, **kwargs):
@@ -609,22 +592,11 @@ class DopplerBase(object):
         of the star, its orientation, etc.)
         """
         # Orbital kwargs
-        theta = kwargs.pop("theta", 0.0)
-        xo = kwargs.pop("xo", 0.0)
-        yo = kwargs.pop("yo", 0.0)
-        zo = kwargs.pop("zo", 1.0)
-        ro = kwargs.pop("ro", 0.0)
-        theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
-        theta, xo, yo, zo, ro = self.cast(theta, xo, yo, zo, ro)
-
-        # Convert angles radians
-        inc = self._inc * radian
-        obl = self._obl * radian
-        theta *= radian
+        theta, xo, yo, zo, ro = self.get_orbit(**kwargs)
 
         # Compute
         return self.ops.rv(
-            theta, xo, yo, zo, ro, inc, obl, self._y, 
+            theta, xo, yo, zo, ro, self._inc, self._obl, self._y, 
             self._u, self._veq, self._alpha
         )
 
@@ -669,19 +641,14 @@ class ReflectedBase(object):
     def render(self, **kwargs):
         res = kwargs.pop("res", 300)
         projection = get_projection(kwargs.pop("projection", "ortho"))
-        theta = self.cast(kwargs.pop("theta", 0.0))
-        source = self.cast(kwargs.pop("source", [-1, 0, 0]))
-        source = atleast_2d(source)
+        theta = self.cast(kwargs.pop("theta", 0.0)) * radian
+        source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
         theta, source = vectorize(theta, source)
 
-        # Convert angles radians
-        inc = self._inc * radian
-        obl = self._obl * radian
-        theta *= radian
-        
         # Compute & return
-        return self.ops.render_reflected(res, projection, theta, inc, obl, 
-                                         self._y, self._u, self._f, source)
+        return self.ops.render_reflected(res, projection, theta, self._inc, 
+                                         self._obl, self._y, self._u, self._f, 
+                                         source)
 
     def show(self, **kwargs):
         # We need to evaluate the variables so we can plot the map!
@@ -690,9 +657,8 @@ class ReflectedBase(object):
             # Get kwargs
             res = kwargs.get("res", 300)
             projection = get_projection(kwargs.get("projection", "ortho"))
-            theta = self.cast(kwargs.pop("theta", 0.0))
-            source = self.cast(kwargs.pop("source", [-1, 0, 0]))
-            source = atleast_2d(source)
+            theta = self.cast(kwargs.pop("theta", 0.0)) * radian
+            source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
             theta, source = vectorize(theta, source)
 
             # Evaluate the variables
@@ -706,8 +672,8 @@ class ReflectedBase(object):
 
             # Explicitly call the compiled version of `render`
             kwargs["image"] = self.ops.render_reflected(
-                res, projection, theta * radian, inc * radian, 
-                obl * radian, y, u, f, source, force_compile=True
+                res, projection, theta, inc, 
+                obl, y, u, f, source, force_compile=True
             )
         return super(ReflectedBase, self).show(**kwargs)
 
