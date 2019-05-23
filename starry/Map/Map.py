@@ -20,7 +20,7 @@ class YlmBase(object):
 
     """
 
-    def __init__(self, ydeg, udeg, fdeg, lazy, quiet=False):
+    def __init__(self, ydeg, udeg, fdeg, lazy=True, quiet=False):
         """
 
         """
@@ -730,4 +730,4 @@ def Map(ydeg=0, udeg=0, doppler=False, reflected=False, lazy=True, quiet=False):
     class Map(*Bases): 
         pass
 
-    return Map(ydeg, udeg, fdeg, lazy, quiet=quiet)
+    return Map(ydeg, udeg, fdeg, lazy=lazy, quiet=quiet)
