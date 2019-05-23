@@ -678,7 +678,7 @@ class ReflectedBase(object):
         inc = self._inc * radian
         obl = self._obl * radian
         theta *= radian
-
+        
         # Compute & return
         return self.ops.render_reflected(res, projection, theta, inc, obl, 
                                          self._y, self._u, self._f, source)
@@ -694,7 +694,7 @@ class ReflectedBase(object):
             source = self.cast(kwargs.pop("source", [-1, 0, 0]))
             source = atleast_2d(source)
             theta, source = vectorize(theta, source)
-            
+
             # Evaluate the variables
             theta = theta.eval()
             source = source.eval()

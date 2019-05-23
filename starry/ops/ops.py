@@ -63,7 +63,7 @@ class autocompile(object):
             The magic happens in here.
 
             """
-            if (not instance.lazy) or force_compile:
+            if (not instance.lazy) or (force_compile):
                 # Compile the function if needed & cache it
                 if not hasattr(instance, self.compiled_name):
                     with CompileLogMessage(self.name):
@@ -360,21 +360,8 @@ class Ops(object):
         # Compute the polynomial basis
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
-        # Compute the terminator & illumination profile
-        b = -source[2]
-        invsr = 1.0 / tt.sqrt(source[0] ** 2 + source[1] ** 2)
-        cosw = source[1] * invsr
-        sinw = -source[0] * invsr
-        xrot = xyz[0] * cosw + xyz[1] * sinw
-        yrot = -xyz[0] * sinw + xyz[1] * cosw
-        yterm = b * tt.sqrt(1.0 - xrot ** 2)
-
-        I = tt.sqrt(1.0 - b ** 2) * yrot - b * xyz[2]
-        I = tt.where(yrot > yterm, I, 0.0)
-
-        # TODO: if b == -1, I = z; if b == 1, I = 0.0 
-
         # If lat/lon, rotate the map so that north points up
+        # TODO: rotate the source as well
         y = tt.switch(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
             tt.reshape(
@@ -403,7 +390,34 @@ class Ops(object):
             )
 
         # Dot the polynomial into the basis
-        return tt.reshape(tt.dot(pT, A1Ry), [res, -1, theta.shape[0]])
+        image = tt.dot(pT, A1Ry)
+
+        # Compute the terminator & illumination profile
+        b = -source[:, 2]
+        invsr = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
+        cosw = source[:, 1] * invsr
+        sinw = -source[:, 0] * invsr
+        xrot = tt.shape_padright(xyz[0]) * cosw + tt.shape_padright(xyz[1]) * sinw
+        yrot = -tt.shape_padright(xyz[0]) * sinw + tt.shape_padright(xyz[1]) * cosw
+        yterm = b * tt.sqrt(1.0 - xrot ** 2)
+        I = tt.sqrt(1.0 - b ** 2) * yrot - b * tt.shape_padright(xyz[2])
+        I = tt.where(yrot > yterm, I, tt.zeros_like(I))
+        
+        I = tt.switch(
+                tt.eq(tt.abs_(b), 1.0),
+                tt.switch(
+                    tt.eq(b, 1.0),
+                    tt.zeros_like(I),           # midnight
+                    tt.shape_padright(xyz[2])   # noon
+                ),
+                I
+            )
+
+        # Weight the image by the illumination
+        image *= I
+
+        # Reshape and return
+        return tt.reshape(image, [res, -1, theta.shape[0]])
 
     @autocompile(
         "get_inc_obl", tt.dvector()
