@@ -3,15 +3,38 @@ from inspect import getmro
 import theano
 import theano.tensor as tt
 import numpy as np
+from theano.ifelse import ifelse
 
 
-__all__ = ["is_theano",
+__all__ = ["STARRY_ORTHOGRAPHIC_PROJECTION",
+           "STARRY_RECTANGULAR_PROJECTION",
+           "get_projection",
+           "is_theano",
            "to_tensor",
            "to_array",
            "vectorize",
+           "atleast_2d",
            "cross",
            "RAxisAngle",
            "VectorRAxisAngle"]
+
+
+# Constants
+STARRY_ORTHOGRAPHIC_PROJECTION = 0
+STARRY_RECTANGULAR_PROJECTION = 1
+
+
+def get_projection(projection):
+    """
+
+    """
+    if projection.lower().startswith("rect"):
+        projection = STARRY_RECTANGULAR_PROJECTION
+    elif projection.lower().startswith("ortho"):
+        projection = STARRY_ORTHOGRAPHIC_PROJECTION
+    else:
+        raise ValueError("Unknown map projection.")
+    return projection
 
 
 def is_theano(*objs):
@@ -50,21 +73,31 @@ def to_array(*args):
 
 def vectorize(*args):
     """
-    Vectorize all scalar ``args``.
+    Vectorize all ``args`` so that they have the same length
+    along the first axis.
 
+    TODO: Add error catching if the dimensions don't agree.
+    
     """
     if is_theano(*args):
-        ones = tt.ones_like(np.sum([arg if is_theano(arg) 
-                                    else np.atleast_1d(arg) 
-                                    for arg in args], axis=0)).astype(tt.config.floatX).reshape([-1])
-        args = tuple([to_tensor(arg).astype(tt.config.floatX) * ones for arg in args])
+        args = [arg * tt.ones(1) for arg in args]
+        size = tt.max([arg.shape[0] for arg in args])
+        args = [tt.repeat(arg, size // arg.shape[0], 0) for arg in args]
     else:
-        ones = np.ones_like(np.sum([np.atleast_1d(arg) for arg in args], axis=0))
-        args = tuple([arg * ones for arg in args])
+        args = [np.atleast_1d(arg) for arg in args]
+        size = np.max([arg.shape[0] for arg in args])
+        args = tuple([arg * np.ones((size,) + tuple(np.ones(len(arg.shape) - 1, dtype=int))) for arg in args])
     if len(args) == 1:
         return args[0]
     else:
         return args
+
+
+def atleast_2d(arg):
+    if is_theano(arg):
+        return arg * tt.ones((1, 1))
+    else:
+        return np.atleast_2d(arg)
 
 
 def cross(x, y):

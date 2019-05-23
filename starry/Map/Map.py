@@ -1,4 +1,4 @@
-from ..ops import Ops, vectorize, STARRY_RECTANGULAR_PROJECTION, STARRY_ORTHOGRAPHIC_PROJECTION
+from ..ops import Ops, vectorize, atleast_2d, get_projection, STARRY_RECTANGULAR_PROJECTION
 from .indices import get_ylm_inds, get_ul_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
@@ -12,7 +12,6 @@ degree = 1.0 / radian
 
 
 __all__ = ["Map"]
-
 
 
 class YlmBase(object):
@@ -297,14 +296,8 @@ class YlmBase(object):
         
         """
         res = kwargs.pop("res", 300)
-        projection = kwargs.pop("projection", "ortho")
-        if projection.lower().startswith("rect"):
-            projection = STARRY_RECTANGULAR_PROJECTION
-        elif projection.lower().startswith("ortho"):
-            projection = STARRY_ORTHOGRAPHIC_PROJECTION
-        else:
-            raise ValueError("Unknown map projection.")
-        theta = kwargs.pop("theta", 0.0)
+        projection = get_projection(kwargs.pop("projection", "ortho"))
+        theta = self.cast(kwargs.pop("theta", 0.0))
         theta = vectorize(theta)
 
         # Convert angles radians
@@ -323,13 +316,7 @@ class YlmBase(object):
         """
         # Get kwargs
         cmap = kwargs.pop("cmap", "plasma")
-        projection = kwargs.get("projection", "ortho")
-        if projection.lower().startswith("rect"):
-            projection = STARRY_RECTANGULAR_PROJECTION
-        elif projection.lower().startswith("ortho"):
-            projection = STARRY_ORTHOGRAPHIC_PROJECTION
-        else:
-            raise ValueError("Unknown map projection.")
+        projection = get_projection(kwargs.get("projection", "ortho"))
         grid = kwargs.pop("grid", True)
         interval = kwargs.pop("interval", 75)
         mp4 = kwargs.pop("mp4", None)
@@ -352,7 +339,7 @@ class YlmBase(object):
 
                 # Get kwargs
                 res = kwargs.get("res", 300)
-                theta = vectorize(kwargs.pop("theta", 0.0))
+                theta = vectorize(self.cast(kwargs.pop("theta", 0.0))).eval()
 
                 # Evaluate the variables
                 inc = self._inc.eval()
@@ -362,9 +349,9 @@ class YlmBase(object):
                 f = self._f.eval()
 
                 # Explicitly call the compiled version of `render`
-                image = self.ops._compiled_render(
+                image = self.ops.render(
                     res, projection, theta * radian, inc * radian, 
-                    obl * radian, y, u, f
+                    obl * radian, y, u, f, force_compile=True
                 )
 
             else:
@@ -680,33 +667,49 @@ class ReflectedBase(object):
     """
 
     def render(self, **kwargs):
-        source = kwargs.pop("source", [-1, 0, 0])
-        res = super(ReflectedBase, self).render(**kwargs)
+        res = kwargs.pop("res", 300)
+        projection = get_projection(kwargs.pop("projection", "ortho"))
+        theta = self.cast(kwargs.pop("theta", 0.0))
+        source = self.cast(kwargs.pop("source", [-1, 0, 0]))
+        source = atleast_2d(source)
+        theta, source = vectorize(theta, source)
 
-        # TODO!
+        # Convert angles radians
+        inc = self._inc * radian
+        obl = self._obl * radian
+        theta *= radian
 
-        '''
-        Scalar b = -sz
-        if (likely(abs(b) < 1.0)) {
-            # Compute the terminator curve
-            Scalar invsr = Scalar(1.0) / sqrt(sx * sx + sy * sy);
-            Scalar cosw = sy * invsr;
-            Scalar sinw = -sx * invsr;
-            xrot = xv * cosw + yv * sinw;
-            xrot2 = xrot.array().square();
-            yrot = -xv * sinw + yv * cosw;
-            yterm = b * (Ones - xrot2).cwiseSqrt();
-            # Compute the illumination
-            I = sqrt(Scalar(1.0) - Scalar(b * b)) * yrot - b * z;
-            I = (yrot.array() > yterm.array()).select(I, 0.0);
-        } else if (b < 0) {
-            # Noon
-            I = z;
-        } else {
-            # Midnight
-            I = z * 0.0;
-        }
-        '''
+        # Compute & return
+        return self.ops.render_reflected(res, projection, theta, inc, obl, 
+                                         self._y, self._u, self._f, source)
+
+    def show(self, **kwargs):
+        # We need to evaluate the variables so we can plot the map!
+        if self.lazy and kwargs.get("image", None) is None:
+
+            # Get kwargs
+            res = kwargs.get("res", 300)
+            projection = get_projection(kwargs.get("projection", "ortho"))
+            theta = self.cast(kwargs.pop("theta", 0.0))
+            source = self.cast(kwargs.pop("source", [-1, 0, 0]))
+            source = atleast_2d(source)
+            theta, source = vectorize(theta, source)
+            
+            # Evaluate the variables
+            theta = theta.eval()
+            source = source.eval()
+            inc = self._inc.eval()
+            obl = self._obl.eval()
+            y = self._y.eval()
+            u = self._u.eval()
+            f = self._f.eval()
+
+            # Explicitly call the compiled version of `render`
+            kwargs["image"] = self.ops.render_reflected(
+                res, projection, theta * radian, inc * radian, 
+                obl * radian, y, u, f, source, force_compile=True
+            )
+        return super(ReflectedBase, self).show(**kwargs)
 
 
 def Map(ydeg=0, udeg=0, doppler=False, reflected=False, lazy=True, quiet=False):

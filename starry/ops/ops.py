@@ -2,7 +2,7 @@ from .. import _c_ops
 from .integration import sT
 from .rotation import dotRxy, dotRxyT, dotRz
 from .filter import F
-from .utils import RAxisAngle, VectorRAxisAngle, cross, to_tensor, to_array
+from .utils import *
 import theano
 import theano.tensor as tt
 import theano.sparse as ts
@@ -13,14 +13,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
 
-__all__ = ["STARRY_ORTHOGRAPHIC_PROJECTION",
-           "STARRY_RECTANGULAR_PROJECTION",
-           "Ops"]
-
-
-# Constants
-STARRY_ORTHOGRAPHIC_PROJECTION = 0
-STARRY_RECTANGULAR_PROJECTION = 1
+__all__ = ["Ops"]
 
 
 class CompileLogMessage:
@@ -65,15 +58,12 @@ class autocompile(object):
         Wrap the method `func` and return a compiled version if `lazy==False`.
         
         """
-        def wrapper(instance, *args):
+        def wrapper(instance, *args, force_compile=False):
             """
             The magic happens in here.
 
             """
-            if instance.lazy:
-                # Just return the function as is
-                return func(instance, *args)
-            else:
+            if (not instance.lazy) or force_compile:
                 # Compile the function if needed & cache it
                 if not hasattr(instance, self.compiled_name):
                     with CompileLogMessage(self.name):
@@ -85,6 +75,9 @@ class autocompile(object):
                         setattr(instance, self.compiled_name, compiled_func)
                 # Return the compiled version
                 return getattr(instance, self.compiled_name)(*args)
+            else:
+                # Just return the function as is
+                return func(instance, *args)
 
         # Store the function info
         wrapper.args = self.args
@@ -157,19 +150,19 @@ class Ops(object):
         self.rect_res = 0
         self.ortho_res = 0
     
-    def compute_ortho_pT(self, res):
+    def compute_ortho_grid(self, res):
         """
         Compute the polynomial basis on the plane of the sky.
 
         """
         dx = 2.0 / res
         y, x = tt.mgrid[-1:1:dx, -1:1:dx]
-        x = tt.reshape(x, [-1])
-        y = tt.reshape(y, [-1])
+        x = tt.reshape(x, [1, -1])
+        y = tt.reshape(y, [1, -1])
         z = tt.sqrt(1 - x ** 2 - y ** 2)
-        return self.pT(x, y, z)
+        return tt.concatenate((x, y, z))
 
-    def compute_rect_pT(self, res):
+    def compute_rect_grid(self, res):
         """
         Compute the polynomial basis on a rectangular lat/lon grid.
 
@@ -180,11 +173,7 @@ class Ops(object):
         y = tt.reshape(tt.cos(lat) * tt.sin(lon), [1, -1])
         z = tt.reshape(tt.sin(lat), [1, -1])
         R = RAxisAngle([1, 0, 0], -np.pi / 2)
-        xyz = tt.dot(R, tt.concatenate((x, y, z)))
-        x = xyz[0]
-        y = xyz[1]
-        z = xyz[2]
-        return self.pT(x, y, z)
+        return tt.dot(R, tt.concatenate((x, y, z)))
 
     def pT(self, x, y, z):
         """
@@ -201,6 +190,11 @@ class Ops(object):
                                   sequences=[self._mu, self._nu],
                                   non_sequences=[x, y, z]
         )
+        # For degree zero maps, we need to ensure the
+        # basis is NaN off the edge of the disk, since
+        # pT doesn't depend on `z`!
+        if self.ydeg == 0:
+            pT = tt.switch(tt.shape_padleft(tt.isnan(z)), pT * np.nan, pT)
         return tt.transpose(pT)
 
     def dotR(self, M, inc, obl, theta):
@@ -306,12 +300,15 @@ class Ops(object):
         """
 
         """
-        # Compute the polynomial basis
-        pT = tt.switch(
+        # Compute the Cartesian grid
+        xyz = tt.switch(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-            self.compute_rect_pT(res),
-            self.compute_ortho_pT(res)
+            self.compute_rect_grid(res),
+            self.compute_ortho_grid(res)
         )
+
+        # Compute the polynomial basis
+        pT = self.pT(xyz[0], xyz[1], xyz[2])
 
         # If lat/lon, rotate the map so that north points up
         y = tt.switch(
@@ -344,21 +341,69 @@ class Ops(object):
         # Dot the polynomial into the basis
         return tt.reshape(tt.dot(pT, A1Ry), [res, -1, theta.shape[0]])
     
-    def _compiled_render(self, *args):
+    @autocompile(
+        "render_reflected", tt.iscalar(), tt.iscalar(), tt.dvector(), 
+                            tt.dscalar(), tt.dscalar(), tt.dvector(), 
+                            tt.dvector(), tt.dvector(), tt.dmatrix()
+    )
+    def render_reflected(self, res, projection, theta, inc, obl, y, u, f, source):
         """
-        A workaround to allow the `render` function to be
-        compiled for lazy maps. Necessary if the user wants
-        to actually view an image of the map using `show`!
 
         """
-        if not hasattr(self, "_compiled_render_detail"):
-            with CompileLogMessage("render"):
-                self._compiled_render_detail = theano.function(
-                    self.render.args, 
-                    self.render.func(self, *self.render.args), 
-                    on_unused_input='ignore'
-                )
-        return self._compiled_render_detail(*args)
+        # Compute the Cartesian grid
+        xyz = tt.switch(
+            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+            self.compute_rect_grid(res),
+            self.compute_ortho_grid(res)
+        )
+
+        # Compute the polynomial basis
+        pT = self.pT(xyz[0], xyz[1], xyz[2])
+
+        # Compute the terminator & illumination profile
+        b = -source[2]
+        invsr = 1.0 / tt.sqrt(source[0] ** 2 + source[1] ** 2)
+        cosw = source[1] * invsr
+        sinw = -source[0] * invsr
+        xrot = xyz[0] * cosw + xyz[1] * sinw
+        yrot = -xyz[0] * sinw + xyz[1] * cosw
+        yterm = b * tt.sqrt(1.0 - xrot ** 2)
+
+        I = tt.sqrt(1.0 - b ** 2) * yrot - b * xyz[2]
+        I = tt.where(yrot > yterm, I, 0.0)
+
+        # TODO: if b == -1, I = z; if b == 1, I = 0.0 
+
+        # If lat/lon, rotate the map so that north points up
+        y = tt.switch(
+            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+            tt.reshape(
+                self.dotRxy(
+                    self.dotRz(
+                        tt.reshape(y, [1, -1]), tt.reshape(-obl, [1])
+                    ), np.pi / 2 - inc, 0
+                ), [-1]
+            ),
+            y
+        )
+
+        # Rotate the map and transform into the polynomial basis
+        yT = tt.tile(y, [theta.shape[0], 1])
+        Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
+        A1Ry = ts.dot(self.A1, Ry)
+
+        # Apply the filter
+        if self.filter:
+            f0 = tt.zeros_like(f)
+            f0 = tt.set_subtensor(f0[0], np.pi)
+            A1Ry = tt.switch(
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                tt.dot(self.F(u, f), A1Ry),
+                tt.dot(self.F(u, f0), A1Ry),
+            )
+
+        # Dot the polynomial into the basis
+        return tt.reshape(tt.dot(pT, A1Ry), [res, -1, theta.shape[0]])
 
     @autocompile(
         "get_inc_obl", tt.dvector()
