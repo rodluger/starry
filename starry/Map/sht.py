@@ -78,7 +78,7 @@ def array2map(image_array, lmax=10, sampling_factor=8, **kwargs):
                           "enable this feature. See " +
                           "`https://healpy.readthedocs.io`.")
     # Figure out a reasonable number of sides
-    # TODO: This is not optimized. There may be a better criterion
+    # Note that this is not optimized. There may be a better criterion
     # for figuring out the optimal number of sides.
     npix = image_array.shape[0] * image_array.shape[1]
     nside = 2

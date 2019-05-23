@@ -361,7 +361,6 @@ class Ops(object):
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
         # If lat/lon, rotate the map so that north points up
-        # TODO: rotate the source as well
         y = tt.switch(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
             tt.reshape(
@@ -372,6 +371,18 @@ class Ops(object):
                 ), [-1]
             ),
             y
+        )
+
+        # Rotate the source vector as well
+        source /= tt.reshape(source.norm(2, axis=1), [-1, 1])
+        map_axis = self.get_axis(inc, obl)
+        axis = cross(map_axis, [0, 1, 0])
+        angle = tt.arccos(map_axis[1])
+        R = RAxisAngle(axis, -angle)
+        source = tt.switch(
+            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+            tt.dot(source, R),
+            source
         )
 
         # Rotate the map and transform into the polynomial basis
@@ -392,7 +403,7 @@ class Ops(object):
         # Dot the polynomial into the basis
         image = tt.dot(pT, A1Ry)
 
-        # Compute the terminator & illumination profile
+        # Compute the terminator & illumination profile 
         b = -source[:, 2]
         invsr = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
         cosw = source[:, 1] * invsr
@@ -401,9 +412,7 @@ class Ops(object):
                tt.shape_padright(xyz[1]) * sinw
         yrot = -tt.shape_padright(xyz[0]) * sinw + \
                 tt.shape_padright(xyz[1]) * cosw
-        yterm = b * tt.sqrt(1.0 - xrot ** 2)
         I = tt.sqrt(1.0 - b ** 2) * yrot - b * tt.shape_padright(xyz[2])
-        I = tt.where(yrot > yterm, I, tt.zeros_like(I))
         I = tt.switch(
                 tt.eq(tt.abs_(b), 1.0),
                 tt.switch(
@@ -413,9 +422,14 @@ class Ops(object):
                 ),
                 I
             )
+        I = tt.switch(tt.gt(I, 0.0), I, tt.zeros_like(I))
 
         # Weight the image by the illumination
-        image *= I
+        image = tt.switch(
+            tt.isnan(image),
+            image,
+            image * I
+        )
 
         # Reshape and return
         return tt.reshape(image, [res, -1, theta.shape[0]])
