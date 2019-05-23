@@ -5,12 +5,17 @@ import pkg_resources
 import theano
 from theano import gof
 import theano.tensor as tt
+from theano.tests import unittest_tools as utt
+from .. import __version__
 
 
 __all__ = ["sTOp"]
 
 
 class sTOp(gof.COp):
+    """
+
+    """
 
     params_type = gof.ParamsType(
         deg=theano.scalar.int32
@@ -25,10 +30,9 @@ class sTOp(gof.COp):
         super(sTOp, self).__init__(self.func_file, self.func_name)
 
     def c_code_cache_version(self):
-        return ()
-        # if "dev" in __version__:
-        #     return ()
-        # return tuple(map(int, __version__.split(".")))
+        if "dev" in __version__:
+            return ()
+        return tuple(map(int, __version__.split(".")))
 
     def c_headers(self, compiler):
         return ["theano_interface.h", "vector"]

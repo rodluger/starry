@@ -5,7 +5,6 @@
 #include <exception>
 #include <Python.h>
 #include <numpy/arrayobject.h>
-
 #include "greens.h"
 
 namespace starry_theano {

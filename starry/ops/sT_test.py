@@ -16,7 +16,6 @@ class TestsTOp(utt.InferShapeTester):
 
     def get_args(self):
         np.random.seed(1234)
-
         b_val = np.random.uniform(0.0, 1.1, 100)
         r_val = 0.1
 
