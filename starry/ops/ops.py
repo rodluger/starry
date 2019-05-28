@@ -205,7 +205,7 @@ class Ops(object):
 
         """
         return tt.dot(
-            self.X.func(self, theta, xo, yo, zo, ro, inc, obl, u, f), y
+            self.X(theta, xo, yo, zo, ro, inc, obl, u, f, no_compile=True), y
         )
 
     @autocompile(
@@ -238,6 +238,7 @@ class Ops(object):
 
         """
         # Compute the Cartesian grid
+        # TODO: Should this be `ifelse`? Do a ctrl+f here for this
         xyz = tt.switch(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
             self.compute_rect_grid(res),
@@ -454,14 +455,14 @@ class Ops(object):
         source /= source.norm(2)
         dest /= dest.norm(2)
         axis = cross(source, dest)
-        inc_obl = self.get_inc_obl.func(self, axis)
+        inc_obl = self.get_inc_obl(axis, no_compile=True)
         inc = inc_obl[0]
         obl = inc_obl[1]
         theta = tt.reshape(tt.arccos(tt.dot(source, dest)), [1])
         return ifelse(
             tt.all(tt.eq(source, dest)),
             tt.reshape(y, [-1]),
-            self.rotate.func(self, y, theta, inc, obl)
+            self.rotate(y, theta, inc, obl, no_compile=True)
         )
 
     @autocompile(
@@ -521,13 +522,13 @@ class Ops(object):
 
         """
         # Compute the velocity-weighted intensity
-        f = self.compute_doppler_filter.func(self, inc, obl, veq, alpha)
-        Iv = self.flux.func(self, theta, xo, yo, zo, ro, inc, obl, y, u, f)
+        f = self.compute_doppler_filter(inc, obl, veq, alpha, no_compile=True)
+        Iv = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f, no_compile=True)
 
         # Compute the inverse of the intensity
         f0 = tt.zeros_like(f)
         f0 = tt.set_subtensor(f0[0], np.pi)
-        I = self.flux.func(self, theta, xo, yo, zo, ro, inc, obl, y, u, f0)
+        I = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f0, no_compile=True)
         invI = tt.ones((1,)) / I
         invI = tt.where(tt.isinf(invI), 0.0, invI)
 

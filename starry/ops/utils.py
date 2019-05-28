@@ -73,12 +73,12 @@ class autocompile(object):
         Wrap the method `func` and return a compiled version if `lazy==False`.
         
         """
-        def wrapper(instance, *args, force_compile=False):
+        def wrapper(instance, *args, force_compile=False, no_compile=False):
             """
             The magic happens in here.
 
             """
-            if (not instance.lazy) or (force_compile):
+            if (not no_compile) and ((not instance.lazy) or (force_compile)):
                 # Compile the function if needed & cache it
                 if not hasattr(instance, self.compiled_name):
                     with CompileLogMessage(self.name):
