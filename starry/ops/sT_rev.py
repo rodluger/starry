@@ -7,13 +7,12 @@ from theano import gof
 import theano.tensor as tt
 from theano.tests import unittest_tools as utt
 from .. import __version__
-from .sT_rev import sTRevOp
 
 
-__all__ = ["sTOp"]
+__all__ = ["sTRevOp"]
 
 
-class sTOp(gof.COp):
+class sTRevOp(gof.COp):
     """
 
     """
@@ -22,14 +21,13 @@ class sTOp(gof.COp):
         deg=theano.scalar.int32
     )
     __props__ = ("deg",)
-    func_file = "./sT.cc"
-    func_name = "APPLY_SPECIFIC(sT)"
+    func_file = "./sT_rev.cc"
+    func_name = "APPLY_SPECIFIC(sT_rev)"
 
     def __init__(self, deg, **kwargs):
         self.deg = int(deg)
         self.N = (deg + 1) ** 2
-        self.grad_op = sTRevOp(deg)
-        super(sTOp, self).__init__(self.func_file, self.func_name)
+        super(sTRevOp, self).__init__(self.func_file, self.func_name)
 
     def c_code_cache_version(self):
         if "dev" in __version__:
@@ -51,25 +49,17 @@ class sTOp(gof.COp):
             opts += ["-stdlib=libc++", "-mmacosx-version-min=10.7"]
         return opts
 
-    def make_node(self, b, r):
+    def make_node(self, b, r, bsT):
         in_args = [
             tt.as_tensor_variable(b),
-            tt.as_tensor_variable(r)
+            tt.as_tensor_variable(r),
+            tt.as_tensor_variable(bsT),
         ]
         out_args = [
-            tt.matrix().type()
+            in_args[0].type(),
+            in_args[1].type()
         ]
         return gof.Apply(self, in_args, out_args)
 
     def infer_shape(self, node, in_shapes):
-        out_shape = list(in_shapes[0])
-        out_shape.append(self.N)
-        return [out_shape]
-
-    def grad(self, inputs, gradients):
-        return self.grad_op(*inputs, gradients[0])
-
-    def R_op(self, inputs, eval_points):
-        if eval_points[0] is None:
-            return eval_points
-        return self.grad(inputs, eval_points)
+        return [in_shapes[0], in_shapes[1]]

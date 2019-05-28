@@ -1104,7 +1104,8 @@ namespace solver {
 
         using ADType = ADScalar<Scalar, 2>;
 
-        // Solver
+        // Solvers
+        Solver<Scalar, false> ScalarSolver;
         Solver<ADType, true> ADTypeSolver;
 
         // AutoDiff
@@ -1119,6 +1120,7 @@ namespace solver {
         ) :
             deg(deg),
             N((deg + 1) * (deg + 1)),
+            ScalarSolver(deg),
             ADTypeSolver(deg),
             b_ad(ADType(0.0, Vector<Scalar>::Unit(2, 0))),
             r_ad(ADType(0.0, Vector<Scalar>::Unit(2, 1)))
@@ -1126,15 +1128,28 @@ namespace solver {
         }
 
         /**
-        Compute the `s^T` occultation solution vector
-        and its gradient.
+        Compute the `s^T` occultation solution vector.
+
+        */
+        inline void compute (
+            const Scalar& b,
+            const Scalar& r,
+            Scalar* sT
+        ) {
+            ScalarSolver.compute(b, r);
+            for (int n = 0; n < N; ++n) {
+                sT[n] = ScalarSolver.sT(n);
+            }
+        }
+
+        /**
+        Compute the gradient of the `s^T` occultation solution vector.
 
         */
         inline void compute (
             const Scalar& b,
             const Scalar& r,
             Scalar* bsT,
-            Scalar* sT,
             Scalar& bb,
             Scalar& br
         ) {
@@ -1142,7 +1157,6 @@ namespace solver {
             r_ad.value() = r;
             ADTypeSolver.compute(b_ad, r_ad);
             for (int n = 0; n < N; ++n) {
-                sT[n] = ADTypeSolver.sT(n).value();
                 bb += ADTypeSolver.sT(n).derivatives()(0) * bsT[n];
                 br += ADTypeSolver.sT(n).derivatives()(1) * bsT[n];
             }

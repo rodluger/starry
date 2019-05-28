@@ -16,10 +16,12 @@ if (APPLY_SPECIFIC(G) != NULL) {
 
 #section support_code_struct
 
-int APPLY_SPECIFIC(sT)(
+int APPLY_SPECIFIC(sT_rev)(
     PyArrayObject* input0,    // b
     PyArrayObject* input1,    // r
-    PyArrayObject** output0,  // s
+    PyArrayObject* input2,    // bs
+    PyArrayObject** output0,  // bb
+    PyArrayObject** output1,  // br
     PARAMS_TYPE* params
 ) {
     typedef DTYPE_OUTPUT_0 Scalar;
@@ -33,7 +35,8 @@ int APPLY_SPECIFIC(sT)(
              ns = -1;
     auto b = starry_theano::get_flat_input<DTYPE_INPUT_0>(input0, &nb);
     auto r = starry_theano::get_flat_input<DTYPE_INPUT_1>(input1, &nr)[0];
-    if (b == NULL || r == NULL) {
+    auto bs = starry_theano::get_flat_input<DTYPE_INPUT_2>(input2, &ns);
+    if (b == NULL || r == NULL || bs == NULL) {
         return 1;
     }
 
@@ -52,20 +55,30 @@ int APPLY_SPECIFIC(sT)(
     for (npy_intp i = 0; i < ndim; ++i) 
         shape[i] = dims[i];
     shape[ndim] = N;
-    auto s = starry_theano::allocate_output<DTYPE_OUTPUT_0>(
-        ndim + 1, &(shape[0]), TYPENUM_OUTPUT_0, output0
+    auto bb = starry_theano::allocate_output<DTYPE_OUTPUT_0>(
+        ndim, &(shape[0]), TYPENUM_OUTPUT_0, output0
     );
-    if (s == NULL) {
+    if (bb == NULL) {
+        return 2;
+    }
+    auto br = starry_theano::allocate_output<DTYPE_OUTPUT_1>(
+        0, &nr, TYPENUM_OUTPUT_1, output1
+    );
+    if (br == NULL) {
         return 2;
     }
     
     // Do the computation
+    *br = 0.0;
     for (npy_intp n = 0; n < nb; ++n) {
+        bb[n] = 0.0;
         try {
             APPLY_SPECIFIC(G)->compute(
                 std::abs(b[n]), 
-                r,
-                &(s[n * N])
+                r, 
+                &(bs[n * N]),
+                bb[n], 
+                *br
             );
         } catch (std::exception& e) {
             PyErr_Format(PyExc_RuntimeError, "starry compute failed");
