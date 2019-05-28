@@ -1,5 +1,6 @@
 from .. import _c_ops
-from .integration import sT
+from .sT import sTOp
+#from .integration import sT
 from .rotation import dotRxy, dotRxyT, dotRz
 from .filter import F
 from .utils import *
@@ -35,6 +36,8 @@ class Ops(object):
         self.ydeg = ydeg
         self.udeg = udeg
         self.fdeg = fdeg
+        self.deg = ydeg + udeg + fdeg
+        self.N = (self.deg + 1) ** 2
         self.filter = (fdeg > 0) or (udeg > 0)
         self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
         self.lazy = lazy
@@ -44,7 +47,10 @@ class Ops(object):
             self.cast = to_array
 
         # Solution vectors
-        self.sT = sT(self._c_ops.sT, self._c_ops.N)
+        #self.sT = sT(self._c_ops.sT, self._c_ops.N)
+
+        self.sT = sTOp(self.deg)
+
         self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
         self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))
         
@@ -167,9 +173,9 @@ class Ops(object):
             rTA1 = self.rTA1
         X_rot = tt.zeros((rows, cols))
         X_rot = tt.set_subtensor(
-            X_rot[i_rot], 
-            self.dotR(rTA1, inc, obl, theta[i_rot])
-        )
+                    X_rot[i_rot], 
+                    self.dotR(rTA1, inc, obl, theta[i_rot])
+                )
 
         # Occultation + rotation operator
         X_occ = tt.zeros((rows, cols))

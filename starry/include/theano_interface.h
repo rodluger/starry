@@ -24,6 +24,7 @@ namespace starry_theano {
     // Check the dimensions if the expectation is provided
     if (size != NULL && *size >= 0) {
       if (actual_size != *size) {
+        std::cout << "size mismatch" << std::endl;
         PyErr_Format(PyExc_ValueError, "size mismatch; expected %d got %d", *size, actual_size);
         return NULL;
       }

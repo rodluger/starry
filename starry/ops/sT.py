@@ -67,7 +67,7 @@ class sTOp(gof.COp):
         return [out_shape]
 
     def grad(self, inputs, gradients):
-        return self.grad_op(*inputs, gradients[0])
+        return self.grad_op(*(inputs + gradients))
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:

@@ -237,7 +237,7 @@ class YlmBase(object):
 
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self.get_orbit(**kwargs)
+        theta, xo, yo, zo, ro = self._get_orbit(**kwargs)
 
         # Compute & return
         return self.ops.X(theta, xo, yo, zo, ro, 
@@ -249,7 +249,7 @@ class YlmBase(object):
         
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self.get_orbit(**kwargs)
+        theta, xo, yo, zo, ro = self._get_orbit(**kwargs)
 
         # Compute & return
         return self.ops.flux(theta, xo, yo, zo, ro, 
@@ -592,7 +592,7 @@ class DopplerBase(object):
         of the star, its orientation, etc.)
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self.get_orbit(**kwargs)
+        theta, xo, yo, zo, ro = self._get_orbit(**kwargs)
 
         # Compute
         return self.ops.rv(

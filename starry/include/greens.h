@@ -1136,6 +1136,9 @@ namespace solver {
             const Scalar& r,
             Scalar* sT
         ) {
+
+            // TODO: Special case for r == 0
+
             ScalarSolver.compute(b, r);
             for (int n = 0; n < N; ++n) {
                 sT[n] = ScalarSolver.sT(n);
@@ -1153,6 +1156,9 @@ namespace solver {
             Scalar& bb,
             Scalar& br
         ) {
+
+            // TODO: Special case for r == 0
+
             b_ad.value() = b;
             r_ad.value() = r;
             ADTypeSolver.compute(b_ad, r_ad);

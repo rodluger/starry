@@ -34,11 +34,13 @@ int APPLY_SPECIFIC(sT_rev)(
              nr = 1, 
              ns = -1;
     auto b = starry_theano::get_flat_input<DTYPE_INPUT_0>(input0, &nb);
-    auto r = starry_theano::get_flat_input<DTYPE_INPUT_1>(input1, &nr)[0];
+    auto r_ = starry_theano::get_flat_input<DTYPE_INPUT_1>(input1, &nr);
     auto bs = starry_theano::get_flat_input<DTYPE_INPUT_2>(input2, &ns);
-    if (b == NULL || r == NULL || bs == NULL) {
+    if (b == NULL || r_ == NULL || bs == NULL) {
+        PyErr_Format(PyExc_RuntimeError, "either `b`, `r`, or `bs` is `NULL`");
         return 1;
     }
+    auto r = r_[0];
 
     // Set up the op; if it exists, reuse it
     if (APPLY_SPECIFIC(G) == NULL || APPLY_SPECIFIC(G)->deg != deg) {
@@ -59,12 +61,14 @@ int APPLY_SPECIFIC(sT_rev)(
         ndim, &(shape[0]), TYPENUM_OUTPUT_0, output0
     );
     if (bb == NULL) {
+        PyErr_Format(PyExc_RuntimeError, "`bb` is NULL");
         return 2;
     }
     auto br = starry_theano::allocate_output<DTYPE_OUTPUT_1>(
         0, &nr, TYPENUM_OUTPUT_1, output1
     );
     if (br == NULL) {
+        PyErr_Format(PyExc_RuntimeError, "`br` is NULL");
         return 2;
     }
     

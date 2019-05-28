@@ -1,3 +1,4 @@
+import theano
 from theano.tests.unittest_tools import verify_grad
 import theano.tensor as tt
 import starry
@@ -80,7 +81,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     theta = np.linspace(0, 30, 10)
     xo = np.linspace(-1.5, 1.5, len(theta))
     yo = np.ones_like(xo) * 0.3
-    zo = 1.0
+    zo = 1.0 * np.ones_like(xo)
     ro = 0.1
     inc = 85.0 * np.pi / 180.
     obl = 30.0 * np.pi / 180.
@@ -104,10 +105,10 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 if __name__ == "__main__":
-    test_pT()
     test_flux()
+    test_sT()
+    test_F()
+    test_pT()
     test_dotRxyT()
     test_dotRxy()
     test_dotRz()
-    test_sT()
-    test_F()

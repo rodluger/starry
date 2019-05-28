@@ -6,10 +6,15 @@ import theano
 from theano import gof
 import theano.tensor as tt
 from theano.tests import unittest_tools as utt
+from theano.tensor.extra_ops import CpuContiguous
 from .. import __version__
 
-
 __all__ = ["sTRevOp"]
+
+
+def as_contiguous_variable(x):
+    """Make `x` C-contiguous."""
+    return CpuContiguous()(tt.as_tensor_variable(x))
 
 
 class sTRevOp(gof.COp):
@@ -53,7 +58,7 @@ class sTRevOp(gof.COp):
         in_args = [
             tt.as_tensor_variable(b),
             tt.as_tensor_variable(r),
-            tt.as_tensor_variable(bsT),
+            as_contiguous_variable(bsT)
         ]
         out_args = [
             in_args[0].type(),
