@@ -49,22 +49,27 @@ class sTOp(gof.COp):
             opts += ["-stdlib=libc++", "-mmacosx-version-min=10.7"]
         return opts
 
-    def make_node(self, b, r):
+    def make_node(self, b, r, bsT):
         in_args = [
             tt.as_tensor_variable(b),
             tt.as_tensor_variable(r),
+            tt.as_tensor_variable(bsT),
         ]
-        out_args = [(tt.shape_padright(in_args[0]) + tt.zeros(self.N)).type()]
+        out_args = [
+            in_args[2].type(),
+            in_args[0].type(),
+            in_args[1].type()
+        ]
         return gof.Apply(self, in_args, out_args)
 
     def infer_shape(self, node, in_shapes):
-        out_shape = list(in_shapes[0])
-        out_shape.append(self.N)
-        return [out_shape]
+        return [in_shapes[2], in_shapes[0], in_shapes[1]]
 
     def grad(self, inputs, gradients):
-        # TODO!!!
-        assert 0
+        b, r = inputs
+        bsT = gradients[0]
+        sT, bb, br = self(b, r, bsT)
+        return bb, br
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:

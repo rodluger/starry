@@ -1104,8 +1104,7 @@ namespace solver {
 
         using ADType = ADScalar<Scalar, 2>;
 
-        // Solvers
-        Solver<Scalar, false> ScalarSolver;
+        // Solver
         Solver<ADType, true> ADTypeSolver;
 
         // AutoDiff
@@ -1114,53 +1113,38 @@ namespace solver {
 
     public:
 
-        // Solutions
-        RowVector<Scalar>& sT;
-        RowVector<Scalar> dsTdb;
-        RowVector<Scalar> dsTdr;
-
         // Constructor
         explicit Greens(
             int deg
         ) :
             deg(deg),
             N((deg + 1) * (deg + 1)),
-            ScalarSolver(deg),
             ADTypeSolver(deg),
             b_ad(ADType(0.0, Vector<Scalar>::Unit(2, 0))),
-            r_ad(ADType(0.0, Vector<Scalar>::Unit(2, 1))),
-            sT(ScalarSolver.sT),
-            dsTdb(RowVector<Scalar>::Zero(N)),
-            dsTdr(RowVector<Scalar>::Zero(N))
+            r_ad(ADType(0.0, Vector<Scalar>::Unit(2, 1)))
         {
         }
 
         /**
         Compute the `s^T` occultation solution vector
-        with or without the gradient.
+        and its gradient.
 
         */
-        template <bool GRADIENT=false>
         inline void compute (
             const Scalar& b,
-            const Scalar& r
+            const Scalar& r,
+            const Vector<Scalar>& bsT,
+            Vector<Scalar>& sT,
+            Scalar& bb,
+            Scalar& br
         ) {
-
-            if (!GRADIENT) {
-
-                ScalarSolver.compute(b, r);
-
-            } else {
-                
-                b_ad.value() = b;
-                r_ad.value() = r;
-                ADTypeSolver.compute(b_ad, r_ad);
-                for (int n = 0; n < N; ++n) {
-                    sT(n) = ADTypeSolver.sT(n).value();
-                    dsTdb(n) = ADTypeSolver.sT(n).derivatives()(0);
-                    dsTdr(n) = ADTypeSolver.sT(n).derivatives()(1);
-                }
-
+            b_ad.value() = b;
+            r_ad.value() = r;
+            ADTypeSolver.compute(b_ad, r_ad);
+            for (int n = 0; n < N; ++n) {
+                sT(n) = ADTypeSolver.sT(n).value();
+                bb += ADTypeSolver.sT(n).derivatives()(0) * bsT(n);
+                br += ADTypeSolver.sT(n).derivatives()(1) * bsT(n);
             }
 
         }
