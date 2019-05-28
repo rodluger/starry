@@ -1,8 +1,10 @@
-from .. import _c_ops
 from .sT import sTOp
-#from .integration import sT
+
+# TODO: Replace --
+from .. import _c_ops
 from .rotation import dotRxy, dotRxyT, dotRz
 from .filter import F
+# ----------------
 from .utils import *
 import theano
 import theano.tensor as tt
@@ -47,9 +49,7 @@ class Ops(object):
             self.cast = to_array
 
         # Solution vectors
-        #self.sT = sT(self._c_ops.sT, self._c_ops.N)
-
-        self.sT = sTOp(self.deg)
+        self.sT = sTOp(ydeg, udeg, fdeg)
 
         self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
         self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))

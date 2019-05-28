@@ -37,7 +37,7 @@ int APPLY_SPECIFIC(sT_rev)(
     auto r_ = starry_theano::get_flat_input<DTYPE_INPUT_1>(input1, &nr);
     auto bs = starry_theano::get_flat_input<DTYPE_INPUT_2>(input2, &ns);
     if (b == NULL || r_ == NULL || bs == NULL) {
-        PyErr_Format(PyExc_RuntimeError, "either `b`, `r`, or `bs` is `NULL`");
+        PyErr_Format(PyExc_RuntimeError, "either `b`, `r`, or `bs` is NULL");
         return 1;
     }
     auto r = r_[0];

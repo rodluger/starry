@@ -4,6 +4,7 @@ import theano
 import theano.tensor as tt
 import numpy as np
 from theano.ifelse import ifelse
+from theano.tensor.extra_ops import CpuContiguous
 import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -16,6 +17,7 @@ __all__ = ["logger",
            "get_projection",
            "is_theano",
            "to_tensor",
+           "as_contiguous_variable",
            "to_array",
            "vectorize",
            "atleast_2d",
@@ -132,6 +134,11 @@ def to_tensor(*args):
         return tt.as_tensor_variable(args[0]).astype(tt.config.floatX)
     else:
         return [tt.as_tensor_variable(arg).astype(tt.config.floatX) for arg in args]
+
+
+def as_contiguous_variable(x):
+    """Make `x` C-contiguous."""
+    return CpuContiguous()(tt.as_tensor_variable(x))
 
 
 def to_array(*args):
