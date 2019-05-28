@@ -216,57 +216,22 @@ inline void computeA1 (
 }
 
 /**
-Compute the *sparse* change of basis matrix `A1`.
-
-*/
-template <typename T>
-inline void computeA1 (
-    int lmax, 
-    Eigen::SparseMatrix<T>& A1,
-    const T& norm
-) {
-    int N = (lmax + 1) * (lmax + 1);
-    Matrix<T> A1Dense(N, N);
-    computeA1(lmax, A1Dense, norm);
-    A1 = A1Dense.sparseView();
-}
-
-/**
-Compute the inverse of the change of basis matrix `A1`.
-
-*/
-template <typename T>
-void computeA1Inv (
-    int lmax, 
-    const Eigen::SparseMatrix<T>& A1,
-    Eigen::SparseMatrix<T>& A1Inv
-) {
-    int N = (lmax + 1) * (lmax + 1);
-    Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
-    solver.compute(A1);
-    if (solver.info() != Eigen::Success)
-        throw std::runtime_error(
-            "Error computing the change of basis matrix `A1Inv`.");
-    Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
-    A1Inv = solver.solve(I);
-}
-
-/**
 Compute the full change of basis matrix, `A`.
 
 */
-template <typename T>
+template <typename Derived>
 void computeA(
     int lmax, 
-    const Eigen::SparseMatrix<T>& A1,
-    Eigen::SparseMatrix<T>& A2, 
-    Eigen::SparseMatrix<T>& A
+    const MatrixBase<Derived>& A1,
+    MatrixBase<Derived>& A2, 
+    MatrixBase<Derived>& A
 ) {
+    using Scalar = typename Derived::Scalar;
     int i, n, l, m, mu, nu;
     int N = (lmax + 1) * (lmax + 1);
 
     // Let's compute the inverse of A2, since it's easier
-    Matrix<T> A2InvDense = Matrix<T>::Zero(N, N);
+    Matrix<Scalar> A2Inv = Matrix<Scalar>::Zero(N, N);
     n = 0;
     for (l = 0; l < lmax + 1; ++l) {
         for (m = -l; m < l + 1; ++m){
@@ -274,63 +239,47 @@ void computeA(
             nu = l + m;
             if (nu % 2 == 0) {
                 // x^(mu/2) y^(nu/2)
-                A2InvDense(n, n) = (mu + 2) / 2;
+                A2Inv(n, n) = (mu + 2) / 2;
             } else if ((l == 1) && (m == 0)) {
                 // z
-                A2InvDense(n, n) = 1;
+                A2Inv(n, n) = 1;
             } else if ((mu == 1) && (l % 2 == 0)) {
                 // x^(l-2) y z
                 i = l * l + 3;
-                A2InvDense(i, n) = 3;
+                A2Inv(i, n) = 3;
             } else if ((mu == 1) && (l % 2 == 1)) {
                 // x^(l-3) z
                 i = 1 + (l - 2) * (l - 2);
-                A2InvDense(i, n) = -1;
+                A2Inv(i, n) = -1;
                 // x^(l-1) z
                 i = l * l + 1;
-                A2InvDense(i, n) = 1;
+                A2Inv(i, n) = 1;
                 // x^(l-3) y^2 z
                 i = l * l + 5;
-                A2InvDense(i, n) = 4;
+                A2Inv(i, n) = 4;
             } else {
                 if (mu != 3) {
                     // x^((mu - 5)/2) y^((nu - 1)/2)
                     i = nu + ((mu - 4 + nu) * (mu - 4 + nu)) / 4;
-                    A2InvDense(i, n) = (mu - 3) / 2;
+                    A2Inv(i, n) = (mu - 3) / 2;
                     // x^((mu - 5)/2) y^((nu + 3)/2)
                     i = nu + 4 + ((mu + nu) * (mu + nu)) / 4;
-                    A2InvDense(i, n) = -(mu - 3) / 2;
+                    A2Inv(i, n) = -(mu - 3) / 2;
                 }
                 // x^((mu - 1)/2) y^((nu - 1)/2)
                 i = nu + (mu + nu) * (mu + nu) / 4;
-                A2InvDense(i, n) = -(mu + 3) / 2;
+                A2Inv(i, n) = -(mu + 3) / 2;
             }
             ++n;
         }
     }
 
-    // Sparse dot A2 into A1
-    Eigen::SparseMatrix<T> A2Inv = A2InvDense.sparseView();
-    Eigen::SparseLU<Eigen::SparseMatrix<T>> solver;
+    // Compute A
+    Eigen::HouseholderQR<Matrix<Scalar>> solver(N, N);
     solver.compute(A2Inv);
-    if (solver.info() != Eigen::Success) {
-        throw std::runtime_error(
-            "Error computing the change of basis matrix `A2`."
-        );
-    }
-    Eigen::SparseMatrix<T> I = Matrix<T>::Identity(N, N).sparseView();
+    Matrix<Scalar> I = Matrix<Scalar>::Identity(N, N);
     A2 = solver.solve(I);
-    if (solver.info() != Eigen::Success) {
-        throw std::runtime_error(
-            "Error computing the change of basis matrix `A2`."
-        );
-    }
     A = solver.solve(A1);
-    if (solver.info() != Eigen::Success) {
-        throw std::runtime_error(
-            "Error computing the change of basis matrix `A1`."
-        );
-    }
 }
 
 /**
@@ -389,22 +338,23 @@ void computerT (
 }
 
 /**
-Compute the change of basis matrices from limb darkening coefficients
+Compute the *dense* change of basis matrices from limb darkening coefficients
 to polynomial and Green's polynomial coefficients.
 
 */
-template <typename T>
+template <typename Derived>
 void computeU(
     int lmax, 
-    const Eigen::SparseMatrix<T>& A1,
-    const Eigen::SparseMatrix<T>& A, 
-    Eigen::SparseMatrix<T>& U1, 
-    T norm
+    const MatrixBase<Derived>& A1,
+    const MatrixBase<Derived>& A, 
+    MatrixBase<Derived>& U1, 
+    typename Derived::Scalar norm
 ) {
-    T twol, amp, lfac, lchoosek, fac0, fac;
+    using Scalar = typename Derived::Scalar;
+    Scalar twol, amp, lfac, lchoosek, fac0, fac;
     int N = (lmax + 1) * (lmax + 1);
-    Matrix<T> U0;
-    Matrix<T> LT, YT;
+    Matrix<Scalar> U0;
+    Matrix<Scalar> LT, YT;
     LT.setZero(lmax + 1, lmax + 1);
     YT.setZero(lmax + 1, lmax + 1);
 
@@ -426,7 +376,7 @@ void computeU(
     lfac = 1.0;
     fac0 = 1.0;
     for (int l = 0; l < lmax + 1; l += 2) {
-        amp = twol * sqrt((2 * l + 1) / (4 * pi<T>())) / lfac;
+        amp = twol * sqrt((2 * l + 1) / (4 * pi<Scalar>())) / lfac;
         lchoosek = 1;
         fac = fac0;
         for (int k = 0; k < l + 1; k += 2) {
@@ -443,7 +393,7 @@ void computeU(
     lfac = 1.0;
     fac0 = 0.5;
     for (int l = 1; l < lmax + 1; l += 2) {
-        amp = twol * sqrt((2 * l + 1) / (4 * pi<T>())) / lfac;
+        amp = twol * sqrt((2 * l + 1) / (4 * pi<Scalar>())) / lfac;
         lchoosek = l;
         fac = fac0;
         for (int k = 1; k < l + 1; k += 2) {
@@ -457,7 +407,7 @@ void computeU(
     }
 
     // Compute U0
-    Eigen::HouseholderQR<Matrix<T>> solver(lmax + 1, lmax + 1);
+    Eigen::HouseholderQR<Matrix<Scalar>> solver(lmax + 1, lmax + 1);
     solver.compute(YT);
     U0 = solver.solve(LT);
 
@@ -466,12 +416,11 @@ void computeU(
     U0 /= norm;
 
     // Compute U1
-    Matrix<T> X(N, lmax + 1);
+    Matrix<Scalar> X(N, lmax + 1);
     X.setZero();
     for (int l = 0; l < lmax + 1; ++l)
         X(l * (l + 1), l) = 1;
-    Eigen::SparseMatrix<T> XU0 = (X * U0).sparseView();
-    U1 = A1 * XU0;
+    U1 = A1 * (X * U0);
 }
 
 
@@ -492,14 +441,14 @@ public:
     const int fdeg;                                                            /**< The highest degree of the filter map */
     const int deg;
     const double norm;                                                         /**< Map normalization constant */
-    Eigen::SparseMatrix<T> A1;                                                 /**< The polynomial change of basis matrix */
-    Eigen::SparseMatrix<T> A1_f;                                               /**< The polynomial change of basis matrix for the filter operator */
-    Eigen::SparseMatrix<T> A1Inv;                                              /**< The inverse of the polynomial change of basis matrix */
-    Eigen::SparseMatrix<T> A2;                                                 /**< The Green's change of basis matrix */
-    Eigen::SparseMatrix<T> A;                                                  /**< The full change of basis matrix */
+    Matrix<T> A1;                                                              /**< The polynomial change of basis matrix */
+    Matrix<T> A1_f;                                                            /**< The polynomial change of basis matrix for the filter operator */
+    Matrix<T> A1Inv;                                                           /**< The inverse of the polynomial change of basis matrix */
+    Matrix<T> A2;                                                              /**< The Green's change of basis matrix */
+    Matrix<T> A;                                                               /**< The full change of basis matrix */
     RowVector<T> rT;                                                           /**< The rotation solution vector */
     RowVector<T> rTA1;                                                         /**< The rotation vector in Ylm space */
-    Eigen::SparseMatrix<T> U1;                                                 /**< The limb darkening to polynomial change of basis matrix */
+    Matrix<T> U1;                                                              /**< The limb darkening to polynomial change of basis matrix */
 
     // Poly basis
     RowVector<T> x_cache, y_cache, z_cache;
@@ -522,17 +471,18 @@ public:
         z_cache(0)
     {
         // Compute the augmented matrices
-        Eigen::SparseMatrix<T> A1_, A1Inv_, A2_, A_, U1_;
+        int N = (deg + 1) * (deg + 1);
+        Matrix<T> A1_(N, N);
+        Matrix<T> A1Inv_, A2_, A_, U1_;
         RowVector<T> rT_, rTA1_;
         computeA1(deg, A1_, norm);
-        computeA1Inv(deg, A1_, A1Inv_);
+        A1Inv_ = A1_.inverse();
         computeA(deg, A1_, A2_, A_);
         computerT(deg, rT_);
         rTA1_ = rT_ * A1_;
         computeU(deg, A1_, A_, U1_, norm);
         
-        // Resize to the shapes actually used
-        // in the code
+        // Resize to the shapes actually used in the code
         int Ny = (ydeg + 1) * (ydeg + 1);
         int Nf = (fdeg + 1) * (fdeg + 1);
         A1 = A1_.block(0, 0, Ny, Ny);

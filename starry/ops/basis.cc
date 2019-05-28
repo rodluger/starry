@@ -19,6 +19,9 @@ if (APPLY_SPECIFIC(B) != NULL) {
 int APPLY_SPECIFIC(basis)(
     PyArrayObject** output0,  // rT
     PyArrayObject** output1,  // rTA1
+    PyArrayObject** output2,  // A
+    PyArrayObject** output3,  // A1
+    PyArrayObject** output4,  // A1Inv
     PARAMS_TYPE* params
 ) {
     typedef DTYPE_OUTPUT_0 Scalar;
@@ -42,6 +45,10 @@ int APPLY_SPECIFIC(basis)(
 
     // Access the output data
     std::vector<npy_intp> shapeN{N};
+    std::vector<npy_intp> shapeNy{Ny};
+    std::vector<npy_intp> shapeNxN{N, N};
+    std::vector<npy_intp> shapeNyxNy{Ny, Ny};
+
     auto rT = starry_theano::allocate_output<DTYPE_OUTPUT_0>(
         1, &(shapeN[0]), TYPENUM_OUTPUT_0, output0
     );
@@ -49,8 +56,6 @@ int APPLY_SPECIFIC(basis)(
         PyErr_Format(PyExc_RuntimeError, "`rT` is NULL");
         return 2;
     }
-
-    std::vector<npy_intp> shapeNy{Ny};
     auto rTA1 = starry_theano::allocate_output<DTYPE_OUTPUT_1>(
         1, &(shapeNy[0]), TYPENUM_OUTPUT_1, output1
     );
@@ -58,14 +63,47 @@ int APPLY_SPECIFIC(basis)(
         PyErr_Format(PyExc_RuntimeError, "`rTA1` is NULL");
         return 2;
     }
-    
-    // Copy the matrices over
+    auto A = starry_theano::allocate_output<DTYPE_OUTPUT_2>(
+        2, &(shapeNxN[0]), TYPENUM_OUTPUT_2, output2
+    );
+    if (A == NULL) {
+        PyErr_Format(PyExc_RuntimeError, "`A` is NULL");
+        return 2;
+    }
+    auto A1 = starry_theano::allocate_output<DTYPE_OUTPUT_3>(
+        2, &(shapeNyxNy[0]), TYPENUM_OUTPUT_3, output3
+    );
+    if (A1 == NULL) {
+        PyErr_Format(PyExc_RuntimeError, "`A1` is NULL");
+        return 2;
+    }
+    auto A1Inv = starry_theano::allocate_output<DTYPE_OUTPUT_4>(
+        2, &(shapeNxN[0]), TYPENUM_OUTPUT_4, output4
+    );
+    if (A1Inv == NULL) {
+        PyErr_Format(PyExc_RuntimeError, "`A1Inv` is NULL");
+        return 2;
+    }
+
+    // Copy the vectors over
     for (npy_intp n = 0; n < N; ++n) {
         rT[n] = APPLY_SPECIFIC(B)->rT(n);
     }
-
     for (npy_intp n = 0; n < Ny; ++n) {
         rTA1[n] = APPLY_SPECIFIC(B)->rTA1(n);
+    }
+
+    // Copy the matrices over
+    for (npy_intp i = 0; i < N; ++i) {
+        for (npy_intp j = 0; j < N; ++j) {
+            A[i * N + j] = APPLY_SPECIFIC(B)->A(i, j);
+            A1Inv[i * N + j] = APPLY_SPECIFIC(B)->A1Inv(i, j);
+        }
+    }
+    for (npy_intp i = 0; i < Ny; ++i) {
+        for (npy_intp j = 0; j < Ny; ++j) {
+            A1[i * Ny + j] = APPLY_SPECIFIC(B)->A1(i, j);
+        }
     }
 
     return 0;

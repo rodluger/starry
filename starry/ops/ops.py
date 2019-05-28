@@ -53,12 +53,9 @@ class Ops(object):
         change_of_basis = ChangeOfBasisOp(ydeg, udeg, fdeg)()
         self.rT = tt.shape_padleft(change_of_basis[0])
         self.rTA1 = tt.shape_padleft(change_of_basis[1])
-
-        #self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1)) # TODO
-        self.A = ts.as_sparse_variable(self._c_ops.A) # TODO
-        self.A1 = ts.as_sparse_variable(self._c_ops.A1) # TODO
-        self.A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv) # TODO
-        
+        self.A = ts.csc_from_dense(change_of_basis[2])
+        self.A1 = ts.csc_from_dense(change_of_basis[3])
+        self.A1Inv = ts.csc_from_dense(change_of_basis[4])
 
         # Solution vectors
         self.sT = sTOp(ydeg, udeg, fdeg)

@@ -23,10 +23,14 @@ class ChangeOfBasisOp(BaseOp):
         in_args = []
         out_args = [
             tt.vector().type(),
-            tt.vector().type()
+            tt.vector().type(),
+            tt.matrix().type(),
+            tt.matrix().type(),
+            tt.matrix().type()
         ]
         return gof.Apply(self, in_args, out_args)
 
     def infer_shape(self, node, in_shapes):
-        out_shape = [[self.N], [self.Ny]]
+        out_shape = [[self.N], [self.Ny], [self.N, self.N], 
+                     [self.Ny, self.Ny], [self.N, self.N]]
         return out_shape
