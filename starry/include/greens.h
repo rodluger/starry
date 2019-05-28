@@ -1133,8 +1133,8 @@ namespace solver {
         inline void compute (
             const Scalar& b,
             const Scalar& r,
-            const Vector<Scalar>& bsT,
-            Vector<Scalar>& sT,
+            Scalar* bsT,
+            Scalar* sT,
             Scalar& bb,
             Scalar& br
         ) {
@@ -1142,9 +1142,9 @@ namespace solver {
             r_ad.value() = r;
             ADTypeSolver.compute(b_ad, r_ad);
             for (int n = 0; n < N; ++n) {
-                sT(n) = ADTypeSolver.sT(n).value();
-                bb += ADTypeSolver.sT(n).derivatives()(0) * bsT(n);
-                br += ADTypeSolver.sT(n).derivatives()(1) * bsT(n);
+                sT[n] = ADTypeSolver.sT(n).value();
+                bb += ADTypeSolver.sT(n).derivatives()(0) * bsT[n];
+                br += ADTypeSolver.sT(n).derivatives()(1) * bsT[n];
             }
 
         }

@@ -31,10 +31,12 @@ int APPLY_SPECIFIC(sT)(
     int deg = params->deg;
 
     // Get pointers to the input data
-    npy_intp size = -1, one = 1, bs_size = -1;
-    auto b = starry_theano::get_flat_input<DTYPE_INPUT_0>(input0, &size);
-    auto r = starry_theano::get_flat_input<DTYPE_INPUT_1>(input1, &one);
-    auto bs = starry_theano::get_flat_input<DTYPE_INPUT_2>(input2, &bs_size);
+    npy_intp nb = -1, 
+             nr = 1, 
+             ns = -1;
+    auto b = starry_theano::get_flat_input<DTYPE_INPUT_0>(input0, &nb);
+    auto r = starry_theano::get_flat_input<DTYPE_INPUT_1>(input1, &nr)[0];
+    auto bs = starry_theano::get_flat_input<DTYPE_INPUT_2>(input2, &ns);
     if (b == NULL || r == NULL || bs == NULL) {
         return 1;
     }
@@ -67,36 +69,29 @@ int APPLY_SPECIFIC(sT)(
         return 2;
     }
     auto br = starry_theano::allocate_output<DTYPE_OUTPUT_2>(
-        0, &one, TYPENUM_OUTPUT_2, output2
+        0, &nr, TYPENUM_OUTPUT_2, output2
     );
     if (br == NULL) {
         return 2;
     }
-    *br = 0.0;
-
+    
     // Do the computation
-    auto r0 = r[0];
-    for (npy_intp n = 0; n < size; ++n) {
+    *br = 0.0;
+    for (npy_intp n = 0; n < nb; ++n) {
         bb[n] = 0.0;
-
-        // DEBUG
-        Eigen::Matrix<Scalar, Eigen::Dynamic, 1> s_vec(N);
-        Eigen::Matrix<Scalar, Eigen::Dynamic, 1> bs_vec(N);
-        for (npy_intp j = 0; j < N; ++j) {
-            bs_vec(j) = bs[n * N + j];
-        }
-
         try {
-            APPLY_SPECIFIC(G)->compute(std::abs(b[n]), r0, bs_vec, s_vec, bb[n], *br);
+            APPLY_SPECIFIC(G)->compute(
+                std::abs(b[n]), 
+                r, 
+                &(bs[n * N]), 
+                &(s[n * N]), 
+                bb[n], 
+                *br
+            );
         } catch (std::exception& e) {
             PyErr_Format(PyExc_RuntimeError, "starry compute failed");
             return 3;
         }
-
-        for (npy_intp j = 0; j < N; ++j) {
-            s[n * N + j] = s_vec(j);
-        }
-
     }
 
     return 0;
