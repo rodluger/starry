@@ -1,4 +1,5 @@
 from .sT import sTOp
+from .basis import ChangeOfBasisOp
 
 # TODO: Replace --
 from .. import _c_ops
@@ -48,24 +49,28 @@ class Ops(object):
         else:
             self.cast = to_array
 
+        # Change of basis
+        change_of_basis = ChangeOfBasisOp(ydeg, udeg, fdeg)()
+        self.rT = tt.shape_padleft(change_of_basis[0])
+        self.rTA1 = tt.shape_padleft(change_of_basis[1])
+
+        #self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1)) # TODO
+        self.A = ts.as_sparse_variable(self._c_ops.A) # TODO
+        self.A1 = ts.as_sparse_variable(self._c_ops.A1) # TODO
+        self.A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv) # TODO
+        
+
         # Solution vectors
         self.sT = sTOp(ydeg, udeg, fdeg)
-
-        self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
-        self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))
         
-        # Change of basis matrices
-        self.A = ts.as_sparse_variable(self._c_ops.A)
-        self.A1 = ts.as_sparse_variable(self._c_ops.A1)
-        self.A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv)
 
         # Rotation left-multiply operations
-        self.dotRz = dotRz(self._c_ops.dotRz)
-        self.dotRxy = dotRxy(self._c_ops.dotRxy)
-        self.dotRxyT = dotRxyT(self._c_ops.dotRxyT)
+        self.dotRz = dotRz(self._c_ops.dotRz) # TODO
+        self.dotRxy = dotRxy(self._c_ops.dotRxy) # TODO
+        self.dotRxyT = dotRxyT(self._c_ops.dotRxyT) # TODO
 
         # Filter
-        self.F = F(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
+        self.F = F(self._c_ops.F, self._c_ops.N, self._c_ops.Ny) # TODO
 
         # mu, nu arrays for computing `pT`
         deg = self.ydeg + self.udeg + self.fdeg

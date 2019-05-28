@@ -6,6 +6,7 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include "greens.h"
+#include "basis.h"
 
 namespace starry_theano {
 
