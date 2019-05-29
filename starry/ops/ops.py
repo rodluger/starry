@@ -41,8 +41,7 @@ class Ops(object):
             self.cast = to_array
 
         # Change of basis
-        # TODO: Make these into a theano function? Would that
-        # speed things up?
+        # TODO: Make these into a theano function? Would that speed things up?
         change_of_basis = ChangeOfBasisOp(ydeg, udeg, fdeg)()
         self.rT = tt.shape_padleft(change_of_basis[0])
         self.rTA1 = tt.shape_padleft(change_of_basis[1])
@@ -57,15 +56,16 @@ class Ops(object):
         self.F = FilterOp(ydeg, udeg, fdeg)
 
         # Rotation left-multiply operations
-        # TODO Replace these ---
+        # TODO These still rely on the pybind interface 
+        # Need to migrate them to theano C ops ---
         from .. import _c_ops
         from .rotation import dotRxy, dotRxyT, dotRz
         self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
-        self.dotRz = dotRz(self._c_ops.dotRz) # TODO
-        self.dotRxy = dotRxy(self._c_ops.dotRxy) # TODO
-        self.dotRxyT = dotRxyT(self._c_ops.dotRxyT) # TODO
-        # ---
-        
+        self.dotRz = dotRz(self._c_ops.dotRz)
+        self.dotRxy = dotRxy(self._c_ops.dotRxy)
+        self.dotRxyT = dotRxyT(self._c_ops.dotRxyT)
+        # -------------------
+
         # mu, nu arrays for computing `pT`
         deg = ydeg + udeg + fdeg
         N = (deg + 1) ** 2

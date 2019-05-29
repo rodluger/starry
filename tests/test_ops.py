@@ -105,8 +105,6 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 if __name__ == "__main__":
-    test_dotRz()
-    quit()
     test_F()
     test_flux()
     test_sT()
