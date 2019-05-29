@@ -289,20 +289,21 @@ public:
         computePolynomialProductMatrix(udeg + fdeg, DFDp);
 
         // Compute the limb darkening derivatives
-        Vector<Matrix<Scalar>> DFDu(Nu);
+        // TODO: compute these directly! Can be super optimized
+        bu.resize(Nu);
         Matrix<Scalar> DpuDu = pi<Scalar>() * norm * B.sp_U1 - 
             pu * B.rT.segment(0, (udeg + 1) * (udeg + 1)) * B.sp_U1 * norm;
-        for (int l = 0; l < udeg + 1; ++l) {
-            DFDu(l).setZero(N, Ny);
-        }
         Matrix<Scalar> DpDu = DpDpu * DpuDu;
-        for (int j = 0; j < (udeg + fdeg + 1) * (udeg + fdeg + 1); ++j) {
-            for (int l = 0; l < udeg + 1; ++l) {
-                DFDu(l) += DFDp(j) * DpDu(j, l);
+        for (int l = 0; l < udeg + 1; ++l) {
+            Matrix<Scalar> DFDu_l;
+            DFDu_l.setZero(N, Ny);
+            for (int j = 0; j < (udeg + fdeg + 1) * (udeg + fdeg + 1); ++j) {
+                DFDu_l += DFDp(j) * DpDu(j, l);
             }
+            bu(l) = DFDu_l.cwiseProduct(bF).sum();
         }
 
-        // Compute the filter derivatives
+        // Compute the filter derivatives (TODO: optimize as above)
         Vector<Matrix<Scalar>> DFDf(Nf);
         for (int l = 0; l < Nf; ++l) {
             DFDf(l).setZero(N, Ny);
@@ -316,12 +317,6 @@ public:
 
         // Backprop
         // TODO: compute these directly! Can be super optimized
-        bu.resize(Nu);
-        if (udeg > 0) {
-            for (int l = 0; l < Nu; ++l) {
-                bu(l) = DFDu(l).cwiseProduct(bF).sum();
-            }
-        }
         bf.resize(Nf);
         if (fdeg > 0) {
             for (int l = 0; l < Nf; ++l) {
