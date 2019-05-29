@@ -1,6 +1,7 @@
-from .sT import sTOp
-from .get_basis import ChangeOfBasisOp
-from .filter import FilterOp
+from .. import _c_ops
+from .integration import sT
+from .rotation import dotRxy, dotRxyT, dotRz
+from .filter import F
 from .utils import *
 import theano
 import theano.tensor as tt
@@ -32,39 +33,33 @@ class Ops(object):
 
         # Instantiate the C++ Ops
         self.ydeg = ydeg
+        self.udeg = udeg
+        self.fdeg = fdeg
         self.filter = (fdeg > 0) or (udeg > 0)
-        
+        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
         self.lazy = lazy
         if self.lazy:
             self.cast = to_tensor
         else:
             self.cast = to_array
 
-        # Change of basis
-        # TODO: Make these into a theano function? Would that speed things up?
-        change_of_basis = ChangeOfBasisOp(ydeg, udeg, fdeg)()
-        self.rT = tt.shape_padleft(change_of_basis[0])
-        self.rTA1 = tt.shape_padleft(change_of_basis[1])
-        self.A = ts.csc_from_dense(change_of_basis[2])
-        self.A1 = ts.csc_from_dense(change_of_basis[3])
-        self.A1Inv = ts.csc_from_dense(change_of_basis[4])
-
         # Solution vectors
-        self.sT = sTOp(ydeg, udeg, fdeg)
+        self.sT = sT(self._c_ops.sT, self._c_ops.N)
+        self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
+        self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))
         
-        # Filter
-        self.F = FilterOp(ydeg, udeg, fdeg)
+        # Change of basis matrices
+        self.A = ts.as_sparse_variable(self._c_ops.A)
+        self.A1 = ts.as_sparse_variable(self._c_ops.A1)
+        self.A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv)
 
         # Rotation left-multiply operations
-        # TODO These still rely on the pybind interface 
-        # Need to migrate them to theano C ops ---
-        from .. import _c_ops
-        from .rotation import dotRxy, dotRxyT, dotRz
-        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
         self.dotRz = dotRz(self._c_ops.dotRz)
         self.dotRxy = dotRxy(self._c_ops.dotRxy)
         self.dotRxyT = dotRxyT(self._c_ops.dotRxyT)
-        # -------------------
+
+        # Filter
+        self.F = F(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
 
         # mu, nu arrays for computing `pT`
         deg = ydeg + udeg + fdeg
