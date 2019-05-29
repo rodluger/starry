@@ -34,6 +34,7 @@ protected:
     const int Nf;                                                              /**< Number of filter `(l, m)` coefficients */
     const int deg;
     const int N;
+    const int Nuf;
     Vector<Eigen::SparseMatrix<Scalar>> DFDp;                                  /**< Deriv of the filter operator w/ respect to the complete filter polynomial */
     
 public:
@@ -55,6 +56,7 @@ public:
         Nf((fdeg + 1) * (fdeg + 1)),
         deg(B.deg),
         N((deg + 1) * (deg + 1)),
+        Nuf((udeg + fdeg + 1) * (udeg + fdeg + 1)),
         DFDp((udeg + fdeg + 1) * (udeg + fdeg + 1))
     {
     
@@ -146,8 +148,6 @@ public:
 
     */
     inline void computePolynomialProductMatrixGradient () {
-        int ufdeg = udeg + fdeg;
-        int Nuf = (ufdeg + 1) * (ufdeg + 1);
         bool odd1;
         int l, n;
         int n1 = 0, n2 = 0;
@@ -158,7 +158,7 @@ public:
             for (int m1 = -l1; m1 < l1 + 1; ++m1) {
                 odd1 = (l1 + m1) % 2 == 0 ? false : true;
                 n2 = 0;
-                for (int l2 = 0; l2 < ufdeg + 1; ++l2) {
+                for (int l2 = 0; l2 < udeg + fdeg + 1; ++l2) {
                     for (int m2 = -l2; m2 < l2 + 1; ++m2) {
                         l = l1 + l2;
                         n = l * l + l + m1 + m2;
@@ -276,6 +276,7 @@ public:
         pf = B.A1_f * f;
 
         // Multiply them
+        // TODO: DpDpf and DpDpu are sparse, and we should probably exploit that
         Vector<Scalar> p;
         if (udeg > fdeg) {
             computePolynomialProduct(udeg, pu, fdeg, pf, DpDpu, DpDpf);
@@ -283,45 +284,23 @@ public:
             computePolynomialProduct(fdeg, pf, udeg, pu, DpDpf, DpDpu);
         }
 
+        // Backprop p
+        RowVector<Scalar> bp(Nuf);
+        for (int j = 0; j < Nuf; ++j)
+            bp(j) = DFDp(j).cwiseProduct(bF).sum();
+
         // Compute the limb darkening derivatives
-        // TODO: compute these directly! Can be super optimized
-        bu.resize(Nu);
         Matrix<Scalar> DpuDu = pi<Scalar>() * norm * B.U1 - 
             pu * B.rT.segment(0, (udeg + 1) * (udeg + 1)) * B.U1 * norm;
-        Matrix<Scalar> DpDu = DpDpu * DpuDu;
-        for (int l = 0; l < udeg + 1; ++l) {
-            Matrix<Scalar> DFDu_l;
-            DFDu_l.setZero(N, Ny);
-            for (int j = 0; j < (udeg + fdeg + 1) * (udeg + fdeg + 1); ++j) {
-                DFDu_l += DFDp(j) * DpDu(j, l);
-            }
-            bu(l) = DFDu_l.cwiseProduct(bF).sum();
+        bu = bp * DpDpu * DpuDu;
 
-        }
-
-        // Compute the filter derivatives (TODO: optimize as above)
-        Vector<Matrix<Scalar>> DFDf(Nf);
-        for (int l = 0; l < Nf; ++l) {
-            DFDf(l).setZero(N, Ny);
-        }
-        Matrix<Scalar> DpDf = DpDpf * B.A1_f;
-        for (int j = 0; j < (udeg + fdeg + 1) * (udeg + fdeg + 1); ++j) {
-            for (int l = 0; l < Nf; ++l) {
-                DFDf(l) += DFDp(j) * DpDf(j, l);
-            }
-        }
-
-        // Backprop
-        // TODO: compute these directly! Can be super optimized
-        bf.resize(Nf);
+        // Compute the Ylm filter derivatives
         if (fdeg > 0) {
-            for (int l = 0; l < Nf; ++l) {
-                bf(l) = DFDf(l).cwiseProduct(bF).sum();
-            }
+            bf = bp * DpDpf * B.A1_f;
         } else {
             bf.resize(0);
         }
-
+        
     }
 
 };
