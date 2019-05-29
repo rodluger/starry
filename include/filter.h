@@ -34,7 +34,8 @@ protected:
     const int Nf;                                                              /**< Number of filter `(l, m)` coefficients */
     const int deg;
     const int N;
-
+    Vector<Eigen::SparseMatrix<Scalar>> DFDp;                                  /**< Deriv of the filter operator w/ respect to the complete filter polynomial */
+    
 public:
 
     Matrix<Scalar> F;                                                          /**< The filter operator in the polynomial basis. TODO: Make sparse? */
@@ -53,10 +54,12 @@ public:
         fdeg(B.fdeg),
         Nf((fdeg + 1) * (fdeg + 1)),
         deg(B.deg),
-        N((deg + 1) * (deg + 1))
+        N((deg + 1) * (deg + 1)),
+        DFDp((udeg + fdeg + 1) * (udeg + fdeg + 1))
     {
     
-        //
+        // Pre-compute dF / dp
+        computePolynomialProductMatrixGradient();
 
     }
 
@@ -138,32 +141,33 @@ public:
 
     /**
     Compute the gradient of the polynomial product matrix.
+    This is independent of the filter polynomials, so we can
+    just pre-compute it!
 
     */
-    inline void computePolynomialProductMatrix (
-        const int plmax,
-        Vector<Matrix<Scalar>>& dMdp
-    ) {
+    inline void computePolynomialProductMatrixGradient () {
+        int ufdeg = udeg + fdeg;
+        int Nuf = (ufdeg + 1) * (ufdeg + 1);
         bool odd1;
         int l, n;
         int n1 = 0, n2 = 0;
-        dMdp.resize((plmax + 1) * (plmax + 1));
-        for (n = 0; n < (plmax + 1) * (plmax + 1); ++n)
-            dMdp(n).setZero((plmax + ydeg + 1) * (plmax + ydeg + 1), Ny);
+        Vector<Matrix<Scalar>> DFDp_dense(Nuf);
+        for (n = 0; n < Nuf; ++n)
+            DFDp_dense(n).setZero(N, Ny);
         for (int l1 = 0; l1 < ydeg + 1; ++l1) {
             for (int m1 = -l1; m1 < l1 + 1; ++m1) {
                 odd1 = (l1 + m1) % 2 == 0 ? false : true;
                 n2 = 0;
-                for (int l2 = 0; l2 < plmax + 1; ++l2) {
+                for (int l2 = 0; l2 < ufdeg + 1; ++l2) {
                     for (int m2 = -l2; m2 < l2 + 1; ++m2) {
                         l = l1 + l2;
                         n = l * l + l + m1 + m2;
                         if (odd1 && ((l2 + m2) % 2 != 0)) {
-                            dMdp[n2](n - 4 * l + 2, n1) += 1;
-                            dMdp[n2](n - 2, n1) -= 1;
-                            dMdp[n2](n + 2, n1) -= 1;
+                            DFDp_dense[n2](n - 4 * l + 2, n1) += 1;
+                            DFDp_dense[n2](n - 2, n1) -= 1;
+                            DFDp_dense[n2](n + 2, n1) -= 1;
                         } else {
-                            dMdp[n2](n, n1) += 1;
+                            DFDp_dense[n2](n, n1) += 1;
                         }
                         ++n2;
                     }
@@ -171,6 +175,8 @@ public:
                 ++n1;
             }
         }  
+        for (n = 0; n < Nuf; ++n)
+            DFDp(n) = DFDp_dense(n).sparseView();
     }
 
     /**
@@ -259,7 +265,6 @@ public:
         const Matrix<Scalar>& bF
     ) {
 
-        Vector<Matrix<Scalar>> DFDp;
         Matrix<Scalar> DpDpu;
         Matrix<Scalar> DpDpf;
 
@@ -278,9 +283,6 @@ public:
             computePolynomialProduct(fdeg, pf, udeg, pu, DpDpf, DpDpu);
         }
 
-        // Compute the polynomial filter operator
-        computePolynomialProductMatrix(udeg + fdeg, DFDp);
-
         // Compute the limb darkening derivatives
         // TODO: compute these directly! Can be super optimized
         bu.resize(Nu);
@@ -294,6 +296,7 @@ public:
                 DFDu_l += DFDp(j) * DpDu(j, l);
             }
             bu(l) = DFDu_l.cwiseProduct(bF).sum();
+
         }
 
         // Compute the filter derivatives (TODO: optimize as above)
