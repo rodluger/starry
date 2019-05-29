@@ -7,6 +7,7 @@
 #include <numpy/arrayobject.h>
 #include "greens.h"
 #include "basis.h"
+#include "filter.h"
 
 namespace starry_theano {
 

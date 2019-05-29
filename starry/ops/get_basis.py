@@ -13,8 +13,8 @@ class ChangeOfBasisOp(BaseOp):
 
     """
 
-    func_file = "./basis.cc"
-    func_name = "APPLY_SPECIFIC(basis)"
+    func_file = "./get_basis.cc"
+    func_name = "APPLY_SPECIFIC(get_basis)"
 
     def __init__(self, *args):
         super(ChangeOfBasisOp, self).__init__(*args)

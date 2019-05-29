@@ -1,11 +1,6 @@
 from .sT import sTOp
-from .basis import ChangeOfBasisOp
-
-# TODO: Replace --
-from .. import _c_ops
-from .rotation import dotRxy, dotRxyT, dotRz
-from .filter import F
-# ----------------
+from .get_basis import ChangeOfBasisOp
+from .filter import FilterOp
 from .utils import *
 import theano
 import theano.tensor as tt
@@ -37,12 +32,8 @@ class Ops(object):
 
         # Instantiate the C++ Ops
         self.ydeg = ydeg
-        self.udeg = udeg
-        self.fdeg = fdeg
-        self.deg = ydeg + udeg + fdeg
-        self.N = (self.deg + 1) ** 2
         self.filter = (fdeg > 0) or (udeg > 0)
-        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
+        
         self.lazy = lazy
         if self.lazy:
             self.cast = to_tensor
@@ -50,6 +41,8 @@ class Ops(object):
             self.cast = to_array
 
         # Change of basis
+        # TODO: Make these into a theano function? Would that
+        # speed things up?
         change_of_basis = ChangeOfBasisOp(ydeg, udeg, fdeg)()
         self.rT = tt.shape_padleft(change_of_basis[0])
         self.rTA1 = tt.shape_padleft(change_of_basis[1])
@@ -60,17 +53,21 @@ class Ops(object):
         # Solution vectors
         self.sT = sTOp(ydeg, udeg, fdeg)
         
+        # Filter
+        self.F = FilterOp(ydeg, udeg, fdeg)
 
         # Rotation left-multiply operations
+        # TODO Replace these ---
+        from .. import _c_ops
+        from .rotation import dotRxy, dotRxyT, dotRz
+        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
         self.dotRz = dotRz(self._c_ops.dotRz) # TODO
         self.dotRxy = dotRxy(self._c_ops.dotRxy) # TODO
         self.dotRxyT = dotRxyT(self._c_ops.dotRxyT) # TODO
-
-        # Filter
-        self.F = F(self._c_ops.F, self._c_ops.N, self._c_ops.Ny) # TODO
-
+        # ---
+        
         # mu, nu arrays for computing `pT`
-        deg = self.ydeg + self.udeg + self.fdeg
+        deg = ydeg + udeg + fdeg
         N = (deg + 1) ** 2
         self._mu = np.zeros(N, dtype=int)
         self._nu = np.zeros(N, dtype=int)

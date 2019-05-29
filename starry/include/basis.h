@@ -439,7 +439,7 @@ public:
     const int ydeg;                                                            /**< The highest degree of the spherical harmonic map */
     const int udeg;                                                            /**< The highest degree of the limb darkening map */
     const int fdeg;                                                            /**< The highest degree of the filter map */
-    const int deg;
+    const int deg;                                                             /**< The total degree of the map */
     const double norm;                                                         /**< Map normalization constant */
     Matrix<T> A1;                                                              /**< The polynomial change of basis matrix */
     Matrix<T> A1_f;                                                            /**< The polynomial change of basis matrix for the filter operator */
@@ -447,12 +447,9 @@ public:
     Matrix<T> A2;                                                              /**< The Green's change of basis matrix */
     Matrix<T> A;                                                               /**< The full change of basis matrix */
     RowVector<T> rT;                                                           /**< The rotation solution vector */
-    RowVector<T> rTA1;                                                         /**< The rotation vector in Ylm space */
-    Matrix<T> U1;                                                              /**< The limb darkening to polynomial change of basis matrix */
-
-    // Poly basis
-    RowVector<T> x_cache, y_cache, z_cache;
-    Matrix<T, RowMajor> pT;
+    RowVector<T> rTA1;                                                         /**< The rotation vector in Ylm space */         
+    Eigen::SparseMatrix<T> sp_U1;                                              /**< The sparse limb darkening to polynomial change of basis matrix */
+    Eigen::SparseMatrix<T> sp_A1;                                              /**< The sparse version of A1 */
 
     // Constructor: compute the matrices
     explicit Basis(
@@ -465,10 +462,7 @@ public:
         udeg(udeg), 
         fdeg(fdeg),
         deg(ydeg + udeg + fdeg),
-        norm(norm),
-        x_cache(0),
-        y_cache(0),
-        z_cache(0)
+        norm(norm)
     {
         // Compute the augmented matrices
         int N = (deg + 1) * (deg + 1);
@@ -492,79 +486,11 @@ public:
         A = A_;
         rT = rT_;
         rTA1 = rTA1_.segment(0, Ny);
-        U1 = U1_.block(0, 0, (udeg + 1) * (udeg + 1), udeg + 1);
 
-    }
+        // Sparse matrices used by the filter operator
+        sp_U1 = (U1_.block(0, 0, (udeg + 1) * (udeg + 1), udeg + 1)).sparseView();
+        sp_A1 = (A1_.block(0, 0, Nf, Nf)).sparseView();
 
-    /**
-    Compute the polynomial basis at a vector of points.
-
-    */ 
-    inline void computePolyBasis ( 
-        const RowVector<T>& x,
-        const RowVector<T>& y,
-        const RowVector<T>& z
-    ) {
-        // Dimensions
-        size_t npts = x.cols();
-        int N = (deg + 1) * (deg + 1);
-        pT.resize(npts, N);
-
-        // Check the cache
-        if ((npts == size_t(x_cache.size())) && (x == x_cache) && (y == y_cache)) {
-            return;
-        } else if (npts == 0) {
-            return;
-        }
-        x_cache = x;
-        y_cache = y;
-
-        // Optimized polynomial basis computation
-        // A little opaque, sorry...
-        Matrix<T> xarr(npts, N), yarr(npts, N);
-        RowVector<T> xterm(npts), yterm(npts);
-        xterm.setOnes();
-        yterm.setOnes();
-        int i0 = 0,
-            di0 = 3,
-            j0 = 0,
-            dj0 = 2;
-        int i, j, di, dj, n;
-        for (n = 0; n < deg + 1; ++n) {
-            i = i0;
-            di = di0;
-            xarr.col(i) = xterm;
-            j = j0;
-            dj = dj0;
-            yarr.col(j) = yterm;
-            i = i0 + di - 1;
-            j = j0 + dj - 1;
-            while (i + 1 < N) {
-                xarr.col(i) = xterm;
-                xarr.col(i + 1) = xterm;
-                di += 2;
-                i += di;
-                yarr.col(j) = yterm;
-                yarr.col(j + 1) = yterm;
-                dj += 2;
-                j += dj - 1;
-            }
-            xterm = xterm.cwiseProduct(x);
-            i0 += 2 * n + 1;
-            di0 += 2;
-            yterm = yterm.cwiseProduct(y);
-            j0 += 2 * (n + 1) + 1;
-            dj0 += 2;
-        }
-        n = 0;
-        for (int l = 0; l < deg + 1; ++l) {
-            for (int m = -l; m < l + 1; ++m) {
-                pT.col(n) = xarr.col(n).cwiseProduct(yarr.col(n));
-                if ((l + m) % 2 != 0)
-                    pT.col(n) = pT.col(n).cwiseProduct(z.transpose());
-                ++n;
-            }
-        }
     }
 
 };

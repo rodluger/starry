@@ -16,7 +16,7 @@ if (APPLY_SPECIFIC(B) != NULL) {
 
 #section support_code_struct
 
-int APPLY_SPECIFIC(basis)(
+int APPLY_SPECIFIC(get_basis)(
     PyArrayObject** output0,  // rT
     PyArrayObject** output1,  // rTA1
     PyArrayObject** output2,  // A
