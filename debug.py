@@ -32,18 +32,11 @@ def compare_plot():
 def time_flux(ydeg, occultation=False, npts=np.logspace(0, 4, 10), ntimes=100):
 
     # Define the Theano function
-    map = starry.Map(ydeg=ydeg)
+    map = starry.Map(ydeg=ydeg, lazy=False)
     map[1:, :] = 1
     map.inc = 45
-    t_theta = tt.dvector("theta")
-    t_xo = tt.dvector("xo")
-    t_yo = tt.dvector("yo")
-    t_ro = tt.dscalar("ro")
-    t_flux = theano.function([t_theta, t_xo, t_yo, t_ro], 
-                            map.flux(theta=t_theta, 
-                                    xo=t_xo, 
-                                    yo=t_yo, 
-                                    ro=t_ro))
+    t_flux = lambda theta, xo, yo, ro: \
+        map.flux(theta=theta, xo=xo, yo=yo, ro=ro)
 
     # Define the starry beta function
     map_beta = starry_beta.Map(ydeg)
@@ -110,4 +103,4 @@ def compare_times():
     plt.show()
 
 
-compare_plot()
+compare_times()
