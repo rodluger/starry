@@ -468,11 +468,15 @@ class OpsReflected(Ops):
         i_rot = tt.arange(b.size)[b_rot]
         i_occ = tt.arange(b.size)[b_occ]
 
-        # TODO: Throw error if b_occ.size > 0
-
         # Determine shapes
         rows = theta.shape[0]
         cols = self.rTA1.shape[1]
+
+        # TODO: Implement occultations in reflected light
+        # Throw error if there's an occultation
+        raise_error_if = RaiseValuerErrorIfOp(
+                "Occultations in reflected light not yet implemented.")
+        theta += raise_error_if(tt.gt(i_occ.size, 0))
 
         # Compute the semi-minor axis of the terminator
         # and the reflectance integrals
@@ -483,8 +487,16 @@ class OpsReflected(Ops):
         # Transform to Ylms and rotate on the sky plane
         rTA1 = ts.dot(rT, self.A1)
         norm = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
-        cosw = source[:, 1] * norm
-        sinw = source[:, 0] * norm
+        cosw = tt.switch(
+            tt.eq(tt.abs_(bterm), 1.0),
+            1.0,
+            source[:, 1] * norm
+        )
+        sinw = tt.switch(
+            tt.eq(tt.abs_(bterm), 1.0),
+            0.0,
+            source[:, 0] * norm
+        )
         theta_z = tt.arctan2(sinw, cosw)
         rTA1Rz = self.dotRz(rTA1, theta_z)
 

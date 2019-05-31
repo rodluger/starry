@@ -103,4 +103,4 @@ def compare_times():
     plt.show()
 
 
-compare_times()
+compare_plot()
