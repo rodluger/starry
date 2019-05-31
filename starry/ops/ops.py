@@ -497,7 +497,7 @@ class OpsReflected(Ops):
         # Rotate to the correct phase
         X_rot = tt.set_subtensor(
             tt.zeros((rows, cols))[i_rot], 
-            self.dotR(rTA1, inc, obl, theta[i_rot])
+            self.dotR(rTA1Rz, inc, obl, theta[i_rot])
         )
 
         return X_rot
