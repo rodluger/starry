@@ -1,5 +1,5 @@
 from .. import _c_ops
-from .integration import sT
+from .integration import sT, rTReflected
 from .rotation import dotRxy, dotRxyT, dotRz
 from .filter import F
 from .utils import *
@@ -11,7 +11,7 @@ import numpy as np
 import logging
 
 
-__all__ = ["Ops"]
+__all__ = ["Ops", "OpsReflected", "OpsDoppler"]
 
 
 class Ops(object):
@@ -47,7 +47,7 @@ class Ops(object):
         self.sT = sT(self._c_ops.sT, self._c_ops.N)
         self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
         self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))
-        
+
         # Change of basis matrices
         self.A = ts.as_sparse_variable(self._c_ops.A)
         self.A1 = ts.as_sparse_variable(self._c_ops.A1)
@@ -165,23 +165,21 @@ class Ops(object):
             rTA1 = ts.dot(tt.dot(self.rT, F), self.A1)
         else:
             rTA1 = self.rTA1
-        X_rot = tt.zeros((rows, cols))
         X_rot = tt.set_subtensor(
-                    X_rot[i_rot], 
-                    self.dotR(rTA1, inc, obl, theta[i_rot])
-                )
+            tt.zeros((rows, cols))[i_rot], 
+            self.dotR(rTA1, inc, obl, theta[i_rot])
+        )
 
         # Occultation + rotation operator
-        X_occ = tt.zeros((rows, cols))
         sT = self.sT(b[i_occ], ro)
         sTA = ts.dot(sT, self.A)
         theta_z = tt.arctan2(xo[i_occ], yo[i_occ])
         sTAR = self.dotRz(sTA, theta_z)
         if self.filter:
             A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
-            sTAR = tt.dot(sTAR, A1InvFA1)
+            sTAR = tt.dot(sTAR, A1InvFA1) 
         X_occ = tt.set_subtensor(
-            X_occ[i_occ], 
+            tt.zeros((rows, cols))[i_occ], 
             self.dotR(sTAR, inc, obl, theta[i_occ])
         )
 
@@ -230,8 +228,7 @@ class Ops(object):
 
         """
         # Compute the Cartesian grid
-        # TODO: Should this be `ifelse`? Do a ctrl+f here for this
-        xyz = tt.switch(
+        xyz = ifelse(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
             self.compute_rect_grid(res),
             self.compute_ortho_grid(res)
@@ -241,7 +238,7 @@ class Ops(object):
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
         # If lat/lon, rotate the map so that north points up
-        y = tt.switch(
+        y = ifelse(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
             tt.reshape(
                 self.dotRxy(
@@ -262,7 +259,7 @@ class Ops(object):
         if self.filter:
             f0 = tt.zeros_like(f)
             f0 = tt.set_subtensor(f0[0], np.pi)
-            A1Ry = tt.switch(
+            A1Ry = ifelse(
                 tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
                 tt.dot(self.F(u, f), A1Ry),
                 tt.dot(self.F(u, f0), A1Ry),
@@ -271,99 +268,6 @@ class Ops(object):
         # Dot the polynomial into the basis
         return tt.reshape(tt.dot(pT, A1Ry), [res, -1, theta.shape[0]])
     
-    @autocompile(
-        "render_reflected", tt.iscalar(), tt.iscalar(), tt.dvector(), 
-                            tt.dscalar(), tt.dscalar(), tt.dvector(), 
-                            tt.dvector(), tt.dvector(), tt.dmatrix()
-    )
-    def render_reflected(self, res, projection, theta, inc, obl, y, u, f, source):
-        """
-
-        """
-        # Compute the Cartesian grid
-        xyz = tt.switch(
-            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-            self.compute_rect_grid(res),
-            self.compute_ortho_grid(res)
-        )
-
-        # Compute the polynomial basis
-        pT = self.pT(xyz[0], xyz[1], xyz[2])
-
-        # If lat/lon, rotate the map so that north points up
-        y = tt.switch(
-            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-            tt.reshape(
-                self.dotRxy(
-                    self.dotRz(
-                        tt.reshape(y, [1, -1]), tt.reshape(-obl, [1])
-                    ), np.pi / 2 - inc, 0
-                ), [-1]
-            ),
-            y
-        )
-
-        # Rotate the source vector as well
-        source /= tt.reshape(source.norm(2, axis=1), [-1, 1])
-        map_axis = self.get_axis(inc, obl)
-        axis = cross(map_axis, [0, 1, 0])
-        angle = tt.arccos(map_axis[1])
-        R = RAxisAngle(axis, -angle)
-        source = tt.switch(
-            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-            tt.dot(source, R),
-            source
-        )
-
-        # Rotate the map and transform into the polynomial basis
-        yT = tt.tile(y, [theta.shape[0], 1])
-        Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
-        A1Ry = ts.dot(self.A1, Ry)
-
-        # Apply the filter
-        if self.filter:
-            f0 = tt.zeros_like(f)
-            f0 = tt.set_subtensor(f0[0], np.pi)
-            A1Ry = tt.switch(
-                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                tt.dot(self.F(u, f), A1Ry),
-                tt.dot(self.F(u, f0), A1Ry),
-            )
-
-        # Dot the polynomial into the basis
-        image = tt.dot(pT, A1Ry)
-
-        # Compute the terminator & illumination profile 
-        b = -source[:, 2]
-        invsr = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
-        cosw = source[:, 1] * invsr
-        sinw = -source[:, 0] * invsr
-        xrot = tt.shape_padright(xyz[0]) * cosw + \
-               tt.shape_padright(xyz[1]) * sinw
-        yrot = -tt.shape_padright(xyz[0]) * sinw + \
-                tt.shape_padright(xyz[1]) * cosw
-        I = tt.sqrt(1.0 - b ** 2) * yrot - b * tt.shape_padright(xyz[2])
-        I = tt.switch(
-                tt.eq(tt.abs_(b), 1.0),
-                tt.switch(
-                    tt.eq(b, 1.0),
-                    tt.zeros_like(I),           # midnight
-                    tt.shape_padright(xyz[2])   # noon
-                ),
-                I
-            )
-        I = tt.switch(tt.gt(I, 0.0), I, tt.zeros_like(I))
-
-        # Weight the image by the illumination
-        image = tt.switch(
-            tt.isnan(image),
-            image,
-            image * I
-        )
-
-        # Reshape and return
-        return tt.reshape(image, [res, -1, theta.shape[0]])
-
     @autocompile(
         "get_inc_obl", tt.dvector()
     )
@@ -457,6 +361,12 @@ class Ops(object):
             self.rotate(y, theta, inc, obl, no_compile=True)
         )
 
+
+class OpsDoppler(Ops):
+    """
+
+    """
+
     @autocompile(
         "compute_doppler_filter", tt.dscalar(), tt.dscalar(), 
                                   tt.dscalar(), tt.dscalar()
@@ -526,3 +436,174 @@ class Ops(object):
 
         # The RV signal is just the product        
         return Iv * invI
+
+
+class OpsReflected(Ops):
+    """
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        """
+
+        """
+        super(OpsReflected, self).__init__(*args, **kwargs)
+        self.rT = rTReflected(self._c_ops.rTReflected, self._c_ops.N)
+
+    # TODO: Intensity override
+
+    @autocompile(
+        "X", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
+             tt.dscalar(), tt.dscalar(), tt.dscalar(), tt.dvector(), 
+             tt.dvector(), tt.dmatrix()
+    )
+    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, source):
+        """
+
+        """
+        # Compute the occultation mask
+        b = tt.sqrt(xo ** 2 + yo ** 2)
+        b_rot = (tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0))
+        b_occ = tt.invert(b_rot)
+        i_rot = tt.arange(b.size)[b_rot]
+        i_occ = tt.arange(b.size)[b_occ]
+
+        # TODO: Throw error if b_occ.size > 0
+
+        # Determine shapes
+        rows = theta.shape[0]
+        cols = self.rTA1.shape[1]
+
+        # Compute the semi-minor axis of the terminator
+        # and the reflectance integrals
+        source /= tt.reshape(source.norm(2, axis=1), [-1, 1])
+        bterm = -source[:, 2]
+        rT = self.rT(bterm)
+
+        # Transform to Ylms and rotate on the sky plane
+        rTA1 = ts.dot(rT, self.A1)
+        norm = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
+        cosw = source[:, 1] * norm
+        sinw = source[:, 0] * norm
+        theta_z = tt.arctan2(sinw, cosw)
+        rTA1Rz = self.dotRz(rTA1, theta_z)
+
+        # Apply limb darkening?
+        if self.filter:
+            F = self.F(u, f)
+            A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+            rTA1Rz = tt.dot(rTA1Rz, A1InvFA1)
+        
+        # Rotate to the correct phase
+        X_rot = tt.set_subtensor(
+            tt.zeros((rows, cols))[i_rot], 
+            self.dotR(rTA1, inc, obl, theta[i_rot])
+        )
+
+        return X_rot
+
+    @autocompile(
+        "flux", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
+                tt.dscalar(), tt.dscalar(), tt.dscalar(), tt.dvector(), 
+                tt.dvector(), tt.dvector(), tt.dmatrix()
+    )
+    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, source):
+        """
+
+        """
+        return tt.dot(
+            self.X(theta, xo, yo, zo, ro, inc, obl, u, f, source, no_compile=True), y
+        )
+
+    @autocompile(
+        "render", tt.iscalar(), tt.iscalar(), tt.dvector(), 
+                  tt.dscalar(), tt.dscalar(), tt.dvector(), 
+                  tt.dvector(), tt.dvector(), tt.dmatrix()
+    )
+    def render(self, res, projection, theta, inc, obl, y, u, f, source):
+        """
+
+        """
+        # Compute the Cartesian grid
+        xyz = ifelse(
+            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+            self.compute_rect_grid(res),
+            self.compute_ortho_grid(res)
+        )
+
+        # Compute the polynomial basis
+        pT = self.pT(xyz[0], xyz[1], xyz[2])
+
+        # If lat/lon, rotate the map so that north points up
+        y = ifelse(
+            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+            tt.reshape(
+                self.dotRxy(
+                    self.dotRz(
+                        tt.reshape(y, [1, -1]), tt.reshape(-obl, [1])
+                    ), np.pi / 2 - inc, 0
+                ), [-1]
+            ),
+            y
+        )
+
+        # Rotate the source vector as well
+        source /= tt.reshape(source.norm(2, axis=1), [-1, 1])
+        map_axis = self.get_axis(inc, obl, no_compile=True)
+        axis = cross(map_axis, [0, 1, 0])
+        angle = tt.arccos(map_axis[1])
+        R = RAxisAngle(axis, -angle)
+        source = ifelse(
+            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+            tt.dot(source, R),
+            source
+        )
+
+        # Rotate the map and transform into the polynomial basis
+        yT = tt.tile(y, [theta.shape[0], 1])
+        Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
+        A1Ry = ts.dot(self.A1, Ry)
+
+        # Apply the filter
+        if self.filter:
+            f0 = tt.zeros_like(f)
+            f0 = tt.set_subtensor(f0[0], np.pi)
+            A1Ry = ifelse(
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                tt.dot(self.F(u, f), A1Ry),
+                tt.dot(self.F(u, f0), A1Ry),
+            )
+
+        # Dot the polynomial into the basis
+        image = tt.dot(pT, A1Ry)
+
+        # Compute the terminator & illumination profile 
+        b = -source[:, 2]
+        invsr = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
+        cosw = source[:, 1] * invsr
+        sinw = -source[:, 0] * invsr
+        xrot = tt.shape_padright(xyz[0]) * cosw + \
+               tt.shape_padright(xyz[1]) * sinw
+        yrot = -tt.shape_padright(xyz[0]) * sinw + \
+                tt.shape_padright(xyz[1]) * cosw
+        I = tt.sqrt(1.0 - b ** 2) * yrot - b * tt.shape_padright(xyz[2])
+        I = tt.switch(
+                tt.eq(tt.abs_(b), 1.0),
+                tt.switch(
+                    tt.eq(b, 1.0),
+                    tt.zeros_like(I),           # midnight
+                    tt.shape_padright(xyz[2])   # noon
+                ),
+                I
+            )
+        I = tt.switch(tt.gt(I, 0.0), I, tt.zeros_like(I))
+
+        # Weight the image by the illumination
+        image = tt.switch(
+            tt.isnan(image),
+            image,
+            image * I
+        )
+
+        # Reshape and return
+        return tt.reshape(image, [res, -1, theta.shape[0]])

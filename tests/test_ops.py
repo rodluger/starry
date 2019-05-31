@@ -106,7 +106,6 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 if __name__ == "__main__":
     test_F()
-    quit() # DEBUG
     test_flux()
     test_sT()
     test_pT()

@@ -126,6 +126,38 @@ PYBIND11_MODULE(
         return ops.B.rT;
     });
 
+    // Rotation solution in reflected light
+    Ops.def(
+        "rTReflected", [](
+            starry::Ops<Scalar>& ops,
+            const Vector<double>& bterm
+        )
+    {
+        size_t npts = size_t(bterm.size());
+        Matrix<Scalar, RowMajor> rT(npts, ops.N);
+        for (size_t n = 0; n < npts; ++n) {
+            ops.GRef.compute(bterm(n));
+            rT.row(n) = ops.GRef.rT;
+        }
+        return rT;
+    });
+
+    // Gradient of rotation solution in reflected light
+    Ops.def(
+        "rTReflected", [](
+            starry::Ops<Scalar>& ops,
+            const Vector<double>& bterm,
+            const Matrix<double, RowMajor>& brT
+        )
+    {
+        size_t npts = size_t(bterm.size());
+        Vector<Scalar> bb(npts);
+        for (size_t n = 0; n < npts; ++n) {
+            bb(n) = ops.GRef.compute(bterm(n), brT.row(n));
+        }
+        return bb;
+    });
+
     // Rotation solution in emitted light dotted into Ylm space
     Ops.def_property_readonly(
         "rTA1", [](

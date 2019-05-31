@@ -1,4 +1,5 @@
-from ..ops import Ops, vectorize, atleast_2d, get_projection, STARRY_RECTANGULAR_PROJECTION
+from ..ops import Ops, OpsReflected, OpsDoppler, vectorize, atleast_2d, get_projection, \
+    STARRY_RECTANGULAR_PROJECTION
 from .indices import get_ylm_inds, get_ul_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
@@ -19,13 +20,15 @@ class YlmBase(object):
 
     """
 
+    _ops_class_ = Ops
+
     def __init__(self, ydeg, udeg, fdeg, lazy=True, quiet=False):
         """
 
         """
         # Instantiate the Theano ops class
         self._lazy = lazy
-        self.ops = Ops(ydeg, udeg, fdeg, lazy, quiet=quiet)
+        self.ops = self._ops_class_(ydeg, udeg, fdeg, lazy, quiet=quiet)
         self.cast = self.ops.cast
 
         # Dimensions
@@ -530,6 +533,8 @@ class DopplerBase(object):
     
     """
 
+    _ops_class_ = OpsDoppler
+
     def reset(self):
         """
 
@@ -638,6 +643,42 @@ class ReflectedBase(object):
 
     """
 
+    _ops_class_ = OpsReflected
+
+    def X(self, **kwargs):
+        """
+        Compute and return the light curve design matrix.
+
+        """
+        # Orbital kwargs
+        theta, xo, yo, zo, ro = self._get_orbit(**kwargs)
+
+        # Source position
+        source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
+        theta, source = vectorize(theta, source)
+
+        # Compute & return
+        return self.ops.X(theta, xo, yo, zo, ro, 
+                          self._inc, self._obl, self._u, self._f, 
+                          source)
+
+    def flux(self, **kwargs):
+        """
+        Compute and return the light curve.
+        
+        """
+        # Orbital kwargs
+        theta, xo, yo, zo, ro = self._get_orbit(**kwargs)
+
+        # Source position
+        source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
+        theta, source = vectorize(theta, source)
+
+        # Compute & return
+        return self.ops.flux(theta, xo, yo, zo, ro, 
+                             self._inc, self._obl, self._y, self._u, self._f,
+                             source)
+
     def render(self, **kwargs):
         res = kwargs.pop("res", 300)
         projection = get_projection(kwargs.pop("projection", "ortho"))
@@ -646,9 +687,9 @@ class ReflectedBase(object):
         theta, source = vectorize(theta, source)
 
         # Compute & return
-        return self.ops.render_reflected(res, projection, theta, self._inc, 
-                                         self._obl, self._y, self._u, self._f, 
-                                         source)
+        return self.ops.render(res, projection, theta, self._inc, 
+                               self._obl, self._y, self._u, self._f, 
+                               source)
 
     def show(self, **kwargs):
         # We need to evaluate the variables so we can plot the map!
@@ -671,7 +712,7 @@ class ReflectedBase(object):
             f = self._f.eval()
 
             # Explicitly call the compiled version of `render`
-            kwargs["image"] = self.ops.render_reflected(
+            kwargs["image"] = self.ops.render(
                 res, projection, theta, inc, 
                 obl, y, u, f, source, force_compile=True
             )

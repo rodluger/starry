@@ -5,6 +5,7 @@
 */
 
 #include "solver_emitted.h"
+#include "solver_reflected.h"
 #include "basis.h"
 #include "wigner.h"
 #include "filter.h"
@@ -30,6 +31,7 @@ public:
     basis::Basis<Scalar> B;
     wigner::Wigner<Scalar> W;
     solver::GreensEmitted<Scalar> G;                                           /**< The occultation integral solver class */
+    solver::GreensReflected<Scalar> GRef;
     filter::Filter<Scalar> F;
 
     // Constructor
@@ -49,6 +51,7 @@ public:
         B(ydeg, udeg, fdeg),
         W(ydeg, udeg, fdeg),
         G(deg),
+        GRef(deg),
         F(B)
     {
         // Bounds checks
