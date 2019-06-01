@@ -1,7 +1,8 @@
 import numpy as np
 
 
-__all__ = ["get_ylm_inds", "get_ul_inds"]
+__all__ = ["get_ylm_inds", "get_ul_inds",
+           "get_ylmw_inds", "get_ulw_inds"]
 
 
 def get_ylm_inds(ydeg, ls, ms):
@@ -54,6 +55,42 @@ def get_ylm_inds(ydeg, ls, ms):
         raise ValueError("Invalid value for `l` and/or `m`.")
 
 
+def get_ylmw_inds(ydeg, nw, ls, ms, ws):
+    """
+    
+    """
+
+    # Turn the `ws` into slices
+    if isinstance(ws, (int, np.int)):
+        ws = slice(ws, ws + 1)
+
+    if isinstance(ws, slice):
+
+        # Get the `l`, `m` indices
+        lminds = get_ylm_inds(ydeg, ls, ms)
+
+        # Process the `w` indices
+        winds = []
+
+        # Fill in the `None`s
+        if ws.start is None:
+            ws = slice(0, ws.stop, ws.step)
+        if ws.stop is None:
+            ws = slice(ws.start, nw, ws.step)
+        if ws.step is None:
+            ws = slice(ws.start, ws.stop, 1)
+
+        if ((ws.start < 0) or (ws.start >= nw)):
+            raise ValueError("Invalid value for `w`.")
+        
+        return tuple((lminds, ws))
+
+    else:
+
+        # Not a slice, not an int... What is it?
+        raise ValueError("Invalid value for `w`.")
+
+
 def get_ul_inds(udeg, ls):
     """
     
@@ -89,3 +126,11 @@ def get_ul_inds(udeg, ls):
 
         # Not a slice, not an int... What is it?
         raise ValueError("Invalid value for `l`.")
+
+
+def get_ul_inds(udeg, nw, ls, ws):
+    """
+    
+    """
+    # TODO
+    pass
