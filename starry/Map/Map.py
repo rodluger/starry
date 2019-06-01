@@ -670,7 +670,7 @@ class ReflectedBase(object):
 
         # Source position
         source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
-        theta, xo, yo, zo, ro, source = vectorize(theta, xo, yo, zo, ro, source)
+        theta, xo, yo, zo, source = vectorize(theta, xo, yo, zo, source)
 
         # Compute & return
         return self.ops.X(theta, xo, yo, zo, ro, 
@@ -687,7 +687,7 @@ class ReflectedBase(object):
 
         # Source position
         source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
-        theta, xo, yo, zo, ro, source = vectorize(theta, xo, yo, zo, ro, source)
+        theta, xo, yo, zo, source = vectorize(theta, xo, yo, zo, source)
 
         # Compute & return
         return self.ops.flux(theta, xo, yo, zo, ro, 
