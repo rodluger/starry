@@ -11,7 +11,7 @@ import numpy as np
 import logging
 
 
-__all__ = ["Ops", "OpsReflected", "OpsDoppler"]
+__all__ = ["Ops", "OpsReflected", "OpsDoppler", "OpsSpectral"]
 
 
 class Ops(object):
@@ -656,3 +656,26 @@ class OpsReflected(Ops):
 
         # Reshape and return
         return tt.reshape(image, [res, -1, theta.shape[0]])
+
+
+class OpsSpectral(Ops):
+    """
+
+    """
+
+    @autocompile(
+        "rotate", tt.dmatrix(), tt.dvector(), tt.dscalar(), tt.dscalar()
+    )
+    def rotate(self, y, theta, inc, obl):
+        """
+
+        """
+        # TODO: The `dotR` operator performs row-wise rotations
+        # on a matrix given an array of `theta` values. In this case,
+        # we actually want to rotate the *entire* matrix by the same
+        # `theta`. The hack below just tiles `theta` so that each
+        # row of y^T is rotated by the same value. This is slow, especially for
+        # large `nw`. Fixing this entails coding up a specialized Op,
+        # but it should be easy.
+        theta = tt.tile(theta, y.shape[1])
+        return tt.transpose(self.dotR(tt.transpose(y), inc, obl, -theta))

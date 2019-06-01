@@ -1,4 +1,4 @@
-from ..ops import Ops, OpsReflected, OpsDoppler, vectorize, \
+from ..ops import Ops, OpsReflected, OpsDoppler, OpsSpectral, vectorize, \
                   atleast_2d, get_projection, \
                   STARRY_RECTANGULAR_PROJECTION
 from . import indices
@@ -322,8 +322,7 @@ class YlmBase(object):
         image = kwargs.pop("image", None)
         if image is None:
 
-            # We need to evaluate the variables so we can
-            # plot the map!
+            # We need to evaluate the variables so we can plot the map!
             if self.lazy:
 
                 # Get kwargs
@@ -768,7 +767,7 @@ class SpectralBase(object):
 
     """
 
-    _ops_class_ = Ops
+    _ops_class_ = OpsSpectral
 
     def __init__(self, *args, nw=1, **kwargs):
         """
