@@ -112,7 +112,7 @@ class dotRz(tt.Op):
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return [[shapes[0][-1], shapes[1][0]]]
+        return [[shapes[1][0], shapes[0][-1]]]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:

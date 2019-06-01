@@ -289,3 +289,6 @@ class RaiseValuerErrorIfOp(tt.Op):
         outputs[0][0] = np.array(0.0)
         if inputs[0]:
             raise ValueError(self.message)
+    
+    def grad(self, inputs, gradients):
+        return [inputs[0] * 0.0]

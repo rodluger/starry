@@ -13,7 +13,7 @@ def test_sT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 def test_dotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     map = starry.Map(ydeg=2)
-    theta = np.array([0., 15., 30., 45., 60., 75., 90.])
+    theta = np.array([0., 15., 30., 45., 60., 75., 90.]) * np.pi / 180.
 
     # Matrix M
     M = np.ones((7, 9))
@@ -106,16 +106,38 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
                 abs_tol=abs_tol, rel_tol=rel_tol, eps=eps, n_tests=1)
 
 
-def test_rTReflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+def test_rT_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     map = starry.Map(ydeg=2, reflected=True)
     bterm = np.linspace(-1, 1, 10)[1:-1]
     verify_grad(map.ops.rT, (bterm,), abs_tol=abs_tol, 
                 rel_tol=rel_tol, eps=eps, n_tests=1)
 
 
+def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    map = starry.Map(ydeg=2, reflected=True)
+    theta = np.linspace(0, 30, 10)
+    xo = np.linspace(-1.5, 1.5, len(theta))
+    yo = np.ones_like(xo) * 0.3
+    zo = -1.0 * np.ones_like(xo)
+    ro = 0.1
+    inc = 85.0 * np.pi / 180.
+    obl = 30.0 * np.pi / 180.
+    y = np.ones(9)
+    u = [-1.0]
+    f = [np.pi]
+    source = np.random.randn(len(theta), 3)
+    source /= np.sqrt(np.sum(source ** 2, axis=1)).reshape(-1, 1)
+
+    func = lambda *args: tt.dot(map.ops.X(*args), y)
+
+    # Just rotation
+    verify_grad(func, (theta, xo, yo, zo, ro, inc, obl, u, f, source), 
+                abs_tol=abs_tol, rel_tol=rel_tol, eps=eps, n_tests=1)
+
+
 if __name__ == "__main__":
-    test_rTReflected()
-    quit()
+    test_flux_reflected()
+    test_rT_reflected()
     test_F()
     test_flux()
     test_sT()

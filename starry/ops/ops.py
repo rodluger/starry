@@ -461,22 +461,13 @@ class OpsReflected(Ops):
         """
 
         """
-        # Compute the occultation mask
+        # Figure out if there's an occultation
         b = tt.sqrt(xo ** 2 + yo ** 2)
-        b_rot = (tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0))
-        b_occ = tt.invert(b_rot)
-        i_rot = tt.arange(b.size)[b_rot]
-        i_occ = tt.arange(b.size)[b_occ]
-
+        occultation = (tt.lt(b, 1.0 + ro) & tt.gt(zo, 0.0) & tt.gt(ro, 0.0)).any()
+                
         # Determine shapes
         rows = theta.shape[0]
         cols = self.rTA1.shape[1]
-
-        # TODO: Implement occultations in reflected light
-        # Throw error if there's an occultation
-        raise_error_if = RaiseValuerErrorIfOp(
-                "Occultations in reflected light not yet implemented.")
-        theta += raise_error_if(tt.gt(i_occ.size, 0))
 
         # Compute the semi-minor axis of the terminator
         # and the reflectance integrals
@@ -485,19 +476,19 @@ class OpsReflected(Ops):
         rT = self.rT(bterm)
 
         # Transform to Ylms and rotate on the sky plane
-        rTA1 = ts.dot(rT, self.A1)
+        rTA1 = ts.dot(rT, self.A1)        
         norm = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
         cosw = tt.switch(
             tt.eq(tt.abs_(bterm), 1.0),
-            1.0,
+            tt.ones_like(norm),
             source[:, 1] * norm
         )
         sinw = tt.switch(
             tt.eq(tt.abs_(bterm), 1.0),
-            0.0,
+            tt.zeros_like(norm),
             source[:, 0] * norm
         )
-        theta_z = tt.arctan2(sinw, cosw)
+        theta_z = tt.arctan2(source[:, 0], source[:, 1])
         rTA1Rz = self.dotRz(rTA1, theta_z)
 
         # Apply limb darkening?
@@ -507,12 +498,16 @@ class OpsReflected(Ops):
             rTA1Rz = tt.dot(rTA1Rz, A1InvFA1)
         
         # Rotate to the correct phase
-        X_rot = tt.set_subtensor(
-            tt.zeros((rows, cols))[i_rot], 
-            self.dotR(rTA1Rz, inc, obl, theta[i_rot])
-        )
+        X_rot = self.dotR(rTA1Rz, inc, obl, theta)
 
-        return X_rot
+        # TODO: Implement occultations in reflected light
+        # Throw error if there's an occultation
+        X_occ = RaiseValuerErrorIfOp(
+            "Occultations in reflected light not yet implemented."
+            )(occultation)
+
+        # We're done
+        return X_rot + X_occ
 
     @autocompile(
         "flux", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
