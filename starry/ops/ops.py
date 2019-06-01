@@ -450,7 +450,65 @@ class OpsReflected(Ops):
         super(OpsReflected, self).__init__(*args, **kwargs)
         self.rT = rTReflected(self._c_ops.rTReflected, self._c_ops.N)
 
-    # TODO: Intensity override
+    def compute_illumination(self, xyz, source):
+        """
+
+        """
+        b = -source[:, 2]
+        invsr = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
+        cosw = source[:, 1] * invsr
+        sinw = -source[:, 0] * invsr
+        xrot = tt.shape_padright(xyz[0]) * cosw + \
+               tt.shape_padright(xyz[1]) * sinw
+        yrot = -tt.shape_padright(xyz[0]) * sinw + \
+                tt.shape_padright(xyz[1]) * cosw
+        I = tt.sqrt(1.0 - b ** 2) * yrot - b * tt.shape_padright(xyz[2])
+        I = tt.switch(
+                tt.eq(tt.abs_(b), 1.0),
+                tt.switch(
+                    tt.eq(b, 1.0),
+                    tt.zeros_like(I),           # midnight
+                    tt.shape_padright(xyz[2])   # noon
+                ),
+                I
+            )
+        I = tt.switch(tt.gt(I, 0.0), I, tt.zeros_like(I))
+        return I
+
+    @autocompile(
+        "intensity", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
+                     tt.dvector(), tt.dvector(), tt.dmatrix()
+    )
+    def intensity(self, xpt, ypt, zpt, y, u, f, source):
+        """
+
+        """
+        # Compute the polynomial basis at the point
+        pT = self.pT(xpt, ypt, zpt)
+
+        # Transform the map to the polynomial basis
+        A1y = ts.dot(self.A1, y)
+
+        # Apply the filter
+        if self.filter:
+            A1y = tt.dot(self.F(u, f), A1y)
+
+        # Dot the polynomial into the basis
+        intensity = tt.dot(pT, A1y)
+
+        # Weight the intensity by the illumination
+        xyz = tt.concatenate((
+            tt.reshape(xpt, [1, -1]),
+            tt.reshape(ypt, [1, -1]),
+            tt.reshape(xpt, [1, -1])
+        ))
+        I = self.compute_illumination(xyz, source)
+        intensity = tt.switch(
+            tt.isnan(intensity),
+            intensity,
+            intensity * I
+        )
+        return intensity
 
     @autocompile(
         "X", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
@@ -586,26 +644,8 @@ class OpsReflected(Ops):
         # Dot the polynomial into the basis
         image = tt.dot(pT, A1Ry)
 
-        # Compute the terminator & illumination profile 
-        b = -source[:, 2]
-        invsr = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
-        cosw = source[:, 1] * invsr
-        sinw = -source[:, 0] * invsr
-        xrot = tt.shape_padright(xyz[0]) * cosw + \
-               tt.shape_padright(xyz[1]) * sinw
-        yrot = -tt.shape_padright(xyz[0]) * sinw + \
-                tt.shape_padright(xyz[1]) * cosw
-        I = tt.sqrt(1.0 - b ** 2) * yrot - b * tt.shape_padright(xyz[2])
-        I = tt.switch(
-                tt.eq(tt.abs_(b), 1.0),
-                tt.switch(
-                    tt.eq(b, 1.0),
-                    tt.zeros_like(I),           # midnight
-                    tt.shape_padright(xyz[2])   # noon
-                ),
-                I
-            )
-        I = tt.switch(tt.gt(I, 0.0), I, tt.zeros_like(I))
+        # Compute the illumination profile 
+        I = self.compute_illumination(xyz, source)
 
         # Weight the image by the illumination
         image = tt.switch(

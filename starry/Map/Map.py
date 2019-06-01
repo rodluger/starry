@@ -655,7 +655,7 @@ class ReflectedBase(object):
 
         # Source position
         source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
-        theta, source = vectorize(theta, source)
+        theta, xo, yo, zo, ro, source = vectorize(theta, xo, yo, zo, ro, source)
 
         # Compute & return
         return self.ops.X(theta, xo, yo, zo, ro, 
@@ -672,12 +672,41 @@ class ReflectedBase(object):
 
         # Source position
         source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
-        theta, source = vectorize(theta, source)
+        theta, xo, yo, zo, ro, source = vectorize(theta, xo, yo, zo, ro, source)
 
         # Compute & return
         return self.ops.flux(theta, xo, yo, zo, ro, 
                              self._inc, self._obl, self._y, self._u, self._f,
                              source)
+
+    def intensity(self, **kwargs):
+        """
+        Compute and return the intensity of the map
+        at a given ``(lat, lon)`` or ``(x, y, z)``
+        point on the surface.
+        
+        """
+        # Get the Cartesian points
+        lat = kwargs.pop("lat", None)
+        lon = kwargs.pop("lon", None)
+        if lat is None and lon is None:
+            x = kwargs.pop("x", 0.0)
+            y = kwargs.pop("y", 0.0)
+            z = kwargs.pop("z", 1.0)
+            x, y, z = vectorize(*self.cast(x, y, z))
+        else:
+            lat, lon = vectorize(*self.cast(lat * radian, lon * radian))
+            xyz = self.ops.latlon_to_xyz(self.axis, lat, lon)
+            x = xyz[0]
+            y = xyz[1]
+            z = xyz[2]
+
+        # Source position
+        source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
+        x, y, z, source = vectorize(x, y, z, source)
+
+        # Compute & return
+        return self.ops.intensity(x, y, z, self._y, self._u, self._f, source)
 
     def render(self, **kwargs):
         res = kwargs.pop("res", 300)
