@@ -514,7 +514,7 @@ class YlmBase(object):
         Another useful application is if you want the map to rotate along with
         the axis of rotation when you change the map's inclination and/or
         obliquity. In other words, say you specified the coefficients of the map
-        in the default frame (in which the rotation axis points along :math:`\hat{y}`)
+        in the default frame (in which the rotation axis points along :math:`\\hat{y}`)
         but the object you're modeling is inclined/rotated with respect to the plane
         of the sky. After specifying the map's inclination and obliquity, run
 
