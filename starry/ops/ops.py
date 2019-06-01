@@ -524,7 +524,9 @@ class OpsReflected(Ops):
 
         """
         return tt.dot(
-            self.X(theta, xo, yo, zo, ro, inc, obl, u, f, source, no_compile=True), y
+            self.X(theta, xo, yo, zo, ro, inc, obl, 
+                   u, f, source, no_compile=True), 
+            y
         )
 
     @autocompile(

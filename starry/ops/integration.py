@@ -63,7 +63,7 @@ class rTReflected(tt.Op):
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
+        outputs = [tt.TensorType(inputs[0].dtype, (False, False))()]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
@@ -75,7 +75,7 @@ class rTReflected(tt.Op):
         return self.grad(inputs, eval_points)
 
     def perform(self, node, inputs, outputs):
-        outputs[0][0] = self.func(*inputs)
+        outputs[0][0] = self.func(inputs[0])
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
