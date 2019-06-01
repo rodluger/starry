@@ -291,4 +291,5 @@ class RaiseValuerErrorIfOp(tt.Op):
             raise ValueError(self.message)
     
     def grad(self, inputs, gradients):
+        # TODO: Is this actually necessary?
         return [inputs[0] * 0.0]

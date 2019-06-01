@@ -621,7 +621,7 @@ public:
         // Init grads
         dotRxyT_binc = 0.0;
         dotRxyT_bobl = 0.0;
-        dotRxyT_bM.setZero(npts, N);
+        dotRxyT_bM.setZero(npts, M.cols());
         if (unlikely(npts == 0)) return;
 
         // Dot them in

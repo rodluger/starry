@@ -295,11 +295,7 @@ public:
         bu = bp * DpDpu * DpuDu;
 
         // Compute the Ylm filter derivatives
-        if (fdeg > 0) {
-            bf = bp * DpDpf * B.A1_f;
-        } else {
-            bf.resize(0);
-        }
+        bf = bp * DpDpf * B.A1_f;
         
     }
 
