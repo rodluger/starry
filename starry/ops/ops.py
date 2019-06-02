@@ -11,7 +11,10 @@ import numpy as np
 import logging
 
 
-__all__ = ["Ops", "OpsReflected", "OpsDoppler", "OpsSpectral"]
+__all__ = ["Ops", "OpsReflected", "OpsDoppler"]
+
+
+
 
 
 class Ops(object):
@@ -21,7 +24,7 @@ class Ops(object):
 
     """
 
-    def __init__(self, ydeg, udeg, fdeg, lazy, quiet=False):
+    def __init__(self, ydeg, udeg, fdeg, nw, lazy, quiet=False):
         """
 
         """
@@ -37,6 +40,7 @@ class Ops(object):
         self.fdeg = fdeg
         self.filter = (fdeg > 0) or (udeg > 0)
         self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
+        self.nw = nw
         self.lazy = lazy
         if self.lazy:
             self.cast = to_tensor
@@ -138,8 +142,8 @@ class Ops(object):
 
     @autocompile(
         "X", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
-             tt.dscalar(), tt.dscalar(), tt.dscalar(), tt.dvector(), 
-             tt.dvector()
+             tt.dscalar(), tt.dscalar(), tt.dscalar(), MapVector(), 
+             MapVector()
     )
     def X(self, theta, xo, yo, zo, ro, inc, obl, u, f):
         """
@@ -187,8 +191,8 @@ class Ops(object):
 
     @autocompile(
         "flux", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
-                tt.dscalar(), tt.dscalar(), tt.dscalar(), tt.dvector(), 
-                tt.dvector(), tt.dvector()
+                tt.dscalar(), tt.dscalar(), tt.dscalar(), MapVector(), 
+                MapVector(), MapVector()
     )
     def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f):
         """
@@ -333,13 +337,24 @@ class Ops(object):
         return xyz
     
     @autocompile(
-        "rotate", tt.dvector(), tt.dvector(), tt.dscalar(), tt.dscalar()
+        "rotate", tt.dvector(), MapVector(), tt.dscalar(), tt.dscalar()
     )
     def rotate(self, y, theta, inc, obl):
         """
 
         """
-        return tt.reshape(self.dotR(y.reshape([1, -1]), inc, obl, -theta), [-1])
+        if self.nw is None:
+            return tt.reshape(self.dotR(y.reshape([1, -1]), inc, obl, -theta), [-1])
+        else:
+            # TODO: The `dotR` operator performs row-wise rotations
+            # on a matrix given an array of `theta` values. In this case,
+            # we actually want to rotate the *entire* matrix by the same
+            # `theta`. The hack below just tiles `theta` so that each
+            # row of y^T is rotated by the same value. This is slow, especially for
+            # large `nw`. Fixing this entails coding up a specialized Op,
+            # but it should be easy.
+            theta = tt.tile(theta, y.shape[1])
+            return tt.transpose(self.dotR(tt.transpose(y), inc, obl, -theta))
     
     @autocompile(
         "align", tt.dvector(), tt.dvector(), tt.dvector()
@@ -656,26 +671,3 @@ class OpsReflected(Ops):
 
         # Reshape and return
         return tt.reshape(image, [res, -1, theta.shape[0]])
-
-
-class OpsSpectral(Ops):
-    """
-
-    """
-
-    @autocompile(
-        "rotate", tt.dmatrix(), tt.dvector(), tt.dscalar(), tt.dscalar()
-    )
-    def rotate(self, y, theta, inc, obl):
-        """
-
-        """
-        # TODO: The `dotR` operator performs row-wise rotations
-        # on a matrix given an array of `theta` values. In this case,
-        # we actually want to rotate the *entire* matrix by the same
-        # `theta`. The hack below just tiles `theta` so that each
-        # row of y^T is rotated by the same value. This is slow, especially for
-        # large `nw`. Fixing this entails coding up a specialized Op,
-        # but it should be easy.
-        theta = tt.tile(theta, y.shape[1])
-        return tt.transpose(self.dotR(tt.transpose(y), inc, obl, -theta))

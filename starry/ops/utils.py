@@ -14,6 +14,7 @@ logger.addHandler(logging.StreamHandler())
 __all__ = ["logger",
            "STARRY_ORTHOGRAPHIC_PROJECTION",
            "STARRY_RECTANGULAR_PROJECTION",
+           "MapVector",
            "autocompile",
            "get_projection",
            "is_theano",
@@ -52,6 +53,25 @@ class CompileLogMessage:
         logger.info("Done.")
 
 
+class DynamicType(object):
+    """
+
+    """
+    def __call__(self, *args):
+        raise NotImplementedError("This type must be subclassed.")
+
+
+class MapVector(DynamicType):
+    """
+
+    """
+    def __call__(self, ops):
+        if ops.nw is None:
+            return tt.dvector()
+        else:
+            return tt.dmatrix()
+
+
 class autocompile(object):
     """
     A decorator used to automatically compile methods into Theano functions
@@ -67,7 +87,7 @@ class autocompile(object):
             *args (tuple): Theano types corresponding to each of the
                 arguments of the method.
         """
-        self.args = args
+        self.args = list(args)
         self.name = name
         self.compiled_name = "_compiled_{0}".format(name)
 
@@ -84,6 +104,14 @@ class autocompile(object):
             if (not no_compile) and ((not instance.lazy) or (force_compile)):
                 # Compile the function if needed & cache it
                 if not hasattr(instance, self.compiled_name):
+
+                    # Evaluate any dynamic types. These are tensors
+                    # whose types depend on specific properties of the
+                    # `Ops` instance that are evaluated at run time.
+                    for i, arg in enumerate(self.args):
+                        if isinstance(arg, DynamicType):
+                            self.args[i] = arg(instance)
+
                     with CompileLogMessage(self.name):
                         compiled_func = theano.function(
                             [*self.args], 
@@ -91,6 +119,7 @@ class autocompile(object):
                             on_unused_input='ignore'
                         )
                         setattr(instance, self.compiled_name, compiled_func)
+                
                 # Return the compiled version
                 return getattr(instance, self.compiled_name)(*args)
             else:

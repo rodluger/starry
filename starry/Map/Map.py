@@ -1,4 +1,4 @@
-from ..ops import Ops, OpsReflected, OpsDoppler, OpsSpectral, vectorize, \
+from ..ops import Ops, OpsReflected, OpsDoppler, vectorize, \
                   atleast_2d, get_projection, \
                   STARRY_RECTANGULAR_PROJECTION
 from . import indices
@@ -23,13 +23,13 @@ class YlmBase(object):
 
     _ops_class_ = Ops
 
-    def __init__(self, ydeg, udeg, fdeg, lazy=True, quiet=False):
+    def __init__(self, ydeg, udeg, fdeg, nw, lazy=True, quiet=False):
         """
 
         """
         # Instantiate the Theano ops class
         self._lazy = lazy
-        self.ops = self._ops_class_(ydeg, udeg, fdeg, lazy, quiet=quiet)
+        self.ops = self._ops_class_(ydeg, udeg, fdeg, nw, lazy, quiet=quiet)
         self.cast = self.ops.cast
 
         # Dimensions
@@ -41,6 +41,7 @@ class YlmBase(object):
         self._Nf = (fdeg + 1) ** 2
         self._deg = ydeg + udeg + fdeg
         self._N = (ydeg + udeg + fdeg + 1) ** 2
+        self._nw = nw
 
         # Initialize
         self.reset()
@@ -109,6 +110,13 @@ class YlmBase(object):
         return self._N
 
     @property
+    def nw(self):
+        """
+
+        """
+        return self._nw
+
+    @property
     def y(self):
         """
 
@@ -165,42 +173,76 @@ class YlmBase(object):
         """
 
         """
-        if isinstance(idx, tuple) and len(idx) == 2:
-            # User is accessing a Ylm index
-            inds = indices.get_ylm_inds(self.ydeg, idx[0], idx[1])
-            return self._y[inds]
-        elif isinstance(idx, (int, np.int)):
-            # User is accessing a limb darkening index
-            inds = indices.get_ul_inds(self.udeg, idx)
-            return self._u[inds]
+        if self.nw is None:
+            if isinstance(idx, tuple) and len(idx) == 2:
+                # User is accessing a Ylm index
+                inds = indices.get_ylm_inds(self.ydeg, idx[0], idx[1])
+                return self._y[inds]
+            elif isinstance(idx, (int, np.int)):
+                # User is accessing a limb darkening index
+                inds = indices.get_ul_inds(self.udeg, idx)
+                return self._u[inds]
+            else:
+                raise ValueError("Invalid map index.")
         else:
-            raise ValueError("Invalid map index.")
+            if isinstance(idx, tuple) and len(idx) == 3:
+                # User is accessing a Ylmw index
+                inds = indices.get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
+                return self._y[inds]
+            elif isinstance(idx, tuple) and len(idx) == 2:
+                # User is accessing a limb darkening index
+                inds = indices.get_ulw_inds(self.udeg, self.nw, idx[0], idx[1])
+                return self._u[inds]
+            else:
+                raise ValueError("Invalid map index.")
 
     def __setitem__(self, idx, val):
         """
 
         """
-        if isinstance(idx, tuple) and len(idx) == 2:
-            # User is accessing a Ylm index
-            inds = indices.get_ylm_inds(self.ydeg, idx[0], idx[1])
-            if 0 in inds:
-                raise ValueError("The Y_{0,0} coefficient cannot be set.")
-            if self._lazy:
-                self._y = self.ops.set_map_vector(self._y, inds, val)
+        if self.nw is None:
+            if isinstance(idx, tuple) and len(idx) == 2:
+                # User is accessing a Ylm index
+                inds = indices.get_ylm_inds(self.ydeg, idx[0], idx[1])
+                if 0 in inds:
+                    raise ValueError("The Y_{0,0} coefficient cannot be set.")
+                if self._lazy:
+                    self._y = self.ops.set_map_vector(self._y, inds, val)
+                else:
+                    self._y[inds] = val
+            elif isinstance(idx, (int, np.int, slice)):
+                # User is accessing a limb darkening index
+                inds = indices.get_ul_inds(self.udeg, idx)
+                if 0 in inds:
+                    raise ValueError("The u_0 coefficient cannot be set.")
+                if self._lazy:
+                    self._u = self.ops.set_map_vector(self._u, inds, val)
+                else:
+                    self._u[inds] = val
             else:
-                self._y[inds] = val
-        elif isinstance(idx, (int, np.int, slice)):
-            # User is accessing a limb darkening index
-            inds = indices.get_ul_inds(self.udeg, idx)
-            if 0 in inds:
-                raise ValueError("The u_0 coefficient cannot be set.")
-            if self._lazy:
-                self._u = self.ops.set_map_vector(self._u, inds, val)
-            else:
-                self._u[inds] = val
+                raise ValueError("Invalid map index.")
         else:
-            raise ValueError("Invalid map index.")
-
+            if isinstance(idx, tuple) and len(idx) == 3:
+                # User is accessing a Ylmw index
+                inds = indices.get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
+                if 0 in inds[0]:
+                    raise ValueError("The Y_{0,0} coefficients cannot be set.")
+                if self._lazy:
+                    self._y = self.ops.set_map_vector(self._y, inds, val)
+                else:
+                    self._y[inds] = val
+            elif isinstance(idx, tuple) and len(idx) == 2:
+                # User is accessing a limb darkening index
+                inds = indices.get_ulw_inds(self.udeg, self.nw, idx[0], idx[1])
+                if 0 in inds[0]:
+                    raise ValueError("The u_0 coefficients cannot be set.")
+                if self._lazy:
+                    self._u = self.ops.set_map_vector(self._u, inds, val)
+                else:
+                    self._u[inds] = val
+            else:
+                raise ValueError("Invalid map index.")
+                
     def _get_orbit(self, **kwargs):
         """
         TODO: Accept an exoplanet `orbit` instance
@@ -220,16 +262,28 @@ class YlmBase(object):
         """
 
         """
-        y = np.zeros(self.Ny)
-        y[0] = 1.0
+        if self.nw is None:
+            y = np.zeros(self.Ny)
+            y[0] = 1.0
+        else:
+            y = np.zeros((self.Ny, self.nw))
+            y[0, :] = 1.0
         self._y = self.cast(y)
 
-        u = np.zeros(self.Nu)
-        u[0] = -1.0
+        if self.nw is None:
+            u = np.zeros(self.Nu)
+            u[0] = -1.0
+        else:
+            u = np.zeros((self.Nu, self.nw))
+            u[0, :] = -1.0
         self._u = self.cast(u)
 
-        f = np.zeros(self.Nf)
-        f[0] = np.pi
+        if self.nw is None:
+            f = np.zeros(self.Nf)
+            f[0] = np.pi
+        else:
+            f = np.zeros((self.Nf, self.nw))
+            f[0, :] = np.pi
         self._f = self.cast(f)
 
         self._inc = self.cast(np.pi / 2)
@@ -762,80 +816,6 @@ class ReflectedBase(object):
         return super(ReflectedBase, self).show(**kwargs)
 
 
-class SpectralBase(object):
-    """
-
-    """
-
-    _ops_class_ = OpsSpectral
-
-    def __init__(self, *args, nw=1, **kwargs):
-        """
-
-        """
-        self._nw = nw
-        super(SpectralBase, self).__init__(*args, **kwargs)
-
-    @property
-    def nw(self):
-        """
-
-        """
-        return self._nw
-
-    def reset(self):
-        """
-
-        """
-        super(SpectralBase, self).reset()
-        y = np.zeros((self.Ny, self.nw))
-        y[0, :] = 1.0
-        self._y = self.cast(y)
-        u = np.zeros((self.Nu, self.nw))
-        u[0, :] = -1.0
-        self._u = self.cast(u)
-
-    def __getitem__(self, idx):
-        """
-
-        """
-        if isinstance(idx, tuple) and len(idx) == 3:
-            # User is accessing a Ylmw index
-            inds = indices.get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
-            return self._y[inds]
-        elif isinstance(idx, tuple) and len(idx) == 2:
-            # User is accessing a limb darkening index
-            inds = indices.get_ulw_inds(self.udeg, self.nw, idx[0], idx[1])
-            return self._u[inds]
-        else:
-            raise ValueError("Invalid map index.")
-
-    def __setitem__(self, idx, val):
-        """
-
-        """
-        if isinstance(idx, tuple) and len(idx) == 3:
-            # User is accessing a Ylmw index
-            inds = indices.get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
-            if 0 in inds[0]:
-                raise ValueError("The Y_{0,0} coefficients cannot be set.")
-            if self._lazy:
-                self._y = self.ops.set_map_vector(self._y, inds, val)
-            else:
-                self._y[inds] = val
-        elif isinstance(idx, tuple) and len(idx) == 2:
-            # User is accessing a limb darkening index
-            inds = indices.get_ulw_inds(self.udeg, self.nw, idx[0], idx[1])
-            if 0 in inds[0]:
-                raise ValueError("The u_0 coefficients cannot be set.")
-            if self._lazy:
-                self._u = self.ops.set_map_vector(self._u, inds, val)
-            else:
-                self._u[inds] = val
-        else:
-            raise ValueError("Invalid map index.")
-
-
 def Map(ydeg=0, udeg=0, nw=None, doppler=False, 
         reflected=False, lazy=True, quiet=False):
     """
@@ -847,6 +827,9 @@ def Map(ydeg=0, udeg=0, nw=None, doppler=False,
     assert ydeg >= 0, "Keyword `ydeg` must be positive."
     udeg = int(udeg)
     assert udeg >= 0, "Keyword `udeg` must be positive."
+    if nw is not None:
+        nw = int(nw)
+        assert nw > 0, "Number of wavelength bins must be positive."
 
     # Default map base
     Bases = (YlmBase,)
@@ -867,15 +850,8 @@ def Map(ydeg=0, udeg=0, nw=None, doppler=False,
     if DopplerBase in Bases and ReflectedBase in Bases:
         raise NotImplementedError("Doppler maps not implemented in reflected light.")
 
-    # Spectral?
-    if nw is not None:
-        nw = int(nw)
-        assert nw > 0, "Number of wavelength bins must be positive."
-        Bases = (SpectralBase,) + Bases
-        kwargs["nw"] = nw
-
     # Construct the class
     class Map(*Bases): 
         pass
 
-    return Map(ydeg, udeg, fdeg, **kwargs)
+    return Map(ydeg, udeg, fdeg, nw, **kwargs)
