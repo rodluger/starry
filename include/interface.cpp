@@ -22,8 +22,8 @@ namespace py = pybind11;
 
 // Multiprecision?
 #if STARRY_NDIGITS > 16
+#   define STARRY_MULTI
     using Scalar = Multi;
-    // TODO: Cast things as needed below.
 #else
     using Scalar = double;
 #endif
@@ -62,10 +62,10 @@ PYBIND11_MODULE(
         )
     {
         size_t npts = size_t(b.size());
-        Matrix<Scalar, RowMajor> sT(npts, ops.N);
+        Matrix<double, RowMajor> sT(npts, ops.N);
         for (size_t n = 0; n < npts; ++n) {
-            ops.G.compute(b(n), r);
-            sT.row(n) = ops.G.sT;
+            ops.G.compute(static_cast<Scalar>(b(n)), static_cast<Scalar>(r));
+            sT.row(n) = ops.G.sT.template cast<double>();
         }
         return sT;
     });
@@ -75,17 +75,17 @@ PYBIND11_MODULE(
         "sT", [](
             starry::Ops<Scalar>& ops,
             const Vector<double>& b,
-            const Scalar& r,
+            const double& r,
             const Matrix<double, RowMajor>& bsT
         )
     {
         size_t npts = size_t(b.size());
-        Vector<Scalar> bb(npts);
-        Scalar br = 0.0;
+        Vector<double> bb(npts);
+        double br = 0.0;
         for (size_t n = 0; n < npts; ++n) {
-            ops.G.template compute<true>(b(n), r);
-            bb(n) = ops.G.dsTdb.dot(bsT.row(n));
-            br += ops.G.dsTdr.dot(bsT.row(n));
+            ops.G.template compute<true>(static_cast<Scalar>(b(n)), static_cast<Scalar>(r));
+            bb(n) = static_cast<double>(ops.G.dsTdb.dot(bsT.row(n).template cast<Scalar>()));
+            br += static_cast<double>(ops.G.dsTdr.dot(bsT.row(n).template cast<Scalar>()));
         }
         return py::make_tuple(bb, br);
     });
@@ -95,8 +95,12 @@ PYBIND11_MODULE(
         "A1", [](
             starry::Ops<Scalar>& ops
         )
-    {
-        return ops.B.A1;
+    {   
+#       ifdef STARRY_MULTI
+            return (ops.B.A1.template cast<double>()).eval();
+#       else
+            return ops.B.A1;
+#       endif
     });
 
     // Augmented change of basis matrix: poly to Ylm
@@ -105,7 +109,11 @@ PYBIND11_MODULE(
             starry::Ops<Scalar>& ops
         )
     {
-        return ops.B.A1Inv;
+#       ifdef STARRY_MULTI
+            return (ops.B.A1Inv.template cast<double>()).eval();
+#       else
+            return ops.B.A1Inv;
+#       endif
     });
 
     // Change of basis matrix: Ylm to greens
@@ -114,7 +122,11 @@ PYBIND11_MODULE(
             starry::Ops<Scalar>& ops
         )
     {
-        return ops.B.A;
+#       ifdef STARRY_MULTI
+            return (ops.B.A.template cast<double>()).eval();
+#       else
+            return ops.B.A;
+#       endif
     });
 
     // Rotation solution in emitted light
@@ -123,7 +135,7 @@ PYBIND11_MODULE(
             starry::Ops<Scalar>& ops
         )
     {
-        return ops.B.rT;
+        return ops.B.rT.template cast<double>();
     });
 
     // Rotation solution in reflected light
@@ -134,10 +146,10 @@ PYBIND11_MODULE(
         )
     {
         size_t npts = size_t(bterm.size());
-        Matrix<Scalar, RowMajor> rT(npts, ops.N);
+        Matrix<double, RowMajor> rT(npts, ops.N);
         for (size_t n = 0; n < npts; ++n) {
-            ops.GRef.compute(bterm(n));
-            rT.row(n) = ops.GRef.rT;
+            ops.GRef.compute(static_cast<Scalar>(bterm(n)));
+            rT.row(n) = ops.GRef.rT.template cast<double>();
         }
         return rT;
     });
@@ -151,9 +163,10 @@ PYBIND11_MODULE(
         )
     {
         size_t npts = size_t(bterm.size());
-        Vector<Scalar> bb(npts);
+        Vector<double> bb(npts);
         for (size_t n = 0; n < npts; ++n) {
-            bb(n) = ops.GRef.compute(bterm(n), brT.row(n));
+            bb(n) = static_cast<double>(ops.GRef.compute(static_cast<Scalar>(bterm(n)), 
+                                        brT.row(n).template cast<Scalar>()));
         }
         return bb;
     });
@@ -164,7 +177,7 @@ PYBIND11_MODULE(
             starry::Ops<Scalar>& ops
         )
     {
-        return ops.B.rTA1;
+        return ops.B.rTA1.template cast<double>();
     });
 
     // Polynomial basis at a vector of points
@@ -176,8 +189,10 @@ PYBIND11_MODULE(
             const RowVector<double>& z
         )
     {
-        ops.B.computePolyBasis(x, y, z);
-        return ops.B.pT;
+        ops.B.computePolyBasis(x.template cast<Scalar>(), 
+                               y.template cast<Scalar>(), 
+                               z.template cast<Scalar>());
+        return ops.B.pT.template cast<double>();
     });
 
     // XY rotation operator (vectors)
@@ -189,8 +204,9 @@ PYBIND11_MODULE(
             const double& obl
         )
     {
-        ops.W.dotRxy(M, inc, obl);
-        return ops.W.dotRxy_result;
+        ops.W.dotRxy(M.template cast<Scalar>(), static_cast<Scalar>(inc), 
+                     static_cast<Scalar>(obl));
+        return ops.W.dotRxy_result.template cast<double>();
     });
 
     // XY rotation operator (matrices)
@@ -202,8 +218,9 @@ PYBIND11_MODULE(
             const double& obl
         )
     {
-        ops.W.dotRxy(M, inc, obl);
-        return ops.W.dotRxy_result;
+        ops.W.dotRxy(M.template cast<Scalar>(), static_cast<Scalar>(inc), 
+                     static_cast<Scalar>(obl));
+        return ops.W.dotRxy_result.template cast<double>();
     });
 
     // Gradient of XY rotation matrix (vectors)
@@ -216,8 +233,11 @@ PYBIND11_MODULE(
             const Matrix<double>& bMRxy
         )
     {
-        ops.W.dotRxy(M, inc, obl, bMRxy);
-        return py::make_tuple(ops.W.dotRxy_bM, ops.W.dotRxy_binc, ops.W.dotRxy_bobl);
+        ops.W.dotRxy(M.template cast<Scalar>(), static_cast<Scalar>(inc), 
+                     static_cast<Scalar>(obl), bMRxy.template cast<Scalar>());
+        return py::make_tuple(ops.W.dotRxy_bM.template cast<double>(), 
+                              static_cast<double>(ops.W.dotRxy_binc), 
+                              static_cast<double>(ops.W.dotRxy_bobl));
     });
 
     // Gradient of XY rotation matrix (matrices)
@@ -230,8 +250,11 @@ PYBIND11_MODULE(
             const Matrix<double>& bMRxy
         )
     {
-        ops.W.dotRxy(M, inc, obl, bMRxy);
-        return py::make_tuple(ops.W.dotRxy_bM, ops.W.dotRxy_binc, ops.W.dotRxy_bobl);
+        ops.W.dotRxy(M.template cast<Scalar>(), static_cast<Scalar>(inc), 
+                     static_cast<Scalar>(obl), bMRxy.template cast<Scalar>());
+        return py::make_tuple(ops.W.dotRxy_bM.template cast<double>(), 
+                              static_cast<double>(ops.W.dotRxy_binc), 
+                              static_cast<double>(ops.W.dotRxy_bobl));
     });
 
     // Transpose of XY rotation operator (vectors)
@@ -243,8 +266,9 @@ PYBIND11_MODULE(
             const double& obl
         )
     {
-        ops.W.dotRxyT(M, inc, obl);
-        return ops.W.dotRxyT_result;
+        ops.W.dotRxyT(M.template cast<Scalar>(), static_cast<Scalar>(inc), 
+                      static_cast<Scalar>(obl));
+        return ops.W.dotRxyT_result.template cast<double>();
     });
 
     // Transpose of XY rotation operator (matrices)
@@ -256,8 +280,9 @@ PYBIND11_MODULE(
             const double& obl
         )
     {
-        ops.W.dotRxyT(M, inc, obl);
-        return ops.W.dotRxyT_result;
+        ops.W.dotRxyT(M.template cast<Scalar>(), static_cast<Scalar>(inc), 
+                      static_cast<Scalar>(obl));
+        return ops.W.dotRxyT_result.template cast<double>();
     });
 
     // Gradient of transpose of XY rotation matrix (vectors)
@@ -270,8 +295,11 @@ PYBIND11_MODULE(
             const Matrix<double>& bMRxyT
         )
     {
-        ops.W.dotRxyT(M, inc, obl, bMRxyT);
-        return py::make_tuple(ops.W.dotRxyT_bM, ops.W.dotRxyT_binc, ops.W.dotRxyT_bobl);
+        ops.W.dotRxyT(M.template cast<Scalar>(), static_cast<Scalar>(inc), 
+                      static_cast<Scalar>(obl), bMRxyT.template cast<Scalar>());
+        return py::make_tuple(ops.W.dotRxyT_bM.template cast<double>(), 
+                              static_cast<double>(ops.W.dotRxyT_binc), 
+                              static_cast<double>(ops.W.dotRxyT_bobl));
     });
 
     // Gradient of transpose of XY rotation matrix (matrices)
@@ -284,8 +312,11 @@ PYBIND11_MODULE(
             const Matrix<double>& bMRxyT
         )
     {
-        ops.W.dotRxyT(M, inc, obl, bMRxyT);
-        return py::make_tuple(ops.W.dotRxyT_bM, ops.W.dotRxyT_binc, ops.W.dotRxyT_bobl);
+        ops.W.dotRxyT(M.template cast<Scalar>(), static_cast<Scalar>(inc), 
+                      static_cast<Scalar>(obl), bMRxyT.template cast<Scalar>());
+        return py::make_tuple(ops.W.dotRxyT_bM.template cast<double>(), 
+                              static_cast<double>(ops.W.dotRxyT_binc), 
+                              static_cast<double>(ops.W.dotRxyT_bobl));
     });
 
     // Z rotation operator (vectors)
@@ -296,8 +327,8 @@ PYBIND11_MODULE(
             const Vector<double>& theta
         )
     {
-        ops.W.dotRz(M, theta);
-        return ops.W.dotRz_result;
+        ops.W.dotRz(M.template cast<Scalar>(), theta.template cast<Scalar>());
+        return ops.W.dotRz_result.template cast<double>();
     });
 
     // Z rotation operator (matrices)
@@ -308,8 +339,8 @@ PYBIND11_MODULE(
             const Vector<double>& theta
         )
     {
-        ops.W.dotRz(M, theta);
-        return ops.W.dotRz_result;
+        ops.W.dotRz(M.template cast<Scalar>(), theta.template cast<Scalar>());
+        return ops.W.dotRz_result.template cast<double>();
     });
 
     // Gradient of Z rotation matrix (vectors)
@@ -321,8 +352,10 @@ PYBIND11_MODULE(
             const Matrix<double>& bMRz
         )
     {
-        ops.W.dotRz(M, theta, bMRz);
-        return py::make_tuple(ops.W.dotRz_bM, ops.W.dotRz_btheta);
+        ops.W.dotRz(M.template cast<Scalar>(), theta.template cast<Scalar>(), 
+                    bMRz.template cast<Scalar>());
+        return py::make_tuple(ops.W.dotRz_bM.template cast<double>(), 
+                              ops.W.dotRz_btheta.template cast<double>());
     });
 
     // Gradient of Z rotation matrix (matrices)
@@ -334,8 +367,10 @@ PYBIND11_MODULE(
             const Matrix<double>& bMRz
         )
     {
-        ops.W.dotRz(M, theta, bMRz);
-        return py::make_tuple(ops.W.dotRz_bM, ops.W.dotRz_btheta);
+        ops.W.dotRz(M.template cast<Scalar>(), theta.template cast<Scalar>(), 
+                    bMRz.template cast<Scalar>());
+        return py::make_tuple(ops.W.dotRz_bM.template cast<double>(), 
+                              ops.W.dotRz_btheta.template cast<double>());
     });
 
     // Filter operator
@@ -346,8 +381,8 @@ PYBIND11_MODULE(
             const Vector<double>& f
         )
     {
-        ops.F.compute(u, f);
-        return ops.F.F;
+        ops.F.compute(u.template cast<Scalar>(), f.template cast<Scalar>());
+        return ops.F.F.template cast<double>();
     });
 
     // Gradient of filter operator
@@ -359,8 +394,10 @@ PYBIND11_MODULE(
             const Matrix<double>& bF
         )
     {
-        ops.F.compute(u, f, bF);
-        return py::make_tuple(ops.F.bu, ops.F.bf);
+        ops.F.compute(u.template cast<Scalar>(), f.template cast<Scalar>(), 
+                      bF.template cast<Scalar>());
+        return py::make_tuple(ops.F.bu.template cast<double>(), 
+                              ops.F.bf.template cast<double>());
     });
 
 }

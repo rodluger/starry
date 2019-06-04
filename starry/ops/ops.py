@@ -142,8 +142,8 @@ class Ops(object):
 
     @autocompile(
         "X", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
-             tt.dscalar(), tt.dscalar(), tt.dscalar(), MapVector(), 
-             MapVector()
+             tt.dscalar(), tt.dscalar(), tt.dscalar(), tt.dvector(), 
+             tt.dvector()
     )
     def X(self, theta, xo, yo, zo, ro, inc, obl, u, f):
         """
@@ -192,7 +192,7 @@ class Ops(object):
     @autocompile(
         "flux", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
                 tt.dscalar(), tt.dscalar(), tt.dscalar(), MapVector(), 
-                MapVector(), MapVector()
+                tt.dvector(), tt.dvector()
     )
     def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f):
         """
@@ -314,7 +314,8 @@ class Ops(object):
         """
 
         """
-        return tt.set_subtensor(vector[inds], vals * tt.ones(len(inds)))
+        res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
+        return res
 
     @autocompile(
         "latlon_to_xyz", tt.dvector(), tt.dvector(), tt.dvector()

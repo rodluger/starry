@@ -1,3 +1,7 @@
+"""
+Functions to compare stuff to the beta version. A work in progress.
+
+"""
 import starry
 import starry_beta
 import numpy as np

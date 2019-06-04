@@ -69,7 +69,7 @@ def get_ext():
         "include",
         "lib/eigen_3.3.5"
     ]
-    if macros["STARRY_NDIGITS"] > 16:
+    if int(macros["STARRY_NDIGITS"]) > 16:
         include_dirs += ["lib/boost_1_66_0"]
     return Extension(
         'starry._c_ops',

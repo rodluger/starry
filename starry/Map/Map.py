@@ -173,76 +173,62 @@ class YlmBase(object):
         """
 
         """
-        if self.nw is None:
-            if isinstance(idx, tuple) and len(idx) == 2:
-                # User is accessing a Ylm index
-                inds = indices.get_ylm_inds(self.ydeg, idx[0], idx[1])
-                return self._y[inds]
-            elif isinstance(idx, (int, np.int)):
-                # User is accessing a limb darkening index
-                inds = indices.get_ul_inds(self.udeg, idx)
-                return self._u[inds]
-            else:
-                raise ValueError("Invalid map index.")
+        if isinstance(idx, (int, np.int, slice)):
+            # User is accessing a limb darkening index
+            inds = indices.get_ul_inds(self.udeg, idx)
+            return self._u[inds]
+        elif isinstance(idx, tuple) and len(idx) == 2 and self.nw is None:
+            # User is accessing a Ylm index
+            inds = indices.get_ylm_inds(self.ydeg, idx[0], idx[1])
+            return self._y[inds]
+        elif isinstance(idx, tuple) and len(idx) == 3 and self.nw:
+            # User is accessing a Ylmw index
+            inds = indices.get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
+            return self._y[inds]
         else:
-            if isinstance(idx, tuple) and len(idx) == 3:
-                # User is accessing a Ylmw index
-                inds = indices.get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
-                return self._y[inds]
-            elif isinstance(idx, tuple) and len(idx) == 2:
-                # User is accessing a limb darkening index
-                inds = indices.get_ulw_inds(self.udeg, self.nw, idx[0], idx[1])
-                return self._u[inds]
-            else:
-                raise ValueError("Invalid map index.")
+            raise ValueError("Invalid map index.")
 
     def __setitem__(self, idx, val):
         """
 
         """
-        if self.nw is None:
-            if isinstance(idx, tuple) and len(idx) == 2:
-                # User is accessing a Ylm index
-                inds = indices.get_ylm_inds(self.ydeg, idx[0], idx[1])
-                if 0 in inds:
-                    raise ValueError("The Y_{0,0} coefficient cannot be set.")
-                if self._lazy:
-                    self._y = self.ops.set_map_vector(self._y, inds, val)
+        if isinstance(idx, (int, np.int, slice)):
+            # User is accessing a limb darkening index
+            inds = indices.get_ul_inds(self.udeg, idx)
+            if 0 in inds:
+                raise ValueError("The u_0 coefficient cannot be set.")
+            if self._lazy:
+                self._u = self.ops.set_map_vector(self._u, inds, val)
+            else:
+                self._u[inds] = val
+        elif isinstance(idx, tuple) and len(idx) == 2 and self.nw is None:
+            # User is accessing a Ylm index
+            inds = indices.get_ylm_inds(self.ydeg, idx[0], idx[1])
+            if 0 in inds:
+                raise ValueError("The Y_{0,0} coefficient cannot be set.")
+            if self._lazy:
+                self._y = self.ops.set_map_vector(self._y, inds, val)
+            else:
+                self._y[inds] = val
+        elif isinstance(idx, tuple) and len(idx) == 3 and self.nw:
+            # User is accessing a Ylmw index
+            inds = indices.get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
+            if 0 in inds[0]:
+                raise ValueError("The Y_{0,0} coefficients cannot be set.")
+            if self._lazy:
+                self._y = self.ops.set_map_vector(self._y, inds, val)
+            else:
+                old_shape = self._y[inds].shape
+                new_shape = np.atleast_2d(val).shape
+                if old_shape == new_shape:
+                    self._y[inds] = val
+                elif old_shape == new_shape[::-1]:
+                    self._y[inds] = np.atleast_2d(val).T
                 else:
                     self._y[inds] = val
-            elif isinstance(idx, (int, np.int, slice)):
-                # User is accessing a limb darkening index
-                inds = indices.get_ul_inds(self.udeg, idx)
-                if 0 in inds:
-                    raise ValueError("The u_0 coefficient cannot be set.")
-                if self._lazy:
-                    self._u = self.ops.set_map_vector(self._u, inds, val)
-                else:
-                    self._u[inds] = val
-            else:
-                raise ValueError("Invalid map index.")
         else:
-            if isinstance(idx, tuple) and len(idx) == 3:
-                # User is accessing a Ylmw index
-                inds = indices.get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
-                if 0 in inds[0]:
-                    raise ValueError("The Y_{0,0} coefficients cannot be set.")
-                if self._lazy:
-                    self._y = self.ops.set_map_vector(self._y, inds, val)
-                else:
-                    self._y[inds] = val
-            elif isinstance(idx, tuple) and len(idx) == 2:
-                # User is accessing a limb darkening index
-                inds = indices.get_ulw_inds(self.udeg, self.nw, idx[0], idx[1])
-                if 0 in inds[0]:
-                    raise ValueError("The u_0 coefficients cannot be set.")
-                if self._lazy:
-                    self._u = self.ops.set_map_vector(self._u, inds, val)
-                else:
-                    self._u[inds] = val
-            else:
-                raise ValueError("Invalid map index.")
-                
+            raise ValueError("Invalid map index.")
+
     def _get_orbit(self, **kwargs):
         """
         TODO: Accept an exoplanet `orbit` instance
@@ -270,20 +256,12 @@ class YlmBase(object):
             y[0, :] = 1.0
         self._y = self.cast(y)
 
-        if self.nw is None:
-            u = np.zeros(self.Nu)
-            u[0] = -1.0
-        else:
-            u = np.zeros((self.Nu, self.nw))
-            u[0, :] = -1.0
+        u = np.zeros(self.Nu)
+        u[0] = -1.0
         self._u = self.cast(u)
 
-        if self.nw is None:
-            f = np.zeros(self.Nf)
-            f[0] = np.pi
-        else:
-            f = np.zeros((self.Nf, self.nw))
-            f[0, :] = np.pi
+        f = np.zeros(self.Nf)
+        f[0] = np.pi
         self._f = self.cast(f)
 
         self._inc = self.cast(np.pi / 2)
