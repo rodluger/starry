@@ -203,7 +203,7 @@ class Ops(object):
         )
 
     @autocompile(
-        "intensity", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
+        "intensity", tt.dvector(), tt.dvector(), tt.dvector(), MapVector(), 
                      tt.dvector(), tt.dvector()
     )
     def intensity(self, xpt, ypt, zpt, y, u, f):
@@ -225,12 +225,16 @@ class Ops(object):
     
     @autocompile(
         "render", tt.iscalar(), tt.iscalar(), tt.dvector(), tt.dscalar(), 
-                  tt.dscalar(), tt.dvector(), tt.dvector(), tt.dvector()
+                  tt.dscalar(), MapVector(), tt.dvector(), tt.dvector()
     )
     def render(self, res, projection, theta, inc, obl, y, u, f):
         """
 
         """
+        # TODO: For spectral maps, see the comment in the
+        # `rotate()` method regarding the inefficiency
+        # of the current implementation.
+
         # Compute the Cartesian grid
         xyz = ifelse(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
@@ -242,24 +246,41 @@ class Ops(object):
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
         # If lat/lon, rotate the map so that north points up
-        y = ifelse(
-            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-            tt.reshape(
-                self.dotRxy(
-                    self.dotRz(
-                        tt.reshape(y, [1, -1]), tt.reshape(-obl, [1])
-                    ), np.pi / 2 - inc, 0
-                ), [-1]
-            ),
-            y
-        )
+        if self.nw is None:
+            y = ifelse(
+                tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+                tt.reshape(
+                    self.dotRxy(
+                        self.dotRz(
+                            tt.reshape(y, [1, -1]), tt.reshape(-obl, [1])
+                        ), np.pi / 2 - inc, 0
+                    ), [-1]
+                ),
+                y
+            )
+        else:
+            y = ifelse(
+                tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+                tt.transpose(
+                    self.dotRxy(
+                        self.dotRz(
+                            tt.transpose(y), tt.tile(-obl, [self.nw])
+                        ), np.pi / 2 - inc, 0
+                    ),
+                ),
+                y
+            )
 
         # Rotate the map and transform into the polynomial basis
-        yT = tt.tile(y, [theta.shape[0], 1])
-        Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
+        if self.nw is None:
+            yT = tt.tile(y, [theta.shape[0], 1])
+            Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
+        else:
+            Ry = tt.transpose(self.dotR(tt.transpose(y), inc, obl, 
+                              -tt.tile(theta[0], self.nw)))
         A1Ry = ts.dot(self.A1, Ry)
 
-        # Apply the filter
+        # Apply the filter *only if orthographic*
         if self.filter:
             f0 = tt.zeros_like(f)
             f0 = tt.set_subtensor(f0[0], np.pi)
@@ -270,7 +291,7 @@ class Ops(object):
             )
 
         # Dot the polynomial into the basis
-        return tt.reshape(tt.dot(pT, A1Ry), [res, -1, theta.shape[0]])
+        return tt.reshape(tt.dot(pT, A1Ry), [res, res, -1])
     
     @autocompile(
         "get_inc_obl", tt.dvector()
@@ -432,7 +453,7 @@ class OpsDoppler(Ops):
 
     @autocompile(
         "rv", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
-              tt.dscalar(), tt.dscalar(), tt.dscalar(), tt.dvector(), 
+              tt.dscalar(), tt.dscalar(), tt.dscalar(), MapVector(), 
               tt.dvector(), tt.dscalar(), tt.dscalar()
     )
     def rv(self, theta, xo, yo, zo, ro, inc, obl, y, u, veq, alpha):
@@ -492,7 +513,7 @@ class OpsReflected(Ops):
         return I
 
     @autocompile(
-        "intensity", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
+        "intensity", tt.dvector(), tt.dvector(), tt.dvector(), MapVector(), 
                      tt.dvector(), tt.dvector(), tt.dmatrix()
     )
     def intensity(self, xpt, ypt, zpt, y, u, f, source):
@@ -585,7 +606,7 @@ class OpsReflected(Ops):
 
     @autocompile(
         "flux", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
-                tt.dscalar(), tt.dscalar(), tt.dscalar(), tt.dvector(), 
+                tt.dscalar(), tt.dscalar(), tt.dscalar(), MapVector(), 
                 tt.dvector(), tt.dvector(), tt.dmatrix()
     )
     def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, source):
@@ -600,7 +621,7 @@ class OpsReflected(Ops):
 
     @autocompile(
         "render", tt.iscalar(), tt.iscalar(), tt.dvector(), 
-                  tt.dscalar(), tt.dscalar(), tt.dvector(), 
+                  tt.dscalar(), tt.dscalar(), MapVector(), 
                   tt.dvector(), tt.dvector(), tt.dmatrix()
     )
     def render(self, res, projection, theta, inc, obl, y, u, f, source):
@@ -618,17 +639,30 @@ class OpsReflected(Ops):
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
         # If lat/lon, rotate the map so that north points up
-        y = ifelse(
-            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-            tt.reshape(
-                self.dotRxy(
-                    self.dotRz(
-                        tt.reshape(y, [1, -1]), tt.reshape(-obl, [1])
-                    ), np.pi / 2 - inc, 0
-                ), [-1]
-            ),
-            y
-        )
+        if self.nw is None:
+            y = ifelse(
+                tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+                tt.reshape(
+                    self.dotRxy(
+                        self.dotRz(
+                            tt.reshape(y, [1, -1]), tt.reshape(-obl, [1])
+                        ), np.pi / 2 - inc, 0
+                    ), [-1]
+                ),
+                y
+            )
+        else:
+            y = ifelse(
+                tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+                tt.transpose(
+                    self.dotRxy(
+                        self.dotRz(
+                            tt.transpose(y), tt.tile(-obl, [self.nw])
+                        ), np.pi / 2 - inc, 0
+                    ),
+                ),
+                y
+            )
 
         # Rotate the source vector as well
         source /= tt.reshape(source.norm(2, axis=1), [-1, 1])
@@ -643,11 +677,15 @@ class OpsReflected(Ops):
         )
 
         # Rotate the map and transform into the polynomial basis
-        yT = tt.tile(y, [theta.shape[0], 1])
-        Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
+        if self.nw is None:
+            yT = tt.tile(y, [theta.shape[0], 1])
+            Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
+        else:
+            Ry = tt.transpose(self.dotR(tt.transpose(y), inc, obl, 
+                              -tt.tile(theta[0], self.nw)))
         A1Ry = ts.dot(self.A1, Ry)
 
-        # Apply the filter
+        # Apply the filter *only if orthographic*
         if self.filter:
             f0 = tt.zeros_like(f)
             f0 = tt.set_subtensor(f0[0], np.pi)
@@ -671,4 +709,4 @@ class OpsReflected(Ops):
         )
 
         # Reshape and return
-        return tt.reshape(image, [res, -1, theta.shape[0]])
+        return tt.reshape(image, [res, res, -1])
