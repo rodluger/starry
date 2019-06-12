@@ -27,7 +27,7 @@ def healpix2map(healpix_map, lmax=10, **kwargs):
     alm = hp.rotator.Rotator((-90, 0, -90)).rotate_alm(alm)
 
     # Smooth the map?
-    if kwargs.get("sigma", None) is not None:
+    if kwargs.pop("sigma", None) is not None:
         alm = hp.sphtfunc.smoothalm(alm, sigma=kwargs.get("sigma"), verbose=False)
 
     # Convert them to real coefficients

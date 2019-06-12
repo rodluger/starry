@@ -9,6 +9,7 @@ import theano.tensor as tt
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
+from warnings import warn
 radian = np.pi / 180.0
 degree = 1.0 / radian
 
@@ -29,6 +30,7 @@ class YlmBase(object):
         """
         # Instantiate the Theano ops class
         self._lazy = lazy
+        self.quiet = quiet
         self.ops = self._ops_class_(ydeg, udeg, fdeg, nw, lazy, quiet=quiet)
         self.cast = self.ops.cast
 
@@ -229,17 +231,40 @@ class YlmBase(object):
         else:
             raise ValueError("Invalid map index.")
 
-    def _get_orbit(self, **kwargs):
+    def _check_kwargs(self, method, kwargs):
         """
-        TODO: Accept an exoplanet `orbit` instance
+
+        """
+        if not self.quiet:
+            for key in kwargs.keys():
+                message = "Invalid keyword `{0}` in call to `{1}()`. Ignoring."
+                message = message.format(key, method)
+                warn(message)
+                kwargs.pop(key, None)
+
+    def _get_orbit(self, kwargs):
+        """
         
         """
-        # Orbital kwargs
+        # Rotational phase & occultor radius
         theta = kwargs.pop("theta", 0.0)
-        xo = kwargs.pop("xo", 0.0)
-        yo = kwargs.pop("yo", 0.0)
-        zo = kwargs.pop("zo", 1.0)
         ro = kwargs.pop("ro", 0.0)
+
+        # Did the user pass an `exoplanet` `orbit` instance?
+        orbit = kwargs.pop("orbit", None)
+        t = kwargs.pop("t", None)
+        if orbit is not None and t is not None:
+            coords = orbit.get_relative_position(t)
+            xo = coords[0] / orbit.r_star
+            yo = coords[1] / orbit.r_star
+            # TODO: This convention may change in the next `exoplanet` release
+            zo = -coords[2] / orbit.r_star
+        else:
+            xo = kwargs.pop("xo", 0.0)
+            yo = kwargs.pop("yo", 0.0)
+            zo = kwargs.pop("zo", 1.0)
+        
+        # Vectorize & cast as needed
         theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
         theta, xo, yo, zo, ro = self.cast(theta, xo, yo, zo, ro)
         return theta * radian, xo, yo, zo, ro
@@ -273,7 +298,10 @@ class YlmBase(object):
 
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_orbit(**kwargs)
+        theta, xo, yo, zo, ro = self._get_orbit(kwargs)
+
+        # Check for invalid kwargs
+        self._check_kwargs("X", kwargs)
 
         # Compute & return
         return self.ops.X(theta, xo, yo, zo, ro, 
@@ -285,7 +313,10 @@ class YlmBase(object):
         
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_orbit(**kwargs)
+        theta, xo, yo, zo, ro = self._get_orbit(kwargs)
+
+        # Check for invalid kwargs
+        self._check_kwargs("flux", kwargs)
 
         # Compute & return
         return self.ops.flux(theta, xo, yo, zo, ro, 
@@ -313,18 +344,21 @@ class YlmBase(object):
             y = xyz[1]
             z = xyz[2]
 
+        # Check for invalid kwargs
+        self._check_kwargs("intensity", kwargs)
+
         # Compute & return
         return self.ops.intensity(x, y, z, self._y, self._u, self._f)
 
-    def render(self, **kwargs):
+    def render(self, res=300, projection="ortho", theta=0.0):
         """
         Compute and return the sky-projected intensity of 
         the map on a square Cartesian grid.
         
         """
-        res = kwargs.pop("res", 300)
-        projection = get_projection(kwargs.pop("projection", "ortho"))
-        theta = vectorize(self.cast(kwargs.pop("theta", 0.0)) * radian)
+        # Convert
+        projection = get_projection(projection)
+        theta = vectorize(self.cast(theta) * radian)
 
         # Compute & return
         return self.ops.render(res, projection, theta, self._inc, self._obl, 
@@ -358,7 +392,7 @@ class YlmBase(object):
             if self.lazy:
 
                 # Get kwargs
-                res = kwargs.get("res", 300)
+                res = kwargs.pop("res", 300)
                 theta = vectorize(self.cast(kwargs.pop("theta", 0.0)) * radian).eval()
 
                 # Evaluate the variables
@@ -463,7 +497,10 @@ class YlmBase(object):
         else:
             plt.show()
 
-    def load(self, image, healpix=False, **kwargs):
+        # Check for invalid kwargs
+        self._check_kwargs("show", kwargs)
+
+    def load(self, image, healpix=False, sampling_factor=8, sigma=None):
         """
         Load an image, array, or ``healpix`` map. 
         
@@ -490,16 +527,19 @@ class YlmBase(object):
         """
         # Is this a file name?
         if type(image) is str:
-            y = image2map(image, lmax=self.ydeg, **kwargs)
+            y = image2map(image, lmax=self.ydeg, sigma=sigma, 
+                          sampling_factor=sampling_factor)
         # or is it an array?
         elif (type(image) is np.ndarray):
             if healpix:
-                y = healpix2map(image, lmax=self.ydeg, **kwargs)
+                y = healpix2map(image, lmax=self.ydeg,sigma=sigma, 
+                          sampling_factor=sampling_factor)
             else:
-                y = array2map(image, lmax=self.ydeg, **kwargs)
+                y = array2map(image, lmax=self.ydeg, sigma=sigma, 
+                          sampling_factor=sampling_factor)
         else:
             raise ValueError("Invalid `image` value.")
-        
+
         # Ingest the coefficients
         self._y = self.cast(y)
 
@@ -643,7 +683,10 @@ class DopplerBase(object):
         of the star, its orientation, etc.)
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_orbit(**kwargs)
+        theta, xo, yo, zo, ro = self._get_orbit(kwargs)
+
+        # Check for invalid kwargs
+        self._check_kwargs("rv", kwargs)
 
         # Compute
         return self.ops.rv(
@@ -697,11 +740,14 @@ class ReflectedBase(object):
 
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_orbit(**kwargs)
+        theta, xo, yo, zo, ro = self._get_orbit(kwargs)
 
         # Source position
         source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
         theta, xo, yo, zo, source = vectorize(theta, xo, yo, zo, source)
+
+        # Check for invalid kwargs
+        self._check_kwargs("X", kwargs)
 
         # Compute & return
         return self.ops.X(theta, xo, yo, zo, ro, 
@@ -714,11 +760,14 @@ class ReflectedBase(object):
         
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_orbit(**kwargs)
+        theta, xo, yo, zo, ro = self._get_orbit(kwargs)
 
         # Source position
         source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
         theta, xo, yo, zo, source = vectorize(theta, xo, yo, zo, source)
+
+        # Check for invalid kwargs
+        self._check_kwargs("flux", kwargs)
 
         # Compute & return
         return self.ops.flux(theta, xo, yo, zo, ro, 
@@ -751,14 +800,17 @@ class ReflectedBase(object):
         source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
         x, y, z, source = vectorize(x, y, z, source)
 
+        # Check for invalid kwargs
+        self._check_kwargs("intensity", kwargs)
+
         # Compute & return
         return self.ops.intensity(x, y, z, self._y, self._u, self._f, source)
 
-    def render(self, **kwargs):
-        res = kwargs.pop("res", 300)
-        projection = get_projection(kwargs.pop("projection", "ortho"))
-        theta = self.cast(kwargs.pop("theta", 0.0)) * radian
-        source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
+    def render(self, res=300, projection="ortho", theta=0.0, source=[-1, 0, 0]):
+        # Convert stuff as needed
+        projection = get_projection(projection)
+        theta = self.cast(theta) * radian
+        source = atleast_2d(self.cast(source))
         theta, source = vectorize(theta, source)
 
         # Compute & return

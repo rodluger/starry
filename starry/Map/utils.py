@@ -5,7 +5,6 @@ import numpy as np
 __all__ = ["get_ortho_latitude_lines", 
            "get_ortho_longitude_lines"]
 
-
 def RAxisAngle(axis=[0, 1, 0], theta=0):
     """
 
