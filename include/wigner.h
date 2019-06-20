@@ -207,7 +207,7 @@ inline void rotar (
 }
 
 /**
-Compute the Euler angles from an axis and a angle.
+Compute the Euler angles from an axis and an angle.
 
 */
 template <typename Scalar>
@@ -290,6 +290,10 @@ protected:
     Scalar obl_cache, inc_cache;
     Scalar tol;
 
+    // The full rotation matrices
+    std::vector<Matrix<Scalar>> D;
+    std::vector<Matrix<Scalar>> R;
+
     // The full XY rotation matrices
     std::vector<Matrix<Scalar>> Dxy;                                           /**< The complex Wigner matrix in the `xy` frame */
     std::vector<Matrix<Scalar>> Rxy;                                           /**< The real Wigner matrix in the `xy` frame */
@@ -300,6 +304,9 @@ protected:
     std::vector<Matrix<Scalar>> DRxyDobl;
 
 public:
+
+    // Full rotation results
+    Matrix<Scalar> rotate_result;
 
     // Z rotation results
     Matrix<Scalar> dotRz_result;
@@ -336,6 +343,8 @@ public:
     {
 
         // Allocate the Wigner matrices
+        D.resize(ydeg + 1);
+        R.resize(ydeg + 1);
         Dxy.resize(ydeg + 1);
         Rxy.resize(ydeg + 1);
         Dxy_ad.resize(ydeg + 1);
@@ -344,6 +353,8 @@ public:
         DRxyDobl.resize(ydeg + 1);
         for (int l = 0; l < ydeg + 1; ++l) {
             int sz = 2 * l + 1;
+            D[l].resize(sz, sz);
+            R[l].resize(sz, sz);
             Dxy[l].resize(sz, sz);
             Rxy[l].resize(sz, sz);
             Dxy_ad[l].resize(sz, sz);
@@ -355,6 +366,96 @@ public:
         // Misc
         tol = 10 * mach_eps<Scalar>();
 
+    }
+
+    /**
+    Rotate a Ylm matrix or vector ``M`` given an axis of rotation
+    and an angle and store the result in ``rotate_result``. This
+    method doesn't do any caching and does not propagate gradients.
+    It is used strictly to rotate maps *outside* of any flux
+    calculations.
+
+    */
+    template <typename T1, bool M_IS_ROW_VECTOR=(T1::RowsAtCompileTime==1)>
+    inline void rotate (
+        const Scalar& axis_x,
+        const Scalar& axis_y,
+        const Scalar& axis_z,
+        const Scalar& theta,
+        const MatrixBase<T1>& M
+    ) {
+
+        // Compute the rotation transformation into and out of the `xy` frame
+        if (ydeg == 0) {
+
+            // Trivial case
+            rotate_result = M;
+
+        } else if (abs(axis_z) > 1 - tol) {
+            
+            // The axis of rotation is zhat, so this is easy
+            size_t nw = M.cols();
+
+            // Compute the sin & cos matrices
+            // Recall that `computeRz` effectively computes
+            // the *transpose* of R_z, so we need to negate `theta`.
+            OneByOne<Scalar> theta_v;
+            theta_v(0) = -theta;
+            if (axis_z < 0) theta_v(0) *= -1;
+            computeRz(theta_v); 
+
+            // Init result
+            rotate_result.resize(Ny, nw);
+
+            // Dot them in
+            for (int l = 0; l < ydeg + 1; ++l) {
+                for (int j = 0; j < 2 * l + 1; ++j) {
+                        rotate_result.row(l * l + j) = 
+                            M.row(l * l + j) * cosmt(0, l * l + j) + 
+                            M.row(l * l + 2 * l - j) * sinmt(0, l * l + j);
+                }
+            }
+            
+        } else {
+
+            // Construct the axis-angle rotation matrix R_A
+            Scalar costheta = cos(theta);
+            Scalar sintheta = sin(theta);
+            Scalar RA02 = axis_x * axis_z * (1 - costheta) + axis_y * sintheta;
+            Scalar RA12 = axis_y * axis_z * (1 - costheta) - axis_x * sintheta;
+            Scalar RA20 = axis_z * axis_x * (1 - costheta) - axis_y * sintheta;
+            Scalar RA21 = axis_z * axis_y * (1 - costheta) + axis_x * sintheta;
+            Scalar RA22 = costheta + axis_z * axis_z * (1 - costheta);
+
+            // Determine the Euler angles
+            Scalar cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
+            Scalar norm1, norm2;
+            cosbeta = RA22;
+            sinbeta = sqrt(1 - cosbeta * cosbeta);
+            norm1 = sqrt(RA20 * RA20 + RA21 * RA21);
+            norm2 = sqrt(RA02 * RA02 + RA12 * RA12);
+            cosgamma = -RA20 / norm1;
+            singamma = RA21 / norm1;
+            cosalpha = RA02 / norm2;
+            sinalpha = RA12 / norm2;
+
+            // Call the Eulerian rotation function
+            rotar(ydeg, cosalpha, sinalpha, cosbeta, sinbeta, 
+                  cosgamma, singamma, tol, D, R);
+
+            // Shape checks
+            size_t nw = M.cols();
+
+            // Init result
+            rotate_result.resize(Ny, nw);
+
+            // Dot the matrix in
+            for (int l = 0; l < ydeg + 1; ++l) {
+                rotate_result.block(l * l, 0, 2 * l + 1, nw) =
+                    R[l] * M.block(l * l, 0, 2 * l + 1, nw);
+            }
+
+        }
     }
 
     /**
@@ -625,7 +726,7 @@ public:
         if (unlikely(npts == 0)) return;
 
         // Dot them in
-        // \todo: There must be a more efficient way of doing this.
+        // TODO: There must be a more efficient way of doing this.
         for (int l = 0; l < ydeg + 1; ++l) {
 
             // d / dinc & d / dobl

@@ -5,7 +5,30 @@ from theano import gof
 import theano.tensor as tt
 import theano.sparse as ts
 
-__all__ = ["dotRxy", "dotRxyT", "dotRz"]
+__all__ = ["dotRxy", "dotRxyT", "dotRz", "rotateOp"]
+
+
+class rotateOp(tt.Op):
+
+    def __init__(self, func, nw):
+        self.func = func
+        self.nw = nw
+
+    def make_node(self, *inputs):
+        inputs = [tt.as_tensor_variable(i) for i in inputs]
+        if self.nw is None:
+            outputs = [tt.TensorType(inputs[0].dtype, (False,))()]
+        else:
+            outputs = [tt.TensorType(inputs[0].dtype, (False, False))()]
+        return gof.Apply(self, inputs, outputs)
+
+    def infer_shape(self, node, shapes):
+        return shapes[-1],
+
+    def perform(self, node, inputs, outputs):
+        outputs[0][0] = self.func(*inputs)
+        if self.nw is None:
+            outputs[0][0] = np.reshape(outputs[0][0], -1)
 
 
 class dotRxy(tt.Op):

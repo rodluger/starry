@@ -400,4 +400,37 @@ PYBIND11_MODULE(
                               ops.F.bf.template cast<double>());
     });
 
+    // Compute the Ylm expansion of a gaussian spot
+    Ops.def(
+        "spotYlm", [](
+            starry::Ops<Scalar>& ops,
+            const RowVector<Scalar>& amp,
+            const Scalar& sigma,
+            const Scalar& lat,
+            const Scalar& lon
+        )
+    {
+        return ops.spotYlm(amp.template cast<double>(), 
+                           static_cast<Scalar>(sigma), 
+                           static_cast<Scalar>(lat), 
+                           static_cast<Scalar>(lon)).template cast<double>();
+    });
+
+    // Rotate a Ylm map given an axis `u` and angle `theta`
+    Ops.def(
+        "rotate", [](
+            starry::Ops<Scalar>& ops,
+            const UnitVector<Scalar>& u,
+            const Scalar& theta,
+            const Matrix<double>& y
+        )
+    {
+        ops.W.rotate(static_cast<Scalar>(u(0)), 
+                     static_cast<Scalar>(u(1)), 
+                     static_cast<Scalar>(u(2)), 
+                     static_cast<Scalar>(theta), 
+                     y.template cast<Scalar>());
+        return ops.W.rotate_result.template cast<double>();
+    });
+
 }

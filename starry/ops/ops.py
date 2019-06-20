@@ -1,6 +1,6 @@
 from .. import _c_ops
 from .integration import sT, rTReflected
-from .rotation import dotRxy, dotRxyT, dotRz
+from .rotation import dotRxy, dotRxyT, dotRz, rotateOp
 from .filter import F
 from .utils import *
 import theano
@@ -11,7 +11,7 @@ import numpy as np
 import logging
 
 
-__all__ = ["Ops", "OpsReflected", "OpsDoppler"]
+__all__ = ["Ops", "OpsReflected", "OpsRV"]
 
 
 
@@ -57,7 +57,8 @@ class Ops(object):
         self.A1 = ts.as_sparse_variable(self._c_ops.A1)
         self.A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv)
 
-        # Rotation left-multiply operations
+        # Rotation operations
+        self.rotateOp = rotateOp(self._c_ops.rotate, self.nw)
         self.dotRz = dotRz(self._c_ops.dotRz)
         self.dotRxy = dotRxy(self._c_ops.dotRxy)
         self.dotRxyT = dotRxyT(self._c_ops.dotRxyT)
@@ -153,8 +154,8 @@ class Ops(object):
         b = tt.sqrt(xo ** 2 + yo ** 2)
         b_rot = (tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0))
         b_occ = tt.invert(b_rot)
-        i_rot = tt.arange(b.size)[b_rot]
-        i_occ = tt.arange(b.size)[b_occ]
+        i_rot = tt.arange(b.size)[b_rot & tt.gt(b, ro - 1.0)]
+        i_occ = tt.arange(b.size)[b_occ & tt.gt(b, ro - 1.0)]
 
         # Determine shapes
         rows = theta.shape[0]
@@ -359,24 +360,14 @@ class Ops(object):
         return xyz
     
     @autocompile(
-        "rotate", tt.dvector(), MapVector(), tt.dscalar(), tt.dscalar()
+        "rotate", tt.dvector(), tt.dscalar(), MapVector()
     )
-    def rotate(self, y, theta, inc, obl):
+    def rotate(self, u, theta, y):
         """
 
         """
-        if self.nw is None:
-            return tt.reshape(self.dotR(y.reshape([1, -1]), inc, obl, -theta), [-1])
-        else:
-            # TODO: The `dotR` operator performs row-wise rotations
-            # on a matrix given an array of `theta` values. In this case,
-            # we actually want to rotate the *entire* matrix by the same
-            # `theta`. The hack below just tiles `theta` so that each
-            # row of y^T is rotated by the same value. This is slow, especially for
-            # large `nw`. Fixing this entails coding up a specialized Op,
-            # but it should be easy.
-            theta = tt.tile(theta, y.shape[1])
-            return tt.transpose(self.dotR(tt.transpose(y), inc, obl, -theta))
+        u /= u.norm(2)
+        return self.rotateOp(u, theta, y)
     
     @autocompile(
         "align", tt.dvector(), tt.dvector(), tt.dvector()
@@ -399,16 +390,16 @@ class Ops(object):
         )
 
 
-class OpsDoppler(Ops):
+class OpsRV(Ops):
     """
 
     """
 
     @autocompile(
-        "compute_doppler_filter", tt.dscalar(), tt.dscalar(), 
+        "compute_rv_filter", tt.dscalar(), tt.dscalar(), 
                                   tt.dscalar(), tt.dscalar()
     )
-    def compute_doppler_filter(self, inc, obl, veq, alpha):
+    def compute_rv_filter(self, inc, obl, veq, alpha):
         """
 
         """
@@ -461,7 +452,7 @@ class OpsDoppler(Ops):
 
         """
         # Compute the velocity-weighted intensity
-        f = self.compute_doppler_filter(inc, obl, veq, alpha, no_compile=True)
+        f = self.compute_rv_filter(inc, obl, veq, alpha, no_compile=True)
         Iv = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f, no_compile=True)
 
         # Compute the inverse of the intensity

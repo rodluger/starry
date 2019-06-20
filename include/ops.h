@@ -4,13 +4,17 @@
 
 */
 
+#include "utils.h"
 #include "solver_emitted.h"
 #include "solver_reflected.h"
 #include "basis.h"
 #include "wigner.h"
 #include "filter.h"
+#include "misc.h"
 
 namespace starry {
+
+using namespace utils;
 
 //! The Ops class
 template <class Scalar>
@@ -64,6 +68,17 @@ public:
                 "Total degree out of range."
             );
     };
+
+    // Compute the Ylm expansion of a gaussian spot at a 
+    // given latitude/longitude on the map.
+    inline Matrix<Scalar> spotYlm (
+        const RowVector<Scalar>& amp,
+        const Scalar& sigma,
+        const Scalar& lat=0,
+        const Scalar& lon=0
+    ) {
+        return misc::spotYlm(amp, sigma, lat, lon, ydeg, W);
+    }
 
 }; // class Ops
 

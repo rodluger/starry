@@ -1,6 +1,8 @@
-from ..ops import Ops, OpsReflected, OpsDoppler, vectorize, \
+# -*- coding: utf-8 -*-
+from ..ops import Ops, OpsReflected, OpsRV, vectorize, \
                   atleast_2d, get_projection, \
                   STARRY_RECTANGULAR_PROJECTION
+from ..orbits import KeplerianOrbit
 from . import indices
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
@@ -17,12 +19,28 @@ degree = 1.0 / radian
 __all__ = ["Map"]
 
 
+class Luminosity(object):
+    """Descriptor for map luminosity."""
+ 
+    def __init__(self):
+        self.value = None
+ 
+    def __get__(self, instance, owner):
+        if self.value is None:
+            self.value = instance.cast(np.ones(instance.nw))
+        return self.value
+ 
+    def __set__(self, instance, value):
+        self.value = instance.cast(np.ones(instance.nw) * value)
+
+
 class YlmBase(object):
     """
 
     """
 
     _ops_class_ = Ops
+    L = Luminosity()
 
     def __init__(self, ydeg, udeg, fdeg, nw, lazy=True, quiet=False):
         """
@@ -44,7 +62,7 @@ class YlmBase(object):
         self._deg = ydeg + udeg + fdeg
         self._N = (ydeg + udeg + fdeg + 1) ** 2
         self._nw = nw
-
+        
         # Initialize
         self.reset()
 
@@ -246,23 +264,20 @@ class YlmBase(object):
         """
         
         """
-        # Rotational phase & occultor radius
-        theta = kwargs.pop("theta", 0.0)
-        ro = kwargs.pop("ro", 0.0)
-
-        # Did the user pass an `exoplanet` `orbit` instance?
+        # Did the user pass an `orbit` instance?
         orbit = kwargs.pop("orbit", None)
-        t = kwargs.pop("t", None)
-        if orbit is not None and t is not None:
-            coords = orbit.get_relative_position(t)
-            xo = coords[0] / orbit.r_star
-            yo = coords[1] / orbit.r_star
-            # TODO: This convention may change in the next `exoplanet` release
-            zo = -coords[2] / orbit.r_star
+        if orbit is not None:
+            assert isinstance(orbit, KeplerianOrbit), \
+                "Expected an instance of `starry.orbits.KeplerianOrbit`."
+            xo, yo, zo, ro, theta = \
+                orbit._get_occultation_coords(kwargs.pop("t", None), 
+                                              force_compile=not self.lazy)
         else:
             xo = kwargs.pop("xo", 0.0)
             yo = kwargs.pop("yo", 0.0)
             zo = kwargs.pop("zo", 1.0)
+            ro = kwargs.pop("ro", 0.0)
+            theta = kwargs.pop("theta", 0.0)
         
         # Vectorize & cast as needed
         theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
@@ -304,8 +319,8 @@ class YlmBase(object):
         self._check_kwargs("X", kwargs)
 
         # Compute & return
-        return self.ops.X(theta, xo, yo, zo, ro, 
-                          self._inc, self._obl, self._u, self._f)
+        return self.L * self.ops.X(theta, xo, yo, zo, ro, 
+                                   self._inc, self._obl, self._u, self._f)
 
     def flux(self, **kwargs):
         """
@@ -319,8 +334,9 @@ class YlmBase(object):
         self._check_kwargs("flux", kwargs)
 
         # Compute & return
-        return self.ops.flux(theta, xo, yo, zo, ro, 
-                             self._inc, self._obl, self._y, self._u, self._f)
+        return self.L * self.ops.flux(theta, xo, yo, zo, ro, 
+                                      self._inc, self._obl, self._y, 
+                                      self._u, self._f)
 
     def intensity(self, **kwargs):
         """
@@ -348,7 +364,7 @@ class YlmBase(object):
         self._check_kwargs("intensity", kwargs)
 
         # Compute & return
-        return self.ops.intensity(x, y, z, self._y, self._u, self._f)
+        return self.L * self.ops.intensity(x, y, z, self._y, self._u, self._f)
 
     def render(self, res=300, projection="ortho", theta=0.0):
         """
@@ -361,8 +377,8 @@ class YlmBase(object):
         theta = vectorize(self.cast(theta) * radian)
 
         # Compute & return
-        return self.ops.render(res, projection, theta, self._inc, self._obl, 
-                               self._y, self._u, self._f)
+        return self.L * self.ops.render(res, projection, theta, self._inc, 
+                                        self._obl, self._y, self._u, self._f)
 
     def show(self, **kwargs):
         """
@@ -401,9 +417,10 @@ class YlmBase(object):
                 y = self._y.eval()
                 u = self._u.eval()
                 f = self._f.eval()
+                L = self.L.eval()
 
                 # Explicitly call the compiled version of `render`
-                image = self.ops.render(
+                image = L * self.ops.render(
                     res, projection, theta, inc, 
                     obl, y, u, f, force_compile=True
                 )
@@ -412,6 +429,7 @@ class YlmBase(object):
 
                 # Easy!
                 image = self.render(**kwargs)
+                kwargs.pop("theta", None)
 
         if len(image.shape) == 3:
             nframes = image.shape[-1]
@@ -549,19 +567,15 @@ class YlmBase(object):
         """
         # Get inc and obl
         if axis is None:
-            inc = self._inc
-            obl = self._obl
+            axis = self.ops.get_axis(self._inc, self._obl)
         else:
             axis = self.cast(axis)
-            inc_obl = self.ops.get_inc_obl(axis)
-            inc = inc_obl[0]
-            obl = inc_obl[1]
 
-        # Reshape theta & convert to radians
-        theta = vectorize(self.cast(theta * radian))
+        # Cast to tensor & convert to radians
+        theta = self.cast(theta * radian)
 
         # Rotate
-        self._y = self.ops.rotate(self._y, theta, inc, obl)
+        self._y = self.ops.rotate(axis, theta, self._y)
 
     def align(self, source=None, dest=None):
         """
@@ -614,18 +628,18 @@ class YlmBase(object):
         self._y = self.ops.align(self._y, source, dest)
 
 
-class DopplerBase(object):
+class RVBase(object):
     """
     
     """
 
-    _ops_class_ = OpsDoppler
+    _ops_class_ = OpsRV
 
     def reset(self):
         """
 
         """
-        super(DopplerBase, self).reset()
+        super(RVBase, self).reset()
         self._alpha = self.cast(0.0)
         self._veq = self.cast(0.0)
 
@@ -658,13 +672,13 @@ class DopplerBase(object):
     def veq(self, value):
         self._veq = self.cast(value)
 
-    def _unset_doppler_filter(self):
+    def _unset_RV_filter(self):
         f = np.zeros(self.Nf)
         f[0] = np.pi
         self._f = self.cast(f)
 
-    def _set_doppler_filter(self):
-        self._f = self.ops.compute_doppler_filter(
+    def _set_RV_filter(self):
+        self._f = self.ops.compute_RV_filter(
             self._inc, self._obl, self._veq, self._alpha
         )
 
@@ -698,20 +712,20 @@ class DopplerBase(object):
         # Compute the velocity-weighted intensity if `rv==True`
         rv = kwargs.pop("rv", True)
         if rv:
-            self._set_doppler_filter()
-        res = super(DopplerBase, self).intensity(**kwargs)
+            self._set_RV_filter()
+        res = super(RVBase, self).intensity(**kwargs)
         if rv:
-            self._unset_doppler_filter()
+            self._unset_RV_filter()
         return res
 
     def render(self, **kwargs):
         # Render the velocity map if `rv==True`
         rv = kwargs.pop("rv", True)
         if rv:
-            self._set_doppler_filter()
-        res = super(DopplerBase, self).render(**kwargs)
+            self._set_RV_filter()
+        res = super(RVBase, self).render(**kwargs)
         if rv:
-            self._unset_doppler_filter()
+            self._unset_RV_filter()
         return res
 
     def show(self, **kwargs):
@@ -720,10 +734,10 @@ class DopplerBase(object):
         rv = kwargs.pop("rv", True)
         if rv:
             kwargs.pop("projection", None)
-            self._set_doppler_filter()
-        res = super(DopplerBase, self).show(**kwargs)
+            self._set_RV_filter()
+        res = super(RVBase, self).show(**kwargs)
         if rv:
-            self._unset_doppler_filter()
+            self._unset_RV_filter()
         return res
 
 
@@ -750,9 +764,9 @@ class ReflectedBase(object):
         self._check_kwargs("X", kwargs)
 
         # Compute & return
-        return self.ops.X(theta, xo, yo, zo, ro, 
-                          self._inc, self._obl, self._u, self._f, 
-                          source)
+        return self.L * self.ops.X(theta, xo, yo, zo, ro, 
+                                   self._inc, self._obl, self._u, self._f, 
+                                   source)
 
     def flux(self, **kwargs):
         """
@@ -770,9 +784,9 @@ class ReflectedBase(object):
         self._check_kwargs("flux", kwargs)
 
         # Compute & return
-        return self.ops.flux(theta, xo, yo, zo, ro, 
-                             self._inc, self._obl, self._y, self._u, self._f,
-                             source)
+        return self.L * self.ops.flux(theta, xo, yo, zo, ro, 
+                                      self._inc, self._obl, self._y, self._u, 
+                                      self._f, source)
 
     def intensity(self, **kwargs):
         """
@@ -804,7 +818,8 @@ class ReflectedBase(object):
         self._check_kwargs("intensity", kwargs)
 
         # Compute & return
-        return self.ops.intensity(x, y, z, self._y, self._u, self._f, source)
+        return self.L * self.ops.intensity(x, y, z, self._y, 
+                                           self._u, self._f, source)
 
     def render(self, res=300, projection="ortho", theta=0.0, source=[-1, 0, 0]):
         # Convert stuff as needed
@@ -814,9 +829,9 @@ class ReflectedBase(object):
         theta, source = vectorize(theta, source)
 
         # Compute & return
-        return self.ops.render(res, projection, theta, self._inc, 
-                               self._obl, self._y, self._u, self._f, 
-                               source)
+        return self.L * self.ops.render(res, projection, theta, self._inc, 
+                                        self._obl, self._y, self._u, self._f, 
+                                        source)
 
     def show(self, **kwargs):
         # We need to evaluate the variables so we can plot the map!
@@ -846,7 +861,7 @@ class ReflectedBase(object):
         return super(ReflectedBase, self).show(**kwargs)
 
 
-def Map(ydeg=0, udeg=0, nw=None, doppler=False, 
+def Map(ydeg=0, udeg=0, nw=None, rv=False, 
         reflected=False, lazy=True, quiet=False):
     """
 
@@ -865,9 +880,9 @@ def Map(ydeg=0, udeg=0, nw=None, doppler=False,
     Bases = (YlmBase,)
     kwargs = dict(lazy=lazy, quiet=quiet)
 
-    # Doppler mode?
-    if doppler:
-        Bases = (DopplerBase,) + Bases
+    # Radial velocity mode?
+    if rv:
+        Bases = (RVBase,) + Bases
         fdeg = 3
     else:
         fdeg = 0
@@ -876,9 +891,11 @@ def Map(ydeg=0, udeg=0, nw=None, doppler=False,
     if reflected:
         Bases = (ReflectedBase,) + Bases
 
-    # Ensure we're not doing both (for now)
-    if DopplerBase in Bases and ReflectedBase in Bases:
-        raise NotImplementedError("Doppler maps not implemented in reflected light.")
+    # Ensure we're not doing both
+    if RVBase in Bases and ReflectedBase in Bases:
+        raise NotImplementedError(
+            "Radial velocity maps not implemented in reflected light."
+        )
 
     # Construct the class
     class Map(*Bases): 
