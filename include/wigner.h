@@ -386,9 +386,9 @@ public:
     ) {
 
         // Compute the rotation transformation into and out of the `xy` frame
-        if (ydeg == 0) {
+        if ((ydeg == 0) || (abs(theta) < tol)) {
 
-            // Trivial case
+            // Trivial case, no rotation
             rotate_result = M;
 
         } else if (abs(axis_z) > 1 - tol) {

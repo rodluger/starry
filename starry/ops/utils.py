@@ -105,17 +105,18 @@ class autocompile(object):
                 # Compile the function if needed & cache it
                 if not hasattr(instance, self.compiled_name):
 
+                    cur_args = list(self.args)
                     # Evaluate any dynamic types. These are tensors
                     # whose types depend on specific properties of the
                     # `Ops` instance that are evaluated at run time.
-                    for i, arg in enumerate(self.args):
+                    for i, arg in enumerate(cur_args):
                         if isinstance(arg, DynamicType):
-                            self.args[i] = arg(instance)
+                            cur_args[i] = arg(instance)
 
                     with CompileLogMessage(self.name):
                         compiled_func = theano.function(
-                            [*self.args], 
-                            func(instance, *self.args), 
+                            [*cur_args], 
+                            func(instance, *cur_args), 
                             on_unused_input='ignore'
                         )
                         setattr(instance, self.compiled_name, compiled_func)

@@ -22,16 +22,11 @@ __all__ = ["Map"]
 class Luminosity(object):
     """Descriptor for map luminosity."""
  
-    def __init__(self):
-        self.value = None
- 
     def __get__(self, instance, owner):
-        if self.value is None:
-            self.value = instance.cast(np.ones(instance.nw))
-        return self.value
+        return instance._L
  
     def __set__(self, instance, value):
-        self.value = instance.cast(np.ones(instance.nw) * value)
+        instance._L = instance.cast(np.ones(instance.nw) * value)
 
 
 class YlmBase(object):
@@ -62,7 +57,10 @@ class YlmBase(object):
         self._deg = ydeg + udeg + fdeg
         self._N = (ydeg + udeg + fdeg + 1) ** 2
         self._nw = nw
-        
+
+        # Luminosity
+        self._L = self.cast(np.ones(self.nw))
+
         # Initialize
         self.reset()
 
@@ -419,10 +417,9 @@ class YlmBase(object):
                 y = self._y.eval()
                 u = self._u.eval()
                 f = self._f.eval()
-                L = self.L.eval()
-
+                
                 # Explicitly call the compiled version of `render`
-                image = L * self.ops.render(
+                image = self.L.eval() * self.ops.render(
                     res, projection, theta, inc, 
                     obl, y, u, f, force_compile=True
                 )

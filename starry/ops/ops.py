@@ -15,9 +15,6 @@ import logging
 __all__ = ["Ops", "OpsReflected", "OpsRV"]
 
 
-
-
-
 class Ops(object):
     """
     Everything in radians here.
@@ -236,10 +233,6 @@ class Ops(object):
         """
 
         """
-        # TODO: For spectral maps, see the comment in the
-        # `rotate()` method regarding the inefficiency
-        # of the current implementation.
-
         # Compute the Cartesian grid
         xyz = ifelse(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
@@ -251,30 +244,12 @@ class Ops(object):
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
         # If lat/lon, rotate the map so that north points up
-        if self.nw is None:
-            y = ifelse(
-                tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-                tt.reshape(
-                    self.dotRxy(
-                        self.dotRz(
-                            tt.reshape(y, [1, -1]), tt.reshape(-obl, [1])
-                        ), np.pi / 2 - inc, 0
-                    ), [-1]
-                ),
-                y
-            )
-        else:
-            y = ifelse(
-                tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-                tt.transpose(
-                    self.dotRxy(
-                        self.dotRz(
-                            tt.transpose(y), tt.tile(-obl, [self.nw])
-                        ), np.pi / 2 - inc, 0
-                    ),
-                ),
-                y
-            )
+        y = ifelse(
+            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+            self.align(y, self.get_axis(inc, obl, no_compile=True), 
+                       to_tensor([0, 1, 0]), no_compile=True),
+            y
+        )
 
         # Rotate the map and transform into the polynomial basis
         if self.nw is None:
@@ -374,7 +349,7 @@ class Ops(object):
         return self.rotateOp(u, theta, y)
     
     @autocompile(
-        "align", tt.dvector(), tt.dvector(), tt.dvector()
+        "align", MapVector(), tt.dvector(), tt.dvector()
     )
     def align(self, y, source, dest):
         """
@@ -383,15 +358,8 @@ class Ops(object):
         source /= source.norm(2)
         dest /= dest.norm(2)
         axis = cross(source, dest)
-        inc_obl = self.get_inc_obl(axis, no_compile=True)
-        inc = inc_obl[0]
-        obl = inc_obl[1]
-        theta = tt.reshape(tt.arccos(tt.dot(source, dest)), [1])
-        return ifelse(
-            tt.all(tt.eq(source, dest)),
-            tt.reshape(y, [-1]),
-            self.rotate(y, theta, inc, obl, no_compile=True)
-        )
+        theta = tt.arccos(tt.dot(source, dest))
+        return self.rotate(axis, theta, y, no_compile=True)
 
     @autocompile(
         "add_spot", MapVector(), tt.dvector(), tt.dscalar(), 
