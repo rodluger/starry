@@ -159,7 +159,7 @@ class YlmBase(object):
 
     @inc.setter
     def inc(self, value):
-        self._inc = self.cast(value * radian)
+        self._inc = self.cast(value) * radian
 
     @property
     def obl(self):
@@ -170,7 +170,7 @@ class YlmBase(object):
     
     @obl.setter
     def obl(self, value):
-        self._obl = self.cast(value * radian)
+        self._obl = self.cast(value) * radian
 
     @property
     def axis(self):
@@ -354,7 +354,9 @@ class YlmBase(object):
             z = kwargs.pop("z", 1.0)
             x, y, z = vectorize(*self.cast(x, y, z))
         else:
-            lat, lon = vectorize(*self.cast(lat * radian, lon * radian))
+            lat, lon = vectorize(*self.cast(lat, lon))
+            lat *= radian
+            lon *= radian
             xyz = self.ops.latlon_to_xyz(self.axis, lat, lon)
             x = xyz[0]
             y = xyz[1]
@@ -572,7 +574,7 @@ class YlmBase(object):
             axis = self.cast(axis)
 
         # Cast to tensor & convert to radians
-        theta = self.cast(theta * radian)
+        theta = self.cast(theta) * radian
 
         # Rotate
         self._y = self.ops.rotate(axis, theta, self._y)
@@ -626,6 +628,15 @@ class YlmBase(object):
         source = self.cast(source)
         dest = self.cast(dest)
         self._y = self.ops.align(self._y, source, dest)
+
+    def add_spot(self, amp, sigma=0.1, lat=0.0, lon=0.0):
+        """
+
+        """
+        amp, _ = vectorize(self.cast(amp), np.ones(self.nw))
+        sigma, lat, lon = self.cast(sigma, lat, lon)
+        self._y = self.ops.add_spot(self._y, amp, sigma, 
+                                    lat * radian, lon * radian)
 
 
 class RVBase(object):
@@ -804,7 +815,9 @@ class ReflectedBase(object):
             z = kwargs.pop("z", 1.0)
             x, y, z = vectorize(*self.cast(x, y, z))
         else:
-            lat, lon = vectorize(*self.cast(lat * radian, lon * radian))
+            lat, lon = vectorize(*self.cast(lat, lon))
+            lat *= radian
+            lon *= radian
             xyz = self.ops.latlon_to_xyz(self.axis, lat, lon)
             x = xyz[0]
             y = xyz[1]

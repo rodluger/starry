@@ -62,18 +62,26 @@ inline Matrix<Scalar> spotYlm(
         y.row(n * n + n) = 0.25 * amp * sqrt(2 * n + 1) * (IP(n) / IP(0));
 
     // Rotate the spot to the correct lat/lon
-    Scalar clat = cos(lat);
-    Scalar clon = cos(lon);
-    Scalar slat = sin(lat);
-    Scalar slon = sin(lon);
-    Scalar costheta = 0.5 * (clon + clat + clon * clat - 1);
-    UnitVector<Scalar> u;
-    u << -slat * (1 + clon), slon * (1 + clat), slon * slat;
-    Scalar normu = u.squaredNorm();
-    u /= normu;
-    Scalar sintheta = 0.5 * normu;
-    W.rotate(u(0), u(1), u(2), atan2(sintheta, costheta), y);
-    y = W.rotate_result;
+    // We are computing the compound rotation matrix
+    //
+    //         R = R(yhat, lon) . R(xhat, -lat)
+    //
+    // in one go.
+    Scalar tol = 10 * mach_eps<Scalar>();
+    if ((abs(lat) > tol) || (abs(lon) > tol)) {
+        Scalar clat = cos(lat);
+        Scalar clon = cos(lon);
+        Scalar slat = sin(lat);
+        Scalar slon = sin(lon);
+        Scalar costheta = 0.5 * (clon + clat + clon * clat - 1);
+        UnitVector<Scalar> u;
+        u << -slat * (1 + clon), slon * (1 + clat), slon * slat;
+        Scalar normu = u.norm();
+        u /= normu;
+        Scalar sintheta = 0.5 * normu;
+        W.rotate(u(0), u(1), u(2), atan2(sintheta, costheta), y);
+        y = W.rotate_result;
+    }
 
     return y;
 }

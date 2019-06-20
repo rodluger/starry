@@ -2,6 +2,7 @@ from .. import _c_ops
 from .integration import sT, rTReflected
 from .rotation import dotRxy, dotRxyT, dotRz, rotateOp
 from .filter import F
+from .misc import spotYlmOp
 from .utils import *
 import theano
 import theano.tensor as tt
@@ -65,6 +66,9 @@ class Ops(object):
 
         # Filter
         self.F = F(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
+
+        # Misc
+        self.spotYlmOp = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
 
         # mu, nu arrays for computing `pT`
         deg = ydeg + udeg + fdeg
@@ -388,6 +392,18 @@ class Ops(object):
             tt.reshape(y, [-1]),
             self.rotate(y, theta, inc, obl, no_compile=True)
         )
+
+    @autocompile(
+        "add_spot", MapVector(), tt.dvector(), tt.dscalar(), 
+                    tt.dscalar(), tt.dscalar()
+    )
+    def add_spot(self, y, amp, sigma, lat, lon):
+        """
+
+        """
+        y_new = y + self.spotYlmOp(amp, sigma, lat, lon)
+        y_new /= y_new[0]
+        return y_new
 
 
 class OpsRV(Ops):
