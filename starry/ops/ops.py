@@ -1,8 +1,8 @@
 from .. import _c_ops
-from .integration import sT, rTReflected
-from .rotation import dotRxy, dotRxyT, dotRz, rotateOp
-from .filter import F
-from .misc import spotYlmOp
+from .integration import sTOp, rTReflectedOp
+from .rotation import dotRxyOp, dotRxyTOp, dotRzOp, rotateOp
+from .filter import FOp
+from .misc import spotYlmOp, pTOp
 from .utils import *
 import theano
 import theano.tensor as tt
@@ -36,6 +36,7 @@ class Ops(object):
         self.ydeg = ydeg
         self.udeg = udeg
         self.fdeg = fdeg
+        self.deg = (ydeg + udeg + fdeg)
         self.filter = (fdeg > 0) or (udeg > 0)
         self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
         self.nw = nw
@@ -46,7 +47,7 @@ class Ops(object):
             self.cast = to_array
 
         # Solution vectors
-        self.sT = sT(self._c_ops.sT, self._c_ops.N)
+        self.sT = sTOp(self._c_ops.sT, self._c_ops.N)
         self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
         self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))
 
@@ -56,30 +57,17 @@ class Ops(object):
         self.A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv)
 
         # Rotation operations
-        self.rotateOp = rotateOp(self._c_ops.rotate, self.nw)
-        self.dotRz = dotRz(self._c_ops.dotRz)
-        self.dotRxy = dotRxy(self._c_ops.dotRxy)
-        self.dotRxyT = dotRxyT(self._c_ops.dotRxyT)
+        self.apply_rotation = rotateOp(self._c_ops.rotate, self.nw)
+        self.dotRz = dotRzOp(self._c_ops.dotRz)
+        self.dotRxy = dotRxyOp(self._c_ops.dotRxy)
+        self.dotRxyT = dotRxyTOp(self._c_ops.dotRxyT)
 
         # Filter
-        self.F = F(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
+        self.F = FOp(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
 
         # Misc
-        self.spotYlmOp = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
-
-        # mu, nu arrays for computing `pT`
-        deg = ydeg + udeg + fdeg
-        N = (deg + 1) ** 2
-        self._mu = np.zeros(N, dtype=int)
-        self._nu = np.zeros(N, dtype=int)
-        n = 0
-        for l in range(deg + 1):
-            for m in range(-l, l + 1):
-                self._mu[n] = l - m
-                self._nu[n] = l + m
-                n += 1
-        self._mu = tt.as_tensor_variable(self._mu)
-        self._nu = tt.as_tensor_variable(self._nu)
+        self.spotYlm = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
+        self.pT = pTOp(self._c_ops.pT, self.deg)
 
         # Map rendering
         self.rect_res = 0
@@ -109,28 +97,6 @@ class Ops(object):
         z = tt.reshape(tt.sin(lat), [1, -1])
         R = RAxisAngle([1, 0, 0], -np.pi / 2)
         return tt.dot(R, tt.concatenate((x, y, z)))
-
-    def pT(self, x, y, z):
-        """
-        TODO: Can probably be sped up with recursion.
-
-        """
-        def _pT_step(mu, nu, x, y, z):
-            return tt.switch(
-                tt.eq((nu % 2), 0), 
-                x ** (mu / 2) * y ** (nu / 2), 
-                x ** ((mu - 1) / 2) * y ** ((nu - 1) / 2) * z
-            )
-        pT, updates = theano.scan(fn=_pT_step,
-                                  sequences=[self._mu, self._nu],
-                                  non_sequences=[x, y, z]
-        )
-        # For degree zero maps, we need to ensure the
-        # basis is NaN off the edge of the disk, since
-        # pT doesn't depend on `z`!
-        if self.ydeg == 0:
-            pT = tt.switch(tt.shape_padleft(tt.isnan(z)), pT * np.nan, pT)
-        return tt.transpose(pT)
 
     def dotR(self, M, inc, obl, theta):
         """
@@ -203,6 +169,50 @@ class Ops(object):
         return tt.dot(
             self.X(theta, xo, yo, zo, ro, inc, obl, u, f, no_compile=True), y
         )
+
+    def _deprecated_pT(self, x, y, z):
+        """
+        Deprecated polynomial basis algorithm. Written in Theano,
+        so automatically backpropagates gradients, but is 
+        20x slower than the C version because I haven't been able
+        to figure out how to compute the polynomials recursively.
+
+        TODO: Figure it out and either replace the current Op or
+              add a gradient method to it.
+
+        """
+        # mu, nu arrays for computing `pT`
+        # NOTE: These should be initialized
+        # in __init__.
+        deg = ydeg + udeg + fdeg
+        N = (deg + 1) ** 2
+        self._mu = np.zeros(N, dtype=int)
+        self._nu = np.zeros(N, dtype=int)
+        n = 0
+        for l in range(deg + 1):
+            for m in range(-l, l + 1):
+                self._mu[n] = l - m
+                self._nu[n] = l + m
+                n += 1
+        self._mu = tt.as_tensor_variable(self._mu)
+        self._nu = tt.as_tensor_variable(self._nu)
+
+        def _pT_step(mu, nu, x, y, z):
+            return tt.switch(
+                tt.eq((nu % 2), 0), 
+                x ** (mu / 2) * y ** (nu / 2), 
+                x ** ((mu - 1) / 2) * y ** ((nu - 1) / 2) * z
+            )
+        pT, updates = theano.scan(fn=_pT_step,
+                                  sequences=[self._mu, self._nu],
+                                  non_sequences=[x, y, z]
+        )
+        # For degree zero maps, we need to ensure the
+        # basis is NaN off the edge of the disk, since
+        # pT doesn't depend on `z`!
+        if self.ydeg == 0:
+            pT = tt.switch(tt.shape_padleft(tt.isnan(z)), pT * np.nan, pT)
+        return tt.transpose(pT)
 
     @autocompile(
         "intensity", tt.dvector(), tt.dvector(), tt.dvector(), MapVector(), 
@@ -346,7 +356,7 @@ class Ops(object):
 
         """
         u /= u.norm(2)
-        return self.rotateOp(u, theta, y)
+        return self.apply_rotation(u, theta, y)
     
     @autocompile(
         "align", MapVector(), tt.dvector(), tt.dvector()
@@ -369,7 +379,7 @@ class Ops(object):
         """
 
         """
-        y_new = y + self.spotYlmOp(amp, sigma, lat, lon)
+        y_new = y + self.spotYlm(amp, sigma, lat, lon)
         y_new /= y_new[0]
         return y_new
 
@@ -460,7 +470,7 @@ class OpsReflected(Ops):
 
         """
         super(OpsReflected, self).__init__(*args, **kwargs)
-        self.rT = rTReflected(self._c_ops.rTReflected, self._c_ops.N)
+        self.rT = rTReflectedOp(self._c_ops.rTReflected, self._c_ops.N)
 
     def compute_illumination(self, xyz, source):
         """

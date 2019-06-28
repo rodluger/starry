@@ -561,13 +561,15 @@ public:
         pT.resize(npts, N);
 
         // Check the cache
-        if ((npts == size_t(x_cache.size())) && (x == x_cache) && (y == y_cache)) {
+        if ((npts == size_t(x_cache.size())) && 
+            (x == x_cache) && (y == y_cache) && (z == z_cache)) {
             return;
         } else if (npts == 0) {
             return;
         }
         x_cache = x;
         y_cache = y;
+        z_cache = z;
 
         // Optimized polynomial basis computation
         // A little opaque, sorry...

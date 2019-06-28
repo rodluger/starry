@@ -5,16 +5,16 @@ from theano import gof
 import theano.tensor as tt
 
 
-__all__ = ["F"]
+__all__ = ["FOp"]
 
 
-class F(tt.Op):
+class FOp(tt.Op):
 
     def __init__(self, func, N, Ny):
         self.func = func
         self.N = N
         self.Ny = Ny
-        self._grad_op = FGradient(self)
+        self._grad_op = FGradientOp(self)
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
@@ -36,7 +36,7 @@ class F(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class FGradient(tt.Op):
+class FGradientOp(tt.Op):
 
     def __init__(self, base_op):
         self.base_op = base_op

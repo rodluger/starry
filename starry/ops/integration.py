@@ -5,15 +5,15 @@ from theano import gof
 import theano.tensor as tt
 
 
-__all__ = ["sT", "rTReflected"]
+__all__ = ["sTOp", "rTReflectedOp"]
 
 
-class sT(tt.Op):
+class sTOp(tt.Op):
 
     def __init__(self, func, N):
         self.func = func
         self.N = N
-        self._grad_op = sTGradient(self)
+        self._grad_op = sTGradientOp(self)
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
@@ -35,7 +35,7 @@ class sT(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class sTGradient(tt.Op):
+class sTGradientOp(tt.Op):
 
     def __init__(self, base_op):
         self.base_op = base_op
@@ -54,12 +54,12 @@ class sTGradient(tt.Op):
         outputs[1][0] = np.reshape(br, np.shape(inputs[1]))
 
 
-class rTReflected(tt.Op):
+class rTReflectedOp(tt.Op):
 
     def __init__(self, func, N):
         self.func = func
         self.N = N
-        self._grad_op = rTReflectedGradient(self)
+        self._grad_op = rTReflectedGradientOp(self)
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
@@ -86,7 +86,7 @@ class rTReflected(tt.Op):
         return [self._grad_op(*(inputs + gradients))]
 
 
-class rTReflectedGradient(tt.Op):
+class rTReflectedGradientOp(tt.Op):
 
     def __init__(self, base_op):
         self.base_op = base_op

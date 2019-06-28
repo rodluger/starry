@@ -5,7 +5,7 @@ from theano import gof
 import theano.tensor as tt
 import theano.sparse as ts
 
-__all__ = ["dotRxy", "dotRxyT", "dotRz", "rotateOp"]
+__all__ = ["dotRxyOp", "dotRxyTOp", "dotRzOp", "rotateOp"]
 
 
 class rotateOp(tt.Op):
@@ -31,11 +31,11 @@ class rotateOp(tt.Op):
             outputs[0][0] = np.reshape(outputs[0][0], -1)
 
 
-class dotRxy(tt.Op):
+class dotRxyOp(tt.Op):
 
     def __init__(self, func):
         self.func = func
-        self._grad_op = dotRxyGradient(self)
+        self._grad_op = dotRxyGradientOp(self)
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
@@ -57,7 +57,7 @@ class dotRxy(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class dotRxyGradient(tt.Op):
+class dotRxyGradientOp(tt.Op):
 
     def __init__(self, base_op):
         self.base_op = base_op
@@ -77,11 +77,11 @@ class dotRxyGradient(tt.Op):
         outputs[2][0] = np.reshape(bobl, np.shape(inputs[2]))
 
 
-class dotRxyT(tt.Op):
+class dotRxyTOp(tt.Op):
 
     def __init__(self, func):
         self.func = func
-        self._grad_op = dotRxyTGradient(self)
+        self._grad_op = dotRxyTGradientOp(self)
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
@@ -103,7 +103,7 @@ class dotRxyT(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class dotRxyTGradient(tt.Op):
+class dotRxyTGradientOp(tt.Op):
 
     def __init__(self, base_op):
         self.base_op = base_op
@@ -123,11 +123,11 @@ class dotRxyTGradient(tt.Op):
         outputs[2][0] = np.reshape(bobl, np.shape(inputs[2]))
 
 
-class dotRz(tt.Op):
+class dotRzOp(tt.Op):
 
     def __init__(self, func):
         self.func = func
-        self._grad_op = dotRzGradient(self)
+        self._grad_op = dotRzGradientOp(self)
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
@@ -149,7 +149,7 @@ class dotRz(tt.Op):
         return self._grad_op(*(inputs + gradients))
 
 
-class dotRzGradient(tt.Op):
+class dotRzGradientOp(tt.Op):
 
     def __init__(self, base_op):
         self.base_op = base_op

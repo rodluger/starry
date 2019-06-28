@@ -349,8 +349,15 @@ class YlmBase(object):
         if lat is None and lon is None:
             x = kwargs.pop("x", 0.0)
             y = kwargs.pop("y", 0.0)
-            z = kwargs.pop("z", 1.0)
-            x, y, z = vectorize(*self.cast(x, y, z))
+            z = kwargs.pop("z", None)
+            if z is not None:
+                x, y, z = vectorize(*self.cast(x, y, z))
+            else:
+                x, y = vectorize(*self.cast(x, y))
+                if self._lazy:
+                    z = tt.sqrt(1.0 - x ** 2 - y ** 2)
+                else:
+                    z = np.sqrt(1.0 - x ** 2 - y ** 2)
         else:
             lat, lon = vectorize(*self.cast(lat, lon))
             lat *= radian
@@ -429,6 +436,7 @@ class YlmBase(object):
                 # Easy!
                 image = self.render(**kwargs)
                 kwargs.pop("theta", None)
+                kwargs.pop("res", None)
 
         if len(image.shape) == 3:
             nframes = image.shape[-1]
