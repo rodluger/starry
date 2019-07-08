@@ -256,7 +256,6 @@ class YlmBase(object):
                 message = "Invalid keyword `{0}` in call to `{1}()`. Ignoring."
                 message = message.format(key, method)
                 warn(message)
-                kwargs.pop(key, None)
 
     def _get_orbit(self, kwargs):
         """
@@ -394,7 +393,7 @@ class YlmBase(object):
         """
         # Get kwargs
         cmap = kwargs.pop("cmap", "plasma")
-        projection = get_projection(kwargs.get("projection", "ortho"))
+        projection = get_projection(kwargs.pop("projection", "ortho"))
         grid = kwargs.pop("grid", True)
         interval = kwargs.pop("interval", 75)
         mp4 = kwargs.pop("mp4", None)

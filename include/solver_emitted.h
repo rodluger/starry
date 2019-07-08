@@ -953,6 +953,19 @@ namespace solver {
                 }
             }
 
+            // Special case: complete occultation
+            if (unlikely(b < r - 1)) {
+                sT.setZero();
+                return;
+            }
+
+            // Special case: no occultation
+            if (unlikely(r == 0) || (b > r + 1)) {
+                throw std::runtime_error(
+                    "No occultation, but occultation routine was called."
+                );
+            }
+
             // Compute the k^2 terms and angular variables
             computeKVariables(b, r, ksq, k, kc, kcsq, kkc, invksq, 
                               kite_area2, kap0, kap1, invb, invr,

@@ -121,8 +121,8 @@ class Ops(object):
         b = tt.sqrt(xo ** 2 + yo ** 2)
         b_rot = (tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0))
         b_occ = tt.invert(b_rot)
-        i_rot = tt.arange(b.size)[b_rot & tt.gt(b, ro - 1.0)]
-        i_occ = tt.arange(b.size)[b_occ & tt.gt(b, ro - 1.0)]
+        i_rot = tt.arange(b.size)[b_rot]
+        i_occ = tt.arange(b.size)[b_occ]
 
         # Determine shapes
         rows = theta.shape[0]

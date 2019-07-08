@@ -1,8 +1,17 @@
 # -*- coding: utf-8 -*-
 import exoplanet
+from packaging import version
 import theano.tensor as tt
 import numpy as np
 from ..ops import autocompile
+
+
+# NOTE: In version 0.1.7, DFM changed the coordinates
+# so that the z-axis points TOWARD the observer!
+if version.parse(exoplanet.__version__) > version.parse('0.1.7.dev0'):
+    z_sign = 1
+else:
+    z_sign = -1
 
 
 class KeplerianOrbit(exoplanet.orbits.KeplerianOrbit):
@@ -50,8 +59,7 @@ class KeplerianOrbit(exoplanet.orbits.KeplerianOrbit):
         # Convert to units of the planet radius
         xo = -coords[0] / self.r_planet
         yo = -coords[1] / self.r_planet
-        # TODO: This convention may change in the next `exoplanet` release
-        zo = coords[2] / self.r_planet
+        zo = -z_sign * coords[2] / self.r_planet
 
         # Rotational phase
         theta = self.theta0
