@@ -5,6 +5,7 @@ import theano.tensor as tt
 import numpy as np
 from theano.ifelse import ifelse
 from theano.tensor.extra_ops import CpuContiguous
+from theano.configparser import change_flags
 from theano import gof
 import logging
 logger = logging.getLogger(__name__)
@@ -114,11 +115,12 @@ class autocompile(object):
                             cur_args[i] = arg(instance)
 
                     with CompileLogMessage(self.name):
-                        compiled_func = theano.function(
-                            [*cur_args], 
-                            func(instance, *cur_args), 
-                            on_unused_input='ignore'
-                        )
+                        with change_flags(compute_test_value='off'):
+                            compiled_func = theano.function(
+                                [*cur_args], 
+                                func(instance, *cur_args), 
+                                on_unused_input='ignore'
+                            )
                         setattr(instance, self.compiled_name, compiled_func)
                 
                 # Return the compiled version

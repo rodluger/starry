@@ -110,8 +110,8 @@ class Ops(object):
 
     @autocompile(
         "X", tt.dvector(), tt.dvector(), tt.dvector(), tt.dvector(), 
-             tt.dscalar(), tt.dscalar(), tt.dscalar(), tt.dvector(), 
-             tt.dvector()
+            tt.dscalar(), tt.dscalar(), tt.dscalar(), tt.dvector(), 
+            tt.dvector()
     )
     def X(self, theta, xo, yo, zo, ro, inc, obl, u, f):
         """
@@ -178,7 +178,7 @@ class Ops(object):
         to figure out how to compute the polynomials recursively.
 
         TODO: Figure it out and either replace the current Op or
-              add a gradient method to it.
+            add a gradient method to it.
 
         """
         # mu, nu arrays for computing `pT`
@@ -204,8 +204,8 @@ class Ops(object):
                 x ** ((mu - 1) / 2) * y ** ((nu - 1) / 2) * z
             )
         pT, updates = theano.scan(fn=_pT_step,
-                                  sequences=[self._mu, self._nu],
-                                  non_sequences=[x, y, z]
+                                sequences=[self._mu, self._nu],
+                                non_sequences=[x, y, z]
         )
         # For degree zero maps, we need to ensure the
         # basis is NaN off the edge of the disk, since
@@ -216,7 +216,7 @@ class Ops(object):
 
     @autocompile(
         "intensity", tt.dvector(), tt.dvector(), tt.dvector(), MapVector(), 
-                     tt.dvector(), tt.dvector()
+                    tt.dvector(), tt.dvector()
     )
     def intensity(self, xpt, ypt, zpt, y, u, f):
         """
@@ -237,7 +237,7 @@ class Ops(object):
     
     @autocompile(
         "render", tt.iscalar(), tt.iscalar(), tt.dvector(), tt.dscalar(), 
-                  tt.dscalar(), MapVector(), tt.dvector(), tt.dvector()
+                tt.dscalar(), MapVector(), tt.dvector(), tt.dvector()
     )
     def render(self, res, projection, theta, inc, obl, y, u, f):
         """
@@ -257,7 +257,7 @@ class Ops(object):
         y = ifelse(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
             self.align(y, self.get_axis(inc, obl, no_compile=True), 
-                       to_tensor([0, 1, 0]), no_compile=True),
+                    to_tensor([0, 1, 0]), no_compile=True),
             y
         )
 
@@ -267,7 +267,7 @@ class Ops(object):
             Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
         else:
             Ry = tt.transpose(self.dotR(tt.transpose(y), inc, obl, 
-                              -tt.tile(theta[0], self.nw)))
+                            -tt.tile(theta[0], self.nw)))
         A1Ry = ts.dot(self.A1, Ry)
 
         # Apply the filter *only if orthographic*
