@@ -407,13 +407,18 @@ PYBIND11_MODULE(
             const RowVector<Scalar>& amp,
             const Scalar& sigma,
             const Scalar& lat,
-            const Scalar& lon
+            const Scalar& lon,
+            const Scalar& inc,
+            const Scalar& obl
         )
     {
         return ops.spotYlm(amp.template cast<double>(), 
                            static_cast<Scalar>(sigma), 
                            static_cast<Scalar>(lat), 
-                           static_cast<Scalar>(lon)).template cast<double>();
+                           static_cast<Scalar>(lon),
+                           static_cast<Scalar>(inc), 
+                           static_cast<Scalar>(obl)
+                           ).template cast<double>();
     });
 
     // Rotate a Ylm map given an axis `u` and angle `theta`
@@ -431,6 +436,22 @@ PYBIND11_MODULE(
                      static_cast<Scalar>(theta), 
                      y.template cast<Scalar>());
         return ops.W.rotate_result.template cast<double>();
+    });
+
+    // Return the actual Wigner matrix `R`
+    Ops.def(
+        "R", [](
+            starry::Ops<Scalar>& ops,
+            const UnitVector<Scalar>& u,
+            const Scalar& theta
+        )
+    {
+        ops.W.compute(static_cast<Scalar>(u(0)), 
+                      static_cast<Scalar>(u(1)), 
+                      static_cast<Scalar>(u(2)), 
+                      static_cast<Scalar>(theta));
+        // NOTE: this will *fail* for multiprecision types
+        return ops.W.R;
     });
 
 }

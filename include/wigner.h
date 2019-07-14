@@ -290,9 +290,15 @@ protected:
     Scalar obl_cache, inc_cache;
     Scalar tol;
 
-    // The full rotation matrices
+    // The complex rotation matrix
     std::vector<Matrix<Scalar>> D;
+
+public:
+
+    // The real rotation matrix
     std::vector<Matrix<Scalar>> R;
+
+protected:
 
     // The full XY rotation matrices
     std::vector<Matrix<Scalar>> Dxy;                                           /**< The complex Wigner matrix in the `xy` frame */
@@ -366,6 +372,61 @@ public:
         // Misc
         tol = 10 * mach_eps<Scalar>();
 
+    }
+
+    /**
+    Compute the full rotation matrix R.
+    \todo: Compute gradients here as well.
+
+    */
+    inline void compute (
+        const Scalar& axis_x,
+        const Scalar& axis_y,
+        const Scalar& axis_z,
+        const Scalar& theta
+    ) {
+        Scalar costheta = cos(theta);
+        Scalar sintheta = sin(theta);
+        Scalar RA01 = axis_x * axis_y * (1 - costheta) - axis_z * sintheta;
+        Scalar RA02 = axis_x * axis_z * (1 - costheta) + axis_y * sintheta;
+        Scalar RA11 = costheta + axis_y * axis_y * (1 - costheta);
+        Scalar RA12 = axis_y * axis_z * (1 - costheta) - axis_x * sintheta;
+        Scalar RA20 = axis_z * axis_x * (1 - costheta) - axis_y * sintheta;
+        Scalar RA21 = axis_z * axis_y * (1 - costheta) + axis_x * sintheta;
+        Scalar RA22 = costheta + axis_z * axis_z * (1 - costheta);
+
+        // Determine the Euler angles
+        Scalar cosalpha, sinalpha, cosbeta, sinbeta, cosgamma, singamma;
+        Scalar norm1, norm2;
+
+        if ((RA22 < -1 + tol) && (RA22 > -1 - tol)) {
+            cosbeta = RA22; // = -1
+            sinbeta = 1 + RA22; // = 0
+            cosgamma = RA11;
+            singamma = RA01;
+            cosalpha = -RA22; // = 1
+            sinalpha = 1 + RA22; // = 0
+        } else if ((RA22 < 1 + tol) && (RA22 > 1 - tol)) {
+            cosbeta = RA22; // = 1
+            sinbeta = 1 - RA22; // = 0
+            cosgamma = RA11;
+            singamma = -RA01;
+            cosalpha = RA22; // = 1
+            sinalpha = 1 - RA22; // = 0
+        } else {
+            cosbeta = RA22;
+            sinbeta = sqrt(1 - cosbeta * cosbeta);
+            norm1 = sqrt(RA20 * RA20 + RA21 * RA21);
+            norm2 = sqrt(RA02 * RA02 + RA12 * RA12);
+            cosgamma = -RA20 / norm1;
+            singamma = RA21 / norm1;
+            cosalpha = RA02 / norm2;
+            sinalpha = RA12 / norm2;
+        }
+
+        // Call the Eulerian rotation function
+        rotar(ydeg, cosalpha, sinalpha, cosbeta, sinbeta, 
+                cosgamma, singamma, tol, D, R);
     }
 
     /**

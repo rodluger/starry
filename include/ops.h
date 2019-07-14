@@ -75,9 +75,11 @@ public:
         const RowVector<Scalar>& amp,
         const Scalar& sigma,
         const Scalar& lat=0,
-        const Scalar& lon=0
+        const Scalar& lon=0,
+        const Scalar& inc=pi<Scalar>(),
+        const Scalar& obl=0
     ) {
-        return misc::spotYlm(amp, sigma, lat, lon, ydeg, W);
+        return misc::spotYlm(amp, sigma, lat, lon, inc, obl, ydeg, W);
     }
 
 }; // class Ops

@@ -25,6 +25,8 @@ inline Matrix<Scalar> spotYlm(
     const Scalar& sigma,
     const Scalar& lat,
     const Scalar& lon,
+    const Scalar& inc,
+    const Scalar& obl,
     int l,
     wigner::Wigner<Scalar>& W
 ) {
@@ -81,6 +83,17 @@ inline Matrix<Scalar> spotYlm(
         Scalar sintheta = 0.5 * normu;
         W.rotate(u(0), u(1), u(2), atan2(sintheta, costheta), y);
         y = W.rotate_result;
+    }
+
+    // Now account for the map inclination/obliquity
+    // \todo: This could be done in a single step as well
+    if ((inc != pi<Scalar>()) || (obl != 0.0)) {
+
+        W.rotate(0.0, 0.0, 1.0, -obl, y);
+        y = W.rotate_result;
+        W.rotate(-cos(obl), sin(obl), 0.0, inc - 0.5 * pi<Scalar>(), y);
+        y = W.rotate_result;
+    
     }
 
     return y;

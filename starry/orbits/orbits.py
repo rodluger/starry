@@ -65,6 +65,7 @@ class KeplerianOrbit(exoplanet.orbits.KeplerianOrbit):
         theta = self.theta0
         if self._is_rotating:
             theta += 360.0 / self.rot_period * (t - self.t0)
+            theta = theta % 360.0
 
         # Star radius in units of planet radius
         ro = self.r_star / self.r_planet

@@ -635,12 +635,14 @@ class YlmBase(object):
 
     def add_spot(self, amp, sigma=0.1, lat=0.0, lon=0.0):
         """
-
+        
         """
         amp, _ = vectorize(self.cast(amp), np.ones(self.nw))
         sigma, lat, lon = self.cast(sigma, lat, lon)
         self._y = self.ops.add_spot(self._y, amp, sigma, 
-                                    lat * radian, lon * radian)
+                                    lat * radian, lon * radian,
+                                    self.inc * radian,
+                                    self.obl * radian)
 
 
 class RVBase(object):

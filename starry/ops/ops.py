@@ -57,6 +57,7 @@ class Ops(object):
         self.A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv)
 
         # Rotation operations
+        self.R = self._c_ops.R
         self.apply_rotation = rotateOp(self._c_ops.rotate, self.nw)
         self.dotRz = dotRzOp(self._c_ops.dotRz)
         self.dotRxy = dotRxyOp(self._c_ops.dotRxy)
@@ -375,11 +376,11 @@ class Ops(object):
         "add_spot", MapVector(), tt.dvector(), tt.dscalar(), 
                     tt.dscalar(), tt.dscalar()
     )
-    def add_spot(self, y, amp, sigma, lat, lon):
+    def add_spot(self, y, amp, sigma, lat, lon, inc, obl):
         """
 
         """
-        y_new = y + self.spotYlm(amp, sigma, lat, lon)
+        y_new = y + self.spotYlm(amp, sigma, lat, lon, inc, obl)
         y_new /= y_new[0]
         return y_new
 
