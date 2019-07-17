@@ -171,50 +171,6 @@ class Ops(object):
             self.X(theta, xo, yo, zo, ro, inc, obl, u, f, no_compile=True), y
         )
 
-    def _deprecated_pT(self, x, y, z):
-        """
-        Deprecated polynomial basis algorithm. Written in Theano,
-        so automatically backpropagates gradients, but is 
-        20x slower than the C version because I haven't been able
-        to figure out how to compute the polynomials recursively.
-
-        TODO: Figure it out and either replace the current Op or
-            add a gradient method to it.
-
-        """
-        # mu, nu arrays for computing `pT`
-        # NOTE: These should be initialized
-        # in __init__.
-        deg = ydeg + udeg + fdeg
-        N = (deg + 1) ** 2
-        self._mu = np.zeros(N, dtype=int)
-        self._nu = np.zeros(N, dtype=int)
-        n = 0
-        for l in range(deg + 1):
-            for m in range(-l, l + 1):
-                self._mu[n] = l - m
-                self._nu[n] = l + m
-                n += 1
-        self._mu = tt.as_tensor_variable(self._mu)
-        self._nu = tt.as_tensor_variable(self._nu)
-
-        def _pT_step(mu, nu, x, y, z):
-            return tt.switch(
-                tt.eq((nu % 2), 0), 
-                x ** (mu / 2) * y ** (nu / 2), 
-                x ** ((mu - 1) / 2) * y ** ((nu - 1) / 2) * z
-            )
-        pT, updates = theano.scan(fn=_pT_step,
-                                sequences=[self._mu, self._nu],
-                                non_sequences=[x, y, z]
-        )
-        # For degree zero maps, we need to ensure the
-        # basis is NaN off the edge of the disk, since
-        # pT doesn't depend on `z`!
-        if self.ydeg == 0:
-            pT = tt.switch(tt.shape_padleft(tt.isnan(z)), pT * np.nan, pT)
-        return tt.transpose(pT)
-
     @autocompile(
         "intensity", tt.dvector(), tt.dvector(), tt.dvector(), MapVector(), 
                     tt.dvector(), tt.dvector()
@@ -282,7 +238,10 @@ class Ops(object):
             )
 
         # Dot the polynomial into the basis
-        return tt.reshape(tt.dot(pT, A1Ry), [res, res, -1])
+        res = tt.reshape(tt.dot(pT, A1Ry), [res, res, -1])
+
+        # We need the shape to be (nframes, npix, npix)
+        return res.dimshuffle(2, 0, 1)
     
     @autocompile(
         "get_inc_obl", tt.dvector()
@@ -374,7 +333,8 @@ class Ops(object):
 
     @autocompile(
         "add_spot", MapVector(), tt.dvector(), tt.dscalar(), 
-                    tt.dscalar(), tt.dscalar()
+                    tt.dscalar(), tt.dscalar(), tt.dscalar(),
+                    tt.dscalar()
     )
     def add_spot(self, y, amp, sigma, lat, lon, inc, obl):
         """

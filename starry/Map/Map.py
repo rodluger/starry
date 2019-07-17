@@ -377,6 +377,8 @@ class YlmBase(object):
         Compute and return the sky-projected intensity of 
         the map on a square Cartesian grid.
         
+        The shape of the returned image is `(nframes, res, res)`.
+
         """
         # Convert
         projection = get_projection(projection)
@@ -393,7 +395,7 @@ class YlmBase(object):
         """
         # Get kwargs
         cmap = kwargs.pop("cmap", "plasma")
-        projection = get_projection(kwargs.pop("projection", "ortho"))
+        projection = get_projection(kwargs.get("projection", "ortho"))
         grid = kwargs.pop("grid", True)
         interval = kwargs.pop("interval", 75)
         mp4 = kwargs.pop("mp4", None)
@@ -434,14 +436,16 @@ class YlmBase(object):
 
                 # Easy!
                 image = self.render(**kwargs)
-                kwargs.pop("theta", None)
+                theta = np.atleast_1d(kwargs.pop("theta", 0.0) * radian)
                 kwargs.pop("res", None)
+        
+        kwargs.pop("projection", None)
 
         if len(image.shape) == 3:
-            nframes = image.shape[-1]
+            nframes = image.shape[0]
         else:
             nframes = 1
-            image = np.reshape(image, image.shape + (1,))
+            image = np.reshape(image, (1,) + image.shape)
 
         # Animation
         animated = (nframes > 1)
@@ -479,12 +483,17 @@ class YlmBase(object):
                 ax.plot(x, y, 'k-', alpha=1, lw=1)
                 ax.plot(x, -y, 'k-', alpha=1, lw=1)
                 lat_lines = get_ortho_latitude_lines(inc=inc, obl=obl)
-                lon_lines = get_ortho_longitude_lines(inc=inc, obl=obl)
-                for x, y in lat_lines + lon_lines:
+                for x, y in lat_lines:
                     ax.plot(x, y, 'k-', lw=0.5, alpha=0.5, zorder=100)
+                lon_lines = get_ortho_longitude_lines(inc=inc, obl=obl, 
+                                                      theta=theta[0])
+                ll = [None for n in lon_lines]
+                for n, l in enumerate(lon_lines):
+                    ll[n], = ax.plot(l[0], l[1], 'k-', lw=0.5,
+                                    alpha=0.5, zorder=100)
 
         # Plot the first frame of the image
-        img = ax.imshow(image[:, :, 0], origin="lower", 
+        img = ax.imshow(image[0], origin="lower", 
                         extent=extent, cmap=cmap,
                         interpolation="none",
                         vmin=np.nanmin(image), vmax=np.nanmax(image), 
@@ -492,15 +501,18 @@ class YlmBase(object):
 
         # Display or save the image / animation
         if animated:
-            interval = kwargs.pop("interval", 75)
-            mp4 = kwargs.pop("mp4", None)
             
             def updatefig(i):
-                img.set_array(image[:, :, i])
-                return img,
+                img.set_array(image[i])
+                lon_lines = get_ortho_longitude_lines(inc=inc, obl=obl, 
+                                                      theta=theta[i])
+                for n, l in enumerate(lon_lines):
+                    ll[n].set_xdata(l[0])
+                    ll[n].set_ydata(l[1])
+                return img, ll
 
             ani = FuncAnimation(fig, updatefig, interval=interval,
-                                blit=False, frames=image.shape[-1])
+                                blit=False, frames=image.shape[0])
 
             # Business as usual
             if (mp4 is not None) and (mp4 != ""):
@@ -531,6 +543,9 @@ class YlmBase(object):
         This routine uses various routines in ``healpix`` to compute the spherical
         harmonic expansion of the input image and sets the map's :py:attr:`y`
         coefficients accordingly.
+
+        The map is oriented such that the north pole of the input image
+        is placed at the north pole of the current rotation axis.
 
         Args:
             image: A path to an image file, a two-dimensional ``numpy`` 
@@ -566,6 +581,9 @@ class YlmBase(object):
 
         # Ingest the coefficients
         self._y = self.cast(y)
+
+        # Align the map with the axis of rotation
+        self.align([0, 1, 0])
 
     def rotate(self, theta, axis=None):
         """

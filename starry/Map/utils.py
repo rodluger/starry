@@ -25,7 +25,7 @@ def RAxisAngle(axis=[0, 1, 0], theta=0):
     ], [3, 3])
 
 
-def get_ortho_latitude_lines(inc=np.pi/2, obl=0, nlines=5, npts=1000):
+def get_ortho_latitude_lines(inc=np.pi/2, obl=0, dlat=np.pi/6, npts=1000):
     """
 
     """
@@ -37,7 +37,7 @@ def get_ortho_latitude_lines(inc=np.pi/2, obl=0, nlines=5, npts=1000):
 
     # Latitude lines
     res = []
-    latlines = np.linspace(-np.pi/2, np.pi/2, nlines + 2)[1:-1]
+    latlines = np.arange(-np.pi/2, np.pi/2, dlat)[1:]
     for lat in latlines:
 
         # Figure out the equation of the ellipse
@@ -70,54 +70,76 @@ def get_ortho_latitude_lines(inc=np.pi/2, obl=0, nlines=5, npts=1000):
     return res
 
 
-def get_ortho_longitude_lines(inc=np.pi/2, obl=0, nlines=13, npts=1000):
+def get_ortho_longitude_lines(inc=np.pi/2, obl=0, theta=0, 
+                              dlon=np.pi/6, npts=1000):
     """
 
     """
+
     # Angular quantities
     ci = np.cos(inc)
     si = np.sin(inc)
     co = np.cos(obl)
     so = np.sin(obl)
 
-    # Longitude lines
+    # Are we (essentially) equator-on?
+    equator_on = (inc > 88 * np.pi / 180) and (inc < 92 * np.pi / 180)
+
+    # Longitude grid lines
     res = []
-    lonlines = np.linspace(-np.pi, np.pi, nlines)
-    for lon in lonlines:
-        # Viewed at i = 90
-        b = np.sin(lon)
-        y = np.linspace(-1, 1, npts)
-        x = b * np.sqrt(1 - y ** 2)
-        z = np.sqrt(np.abs(1 - x ** 2 - y ** 2))
+    if equator_on:
+        offsets = np.arange(-np.pi / 2, np.pi / 2, dlon)
+    else:
+        offsets = np.arange(0, 2 * np.pi, dlon)
+    
+    for offset in offsets:
 
-        if (inc > 88 * np.pi / 180) and (inc < 92 * np.pi / 180):
-            y1 = y
-            y2 = np.nan * y
+        # Super hacky, sorry. This can probably
+        # be coded up more intelligently.
+        if equator_on:
+            sgns = [1]
+            if np.cos(theta + offset) >= 0:
+                bsgn = 1
+            else:
+                bsgn = -1
         else:
-            # Rotate by the inclination
-            R = RAxisAngle([1, 0, 0], np.pi/2 - inc)
-            v = np.vstack((x.reshape(1, -1), 
-                            y.reshape(1, -1), 
-                            z.reshape(1, -1)))
-            x, y1, _ = np.dot(R, v)
-            v[2] *= -1
-            _, y2, _ = np.dot(R, v)
+            bsgn = 1
+            if np.cos(theta + offset) >= 0:
+                sgns = np.array([1, -1])
+            else:
+                sgns = np.array([-1, 1])
 
-            # Mask lines on the backside
-            if (si != 0):
-                if inc < np.pi/2:
-                    imax = np.argmax(x ** 2 + y1 ** 2)
-                    y1[:imax + 1] = np.nan
-                    imax = np.argmax(x ** 2 + y2 ** 2)
-                    y2[:imax + 1] = np.nan
-                else:
-                    imax = np.argmax(x ** 2 + y1 ** 2)
-                    y1[imax:] = np.nan
-                    imax = np.argmax(x ** 2 + y2 ** 2)
-                    y2[imax:] = np.nan
+        for lon, sgn in zip([0, np.pi], sgns):
 
-        # Rotate them
-        for y in (y1, y2):
+            # Viewed at i = 90
+            y = np.linspace(-1, 1, npts)
+            b = bsgn * np.sin(lon - theta - offset)
+            x = b * np.sqrt(1 - y ** 2)
+            z = sgn * np.sqrt(np.abs(1 - x ** 2 - y ** 2))
+
+            if equator_on:
+
+                pass
+            
+            else:
+
+                # Rotate by the inclination
+                R = RAxisAngle([1, 0, 0], np.pi / 2 - inc)
+                v = np.vstack((x.reshape(1, -1), 
+                               y.reshape(1, -1), 
+                               z.reshape(1, -1)))
+                x, y, _ = np.dot(R, v)
+
+                # Mask lines on the backside
+                if (si != 0):
+                    if inc < np.pi/2:
+                        imax = np.argmax(x ** 2 + y ** 2)
+                        y[:imax + 1] = np.nan
+                    else:
+                        imax = np.argmax(x ** 2 + y ** 2)
+                        y[imax:] = np.nan
+
+            # Rotate by the obliquity
             xr = -x * co + y * so
             yr = x * so + y * co
             res.append((xr, yr))
