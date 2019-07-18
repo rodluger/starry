@@ -2,7 +2,6 @@
 from ..ops import Ops, OpsReflected, OpsRV, vectorize, \
                   atleast_2d, get_projection, \
                   STARRY_RECTANGULAR_PROJECTION
-from ..orbits import KeplerianOrbit
 from . import indices
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
@@ -60,6 +59,20 @@ class YlmBase(object):
 
         # Luminosity
         self._L = self.cast(np.ones(self.nw))
+
+        # NOTE: In version 0.1.7, DFM changed the coordinates
+        # so that the z-axis points TOWARD the observer!
+        # TODO: Phase this out and eventually require >= v0.2.0
+        try:
+            from packaging import version
+            import exoplanet
+            if (version.parse(exoplanet.__version__) > 
+                    version.parse('0.1.7.dev0')):
+                self._exoplanet_z_sign = 1.0
+            else:
+                self._exoplanet_z_sign = -1.0
+        except ModuleNotFoundError:
+            self._exoplanet_z_sign = None
 
         # Initialize
         self.reset()
@@ -171,6 +184,43 @@ class YlmBase(object):
         self._obl = self.cast(value) * radian
 
     @property
+    def t0(self):
+        """
+
+        """
+        return self._t0
+    
+    @t0.setter
+    def t0(self, value):
+        self._t0 = self.cast(value)
+
+    @property
+    def P(self):
+        """
+
+        """
+        return self._P
+    
+    @P.setter
+    def P(self, value):
+        if (value is None):
+            self._P = None
+        else:
+            self._P = self.cast(value)
+
+    @property
+    def r(self):
+        """
+        Radius of the body in solar radii.
+
+        """
+        return self._r
+    
+    @r.setter
+    def r(self, value):
+        self._r = self.cast(value)
+
+    @property
     def axis(self):
         """
 
@@ -259,16 +309,46 @@ class YlmBase(object):
 
     def _get_orbit(self, kwargs):
         """
-        
+        Note that `kwargs` is passed as a dict so we can pop elements
+        and run `check_kwargs` in the calling method.
+
         """
         # Did the user pass an `orbit` instance?
         orbit = kwargs.pop("orbit", None)
         if orbit is not None:
-            assert isinstance(orbit, KeplerianOrbit), \
-                "Expected an instance of `starry.orbits.KeplerianOrbit`."
-            xo, yo, zo, ro, theta = \
-                orbit._get_occultation_coords(kwargs.pop("t", None), 
-                                              force_compile=not self.lazy)
+
+            # NOTE: See comment above in `__init__`
+            if self._exoplanet_z_sign is None:
+                raise ValueError("Error importing `exoplanet`.")
+
+            # Time vector
+            t = kwargs.pop("t", None)
+
+            # Get the relative position of the central body (star) and the
+            # orbiting body (planet) in units of R_sun.
+            coords = orbit.get_relative_position(t)
+
+            # Convert to units of the planet radius
+            xo = -coords[0] / self.r
+            yo = -coords[1] / self.r
+            zo = -self._exoplanet_z_sign * coords[2] / self.r
+
+            # Rotational phase
+            theta = self.cast(0.0)
+            if (self.P is not None):
+                theta += 360.0 / self.P * (t - self.t0)
+                theta = theta % 360.0
+
+            # Star radius in units of planet radius
+            ro = orbit.r_star / self.r
+
+            # Greedy?
+            if not self.lazy:
+                xo = xo.eval()
+                yo = yo.eval()
+                zo = zo.eval()
+                ro = ro.eval()
+
         else:
             xo = kwargs.pop("xo", 0.0)
             yo = kwargs.pop("yo", 0.0)
@@ -303,6 +383,10 @@ class YlmBase(object):
 
         self._inc = self.cast(np.pi / 2)
         self._obl = self.cast(0.0)
+
+        self._P = None
+        self._t0 = self.cast(0.0)
+        self._r = 1.0
 
     def X(self, **kwargs):
         """
