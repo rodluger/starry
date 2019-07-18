@@ -504,12 +504,15 @@ class YlmBase(object):
             
             def updatefig(i):
                 img.set_array(image[i])
-                lon_lines = get_ortho_longitude_lines(inc=inc, obl=obl, 
-                                                      theta=theta[i])
-                for n, l in enumerate(lon_lines):
-                    ll[n].set_xdata(l[0])
-                    ll[n].set_ydata(l[1])
-                return img, ll
+                if grid:
+                    lon_lines = get_ortho_longitude_lines(inc=inc, obl=obl, 
+                                                        theta=theta[i])
+                    for n, l in enumerate(lon_lines):
+                        ll[n].set_xdata(l[0])
+                        ll[n].set_ydata(l[1])
+                    return img, ll
+                else:
+                    return img,
 
             ani = FuncAnimation(fig, updatefig, interval=interval,
                                 blit=False, frames=image.shape[0])
