@@ -69,14 +69,13 @@ namespace kepler {
     T EccentricAnomaly(const T& M, const T& ecc) {
         // Initial condition
         T E = M;
-        T tol = 10 * mach_eps<T>();
         T delta;
         if (ecc > 0) {
             // Iterate
             for (int iter = 0; iter <= STARRY_KEPLER_MAX_ITER; iter++) {
                 delta = ecc * sin(E) + M;
                 E = E - (E - delta) / (1. - ecc * cos(E));
-                if (abs(E - delta) <= tol) return E;
+                if (abs(E - delta) <= STARRY_KEPLER_TOL) return E;
             }
             // Didn't converge!
             throw errors::ConvergenceError("The Kepler solver "
