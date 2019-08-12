@@ -43,7 +43,7 @@ namespace starry {
 
 //! Kepler solver tolerance
 #ifndef STARRY_KEPLER_TOL
-#define STARRY_KEPLER_TOL                       3e-15
+#define STARRY_KEPLER_TOL                       1e-12
 #endif
     
 //! Re-parameterize solution vector when
