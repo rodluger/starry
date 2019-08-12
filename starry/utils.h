@@ -41,6 +41,11 @@ namespace starry {
 #define STARRY_KEPLER_MAX_ITER                  100
 #endif
 
+//! Kepler solver tolerance
+#ifndef STARRY_KEPLER_TOL
+#define STARRY_KEPLER_TOL                       3e-15
+#endif
+    
 //! Re-parameterize solution vector when
 //! abs(b - r) < STARRY_EPS_BMR_ZERO
 #ifndef STARRY_EPS_BMR_ZERO
