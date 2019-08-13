@@ -1,6 +1,3 @@
 include README.md LICENSE HISTORY.rst
-include include/pybind/*.h
-include include/starry/*.h
-include include/starry/maps/*.h
-include include/starry/maps/inline/*.h
+include include/*.h
 graft lib

@@ -511,7 +511,7 @@ class YlmBase(object):
                 f = self._f.eval()
                 
                 # Explicitly call the compiled version of `render`
-                image = self.L.eval() * self.ops.render(
+                image = self.L.eval().reshape(-1, 1, 1) * self.ops.render(
                     res, projection, theta, inc, 
                     obl, y, u, f, force_compile=True
                 )
@@ -588,9 +588,9 @@ class YlmBase(object):
             
             def updatefig(i):
                 img.set_array(image[i])
-                if grid:
+                if grid and len(theta) > 1:
                     lon_lines = get_ortho_longitude_lines(inc=inc, obl=obl, 
-                                                        theta=theta[i])
+                                                          theta=theta[i])
                     for n, l in enumerate(lon_lines):
                         ll[n].set_xdata(l[0])
                         ll[n].set_ydata(l[1])
