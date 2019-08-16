@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
-from ..ops import Ops, OpsReflected, OpsRV, vectorize, \
-                  atleast_2d, get_projection, \
-                  STARRY_RECTANGULAR_PROJECTION
+from ..ops import (
+    Ops,
+    OpsReflected,
+    OpsRV,
+    vectorize,
+    atleast_2d,
+    get_projection,
+    STARRY_RECTANGULAR_PROJECTION,
+)
 from . import indices
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
@@ -11,6 +17,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
 from warnings import warn
+
 radian = np.pi / 180.0
 degree = 1.0 / radian
 
@@ -20,10 +27,10 @@ __all__ = ["Map"]
 
 class Luminosity(object):
     """Descriptor for map luminosity."""
- 
+
     def __get__(self, instance, owner):
         return instance._L
- 
+
     def __set__(self, instance, value):
         instance._L = instance.cast(np.ones(instance.nw) * value)
 
@@ -48,7 +55,7 @@ class YlmBase(object):
 
         # Dimensions
         self._ydeg = ydeg
-        self._Ny = (ydeg + 1) ** 2 
+        self._Ny = (ydeg + 1) ** 2
         self._udeg = udeg
         self._Nu = udeg + 1
         self._fdeg = fdeg
@@ -66,8 +73,10 @@ class YlmBase(object):
         try:
             from packaging import version
             import exoplanet
-            if (version.parse(exoplanet.__version__) > 
-                    version.parse('0.1.7.dev0')):
+
+            if version.parse(exoplanet.__version__) > version.parse(
+                "0.1.7.dev0"
+            ):
                 self._exoplanet_z_sign = 1.0
             else:
                 self._exoplanet_z_sign = -1.0
@@ -90,7 +99,7 @@ class YlmBase(object):
         
         """
         return self._ydeg
-    
+
     @property
     def Ny(self):
         """
@@ -104,7 +113,7 @@ class YlmBase(object):
         
         """
         return self._udeg
-    
+
     @property
     def Nu(self):
         """
@@ -118,7 +127,7 @@ class YlmBase(object):
         
         """
         return self._fdeg
-    
+
     @property
     def Nf(self):
         """
@@ -132,7 +141,7 @@ class YlmBase(object):
         
         """
         return self._deg
-    
+
     @property
     def N(self):
         """
@@ -178,7 +187,7 @@ class YlmBase(object):
 
         """
         return self._obl * degree
-    
+
     @obl.setter
     def obl(self, value):
         self._obl = self.cast(value) * radian
@@ -189,7 +198,7 @@ class YlmBase(object):
 
         """
         return self._t0
-    
+
     @t0.setter
     def t0(self, value):
         self._t0 = self.cast(value)
@@ -200,10 +209,10 @@ class YlmBase(object):
 
         """
         return self._P
-    
+
     @P.setter
     def P(self, value):
-        if (value is None):
+        if value is None:
             self._P = None
         else:
             self._P = self.cast(value)
@@ -215,7 +224,7 @@ class YlmBase(object):
 
         """
         return self._r
-    
+
     @r.setter
     def r(self, value):
         self._r = self.cast(value)
@@ -236,7 +245,7 @@ class YlmBase(object):
         inc_obl = self.ops.get_inc_obl(axis)
         self._inc = inc_obl[0]
         self._obl = inc_obl[1]
-        
+
     def __getitem__(self, idx):
         """
 
@@ -251,7 +260,9 @@ class YlmBase(object):
             return self._y[inds]
         elif isinstance(idx, tuple) and len(idx) == 3 and self.nw:
             # User is accessing a Ylmw index
-            inds = indices.get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
+            inds = indices.get_ylmw_inds(
+                self.ydeg, self.nw, idx[0], idx[1], idx[2]
+            )
             return self._y[inds]
         else:
             raise ValueError("Invalid map index.")
@@ -280,7 +291,9 @@ class YlmBase(object):
                 self._y[inds] = val
         elif isinstance(idx, tuple) and len(idx) == 3 and self.nw:
             # User is accessing a Ylmw index
-            inds = indices.get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
+            inds = indices.get_ylmw_inds(
+                self.ydeg, self.nw, idx[0], idx[1], idx[2]
+            )
             if 0 in inds[0]:
                 raise ValueError("The Y_{0,0} coefficients cannot be set.")
             if self._lazy:
@@ -312,6 +325,9 @@ class YlmBase(object):
         Note that `kwargs` is passed as a dict so we can pop elements
         and run `check_kwargs` in the calling method.
 
+        TODO: This needs so much work!
+        BUG: I think my interpretation of the exoplanet sign convention is wrong.
+
         """
         # Did the user pass an `orbit` instance?
         orbit = kwargs.pop("orbit", None)
@@ -335,7 +351,7 @@ class YlmBase(object):
 
             # Rotational phase
             theta = self.cast(0.0)
-            if (self.P is not None):
+            if self.P is not None:
                 theta += 360.0 / self.P * (t - self.t0)
                 theta = theta % 360.0
 
@@ -355,7 +371,7 @@ class YlmBase(object):
             zo = kwargs.pop("zo", 1.0)
             ro = kwargs.pop("ro", 0.0)
             theta = kwargs.pop("theta", 0.0)
-        
+
         # Vectorize & cast as needed
         theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
         theta, xo, yo, zo, ro = self.cast(theta, xo, yo, zo, ro)
@@ -400,8 +416,9 @@ class YlmBase(object):
         self._check_kwargs("X", kwargs)
 
         # Compute & return
-        return self.L * self.ops.X(theta, xo, yo, zo, ro, 
-                                   self._inc, self._obl, self._u, self._f)
+        return self.L * self.ops.X(
+            theta, xo, yo, zo, ro, self._inc, self._obl, self._u, self._f
+        )
 
     def flux(self, **kwargs):
         """
@@ -415,9 +432,18 @@ class YlmBase(object):
         self._check_kwargs("flux", kwargs)
 
         # Compute & return
-        return self.L * self.ops.flux(theta, xo, yo, zo, ro, 
-                                      self._inc, self._obl, self._y, 
-                                      self._u, self._f)
+        return self.L * self.ops.flux(
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self._y,
+            self._u,
+            self._f,
+        )
 
     def intensity(self, **kwargs):
         """
@@ -469,8 +495,16 @@ class YlmBase(object):
         theta = vectorize(self.cast(theta) * radian)
 
         # Compute & return
-        return self.L * self.ops.render(res, projection, theta, self._inc, 
-                                        self._obl, self._y, self._u, self._f)
+        return self.L * self.ops.render(
+            res,
+            projection,
+            theta,
+            self._inc,
+            self._obl,
+            self._y,
+            self._u,
+            self._f,
+        )
 
     def show(self, **kwargs):
         """
@@ -501,7 +535,9 @@ class YlmBase(object):
 
                 # Get kwargs
                 res = kwargs.pop("res", 300)
-                theta = vectorize(self.cast(kwargs.pop("theta", 0.0)) * radian).eval()
+                theta = vectorize(
+                    self.cast(kwargs.pop("theta", 0.0)) * radian
+                ).eval()
 
                 # Evaluate the variables
                 inc = self._inc.eval()
@@ -509,11 +545,18 @@ class YlmBase(object):
                 y = self._y.eval()
                 u = self._u.eval()
                 f = self._f.eval()
-                
+
                 # Explicitly call the compiled version of `render`
                 image = self.L.eval().reshape(-1, 1, 1) * self.ops.render(
-                    res, projection, theta, inc, 
-                    obl, y, u, f, force_compile=True
+                    res,
+                    projection,
+                    theta,
+                    inc,
+                    obl,
+                    y,
+                    u,
+                    f,
+                    force_compile=True,
                 )
 
             else:
@@ -522,7 +565,7 @@ class YlmBase(object):
                 image = self.render(**kwargs)
                 theta = np.atleast_1d(kwargs.pop("theta", 0.0) * radian)
                 kwargs.pop("res", None)
-        
+
         kwargs.pop("projection", None)
 
         if len(image.shape) == 3:
@@ -532,7 +575,7 @@ class YlmBase(object):
             image = np.reshape(image, (1,) + image.shape)
 
         # Animation
-        animated = (nframes > 1)
+        animated = nframes > 1
 
         if projection == STARRY_RECTANGULAR_PROJECTION:
             # Set up the plot
@@ -555,7 +598,7 @@ class YlmBase(object):
         else:
             # Set up the plot
             fig, ax = plt.subplots(1, figsize=(3, 3))
-            ax.axis('off')
+            ax.axis("off")
             ax.set_xlim(-1.05, 1.05)
             ax.set_ylim(-1.05, 1.05)
             extent = (-1, 1, -1, 1)
@@ -564,52 +607,65 @@ class YlmBase(object):
             if grid:
                 x = np.linspace(-1, 1, 10000)
                 y = np.sqrt(1 - x ** 2)
-                ax.plot(x, y, 'k-', alpha=1, lw=1)
-                ax.plot(x, -y, 'k-', alpha=1, lw=1)
+                ax.plot(x, y, "k-", alpha=1, lw=1)
+                ax.plot(x, -y, "k-", alpha=1, lw=1)
                 lat_lines = get_ortho_latitude_lines(inc=inc, obl=obl)
                 for x, y in lat_lines:
-                    ax.plot(x, y, 'k-', lw=0.5, alpha=0.5, zorder=100)
-                lon_lines = get_ortho_longitude_lines(inc=inc, obl=obl, 
-                                                      theta=theta[0])
+                    ax.plot(x, y, "k-", lw=0.5, alpha=0.5, zorder=100)
+                lon_lines = get_ortho_longitude_lines(
+                    inc=inc, obl=obl, theta=theta[0]
+                )
                 ll = [None for n in lon_lines]
                 for n, l in enumerate(lon_lines):
-                    ll[n], = ax.plot(l[0], l[1], 'k-', lw=0.5,
-                                    alpha=0.5, zorder=100)
+                    ll[n], = ax.plot(
+                        l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=100
+                    )
 
         # Plot the first frame of the image
-        img = ax.imshow(image[0], origin="lower", 
-                        extent=extent, cmap=cmap,
-                        interpolation="none",
-                        vmin=np.nanmin(image), vmax=np.nanmax(image), 
-                        animated=animated)
+        img = ax.imshow(
+            image[0],
+            origin="lower",
+            extent=extent,
+            cmap=cmap,
+            interpolation="none",
+            vmin=np.nanmin(image),
+            vmax=np.nanmax(image),
+            animated=animated,
+        )
 
         # Display or save the image / animation
         if animated:
-            
+
             def updatefig(i):
                 img.set_array(image[i])
                 if grid and len(theta) > 1:
-                    lon_lines = get_ortho_longitude_lines(inc=inc, obl=obl, 
-                                                          theta=theta[i])
+                    lon_lines = get_ortho_longitude_lines(
+                        inc=inc, obl=obl, theta=theta[i]
+                    )
                     for n, l in enumerate(lon_lines):
                         ll[n].set_xdata(l[0])
                         ll[n].set_ydata(l[1])
                     return img, ll
                 else:
-                    return img,
+                    return (img,)
 
-            ani = FuncAnimation(fig, updatefig, interval=interval,
-                                blit=False, frames=image.shape[0])
+            ani = FuncAnimation(
+                fig,
+                updatefig,
+                interval=interval,
+                blit=False,
+                frames=image.shape[0],
+            )
 
             # Business as usual
             if (mp4 is not None) and (mp4 != ""):
                 if mp4.endswith(".mp4"):
                     mp4 = mp4[:-4]
-                ani.save('%s.mp4' % mp4, writer='ffmpeg')
+                ani.save("%s.mp4" % mp4, writer="ffmpeg")
                 plt.close()
             else:
                 try:
-                    if 'zmqshell' in str(type(get_ipython())):
+                    if "zmqshell" in str(type(get_ipython())):
                         plt.close()
                         display(HTML(ani.to_jshtml()))
                     else:
@@ -621,6 +677,7 @@ class YlmBase(object):
             plt.show()
 
         # Check for invalid kwargs
+        kwargs.pop("rv", None)
         self._check_kwargs("show", kwargs)
 
     def load(self, image, healpix=False, sampling_factor=8, sigma=None):
@@ -653,16 +710,28 @@ class YlmBase(object):
         """
         # Is this a file name?
         if type(image) is str:
-            y = image2map(image, lmax=self.ydeg, sigma=sigma, 
-                          sampling_factor=sampling_factor)
+            y = image2map(
+                image,
+                lmax=self.ydeg,
+                sigma=sigma,
+                sampling_factor=sampling_factor,
+            )
         # or is it an array?
-        elif (type(image) is np.ndarray):
+        elif type(image) is np.ndarray:
             if healpix:
-                y = healpix2map(image, lmax=self.ydeg,sigma=sigma, 
-                          sampling_factor=sampling_factor)
+                y = healpix2map(
+                    image,
+                    lmax=self.ydeg,
+                    sigma=sigma,
+                    sampling_factor=sampling_factor,
+                )
             else:
-                y = array2map(image, lmax=self.ydeg, sigma=sigma, 
-                          sampling_factor=sampling_factor)
+                y = array2map(
+                    image,
+                    lmax=self.ydeg,
+                    sigma=sigma,
+                    sampling_factor=sampling_factor,
+                )
         else:
             raise ValueError("Invalid `image` value.")
 
@@ -744,10 +813,15 @@ class YlmBase(object):
         """
         amp, _ = vectorize(self.cast(amp), np.ones(self.nw))
         sigma, lat, lon = self.cast(sigma, lat, lon)
-        self._y = self.ops.add_spot(self._y, amp, sigma, 
-                                    lat * radian, lon * radian,
-                                    self.inc * radian,
-                                    self.obl * radian)
+        self._y = self.ops.add_spot(
+            self._y,
+            amp,
+            sigma,
+            lat * radian,
+            lon * radian,
+            self.inc * radian,
+            self.obl * radian,
+        )
 
 
 class RVBase(object):
@@ -780,7 +854,7 @@ class RVBase(object):
         the object.
         """
         return self._alpha
-    
+
     @alpha.setter
     def alpha(self, value):
         self._alpha = self.cast(value)
@@ -789,7 +863,7 @@ class RVBase(object):
     def veq(self):
         """The equatorial velocity of the object in arbitrary units."""
         return self._veq
-    
+
     @veq.setter
     def veq(self, value):
         self._veq = self.cast(value)
@@ -800,7 +874,7 @@ class RVBase(object):
         self._f = self.cast(f)
 
     def _set_RV_filter(self):
-        self._f = self.ops.compute_RV_filter(
+        self._f = self.ops.compute_rv_filter(
             self._inc, self._obl, self._veq, self._alpha
         )
 
@@ -826,8 +900,17 @@ class RVBase(object):
 
         # Compute
         return self.ops.rv(
-            theta, xo, yo, zo, ro, self._inc, self._obl, self._y, 
-            self._u, self._veq, self._alpha
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self._y,
+            self._u,
+            self._veq,
+            self._alpha,
         )
 
     def intensity(self, **kwargs):
@@ -842,8 +925,11 @@ class RVBase(object):
 
     def render(self, **kwargs):
         # Render the velocity map if `rv==True`
+        # Override the `projection` kwarg if we're
+        # plotting the radial velocity.
         rv = kwargs.pop("rv", True)
         if rv:
+            kwargs.pop("projection", None)
             self._set_RV_filter()
         res = super(RVBase, self).render(**kwargs)
         if rv:
@@ -851,13 +937,14 @@ class RVBase(object):
         return res
 
     def show(self, **kwargs):
+        # Show the velocity map if `rv==True`
         # Override the `projection` kwarg if we're
         # plotting the radial velocity.
         rv = kwargs.pop("rv", True)
         if rv:
             kwargs.pop("projection", None)
             self._set_RV_filter()
-        res = super(RVBase, self).show(**kwargs)
+        res = super(RVBase, self).show(rv=rv, **kwargs)
         if rv:
             self._unset_RV_filter()
         return res
@@ -886,9 +973,18 @@ class ReflectedBase(object):
         self._check_kwargs("X", kwargs)
 
         # Compute & return
-        return self.L * self.ops.X(theta, xo, yo, zo, ro, 
-                                   self._inc, self._obl, self._u, self._f, 
-                                   source)
+        return self.L * self.ops.X(
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self._u,
+            self._f,
+            source,
+        )
 
     def flux(self, **kwargs):
         """
@@ -906,9 +1002,19 @@ class ReflectedBase(object):
         self._check_kwargs("flux", kwargs)
 
         # Compute & return
-        return self.L * self.ops.flux(theta, xo, yo, zo, ro, 
-                                      self._inc, self._obl, self._y, self._u, 
-                                      self._f, source)
+        return self.L * self.ops.flux(
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self._y,
+            self._u,
+            self._f,
+            source,
+        )
 
     def intensity(self, **kwargs):
         """
@@ -942,10 +1048,13 @@ class ReflectedBase(object):
         self._check_kwargs("intensity", kwargs)
 
         # Compute & return
-        return self.L * self.ops.intensity(x, y, z, self._y, 
-                                           self._u, self._f, source)
+        return self.L * self.ops.intensity(
+            x, y, z, self._y, self._u, self._f, source
+        )
 
-    def render(self, res=300, projection="ortho", theta=0.0, source=[-1, 0, 0]):
+    def render(
+        self, res=300, projection="ortho", theta=0.0, source=[-1, 0, 0]
+    ):
         # Convert stuff as needed
         projection = get_projection(projection)
         theta = self.cast(theta) * radian
@@ -953,9 +1062,17 @@ class ReflectedBase(object):
         theta, source = vectorize(theta, source)
 
         # Compute & return
-        return self.L * self.ops.render(res, projection, theta, self._inc, 
-                                        self._obl, self._y, self._u, self._f, 
-                                        source)
+        return self.L * self.ops.render(
+            res,
+            projection,
+            theta,
+            self._inc,
+            self._obl,
+            self._y,
+            self._u,
+            self._f,
+            source,
+        )
 
     def show(self, **kwargs):
         # We need to evaluate the variables so we can plot the map!
@@ -979,14 +1096,23 @@ class ReflectedBase(object):
 
             # Explicitly call the compiled version of `render`
             kwargs["image"] = self.ops.render(
-                res, projection, theta, inc, 
-                obl, y, u, f, source, force_compile=True
+                res,
+                projection,
+                theta,
+                inc,
+                obl,
+                y,
+                u,
+                f,
+                source,
+                force_compile=True,
             )
         return super(ReflectedBase, self).show(**kwargs)
 
 
-def Map(ydeg=0, udeg=0, nw=None, rv=False, 
-        reflected=False, lazy=True, quiet=False):
+def Map(
+    ydeg=0, udeg=0, nw=None, rv=False, reflected=False, lazy=True, quiet=False
+):
     """
 
     """
@@ -1010,7 +1136,7 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False,
         fdeg = 3
     else:
         fdeg = 0
-    
+
     # Reflected light?
     if reflected:
         Bases = (ReflectedBase,) + Bases
@@ -1022,7 +1148,7 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False,
         )
 
     # Construct the class
-    class Map(*Bases): 
+    class Map(*Bases):
         pass
 
     return Map(ydeg, udeg, fdeg, nw, **kwargs)
