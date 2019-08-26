@@ -189,6 +189,21 @@ class Ops(object):
             self.X(theta, xo, yo, zo, ro, inc, obl, u, f, no_compile=True), y
         )
 
+    @autocompile("P", tt.dvector(), tt.dvector(), tt.dvector())
+    def P(self, xpt, ypt, zpt):
+        """
+        Pixelization matrix, no filters or illumination.
+
+        """
+        # Compute the polynomial basis at the point
+        pT = self.pT(xpt, ypt, zpt)
+
+        # Transform to the Ylm basis
+        pTA1 = ts.dot(pT, self.A1)
+
+        # We're done
+        return pTA1
+
     @autocompile(
         "intensity",
         tt.dvector(),
@@ -760,5 +775,5 @@ class OpsReflected(Ops):
         # Weight the image by the illumination
         image = tt.switch(tt.isnan(image), image, image * I)
 
-        # Reshape and return
-        return tt.reshape(image, [res, res, -1])
+        # We need the shape to be (nframes, npix, npix)
+        return tt.reshape(image, [res, res, -1]).dimshuffle(2, 0, 1)

@@ -420,6 +420,42 @@ class YlmBase(object):
             theta, xo, yo, zo, ro, self._inc, self._obl, self._u, self._f
         )
 
+    def P(self, **kwargs):
+        """
+        Compute and return the pixelization matrix ``P``.
+        No filters/illumination.
+        
+        """
+        # Get the Cartesian points
+        lat = kwargs.pop("lat", None)
+        lon = kwargs.pop("lon", None)
+        if lat is None and lon is None:
+            x = kwargs.pop("x", 0.0)
+            y = kwargs.pop("y", 0.0)
+            z = kwargs.pop("z", None)
+            if z is not None:
+                x, y, z = vectorize(*self.cast(x, y, z))
+            else:
+                x, y = vectorize(*self.cast(x, y))
+                if self._lazy:
+                    z = tt.sqrt(1.0 - x ** 2 - y ** 2)
+                else:
+                    z = np.sqrt(1.0 - x ** 2 - y ** 2)
+        else:
+            lat, lon = vectorize(*self.cast(lat, lon))
+            lat *= radian
+            lon *= radian
+            xyz = self.ops.latlon_to_xyz(self.axis, lat, lon)
+            x = xyz[0]
+            y = xyz[1]
+            z = xyz[2]
+
+        # Check for invalid kwargs
+        self._check_kwargs("P", kwargs)
+
+        # Compute & return
+        return self.L * self.ops.P(x, y, z)
+
     def flux(self, **kwargs):
         """
         Compute and return the light curve.
@@ -612,6 +648,7 @@ class YlmBase(object):
                 lat_lines = get_ortho_latitude_lines(inc=inc, obl=obl)
                 for x, y in lat_lines:
                     ax.plot(x, y, "k-", lw=0.5, alpha=0.5, zorder=100)
+                theta = np.atleast_1d(kwargs.pop("theta", 0.0) * radian)
                 lon_lines = get_ortho_longitude_lines(
                     inc=inc, obl=obl, theta=theta[0]
                 )
