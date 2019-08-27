@@ -7,8 +7,14 @@ try:
 except NameError:
     __STARRY_SETUP__ = False
 
+# Is this a docs run?
+try:
+    __STARRY_DOCS__
+except NameError:
+    __STARRY_DOCS__ = False
+
 # Import all modules
-if not __STARRY_SETUP__:
+if not __STARRY_SETUP__ and not __STARRY_DOCS__:
 
     # Import the main interface
     from .maps import Map

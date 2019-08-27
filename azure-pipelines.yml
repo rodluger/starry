@@ -20,6 +20,7 @@ jobs:
       theano-cache purge
       pip install -U pip
       pip install -U setuptools
+      pip install -U pytest
       pip install -U -r requirements.txt
       pip install -U -r optional-requirements.txt
     displayName: 'Install dependencies'
