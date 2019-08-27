@@ -10,6 +10,9 @@ import starry
 import numpy as np
 
 
+theano.config.compute_test_value = "ignore"
+
+
 def test_sT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     map = starry.Map(ydeg=2)
     verify_grad(
@@ -352,4 +355,4 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 if __name__ == "__main__":
-    test_sT()
+    test_flux_reflected()
