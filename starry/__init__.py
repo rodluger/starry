@@ -13,6 +13,7 @@ try:
 except NameError:
     __STARRY_DOCS__ = False
 
+
 # Import all modules
 if not __STARRY_SETUP__:
 

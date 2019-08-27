@@ -25,7 +25,7 @@ from astropy import units
 km_s = (units.Rsun / units.day).in_units(units.km / units.s)
 
 
-__all__ = ["Map"]
+__all__ = ["Map", "YlmBase", "RVBase", "ReflectedBase"]
 
 
 class Luminosity(object):
@@ -39,8 +39,11 @@ class Luminosity(object):
 
 
 class YlmBase(object):
-    """
+    """The default ``starry`` map class.
 
+    This class handles light curves and phase curves of objects in 
+    emitted light. It can be instantiated by calling :py:func:`starry.Map` with 
+    both ``rv`` and ``reflected`` set to False.
     """
 
     _ops_class_ = Ops
@@ -80,7 +83,7 @@ class YlmBase(object):
 
     @property
     def lazy(self):
-        """Indicates whether or not the map evaluates things lazily. [Read only]
+        """Indicates whether or not the map evaluates things lazily. *Read-only*
 
         If True, all attributes and method return values are unevaluated 
         ``theano`` nodes. This is particularly useful for model building and 
@@ -128,12 +131,12 @@ class YlmBase(object):
 
     @property
     def ydeg(self):
-        """Spherical harmonic degree of the map. [Read only]"""
+        """Spherical harmonic degree of the map. *Read-only*"""
         return self._ydeg
 
     @property
     def Ny(self):
-        """Number of spherical harmonic coefficients. [Read only]
+        """Number of spherical harmonic coefficients. *Read-only*
 
         This is equal to :math:`(y_\mathrm{deg} + 1)^2`.
         """
@@ -141,12 +144,12 @@ class YlmBase(object):
 
     @property
     def udeg(self):
-        """Limb darkening degree. [Read only]"""
+        """Limb darkening degree. *Read-only*"""
         return self._udeg
 
     @property
     def Nu(self):
-        """Number of limb darkening coefficients, including :math:`u_0`. [Read only]
+        """Number of limb darkening coefficients, including :math:`u_0`. *Read-only*
         
         This is equal to :math:`u_\mathrm{deg} + 1`.
         """
@@ -154,12 +157,12 @@ class YlmBase(object):
 
     @property
     def fdeg(self):
-        """Degree of the multiplicative filter. [Read only]"""
+        """Degree of the multiplicative filter. *Read-only*"""
         return self._fdeg
 
     @property
     def Nf(self):
-        """Number of spherical harmonic coefficients in the filter. [Read only]
+        """Number of spherical harmonic coefficients in the filter. *Read-only*
 
         This is equal to :math:`(f_\mathrm{deg} + 1)^2`.
         """
@@ -167,7 +170,7 @@ class YlmBase(object):
 
     @property
     def deg(self):
-        """Total degree of the map. [Read only]
+        """Total degree of the map. *Read-only*
         
         This is equal to :math:`y_\mathrm{deg} + u_\mathrm{deg} + f_\mathrm{deg}`.
         """
@@ -175,7 +178,7 @@ class YlmBase(object):
 
     @property
     def N(self):
-        """Total number of map coefficients. [Read only]
+        """Total number of map coefficients. *Read-only*
         
         This is equal to :math:`N_\mathrm{y} + N_\mathrm{u} + N_\mathrm{f}`.
         """
@@ -183,12 +186,12 @@ class YlmBase(object):
 
     @property
     def nw(self):
-        """Number of wavelength bins. [Read only]"""
+        """Number of wavelength bins. *Read-only*"""
         return self._nw
 
     @property
     def y(self):
-        """The spherical harmonic coefficient vector. [Read only]
+        """The spherical harmonic coefficient vector. *Read-only*
         
         To set this vector, index the map directly using two indices:
         ``map[l, m] = ...`` where ``l`` is the spherical harmonic degree and 
@@ -199,7 +202,7 @@ class YlmBase(object):
 
     @property
     def u(self):
-        """The vector of limb darkening coefficients. [Read only]
+        """The vector of limb darkening coefficients. *Read-only*
         
         To set this vector, index the map directly using one index:
         ``map[n] = ...`` where ``n`` is the degree of the limb darkening
@@ -210,7 +213,7 @@ class YlmBase(object):
 
     @property
     def inc(self):
-        """The inclination of the map in units of ``angle_unit``."""
+        """The inclination of the map in units of :py:attr:`angle_unit`."""
         return self._inc / self._angle_factor
 
     @inc.setter
@@ -219,7 +222,7 @@ class YlmBase(object):
 
     @property
     def obl(self):
-        """The obliquity of the map in units of ``angle_unit``."""
+        """The obliquity of the map in units of :py:attr:`angle_unit`."""
         return self._obl / self._angle_factor
 
     @obl.setter
@@ -228,7 +231,7 @@ class YlmBase(object):
 
     @property
     def t0(self):
-        """Reference time in units of ``time_unit``.
+        """Reference time in units of :py:attr:`time_unit`.
         
         This is the reference time at which the map coefficients are 
         defined.
@@ -241,7 +244,7 @@ class YlmBase(object):
 
     @property
     def P(self):
-        """Body rotation period in units of ``time_unit``."""
+        """Body rotation period in units of :py:attr:`time_unit`."""
         return self._P / self._time_factor
 
     @P.setter
@@ -251,7 +254,7 @@ class YlmBase(object):
 
     @property
     def r(self):
-        """Radius of the body in units of ``length_unit``."""
+        """Radius of the body in units of :py:attr:`length_unit`."""
         return self._r / self._length_factor
 
     @r.setter
@@ -261,7 +264,7 @@ class YlmBase(object):
 
     @property
     def veq(self):
-        """The equatorial velocity of the body in km / s. [Read only]
+        """The equatorial velocity of the body in km / s. *Read-only*
         
         To change this quantity, edit the period ``P`` and/or the
         radius ``r`` of the body.
@@ -388,7 +391,7 @@ class YlmBase(object):
         self._veq = 0.0
 
     def X(self, **kwargs):
-        """Alias for ``design_matrix``. [Deprecated]"""
+        """Alias for :py:meth:`design_matrix`. *Deprecated*"""
         return self.design_matrix(**kwargs)
 
     def design_matrix(self, **kwargs):
@@ -396,15 +399,15 @@ class YlmBase(object):
         
         Args:
             xo (array or scalar, optional): x coordinate of the occultor 
-                relative to this body in units of ``length_unit``.
+                relative to this body in units of :py:attr:`length_unit`.
             yo (array or scalar, optional): y coordinate of the occultor 
-                relative to this body in units of ``length_unit``.
+                relative to this body in units of :py:attr:`length_unit`.
             zo (array or scalar, optional): z coordinate of the occultor 
-                relative to this body in units of ``length_unit``.
+                relative to this body in units of :py:attr:`length_unit`.
             ro (scalar, optional): Radius of the occultor in units of 
-                ``length_unit``.
+                :py:attr:`length_unit`.
             theta (array or scalar, optional): Angular phase of the body
-                in units of ``angle_unit``.
+                in units of :py:attr:`angle_unit`.
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_orbit(kwargs)
@@ -462,15 +465,15 @@ class YlmBase(object):
 
         Args:
             xo (array or scalar, optional): x coordinate of the occultor 
-                relative to this body in units of ``length_unit``.
+                relative to this body in units of :py:attr:`length_unit`.
             yo (array or scalar, optional): y coordinate of the occultor 
-                relative to this body in units of ``length_unit``.
+                relative to this body in units of :py:attr:`length_unit`.
             zo (array or scalar, optional): z coordinate of the occultor 
-                relative to this body in units of ``length_unit``.
+                relative to this body in units of :py:attr:`length_unit`.
             ro (scalar, optional): Radius of the occultor in units of 
-                ``length_unit``.
+                :py:attr:`length_unit`.
             theta (array or scalar, optional): Angular phase of the body
-                in units of ``angle_unit``.
+                in units of :py:attr:`angle_unit`.
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_orbit(kwargs)
@@ -891,16 +894,21 @@ class YlmBase(object):
 
 
 class RVBase(object):
-    """
-    
+    """The radial velocity ``starry`` map class.
+
+    This class handles velocity-weighted intensities for use in
+    Rossiter-McLaughlin effect investigations. It has all the same 
+    attributes and methods as b:py:class:`starry.maps.YlmBase`, with the
+    additions and modifications listed below.
+
+    .. note::
+        Instantiate this class by calling :py:func:`starry.Map` with
+        ``rv`` set to True.
     """
 
     _ops_class_ = OpsRV
 
     def reset(self):
-        """
-
-        """
         super(RVBase, self).reset()
         self._alpha = self.cast(0.0)
 
@@ -969,6 +977,9 @@ class RVBase(object):
         )
 
     def intensity(self, **kwargs):
+        """
+
+        """
         # Compute the velocity-weighted intensity if `rv==True`
         rv = kwargs.pop("rv", True)
         if rv:
@@ -979,6 +990,9 @@ class RVBase(object):
         return res
 
     def render(self, **kwargs):
+        """
+        
+        """
         # Render the velocity map if `rv==True`
         # Override the `projection` kwarg if we're
         # plotting the radial velocity.
@@ -992,6 +1006,9 @@ class RVBase(object):
         return res
 
     def show(self, **kwargs):
+        """
+        
+        """
         # Show the velocity map if `rv==True`
         # Override the `projection` kwarg if we're
         # plotting the radial velocity.
@@ -1006,15 +1023,22 @@ class RVBase(object):
 
 
 class ReflectedBase(object):
-    """
+    """The reflected light ``starry`` map class.
 
+    This class handles light curves and phase curves of objects viewed
+    in reflected light. It has all the same attributes and methods as
+    :py:class:`starry.maps.YlmBase`, with the
+    additions and modifications listed below.
+
+    .. note::
+        Instantiate this class by calling 
+        :py:func:`starry.Map` with ``reflected`` set to True.
     """
 
     _ops_class_ = OpsReflected
 
-    def X(self, **kwargs):
+    def design_matrix(self, **kwargs):
         """
-        Compute and return the light curve design matrix.
 
         """
         # Orbital kwargs
@@ -1043,7 +1067,6 @@ class ReflectedBase(object):
 
     def flux(self, **kwargs):
         """
-        Compute and return the light curve.
         
         """
         # Orbital kwargs
@@ -1073,8 +1096,6 @@ class ReflectedBase(object):
 
     def intensity(self, **kwargs):
         """
-        Compute and return the intensity of the map at a given ``(lat, lon)`` 
-        or ``(x, y, z)`` point on the surface.
         
         """
         # Get the Cartesian points
@@ -1109,6 +1130,9 @@ class ReflectedBase(object):
     def render(
         self, res=300, projection="ortho", theta=0.0, source=[-1, 0, 0]
     ):
+        """
+        
+        """
         # Multiple frames?
         if self.nw is not None:
             animated = True
@@ -1186,6 +1210,15 @@ def Map(
     ydeg=0, udeg=0, nw=None, rv=False, reflected=False, lazy=True, quiet=False
 ):
     """A generic ``starry`` surface map.
+
+    This function is a class factory that returns an instance of either
+    :py:class:`starry.maps.YlmBase`, :py:class:`starry.maps.RVBase`, or 
+    :py:class:`starry.maps.ReflectedBase`,
+    depending on the arguments provided by the user. The default is
+    :py:class:`starry.maps.YlmBase`. If ``rv`` is True, instantiates 
+    the :py:class:`starry.maps.RVBase`
+    class, and if ``reflected`` is True, instantiates the 
+    :py:class:`starry.maps.ReflectedBase` class.
     
     Args:
         ydeg (int, optional): Degree of the spherical harmonic map. 
