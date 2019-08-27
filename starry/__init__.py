@@ -14,7 +14,7 @@ except NameError:
     __STARRY_DOCS__ = False
 
 # Import all modules
-if not __STARRY_SETUP__ and not __STARRY_DOCS__:
+if not __STARRY_SETUP__:
 
     # Import the main interface
     from .maps import Map
