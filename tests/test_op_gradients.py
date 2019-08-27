@@ -6,6 +6,7 @@ Test the various Theano Ops.
 import theano
 
 theano.config.compute_test_value = "off"
+
 from theano.tests.unittest_tools import verify_grad
 import theano.tensor as tt
 import starry
@@ -13,6 +14,7 @@ import numpy as np
 
 
 def test_sT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2)
     verify_grad(
         map.ops.sT,
@@ -25,6 +27,7 @@ def test_sT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_intensity(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2, udeg=2)
     np.random.seed(11)
     xpt = 0.5 * np.random.random(10)
@@ -44,6 +47,7 @@ def test_intensity(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_dotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2)
     theta = np.array([0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0]) * np.pi / 180.0
 
@@ -71,6 +75,7 @@ def test_dotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_dotRxy(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2)
     inc = 85.0 * np.pi / 180.0
     obl = 30.0 * np.pi / 180.0
@@ -99,6 +104,7 @@ def test_dotRxy(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_dotRxyT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2)
     inc = 85.0 * np.pi / 180.0
     obl = 30.0 * np.pi / 180.0
@@ -127,6 +133,7 @@ def test_dotRxyT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_F(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2, udeg=2, rv=True)
     np.random.seed(11)
     u = np.random.randn(3)
@@ -138,6 +145,7 @@ def test_F(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_pT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2)
     map[1:, :] = 1
     x = np.array([0.13])
@@ -154,6 +162,7 @@ def test_pT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2)
     theta = np.linspace(0, 30, 10)
     xo = np.linspace(-1.5, 1.5, len(theta))
@@ -200,6 +209,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_rT_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2, reflected=True)
     bterm = np.linspace(-1, 1, 10)[1:-1]
     verify_grad(
@@ -213,6 +223,7 @@ def test_rT_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2, udeg=2, reflected=True)
     np.random.seed(11)
     xpt = 0.5 * np.random.random(10)
@@ -234,6 +245,7 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2, reflected=True)
     theta = np.linspace(0, 30, 10)
     xo = np.linspace(-1.5, 1.5, len(theta))
@@ -262,6 +274,7 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_flux_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2, udeg=2)
     theta = np.linspace(0, 30, 10)
     xo = np.linspace(-1.5, 1.5, len(theta))
@@ -309,6 +322,7 @@ def test_flux_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2, rv=True)
     theta = np.linspace(0, 30, 10)
     xo = np.linspace(-1.5, 1.5, len(theta))
