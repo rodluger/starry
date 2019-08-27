@@ -4,9 +4,6 @@ Test the various Theano Ops.
 
 """
 import theano
-
-theano.config.compute_test_value = "off"
-
 from theano.tests.unittest_tools import verify_grad
 import theano.tensor as tt
 import starry
@@ -365,13 +362,3 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         eps=eps,
         n_tests=1,
     )
-
-
-if __name__ == "__main__":
-    """
-    theano.config.compute_test_value = "raise"
-    map = starry.Map(ydeg=2)
-    verify_grad(map.ops.sT, (np.linspace(0.01, 1.09, 30), 0.1), n_tests=1)
-    """
-    pass
-
