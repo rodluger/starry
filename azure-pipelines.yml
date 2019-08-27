@@ -30,5 +30,6 @@ jobs:
     displayName: 'Install starry'
   - script: |
       . $CONDA/etc/profile.d/conda.sh
+      conda activate starry
       py.test -v -s
     displayName: 'Run tests'
