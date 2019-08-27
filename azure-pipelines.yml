@@ -26,7 +26,7 @@ jobs:
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      python setup.py install -U
+      python setup.py develop
     displayName: 'Install starry'
   - script: |
       . $CONDA/etc/profile.d/conda.sh

@@ -1209,17 +1209,6 @@ def Map(
             version of the code.
         quiet (bool, optional): Suppress all logging messages? 
             Defaults to False.
-
-    TODO: Allow users to pass in the following:
-        - inc
-        - obl
-        - axis
-        - P
-        - t0
-        - r
-        - alpha
-        - units
-        - ...
     """
 
     # Check args
