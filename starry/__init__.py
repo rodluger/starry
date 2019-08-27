@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__version__ = '1.0.0.dev3'
+__version__ = "1.0.0.dev4"
 
 # Was `starry` imported from setup.py?
 try:
@@ -11,8 +11,9 @@ except NameError:
 if not __STARRY_SETUP__:
 
     # Import the main interface
-    from .Map import Map
+    from .maps import Map
 
     # Force double precision
     import theano.tensor as tt
+
     tt.config.floatX = "float64"

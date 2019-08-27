@@ -6,6 +6,7 @@ from ..ops import (
     vectorize,
     atleast_2d,
     get_projection,
+    is_theano,
     STARRY_RECTANGULAR_PROJECTION,
 )
 from . import indices
@@ -17,9 +18,10 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
 from warnings import warn
+from astropy import units
 
-radian = np.pi / 180.0
-degree = 1.0 / radian
+# Rsun / day to km / s
+km_s = (units.Rsun / units.day).in_units(units.km / units.s)
 
 
 __all__ = ["Map"]
@@ -67,189 +69,217 @@ class YlmBase(object):
         # Luminosity
         self._L = self.cast(np.ones(self.nw))
 
-        # NOTE: In version 0.1.7, DFM changed the coordinates
-        # so that the z-axis points TOWARD the observer!
-        # TODO: Phase this out and eventually require >= v0.2.0
-        try:
-            from packaging import version
-            import exoplanet
-
-            if version.parse(exoplanet.__version__) > version.parse(
-                "0.1.7.dev0"
-            ):
-                self._exoplanet_z_sign = 1.0
-            else:
-                self._exoplanet_z_sign = -1.0
-        except ModuleNotFoundError:
-            self._exoplanet_z_sign = None
+        # Units
+        self.length_unit = units.Rsun
+        self.angle_unit = units.degree
+        self.time_unit = units.day
 
         # Initialize
         self.reset()
 
     @property
     def lazy(self):
-        """
+        """Indicates whether or not the map evaluates things lazily. [Read only]
 
+        If True, all attributes and method return values are unevaluated 
+        ``theano`` nodes. This is particularly useful for model building and 
+        integration with ``pymc3``. In lazy mode, call the ``.eval()`` method 
+        on any ``theano`` node to compute and return its numerical value. 
+
+        If False, ``starry`` will automatically compile methods called by the 
+        user, and all methods will return numerical values as in the previous 
+        version of the code.
         """
         return self._lazy
 
     @property
+    def length_unit(self):
+        """An ``astropy.units`` unit defining the length metric for this map."""
+        return self._length_unit
+
+    @length_unit.setter
+    def length_unit(self, value):
+        assert value.physical_type == "length"
+        self._length_unit = value
+        self._length_factor = value.in_units(units.Rsun)
+
+    @property
+    def angle_unit(self):
+        """An ``astropy.units`` unit defining the angle metric for this map."""
+        return self._angle_unit
+
+    @angle_unit.setter
+    def angle_unit(self, value):
+        assert value.physical_type == "angle"
+        self._angle_unit = value
+        self._angle_factor = value.in_units(units.radian)
+
+    @property
+    def time_unit(self):
+        """An ``astropy.units`` unit defining the time metric for this map."""
+        return self._time_unit
+
+    @time_unit.setter
+    def time_unit(self, value):
+        assert value.physical_type == "time"
+        self._time_unit = value
+        self._time_factor = value.in_units(units.day)
+
+    @property
     def ydeg(self):
-        """
-        
-        """
+        """Spherical harmonic degree of the map. [Read only]"""
         return self._ydeg
 
     @property
     def Ny(self):
-        """
-        
+        """Number of spherical harmonic coefficients. [Read only]
+
+        This is equal to :math:`(y_\mathrm{deg} + 1)^2`.
         """
         return self._Ny
 
     @property
     def udeg(self):
-        """
-        
-        """
+        """Limb darkening degree. [Read only]"""
         return self._udeg
 
     @property
     def Nu(self):
-        """
+        """Number of limb darkening coefficients, including :math:`u_0`. [Read only]
         
+        This is equal to :math:`u_\mathrm{deg} + 1`.
         """
         return self._Nu
 
     @property
     def fdeg(self):
-        """
-        
-        """
+        """Degree of the multiplicative filter. [Read only]"""
         return self._fdeg
 
     @property
     def Nf(self):
-        """
-        
+        """Number of spherical harmonic coefficients in the filter. [Read only]
+
+        This is equal to :math:`(f_\mathrm{deg} + 1)^2`.
         """
         return self._Nf
 
     @property
     def deg(self):
-        """
+        """Total degree of the map. [Read only]
         
+        This is equal to :math:`y_\mathrm{deg} + u_\mathrm{deg} + f_\mathrm{deg}`.
         """
         return self._deg
 
     @property
     def N(self):
-        """
+        """Total number of map coefficients. [Read only]
         
+        This is equal to :math:`N_\mathrm{y} + N_\mathrm{u} + N_\mathrm{f}`.
         """
         return self._N
 
     @property
     def nw(self):
-        """
-
-        """
+        """Number of wavelength bins. [Read only]"""
         return self._nw
 
     @property
     def y(self):
-        """
-
+        """The spherical harmonic coefficient vector. [Read only]
+        
+        To set this vector, index the map directly using two indices:
+        ``map[l, m] = ...`` where ``l`` is the spherical harmonic degree and 
+        ``m`` is the spherical harmonic order. These may be integers or 
+        arrays of integers. Slice notation may also be used.
         """
         return self._y
 
     @property
     def u(self):
-        """
-
+        """The vector of limb darkening coefficients. [Read only]
+        
+        To set this vector, index the map directly using one index:
+        ``map[n] = ...`` where ``n`` is the degree of the limb darkening
+        coefficient. This may be an integer or an array of integers.
+        Slice notation may also be used.
         """
         return self._u
 
     @property
     def inc(self):
-        """
-
-        """
-        return self._inc * degree
+        """The inclination of the map in units of ``angle_unit``."""
+        return self._inc / self._angle_factor
 
     @inc.setter
     def inc(self, value):
-        self._inc = self.cast(value) * radian
+        self._inc = self.cast(value) * self._angle_factor
 
     @property
     def obl(self):
-        """
-
-        """
-        return self._obl * degree
+        """The obliquity of the map in units of ``angle_unit``."""
+        return self._obl / self._angle_factor
 
     @obl.setter
     def obl(self, value):
-        self._obl = self.cast(value) * radian
+        self._obl = self.cast(value) * self._angle_factor
 
     @property
     def t0(self):
+        """Reference time in units of ``time_unit``.
+        
+        This is the reference time at which the map coefficients are 
+        defined.
         """
-
-        """
-        return self._t0
+        return self._t0 / self._time_factor
 
     @t0.setter
     def t0(self, value):
-        self._t0 = self.cast(value)
+        self._t0 = self.cast(value) * self._time_factor
 
     @property
     def P(self):
-        """
-
-        """
-        return self._P
+        """Body rotation period in units of ``time_unit``."""
+        return self._P / self._time_factor
 
     @P.setter
     def P(self, value):
-        if value is None:
-            self._P = None
-        else:
-            self._P = self.cast(value)
+        self._P = self.cast(value) * self._time_factor
+        self._veq = 2 * np.pi * self._P / self._r * km_s
 
     @property
     def r(self):
-        """
-        Radius of the body in solar radii.
-
-        """
-        return self._r
+        """Radius of the body in units of ``length_unit``."""
+        return self._r / self._length_factor
 
     @r.setter
     def r(self, value):
-        self._r = self.cast(value)
+        self._r = self.cast(value) * self._length_factor
+        self._veq = 2 * np.pi * self._P / self._r * km_s
+
+    @property
+    def veq(self):
+        """The equatorial velocity of the body in km / s. [Read only]
+        
+        To change this quantity, edit the period ``P`` and/or the
+        radius ``r`` of the body.
+        """
+        return self._veq
 
     @property
     def axis(self):
-        """
-
-        """
+        """A unit vector representing the axis of rotation for the map."""
         return self.ops.get_axis(self._inc, self._obl)
 
     @axis.setter
     def axis(self, axis):
-        """
-
-        """
         axis = self.cast(axis)
         inc_obl = self.ops.get_inc_obl(axis)
         self._inc = inc_obl[0]
         self._obl = inc_obl[1]
 
     def __getitem__(self, idx):
-        """
-
-        """
         if isinstance(idx, (int, np.int, slice)):
             # User is accessing a limb darkening index
             inds = indices.get_ul_inds(self.udeg, idx)
@@ -268,9 +298,6 @@ class YlmBase(object):
             raise ValueError("Invalid map index.")
 
     def __setitem__(self, idx, val):
-        """
-
-        """
         if isinstance(idx, (int, np.int, slice)):
             # User is accessing a limb darkening index
             inds = indices.get_ul_inds(self.udeg, idx)
@@ -311,9 +338,6 @@ class YlmBase(object):
             raise ValueError("Invalid map index.")
 
     def _check_kwargs(self, method, kwargs):
-        """
-
-        """
         if not self.quiet:
             for key in kwargs.keys():
                 message = "Invalid keyword `{0}` in call to `{1}()`. Ignoring."
@@ -321,65 +345,22 @@ class YlmBase(object):
                 warn(message)
 
     def _get_orbit(self, kwargs):
-        """
-        Note that `kwargs` is passed as a dict so we can pop elements
-        and run `check_kwargs` in the calling method.
-
-        TODO: This needs so much work!
-        BUG: I think my interpretation of the exoplanet sign convention is wrong.
-
-        """
-        # Did the user pass an `orbit` instance?
-        orbit = kwargs.pop("orbit", None)
-        if orbit is not None:
-
-            # NOTE: See comment above in `__init__`
-            if self._exoplanet_z_sign is None:
-                raise ValueError("Error importing `exoplanet`.")
-
-            # Time vector
-            t = kwargs.pop("t", None)
-
-            # Get the relative position of the central body (star) and the
-            # orbiting body (planet) in units of R_sun.
-            coords = orbit.get_relative_position(t)
-
-            # Convert to units of the planet radius
-            xo = -coords[0] / self.r
-            yo = -coords[1] / self.r
-            zo = -self._exoplanet_z_sign * coords[2] / self.r
-
-            # Rotational phase
-            theta = self.cast(0.0)
-            if self.P is not None:
-                theta += 360.0 / self.P * (t - self.t0)
-                theta = theta % 360.0
-
-            # Star radius in units of planet radius
-            ro = orbit.r_star / self.r
-
-            # Greedy?
-            if not self.lazy:
-                xo = xo.eval()
-                yo = yo.eval()
-                zo = zo.eval()
-                ro = ro.eval()
-
-        else:
-            xo = kwargs.pop("xo", 0.0)
-            yo = kwargs.pop("yo", 0.0)
-            zo = kwargs.pop("zo", 1.0)
-            ro = kwargs.pop("ro", 0.0)
-            theta = kwargs.pop("theta", 0.0)
-
-        # Vectorize & cast as needed
+        xo = kwargs.pop("xo", 0.0)
+        yo = kwargs.pop("yo", 0.0)
+        zo = kwargs.pop("zo", 1.0)
+        ro = kwargs.pop("ro", 0.0)
+        theta = kwargs.pop("theta", 0.0)
         theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
         theta, xo, yo, zo, ro = self.cast(theta, xo, yo, zo, ro)
-        return theta * radian, xo, yo, zo, ro
+        theta *= self._angle_factor
+        return theta, xo, yo, zo, ro
 
     def reset(self):
-        """
-
+        """Reset all map coefficients and attributes.
+        
+        .. note:: 
+            Does not reset custom unit settings.
+        
         """
         if self.nw is None:
             y = np.zeros(self.Ny)
@@ -400,30 +381,48 @@ class YlmBase(object):
         self._inc = self.cast(np.pi / 2)
         self._obl = self.cast(0.0)
 
-        self._P = None
+        self._P = 1.0
         self._t0 = self.cast(0.0)
         self._r = 1.0
+        self._veq = 0.0
 
     def X(self, **kwargs):
-        """
-        Compute and return the light curve design matrix.
+        """Alias for ``design_matrix``. [Deprecated]"""
+        return self.design_matrix(**kwargs)
 
+    def design_matrix(self, **kwargs):
+        """Compute and return the light curve design matrix.
+        
+        Args:
+            xo (array or scalar, optional): x coordinate of the occultor 
+                relative to this body in units of ``length_unit``.
+            yo (array or scalar, optional): y coordinate of the occultor 
+                relative to this body in units of ``length_unit``.
+            zo (array or scalar, optional): z coordinate of the occultor 
+                relative to this body in units of ``length_unit``.
+            ro (scalar, optional): Radius of the occultor in units of 
+                ``length_unit``.
+            theta (array or scalar, optional): Angular phase of the body
+                in units of ``angle_unit``.
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_orbit(kwargs)
 
         # Check for invalid kwargs
-        self._check_kwargs("X", kwargs)
+        self._check_kwargs("design_matrix", kwargs)
 
         # Compute & return
         return self.L * self.ops.X(
             theta, xo, yo, zo, ro, self._inc, self._obl, self._u, self._f
         )
 
-    def P(self, **kwargs):
-        """
-        Compute and return the pixelization matrix ``P``.
-        No filters/illumination.
+    def intensity_design_matrix(self, **kwargs):
+        """Compute and return the pixelization matrix ``P``.
+        
+        .. note::
+            This method ignores any filters (such as limb darkening
+            or velocity weighting) and illumination (for reflected light
+            maps).
         
         """
         # Get the Cartesian points
@@ -443,15 +442,15 @@ class YlmBase(object):
                     z = np.sqrt(1.0 - x ** 2 - y ** 2)
         else:
             lat, lon = vectorize(*self.cast(lat, lon))
-            lat *= radian
-            lon *= radian
+            lat *= self._angle_factor
+            lon *= self._angle_factor
             xyz = self.ops.latlon_to_xyz(self.axis, lat, lon)
             x = xyz[0]
             y = xyz[1]
             z = xyz[2]
 
         # Check for invalid kwargs
-        self._check_kwargs("P", kwargs)
+        self._check_kwargs("intensity_design_matrix", kwargs)
 
         # Compute & return
         return self.L * self.ops.P(x, y, z)
@@ -459,7 +458,18 @@ class YlmBase(object):
     def flux(self, **kwargs):
         """
         Compute and return the light curve.
-        
+
+        Args:
+            xo (array or scalar, optional): x coordinate of the occultor 
+                relative to this body in units of ``length_unit``.
+            yo (array or scalar, optional): y coordinate of the occultor 
+                relative to this body in units of ``length_unit``.
+            zo (array or scalar, optional): z coordinate of the occultor 
+                relative to this body in units of ``length_unit``.
+            ro (scalar, optional): Radius of the occultor in units of 
+                ``length_unit``.
+            theta (array or scalar, optional): Angular phase of the body
+                in units of ``angle_unit``.
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_orbit(kwargs)
@@ -505,8 +515,8 @@ class YlmBase(object):
                     z = np.sqrt(1.0 - x ** 2 - y ** 2)
         else:
             lat, lon = vectorize(*self.cast(lat, lon))
-            lat *= radian
-            lon *= radian
+            lat *= self._angle_factor
+            lon *= self._angle_factor
             xyz = self.ops.latlon_to_xyz(self.axis, lat, lon)
             x = xyz[0]
             y = xyz[1]
@@ -526,12 +536,21 @@ class YlmBase(object):
         The shape of the returned image is `(nframes, res, res)`.
 
         """
+        # Multiple frames?
+        if self.nw is not None:
+            animated = True
+        else:
+            if is_theano(theta):
+                animated = theta.ndim > 0
+            else:
+                animated = hasattr(theta, "__len__")
+
         # Convert
         projection = get_projection(projection)
-        theta = vectorize(self.cast(theta) * radian)
+        theta = vectorize(self.cast(theta) * self._angle_factor)
 
-        # Compute & return
-        return self.L * self.ops.render(
+        # Compute
+        image = self.L * self.ops.render(
             res,
             projection,
             theta,
@@ -541,6 +560,15 @@ class YlmBase(object):
             self._u,
             self._f,
         )
+
+        # Squeeze?
+        if animated:
+            return image
+        else:
+            if self.lazy:
+                return tt.reshape(image, [res, res])
+            else:
+                return image.reshape(res, res)
 
     def show(self, **kwargs):
         """
@@ -562,6 +590,16 @@ class YlmBase(object):
             inc = self._inc
             obl = self._obl
 
+        # Get the rotational phase
+        if self.lazy:
+            theta = vectorize(
+                self.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
+            ).eval()
+        else:
+            theta = np.atleast_1d(
+                kwargs.pop("theta", 0.0) * self._angle_factor
+            )
+
         # Render the map if needed
         image = kwargs.pop("image", None)
         if image is None:
@@ -571,9 +609,6 @@ class YlmBase(object):
 
                 # Get kwargs
                 res = kwargs.pop("res", 300)
-                theta = vectorize(
-                    self.cast(kwargs.pop("theta", 0.0)) * radian
-                ).eval()
 
                 # Evaluate the variables
                 inc = self._inc.eval()
@@ -598,11 +633,8 @@ class YlmBase(object):
             else:
 
                 # Easy!
-                image = self.render(**kwargs)
-                theta = np.atleast_1d(kwargs.pop("theta", 0.0) * radian)
+                image = self.render(theta=theta / self._angle_factor, **kwargs)
                 kwargs.pop("res", None)
-
-        kwargs.pop("projection", None)
 
         if len(image.shape) == 3:
             nframes = image.shape[0]
@@ -648,7 +680,6 @@ class YlmBase(object):
                 lat_lines = get_ortho_latitude_lines(inc=inc, obl=obl)
                 for x, y in lat_lines:
                     ax.plot(x, y, "k-", lw=0.5, alpha=0.5, zorder=100)
-                theta = np.atleast_1d(kwargs.pop("theta", 0.0) * radian)
                 lon_lines = get_ortho_longitude_lines(
                     inc=inc, obl=obl, theta=theta[0]
                 )
@@ -715,35 +746,33 @@ class YlmBase(object):
 
         # Check for invalid kwargs
         kwargs.pop("rv", None)
+        kwargs.pop("projection", None)
         self._check_kwargs("show", kwargs)
 
     def load(self, image, healpix=False, sampling_factor=8, sigma=None):
-        """
-        Load an image, array, or ``healpix`` map. 
+        """Load an image, array, or ``healpix`` map. 
         
-        This routine uses various routines in ``healpix`` to compute the spherical
-        harmonic expansion of the input image and sets the map's :py:attr:`y`
-        coefficients accordingly.
+        This routine uses various routines in ``healpix`` to compute the 
+        spherical harmonic expansion of the input image and sets the map's 
+        :py:attr:`y` coefficients accordingly.
 
         The map is oriented such that the north pole of the input image
         is placed at the north pole of the current rotation axis.
 
         Args:
             image: A path to an image file, a two-dimensional ``numpy`` 
-                array, or a ``healpix`` map array (if ``healpix==True``).
-        
-        Keyword arguments:
-            healpix (bool): Treat ``image`` as a ``healpix`` array? 
-                Default ``False``.
-            sampling_factor (int): Oversampling factor when computing the 
-                ``healpix`` representation of an input image or array. 
-                Default 8. Increasing this number may improve the fidelity of 
-                the expanded map, but the calculation will take longer.
-            sigma (float): If not ``None``, apply gaussian smoothing 
+                array, or a ``healpix`` map array (if ``healpix`` is True).
+            healpix (bool, optional): Treat ``image`` as a ``healpix`` array? 
+                Default is False.
+            sampling_factor (int, optional): Oversampling factor when computing 
+                the ``healpix`` representation of an input image or array. 
+                Default is 8. Increasing this number may improve the fidelity 
+                of the expanded map, but the calculation will take longer.
+            sigma (float, optional): If not None, apply gaussian smoothing 
                 with standard deviation ``sigma`` to smooth over 
                 spurious ringing features. Smoothing is performed with 
                 the ``healpix.sphtfunc.smoothalm`` method. 
-                Default ``None``.
+                Default is None.
         """
         # Is this a file name?
         if type(image) is str:
@@ -788,23 +817,22 @@ class YlmBase(object):
         else:
             axis = self.cast(axis)
 
-        # Cast to tensor & convert to radians
-        theta = self.cast(theta) * radian
+        # Cast to tensor & convert to internal units
+        theta = self.cast(theta) * self._angle_factor
 
         # Rotate
         self._y = self.ops.rotate(axis, theta, self._y)
 
     def align(self, source=None, dest=None):
-        """
-        Rotate the map to align the ``source`` point/axis with the
-        ``dest`` point/axis.
+        """Rotate the map to align ``source`` with ``dest``.
 
         The standard way of rotating maps in ``starry`` is to
         provide the axis and angle of rotation, but this isn't always
         convenient. In some cases, it is easier to specify a source
-        point/axis and a destination point/axis, and rotate the map such that the
-        source aligns with the destination. This is particularly useful for
-        changing map projections. For instance, to view the map pole-on,
+        point/axis and a destination point/axis, and rotate the map such 
+        that the source aligns with the destination. This is particularly 
+        useful for changing map projections. For instance, to view the 
+        map pole-on,
 
         .. code-block:: python
 
@@ -815,10 +843,11 @@ class YlmBase(object):
 
         Another useful application is if you want the map to rotate along with
         the axis of rotation when you change the map's inclination and/or
-        obliquity. In other words, say you specified the coefficients of the map
-        in the default frame (in which the rotation axis points along :math:`\\hat{y}`)
-        but the object you're modeling is inclined/rotated with respect to the plane
-        of the sky. After specifying the map's inclination and obliquity, run
+        obliquity. In other words, say you specified the coefficients of the 
+        map in the default frame (in which the rotation axis points along 
+        :math:`\\hat{y}`) but the object you're modeling is inclined/rotated 
+        with respect to the plane of the sky. After specifying the map's 
+        inclination and obliquity, run
 
         .. code-block:: python
 
@@ -828,13 +857,12 @@ class YlmBase(object):
         in the frame corresponding to the plane of the sky.
 
         Args:
-            source: A unit vector describing the source position. 
-                This point will be rotated onto ``dest``. Default 
+            source (array, optional): A unit vector describing the source 
+                position. This point will be rotated onto ``dest``. Default 
                 is the current map axis.
-            dest: A unit vector describing the destination position. 
-                The ``source`` point will be rotated onto this point. Default 
-                is the current map axis.
-
+            dest (array, optional): A unit vector describing the destination 
+                position. The ``source`` point will be rotated onto this point. 
+                Default is the current map axis.
         """
         if source is None:
             source = self.axis
@@ -854,10 +882,10 @@ class YlmBase(object):
             self._y,
             amp,
             sigma,
-            lat * radian,
-            lon * radian,
-            self.inc * radian,
-            self.obl * radian,
+            lat * self._angle_factor,
+            lon * self._angle_factor,
+            self._inc,
+            self._obl,
         )
 
 
@@ -874,12 +902,10 @@ class RVBase(object):
         """
         super(RVBase, self).reset()
         self._alpha = self.cast(0.0)
-        self._veq = self.cast(0.0)
 
     @property
     def alpha(self):
-        """
-        The rotational shear coefficient, a number in the range ``[0, 1]``.
+        """The rotational shear coefficient, a number in the range ``[0, 1]``.
         
         The parameter :math:`\\alpha` is used to model linear differential
         rotation. The angular velocity at a given latitude :math:`\\theta`
@@ -895,15 +921,6 @@ class RVBase(object):
     @alpha.setter
     def alpha(self, value):
         self._alpha = self.cast(value)
-
-    @property
-    def veq(self):
-        """The equatorial velocity of the object in arbitrary units."""
-        return self._veq
-
-    @veq.setter
-    def veq(self, value):
-        self._veq = self.cast(value)
 
     def _unset_RV_filter(self):
         f = np.zeros(self.Nf)
@@ -1055,9 +1072,8 @@ class ReflectedBase(object):
 
     def intensity(self, **kwargs):
         """
-        Compute and return the intensity of the map
-        at a given ``(lat, lon)`` or ``(x, y, z)``
-        point on the surface.
+        Compute and return the intensity of the map at a given ``(lat, lon)`` 
+        or ``(x, y, z)`` point on the surface.
         
         """
         # Get the Cartesian points
@@ -1070,8 +1086,8 @@ class ReflectedBase(object):
             x, y, z = vectorize(*self.cast(x, y, z))
         else:
             lat, lon = vectorize(*self.cast(lat, lon))
-            lat *= radian
-            lon *= radian
+            lat *= self._angle_factor
+            lon *= self._angle_factor
             xyz = self.ops.latlon_to_xyz(self.axis, lat, lon)
             x = xyz[0]
             y = xyz[1]
@@ -1092,14 +1108,23 @@ class ReflectedBase(object):
     def render(
         self, res=300, projection="ortho", theta=0.0, source=[-1, 0, 0]
     ):
+        # Multiple frames?
+        if self.nw is not None:
+            animated = True
+        else:
+            if is_theano(theta):
+                animated = theta.ndim > 0
+            else:
+                animated = hasattr(theta, "__len__")
+
         # Convert stuff as needed
         projection = get_projection(projection)
-        theta = self.cast(theta) * radian
+        theta = self.cast(theta) * self._angle_factor
         source = atleast_2d(self.cast(source))
         theta, source = vectorize(theta, source)
 
-        # Compute & return
-        return self.L * self.ops.render(
+        # Compute
+        image = self.L * self.ops.render(
             res,
             projection,
             theta,
@@ -1111,6 +1136,15 @@ class ReflectedBase(object):
             source,
         )
 
+        # Squeeze?
+        if animated:
+            return image
+        else:
+            if self.lazy:
+                return tt.reshape(image, [res, res])
+            else:
+                return image.reshape(res, res)
+
     def show(self, **kwargs):
         # We need to evaluate the variables so we can plot the map!
         if self.lazy and kwargs.get("image", None) is None:
@@ -1118,7 +1152,7 @@ class ReflectedBase(object):
             # Get kwargs
             res = kwargs.get("res", 300)
             projection = get_projection(kwargs.get("projection", "ortho"))
-            theta = self.cast(kwargs.pop("theta", 0.0)) * radian
+            theta = self.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
             source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
             theta, source = vectorize(theta, source)
 
@@ -1150,8 +1184,41 @@ class ReflectedBase(object):
 def Map(
     ydeg=0, udeg=0, nw=None, rv=False, reflected=False, lazy=True, quiet=False
 ):
-    """
+    """A generic ``starry`` surface map.
+    
+    Args:
+        ydeg (int, optional): Degree of the spherical harmonic map. 
+            Defaults to 0.
+        udeg (int, optional): Degree of the limb darkening filter. 
+            Defaults to 0.
+        nw (int, optional): Number of wavelength bins. Defaults to None
+            (for monochromatic light curves).
+        rv (bool, optional): If True, enable computation of radial velocities
+            for modeling the Rossiter-McLaughlin effect. Defaults to False.
+        reflected (bool, optional): If True, models light curves in reflected
+            light. Defaults to False.
+        lazy (bool, optional): Perform all calculations lazily? Defaults to 
+            True, in which case all attributes and method return values are
+            unevaluated ``theano`` nodes. This is particularly useful for
+            model building and integration with ``pymc3``. In lazy mode,
+            call the ``.eval()`` method on any ``theano`` node to compute
+            and return its numerical value. If ``lazy`` is set to False, 
+            ``starry`` will automatically compile methods called by the user,
+            and all methods will return numerical values as in the previous
+            version of the code.
+        quiet (bool, optional): Suppress all logging messages? 
+            Defaults to False.
 
+    TODO: Allow users to pass in the following:
+        - inc
+        - obl
+        - axis
+        - P
+        - t0
+        - r
+        - alpha
+        - units
+        - ...
     """
 
     # Check args

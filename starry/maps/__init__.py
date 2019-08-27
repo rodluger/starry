@@ -1,2 +1,2 @@
 # -*- coding: utf-8 -*-
-from .Map import Map
+from .maps import Map

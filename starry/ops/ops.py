@@ -256,16 +256,17 @@ class Ops(object):
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
         # If lat/lon, rotate the map so that north points up
-        y = ifelse(
-            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-            self.align(
+        if self.ydeg > 0:
+            y = ifelse(
+                tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+                self.align(
+                    y,
+                    self.get_axis(inc, obl, no_compile=True),
+                    to_tensor([0, 1, 0]),
+                    no_compile=True,
+                ),
                 y,
-                self.get_axis(inc, obl, no_compile=True),
-                to_tensor([0, 1, 0]),
-                no_compile=True,
-            ),
-            y,
-        )
+            )
 
         # Rotate the map and transform into the polynomial basis
         if self.nw is None:
