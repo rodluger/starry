@@ -20,6 +20,7 @@ from IPython.display import HTML
 from warnings import warn
 from astropy import units
 
+
 # Rsun / day to km / s
 km_s = (units.Rsun / units.day).in_units(units.km / units.s)
 

@@ -25,7 +25,8 @@ jobs:
     displayName: 'Install dependencies'
   - script: |
       . $CONDA/etc/profile.d/conda.sh
-      python setup.py develop
+      conda activate starry
+      python setup.py install -U
     displayName: 'Install starry'
   - script: |
       . $CONDA/etc/profile.d/conda.sh

@@ -5,9 +5,9 @@
   This is the completely re-written version of starry written in Theano with some help from C++.
   Still no docs and functionality is very limited, but this will hopefully transform into the next release!
   <p align="center">
-    <a href="https://travis-ci.org/rodluger/starry/">
-      <img src="https://img.shields.io/travis/rodluger/starry/dev.svg?colorB=7d93c7"/>
-    </a>
+    <a href="https://dev.azure.com/rodluger/starry/_build">
+    <img src="https://dev.azure.com/rodluger/starry/_apis/build/status/rodluger.starry?branchName=dev"/>
+  </a>
     <a href="http://adsabs.harvard.edu/abs/2019AJ....157...64L">
       <img src="https://img.shields.io/badge/read-the_paper-7d93c7.svg?style=flat"/>
     </a>
