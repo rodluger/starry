@@ -21,10 +21,6 @@ from warnings import warn
 from astropy import units
 
 
-# Rsun / day to km / s
-km_s = (units.Rsun / units.day).in_units(units.km / units.s)
-
-
 __all__ = ["Map", "YlmBase", "RVBase", "ReflectedBase"]
 
 
@@ -74,9 +70,7 @@ class YlmBase(object):
         self._L = self.cast(np.ones(self.nw))
 
         # Units
-        self.length_unit = units.Rsun
         self.angle_unit = units.degree
-        self.time_unit = units.day
 
         # Initialize
         self.reset()
@@ -97,17 +91,6 @@ class YlmBase(object):
         return self._lazy
 
     @property
-    def length_unit(self):
-        """An ``astropy.units`` unit defining the length metric for this map."""
-        return self._length_unit
-
-    @length_unit.setter
-    def length_unit(self, value):
-        assert value.physical_type == "length"
-        self._length_unit = value
-        self._length_factor = value.in_units(units.Rsun)
-
-    @property
     def angle_unit(self):
         """An ``astropy.units`` unit defining the angle metric for this map."""
         return self._angle_unit
@@ -117,17 +100,6 @@ class YlmBase(object):
         assert value.physical_type == "angle"
         self._angle_unit = value
         self._angle_factor = value.in_units(units.radian)
-
-    @property
-    def time_unit(self):
-        """An ``astropy.units`` unit defining the time metric for this map."""
-        return self._time_unit
-
-    @time_unit.setter
-    def time_unit(self, value):
-        assert value.physical_type == "time"
-        self._time_unit = value
-        self._time_factor = value.in_units(units.day)
 
     @property
     def ydeg(self):
@@ -212,76 +184,34 @@ class YlmBase(object):
         return self._u
 
     @property
-    def inc(self):
-        """The inclination of the map in units of :py:attr:`angle_unit`."""
-        return self._inc / self._angle_factor
+    def axis_inc(self):
+        """The inclination of the rotation axis in units of :py:attr:`angle_unit`."""
+        return self._axis_inc / self._angle_factor
 
-    @inc.setter
-    def inc(self, value):
-        self._inc = self.cast(value) * self._angle_factor
-
-    @property
-    def obl(self):
-        """The obliquity of the map in units of :py:attr:`angle_unit`."""
-        return self._obl / self._angle_factor
-
-    @obl.setter
-    def obl(self, value):
-        self._obl = self.cast(value) * self._angle_factor
+    @axis_inc.setter
+    def axis_inc(self, value):
+        self._axis_inc = self.cast(value) * self._angle_factor
 
     @property
-    def t0(self):
-        """Reference time in units of :py:attr:`time_unit`.
-        
-        This is the reference time at which the map coefficients are 
-        defined.
-        """
-        return self._t0 / self._time_factor
+    def axis_obl(self):
+        """The obliquity of the rotation axis in units of :py:attr:`angle_unit`."""
+        return self._axis_obl / self._angle_factor
 
-    @t0.setter
-    def t0(self, value):
-        self._t0 = self.cast(value) * self._time_factor
-
-    @property
-    def P(self):
-        """Body rotation period in units of :py:attr:`time_unit`."""
-        return self._P / self._time_factor
-
-    @P.setter
-    def P(self, value):
-        self._P = self.cast(value) * self._time_factor
-        self._veq = 2 * np.pi * self._P / self._r * km_s
-
-    @property
-    def r(self):
-        """Radius of the body in units of :py:attr:`length_unit`."""
-        return self._r / self._length_factor
-
-    @r.setter
-    def r(self, value):
-        self._r = self.cast(value) * self._length_factor
-        self._veq = 2 * np.pi * self._P / self._r * km_s
-
-    @property
-    def veq(self):
-        """The equatorial velocity of the body in km / s. *Read-only*
-        
-        To change this quantity, edit the period ``P`` and/or the
-        radius ``r`` of the body.
-        """
-        return self._veq
+    @axis_obl.setter
+    def axis_obl(self, value):
+        self._axis_obl = self.cast(value) * self._angle_factor
 
     @property
     def axis(self):
         """A unit vector representing the axis of rotation for the map."""
-        return self.ops.get_axis(self._inc, self._obl)
+        return self.ops.get_axis(self._axis_inc, self._axis_obl)
 
     @axis.setter
     def axis(self, axis):
         axis = self.cast(axis)
         inc_obl = self.ops.get_inc_obl(axis)
-        self._inc = inc_obl[0]
-        self._obl = inc_obl[1]
+        self._axis_inc = inc_obl[0]
+        self._axis_obl = inc_obl[1]
 
     def __getitem__(self, idx):
         if isinstance(idx, (int, np.int, slice)):
@@ -382,10 +312,10 @@ class YlmBase(object):
         f[0] = np.pi
         self._f = self.cast(f)
 
-        self._inc = self.cast(np.pi / 2)
-        self._obl = self.cast(0.0)
+        self._axis_inc = self.cast(np.pi / 2)
+        self._axis_obl = self.cast(0.0)
 
-        self._P = 1.0
+        self._prot = 1.0
         self._t0 = self.cast(0.0)
         self._r = 1.0
         self._veq = 0.0
@@ -399,13 +329,13 @@ class YlmBase(object):
         
         Args:
             xo (array or scalar, optional): x coordinate of the occultor 
-                relative to this body in units of :py:attr:`length_unit`.
+                relative to this body in units of this body's radius.
             yo (array or scalar, optional): y coordinate of the occultor 
-                relative to this body in units of :py:attr:`length_unit`.
+                relative to this body in units of this body's radius.
             zo (array or scalar, optional): z coordinate of the occultor 
-                relative to this body in units of :py:attr:`length_unit`.
+                relative to this body in units of this body's radius.
             ro (scalar, optional): Radius of the occultor in units of 
-                :py:attr:`length_unit`.
+                this body's radius.
             theta (array or scalar, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
         """
@@ -417,7 +347,15 @@ class YlmBase(object):
 
         # Compute & return
         return self.L * self.ops.X(
-            theta, xo, yo, zo, ro, self._inc, self._obl, self._u, self._f
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._axis_inc,
+            self._axis_obl,
+            self._u,
+            self._f,
         )
 
     def intensity_design_matrix(self, **kwargs):
@@ -465,13 +403,13 @@ class YlmBase(object):
 
         Args:
             xo (array or scalar, optional): x coordinate of the occultor 
-                relative to this body in units of :py:attr:`length_unit`.
+                relative to this body in units of this body's radius.
             yo (array or scalar, optional): y coordinate of the occultor 
-                relative to this body in units of :py:attr:`length_unit`.
+                relative to this body in units of this body's radius.
             zo (array or scalar, optional): z coordinate of the occultor 
-                relative to this body in units of :py:attr:`length_unit`.
+                relative to this body in units of this body's radius.
             ro (scalar, optional): Radius of the occultor in units of 
-                :py:attr:`length_unit`.
+                this body's radius.
             theta (array or scalar, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
         """
@@ -488,8 +426,8 @@ class YlmBase(object):
             yo,
             zo,
             ro,
-            self._inc,
-            self._obl,
+            self._axis_inc,
+            self._axis_obl,
             self._y,
             self._u,
             self._f,
@@ -558,8 +496,8 @@ class YlmBase(object):
             res,
             projection,
             theta,
-            self._inc,
-            self._obl,
+            self._axis_inc,
+            self._axis_obl,
             self._y,
             self._u,
             self._f,
@@ -588,11 +526,11 @@ class YlmBase(object):
 
         # Get the map orientation
         if self.lazy:
-            inc = self._inc.eval()
-            obl = self._obl.eval()
+            inc = self._axis_inc.eval()
+            obl = self._axis_obl.eval()
         else:
-            inc = self._inc
-            obl = self._obl
+            inc = self._axis_inc
+            obl = self._axis_obl
 
         # Get the rotational phase
         if self.lazy:
@@ -615,8 +553,8 @@ class YlmBase(object):
                 res = kwargs.pop("res", 300)
 
                 # Evaluate the variables
-                inc = self._inc.eval()
-                obl = self._obl.eval()
+                inc = self._axis_inc.eval()
+                obl = self._axis_obl.eval()
                 y = self._y.eval()
                 u = self._u.eval()
                 f = self._f.eval()
@@ -817,7 +755,7 @@ class YlmBase(object):
         """
         # Get inc and obl
         if axis is None:
-            axis = self.ops.get_axis(self._inc, self._obl)
+            axis = self.ops.get_axis(self._axis_inc, self._axis_obl)
         else:
             axis = self.cast(axis)
 
@@ -888,8 +826,8 @@ class YlmBase(object):
             sigma,
             lat * self._angle_factor,
             lon * self._angle_factor,
-            self._inc,
-            self._obl,
+            self._axis_inc,
+            self._axis_obl,
         )
 
 
@@ -911,6 +849,7 @@ class RVBase(object):
     def reset(self):
         super(RVBase, self).reset()
         self._alpha = self.cast(0.0)
+        self._veq = self.cast(0.0)
 
     @property
     def alpha(self):
@@ -931,6 +870,16 @@ class RVBase(object):
     def alpha(self, value):
         self._alpha = self.cast(value)
 
+    @property
+    def veq(self):
+        """The equatorial velocity of the body in km / s.
+        """
+        return self._veq
+
+    @veq.setter
+    def veq(self, value):
+        self._veq = value
+
     def _unset_RV_filter(self):
         f = np.zeros(self.Nf)
         f[0] = np.pi
@@ -938,7 +887,7 @@ class RVBase(object):
 
     def _set_RV_filter(self):
         self._f = self.ops.compute_rv_filter(
-            self._inc, self._obl, self._veq, self._alpha
+            self._axis_inc, self._axis_obl, self._veq, self._alpha
         )
 
     def rv(self, **kwargs):
@@ -968,8 +917,8 @@ class RVBase(object):
             yo,
             zo,
             ro,
-            self._inc,
-            self._obl,
+            self._axis_inc,
+            self._axis_obl,
             self._y,
             self._u,
             self._veq,
@@ -1058,8 +1007,8 @@ class ReflectedBase(object):
             yo,
             zo,
             ro,
-            self._inc,
-            self._obl,
+            self._axis_inc,
+            self._axis_obl,
             self._u,
             self._f,
             source,
@@ -1086,8 +1035,8 @@ class ReflectedBase(object):
             yo,
             zo,
             ro,
-            self._inc,
-            self._obl,
+            self._axis_inc,
+            self._axis_obl,
             self._y,
             self._u,
             self._f,
@@ -1153,8 +1102,8 @@ class ReflectedBase(object):
             res,
             projection,
             theta,
-            self._inc,
-            self._obl,
+            self._axis_inc,
+            self._axis_obl,
             self._y,
             self._u,
             self._f,
@@ -1184,8 +1133,8 @@ class ReflectedBase(object):
             # Evaluate the variables
             theta = theta.eval()
             source = source.eval()
-            inc = self._inc.eval()
-            obl = self._obl.eval()
+            inc = self._axis_inc.eval()
+            obl = self._axis_obl.eval()
             y = self._y.eval()
             u = self._u.eval()
             f = self._f.eval()

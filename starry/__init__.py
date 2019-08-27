@@ -18,7 +18,7 @@ except NameError:
 if not __STARRY_SETUP__:
 
     # Import the main interface
-    from .maps import Map
+    from .maps import Map, KeplerianSystem
 
     # Force double precision
     import theano.tensor as tt
