@@ -21,7 +21,7 @@ from warnings import warn
 from astropy import units
 
 
-__all__ = ["Map", "YlmBase", "RVBase", "ReflectedBase"]
+__all__ = ["Map", "MapBase", "YlmBase", "RVBase", "ReflectedBase"]
 
 
 class Luminosity(object):
@@ -32,6 +32,12 @@ class Luminosity(object):
 
     def __set__(self, instance, value):
         instance._L = instance.cast(np.ones(instance.nw) * value)
+
+
+class MapBase(object):
+    """The base class for all `starry` maps."""
+
+    pass
 
 
 class YlmBase(object):
@@ -184,34 +190,34 @@ class YlmBase(object):
         return self._u
 
     @property
-    def axis_inc(self):
+    def inc(self):
         """The inclination of the rotation axis in units of :py:attr:`angle_unit`."""
-        return self._axis_inc / self._angle_factor
+        return self._inc / self._angle_factor
 
-    @axis_inc.setter
-    def axis_inc(self, value):
-        self._axis_inc = self.cast(value) * self._angle_factor
+    @inc.setter
+    def inc(self, value):
+        self._inc = self.cast(value) * self._angle_factor
 
     @property
-    def axis_obl(self):
+    def obl(self):
         """The obliquity of the rotation axis in units of :py:attr:`angle_unit`."""
-        return self._axis_obl / self._angle_factor
+        return self._obl / self._angle_factor
 
-    @axis_obl.setter
-    def axis_obl(self, value):
-        self._axis_obl = self.cast(value) * self._angle_factor
+    @obl.setter
+    def obl(self, value):
+        self._obl = self.cast(value) * self._angle_factor
 
     @property
     def axis(self):
         """A unit vector representing the axis of rotation for the map."""
-        return self.ops.get_axis(self._axis_inc, self._axis_obl)
+        return self.ops.get_axis(self._inc, self._obl)
 
     @axis.setter
     def axis(self, axis):
         axis = self.cast(axis)
         inc_obl = self.ops.get_inc_obl(axis)
-        self._axis_inc = inc_obl[0]
-        self._axis_obl = inc_obl[1]
+        self._inc = inc_obl[0]
+        self._obl = inc_obl[1]
 
     def __getitem__(self, idx):
         if isinstance(idx, (int, np.int, slice)):
@@ -312,8 +318,8 @@ class YlmBase(object):
         f[0] = np.pi
         self._f = self.cast(f)
 
-        self._axis_inc = self.cast(np.pi / 2)
-        self._axis_obl = self.cast(0.0)
+        self._inc = self.cast(np.pi / 2)
+        self._obl = self.cast(0.0)
 
         self._prot = 1.0
         self._t0 = self.cast(0.0)
@@ -347,15 +353,7 @@ class YlmBase(object):
 
         # Compute & return
         return self.L * self.ops.X(
-            theta,
-            xo,
-            yo,
-            zo,
-            ro,
-            self._axis_inc,
-            self._axis_obl,
-            self._u,
-            self._f,
+            theta, xo, yo, zo, ro, self._inc, self._obl, self._u, self._f
         )
 
     def intensity_design_matrix(self, **kwargs):
@@ -426,8 +424,8 @@ class YlmBase(object):
             yo,
             zo,
             ro,
-            self._axis_inc,
-            self._axis_obl,
+            self._inc,
+            self._obl,
             self._y,
             self._u,
             self._f,
@@ -496,8 +494,8 @@ class YlmBase(object):
             res,
             projection,
             theta,
-            self._axis_inc,
-            self._axis_obl,
+            self._inc,
+            self._obl,
             self._y,
             self._u,
             self._f,
@@ -526,11 +524,11 @@ class YlmBase(object):
 
         # Get the map orientation
         if self.lazy:
-            inc = self._axis_inc.eval()
-            obl = self._axis_obl.eval()
+            inc = self._inc.eval()
+            obl = self._obl.eval()
         else:
-            inc = self._axis_inc
-            obl = self._axis_obl
+            inc = self._inc
+            obl = self._obl
 
         # Get the rotational phase
         if self.lazy:
@@ -553,8 +551,8 @@ class YlmBase(object):
                 res = kwargs.pop("res", 300)
 
                 # Evaluate the variables
-                inc = self._axis_inc.eval()
-                obl = self._axis_obl.eval()
+                inc = self._inc.eval()
+                obl = self._obl.eval()
                 y = self._y.eval()
                 u = self._u.eval()
                 f = self._f.eval()
@@ -755,7 +753,7 @@ class YlmBase(object):
         """
         # Get inc and obl
         if axis is None:
-            axis = self.ops.get_axis(self._axis_inc, self._axis_obl)
+            axis = self.ops.get_axis(self._inc, self._obl)
         else:
             axis = self.cast(axis)
 
@@ -826,8 +824,8 @@ class YlmBase(object):
             sigma,
             lat * self._angle_factor,
             lon * self._angle_factor,
-            self._axis_inc,
-            self._axis_obl,
+            self._inc,
+            self._obl,
         )
 
 
@@ -872,8 +870,9 @@ class RVBase(object):
 
     @property
     def veq(self):
-        """The equatorial velocity of the body in km / s.
-        """
+        """The equatorial velocity of the body in arbitrary units."""
+        # TODO: Warn user that changing `prot` and `r` doesn't currently
+        # affect this value.
         return self._veq
 
     @veq.setter
@@ -887,7 +886,7 @@ class RVBase(object):
 
     def _set_RV_filter(self):
         self._f = self.ops.compute_rv_filter(
-            self._axis_inc, self._axis_obl, self._veq, self._alpha
+            self._inc, self._obl, self._veq, self._alpha
         )
 
     def rv(self, **kwargs):
@@ -917,8 +916,8 @@ class RVBase(object):
             yo,
             zo,
             ro,
-            self._axis_inc,
-            self._axis_obl,
+            self._inc,
+            self._obl,
             self._y,
             self._u,
             self._veq,
@@ -1007,8 +1006,8 @@ class ReflectedBase(object):
             yo,
             zo,
             ro,
-            self._axis_inc,
-            self._axis_obl,
+            self._inc,
+            self._obl,
             self._u,
             self._f,
             source,
@@ -1035,8 +1034,8 @@ class ReflectedBase(object):
             yo,
             zo,
             ro,
-            self._axis_inc,
-            self._axis_obl,
+            self._inc,
+            self._obl,
             self._y,
             self._u,
             self._f,
@@ -1102,8 +1101,8 @@ class ReflectedBase(object):
             res,
             projection,
             theta,
-            self._axis_inc,
-            self._axis_obl,
+            self._inc,
+            self._obl,
             self._y,
             self._u,
             self._f,
@@ -1133,8 +1132,8 @@ class ReflectedBase(object):
             # Evaluate the variables
             theta = theta.eval()
             source = source.eval()
-            inc = self._axis_inc.eval()
-            obl = self._axis_obl.eval()
+            inc = self._inc.eval()
+            obl = self._obl.eval()
             y = self._y.eval()
             u = self._u.eval()
             f = self._f.eval()
@@ -1203,7 +1202,7 @@ def Map(
         assert nw > 0, "Number of wavelength bins must be positive."
 
     # Default map base
-    Bases = (YlmBase,)
+    Bases = (YlmBase, MapBase)
     kwargs = dict(lazy=lazy, quiet=quiet)
 
     # Radial velocity mode?

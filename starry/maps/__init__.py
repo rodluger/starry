@@ -1,3 +1,4 @@
 # -*- coding: utf-8 -*-
-from .maps import Map, YlmBase, RVBase, ReflectedBase
-from .kepler import KeplerianBase, KeplerianSystem
+from .maps import Map, MapBase, YlmBase, RVBase, ReflectedBase
+from .kepler import Primary, Secondary, System
+

@@ -632,6 +632,8 @@ public:
         RowVector<T> xterm(npts), yterm(npts);
         xterm.setOnes();
         yterm.setOnes();
+        xterm += 0.0 * z; // Ensures we get `nan`s off the disk
+        yterm += 0.0 * z; // Ensures we get `nan`s off the disk
         int i0 = 0,
             di0 = 3,
             j0 = 0,
