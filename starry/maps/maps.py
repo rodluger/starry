@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from .. import config
 from ..ops import (
     Ops,
     OpsReflected,
@@ -51,14 +52,13 @@ class YlmBase(object):
     _ops_class_ = Ops
     L = Luminosity()
 
-    def __init__(self, ydeg, udeg, fdeg, nw, lazy=True, quiet=False):
+    def __init__(self, ydeg, udeg, fdeg, nw, quiet=False):
         """
 
         """
         # Instantiate the Theano ops class
-        self._lazy = lazy
         self.quiet = quiet
-        self.ops = self._ops_class_(ydeg, udeg, fdeg, nw, lazy, quiet=quiet)
+        self.ops = self._ops_class_(ydeg, udeg, fdeg, nw, quiet=quiet)
         self.cast = self.ops.cast
 
         # Dimensions
@@ -80,21 +80,6 @@ class YlmBase(object):
 
         # Initialize
         self.reset()
-
-    @property
-    def lazy(self):
-        """Indicates whether or not the map evaluates things lazily. *Read-only*
-
-        If True, all attributes and method return values are unevaluated 
-        ``theano`` nodes. This is particularly useful for model building and 
-        integration with ``pymc3``. In lazy mode, call the ``.eval()`` method 
-        on any ``theano`` node to compute and return its numerical value. 
-
-        If False, ``starry`` will automatically compile methods called by the 
-        user, and all methods will return numerical values as in the previous 
-        version of the code.
-        """
-        return self._lazy
 
     @property
     def angle_unit(self):
@@ -243,7 +228,7 @@ class YlmBase(object):
             inds = indices.get_ul_inds(self.udeg, idx)
             if 0 in inds:
                 raise ValueError("The u_0 coefficient cannot be set.")
-            if self._lazy:
+            if config.lazy:
                 self._u = self.ops.set_map_vector(self._u, inds, val)
             else:
                 self._u[inds] = val
@@ -252,7 +237,7 @@ class YlmBase(object):
             inds = indices.get_ylm_inds(self.ydeg, idx[0], idx[1])
             if 0 in inds:
                 raise ValueError("The Y_{0,0} coefficient cannot be set.")
-            if self._lazy:
+            if config.lazy:
                 self._y = self.ops.set_map_vector(self._y, inds, val)
             else:
                 self._y[inds] = val
@@ -263,7 +248,7 @@ class YlmBase(object):
             )
             if 0 in inds[0]:
                 raise ValueError("The Y_{0,0} coefficients cannot be set.")
-            if self._lazy:
+            if config.lazy:
                 self._y = self.ops.set_map_vector(self._y, inds, val)
             else:
                 old_shape = self._y[inds].shape
@@ -376,7 +361,7 @@ class YlmBase(object):
                 x, y, z = vectorize(*self.cast(x, y, z))
             else:
                 x, y = vectorize(*self.cast(x, y))
-                if self._lazy:
+                if config.lazy:
                     z = tt.sqrt(1.0 - x ** 2 - y ** 2)
                 else:
                     z = np.sqrt(1.0 - x ** 2 - y ** 2)
@@ -449,7 +434,7 @@ class YlmBase(object):
                 x, y, z = vectorize(*self.cast(x, y, z))
             else:
                 x, y = vectorize(*self.cast(x, y))
-                if self._lazy:
+                if config.lazy:
                     z = tt.sqrt(1.0 - x ** 2 - y ** 2)
                 else:
                     z = np.sqrt(1.0 - x ** 2 - y ** 2)
@@ -505,7 +490,7 @@ class YlmBase(object):
         if animated:
             return image
         else:
-            if self.lazy:
+            if config.lazy:
                 return tt.reshape(image, [res, res])
             else:
                 return image.reshape(res, res)
@@ -523,7 +508,7 @@ class YlmBase(object):
         mp4 = kwargs.pop("mp4", None)
 
         # Get the map orientation
-        if self.lazy:
+        if config.lazy:
             inc = self._inc.eval()
             obl = self._obl.eval()
         else:
@@ -531,7 +516,7 @@ class YlmBase(object):
             obl = self._obl
 
         # Get the rotational phase
-        if self.lazy:
+        if config.lazy:
             theta = vectorize(
                 self.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
             ).eval()
@@ -545,7 +530,7 @@ class YlmBase(object):
         if image is None:
 
             # We need to evaluate the variables so we can plot the map!
-            if self.lazy:
+            if config.lazy:
 
                 # Get kwargs
                 res = kwargs.pop("res", 300)
@@ -1113,14 +1098,14 @@ class ReflectedBase(object):
         if animated:
             return image
         else:
-            if self.lazy:
+            if config.lazy:
                 return tt.reshape(image, [res, res])
             else:
                 return image.reshape(res, res)
 
     def show(self, **kwargs):
         # We need to evaluate the variables so we can plot the map!
-        if self.lazy and kwargs.get("image", None) is None:
+        if config.lazy and kwargs.get("image", None) is None:
 
             # Get kwargs
             res = kwargs.get("res", 300)
@@ -1154,9 +1139,7 @@ class ReflectedBase(object):
         return super(ReflectedBase, self).show(**kwargs)
 
 
-def Map(
-    ydeg=0, udeg=0, nw=None, rv=False, reflected=False, lazy=True, quiet=False
-):
+def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, quiet=False):
     """A generic ``starry`` surface map.
 
     This function is a class factory that returns an instance of either
@@ -1179,15 +1162,6 @@ def Map(
             for modeling the Rossiter-McLaughlin effect. Defaults to False.
         reflected (bool, optional): If True, models light curves in reflected
             light. Defaults to False.
-        lazy (bool, optional): Perform all calculations lazily? Defaults to 
-            True, in which case all attributes and method return values are
-            unevaluated ``theano`` nodes. This is particularly useful for
-            model building and integration with ``pymc3``. In lazy mode,
-            call the ``.eval()`` method on any ``theano`` node to compute
-            and return its numerical value. If ``lazy`` is set to False, 
-            ``starry`` will automatically compile methods called by the user,
-            and all methods will return numerical values as in the previous
-            version of the code.
         quiet (bool, optional): Suppress all logging messages? 
             Defaults to False.
     """
@@ -1203,7 +1177,7 @@ def Map(
 
     # Default map base
     Bases = (YlmBase, MapBase)
-    kwargs = dict(lazy=lazy, quiet=quiet)
+    kwargs = dict(quiet=quiet)
 
     # Radial velocity mode?
     if rv:

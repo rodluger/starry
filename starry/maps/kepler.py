@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
+from .. import config
 from .maps import MapBase
-from ..ops import to_tensor
+from ..ops import to_tensor, autocompile, MapVector, vectorize
 import numpy as np
-from astropy import units
+from astropy import units, constants
 from inspect import getmro
 import theano.tensor as tt
 
@@ -15,6 +16,9 @@ try:
         exoplanet = None
 except ModuleNotFoundError:
     exoplanet = None
+
+
+G_grav = constants.G.to(units.R_sun ** 3 / units.M_sun / units.day ** 2).value
 
 
 __all__ = ["Primary", "Secondary", "System"]
@@ -132,7 +136,6 @@ class Body(object):
     @r.setter
     def r(self, value):
         self._r = self.cast(value * self._length_factor)
-        self._update_orbit()
 
     @property
     def m(self):
@@ -142,7 +145,6 @@ class Body(object):
     @m.setter
     def m(self, value):
         self._m = self.cast(value * self._mass_factor)
-        self._update_orbit()
 
     @property
     def prot(self):
@@ -152,7 +154,6 @@ class Body(object):
     @prot.setter
     def prot(self, value):
         self._prot = self.cast(value * self._time_factor)
-        self._update_orbit()
 
     @property
     def t0(self):
@@ -163,7 +164,6 @@ class Body(object):
     @t0.setter
     def t0(self, value):
         self._t0 = self.cast(value * self._time_factor)
-        self._update_orbit()
 
     @property
     def L(self):
@@ -174,15 +174,8 @@ class Body(object):
     def L(self, value):
         self._map.L = value
 
-    @property
-    def lazy(self):
-        return self._map.lazy
-
     def cast(self, *args, **kwargs):
         return self._map.cast(*args, **kwargs)
-
-    def _update_orbit(self):
-        pass
 
 
 class Primary(Body):
@@ -215,7 +208,7 @@ class Secondary(Body):
         .. note:: 
             Setting this value overrides the value of :py:attr:`a`.
         """
-        if self._porb is None:
+        if self._porb == 0.0:
             return None
         else:
             return self._porb / self._time_factor
@@ -223,8 +216,7 @@ class Secondary(Body):
     @porb.setter
     def porb(self, value):
         self._porb = self.cast(value * self._time_factor)
-        self._a = None
-        self._update_orbit()
+        self._a = 0.0
 
     @property
     def a(self):
@@ -233,7 +225,7 @@ class Secondary(Body):
         .. note:: 
             Setting this value overrides the value of :py:attr:`porb`.
         """
-        if self._a is None:
+        if self._a == 0.0:
             return None
         else:
             return self._a / self._length_factor
@@ -241,8 +233,7 @@ class Secondary(Body):
     @a.setter
     def a(self, value):
         self._a = self.cast(value * self._length_factor)
-        self._porb = None
-        self._update_orbit()
+        self._porb = 0.0
 
     @property
     def ecc(self):
@@ -252,7 +243,6 @@ class Secondary(Body):
     @ecc.setter
     def ecc(self, value):
         self._ecc = value
-        self._update_orbit()
 
     @property
     def w(self):
@@ -262,7 +252,6 @@ class Secondary(Body):
     @w.setter
     def w(self, value):
         self._w = self.cast(value * self._angle_factor)
-        self._update_orbit()
 
     @property
     def omega(self):
@@ -281,7 +270,6 @@ class Secondary(Body):
     @Omega.setter
     def Omega(self, value):
         self._Omega = self.cast(value * self._angle_factor)
-        self._update_orbit()
 
     @property
     def inc(self):
@@ -292,7 +280,6 @@ class Secondary(Body):
     @inc.setter
     def inc(self, value):
         self._inc = self.cast(value * self._angle_factor)
-        self._update_orbit()
 
 
 class System(object):
@@ -312,19 +299,10 @@ class System(object):
             assert (
                 type(sec) is Secondary
             ), "Argument `*secondaries` must be a sequence of `Secondary` instances."
-            assert (
-                sec.lazy == self._primary.lazy
-            ), "Mixing `lazy` and non-`lazy` bodies in a `System` class is not supported."
         self._secondaries = secondaries
 
-        # Instantiate an orbit instance
-        self._update_orbit()
-
-        # Set up callbacks to update the orbit
-        # TODO: ONLY if we're not in a pymc3 model context!!!
-        self._primary._update_orbit = self._update_orbit
-        for sec in self.secondaries:
-            sec._update_orbit = self._update_orbit
+    def cast(self, *args, **kwargs):
+        return self._primary._map.cast(*args, **kwargs)
 
     @property
     def time_unit(self):
@@ -347,74 +325,179 @@ class System(object):
         """A list of the secondary (orbiting) object(s) in the Keplerian system."""
         return self._secondaries
 
-    def _update_orbit(self):
-        period = [sec._porb for sec in self._secondaries]
-        if None in period:
-            period = None
-        a = [sec._a for sec in self._secondaries]
-        if None in a:
-            a = None
-        if period is None and a is None:
-            raise ValueError(
-                "Please provide *either* periods or semi-major axes for all "
-                "secondary instances. Mixing values is not supported."
-            )
-        self._orbit = exoplanet.orbits.KeplerianOrbit(
-            period=period,
-            a=a,
-            t0=[sec._t0 for sec in self._secondaries],
-            incl=[sec._inc for sec in self._secondaries],
-            ecc=[sec._ecc for sec in self._secondaries],
-            omega=[sec._w for sec in self._secondaries],
-            Omega=[sec._Omega for sec in self._secondaries],
-            m_planet=[sec._m for sec in self._secondaries],
-            m_star=self._primary._m,
-            r_star=self._primary._r,
-            m_planet_units=units.Msun,
+    def flux(self, t):
+
+        if config.lazy:
+            make_array = tt.as_tensor_variable
+        else:
+            make_array = np.array
+        return self._flux(
+            make_array(t) * self._time_factor,
+            self._primary._r,
+            self._primary._m,
+            self._primary._prot,
+            self._primary._t0,
+            self._primary._map.L,
+            self._primary._map._inc,
+            self._primary._map._obl,
+            self._primary._map._y,
+            self._primary._map._u,
+            self._primary._map._f,
+            make_array([sec._r for sec in self._secondaries]),
+            make_array([sec._m for sec in self._secondaries]),
+            make_array([sec._prot for sec in self._secondaries]),
+            make_array([sec._t0 for sec in self._secondaries]),
+            make_array([sec._porb for sec in self._secondaries]),
+            make_array([sec._a for sec in self._secondaries]),
+            make_array([sec._ecc for sec in self._secondaries]),
+            make_array([sec._w for sec in self._secondaries]),
+            make_array([sec._Omega for sec in self._secondaries]),
+            make_array([sec._inc for sec in self._secondaries]),
+            make_array([sec._map.L for sec in self._secondaries]),
+            make_array([sec._map._inc for sec in self._secondaries]),
+            make_array([sec._map._obl for sec in self._secondaries]),
+            make_array([sec._map._y for sec in self._secondaries]),
+            make_array([sec._map._u for sec in self._secondaries]),
+            make_array([sec._map._f for sec in self._secondaries]),
         )
 
-    # TODO: autocompile!
-    # TODO: Make this work when lazy is False
-    def flux(self, t):
-        """Compute the system flux at time `t` in units of :py:attr:`time_unit`."""
+    @autocompile(
+        "flux",
+        tt.dvector(),  # t
+        # -- primary --
+        tt.dscalar(),  # r
+        tt.dscalar(),  # m
+        tt.dscalar(),  # prot
+        tt.dscalar(),  # t0
+        tt.dscalar(),  # L; this is a vector if `nw` > 1
+        tt.dscalar(),  # inc
+        tt.dscalar(),  # obl
+        tt.dvector(),  # y; make this work for `nw` > 1
+        tt.dvector(),  # u
+        tt.dvector(),  # f
+        # -- secondaries --
+        tt.dvector(),  # r
+        tt.dvector(),  # m
+        tt.dvector(),  # prot
+        tt.dvector(),  # t0
+        tt.dvector(),  # porb
+        tt.dvector(),  # a
+        tt.dvector(),  # ecc
+        tt.dvector(),  # w
+        tt.dvector(),  # Omega
+        tt.dvector(),  # iorb
+        tt.dvector(),  # L; this is a matrix if `nw` > 1
+        tt.dvector(),  # inc
+        tt.dvector(),  # obl
+        tt.dmatrix(),  # y; make this work for `nw` > 1
+        tt.dmatrix(),  # u
+        tt.dmatrix(),  # f
+    )
+    def _flux(
+        self,
+        t,
+        pri_r,
+        pri_m,
+        pri_prot,
+        pri_t0,
+        pri_L,
+        pri_inc,
+        pri_obl,
+        pri_y,
+        pri_u,
+        pri_f,
+        sec_r,
+        sec_m,
+        sec_prot,
+        sec_t0,
+        sec_porb,
+        sec_a,
+        sec_ecc,
+        sec_w,
+        sec_Omega,
+        sec_iorb,
+        sec_L,
+        sec_inc,
+        sec_obl,
+        sec_y,
+        sec_u,
+        sec_f,
+    ):
         # Get all rotational phases
-        theta_pri = (
+        theta_pri = (2 * np.pi) / pri_prot * (t - pri_t0)
+        theta_sec = (
             (2 * np.pi)
-            / self._primary._angle_factor
-            / self._primary._prot
-            * (self._primary.cast(t) * self._time_factor - self._primary._t0)
-        )
-        theta_sec = tt.as_tensor_variable(
-            [
-                (2 * np.pi)
-                / sec._angle_factor
-                / sec._prot
-                * (sec.cast(t) * self._time_factor - sec._t0)
-                for sec in self._secondaries
-            ]
+            / tt.shape_padright(sec_prot)
+            * (tt.shape_padleft(t) - tt.shape_padright(sec_t0))
         )
 
         # Compute all the phase curves
-        phase_pri = self._primary.map.flux(theta=theta_pri)
+        phase_pri = pri_L * self._primary.map.ops.flux(
+            theta_pri,
+            tt.zeros_like(t),
+            tt.zeros_like(t),
+            tt.zeros_like(t),
+            to_tensor(0.0),
+            pri_inc,
+            pri_obl,
+            pri_y,
+            pri_u,
+            pri_f,
+            no_compile=True,
+        )
         phase_sec = tt.as_tensor_variable(
             [
-                sec.map.flux(theta=theta_sec[i])
+                sec_L[i]
+                * sec.map.ops.flux(
+                    theta_sec[i],
+                    tt.zeros_like(t),
+                    tt.zeros_like(t),
+                    tt.zeros_like(t),
+                    to_tensor(0.0),
+                    sec_inc[i],
+                    sec_obl[i],
+                    sec_y[i],
+                    sec_u[i],
+                    sec_f[i],
+                    no_compile=True,
+                )
                 for i, sec in enumerate(self._secondaries)
             ]
         )
 
-        # Get the positions of all the bodies
-        x, y, z = self._orbit.get_relative_position(
-            to_tensor(t) * self._time_factor
+        # Compute any occultations
+        occ_pri = tt.zeros_like(t)
+        occ_sec = tt.zeros_like(phase_sec)
+
+        # Compute the period if we were given a semi-major axis
+        sec_porb = tt.switch(
+            tt.eq(sec_porb, 0.0),
+            (G_grav * (pri_m + sec_m) * sec_porb ** 2 / (4 * np.pi ** 2))
+            ** (1.0 / 3),
+            sec_porb,
         )
 
+        # Compute the relative positions of all bodies
+        orbit = exoplanet.orbits.KeplerianOrbit(
+            period=sec_porb,
+            t0=sec_t0,
+            incl=sec_iorb,
+            ecc=sec_ecc,
+            omega=sec_w,
+            Omega=sec_Omega,
+            m_planet=sec_m,
+            m_star=pri_m,
+            r_star=pri_r,
+            m_planet_units=units.Msun,
+        )
+        x, y, z = orbit.get_relative_position(t)
+
         # Compute transits across the primary
-        occ_pri = tt.zeros_like(phase_pri)
-        for i, sec in enumerate(self._secondaries):
-            xo = -x[:, i] / self._primary._r
-            yo = -y[:, i] / self._primary._r
-            zo = -z[:, i] / self._primary._r
-            ro = sec._r / self._primary._r
+        for i, _ in enumerate(self._secondaries):
+            xo = -x[:, i] / pri_r
+            yo = -y[:, i] / pri_r
+            zo = -z[:, i] / pri_r
+            ro = sec_r[i] / pri_r
             b = tt.sqrt(xo ** 2 + yo ** 2)
             b_occ = tt.invert(
                 tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
@@ -423,24 +506,29 @@ class System(object):
             occ_pri = tt.set_subtensor(
                 occ_pri[idx],
                 occ_pri[idx]
-                + self._primary.map.flux(
-                    theta=theta_pri[idx],
-                    xo=xo[idx],
-                    yo=yo[idx],
-                    zo=zo[idx],
-                    ro=ro,
+                + pri_L
+                * self._primary.map.ops.flux(
+                    theta_pri[idx],
+                    xo[idx],
+                    yo[idx],
+                    zo[idx],
+                    ro,
+                    pri_inc,
+                    pri_obl,
+                    pri_y,
+                    pri_u,
+                    pri_f,
+                    no_compile=True,
                 )
                 - phase_pri[idx],
             )
 
         # Compute occultations by the primary
-        occ_sec = tt.zeros_like(phase_sec)
-
         for i, sec in enumerate(self._secondaries):
-            xo = x[:, i] / sec._r
-            yo = y[:, i] / sec._r
-            zo = z[:, i] / sec._r
-            ro = self._primary._r / sec._r
+            xo = x[:, i] / sec_r[i]
+            yo = y[:, i] / sec_r[i]
+            zo = z[:, i] / sec_r[i]
+            ro = pri_r / sec_r[i]
             b = tt.sqrt(xo ** 2 + yo ** 2)
             b_occ = tt.invert(
                 tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
@@ -449,15 +537,24 @@ class System(object):
             occ_sec = tt.set_subtensor(
                 occ_sec[i, idx],
                 occ_sec[i, idx]
-                + sec.map.flux(
-                    theta=theta_sec[i, idx],
-                    xo=xo[idx],
-                    yo=yo[idx],
-                    zo=zo[idx],
-                    ro=ro,
+                + sec_L[i]
+                * sec.map.ops.flux(
+                    theta_sec[i, idx],
+                    xo[idx],
+                    yo[idx],
+                    zo[idx],
+                    ro,
+                    sec_inc[i],
+                    sec_obl[i],
+                    sec_y[i],
+                    sec_u[i],
+                    sec_f[i],
+                    no_compile=True,
                 )
                 - phase_sec[i, idx],
             )
+
+        # TODO: secondary-secondary occultations
 
         # Sum it all up and return
         flux_total = (

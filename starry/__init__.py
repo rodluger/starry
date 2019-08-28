@@ -19,8 +19,4 @@ if not __STARRY_SETUP__:
 
     # Import the main interface
     from .maps import Map, Primary, Secondary, System
-
-    # Force double precision
-    import theano.tensor as tt
-
-    tt.config.floatX = "float64"
+    from . import config

@@ -1,3 +1,4 @@
+from .. import config
 from .. import _c_ops
 from .integration import sTOp, rTReflectedOp
 from .rotation import dotRxyOp, dotRxyTOp, dotRzOp, rotateOp
@@ -22,7 +23,7 @@ class Ops(object):
 
     """
 
-    def __init__(self, ydeg, udeg, fdeg, nw, lazy, quiet=False):
+    def __init__(self, ydeg, udeg, fdeg, nw, quiet=False):
         """
 
         """
@@ -40,8 +41,7 @@ class Ops(object):
         self.filter = (fdeg > 0) or (udeg > 0)
         self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
         self.nw = nw
-        self.lazy = lazy
-        if self.lazy:
+        if config.lazy:
             self.cast = to_tensor
         else:
             self.cast = to_array

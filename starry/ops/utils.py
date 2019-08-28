@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from .. import config
 from inspect import getmro
 import theano
 import theano.tensor as tt
@@ -8,27 +9,30 @@ from theano.tensor.extra_ops import CpuContiguous
 from theano.configparser import change_flags
 from theano import gof
 import logging
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
 
-__all__ = ["logger",
-           "STARRY_ORTHOGRAPHIC_PROJECTION",
-           "STARRY_RECTANGULAR_PROJECTION",
-           "MapVector",
-           "autocompile",
-           "get_projection",
-           "is_theano",
-           "to_tensor",
-           "as_contiguous_variable",
-           "to_array",
-           "vectorize",
-           "atleast_2d",
-           "cross",
-           "RAxisAngle",
-           "VectorRAxisAngle",
-           "CheckBoundsOp",
-           "RaiseValuerErrorIfOp"]
+__all__ = [
+    "logger",
+    "STARRY_ORTHOGRAPHIC_PROJECTION",
+    "STARRY_RECTANGULAR_PROJECTION",
+    "MapVector",
+    "autocompile",
+    "get_projection",
+    "is_theano",
+    "to_tensor",
+    "as_contiguous_variable",
+    "to_array",
+    "vectorize",
+    "atleast_2d",
+    "cross",
+    "RAxisAngle",
+    "VectorRAxisAngle",
+    "CheckBoundsOp",
+    "RaiseValuerErrorIfOp",
+]
 
 
 # Constants
@@ -42,6 +46,7 @@ class CompileLogMessage:
     being compiled and print `Done` when finished.
 
     """
+
     def __init__(self, name):
         self.name = name
 
@@ -58,6 +63,7 @@ class DynamicType(object):
     """
 
     """
+
     def __call__(self, *args):
         raise NotImplementedError("This type must be subclassed.")
 
@@ -66,6 +72,7 @@ class MapVector(DynamicType):
     """
 
     """
+
     def __call__(self, ops):
         if ops.nw is None:
             return tt.dvector()
@@ -79,6 +86,7 @@ class autocompile(object):
     if the user disables lazy evaluation.
 
     """
+
     def __init__(self, name, *args):
         """
         Initialize the decorator.
@@ -97,12 +105,13 @@ class autocompile(object):
         Wrap the method `func` and return a compiled version if `lazy==False`.
         
         """
+
         def wrapper(instance, *args, force_compile=False, no_compile=False):
             """
             The magic happens in here.
 
             """
-            if (not no_compile) and ((not instance.lazy) or (force_compile)):
+            if (not no_compile) and ((not config.lazy) or (force_compile)):
                 # Compile the function if needed & cache it
                 if not hasattr(instance, self.compiled_name):
 
@@ -115,14 +124,14 @@ class autocompile(object):
                             cur_args[i] = arg(instance)
 
                     with CompileLogMessage(self.name):
-                        with change_flags(compute_test_value='off'):
+                        with change_flags(compute_test_value="off"):
                             compiled_func = theano.function(
-                                [*cur_args], 
-                                func(instance, *cur_args), 
-                                on_unused_input='ignore'
+                                [*cur_args],
+                                func(instance, *cur_args),
+                                on_unused_input="ignore",
                             )
                         setattr(instance, self.compiled_name, compiled_func)
-                
+
                 # Return the compiled version
                 return getattr(instance, self.compiled_name)(*args)
             else:
@@ -168,7 +177,9 @@ def to_tensor(*args):
     if len(args) == 1:
         return tt.as_tensor_variable(args[0]).astype(tt.config.floatX)
     else:
-        return [tt.as_tensor_variable(arg).astype(tt.config.floatX) for arg in args]
+        return [
+            tt.as_tensor_variable(arg).astype(tt.config.floatX) for arg in args
+        ]
 
 
 def as_contiguous_variable(x):
@@ -202,7 +213,15 @@ def vectorize(*args):
     else:
         args = [np.atleast_1d(arg) for arg in args]
         size = np.max([arg.shape[0] for arg in args])
-        args = tuple([arg * np.ones((size,) + tuple(np.ones(len(arg.shape) - 1, dtype=int))) for arg in args])
+        args = tuple(
+            [
+                arg
+                * np.ones(
+                    (size,) + tuple(np.ones(len(arg.shape) - 1, dtype=int))
+                )
+                for arg in args
+            ]
+        )
     if len(args) == 1:
         return args[0]
     else:
@@ -225,9 +244,7 @@ def cross(x, y):
     eijk = np.zeros((3, 3, 3))
     eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
     eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
-    result = tt.as_tensor_variable(
-        tt.dot(tt.dot(eijk, y), x)
-    )
+    result = tt.as_tensor_variable(tt.dot(tt.dot(eijk, y), x))
     return result
 
 
@@ -240,17 +257,22 @@ def RAxisAngle(axis=[0, 1, 0], theta=0):
     cost = tt.cos(theta)
     sint = tt.sin(theta)
 
-    return tt.reshape(tt.as_tensor_variable([
-        cost + axis[0] * axis[0] * (1 - cost),
-        axis[0] * axis[1] * (1 - cost) - axis[2] * sint,
-        axis[0] * axis[2] * (1 - cost) + axis[1] * sint,
-        axis[1] * axis[0] * (1 - cost) + axis[2] * sint,
-        cost + axis[1] * axis[1] * (1 - cost),
-        axis[1] * axis[2] * (1 - cost) - axis[0] * sint,
-        axis[2] * axis[0] * (1 - cost) - axis[1] * sint,
-        axis[2] * axis[1] * (1 - cost) + axis[0] * sint,
-        cost + axis[2] * axis[2] * (1 - cost)
-    ]), [3, 3])
+    return tt.reshape(
+        tt.as_tensor_variable(
+            [
+                cost + axis[0] * axis[0] * (1 - cost),
+                axis[0] * axis[1] * (1 - cost) - axis[2] * sint,
+                axis[0] * axis[2] * (1 - cost) + axis[1] * sint,
+                axis[1] * axis[0] * (1 - cost) + axis[2] * sint,
+                cost + axis[1] * axis[1] * (1 - cost),
+                axis[1] * axis[2] * (1 - cost) - axis[0] * sint,
+                axis[2] * axis[0] * (1 - cost) - axis[1] * sint,
+                axis[2] * axis[1] * (1 - cost) + axis[0] * sint,
+                cost + axis[2] * axis[2] * (1 - cost),
+            ]
+        ),
+        [3, 3],
+    )
 
 
 def VectorRAxisAngle(axis=[0, 1, 0], theta=0):
@@ -266,6 +288,7 @@ class CheckBoundsOp(tt.Op):
     """
 
     """
+
     def __init__(self, lower=-np.inf, upper=np.inf, name=None):
         self.lower = lower
         self.upper = upper
@@ -296,8 +319,7 @@ class CheckBoundsOp(tt.Op):
                 sign = ">"
                 bound = self.upper
             raise ValueError(
-                "%s out of bounds: %f %s %f" % 
-                (self.name, value, sign, bound)
+                "%s out of bounds: %f %s %f" % (self.name, value, sign, bound)
             )
 
 
@@ -305,6 +327,7 @@ class RaiseValuerErrorIfOp(tt.Op):
     """
 
     """
+
     def __init__(self, message=None):
         self.message = message
 
@@ -321,7 +344,7 @@ class RaiseValuerErrorIfOp(tt.Op):
         outputs[0][0] = np.array(0.0)
         if inputs[0]:
             raise ValueError(self.message)
-    
+
     def grad(self, inputs, gradients):
         # TODO: Is this actually necessary?
         return [inputs[0] * 0.0]
