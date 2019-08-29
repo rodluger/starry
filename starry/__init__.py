@@ -28,7 +28,9 @@ if not __STARRY_SETUP__:
     config = Config()
 
     # Import the main interface
-    from .maps import Map, Primary, Secondary, System
+    from . import indices, kepler, maps, sht, utils
+    from .maps import Map
+    from .kepler import Primary, Secondary, System
 
     # Clean up the namespace
     del tt

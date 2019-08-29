@@ -18,7 +18,7 @@ __all__ = [
     "logger",
     "STARRY_ORTHOGRAPHIC_PROJECTION",
     "STARRY_RECTANGULAR_PROJECTION",
-    "MapVector",
+    "DynamicType",
     "autocompile",
     "get_projection",
     "is_theano",
@@ -27,6 +27,8 @@ __all__ = [
     "to_array",
     "vectorize",
     "atleast_2d",
+    "reshape",
+    "make_array_or_tensor",
     "cross",
     "RAxisAngle",
     "VectorRAxisAngle",
@@ -64,20 +66,11 @@ class DynamicType(object):
 
     """
 
-    def __call__(self, *args):
-        raise NotImplementedError("This type must be subclassed.")
+    def __init__(self, code):
+        self._code = code
 
-
-class MapVector(DynamicType):
-    """
-
-    """
-
-    def __call__(self, ops):
-        if ops.nw is None:
-            return tt.dvector()
-        else:
-            return tt.dmatrix()
+    def __call__(self, instance):
+        return eval(self._code)
 
 
 class autocompile(object):
@@ -233,6 +226,20 @@ def atleast_2d(arg):
         return arg * tt.ones((1, 1))
     else:
         return np.atleast_2d(arg)
+
+
+def reshape(x, shape):
+    if is_theano(x):
+        return tt.reshape(x, shape)
+    else:
+        return np.reshape(x, shape)
+
+
+def make_array_or_tensor(x):
+    if config.lazy:
+        return tt.as_tensor_variable(x)
+    else:
+        return np.array(x)
 
 
 def cross(x, y):

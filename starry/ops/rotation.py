@@ -9,7 +9,6 @@ __all__ = ["dotRxyOp", "dotRxyTOp", "dotRzOp", "rotateOp"]
 
 
 class rotateOp(tt.Op):
-
     def __init__(self, func, nw):
         self.func = func
         self.nw = nw
@@ -23,7 +22,7 @@ class rotateOp(tt.Op):
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return shapes[-1],
+        return (shapes[-1],)
 
     def perform(self, node, inputs, outputs):
         outputs[0][0] = self.func(*inputs)
@@ -32,7 +31,6 @@ class rotateOp(tt.Op):
 
 
 class dotRxyOp(tt.Op):
-
     def __init__(self, func):
         self.func = func
         self._grad_op = dotRxyGradientOp(self)
@@ -43,7 +41,7 @@ class dotRxyOp(tt.Op):
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return shapes[0],
+        return (shapes[0],)
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -58,7 +56,6 @@ class dotRxyOp(tt.Op):
 
 
 class dotRxyGradientOp(tt.Op):
-
     def __init__(self, base_op):
         self.base_op = base_op
 
@@ -78,7 +75,6 @@ class dotRxyGradientOp(tt.Op):
 
 
 class dotRxyTOp(tt.Op):
-
     def __init__(self, func):
         self.func = func
         self._grad_op = dotRxyTGradientOp(self)
@@ -89,7 +85,7 @@ class dotRxyTOp(tt.Op):
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return shapes[0],
+        return (shapes[0],)
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -104,7 +100,6 @@ class dotRxyTOp(tt.Op):
 
 
 class dotRxyTGradientOp(tt.Op):
-
     def __init__(self, base_op):
         self.base_op = base_op
 
@@ -124,7 +119,6 @@ class dotRxyTGradientOp(tt.Op):
 
 
 class dotRzOp(tt.Op):
-
     def __init__(self, func):
         self.func = func
         self._grad_op = dotRzGradientOp(self)
@@ -150,7 +144,6 @@ class dotRzOp(tt.Op):
 
 
 class dotRzGradientOp(tt.Op):
-
     def __init__(self, base_op):
         self.base_op = base_op
 

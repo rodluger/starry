@@ -2,8 +2,8 @@
 import numpy as np
 
 
-__all__ = ["get_ortho_latitude_lines", 
-           "get_ortho_longitude_lines"]
+__all__ = ["get_ortho_latitude_lines", "get_ortho_longitude_lines"]
+
 
 def RAxisAngle(axis=[0, 1, 0], theta=0):
     """
@@ -12,20 +12,23 @@ def RAxisAngle(axis=[0, 1, 0], theta=0):
     cost = np.cos(theta)
     sint = np.sin(theta)
 
-    return np.reshape([
-        cost + axis[0] * axis[0] * (1 - cost),
-        axis[0] * axis[1] * (1 - cost) - axis[2] * sint,
-        axis[0] * axis[2] * (1 - cost) + axis[1] * sint,
-        axis[1] * axis[0] * (1 - cost) + axis[2] * sint,
-        cost + axis[1] * axis[1] * (1 - cost),
-        axis[1] * axis[2] * (1 - cost) - axis[0] * sint,
-        axis[2] * axis[0] * (1 - cost) - axis[1] * sint,
-        axis[2] * axis[1] * (1 - cost) + axis[0] * sint,
-        cost + axis[2] * axis[2] * (1 - cost)
-    ], [3, 3])
+    return np.reshape(
+        [
+            cost + axis[0] * axis[0] * (1 - cost),
+            axis[0] * axis[1] * (1 - cost) - axis[2] * sint,
+            axis[0] * axis[2] * (1 - cost) + axis[1] * sint,
+            axis[1] * axis[0] * (1 - cost) + axis[2] * sint,
+            cost + axis[1] * axis[1] * (1 - cost),
+            axis[1] * axis[2] * (1 - cost) - axis[0] * sint,
+            axis[2] * axis[0] * (1 - cost) - axis[1] * sint,
+            axis[2] * axis[1] * (1 - cost) + axis[0] * sint,
+            cost + axis[2] * axis[2] * (1 - cost),
+        ],
+        [3, 3],
+    )
 
 
-def get_ortho_latitude_lines(inc=np.pi/2, obl=0, dlat=np.pi/6, npts=1000):
+def get_ortho_latitude_lines(inc=np.pi / 2, obl=0, dlat=np.pi / 6, npts=1000):
     """
 
     """
@@ -37,7 +40,7 @@ def get_ortho_latitude_lines(inc=np.pi/2, obl=0, dlat=np.pi/6, npts=1000):
 
     # Latitude lines
     res = []
-    latlines = np.arange(-np.pi/2, np.pi/2, dlat)[1:]
+    latlines = np.arange(-np.pi / 2, np.pi / 2, dlat)[1:]
     for lat in latlines:
 
         # Figure out the equation of the ellipse
@@ -49,8 +52,8 @@ def get_ortho_latitude_lines(inc=np.pi/2, obl=0, dlat=np.pi/6, npts=1000):
         y2 = y0 + b * np.sqrt(1 - (x / a) ** 2)
 
         # Mask lines on the backside
-        if (si != 0):
-            if inc > np.pi/2:
+        if si != 0:
+            if inc > np.pi / 2:
                 ymax = y1[np.argmax(x ** 2 + y1 ** 2)]
                 y1[y1 < ymax] = np.nan
                 ymax = y2[np.argmax(x ** 2 + y2 ** 2)]
@@ -70,8 +73,9 @@ def get_ortho_latitude_lines(inc=np.pi/2, obl=0, dlat=np.pi/6, npts=1000):
     return res
 
 
-def get_ortho_longitude_lines(inc=np.pi/2, obl=0, theta=0, 
-                              dlon=np.pi/6, npts=1000):
+def get_ortho_longitude_lines(
+    inc=np.pi / 2, obl=0, theta=0, dlon=np.pi / 6, npts=1000
+):
     """
 
     """
@@ -91,7 +95,7 @@ def get_ortho_longitude_lines(inc=np.pi/2, obl=0, theta=0,
         offsets = np.arange(-np.pi / 2, np.pi / 2, dlon)
     else:
         offsets = np.arange(0, 2 * np.pi, dlon)
-    
+
     for offset in offsets:
 
         # Super hacky, sorry. This can probably
@@ -120,21 +124,21 @@ def get_ortho_longitude_lines(inc=np.pi/2, obl=0, theta=0,
             if equator_on:
 
                 pass
-            
+
             else:
 
                 # Rotate by the inclination
                 R = RAxisAngle([1, 0, 0], np.pi / 2 - inc)
-                v = np.vstack((x.reshape(1, -1), 
-                               y.reshape(1, -1), 
-                               z.reshape(1, -1)))
+                v = np.vstack(
+                    (x.reshape(1, -1), y.reshape(1, -1), z.reshape(1, -1))
+                )
                 x, y, _ = np.dot(R, v)
 
                 # Mask lines on the backside
-                if (si != 0):
-                    if inc < np.pi/2:
+                if si != 0:
+                    if inc < np.pi / 2:
                         imax = np.argmax(x ** 2 + y ** 2)
-                        y[:imax + 1] = np.nan
+                        y[: imax + 1] = np.nan
                     else:
                         imax = np.argmax(x ** 2 + y ** 2)
                         y[imax:] = np.nan
@@ -143,5 +147,5 @@ def get_ortho_longitude_lines(inc=np.pi/2, obl=0, theta=0,
             xr = -x * co + y * so
             yr = x * so + y * co
             res.append((xr, yr))
-    
+
     return res

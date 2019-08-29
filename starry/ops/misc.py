@@ -9,7 +9,6 @@ __all__ = ["spotYlmOp", "pTOp"]
 
 
 class spotYlmOp(tt.Op):
-
     def __init__(self, func, ydeg, nw):
         self.func = func
         self.Ny = (ydeg + 1) ** 2
@@ -36,7 +35,6 @@ class spotYlmOp(tt.Op):
 
 
 class pTOp(tt.Op):
-
     def __init__(self, func, deg):
         self.func = func
         self.deg = deg
@@ -59,7 +57,6 @@ class pTOp(tt.Op):
 
 
 class pTGradientOp(tt.Op):
-
     def __init__(self, base_op):
         self.base_op = base_op
 
@@ -72,7 +69,7 @@ class pTGradientOp(tt.Op):
             for m in range(-l, l + 1):
                 mu = l - m
                 nu = l + m
-                if (nu % 2 == 0):
+                if nu % 2 == 0:
                     if mu > 0:
                         self.xf[n] = mu // 2
                     if nu > 0:

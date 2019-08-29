@@ -9,7 +9,6 @@ __all__ = ["FOp"]
 
 
 class FOp(tt.Op):
-
     def __init__(self, func, N, Ny):
         self.func = func
         self.N = N
@@ -37,7 +36,6 @@ class FOp(tt.Op):
 
 
 class FGradientOp(tt.Op):
-
     def __init__(self, base_op):
         self.base_op = base_op
 

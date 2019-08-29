@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from .. import config
-from ..ops import (
+from . import config
+from .ops import (
     Ops,
     OpsReflected,
     OpsRV,
@@ -8,13 +8,13 @@ from ..ops import (
     atleast_2d,
     get_projection,
     is_theano,
+    reshape,
     STARRY_RECTANGULAR_PROJECTION,
 )
-from . import indices
+from .indices import get_ylm_inds, get_ul_inds, get_ylmw_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
 import numpy as np
-import theano.tensor as tt
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
@@ -207,17 +207,15 @@ class YlmBase(object):
     def __getitem__(self, idx):
         if isinstance(idx, (int, np.int, slice)):
             # User is accessing a limb darkening index
-            inds = indices.get_ul_inds(self.udeg, idx)
+            inds = get_ul_inds(self.udeg, idx)
             return self._u[inds]
         elif isinstance(idx, tuple) and len(idx) == 2 and self.nw is None:
             # User is accessing a Ylm index
-            inds = indices.get_ylm_inds(self.ydeg, idx[0], idx[1])
+            inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
             return self._y[inds]
         elif isinstance(idx, tuple) and len(idx) == 3 and self.nw:
             # User is accessing a Ylmw index
-            inds = indices.get_ylmw_inds(
-                self.ydeg, self.nw, idx[0], idx[1], idx[2]
-            )
+            inds = get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
             return self._y[inds]
         else:
             raise ValueError("Invalid map index.")
@@ -225,7 +223,7 @@ class YlmBase(object):
     def __setitem__(self, idx, val):
         if isinstance(idx, (int, np.int, slice)):
             # User is accessing a limb darkening index
-            inds = indices.get_ul_inds(self.udeg, idx)
+            inds = get_ul_inds(self.udeg, idx)
             if 0 in inds:
                 raise ValueError("The u_0 coefficient cannot be set.")
             if config.lazy:
@@ -234,7 +232,7 @@ class YlmBase(object):
                 self._u[inds] = val
         elif isinstance(idx, tuple) and len(idx) == 2 and self.nw is None:
             # User is accessing a Ylm index
-            inds = indices.get_ylm_inds(self.ydeg, idx[0], idx[1])
+            inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
             if 0 in inds:
                 raise ValueError("The Y_{0,0} coefficient cannot be set.")
             if config.lazy:
@@ -243,9 +241,7 @@ class YlmBase(object):
                 self._y[inds] = val
         elif isinstance(idx, tuple) and len(idx) == 3 and self.nw:
             # User is accessing a Ylmw index
-            inds = indices.get_ylmw_inds(
-                self.ydeg, self.nw, idx[0], idx[1], idx[2]
-            )
+            inds = get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
             if 0 in inds[0]:
                 raise ValueError("The Y_{0,0} coefficients cannot be set.")
             if config.lazy:
@@ -361,10 +357,7 @@ class YlmBase(object):
                 x, y, z = vectorize(*self.cast(x, y, z))
             else:
                 x, y = vectorize(*self.cast(x, y))
-                if config.lazy:
-                    z = tt.sqrt(1.0 - x ** 2 - y ** 2)
-                else:
-                    z = np.sqrt(1.0 - x ** 2 - y ** 2)
+                z = (1.0 - x ** 2 - y ** 2) ** 0.5
         else:
             lat, lon = vectorize(*self.cast(lat, lon))
             lat *= self._angle_factor
@@ -434,10 +427,7 @@ class YlmBase(object):
                 x, y, z = vectorize(*self.cast(x, y, z))
             else:
                 x, y = vectorize(*self.cast(x, y))
-                if config.lazy:
-                    z = tt.sqrt(1.0 - x ** 2 - y ** 2)
-                else:
-                    z = np.sqrt(1.0 - x ** 2 - y ** 2)
+                z = (1.0 - x ** 2 - y ** 2) ** 0.5
         else:
             lat, lon = vectorize(*self.cast(lat, lon))
             lat *= self._angle_factor
@@ -490,10 +480,7 @@ class YlmBase(object):
         if animated:
             return image
         else:
-            if config.lazy:
-                return tt.reshape(image, [res, res])
-            else:
-                return image.reshape(res, res)
+            return reshape(image, [res, res])
 
     def show(self, **kwargs):
         """
@@ -1098,10 +1085,7 @@ class ReflectedBase(object):
         if animated:
             return image
         else:
-            if config.lazy:
-                return tt.reshape(image, [res, res])
-            else:
-                return image.reshape(res, res)
+            return reshape(image, [res, res])
 
     def show(self, **kwargs):
         # We need to evaluate the variables so we can plot the map!

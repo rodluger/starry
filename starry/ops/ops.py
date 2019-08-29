@@ -11,9 +11,24 @@ import theano.sparse as ts
 from theano.ifelse import ifelse
 import numpy as np
 import logging
+from astropy import units, constants
+
+try:
+    # starry requires exoplanet >= v0.2.0
+    from packaging import version
+    import exoplanet
+
+    if version.parse(exoplanet.__version__) < version.parse("0.2.0"):
+        exoplanet = None
+except ModuleNotFoundError:
+    exoplanet = None
 
 
-__all__ = ["Ops", "OpsReflected", "OpsRV"]
+# Gravitational constant in internal units
+G_grav = constants.G.to(units.R_sun ** 3 / units.M_sun / units.day ** 2).value
+
+
+__all__ = ["Ops", "OpsReflected", "OpsRV", "OpsSystem"]
 
 
 class Ops(object):
@@ -177,7 +192,7 @@ class Ops(object):
         tt.dscalar(),
         tt.dscalar(),
         tt.dscalar(),
-        MapVector(),
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
     )
@@ -209,7 +224,7 @@ class Ops(object):
         tt.dvector(),
         tt.dvector(),
         tt.dvector(),
-        MapVector(),
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
     )
@@ -237,7 +252,7 @@ class Ops(object):
         tt.dvector(),
         tt.dscalar(),
         tt.dscalar(),
-        MapVector(),
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
     )
@@ -357,7 +372,7 @@ class Ops(object):
         xyz = tt.transpose(tt.dot(R, origin))
         return xyz
 
-    @autocompile("rotate", tt.dvector(), tt.dscalar(), MapVector())
+    @autocompile("rotate", tt.dvector(), tt.dscalar(), DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"))
     def rotate(self, u, theta, y):
         """
 
@@ -365,7 +380,7 @@ class Ops(object):
         u /= u.norm(2)
         return self.apply_rotation(u, theta, y)
 
-    @autocompile("align", MapVector(), tt.dvector(), tt.dvector())
+    @autocompile("align", DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"), tt.dvector(), tt.dvector())
     def align(self, y, source, dest):
         """
 
@@ -378,7 +393,7 @@ class Ops(object):
 
     @autocompile(
         "add_spot",
-        MapVector(),
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dscalar(),
         tt.dscalar(),
@@ -479,7 +494,7 @@ class OpsRV(Ops):
         tt.dscalar(),
         tt.dscalar(),
         tt.dscalar(),
-        MapVector(),
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dscalar(),
         tt.dscalar(),
@@ -552,7 +567,7 @@ class OpsReflected(Ops):
         tt.dvector(),
         tt.dvector(),
         tt.dvector(),
-        MapVector(),
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
         tt.dmatrix(),
@@ -660,7 +675,7 @@ class OpsReflected(Ops):
         tt.dscalar(),
         tt.dscalar(),
         tt.dscalar(),
-        MapVector(),
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
         tt.dmatrix(),
@@ -683,7 +698,7 @@ class OpsReflected(Ops):
         tt.dvector(),
         tt.dscalar(),
         tt.dscalar(),
-        MapVector(),
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
         tt.dmatrix(),
@@ -778,3 +793,231 @@ class OpsReflected(Ops):
 
         # We need the shape to be (nframes, npix, npix)
         return tt.reshape(image, [res, res, -1]).dimshuffle(2, 0, 1)
+
+
+class OpsSystem(object):
+    """
+
+    """
+
+    def __init__(self, primary, secondaries, quiet=False):
+        """
+
+        """
+        # Logging
+        if quiet:
+            logger.setLevel(logging.WARNING)
+        else:
+            logger.setLevel(logging.INFO)
+
+        # System members
+        self._primary = primary
+        self._secondaries = secondaries
+        self.nw = self._primary._map.nw
+
+        # Require exoplanet
+        assert exoplanet is not None, "This class requires exoplanet >= 0.2.0."
+
+    @autocompile(
+        "flux",
+        tt.dvector(),  # t
+        # -- primary --
+        tt.dscalar(),  # r
+        tt.dscalar(),  # m
+        tt.dscalar(),  # prot
+        tt.dscalar(),  # t0
+        DynamicType("tt.dscalar() if instance.nw is None else tt.dvector()"), # L
+        tt.dscalar(),  # inc
+        tt.dscalar(),  # obl
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"), # y
+        tt.dvector(),  # u
+        tt.dvector(),  # f
+        # -- secondaries --
+        tt.dvector(),  # r
+        tt.dvector(),  # m
+        tt.dvector(),  # prot
+        tt.dvector(),  # t0
+        tt.dvector(),  # porb
+        tt.dvector(),  # a
+        tt.dvector(),  # ecc
+        tt.dvector(),  # w
+        tt.dvector(),  # Omega
+        tt.dvector(),  # iorb
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"), # L
+        tt.dvector(),  # inc
+        tt.dvector(),  # obl
+        DynamicType("tt.dmatrix() if instance.nw is None else tt.dtensor3()"), # y
+        tt.dmatrix(),  # u
+        tt.dmatrix(),  # f
+    )
+    def _flux(
+        self,
+        t,
+        pri_r,
+        pri_m,
+        pri_prot,
+        pri_t0,
+        pri_L,
+        pri_inc,
+        pri_obl,
+        pri_y,
+        pri_u,
+        pri_f,
+        sec_r,
+        sec_m,
+        sec_prot,
+        sec_t0,
+        sec_porb,
+        sec_a,
+        sec_ecc,
+        sec_w,
+        sec_Omega,
+        sec_iorb,
+        sec_L,
+        sec_inc,
+        sec_obl,
+        sec_y,
+        sec_u,
+        sec_f,
+    ):
+        # Get all rotational phases
+        theta_pri = (2 * np.pi) / pri_prot * (t - pri_t0)
+        theta_sec = (
+            (2 * np.pi)
+            / tt.shape_padright(sec_prot)
+            * (tt.shape_padleft(t) - tt.shape_padright(sec_t0))
+        )
+
+        # Compute all the phase curves
+        phase_pri = pri_L * self._primary.map.ops.flux(
+            theta_pri,
+            tt.zeros_like(t),
+            tt.zeros_like(t),
+            tt.zeros_like(t),
+            to_tensor(0.0),
+            pri_inc,
+            pri_obl,
+            pri_y,
+            pri_u,
+            pri_f,
+            no_compile=True,
+        )
+        phase_sec = tt.as_tensor_variable(
+            [
+                sec_L[i]
+                * sec.map.ops.flux(
+                    theta_sec[i],
+                    tt.zeros_like(t),
+                    tt.zeros_like(t),
+                    tt.zeros_like(t),
+                    to_tensor(0.0),
+                    sec_inc[i],
+                    sec_obl[i],
+                    sec_y[i],
+                    sec_u[i],
+                    sec_f[i],
+                    no_compile=True,
+                )
+                for i, sec in enumerate(self._secondaries)
+            ]
+        )
+
+        # Compute any occultations
+        occ_pri = tt.zeros_like(phase_pri)
+        occ_sec = tt.zeros_like(phase_sec)
+
+        # Compute the period if we were given a semi-major axis
+        sec_porb = tt.switch(
+            tt.eq(sec_porb, 0.0),
+            (G_grav * (pri_m + sec_m) * sec_porb ** 2 / (4 * np.pi ** 2))
+            ** (1.0 / 3),
+            sec_porb,
+        )
+
+        # Compute the relative positions of all bodies
+        orbit = exoplanet.orbits.KeplerianOrbit(
+            period=sec_porb,
+            t0=sec_t0,
+            incl=sec_iorb,
+            ecc=sec_ecc,
+            omega=sec_w,
+            Omega=sec_Omega,
+            m_planet=sec_m,
+            m_star=pri_m,
+            r_star=pri_r,
+            m_planet_units=units.Msun,
+        )
+        x, y, z = orbit.get_relative_position(t)
+
+        # Compute transits across the primary
+        for i, _ in enumerate(self._secondaries):
+            xo = -x[:, i] / pri_r
+            yo = -y[:, i] / pri_r
+            zo = -z[:, i] / pri_r
+            ro = sec_r[i] / pri_r
+            b = tt.sqrt(xo ** 2 + yo ** 2)
+            b_occ = tt.invert(
+                tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
+            )
+            idx = tt.arange(b.shape[0])[b_occ]
+            occ_pri = tt.set_subtensor(
+                occ_pri[idx],
+                occ_pri[idx]
+                + pri_L
+                * self._primary.map.ops.flux(
+                    theta_pri[idx],
+                    xo[idx],
+                    yo[idx],
+                    zo[idx],
+                    ro,
+                    pri_inc,
+                    pri_obl,
+                    pri_y,
+                    pri_u,
+                    pri_f,
+                    no_compile=True,
+                )
+                - phase_pri[idx],
+            )
+
+        # Compute occultations by the primary
+        for i, sec in enumerate(self._secondaries):
+            xo = x[:, i] / sec_r[i]
+            yo = y[:, i] / sec_r[i]
+            zo = z[:, i] / sec_r[i]
+            ro = pri_r / sec_r[i]
+            b = tt.sqrt(xo ** 2 + yo ** 2)
+            b_occ = tt.invert(
+                tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
+            )
+            idx = tt.arange(b.shape[0])[b_occ]
+            occ_sec = tt.set_subtensor(
+                occ_sec[i, idx],
+                occ_sec[i, idx]
+                + sec_L[i]
+                * sec.map.ops.flux(
+                    theta_sec[i, idx],
+                    xo[idx],
+                    yo[idx],
+                    zo[idx],
+                    ro,
+                    sec_inc[i],
+                    sec_obl[i],
+                    sec_y[i],
+                    sec_u[i],
+                    sec_f[i],
+                    no_compile=True,
+                )
+                - phase_sec[i, idx],
+            )
+
+        # TODO: secondary-secondary occultations
+
+        # Sum it all up and return
+        flux_total = (
+            phase_pri
+            + occ_pri
+            + tt.sum(phase_sec, axis=0)
+            + tt.sum(occ_sec, axis=0)
+        )
+        return flux_total

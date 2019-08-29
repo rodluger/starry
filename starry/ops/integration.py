@@ -9,7 +9,6 @@ __all__ = ["sTOp", "rTReflectedOp"]
 
 
 class sTOp(tt.Op):
-
     def __init__(self, func, N):
         self.func = func
         self.N = N
@@ -36,7 +35,6 @@ class sTOp(tt.Op):
 
 
 class sTGradientOp(tt.Op):
-
     def __init__(self, base_op):
         self.base_op = base_op
 
@@ -55,7 +53,6 @@ class sTGradientOp(tt.Op):
 
 
 class rTReflectedOp(tt.Op):
-
     def __init__(self, func, N):
         self.func = func
         self.N = N
@@ -80,14 +77,13 @@ class rTReflectedOp(tt.Op):
     def grad(self, inputs, gradients):
         # NOTE: There may be a bug in Theano for custom Ops
         # that are functions of a single variable, since a
-        # call to their gradient method does not return a 
+        # call to their gradient method does not return a
         # list (which it *should*). We need to explicitly make it
         # into a list below.
         return [self._grad_op(*(inputs + gradients))]
 
 
 class rTReflectedGradientOp(tt.Op):
-
     def __init__(self, base_op):
         self.base_op = base_op
 

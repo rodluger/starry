@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Healpy-based spherical harmonic transform utilities for starry."""
 import numpy as np
+
 try:
     import healpy as hp
 except ImportError:
@@ -16,22 +17,25 @@ __all__ = ["image2map", "healpix2map", "array2map"]
 def healpix2map(healpix_map, lmax=10, **kwargs):
     """Return a map vector corresponding to a healpix array."""
     if hp is None:
-        raise ImportError("Please install the `healpy` Python package to " +
-                          "enable this feature. See " +
-                          "`https://healpy.readthedocs.io`.")
+        raise ImportError(
+            "Please install the `healpy` Python package to "
+            "enable this feature. See `https://healpy.readthedocs.io`."
+        )
     # Get the complex spherical harmonic coefficients
     alm = hp.sphtfunc.map2alm(healpix_map, lmax=lmax)
-    
+
     # We first need to do a rotation to get our axes aligned correctly,
     # since we use a different convention than `healpy`
     alm = hp.rotator.Rotator((-90, 0, -90)).rotate_alm(alm)
 
     # Smooth the map?
     if kwargs.pop("sigma", None) is not None:
-        alm = hp.sphtfunc.smoothalm(alm, sigma=kwargs.get("sigma"), verbose=False)
+        alm = hp.sphtfunc.smoothalm(
+            alm, sigma=kwargs.get("sigma"), verbose=False
+        )
 
     # Convert them to real coefficients
-    ylm = np.zeros(lmax ** 2 + 2 * lmax + 1, dtype='float')
+    ylm = np.zeros(lmax ** 2 + 2 * lmax + 1, dtype="float")
     i = 0
     for l in range(0, lmax + 1):
         for m in range(-l, l + 1):
@@ -74,9 +78,10 @@ def image2map(image, lmax=10, **kwargs):
 def array2map(image_array, lmax=10, sampling_factor=8, **kwargs):
     """Return a map vector corresponding to a lat-lon map image array."""
     if hp is None:
-        raise ImportError("Please install the `healpy` Python package to " +
-                          "enable this feature. See " +
-                          "`https://healpy.readthedocs.io`.")
+        raise ImportError(
+            "Please install the `healpy` Python package to "
+            "enable this feature. See `https://healpy.readthedocs.io`."
+        )
     # Figure out a reasonable number of sides
     # Note that this is not optimized. There may be a better criterion
     # for figuring out the optimal number of sides.
