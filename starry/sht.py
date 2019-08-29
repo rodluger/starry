@@ -59,7 +59,7 @@ def image2map(image, lmax=10, **kwargs):
     # If image doesn't exist, check for it in `img` directory
     if not os.path.exists(image):
         dn = os.path.dirname
-        image = os.path.join(dn(dn(os.path.abspath(__file__))), "img", image)
+        image = os.path.join(dn(os.path.abspath(__file__)), "img", image)
         if not image.endswith(".jpg"):
             image += ".jpg"
         if not os.path.exists(image):
