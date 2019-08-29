@@ -1011,7 +1011,39 @@ class OpsSystem(object):
                 - phase_sec[i, idx],
             )
 
-        # TODO: secondary-secondary occultations
+        # Compute secondary-secondary occultations
+        for i, sec in enumerate(self._secondaries):
+            for j, _ in enumerate(self._secondaries):
+                if (i == j):
+                    continue
+                xo = (x[:, j] - x[:, i]) / sec_r[i]
+                yo = (y[:, j] - y[:, i]) / sec_r[i]
+                zo = (z[:, j] - z[:, i]) / sec_r[i]
+                ro = sec_r[j] / sec_r[i]
+                b = tt.sqrt(xo ** 2 + yo ** 2)
+                b_occ = tt.invert(
+                    tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
+                )
+                idx = tt.arange(b.shape[0])[b_occ]
+                occ_sec = tt.set_subtensor(
+                    occ_sec[i, idx],
+                    occ_sec[i, idx]
+                    + sec_L[i]
+                    * sec.map.ops.flux(
+                        theta_sec[i, idx],
+                        xo[idx],
+                        yo[idx],
+                        zo[idx],
+                        ro,
+                        sec_inc[i],
+                        sec_obl[i],
+                        sec_y[i],
+                        sec_u[i],
+                        sec_f[i],
+                        no_compile=True,
+                    )
+                    - phase_sec[i, idx],
+                )
 
         # Sum it all up and return
         flux_total = (

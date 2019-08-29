@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+TODO:
+    - Radial velocity support
+    - Support for reflected light maps
+    - Resolve tension with orbital and rotational inclination
+    - Figure out what `t0` means
+"""
 from . import config
 from .maps import MapBase
 from .ops import OpsSystem, reshape, make_array_or_tensor
@@ -321,8 +328,6 @@ class System(object):
 
     def flux(self, t):
         """Compute the system flux at times ``t``."""
-        # TODO: Make this work in reflected light
-        # TODO: Add an `rv` function
         return self.ops._flux(
             reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
             self._primary._r,
