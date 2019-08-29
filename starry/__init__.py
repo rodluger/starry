@@ -17,6 +17,19 @@ except NameError:
 # Import all modules
 if not __STARRY_SETUP__:
 
+    # Force double precision
+    import theano.tensor as tt
+
+    tt.config.floatX = "float64"
+
+    # Set up the default config
+    from .configdefaults import Config
+
+    config = Config()
+
     # Import the main interface
     from .maps import Map, Primary, Secondary, System
-    from . import config
+
+    # Clean up the namespace
+    del tt
+    del Config

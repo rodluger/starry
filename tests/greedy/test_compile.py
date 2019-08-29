@@ -14,7 +14,7 @@ def test_test_value_error():
     test values are missing.
     
     """
-    theano.config.compute_test_value = 'raise'
-    map = starry.Map(lazy=False)
+    theano.config.compute_test_value = "raise"
+    map = starry.Map()
     flux = map.flux()
-    assert theano.config.compute_test_value == 'raise'
+    assert theano.config.compute_test_value == "raise"

@@ -23,7 +23,7 @@ def flux(map, xo=0, yo=0, ro=0, **kwargs):
 
 
 def test_flux(n_tests=10):
-    map = starry.Map(2, lazy=False)
+    map = starry.Map(2)
     np.random.seed(12)
     for i in range(n_tests):
         map[1:, :] = np.random.randn(len(map[1:, :]))
@@ -38,7 +38,7 @@ def test_flux(n_tests=10):
 
 
 def test_flux_reflected(n_tests=10):
-    map = starry.Map(2, reflected=True, lazy=False)
+    map = starry.Map(2, reflected=True)
     np.random.seed(12)
     for i in range(n_tests):
         map[1:, :] = np.random.randn(len(map[1:, :]))

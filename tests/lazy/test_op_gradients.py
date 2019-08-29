@@ -6,8 +6,9 @@ Test the various Theano Ops.
 import theano
 from theano.tests.unittest_tools import verify_grad
 import theano.tensor as tt
-import starry
 import numpy as np
+import pytest
+import starry
 
 
 def test_sT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):

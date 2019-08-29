@@ -326,7 +326,9 @@ class System(object):
         return self._secondaries
 
     def flux(self, t):
-
+        """Compute the system flux at times ``t``."""
+        # TODO: Make this work in reflected light
+        # TODO: Add an `rv` function
         if config.lazy:
             make_array = tt.as_tensor_variable
         else:
@@ -369,10 +371,10 @@ class System(object):
         tt.dscalar(),  # m
         tt.dscalar(),  # prot
         tt.dscalar(),  # t0
-        tt.dscalar(),  # L; this is a vector if `nw` > 1
+        tt.dscalar(),  # L; TODO: this is a vector if `nw` > 1
         tt.dscalar(),  # inc
         tt.dscalar(),  # obl
-        tt.dvector(),  # y; make this work for `nw` > 1
+        tt.dvector(),  # y; TODO: make this work for `nw` > 1
         tt.dvector(),  # u
         tt.dvector(),  # f
         # -- secondaries --
@@ -386,10 +388,10 @@ class System(object):
         tt.dvector(),  # w
         tt.dvector(),  # Omega
         tt.dvector(),  # iorb
-        tt.dvector(),  # L; this is a matrix if `nw` > 1
+        tt.dvector(),  # L; TODO: this is a matrix if `nw` > 1
         tt.dvector(),  # inc
         tt.dvector(),  # obl
-        tt.dmatrix(),  # y; make this work for `nw` > 1
+        tt.dmatrix(),  # y; TODO: make this work for `nw` > 1
         tt.dmatrix(),  # u
         tt.dmatrix(),  # f
     )

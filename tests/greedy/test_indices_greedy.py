@@ -8,32 +8,10 @@ import numpy as np
 import pytest
 
 
-@pytest.fixture(
-    scope="class",
-    params=[
-        (None, False),
-        (3, False),
-        (None, True),
-        (3, True),
-    ],
-)
+@pytest.fixture(scope="class", params=[(None,), (3,)])
 def map(request):
-    nw, lazy = request.param
-    map = starry.Map(ydeg=5, udeg=2, nw=nw, lazy=lazy)
-
-    if lazy:
-        class Map(map.__class__):
-            def __getitem__(self, idx):
-                val = super(Map, self).__getitem__(idx)
-                return val.eval()
-            @property
-            def y(self):
-                return self._y.eval()
-            @property
-            def u(self):
-                return self._u.eval()    
-        map = Map(5, 2, 0, nw, lazy=True)
-
+    nw, = request.param
+    map = starry.Map(ydeg=5, udeg=2, nw=nw)
     return map
 
 
@@ -56,12 +34,12 @@ class TestGettersAndSetters:
         if map.nw:
             map[1:, 1, 0] = 7
             assert np.all(map[:, 1, 0] == 7)
-            inds = [l ** 2 + l + 1 for l in range(1, map.ydeg + 1)] 
+            inds = [l ** 2 + l + 1 for l in range(1, map.ydeg + 1)]
             assert np.all(map.y[inds, 0] == 7)
         else:
             map[1:, 1] = 7
             assert np.all(map[:, 1] == 7)
-            inds = [l ** 2 + l + 1 for l in range(1, map.ydeg + 1)] 
+            inds = [l ** 2 + l + 1 for l in range(1, map.ydeg + 1)]
             assert np.all(map.y[inds] == 7)
 
     def test_ylm_multiple_m_to_scalar(self, map):
@@ -102,7 +80,7 @@ class TestGettersAndSetters:
         if map.nw:
             map[1:, 1, :] = 7
             assert np.all(map[1:, 1, :] == 7)
-            inds = [l ** 2 + l + 1 for l in range(1, map.ydeg + 1)] 
+            inds = [l ** 2 + l + 1 for l in range(1, map.ydeg + 1)]
             assert np.all(map.y[inds, :] == 7)
         else:
             pass
@@ -131,12 +109,12 @@ class TestGettersAndSetters:
         if map.nw:
             map[1:, 1, 0] = np.atleast_2d(np.arange(1, map.ydeg + 1)).T
             assert np.allclose(map[:, 1, 0].flatten(), range(1, map.ydeg + 1))
-            inds = [l ** 2 + l + 1 for l in range(1, map.ydeg + 1)] 
+            inds = [l ** 2 + l + 1 for l in range(1, map.ydeg + 1)]
             assert np.allclose(map.y[inds, 0], range(1, map.ydeg + 1))
         else:
             map[1:, 1] = range(1, map.ydeg + 1)
             assert np.allclose(map[:, 1], range(1, map.ydeg + 1))
-            inds = [l ** 2 + l + 1 for l in range(1, map.ydeg + 1)] 
+            inds = [l ** 2 + l + 1 for l in range(1, map.ydeg + 1)]
             assert np.allclose(map.y[inds], range(1, map.ydeg + 1))
 
     def test_ylm_multiple_m_to_vector(self, map):
@@ -175,8 +153,9 @@ class TestGettersAndSetters:
     def test_ylm_multiple_lx_to_vector(self, map):
         map.reset()
         if map.nw:
-            vals = np.array([np.arange(1, map.ydeg + 1) + i 
-                             for i in range(map.nw)]).transpose()
+            vals = np.array(
+                [np.arange(1, map.ydeg + 1) + i for i in range(map.nw)]
+            ).transpose()
             map[1:, 1, :] = vals
             assert np.allclose(map[1:, 1, :], vals)
             inds = [l ** 2 + l + 1 for l in range(1, map.ydeg + 1)]
@@ -187,8 +166,9 @@ class TestGettersAndSetters:
     def test_ylm_multiple_mx_to_vector(self, map):
         map.reset()
         if map.nw:
-            vals = np.array([[1 + i, 2 + i, 3 + i] 
-                             for i in range(map.nw)]).transpose()
+            vals = np.array(
+                [[1 + i, 2 + i, 3 + i] for i in range(map.nw)]
+            ).transpose()
             map[1, :, :] = vals
             assert np.allclose(map[1, :, :], vals)
             inds = [1, 2, 3]
@@ -206,7 +186,6 @@ class TestGettersAndSetters:
             assert np.allclose(map.y[1:, :], vals)
         else:
             pass
-        
 
     def test_ul_single_to_scalar(self, map):
         map.reset()
@@ -225,7 +204,7 @@ class TestGettersAndSetters:
         map[1:] = [1, 2]
         assert np.allclose(map[1:], [1, 2])
         assert np.allclose(map.u[1:], [1, 2])
-    
+
     def test_yl_set_constant_coeff(self, map):
         map.reset()
         if map.nw:

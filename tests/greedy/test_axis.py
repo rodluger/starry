@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """Test rotation axis i/o."""
-import starry
 import pytest
 import numpy as np
+import starry
 
 
-# Instantiate a global map
-map = starry.Map(1, lazy=False)
+map = starry.Map(1)
 
 
 @pytest.fixture(
@@ -38,11 +37,12 @@ map = starry.Map(1, lazy=False)
         [[0, -np.sqrt(1 / 2), np.sqrt(1 / 2)]],
         [[0, np.sqrt(1 / 2), -np.sqrt(1 / 2)]],
         [[0, -np.sqrt(1 / 2), -np.sqrt(1 / 2)]],
-    ]
+    ],
 )
 def axis(request):
     axis, = request.param
     return axis
+
 
 class TestAxis:
     """Test setting the axis of rotation."""

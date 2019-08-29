@@ -1198,6 +1198,10 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, quiet=False):
 
     # Construct the class
     class Map(*Bases):
-        pass
+        def __init__(self, *args, **kwargs):
+            # Once a map has been instantiated, no changes
+            # to the config are allowed.
+            config.freeze()
+            super(Map, self).__init__(*args, **kwargs)
 
     return Map(ydeg, udeg, fdeg, nw, **kwargs)

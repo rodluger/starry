@@ -32,5 +32,6 @@ jobs:
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      py.test -v -s
+      py.test -v -s lazy
+      py.test -v -s greedy
     displayName: 'Run tests'
