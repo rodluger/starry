@@ -330,8 +330,10 @@ class System(object):
         # TODO: Make this work in reflected light
         # TODO: Add an `rv` function
         if config.lazy:
+            t = tt.reshape(t, [-1])
             make_array = tt.as_tensor_variable
         else:
+            t = np.atleast_1d(t)
             make_array = np.array
         return self._flux(
             make_array(t) * self._time_factor,
