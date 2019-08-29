@@ -2,13 +2,14 @@
 """
 TODO:
     - Radial velocity support
-    - Support for reflected light maps
     - Resolve tension with orbital and rotational inclination
     - Figure out what `t0` means
+    - Exposure time integration
+    - Light travel time delay
 """
 from . import config
-from .maps import MapBase
-from .ops import OpsSystem, reshape, make_array_or_tensor
+from .maps import MapBase, RVBase, ReflectedBase
+from .ops import OpsSystem, OpsRVSystem, reshape, make_array_or_tensor
 import numpy as np
 from astropy import units
 from inspect import getmro
@@ -172,12 +173,16 @@ class Body(object):
 
 
 class Primary(Body):
+    """ A primary (central) body."""
+
     def __init__(self, map, **kwargs):
         # Initialize `Body`
         super(Primary, self).__init__(map, **kwargs)
 
 
 class Secondary(Body):
+    """A secondary (orbiting) body."""
+
     def __init__(self, map, **kwargs):
         # Initialize `Body`
         super(Secondary, self).__init__(map, **kwargs)
@@ -276,8 +281,10 @@ class Secondary(Body):
 
 
 class System(object):
-
-    _ops_class_ = OpsSystem
+    """
+    A system of bodies in Keplerian orbits about a central primary body.
+    
+    """
 
     def __init__(
         self, primary, *secondaries, time_unit=units.day, quiet=False
@@ -285,25 +292,57 @@ class System(object):
         # Units
         self.time_unit = time_unit
 
-        # Members
+        # Primary body
         assert (
             type(primary) is Primary
         ), "Argument `primary` must be an instance of `Primary`."
+        assert ReflectedBase not in getmro(
+            type(primary._map)
+        ), "Reflected light map not allowed for the primary body."
         self._primary = primary
+        self._rv = RVBase in getmro(type(primary._map))
+
+        # Secondary bodies
         assert len(secondaries) > 0, "There must be at least one secondary."
         for sec in secondaries:
-            assert (
-                type(sec) is Secondary
-            ), "Argument `*secondaries` must be a sequence of `Secondary` instances."
+            assert type(sec) is Secondary, (
+                "Argument `*secondaries` must be a sequence of "
+                "`Secondary` instances."
+            )
             assert (
                 sec._map.nw == self._primary._map.nw
             ), "All bodies must have the same number of wavelength bins `nw`."
+            assert (RVBase in getmro(type(sec._map))) == self._rv, (
+                "Radial velocity must be enabled "
+                "for either all or none of the bodies."
+            )
+
+        reflected = [
+            ReflectedBase in getmro(type(sec._map)) for sec in secondaries
+        ]
+        if np.all(reflected):
+            self._reflected = True
+        elif np.any(reflected):
+            raise ValueError(
+                "Reflected light must be enabled "
+                "for either all or none of the secondaries."
+            )
+        else:
+            self._reflected = False
         self._secondaries = secondaries
 
         # Theano ops class
-        self.ops = self._ops_class_(
-            self._primary, self._secondaries, quiet=quiet
-        )
+        if self._rv:
+            self.ops = OpsRVSystem(
+                self._primary, self._secondaries, quiet=quiet
+            )
+        else:
+            self.ops = OpsSystem(
+                self._primary,
+                self._secondaries,
+                reflected=self._reflected,
+                quiet=quiet,
+            )
 
     @property
     def time_unit(self):

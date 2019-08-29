@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from .. import config
 from .. import _c_ops
 from .integration import sTOp, rTReflectedOp
@@ -28,7 +29,7 @@ except ModuleNotFoundError:
 G_grav = constants.G.to(units.R_sun ** 3 / units.M_sun / units.day ** 2).value
 
 
-__all__ = ["Ops", "OpsReflected", "OpsRV", "OpsSystem"]
+__all__ = ["Ops", "OpsReflected", "OpsRV", "OpsSystem", "OpsRVSystem"]
 
 
 class Ops(object):
@@ -372,7 +373,12 @@ class Ops(object):
         xyz = tt.transpose(tt.dot(R, origin))
         return xyz
 
-    @autocompile("rotate", tt.dvector(), tt.dscalar(), DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"))
+    @autocompile(
+        "rotate",
+        tt.dvector(),
+        tt.dscalar(),
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+    )
     def rotate(self, u, theta, y):
         """
 
@@ -380,7 +386,12 @@ class Ops(object):
         u /= u.norm(2)
         return self.apply_rotation(u, theta, y)
 
-    @autocompile("align", DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"), tt.dvector(), tt.dvector())
+    @autocompile(
+        "align",
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        tt.dvector(),
+        tt.dvector(),
+    )
     def align(self, y, source, dest):
         """
 
@@ -800,7 +811,7 @@ class OpsSystem(object):
 
     """
 
-    def __init__(self, primary, secondaries, quiet=False):
+    def __init__(self, primary, secondaries, reflected=False, quiet=False):
         """
 
         """
@@ -811,9 +822,12 @@ class OpsSystem(object):
             logger.setLevel(logging.INFO)
 
         # System members
-        self._primary = primary
-        self._secondaries = secondaries
-        self.nw = self._primary._map.nw
+        self.primary = primary
+        self.secondaries = secondaries
+        self.reflected = reflected
+        self.nw = self.primary._map.nw
+
+        # Are the secondaries
 
         # Require exoplanet
         assert exoplanet is not None, "This class requires exoplanet >= 0.2.0."
@@ -826,10 +840,14 @@ class OpsSystem(object):
         tt.dscalar(),  # m
         tt.dscalar(),  # prot
         tt.dscalar(),  # t0
-        DynamicType("tt.dscalar() if instance.nw is None else tt.dvector()"), # L
+        DynamicType(
+            "tt.dscalar() if instance.nw is None else tt.dvector()"
+        ),  # L
         tt.dscalar(),  # inc
         tt.dscalar(),  # obl
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"), # y
+        DynamicType(
+            "tt.dvector() if instance.nw is None else tt.dmatrix()"
+        ),  # y
         tt.dvector(),  # u
         tt.dvector(),  # f
         # -- secondaries --
@@ -843,10 +861,14 @@ class OpsSystem(object):
         tt.dvector(),  # w
         tt.dvector(),  # Omega
         tt.dvector(),  # iorb
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"), # L
+        DynamicType(
+            "tt.dvector() if instance.nw is None else tt.dmatrix()"
+        ),  # L
         tt.dvector(),  # inc
         tt.dvector(),  # obl
-        DynamicType("tt.dmatrix() if instance.nw is None else tt.dtensor3()"), # y
+        DynamicType(
+            "tt.dmatrix() if instance.nw is None else tt.dtensor3()"
+        ),  # y
         tt.dmatrix(),  # u
         tt.dmatrix(),  # f
     )
@@ -880,6 +902,35 @@ class OpsSystem(object):
         sec_u,
         sec_f,
     ):
+        # Compute the relative positions of all bodies
+        orbit = exoplanet.orbits.KeplerianOrbit(
+            period=sec_porb,
+            t0=sec_t0,
+            incl=sec_iorb,
+            ecc=sec_ecc,
+            omega=sec_w,
+            Omega=sec_Omega,
+            m_planet=sec_m,
+            m_star=pri_m,
+            r_star=pri_r,
+            m_planet_units=units.Msun,
+        )
+        x, y, z = orbit.get_relative_position(t)
+
+        # Compute the position of the illumination source (the primary)
+        # if we're doing things in reflected light
+        if self.reflected:
+            source = [
+                [
+                    tt.transpose(
+                        tt.as_tensor_variable([-x[:, i], -y[:, i], -z[:, i]])
+                    )
+                ]
+                for i, sec in enumerate(self.secondaries)
+            ]
+        else:
+            source = [[] for sec in self.secondaries]
+
         # Get all rotational phases
         theta_pri = (2 * np.pi) / pri_prot * (t - pri_t0)
         theta_sec = (
@@ -889,7 +940,7 @@ class OpsSystem(object):
         )
 
         # Compute all the phase curves
-        phase_pri = pri_L * self._primary.map.ops.flux(
+        phase_pri = pri_L * self.primary.map.ops.flux(
             theta_pri,
             tt.zeros_like(t),
             tt.zeros_like(t),
@@ -916,9 +967,10 @@ class OpsSystem(object):
                     sec_y[i],
                     sec_u[i],
                     sec_f[i],
+                    *source[i],
                     no_compile=True,
                 )
-                for i, sec in enumerate(self._secondaries)
+                for i, sec in enumerate(self.secondaries)
             ]
         )
 
@@ -934,23 +986,8 @@ class OpsSystem(object):
             sec_porb,
         )
 
-        # Compute the relative positions of all bodies
-        orbit = exoplanet.orbits.KeplerianOrbit(
-            period=sec_porb,
-            t0=sec_t0,
-            incl=sec_iorb,
-            ecc=sec_ecc,
-            omega=sec_w,
-            Omega=sec_Omega,
-            m_planet=sec_m,
-            m_star=pri_m,
-            r_star=pri_r,
-            m_planet_units=units.Msun,
-        )
-        x, y, z = orbit.get_relative_position(t)
-
         # Compute transits across the primary
-        for i, _ in enumerate(self._secondaries):
+        for i, _ in enumerate(self.secondaries):
             xo = -x[:, i] / pri_r
             yo = -y[:, i] / pri_r
             zo = -z[:, i] / pri_r
@@ -964,7 +1001,7 @@ class OpsSystem(object):
                 occ_pri[idx],
                 occ_pri[idx]
                 + pri_L
-                * self._primary.map.ops.flux(
+                * self.primary.map.ops.flux(
                     theta_pri[idx],
                     xo[idx],
                     yo[idx],
@@ -981,7 +1018,7 @@ class OpsSystem(object):
             )
 
         # Compute occultations by the primary
-        for i, sec in enumerate(self._secondaries):
+        for i, sec in enumerate(self.secondaries):
             xo = x[:, i] / sec_r[i]
             yo = y[:, i] / sec_r[i]
             zo = z[:, i] / sec_r[i]
@@ -1006,15 +1043,16 @@ class OpsSystem(object):
                     sec_y[i],
                     sec_u[i],
                     sec_f[i],
+                    *source[i],
                     no_compile=True,
                 )
                 - phase_sec[i, idx],
             )
 
         # Compute secondary-secondary occultations
-        for i, sec in enumerate(self._secondaries):
-            for j, _ in enumerate(self._secondaries):
-                if (i == j):
+        for i, sec in enumerate(self.secondaries):
+            for j, _ in enumerate(self.secondaries):
+                if i == j:
                     continue
                 xo = (x[:, j] - x[:, i]) / sec_r[i]
                 yo = (y[:, j] - y[:, i]) / sec_r[i]
@@ -1040,6 +1078,7 @@ class OpsSystem(object):
                         sec_y[i],
                         sec_u[i],
                         sec_f[i],
+                        *source[i],
                         no_compile=True,
                     )
                     - phase_sec[i, idx],
@@ -1053,3 +1092,8 @@ class OpsSystem(object):
             + tt.sum(occ_sec, axis=0)
         )
         return flux_total
+
+
+class OpsRVSystem(OpsSystem):
+    def __init__(self, *args, **kwargs):
+        raise NotImplementedError("Radial velocity mode not yet implemented.")

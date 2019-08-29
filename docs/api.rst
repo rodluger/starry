@@ -11,3 +11,14 @@ The starry Python API
 
 .. autoclass:: starry.maps.ReflectedBase()
     :members:
+
+.. autoclass:: starry.Primary()
+    :members:
+    :inherited-members:
+
+.. autoclass:: starry.Secondary()
+    :members:
+    :inherited-members:
+
+.. autoclass:: starry.System()
+    :members:
