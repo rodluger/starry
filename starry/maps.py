@@ -1163,16 +1163,15 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, quiet=False):
     Bases = (YlmBase, MapBase)
     kwargs = dict(quiet=quiet)
 
-    # Radial velocity mode?
+    # Radial velocity / reflected light?
     if rv:
         Bases = (RVBase,) + Bases
         fdeg = 3
+    elif reflected:
+        Bases = (ReflectedBase,) + Bases
+        fdeg = 0  # DEBUG
     else:
         fdeg = 0
-
-    # Reflected light?
-    if reflected:
-        Bases = (ReflectedBase,) + Bases
 
     # Ensure we're not doing both
     if RVBase in Bases and ReflectedBase in Bases:

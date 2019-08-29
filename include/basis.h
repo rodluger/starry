@@ -546,15 +546,16 @@ public:
     const int udeg; /**< The highest degree of the limb darkening map */
     const int fdeg; /**< The highest degree of the filter map */
     const int deg;
-    const double norm;            /**< Map normalization constant */
-    Eigen::SparseMatrix<T> A1;    /**< The polynomial change of basis matrix */
-    Eigen::SparseMatrix<T> A1_f;  /**< The polynomial change of basis matrix for the filter operator */
-    Eigen::SparseMatrix<T> A1Inv; /**< The inverse of the polynomial change of basis matrix */
-    Eigen::SparseMatrix<T> A2;    /**< The Green's change of basis matrix */
-    Eigen::SparseMatrix<T> A;     /**< The full change of basis matrix */
-    RowVector<T> rT;              /**< The rotation solution vector */
-    RowVector<T> rTA1;            /**< The rotation vector in Ylm space */
-    Eigen::SparseMatrix<T> U1;    /**< The limb darkening to polynomial change of basis matrix */
+    const double norm;             /**< Map normalization constant */
+    Eigen::SparseMatrix<T> A1;     /**< The polynomial change of basis matrix */
+    Eigen::SparseMatrix<T> A1_big; /**< The augmented polynomial change of basis matrix */
+    Eigen::SparseMatrix<T> A1_f;   /**< The polynomial change of basis matrix for the filter operator */
+    Eigen::SparseMatrix<T> A1Inv;  /**< The inverse of the polynomial change of basis matrix */
+    Eigen::SparseMatrix<T> A2;     /**< The Green's change of basis matrix */
+    Eigen::SparseMatrix<T> A;      /**< The full change of basis matrix */
+    RowVector<T> rT;               /**< The rotation solution vector */
+    RowVector<T> rTA1;             /**< The rotation vector in Ylm space */
+    Eigen::SparseMatrix<T> U1;     /**< The limb darkening to polynomial change of basis matrix */
 
     // Poly basis
     RowVector<T> x_cache, y_cache, z_cache;
@@ -575,21 +576,21 @@ public:
                                        z_cache(0)
     {
         // Compute the augmented matrices
-        Eigen::SparseMatrix<T> A1_, A1Inv_, A2_, A_, U1_;
+        Eigen::SparseMatrix<T> A1Inv_, A2_, A_, U1_;
         RowVector<T> rT_, rTA1_;
-        computeA1(deg, A1_, norm);
-        computeA1Inv(deg, A1_, A1Inv_);
-        computeA(deg, A1_, A2_, A_);
+        computeA1(deg, A1_big, norm);
+        computeA1Inv(deg, A1_big, A1Inv_);
+        computeA(deg, A1_big, A2_, A_);
         computerT(deg, rT_);
-        rTA1_ = rT_ * A1_;
-        computeU(deg, A1_, A_, U1_, norm);
+        rTA1_ = rT_ * A1_big;
+        computeU(deg, A1_big, A_, U1_, norm);
 
         // Resize to the shapes actually used
         // in the code
         int Ny = (ydeg + 1) * (ydeg + 1);
         int Nf = (fdeg + 1) * (fdeg + 1);
-        A1 = A1_.block(0, 0, Ny, Ny);
-        A1_f = A1_.block(0, 0, Nf, Nf);
+        A1 = A1_big.block(0, 0, Ny, Ny);
+        A1_f = A1_big.block(0, 0, Nf, Nf);
         A1Inv = A1Inv_;
         A2 = A2_.block(0, 0, Ny, Ny);
         A = A_;

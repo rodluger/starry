@@ -212,7 +212,7 @@ class Ops(object):
 
         """
         # Compute the polynomial basis at the point
-        pT = self.pT(xpt, ypt, zpt)
+        pT = self.pT(xpt, ypt, zpt)[:, : (self.ydeg + 1) ** 2]
 
         # Transform to the Ylm basis
         pTA1 = ts.dot(pT, self.A1)
@@ -544,6 +544,7 @@ class OpsReflected(Ops):
         """
         super(OpsReflected, self).__init__(*args, **kwargs)
         self.rT = rTReflectedOp(self._c_ops.rTReflected, self._c_ops.N)
+        self.A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
 
     def compute_illumination(self, xyz, source):
         """
@@ -635,10 +636,6 @@ class OpsReflected(Ops):
             tt.lt(b, 1.0 + ro) & tt.gt(zo, 0.0) & tt.gt(ro, 0.0)
         ).any()
 
-        # Determine shapes
-        rows = theta.shape[0]
-        cols = self.rTA1.shape[1]
-
         # Compute the semi-minor axis of the terminator
         # and the reflectance integrals
         source /= tt.reshape(source.norm(2, axis=1), [-1, 1])
@@ -646,7 +643,7 @@ class OpsReflected(Ops):
         rT = self.rT(bterm)
 
         # Transform to Ylms and rotate on the sky plane
-        rTA1 = ts.dot(rT, self.A1)
+        rTA1 = ts.dot(rT, self.A1Big)
         norm = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
         cosw = tt.switch(
             tt.eq(tt.abs_(bterm), 1.0), tt.ones_like(norm), source[:, 1] * norm
@@ -667,6 +664,8 @@ class OpsReflected(Ops):
 
         # Rotate to the correct phase
         X_rot = self.dotR(rTA1Rz, inc, obl, theta)
+
+        # breakpoint()
 
         # TODO: Implement occultations in reflected light
         # Throw error if there's an occultation
