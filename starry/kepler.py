@@ -373,6 +373,38 @@ class System(object):
         """A list of the secondary (orbiting) object(s) in the Keplerian system."""
         return self._secondaries
 
+    def X(self, t):
+        """Compute the system flux design matrix at times ``t``."""
+        return self.ops.X(
+            reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
+            self._primary._r,
+            self._primary._m,
+            self._primary._prot,
+            self._primary._t0,
+            self._primary._theta0,
+            self._primary._map._L,
+            self._primary._map._inc,
+            self._primary._map._obl,
+            self._primary._map._u,
+            self._primary._map._f,
+            make_array_or_tensor([sec._r for sec in self._secondaries]),
+            make_array_or_tensor([sec._m for sec in self._secondaries]),
+            make_array_or_tensor([sec._prot for sec in self._secondaries]),
+            make_array_or_tensor([sec._t0 for sec in self._secondaries]),
+            make_array_or_tensor([sec._theta0 for sec in self._secondaries]),
+            make_array_or_tensor([sec._porb for sec in self._secondaries]),
+            make_array_or_tensor([sec._a for sec in self._secondaries]),
+            make_array_or_tensor([sec._ecc for sec in self._secondaries]),
+            make_array_or_tensor([sec._w for sec in self._secondaries]),
+            make_array_or_tensor([sec._Omega for sec in self._secondaries]),
+            make_array_or_tensor([sec._inc for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._L for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._inc for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._obl for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._u for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._f for sec in self._secondaries]),
+        )
+
     def flux(self, t):
         """Compute the system flux at times ``t``."""
         return self.ops.flux(
