@@ -39,7 +39,7 @@ class Ops(object):
 
     """
 
-    def __init__(self, ydeg, udeg, fdeg, nw, quiet=False):
+    def __init__(self, ydeg, udeg, fdeg, nw, quiet=False, **kwargs):
         """
 
         """
@@ -545,6 +545,7 @@ class OpsReflected(Ops):
         super(OpsReflected, self).__init__(*args, **kwargs)
         self.rT = rTReflectedOp(self._c_ops.rTReflected, self._c_ops.N)
         self.A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
+        self.occ_approx = kwargs.get("occ_approx", False)
 
     def compute_illumination(self, xyz, source):
         """
@@ -595,8 +596,7 @@ class OpsReflected(Ops):
         A1y = ts.dot(self.A1, y)
 
         # Apply the filter
-        if self.filter:
-            A1y = tt.dot(self.F(u, f), A1y)
+        A1y = tt.dot(self.F(u, f), A1y)
 
         # Dot the polynomial into the basis
         intensity = tt.dot(pT, A1y)
@@ -630,11 +630,15 @@ class OpsReflected(Ops):
         """
 
         """
-        # Figure out if there's an occultation
+        # Determine shapes
+        rows = theta.shape[0]
+        cols = (self.ydeg + 1) ** 2
+
+        # Compute the occultation mask
         b = tt.sqrt(xo ** 2 + yo ** 2)
-        occultation = (
-            tt.lt(b, 1.0 + ro) & tt.gt(zo, 0.0) & tt.gt(ro, 0.0)
-        ).any()
+        b_rot = tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
+        b_occ = tt.invert(b_rot)
+        i_occ = tt.arange(b.size)[b_occ]
 
         # Compute the semi-minor axis of the terminator
         # and the reflectance integrals
@@ -644,37 +648,46 @@ class OpsReflected(Ops):
 
         # Transform to Ylms and rotate on the sky plane
         rTA1 = ts.dot(rT, self.A1Big)
-        norm = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
-        cosw = tt.switch(
-            tt.eq(tt.abs_(bterm), 1.0), tt.ones_like(norm), source[:, 1] * norm
-        )
-        sinw = tt.switch(
-            tt.eq(tt.abs_(bterm), 1.0),
-            tt.zeros_like(norm),
-            source[:, 0] * norm,
-        )
         theta_z = tt.arctan2(source[:, 0], source[:, 1])
         rTA1Rz = self.dotRz(rTA1, theta_z)
 
         # Apply limb darkening?
-        if self.filter:
-            F = self.F(u, f)
-            A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
-            rTA1Rz = tt.dot(rTA1Rz, A1InvFA1)
+        F = self.F(u, f)
+        A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+        rTA1Rz = tt.dot(rTA1Rz, A1InvFA1)
 
         # Rotate to the correct phase
-        X_rot = self.dotR(rTA1Rz, inc, obl, theta)
+        X = self.dotR(rTA1Rz, inc, obl, theta)
 
-        # breakpoint()
+        # Occultations
+        if self.occ_approx:
 
-        # TODO: Implement occultations in reflected light
-        # Throw error if there's an occultation
-        X_occ = RaiseValuerErrorIfOp(
-            "Occultations in reflected light not yet implemented."
-        )(occultation)
+            # TODO: This is a pretty bad approximation!
+            # Re-compute the filter with a full phase weighting
+            fnew = (np.pi / np.sqrt(3.0)) * tt.as_tensor_variable(
+                [0.0, 0.0, 1.0, 0.0]
+            )
+            F = self.F(u, fnew)
+            sT = self.sT(b[i_occ], ro)
+            sTA = ts.dot(sT, self.A)
+            theta_z = tt.arctan2(xo[i_occ], yo[i_occ])
+            sTAR = self.dotRz(sTA, theta_z)
+            A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+            sTAR = tt.dot(sTAR, A1InvFA1)
+            X = tt.set_subtensor(
+                X[i_occ], self.dotR(sTAR, inc, obl, theta[i_occ])
+            )
+
+        else:
+
+            # TODO: Implement occultations in reflected light
+            # Throw error if there's an occultation
+            X = X + RaiseValuerErrorIfOp(
+                "Occultations in reflected light not yet implemented."
+            )(b_occ.any())
 
         # We're done
-        return X_rot + X_occ
+        return X
 
     @autocompile(
         "flux",
@@ -781,16 +794,15 @@ class OpsReflected(Ops):
         A1Ry = ts.dot(self.A1, Ry)
 
         # Apply the filter *only if orthographic*
-        if self.filter:
-            f0 = tt.zeros_like(f)
-            f0 = tt.set_subtensor(f0[0], np.pi)
-            u0 = tt.zeros_like(u)
-            u0 = tt.set_subtensor(u0[0], -1.0)
-            A1Ry = ifelse(
-                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                tt.dot(self.F(u, f), A1Ry),
-                tt.dot(self.F(u0, f0), A1Ry),
-            )
+        f0 = tt.zeros_like(f)
+        f0 = tt.set_subtensor(f0[0], np.pi)
+        u0 = tt.zeros_like(u)
+        u0 = tt.set_subtensor(u0[0], -1.0)
+        A1Ry = ifelse(
+            tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+            tt.dot(self.F(u, f), A1Ry),
+            tt.dot(self.F(u0, f0), A1Ry),
+        )
 
         # Dot the polynomial into the basis
         image = tt.dot(pT, A1Ry)
@@ -826,10 +838,66 @@ class OpsSystem(object):
         self.reflected = reflected
         self.nw = self.primary._map.nw
 
-        # Are the secondaries
-
         # Require exoplanet
         assert exoplanet is not None, "This class requires exoplanet >= 0.2.0."
+
+    @autocompile(
+        "position",
+        tt.dvector(),  # t
+        # -- primary --
+        tt.dscalar(),  # m
+        tt.dscalar(),  # t0
+        # -- secondaries --
+        tt.dvector(),  # m
+        tt.dvector(),  # t0
+        tt.dvector(),  # porb
+        tt.dvector(),  # a
+        tt.dvector(),  # ecc
+        tt.dvector(),  # w
+        tt.dvector(),  # Omega
+        tt.dvector(),  # iorb
+    )
+    def position(
+        self,
+        t,
+        pri_m,
+        pri_t0,
+        sec_m,
+        sec_t0,
+        sec_porb,
+        sec_a,
+        sec_ecc,
+        sec_w,
+        sec_Omega,
+        sec_iorb,
+    ):
+        orbit = exoplanet.orbits.KeplerianOrbit(
+            period=sec_porb,
+            t0=sec_t0,
+            incl=sec_iorb,
+            ecc=sec_ecc,
+            omega=sec_w,
+            Omega=sec_Omega,
+            m_planet=sec_m,
+            m_star=pri_m,
+            r_star=1.0,  # doesn't matter
+            m_planet_units=units.Msun,
+        )
+        # Position of the primary
+        if len(self.secondaries) > 1:
+            x_pri, y_pri, z_pri = tt.sum(orbit.get_star_position(t), axis=-1)
+        else:
+            x_pri, y_pri, z_pri = orbit.get_star_position(t)
+
+        # Positions of the secondaries
+        x_sec, y_sec, z_sec = orbit.get_planet_position(t)
+
+        # Concatenate them
+        x = tt.transpose(tt.concatenate((x_pri, x_sec), axis=-1))
+        y = tt.transpose(tt.concatenate((y_pri, y_sec), axis=-1))
+        z = tt.transpose(tt.concatenate((z_pri, z_sec), axis=-1))
+
+        return x, y, z
 
     @autocompile(
         "flux",
@@ -839,6 +907,7 @@ class OpsSystem(object):
         tt.dscalar(),  # m
         tt.dscalar(),  # prot
         tt.dscalar(),  # t0
+        tt.dscalar(),  # theta0
         DynamicType(
             "tt.dscalar() if instance.nw is None else tt.dvector()"
         ),  # L
@@ -854,6 +923,7 @@ class OpsSystem(object):
         tt.dvector(),  # m
         tt.dvector(),  # prot
         tt.dvector(),  # t0
+        tt.dvector(),  # theta0
         tt.dvector(),  # porb
         tt.dvector(),  # a
         tt.dvector(),  # ecc
@@ -871,13 +941,14 @@ class OpsSystem(object):
         tt.dmatrix(),  # u
         tt.dmatrix(),  # f
     )
-    def _flux(
+    def flux(
         self,
         t,
         pri_r,
         pri_m,
         pri_prot,
         pri_t0,
+        pri_theta0,
         pri_L,
         pri_inc,
         pri_obl,
@@ -888,6 +959,7 @@ class OpsSystem(object):
         sec_m,
         sec_prot,
         sec_t0,
+        sec_theta0,
         sec_porb,
         sec_a,
         sec_ecc,
@@ -931,12 +1003,10 @@ class OpsSystem(object):
             source = [[] for sec in self.secondaries]
 
         # Get all rotational phases
-        theta_pri = (2 * np.pi) / pri_prot * (t - pri_t0)
-        theta_sec = (
-            (2 * np.pi)
-            / tt.shape_padright(sec_prot)
-            * (tt.shape_padleft(t) - tt.shape_padright(sec_t0))
-        )
+        theta_pri = (2 * np.pi) / pri_prot * (t - pri_t0) - pri_theta0
+        theta_sec = (2 * np.pi) / tt.shape_padright(sec_prot) * (
+            tt.shape_padleft(t) - tt.shape_padright(sec_t0)
+        ) - tt.shape_padright(sec_theta0)
 
         # Compute all the phase curves
         phase_pri = pri_L * self.primary.map.ops.flux(
@@ -961,8 +1031,8 @@ class OpsSystem(object):
                     tt.zeros_like(t),
                     tt.zeros_like(t),
                     to_tensor(0.0),
-                    sec_inc[i],
-                    sec_obl[i],
+                    sec_inc[i] + sec_iorb[i],
+                    sec_obl[i] + sec_Omega[i],
                     sec_y[i],
                     sec_u[i],
                     sec_f[i],
@@ -987,9 +1057,9 @@ class OpsSystem(object):
 
         # Compute transits across the primary
         for i, _ in enumerate(self.secondaries):
-            xo = -x[:, i] / pri_r
-            yo = -y[:, i] / pri_r
-            zo = -z[:, i] / pri_r
+            xo = x[:, i] / pri_r
+            yo = y[:, i] / pri_r
+            zo = z[:, i] / pri_r
             ro = sec_r[i] / pri_r
             b = tt.sqrt(xo ** 2 + yo ** 2)
             b_occ = tt.invert(
@@ -1018,14 +1088,23 @@ class OpsSystem(object):
 
         # Compute occultations by the primary
         for i, sec in enumerate(self.secondaries):
-            xo = x[:, i] / sec_r[i]
-            yo = y[:, i] / sec_r[i]
-            zo = z[:, i] / sec_r[i]
+            xo = -x[:, i] / sec_r[i]
+            yo = -y[:, i] / sec_r[i]
+            zo = -z[:, i] / sec_r[i]
             ro = pri_r / sec_r[i]
             b = tt.sqrt(xo ** 2 + yo ** 2)
             b_occ = tt.invert(
                 tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
             )
+            if self.reflected:
+                source_occ = [
+                    [
+                        source[0][i][b_occ]
+                        for i, _ in enumerate(self.secondaries)
+                    ]
+                ]
+            else:
+                source_occ = source
             idx = tt.arange(b.shape[0])[b_occ]
             occ_sec = tt.set_subtensor(
                 occ_sec[i, idx],
@@ -1037,12 +1116,12 @@ class OpsSystem(object):
                     yo[idx],
                     zo[idx],
                     ro,
-                    sec_inc[i],
-                    sec_obl[i],
+                    sec_inc[i] + sec_iorb[i],
+                    sec_obl[i] + sec_Omega[i],
                     sec_y[i],
                     sec_u[i],
                     sec_f[i],
-                    *source[i],
+                    *source_occ[i],
                     no_compile=True,
                 )
                 - phase_sec[i, idx],
@@ -1053,14 +1132,23 @@ class OpsSystem(object):
             for j, _ in enumerate(self.secondaries):
                 if i == j:
                     continue
-                xo = (x[:, j] - x[:, i]) / sec_r[i]
-                yo = (y[:, j] - y[:, i]) / sec_r[i]
-                zo = (z[:, j] - z[:, i]) / sec_r[i]
+                xo = (x[:, i] - x[:, j]) / sec_r[i]
+                yo = (y[:, i] - y[:, j]) / sec_r[i]
+                zo = (z[:, i] - z[:, j]) / sec_r[i]
                 ro = sec_r[j] / sec_r[i]
                 b = tt.sqrt(xo ** 2 + yo ** 2)
                 b_occ = tt.invert(
                     tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
                 )
+                if self.reflected:
+                    source_occ = [
+                        [
+                            source[0][i][b_occ]
+                            for i, _ in enumerate(self.secondaries)
+                        ]
+                    ]
+                else:
+                    source_occ = source
                 idx = tt.arange(b.shape[0])[b_occ]
                 occ_sec = tt.set_subtensor(
                     occ_sec[i, idx],
@@ -1072,12 +1160,12 @@ class OpsSystem(object):
                         yo[idx],
                         zo[idx],
                         ro,
-                        sec_inc[i],
-                        sec_obl[i],
+                        sec_inc[i] + sec_iorb[i],
+                        sec_obl[i] + sec_Omega[i],
                         sec_y[i],
                         sec_u[i],
                         sec_f[i],
-                        *source[i],
+                        *source_occ[i],
                         no_compile=True,
                     )
                     - phase_sec[i, idx],

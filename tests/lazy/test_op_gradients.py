@@ -229,7 +229,7 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     zpt = np.sqrt(1 - xpt ** 2 - ypt ** 2)
     y = [1.0] + list(np.random.randn(8))
     u = [-1.0] + list(np.random.randn(2))
-    f = [np.pi]
+    f = [np.pi, 0.0, 0.0, 0.0]
     source = source = np.random.randn(10, 3)
     source /= np.sqrt(np.sum(source ** 2, axis=1)).reshape(-1, 1)
     verify_grad(
@@ -254,7 +254,7 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     obl = 30.0 * np.pi / 180.0
     y = np.ones(9)
     u = [-1.0]
-    f = [np.pi]
+    f = [np.pi, 0.0, 0.0, 0.0]
     source = np.random.randn(len(theta), 3)
     source /= np.sqrt(np.sum(source ** 2, axis=1)).reshape(-1, 1)
 

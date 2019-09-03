@@ -52,13 +52,15 @@ class YlmBase(object):
     _ops_class_ = Ops
     L = Luminosity()
 
-    def __init__(self, ydeg, udeg, fdeg, nw, quiet=False):
+    def __init__(self, ydeg, udeg, fdeg, nw, quiet=False, **kwargs):
         """
 
         """
         # Instantiate the Theano ops class
         self.quiet = quiet
-        self.ops = self._ops_class_(ydeg, udeg, fdeg, nw, quiet=quiet)
+        self.ops = self._ops_class_(
+            ydeg, udeg, fdeg, nw, quiet=quiet, **kwargs
+        )
         self.cast = self.ops.cast
 
         # Dimensions
@@ -79,7 +81,7 @@ class YlmBase(object):
         self.angle_unit = units.degree
 
         # Initialize
-        self.reset()
+        self.reset(**kwargs)
 
     @property
     def angle_unit(self):
@@ -276,7 +278,7 @@ class YlmBase(object):
         theta *= self._angle_factor
         return theta, xo, yo, zo, ro
 
-    def reset(self):
+    def reset(self, **kwargs):
         """Reset all map coefficients and attributes.
         
         .. note:: 
@@ -299,13 +301,8 @@ class YlmBase(object):
         f[0] = np.pi
         self._f = self.cast(f)
 
-        self._inc = self.cast(np.pi / 2)
-        self._obl = self.cast(0.0)
-
-        self._prot = 1.0
-        self._t0 = self.cast(0.0)
-        self._r = 1.0
-        self._veq = 0.0
+        self.inc = kwargs.get("inc", 90.0)
+        self.obl = kwargs.get("obl", 0.0)
 
     def X(self, **kwargs):
         """Alias for :py:meth:`design_matrix`. *Deprecated*"""
@@ -1123,7 +1120,7 @@ class ReflectedBase(object):
         return super(ReflectedBase, self).show(**kwargs)
 
 
-def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, quiet=False):
+def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, **kwargs):
     """A generic ``starry`` surface map.
 
     This function is a class factory that returns an instance of either
@@ -1146,8 +1143,6 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, quiet=False):
             for modeling the Rossiter-McLaughlin effect. Defaults to False.
         reflected (bool, optional): If True, models light curves in reflected
             light. Defaults to False.
-        quiet (bool, optional): Suppress all logging messages? 
-            Defaults to False.
     """
 
     # Check args
@@ -1161,7 +1156,6 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, quiet=False):
 
     # Default map base
     Bases = (YlmBase, MapBase)
-    kwargs = dict(quiet=quiet)
 
     # Radial velocity / reflected light?
     if rv:
@@ -1169,7 +1163,7 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, quiet=False):
         fdeg = 3
     elif reflected:
         Bases = (ReflectedBase,) + Bases
-        fdeg = 0  # DEBUG
+        fdeg = 1
     else:
         fdeg = 0
 

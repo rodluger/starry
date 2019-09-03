@@ -2,8 +2,6 @@
 """
 TODO:
     - Radial velocity support
-    - Resolve tension with orbital and rotational inclination
-    - Figure out what `t0` means
     - Exposure time integration
     - Light travel time delay
 """
@@ -26,6 +24,7 @@ class Body(object):
         m=1.0,
         prot=1.0,
         t0=0.0,
+        theta0=0.0,
         L=None,
         length_unit=units.Rsun,
         mass_unit=units.Msun,
@@ -47,6 +46,7 @@ class Body(object):
         self.m = m
         self.prot = prot
         self.t0 = t0
+        self.theta0 = theta0
         if L is not None:
             self.L = L
 
@@ -152,12 +152,20 @@ class Body(object):
     @property
     def t0(self):
         """A reference time in units of :py:attr:`time_unit`."""
-        # TODO: Think about this one
         return self._t0 / self._time_factor
 
     @t0.setter
     def t0(self, value):
         self._t0 = self.cast(value * self._time_factor)
+
+    @property
+    def theta0(self):
+        """The map rotational phase at time :py:attr:`t0`."""
+        return self._theta0 / self._angle_factor
+
+    @theta0.setter
+    def theta0(self, value):
+        self._theta0 = self.cast(value * self._angle_factor)
 
     @property
     def L(self):
@@ -183,8 +191,9 @@ class Primary(Body):
 class Secondary(Body):
     """A secondary (orbiting) body."""
 
-    def __init__(self, map, **kwargs):
+    def __init__(self, map, theta0=180.0, **kwargs):
         # Initialize `Body`
+        kwargs.update({"theta0": theta0})
         super(Secondary, self).__init__(map, **kwargs)
 
         # Attributes
@@ -272,7 +281,6 @@ class Secondary(Body):
     @property
     def inc(self):
         """The orbital inclination in units of :py:attr:`angle_unit`."""
-        # TODO: resolve tension with rotational inclination
         return self._inc / self._angle_factor
 
     @inc.setter
@@ -367,12 +375,13 @@ class System(object):
 
     def flux(self, t):
         """Compute the system flux at times ``t``."""
-        return self.ops._flux(
+        return self.ops.flux(
             reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
             self._primary._r,
             self._primary._m,
             self._primary._prot,
             self._primary._t0,
+            self._primary._theta0,
             self._primary._map._L,
             self._primary._map._inc,
             self._primary._map._obl,
@@ -383,6 +392,7 @@ class System(object):
             make_array_or_tensor([sec._m for sec in self._secondaries]),
             make_array_or_tensor([sec._prot for sec in self._secondaries]),
             make_array_or_tensor([sec._t0 for sec in self._secondaries]),
+            make_array_or_tensor([sec._theta0 for sec in self._secondaries]),
             make_array_or_tensor([sec._porb for sec in self._secondaries]),
             make_array_or_tensor([sec._a for sec in self._secondaries]),
             make_array_or_tensor([sec._ecc for sec in self._secondaries]),
@@ -397,3 +407,24 @@ class System(object):
             make_array_or_tensor([sec._map._f for sec in self._secondaries]),
         )
 
+    def position(self, t):
+        """Compute the Cartesian positions of all bodies at times ``t``."""
+        x, y, z = self.ops.position(
+            reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
+            self._primary._m,
+            self._primary._t0,
+            make_array_or_tensor([sec._m for sec in self._secondaries]),
+            make_array_or_tensor([sec._t0 for sec in self._secondaries]),
+            make_array_or_tensor([sec._porb for sec in self._secondaries]),
+            make_array_or_tensor([sec._a for sec in self._secondaries]),
+            make_array_or_tensor([sec._ecc for sec in self._secondaries]),
+            make_array_or_tensor([sec._w for sec in self._secondaries]),
+            make_array_or_tensor([sec._Omega for sec in self._secondaries]),
+            make_array_or_tensor([sec._inc for sec in self._secondaries]),
+        )
+        fac = np.reshape(
+            [self._primary._length_factor]
+            + [sec._length_factor for sec in self._secondaries],
+            [-1, 1],
+        )
+        return (x / fac, y / fac, z / fac)
