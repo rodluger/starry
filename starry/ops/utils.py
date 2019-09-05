@@ -34,6 +34,7 @@ __all__ = [
     "VectorRAxisAngle",
     "CheckBoundsOp",
     "RaiseValuerErrorIfOp",
+    "math",
 ]
 
 
@@ -355,3 +356,17 @@ class RaiseValuerErrorIfOp(tt.Op):
     def grad(self, inputs, gradients):
         # TODO: Is this actually necessary?
         return [inputs[0] * 0.0]
+
+
+class MathType(type):
+    def __getattr__(cls, attr):
+        if config.lazy:
+            return getattr(tt, attr)
+        else:
+            return getattr(np, attr)
+
+
+class math(metaclass=MathType):
+    """Alias for ``numpy`` or ``theano.tensor``."""
+
+    pass

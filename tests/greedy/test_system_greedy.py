@@ -6,12 +6,33 @@ import theano
 import numpy as np
 
 
-def test_system():
-    """
-    TODO: This test needs to be improved.
+def test_orientation(Omega=45, inc=35):
+    # Instantiate
+    pri = starry.Primary(starry.Map(), L=0)
+    sec = starry.Secondary(
+        starry.Map(ydeg=1),
+        porb=1.0,
+        L=1,
+        r=0,
+        m=0,
+        inc=inc,
+        Omega=Omega,
+        prot=1.0,
+    )
+    sec.map[1, 0] = 1.0
+    sys = starry.System(pri, sec)
 
-    """
-    A = starry.Primary(starry.Map())
-    b = starry.Secondary(starry.Map(), porb=1.0, prot=1, r=0.1, L=0.1)
-    sys = starry.System(A, b)
-    assert np.allclose(sys.flux([0, 0.25, 0.5]), [1.09, 1.1, 1.0])
+    # Align the rotational axis with the orbital axis
+    sec.map.axis = sec.axis
+    sec.map.align()
+
+    # Compute the flux
+    t = np.linspace(-0.5, 0.5, 1000)
+    flux = sys.flux(t)
+
+    # This is the analytic result
+    flux_analytic = 1.0 - np.sin(inc * np.pi / 180.0) * (
+        2.0 / np.sqrt(3.0)
+    ) * np.cos(2 * np.pi * t)
+
+    assert np.allclose(flux, flux_analytic)

@@ -301,8 +301,11 @@ class YlmBase(object):
         f[0] = np.pi
         self._f = self.cast(f)
 
-        self.inc = kwargs.get("inc", 90.0)
-        self.obl = kwargs.get("obl", 0.0)
+        self.inc = kwargs.pop("inc", 90.0)
+        self.obl = kwargs.pop("obl", 0.0)
+        self.axis = kwargs.pop("axis", self.axis)
+
+        self._check_kwargs("reset", kwargs)
 
     def X(self, **kwargs):
         """Alias for :py:meth:`design_matrix`. *Deprecated*"""
@@ -714,7 +717,24 @@ class YlmBase(object):
         self._y = self.cast(y)
 
         # Align the map with the axis of rotation
-        self.align([0, 1, 0])
+        self._y = self.ops.align(self._y, self._inc, self._obl)
+
+    def align(self):
+        r"""Align the map with the axis of rotation.
+
+        In ``starry``, map coefficients are defined relative to the
+        plane of the sky, with :math:`\hat{y}` pointing up,
+        :math:`\hat{x}` pointing to the right, and :math:`\hat{z}` pointing 
+        toward the observer. Changing the rotational axis (or the 
+        inclination/obliquity) does not by default change these coefficients,
+        so where the north pole of the map is will change relative to features
+        on the surface.
+
+        Call this function after setting the rotational axis to 
+        rotate the map coefficients such that the north pole remains fixed
+        relative to the surface map.
+        """
+        self._y = self.ops.align(self._y, self._inc, self._obl)
 
     def rotate(self, theta, axis=None):
         """
@@ -731,55 +751,6 @@ class YlmBase(object):
 
         # Rotate
         self._y = self.ops.rotate(axis, theta, self._y)
-
-    def align(self, source=None, dest=None):
-        """Rotate the map to align ``source`` with ``dest``.
-
-        The standard way of rotating maps in ``starry`` is to
-        provide the axis and angle of rotation, but this isn't always
-        convenient. In some cases, it is easier to specify a source
-        point/axis and a destination point/axis, and rotate the map such 
-        that the source aligns with the destination. This is particularly 
-        useful for changing map projections. For instance, to view the 
-        map pole-on,
-
-        .. code-block:: python
-
-            map.align(source=map.axis, dest=[0, 0, 1])
-
-        This rotates the map axis to align with the z-axis, which points
-        toward the observer.
-
-        Another useful application is if you want the map to rotate along with
-        the axis of rotation when you change the map's inclination and/or
-        obliquity. In other words, say you specified the coefficients of the 
-        map in the default frame (in which the rotation axis points along 
-        :math:`\\hat{y}`) but the object you're modeling is inclined/rotated 
-        with respect to the plane of the sky. After specifying the map's 
-        inclination and obliquity, run
-
-        .. code-block:: python
-
-            map.align(source=[0, 1, 0], dest=map.axis)
-        
-        to align the pole of the map with the axis of rotation. You are now
-        in the frame corresponding to the plane of the sky.
-
-        Args:
-            source (array, optional): A unit vector describing the source 
-                position. This point will be rotated onto ``dest``. Default 
-                is the current map axis.
-            dest (array, optional): A unit vector describing the destination 
-                position. The ``source`` point will be rotated onto this point. 
-                Default is the current map axis.
-        """
-        if source is None:
-            source = self.axis
-        if dest is None:
-            dest = self.axis
-        source = self.cast(source)
-        dest = self.cast(dest)
-        self._y = self.ops.align(self._y, source, dest)
 
     def add_spot(self, amp, sigma=0.1, lat=0.0, lon=0.0):
         """

@@ -11,6 +11,8 @@ import theano.tensor as tt
 import time
 from tqdm import tqdm
 
+starry.config.lazy = False
+
 
 def compare_plot():
 
@@ -19,15 +21,20 @@ def compare_plot():
     yo = np.zeros_like(xo) + 0.1
     ro = 0.1
 
-    map = starry.Map(1, 1, lazy=False)
+    map = starry.Map(ydeg=1, udeg=1)
     map[1, 0] = 0.5
     map.inc = 45
-    plt.plot(xo, map.flux(theta=theta, xo=xo, yo=yo, ro=ro), label="dev", lw=3)
+    plt.plot(xo, map.flux(theta=theta, xo=xo, yo=yo, ro=ro), label="v1", lw=3)
 
     map_beta = starry_beta.Map(1)
     map_beta[1, 0] = 0.5
     map_beta.axis = [0, 1, 1]
-    plt.plot(xo, map_beta.flux(theta=theta, xo=xo, yo=yo, ro=ro), label="beta", ls="--")
+    plt.plot(
+        xo,
+        map_beta.flux(theta=theta, xo=xo, yo=yo, ro=ro),
+        label="beta",
+        ls="--",
+    )
 
     plt.legend()
     plt.show()
@@ -35,25 +42,27 @@ def compare_plot():
 
 def time_flux(ydeg, occultation=False, npts=np.logspace(0, 4, 10), ntimes=100):
 
-    # Define the Theano function
-    map = starry.Map(ydeg=ydeg, lazy=False)
+    # Define the new starry function
+    map = starry.Map(ydeg=ydeg)
     map[1:, :] = 1
     map.inc = 45
-    t_flux = lambda theta, xo, yo, ro: \
-        map.flux(theta=theta, xo=xo, yo=yo, ro=ro)
+    t_flux = lambda theta, xo, yo, ro: map.flux(
+        theta=theta, xo=xo, yo=yo, ro=ro
+    )
 
     # Define the starry beta function
     map_beta = starry_beta.Map(ydeg)
     map_beta[1:, :] = 1
     map_beta.axis = [0, 1, 1]
-    b_flux = lambda theta, xo, yo, ro: \
-        map_beta.flux(theta=theta, xo=xo, yo=yo, ro=ro)
+    b_flux = lambda theta, xo, yo, ro: map_beta.flux(
+        theta=theta, xo=xo, yo=yo, ro=ro
+    )
 
     if occultation:
         ro = 0.1
     else:
         ro = 0.0
-    
+
     t_time = np.zeros_like(npts)
     b_time = np.zeros_like(npts)
     for i in tqdm(range(len(npts))):
@@ -61,7 +70,7 @@ def time_flux(ydeg, occultation=False, npts=np.logspace(0, 4, 10), ntimes=100):
         theta = np.linspace(-180, 180, int(npts[i]))
         xo = np.linspace(-1.0, 1.0, int(npts[i]))
         yo = np.zeros_like(xo) + 0.1
-        
+
         for t, flux in zip([t_time, b_time], [t_flux, b_flux]):
             elapsed = np.zeros(ntimes)
             for k in range(ntimes):
@@ -74,7 +83,7 @@ def time_flux(ydeg, occultation=False, npts=np.logspace(0, 4, 10), ntimes=100):
 
 
 def compare_times():
-    
+
     ydeg = [1, 2, 3, 5, 10, 15]
     npts = np.logspace(0, 4, 10)
 
@@ -82,20 +91,34 @@ def compare_times():
     ax = ax.flatten()
 
     for i in range(len(ydeg)):
-        for occultation, fillstyle, ls in zip([False, True], ["none", "full"], ["--", "-"]):
-            b_time, t_time = time_flux(ydeg[i], npts=npts, occultation=occultation)
-            ax[i].plot(npts, t_time, "C0o", fillstyle=fillstyle, ls="none", ms=3)
+        for occultation, fillstyle, ls in zip(
+            [False, True], ["none", "full"], ["--", "-"]
+        ):
+            b_time, t_time = time_flux(
+                ydeg[i], npts=npts, occultation=occultation
+            )
+            ax[i].plot(
+                npts, t_time, "C0o", fillstyle=fillstyle, ls="none", ms=3
+            )
             ax[i].plot(npts, t_time, "C0", ls=ls, lw=1, alpha=0.5)
-            ax[i].plot(npts, b_time, "C1o", fillstyle=fillstyle, ls="none", ms=3)
+            ax[i].plot(
+                npts, b_time, "C1o", fillstyle=fillstyle, ls="none", ms=3
+            )
             ax[i].plot(npts, b_time, "C1", ls=ls, lw=1, alpha=0.5)
             ax[i].set_xscale("log")
             ax[i].set_yscale("log")
-            ax[i].annotate(r"$\mathcal{l} = %s$" % ydeg[i], xy=(0, 1), 
-                        xycoords="axes fraction", 
-                        xytext=(5, -5), textcoords="offset points",
-                        ha="left", va="top", fontsize=12)
+            ax[i].annotate(
+                r"$\mathcal{l} = %s$" % ydeg[i],
+                xy=(0, 1),
+                xycoords="axes fraction",
+                xytext=(5, -5),
+                textcoords="offset points",
+                ha="left",
+                va="top",
+                fontsize=12,
+            )
 
-    ax[0].plot([], [], "C0-", label="dev")
+    ax[0].plot([], [], "C0-", label="v1")
     ax[0].plot([], [], "C1-", label="beta")
     ax[0].plot([], [], "k--", label="rotation")
     ax[0].plot([], [], "k-", label="occultation")
@@ -107,4 +130,4 @@ def compare_times():
     plt.show()
 
 
-compare_plot()
+compare_times()

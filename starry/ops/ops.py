@@ -272,14 +272,30 @@ class Ops(object):
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
         # If lat/lon, rotate the map so that north points up
-        if self.ydeg > 0:
+        if self.nw is None:
             y = ifelse(
                 tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-                self.align(
-                    y,
-                    self.get_axis(inc, obl, no_compile=True),
-                    to_tensor([0, 1, 0]),
-                    no_compile=True,
+                tt.reshape(
+                    self.dotRxy(
+                        self.dotRz(
+                            tt.reshape(y, [1, -1]), tt.reshape(-obl, [1])
+                        ),
+                        np.pi / 2 - inc,
+                        0,
+                    ),
+                    [-1],
+                ),
+                y,
+            )
+        else:
+            y = ifelse(
+                tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+                tt.transpose(
+                    self.dotRxy(
+                        self.dotRz(tt.transpose(y), tt.tile(-obl, [self.nw])),
+                        np.pi / 2 - inc,
+                        0,
+                    )
                 ),
                 y,
             )
@@ -389,18 +405,21 @@ class Ops(object):
     @autocompile(
         "align",
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
-        tt.dvector(),
-        tt.dvector(),
+        tt.dscalar(),
+        tt.dscalar(),
     )
-    def align(self, y, source, dest):
+    def align(self, y, inc, obl):
         """
 
         """
-        source /= source.norm(2)
-        dest /= dest.norm(2)
-        axis = cross(source, dest)
-        theta = tt.arccos(tt.dot(source, dest))
-        return self.rotate(axis, theta, y, no_compile=True)
+        return self.rotate(
+            tt.as_tensor_variable([-tt.cos(obl), tt.sin(obl), 0]),
+            -(0.5 * np.pi - inc),
+            self.rotate(
+                tt.as_tensor_variable([0, 0, 1]), -obl, y, no_compile=True
+            ),
+            no_compile=True,
+        )
 
     @autocompile(
         "add_spot",
@@ -1022,8 +1041,8 @@ class OpsSystem(object):
                     tt.zeros_like(t),
                     tt.zeros_like(t),
                     to_tensor(0.0),
-                    sec_inc[i] + sec_iorb[i],
-                    sec_obl[i] + sec_Omega[i],
+                    sec_inc[i],
+                    sec_obl[i],
                     sec_u[i],
                     sec_f[i],
                     *source[i],
@@ -1105,8 +1124,8 @@ class OpsSystem(object):
                     yo[idx],
                     zo[idx],
                     ro,
-                    sec_inc[i] + sec_iorb[i],
-                    sec_obl[i] + sec_Omega[i],
+                    sec_inc[i],
+                    sec_obl[i],
                     sec_u[i],
                     sec_f[i],
                     *source_occ[i],
@@ -1148,8 +1167,8 @@ class OpsSystem(object):
                         yo[idx],
                         zo[idx],
                         ro,
-                        sec_inc[i] + sec_iorb[i],
-                        sec_obl[i] + sec_Omega[i],
+                        sec_inc[i],
+                        sec_obl[i],
                         sec_u[i],
                         sec_f[i],
                         *source_occ[i],
@@ -1266,6 +1285,7 @@ class OpsSystem(object):
             sec_obl,
             sec_u,
             sec_f,
+            no_compile=True,
         )
         y = tt.concatenate((pri_y, tt.reshape(sec_y, (-1,))))
         return tt.dot(X, y)

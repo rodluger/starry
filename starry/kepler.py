@@ -7,7 +7,7 @@ TODO:
 """
 from . import config
 from .maps import MapBase, RVBase, ReflectedBase
-from .ops import OpsSystem, OpsRVSystem, reshape, make_array_or_tensor
+from .ops import OpsSystem, OpsRVSystem, reshape, make_array_or_tensor, math
 import numpy as np
 from astropy import units
 from inspect import getmro
@@ -286,6 +286,18 @@ class Secondary(Body):
     @inc.setter
     def inc(self, value):
         self._inc = self.cast(value * self._angle_factor)
+
+    @property
+    def axis(self):
+        """The axis perpendicular to the orbital plane. *Read-only.*
+
+        This value is computed from :py:attr:`inc` and :py:attr:`Omega`.
+        """
+        cosO = math.cos(self._Omega)
+        sinO = math.sin(self._Omega)
+        cosI = math.cos(self._inc)
+        sinI = math.sin(self._inc)
+        return make_array_or_tensor([-sinO * sinI, cosO * sinI, cosI])
 
 
 class System(object):
