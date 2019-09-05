@@ -2,7 +2,7 @@
 from .. import config
 from .. import _c_ops
 from .integration import sTOp, rTReflectedOp
-from .rotation import dotRxyOp, dotRxyTOp, dotRzOp, rotateOp
+from .rotation import dotRxyOp, dotRxyTOp, dotRzOp
 from .filter import FOp
 from .misc import spotYlmOp, pTOp
 from .utils import *
@@ -73,8 +73,6 @@ class Ops(object):
         self.A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv)
 
         # Rotation operations
-        self.R = self._c_ops.R
-        self.apply_rotation = rotateOp(self._c_ops.rotate, self.nw)
         self.dotRz = dotRzOp(self._c_ops.dotRz)
         self.dotRxy = dotRxyOp(self._c_ops.dotRxy)
         self.dotRxyT = dotRxyTOp(self._c_ops.dotRxyT)
@@ -90,43 +88,6 @@ class Ops(object):
         # Map rendering
         self.rect_res = 0
         self.ortho_res = 0
-
-    def compute_ortho_grid(self, res):
-        """
-        Compute the polynomial basis on the plane of the sky.
-
-        """
-        dx = 2.0 / res
-        y, x = tt.mgrid[-1:1:dx, -1:1:dx]
-        x = tt.reshape(x, [1, -1])
-        y = tt.reshape(y, [1, -1])
-        z = tt.sqrt(1 - x ** 2 - y ** 2)
-        return tt.concatenate((x, y, z))
-
-    def compute_rect_grid(self, res):
-        """
-        Compute the polynomial basis on a rectangular lat/lon grid.
-
-        """
-        dx = np.pi / res
-        lat, lon = tt.mgrid[
-            -np.pi / 2 : np.pi / 2 : dx, -3 * np.pi / 2 : np.pi / 2 : 2 * dx
-        ]
-        x = tt.reshape(tt.cos(lat) * tt.cos(lon), [1, -1])
-        y = tt.reshape(tt.cos(lat) * tt.sin(lon), [1, -1])
-        z = tt.reshape(tt.sin(lat), [1, -1])
-        R = RAxisAngle([1, 0, 0], -np.pi / 2)
-        return tt.dot(R, tt.concatenate((x, y, z)))
-
-    def dotR(self, M, inc, obl, theta):
-        """
-
-        """
-
-        res = self.dotRxyT(M, inc, obl)
-        res = self.dotRz(res, theta)
-        res = self.dotRxy(res, inc, obl)
-        return res
 
     @autocompile(
         "X",
@@ -166,7 +127,7 @@ class Ops(object):
             rTA1 = self.rTA1
         X_rot = tt.set_subtensor(
             tt.zeros((rows, cols))[i_rot],
-            self.dotR(rTA1, inc, obl, theta[i_rot]),
+            self.dotR(rTA1, inc, obl, theta[i_rot], input_frame="invariant"),
         )
 
         # Occultation + rotation operator
@@ -179,7 +140,7 @@ class Ops(object):
             sTAR = tt.dot(sTAR, A1InvFA1)
         X_occ = tt.set_subtensor(
             tt.zeros((rows, cols))[i_occ],
-            self.dotR(sTAR, inc, obl, theta[i_occ]),
+            self.dotR(sTAR, inc, obl, theta[i_occ], input_frame="invariant"),
         )
 
         return X_rot + X_occ
@@ -206,11 +167,14 @@ class Ops(object):
         )
 
     @autocompile("P", tt.dvector(), tt.dvector(), tt.dvector())
-    def P(self, xpt, ypt, zpt):
+    def P(self, lat, lon):
         """
         Pixelization matrix, no filters or illumination.
 
         """
+        # Get the Cartesian points
+        xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
+
         # Compute the polynomial basis at the point
         pT = self.pT(xpt, ypt, zpt)[:, : (self.ydeg + 1) ** 2]
 
@@ -224,15 +188,17 @@ class Ops(object):
         "intensity",
         tt.dvector(),
         tt.dvector(),
-        tt.dvector(),
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
     )
-    def intensity(self, xpt, ypt, zpt, y, u, f):
+    def intensity(self, lat, lon, y, u, f):
         """
 
         """
+        # Get the Cartesian points
+        xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
+
         # Compute the polynomial basis at the point
         pT = self.pT(xpt, ypt, zpt)
 
@@ -271,17 +237,16 @@ class Ops(object):
         # Compute the polynomial basis
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
-        # If lat/lon, rotate the map so that north points up
+        # If ortho, rotate the map to the correct frame
         if self.nw is None:
             y = ifelse(
-                tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
                 tt.reshape(
-                    self.dotRxy(
-                        self.dotRz(
-                            tt.reshape(y, [1, -1]), tt.reshape(-obl, [1])
+                    self.dotRz(
+                        self.dotRxy(
+                            tt.reshape(y, [1, -1]), inc - 0.5 * np.pi, 0
                         ),
-                        np.pi / 2 - inc,
-                        0,
+                        tt.reshape(obl, [1]),
                     ),
                     [-1],
                 ),
@@ -289,12 +254,11 @@ class Ops(object):
             )
         else:
             y = ifelse(
-                tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
                 tt.transpose(
-                    self.dotRxy(
-                        self.dotRz(tt.transpose(y), tt.tile(-obl, [self.nw])),
-                        np.pi / 2 - inc,
-                        0,
+                    self.dotRz(
+                        self.dotRxy(tt.transpose(y), inc - 0.5 * np.pi, 0),
+                        tt.tile(obl, [self.nw]),
                     )
                 ),
                 y,
@@ -303,11 +267,17 @@ class Ops(object):
         # Rotate the map and transform into the polynomial basis
         if self.nw is None:
             yT = tt.tile(y, [theta.shape[0], 1])
-            Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
+            Ry = tt.transpose(
+                self.dotR(yT, inc, obl, -theta, input_frame="observer")
+            )
         else:
             Ry = tt.transpose(
                 self.dotR(
-                    tt.transpose(y), inc, obl, -tt.tile(theta[0], self.nw)
+                    tt.transpose(y),
+                    inc,
+                    obl,
+                    -tt.tile(theta[0], self.nw),
+                    input_frame="observer",
                 )
             )
         A1Ry = ts.dot(self.A1, Ry)
@@ -330,25 +300,6 @@ class Ops(object):
         # We need the shape to be (nframes, npix, npix)
         return res.dimshuffle(2, 0, 1)
 
-    @autocompile("get_inc_obl", tt.dvector())
-    def get_inc_obl(self, axis):
-        """
-
-        """
-        axis /= axis.norm(2)
-        inc_obl = tt.zeros(2)
-        obl = tt.arctan2(axis[0], axis[1])
-        sino = tt.sin(obl)
-        coso = tt.cos(obl)
-        inc = tt.switch(
-            tt.lt(tt.abs_(sino), 1e-10),
-            tt.arctan2(axis[1] / coso, axis[2]),
-            tt.arctan2(axis[0] / sino, axis[2]),
-        )
-        inc_obl = tt.set_subtensor(inc_obl[0], inc)
-        inc_obl = tt.set_subtensor(inc_obl[1], obl)
-        return inc_obl
-
     @autocompile("get_axis", tt.dscalar(), tt.dscalar())
     def get_axis(self, inc, obl):
         """
@@ -364,63 +315,6 @@ class Ops(object):
         axis = tt.set_subtensor(axis[2], cosi)
         return axis
 
-    def set_map_vector(self, vector, inds, vals):
-        """
-
-        """
-        res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
-        return res
-
-    @autocompile("latlon_to_xyz", tt.dvector(), tt.dvector(), tt.dvector())
-    def latlon_to_xyz(self, axis, lat, lon):
-        """
-
-        """
-        # Get the `lat = 0, lon = 0` point
-        u = [axis[1], -axis[0], 0]
-        theta = tt.arccos(axis[2])
-        R0 = RAxisAngle(u, theta)
-        origin = tt.dot(R0, [0.0, 0.0, 1.0])
-
-        # Now rotate it to `lat, lon`
-        R1 = VectorRAxisAngle([1.0, 0.0, 0.0], -lat)
-        R2 = VectorRAxisAngle([0.0, 1.0, 0.0], lon)
-        R = tt.batched_dot(R2, R1)
-        xyz = tt.transpose(tt.dot(R, origin))
-        return xyz
-
-    @autocompile(
-        "rotate",
-        tt.dvector(),
-        tt.dscalar(),
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
-    )
-    def rotate(self, u, theta, y):
-        """
-
-        """
-        u /= u.norm(2)
-        return self.apply_rotation(u, theta, y)
-
-    @autocompile(
-        "align",
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
-        tt.dscalar(),
-        tt.dscalar(),
-    )
-    def align(self, y, inc, obl):
-        """
-
-        """
-        return self.rotate(
-            tt.as_tensor_variable([-tt.cos(obl), tt.sin(obl), 0]),
-            -(0.5 * np.pi - inc),
-            self.rotate(
-                tt.as_tensor_variable([0, 0, 1]), -obl, y, no_compile=True
-            ),
-            no_compile=True,
-        )
-
     @autocompile(
         "add_spot",
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
@@ -428,16 +322,90 @@ class Ops(object):
         tt.dscalar(),
         tt.dscalar(),
         tt.dscalar(),
-        tt.dscalar(),
-        tt.dscalar(),
     )
-    def add_spot(self, y, amp, sigma, lat, lon, inc, obl):
+    def add_spot(self, y, amp, sigma, lat, lon):
         """
 
         """
-        y_new = y + self.spotYlm(amp, sigma, lat, lon, inc, obl)
+        y_new = y + self.spotYlm(amp, sigma, lat, lon, 0.5 * np.pi, 0.0)
         y_new /= y_new[0]
         return y_new
+
+    def compute_ortho_grid(self, res):
+        """
+        Compute the polynomial basis on the plane of the sky.
+
+        """
+        dx = 2.0 / res
+        y, x = tt.mgrid[-1:1:dx, -1:1:dx]
+        x = tt.reshape(x, [1, -1])
+        y = tt.reshape(y, [1, -1])
+        z = tt.sqrt(1 - x ** 2 - y ** 2)
+        return tt.concatenate((x, y, z))
+
+    def compute_rect_grid(self, res):
+        """
+        Compute the polynomial basis on a rectangular lat/lon grid.
+
+        """
+        dx = np.pi / res
+        lat, lon = tt.mgrid[
+            -np.pi / 2 : np.pi / 2 : dx, -3 * np.pi / 2 : np.pi / 2 : 2 * dx
+        ]
+        x = tt.reshape(tt.cos(lat) * tt.cos(lon), [1, -1])
+        y = tt.reshape(tt.cos(lat) * tt.sin(lon), [1, -1])
+        z = tt.reshape(tt.sin(lat), [1, -1])
+        R = RAxisAngle([1, 0, 0], -np.pi / 2)
+        return tt.dot(R, tt.concatenate((x, y, z)))
+
+    def dotR(self, M, inc, obl, theta, input_frame="observer"):
+        """
+        Dots the tensor ``M`` into the rotation matrix that transforms a
+        vector of spherical harmonic coefficients in the ``input_frame``
+        to the vector of spherical harmonic coefficients describing the
+        map on the sky plane (at inclination ``inc`` and obliquity ``obl``)
+        rotated to phase ``theta``.
+
+        """
+        # Rotate onto the sky plane
+        res = self.dotRxyT(M, inc, obl)
+
+        # Rotate in phase (this is a tensor dot; theta is a vector)
+        res = self.dotRz(res, theta)
+
+        # Rotate into the polar frame
+        if input_frame == "observer":
+
+            # Rotate from observer frame
+            res = self.dotRxy(res, inc, obl)
+
+        elif input_frame == "invariant":
+
+            # Rotate from invariant frame
+            res = self.dotRxy(res, 0.5 * np.pi, 0.0)
+
+        else:
+
+            raise ValueError("Invalid input frame.")
+
+        return res
+
+    def set_map_vector(self, vector, inds, vals):
+        """
+
+        """
+        res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
+        return res
+
+    def latlon_to_xyz(self, lat, lon):
+        """
+
+        """
+        R1 = VectorRAxisAngle([1.0, 0.0, 0.0], -lat)
+        R2 = VectorRAxisAngle([0.0, 1.0, 0.0], lon)
+        R = tt.batched_dot(R2, R1)
+        xyz = tt.transpose(tt.dot(R, [0.0, 0.0, 1.0]))
+        return xyz[0], xyz[1], xyz[2]
 
 
 class OpsRV(Ops):
@@ -598,16 +566,18 @@ class OpsReflected(Ops):
         "intensity",
         tt.dvector(),
         tt.dvector(),
-        tt.dvector(),
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
         tt.dmatrix(),
     )
-    def intensity(self, xpt, ypt, zpt, y, u, f, source):
+    def intensity(self, lat, lon, y, u, f, source):
         """
 
         """
+        # Get the Cartesian points
+        xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
+
         # Compute the polynomial basis at the point
         pT = self.pT(xpt, ypt, zpt)
 
@@ -747,7 +717,8 @@ class OpsReflected(Ops):
     )
     def render(self, res, projection, theta, inc, obl, y, u, f, source):
         """
-
+        TODO: BROKEN
+        
         """
         # Compute the Cartesian grid
         xyz = ifelse(

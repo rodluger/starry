@@ -81,7 +81,7 @@ class YlmBase(object):
         self.angle_unit = units.degree
 
         # Initialize
-        self.reset(**kwargs)
+        self.reset()
 
     @property
     def angle_unit(self):
@@ -194,18 +194,6 @@ class YlmBase(object):
     def obl(self, value):
         self._obl = self.cast(value) * self._angle_factor
 
-    @property
-    def axis(self):
-        """A unit vector representing the axis of rotation for the map."""
-        return self.ops.get_axis(self._inc, self._obl)
-
-    @axis.setter
-    def axis(self, axis):
-        axis = self.cast(axis)
-        inc_obl = self.ops.get_inc_obl(axis)
-        self._inc = inc_obl[0]
-        self._obl = inc_obl[1]
-
     def __getitem__(self, idx):
         if isinstance(idx, (int, np.int, slice)):
             # User is accessing a limb darkening index
@@ -278,7 +266,7 @@ class YlmBase(object):
         theta *= self._angle_factor
         return theta, xo, yo, zo, ro
 
-    def reset(self, **kwargs):
+    def reset(self):
         """Reset all map coefficients and attributes.
         
         .. note:: 
@@ -301,11 +289,8 @@ class YlmBase(object):
         f[0] = np.pi
         self._f = self.cast(f)
 
-        self.inc = kwargs.pop("inc", 90.0)
-        self.obl = kwargs.pop("obl", 0.0)
-        self.axis = kwargs.pop("axis", self.axis)
-
-        self._check_kwargs("reset", kwargs)
+        self._inc = self.cast(0.5 * np.pi)
+        self._obl = self.cast(0.0)
 
     def X(self, **kwargs):
         """Alias for :py:meth:`design_matrix`. *Deprecated*"""
@@ -337,7 +322,7 @@ class YlmBase(object):
             theta, xo, yo, zo, ro, self._inc, self._obl, self._u, self._f
         )
 
-    def intensity_design_matrix(self, **kwargs):
+    def intensity_design_matrix(self, lat=0, lon=0):
         """Compute and return the pixelization matrix ``P``.
         
         .. note::
@@ -347,31 +332,12 @@ class YlmBase(object):
         
         """
         # Get the Cartesian points
-        lat = kwargs.pop("lat", None)
-        lon = kwargs.pop("lon", None)
-        if lat is None and lon is None:
-            x = kwargs.pop("x", 0.0)
-            y = kwargs.pop("y", 0.0)
-            z = kwargs.pop("z", None)
-            if z is not None:
-                x, y, z = vectorize(*self.cast(x, y, z))
-            else:
-                x, y = vectorize(*self.cast(x, y))
-                z = (1.0 - x ** 2 - y ** 2) ** 0.5
-        else:
-            lat, lon = vectorize(*self.cast(lat, lon))
-            lat *= self._angle_factor
-            lon *= self._angle_factor
-            xyz = self.ops.latlon_to_xyz(self.axis, lat, lon)
-            x = xyz[0]
-            y = xyz[1]
-            z = xyz[2]
-
-        # Check for invalid kwargs
-        self._check_kwargs("intensity_design_matrix", kwargs)
+        lat, lon = vectorize(*self.cast(lat, lon))
+        lat *= self._angle_factor
+        lon *= self._angle_factor
 
         # Compute & return
-        return self.L * self.ops.P(x, y, z)
+        return self.L * self.ops.P(lat, lon)
 
     def flux(self, **kwargs):
         """
@@ -409,39 +375,18 @@ class YlmBase(object):
             self._f,
         )
 
-    def intensity(self, **kwargs):
+    def intensity(self, lat=0, lon=0):
         """
-        Compute and return the intensity of the map
-        at a given ``(lat, lon)`` or ``(x, y, z)``
-        point on the surface.
+        Compute and return the intensity of the map.
         
         """
         # Get the Cartesian points
-        lat = kwargs.pop("lat", None)
-        lon = kwargs.pop("lon", None)
-        if lat is None and lon is None:
-            x = kwargs.pop("x", 0.0)
-            y = kwargs.pop("y", 0.0)
-            z = kwargs.pop("z", None)
-            if z is not None:
-                x, y, z = vectorize(*self.cast(x, y, z))
-            else:
-                x, y = vectorize(*self.cast(x, y))
-                z = (1.0 - x ** 2 - y ** 2) ** 0.5
-        else:
-            lat, lon = vectorize(*self.cast(lat, lon))
-            lat *= self._angle_factor
-            lon *= self._angle_factor
-            xyz = self.ops.latlon_to_xyz(self.axis, lat, lon)
-            x = xyz[0]
-            y = xyz[1]
-            z = xyz[2]
-
-        # Check for invalid kwargs
-        self._check_kwargs("intensity", kwargs)
+        lat, lon = vectorize(*self.cast(lat, lon))
+        lat *= self._angle_factor
+        lon *= self._angle_factor
 
         # Compute & return
-        return self.L * self.ops.intensity(x, y, z, self._y, self._u, self._f)
+        return self.L * self.ops.intensity(lat, lon, self._y, self._u, self._f)
 
     def render(self, res=300, projection="ortho", theta=0.0):
         """
@@ -668,9 +613,6 @@ class YlmBase(object):
         spherical harmonic expansion of the input image and sets the map's 
         :py:attr:`y` coefficients accordingly.
 
-        The map is oriented such that the north pole of the input image
-        is placed at the north pole of the current rotation axis.
-
         Args:
             image: A path to an image file, a two-dimensional ``numpy`` 
                 array, or a ``healpix`` map array (if ``healpix`` is True).
@@ -686,6 +628,12 @@ class YlmBase(object):
                 the ``healpix.sphtfunc.smoothalm`` method. 
                 Default is None.
         """
+        # TODO?
+        if self.nw is not None:
+            raise NotImplementedError(
+                "Method not available for spectral maps."
+            )
+
         # Is this a file name?
         if type(image) is str:
             y = image2map(
@@ -716,42 +664,6 @@ class YlmBase(object):
         # Ingest the coefficients
         self._y = self.cast(y)
 
-        # Align the map with the axis of rotation
-        self._y = self.ops.align(self._y, self._inc, self._obl)
-
-    def align(self):
-        r"""Align the map with the axis of rotation.
-
-        In ``starry``, map coefficients are defined relative to the
-        plane of the sky, with :math:`\hat{y}` pointing up,
-        :math:`\hat{x}` pointing to the right, and :math:`\hat{z}` pointing 
-        toward the observer. Changing the rotational axis (or the 
-        inclination/obliquity) does not by default change these coefficients,
-        so where the north pole of the map is will change relative to features
-        on the surface.
-
-        Call this function after setting the rotational axis to 
-        rotate the map coefficients such that the north pole remains fixed
-        relative to the surface map.
-        """
-        self._y = self.ops.align(self._y, self._inc, self._obl)
-
-    def rotate(self, theta, axis=None):
-        """
-
-        """
-        # Get inc and obl
-        if axis is None:
-            axis = self.ops.get_axis(self._inc, self._obl)
-        else:
-            axis = self.cast(axis)
-
-        # Cast to tensor & convert to internal units
-        theta = self.cast(theta) * self._angle_factor
-
-        # Rotate
-        self._y = self.ops.rotate(axis, theta, self._y)
-
     def add_spot(self, amp, sigma=0.1, lat=0.0, lon=0.0):
         """
         
@@ -764,8 +676,6 @@ class YlmBase(object):
             sigma,
             lat * self._angle_factor,
             lon * self._angle_factor,
-            self._inc,
-            self._obl,
         )
 
 
@@ -982,37 +892,22 @@ class ReflectedBase(object):
             source,
         )
 
-    def intensity(self, **kwargs):
+    def intensity(self, lat=0, lon=0, source=[-1, 0, 0]):
         """
         
         """
         # Get the Cartesian points
-        lat = kwargs.pop("lat", None)
-        lon = kwargs.pop("lon", None)
-        if lat is None and lon is None:
-            x = kwargs.pop("x", 0.0)
-            y = kwargs.pop("y", 0.0)
-            z = kwargs.pop("z", 1.0)
-            x, y, z = vectorize(*self.cast(x, y, z))
-        else:
-            lat, lon = vectorize(*self.cast(lat, lon))
-            lat *= self._angle_factor
-            lon *= self._angle_factor
-            xyz = self.ops.latlon_to_xyz(self.axis, lat, lon)
-            x = xyz[0]
-            y = xyz[1]
-            z = xyz[2]
+        lat, lon = vectorize(*self.cast(lat, lon))
+        lat *= self._angle_factor
+        lon *= self._angle_factor
 
         # Source position
-        source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
-        x, y, z, source = vectorize(x, y, z, source)
-
-        # Check for invalid kwargs
-        self._check_kwargs("intensity", kwargs)
+        source = atleast_2d(self.cast(source))
+        lat, lon, source = vectorize(lat, lon, source)
 
         # Compute & return
         return self.L * self.ops.intensity(
-            x, y, z, self._y, self._u, self._f, source
+            lat, lon, self._y, self._u, self._f, source
         )
 
     def render(
