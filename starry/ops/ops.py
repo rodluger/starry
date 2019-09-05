@@ -143,7 +143,18 @@ class Ops(object):
             self.dotR(sTAR, inc, obl, theta[i_occ], input_frame="invariant"),
         )
 
-        return X_rot + X_occ
+        # Total design matrix
+        X = X_rot + X_occ
+
+        """
+        # Rotate to invariant frame
+        X = self.dotRxy(
+            X, (inc - 0.5 * np.pi), tt.arctan2(-tt.sin(obl), -tt.cos(obl))
+        )
+        X = self.dotRz(X, tt.tile(-obl, [theta.shape[0]]))
+        """
+
+        return X
 
     @autocompile(
         "flux",
@@ -367,22 +378,32 @@ class Ops(object):
         rotated to phase ``theta``.
 
         """
-        # Rotate onto the sky plane
+        # Rotate into the polar frame
         res = self.dotRxyT(M, inc, obl)
 
         # Rotate in phase (this is a tensor dot; theta is a vector)
         res = self.dotRz(res, theta)
 
-        # Rotate into the polar frame
-        if input_frame == "observer":
+        # Rotate onto the sky plane
+        res = self.dotRxy(res, inc, obl)
 
-            # Rotate from observer frame
-            res = self.dotRxy(res, inc, obl)
+        # Rotate into the output frame
+        if input_frame == "invariant":
 
-        elif input_frame == "invariant":
+            # TODO: This is a slow brain-dead hack. Speed this up!
 
-            # Rotate from invariant frame
-            res = self.dotRxy(res, 0.5 * np.pi, 0.0)
+            # Rotate to the invariant frame
+            res = self.dotRxy(
+                res,
+                (inc - 0.5 * np.pi),
+                tt.arctan2(-tt.sin(obl), -tt.cos(obl)),
+            )
+            res = self.dotRz(res, tt.tile(-obl, [theta.shape[0]]))
+
+        elif input_frame == "observer":
+
+            # We're already in the observer frame
+            pass
 
         else:
 
