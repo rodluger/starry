@@ -85,10 +85,6 @@ class Ops(object):
         self.spotYlm = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
         self.pT = pTOp(self._c_ops.pT, self.deg)
 
-        # Map rendering
-        self.rect_res = 0
-        self.ortho_res = 0
-
     @autocompile(
         "X",
         tt.dvector(),
@@ -127,7 +123,7 @@ class Ops(object):
             rTA1 = self.rTA1
         X_rot = tt.set_subtensor(
             tt.zeros((rows, cols))[i_rot],
-            self.dotR(rTA1, inc, obl, theta[i_rot], input_frame="invariant"),
+            self.dotR(rTA1, inc, obl, theta[i_rot]),
         )
 
         # Occultation + rotation operator
@@ -140,21 +136,10 @@ class Ops(object):
             sTAR = tt.dot(sTAR, A1InvFA1)
         X_occ = tt.set_subtensor(
             tt.zeros((rows, cols))[i_occ],
-            self.dotR(sTAR, inc, obl, theta[i_occ], input_frame="invariant"),
+            self.dotR(sTAR, inc, obl, theta[i_occ]),
         )
 
-        # Total design matrix
-        X = X_rot + X_occ
-
-        """
-        # Rotate to invariant frame
-        X = self.dotRxy(
-            X, (inc - 0.5 * np.pi), tt.arctan2(-tt.sin(obl), -tt.cos(obl))
-        )
-        X = self.dotRz(X, tt.tile(-obl, [theta.shape[0]]))
-        """
-
-        return X
+        return X_rot + X_occ
 
     @autocompile(
         "flux",
@@ -248,49 +233,16 @@ class Ops(object):
         # Compute the polynomial basis
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
-        # If ortho, rotate the map to the correct frame
-        if self.nw is None:
-            y = ifelse(
-                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                tt.reshape(
-                    self.dotRz(
-                        self.dotRxy(
-                            tt.reshape(y, [1, -1]), inc - 0.5 * np.pi, 0
-                        ),
-                        tt.reshape(obl, [1]),
-                    ),
-                    [-1],
-                ),
-                y,
-            )
-        else:
-            y = ifelse(
-                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                tt.transpose(
-                    self.dotRz(
-                        self.dotRxy(tt.transpose(y), inc - 0.5 * np.pi, 0),
-                        tt.tile(obl, [self.nw]),
-                    )
-                ),
-                y,
-            )
+        # If orthographic, rotate the map to the correct frame
+        Ry = ifelse(
+            tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+            self.Rdot(
+                tt.transpose(tt.tile(y, [theta.shape[0], 1])), inc, obl, theta
+            ),
+            tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+        )
 
-        # Rotate the map and transform into the polynomial basis
-        if self.nw is None:
-            yT = tt.tile(y, [theta.shape[0], 1])
-            Ry = tt.transpose(
-                self.dotR(yT, inc, obl, -theta, input_frame="observer")
-            )
-        else:
-            Ry = tt.transpose(
-                self.dotR(
-                    tt.transpose(y),
-                    inc,
-                    obl,
-                    -tt.tile(theta[0], self.nw),
-                    input_frame="observer",
-                )
-            )
+        # Change basis to polynomials
         A1Ry = ts.dot(self.A1, Ry)
 
         # Apply the filter *only if orthographic*
@@ -310,21 +262,6 @@ class Ops(object):
 
         # We need the shape to be (nframes, npix, npix)
         return res.dimshuffle(2, 0, 1)
-
-    @autocompile("get_axis", tt.dscalar(), tt.dscalar())
-    def get_axis(self, inc, obl):
-        """
-
-        """
-        axis = tt.zeros(3)
-        sino = tt.sin(obl)
-        coso = tt.cos(obl)
-        sini = tt.sin(inc)
-        cosi = tt.cos(inc)
-        axis = tt.set_subtensor(axis[0], sino * sini)
-        axis = tt.set_subtensor(axis[1], coso * sini)
-        axis = tt.set_subtensor(axis[2], cosi)
-        return axis
 
     @autocompile(
         "add_spot",
@@ -369,13 +306,13 @@ class Ops(object):
         R = RAxisAngle([1, 0, 0], -np.pi / 2)
         return tt.dot(R, tt.concatenate((x, y, z)))
 
-    def dotR(self, M, inc, obl, theta, input_frame="observer"):
-        """
-        Dots the tensor ``M`` into the rotation matrix that transforms a
-        vector of spherical harmonic coefficients in the ``input_frame``
-        to the vector of spherical harmonic coefficients describing the
-        map on the sky plane (at inclination ``inc`` and obliquity ``obl``)
-        rotated to phase ``theta``.
+    def dotR(self, M, inc, obl, theta):
+        r"""
+        Returns the dot product :math:`M \cdot R`.
+
+        ``M`` is a generic matrix and ``R`` is the matrix that rotates a 
+        spherical harmonic coefficient vector in the invariant frame to
+        vector in the observer's frame.
 
         """
         # Rotate into the polar frame
@@ -387,29 +324,33 @@ class Ops(object):
         # Rotate onto the sky plane
         res = self.dotRxy(res, inc, obl)
 
-        # Rotate into the output frame
-        if input_frame == "invariant":
-
-            # TODO: This is a slow brain-dead hack. Speed this up!
-
-            # Rotate to the invariant frame
-            res = self.dotRxy(
-                res,
-                (inc - 0.5 * np.pi),
-                tt.arctan2(-tt.sin(obl), -tt.cos(obl)),
-            )
-            res = self.dotRz(res, tt.tile(-obl, [theta.shape[0]]))
-
-        elif input_frame == "observer":
-
-            # We're already in the observer frame
-            pass
-
-        else:
-
-            raise ValueError("Invalid input frame.")
+        # Rotate to the invariant frame
+        res = self.dotRxy(
+            res, (inc - 0.5 * np.pi), tt.arctan2(-tt.sin(obl), -tt.cos(obl))
+        )
+        res = self.dotRz(res, tt.tile(-obl, [theta.shape[0]]))
 
         return res
+
+    def Rdot(self, M, inc, obl, theta):
+        r"""
+        Returns the dot product :math:`R \cdot M`.
+
+        ``M`` is a generic matrix and ``R`` is the matrix that rotates a 
+        spherical harmonic coefficient vector in the invariant frame to
+        vector in the observer's frame.
+
+        """
+        # We are computing R . M = (M^T . R^T)^T
+        # See the comments in `dotR()` for reference
+        res = self.dotRz(tt.transpose(M), tt.tile(obl, [theta.shape[0]]))
+        res = self.dotRxy(
+            res, -(inc - 0.5 * np.pi), tt.arctan2(-tt.sin(obl), -tt.cos(obl))
+        )
+        res = self.dotRxy(res, -inc, obl)
+        res = self.dotRz(res, -theta)
+        res = self.dotRxyT(res, -inc, obl)
+        return tt.transpose(res)
 
     def set_map_vector(self, vector, inds, vals):
         """
@@ -723,6 +664,22 @@ class OpsReflected(Ops):
             ),
             y,
         )
+
+    @autocompile("get_axis", tt.dscalar(), tt.dscalar())
+    def get_axis(self, inc, obl):
+        """
+        TODO: Is this necessary?
+
+        """
+        axis = tt.zeros(3)
+        sino = tt.sin(obl)
+        coso = tt.cos(obl)
+        sini = tt.sin(inc)
+        cosi = tt.cos(inc)
+        axis = tt.set_subtensor(axis[0], sino * sini)
+        axis = tt.set_subtensor(axis[1], coso * sini)
+        axis = tt.set_subtensor(axis[2], cosi)
+        return axis
 
     @autocompile(
         "render",
