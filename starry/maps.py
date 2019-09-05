@@ -10,6 +10,7 @@ from .ops import (
     is_theano,
     reshape,
     STARRY_RECTANGULAR_PROJECTION,
+    STARRY_ORTHOGRAPHIC_PROJECTION,
 )
 from .indices import get_ylm_inds, get_ul_inds, get_ylmw_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
@@ -563,7 +564,12 @@ class YlmBase(object):
 
             def updatefig(i):
                 img.set_array(image[i])
-                if grid and len(theta) > 1:
+                if (
+                    projection == STARRY_ORTHOGRAPHIC_PROJECTION
+                    and grid
+                    and len(theta) > 1
+                    and self.nw is None
+                ):
                     lon_lines = get_ortho_longitude_lines(
                         inc=inc, obl=obl, theta=theta[i]
                     )

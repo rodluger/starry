@@ -234,13 +234,23 @@ class Ops(object):
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
         # If orthographic, rotate the map to the correct frame
-        Ry = ifelse(
-            tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-            self.Rdot(
-                tt.transpose(tt.tile(y, [theta.shape[0], 1])), inc, obl, theta
-            ),
-            tt.transpose(tt.tile(y, [theta.shape[0], 1])),
-        )
+        if self.nw is None:
+            Ry = ifelse(
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                self.Rdot(
+                    tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                    inc,
+                    obl,
+                    theta,
+                ),
+                tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+            )
+        else:
+            Ry = ifelse(
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                self.Rdot(y, inc, obl, tt.tile(theta[0], self.nw)),
+                y,
+            )
 
         # Change basis to polynomials
         A1Ry = ts.dot(self.A1, Ry)
