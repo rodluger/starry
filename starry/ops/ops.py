@@ -2,7 +2,7 @@
 from .. import config
 from .. import _c_ops
 from .integration import sTOp, rTReflectedOp
-from .rotation import dotRxyOp, dotRxyTOp, dotRzOp
+from .rotation import dotROp, tensordotRzOp
 from .filter import FOp
 from .misc import spotYlmOp, pTOp
 from .utils import *
@@ -73,9 +73,8 @@ class Ops(object):
         self.A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv)
 
         # Rotation operations
-        self.dotRz = dotRzOp(self._c_ops.dotRz)
-        self.dotRxy = dotRxyOp(self._c_ops.dotRxy)
-        self.dotRxyT = dotRxyTOp(self._c_ops.dotRxyT)
+        self.tensordotRz = tensordotRzOp(self._c_ops.tensordotRz)
+        self.dotR = dotROp(self._c_ops.dotR)
 
         # Filter
         # TODO: This should be sparse!!!
@@ -123,20 +122,20 @@ class Ops(object):
             rTA1 = self.rTA1
         X_rot = tt.set_subtensor(
             tt.zeros((rows, cols))[i_rot],
-            self.dotR(rTA1, inc, obl, theta[i_rot]),
+            self.right_project(rTA1, inc, obl, theta[i_rot]),
         )
 
         # Occultation + rotation operator
         sT = self.sT(b[i_occ], ro)
         sTA = ts.dot(sT, self.A)
         theta_z = tt.arctan2(xo[i_occ], yo[i_occ])
-        sTAR = self.dotRz(sTA, theta_z)
+        sTAR = self.tensordotRz(sTA, theta_z)
         if self.filter:
             A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
             sTAR = tt.dot(sTAR, A1InvFA1)
         X_occ = tt.set_subtensor(
             tt.zeros((rows, cols))[i_occ],
-            self.dotR(sTAR, inc, obl, theta[i_occ]),
+            self.right_project(sTAR, inc, obl, theta[i_occ]),
         )
 
         return X_rot + X_occ
@@ -237,7 +236,7 @@ class Ops(object):
         if self.nw is None:
             Ry = ifelse(
                 tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                self.Rdot(
+                self.left_project(
                     tt.transpose(tt.tile(y, [theta.shape[0], 1])),
                     inc,
                     obl,
@@ -248,7 +247,7 @@ class Ops(object):
         else:
             Ry = ifelse(
                 tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                self.Rdot(y, inc, obl, tt.tile(theta[0], self.nw)),
+                self.left_project(y, inc, obl, tt.tile(theta[0], self.nw)),
                 y,
             )
 
@@ -285,7 +284,7 @@ class Ops(object):
         """
 
         """
-        y_new = y + self.spotYlm(amp, sigma, lat, lon, 0.5 * np.pi, 0.0)
+        y_new = y + self.spotYlm(amp, sigma, lat, lon)
         y_new /= y_new[0]
         return y_new
 
@@ -316,51 +315,98 @@ class Ops(object):
         R = RAxisAngle([1, 0, 0], -np.pi / 2)
         return tt.dot(R, tt.concatenate((x, y, z)))
 
-    def dotR(self, M, inc, obl, theta):
-        r"""
-        Returns the dot product :math:`M \cdot R`.
+    def right_project(self, M, inc, obl, theta):
+        r"""Apply the projection operator on the right.
 
-        ``M`` is a generic matrix and ``R`` is the matrix that rotates a 
-        spherical harmonic coefficient vector in the invariant frame to
-        vector in the observer's frame.
-
-        """
-        # Rotate into the polar frame
-        res = self.dotRxyT(M, inc, obl)
-
-        # Rotate in phase (this is a tensor dot; theta is a vector)
-        res = self.dotRz(res, theta)
-
-        # Rotate onto the sky plane
-        res = self.dotRxy(res, inc, obl)
-
-        # Rotate to the invariant frame
-        res = self.dotRxy(
-            res, (inc - 0.5 * np.pi), tt.arctan2(-tt.sin(obl), -tt.cos(obl))
-        )
-        res = self.dotRz(res, tt.tile(-obl, [theta.shape[0]]))
-
-        return res
-
-    def Rdot(self, M, inc, obl, theta):
-        r"""
-        Returns the dot product :math:`R \cdot M`.
-
-        ``M`` is a generic matrix and ``R`` is the matrix that rotates a 
-        spherical harmonic coefficient vector in the invariant frame to
-        vector in the observer's frame.
+        Specifically, this method returns the dot product :math:`M \cdot R`,
+        where ``M`` is an input matrix and ``R`` is the Wigner rotation matrix 
+        that transforms a spherical harmonic coefficient vector in the 
+        input frame to a vector in the observer's frame.
 
         """
-        # We are computing R . M = (M^T . R^T)^T
-        # See the comments in `dotR()` for reference
-        res = self.dotRz(tt.transpose(M), tt.tile(obl, [theta.shape[0]]))
-        res = self.dotRxy(
-            res, -(inc - 0.5 * np.pi), tt.arctan2(-tt.sin(obl), -tt.cos(obl))
+        # Rotate to the sky frame
+        # TODO: Do this in a single compound rotation
+        M = self.dotR(
+            self.dotR(
+                self.dotR(
+                    M,
+                    -tt.sin(obl),
+                    tt.cos(obl),
+                    tt.as_tensor_variable(0.0),
+                    -(0.5 * np.pi - inc),
+                ),
+                tt.as_tensor_variable(0.0),
+                tt.as_tensor_variable(0.0),
+                tt.as_tensor_variable(1.0),
+                -obl,
+            ),
+            tt.as_tensor_variable(1.0),
+            tt.as_tensor_variable(0.0),
+            tt.as_tensor_variable(0.0),
+            -0.5 * np.pi,
         )
-        res = self.dotRxy(res, -inc, obl)
-        res = self.dotRz(res, -theta)
-        res = self.dotRxyT(res, -inc, obl)
-        return tt.transpose(res)
+
+        # Rotate to the correct phase
+        M = self.tensordotRz(M, theta)
+
+        # Rotate to the polar frame
+        M = self.dotR(
+            M,
+            tt.as_tensor_variable(1.0),
+            tt.as_tensor_variable(0.0),
+            tt.as_tensor_variable(0.0),
+            0.5 * np.pi,
+        )
+
+        return M
+
+    def left_project(self, M, inc, obl, theta):
+        r"""Apply the projection operator on the left.
+
+        Specifically, this method returns the dot product :math:`R \cdot M`,
+        where ``M`` is an input matrix and ``R`` is the Wigner rotation matrix 
+        that transforms a spherical harmonic coefficient vector in the 
+        input frame to a vector in the observer's frame.
+
+        """
+        # Note that here we are using the fact that R . M = (M^T . R^T)^T
+        MT = tt.transpose(M)
+
+        # Rotate to the polar frame
+        MT = self.dotR(
+            MT,
+            tt.as_tensor_variable(1.0),
+            tt.as_tensor_variable(0.0),
+            tt.as_tensor_variable(0.0),
+            -0.5 * np.pi,
+        )
+
+        # Rotate to the correct phase
+        MT = self.tensordotRz(MT, -theta)
+
+        # Rotate to the sky frame
+        # TODO: Do this in a single compound rotation
+        MT = self.dotR(
+            self.dotR(
+                self.dotR(
+                    MT,
+                    tt.as_tensor_variable(1.0),
+                    tt.as_tensor_variable(0.0),
+                    tt.as_tensor_variable(0.0),
+                    0.5 * np.pi,
+                ),
+                tt.as_tensor_variable(0.0),
+                tt.as_tensor_variable(0.0),
+                tt.as_tensor_variable(1.0),
+                obl,
+            ),
+            -tt.sin(obl),
+            tt.cos(obl),
+            tt.as_tensor_variable(0.0),
+            (0.5 * np.pi - inc),
+        )
+
+        return tt.transpose(MT)
 
     def set_map_vector(self, vector, inds, vals):
         """
@@ -504,7 +550,6 @@ class OpsReflected(Ops):
         super(OpsReflected, self).__init__(*args, **kwargs)
         self.rT = rTReflectedOp(self._c_ops.rTReflected, self._c_ops.N)
         self.A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
-        self.occ_approx = kwargs.get("occ_approx", False)
 
     def compute_illumination(self, xyz, source):
         """
@@ -610,7 +655,7 @@ class OpsReflected(Ops):
         # Transform to Ylms and rotate on the sky plane
         rTA1 = ts.dot(rT, self.A1Big)
         theta_z = tt.arctan2(source[:, 0], source[:, 1])
-        rTA1Rz = self.dotRz(rTA1, theta_z)
+        rTA1Rz = self.tensordotRz(rTA1, theta_z)
 
         # Apply limb darkening?
         F = self.F(u, f)
@@ -618,34 +663,13 @@ class OpsReflected(Ops):
         rTA1Rz = tt.dot(rTA1Rz, A1InvFA1)
 
         # Rotate to the correct phase
-        X = self.dotR(rTA1Rz, inc, obl, theta)
+        X = self.right_project(rTA1Rz, inc, obl, theta)
 
-        # Occultations
-        if self.occ_approx:
-
-            # TODO: This is a pretty bad approximation!
-            # Re-compute the filter with a full phase weighting
-            fnew = (np.pi / np.sqrt(3.0)) * tt.as_tensor_variable(
-                [0.0, 0.0, 1.0, 0.0]
-            )
-            F = self.F(u, fnew)
-            sT = self.sT(b[i_occ], ro)
-            sTA = ts.dot(sT, self.A)
-            theta_z = tt.arctan2(xo[i_occ], yo[i_occ])
-            sTAR = self.dotRz(sTA, theta_z)
-            A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
-            sTAR = tt.dot(sTAR, A1InvFA1)
-            X = tt.set_subtensor(
-                X[i_occ], self.dotR(sTAR, inc, obl, theta[i_occ])
-            )
-
-        else:
-
-            # TODO: Implement occultations in reflected light
-            # Throw error if there's an occultation
-            X = X + RaiseValuerErrorIfOp(
-                "Occultations in reflected light not yet implemented."
-            )(b_occ.any())
+        # TODO: Implement occultations in reflected light
+        # Throw error if there's an occultation
+        X = X + RaiseValuerErrorIfOp(
+            "Occultations in reflected light not yet implemented."
+        )(b_occ.any())
 
         # We're done
         return X
@@ -675,22 +699,6 @@ class OpsReflected(Ops):
             y,
         )
 
-    @autocompile("get_axis", tt.dscalar(), tt.dscalar())
-    def get_axis(self, inc, obl):
-        """
-        TODO: Is this necessary?
-
-        """
-        axis = tt.zeros(3)
-        sino = tt.sin(obl)
-        coso = tt.cos(obl)
-        sini = tt.sin(inc)
-        cosi = tt.cos(inc)
-        axis = tt.set_subtensor(axis[0], sino * sini)
-        axis = tt.set_subtensor(axis[1], coso * sini)
-        axis = tt.set_subtensor(axis[2], cosi)
-        return axis
-
     @autocompile(
         "render",
         tt.iscalar(),
@@ -705,7 +713,6 @@ class OpsReflected(Ops):
     )
     def render(self, res, projection, theta, inc, obl, y, u, f, source):
         """
-        TODO: BROKEN
         
         """
         # Compute the Cartesian grid
@@ -718,57 +725,26 @@ class OpsReflected(Ops):
         # Compute the polynomial basis
         pT = self.pT(xyz[0], xyz[1], xyz[2])
 
-        # If lat/lon, rotate the map so that north points up
+        # If orthographic, rotate the map to the correct frame
         if self.nw is None:
-            y = ifelse(
-                tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-                tt.reshape(
-                    self.dotRxy(
-                        self.dotRz(
-                            tt.reshape(y, [1, -1]), tt.reshape(-obl, [1])
-                        ),
-                        np.pi / 2 - inc,
-                        0,
-                    ),
-                    [-1],
+            Ry = ifelse(
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                self.left_project(
+                    tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                    inc,
+                    obl,
+                    theta,
                 ),
-                y,
+                tt.transpose(tt.tile(y, [theta.shape[0], 1])),
             )
         else:
-            y = ifelse(
-                tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-                tt.transpose(
-                    self.dotRxy(
-                        self.dotRz(tt.transpose(y), tt.tile(-obl, [self.nw])),
-                        np.pi / 2 - inc,
-                        0,
-                    )
-                ),
+            Ry = ifelse(
+                tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
+                self.left_project(y, inc, obl, tt.tile(theta[0], self.nw)),
                 y,
             )
 
-        # Rotate the source vector as well
-        source /= tt.reshape(source.norm(2, axis=1), [-1, 1])
-        map_axis = self.get_axis(inc, obl, no_compile=True)
-        axis = cross(map_axis, [0, 1, 0])
-        angle = tt.arccos(map_axis[1])
-        R = RAxisAngle(axis, -angle)
-        source = ifelse(
-            tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-            tt.dot(source, R),
-            source,
-        )
-
-        # Rotate the map and transform into the polynomial basis
-        if self.nw is None:
-            yT = tt.tile(y, [theta.shape[0], 1])
-            Ry = tt.transpose(self.dotR(yT, inc, obl, -theta))
-        else:
-            Ry = tt.transpose(
-                self.dotR(
-                    tt.transpose(y), inc, obl, -tt.tile(theta[0], self.nw)
-                )
-            )
+        # Transform to polynomials
         A1Ry = ts.dot(self.A1, Ry)
 
         # Apply the filter *only if orthographic*
@@ -960,6 +936,7 @@ class OpsSystem(object):
 
         # Compute the position of the illumination source (the primary)
         # if we're doing things in reflected light
+        # TODO: Check whether we are in the right frame here.
         if self.reflected:
             source = [
                 [
@@ -991,6 +968,8 @@ class OpsSystem(object):
             pri_f,
             no_compile=True,
         )
+
+        # TODO: Check if we're in the correct frame here
         phase_sec = tt.as_tensor_variable(
             [
                 sec_L[i]
