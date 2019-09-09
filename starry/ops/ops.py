@@ -334,8 +334,8 @@ class Ops(object):
             self.dotR(
                 self.dotR(
                     M,
-                    -tt.sin(obl),
-                    tt.cos(obl),
+                    -tt.cos(obl),
+                    tt.sin(obl),
                     tt.as_tensor_variable(0.0),
                     -(0.5 * np.pi - inc),
                 ),
@@ -408,8 +408,8 @@ class Ops(object):
                 tt.as_tensor_variable(1.0),
                 obl,
             ),
-            -tt.sin(obl),
-            tt.cos(obl),
+            -tt.cos(obl),
+            tt.sin(obl),
             tt.as_tensor_variable(0.0),
             (0.5 * np.pi - inc),
         )
@@ -945,7 +945,6 @@ class OpsSystem(object):
 
         # Compute the position of the illumination source (the primary)
         # if we're doing things in reflected light
-        # TODO: Check whether we are in the right frame here.
         if self.reflected:
             source = [
                 [
@@ -977,8 +976,6 @@ class OpsSystem(object):
             pri_f,
             no_compile=True,
         )
-
-        # TODO: Check if we're in the correct frame here
         phase_sec = tt.as_tensor_variable(
             [
                 sec_L[i]
