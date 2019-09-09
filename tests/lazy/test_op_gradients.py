@@ -28,15 +28,14 @@ def test_intensity(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2, udeg=2)
     np.random.seed(11)
-    xpt = 0.5 * np.random.random(10)
-    ypt = 0.5 * np.random.random(10)
-    zpt = np.sqrt(1 - xpt ** 2 - ypt ** 2)
+    lat = 180 * (np.random.random(10) - 0.5)
+    lon = 360 * (np.random.random(10) - 0.5)
     y = [1.0] + list(np.random.randn(8))
     u = [-1.0] + list(np.random.randn(2))
     f = [np.pi]
     verify_grad(
         map.ops.intensity,
-        (xpt, ypt, zpt, y, u, f),
+        (lat, lon, y, u, f),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
@@ -44,7 +43,7 @@ def test_intensity(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     )
 
 
-def test_dotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+def test_tensordotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2)
     theta = np.array([0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0]) * np.pi / 180.0
@@ -52,7 +51,7 @@ def test_dotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     # Matrix M
     M = np.ones((7, 9))
     verify_grad(
-        map.ops.dotRz,
+        map.ops.tensordotRz,
         (M, theta),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
@@ -63,7 +62,7 @@ def test_dotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     # Vector M
     M = np.ones((1, 9))
     verify_grad(
-        map.ops.dotRz,
+        map.ops.tensordotRz,
         (M, theta),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
@@ -72,17 +71,20 @@ def test_dotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     )
 
 
-def test_dotRxy(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+def test_dotR(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2)
-    inc = 85.0 * np.pi / 180.0
-    obl = 30.0 * np.pi / 180.0
+
+    x = 1.0 / np.sqrt(3)
+    y = 1.0 / np.sqrt(3)
+    z = 1.0 / np.sqrt(3)
+    theta = np.pi / 5
 
     # Matrix M
     M = np.ones((7, 9))
     verify_grad(
-        map.ops.dotRxy,
-        (M, inc, obl),
+        map.ops.dotR,
+        (M, x, y, z, theta),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
@@ -92,37 +94,8 @@ def test_dotRxy(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     # Vector M
     M = np.ones((1, 9))
     verify_grad(
-        map.ops.dotRxy,
-        (M, inc, obl),
-        abs_tol=abs_tol,
-        rel_tol=rel_tol,
-        eps=eps,
-        n_tests=1,
-    )
-
-
-def test_dotRxyT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
-    theano.config.compute_test_value = "off"
-    map = starry.Map(ydeg=2)
-    inc = 85.0 * np.pi / 180.0
-    obl = 30.0 * np.pi / 180.0
-
-    # Matrix M
-    M = np.ones((7, 9))
-    verify_grad(
-        map.ops.dotRxyT,
-        (M, inc, obl),
-        abs_tol=abs_tol,
-        rel_tol=rel_tol,
-        eps=eps,
-        n_tests=1,
-    )
-
-    # Vector M
-    M = np.ones((1, 9))
-    verify_grad(
-        map.ops.dotRxyT,
-        (M, inc, obl),
+        map.ops.dotR,
+        (M, x, y, z, theta),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
@@ -224,9 +197,8 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2, udeg=2, reflected=True)
     np.random.seed(11)
-    xpt = 0.5 * np.random.random(10)
-    ypt = 0.5 * np.random.random(10)
-    zpt = np.sqrt(1 - xpt ** 2 - ypt ** 2)
+    lat = 180 * (np.random.random(10) - 0.5)
+    lon = 360 * (np.random.random(10) - 0.5)
     y = [1.0] + list(np.random.randn(8))
     u = [-1.0] + list(np.random.randn(2))
     f = [np.pi, 0.0, 0.0, 0.0]
@@ -234,7 +206,7 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     source /= np.sqrt(np.sum(source ** 2, axis=1)).reshape(-1, 1)
     verify_grad(
         map.ops.intensity,
-        (xpt, ypt, zpt, y, u, f, source),
+        (lat, lon, y, u, f, source),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,

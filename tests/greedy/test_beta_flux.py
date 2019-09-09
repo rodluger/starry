@@ -19,7 +19,7 @@ theta = [0, np.linspace(-180, 180, 30)]
 xo = [0, np.linspace(-1.5, 1.5, 30)]
 yo = [0.1]
 ro = [0, 0.1, 2.0]
-axis = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+axis = [[0, 1, 0]]  # TODO: Test different axes; need to align the maps!
 params = itertools.product(y, u, theta, xo, yo, ro, axis)
 
 

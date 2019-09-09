@@ -102,7 +102,7 @@ class YlmBase(object):
 
     @property
     def Ny(self):
-        """Number of spherical harmonic coefficients. *Read-only*
+        r"""Number of spherical harmonic coefficients. *Read-only*
 
         This is equal to :math:`(y_\mathrm{deg} + 1)^2`.
         """
@@ -115,7 +115,7 @@ class YlmBase(object):
 
     @property
     def Nu(self):
-        """Number of limb darkening coefficients, including :math:`u_0`. *Read-only*
+        r"""Number of limb darkening coefficients, including :math:`u_0`. *Read-only*
         
         This is equal to :math:`u_\mathrm{deg} + 1`.
         """
@@ -128,7 +128,7 @@ class YlmBase(object):
 
     @property
     def Nf(self):
-        """Number of spherical harmonic coefficients in the filter. *Read-only*
+        r"""Number of spherical harmonic coefficients in the filter. *Read-only*
 
         This is equal to :math:`(f_\mathrm{deg} + 1)^2`.
         """
@@ -136,7 +136,7 @@ class YlmBase(object):
 
     @property
     def deg(self):
-        """Total degree of the map. *Read-only*
+        r"""Total degree of the map. *Read-only*
         
         This is equal to :math:`y_\mathrm{deg} + u_\mathrm{deg} + f_\mathrm{deg}`.
         """

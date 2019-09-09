@@ -324,6 +324,10 @@ class Ops(object):
         input frame to a vector in the observer's frame.
 
         """
+        # Trivial case
+        if self.ydeg == 0:
+            return M
+
         # Rotate to the sky frame
         # TODO: Do this in a single compound rotation
         M = self.dotR(
@@ -369,6 +373,10 @@ class Ops(object):
         input frame to a vector in the observer's frame.
 
         """
+        # Trivial case
+        if self.ydeg == 0:
+            return M
+
         # Note that here we are using the fact that R . M = (M^T . R^T)^T
         MT = tt.transpose(M)
 
@@ -762,6 +770,7 @@ class OpsReflected(Ops):
         image = tt.dot(pT, A1Ry)
 
         # Compute the illumination profile
+        source /= tt.reshape(source.norm(2, axis=1), [-1, 1])
         I = self.compute_illumination(xyz, source)
 
         # Weight the image by the illumination
