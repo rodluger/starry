@@ -298,15 +298,15 @@ class YlmBase(object):
         """Compute and return the light curve design matrix.
         
         Args:
-            xo (array or scalar, optional): x coordinate of the occultor 
+            xo (scalar or vector, optional): x coordinate of the occultor 
                 relative to this body in units of this body's radius.
-            yo (array or scalar, optional): y coordinate of the occultor 
+            yo (scalar or vector, optional): y coordinate of the occultor 
                 relative to this body in units of this body's radius.
-            zo (array or scalar, optional): z coordinate of the occultor 
+            zo (scalar or vector, optional): z coordinate of the occultor 
                 relative to this body in units of this body's radius.
             ro (scalar, optional): Radius of the occultor in units of 
                 this body's radius.
-            theta (array or scalar, optional): Angular phase of the body
+            theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
         """
         # Orbital kwargs
@@ -323,6 +323,15 @@ class YlmBase(object):
     def intensity_design_matrix(self, lat=0, lon=0):
         """Compute and return the pixelization matrix ``P``.
         
+        This matrix transforms a spherical harmonic coefficient vector
+        to a vector of intensities on the surface.
+
+        Args:
+            lat (scalar or vector, optional): latitude at which to evaluate
+                the design matrix in units of :py:attr:``angle_unit``.
+            lon (scalar or vector, optional): longitude at which to evaluate
+                the design matrix in units of :py:attr:``angle_unit``.
+
         .. note::
             This method ignores any filters (such as limb darkening
             or velocity weighting) and illumination (for reflected light
@@ -342,15 +351,15 @@ class YlmBase(object):
         Compute and return the light curve.
 
         Args:
-            xo (array or scalar, optional): x coordinate of the occultor 
+            xo (scalar or vector, optional): x coordinate of the occultor 
                 relative to this body in units of this body's radius.
-            yo (array or scalar, optional): y coordinate of the occultor 
+            yo (scalar or vector, optional): y coordinate of the occultor 
                 relative to this body in units of this body's radius.
-            zo (array or scalar, optional): z coordinate of the occultor 
+            zo (scalar or vector, optional): z coordinate of the occultor 
                 relative to this body in units of this body's radius.
             ro (scalar, optional): Radius of the occultor in units of 
                 this body's radius.
-            theta (array or scalar, optional): Angular phase of the body
+            theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
         """
         # Orbital kwargs
@@ -377,6 +386,12 @@ class YlmBase(object):
         """
         Compute and return the intensity of the map.
         
+        Args:
+            lat (scalar or vector, optional): latitude at which to evaluate
+                the intensity in units of :py:attr:``angle_unit``.
+            lon (scalar or vector, optional): longitude at which to evaluate
+                the intensity in units of :py:attr:``angle_unit``.
+
         """
         # Get the Cartesian points
         lat, lon = vectorize(*self.cast(lat, lon))
@@ -387,12 +402,25 @@ class YlmBase(object):
         return self.L * self.ops.intensity(lat, lon, self._y, self._u, self._f)
 
     def render(self, res=300, projection="ortho", theta=0.0):
-        """
-        Compute and return the sky-projected intensity of 
-        the map on a square Cartesian grid.
+        """Compute and return the intensity of the map on a grid.
         
-        The shape of the returned image is `(nframes, res, res)`.
-
+        Returns an image of shape ``(res, res)``, unless ``theta`` is a vector,
+        in which case returns an array of shape ``(nframes, res, res)``, where
+        ``nframes`` is the number of values of ``theta``. However, if this is 
+        a spectral map, ``nframes`` is the number of wavelength bins and 
+        ``theta`` must be a scalar.
+        
+        Args:
+            res (int, optional): The resolution of the map in pixels on a
+                side. Defaults to 300.
+            projection (string, optional): The map projection. Accepted
+                values are ``ortho``, corresponding to an orthographic
+                projection (as seen on the sky), and ``rect``, corresponding
+                to an equirectangular latitude-longitude projection.
+                Defaults to ``ortho``.
+            theta (scalar or vector, optional): The map rotation phase in
+                units of :py:attr:``angle_unit``. If this is a vector, an
+                animation is generated. Defaults to ``0.0``.
         """
         # Multiple frames?
         if self.nw is not None:
@@ -427,7 +455,24 @@ class YlmBase(object):
 
     def show(self, **kwargs):
         """
-        Display an image of the map, with optional animation.
+        Display an image of the map, with optional animation. See the
+        docstring of :py:meth:``render`` for more details and additional
+        keywords accepted by this method.
+
+        Args:
+            cmap (string or colormap instance): The matplotlib colormap
+                to use. Defaults to ``plasma``.
+            projection (string, optional): The map projection. Accepted
+                values are ``ortho``, corresponding to an orthographic
+                projection (as seen on the sky), and ``rect``, corresponding
+                to an equirectangular latitude-longitude projection.
+                Defaults to ``ortho``.
+            grid (bool, optional): Show latitude/longitude grid lines?
+                Defaults to True.
+            interval (int, optional): Interval between frames in milliseconds
+                (animated maps only). Defaults to 75.
+            mp4 (string, optional): The file name to save an ``mp4``
+                animation to (animated maps only). Defaults to None.
 
         """
         # Get kwargs
@@ -752,9 +797,16 @@ class RVBase(object):
 
     @property
     def veq(self):
-        """The equatorial velocity of the body in arbitrary units."""
-        # TODO: Warn user that changing `prot` and `r` doesn't currently
-        # affect this value.
+        """The equatorial velocity of the body in arbitrary units.
+        
+        .. warning::
+            If this map is associated with a :py:obj:``starry.Body``
+            instance in a Keplerian system, changing the body's
+            radius and rotation period does not currently affect this
+            value. The user must explicitly change this value to affect
+            the map's radial velocity.
+
+        """
         return self._veq
 
     @veq.setter
@@ -772,8 +824,7 @@ class RVBase(object):
         )
 
     def rv(self, **kwargs):
-        """
-        Compute the net radial velocity one would measure from the object.
+        """Compute the net radial velocity one would measure from the object.
 
         The radial velocity is computed as the ratio
 
@@ -784,6 +835,18 @@ class RVBase(object):
         spherical harmonic and limb darkening coefficients) and :math:`v`
         is the radial velocity field (computed based on the equatorial velocity
         of the star, its orientation, etc.)
+
+        Args:
+            xo (scalar or vector, optional): x coordinate of the occultor 
+                relative to this body in units of this body's radius.
+            yo (scalar or vector, optional): y coordinate of the occultor 
+                relative to this body in units of this body's radius.
+            zo (scalar or vector, optional): z coordinate of the occultor 
+                relative to this body in units of this body's radius.
+            ro (scalar, optional): Radius of the occultor in units of 
+                this body's radius.
+            theta (scalar or vector, optional): Angular phase of the body
+                in units of :py:attr:`angle_unit`.
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_orbit(kwargs)
@@ -808,6 +871,15 @@ class RVBase(object):
 
     def intensity(self, **kwargs):
         """
+        Compute and return the intensity of the map.
+        
+        Args:
+            lat (scalar or vector, optional): latitude at which to evaluate
+                the intensity in units of :py:attr:``angle_unit``.
+            lon (scalar or vector, optional): longitude at which to evaluate
+                the intensity in units of :py:attr:``angle_unit``.
+            rv (bool, optional): If True, computes the velocity-weighted
+                intensity instead. Defaults to True.
 
         """
         # Compute the velocity-weighted intensity if `rv==True`
@@ -821,7 +893,27 @@ class RVBase(object):
 
     def render(self, **kwargs):
         """
+        Compute and return the intensity of the map on a grid.
         
+        Returns an image of shape ``(res, res)``, unless ``theta`` is a vector,
+        in which case returns an array of shape ``(nframes, res, res)``, where
+        ``nframes`` is the number of values of ``theta``. However, if this is 
+        a spectral map, ``nframes`` is the number of wavelength bins and 
+        ``theta`` must be a scalar.
+        
+        Args:
+            res (int, optional): The resolution of the map in pixels on a
+                side. Defaults to 300.
+            projection (string, optional): The map projection. Accepted
+                values are ``ortho``, corresponding to an orthographic
+                projection (as seen on the sky), and ``rect``, corresponding
+                to an equirectangular latitude-longitude projection.
+                Defaults to ``ortho``.
+            theta (scalar or vector, optional): The map rotation phase in
+                units of :py:attr:``angle_unit``. If this is a vector, an
+                animation is generated. Defaults to ``0.0``.
+            rv (bool, optional): If True, computes the velocity-weighted
+                intensity instead. Defaults to True.
         """
         # Render the velocity map if `rv==True`
         # Override the `projection` kwarg if we're
@@ -837,7 +929,26 @@ class RVBase(object):
 
     def show(self, **kwargs):
         """
-        
+        Display an image of the map, with optional animation. See the
+        docstring of :py:meth:``render`` for more details and additional
+        keywords accepted by this method.
+
+        Args:
+            cmap (string or colormap instance): The matplotlib colormap
+                to use. Defaults to ``plasma``.
+            projection (string, optional): The map projection. Accepted
+                values are ``ortho``, corresponding to an orthographic
+                projection (as seen on the sky), and ``rect``, corresponding
+                to an equirectangular latitude-longitude projection.
+                Defaults to ``ortho``.
+            grid (bool, optional): Show latitude/longitude grid lines?
+                Defaults to True.
+            interval (int, optional): Interval between frames in milliseconds
+                (animated maps only). Defaults to 75.
+            mp4 (string, optional): The file name to save an ``mp4``
+                animation to (animated maps only). Defaults to None.
+            rv (bool, optional): If True, computes the velocity-weighted
+                intensity instead. Defaults to True.
         """
         # Show the velocity map if `rv==True`
         # Override the `projection` kwarg if we're
@@ -869,6 +980,25 @@ class ReflectedBase(object):
 
     def design_matrix(self, **kwargs):
         """
+        Compute and return the light curve design matrix.
+        
+        Args:
+            xo (scalar or vector, optional): x coordinate of the occultor 
+                relative to this body in units of this body's radius.
+            yo (scalar or vector, optional): y coordinate of the occultor 
+                relative to this body in units of this body's radius.
+            zo (scalar or vector, optional): z coordinate of the occultor 
+                relative to this body in units of this body's radius.
+            ro (scalar, optional): Radius of the occultor in units of 
+                this body's radius.
+            theta (scalar or vector, optional): Angular phase of the body
+                in units of :py:attr:`angle_unit`.
+            source (vector or matrix, optional): The Cartesian position of
+                the illumination source in the observer frame, where ``x`` points
+                to the right on the sky, ``y`` points up on the sky, and ``z`` 
+                points out of the sky toward the observer. This must be either 
+                a unit vector of shape ``(3,)`` or a sequence of unit 
+                vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
 
         """
         # Orbital kwargs
@@ -897,7 +1027,25 @@ class ReflectedBase(object):
 
     def flux(self, **kwargs):
         """
+        Compute and return the reflected flux from the map.
         
+        Args:
+            xo (scalar or vector, optional): x coordinate of the occultor 
+                relative to this body in units of this body's radius.
+            yo (scalar or vector, optional): y coordinate of the occultor 
+                relative to this body in units of this body's radius.
+            zo (scalar or vector, optional): z coordinate of the occultor 
+                relative to this body in units of this body's radius.
+            ro (scalar, optional): Radius of the occultor in units of 
+                this body's radius.
+            theta (scalar or vector, optional): Angular phase of the body
+                in units of :py:attr:`angle_unit`.
+            source (vector or matrix, optional): The Cartesian position of
+                the illumination source in the observer frame, where ``x`` points
+                to the right on the sky, ``y`` points up on the sky, and ``z`` 
+                points out of the sky toward the observer. This must be either 
+                a unit vector of shape ``(3,)`` or a sequence of unit 
+                vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_orbit(kwargs)
@@ -926,7 +1074,19 @@ class ReflectedBase(object):
 
     def intensity(self, lat=0, lon=0, source=[-1, 0, 0]):
         """
+        Compute and return the intensity of the map.
         
+        Args:
+            lat (scalar or vector, optional): latitude at which to evaluate
+                the intensity in units of :py:attr:``angle_unit``.
+            lon (scalar or vector, optional): longitude at which to evaluate
+                the intensity in units of :py:attr:``angle_unit``.
+            source (vector or matrix, optional): The Cartesian position of
+                the illumination source in the observer frame, where ``x`` points
+                to the right on the sky, ``y`` points up on the sky, and ``z`` 
+                points out of the sky toward the observer. This must be either 
+                a unit vector of shape ``(3,)`` or a sequence of unit 
+                vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
         """
         # Get the Cartesian points
         lat, lon = vectorize(*self.cast(lat, lon))
@@ -946,7 +1106,31 @@ class ReflectedBase(object):
         self, res=300, projection="ortho", theta=0.0, source=[-1, 0, 0]
     ):
         """
+        Compute and return the intensity of the map on a grid.
         
+        Returns an image of shape ``(res, res)``, unless ``theta`` is a vector,
+        in which case returns an array of shape ``(nframes, res, res)``, where
+        ``nframes`` is the number of values of ``theta``. However, if this is 
+        a spectral map, ``nframes`` is the number of wavelength bins and 
+        ``theta`` must be a scalar.
+        
+        Args:
+            res (int, optional): The resolution of the map in pixels on a
+                side. Defaults to 300.
+            projection (string, optional): The map projection. Accepted
+                values are ``ortho``, corresponding to an orthographic
+                projection (as seen on the sky), and ``rect``, corresponding
+                to an equirectangular latitude-longitude projection.
+                Defaults to ``ortho``.
+            theta (scalar or vector, optional): The map rotation phase in
+                units of :py:attr:``angle_unit``. If this is a vector, an
+                animation is generated. Defaults to ``0.0``.
+            source (vector or matrix, optional): The Cartesian position of
+                the illumination source in the observer frame, where ``x`` points
+                to the right on the sky, ``y`` points up on the sky, and ``z`` 
+                points out of the sky toward the observer. This must be either 
+                a unit vector of shape ``(3,)`` or a sequence of unit 
+                vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
         """
         # Multiple frames?
         if self.nw is not None:
