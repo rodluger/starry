@@ -18,6 +18,8 @@ __all__ = ["Primary", "Secondary", "System"]
 
 
 class Body(object):
+    """A generic body. Must be subclassed."""
+
     def __init__(
         self,
         map,
@@ -26,7 +28,6 @@ class Body(object):
         prot=1.0,
         t0=0.0,
         theta0=0.0,
-        L=None,
         length_unit=units.Rsun,
         mass_unit=units.Msun,
         time_unit=units.day,
@@ -48,8 +49,6 @@ class Body(object):
         self.prot = prot
         self.t0 = t0
         self.theta0 = theta0
-        if L is not None:
-            self.L = L
 
     @property
     def length_unit(self):
@@ -168,21 +167,39 @@ class Body(object):
     def theta0(self, value):
         self._theta0 = self.cast(value * self._angle_factor)
 
-    @property
-    def L(self):
-        """The body luminosity in arbitrary units."""
-        return self._map.L
-
-    @L.setter
-    def L(self, value):
-        self._map.L = value
-
     def cast(self, *args, **kwargs):
         return self._map.cast(*args, **kwargs)
 
 
 class Primary(Body):
-    """ A primary (central) body."""
+    """A primary (central) body.
+        
+        Args:
+            map: The surface map of this body. This should be an instance
+                returned by :py:func:`starry.Map`.
+            r (scalar, optional): The radius of the body in units of 
+                :py:attr:`length_unit`. Defaults to 1.0.
+            m (scalar, optional): The mass of the body in units of 
+                :py:attr:`mass_unit`. Defaults to 1.0.
+            prot (scalar, optional): The rotation period of the body in units of 
+                :py:attr:`time_unit`. Defaults to 1.0.
+            t0 (scalar, optional): A reference time in units of
+                :py:attr:`time_unit`. Defaults to 0.0.
+            theta0 (scalar, optional): The rotational phase of the map at time
+                :py:attr:`t0` in units of :py:attr:`angle_unit`. Defaults to 0.0.
+            length_unit (optional): An ``astropy.units`` unit defining the 
+                distance metric for this object. Defaults to 
+                :py:attr:`astropy.units.Rsun.`
+            mass_unit (optional): An ``astropy.units`` unit defining the 
+                mass metric for this object. Defaults to 
+                :py:attr:`astropy.units.Msun.`
+            time_unit (optional): An ``astropy.units`` unit defining the 
+                time metric for this object. Defaults to 
+                :py:attr:`astropy.units.day.`
+            angle_unit (optional): An ``astropy.units`` unit defining the 
+                angular metric for this object. Defaults to 
+                :py:attr:`astropy.units.degree.`
+    """
 
     def __init__(self, map, **kwargs):
         # Initialize `Body`
@@ -190,7 +207,56 @@ class Primary(Body):
 
 
 class Secondary(Body):
-    """A secondary (orbiting) body."""
+    """A secondary (orbiting) body.
+        
+        .. note:: Unlike :py:class:`Primary` instances, the default rotational 
+            phase at the reference time for :py:class:`Secondary` instances 
+            is 180 degrees. This is convenient for edge-on, circular orbits, 
+            where the map coefficients define the appearance of the map at 
+            secondary eclipse.
+
+        Args:
+            map: The surface map of this body. This should be an instance
+                returned by :py:func:`starry.Map`.
+            r (scalar, optional): The radius of the body in units of 
+                :py:attr:`length_unit`. Defaults to 1.0.
+            m (scalar, optional): The mass of the body in units of 
+                :py:attr:`mass_unit`. Defaults to 1.0.
+            a (scalar, optional): The semi-major axis of the body in units of 
+                :py:attr:`time_unit`. Defaults to 1.0. If :py:attr:`porb` is
+                also provided, this value is ignored.
+            porb (scalar, optional): The orbital period of the body in units of 
+                :py:attr:`time_unit`. Defaults to 1.0. Setting this value 
+                overrides :py:attr:`a`.
+            prot (scalar, optional): The rotation period of the body in units of 
+                :py:attr:`time_unit`. Defaults to 1.0.
+            t0 (scalar, optional): A reference time in units of
+                :py:attr:`time_unit`. This is taken to be the time of a reference
+                transit. Defaults to 0.0.
+            ecc (scalar, optional): The orbital eccentricity of the body.
+                Defaults to 0.
+            w, omega (scalar, optional): The argument of pericenter of the body
+                in units of :py:attr:`angle_unit`. Defaults to 90 degrees.
+            Omega (scalar, optional): The longitude of ascending node of the 
+                body in units of :py:attr:`angle_unit`. Defaults to 0 degrees.
+            inc (scalar, optional): The orbital inclination of the body in 
+                units of :py:attr:`angle_unit`. Defaults to 90 degrees.
+            theta0 (scalar, optional): The rotational phase of the map at time
+                :py:attr:`t0` in units of :py:attr:`angle_unit`. Defaults to 
+                180 degrees.
+            length_unit (optional): An ``astropy.units`` unit defining the 
+                distance metric for this object. Defaults to 
+                :py:attr:`astropy.units.Rsun.`
+            mass_unit (optional): An ``astropy.units`` unit defining the 
+                mass metric for this object. Defaults to 
+                :py:attr:`astropy.units.Msun.`
+            time_unit (optional): An ``astropy.units`` unit defining the 
+                time metric for this object. Defaults to 
+                :py:attr:`astropy.units.day.`
+            angle_unit (optional): An ``astropy.units`` unit defining the 
+                angular metric for this object. Defaults to 
+                :py:attr:`astropy.units.degree.`
+    """
 
     def __init__(self, map, theta0=180.0, **kwargs):
         # Initialize `Body`
@@ -205,7 +271,9 @@ class Secondary(Body):
         else:
             raise ValueError("Must provide a value for either `porb` or `a`.")
         self.ecc = kwargs.get("ecc", 0.0)
-        self.w = kwargs.get("w", 0.5 * np.pi / self._angle_factor)
+        self.w = kwargs.get(
+            "w", kwargs.get("omega", 0.5 * np.pi / self._angle_factor)
+        )
         self.Omega = kwargs.get("Omega", 0.0)
         self.inc = kwargs.get("inc", 0.5 * np.pi / self._angle_factor)
 
@@ -288,6 +356,8 @@ class Secondary(Body):
     def inc(self, value):
         self._inc = self.cast(value * self._angle_factor)
 
+    '''
+    TODO: Is this property actually useful?
     @property
     def axis(self):
         """The axis perpendicular to the orbital plane. *Read-only.*
@@ -299,12 +369,21 @@ class Secondary(Body):
         cosI = math.cos(self._inc)
         sinI = math.sin(self._inc)
         return make_array_or_tensor([-sinO * sinI, cosO * sinI, cosI])
+    '''
 
 
 class System(object):
-    """
-    A system of bodies in Keplerian orbits about a central primary body.
+    """A system of bodies in Keplerian orbits about a central primary body.
     
+    Args:
+        primary (:py:class:`Primary`): The central body.
+        secondaries (:py:class:`Secondary`): One or more secondary bodies
+            in orbit about the primary. 
+        time_unit (optional): An ``astropy.units`` unit defining the 
+            time metric for this object. Defaults to 
+            :py:attr:`astropy.units.day.`
+        quiet (bool, optional): Suppress information messages? 
+            Defaults to False.
     """
 
     def __init__(
@@ -387,7 +466,12 @@ class System(object):
         return self._secondaries
 
     def X(self, t):
-        """Compute the system flux design matrix at times ``t``."""
+        """Compute the system flux design matrix at times ``t``.
+        
+        Args:
+            t (scalar or vector): An array of times at which to evaluate
+                the design matrix in units of :py:attr:`time_unit`.
+        """
         return self.ops.X(
             reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
             self._primary._r,
@@ -419,7 +503,12 @@ class System(object):
         )
 
     def flux(self, t):
-        """Compute the system flux at times ``t``."""
+        """Compute the system flux at times ``t``.
+        
+        Args:
+            t (scalar or vector): An array of times at which to evaluate
+                the flux in units of :py:attr:`time_unit`.
+        """
         return self.ops.flux(
             reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
             self._primary._r,
@@ -453,7 +542,12 @@ class System(object):
         )
 
     def position(self, t):
-        """Compute the Cartesian positions of all bodies at times ``t``."""
+        """Compute the Cartesian positions of all bodies at times ``t``.
+        
+        Args:
+            t (scalar or vector): An array of times at which to evaluate
+                the position in units of :py:attr:`time_unit`.
+        """
         x, y, z = self.ops.position(
             reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
             self._primary._m,

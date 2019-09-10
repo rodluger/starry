@@ -800,7 +800,7 @@ class RVBase(object):
         """The equatorial velocity of the body in arbitrary units.
         
         .. warning::
-            If this map is associated with a :py:obj:``starry.Body``
+            If this map is associated with a :py:class:`starry.Body`
             instance in a Keplerian system, changing the body's
             radius and rotation period does not currently affect this
             value. The user must explicitly change this value to affect
