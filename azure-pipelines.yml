@@ -21,7 +21,8 @@ jobs:
       pip install -U pip
       pip install -U setuptools
       pip install -U parameterized nose pytest sphinx
-      pip install -U git+https://github.com/rodluger/starry-beta
+      git clone https://github.com/rodluger/starry_beta
+      pushd starry_beta && python setup.py develop && popd
       pip install -U -r requirements.txt
       pip install -U -r optional-requirements.txt
     displayName: 'Install dependencies'
