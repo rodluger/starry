@@ -20,7 +20,7 @@ jobs:
       theano-cache purge
       pip install -U pip
       pip install -U setuptools
-      pip install -U parameterized nose pytest sphinx
+      pip install -U parameterized nose pytest sphinx nbsphinx
       git clone https://github.com/rodluger/starry_beta
       pip install -U -r requirements.txt
       pip install -U -r optional-requirements.txt

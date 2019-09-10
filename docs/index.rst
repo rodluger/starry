@@ -12,11 +12,14 @@ timeseries data. Check out the links below for examples, tutorials, detailed
 documentation of the API, and more.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
     Installation <install>
     API <api>
+    Github <https://github.com/rodluger/starry>
+    Submit an issue <https://github.com/rodluger/starry/issues>
+    Papers <https://ui.adsabs.harvard.edu/public-libraries/b0KqtPtYRj6I7T8eAZc5Ig>
 
 
 Indices and tables

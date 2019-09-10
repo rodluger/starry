@@ -1,6 +1,9 @@
 Installation
 ============
 
+This version has still not been officially released.
+
+
 Development version
 -------------------
 

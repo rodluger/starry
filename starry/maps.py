@@ -21,6 +21,7 @@ from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
 from warnings import warn
 from astropy import units
+import os
 
 
 __all__ = ["Map", "MapBase", "YlmBase", "RVBase", "ReflectedBase"]
@@ -337,9 +338,9 @@ class YlmBase(object):
 
         Args:
             lat (scalar or vector, optional): latitude at which to evaluate
-                the design matrix in units of :py:attr:``angle_unit``.
+                the design matrix in units of :py:attr:`angle_unit`.
             lon (scalar or vector, optional): longitude at which to evaluate
-                the design matrix in units of :py:attr:``angle_unit``.
+                the design matrix in units of :py:attr:`angle_unit`.
 
         .. note::
             This method ignores any filters (such as limb darkening
@@ -397,9 +398,9 @@ class YlmBase(object):
         
         Args:
             lat (scalar or vector, optional): latitude at which to evaluate
-                the intensity in units of :py:attr:``angle_unit``.
+                the intensity in units of :py:attr:`angle_unit`.
             lon (scalar or vector, optional): longitude at which to evaluate
-                the intensity in units of :py:attr:``angle_unit``.
+                the intensity in units of :py:attr:`angle_unit``.
 
         """
         # Get the Cartesian points
@@ -428,7 +429,7 @@ class YlmBase(object):
                 to an equirectangular latitude-longitude projection.
                 Defaults to ``ortho``.
             theta (scalar or vector, optional): The map rotation phase in
-                units of :py:attr:``angle_unit``. If this is a vector, an
+                units of :py:attr:`angle_unit`. If this is a vector, an
                 animation is generated. Defaults to ``0.0``.
         """
         # Multiple frames?
@@ -465,7 +466,7 @@ class YlmBase(object):
     def show(self, **kwargs):
         """
         Display an image of the map, with optional animation. See the
-        docstring of :py:meth:``render`` for more details and additional
+        docstring of :py:meth:`render` for more details and additional
         keywords accepted by this method.
 
         Args:
@@ -655,6 +656,14 @@ class YlmBase(object):
                 except NameError:
                     plt.show()
                     plt.close()
+
+            # Matplotlib generates an annoying empty
+            # file when producing an animation. Delete it.
+            try:
+                os.remove("None0000000.png")
+            except FileNotFoundError:
+                pass
+
         else:
             plt.show()
 
@@ -884,9 +893,9 @@ class RVBase(object):
         
         Args:
             lat (scalar or vector, optional): latitude at which to evaluate
-                the intensity in units of :py:attr:``angle_unit``.
+                the intensity in units of :py:attr:`angle_unit`.
             lon (scalar or vector, optional): longitude at which to evaluate
-                the intensity in units of :py:attr:``angle_unit``.
+                the intensity in units of :py:attr:`angle_unit`.
             rv (bool, optional): If True, computes the velocity-weighted
                 intensity instead. Defaults to True.
 
@@ -919,7 +928,7 @@ class RVBase(object):
                 to an equirectangular latitude-longitude projection.
                 Defaults to ``ortho``.
             theta (scalar or vector, optional): The map rotation phase in
-                units of :py:attr:``angle_unit``. If this is a vector, an
+                units of :py:attr:`angle_unit`. If this is a vector, an
                 animation is generated. Defaults to ``0.0``.
             rv (bool, optional): If True, computes the velocity-weighted
                 intensity instead. Defaults to True.
@@ -939,7 +948,7 @@ class RVBase(object):
     def show(self, **kwargs):
         """
         Display an image of the map, with optional animation. See the
-        docstring of :py:meth:``render`` for more details and additional
+        docstring of :py:meth:`render` for more details and additional
         keywords accepted by this method.
 
         Args:
@@ -1087,9 +1096,9 @@ class ReflectedBase(object):
         
         Args:
             lat (scalar or vector, optional): latitude at which to evaluate
-                the intensity in units of :py:attr:``angle_unit``.
+                the intensity in units of :py:attr:`angle_unit`.
             lon (scalar or vector, optional): longitude at which to evaluate
-                the intensity in units of :py:attr:``angle_unit``.
+                the intensity in units of :py:attr:`angle_unit`.
             source (vector or matrix, optional): The Cartesian position of
                 the illumination source in the observer frame, where ``x`` points
                 to the right on the sky, ``y`` points up on the sky, and ``z`` 
@@ -1132,7 +1141,7 @@ class ReflectedBase(object):
                 to an equirectangular latitude-longitude projection.
                 Defaults to ``ortho``.
             theta (scalar or vector, optional): The map rotation phase in
-                units of :py:attr:``angle_unit``. If this is a vector, an
+                units of :py:attr:`angle_unit`. If this is a vector, an
                 animation is generated. Defaults to ``0.0``.
             source (vector or matrix, optional): The Cartesian position of
                 the illumination source in the observer frame, where ``x`` points
