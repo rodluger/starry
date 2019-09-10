@@ -43,9 +43,8 @@ jobs:
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
       # Build the docs
-      pushd docs
-      make html
-      pushd _build
+      make -C docs html
+      cd _build
       # Clone the `gh-pages` branch
       mkdir gh-pages
       cd gh-pages
@@ -62,6 +61,5 @@ jobs:
       git add -f *
       git -c user.name='azure' -c user.email='azure' commit -m "rebuild gh-pages at ${rev} for ${STARRY_VERSION}"
       git push -q -f https://$GITHUB_USER:$GITHUB_API_KEY@github.com/rodluger/starry HEAD:gh-pages >/dev/null 2>&1
-      # Return to the top level
-      popd
+      cd ../../
     displayName: 'Build docs'
