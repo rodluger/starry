@@ -44,7 +44,7 @@ jobs:
       conda activate starry
       # Build the docs
       make -C docs html
-      cd _build
+      cd docs/_build
       # Clone the `gh-pages` branch
       mkdir gh-pages
       cd gh-pages
