@@ -22,9 +22,11 @@ jobs:
       pip install -U setuptools
       pip install -U parameterized nose pytest sphinx
       git clone https://github.com/rodluger/starry_beta
-      pushd starry_beta && python setup.py develop && popd
       pip install -U -r requirements.txt
       pip install -U -r optional-requirements.txt
+      pushd starry_beta
+      python setup.py develop
+      popd
     displayName: 'Install dependencies'
   - script: |
       . $CONDA/etc/profile.d/conda.sh
@@ -40,5 +42,26 @@ jobs:
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      cd docs && make html
+      # Build the docs
+      pushd docs
+      make html
+      pushd _build
+      # Clone the `gh-pages` branch
+      mkdir gh-pages
+      cd gh-pages
+      git clone -b gh-pages --single-branch https://github.com/rodluger/starry.git .
+      # Reset git tracking & update the current version's docs
+      rm -rf .git
+      STARRY_VERSION=$(python -c "import starry; print('v' + starry.__version__)")
+      rm -rf $STARRY_VERSION/*
+      mv ../html/* $STARRY_VERSION/
+      # Commit & force push back
+      git init
+      touch .nojekyll
+      git add -f .nojekyll
+      git add -f *
+      git -c user.name='azure' -c user.email='azure' commit -m "rebuild gh-pages at ${rev} for ${STARRY_VERSION}"
+      git push -q -f https://$GITHUB_USER:$GITHUB_API_KEY@github.com/rodluger/starry HEAD:gh-pages >/dev/null 2>&1
+      # Return to the top level
+      popd
     displayName: 'Build docs'
