@@ -54,7 +54,7 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -79,7 +79,7 @@ html_js_files = ["js/version.js"]
 # Add a heading to notebooks
 nbsphinx_prolog = """
 {% set docname = env.doc2path(env.docname, base=None) %}
-.. note:: This tutorial was generated from an Jupyter notebook that can be
+.. note:: This tutorial was generated from a Jupyter notebook that can be
           downloaded `here <https://github.com/rodluger/starry/blob/dev/docs/{{ docname }}>`_.
 """
 

@@ -15,6 +15,7 @@ docs/_generate
 docs/.doxyxml
 docs/.build
 docs/notebooks
+notebooks/tmp
 
 tmp/*
 tests/cpp/test

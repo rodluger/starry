@@ -17,6 +17,7 @@ documentation of the API, and more.
 
     Installation <install>
     New in version 1.0.0 <changes>
+    Examples & tutorials <tutorials>
     API <api>
     Github <https://github.com/rodluger/starry>
     Submit an issue <https://github.com/rodluger/starry/issues>

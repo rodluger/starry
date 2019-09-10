@@ -45,7 +45,6 @@ jobs:
       # Build the docs
       make -C docs html
       cd docs/_build
-      pwd && ls # DEBUG
       # Clone the `gh-pages` branch
       mkdir gh-pages
       cd gh-pages
@@ -54,8 +53,7 @@ jobs:
       rm -rf .git
       STARRY_VERSION=$(python -c "import starry; print('v' + starry.__version__)")
       rm -rf $STARRY_VERSION/*
-      pwd && ls # DEBUG
-      pwd && ls ../ # DEBUG
+      mkdir -p $STARRY_VERSION
       mv ../html/* $STARRY_VERSION/
       # Commit & force push back
       git init
