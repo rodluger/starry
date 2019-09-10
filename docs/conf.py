@@ -28,6 +28,7 @@ copyright = "2019, Rodrigo Luger"
 author = "Rodrigo Luger"
 
 # The full version, including alpha/beta/rc tags
+version = starry.__version__
 release = starry.__version__
 
 
@@ -63,11 +64,15 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 #
 html_theme = "sphinx_rtd_theme"
 
+html_theme_options = {"display_version": True}
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ["_static"]
 
+html_static_path = ["_static"]
+
+html_js_files = ["js/version.js"]
 
 # -- Extension settings ------------------------------------------------------
 

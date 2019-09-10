@@ -8,7 +8,7 @@ import numpy as np
 
 def test_orientation(Omega=45, inc=35):
     # Instantiate
-    pri = starry.Primary(starry.Map(), L=0)
+    pri = starry.Primary(starry.Map(L=0))
     sec = starry.Secondary(
         starry.Map(ydeg=1),
         porb=1.0,

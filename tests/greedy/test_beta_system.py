@@ -69,9 +69,8 @@ def test_edge_on_eccentric():
     pri = starry.Primary(starry.Map(udeg=2))
     pri.map[1:] = u
     sec = starry.Secondary(
-        starry.Map(ydeg=ydeg),
+        starry.Map(ydeg=ydeg, L=L),
         porb=porb,
-        L=L,
         r=r,
         m=m,
         inc=90,

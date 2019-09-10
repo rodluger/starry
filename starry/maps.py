@@ -77,7 +77,7 @@ class YlmBase(object):
         self.angle_unit = units.degree
 
         # Initialize
-        self.reset()
+        self.reset(**kwargs)
 
     @property
     def angle_unit(self):
@@ -262,7 +262,7 @@ class YlmBase(object):
         theta *= self._angle_factor
         return theta, xo, yo, zo, ro
 
-    def reset(self):
+    def reset(self, **kwargs):
         """Reset all map coefficients and attributes.
         
         .. note:: 
@@ -285,10 +285,19 @@ class YlmBase(object):
         f[0] = np.pi
         self._f = self.cast(f)
 
-        self._L = self.cast(np.ones(self.nw))
+        self._L = self.cast(kwargs.pop("L", np.ones(self.nw)))
 
-        self._inc = self.cast(0.5 * np.pi)
-        self._obl = self.cast(0.0)
+        if kwargs.get("inc", None) is not None:
+            self.inc = kwargs.pop("inc")
+        else:
+            self._inc = self.cast(0.5 * np.pi)
+
+        if kwargs.get("obl", None) is not None:
+            self.obl = kwargs.pop("obl")
+        else:
+            self._obl = self.cast(0.0)
+
+        self._check_kwargs("reset", kwargs)
 
     def X(self, **kwargs):
         """Alias for :py:meth:`design_matrix`. *Deprecated*"""
