@@ -52,9 +52,8 @@ inline Matrix<Scalar> spotYlm(const RowVector<Scalar> &amp, const Scalar &sigma,
   }
 
   // Compute the coefficients of the expansion
-  // normalized so the integral over the sphere is `amp`
   for (int n = 0; n < l + 1; ++n)
-    y.row(n * n + n) = 0.25 * amp * sqrt(2 * n + 1) * (IP(n) / IP(0));
+    y.row(n * n + n) = amp * sqrt(2 * n + 1) * (IP(n) / IP(0));
 
   // Rotate the spot to the correct lat/lon
   // We are computing the compound rotation matrix

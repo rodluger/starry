@@ -275,18 +275,20 @@ class Ops(object):
     @autocompile(
         "add_spot",
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        DynamicType("tt.dscalar() if instance.nw is None else tt.dvector()"),
         tt.dvector(),
         tt.dscalar(),
         tt.dscalar(),
         tt.dscalar(),
     )
-    def add_spot(self, y, amp, sigma, lat, lon):
+    def add_spot(self, y, L, amp, sigma, lat, lon):
         """
 
         """
         y_new = y + self.spotYlm(amp, sigma, lat, lon)
+        L_new = L * y_new[0]
         y_new /= y_new[0]
-        return y_new
+        return y_new, L_new
 
     def compute_ortho_grid(self, res):
         """

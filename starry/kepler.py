@@ -4,6 +4,7 @@ TODO:
     - Radial velocity support
     - Exposure time integration
     - Light travel time delay
+    - Check kwargs
 """
 from . import config
 from .maps import MapBase, RVBase, ReflectedBase

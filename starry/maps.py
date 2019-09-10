@@ -27,8 +27,6 @@ __all__ = ["Map", "MapBase", "YlmBase", "RVBase", "ReflectedBase"]
 
 
 class Luminosity(object):
-    """Descriptor for map luminosity."""
-
     def __get__(self, instance, owner):
         return instance._L
 
@@ -74,9 +72,6 @@ class YlmBase(object):
         self._deg = ydeg + udeg + fdeg
         self._N = (ydeg + udeg + fdeg + 1) ** 2
         self._nw = nw
-
-        # Luminosity
-        self._L = self.cast(np.ones(self.nw))
 
         # Units
         self.angle_unit = units.degree
@@ -289,6 +284,8 @@ class YlmBase(object):
         f = np.zeros(self.Nf)
         f[0] = np.pi
         self._f = self.cast(f)
+
+        self._L = self.cast(np.ones(self.nw))
 
         self._inc = self.cast(0.5 * np.pi)
         self._obl = self.cast(0.0)
@@ -670,19 +667,48 @@ class YlmBase(object):
         # Ingest the coefficients
         self._y = self.cast(y)
 
-    def add_spot(self, amp, sigma=0.1, lat=0.0, lon=0.0):
-        """
+    def add_spot(
+        self, amp, sigma=0.1, lat=0.0, lon=0.0, preserve_luminosity=False
+    ):
+        r"""Add the expansion of a gaussian spot to the map.
         
+        This function adds a spot whose functional form is the spherical
+        harmonic expansion of a gaussian in the quantity 
+        :math:`\cos\Delta\theta`, where :math:`\Delta\theta`
+        is the angular separation between the center of the spot and another
+        point on the surface. The spot brightness is controlled by the
+        parameter ``amp``, which is defined as the fractional change in the
+        total luminosity of the object due to the spot.
+
+        Args:
+            amp (scalar or vector): The amplitude of the spot. This is equal
+                to the fractional change in the luminosity of the map due to
+                the spot (unless ``preserve_luminosity`` is True.) If the map
+                has more than one wavelength bin, this must be a vector of
+                length equal to the number of wavelength bins.
+            sigma (scalar, optional): The standard deviation of the gaussian. 
+                Defaults to 0.1.
+            lat (scalar, optional): The latitude of the spot in units of 
+                :py:attr:`angle_unit`. Defaults to 0.0.
+            lon (scalar, optional): The longitude of the spot in units of 
+                :py:attr:`angle_unit`. Defaults to 0.0.
+            preserve_luminosity (bool, optional): If True, preserves the 
+                current map luminosity when adding the spot. Regionss of the 
+                map outside of the spot will therefore get brighter. 
+                Defaults to False.
         """
         amp, _ = vectorize(self.cast(amp), np.ones(self.nw))
         sigma, lat, lon = self.cast(sigma, lat, lon)
-        self._y = self.ops.add_spot(
+        self._y, new_L = self.ops.add_spot(
             self._y,
+            self._L,
             amp,
             sigma,
             lat * self._angle_factor,
             lon * self._angle_factor,
         )
+        if not preserve_luminosity:
+            self._L = new_L
 
 
 class RVBase(object):

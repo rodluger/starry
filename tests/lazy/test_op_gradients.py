@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Test the various Theano Ops.
+Test the various Theano Ops and their gradients.
 
 """
 import theano
