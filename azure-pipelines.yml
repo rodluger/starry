@@ -20,7 +20,8 @@ jobs:
       theano-cache purge
       pip install -U pip
       pip install -U setuptools
-      pip install -U parameterized nose pytest
+      pip install -U parameterized nose pytest sphinx
+      pip install -U git+https://github.com/rodluger/starry-beta
       pip install -U -r requirements.txt
       pip install -U -r optional-requirements.txt
     displayName: 'Install dependencies'
@@ -35,3 +36,8 @@ jobs:
       py.test -v -s tests/lazy
       py.test -v -s tests/greedy
     displayName: 'Run tests'
+  - script: |
+      . $CONDA/etc/profile.d/conda.sh
+      conda activate starry
+      cd docs && make html
+    displayName: 'Build docs'
