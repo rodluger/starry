@@ -75,7 +75,7 @@ class YlmBase(object):
         self._nw = nw
 
         # Units
-        self.angle_unit = units.degree
+        self.angle_unit = kwargs.pop("angle_unit", units.degree)
 
         # Initialize
         self.reset(**kwargs)

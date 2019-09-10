@@ -68,6 +68,11 @@ Deprecation of ``add_gaussian`` in favor of ``add_spot``
 Also a name change, but the algorithm used to compute the spherical harmonic 
 expansion of the spot is now analytic and much, much faster.
 
+Deprecation of the ``animate`` method
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+All map visualizations are now performed via the ``show`` method. If you want
+to animate the map as it rotates, pass a vector-valued ``theta``.
+
 Distinction between ``ydeg`` and ``udeg``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Previously, maps were instantiated for a given maximum degree ``lmax``. 
