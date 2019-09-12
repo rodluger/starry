@@ -337,14 +337,14 @@ class Ops(object):
                 self.dotR(
                     M,
                     -tt.cos(obl),
-                    tt.sin(obl),
+                    -tt.sin(obl),
                     tt.as_tensor_variable(0.0),
                     -(0.5 * np.pi - inc),
                 ),
                 tt.as_tensor_variable(0.0),
                 tt.as_tensor_variable(0.0),
                 tt.as_tensor_variable(1.0),
-                -obl,
+                obl,
             ),
             tt.as_tensor_variable(1.0),
             tt.as_tensor_variable(0.0),
@@ -408,10 +408,10 @@ class Ops(object):
                 tt.as_tensor_variable(0.0),
                 tt.as_tensor_variable(0.0),
                 tt.as_tensor_variable(1.0),
-                obl,
+                -obl,
             ),
             -tt.cos(obl),
-            tt.sin(obl),
+            -tt.sin(obl),
             tt.as_tensor_variable(0.0),
             (0.5 * np.pi - inc),
         )
@@ -458,7 +458,7 @@ class OpsRV(Ops):
         cosl = tt.cos(obl)
         sinl = tt.sin(obl)
         A = sini * cosl
-        B = -sini * sinl
+        B = sini * sinl
         C = cosi
 
         # Compute the Ylm expansion of the RV field

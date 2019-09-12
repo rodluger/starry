@@ -24,7 +24,7 @@ def test_orientation(Omega=45, inc=35):
 
     # Align the rotational axis with the orbital axis
     sec.map.inc = sec.inc
-    sec.map.obl = -sec.Omega
+    sec.map.obl = sec.Omega
 
     # Compute the flux
     t = np.linspace(-0.5, 0.5, 1000)
