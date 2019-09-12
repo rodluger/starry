@@ -63,8 +63,10 @@ jobs:
       git -c user.name='rodluger' -c user.email='rodluger@gmail.com' commit -m "rebuild gh-pages for ${STARRY_VERSION}"
       # DEBUG
       echo $GITHUB_API_KEY | head -c 3
+      echo $GITHUB_USER
       # DEBUG
       echo $GITHUB_API_KEY | tail -c 3
+      echo $GITHUB_USER
       # DEBUG
       git push -f https://rodluger:$GITHUB_API_KEY@github.com/rodluger/starry HEAD:gh-pages #>/dev/null 2>&1 #-q
       cd ../../
