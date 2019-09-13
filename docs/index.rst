@@ -3,6 +3,15 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. raw:: html
+
+   <div align="center">
+   <img src="https://github.com/rodluger/starry/blob/master/docs/starry.png?raw=true" width="450px">
+   </img>
+   <br/>
+   </div>
+   <br/><br/>
+
 Documentation
 =============
 
