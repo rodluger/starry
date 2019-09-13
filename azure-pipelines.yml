@@ -17,6 +17,7 @@ jobs:
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
       conda install -y -q numpy scipy mkl openblas theano
+      conda install -y -q -c conda-forge pandoc
       theano-cache purge
       pip install -U pip
       pip install -U setuptools
@@ -37,11 +38,17 @@ jobs:
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
       py.test -v -s tests/lazy
-      py.test -v -s tests/greedy
-    displayName: 'Run tests'
+    displayName: 'Run tests: lazy'
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
+      py.test -v -s tests/greedy
+    displayName: 'Run tests: greedy'
+  - script: |
+      . $CONDA/etc/profile.d/conda.sh
+      conda activate starry
+      # Fail on error
+      set -e
       # Build the docs
       make -C docs html
       cd docs/_build
