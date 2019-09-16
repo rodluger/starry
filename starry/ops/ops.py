@@ -867,9 +867,15 @@ class OpsSystem(object):
             x_pri, y_pri, z_pri = orbit.get_star_position(t)
 
         # Positions of the secondaries
-        x_sec, y_sec, z_sec = orbit.get_planet_position(
-            t, light_delay=self.light_delay
-        )
+        try:
+            x_sec, y_sec, z_sec = orbit.get_planet_position(
+                t, light_delay=self.light_delay
+            )
+        except TypeError:
+            logger.warn(
+                "This version of `exoplanet` does not model light delays."
+            )
+            x_sec, y_sec, z_sec = orbit.get_planet_position(t)
 
         # Concatenate them
         x = tt.transpose(tt.concatenate((x_pri, x_sec), axis=-1))
@@ -954,7 +960,15 @@ class OpsSystem(object):
             m_star=pri_m,
             r_star=pri_r,
         )
-        x, y, z = orbit.get_relative_position(t, light_delay=self.light_delay)
+        try:
+            x, y, z = orbit.get_relative_position(
+                t, light_delay=self.light_delay
+            )
+        except TypeError:
+            logger.warn(
+                "This version of `exoplanet` does not model light delays."
+            )
+            x, y, z = orbit.get_relative_position(t)
 
         # Compute the position of the illumination source (the primary)
         # if we're doing things in reflected light
