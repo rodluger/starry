@@ -2,8 +2,6 @@
 """
 TODO:
     - Radial velocity support
-    - Exposure time integration
-    - Light travel time delay
     - Check kwargs
 """
 from . import config
@@ -19,6 +17,10 @@ from .ops import (
 import numpy as np
 from astropy import units
 from inspect import getmro
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from IPython.display import HTML
+import os
 
 
 __all__ = ["Primary", "Secondary", "System"]
@@ -502,8 +504,7 @@ class System(object):
     def order(self):
         """The order of the numerical integration scheme. *Read-only*
         
-        - ``0``: a centered Riemann sum (equivalent to the "resampling" 
-                 procedure suggested by Kipping 2010)
+        - ``0``: a centered Riemann sum
         - ``1``: trapezoid rule
         - ``2``: Simpson’s rule
         """
@@ -529,6 +530,197 @@ class System(object):
     def secondaries(self):
         """A list of the secondary (orbiting) object(s) in the Keplerian system."""
         return self._secondaries
+
+    def show(self, t, **kwargs):
+        """Experimental!
+
+        TODO: Will fail for spectral maps.
+
+        """
+        # Get kwargs
+        cmap = kwargs.pop("cmap", "plasma")
+        res = kwargs.pop("res", 300)
+        interval = kwargs.pop("interval", 75)
+        file = kwargs.pop("file", None)
+        figsize = kwargs.pop("figsize", (3, 3))
+        html5_video = kwargs.pop("html5_video", True)
+        window_pad = kwargs.pop("window_pad", 1.0)
+
+        # Render the maps & get the orbital positions
+        img_pri, img_sec, x, y, z = self.ops.render(
+            reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
+            res,
+            self._primary._r,
+            self._primary._m,
+            self._primary._prot,
+            self._primary._t0,
+            self._primary._theta0,
+            self._primary._map._L,
+            self._primary._map._inc,
+            self._primary._map._obl,
+            self._primary._map._y,
+            self._primary._map._u,
+            self._primary._map._f,
+            make_array_or_tensor([sec._r for sec in self._secondaries]),
+            make_array_or_tensor([sec._m for sec in self._secondaries]),
+            make_array_or_tensor([sec._prot for sec in self._secondaries]),
+            make_array_or_tensor([sec._t0 for sec in self._secondaries]),
+            make_array_or_tensor([sec._theta0 for sec in self._secondaries]),
+            self._get_periods(),
+            make_array_or_tensor([sec._ecc for sec in self._secondaries]),
+            make_array_or_tensor([sec._w for sec in self._secondaries]),
+            make_array_or_tensor([sec._Omega for sec in self._secondaries]),
+            make_array_or_tensor([sec._inc for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._L for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._inc for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._obl for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._y for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._u for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._f for sec in self._secondaries]),
+        )
+
+        # Convert to units of the primary radius
+        fac = np.reshape(
+            [sec._length_factor for sec in self._secondaries], [-1, 1]
+        )
+        fac = fac * self._primary._r
+        x, y, z = x / fac, y / fac, z / fac
+        r = make_array_or_tensor([sec._r for sec in self._secondaries])
+        r = r / self._primary._r
+
+        # Evaluate if needed
+        if config.lazy:
+            img_pri = img_pri.eval()
+            img_sec = img_sec.eval()
+            x = x.eval()
+            y = y.eval()
+            z = z.eval()
+            r = r.eval()
+
+        # We need this to be of shape (nplanet, nframe)
+        x = x.T
+        y = y.T
+        z = z.T
+
+        # Ensure we have an array of frames
+        if len(img_pri.shape) == 3:
+            nframes = img_pri.shape[0]
+        else:
+            nframes = 1
+            img_pri = np.reshape(img_pri, (1,) + img_pri.shape)
+            img_sec = np.reshape(img_sec, (1,) + img_sec.shape)
+        animated = nframes > 1
+
+        # Set up the plot
+        fig, ax = plt.subplots(1, figsize=figsize)
+        ax.axis("off")
+        ax.set_xlim(-1.0 - window_pad, 1.0 + window_pad)
+        ax.set_ylim(-1.0 - window_pad, 1.0 + window_pad)
+
+        # Render the first frame
+        img = [None for n in range(1 + len(self._secondaries))]
+        circ = [None for n in range(1 + len(self._secondaries))]
+        extent = np.array([-1.0, 1.0, -1.0, 1.0])
+        img[0] = ax.imshow(
+            img_pri[0],
+            origin="lower",
+            extent=extent,
+            cmap=cmap,
+            interpolation="none",
+            vmin=np.nanmin(img_pri),
+            vmax=np.nanmax(img_pri),
+            animated=animated,
+            zorder=0.0,
+        )
+        circ[0] = plt.Circle(
+            (0, 0), 1, color="k", fill=False, zorder=1e-3, lw=2
+        )
+        ax.add_artist(circ[0])
+        for i, _ in enumerate(self._secondaries):
+            extent = np.array([x[i, 0], x[i, 0], y[i, 0], y[i, 0]]) + (
+                r[i] * np.array([-1.0, 1.0, -1.0, 1.0])
+            )
+            img[i + 1] = ax.imshow(
+                img_sec[i, 0],
+                origin="lower",
+                extent=extent,
+                cmap=cmap,
+                interpolation="none",
+                vmin=np.nanmin(img_sec),
+                vmax=np.nanmax(img_sec),
+                animated=animated,
+                zorder=z[i, 0],
+            )
+            circ[i] = plt.Circle(
+                (x[i, 0], y[i, 0]),
+                r[i],
+                color="k",
+                fill=False,
+                zorder=z[i, 0] + 1e-3,
+                lw=2,
+            )
+            ax.add_artist(circ[i])
+
+        # Animation
+        if animated:
+
+            def updatefig(k):
+
+                # Update Primary map
+                img[0].set_array(img_pri[k])
+
+                # Update Secondary maps & positions
+                for i, _ in enumerate(self._secondaries):
+                    extent = np.array([x[i, k], x[i, k], y[i, k], y[i, k]]) + (
+                        r[i] * np.array([-1.0, 1.0, -1.0, 1.0])
+                    )
+                    if np.any(np.abs(extent) < 1.0 + window_pad):
+                        img[i + 1].set_array(img_sec[i, k])
+                        img[i + 1].set_extent(extent)
+                        img[i + 1].set_zorder(z[i, k])
+                        circ[i].center = (x[i, k], y[i, k])
+                        circ[i].set_zorder(z[i, k] + 1e-3)
+
+                return img + circ
+
+            ani = FuncAnimation(
+                fig, updatefig, interval=interval, blit=False, frames=nframes
+            )
+
+            # Business as usual
+            if (file is not None) and (file != ""):
+                if file.endswith(".mp4"):
+                    ani.save(file, writer="ffmpeg")
+                elif file.endswith(".gif"):
+                    ani.save(file, writer="imagemagick")
+                else:
+                    # Try and see what happens!
+                    ani.save(file)
+                plt.close()
+            else:
+                try:
+                    if "zmqshell" in str(type(get_ipython())):
+                        plt.close()
+                        if html5_video:
+                            display(HTML(ani.to_html5_video()))
+                        else:
+                            display(HTML(ani.to_jshtml()))
+                    else:
+                        raise NameError("")
+                except NameError:
+                    plt.show()
+                    plt.close()
+
+            # Matplotlib generates an annoying empty
+            # file when producing an animation. Delete it.
+            try:
+                os.remove("None0000000.png")
+            except FileNotFoundError:
+                pass
+
+        else:
+
+            plt.show()
 
     def X(self, t):
         """Compute the system flux design matrix at times ``t``.

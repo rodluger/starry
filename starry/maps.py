@@ -472,6 +472,9 @@ class YlmBase(object):
         Args:
             cmap (string or colormap instance): The matplotlib colormap
                 to use. Defaults to ``plasma``.
+            figsize (tuple, optional): Figure size in inches. Default is 
+                (3, 3) for orthographic maps and (7, 3.5) for rectangular
+                maps.
             projection (string, optional): The map projection. Accepted
                 values are ``ortho``, corresponding to an orthographic
                 projection (as seen on the sky), and ``rect``, corresponding
@@ -481,16 +484,19 @@ class YlmBase(object):
                 Defaults to True.
             interval (int, optional): Interval between frames in milliseconds
                 (animated maps only). Defaults to 75.
-            mp4 (string, optional): The file name to save an ``mp4``
-                animation to (animated maps only). Defaults to None.
-
+            file (string, optional): The file name (including the extension)
+                to save the animation to (animated maps only). Defaults to None.
+            html5_video (bool, optional): If rendering in a Jupyter notebook,
+                display as an HTML5 video? Default is True. If False, displays
+                the animation using Javascript (file size will be larger.)
         """
         # Get kwargs
         cmap = kwargs.pop("cmap", "plasma")
         projection = get_projection(kwargs.get("projection", "ortho"))
         grid = kwargs.pop("grid", True)
         interval = kwargs.pop("interval", 75)
-        mp4 = kwargs.pop("mp4", None)
+        file = kwargs.pop("file", None)
+        html5_video = kwargs.pop("html5_video", True)
 
         # Get the map orientation
         if config.lazy:
@@ -557,7 +563,8 @@ class YlmBase(object):
 
         if projection == STARRY_RECTANGULAR_PROJECTION:
             # Set up the plot
-            fig, ax = plt.subplots(1, figsize=(7, 3.75))
+            figsize = kwargs.pop("figsize", (7, 3.75))
+            fig, ax = plt.subplots(1, figsize=figsize)
             extent = (-180, 180, -90, 90)
 
             # Grid lines
@@ -575,7 +582,8 @@ class YlmBase(object):
 
         else:
             # Set up the plot
-            fig, ax = plt.subplots(1, figsize=(3, 3))
+            figsize = kwargs.pop("figsize", (3, 3))
+            fig, ax = plt.subplots(1, figsize=figsize)
             ax.axis("off")
             ax.set_xlim(-1.05, 1.05)
             ax.set_ylim(-1.05, 1.05)
@@ -641,16 +649,23 @@ class YlmBase(object):
             )
 
             # Business as usual
-            if (mp4 is not None) and (mp4 != ""):
-                if mp4.endswith(".mp4"):
-                    mp4 = mp4[:-4]
-                ani.save("%s.mp4" % mp4, writer="ffmpeg")
+            if (file is not None) and (file != ""):
+                if file.endswith(".mp4"):
+                    ani.save(file, writer="ffmpeg")
+                elif file.endswith(".gif"):
+                    ani.save(file, writer="imagemagick")
+                else:
+                    # Try and see what happens!
+                    ani.save(file)
                 plt.close()
             else:
                 try:
                     if "zmqshell" in str(type(get_ipython())):
                         plt.close()
-                        display(HTML(ani.to_jshtml()))
+                        if html5_video:
+                            display(HTML(ani.to_html5_video()))
+                        else:
+                            display(HTML(ani.to_jshtml()))
                     else:
                         raise NameError("")
                 except NameError:

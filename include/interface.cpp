@@ -9,6 +9,8 @@
 #undef NDEBUG
 #endif
 
+#define EIGEN_DONT_PARALLELIZE // DEBUG
+
 // Includes
 #include "ops.h"
 #include "utils.h"

@@ -1311,6 +1311,158 @@ class OpsSystem(object):
         y = tt.concatenate((pri_y, tt.reshape(sec_y, (-1,))))
         return tt.dot(X, y)
 
+    @autocompile(
+        "render",
+        tt.dvector(),  # t
+        tt.iscalar(),  # res
+        # -- primary --
+        tt.dscalar(),  # r
+        tt.dscalar(),  # m
+        tt.dscalar(),  # prot
+        tt.dscalar(),  # t0
+        tt.dscalar(),  # theta0
+        DynamicType(
+            "tt.dscalar() if instance.nw is None else tt.dvector()"
+        ),  # L
+        tt.dscalar(),  # inc
+        tt.dscalar(),  # obl
+        DynamicType(
+            "tt.dvector() if instance.nw is None else tt.dmatrix()"
+        ),  # y
+        tt.dvector(),  # u
+        tt.dvector(),  # f
+        # -- secondaries --
+        tt.dvector(),  # r
+        tt.dvector(),  # m
+        tt.dvector(),  # prot
+        tt.dvector(),  # t0
+        tt.dvector(),  # theta0
+        tt.dvector(),  # porb
+        tt.dvector(),  # ecc
+        tt.dvector(),  # w
+        tt.dvector(),  # Omega
+        tt.dvector(),  # iorb
+        DynamicType(
+            "tt.dvector() if instance.nw is None else tt.dmatrix()"
+        ),  # L
+        tt.dvector(),  # inc
+        tt.dvector(),  # obl
+        DynamicType(
+            "tt.dmatrix() if instance.nw is None else tt.dtensor3()"
+        ),  # y
+        tt.dmatrix(),  # u
+        tt.dmatrix(),  # f
+    )
+    def render(
+        self,
+        t,
+        res,
+        pri_r,
+        pri_m,
+        pri_prot,
+        pri_t0,
+        pri_theta0,
+        pri_L,
+        pri_inc,
+        pri_obl,
+        pri_y,
+        pri_u,
+        pri_f,
+        sec_r,
+        sec_m,
+        sec_prot,
+        sec_t0,
+        sec_theta0,
+        sec_porb,
+        sec_ecc,
+        sec_w,
+        sec_Omega,
+        sec_iorb,
+        sec_L,
+        sec_inc,
+        sec_obl,
+        sec_y,
+        sec_u,
+        sec_f,
+    ):
+        # Compute the relative positions of all bodies
+        orbit = exoplanet.orbits.KeplerianOrbit(
+            period=sec_porb,
+            t0=sec_t0,
+            incl=sec_iorb,
+            ecc=sec_ecc,
+            omega=sec_w,
+            Omega=sec_Omega,
+            m_planet=sec_m,
+            m_star=pri_m,
+            r_star=pri_r,
+        )
+        try:
+            x, y, z = orbit.get_relative_position(
+                t, light_delay=self.light_delay
+            )
+        except TypeError:
+            if self.light_delay:
+                logger.warn(
+                    "This version of `exoplanet` does not model light delays."
+                )
+            x, y, z = orbit.get_relative_position(t)
+
+        # Compute the position of the illumination source (the primary)
+        # if we're doing things in reflected light
+        if self.reflected:
+            source = [
+                [
+                    tt.transpose(
+                        tt.as_tensor_variable([-x[:, i], -y[:, i], -z[:, i]])
+                    )
+                ]
+                for i, sec in enumerate(self.secondaries)
+            ]
+        else:
+            source = [[] for sec in self.secondaries]
+
+        # Get all rotational phases
+        pri_prot = ifelse(tt.eq(pri_prot, 0.0), to_tensor(np.inf), pri_prot)
+        theta_pri = (2 * np.pi) / pri_prot * (t - pri_t0) + pri_theta0
+        sec_prot = tt.switch(tt.eq(sec_prot, 0.0), to_tensor(np.inf), sec_prot)
+        theta_sec = (2 * np.pi) / tt.shape_padright(sec_prot) * (
+            tt.shape_padleft(t) - tt.shape_padright(sec_t0)
+        ) + tt.shape_padright(sec_theta0)
+
+        # Compute all the maps
+        img_pri = self.primary.map.ops.render(
+            res,
+            STARRY_ORTHOGRAPHIC_PROJECTION,
+            theta_pri,
+            pri_inc,
+            pri_obl,
+            pri_y,
+            pri_u,
+            pri_f,
+            no_compile=True,
+        )
+        img_sec = tt.as_tensor_variable(
+            [
+                sec.map.ops.render(
+                    res,
+                    STARRY_ORTHOGRAPHIC_PROJECTION,
+                    theta_sec[i],
+                    sec_inc[i],
+                    sec_obl[i],
+                    sec_y[i],
+                    sec_u[i],
+                    sec_f[i],
+                    *source[i],
+                    no_compile=True,
+                )
+                for i, sec in enumerate(self.secondaries)
+            ]
+        )
+        
+        # Return the images and secondary orbital positions
+        return img_pri, img_sec, x, y, z
+
 
 class OpsRVSystem(OpsSystem):
     def __init__(self, *args, **kwargs):
