@@ -8,7 +8,14 @@ TODO:
 """
 from . import config
 from .maps import MapBase, RVBase, ReflectedBase
-from .ops import OpsSystem, OpsRVSystem, reshape, make_array_or_tensor, math
+from .ops import (
+    OpsSystem,
+    OpsRVSystem,
+    G_grav,
+    reshape,
+    make_array_or_tensor,
+    math,
+)
 import numpy as np
 from astropy import units
 from inspect import getmro
@@ -208,12 +215,6 @@ class Primary(Body):
 
 class Secondary(Body):
     """A secondary (orbiting) body.
-        
-        .. note:: Unlike :py:class:`Primary` instances, the default rotational 
-            phase at the reference time for :py:class:`Secondary` instances 
-            is 180 degrees. This is convenient for edge-on, circular orbits, 
-            where the map coefficients define the appearance of the map at 
-            secondary eclipse.
 
         Args:
             map: The surface map of this body. This should be an instance
@@ -243,7 +244,7 @@ class Secondary(Body):
                 units of :py:attr:`angle_unit`. Defaults to 90 degrees.
             theta0 (scalar, optional): The rotational phase of the map at time
                 :py:attr:`t0` in units of :py:attr:`angle_unit`. Defaults to 
-                180 degrees.
+                0.0.
             length_unit (optional): An ``astropy.units`` unit defining the 
                 distance metric for this object. Defaults to 
                 :py:attr:`astropy.units.Rsun.`
@@ -258,9 +259,8 @@ class Secondary(Body):
                 :py:attr:`astropy.units.degree.`
     """
 
-    def __init__(self, map, theta0=180.0, **kwargs):
+    def __init__(self, map, **kwargs):
         # Initialize `Body`
-        kwargs.update({"theta0": theta0})
         super(Secondary, self).__init__(map, **kwargs)
 
         # Attributes
@@ -382,12 +382,19 @@ class System(object):
         time_unit (optional): An ``astropy.units`` unit defining the 
             time metric for this object. Defaults to 
             :py:attr:`astropy.units.day.`
+        light_delay (bool, optional): Account for the light travel time 
+            delay to the barycenter of the system? Default is False.
         quiet (bool, optional): Suppress information messages? 
             Defaults to False.
     """
 
     def __init__(
-        self, primary, *secondaries, time_unit=units.day, quiet=False
+        self,
+        primary,
+        *secondaries,
+        time_unit=units.day,
+        light_delay=False,
+        quiet=False
     ):
         # Units
         self.time_unit = time_unit
@@ -434,7 +441,10 @@ class System(object):
         # Theano ops class
         if self._rv:
             self.ops = OpsRVSystem(
-                self._primary, self._secondaries, quiet=quiet
+                self._primary,
+                self._secondaries,
+                quiet=quiet,
+                light_delay=light_delay,
             )
         else:
             self.ops = OpsSystem(
@@ -442,6 +452,7 @@ class System(object):
                 self._secondaries,
                 reflected=self._reflected,
                 quiet=quiet,
+                light_delay=light_delay,
             )
 
     @property
@@ -489,8 +500,7 @@ class System(object):
             make_array_or_tensor([sec._prot for sec in self._secondaries]),
             make_array_or_tensor([sec._t0 for sec in self._secondaries]),
             make_array_or_tensor([sec._theta0 for sec in self._secondaries]),
-            make_array_or_tensor([sec._porb for sec in self._secondaries]),
-            make_array_or_tensor([sec._a for sec in self._secondaries]),
+            self._get_periods(),
             make_array_or_tensor([sec._ecc for sec in self._secondaries]),
             make_array_or_tensor([sec._w for sec in self._secondaries]),
             make_array_or_tensor([sec._Omega for sec in self._secondaries]),
@@ -527,8 +537,7 @@ class System(object):
             make_array_or_tensor([sec._prot for sec in self._secondaries]),
             make_array_or_tensor([sec._t0 for sec in self._secondaries]),
             make_array_or_tensor([sec._theta0 for sec in self._secondaries]),
-            make_array_or_tensor([sec._porb for sec in self._secondaries]),
-            make_array_or_tensor([sec._a for sec in self._secondaries]),
+            self._get_periods(),
             make_array_or_tensor([sec._ecc for sec in self._secondaries]),
             make_array_or_tensor([sec._w for sec in self._secondaries]),
             make_array_or_tensor([sec._Omega for sec in self._secondaries]),
@@ -554,8 +563,7 @@ class System(object):
             self._primary._t0,
             make_array_or_tensor([sec._m for sec in self._secondaries]),
             make_array_or_tensor([sec._t0 for sec in self._secondaries]),
-            make_array_or_tensor([sec._porb for sec in self._secondaries]),
-            make_array_or_tensor([sec._a for sec in self._secondaries]),
+            self._get_periods(),
             make_array_or_tensor([sec._ecc for sec in self._secondaries]),
             make_array_or_tensor([sec._w for sec in self._secondaries]),
             make_array_or_tensor([sec._Omega for sec in self._secondaries]),
@@ -567,3 +575,16 @@ class System(object):
             [-1, 1],
         )
         return (x / fac, y / fac, z / fac)
+
+    def _get_periods(self):
+        periods = [None for sec in self._secondaries]
+        for i, sec in enumerate(self._secondaries):
+            if sec.porb:
+                periods[i] = sec.porb
+            else:
+                periods[i] = (
+                    (2 * np.pi)
+                    * sec._a ** (3 / 2)
+                    / (math.sqrt(G_grav * (self._primary.m + sec._m)))
+                )
+        return make_array_or_tensor(periods)

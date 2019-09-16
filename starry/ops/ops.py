@@ -29,7 +29,14 @@ except ModuleNotFoundError:
 G_grav = constants.G.to(units.R_sun ** 3 / units.M_sun / units.day ** 2).value
 
 
-__all__ = ["Ops", "OpsReflected", "OpsRV", "OpsSystem", "OpsRVSystem"]
+__all__ = [
+    "Ops",
+    "OpsReflected",
+    "OpsRV",
+    "OpsSystem",
+    "OpsRVSystem",
+    "G_grav",
+]
 
 
 class Ops(object):
@@ -787,7 +794,14 @@ class OpsSystem(object):
 
     """
 
-    def __init__(self, primary, secondaries, reflected=False, quiet=False):
+    def __init__(
+        self,
+        primary,
+        secondaries,
+        reflected=False,
+        quiet=False,
+        light_delay=False,
+    ):
         """
 
         """
@@ -802,6 +816,7 @@ class OpsSystem(object):
         self.secondaries = secondaries
         self.reflected = reflected
         self.nw = self.primary._map.nw
+        self.light_delay = light_delay
 
         # Require exoplanet
         assert exoplanet is not None, "This class requires exoplanet >= 0.2.0."
@@ -816,7 +831,6 @@ class OpsSystem(object):
         tt.dvector(),  # m
         tt.dvector(),  # t0
         tt.dvector(),  # porb
-        tt.dvector(),  # a
         tt.dvector(),  # ecc
         tt.dvector(),  # w
         tt.dvector(),  # Omega
@@ -830,7 +844,6 @@ class OpsSystem(object):
         sec_m,
         sec_t0,
         sec_porb,
-        sec_a,
         sec_ecc,
         sec_w,
         sec_Omega,
@@ -846,7 +859,6 @@ class OpsSystem(object):
             m_planet=sec_m,
             m_star=pri_m,
             r_star=1.0,  # doesn't matter
-            m_planet_units=units.Msun,
         )
         # Position of the primary
         if len(self.secondaries) > 1:
@@ -855,7 +867,9 @@ class OpsSystem(object):
             x_pri, y_pri, z_pri = orbit.get_star_position(t)
 
         # Positions of the secondaries
-        x_sec, y_sec, z_sec = orbit.get_planet_position(t)
+        x_sec, y_sec, z_sec = orbit.get_planet_position(
+            t, light_delay=self.light_delay
+        )
 
         # Concatenate them
         x = tt.transpose(tt.concatenate((x_pri, x_sec), axis=-1))
@@ -887,7 +901,6 @@ class OpsSystem(object):
         tt.dvector(),  # t0
         tt.dvector(),  # theta0
         tt.dvector(),  # porb
-        tt.dvector(),  # a
         tt.dvector(),  # ecc
         tt.dvector(),  # w
         tt.dvector(),  # Omega
@@ -919,7 +932,6 @@ class OpsSystem(object):
         sec_t0,
         sec_theta0,
         sec_porb,
-        sec_a,
         sec_ecc,
         sec_w,
         sec_Omega,
@@ -941,9 +953,8 @@ class OpsSystem(object):
             m_planet=sec_m,
             m_star=pri_m,
             r_star=pri_r,
-            m_planet_units=units.Msun,
         )
-        x, y, z = orbit.get_relative_position(t)
+        x, y, z = orbit.get_relative_position(t, light_delay=self.light_delay)
 
         # Compute the position of the illumination source (the primary)
         # if we're doing things in reflected light
@@ -960,10 +971,12 @@ class OpsSystem(object):
             source = [[] for sec in self.secondaries]
 
         # Get all rotational phases
-        theta_pri = (2 * np.pi) / pri_prot * (t - pri_t0) - pri_theta0
+        pri_prot = ifelse(tt.eq(pri_prot, 0.0), to_tensor(np.inf), pri_prot)
+        theta_pri = (2 * np.pi) / pri_prot * (t - pri_t0) + pri_theta0
+        sec_prot = tt.switch(tt.eq(sec_prot, 0.0), to_tensor(np.inf), sec_prot)
         theta_sec = (2 * np.pi) / tt.shape_padright(sec_prot) * (
             tt.shape_padleft(t) - tt.shape_padright(sec_t0)
-        ) - tt.shape_padright(sec_theta0)
+        ) + tt.shape_padright(sec_theta0)
 
         # Compute all the phase curves
         phase_pri = pri_L * self.primary.map.ops.X(
@@ -1085,9 +1098,9 @@ class OpsSystem(object):
             for j, _ in enumerate(self.secondaries):
                 if i == j:
                     continue
-                xo = (x[:, i] - x[:, j]) / sec_r[i]
-                yo = (y[:, i] - y[:, j]) / sec_r[i]
-                zo = (z[:, i] - z[:, j]) / sec_r[i]
+                xo = (-x[:, i] + x[:, j]) / sec_r[i]
+                yo = (-y[:, i] + y[:, j]) / sec_r[i]
+                zo = (-z[:, i] + z[:, j]) / sec_r[i]
                 ro = sec_r[j] / sec_r[i]
                 b = tt.sqrt(xo ** 2 + yo ** 2)
                 b_occ = tt.invert(
@@ -1155,7 +1168,6 @@ class OpsSystem(object):
         tt.dvector(),  # t0
         tt.dvector(),  # theta0
         tt.dvector(),  # porb
-        tt.dvector(),  # a
         tt.dvector(),  # ecc
         tt.dvector(),  # w
         tt.dvector(),  # Omega
@@ -1191,7 +1203,6 @@ class OpsSystem(object):
         sec_t0,
         sec_theta0,
         sec_porb,
-        sec_a,
         sec_ecc,
         sec_w,
         sec_Omega,
@@ -1221,7 +1232,6 @@ class OpsSystem(object):
             sec_t0,
             sec_theta0,
             sec_porb,
-            sec_a,
             sec_ecc,
             sec_w,
             sec_Omega,
