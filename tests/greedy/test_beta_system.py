@@ -63,7 +63,7 @@ def test_edge_on_eccentric():
 
     # This is the required phase offset such that the map coefficients
     # correspond to what the observer sees at secondary eclipse
-    theta0 = (t_ecl - t0) * 360
+    theta0 = -(t_ecl - t0) * 360
 
     # Version 1
     pri = starry.Primary(starry.Map(udeg=2))
@@ -83,6 +83,12 @@ def test_edge_on_eccentric():
     sec.map[1:, :] = y
     sys = starry.System(pri, sec)
     flux = sys.flux(t)
+
+    import matplotlib.pyplot as plt
+
+    plt.plot(t, flux)
+    plt.plot(t, flux_beta)
+    plt.show()
 
     # Compare
     assert np.allclose(flux, flux_beta)

@@ -384,6 +384,16 @@ class System(object):
             :py:attr:`astropy.units.day.`
         light_delay (bool, optional): Account for the light travel time 
             delay to the barycenter of the system? Default is False.
+        texp (scalar): The exposure time of each observation. This can be a 
+            scalar or a tensor with the same shape as ``t``. If ``texp`` is 
+            provided, ``t`` is assumed to indicate the timestamp at the middle 
+            of an exposure of length ``texp``.
+        oversample (int): The number of function evaluations to use when 
+            numerically integrating the exposure time.
+        order (int): The order of the numerical integration scheme. This must 
+            be one of the following: ``0`` for a centered Riemann sum 
+            (equivalent to the "resampling" procedure suggested by Kipping 2010), 
+            ``1`` for the trapezoid rule, or ``2`` for Simpson’s rule.
         quiet (bool, optional): Suppress information messages? 
             Defaults to False.
     """
@@ -394,10 +404,23 @@ class System(object):
         *secondaries,
         time_unit=units.day,
         light_delay=False,
+        texp=None,
+        oversample=7,
+        order=0,
         quiet=False
     ):
         # Units
         self.time_unit = time_unit
+        self._light_delay = bool(light_delay)
+        if texp is None:
+            self._texp = 0.0
+        else:
+            self._texp = texp
+        assert self._texp >= 0.0, "Parameter `texp` must be >= 0."
+        self._oversample = int(oversample)
+        assert self._oversample > 0, "Parameter `oversample` must be > 0."
+        self._order = int(order)
+        assert self._order in [0, 1, 2], "Invalid value for parameter `order`."
 
         # Primary body
         assert (
@@ -444,7 +467,10 @@ class System(object):
                 self._primary,
                 self._secondaries,
                 quiet=quiet,
-                light_delay=light_delay,
+                light_delay=self._light_delay,
+                texp=self._texp,
+                oversample=self._oversample,
+                order=self._order,
             )
         else:
             self.ops = OpsSystem(
@@ -452,8 +478,36 @@ class System(object):
                 self._secondaries,
                 reflected=self._reflected,
                 quiet=quiet,
-                light_delay=light_delay,
+                light_delay=self._light_delay,
+                texp=self._texp,
+                oversample=self._oversample,
+                order=self._order,
             )
+
+    @property
+    def light_delay(self):
+        """Account for the light travel time delay? *Read-only*"""
+        return self._light_delay
+
+    @property
+    def texp(self):
+        """The exposure time in units of :py:attr:`time_unit`. *Read-only*"""
+
+    @property
+    def oversample(self):
+        """Oversample factor when integrating over exposure time. *Read-only*"""
+        return self._oversample
+
+    @property
+    def order(self):
+        """The order of the numerical integration scheme. *Read-only*
+        
+        - ``0``: a centered Riemann sum (equivalent to the "resampling" 
+                 procedure suggested by Kipping 2010)
+        - ``1``: trapezoid rule
+        - ``2``: Simpson’s rule
+        """
+        return self._order
 
     @property
     def time_unit(self):

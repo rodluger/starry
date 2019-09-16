@@ -18,6 +18,7 @@ def test_orientation(Omega=45, inc=35):
         inc=inc,
         Omega=Omega,
         prot=1.0,
+        theta0=180.0,
     )
     sec.map[1, 0] = 1.0
     sys = starry.System(pri, sec)

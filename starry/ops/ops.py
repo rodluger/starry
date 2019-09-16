@@ -801,6 +801,9 @@ class OpsSystem(object):
         reflected=False,
         quiet=False,
         light_delay=False,
+        texp=None,
+        oversample=7,
+        order=0,
     ):
         """
 
@@ -817,6 +820,9 @@ class OpsSystem(object):
         self.reflected = reflected
         self.nw = self.primary._map.nw
         self.light_delay = light_delay
+        self.texp = texp
+        self.oversample = oversample
+        self.order = order
 
         # Require exoplanet
         assert exoplanet is not None, "This class requires exoplanet >= 0.2.0."
@@ -872,9 +878,10 @@ class OpsSystem(object):
                 t, light_delay=self.light_delay
             )
         except TypeError:
-            logger.warn(
-                "This version of `exoplanet` does not model light delays."
-            )
+            if self.light_delay:
+                logger.warn(
+                    "This version of `exoplanet` does not model light delays."
+                )
             x_sec, y_sec, z_sec = orbit.get_planet_position(t)
 
         # Concatenate them
@@ -948,6 +955,35 @@ class OpsSystem(object):
         sec_u,
         sec_f,
     ):
+        # Exposure time integration?
+        if self.texp != 0.0:
+
+            texp = tt.as_tensor_variable(self.texp)
+            oversample = int(self.oversample)
+            oversample += 1 - oversample % 2
+            stencil = np.ones(oversample)
+
+            # Construct the exposure time integration stencil
+            if self.order == 0:
+                dt = np.linspace(-0.5, 0.5, 2 * oversample + 1)[1:-1:2]
+            elif self.order == 1:
+                dt = np.linspace(-0.5, 0.5, oversample)
+                stencil[1:-1] = 2
+            elif self.order == 2:
+                dt = np.linspace(-0.5, 0.5, oversample)
+                stencil[1:-1:2] = 4
+                stencil[2:-1:2] = 2
+            else:
+                raise ValueError("Parameter `order` must be <= 2")
+            stencil /= np.sum(stencil)
+
+            if texp.ndim == 0:
+                dt = texp * dt
+            else:
+                dt = tt.shape_padright(texp) * dt
+            t = tt.shape_padright(t) + dt
+            t = tt.reshape(t, (-1,))
+
         # Compute the relative positions of all bodies
         orbit = exoplanet.orbits.KeplerianOrbit(
             period=sec_porb,
@@ -965,9 +1001,10 @@ class OpsSystem(object):
                 t, light_delay=self.light_delay
             )
         except TypeError:
-            logger.warn(
-                "This version of `exoplanet` does not model light delays."
-            )
+            if self.light_delay:
+                logger.warn(
+                    "This version of `exoplanet` does not model light delays."
+                )
             x, y, z = orbit.get_relative_position(t)
 
         # Compute the position of the illumination source (the primary)
@@ -1005,6 +1042,7 @@ class OpsSystem(object):
             pri_f,
             no_compile=True,
         )
+
         phase_sec = tt.as_tensor_variable(
             [
                 sec_L[i]
@@ -1150,11 +1188,24 @@ class OpsSystem(object):
                     - phase_sec[i, idx],
                 )
 
-        # Concatenate the design matrices & return
+        # Concatenate the design matrices
         X_pri = phase_pri + occ_pri
         X_sec = phase_sec + occ_sec
         X_sec = tt.reshape(tt.swapaxes(X_sec, 0, 1), (X_sec.shape[1], -1))
-        return tt.horizontal_stack(X_pri, X_sec)
+        X = tt.horizontal_stack(X_pri, X_sec)
+
+        # Sum and return
+        if self.texp == 0.0:
+
+            return X
+
+        else:
+
+            stencil = tt.shape_padright(tt.shape_padleft(stencil, 1), 1)
+            return tt.sum(
+                stencil * tt.reshape(X, (-1, self.oversample, X.shape[1])),
+                axis=1,
+            )
 
     @autocompile(
         "flux",
