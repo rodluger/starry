@@ -9,7 +9,7 @@
 #undef NDEBUG
 #endif
 
-#define EIGEN_DONT_PARALLELIZE // DEBUG
+// TODO: #define EIGEN_DONT_PARALLELIZE
 
 // Includes
 #include "ops.h"

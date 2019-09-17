@@ -470,7 +470,7 @@ class YlmBase(object):
         keywords accepted by this method.
 
         Args:
-            cmap (string or colormap instance): The matplotlib colormap
+            cmap (string or colormap instance, optional): The matplotlib colormap
                 to use. Defaults to ``plasma``.
             figsize (tuple, optional): Figure size in inches. Default is 
                 (3, 3) for orthographic maps and (7, 3.5) for rectangular

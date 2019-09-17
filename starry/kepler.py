@@ -2,7 +2,6 @@
 """
 TODO:
     - Radial velocity support
-    - Check kwargs
 """
 from . import config
 from .maps import MapBase, RVBase, ReflectedBase
@@ -21,6 +20,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
 import os
+from warnings import warn
 
 
 __all__ = ["Primary", "Secondary", "System"]
@@ -41,7 +41,8 @@ class Body(object):
         mass_unit=units.Msun,
         time_unit=units.day,
         angle_unit=units.degree,
-        **kwargs
+        quiet=False,
+        **kwargs,
     ):
         # Surface map
         self.map = map
@@ -58,6 +59,8 @@ class Body(object):
         self.prot = prot
         self.t0 = t0
         self.theta0 = theta0
+
+        self.quiet = quiet
 
     @property
     def length_unit(self):
@@ -179,105 +182,144 @@ class Body(object):
     def cast(self, *args, **kwargs):
         return self._map.cast(*args, **kwargs)
 
+    def _check_kwargs(self, method, kwargs):
+        if not self.quiet:
+            for key in kwargs.keys():
+                message = "Invalid keyword `{0}` in call to `{1}()`. Ignoring."
+                message = message.format(key, method)
+                warn(message)
+
 
 class Primary(Body):
     """A primary (central) body.
         
-        Args:
-            map: The surface map of this body. This should be an instance
-                returned by :py:func:`starry.Map`.
-            r (scalar, optional): The radius of the body in units of 
-                :py:attr:`length_unit`. Defaults to 1.0.
-            m (scalar, optional): The mass of the body in units of 
-                :py:attr:`mass_unit`. Defaults to 1.0.
-            prot (scalar, optional): The rotation period of the body in units of 
-                :py:attr:`time_unit`. Defaults to 1.0.
-            t0 (scalar, optional): A reference time in units of
-                :py:attr:`time_unit`. Defaults to 0.0.
-            theta0 (scalar, optional): The rotational phase of the map at time
-                :py:attr:`t0` in units of :py:attr:`angle_unit`. Defaults to 0.0.
-            length_unit (optional): An ``astropy.units`` unit defining the 
-                distance metric for this object. Defaults to 
-                :py:attr:`astropy.units.Rsun.`
-            mass_unit (optional): An ``astropy.units`` unit defining the 
-                mass metric for this object. Defaults to 
-                :py:attr:`astropy.units.Msun.`
-            time_unit (optional): An ``astropy.units`` unit defining the 
-                time metric for this object. Defaults to 
-                :py:attr:`astropy.units.day.`
-            angle_unit (optional): An ``astropy.units`` unit defining the 
-                angular metric for this object. Defaults to 
-                :py:attr:`astropy.units.degree.`
+    Args:
+        map: The surface map of this body. This should be an instance
+            returned by :py:func:`starry.Map`.
+        r (scalar, optional): The radius of the body in units of 
+            :py:attr:`length_unit`. Defaults to 1.0.
+        m (scalar, optional): The mass of the body in units of 
+            :py:attr:`mass_unit`. Defaults to 1.0.
+        prot (scalar, optional): The rotation period of the body in units of 
+            :py:attr:`time_unit`. Defaults to 1.0.
+        t0 (scalar, optional): A reference time in units of
+            :py:attr:`time_unit`. Defaults to 0.0.
+        theta0 (scalar, optional): The rotational phase of the map at time
+            :py:attr:`t0` in units of :py:attr:`angle_unit`. Defaults to 0.0.
+        length_unit (optional): An ``astropy.units`` unit defining the 
+            distance metric for this object. Defaults to 
+            :py:attr:`astropy.units.Rsun.`
+        mass_unit (optional): An ``astropy.units`` unit defining the 
+            mass metric for this object. Defaults to 
+            :py:attr:`astropy.units.Msun.`
+        time_unit (optional): An ``astropy.units`` unit defining the 
+            time metric for this object. Defaults to 
+            :py:attr:`astropy.units.day.`
+        angle_unit (optional): An ``astropy.units`` unit defining the 
+            angular metric for this object. Defaults to 
+            :py:attr:`astropy.units.degree.`
+        quiet (bool, optional): Suppress information messages? 
+            Defaults to False.
     """
 
     def __init__(self, map, **kwargs):
         # Initialize `Body`
         super(Primary, self).__init__(map, **kwargs)
+        for kw in [
+            "r",
+            "m",
+            "prot",
+            "t0",
+            "theta0",
+            "length_unit",
+            "mass_unit",
+            "time_unit",
+            "angle_unit",
+            "quiet",
+        ]:
+            kwargs.pop(kw, None)
+        self._check_kwargs("Primary", kwargs)
 
 
 class Secondary(Body):
     """A secondary (orbiting) body.
 
-        Args:
-            map: The surface map of this body. This should be an instance
-                returned by :py:func:`starry.Map`.
-            r (scalar, optional): The radius of the body in units of 
-                :py:attr:`length_unit`. Defaults to 1.0.
-            m (scalar, optional): The mass of the body in units of 
-                :py:attr:`mass_unit`. Defaults to 1.0.
-            a (scalar, optional): The semi-major axis of the body in units of 
-                :py:attr:`time_unit`. Defaults to 1.0. If :py:attr:`porb` is
-                also provided, this value is ignored.
-            porb (scalar, optional): The orbital period of the body in units of 
-                :py:attr:`time_unit`. Defaults to 1.0. Setting this value 
-                overrides :py:attr:`a`.
-            prot (scalar, optional): The rotation period of the body in units of 
-                :py:attr:`time_unit`. Defaults to 1.0.
-            t0 (scalar, optional): A reference time in units of
-                :py:attr:`time_unit`. This is taken to be the time of a reference
-                transit. Defaults to 0.0.
-            ecc (scalar, optional): The orbital eccentricity of the body.
-                Defaults to 0.
-            w, omega (scalar, optional): The argument of pericenter of the body
-                in units of :py:attr:`angle_unit`. Defaults to 90 degrees.
-            Omega (scalar, optional): The longitude of ascending node of the 
-                body in units of :py:attr:`angle_unit`. Defaults to 0 degrees.
-            inc (scalar, optional): The orbital inclination of the body in 
-                units of :py:attr:`angle_unit`. Defaults to 90 degrees.
-            theta0 (scalar, optional): The rotational phase of the map at time
-                :py:attr:`t0` in units of :py:attr:`angle_unit`. Defaults to 
-                0.0.
-            length_unit (optional): An ``astropy.units`` unit defining the 
-                distance metric for this object. Defaults to 
-                :py:attr:`astropy.units.Rsun.`
-            mass_unit (optional): An ``astropy.units`` unit defining the 
-                mass metric for this object. Defaults to 
-                :py:attr:`astropy.units.Msun.`
-            time_unit (optional): An ``astropy.units`` unit defining the 
-                time metric for this object. Defaults to 
-                :py:attr:`astropy.units.day.`
-            angle_unit (optional): An ``astropy.units`` unit defining the 
-                angular metric for this object. Defaults to 
-                :py:attr:`astropy.units.degree.`
+    Args:
+        map: The surface map of this body. This should be an instance
+            returned by :py:func:`starry.Map`.
+        r (scalar, optional): The radius of the body in units of 
+            :py:attr:`length_unit`. Defaults to 1.0.
+        m (scalar, optional): The mass of the body in units of 
+            :py:attr:`mass_unit`. Defaults to 1.0.
+        a (scalar, optional): The semi-major axis of the body in units of 
+            :py:attr:`time_unit`. Defaults to 1.0. If :py:attr:`porb` is
+            also provided, this value is ignored.
+        porb (scalar, optional): The orbital period of the body in units of 
+            :py:attr:`time_unit`. Defaults to 1.0. Setting this value 
+            overrides :py:attr:`a`.
+        prot (scalar, optional): The rotation period of the body in units of 
+            :py:attr:`time_unit`. Defaults to 1.0.
+        t0 (scalar, optional): A reference time in units of
+            :py:attr:`time_unit`. This is taken to be the time of a reference
+            transit. Defaults to 0.0.
+        ecc (scalar, optional): The orbital eccentricity of the body.
+            Defaults to 0.
+        w, omega (scalar, optional): The argument of pericenter of the body
+            in units of :py:attr:`angle_unit`. Defaults to 90 degrees.
+        Omega (scalar, optional): The longitude of ascending node of the 
+            body in units of :py:attr:`angle_unit`. Defaults to 0 degrees.
+        inc (scalar, optional): The orbital inclination of the body in 
+            units of :py:attr:`angle_unit`. Defaults to 90 degrees.
+        theta0 (scalar, optional): The rotational phase of the map at time
+            :py:attr:`t0` in units of :py:attr:`angle_unit`. Defaults to 
+            0.0.
+        length_unit (optional): An ``astropy.units`` unit defining the 
+            distance metric for this object. Defaults to 
+            :py:attr:`astropy.units.Rsun.`
+        mass_unit (optional): An ``astropy.units`` unit defining the 
+            mass metric for this object. Defaults to 
+            :py:attr:`astropy.units.Msun.`
+        time_unit (optional): An ``astropy.units`` unit defining the 
+            time metric for this object. Defaults to 
+            :py:attr:`astropy.units.day.`
+        angle_unit (optional): An ``astropy.units`` unit defining the 
+            angular metric for this object. Defaults to 
+            :py:attr:`astropy.units.degree.`
+        quiet (bool, optional): Suppress information messages? 
+            Defaults to False.
     """
 
     def __init__(self, map, **kwargs):
         # Initialize `Body`
         super(Secondary, self).__init__(map, **kwargs)
+        for kw in [
+            "r",
+            "m",
+            "prot",
+            "t0",
+            "theta0",
+            "length_unit",
+            "mass_unit",
+            "time_unit",
+            "angle_unit",
+            "quiet",
+        ]:
+            kwargs.pop(kw, None)
 
         # Attributes
         if kwargs.get("porb", None) is not None:
-            self.porb = kwargs.get("porb", None)
+            self.porb = kwargs.pop("porb", None)
         elif kwargs.get("a", None) is not None:
-            self.a = kwargs.get("a", None)
+            self.a = kwargs.pop("a", None)
         else:
             raise ValueError("Must provide a value for either `porb` or `a`.")
-        self.ecc = kwargs.get("ecc", 0.0)
-        self.w = kwargs.get(
-            "w", kwargs.get("omega", 0.5 * np.pi / self._angle_factor)
+        self.ecc = kwargs.pop("ecc", 0.0)
+        self.w = kwargs.pop(
+            "w", kwargs.pop("omega", 0.5 * np.pi / self._angle_factor)
         )
-        self.Omega = kwargs.get("Omega", 0.0)
-        self.inc = kwargs.get("inc", 0.5 * np.pi / self._angle_factor)
+        self.Omega = kwargs.pop("Omega", 0.0)
+        self.inc = kwargs.pop("inc", 0.5 * np.pi / self._angle_factor)
+        self._check_kwargs("Secondary", kwargs)
 
     @property
     def porb(self):
@@ -409,7 +451,7 @@ class System(object):
         texp=None,
         oversample=7,
         order=0,
-        quiet=False
+        quiet=False,
     ):
         # Units
         self.time_unit = time_unit
@@ -531,20 +573,45 @@ class System(object):
         """A list of the secondary (orbiting) object(s) in the Keplerian system."""
         return self._secondaries
 
-    def show(self, t, **kwargs):
-        """Experimental!
-
-        TODO: Will fail for spectral maps.
-
+    def show(
+        self,
+        t,
+        cmap="plasma",
+        res=300,
+        interval=75,
+        file=None,
+        figsize=(3, 3),
+        html5_video=True,
+        window_pad=1.0,
+    ):
+        """Visualize the Keplerian system.
+        
+        Args:
+            t (scalar or vector): The time(s) at which to evaluate the orbit and
+                the map in units of :py:attr:`time_unit`.
+            cmap (string or colormap instance, optional): The matplotlib colormap
+                to use. Defaults to ``plasma``.
+            res (int, optional): The resolution of the map in pixels on a
+                side. Defaults to 300.
+            figsize (tuple, optional): Figure size in inches. Default is 
+                (3, 3) for orthographic maps and (7, 3.5) for rectangular
+                maps.
+            interval (int, optional): Interval between frames in milliseconds
+                (animated maps only). Defaults to 75.
+            file (string, optional): The file name (including the extension)
+                to save the animation to (animated maps only). Defaults to None.
+            html5_video (bool, optional): If rendering in a Jupyter notebook,
+                display as an HTML5 video? Default is True. If False, displays
+                the animation using Javascript (file size will be larger.)
+            window_pad (float, optional): Padding around the primary in units
+                of the primary radius. Bodies outside of this window will be
+                cropped. Default is 1.0.
         """
-        # Get kwargs
-        cmap = kwargs.pop("cmap", "plasma")
-        res = kwargs.pop("res", 300)
-        interval = kwargs.pop("interval", 75)
-        file = kwargs.pop("file", None)
-        figsize = kwargs.pop("figsize", (3, 3))
-        html5_video = kwargs.pop("html5_video", True)
-        window_pad = kwargs.pop("window_pad", 1.0)
+        # Not yet implemented
+        if self._primary._map.nw is not None:
+            raise NotImplementedError(
+                "Method not implemented for spectral maps."
+            )
 
         # Render the maps & get the orbital positions
         img_pri, img_sec, x, y, z = self.ops.render(
