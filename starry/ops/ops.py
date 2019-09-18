@@ -4,7 +4,7 @@ from .. import _c_ops
 from .integration import sTOp, rTReflectedOp
 from .rotation import dotROp, tensordotRzOp
 from .filter import FOp
-from .misc import spotYlmOp, pTOp
+from .misc import spotYlmOp, pTOp, minimizeOp
 from .utils import *
 import theano
 import theano.tensor as tt
@@ -90,33 +90,20 @@ class Ops(object):
         # Misc
         self.spotYlm = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
         self.pT = pTOp(self._c_ops.pT, self.deg)
-
-        # Map rendering transform on an equal area lat-lon grid for future use.
-        # The maximum number of extrema of a band-limited function
-        # on the sphere is l^2 - l + 2 (Kuznetsov & Kholshevnikov 1992)
-        # The minimum resolution of the grid must therefore be...
-        res = int(
-            np.ceil(
-                0.25 * (np.sqrt(1 + 8 * (self.ydeg ** 2 - self.ydeg + 2)) - 1)
+        if self.nw is None:
+            self.minimize = minimizeOp(
+                self.intensity, self.P, self.ydeg, self.udeg, self.fdeg
             )
-        )
-        lon_grid = np.linspace(-np.pi, np.pi, res)
-        lat_grid = np.arccos(1 - np.arange(2 * res + 1) / res) - np.pi / 2
-        lon_grid, lat_grid = np.meshgrid(lon_grid, lat_grid)
-        lon_grid, lat_grid = lon_grid.flatten(), lat_grid.flatten()
-        self.P_grid = self.P(lat_grid, lon_grid)
-        self.lat_grid = tt.as_tensor_variable(lat_grid)
-        self.lon_grid = tt.as_tensor_variable(lon_grid)
+        else:
+            # TODO?
+            self.minimize = None
 
     @autocompile(
-        "coarse_minimize",
+        "get_minimum",
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
     )
-    def coarse_minimize(self, y):
-        imin = tt.argmin(tt.dot(self.P_grid, y))
-        lat = self.lat_grid[imin]
-        lon = self.lon_grid[imin]
-        return lat, lon
+    def get_minimum(self, y):
+        return self.minimize(y)
 
     @autocompile(
         "X",

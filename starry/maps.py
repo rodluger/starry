@@ -11,7 +11,6 @@ from .ops import (
     reshape,
     STARRY_RECTANGULAR_PROJECTION,
     STARRY_ORTHOGRAPHIC_PROJECTION,
-    Adam,
 )
 from .indices import get_ylm_inds, get_ul_inds, get_ylmw_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
@@ -23,8 +22,6 @@ from IPython.display import HTML
 from warnings import warn
 from astropy import units
 import os
-import theano
-import theano.tensor as tt
 
 
 __all__ = ["Map", "MapBase", "YlmBase", "RVBase", "ReflectedBase"]
@@ -757,18 +754,25 @@ class YlmBase(object):
         else:
             raise ValueError("Invalid `image` value.")
 
+        # Ingest the coefficients
+        self._y = self.cast(y)
+
         # Ensure positive semi-definite?
         if psd:
 
             # Find the minimum
-            _, _, I = self.minimize(y=y, **kwargs)
+            _, _, I = self.minimize(**kwargs)
+            if config.lazy:
+                I = I.eval()
 
             # Scale the coeffs?
             if I < 0:
-                y[1:] *= 1.0 / (1.0 - np.pi * I)
-
-        # Ingest the coefficients
-        self._y = self.cast(y)
+                fac = 1.0 / (1.0 - np.pi * I)
+                if config.lazy:
+                    self._y *= fac
+                    self._y = self.ops.set_map_vector(self._y, 0, 1.0)
+                else:
+                    self._y[1:] *= fac
 
     def add_spot(
         self, amp, sigma=0.1, lat=0.0, lon=0.0, preserve_luminosity=False
@@ -813,68 +817,18 @@ class YlmBase(object):
         if not preserve_luminosity:
             self._L = new_L
 
-    def minimize(self, niter=250, y=None, **kwargs):
+    def minimize(self, **kwargs):
         r"""Find the global minimum of the map intensity.
 
         """
-
         # TODO?
         if self.nw is not None:
             raise NotImplementedError(
-                "This function is not implemented for spectral types."
+                "Method not available for spectral maps."
             )
 
-        # TODO: This is garbage!!!
-        if y is None:
-            y = self.y
-        if is_theano(y):
-            try:
-                y = y.eval()
-            except:
-                try:
-                    y = y.get_value()
-                except:
-                    try:
-                        y = y.tag.test_value()
-                    except:
-                        raise NotImplementedError(
-                            "This method requires `y` to have a value."
-                        )
-
-        lat, lon = self.ops.coarse_minimize(y, force_compile=True)
-        lat = theano.shared(lat)
-        lon = theano.shared(lon)
-
-        # Set up the nonlinear solver
-        u0 = tt.zeros(self.Nu)
-        u0 = tt.set_subtensor(u0[0], -1.0)
-        f0 = tt.zeros(self.Nf)
-        f0 = tt.set_subtensor(f0[0], np.pi)
-        loss = self.ops.intensity(
-            lat, lon, tt.as_tensor_variable(y), u0, f0, no_compile=True
-        )[0]
-
-        train = theano.function(
-            [], [lat, lon, loss], updates=Adam(loss, [lat, lon], **kwargs)
-        )
-
-        # Run
-        loss_val = np.inf
-        lat_val = 0.0
-        lon_val = 0.0
-        for n in range(niter):
-            lat_new, lon_new, loss_new = train()
-            if loss_new < loss_val:
-                loss_val = loss_new
-                lat_val = lat_new
-                lon_val = lon_new
-
-        # Return the coords & value at the minimum
-        return (
-            lat_val / self._angle_factor,
-            lon_val / self._angle_factor,
-            loss_val,
-        )
+        lat, lon, I = self.ops.get_minimum(self.y)
+        return lat / self._angle_factor, lon / self._angle_factor, I
 
 
 class RVBase(object):
