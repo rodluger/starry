@@ -84,12 +84,6 @@ def test_edge_on_eccentric():
     sys = starry.System(pri, sec)
     flux = sys.flux(t)
 
-    import matplotlib.pyplot as plt
-
-    plt.plot(t, flux)
-    plt.plot(t, flux_beta)
-    plt.show()
-
     # Compare
     assert np.allclose(flux, flux_beta)
 

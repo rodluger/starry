@@ -91,6 +91,33 @@ class Ops(object):
         self.spotYlm = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
         self.pT = pTOp(self._c_ops.pT, self.deg)
 
+        # Map rendering transform on an equal area lat-lon grid for future use.
+        # The maximum number of extrema of a band-limited function
+        # on the sphere is l^2 - l + 2 (Kuznetsov & Kholshevnikov 1992)
+        # The minimum resolution of the grid must therefore be...
+        res = int(
+            np.ceil(
+                0.25 * (np.sqrt(1 + 8 * (self.ydeg ** 2 - self.ydeg + 2)) - 1)
+            )
+        )
+        lon_grid = np.linspace(-np.pi, np.pi, res)
+        lat_grid = np.arccos(1 - np.arange(2 * res + 1) / res) - np.pi / 2
+        lon_grid, lat_grid = np.meshgrid(lon_grid, lat_grid)
+        lon_grid, lat_grid = lon_grid.flatten(), lat_grid.flatten()
+        self.P_grid = self.P(lat_grid, lon_grid)
+        self.lat_grid = tt.as_tensor_variable(lat_grid)
+        self.lon_grid = tt.as_tensor_variable(lon_grid)
+
+    @autocompile(
+        "coarse_minimize",
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+    )
+    def coarse_minimize(self, y):
+        imin = tt.argmin(tt.dot(self.P_grid, y))
+        lat = self.lat_grid[imin]
+        lon = self.lon_grid[imin]
+        return lat, lon
+
     @autocompile(
         "X",
         tt.dvector(),
@@ -168,7 +195,7 @@ class Ops(object):
             self.X(theta, xo, yo, zo, ro, inc, obl, u, f, no_compile=True), y
         )
 
-    @autocompile("P", tt.dvector(), tt.dvector(), tt.dvector())
+    @autocompile("P", tt.dvector(), tt.dvector())
     def P(self, lat, lon):
         """
         Pixelization matrix, no filters or illumination.
@@ -324,7 +351,7 @@ class Ops(object):
         R = RAxisAngle([1, 0, 0], -np.pi / 2)
         return tt.dot(R, tt.concatenate((x, y, z)))
 
-    def right_project(self, M, inc, obl, theta):
+    def right_project(self, M, inc, obl, theta, tensor_theta=True):
         r"""Apply the projection operator on the right.
 
         Specifically, this method returns the dot product :math:`M \cdot R`,
@@ -360,7 +387,16 @@ class Ops(object):
         )
 
         # Rotate to the correct phase
-        M = self.tensordotRz(M, theta)
+        if tensor_theta:
+            M = self.tensordotRz(M, theta)
+        else:
+            M = self.dotR(
+                M,
+                tt.as_tensor_variable(0.0),
+                tt.as_tensor_variable(0.0),
+                tt.as_tensor_variable(1.0),
+                theta,
+            )
 
         # Rotate to the polar frame
         M = self.dotR(
@@ -373,7 +409,7 @@ class Ops(object):
 
         return M
 
-    def left_project(self, M, inc, obl, theta):
+    def left_project(self, M, inc, obl, theta, tensor_theta=True):
         r"""Apply the projection operator on the left.
 
         Specifically, this method returns the dot product :math:`R \cdot M`,
@@ -399,7 +435,16 @@ class Ops(object):
         )
 
         # Rotate to the correct phase
-        MT = self.tensordotRz(MT, -theta)
+        if tensor_theta:
+            MT = self.tensordotRz(MT, -theta)
+        else:
+            MT = self.dotR(
+                MT,
+                tt.as_tensor_variable(0.0),
+                tt.as_tensor_variable(0.0),
+                tt.as_tensor_variable(1.0),
+                -theta,
+            )
 
         # Rotate to the sky frame
         # TODO: Do this in a single compound rotation
@@ -436,6 +481,11 @@ class Ops(object):
         """
 
         """
+        # TODO: Check that these if statements are OK
+        if lat.ndim == 0:
+            lat = tt.shape_padleft(lat, 1)
+        if lon.ndim == 0:
+            lon = tt.shape_padleft(lon, 1)
         R1 = VectorRAxisAngle([1.0, 0.0, 0.0], -lat)
         R2 = VectorRAxisAngle([0.0, 1.0, 0.0], lon)
         R = tt.batched_dot(R2, R1)
@@ -1459,7 +1509,7 @@ class OpsSystem(object):
                 for i, sec in enumerate(self.secondaries)
             ]
         )
-        
+
         # Return the images and secondary orbital positions
         return img_pri, img_sec, x, y, z
 

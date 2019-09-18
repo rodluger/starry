@@ -50,7 +50,6 @@ def healpix2map(healpix_map, lmax=10, **kwargs):
 
     # Normalize and return
     ylm /= ylm[0]
-
     return ylm
 
 

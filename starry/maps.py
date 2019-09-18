@@ -11,6 +11,7 @@ from .ops import (
     reshape,
     STARRY_RECTANGULAR_PROJECTION,
     STARRY_ORTHOGRAPHIC_PROJECTION,
+    Adam,
 )
 from .indices import get_ylm_inds, get_ul_inds, get_ylmw_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
@@ -22,6 +23,8 @@ from IPython.display import HTML
 from warnings import warn
 from astropy import units
 import os
+import theano
+import theano.tensor as tt
 
 
 __all__ = ["Map", "MapBase", "YlmBase", "RVBase", "ReflectedBase"]
@@ -687,7 +690,15 @@ class YlmBase(object):
         kwargs.pop("projection", None)
         self._check_kwargs("show", kwargs)
 
-    def load(self, image, healpix=False, sampling_factor=8, sigma=None):
+    def load(
+        self,
+        image,
+        healpix=False,
+        sampling_factor=8,
+        sigma=None,
+        psd=True,
+        **kwargs
+    ):
         """Load an image, array, or ``healpix`` map. 
         
         This routine uses various routines in ``healpix`` to compute the 
@@ -708,6 +719,10 @@ class YlmBase(object):
                 spurious ringing features. Smoothing is performed with 
                 the ``healpix.sphtfunc.smoothalm`` method. 
                 Default is None.
+            psd (bool, optional): Force the map to be positive semi-definite?
+                Default is True.
+            kwargs (optional): Any other kwargs passed directly to
+                :py:meth:`minimize` (only if ``psd`` is True).
         """
         # TODO?
         if self.nw is not None:
@@ -741,6 +756,16 @@ class YlmBase(object):
                 )
         else:
             raise ValueError("Invalid `image` value.")
+
+        # Ensure positive semi-definite?
+        if psd:
+
+            # Find the minimum
+            _, _, I = self.minimize(y=y, **kwargs)
+
+            # Scale the coeffs?
+            if I < 0:
+                y[1:] *= 1.0 / (1.0 - np.pi * I)
 
         # Ingest the coefficients
         self._y = self.cast(y)
@@ -787,6 +812,69 @@ class YlmBase(object):
         )
         if not preserve_luminosity:
             self._L = new_L
+
+    def minimize(self, niter=250, y=None, **kwargs):
+        r"""Find the global minimum of the map intensity.
+
+        """
+
+        # TODO?
+        if self.nw is not None:
+            raise NotImplementedError(
+                "This function is not implemented for spectral types."
+            )
+
+        # TODO: This is garbage!!!
+        if y is None:
+            y = self.y
+        if is_theano(y):
+            try:
+                y = y.eval()
+            except:
+                try:
+                    y = y.get_value()
+                except:
+                    try:
+                        y = y.tag.test_value()
+                    except:
+                        raise NotImplementedError(
+                            "This method requires `y` to have a value."
+                        )
+
+        lat, lon = self.ops.coarse_minimize(y, force_compile=True)
+        lat = theano.shared(lat)
+        lon = theano.shared(lon)
+
+        # Set up the nonlinear solver
+        u0 = tt.zeros(self.Nu)
+        u0 = tt.set_subtensor(u0[0], -1.0)
+        f0 = tt.zeros(self.Nf)
+        f0 = tt.set_subtensor(f0[0], np.pi)
+        loss = self.ops.intensity(
+            lat, lon, tt.as_tensor_variable(y), u0, f0, no_compile=True
+        )[0]
+
+        train = theano.function(
+            [], [lat, lon, loss], updates=Adam(loss, [lat, lon], **kwargs)
+        )
+
+        # Run
+        loss_val = np.inf
+        lat_val = 0.0
+        lon_val = 0.0
+        for n in range(niter):
+            lat_new, lon_new, loss_new = train()
+            if loss_new < loss_val:
+                loss_val = loss_new
+                lat_val = lat_new
+                lon_val = lon_new
+
+        # Return the coords & value at the minimum
+        return (
+            lat_val / self._angle_factor,
+            lon_val / self._angle_factor,
+            loss_val,
+        )
 
 
 class RVBase(object):
