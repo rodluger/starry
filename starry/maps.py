@@ -12,7 +12,7 @@ from .ops import (
     STARRY_RECTANGULAR_PROJECTION,
     STARRY_ORTHOGRAPHIC_PROJECTION,
 )
-from .indices import get_ylm_inds, get_ul_inds, get_ylmw_inds
+from .indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
 import numpy as np
@@ -192,7 +192,7 @@ class YlmBase(object):
         self._obl = self.cast(value) * self._angle_factor
 
     def __getitem__(self, idx):
-        if isinstance(idx, (int, np.int, slice)):
+        if isinstance(idx, integers) or isinstance(idx, slice):
             # User is accessing a limb darkening index
             inds = get_ul_inds(self.udeg, idx)
             return self._u[inds]
@@ -208,7 +208,7 @@ class YlmBase(object):
             raise ValueError("Invalid map index.")
 
     def __setitem__(self, idx, val):
-        if isinstance(idx, (int, np.int, slice)):
+        if isinstance(idx, integers) or isinstance(idx, slice):
             # User is accessing a limb darkening index
             inds = get_ul_inds(self.udeg, idx)
             if 0 in inds:
@@ -826,7 +826,7 @@ class YlmBase(object):
             raise NotImplementedError(
                 "Method not available for spectral maps."
             )
-
+        self.ops.minimize.setup()
         lat, lon, I = self.ops.get_minimum(self.y)
         return lat / self._angle_factor, lon / self._angle_factor, I
 

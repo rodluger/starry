@@ -2,7 +2,10 @@
 import numpy as np
 
 
-__all__ = ["get_ylm_inds", "get_ul_inds", "get_ylmw_inds"]
+__all__ = ["get_ylm_inds", "get_ul_inds", "get_ylmw_inds", "integers"]
+
+
+integers = (int, np.int, np.int16, np.int32, np.int64)
 
 
 def get_ylm_inds(ydeg, ls, ms):
@@ -11,9 +14,9 @@ def get_ylm_inds(ydeg, ls, ms):
     """
 
     # Turn `ls` and `ms` into slices
-    if isinstance(ls, (int, np.int)):
+    if isinstance(ls, integers):
         ls = slice(ls, ls + 1)
-    if isinstance(ms, (int, np.int)):
+    if isinstance(ms, integers):
         ms = slice(ms, ms + 1)
 
     if isinstance(ls, slice) and isinstance(ms, slice):
@@ -61,7 +64,7 @@ def get_ylmw_inds(ydeg, nw, ls, ms, ws):
     """
 
     # Turn the `ws` into slices
-    if isinstance(ws, (int, np.int)):
+    if isinstance(ws, integers):
         ws = slice(ws, ws + 1)
 
     if isinstance(ws, slice):
@@ -97,7 +100,7 @@ def get_ul_inds(udeg, ls):
     """
 
     # Turn `ls` into a slice
-    if isinstance(ls, (int, np.int)):
+    if isinstance(ls, integers):
         ls = slice(ls, ls + 1)
 
     if isinstance(ls, slice):
