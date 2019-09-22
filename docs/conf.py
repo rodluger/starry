@@ -20,6 +20,15 @@ else:
 builtins.__STARRY_DOCS__ = True
 import starry
 
+# Copy notebooks over
+import copy_notebooks
+import glob
+
+if not os.path.exists("notebooks"):
+    os.mkdir("notebooks")
+for infile in glob.glob("../notebooks/*.ipynb"):
+    outfile = os.path.join("notebooks", os.path.basename(infile))
+    copy_notebooks.copy(infile, outfile)
 
 # -- Project information -----------------------------------------------------
 
@@ -73,6 +82,7 @@ html_theme_options = {"display_version": True}
 html_static_path = ["_static"]
 
 html_js_files = ["js/version.js"]
+html_css_files = ["css/hide_input.css"]
 
 # -- Extension settings ------------------------------------------------------
 
