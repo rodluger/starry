@@ -1,12 +1,28 @@
 Examples & Tutorials
 ====================
 
+
+
+The basics
+----------
+
 .. toctree::
    :titlesonly:
    :maxdepth: 1
 
-   Basics <notebooks/Basics.ipynb>
-   Eclipsing Binary Example  <notebooks/EclipsingBinary.ipynb>
-   Light travel time delay  <notebooks/LightTravelDelay.ipynb>
-   Map orientation  <notebooks/Orientation.ipynb>
-   Orbit visualization  <notebooks/OrbitViz.ipynb>
+   notebooks/Basics.ipynb
+   notebooks/EclipsingBinary.ipynb
+   notebooks/Orientation.ipynb
+   notebooks/OrbitViz.ipynb
+
+Advanced
+--------
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   notebooks/ReflectedLight.ipynb
+   notebooks/NullSpace.ipynb
+   notebooks/StayingPositive.ipynb
+   notebooks/LightTravelDelay.ipynb

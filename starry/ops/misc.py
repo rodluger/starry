@@ -49,10 +49,8 @@ class minimizeOp(tt.Op):
             # Set up the cost & grad function for the nonlinear solver
             u0 = np.zeros(self.udeg + 1)
             u0[0] = -1.0
-            self.u0 = tt.as_tensor_variable(u0)
             f0 = np.zeros((self.fdeg + 1) ** 2)
             f0[0] = np.pi
-            self.f0 = tt.as_tensor_variable(f0)
             latlon = tt.dvector()
             y = tt.dvector()
             self.I = theano.function(

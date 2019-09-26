@@ -10,6 +10,8 @@ import theano
 import theano.tensor as tt
 import theano.sparse as ts
 from theano.ifelse import ifelse
+import theano.tensor.slinalg as sla
+import theano.tensor.nlinalg as nla
 import numpy as np
 import logging
 from astropy import units, constants
@@ -46,7 +48,9 @@ class Ops(object):
 
     """
 
-    def __init__(self, ydeg, udeg, fdeg, nw, quiet=False, **kwargs):
+    def __init__(
+        self, ydeg, udeg, fdeg, nw, quiet=False, reflected=False, **kwargs
+    ):
         """
 
         """
@@ -64,6 +68,7 @@ class Ops(object):
         self.filter = (fdeg > 0) or (udeg > 0)
         self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
         self.nw = nw
+        self.reflected = reflected
         if config.lazy:
             self.cast = to_tensor
         else:
@@ -91,9 +96,18 @@ class Ops(object):
         self.spotYlm = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
         self.pT = pTOp(self._c_ops.pT, self.deg)
         if self.nw is None:
-            self.minimize = minimizeOp(
-                self.intensity, self.P, self.ydeg, self.udeg, self.fdeg
-            )
+            if self.reflected:
+                self.minimize = minimizeOp(
+                    self.unweighted_intensity,
+                    self.P,
+                    self.ydeg,
+                    self.udeg,
+                    self.fdeg,
+                )
+            else:
+                self.minimize = minimizeOp(
+                    self.intensity, self.P, self.ydeg, self.udeg, self.fdeg
+                )
         else:
             # TODO?
             self.minimize = None
@@ -359,17 +373,17 @@ class Ops(object):
                     M,
                     -tt.cos(obl),
                     -tt.sin(obl),
-                    tt.as_tensor_variable(0.0),
+                    to_tensor(0.0),
                     -(0.5 * np.pi - inc),
                 ),
-                tt.as_tensor_variable(0.0),
-                tt.as_tensor_variable(0.0),
-                tt.as_tensor_variable(1.0),
+                to_tensor(0.0),
+                to_tensor(0.0),
+                to_tensor(1.0),
                 obl,
             ),
-            tt.as_tensor_variable(1.0),
-            tt.as_tensor_variable(0.0),
-            tt.as_tensor_variable(0.0),
+            to_tensor(1.0),
+            to_tensor(0.0),
+            to_tensor(0.0),
             -0.5 * np.pi,
         )
 
@@ -378,20 +392,12 @@ class Ops(object):
             M = self.tensordotRz(M, theta)
         else:
             M = self.dotR(
-                M,
-                tt.as_tensor_variable(0.0),
-                tt.as_tensor_variable(0.0),
-                tt.as_tensor_variable(1.0),
-                theta,
+                M, to_tensor(0.0), to_tensor(0.0), to_tensor(1.0), theta
             )
 
         # Rotate to the polar frame
         M = self.dotR(
-            M,
-            tt.as_tensor_variable(1.0),
-            tt.as_tensor_variable(0.0),
-            tt.as_tensor_variable(0.0),
-            0.5 * np.pi,
+            M, to_tensor(1.0), to_tensor(0.0), to_tensor(0.0), 0.5 * np.pi
         )
 
         return M
@@ -414,11 +420,7 @@ class Ops(object):
 
         # Rotate to the polar frame
         MT = self.dotR(
-            MT,
-            tt.as_tensor_variable(1.0),
-            tt.as_tensor_variable(0.0),
-            tt.as_tensor_variable(0.0),
-            -0.5 * np.pi,
+            MT, to_tensor(1.0), to_tensor(0.0), to_tensor(0.0), -0.5 * np.pi
         )
 
         # Rotate to the correct phase
@@ -426,11 +428,7 @@ class Ops(object):
             MT = self.tensordotRz(MT, -theta)
         else:
             MT = self.dotR(
-                MT,
-                tt.as_tensor_variable(0.0),
-                tt.as_tensor_variable(0.0),
-                tt.as_tensor_variable(1.0),
-                -theta,
+                MT, to_tensor(0.0), to_tensor(0.0), to_tensor(1.0), -theta
             )
 
         # Rotate to the sky frame
@@ -439,19 +437,19 @@ class Ops(object):
             self.dotR(
                 self.dotR(
                     MT,
-                    tt.as_tensor_variable(1.0),
-                    tt.as_tensor_variable(0.0),
-                    tt.as_tensor_variable(0.0),
+                    to_tensor(1.0),
+                    to_tensor(0.0),
+                    to_tensor(0.0),
                     0.5 * np.pi,
                 ),
-                tt.as_tensor_variable(0.0),
-                tt.as_tensor_variable(0.0),
-                tt.as_tensor_variable(1.0),
+                to_tensor(0.0),
+                to_tensor(0.0),
+                to_tensor(1.0),
                 -obl,
             ),
             -tt.cos(obl),
             -tt.sin(obl),
-            tt.as_tensor_variable(0.0),
+            to_tensor(0.0),
             (0.5 * np.pi - inc),
         )
 
@@ -478,6 +476,72 @@ class Ops(object):
         R = tt.batched_dot(R2, R1)
         xyz = tt.transpose(tt.dot(R, [0.0, 0.0, 1.0]))
         return xyz[0], xyz[1], xyz[2]
+
+    @autocompile("MAP", tt.dmatrix(), tt.dvector(), tt.dmatrix(), tt.dmatrix())
+    def MAP(self, X, flux, L, C, L_type, C_type):
+        """
+        Compute the maximum a posteriori (MAP) prediction for the
+        spherical harmonic coefficients of a map given a flux timeseries.
+
+        Args:
+            X: The flux design matrix.
+            L: The prior covariance of the spherical harmonic coefficients.
+                This may be a scalar, a vector, a matrix, or the Cholesky
+                factorization of the covariance matrix (a tuple returned by
+                :py:obj:`scipy.linalg.cho_factor`).
+            C: The data covariance. This may be a scalar, a vector, a matrix,
+                or the Cholesky factorization of the covariance matrix (a tuple
+                returned by :py:obj:`scipy.linalg.cho_factor`).
+            flux (ndarray): The flux timeseries.
+            
+        Returns:
+            The vector of spherical harmonic coefficients corresponding to the
+            MAP solution, and optionally the covariance of the solution and the
+            Cholesky factorization of :math:`W` (see above).
+        """
+
+        raise NotImplementedError("TODO!")
+
+        # The solve Ops we'll need
+        inverse = nla.MatrixInverse()
+        solve = sla.Solve(A_structure="general")
+        solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
+        solve_upper = sla.Solve(A_structure="upper_triangular", lower=False)
+        cho_solve = lambda cho_A, b: solve_upper(
+            tt.transpose(cho_A), solve_lower(cho_A, b)
+        )
+
+        # Compute C^-1 . X
+        if C_type == "cholesky":
+            CInvX = cho_solve(C, X)
+        elif C_type == "scalar":
+            CInvX = (1.0 / C) * X
+        elif C_type == "vector":
+            CInvX = (1.0 / C)[:, None] * X
+        elif C_type == "matrix":
+            CInvX = solve(C, X)
+        else:
+            raise ValueError("Invalid type for `C`.")
+
+        # Compute W = X^T . C^-1 . X + L^-1
+        W = tt.dot(tt.transpose(X), CInvX)
+        if L_type == "cholesky":
+            W += cho_solve(L, tt.eye(X.shape[1]))
+        elif L_type == "scalar":
+            W += tt.eye(X.shape[1]) / L
+        elif L_type == "vector":
+            W += tt.diag(1.0 / L)
+        elif L_type == "matrix":
+            W += inverse(L)
+        else:
+            raise ValueError("Invalid type for `L`.")
+
+        # Compute the max like y and its covariance matrix
+        cho_W = sla.cholesky(W)
+        M = cho_solve(cho_W, tt.transpose(CInvX))
+        yhat = tt.dot(M, flux)
+        yvar = cho_solve(cho_W, tt.eye(X.shape[1]))
+        return yhat, yvar, cho_W
 
 
 class OpsRV(Ops):
@@ -601,7 +665,7 @@ class OpsReflected(Ops):
         """
 
         """
-        super(OpsReflected, self).__init__(*args, **kwargs)
+        super(OpsReflected, self).__init__(*args, reflected=True, **kwargs)
         self.rT = rTReflectedOp(self._c_ops.rTReflected, self._c_ops.N)
         self.A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
 
@@ -672,6 +736,34 @@ class OpsReflected(Ops):
         I = self.compute_illumination(xyz, source)
         intensity = tt.switch(tt.isnan(intensity), intensity, intensity * I)
         return intensity
+
+    @autocompile(
+        "unweighted_intensity",
+        tt.dvector(),
+        tt.dvector(),
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        tt.dvector(),
+        tt.dvector(),
+    )
+    def unweighted_intensity(self, lat, lon, y, u, f):
+        """
+
+        """
+        # Get the Cartesian points
+        xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
+
+        # Compute the polynomial basis at the point
+        pT = self.pT(xpt, ypt, zpt)
+
+        # Transform the map to the polynomial basis
+        A1y = ts.dot(self.A1, y)
+
+        # Apply the filter
+        if self.filter:
+            A1y = tt.dot(self.F(u, f), A1y)
+
+        # Dot the polynomial into the basis
+        return tt.dot(pT, A1y)
 
     @autocompile(
         "X",

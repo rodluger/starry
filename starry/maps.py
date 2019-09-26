@@ -685,6 +685,7 @@ class YlmBase(object):
         # Check for invalid kwargs
         kwargs.pop("rv", None)
         kwargs.pop("projection", None)
+        kwargs.pop("source", None)
         self._check_kwargs("show", kwargs)
 
     def load(
