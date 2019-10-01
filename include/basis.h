@@ -60,8 +60,7 @@ inline void polymul(int lmax1, const MatrixBase<Derived> &p1, int lmax2,
         odd1 = (l1 + m1) % 2 == 0 ? false : true;
         n2 = 0;
         for (int l2 = 0; l2 < lmax2 + 1; ++l2) {
-          if (l1 + l2 > lmax12)
-            break;
+          if (l1 + l2 > lmax12) break;
           for (int m2 = -l2; m2 < l2 + 1; ++m2) {
             if (p2.row(n2).any()) {
               l = l1 + l2;
@@ -147,8 +146,7 @@ inline void theta(int lmax, MatrixBase<Derived> &M) {
         n1 = l * l + l + m;
         n2 = l * l + l - m;
         M(np1, n1) = term1;
-        if (np2 < N)
-          M(np2, n2) = term2;
+        if (np2 < N) M(np2, n2) = term2;
       }
     }
   }
@@ -158,7 +156,8 @@ inline void theta(int lmax, MatrixBase<Derived> &M) {
 Compute the amplitudes of the Ylm vectors.
 
 */
-template <typename Derived> inline void amp(int lmax, MatrixBase<Derived> &M) {
+template <typename Derived>
+inline void amp(int lmax, MatrixBase<Derived> &M) {
   M.setZero();
   typename Derived::Scalar inv_root_two = sqrt(0.5);
   for (int l = 0; l < lmax + 1; ++l) {
@@ -309,7 +308,8 @@ void computeA(int lmax, const Eigen::SparseMatrix<T> &A1,
 Compute the `r^T` phase curve solution vector.
 
 */
-template <typename T> void computerT(int lmax, RowVector<T> &rT) {
+template <typename T>
+void computerT(int lmax, RowVector<T> &rT) {
   T amp0, amp, lfac1, lfac2;
   int mu, nu;
   rT.resize((lmax + 1) * (lmax + 1));
@@ -432,8 +432,7 @@ void computeU(int lmax, const Eigen::SparseMatrix<T> &A1,
   // Compute U1
   Matrix<T> X(N, lmax + 1);
   X.setZero();
-  for (int l = 0; l < lmax + 1; ++l)
-    X(l * (l + 1), l) = 1;
+  for (int l = 0; l < lmax + 1; ++l) X(l * (l + 1), l) = 1;
   Eigen::SparseMatrix<T> XU0 = (X * U0).sparseView();
   U1 = A1 * XU0;
 }
@@ -444,8 +443,9 @@ void computeU(int lmax, const Eigen::SparseMatrix<T> &A1,
 Basis transform matrices and operations.
 
 */
-template <typename T> class Basis {
-public:
+template <typename T>
+class Basis {
+ public:
   const int ydeg; /**< The highest degree of the spherical harmonic map */
   const int udeg; /**< The highest degree of the limb darkening map */
   const int fdeg; /**< The highest degree of the filter map */
@@ -470,9 +470,9 @@ public:
   Matrix<T, RowMajor> pT;
 
   // Constructor: compute the matrices
-  explicit Basis(int ydeg, int udeg, int fdeg, T norm = 2.0 / root_pi<T>())
-      : ydeg(ydeg), udeg(udeg), fdeg(fdeg), deg(ydeg + udeg + fdeg), norm(norm),
-        x_cache(0), y_cache(0), z_cache(0) {
+  explicit Basis(int ydeg, int udeg, int fdeg, T norm = 2.0 / root_pi<T>()) :
+      ydeg(ydeg), udeg(udeg), fdeg(fdeg), deg(ydeg + udeg + fdeg), norm(norm),
+      x_cache(0), y_cache(0), z_cache(0) {
     // Compute the augmented matrices
     Eigen::SparseMatrix<T> A1Inv_, A2_, A_, U1_;
     RowVector<T> rT_, rTA1_;
@@ -525,8 +525,8 @@ public:
     RowVector<T> xterm(npts), yterm(npts);
     xterm.setOnes();
     yterm.setOnes();
-    xterm += 0.0 * z; // Ensures we get `nan`s off the disk
-    yterm += 0.0 * z; // Ensures we get `nan`s off the disk
+    xterm += 0.0 * z;  // Ensures we get `nan`s off the disk
+    yterm += 0.0 * z;  // Ensures we get `nan`s off the disk
     int i0 = 0, di0 = 3, j0 = 0, dj0 = 2;
     int i, j, di, dj, n;
     for (n = 0; n < deg + 1; ++n) {
@@ -559,14 +559,13 @@ public:
     for (int l = 0; l < deg + 1; ++l) {
       for (int m = -l; m < l + 1; ++m) {
         pT.col(n) = xarr.col(n).cwiseProduct(yarr.col(n));
-        if ((l + m) % 2 != 0)
-          pT.col(n) = pT.col(n).cwiseProduct(z.transpose());
+        if ((l + m) % 2 != 0) pT.col(n) = pT.col(n).cwiseProduct(z.transpose());
         ++n;
       }
     }
   }
 };
 
-} // namespace basis
-} // namespace starry
+}  // namespace basis
+}  // namespace starry
 #endif

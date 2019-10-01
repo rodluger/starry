@@ -277,10 +277,17 @@ PYBIND11_MODULE(_c_ops, m) {
             .template cast<double>();
       });
 
-  // Differential rotation operator
-  Ops.def("D", [](starry::Ops<Scalar> &ops, const Vector<double> &wta) {
-    ops.F.computeD(wta.template cast<Scalar>());
-    return ops.F.D;
-    // NOTE: This will fail for multi types
+  // Differential rotation operator (matrices)
+  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
+                           const Vector<double> &wta) {
+    ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>());
+    return ops.D.tensordotD_result.template cast<double>();
+  });
+
+  // Differential rotation operator (vectors)
+  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const RowVector<double> &M,
+                           const Vector<double> &wta) {
+    ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>());
+    return ops.D.tensordotD_result.template cast<double>();
   });
 }

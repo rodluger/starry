@@ -5,6 +5,7 @@
 */
 
 #include "basis.h"
+#include "diffrot.h"
 #include "filter.h"
 #include "misc.h"
 #include "solver_emitted.h"
@@ -35,13 +36,14 @@ class Ops {
   solver::GreensEmitted<Scalar> G; /**< The occultation integral solver class */
   solver::GreensReflected<Scalar> GRef;
   filter::Filter<Scalar> F;
+  diffrot::DiffRot<Scalar> D;
 
   // Constructor
   explicit Ops(int ydeg, int udeg, int fdeg, int drorder) :
       ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
       fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
       N((deg + 1) * (deg + 1)), drorder(drorder), B(ydeg, udeg, fdeg),
-      W(ydeg, udeg, fdeg), G(deg), GRef(deg), F(B, drorder) {
+      W(ydeg, udeg, fdeg), G(deg), GRef(deg), F(B), D(B, drorder) {
     // Bounds checks
     if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))
       throw std::out_of_range("Spherical harmonic degree out of range.");
