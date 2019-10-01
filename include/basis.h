@@ -173,35 +173,99 @@ inline void amp(int lmax, MatrixBase<Derived> &M) {
 }
 
 /**
-Compute the *dense* change of basis matrix `A1`.
+Compute a sparse polynomial product using Eigen Triplets.
 
 */
-template <typename Derived>
-inline void computeA1(int lmax, MatrixBase<Derived> &M,
-                      const typename Derived::Scalar &norm) {
-  typename Derived::PlainObject C, Z, XY;
-  int N = (lmax + 1) * (lmax + 1);
-  C.resize(N, N);
-  Z.resize(N, N);
-  XY.resize(N, N);
-  amp(lmax, C);
-  legendre(lmax, Z);
-  theta(lmax, XY);
-  polymul(lmax, Z, lmax, XY, lmax, M);
-  M = M.cwiseProduct(C);
-  M *= norm;
+template <typename Scalar>
+inline void computeSparsePolynomialProduct(
+    const std::vector<Eigen::Triplet<Scalar>> &p1,
+    const std::vector<Eigen::Triplet<Scalar>> &p2,
+    std::vector<Eigen::Triplet<Scalar>> &p1p2) {
+  using Triplet = Eigen::Triplet<Scalar>;
+  int l1, m1, l2, m2;
+  bool odd1;
+  Scalar prod;
+  p1p2.clear();
+  for (Triplet t1 : p1) {
+    l1 = t1.row();
+    m1 = t1.col();
+    odd1 = (l1 + m1) % 2 == 0 ? false : true;
+    for (Triplet t2 : p2) {
+      l2 = t2.row();
+      m2 = t2.col();
+      prod = t1.value() * t2.value();
+      if (odd1 && ((l2 + m2) % 2 != 0)) {
+        p1p2.push_back(Triplet(l1 + l2 - 2, m1 + m2, prod));
+        p1p2.push_back(Triplet(l1 + l2, m1 + m2 - 2, -prod));
+        p1p2.push_back(Triplet(l1 + l2, m1 + m2 + 2, -prod));
+      } else {
+        p1p2.push_back(Triplet(l1 + l2, m1 + m2, prod));
+      }
+    }
+  }
 }
 
 /**
 Compute the *sparse* change of basis matrix `A1`.
 
 */
-template <typename T>
-inline void computeA1(int lmax, Eigen::SparseMatrix<T> &A1, const T &norm) {
+template <typename Scalar>
+inline void computeA1(int lmax, Eigen::SparseMatrix<Scalar> &A1,
+                      const Scalar &norm) {
+  using Triplet = Eigen::Triplet<Scalar>;
+  using Triplets = std::vector<Triplet>;
+
   int N = (lmax + 1) * (lmax + 1);
-  Matrix<T> A1Dense(N, N);
-  computeA1(lmax, A1Dense, norm);
-  A1 = A1Dense.sparseView();
+
+  // Amplitude
+  Matrix<Scalar> C(N, N);
+  amp(lmax, C);
+
+  // Z terms
+  Matrix<Scalar> Z(N, N);
+  legendre(lmax, Z);
+  std::vector<Triplets> t_Z(N);
+  for (int col = 0; col < N; ++col) {
+    int n2 = 0;
+    for (int l = 0; l < lmax + 1; ++l) {
+      for (int m = -l; m < l + 1; ++m) {
+        if (Z(n2, col) != 0) t_Z[col].push_back(Triplet(l, m, Z(n2, col)));
+        ++n2;
+      }
+    }
+  }
+
+  // XY terms
+  Matrix<Scalar> XY(N, N);
+  theta(lmax, XY);
+  std::vector<Triplets> t_XY(N);
+  for (int col = 0; col < N; ++col) {
+    int n2 = 0;
+    for (int l = 0; l < lmax + 1; ++l) {
+      for (int m = -l; m < l + 1; ++m) {
+        if (XY(n2, col) != 0) t_XY[col].push_back(Triplet(l, m, XY(n2, col)));
+        ++n2;
+      }
+    }
+  }
+
+  // Construct the change of basis matrix
+  Triplets t_M, coeffs;
+  for (int col = 0; col < N; ++col) {
+    // Multiply Z and XY
+    computeSparsePolynomialProduct(t_Z[col], t_XY[col], t_M);
+
+    // Parse the terms and store in `coeffs`
+    for (Triplet term : t_M) {
+      int l = term.row();
+      int m = term.col();
+      int row = l * l + l + m;
+      Scalar value = term.value() * norm * C(row, col);
+      coeffs.push_back(Triplet(row, col, value));
+    }
+  }
+  A1.resize(N, N);
+  A1.setFromTriplets(coeffs.begin(), coeffs.end());
 }
 
 /**
