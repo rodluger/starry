@@ -27,7 +27,7 @@ def map(request):
         def u(self):
             return self._u.eval()
 
-    map = Map(5, 2, 0, nw)
+    map = Map(5, 2, 0, 0, nw)
 
     return map
 

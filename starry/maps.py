@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+
+# TODO:
+# - L normalization: is the integral of I equal to L?
+# - Reflected light maps: what is L? Make it prop to 1/r^2
+# - Is sys.secondaries[i] a ptr as before? Check.
+# - Check how map.load() normalizes things.
+# - Reflected light: get rid of `source`; just use `xo`, `yo`, `zo`
+
 from . import config
 from .ops import (
     Ops,
@@ -52,14 +60,14 @@ class YlmBase(object):
     _ops_class_ = Ops
     L = Luminosity()
 
-    def __init__(self, ydeg, udeg, fdeg, nw, quiet=False, **kwargs):
+    def __init__(self, ydeg, udeg, fdeg, drorder, nw, quiet=False, **kwargs):
         """
 
         """
         # Instantiate the Theano ops class
         self.quiet = quiet
         self.ops = self._ops_class_(
-            ydeg, udeg, fdeg, nw, quiet=quiet, **kwargs
+            ydeg, udeg, fdeg, drorder, nw, quiet=quiet, **kwargs
         )
         self.cast = self.ops.cast
 
@@ -1278,7 +1286,9 @@ class ReflectedBase(object):
         return super(ReflectedBase, self).show(**kwargs)
 
 
-def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, **kwargs):
+def Map(
+    ydeg=0, udeg=0, drorder=0, nw=None, rv=False, reflected=False, **kwargs
+):
     """A generic ``starry`` surface map.
 
     This function is a class factory that returns an instance of either
@@ -1295,6 +1305,8 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, **kwargs):
             Defaults to 0.
         udeg (int, optional): Degree of the limb darkening filter. 
             Defaults to 0.
+        drorder (int, optional): Order of the differential rotation
+            approximation. Defaults to 0.
         nw (int, optional): Number of wavelength bins. Defaults to None
             (for monochromatic light curves).
         rv (bool, optional): If True, enable computation of radial velocities
@@ -1339,4 +1351,4 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, **kwargs):
             config.freeze()
             super(Map, self).__init__(*args, **kwargs)
 
-    return Map(ydeg, udeg, fdeg, nw, **kwargs)
+    return Map(ydeg, udeg, fdeg, drorder, nw, **kwargs)

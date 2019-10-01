@@ -49,7 +49,15 @@ class Ops(object):
     """
 
     def __init__(
-        self, ydeg, udeg, fdeg, nw, quiet=False, reflected=False, **kwargs
+        self,
+        ydeg,
+        udeg,
+        fdeg,
+        drorder,
+        nw,
+        quiet=False,
+        reflected=False,
+        **kwargs,
     ):
         """
 
@@ -66,7 +74,7 @@ class Ops(object):
         self.fdeg = fdeg
         self.deg = ydeg + udeg + fdeg
         self.filter = (fdeg > 0) or (udeg > 0)
-        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
+        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg, drorder)
         self.nw = nw
         self.reflected = reflected
         if config.lazy:
@@ -135,16 +143,17 @@ class Ops(object):
         """
 
         """
+        # Determine shapes
+        rows = theta.shape[0]
+        cols = self.rTA1.shape[1]
+        X = tt.zeros((rows, cols))
+
         # Compute the occultation mask
         b = tt.sqrt(xo ** 2 + yo ** 2)
         b_rot = tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
         b_occ = tt.invert(b_rot)
         i_rot = tt.arange(b.size)[b_rot]
         i_occ = tt.arange(b.size)[b_occ]
-
-        # Determine shapes
-        rows = theta.shape[0]
-        cols = self.rTA1.shape[1]
 
         # Compute filter operator
         if self.filter:
@@ -155,9 +164,8 @@ class Ops(object):
             rTA1 = ts.dot(tt.dot(self.rT, F), self.A1)
         else:
             rTA1 = self.rTA1
-        X_rot = tt.set_subtensor(
-            tt.zeros((rows, cols))[i_rot],
-            self.right_project(rTA1, inc, obl, theta[i_rot]),
+        X = tt.set_subtensor(
+            X[i_rot], self.right_project(rTA1, inc, obl, theta[i_rot])
         )
 
         # Occultation + rotation operator
@@ -168,12 +176,11 @@ class Ops(object):
         if self.filter:
             A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
             sTAR = tt.dot(sTAR, A1InvFA1)
-        X_occ = tt.set_subtensor(
-            tt.zeros((rows, cols))[i_occ],
-            self.right_project(sTAR, inc, obl, theta[i_occ]),
+        X = tt.set_subtensor(
+            X[i_occ], self.right_project(sTAR, inc, obl, theta[i_occ])
         )
 
-        return X_rot + X_occ
+        return X
 
     @autocompile(
         "flux",
