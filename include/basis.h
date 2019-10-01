@@ -42,83 +42,60 @@ inline void polymulz(int lmax, const MatrixBase<T1> &p, MatrixBase<T2> &pz) {
 }
 
 /**
-Multiply two polynomial matrices.
-
-*/
-template <typename Derived>
-inline void polymul(int lmax1, const MatrixBase<Derived> &p1, int lmax2,
-                    const MatrixBase<Derived> &p2, int lmax12,
-                    MatrixBase<Derived> &p1p2) {
-  bool odd1;
-  int l, n;
-  int n2, n1 = 0;
-  RowVector<typename Derived::Scalar> fac1;
-  p1p2.setZero();
-  for (int l1 = 0; l1 < lmax1 + 1; ++l1) {
-    for (int m1 = -l1; m1 < l1 + 1; ++m1) {
-      if (p1.row(n1).any()) {
-        odd1 = (l1 + m1) % 2 == 0 ? false : true;
-        n2 = 0;
-        for (int l2 = 0; l2 < lmax2 + 1; ++l2) {
-          if (l1 + l2 > lmax12) break;
-          for (int m2 = -l2; m2 < l2 + 1; ++m2) {
-            if (p2.row(n2).any()) {
-              l = l1 + l2;
-              n = l * l + l + m1 + m2;
-              fac1 = p1.row(n1).cwiseProduct(p2.row(n2));
-              if (odd1 && ((l2 + m2) % 2 != 0)) {
-                p1p2.row(n - 4 * l + 2) += fac1;
-                p1p2.row(n - 2) -= fac1;
-                p1p2.row(n + 2) -= fac1;
-              } else {
-                p1p2.row(n) += fac1;
-              }
-            }
-            ++n2;
-          }
-        }
-      }
-      ++n1;
-    }
-  }
-}
-
-/**
 Compute the `P(z)` part of the Ylm vectors.
 
+TODO: This can be sped up with sparse algebra.
+
 */
-template <typename Derived>
-inline void legendre(int lmax, MatrixBase<Derived> &M) {
-  M.setZero();
+template <typename Scalar>
+inline void legendre(int lmax,
+                     std::vector<std::vector<Eigen::Triplet<Scalar>>> &M) {
+  // Compute densely
+  int N = (lmax + 1) * (lmax + 1);
   int ip, im;
-  typename Derived::Scalar term = 1, fac = 1;
-  Vector<typename Derived::Scalar> col((lmax + 1) * (lmax + 1));
+  Scalar term = 1.0, fac = 1.0;
+  Vector<Scalar> colvec(N);
+  Matrix<Scalar> dnsM(N, N);
+  dnsM.setZero();
   for (int m = 0; m < lmax + 1; ++m) {
     // 1
     ip = m * m + 2 * m;
     im = m * m;
-    M(0, ip) = fac;
-    M(0, im) = fac;
+    dnsM(0, ip) = fac;
+    dnsM(0, im) = fac;
     if (m < lmax) {
       // z
       ip = m * m + 4 * m + 2;
       im = m * m + 2 * m + 2;
-      M(2, ip) = (2 * m + 1) * M(m * m + 2 * m, 0);
-      M(2, im) = M(2, ip);
+      dnsM(2, ip) = (2 * m + 1) * dnsM(m * m + 2 * m, 0);
+      dnsM(2, im) = dnsM(2, ip);
     }
     for (int l = m + 1; l < lmax + 1; ++l) {
       // Recurse
       ip = l * l + l + m;
       im = l * l + l - m;
-      polymulz(lmax - 1, M.col((l - 1) * (l - 1) + l - 1 + m), col);
-      M.col(ip) = (2 * l - 1) * col / (l - m);
+      polymulz(lmax - 1, dnsM.col((l - 1) * (l - 1) + l - 1 + m), colvec);
+      dnsM.col(ip) = (2 * l - 1) * colvec / (l - m);
       if (l > m + 1)
-        M.col(ip) -=
-            (l + m - 1) * M.col((l - 2) * (l - 2) + l - 2 + m) / (l - m);
-      M.col(im) = M.col(ip);
+        dnsM.col(ip) -=
+            (l + m - 1) * dnsM.col((l - 2) * (l - 2) + l - 2 + m) / (l - m);
+      dnsM.col(im) = dnsM.col(ip);
     }
     fac *= -term;
     term += 2;
+  }
+
+  // Store as triplets
+  M.resize(N);
+  for (int col = 0; col < N; ++col) {
+    int n2 = 0;
+    for (int l = 0; l < lmax + 1; ++l) {
+      for (int m = -l; m < l + 1; ++m) {
+        if (dnsM(n2, col) != 0)
+          M[col].push_back(Eigen::Triplet<Scalar>(l, m, dnsM(n2, col)));
+        ++n2;
+      }
+    }
   }
 }
 
@@ -126,12 +103,13 @@ inline void legendre(int lmax, MatrixBase<Derived> &M) {
 Compute the `theta(x, y)` term of the Ylm vectors.
 
 */
-template <typename Derived>
-inline void theta(int lmax, MatrixBase<Derived> &M) {
+template <typename Scalar>
+inline void theta(int lmax,
+                  std::vector<std::vector<Eigen::Triplet<Scalar>>> &M) {
   int N = (lmax + 1) * (lmax + 1);
-  typename Derived::Scalar term1, term2;
+  M.resize(N);
+  Scalar term1, term2;
   int n1, n2, np1, np2;
-  M.setZero();
   for (int m = 0; m < lmax + 1; ++m) {
     term1 = 1.0;
     term2 = m;
@@ -145,8 +123,13 @@ inline void theta(int lmax, MatrixBase<Derived> &M) {
       for (int l = m; l < lmax + 1; ++l) {
         n1 = l * l + l + m;
         n2 = l * l + l - m;
-        M(np1, n1) = term1;
-        if (np2 < N) M(np2, n2) = term2;
+        M[n1].push_back(Eigen::Triplet<Scalar>(m, 2 * j - m, term1));
+
+        // std::cout <<
+
+        if (j < m) {
+          M[n2].push_back(Eigen::Triplet<Scalar>(m, 2 * (j + 1) - m, term2));
+        }
       }
     }
   }
@@ -222,32 +205,12 @@ inline void computeA1(int lmax, Eigen::SparseMatrix<Scalar> &A1,
   amp(lmax, C);
 
   // Z terms
-  Matrix<Scalar> Z(N, N);
-  legendre(lmax, Z);
   std::vector<Triplets> t_Z(N);
-  for (int col = 0; col < N; ++col) {
-    int n2 = 0;
-    for (int l = 0; l < lmax + 1; ++l) {
-      for (int m = -l; m < l + 1; ++m) {
-        if (Z(n2, col) != 0) t_Z[col].push_back(Triplet(l, m, Z(n2, col)));
-        ++n2;
-      }
-    }
-  }
+  legendre(lmax, t_Z);
 
   // XY terms
-  Matrix<Scalar> XY(N, N);
-  theta(lmax, XY);
   std::vector<Triplets> t_XY(N);
-  for (int col = 0; col < N; ++col) {
-    int n2 = 0;
-    for (int l = 0; l < lmax + 1; ++l) {
-      for (int m = -l; m < l + 1; ++m) {
-        if (XY(n2, col) != 0) t_XY[col].push_back(Triplet(l, m, XY(n2, col)));
-        ++n2;
-      }
-    }
-  }
+  theta(lmax, t_XY);
 
   // Construct the change of basis matrix
   Triplets t_M, coeffs;

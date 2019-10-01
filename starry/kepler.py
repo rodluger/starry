@@ -628,6 +628,7 @@ class System(object):
             self._primary._map._y,
             self._primary._map._u,
             self._primary._map._f,
+            self._primary._map._alpha,
             make_array_or_tensor([sec._r for sec in self._secondaries]),
             make_array_or_tensor([sec._m for sec in self._secondaries]),
             make_array_or_tensor([sec._prot for sec in self._secondaries]),
@@ -644,6 +645,9 @@ class System(object):
             make_array_or_tensor([sec._map._y for sec in self._secondaries]),
             make_array_or_tensor([sec._map._u for sec in self._secondaries]),
             make_array_or_tensor([sec._map._f for sec in self._secondaries]),
+            make_array_or_tensor(
+                [sec._map._alpha for sec in self._secondaries]
+            ),
         )
 
         # Convert to units of the primary radius
@@ -808,6 +812,7 @@ class System(object):
             self._primary._map._obl,
             self._primary._map._u,
             self._primary._map._f,
+            self._primary._map._alpha,
             make_array_or_tensor([sec._r for sec in self._secondaries]),
             make_array_or_tensor([sec._m for sec in self._secondaries]),
             make_array_or_tensor([sec._prot for sec in self._secondaries]),
@@ -823,6 +828,9 @@ class System(object):
             make_array_or_tensor([sec._map._obl for sec in self._secondaries]),
             make_array_or_tensor([sec._map._u for sec in self._secondaries]),
             make_array_or_tensor([sec._map._f for sec in self._secondaries]),
+            make_array_or_tensor(
+                [sec._map._alpha for sec in self._secondaries]
+            ),
         )
 
     def flux(self, t):
@@ -845,6 +853,7 @@ class System(object):
             self._primary._map._y,
             self._primary._map._u,
             self._primary._map._f,
+            self._primary._map._alpha,
             make_array_or_tensor([sec._r for sec in self._secondaries]),
             make_array_or_tensor([sec._m for sec in self._secondaries]),
             make_array_or_tensor([sec._prot for sec in self._secondaries]),
@@ -861,6 +870,9 @@ class System(object):
             make_array_or_tensor([sec._map._y for sec in self._secondaries]),
             make_array_or_tensor([sec._map._u for sec in self._secondaries]),
             make_array_or_tensor([sec._map._f for sec in self._secondaries]),
+            make_array_or_tensor(
+                [sec._map._alpha for sec in self._secondaries]
+            ),
         )
 
     def position(self, t):

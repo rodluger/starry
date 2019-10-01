@@ -6,6 +6,7 @@
 # - Is sys.secondaries[i] a ptr as before? Check.
 # - Check how map.load() normalizes things.
 # - Reflected light: get rid of `source`; just use `xo`, `yo`, `zo`
+# - MAP Op
 
 from . import config
 from .ops import (
@@ -199,6 +200,25 @@ class YlmBase(object):
     def obl(self, value):
         self._obl = self.cast(value) * self._angle_factor
 
+    @property
+    def alpha(self):
+        """The rotational shear coefficient, a number in the range ``[0, 1]``.
+        
+        The parameter :math:`\\alpha` is used to model linear differential
+        rotation. The angular velocity at a given latitude :math:`\\theta`
+        is
+
+        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
+
+        where :math:`\\omega_{eq}` is the equatorial angular velocity of
+        the object.
+        """
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, value):
+        self._alpha = self.cast(value)
+
     def __getitem__(self, idx):
         if isinstance(idx, integers) or isinstance(idx, slice):
             # User is accessing a limb darkening index
@@ -306,6 +326,11 @@ class YlmBase(object):
         else:
             self._obl = self.cast(0.0)
 
+        if kwargs.get("alpha", None) is not None:
+            self.alpha = kwargs.pop("alpha")
+        else:
+            self._alpha = self.cast(0.0)
+
         self._check_kwargs("reset", kwargs)
 
     def X(self, **kwargs):
@@ -335,7 +360,16 @@ class YlmBase(object):
 
         # Compute & return
         return self.L * self.ops.X(
-            theta, xo, yo, zo, ro, self._inc, self._obl, self._u, self._f
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self._u,
+            self._f,
+            self._alpha,
         )
 
     def intensity_design_matrix(self, lat=0, lon=0):
@@ -398,6 +432,7 @@ class YlmBase(object):
             self._y,
             self._u,
             self._f,
+            self._alpha,
         )
 
     def intensity(self, lat=0, lon=0):
@@ -463,6 +498,7 @@ class YlmBase(object):
             self._y,
             self._u,
             self._f,
+            self._alpha,
         )
 
         # Squeeze?
@@ -540,6 +576,7 @@ class YlmBase(object):
                 y = self._y.eval()
                 u = self._u.eval()
                 f = self._f.eval()
+                alpha = self._alpha.eval()
 
                 # Explicitly call the compiled version of `render`
                 image = self.L.eval().reshape(-1, 1, 1) * self.ops.render(
@@ -551,6 +588,7 @@ class YlmBase(object):
                     y,
                     u,
                     f,
+                    alpha,
                     force_compile=True,
                 )
 
@@ -809,7 +847,7 @@ class YlmBase(object):
             lon (scalar, optional): The longitude of the spot in units of 
                 :py:attr:`angle_unit`. Defaults to 0.0.
             preserve_luminosity (bool, optional): If True, preserves the 
-                current map luminosity when adding the spot. Regionss of the 
+                current map luminosity when adding the spot. Regions of the 
                 map outside of the spot will therefore get brighter. 
                 Defaults to False.
         """
@@ -857,27 +895,7 @@ class RVBase(object):
 
     def reset(self):
         super(RVBase, self).reset()
-        self._alpha = self.cast(0.0)
         self._veq = self.cast(0.0)
-
-    @property
-    def alpha(self):
-        """The rotational shear coefficient, a number in the range ``[0, 1]``.
-        
-        The parameter :math:`\\alpha` is used to model linear differential
-        rotation. The angular velocity at a given latitude :math:`\\theta`
-        is
-
-        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
-
-        where :math:`\\omega_{eq}` is the equatorial angular velocity of
-        the object.
-        """
-        return self._alpha
-
-    @alpha.setter
-    def alpha(self, value):
-        self._alpha = self.cast(value)
 
     @property
     def veq(self):
@@ -1106,6 +1124,7 @@ class ReflectedBase(object):
             self._obl,
             self._u,
             self._f,
+            self._alpha,
             source,
         )
 
@@ -1153,6 +1172,7 @@ class ReflectedBase(object):
             self._y,
             self._u,
             self._f,
+            self._alpha,
             source,
         )
 
@@ -1241,6 +1261,7 @@ class ReflectedBase(object):
             self._y,
             self._u,
             self._f,
+            self._alpha,
             source,
         )
 
@@ -1269,6 +1290,7 @@ class ReflectedBase(object):
             y = self._y.eval()
             u = self._u.eval()
             f = self._f.eval()
+            alpha = self._alpha.eval()
 
             # Explicitly call the compiled version of `render`
             kwargs["image"] = self.ops.render(
@@ -1280,6 +1302,7 @@ class ReflectedBase(object):
                 y,
                 u,
                 f,
+                alpha,
                 source,
                 force_compile=True,
             )

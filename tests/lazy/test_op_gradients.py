@@ -145,13 +145,14 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     y = np.ones(9)
     u = [-1.0]
     f = [np.pi]
+    alpha = 0.0
 
     func = lambda *args: tt.dot(map.ops.X(*args), y)
 
     # Just rotation
     verify_grad(
         func,
-        (theta, xo, yo, zo, 0.0, inc, obl, u, f),
+        (theta, xo, yo, zo, 0.0, inc, obl, u, f, alpha),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
@@ -161,7 +162,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     # Just occultation
     verify_grad(
         func,
-        (theta, xo / 3, yo, zo, ro, inc, obl, u, f),
+        (theta, xo / 3, yo, zo, ro, inc, obl, u, f, alpha),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
@@ -171,7 +172,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     # Rotation + occultation
     verify_grad(
         func,
-        (theta, xo, yo, zo, ro, inc, obl, u, f),
+        (theta, xo, yo, zo, ro, inc, obl, u, f, alpha),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
@@ -227,6 +228,7 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     y = np.ones(9)
     u = [-1.0]
     f = [np.pi, 0.0, 0.0, 0.0]
+    alpha = 0.0
     source = np.random.randn(len(theta), 3)
     source /= np.sqrt(np.sum(source ** 2, axis=1)).reshape(-1, 1)
 
@@ -235,7 +237,7 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     # Just rotation
     verify_grad(
         func,
-        (theta, xo, yo, zo, ro, inc, obl, u, f, source),
+        (theta, xo, yo, zo, ro, inc, obl, u, f, alpha, source),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
@@ -257,13 +259,14 @@ def test_flux_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     np.random.seed(14)
     u = [-1.0] + list(np.random.randn(2))
     f = [np.pi]
+    alpha = 0.0
 
     func = lambda *args: tt.dot(map.ops.X(*args), y)
 
     # Just rotation
     verify_grad(
         func,
-        (theta, xo, yo, zo, 0.0, inc, obl, u, f),
+        (theta, xo, yo, zo, 0.0, inc, obl, u, f, alpha),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
@@ -273,7 +276,7 @@ def test_flux_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     # Just occultation
     verify_grad(
         func,
-        (theta, xo / 3, yo, zo, ro, inc, obl, u, f),
+        (theta, xo / 3, yo, zo, ro, inc, obl, u, f, alpha),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
@@ -283,7 +286,7 @@ def test_flux_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     # Rotation + occultation
     verify_grad(
         func,
-        (theta, xo, yo, zo, ro, inc, obl, u, f),
+        (theta, xo, yo, zo, ro, inc, obl, u, f, alpha),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,

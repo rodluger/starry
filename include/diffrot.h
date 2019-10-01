@@ -45,11 +45,18 @@ class DiffRot {
 
  public:
   Matrix<Scalar> tensordotD_result;
+  Vector<Scalar> tensordotD_btheta;
+  Matrix<Scalar> tensordotD_bM;
 
   // Constructor: compute the matrices
   explicit DiffRot(basis::Basis<Scalar> &B, const int &drorder) :
       B(B), ydeg(B.ydeg), Ny((ydeg + 1) * (ydeg + 1)), drorder(drorder),
       ddeg(4 * drorder), Ddeg((ddeg + 1) * ydeg), ND((Ddeg + 1) * (Ddeg + 1)) {
+    // Trivial cases
+    if ((ydeg == 0) || (drorder == 0)) {
+      return;
+    }
+
     // Initialize the constant triplets
     t_1.push_back(Triplet(0, 0, 1));
     t_x.push_back(Triplet(1, -1, 1));
@@ -60,10 +67,12 @@ class DiffRot {
     // Pre-compute the change-of-basis matrices
     // A1 is (Ny x Ny) as usual, but we need
     // A1Inv to be (Ny x ND)
+    std::cout << "Computing A1..." << std::endl;  // TODO: Get rid of this
     basis::computeA1(Ddeg, A1, B.norm);
     basis::computeA1Inv(Ddeg, A1, A1Inv);
     A1Inv = A1Inv.topRows(Ny);
     A1 = B.A1;
+    std::cout << "Done." << std::endl;  // TODO: Get rid of this
 
     // Initialize the sparse D matrix
     D.resize(ND, Ny);
@@ -104,15 +113,15 @@ class DiffRot {
 
   */
   template <typename T1>
-  void tensordotD(const MatrixBase<T1> &M, const Vector<Scalar> &wta) {
-    // Pathological case
-    if (ydeg == 0) {
+  void tensordotD(const MatrixBase<T1> &M, const Vector<Scalar> &theta) {
+    // Trivial cases
+    if ((ydeg == 0) || (drorder == 0)) {
       tensordotD_result = M;
       return;
     }
 
     // Size checks
-    size_t npts = wta.size();
+    size_t npts = theta.size();
     if (((size_t)M.rows() != npts) || ((int)M.cols() != Ny))
       throw std::runtime_error("Incompatible shapes in `tensordotD`.");
 
@@ -121,8 +130,8 @@ class DiffRot {
     Matrix<Scalar> MA1InvD(npts, Ny);
 
     // Loop over all times
-    for (int i = 0; i < wta.size(); ++i) {
-      Scalar wtai_2 = wta(i) * wta(i);
+    for (int i = 0; i < theta.size(); ++i) {
+      Scalar thetai_2 = theta(i) * theta(i);
       t_c.clear();
       t_s.clear();
       t_xD.clear();
@@ -132,16 +141,16 @@ class DiffRot {
       Scalar fac = 1.0;
       for (int l = 0; l < ddeg + 1; l += 4) {
         t_c.push_back(Triplet(l, l, fac));
-        fac *= -(4.0 * wtai_2) / ((l + 4.0) * (l + 2.0));
+        fac *= -(4.0 * thetai_2) / ((l + 4.0) * (l + 2.0));
       }
       computeSparsePolynomialProduct(t_x, t_c, t_xc);
       computeSparsePolynomialProduct(t_z, t_c, t_zc);
 
       // Sine expansion
-      fac = wta(i);
+      fac = theta(i);
       for (int l = 2; l < ddeg + 1; l += 4) {
         t_s.push_back(Triplet(l, l, fac));
-        fac *= -(4.0 * wtai_2) / ((l + 4.0) * (l + 2.0));
+        fac *= -(4.0 * thetai_2) / ((l + 4.0) * (l + 2.0));
       }
       computeSparsePolynomialProduct(t_x, t_s, t_xs);
       computeSparsePolynomialProduct(t_z, t_s, t_zs);
@@ -202,6 +211,26 @@ class DiffRot {
 
     // Rotate fully to Ylm space
     tensordotD_result = MA1InvD * B.A1;
+  }
+
+  template <typename T1>
+  inline void tensordotD(const MatrixBase<T1> &M, const Vector<Scalar> &theta,
+                         const Matrix<Scalar> &bMD) {
+    // Shape checks
+    size_t npts = theta.size();
+
+    // Init grads
+    tensordotD_btheta.setZero(npts);
+    tensordotD_bM.setZero(M.rows(), Ny);
+
+    // TODO!
+    throw std::runtime_error(
+        "Differential rotation gradient not yet implemented.");
+
+    // Trivial cases
+    if ((ydeg == 0) || (drorder == 0)) {
+      // TODO
+    }
   }
 };
 

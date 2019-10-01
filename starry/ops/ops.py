@@ -4,6 +4,7 @@ from .. import _c_ops
 from .integration import sTOp, rTReflectedOp
 from .rotation import dotROp, tensordotRzOp
 from .filter import FOp
+from .diffrot import tensordotDOp
 from .misc import spotYlmOp, pTOp, minimizeOp
 from .utils import *
 import theano
@@ -74,6 +75,8 @@ class Ops(object):
         self.fdeg = fdeg
         self.deg = ydeg + udeg + fdeg
         self.filter = (fdeg > 0) or (udeg > 0)
+        self.drorder = drorder
+        self.diffrot = drorder > 0
         self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg, drorder)
         self.nw = nw
         self.reflected = reflected
@@ -97,8 +100,11 @@ class Ops(object):
         self.dotR = dotROp(self._c_ops.dotR)
 
         # Filter
-        # TODO: This should be sparse!!!
+        # TODO: Make this sparse
         self.F = FOp(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
+
+        # Differential rotation
+        self.tensordotD = tensordotDOp(self._c_ops.tensordotD)
 
         # Misc
         self.spotYlm = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
@@ -138,8 +144,9 @@ class Ops(object):
         tt.dscalar(),
         tt.dvector(),
         tt.dvector(),
+        tt.dscalar(),
     )
-    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f):
+    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
         """
 
         """
@@ -194,13 +201,17 @@ class Ops(object):
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
+        tt.dscalar(),
     )
-    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f):
+    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha):
         """
 
         """
         return tt.dot(
-            self.X(theta, xo, yo, zo, ro, inc, obl, u, f, no_compile=True), y
+            self.X(
+                theta, xo, yo, zo, ro, inc, obl, u, f, alpha, no_compile=True
+            ),
+            y,
         )
 
     @autocompile("P", tt.dvector(), tt.dvector())
@@ -231,6 +242,7 @@ class Ops(object):
     )
     def intensity(self, lat, lon, y, u, f):
         """
+        Intensity (static, no diff. rot).
 
         """
         # Get the Cartesian points
@@ -259,8 +271,9 @@ class Ops(object):
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
+        tt.dscalar(),
     )
-    def render(self, res, projection, theta, inc, obl, y, u, f):
+    def render(self, res, projection, theta, inc, obl, y, u, f, alpha):
         """
 
         """
@@ -505,6 +518,9 @@ class Ops(object):
             The vector of spherical harmonic coefficients corresponding to the
             MAP solution, and optionally the covariance of the solution and the
             Cholesky factorization of :math:`W` (see above).
+
+        TODO! 
+
         """
 
         raise NotImplementedError("TODO!")
@@ -647,14 +663,14 @@ class OpsRV(Ops):
         # Compute the velocity-weighted intensity
         f = self.compute_rv_filter(inc, obl, veq, alpha, no_compile=True)
         Iv = self.flux(
-            theta, xo, yo, zo, ro, inc, obl, y, u, f, no_compile=True
+            theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha, no_compile=True
         )
 
         # Compute the inverse of the intensity
         f0 = tt.zeros_like(f)
         f0 = tt.set_subtensor(f0[0], np.pi)
         I = self.flux(
-            theta, xo, yo, zo, ro, inc, obl, y, u, f0, no_compile=True
+            theta, xo, yo, zo, ro, inc, obl, y, u, f0, alpha, no_compile=True
         )
         invI = tt.ones((1,)) / I
         invI = tt.where(tt.isinf(invI), 0.0, invI)
@@ -783,9 +799,10 @@ class OpsReflected(Ops):
         tt.dscalar(),
         tt.dvector(),
         tt.dvector(),
+        tt.dscalar(),
         tt.dmatrix(),
     )
-    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, source):
+    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha, source):
         """
 
         """
@@ -839,15 +856,27 @@ class OpsReflected(Ops):
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
+        tt.dscalar(),
         tt.dmatrix(),
     )
-    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, source):
+    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha, source):
         """
 
         """
         return tt.dot(
             self.X(
-                theta, xo, yo, zo, ro, inc, obl, u, f, source, no_compile=True
+                theta,
+                xo,
+                yo,
+                zo,
+                ro,
+                inc,
+                obl,
+                u,
+                f,
+                alpha,
+                source,
+                no_compile=True,
             ),
             y,
         )
@@ -862,9 +891,10 @@ class OpsReflected(Ops):
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
+        tt.dscalar(),
         tt.dmatrix(),
     )
-    def render(self, res, projection, theta, inc, obl, y, u, f, source):
+    def render(self, res, projection, theta, inc, obl, y, u, f, alpha, source):
         """
         
         """
@@ -1075,6 +1105,7 @@ class OpsSystem(object):
         pri_obl,
         pri_u,
         pri_f,
+        pri_alpha,
         sec_r,
         sec_m,
         sec_prot,
@@ -1090,6 +1121,7 @@ class OpsSystem(object):
         sec_obl,
         sec_u,
         sec_f,
+        sec_alpha,
     ):
         # Exposure time integration?
         if self.texp != 0.0:
@@ -1176,6 +1208,7 @@ class OpsSystem(object):
             pri_obl,
             pri_u,
             pri_f,
+            pri_alpha,
             no_compile=True,
         )
 
@@ -1192,6 +1225,7 @@ class OpsSystem(object):
                     sec_obl[i],
                     sec_u[i],
                     sec_f[i],
+                    sec_alpha[i],
                     *source[i],
                     no_compile=True,
                 )
@@ -1236,6 +1270,7 @@ class OpsSystem(object):
                     pri_obl,
                     pri_u,
                     pri_f,
+                    pri_alpha,
                     no_compile=True,
                 )
                 - phase_pri[idx],
@@ -1275,6 +1310,7 @@ class OpsSystem(object):
                     sec_obl[i],
                     sec_u[i],
                     sec_f[i],
+                    sec_alpha[i],
                     *source_occ[i],
                     no_compile=True,
                 )
@@ -1318,6 +1354,7 @@ class OpsSystem(object):
                         sec_obl[i],
                         sec_u[i],
                         sec_f[i],
+                        sec_alpha[i],
                         *source_occ[i],
                         no_compile=True,
                     )
@@ -1362,6 +1399,7 @@ class OpsSystem(object):
         ),  # y
         tt.dvector(),  # u
         tt.dvector(),  # f
+        tt.dscalar(),  # alpha
         # -- secondaries --
         tt.dvector(),  # r
         tt.dvector(),  # m
@@ -1383,6 +1421,7 @@ class OpsSystem(object):
         ),  # y
         tt.dmatrix(),  # u
         tt.dmatrix(),  # f
+        tt.dvector(),  # alpha
     )
     def flux(
         self,
@@ -1398,6 +1437,7 @@ class OpsSystem(object):
         pri_y,
         pri_u,
         pri_f,
+        pri_alpha,
         sec_r,
         sec_m,
         sec_prot,
@@ -1414,6 +1454,7 @@ class OpsSystem(object):
         sec_y,
         sec_u,
         sec_f,
+        sec_alpha,
     ):
         X = self.X(
             t,
@@ -1427,6 +1468,7 @@ class OpsSystem(object):
             pri_obl,
             pri_u,
             pri_f,
+            pri_alpha,
             sec_r,
             sec_m,
             sec_prot,
@@ -1442,6 +1484,7 @@ class OpsSystem(object):
             sec_obl,
             sec_u,
             sec_f,
+            sec_alpha,
             no_compile=True,
         )
         y = tt.concatenate((pri_y, tt.reshape(sec_y, (-1,))))
@@ -1467,6 +1510,7 @@ class OpsSystem(object):
         ),  # y
         tt.dvector(),  # u
         tt.dvector(),  # f
+        tt.dscalar(),  # alpha
         # -- secondaries --
         tt.dvector(),  # r
         tt.dvector(),  # m
@@ -1488,6 +1532,7 @@ class OpsSystem(object):
         ),  # y
         tt.dmatrix(),  # u
         tt.dmatrix(),  # f
+        tt.dvector(),  # alpha
     )
     def render(
         self,
@@ -1504,6 +1549,7 @@ class OpsSystem(object):
         pri_y,
         pri_u,
         pri_f,
+        pri_alpha,
         sec_r,
         sec_m,
         sec_prot,
@@ -1520,6 +1566,7 @@ class OpsSystem(object):
         sec_y,
         sec_u,
         sec_f,
+        sec_alpha,
     ):
         # Compute the relative positions of all bodies
         orbit = exoplanet.orbits.KeplerianOrbit(
@@ -1576,6 +1623,7 @@ class OpsSystem(object):
             pri_y,
             pri_u,
             pri_f,
+            pri_alpha,
             no_compile=True,
         )
         img_sec = tt.as_tensor_variable(
@@ -1589,6 +1637,7 @@ class OpsSystem(object):
                     sec_y[i],
                     sec_u[i],
                     sec_f[i],
+                    sec_alpha[i],
                     *source[i],
                     no_compile=True,
                 )
