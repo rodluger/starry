@@ -67,12 +67,10 @@ class DiffRot {
     // Pre-compute the change-of-basis matrices
     // A1 is (Ny x Ny) as usual, but we need
     // A1Inv to be (Ny x ND)
-    std::cout << "Computing A1..." << std::endl;  // TODO: Get rid of this
     basis::computeA1(Ddeg, A1, B.norm);
     basis::computeA1Inv(Ddeg, A1, A1Inv);
     A1Inv = A1Inv.topRows(Ny);
     A1 = B.A1;
-    std::cout << "Done." << std::endl;  // TODO: Get rid of this
 
     // Initialize the sparse D matrix
     D.resize(ND, Ny);
@@ -210,7 +208,7 @@ class DiffRot {
     }
 
     // Rotate fully to Ylm space
-    tensordotD_result = MA1InvD * B.A1;
+    tensordotD_result = MA1InvD * A1;
   }
 
   template <typename T1>

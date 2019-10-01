@@ -69,7 +69,7 @@ class Ops(object):
         else:
             logger.setLevel(logging.INFO)
 
-        # Instantiate the C++ Ops
+        # Ingest kwargs
         self.ydeg = ydeg
         self.udeg = udeg
         self.fdeg = fdeg
@@ -77,13 +77,19 @@ class Ops(object):
         self.filter = (fdeg > 0) or (udeg > 0)
         self.drorder = drorder
         self.diffrot = drorder > 0
-        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg, drorder)
         self.nw = nw
         self.reflected = reflected
         if config.lazy:
             self.cast = to_tensor
         else:
             self.cast = to_array
+
+        # Instantiate the C++ Ops
+        logger.handlers[0].terminator = ""
+        logger.info("Pre-computing some matrices... ")
+        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg, drorder)
+        logger.handlers[0].terminator = "\n"
+        logger.info("Done.")
 
         # Solution vectors
         self.sT = sTOp(self._c_ops.sT, self._c_ops.N)
@@ -172,7 +178,7 @@ class Ops(object):
         else:
             rTA1 = self.rTA1
         X = tt.set_subtensor(
-            X[i_rot], self.right_project(rTA1, inc, obl, theta[i_rot])
+            X[i_rot], self.right_project(rTA1, inc, obl, theta[i_rot], alpha)
         )
 
         # Occultation + rotation operator
@@ -184,7 +190,7 @@ class Ops(object):
             A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
             sTAR = tt.dot(sTAR, A1InvFA1)
         X = tt.set_subtensor(
-            X[i_occ], self.right_project(sTAR, inc, obl, theta[i_occ])
+            X[i_occ], self.right_project(sTAR, inc, obl, theta[i_occ], alpha)
         )
 
         return X
@@ -296,13 +302,16 @@ class Ops(object):
                     inc,
                     obl,
                     theta,
+                    alpha,
                 ),
                 tt.transpose(tt.tile(y, [theta.shape[0], 1])),
             )
         else:
             Ry = ifelse(
                 tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                self.left_project(y, inc, obl, tt.tile(theta[0], self.nw)),
+                self.left_project(
+                    y, inc, obl, tt.tile(theta[0], self.nw), alpha
+                ),
                 y,
             )
 
@@ -372,7 +381,7 @@ class Ops(object):
         R = RAxisAngle([1, 0, 0], -np.pi / 2)
         return tt.dot(R, tt.concatenate((x, y, z)))
 
-    def right_project(self, M, inc, obl, theta, tensor_theta=True):
+    def right_project(self, M, inc, obl, theta, alpha, tensor_theta=True):
         r"""Apply the projection operator on the right.
 
         Specifically, this method returns the dot product :math:`M \cdot R`,
@@ -420,9 +429,16 @@ class Ops(object):
             M, to_tensor(1.0), to_tensor(0.0), to_tensor(0.0), 0.5 * np.pi
         )
 
+        # Apply the differential rotation
+        if self.diffrot:
+            if tensor_theta:
+                M = self.tensordotD(M, -theta * alpha)
+            else:
+                raise NotImplementedError("Code this branch up if needed.")
+
         return M
 
-    def left_project(self, M, inc, obl, theta, tensor_theta=True):
+    def left_project(self, M, inc, obl, theta, alpha, tensor_theta=True):
         r"""Apply the projection operator on the left.
 
         Specifically, this method returns the dot product :math:`R \cdot M`,
@@ -437,6 +453,13 @@ class Ops(object):
 
         # Note that here we are using the fact that R . M = (M^T . R^T)^T
         MT = tt.transpose(M)
+
+        # Apply the differential rotation
+        if self.diffrot:
+            if tensor_theta:
+                MT = self.tensordotD(MT, theta * alpha)
+            else:
+                raise NotImplementedError("Code this branch up if needed.")
 
         # Rotate to the polar frame
         MT = self.dotR(
@@ -833,7 +856,7 @@ class OpsReflected(Ops):
         rTA1Rz = tt.dot(rTA1Rz, A1InvFA1)
 
         # Rotate to the correct phase
-        X = self.right_project(rTA1Rz, inc, obl, theta)
+        X = self.right_project(rTA1Rz, inc, obl, theta, alpha)
 
         # TODO: Implement occultations in reflected light
         # Throw error if there's an occultation
@@ -917,13 +940,16 @@ class OpsReflected(Ops):
                     inc,
                     obl,
                     theta,
+                    alpha,
                 ),
                 tt.transpose(tt.tile(y, [theta.shape[0], 1])),
             )
         else:
             Ry = ifelse(
                 tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                self.left_project(y, inc, obl, tt.tile(theta[0], self.nw)),
+                self.left_project(
+                    y, inc, obl, tt.tile(theta[0], self.nw), alpha
+                ),
                 y,
             )
 

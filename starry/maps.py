@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # TODO:
+# - Gradient of Diff rot op
 # - L normalization: is the integral of I equal to L?
 # - Reflected light maps: what is L? Make it prop to 1/r^2
 # - Is sys.secondaries[i] a ptr as before? Check.
@@ -82,6 +83,7 @@ class YlmBase(object):
         self._deg = ydeg + udeg + fdeg
         self._N = (ydeg + udeg + fdeg + 1) ** 2
         self._nw = nw
+        self._drorder = drorder
 
         # Units
         self.angle_unit = kwargs.pop("angle_unit", units.degree)
@@ -161,6 +163,11 @@ class YlmBase(object):
         return self._nw
 
     @property
+    def drorder(self):
+        """Differential rotation order. *Read-only*"""
+        return self._drorder
+
+    @property
     def y(self):
         """The spherical harmonic coefficient vector. *Read-only*
         
@@ -217,7 +224,12 @@ class YlmBase(object):
 
     @alpha.setter
     def alpha(self, value):
-        self._alpha = self.cast(value)
+        if (self._drorder == 0) and not hasattr(self, "rv"):
+            warn(
+                "Parameter `drorder` is zero, so setting `alpha` has no effect."
+            )
+        else:
+            self._alpha = self.cast(value)
 
     def __getitem__(self, idx):
         if isinstance(idx, integers) or isinstance(idx, slice):
@@ -1337,7 +1349,6 @@ def Map(
         reflected (bool, optional): If True, models light curves in reflected
             light. Defaults to False.
     """
-
     # Check args
     ydeg = int(ydeg)
     assert ydeg >= 0, "Keyword `ydeg` must be positive."
@@ -1346,6 +1357,19 @@ def Map(
     if nw is not None:
         nw = int(nw)
         assert nw > 0, "Number of wavelength bins must be positive."
+    drorder = int(drorder)
+    assert (drorder >= 0) and (
+        drorder <= 2
+    ), "Differential rotation orders above 2 are not supported."
+    Ddeg = (4 * drorder + 1) * ydeg
+    if Ddeg >= 50:
+        warn(
+            "The degree of the differential rotation operator "
+            + "is currently {0}, ".format(Ddeg)
+            + "which will likely cause the code to run very slowly. "
+            + "Consider decreasing the degree of the map or the order "
+            + "of differential rotation."
+        )
 
     # Default map base
     Bases = (YlmBase, MapBase)
