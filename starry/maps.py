@@ -1368,15 +1368,21 @@ def Map(
     assert (drorder >= 0) and (
         drorder <= 2
     ), "Differential rotation orders above 2 are not supported."
-    Ddeg = (4 * drorder + 1) * ydeg
-    if Ddeg >= 50:
+    if drorder > 0:
+        # TODO: phase this warning out
         warn(
-            "The degree of the differential rotation operator "
-            + "is currently {0}, ".format(Ddeg)
-            + "which will likely cause the code to run very slowly. "
-            + "Consider decreasing the degree of the map or the order "
-            + "of differential rotation."
-        )
+                "Differential rotation is still an experimental feature. "
+                + "Use it with care."
+            )
+        Ddeg = (4 * drorder + 1) * ydeg
+        if Ddeg >= 50:
+            warn(
+                "The degree of the differential rotation operator "
+                + "is currently {0}, ".format(Ddeg)
+                + "which will likely cause the code to run very slowly. "
+                + "Consider decreasing the degree of the map or the order "
+                + "of differential rotation."
+            )
 
     # Default map base
     Bases = (YlmBase, MapBase)
