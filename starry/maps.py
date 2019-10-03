@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 
 # TODO:
-# - Gradient of Diff rot op
 # - L normalization: is the integral of I equal to L?
+# - Reflected light: get rid of `source`; just use `xo`, `yo`, `zo`
 # - Reflected light maps: what is L? Make it prop to 1/r^2
 # - Is sys.secondaries[i] a ptr as before? Check.
-# - Check how map.load() normalizes things.
-# - Reflected light: get rid of `source`; just use `xo`, `yo`, `zo`
 # - MAP Op
+# - Gradient of Diff rot op
 
 from . import config
 from .ops import (
@@ -759,7 +758,7 @@ class YlmBase(object):
         healpix=False,
         sampling_factor=8,
         sigma=None,
-        psd=True,
+        force_psd=False,
         **kwargs
     ):
         """Load an image, array, or ``healpix`` map. 
@@ -782,8 +781,8 @@ class YlmBase(object):
                 spurious ringing features. Smoothing is performed with 
                 the ``healpix.sphtfunc.smoothalm`` method. 
                 Default is None.
-            psd (bool, optional): Force the map to be positive semi-definite?
-                Default is True.
+            force_psd (bool, optional): Force the map to be positive 
+                semi-definite? Default is False.
             kwargs (optional): Any other kwargs passed directly to
                 :py:meth:`minimize` (only if ``psd`` is True).
         """
@@ -820,11 +819,15 @@ class YlmBase(object):
         else:
             raise ValueError("Invalid `image` value.")
 
-        # Ingest the coefficients
-        self._y = self.cast(y)
+        # Ingest the coefficients w/ appropriate normalization
+        # This ensures the map intensity will have the same normalization
+        # as that of the input image
+        y /= 2 * np.sqrt(np.pi)
+        self._y = self.cast(y / y[0])
+        self._L = self.cast(y[0] * np.pi)
 
         # Ensure positive semi-definite?
-        if psd:
+        if force_psd:
 
             # Find the minimum
             _, _, I = self.minimize(**kwargs)
@@ -833,7 +836,7 @@ class YlmBase(object):
 
             # Scale the coeffs?
             if I < 0:
-                fac = 1.0 / (1.0 - np.pi * I)
+                fac = self._L / (self._L - np.pi * I)
                 if config.lazy:
                     self._y *= fac
                     self._y = self.ops.set_map_vector(self._y, 0, 1.0)
@@ -1371,9 +1374,9 @@ def Map(
     if drorder > 0:
         # TODO: phase this warning out
         warn(
-                "Differential rotation is still an experimental feature. "
-                + "Use it with care."
-            )
+            "Differential rotation is still an experimental feature. "
+            + "Use it with care."
+        )
         Ddeg = (4 * drorder + 1) * ydeg
         if Ddeg >= 50:
             warn(

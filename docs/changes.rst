@@ -16,12 +16,21 @@ gradients automatically (back-)propagated along the way. This is exactly how
 Significant changes
 ~~~~~~~~~~~~~~~~~~~
 
+Lazy evaluation
+^^^^^^^^^^^^^^^
+By default, all operations are done lazily, and all map properties are stored as
+``theano`` nodes rather than numerical values. This behavior can be changed by
+setting ``starry.config.lazy = False`` as soon as ``starry`` is imported
+(before any maps have been instantiated). Doing so will automatically compile
+all functions behind the scenes, and the code will function similarly to version
+``0.3.0``.
+
 The frame in which the coefficients are defined
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Spherical harmonic coefficients are now defined in a static frame that is
 independent of the orientation of the map. Changing the rotational axis of the
 map (which is now done by specifying the inclination and obliquity of the object) 
-no longer changes the $Y_{l,m}$ coefficients. Another way to think about this 
+no longer changes the :math:`Y_{l,m}` coefficients. Another way to think about this 
 is that changing the inclination and obliquity corresponds to moving the 
 observer around, *not* rotating the map.
 
@@ -73,6 +82,14 @@ Deprecation of the ``animate`` method
 All map visualizations are now performed via the ``show`` method. If you want
 to animate the map as it rotates, pass a vector-valued ``theta``.
 
+Deprecation of the ``__call__`` method
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+In the previous version, users could evaluate the intensity at a point on the
+surface of a map by calling the instance directly: ``map(x=0, y=0)``. This is
+now done via the ``intensity`` method, whose arguments are the latitude 
+``lat`` and longitude ``lon`` of the point(s) rather than their Cartesian
+coordinates.
+
 Distinction between ``ydeg`` and ``udeg``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Previously, maps were instantiated for a given maximum degree ``lmax``. 
@@ -101,4 +118,14 @@ intensity.
 Doppler maps
 ^^^^^^^^^^^^
 The ``Map`` class can now also model radial velocity observations. This is 
-useful for modeling the Rossiter-McLaughlin effect.
+useful for modeling the Rossiter-McLaughlin effect, for example.
+
+Differential rotation (experimental)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Users can now specify the differential rotation parameter ``alpha``
+to model weak differential rotation over short timescales. Unfortunately,
+differential rotation is not a linear operation on the spherical harmonic
+coefficient vector, since the shearing induces higher order modes that
+grow strongly with time. The version implemented in ``starry`` is just a 
+low-order approximation to differential rotation that works in cases where
+both ``alpha`` and the number of rotations are small.

@@ -48,8 +48,6 @@ def healpix2map(healpix_map, lmax=10, **kwargs):
                 ylm[i] = np.sqrt(2) * (-1) ** m * alm[j].real
             i += 1
 
-    # Normalize and return
-    ylm /= ylm[0]
     return ylm
 
 
@@ -68,7 +66,7 @@ def image2map(image, lmax=10, **kwargs):
     grayscale_pil_image = Image.open(image).convert("L")
     image_array = pil_to_array(grayscale_pil_image)
     image_array = np.array(image_array, dtype=float)
-    image_array /= np.max(image_array)
+    image_array /= 255.0
 
     # Convert it to a map
     return array2map(image_array, lmax=lmax, **kwargs)
