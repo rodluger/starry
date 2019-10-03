@@ -553,6 +553,9 @@ class YlmBase(object):
         interval = kwargs.pop("interval", 75)
         file = kwargs.pop("file", None)
         html5_video = kwargs.pop("html5_video", True)
+        vmin = kwargs.pop("vmin", None)
+        vmax = kwargs.pop("vmax", None)
+        dpi = kwargs.pop("dpi", None)
 
         # Get the map orientation
         if config.lazy:
@@ -666,14 +669,18 @@ class YlmBase(object):
                     )
 
         # Plot the first frame of the image
+        if vmin is None:
+            vmin = np.nanmin(image)
+        if vmax is None:
+            vmax = np.nanmax(image)
         img = ax.imshow(
             image[0],
             origin="lower",
             extent=extent,
             cmap=cmap,
             interpolation="none",
-            vmin=np.nanmin(image),
-            vmax=np.nanmax(image),
+            vmin=vmin,
+            vmax=vmax,
             animated=animated,
         )
 
@@ -709,12 +716,12 @@ class YlmBase(object):
             # Business as usual
             if (file is not None) and (file != ""):
                 if file.endswith(".mp4"):
-                    ani.save(file, writer="ffmpeg")
+                    ani.save(file, writer="ffmpeg", dpi=dpi)
                 elif file.endswith(".gif"):
-                    ani.save(file, writer="imagemagick")
+                    ani.save(file, writer="imagemagick", dpi=dpi)
                 else:
                     # Try and see what happens!
-                    ani.save(file)
+                    ani.save(file, dpi=dpi)
                 plt.close()
             else:
                 try:
