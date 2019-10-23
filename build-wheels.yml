@@ -7,9 +7,7 @@ jobs:
     - bash: |
         python -m pip install --upgrade pip
         pip install --upgrade setuptools
-        pip install --upgrade numpy pybind11
-        pip install -r requirements.txt
-        pip install -r optional-requirements.txt
+        pip install --upgrade numpy pybind11 exoplanet
         pip install cibuildwheel==0.12.0
         cibuildwheel --output-dir wheelhouse .
     - task: PublishBuildArtifacts@1
@@ -21,9 +19,7 @@ jobs:
     - bash: |
         python -m pip install --upgrade pip
         pip install --upgrade setuptools
-        pip install --upgrade numpy pybind11
-        pip install -r requirements.txt
-        pip install -r optional-requirements.txt
+        pip install --upgrade numpy pybind11 exoplanet
         pip install cibuildwheel==0.12.0
         cibuildwheel --output-dir wheelhouse .
     - task: PublishBuildArtifacts@1
@@ -44,9 +40,7 @@ jobs:
     - bash: |
         python -m pip install --upgrade pip
         pip install --upgrade setuptools
-        pip install --upgrade numpy pybind11
-        pip install -r requirements.txt
-        pip install -r optional-requirements.txt
+        pip install --upgrade numpy pybind11 exoplanet
         pip install cibuildwheel==0.12.0
         cibuildwheel --output-dir wheelhouse .
     - task: PublishBuildArtifacts@1
