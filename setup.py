@@ -6,6 +6,11 @@ import os
 import glob
 import setuptools
 
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "starry")
+)
+from starry_version import __version__
+
 # Custom compiler flags
 macros = dict(
     STARRY_NDIGITS=16,
@@ -153,10 +158,7 @@ class BuildExt(build_ext):
 
 setup(
     name="starry",
-    use_scm_version={
-        "write_to": os.path.join("starry", "starry_version.py"),
-        "write_to_template": '__version__ = "{version}"\n',
-    },
+    version=__version__,
     author="Rodrigo Luger",
     author_email="rodluger@gmail.com",
     url="https://github.com/rodluger/starry",
