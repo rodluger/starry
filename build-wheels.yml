@@ -6,6 +6,7 @@ jobs:
     - bash: |
         python -m pip install --upgrade pip
         python -m pip install --upgrade setuptools
+        python -m pip install --upgrade numpy pybind11
         python -m pip install --upgrade -r requirements.txt
         python -m pip install --upgrade -r optional-requirements.txt
         pip install cibuildwheel==0.12.0
@@ -19,6 +20,7 @@ jobs:
     - bash: |
         python -m pip install --upgrade pip
               python -m pip install --upgrade setuptools
+              python -m pip install --upgrade numpy pybind11
         python -m pip install --upgrade -r requirements.txt
         python -m pip install --upgrade -r optional-requirements.txt
         pip install cibuildwheel==0.12.0
@@ -41,6 +43,7 @@ jobs:
     - bash: |
         python -m pip install --upgrade pip
         python -m pip install --upgrade setuptools
+        python -m pip install --upgrade numpy pybind11
         python -m pip install --upgrade -r requirements.txt
         python -m pip install --upgrade -r optional-requirements.txt
         pip install cibuildwheel==0.12.0
