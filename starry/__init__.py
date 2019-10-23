@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-__version__ = "1.0.0.dev5"
-
-# Was `starry` imported from setup.py?
-try:
-    __STARRY_SETUP__
-except NameError:
-    __STARRY_SETUP__ = False
+from .starry_version import __version__
 
 # Is this a docs run?
 try:
@@ -13,25 +7,21 @@ try:
 except NameError:
     __STARRY_DOCS__ = False
 
+# Force double precision
+import theano.tensor as tt
 
-# Import all modules
-if not __STARRY_SETUP__:
+tt.config.floatX = "float64"
 
-    # Force double precision
-    import theano.tensor as tt
+# Set up the default config
+from .configdefaults import Config
 
-    tt.config.floatX = "float64"
+config = Config()
 
-    # Set up the default config
-    from .configdefaults import Config
+# Import the main interface
+from . import indices, kepler, maps, sht, utils
+from .maps import Map
+from .kepler import Primary, Secondary, System
 
-    config = Config()
-
-    # Import the main interface
-    from . import indices, kepler, maps, sht, utils
-    from .maps import Map
-    from .kepler import Primary, Secondary, System
-
-    # Clean up the namespace
-    del tt
-    del Config
+# Clean up the namespace
+del tt
+del Config

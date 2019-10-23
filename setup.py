@@ -6,14 +6,6 @@ import os
 import glob
 import setuptools
 
-# Figure out the current version
-if sys.version_info[0] < 3:
-    import __builtin__ as builtins
-else:
-    import builtins
-builtins.__STARRY_SETUP__ = True
-from starry import __version__
-
 # Custom compiler flags
 macros = dict(
     STARRY_NDIGITS=16,
@@ -161,7 +153,10 @@ class BuildExt(build_ext):
 
 setup(
     name="starry",
-    version=__version__,
+    use_scm_version={
+        "write_to": os.path.join("starry", "starry_version.py"),
+        "write_to_template": '__version__ = "{version}"\n',
+    },
     author="Rodrigo Luger",
     author_email="rodluger@gmail.com",
     url="https://github.com/rodluger/starry",

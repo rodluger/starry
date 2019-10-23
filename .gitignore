@@ -125,3 +125,4 @@ ENV/
 
 # mypy
 .mypy_cache/
+starry/starry_version.py
