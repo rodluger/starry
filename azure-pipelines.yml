@@ -32,8 +32,6 @@ jobs:
       pushd nbsphinx
       python setup.py develop
       popd
-      conda install -y -q nb_conda nb_conda_kernels nb_anacondacloud
-      pip install jupyter_client
     displayName: 'Install dependencies'
   - script: |
       . $CONDA/etc/profile.d/conda.sh
