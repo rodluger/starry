@@ -23,7 +23,6 @@ template <class Scalar>
 inline Matrix<Scalar> spotYlm(const RowVector<Scalar> &amp, const Scalar &sigma,
                               const Scalar &lat, const Scalar &lon, int l,
                               wigner::Wigner<Scalar> &W) {
-
   // Compute the integrals recursively
   Vector<Scalar> IP(l + 1);
   Vector<Scalar> ID(l + 1);
@@ -81,6 +80,6 @@ inline Matrix<Scalar> spotYlm(const RowVector<Scalar> &amp, const Scalar &sigma,
   return y;
 }
 
-} // namespace misc
-} // namespace starry
+}  // namespace misc
+}  // namespace starry
 #endif

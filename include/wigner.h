@@ -28,8 +28,9 @@ inline void dlmn(int l, const Scalar &s1, const Scalar &c1, const Scalar &c2,
   int m, mp;
   int al, al1, tal1, amp, laux, lbux, am, lauz, lbuz;
   int sign;
-  Scalar ali, auz, aux, cux, fact, term, cuz;
-  Scalar cosaux, cosmal, sinmal, cosag, sinag, cosagm, sinagm, cosmga, sinmga;
+  Scalar ali, auz, aux, cux, fact, cuz;
+  Scalar cosmal, sinmal, cosag, sinag, cosagm, sinagm, cosmga, sinmga;
+  Scalar term, cosaux;
   Scalar d1, d2;
 
   // Compute the D[l;m',m) matrix.
@@ -145,10 +146,11 @@ Compute the Wigner D matrices.
 
 */
 template <class Scalar>
-inline void
-rotar(const int ydeg, const Scalar &c1, const Scalar &s1, const Scalar &c2,
-      const Scalar &s2, const Scalar &c3, const Scalar &s3, const Scalar &tol,
-      std::vector<Matrix<Scalar>> &D, std::vector<Matrix<Scalar>> &R) {
+inline void rotar(const int ydeg, const Scalar &c1, const Scalar &s1,
+                  const Scalar &c2, const Scalar &s2, const Scalar &c3,
+                  const Scalar &s3, const Scalar &tol,
+                  std::vector<Matrix<Scalar>> &D,
+                  std::vector<Matrix<Scalar>> &R) {
   Scalar cosag, cosamg, sinag, sinamg, tgbet2;
   Scalar root_two = sqrt(Scalar(2.0));
 
@@ -181,12 +183,11 @@ rotar(const int ydeg, const Scalar &c1, const Scalar &s1, const Scalar &c2,
   // The remaining matrices are calculated using
   // symmetry and and recurrence relations
   if (abs(s2) < tol)
-    tgbet2 = s2; // = 0
+    tgbet2 = s2;  // = 0
   else
     tgbet2 = (Scalar(1.0) - c2) / s2;
 
-  for (int l = 2; l < ydeg + 1; ++l)
-    dlmn(l, s1, c1, c2, tgbet2, s3, c3, D, R);
+  for (int l = 2; l < ydeg + 1; ++l) dlmn(l, s1, c1, c2, tgbet2, s3, c3, D, R);
 
   return;
 }
@@ -213,19 +214,19 @@ inline void axisAngleToEuler(const Scalar &axis_x, const Scalar &axis_y,
   // Determine the Euler angles
   Scalar norm1, norm2;
   if ((RA22 < Scalar(-1.0) + tol) && (RA22 > Scalar(-1.0) - tol)) {
-    cosbeta = RA22;               // = -1
-    sinbeta = Scalar(1.0) + RA22; // = 0
+    cosbeta = RA22;                // = -1
+    sinbeta = Scalar(1.0) + RA22;  // = 0
     cosgamma = RA11;
     singamma = RA01;
-    cosalpha = -RA22;              // = 1
-    sinalpha = Scalar(1.0) + RA22; // = 0
+    cosalpha = -RA22;               // = 1
+    sinalpha = Scalar(1.0) + RA22;  // = 0
   } else if ((RA22 < Scalar(1.0) + tol) && (RA22 > Scalar(1.0) - tol)) {
-    cosbeta = RA22;               // = 1
-    sinbeta = Scalar(1.0) - RA22; // = 0
+    cosbeta = RA22;                // = 1
+    sinbeta = Scalar(1.0) - RA22;  // = 0
     cosgamma = RA11;
     singamma = -RA01;
-    cosalpha = RA22;               // = 1
-    sinalpha = Scalar(1.0) - RA22; // = 0
+    cosalpha = RA22;                // = 1
+    sinalpha = Scalar(1.0) - RA22;  // = 0
   } else {
     cosbeta = RA22;
     sinbeta = sqrt(Scalar(1.0) - cosbeta * cosbeta);
@@ -242,9 +243,9 @@ inline void axisAngleToEuler(const Scalar &axis_x, const Scalar &axis_y,
 Rotation matrix class for the spherical harmonics.
 
 */
-template <class Scalar> class Wigner {
-
-protected:
+template <class Scalar>
+class Wigner {
+ protected:
   // Sizes
   const int ydeg; /**< */
   const int Ny;   /**< Number of spherical harmonic `(l, m)` coefficients */
@@ -279,7 +280,7 @@ protected:
   std::vector<Matrix<Scalar>> DRDz;     /**< */
   std::vector<Matrix<Scalar>> DRDtheta; /**< */
 
-public:
+ public:
   // Tensor z rotation results
   Matrix<Scalar> tensordotRz_result; /**< */
   Vector<Scalar> tensordotRz_btheta; /**< */
@@ -290,12 +291,11 @@ public:
   Scalar dotR_bx, dotR_by, dotR_bz, dotR_btheta; /**< */
   Matrix<Scalar> dotR_bM;                        /**< */
 
-  Wigner(int ydeg, int udeg, int fdeg)
-      : ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
-        fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
-        N((deg + 1) * (deg + 1)), theta_Rz_cache(0), x_cache(NAN), y_cache(NAN),
-        z_cache(NAN), theta_cache(NAN) {
-
+  Wigner(int ydeg, int udeg, int fdeg) :
+      ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
+      fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
+      N((deg + 1) * (deg + 1)), theta_Rz_cache(0), x_cache(NAN), y_cache(NAN),
+      z_cache(NAN), theta_cache(NAN) {
     // Allocate the Wigner matrices
     D.resize(ydeg + 1);
     R.resize(ydeg + 1);
@@ -361,20 +361,20 @@ public:
 
     if ((RA22.value() < Scalar(-1.0) + tol) &&
         (RA22.value() > Scalar(-1.0) - tol)) {
-      cosbeta = RA22;               // = -1
-      sinbeta = Scalar(1.0) + RA22; // = 0
+      cosbeta = RA22;                // = -1
+      sinbeta = Scalar(1.0) + RA22;  // = 0
       cosgamma = RA11;
       singamma = RA01;
-      cosalpha = -RA22;              // = 1
-      sinalpha = Scalar(1.0) + RA22; // = 0
+      cosalpha = -RA22;               // = 1
+      sinalpha = Scalar(1.0) + RA22;  // = 0
     } else if ((RA22.value() < Scalar(1.0) + tol) &&
                (RA22.value() > Scalar(1.0) - tol)) {
-      cosbeta = RA22;               // = 1
-      sinbeta = Scalar(1.0) - RA22; // = 0
+      cosbeta = RA22;                // = 1
+      sinbeta = Scalar(1.0) - RA22;  // = 0
       cosgamma = RA11;
       singamma = -RA01;
-      cosalpha = RA22;               // = 1
-      sinalpha = Scalar(1.0) - RA22; // = 0
+      cosalpha = RA22;                // = 1
+      sinalpha = Scalar(1.0) - RA22;  // = 0
     } else {
       ADType norm1, norm2;
       cosbeta = RA22;
@@ -412,7 +412,6 @@ public:
 
   */
   inline void computeRz(const Vector<Scalar> &theta) {
-
     // Length of timeseries
     size_t npts = theta.size();
 
@@ -467,7 +466,6 @@ public:
   template <typename T1, bool M_IS_ROW_VECTOR = (T1::RowsAtCompileTime == 1)>
   inline void dotR(const MatrixBase<T1> &M, const Scalar &x, const Scalar &y,
                    const Scalar &z, const Scalar &theta) {
-
     // Shape checks
     size_t npts = M.rows();
 
@@ -476,8 +474,7 @@ public:
 
     // Init result
     dotR_result.resize(npts, Ny);
-    if (unlikely(npts == 0))
-      return;
+    if (unlikely(npts == 0)) return;
 
     // Dot them in
     for (int l = 0; l < ydeg + 1; ++l) {
@@ -494,7 +491,6 @@ public:
   inline void dotR(const MatrixBase<T1> &M, const Scalar &x, const Scalar &y,
                    const Scalar &z, const Scalar &theta,
                    const Matrix<Scalar> &bMR) {
-
     // Shape checks
     size_t npts = M.rows();
 
@@ -507,13 +503,11 @@ public:
     dotR_bz = 0.0;
     dotR_btheta = 0.0;
     dotR_bM.setZero(npts, Ny);
-    if (unlikely(npts == 0))
-      return;
+    if (unlikely(npts == 0)) return;
 
     // Dot them in
     // \todo: There must be a more efficient way of doing this.
     for (int l = 0; l < ydeg + 1; ++l) {
-
       // d / dargs
       dotR_bx += (M.block(0, l * l, npts, 2 * l + 1) * DRDx[l])
                      .cwiseProduct(bMR.block(0, l * l, npts, 2 * l + 1))
@@ -541,7 +535,6 @@ public:
   template <typename T1, bool M_IS_ROW_VECTOR = (T1::RowsAtCompileTime == 1)>
   inline void tensordotRz(const MatrixBase<T1> &M,
                           const Vector<Scalar> &theta) {
-
     // Shape checks
     size_t npts = theta.size();
     size_t Nr = M.cols();
@@ -552,8 +545,7 @@ public:
 
     // Init result
     tensordotRz_result.resize(npts, Nr);
-    if (unlikely(npts == 0))
-      return;
+    if (unlikely(npts == 0)) return;
 
     // Dot them in
     for (int l = 0; l < degr + 1; ++l) {
@@ -578,7 +570,6 @@ public:
   template <typename T1, bool M_IS_ROW_VECTOR = (T1::RowsAtCompileTime == 1)>
   inline void tensordotRz(const MatrixBase<T1> &M, const Vector<Scalar> &theta,
                           const Matrix<Scalar> &bMRz) {
-
     // Shape checks
     size_t npts = theta.size();
     size_t Nr = M.cols();
@@ -590,13 +581,11 @@ public:
     // Init grads
     tensordotRz_btheta.setZero(npts);
     tensordotRz_bM.setZero(M.rows(), Nr);
-    if (unlikely((npts == 0) || (M.rows() == 0)))
-      return;
+    if (unlikely((npts == 0) || (M.rows() == 0))) return;
 
     // Dot the sines and cosines in
     for (int l = 0; l < degr + 1; ++l) {
       for (int j = 0; j < 2 * l + 1; ++j) {
-
         // Pre-compute these guys
         tmp_c = bMRz.col(l * l + j).cwiseProduct(cosmt.col(l * l + j));
         tmp_s = bMRz.col(l * l + j).cwiseProduct(sinmt.col(l * l + j));
@@ -624,7 +613,7 @@ public:
   }
 };
 
-} // namespace wigner
-} // namespace starry
+}  // namespace wigner
+}  // namespace starry
 
 #endif
