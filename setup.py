@@ -176,7 +176,7 @@ setup(
         "ipython",
         "pillow",
         "exoplanet>=0.2.0",
-        "healpy>=1.12.8;platform_system!='Windows'",
+        # "healpy>=1.12.8;platform_system!='Windows'",
     ],
     cmdclass={"build_ext": BuildExt},
     data_files=glob.glob("starry/img/*.jpg"),
