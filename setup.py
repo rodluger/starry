@@ -9,7 +9,7 @@ import setuptools
 sys.path.insert(
     0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "starry")
 )
-from starry_version import __version__
+from starry_version import __version__  # NOQA
 
 # Custom compiler flags
 macros = dict(
@@ -92,7 +92,7 @@ def has_flag(compiler, flagname):
     """
     import tempfile
 
-    with tempfile.NamedTemporaryFile("w", suffix=".cpp") as f:
+    with tempfile.NamedTemporaryFile("w", suffix=".cpp", dir=".") as f:
         f.write("int main (int argc, char **argv) { return 0; }")
         try:
             compiler.compile([f.name], extra_postargs=[flagname])
