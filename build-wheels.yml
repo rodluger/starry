@@ -1,7 +1,7 @@
 variables:
   CIBW_BEFORE_BUILD: pip install matplotlib pybind11
   CIBW_BUILD: cp3?-*
-  CIBW_SKIP: cp34-* cp35-*
+  CIBW_SKIP: cp34-* cp35-* *-manylinux_i686
 jobs:
 - job: linux
   pool: {vmImage: 'Ubuntu-16.04'}
