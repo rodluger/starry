@@ -1,5 +1,6 @@
 variables:
   CIBW_BEFORE_BUILD: pip install pybind11
+  CIBW_BUILD: cp3?-*
 jobs:
 - job: linux
   pool: {vmImage: 'Ubuntu-16.04'}
