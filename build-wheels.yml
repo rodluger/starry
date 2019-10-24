@@ -1,4 +1,5 @@
-name: Build Wheels
+variables:
+- CIBW_BEFORE_BUILD: pip install pybind11
 jobs:
 - job: linux
   pool: {vmImage: 'Ubuntu-16.04'}
@@ -6,8 +7,8 @@ jobs:
     - task: UsePythonVersion@0
     - bash: |
         python -m pip install --upgrade pip
-        pip install --upgrade pybind11
-        export CIBW_BEFORE_BUILD=pip install pybind11
+        pip install cibuildwheel==0.12.0
+        echo $CIBW_BEFORE_BUILD
         cibuildwheel --output-dir wheelhouse .
     - task: PublishBuildArtifacts@1
       inputs: {pathtoPublish: 'wheelhouse'}
