@@ -148,11 +148,15 @@ class BuildExt(build_ext):
             ext.extra_compile_args = list(opts + ext.extra_compile_args)
             ext.extra_compile_args += ["-O%d" % optimize]
             ext.extra_compile_args += [
-                "-Wextra",
-                "-Wpedantic",
-                "-Wno-unused-parameter",  # DEBUG disable this
-                "-Wno-unused-lambda-capture",
-                "-Wno-unused-local-typedef",
+                f
+                for f in (
+                    "-Wextra",
+                    "-Wpedantic",
+                    "-Wno-unused-parameter",  # DEBUG disable this
+                    "-Wno-unused-lambda-capture",
+                    "-Wno-unused-local-typedef",
+                )
+                if has_flag(self.compiler, f)
             ]
             if debug:
                 ext.extra_compile_args += ["-g"]
