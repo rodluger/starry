@@ -90,20 +90,21 @@ def has_flag(compiler, flagname):
     Return a boolean indicating whether a flag name is supported on
     the specified compiler.
     """
-    import shutil
+    import os
     import tempfile
 
     if compiler.compiler_type == "msvc":
         fn = ".starry-compile-temp.cpp"
         with open(fn, "w") as f:
             f.write("int main (int argc, char **argv) { return 0; }")
+
+        result = True
         try:
             compiler.compile([fn], extra_postargs=[flagname])
         except setuptools.distutils.errors.CompileError:
-            shutil.rmtree(fn)
-            return False
-        shutil.rmtree(fn)
-        return True
+            result = False
+        os.remove(fn)
+        return result
 
     with tempfile.NamedTemporaryFile("w", suffix=".cpp", dir=".") as f:
         f.write("int main (int argc, char **argv) { return 0; }")
