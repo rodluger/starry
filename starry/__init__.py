@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
+import os
+PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
+
 from ._starry_mono_64 import __version__
 from . import _starry_mono_64, _starry_mono_128, \
               _starry_spectral_64, _starry_spectral_128
 from . import kepler
+from . import nexsci
+
 
 
 # Class factory
