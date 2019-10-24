@@ -1,5 +1,5 @@
 """Install script for `starry`."""
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 import sys
 import os
@@ -182,7 +182,7 @@ setup(
     url="https://github.com/rodluger/starry",
     description="Analytic occultation light curves for astronomy.",
     license="GPL",
-    packages=["starry"],
+    packages=find_packages(),
     ext_modules=ext_modules,
     install_requires=[
         "numpy>=1.13.0",
