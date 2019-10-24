@@ -7,9 +7,7 @@ jobs:
     - bash: |
         python -m pip install --upgrade pip
         pip install --upgrade pybind11
-        pip install cibuildwheel==0.12.0
-        python -c 'import pybind11;print(pybind11.get_include())'
-        ls `python -c 'import pybind11;print(pybind11.get_include())'`
+        export CIBW_BEFORE_BUILD=pip install pybind11
         cibuildwheel --output-dir wheelhouse .
     - task: PublishBuildArtifacts@1
       inputs: {pathtoPublish: 'wheelhouse'}
