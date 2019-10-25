@@ -75,3 +75,4 @@ jobs:
       git push -f https://$(GITHUB_USER):$(GITHUB_API_KEY)@github.com/rodluger/starry HEAD:gh-pages #>/dev/null 2>&1 #-q
       cd ../../
     displayName: 'Build docs'
+    condition: ne(variables['Build.Reason'], 'PullRequest')
