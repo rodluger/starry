@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+
+# TODO:
+# - L normalization: is the integral of I equal to L?
+# - Reflected light: get rid of `source`; just use `xo`, `yo`, `zo`
+# - Reflected light maps: what is L? Make it prop to 1/r^2
+# - Is sys.secondaries[i] a ptr as before? Check.
+# - MAP Op
+# - Gradient of Diff rot op
+
 from . import config
 from .ops import (
     Ops,
@@ -52,14 +61,14 @@ class YlmBase(object):
     _ops_class_ = Ops
     L = Luminosity()
 
-    def __init__(self, ydeg, udeg, fdeg, nw, quiet=False, **kwargs):
+    def __init__(self, ydeg, udeg, fdeg, drorder, nw, quiet=False, **kwargs):
         """
 
         """
         # Instantiate the Theano ops class
         self.quiet = quiet
         self.ops = self._ops_class_(
-            ydeg, udeg, fdeg, nw, quiet=quiet, **kwargs
+            ydeg, udeg, fdeg, drorder, nw, quiet=quiet, **kwargs
         )
         self.cast = self.ops.cast
 
@@ -73,6 +82,7 @@ class YlmBase(object):
         self._deg = ydeg + udeg + fdeg
         self._N = (ydeg + udeg + fdeg + 1) ** 2
         self._nw = nw
+        self._drorder = drorder
 
         # Units
         self.angle_unit = kwargs.pop("angle_unit", units.degree)
@@ -152,6 +162,11 @@ class YlmBase(object):
         return self._nw
 
     @property
+    def drorder(self):
+        """Differential rotation order. *Read-only*"""
+        return self._drorder
+
+    @property
     def y(self):
         """The spherical harmonic coefficient vector. *Read-only*
         
@@ -190,6 +205,30 @@ class YlmBase(object):
     @obl.setter
     def obl(self, value):
         self._obl = self.cast(value) * self._angle_factor
+
+    @property
+    def alpha(self):
+        """The rotational shear coefficient, a number in the range ``[0, 1]``.
+        
+        The parameter :math:`\\alpha` is used to model linear differential
+        rotation. The angular velocity at a given latitude :math:`\\theta`
+        is
+
+        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
+
+        where :math:`\\omega_{eq}` is the equatorial angular velocity of
+        the object.
+        """
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, value):
+        if (self._drorder == 0) and not hasattr(self, "rv"):
+            warn(
+                "Parameter `drorder` is zero, so setting `alpha` has no effect."
+            )
+        else:
+            self._alpha = self.cast(value)
 
     def __getitem__(self, idx):
         if isinstance(idx, integers) or isinstance(idx, slice):
@@ -298,6 +337,11 @@ class YlmBase(object):
         else:
             self._obl = self.cast(0.0)
 
+        if kwargs.get("alpha", None) is not None:
+            self.alpha = kwargs.pop("alpha")
+        else:
+            self._alpha = self.cast(0.0)
+
         self._check_kwargs("reset", kwargs)
 
     def X(self, **kwargs):
@@ -327,7 +371,16 @@ class YlmBase(object):
 
         # Compute & return
         return self.L * self.ops.X(
-            theta, xo, yo, zo, ro, self._inc, self._obl, self._u, self._f
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self._u,
+            self._f,
+            self._alpha,
         )
 
     def intensity_design_matrix(self, lat=0, lon=0):
@@ -390,6 +443,7 @@ class YlmBase(object):
             self._y,
             self._u,
             self._f,
+            self._alpha,
         )
 
     def intensity(self, lat=0, lon=0):
@@ -455,6 +509,7 @@ class YlmBase(object):
             self._y,
             self._u,
             self._f,
+            self._alpha,
         )
 
         # Squeeze?
@@ -497,6 +552,9 @@ class YlmBase(object):
         interval = kwargs.pop("interval", 75)
         file = kwargs.pop("file", None)
         html5_video = kwargs.pop("html5_video", True)
+        vmin = kwargs.pop("vmin", None)
+        vmax = kwargs.pop("vmax", None)
+        dpi = kwargs.pop("dpi", None)
 
         # Get the map orientation
         if config.lazy:
@@ -532,6 +590,7 @@ class YlmBase(object):
                 y = self._y.eval()
                 u = self._u.eval()
                 f = self._f.eval()
+                alpha = self._alpha.eval()
 
                 # Explicitly call the compiled version of `render`
                 image = self.L.eval().reshape(-1, 1, 1) * self.ops.render(
@@ -543,6 +602,7 @@ class YlmBase(object):
                     y,
                     u,
                     f,
+                    alpha,
                     force_compile=True,
                 )
 
@@ -608,14 +668,18 @@ class YlmBase(object):
                     )
 
         # Plot the first frame of the image
+        if vmin is None:
+            vmin = np.nanmin(image)
+        if vmax is None:
+            vmax = np.nanmax(image)
         img = ax.imshow(
             image[0],
             origin="lower",
             extent=extent,
             cmap=cmap,
             interpolation="none",
-            vmin=np.nanmin(image),
-            vmax=np.nanmax(image),
+            vmin=vmin,
+            vmax=vmax,
             animated=animated,
         )
 
@@ -651,12 +715,12 @@ class YlmBase(object):
             # Business as usual
             if (file is not None) and (file != ""):
                 if file.endswith(".mp4"):
-                    ani.save(file, writer="ffmpeg")
+                    ani.save(file, writer="ffmpeg", dpi=dpi)
                 elif file.endswith(".gif"):
-                    ani.save(file, writer="imagemagick")
+                    ani.save(file, writer="imagemagick", dpi=dpi)
                 else:
                     # Try and see what happens!
-                    ani.save(file)
+                    ani.save(file, dpi=dpi)
                 plt.close()
             else:
                 try:
@@ -694,7 +758,7 @@ class YlmBase(object):
         healpix=False,
         sampling_factor=8,
         sigma=None,
-        psd=True,
+        force_psd=False,
         **kwargs
     ):
         """Load an image, array, or ``healpix`` map. 
@@ -717,8 +781,8 @@ class YlmBase(object):
                 spurious ringing features. Smoothing is performed with 
                 the ``healpix.sphtfunc.smoothalm`` method. 
                 Default is None.
-            psd (bool, optional): Force the map to be positive semi-definite?
-                Default is True.
+            force_psd (bool, optional): Force the map to be positive 
+                semi-definite? Default is False.
             kwargs (optional): Any other kwargs passed directly to
                 :py:meth:`minimize` (only if ``psd`` is True).
         """
@@ -755,11 +819,15 @@ class YlmBase(object):
         else:
             raise ValueError("Invalid `image` value.")
 
-        # Ingest the coefficients
-        self._y = self.cast(y)
+        # Ingest the coefficients w/ appropriate normalization
+        # This ensures the map intensity will have the same normalization
+        # as that of the input image
+        y /= 2 * np.sqrt(np.pi)
+        self._y = self.cast(y / y[0])
+        self._L = self.cast(y[0] * np.pi)
 
         # Ensure positive semi-definite?
-        if psd:
+        if force_psd:
 
             # Find the minimum
             _, _, I = self.minimize(**kwargs)
@@ -768,7 +836,7 @@ class YlmBase(object):
 
             # Scale the coeffs?
             if I < 0:
-                fac = 1.0 / (1.0 - np.pi * I)
+                fac = self._L / (self._L - np.pi * I)
                 if config.lazy:
                     self._y *= fac
                     self._y = self.ops.set_map_vector(self._y, 0, 1.0)
@@ -801,7 +869,7 @@ class YlmBase(object):
             lon (scalar, optional): The longitude of the spot in units of 
                 :py:attr:`angle_unit`. Defaults to 0.0.
             preserve_luminosity (bool, optional): If True, preserves the 
-                current map luminosity when adding the spot. Regionss of the 
+                current map luminosity when adding the spot. Regions of the 
                 map outside of the spot will therefore get brighter. 
                 Defaults to False.
         """
@@ -849,27 +917,7 @@ class RVBase(object):
 
     def reset(self):
         super(RVBase, self).reset()
-        self._alpha = self.cast(0.0)
         self._veq = self.cast(0.0)
-
-    @property
-    def alpha(self):
-        """The rotational shear coefficient, a number in the range ``[0, 1]``.
-        
-        The parameter :math:`\\alpha` is used to model linear differential
-        rotation. The angular velocity at a given latitude :math:`\\theta`
-        is
-
-        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
-
-        where :math:`\\omega_{eq}` is the equatorial angular velocity of
-        the object.
-        """
-        return self._alpha
-
-    @alpha.setter
-    def alpha(self, value):
-        self._alpha = self.cast(value)
 
     @property
     def veq(self):
@@ -1098,6 +1146,7 @@ class ReflectedBase(object):
             self._obl,
             self._u,
             self._f,
+            self._alpha,
             source,
         )
 
@@ -1145,6 +1194,7 @@ class ReflectedBase(object):
             self._y,
             self._u,
             self._f,
+            self._alpha,
             source,
         )
 
@@ -1233,6 +1283,7 @@ class ReflectedBase(object):
             self._y,
             self._u,
             self._f,
+            self._alpha,
             source,
         )
 
@@ -1261,6 +1312,7 @@ class ReflectedBase(object):
             y = self._y.eval()
             u = self._u.eval()
             f = self._f.eval()
+            alpha = self._alpha.eval()
 
             # Explicitly call the compiled version of `render`
             kwargs["image"] = self.ops.render(
@@ -1272,13 +1324,16 @@ class ReflectedBase(object):
                 y,
                 u,
                 f,
+                alpha,
                 source,
                 force_compile=True,
             )
         return super(ReflectedBase, self).show(**kwargs)
 
 
-def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, **kwargs):
+def Map(
+    ydeg=0, udeg=0, drorder=0, nw=None, rv=False, reflected=False, **kwargs
+):
     """A generic ``starry`` surface map.
 
     This function is a class factory that returns an instance of either
@@ -1295,6 +1350,8 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, **kwargs):
             Defaults to 0.
         udeg (int, optional): Degree of the limb darkening filter. 
             Defaults to 0.
+        drorder (int, optional): Order of the differential rotation
+            approximation. Defaults to 0.
         nw (int, optional): Number of wavelength bins. Defaults to None
             (for monochromatic light curves).
         rv (bool, optional): If True, enable computation of radial velocities
@@ -1302,7 +1359,6 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, **kwargs):
         reflected (bool, optional): If True, models light curves in reflected
             light. Defaults to False.
     """
-
     # Check args
     ydeg = int(ydeg)
     assert ydeg >= 0, "Keyword `ydeg` must be positive."
@@ -1311,6 +1367,25 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, **kwargs):
     if nw is not None:
         nw = int(nw)
         assert nw > 0, "Number of wavelength bins must be positive."
+    drorder = int(drorder)
+    assert (drorder >= 0) and (
+        drorder <= 2
+    ), "Differential rotation orders above 2 are not supported."
+    if drorder > 0:
+        # TODO: phase this warning out
+        warn(
+            "Differential rotation is still an experimental feature. "
+            + "Use it with care."
+        )
+        Ddeg = (4 * drorder + 1) * ydeg
+        if Ddeg >= 50:
+            warn(
+                "The degree of the differential rotation operator "
+                + "is currently {0}, ".format(Ddeg)
+                + "which will likely cause the code to run very slowly. "
+                + "Consider decreasing the degree of the map or the order "
+                + "of differential rotation."
+            )
 
     # Default map base
     Bases = (YlmBase, MapBase)
@@ -1339,4 +1414,4 @@ def Map(ydeg=0, udeg=0, nw=None, rv=False, reflected=False, **kwargs):
             config.freeze()
             super(Map, self).__init__(*args, **kwargs)
 
-    return Map(ydeg, udeg, fdeg, nw, **kwargs)
+    return Map(ydeg, udeg, fdeg, drorder, nw, **kwargs)

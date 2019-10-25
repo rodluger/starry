@@ -19,9 +19,9 @@ using namespace utils;
 Filter operations on a spherical harmonic map.
 
 */
-template <typename Scalar> class Filter {
-
-protected:
+template <typename Scalar>
+class Filter {
+ protected:
   basis::Basis<Scalar> &B;
   const int ydeg; /**< */
   const int Ny;   /**< Number of spherical harmonic `(l, m)` coefficients */
@@ -36,19 +36,18 @@ protected:
       DFDp; /**< Deriv of the filter operator w/ respect to the complete filter
                polynomial */
 
-public:
+ public:
   Matrix<Scalar>
       F; /**< The filter operator in the polynomial basis. TODO: Make sparse? */
   Vector<Scalar> bu;
   Vector<Scalar> bf;
 
   // Constructor: compute the matrices
-  explicit Filter(basis::Basis<Scalar> &B)
-      : B(B), ydeg(B.ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(B.udeg),
-        Nu(udeg + 1), fdeg(B.fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(B.deg),
-        N((deg + 1) * (deg + 1)), Nuf((udeg + fdeg + 1) * (udeg + fdeg + 1)),
-        DFDp((udeg + fdeg + 1) * (udeg + fdeg + 1)) {
-
+  explicit Filter(basis::Basis<Scalar> &B) :
+      B(B), ydeg(B.ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(B.udeg),
+      Nu(udeg + 1), fdeg(B.fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(B.deg),
+      N((deg + 1) * (deg + 1)), Nuf((udeg + fdeg + 1) * (udeg + fdeg + 1)),
+      DFDp((udeg + fdeg + 1) * (udeg + fdeg + 1)) {
     // Pre-compute dF / dp
     computePolynomialProductMatrixGradient();
   }
@@ -98,7 +97,7 @@ public:
                                        Vector<Scalar> &p1p2) {
     int n1, n2, l1, m1, l2, m2, l, n;
     bool odd1;
-    p1p2.setZero(N);
+    p1p2.setZero((lmax1 + lmax2 + 1) * (lmax1 + lmax2 + 1));
     Scalar mult;
     n1 = 0;
     for (l1 = 0; l1 < lmax1 + 1; ++l1) {
@@ -136,8 +135,7 @@ public:
     int l, n;
     int n1 = 0, n2 = 0;
     Vector<Matrix<Scalar>> DFDp_dense(Nuf);
-    for (n = 0; n < Nuf; ++n)
-      DFDp_dense(n).setZero(N, Ny);
+    for (n = 0; n < Nuf; ++n) DFDp_dense(n).setZero(N, Ny);
     for (int l1 = 0; l1 < ydeg + 1; ++l1) {
       for (int m1 = -l1; m1 < l1 + 1; ++m1) {
         odd1 = (l1 + m1) % 2 == 0 ? false : true;
@@ -159,18 +157,19 @@ public:
         ++n1;
       }
     }
-    for (n = 0; n < Nuf; ++n)
-      DFDp(n) = DFDp_dense(n).sparseView();
+    for (n = 0; n < Nuf; ++n) DFDp(n) = DFDp_dense(n).sparseView();
   }
 
   /**
   Compute the gradient of the polynomial product.
 
   */
-  inline void
-  computePolynomialProduct(const int lmax1, const Vector<Scalar> &p1,
-                           const int lmax2, const Vector<Scalar> &p2,
-                           Matrix<Scalar> &grad_p1, Matrix<Scalar> &grad_p2) {
+  inline void computePolynomialProduct(const int lmax1,
+                                       const Vector<Scalar> &p1,
+                                       const int lmax2,
+                                       const Vector<Scalar> &p2,
+                                       Matrix<Scalar> &grad_p1,
+                                       Matrix<Scalar> &grad_p2) {
     int n1, n2, l1, m1, l2, m2, l, n;
     bool odd1;
     int N1 = (lmax1 + 1) * (lmax1 + 1);
@@ -210,8 +209,7 @@ public:
   Compute the polynomial filter operator.
 
   */
-  void compute(const Vector<Scalar> &u, const Vector<Scalar> &f) {
-
+  void computeF(const Vector<Scalar> &u, const Vector<Scalar> &f) {
     // Compute the two polynomials
     Vector<Scalar> tmp = B.U1 * u;
     Scalar norm =
@@ -236,9 +234,8 @@ public:
   Compute the gradient of the polynomial filter operator.
 
   */
-  void compute(const Vector<Scalar> &u, const Vector<Scalar> &f,
-               const Matrix<Scalar> &bF) {
-
+  void computeF(const Vector<Scalar> &u, const Vector<Scalar> &f,
+                const Matrix<Scalar> &bF) {
     Matrix<Scalar> DpDpu;
     Matrix<Scalar> DpDpf;
 
@@ -261,8 +258,7 @@ public:
 
     // Backprop p
     RowVector<Scalar> bp(Nuf);
-    for (int j = 0; j < Nuf; ++j)
-      bp(j) = DFDp(j).cwiseProduct(bF).sum();
+    for (int j = 0; j < Nuf; ++j) bp(j) = DFDp(j).cwiseProduct(bF).sum();
 
     // Compute the limb darkening derivatives
     Matrix<Scalar> DpuDu =
@@ -275,6 +271,6 @@ public:
   }
 };
 
-} // namespace filter
-} // namespace starry
+}  // namespace filter
+}  // namespace starry
 #endif

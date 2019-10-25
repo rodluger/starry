@@ -4,6 +4,7 @@ from .. import _c_ops
 from .integration import sTOp, rTReflectedOp
 from .rotation import dotROp, tensordotRzOp
 from .filter import FOp
+from .diffrot import tensordotDOp
 from .misc import spotYlmOp, pTOp, minimizeOp
 from .utils import *
 import theano
@@ -49,7 +50,15 @@ class Ops(object):
     """
 
     def __init__(
-        self, ydeg, udeg, fdeg, nw, quiet=False, reflected=False, **kwargs
+        self,
+        ydeg,
+        udeg,
+        fdeg,
+        drorder,
+        nw,
+        quiet=False,
+        reflected=False,
+        **kwargs,
     ):
         """
 
@@ -60,19 +69,27 @@ class Ops(object):
         else:
             logger.setLevel(logging.INFO)
 
-        # Instantiate the C++ Ops
+        # Ingest kwargs
         self.ydeg = ydeg
         self.udeg = udeg
         self.fdeg = fdeg
         self.deg = ydeg + udeg + fdeg
         self.filter = (fdeg > 0) or (udeg > 0)
-        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
+        self.drorder = drorder
+        self.diffrot = drorder > 0
         self.nw = nw
         self.reflected = reflected
         if config.lazy:
             self.cast = to_tensor
         else:
             self.cast = to_array
+
+        # Instantiate the C++ Ops
+        logger.handlers[0].terminator = ""
+        logger.info("Pre-computing some matrices... ")
+        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg, drorder)
+        logger.handlers[0].terminator = "\n"
+        logger.info("Done.")
 
         # Solution vectors
         self.sT = sTOp(self._c_ops.sT, self._c_ops.N)
@@ -89,8 +106,11 @@ class Ops(object):
         self.dotR = dotROp(self._c_ops.dotR)
 
         # Filter
-        # TODO: This should be sparse!!!
+        # TODO: Make this sparse
         self.F = FOp(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
+
+        # Differential rotation
+        self.tensordotD = tensordotDOp(self._c_ops.tensordotD)
 
         # Misc
         self.spotYlm = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
@@ -130,21 +150,23 @@ class Ops(object):
         tt.dscalar(),
         tt.dvector(),
         tt.dvector(),
+        tt.dscalar(),
     )
-    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f):
+    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
         """
 
         """
+        # Determine shapes
+        rows = theta.shape[0]
+        cols = self.rTA1.shape[1]
+        X = tt.zeros((rows, cols))
+
         # Compute the occultation mask
         b = tt.sqrt(xo ** 2 + yo ** 2)
         b_rot = tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
         b_occ = tt.invert(b_rot)
         i_rot = tt.arange(b.size)[b_rot]
         i_occ = tt.arange(b.size)[b_occ]
-
-        # Determine shapes
-        rows = theta.shape[0]
-        cols = self.rTA1.shape[1]
 
         # Compute filter operator
         if self.filter:
@@ -155,9 +177,8 @@ class Ops(object):
             rTA1 = ts.dot(tt.dot(self.rT, F), self.A1)
         else:
             rTA1 = self.rTA1
-        X_rot = tt.set_subtensor(
-            tt.zeros((rows, cols))[i_rot],
-            self.right_project(rTA1, inc, obl, theta[i_rot]),
+        X = tt.set_subtensor(
+            X[i_rot], self.right_project(rTA1, inc, obl, theta[i_rot], alpha)
         )
 
         # Occultation + rotation operator
@@ -168,12 +189,11 @@ class Ops(object):
         if self.filter:
             A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
             sTAR = tt.dot(sTAR, A1InvFA1)
-        X_occ = tt.set_subtensor(
-            tt.zeros((rows, cols))[i_occ],
-            self.right_project(sTAR, inc, obl, theta[i_occ]),
+        X = tt.set_subtensor(
+            X[i_occ], self.right_project(sTAR, inc, obl, theta[i_occ], alpha)
         )
 
-        return X_rot + X_occ
+        return X
 
     @autocompile(
         "flux",
@@ -187,13 +207,17 @@ class Ops(object):
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
+        tt.dscalar(),
     )
-    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f):
+    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha):
         """
 
         """
         return tt.dot(
-            self.X(theta, xo, yo, zo, ro, inc, obl, u, f, no_compile=True), y
+            self.X(
+                theta, xo, yo, zo, ro, inc, obl, u, f, alpha, no_compile=True
+            ),
+            y,
         )
 
     @autocompile("P", tt.dvector(), tt.dvector())
@@ -224,6 +248,7 @@ class Ops(object):
     )
     def intensity(self, lat, lon, y, u, f):
         """
+        Intensity (static, no diff. rot).
 
         """
         # Get the Cartesian points
@@ -252,8 +277,9 @@ class Ops(object):
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
+        tt.dscalar(),
     )
-    def render(self, res, projection, theta, inc, obl, y, u, f):
+    def render(self, res, projection, theta, inc, obl, y, u, f, alpha):
         """
 
         """
@@ -276,13 +302,16 @@ class Ops(object):
                     inc,
                     obl,
                     theta,
+                    alpha,
                 ),
                 tt.transpose(tt.tile(y, [theta.shape[0], 1])),
             )
         else:
             Ry = ifelse(
                 tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                self.left_project(y, inc, obl, tt.tile(theta[0], self.nw)),
+                self.left_project(
+                    y, inc, obl, tt.tile(theta[0], self.nw), alpha
+                ),
                 y,
             )
 
@@ -352,7 +381,7 @@ class Ops(object):
         R = RAxisAngle([1, 0, 0], -np.pi / 2)
         return tt.dot(R, tt.concatenate((x, y, z)))
 
-    def right_project(self, M, inc, obl, theta, tensor_theta=True):
+    def right_project(self, M, inc, obl, theta, alpha, tensor_theta=True):
         r"""Apply the projection operator on the right.
 
         Specifically, this method returns the dot product :math:`M \cdot R`,
@@ -400,9 +429,16 @@ class Ops(object):
             M, to_tensor(1.0), to_tensor(0.0), to_tensor(0.0), 0.5 * np.pi
         )
 
+        # Apply the differential rotation
+        if self.diffrot:
+            if tensor_theta:
+                M = self.tensordotD(M, -theta * alpha)
+            else:
+                raise NotImplementedError("Code this branch up if needed.")
+
         return M
 
-    def left_project(self, M, inc, obl, theta, tensor_theta=True):
+    def left_project(self, M, inc, obl, theta, alpha, tensor_theta=True):
         r"""Apply the projection operator on the left.
 
         Specifically, this method returns the dot product :math:`R \cdot M`,
@@ -417,6 +453,13 @@ class Ops(object):
 
         # Note that here we are using the fact that R . M = (M^T . R^T)^T
         MT = tt.transpose(M)
+
+        # Apply the differential rotation
+        if self.diffrot:
+            if tensor_theta:
+                MT = self.tensordotD(MT, theta * alpha)
+            else:
+                raise NotImplementedError("Code this branch up if needed.")
 
         # Rotate to the polar frame
         MT = self.dotR(
@@ -498,6 +541,9 @@ class Ops(object):
             The vector of spherical harmonic coefficients corresponding to the
             MAP solution, and optionally the covariance of the solution and the
             Cholesky factorization of :math:`W` (see above).
+
+        TODO! 
+
         """
 
         raise NotImplementedError("TODO!")
@@ -640,14 +686,14 @@ class OpsRV(Ops):
         # Compute the velocity-weighted intensity
         f = self.compute_rv_filter(inc, obl, veq, alpha, no_compile=True)
         Iv = self.flux(
-            theta, xo, yo, zo, ro, inc, obl, y, u, f, no_compile=True
+            theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha, no_compile=True
         )
 
         # Compute the inverse of the intensity
         f0 = tt.zeros_like(f)
         f0 = tt.set_subtensor(f0[0], np.pi)
         I = self.flux(
-            theta, xo, yo, zo, ro, inc, obl, y, u, f0, no_compile=True
+            theta, xo, yo, zo, ro, inc, obl, y, u, f0, alpha, no_compile=True
         )
         invI = tt.ones((1,)) / I
         invI = tt.where(tt.isinf(invI), 0.0, invI)
@@ -776,9 +822,10 @@ class OpsReflected(Ops):
         tt.dscalar(),
         tt.dvector(),
         tt.dvector(),
+        tt.dscalar(),
         tt.dmatrix(),
     )
-    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, source):
+    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha, source):
         """
 
         """
@@ -809,7 +856,7 @@ class OpsReflected(Ops):
         rTA1Rz = tt.dot(rTA1Rz, A1InvFA1)
 
         # Rotate to the correct phase
-        X = self.right_project(rTA1Rz, inc, obl, theta)
+        X = self.right_project(rTA1Rz, inc, obl, theta, alpha)
 
         # TODO: Implement occultations in reflected light
         # Throw error if there's an occultation
@@ -832,15 +879,27 @@ class OpsReflected(Ops):
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
+        tt.dscalar(),
         tt.dmatrix(),
     )
-    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, source):
+    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha, source):
         """
 
         """
         return tt.dot(
             self.X(
-                theta, xo, yo, zo, ro, inc, obl, u, f, source, no_compile=True
+                theta,
+                xo,
+                yo,
+                zo,
+                ro,
+                inc,
+                obl,
+                u,
+                f,
+                alpha,
+                source,
+                no_compile=True,
             ),
             y,
         )
@@ -855,9 +914,10 @@ class OpsReflected(Ops):
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
+        tt.dscalar(),
         tt.dmatrix(),
     )
-    def render(self, res, projection, theta, inc, obl, y, u, f, source):
+    def render(self, res, projection, theta, inc, obl, y, u, f, alpha, source):
         """
         
         """
@@ -880,13 +940,16 @@ class OpsReflected(Ops):
                     inc,
                     obl,
                     theta,
+                    alpha,
                 ),
                 tt.transpose(tt.tile(y, [theta.shape[0], 1])),
             )
         else:
             Ry = ifelse(
                 tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
-                self.left_project(y, inc, obl, tt.tile(theta[0], self.nw)),
+                self.left_project(
+                    y, inc, obl, tt.tile(theta[0], self.nw), alpha
+                ),
                 y,
             )
 
@@ -1068,6 +1131,7 @@ class OpsSystem(object):
         pri_obl,
         pri_u,
         pri_f,
+        pri_alpha,
         sec_r,
         sec_m,
         sec_prot,
@@ -1083,6 +1147,7 @@ class OpsSystem(object):
         sec_obl,
         sec_u,
         sec_f,
+        sec_alpha,
     ):
         # Exposure time integration?
         if self.texp != 0.0:
@@ -1169,6 +1234,7 @@ class OpsSystem(object):
             pri_obl,
             pri_u,
             pri_f,
+            pri_alpha,
             no_compile=True,
         )
 
@@ -1185,6 +1251,7 @@ class OpsSystem(object):
                     sec_obl[i],
                     sec_u[i],
                     sec_f[i],
+                    sec_alpha[i],
                     *source[i],
                     no_compile=True,
                 )
@@ -1229,6 +1296,7 @@ class OpsSystem(object):
                     pri_obl,
                     pri_u,
                     pri_f,
+                    pri_alpha,
                     no_compile=True,
                 )
                 - phase_pri[idx],
@@ -1268,6 +1336,7 @@ class OpsSystem(object):
                     sec_obl[i],
                     sec_u[i],
                     sec_f[i],
+                    sec_alpha[i],
                     *source_occ[i],
                     no_compile=True,
                 )
@@ -1311,6 +1380,7 @@ class OpsSystem(object):
                         sec_obl[i],
                         sec_u[i],
                         sec_f[i],
+                        sec_alpha[i],
                         *source_occ[i],
                         no_compile=True,
                     )
@@ -1355,6 +1425,7 @@ class OpsSystem(object):
         ),  # y
         tt.dvector(),  # u
         tt.dvector(),  # f
+        tt.dscalar(),  # alpha
         # -- secondaries --
         tt.dvector(),  # r
         tt.dvector(),  # m
@@ -1376,6 +1447,7 @@ class OpsSystem(object):
         ),  # y
         tt.dmatrix(),  # u
         tt.dmatrix(),  # f
+        tt.dvector(),  # alpha
     )
     def flux(
         self,
@@ -1391,6 +1463,7 @@ class OpsSystem(object):
         pri_y,
         pri_u,
         pri_f,
+        pri_alpha,
         sec_r,
         sec_m,
         sec_prot,
@@ -1407,6 +1480,7 @@ class OpsSystem(object):
         sec_y,
         sec_u,
         sec_f,
+        sec_alpha,
     ):
         X = self.X(
             t,
@@ -1420,6 +1494,7 @@ class OpsSystem(object):
             pri_obl,
             pri_u,
             pri_f,
+            pri_alpha,
             sec_r,
             sec_m,
             sec_prot,
@@ -1435,6 +1510,7 @@ class OpsSystem(object):
             sec_obl,
             sec_u,
             sec_f,
+            sec_alpha,
             no_compile=True,
         )
         y = tt.concatenate((pri_y, tt.reshape(sec_y, (-1,))))
@@ -1460,6 +1536,7 @@ class OpsSystem(object):
         ),  # y
         tt.dvector(),  # u
         tt.dvector(),  # f
+        tt.dscalar(),  # alpha
         # -- secondaries --
         tt.dvector(),  # r
         tt.dvector(),  # m
@@ -1481,6 +1558,7 @@ class OpsSystem(object):
         ),  # y
         tt.dmatrix(),  # u
         tt.dmatrix(),  # f
+        tt.dvector(),  # alpha
     )
     def render(
         self,
@@ -1497,6 +1575,7 @@ class OpsSystem(object):
         pri_y,
         pri_u,
         pri_f,
+        pri_alpha,
         sec_r,
         sec_m,
         sec_prot,
@@ -1513,6 +1592,7 @@ class OpsSystem(object):
         sec_y,
         sec_u,
         sec_f,
+        sec_alpha,
     ):
         # Compute the relative positions of all bodies
         orbit = exoplanet.orbits.KeplerianOrbit(
@@ -1569,6 +1649,7 @@ class OpsSystem(object):
             pri_y,
             pri_u,
             pri_f,
+            pri_alpha,
             no_compile=True,
         )
         img_sec = tt.as_tensor_variable(
@@ -1582,6 +1663,7 @@ class OpsSystem(object):
                     sec_y[i],
                     sec_u[i],
                     sec_f[i],
+                    sec_alpha[i],
                     *source[i],
                     no_compile=True,
                 )

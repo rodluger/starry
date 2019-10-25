@@ -9,17 +9,15 @@
 #undef NDEBUG
 #endif
 
-// TODO: #define EIGEN_DONT_PARALLELIZE
-
 // Includes
-#include "ops.h"
-#include "utils.h"
-#include <iostream>
 #include <pybind11/eigen.h>
 #include <pybind11/embed.h>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <iostream>
+#include "ops.h"
+#include "utils.h"
 namespace py = pybind11;
 
 // Multiprecision?
@@ -32,7 +30,6 @@ using Scalar = double;
 
 // Register the Python module
 PYBIND11_MODULE(_c_ops, m) {
-
   // Import some useful stuff
   using namespace starry::utils;
 
@@ -40,7 +37,7 @@ PYBIND11_MODULE(_c_ops, m) {
   py::class_<starry::Ops<Scalar>> Ops(m, "Ops");
 
   // Constructor
-  Ops.def(py::init<int, int, int>());
+  Ops.def(py::init<int, int, int, int>());
 
   // Map dimensions
   Ops.def_property_readonly("ydeg",
@@ -59,6 +56,8 @@ PYBIND11_MODULE(_c_ops, m) {
                             [](starry::Ops<Scalar> &ops) { return ops.deg; });
   Ops.def_property_readonly("N",
                             [](starry::Ops<Scalar> &ops) { return ops.N; });
+  Ops.def_property_readonly(
+      "drorder", [](starry::Ops<Scalar> &ops) { return ops.drorder; });
 
   // Occultation solution in emitted light
   Ops.def("sT", [](starry::Ops<Scalar> &ops, const Vector<double> &b,
@@ -255,26 +254,60 @@ PYBIND11_MODULE(_c_ops, m) {
   // Filter operator
   Ops.def("F", [](starry::Ops<Scalar> &ops, const Vector<double> &u,
                   const Vector<double> &f) {
-    ops.F.compute(u.template cast<Scalar>(), f.template cast<Scalar>());
+    ops.F.computeF(u.template cast<Scalar>(), f.template cast<Scalar>());
     return ops.F.F.template cast<double>();
   });
 
   // Gradient of filter operator
   Ops.def("F", [](starry::Ops<Scalar> &ops, const Vector<double> &u,
                   const Vector<double> &f, const Matrix<double> &bF) {
-    ops.F.compute(u.template cast<Scalar>(), f.template cast<Scalar>(),
-                  bF.template cast<Scalar>());
+    ops.F.computeF(u.template cast<Scalar>(), f.template cast<Scalar>(),
+                   bF.template cast<Scalar>());
     return py::make_tuple(ops.F.bu.template cast<double>(),
                           ops.F.bf.template cast<double>());
   });
 
   // Compute the Ylm expansion of a gaussian spot
-  Ops.def("spotYlm", [](starry::Ops<Scalar> &ops, const RowVector<Scalar> &amp,
-                        const Scalar &sigma, const Scalar &lat,
-                        const Scalar &lon) {
-    return ops
-        .spotYlm(amp.template cast<double>(), static_cast<Scalar>(sigma),
-                 static_cast<Scalar>(lat), static_cast<Scalar>(lon))
-        .template cast<double>();
+  Ops.def(
+      "spotYlm", [](starry::Ops<Scalar> &ops, const RowVector<Scalar> &amp,
+                    const Scalar &sigma, const Scalar &lat, const Scalar &lon) {
+        return ops
+            .spotYlm(amp.template cast<double>(), static_cast<Scalar>(sigma),
+                     static_cast<Scalar>(lat), static_cast<Scalar>(lon))
+            .template cast<double>();
+      });
+
+  // Differential rotation operator (matrices)
+  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
+                           const Vector<double> &theta) {
+    ops.D.tensordotD(M.template cast<Scalar>(), theta.template cast<Scalar>());
+    return ops.D.tensordotD_result.template cast<double>();
+  });
+
+  // Differential rotation operator (vectors)
+  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const RowVector<double> &M,
+                           const Vector<double> &theta) {
+    ops.D.tensordotD(M.template cast<Scalar>(), theta.template cast<Scalar>());
+    return ops.D.tensordotD_result.template cast<double>();
+  });
+
+  // Gradient of differential rotation operator (vectors)
+  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const RowVector<double> &M,
+                           const Vector<double> &theta,
+                           const Matrix<double> &bMD) {
+    ops.D.tensordotD(M.template cast<Scalar>(), theta.template cast<Scalar>(),
+                     bMD.template cast<Scalar>());
+    return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
+                          ops.D.tensordotD_btheta.template cast<double>());
+  });
+
+  // Gradient of differential rotation operator (matrices)
+  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
+                           const Vector<double> &theta,
+                           const Matrix<double> &bMD) {
+    ops.D.tensordotD(M.template cast<Scalar>(), theta.template cast<Scalar>(),
+                     bMD.template cast<Scalar>());
+    return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
+                          ops.D.tensordotD_btheta.template cast<double>());
   });
 }
