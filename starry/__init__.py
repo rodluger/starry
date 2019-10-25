@@ -16,6 +16,8 @@ except NameError:
 
 # Import all modules
 if not __STARRY_SETUP__:
+    import os
+    PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
 
     # Force double precision
     import theano.tensor as tt

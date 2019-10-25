@@ -1,1 +1,1 @@
-from nexsci import from_archive
+from .nexsci import from_nexsci
