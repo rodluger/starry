@@ -61,7 +61,7 @@ def from_nexsci(name, limb_darkening=[0.4, 0.2]):
         r = (np.asarray(d.pl_radj * u.jupiterRad.to(u.solRad)) / np.asarray(d.st_rad))
 
         planet = Secondary(Map(L=0), porb=d.pl_orbper, t0=d.pl_tranmid, r=r,
-                            inc=d.pl_orbincl, ecc=d.pl_eccen)
+                            inc=d.pl_orbincl, ecc=d.pl_eccen, w=d.pl_orblper)
         planets.append(planet)
     sys = System(star, *planets)
     return sys
