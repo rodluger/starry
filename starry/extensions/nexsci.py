@@ -29,12 +29,19 @@ def from_nexsci(name, limb_darkening=[0.4, 0.2]):
         Starry system using planet parameters from nexsci
     """
     df = _get_nexsci_data()
-    if np.any([name.endswith(i) for i in 'bcdefghijklmnopqrstuvwxyz']):
-        df = df[(df.pl_hostname + df.pl_letter) == name].reset_index(drop=True)
+    if name is 'random':
+        system_list = df[['pl_hostname', 'pl_letter', 'pl_orbper', 'pl_trandep', 'pl_radj']].dropna()['pl_hostname'].unique()
+        name = np.random.choice(system_list)
+        warn('Randomly selected {}'.format(name))
+        df = df[df.pl_hostname == name].reset_index(drop=True)
     else:
-        df = df[(df.pl_hostname) == name].reset_index(drop=True)
-    if len(df) == 0:
-        raise ValueError("{} does not exist at NExSci".format(name))
+        sname = name.lower().replace('-', '').replace(' ','')
+        if np.any([name.endswith(i) for i in 'bcdefghijklmnopqrstuvwxyz']):
+            df = df[(df.stripped_name + df.pl_letter) == sname].reset_index(drop=True)
+        else:
+            df = df[(df.stripped_name) == sname].reset_index(drop=True)
+        if len(df) == 0:
+            raise ValueError("{} does not exist at NExSci".format(name))
 
     m = df.iloc[0].st_mass
     if ~np.isfinite(m):
@@ -47,9 +54,14 @@ def from_nexsci(name, limb_darkening=[0.4, 0.2]):
         star.map[idx + 1] = limb_darkening[idx]
     planets = []
     for idx, d in df.iterrows():
+        for key in ['pl_orbper', 'pl_tranmid', 'pl_radj']:
+            if ~np.isfinite(d[key]):
+                warn('{} is not set for {}{}, planet will be skipped'
+                        .format(key, d.pl_hostname, d.pl_letter))
         r = (np.asarray(d.pl_radj * u.jupiterRad.to(u.solRad)) / np.asarray(d.st_rad))
+
         planet = Secondary(Map(L=0), porb=d.pl_orbper, t0=d.pl_tranmid, r=r,
-                            inc=d.pl_orbincl, ecc=d.pl_eccen, Omega=d.pl_orblper)
+                            inc=d.pl_orbincl, ecc=d.pl_eccen)
         planets.append(planet)
     sys = System(star, *planets)
     return sys
@@ -111,6 +123,8 @@ def _retrieve_online_data(guess_masses=False):
     df = pd.merge(left=planets, right=composite, how='left', left_on=['pl_hostname', 'pl_letter'],
                     right_on = ['pl_hostname', 'pl_letter'])
     df = _fill_data(df)
+
+    df['stripped_name'] = np.asarray([n.lower().replace('-', '').replace(' ','') for n in df.pl_hostname])
     df[df.pl_tranflag==1].to_csv("{}/extensions/data/planets.csv".format(PACKAGEDIR), index=False)
 
 def _check_data_on_import():
