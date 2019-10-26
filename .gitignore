@@ -16,6 +16,7 @@ docs/.doxyxml
 docs/.build
 notebooks/tmp
 docs/notebooks
+junit/
 
 tmp/*
 tests/cpp/test

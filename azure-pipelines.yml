@@ -21,7 +21,7 @@ jobs:
       theano-cache purge
       pip install -U pip
       pip install -U setuptools
-      pip install -U parameterized nose pytest sphinx
+      pip install -U parameterized nose pytest pytest-cov sphinx
       pip install -U -r requirements.txt
       pip install -U -r optional-requirements.txt
       git clone https://github.com/rodluger/starry_beta
@@ -41,13 +41,23 @@ jobs:
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      py.test -v -s tests/lazy
+      py.test -v -s tests/lazy --junitxml=junit/test-results-lazy.xml
     displayName: 'Run tests: lazy'
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      py.test -v -s tests/greedy
+      py.test -v -s tests/greedy --junitxml=junit/test-results-greedy.xml
     displayName: 'Run tests: greedy'
+  - script: |
+      . $CONDA/etc/profile.d/conda.sh
+      conda activate starry
+      py.test -v -s starry/extensions/tests/lazy --junitxml=junit/test-results-extensions-lazy.xml
+    displayName: 'Run extensions tests: lazy'
+  - script: |
+      . $CONDA/etc/profile.d/conda.sh
+      conda activate starry
+      py.test -v -s starry/extensions/tests/greedy --junitxml=junit/test-results-extensions-greedy.xml
+    displayName: 'Run extensions tests: greedy'
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
@@ -76,3 +86,8 @@ jobs:
       cd ../../
     displayName: 'Build docs'
     condition: ne(variables['Build.Reason'], 'PullRequest')
+  - task: PublishTestResults@2
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFiles: '**/test-*.xml'
+      testRunTitle: 'Publish test results'
