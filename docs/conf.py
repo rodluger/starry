@@ -86,6 +86,10 @@ html_css_files = ["css/hide_input.css"]
 
 # -- Extension settings ------------------------------------------------------
 
+from ipywidgets.embed import DEFAULT_EMBED_REQUIREJS_URL
+
+html_js_files += [DEFAULT_EMBED_REQUIREJS_URL]
+
 # Add a heading to notebooks
 nbsphinx_prolog = """
 {% set docname = env.doc2path(env.docname, base=None) %}

@@ -31,3 +31,5 @@ Advanced
    notebooks/NullSpace.ipynb
    notebooks/StayingPositive.ipynb
    notebooks/LightTravelDelay.ipynb
+   notebooks/LDNormalization.ipynb
+   notebooks/HotJupiterPhaseCurve.ipynb

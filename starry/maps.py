@@ -1,13 +1,4 @@
 # -*- coding: utf-8 -*-
-
-# TODO:
-# - L normalization: is the integral of I equal to L?
-# - Reflected light: get rid of `source`; just use `xo`, `yo`, `zo`
-# - Reflected light maps: what is L? Make it prop to 1/r^2
-# - Is sys.secondaries[i] a ptr as before? Check.
-# - MAP Op
-# - Gradient of Diff rot op
-
 from . import config
 from .ops import (
     Ops,

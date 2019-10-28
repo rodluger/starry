@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-TODO:
-    - Radial velocity support
-"""
 from . import config
 from .maps import MapBase, RVBase, ReflectedBase
 from .ops import (
