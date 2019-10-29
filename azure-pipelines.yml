@@ -43,6 +43,7 @@ jobs:
       pip install -U ipywidgets
       sudo apt-get install ffmpeg
       pip install -U sympy
+      pip install -U corner
     displayName: 'Install dependencies'
 
   - script: |
