@@ -37,7 +37,6 @@ class Body(object):
         mass_unit=units.Msun,
         time_unit=units.day,
         angle_unit=units.degree,
-        quiet=False,
         **kwargs,
     ):
         # Surface map
@@ -55,8 +54,6 @@ class Body(object):
         self.prot = prot
         self.t0 = t0
         self.theta0 = theta0
-
-        self.quiet = quiet
 
     @property
     def length_unit(self):
@@ -179,7 +176,7 @@ class Body(object):
         return self._map.cast(*args, **kwargs)
 
     def _check_kwargs(self, method, kwargs):
-        if not self.quiet:
+        if not config.quiet:
             for key in kwargs.keys():
                 message = "Invalid keyword `{0}` in call to `{1}()`. Ignoring."
                 message = message.format(key, method)
@@ -214,8 +211,6 @@ class Primary(Body):
         angle_unit (optional): An ``astropy.units`` unit defining the 
             angular metric for this object. Defaults to 
             :py:attr:`astropy.units.degree.`
-        quiet (bool, optional): Suppress information messages? 
-            Defaults to False.
     """
 
     def __init__(self, map, **kwargs):
@@ -231,7 +226,6 @@ class Primary(Body):
             "mass_unit",
             "time_unit",
             "angle_unit",
-            "quiet",
         ]:
             kwargs.pop(kw, None)
         self._check_kwargs("Primary", kwargs)
@@ -281,8 +275,6 @@ class Secondary(Body):
         angle_unit (optional): An ``astropy.units`` unit defining the 
             angular metric for this object. Defaults to 
             :py:attr:`astropy.units.degree.`
-        quiet (bool, optional): Suppress information messages? 
-            Defaults to False.
     """
 
     def __init__(self, map, **kwargs):
@@ -298,7 +290,6 @@ class Secondary(Body):
             "mass_unit",
             "time_unit",
             "angle_unit",
-            "quiet",
         ]:
             kwargs.pop(kw, None)
 
@@ -434,8 +425,6 @@ class System(object):
             be one of the following: ``0`` for a centered Riemann sum 
             (equivalent to the "resampling" procedure suggested by Kipping 2010), 
             ``1`` for the trapezoid rule, or ``2`` for Simpson’s rule.
-        quiet (bool, optional): Suppress information messages? 
-            Defaults to False.
     """
 
     def __init__(
@@ -447,7 +436,6 @@ class System(object):
         texp=None,
         oversample=7,
         order=0,
-        quiet=False,
     ):
         # Units
         self.time_unit = time_unit
@@ -506,7 +494,6 @@ class System(object):
             self.ops = OpsRVSystem(
                 self._primary,
                 self._secondaries,
-                quiet=quiet,
                 light_delay=self._light_delay,
                 texp=self._texp,
                 oversample=self._oversample,
@@ -517,7 +504,6 @@ class System(object):
                 self._primary,
                 self._secondaries,
                 reflected=self._reflected,
-                quiet=quiet,
                 light_delay=self._light_delay,
                 texp=self._texp,
                 oversample=self._oversample,
@@ -789,7 +775,11 @@ class System(object):
 
             plt.show()
 
-    def X(self, t):
+    def X(self, *args, **kwargs):
+        """Alias for :py:meth:`design_matrix`. *Deprecated*"""
+        return self.design_matrix(*args, **kwargs)
+
+    def design_matrix(self, t):
         """Compute the system flux design matrix at times ``t``.
         
         Args:

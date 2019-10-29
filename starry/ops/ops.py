@@ -14,7 +14,6 @@ from theano.ifelse import ifelse
 import theano.tensor.slinalg as sla
 import theano.tensor.nlinalg as nla
 import numpy as np
-import logging
 from astropy import units, constants
 
 try:
@@ -50,25 +49,11 @@ class Ops(object):
     """
 
     def __init__(
-        self,
-        ydeg,
-        udeg,
-        fdeg,
-        drorder,
-        nw,
-        quiet=False,
-        reflected=False,
-        **kwargs,
+        self, ydeg, udeg, fdeg, drorder, nw, reflected=False, **kwargs
     ):
         """
 
         """
-        # Logging
-        if quiet:
-            logger.setLevel(logging.WARNING)
-        else:
-            logger.setLevel(logging.INFO)
-
         # Ingest kwargs
         self.ydeg = ydeg
         self.udeg = udeg
@@ -85,10 +70,10 @@ class Ops(object):
             self.cast = to_array
 
         # Instantiate the C++ Ops
-        logger.handlers[0].terminator = ""
+        config.rootHandler.terminator = ""
         logger.info("Pre-computing some matrices... ")
         self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg, drorder)
-        logger.handlers[0].terminator = "\n"
+        config.rootHandler.terminator = "\n"
         logger.info("Done.")
 
         # Solution vectors
@@ -991,7 +976,6 @@ class OpsSystem(object):
         primary,
         secondaries,
         reflected=False,
-        quiet=False,
         light_delay=False,
         texp=None,
         oversample=7,
@@ -1000,12 +984,6 @@ class OpsSystem(object):
         """
 
         """
-        # Logging
-        if quiet:
-            logger.setLevel(logging.WARNING)
-        else:
-            logger.setLevel(logging.INFO)
-
         # System members
         self.primary = primary
         self.secondaries = secondaries
@@ -1099,6 +1077,7 @@ class OpsSystem(object):
         tt.dscalar(),  # obl
         tt.dvector(),  # u
         tt.dvector(),  # f
+        tt.dscalar(),  # alpha
         # -- secondaries --
         tt.dvector(),  # r
         tt.dvector(),  # m
@@ -1117,6 +1096,7 @@ class OpsSystem(object):
         tt.dvector(),  # obl
         tt.dmatrix(),  # u
         tt.dmatrix(),  # f
+        tt.dvector(),  # alpha
     )
     def X(
         self,
