@@ -72,7 +72,6 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 # a list of builtin themes.
 #
 html_theme = "sphinx_rtd_theme"
-
 html_theme_options = {"display_version": True}
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -80,7 +79,6 @@ html_theme_options = {"display_version": True}
 # so a file named "default.css" will overwrite the builtin "default.css".
 
 html_static_path = ["_static"]
-
 html_js_files = ["js/version.js"]
 html_css_files = ["css/hide_input.css"]
 

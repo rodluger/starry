@@ -26,20 +26,26 @@ jobs:
       pip install -U parameterized nose pytest pytest-cov sphinx
       pip install -U -r requirements.txt
       pip install -U -r optional-requirements.txt
-      git clone https://github.com/rodluger/starry_beta
-      pushd starry_beta
-      python setup.py develop
-      popd
       git clone https://github.com/rodluger/nbsphinx
       pushd nbsphinx
       python setup.py develop
       popd
+      sudo apt-get install ffmpeg
     displayName: 'Install dependencies'
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
       python setup.py develop
     displayName: 'Install starry'
+  - script: |
+      . $CONDA/etc/profile.d/conda.sh
+      conda activate starry
+      git clone https://github.com/rodluger/starry_beta
+      pushd starry_beta
+      python setup.py develop
+      popd
+    displayName: 'Install starry beta (for benchmarks)'
+    condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
