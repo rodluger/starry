@@ -20,6 +20,20 @@ else:
 builtins.__STARRY_DOCS__ = True
 import starry
 
+# Get current git branch
+import subprocess
+
+try:
+    branch = (
+        subprocess.check_output(["git", "branch"])
+        .decode("utf-8")
+        .split("* ")[1]
+        .split("\n")[0]
+    )
+except:
+    # Try master
+    branch = "master"
+
 # Copy notebooks over
 import copy_notebooks
 import glob
@@ -89,11 +103,14 @@ from ipywidgets.embed import DEFAULT_EMBED_REQUIREJS_URL
 html_js_files += [DEFAULT_EMBED_REQUIREJS_URL]
 
 # Add a heading to notebooks (TODO: switch to `master`)
-nbsphinx_prolog = """
+nbsphinx_prolog = (
+    """
 {% set docname = env.doc2path(env.docname, base=None) %}
 .. note:: This tutorial was generated from a Jupyter notebook that can be
-          downloaded `here <https://github.com/rodluger/starry/blob/dev/docs/{{ docname }}>`_.
+          downloaded `here <https://github.com/rodluger/starry/blob/%s/docs/{{ docname }}>`_.
 """
+    % branch
+)
 nbsphinx_prompt_width = 0
 nbsphinx_timeout = 600
 napoleon_use_ivar = True

@@ -98,6 +98,8 @@ jobs:
       mv ../html/* $STARRY_VERSION/
       # Copy over the coverage results, if available
       mv ../../../htmlcov $STARRY_VERSION/
+      # Update the version list, if necessary
+      python update_version_list.py $STARRY_VERSION
       # Commit & force push back
       git init
       touch .nojekyll
