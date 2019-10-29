@@ -6,6 +6,8 @@ rootLogger.addHandler(logging.StreamHandler())
 
 
 class Config(object):
+    """Global config container."""
+
     def __init__(self):
         self._allow_lazy_changes = True
         self.lazy = True
