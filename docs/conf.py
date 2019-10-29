@@ -103,13 +103,14 @@ from ipywidgets.embed import DEFAULT_EMBED_REQUIREJS_URL
 html_js_files += [DEFAULT_EMBED_REQUIREJS_URL]
 
 # Add a heading to notebooks (TODO: switch to `master`)
-nbsphinx_prolog = (
-    """
-{% set docname = env.doc2path(env.docname, base=None) %}
+nbsphinx_prolog = """
+{%s set docname = env.doc2path(env.docname, base=None) %s}
 .. note:: This tutorial was generated from a Jupyter notebook that can be
           downloaded `here <https://github.com/rodluger/starry/blob/%s/docs/{{ docname }}>`_.
-"""
-    % branch
+""" % (
+    "%",
+    "%",
+    branch,
 )
 nbsphinx_prompt_width = 0
 nbsphinx_timeout = 600
