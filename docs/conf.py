@@ -94,14 +94,9 @@ nbsphinx_prolog = """
 .. note:: This tutorial was generated from a Jupyter notebook that can be
           downloaded `here <https://github.com/rodluger/starry/blob/dev/docs/{{ docname }}>`_.
 """
-
-# Remove jupyter notebook prompt numbers
 nbsphinx_prompt_width = 0
+nbsphinx_timeout = 600
 napoleon_use_ivar = True
-
-# Todo lists
 todo_include_todos = True
-
 autosummary_generate = True
-
 autodoc_docstring_signature = True
