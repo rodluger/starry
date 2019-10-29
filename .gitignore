@@ -17,6 +17,8 @@ docs/.build
 notebooks/tmp
 docs/notebooks
 junit/
+tests/cov.xml
+coverage.sh
 
 tmp/*
 tests/cpp/test

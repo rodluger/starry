@@ -24,6 +24,7 @@ jobs:
       pip install -U "nbconvert>=5.5"
       pip install -U setuptools
       pip install -U parameterized nose pytest pytest-cov sphinx
+      pip install -U coverage-badge
       pip install -U -r requirements.txt
       pip install -U -r optional-requirements.txt
       git clone https://github.com/rodluger/nbsphinx
@@ -49,26 +50,33 @@ jobs:
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      py.test -v -s tests/lazy --junitxml=junit/test-results-lazy.xml
+      py.test -v -s tests/lazy --junitxml=junit/test-results-lazy.xml --cov=starry --cov-report html:htmlcov tests/lazy
     displayName: 'Run tests: lazy' 
     condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      py.test -v -s tests/greedy --junitxml=junit/test-results-greedy.xml
+      py.test -v -s tests/greedy --junitxml=junit/test-results-greedy.xml --cov=starry --cov-append --cov-report html:htmlcov tests/greedy
     displayName: 'Run tests: greedy'
     condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      py.test -v -s starry/extensions/tests/lazy --junitxml=junit/test-results-extensions-lazy.xml
+      py.test -v -s starry/extensions/tests/lazy --junitxml=junit/test-results-extensions-lazy.xml --cov=starry --cov-append --cov-report html:htmlcov starry/extensions/tests/lazy
     displayName: 'Run extensions tests: lazy'
     condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      py.test -v -s starry/extensions/tests/greedy --junitxml=junit/test-results-extensions-greedy.xml
+      py.test -v -s starry/extensions/tests/greedy --junitxml=junit/test-results-extensions-greedy.xml --cov=starry --cov-append --cov-report html:htmlcov starry/extensions/tests/greedy
     displayName: 'Run extensions tests: greedy'
+    condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
+  - script: |
+      . $CONDA/etc/profile.d/conda.sh
+      conda activate starry
+      mkdir -p htmlcov
+      coverage-badge -o htmlcov/coverage.svg
+    displayName: 'Get coverage badge'
     condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
   - script: |
       . $CONDA/etc/profile.d/conda.sh
@@ -88,6 +96,8 @@ jobs:
       rm -rf $STARRY_VERSION/*
       mkdir -p $STARRY_VERSION
       mv ../html/* $STARRY_VERSION/
+      # Copy over the coverage results, if available
+      mv ../../../htmlcov $STARRY_VERSION/
       # Commit & force push back
       git init
       touch .nojekyll
