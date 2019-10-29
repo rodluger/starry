@@ -88,7 +88,7 @@ from ipywidgets.embed import DEFAULT_EMBED_REQUIREJS_URL
 
 html_js_files += [DEFAULT_EMBED_REQUIREJS_URL]
 
-# Add a heading to notebooks
+# Add a heading to notebooks (TODO: switch to `master`)
 nbsphinx_prolog = """
 {% set docname = env.doc2path(env.docname, base=None) %}
 .. note:: This tutorial was generated from a Jupyter notebook that can be
