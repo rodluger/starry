@@ -21,6 +21,7 @@ jobs:
       theano-cache purge
       pip install -U pip
       pip install -U ipywidgets
+      pip install -U "nbconvert>=5.5"
       pip install -U setuptools
       pip install -U parameterized nose pytest pytest-cov sphinx
       pip install -U -r requirements.txt
@@ -43,22 +44,26 @@ jobs:
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
       py.test -v -s tests/lazy --junitxml=junit/test-results-lazy.xml
-    displayName: 'Run tests: lazy'
+    displayName: 'Run tests: lazy' 
+    condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
       py.test -v -s tests/greedy --junitxml=junit/test-results-greedy.xml
     displayName: 'Run tests: greedy'
+    condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
       py.test -v -s starry/extensions/tests/lazy --junitxml=junit/test-results-extensions-lazy.xml
     displayName: 'Run extensions tests: lazy'
+    condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
       py.test -v -s starry/extensions/tests/greedy --junitxml=junit/test-results-extensions-greedy.xml
     displayName: 'Run extensions tests: greedy'
+    condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
@@ -83,10 +88,10 @@ jobs:
       git add -f .nojekyll
       git add -f *
       git -c user.name='rodluger' -c user.email='rodluger@gmail.com' commit -m "rebuild gh-pages for ${STARRY_VERSION}"
-      git push -f https://$(GITHUB_USER):$(GITHUB_API_KEY)@github.com/rodluger/starry HEAD:gh-pages #>/dev/null 2>&1 #-q
+      git push -f https://$(GITHUB_USER):$(GITHUB_API_KEY)@github.com/rodluger/starry HEAD:gh-pages >/dev/null 2>&1 -q
       cd ../../
     displayName: 'Build docs'
-    condition: ne(variables['Build.Reason'], 'PullRequest')
+    condition: and(ne(variables['Build.Reason'], 'PullRequest'), not(contains(variables['Build.SourceVersionMessage'], '[skip docs]')))
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
