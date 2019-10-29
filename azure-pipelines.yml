@@ -64,28 +64,34 @@ jobs:
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      py.test -v -s tests/lazy --junitxml=junit/test-results-lazy.xml --cov=starry --cov-report html:htmlcov tests/lazy
+      py.test -v -s tests/lazy --junitxml=junit/test-results-lazy.xml \
+              --cov=starry --cov-report html:htmlcov tests/lazy
     displayName: 'Run tests: lazy' 
     condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
 
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      py.test -v -s tests/greedy --junitxml=junit/test-results-greedy.xml --cov=starry --cov-append --cov-report html:htmlcov tests/greedy
+      py.test -v -s tests/greedy --junitxml=junit/test-results-greedy.xml \
+              --cov=starry --cov-append --cov-report html:htmlcov tests/greedy
     displayName: 'Run tests: greedy'
     condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
 
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      py.test -v -s starry/extensions/tests/lazy --junitxml=junit/test-results-extensions-lazy.xml --cov=starry --cov-append --cov-report html:htmlcov starry/extensions/tests/lazy
+      py.test -v -s starry/extensions/tests/lazy \
+              --junitxml=junit/test-results-extensions-lazy.xml --cov=starry \
+              --cov-append --cov-report html:htmlcov starry/extensions/tests/lazy
     displayName: 'Run extensions tests: lazy'
     condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
 
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-      py.test -v -s starry/extensions/tests/greedy --junitxml=junit/test-results-extensions-greedy.xml --cov=starry --cov-append --cov-report html:htmlcov starry/extensions/tests/greedy
+      py.test -v -s starry/extensions/tests/greedy \
+              --junitxml=junit/test-results-extensions-greedy.xml --cov=starry \
+              --cov-append --cov-report html:htmlcov starry/extensions/tests/greedy
     displayName: 'Run extensions tests: greedy'
     condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
 
@@ -129,8 +135,10 @@ jobs:
       touch .nojekyll
       git add -f .nojekyll
       git add -f *
-      git -c user.name='rodluger' -c user.email='rodluger@gmail.com' commit -m "rebuild gh-pages for ${STARRY_VERSION}"
-      git push -f https://$(GITHUB_USER):$(GITHUB_API_KEY)@github.com/rodluger/starry HEAD:gh-pages >/dev/null 2>&1 -q
+      git -c user.name='rodluger' -c user.email='rodluger@gmail.com' \
+          commit -m "rebuild gh-pages for ${STARRY_VERSION}"
+      git push -f https://$(GITHUB_USER):$(GITHUB_API_KEY)@github.com/rodluger/starry \
+          HEAD:gh-pages >/dev/null 2>&1 -q
       cd ../../
     displayName: 'Build docs'
     condition: and(ne(variables['Build.Reason'], 'PullRequest'), not(contains(variables['Build.SourceVersionMessage'], '[skip docs]')))
