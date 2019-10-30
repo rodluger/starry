@@ -8,15 +8,7 @@ fi
 
 # Install dependencies
 pip install -U parameterized nose pytest pytest-cov coverage-badge
-
-# Install starry beta
-# TODO: use a wheel!
-if ! python -c "import starry_beta" &> /dev/null; then
-    git clone https://github.com/rodluger/starry_beta
-    pushd starry_beta
-    python setup.py develop &> /dev/null
-    popd
-fi
+pip install -U starry_beta
 
 # Run tests
 py.test -v -s tests/greedy --junitxml=junit/test-results-greedy.xml \

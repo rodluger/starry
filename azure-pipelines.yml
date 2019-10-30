@@ -57,6 +57,7 @@ jobs:
     env:
       GHUSER: $(GITHUB_USER)
       GHKEY: $(GITHUB_API_KEY)
+      GHBRANCH: $(Build.SourceBranchName)
     condition: and(ne(variables['Build.Reason'], 'PullRequest'), not(contains(variables['Build.SourceVersionMessage'], '[skip docs]')))
 
   - task: PublishTestResults@2

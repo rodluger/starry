@@ -7,17 +7,9 @@
 # -- Path setup --------------------------------------------------------------
 
 import os
-
-# Get current git branch
-import subprocess
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-import sys
-
 import starry
 from ipywidgets.embed import DEFAULT_EMBED_REQUIREJS_URL
+import sys
 
 sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
 if sys.version_info[0] < 3:
@@ -26,17 +18,8 @@ else:
     import builtins
 builtins.__STARRY_DOCS__ = True
 
-
-try:
-    branch = (
-        subprocess.check_output(["git", "branch"])
-        .decode("utf-8")
-        .split("* ")[1]
-        .split("\n")[0]
-    )
-except:
-    # Try master
-    branch = "master"
+# Get current git branch
+branch = os.getenv("GHBRANCH", "master")
 
 # -- Project information -----------------------------------------------------
 
