@@ -9,7 +9,7 @@ def test_greedy_example():
     assert True
 
 
-@pytest.mark.xfail
+# DEBUG @pytest.mark.xfail
 def test_greedy_example_failure():
     # Let's see what happens when an extension test fails
     assert False

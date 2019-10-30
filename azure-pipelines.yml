@@ -52,56 +52,9 @@ jobs:
       python setup.py develop
     displayName: 'Install starry'
 
-  - script: |
-      . $CONDA/etc/profile.d/conda.sh
-      conda activate starry
-      git clone https://github.com/rodluger/starry_beta
-      pushd starry_beta
-      python setup.py develop
-      popd
-    displayName: 'Install starry beta (for benchmarks)'
-    condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
-
-  - script: |
-      . $CONDA/etc/profile.d/conda.sh
-      conda activate starry
-      py.test -v -s tests/lazy --junitxml=junit/test-results-lazy.xml \
-              --cov=starry --cov-report html:htmlcov tests/lazy
-    displayName: 'Run tests: lazy' 
-    condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
-
-  - script: |
-      . $CONDA/etc/profile.d/conda.sh
-      conda activate starry
-      py.test -v -s tests/greedy --junitxml=junit/test-results-greedy.xml \
-              --cov=starry --cov-append --cov-report html:htmlcov tests/greedy
-    displayName: 'Run tests: greedy'
-    condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
-
-  - script: |
-      . $CONDA/etc/profile.d/conda.sh
-      conda activate starry
-      py.test -v -s starry/extensions/tests/lazy \
-              --junitxml=junit/test-results-extensions-lazy.xml --cov=starry \
-              --cov-append --cov-report html:htmlcov starry/extensions/tests/lazy
-    displayName: 'Run extensions tests: lazy'
-    condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
-
-  - script: |
-      . $CONDA/etc/profile.d/conda.sh
-      conda activate starry
-      py.test -v -s starry/extensions/tests/greedy \
-              --junitxml=junit/test-results-extensions-greedy.xml --cov=starry \
-              --cov-append --cov-report html:htmlcov starry/extensions/tests/greedy
-    displayName: 'Run extensions tests: greedy'
-    condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
-
-  - script: |
-      . $CONDA/etc/profile.d/conda.sh
-      conda activate starry
-      mkdir -p htmlcov
-      coverage-badge -o htmlcov/coverage.svg
-    displayName: 'Get coverage badge'
+  - bash: .ci/run_tests.sh
+    displayName: 'Run tests'
+    failOnStderr: true
     condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
 
   - script: |
@@ -143,7 +96,7 @@ jobs:
       cd ../../
     displayName: 'Build docs'
     condition: and(ne(variables['Build.Reason'], 'PullRequest'), not(contains(variables['Build.SourceVersionMessage'], '[skip docs]')))
-  
+
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
