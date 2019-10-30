@@ -6,11 +6,18 @@
 
 # -- Path setup --------------------------------------------------------------
 
+import os
+
+# Get current git branch
+import subprocess
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 import sys
-import os
+
+import starry
+from ipywidgets.embed import DEFAULT_EMBED_REQUIREJS_URL
 
 sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
 if sys.version_info[0] < 3:
@@ -18,10 +25,7 @@ if sys.version_info[0] < 3:
 else:
     import builtins
 builtins.__STARRY_DOCS__ = True
-import starry
 
-# Get current git branch
-import subprocess
 
 try:
     branch = (
@@ -33,16 +37,6 @@ try:
 except:
     # Try master
     branch = "master"
-
-# Copy notebooks over
-import copy_notebooks
-import glob
-
-if not os.path.exists("notebooks"):
-    os.mkdir("notebooks")
-for infile in glob.glob("../notebooks/*.ipynb"):
-    outfile = os.path.join("notebooks", os.path.basename(infile))
-    copy_notebooks.copy(infile, outfile)
 
 # -- Project information -----------------------------------------------------
 
@@ -98,7 +92,6 @@ html_css_files = ["css/hide_input.css"]
 
 # -- Extension settings ------------------------------------------------------
 
-from ipywidgets.embed import DEFAULT_EMBED_REQUIREJS_URL
 
 html_js_files += [DEFAULT_EMBED_REQUIREJS_URL]
 

@@ -57,9 +57,25 @@ jobs:
     failOnStderr: false
     condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
 
+  - bash: .ci/run_notebooks.sh
+    displayName: 'Run notebooks'
+    failOnStderr: false
+    env:
+      GHUSER: $(GITHUB_USER)
+      GHKEY: $(GITHUB_API_KEY)
+    condition: contains(variables['Build.SourceVersionMessage'], '[run notebooks]')
+
+  - bash: .ci/get_notebooks.sh
+    displayName: 'Get notebooks'
+    failOnStderr: false
+    condition: not(contains(variables['Build.SourceVersionMessage'], '[run notebooks]'))
+
   - bash: .ci/build_docs.sh
     displayName: 'Build docs'
     failOnStderr: false
+    env:
+      GHUSER: $(GITHUB_USER)
+      GHKEY: $(GITHUB_API_KEY)
     condition: and(ne(variables['Build.Reason'], 'PullRequest'), not(contains(variables['Build.SourceVersionMessage'], '[skip docs]')))
 
   - task: PublishTestResults@2
