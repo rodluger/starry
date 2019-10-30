@@ -36,5 +36,5 @@ git add -f .nojekyll
 git add -f *
 git -c user.name='rodluger' -c user.email='rodluger@gmail.com' \
     commit -m "rebuild gh-pages for ${STARRY_VERSION}"
-git push -f https://$(GITHUB_USER):$(GITHUB_API_KEY)@github.com/rodluger/starry \
+git push -f https://$GITHUB_USER:$GITHUB_API_KEY@github.com/rodluger/starry \
     HEAD:gh-pages >/dev/null 2>&1 -q
