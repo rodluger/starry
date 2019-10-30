@@ -1,5 +1,7 @@
 #!/bin/bash
-set -e
+# DEBUG set -e
+# DEBUG
+echo $GITHUB_USER
 
 # Load the environment
 if [[ -e $CONDA ]]; then
