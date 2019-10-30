@@ -1,2 +1,4 @@
 lib/* linguist-vendored
 notebooks/* linguist-documentation
+*.ipynb filter=nbstripout
+*.ipynb diff=ipynb
