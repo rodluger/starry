@@ -14,6 +14,7 @@ pip install -U sympy
 pip install -U corner
 
 # Run the notebooks using nbconvert
+mkdir -p docs/notebooks
 python .ci/run_notebooks.py
 
 # Force push to `notebooks` branch
