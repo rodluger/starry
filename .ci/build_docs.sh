@@ -16,6 +16,7 @@ pushd nbsphinx
 python setup.py develop
 popd
 pip install -U coverage-badge
+pip install -U ipywidgets
 
 # Build the docs
 make -C docs html
