@@ -6,6 +6,13 @@ if [[ -e $CONDA ]]; then
     conda activate starry
 fi
 
+# Install dependencies
+pip install -U "nbconvert>=5.5"
+pip install -U ipywidgets
+sudo apt-get install ffmpeg
+pip install -U sympy
+pip install -U corner
+
 # Run the notebooks using nbconvert
 python .ci/run_notebooks.py
 

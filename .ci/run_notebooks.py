@@ -1,9 +1,11 @@
 import glob
 import json
 import os
-
 import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
+
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def run(infile, outfile, timeout=600):
@@ -32,6 +34,9 @@ def run(infile, outfile, timeout=600):
 
 
 if __name__ == "__main__":
-    for infile in glob.glob("../notebooks/*.ipynb"):
-        outfile = os.path.join("../docs/notebooks", os.path.basename(infile))
+    files = glob.glob(os.path.join(ROOT, "notebooks", "*.ipynb"))
+    for infile in files:
+        outfile = os.path.join(
+            ROOT, "docs", "notebooks", os.path.basename(infile)
+        )
         run(infile, outfile)

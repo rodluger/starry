@@ -19,32 +19,13 @@ jobs:
   - script: |
       . $CONDA/etc/profile.d/conda.sh
       conda activate starry
-
-      # Base requirements
       conda install -y -q numpy scipy mkl openblas theano
       theano-cache purge
       pip install -U pip
       pip install -U setuptools
-      pip install -U parameterized nose pytest pytest-cov
       pip install -U -r requirements.txt
       pip install -U -r optional-requirements.txt
-
-      # Needed for building the docs
-      conda install -y -q -c conda-forge pandoc
-      pip install -U sphinx
-      pip install -U "nbconvert>=5.5"
-      git clone https://github.com/rodluger/nbsphinx
-      pushd nbsphinx
-      python setup.py develop
-      popd
-      pip install -U coverage-badge
-
-      # Needed for running the notebooks
-      pip install -U ipywidgets
-      sudo apt-get install ffmpeg
-      pip install -U sympy
-      pip install -U corner
-    displayName: 'Install dependencies'
+    displayName: 'Install base dependencies'
 
   - script: |
       . $CONDA/etc/profile.d/conda.sh

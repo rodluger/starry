@@ -7,6 +7,16 @@ if [[ -e $CONDA ]]; then
     conda activate starry
 fi
 
+# Install dependencies
+conda install -y -q -c conda-forge pandoc
+pip install -U sphinx
+pip install -U "nbconvert>=5.5"
+git clone https://github.com/rodluger/nbsphinx
+pushd nbsphinx
+python setup.py develop
+popd
+pip install -U coverage-badge
+
 # Build the docs
 make -C docs html
 cd docs/_build

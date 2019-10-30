@@ -6,6 +6,9 @@ if [[ -e $CONDA ]]; then
     conda activate starry
 fi
 
+# Install dependencies
+pip install -U parameterized nose pytest pytest-cov coverage-badge
+
 # Install starry beta
 # TODO: use a wheel!
 if ! python -c "import starry_beta" &> /dev/null; then
