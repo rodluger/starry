@@ -7,6 +7,9 @@
     <a href="https://dev.azure.com/rodluger/starry/_build">
       <img src="https://img.shields.io/azure-devops/build/rodluger/starry/2/dev"/>
     </a>
+    <a href="https://dev.azure.com/rodluger/starry/_build">
+      <img src="https://img.shields.io/azure-devops/tests/rodluger/starry/2/dev"/>
+    </a>
     <a href="https://rodluger.github.io/starry/v1.0.0.dev6/htmlcov/">
       <img src="https://rodluger.github.io/starry/v1.0.0.dev6/htmlcov/coverage.svg"/>
     </a>

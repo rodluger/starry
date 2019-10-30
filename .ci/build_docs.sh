@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Load the environment
 if [[ -e $CONDA ]]; then

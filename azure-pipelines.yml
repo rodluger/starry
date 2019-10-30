@@ -54,12 +54,12 @@ jobs:
 
   - bash: .ci/run_tests.sh
     displayName: 'Run tests'
-    failOnStderr: true
+    failOnStderr: false
     condition: not(contains(variables['Build.SourceVersionMessage'], '[skip tests]'))
 
   - bash: .ci/build_docs.sh
     displayName: 'Build docs'
-    failOnStderr: true
+    failOnStderr: false
     condition: and(ne(variables['Build.Reason'], 'PullRequest'), not(contains(variables['Build.SourceVersionMessage'], '[skip docs]')))
 
   - task: PublishTestResults@2
