@@ -82,7 +82,7 @@ html_js_files += [DEFAULT_EMBED_REQUIREJS_URL]
 nbsphinx_prolog = """
 {%s set docname = env.doc2path(env.docname, base=None) %s}
 .. note:: This tutorial was generated from a Jupyter notebook that can be
-          downloaded `here <https://github.com/rodluger/starry/blob/%s/docs/{{ docname }}>`_.
+          downloaded `here <https://github.com/rodluger/starry/blob/%s/{{ docname }}>`_.
 """ % (
     "%",
     "%",
