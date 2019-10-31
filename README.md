@@ -19,7 +19,7 @@
     <br/>
     <!-- extensions -->
     <a href="https://dev.azure.com/rodluger/starry/_build">
-      <img src="https://img.shields.io/azure-devops/tests/rodluger/starry/5/dev?label=extensions"/>
+      <img src="https://img.shields.io/azure-devops/tests/rodluger/starry/5/dev?label=extensions%20tests"/>
     </a>
     <!-- extensions coveragee -->
     <a href="https://rodluger.github.io/starry/v1.0.0.dev6/coverage-extensions/">

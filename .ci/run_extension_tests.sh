@@ -18,9 +18,9 @@ py.test -v -s starry/extensions/tests/lazy \
         --junitxml=junit/test-results-extensions-lazy.xml --cov=starry \
         --cov-append --cov-report html:coverage-extensions starry/extensions/tests/lazy
 
-# Get coverage badge
-coverage-badge -o coverage-extensions/coverage.svg
-sed 's/coverage/extensions coverage/g' coverage-extensions/coverage.svg > coverage-extensions/coverage.svg
+# Get coverage badge (hackily edit the label)
+coverage-badge -o tmp.svg
+python -c "f1 = open('tmp.svg', 'r'); f2 = open('coverage-extensions/coverage.svg', 'w'); [f2.write(l.replace('coverage', 'extensions coverage')) for l in f1.readlines()]"
 
 # Force push to `coverage-extensions` branch
 cd coverage-extensions
