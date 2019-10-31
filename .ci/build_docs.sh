@@ -38,7 +38,7 @@ mv ../html/* $STARRY_VERSION/
 mv ../../../htmlcov $STARRY_VERSION/
 
 # Update the version list, if necessary
-cp ../../../update_version_list.py .
+cp ../../../.ci/update_version_list.py .
 python update_version_list.py $STARRY_VERSION
 
 # Commit & force push back
