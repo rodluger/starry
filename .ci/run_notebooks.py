@@ -8,7 +8,7 @@ from nbconvert.preprocessors import ExecutePreprocessor
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def run(infile, outfile, timeout=600):
+def run(infile, outfile, timeout=1200):
     print("Executing %s..." % infile)
 
     # Open the notebook
