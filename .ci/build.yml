@@ -10,6 +10,9 @@ jobs:
 
   - bash: .ci/run_tests.sh
     displayName: 'Run tests'
+    env:
+      GHUSER: $(GITHUB_USER)
+      GHKEY: $(GITHUB_API_KEY)
 
   - task: PublishTestResults@2
     condition: succeededOrFailed()

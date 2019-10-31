@@ -12,9 +12,20 @@ pip install -U starry_beta
 
 # Run tests
 py.test -v -s tests/greedy --junitxml=junit/test-results-greedy.xml \
-        --cov=starry --cov-append --cov-report html:htmlcov tests/greedy
+        --cov=starry --cov-append --cov-report html:coverage tests/greedy
 py.test -v -s tests/lazy --junitxml=junit/test-results-lazy.xml --cov=starry \
-         --cov-append --cov-report html:htmlcov tests/lazy
+         --cov-append --cov-report html:coverage tests/lazy
 
 # Get coverage badge
-coverage-badge -o htmlcov/coverage.svg
+coverage-badge -o coverage/coverage.svg
+
+# Force push to `coverage` branch
+cd coverage
+git init
+touch .nojekyll
+git add -f .nojekyll
+git add -f *
+git -c user.name='rodluger' -c user.email='rodluger@gmail.com' \
+    commit -m "publish coverage"
+git push -f https://$GHUSER:$GHKEY@github.com/rodluger/starry \
+    HEAD:coverage >/dev/null 2>&1 -q

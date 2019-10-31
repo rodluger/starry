@@ -34,8 +34,11 @@ rm -rf $STARRY_VERSION/*
 mkdir -p $STARRY_VERSION
 mv ../html/* $STARRY_VERSION/
 
-# Copy over the coverage results, if available
-mv ../../../htmlcov $STARRY_VERSION/
+# Copy over the coverage results
+mkdir $STARRY_VERSION/coverage
+git clone -b coverage --single-branch https://github.com/rodluger/starry.git $STARRY_VERSION/coverage
+mkdir $STARRY_VERSION/coverage-extensions
+git clone -b coverage-extensions --single-branch https://github.com/rodluger/starry.git $STARRY_VERSION/coverage-extensions
 
 # Update the version list, if necessary
 cp ../../../.ci/update_version_list.py .
