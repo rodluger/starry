@@ -1,3 +1,7 @@
+trigger:
+  - dev
+  - master
+
 jobs:
 - job: Default
   timeoutInMinutes: 60

@@ -1,8 +1,14 @@
+trigger:
+  - dev
+  - master
+
 jobs:
 - job: Default
   timeoutInMinutes: 60
   pool:
     vmImage: Ubuntu-16.04
+  # don't build on PRs
+  condition: ne(variables['Build.Reason'], 'PullRequest')
   steps:
 
   - bash: .ci/setup.sh
