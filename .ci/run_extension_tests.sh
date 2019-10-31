@@ -20,6 +20,7 @@ py.test -v -s starry/extensions/tests/lazy \
 
 # Get coverage badge
 coverage-badge -o coverage-extensions/coverage.svg
+sed 's/coverage/extensions coverage/g' coverage-extensions/coverage.svg > coverage-extensions/coverage.svg
 
 # Force push to `coverage-extensions` branch
 cd coverage-extensions
