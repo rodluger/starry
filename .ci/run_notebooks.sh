@@ -24,4 +24,4 @@ git add -f *.ipynb
 git -c user.name='rodluger' -c user.email='rodluger@gmail.com' \
     commit -m "rebuild notebooks"
 git push -f https://$GHUSER:$GHKEY@github.com/rodluger/starry \
-    HEAD:notebooks # DEBUG >/dev/null 2>&1 -q
+    HEAD:notebooks >/dev/null 2>&1 -q
