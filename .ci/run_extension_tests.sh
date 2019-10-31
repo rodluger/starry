@@ -13,10 +13,14 @@ pip install -U starry_beta
 # Run tests
 py.test -v -s starry/extensions/tests/greedy \
         --junitxml=junit/test-results-extensions-greedy.xml --cov=starry \
-        --cov-append --cov-report html:coverage-extensions starry/extensions/tests/greedy
+        --cov-append --cov-report html:coverage-extensions \
+        --cov-config=.coveragerc_extensions \
+        starry/extensions/tests/greedy
 py.test -v -s starry/extensions/tests/lazy \
         --junitxml=junit/test-results-extensions-lazy.xml --cov=starry \
-        --cov-append --cov-report html:coverage-extensions starry/extensions/tests/lazy
+        --cov-append --cov-report html:coverage-extensions \
+        --cov-config=.coveragerc_extensions \
+        starry/extensions/tests/lazy
 
 # Get coverage badge (hackily edit the label)
 coverage-badge -o tmp.svg
