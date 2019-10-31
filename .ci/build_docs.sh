@@ -43,6 +43,8 @@ python update_version_list.py $STARRY_VERSION
 
 # Commit & force push back
 git init
+touch .nojekyll
+git add .nojekyll
 git add -f *
 git -c user.name='rodluger' -c user.email='rodluger@gmail.com' \
     commit -m "rebuild gh-pages for ${STARRY_VERSION}"
