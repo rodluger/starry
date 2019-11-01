@@ -1,5 +1,5 @@
 [run]
-include =
-    starry/extensions/*
 omit =
     */test_*.py
+    starry/*.py
+    starry/ops/*.py
