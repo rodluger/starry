@@ -10,9 +10,7 @@ from theano.configparser import change_flags
 from theano import gof
 import logging
 
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
-
+logger = logging.getLogger("starry.ops")
 
 __all__ = [
     "logger",
@@ -45,7 +43,6 @@ __all__ = [
 # Constants
 STARRY_ORTHOGRAPHIC_PROJECTION = 0
 STARRY_RECTANGULAR_PROJECTION = 1
-
 STARRY_COVARIANCE_SCALAR = 0
 STARRY_COVARIANCE_VECTOR = 1
 STARRY_COVARIANCE_MATRIX = 2
@@ -63,11 +60,11 @@ class CompileLogMessage:
         self.name = name
 
     def __enter__(self):
-        logger.handlers[0].terminator = ""
+        config.rootHandler.terminator = ""
         logger.info("Compiling `{0}`... ".format(self.name))
 
     def __exit__(self, type, value, traceback):
-        logger.handlers[0].terminator = "\n"
+        config.rootHandler.terminator = "\n"
         logger.info("Done.")
 
 

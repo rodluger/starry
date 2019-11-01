@@ -1,11 +1,25 @@
 # -*- coding: utf-8 -*-
-import theano.tensor as tt
+import logging
+
+rootLogger = logging.getLogger()
+rootLogger.addHandler(logging.StreamHandler())
 
 
 class Config(object):
+    """Global config container."""
+
     def __init__(self):
-        self._lazy = True
-        self._allow_changes = True
+        self._allow_lazy_changes = True
+        self.lazy = True
+        self.quiet = False
+
+    @property
+    def rootLogger(self):
+        return rootLogger
+
+    @property
+    def rootHandler(self):
+        return rootLogger.handlers[0]
 
     @property
     def lazy(self):
@@ -22,9 +36,22 @@ class Config(object):
         """
         return self._lazy
 
+    @property
+    def quiet(self):
+        """Indicates whether or not to suppress informational messages."""
+        return self._quiet
+
+    @quiet.setter
+    def quiet(self, value):
+        self._quiet = value
+        if self._quiet:
+            rootLogger.setLevel(logging.ERROR)
+        else:
+            rootLogger.setLevel(logging.INFO)
+
     @lazy.setter
     def lazy(self, value):
-        if (self._lazy == value) or self._allow_changes:
+        if (self._allow_lazy_changes) or (self._lazy == value):
             self._lazy = value
         else:
             raise Exception(
@@ -33,4 +60,4 @@ class Config(object):
             )
 
     def freeze(self):
-        self._allow_changes = False
+        self._allow_lazy_changes = False

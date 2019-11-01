@@ -1,13 +1,4 @@
 # -*- coding: utf-8 -*-
-
-# TODO:
-# - L normalization: is the integral of I equal to L?
-# - Reflected light: get rid of `source`; just use `xo`, `yo`, `zo`
-# - Reflected light maps: what is L? Make it prop to 1/r^2
-# - Is sys.secondaries[i] a ptr as before? Check.
-# - MAP Op
-# - Gradient of Diff rot op
-
 from . import config
 from .ops import (
     Ops,
@@ -28,9 +19,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
-from warnings import warn
 from astropy import units
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 __all__ = ["Map", "MapBase", "YlmBase", "RVBase", "ReflectedBase"]
@@ -61,15 +54,12 @@ class YlmBase(object):
     _ops_class_ = Ops
     L = Luminosity()
 
-    def __init__(self, ydeg, udeg, fdeg, drorder, nw, quiet=False, **kwargs):
+    def __init__(self, ydeg, udeg, fdeg, drorder, nw, **kwargs):
         """
 
         """
         # Instantiate the Theano ops class
-        self.quiet = quiet
-        self.ops = self._ops_class_(
-            ydeg, udeg, fdeg, drorder, nw, quiet=quiet, **kwargs
-        )
+        self.ops = self._ops_class_(ydeg, udeg, fdeg, drorder, nw, **kwargs)
         self.cast = self.ops.cast
 
         # Dimensions
@@ -224,7 +214,7 @@ class YlmBase(object):
     @alpha.setter
     def alpha(self, value):
         if (self._drorder == 0) and not hasattr(self, "rv"):
-            warn(
+            logging.warn(
                 "Parameter `drorder` is zero, so setting `alpha` has no effect."
             )
         else:
@@ -285,11 +275,11 @@ class YlmBase(object):
             raise ValueError("Invalid map index.")
 
     def _check_kwargs(self, method, kwargs):
-        if not self.quiet:
+        if not config.quiet:
             for key in kwargs.keys():
                 message = "Invalid keyword `{0}` in call to `{1}()`. Ignoring."
                 message = message.format(key, method)
-                warn(message)
+                logging.warn(message)
 
     def _get_orbit(self, kwargs):
         xo = kwargs.pop("xo", 0.0)
@@ -540,7 +530,7 @@ class YlmBase(object):
             interval (int, optional): Interval between frames in milliseconds
                 (animated maps only). Defaults to 75.
             file (string, optional): The file name (including the extension)
-                to save the animation to (animated maps only). Defaults to None.
+                to save the figure or animation to. Defaults to None.
             html5_video (bool, optional): If rendering in a Jupyter notebook,
                 display as an HTML5 video? Default is True. If False, displays
                 the animation using Javascript (file size will be larger.)
@@ -744,7 +734,15 @@ class YlmBase(object):
                 pass
 
         else:
-            plt.show()
+            if (file is not None) and (file != ""):
+                if projection == STARRY_ORTHOGRAPHIC_PROJECTION:
+                    fig.subplots_adjust(
+                        left=0.01, right=0.99, bottom=0.01, top=0.99
+                    )
+                fig.savefig(file)
+                plt.close()
+            else:
+                plt.show()
 
         # Check for invalid kwargs
         kwargs.pop("rv", None)
@@ -1373,13 +1371,13 @@ def Map(
     ), "Differential rotation orders above 2 are not supported."
     if drorder > 0:
         # TODO: phase this warning out
-        warn(
+        logging.warn(
             "Differential rotation is still an experimental feature. "
             + "Use it with care."
         )
         Ddeg = (4 * drorder + 1) * ydeg
         if Ddeg >= 50:
-            warn(
+            logging.warn(
                 "The degree of the differential rotation operator "
                 + "is currently {0}, ".format(Ddeg)
                 + "which will likely cause the code to run very slowly. "

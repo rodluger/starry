@@ -1,10 +1,9 @@
 Examples & Tutorials
 ====================
 
-Below you'll find a collection of Jupyter Notebooks that demonstrate how 
+Below you'll find a collection of Jupyter Notebooks that demonstrate how
 to use ``starry`` in various different ways. This page is still under
-construction, and a ⚠️ symbol next to a tutorial means it's still not
-complete.
+construction.
 
 
 The basics
@@ -31,3 +30,5 @@ Advanced
    notebooks/NullSpace.ipynb
    notebooks/StayingPositive.ipynb
    notebooks/LightTravelDelay.ipynb
+   notebooks/LDNormalization.ipynb
+   notebooks/HotJupiterPhaseCurve.ipynb
