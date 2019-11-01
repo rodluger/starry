@@ -15,6 +15,7 @@ jobs:
   - bash: .ci/run_extension_tests.sh
     displayName: 'Run extension tests'
     env:
+      BUILDREASON: $(Build.Reason)
       GHUSER: $(GITHUB_USER)
       GHKEY: $(GITHUB_API_KEY)
 

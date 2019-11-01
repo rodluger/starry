@@ -2,7 +2,6 @@
 set -e
 
 # Display machine info
-nproc
 lscpu
 
 # Set up conda

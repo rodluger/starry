@@ -23,16 +23,16 @@ py.test -v -s starry/extensions/tests/lazy \
         --cov-config=.ci/.coveragerc_extensions \
         starry/extensions/tests/lazy
 
-# Get coverage badge
-coverage-badge -n extensions.svg -o coverage-extensions/coverage.svg
-
-# Force push to `coverage-extensions` branch
-cd coverage-extensions
-git init
-touch .nojekyll
-git add -f .nojekyll
-git add -f *
-git -c user.name='rodluger' -c user.email='rodluger@gmail.com' \
-    commit -m "publish coverage"
-git push -f https://$GHUSER:$GHKEY@github.com/rodluger/starry \
-    HEAD:coverage-extensions >/dev/null 2>&1 -q
+# Publish coverage results
+if [ $BUILDREASON != "PullRequest" ]; then
+    coverage-badge -n extensions.svg -o coverage-extensions/coverage.svg
+    cd coverage-extensions
+    git init
+    touch .nojekyll
+    git add -f .nojekyll
+    git add -f *
+    git -c user.name='rodluger' -c user.email='rodluger@gmail.com' \
+        commit -m "publish coverage"
+    git push -f https://$GHUSER:$GHKEY@github.com/rodluger/starry \
+        HEAD:coverage-extensions >/dev/null 2>&1 -q
+fi
