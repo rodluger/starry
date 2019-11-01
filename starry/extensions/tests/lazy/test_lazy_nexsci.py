@@ -8,11 +8,16 @@ import pandas as pd
 import pytest
 import starry
 import warnings
-from starry.extensions.nexsci import from_nexsci, _retrieve_online_data, \
-                                        _check_data_on_import, _get_nexsci_data, \
-                                        _fill_data
+from starry.extensions.nexsci import (
+    from_nexsci,
+    _retrieve_online_data,
+    _check_data_on_import,
+    _get_nexsci_data,
+    _fill_data,
+)
 
 starry.config.lazy = True
+
 
 @pytest.mark.xfail
 def test_lazy_nexsci_query():
@@ -27,24 +32,25 @@ def test_lazy_nexsci_query():
     df = _fill_data(df)
     assert isinstance(df, pd.DataFrame)
 
+
 def test_lazy_nexsci_local():
     """ Tests if creating a system from the local csv file works """
 
     # Pass a nice name
-    sys = from_nexsci('Kepler-10')
+    sys = from_nexsci("Kepler-10")
     assert isinstance(sys, starry.System)
     assert len(sys.secondaries) == 2
 
     # Pass a planet name
-    sys = from_nexsci('Kepler-10b')
+    sys = from_nexsci("Kepler-10b")
     assert isinstance(sys, starry.System)
     assert len(sys.secondaries) == 1
 
     # Pass a bad name
-    sys = from_nexsci('kepler 10')
+    sys = from_nexsci("kepler 10")
     assert isinstance(sys, starry.System)
 
     # Pass a random name
     with pytest.warns(UserWarning):
-        sys = from_nexsci('random')
+        sys = from_nexsci("random")
     assert isinstance(sys, starry.System)
