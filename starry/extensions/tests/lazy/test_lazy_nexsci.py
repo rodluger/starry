@@ -19,6 +19,11 @@ from starry.extensions.nexsci import (
 starry.config.lazy = True
 
 
+def test_debug():
+    # DEBUG!
+    assert False
+
+
 def test_lazy_nexsci_query():
     """ Tests if the nexsci query works. """
 
