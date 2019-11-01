@@ -13,12 +13,12 @@ pip install -U git+https://github.com/rodluger/coverage-badge
 
 # Run tests
 py.test -v -s starry/extensions/tests/greedy \
-        --junitxml=junit/test-results-extensions-greedy.xml --cov=starry \
+        --junitxml=junit/test-results-extensions-greedy.xml --cov=starry/extensions \
         --cov-append --cov-report html:coverage-extensions \
         --cov-config=.ci/.coveragerc_extensions \
         starry/extensions/tests/greedy
 py.test -v -s starry/extensions/tests/lazy \
-        --junitxml=junit/test-results-extensions-lazy.xml --cov=starry \
+        --junitxml=junit/test-results-extensions-lazy.xml --cov=starry/extensions \
         --cov-append --cov-report html:coverage-extensions \
         --cov-config=.ci/.coveragerc_extensions \
         starry/extensions/tests/lazy

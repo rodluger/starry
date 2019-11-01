@@ -1,5 +1,4 @@
 [run]
 omit =
     */test_*.py
-    starry/*.py
-    starry/ops/*.py
+    */conftest.py

@@ -2,3 +2,4 @@
 omit =
     */test_*.py
     starry/extensions/*
+    */conftest.py
