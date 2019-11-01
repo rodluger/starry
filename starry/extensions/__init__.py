@@ -1,3 +1,2 @@
 # -*- coding: utf-8 -*-
-
-pass
+from .nexsci import from_nexsci
