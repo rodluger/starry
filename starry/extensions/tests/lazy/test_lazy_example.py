@@ -1,4 +1,5 @@
 import starry
+from starry import extensions
 
 starry.config.lazy = True
 

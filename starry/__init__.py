@@ -29,6 +29,7 @@ if not __STARRY_SETUP__:
 
     # Import the main interface
     from . import indices, kepler, maps, sht, utils
+    from . import extensions
     from .maps import Map
     from .kepler import Primary, Secondary, System
 
