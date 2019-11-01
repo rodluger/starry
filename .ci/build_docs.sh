@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-# DEBUG!!!
-exit 1
-
 # Load the environment
 if [[ -e $CONDA ]]; then
     . $CONDA/etc/profile.d/conda.sh
