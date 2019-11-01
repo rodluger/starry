@@ -19,7 +19,6 @@ jobs:
 
   - bash: .ci/build_docs.sh
     displayName: 'Build docs'
-    failOnStderr: true
     env:
       GHUSER: $(GITHUB_USER)
       GHKEY: $(GITHUB_API_KEY)
