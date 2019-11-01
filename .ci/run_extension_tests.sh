@@ -16,15 +16,17 @@ py.test -v -s starry/extensions/tests/greedy \
         --junitxml=junit/test-results-extensions-greedy.xml --cov=starry/extensions \
         --cov-append --cov-report html:coverage-extensions \
         --cov-config=.ci/.coveragerc_extensions \
-        starry/extensions/tests/greedy
+        starry/extensions/tests/greedy \
+        && SUCCESS1=true || SUCCESS1=false
 py.test -v -s starry/extensions/tests/lazy \
         --junitxml=junit/test-results-extensions-lazy.xml --cov=starry/extensions \
         --cov-append --cov-report html:coverage-extensions \
         --cov-config=.ci/.coveragerc_extensions \
-        starry/extensions/tests/lazy
+        starry/extensions/tests/lazy \
+        && SUCCESS2=true || SUCCESS2=false
 
 # Publish coverage results
-if [ $BUILDREASON != "PullRequest" ]; then
+if [[ -e $BUILDREASON ]] && [[ $BUILDREASON != "PullRequest" ]]; then
     coverage-badge -n extensions.svg -o coverage-extensions/coverage.svg
     cd coverage-extensions
     git init
@@ -35,4 +37,11 @@ if [ $BUILDREASON != "PullRequest" ]; then
         commit -m "publish coverage"
     git push -f https://$GHUSER:$GHKEY@github.com/rodluger/starry \
         HEAD:coverage-extensions >/dev/null 2>&1 -q
+fi
+
+# Exit
+if [[ $SUCCESS1 && $SUCCESS2 ]]; then
+    exit 0
+else
+    exit 1
 fi

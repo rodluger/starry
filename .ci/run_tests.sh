@@ -15,14 +15,16 @@ pip install -U git+https://github.com/rodluger/coverage-badge
 py.test -v -s tests/greedy --junitxml=junit/test-results-greedy.xml \
         --cov=starry --cov-append --cov-report html:coverage \
         --cov-config=.ci/.coveragerc \
-        tests/greedy
+        tests/greedy \
+        && SUCCESS1=true || SUCCESS1=false
 py.test -v -s tests/lazy --junitxml=junit/test-results-lazy.xml --cov=starry \
          --cov-append --cov-report html:coverage \
          --cov-config=.ci/.coveragerc \
-         tests/lazy
+         tests/lazy \
+        && SUCCESS2=true || SUCCESS2=false
 
 # Publish coverage results
-if [ $BUILDREASON != "PullRequest" ]; then
+if [[ -e $BUILDREASON ]] && [[ $BUILDREASON != "PullRequest" ]]; then
     coverage-badge -o coverage/coverage.svg
     cd coverage
     git init
@@ -33,4 +35,11 @@ if [ $BUILDREASON != "PullRequest" ]; then
         commit -m "publish coverage"
     git push -f https://$GHUSER:$GHKEY@github.com/rodluger/starry \
         HEAD:coverage >/dev/null 2>&1 -q
+fi
+
+# Exit
+if [[ $SUCCESS1 && $SUCCESS2 ]]; then
+    exit 0
+else
+    exit 1
 fi

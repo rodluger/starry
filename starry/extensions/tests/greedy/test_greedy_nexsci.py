@@ -19,7 +19,6 @@ from starry.extensions.nexsci import (
 starry.config.lazy = False
 
 
-@pytest.mark.xfail
 def test_lazy_nexsci_query():
     """ Tests if the nexsci query works. """
 
