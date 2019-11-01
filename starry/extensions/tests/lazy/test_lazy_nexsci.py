@@ -8,32 +8,22 @@ import pandas as pd
 import pytest
 import starry
 import warnings
-from starry.extensions.nexsci import (
-    from_nexsci,
-    _retrieve_online_data,
-    _check_data_on_import,
-    _get_nexsci_data,
-    _fill_data,
-)
+from starry.extensions import from_nexsci
+from starry.extensions.nexsci import nexsci
 
 starry.config.lazy = True
-
-
-def test_debug():
-    # DEBUG!
-    assert False
 
 
 def test_lazy_nexsci_query():
     """ Tests if the nexsci query works. """
 
     # These should run without error
-    _retrieve_online_data()
-    _check_data_on_import()
+    nexsci._retrieve_online_data()
+    nexsci._check_data_on_import()
 
-    df = _get_nexsci_data()
+    df = nexsci._get_nexsci_data()
     assert isinstance(df, pd.DataFrame)
-    df = _fill_data(df)
+    df = nexsci._fill_data(df)
     assert isinstance(df, pd.DataFrame)
 
 

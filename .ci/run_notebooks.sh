@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Load the environment
 if [[ -e $CONDA ]]; then
@@ -18,10 +19,12 @@ mkdir -p docs/notebooks
 python .ci/run_notebooks.py
 
 # Force push to `notebooks` branch
-cd docs/notebooks
-git init
-git add -f *.ipynb
-git -c user.name='rodluger' -c user.email='rodluger@gmail.com' \
-    commit -m "rebuild notebooks"
-git push -f https://$GHUSER:$GHKEY@github.com/rodluger/starry \
-    HEAD:notebooks >/dev/null 2>&1 -q
+if [[ -e $BUILDREASON ]] && [[ $BUILDREASON != "PullRequest" ]]; then
+    cd docs/notebooks
+    git init
+    git add -f *.ipynb
+    git -c user.name='rodluger' -c user.email='rodluger@gmail.com' \
+        commit -m "rebuild notebooks"
+    git push -f https://$GHUSER:$GHKEY@github.com/rodluger/starry \
+        HEAD:notebooks >/dev/null 2>&1 -q
+fi

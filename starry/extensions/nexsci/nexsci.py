@@ -1,4 +1,13 @@
-"""Extension for nexsci queries"""
+"""
+Extension for nexsci queries.
+
+========== ==============================================
+**Author** Christina Hedges
+**Email**  christina.l.hedges@nasa.gov
+**Date**   November 1, 2019
+========== ==============================================
+
+"""
 import pandas as pd
 import numpy as np
 import os
@@ -7,8 +16,8 @@ import astropy.units as u
 from glob import glob
 from warnings import warn
 
-from .. import PACKAGEDIR
-from .. import Secondary, Primary, System, Map
+from ... import PACKAGEDIR
+from ... import Secondary, Primary, System, Map
 
 
 class DataRetrievalFailure(Exception):
@@ -28,7 +37,7 @@ def from_nexsci(name, limb_darkening=[0.4, 0.2]):
 
     Returns
     -------
-    sys : `.starry.System`
+    sys : :py:class:`starry.System`
         Starry system using planet parameters from nexsci
     """
     df = _get_nexsci_data()
@@ -191,7 +200,7 @@ def _retrieve_online_data(guess_masses=False):
         [n.lower().replace("-", "").replace(" ", "") for n in df.pl_hostname]
     )
     df[df.pl_tranflag == 1].to_csv(
-        "{}/extensions/data/planets.csv".format(PACKAGEDIR), index=False
+        "{}/extensions/nexsci/data/planets.csv".format(PACKAGEDIR), index=False
     )
 
 
@@ -200,10 +209,12 @@ def _check_data_on_import():
 
     Data is considered out of date if a week has passed since downloading it.
     """
-    fname = glob("{}/extensions/data/planets.csv".format(PACKAGEDIR))
+    fname = glob("{}/extensions/nexsci/data/planets.csv".format(PACKAGEDIR))
     if len(fname) == 0:
         _retrieve_online_data()
-        fname = glob("{}/extensions/data/planets.csv".format(PACKAGEDIR))
+        fname = glob(
+            "{}/extensions/nexsci/data/planets.csv".format(PACKAGEDIR)
+        )
     st = os.stat(fname[0])
     mtime = st.st_mtime
     # If database is out of date, get it again.
@@ -217,7 +228,9 @@ def _check_data_on_import():
 def _get_nexsci_data():
     """Returns pandas dataframe of all exoplanet data from nexsci
     """
-    return pd.read_csv("{}/extensions/data/planets.csv".format(PACKAGEDIR))
+    return pd.read_csv(
+        "{}/extensions/nexsci/data/planets.csv".format(PACKAGEDIR)
+    )
 
 
 _check_data_on_import()
