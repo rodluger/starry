@@ -17,3 +17,4 @@ jobs:
     env:
       GHUSER: $(GITHUB_USER)
       GHKEY: $(GITHUB_API_KEY)
+      BUILDREASON: $(Build.Reason)
