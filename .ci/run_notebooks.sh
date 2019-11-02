@@ -2,7 +2,7 @@
 set -e
 
 # Load the environment
-if [[ -e $CONDA ]]; then
+if [[ -n $CONDA ]]; then
     . $CONDA/etc/profile.d/conda.sh
     conda activate starry
 fi
@@ -19,7 +19,7 @@ mkdir -p docs/notebooks
 python .ci/run_notebooks.py
 
 # Force push to `notebooks` branch
-if [[ -e $BUILDREASON ]] && [[ $BUILDREASON != "PullRequest" ]]; then
+if [[ -n $BUILDREASON ]] && [[ $BUILDREASON != "PullRequest" ]]; then
     cd docs/notebooks
     git init
     git add -f *.ipynb

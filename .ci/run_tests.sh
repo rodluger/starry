@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Load the environment
-if [[ -e $CONDA ]]; then
+if [[ -n $CONDA ]]; then
     . $CONDA/etc/profile.d/conda.sh
     conda activate starry
 fi
@@ -22,7 +22,7 @@ py.test -v -s tests/lazy --junitxml=junit/test-results-lazy.xml --cov=starry \
          tests/lazy
 
 # Publish coverage results
-if [[ -e $BUILDREASON ]] && [[ $BUILDREASON != "PullRequest" ]]; then
+if [[ -n $BUILDREASON ]] && [[ $BUILDREASON != "PullRequest" ]]; then
     coverage-badge -o coverage/coverage.svg
     cd coverage
     git init

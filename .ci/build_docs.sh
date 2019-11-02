@@ -2,7 +2,7 @@
 set -e
 
 # Load the environment
-if [[ -e $CONDA ]]; then
+if [[ -n $CONDA ]]; then
     . $CONDA/etc/profile.d/conda.sh
     conda activate starry
 fi
