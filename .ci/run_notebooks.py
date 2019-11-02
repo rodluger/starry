@@ -8,6 +8,30 @@ from nbconvert.preprocessors import ExecutePreprocessor
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def warning_filter(infile, outfile):
+    logfile = os.path.join(
+        os.path.dirname(os.path.abspath(outfile)), "warnings.log"
+    )
+    header = os.path.basename(infile)
+    div = "=" * len(header)
+    header = "\n\n" + div + "\n" + header + "\n" + div + "\n\n"
+    return """import warnings, sys
+
+def customwarn(message, category, filename, lineno, file=None, line=None):
+    with open("{logfile}", "a") as file:
+        print(
+            warnings.formatwarning(message, category, filename, lineno),
+            file=file,
+        )
+
+with open("{logfile}", "a") as file:
+    print('''{header}''', file=file)
+
+warnings.showwarning = customwarn""".format(
+        logfile=logfile, header=header
+    )
+
+
 def run(infile, outfile, timeout=1200):
     print("Executing %s..." % infile)
 
@@ -22,6 +46,20 @@ def run(infile, outfile, timeout=1200):
         if "hide_output" in cell.get("metadata", {}).get("tags", []):
             cell["source"] = "#hide_output\n" + cell["source"]
 
+    # Filter warnings
+    nb.get("cells").insert(
+        0,
+        nbformat.notebooknode.NotebookNode(
+            {
+                "cell_type": "code",
+                "execution_count": 1,
+                "metadata": {"tags": ["hide_input"]},
+                "outputs": [],
+                "source": warning_filter(infile, outfile),
+            }
+        ),
+    )
+
     # Execute the notebook
     ep = ExecutePreprocessor(timeout=timeout, kernel_name="python3")
     ep.preprocess(
@@ -34,6 +72,7 @@ def run(infile, outfile, timeout=1200):
 
 
 if __name__ == "__main__":
+    # Run the notebookss
     files = glob.glob(os.path.join(ROOT, "notebooks", "*.ipynb"))
     for infile in files:
         outfile = os.path.join(

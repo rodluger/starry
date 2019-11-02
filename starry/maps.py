@@ -23,7 +23,7 @@ from astropy import units
 import os
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("starry.maps")
 
 
 __all__ = ["Map", "MapBase", "YlmBase", "RVBase", "ReflectedBase"]
@@ -46,8 +46,8 @@ class MapBase(object):
 class YlmBase(object):
     """The default ``starry`` map class.
 
-    This class handles light curves and phase curves of objects in 
-    emitted light. It can be instantiated by calling :py:func:`starry.Map` with 
+    This class handles light curves and phase curves of objects in
+    emitted light. It can be instantiated by calling :py:func:`starry.Map` with
     both ``rv`` and ``reflected`` set to False.
     """
 
@@ -112,7 +112,7 @@ class YlmBase(object):
     @property
     def Nu(self):
         r"""Number of limb darkening coefficients, including :math:`u_0`. *Read-only*
-        
+
         This is equal to :math:`u_\mathrm{deg} + 1`.
         """
         return self._Nu
@@ -133,7 +133,7 @@ class YlmBase(object):
     @property
     def deg(self):
         r"""Total degree of the map. *Read-only*
-        
+
         This is equal to :math:`y_\mathrm{deg} + u_\mathrm{deg} + f_\mathrm{deg}`.
         """
         return self._deg
@@ -141,7 +141,7 @@ class YlmBase(object):
     @property
     def N(self):
         """Total number of map coefficients. *Read-only*
-        
+
         This is equal to :math:`N_\mathrm{y} + N_\mathrm{u} + N_\mathrm{f}`.
         """
         return self._N
@@ -159,10 +159,10 @@ class YlmBase(object):
     @property
     def y(self):
         """The spherical harmonic coefficient vector. *Read-only*
-        
+
         To set this vector, index the map directly using two indices:
-        ``map[l, m] = ...`` where ``l`` is the spherical harmonic degree and 
-        ``m`` is the spherical harmonic order. These may be integers or 
+        ``map[l, m] = ...`` where ``l`` is the spherical harmonic degree and
+        ``m`` is the spherical harmonic order. These may be integers or
         arrays of integers. Slice notation may also be used.
         """
         return self._y
@@ -170,7 +170,7 @@ class YlmBase(object):
     @property
     def u(self):
         """The vector of limb darkening coefficients. *Read-only*
-        
+
         To set this vector, index the map directly using one index:
         ``map[n] = ...`` where ``n`` is the degree of the limb darkening
         coefficient. This may be an integer or an array of integers.
@@ -199,7 +199,7 @@ class YlmBase(object):
     @property
     def alpha(self):
         """The rotational shear coefficient, a number in the range ``[0, 1]``.
-        
+
         The parameter :math:`\\alpha` is used to model linear differential
         rotation. The angular velocity at a given latitude :math:`\\theta`
         is
@@ -214,7 +214,7 @@ class YlmBase(object):
     @alpha.setter
     def alpha(self, value):
         if (self._drorder == 0) and not hasattr(self, "rv"):
-            logging.warn(
+            logger.warn(
                 "Parameter `drorder` is zero, so setting `alpha` has no effect."
             )
         else:
@@ -279,7 +279,7 @@ class YlmBase(object):
             for key in kwargs.keys():
                 message = "Invalid keyword `{0}` in call to `{1}()`. Ignoring."
                 message = message.format(key, method)
-                logging.warn(message)
+                logger.warn(message)
 
     def _get_orbit(self, kwargs):
         xo = kwargs.pop("xo", 0.0)
@@ -294,10 +294,10 @@ class YlmBase(object):
 
     def reset(self, **kwargs):
         """Reset all map coefficients and attributes.
-        
-        .. note:: 
+
+        .. note::
             Does not reset custom unit settings.
-        
+
         """
         if self.nw is None:
             y = np.zeros(self.Ny)
@@ -340,15 +340,15 @@ class YlmBase(object):
 
     def design_matrix(self, **kwargs):
         """Compute and return the light curve design matrix.
-        
+
         Args:
-            xo (scalar or vector, optional): x coordinate of the occultor 
+            xo (scalar or vector, optional): x coordinate of the occultor
                 relative to this body in units of this body's radius.
-            yo (scalar or vector, optional): y coordinate of the occultor 
+            yo (scalar or vector, optional): y coordinate of the occultor
                 relative to this body in units of this body's radius.
-            zo (scalar or vector, optional): z coordinate of the occultor 
+            zo (scalar or vector, optional): z coordinate of the occultor
                 relative to this body in units of this body's radius.
-            ro (scalar, optional): Radius of the occultor in units of 
+            ro (scalar, optional): Radius of the occultor in units of
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
@@ -375,7 +375,7 @@ class YlmBase(object):
 
     def intensity_design_matrix(self, lat=0, lon=0):
         """Compute and return the pixelization matrix ``P``.
-        
+
         This matrix transforms a spherical harmonic coefficient vector
         to a vector of intensities on the surface.
 
@@ -389,7 +389,7 @@ class YlmBase(object):
             This method ignores any filters (such as limb darkening
             or velocity weighting) and illumination (for reflected light
             maps).
-        
+
         """
         # Get the Cartesian points
         lat, lon = vectorize(*self.cast(lat, lon))
@@ -404,13 +404,13 @@ class YlmBase(object):
         Compute and return the light curve.
 
         Args:
-            xo (scalar or vector, optional): x coordinate of the occultor 
+            xo (scalar or vector, optional): x coordinate of the occultor
                 relative to this body in units of this body's radius.
-            yo (scalar or vector, optional): y coordinate of the occultor 
+            yo (scalar or vector, optional): y coordinate of the occultor
                 relative to this body in units of this body's radius.
-            zo (scalar or vector, optional): z coordinate of the occultor 
+            zo (scalar or vector, optional): z coordinate of the occultor
                 relative to this body in units of this body's radius.
-            ro (scalar, optional): Radius of the occultor in units of 
+            ro (scalar, optional): Radius of the occultor in units of
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
@@ -439,7 +439,7 @@ class YlmBase(object):
     def intensity(self, lat=0, lon=0):
         """
         Compute and return the intensity of the map.
-        
+
         Args:
             lat (scalar or vector, optional): latitude at which to evaluate
                 the intensity in units of :py:attr:`angle_unit`.
@@ -457,13 +457,13 @@ class YlmBase(object):
 
     def render(self, res=300, projection="ortho", theta=0.0):
         """Compute and return the intensity of the map on a grid.
-        
+
         Returns an image of shape ``(res, res)``, unless ``theta`` is a vector,
         in which case returns an array of shape ``(nframes, res, res)``, where
-        ``nframes`` is the number of values of ``theta``. However, if this is 
-        a spectral map, ``nframes`` is the number of wavelength bins and 
+        ``nframes`` is the number of values of ``theta``. However, if this is
+        a spectral map, ``nframes`` is the number of wavelength bins and
         ``theta`` must be a scalar.
-        
+
         Args:
             res (int, optional): The resolution of the map in pixels on a
                 side. Defaults to 300.
@@ -517,7 +517,7 @@ class YlmBase(object):
         Args:
             cmap (string or colormap instance, optional): The matplotlib colormap
                 to use. Defaults to ``plasma``.
-            figsize (tuple, optional): Figure size in inches. Default is 
+            figsize (tuple, optional): Figure size in inches. Default is
                 (3, 3) for orthographic maps and (7, 3.5) for rectangular
                 maps.
             projection (string, optional): The map projection. Accepted
@@ -653,7 +653,7 @@ class YlmBase(object):
                 )
                 ll = [None for n in lon_lines]
                 for n, l in enumerate(lon_lines):
-                    ll[n], = ax.plot(
+                    (ll[n],) = ax.plot(
                         l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=100
                     )
 
@@ -759,27 +759,27 @@ class YlmBase(object):
         force_psd=False,
         **kwargs
     ):
-        """Load an image, array, or ``healpix`` map. 
-        
-        This routine uses various routines in ``healpix`` to compute the 
-        spherical harmonic expansion of the input image and sets the map's 
+        """Load an image, array, or ``healpix`` map.
+
+        This routine uses various routines in ``healpix`` to compute the
+        spherical harmonic expansion of the input image and sets the map's
         :py:attr:`y` coefficients accordingly.
 
         Args:
-            image: A path to an image file, a two-dimensional ``numpy`` 
+            image: A path to an image file, a two-dimensional ``numpy``
                 array, or a ``healpix`` map array (if ``healpix`` is True).
-            healpix (bool, optional): Treat ``image`` as a ``healpix`` array? 
+            healpix (bool, optional): Treat ``image`` as a ``healpix`` array?
                 Default is False.
-            sampling_factor (int, optional): Oversampling factor when computing 
-                the ``healpix`` representation of an input image or array. 
-                Default is 8. Increasing this number may improve the fidelity 
+            sampling_factor (int, optional): Oversampling factor when computing
+                the ``healpix`` representation of an input image or array.
+                Default is 8. Increasing this number may improve the fidelity
                 of the expanded map, but the calculation will take longer.
-            sigma (float, optional): If not None, apply gaussian smoothing 
-                with standard deviation ``sigma`` to smooth over 
-                spurious ringing features. Smoothing is performed with 
-                the ``healpix.sphtfunc.smoothalm`` method. 
+            sigma (float, optional): If not None, apply gaussian smoothing
+                with standard deviation ``sigma`` to smooth over
+                spurious ringing features. Smoothing is performed with
+                the ``healpix.sphtfunc.smoothalm`` method.
                 Default is None.
-            force_psd (bool, optional): Force the map to be positive 
+            force_psd (bool, optional): Force the map to be positive
                 semi-definite? Default is False.
             kwargs (optional): Any other kwargs passed directly to
                 :py:meth:`minimize` (only if ``psd`` is True).
@@ -845,9 +845,9 @@ class YlmBase(object):
         self, amp, sigma=0.1, lat=0.0, lon=0.0, preserve_luminosity=False
     ):
         r"""Add the expansion of a gaussian spot to the map.
-        
+
         This function adds a spot whose functional form is the spherical
-        harmonic expansion of a gaussian in the quantity 
+        harmonic expansion of a gaussian in the quantity
         :math:`\cos\Delta\theta`, where :math:`\Delta\theta`
         is the angular separation between the center of the spot and another
         point on the surface. The spot brightness is controlled by the
@@ -860,15 +860,15 @@ class YlmBase(object):
                 the spot (unless ``preserve_luminosity`` is True.) If the map
                 has more than one wavelength bin, this must be a vector of
                 length equal to the number of wavelength bins.
-            sigma (scalar, optional): The standard deviation of the gaussian. 
+            sigma (scalar, optional): The standard deviation of the gaussian.
                 Defaults to 0.1.
-            lat (scalar, optional): The latitude of the spot in units of 
+            lat (scalar, optional): The latitude of the spot in units of
                 :py:attr:`angle_unit`. Defaults to 0.0.
-            lon (scalar, optional): The longitude of the spot in units of 
+            lon (scalar, optional): The longitude of the spot in units of
                 :py:attr:`angle_unit`. Defaults to 0.0.
-            preserve_luminosity (bool, optional): If True, preserves the 
-                current map luminosity when adding the spot. Regions of the 
-                map outside of the spot will therefore get brighter. 
+            preserve_luminosity (bool, optional): If True, preserves the
+                current map luminosity when adding the spot. Regions of the
+                map outside of the spot will therefore get brighter.
                 Defaults to False.
         """
         amp, _ = vectorize(self.cast(amp), np.ones(self.nw))
@@ -902,7 +902,7 @@ class RVBase(object):
     """The radial velocity ``starry`` map class.
 
     This class handles velocity-weighted intensities for use in
-    Rossiter-McLaughlin effect investigations. It has all the same 
+    Rossiter-McLaughlin effect investigations. It has all the same
     attributes and methods as b:py:class:`starry.maps.YlmBase`, with the
     additions and modifications listed below.
 
@@ -920,7 +920,7 @@ class RVBase(object):
     @property
     def veq(self):
         """The equatorial velocity of the body in arbitrary units.
-        
+
         .. warning::
             If this map is associated with a :py:class:`starry.Body`
             instance in a Keplerian system, changing the body's
@@ -952,20 +952,20 @@ class RVBase(object):
 
             :math:`\\Delta RV = \\frac{\\int Iv \\mathrm{d}A}{\\int I \\mathrm{d}A}`
 
-        where both integrals are taken over the visible portion of the 
+        where both integrals are taken over the visible portion of the
         projected disk. :math:`I` is the intensity field (described by the
         spherical harmonic and limb darkening coefficients) and :math:`v`
         is the radial velocity field (computed based on the equatorial velocity
         of the star, its orientation, etc.)
 
         Args:
-            xo (scalar or vector, optional): x coordinate of the occultor 
+            xo (scalar or vector, optional): x coordinate of the occultor
                 relative to this body in units of this body's radius.
-            yo (scalar or vector, optional): y coordinate of the occultor 
+            yo (scalar or vector, optional): y coordinate of the occultor
                 relative to this body in units of this body's radius.
-            zo (scalar or vector, optional): z coordinate of the occultor 
+            zo (scalar or vector, optional): z coordinate of the occultor
                 relative to this body in units of this body's radius.
-            ro (scalar, optional): Radius of the occultor in units of 
+            ro (scalar, optional): Radius of the occultor in units of
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
@@ -994,7 +994,7 @@ class RVBase(object):
     def intensity(self, **kwargs):
         """
         Compute and return the intensity of the map.
-        
+
         Args:
             lat (scalar or vector, optional): latitude at which to evaluate
                 the intensity in units of :py:attr:`angle_unit`.
@@ -1016,13 +1016,13 @@ class RVBase(object):
     def render(self, **kwargs):
         """
         Compute and return the intensity of the map on a grid.
-        
+
         Returns an image of shape ``(res, res)``, unless ``theta`` is a vector,
         in which case returns an array of shape ``(nframes, res, res)``, where
-        ``nframes`` is the number of values of ``theta``. However, if this is 
-        a spectral map, ``nframes`` is the number of wavelength bins and 
+        ``nframes`` is the number of values of ``theta``. However, if this is
+        a spectral map, ``nframes`` is the number of wavelength bins and
         ``theta`` must be a scalar.
-        
+
         Args:
             res (int, optional): The resolution of the map in pixels on a
                 side. Defaults to 300.
@@ -1094,7 +1094,7 @@ class ReflectedBase(object):
     additions and modifications listed below.
 
     .. note::
-        Instantiate this class by calling 
+        Instantiate this class by calling
         :py:func:`starry.Map` with ``reflected`` set to True.
     """
 
@@ -1103,23 +1103,23 @@ class ReflectedBase(object):
     def design_matrix(self, **kwargs):
         """
         Compute and return the light curve design matrix.
-        
+
         Args:
-            xo (scalar or vector, optional): x coordinate of the occultor 
+            xo (scalar or vector, optional): x coordinate of the occultor
                 relative to this body in units of this body's radius.
-            yo (scalar or vector, optional): y coordinate of the occultor 
+            yo (scalar or vector, optional): y coordinate of the occultor
                 relative to this body in units of this body's radius.
-            zo (scalar or vector, optional): z coordinate of the occultor 
+            zo (scalar or vector, optional): z coordinate of the occultor
                 relative to this body in units of this body's radius.
-            ro (scalar, optional): Radius of the occultor in units of 
+            ro (scalar, optional): Radius of the occultor in units of
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
             source (vector or matrix, optional): The Cartesian position of
                 the illumination source in the observer frame, where ``x`` points
-                to the right on the sky, ``y`` points up on the sky, and ``z`` 
-                points out of the sky toward the observer. This must be either 
-                a unit vector of shape ``(3,)`` or a sequence of unit 
+                to the right on the sky, ``y`` points up on the sky, and ``z``
+                points out of the sky toward the observer. This must be either
+                a unit vector of shape ``(3,)`` or a sequence of unit
                 vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
 
         """
@@ -1151,23 +1151,23 @@ class ReflectedBase(object):
     def flux(self, **kwargs):
         """
         Compute and return the reflected flux from the map.
-        
+
         Args:
-            xo (scalar or vector, optional): x coordinate of the occultor 
+            xo (scalar or vector, optional): x coordinate of the occultor
                 relative to this body in units of this body's radius.
-            yo (scalar or vector, optional): y coordinate of the occultor 
+            yo (scalar or vector, optional): y coordinate of the occultor
                 relative to this body in units of this body's radius.
-            zo (scalar or vector, optional): z coordinate of the occultor 
+            zo (scalar or vector, optional): z coordinate of the occultor
                 relative to this body in units of this body's radius.
-            ro (scalar, optional): Radius of the occultor in units of 
+            ro (scalar, optional): Radius of the occultor in units of
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
             source (vector or matrix, optional): The Cartesian position of
                 the illumination source in the observer frame, where ``x`` points
-                to the right on the sky, ``y`` points up on the sky, and ``z`` 
-                points out of the sky toward the observer. This must be either 
-                a unit vector of shape ``(3,)`` or a sequence of unit 
+                to the right on the sky, ``y`` points up on the sky, and ``z``
+                points out of the sky toward the observer. This must be either
+                a unit vector of shape ``(3,)`` or a sequence of unit
                 vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
         """
         # Orbital kwargs
@@ -1199,7 +1199,7 @@ class ReflectedBase(object):
     def intensity(self, lat=0, lon=0, source=[-1, 0, 0]):
         """
         Compute and return the intensity of the map.
-        
+
         Args:
             lat (scalar or vector, optional): latitude at which to evaluate
                 the intensity in units of :py:attr:`angle_unit`.
@@ -1207,9 +1207,9 @@ class ReflectedBase(object):
                 the intensity in units of :py:attr:`angle_unit`.
             source (vector or matrix, optional): The Cartesian position of
                 the illumination source in the observer frame, where ``x`` points
-                to the right on the sky, ``y`` points up on the sky, and ``z`` 
-                points out of the sky toward the observer. This must be either 
-                a unit vector of shape ``(3,)`` or a sequence of unit 
+                to the right on the sky, ``y`` points up on the sky, and ``z``
+                points out of the sky toward the observer. This must be either
+                a unit vector of shape ``(3,)`` or a sequence of unit
                 vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
         """
         # Get the Cartesian points
@@ -1231,13 +1231,13 @@ class ReflectedBase(object):
     ):
         """
         Compute and return the intensity of the map on a grid.
-        
+
         Returns an image of shape ``(res, res)``, unless ``theta`` is a vector,
         in which case returns an array of shape ``(nframes, res, res)``, where
-        ``nframes`` is the number of values of ``theta``. However, if this is 
-        a spectral map, ``nframes`` is the number of wavelength bins and 
+        ``nframes`` is the number of values of ``theta``. However, if this is
+        a spectral map, ``nframes`` is the number of wavelength bins and
         ``theta`` must be a scalar.
-        
+
         Args:
             res (int, optional): The resolution of the map in pixels on a
                 side. Defaults to 300.
@@ -1251,9 +1251,9 @@ class ReflectedBase(object):
                 animation is generated. Defaults to ``0.0``.
             source (vector or matrix, optional): The Cartesian position of
                 the illumination source in the observer frame, where ``x`` points
-                to the right on the sky, ``y`` points up on the sky, and ``z`` 
-                points out of the sky toward the observer. This must be either 
-                a unit vector of shape ``(3,)`` or a sequence of unit 
+                to the right on the sky, ``y`` points up on the sky, and ``z``
+                points out of the sky toward the observer. This must be either
+                a unit vector of shape ``(3,)`` or a sequence of unit
                 vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
         """
         # Multiple frames?
@@ -1335,18 +1335,18 @@ def Map(
     """A generic ``starry`` surface map.
 
     This function is a class factory that returns an instance of either
-    :py:class:`starry.maps.YlmBase`, :py:class:`starry.maps.RVBase`, or 
+    :py:class:`starry.maps.YlmBase`, :py:class:`starry.maps.RVBase`, or
     :py:class:`starry.maps.ReflectedBase`,
     depending on the arguments provided by the user. The default is
-    :py:class:`starry.maps.YlmBase`. If ``rv`` is True, instantiates 
+    :py:class:`starry.maps.YlmBase`. If ``rv`` is True, instantiates
     the :py:class:`starry.maps.RVBase`
-    class, and if ``reflected`` is True, instantiates the 
+    class, and if ``reflected`` is True, instantiates the
     :py:class:`starry.maps.ReflectedBase` class.
-    
+
     Args:
-        ydeg (int, optional): Degree of the spherical harmonic map. 
+        ydeg (int, optional): Degree of the spherical harmonic map.
             Defaults to 0.
-        udeg (int, optional): Degree of the limb darkening filter. 
+        udeg (int, optional): Degree of the limb darkening filter.
             Defaults to 0.
         drorder (int, optional): Order of the differential rotation
             approximation. Defaults to 0.
@@ -1371,13 +1371,13 @@ def Map(
     ), "Differential rotation orders above 2 are not supported."
     if drorder > 0:
         # TODO: phase this warning out
-        logging.warn(
+        logger.warn(
             "Differential rotation is still an experimental feature. "
             + "Use it with care."
         )
         Ddeg = (4 * drorder + 1) * ydeg
         if Ddeg >= 50:
-            logging.warn(
+            logger.warn(
                 "The degree of the differential rotation operator "
                 + "is currently {0}, ".format(Ddeg)
                 + "which will likely cause the code to run very slowly. "
