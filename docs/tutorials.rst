@@ -25,6 +25,7 @@ Advanced
    :titlesonly:
    :maxdepth: 1
 
+   notebooks/RVDerivation.ipynb
    notebooks/RossiterMcLaughlin.ipynb
    notebooks/ReflectedLight.ipynb
    notebooks/NullSpace.ipynb
