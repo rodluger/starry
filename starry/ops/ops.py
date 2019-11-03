@@ -31,14 +31,7 @@ except ModuleNotFoundError:
 G_grav = constants.G.to(units.R_sun ** 3 / units.M_sun / units.day ** 2).value
 
 
-__all__ = [
-    "Ops",
-    "OpsReflected",
-    "OpsRV",
-    "OpsSystem",
-    "OpsRVSystem",
-    "G_grav",
-]
+__all__ = ["Ops", "OpsReflected", "OpsRV", "OpsSystem", "G_grav"]
 
 
 class Ops(object):
@@ -63,7 +56,7 @@ class Ops(object):
         self.drorder = drorder
         self.diffrot = drorder > 0
         self.nw = nw
-        self.reflected = reflected
+        self._reflected = reflected
         if config.lazy:
             self.cast = to_tensor
         else:
@@ -101,7 +94,7 @@ class Ops(object):
         self.spotYlm = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
         self.pT = pTOp(self._c_ops.pT, self.deg)
         if self.nw is None:
-            if self.reflected:
+            if self._reflected:
                 self.minimize = minimizeOp(
                     self.unweighted_intensity,
                     self.P,
@@ -370,8 +363,8 @@ class Ops(object):
         r"""Apply the projection operator on the right.
 
         Specifically, this method returns the dot product :math:`M \cdot R`,
-        where ``M`` is an input matrix and ``R`` is the Wigner rotation matrix 
-        that transforms a spherical harmonic coefficient vector in the 
+        where ``M`` is an input matrix and ``R`` is the Wigner rotation matrix
+        that transforms a spherical harmonic coefficient vector in the
         input frame to a vector in the observer's frame.
 
         """
@@ -427,8 +420,8 @@ class Ops(object):
         r"""Apply the projection operator on the left.
 
         Specifically, this method returns the dot product :math:`R \cdot M`,
-        where ``M`` is an input matrix and ``R`` is the Wigner rotation matrix 
-        that transforms a spherical harmonic coefficient vector in the 
+        where ``M`` is an input matrix and ``R`` is the Wigner rotation matrix
+        that transforms a spherical harmonic coefficient vector in the
         input frame to a vector in the observer's frame.
 
         """
@@ -521,13 +514,13 @@ class Ops(object):
                 or the Cholesky factorization of the covariance matrix (a tuple
                 returned by :py:obj:`scipy.linalg.cho_factor`).
             flux (ndarray): The flux timeseries.
-            
+
         Returns:
             The vector of spherical harmonic coefficients corresponding to the
             MAP solution, and optionally the covariance of the solution and the
             Cholesky factorization of :math:`W` (see above).
 
-        TODO! 
+        TODO!
 
         """
 
@@ -608,13 +601,13 @@ class OpsRV(Ops):
                     veq
                     * np.sqrt(3)
                     * B
-                    * (-A ** 2 * alpha - B ** 2 * alpha - C ** 2 * alpha + 5)
+                    * (-(A ** 2) * alpha - B ** 2 * alpha - C ** 2 * alpha + 5)
                     / 15,
                     0,
                     veq
                     * np.sqrt(3)
                     * A
-                    * (-A ** 2 * alpha - B ** 2 * alpha - C ** 2 * alpha + 5)
+                    * (-(A ** 2) * alpha - B ** 2 * alpha - C ** 2 * alpha + 5)
                     / 15,
                     0,
                     0,
@@ -627,7 +620,7 @@ class OpsRV(Ops):
                     * 2
                     * np.sqrt(105)
                     * C
-                    * (-A ** 2 + B ** 2)
+                    * (-(A ** 2) + B ** 2)
                     / 105,
                     veq
                     * alpha
@@ -904,7 +897,7 @@ class OpsReflected(Ops):
     )
     def render(self, res, projection, theta, inc, obl, y, u, f, alpha, source):
         """
-        
+
         """
         # Compute the Cartesian grid
         xyz = ifelse(
@@ -976,6 +969,7 @@ class OpsSystem(object):
         primary,
         secondaries,
         reflected=False,
+        rv=False,
         light_delay=False,
         texp=None,
         oversample=7,
@@ -987,7 +981,8 @@ class OpsSystem(object):
         # System members
         self.primary = primary
         self.secondaries = secondaries
-        self.reflected = reflected
+        self._reflected = reflected
+        self._rv = rv
         self.nw = self.primary._map.nw
         self.light_delay = light_delay
         self.texp = texp
@@ -1183,7 +1178,7 @@ class OpsSystem(object):
 
         # Compute the position of the illumination source (the primary)
         # if we're doing things in reflected light
-        if self.reflected:
+        if self._reflected:
             source = [
                 [
                     tt.transpose(
@@ -1292,7 +1287,7 @@ class OpsSystem(object):
             b_occ = tt.invert(
                 tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
             )
-            if self.reflected:
+            if self._reflected:
                 source_occ = [
                     [
                         source[0][i][b_occ]
@@ -1336,7 +1331,7 @@ class OpsSystem(object):
                 b_occ = tt.invert(
                     tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
                 )
-                if self.reflected:
+                if self._reflected:
                     source_occ = [
                         [
                             source[0][i][b_occ]
@@ -1497,6 +1492,229 @@ class OpsSystem(object):
         return tt.dot(X, y)
 
     @autocompile(
+        "rv",
+        tt.dvector(),  # t
+        # -- primary --
+        tt.dscalar(),  # r
+        tt.dscalar(),  # m
+        tt.dscalar(),  # prot
+        tt.dscalar(),  # t0
+        tt.dscalar(),  # theta0
+        DynamicType(
+            "tt.dscalar() if instance.nw is None else tt.dvector()"
+        ),  # L
+        tt.dscalar(),  # inc
+        tt.dscalar(),  # obl
+        DynamicType(
+            "tt.dvector() if instance.nw is None else tt.dmatrix()"
+        ),  # y
+        tt.dvector(),  # u
+        tt.dscalar(),  # alpha
+        tt.dscalar(),  # veq
+        # -- secondaries --
+        tt.dvector(),  # r
+        tt.dvector(),  # m
+        tt.dvector(),  # prot
+        tt.dvector(),  # t0
+        tt.dvector(),  # theta0
+        tt.dvector(),  # porb
+        tt.dvector(),  # ecc
+        tt.dvector(),  # w
+        tt.dvector(),  # Omega
+        tt.dvector(),  # iorb
+        DynamicType(
+            "tt.dvector() if instance.nw is None else tt.dmatrix()"
+        ),  # L
+        tt.dvector(),  # inc
+        tt.dvector(),  # obl
+        DynamicType(
+            "tt.dmatrix() if instance.nw is None else tt.dtensor3()"
+        ),  # y
+        tt.dmatrix(),  # u
+        tt.dvector(),  # alpha
+        tt.dvector(),  # veq
+        tt.bscalar(),  # keplerian?
+    )
+    def rv(
+        self,
+        t,
+        pri_r,
+        pri_m,
+        pri_prot,
+        pri_t0,
+        pri_theta0,
+        pri_L,
+        pri_inc,
+        pri_obl,
+        pri_y,
+        pri_u,
+        pri_alpha,
+        pri_veq,
+        sec_r,
+        sec_m,
+        sec_prot,
+        sec_t0,
+        sec_theta0,
+        sec_porb,
+        sec_ecc,
+        sec_w,
+        sec_Omega,
+        sec_iorb,
+        sec_L,
+        sec_inc,
+        sec_obl,
+        sec_y,
+        sec_u,
+        sec_alpha,
+        sec_veq,
+        keplerian,
+    ):
+
+        # TODO: This method is currently very inefficient, as it
+        # calls `X` twice per call and instantiates an `orbit`
+        # instance up to three separate times per call. We should
+        # re-code the logic from `X()` in here to optimize it.
+
+        # Compute the RV filter
+        pri_f = self.primary.map.ops.compute_rv_filter(
+            pri_inc, pri_obl, pri_veq, pri_alpha, no_compile=True
+        )
+        sec_f = tt.as_tensor_variable(
+            [
+                sec.map.ops.compute_rv_filter(
+                    sec_inc[k],
+                    sec_obl[k],
+                    sec_veq[k],
+                    sec_alpha[k],
+                    no_compile=True,
+                )
+                for k, sec in enumerate(self.secondaries)
+            ]
+        )
+
+        # Compute the identity filter
+        pri_f0 = tt.zeros_like(pri_f)
+        pri_f0 = tt.set_subtensor(pri_f0[0], np.pi)
+        sec_f0 = tt.as_tensor_variable([pri_f0 for sec in self.secondaries])
+
+        # Compute the two design matrices
+        X = self.X(
+            t,
+            pri_r,
+            pri_m,
+            pri_prot,
+            pri_t0,
+            pri_theta0,
+            pri_L,
+            pri_inc,
+            pri_obl,
+            pri_u,
+            pri_f,
+            pri_alpha,
+            sec_r,
+            sec_m,
+            sec_prot,
+            sec_t0,
+            sec_theta0,
+            sec_porb,
+            sec_ecc,
+            sec_w,
+            sec_Omega,
+            sec_iorb,
+            sec_L,
+            sec_inc,
+            sec_obl,
+            sec_u,
+            sec_f,
+            sec_alpha,
+            no_compile=True,
+        )
+
+        X0 = self.X(
+            t,
+            pri_r,
+            pri_m,
+            pri_prot,
+            pri_t0,
+            pri_theta0,
+            pri_L,
+            pri_inc,
+            pri_obl,
+            pri_u,
+            pri_f0,
+            pri_alpha,
+            sec_r,
+            sec_m,
+            sec_prot,
+            sec_t0,
+            sec_theta0,
+            sec_porb,
+            sec_ecc,
+            sec_w,
+            sec_Omega,
+            sec_iorb,
+            sec_L,
+            sec_inc,
+            sec_obl,
+            sec_u,
+            sec_f0,
+            sec_alpha,
+            no_compile=True,
+        )
+
+        # Get the indices of X corresponding to each body
+        pri_inds = np.arange(0, self.primary.map.Ny, dtype=int)
+        sec_inds = [None for sec in self.secondaries]
+        n = self.primary.map.Ny
+        for i, sec in enumerate(self.secondaries):
+            sec_inds[i] = np.arange(n, n + sec.map.Ny, dtype=int)
+            n += sec.map.Ny
+
+        # Compute the integral of the velocity-weighted intensity
+        Iv = tt.as_tensor_variable(
+            [tt.dot(X[:, pri_inds], pri_y)]
+            + [
+                tt.dot(X[:, sec_inds[n]], sec_y[n])
+                for n in range(len(self.secondaries))
+            ]
+        )
+
+        # Compute the inverse of the integral of the intensity
+        invI = tt.as_tensor_variable(
+            [tt.ones((1,)) / tt.dot(X0[:, pri_inds], pri_y)]
+            + [
+                tt.ones((1,)) / tt.dot(X0[:, sec_inds[n]], sec_y[n])
+                for n in range(len(self.secondaries))
+            ]
+        )
+        invI = tt.where(tt.isinf(invI), 0.0, invI)
+
+        # The RV anomaly is just the product
+        rv = tt.sum(Iv * invI, axis=0)
+
+        # Compute the Keplerian RV
+        orbit = exoplanet.orbits.KeplerianOrbit(
+            period=sec_porb,
+            t0=sec_t0,
+            incl=sec_iorb,
+            ecc=sec_ecc,
+            omega=sec_w,
+            Omega=sec_Omega,
+            m_planet=sec_m,
+            m_star=pri_m,
+            r_star=pri_r,
+        )
+        return ifelse(
+            keplerian,
+            rv
+            + tt.sum(
+                orbit.get_radial_velocity(t, output_units=units.m / units.s),
+                axis=-1,
+            ),
+            rv,
+        )
+
+    @autocompile(
         "render",
         tt.dvector(),  # t
         tt.iscalar(),  # res
@@ -1599,7 +1817,7 @@ class OpsSystem(object):
 
         # Compute the position of the illumination source (the primary)
         # if we're doing things in reflected light
-        if self.reflected:
+        if self._reflected:
             source = [
                 [
                     tt.transpose(
@@ -1653,8 +1871,3 @@ class OpsSystem(object):
 
         # Return the images and secondary orbital positions
         return img_pri, img_sec, x, y, z
-
-
-class OpsRVSystem(OpsSystem):
-    def __init__(self, *args, **kwargs):
-        raise NotImplementedError("Radial velocity mode not yet implemented.")

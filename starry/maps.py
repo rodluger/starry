@@ -52,6 +52,8 @@ class YlmBase(object):
     """
 
     _ops_class_ = Ops
+
+    # TODO: MAKE SURE THIS IS IN THE DOCS
     L = Luminosity()
 
     def __init__(self, ydeg, udeg, fdeg, drorder, nw, **kwargs):
@@ -913,13 +915,25 @@ class RVBase(object):
 
     _ops_class_ = OpsRV
 
-    def reset(self):
-        super(RVBase, self).reset()
-        self._veq = self.cast(0.0)
+    def reset(self, **kwargs):
+        self.velocity_unit = kwargs.pop("velocity_unit", units.m / units.s)
+        self.veq = kwargs.pop("veq", 0.0)
+        super(RVBase, self).reset(**kwargs)
+
+    @property
+    def velocity_unit(self):
+        """An ``astropy.units`` unit defining the velocity metric for this map."""
+        return self._velocity_unit
+
+    @velocity_unit.setter
+    def velocity_unit(self, value):
+        assert value.physical_type == "speed"
+        self._velocity_unit = value
+        self._velocity_factor = value.in_units(units.m / units.s)
 
     @property
     def veq(self):
-        """The equatorial velocity of the body in arbitrary units.
+        """The equatorial velocity of the body in units of :py:attr:`velocity_unit`.
 
         .. warning::
             If this map is associated with a :py:class:`starry.Body`
@@ -929,11 +943,11 @@ class RVBase(object):
             the map's radial velocity.
 
         """
-        return self._veq
+        return self._veq / self._velocity_factor
 
     @veq.setter
     def veq(self, value):
-        self._veq = value
+        self._veq = self.cast(value) * self._velocity_factor
 
     def _unset_RV_filter(self):
         f = np.zeros(self.Nf)
