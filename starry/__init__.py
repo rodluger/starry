@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 from .starry_version import __version__
 
 # Is this a docs run?
@@ -6,6 +7,10 @@ try:
     __STARRY_DOCS__
 except NameError:
     __STARRY_DOCS__ = False
+
+import os
+
+PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
 
 # Force double precision
 import theano.tensor as tt
@@ -25,3 +30,16 @@ from .kepler import Primary, Secondary, System
 # Clean up the namespace
 del tt
 del Config
+
+__all__ = [
+    "__version__",
+    "indices",
+    "kepler",
+    "maps",
+    "sht",
+    "utils",
+    "Map",
+    "Primary",
+    "Secondary",
+    "System",
+]

@@ -28,6 +28,8 @@ documentation of the API, and more.
     New in version 1.0.0 <changes>
     Examples & tutorials <tutorials>
     API <api>
+    Extensions <extensions>
+    Developer <developer>
     Github <https://github.com/rodluger/starry>
     Submit an issue <https://github.com/rodluger/starry/issues>
     Papers <https://ui.adsabs.harvard.edu/public-libraries/b0KqtPtYRj6I7T8eAZc5Ig>

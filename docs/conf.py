@@ -6,11 +6,10 @@
 
 # -- Path setup --------------------------------------------------------------
 
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-import sys
 import os
+import starry
+from ipywidgets.embed import DEFAULT_EMBED_REQUIREJS_URL
+import sys
 
 sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
 if sys.version_info[0] < 3:
@@ -18,17 +17,9 @@ if sys.version_info[0] < 3:
 else:
     import builtins
 builtins.__STARRY_DOCS__ = True
-import starry
 
-# Copy notebooks over
-import copy_notebooks
-import glob
-
-if not os.path.exists("notebooks"):
-    os.mkdir("notebooks")
-for infile in glob.glob("../notebooks/*.ipynb"):
-    outfile = os.path.join("notebooks", os.path.basename(infile))
-    copy_notebooks.copy(infile, outfile)
+# Get current git branch
+branch = os.getenv("GHBRANCH", "master")
 
 # -- Project information -----------------------------------------------------
 
@@ -72,7 +63,6 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 # a list of builtin themes.
 #
 html_theme = "sphinx_rtd_theme"
-
 html_theme_options = {"display_version": True}
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -80,26 +70,27 @@ html_theme_options = {"display_version": True}
 # so a file named "default.css" will overwrite the builtin "default.css".
 
 html_static_path = ["_static"]
-
 html_js_files = ["js/version.js"]
 html_css_files = ["css/hide_input.css"]
 
 # -- Extension settings ------------------------------------------------------
 
-# Add a heading to notebooks
+
+html_js_files += [DEFAULT_EMBED_REQUIREJS_URL]
+
+# Add a heading to notebooks (TODO: switch to `master`)
 nbsphinx_prolog = """
-{% set docname = env.doc2path(env.docname, base=None) %}
+{%s set docname = env.doc2path(env.docname, base=None) %s}
 .. note:: This tutorial was generated from a Jupyter notebook that can be
-          downloaded `here <https://github.com/rodluger/starry/blob/dev/docs/{{ docname }}>`_.
-"""
-
-# Remove jupyter notebook prompt numbers
+          downloaded `here <https://github.com/rodluger/starry/blob/%s/{{ docname }}>`_.
+""" % (
+    "%",
+    "%",
+    branch,
+)
 nbsphinx_prompt_width = 0
+nbsphinx_timeout = 600
 napoleon_use_ivar = True
-
-# Todo lists
 todo_include_todos = True
-
 autosummary_generate = True
-
 autodoc_docstring_signature = True

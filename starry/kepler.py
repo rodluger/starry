@@ -1,18 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-TODO:
-    - Radial velocity support
-"""
 from . import config
 from .maps import MapBase, RVBase, ReflectedBase
-from .ops import (
-    OpsSystem,
-    OpsRVSystem,
-    G_grav,
-    reshape,
-    make_array_or_tensor,
-    math,
-)
+from .ops import OpsSystem, G_grav, reshape, make_array_or_tensor, math
 import numpy as np
 from astropy import units
 from inspect import getmro
@@ -41,7 +30,6 @@ class Body(object):
         mass_unit=units.Msun,
         time_unit=units.day,
         angle_unit=units.degree,
-        quiet=False,
         **kwargs,
     ):
         # Surface map
@@ -59,8 +47,6 @@ class Body(object):
         self.prot = prot
         self.t0 = t0
         self.theta0 = theta0
-
-        self.quiet = quiet
 
     @property
     def length_unit(self):
@@ -183,7 +169,7 @@ class Body(object):
         return self._map.cast(*args, **kwargs)
 
     def _check_kwargs(self, method, kwargs):
-        if not self.quiet:
+        if not config.quiet:
             for key in kwargs.keys():
                 message = "Invalid keyword `{0}` in call to `{1}()`. Ignoring."
                 message = message.format(key, method)
@@ -192,34 +178,32 @@ class Body(object):
 
 class Primary(Body):
     """A primary (central) body.
-        
+
     Args:
         map: The surface map of this body. This should be an instance
             returned by :py:func:`starry.Map`.
-        r (scalar, optional): The radius of the body in units of 
+        r (scalar, optional): The radius of the body in units of
             :py:attr:`length_unit`. Defaults to 1.0.
-        m (scalar, optional): The mass of the body in units of 
+        m (scalar, optional): The mass of the body in units of
             :py:attr:`mass_unit`. Defaults to 1.0.
-        prot (scalar, optional): The rotation period of the body in units of 
+        prot (scalar, optional): The rotation period of the body in units of
             :py:attr:`time_unit`. Defaults to 1.0.
         t0 (scalar, optional): A reference time in units of
             :py:attr:`time_unit`. Defaults to 0.0.
         theta0 (scalar, optional): The rotational phase of the map at time
             :py:attr:`t0` in units of :py:attr:`angle_unit`. Defaults to 0.0.
-        length_unit (optional): An ``astropy.units`` unit defining the 
-            distance metric for this object. Defaults to 
+        length_unit (optional): An ``astropy.units`` unit defining the
+            distance metric for this object. Defaults to
             :py:attr:`astropy.units.Rsun.`
-        mass_unit (optional): An ``astropy.units`` unit defining the 
-            mass metric for this object. Defaults to 
+        mass_unit (optional): An ``astropy.units`` unit defining the
+            mass metric for this object. Defaults to
             :py:attr:`astropy.units.Msun.`
-        time_unit (optional): An ``astropy.units`` unit defining the 
-            time metric for this object. Defaults to 
+        time_unit (optional): An ``astropy.units`` unit defining the
+            time metric for this object. Defaults to
             :py:attr:`astropy.units.day.`
-        angle_unit (optional): An ``astropy.units`` unit defining the 
-            angular metric for this object. Defaults to 
+        angle_unit (optional): An ``astropy.units`` unit defining the
+            angular metric for this object. Defaults to
             :py:attr:`astropy.units.degree.`
-        quiet (bool, optional): Suppress information messages? 
-            Defaults to False.
     """
 
     def __init__(self, map, **kwargs):
@@ -235,7 +219,6 @@ class Primary(Body):
             "mass_unit",
             "time_unit",
             "angle_unit",
-            "quiet",
         ]:
             kwargs.pop(kw, None)
         self._check_kwargs("Primary", kwargs)
@@ -247,17 +230,17 @@ class Secondary(Body):
     Args:
         map: The surface map of this body. This should be an instance
             returned by :py:func:`starry.Map`.
-        r (scalar, optional): The radius of the body in units of 
+        r (scalar, optional): The radius of the body in units of
             :py:attr:`length_unit`. Defaults to 1.0.
-        m (scalar, optional): The mass of the body in units of 
+        m (scalar, optional): The mass of the body in units of
             :py:attr:`mass_unit`. Defaults to 1.0.
-        a (scalar, optional): The semi-major axis of the body in units of 
+        a (scalar, optional): The semi-major axis of the body in units of
             :py:attr:`time_unit`. Defaults to 1.0. If :py:attr:`porb` is
             also provided, this value is ignored.
-        porb (scalar, optional): The orbital period of the body in units of 
-            :py:attr:`time_unit`. Defaults to 1.0. Setting this value 
+        porb (scalar, optional): The orbital period of the body in units of
+            :py:attr:`time_unit`. Defaults to 1.0. Setting this value
             overrides :py:attr:`a`.
-        prot (scalar, optional): The rotation period of the body in units of 
+        prot (scalar, optional): The rotation period of the body in units of
             :py:attr:`time_unit`. Defaults to 1.0.
         t0 (scalar, optional): A reference time in units of
             :py:attr:`time_unit`. This is taken to be the time of a reference
@@ -266,27 +249,25 @@ class Secondary(Body):
             Defaults to 0.
         w, omega (scalar, optional): The argument of pericenter of the body
             in units of :py:attr:`angle_unit`. Defaults to 90 degrees.
-        Omega (scalar, optional): The longitude of ascending node of the 
+        Omega (scalar, optional): The longitude of ascending node of the
             body in units of :py:attr:`angle_unit`. Defaults to 0 degrees.
-        inc (scalar, optional): The orbital inclination of the body in 
+        inc (scalar, optional): The orbital inclination of the body in
             units of :py:attr:`angle_unit`. Defaults to 90 degrees.
         theta0 (scalar, optional): The rotational phase of the map at time
-            :py:attr:`t0` in units of :py:attr:`angle_unit`. Defaults to 
+            :py:attr:`t0` in units of :py:attr:`angle_unit`. Defaults to
             0.0.
-        length_unit (optional): An ``astropy.units`` unit defining the 
-            distance metric for this object. Defaults to 
+        length_unit (optional): An ``astropy.units`` unit defining the
+            distance metric for this object. Defaults to
             :py:attr:`astropy.units.Rsun.`
-        mass_unit (optional): An ``astropy.units`` unit defining the 
-            mass metric for this object. Defaults to 
+        mass_unit (optional): An ``astropy.units`` unit defining the
+            mass metric for this object. Defaults to
             :py:attr:`astropy.units.Msun.`
-        time_unit (optional): An ``astropy.units`` unit defining the 
-            time metric for this object. Defaults to 
+        time_unit (optional): An ``astropy.units`` unit defining the
+            time metric for this object. Defaults to
             :py:attr:`astropy.units.day.`
-        angle_unit (optional): An ``astropy.units`` unit defining the 
-            angular metric for this object. Defaults to 
+        angle_unit (optional): An ``astropy.units`` unit defining the
+            angular metric for this object. Defaults to
             :py:attr:`astropy.units.degree.`
-        quiet (bool, optional): Suppress information messages? 
-            Defaults to False.
     """
 
     def __init__(self, map, **kwargs):
@@ -302,7 +283,6 @@ class Secondary(Body):
             "mass_unit",
             "time_unit",
             "angle_unit",
-            "quiet",
         ]:
             kwargs.pop(kw, None)
 
@@ -324,8 +304,8 @@ class Secondary(Body):
     @property
     def porb(self):
         """The orbital period in units of :py:attr:`time_unit`.
-        
-        .. note:: 
+
+        .. note::
             Setting this value overrides the value of :py:attr:`a`.
         """
         if self._porb == 0.0:
@@ -341,8 +321,8 @@ class Secondary(Body):
     @property
     def a(self):
         """The semi-major axis in units of :py:attr:`length_unit`.
-        
-        .. note:: 
+
+        .. note::
             Setting this value overrides the value of :py:attr:`porb`.
         """
         if self._a == 0.0:
@@ -418,28 +398,26 @@ class Secondary(Body):
 
 class System(object):
     """A system of bodies in Keplerian orbits about a central primary body.
-    
+
     Args:
         primary (:py:class:`Primary`): The central body.
         secondaries (:py:class:`Secondary`): One or more secondary bodies
-            in orbit about the primary. 
-        time_unit (optional): An ``astropy.units`` unit defining the 
-            time metric for this object. Defaults to 
+            in orbit about the primary.
+        time_unit (optional): An ``astropy.units`` unit defining the
+            time metric for this object. Defaults to
             :py:attr:`astropy.units.day.`
-        light_delay (bool, optional): Account for the light travel time 
+        light_delay (bool, optional): Account for the light travel time
             delay to the barycenter of the system? Default is False.
-        texp (scalar): The exposure time of each observation. This can be a 
-            scalar or a tensor with the same shape as ``t``. If ``texp`` is 
-            provided, ``t`` is assumed to indicate the timestamp at the middle 
+        texp (scalar): The exposure time of each observation. This can be a
+            scalar or a tensor with the same shape as ``t``. If ``texp`` is
+            provided, ``t`` is assumed to indicate the timestamp at the middle
             of an exposure of length ``texp``.
-        oversample (int): The number of function evaluations to use when 
+        oversample (int): The number of function evaluations to use when
             numerically integrating the exposure time.
-        order (int): The order of the numerical integration scheme. This must 
-            be one of the following: ``0`` for a centered Riemann sum 
-            (equivalent to the "resampling" procedure suggested by Kipping 2010), 
+        order (int): The order of the numerical integration scheme. This must
+            be one of the following: ``0`` for a centered Riemann sum
+            (equivalent to the "resampling" procedure suggested by Kipping 2010),
             ``1`` for the trapezoid rule, or ``2`` for Simpson’s rule.
-        quiet (bool, optional): Suppress information messages? 
-            Defaults to False.
     """
 
     def __init__(
@@ -451,7 +429,6 @@ class System(object):
         texp=None,
         oversample=7,
         order=0,
-        quiet=False,
     ):
         # Units
         self.time_unit = time_unit
@@ -506,27 +483,16 @@ class System(object):
         self._secondaries = secondaries
 
         # Theano ops class
-        if self._rv:
-            self.ops = OpsRVSystem(
-                self._primary,
-                self._secondaries,
-                quiet=quiet,
-                light_delay=self._light_delay,
-                texp=self._texp,
-                oversample=self._oversample,
-                order=self._order,
-            )
-        else:
-            self.ops = OpsSystem(
-                self._primary,
-                self._secondaries,
-                reflected=self._reflected,
-                quiet=quiet,
-                light_delay=self._light_delay,
-                texp=self._texp,
-                oversample=self._oversample,
-                order=self._order,
-            )
+        self.ops = OpsSystem(
+            self._primary,
+            self._secondaries,
+            reflected=self._reflected,
+            rv=self._rv,
+            light_delay=self._light_delay,
+            texp=self._texp,
+            oversample=self._oversample,
+            order=self._order,
+        )
 
     @property
     def light_delay(self):
@@ -545,7 +511,7 @@ class System(object):
     @property
     def order(self):
         """The order of the numerical integration scheme. *Read-only*
-        
+
         - ``0``: a centered Riemann sum
         - ``1``: trapezoid rule
         - ``2``: Simpson’s rule
@@ -585,7 +551,7 @@ class System(object):
         window_pad=1.0,
     ):
         """Visualize the Keplerian system.
-        
+
         Args:
             t (scalar or vector): The time(s) at which to evaluate the orbit and
                 the map in units of :py:attr:`time_unit`.
@@ -593,7 +559,7 @@ class System(object):
                 to use. Defaults to ``plasma``.
             res (int, optional): The resolution of the map in pixels on a
                 side. Defaults to 300.
-            figsize (tuple, optional): Figure size in inches. Default is 
+            figsize (tuple, optional): Figure size in inches. Default is
                 (3, 3) for orthographic maps and (7, 3.5) for rectangular
                 maps.
             interval (int, optional): Interval between frames in milliseconds
@@ -614,6 +580,10 @@ class System(object):
             )
 
         # Render the maps & get the orbital positions
+        if self._rv:
+            self._primary.map._set_RV_filter()
+            for sec in self._secondaries:
+                sec.map._set_RV_filter()
         img_pri, img_sec, x, y, z = self.ops.render(
             reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
             res,
@@ -793,9 +763,18 @@ class System(object):
 
             plt.show()
 
-    def X(self, t):
+        if self._rv:
+            self._primary.map._unset_RV_filter()
+            for sec in self._secondaries:
+                sec.map._unset_RV_filter()
+
+    def X(self, *args, **kwargs):
+        """Alias for :py:meth:`design_matrix`. *Deprecated*"""
+        return self.design_matrix(*args, **kwargs)
+
+    def design_matrix(self, t):
         """Compute the system flux design matrix at times ``t``.
-        
+
         Args:
             t (scalar or vector): An array of times at which to evaluate
                 the design matrix in units of :py:attr:`time_unit`.
@@ -835,7 +814,7 @@ class System(object):
 
     def flux(self, t):
         """Compute the system flux at times ``t``.
-        
+
         Args:
             t (scalar or vector): An array of times at which to evaluate
                 the flux in units of :py:attr:`time_unit`.
@@ -875,9 +854,57 @@ class System(object):
             ),
         )
 
+    def rv(self, t, keplerian=True):
+        """Compute the observed radial velocity of the system at times ``t``.
+
+        Args:
+            t (scalar or vector): An array of times at which to evaluate
+                the radial velocity in units of :py:attr:`time_unit`.
+            keplerian (bool): Include the Keplerian component of the radial
+                velocity? Default is True. If False, this method returns a
+                model for only the radial velocity anomaly due to transits
+                (the Rossiter-McLaughlin effect) and time-variable surface
+                features (Doppler tomography).
+        """
+        return self.ops.rv(
+            reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
+            self._primary._r,
+            self._primary._m,
+            self._primary._prot,
+            self._primary._t0,
+            self._primary._theta0,
+            self._primary._map._L,
+            self._primary._map._inc,
+            self._primary._map._obl,
+            self._primary._map._y,
+            self._primary._map._u,
+            self._primary._map._alpha,
+            self._primary._map._veq,
+            make_array_or_tensor([sec._r for sec in self._secondaries]),
+            make_array_or_tensor([sec._m for sec in self._secondaries]),
+            make_array_or_tensor([sec._prot for sec in self._secondaries]),
+            make_array_or_tensor([sec._t0 for sec in self._secondaries]),
+            make_array_or_tensor([sec._theta0 for sec in self._secondaries]),
+            self._get_periods(),
+            make_array_or_tensor([sec._ecc for sec in self._secondaries]),
+            make_array_or_tensor([sec._w for sec in self._secondaries]),
+            make_array_or_tensor([sec._Omega for sec in self._secondaries]),
+            make_array_or_tensor([sec._inc for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._L for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._inc for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._obl for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._y for sec in self._secondaries]),
+            make_array_or_tensor([sec._map._u for sec in self._secondaries]),
+            make_array_or_tensor(
+                [sec._map._alpha for sec in self._secondaries]
+            ),
+            make_array_or_tensor([sec._map._veq for sec in self._secondaries]),
+            np.array(keplerian),
+        )
+
     def position(self, t):
         """Compute the Cartesian positions of all bodies at times ``t``.
-        
+
         Args:
             t (scalar or vector): An array of times at which to evaluate
                 the position in units of :py:attr:`time_unit`.

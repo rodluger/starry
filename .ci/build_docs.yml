@@ -1,0 +1,25 @@
+trigger:
+  - dev
+  - master
+
+jobs:
+- job: Default
+  timeoutInMinutes: 60
+  pool:
+    vmImage: Ubuntu-16.04
+  # don't build on PRs
+  condition: ne(variables['Build.Reason'], 'PullRequest')
+  steps:
+
+  - bash: .ci/setup.sh
+    displayName: 'Setup'
+
+  - bash: .ci/get_notebooks.sh
+    displayName: 'Get notebooks'
+
+  - bash: .ci/build_docs.sh
+    displayName: 'Build docs'
+    env:
+      GHUSER: $(GITHUB_USER)
+      GHKEY: $(GITHUB_API_KEY)
+      GHBRANCH: $(Build.SourceBranchName)
