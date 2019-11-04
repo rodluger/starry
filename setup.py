@@ -1,18 +1,15 @@
 """Install script for `starry`."""
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 import sys
 import os
 import glob
 import setuptools
 
-# Figure out the current version
-if sys.version_info[0] < 3:
-    import __builtin__ as builtins
-else:
-    import builtins
-builtins.__STARRY_SETUP__ = True
-from starry import __version__
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "starry")
+)
+from starry_version import __version__  # NOQA
 
 # Custom compiler flags
 macros = dict(
@@ -93,9 +90,23 @@ def has_flag(compiler, flagname):
     Return a boolean indicating whether a flag name is supported on
     the specified compiler.
     """
+    import os
     import tempfile
 
-    with tempfile.NamedTemporaryFile("w", suffix=".cpp") as f:
+    if compiler.compiler_type == "msvc":
+        fn = ".starry-compile-temp.cpp"
+        with open(fn, "w") as f:
+            f.write("int main (int argc, char **argv) { return 0; }")
+
+        result = True
+        try:
+            compiler.compile([fn], extra_postargs=[flagname])
+        except setuptools.distutils.errors.CompileError:
+            result = False
+        os.remove(fn)
+        return result
+
+    with tempfile.NamedTemporaryFile("w", suffix=".cpp", dir=".") as f:
         f.write("int main (int argc, char **argv) { return 0; }")
         try:
             compiler.compile([f.name], extra_postargs=[flagname])
@@ -137,11 +148,15 @@ class BuildExt(build_ext):
             ext.extra_compile_args = list(opts + ext.extra_compile_args)
             ext.extra_compile_args += ["-O%d" % optimize]
             ext.extra_compile_args += [
-                "-Wextra",
-                "-Wpedantic",
-                "-Wno-unused-parameter",  # DEBUG disable this
-                "-Wno-unused-lambda-capture",
-                "-Wno-unused-local-typedef",
+                f
+                for f in (
+                    "-Wextra",
+                    "-Wpedantic",
+                    "-Wno-unused-parameter",  # DEBUG disable this
+                    "-Wno-unused-lambda-capture",
+                    "-Wno-unused-local-typedef",
+                )
+                if has_flag(self.compiler, f)
             ]
             if debug:
                 ext.extra_compile_args += ["-g"]
@@ -167,7 +182,7 @@ setup(
     url="https://github.com/rodluger/starry",
     description="Analytic occultation light curves for astronomy.",
     license="GPL",
-    packages=["starry"],
+    packages=find_packages(),
     ext_modules=ext_modules,
     install_requires=[
         "numpy>=1.13.0",
@@ -179,7 +194,7 @@ setup(
         "ipython",
         "pillow",
         "exoplanet>=0.2.0",
-        "healpy>=1.12.8;platform_system!='Windows'",
+        # "healpy>=1.12.8;platform_system!='Windows'",
     ],
     cmdclass={"build_ext": BuildExt},
     data_files=glob.glob("starry/img/*.jpg"),
