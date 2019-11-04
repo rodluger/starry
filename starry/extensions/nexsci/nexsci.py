@@ -1,5 +1,16 @@
 """
-Extension for nexsci queries.
+Extension for querying NExSci for real planet systems.
+
+Example
+-------
+Obtain the `starry.System` for Kepler-10 and evaluate at some times. Here `flux`
+contains the normalized flux from the Kepler-10 system.
+
+>>> from starry.extensions import from_nexsci
+>>> import numpy as np
+>>> sys = from_nexsci('Kepler-10')
+>>> time = np.arange(0, 10, 0.1)
+>>> flux = sys.flux(time).eval()
 
 ========== ==============================================
 **Author** Christina Hedges
@@ -20,25 +31,26 @@ from ... import PACKAGEDIR
 from ... import Secondary, Primary, System, Map
 
 
-class DataRetrievalFailure(Exception):
-    """Raised if data can't be retrieved from online database
-    """
-
-    pass
-
 
 def from_nexsci(name, limb_darkening=[0.4, 0.2]):
-    """Returns a starry system with properties of system
+    """Extension for retrieving a `starry.System` initialized with parameters from NExSci.
 
-    Parameters
-    ----------
-    name : str
-        Name of system to retrieve. e.g. 'K2-43' or 'K2-43b'
+    Specify the name of the system as a string to `name` to create that specific
+    system. Users can also pass `'random'` to obtain a random system. Returns
+    a `starry.System` object.
 
-    Returns
-    -------
-    sys : :py:class:`starry.System`
-        Starry system using planet parameters from nexsci
+    This extension queries NExSci and then stores the data as a csv file in
+    '/extensions/data'. Loading this module will trigger a query of NExSci if
+    this csv file is more than 7 days out of date.
+
+    Args:
+        name (str): Name of system to retrieve.
+            e.g. 'K2-43' or 'K2-43b'
+        limb_darkening (list, optional): The quadratic limb-darkening
+            parameters to apply to the model. Default is [0.4, 0.2]
+    Returns:
+        sys :py:class:`starry.System`: Starry system using planet
+            parameters from nexsci
     """
     df = _get_nexsci_data()
     if name is "random":
@@ -231,6 +243,12 @@ def _get_nexsci_data():
     return pd.read_csv(
         "{}/extensions/nexsci/data/planets.csv".format(PACKAGEDIR)
     )
+
+
+class DataRetrievalFailure(Exception):
+    """Exception raised if data can't be retrieved from NExSci
+    """
+    pass
 
 
 _check_data_on_import()
