@@ -660,20 +660,22 @@ class YlmBase(object):
                     )
 
         # Plot the first frame of the image
-        if norm is None:
-            norm = colors.Normalize(
-                vmin=np.nanmin(image), vmax=np.nanmax(image)
-            )
-        elif norm == "rv":
-            try:
-                norm = colors.DivergingNorm(
-                    vmin=np.nanmin(image), vmax=np.nanmax(image), vcenter=0
-                )
-            except AttributeError:
-                # DivergingNorm was introduced in matplotlib 3.1
-                norm = colors.Normalize(
-                    vmin=np.nanmin(image), vmax=np.nanmax(image)
-                )
+        if norm is None or norm == "rv":
+            vmin = np.nanmin(image)
+            vmax = np.nanmax(image)
+            if vmin == vmax:
+                vmin -= 1e-15
+                vmax += 1e-15
+            if norm is None:
+                norm = colors.Normalize(vmin=vmin, vmax=vmax)
+            elif norm == "rv":
+                try:
+                    norm = colors.DivergingNorm(
+                        vmin=vmin, vcenter=0, vmax=vmax
+                    )
+                except AttributeError:
+                    # DivergingNorm was introduced in matplotlib 3.1
+                    norm = colors.Normalize(vmin=vmin, vmax=vmax)
         img = ax.imshow(
             image[0],
             origin="lower",

@@ -27,7 +27,7 @@ def test_show_reflected():
     map.show(theta=np.linspace(0, 360, 10), file="tmp.mp4")
 
 
-def test_show_rrv():
+def test_show_rv():
     map = starry.Map(ydeg=1, udeg=1, rv=True)
     map.show(rv=True, file="tmp.pdf", projection="ortho")
     map.show(rv=True, file="tmp.pdf", projection="rect")
