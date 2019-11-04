@@ -17,6 +17,7 @@ from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import colors
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
 from astropy import units
@@ -544,8 +545,7 @@ class YlmBase(object):
         interval = kwargs.pop("interval", 75)
         file = kwargs.pop("file", None)
         html5_video = kwargs.pop("html5_video", True)
-        vmin = kwargs.pop("vmin", None)
-        vmax = kwargs.pop("vmax", None)
+        norm = kwargs.pop("norm", None)
         dpi = kwargs.pop("dpi", None)
 
         # Get the map orientation
@@ -660,18 +660,27 @@ class YlmBase(object):
                     )
 
         # Plot the first frame of the image
-        if vmin is None:
-            vmin = np.nanmin(image)
-        if vmax is None:
-            vmax = np.nanmax(image)
+        if norm is None:
+            norm = colors.Normalize(
+                vmin=np.nanmin(image), vmax=np.nanmax(image)
+            )
+        elif norm == "rv":
+            try:
+                norm = colors.DivergingNorm(
+                    vmin=np.nanmin(image), vmax=np.nanmax(image), vcenter=0
+                )
+            except AttributeError:
+                # DivergingNorm was introduced in matplotlib 3.1
+                norm = colors.Normalize(
+                    vmin=np.nanmin(image), vmax=np.nanmax(image)
+                )
         img = ax.imshow(
             image[0],
             origin="lower",
             extent=extent,
             cmap=cmap,
+            norm=norm,
             interpolation="none",
-            vmin=vmin,
-            vmax=vmax,
             animated=animated,
         )
 
@@ -1071,7 +1080,7 @@ class RVBase(object):
 
         Args:
             cmap (string or colormap instance): The matplotlib colormap
-                to use. Defaults to ``plasma``.
+                to use. Defaults to ``RdBu_r``.
             projection (string, optional): The map projection. Accepted
                 values are ``ortho``, corresponding to an orthographic
                 projection (as seen on the sky), and ``rect``, corresponding
@@ -1087,12 +1096,14 @@ class RVBase(object):
                 intensity instead. Defaults to True.
         """
         # Show the velocity map if `rv==True`
-        # Override the `projection` kwarg if we're
+        # Override some kwargs if we're
         # plotting the radial velocity.
         rv = kwargs.pop("rv", True)
         if rv:
             kwargs.pop("projection", None)
             self._set_RV_filter()
+            kwargs["cmap"] = kwargs.pop("cmap", "RdBu_r")
+            kwargs["norm"] = kwargs.pop("norm", "rv")
         res = super(RVBase, self).show(rv=rv, **kwargs)
         if rv:
             self._unset_RV_filter()
