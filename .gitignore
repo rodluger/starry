@@ -19,6 +19,7 @@ docs/notebooks
 junit/
 tests/cov.xml
 coverage.sh
+tests/*/tmp.*
 
 tmp/*
 tests/cpp/test
