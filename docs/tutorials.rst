@@ -25,11 +25,20 @@ Advanced
    :titlesonly:
    :maxdepth: 1
 
-   notebooks/RVDerivation.ipynb
    notebooks/RossiterMcLaughlin.ipynb
    notebooks/ReflectedLight.ipynb
+   notebooks/LightTravelDelay.ipynb
+   notebooks/HotJupiterPhaseCurve.ipynb
+
+Miscellaneous
+-------------
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   notebooks/RVDerivation.ipynb
    notebooks/NullSpace.ipynb
    notebooks/StayingPositive.ipynb
-   notebooks/LightTravelDelay.ipynb
    notebooks/LDNormalization.ipynb
-   notebooks/HotJupiterPhaseCurve.ipynb
+   notebooks/TimingTests.ipynb
