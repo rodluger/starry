@@ -599,9 +599,10 @@ class OpsLD(object):
         res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
         return res
 
-    def intensity(self, lat, lon, u):
-        # TODO
-        raise NotImplementedError("Method not yet implemented.")
+    @autocompile("intensity", tt.dvector(), tt.dvector())
+    def intensity(self, mu, u):
+        basis = tt.reshape(1.0 - mu, (-1, 1)) ** np.arange(self.udeg + 1)
+        return -tt.dot(basis, u)
 
     @autocompile(
         "flux",
@@ -660,9 +661,20 @@ class OpsLD(object):
         X = tt.reshape(flux, (-1, 1))
         return X
 
+    @autocompile("render", tt.iscalar(), tt.dvector())
     def render(self, res, u):
-        # TODO
-        raise NotImplementedError("Method not yet implemented.")
+        # Compute the Cartesian grid
+        dx = 2.0 / res
+        y, x = tt.mgrid[-1:1:dx, -1:1:dx]
+        x = tt.reshape(x, [1, -1])
+        y = tt.reshape(y, [1, -1])
+        mu = tt.sqrt(1 - x ** 2 - y ** 2)
+
+        # Compute the intensity
+        intensity = self.intensity(mu, u, no_compile=True)
+
+        # We need the shape to be (nframes, npix, npix)
+        return tt.reshape(intensity, (1, res, res))
 
 
 class OpsRV(Ops):

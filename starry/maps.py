@@ -962,24 +962,37 @@ class LimbDarkenedBase(object):
         # Compute & return
         return self.L * self.ops.flux(xo, yo, zo, ro, self._u)
 
-    def intensity(self, lat=0, lon=0):
+    def intensity(self, mu=None, x=None, y=None):
         """
         Compute and return the intensity of the map.
 
         Args:
-            lat (scalar or vector, optional): latitude at which to evaluate
-                the intensity in units of :py:attr:`angle_unit`.
-            lon (scalar or vector, optional): longitude at which to evaluate
-                the intensity in units of :py:attr:`angle_unit``.
+            mu (scalar or vector, optional): the radial parameter :math:`\mu`,
+                equal to the cosine of the angle between the line of sight and
+                the normal to the surface. Default is None.
+            x (scalar or vector, optional): the Cartesian x position on the
+                surface in units of the body's radius. Default is None.
+            y (scalar or vector, optional): the Cartesian y position on the
+                surface in units of the body's radius. Default is None.
 
+        .. note::
+            Users must provide either `mu` **or** `x` and `y`.
         """
         # Get the Cartesian points
-        lat, lon = vectorize(*self.cast(lat, lon))
-        lat *= self._angle_factor
-        lon *= self._angle_factor
+        if mu is not None:
+            mu = vectorize(self.cast(mu))
+            assert (
+                x is None and y is None
+            ), "Please provide either `mu` or `x` and `y`, but not both."
+        else:
+            assert (
+                x is not None and y is not None
+            ), "Please provide either `mu` or `x` and `y`."
+            x, y = vectorize(*self.cast(x, y))
+            mu = (1 - x ** 2 - y ** 2) ** 0.5
 
         # Compute & return
-        return self.L * self.ops.intensity(lat, lon, self._u)
+        return self.L * self.ops.intensity(mu, self._u)
 
     def render(self, res=300):
         """Compute and return the intensity of the map on a grid.
