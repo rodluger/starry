@@ -661,11 +661,36 @@ class OpsLD(object):
         X = tt.reshape(flux, (-1, 1))
         return X
 
-    @autocompile("render", tt.iscalar(), tt.dvector())
-    def render(self, res, u):
+    @autocompile(
+        "render",
+        tt.iscalar(),
+        tt.iscalar(),
+        tt.dvector(),
+        tt.dscalar(),
+        tt.dscalar(),
+        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        tt.dvector(),
+        tt.dvector(),
+        tt.dscalar(),
+    )
+    def render(self, res, projection, theta, inc, obl, y, u, f, alpha):
+        nframes = tt.shape(theta)[0]
+        image = self._render(res, u, no_compile=True)
+        return tt.tile(image, (nframes, 1, 1))
+
+    @autocompile("_render", tt.iscalar(), tt.dvector())
+    def _render(self, res, u):
+        # TODO: There may be a bug in Theano related to
+        # tt.mgrid; I get different results depending on whether the
+        # function is compiled using `theano.function()` or if it
+        # is evaluated using `.eval()`. The small perturbation to `res`
+        # is a temporary fix that ensures that `y` and `x` are of the
+        # correct length in all cases I've tested.
+
         # Compute the Cartesian grid
-        dx = 2.0 / res
+        dx = 2.0 / (res - 0.01)
         y, x = tt.mgrid[-1:1:dx, -1:1:dx]
+
         x = tt.reshape(x, [1, -1])
         y = tt.reshape(y, [1, -1])
         mu = tt.sqrt(1 - x ** 2 - y ** 2)

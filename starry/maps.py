@@ -1010,7 +1010,7 @@ class LimbDarkenedBase(object):
             animated = False
 
         # Compute
-        image = self.L * self.ops.render(res, self._u)
+        image = self.L * self.ops._render(res, self._u)
 
         # Squeeze?
         if animated:
@@ -1063,7 +1063,7 @@ class LimbDarkenedBase(object):
                 u = self._u.eval()
 
                 # Explicitly call the compiled version of `render`
-                image = self.L.eval().reshape(-1, 1, 1) * self.ops.render(
+                image = self.L.eval().reshape(-1, 1, 1) * self.ops._render(
                     res, u, force_compile=True
                 )
 
