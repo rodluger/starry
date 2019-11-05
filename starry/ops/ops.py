@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from .. import config
 from .. import _c_ops
+from .limbdark import LimbDarkOp, GetClOp
 from .integration import sTOp, rTReflectedOp
 from .rotation import dotROp, tensordotRzOp
 from .filter import FOp
@@ -31,7 +32,7 @@ except ModuleNotFoundError:
 G_grav = constants.G.to(units.R_sun ** 3 / units.M_sun / units.day ** 2).value
 
 
-__all__ = ["Ops", "OpsReflected", "OpsRV", "OpsSystem", "G_grav"]
+__all__ = ["Ops", "OpsLD", "OpsReflected", "OpsRV", "OpsSystem", "G_grav"]
 
 
 class Ops(object):
@@ -566,6 +567,102 @@ class Ops(object):
         yhat = tt.dot(M, flux)
         yvar = cho_solve(cho_W, tt.eye(X.shape[1]))
         return yhat, yvar, cho_W
+
+
+class OpsLD(object):
+    def __init__(
+        self, ydeg, udeg, fdeg, drorder, nw, reflected=False, **kwargs
+    ):
+        """
+
+        """
+        # Sanity checks
+        assert ydeg == fdeg == drorder == 0
+        assert reflected is False
+
+        # Ingest kwargs
+        self.udeg = udeg
+        self.nw = nw
+        if config.lazy:
+            self.cast = to_tensor
+        else:
+            self.cast = to_array
+
+        # Set up the ops
+        self.get_cl = GetClOp()
+        self.limbdark = LimbDarkOp()
+
+    def set_map_vector(self, vector, inds, vals):
+        """
+
+        """
+        res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
+        return res
+
+    def intensity(self, lat, lon, u):
+        # TODO
+        raise NotImplementedError("Method not yet implemented.")
+
+    @autocompile(
+        "flux",
+        tt.dvector(),
+        tt.dvector(),
+        tt.dvector(),
+        tt.dscalar(),
+        tt.dvector(),
+    )
+    def flux(self, xo, yo, zo, ro, u):
+        # Initialize flat light curve
+        flux = tt.ones_like(xo)
+
+        # Compute the occultation mask
+        b = tt.sqrt(xo ** 2 + yo ** 2)
+        b_occ = tt.invert(tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0))
+        i_occ = tt.arange(b.size)[b_occ]
+
+        # Get the Agol `c` coefficients
+        c = self.get_cl(u)
+        if self.udeg == 0:
+            c_norm = c / (np.pi * c[0])
+        else:
+            c_norm = c / (np.pi * (c[0] + 2 * c[1] / 3))
+
+        # Compute the occultation flux
+        los = zo[i_occ]
+        r = ro * tt.ones_like(los)
+        flux = tt.set_subtensor(
+            flux[i_occ], self.limbdark(c_norm, b[i_occ], r, los)[0]
+        )
+        return flux
+
+    @autocompile(
+        "X",
+        tt.dvector(),
+        tt.dvector(),
+        tt.dvector(),
+        tt.dvector(),
+        tt.dscalar(),
+        tt.dscalar(),
+        tt.dscalar(),
+        tt.dvector(),
+        tt.dvector(),
+        tt.dscalar(),
+    )
+    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
+        """
+        Convenience function for integration of limb-darkened maps
+        with the ``System`` class. The design matrix for limb-darkened
+        maps is just a column vector equal to the total flux, since the
+        spherical harmonic coefficient vector is ``[1.0]``.
+
+        """
+        flux = self.flux(xo, yo, zo, ro, u, no_compile=True)
+        X = tt.reshape(flux, (-1, 1))
+        return X
+
+    def render(self, res, u):
+        # TODO
+        raise NotImplementedError("Method not yet implemented.")
 
 
 class OpsRV(Ops):

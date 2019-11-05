@@ -2,6 +2,7 @@
 from . import config
 from .ops import (
     Ops,
+    OpsLD,
     OpsReflected,
     OpsRV,
     vectorize,
@@ -27,7 +28,14 @@ import logging
 logger = logging.getLogger("starry.maps")
 
 
-__all__ = ["Map", "MapBase", "YlmBase", "RVBase", "ReflectedBase"]
+__all__ = [
+    "Map",
+    "MapBase",
+    "YlmBase",
+    "LimbDarkenedBase",
+    "RVBase",
+    "ReflectedBase",
+]
 
 
 class Luminosity(object):
@@ -40,19 +48,6 @@ class Luminosity(object):
 
 class MapBase(object):
     """The base class for all `starry` maps."""
-
-    pass
-
-
-class YlmBase(object):
-    """The default ``starry`` map class.
-
-    This class handles light curves and phase curves of objects in
-    emitted light. It can be instantiated by calling :py:func:`starry.Map` with
-    both ``rv`` and ``reflected`` set to False.
-    """
-
-    _ops_class_ = Ops
 
     # TODO: MAKE SURE THIS IS IN THE DOCS
     L = Luminosity()
@@ -76,6 +71,11 @@ class YlmBase(object):
         self._N = (ydeg + udeg + fdeg + 1) ** 2
         self._nw = nw
         self._drorder = drorder
+
+        # Basic properties
+        self._inc = 0.5 * np.pi
+        self._obl = 0.0
+        self._alpha = 0.0
 
         # Units
         self.angle_unit = kwargs.pop("angle_unit", units.degree)
@@ -181,48 +181,6 @@ class YlmBase(object):
         """
         return self._u
 
-    @property
-    def inc(self):
-        """The inclination of the rotation axis in units of :py:attr:`angle_unit`."""
-        return self._inc / self._angle_factor
-
-    @inc.setter
-    def inc(self, value):
-        self._inc = self.cast(value) * self._angle_factor
-
-    @property
-    def obl(self):
-        """The obliquity of the rotation axis in units of :py:attr:`angle_unit`."""
-        return self._obl / self._angle_factor
-
-    @obl.setter
-    def obl(self, value):
-        self._obl = self.cast(value) * self._angle_factor
-
-    @property
-    def alpha(self):
-        """The rotational shear coefficient, a number in the range ``[0, 1]``.
-
-        The parameter :math:`\\alpha` is used to model linear differential
-        rotation. The angular velocity at a given latitude :math:`\\theta`
-        is
-
-        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
-
-        where :math:`\\omega_{eq}` is the equatorial angular velocity of
-        the object.
-        """
-        return self._alpha
-
-    @alpha.setter
-    def alpha(self, value):
-        if (self._drorder == 0) and not hasattr(self, "rv"):
-            logger.warn(
-                "Parameter `drorder` is zero, so setting `alpha` has no effect."
-            )
-        else:
-            self._alpha = self.cast(value)
-
     def __getitem__(self, idx):
         if isinstance(idx, integers) or isinstance(idx, slice):
             # User is accessing a limb darkening index
@@ -284,7 +242,7 @@ class YlmBase(object):
                 message = message.format(key, method)
                 logger.warn(message)
 
-    def _get_orbit(self, kwargs):
+    def _get_flux_kwargs(self, kwargs):
         xo = kwargs.pop("xo", 0.0)
         yo = kwargs.pop("yo", 0.0)
         zo = kwargs.pop("zo", 1.0)
@@ -320,6 +278,20 @@ class YlmBase(object):
 
         self._L = self.cast(kwargs.pop("L", np.ones(self.nw)))
 
+        self._check_kwargs("reset", kwargs)
+
+
+class YlmBase(object):
+    """The default ``starry`` map class.
+
+    This class handles light curves and phase curves of objects in
+    emitted light. It can be instantiated by calling :py:func:`starry.Map` with
+    both ``rv`` and ``reflected`` set to False.
+    """
+
+    _ops_class_ = Ops
+
+    def reset(self, **kwargs):
         if kwargs.get("inc", None) is not None:
             self.inc = kwargs.pop("inc")
         else:
@@ -335,7 +307,49 @@ class YlmBase(object):
         else:
             self._alpha = self.cast(0.0)
 
-        self._check_kwargs("reset", kwargs)
+        super(YlmBase, self).reset(**kwargs)
+
+    @property
+    def inc(self):
+        """The inclination of the rotation axis in units of :py:attr:`angle_unit`."""
+        return self._inc / self._angle_factor
+
+    @inc.setter
+    def inc(self, value):
+        self._inc = self.cast(value) * self._angle_factor
+
+    @property
+    def obl(self):
+        """The obliquity of the rotation axis in units of :py:attr:`angle_unit`."""
+        return self._obl / self._angle_factor
+
+    @obl.setter
+    def obl(self, value):
+        self._obl = self.cast(value) * self._angle_factor
+
+    @property
+    def alpha(self):
+        """The rotational shear coefficient, a number in the range ``[0, 1]``.
+
+        The parameter :math:`\\alpha` is used to model linear differential
+        rotation. The angular velocity at a given latitude :math:`\\theta`
+        is
+
+        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
+
+        where :math:`\\omega_{eq}` is the equatorial angular velocity of
+        the object.
+        """
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, value):
+        if (self._drorder == 0) and not hasattr(self, "rv"):
+            logger.warn(
+                "Parameter `drorder` is zero, so setting `alpha` has no effect."
+            )
+        else:
+            self._alpha = self.cast(value)
 
     def X(self, **kwargs):
         """Alias for :py:meth:`design_matrix`. *Deprecated*"""
@@ -357,7 +371,7 @@ class YlmBase(object):
                 in units of :py:attr:`angle_unit`.
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_orbit(kwargs)
+        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Check for invalid kwargs
         self._check_kwargs("design_matrix", kwargs)
@@ -419,7 +433,7 @@ class YlmBase(object):
                 in units of :py:attr:`angle_unit`.
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_orbit(kwargs)
+        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Check for invalid kwargs
         self._check_kwargs("flux", kwargs)
@@ -911,6 +925,256 @@ class YlmBase(object):
         return lat / self._angle_factor, lon / self._angle_factor, I
 
 
+class LimbDarkenedBase(object):
+    """The ``starry`` map class for purely limb-darkened maps.
+
+    This class handles light curves of purely limb-darkened objects in
+    emitted light. It can be instantiated by calling :py:func:`starry.Map` with
+    ``ydeg`` set to zero and both ``rv`` and ``reflected`` set to False.
+    """
+
+    _ops_class_ = OpsLD
+
+    def flux(self, **kwargs):
+        """
+        Compute and return the light curve.
+
+        Args:
+            xo (scalar or vector, optional): x coordinate of the occultor
+                relative to this body in units of this body's radius.
+            yo (scalar or vector, optional): y coordinate of the occultor
+                relative to this body in units of this body's radius.
+            zo (scalar or vector, optional): z coordinate of the occultor
+                relative to this body in units of this body's radius.
+            ro (scalar, optional): Radius of the occultor in units of
+                this body's radius.
+        """
+        # Orbital kwargs
+        theta = kwargs.pop("theta", None)
+        _, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
+
+        # Check for invalid kwargs
+        if theta is not None:
+            # If the user passed in `theta`, make sure a warning is raised
+            kwargs["theta"] = theta
+        self._check_kwargs("flux", kwargs)
+
+        # Compute & return
+        return self.L * self.ops.flux(xo, yo, zo, ro, self._u)
+
+    def intensity(self, lat=0, lon=0):
+        """
+        Compute and return the intensity of the map.
+
+        Args:
+            lat (scalar or vector, optional): latitude at which to evaluate
+                the intensity in units of :py:attr:`angle_unit`.
+            lon (scalar or vector, optional): longitude at which to evaluate
+                the intensity in units of :py:attr:`angle_unit``.
+
+        """
+        # Get the Cartesian points
+        lat, lon = vectorize(*self.cast(lat, lon))
+        lat *= self._angle_factor
+        lon *= self._angle_factor
+
+        # Compute & return
+        return self.L * self.ops.intensity(lat, lon, self._u)
+
+    def render(self, res=300):
+        """Compute and return the intensity of the map on a grid.
+
+        Returns an image of shape ``(res, res)``.
+
+        Args:
+            res (int, optional): The resolution of the map in pixels on a
+                side. Defaults to 300.
+        """
+        # Multiple frames?
+        if self.nw is not None:
+            animated = True
+        else:
+            animated = False
+
+        # Compute
+        image = self.L * self.ops.render(res, self._u)
+
+        # Squeeze?
+        if animated:
+            return image
+        else:
+            return reshape(image, [res, res])
+
+    def show(self, **kwargs):
+        """
+        Display an image of the map, with optional animation. See the
+        docstring of :py:meth:`render` for more details and additional
+        keywords accepted by this method.
+
+        Args:
+            cmap (string or colormap instance, optional): The matplotlib colormap
+                to use. Defaults to ``plasma``.
+            figsize (tuple, optional): Figure size in inches. Default is
+                (3, 3) for orthographic maps and (7, 3.5) for rectangular
+                maps.
+            grid (bool, optional): Show latitude/longitude grid lines?
+                Defaults to True.
+            interval (int, optional): Interval between frames in milliseconds
+                (animated maps only). Defaults to 75.
+            file (string, optional): The file name (including the extension)
+                to save the figure or animation to. Defaults to None.
+            html5_video (bool, optional): If rendering in a Jupyter notebook,
+                display as an HTML5 video? Default is True. If False, displays
+                the animation using Javascript (file size will be larger.)
+        """
+        # Get kwargs
+        cmap = kwargs.pop("cmap", "plasma")
+        grid = kwargs.pop("grid", True)
+        interval = kwargs.pop("interval", 75)
+        file = kwargs.pop("file", None)
+        html5_video = kwargs.pop("html5_video", True)
+        norm = kwargs.pop("norm", None)
+        dpi = kwargs.pop("dpi", None)
+
+        # Render the map if needed
+        image = kwargs.pop("image", None)
+        if image is None:
+
+            # We need to evaluate the variables so we can plot the map!
+            if config.lazy:
+
+                # Get kwargs
+                res = kwargs.pop("res", 300)
+
+                # Evaluate the variables
+                u = self._u.eval()
+
+                # Explicitly call the compiled version of `render`
+                image = self.L.eval().reshape(-1, 1, 1) * self.ops.render(
+                    res, u, force_compile=True
+                )
+
+            else:
+
+                # Easy!
+                image = self.render(**kwargs)
+                kwargs.pop("res", None)
+
+        if len(image.shape) == 3:
+            nframes = image.shape[0]
+        else:
+            nframes = 1
+            image = np.reshape(image, (1,) + image.shape)
+
+        # Animation
+        animated = nframes > 1
+
+        # Set up the plot
+        figsize = kwargs.pop("figsize", (3, 3))
+        fig, ax = plt.subplots(1, figsize=figsize)
+        ax.axis("off")
+        ax.set_xlim(-1.05, 1.05)
+        ax.set_ylim(-1.05, 1.05)
+        extent = (-1, 1, -1, 1)
+
+        # Grid lines
+        if grid:
+            x = np.linspace(-1, 1, 10000)
+            y = np.sqrt(1 - x ** 2)
+            ax.plot(x, y, "k-", alpha=1, lw=1)
+            ax.plot(x, -y, "k-", alpha=1, lw=1)
+            lat_lines = get_ortho_latitude_lines()
+            for x, y in lat_lines:
+                ax.plot(x, y, "k-", lw=0.5, alpha=0.5, zorder=100)
+            lon_lines = get_ortho_longitude_lines()
+            ll = [None for n in lon_lines]
+            for n, l in enumerate(lon_lines):
+                (ll[n],) = ax.plot(
+                    l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=100
+                )
+
+        # Plot the first frame of the image
+        if norm is None:
+            vmin = np.nanmin(image)
+            vmax = np.nanmax(image)
+            if vmin == vmax:
+                vmin -= 1e-15
+                vmax += 1e-15
+            norm = colors.Normalize(vmin=vmin, vmax=vmax)
+        img = ax.imshow(
+            image[0],
+            origin="lower",
+            extent=extent,
+            cmap=cmap,
+            norm=norm,
+            interpolation="none",
+            animated=animated,
+        )
+
+        # Display or save the image / animation
+        if animated:
+
+            def updatefig(i):
+                img.set_array(image[i])
+                return (img,)
+
+            ani = FuncAnimation(
+                fig,
+                updatefig,
+                interval=interval,
+                blit=False,
+                frames=image.shape[0],
+            )
+
+            # Business as usual
+            if (file is not None) and (file != ""):
+                if file.endswith(".mp4"):
+                    ani.save(file, writer="ffmpeg", dpi=dpi)
+                elif file.endswith(".gif"):
+                    ani.save(file, writer="imagemagick", dpi=dpi)
+                else:
+                    # Try and see what happens!
+                    ani.save(file, dpi=dpi)
+                plt.close()
+            else:
+                try:
+                    if "zmqshell" in str(type(get_ipython())):
+                        plt.close()
+                        if html5_video:
+                            display(HTML(ani.to_html5_video()))
+                        else:
+                            display(HTML(ani.to_jshtml()))
+                    else:
+                        raise NameError("")
+                except NameError:
+                    plt.show()
+                    plt.close()
+
+            # Matplotlib generates an annoying empty
+            # file when producing an animation. Delete it.
+            try:
+                os.remove("None0000000.png")
+            except FileNotFoundError:
+                pass
+
+        else:
+            if (file is not None) and (file != ""):
+                fig.savefig(file)
+                plt.close()
+            else:
+                plt.show()
+
+        # Check for invalid kwargs
+        self._check_kwargs("show", kwargs)
+
+    def minimize(self, **kwargs):
+        r"""Find the global minimum of the map intensity.
+
+        """
+        # TODO
+        raise NotImplementedError("Method not yet available.")
+
+
 class RVBase(object):
     """The radial velocity ``starry`` map class.
 
@@ -996,7 +1260,7 @@ class RVBase(object):
                 in units of :py:attr:`angle_unit`.
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_orbit(kwargs)
+        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Check for invalid kwargs
         self._check_kwargs("rv", kwargs)
@@ -1151,7 +1415,7 @@ class ReflectedBase(object):
 
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_orbit(kwargs)
+        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Source position
         source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
@@ -1198,7 +1462,7 @@ class ReflectedBase(object):
                 vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_orbit(kwargs)
+        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Source position
         source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
@@ -1397,23 +1661,36 @@ def Map(
         drorder <= 2
     ), "Differential rotation orders above 2 are not supported."
     if drorder > 0:
-        # TODO: phase this warning out
+        assert ydeg > 0, "Differential rotation requires `ydeg` >= 1."
+
+        # TODO: phase this next warning out
         logger.warn(
             "Differential rotation is still an experimental feature. "
-            + "Use it with care."
+            "Use it with care."
         )
+
         Ddeg = (4 * drorder + 1) * ydeg
         if Ddeg >= 50:
             logger.warn(
                 "The degree of the differential rotation operator "
-                + "is currently {0}, ".format(Ddeg)
+                "is currently {0}, ".format(Ddeg)
                 + "which will likely cause the code to run very slowly. "
-                + "Consider decreasing the degree of the map or the order "
-                + "of differential rotation."
+                "Consider decreasing the degree of the map or the order "
+                "of differential rotation."
             )
 
-    # Default map base
-    Bases = (YlmBase, MapBase)
+    # Limb-darkened?
+    if (ydeg == 0) and (rv is False) and (reflected is False):
+
+        # TODO: Add support for wavelength-dependent limb darkening
+        if nw is not None:
+            raise NotImplementedError(
+                "Multi-wavelength limb-darkened maps are not yet supported."
+            )
+
+        Bases = (LimbDarkenedBase, MapBase)
+    else:
+        Bases = (YlmBase, MapBase)
 
     # Radial velocity / reflected light?
     if rv:

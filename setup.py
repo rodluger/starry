@@ -64,14 +64,14 @@ def get_ext():
     include_dirs = [
         get_pybind_include(),
         get_pybind_include(user=True),
-        "include",
-        "lib/eigen_3.3.5",
+        "starry/lib/include",
+        "starry/lib/vendor/eigen_3.3.5",
     ]
     if int(macros["STARRY_NDIGITS"]) > 16:
         include_dirs += ["lib/boost_1_66_0"]
     return Extension(
         "starry._c_ops",
-        ["include/interface.cpp"],
+        ["starry/lib/include/interface.cpp"],
         include_dirs=include_dirs,
         language="c++",
         define_macros=[(key, value) for key, value in macros.items()],

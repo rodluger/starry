@@ -19,7 +19,8 @@ docs/notebooks
 junit/
 tests/cov.xml
 coverage.sh
-tests/*/tmp.*
+tmp.mp4
+tmp.pdf
 
 tmp/*
 tests/cpp/test

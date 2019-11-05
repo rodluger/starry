@@ -245,7 +245,7 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     )
 
 
-def test_flux_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+def test_flux_ylm_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2, udeg=2)
     theta = np.linspace(0, 30, 10)
@@ -287,6 +287,27 @@ def test_flux_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     verify_grad(
         func,
         (theta, xo, yo, zo, ro, inc, obl, u, f, alpha),
+        abs_tol=abs_tol,
+        rel_tol=rel_tol,
+        eps=eps,
+        n_tests=1,
+    )
+
+
+def test_flux_quad_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    theano.config.compute_test_value = "off"
+    map = starry.Map(udeg=2)
+    xo = np.linspace(-1.5, 1.5, 10)
+    yo = np.ones_like(xo) * 0.3
+    zo = 1.0 * np.ones_like(xo)
+    ro = 0.1
+    np.random.seed(14)
+    u = np.array([-1.0] + list(np.random.randn(2)))
+    func = lambda *args: map.ops.flux(*args)
+
+    verify_grad(
+        func,
+        (xo, yo, zo, ro, u),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
