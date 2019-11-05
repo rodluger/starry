@@ -32,6 +32,19 @@ warnings.showwarning = customwarn""".format(
     )
 
 
+matplotlib_setup = """get_ipython().magic('config InlineBackend.figure_format = "retina"')
+import matplotlib.pyplot as plt
+plt.style.use("default")
+plt.rcParams["savefig.dpi"] = 100
+plt.rcParams["figure.dpi"] = 100
+plt.rcParams["font.size"] = 16
+plt.rcParams["font.family"] = "sans-serif"
+plt.rcParams["font.sans-serif"] = ["Liberation Sans"]
+plt.rcParams["font.cursive"] = ["Liberation Sans"]
+plt.rcParams["mathtext.fontset"] = "custom"
+"""
+
+
 def run(infile, outfile, timeout=1200):
     print("Executing %s..." % infile)
 
@@ -49,6 +62,20 @@ def run(infile, outfile, timeout=1200):
                 "metadata": {"tags": ["hide_input"]},
                 "outputs": [],
                 "source": warning_filter(infile, outfile),
+            }
+        ),
+    )
+
+    # Matplotlib setup
+    nb.get("cells").insert(
+        0,
+        nbformat.notebooknode.NotebookNode(
+            {
+                "cell_type": "code",
+                "execution_count": 1,
+                "metadata": {"tags": ["hide_input"]},
+                "outputs": [],
+                "source": matplotlib_setup,
             }
         ),
     )
