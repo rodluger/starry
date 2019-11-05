@@ -42,3 +42,9 @@ def test_show_rv():
     os.remove("tmp.pdf")
     map.show(rv=True, theta=np.linspace(0, 360, 10), file="tmp.mp4")
     os.remove("tmp.mp4")
+
+
+def test_show_ld():
+    map = starry.Map(udeg=2)
+    map.show(file="tmp.pdf")
+    os.remove("tmp.pdf")

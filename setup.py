@@ -194,6 +194,7 @@ setup(
         "ipython",
         "pillow",
         "exoplanet>=0.2.0",
+        "packaging"
         # "healpy>=1.12.8;platform_system!='Windows'",
     ],
     cmdclass={"build_ext": BuildExt},
