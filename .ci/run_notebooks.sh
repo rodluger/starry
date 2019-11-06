@@ -8,6 +8,7 @@ if [[ -n $CONDA ]]; then
 fi
 
 # Attempt to fix BLAS warnings
+sudo apt-get update
 sudo apt-get install libblas-dev liblapack-dev libatlas-base-dev gfortran
 export THEANO_FLAGS=blas.ldflags="-L/usr/lib/ -lblas"
 
