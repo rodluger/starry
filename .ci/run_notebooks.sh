@@ -7,6 +7,10 @@ if [[ -n $CONDA ]]; then
     conda activate starry
 fi
 
+# Attempt to fix BLAS warnings
+sudo apt-get install libblas-dev liblapack-dev libatlas-base-dev gfortran
+export THEANO_FLAGS=blas.ldflags="-L/usr/lib/ -lblas"
+
 # Install dependencies
 pip install -U "nbconvert>=5.5"
 pip install -U ipywidgets
