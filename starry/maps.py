@@ -1398,6 +1398,10 @@ class ReflectedBase(object):
     :py:class:`starry.maps.YlmBase`, with the
     additions and modifications listed below.
 
+    The spherical harmonic coefficients of a map in reflected light are
+    an expansion of the object's *albedo* (instead of its emissivity, in
+    the default case).
+
     The illumination source is currently assumed to be a point source for
     the purposes of computing the illumination profile on the surface of the
     body. However, if the illumination source occults the body, the flux
@@ -1407,6 +1411,17 @@ class ReflectedBase(object):
     case of an extremely short-period planet, in which case signficantly more
     than half the planet surface is illuminated by the star at any given time.
     We plan to account for this effect in the future, so stay tuned.
+
+    The ``xo``, ``yo``, and ``zo`` parameters in several of the methods below
+    specify the position of the illumination source in units of this body's
+    radius. The flux returned by the :py:meth:`flux` method is normalized such
+    that when the distance between the occultor and the illumination source is
+    unity, a uniform unit-amplitude map will emit a flux of unity when viewed
+    at noon.
+
+    This class does not currently support occultations. If an occultation
+    does occur, a ``ValueError`` will be raised. Support for occultations in
+    reflected light will be added in an upcoming version, so stay tuned.
 
     .. note::
         Instantiate this class by calling
@@ -1514,17 +1529,11 @@ class ReflectedBase(object):
             lon (scalar or vector, optional): longitude at which to evaluate
                 the intensity in units of :py:attr:`angle_unit`.
             xo (scalar or vector, optional): x coordinate of the illumination
-                source relative to this body.
+                source relative to this body in units of this body's radius.
             yo (scalar or vector, optional): y coordinate of the illumination
-                source relative to this body.
+                source relative to this body in units of this body's radius.
             zo (scalar or vector, optional): z coordinate of the illumination
-                source relative to this body.
-
-        .. note::
-            Since the illuminating body is currently treated as a point source,
-            the units of ``xo``, ``yo``, and ``zo`` aren't important, as only
-            the **angle** of this vector is used to calculate the illumination
-            profile.
+                source relative to this body in units of this body's radius.
 
         """
         # Get the Cartesian points
@@ -1533,7 +1542,7 @@ class ReflectedBase(object):
         lon *= self._angle_factor
 
         # Get the source position
-        lat, lon, xo, yo, zo = vectorize(*self.cast(lat, lon, xo, yo, zo))
+        xo, yo, zo = vectorize(*self.cast(xo, yo, zo))
 
         # Compute & return
         return self.amp * self.ops.intensity(
@@ -1562,17 +1571,12 @@ class ReflectedBase(object):
                 units of :py:attr:`angle_unit`. If this is a vector, an
                 animation is generated. Defaults to ``0.0``.
             xo (scalar or vector, optional): x coordinate of the illumination
-                source relative to this body.
+                source relative to this body in units of this body's radius.
             yo (scalar or vector, optional): y coordinate of the illumination
-                source relative to this body.
+                source relative to this body in units of this body's radius.
             zo (scalar or vector, optional): z coordinate of the illumination
-                source relative to this body.
+                source relative to this body in units of this body's radius.
 
-        .. note::
-            Since the illuminating body is currently treated as a point source,
-            the units of ``xo``, ``yo``, and ``zo`` aren't important, as only
-            the **angle** of this vector is used to calculate the illumination
-            profile.
         """
         # Multiple frames?
         if self.nw is not None:

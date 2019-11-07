@@ -854,7 +854,11 @@ class OpsReflected(Ops):
             I,
         )
         I = tt.switch(tt.gt(I, 0.0), I, tt.zeros_like(I))  # set night to zero
-        I /= tt.shape_padleft(r2)  # weight by the distance to the source
+
+        # Weight by the distance to the source
+        # The factor of 2/3 ensures that the flux from a uniform map
+        # with unit amplitude seen at noon is unity.
+        I /= (2.0 / 3.0) * tt.shape_padleft(r2)
         return I
 
     @autocompile(
@@ -885,14 +889,14 @@ class OpsReflected(Ops):
         A1y = tt.dot(self.F(u, f), A1y)
 
         # Dot the polynomial into the basis
-        intensity = tt.dot(pT, A1y)
+        intensity = tt.shape_padright(tt.dot(pT, A1y))
 
         # Weight the intensity by the illumination
         xyz = tt.concatenate(
             (
                 tt.reshape(xpt, [1, -1]),
                 tt.reshape(ypt, [1, -1]),
-                tt.reshape(xpt, [1, -1]),
+                tt.reshape(zpt, [1, -1]),
             )
         )
         I = self.compute_illumination(xyz, xo, yo, zo)
@@ -974,7 +978,9 @@ class OpsReflected(Ops):
         X = self.right_project(rTA1Rz, inc, obl, theta, alpha)
 
         # Weight by the distance to the source
-        X /= tt.shape_padright(r2)
+        # The factor of 2/3 ensures that the flux from a uniform map
+        # with unit amplitude seen at noon is unity.
+        X /= (2.0 / 3.0) * tt.shape_padright(r2)
 
         # TODO: Implement occultations in reflected light
         # Throw error if there's an occultation
