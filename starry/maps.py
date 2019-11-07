@@ -561,7 +561,7 @@ class YlmBase(object):
         interval = kwargs.pop("interval", 75)
         file = kwargs.pop("file", None)
         html5_video = kwargs.pop("html5_video", True)
-        amp = kwargs.pop("amp", None)
+        norm = kwargs.pop("norm", None)
         dpi = kwargs.pop("dpi", None)
 
         # Get the map orientation
@@ -676,26 +676,28 @@ class YlmBase(object):
                     )
 
         # Plot the first frame of the image
-        if amp is None or amp == "rv":
+        if norm is None or norm == "rv":
             vmin = np.nanmin(image)
             vmax = np.nanmax(image)
             if vmin == vmax:
                 vmin -= 1e-15
                 vmax += 1e-15
-            if amp is None:
-                amp = colors.Normalize(vmin=vmin, vmax=vmax)
-            elif amp == "rv":
+            if norm is None:
+                norm = colors.Normalize(vmin=vmin, vmax=vmax)
+            elif norm == "rv":
                 try:
-                    amp = colors.DivergingNorm(vmin=vmin, vcenter=0, vmax=vmax)
+                    norm = colors.DivergingNorm(
+                        vmin=vmin, vcenter=0, vmax=vmax
+                    )
                 except AttributeError:
                     # DivergingNorm was introduced in matplotlib 3.1
-                    amp = colors.Normalize(vmin=vmin, vmax=vmax)
+                    norm = colors.Normalize(vmin=vmin, vmax=vmax)
         img = ax.imshow(
             image[0],
             origin="lower",
             extent=extent,
             cmap=cmap,
-            amp=amp,
+            norm=norm,
             interpolation="none",
             animated=animated,
         )
@@ -1046,7 +1048,7 @@ class LimbDarkenedBase(object):
         interval = kwargs.pop("interval", 75)
         file = kwargs.pop("file", None)
         html5_video = kwargs.pop("html5_video", True)
-        amp = kwargs.pop("amp", None)
+        norm = kwargs.pop("norm", None)
         dpi = kwargs.pop("dpi", None)
 
         # Render the map if needed
@@ -1107,19 +1109,19 @@ class LimbDarkenedBase(object):
                 )
 
         # Plot the first frame of the image
-        if amp is None:
+        if norm is None:
             vmin = np.nanmin(image)
             vmax = np.nanmax(image)
             if vmin == vmax:
                 vmin -= 1e-15
                 vmax += 1e-15
-            amp = colors.Normalize(vmin=vmin, vmax=vmax)
+            norm = colors.Normalize(vmin=vmin, vmax=vmax)
         img = ax.imshow(
             image[0],
             origin="lower",
             extent=extent,
             cmap=cmap,
-            amp=amp,
+            norm=norm,
             interpolation="none",
             animated=animated,
         )
@@ -1382,7 +1384,7 @@ class RVBase(object):
             kwargs.pop("projection", None)
             self._set_RV_filter()
             kwargs["cmap"] = kwargs.pop("cmap", "RdBu_r")
-            kwargs["amp"] = kwargs.pop("amp", "rv")
+            kwargs["norm"] = kwargs.pop("norm", "rv")
         res = super(RVBase, self).show(rv=rv, **kwargs)
         if rv:
             self._unset_RV_filter()
