@@ -579,7 +579,7 @@ class YlmBase(object):
             ).eval()
         else:
             theta = np.atleast_1d(
-                kwargs.pop("theta", 0.0) * self._angle_factor
+                np.array(kwargs.pop("theta", 0.0)) * self._angle_factor
             )
 
         # Render the map if needed
@@ -1621,9 +1621,9 @@ class ReflectedBase(object):
             res = kwargs.get("res", 300)
             projection = get_projection(kwargs.get("projection", "ortho"))
             theta = self.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
-            xo = self.cast(kwargs.pop("xo", -1))
+            xo = self.cast(kwargs.pop("xo", 0))
             yo = self.cast(kwargs.pop("yo", 0))
-            zo = self.cast(kwargs.pop("zo", 0))
+            zo = self.cast(kwargs.pop("zo", 1))
             theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
 
             # Evaluate the variables
@@ -1654,6 +1654,8 @@ class ReflectedBase(object):
                 zo,
                 force_compile=True,
             )
+            kwargs["theta"] = theta / self._angle_factor
+
         return super(ReflectedBase, self).show(**kwargs)
 
 

@@ -831,7 +831,8 @@ class OpsReflected(Ops):
         """
 
         """
-        b = -zo / tt.sqrt(xo ** 2 + yo ** 2 + zo ** 2)
+        r2 = xo ** 2 + yo ** 2 + zo ** 2
+        b = -zo / tt.sqrt(r2)  # semi-minor axis of terminator
         invsr = 1.0 / tt.sqrt(xo ** 2 + yo ** 2)
         cosw = yo * invsr
         sinw = -xo * invsr
@@ -852,7 +853,8 @@ class OpsReflected(Ops):
             ),
             I,
         )
-        I = tt.switch(tt.gt(I, 0.0), I, tt.zeros_like(I))
+        I = tt.switch(tt.gt(I, 0.0), I, tt.zeros_like(I))  # set night to zero
+        I /= tt.shape_padleft(r2)  # weight by the distance to the source
         return I
 
     @autocompile(
@@ -954,7 +956,8 @@ class OpsReflected(Ops):
 
         # Compute the semi-minor axis of the terminator
         # and the reflectance integrals
-        bterm = -zo / tt.sqrt(xo ** 2 + yo ** 2 + zo ** 2)
+        r2 = xo ** 2 + yo ** 2 + zo ** 2
+        bterm = -zo / tt.sqrt(r2)
         rT = self.rT(bterm)
 
         # Transform to Ylms and rotate on the sky plane
@@ -969,6 +972,9 @@ class OpsReflected(Ops):
 
         # Rotate to the correct phase
         X = self.right_project(rTA1Rz, inc, obl, theta, alpha)
+
+        # Weight by the distance to the source
+        X /= tt.shape_padright(r2)
 
         # TODO: Implement occultations in reflected light
         # Throw error if there's an occultation
