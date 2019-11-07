@@ -12,7 +12,7 @@ def test_compare_to_map_rv():
     """Ensure we get the same result by calling `map.rv()` and `sys.rv()`.
     """
     # Define the map
-    map = starry.Map(ydeg=1, udeg=2, rv=True, L=1, veq=1, alpha=0)
+    map = starry.Map(ydeg=1, udeg=2, rv=True, amp=1, veq=1, alpha=0)
     map[1, 0] = 0.5
 
     # Define the star
@@ -22,7 +22,7 @@ def test_compare_to_map_rv():
 
     # Define the planet
     b = starry.Secondary(
-        starry.Map(rv=True, L=1, veq=0),
+        starry.Map(rv=True, amp=1, veq=0),
         r=0.1,
         porb=1.0,
         m=0.01,

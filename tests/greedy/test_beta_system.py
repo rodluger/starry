@@ -20,7 +20,7 @@ def test_edge_on_eccentric():
     y = 0.1 * np.random.randn((ydeg + 1) ** 2 - 1)
     porb = 1.0
     prot = 1.0
-    L = 0.25
+    amp = 0.25
     r = 0.99
     m = 0.25
     ecc = 0.5
@@ -34,7 +34,7 @@ def test_edge_on_eccentric():
     sec_beta[1:, :] = y
     sec_beta.porb = porb
     sec_beta.prot = prot
-    sec_beta.L = L
+    sec_beta.L = amp
     sec_beta.r = r
     sec_beta.a = (G_grav * (1.0 + m) * porb ** 2 / (4 * np.pi ** 2)) ** (
         1.0 / 3
@@ -69,7 +69,7 @@ def test_edge_on_eccentric():
     pri = starry.Primary(starry.Map(udeg=2))
     pri.map[1:] = u
     sec = starry.Secondary(
-        starry.Map(ydeg=ydeg, L=L),
+        starry.Map(ydeg=ydeg, amp=amp),
         porb=porb,
         r=r,
         m=m,
@@ -86,4 +86,3 @@ def test_edge_on_eccentric():
 
     # Compare
     assert np.allclose(flux, flux_beta)
-

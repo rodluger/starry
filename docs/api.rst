@@ -29,6 +29,13 @@ The Map class
 .. autoclass:: starry.maps.YlmBase()
     :members:
 
+    .. attribute:: amp
+
+      The overall amplitude of the map in arbitrary units. This factor
+      multiplies the intensity and the flux and is thus proportional to the
+      luminosity of the object. For multi-wavelength maps, this is a vector
+      corresponding to the amplitude of each wavelength bin.
+
 .. _RVBase:
 
 .. autoclass:: starry.maps.RVBase()

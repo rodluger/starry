@@ -6,11 +6,11 @@ import theano
 import numpy as np
 
 
-def test_luminosity():
+def test_normalization():
     map = starry.Map(20)
     amp = -np.random.random()
     map.add_spot(amp)
-    assert map.L == 1 + amp
+    assert map.amp == 1 + amp
 
 
 def test_gaussianity():
@@ -26,7 +26,7 @@ def test_gaussianity():
 
     # This is the actual gaussian spot intensity
     coslon = np.cos(lon * np.pi / 180)
-    I_gaussian = np.exp(-(coslon - 1) ** 2 / (2 * sigma ** 2))
+    I_gaussian = np.exp(-((coslon - 1) ** 2) / (2 * sigma ** 2))
 
     # Compare
     assert np.allclose(I, I_gaussian, atol=1e-5)

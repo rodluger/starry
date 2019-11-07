@@ -38,19 +38,19 @@ __all__ = [
 ]
 
 
-class Luminosity(object):
+class Amplitude(object):
     def __get__(self, instance, owner):
-        return instance._L
+        return instance._amp
 
     def __set__(self, instance, value):
-        instance._L = instance.cast(np.ones(instance.nw) * value)
+        instance._amp = instance.cast(np.ones(instance.nw) * value)
 
 
 class MapBase(object):
     """The base class for all `starry` maps."""
 
-    # TODO: MAKE SURE THIS IS IN THE DOCS
-    L = Luminosity()
+    # The map amplitude (just an attribute)
+    amp = Amplitude()
 
     def __init__(self, ydeg, udeg, fdeg, drorder, nw, **kwargs):
         """
@@ -276,7 +276,7 @@ class MapBase(object):
         f[0] = np.pi
         self._f = self.cast(f)
 
-        self._L = self.cast(kwargs.pop("L", np.ones(self.nw)))
+        self._amp = self.cast(kwargs.pop("amp", np.ones(self.nw)))
 
         self._check_kwargs("reset", kwargs)
 
@@ -377,7 +377,7 @@ class YlmBase(object):
         self._check_kwargs("design_matrix", kwargs)
 
         # Compute & return
-        return self.L * self.ops.X(
+        return self.amp * self.ops.X(
             theta,
             xo,
             yo,
@@ -414,7 +414,7 @@ class YlmBase(object):
         lon *= self._angle_factor
 
         # Compute & return
-        return self.L * self.ops.P(lat, lon)
+        return self.amp * self.ops.P(lat, lon)
 
     def flux(self, **kwargs):
         """
@@ -439,7 +439,7 @@ class YlmBase(object):
         self._check_kwargs("flux", kwargs)
 
         # Compute & return
-        return self.L * self.ops.flux(
+        return self.amp * self.ops.flux(
             theta,
             xo,
             yo,
@@ -470,7 +470,9 @@ class YlmBase(object):
         lon *= self._angle_factor
 
         # Compute & return
-        return self.L * self.ops.intensity(lat, lon, self._y, self._u, self._f)
+        return self.amp * self.ops.intensity(
+            lat, lon, self._y, self._u, self._f
+        )
 
     def render(self, res=300, projection="ortho", theta=0.0):
         """Compute and return the intensity of the map on a grid.
@@ -507,7 +509,7 @@ class YlmBase(object):
         theta = vectorize(self.cast(theta) * self._angle_factor)
 
         # Compute
-        image = self.L * self.ops.render(
+        image = self.amp * self.ops.render(
             res,
             projection,
             theta,
@@ -559,7 +561,7 @@ class YlmBase(object):
         interval = kwargs.pop("interval", 75)
         file = kwargs.pop("file", None)
         html5_video = kwargs.pop("html5_video", True)
-        norm = kwargs.pop("norm", None)
+        amp = kwargs.pop("amp", None)
         dpi = kwargs.pop("dpi", None)
 
         # Get the map orientation
@@ -599,7 +601,7 @@ class YlmBase(object):
                 alpha = self._alpha.eval()
 
                 # Explicitly call the compiled version of `render`
-                image = self.L.eval().reshape(-1, 1, 1) * self.ops.render(
+                image = self.amp.eval().reshape(-1, 1, 1) * self.ops.render(
                     res,
                     projection,
                     theta,
@@ -674,28 +676,26 @@ class YlmBase(object):
                     )
 
         # Plot the first frame of the image
-        if norm is None or norm == "rv":
+        if amp is None or amp == "rv":
             vmin = np.nanmin(image)
             vmax = np.nanmax(image)
             if vmin == vmax:
                 vmin -= 1e-15
                 vmax += 1e-15
-            if norm is None:
-                norm = colors.Normalize(vmin=vmin, vmax=vmax)
-            elif norm == "rv":
+            if amp is None:
+                amp = colors.Normalize(vmin=vmin, vmax=vmax)
+            elif amp == "rv":
                 try:
-                    norm = colors.DivergingNorm(
-                        vmin=vmin, vcenter=0, vmax=vmax
-                    )
+                    amp = colors.DivergingNorm(vmin=vmin, vcenter=0, vmax=vmax)
                 except AttributeError:
                     # DivergingNorm was introduced in matplotlib 3.1
-                    norm = colors.Normalize(vmin=vmin, vmax=vmax)
+                    amp = colors.Normalize(vmin=vmin, vmax=vmax)
         img = ax.imshow(
             image[0],
             origin="lower",
             extent=extent,
             cmap=cmap,
-            norm=norm,
+            amp=amp,
             interpolation="none",
             animated=animated,
         )
@@ -849,7 +849,7 @@ class YlmBase(object):
         # as that of the input image
         y /= 2 * np.sqrt(np.pi)
         self._y = self.cast(y / y[0])
-        self._L = self.cast(y[0] * np.pi)
+        self._amp = self.cast(y[0] * np.pi)
 
         # Ensure positive semi-definite?
         if force_psd:
@@ -861,7 +861,7 @@ class YlmBase(object):
 
             # Scale the coeffs?
             if I < 0:
-                fac = self._L / (self._L - np.pi * I)
+                fac = self._amp / (self._amp - np.pi * I)
                 if config.lazy:
                     self._y *= fac
                     self._y = self.ops.set_map_vector(self._y, 0, 1.0)
@@ -900,16 +900,16 @@ class YlmBase(object):
         """
         amp, _ = vectorize(self.cast(amp), np.ones(self.nw))
         sigma, lat, lon = self.cast(sigma, lat, lon)
-        self._y, new_L = self.ops.add_spot(
+        self._y, new_norm = self.ops.add_spot(
             self._y,
-            self._L,
+            self._amp,
             amp,
             sigma,
             lat * self._angle_factor,
             lon * self._angle_factor,
         )
         if not preserve_luminosity:
-            self._L = new_L
+            self._amp = new_norm
 
     def minimize(self, **kwargs):
         r"""Find the global minimum of the map intensity.
@@ -960,7 +960,7 @@ class LimbDarkenedBase(object):
         self._check_kwargs("flux", kwargs)
 
         # Compute & return
-        return self.L * self.ops.flux(xo, yo, zo, ro, self._u)
+        return self.amp * self.ops.flux(xo, yo, zo, ro, self._u)
 
     def intensity(self, mu=None, x=None, y=None):
         """
@@ -992,7 +992,7 @@ class LimbDarkenedBase(object):
             mu = (1 - x ** 2 - y ** 2) ** 0.5
 
         # Compute & return
-        return self.L * self.ops.intensity(mu, self._u)
+        return self.amp * self.ops.intensity(mu, self._u)
 
     def render(self, res=300):
         """Compute and return the intensity of the map on a grid.
@@ -1010,7 +1010,7 @@ class LimbDarkenedBase(object):
             animated = False
 
         # Compute
-        image = self.L * self.ops._render(res, self._u)
+        image = self.amp * self.ops._render(res, self._u)
 
         # Squeeze?
         if animated:
@@ -1046,7 +1046,7 @@ class LimbDarkenedBase(object):
         interval = kwargs.pop("interval", 75)
         file = kwargs.pop("file", None)
         html5_video = kwargs.pop("html5_video", True)
-        norm = kwargs.pop("norm", None)
+        amp = kwargs.pop("amp", None)
         dpi = kwargs.pop("dpi", None)
 
         # Render the map if needed
@@ -1063,7 +1063,7 @@ class LimbDarkenedBase(object):
                 u = self._u.eval()
 
                 # Explicitly call the compiled version of `render`
-                image = self.L.eval().reshape(-1, 1, 1) * self.ops._render(
+                image = self.amp.eval().reshape(-1, 1, 1) * self.ops._render(
                     res, u, force_compile=True
                 )
 
@@ -1107,19 +1107,19 @@ class LimbDarkenedBase(object):
                 )
 
         # Plot the first frame of the image
-        if norm is None:
+        if amp is None:
             vmin = np.nanmin(image)
             vmax = np.nanmax(image)
             if vmin == vmax:
                 vmin -= 1e-15
                 vmax += 1e-15
-            norm = colors.Normalize(vmin=vmin, vmax=vmax)
+            amp = colors.Normalize(vmin=vmin, vmax=vmax)
         img = ax.imshow(
             image[0],
             origin="lower",
             extent=extent,
             cmap=cmap,
-            norm=norm,
+            amp=amp,
             interpolation="none",
             animated=animated,
         )
@@ -1193,7 +1193,7 @@ class RVBase(object):
 
     This class handles velocity-weighted intensities for use in
     Rossiter-McLaughlin effect investigations. It has all the same
-    attributes and methods as b:py:class:`starry.maps.YlmBase`, with the
+    attributes and methods as :py:class:`starry.maps.YlmBase`, with the
     additions and modifications listed below.
 
     .. note::
@@ -1382,7 +1382,7 @@ class RVBase(object):
             kwargs.pop("projection", None)
             self._set_RV_filter()
             kwargs["cmap"] = kwargs.pop("cmap", "RdBu_r")
-            kwargs["norm"] = kwargs.pop("norm", "rv")
+            kwargs["amp"] = kwargs.pop("amp", "rv")
         res = super(RVBase, self).show(rv=rv, **kwargs)
         if rv:
             self._unset_RV_filter()
@@ -1438,7 +1438,7 @@ class ReflectedBase(object):
         self._check_kwargs("X", kwargs)
 
         # Compute & return
-        return self.L * self.ops.X(
+        return self.amp * self.ops.X(
             theta,
             xo,
             yo,
@@ -1485,7 +1485,7 @@ class ReflectedBase(object):
         self._check_kwargs("flux", kwargs)
 
         # Compute & return
-        return self.L * self.ops.flux(
+        return self.amp * self.ops.flux(
             theta,
             xo,
             yo,
@@ -1526,7 +1526,7 @@ class ReflectedBase(object):
         lat, lon, source = vectorize(lat, lon, source)
 
         # Compute & return
-        return self.L * self.ops.intensity(
+        return self.amp * self.ops.intensity(
             lat, lon, self._y, self._u, self._f, source
         )
 
@@ -1576,7 +1576,7 @@ class ReflectedBase(object):
         theta, source = vectorize(theta, source)
 
         # Compute
-        image = self.L * self.ops.render(
+        image = self.amp * self.ops.render(
             res,
             projection,
             theta,
