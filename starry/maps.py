@@ -776,7 +776,6 @@ class YlmBase(object):
         # Check for invalid kwargs
         kwargs.pop("rv", None)
         kwargs.pop("projection", None)
-        kwargs.pop("source", None)
         self._check_kwargs("show", kwargs)
 
     def load(
@@ -1399,6 +1398,16 @@ class ReflectedBase(object):
     :py:class:`starry.maps.YlmBase`, with the
     additions and modifications listed below.
 
+    The illumination source is currently assumed to be a point source for
+    the purposes of computing the illumination profile on the surface of the
+    body. However, if the illumination source occults the body, the flux
+    *is* computed correctly (i.e., the occulting body has a finite radius).
+    This approximation holds if the distance between the occultor and the source
+    is large compared to the size of the source. It fails, for example, in the
+    case of an extremely short-period planet, in which case signficantly more
+    than half the planet surface is illuminated by the star at any given time.
+    We plan to account for this effect in the future, so stay tuned.
+
     .. note::
         Instantiate this class by calling
         :py:func:`starry.Map` with ``reflected`` set to True.
@@ -1421,20 +1430,17 @@ class ReflectedBase(object):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
-            source (vector or matrix, optional): The Cartesian position of
-                the illumination source in the observer frame, where ``x`` points
-                to the right on the sky, ``y`` points up on the sky, and ``z``
-                points out of the sky toward the observer. This must be either
-                a unit vector of shape ``(3,)`` or a sequence of unit
-                vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
+
+        .. note::
+            The occultor is assumed to be the illumination source. This is
+            the case, for example, of a planet being occulted by its star.
+            ``starry`` does not yet support occultations in reflected light
+            by objects other than the source of illumination; for instance,
+            a moon occulting a planet that is illuminated by a star.
 
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
-
-        # Source position
-        source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
-        theta, xo, yo, zo, source = vectorize(theta, xo, yo, zo, source)
 
         # Check for invalid kwargs
         self._check_kwargs("X", kwargs)
@@ -1451,7 +1457,6 @@ class ReflectedBase(object):
             self._u,
             self._f,
             self._alpha,
-            source,
         )
 
     def flux(self, **kwargs):
@@ -1469,19 +1474,17 @@ class ReflectedBase(object):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
-            source (vector or matrix, optional): The Cartesian position of
-                the illumination source in the observer frame, where ``x`` points
-                to the right on the sky, ``y`` points up on the sky, and ``z``
-                points out of the sky toward the observer. This must be either
-                a unit vector of shape ``(3,)`` or a sequence of unit
-                vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
+
+        .. note::
+            The occultor is assumed to be the illumination source. This is
+            the case, for example, of a planet being occulted by its star.
+            ``starry`` does not yet support occultations in reflected light
+            by objects other than the source of illumination; for instance,
+            a moon occulting a planet that is illuminated by a star.
+
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
-
-        # Source position
-        source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
-        theta, xo, yo, zo, source = vectorize(theta, xo, yo, zo, source)
 
         # Check for invalid kwargs
         self._check_kwargs("flux", kwargs)
@@ -1499,10 +1502,9 @@ class ReflectedBase(object):
             self._u,
             self._f,
             self._alpha,
-            source,
         )
 
-    def intensity(self, lat=0, lon=0, source=[-1, 0, 0]):
+    def intensity(self, lat=0, lon=0, xo=0, yo=0, zo=1):
         """
         Compute and return the intensity of the map.
 
@@ -1511,30 +1513,34 @@ class ReflectedBase(object):
                 the intensity in units of :py:attr:`angle_unit`.
             lon (scalar or vector, optional): longitude at which to evaluate
                 the intensity in units of :py:attr:`angle_unit`.
-            source (vector or matrix, optional): The Cartesian position of
-                the illumination source in the observer frame, where ``x`` points
-                to the right on the sky, ``y`` points up on the sky, and ``z``
-                points out of the sky toward the observer. This must be either
-                a unit vector of shape ``(3,)`` or a sequence of unit
-                vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
+            xo (scalar or vector, optional): x coordinate of the illumination
+                source relative to this body.
+            yo (scalar or vector, optional): y coordinate of the illumination
+                source relative to this body.
+            zo (scalar or vector, optional): z coordinate of the illumination
+                source relative to this body.
+
+        .. note::
+            Since the illuminating body is currently treated as a point source,
+            the units of ``xo``, ``yo``, and ``zo`` aren't important, as only
+            the **angle** of this vector is used to calculate the illumination
+            profile.
+
         """
         # Get the Cartesian points
         lat, lon = vectorize(*self.cast(lat, lon))
         lat *= self._angle_factor
         lon *= self._angle_factor
 
-        # Source position
-        source = atleast_2d(self.cast(source))
-        lat, lon, source = vectorize(lat, lon, source)
+        # Get the source position
+        lat, lon, xo, yo, zo = vectorize(*self.cast(lat, lon, xo, yo, zo))
 
         # Compute & return
         return self.amp * self.ops.intensity(
-            lat, lon, self._y, self._u, self._f, source
+            lat, lon, self._y, self._u, self._f, xo, yo, zo
         )
 
-    def render(
-        self, res=300, projection="ortho", theta=0.0, source=[-1, 0, 0]
-    ):
+    def render(self, res=300, projection="ortho", theta=0.0, xo=0, yo=0, zo=1):
         """
         Compute and return the intensity of the map on a grid.
 
@@ -1555,12 +1561,18 @@ class ReflectedBase(object):
             theta (scalar or vector, optional): The map rotation phase in
                 units of :py:attr:`angle_unit`. If this is a vector, an
                 animation is generated. Defaults to ``0.0``.
-            source (vector or matrix, optional): The Cartesian position of
-                the illumination source in the observer frame, where ``x`` points
-                to the right on the sky, ``y`` points up on the sky, and ``z``
-                points out of the sky toward the observer. This must be either
-                a unit vector of shape ``(3,)`` or a sequence of unit
-                vectors of shape ``(N, 3)``. Defaults to ``[-1, 0, 0]``.
+            xo (scalar or vector, optional): x coordinate of the illumination
+                source relative to this body.
+            yo (scalar or vector, optional): y coordinate of the illumination
+                source relative to this body.
+            zo (scalar or vector, optional): z coordinate of the illumination
+                source relative to this body.
+
+        .. note::
+            Since the illuminating body is currently treated as a point source,
+            the units of ``xo``, ``yo``, and ``zo`` aren't important, as only
+            the **angle** of this vector is used to calculate the illumination
+            profile.
         """
         # Multiple frames?
         if self.nw is not None:
@@ -1574,8 +1586,10 @@ class ReflectedBase(object):
         # Convert stuff as needed
         projection = get_projection(projection)
         theta = self.cast(theta) * self._angle_factor
-        source = atleast_2d(self.cast(source))
-        theta, source = vectorize(theta, source)
+        xo = self.cast(xo)
+        yo = self.cast(yo)
+        zo = self.cast(zo)
+        theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
 
         # Compute
         image = self.amp * self.ops.render(
@@ -1588,7 +1602,9 @@ class ReflectedBase(object):
             self._u,
             self._f,
             self._alpha,
-            source,
+            xo,
+            yo,
+            zo,
         )
 
         # Squeeze?
@@ -1605,12 +1621,16 @@ class ReflectedBase(object):
             res = kwargs.get("res", 300)
             projection = get_projection(kwargs.get("projection", "ortho"))
             theta = self.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
-            source = atleast_2d(self.cast(kwargs.pop("source", [-1, 0, 0])))
-            theta, source = vectorize(theta, source)
+            xo = self.cast(kwargs.pop("xo", -1))
+            yo = self.cast(kwargs.pop("yo", 0))
+            zo = self.cast(kwargs.pop("zo", 0))
+            theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
 
             # Evaluate the variables
             theta = theta.eval()
-            source = source.eval()
+            xo = xo.eval()
+            yo = yo.eval()
+            zo = zo.eval()
             inc = self._inc.eval()
             obl = self._obl.eval()
             y = self._y.eval()
@@ -1629,7 +1649,9 @@ class ReflectedBase(object):
                 u,
                 f,
                 alpha,
-                source,
+                xo,
+                yo,
+                zo,
                 force_compile=True,
             )
         return super(ReflectedBase, self).show(**kwargs)

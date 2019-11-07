@@ -827,14 +827,14 @@ class OpsReflected(Ops):
         self.rT = rTReflectedOp(self._c_ops.rTReflected, self._c_ops.N)
         self.A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
 
-    def compute_illumination(self, xyz, source):
+    def compute_illumination(self, xyz, xo, yo, zo):
         """
 
         """
-        b = -source[:, 2]
-        invsr = 1.0 / tt.sqrt(source[:, 0] ** 2 + source[:, 1] ** 2)
-        cosw = source[:, 1] * invsr
-        sinw = -source[:, 0] * invsr
+        b = -zo / tt.sqrt(xo ** 2 + yo ** 2 + zo ** 2)
+        invsr = 1.0 / tt.sqrt(xo ** 2 + yo ** 2)
+        cosw = yo * invsr
+        sinw = -xo * invsr
         xrot = (
             tt.shape_padright(xyz[0]) * cosw + tt.shape_padright(xyz[1]) * sinw
         )
@@ -862,9 +862,11 @@ class OpsReflected(Ops):
         DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
-        tt.dmatrix(),
+        tt.dvector(),
+        tt.dvector(),
+        tt.dvector(),
     )
-    def intensity(self, lat, lon, y, u, f, source):
+    def intensity(self, lat, lon, y, u, f, xo, yo, zo):
         """
 
         """
@@ -891,7 +893,7 @@ class OpsReflected(Ops):
                 tt.reshape(xpt, [1, -1]),
             )
         )
-        I = self.compute_illumination(xyz, source)
+        I = self.compute_illumination(xyz, xo, yo, zo)
         intensity = tt.switch(tt.isnan(intensity), intensity, intensity * I)
         return intensity
 
@@ -935,9 +937,8 @@ class OpsReflected(Ops):
         tt.dvector(),
         tt.dvector(),
         tt.dscalar(),
-        tt.dmatrix(),
     )
-    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha, source):
+    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
         """
 
         """
@@ -953,13 +954,12 @@ class OpsReflected(Ops):
 
         # Compute the semi-minor axis of the terminator
         # and the reflectance integrals
-        source /= tt.reshape(source.norm(2, axis=1), [-1, 1])
-        bterm = -source[:, 2]
+        bterm = -zo / tt.sqrt(xo ** 2 + yo ** 2 + zo ** 2)
         rT = self.rT(bterm)
 
         # Transform to Ylms and rotate on the sky plane
         rTA1 = ts.dot(rT, self.A1Big)
-        theta_z = tt.arctan2(source[:, 0], source[:, 1])
+        theta_z = tt.arctan2(xo, yo)
         rTA1Rz = self.tensordotRz(rTA1, theta_z)
 
         # Apply limb darkening?
@@ -992,26 +992,14 @@ class OpsReflected(Ops):
         tt.dvector(),
         tt.dvector(),
         tt.dscalar(),
-        tt.dmatrix(),
     )
-    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha, source):
+    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha):
         """
 
         """
         return tt.dot(
             self.X(
-                theta,
-                xo,
-                yo,
-                zo,
-                ro,
-                inc,
-                obl,
-                u,
-                f,
-                alpha,
-                source,
-                no_compile=True,
+                theta, xo, yo, zo, ro, inc, obl, u, f, alpha, no_compile=True
             ),
             y,
         )
@@ -1027,9 +1015,13 @@ class OpsReflected(Ops):
         tt.dvector(),
         tt.dvector(),
         tt.dscalar(),
-        tt.dmatrix(),
+        tt.dvector(),
+        tt.dvector(),
+        tt.dvector(),
     )
-    def render(self, res, projection, theta, inc, obl, y, u, f, alpha, source):
+    def render(
+        self, res, projection, theta, inc, obl, y, u, f, alpha, xo, yo, zo
+    ):
         """
 
         """
@@ -1083,8 +1075,7 @@ class OpsReflected(Ops):
         image = tt.dot(pT, A1Ry)
 
         # Compute the illumination profile
-        source /= tt.reshape(source.norm(2, axis=1), [-1, 1])
-        I = self.compute_illumination(xyz, source)
+        I = self.compute_illumination(xyz, xo, yo, zo)
 
         # Weight the image by the illumination
         image = tt.switch(tt.isnan(image), image, image * I)
@@ -1310,20 +1301,6 @@ class OpsSystem(object):
                 )
             x, y, z = orbit.get_relative_position(t)
 
-        # Compute the position of the illumination source (the primary)
-        # if we're doing things in reflected light
-        if self._reflected:
-            source = [
-                [
-                    tt.transpose(
-                        tt.as_tensor_variable([-x[:, i], -y[:, i], -z[:, i]])
-                    )
-                ]
-                for i, sec in enumerate(self.secondaries)
-            ]
-        else:
-            source = [[] for sec in self.secondaries]
-
         # Get all rotational phases
         pri_prot = ifelse(tt.eq(pri_prot, 0.0), to_tensor(np.inf), pri_prot)
         theta_pri = (2 * np.pi) / pri_prot * (t - pri_t0) + pri_theta0
@@ -1346,22 +1323,20 @@ class OpsSystem(object):
             pri_alpha,
             no_compile=True,
         )
-
         phase_sec = tt.as_tensor_variable(
             [
                 sec_L[i]
                 * sec.map.ops.X(
                     theta_sec[i],
-                    tt.zeros_like(t),
-                    tt.zeros_like(t),
-                    tt.zeros_like(t),
-                    to_tensor(0.0),
+                    -x[:, i],
+                    -y[:, i],
+                    -z[:, i],
+                    to_tensor(0.0),  # occultor of zero radius
                     sec_inc[i],
                     sec_obl[i],
                     sec_u[i],
                     sec_f[i],
                     sec_alpha[i],
-                    *source[i],
                     no_compile=True,
                 )
                 for i, sec in enumerate(self.secondaries)
@@ -1421,15 +1396,6 @@ class OpsSystem(object):
             b_occ = tt.invert(
                 tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
             )
-            if self._reflected:
-                source_occ = [
-                    [
-                        source[0][i][b_occ]
-                        for i, _ in enumerate(self.secondaries)
-                    ]
-                ]
-            else:
-                source_occ = source
             idx = tt.arange(b.shape[0])[b_occ]
             occ_sec = tt.set_subtensor(
                 occ_sec[i, idx],
@@ -1446,7 +1412,6 @@ class OpsSystem(object):
                     sec_u[i],
                     sec_f[i],
                     sec_alpha[i],
-                    *source_occ[i],
                     no_compile=True,
                 )
                 - phase_sec[i, idx],
@@ -1465,15 +1430,6 @@ class OpsSystem(object):
                 b_occ = tt.invert(
                     tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
                 )
-                if self._reflected:
-                    source_occ = [
-                        [
-                            source[0][i][b_occ]
-                            for i, _ in enumerate(self.secondaries)
-                        ]
-                    ]
-                else:
-                    source_occ = source
                 idx = tt.arange(b.shape[0])[b_occ]
                 occ_sec = tt.set_subtensor(
                     occ_sec[i, idx],
@@ -1490,11 +1446,17 @@ class OpsSystem(object):
                         sec_u[i],
                         sec_f[i],
                         sec_alpha[i],
-                        *source_occ[i],
                         no_compile=True,
                     )
                     - phase_sec[i, idx],
                 )
+
+                # NOTE: Not implemented in reflected light
+                # Throw error if there's an occultation in reflected light
+                if self._reflected:
+                    occ_sec = occ_sec + RaiseValuerErrorIfOp(
+                        "Secondary-secondary occultations reflected light not implemented."
+                    )(b_occ.any())
 
         # Concatenate the design matrices
         X_pri = phase_pri + occ_pri
@@ -1949,20 +1911,6 @@ class OpsSystem(object):
                 )
             x, y, z = orbit.get_relative_position(t)
 
-        # Compute the position of the illumination source (the primary)
-        # if we're doing things in reflected light
-        if self._reflected:
-            source = [
-                [
-                    tt.transpose(
-                        tt.as_tensor_variable([-x[:, i], -y[:, i], -z[:, i]])
-                    )
-                ]
-                for i, sec in enumerate(self.secondaries)
-            ]
-        else:
-            source = [[] for sec in self.secondaries]
-
         # Get all rotational phases
         pri_prot = ifelse(tt.eq(pri_prot, 0.0), to_tensor(np.inf), pri_prot)
         theta_pri = (2 * np.pi) / pri_prot * (t - pri_t0) + pri_theta0
@@ -1984,24 +1932,45 @@ class OpsSystem(object):
             pri_alpha,
             no_compile=True,
         )
-        img_sec = tt.as_tensor_variable(
-            [
-                sec.map.ops.render(
-                    res,
-                    STARRY_ORTHOGRAPHIC_PROJECTION,
-                    theta_sec[i],
-                    sec_inc[i],
-                    sec_obl[i],
-                    sec_y[i],
-                    sec_u[i],
-                    sec_f[i],
-                    sec_alpha[i],
-                    *source[i],
-                    no_compile=True,
-                )
-                for i, sec in enumerate(self.secondaries)
-            ]
-        )
+        if self._reflected:
+            img_sec = tt.as_tensor_variable(
+                [
+                    sec.map.ops.render(
+                        res,
+                        STARRY_ORTHOGRAPHIC_PROJECTION,
+                        theta_sec[i],
+                        sec_inc[i],
+                        sec_obl[i],
+                        sec_y[i],
+                        sec_u[i],
+                        sec_f[i],
+                        sec_alpha[i],
+                        -x[:, i],
+                        -y[:, i],
+                        -z[:, i],
+                        no_compile=True,
+                    )
+                    for i, sec in enumerate(self.secondaries)
+                ]
+            )
+        else:
+            img_sec = tt.as_tensor_variable(
+                [
+                    sec.map.ops.render(
+                        res,
+                        STARRY_ORTHOGRAPHIC_PROJECTION,
+                        theta_sec[i],
+                        sec_inc[i],
+                        sec_obl[i],
+                        sec_y[i],
+                        sec_u[i],
+                        sec_f[i],
+                        sec_alpha[i],
+                        no_compile=True,
+                    )
+                    for i, sec in enumerate(self.secondaries)
+                ]
+            )
 
         # Return the images and secondary orbital positions
         return img_pri, img_sec, x, y, z

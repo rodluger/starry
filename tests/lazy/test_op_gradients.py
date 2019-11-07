@@ -203,11 +203,14 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     y = [1.0] + list(np.random.randn(8))
     u = [-1.0] + list(np.random.randn(2))
     f = [np.pi, 0.0, 0.0, 0.0]
-    source = source = np.random.randn(10, 3)
+    source = np.random.randn(10, 3)
     source /= np.sqrt(np.sum(source ** 2, axis=1)).reshape(-1, 1)
+    xo = source[:, 0]
+    yo = source[:, 1]
+    zo = source[:, 2]
     verify_grad(
         map.ops.intensity,
-        (lat, lon, y, u, f, source),
+        (lat, lon, y, u, f, xo, yo, zo),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
@@ -229,15 +232,13 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     u = [-1.0]
     f = [np.pi, 0.0, 0.0, 0.0]
     alpha = 0.0
-    source = np.random.randn(len(theta), 3)
-    source /= np.sqrt(np.sum(source ** 2, axis=1)).reshape(-1, 1)
 
     func = lambda *args: tt.dot(map.ops.X(*args), y)
 
     # Just rotation
     verify_grad(
         func,
-        (theta, xo, yo, zo, ro, inc, obl, u, f, alpha, source),
+        (theta, xo, yo, zo, ro, inc, obl, u, f, alpha),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,

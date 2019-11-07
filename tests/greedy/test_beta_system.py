@@ -21,11 +21,11 @@ def test_edge_on_eccentric():
     porb = 1.0
     prot = 1.0
     amp = 0.25
-    r = 0.99
+    r = 0.5
     m = 0.25
     ecc = 0.5
     w = 75
-    t = np.linspace(-0.5, 0.5, 10000)
+    t = np.linspace(-0.75, 0.75, 10000)
 
     # Beta version
     pri_beta = starry_beta.kepler.Primary(lmax=2)
