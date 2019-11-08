@@ -1,4 +1,5 @@
 $(document).ready(function() {
+
   // @rodluger: String trimmer
   if (typeof (String.prototype.trim) === 'undefined') {
     String.prototype.trim = function() {

@@ -1668,14 +1668,17 @@ def Map(
 ):
     """A generic ``starry`` surface map.
 
-    This function is a class factory that returns an instance of either
-    :py:class:`starry.maps.YlmBase`, :py:class:`starry.maps.RVBase`, or
-    :py:class:`starry.maps.ReflectedBase`,
+    This function is a class factory that returns either
+    a :doc:`spherical harmonic map <Map>`,
+    a :doc:`limb darkened map <LimbDarkenedMap>`,
+    a :doc:`radial velocity map <RadialVelocityMap>`, or
+    a :doc:`reflected light map <ReflectedLightMap>`,
     depending on the arguments provided by the user. The default is
-    :py:class:`starry.maps.YlmBase`. If ``rv`` is True, instantiates
-    the :py:class:`starry.maps.RVBase`
-    class, and if ``reflected`` is True, instantiates the
-    :py:class:`starry.maps.ReflectedBase` class.
+    a :doc:`spherical harmonic map <Map>`. If ``rv`` is True, instantiates
+    a :doc:`radial velocity map <RadialVelocityMap>` map, and if ``reflected``
+    is True, instantiates a :doc:`reflected light map <ReflectedLightMap>`.
+    Otherwise, if ``ydeg`` is zero, instantiates a
+    :doc:`limb darkened map <LimbDarkenedMap>`.
 
     Args:
         ydeg (int, optional): Degree of the spherical harmonic map.
