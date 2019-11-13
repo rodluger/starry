@@ -22,9 +22,9 @@ using namespace starry::utils;
 Vieta's theorem coefficient A_{i,u,v}
 
 */
-template <class T> class Vieta {
-
-protected:
+template <class T>
+class Vieta {
+ protected:
   int umax;
   int vmax;
   T res;
@@ -52,8 +52,7 @@ protected:
         --c;
         fac *= -((u - j) * (c + 1.0)) / ((j + 1.0) * (v - c));
       }
-      if (i >= v)
-        --j2;
+      if (i >= v) --j2;
       if (i < u) {
         --j1;
         sgn0 *= -1;
@@ -82,12 +81,12 @@ protected:
     }
   }
 
-public:
+ public:
   //! Constructor
-  explicit Vieta(int lmax)
-      : umax(is_even(lmax) ? (lmax + 2) / 2 : (lmax + 3) / 2),
-        vmax(lmax > 0 ? lmax : 1), delta(vmax + 1), set(umax + 1, vmax + 1),
-        vec(umax + 1, vmax + 1) {
+  explicit Vieta(int lmax) :
+      umax(is_even(lmax) ? (lmax + 2) / 2 : (lmax + 3) / 2),
+      vmax(lmax > 0 ? lmax : 1), delta(vmax + 1), set(umax + 1, vmax + 1),
+      vec(umax + 1, vmax + 1) {
     delta(0) = 1.0;
     set.setZero();
     for (int u = 0; u < umax + 1; ++u) {
@@ -113,9 +112,9 @@ public:
 The helper primitive integral H_{u,v}.
 
 */
-template <class T> class HIntegral {
-
-protected:
+template <class T>
+class HIntegral {
+ protected:
   int umax;
   int vmax;
   Matrix<bool> set;
@@ -165,11 +164,11 @@ protected:
     }
   }
 
-public:
+ public:
   //! Constructor
-  explicit HIntegral(int lmax)
-      : umax(lmax + 2), vmax(max(1, lmax)), set(umax + 1, vmax + 1),
-        value(umax + 1, vmax + 1), pow_coslam(umax + 2), pow_sinlam(vmax + 2) {
+  explicit HIntegral(int lmax) :
+      umax(lmax + 2), vmax(max(1, lmax)), set(umax + 1, vmax + 1),
+      value(umax + 1, vmax + 1), pow_coslam(umax + 2), pow_sinlam(vmax + 2) {
     set.setZero();
     pow_coslam(0) = 1.0;
     pow_sinlam(0) = 1.0;
@@ -243,9 +242,9 @@ inline void computeKVariables(const T &b, const T &r, T &ksq, T &k, T &kc,
     kcsq = 1;
     kkc = T(INFINITY);
     invksq = 0;
-    kite_area2 = 0; // Not used!
-    kap0 = 0;       // Not used!
-    kap1 = 0;       // Not used!
+    kite_area2 = 0;  // Not used!
+    kap0 = 0;        // Not used!
+    kap1 = 0;        // Not used!
   } else {
     ksq = onembpr2 * invfourbr + T(1.0);
     invksq = T(1.0) / ksq;
@@ -257,18 +256,15 @@ inline void computeKVariables(const T &b, const T &r, T &ksq, T &k, T &kc,
       kcsq = onembpr2 * onembmr2inv;
       kc = sqrt(kcsq);
       kkc = k * kc;
-      kite_area2 = 0; // Not used!
-      kap0 = 0;       // Not used!
-      kap1 = 0;       // Not used!
+      kite_area2 = 0;  // Not used!
+      kap0 = 0;        // Not used!
+      kap1 = 0;        // Not used!
     } else {
       T b2 = b * b;
       T p0 = T(1.0), p1 = b, p2 = r;
-      if (p0 < p1)
-        swap(p0, p1);
-      if (p1 < p2)
-        swap(p1, p2);
-      if (p0 < p1)
-        swap(p0, p1);
+      if (p0 < p1) swap(p0, p1);
+      if (p1 < p2) swap(p1, p2);
+      if (p0 < p1) swap(p0, p1);
       T sqarea = (p0 + (p1 + p2)) * (p2 - (p0 - p1)) * (p2 + (p0 - p1)) *
                  (p0 + (p1 - p2));
       kite_area2 = sqrt(max(T(0.0), sqarea));
@@ -469,9 +465,9 @@ inline void computeS2_(const Scalar &b, const Scalar &r, const Scalar &ksq,
   s2 = ((1.0 - int(r > b)) * 2 * pi<Scalar>() - Lambda1) * third;
 }
 
-template <class T, bool AUTODIFF> class Solver {
-
-public:
+template <class T, bool AUTODIFF>
+class Solver {
+ public:
   // Indices
   int lmax;
   int N;
@@ -516,12 +512,12 @@ public:
   // The solution vector
   RowVector<T> sT;
 
-  explicit Solver(int lmax)
-      : lmax(lmax), N((lmax + 1) * (lmax + 1)), ivmax(lmax + 2),
-        jvmax(lmax > 0 ? lmax - 1 : 0), pow_ksq(ivmax + 1),
-        cjlow(Vector<T>::Zero(jvmax + 2)), cjhigh(Vector<T>::Zero(jvmax + 2)),
-        A(lmax), H(lmax), I(ivmax + 1), IGamma(ivmax + 1), J(jvmax + 1),
-        sT(RowVector<T>::Zero(N)) {
+  explicit Solver(int lmax) :
+      lmax(lmax), N((lmax + 1) * (lmax + 1)), ivmax(lmax + 2),
+      jvmax(lmax > 0 ? lmax - 1 : 0), pow_ksq(ivmax + 1),
+      cjlow(Vector<T>::Zero(jvmax + 2)), cjhigh(Vector<T>::Zero(jvmax + 2)),
+      A(lmax), H(lmax), I(ivmax + 1), IGamma(ivmax + 1), J(jvmax + 1),
+      sT(RowVector<T>::Zero(N)) {
     third = T(1.0) / T(3.0);
     dummy = 0.0;
     pow_ksq(0) = 1.0;
@@ -571,10 +567,8 @@ public:
     T term;
     for (int v = 0; v <= ivmax; v++) {
       term = pi<T>();
-      for (int i = 1; i < v; ++i)
-        term *= (i - T(0.5)) / (i + T(1.0));
-      for (int i = max(1, v); i < v + 1; ++i)
-        term *= i - T(0.5);
+      for (int i = 1; i < v; ++i) term *= (i - T(0.5)) / (i + T(1.0));
+      for (int i = max(1, v); i < v + 1; ++i) term *= i - T(0.5);
       IGamma(v) = term;
     }
   }
@@ -610,8 +604,7 @@ public:
         }
         cjlow(v) = term0 / term1;
         term0 = pi<T>();
-        for (int i = 1; i <= v; ++i)
-          term0 *= (T(1.0) - T(0.5) / i);
+        for (int i = 1; i <= v; ++i) term0 *= (T(1.0) - T(0.5) / i);
         cjhigh(v) = term0;
       }
     }
@@ -670,7 +663,8 @@ public:
   by downward recursion.
 
   */
-  template <bool KSQLESSTHANONE> inline void computeJDownward() {
+  template <bool KSQLESSTHANONE>
+  inline void computeJDownward() {
     // Track the error
     T tol;
     if (KSQLESSTHANONE)
@@ -737,7 +731,8 @@ public:
   by upward recursion.
 
   */
-  template <bool KSQLESSTHANONE> inline void computeJUpward() {
+  template <bool KSQLESSTHANONE>
+  inline void computeJUpward() {
     T f1, f2;
     if (KSQLESSTHANONE) {
       T fac = 2.0 * third / k;
@@ -840,7 +835,6 @@ public:
 
   */
   inline void compute(const T &b_, const T &r_) {
-
     // Initialize b and r
     b = b_;
     r = r_;
@@ -864,6 +858,11 @@ public:
           "No occultation, but occultation routine was called.");
     }
 
+    // Special case: negative radius
+    if (unlikely(r < 0)) {
+      throw std::runtime_error("Occultor radius is negative. Aborting.");
+    }
+
     // Compute the k^2 terms and angular variables
     computeKVariables(b, r, ksq, k, kc, kcsq, kkc, invksq, kite_area2, kap0,
                       kap1, invb, invr, coslam, sinlam, qcond);
@@ -878,8 +877,7 @@ public:
     computeS0();
 
     // Break if lmax = 0
-    if (unlikely(N == 1))
-      return;
+    if (unlikely(N == 1)) return;
 
     // The l = 1, m = -1 is zero by symmetry
     sT(1) = 0;
@@ -902,12 +900,10 @@ public:
     sT(3) = -2.0 * third * coslam * coslam * coslam - 2 * tworlp2 * K11;
 
     // Break if lmax = 1
-    if (N == 4)
-      return;
+    if (N == 4) return;
 
     // Compute powers of ksq
-    for (int v = 1; v < ivmax + 1; ++v)
-      pow_ksq(v) = pow_ksq(v - 1) * ksq;
+    for (int v = 1; v < ivmax + 1; ++v) pow_ksq(v) = pow_ksq(v - 1) * ksq;
 
     // Compute the helper integrals
     A.reset(delta);
@@ -939,30 +935,25 @@ public:
     // Compute the other terms of the solution vector
     int n = 4;
     for (int l = 2; l < lmax + 1; ++l) {
-
       // Update the pre-factors
       tworlp2 *= twor;
       lfac *= twor;
 
       for (int m = -l; m < l + 1; ++m) {
-
         int mu = l - m;
         int nu = l + m;
 
         // These terms are zero because they are proportional to
         // odd powers of x, so we don't need to compute them!
         if ((is_even(mu - 1)) && (!is_even((mu - 1) / 2))) {
-
           sT(n) = 0;
 
           // These terms are also zero for the same reason
         } else if ((is_even(mu)) && (!is_even(mu / 2))) {
-
           sT(n) = 0;
 
           // We need to compute the integral...
         } else {
-
           // The Q integral
           if ((qcond) && (!is_even(mu, 2) || !is_even(nu, 2)))
             Q = 0.0;
@@ -998,9 +989,9 @@ Greens integral solver wrapper class.
 Emitted light specialization.
 
 */
-template <class Scalar> class GreensEmitted {
-
-protected:
+template <class Scalar>
+class GreensEmitted {
+ protected:
   using ADType = ADScalar<Scalar, 2>;
 
   // Indices
@@ -1015,18 +1006,18 @@ protected:
   ADType b_ad;
   ADType r_ad;
 
-public:
+ public:
   // Solutions
   RowVector<Scalar> &sT;
   RowVector<Scalar> dsTdb;
   RowVector<Scalar> dsTdr;
 
   // Constructor
-  explicit GreensEmitted(int lmax)
-      : lmax(lmax), N((lmax + 1) * (lmax + 1)), ScalarSolver(lmax),
-        ADTypeSolver(lmax), b_ad(ADType(0.0, Vector<Scalar>::Unit(2, 0))),
-        r_ad(ADType(0.0, Vector<Scalar>::Unit(2, 1))), sT(ScalarSolver.sT),
-        dsTdb(RowVector<Scalar>::Zero(N)), dsTdr(RowVector<Scalar>::Zero(N)) {}
+  explicit GreensEmitted(int lmax) :
+      lmax(lmax), N((lmax + 1) * (lmax + 1)), ScalarSolver(lmax),
+      ADTypeSolver(lmax), b_ad(ADType(0.0, Vector<Scalar>::Unit(2, 0))),
+      r_ad(ADType(0.0, Vector<Scalar>::Unit(2, 1))), sT(ScalarSolver.sT),
+      dsTdb(RowVector<Scalar>::Zero(N)), dsTdr(RowVector<Scalar>::Zero(N)) {}
 
   /**
   Compute the `s^T` occultation solution vector
@@ -1035,13 +1026,10 @@ public:
   */
   template <bool GRADIENT = false>
   inline void compute(const Scalar &b, const Scalar &r) {
-
     if (!GRADIENT) {
-
       ScalarSolver.compute(b, r);
 
     } else {
-
       b_ad.value() = b;
       r_ad.value() = r;
       ADTypeSolver.compute(b_ad, r_ad);
@@ -1054,7 +1042,7 @@ public:
   }
 };
 
-} // namespace solver
-} // namespace starry
+}  // namespace solver
+}  // namespace starry
 
 #endif
