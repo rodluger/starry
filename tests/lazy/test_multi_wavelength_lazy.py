@@ -7,6 +7,7 @@ import starry
 import pytest
 import itertools
 
+# Params combinations
 ydeg = [2]
 udeg = [0]
 nw = [5]
@@ -14,12 +15,13 @@ rv = [False, True]
 reflected = [False, True]
 params = itertools.product(ydeg, udeg, nw, rv, reflected)
 
+# Reflected light + radial velocity is not implemented
+params = [p for p in params if not (p[3] and p[4])]
+
 
 @pytest.fixture(scope="class", params=params)
 def map(request):
     ydeg, udeg, nw, rv, reflected = request.param
-    if rv and reflected:
-        pytest.skip("Reflected light + radial velocity not implemented.")
     map = starry.Map(ydeg=ydeg, udeg=udeg, nw=nw, reflected=reflected, rv=rv)
     map.reflected = reflected
     return map
