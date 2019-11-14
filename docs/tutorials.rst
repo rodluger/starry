@@ -25,6 +25,7 @@ Advanced
    :titlesonly:
    :maxdepth: 1
 
+   notebooks/MultiWavelength.ipynb
    notebooks/RossiterMcLaughlin.ipynb
    notebooks/ReflectedLight.ipynb
    notebooks/LightTravelDelay.ipynb
