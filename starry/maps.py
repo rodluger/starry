@@ -509,7 +509,13 @@ class YlmBase(object):
         theta = vectorize(self.cast(theta) * self._angle_factor)
 
         # Compute
-        image = self.amp * self.ops.render(
+        if config.lazy:
+            amp = self.amp
+        else:
+            # The intensity has shape `(nw, res, res)`
+            # so we must reshape `amp` to take the product correctly
+            amp = self.amp[:, np.newaxis, np.newaxis]
+        image = amp * self.ops.render(
             res,
             projection,
             theta,
@@ -1545,7 +1551,14 @@ class ReflectedBase(object):
         xo, yo, zo = vectorize(*self.cast(xo, yo, zo))
 
         # Compute & return
-        return self.amp * self.ops.intensity(
+        if config.lazy:
+            amp = self.amp
+        else:
+            # The intensity has shape `(nsurf_pts, nw, nsource_pts)`
+            # so we must reshape `amp` to take the product correctly
+            amp = self.amp[np.newaxis, :, np.newaxis]
+
+        return amp * self.ops.intensity(
             lat, lon, self._y, self._u, self._f, xo, yo, zo
         )
 
@@ -1596,7 +1609,14 @@ class ReflectedBase(object):
         theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
 
         # Compute
-        image = self.amp * self.ops.render(
+        if config.lazy:
+            amp = self.amp
+        else:
+            # The intensity has shape `(nw, res, res)`
+            # so we must reshape `amp` to take the product correctly
+            amp = self.amp[:, np.newaxis, np.newaxis]
+
+        image = amp * self.ops.render(
             res,
             projection,
             theta,
@@ -1749,7 +1769,7 @@ def Map(
         fdeg = 0
 
     # Ensure we're not doing both
-    if RVBase in Bases and ReflectedBase in Bases:
+    if rv and reflected:
         raise NotImplementedError(
             "Radial velocity maps not implemented in reflected light."
         )

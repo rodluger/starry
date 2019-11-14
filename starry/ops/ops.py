@@ -900,6 +900,11 @@ class OpsReflected(Ops):
             )
         )
         I = self.compute_illumination(xyz, xo, yo, zo)
+
+        # Add an extra dimension for the wavelength
+        if self.nw is not None:
+            I = tt.shape_padaxis(I, 1)
+
         intensity = tt.switch(tt.isnan(intensity), intensity, intensity * I)
         return intensity
 
@@ -1088,6 +1093,10 @@ class OpsReflected(Ops):
 
         # Compute the illumination profile
         I = self.compute_illumination(xyz, xo, yo, zo)
+
+        # Add an extra dimension for the wavelength
+        if self.nw is not None:
+            I = tt.repeat(I, self.nw, 1)
 
         # Weight the image by the illumination
         image = tt.switch(tt.isnan(image), image, image * I)

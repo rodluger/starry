@@ -10,7 +10,7 @@ import pytest
 
 @pytest.fixture(scope="class", params=[(None,), (3,)])
 def map(request):
-    nw, = request.param
+    (nw,) = request.param
     map = starry.Map(ydeg=5, udeg=2, nw=nw)
     return map
 
