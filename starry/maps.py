@@ -569,6 +569,7 @@ class YlmBase(object):
         html5_video = kwargs.pop("html5_video", True)
         norm = kwargs.pop("norm", None)
         dpi = kwargs.pop("dpi", None)
+        figsize = kwargs.pop("figsize", None)
 
         # Get the map orientation
         if config.lazy:
@@ -637,7 +638,8 @@ class YlmBase(object):
 
         if projection == STARRY_RECTANGULAR_PROJECTION:
             # Set up the plot
-            figsize = kwargs.pop("figsize", (7, 3.75))
+            if figsize is None:
+                figsize = (7, 3.75)
             fig, ax = plt.subplots(1, figsize=figsize)
             extent = (-180, 180, -90, 90)
 
@@ -656,7 +658,8 @@ class YlmBase(object):
 
         else:
             # Set up the plot
-            figsize = kwargs.pop("figsize", (3, 3))
+            if figsize is None:
+                figsize = (3, 3)
             fig, ax = plt.subplots(1, figsize=figsize)
             ax.axis("off")
             ax.set_xlim(-1.05, 1.05)
@@ -1035,8 +1038,7 @@ class LimbDarkenedBase(object):
             cmap (string or colormap instance, optional): The matplotlib colormap
                 to use. Defaults to ``plasma``.
             figsize (tuple, optional): Figure size in inches. Default is
-                (3, 3) for orthographic maps and (7, 3.5) for rectangular
-                maps.
+                (3, 3).
             grid (bool, optional): Show latitude/longitude grid lines?
                 Defaults to True.
             interval (int, optional): Interval between frames in milliseconds
@@ -1055,6 +1057,7 @@ class LimbDarkenedBase(object):
         html5_video = kwargs.pop("html5_video", True)
         norm = kwargs.pop("norm", None)
         dpi = kwargs.pop("dpi", None)
+        figsize = kwargs.pop("figsize", (3, 3))
 
         # Render the map if needed
         image = kwargs.pop("image", None)
@@ -1090,7 +1093,6 @@ class LimbDarkenedBase(object):
         animated = nframes > 1
 
         # Set up the plot
-        figsize = kwargs.pop("figsize", (3, 3))
         fig, ax = plt.subplots(1, figsize=figsize)
         ax.axis("off")
         ax.set_xlim(-1.05, 1.05)
