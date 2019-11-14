@@ -509,7 +509,7 @@ class YlmBase(object):
         theta = vectorize(self.cast(theta) * self._angle_factor)
 
         # Compute
-        if config.lazy:
+        if self.nw is None or config.lazy:
             amp = self.amp
         else:
             # The intensity has shape `(nw, res, res)`
@@ -1551,7 +1551,7 @@ class ReflectedBase(object):
         xo, yo, zo = vectorize(*self.cast(xo, yo, zo))
 
         # Compute & return
-        if config.lazy:
+        if self.nw is None or config.lazy:
             amp = self.amp
         else:
             # The intensity has shape `(nsurf_pts, nw, nsource_pts)`
@@ -1609,7 +1609,7 @@ class ReflectedBase(object):
         theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
 
         # Compute
-        if config.lazy:
+        if self.nw is None or config.lazy:
             amp = self.amp
         else:
             # The intensity has shape `(nw, res, res)`
