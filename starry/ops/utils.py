@@ -35,7 +35,8 @@ __all__ = [
     "RAxisAngle",
     "VectorRAxisAngle",
     "CheckBoundsOp",
-    "RaiseValuerErrorIfOp",
+    "RaiseValueErrorOp",
+    "RaiseValueErrorIfOp",
     "math",
 ]
 
@@ -103,7 +104,7 @@ class autocompile(object):
     def __call__(self, func):
         """
         Wrap the method `func` and return a compiled version if `lazy==False`.
-        
+
         """
 
         def wrapper(instance, *args, force_compile=False, no_compile=False):
@@ -204,7 +205,7 @@ def vectorize(*args):
     along the first axis.
 
     TODO: Add error catching if the dimensions don't agree.
-    
+
     """
     if is_theano(*args):
         args = [arg * tt.ones(1) for arg in args]
@@ -264,7 +265,7 @@ def cross(x, y):
 
 def RAxisAngle(axis=[0, 1, 0], theta=0):
     """
-    
+
     """
     axis = tt.as_tensor_variable(axis)
     axis /= axis.norm(2)
@@ -337,7 +338,13 @@ class CheckBoundsOp(tt.Op):
             )
 
 
-class RaiseValuerErrorIfOp(tt.Op):
+def RaiseValueErrorOp(msg, shape):
+    return tt.as_tensor_variable(np.empty(shape)) * tt.RaiseValueErrorIfOp(
+        msg
+    )(True)
+
+
+class RaiseValueErrorIfOp(tt.Op):
     """
 
     """

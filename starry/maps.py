@@ -307,6 +307,14 @@ class YlmBase(object):
         else:
             self._alpha = self.cast(0.0)
 
+        # Reset data and priors
+        self._flux = None
+        self._cho_C = None
+        self._mu = None
+        self._cho_L = None
+        self._yhat = None
+        self._cho_yvar = None
+
         super(YlmBase, self).reset(**kwargs)
 
     @property
@@ -351,12 +359,18 @@ class YlmBase(object):
         else:
             self._alpha = self.cast(value)
 
-    def X(self, **kwargs):
-        """Alias for :py:meth:`design_matrix`. *Deprecated*"""
-        return self.design_matrix(**kwargs)
-
     def design_matrix(self, **kwargs):
-        """Compute and return the light curve design matrix.
+        r"""Compute and return the light curve design matrix :math:`A`.
+
+        The flux :math:`f` obtained by calling the :py:meth:`flux` method
+        is equal to
+
+            .. math::
+                f = \alpha A \cdot y
+
+        where :math:`\alpha` is the amplitude (:py:attr:`amp`)
+        and :math:`y` is the vector of spherical harmonic coefficients
+        (:py:attr:`y`).
 
         Args:
             xo (scalar or vector, optional): x coordinate of the occultor
@@ -377,7 +391,7 @@ class YlmBase(object):
         self._check_kwargs("design_matrix", kwargs)
 
         # Compute & return
-        return self.amp * self.ops.X(
+        return self.ops.X(
             theta,
             xo,
             yo,
@@ -924,6 +938,7 @@ class YlmBase(object):
     def minimize(self, **kwargs):
         r"""Find the global minimum of the map intensity.
 
+        TODO: Add tests
         """
         # TODO?
         if self.nw is not None:
@@ -933,6 +948,148 @@ class YlmBase(object):
         self.ops.minimize.setup()
         lat, lon, I = self.ops.get_minimum(self.y)
         return lat / self._angle_factor, lon / self._angle_factor, I
+
+    def set_data(self, flux, C=None, cho_C=None):
+        """Set the data vector and covariance matrix.
+
+        This method is required by the :py:meth:`solve` method, which
+        analytically computes the posterior over surface maps given a
+        dataset and a prior, provided both are described as multivariate
+        Gaussians.
+
+        Args:
+            flux (vector): The observed light curve.
+            C (scalar, vector, or matrix): The data covariance. This may be
+                a scalar, in which case the noise is assumed to be
+                homoscedastic, a vector, in which case the covariance
+                is assumed to be diagonal, or a matrix specifying the full
+                covariance of the dataset. Default is None. Either `C` or
+                `cho_C` must be provided.
+            cho_C (matrix): The lower Cholesky factorization of the data
+                covariance matrix. Defaults to None. Either `C` or
+                `cho_C` must be provided.
+        """
+        self._flux = self.cast(flux)
+        if cho_C is not None:
+            self._cho_C = self.cast(cho_C)
+        elif C is not None:
+            self._cho_C = self.ops.get_cholesky(C, size=flux.shape[0])
+        else:
+            raise ValueError("Either `C` or `cho_C` must be provided.")
+
+    def set_prior(self, mu=0, L=None, cho_L=None):
+        """Set the prior mean and covariance on the spherical harmonic coefficients.
+
+        This method is required by the :py:meth:`solve` method, which
+        analytically computes the posterior over surface maps given a
+        dataset and a prior, provided both are described as multivariate
+        Gaussians.
+
+        Args:
+            mu (scalar or vector): The prior mean on the spherical harmonic
+                coefficients for ``l > 0``. Default is zero. If this is a vector,
+                it must have length equal to one less than :py:attr:`Ny`.
+            L (scalar, vector, or matrix): The prior covariance. This may be
+                a scalar, in which case the covariance is assumed to be
+                homoscedastic, a vector, in which case the covariance
+                is assumed to be diagonal, or a matrix specifying the full
+                prior covariance. Default is None. Either `L` or
+                `cho_L` must be provided.
+            cho_L (matrix): The lower Cholesky factorization of the prior
+                covariance matrix. Defaults to None. Either `L` or
+                `cho_L` must be provided.
+        """
+        self._mu = self.cast(mu) * self.cast(np.ones(self.Ny - 1))
+        if cho_L is not None:
+            self._cho_L = self.cast(cho_L)
+        elif L is not None:
+            self._cho_L = self.ops.get_cholesky(L, size=self.Ny - 1)
+        else:
+            raise ValueError("Either `L` or `cho_L` must be provided.")
+
+    def solve(self, design_matrix=None, **kwargs):
+        """Solve the linear least-squares problem for the posterior over maps.
+
+        This method solves the generalized least squares problem given a
+        light curve and its covariance (set via the :py:meth:`set_data` method)
+        and a Gaussian prior on the spherical harmonic coefficients
+        (set via the :py:meth:`set_prior` method).
+
+        Args:
+            design_matrix (matrix, optional): The flux design matrix, the
+                quantity returned by :py:meth:`design_matrix`. Default is
+                None, in which case this is computed based on ``kwargs``.
+            kwargs (optional): Keyword arguments to be passed directly to
+                :py:meth:`design_matrix`, if a design matrix is not provided.
+
+        Returns:
+            yhat, cho_ycov: The posterior mean for the spherical harmonic
+                coefficients `l > 0` and the Cholesky factorization of the
+                posterior covariance.
+
+        .. note::
+            Users may call :py:meth:`draw` to draw from the
+            posterior after calling this method.
+        """
+        if self._flux is None or self._cho_C is None:
+            raise ValueError("Please provide a dataset with `set_data()`.")
+        elif self._mu is None or self._cho_L is None:
+            raise ValueError("Please provide a prior with `set_prior()`.")
+
+        # TODO?
+        if self.nw is not None:
+            raise NotImplementedError(
+                "Method not yet implemented for spectral maps."
+            )
+
+        # Get the design matrix
+        if design_matrix is None:
+            design_matrix = self.design_matrix(**kwargs)
+        X = self.cast(design_matrix)
+        X0 = X[:, 0]
+        X1 = X[:, 1:]
+
+        # Subtract out the constant term & divide out the amplitude
+        f = self._flux / self.amp - X0
+
+        # Compute & return the MAP solution
+        self._yhat, self._cho_yvar = self.ops.MAP(
+            X1, f, self._cho_C, self._mu, self._cho_L
+        )
+        return self._yhat, self._cho_yvar
+
+    @property
+    def yhat(self):
+        """The maximum a posteriori (MAP) map solution.
+
+        Users should call :py:meth:`solve` to enable this attribute.
+        """
+        if self._yhat is None:
+            raise ValueError("Please call `solve()` first.")
+        return self._yhat
+
+    @property
+    def ycov(self):
+        """The posterior covariance of the map coefficients.
+
+        Users should call :py:meth:`solve` to enable this attribute.
+        """
+        if self._cho_yvar is None:
+            raise ValueError("Please call `solve()` first.")
+        return self.ops.cho_solve(
+            self._cho_yvar, self.cast(np.eye(self.Ny - 1))
+        )
+
+    def draw(self):
+        """Draw a map from the posterior distribution and set the :py:attr:`y` map vector.
+        """
+        if self._yhat is None or self._cho_yvar is None:
+            raise ValueError("Please call `solve()` first.")
+
+        # Fast multivariate sampling using the Cholesky factorization
+        u = self.cast(np.random.randn(self.Ny - 1))
+        y = self._yhat + self.ops.cho_solve(self._cho_yvar, u)
+        self[1:, :] = y
 
 
 class LimbDarkenedBase(object):
@@ -1469,7 +1626,7 @@ class ReflectedBase(object):
         self._check_kwargs("X", kwargs)
 
         # Compute & return
-        return self.amp * self.ops.X(
+        return self.ops.X(
             theta,
             xo,
             yo,
@@ -1564,7 +1721,16 @@ class ReflectedBase(object):
             lat, lon, self._y, self._u, self._f, xo, yo, zo
         )
 
-    def render(self, res=300, projection="ortho", theta=0.0, xo=0, yo=0, zo=1):
+    def render(
+        self,
+        res=300,
+        projection="ortho",
+        illuminate=True,
+        theta=0.0,
+        xo=0,
+        yo=0,
+        zo=1,
+    ):
         """
         Compute and return the intensity of the map on a grid.
 
@@ -1582,6 +1748,7 @@ class ReflectedBase(object):
                 projection (as seen on the sky), and ``rect``, corresponding
                 to an equirectangular latitude-longitude projection.
                 Defaults to ``ortho``.
+            illuminate (bool, optional): Illuminate the map? Default is True.
             theta (scalar or vector, optional): The map rotation phase in
                 units of :py:attr:`angle_unit`. If this is a vector, an
                 animation is generated. Defaults to ``0.0``.
@@ -1609,6 +1776,7 @@ class ReflectedBase(object):
         yo = self.cast(yo)
         zo = self.cast(zo)
         theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
+        illuminate = int(illuminate)
 
         # Compute
         if self.nw is None or config.lazy:
@@ -1621,6 +1789,7 @@ class ReflectedBase(object):
         image = amp * self.ops.render(
             res,
             projection,
+            illuminate,
             theta,
             self._inc,
             self._obl,
@@ -1651,6 +1820,7 @@ class ReflectedBase(object):
             yo = self.cast(kwargs.pop("yo", 0))
             zo = self.cast(kwargs.pop("zo", 1))
             theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
+            illuminate = int(kwargs.pop("illuminate", True))
 
             # Evaluate the variables
             theta = theta.eval()
@@ -1668,6 +1838,7 @@ class ReflectedBase(object):
             kwargs["image"] = self.ops.render(
                 res,
                 projection,
+                illuminate,
                 theta,
                 inc,
                 obl,

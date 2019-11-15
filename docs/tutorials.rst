@@ -25,6 +25,7 @@ Advanced
    :titlesonly:
    :maxdepth: 1
 
+   notebooks/LinearSolve.ipynb
    notebooks/MultiWavelength.ipynb
    notebooks/RossiterMcLaughlin.ipynb
    notebooks/ReflectedLight.ipynb

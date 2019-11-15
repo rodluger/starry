@@ -16,6 +16,7 @@ import theano.tensor.slinalg as sla
 import theano.tensor.nlinalg as nla
 import numpy as np
 from astropy import units, constants
+import scipy
 
 try:
     # starry requires exoplanet >= v0.2.0
@@ -499,37 +500,35 @@ class Ops(object):
         xyz = tt.transpose(tt.dot(R, [0.0, 0.0, 1.0]))
         return xyz[0], xyz[1], xyz[2]
 
-    @autocompile("MAP", tt.dmatrix(), tt.dvector(), tt.dmatrix(), tt.dmatrix())
-    def MAP(self, X, flux, L, C, L_type, C_type):
+    @autocompile(
+        "MAP",
+        tt.dmatrix(),
+        tt.dvector(),
+        tt.dmatrix(),
+        tt.dvector(),
+        tt.dmatrix(),
+    )
+    def MAP(self, X, flux, cho_C, mu, cho_L):
         """
         Compute the maximum a posteriori (MAP) prediction for the
         spherical harmonic coefficients of a map given a flux timeseries.
 
         Args:
             X: The flux design matrix.
-            L: The prior covariance of the spherical harmonic coefficients.
-                This may be a scalar, a vector, a matrix, or the Cholesky
-                factorization of the covariance matrix (a tuple returned by
-                :py:obj:`scipy.linalg.cho_factor`).
-            C: The data covariance. This may be a scalar, a vector, a matrix,
-                or the Cholesky factorization of the covariance matrix (a tuple
-                returned by :py:obj:`scipy.linalg.cho_factor`).
             flux (ndarray): The flux timeseries.
+            C: The lower cholesky factorization of the data covariance.
+            mu: The prior mean of the spherical harmonic coefficients.
+            L: The lower cholesky factorization of the prior covariance of the
+                spherical harmonic coefficients.
 
         Returns:
             The vector of spherical harmonic coefficients corresponding to the
             MAP solution, and optionally the covariance of the solution and the
-            Cholesky factorization of :math:`W` (see above).
-
-        TODO!
+            Cholesky factorization of :math:`W`.
 
         """
 
-        raise NotImplementedError("TODO!")
-
         # The solve Ops we'll need
-        inverse = nla.MatrixInverse()
-        solve = sla.Solve(A_structure="general")
         solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
         solve_upper = sla.Solve(A_structure="upper_triangular", lower=False)
         cho_solve = lambda cho_A, b: solve_upper(
@@ -537,36 +536,51 @@ class Ops(object):
         )
 
         # Compute C^-1 . X
-        if C_type == "cholesky":
-            CInvX = cho_solve(C, X)
-        elif C_type == "scalar":
-            CInvX = (1.0 / C) * X
-        elif C_type == "vector":
-            CInvX = (1.0 / C)[:, None] * X
-        elif C_type == "matrix":
-            CInvX = solve(C, X)
-        else:
-            raise ValueError("Invalid type for `C`.")
+        CInvX = cho_solve(cho_C, X)
 
         # Compute W = X^T . C^-1 . X + L^-1
-        W = tt.dot(tt.transpose(X), CInvX)
-        if L_type == "cholesky":
-            W += cho_solve(L, tt.eye(X.shape[1]))
-        elif L_type == "scalar":
-            W += tt.eye(X.shape[1]) / L
-        elif L_type == "vector":
-            W += tt.diag(1.0 / L)
-        elif L_type == "matrix":
-            W += inverse(L)
-        else:
-            raise ValueError("Invalid type for `L`.")
+        W = tt.dot(tt.transpose(X), CInvX) + cho_solve(
+            cho_L, tt.eye(X.shape[1])
+        )
 
         # Compute the max like y and its covariance matrix
-        cho_W = sla.cholesky(W)
-        M = cho_solve(cho_W, tt.transpose(CInvX))
-        yhat = tt.dot(M, flux)
-        yvar = cho_solve(cho_W, tt.eye(X.shape[1]))
-        return yhat, yvar, cho_W
+        cho_yvar = sla.cholesky(W)
+        M = cho_solve(cho_yvar, tt.transpose(CInvX))
+        yhat = tt.dot(M, flux) + cho_solve(cho_L, mu)
+        return yhat, cho_yvar
+
+    def get_cholesky(self, C, size=None):
+        if config.lazy:
+            sqrt = tt.sqrt
+            eye = tt.eye
+            diag = tt.diag
+            cholesky = sla.cholesky
+        else:
+            sqrt = np.sqrt
+            eye = np.eye
+            diag = np.diag
+            cholesky = scipy.linalg.cholesky
+        if hasattr(C, "ndim"):
+            if C.ndim == 0:
+                cho_C = sqrt(C) * eye(size)
+            elif C.ndim == 1:
+                cho_C = diag(sqrt(C))
+            else:
+                cho_C = cholesky(C, lower=True)
+        else:
+            # Assume it's a scalar
+            cho_C = sqrt(C) * eye(size)
+        return cho_C
+
+    def cho_solve(self, cho_A, b):
+        if config.lazy:
+            solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
+            solve_upper = sla.Solve(
+                A_structure="upper_triangular", lower=False
+            )
+            return solve_upper(tt.transpose(cho_A), solve_lower(cho_A, b))
+        else:
+            return scipy.linalg.cho_solve((cho_A, True), b)
 
 
 class OpsLD(object):
@@ -989,7 +1003,7 @@ class OpsReflected(Ops):
 
         # TODO: Implement occultations in reflected light
         # Throw error if there's an occultation
-        X = X + RaiseValuerErrorIfOp(
+        X = X + RaiseValueErrorIfOp(
             "Occultations in reflected light not yet implemented."
         )(b_occ.any())
 
@@ -1025,6 +1039,7 @@ class OpsReflected(Ops):
         "render",
         tt.iscalar(),
         tt.iscalar(),
+        tt.iscalar(),
         tt.dvector(),
         tt.dscalar(),
         tt.dscalar(),
@@ -1037,7 +1052,20 @@ class OpsReflected(Ops):
         tt.dvector(),
     )
     def render(
-        self, res, projection, theta, inc, obl, y, u, f, alpha, xo, yo, zo
+        self,
+        res,
+        projection,
+        illuminate,
+        theta,
+        inc,
+        obl,
+        y,
+        u,
+        f,
+        alpha,
+        xo,
+        yo,
+        zo,
     ):
         """
 
@@ -1099,7 +1127,9 @@ class OpsReflected(Ops):
             I = tt.repeat(I, self.nw, 1)
 
         # Weight the image by the illumination
-        image = tt.switch(tt.isnan(image), image, image * I)
+        image = ifelse(
+            illuminate, tt.switch(tt.isnan(image), image, image * I), image
+        )
 
         # We need the shape to be (nframes, npix, npix)
         return tt.reshape(image, [res, res, -1]).dimshuffle(2, 0, 1)
@@ -1475,7 +1505,7 @@ class OpsSystem(object):
                 # NOTE: Not implemented in reflected light
                 # Throw error if there's an occultation in reflected light
                 if self._reflected:
-                    occ_sec = occ_sec + RaiseValuerErrorIfOp(
+                    occ_sec = occ_sec + RaiseValueErrorIfOp(
                         "Secondary-secondary occultations reflected light not implemented."
                     )(b_occ.any())
 
