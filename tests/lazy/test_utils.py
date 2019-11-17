@@ -2,7 +2,10 @@
 """Test Op utils.
 
 """
+import theano.tensor as tt
 from starry.ops import block_diag
+from scipy.linalg import block_diag as scipy_block_diag
+import numpy as np
 
 
 def test_block_diag():
