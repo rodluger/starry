@@ -1,7 +1,15 @@
 # -*- coding: utf-8 -*-
 from . import config
 from .maps import MapBase, RVBase, ReflectedBase
-from .ops import OpsSystem, G_grav, reshape, make_array_or_tensor, math
+from .ops import (
+    OpsSystem,
+    G_grav,
+    reshape,
+    make_array_or_tensor,
+    math,
+    linalg,
+    block_diag,
+)
 import numpy as np
 from astropy import units
 from inspect import getmro
@@ -447,11 +455,11 @@ class System(object):
         assert (
             type(primary) is Primary
         ), "Argument `primary` must be an instance of `Primary`."
-        assert ReflectedBase not in getmro(
-            type(primary._map)
+        assert (
+            primary._map.__props__["reflected"] == False
         ), "Reflected light map not allowed for the primary body."
         self._primary = primary
-        self._rv = RVBase in getmro(type(primary._map))
+        self._rv = primary._map.__props__["rv"]
 
         # Secondary bodies
         assert len(secondaries) > 0, "There must be at least one secondary."
@@ -463,14 +471,12 @@ class System(object):
             assert (
                 sec._map.nw == self._primary._map.nw
             ), "All bodies must have the same number of wavelength bins `nw`."
-            assert (RVBase in getmro(type(sec._map))) == self._rv, (
+            assert sec._map.__props__["rv"] == self._rv, (
                 "Radial velocity must be enabled "
                 "for either all or none of the bodies."
             )
 
-        reflected = [
-            ReflectedBase in getmro(type(sec._map)) for sec in secondaries
-        ]
+        reflected = [sec._map.__props__["reflected"] for sec in secondaries]
         if np.all(reflected):
             self._reflected = True
         elif np.any(reflected):
@@ -493,6 +499,11 @@ class System(object):
             oversample=self._oversample,
             order=self._order,
         )
+        self.cast = self.ops.cast
+
+        # Solve stuff
+        self._flux = None
+        self._cho_C = None
 
     @property
     def light_delay(self):
@@ -768,10 +779,6 @@ class System(object):
             for sec in self._secondaries:
                 sec.map._unset_RV_filter()
 
-    def X(self, *args, **kwargs):
-        """Alias for :py:meth:`design_matrix`. *Deprecated*"""
-        return self.design_matrix(*args, **kwargs)
-
     def design_matrix(self, t):
         """Compute the system flux design matrix at times ``t``.
 
@@ -940,3 +947,146 @@ class System(object):
                     / (math.sqrt(G_grav * (self._primary.m + sec._m)))
                 )
         return make_array_or_tensor(periods)
+
+    def set_data(self, flux, C=None, cho_C=None):
+        """Set the data vector and covariance matrix.
+
+        This method is required by the :py:meth:`solve` method, which
+        analytically computes the posterior over surface maps for all bodies
+        in the system given a dataset and a prior, provided both are described
+        as multivariate Gaussians.
+
+        Args:
+            flux (vector): The observed system light curve.
+            C (scalar, vector, or matrix): The data covariance. This may be
+                a scalar, in which case the noise is assumed to be
+                homoscedastic, a vector, in which case the covariance
+                is assumed to be diagonal, or a matrix specifying the full
+                covariance of the dataset. Default is None. Either `C` or
+                `cho_C` must be provided.
+            cho_C (matrix): The lower Cholesky factorization of the data
+                covariance matrix. Defaults to None. Either `C` or
+                `cho_C` must be provided.
+        """
+        self._flux = self._primary.cast(flux)
+        if cho_C is not None:
+            self._cho_C = self._primary.cast(cho_C)
+        elif C is not None:
+            self._cho_C = linalg.get_cholesky(
+                C, size=self._primary.cast(flux).shape[0]
+            )
+        else:
+            raise ValueError("Either `C` or `cho_C` must be provided.")
+
+    def solve(self, design_matrix=None, t=None):
+        """Solve the least-squares problem for the posterior over maps for all bodies.
+
+        This method solves the generalized least squares problem given a system
+        light curve and its covariance (set via the :py:meth:`set_data` method)
+        and a Gaussian prior on the spherical harmonic coefficients
+        (set via the :py:meth:`set_prior` method).
+
+        Args:
+            design_matrix (matrix, optional): The flux design matrix, the
+                quantity returned by :py:meth:`design_matrix`. Default is
+                None, in which case this is computed based on ``kwargs``.
+            t (vector, optional): The vector of times at which to evaluate
+                :py:meth:`design_matrix`, if a design matrix is not provided.
+                Default is None.
+
+        Returns:
+            yhat, cho_ycov: The posterior mean for the spherical harmonic
+                coefficients `l > 0` and the Cholesky factorization of the
+                posterior covariance of each of the bodies in the system.
+
+        .. note::
+            Users may call the :py:meth:`draw` method from the map attribute
+            of each of the bodies to draw from the posterior after calling
+            this method.
+        """
+        # TODO?
+        if self._primary.map.__props__["spectral"]:
+            raise NotImplementedError(
+                "Method not yet implemented for spectral maps."
+            )
+
+        # Check that the data is set
+        if self._flux is None or self._cho_C is None:
+            raise ValueError("Please provide a dataset with `set_data()`.")
+
+        # Check that all the priors are set & keep track of the indices
+        # of the Y00 coefficient, which we don't actually solve for
+        Y00inds = [0, self._primary.map.Ny]
+        if self._primary.map.ydeg > 0:
+            if (
+                self._primary.map._mu is None
+                or self._primary.map._cho_L is None
+            ):
+                raise ValueError(
+                    "Please provide a prior for the primary's "
+                    + "map with `set_prior()`."
+                )
+        for k, sec in enumerate(self._secondaries):
+            Y00inds.append(Y00inds[-1] + sec.map.Ny)
+            if sec.map.ydeg > 0:
+                if sec.map._mu is None or sec.map._cho_L is None:
+                    raise ValueError(
+                        "Please provide a prior for the map "
+                        + "of secondary #%d with `set_prior()`." % (k + 1)
+                    )
+        YXXinds = np.arange(Y00inds[-1])
+        Y00inds = np.array(Y00inds[:-1], dtype=int)
+        YXXinds = np.delete(YXXinds, Y00inds)
+
+        # Get the design matrix
+        if design_matrix is None:
+            assert t is not None, "Please provide a time vector `t`."
+            design_matrix = self.design_matrix(t)
+        X = self._primary.cast(design_matrix)
+        X0 = X[:, Y00inds]
+        X1 = X[:, YXXinds]
+
+        # Subtract out the constant term & divide out the amplitude
+        f = self._flux - math.sum(X0, axis=-1)
+
+        # Stack our priors
+        mu = math.concatenate(
+            [
+                body.map._mu
+                for body in [self._primary] + list(self._secondaries)
+                if body.map.ydeg > 0
+            ]
+        )
+
+        # FACT: The Cholesky factorization of a block diagonal matrix
+        # is the block diagonal matrix constructed from the
+        # factorization of each block individually.
+        cho_L = block_diag(
+            *[
+                body.map._cho_L
+                for body in [self._primary] + list(self._secondaries)
+                if body.map.ydeg > 0
+            ]
+        )
+
+        # Compute the MAP solution
+        yhat, cho_yvar = linalg.MAP(X1, f, self._cho_C, mu, cho_L)
+
+        # Set the body's individual solutions
+        yhat_list = []
+        cho_yvar_list = []
+        n = 0
+        for body in [self._primary] + list(self._secondaries):
+            if body.map.ydeg > 0:
+                inds = slice(n, n + body.map.Ny - 1)
+                body.map._yhat = yhat[inds]
+                body.map._cho_yvar = cho_yvar[tuple((inds, inds))]
+                yhat_list.append(body.map._yhat)
+                cho_yvar_list.append(body.map._cho_yvar)
+                n += body.map.Ny - 1
+            else:
+                yhat_list.append([])
+                cho_yvar_list.append([])
+
+        # Return the list of solutions
+        return yhat_list, cho_yvar_list

@@ -33,7 +33,102 @@ except ModuleNotFoundError:
 G_grav = constants.G.to(units.R_sun ** 3 / units.M_sun / units.day ** 2).value
 
 
-__all__ = ["Ops", "OpsLD", "OpsReflected", "OpsRV", "OpsSystem", "G_grav"]
+__all__ = [
+    "Ops",
+    "OpsLD",
+    "OpsReflected",
+    "OpsRV",
+    "OpsSystem",
+    "G_grav",
+    "linalg",
+]
+
+
+class OpsLinAlg(object):
+    @autocompile(
+        "MAP",
+        tt.dmatrix(),
+        tt.dvector(),
+        tt.dmatrix(),
+        tt.dvector(),
+        tt.dmatrix(),
+    )
+    def MAP(self, X, flux, cho_C, mu, cho_L):
+        """
+        Compute the maximum a posteriori (MAP) prediction for the
+        spherical harmonic coefficients of a map given a flux timeseries.
+
+        Args:
+            X: The flux design matrix.
+            flux (ndarray): The flux timeseries.
+            C: The lower cholesky factorization of the data covariance.
+            mu: The prior mean of the spherical harmonic coefficients.
+            L: The lower cholesky factorization of the prior covariance of the
+                spherical harmonic coefficients.
+
+        Returns:
+            The vector of spherical harmonic coefficients corresponding to the
+            MAP solution, and optionally the covariance of the solution and the
+            Cholesky factorization of :math:`W`.
+
+        """
+
+        # The solve Ops we'll need
+        solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
+        solve_upper = sla.Solve(A_structure="upper_triangular", lower=False)
+        cho_solve = lambda cho_A, b: solve_upper(
+            tt.transpose(cho_A), solve_lower(cho_A, b)
+        )
+
+        # Compute C^-1 . X
+        CInvX = cho_solve(cho_C, X)
+
+        # Compute W = X^T . C^-1 . X + L^-1
+        W = tt.dot(tt.transpose(X), CInvX) + cho_solve(
+            cho_L, tt.eye(X.shape[1])
+        )
+
+        # Compute the max like y and its covariance matrix
+        cho_yvar = sla.cholesky(W)
+        M = cho_solve(cho_yvar, tt.transpose(CInvX))
+        yhat = tt.dot(M, flux) + cho_solve(cho_L, mu)
+        return yhat, cho_yvar
+
+    def get_cholesky(self, C, size=None):
+        if config.lazy:
+            sqrt = tt.sqrt
+            eye = tt.eye
+            diag = tt.diag
+            cholesky = sla.cholesky
+        else:
+            sqrt = np.sqrt
+            eye = np.eye
+            diag = np.diag
+            cholesky = scipy.linalg.cholesky
+        if hasattr(C, "ndim"):
+            if C.ndim == 0:
+                cho_C = sqrt(C) * eye(size)
+            elif C.ndim == 1:
+                cho_C = diag(sqrt(C))
+            else:
+                cho_C = cholesky(C, lower=True)
+        else:
+            # Assume it's a scalar
+            cho_C = sqrt(C) * eye(size)
+        return cho_C
+
+    def cho_solve(self, cho_A, b):
+        if config.lazy:
+            solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
+            solve_upper = sla.Solve(
+                A_structure="upper_triangular", lower=False
+            )
+            return solve_upper(tt.transpose(cho_A), solve_lower(cho_A, b))
+        else:
+            return scipy.linalg.cho_solve((cho_A, True), b)
+
+
+linalg = OpsLinAlg()
 
 
 class Ops(object):
@@ -499,88 +594,6 @@ class Ops(object):
         R = tt.batched_dot(R2, R1)
         xyz = tt.transpose(tt.dot(R, [0.0, 0.0, 1.0]))
         return xyz[0], xyz[1], xyz[2]
-
-    @autocompile(
-        "MAP",
-        tt.dmatrix(),
-        tt.dvector(),
-        tt.dmatrix(),
-        tt.dvector(),
-        tt.dmatrix(),
-    )
-    def MAP(self, X, flux, cho_C, mu, cho_L):
-        """
-        Compute the maximum a posteriori (MAP) prediction for the
-        spherical harmonic coefficients of a map given a flux timeseries.
-
-        Args:
-            X: The flux design matrix.
-            flux (ndarray): The flux timeseries.
-            C: The lower cholesky factorization of the data covariance.
-            mu: The prior mean of the spherical harmonic coefficients.
-            L: The lower cholesky factorization of the prior covariance of the
-                spherical harmonic coefficients.
-
-        Returns:
-            The vector of spherical harmonic coefficients corresponding to the
-            MAP solution, and optionally the covariance of the solution and the
-            Cholesky factorization of :math:`W`.
-
-        """
-
-        # The solve Ops we'll need
-        solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
-        solve_upper = sla.Solve(A_structure="upper_triangular", lower=False)
-        cho_solve = lambda cho_A, b: solve_upper(
-            tt.transpose(cho_A), solve_lower(cho_A, b)
-        )
-
-        # Compute C^-1 . X
-        CInvX = cho_solve(cho_C, X)
-
-        # Compute W = X^T . C^-1 . X + L^-1
-        W = tt.dot(tt.transpose(X), CInvX) + cho_solve(
-            cho_L, tt.eye(X.shape[1])
-        )
-
-        # Compute the max like y and its covariance matrix
-        cho_yvar = sla.cholesky(W)
-        M = cho_solve(cho_yvar, tt.transpose(CInvX))
-        yhat = tt.dot(M, flux) + cho_solve(cho_L, mu)
-        return yhat, cho_yvar
-
-    def get_cholesky(self, C, size=None):
-        if config.lazy:
-            sqrt = tt.sqrt
-            eye = tt.eye
-            diag = tt.diag
-            cholesky = sla.cholesky
-        else:
-            sqrt = np.sqrt
-            eye = np.eye
-            diag = np.diag
-            cholesky = scipy.linalg.cholesky
-        if hasattr(C, "ndim"):
-            if C.ndim == 0:
-                cho_C = sqrt(C) * eye(size)
-            elif C.ndim == 1:
-                cho_C = diag(sqrt(C))
-            else:
-                cho_C = cholesky(C, lower=True)
-        else:
-            # Assume it's a scalar
-            cho_C = sqrt(C) * eye(size)
-        return cho_C
-
-    def cho_solve(self, cho_A, b):
-        if config.lazy:
-            solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
-            solve_upper = sla.Solve(
-                A_structure="upper_triangular", lower=False
-            )
-            return solve_upper(tt.transpose(cho_A), solve_lower(cho_A, b))
-        else:
-            return scipy.linalg.cho_solve((cho_A, True), b)
 
 
 class OpsLD(object):
@@ -1164,6 +1177,11 @@ class OpsSystem(object):
         self.texp = texp
         self.oversample = oversample
         self.order = order
+
+        if config.lazy:
+            self.cast = to_tensor
+        else:
+            self.cast = to_array
 
         # Require exoplanet
         assert exoplanet is not None, "This class requires exoplanet >= 0.2.0."

@@ -12,6 +12,7 @@ from .ops import (
     reshape,
     STARRY_RECTANGULAR_PROJECTION,
     STARRY_ORTHOGRAPHIC_PROJECTION,
+    linalg,
 )
 from .indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
@@ -366,10 +367,9 @@ class YlmBase(object):
         is equal to
 
             .. math::
-                f = \alpha A \cdot y
+                f = A \cdot y
 
-        where :math:`\alpha` is the amplitude (:py:attr:`amp`)
-        and :math:`y` is the vector of spherical harmonic coefficients
+        where :math:`y` is the vector of spherical harmonic coefficients
         (:py:attr:`y`).
 
         Args:
@@ -391,7 +391,7 @@ class YlmBase(object):
         self._check_kwargs("design_matrix", kwargs)
 
         # Compute & return
-        return self.ops.X(
+        return self.amp * self.ops.X(
             theta,
             xo,
             yo,
@@ -973,7 +973,7 @@ class YlmBase(object):
         if cho_C is not None:
             self._cho_C = self.cast(cho_C)
         elif C is not None:
-            self._cho_C = self.ops.get_cholesky(C, size=flux.shape[0])
+            self._cho_C = linalg.get_cholesky(C, size=self.cast(flux).shape[0])
         else:
             raise ValueError("Either `C` or `cho_C` must be provided.")
 
@@ -1003,7 +1003,7 @@ class YlmBase(object):
         if cho_L is not None:
             self._cho_L = self.cast(cho_L)
         elif L is not None:
-            self._cho_L = self.ops.get_cholesky(L, size=self.Ny - 1)
+            self._cho_L = linalg.get_cholesky(L, size=self.Ny - 1)
         else:
             raise ValueError("Either `L` or `cho_L` must be provided.")
 
@@ -1050,10 +1050,10 @@ class YlmBase(object):
         X1 = X[:, 1:]
 
         # Subtract out the constant term & divide out the amplitude
-        f = self._flux / self.amp - X0
+        f = self._flux - X0
 
         # Compute & return the MAP solution
-        self._yhat, self._cho_yvar = self.ops.MAP(
+        self._yhat, self._cho_yvar = linalg.MAP(
             X1, f, self._cho_C, self._mu, self._cho_L
         )
         return self._yhat, self._cho_yvar
@@ -1076,9 +1076,7 @@ class YlmBase(object):
         """
         if self._cho_yvar is None:
             raise ValueError("Please call `solve()` first.")
-        return self.ops.cho_solve(
-            self._cho_yvar, self.cast(np.eye(self.Ny - 1))
-        )
+        return linalg.cho_solve(self._cho_yvar, self.cast(np.eye(self.Ny - 1)))
 
     def draw(self):
         """Draw a map from the posterior distribution and set the :py:attr:`y` map vector.
@@ -1088,7 +1086,7 @@ class YlmBase(object):
 
         # Fast multivariate sampling using the Cholesky factorization
         u = self.cast(np.random.randn(self.Ny - 1))
-        y = self._yhat + self.ops.cho_solve(self._cho_yvar, u)
+        y = self._yhat + linalg.cho_solve(self._cho_yvar, u)
         self[1:, :] = y
 
 
@@ -1626,7 +1624,7 @@ class ReflectedBase(object):
         self._check_kwargs("X", kwargs)
 
         # Compute & return
-        return self.ops.X(
+        return self.amp * self.ops.X(
             theta,
             xo,
             yo,
@@ -1949,6 +1947,16 @@ def Map(
 
     # Construct the class
     class Map(*Bases):
+
+        # Tags
+        __props__ = dict(
+            limbdarkened=LimbDarkenedBase in Bases,
+            reflected=ReflectedBase in Bases,
+            rv=RVBase in Bases,
+            spectral=nw is not None,
+            differential_rotation=drorder > 0,
+        )
+
         def __init__(self, *args, **kwargs):
             # Once a map has been instantiated, no changes
             # to the config are allowed.

@@ -14,9 +14,19 @@ The basics
    :maxdepth: 1
 
    notebooks/Basics.ipynb
-   notebooks/EclipsingBinary.ipynb
    notebooks/Orientation.ipynb
    notebooks/OrbitViz.ipynb
+
+Eclipsing Binary Example
+------------------------
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   notebooks/EclipsingBinary_Generate.ipynb
+   notebooks/EclipsingBinary_Linear.ipynb
+   notebooks/EclipsingBinary_PyMC3.ipynb
 
 Advanced
 --------

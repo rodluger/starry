@@ -8,6 +8,7 @@ from theano.ifelse import ifelse
 from theano.tensor.extra_ops import CpuContiguous
 from theano.configparser import change_flags
 from theano import gof
+from scipy.linalg import block_diag as scipy_block_diag
 import logging
 
 logger = logging.getLogger("starry.ops")
@@ -38,6 +39,7 @@ __all__ = [
     "RaiseValueErrorOp",
     "RaiseValueErrorIfOp",
     "math",
+    "block_diag",
 ]
 
 
@@ -261,6 +263,21 @@ def cross(x, y):
     eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
     result = tt.as_tensor_variable(tt.dot(tt.dot(eijk, y), x))
     return result
+
+
+def block_diag(*mats):
+    if config.lazy:
+        N = [mat.shape[0] for mat in mats]
+        Nsum = tt.sum(N)
+        res = tt.zeros((Nsum, Nsum), dtype=theano.config.floatX)
+        n = 0
+        for mat in mats:
+            inds = slice(n, n + mat.shape[0])
+            res = tt.set_subtensor(res[tuple((inds, inds))], mat)
+            n += mat.shape[0]
+        return res
+    else:
+        return scipy_block_diag(*mats)
 
 
 def RAxisAngle(axis=[0, 1, 0], theta=0):
