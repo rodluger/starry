@@ -798,8 +798,13 @@ class YlmBase(object):
                 plt.show()
 
         # Check for invalid kwargs
-        kwargs.pop("rv", None)
+        if self.__props__["rv"]:
+            kwargs.pop("rv", None)
         kwargs.pop("projection", None)
+        if self.__props__["reflected"]:
+            kwargs.pop("xo", None)
+            kwargs.pop("yo", None)
+            kwargs.pop("zo", None)
         self._check_kwargs("show", kwargs)
 
     def load(
@@ -1024,9 +1029,11 @@ class YlmBase(object):
                 :py:meth:`design_matrix`, if a design matrix is not provided.
 
         Returns:
-            yhat, cho_ycov: The posterior mean for the spherical harmonic
-                coefficients `l > 0` and the Cholesky factorization of the
-                posterior covariance.
+            (tuple): tuple containing:
+                yhat (vector): The posterior mean for the spherical harmonic
+                    coefficients `l > 0`
+                cho_ycov (matrix): The Cholesky factorization of the
+                    posterior covariance
 
         .. note::
             Users may call :py:meth:`draw` to draw from the
@@ -1812,7 +1819,7 @@ class ReflectedBase(object):
         if config.lazy and kwargs.get("image", None) is None:
 
             # Get kwargs
-            res = kwargs.get("res", 300)
+            res = kwargs.pop("res", 300)
             projection = get_projection(kwargs.get("projection", "ortho"))
             theta = self.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
             xo = self.cast(kwargs.pop("xo", 0))

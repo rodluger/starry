@@ -68,3 +68,54 @@ def test_bad_ul_indices():
     # Bad type
     with pytest.raises(ValueError) as e:
         x = map[map]
+
+
+def test_bad_sys_settings():
+    pri = starry.Primary(starry.Map())
+    sec = starry.Secondary(starry.Map(), porb=1.0)
+
+    # Bad exposure time
+    with pytest.raises(AssertionError) as e:
+        sys = starry.System(pri, sec, texp=-1.0)
+
+    # Bad oversample factor
+    with pytest.raises(AssertionError) as e:
+        sys = starry.System(pri, sec, oversample=-1)
+
+    # Bad integration order
+    with pytest.raises(AssertionError) as e:
+        sys = starry.System(pri, sec, order=99)
+
+    # Bad primary
+    with pytest.raises(AssertionError) as e:
+        sys = starry.System(sec, sec)
+
+    # Reflected light primary
+    with pytest.raises(AssertionError) as e:
+        sys = starry.System(starry.Primary(starry.Map(reflected=True)), sec)
+
+    # Bad secondary
+    with pytest.raises(AssertionError) as e:
+        sys = starry.System(pri, pri)
+
+    # No secondaries
+    with pytest.raises(AssertionError) as e:
+        sys = starry.System(pri)
+
+    # Different number of wavelength bins
+    with pytest.raises(AssertionError) as e:
+        sys = starry.System(
+            pri, starry.Secondary(starry.Map(ydeg=1, nw=2), porb=1.0)
+        )
+
+    # RV for secondary, but not primary
+    with pytest.raises(AssertionError) as e:
+        sys = starry.System(
+            pri, starry.Secondary(starry.Map(rv=True), porb=1.0)
+        )
+
+    # Reflected light for first secondary, but not second
+    with pytest.raises(ValueError) as e:
+        sys = starry.System(
+            pri, sec, starry.Secondary(starry.Map(reflected=True), porb=1.0)
+        )

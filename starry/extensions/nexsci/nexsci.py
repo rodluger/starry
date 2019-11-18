@@ -31,7 +31,6 @@ from ... import PACKAGEDIR
 from ... import Secondary, Primary, System, Map
 
 
-
 def from_nexsci(name, limb_darkening=[0.4, 0.2]):
     """Extension for retrieving a `starry.System` initialized with parameters from NExSci.
 
@@ -233,7 +232,7 @@ def _check_data_on_import():
     if datetime.datetime.now() - datetime.datetime.fromtimestamp(
         mtime
     ) > datetime.timedelta(days=7):
-        log.warning("Database out of date. Redownloading...")
+        warn("Database out of date. Redownloading...")
         _retrieve_online_data()
 
 
@@ -248,6 +247,7 @@ def _get_nexsci_data():
 class DataRetrievalFailure(Exception):
     """Exception raised if data can't be retrieved from NExSci
     """
+
     pass
 
 

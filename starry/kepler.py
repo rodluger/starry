@@ -388,21 +388,6 @@ class Secondary(Body):
     def inc(self, value):
         self._inc = self.cast(value * self._angle_factor)
 
-    '''
-    TODO: Is this property actually useful?
-    @property
-    def axis(self):
-        """The axis perpendicular to the orbital plane. *Read-only.*
-
-        This value is computed from :py:attr:`inc` and :py:attr:`Omega`.
-        """
-        cosO = math.cos(self._Omega)
-        sinO = math.sin(self._Omega)
-        cosI = math.cos(self._inc)
-        sinI = math.sin(self._inc)
-        return make_array_or_tensor([-sinO * sinI, cosO * sinI, cosI])
-    '''
-
 
 class System(object):
     """A system of bodies in Keplerian orbits about a central primary body.
@@ -944,7 +929,7 @@ class System(object):
                 periods[i] = (
                     (2 * np.pi)
                     * sec._a ** (3 / 2)
-                    / (math.sqrt(G_grav * (self._primary.m + sec._m)))
+                    / (math.sqrt(G_grav * (self._primary._m + sec._m)))
                 )
         return make_array_or_tensor(periods)
 

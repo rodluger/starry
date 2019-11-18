@@ -36,3 +36,11 @@ def test_orientation(Omega=45, inc=35):
     ) * np.cos(2 * np.pi * t)
 
     assert np.allclose(flux, flux_analytic)
+
+
+def test_bodies():
+    pri = starry.Primary(starry.Map())
+    sec = starry.Secondary(starry.Map(ydeg=1), porb=1.0)
+    sys = starry.System(pri, sec)
+    assert sys.primary == pri
+    assert sys.secondaries[0] == sec

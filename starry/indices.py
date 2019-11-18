@@ -127,7 +127,7 @@ def get_ul_inds(udeg, ls):
 
         return inds
 
-    else:
+    else:  # pragma: no cover
 
         # Not a slice, not an int... What is it?
         raise ValueError("Invalid value for `l`.")
