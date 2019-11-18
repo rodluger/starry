@@ -242,7 +242,7 @@ class MapBase(object):
             for key in kwargs.keys():
                 message = "Invalid keyword `{0}` in call to `{1}()`. Ignoring."
                 message = message.format(key, method)
-                logger.warn(message)
+                logger.warning(message)
 
     def _get_flux_kwargs(self, kwargs):
         xo = kwargs.pop("xo", 0.0)
@@ -355,7 +355,7 @@ class YlmBase(object):
     @alpha.setter
     def alpha(self, value):
         if (self._drorder == 0) and not hasattr(self, "rv"):
-            logger.warn(
+            logger.warning(
                 "Parameter `drorder` is zero, so setting `alpha` has no effect."
             )
         else:
@@ -1909,14 +1909,14 @@ def Map(
         assert ydeg > 0, "Differential rotation requires `ydeg` >= 1."
 
         # TODO: phase this next warning out
-        logger.warn(
+        logger.warning(
             "Differential rotation is still an experimental feature. "
             "Use it with care."
         )
 
         Ddeg = (4 * drorder + 1) * ydeg
         if Ddeg >= 50:
-            logger.warn(
+            logger.warning(
                 "The degree of the differential rotation operator "
                 "is currently {0}, ".format(Ddeg)
                 + "which will likely cause the code to run very slowly. "

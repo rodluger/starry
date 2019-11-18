@@ -6,6 +6,7 @@ Miscellaneous tests.
 import starry
 import io
 import logging
+import warnings
 
 
 def test_quiet():

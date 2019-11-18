@@ -44,3 +44,31 @@ def test_bodies():
     sys = starry.System(pri, sec)
     assert sys.primary == pri
     assert sys.secondaries[0] == sec
+
+
+def test_integration():
+    pri = starry.Primary(starry.Map(udeg=2), r=1.0)
+    pri.map[1:] = [0.5, 0.25]
+    sec = starry.Secondary(starry.Map(ydeg=1), porb=1.0, r=0.25)
+
+    # Manual integration
+    t = np.linspace(-0.1, 0.1, 10000)
+    sys = starry.System(pri, sec, texp=0)
+    flux = sys.flux(t)
+    t = t.reshape(-1, 1000).mean(axis=1)
+    flux = flux.reshape(-1, 1000).mean(axis=1)
+
+    sys0 = starry.System(pri, sec, texp=0.02, order=0, oversample=999)
+    assert sys0.order == 0
+    flux0 = sys0.flux(t)
+    assert np.allclose(flux, flux0)
+
+    sys1 = starry.System(pri, sec, texp=0.02, order=1, oversample=999)
+    assert sys1.order == 1
+    flux1 = sys1.flux(t)
+    assert np.allclose(flux, flux1)
+
+    sys2 = starry.System(pri, sec, texp=0.02, order=2, oversample=999)
+    assert sys2.order == 2
+    flux2 = sys2.flux(t)
+    assert np.allclose(flux, flux2)
