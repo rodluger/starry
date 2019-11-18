@@ -227,3 +227,7 @@ class TestGettersAndSetters:
             raise Exception("")
         except ValueError:
             pass
+
+    def test_ul_constant_coeff(self, map):
+        map.reset()
+        assert np.allclose(map[:], [-1, 0, 0])

@@ -45,9 +45,9 @@ class Config(object):
     def quiet(self, value):
         self._quiet = value
         if self._quiet:
-            rootLogger.setLevel(logging.ERROR)
+            self.rootLogger.setLevel(logging.ERROR)
         else:
-            rootLogger.setLevel(logging.INFO)
+            self.rootLogger.setLevel(logging.INFO)
 
     @lazy.setter
     def lazy(self, value):

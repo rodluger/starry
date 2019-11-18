@@ -10,7 +10,7 @@ integers = (int, np.int, np.int16, np.int32, np.int64)
 
 def get_ylm_inds(ydeg, ls, ms):
     """
-    
+
     """
 
     # Turn `ls` and `ms` into slices
@@ -46,7 +46,9 @@ def get_ylm_inds(ydeg, ls, ms):
                 ms_ = slice(ms_.start, l + 1, ms_.step)
             for m in range(ms_.start, ms_.stop, ms_.step):
                 n = l * l + l + m
-                if (n < 0) or (n >= (ydeg + 1) ** 2) or (m > l) or (m < -l):
+                if (
+                    (n < 0) or (n >= (ydeg + 1) ** 2) or (m > l) or (m < -l)
+                ):  # pragma: no cover
                     raise ValueError("Invalid value for `l` and/or `m`.")
                 inds.append(n)
 
@@ -60,7 +62,7 @@ def get_ylm_inds(ydeg, ls, ms):
 
 def get_ylmw_inds(ydeg, nw, ls, ms, ws):
     """
-    
+
     """
 
     # Turn the `ws` into slices
@@ -96,7 +98,7 @@ def get_ylmw_inds(ydeg, nw, ls, ms, ws):
 
 def get_ul_inds(udeg, ls):
     """
-    
+
     """
 
     # Turn `ls` into a slice
