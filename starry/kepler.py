@@ -1070,23 +1070,23 @@ class System(object):
         )
 
         # Compute the MAP solution
-        yhat, cho_yvar = linalg.MAP(X1, f, self._cho_C, mu, cho_L)
+        yhat, cho_ycov = linalg.MAP(X1, f, self._cho_C, mu, cho_L)
 
         # Set the body's individual solutions
         yhat_list = []
-        cho_yvar_list = []
+        cho_ycov_list = []
         n = 0
         for body in [self._primary] + list(self._secondaries):
             if body.map.ydeg > 0:
                 inds = slice(n, n + body.map.Ny - 1)
                 body.map._yhat = yhat[inds]
-                body.map._cho_yvar = cho_yvar[tuple((inds, inds))]
+                body.map._cho_ycov = cho_ycov[tuple((inds, inds))]
                 yhat_list.append(body.map._yhat)
-                cho_yvar_list.append(body.map._cho_yvar)
+                cho_ycov_list.append(body.map._cho_ycov)
                 n += body.map.Ny - 1
             else:
                 yhat_list.append([])
-                cho_yvar_list.append([])
+                cho_ycov_list.append([])
 
         # Return the list of solutions
-        return yhat_list, cho_yvar_list
+        return yhat_list, cho_ycov_list

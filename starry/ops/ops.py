@@ -68,8 +68,8 @@ class OpsLinAlg(object):
 
         Returns:
             The vector of spherical harmonic coefficients corresponding to the
-            MAP solution, and optionally the covariance of the solution and the
-            Cholesky factorization of :math:`W`.
+            MAP solution and the Cholesky factorization of the corresponding
+            covariance matrix.
 
         """
 
@@ -89,10 +89,15 @@ class OpsLinAlg(object):
         )
 
         # Compute the max like y and its covariance matrix
-        cho_yvar = sla.cholesky(W)
-        M = cho_solve(cho_yvar, tt.transpose(CInvX))
+        cho_W = sla.cholesky(W)
+        M = cho_solve(cho_W, tt.transpose(CInvX))
         yhat = tt.dot(M, flux) + cho_solve(cho_L, mu)
-        return yhat, cho_yvar
+
+        # TODO: There has to be a faster / more stable way of doing this!
+        ycov = cho_solve(cho_W, tt.eye(cho_W.shape[0]))
+        cho_ycov = sla.cholesky(ycov)
+
+        return yhat, cho_ycov
 
     def get_cholesky(self, C, size=None):
         if config.lazy:

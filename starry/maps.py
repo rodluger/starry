@@ -13,6 +13,7 @@ from .ops import (
     STARRY_RECTANGULAR_PROJECTION,
     STARRY_ORTHOGRAPHIC_PROJECTION,
     linalg,
+    math,
 )
 from .indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
@@ -314,7 +315,7 @@ class YlmBase(object):
         self._mu = None
         self._cho_L = None
         self._yhat = None
-        self._cho_yvar = None
+        self._cho_ycov = None
 
         super(YlmBase, self).reset(**kwargs)
 
@@ -1053,10 +1054,10 @@ class YlmBase(object):
         f = self._flux - X0
 
         # Compute & return the MAP solution
-        self._yhat, self._cho_yvar = linalg.MAP(
+        self._yhat, self._cho_ycov = linalg.MAP(
             X1, f, self._cho_C, self._mu, self._cho_L
         )
-        return self._yhat, self._cho_yvar
+        return self._yhat, self._cho_ycov
 
     @property
     def yhat(self):
@@ -1074,19 +1075,19 @@ class YlmBase(object):
 
         Users should call :py:meth:`solve` to enable this attribute.
         """
-        if self._cho_yvar is None:
+        if self._cho_ycov is None:
             raise ValueError("Please call `solve()` first.")
-        return linalg.cho_solve(self._cho_yvar, self.cast(np.eye(self.Ny - 1)))
+        return linalg.cho_solve(self._cho_ycov, self.cast(np.eye(self.Ny - 1)))
 
     def draw(self):
         """Draw a map from the posterior distribution and set the :py:attr:`y` map vector.
         """
-        if self._yhat is None or self._cho_yvar is None:
+        if self._yhat is None or self._cho_ycov is None:
             raise ValueError("Please call `solve()` first.")
 
         # Fast multivariate sampling using the Cholesky factorization
         u = self.cast(np.random.randn(self.Ny - 1))
-        y = self._yhat + linalg.cho_solve(self._cho_yvar, u)
+        y = self._yhat + math.dot(self._cho_ycov, u)
         self[1:, :] = y
 
 
