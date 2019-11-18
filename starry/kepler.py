@@ -734,7 +734,7 @@ class System(object):
                     # Try and see what happens!
                     ani.save(file)
                 plt.close()
-            else:
+            else:  # pragma: no cover
                 try:
                     if "zmqshell" in str(type(get_ipython())):
                         plt.close()
@@ -757,7 +757,11 @@ class System(object):
 
         else:
 
-            plt.show()
+            if (file is not None) and (file != ""):
+                fig.savefig(file)
+                plt.close()
+            else:  # pragma: no cover
+                plt.show()
 
         if self._rv:
             self._primary.map._unset_RV_filter()

@@ -60,15 +60,18 @@ def test_integration():
 
     sys0 = starry.System(pri, sec, texp=0.02, order=0, oversample=999)
     assert sys0.order == 0
+    assert sys0.oversample == 999
     flux0 = sys0.flux(t)
     assert np.allclose(flux, flux0)
 
     sys1 = starry.System(pri, sec, texp=0.02, order=1, oversample=999)
     assert sys1.order == 1
+    assert sys1.oversample == 999
     flux1 = sys1.flux(t)
     assert np.allclose(flux, flux1)
 
     sys2 = starry.System(pri, sec, texp=0.02, order=2, oversample=999)
     assert sys2.order == 2
+    assert sys2.oversample == 999
     flux2 = sys2.flux(t)
     assert np.allclose(flux, flux2)
