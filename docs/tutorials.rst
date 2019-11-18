@@ -25,8 +25,8 @@ Eclipsing Binary Example
    :maxdepth: 1
 
    notebooks/EclipsingBinary_Generate.ipynb
-   notebooks/EclipsingBinary_Linear.ipynb
    notebooks/EclipsingBinary_PyMC3.ipynb
+   notebooks/EclipsingBinary_Linear.ipynb
 
 Advanced
 --------

@@ -58,6 +58,8 @@ def test_system_show():
     os.remove("tmp.pdf")
     sys.show([0.1, 0.2], file="tmp.mp4")
     os.remove("tmp.mp4")
+    sys.show([0.1, 0.2], file="tmp.gif")
+    os.remove("tmp.gif")
 
 
 def test_system_rv_show():

@@ -570,7 +570,7 @@ class System(object):
                 cropped. Default is 1.0.
         """
         # Not yet implemented
-        if self._primary._map.nw is not None:
+        if self._primary._map.nw is not None:  # pragma: no cover
             raise NotImplementedError(
                 "Method not implemented for spectral maps."
             )
@@ -730,7 +730,7 @@ class System(object):
                     ani.save(file, writer="ffmpeg")
                 elif file.endswith(".gif"):
                     ani.save(file, writer="imagemagick")
-                else:
+                else:  # pragma: no cover
                     # Try and see what happens!
                     ani.save(file)
                 plt.close()
@@ -994,7 +994,7 @@ class System(object):
             this method.
         """
         # TODO?
-        if self._primary.map.__props__["spectral"]:
+        if self._primary.map.__props__["spectral"]:  # pragma: no cover
             raise NotImplementedError(
                 "Method not yet implemented for spectral maps."
             )
