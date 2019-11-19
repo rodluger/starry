@@ -119,3 +119,37 @@ def test_bad_sys_settings():
         sys = starry.System(
             pri, sec, starry.Secondary(starry.Map(reflected=True), porb=1.0)
         )
+
+
+def test_bad_sys_data():
+    pri = starry.Primary(starry.Map(ydeg=1))
+    sec = starry.Secondary(starry.Map(ydeg=1), porb=1.0)
+    sys = starry.System(pri, sec)
+
+    # User didn't provide the covariance
+    with pytest.raises(ValueError) as e:
+        sys.set_data([0.0])
+
+    # User didn't provide a dataset
+    with pytest.raises(ValueError) as e:
+        sys.solve(t=[0.0])
+
+    # Provide a dummy dataset
+    sys.set_data([0.0], C=1.0)
+
+    # User didn't provide a prior for the primary
+    with pytest.raises(ValueError) as e:
+        sys.solve(t=[0.0])
+
+    # Provide a prior for the primary
+    pri.map.set_prior(L=1.0)
+
+    # User didn't provide a prior for the secondary
+    with pytest.raises(ValueError) as e:
+        sys.solve(t=[0.0])
+
+    # Provide a prior for the secondary
+    sec.map.set_prior(L=1.0)
+
+    # Now check that this works
+    sys.solve(t=[0.0])

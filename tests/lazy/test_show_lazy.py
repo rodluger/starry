@@ -48,3 +48,25 @@ def test_show_ld():
     map = starry.Map(udeg=2)
     map.show(file="tmp.pdf")
     os.remove("tmp.pdf")
+
+
+def test_system_show():
+    pri = starry.Primary(starry.Map())
+    sec = starry.Secondary(starry.Map(), porb=1.0)
+    sys = starry.System(pri, sec)
+    sys.show(0.1, file="tmp.pdf")
+    os.remove("tmp.pdf")
+    sys.show([0.1, 0.2], file="tmp.mp4")
+    os.remove("tmp.mp4")
+    sys.show([0.1, 0.2], file="tmp.gif")
+    os.remove("tmp.gif")
+
+
+def test_system_rv_show():
+    pri = starry.Primary(starry.Map(rv=True))
+    sec = starry.Secondary(starry.Map(rv=True), porb=1.0)
+    sys = starry.System(pri, sec)
+    sys.show(0.1, file="tmp.pdf")
+    os.remove("tmp.pdf")
+    sys.show([0.1, 0.2], file="tmp.mp4")
+    os.remove("tmp.mp4")

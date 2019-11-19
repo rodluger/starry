@@ -983,7 +983,7 @@ class YlmBase(object):
         else:
             raise ValueError("Either `C` or `cho_C` must be provided.")
 
-    def set_prior(self, mu=0, L=None, cho_L=None):
+    def set_prior(self, *, mu=0, L=None, cho_L=None):
         """Set the prior mean and covariance on the spherical harmonic coefficients.
 
         This method is required by the :py:meth:`solve` method, which
@@ -1013,7 +1013,7 @@ class YlmBase(object):
         else:
             raise ValueError("Either `L` or `cho_L` must be provided.")
 
-    def solve(self, design_matrix=None, **kwargs):
+    def solve(self, *, design_matrix=None, **kwargs):
         """Solve the linear least-squares problem for the posterior over maps.
 
         This method solves the generalized least squares problem given a

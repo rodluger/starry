@@ -104,19 +104,19 @@ class OpsLinAlg(object):
             sqrt = tt.sqrt
             eye = tt.eye
             diag = tt.diag
-            cholesky = sla.cholesky
+            cholesky = sla.cholesky  # lower by default
         else:
             sqrt = np.sqrt
             eye = np.eye
             diag = np.diag
-            cholesky = scipy.linalg.cholesky
+            cholesky = lambda C: scipy.linalg.cholesky(C, lower=True)
         if hasattr(C, "ndim"):
             if C.ndim == 0:
                 cho_C = sqrt(C) * eye(size)
             elif C.ndim == 1:
                 cho_C = diag(sqrt(C))
             else:
-                cho_C = cholesky(C, lower=True)
+                cho_C = cholesky(C)
         else:
             # Assume it's a scalar
             cho_C = sqrt(C) * eye(size)
@@ -133,6 +133,7 @@ class OpsLinAlg(object):
             return scipy.linalg.cho_solve((cho_A, True), b)
 
 
+# Instantiate the Op
 linalg = OpsLinAlg()
 
 

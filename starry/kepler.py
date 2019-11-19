@@ -642,7 +642,7 @@ class System(object):
         # Ensure we have an array of frames
         if len(img_pri.shape) == 3:
             nframes = img_pri.shape[0]
-        else:
+        else:  # pragma: no cover
             nframes = 1
             img_pri = np.reshape(img_pri, (1,) + img_pri.shape)
             img_sec = np.reshape(img_sec, (1,) + img_sec.shape)
@@ -967,7 +967,7 @@ class System(object):
         else:
             raise ValueError("Either `C` or `cho_C` must be provided.")
 
-    def solve(self, design_matrix=None, t=None):
+    def solve(self, *, design_matrix=None, t=None):
         """Solve the least-squares problem for the posterior over maps for all bodies.
 
         This method solves the generalized least squares problem given a system
