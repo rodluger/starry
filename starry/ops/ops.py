@@ -61,9 +61,9 @@ class OpsLinAlg(object):
         Args:
             X: The flux design matrix.
             flux (ndarray): The flux timeseries.
-            C: The lower cholesky factorization of the data covariance.
+            cho_C: The lower cholesky factorization of the data covariance.
             mu: The prior mean of the spherical harmonic coefficients.
-            L: The lower cholesky factorization of the prior covariance of the
+            cho_L: The lower cholesky factorization of the prior covariance of the
                 spherical harmonic coefficients.
 
         Returns:
@@ -98,6 +98,77 @@ class OpsLinAlg(object):
         cho_ycov = sla.cholesky(ycov)
 
         return yhat, cho_ycov
+
+    @autocompile(
+        "lnlike",
+        tt.dmatrix(),
+        tt.dvector(),
+        tt.dmatrix(),
+        tt.dvector(),
+        tt.dmatrix(),
+    )
+    def lnlike(self, X, flux, C, mu, L):
+        """
+        Compute the log marginal likelihood of the data given a design matrix.
+
+        Args:
+            X: The flux design matrix.
+            flux (ndarray): The flux timeseries.
+            C: The data covariance matrix.
+            mu: The prior mean of the spherical harmonic coefficients.
+            L: The prior covariance of the spherical harmonic coefficients.
+
+        Returns:
+            The log marginal likelihood of the `flux` vector conditioned on
+            the design matrix `X`. This is the likelihood marginalized over
+            all possible spherical harmonic vectors, which is analytically
+            computable for the linear `starry` model.
+
+        """
+
+        # The solve Ops we'll need
+        solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
+        solve_upper = sla.Solve(A_structure="upper_triangular", lower=False)
+        cho_solve = lambda cho_A, b: solve_upper(
+            tt.transpose(cho_A), solve_lower(cho_A, b)
+        )
+
+        # Compute the GP
+        # TODO: The Woodbury identity might help speed this up
+        gp_mu = tt.dot(X, mu)
+        gp_cov = C + tt.dot(tt.dot(X, L), tt.transpose(X))
+        cho_gp_cov = sla.cholesky(gp_cov)
+
+        # Compute the marginal likelihood
+        N = X.shape[0]
+        r = tt.reshape(flux - gp_mu, (-1, 1))
+        lnlike = -0.5 * tt.dot(tt.transpose(r), cho_solve(cho_gp_cov, r))
+        lnlike -= tt.sum(tt.log(tt.diag(cho_gp_cov)))
+        lnlike -= 0.5 * N * tt.log(2 * np.pi)
+
+        return lnlike
+
+    def get_covariance(self, C, size=None):
+        if config.lazy:
+            sqrt = tt.sqrt
+            eye = tt.eye
+            diag = tt.diag
+        else:
+            sqrt = np.sqrt
+            eye = np.eye
+            diag = np.diag
+        if hasattr(C, "ndim"):
+            if C.ndim == 0:
+                C = C * eye(size)
+            elif C.ndim == 1:
+                C = diag(C)
+            else:
+                # already a matrix
+                pass
+        else:
+            # Assume it's a scalar
+            C = C * eye(size)
+        return C
 
     def get_cholesky(self, C, size=None):
         if config.lazy:

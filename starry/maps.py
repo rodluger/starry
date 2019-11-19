@@ -311,8 +311,10 @@ class YlmBase(object):
 
         # Reset data and priors
         self._flux = None
+        self._C = None
         self._cho_C = None
         self._mu = None
+        self._L = None
         self._cho_L = None
         self._yhat = None
         self._cho_ycov = None
@@ -978,7 +980,11 @@ class YlmBase(object):
         self._flux = self.cast(flux)
         if cho_C is not None:
             self._cho_C = self.cast(cho_C)
+            self._C = math.dot(self._cho_C, math.traspose(self._cho_C))
         elif C is not None:
+            self._C = linalg.get_covariance(
+                self.cast(C), size=self.cast(flux).shape[0]
+            )
             self._cho_C = linalg.get_cholesky(C, size=self.cast(flux).shape[0])
         else:
             raise ValueError("Either `C` or `cho_C` must be provided.")
@@ -1008,7 +1014,9 @@ class YlmBase(object):
         self._mu = self.cast(mu) * self.cast(np.ones(self.Ny - 1))
         if cho_L is not None:
             self._cho_L = self.cast(cho_L)
+            self._L = math.dot(self._cho_L, math.traspose(self._cho_L))
         elif L is not None:
+            self._L = linalg.get_covariance(self.cast(L), size=self.Ny - 1)
             self._cho_L = linalg.get_cholesky(L, size=self.Ny - 1)
         else:
             raise ValueError("Either `L` or `cho_L` must be provided.")
@@ -1045,7 +1053,7 @@ class YlmBase(object):
             raise ValueError("Please provide a prior with `set_prior()`.")
 
         # TODO?
-        if self.nw is not None:
+        if self.nw is not None:  # pragma: no cover
             raise NotImplementedError(
                 "Method not yet implemented for spectral maps."
             )
@@ -1065,6 +1073,49 @@ class YlmBase(object):
             X1, f, self._cho_C, self._mu, self._cho_L
         )
         return self._yhat, self._cho_ycov
+
+    def lnlike(self, *, design_matrix=None, **kwargs):
+        """Returns the log marginal likelihood of the data given a design matrix.
+
+        This method computes the marginal likelihood (marginalized over the
+        spherical harmonic coefficients) given a
+        light curve and its covariance (set via the :py:meth:`set_data` method)
+        and a Gaussian prior on the spherical harmonic coefficients
+        (set via the :py:meth:`set_prior` method).
+
+        Args:
+            design_matrix (matrix, optional): The flux design matrix, the
+                quantity returned by :py:meth:`design_matrix`. Default is
+                None, in which case this is computed based on ``kwargs``.
+            kwargs (optional): Keyword arguments to be passed directly to
+                :py:meth:`design_matrix`, if a design matrix is not provided.
+
+        Returns:
+            lnlike: The log marginal likelihood.
+        """
+        if self._flux is None or self._C is None:
+            raise ValueError("Please provide a dataset with `set_data()`.")
+        elif self._mu is None or self._L is None:
+            raise ValueError("Please provide a prior with `set_prior()`.")
+
+        # TODO?
+        if self.nw is not None:  # pragma: no cover
+            raise NotImplementedError(
+                "Method not yet implemented for spectral maps."
+            )
+
+        # Get the design matrix
+        if design_matrix is None:
+            design_matrix = self.design_matrix(**kwargs)
+        X = self.cast(design_matrix)
+        X0 = X[:, 0]
+        X1 = X[:, 1:]
+
+        # Subtract out the constant term & divide out the amplitude
+        f = self._flux - X0
+
+        # Compute the likelihood
+        return linalg.lnlike(X1, f, self._C, self._mu, self._L)
 
     @property
     def yhat(self):

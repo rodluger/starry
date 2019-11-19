@@ -488,6 +488,7 @@ class System(object):
 
         # Solve stuff
         self._flux = None
+        self._C = None
         self._cho_C = None
 
     @property
@@ -960,7 +961,11 @@ class System(object):
         self._flux = self._primary.cast(flux)
         if cho_C is not None:
             self._cho_C = self._primary.cast(cho_C)
+            self._C = math.dot(self._cho_C, math.traspose(self._cho_C))
         elif C is not None:
+            self._C = linalg.get_covariance(
+                self._primary.cast(C), size=self._primary.cast(flux).shape[0]
+            )
             self._cho_C = linalg.get_cholesky(
                 C, size=self._primary.cast(flux).shape[0]
             )
@@ -1079,3 +1084,83 @@ class System(object):
 
         # Return the list of solutions
         return yhat_list, cho_ycov_list
+
+    def lnlike(self, *, design_matrix=None, t=None):
+        """Returns the log marginal likelihood of the data given a design matrix.
+
+        This method computes the marginal likelihood (marginalized over the
+        spherical harmonic coefficients of all bodies) given a system
+        light curve and its covariance (set via the :py:meth:`set_data` method)
+        and a Gaussian prior on the spherical harmonic coefficients
+        (set via the :py:meth:`set_prior` method).
+
+        Args:
+            design_matrix (matrix, optional): The flux design matrix, the
+                quantity returned by :py:meth:`design_matrix`. Default is
+                None, in which case this is computed based on ``kwargs``.
+            t (vector, optional): The vector of times at which to evaluate
+                :py:meth:`design_matrix`, if a design matrix is not provided.
+                Default is None.
+
+        Returns:
+            lnlike: The log marginal likelihood.
+        """
+        # TODO?
+        if self._primary.map.__props__["spectral"]:  # pragma: no cover
+            raise NotImplementedError(
+                "Method not yet implemented for spectral maps."
+            )
+
+        # Check that the data is set
+        if self._flux is None or self._C is None:
+            raise ValueError("Please provide a dataset with `set_data()`.")
+
+        # Check that all the priors are set & keep track of the indices
+        # of the Y00 coefficient, which we don't actually solve for
+        Y00inds = [0, self._primary.map.Ny]
+        if self._primary.map.ydeg > 0:
+            if self._primary.map._mu is None or self._primary.map._L is None:
+                raise ValueError(
+                    "Please provide a prior for the primary's "
+                    + "map with `set_prior()`."
+                )
+        for k, sec in enumerate(self._secondaries):
+            Y00inds.append(Y00inds[-1] + sec.map.Ny)
+            if sec.map.ydeg > 0:
+                if sec.map._mu is None or sec.map._L is None:
+                    raise ValueError(
+                        "Please provide a prior for the map "
+                        + "of secondary #%d with `set_prior()`." % (k + 1)
+                    )
+        YXXinds = np.arange(Y00inds[-1])
+        Y00inds = np.array(Y00inds[:-1], dtype=int)
+        YXXinds = np.delete(YXXinds, Y00inds)
+
+        # Get the design matrix
+        if design_matrix is None:
+            assert t is not None, "Please provide a time vector `t`."
+            design_matrix = self.design_matrix(t)
+        X = self._primary.cast(design_matrix)
+        X0 = X[:, Y00inds]
+        X1 = X[:, YXXinds]
+
+        # Subtract out the constant term & divide out the amplitude
+        f = self._flux - math.sum(X0, axis=-1)
+
+        # Stack our priors
+        mu = math.concatenate(
+            [
+                body.map._mu
+                for body in [self._primary] + list(self._secondaries)
+                if body.map.ydeg > 0
+            ]
+        )
+        L = block_diag(
+            *[
+                body.map._L
+                for body in [self._primary] + list(self._secondaries)
+                if body.map.ydeg > 0
+            ]
+        )
+
+        return linalg.lnlike(X1, f, self._C, mu, L)

@@ -27,6 +27,7 @@ Eclipsing Binary Example
    notebooks/EclipsingBinary_Generate.ipynb
    notebooks/EclipsingBinary_PyMC3.ipynb
    notebooks/EclipsingBinary_Linear.ipynb
+   notebooks/EclipsingBinary_FullSolution.ipynb
 
 Advanced
 --------
