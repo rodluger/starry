@@ -961,7 +961,7 @@ class System(object):
         self._flux = self._primary.cast(flux)
         if cho_C is not None:
             self._cho_C = self._primary.cast(cho_C)
-            self._C = math.dot(self._cho_C, math.traspose(self._cho_C))
+            self._C = math.dot(self._cho_C, math.transpose(self._cho_C))
         elif C is not None:
             self._C = linalg.get_covariance(
                 self._primary.cast(C), size=self._primary.cast(flux).shape[0]

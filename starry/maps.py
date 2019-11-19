@@ -980,7 +980,7 @@ class YlmBase(object):
         self._flux = self.cast(flux)
         if cho_C is not None:
             self._cho_C = self.cast(cho_C)
-            self._C = math.dot(self._cho_C, math.traspose(self._cho_C))
+            self._C = math.dot(self._cho_C, math.transpose(self._cho_C))
         elif C is not None:
             self._C = linalg.get_covariance(
                 self.cast(C), size=self.cast(flux).shape[0]
@@ -1014,7 +1014,7 @@ class YlmBase(object):
         self._mu = self.cast(mu) * self.cast(np.ones(self.Ny - 1))
         if cho_L is not None:
             self._cho_L = self.cast(cho_L)
-            self._L = math.dot(self._cho_L, math.traspose(self._cho_L))
+            self._L = math.dot(self._cho_L, math.transpose(self._cho_L))
         elif L is not None:
             self._L = linalg.get_covariance(self.cast(L), size=self.Ny - 1)
             self._cho_L = linalg.get_cholesky(L, size=self.Ny - 1)
