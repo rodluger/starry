@@ -88,7 +88,7 @@ def run(infile, outfile, timeout=1200):
             cell["source"] = "#hide_output\n" + cell["source"]
 
     # Execute the notebook
-    if not nb["metadata"].get("nbsphinx_execute", True):
+    if nb["metadata"].get("nbsphinx_execute", True):
         ep = ExecutePreprocessor(timeout=timeout, kernel_name="python3")
         ep.preprocess(
             nb,
