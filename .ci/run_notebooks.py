@@ -88,10 +88,12 @@ def run(infile, outfile, timeout=1200):
             cell["source"] = "#hide_output\n" + cell["source"]
 
     # Execute the notebook
-    ep = ExecutePreprocessor(timeout=timeout, kernel_name="python3")
-    ep.preprocess(
-        nb, {"metadata": {"path": os.path.dirname(os.path.abspath(infile))}}
-    )
+    if not nb["metadata"].get("nbsphinx_execute", True):
+        ep = ExecutePreprocessor(timeout=timeout, kernel_name="python3")
+        ep.preprocess(
+            nb,
+            {"metadata": {"path": os.path.dirname(os.path.abspath(infile))}},
+        )
 
     # Write it back
     with open(outfile, "w", encoding="utf-8") as f:

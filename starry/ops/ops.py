@@ -146,7 +146,7 @@ class OpsLinAlg(object):
         lnlike -= tt.sum(tt.log(tt.diag(cho_gp_cov)))
         lnlike -= 0.5 * N * tt.log(2 * np.pi)
 
-        return lnlike
+        return lnlike[0, 0]
 
     def get_covariance(self, C, size=None):
         if config.lazy:
