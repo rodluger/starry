@@ -8,7 +8,9 @@ from .ops import (
     make_array_or_tensor,
     math,
     linalg,
+    cast,
     block_diag,
+    Covariance,
 )
 import numpy as np
 from astropy import units
@@ -135,7 +137,7 @@ class Body(object):
 
     @r.setter
     def r(self, value):
-        self._r = self.cast(value * self._length_factor)
+        self._r = cast(value * self._length_factor)
 
     @property
     def m(self):
@@ -144,7 +146,7 @@ class Body(object):
 
     @m.setter
     def m(self, value):
-        self._m = self.cast(value * self._mass_factor)
+        self._m = cast(value * self._mass_factor)
 
     @property
     def prot(self):
@@ -153,7 +155,7 @@ class Body(object):
 
     @prot.setter
     def prot(self, value):
-        self._prot = self.cast(value * self._time_factor)
+        self._prot = cast(value * self._time_factor)
 
     @property
     def t0(self):
@@ -162,7 +164,7 @@ class Body(object):
 
     @t0.setter
     def t0(self, value):
-        self._t0 = self.cast(value * self._time_factor)
+        self._t0 = cast(value * self._time_factor)
 
     @property
     def theta0(self):
@@ -171,7 +173,7 @@ class Body(object):
 
     @theta0.setter
     def theta0(self, value):
-        self._theta0 = self.cast(value * self._angle_factor)
+        self._theta0 = cast(value * self._angle_factor)
 
     def cast(self, *args, **kwargs):
         return self._map.cast(*args, **kwargs)
@@ -323,7 +325,7 @@ class Secondary(Body):
 
     @porb.setter
     def porb(self, value):
-        self._porb = self.cast(value * self._time_factor)
+        self._porb = cast(value * self._time_factor)
         self._a = 0.0
 
     @property
@@ -340,7 +342,7 @@ class Secondary(Body):
 
     @a.setter
     def a(self, value):
-        self._a = self.cast(value * self._length_factor)
+        self._a = cast(value * self._length_factor)
         self._porb = 0.0
 
     @property
@@ -359,7 +361,7 @@ class Secondary(Body):
 
     @w.setter
     def w(self, value):
-        self._w = self.cast(value * self._angle_factor)
+        self._w = cast(value * self._angle_factor)
 
     @property
     def omega(self):
@@ -377,7 +379,7 @@ class Secondary(Body):
 
     @Omega.setter
     def Omega(self, value):
-        self._Omega = self.cast(value * self._angle_factor)
+        self._Omega = cast(value * self._angle_factor)
 
     @property
     def inc(self):
@@ -386,7 +388,7 @@ class Secondary(Body):
 
     @inc.setter
     def inc(self, value):
-        self._inc = self.cast(value * self._angle_factor)
+        self._inc = cast(value * self._angle_factor)
 
 
 class System(object):
@@ -484,12 +486,10 @@ class System(object):
             oversample=self._oversample,
             order=self._order,
         )
-        self.cast = self.ops.cast
 
         # Solve stuff
         self._flux = None
         self._C = None
-        self._cho_C = None
 
     @property
     def light_delay(self):
@@ -958,19 +958,8 @@ class System(object):
                 covariance matrix. Defaults to None. Either `C` or
                 `cho_C` must be provided.
         """
-        self._flux = self._primary.cast(flux)
-        if cho_C is not None:
-            self._cho_C = self._primary.cast(cho_C)
-            self._C = math.dot(self._cho_C, math.transpose(self._cho_C))
-        elif C is not None:
-            self._C = linalg.get_covariance(
-                self._primary.cast(C), size=self._primary.cast(flux).shape[0]
-            )
-            self._cho_C = linalg.get_cholesky(
-                C, size=self._primary.cast(flux).shape[0]
-            )
-        else:
-            raise ValueError("Either `C` or `cho_C` must be provided.")
+        self._flux = cast(flux)
+        self._C = Covariance(C=C, cho_C=cho_C, N=self._flux.shape[0])
 
     def solve(self, *, design_matrix=None, t=None):
         """Solve the least-squares problem for the posterior over maps for all bodies.
@@ -1005,17 +994,14 @@ class System(object):
             )
 
         # Check that the data is set
-        if self._flux is None or self._cho_C is None:
+        if self._flux is None or self._C is None:
             raise ValueError("Please provide a dataset with `set_data()`.")
 
         # Check that all the priors are set & keep track of the indices
         # of the Y00 coefficient, which we don't actually solve for
         Y00inds = [0, self._primary.map.Ny]
         if self._primary.map.ydeg > 0:
-            if (
-                self._primary.map._mu is None
-                or self._primary.map._cho_L is None
-            ):
+            if self._primary.map._mu is None or self._primary.map._L is None:
                 raise ValueError(
                     "Please provide a prior for the primary's "
                     + "map with `set_prior()`."
@@ -1023,7 +1009,7 @@ class System(object):
         for k, sec in enumerate(self._secondaries):
             Y00inds.append(Y00inds[-1] + sec.map.Ny)
             if sec.map.ydeg > 0:
-                if sec.map._mu is None or sec.map._cho_L is None:
+                if sec.map._mu is None or sec.map._L is None:
                     raise ValueError(
                         "Please provide a prior for the map "
                         + "of secondary #%d with `set_prior()`." % (k + 1)
@@ -1036,7 +1022,7 @@ class System(object):
         if design_matrix is None:
             assert t is not None, "Please provide a time vector `t`."
             design_matrix = self.design_matrix(t)
-        X = self._primary.cast(design_matrix)
+        X = cast(design_matrix)
         X0 = X[:, Y00inds]
         X1 = X[:, YXXinds]
 
@@ -1057,14 +1043,14 @@ class System(object):
         # factorization of each block individually.
         cho_L = block_diag(
             *[
-                body.map._cho_L
+                body.map._L.cholesky
                 for body in [self._primary] + list(self._secondaries)
                 if body.map.ydeg > 0
             ]
         )
 
         # Compute the MAP solution
-        yhat, cho_ycov = linalg.MAP(X1, f, self._cho_C, mu, cho_L)
+        yhat, cho_ycov = linalg.MAP(X1, f, self._C.cholesky, mu, cho_L)
 
         # Set the body's individual solutions
         yhat_list = []
@@ -1140,7 +1126,7 @@ class System(object):
         if design_matrix is None:
             assert t is not None, "Please provide a time vector `t`."
             design_matrix = self.design_matrix(t)
-        X = self._primary.cast(design_matrix)
+        X = cast(design_matrix)
         X0 = X[:, Y00inds]
         X1 = X[:, YXXinds]
 
@@ -1157,10 +1143,10 @@ class System(object):
         )
         L = block_diag(
             *[
-                body.map._L
+                body.map._L.matrix
                 for body in [self._primary] + list(self._secondaries)
                 if body.map.ydeg > 0
             ]
         )
 
-        return linalg.lnlike(X1, f, self._C, mu, L)
+        return linalg.lnlike(X1, f, self._C.matrix, mu, L)

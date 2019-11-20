@@ -41,10 +41,97 @@ __all__ = [
     "OpsSystem",
     "G_grav",
     "linalg",
+    "Covariance",
 ]
 
 
+class Covariance(object):
+    """A container for covariance matrices."""
+
+    def __init__(self, C=None, cho_C=None, N=None):
+
+        # User provided the Cholesky factorization
+        if cho_C is not None:
+
+            self.cholesky = cast(cho_C)
+            self.matrix = math.dot(
+                self.cholesky, math.transpose(self.cholesky)
+            )
+            self.inverse = self._cho_solve(self.cholesky)
+            self.lndet = 2 * math.sum(math.log(math.diag(self.cholesky)))
+            self.kind = "cholesky"
+
+        # User provided the covariance as a scalar, vector, or matrix
+        elif C is not None:
+
+            C = cast(C)
+
+            if hasattr(C, "ndim"):
+
+                if C.ndim == 0:
+
+                    assert N is not None, "Please provide a matrix size `N`."
+                    self.cholesky = math.sqrt(C) * math.eye(N)
+                    self.inverse = (1.0 / C) * math.eye(N)
+                    self.lndet = N * math.log(C)
+                    self.matrix = C * math.eye(N)
+                    self.kind = "scalar"
+
+                elif C.ndim == 1:
+
+                    self.cholesky = math.diag(math.sqrt(C))
+                    self.inverse = math.diag(1.0 / C)
+                    self.lndet = math.sum(math.log(C))
+                    self.matrix = math.diag(C)
+                    self.kind = "vector"
+
+                else:
+
+                    self.cholesky = math.cholesky(C)
+                    self.inverse = self._cho_solve(self.cholesky)
+                    self.lndet = 2 * math.sum(
+                        math.log(math.diag(self.cholesky))
+                    )
+                    self.matrix = C
+                    self.kind = "matrix"
+
+            # Assume it's a scalar
+            else:
+
+                assert N is not None, "Please provide a matrix size `N`."
+                self.cholesky = math.sqrt(C) * math.eye(N)
+                self.inverse = (1.0 / C) * math.eye(N)
+                self.lndet = N * math.log(C)
+                self.matrix = C * math.eye(N)
+                self.kind = "scalar"
+
+        # ?!
+        else:
+            raise ValueError("Either `C` or `cho_C` must be provided.")
+
+    def _cho_solve(self, cho_A, b=None):
+        if config.lazy:
+            if b is None:
+                b = tt.eye(cho_A.shape[0])
+            solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
+            solve_upper = sla.Solve(
+                A_structure="upper_triangular", lower=False
+            )
+            return solve_upper(tt.transpose(cho_A), solve_lower(cho_A, b))
+        else:
+            if b is None:
+                b = np.eye(cho_A.shape[0])
+            return scipy.linalg.cho_solve((cho_A, True), b)
+
+
 class OpsLinAlg(object):
+    def __init__(self):
+        solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
+        solve_upper = sla.Solve(A_structure="upper_triangular", lower=False)
+        self.cho_solve = lambda cho_A, b: solve_upper(
+            tt.transpose(cho_A), solve_lower(cho_A, b)
+        )
+
     @autocompile(
         "MAP",
         tt.dmatrix(),
@@ -72,29 +159,19 @@ class OpsLinAlg(object):
             covariance matrix.
 
         """
-
-        # The solve Ops we'll need
-        solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
-        solve_upper = sla.Solve(A_structure="upper_triangular", lower=False)
-        cho_solve = lambda cho_A, b: solve_upper(
-            tt.transpose(cho_A), solve_lower(cho_A, b)
-        )
-
         # Compute C^-1 . X
-        CInvX = cho_solve(cho_C, X)
+        CInvX = self.cho_solve(cho_C, X)
 
         # Compute W = X^T . C^-1 . X + L^-1
-        W = tt.dot(tt.transpose(X), CInvX) + cho_solve(
+        W = tt.dot(tt.transpose(X), CInvX) + self.cho_solve(
             cho_L, tt.eye(X.shape[1])
         )
 
         # Compute the max like y and its covariance matrix
         cho_W = sla.cholesky(W)
-        M = cho_solve(cho_W, tt.transpose(CInvX))
-        yhat = tt.dot(M, flux) + cho_solve(cho_L, mu)
-
-        # TODO: There has to be a faster / more stable way of doing this!
-        ycov = cho_solve(cho_W, tt.eye(cho_W.shape[0]))
+        M = self.cho_solve(cho_W, tt.transpose(CInvX))
+        yhat = tt.dot(M, flux) + self.cho_solve(cho_L, mu)
+        ycov = self.cho_solve(cho_W, tt.eye(cho_W.shape[0]))
         cho_ycov = sla.cholesky(ycov)
 
         return yhat, cho_ycov
@@ -126,15 +203,7 @@ class OpsLinAlg(object):
 
         """
 
-        # The solve Ops we'll need
-        solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
-        solve_upper = sla.Solve(A_structure="upper_triangular", lower=False)
-        cho_solve = lambda cho_A, b: solve_upper(
-            tt.transpose(cho_A), solve_lower(cho_A, b)
-        )
-
         # Compute the GP
-        # TODO: The Woodbury identity might help speed this up
         gp_mu = tt.dot(X, mu)
         gp_cov = C + tt.dot(tt.dot(X, L), tt.transpose(X))
         cho_gp_cov = sla.cholesky(gp_cov)
@@ -142,66 +211,11 @@ class OpsLinAlg(object):
         # Compute the marginal likelihood
         N = X.shape[0]
         r = tt.reshape(flux - gp_mu, (-1, 1))
-        lnlike = -0.5 * tt.dot(tt.transpose(r), cho_solve(cho_gp_cov, r))
+        lnlike = -0.5 * tt.dot(tt.transpose(r), self.cho_solve(cho_gp_cov, r))
         lnlike -= tt.sum(tt.log(tt.diag(cho_gp_cov)))
         lnlike -= 0.5 * N * tt.log(2 * np.pi)
 
         return lnlike[0, 0]
-
-    def get_covariance(self, C, size=None):
-        if config.lazy:
-            sqrt = tt.sqrt
-            eye = tt.eye
-            diag = tt.diag
-        else:
-            sqrt = np.sqrt
-            eye = np.eye
-            diag = np.diag
-        if hasattr(C, "ndim"):
-            if C.ndim == 0:
-                C = C * eye(size)
-            elif C.ndim == 1:
-                C = diag(C)
-            else:
-                # already a matrix
-                pass
-        else:
-            # Assume it's a scalar
-            C = C * eye(size)
-        return C
-
-    def get_cholesky(self, C, size=None):
-        if config.lazy:
-            sqrt = tt.sqrt
-            eye = tt.eye
-            diag = tt.diag
-            cholesky = sla.cholesky  # lower by default
-        else:
-            sqrt = np.sqrt
-            eye = np.eye
-            diag = np.diag
-            cholesky = lambda C: scipy.linalg.cholesky(C, lower=True)
-        if hasattr(C, "ndim"):
-            if C.ndim == 0:
-                cho_C = sqrt(C) * eye(size)
-            elif C.ndim == 1:
-                cho_C = diag(sqrt(C))
-            else:
-                cho_C = cholesky(C)
-        else:
-            # Assume it's a scalar
-            cho_C = sqrt(C) * eye(size)
-        return cho_C
-
-    def cho_solve(self, cho_A, b):
-        if config.lazy:
-            solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
-            solve_upper = sla.Solve(
-                A_structure="upper_triangular", lower=False
-            )
-            return solve_upper(tt.transpose(cho_A), solve_lower(cho_A, b))
-        else:
-            return scipy.linalg.cho_solve((cho_A, True), b)
 
 
 # Instantiate the Op
@@ -231,10 +245,6 @@ class Ops(object):
         self.diffrot = drorder > 0
         self.nw = nw
         self._reflected = reflected
-        if config.lazy:
-            self.cast = to_tensor
-        else:
-            self.cast = to_array
 
         # Instantiate the C++ Ops
         config.rootHandler.terminator = ""
@@ -687,10 +697,6 @@ class OpsLD(object):
         # Ingest kwargs
         self.udeg = udeg
         self.nw = nw
-        if config.lazy:
-            self.cast = to_tensor
-        else:
-            self.cast = to_array
 
         # Set up the ops
         self.get_cl = GetClOp()
@@ -1254,11 +1260,6 @@ class OpsSystem(object):
         self.texp = texp
         self.oversample = oversample
         self.order = order
-
-        if config.lazy:
-            self.cast = to_tensor
-        else:
-            self.cast = to_array
 
         # Require exoplanet
         assert exoplanet is not None, "This class requires exoplanet >= 0.2.0."

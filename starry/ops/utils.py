@@ -9,7 +9,9 @@ from theano.tensor.extra_ops import CpuContiguous
 from theano.configparser import change_flags
 from theano import gof
 from scipy.linalg import block_diag as scipy_block_diag
+import theano.tensor.slinalg as sla
 import logging
+import scipy
 
 logger = logging.getLogger("starry.ops")
 
@@ -40,6 +42,7 @@ __all__ = [
     "RaiseValueErrorIfOp",
     "math",
     "block_diag",
+    "cast",
 ]
 
 
@@ -199,6 +202,13 @@ def to_array(*args):
         return np.array(args[0], dtype=tt.config.floatX)
     else:
         return [np.array(arg, dtype=tt.config.floatX) for arg in args]
+
+
+def cast(*args):
+    if config.lazy:
+        return to_tensor(*args)
+    else:
+        return to_array(*args)
 
 
 def vectorize(*args):
@@ -391,9 +401,15 @@ class RaiseValueErrorIfOp(tt.Op):
 class MathType(type):
     def __getattr__(cls, attr):
         if config.lazy:
-            return getattr(tt, attr)
+            if attr == "cholesky":
+                return sla.cholesky
+            else:
+                return getattr(tt, attr)
         else:
-            return getattr(np, attr)
+            if attr == "cholesky":
+                return lambda C: scipy.linalg.cholesky(C, lower=True)
+            else:
+                return getattr(np, attr)
 
 
 class math(metaclass=MathType):

@@ -14,6 +14,8 @@ from .ops import (
     STARRY_ORTHOGRAPHIC_PROJECTION,
     linalg,
     math,
+    cast,
+    Covariance,
 )
 from .indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
@@ -60,7 +62,6 @@ class MapBase(object):
         """
         # Instantiate the Theano ops class
         self.ops = self._ops_class_(ydeg, udeg, fdeg, drorder, nw, **kwargs)
-        self.cast = self.ops.cast
 
         # Dimensions
         self._ydeg = ydeg
@@ -251,7 +252,7 @@ class MapBase(object):
         ro = kwargs.pop("ro", 0.0)
         theta = kwargs.pop("theta", 0.0)
         theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
-        theta, xo, yo, zo, ro = self.cast(theta, xo, yo, zo, ro)
+        theta, xo, yo, zo, ro = cast(theta, xo, yo, zo, ro)
         theta *= self._angle_factor
         return theta, xo, yo, zo, ro
 
@@ -268,17 +269,17 @@ class MapBase(object):
         else:
             y = np.zeros((self.Ny, self.nw))
             y[0, :] = 1.0
-        self._y = self.cast(y)
+        self._y = cast(y)
 
         u = np.zeros(self.Nu)
         u[0] = -1.0
-        self._u = self.cast(u)
+        self._u = cast(u)
 
         f = np.zeros(self.Nf)
         f[0] = np.pi
-        self._f = self.cast(f)
+        self._f = cast(f)
 
-        self._amp = self.cast(kwargs.pop("amp", np.ones(self.nw)))
+        self._amp = cast(kwargs.pop("amp", np.ones(self.nw)))
 
         self._check_kwargs("reset", kwargs)
 
@@ -297,25 +298,23 @@ class YlmBase(object):
         if kwargs.get("inc", None) is not None:
             self.inc = kwargs.pop("inc")
         else:
-            self._inc = self.cast(0.5 * np.pi)
+            self._inc = cast(0.5 * np.pi)
 
         if kwargs.get("obl", None) is not None:
             self.obl = kwargs.pop("obl")
         else:
-            self._obl = self.cast(0.0)
+            self._obl = cast(0.0)
 
         if kwargs.get("alpha", None) is not None:
             self.alpha = kwargs.pop("alpha")
         else:
-            self._alpha = self.cast(0.0)
+            self._alpha = cast(0.0)
 
         # Reset data and priors
         self._flux = None
         self._C = None
-        self._cho_C = None
         self._mu = None
         self._L = None
-        self._cho_L = None
         self._yhat = None
         self._cho_ycov = None
 
@@ -328,7 +327,7 @@ class YlmBase(object):
 
     @inc.setter
     def inc(self, value):
-        self._inc = self.cast(value) * self._angle_factor
+        self._inc = cast(value) * self._angle_factor
 
     @property
     def obl(self):
@@ -337,7 +336,7 @@ class YlmBase(object):
 
     @obl.setter
     def obl(self, value):
-        self._obl = self.cast(value) * self._angle_factor
+        self._obl = cast(value) * self._angle_factor
 
     @property
     def alpha(self):
@@ -361,7 +360,7 @@ class YlmBase(object):
                 "Parameter `drorder` is zero, so setting `alpha` has no effect."
             )
         else:
-            self._alpha = self.cast(value)
+            self._alpha = cast(value)
 
     def design_matrix(self, **kwargs):
         r"""Compute and return the light curve design matrix :math:`A`.
@@ -426,7 +425,7 @@ class YlmBase(object):
 
         """
         # Get the Cartesian points
-        lat, lon = vectorize(*self.cast(lat, lon))
+        lat, lon = vectorize(*cast(lat, lon))
         lat *= self._angle_factor
         lon *= self._angle_factor
 
@@ -482,7 +481,7 @@ class YlmBase(object):
 
         """
         # Get the Cartesian points
-        lat, lon = vectorize(*self.cast(lat, lon))
+        lat, lon = vectorize(*cast(lat, lon))
         lat *= self._angle_factor
         lon *= self._angle_factor
 
@@ -523,7 +522,7 @@ class YlmBase(object):
 
         # Convert
         projection = get_projection(projection)
-        theta = vectorize(self.cast(theta) * self._angle_factor)
+        theta = vectorize(cast(theta) * self._angle_factor)
 
         # Compute
         if self.nw is None or config.lazy:
@@ -599,7 +598,7 @@ class YlmBase(object):
         # Get the rotational phase
         if config.lazy:
             theta = vectorize(
-                self.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
+                cast(kwargs.pop("theta", 0.0)) * self._angle_factor
             ).eval()
         else:
             theta = np.atleast_1d(
@@ -880,8 +879,8 @@ class YlmBase(object):
         # This ensures the map intensity will have the same normalization
         # as that of the input image
         y /= 2 * np.sqrt(np.pi)
-        self._y = self.cast(y / y[0])
-        self._amp = self.cast(y[0] * np.pi)
+        self._y = cast(y / y[0])
+        self._amp = cast(y[0] * np.pi)
 
         # Ensure positive semi-definite?
         if force_psd:
@@ -930,8 +929,8 @@ class YlmBase(object):
                 map outside of the spot will therefore get brighter.
                 Defaults to False.
         """
-        amp, _ = vectorize(self.cast(amp), np.ones(self.nw))
-        sigma, lat, lon = self.cast(sigma, lat, lon)
+        amp, _ = vectorize(cast(amp), np.ones(self.nw))
+        sigma, lat, lon = cast(sigma, lat, lon)
         self._y, new_norm = self.ops.add_spot(
             self._y,
             self._amp,
@@ -977,17 +976,8 @@ class YlmBase(object):
                 covariance matrix. Defaults to None. Either `C` or
                 `cho_C` must be provided.
         """
-        self._flux = self.cast(flux)
-        if cho_C is not None:
-            self._cho_C = self.cast(cho_C)
-            self._C = math.dot(self._cho_C, math.transpose(self._cho_C))
-        elif C is not None:
-            self._C = linalg.get_covariance(
-                self.cast(C), size=self.cast(flux).shape[0]
-            )
-            self._cho_C = linalg.get_cholesky(C, size=self.cast(flux).shape[0])
-        else:
-            raise ValueError("Either `C` or `cho_C` must be provided.")
+        self._flux = cast(flux)
+        self._C = Covariance(C, cho_C, N=self._flux.shape[0])
 
     def set_prior(self, *, mu=0, L=None, cho_L=None):
         """Set the prior mean and covariance on the spherical harmonic coefficients.
@@ -1011,15 +1001,8 @@ class YlmBase(object):
                 covariance matrix. Defaults to None. Either `L` or
                 `cho_L` must be provided.
         """
-        self._mu = self.cast(mu) * self.cast(np.ones(self.Ny - 1))
-        if cho_L is not None:
-            self._cho_L = self.cast(cho_L)
-            self._L = math.dot(self._cho_L, math.transpose(self._cho_L))
-        elif L is not None:
-            self._L = linalg.get_covariance(self.cast(L), size=self.Ny - 1)
-            self._cho_L = linalg.get_cholesky(L, size=self.Ny - 1)
-        else:
-            raise ValueError("Either `L` or `cho_L` must be provided.")
+        self._mu = cast(mu) * cast(np.ones(self.Ny - 1))
+        self._L = Covariance(L, cho_L, N=self.Ny - 1)
 
     def solve(self, *, design_matrix=None, **kwargs):
         """Solve the linear least-squares problem for the posterior over maps.
@@ -1047,9 +1030,9 @@ class YlmBase(object):
             Users may call :py:meth:`draw` to draw from the
             posterior after calling this method.
         """
-        if self._flux is None or self._cho_C is None:
+        if self._flux is None or self._C is None:
             raise ValueError("Please provide a dataset with `set_data()`.")
-        elif self._mu is None or self._cho_L is None:
+        elif self._mu is None or self._L is None:
             raise ValueError("Please provide a prior with `set_prior()`.")
 
         # TODO?
@@ -1061,7 +1044,7 @@ class YlmBase(object):
         # Get the design matrix
         if design_matrix is None:
             design_matrix = self.design_matrix(**kwargs)
-        X = self.cast(design_matrix)
+        X = cast(design_matrix)
         X0 = X[:, 0]
         X1 = X[:, 1:]
 
@@ -1070,7 +1053,7 @@ class YlmBase(object):
 
         # Compute & return the MAP solution
         self._yhat, self._cho_ycov = linalg.MAP(
-            X1, f, self._cho_C, self._mu, self._cho_L
+            X1, f, self._C.cholesky, self._mu, self._L.cholesky
         )
         return self._yhat, self._cho_ycov
 
@@ -1107,7 +1090,7 @@ class YlmBase(object):
         # Get the design matrix
         if design_matrix is None:
             design_matrix = self.design_matrix(**kwargs)
-        X = self.cast(design_matrix)
+        X = cast(design_matrix)
         X0 = X[:, 0]
         X1 = X[:, 1:]
 
@@ -1115,7 +1098,7 @@ class YlmBase(object):
         f = self._flux - X0
 
         # Compute the likelihood
-        return linalg.lnlike(X1, f, self._C, self._mu, self._L)
+        return linalg.lnlike(X1, f, self._C.matrix, self._mu, self._L.matrix)
 
     @property
     def yhat(self):
@@ -1135,7 +1118,7 @@ class YlmBase(object):
         """
         if self._cho_ycov is None:
             raise ValueError("Please call `solve()` first.")
-        return linalg.cho_solve(self._cho_ycov, self.cast(np.eye(self.Ny - 1)))
+        return linalg.cho_solve(self._cho_ycov, cast(np.eye(self.Ny - 1)))
 
     def draw(self):
         """Draw a map from the posterior distribution and set the :py:attr:`y` map vector.
@@ -1144,7 +1127,7 @@ class YlmBase(object):
             raise ValueError("Please call `solve()` first.")
 
         # Fast multivariate sampling using the Cholesky factorization
-        u = self.cast(np.random.randn(self.Ny - 1))
+        u = cast(np.random.randn(self.Ny - 1))
         y = self._yhat + math.dot(self._cho_ycov, u)
         self[1:, :] = y
 
@@ -1204,7 +1187,7 @@ class LimbDarkenedBase(object):
         """
         # Get the Cartesian points
         if mu is not None:
-            mu = vectorize(self.cast(mu))
+            mu = vectorize(cast(mu))
             assert (
                 x is None and y is None
             ), "Please provide either `mu` or `x` and `y`, but not both."
@@ -1212,7 +1195,7 @@ class LimbDarkenedBase(object):
             assert (
                 x is not None and y is not None
             ), "Please provide either `mu` or `x` and `y`."
-            x, y = vectorize(*self.cast(x, y))
+            x, y = vectorize(*cast(x, y))
             mu = (1 - x ** 2 - y ** 2) ** 0.5
 
         # Compute & return
@@ -1458,12 +1441,12 @@ class RVBase(object):
 
     @veq.setter
     def veq(self, value):
-        self._veq = self.cast(value) * self._velocity_factor
+        self._veq = cast(value) * self._velocity_factor
 
     def _unset_RV_filter(self):
         f = np.zeros(self.Nf)
         f[0] = np.pi
-        self._f = self.cast(f)
+        self._f = cast(f)
 
     def _set_RV_filter(self):
         self._f = self.ops.compute_rv_filter(
@@ -1759,12 +1742,12 @@ class ReflectedBase(object):
 
         """
         # Get the Cartesian points
-        lat, lon = vectorize(*self.cast(lat, lon))
+        lat, lon = vectorize(*cast(lat, lon))
         lat *= self._angle_factor
         lon *= self._angle_factor
 
         # Get the source position
-        xo, yo, zo = vectorize(*self.cast(xo, yo, zo))
+        xo, yo, zo = vectorize(*cast(xo, yo, zo))
 
         # Compute & return
         if self.nw is None or config.lazy:
@@ -1828,10 +1811,10 @@ class ReflectedBase(object):
 
         # Convert stuff as needed
         projection = get_projection(projection)
-        theta = self.cast(theta) * self._angle_factor
-        xo = self.cast(xo)
-        yo = self.cast(yo)
-        zo = self.cast(zo)
+        theta = cast(theta) * self._angle_factor
+        xo = cast(xo)
+        yo = cast(yo)
+        zo = cast(zo)
         theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
         illuminate = int(illuminate)
 
@@ -1872,10 +1855,10 @@ class ReflectedBase(object):
             # Get kwargs
             res = kwargs.pop("res", 300)
             projection = get_projection(kwargs.get("projection", "ortho"))
-            theta = self.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
-            xo = self.cast(kwargs.pop("xo", 0))
-            yo = self.cast(kwargs.pop("yo", 0))
-            zo = self.cast(kwargs.pop("zo", 1))
+            theta = cast(kwargs.pop("theta", 0.0)) * self._angle_factor
+            xo = cast(kwargs.pop("xo", 0))
+            yo = cast(kwargs.pop("yo", 0))
+            zo = cast(kwargs.pop("zo", 1))
             theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
             illuminate = int(kwargs.pop("illuminate", True))
 
