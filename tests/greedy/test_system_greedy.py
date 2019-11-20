@@ -75,3 +75,13 @@ def test_integration():
     assert sys2.oversample == 999
     flux2 = sys2.flux(t)
     assert np.allclose(flux, flux2)
+
+
+def test_reflected_light():
+    pri = starry.Primary(starry.Map(amp=0), r=1)
+    sec = starry.Secondary(starry.Map(reflected=True), porb=1.0, r=1)
+    sys = starry.System(pri, sec)
+    t = np.concatenate((np.linspace(0.1, 0.4, 50), np.linspace(0.6, 0.9, 50)))
+    flux = sys.flux(t)
+
+    # TODO: Add an analytic validation here
