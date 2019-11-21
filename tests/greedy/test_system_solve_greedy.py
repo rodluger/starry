@@ -30,30 +30,18 @@ def test_solve():
 
     # Place a generous prior on the map coefficients
     A.map.set_prior(L=1)
+    sys.set_data(flux, C=sigma ** 2)
 
-    # Specify the covariance in every way possible: as a scalar,
-    # as a vector, as a matrix, or as a Cholesky factorization
-    for C, cho_C in zip(
-        [
-            sigma ** 2,
-            sigma ** 2 * np.ones_like(flux),
-            sigma ** 2 * np.eye(len(flux)),
-            None,
-        ],
-        [None, None, None, sigma * np.eye(len(flux))],
-    ):
-        sys.set_data(flux, C=C, cho_C=cho_C)
+    # Solve the linear problem
+    mu, cho_cov = sys.solve(t=t)
 
-        # Solve the linear problem
-        mu, cho_cov = sys.solve(t=t)
-
-        # Ensure the likelihood of the true value is close to that of
-        # the MAP solution
-        mean = mu[0]
-        cov = cho_cov[0].dot(cho_cov[0].T)
-        LnL0 = multivariate_normal.logpdf(mean, mean=mean, cov=cov)
-        LnL = multivariate_normal.logpdf([0.1, 0.2, 0.3], mean=mean, cov=cov)
-        assert LnL0 - LnL < 5.00
+    # Ensure the likelihood of the true value is close to that of
+    # the MAP solution
+    mean = mu[0]
+    cov = cho_cov[0].dot(cho_cov[0].T)
+    LnL0 = multivariate_normal.logpdf(mean, mean=mean, cov=cov)
+    LnL = multivariate_normal.logpdf([0.1, 0.2, 0.3], mean=mean, cov=cov)
+    assert LnL0 - LnL < 5.00
 
 
 def test_lnlike():

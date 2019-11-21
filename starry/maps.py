@@ -1,24 +1,18 @@
 # -*- coding: utf-8 -*-
 from . import config
+from .constants import *
 from .ops import (
     Ops,
     OpsLD,
     OpsReflected,
     OpsRV,
-    vectorize,
-    atleast_2d,
     get_projection,
-    is_theano,
-    reshape,
-    STARRY_RECTANGULAR_PROJECTION,
-    STARRY_ORTHOGRAPHIC_PROJECTION,
     linalg,
     math,
-    cast,
     Covariance,
 )
 from .indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
-from .utils import get_ortho_latitude_lines, get_ortho_longitude_lines
+from .plotting import get_ortho_latitude_lines, get_ortho_longitude_lines
 from .sht import image2map, healpix2map, array2map
 import numpy as np
 import matplotlib.pyplot as plt
@@ -47,7 +41,7 @@ class Amplitude(object):
         return instance._amp
 
     def __set__(self, instance, value):
-        instance._amp = instance.cast(np.ones(instance.nw) * value)
+        instance._amp = math.cast(np.ones(instance.nw) * value)
 
 
 class MapBase(object):
@@ -55,6 +49,22 @@ class MapBase(object):
 
     # The map amplitude (just an attribute)
     amp = Amplitude()
+
+    def _no_spectral(func):
+        """
+        Decorator that returns an error if the map is spectral.
+
+        """
+
+        def wrapper(self, *args, **kwargs):
+            if self.nw is not None:
+                raise NotImplementedError(
+                    "Method not yet implemented for spectral maps."
+                )
+            else:
+                return func(self, *args, **kwargs)
+
+        return wrapper
 
     def __init__(self, ydeg, udeg, fdeg, drorder, nw, **kwargs):
         """
@@ -146,7 +156,7 @@ class MapBase(object):
 
     @property
     def N(self):
-        """Total number of map coefficients. *Read-only*
+        r"""Total number of map coefficients. *Read-only*
 
         This is equal to :math:`N_\mathrm{y} + N_\mathrm{u} + N_\mathrm{f}`.
         """
@@ -251,8 +261,8 @@ class MapBase(object):
         zo = kwargs.pop("zo", 1.0)
         ro = kwargs.pop("ro", 0.0)
         theta = kwargs.pop("theta", 0.0)
-        theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
-        theta, xo, yo, zo, ro = cast(theta, xo, yo, zo, ro)
+        theta, xo, yo, zo = math.vectorize(theta, xo, yo, zo)
+        theta, xo, yo, zo, ro = math.cast(theta, xo, yo, zo, ro)
         theta *= self._angle_factor
         return theta, xo, yo, zo, ro
 
@@ -269,285 +279,19 @@ class MapBase(object):
         else:
             y = np.zeros((self.Ny, self.nw))
             y[0, :] = 1.0
-        self._y = cast(y)
+        self._y = math.cast(y)
 
         u = np.zeros(self.Nu)
         u[0] = -1.0
-        self._u = cast(u)
+        self._u = math.cast(u)
 
         f = np.zeros(self.Nf)
         f[0] = np.pi
-        self._f = cast(f)
+        self._f = math.cast(f)
 
-        self._amp = cast(kwargs.pop("amp", np.ones(self.nw)))
+        self._amp = math.cast(kwargs.pop("amp", np.ones(self.nw)))
 
         self._check_kwargs("reset", kwargs)
-
-
-class YlmBase(object):
-    """The default ``starry`` map class.
-
-    This class handles light curves and phase curves of objects in
-    emitted light. It can be instantiated by calling :py:func:`starry.Map` with
-    both ``rv`` and ``reflected`` set to False.
-    """
-
-    _ops_class_ = Ops
-
-    def reset(self, **kwargs):
-        if kwargs.get("inc", None) is not None:
-            self.inc = kwargs.pop("inc")
-        else:
-            self._inc = cast(0.5 * np.pi)
-
-        if kwargs.get("obl", None) is not None:
-            self.obl = kwargs.pop("obl")
-        else:
-            self._obl = cast(0.0)
-
-        if kwargs.get("alpha", None) is not None:
-            self.alpha = kwargs.pop("alpha")
-        else:
-            self._alpha = cast(0.0)
-
-        # Reset data and priors
-        self._flux = None
-        self._C = None
-        self._mu = None
-        self._L = None
-        self._yhat = None
-        self._cho_ycov = None
-
-        super(YlmBase, self).reset(**kwargs)
-
-    @property
-    def inc(self):
-        """The inclination of the rotation axis in units of :py:attr:`angle_unit`."""
-        return self._inc / self._angle_factor
-
-    @inc.setter
-    def inc(self, value):
-        self._inc = cast(value) * self._angle_factor
-
-    @property
-    def obl(self):
-        """The obliquity of the rotation axis in units of :py:attr:`angle_unit`."""
-        return self._obl / self._angle_factor
-
-    @obl.setter
-    def obl(self, value):
-        self._obl = cast(value) * self._angle_factor
-
-    @property
-    def alpha(self):
-        """The rotational shear coefficient, a number in the range ``[0, 1]``.
-
-        The parameter :math:`\\alpha` is used to model linear differential
-        rotation. The angular velocity at a given latitude :math:`\\theta`
-        is
-
-        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
-
-        where :math:`\\omega_{eq}` is the equatorial angular velocity of
-        the object.
-        """
-        return self._alpha
-
-    @alpha.setter
-    def alpha(self, value):
-        if (self._drorder == 0) and not hasattr(self, "rv"):
-            logger.warning(
-                "Parameter `drorder` is zero, so setting `alpha` has no effect."
-            )
-        else:
-            self._alpha = cast(value)
-
-    def design_matrix(self, **kwargs):
-        r"""Compute and return the light curve design matrix :math:`A`.
-
-        The flux :math:`f` obtained by calling the :py:meth:`flux` method
-        is equal to
-
-            .. math::
-                f = A \cdot y
-
-        where :math:`y` is the vector of spherical harmonic coefficients
-        (:py:attr:`y`).
-
-        Args:
-            xo (scalar or vector, optional): x coordinate of the occultor
-                relative to this body in units of this body's radius.
-            yo (scalar or vector, optional): y coordinate of the occultor
-                relative to this body in units of this body's radius.
-            zo (scalar or vector, optional): z coordinate of the occultor
-                relative to this body in units of this body's radius.
-            ro (scalar, optional): Radius of the occultor in units of
-                this body's radius.
-            theta (scalar or vector, optional): Angular phase of the body
-                in units of :py:attr:`angle_unit`.
-        """
-        # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
-
-        # Check for invalid kwargs
-        self._check_kwargs("design_matrix", kwargs)
-
-        # Compute & return
-        return self.amp * self.ops.X(
-            theta,
-            xo,
-            yo,
-            zo,
-            ro,
-            self._inc,
-            self._obl,
-            self._u,
-            self._f,
-            self._alpha,
-        )
-
-    def intensity_design_matrix(self, lat=0, lon=0):
-        """Compute and return the pixelization matrix ``P``.
-
-        This matrix transforms a spherical harmonic coefficient vector
-        to a vector of intensities on the surface.
-
-        Args:
-            lat (scalar or vector, optional): latitude at which to evaluate
-                the design matrix in units of :py:attr:`angle_unit`.
-            lon (scalar or vector, optional): longitude at which to evaluate
-                the design matrix in units of :py:attr:`angle_unit`.
-
-        .. note::
-            This method ignores any filters (such as limb darkening
-            or velocity weighting) and illumination (for reflected light
-            maps).
-
-        """
-        # Get the Cartesian points
-        lat, lon = vectorize(*cast(lat, lon))
-        lat *= self._angle_factor
-        lon *= self._angle_factor
-
-        # Compute & return
-        return self.amp * self.ops.P(lat, lon)
-
-    def flux(self, **kwargs):
-        """
-        Compute and return the light curve.
-
-        Args:
-            xo (scalar or vector, optional): x coordinate of the occultor
-                relative to this body in units of this body's radius.
-            yo (scalar or vector, optional): y coordinate of the occultor
-                relative to this body in units of this body's radius.
-            zo (scalar or vector, optional): z coordinate of the occultor
-                relative to this body in units of this body's radius.
-            ro (scalar, optional): Radius of the occultor in units of
-                this body's radius.
-            theta (scalar or vector, optional): Angular phase of the body
-                in units of :py:attr:`angle_unit`.
-        """
-        # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
-
-        # Check for invalid kwargs
-        self._check_kwargs("flux", kwargs)
-
-        # Compute & return
-        return self.amp * self.ops.flux(
-            theta,
-            xo,
-            yo,
-            zo,
-            ro,
-            self._inc,
-            self._obl,
-            self._y,
-            self._u,
-            self._f,
-            self._alpha,
-        )
-
-    def intensity(self, lat=0, lon=0):
-        """
-        Compute and return the intensity of the map.
-
-        Args:
-            lat (scalar or vector, optional): latitude at which to evaluate
-                the intensity in units of :py:attr:`angle_unit`.
-            lon (scalar or vector, optional): longitude at which to evaluate
-                the intensity in units of :py:attr:`angle_unit``.
-
-        """
-        # Get the Cartesian points
-        lat, lon = vectorize(*cast(lat, lon))
-        lat *= self._angle_factor
-        lon *= self._angle_factor
-
-        # Compute & return
-        return self.amp * self.ops.intensity(
-            lat, lon, self._y, self._u, self._f
-        )
-
-    def render(self, res=300, projection="ortho", theta=0.0):
-        """Compute and return the intensity of the map on a grid.
-
-        Returns an image of shape ``(res, res)``, unless ``theta`` is a vector,
-        in which case returns an array of shape ``(nframes, res, res)``, where
-        ``nframes`` is the number of values of ``theta``. However, if this is
-        a spectral map, ``nframes`` is the number of wavelength bins and
-        ``theta`` must be a scalar.
-
-        Args:
-            res (int, optional): The resolution of the map in pixels on a
-                side. Defaults to 300.
-            projection (string, optional): The map projection. Accepted
-                values are ``ortho``, corresponding to an orthographic
-                projection (as seen on the sky), and ``rect``, corresponding
-                to an equirectangular latitude-longitude projection.
-                Defaults to ``ortho``.
-            theta (scalar or vector, optional): The map rotation phase in
-                units of :py:attr:`angle_unit`. If this is a vector, an
-                animation is generated. Defaults to ``0.0``.
-        """
-        # Multiple frames?
-        if self.nw is not None:
-            animated = True
-        else:
-            if is_theano(theta):
-                animated = theta.ndim > 0
-            else:
-                animated = hasattr(theta, "__len__")
-
-        # Convert
-        projection = get_projection(projection)
-        theta = vectorize(cast(theta) * self._angle_factor)
-
-        # Compute
-        if self.nw is None or config.lazy:
-            amp = self.amp
-        else:
-            # The intensity has shape `(nw, res, res)`
-            # so we must reshape `amp` to take the product correctly
-            amp = self.amp[:, np.newaxis, np.newaxis]
-        image = amp * self.ops.render(
-            res,
-            projection,
-            theta,
-            self._inc,
-            self._obl,
-            self._y,
-            self._u,
-            self._f,
-            self._alpha,
-        )
-
-        # Squeeze?
-        if animated:
-            return image
-        else:
-            return reshape(image, [res, res])
 
     def show(self, **kwargs):
         """
@@ -575,10 +319,13 @@ class YlmBase(object):
             html5_video (bool, optional): If rendering in a Jupyter notebook,
                 display as an HTML5 video? Default is True. If False, displays
                 the animation using Javascript (file size will be larger.)
+
+        .. note::
+            Pure limb-darkened maps do not accept a ``projection`` keyword.
+
         """
         # Get kwargs
         cmap = kwargs.pop("cmap", "plasma")
-        projection = get_projection(kwargs.get("projection", "ortho"))
         grid = kwargs.pop("grid", True)
         interval = kwargs.pop("interval", 75)
         file = kwargs.pop("file", None)
@@ -587,23 +334,34 @@ class YlmBase(object):
         dpi = kwargs.pop("dpi", None)
         figsize = kwargs.pop("figsize", None)
 
-        # Get the map orientation
-        if config.lazy:
-            inc = self._inc.eval()
-            obl = self._obl.eval()
-        else:
-            inc = self._inc
-            obl = self._obl
+        # Ylm-base maps only
+        if not self.__props__["limbdarkened"]:
 
-        # Get the rotational phase
-        if config.lazy:
-            theta = vectorize(
-                cast(kwargs.pop("theta", 0.0)) * self._angle_factor
-            ).eval()
+            projection = get_projection(kwargs.get("projection", "ortho"))
+
+            # Get the map orientation
+            if config.lazy:
+                inc = self._inc.eval()
+                obl = self._obl.eval()
+            else:
+                inc = self._inc
+                obl = self._obl
+
+            # Get the rotational phase
+            if config.lazy:
+                theta = math.vectorize(
+                    math.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
+                ).eval()
+            else:
+                theta = np.atleast_1d(
+                    np.array(kwargs.pop("theta", 0.0)) * self._angle_factor
+                )
+
         else:
-            theta = np.atleast_1d(
-                np.array(kwargs.pop("theta", 0.0)) * self._angle_factor
-            )
+
+            inc = 90
+            obl = 0
+            theta = [0]
 
         # Render the map if needed
         image = kwargs.pop("image", None)
@@ -616,31 +374,48 @@ class YlmBase(object):
                 res = kwargs.pop("res", 300)
 
                 # Evaluate the variables
-                inc = self._inc.eval()
-                obl = self._obl.eval()
-                y = self._y.eval()
                 u = self._u.eval()
-                f = self._f.eval()
-                alpha = self._alpha.eval()
 
-                # Explicitly call the compiled version of `render`
-                image = self.amp.eval().reshape(-1, 1, 1) * self.ops.render(
-                    res,
-                    projection,
-                    theta,
-                    inc,
-                    obl,
-                    y,
-                    u,
-                    f,
-                    alpha,
-                    force_compile=True,
-                )
+                if not self.__props__["limbdarkened"]:
+
+                    inc = self._inc.eval()
+                    obl = self._obl.eval()
+                    y = self._y.eval()
+                    f = self._f.eval()
+                    alpha = self._alpha.eval()
+
+                    # Explicitly call the compiled version of `render`
+                    image = self.amp.eval().reshape(
+                        -1, 1, 1
+                    ) * self.ops.render(
+                        res,
+                        projection,
+                        theta,
+                        inc,
+                        obl,
+                        y,
+                        u,
+                        f,
+                        alpha,
+                        force_compile=True,
+                    )
+
+                else:
+
+                    # Explicitly call the compiled version of `render`
+                    image = self.amp.eval().reshape(
+                        -1, 1, 1
+                    ) * self.ops._render(res, u, force_compile=True)
 
             else:
 
                 # Easy!
-                image = self.render(theta=theta / self._angle_factor, **kwargs)
+                if not self.__props__["limbdarkened"]:
+                    image = self.render(
+                        theta=theta / self._angle_factor, **kwargs
+                    )
+                else:
+                    image = self.render(**kwargs)
                 kwargs.pop("res", None)
 
         if len(image.shape) == 3:
@@ -652,7 +427,10 @@ class YlmBase(object):
         # Animation
         animated = nframes > 1
 
-        if projection == STARRY_RECTANGULAR_PROJECTION:
+        if (
+            not self.__props__["limbdarkened"]
+            and projection == STARRY_RECTANGULAR_PROJECTION
+        ):
             # Set up the plot
             if figsize is None:
                 figsize = (7, 3.75)
@@ -733,7 +511,8 @@ class YlmBase(object):
             def updatefig(i):
                 img.set_array(image[i])
                 if (
-                    projection == STARRY_ORTHOGRAPHIC_PROJECTION
+                    not self.__props__["limbdarkened"]
+                    and projection == STARRY_ORTHOGRAPHIC_PROJECTION
                     and grid
                     and len(theta) > 1
                     and self.nw is None
@@ -789,7 +568,10 @@ class YlmBase(object):
 
         else:
             if (file is not None) and (file != ""):
-                if projection == STARRY_ORTHOGRAPHIC_PROJECTION:
+                if (
+                    not self.__props__["limbdarkened"]
+                    and projection == STARRY_ORTHOGRAPHIC_PROJECTION
+                ):
                     fig.subplots_adjust(
                         left=0.01, right=0.99, bottom=0.01, top=0.99
                     )
@@ -801,13 +583,281 @@ class YlmBase(object):
         # Check for invalid kwargs
         if self.__props__["rv"]:
             kwargs.pop("rv", None)
-        kwargs.pop("projection", None)
+        if not self.__props__["limbdarkened"]:
+            kwargs.pop("projection", None)
         if self.__props__["reflected"]:
             kwargs.pop("xo", None)
             kwargs.pop("yo", None)
             kwargs.pop("zo", None)
         self._check_kwargs("show", kwargs)
 
+
+class YlmBase(object):
+    """The default ``starry`` map class.
+
+    This class handles light curves and phase curves of objects in
+    emitted light. It can be instantiated by calling :py:func:`starry.Map` with
+    both ``rv`` and ``reflected`` set to False.
+    """
+
+    _ops_class_ = Ops
+
+    def reset(self, **kwargs):
+        if kwargs.get("inc", None) is not None:
+            self.inc = kwargs.pop("inc")
+        else:
+            self._inc = math.cast(0.5 * np.pi)
+
+        if kwargs.get("obl", None) is not None:
+            self.obl = kwargs.pop("obl")
+        else:
+            self._obl = math.cast(0.0)
+
+        if kwargs.get("alpha", None) is not None:
+            self.alpha = kwargs.pop("alpha")
+        else:
+            self._alpha = math.cast(0.0)
+
+        # Reset data and priors
+        self._flux = None
+        self._C = None
+        self._mu = None
+        self._L = None
+        self._yhat = None
+        self._cho_ycov = None
+
+        super(YlmBase, self).reset(**kwargs)
+
+    @property
+    def inc(self):
+        """The inclination of the rotation axis in units of :py:attr:`angle_unit`."""
+        return self._inc / self._angle_factor
+
+    @inc.setter
+    def inc(self, value):
+        self._inc = math.cast(value) * self._angle_factor
+
+    @property
+    def obl(self):
+        """The obliquity of the rotation axis in units of :py:attr:`angle_unit`."""
+        return self._obl / self._angle_factor
+
+    @obl.setter
+    def obl(self, value):
+        self._obl = math.cast(value) * self._angle_factor
+
+    @property
+    def alpha(self):
+        """The rotational shear coefficient, a number in the range ``[0, 1]``.
+
+        The parameter :math:`\\alpha` is used to model linear differential
+        rotation. The angular velocity at a given latitude :math:`\\theta`
+        is
+
+        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
+
+        where :math:`\\omega_{eq}` is the equatorial angular velocity of
+        the object.
+        """
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, value):
+        if (self._drorder == 0) and not hasattr(self, "rv"):
+            logger.warning(
+                "Parameter `drorder` is zero, so setting `alpha` has no effect."
+            )
+        else:
+            self._alpha = math.cast(value)
+
+    def design_matrix(self, **kwargs):
+        r"""Compute and return the light curve design matrix :math:`A`.
+
+        The flux :math:`f` obtained by calling the :py:meth:`flux` method
+        is equal to
+
+            .. math::
+                f = A \cdot y
+
+        where :math:`y` is the vector of spherical harmonic coefficients
+        (:py:attr:`y`).
+
+        Args:
+            xo (scalar or vector, optional): x coordinate of the occultor
+                relative to this body in units of this body's radius.
+            yo (scalar or vector, optional): y coordinate of the occultor
+                relative to this body in units of this body's radius.
+            zo (scalar or vector, optional): z coordinate of the occultor
+                relative to this body in units of this body's radius.
+            ro (scalar, optional): Radius of the occultor in units of
+                this body's radius.
+            theta (scalar or vector, optional): Angular phase of the body
+                in units of :py:attr:`angle_unit`.
+        """
+        # Orbital kwargs
+        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
+
+        # Check for invalid kwargs
+        self._check_kwargs("design_matrix", kwargs)
+
+        # Compute & return
+        return self.amp * self.ops.X(
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self._u,
+            self._f,
+            self._alpha,
+        )
+
+    def intensity_design_matrix(self, lat=0, lon=0):
+        """Compute and return the pixelization matrix ``P``.
+
+        This matrix transforms a spherical harmonic coefficient vector
+        to a vector of intensities on the surface.
+
+        Args:
+            lat (scalar or vector, optional): latitude at which to evaluate
+                the design matrix in units of :py:attr:`angle_unit`.
+            lon (scalar or vector, optional): longitude at which to evaluate
+                the design matrix in units of :py:attr:`angle_unit`.
+
+        .. note::
+            This method ignores any filters (such as limb darkening
+            or velocity weighting) and illumination (for reflected light
+            maps).
+
+        """
+        # Get the Cartesian points
+        lat, lon = math.vectorize(*math.cast(lat, lon))
+        lat *= self._angle_factor
+        lon *= self._angle_factor
+
+        # Compute & return
+        return self.amp * self.ops.P(lat, lon)
+
+    def flux(self, **kwargs):
+        """
+        Compute and return the light curve.
+
+        Args:
+            xo (scalar or vector, optional): x coordinate of the occultor
+                relative to this body in units of this body's radius.
+            yo (scalar or vector, optional): y coordinate of the occultor
+                relative to this body in units of this body's radius.
+            zo (scalar or vector, optional): z coordinate of the occultor
+                relative to this body in units of this body's radius.
+            ro (scalar, optional): Radius of the occultor in units of
+                this body's radius.
+            theta (scalar or vector, optional): Angular phase of the body
+                in units of :py:attr:`angle_unit`.
+        """
+        # Orbital kwargs
+        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
+
+        # Check for invalid kwargs
+        self._check_kwargs("flux", kwargs)
+
+        # Compute & return
+        return self.amp * self.ops.flux(
+            theta,
+            xo,
+            yo,
+            zo,
+            ro,
+            self._inc,
+            self._obl,
+            self._y,
+            self._u,
+            self._f,
+            self._alpha,
+        )
+
+    def intensity(self, lat=0, lon=0):
+        """
+        Compute and return the intensity of the map.
+
+        Args:
+            lat (scalar or vector, optional): latitude at which to evaluate
+                the intensity in units of :py:attr:`angle_unit`.
+            lon (scalar or vector, optional): longitude at which to evaluate
+                the intensity in units of :py:attr:`angle_unit``.
+
+        """
+        # Get the Cartesian points
+        lat, lon = math.vectorize(*math.cast(lat, lon))
+        lat *= self._angle_factor
+        lon *= self._angle_factor
+
+        # Compute & return
+        return self.amp * self.ops.intensity(
+            lat, lon, self._y, self._u, self._f
+        )
+
+    def render(self, res=300, projection="ortho", theta=0.0):
+        """Compute and return the intensity of the map on a grid.
+
+        Returns an image of shape ``(res, res)``, unless ``theta`` is a vector,
+        in which case returns an array of shape ``(nframes, res, res)``, where
+        ``nframes`` is the number of values of ``theta``. However, if this is
+        a spectral map, ``nframes`` is the number of wavelength bins and
+        ``theta`` must be a scalar.
+
+        Args:
+            res (int, optional): The resolution of the map in pixels on a
+                side. Defaults to 300.
+            projection (string, optional): The map projection. Accepted
+                values are ``ortho``, corresponding to an orthographic
+                projection (as seen on the sky), and ``rect``, corresponding
+                to an equirectangular latitude-longitude projection.
+                Defaults to ``ortho``.
+            theta (scalar or vector, optional): The map rotation phase in
+                units of :py:attr:`angle_unit`. If this is a vector, an
+                animation is generated. Defaults to ``0.0``.
+        """
+        # Multiple frames?
+        if self.nw is not None:
+            animated = True
+        else:
+            if config.lazy:
+                animated = theta.ndim > 0
+            else:
+                animated = hasattr(theta, "__len__")
+
+        # Convert
+        projection = get_projection(projection)
+        theta = math.vectorize(math.cast(theta) * self._angle_factor)
+
+        # Compute
+        if self.nw is None or config.lazy:
+            amp = self.amp
+        else:
+            # The intensity has shape `(nw, res, res)`
+            # so we must reshape `amp` to take the product correctly
+            amp = self.amp[:, np.newaxis, np.newaxis]
+        image = amp * self.ops.render(
+            res,
+            projection,
+            theta,
+            self._inc,
+            self._obl,
+            self._y,
+            self._u,
+            self._f,
+            self._alpha,
+        )
+
+        # Squeeze?
+        if animated:
+            return image
+        else:
+            return math.reshape(image, [res, res])
+
+    @MapBase._no_spectral
     def load(
         self,
         image,
@@ -842,12 +892,6 @@ class YlmBase(object):
             kwargs (optional): Any other kwargs passed directly to
                 :py:meth:`minimize` (only if ``psd`` is True).
         """
-        # TODO?
-        if self.nw is not None:
-            raise NotImplementedError(
-                "Method not available for spectral maps."
-            )
-
         # Is this a file name?
         if type(image) is str:
             y = image2map(
@@ -879,8 +923,8 @@ class YlmBase(object):
         # This ensures the map intensity will have the same normalization
         # as that of the input image
         y /= 2 * np.sqrt(np.pi)
-        self._y = cast(y / y[0])
-        self._amp = cast(y[0] * np.pi)
+        self._y = math.cast(y / y[0])
+        self._amp = math.cast(y[0] * np.pi)
 
         # Ensure positive semi-definite?
         if force_psd:
@@ -929,8 +973,8 @@ class YlmBase(object):
                 map outside of the spot will therefore get brighter.
                 Defaults to False.
         """
-        amp, _ = vectorize(cast(amp), np.ones(self.nw))
-        sigma, lat, lon = cast(sigma, lat, lon)
+        amp, _ = math.vectorize(math.cast(amp), np.ones(self.nw))
+        sigma, lat, lon = math.cast(sigma, lat, lon)
         self._y, new_norm = self.ops.add_spot(
             self._y,
             self._amp,
@@ -942,16 +986,11 @@ class YlmBase(object):
         if not preserve_luminosity:
             self._amp = new_norm
 
+    @MapBase._no_spectral
     def minimize(self, **kwargs):
         r"""Find the global minimum of the map intensity.
 
-        TODO: Add tests
         """
-        # TODO?
-        if self.nw is not None:
-            raise NotImplementedError(
-                "Method not available for spectral maps."
-            )
         self.ops.minimize.setup()
         lat, lon, I = self.ops.get_minimum(self.y)
         return lat / self._angle_factor, lon / self._angle_factor, I
@@ -976,7 +1015,7 @@ class YlmBase(object):
                 covariance matrix. Defaults to None. Either `C` or
                 `cho_C` must be provided.
         """
-        self._flux = cast(flux)
+        self._flux = math.cast(flux)
         self._C = Covariance(C, cho_C, N=self._flux.shape[0])
 
     def set_prior(self, *, mu=0, L=None, cho_L=None):
@@ -1001,9 +1040,10 @@ class YlmBase(object):
                 covariance matrix. Defaults to None. Either `L` or
                 `cho_L` must be provided.
         """
-        self._mu = cast(mu) * cast(np.ones(self.Ny - 1))
+        self._mu = math.cast(mu) * math.cast(np.ones(self.Ny - 1))
         self._L = Covariance(L, cho_L, N=self.Ny - 1)
 
+    @MapBase._no_spectral
     def solve(self, *, design_matrix=None, **kwargs):
         """Solve the linear least-squares problem for the posterior over maps.
 
@@ -1035,16 +1075,10 @@ class YlmBase(object):
         elif self._mu is None or self._L is None:
             raise ValueError("Please provide a prior with `set_prior()`.")
 
-        # TODO?
-        if self.nw is not None:  # pragma: no cover
-            raise NotImplementedError(
-                "Method not yet implemented for spectral maps."
-            )
-
         # Get the design matrix
         if design_matrix is None:
             design_matrix = self.design_matrix(**kwargs)
-        X = cast(design_matrix)
+        X = math.cast(design_matrix)
         X0 = X[:, 0]
         X1 = X[:, 1:]
 
@@ -1057,7 +1091,8 @@ class YlmBase(object):
         )
         return self._yhat, self._cho_ycov
 
-    def lnlike(self, *, design_matrix=None, **kwargs):
+    @MapBase._no_spectral
+    def lnlike(self, *, design_matrix=None, woodbury=True, **kwargs):
         """Returns the log marginal likelihood of the data given a design matrix.
 
         This method computes the marginal likelihood (marginalized over the
@@ -1070,6 +1105,8 @@ class YlmBase(object):
             design_matrix (matrix, optional): The flux design matrix, the
                 quantity returned by :py:meth:`design_matrix`. Default is
                 None, in which case this is computed based on ``kwargs``.
+            woodbury (bool, optional): Solve the linear problem using the
+                Woodbury identity. Default is True.
             kwargs (optional): Keyword arguments to be passed directly to
                 :py:meth:`design_matrix`, if a design matrix is not provided.
 
@@ -1081,16 +1118,10 @@ class YlmBase(object):
         elif self._mu is None or self._L is None:
             raise ValueError("Please provide a prior with `set_prior()`.")
 
-        # TODO?
-        if self.nw is not None:  # pragma: no cover
-            raise NotImplementedError(
-                "Method not yet implemented for spectral maps."
-            )
-
         # Get the design matrix
         if design_matrix is None:
             design_matrix = self.design_matrix(**kwargs)
-        X = cast(design_matrix)
+        X = math.cast(design_matrix)
         X0 = X[:, 0]
         X1 = X[:, 1:]
 
@@ -1118,7 +1149,7 @@ class YlmBase(object):
         """
         if self._cho_ycov is None:
             raise ValueError("Please call `solve()` first.")
-        return linalg.cho_solve(self._cho_ycov, cast(np.eye(self.Ny - 1)))
+        return linalg.cho_solve(self._cho_ycov, math.cast(np.eye(self.Ny - 1)))
 
     def draw(self):
         """Draw a map from the posterior distribution and set the :py:attr:`y` map vector.
@@ -1127,7 +1158,7 @@ class YlmBase(object):
             raise ValueError("Please call `solve()` first.")
 
         # Fast multivariate sampling using the Cholesky factorization
-        u = cast(np.random.randn(self.Ny - 1))
+        u = math.cast(np.random.randn(self.Ny - 1))
         y = self._yhat + math.dot(self._cho_ycov, u)
         self[1:, :] = y
 
@@ -1187,7 +1218,7 @@ class LimbDarkenedBase(object):
         """
         # Get the Cartesian points
         if mu is not None:
-            mu = vectorize(cast(mu))
+            mu = math.vectorize(math.cast(mu))
             assert (
                 x is None and y is None
             ), "Please provide either `mu` or `x` and `y`, but not both."
@@ -1195,7 +1226,7 @@ class LimbDarkenedBase(object):
             assert (
                 x is not None and y is not None
             ), "Please provide either `mu` or `x` and `y`."
-            x, y = vectorize(*cast(x, y))
+            x, y = math.vectorize(*math.cast(x, y))
             mu = (1 - x ** 2 - y ** 2) ** 0.5
 
         # Compute & return
@@ -1223,168 +1254,7 @@ class LimbDarkenedBase(object):
         if animated:
             return image
         else:
-            return reshape(image, [res, res])
-
-    def show(self, **kwargs):
-        """
-        Display an image of the map, with optional animation. See the
-        docstring of :py:meth:`render` for more details and additional
-        keywords accepted by this method.
-
-        Args:
-            cmap (string or colormap instance, optional): The matplotlib colormap
-                to use. Defaults to ``plasma``.
-            figsize (tuple, optional): Figure size in inches. Default is
-                (3, 3).
-            grid (bool, optional): Show latitude/longitude grid lines?
-                Defaults to True.
-            interval (int, optional): Interval between frames in milliseconds
-                (animated maps only). Defaults to 75.
-            file (string, optional): The file name (including the extension)
-                to save the figure or animation to. Defaults to None.
-            html5_video (bool, optional): If rendering in a Jupyter notebook,
-                display as an HTML5 video? Default is True. If False, displays
-                the animation using Javascript (file size will be larger.)
-        """
-        # Get kwargs
-        cmap = kwargs.pop("cmap", "plasma")
-        grid = kwargs.pop("grid", True)
-        interval = kwargs.pop("interval", 75)
-        file = kwargs.pop("file", None)
-        html5_video = kwargs.pop("html5_video", True)
-        norm = kwargs.pop("norm", None)
-        dpi = kwargs.pop("dpi", None)
-        figsize = kwargs.pop("figsize", (3, 3))
-
-        # Render the map if needed
-        image = kwargs.pop("image", None)
-        if image is None:
-
-            # We need to evaluate the variables so we can plot the map!
-            if config.lazy:
-
-                # Get kwargs
-                res = kwargs.pop("res", 300)
-
-                # Evaluate the variables
-                u = self._u.eval()
-
-                # Explicitly call the compiled version of `render`
-                image = self.amp.eval().reshape(-1, 1, 1) * self.ops._render(
-                    res, u, force_compile=True
-                )
-
-            else:
-
-                # Easy!
-                image = self.render(**kwargs)
-                kwargs.pop("res", None)
-
-        if len(image.shape) == 3:
-            nframes = image.shape[0]
-        else:
-            nframes = 1
-            image = np.reshape(image, (1,) + image.shape)
-
-        # Animation
-        animated = nframes > 1
-
-        # Set up the plot
-        fig, ax = plt.subplots(1, figsize=figsize)
-        ax.axis("off")
-        ax.set_xlim(-1.05, 1.05)
-        ax.set_ylim(-1.05, 1.05)
-        extent = (-1, 1, -1, 1)
-
-        # Grid lines
-        if grid:
-            x = np.linspace(-1, 1, 10000)
-            y = np.sqrt(1 - x ** 2)
-            ax.plot(x, y, "k-", alpha=1, lw=1)
-            ax.plot(x, -y, "k-", alpha=1, lw=1)
-            lat_lines = get_ortho_latitude_lines()
-            for x, y in lat_lines:
-                ax.plot(x, y, "k-", lw=0.5, alpha=0.5, zorder=100)
-            lon_lines = get_ortho_longitude_lines()
-            ll = [None for n in lon_lines]
-            for n, l in enumerate(lon_lines):
-                (ll[n],) = ax.plot(
-                    l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=100
-                )
-
-        # Plot the first frame of the image
-        if norm is None:
-            vmin = np.nanmin(image)
-            vmax = np.nanmax(image)
-            if vmin == vmax:
-                vmin -= 1e-15
-                vmax += 1e-15
-            norm = colors.Normalize(vmin=vmin, vmax=vmax)
-        img = ax.imshow(
-            image[0],
-            origin="lower",
-            extent=extent,
-            cmap=cmap,
-            norm=norm,
-            interpolation="none",
-            animated=animated,
-        )
-
-        # Display or save the image / animation
-        if animated:
-
-            def updatefig(i):
-                img.set_array(image[i])
-                return (img,)
-
-            ani = FuncAnimation(
-                fig,
-                updatefig,
-                interval=interval,
-                blit=False,
-                frames=image.shape[0],
-            )
-
-            # Business as usual
-            if (file is not None) and (file != ""):
-                if file.endswith(".mp4"):
-                    ani.save(file, writer="ffmpeg", dpi=dpi)
-                elif file.endswith(".gif"):
-                    ani.save(file, writer="imagemagick", dpi=dpi)
-                else:
-                    # Try and see what happens!
-                    ani.save(file, dpi=dpi)
-                plt.close()
-            else:
-                try:
-                    if "zmqshell" in str(type(get_ipython())):
-                        plt.close()
-                        if html5_video:
-                            display(HTML(ani.to_html5_video()))
-                        else:
-                            display(HTML(ani.to_jshtml()))
-                    else:
-                        raise NameError("")
-                except NameError:
-                    plt.show()
-                    plt.close()
-
-            # Matplotlib generates an annoying empty
-            # file when producing an animation. Delete it.
-            try:
-                os.remove("None0000000.png")
-            except FileNotFoundError:
-                pass
-
-        else:
-            if (file is not None) and (file != ""):
-                fig.savefig(file)
-                plt.close()
-            else:
-                plt.show()
-
-        # Check for invalid kwargs
-        self._check_kwargs("show", kwargs)
+            return math.reshape(image, [res, res])
 
     def minimize(self, **kwargs):
         r"""Find the global minimum of the map intensity.
@@ -1441,12 +1311,12 @@ class RVBase(object):
 
     @veq.setter
     def veq(self, value):
-        self._veq = cast(value) * self._velocity_factor
+        self._veq = math.cast(value) * self._velocity_factor
 
     def _unset_RV_filter(self):
         f = np.zeros(self.Nf)
         f[0] = np.pi
-        self._f = cast(f)
+        self._f = math.cast(f)
 
     def _set_RV_filter(self):
         self._f = self.ops.compute_rv_filter(
@@ -1742,12 +1612,12 @@ class ReflectedBase(object):
 
         """
         # Get the Cartesian points
-        lat, lon = vectorize(*cast(lat, lon))
+        lat, lon = math.vectorize(*math.cast(lat, lon))
         lat *= self._angle_factor
         lon *= self._angle_factor
 
         # Get the source position
-        xo, yo, zo = vectorize(*cast(xo, yo, zo))
+        xo, yo, zo = math.vectorize(*math.cast(xo, yo, zo))
 
         # Compute & return
         if self.nw is None or config.lazy:
@@ -1804,18 +1674,18 @@ class ReflectedBase(object):
         if self.nw is not None:
             animated = True
         else:
-            if is_theano(theta):
+            if config.lazy:
                 animated = theta.ndim > 0
             else:
                 animated = hasattr(theta, "__len__")
 
         # Convert stuff as needed
         projection = get_projection(projection)
-        theta = cast(theta) * self._angle_factor
-        xo = cast(xo)
-        yo = cast(yo)
-        zo = cast(zo)
-        theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
+        theta = math.cast(theta) * self._angle_factor
+        xo = math.cast(xo)
+        yo = math.cast(yo)
+        zo = math.cast(zo)
+        theta, xo, yo, zo = math.vectorize(theta, xo, yo, zo)
         illuminate = int(illuminate)
 
         # Compute
@@ -1846,7 +1716,7 @@ class ReflectedBase(object):
         if animated:
             return image
         else:
-            return reshape(image, [res, res])
+            return math.reshape(image, [res, res])
 
     def show(self, **kwargs):
         # We need to evaluate the variables so we can plot the map!
@@ -1855,11 +1725,11 @@ class ReflectedBase(object):
             # Get kwargs
             res = kwargs.pop("res", 300)
             projection = get_projection(kwargs.get("projection", "ortho"))
-            theta = cast(kwargs.pop("theta", 0.0)) * self._angle_factor
-            xo = cast(kwargs.pop("xo", 0))
-            yo = cast(kwargs.pop("yo", 0))
-            zo = cast(kwargs.pop("zo", 1))
-            theta, xo, yo, zo = vectorize(theta, xo, yo, zo)
+            theta = math.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
+            xo = math.cast(kwargs.pop("xo", 0))
+            yo = math.cast(kwargs.pop("yo", 0))
+            zo = math.cast(kwargs.pop("zo", 1))
+            theta, xo, yo, zo = math.vectorize(theta, xo, yo, zo)
             illuminate = int(kwargs.pop("illuminate", True))
 
             # Evaluate the variables

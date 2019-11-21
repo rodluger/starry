@@ -1,17 +1,8 @@
 # -*- coding: utf-8 -*-
 from . import config
+from .constants import *
 from .maps import MapBase, RVBase, ReflectedBase
-from .ops import (
-    OpsSystem,
-    G_grav,
-    reshape,
-    make_array_or_tensor,
-    math,
-    linalg,
-    cast,
-    block_diag,
-    Covariance,
-)
+from .ops import OpsSystem, math, linalg, Covariance
 import numpy as np
 from astropy import units
 from inspect import getmro
@@ -137,7 +128,7 @@ class Body(object):
 
     @r.setter
     def r(self, value):
-        self._r = cast(value * self._length_factor)
+        self._r = math.cast(value * self._length_factor)
 
     @property
     def m(self):
@@ -146,7 +137,7 @@ class Body(object):
 
     @m.setter
     def m(self, value):
-        self._m = cast(value * self._mass_factor)
+        self._m = math.cast(value * self._mass_factor)
 
     @property
     def prot(self):
@@ -155,7 +146,7 @@ class Body(object):
 
     @prot.setter
     def prot(self, value):
-        self._prot = cast(value * self._time_factor)
+        self._prot = math.cast(value * self._time_factor)
 
     @property
     def t0(self):
@@ -164,7 +155,7 @@ class Body(object):
 
     @t0.setter
     def t0(self, value):
-        self._t0 = cast(value * self._time_factor)
+        self._t0 = math.cast(value * self._time_factor)
 
     @property
     def theta0(self):
@@ -173,10 +164,7 @@ class Body(object):
 
     @theta0.setter
     def theta0(self, value):
-        self._theta0 = cast(value * self._angle_factor)
-
-    def cast(self, *args, **kwargs):
-        return self._map.cast(*args, **kwargs)
+        self._theta0 = math.cast(value * self._angle_factor)
 
     def _check_kwargs(self, method, kwargs):
         if not config.quiet:
@@ -325,7 +313,7 @@ class Secondary(Body):
 
     @porb.setter
     def porb(self, value):
-        self._porb = cast(value * self._time_factor)
+        self._porb = math.cast(value * self._time_factor)
         self._a = 0.0
 
     @property
@@ -342,7 +330,7 @@ class Secondary(Body):
 
     @a.setter
     def a(self, value):
-        self._a = cast(value * self._length_factor)
+        self._a = math.cast(value * self._length_factor)
         self._porb = 0.0
 
     @property
@@ -361,7 +349,7 @@ class Secondary(Body):
 
     @w.setter
     def w(self, value):
-        self._w = cast(value * self._angle_factor)
+        self._w = math.cast(value * self._angle_factor)
 
     @property
     def omega(self):
@@ -379,7 +367,7 @@ class Secondary(Body):
 
     @Omega.setter
     def Omega(self, value):
-        self._Omega = cast(value * self._angle_factor)
+        self._Omega = math.cast(value * self._angle_factor)
 
     @property
     def inc(self):
@@ -388,7 +376,7 @@ class Secondary(Body):
 
     @inc.setter
     def inc(self, value):
-        self._inc = cast(value * self._angle_factor)
+        self._inc = math.cast(value * self._angle_factor)
 
 
 class System(object):
@@ -582,7 +570,7 @@ class System(object):
             for sec in self._secondaries:
                 sec.map._set_RV_filter()
         img_pri, img_sec, x, y, z = self.ops.render(
-            reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
+            math.reshape(math.to_array_or_tensor(t), [-1]) * self._time_factor,
             res,
             self._primary._r,
             self._primary._m,
@@ -596,23 +584,37 @@ class System(object):
             self._primary._map._u,
             self._primary._map._f,
             self._primary._map._alpha,
-            make_array_or_tensor([sec._r for sec in self._secondaries]),
-            make_array_or_tensor([sec._m for sec in self._secondaries]),
-            make_array_or_tensor([sec._prot for sec in self._secondaries]),
-            make_array_or_tensor([sec._t0 for sec in self._secondaries]),
-            make_array_or_tensor([sec._theta0 for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._r for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._m for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._prot for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._t0 for sec in self._secondaries]),
+            math.to_array_or_tensor(
+                [sec._theta0 for sec in self._secondaries]
+            ),
             self._get_periods(),
-            make_array_or_tensor([sec._ecc for sec in self._secondaries]),
-            make_array_or_tensor([sec._w for sec in self._secondaries]),
-            make_array_or_tensor([sec._Omega for sec in self._secondaries]),
-            make_array_or_tensor([sec._inc for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._amp for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._inc for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._obl for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._y for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._u for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._f for sec in self._secondaries]),
-            make_array_or_tensor(
+            math.to_array_or_tensor([sec._ecc for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._w for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
+            math.to_array_or_tensor(
+                [sec._map._amp for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._inc for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._obl for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._y for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._u for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._f for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
             ),
         )
@@ -623,7 +625,7 @@ class System(object):
         )
         fac = fac * self._primary._r
         x, y, z = x / fac, y / fac, z / fac
-        r = make_array_or_tensor([sec._r for sec in self._secondaries])
+        r = math.to_array_or_tensor([sec._r for sec in self._secondaries])
         r = r / self._primary._r
 
         # Evaluate if needed
@@ -777,7 +779,7 @@ class System(object):
                 the design matrix in units of :py:attr:`time_unit`.
         """
         return self.ops.X(
-            reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
+            math.reshape(math.to_array_or_tensor(t), [-1]) * self._time_factor,
             self._primary._r,
             self._primary._m,
             self._primary._prot,
@@ -789,22 +791,34 @@ class System(object):
             self._primary._map._u,
             self._primary._map._f,
             self._primary._map._alpha,
-            make_array_or_tensor([sec._r for sec in self._secondaries]),
-            make_array_or_tensor([sec._m for sec in self._secondaries]),
-            make_array_or_tensor([sec._prot for sec in self._secondaries]),
-            make_array_or_tensor([sec._t0 for sec in self._secondaries]),
-            make_array_or_tensor([sec._theta0 for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._r for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._m for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._prot for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._t0 for sec in self._secondaries]),
+            math.to_array_or_tensor(
+                [sec._theta0 for sec in self._secondaries]
+            ),
             self._get_periods(),
-            make_array_or_tensor([sec._ecc for sec in self._secondaries]),
-            make_array_or_tensor([sec._w for sec in self._secondaries]),
-            make_array_or_tensor([sec._Omega for sec in self._secondaries]),
-            make_array_or_tensor([sec._inc for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._amp for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._inc for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._obl for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._u for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._f for sec in self._secondaries]),
-            make_array_or_tensor(
+            math.to_array_or_tensor([sec._ecc for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._w for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
+            math.to_array_or_tensor(
+                [sec._map._amp for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._inc for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._obl for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._u for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._f for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
             ),
         )
@@ -817,7 +831,7 @@ class System(object):
                 the flux in units of :py:attr:`time_unit`.
         """
         return self.ops.flux(
-            reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
+            math.reshape(math.to_array_or_tensor(t), [-1]) * self._time_factor,
             self._primary._r,
             self._primary._m,
             self._primary._prot,
@@ -830,23 +844,37 @@ class System(object):
             self._primary._map._u,
             self._primary._map._f,
             self._primary._map._alpha,
-            make_array_or_tensor([sec._r for sec in self._secondaries]),
-            make_array_or_tensor([sec._m for sec in self._secondaries]),
-            make_array_or_tensor([sec._prot for sec in self._secondaries]),
-            make_array_or_tensor([sec._t0 for sec in self._secondaries]),
-            make_array_or_tensor([sec._theta0 for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._r for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._m for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._prot for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._t0 for sec in self._secondaries]),
+            math.to_array_or_tensor(
+                [sec._theta0 for sec in self._secondaries]
+            ),
             self._get_periods(),
-            make_array_or_tensor([sec._ecc for sec in self._secondaries]),
-            make_array_or_tensor([sec._w for sec in self._secondaries]),
-            make_array_or_tensor([sec._Omega for sec in self._secondaries]),
-            make_array_or_tensor([sec._inc for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._amp for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._inc for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._obl for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._y for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._u for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._f for sec in self._secondaries]),
-            make_array_or_tensor(
+            math.to_array_or_tensor([sec._ecc for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._w for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
+            math.to_array_or_tensor(
+                [sec._map._amp for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._inc for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._obl for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._y for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._u for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._f for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
             ),
         )
@@ -864,7 +892,7 @@ class System(object):
                 features (Doppler tomography).
         """
         return self.ops.rv(
-            reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
+            math.reshape(math.to_array_or_tensor(t), [-1]) * self._time_factor,
             self._primary._r,
             self._primary._m,
             self._primary._prot,
@@ -877,25 +905,39 @@ class System(object):
             self._primary._map._u,
             self._primary._map._alpha,
             self._primary._map._veq,
-            make_array_or_tensor([sec._r for sec in self._secondaries]),
-            make_array_or_tensor([sec._m for sec in self._secondaries]),
-            make_array_or_tensor([sec._prot for sec in self._secondaries]),
-            make_array_or_tensor([sec._t0 for sec in self._secondaries]),
-            make_array_or_tensor([sec._theta0 for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._r for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._m for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._prot for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._t0 for sec in self._secondaries]),
+            math.to_array_or_tensor(
+                [sec._theta0 for sec in self._secondaries]
+            ),
             self._get_periods(),
-            make_array_or_tensor([sec._ecc for sec in self._secondaries]),
-            make_array_or_tensor([sec._w for sec in self._secondaries]),
-            make_array_or_tensor([sec._Omega for sec in self._secondaries]),
-            make_array_or_tensor([sec._inc for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._amp for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._inc for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._obl for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._y for sec in self._secondaries]),
-            make_array_or_tensor([sec._map._u for sec in self._secondaries]),
-            make_array_or_tensor(
+            math.to_array_or_tensor([sec._ecc for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._w for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
+            math.to_array_or_tensor(
+                [sec._map._amp for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._inc for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._obl for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._y for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._u for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
             ),
-            make_array_or_tensor([sec._map._veq for sec in self._secondaries]),
+            math.to_array_or_tensor(
+                [sec._map._veq for sec in self._secondaries]
+            ),
             np.array(keplerian),
         )
 
@@ -907,16 +949,16 @@ class System(object):
                 the position in units of :py:attr:`time_unit`.
         """
         x, y, z = self.ops.position(
-            reshape(make_array_or_tensor(t), [-1]) * self._time_factor,
+            math.reshape(math.to_array_or_tensor(t), [-1]) * self._time_factor,
             self._primary._m,
             self._primary._t0,
-            make_array_or_tensor([sec._m for sec in self._secondaries]),
-            make_array_or_tensor([sec._t0 for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._m for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._t0 for sec in self._secondaries]),
             self._get_periods(),
-            make_array_or_tensor([sec._ecc for sec in self._secondaries]),
-            make_array_or_tensor([sec._w for sec in self._secondaries]),
-            make_array_or_tensor([sec._Omega for sec in self._secondaries]),
-            make_array_or_tensor([sec._inc for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._ecc for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._w for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
+            math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
         )
         fac = np.reshape(
             [self._primary._length_factor]
@@ -936,7 +978,7 @@ class System(object):
                     * sec._a ** (3 / 2)
                     / (math.sqrt(G_grav * (self._primary._m + sec._m)))
                 )
-        return make_array_or_tensor(periods)
+        return math.to_array_or_tensor(periods)
 
     def set_data(self, flux, C=None, cho_C=None):
         """Set the data vector and covariance matrix.
@@ -958,7 +1000,7 @@ class System(object):
                 covariance matrix. Defaults to None. Either `C` or
                 `cho_C` must be provided.
         """
-        self._flux = cast(flux)
+        self._flux = math.cast(flux)
         self._C = Covariance(C=C, cho_C=cho_C, N=self._flux.shape[0])
 
     def solve(self, *, design_matrix=None, t=None):
@@ -1022,7 +1064,7 @@ class System(object):
         if design_matrix is None:
             assert t is not None, "Please provide a time vector `t`."
             design_matrix = self.design_matrix(t)
-        X = cast(design_matrix)
+        X = math.cast(design_matrix)
         X0 = X[:, Y00inds]
         X1 = X[:, YXXinds]
 
@@ -1041,7 +1083,7 @@ class System(object):
         # FACT: The Cholesky factorization of a block diagonal matrix
         # is the block diagonal matrix constructed from the
         # factorization of each block individually.
-        cho_L = block_diag(
+        cho_L = math.block_diag(
             *[
                 body.map._L.cholesky
                 for body in [self._primary] + list(self._secondaries)
@@ -1126,7 +1168,7 @@ class System(object):
         if design_matrix is None:
             assert t is not None, "Please provide a time vector `t`."
             design_matrix = self.design_matrix(t)
-        X = cast(design_matrix)
+        X = math.cast(design_matrix)
         X0 = X[:, Y00inds]
         X1 = X[:, YXXinds]
 
@@ -1141,7 +1183,7 @@ class System(object):
                 if body.map.ydeg > 0
             ]
         )
-        L = block_diag(
+        L = math.block_diag(
             *[
                 body.map._L.matrix
                 for body in [self._primary] + list(self._secondaries)

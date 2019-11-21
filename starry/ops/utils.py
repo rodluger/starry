@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 from .. import config
-from inspect import getmro
+from ..constants import *
 import theano
 import theano.tensor as tt
 import numpy as np
-from theano.ifelse import ifelse
-from theano.tensor.extra_ops import CpuContiguous
 from theano.configparser import change_flags
 from theano import gof
 from scipy.linalg import block_diag as scipy_block_diag
@@ -17,42 +15,15 @@ logger = logging.getLogger("starry.ops")
 
 __all__ = [
     "logger",
-    "STARRY_ORTHOGRAPHIC_PROJECTION",
-    "STARRY_RECTANGULAR_PROJECTION",
-    "STARRY_COVARIANCE_SCALAR",
-    "STARRY_COVARIANCE_VECTOR",
-    "STARRY_COVARIANCE_MATRIX",
-    "STARRY_COVARIANCE_CHOLESKY",
     "DynamicType",
     "autocompile",
     "get_projection",
-    "is_theano",
-    "to_tensor",
-    "as_contiguous_variable",
-    "to_array",
-    "vectorize",
-    "atleast_2d",
-    "reshape",
-    "make_array_or_tensor",
-    "cross",
     "RAxisAngle",
-    "VectorRAxisAngle",
     "CheckBoundsOp",
     "RaiseValueErrorOp",
     "RaiseValueErrorIfOp",
     "math",
-    "block_diag",
-    "cast",
 ]
-
-
-# Constants
-STARRY_ORTHOGRAPHIC_PROJECTION = 0
-STARRY_RECTANGULAR_PROJECTION = 1
-STARRY_COVARIANCE_SCALAR = 0
-STARRY_COVARIANCE_VECTOR = 1
-STARRY_COVARIANCE_MATRIX = 2
-STARRY_COVARIANCE_CHOLESKY = 3
 
 
 class CompileLogMessage:
@@ -163,134 +134,7 @@ def get_projection(projection):
     return projection
 
 
-def is_theano(*objs):
-    """
-    Return ``True`` if any of ``objs`` is a ``Theano`` object.
-
-    """
-    for obj in objs:
-        for c in getmro(type(obj)):
-            if c is theano.gof.graph.Node:
-                return True
-    return False
-
-
-def to_tensor(*args):
-    """
-    Convert all ``args`` to tensor variables.
-
-    """
-    if len(args) == 1:
-        return tt.as_tensor_variable(args[0]).astype(tt.config.floatX)
-    else:
-        return [
-            tt.as_tensor_variable(arg).astype(tt.config.floatX) for arg in args
-        ]
-
-
-def as_contiguous_variable(x):
-    """Make `x` C-contiguous."""
-    return CpuContiguous()(tt.as_tensor_variable(x))
-
-
-def to_array(*args):
-    """
-    Convert all ``args`` to numpy arrays.
-
-    """
-    if len(args) == 1:
-        return np.array(args[0], dtype=tt.config.floatX)
-    else:
-        return [np.array(arg, dtype=tt.config.floatX) for arg in args]
-
-
-def cast(*args):
-    if config.lazy:
-        return to_tensor(*args)
-    else:
-        return to_array(*args)
-
-
-def vectorize(*args):
-    """
-    Vectorize all ``args`` so that they have the same length
-    along the first axis.
-
-    TODO: Add error catching if the dimensions don't agree.
-
-    """
-    if is_theano(*args):
-        args = [arg * tt.ones(1) for arg in args]
-        size = tt.max([arg.shape[0] for arg in args])
-        args = [tt.repeat(arg, size // arg.shape[0], 0) for arg in args]
-    else:
-        args = [np.atleast_1d(arg) for arg in args]
-        size = np.max([arg.shape[0] for arg in args])
-        args = tuple(
-            [
-                arg
-                * np.ones(
-                    (size,) + tuple(np.ones(len(arg.shape) - 1, dtype=int))
-                )
-                for arg in args
-            ]
-        )
-    if len(args) == 1:
-        return args[0]
-    else:
-        return args
-
-
-def atleast_2d(arg):
-    if is_theano(arg):
-        return arg * tt.ones((1, 1))
-    else:
-        return np.atleast_2d(arg)
-
-
-def reshape(x, shape):
-    if is_theano(x):
-        return tt.reshape(x, shape)
-    else:
-        return np.reshape(x, shape)
-
-
-def make_array_or_tensor(x):
-    if config.lazy:
-        return tt.as_tensor_variable(x)
-    else:
-        return np.array(x)
-
-
-def cross(x, y):
-    """
-    Cross product of two 3-vectors.
-
-    Based on ``https://github.com/Theano/Theano/pull/3008``
-    """
-    eijk = np.zeros((3, 3, 3))
-    eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
-    eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
-    result = tt.as_tensor_variable(tt.dot(tt.dot(eijk, y), x))
-    return result
-
-
-def block_diag(*mats):
-    if config.lazy:
-        N = [mat.shape[0] for mat in mats]
-        Nsum = tt.sum(N)
-        res = tt.zeros((Nsum, Nsum), dtype=theano.config.floatX)
-        n = 0
-        for mat in mats:
-            inds = slice(n, n + mat.shape[0])
-            res = tt.set_subtensor(res[tuple((inds, inds))], mat)
-            n += mat.shape[0]
-        return res
-    else:
-        return scipy_block_diag(*mats)
-
-
-def RAxisAngle(axis=[0, 1, 0], theta=0):
+def _RAxisAngle(axis=[0, 1, 0], theta=0):
     """
 
     """
@@ -317,13 +161,16 @@ def RAxisAngle(axis=[0, 1, 0], theta=0):
     )
 
 
-def VectorRAxisAngle(axis=[0, 1, 0], theta=0):
+def RAxisAngle(axis=[0, 1, 0], theta=0):
     """
 
     """
-    fn = lambda theta, axis: RAxisAngle(axis=axis, theta=theta)
-    R, _ = theano.scan(fn=fn, sequences=[theta], non_sequences=[axis])
-    return R
+    if hasattr(theta, "ndim") and theta.ndim > 0:
+        fn = lambda theta, axis: _RAxisAngle(axis=axis, theta=theta)
+        R, _ = theano.scan(fn=fn, sequences=[theta], non_sequences=[axis])
+        return R
+    else:
+        return _RAxisAngle(axis=axis, theta=theta)
 
 
 class CheckBoundsOp(tt.Op):
@@ -399,17 +246,109 @@ class RaiseValueErrorIfOp(tt.Op):
 
 
 class MathType(type):
+    """Wrapper for theano/numpy functions."""
+
+    def cholesky(cls, *args, **kwargs):
+        if config.lazy:
+            return sla.cholesky(*args, **kwargs)
+        else:
+            return scipy.linalg.cholesky(*args, **kwargs, lower=True)
+
+    def atleast_2d(cls, arg):
+        if config.lazy:
+            return arg * tt.ones((1, 1))
+        else:
+            return np.atleast_2d(arg)
+
+    def vectorize(cls, *args):
+        """
+        Vectorize all ``args`` so that they have the same length
+        along the first axis.
+
+        TODO: Add error catching if the dimensions don't agree.
+
+        """
+        if config.lazy:
+            args = [arg * tt.ones(1) for arg in args]
+            size = tt.max([arg.shape[0] for arg in args])
+            args = [tt.repeat(arg, size // arg.shape[0], 0) for arg in args]
+        else:
+            args = [np.atleast_1d(arg) for arg in args]
+            size = np.max([arg.shape[0] for arg in args])
+            args = tuple(
+                [
+                    arg
+                    * np.ones(
+                        (size,) + tuple(np.ones(len(arg.shape) - 1, dtype=int))
+                    )
+                    for arg in args
+                ]
+            )
+        if len(args) == 1:
+            return args[0]
+        else:
+            return args
+
+    def cross(x, y):
+        """Cross product of two 3-vectors.
+
+        Based on ``https://github.com/Theano/Theano/pull/3008``
+        """
+        if config.lazy:
+            eijk = np.zeros((3, 3, 3))
+            eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
+            eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
+            return tt.as_tensor_variable(tt.dot(tt.dot(eijk, y), x))
+        else:
+            return np.cross(x, y)
+
+    def cast(cls, *args):
+        if config.lazy:
+            return cls.to_tensor(*args)
+        else:
+            if len(args) == 1:
+                return np.array(args[0], dtype=tt.config.floatX)
+            else:
+                return [np.array(arg, dtype=tt.config.floatX) for arg in args]
+
+    def to_array_or_tensor(cls, x):
+        if config.lazy:
+            return tt.as_tensor_variable(x)
+        else:
+            return np.array(x)
+
+    def block_diag(self, *mats):
+        if config.lazy:
+            N = [mat.shape[0] for mat in mats]
+            Nsum = tt.sum(N)
+            res = tt.zeros((Nsum, Nsum), dtype=theano.config.floatX)
+            n = 0
+            for mat in mats:
+                inds = slice(n, n + mat.shape[0])
+                res = tt.set_subtensor(res[tuple((inds, inds))], mat)
+                n += mat.shape[0]
+            return res
+        else:
+            return scipy_block_diag(*mats)
+
+    def to_tensor(cls, *args):
+        """Convert all ``args`` to Theano tensor variables.
+
+        Converts to tensor regardless of whether `config.lazy` is True or False.
+        """
+        if len(args) == 1:
+            return tt.as_tensor_variable(args[0]).astype(tt.config.floatX)
+        else:
+            return [
+                tt.as_tensor_variable(arg).astype(tt.config.floatX)
+                for arg in args
+            ]
+
     def __getattr__(cls, attr):
         if config.lazy:
-            if attr == "cholesky":
-                return sla.cholesky
-            else:
-                return getattr(tt, attr)
+            return getattr(tt, attr)
         else:
-            if attr == "cholesky":
-                return lambda C: scipy.linalg.cholesky(C, lower=True)
-            else:
-                return getattr(np, attr)
+            return getattr(np, attr)
 
 
 class math(metaclass=MathType):
