@@ -23,7 +23,7 @@ from .configdefaults import Config
 config = Config()
 
 # Import the main interface
-from . import constants, indices, kepler, maps, sht, plotting
+from . import constants, core, indices, kepler, maps, sht, plotting
 from .maps import Map
 from .kepler import Primary, Secondary, System
 
@@ -34,6 +34,7 @@ del Config
 __all__ = [
     "__version__",
     "constants",
+    "core",
     "indices",
     "kepler",
     "maps",

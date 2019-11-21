@@ -16,7 +16,7 @@ def flux(map, xo=0, yo=0, zo=1, ro=0, **kwargs):
     x, y, z = compute_ortho_grid()
     occulted = (xo - x) ** 2 + (yo - y) ** 2 < ro ** 2
     occulted = occulted.reshape(res, res)
-    if map._ops_class_ == starry.ops.OpsReflected:
+    if map._ops_class_ == starry.core.OpsReflected:
         image = map.render(res=res, xo=xo, yo=yo, zo=zo, **kwargs)
     else:
         image = map.render(res=res, **kwargs)

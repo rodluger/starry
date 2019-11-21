@@ -2,19 +2,28 @@
 from .. import config
 from ..constants import *
 from .. import _c_ops
-from .limbdark import LimbDarkOp, GetClOp
-from .integration import sTOp, rTReflectedOp
-from .rotation import dotROp, tensordotRzOp
-from .filter import FOp
-from .diffrot import tensordotDOp
-from .misc import spotYlmOp, pTOp, minimizeOp
-from .utils import *
+from .ops import (
+    sTOp,
+    rTReflectedOp,
+    dotROp,
+    tensordotRzOp,
+    FOp,
+    tensordotDOp,
+    spotYlmOp,
+    pTOp,
+    minimizeOp,
+    LimbDarkOp,
+    GetClOp,
+    RaiseValueErrorIfOp,
+)
+from .utils import logger, DynamicType, autocompile
+from .math import math
 import theano
 import theano.tensor as tt
 import theano.sparse as ts
 from theano.ifelse import ifelse
 import numpy as np
-from astropy import units, constants
+from astropy import units
 
 try:
     # starry requires exoplanet >= v0.2.0
@@ -28,6 +37,45 @@ except ModuleNotFoundError:
 
 
 __all__ = ["Ops", "OpsLD", "OpsReflected", "OpsRV", "OpsSystem"]
+
+
+def _RAxisAngle(axis=[0, 1, 0], theta=0):
+    """
+
+    """
+    axis = tt.as_tensor_variable(axis)
+    axis /= axis.norm(2)
+    cost = tt.cos(theta)
+    sint = tt.sin(theta)
+
+    return tt.reshape(
+        tt.as_tensor_variable(
+            [
+                cost + axis[0] * axis[0] * (1 - cost),
+                axis[0] * axis[1] * (1 - cost) - axis[2] * sint,
+                axis[0] * axis[2] * (1 - cost) + axis[1] * sint,
+                axis[1] * axis[0] * (1 - cost) + axis[2] * sint,
+                cost + axis[1] * axis[1] * (1 - cost),
+                axis[1] * axis[2] * (1 - cost) - axis[0] * sint,
+                axis[2] * axis[0] * (1 - cost) - axis[1] * sint,
+                axis[2] * axis[1] * (1 - cost) + axis[0] * sint,
+                cost + axis[2] * axis[2] * (1 - cost),
+            ]
+        ),
+        [3, 3],
+    )
+
+
+def RAxisAngle(axis=[0, 1, 0], theta=0):
+    """
+
+    """
+    if hasattr(theta, "ndim") and theta.ndim > 0:
+        fn = lambda theta, axis: _RAxisAngle(axis=axis, theta=theta)
+        R, _ = theano.scan(fn=fn, sequences=[theta], non_sequences=[axis])
+        return R
+    else:
+        return _RAxisAngle(axis=axis, theta=theta)
 
 
 class Ops(object):

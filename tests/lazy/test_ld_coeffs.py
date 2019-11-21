@@ -3,8 +3,8 @@ import numpy as np
 import theano
 import theano.tensor as tt
 from theano.tests import unittest_tools as utt
-from starry.ops.limbdark.get_cl import GetClOp
-from starry.ops.limbdark.get_cl_rev import GetClRevOp
+from starry.core.ops.limbdark.get_cl import GetClOp
+from starry.core.ops.limbdark.get_cl_rev import GetClRevOp
 
 
 class TestGetCl(utt.InferShapeTester):

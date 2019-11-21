@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from .. import config
 from .utils import *
+from .math import math
 import theano
 import theano.tensor as tt
 import theano.tensor.slinalg as sla
@@ -8,10 +9,10 @@ import numpy as np
 import scipy
 
 
-__all__ = ["linalg", "Covariance"]
+__all__ = ["linalg"]
 
 
-class Covariance(object):
+class _Covariance(object):
     """A container for covariance matrices."""
 
     def __init__(self, C=None, cho_C=None, N=None):
@@ -189,3 +190,4 @@ class OpsLinAlg(object):
 
 # Instantiate the Op
 linalg = OpsLinAlg()
+linalg.Covariance = _Covariance

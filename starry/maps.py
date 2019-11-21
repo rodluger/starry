@@ -1,18 +1,13 @@
 # -*- coding: utf-8 -*-
 from . import config
 from .constants import *
-from .ops import (
-    Ops,
-    OpsLD,
-    OpsReflected,
-    OpsRV,
-    get_projection,
-    linalg,
-    math,
-    Covariance,
-)
+from .core import Ops, OpsLD, OpsReflected, OpsRV, linalg, math
 from .indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
-from .plotting import get_ortho_latitude_lines, get_ortho_longitude_lines
+from .plotting import (
+    get_ortho_latitude_lines,
+    get_ortho_longitude_lines,
+    get_projection,
+)
 from .sht import image2map, healpix2map, array2map
 import numpy as np
 import matplotlib.pyplot as plt
@@ -1016,7 +1011,7 @@ class YlmBase(object):
                 `cho_C` must be provided.
         """
         self._flux = math.cast(flux)
-        self._C = Covariance(C, cho_C, N=self._flux.shape[0])
+        self._C = linalg.Covariance(C, cho_C, N=self._flux.shape[0])
 
     def set_prior(self, *, mu=0, L=None, cho_L=None):
         """Set the prior mean and covariance on the spherical harmonic coefficients.
@@ -1041,7 +1036,7 @@ class YlmBase(object):
                 `cho_L` must be provided.
         """
         self._mu = math.cast(mu) * math.cast(np.ones(self.Ny - 1))
-        self._L = Covariance(L, cho_L, N=self.Ny - 1)
+        self._L = linalg.Covariance(L, cho_L, N=self.Ny - 1)
 
     @MapBase._no_spectral
     def solve(self, *, design_matrix=None, **kwargs):

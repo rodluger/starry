@@ -2,7 +2,7 @@
 from theano import gof
 import sys
 import pkg_resources
-from ...starry_version import __version__
+from ....starry_version import __version__
 
 __all__ = ["LimbDarkBaseOp"]
 

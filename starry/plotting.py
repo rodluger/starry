@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
+from .constants import *
 import numpy as np
 
 
-__all__ = ["get_ortho_latitude_lines", "get_ortho_longitude_lines"]
+__all__ = [
+    "get_ortho_latitude_lines",
+    "get_ortho_longitude_lines",
+    "get_projection",
+]
 
 
 def RAxisAngle(axis=[0, 1, 0], theta=0):
@@ -149,3 +154,16 @@ def get_ortho_longitude_lines(
             res.append((xr, yr))
 
     return res
+
+
+def get_projection(projection):
+    """
+
+    """
+    if projection.lower().startswith("rect"):
+        projection = STARRY_RECTANGULAR_PROJECTION
+    elif projection.lower().startswith("ortho"):
+        projection = STARRY_ORTHOGRAPHIC_PROJECTION
+    else:
+        raise ValueError("Unknown map projection.")
+    return projection

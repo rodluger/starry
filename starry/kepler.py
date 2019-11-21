@@ -2,7 +2,7 @@
 from . import config
 from .constants import *
 from .maps import MapBase, RVBase, ReflectedBase
-from .ops import OpsSystem, math, linalg, Covariance
+from .core import OpsSystem, math, linalg
 import numpy as np
 from astropy import units
 from inspect import getmro
@@ -1001,7 +1001,7 @@ class System(object):
                 `cho_C` must be provided.
         """
         self._flux = math.cast(flux)
-        self._C = Covariance(C=C, cho_C=cho_C, N=self._flux.shape[0])
+        self._C = linalg.Covariance(C=C, cho_C=cho_C, N=self._flux.shape[0])
 
     def solve(self, *, design_matrix=None, t=None):
         """Solve the least-squares problem for the posterior over maps for all bodies.
