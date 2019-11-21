@@ -4,11 +4,21 @@ import theano
 import theano.tensor as tt
 import numpy as np
 from theano.configparser import change_flags
+from inspect import getmro
 import logging
 
 logger = logging.getLogger("starry.ops")
 
 __all__ = ["logger", "DynamicType", "autocompile"]
+
+
+def is_theano(*objs):
+    """Return ``True`` if any of ``objs`` is a ``Theano`` object."""
+    for obj in objs:
+        for c in getmro(type(obj)):
+            if c is theano.gof.graph.Node:
+                return True
+    return False
 
 
 class CompileLogMessage:
@@ -31,15 +41,20 @@ class CompileLogMessage:
 
 
 class DynamicType(object):
-    """
+    """A hack to allow dynamic types when compiling Ops.
 
+    When compiling a Theano function, we need to tell Theano whether
+    the arguments are scalars, vectors, or matrices. In `starry`, the
+    map coefficients can be vectors (for single-wavelength maps) or
+    matrices (for spectral maps), so this class enables us to delay
+    type declaration until runtime.
     """
 
     def __init__(self, code):
         self._code = code
 
     def __call__(self, instance):
-        return eval(self._code)
+        return eval(self._code.replace("self", "instance"))
 
 
 class autocompile(object):
@@ -68,12 +83,18 @@ class autocompile(object):
 
         """
 
-        def wrapper(instance, *args, force_compile=False, no_compile=False):
+        def wrapper(instance, *args):
             """
             The magic happens in here.
 
             """
-            if (not no_compile) and ((not config.lazy) or (force_compile)):
+            if is_theano(*args):
+
+                # Just return the function as is
+                return func(instance, *args)
+
+            else:
+
                 # Compile the function if needed & cache it
                 if not hasattr(instance, self.compiled_name):
 
@@ -96,9 +117,6 @@ class autocompile(object):
 
                 # Return the compiled version
                 return getattr(instance, self.compiled_name)(*args)
-            else:
-                # Just return the function as is
-                return func(instance, *args)
 
         # Store the function info
         wrapper.args = self.args

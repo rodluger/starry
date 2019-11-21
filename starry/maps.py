@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from . import config
 from .constants import *
-from .core import Ops, OpsLD, OpsReflected, OpsRV, linalg, math
+from .core import OpsYlm, OpsLD, OpsReflected, OpsRV, linalg, math
 from .indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from .plotting import (
     get_ortho_latitude_lines,
@@ -62,9 +62,6 @@ class MapBase(object):
         return wrapper
 
     def __init__(self, ydeg, udeg, fdeg, drorder, nw, **kwargs):
-        """
-
-        """
         # Instantiate the Theano ops class
         self.ops = self._ops_class_(ydeg, udeg, fdeg, drorder, nw, **kwargs)
 
@@ -383,16 +380,7 @@ class MapBase(object):
                     image = self.amp.eval().reshape(
                         -1, 1, 1
                     ) * self.ops.render(
-                        res,
-                        projection,
-                        theta,
-                        inc,
-                        obl,
-                        y,
-                        u,
-                        f,
-                        alpha,
-                        force_compile=True,
+                        res, projection, theta, inc, obl, y, u, f, alpha
                     )
 
                 else:
@@ -400,7 +388,7 @@ class MapBase(object):
                     # Explicitly call the compiled version of `render`
                     image = self.amp.eval().reshape(
                         -1, 1, 1
-                    ) * self.ops._render(res, u, force_compile=True)
+                    ) * self.ops._render(res, u)
 
             else:
 
@@ -595,7 +583,7 @@ class YlmBase(object):
     both ``rv`` and ``reflected`` set to False.
     """
 
-    _ops_class_ = Ops
+    _ops_class_ = OpsYlm
 
     def reset(self, **kwargs):
         if kwargs.get("inc", None) is not None:
@@ -819,7 +807,7 @@ class YlmBase(object):
             animated = True
         else:
             if config.lazy:
-                animated = theta.ndim > 0
+                animated = hasattr(theta, "ndim") and theta.ndim > 0
             else:
                 animated = hasattr(theta, "__len__")
 
@@ -1196,7 +1184,7 @@ class LimbDarkenedBase(object):
         return self.amp * self.ops.flux(xo, yo, zo, ro, self._u)
 
     def intensity(self, mu=None, x=None, y=None):
-        """
+        r"""
         Compute and return the intensity of the map.
 
         Args:
@@ -1670,7 +1658,7 @@ class ReflectedBase(object):
             animated = True
         else:
             if config.lazy:
-                animated = theta.ndim > 0
+                animated = hasattr(theta, "ndim") and theta.ndim > 0
             else:
                 animated = hasattr(theta, "__len__")
 
@@ -1754,7 +1742,6 @@ class ReflectedBase(object):
                 xo,
                 yo,
                 zo,
-                force_compile=True,
             )
             kwargs["theta"] = theta / self._angle_factor
 

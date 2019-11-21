@@ -36,61 +36,15 @@ except ModuleNotFoundError:
     exoplanet = None
 
 
-__all__ = ["Ops", "OpsLD", "OpsReflected", "OpsRV", "OpsSystem"]
+__all__ = ["OpsYlm", "OpsLD", "OpsReflected", "OpsRV", "OpsSystem"]
 
 
-def _RAxisAngle(axis=[0, 1, 0], theta=0):
-    """
-
-    """
-    axis = tt.as_tensor_variable(axis)
-    axis /= axis.norm(2)
-    cost = tt.cos(theta)
-    sint = tt.sin(theta)
-
-    return tt.reshape(
-        tt.as_tensor_variable(
-            [
-                cost + axis[0] * axis[0] * (1 - cost),
-                axis[0] * axis[1] * (1 - cost) - axis[2] * sint,
-                axis[0] * axis[2] * (1 - cost) + axis[1] * sint,
-                axis[1] * axis[0] * (1 - cost) + axis[2] * sint,
-                cost + axis[1] * axis[1] * (1 - cost),
-                axis[1] * axis[2] * (1 - cost) - axis[0] * sint,
-                axis[2] * axis[0] * (1 - cost) - axis[1] * sint,
-                axis[2] * axis[1] * (1 - cost) + axis[0] * sint,
-                cost + axis[2] * axis[2] * (1 - cost),
-            ]
-        ),
-        [3, 3],
-    )
-
-
-def RAxisAngle(axis=[0, 1, 0], theta=0):
-    """
-
-    """
-    if hasattr(theta, "ndim") and theta.ndim > 0:
-        fn = lambda theta, axis: _RAxisAngle(axis=axis, theta=theta)
-        R, _ = theano.scan(fn=fn, sequences=[theta], non_sequences=[axis])
-        return R
-    else:
-        return _RAxisAngle(axis=axis, theta=theta)
-
-
-class Ops(object):
-    """
-    Everything in radians here.
-    Everything is a Theano operation.
-
-    """
+class OpsYlm(object):
+    """Class housing Theano operations for spherical harmonics maps."""
 
     def __init__(
         self, ydeg, udeg, fdeg, drorder, nw, reflected=False, **kwargs
     ):
-        """
-
-        """
         # Ingest kwargs
         self.ydeg = ydeg
         self.udeg = udeg
@@ -152,9 +106,10 @@ class Ops(object):
 
     @autocompile(
         "get_minimum",
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
     )
     def get_minimum(self, y):
+        """Compute the location and value of the intensity minimum."""
         return self.minimize(y)
 
     @autocompile(
@@ -171,9 +126,7 @@ class Ops(object):
         tt.dscalar(),
     )
     def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
-        """
-
-        """
+        """Compute the light curve design matrix."""
         # Determine shapes
         rows = theta.shape[0]
         cols = self.rTA1.shape[1]
@@ -222,28 +175,18 @@ class Ops(object):
         tt.dscalar(),
         tt.dscalar(),
         tt.dscalar(),
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
         tt.dscalar(),
     )
     def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha):
-        """
-
-        """
-        return tt.dot(
-            self.X(
-                theta, xo, yo, zo, ro, inc, obl, u, f, alpha, no_compile=True
-            ),
-            y,
-        )
+        """Compute the light curve."""
+        return tt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, u, f, alpha), y)
 
     @autocompile("P", tt.dvector(), tt.dvector())
     def P(self, lat, lon):
-        """
-        Pixelization matrix, no filters or illumination.
-
-        """
+        """Compute the pixelization matrix, no filters or illumination."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
 
@@ -260,15 +203,12 @@ class Ops(object):
         "intensity",
         tt.dvector(),
         tt.dvector(),
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
     )
     def intensity(self, lat, lon, y, u, f):
-        """
-        Intensity (static, no diff. rot).
-
-        """
+        """Compute the intensity (static, no diff. rot)."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
 
@@ -292,15 +232,13 @@ class Ops(object):
         tt.dvector(),
         tt.dscalar(),
         tt.dscalar(),
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
         tt.dscalar(),
     )
     def render(self, res, projection, theta, inc, obl, y, u, f, alpha):
-        """
-
-        """
+        """Render the map on a Cartesian grid."""
         # Compute the Cartesian grid
         xyz = ifelse(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
@@ -356,27 +294,22 @@ class Ops(object):
 
     @autocompile(
         "add_spot",
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
-        DynamicType("tt.dscalar() if instance.nw is None else tt.dvector()"),
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
+        DynamicType("tt.dscalar() if self.nw is None else tt.dvector()"),
         tt.dvector(),
         tt.dscalar(),
         tt.dscalar(),
         tt.dscalar(),
     )
     def add_spot(self, y, L, amp, sigma, lat, lon):
-        """
-
-        """
+        """Return the spherical harmonic expansion of a Gaussian spot."""
         y_new = y + self.spotYlm(amp, sigma, lat, lon)
         L_new = L * y_new[0]
         y_new /= y_new[0]
         return y_new, L_new
 
     def compute_ortho_grid(self, res):
-        """
-        Compute the polynomial basis on the plane of the sky.
-
-        """
+        """Compute the polynomial basis on the plane of the sky."""
         dx = 2.0 / res
         y, x = tt.mgrid[-1:1:dx, -1:1:dx]
         x = tt.reshape(x, [1, -1])
@@ -385,10 +318,7 @@ class Ops(object):
         return tt.concatenate((x, y, z))
 
     def compute_rect_grid(self, res):
-        """
-        Compute the polynomial basis on a rectangular lat/lon grid.
-
-        """
+        """Compute the polynomial basis on a rectangular lat/lon grid."""
         dx = np.pi / res
         lat, lon = tt.mgrid[
             -np.pi / 2 : np.pi / 2 : dx, -3 * np.pi / 2 : np.pi / 2 : 2 * dx
@@ -396,7 +326,7 @@ class Ops(object):
         x = tt.reshape(tt.cos(lat) * tt.cos(lon), [1, -1])
         y = tt.reshape(tt.cos(lat) * tt.sin(lon), [1, -1])
         z = tt.reshape(tt.sin(lat), [1, -1])
-        R = RAxisAngle([1, 0, 0], -np.pi / 2)
+        R = self.RAxisAngle([1, 0, 0], -np.pi / 2)
         return tt.dot(R, tt.concatenate((x, y, z)))
 
     def right_project(self, M, inc, obl, theta, alpha, tensor_theta=True):
@@ -406,7 +336,6 @@ class Ops(object):
         where ``M`` is an input matrix and ``R`` is the Wigner rotation matrix
         that transforms a spherical harmonic coefficient vector in the
         input frame to a vector in the observer's frame.
-
         """
         # Trivial case
         if self.ydeg == 0:
@@ -533,35 +462,64 @@ class Ops(object):
         return tt.transpose(MT)
 
     def set_map_vector(self, vector, inds, vals):
-        """
-
-        """
+        """Set the elements of the theano map coefficient tensor."""
         res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
         return res
 
     def latlon_to_xyz(self, lat, lon):
-        """
-
-        """
+        """Convert lat-lon points to Cartesian points."""
         # TODO: Check that these if statements are OK
         if lat.ndim == 0:
             lat = tt.shape_padleft(lat, 1)
         if lon.ndim == 0:
             lon = tt.shape_padleft(lon, 1)
-        R1 = RAxisAngle([1.0, 0.0, 0.0], -lat)
-        R2 = RAxisAngle([0.0, 1.0, 0.0], lon)
+        R1 = self.RAxisAngle([1.0, 0.0, 0.0], -lat)
+        R2 = self.RAxisAngle([0.0, 1.0, 0.0], lon)
         R = tt.batched_dot(R2, R1)
         xyz = tt.transpose(tt.dot(R, [0.0, 0.0, 1.0]))
         return xyz[0], xyz[1], xyz[2]
 
+    def RAxisAngle(self, axis=[0, 1, 0], theta=0):
+        """Wigner axis-angle rotation matrix."""
+
+        def compute(axis=[0, 1, 0], theta=0):
+            axis = tt.as_tensor_variable(axis)
+            axis /= axis.norm(2)
+            cost = tt.cos(theta)
+            sint = tt.sin(theta)
+
+            return tt.reshape(
+                tt.as_tensor_variable(
+                    [
+                        cost + axis[0] * axis[0] * (1 - cost),
+                        axis[0] * axis[1] * (1 - cost) - axis[2] * sint,
+                        axis[0] * axis[2] * (1 - cost) + axis[1] * sint,
+                        axis[1] * axis[0] * (1 - cost) + axis[2] * sint,
+                        cost + axis[1] * axis[1] * (1 - cost),
+                        axis[1] * axis[2] * (1 - cost) - axis[0] * sint,
+                        axis[2] * axis[0] * (1 - cost) - axis[1] * sint,
+                        axis[2] * axis[1] * (1 - cost) + axis[0] * sint,
+                        cost + axis[2] * axis[2] * (1 - cost),
+                    ]
+                ),
+                [3, 3],
+            )
+
+        # If theta is a vector, this is a tensor!
+        if hasattr(theta, "ndim") and theta.ndim > 0:
+            fn = lambda theta, axis: compute(axis=axis, theta=theta)
+            R, _ = theano.scan(fn=fn, sequences=[theta], non_sequences=[axis])
+            return R
+        else:
+            return compute(axis=axis, theta=theta)
+
 
 class OpsLD(object):
+    """Class housing Theano operations for limb-darkened maps."""
+
     def __init__(
         self, ydeg, udeg, fdeg, drorder, nw, reflected=False, **kwargs
     ):
-        """
-
-        """
         # Sanity checks
         assert ydeg == fdeg == drorder == 0
         assert reflected is False
@@ -574,15 +532,9 @@ class OpsLD(object):
         self.get_cl = GetClOp()
         self.limbdark = LimbDarkOp()
 
-    def set_map_vector(self, vector, inds, vals):
-        """
-
-        """
-        res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
-        return res
-
     @autocompile("intensity", tt.dvector(), tt.dvector())
     def intensity(self, mu, u):
+        """Compute the intensity at a set of points."""
         basis = tt.reshape(1.0 - mu, (-1, 1)) ** np.arange(self.udeg + 1)
         return -tt.dot(basis, u)
 
@@ -595,6 +547,7 @@ class OpsLD(object):
         tt.dvector(),
     )
     def flux(self, xo, yo, zo, ro, u):
+        """Compute the light curve."""
         # Initialize flat light curve
         flux = tt.ones_like(xo)
 
@@ -639,7 +592,7 @@ class OpsLD(object):
         spherical harmonic coefficient vector is ``[1.0]``.
 
         """
-        flux = self.flux(xo, yo, zo, ro, u, no_compile=True)
+        flux = self.flux(xo, yo, zo, ro, u)
         X = tt.reshape(flux, (-1, 1))
         return X
 
@@ -650,18 +603,25 @@ class OpsLD(object):
         tt.dvector(),
         tt.dscalar(),
         tt.dscalar(),
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
         tt.dscalar(),
     )
     def render(self, res, projection, theta, inc, obl, y, u, f, alpha):
+        """Render the map on a Cartesian grid."""
         nframes = tt.shape(theta)[0]
-        image = self._render(res, u, no_compile=True)
+        image = self._render(res, u)
         return tt.tile(image, (nframes, 1, 1))
 
     @autocompile("_render", tt.iscalar(), tt.dvector())
     def _render(self, res, u):
+        """Simplified version of `render` w/o the extra params.
+
+        The method `render` requires a bunch of dummy params for
+        compatibility with the `System` class. This method is a
+        convenience method for use in the `Map` class.
+        """
         # TODO: There may be a bug in Theano related to
         # tt.mgrid; I get different results depending on whether the
         # function is compiled using `theano.function()` or if it
@@ -678,16 +638,19 @@ class OpsLD(object):
         mu = tt.sqrt(1 - x ** 2 - y ** 2)
 
         # Compute the intensity
-        intensity = self.intensity(mu, u, no_compile=True)
+        intensity = self.intensity(mu, u)
 
         # We need the shape to be (nframes, npix, npix)
         return tt.reshape(intensity, (1, res, res))
 
+    def set_map_vector(self, vector, inds, vals):
+        """Set the elements of the theano map coefficient tensor."""
+        res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
+        return res
 
-class OpsRV(Ops):
-    """
 
-    """
+class OpsRV(OpsYlm):
+    """Class housing Theano operations for radial velocity maps."""
 
     @autocompile(
         "compute_rv_filter",
@@ -697,9 +660,7 @@ class OpsRV(Ops):
         tt.dscalar(),
     )
     def compute_rv_filter(self, inc, obl, veq, alpha):
-        """
-
-        """
+        """Compute the radial velocity field Ylm multiplicative filter."""
         # Define some angular quantities
         cosi = tt.cos(inc)
         sini = tt.sin(inc)
@@ -768,27 +729,21 @@ class OpsRV(Ops):
         tt.dscalar(),
         tt.dscalar(),
         tt.dscalar(),
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dscalar(),
         tt.dscalar(),
     )
     def rv(self, theta, xo, yo, zo, ro, inc, obl, y, u, veq, alpha):
-        """
-
-        """
+        """Compute the observed radial velocity anomaly."""
         # Compute the velocity-weighted intensity
-        f = self.compute_rv_filter(inc, obl, veq, alpha, no_compile=True)
-        Iv = self.flux(
-            theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha, no_compile=True
-        )
+        f = self.compute_rv_filter(inc, obl, veq, alpha)
+        Iv = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha)
 
         # Compute the inverse of the intensity
         f0 = tt.zeros_like(f)
         f0 = tt.set_subtensor(f0[0], np.pi)
-        I = self.flux(
-            theta, xo, yo, zo, ro, inc, obl, y, u, f0, alpha, no_compile=True
-        )
+        I = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f0, alpha)
         invI = tt.ones((1,)) / I
         invI = tt.where(tt.isinf(invI), 0.0, invI)
 
@@ -796,58 +751,19 @@ class OpsRV(Ops):
         return Iv * invI
 
 
-class OpsReflected(Ops):
-    """
-
-    """
+class OpsReflected(OpsYlm):
+    """Class housing Theano operations for reflected light maps."""
 
     def __init__(self, *args, **kwargs):
-        """
-
-        """
         super(OpsReflected, self).__init__(*args, reflected=True, **kwargs)
         self.rT = rTReflectedOp(self._c_ops.rTReflected, self._c_ops.N)
         self.A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
-
-    def compute_illumination(self, xyz, xo, yo, zo):
-        """
-
-        """
-        r2 = xo ** 2 + yo ** 2 + zo ** 2
-        b = -zo / tt.sqrt(r2)  # semi-minor axis of terminator
-        invsr = 1.0 / tt.sqrt(xo ** 2 + yo ** 2)
-        cosw = yo * invsr
-        sinw = -xo * invsr
-        xrot = (
-            tt.shape_padright(xyz[0]) * cosw + tt.shape_padright(xyz[1]) * sinw
-        )
-        yrot = (
-            -tt.shape_padright(xyz[0]) * sinw
-            + tt.shape_padright(xyz[1]) * cosw
-        )
-        I = tt.sqrt(1.0 - b ** 2) * yrot - b * tt.shape_padright(xyz[2])
-        I = tt.switch(
-            tt.eq(tt.abs_(b), 1.0),
-            tt.switch(
-                tt.eq(b, 1.0),
-                tt.zeros_like(I),  # midnight
-                tt.shape_padright(xyz[2]),  # noon
-            ),
-            I,
-        )
-        I = tt.switch(tt.gt(I, 0.0), I, tt.zeros_like(I))  # set night to zero
-
-        # Weight by the distance to the source
-        # The factor of 2/3 ensures that the flux from a uniform map
-        # with unit amplitude seen at noon is unity.
-        I /= (2.0 / 3.0) * tt.shape_padleft(r2)
-        return I
 
     @autocompile(
         "intensity",
         tt.dvector(),
         tt.dvector(),
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
         tt.dvector(),
@@ -855,9 +771,7 @@ class OpsReflected(Ops):
         tt.dvector(),
     )
     def intensity(self, lat, lon, y, u, f, xo, yo, zo):
-        """
-
-        """
+        """Compute the intensity at a series of lat-lon points on the surface."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
 
@@ -894,14 +808,12 @@ class OpsReflected(Ops):
         "unweighted_intensity",
         tt.dvector(),
         tt.dvector(),
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
     )
     def unweighted_intensity(self, lat, lon, y, u, f):
-        """
-
-        """
+        """Compute the intensity in the absence of an illumination source."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
 
@@ -932,9 +844,7 @@ class OpsReflected(Ops):
         tt.dscalar(),
     )
     def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
-        """
-
-        """
+        """Compute the light curve design matrix."""
         # Determine shapes
         rows = theta.shape[0]
         cols = (self.ydeg + 1) ** 2
@@ -987,21 +897,14 @@ class OpsReflected(Ops):
         tt.dscalar(),
         tt.dscalar(),
         tt.dscalar(),
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
         tt.dscalar(),
     )
     def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha):
-        """
-
-        """
-        return tt.dot(
-            self.X(
-                theta, xo, yo, zo, ro, inc, obl, u, f, alpha, no_compile=True
-            ),
-            y,
-        )
+        """Compute the reflected light curve."""
+        return tt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, u, f, alpha), y)
 
     @autocompile(
         "render",
@@ -1011,7 +914,7 @@ class OpsReflected(Ops):
         tt.dvector(),
         tt.dscalar(),
         tt.dscalar(),
-        DynamicType("tt.dvector() if instance.nw is None else tt.dmatrix()"),
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
         tt.dvector(),
         tt.dvector(),
         tt.dscalar(),
@@ -1035,9 +938,7 @@ class OpsReflected(Ops):
         yo,
         zo,
     ):
-        """
-
-        """
+        """Render the map on a Cartesian grid."""
         # Compute the Cartesian grid
         xyz = ifelse(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
@@ -1102,11 +1003,41 @@ class OpsReflected(Ops):
         # We need the shape to be (nframes, npix, npix)
         return tt.reshape(image, [res, res, -1]).dimshuffle(2, 0, 1)
 
+    def compute_illumination(self, xyz, xo, yo, zo):
+        """Compute the illumination profile when rendering maps."""
+        r2 = xo ** 2 + yo ** 2 + zo ** 2
+        b = -zo / tt.sqrt(r2)  # semi-minor axis of terminator
+        invsr = 1.0 / tt.sqrt(xo ** 2 + yo ** 2)
+        cosw = yo * invsr
+        sinw = -xo * invsr
+        xrot = (
+            tt.shape_padright(xyz[0]) * cosw + tt.shape_padright(xyz[1]) * sinw
+        )
+        yrot = (
+            -tt.shape_padright(xyz[0]) * sinw
+            + tt.shape_padright(xyz[1]) * cosw
+        )
+        I = tt.sqrt(1.0 - b ** 2) * yrot - b * tt.shape_padright(xyz[2])
+        I = tt.switch(
+            tt.eq(tt.abs_(b), 1.0),
+            tt.switch(
+                tt.eq(b, 1.0),
+                tt.zeros_like(I),  # midnight
+                tt.shape_padright(xyz[2]),  # noon
+            ),
+            I,
+        )
+        I = tt.switch(tt.gt(I, 0.0), I, tt.zeros_like(I))  # set night to zero
+
+        # Weight by the distance to the source
+        # The factor of 2/3 ensures that the flux from a uniform map
+        # with unit amplitude seen at noon is unity.
+        I /= (2.0 / 3.0) * tt.shape_padleft(r2)
+        return I
+
 
 class OpsSystem(object):
-    """
-
-    """
+    """Class housing ops for modeling Keplerian systems."""
 
     def __init__(
         self,
@@ -1119,9 +1050,6 @@ class OpsSystem(object):
         oversample=7,
         order=0,
     ):
-        """
-
-        """
         # System members
         self.primary = primary
         self.secondaries = secondaries
@@ -1164,6 +1092,7 @@ class OpsSystem(object):
         sec_Omega,
         sec_iorb,
     ):
+        """Compute the Cartesian positions of all bodies."""
         orbit = exoplanet.orbits.KeplerianOrbit(
             period=sec_porb,
             t0=sec_t0,
@@ -1209,9 +1138,7 @@ class OpsSystem(object):
         tt.dscalar(),  # prot
         tt.dscalar(),  # t0
         tt.dscalar(),  # theta0
-        DynamicType(
-            "tt.dscalar() if instance.nw is None else tt.dvector()"
-        ),  # L
+        DynamicType("tt.dscalar() if self.nw is None else tt.dvector()"),  # L
         tt.dscalar(),  # inc
         tt.dscalar(),  # obl
         tt.dvector(),  # u
@@ -1228,9 +1155,7 @@ class OpsSystem(object):
         tt.dvector(),  # w
         tt.dvector(),  # Omega
         tt.dvector(),  # iorb
-        DynamicType(
-            "tt.dvector() if instance.nw is None else tt.dmatrix()"
-        ),  # L
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # L
         tt.dvector(),  # inc
         tt.dvector(),  # obl
         tt.dmatrix(),  # u
@@ -1268,6 +1193,7 @@ class OpsSystem(object):
         sec_f,
         sec_alpha,
     ):
+        """Compute the system light curve design matrix."""
         # Exposure time integration?
         if self.texp != 0.0:
 
@@ -1344,7 +1270,6 @@ class OpsSystem(object):
             pri_u,
             pri_f,
             pri_alpha,
-            no_compile=True,
         )
         phase_sec = tt.as_tensor_variable(
             [
@@ -1360,7 +1285,6 @@ class OpsSystem(object):
                     sec_u[i],
                     sec_f[i],
                     sec_alpha[i],
-                    no_compile=True,
                 )
                 for i, sec in enumerate(self.secondaries)
             ]
@@ -1404,7 +1328,6 @@ class OpsSystem(object):
                     pri_u,
                     pri_f,
                     pri_alpha,
-                    no_compile=True,
                 )
                 - phase_pri[idx],
             )
@@ -1435,7 +1358,6 @@ class OpsSystem(object):
                     sec_u[i],
                     sec_f[i],
                     sec_alpha[i],
-                    no_compile=True,
                 )
                 - phase_sec[i, idx],
             )
@@ -1469,7 +1391,6 @@ class OpsSystem(object):
                         sec_u[i],
                         sec_f[i],
                         sec_alpha[i],
-                        no_compile=True,
                     )
                     - phase_sec[i, idx],
                 )
@@ -1478,7 +1399,8 @@ class OpsSystem(object):
                 # Throw error if there's an occultation in reflected light
                 if self._reflected:
                     occ_sec = occ_sec + RaiseValueErrorIfOp(
-                        "Secondary-secondary occultations reflected light not implemented."
+                        "Secondary-secondary occultations in reflected "
+                        + "light not implemented."
                     )(b_occ.any())
 
         # Concatenate the design matrices
@@ -1509,14 +1431,10 @@ class OpsSystem(object):
         tt.dscalar(),  # prot
         tt.dscalar(),  # t0
         tt.dscalar(),  # theta0
-        DynamicType(
-            "tt.dscalar() if instance.nw is None else tt.dvector()"
-        ),  # L
+        DynamicType("tt.dscalar() if self.nw is None else tt.dvector()"),  # L
         tt.dscalar(),  # inc
         tt.dscalar(),  # obl
-        DynamicType(
-            "tt.dvector() if instance.nw is None else tt.dmatrix()"
-        ),  # y
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # y
         tt.dvector(),  # u
         tt.dvector(),  # f
         tt.dscalar(),  # alpha
@@ -1531,14 +1449,10 @@ class OpsSystem(object):
         tt.dvector(),  # w
         tt.dvector(),  # Omega
         tt.dvector(),  # iorb
-        DynamicType(
-            "tt.dvector() if instance.nw is None else tt.dmatrix()"
-        ),  # L
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # L
         tt.dvector(),  # inc
         tt.dvector(),  # obl
-        DynamicType(
-            "tt.dmatrix() if instance.nw is None else tt.dtensor3()"
-        ),  # y
+        DynamicType("tt.dmatrix() if self.nw is None else tt.dtensor3()"),  # y
         tt.dmatrix(),  # u
         tt.dmatrix(),  # f
         tt.dvector(),  # alpha
@@ -1576,6 +1490,7 @@ class OpsSystem(object):
         sec_f,
         sec_alpha,
     ):
+        """Compute the full system light curve."""
         X = self.X(
             t,
             pri_r,
@@ -1605,7 +1520,6 @@ class OpsSystem(object):
             sec_u,
             sec_f,
             sec_alpha,
-            no_compile=True,
         )
         y = tt.concatenate((pri_y, tt.reshape(sec_y, (-1,))))
         return tt.dot(X, y)
@@ -1619,14 +1533,10 @@ class OpsSystem(object):
         tt.dscalar(),  # prot
         tt.dscalar(),  # t0
         tt.dscalar(),  # theta0
-        DynamicType(
-            "tt.dscalar() if instance.nw is None else tt.dvector()"
-        ),  # L
+        DynamicType("tt.dscalar() if self.nw is None else tt.dvector()"),  # L
         tt.dscalar(),  # inc
         tt.dscalar(),  # obl
-        DynamicType(
-            "tt.dvector() if instance.nw is None else tt.dmatrix()"
-        ),  # y
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # y
         tt.dvector(),  # u
         tt.dscalar(),  # alpha
         tt.dscalar(),  # veq
@@ -1641,14 +1551,10 @@ class OpsSystem(object):
         tt.dvector(),  # w
         tt.dvector(),  # Omega
         tt.dvector(),  # iorb
-        DynamicType(
-            "tt.dvector() if instance.nw is None else tt.dmatrix()"
-        ),  # L
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # L
         tt.dvector(),  # inc
         tt.dvector(),  # obl
-        DynamicType(
-            "tt.dmatrix() if instance.nw is None else tt.dtensor3()"
-        ),  # y
+        DynamicType("tt.dmatrix() if self.nw is None else tt.dtensor3()"),  # y
         tt.dmatrix(),  # u
         tt.dvector(),  # alpha
         tt.dvector(),  # veq
@@ -1688,7 +1594,7 @@ class OpsSystem(object):
         sec_veq,
         keplerian,
     ):
-
+        """Compute the observed system radial velocity (RV maps only)."""
         # TODO: This method is currently very inefficient, as it
         # calls `X` twice per call and instantiates an `orbit`
         # instance up to three separate times per call. We should
@@ -1696,16 +1602,12 @@ class OpsSystem(object):
 
         # Compute the RV filter
         pri_f = self.primary.map.ops.compute_rv_filter(
-            pri_inc, pri_obl, pri_veq, pri_alpha, no_compile=True
+            pri_inc, pri_obl, pri_veq, pri_alpha
         )
         sec_f = tt.as_tensor_variable(
             [
                 sec.map.ops.compute_rv_filter(
-                    sec_inc[k],
-                    sec_obl[k],
-                    sec_veq[k],
-                    sec_alpha[k],
-                    no_compile=True,
+                    sec_inc[k], sec_obl[k], sec_veq[k], sec_alpha[k]
                 )
                 for k, sec in enumerate(self.secondaries)
             ]
@@ -1746,7 +1648,6 @@ class OpsSystem(object):
             sec_u,
             sec_f,
             sec_alpha,
-            no_compile=True,
         )
 
         X0 = self.X(
@@ -1778,7 +1679,6 @@ class OpsSystem(object):
             sec_u,
             sec_f0,
             sec_alpha,
-            no_compile=True,
         )
 
         # Get the indices of X corresponding to each body
@@ -1843,14 +1743,10 @@ class OpsSystem(object):
         tt.dscalar(),  # prot
         tt.dscalar(),  # t0
         tt.dscalar(),  # theta0
-        DynamicType(
-            "tt.dscalar() if instance.nw is None else tt.dvector()"
-        ),  # L
+        DynamicType("tt.dscalar() if self.nw is None else tt.dvector()"),  # L
         tt.dscalar(),  # inc
         tt.dscalar(),  # obl
-        DynamicType(
-            "tt.dvector() if instance.nw is None else tt.dmatrix()"
-        ),  # y
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # y
         tt.dvector(),  # u
         tt.dvector(),  # f
         tt.dscalar(),  # alpha
@@ -1865,14 +1761,10 @@ class OpsSystem(object):
         tt.dvector(),  # w
         tt.dvector(),  # Omega
         tt.dvector(),  # iorb
-        DynamicType(
-            "tt.dvector() if instance.nw is None else tt.dmatrix()"
-        ),  # L
+        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # L
         tt.dvector(),  # inc
         tt.dvector(),  # obl
-        DynamicType(
-            "tt.dmatrix() if instance.nw is None else tt.dtensor3()"
-        ),  # y
+        DynamicType("tt.dmatrix() if self.nw is None else tt.dtensor3()"),  # y
         tt.dmatrix(),  # u
         tt.dmatrix(),  # f
         tt.dvector(),  # alpha
@@ -1911,6 +1803,7 @@ class OpsSystem(object):
         sec_f,
         sec_alpha,
     ):
+        """Render all of the bodies in the system."""
         # Compute the relative positions of all bodies
         orbit = exoplanet.orbits.KeplerianOrbit(
             period=sec_porb,
@@ -1957,7 +1850,6 @@ class OpsSystem(object):
             pri_u,
             pri_f,
             pri_alpha,
-            no_compile=True,
         )
         if self._reflected:
             img_sec = tt.as_tensor_variable(
@@ -1975,7 +1867,6 @@ class OpsSystem(object):
                         -x[:, i],
                         -y[:, i],
                         -z[:, i],
-                        no_compile=True,
                     )
                     for i, sec in enumerate(self.secondaries)
                 ]
@@ -1993,7 +1884,6 @@ class OpsSystem(object):
                         sec_u[i],
                         sec_f[i],
                         sec_alpha[i],
-                        no_compile=True,
                     )
                     for i, sec in enumerate(self.secondaries)
                 ]
