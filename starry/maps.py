@@ -45,21 +45,11 @@ class MapBase(object):
     # The map amplitude (just an attribute)
     amp = Amplitude()
 
-    def _no_spectral(func):
-        """
-        Decorator that returns an error if the map is spectral.
-
-        """
-
-        def wrapper(self, *args, **kwargs):
-            if self.nw is not None:
-                raise NotImplementedError(
-                    "Method not yet implemented for spectral maps."
-                )
-            else:
-                return func(self, *args, **kwargs)
-
-        return wrapper
+    def _no_spectral(self):
+        if self.nw is not None:
+            raise NotImplementedError(
+                "Method not yet implemented for spectral maps."
+            )
 
     def __init__(self, ydeg, udeg, fdeg, drorder, nw, **kwargs):
         # Instantiate the Theano ops class
@@ -840,7 +830,6 @@ class YlmBase(object):
         else:
             return math.reshape(image, [res, res])
 
-    @MapBase._no_spectral
     def load(
         self,
         image,
@@ -875,6 +864,9 @@ class YlmBase(object):
             kwargs (optional): Any other kwargs passed directly to
                 :py:meth:`minimize` (only if ``psd`` is True).
         """
+        # Not implemented for spectral
+        self._no_spectral()
+
         # Is this a file name?
         if type(image) is str:
             y = image2map(
@@ -969,14 +961,40 @@ class YlmBase(object):
         if not preserve_luminosity:
             self._amp = new_norm
 
-    @MapBase._no_spectral
-    def minimize(self, **kwargs):
-        r"""Find the global minimum of the map intensity.
+    def minimize(self, fac=1, return_info=False):
+        """Find the global minimum of the map intensity.
 
+        Args:
+            fac (scalar): The factor by which to increase the resolution
+                of the initial brute force search grid. The number of points
+                when ``fac=1`` is on the order of ``map.ydeg ** 2``. Default
+                is 1.
+            return_info (bool): Return the info from the minimization call?
+                Default is False.
+
+        Returns:
+            A tuple of the latitude, longitude, and the value of the intensity \
+            at the minimum. If ``return_info`` is True, also returns the detailed \
+            solver information.
         """
-        self.ops.minimize.setup()
+        # Not implemented for spectral
+        self._no_spectral()
+
+        self.ops.minimize.setup(fac=fac)
         lat, lon, I = self.ops.get_minimum(self.y)
-        return lat / self._angle_factor, lon / self._angle_factor, I
+        if return_info:
+            return (
+                lat / self._angle_factor,
+                lon / self._angle_factor,
+                self._amp * I,
+                self.ops.minimize.result,
+            )
+        else:
+            return (
+                lat / self._angle_factor,
+                lon / self._angle_factor,
+                self._amp * I,
+            )
 
     def set_data(self, flux, C=None, cho_C=None):
         """Set the data vector and covariance matrix.
@@ -1026,7 +1044,6 @@ class YlmBase(object):
         self._mu = math.cast(mu) * math.cast(np.ones(self.Ny - 1))
         self._L = linalg.Covariance(L, cho_L, N=self.Ny - 1)
 
-    @MapBase._no_spectral
     def solve(self, *, design_matrix=None, **kwargs):
         """Solve the linear least-squares problem for the posterior over maps.
 
@@ -1043,16 +1060,17 @@ class YlmBase(object):
                 :py:meth:`design_matrix`, if a design matrix is not provided.
 
         Returns:
-            (tuple): tuple containing:
-                yhat (vector): The posterior mean for the spherical harmonic
-                    coefficients `l > 0`
-                cho_ycov (matrix): The Cholesky factorization of the
-                    posterior covariance
+            A tuple containing the posterior mean for the spherical harmonic \
+            coefficients ``l > 0`` (a vector) and the Cholesky factorization \
+            of the posterior covariance (a lower triangular matrix).
 
         .. note::
             Users may call :py:meth:`draw` to draw from the
             posterior after calling this method.
         """
+        # Not implemented for spectral
+        self._no_spectral()
+
         if self._flux is None or self._C is None:
             raise ValueError("Please provide a dataset with `set_data()`.")
         elif self._mu is None or self._L is None:
@@ -1074,7 +1092,6 @@ class YlmBase(object):
         )
         return self._yhat, self._cho_ycov
 
-    @MapBase._no_spectral
     def lnlike(self, *, design_matrix=None, woodbury=True, **kwargs):
         """Returns the log marginal likelihood of the data given a design matrix.
 
@@ -1094,8 +1111,11 @@ class YlmBase(object):
                 :py:meth:`design_matrix`, if a design matrix is not provided.
 
         Returns:
-            lnlike: The log marginal likelihood.
+            The log marginal likelihood, a scalar.
         """
+        # Not implemented for spectral
+        self._no_spectral()
+
         if self._flux is None or self._C is None:
             raise ValueError("Please provide a dataset with `set_data()`.")
         elif self._mu is None or self._L is None:

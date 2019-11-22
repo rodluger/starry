@@ -21,46 +21,52 @@ class minimizeOp(tt.Op):
         self.udeg = udeg
         self.fdeg = fdeg
         self._do_setup = True
+        self.fac = 1
+        self.result = None
 
-    def setup(self):
+    def setup(self, fac=1):
         # Don't setup unless the user actually calls this function,
         # since there's quite a bit of overhead
-        if self._do_setup:
-            # Coarse map rendering transform on an equal area lat-lon grid.
-            # The maximum number of extrema of a band-limited function
-            # on the sphere is l^2 - l + 2 (Kuznetsov & Kholshevnikov 1992)
-            # The minimum resolution of the grid must therefore be...
-            res = int(
-                np.ceil(
-                    0.25
-                    * (np.sqrt(1 + 8 * (self.ydeg ** 2 - self.ydeg + 2)) - 1)
-                )
-            )
+        if self._do_setup or (fac != self.fac):
+
+            # The grid seach resolution
+            self.fac = fac
+            res = int(self.fac * self.ydeg)
+
+            # Create the grid
             lon_grid = np.linspace(-np.pi, np.pi, res)
             lat_grid = np.arccos(1 - np.arange(2 * res + 1) / res) - np.pi / 2
             lon_grid, lat_grid = np.meshgrid(lon_grid, lat_grid)
             lon_grid, lat_grid = lon_grid.flatten(), lat_grid.flatten()
-            self.P_grid = self.P(lat_grid, lon_grid, no_compile=True).eval()
+
+            # Add some noise to try to counteract aliasing
+            s = np.random.RandomState(0)
+            lon_grid += (0.1 / res) * s.randn(len(lon_grid))
+            lat_grid += (0.1 / res) * s.randn(len(lat_grid))
+
+            # Evaluate the intensities
+            self.P_grid = self.P(
+                tt.as_tensor_variable(lat_grid),
+                tt.as_tensor_variable(lon_grid),
+            ).eval()
             self.lat_grid = lat_grid
             self.lon_grid = lon_grid
 
             # Set up the cost & grad function for the nonlinear solver
             u0 = np.zeros(self.udeg + 1)
             u0[0] = -1.0
+            u0 = tt.as_tensor_variable(u0)
             f0 = np.zeros((self.fdeg + 1) ** 2)
             f0[0] = np.pi
+            f0 = tt.as_tensor_variable(f0)
             latlon = tt.dvector()
             y = tt.dvector()
             self.I = theano.function(
                 [latlon, y],
                 [
-                    self.intensity(
-                        latlon[0], latlon[1], y, u0, f0, no_compile=True
-                    )[0],
+                    self.intensity(latlon[0], latlon[1], y, u0, f0)[0],
                     *theano.grad(
-                        self.intensity(
-                            latlon[0], latlon[1], y, u0, f0, no_compile=True
-                        )[0],
+                        self.intensity(latlon[0], latlon[1], y, u0, f0)[0],
                         [latlon],
                     ),
                 ],
@@ -95,3 +101,6 @@ class minimizeOp(tt.Op):
         outputs[0][0] = result.x[0]
         outputs[1][0] = result.x[1]
         outputs[2][0] = result.fun
+
+        # Save
+        self.result = result

@@ -25,14 +25,14 @@ from theano.ifelse import ifelse
 import numpy as np
 from astropy import units
 
-try:
+try:  # pragma: no cover
     # starry requires exoplanet >= v0.2.0
     from packaging import version
     import exoplanet
 
     if version.parse(exoplanet.__version__) < version.parse("0.2.0"):
         exoplanet = None
-except ModuleNotFoundError:
+except ModuleNotFoundError:  # pragma: no cover
     exoplanet = None
 
 
