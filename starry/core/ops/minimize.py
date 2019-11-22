@@ -4,6 +4,7 @@ from scipy.optimize import minimize
 import theano
 from theano import gof
 import theano.tensor as tt
+from theano.configparser import change_flags
 
 __all__ = ["minimizeOp"]
 
@@ -61,16 +62,17 @@ class minimizeOp(tt.Op):
             f0 = tt.as_tensor_variable(f0)
             latlon = tt.dvector()
             y = tt.dvector()
-            self.I = theano.function(
-                [latlon, y],
-                [
-                    self.intensity(latlon[0], latlon[1], y, u0, f0)[0],
-                    *theano.grad(
+            with change_flags(compute_test_value="off"):
+                self.I = theano.function(
+                    [latlon, y],
+                    [
                         self.intensity(latlon[0], latlon[1], y, u0, f0)[0],
-                        [latlon],
-                    ),
-                ],
-            )
+                        *theano.grad(
+                            self.intensity(latlon[0], latlon[1], y, u0, f0)[0],
+                            [latlon],
+                        ),
+                    ],
+                )
             self._do_setup = False
 
     def make_node(self, *inputs):
