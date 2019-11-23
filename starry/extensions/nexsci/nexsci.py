@@ -11,6 +11,7 @@ Extension for nexsci queries.
 import pandas as pd
 import numpy as np
 import os
+import logging
 import datetime
 import astropy.units as u
 from glob import glob
@@ -19,6 +20,7 @@ from warnings import warn
 from ... import PACKAGEDIR
 from ... import Secondary, Primary, System, Map
 
+logger = logging.getLogger("starry.ops")
 
 class DataRetrievalFailure(Exception):
     """Raised if data can't be retrieved from online database
@@ -221,7 +223,7 @@ def _check_data_on_import():
     if datetime.datetime.now() - datetime.datetime.fromtimestamp(
         mtime
     ) > datetime.timedelta(days=7):
-        log.warning("Database out of date. Redownloading...")
+        logger.warning("Database out of date. Redownloading...")
         _retrieve_online_data()
 
 
