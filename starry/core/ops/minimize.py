@@ -161,12 +161,12 @@ class LDPhysicalOp(tt.Op):
 
         # Sturm's theorem on the intensity to ensure positivity
         p = u[::-1]
-        if self.nroots(p) > 0:
+        if self.nroots(p, 0, 1) > 0:
             outputs[0][0] = 0
             return
 
         # Sturm's theorem on the derivative to ensure monotonicity
         p = (u[1:] * np.arange(1, len(u)))[::-1]
-        if self.nroots(p) > 0:
+        if self.nroots(p, 0, 1) > 0:
             outputs[0][0] = 0
             return

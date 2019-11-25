@@ -116,7 +116,8 @@ inline int sgn(T val) {
 // Count the positive roots of a polynomial over the domain [0, 1] using Sturm's
 // theorem. `p` are the polynomial coefficients, highest order first.
 template <typename T>
-inline int polycountroots(const Eigen::Matrix<T, Eigen::Dynamic, 1>& p) {
+inline int polycountroots(const Eigen::Matrix<T, Eigen::Dynamic, 1>& p,
+                          const T& a = 0, const T& b = 1) {
   if (p.rows() <= 1) return 0;
 
   int n = p.rows() - 1, count = 0;
@@ -125,18 +126,21 @@ inline int polycountroots(const Eigen::Matrix<T, Eigen::Dynamic, 1>& p) {
   Eigen::Matrix<T, Eigen::Dynamic, 1> p0 = p;
 
   // HACKS: for stability
-  if ((p0(n) == 0)) p0(n) = -utils::mach_eps<T>();
+  if (p0(n) == 0) p0(n) = -utils::mach_eps<T>();
   if ((n > 1) && (p0(n - 1) == 0)) p0(n - 1) = utils::mach_eps<T>();
 
   Eigen::Matrix<T, Eigen::Dynamic, 1> p1 = polyder(p0);
   Eigen::Matrix<T, Eigen::Dynamic, 1> tmp;
-  // Sign at x = 0
-  int s_0 = sgn(p1[p1.rows() - 1]);
-  // Sign at x = 1
-  int s_1 = sgn(polyval(p1, 1));
+
+  // Sign at x = a
+  int s_0 = sgn(polyval(p1, a));
+
+  // Sign at x = b
+  int s_1 = sgn(polyval(p1, b));
+
   int s;
-  count += (sgn(p0[p0.rows() - 1]) != s_0);
-  count -= (sgn(polyval(p0, 1)) != s_1);
+  count += (sgn(polyval(p0, a)) != s_0);
+  count -= (sgn(polyval(p0, b)) != s_1);
 
   // Loop over the Sturm sequence and compute each polynomial.
   for (int k = 0; k < n; ++k) {
@@ -147,10 +151,10 @@ inline int polycountroots(const Eigen::Matrix<T, Eigen::Dynamic, 1>& p) {
 
     // Count the roots for this next polynomial.
     s = s_0;
-    s_0 = sgn(p1[p1.rows() - 1]);
+    s_0 = sgn(polyval(p1, a));
     count += (s != s_0);
     s = s_1;
-    s_1 = sgn(polyval(p1, 1));
+    s_1 = sgn(polyval(p1, b));
     count -= (s != s_1);
 
     if (p1.rows() == 1) break;

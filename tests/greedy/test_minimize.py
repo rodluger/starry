@@ -41,7 +41,7 @@ def test_sturm():
             if r.imag == 0 and r.real >= 0 and r.real <= 1
         ]
         np_nroots = len(np_roots)
-        assert nroots(p) == np_nroots
+        assert nroots(p, 0, 1) == np_nroots
 
 
 def test_limbdark_physical():

@@ -565,6 +565,16 @@ class MapBase(object):
         self._check_kwargs("show", kwargs)
 
     def limbdark_is_physical(self):
+        """Check whether the limb darkening profile (if any) is physical.
+
+        This method uses Sturm's theorem to ensure that the limb darkening
+        intensity
+            - is positive everywhere
+            - decreases monotonically toward the limb
+
+        Returns:
+            bool: Whether or not the limb darkening profile is physical.
+        """
         result = self.ops.limbdark_is_physical(self.u)
         if config.lazy:
             return result

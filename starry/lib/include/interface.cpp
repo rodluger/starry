@@ -312,8 +312,11 @@ PYBIND11_MODULE(_c_ops, m) {
                           ops.D.tensordotD_btheta.template cast<double>());
   });
 
-  // Sturm's theorem to get number of poly roots
-  m.def("nroots", [](const Vector<double> &p) {
-    return starry::sturm::polycountroots(p.template cast<Scalar>());
-  });
+  // Sturm's theorem to get number of poly roots between `a` and `b`
+  m.def("nroots",
+        [](const Vector<double> &p, const double &a, const double &b) {
+          return starry::sturm::polycountroots(p.template cast<Scalar>(),
+                                               static_cast<Scalar>(a),
+                                               static_cast<Scalar>(b));
+        });
 }
