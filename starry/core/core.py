@@ -12,6 +12,7 @@ from .ops import (
     spotYlmOp,
     pTOp,
     minimizeOp,
+    LDPhysicalOp,
     LimbDarkOp,
     GetClOp,
     RaiseValueErrorIfOp,
@@ -103,6 +104,12 @@ class OpsYlm(object):
         else:
             # TODO?
             self.minimize = None
+        self.LimbDarkIsPhysical = LDPhysicalOp(_c_ops.nroots)
+
+    @autocompile("limbdark_is_physical", tt.dvector())
+    def limbdark_is_physical(self, u):
+        """Return True if the limb darkening profile is physical."""
+        return self.LimbDarkIsPhysical(u)
 
     @autocompile(
         "get_minimum",
@@ -531,6 +538,12 @@ class OpsLD(object):
         # Set up the ops
         self.get_cl = GetClOp()
         self.limbdark = LimbDarkOp()
+        self.LimbDarkIsPhysical = LDPhysicalOp(_c_ops.nroots)
+
+    @autocompile("limbdark_is_physical", tt.dvector())
+    def limbdark_is_physical(self, u):
+        """Return True if the limb darkening profile is physical."""
+        return self.LimbDarkIsPhysical(u)
 
     @autocompile("intensity", tt.dvector(), tt.dvector())
     def intensity(self, mu, u):

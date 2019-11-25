@@ -21,8 +21,38 @@ def test_minimize():
     lat = lat[i, j]
     lon = lon[i, j]
     val = image[i, j]
-    lat_m, lon_m, val_m = map.minimize()
+    lat_m, lon_m, val_m = map.minimize(oversample=2, ntries=2)
 
-    # The location and value should agree within 5 percent
-    assert np.allclose([lat_m, lon_m], [lat, lon], atol=0, rtol=0.05)
-    assert np.allclose(val_m, val, atol=0, rtol=0.05)
+    # Check that we did better than the grid search
+    assert val_m <= val
+
+
+def test_sturm():
+    # Check that we can count the real
+    # roots of a polynomial in the range [0, 1]
+    # using Sturm's theorem
+    np.random.seed(1)
+    nroots = starry._c_ops.nroots
+    for i in range(100):
+        p = np.random.randn(10)
+        np_roots = [
+            r.real
+            for r in np.roots(p)
+            if r.imag == 0 and r.real >= 0 and r.real <= 1
+        ]
+        np_nroots = len(np_roots)
+        assert nroots(p) == np_nroots
+
+
+def test_limbdark_physical():
+    # Test our routine on quadratic LD, where
+    # the constraints are analytic (Kipping 2013)
+    np.random.seed(0)
+
+    def is_physical(u):
+        return (u[1] + u[2] < 1) and (u[1] > 0) and (u[1] + 2 * u[2] > 0)
+
+    map = starry.Map(udeg=2)
+    for i in range(500):
+        map[1:] = np.random.randn(2)
+        assert map.limbdark_is_physical() == is_physical(map.u)

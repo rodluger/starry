@@ -341,7 +341,7 @@ class MapBase(object):
 
         else:
 
-            inc = 90
+            inc = 0.5 * np.pi
             obl = 0
             theta = [0]
 
@@ -563,6 +563,13 @@ class MapBase(object):
             kwargs.pop("yo", None)
             kwargs.pop("zo", None)
         self._check_kwargs("show", kwargs)
+
+    def limbdark_is_physical(self):
+        result = self.ops.limbdark_is_physical(self.u)
+        if config.lazy:
+            return result
+        else:
+            return bool(result)
 
 
 class YlmBase(object):
@@ -961,14 +968,14 @@ class YlmBase(object):
         if not preserve_luminosity:
             self._amp = new_norm
 
-    def minimize(self, fac=1, return_info=False):
+    def minimize(self, oversample=1, ntries=1, return_info=False):
         """Find the global minimum of the map intensity.
 
         Args:
-            fac (scalar): The factor by which to increase the resolution
-                of the initial brute force search grid. The number of points
-                when ``fac=1`` is on the order of ``map.ydeg ** 2``. Default
-                is 1.
+            oversample (int): Factor by which to oversample the initial
+                grid on which the brute force search is performed. Default 1.
+            ntries (int): Number of times the nonlinear minimizer is called.
+                Default 1.
             return_info (bool): Return the info from the minimization call?
                 Default is False.
 
@@ -980,7 +987,7 @@ class YlmBase(object):
         # Not implemented for spectral
         self._no_spectral()
 
-        self.ops.minimize.setup(fac=fac)
+        self.ops.minimize.setup(oversample=oversample, ntries=ntries)
         lat, lon, I = self.ops.get_minimum(self.y)
         if return_info:
             return (

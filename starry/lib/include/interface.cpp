@@ -17,6 +17,7 @@
 #include <pybind11/stl.h>
 #include <iostream>
 #include "ops.h"
+#include "sturm.h"
 #include "utils.h"
 namespace py = pybind11;
 
@@ -309,5 +310,10 @@ PYBIND11_MODULE(_c_ops, m) {
                      bMD.template cast<Scalar>());
     return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
                           ops.D.tensordotD_btheta.template cast<double>());
+  });
+
+  // Sturm's theorem to get number of poly roots
+  m.def("nroots", [](const Vector<double> &p) {
+    return starry::sturm::polycountroots(p.template cast<Scalar>());
   });
 }
