@@ -25,10 +25,13 @@ import os
 import datetime
 import astropy.units as u
 from glob import glob
-from warnings import warn
+import logging
 
 from ... import PACKAGEDIR
 from ... import Secondary, Primary, System, Map
+
+
+logger = logging.getLogger("starry.ops")
 
 
 def from_nexsci(name, limb_darkening=[0.4, 0.2]):
@@ -67,7 +70,7 @@ def from_nexsci(name, limb_darkening=[0.4, 0.2]):
             .unique()
         )
         name = np.random.choice(system_list)
-        warn("Randomly selected {}".format(name))
+        logger.warning("Randomly selected {}".format(name))
         df = df[df.pl_hostname == name].reset_index(drop=True)
     else:
         sname = name.lower().replace("-", "").replace(" ", "")
@@ -83,7 +86,7 @@ def from_nexsci(name, limb_darkening=[0.4, 0.2]):
     m = df.iloc[0].st_mass
     if ~np.isfinite(m):
         m = 1
-        warn("Stellar mass is NaN, setting to 1.")
+        logger.warning("Stellar mass is NaN, setting to 1.")
 
     star = Primary(Map(udeg=len(limb_darkening), L=1), r=1, m=m)
     for idx in range(len(limb_darkening)):
@@ -92,7 +95,7 @@ def from_nexsci(name, limb_darkening=[0.4, 0.2]):
     for idx, d in df.iterrows():
         for key in ["pl_orbper", "pl_tranmid", "pl_radj"]:
             if ~np.isfinite(d[key]):
-                warn(
+                logger.warning(
                     "{} is not set for {}{}, planet will be skipped".format(
                         key, d.pl_hostname, d.pl_letter
                     )
@@ -232,7 +235,7 @@ def _check_data_on_import():
     if datetime.datetime.now() - datetime.datetime.fromtimestamp(
         mtime
     ) > datetime.timedelta(days=7):
-        warn("Database out of date. Redownloading...")
+        logger.warning("Database out of date. Redownloading...")
         _retrieve_online_data()
 
 

@@ -120,7 +120,7 @@ html_css_files = ["css/hide_input.css"]
 
 html_js_files += [DEFAULT_EMBED_REQUIREJS_URL]
 
-# Add a heading to notebooks (TODO: switch to `master`)
+# Add a heading to notebooks
 nbsphinx_prolog = """
 {%s set docname = env.doc2path(env.docname, base=None) %s}
 .. note:: This tutorial was generated from a Jupyter notebook that can be
