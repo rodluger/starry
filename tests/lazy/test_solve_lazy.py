@@ -52,11 +52,11 @@ def test_solve(L, C):
     if C == "scalar":
         map.set_data(flux, C=sigma ** 2)
     elif C == "vector":
-        map.set_data(flux, C=np.ones(len(flux)) * sigma ** 2)
+        map.set_data(flux, C=np.ones(len(theta)) * sigma ** 2)
     elif C == "matrix":
-        map.set_data(flux, C=np.eye(len(flux)) * sigma ** 2)
+        map.set_data(flux, C=np.eye(len(theta)) * sigma ** 2)
     elif C == "cholesky":
-        map.set_data(flux, cho_C=np.eye(len(flux)) * sigma)
+        map.set_data(flux, cho_C=np.eye(len(theta)) * sigma)
 
     # Solve the linear problem
     map.inc = inc_true
@@ -64,6 +64,8 @@ def test_solve(L, C):
 
     # Ensure the likelihood of the true value is close to that of
     # the MAP solution
+    mu = mu.eval()
+    cho_cov = cho_cov.eval()
     cov = cho_cov.dot(cho_cov.T)
     LnL0 = multivariate_normal.logpdf(mu, mean=mu, cov=cov)
     LnL = multivariate_normal.logpdf([0.1, 0.2, 0.3], mean=mu, cov=cov)
@@ -87,18 +89,18 @@ def test_lnlike(L, C, woodbury):
     if C == "scalar":
         map.set_data(flux, C=sigma ** 2)
     elif C == "vector":
-        map.set_data(flux, C=np.ones(len(flux)) * sigma ** 2)
+        map.set_data(flux, C=np.ones(len(theta)) * sigma ** 2)
     elif C == "matrix":
-        map.set_data(flux, C=np.eye(len(flux)) * sigma ** 2)
+        map.set_data(flux, C=np.eye(len(theta)) * sigma ** 2)
     elif C == "cholesky":
-        map.set_data(flux, cho_C=np.eye(len(flux)) * sigma)
+        map.set_data(flux, cho_C=np.eye(len(theta)) * sigma)
 
     # Compute the marginal log likelihood for different inclinations
     incs = [15, 30, 45, 60, 75, 90]
     ll = np.zeros_like(incs, dtype=float)
     for i, inc in enumerate(incs):
         map.inc = inc
-        ll[i] = map.lnlike(woodbury=woodbury, **kwargs)
+        ll[i] = map.lnlike(woodbury=woodbury, **kwargs).eval()
 
     # Verify that we get the correct inclination
     assert incs[np.argmax(ll)] == 60

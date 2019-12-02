@@ -17,7 +17,7 @@ from .ops import (
     GetClOp,
     RaiseValueErrorIfOp,
 )
-from .utils import logger, DynamicType, autocompile
+from .utils import logger, autocompile
 from .math import math
 import theano
 import theano.tensor as tt
@@ -106,32 +106,17 @@ class OpsYlm(object):
             self.minimize = None
         self.LimbDarkIsPhysical = LDPhysicalOp(_c_ops.nroots)
 
-    @autocompile("limbdark_is_physical", tt.dvector())
+    @autocompile
     def limbdark_is_physical(self, u):
         """Return True if the limb darkening profile is physical."""
         return self.LimbDarkIsPhysical(u)
 
-    @autocompile(
-        "get_minimum",
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
-    )
+    @autocompile
     def get_minimum(self, y):
         """Compute the location and value of the intensity minimum."""
         return self.minimize(y)
 
-    @autocompile(
-        "X",
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dscalar(),
-        tt.dscalar(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-    )
+    @autocompile
     def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
         """Compute the light curve design matrix."""
         # Determine shapes
@@ -173,25 +158,12 @@ class OpsYlm(object):
 
         return X
 
-    @autocompile(
-        "flux",
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dscalar(),
-        tt.dscalar(),
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-    )
+    @autocompile
     def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha):
         """Compute the light curve."""
         return tt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, u, f, alpha), y)
 
-    @autocompile("P", tt.dvector(), tt.dvector())
+    @autocompile
     def P(self, lat, lon):
         """Compute the pixelization matrix, no filters or illumination."""
         # Get the Cartesian points
@@ -206,14 +178,7 @@ class OpsYlm(object):
         # We're done
         return pTA1
 
-    @autocompile(
-        "intensity",
-        tt.dvector(),
-        tt.dvector(),
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
-        tt.dvector(),
-        tt.dvector(),
-    )
+    @autocompile
     def intensity(self, lat, lon, y, u, f):
         """Compute the intensity (static, no diff. rot)."""
         # Get the Cartesian points
@@ -232,18 +197,7 @@ class OpsYlm(object):
         # Dot the polynomial into the basis
         return tt.dot(pT, A1y)
 
-    @autocompile(
-        "render",
-        tt.iscalar(),
-        tt.iscalar(),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dscalar(),
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-    )
+    @autocompile
     def render(self, res, projection, theta, inc, obl, y, u, f, alpha):
         """Render the map on a Cartesian grid."""
         # Compute the Cartesian grid
@@ -299,15 +253,7 @@ class OpsYlm(object):
         # We need the shape to be (nframes, npix, npix)
         return res.dimshuffle(2, 0, 1)
 
-    @autocompile(
-        "add_spot",
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
-        DynamicType("tt.dscalar() if self.nw is None else tt.dvector()"),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dscalar(),
-        tt.dscalar(),
-    )
+    @autocompile
     def add_spot(self, y, L, amp, sigma, lat, lon):
         """Return the spherical harmonic expansion of a Gaussian spot."""
         y_new = y + self.spotYlm(amp, sigma, lat, lon)
@@ -540,25 +486,18 @@ class OpsLD(object):
         self.limbdark = LimbDarkOp()
         self.LimbDarkIsPhysical = LDPhysicalOp(_c_ops.nroots)
 
-    @autocompile("limbdark_is_physical", tt.dvector())
+    @autocompile
     def limbdark_is_physical(self, u):
         """Return True if the limb darkening profile is physical."""
         return self.LimbDarkIsPhysical(u)
 
-    @autocompile("intensity", tt.dvector(), tt.dvector())
+    @autocompile
     def intensity(self, mu, u):
         """Compute the intensity at a set of points."""
         basis = tt.reshape(1.0 - mu, (-1, 1)) ** np.arange(self.udeg + 1)
         return -tt.dot(basis, u)
 
-    @autocompile(
-        "flux",
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dvector(),
-    )
+    @autocompile
     def flux(self, xo, yo, zo, ro, u):
         """Compute the light curve."""
         # Initialize flat light curve
@@ -584,19 +523,7 @@ class OpsLD(object):
         )
         return flux
 
-    @autocompile(
-        "X",
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dscalar(),
-        tt.dscalar(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-    )
+    @autocompile
     def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
         """
         Convenience function for integration of limb-darkened maps
@@ -609,25 +536,14 @@ class OpsLD(object):
         X = tt.reshape(flux, (-1, 1))
         return X
 
-    @autocompile(
-        "render",
-        tt.iscalar(),
-        tt.iscalar(),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dscalar(),
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-    )
+    @autocompile
     def render(self, res, projection, theta, inc, obl, y, u, f, alpha):
         """Render the map on a Cartesian grid."""
         nframes = tt.shape(theta)[0]
         image = self._render(res, u)
         return tt.tile(image, (nframes, 1, 1))
 
-    @autocompile("_render", tt.iscalar(), tt.dvector())
+    @autocompile
     def _render(self, res, u):
         """Simplified version of `render` w/o the extra params.
 
@@ -665,13 +581,7 @@ class OpsLD(object):
 class OpsRV(OpsYlm):
     """Class housing Theano operations for radial velocity maps."""
 
-    @autocompile(
-        "compute_rv_filter",
-        tt.dscalar(),
-        tt.dscalar(),
-        tt.dscalar(),
-        tt.dscalar(),
-    )
+    @autocompile
     def compute_rv_filter(self, inc, obl, veq, alpha):
         """Compute the radial velocity field Ylm multiplicative filter."""
         # Define some angular quantities
@@ -733,20 +643,7 @@ class OpsRV(OpsYlm):
             * np.pi
         )
 
-    @autocompile(
-        "rv",
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dscalar(),
-        tt.dscalar(),
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dscalar(),
-    )
+    @autocompile
     def rv(self, theta, xo, yo, zo, ro, inc, obl, y, u, veq, alpha):
         """Compute the observed radial velocity anomaly."""
         # Compute the velocity-weighted intensity
@@ -772,17 +669,7 @@ class OpsReflected(OpsYlm):
         self.rT = rTReflectedOp(self._c_ops.rTReflected, self._c_ops.N)
         self.A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
 
-    @autocompile(
-        "intensity",
-        tt.dvector(),
-        tt.dvector(),
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-    )
+    @autocompile
     def intensity(self, lat, lon, y, u, f, xo, yo, zo):
         """Compute the intensity at a series of lat-lon points on the surface."""
         # Get the Cartesian points
@@ -817,14 +704,7 @@ class OpsReflected(OpsYlm):
         intensity = tt.switch(tt.isnan(intensity), intensity, intensity * I)
         return intensity
 
-    @autocompile(
-        "unweighted_intensity",
-        tt.dvector(),
-        tt.dvector(),
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
-        tt.dvector(),
-        tt.dvector(),
-    )
+    @autocompile
     def unweighted_intensity(self, lat, lon, y, u, f):
         """Compute the intensity in the absence of an illumination source."""
         # Get the Cartesian points
@@ -843,19 +723,7 @@ class OpsReflected(OpsYlm):
         # Dot the polynomial into the basis
         return tt.dot(pT, A1y)
 
-    @autocompile(
-        "X",
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dscalar(),
-        tt.dscalar(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-    )
+    @autocompile
     def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
         """Compute the light curve design matrix."""
         # Determine shapes
@@ -901,40 +769,12 @@ class OpsReflected(OpsYlm):
         # We're done
         return X
 
-    @autocompile(
-        "flux",
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dscalar(),
-        tt.dscalar(),
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-    )
+    @autocompile
     def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha):
         """Compute the reflected light curve."""
         return tt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, u, f, alpha), y)
 
-    @autocompile(
-        "render",
-        tt.iscalar(),
-        tt.iscalar(),
-        tt.iscalar(),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dscalar(),
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dscalar(),
-        tt.dvector(),
-        tt.dvector(),
-        tt.dvector(),
-    )
+    @autocompile
     def render(
         self,
         res,
@@ -1077,21 +917,7 @@ class OpsSystem(object):
         # Require exoplanet
         assert exoplanet is not None, "This class requires exoplanet >= 0.2.0."
 
-    @autocompile(
-        "position",
-        tt.dvector(),  # t
-        # -- primary --
-        tt.dscalar(),  # m
-        tt.dscalar(),  # t0
-        # -- secondaries --
-        tt.dvector(),  # m
-        tt.dvector(),  # t0
-        tt.dvector(),  # porb
-        tt.dvector(),  # ecc
-        tt.dvector(),  # w
-        tt.dvector(),  # Omega
-        tt.dvector(),  # iorb
-    )
+    @autocompile
     def position(
         self,
         t,
@@ -1142,39 +968,7 @@ class OpsSystem(object):
 
         return x, y, z
 
-    @autocompile(
-        "X",
-        tt.dvector(),  # t
-        # -- primary --
-        tt.dscalar(),  # r
-        tt.dscalar(),  # m
-        tt.dscalar(),  # prot
-        tt.dscalar(),  # t0
-        tt.dscalar(),  # theta0
-        DynamicType("tt.dscalar() if self.nw is None else tt.dvector()"),  # L
-        tt.dscalar(),  # inc
-        tt.dscalar(),  # obl
-        tt.dvector(),  # u
-        tt.dvector(),  # f
-        tt.dscalar(),  # alpha
-        # -- secondaries --
-        tt.dvector(),  # r
-        tt.dvector(),  # m
-        tt.dvector(),  # prot
-        tt.dvector(),  # t0
-        tt.dvector(),  # theta0
-        tt.dvector(),  # porb
-        tt.dvector(),  # ecc
-        tt.dvector(),  # w
-        tt.dvector(),  # Omega
-        tt.dvector(),  # iorb
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # L
-        tt.dvector(),  # inc
-        tt.dvector(),  # obl
-        tt.dmatrix(),  # u
-        tt.dmatrix(),  # f
-        tt.dvector(),  # alpha
-    )
+    @autocompile
     def X(
         self,
         t,
@@ -1435,41 +1229,7 @@ class OpsSystem(object):
                 axis=1,
             )
 
-    @autocompile(
-        "flux",
-        tt.dvector(),  # t
-        # -- primary --
-        tt.dscalar(),  # r
-        tt.dscalar(),  # m
-        tt.dscalar(),  # prot
-        tt.dscalar(),  # t0
-        tt.dscalar(),  # theta0
-        DynamicType("tt.dscalar() if self.nw is None else tt.dvector()"),  # L
-        tt.dscalar(),  # inc
-        tt.dscalar(),  # obl
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # y
-        tt.dvector(),  # u
-        tt.dvector(),  # f
-        tt.dscalar(),  # alpha
-        # -- secondaries --
-        tt.dvector(),  # r
-        tt.dvector(),  # m
-        tt.dvector(),  # prot
-        tt.dvector(),  # t0
-        tt.dvector(),  # theta0
-        tt.dvector(),  # porb
-        tt.dvector(),  # ecc
-        tt.dvector(),  # w
-        tt.dvector(),  # Omega
-        tt.dvector(),  # iorb
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # L
-        tt.dvector(),  # inc
-        tt.dvector(),  # obl
-        DynamicType("tt.dmatrix() if self.nw is None else tt.dtensor3()"),  # y
-        tt.dmatrix(),  # u
-        tt.dmatrix(),  # f
-        tt.dvector(),  # alpha
-    )
+    @autocompile
     def flux(
         self,
         t,
@@ -1537,42 +1297,7 @@ class OpsSystem(object):
         y = tt.concatenate((pri_y, tt.reshape(sec_y, (-1,))))
         return tt.dot(X, y)
 
-    @autocompile(
-        "rv",
-        tt.dvector(),  # t
-        # -- primary --
-        tt.dscalar(),  # r
-        tt.dscalar(),  # m
-        tt.dscalar(),  # prot
-        tt.dscalar(),  # t0
-        tt.dscalar(),  # theta0
-        DynamicType("tt.dscalar() if self.nw is None else tt.dvector()"),  # L
-        tt.dscalar(),  # inc
-        tt.dscalar(),  # obl
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # y
-        tt.dvector(),  # u
-        tt.dscalar(),  # alpha
-        tt.dscalar(),  # veq
-        # -- secondaries --
-        tt.dvector(),  # r
-        tt.dvector(),  # m
-        tt.dvector(),  # prot
-        tt.dvector(),  # t0
-        tt.dvector(),  # theta0
-        tt.dvector(),  # porb
-        tt.dvector(),  # ecc
-        tt.dvector(),  # w
-        tt.dvector(),  # Omega
-        tt.dvector(),  # iorb
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # L
-        tt.dvector(),  # inc
-        tt.dvector(),  # obl
-        DynamicType("tt.dmatrix() if self.nw is None else tt.dtensor3()"),  # y
-        tt.dmatrix(),  # u
-        tt.dvector(),  # alpha
-        tt.dvector(),  # veq
-        tt.bscalar(),  # keplerian?
-    )
+    @autocompile
     def rv(
         self,
         t,
@@ -1746,42 +1471,7 @@ class OpsSystem(object):
             rv,
         )
 
-    @autocompile(
-        "render",
-        tt.dvector(),  # t
-        tt.iscalar(),  # res
-        # -- primary --
-        tt.dscalar(),  # r
-        tt.dscalar(),  # m
-        tt.dscalar(),  # prot
-        tt.dscalar(),  # t0
-        tt.dscalar(),  # theta0
-        DynamicType("tt.dscalar() if self.nw is None else tt.dvector()"),  # L
-        tt.dscalar(),  # inc
-        tt.dscalar(),  # obl
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # y
-        tt.dvector(),  # u
-        tt.dvector(),  # f
-        tt.dscalar(),  # alpha
-        # -- secondaries --
-        tt.dvector(),  # r
-        tt.dvector(),  # m
-        tt.dvector(),  # prot
-        tt.dvector(),  # t0
-        tt.dvector(),  # theta0
-        tt.dvector(),  # porb
-        tt.dvector(),  # ecc
-        tt.dvector(),  # w
-        tt.dvector(),  # Omega
-        tt.dvector(),  # iorb
-        DynamicType("tt.dvector() if self.nw is None else tt.dmatrix()"),  # L
-        tt.dvector(),  # inc
-        tt.dvector(),  # obl
-        DynamicType("tt.dmatrix() if self.nw is None else tt.dtensor3()"),  # y
-        tt.dmatrix(),  # u
-        tt.dmatrix(),  # f
-        tt.dvector(),  # alpha
-    )
+    @autocompile
     def render(
         self,
         t,

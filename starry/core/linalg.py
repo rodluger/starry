@@ -21,12 +21,11 @@ class _Covariance(object):
         if cho_C is not None:
 
             self.cholesky = math.cast(cho_C)
-            self.matrix = math.dot(
-                self.cholesky, math.transpose(self.cholesky)
-            )
+            self.value = math.dot(self.cholesky, math.transpose(self.cholesky))
             self.inverse = self._cho_solve(self.cholesky)
             self.lndet = 2 * math.sum(math.log(math.diag(self.cholesky)))
             self.kind = "cholesky"
+            self.N = cho_C.shape[0]
 
         # User provided the covariance as a scalar, vector, or matrix
         elif C is not None:
@@ -38,19 +37,21 @@ class _Covariance(object):
                 if C.ndim == 0:
 
                     assert N is not None, "Please provide a matrix size `N`."
-                    self.cholesky = math.sqrt(C) * math.eye(N)
-                    self.inverse = (1.0 / C) * math.eye(N)
-                    self.lndet = N * math.log(C)
-                    self.matrix = C * math.eye(N)
+                    self.cholesky = math.sqrt(C)
+                    self.inverse = math.cast(1.0 / C)
+                    self.lndet = math.cast(N * math.log(C))
+                    self.value = C
                     self.kind = "scalar"
+                    self.N = N
 
                 elif C.ndim == 1:
 
-                    self.cholesky = math.diag(math.sqrt(C))
-                    self.inverse = math.diag(1.0 / C)
+                    self.cholesky = math.sqrt(C)
+                    self.inverse = 1.0 / C
                     self.lndet = math.sum(math.log(C))
-                    self.matrix = math.diag(C)
+                    self.value = C
                     self.kind = "vector"
+                    self.N = C.shape[0]
 
                 else:
 
@@ -59,18 +60,20 @@ class _Covariance(object):
                     self.lndet = 2 * math.sum(
                         math.log(math.diag(self.cholesky))
                     )
-                    self.matrix = C
+                    self.value = C
                     self.kind = "matrix"
+                    self.N = C.shape[0]
 
             # Assume it's a scalar
             else:
 
                 assert N is not None, "Please provide a matrix size `N`."
-                self.cholesky = math.sqrt(C) * math.eye(N)
-                self.inverse = (1.0 / C) * math.eye(N)
-                self.lndet = N * math.log(C)
-                self.matrix = C * math.eye(N)
+                self.cholesky = math.sqrt(C)
+                self.inverse = math.cast(1.0 / C)
+                self.lndet = math.cast(N * math.log(C))
+                self.value = C
                 self.kind = "scalar"
+                self.N = N
 
         # ?!
         else:
@@ -102,25 +105,19 @@ class OpsLinAlg(object):
             tt.transpose(cho_A), solve_lower(cho_A, b)
         )
 
-    @autocompile(
-        "MAP",
-        tt.dmatrix(),
-        tt.dvector(),
-        tt.dmatrix(),
-        tt.dvector(),
-        tt.dmatrix(),
-    )
-    def MAP(self, X, flux, cho_C, mu, cho_L):
+    @autocompile
+    def MAP(self, X, flux, cho_C, mu, LInv):
         """
         Compute the maximum a posteriori (MAP) prediction for the
         spherical harmonic coefficients of a map given a flux timeseries.
 
         Args:
-            X: The flux design matrix.
-            flux (ndarray): The flux timeseries.
-            cho_C: The lower cholesky factorization of the data covariance.
-            mu: The prior mean of the spherical harmonic coefficients.
-            cho_L: The lower cholesky factorization of the prior covariance of the
+            X (matrix): The flux design matrix.
+            flux (array): The flux timeseries.
+            cho_C (scalar/vector/matrix): The lower cholesky factorization
+                of the data covariance.
+            mu (array): The prior mean of the spherical harmonic coefficients.
+            LInv (scalar/vector/matrix): The inverse prior covariance of the
                 spherical harmonic coefficients.
 
         Returns:
@@ -130,40 +127,50 @@ class OpsLinAlg(object):
 
         """
         # Compute C^-1 . X
-        CInvX = self.cho_solve(cho_C, X)
+        if cho_C.ndim == 0:
+            CInvX = X / cho_C ** 2
+        elif cho_C.ndim == 1:
+            CInvX = tt.dot(tt.diag(1 / cho_C ** 2), X)
+        else:
+            CInvX = self.cho_solve(cho_C, X)
 
         # Compute W = X^T . C^-1 . X + L^-1
-        W = tt.dot(tt.transpose(X), CInvX) + self.cho_solve(
-            cho_L, tt.eye(X.shape[1])
-        )
+        W = tt.dot(tt.transpose(X), CInvX)
+        if LInv.ndim == 0:
+            W = tt.inc_subtensor(
+                W[tuple((tt.arange(W.shape[0]), tt.arange(W.shape[0])))], LInv
+            )
+            LInvmu = mu * LInv
+        elif LInv.ndim == 1:
+            W = tt.inc_subtensor(
+                W[tuple((tt.arange(W.shape[0]), tt.arange(W.shape[0])))], LInv
+            )
+            LInvmu = mu * LInv
+        else:
+            W += LInv
+            LInvmu = tt.dot(LInv, mu)
 
         # Compute the max like y and its covariance matrix
         cho_W = sla.cholesky(W)
         M = self.cho_solve(cho_W, tt.transpose(CInvX))
-        yhat = tt.dot(M, flux) + self.cho_solve(cho_L, mu)
+        yhat = tt.dot(M, flux) + LInvmu
         ycov = self.cho_solve(cho_W, tt.eye(cho_W.shape[0]))
         cho_ycov = sla.cholesky(ycov)
 
         return yhat, cho_ycov
 
-    @autocompile(
-        "lnlike",
-        tt.dmatrix(),
-        tt.dvector(),
-        tt.dmatrix(),
-        tt.dvector(),
-        tt.dmatrix(),
-    )
+    @autocompile
     def lnlike(self, X, flux, C, mu, L):
         """
         Compute the log marginal likelihood of the data given a design matrix.
 
         Args:
-            X: The flux design matrix.
-            flux (ndarray): The flux timeseries.
-            C: The data covariance matrix.
-            mu: The prior mean of the spherical harmonic coefficients.
-            L: The prior covariance of the spherical harmonic coefficients.
+            X (matrix): The flux design matrix.
+            flux (array): The flux timeseries.
+            C (scalar/vector/matrix): The data covariance matrix.
+            mu (array): The prior mean of the spherical harmonic coefficients.
+            L (scalar/vector/matrix): The prior covariance of the spherical
+                harmonic coefficients.
 
         Returns:
             The log marginal likelihood of the `flux` vector conditioned on
@@ -172,10 +179,25 @@ class OpsLinAlg(object):
             computable for the linear `starry` model.
 
         """
-
-        # Compute the GP
+        # Compute the GP mean
         gp_mu = tt.dot(X, mu)
-        gp_cov = C + tt.dot(tt.dot(X, L), tt.transpose(X))
+
+        # Compute the GP covariance
+        if L.ndim == 0:
+            XLX = tt.dot(X, tt.transpose(X)) * L
+        elif L.ndim == 1:
+            XLX = tt.dot(tt.dot(X, tt.diag(L)), tt.transpose(X))
+        else:
+            XLX = tt.dot(tt.dot(X, L), tt.transpose(X))
+
+        if C.ndim == 0 or C.ndim == 1:
+            gp_cov = tt.inc_subtensor(
+                XLX[tuple((tt.arange(XLX.shape[0]), tt.arange(XLX.shape[0])))],
+                C,
+            )
+        else:
+            gp_cov = C + XLX
+
         cho_gp_cov = sla.cholesky(gp_cov)
 
         # Compute the marginal likelihood
@@ -183,6 +205,72 @@ class OpsLinAlg(object):
         r = tt.reshape(flux - gp_mu, (-1, 1))
         lnlike = -0.5 * tt.dot(tt.transpose(r), self.cho_solve(cho_gp_cov, r))
         lnlike -= tt.sum(tt.log(tt.diag(cho_gp_cov)))
+        lnlike -= 0.5 * N * tt.log(2 * np.pi)
+
+        return lnlike[0, 0]
+
+    @autocompile
+    def lnlike_woodbury(self, X, flux, CInv, mu, LInv, lndetC, lndetL):
+        """
+        Compute the log marginal likelihood of the data given a design matrix
+        using the Woodbury identity.
+
+        Args:
+            X (matrix): The flux design matrix.
+            flux (array): The flux timeseries.
+            CInv (scalar/vector/matrix): The inverse data covariance matrix.
+            mu (array): The prior mean of the spherical harmonic coefficients.
+            L (scalar/vector/matrix): The inverse prior covariance of the
+                spherical harmonic coefficients.
+
+        Returns:
+            The log marginal likelihood of the `flux` vector conditioned on
+            the design matrix `X`. This is the likelihood marginalized over
+            all possible spherical harmonic vectors, which is analytically
+            computable for the linear `starry` model.
+
+        """
+        # Compute the GP mean
+        gp_mu = tt.dot(X, mu)
+
+        # Residual vector
+        r = tt.reshape(flux - gp_mu, (-1, 1))
+
+        # Inverse of GP covariance via Woodbury identity
+        if CInv.ndim == 0:
+            U = X * CInv
+        elif CInv.ndim == 1:
+            U = tt.dot(tt.diag(CInv), X)
+        else:
+            U = tt.dot(CInv, X)
+
+        if LInv.ndim == 0:
+            W = tt.dot(tt.transpose(X), U) + LInv * tt.eye(U.shape[1])
+        elif LInv.ndim == 1:
+            W = tt.dot(tt.transpose(X), U) + tt.diag(LInv)
+        else:
+            W = tt.dot(tt.transpose(X), U) + LInv
+        cho_W = sla.cholesky(W)
+
+        if CInv.ndim == 0:
+            SInv = CInv * tt.eye(U.shape[0]) - tt.dot(
+                U, self.cho_solve(cho_W, tt.transpose(U))
+            )
+        elif CInv.ndim == 1:
+            SInv = tt.diag(CInv) - tt.dot(
+                U, self.cho_solve(cho_W, tt.transpose(U))
+            )
+        else:
+            SInv = CInv - tt.dot(U, self.cho_solve(cho_W, tt.transpose(U)))
+
+        # Determinant of GP covariance
+        lndetW = 2 * tt.sum(tt.log(tt.diag(cho_W)))
+        lndetS = lndetW + lndetC + lndetL
+
+        # Compute the marginal likelihood
+        N = X.shape[0]
+        lnlike = -0.5 * tt.dot(tt.transpose(r), tt.dot(SInv, r))
+        lnlike -= 0.5 * lndetS
         lnlike -= 0.5 * N * tt.log(2 * np.pi)
 
         return lnlike[0, 0]

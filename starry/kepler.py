@@ -403,6 +403,13 @@ class System(object):
             ``1`` for the trapezoid rule, or ``2`` for Simpson’s rule.
     """
 
+    # pragma: no cover
+    def _no_spectral(self):
+        if self._primary._map.nw is not None:
+            raise NotImplementedError(
+                "Method not yet implemented for spectral maps."
+            )
+
     def __init__(
         self,
         primary,
@@ -1029,11 +1036,7 @@ class System(object):
             of each of the bodies to draw from the posterior after calling
             this method.
         """
-        # TODO?
-        if self._primary.map.__props__["spectral"]:  # pragma: no cover
-            raise NotImplementedError(
-                "Method not yet implemented for spectral maps."
-            )
+        self._no_spectral()  # TODO?
 
         # Check that the data is set
         if self._flux is None or self._C is None:
@@ -1048,6 +1051,7 @@ class System(object):
                     "Please provide a prior for the primary's "
                     + "map with `set_prior()`."
                 )
+        dense_L = False
         for k, sec in enumerate(self._secondaries):
             Y00inds.append(Y00inds[-1] + sec.map.Ny)
             if sec.map.ydeg > 0:
@@ -1056,6 +1060,8 @@ class System(object):
                         "Please provide a prior for the map "
                         + "of secondary #%d with `set_prior()`." % (k + 1)
                     )
+                elif sec.map._L.kind in ["matrix", "cholesky"]:
+                    dense_L = True
         YXXinds = np.arange(Y00inds[-1])
         Y00inds = np.array(Y00inds[:-1], dtype=int)
         YXXinds = np.delete(YXXinds, Y00inds)
@@ -1080,19 +1086,28 @@ class System(object):
             ]
         )
 
-        # FACT: The Cholesky factorization of a block diagonal matrix
-        # is the block diagonal matrix constructed from the
-        # factorization of each block individually.
-        cho_L = math.block_diag(
-            *[
-                body.map._L.cholesky
-                for body in [self._primary] + list(self._secondaries)
-                if body.map.ydeg > 0
-            ]
-        )
+        if not dense_L:
+            # We can just concatenate vectors
+            LInv = math.concatenate(
+                [
+                    body.map._L.inverse * math.ones(body.map.Ny - 1)
+                    for body in [self._primary] + list(self._secondaries)
+                    if body.map.ydeg > 0
+                ]
+            )
+        else:
+            # FACT: The inverse of a block diagonal matrix
+            # is the block diagonal matrix of the inverses.
+            LInv = math.block_diag(
+                *[
+                    body.map._L.inverse * math.eye(body.map.Ny - 1)
+                    for body in [self._primary] + list(self._secondaries)
+                    if body.map.ydeg > 0
+                ]
+            )
 
         # Compute the MAP solution
-        yhat, cho_ycov = linalg.MAP(X1, f, self._C.cholesky, mu, cho_L)
+        yhat, cho_ycov = linalg.MAP(X1, f, self._C.cholesky, mu, LInv)
 
         # Set the body's individual solutions
         yhat_list = []
@@ -1113,7 +1128,7 @@ class System(object):
         # Return the list of solutions
         return yhat_list, cho_ycov_list
 
-    def lnlike(self, *, design_matrix=None, t=None):
+    def lnlike(self, *, design_matrix=None, t=None, woodbury=True):
         """Returns the log marginal likelihood of the data given a design matrix.
 
         This method computes the marginal likelihood (marginalized over the
@@ -1129,15 +1144,13 @@ class System(object):
             t (vector, optional): The vector of times at which to evaluate
                 :py:meth:`design_matrix`, if a design matrix is not provided.
                 Default is None.
+            woodbury (bool, optional): Solve the linear problem using the
+                Woodbury identity? Default is True.
 
         Returns:
             lnlike: The log marginal likelihood.
         """
-        # TODO?
-        if self._primary.map.__props__["spectral"]:  # pragma: no cover
-            raise NotImplementedError(
-                "Method not yet implemented for spectral maps."
-            )
+        self._no_spectral()  # TODO?
 
         # Check that the data is set
         if self._flux is None or self._C is None:
@@ -1152,6 +1165,7 @@ class System(object):
                     "Please provide a prior for the primary's "
                     + "map with `set_prior()`."
                 )
+        dense_L = False
         for k, sec in enumerate(self._secondaries):
             Y00inds.append(Y00inds[-1] + sec.map.Ny)
             if sec.map.ydeg > 0:
@@ -1160,6 +1174,8 @@ class System(object):
                         "Please provide a prior for the map "
                         + "of secondary #%d with `set_prior()`." % (k + 1)
                     )
+                elif sec.map._L.kind in ["matrix", "cholesky"]:
+                    dense_L = True
         YXXinds = np.arange(Y00inds[-1])
         Y00inds = np.array(Y00inds[:-1], dtype=int)
         YXXinds = np.delete(YXXinds, Y00inds)
@@ -1183,12 +1199,52 @@ class System(object):
                 if body.map.ydeg > 0
             ]
         )
-        L = math.block_diag(
-            *[
-                body.map._L.matrix
-                for body in [self._primary] + list(self._secondaries)
-                if body.map.ydeg > 0
-            ]
-        )
 
-        return linalg.lnlike(X1, f, self._C.matrix, mu, L)
+        # Compute the likelihood
+        if woodbury:
+            if not dense_L:
+                # We can just concatenate vectors
+                LInv = math.concatenate(
+                    [
+                        body.map._L.inverse * math.ones(body.map.Ny - 1)
+                        for body in [self._primary] + list(self._secondaries)
+                        if body.map.ydeg > 0
+                    ]
+                )
+            else:
+                LInv = math.block_diag(
+                    *[
+                        body.map._L.inverse * math.eye(body.map.Ny - 1)
+                        for body in [self._primary] + list(self._secondaries)
+                        if body.map.ydeg > 0
+                    ]
+                )
+            lndetL = math.cast(
+                [
+                    body.map._L.lndet
+                    for body in [self._primary] + list(self._secondaries)
+                    if body.map.ydeg > 0
+                ]
+            )
+            return linalg.lnlike_woodbury(
+                X1, f, self._C.inverse, mu, LInv, self._C.lndet, lndetL
+            )
+        else:
+            if not dense_L:
+                # We can just concatenate vectors
+                L = math.concatenate(
+                    [
+                        body.map._L.value * math.ones(body.map.Ny - 1)
+                        for body in [self._primary] + list(self._secondaries)
+                        if body.map.ydeg > 0
+                    ]
+                )
+            else:
+                L = math.block_diag(
+                    *[
+                        body.map._L.value * math.eye(body.map.Ny - 1)
+                        for body in [self._primary] + list(self._secondaries)
+                        if body.map.ydeg > 0
+                    ]
+                )
+            return linalg.lnlike(X1, f, self._C.value, mu, L)

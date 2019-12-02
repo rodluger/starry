@@ -68,9 +68,9 @@ class MapBase(object):
         self._drorder = drorder
 
         # Basic properties
-        self._inc = 0.5 * np.pi
-        self._obl = 0.0
-        self._alpha = 0.0
+        self._inc = math.cast(0.5 * np.pi)
+        self._obl = math.cast(0.0)
+        self._alpha = math.cast(0.0)
 
         # Units
         self.angle_unit = kwargs.pop("angle_unit", units.degree)
@@ -341,9 +341,9 @@ class MapBase(object):
 
         else:
 
-            inc = 0.5 * np.pi
-            obl = 0
-            theta = [0]
+            inc = np.array(0.5 * np.pi)
+            obl = np.array(0)
+            theta = np.array([0])
 
         # Render the map if needed
         image = kwargs.pop("image", None)
@@ -1105,7 +1105,7 @@ class YlmBase(object):
 
         # Compute & return the MAP solution
         self._yhat, self._cho_ycov = linalg.MAP(
-            X1, f, self._C.cholesky, self._mu, self._L.cholesky
+            X1, f, self._C.cholesky, self._mu, self._L.inverse
         )
         return self._yhat, self._cho_ycov
 
@@ -1123,7 +1123,7 @@ class YlmBase(object):
                 quantity returned by :py:meth:`design_matrix`. Default is
                 None, in which case this is computed based on ``kwargs``.
             woodbury (bool, optional): Solve the linear problem using the
-                Woodbury identity. Default is True.
+                Woodbury identity? Default is True.
             kwargs (optional): Keyword arguments to be passed directly to
                 :py:meth:`design_matrix`, if a design matrix is not provided.
 
@@ -1149,7 +1149,18 @@ class YlmBase(object):
         f = self._flux - X0
 
         # Compute the likelihood
-        return linalg.lnlike(X1, f, self._C.matrix, self._mu, self._L.matrix)
+        if woodbury:
+            return linalg.lnlike_woodbury(
+                X1,
+                f,
+                self._C.inverse,
+                self._mu,
+                self._L.inverse,
+                self._C.lndet,
+                self._L.lndet,
+            )
+        else:
+            return linalg.lnlike(X1, f, self._C.value, self._mu, self._L.value)
 
     @property
     def yhat(self):
