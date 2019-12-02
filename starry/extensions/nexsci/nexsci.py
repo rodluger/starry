@@ -88,7 +88,7 @@ def from_nexsci(name, limb_darkening=[0.4, 0.2]):
         m = 1
         logger.warning("Stellar mass is NaN, setting to 1.")
 
-    star = Primary(Map(udeg=len(limb_darkening), L=1), r=1, m=m)
+    star = Primary(Map(udeg=len(limb_darkening), amp=1), r=1, m=m)
     for idx in range(len(limb_darkening)):
         star.map[idx + 1] = limb_darkening[idx]
     planets = []
@@ -105,7 +105,7 @@ def from_nexsci(name, limb_darkening=[0.4, 0.2]):
         )
 
         planet = Secondary(
-            Map(L=0),
+            Map(amp=0),
             porb=d.pl_orbper,
             t0=d.pl_tranmid,
             r=r,

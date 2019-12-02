@@ -45,6 +45,5 @@ def test_lazy_nexsci_local():
     assert isinstance(sys, starry.System)
 
     # Pass a random name
-    with pytest.warns(UserWarning):
-        sys = from_nexsci("random")
+    sys = from_nexsci("random")
     assert isinstance(sys, starry.System)
