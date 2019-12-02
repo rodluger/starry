@@ -21,6 +21,7 @@ tests/cov.xml
 coverage.sh
 tmp.mp4
 tmp.pdf
+planets.csv
 
 tmp/*
 tests/cpp/test
