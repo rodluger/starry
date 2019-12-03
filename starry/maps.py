@@ -569,9 +569,8 @@ class MapBase(object):
         """Check whether the limb darkening profile (if any) is physical.
 
         This method uses Sturm's theorem to ensure that the limb darkening
-        intensity
-            - is positive everywhere
-            - decreases monotonically toward the limb
+        intensity is positive everywhere and decreases monotonically toward
+        the limb.
 
         Returns:
             bool: Whether or not the limb darkening profile is physical.
