@@ -15,13 +15,6 @@ def run(infile, outfile, timeout=1200):
     with open(infile, "r") as f:
         nb = nbformat.read(f, as_version=4)
 
-    # Process custom tags
-    for cell in nb.get("cells", []):
-        if "hide_input" in cell.get("metadata", {}).get("tags", []):
-            cell["source"] = "#hide_input\n" + cell["source"]
-        if "hide_output" in cell.get("metadata", {}).get("tags", []):
-            cell["source"] = "#hide_output\n" + cell["source"]
-
     # Execute the notebook
     if nb["metadata"].get("nbsphinx_execute", True):
         ep = ExecutePreprocessor(timeout=timeout, kernel_name="python3")
