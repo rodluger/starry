@@ -11,10 +11,7 @@ fi
 conda install -y -q -c conda-forge pandoc
 pip install -U sphinx
 pip install -U "nbconvert>=5.5"
-git clone https://github.com/rodluger/nbsphinx
-pushd nbsphinx
-python setup.py develop
-popd
+pip install nbsphinx==0.5.0
 pip install -U coverage-badge
 pip install -U ipywidgets
 

@@ -11,54 +11,11 @@ import starry
 from ipywidgets.embed import DEFAULT_EMBED_REQUIREJS_URL
 import sys
 
-# -- HACK the modules for the docs --------------------------------------------
-
+# Add the CWD to the path
 sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
-if sys.version_info[0] < 3:
-    import __builtin__ as builtins
-else:
-    import builtins
-builtins.__STARRY_DOCS__ = True
 
-
-class CustomBase(object):
-    @property
-    def amp(self):
-        """
-        The overall amplitude of the map in arbitrary units. This factor
-        multiplies the intensity and the flux and is thus proportional to the
-        luminosity of the object. For multi-wavelength maps, this is a vector
-        corresponding to the amplitude of each wavelength bin.
-        """
-        pass
-
-
-class _Map(CustomBase, starry.maps.YlmBase, starry.maps.MapBase):
-    __doc__ = starry.maps.YlmBase.__doc__
-
-
-class _LimbDarkenedMap(
-    CustomBase, starry.maps.LimbDarkenedBase, starry.maps.MapBase
-):
-    __doc__ = starry.maps.LimbDarkenedBase.__doc__
-
-
-class _ReflectedLightMap(
-    CustomBase, starry.maps.ReflectedBase, starry.maps.MapBase
-):
-    __doc__ = starry.maps.ReflectedBase.__doc__
-
-
-class _RadialVelocityMap(CustomBase, starry.maps.RVBase, starry.maps.MapBase):
-    __doc__ = starry.maps.RVBase.__doc__
-
-
-starry._Map = _Map
-starry._LimbDarkenedMap = _LimbDarkenedMap
-starry._ReflectedLightMap = _ReflectedLightMap
-starry._RadialVelocityMap = _RadialVelocityMap
-autoclass_content = "both"
-
+# Custom hacks for this project
+import hacks
 
 # -- Project information -----------------------------------------------------
 
@@ -113,11 +70,15 @@ html_last_updated_fmt = "%Y %b %d at %H:%M:%S UTC"
 
 html_static_path = ["_static"]
 html_js_files = ["js/version.js", "js/fix_class_names.js"]
-html_css_files = ["css/hide_input.css"]
 
 # -- Extension settings ------------------------------------------------------
 
+# autodocs
+autoclass_content = "both"
+autosummary_generate = True
+autodoc_docstring_signature = True
 
+# for our js hacks
 html_js_files += [DEFAULT_EMBED_REQUIREJS_URL]
 
 # Add a heading to notebooks
@@ -130,9 +91,11 @@ nbsphinx_prolog = """
     "%",
     branch,
 )
+
+# nbsphinx
 nbsphinx_prompt_width = 0
 nbsphinx_timeout = 600
 napoleon_use_ivar = True
+
+# todos
 todo_include_todos = True
-autosummary_generate = True
-autodoc_docstring_signature = True
