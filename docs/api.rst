@@ -1,8 +1,6 @@
 The starry Python API
 =====================
 
-This page describes the two main ways of interfacing with the ``starry`` code.
-
 The :doc:`Map <MapFactory>` class factory allows users to quickly instantiate
 surface maps described by spherical harmonics.
 
@@ -18,3 +16,11 @@ objects, each with their own surface map.
         :maxdepth: 2
 
         Kepler
+
+The :doc:`config <config>` class contains global configuration options for
+``starry``.
+
+    .. toctree::
+        :maxdepth: 2
+
+        config

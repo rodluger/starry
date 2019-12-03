@@ -6,7 +6,11 @@ rootLogger.addHandler(logging.StreamHandler())
 
 
 class Config(object):
-    """Global config container."""
+    """Global config container.
+
+    Users should access this as :py:obj:`starry.config`.
+
+    """
 
     def __init__(self):
         self._allow_changes = True
