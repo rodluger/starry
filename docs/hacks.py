@@ -3,6 +3,7 @@ import nbsphinx
 import os
 import sys
 import starry
+import re
 
 
 # Hack `nbsphinx` to enable us to hide certain input cells in the
@@ -13,6 +14,15 @@ nbsphinx.RST_TEMPLATE = nbsphinx.RST_TEMPLATE.replace(
 )
 nbsphinx.RST_TEMPLATE = nbsphinx.RST_TEMPLATE.replace(
     "{% endblock input %}", "{% endif %}\n{% endblock input %}"
+)
+
+# Hack `nbsphinx` to prevent fixed-height images, which look
+# terrible when the window is resized!
+nbsphinx.RST_TEMPLATE = re.sub(
+    r"\{%- if height %\}.*?{% endif %}",
+    "",
+    nbsphinx.RST_TEMPLATE,
+    flags=re.DOTALL,
 )
 
 # Hack the docstrings of the different base maps. This allows us
