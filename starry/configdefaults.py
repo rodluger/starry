@@ -9,9 +9,10 @@ class Config(object):
     """Global config container."""
 
     def __init__(self):
-        self._allow_lazy_changes = True
+        self._allow_changes = True
         self.lazy = True
         self.quiet = False
+        self.profile = False
 
     @property
     def rootLogger(self):
@@ -41,6 +42,11 @@ class Config(object):
         """Indicates whether or not to suppress informational messages."""
         return self._quiet
 
+    @property
+    def profile(self):
+        """Enable function profiling in lazy mode."""
+        return self._profile
+
     @quiet.setter
     def quiet(self, value):
         self._quiet = value
@@ -51,7 +57,7 @@ class Config(object):
 
     @lazy.setter
     def lazy(self, value):
-        if (self._allow_lazy_changes) or (self._lazy == value):
+        if (self._allow_changes) or (self._lazy == value):
             self._lazy = value
         else:
             raise Exception(
@@ -59,5 +65,15 @@ class Config(object):
                 "Config options should be set before instantiating any `starry` maps."
             )
 
+    @profile.setter
+    def profile(self, value):
+        if (self._allow_changes) or (self._profile == value):
+            self._profile = value
+        else:
+            raise Exception(
+                "Cannot change the `starry` config at this time. "
+                "Config options should be set before instantiating any `starry` maps."
+            )
+
     def freeze(self):
-        self._allow_lazy_changes = False
+        self._allow_changes = False

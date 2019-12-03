@@ -5,4 +5,4 @@ font.size : 16
 text.usetex : False
 font.family : sans-serif
 font.sans-serif : Liberation Sans
-mathtext.fontset : custom
+mathtext.fontset : cm

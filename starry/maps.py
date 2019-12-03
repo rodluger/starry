@@ -45,6 +45,7 @@ class MapBase(object):
     # The map amplitude (just an attribute)
     amp = Amplitude()
 
+    # pragma: no cover
     def _no_spectral(self):
         if self.nw is not None:
             raise NotImplementedError(
