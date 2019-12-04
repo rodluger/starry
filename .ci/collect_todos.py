@@ -22,17 +22,29 @@ template = """
 
 """
 
+# Get the JSON data from leasot
+with open("docs/todos.json", "r") as f:
+    data = json.load(f)
+
+if len(data) == 0:
+    verbs = "are", "need"
+    value = "no more"
+elif len(data) == 1:
+    verb = "is", "needs"
+    value = "one"
+else:
+    verb = "are", "need"
+    value = len(data)
+
 contents = """
 todos
 -----
 
-A list of outstanding todo items throughout the code.
+There {} **{}** todo items that {} to be addressed in ``starry``.
 
-"""
-
-# Get the JSON data from leasot
-with open("docs/todos.json", "r") as f:
-    data = json.load(f)
+""".format(
+    verbs[0], value, verbs[1]
+)
 
 # Parse each entry and add to the .rst file
 for entry in data:
