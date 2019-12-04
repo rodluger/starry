@@ -8,7 +8,7 @@ if [[ -n $CONDA ]]; then
 fi
 
 # Install leasot
-npm install --global leasot
+sudo npm install --global leasot
 
 # Grab the todos
 leasot -S -i starry/lib/vendor starry tests -r json > docs/todos.json
