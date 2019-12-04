@@ -179,13 +179,27 @@ class OpsYlm(object):
         return pTA1
 
     @autocompile
-    def intensity(self, lat, lon, y, u, f):
-        """Compute the intensity (static, no diff. rot)."""
+    def intensity(self, lat, lon, y, u, f, alpha_theta):
+        """Compute the intensity at a point or a set of points."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
 
         # Compute the polynomial basis at the point
         pT = self.pT(xpt, ypt, zpt)
+
+        # Apply the differential rotation operator
+        if self.diffrot:
+            if self.nw is None:
+                y = tt.reshape(
+                    self.tensordotD(tt.reshape(y, (1, -1)), [alpha_theta]),
+                    (-1,),
+                )
+            else:
+                y = tt.transpose(
+                    self.tensordotD(
+                        tt.transpose(y), tt.ones(self.nw) * alpha_theta
+                    )
+                )
 
         # Transform the map to the polynomial basis
         A1y = ts.dot(self.A1, y)
@@ -676,13 +690,27 @@ class OpsReflected(OpsYlm):
         self.A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
 
     @autocompile
-    def intensity(self, lat, lon, y, u, f, xs, ys, zs):
+    def intensity(self, lat, lon, y, u, f, xs, ys, zs, alpha_theta):
         """Compute the intensity at a series of lat-lon points on the surface."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
 
         # Compute the polynomial basis at the point
         pT = self.pT(xpt, ypt, zpt)
+
+        # Apply the differential rotation operator
+        if self.diffrot:
+            if self.nw is None:
+                y = tt.reshape(
+                    self.tensordotD(tt.reshape(y, (1, -1)), [alpha_theta]),
+                    (-1,),
+                )
+            else:
+                y = tt.transpose(
+                    self.tensordotD(
+                        tt.transpose(y), tt.ones(self.nw) * alpha_theta
+                    )
+                )
 
         # Transform the map to the polynomial basis
         A1y = ts.dot(self.A1, y)

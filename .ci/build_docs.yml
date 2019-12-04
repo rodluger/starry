@@ -17,6 +17,11 @@ jobs:
   - bash: .ci/get_notebooks.sh
     displayName: 'Get notebooks'
 
+  - bash: .ci/collect_todos.sh
+    displayName: 'Collect todos'
+    env:
+      GHSHA1: $(Build.SourceVersion)
+
   - bash: .ci/build_docs.sh
     displayName: 'Build docs'
     env:

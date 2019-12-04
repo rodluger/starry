@@ -22,6 +22,8 @@ coverage.sh
 tmp.mp4
 tmp.pdf
 planets.csv
+docs/todos.json
+docs/todos.rst
 
 tmp/*
 tests/cpp/test

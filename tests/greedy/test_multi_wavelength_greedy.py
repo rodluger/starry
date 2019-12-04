@@ -77,7 +77,7 @@ class TestShapes:
 
 def test_amplitude():
     """Test the amplitude attribute of a multi-wavelength map."""
-    map = starry.Map(nw=5)
+    map = starry.Map(ydeg=1, nw=5)
     assert np.allclose(map.amp, np.ones(5))
     map.amp = 10.0
     assert np.allclose(map.amp, 10.0 * np.ones(5))

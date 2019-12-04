@@ -56,13 +56,8 @@ def test_diffrot(visualize=False):
         # "Tropics" should agree within 2 degrees
         assert np.all(diff[tropics] < 2)
 
-    # In case we want to actually see the images
-    if visualize:
-        import matplotlib.pyplot as plt
-
-        fig, ax = plt.subplots(5, figsize=(5, 10))
-        for k in range(5):
-            ax[k].imshow(images[k], extent=(-180, 180, -90, 90))
-            ax[k].plot(lon_exact[k], lat)
-            ax[k].plot(lon_starry[k], lat)
-        plt.show()
+    # Finally, check that the intensity we get when calling
+    # `map.intensity` agrees with that from `map.render`
+    I1 = map.intensity(lat=lat[250], lon=lon, theta=360)
+    I2 = images[-1][250, :]
+    assert np.allclose(I1, I2)

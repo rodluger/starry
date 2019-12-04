@@ -779,7 +779,7 @@ class YlmBase(object):
             self._alpha,
         )
 
-    def intensity(self, lat=0, lon=0):
+    def intensity(self, lat=0, lon=0, **kwargs):
         """
         Compute and return the intensity of the map.
 
@@ -788,10 +788,9 @@ class YlmBase(object):
                 the intensity in units of :py:attr:`angle_unit`.
             lon (scalar or vector, optional): longitude at which to evaluate
                 the intensity in units of :py:attr:`angle_unit``.
-
-        .. todo::
-
-            Implement `theta` keyword for differentially-rotating maps.
+            theta (scalar, optional): For differentially rotating maps only,
+                the angular phase at which to evaluate the intensity.
+                Default 0.
 
         """
         # Get the Cartesian points
@@ -799,9 +798,16 @@ class YlmBase(object):
         lat *= self._angle_factor
         lon *= self._angle_factor
 
+        # If differentially rotating, allow a `theta` keyword
+        if self.drorder > 0:
+            alpha_theta = math.cast(kwargs.get("theta", 0.0)) * self.alpha
+            alpha_theta *= self._angle_factor
+        else:
+            alpha_theta = math.cast(0.0)
+
         # Compute & return
         return self.amp * self.ops.intensity(
-            lat, lon, self._y, self._u, self._f
+            lat, lon, self._y, self._u, self._f, alpha_theta
         )
 
     def render(self, res=300, projection="ortho", theta=0.0):
@@ -1420,6 +1426,9 @@ class RVBase(object):
                 the intensity in units of :py:attr:`angle_unit`.
             rv (bool, optional): If True, computes the velocity-weighted
                 intensity instead. Defaults to True.
+            theta (scalar, optional): For differentially rotating maps only,
+                the angular phase at which to evaluate the intensity.
+                Default 0.
 
         """
         # Compute the velocity-weighted intensity if `rv==True`
@@ -1662,7 +1671,7 @@ class ReflectedBase(object):
             self._alpha,
         )
 
-    def intensity(self, lat=0, lon=0, xs=0, ys=0, zs=1):
+    def intensity(self, lat=0, lon=0, xs=0, ys=0, zs=1, **kwargs):
         """
         Compute and return the intensity of the map.
 
@@ -1677,7 +1686,9 @@ class ReflectedBase(object):
                 source relative to this body in units of this body's radius.
             zs (scalar or vector, optional): z coordinate of the illumination
                 source relative to this body in units of this body's radius.
-
+            theta (scalar, optional): For differentially rotating maps only,
+                the angular phase at which to evaluate the intensity.
+                Default 0.
         """
         # Get the Cartesian points
         lat, lon = math.vectorize(*math.cast(lat, lon))
@@ -1687,7 +1698,7 @@ class ReflectedBase(object):
         # Get the source position
         xs, ys, zs = math.vectorize(*math.cast(xs, ys, zs))
 
-        # Compute & return
+        # Get the amplitude
         if self.nw is None or config.lazy:
             amp = self.amp
         else:
@@ -1695,8 +1706,17 @@ class ReflectedBase(object):
             # so we must reshape `amp` to take the product correctly
             amp = self.amp[np.newaxis, :, np.newaxis]
 
+        # If differentially rotating, allow a `theta` keyword
+        if self.drorder > 0:
+            alpha_theta = math.cast(kwargs.get("theta", 0.0)) * self.alpha
+            alpha_theta *= self._angle_factor
+        else:
+            alpha_theta = math.cast(0.0)
+            self._check_kwargs("intensity", kwargs)
+
+        # Compute & return
         return amp * self.ops.intensity(
-            lat, lon, self._y, self._u, self._f, xs, ys, zs
+            lat, lon, self._y, self._u, self._f, xs, ys, zs, alpha_theta
         )
 
     def render(
