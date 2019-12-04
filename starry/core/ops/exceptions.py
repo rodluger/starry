@@ -68,11 +68,10 @@ class RaiseValueErrorIfOp(tt.Op):
             raise ValueError(self.message)
 
     def grad(self, inputs, gradients):
-        # TODO: Is this actually necessary?
         return [inputs[0] * 0.0]
 
 
-def RaiseValueErrorOp(msg, shape):
-    return tt.as_tensor_variable(np.empty(shape)) * tt.RaiseValueErrorIfOp(
-        msg
-    )(True)
+def RaiseValueErrorOp(msg, shape=()):
+    return tt.as_tensor_variable(np.ones(shape)) * RaiseValueErrorIfOp(msg)(
+        True
+    )

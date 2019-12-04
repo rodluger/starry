@@ -35,9 +35,55 @@ def test_quiet():
         logger.removeHandler(ch)
 
 
-def test_check_kwargs_body():
+def test_check_kwargs_map(caplog):
+    """Test that we capture bad keyword arguments."""
     starry.config.quiet = False
-    with warnings.catch_warnings(record=True) as w:
-        body = starry.Primary(starry.Map(), giraffe=10)
-        assert len(w) == 1
-        assert "Invalid keyword `giraffe`" in str(w[-1].message)
+    caplog.clear()
+    map = starry.Map(giraffe=10)
+    assert len(caplog.records) >= 1
+    assert any(
+        [
+            "Invalid keyword `giraffe`" in str(rec.message)
+            for rec in caplog.records
+        ]
+    )
+
+
+def test_check_kwargs_map_flux(caplog):
+    """Test that we capture bad keyword arguments."""
+    starry.config.quiet = False
+    caplog.clear()
+    flux = starry.Map().flux(giraffe=10)
+    assert len(caplog.records) >= 1
+    assert any(
+        [
+            "Invalid keyword `giraffe`" in str(rec.message)
+            for rec in caplog.records
+        ]
+    )
+
+
+def test_check_kwargs_body(caplog):
+    """Test that we capture bad keyword arguments."""
+    starry.config.quiet = False
+    caplog.clear()
+    body = starry.Primary(starry.Map(), giraffe=10)
+    assert len(caplog.records) >= 1
+    assert any(
+        [
+            "Invalid keyword `giraffe`" in str(rec.message)
+            for rec in caplog.records
+        ]
+    )
+
+
+def test_coefficient_numbers():
+    map = starry.Map(ydeg=2, udeg=3)
+    assert map.ydeg == 2
+    assert map.udeg == 3
+    assert map.fdeg == 0
+    assert map.deg == 5
+    assert map.Ny == 9
+    assert map.Nu == 4
+    assert map.Nf == 1
+    assert map.drorder == 0

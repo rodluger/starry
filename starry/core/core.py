@@ -221,7 +221,13 @@ class OpsYlm(object):
                     theta,
                     alpha,
                 ),
-                tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                tt.transpose(
+                    self.tensordotD(
+                        tt.tile(y, [theta.shape[0], 1]), theta * alpha
+                    )
+                )
+                if self.diffrot
+                else tt.transpose(tt.tile(y, [theta.shape[0], 1])),
             )
         else:
             Ry = ifelse(
@@ -670,7 +676,7 @@ class OpsReflected(OpsYlm):
         self.A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
 
     @autocompile
-    def intensity(self, lat, lon, y, u, f, xo, yo, zo):
+    def intensity(self, lat, lon, y, u, f, xs, ys, zs):
         """Compute the intensity at a series of lat-lon points on the surface."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
@@ -695,7 +701,7 @@ class OpsReflected(OpsYlm):
                 tt.reshape(zpt, [1, -1]),
             )
         )
-        I = self.compute_illumination(xyz, xo, yo, zo)
+        I = self.compute_illumination(xyz, xs, ys, zs)
 
         # Add an extra dimension for the wavelength
         if self.nw is not None:
@@ -724,27 +730,32 @@ class OpsReflected(OpsYlm):
         return tt.dot(pT, A1y)
 
     @autocompile
-    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
+    def X(self, theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha):
         """Compute the light curve design matrix."""
         # Determine shapes
         rows = theta.shape[0]
         cols = (self.ydeg + 1) ** 2
+        X = tt.zeros((rows, cols))
 
         # Compute the occultation mask
         b = tt.sqrt(xo ** 2 + yo ** 2)
         b_rot = tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
         b_occ = tt.invert(b_rot)
+        i_rot = tt.arange(b.size)[b_rot]
         i_occ = tt.arange(b.size)[b_occ]
+
+        # Rotation operator
+        # -----------------
 
         # Compute the semi-minor axis of the terminator
         # and the reflectance integrals
-        r2 = xo ** 2 + yo ** 2 + zo ** 2
-        bterm = -zo / tt.sqrt(r2)
+        r2 = xs[i_rot] ** 2 + ys[i_rot] ** 2 + zs[i_rot] ** 2
+        bterm = -zs[i_rot] / tt.sqrt(r2)
         rT = self.rT(bterm)
 
         # Transform to Ylms and rotate on the sky plane
         rTA1 = ts.dot(rT, self.A1Big)
-        theta_z = tt.arctan2(xo, yo)
+        theta_z = tt.arctan2(xs[i_rot], ys[i_rot])
         rTA1Rz = self.tensordotRz(rTA1, theta_z)
 
         # Apply limb darkening?
@@ -752,27 +763,36 @@ class OpsReflected(OpsYlm):
         A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
         rTA1Rz = tt.dot(rTA1Rz, A1InvFA1)
 
-        # Rotate to the correct phase
-        X = self.right_project(rTA1Rz, inc, obl, theta, alpha)
-
-        # Weight by the distance to the source
+        # Rotate to the correct phase and weight by the distance to the source
         # The factor of 2/3 ensures that the flux from a uniform map
         # with unit amplitude seen at noon is unity.
-        X /= (2.0 / 3.0) * tt.shape_padright(r2)
+        X = tt.set_subtensor(
+            X[i_rot],
+            self.right_project(rTA1Rz, inc, obl, theta[i_rot], alpha)
+            / (2.0 / 3.0 * tt.shape_padright(r2)),
+        )
 
-        # TODO: Implement occultations in reflected light
-        # Throw error if there's an occultation
-        X = X + RaiseValueErrorIfOp(
-            "Occultations in reflected light not yet implemented."
-        )(b_occ.any())
+        # Occultation operator
+        # --------------------
+
+        X = tt.set_subtensor(
+            X[i_occ],
+            RaiseValueErrorIfOp(
+                "Occultations in reflected light not yet implemented."
+            )(b_occ.any()),
+        )
 
         # We're done
         return X
 
     @autocompile
-    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha):
+    def flux(
+        self, theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, y, u, f, alpha
+    ):
         """Compute the reflected light curve."""
-        return tt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, u, f, alpha), y)
+        return tt.dot(
+            self.X(theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha), y
+        )
 
     @autocompile
     def render(
@@ -787,9 +807,9 @@ class OpsReflected(OpsYlm):
         u,
         f,
         alpha,
-        xo,
-        yo,
-        zo,
+        xs,
+        ys,
+        zs,
     ):
         """Render the map on a Cartesian grid."""
         # Compute the Cartesian grid
@@ -813,7 +833,13 @@ class OpsReflected(OpsYlm):
                     theta,
                     alpha,
                 ),
-                tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                tt.transpose(
+                    self.tensordotD(
+                        tt.tile(y, [theta.shape[0], 1]), theta * alpha
+                    )
+                )
+                if self.diffrot
+                else tt.transpose(tt.tile(y, [theta.shape[0], 1])),
             )
         else:
             Ry = ifelse(
@@ -842,7 +868,7 @@ class OpsReflected(OpsYlm):
         image = tt.dot(pT, A1Ry)
 
         # Compute the illumination profile
-        I = self.compute_illumination(xyz, xo, yo, zo)
+        I = self.compute_illumination(xyz, xs, ys, zs)
 
         # Add an extra dimension for the wavelength
         if self.nw is not None:
@@ -856,13 +882,13 @@ class OpsReflected(OpsYlm):
         # We need the shape to be (nframes, npix, npix)
         return tt.reshape(image, [res, res, -1]).dimshuffle(2, 0, 1)
 
-    def compute_illumination(self, xyz, xo, yo, zo):
+    def compute_illumination(self, xyz, xs, ys, zs):
         """Compute the illumination profile when rendering maps."""
-        r2 = xo ** 2 + yo ** 2 + zo ** 2
-        b = -zo / tt.sqrt(r2)  # semi-minor axis of terminator
-        invsr = 1.0 / tt.sqrt(xo ** 2 + yo ** 2)
-        cosw = yo * invsr
-        sinw = -xo * invsr
+        r2 = xs ** 2 + ys ** 2 + zs ** 2
+        b = -zs / tt.sqrt(r2)  # semi-minor axis of terminator
+        invsr = 1.0 / tt.sqrt(xs ** 2 + ys ** 2)
+        cosw = ys * invsr
+        sinw = -xs * invsr
         xrot = (
             tt.shape_padright(xyz[0]) * cosw + tt.shape_padright(xyz[1]) * sinw
         )
@@ -1078,24 +1104,47 @@ class OpsSystem(object):
             pri_f,
             pri_alpha,
         )
-        phase_sec = tt.as_tensor_variable(
-            [
-                sec_L[i]
-                * sec.map.ops.X(
-                    theta_sec[i],
-                    -x[:, i],
-                    -y[:, i],
-                    -z[:, i],
-                    math.to_tensor(0.0),  # occultor of zero radius
-                    sec_inc[i],
-                    sec_obl[i],
-                    sec_u[i],
-                    sec_f[i],
-                    sec_alpha[i],
-                )
-                for i, sec in enumerate(self.secondaries)
-            ]
-        )
+        if self._reflected:
+            phase_sec = tt.as_tensor_variable(
+                [
+                    sec_L[i]
+                    * sec.map.ops.X(
+                        theta_sec[i],
+                        -x[:, i],
+                        -y[:, i],
+                        -z[:, i],
+                        -x[:, i],  # not used
+                        -y[:, i],  # not used
+                        -z[:, i],  # not used, since...
+                        math.to_tensor(0.0),  # occultor of zero radius
+                        sec_inc[i],
+                        sec_obl[i],
+                        sec_u[i],
+                        sec_f[i],
+                        sec_alpha[i],
+                    )
+                    for i, sec in enumerate(self.secondaries)
+                ]
+            )
+        else:
+            phase_sec = tt.as_tensor_variable(
+                [
+                    sec_L[i]
+                    * sec.map.ops.X(
+                        theta_sec[i],
+                        -x[:, i],
+                        -y[:, i],
+                        -z[:, i],
+                        math.to_tensor(0.0),  # occultor of zero radius
+                        sec_inc[i],
+                        sec_obl[i],
+                        sec_u[i],
+                        sec_f[i],
+                        sec_alpha[i],
+                    )
+                    for i, sec in enumerate(self.secondaries)
+                ]
+            )
 
         # Compute any occultations
         occ_pri = tt.zeros_like(phase_pri)
@@ -1150,39 +1199,29 @@ class OpsSystem(object):
                 tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
             )
             idx = tt.arange(b.shape[0])[b_occ]
-            occ_sec = tt.set_subtensor(
-                occ_sec[i, idx],
-                occ_sec[i, idx]
-                + sec_L[i]
-                * sec.map.ops.X(
-                    theta_sec[i, idx],
-                    xo[idx],
-                    yo[idx],
-                    zo[idx],
-                    ro,
-                    sec_inc[i],
-                    sec_obl[i],
-                    sec_u[i],
-                    sec_f[i],
-                    sec_alpha[i],
+            if self._reflected:
+                occ_sec = tt.set_subtensor(
+                    occ_sec[i, idx],
+                    occ_sec[i, idx]
+                    + sec_L[i]
+                    * sec.map.ops.X(
+                        theta_sec[i, idx],
+                        xo[idx],  # the primary is both the source...
+                        yo[idx],
+                        zo[idx],
+                        xo[idx],  # ... and the occultor
+                        yo[idx],
+                        zo[idx],
+                        ro,
+                        sec_inc[i],
+                        sec_obl[i],
+                        sec_u[i],
+                        sec_f[i],
+                        sec_alpha[i],
+                    )
+                    - phase_sec[i, idx],
                 )
-                - phase_sec[i, idx],
-            )
-
-        # Compute secondary-secondary occultations
-        for i, sec in enumerate(self.secondaries):
-            for j, _ in enumerate(self.secondaries):
-                if i == j:
-                    continue
-                xo = (-x[:, i] + x[:, j]) / sec_r[i]
-                yo = (-y[:, i] + y[:, j]) / sec_r[i]
-                zo = (-z[:, i] + z[:, j]) / sec_r[i]
-                ro = sec_r[j] / sec_r[i]
-                b = tt.sqrt(xo ** 2 + yo ** 2)
-                b_occ = tt.invert(
-                    tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
-                )
-                idx = tt.arange(b.shape[0])[b_occ]
+            else:
                 occ_sec = tt.set_subtensor(
                     occ_sec[i, idx],
                     occ_sec[i, idx]
@@ -1202,13 +1241,64 @@ class OpsSystem(object):
                     - phase_sec[i, idx],
                 )
 
-                # NOTE: Not implemented in reflected light
-                # Throw error if there's an occultation in reflected light
+        # Compute secondary-secondary occultations
+        for i, sec in enumerate(self.secondaries):
+            for j, _ in enumerate(self.secondaries):
+                if i == j:
+                    continue
+                xo = (-x[:, i] + x[:, j]) / sec_r[i]
+                yo = (-y[:, i] + y[:, j]) / sec_r[i]
+                zo = (-z[:, i] + z[:, j]) / sec_r[i]
+                ro = sec_r[j] / sec_r[i]
+                b = tt.sqrt(xo ** 2 + yo ** 2)
+                b_occ = tt.invert(
+                    tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
+                )
+                idx = tt.arange(b.shape[0])[b_occ]
                 if self._reflected:
-                    occ_sec = occ_sec + RaiseValueErrorIfOp(
-                        "Secondary-secondary occultations in reflected "
-                        + "light not implemented."
-                    )(b_occ.any())
+                    xs = -x[:, i] / sec_r[i]
+                    ys = -y[:, i] / sec_r[i]
+                    zs = -z[:, i] / sec_r[i]
+                    occ_sec = tt.set_subtensor(
+                        occ_sec[i, idx],
+                        occ_sec[i, idx]
+                        + sec_L[i]
+                        * sec.map.ops.X(
+                            theta_sec[i, idx],
+                            xs[idx],  # the primary is the source
+                            ys[idx],
+                            zs[idx],
+                            xo[idx],  # another secondary is the occultor
+                            yo[idx],
+                            zo[idx],
+                            ro,
+                            sec_inc[i],
+                            sec_obl[i],
+                            sec_u[i],
+                            sec_f[i],
+                            sec_alpha[i],
+                        )
+                        - phase_sec[i, idx],
+                    )
+                else:
+                    occ_sec = tt.set_subtensor(
+                        occ_sec[i, idx],
+                        occ_sec[i, idx]
+                        + sec_L[i]
+                        * sec.map.ops.X(
+                            theta_sec[i, idx],
+                            xo[idx],
+                            yo[idx],
+                            zo[idx],
+                            ro,
+                            sec_inc[i],
+                            sec_obl[i],
+                            sec_u[i],
+                            sec_f[i],
+                            sec_alpha[i],
+                        )
+                        - phase_sec[i, idx],
+                    )
 
         # Concatenate the design matrices
         X_pri = phase_pri + occ_pri

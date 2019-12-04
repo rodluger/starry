@@ -16,6 +16,7 @@ def test_default_body_units():
     assert body.mass_unit == u.Msun
     assert body.angle_unit == u.degree
     assert body.time_unit == u.day
+    assert body.map.angle_unit == u.degree
 
 
 def test_default_system_units():
@@ -27,7 +28,7 @@ def test_default_system_units():
 
 def test_unit_conversions():
     body = starry.Secondary(
-        starry.Map(),
+        starry.Map(ydeg=1, inc=1.0, obl=1.0, angle_unit=u.radian),
         r=1.0,
         m=1.0,
         inc=1.0,
@@ -56,6 +57,10 @@ def test_unit_conversions():
     assert body.t0 == 1.0
     assert body._t0 == body.time_unit.in_units(u.day)
     assert body.ecc == 0.0
+    assert body.map.inc == 1.0
+    assert body.map._inc == body.map.angle_unit.in_units(u.radian)
+    assert body.map.obl == 1.0
+    assert body.map._obl == body.map.angle_unit.in_units(u.radian)
 
     # First test the orbital period
     assert body.porb == 1.0

@@ -12,12 +12,12 @@ map_tmp = starry.Map(1)
 compute_ortho_grid = theano.function([], map_tmp.ops.compute_ortho_grid(res))
 
 
-def flux(map, xo=0, yo=0, zo=1, ro=0, **kwargs):
+def flux(map, xs=0, ys=0, zs=0, xo=0, yo=0, zo=1, ro=0, **kwargs):
     x, y, z = compute_ortho_grid()
     occulted = (xo - x) ** 2 + (yo - y) ** 2 < ro ** 2
     occulted = occulted.reshape(res, res)
     if map._ops_class_ == starry.core.OpsReflected:
-        image = map.render(res=res, xo=xo, yo=yo, zo=zo, **kwargs)
+        image = map.render(res=res, xs=xs, ys=ys, zs=zs, **kwargs)
     else:
         image = map.render(res=res, **kwargs)
     image[occulted] = 0.0
@@ -48,7 +48,7 @@ def test_flux_reflected(n_tests=10):
         theta = np.random.random() * 360
         source = np.random.randn(3)
         kwargs = dict(
-            theta=theta, xo=source[0], yo=source[1], zo=source[2], ro=0
+            theta=theta, xs=source[0], ys=source[1], zs=source[2], ro=0
         )
         assert np.allclose(
             map.flux(**kwargs), flux(map, **kwargs), rtol=1e-3, atol=1e-3

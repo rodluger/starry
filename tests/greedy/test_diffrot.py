@@ -1,0 +1,68 @@
+# -*- coding: utf-8 -*-
+"""
+Test differential rotation.
+
+"""
+import starry
+import numpy as np
+
+
+def test_diffrot(visualize=False):
+    """Test differential rotation on a map with a cosine-like meridional band."""
+    map = starry.Map(ydeg=5, drorder=1)
+    map.alpha = 0.1
+
+    # This is a bit hacky: compute the Ylm expansion of cos(latitude)
+    # then rotate it 90 degrees so it's cos(longitude) instead.
+    # Expanding a longitudinal cosine directly doesn't work as well
+    map.load(np.tile(np.cos(np.linspace(-np.pi, np.pi, 500)), (1000, 1)).T)
+    y = (
+        map.ops.dotR(map.y.reshape(1, -1), 0, 0, 1, 0.5 * np.pi)
+        .eval()
+        .reshape(-1)
+    )
+    map[1:, :] = y[1:]
+
+    # Render the map at 5 phases
+    theta = [0, 90, 180, 270, 360]
+    res = 300
+    images = map.render(projection="rect", theta=theta, res=res)
+    lat = np.linspace(-90, 90, res, endpoint=False)
+    lon = np.linspace(-180, 180, res, endpoint=False)
+
+    # Compute the longitude of the maximum on the side
+    # facing the observer; it's easiest if we just mask the far side
+    images_masked = np.array(images)
+    images_masked[:, :, : (res // 4)] = 0
+    images_masked[:, :, -(res // 4) :] = 0
+    lon_starry = [lon[np.argmax(img, axis=1)] for img in images_masked]
+
+    # Compute the expected longitude of the maximum given
+    # the linear differential rotation law
+    lon_exact = [
+        -theta_i * map.alpha * np.sin(lat * np.pi / 180) ** 2
+        for theta_i in theta
+    ]
+
+    # Check that the expressions agree within the error of the expansion
+    poles = (np.abs(lat) > 60) & (np.abs(lat) < 89)
+    tropics = np.abs(lat) < 60
+    for k in range(5):
+        diff = np.abs(lon_exact[k] - lon_starry[k])
+
+        # Poles should agree within 5 degrees
+        assert np.all(diff[poles] < 5)
+
+        # "Tropics" should agree within 2 degrees
+        assert np.all(diff[tropics] < 2)
+
+    # In case we want to actually see the images
+    if visualize:
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(5, figsize=(5, 10))
+        for k in range(5):
+            ax[k].imshow(images[k], extent=(-180, 180, -90, 90))
+            ax[k].plot(lon_exact[k], lat)
+            ax[k].plot(lon_starry[k], lat)
+        plt.show()

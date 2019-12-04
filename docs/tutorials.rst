@@ -17,7 +17,7 @@ The basics
    notebooks/Orientation.ipynb
    notebooks/OrbitViz.ipynb
 
-Eclipsing Binary Example
+Eclipsing binary example
 ------------------------
 
 .. toctree::
@@ -27,7 +27,6 @@ Eclipsing Binary Example
    notebooks/EclipsingBinary_Generate.ipynb
    notebooks/EclipsingBinary_PyMC3.ipynb
    notebooks/EclipsingBinary_Linear.ipynb
-   notebooks/EclipsingBinary_FullSolution.ipynb
 
 Advanced
 --------
@@ -41,6 +40,7 @@ Advanced
    notebooks/MultiWavelength.ipynb
    notebooks/RossiterMcLaughlin.ipynb
    notebooks/ReflectedLight.ipynb
+   notebooks/DifferentialRotation.ipynb
    notebooks/LightTravelDelay.ipynb
    notebooks/HotJupiterPhaseCurve.ipynb
 
@@ -51,8 +51,17 @@ Miscellaneous
    :titlesonly:
    :maxdepth: 1
 
-   notebooks/RVDerivation.ipynb
    notebooks/NullSpace.ipynb
    notebooks/StayingPositive.ipynb
    notebooks/LDNormalization.ipynb
+
+Under the hood
+--------------
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   notebooks/RVDerivation.ipynb
+   notebooks/MarginalLikelihoodTiming.ipynb
    notebooks/TimingTests.ipynb

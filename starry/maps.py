@@ -45,9 +45,8 @@ class MapBase(object):
     # The map amplitude (just an attribute)
     amp = Amplitude()
 
-    # pragma: no cover
     def _no_spectral(self):
-        if self.nw is not None:
+        if self.nw is not None:  # pragma: no cover
             raise NotImplementedError(
                 "Method not yet implemented for spectral maps."
             )
@@ -400,6 +399,9 @@ class MapBase(object):
 
         # Animation
         animated = nframes > 1
+        borders = []
+        latlines = []
+        lonlines = []
 
         if (
             not self.__props__["limbdarkened"]
@@ -413,14 +415,20 @@ class MapBase(object):
 
             # Grid lines
             if grid:
-                latlines = np.linspace(-90, 90, 7)[1:-1]
-                lonlines = np.linspace(-180, 180, 13)
-                for lat in latlines:
-                    ax.axhline(lat, color="k", lw=0.5, alpha=0.5, zorder=100)
-                for lon in lonlines:
-                    ax.axvline(lon, color="k", lw=0.5, alpha=0.5, zorder=100)
-            ax.set_xticks(lonlines)
-            ax.set_yticks(latlines)
+                lats = np.linspace(-90, 90, 7)[1:-1]
+                lons = np.linspace(-180, 180, 13)
+                latlines = [None for n in lats]
+                for n, lat in enumerate(lats):
+                    latlines[n] = ax.axhline(
+                        lat, color="k", lw=0.5, alpha=0.5, zorder=100
+                    )
+                lonlines = [None for n in lons]
+                for n, lon in enumerate(lons):
+                    lonlines[n] = ax.axvline(
+                        lon, color="k", lw=0.5, alpha=0.5, zorder=100
+                    )
+            ax.set_xticks(lons)
+            ax.set_yticks(lats)
             ax.set_xlabel("Longitude [deg]")
             ax.set_ylabel("Latitude [deg]")
 
@@ -438,17 +446,21 @@ class MapBase(object):
             if grid:
                 x = np.linspace(-1, 1, 10000)
                 y = np.sqrt(1 - x ** 2)
-                ax.plot(x, y, "k-", alpha=1, lw=1)
-                ax.plot(x, -y, "k-", alpha=1, lw=1)
-                lat_lines = get_ortho_latitude_lines(inc=inc, obl=obl)
-                for x, y in lat_lines:
-                    ax.plot(x, y, "k-", lw=0.5, alpha=0.5, zorder=100)
-                lon_lines = get_ortho_longitude_lines(
+                borders = [None, None]
+                (borders[0],) = ax.plot(x, y, "k-", alpha=1, lw=1)
+                (borders[1],) = ax.plot(x, -y, "k-", alpha=1, lw=1)
+                lats = get_ortho_latitude_lines(inc=inc, obl=obl)
+                latlines = [None for n in lats]
+                for n, l in enumerate(lats):
+                    (latlines[n],) = ax.plot(
+                        l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=100
+                    )
+                lons = get_ortho_longitude_lines(
                     inc=inc, obl=obl, theta=theta[0]
                 )
-                ll = [None for n in lon_lines]
-                for n, l in enumerate(lon_lines):
-                    (ll[n],) = ax.plot(
+                lonlines = [None for n in lons]
+                for n, l in enumerate(lons):
+                    (lonlines[n],) = ax.plot(
                         l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=100
                     )
 
@@ -466,7 +478,7 @@ class MapBase(object):
                     norm = colors.DivergingNorm(
                         vmin=vmin, vcenter=0, vmax=vmax
                     )
-                except AttributeError:
+                except AttributeError:  # pragma: no cover
                     # DivergingNorm was introduced in matplotlib 3.1
                     norm = colors.Normalize(vmin=vmin, vmax=vmax)
         img = ax.imshow(
@@ -491,21 +503,19 @@ class MapBase(object):
                     and len(theta) > 1
                     and self.nw is None
                 ):
-                    lon_lines = get_ortho_longitude_lines(
+                    lons = get_ortho_longitude_lines(
                         inc=inc, obl=obl, theta=theta[i]
                     )
-                    for n, l in enumerate(lon_lines):
-                        ll[n].set_xdata(l[0])
-                        ll[n].set_ydata(l[1])
-                    return img, ll
-                else:
-                    return (img,)
+                    for n, l in enumerate(lons):
+                        lonlines[n].set_xdata(l[0])
+                        lonlines[n].set_ydata(l[1])
+                return (img,) + tuple(lonlines + latlines + borders)
 
             ani = FuncAnimation(
                 fig,
                 updatefig,
                 interval=interval,
-                blit=False,
+                blit=True,
                 frames=image.shape[0],
             )
 
@@ -515,11 +525,11 @@ class MapBase(object):
                     ani.save(file, writer="ffmpeg", dpi=dpi)
                 elif file.endswith(".gif"):
                     ani.save(file, writer="imagemagick", dpi=dpi)
-                else:
+                else:  # pragma: no cover
                     # Try and see what happens!
                     ani.save(file, dpi=dpi)
                 plt.close()
-            else:
+            else:  # pragma: no cover
                 try:
                     if "zmqshell" in str(type(get_ipython())):
                         plt.close()
@@ -551,7 +561,7 @@ class MapBase(object):
                     )
                 fig.savefig(file)
                 plt.close()
-            else:
+            else:  # pragma: no cover
                 plt.show()
 
         # Check for invalid kwargs
@@ -653,7 +663,9 @@ class YlmBase(object):
 
     @alpha.setter
     def alpha(self, value):
-        if (self._drorder == 0) and not hasattr(self, "rv"):
+        if (self._drorder == 0) and not hasattr(
+            self, "rv"
+        ):  # pragma: no cover
             logger.warning(
                 "Parameter `drorder` is zero, so setting `alpha` has no effect."
             )
@@ -776,6 +788,10 @@ class YlmBase(object):
                 the intensity in units of :py:attr:`angle_unit`.
             lon (scalar or vector, optional): longitude at which to evaluate
                 the intensity in units of :py:attr:`angle_unit``.
+
+        .. todo::
+
+            Implement `theta` keyword for differentially-rotating maps.
 
         """
         # Get the Cartesian points
@@ -999,7 +1015,7 @@ class YlmBase(object):
 
         self.ops.minimize.setup(oversample=oversample, ntries=ntries)
         lat, lon, I = self.ops.get_minimum(self.y)
-        if return_info:
+        if return_info:  # pragma: no cover
             return (
                 lat / self._angle_factor,
                 lon / self._angle_factor,
@@ -1180,7 +1196,7 @@ class YlmBase(object):
         """
         if self._cho_ycov is None:
             raise ValueError("Please call `solve()` first.")
-        return linalg.cho_solve(self._cho_ycov, math.cast(np.eye(self.Ny - 1)))
+        return math.dot(self._cho_ycov, math.transpose(self._cho_ycov.T))
 
     def draw(self):
         """Draw a map from the posterior distribution and set the :py:attr:`y` map vector.
@@ -1286,13 +1302,6 @@ class LimbDarkenedBase(object):
             return image
         else:
             return math.reshape(image, [res, res])
-
-    def minimize(self, **kwargs):
-        r"""Find the global minimum of the map intensity.
-
-        """
-        # TODO
-        raise NotImplementedError("Method not yet available.")
 
 
 class RVBase(object):
@@ -1536,11 +1545,35 @@ class ReflectedBase(object):
 
     _ops_class_ = OpsReflected
 
+    def _get_flux_kwargs(self, kwargs):
+        xo = kwargs.pop("xo", 0.0)
+        yo = kwargs.pop("yo", 0.0)
+        zo = kwargs.pop("zo", 1.0)
+        ro = kwargs.pop("ro", 0.0)
+        xs = kwargs.pop("xs", 0.0)
+        ys = kwargs.pop("ys", 0.0)
+        zs = kwargs.pop("zs", 1.0)
+        theta = kwargs.pop("theta", 0.0)
+        theta, xs, ys, zs, xo, yo, zo = math.vectorize(
+            theta, xs, ys, zs, xo, yo, zo
+        )
+        theta, xs, ys, zs, xo, yo, zo, ro = math.cast(
+            theta, xs, ys, zs, xo, yo, zo, ro
+        )
+        theta *= self._angle_factor
+        return theta, xs, ys, zs, xo, yo, zo, ro
+
     def design_matrix(self, **kwargs):
         """
         Compute and return the light curve design matrix.
 
         Args:
+            xs (scalar or vector, optional): x coordinate of the illumination
+                source relative to this body in units of this body's radius.
+            ys (scalar or vector, optional): y coordinate of the illumination
+                source relative to this body in units of this body's radius.
+            zs (scalar or vector, optional): z coordinate of the illumination
+                source relative to this body in units of this body's radius.
             xo (scalar or vector, optional): x coordinate of the occultor
                 relative to this body in units of this body's radius.
             yo (scalar or vector, optional): y coordinate of the occultor
@@ -1553,15 +1586,11 @@ class ReflectedBase(object):
                 in units of :py:attr:`angle_unit`.
 
         .. note::
-            The occultor is assumed to be the illumination source. This is
-            the case, for example, of a planet being occulted by its star.
-            ``starry`` does not yet support occultations in reflected light
-            by objects other than the source of illumination; for instance,
-            a moon occulting a planet that is illuminated by a star.
+            ``starry`` does not yet support occultations in reflected light.
 
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
+        theta, xs, ys, zs, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Check for invalid kwargs
         self._check_kwargs("X", kwargs)
@@ -1569,6 +1598,9 @@ class ReflectedBase(object):
         # Compute & return
         return self.amp * self.ops.X(
             theta,
+            xs,
+            ys,
+            zs,
             xo,
             yo,
             zo,
@@ -1585,6 +1617,12 @@ class ReflectedBase(object):
         Compute and return the reflected flux from the map.
 
         Args:
+            xs (scalar or vector, optional): x coordinate of the illumination
+                source relative to this body in units of this body's radius.
+            ys (scalar or vector, optional): y coordinate of the illumination
+                source relative to this body in units of this body's radius.
+            zs (scalar or vector, optional): z coordinate of the illumination
+                source relative to this body in units of this body's radius.
             xo (scalar or vector, optional): x coordinate of the occultor
                 relative to this body in units of this body's radius.
             yo (scalar or vector, optional): y coordinate of the occultor
@@ -1597,15 +1635,11 @@ class ReflectedBase(object):
                 in units of :py:attr:`angle_unit`.
 
         .. note::
-            The occultor is assumed to be the illumination source. This is
-            the case, for example, of a planet being occulted by its star.
-            ``starry`` does not yet support occultations in reflected light
-            by objects other than the source of illumination; for instance,
-            a moon occulting a planet that is illuminated by a star.
+            ``starry`` does not yet support occultations in reflected light.
 
         """
         # Orbital kwargs
-        theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
+        theta, xs, ys, zs, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Check for invalid kwargs
         self._check_kwargs("flux", kwargs)
@@ -1613,6 +1647,9 @@ class ReflectedBase(object):
         # Compute & return
         return self.amp * self.ops.flux(
             theta,
+            xs,
+            ys,
+            zs,
             xo,
             yo,
             zo,
@@ -1625,7 +1662,7 @@ class ReflectedBase(object):
             self._alpha,
         )
 
-    def intensity(self, lat=0, lon=0, xo=0, yo=0, zo=1):
+    def intensity(self, lat=0, lon=0, xs=0, ys=0, zs=1):
         """
         Compute and return the intensity of the map.
 
@@ -1634,11 +1671,11 @@ class ReflectedBase(object):
                 the intensity in units of :py:attr:`angle_unit`.
             lon (scalar or vector, optional): longitude at which to evaluate
                 the intensity in units of :py:attr:`angle_unit`.
-            xo (scalar or vector, optional): x coordinate of the illumination
+            xs (scalar or vector, optional): x coordinate of the illumination
                 source relative to this body in units of this body's radius.
-            yo (scalar or vector, optional): y coordinate of the illumination
+            ys (scalar or vector, optional): y coordinate of the illumination
                 source relative to this body in units of this body's radius.
-            zo (scalar or vector, optional): z coordinate of the illumination
+            zs (scalar or vector, optional): z coordinate of the illumination
                 source relative to this body in units of this body's radius.
 
         """
@@ -1648,7 +1685,7 @@ class ReflectedBase(object):
         lon *= self._angle_factor
 
         # Get the source position
-        xo, yo, zo = math.vectorize(*math.cast(xo, yo, zo))
+        xs, ys, zs = math.vectorize(*math.cast(xs, ys, zs))
 
         # Compute & return
         if self.nw is None or config.lazy:
@@ -1659,7 +1696,7 @@ class ReflectedBase(object):
             amp = self.amp[np.newaxis, :, np.newaxis]
 
         return amp * self.ops.intensity(
-            lat, lon, self._y, self._u, self._f, xo, yo, zo
+            lat, lon, self._y, self._u, self._f, xs, ys, zs
         )
 
     def render(
@@ -1668,9 +1705,9 @@ class ReflectedBase(object):
         projection="ortho",
         illuminate=True,
         theta=0.0,
-        xo=0,
-        yo=0,
-        zo=1,
+        xs=0,
+        ys=0,
+        zs=1,
     ):
         """
         Compute and return the intensity of the map on a grid.
@@ -1693,11 +1730,11 @@ class ReflectedBase(object):
             theta (scalar or vector, optional): The map rotation phase in
                 units of :py:attr:`angle_unit`. If this is a vector, an
                 animation is generated. Defaults to ``0.0``.
-            xo (scalar or vector, optional): x coordinate of the illumination
+            xs (scalar or vector, optional): x coordinate of the illumination
                 source relative to this body in units of this body's radius.
-            yo (scalar or vector, optional): y coordinate of the illumination
+            ys (scalar or vector, optional): y coordinate of the illumination
                 source relative to this body in units of this body's radius.
-            zo (scalar or vector, optional): z coordinate of the illumination
+            zs (scalar or vector, optional): z coordinate of the illumination
                 source relative to this body in units of this body's radius.
 
         """
@@ -1713,10 +1750,10 @@ class ReflectedBase(object):
         # Convert stuff as needed
         projection = get_projection(projection)
         theta = math.cast(theta) * self._angle_factor
-        xo = math.cast(xo)
-        yo = math.cast(yo)
-        zo = math.cast(zo)
-        theta, xo, yo, zo = math.vectorize(theta, xo, yo, zo)
+        xs = math.cast(xs)
+        ys = math.cast(ys)
+        zs = math.cast(zs)
+        theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
         illuminate = int(illuminate)
 
         # Compute
@@ -1738,9 +1775,9 @@ class ReflectedBase(object):
             self._u,
             self._f,
             self._alpha,
-            xo,
-            yo,
-            zo,
+            xs,
+            ys,
+            zs,
         )
 
         # Squeeze?
@@ -1757,17 +1794,17 @@ class ReflectedBase(object):
             res = kwargs.pop("res", 300)
             projection = get_projection(kwargs.get("projection", "ortho"))
             theta = math.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
-            xo = math.cast(kwargs.pop("xo", 0))
-            yo = math.cast(kwargs.pop("yo", 0))
-            zo = math.cast(kwargs.pop("zo", 1))
-            theta, xo, yo, zo = math.vectorize(theta, xo, yo, zo)
+            xs = math.cast(kwargs.pop("xs", 0))
+            ys = math.cast(kwargs.pop("ys", 0))
+            zs = math.cast(kwargs.pop("zs", 1))
+            theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
             illuminate = int(kwargs.pop("illuminate", True))
 
             # Evaluate the variables
             theta = theta.eval()
-            xo = xo.eval()
-            yo = yo.eval()
-            zo = zo.eval()
+            xs = xs.eval()
+            ys = ys.eval()
+            zs = zs.eval()
             inc = self._inc.eval()
             obl = self._obl.eval()
             y = self._y.eval()
@@ -1787,9 +1824,9 @@ class ReflectedBase(object):
                 u,
                 f,
                 alpha,
-                xo,
-                yo,
-                zo,
+                xs,
+                ys,
+                zs,
             )
             kwargs["theta"] = theta / self._angle_factor
 

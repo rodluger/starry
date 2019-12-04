@@ -10,7 +10,9 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
 import os
-from warnings import warn
+import logging
+
+logger = logging.getLogger("starry.maps")
 
 
 __all__ = ["Primary", "Secondary", "System"]
@@ -171,7 +173,7 @@ class Body(object):
             for key in kwargs.keys():
                 message = "Invalid keyword `{0}` in call to `{1}()`. Ignoring."
                 message = message.format(key, method)
-                warn(message)
+                logger.warning(message)
 
 
 class Primary(Body):
@@ -403,9 +405,8 @@ class System(object):
             ``1`` for the trapezoid rule, or ``2`` for Simpson’s rule.
     """
 
-    # pragma: no cover
     def _no_spectral(self):
-        if self._primary._map.nw is not None:
+        if self._primary._map.nw is not None:  # pragma: no cover
             raise NotImplementedError(
                 "Method not yet implemented for spectral maps."
             )

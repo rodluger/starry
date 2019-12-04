@@ -28,18 +28,26 @@ def test_bad_ylm_indices():
     # Bad `l`
     with pytest.raises(ValueError) as e:
         x = map[2, 0]
+    with pytest.raises(ValueError) as e:
+        map[2, 0] = 1
 
     # Bad `l`
     with pytest.raises(ValueError) as e:
         x = map[-1, 0]
+    with pytest.raises(ValueError) as e:
+        map[-1, 0] = 1
 
     # Bad `m`
     x = map[1, 3]
     assert len(x) == 0
+    # TODO: It would be nice if `map[1, 3] = ...` raised
+    # an error, but currently it does nothing (silently).
 
     # Bad type
     with pytest.raises(ValueError) as e:
         x = map[2.3, 5.7]
+    with pytest.raises(ValueError) as e:
+        map[2.3, 5.7] = 1
 
 
 def test_bad_wavelength_indices():
@@ -48,10 +56,14 @@ def test_bad_wavelength_indices():
     # Bad index
     with pytest.raises(ValueError) as e:
         x = map[1, 0, -1]
+    with pytest.raises(ValueError) as e:
+        map[1, 0, -1] = 1
 
     # Bad type
     with pytest.raises(ValueError) as e:
         x = map[1, 0, "foo"]
+    with pytest.raises(ValueError) as e:
+        map[1, 0, "foo"] = 1
 
 
 def test_bad_ul_indices():
@@ -60,14 +72,20 @@ def test_bad_ul_indices():
     # Bad `l`
     with pytest.raises(ValueError) as e:
         x = map[-1]
+    with pytest.raises(ValueError) as e:
+        map[-1] = 1
 
     # Bad `l`
     with pytest.raises(ValueError) as e:
         x = map[3]
+    with pytest.raises(ValueError) as e:
+        map[3] = 1
 
     # Bad type
     with pytest.raises(ValueError) as e:
         x = map[map]
+    with pytest.raises(ValueError) as e:
+        map[map] = 1
 
 
 def test_bad_sys_settings():
@@ -153,3 +171,38 @@ def test_bad_sys_data():
 
     # Now check that this works
     sys.solve(t=[0.0])
+
+
+def test_bad_map_data():
+    map = starry.Map(ydeg=1)
+
+    # User didn't provide the covariance
+    with pytest.raises(ValueError) as e:
+        map.set_data([0.0])
+
+    # User didn't provide a dataset
+    with pytest.raises(ValueError) as e:
+        map.solve()
+
+    # Provide a dummy dataset
+    map.set_data([0.0], C=1.0)
+
+    # User didn't provide a prior
+    with pytest.raises(ValueError) as e:
+        map.solve()
+
+    # Provide a prior
+    map.set_prior(L=1.0)
+
+    # Now check that this works
+    map.solve()
+
+
+def test_bad_map_types():
+    # RV + Reflected
+    with pytest.raises(NotImplementedError) as e:
+        starry.Map(reflected=True, rv=True)
+
+    # Limb-darkened + spectral
+    with pytest.raises(NotImplementedError) as e:
+        starry.Map(udeg=2, nw=10)

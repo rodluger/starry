@@ -99,10 +99,17 @@ class OpsLinAlg(object):
     """Linear algebra operations for maps."""
 
     def __init__(self):
-        solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
-        solve_upper = sla.Solve(A_structure="upper_triangular", lower=False)
-        self.cho_solve = lambda cho_A, b: solve_upper(
-            tt.transpose(cho_A), solve_lower(cho_A, b)
+        self._solve_lower = sla.Solve(
+            A_structure="lower_triangular", lower=True
+        )
+        self._solve_upper = sla.Solve(
+            A_structure="upper_triangular", lower=False
+        )
+
+    @autocompile
+    def cho_solve(self, cho_A, b):
+        return self._solve_upper(
+            tt.transpose(cho_A), self._solve_lower(cho_A, b)
         )
 
     @autocompile

@@ -26,10 +26,10 @@ map.inc = inc_true
 # Generate a synthetic light curve with just a little noise
 theta = np.linspace(0, 360, 100)
 phi = 3.5 * theta
-xo = np.cos(phi * np.pi / 180)
-yo = 0.1 * np.cos(phi * np.pi / 180)
-zo = np.sin(phi * np.pi / 180)
-kwargs = dict(theta=theta, xo=xo, yo=yo, zo=zo)
+xs = np.cos(phi * np.pi / 180)
+ys = 0.1 * np.cos(phi * np.pi / 180)
+zs = np.sin(phi * np.pi / 180)
+kwargs = dict(theta=theta, xs=xs, ys=ys, zs=zs)
 flux = map.flux(**kwargs)
 sigma = 1e-5
 np.random.seed(1)
@@ -68,6 +68,11 @@ def test_solve(L, C):
     LnL0 = multivariate_normal.logpdf(mu, mean=mu, cov=cov)
     LnL = multivariate_normal.logpdf([0.1, 0.2, 0.3], mean=mu, cov=cov)
     assert LnL0 - LnL < 5.00
+
+    # Check that we can draw from the posterior
+    assert np.allclose(map.yhat, mu)
+    assert np.allclose(map.ycov, cov)
+    map.draw()
 
 
 @pytest.mark.parametrize("L,C,woodbury", lnlike_inputs)

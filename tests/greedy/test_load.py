@@ -37,9 +37,20 @@ def test_load_normalization():
     sig1 = np.std(img1)
     mu2 = np.mean(img2)
     sig2 = np.std(img2)
-
     print(sig2 - sig1)
 
     # Assert within a couple percent
     assert np.abs(mu1 - mu2) < 0.01
     assert np.abs(sig1 - sig2) < 0.02
+
+
+def test_force_psd():
+    """Test the positive semi-definite feature."""
+    # High res map
+    map = starry.Map(10)
+
+    # Render the image with starry with aggressive minimum finding
+    map.load("spot", force_psd=True, oversample=3, ntries=2)
+
+    # Ensure positive everywhere
+    assert map.render(projection="rect").min() >= 0

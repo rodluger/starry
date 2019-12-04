@@ -54,7 +54,7 @@ class TestShapes:
 
     def test_intensity_matrix(self, map):
         if map.reflected:
-            assert map.intensity(lat=[0, 30, 60], xo=[1, 2]).eval().shape == (
+            assert map.intensity(lat=[0, 30, 60], xs=[1, 2]).eval().shape == (
                 3,
                 map.nw,
                 2,

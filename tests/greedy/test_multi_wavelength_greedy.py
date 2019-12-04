@@ -50,7 +50,7 @@ class TestShapes:
 
     def test_intensity_matrix(self, map):
         if map.reflected:
-            assert map.intensity(lat=[0, 30, 60], xo=[1, 2]).shape == (
+            assert map.intensity(lat=[0, 30, 60], xs=[1, 2]).shape == (
                 3,
                 map.nw,
                 2,
@@ -73,3 +73,11 @@ class TestShapes:
     def test_render(self, map):
         res = 100
         map.render(res=res).shape == (map.nw, res, res)
+
+
+def test_amplitude():
+    """Test the amplitude attribute of a multi-wavelength map."""
+    map = starry.Map(nw=5)
+    assert np.allclose(map.amp, np.ones(5))
+    map.amp = 10.0
+    assert np.allclose(map.amp, 10.0 * np.ones(5))

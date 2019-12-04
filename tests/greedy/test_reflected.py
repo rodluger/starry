@@ -10,6 +10,13 @@ import numpy as np
 def test_one_over_r_squared(n_tests=10):
     map = starry.Map(2, reflected=True)
     flux0 = map.flux()
-    zo = np.linspace(1, 10, 100)
-    flux = map.flux(xo=0, yo=0, zo=zo)
-    assert np.allclose(flux, flux0 / zo ** 2)
+    zs = np.linspace(1, 10, 100)
+    flux = map.flux(xs=0, ys=0, zs=zs)
+
+    import matplotlib.pyplot as plt
+
+    plt.plot(zs, flux)
+    plt.plot(zs, flux0 / zs ** 2)
+    plt.show()
+
+    assert np.allclose(flux, flux0 / zs ** 2)

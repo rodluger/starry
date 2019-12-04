@@ -205,12 +205,12 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     f = [np.pi, 0.0, 0.0, 0.0]
     source = np.random.randn(10, 3)
     source /= np.sqrt(np.sum(source ** 2, axis=1)).reshape(-1, 1)
-    xo = source[:, 0]
-    yo = source[:, 1]
-    zo = source[:, 2]
+    xs = source[:, 0]
+    ys = source[:, 1]
+    zs = source[:, 2]
     verify_grad(
         map.ops.intensity,
-        (lat, lon, y, u, f, xo, yo, zo),
+        (lat, lon, y, u, f, xs, ys, zs),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
@@ -222,10 +222,10 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     theano.config.compute_test_value = "off"
     map = starry.Map(ydeg=2, reflected=True)
     theta = np.linspace(0, 30, 10)
-    xo = np.linspace(-1.5, 1.5, len(theta))
-    yo = np.ones_like(xo) * 0.3
-    zo = -1.0 * np.ones_like(xo)
-    ro = 0.1
+    xs = np.linspace(-1.5, 1.5, len(theta))
+    ys = np.ones_like(xs) * 0.3
+    zs = -1.0 * np.ones_like(xs)
+    ro = 0.0
     inc = 85.0 * np.pi / 180.0
     obl = 30.0 * np.pi / 180.0
     y = np.ones(9)
@@ -238,7 +238,7 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     # Just rotation
     verify_grad(
         func,
-        (theta, xo, yo, zo, ro, inc, obl, u, f, alpha),
+        (theta, xs, ys, zs, xs, ys, zs, ro, inc, obl, u, f, alpha),
         abs_tol=abs_tol,
         rel_tol=rel_tol,
         eps=eps,
