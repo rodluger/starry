@@ -30,10 +30,10 @@ if len(data) == 0:
     verbs = "are", "need"
     value = "no more"
 elif len(data) == 1:
-    verb = "is", "needs"
+    verbs = "is", "needs"
     value = "one"
 else:
-    verb = "are", "need"
+    verbs = "are", "need"
     value = len(data)
 
 contents = """
