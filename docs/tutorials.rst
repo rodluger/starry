@@ -14,6 +14,7 @@ The basics
    :maxdepth: 1
 
    notebooks/Basics.ipynb
+   notebooks/LazyGreedy.ipynb
    notebooks/Orientation.ipynb
    notebooks/OrbitViz.ipynb
 
