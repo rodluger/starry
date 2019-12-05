@@ -280,37 +280,37 @@ PYBIND11_MODULE(_c_ops, m) {
 
   // Differential rotation operator (matrices)
   Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
-                           const Vector<double> &theta) {
-    ops.D.tensordotD(M.template cast<Scalar>(), theta.template cast<Scalar>());
+                           const Vector<double> &wta) {
+    ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>());
     return ops.D.tensordotD_result.template cast<double>();
   });
 
   // Differential rotation operator (vectors)
   Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const RowVector<double> &M,
-                           const Vector<double> &theta) {
-    ops.D.tensordotD(M.template cast<Scalar>(), theta.template cast<Scalar>());
+                           const Vector<double> &wta) {
+    ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>());
     return ops.D.tensordotD_result.template cast<double>();
   });
 
   // Gradient of differential rotation operator (vectors)
-  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const RowVector<double> &M,
-                           const Vector<double> &theta,
-                           const Matrix<double> &bMD) {
-    ops.D.tensordotD(M.template cast<Scalar>(), theta.template cast<Scalar>(),
-                     bMD.template cast<Scalar>());
-    return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
-                          ops.D.tensordotD_btheta.template cast<double>());
-  });
+  Ops.def(
+      "tensordotD", [](starry::Ops<Scalar> &ops, const RowVector<double> &M,
+                       const Vector<double> &wta, const Matrix<double> &bMD) {
+        ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>(),
+                         bMD.template cast<Scalar>());
+        return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
+                              ops.D.tensordotD_bwta.template cast<double>());
+      });
 
   // Gradient of differential rotation operator (matrices)
-  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
-                           const Vector<double> &theta,
-                           const Matrix<double> &bMD) {
-    ops.D.tensordotD(M.template cast<Scalar>(), theta.template cast<Scalar>(),
-                     bMD.template cast<Scalar>());
-    return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
-                          ops.D.tensordotD_btheta.template cast<double>());
-  });
+  Ops.def(
+      "tensordotD", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
+                       const Vector<double> &wta, const Matrix<double> &bMD) {
+        ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>(),
+                         bMD.template cast<Scalar>());
+        return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
+                              ops.D.tensordotD_bwta.template cast<double>());
+      });
 
   // Sturm's theorem to get number of poly roots between `a` and `b`
   m.def("nroots",

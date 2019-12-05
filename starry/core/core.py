@@ -179,7 +179,7 @@ class OpsYlm(object):
         return pTA1
 
     @autocompile
-    def intensity(self, lat, lon, y, u, f, alpha_theta):
+    def intensity(self, lat, lon, y, u, f, wta):
         """Compute the intensity at a point or a set of points."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
@@ -191,14 +191,11 @@ class OpsYlm(object):
         if self.diffrot:
             if self.nw is None:
                 y = tt.reshape(
-                    self.tensordotD(tt.reshape(y, (1, -1)), [alpha_theta]),
-                    (-1,),
+                    self.tensordotD(tt.reshape(y, (1, -1)), [wta]), (-1,)
                 )
             else:
                 y = tt.transpose(
-                    self.tensordotD(
-                        tt.transpose(y), tt.ones(self.nw) * alpha_theta
-                    )
+                    self.tensordotD(tt.transpose(y), tt.ones(self.nw) * wta)
                 )
 
         # Transform the map to the polynomial basis
@@ -690,7 +687,7 @@ class OpsReflected(OpsYlm):
         self.A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
 
     @autocompile
-    def intensity(self, lat, lon, y, u, f, xs, ys, zs, alpha_theta):
+    def intensity(self, lat, lon, y, u, f, xs, ys, zs, wta):
         """Compute the intensity at a series of lat-lon points on the surface."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
@@ -702,14 +699,11 @@ class OpsReflected(OpsYlm):
         if self.diffrot:
             if self.nw is None:
                 y = tt.reshape(
-                    self.tensordotD(tt.reshape(y, (1, -1)), [alpha_theta]),
-                    (-1,),
+                    self.tensordotD(tt.reshape(y, (1, -1)), [wta]), (-1,)
                 )
             else:
                 y = tt.transpose(
-                    self.tensordotD(
-                        tt.transpose(y), tt.ones(self.nw) * alpha_theta
-                    )
+                    self.tensordotD(tt.transpose(y), tt.ones(self.nw) * wta)
                 )
 
         # Transform the map to the polynomial basis

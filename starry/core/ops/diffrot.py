@@ -46,6 +46,6 @@ class tensordotDGradientOp(tt.Op):
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
-        bM, btheta = self.base_op.func(*inputs)
+        bM, bwta = self.base_op.func(*inputs)
         outputs[0][0] = np.reshape(bM, np.shape(inputs[0]))
-        outputs[1][0] = np.reshape(btheta, np.shape(inputs[1]))
+        outputs[1][0] = np.reshape(bwta, np.shape(inputs[1]))

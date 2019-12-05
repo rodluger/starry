@@ -6,6 +6,8 @@ Test multi-wavelength maps.
 import starry
 import pytest
 import itertools
+import numpy as np
+
 
 # Params combinations
 ydeg = [2]
