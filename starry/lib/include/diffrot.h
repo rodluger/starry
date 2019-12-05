@@ -365,7 +365,9 @@ class DiffRot {
       DA1bfT.col(i) = D * A1bfT.col(i);
 
       RowVector<Scalar> dfdwta_i = M.row(i) * A1Inv * dD * A1;
-      tensordotD_bwta(i) = dfdwta_i.cwiseProduct(bf.row(i)).sum();
+      //tensordotD_bwta(i) = dfdwta_i.cwiseProduct(bf.row(i)).sum();
+
+      tensordotD_bwta(i) = dfdwta_i.dot(bf.row(i).transpose());
 
     }
 
