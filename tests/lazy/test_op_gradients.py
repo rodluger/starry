@@ -387,7 +387,3 @@ def test_diffrot(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             eps=eps,
             n_tests=1,
         )
-
-
-if __name__ == "__main__":
-    test_diffrot()

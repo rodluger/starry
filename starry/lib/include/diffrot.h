@@ -235,10 +235,11 @@ class DiffRot {
       return;
     }
 
-    // Temporary matrices for computing bM
+    // Temporary matrices for computing bM and bwta
     Matrix<Scalar> A1bfT = A1 * bf.transpose();
     Matrix<Scalar> DA1bfT(ND, npts);
-    
+    Matrix<Scalar> MA1Inv = M * A1Inv;
+
     // Loop over all times
     for (int i = 0; i < wta.size(); ++i) {
       t_c.clear();
@@ -364,11 +365,8 @@ class DiffRot {
       // Used to compute bM below
       DA1bfT.col(i) = D * A1bfT.col(i);
 
-      RowVector<Scalar> dfdwta_i = M.row(i) * A1Inv * dD * A1;
-      //tensordotD_bwta(i) = dfdwta_i.cwiseProduct(bf.row(i)).sum();
-
-      tensordotD_bwta(i) = dfdwta_i.dot(bf.row(i).transpose());
-
+      // bwta
+      tensordotD_bwta(i) = MA1Inv.row(i) * dD * A1bfT.col(i);
     }
 
     // Finish computing bM
