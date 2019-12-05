@@ -65,32 +65,32 @@ class OpsYlm(object):
         logger.info("Done.")
 
         # Solution vectors
-        self.sT = sTOp(self._c_ops.sT, self._c_ops.N)
-        self.rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
-        self.rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))
+        self._sT = sTOp(self._c_ops.sT, self._c_ops.N)
+        self._rT = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rT))
+        self._rTA1 = tt.shape_padleft(tt.as_tensor_variable(self._c_ops.rTA1))
 
         # Change of basis matrices
-        self.A = ts.as_sparse_variable(self._c_ops.A)
-        self.A1 = ts.as_sparse_variable(self._c_ops.A1)
-        self.A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv)
+        self._A = ts.as_sparse_variable(self._c_ops.A)
+        self._A1 = ts.as_sparse_variable(self._c_ops.A1)
+        self._A1Inv = ts.as_sparse_variable(self._c_ops.A1Inv)
 
         # Rotation operations
-        self.tensordotRz = tensordotRzOp(self._c_ops.tensordotRz)
-        self.dotR = dotROp(self._c_ops.dotR)
+        self._tensordotRz = tensordotRzOp(self._c_ops.tensordotRz)
+        self._dotR = dotROp(self._c_ops.dotR)
 
         # Filter
-        # TODO: Make this sparse
-        self.F = FOp(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
+        # TODO: Make the filter operator sparse
+        self._F = FOp(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
 
         # Differential rotation
-        self.tensordotD = tensordotDOp(self._c_ops.tensordotD)
+        self._tensordotD = tensordotDOp(self._c_ops.tensordotD)
 
         # Misc
-        self.spotYlm = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
-        self.pT = pTOp(self._c_ops.pT, self.deg)
+        self._spotYlm = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
+        self._pT = pTOp(self._c_ops.pT, self.deg)
         if self.nw is None:
             if self._reflected:
-                self.minimize = minimizeOp(
+                self._minimize = minimizeOp(
                     self.unweighted_intensity,
                     self.P,
                     self.ydeg,
@@ -98,23 +98,71 @@ class OpsYlm(object):
                     self.fdeg,
                 )
             else:
-                self.minimize = minimizeOp(
+                self._minimize = minimizeOp(
                     self.intensity, self.P, self.ydeg, self.udeg, self.fdeg
                 )
         else:
-            # TODO?
-            self.minimize = None
-        self.LimbDarkIsPhysical = LDPhysicalOp(_c_ops.nroots)
+            # TODO: Implement minimization for spectral maps?
+            self._minimize = None
+        self._LimbDarkIsPhysical = LDPhysicalOp(_c_ops.nroots)
+
+    @property
+    def rT(self):
+        return self._rT
+
+    @property
+    def rTA1(self):
+        return self._rTA1
+
+    @property
+    def A(self):
+        return self._A
+
+    @property
+    def A1(self):
+        return self._A1
+
+    @property
+    def A1Inv(self):
+        return self._A1Inv
+
+    @autocompile
+    def sT(self, b, r):
+        return self._sT(b, r)
+
+    @autocompile
+    def tensordotRz(self, matrix, theta):
+        return self._tensordotRz(matrix, theta)
+
+    @autocompile
+    def dotR(self, matrix, ux, uy, uz, theta):
+        return self._dotR(matrix, ux, uy, uz, theta)
+
+    @autocompile
+    def F(self, u, f):
+        return self._F(u, f)
+
+    @autocompile
+    def tensordotD(self, matrix, wta):
+        return self._tensordotD(matrix, wta)
+
+    @autocompile
+    def spotYlm(self, amp, sigma, lat, lon):
+        return self._spotYlm(amp, sigma, lat, lon)
+
+    @autocompile
+    def pT(self, x, y, z):
+        return self._pT(x, y, z)
 
     @autocompile
     def limbdark_is_physical(self, u):
         """Return True if the limb darkening profile is physical."""
-        return self.LimbDarkIsPhysical(u)
+        return self._LimbDarkIsPhysical(u)
 
     @autocompile
     def get_minimum(self, y):
         """Compute the location and value of the intensity minimum."""
-        return self.minimize(y)
+        return self._minimize(y)
 
     @autocompile
     def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
@@ -278,6 +326,7 @@ class OpsYlm(object):
         y_new /= y_new[0]
         return y_new, L_new
 
+    @autocompile
     def compute_ortho_grid(self, res):
         """Compute the polynomial basis on the plane of the sky."""
         dx = 2.0 / res
@@ -287,6 +336,7 @@ class OpsYlm(object):
         z = tt.sqrt(1 - x ** 2 - y ** 2)
         return tt.concatenate((x, y, z))
 
+    @autocompile
     def compute_rect_grid(self, res):
         """Compute the polynomial basis on a rectangular lat/lon grid."""
         dx = np.pi / res
@@ -296,9 +346,10 @@ class OpsYlm(object):
         x = tt.reshape(tt.cos(lat) * tt.cos(lon), [1, -1])
         y = tt.reshape(tt.cos(lat) * tt.sin(lon), [1, -1])
         z = tt.reshape(tt.sin(lat), [1, -1])
-        R = self.RAxisAngle([1, 0, 0], -np.pi / 2)
+        R = self.RAxisAngle(tt.as_tensor_variable([1.0, 0.0, 0.0]), -np.pi / 2)
         return tt.dot(R, tt.concatenate((x, y, z)))
 
+    @autocompile
     def right_project(self, M, inc, obl, theta, alpha, tensor_theta=True):
         r"""Apply the projection operator on the right.
 
@@ -363,6 +414,7 @@ class OpsYlm(object):
 
         return M
 
+    @autocompile
     def left_project(self, M, inc, obl, theta, alpha, tensor_theta=True):
         r"""Apply the projection operator on the left.
 
@@ -431,11 +483,13 @@ class OpsYlm(object):
 
         return tt.transpose(MT)
 
+    @autocompile
     def set_map_vector(self, vector, inds, vals):
         """Set the elements of the theano map coefficient tensor."""
         res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
         return res
 
+    @autocompile
     def latlon_to_xyz(self, lat, lon):
         """Convert lat-lon points to Cartesian points."""
         # TODO: Check that these if statements are OK
@@ -449,6 +503,7 @@ class OpsYlm(object):
         xyz = tt.transpose(tt.dot(R, [0.0, 0.0, 1.0]))
         return xyz[0], xyz[1], xyz[2]
 
+    @autocompile
     def RAxisAngle(self, axis=[0, 1, 0], theta=0):
         """Wigner axis-angle rotation matrix."""
 
@@ -499,14 +554,14 @@ class OpsLD(object):
         self.nw = nw
 
         # Set up the ops
-        self.get_cl = GetClOp()
-        self.limbdark = LimbDarkOp()
-        self.LimbDarkIsPhysical = LDPhysicalOp(_c_ops.nroots)
+        self._get_cl = GetClOp()
+        self._limbdark = LimbDarkOp()
+        self._LimbDarkIsPhysical = LDPhysicalOp(_c_ops.nroots)
 
     @autocompile
     def limbdark_is_physical(self, u):
         """Return True if the limb darkening profile is physical."""
-        return self.LimbDarkIsPhysical(u)
+        return self._LimbDarkIsPhysical(u)
 
     @autocompile
     def intensity(self, mu, u):
@@ -526,7 +581,7 @@ class OpsLD(object):
         i_occ = tt.arange(b.size)[b_occ]
 
         # Get the Agol `c` coefficients
-        c = self.get_cl(u)
+        c = self._get_cl(u)
         if self.udeg == 0:
             c_norm = c / (np.pi * c[0])
         else:
@@ -536,7 +591,7 @@ class OpsLD(object):
         los = zo[i_occ]
         r = ro * tt.ones_like(los)
         flux = tt.set_subtensor(
-            flux[i_occ], self.limbdark(c_norm, b[i_occ], r, los)[0]
+            flux[i_occ], self._limbdark(c_norm, b[i_occ], r, los)[0]
         )
         return flux
 
@@ -557,11 +612,11 @@ class OpsLD(object):
     def render(self, res, projection, theta, inc, obl, y, u, f, alpha):
         """Render the map on a Cartesian grid."""
         nframes = tt.shape(theta)[0]
-        image = self._render(res, u)
+        image = self.render_ld(res, u)
         return tt.tile(image, (nframes, 1, 1))
 
     @autocompile
-    def _render(self, res, u):
+    def render_ld(self, res, u):
         """Simplified version of `render` w/o the extra params.
 
         The method `render` requires a bunch of dummy params for
@@ -589,6 +644,7 @@ class OpsLD(object):
         # We need the shape to be (nframes, npix, npix)
         return tt.reshape(intensity, (1, res, res))
 
+    @autocompile
     def set_map_vector(self, vector, inds, vals):
         """Set the elements of the theano map coefficient tensor."""
         res = tt.set_subtensor(vector[inds], vals * tt.ones_like(vector[inds]))
@@ -683,8 +739,16 @@ class OpsReflected(OpsYlm):
 
     def __init__(self, *args, **kwargs):
         super(OpsReflected, self).__init__(*args, reflected=True, **kwargs)
-        self.rT = rTReflectedOp(self._c_ops.rTReflected, self._c_ops.N)
-        self.A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
+        self._rT = rTReflectedOp(self._c_ops.rTReflected, self._c_ops.N)
+        self._A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
+
+    @property
+    def A1Big(self):
+        return self._A1Big
+
+    @autocompile
+    def rT(self, b):
+        return self._rT(b)
 
     @autocompile
     def intensity(self, lat, lon, y, u, f, xs, ys, zs, wta):
@@ -904,6 +968,7 @@ class OpsReflected(OpsYlm):
         # We need the shape to be (nframes, npix, npix)
         return tt.reshape(image, [res, res, -1]).dimshuffle(2, 0, 1)
 
+    @autocompile
     def compute_illumination(self, xyz, xs, ys, zs):
         """Compute the illumination profile when rendering maps."""
         r2 = xs ** 2 + ys ** 2 + zs ** 2

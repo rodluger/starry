@@ -16,12 +16,7 @@ def test_diffrot(visualize=False):
     # then rotate it 90 degrees so it's cos(longitude) instead.
     # Expanding a longitudinal cosine directly doesn't work as well
     map.load(np.tile(np.cos(np.linspace(-np.pi, np.pi, 500)), (1000, 1)).T)
-    y = (
-        map.ops.dotR(map.y.reshape(1, -1), 0, 0, 1, 0.5 * np.pi)
-        .eval()
-        .reshape(-1)
-    )
-    map[1:, :] = y[1:]
+    map.rotate([0, 0, 1], 90)
 
     # Render the map at 5 phases
     theta = [0, 90, 180, 270, 360]

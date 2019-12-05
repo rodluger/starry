@@ -52,6 +52,9 @@ def _get_type(arg):
         - an integer (`int`, `np.int`, `np.int16`, `np.int32`, `np.int64`)
         - a numpy boolean (`np.array(True)`, `np.array(False)`)
         - a numpy float array with ndim equal to 0, 1, 2, or 3
+
+    # TODO: Cast lists to arrays and floats to np.array(float)
+
     """
     ttype = type(arg)
     if is_theano(arg):

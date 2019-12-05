@@ -378,7 +378,7 @@ class MapBase(object):
                     # Explicitly call the compiled version of `render`
                     image = self.amp.eval().reshape(
                         -1, 1, 1
-                    ) * self.ops._render(res, u)
+                    ) * self.ops.render_ld(res, u)
 
             else:
 
@@ -957,6 +957,31 @@ class YlmBase(object):
                 else:
                     self._y[1:] *= fac
 
+    def rotate(self, axis, theta):
+        """Rotate the current map vector an angle ``theta`` about ``axis``.
+
+        Args:
+            axis (vector): The axis about which to rotate the map.
+            theta (scalar): The angle of (counter-clockwise) rotation.
+        """
+        axis = math.cast(axis)
+        axis /= math.sqrt(math.sum(axis ** 2))
+        # Note that we rotate by -theta since
+        # this is the *RHS* rotation operator
+        y = self.ops.dotR(
+            math.transpose(
+                math.reshape(self.y, (-1, 1 if self.nw is None else self.nw))
+            ),
+            axis[0],
+            axis[1],
+            axis[2],
+            -math.cast(theta * self._angle_factor),
+        )
+        if self.nw is None:
+            self._y = y[0]
+        else:
+            self._y = math.transpose(y)
+
     def add_spot(
         self, amp, sigma=0.1, lat=0.0, lon=0.0, preserve_luminosity=False
     ):
@@ -1019,14 +1044,14 @@ class YlmBase(object):
         # Not implemented for spectral
         self._no_spectral()
 
-        self.ops.minimize.setup(oversample=oversample, ntries=ntries)
+        self.ops._minimize.setup(oversample=oversample, ntries=ntries)
         lat, lon, I = self.ops.get_minimum(self.y)
         if return_info:  # pragma: no cover
             return (
                 lat / self._angle_factor,
                 lon / self._angle_factor,
                 self._amp * I,
-                self.ops.minimize.result,
+                self.ops._minimize.result,
             )
         else:
             return (
@@ -1301,7 +1326,7 @@ class LimbDarkenedBase(object):
             animated = False
 
         # Compute
-        image = self.amp * self.ops._render(res, self._u)
+        image = self.amp * self.ops.render_ld(res, self._u)
 
         # Squeeze?
         if animated:
