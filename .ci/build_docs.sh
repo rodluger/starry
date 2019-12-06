@@ -26,7 +26,7 @@ git clone -b gh-pages --single-branch https://github.com/rodluger/starry.git .
 
 # Reset git tracking & update the current version's docs
 rm -rf .git
-STARRY_VERSION=$(python print_starry_version.py)
+STARRY_VERSION=$(python .ci/print_starry_version.py)
 rm -rf $STARRY_VERSION/*
 mkdir -p $STARRY_VERSION
 mv ../html/* $STARRY_VERSION/
