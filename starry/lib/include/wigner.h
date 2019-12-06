@@ -394,7 +394,7 @@ class Wigner {
 
     // Extract the matrices and their derivatives
     for (int l = 0; l < ydeg + 1; ++l) {
-      // \todo This data copy is *very* slow; is there a better way?
+      // TODO: This data copy is *very* slow; is there a better way?
       for (int i = 0; i < 2 * l + 1; ++i) {
         for (int j = 0; j < 2 * l + 1; ++j) {
           R[l](i, j) = R_ad[l](i, j).value();
@@ -506,7 +506,7 @@ class Wigner {
     if (unlikely(npts == 0)) return;
 
     // Dot them in
-    // \todo: There must be a more efficient way of doing this.
+    // TODO: There must be a more efficient way of doing this.
     for (int l = 0; l < ydeg + 1; ++l) {
       // d / dargs
       dotR_bx += (M.block(0, l * l, npts, 2 * l + 1) * DRDx[l])

@@ -1,9 +1,14 @@
 .. :changelog:
 
-1.0.0 (????-??-??)
+1.0.1 (2019-12-06)
 ++++++++++++++++++
 
-- Currently working on this release on the `dev` branch. Stay tuned.
+- First official release of the code.
+- Major changes to the backend, which is now mostly written on top
+  of Theano and uses lazy evaluation by default.
+- Easy integration with `pymc3` and `exoplanet` for inference problems.
+- New features, such as radial velocity and reflected light modeling.
+- Lots of other stuff; see the docs for details.
 
 0.3.0 (2018-12-30)
 ++++++++++++++++++

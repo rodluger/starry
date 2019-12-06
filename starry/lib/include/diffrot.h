@@ -227,7 +227,7 @@ class DiffRot {
       throw std::runtime_error("Incompatible shapes in `tensordotD`.");
 
     tensordotD_bwta.setZero(npts);
-    tensordotD_bM.setZero(npts, Ny);  // todo
+    tensordotD_bM.setZero(npts, Ny);
 
     // Trivial case
     if ((ydeg == 0) || (drorder == 0)) {

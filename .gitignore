@@ -24,6 +24,7 @@ tmp.pdf
 planets.csv
 docs/todos.json
 docs/todos.rst
+starry/starry_version.py
 
 tmp/*
 tests/cpp/test

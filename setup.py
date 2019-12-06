@@ -9,7 +9,6 @@ import setuptools
 sys.path.insert(
     0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "starry")
 )
-from starry_version import __version__  # NOQA
 
 # Custom compiler flags
 macros = dict(
@@ -153,7 +152,6 @@ class BuildExt(build_ext):
                     "-Wextra",
                     "-Wpedantic",
                     "-Wno-unused-parameter",  # DEBUG disable this
-                    "-Wno-unused-lambda-capture",
                     "-Wno-unused-local-typedef",
                 )
                 if has_flag(self.compiler, f)
@@ -176,7 +174,6 @@ class BuildExt(build_ext):
 
 setup(
     name="starry",
-    version=__version__,
     author="Rodrigo Luger",
     author_email="rodluger@gmail.com",
     url="https://github.com/rodluger/starry",
@@ -184,7 +181,12 @@ setup(
     license="MIT",
     packages=find_packages(),
     ext_modules=ext_modules,
+    use_scm_version={
+        "write_to": os.path.join("starry", "starry_version.py"),
+        "write_to_template": '__version__ = "{version}"\n',
+    },
     install_requires=[
+        "setuptools_scm",
         "numpy>=1.13.0",
         "scipy>=1.2.1",
         "astropy>=3.1",

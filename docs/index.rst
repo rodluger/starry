@@ -25,7 +25,7 @@ documentation of the API, and more.
    :caption: Contents:
 
     Installation <install>
-    New in version 1.0.0 <changes>
+    New in version 1.0 <changes>
     Examples & tutorials <tutorials>
     API <api>
     Extensions <extensions>

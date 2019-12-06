@@ -2,8 +2,8 @@
 \file limbdark.h
 \brief Limb darkening utilities from Agol, Luger & Foreman-Mackey (2019).
 
-\todo Loop downward in `v` until `J[v] != 0`
-\todo Test all special cases
+TODO: Loop downward in `v` until `J[v] != 0`
+TODO: Test all special cases
 
 */
 
