@@ -69,7 +69,7 @@ html_last_updated_fmt = "%Y %b %d at %H:%M:%S UTC"
 # so a file named "default.css" will overwrite the builtin "default.css".
 
 html_static_path = ["_static"]
-html_js_files = ["js/version.js", "js/fix_class_names.js"]
+html_js_files = ["js/hacks.js"]
 
 # -- Extension settings ------------------------------------------------------
 

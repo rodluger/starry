@@ -1,25 +1,29 @@
-$(document).ready(function() {
+$(document).ready(function () {
 
-  // @rodluger: String trimmer
+  // @rodluger: Hack the class names
+  document.body.innerHTML = document.body.innerHTML.replace(/_Map/g, 'Map');
+  document.body.innerHTML = document.body.innerHTML.replace(/_LimbDarkenedMap/g, 'Map');
+  document.body.innerHTML = document.body.innerHTML.replace(/_RadialVelocityMap/g, 'Map');
+  document.body.innerHTML = document.body.innerHTML.replace(/_ReflectedLightMap/g, 'Map');
+
+  // @rodluger: Create code version dropdown
   if (typeof (String.prototype.trim) === 'undefined') {
-    String.prototype.trim = function() {
+    String.prototype.trim = function () {
       return String(this).replace(/^\s+|\s+$/g, '');
     };
   }
-
-  // @rodluger: Create version dropdown
   version_div = document.getElementsByClassName('version')[0];
   var current_version = 'v' + version_div.innerHTML.trim();
   version_div.innerHTML = '';
   version_selector = document.createElement('select');
 
-  // @rodluger: Read versions from github and add to dropdown
+  // @rodluger: Read code versions from github and add to dropdown
   var txtFile = new XMLHttpRequest();
   txtFile.open(
-      'GET',
-      'https://raw.githubusercontent.com/rodluger/starry/gh-pages/versions.txt',
-      true);
-  txtFile.onreadystatechange = function() {
+    'GET',
+    'https://raw.githubusercontent.com/rodluger/starry/gh-pages/versions.txt',
+    true);
+  txtFile.onreadystatechange = function () {
     if (txtFile.readyState === 4) {  // document is ready to parse.
       if (txtFile.status === 200) {  // file is found
         allText = txtFile.responseText;
@@ -43,7 +47,7 @@ $(document).ready(function() {
   txtFile.send(null);
 
   // @rodluger: Re-direct to the selected version's docs
-  version_selector.onchange = function() {
+  version_selector.onchange = function () {
     window.location.href = '/starry/' + this.value;
   }
 })
