@@ -148,7 +148,7 @@ class BuildExt(build_ext):
                 for f in (
                     "-Wextra",
                     "-Wpedantic",
-                    "-Wno-unused-parameter",  # DEBUG disable this
+                    "-Wno-unused-parameter",  # TODO disable this
                     "-Wno-unused-local-typedef",
                 )
                 if has_flag(self.compiler, f)
@@ -194,7 +194,7 @@ setup(
         "pillow",
         "exoplanet>=0.2.0",
         "packaging"
-        # "healpy>=1.12.8;platform_system!='Windows'",
+        # TODO? "healpy>=1.12.8;platform_system!='Windows'",
     ],
     cmdclass={"build_ext": BuildExt},
     data_files=glob.glob("starry/img/*.jpg"),
