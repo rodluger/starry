@@ -6,9 +6,6 @@ import os
 import glob
 import setuptools
 
-sys.path.insert(
-    0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "starry")
-)
 
 # Custom compiler flags
 macros = dict(
