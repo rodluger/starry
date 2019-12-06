@@ -10,6 +10,7 @@ from .plotting import (
 )
 from .sht import image2map, healpix2map, array2map
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.animation import FuncAnimation
@@ -533,10 +534,17 @@ class MapBase(object):
                 try:
                     if "zmqshell" in str(type(get_ipython())):
                         plt.close()
-                        if html5_video:
-                            display(HTML(ani.to_html5_video()))
-                        else:
-                            display(HTML(ani.to_jshtml()))
+                        with matplotlib.rc_context(
+                            {
+                                "savefig.dpi": dpi
+                                if dpi is not None
+                                else "figure"
+                            }
+                        ):
+                            if html5_video:
+                                display(HTML(ani.to_html5_video()))
+                            else:
+                                display(HTML(ani.to_jshtml()))
                     else:
                         raise NameError("")
                 except NameError:

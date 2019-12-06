@@ -16,7 +16,6 @@ The basics
    notebooks/Basics.ipynb
    notebooks/LazyGreedy.ipynb
    notebooks/Orientation.ipynb
-   notebooks/OrbitViz.ipynb
 
 Eclipsing binary example
 ------------------------
@@ -55,6 +54,7 @@ Miscellaneous
    notebooks/NullSpace.ipynb
    notebooks/StayingPositive.ipynb
    notebooks/LDNormalization.ipynb
+   notebooks/OrbitViz.ipynb
 
 Under the hood
 --------------
