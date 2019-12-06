@@ -18,3 +18,10 @@ exclude = '''
   | dist
 )/
 '''
+
+[build-system]
+requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]>=3.4"]
+
+[tools.setuptools_scm]
+write_to = starry/starry_version.py
+write_to_template = '__version__ = "{version}"\n'

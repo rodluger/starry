@@ -18,6 +18,7 @@ pip install -U pip
 pip install -U setuptools
 pip install -U -r requirements.txt
 pip install -U -r optional-requirements.txt
+pip install setuptools_scm
 
 # Install starry
 python setup.py develop

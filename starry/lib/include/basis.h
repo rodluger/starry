@@ -124,9 +124,6 @@ inline void theta(int lmax,
         n1 = l * l + l + m;
         n2 = l * l + l - m;
         M[n1].push_back(Eigen::Triplet<Scalar>(m, 2 * j - m, term1));
-
-        // std::cout <<
-
         if (j < m) {
           M[n2].push_back(Eigen::Triplet<Scalar>(m, 2 * (j + 1) - m, term2));
         }
