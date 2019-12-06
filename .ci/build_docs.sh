@@ -15,6 +15,9 @@ pip install nbsphinx==0.5.0
 pip install -U coverage-badge
 pip install -U ipywidgets
 
+# Get the current starry version
+STARRY_VERSION=$(python .ci/print_starry_version.py)
+
 # Build the docs
 make -C docs html
 cd docs/_build
@@ -26,7 +29,6 @@ git clone -b gh-pages --single-branch https://github.com/rodluger/starry.git .
 
 # Reset git tracking & update the current version's docs
 rm -rf .git
-STARRY_VERSION=$(python .ci/print_starry_version.py)
 rm -rf $STARRY_VERSION/*
 mkdir -p $STARRY_VERSION
 mv ../html/* $STARRY_VERSION/
