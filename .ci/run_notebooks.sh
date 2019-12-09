@@ -22,14 +22,3 @@ pip install -U corner
 # Run the notebooks using nbconvert
 mkdir -p docs/notebooks
 python .ci/run_notebooks.py
-
-# Force push to `notebooks` branch
-if [[ -n $BUILDREASON ]] && [[ $BUILDREASON != "PullRequest" ]]; then
-    cd docs/notebooks
-    git init
-    git add -f *.ipynb
-    git -c user.name='rodluger' -c user.email='rodluger@gmail.com' \
-        commit -m "rebuild notebooks"
-    git push -f https://$GHUSER:$GHKEY@github.com/rodluger/starry \
-        HEAD:notebooks >/dev/null 2>&1 -q
-fi

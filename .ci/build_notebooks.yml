@@ -14,7 +14,8 @@ jobs:
 
   - bash: .ci/run_notebooks.sh
     displayName: 'Run notebooks'
-    env:
-      GHUSER: $(GITHUB_USER)
-      GHKEY: $(GITHUB_API_KEY)
-      BUILDREASON: $(Build.Reason)
+
+  - task: PublishPipelineArtifact@1
+    inputs:
+      path: $(System.DefaultWorkingDirectory)/docs/notebooks
+      artifact: Notebooks

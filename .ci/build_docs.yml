@@ -14,15 +14,13 @@ jobs:
   - bash: .ci/setup.sh
     displayName: 'Setup'
 
-  - bash: .ci/get_notebooks.sh
-    displayName: 'Get notebooks'
-
   - bash: .ci/collect_todos.sh
     displayName: 'Collect todos'
     env:
       GHSHA1: $(Build.SourceVersion)
 
   - task: DownloadPipelineArtifact@2
+    displayName: 'Get coverage results'
     inputs:
       artifact: Coverage
       source: 'specific'
@@ -31,9 +29,10 @@ jobs:
       preferTriggeringPipeline: true
       runVersion: 'latestFromBranch'
       runBranch: 'refs/heads/dev'
-      path: '$(Pipeline.Workspace)'
+      path: '$(System.DefaultWorkingDirectory)'
 
   - task: DownloadPipelineArtifact@2
+    displayName: 'Get extensions coverage results'
     inputs:
       artifact: ExtensionsCoverage
       source: 'specific'
@@ -42,7 +41,19 @@ jobs:
       preferTriggeringPipeline: true
       runVersion: 'latestFromBranch'
       runBranch: 'refs/heads/dev'
-      path: '$(Pipeline.Workspace)'
+      path: '$(System.DefaultWorkingDirectory)'
+
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Get notebooks'
+    inputs:
+      artifact: Notebooks
+      source: 'specific'
+      project: b8e8ed48-d922-453f-ba13-4864eae19e27 # See https://dev.azure.com/rodluger/_apis/projects?api-version=5.0
+      pipeline: 6
+      preferTriggeringPipeline: true
+      runVersion: 'latestFromBranch'
+      runBranch: 'refs/heads/dev'
+      path: '$(System.DefaultWorkingDirectory)/docs'
 
   - bash: .ci/build_docs.sh
     displayName: 'Build docs'
