@@ -16,13 +16,11 @@ py.test -v -s starry/extensions/tests/greedy \
         --junitxml=junit/test-results-extensions-greedy.xml --cov=starry/extensions \
         --cov-append --cov-report html:coverage-extensions \
         --cov-config=.ci/.coveragerc_extensions \
-        --collect-only \
         starry/extensions/tests/greedy
 py.test -v -s starry/extensions/tests/lazy \
         --junitxml=junit/test-results-extensions-lazy.xml --cov=starry/extensions \
         --cov-append --cov-report html:coverage-extensions \
         --cov-config=.ci/.coveragerc_extensions \
-        --collect-only \
         starry/extensions/tests/lazy
 
 # Generate badge

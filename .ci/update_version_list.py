@@ -4,11 +4,11 @@ import sys
 
 
 def cmp(v1, v2):
-    if version.parse(v1) == "latest":
+    if v1 == "latest":
         return 1
-    elif version.parse(v2) == "latest":
+    elif v2 == "latest":
         return -1
-    if version.parse(v1) < version.parse(v2):
+    elif version.parse(v1) < version.parse(v2):
         return -1
     elif version.parse(v1) > version.parse(v2):
         return 1

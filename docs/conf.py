@@ -10,6 +10,7 @@ import os
 import starry
 from ipywidgets.embed import DEFAULT_EMBED_REQUIREJS_URL
 import sys
+import packaging
 
 # Add the CWD to the path
 sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
@@ -22,12 +23,10 @@ import hacks
 project = "starry"
 copyright = "2019, Rodrigo Luger"
 author = "Rodrigo Luger"
-
-# The full version, including alpha/beta/rc tags
-version = starry.__version__
-release = starry.__version__
+version = packaging.version.parse(starry.__version__).base_version
 if hacks.is_latest:
-    release = "latest"
+    version = "latest"
+release = version
 
 # Get current git branch
 branch = os.getenv("GHBRANCH", "master")
