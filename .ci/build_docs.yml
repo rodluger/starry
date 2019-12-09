@@ -22,6 +22,14 @@ jobs:
     env:
       GHSHA1: $(Build.SourceVersion)
 
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      artifact: Coverage
+
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      artifact: CoverageExtensions
+
   - bash: .ci/build_docs.sh
     displayName: 'Build docs'
     env:

@@ -16,23 +16,14 @@ py.test -v -s starry/extensions/tests/greedy \
         --junitxml=junit/test-results-extensions-greedy.xml --cov=starry/extensions \
         --cov-append --cov-report html:coverage-extensions \
         --cov-config=.ci/.coveragerc_extensions \
+        --collect-only \
         starry/extensions/tests/greedy
 py.test -v -s starry/extensions/tests/lazy \
         --junitxml=junit/test-results-extensions-lazy.xml --cov=starry/extensions \
         --cov-append --cov-report html:coverage-extensions \
         --cov-config=.ci/.coveragerc_extensions \
+        --collect-only \
         starry/extensions/tests/lazy
 
-# Publish coverage results
-if [[ -n $BUILDREASON ]] && [[ $BUILDREASON != "PullRequest" ]]; then
-    coverage-badge -n extensions.svg -o coverage-extensions/coverage.svg
-    cd coverage-extensions
-    git init
-    touch .nojekyll
-    git add -f .nojekyll
-    git add -f *
-    git -c user.name='rodluger' -c user.email='rodluger@gmail.com' \
-        commit -m "publish coverage"
-    git push -f https://$GHUSER:$GHKEY@github.com/rodluger/starry \
-        HEAD:coverage-extensions >/dev/null 2>&1 -q
-fi
+# Generate badge
+coverage-badge -n extensions.svg -o coverage-extensions/coverage.svg

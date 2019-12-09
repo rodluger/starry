@@ -4,6 +4,10 @@ import sys
 
 
 def cmp(v1, v2):
+    if version.parse(v1) == "latest":
+        return 1
+    elif version.parse(v2) == "latest":
+        return -1
     if version.parse(v1) < version.parse(v2):
         return -1
     elif version.parse(v1) > version.parse(v2):
@@ -25,7 +29,9 @@ versions = list(set(versions))
 
 # Eliminate non-version entries, if any
 versions = [
-    v for v in versions if isinstance(version.parse(v), version.Version)
+    v
+    for v in versions
+    if isinstance(version.parse(v), version.Version) or v == "latest"
 ]
 
 # Sort them
