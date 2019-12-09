@@ -26,7 +26,7 @@ jobs:
     inputs:
       artifact: Coverage
       source: 'specific'
-      project: b8e8ed48-d922-453f-ba13-4864eae19e27
+      project: b8e8ed48-d922-453f-ba13-4864eae19e27 # See https://dev.azure.com/rodluger/_apis/projects?api-version=5.0
       pipeline: 4
       preferTriggeringPipeline: true
       runVersion: 'latestFromBranch'
@@ -35,9 +35,9 @@ jobs:
 
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: CoverageExtensions
+      artifact: ExtensionsCoverage
       source: 'specific'
-      project: b8e8ed48-d922-453f-ba13-4864eae19e27
+      project: b8e8ed48-d922-453f-ba13-4864eae19e27 # See https://dev.azure.com/rodluger/_apis/projects?api-version=5.0
       pipeline: 5
       preferTriggeringPipeline: true
       runVersion: 'latestFromBranch'
