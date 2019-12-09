@@ -26,7 +26,7 @@ jobs:
       source: 'specific'
       project: b8e8ed48-d922-453f-ba13-4864eae19e27 # See https://dev.azure.com/rodluger/_apis/projects?api-version=5.0
       pipeline: 4
-      preferTriggeringPipeline: true
+      preferTriggeringPipeline: false
       runVersion: 'latestFromBranch'
       runBranch: 'refs/heads/dev'
       path: '$(System.DefaultWorkingDirectory)'
@@ -38,7 +38,7 @@ jobs:
       source: 'specific'
       project: b8e8ed48-d922-453f-ba13-4864eae19e27 # See https://dev.azure.com/rodluger/_apis/projects?api-version=5.0
       pipeline: 5
-      preferTriggeringPipeline: true
+      preferTriggeringPipeline: false
       runVersion: 'latestFromBranch'
       runBranch: 'refs/heads/dev'
       path: '$(System.DefaultWorkingDirectory)'
@@ -50,7 +50,7 @@ jobs:
       source: 'specific'
       project: b8e8ed48-d922-453f-ba13-4864eae19e27 # See https://dev.azure.com/rodluger/_apis/projects?api-version=5.0
       pipeline: 6
-      preferTriggeringPipeline: true
+      preferTriggeringPipeline: false
       runVersion: 'latestFromBranch'
       runBranch: 'refs/heads/dev'
       path: '$(System.DefaultWorkingDirectory)/docs'
