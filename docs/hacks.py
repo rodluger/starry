@@ -4,6 +4,8 @@ import os
 import sys
 import starry
 import re
+import packaging
+import urllib
 
 
 # Hack `nbsphinx` to enable us to hide certain input cells in the
@@ -65,3 +67,16 @@ starry._Map = _Map
 starry._LimbDarkenedMap = _LimbDarkenedMap
 starry._ReflectedLightMap = _ReflectedLightMap
 starry._RadialVelocityMap = _RadialVelocityMap
+
+
+# Hack to figure out if we are the latest version
+url = "https://raw.githubusercontent.com/rodluger/starry/gh-pages/versions.txt"
+all_versions = []
+for line in urllib.request.urlopen(url):
+    version_string = line.decode("utf-8").replace("\n", "").strip()
+    all_versions.append(packaging.version.parse(version_string))
+all_versions = sorted(all_versions)
+current_version = packaging.version.parse(starry.__version__)
+is_latest = (current_version.is_devrelease) and (
+    current_version.base_version >= all_versions[-1].base_version
+)

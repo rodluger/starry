@@ -13,7 +13,8 @@ $(document).ready(function () {
     };
   }
   version_div = document.getElementsByClassName('version')[0];
-  var current_version = 'v' + version_div.innerHTML.trim();
+  var current_version = version_div.innerHTML.trim();
+  if (current_version != "latest") current_version = 'v' + current_version;
   version_div.innerHTML = '';
   version_selector = document.createElement('select');
 

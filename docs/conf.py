@@ -26,6 +26,8 @@ author = "Rodrigo Luger"
 # The full version, including alpha/beta/rc tags
 version = starry.__version__
 release = starry.__version__
+if hacks.is_latest:
+    release = "latest"
 
 # Get current git branch
 branch = os.getenv("GHBRANCH", "master")
