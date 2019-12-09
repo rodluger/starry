@@ -48,9 +48,9 @@ class minimizeOp(tt.Op):
 
             # Create the grid using healpy if available
             # Require at least `oversample * l ** 2 points`
+            s = np.random.RandomState(0)
             if hp is None:
                 npts = oversample * self.ydeg ** 2
-                s = np.random.RandomState(0)
                 self.lat_grid = (
                     np.arccos(2 * s.rand(npts) - 1) * 180.0 / np.pi - 90.0
                 )
@@ -64,6 +64,9 @@ class minimizeOp(tt.Op):
                 )
                 self.lat_grid = 0.5 * np.pi - theta
                 self.lon_grid = phi - np.pi
+                # Add a little noise for stability
+                self.lat_grid += 1e-4 * s.randn(len(self.lat_grid))
+                self.lon_grid += 1e-4 * s.randn(len(self.lon_grid))
             self.P_grid = self.P(
                 tt.as_tensor_variable(self.lat_grid),
                 tt.as_tensor_variable(self.lon_grid),

@@ -18,9 +18,6 @@ $(document).ready(function () {
   version_div.innerHTML = '';
   version_selector = document.createElement('select');
 
-  // DEBUG
-  alert(current_version);
-
   // @rodluger: Read code versions from github and add to dropdown
   var txtFile = new XMLHttpRequest();
   txtFile.open(
