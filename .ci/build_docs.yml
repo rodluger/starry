@@ -28,7 +28,7 @@ jobs:
       pipeline: 4
       preferTriggeringPipeline: false
       runVersion: 'latestFromBranch'
-      runBranch: 'refs/heads/dev'
+      runBranch: 'refs/heads/master'
       path: '$(System.DefaultWorkingDirectory)/coverage'
 
   - task: DownloadPipelineArtifact@2
@@ -40,7 +40,7 @@ jobs:
       pipeline: 5
       preferTriggeringPipeline: false
       runVersion: 'latestFromBranch'
-      runBranch: 'refs/heads/dev'
+      runBranch: 'refs/heads/master'
       path: '$(System.DefaultWorkingDirectory)/coverage-extensions'
 
   - task: DownloadPipelineArtifact@2
@@ -52,7 +52,7 @@ jobs:
       pipeline: 6
       preferTriggeringPipeline: false
       runVersion: 'latestFromBranch'
-      runBranch: 'refs/heads/dev'
+      runBranch: 'refs/heads/master'
       path: '$(System.DefaultWorkingDirectory)/docs/notebooks'
 
   - bash: .ci/build_docs.sh
