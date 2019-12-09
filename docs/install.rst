@@ -14,5 +14,4 @@ from `GitHub <https://github.com/rodluger/starry>`_:
 
     git clone https://github.com/rodluger/starry.git
     cd starry
-    git checkout dev
     python setup.py develop
