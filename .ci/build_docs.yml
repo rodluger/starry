@@ -26,7 +26,7 @@ jobs:
     inputs:
       artifact: Coverage
       source: 'specific'
-      project: 'starry'
+      project: b8e8ed48-d922-453f-ba13-4864eae19e27
       pipeline: 4
       preferTriggeringPipeline: true
       runVersion: 'latestFromBranch'
@@ -37,7 +37,7 @@ jobs:
     inputs:
       artifact: CoverageExtensions
       source: 'specific'
-      project: 'starry'
+      project: b8e8ed48-d922-453f-ba13-4864eae19e27
       pipeline: 5
       preferTriggeringPipeline: true
       runVersion: 'latestFromBranch'
