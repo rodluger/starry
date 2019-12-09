@@ -25,10 +25,24 @@ jobs:
   - task: DownloadPipelineArtifact@2
     inputs:
       artifact: Coverage
+      source: 'specific'
+      project: 'starry'
+      pipeline: 4
+      preferTriggeringPipeline: true
+      runVersion: 'latestFromBranch'
+      runBranch: 'refs/heads/dev'
+      path: '$(Pipeline.Workspace)'
 
   - task: DownloadPipelineArtifact@2
     inputs:
       artifact: CoverageExtensions
+      source: 'specific'
+      project: 'starry'
+      pipeline: 5
+      preferTriggeringPipeline: true
+      runVersion: 'latestFromBranch'
+      runBranch: 'refs/heads/dev'
+      path: '$(Pipeline.Workspace)'
 
   - bash: .ci/build_docs.sh
     displayName: 'Build docs'
