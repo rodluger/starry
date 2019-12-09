@@ -109,7 +109,7 @@ inline void theta(int lmax,
   int N = (lmax + 1) * (lmax + 1);
   M.resize(N);
   Scalar term1, term2;
-  int n1, n2, np1, np2;
+  int n1, n2;
   for (int m = 0; m < lmax + 1; ++m) {
     term1 = 1.0;
     term2 = m;
@@ -118,8 +118,6 @@ inline void theta(int lmax,
         term1 *= -(m - j + 1.0) * (m - j + 2.0) / (j * (j - 1.0));
         term2 *= -(m - j) * (m - j + 1.0) / (j * (j + 1.0));
       }
-      np1 = m * m + 2 * j;
-      np2 = m * m + 2 * (j + 1);
       for (int l = m; l < lmax + 1; ++l) {
         n1 = l * l + l + m;
         n2 = l * l + l - m;

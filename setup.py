@@ -1,10 +1,11 @@
 """Install script for `starry`."""
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
+import setuptools
+import subprocess
 import sys
 import os
 import glob
-import setuptools
 
 
 # Custom compiler flags
@@ -45,64 +46,61 @@ class get_pybind_include(object):
     """
 
     def __init__(self, user=False):
-        """Init."""
+
+        # TODO: This is a horrible hack. We need a better way
+        # of ensuring pybind11 is installed *before* any of the
+        # C code is compiled. For some reason placing `pybind11`
+        # in `setup_requires` is *not* sufficient.
+        # See https://github.com/pybind/python_example/issues/32
+        try:
+            import pybind11
+        except ImportError:
+            if subprocess.call(
+                [sys.executable, "-m", "pip", "install", "pybind11"]
+            ):
+                raise RuntimeError(
+                    "pybind11 install failed. Please install it manually."
+                )
+
         self.user = user
 
     def __str__(self):
-        """Str."""
         import pybind11
 
         return pybind11.get_include(self.user)
 
 
-# Get C extension
-def get_ext():
-    include_dirs = [
-        get_pybind_include(),
-        get_pybind_include(user=True),
-        "starry/lib/include",
-        "starry/lib/vendor/eigen_3.3.5",
-    ]
-    if int(macros["STARRY_NDIGITS"]) > 16:
-        include_dirs += ["lib/boost_1_66_0"]
-    return Extension(
+if int(macros["STARRY_NDIGITS"]) > 16:
+    include_dirs = ["lib/boost_1_66_0"]
+else:
+    include_dirs = []
+ext_modules = [
+    Extension(
         "starry._c_ops",
         ["starry/lib/include/interface.cpp"],
-        include_dirs=include_dirs,
+        include_dirs=include_dirs
+        + [
+            # Path to pybind11 headers
+            get_pybind_include(),
+            get_pybind_include(user=True),
+            "starry/lib/include",
+            "starry/lib/vendor/eigen_3.3.5",
+        ],
         language="c++",
         define_macros=[(key, value) for key, value in macros.items()],
     )
-
-
-ext_modules = [get_ext()]
+]
 
 
 # As of Python 3.6, CCompiler has a `has_flag` method.
 # cf http://bugs.python.org/issue26689
 def has_flag(compiler, flagname):
-    """
-    Check if flag name is supported.
-
-    Return a boolean indicating whether a flag name is supported on
+    """Return a boolean indicating whether a flag name is supported on
     the specified compiler.
     """
-    import os
     import tempfile
 
-    if compiler.compiler_type == "msvc":
-        fn = ".starry-compile-temp.cpp"
-        with open(fn, "w") as f:
-            f.write("int main (int argc, char **argv) { return 0; }")
-
-        result = True
-        try:
-            compiler.compile([fn], extra_postargs=[flagname])
-        except setuptools.distutils.errors.CompileError:
-            result = False
-        os.remove(fn)
-        return result
-
-    with tempfile.NamedTemporaryFile("w", suffix=".cpp", dir=".") as f:
+    with tempfile.NamedTemporaryFile("w", suffix=".cpp") as f:
         f.write("int main (int argc, char **argv) { return 0; }")
         try:
             compiler.compile([f.name], extra_postargs=[flagname])
@@ -111,29 +109,42 @@ def has_flag(compiler, flagname):
     return True
 
 
+def cpp_flag(compiler):
+    """Return the -std=c++[11/14/17] compiler flag.
+
+    The newer version is prefered over c++11 (when it is available).
+    """
+    flags = ["-std=c++17", "-std=c++14", "-std=c++11"]
+
+    for flag in flags:
+        if has_flag(compiler, flag):
+            return flag
+
+    raise RuntimeError(
+        "Unsupported compiler -- at least C++11 support " "is needed!"
+    )
+
+
 class BuildExt(build_ext):
     """A custom build extension for adding compiler-specific options."""
 
     c_opts = {"msvc": ["/EHsc"], "unix": []}
+    l_opts = {"msvc": [], "unix": []}
 
     if sys.platform == "darwin":
-        c_opts["unix"] += ["-stdlib=libc++", "-mmacosx-version-min=10.7"]
+        darwin_opts = ["-stdlib=libc++", "-mmacosx-version-min=10.7"]
+        c_opts["unix"] += darwin_opts
+        l_opts["unix"] += darwin_opts
 
     def build_extensions(self):
-        """Build the extensions."""
         ct = self.compiler.compiler_type
         opts = self.c_opts.get(ct, [])
-        if not any(f.startswith("-std=") for f in opts):
-            if has_flag(self.compiler, "-std=c++14"):
-                opts.append("-std=c++14")
-            elif has_flag(self.compiler, "-std=c++11"):
-                opts.append("-std=c++11")
-            else:
-                raise RuntimeError("C++11 or 14 is required to compile starry")
+        link_opts = self.l_opts.get(ct, [])
         if ct == "unix":
             opts.append(
                 '-DVERSION_INFO="%s"' % self.distribution.get_version()
             )
+            opts.append(cpp_flag(self.compiler))
             if has_flag(self.compiler, "-fvisibility=hidden"):
                 opts.append("-fvisibility=hidden")
         elif ct == "msvc":
@@ -141,31 +152,8 @@ class BuildExt(build_ext):
                 '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()
             )
         for ext in self.extensions:
-            ext.extra_compile_args = list(opts + ext.extra_compile_args)
-            ext.extra_compile_args += ["-O%d" % optimize]
-            ext.extra_compile_args += [
-                f
-                for f in (
-                    "-Wextra",
-                    "-Wpedantic",
-                    "-Wno-unused-parameter",  # TODO disable this
-                    "-Wno-unused-local-typedef",
-                )
-                if has_flag(self.compiler, f)
-            ]
-            if debug:
-                ext.extra_compile_args += ["-g"]
-            else:
-                ext.extra_compile_args += ["-g0"]
-            if sys.platform == "darwin":
-                ext.extra_compile_args += [
-                    "-march=native",
-                    "-mmacosx-version-min=10.9",
-                ]
-                ext.extra_link_args += [
-                    "-march=native",
-                    "-mmacosx-version-min=10.9",
-                ]
+            ext.extra_compile_args = opts
+            ext.extra_link_args = link_opts
         build_ext.build_extensions(self)
 
 
@@ -188,7 +176,7 @@ setup(
         "scipy>=1.2.1",
         "astropy>=3.1",
         "matplotlib>=3.0.2",
-        "pybind11>=2.2",
+        "pybind11>=2.4",
         "theano>=1.0.4",
         "ipython",
         "pillow",
@@ -196,6 +184,7 @@ setup(
         "packaging"
         # TODO? "healpy>=1.12.8;platform_system!='Windows'",
     ],
+    setup_requires=["setuptools_scm", "pybind11>2.4"],
     cmdclass={"build_ext": BuildExt},
     data_files=glob.glob("starry/img/*.jpg"),
     include_package_data=True,
