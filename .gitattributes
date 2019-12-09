@@ -1,6 +1,4 @@
 lib/* linguist-vendored
-docs/* linguist-documentation
-tex/* linguist-documentation
-misc/* linguist-documentation
-tutorials/* linguist-documentation
-julia/*.nb linguist-documentation
+notebooks/* linguist-documentation
+*.ipynb filter=nbstripout
+*.ipynb diff=ipynb

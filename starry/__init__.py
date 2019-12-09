@@ -1,23 +1,47 @@
 # -*- coding: utf-8 -*-
-from ._starry_mono_64 import __version__
-from . import _starry_mono_64, _starry_mono_128, \
-              _starry_spectral_64, _starry_spectral_128
-from . import kepler
+from .starry_version import __version__
 
 
-# Class factory
-def Map(lmax=2, nwav=1, multi=False):
-    if (nwav == 1) and (not multi):
-        return _starry_mono_64.Map(lmax, nwav)
-    elif (nwav == 1) and (multi):
-        return _starry_mono_128.Map(lmax, nwav)
-    elif (nwav > 1) and (not multi):
-        return _starry_spectral_64.Map(lmax, nwav)
-    elif (nwav > 1) and (multi):
-        return _starry_spectral_128.Map(lmax, nwav)
-    else:
-        raise ValueError("Invalid argument(s) to `Map`.")
+# Store the package directory
+import os
+
+PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
 
 
-# Hack the docstring
-Map.__doc__ = _starry_mono_64.Map.__doc__
+# Force double precision
+import theano.tensor as tt
+
+tt.config.floatX = "float64"
+
+
+# Set up the default config
+from .configdefaults import Config
+
+config = Config()
+
+
+# Import the main interface
+from . import constants, core, indices, kepler, maps, sht, plotting
+from .maps import Map
+from .kepler import Primary, Secondary, System
+
+
+# Clean up the namespace
+del tt
+del Config
+
+
+__all__ = [
+    "__version__",
+    "constants",
+    "core",
+    "indices",
+    "kepler",
+    "maps",
+    "sht",
+    "plotting",
+    "Map",
+    "Primary",
+    "Secondary",
+    "System",
+]

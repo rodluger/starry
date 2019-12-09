@@ -1,40 +1,38 @@
 # Misc
 *.gif
-.old/
-src/run_tests
 *.o
 *.dSYM
-mathematica
 .DS_Store
 build/
 dist/
 starry.egg-info/
-old
 docs/_build
 docs/_generate
-.pytest_cache/
-starry/test
-starry/test_autodiff
-misc/stability/*.pdf
-*.sav
-*.npz
-tex/travis
-*.sav
+*.pytest_cache/
 *.npz
 *callgrind.out.*
-starry/test
-lib/boost_1_68_0
 *.vscode
-tmp/*
+docs/.doxyxml
+docs/.build
+notebooks/tmp
+docs/notebooks
+junit/
+tests/cov.xml
+coverage.sh
+tmp.mp4
+tmp.pdf
+planets.csv
+docs/todos.json
+docs/todos.rst
+starry/starry_version.py
 
-# Latex
-*.aux
-*.bbl
-*.blg
-tex/*.pdf
-tex/figures/*.pdf
-starryNotes.bib
-tex/gitlinks.tex
+tmp/*
+tests/cpp/test
+include/examples/default
+include/examples/spectral
+include/examples/temporal
+scripts/*.pdf
+include/starry/extensions/modelgrid.h
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

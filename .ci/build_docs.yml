@@ -1,0 +1,63 @@
+trigger:
+  - dev
+  - master
+
+jobs:
+- job: Default
+  timeoutInMinutes: 60
+  pool:
+    vmImage: Ubuntu-16.04
+  # don't build on PRs
+  condition: ne(variables['Build.Reason'], 'PullRequest')
+  steps:
+
+  - bash: .ci/setup.sh
+    displayName: 'Setup'
+
+  - bash: .ci/collect_todos.sh
+    displayName: 'Collect todos'
+    env:
+      GHSHA1: $(Build.SourceVersion)
+
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Get coverage results'
+    inputs:
+      artifact: Coverage
+      source: 'specific'
+      project: b8e8ed48-d922-453f-ba13-4864eae19e27 # See https://dev.azure.com/rodluger/_apis/projects?api-version=5.0
+      pipeline: 4
+      preferTriggeringPipeline: false
+      runVersion: 'latestFromBranch'
+      runBranch: 'refs/heads/dev'
+      path: '$(System.DefaultWorkingDirectory)/coverage'
+
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Get extensions coverage results'
+    inputs:
+      artifact: ExtensionsCoverage
+      source: 'specific'
+      project: b8e8ed48-d922-453f-ba13-4864eae19e27 # See https://dev.azure.com/rodluger/_apis/projects?api-version=5.0
+      pipeline: 5
+      preferTriggeringPipeline: false
+      runVersion: 'latestFromBranch'
+      runBranch: 'refs/heads/dev'
+      path: '$(System.DefaultWorkingDirectory)/coverage-extensions'
+
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Get notebooks'
+    inputs:
+      artifact: Notebooks
+      source: 'specific'
+      project: b8e8ed48-d922-453f-ba13-4864eae19e27 # See https://dev.azure.com/rodluger/_apis/projects?api-version=5.0
+      pipeline: 6
+      preferTriggeringPipeline: false
+      runVersion: 'latestFromBranch'
+      runBranch: 'refs/heads/dev'
+      path: '$(System.DefaultWorkingDirectory)/docs/notebooks'
+
+  - bash: .ci/build_docs.sh
+    displayName: 'Build docs'
+    env:
+      GHUSER: $(GITHUB_USER)
+      GHKEY: $(GITHUB_API_KEY)
+      GHBRANCH: $(Build.SourceBranchName)

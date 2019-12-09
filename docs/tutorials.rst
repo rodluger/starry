@@ -2,7 +2,8 @@ Examples & Tutorials
 ====================
 
 Below you'll find a collection of Jupyter Notebooks that demonstrate how
-to use :py:obj:`starry` in various different ways.
+to use ``starry`` in various different ways. This page is still under
+construction.
 
 
 The basics
@@ -12,22 +13,36 @@ The basics
    :titlesonly:
    :maxdepth: 1
 
-   Surface maps  <tutorials/basics1.ipynb>
-   Limb-darkened maps <tutorials/basics2.ipynb>
-   Exoplanet systems <tutorials/basics3.ipynb>
-   Light curve gradients <tutorials/basics4.ipynb>
-   Multi-wavelength maps <tutorials/basics5.ipynb>
+   notebooks/Basics.ipynb
+   notebooks/LazyGreedy.ipynb
+   notebooks/Orientation.ipynb
 
-Fitting and inference
----------------------
+Eclipsing binary example
+------------------------
 
 .. toctree::
    :titlesonly:
    :maxdepth: 1
 
-   Parameter inference with MCMC <tutorials/mcmc.ipynb>
-   Optimization with analytic gradients <tutorials/autograd.ipynb>
-   Inferring the map of HD 1897833b <tutorials/hd189.ipynb>
+   notebooks/EclipsingBinary_Generate.ipynb
+   notebooks/EclipsingBinary_PyMC3.ipynb
+   notebooks/EclipsingBinary_Linear.ipynb
+
+Advanced
+--------
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   notebooks/LinearSolve.ipynb
+   notebooks/MarginalLikelihood.ipynb
+   notebooks/MultiWavelength.ipynb
+   notebooks/RossiterMcLaughlin.ipynb
+   notebooks/ReflectedLight.ipynb
+   notebooks/DifferentialRotation.ipynb
+   notebooks/LightTravelDelay.ipynb
+   notebooks/HotJupiterPhaseCurve.ipynb
 
 Miscellaneous
 -------------
@@ -36,9 +51,18 @@ Miscellaneous
    :titlesonly:
    :maxdepth: 1
 
-   High order limb-darkening <tutorials/high_order_ld.ipynb>
-   Orientation of the map on the sky <tutorials/geometry.ipynb>
-   Light travel time delay <tutorials/light_travel.ipynb>
-   Positive-definite surface maps <tutorials/non-negative.ipynb>
-   Physical limb-darkened maps <tutorials/sturm.ipynb>
-   Starspots <tutorials/spottedstar.ipynb>
+   notebooks/NullSpace.ipynb
+   notebooks/StayingPositive.ipynb
+   notebooks/LDNormalization.ipynb
+   notebooks/OrbitViz.ipynb
+
+Under the hood
+--------------
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   notebooks/RVDerivation.ipynb
+   notebooks/MarginalLikelihoodTiming.ipynb
+   notebooks/TimingTests.ipynb

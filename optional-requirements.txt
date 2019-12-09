@@ -1,0 +1,3 @@
+pillow
+healpy>=1.12.8
+exoplanet>=0.2.0

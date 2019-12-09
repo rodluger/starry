@@ -1,7 +1,0 @@
-backend: agg
-font.family: serif
-font.serif: Liberation Serif, DejaVu Serif
-mathtext.fontset: custom
-mathtext.rm: Liberation Serif, DejaVu Serif
-mathtext.it: Liberation Serif, DejaVu Serif:italic
-mathtext.bf: Liberation Serif, DejaVu Serif:bold
