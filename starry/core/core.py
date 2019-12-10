@@ -227,7 +227,7 @@ class OpsYlm(object):
         return pTA1
 
     @autocompile
-    def intensity(self, lat, lon, y, u, f, wta):
+    def intensity(self, lat, lon, y, u, f, wta, ld):
         """Compute the intensity at a point or a set of points."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
@@ -251,7 +251,11 @@ class OpsYlm(object):
 
         # Apply the filter
         if self.filter:
-            A1y = tt.dot(self.F(u, f), A1y)
+            u0 = tt.zeros_like(u)
+            u0 = tt.set_subtensor(u0[0], -1.0)
+            A1y = ifelse(
+                ld, tt.dot(self.F(u, f), A1y), tt.dot(self.F(u0, f), A1y)
+            )
 
         # Dot the polynomial into the basis
         return tt.dot(pT, A1y)
@@ -319,12 +323,9 @@ class OpsYlm(object):
         return res.dimshuffle(2, 0, 1)
 
     @autocompile
-    def add_spot(self, y, L, amp, sigma, lat, lon):
+    def expand_spot(self, amp, sigma, lat, lon):
         """Return the spherical harmonic expansion of a Gaussian spot."""
-        y_new = y + self.spotYlm(amp, sigma, lat, lon)
-        L_new = L * y_new[0]
-        y_new /= y_new[0]
-        return y_new, L_new
+        return self.spotYlm(amp, sigma, lat, lon)
 
     @autocompile
     def compute_ortho_grid(self, res):
@@ -492,7 +493,6 @@ class OpsYlm(object):
     @autocompile
     def latlon_to_xyz(self, lat, lon):
         """Convert lat-lon points to Cartesian points."""
-        # TODO: Check that these if statements are OK
         if lat.ndim == 0:
             lat = tt.shape_padleft(lat, 1)
         if lon.ndim == 0:
@@ -751,7 +751,7 @@ class OpsReflected(OpsYlm):
         return self._rT(b)
 
     @autocompile
-    def intensity(self, lat, lon, y, u, f, xs, ys, zs, wta):
+    def intensity(self, lat, lon, y, u, f, xs, ys, zs, wta, ld):
         """Compute the intensity at a series of lat-lon points on the surface."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
@@ -774,7 +774,12 @@ class OpsReflected(OpsYlm):
         A1y = ts.dot(self.A1, y)
 
         # Apply the filter
-        A1y = tt.dot(self.F(u, f), A1y)
+        if self.filter:
+            u0 = tt.zeros_like(u)
+            u0 = tt.set_subtensor(u0[0], -1.0)
+            A1y = ifelse(
+                ld, tt.dot(self.F(u, f), A1y), tt.dot(self.F(u0, f), A1y)
+            )
 
         # Dot the polynomial into the basis
         intensity = tt.shape_padright(tt.dot(pT, A1y))
@@ -797,7 +802,7 @@ class OpsReflected(OpsYlm):
         return intensity
 
     @autocompile
-    def unweighted_intensity(self, lat, lon, y, u, f):
+    def unweighted_intensity(self, lat, lon, y, u, f, ld):
         """Compute the intensity in the absence of an illumination source."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
@@ -810,7 +815,11 @@ class OpsReflected(OpsYlm):
 
         # Apply the filter
         if self.filter:
-            A1y = tt.dot(self.F(u, f), A1y)
+            u0 = tt.zeros_like(u)
+            u0 = tt.set_subtensor(u0[0], -1.0)
+            A1y = ifelse(
+                ld, tt.dot(self.F(u, f), A1y), tt.dot(self.F(u0, f), A1y)
+            )
 
         # Dot the polynomial into the basis
         return tt.dot(pT, A1y)

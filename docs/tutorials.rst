@@ -35,6 +35,7 @@ Advanced
    :titlesonly:
    :maxdepth: 1
 
+   notebooks/StarSpots.ipynb
    notebooks/LinearSolve.ipynb
    notebooks/MarginalLikelihood.ipynb
    notebooks/MultiWavelength.ipynb

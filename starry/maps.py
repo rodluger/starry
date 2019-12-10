@@ -799,6 +799,8 @@ class YlmBase(object):
             theta (scalar, optional): For differentially rotating maps only,
                 the angular phase at which to evaluate the intensity.
                 Default 0.
+            limbdarken (bool, optional): Apply limb darkening
+                (only if :py:attr:`udeg` > 0)? Default True.
 
         """
         # Get the Cartesian points
@@ -813,9 +815,15 @@ class YlmBase(object):
         else:
             alpha_theta = math.cast(0.0)
 
+        # If limb-darkened, allow a `limbdarken` keyword
+        if self.udeg > 0:
+            ld = np.array(True)
+        else:
+            ld = np.array(False)
+
         # Compute & return
         return self.amp * self.ops.intensity(
-            lat, lon, self._y, self._u, self._f, alpha_theta
+            lat, lon, self._y, self._u, self._f, alpha_theta, ld
         )
 
     def render(self, res=300, projection="ortho", theta=0.0):
@@ -990,48 +998,80 @@ class YlmBase(object):
         else:
             self._y = math.transpose(y)
 
-    def add_spot(
-        self, amp, sigma=0.1, lat=0.0, lon=0.0, preserve_luminosity=False
-    ):
+    def add_spot(self, amp=None, intensity=None, sigma=0.1, lat=0.0, lon=0.0):
         r"""Add the expansion of a gaussian spot to the map.
 
         This function adds a spot whose functional form is the spherical
         harmonic expansion of a gaussian in the quantity
         :math:`\cos\Delta\theta`, where :math:`\Delta\theta`
         is the angular separation between the center of the spot and another
-        point on the surface. The spot brightness is controlled by the
-        parameter ``amp``, which is defined as the fractional change in the
-        total luminosity of the object due to the spot.
+        point on the surface. The spot brightness is controlled by either the
+        parameter ``amp``, defined as the fractional change in the
+        total luminosity of the object due to the spot, or the parameter
+        ``intensity``, defined as the fractional change in the
+        intensity at the center of the spot.
 
         Args:
-            amp (scalar or vector): The amplitude of the spot. This is equal
-                to the fractional change in the luminosity of the map due to
-                the spot (unless ``preserve_luminosity`` is True.) If the map
-                has more than one wavelength bin, this must be a vector of
-                length equal to the number of wavelength bins.
+            amp (scalar or vector, optional): The amplitude of the spot. This
+                is equal to the fractional change in the luminosity of the map
+                due to the spot. If the map has more than one wavelength bin,
+                this must be a vector of length equal to the number of
+                wavelength bins. Default is None.
+                Either ``amp`` or ``intensity`` must be given.
+            intensity (scalar or vector, optional): The intensity of the spot.
+                This is equal to the fractional change in the intensity of the
+                map at the *center* of the spot. If the map has more than one
+                wavelength bin, this must be a vector of length equal to the
+                number of wavelength bins. Default is None.
+                Either ``amp`` or ``intensity`` must be given.
             sigma (scalar, optional): The standard deviation of the gaussian.
                 Defaults to 0.1.
             lat (scalar, optional): The latitude of the spot in units of
                 :py:attr:`angle_unit`. Defaults to 0.0.
             lon (scalar, optional): The longitude of the spot in units of
                 :py:attr:`angle_unit`. Defaults to 0.0.
-            preserve_luminosity (bool, optional): If True, preserves the
-                current map luminosity when adding the spot. Regions of the
-                map outside of the spot will therefore get brighter.
-                Defaults to False.
+
         """
-        amp, _ = math.vectorize(math.cast(amp), np.ones(self.nw))
+        # Parse the amplitude
+        if (amp is None and intensity is None) or (
+            amp is not None and intensity is not None
+        ):
+            raise ValueError("Please provide either `amp` or `intensity`.")
+        elif amp is not None:
+            amp, _ = math.vectorize(math.cast(amp), np.ones(self.nw))
+        else:
+            # Vectorize if needed
+            intensity, _ = math.vectorize(
+                math.cast(intensity), np.ones(self.nw)
+            )
+            # This is the relative change in intensity
+            DeltaI = (
+                self.intensity(lat=lat, lon=lon, limbdarken=False) * intensity
+            )
+            # The integral of the gaussian in cos(Delta theta) over the
+            # surface of the sphere is sigma * sqrt(2 * pi^3). Combining
+            # this with the normalization convention of starry (a factor of 4),
+            # the corresponding spot amplitude is...
+            amp = sigma * np.sqrt(2 * np.pi ** 3) * DeltaI / 4
+
+        # Parse remaining kwargs
         sigma, lat, lon = math.cast(sigma, lat, lon)
-        self._y, new_norm = self.ops.add_spot(
-            self._y,
-            self._amp,
-            amp,
+
+        # Get the Ylm expansion of the spot. Note that yspot[0] is not
+        # unity, so we'll need to normalize it before setting self._y
+        yspot = self.ops.expand_spot(
+            amp / self.amp,
             sigma,
             lat * self._angle_factor,
             lon * self._angle_factor,
         )
-        if not preserve_luminosity:
-            self._amp = new_norm
+        y_new = self._y + yspot
+        amp_new = self._amp * y_new[0]
+        y_new /= y_new[0]
+
+        # Update the map and the normalizing amplitude
+        self._y = y_new
+        self._amp = amp_new
 
     def minimize(self, oversample=1, ntries=1, return_info=False):
         """Find the global minimum of the map intensity.
@@ -1462,6 +1502,8 @@ class RVBase(object):
             theta (scalar, optional): For differentially rotating maps only,
                 the angular phase at which to evaluate the intensity.
                 Default 0.
+            limbdarken (bool, optional): Apply limb darkening
+                (only if :py:attr:`udeg` > 0)? Default True.
 
         """
         # Compute the velocity-weighted intensity if `rv==True`
@@ -1722,6 +1764,8 @@ class ReflectedBase(object):
             theta (scalar, optional): For differentially rotating maps only,
                 the angular phase at which to evaluate the intensity.
                 Default 0.
+            limbdarken (bool, optional): Apply limb darkening
+                (only if :py:attr:`udeg` > 0)? Default True.
         """
         # Get the Cartesian points
         lat, lon = math.vectorize(*math.cast(lat, lon))
@@ -1747,9 +1791,15 @@ class ReflectedBase(object):
             alpha_theta = math.cast(0.0)
             self._check_kwargs("intensity", kwargs)
 
+        # If limb-darkened, allow a `limbdarken` keyword
+        if self.udeg > 0:
+            ld = np.array(True)
+        else:
+            ld = np.array(False)
+
         # Compute & return
         return amp * self.ops.intensity(
-            lat, lon, self._y, self._u, self._f, xs, ys, zs, alpha_theta
+            lat, lon, self._y, self._u, self._f, xs, ys, zs, alpha_theta, ld
         )
 
     def render(

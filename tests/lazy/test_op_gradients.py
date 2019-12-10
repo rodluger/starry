@@ -35,8 +35,12 @@ def test_intensity(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         u = [-1.0] + list(np.random.randn(2))
         f = [np.pi]
         wta = 0.0
+
+        def intensity(lat, lon, y, u, f, wta):
+            return map.ops.intensity(lat, lon, y, u, f, wta, np.array(True))
+
         verify_grad(
-            map.ops.intensity,
+            intensity,
             (lat, lon, y, u, f, wta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
@@ -218,8 +222,14 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         ys = source[:, 1]
         zs = source[:, 2]
         wta = 0.0
+
+        def intensity(lat, lon, y, u, f, xs, ys, zs, wta):
+            return map.ops.intensity(
+                lat, lon, y, u, f, xs, ys, zs, wta, np.array(True)
+            )
+
         verify_grad(
-            map.ops.intensity,
+            intensity,
             (lat, lon, y, u, f, xs, ys, zs, wta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
