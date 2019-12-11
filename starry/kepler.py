@@ -1146,7 +1146,16 @@ class System(object):
                 :py:meth:`design_matrix`, if a design matrix is not provided.
                 Default is None.
             woodbury (bool, optional): Solve the linear problem using the
-                Woodbury identity? Default is True.
+                Woodbury identity? Default is True. The
+                `Woodbury identity <https://en.wikipedia.org/wiki/Woodbury_matrix_identity>`_
+                is used to speed up matrix operations in the case that the
+                number of data points is much larger than the number of
+                spherical harmonic coefficients. In this limit, it can
+                speed up the code by more than an order of magnitude. Keep
+                in mind that the numerical stability of the Woodbury identity
+                is not great, so if you're getting strange results try
+                disabling this. It's also a good idea to disable this in the
+                limit of few data points and large spherical harmonic degree.
 
         Returns:
             lnlike: The log marginal likelihood.

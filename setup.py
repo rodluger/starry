@@ -46,22 +46,6 @@ class get_pybind_include(object):
     """
 
     def __init__(self, user=False):
-
-        # TODO: This is a horrible hack. We need a better way
-        # of ensuring pybind11 is installed *before* any of the
-        # C code is compiled. For some reason placing `pybind11`
-        # in `setup_requires` is *not* sufficient.
-        # See https://github.com/pybind/python_example/issues/32
-        try:
-            import pybind11
-        except ImportError:
-            if subprocess.call(
-                [sys.executable, "-m", "pip", "install", "pybind11"]
-            ):
-                raise RuntimeError(
-                    "pybind11 install failed. Please install it manually."
-                )
-
         self.user = user
 
     def __str__(self):
@@ -132,7 +116,7 @@ class BuildExt(build_ext):
     l_opts = {"msvc": [], "unix": []}
 
     if sys.platform == "darwin":
-        darwin_opts = ["-stdlib=libc++", "-mmacosx-version-min=10.7"]
+        darwin_opts = ["-stdlib=libc++", "-mmacosx-version-min=10.14"]
         c_opts["unix"] += darwin_opts
         l_opts["unix"] += darwin_opts
 

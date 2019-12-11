@@ -1,4 +1,10 @@
 lib/* linguist-vendored
 notebooks/* linguist-documentation
+
+# nbstripout removes output from notebooks
 *.ipynb filter=nbstripout
 *.ipynb diff=ipynb
+
+# keep the output from these notebooks
+notebooks/EclipsingBinary_FullSolution.ipynb filter= diff=
+notebooks/EclipsingBinary_FullSolution_Painful.ipynb filter= diff=
