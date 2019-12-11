@@ -46,3 +46,35 @@ def test_latlon():
     imin = np.argmin(I)
     assert lat[imin] == lat0
     assert lon[imin] == lon0
+
+
+def test_two_spots():
+    """
+    Test the behavior when adding two identical spots in different locations.
+
+    If `relative` is True, the intensities at the spot centers should be
+    different, since the user is asking for the spot to change the *current*
+    intensity or amplitude of the map by a fixed percentage. After the first
+    spot is added, the intensity/amplitude of the map has changed, so the
+    second spot will result in a different *absolute* change to the intensity.
+
+    If `relative` is False, the intensities at the spot centers should be
+    the same. The user is essentially asking for the spot to change the
+    *original* intensity or amplitude of the map by a fixed percentage.
+    """
+
+    def same_intensity(intensity=None, amp=None, relative=True):
+        map = starry.Map(ydeg=10)
+        map.add_spot(
+            intensity=intensity, amp=amp, sigma=0.05, lon=0, relative=relative
+        )
+        map.add_spot(
+            intensity=intensity, amp=amp, sigma=0.05, lon=90, relative=relative
+        )
+        return np.isclose(map.intensity(lon=0), map.intensity(lon=90))
+
+    assert same_intensity(amp=-0.01, relative=False)
+    assert same_intensity(intensity=-0.1, relative=False)
+
+    assert not same_intensity(amp=-0.01, relative=True)
+    assert not same_intensity(intensity=-0.1, relative=True)

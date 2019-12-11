@@ -998,7 +998,15 @@ class YlmBase(object):
         else:
             self._y = math.transpose(y)
 
-    def add_spot(self, amp=None, intensity=None, sigma=0.1, lat=0.0, lon=0.0):
+    def add_spot(
+        self,
+        amp=None,
+        intensity=None,
+        relative=True,
+        sigma=0.1,
+        lat=0.0,
+        lon=0.0,
+    ):
         r"""Add the expansion of a gaussian spot to the map.
 
         This function adds a spot whose functional form is the spherical
@@ -1024,6 +1032,17 @@ class YlmBase(object):
                 wavelength bin, this must be a vector of length equal to the
                 number of wavelength bins. Default is None.
                 Either ``amp`` or ``intensity`` must be given.
+            relative (bool, optional): If True, computes the spot expansion
+                assuming the fractional `amp` or `intensity` change is relative
+                to the **current** map amplitude/intensity. If False, computes
+                the spot expansion assuming the fractional change is relative
+                to the **original** map amplitude/intensity (i.e., that of
+                a featureless map). Defaults to True. Note that if True,
+                adding two spots with the same values of `amp` or `intensity`
+                will generally result in *different* intensities at their
+                centers, since the first spot will have changed the map
+                intensity everywhere!
+            Defaults to True.
             sigma (scalar, optional): The standard deviation of the gaussian.
                 Defaults to 0.1.
             lat (scalar, optional): The latitude of the spot in units of
@@ -1039,20 +1058,27 @@ class YlmBase(object):
             raise ValueError("Please provide either `amp` or `intensity`.")
         elif amp is not None:
             amp, _ = math.vectorize(math.cast(amp), np.ones(self.nw))
+            # Normalize?
+            if not relative:
+                amp /= self.amp
         else:
             # Vectorize if needed
             intensity, _ = math.vectorize(
                 math.cast(intensity), np.ones(self.nw)
             )
-            # This is the relative change in intensity
-            DeltaI = (
-                self.intensity(lat=lat, lon=lon, limbdarken=False) * intensity
-            )
+            # Normalize?
+            if not relative:
+                baseline = 1.0 / np.pi
+            else:
+                baseline = self.intensity(lat=lat, lon=lon, limbdarken=False)
+            DeltaI = baseline * intensity
             # The integral of the gaussian in cos(Delta theta) over the
             # surface of the sphere is sigma * sqrt(2 * pi^3). Combining
             # this with the normalization convention of starry (a factor of 4),
             # the corresponding spot amplitude is...
             amp = sigma * np.sqrt(2 * np.pi ** 3) * DeltaI / 4
+            if not relative:
+                amp /= self.amp
 
         # Parse remaining kwargs
         sigma, lat, lon = math.cast(sigma, lat, lon)
@@ -1060,10 +1086,7 @@ class YlmBase(object):
         # Get the Ylm expansion of the spot. Note that yspot[0] is not
         # unity, so we'll need to normalize it before setting self._y
         yspot = self.ops.expand_spot(
-            amp / self.amp,
-            sigma,
-            lat * self._angle_factor,
-            lon * self._angle_factor,
+            amp, sigma, lat * self._angle_factor, lon * self._angle_factor
         )
         y_new = self._y + yspot
         amp_new = self._amp * y_new[0]
