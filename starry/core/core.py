@@ -1416,74 +1416,6 @@ class OpsSystem(object):
             )
 
     @autocompile
-    def flux(
-        self,
-        t,
-        pri_r,
-        pri_m,
-        pri_prot,
-        pri_t0,
-        pri_theta0,
-        pri_L,
-        pri_inc,
-        pri_obl,
-        pri_y,
-        pri_u,
-        pri_f,
-        pri_alpha,
-        sec_r,
-        sec_m,
-        sec_prot,
-        sec_t0,
-        sec_theta0,
-        sec_porb,
-        sec_ecc,
-        sec_w,
-        sec_Omega,
-        sec_iorb,
-        sec_L,
-        sec_inc,
-        sec_obl,
-        sec_y,
-        sec_u,
-        sec_f,
-        sec_alpha,
-    ):
-        """Compute the full system light curve."""
-        X = self.X(
-            t,
-            pri_r,
-            pri_m,
-            pri_prot,
-            pri_t0,
-            pri_theta0,
-            pri_L,
-            pri_inc,
-            pri_obl,
-            pri_u,
-            pri_f,
-            pri_alpha,
-            sec_r,
-            sec_m,
-            sec_prot,
-            sec_t0,
-            sec_theta0,
-            sec_porb,
-            sec_ecc,
-            sec_w,
-            sec_Omega,
-            sec_iorb,
-            sec_L,
-            sec_inc,
-            sec_obl,
-            sec_u,
-            sec_f,
-            sec_alpha,
-        )
-        y = tt.concatenate((pri_y, tt.reshape(sec_y, (-1,))))
-        return tt.dot(X, y)
-
-    @autocompile
     def rv(
         self,
         t,
@@ -1633,7 +1565,7 @@ class OpsSystem(object):
         invI = tt.where(tt.isinf(invI), 0.0, invI)
 
         # The RV anomaly is just the product
-        rv = tt.sum(Iv * invI, axis=0)
+        rv = Iv * invI
 
         # Compute the Keplerian RV
         orbit = exoplanet.orbits.KeplerianOrbit(
@@ -1649,10 +1581,14 @@ class OpsSystem(object):
         )
         return ifelse(
             keplerian,
-            rv
-            + tt.sum(
-                orbit.get_radial_velocity(t, output_units=units.m / units.s),
-                axis=-1,
+            tt.inc_subtensor(
+                rv[0],
+                tt.reshape(
+                    orbit.get_radial_velocity(
+                        t, output_units=units.m / units.s
+                    ),
+                    (-1,),
+                ),
             ),
             rv,
         )

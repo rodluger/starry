@@ -18,6 +18,7 @@ pip install -U ipywidgets
 sudo apt-get install ffmpeg
 pip install -U sympy
 pip install -U corner
+pip install -U batman-package
 
 # Run the notebooks using nbconvert
 mkdir -p docs/notebooks

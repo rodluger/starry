@@ -471,6 +471,16 @@ class System(object):
             self._reflected = False
         self._secondaries = secondaries
 
+        # Indices of each of the bodies in the design matrix
+        Ny = [self._primary._map.Ny] + [
+            sec._map.Ny for sec in self._secondaries
+        ]
+        self._inds = []
+        cur = 0
+        for N in Ny:
+            self._inds.append(cur + np.arange(N))
+            cur += N
+
         # Theano ops class
         self.ops = OpsSystem(
             self._primary,
@@ -831,75 +841,45 @@ class System(object):
             ),
         )
 
-    def flux(self, t):
+    def flux(self, t, total=True):
         """Compute the system flux at times ``t``.
 
         Args:
             t (scalar or vector): An array of times at which to evaluate
                 the flux in units of :py:attr:`time_unit`.
+            total (bool, optional): Return the total system flux? Defaults to
+                True. If False, returns arrays corresponding to the flux
+                from each body.
         """
-        return self.ops.flux(
-            math.reshape(math.to_array_or_tensor(t), [-1]) * self._time_factor,
-            self._primary._r,
-            self._primary._m,
-            self._primary._prot,
-            self._primary._t0,
-            self._primary._theta0,
-            self._primary._map._amp,
-            self._primary._map._inc,
-            self._primary._map._obl,
-            self._primary._map._y,
-            self._primary._map._u,
-            self._primary._map._f,
-            self._primary._map._alpha,
-            math.to_array_or_tensor([sec._r for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._m for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._prot for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._t0 for sec in self._secondaries]),
-            math.to_array_or_tensor(
-                [sec._theta0 for sec in self._secondaries]
-            ),
-            self._get_periods(),
-            math.to_array_or_tensor([sec._ecc for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._w for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
-            math.to_array_or_tensor(
-                [sec._map._amp for sec in self._secondaries]
-            ),
-            math.to_array_or_tensor(
-                [sec._map._inc for sec in self._secondaries]
-            ),
-            math.to_array_or_tensor(
-                [sec._map._obl for sec in self._secondaries]
-            ),
-            math.to_array_or_tensor(
-                [sec._map._y for sec in self._secondaries]
-            ),
-            math.to_array_or_tensor(
-                [sec._map._u for sec in self._secondaries]
-            ),
-            math.to_array_or_tensor(
-                [sec._map._f for sec in self._secondaries]
-            ),
-            math.to_array_or_tensor(
-                [sec._map._alpha for sec in self._secondaries]
-            ),
-        )
+        X = self.design_matrix(t)
+        y = [self._primary._map._y] + [
+            sec._map._y for sec in self._secondaries
+        ]
+        if total:
+            return math.dot(X, math.concatenate(y))
+        else:
+            return [
+                math.dot(X[:, idx], y[i]) for i, idx in enumerate(self._inds)
+            ]
 
-    def rv(self, t, keplerian=True):
+    def rv(self, t, keplerian=True, total=True):
         """Compute the observed radial velocity of the system at times ``t``.
 
         Args:
             t (scalar or vector): An array of times at which to evaluate
                 the radial velocity in units of :py:attr:`time_unit`.
             keplerian (bool): Include the Keplerian component of the radial
-                velocity? Default is True. If False, this method returns a
-                model for only the radial velocity anomaly due to transits
-                (the Rossiter-McLaughlin effect) and time-variable surface
-                features (Doppler tomography).
+                velocity of the primary? Default is True. If False, this
+                method returns a model for only the radial velocity anomaly
+                due to transits (the Rossiter-McLaughlin effect) and
+                time-variable surface features (Doppler tomography) for all
+                bodies in the system.
+            total (bool, optional): Return the total system RV? Defaults to
+                True. If False, returns arrays corresponding to the RV
+                contribution from each body.
+
         """
-        return self.ops.rv(
+        rv = self.ops.rv(
             math.reshape(math.to_array_or_tensor(t), [-1]) * self._time_factor,
             self._primary._r,
             self._primary._m,
@@ -948,6 +928,10 @@ class System(object):
             ),
             np.array(keplerian),
         )
+        if total:
+            return math.sum(rv, axis=0)
+        else:
+            return rv
 
     def position(self, t):
         """Compute the Cartesian positions of all bodies at times ``t``.

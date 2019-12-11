@@ -16,6 +16,7 @@ The basics
    notebooks/Basics.ipynb
    notebooks/LazyGreedy.ipynb
    notebooks/Orientation.ipynb
+   notebooks/Exoplanet.ipynb
 
 Eclipsing binary example
 ------------------------
