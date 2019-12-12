@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """Healpy-based spherical harmonic transform utilities for starry."""
 import numpy as np
+from PIL import Image
+from matplotlib.image import pil_to_array
+import os
+from scipy import ndimage
 
 try:
     import healpy as hp
 except ImportError:
     hp = None
-from PIL import Image
-from matplotlib.image import pil_to_array
-import os
 
-
-__all__ = ["image2map", "healpix2map", "array2map"]
+__all__ = ["image2map", "healpix2map", "array2map", "array2healpix"]
 
 
 def healpix2map(healpix_map, lmax=10, **kwargs):
@@ -50,7 +50,7 @@ def healpix2map(healpix_map, lmax=10, **kwargs):
     return ylm
 
 
-def image2map(image, lmax=10, **kwargs):
+def image2map(image, **kwargs):
     """Return a map vector corresponding to a lat-long map image."""
     # If image doesn't exist, check for it in `img` directory
     if not os.path.exists(image):
@@ -68,30 +68,54 @@ def image2map(image, lmax=10, **kwargs):
     image_array /= 255.0
 
     # Convert it to a map
-    return array2map(image_array, lmax=lmax, **kwargs)
+    return array2map(image_array, **kwargs)
 
 
-def array2map(image_array, lmax=10, sampling_factor=8, **kwargs):
-    """Return a map vector corresponding to a lat-lon map image array."""
+def array2healpix(image_array, nside=16, max_iter=3, **kwargs):
+    """Return a healpix ring-ordered map corresponding to a lat-lon map image array."""
     if hp is None:
         raise ImportError(
             "Please install the `healpy` Python package to "
             "enable this feature. See `https://healpy.readthedocs.io`."
         )
-    # Figure out a reasonable number of sides
-    # Note that this is not optimized. There may be a better criterion
-    # for figuring out the optimal number of sides.
-    npix = image_array.shape[0] * image_array.shape[1]
-    nside = 2
-    while hp.nside2npix(nside) * sampling_factor < npix:
-        nside *= 2
 
-    # Convert to a healpix map
-    theta = np.linspace(0, np.pi, image_array.shape[0])[:, None]
-    phi = np.linspace(-np.pi, np.pi, image_array.shape[1])[::-1]
-    pix = hp.ang2pix(nside, theta, phi, nest=False)
-    healpix_map = np.zeros(hp.nside2npix(nside), dtype=np.float64)
-    healpix_map[pix] = image_array
+    # Starting value for the zoom
+    zoom = 2
+
+    # Keep track of the number of unseen pixels
+    unseen = 1
+    ntries = 0
+    while unseen > 0:
+
+        # Make the image bigger so we have good angular coverage
+        image_array = ndimage.zoom(image_array, zoom)
+
+        # Convert to a healpix map
+        theta = np.linspace(0, np.pi, image_array.shape[0])[:, None]
+        phi = np.linspace(-np.pi, np.pi, image_array.shape[1])[::-1]
+        pix = hp.ang2pix(nside, theta, phi, nest=False)
+        healpix_map = (
+            np.ones(hp.nside2npix(nside), dtype=np.float64) * hp.UNSEEN
+        )
+        healpix_map[pix] = image_array
+
+        # Count the unseen pixels
+        unseen = np.count_nonzero(healpix_map == hp.UNSEEN)
+
+        # Did we do this too many times?
+        ntries += 1
+        if ntries > max_iter:
+            raise ValueError(
+                "Maximum number of iterations exceeded. Either decreaser `nside` or increase `max_iter`."
+            )
+
+    return healpix_map
+
+
+def array2map(image_array, **kwargs):
+    """Return a map vector corresponding to a lat-lon map image array."""
+    # Get the healpix map
+    healpix_map = array2healpix(image_array, **kwargs)
 
     # Now convert it to a spherical harmonic map
-    return healpix2map(healpix_map, lmax=lmax, **kwargs)
+    return healpix2map(healpix_map, **kwargs)

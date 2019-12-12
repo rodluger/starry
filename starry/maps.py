@@ -578,9 +578,9 @@ class MapBase(object):
         if not self.__props__["limbdarkened"]:
             kwargs.pop("projection", None)
         if self.__props__["reflected"]:
-            kwargs.pop("xo", None)
-            kwargs.pop("yo", None)
-            kwargs.pop("zo", None)
+            kwargs.pop("xs", None)
+            kwargs.pop("ys", None)
+            kwargs.pop("zs", None)
         self._check_kwargs("show", kwargs)
 
     def limbdark_is_physical(self):
@@ -889,7 +889,8 @@ class YlmBase(object):
         self,
         image,
         healpix=False,
-        sampling_factor=8,
+        nside=None,
+        max_iter=3,
         sigma=None,
         force_psd=False,
         **kwargs
@@ -905,10 +906,6 @@ class YlmBase(object):
                 array, or a ``healpix`` map array (if ``healpix`` is True).
             healpix (bool, optional): Treat ``image`` as a ``healpix`` array?
                 Default is False.
-            sampling_factor (int, optional): Oversampling factor when computing
-                the ``healpix`` representation of an input image or array.
-                Default is 8. Increasing this number may improve the fidelity
-                of the expanded map, but the calculation will take longer.
             sigma (float, optional): If not None, apply gaussian smoothing
                 with standard deviation ``sigma`` to smooth over
                 spurious ringing features. Smoothing is performed with
@@ -916,11 +913,26 @@ class YlmBase(object):
                 Default is None.
             force_psd (bool, optional): Force the map to be positive
                 semi-definite? Default is False.
+            nside (int, optional): The ``NSIDE`` argument to a Healpix
+                map. This controls the angular resolution of the image; increase
+                this for maps with higher fidelity, at the expense of extra
+                compute time. Default is the degree of the map, rounded
+                up to the closest power of 2.
+            max_iter (int, optional): Maximum number of iterations in trying
+                to convert the map to a Healpix array. Each iteration, the
+                input array is successively doubled in size in order to
+                increase the angular coverage of the input. Default is 3. If
+                the number of iterations exceeds this value, an error will
+                be raised.
             kwargs (optional): Any other kwargs passed directly to
                 :py:meth:`minimize` (only if ``psd`` is True).
         """
         # Not implemented for spectral
         self._no_spectral()
+
+        # Default number of sides
+        if nside is None:
+            nside = int(2 ** np.ceil(np.log2(self.ydeg)))
 
         # Is this a file name?
         if type(image) is str:
@@ -928,7 +940,8 @@ class YlmBase(object):
                 image,
                 lmax=self.ydeg,
                 sigma=sigma,
-                sampling_factor=sampling_factor,
+                nside=nside,
+                max_iter=max_iter,
             )
         # or is it an array?
         elif type(image) is np.ndarray:
@@ -937,14 +950,16 @@ class YlmBase(object):
                     image,
                     lmax=self.ydeg,
                     sigma=sigma,
-                    sampling_factor=sampling_factor,
+                    nside=nside,
+                    max_iter=max_iter,
                 )
             else:
                 y = array2map(
                     image,
                     lmax=self.ydeg,
                     sigma=sigma,
-                    sampling_factor=sampling_factor,
+                    nside=nside,
+                    max_iter=max_iter,
                 )
         else:
             raise ValueError("Invalid `image` value.")
