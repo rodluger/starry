@@ -15,7 +15,12 @@ def test_diffrot(visualize=False):
     # This is a bit hacky: compute the Ylm expansion of cos(latitude)
     # then rotate it 90 degrees so it's cos(longitude) instead.
     # Expanding a longitudinal cosine directly doesn't work as well
-    map.load(np.tile(np.cos(np.linspace(-np.pi, np.pi, 500)), (1000, 1)).T)
+    map.load(
+        np.tile(
+            np.cos(np.linspace(-np.pi, np.pi, 500, endpoint=False)), (1000, 1)
+        ).T,
+        nside=128,
+    )
     map.rotate([0, 0, 1], 90)
 
     # Render the map at 5 phases

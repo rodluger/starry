@@ -65,10 +65,9 @@ def test_solve(L, C):
 
     # Ensure the likelihood of the true value is close to that of
     # the MAP solution
-    mean = mu[0]
-    cov = cho_cov[0].dot(cho_cov[0].T)
-    LnL0 = multivariate_normal.logpdf(mean, mean=mean, cov=cov)
-    LnL = multivariate_normal.logpdf([0.1, 0.2, 0.3], mean=mean, cov=cov)
+    cov = cho_cov.dot(cho_cov.T)
+    LnL0 = multivariate_normal.logpdf(mu, mean=mu, cov=cov)
+    LnL = multivariate_normal.logpdf([0.1, 0.2, 0.3], mean=mu, cov=cov)
     assert LnL0 - LnL < 5.00
 
 

@@ -496,6 +496,8 @@ class System(object):
         # Solve stuff
         self._flux = None
         self._C = None
+        self._yhat = None
+        self._cho_ycov = None
 
     @property
     def light_delay(self):
@@ -1014,12 +1016,13 @@ class System(object):
         Returns:
             yhat, cho_ycov: The posterior mean for the spherical harmonic
                 coefficients `l > 0` and the Cholesky factorization of the
-                posterior covariance of each of the bodies in the system.
+                posterior covariance of all of the bodies in the system,
+                stacked in order (primary, followed by each of the secondaries
+                in the order they were provided.)
 
         .. note::
-            Users may call the :py:meth:`draw` method from the map attribute
-            of each of the bodies to draw from the posterior after calling
-            this method.
+            Users may call the :py:meth:`draw` method of this class to draw
+            from the posterior after calling :py:meth:`solve`.
         """
         self._no_spectral()  # TODO?
 
@@ -1091,27 +1094,60 @@ class System(object):
                 ]
             )
 
-        # Compute the MAP solution
-        yhat, cho_ycov = linalg.MAP(X1, f, self._C.cholesky, mu, LInv)
+        # Compute and return the MAP solution
+        self._yhat, self._cho_ycov = linalg.MAP(
+            X1, f, self._C.cholesky, mu, LInv
+        )
+        return self._yhat, self._cho_ycov
 
-        # Set the body's individual solutions
-        yhat_list = []
-        cho_ycov_list = []
+    @property
+    def yhat(self):
+        """The maximum a posteriori (MAP) solution for all of the maps of the system.
+
+        Users should call :py:meth:`solve` to enable this attribute.
+        """
+        if self._yhat is None:
+            raise ValueError("Please call `solve()` first.")
+        return self._yhat
+
+    @property
+    def ycov(self):
+        """The posterior covariance of the coefficients for all of the maps of the system.
+
+        Users should call :py:meth:`solve` to enable this attribute.
+        """
+        if self._cho_ycov is None:
+            raise ValueError("Please call `solve()` first.")
+        return math.dot(self._cho_ycov, math.transpose(self._cho_ycov.T))
+
+    def draw(self):
+        """
+        Draw a map from the posterior distribution and set
+        the :py:attr:`y` map vector of each body.
+
+        Users should call :py:meth:`solve` to enable this attribute.
+        """
+        if self._yhat is None or self._cho_ycov is None:
+            raise ValueError("Please call `solve()` first.")
+
+        # Number of coefficients
+        bodies = [
+            body
+            for body in [self._primary] + list(self._secondaries)
+            if body.map.ydeg > 0
+        ]
+        N = np.sum([body.map.Ny - 1 for body in bodies])
+
+        # Fast multivariate sampling using the Cholesky factorization
+        u = math.cast(np.random.randn(N))
+        y = self._yhat + math.dot(self._cho_ycov, u)
+
+        # Set all the map vectors
         n = 0
-        for body in [self._primary] + list(self._secondaries):
-            if body.map.ydeg > 0:
-                inds = slice(n, n + body.map.Ny - 1)
-                body.map._yhat = yhat[inds]
-                body.map._cho_ycov = cho_ycov[tuple((inds, inds))]
-                yhat_list.append(body.map._yhat)
-                cho_ycov_list.append(body.map._cho_ycov)
-                n += body.map.Ny - 1
-            else:
-                yhat_list.append([])
-                cho_ycov_list.append([])
-
-        # Return the list of solutions
-        return yhat_list, cho_ycov_list
+        for body in bodies:
+            inds = slice(n, n + body.map.Ny - 1)
+            body.map[1:, :] = y[inds]
+            n += body.map.Ny - 1
 
     def lnlike(self, *, design_matrix=None, t=None, woodbury=True):
         """Returns the log marginal likelihood of the data given a design matrix.

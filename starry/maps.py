@@ -889,7 +889,7 @@ class YlmBase(object):
         self,
         image,
         healpix=False,
-        nside=None,
+        nside=32,
         max_iter=3,
         sigma=None,
         force_psd=False,
@@ -916,8 +916,7 @@ class YlmBase(object):
             nside (int, optional): The ``NSIDE`` argument to a Healpix
                 map. This controls the angular resolution of the image; increase
                 this for maps with higher fidelity, at the expense of extra
-                compute time. Default is the degree of the map, rounded
-                up to the closest power of 2.
+                compute time. Default is 32.
             max_iter (int, optional): Maximum number of iterations in trying
                 to convert the map to a Healpix array. Each iteration, the
                 input array is successively doubled in size in order to
@@ -929,10 +928,6 @@ class YlmBase(object):
         """
         # Not implemented for spectral
         self._no_spectral()
-
-        # Default number of sides
-        if nside is None:
-            nside = int(2 ** np.ceil(np.log2(self.ydeg)))
 
         # Is this a file name?
         if type(image) is str:
@@ -1326,6 +1321,8 @@ class YlmBase(object):
 
     def draw(self):
         """Draw a map from the posterior distribution and set the :py:attr:`y` map vector.
+
+        Users should call :py:meth:`solve` to enable this attribute.
         """
         if self._yhat is None or self._cho_ycov is None:
             raise ValueError("Please call `solve()` first.")
