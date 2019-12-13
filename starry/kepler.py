@@ -1014,11 +1014,11 @@ class System(object):
                 Default is None.
 
         Returns:
-            yhat, cho_ycov: The posterior mean for the spherical harmonic
-                coefficients `l > 0` and the Cholesky factorization of the
-                posterior covariance of all of the bodies in the system,
-                stacked in order (primary, followed by each of the secondaries
-                in the order they were provided.)
+            The posterior mean for the spherical harmonic \
+            coefficients `l > 0` and the Cholesky factorization of the \
+            posterior covariance of all of the bodies in the system, \
+            stacked in order (primary, followed by each of the secondaries \
+            in the order they were provided.)
 
         .. note::
             Users may call the :py:meth:`draw` method of this class to draw
