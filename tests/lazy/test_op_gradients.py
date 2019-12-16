@@ -397,3 +397,37 @@ def test_diffrot(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             eps=eps,
             n_tests=1,
         )
+
+
+def test_spot(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    with change_flags(compute_test_value="off"):
+        map = starry.Map(ydeg=5)
+        amp = [-0.01]
+        sigma = 0.1
+        lat = 30 * np.pi / 180
+        lon = 45 * np.pi / 180
+        verify_grad(
+            map.ops.spotYlm,
+            (amp, sigma, lat, lon),
+            abs_tol=abs_tol,
+            rel_tol=rel_tol,
+            eps=eps,
+            n_tests=1,
+        )
+
+
+def test_spot_spectral(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    with change_flags(compute_test_value="off"):
+        map = starry.Map(ydeg=5, nw=2)
+        amp = [-0.01, -0.02]
+        sigma = 0.1
+        lat = 30 * np.pi / 180
+        lon = 45 * np.pi / 180
+        verify_grad(
+            map.ops.spotYlm,
+            (amp, sigma, lat, lon),
+            abs_tol=abs_tol,
+            rel_tol=rel_tol,
+            eps=eps,
+            n_tests=1,
+        )

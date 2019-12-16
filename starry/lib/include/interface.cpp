@@ -278,6 +278,20 @@ PYBIND11_MODULE(_c_ops, m) {
             .template cast<double>();
       });
 
+  // Gradient of the Ylm expansion of a gaussian spot
+  Ops.def(
+      "spotYlm", [](starry::Ops<Scalar> &ops, const RowVector<Scalar> &amp,
+                    const Scalar &sigma, const Scalar &lat, const Scalar &lon, 
+                    const Matrix<double> &by) {
+        ops.spotYlm(amp.template cast<double>(), static_cast<Scalar>(sigma),
+                     static_cast<Scalar>(lat), static_cast<Scalar>(lon), 
+                     by.template cast<Scalar>());
+        return py::make_tuple(ops.bamp.template cast<double>(),
+                              static_cast<double>(ops.bsigma),
+                              static_cast<double>(ops.blat),
+                              static_cast<double>(ops.blon));
+      });
+
   // Differential rotation operator (matrices)
   Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
                            const Vector<double> &wta) {

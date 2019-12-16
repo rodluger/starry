@@ -38,6 +38,12 @@ class Ops {
   filter::Filter<Scalar> F;
   diffrot::DiffRot<Scalar> D;
 
+  // Spot gradients
+  RowVector<Scalar> bamp;
+  Scalar bsigma;
+  Scalar blat;
+  Scalar blon;
+
   // Constructor
   explicit Ops(int ydeg, int udeg, int fdeg, int drorder) :
       ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
@@ -57,6 +63,15 @@ class Ops {
                                 const Scalar &sigma, const Scalar &lat = 0,
                                 const Scalar &lon = 0) {
     return misc::spotYlm(amp, sigma, lat, lon, ydeg, W);
+  }
+
+  // Compute the gradient of the Ylm expansion of a gaussian spot at a
+  // given latitude/longitude on the map.
+  inline void spotYlm(const RowVector<Scalar> &amp,
+                      const Scalar &sigma, const Scalar &lat,
+                      const Scalar &lon,
+                      const Matrix<double> &by) {
+    misc::spotYlm(amp, sigma, lat, lon, by, ydeg, W, bamp, bsigma, blat, blon);
   }
 
 };  // class Ops
