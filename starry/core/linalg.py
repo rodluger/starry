@@ -160,7 +160,7 @@ class OpsLinAlg(object):
         # Compute the max like y and its covariance matrix
         cho_W = sla.cholesky(W)
         M = self.cho_solve(cho_W, tt.transpose(CInvX))
-        yhat = tt.dot(M, flux) + LInvmu
+        yhat = tt.dot(M, flux) + self.cho_solve(cho_W, LInvmu)
         ycov = self.cho_solve(cho_W, tt.eye(cho_W.shape[0]))
         cho_ycov = sla.cholesky(ycov)
 
