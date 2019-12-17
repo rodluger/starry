@@ -162,10 +162,6 @@ def test_bad_sys_data():
     # Provide a prior for the primary
     pri.map.set_prior(L=1.0)
 
-    # User didn't provide a prior for the secondary
-    with pytest.raises(ValueError) as e:
-        sys.solve(t=[0.0])
-
     # Provide a prior for the secondary
     sec.map.set_prior(L=1.0)
 

@@ -12,6 +12,9 @@ pip install -U starry_beta
 pip install -U git+https://github.com/rodluger/coverage-badge
 sudo apt-get install ffmpeg
 
+# DEBUG
+which ffmpeg
+
 # Run tests
 py.test -v -s tests/greedy --junitxml=junit/test-results-greedy.xml \
         --cov=starry --cov-append --cov-report html:coverage \

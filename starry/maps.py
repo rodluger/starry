@@ -274,6 +274,13 @@ class MapBase(object):
 
         self._amp = math.cast(kwargs.pop("amp", np.ones(self.nw)))
 
+        # Reset data and priors
+        self._flux = None
+        self._C = None
+        self._mu = None
+        self._L = None
+        self._solution = None
+
         self._check_kwargs("reset", kwargs)
 
     def show(self, **kwargs):
@@ -599,6 +606,218 @@ class MapBase(object):
         else:
             return bool(result)
 
+    def set_data(self, flux, C=None, cho_C=None):
+        """Set the data vector and covariance matrix.
+
+        This method is required by the :py:meth:`solve` method, which
+        analytically computes the posterior over surface maps given a
+        dataset and a prior, provided both are described as multivariate
+        Gaussians.
+
+        Args:
+            flux (vector): The observed light curve.
+            C (scalar, vector, or matrix): The data covariance. This may be
+                a scalar, in which case the noise is assumed to be
+                homoscedastic, a vector, in which case the covariance
+                is assumed to be diagonal, or a matrix specifying the full
+                covariance of the dataset. Default is None. Either `C` or
+                `cho_C` must be provided.
+            cho_C (matrix): The lower Cholesky factorization of the data
+                covariance matrix. Defaults to None. Either `C` or
+                `cho_C` must be provided.
+        """
+        self._flux = math.cast(flux)
+        self._C = linalg.Covariance(C, cho_C, N=self._flux.shape[0])
+
+    def set_prior(self, *, mu=None, L=None, cho_L=None):
+        """Set the prior mean and covariance of the spherical harmonic coefficients.
+
+        This method is required by the :py:meth:`solve` method, which
+        analytically computes the posterior over surface maps given a
+        dataset and a prior, provided both are described as multivariate
+        Gaussians.
+
+        Note that the prior is placed on the **amplitude-weighted** coefficients,
+        i.e., the quantity ``x = map.amp * map.y``. Because the first spherical
+        harmonic coefficient is fixed at unity, ``x[0]`` is
+        the amplitude of the map. The actual spherical harmonic coefficients
+        are given by ``x / map.amp``.
+
+        This convention allows one to linearly fit for an arbitrary map normalization
+        at the same time as the spherical harmonic coefficients, while ensuring
+        the ``starry`` requirement that the coefficient of the :math:`Y_{0,0}`
+        harmonic is always unity.
+
+        Args:
+            mu (scalar or vector): The prior mean on the amplitude-weighted
+                spherical harmonic coefficients. Default is unity for the
+                first term and zero for the remaining terms. If this is a vector,
+                it must have length equal to one :py:attr:`Ny`.
+            L (scalar, vector, or matrix): The prior covariance. This may be
+                a scalar, in which case the covariance is assumed to be
+                homoscedastic, a vector, in which case the covariance
+                is assumed to be diagonal, or a matrix specifying the full
+                prior covariance. Default is None. Either `L` or
+                `cho_L` must be provided.
+            cho_L (matrix): The lower Cholesky factorization of the prior
+                covariance matrix. Defaults to None. Either `L` or
+                `cho_L` must be provided.
+
+        """
+        if mu is None:
+            mu = np.zeros(self.Ny)
+            mu[0] = 1.0
+            mu = math.cast(mu)
+        self._mu = math.cast(mu) * math.cast(np.ones(self.Ny))
+        self._L = linalg.Covariance(L, cho_L, N=self.Ny)
+
+    def remove_prior(self):
+        """Remove the prior on the map coefficients."""
+        self._mu = None
+        self._L = None
+
+    def solve(self, *, design_matrix=None, **kwargs):
+        """Solve the linear least-squares problem for the posterior over maps.
+
+        This method solves the generalized least squares problem given a
+        light curve and its covariance (set via the :py:meth:`set_data` method)
+        and a Gaussian prior on the spherical harmonic coefficients
+        (set via the :py:meth:`set_prior` method).
+
+        Args:
+            design_matrix (matrix, optional): The flux design matrix, the
+                quantity returned by :py:meth:`design_matrix`. Default is
+                None, in which case this is computed based on ``kwargs``.
+            kwargs (optional): Keyword arguments to be passed directly to
+                :py:meth:`design_matrix`, if a design matrix is not provided.
+
+        Returns:
+            A tuple containing the posterior mean for the amplitude-weighted \
+            spherical harmonic coefficients (a vector) and the Cholesky factorization \
+            of the posterior covariance (a lower triangular matrix).
+
+        .. note::
+            Users may call :py:meth:`draw` to draw from the
+            posterior after calling this method.
+        """
+        # Not implemented for spectral
+        self._no_spectral()
+
+        if self._flux is None or self._C is None:
+            raise ValueError("Please provide a dataset with `set_data()`.")
+        elif self._mu is None or self._L is None:
+            raise ValueError("Please provide a prior with `set_prior()`.")
+
+        # Get the design matrix & remove any amplitude weighting
+        if design_matrix is None:
+            design_matrix = self.design_matrix(**kwargs)
+        X = math.cast(design_matrix)
+
+        # Compute & return the MAP solution
+        self._solution = linalg.MAP(
+            X, self._flux, self._C.cholesky, self._mu, self._L.inverse
+        )
+
+        return self._solution
+
+    def lnlike(self, *, design_matrix=None, woodbury=True, **kwargs):
+        """Returns the log marginal likelihood of the data given a design matrix.
+
+        This method computes the marginal likelihood (marginalized over the
+        spherical harmonic coefficients) given a
+        light curve and its covariance (set via the :py:meth:`set_data` method)
+        and a Gaussian prior on the spherical harmonic coefficients
+        (set via the :py:meth:`set_prior` method).
+
+        Args:
+            design_matrix (matrix, optional): The flux design matrix, the
+                quantity returned by :py:meth:`design_matrix`. Default is
+                None, in which case this is computed based on ``kwargs``.
+            woodbury (bool, optional): Solve the linear problem using the
+                Woodbury identity? Default is True. The
+                `Woodbury identity <https://en.wikipedia.org/wiki/Woodbury_matrix_identity>`_
+                is used to speed up matrix operations in the case that the
+                number of data points is much larger than the number of
+                spherical harmonic coefficients. In this limit, it can
+                speed up the code by more than an order of magnitude. Keep
+                in mind that the numerical stability of the Woodbury identity
+                is not great, so if you're getting strange results try
+                disabling this. It's also a good idea to disable this in the
+                limit of few data points and large spherical harmonic degree.
+            kwargs (optional): Keyword arguments to be passed directly to
+                :py:meth:`design_matrix`, if a design matrix is not provided.
+
+        Returns:
+            The log marginal likelihood, a scalar.
+        """
+        # Not implemented for spectral
+        self._no_spectral()
+
+        if self._flux is None or self._C is None:
+            raise ValueError("Please provide a dataset with `set_data()`.")
+        elif self._mu is None or self._L is None:
+            raise ValueError("Please provide a prior with `set_prior()`.")
+
+        # Get the design matrix & remove any amplitude weighting
+        if design_matrix is None:
+            design_matrix = self.design_matrix(**kwargs)
+        X = math.cast(design_matrix)
+
+        # Compute the likelihood
+        if woodbury:
+            return linalg.lnlike_woodbury(
+                X,
+                self._flux,
+                self._C.inverse,
+                self._mu,
+                self._L.inverse,
+                self._C.lndet,
+                self._L.lndet,
+            )
+        else:
+            return linalg.lnlike(
+                X, self._flux, self._C.value, self._mu, self._L.value
+            )
+
+    @property
+    def solution(self):
+        r"""The posterior probability distribution for the map.
+
+        This is a tuple containing the mean and lower Cholesky factorization of the
+        covariance of the amplitude-weighted spherical harmonic coefficient vector,
+        obtained by solving the regularized least-squares problem
+        via the :py:meth:`solve` method.
+
+        Note that to obtain the actual covariance matrix from the lower Cholesky
+        factorization :math:`L`, simply compute :math:`L L^\top`.
+
+        Note also that this is the posterior for the **amplitude-weighted**
+        map vector. Under this convention, the map amplitude is equal to the
+        first term of the vector and the spherical harmonic coefficients are
+        equal to the vector normalized by the first term.
+        """
+        if self._solution is None:
+            raise ValueError("Please call `solve()` first.")
+        return self._solution
+
+    def draw(self):
+        """Draw a map from the posterior distribution.
+
+        This method draws a random map from the posterior distribution and
+        sets the :py:attr:`y` map vector and :py:attr:`amp` map amplitude
+        accordingly. Users should call :py:meth:`solve` to enable this
+        attribute.
+        """
+        if self._solution is None:
+            raise ValueError("Please call `solve()` first.")
+
+        # Fast multivariate sampling using the Cholesky factorization
+        yhat, cho_ycov = self._solution
+        u = math.cast(np.random.randn(self.Ny))
+        x = yhat + math.dot(cho_ycov, u)
+        self.amp = x[0]
+        self[1:, :] = x[1:] / self.amp
+
 
 class YlmBase(object):
     """The default ``starry`` map class.
@@ -625,14 +844,6 @@ class YlmBase(object):
             self.alpha = kwargs.pop("alpha")
         else:
             self._alpha = math.cast(0.0)
-
-        # Reset data and priors
-        self._flux = None
-        self._C = None
-        self._mu = None
-        self._L = None
-        self._yhat = None
-        self._cho_ycov = None
 
         super(YlmBase, self).reset(**kwargs)
 
@@ -683,14 +894,9 @@ class YlmBase(object):
     def design_matrix(self, **kwargs):
         r"""Compute and return the light curve design matrix :math:`A`.
 
-        The flux :math:`f` obtained by calling the :py:meth:`flux` method
-        is equal to
-
-            .. math::
-                f = A \cdot y
-
-        where :math:`y` is the vector of spherical harmonic coefficients
-        (:py:attr:`y`).
+        This matrix is used to compute the flux :math:`f` from a vector of spherical
+        harmonic coefficients :math:`y` and the map amplitude :math:`\alpha`:
+        :math:`f = \alpha A y`.
 
         Args:
             xo (scalar or vector, optional): x coordinate of the occultor
@@ -711,7 +917,7 @@ class YlmBase(object):
         self._check_kwargs("design_matrix", kwargs)
 
         # Compute & return
-        return self.amp * self.ops.X(
+        return self.ops.X(
             theta,
             xo,
             yo,
@@ -727,8 +933,9 @@ class YlmBase(object):
     def intensity_design_matrix(self, lat=0, lon=0):
         """Compute and return the pixelization matrix ``P``.
 
-        This matrix transforms a spherical harmonic coefficient vector
-        to a vector of intensities on the surface.
+        This matrix is used to compute the intensity :math:`I` from a vector of spherical
+        harmonic coefficients :math:`y` and the map amplitude :math:`\alpha`:
+        :math:`I = \alpha P y`.
 
         Args:
             lat (scalar or vector, optional): latitude at which to evaluate
@@ -748,7 +955,7 @@ class YlmBase(object):
         lon *= self._angle_factor
 
         # Compute & return
-        return self.amp * self.ops.P(lat, lon)
+        return self.ops.P(lat, lon)
 
     def flux(self, **kwargs):
         """
@@ -1141,197 +1348,6 @@ class YlmBase(object):
                 self._amp * I,
             )
 
-    def set_data(self, flux, C=None, cho_C=None):
-        """Set the data vector and covariance matrix.
-
-        This method is required by the :py:meth:`solve` method, which
-        analytically computes the posterior over surface maps given a
-        dataset and a prior, provided both are described as multivariate
-        Gaussians.
-
-        Args:
-            flux (vector): The observed light curve.
-            C (scalar, vector, or matrix): The data covariance. This may be
-                a scalar, in which case the noise is assumed to be
-                homoscedastic, a vector, in which case the covariance
-                is assumed to be diagonal, or a matrix specifying the full
-                covariance of the dataset. Default is None. Either `C` or
-                `cho_C` must be provided.
-            cho_C (matrix): The lower Cholesky factorization of the data
-                covariance matrix. Defaults to None. Either `C` or
-                `cho_C` must be provided.
-        """
-        self._flux = math.cast(flux)
-        self._C = linalg.Covariance(C, cho_C, N=self._flux.shape[0])
-
-    def set_prior(self, *, mu=0, L=None, cho_L=None):
-        """Set the prior mean and covariance on the spherical harmonic coefficients.
-
-        This method is required by the :py:meth:`solve` method, which
-        analytically computes the posterior over surface maps given a
-        dataset and a prior, provided both are described as multivariate
-        Gaussians.
-
-        Args:
-            mu (scalar or vector): The prior mean on the spherical harmonic
-                coefficients for ``l > 0``. Default is zero. If this is a vector,
-                it must have length equal to one less than :py:attr:`Ny`.
-            L (scalar, vector, or matrix): The prior covariance. This may be
-                a scalar, in which case the covariance is assumed to be
-                homoscedastic, a vector, in which case the covariance
-                is assumed to be diagonal, or a matrix specifying the full
-                prior covariance. Default is None. Either `L` or
-                `cho_L` must be provided.
-            cho_L (matrix): The lower Cholesky factorization of the prior
-                covariance matrix. Defaults to None. Either `L` or
-                `cho_L` must be provided.
-        """
-        self._mu = math.cast(mu) * math.cast(np.ones(self.Ny - 1))
-        self._L = linalg.Covariance(L, cho_L, N=self.Ny - 1)
-
-    def solve(self, *, design_matrix=None, **kwargs):
-        """Solve the linear least-squares problem for the posterior over maps.
-
-        This method solves the generalized least squares problem given a
-        light curve and its covariance (set via the :py:meth:`set_data` method)
-        and a Gaussian prior on the spherical harmonic coefficients
-        (set via the :py:meth:`set_prior` method).
-
-        Args:
-            design_matrix (matrix, optional): The flux design matrix, the
-                quantity returned by :py:meth:`design_matrix`. Default is
-                None, in which case this is computed based on ``kwargs``.
-            kwargs (optional): Keyword arguments to be passed directly to
-                :py:meth:`design_matrix`, if a design matrix is not provided.
-
-        Returns:
-            A tuple containing the posterior mean for the spherical harmonic \
-            coefficients ``l > 0`` (a vector) and the Cholesky factorization \
-            of the posterior covariance (a lower triangular matrix).
-
-        .. note::
-            Users may call :py:meth:`draw` to draw from the
-            posterior after calling this method.
-        """
-        # Not implemented for spectral
-        self._no_spectral()
-
-        if self._flux is None or self._C is None:
-            raise ValueError("Please provide a dataset with `set_data()`.")
-        elif self._mu is None or self._L is None:
-            raise ValueError("Please provide a prior with `set_prior()`.")
-
-        # Get the design matrix
-        if design_matrix is None:
-            design_matrix = self.design_matrix(**kwargs)
-        X = math.cast(design_matrix)
-        X0 = X[:, 0]
-        X1 = X[:, 1:]
-
-        # Subtract out the constant term & divide out the amplitude
-        f = self._flux - X0
-
-        # Compute & return the MAP solution
-        self._yhat, self._cho_ycov = linalg.MAP(
-            X1, f, self._C.cholesky, self._mu, self._L.inverse
-        )
-        return self._yhat, self._cho_ycov
-
-    def lnlike(self, *, design_matrix=None, woodbury=True, **kwargs):
-        """Returns the log marginal likelihood of the data given a design matrix.
-
-        This method computes the marginal likelihood (marginalized over the
-        spherical harmonic coefficients) given a
-        light curve and its covariance (set via the :py:meth:`set_data` method)
-        and a Gaussian prior on the spherical harmonic coefficients
-        (set via the :py:meth:`set_prior` method).
-
-        Args:
-            design_matrix (matrix, optional): The flux design matrix, the
-                quantity returned by :py:meth:`design_matrix`. Default is
-                None, in which case this is computed based on ``kwargs``.
-            woodbury (bool, optional): Solve the linear problem using the
-                Woodbury identity? Default is True. The
-                `Woodbury identity <https://en.wikipedia.org/wiki/Woodbury_matrix_identity>`_
-                is used to speed up matrix operations in the case that the
-                number of data points is much larger than the number of
-                spherical harmonic coefficients. In this limit, it can
-                speed up the code by more than an order of magnitude. Keep
-                in mind that the numerical stability of the Woodbury identity
-                is not great, so if you're getting strange results try
-                disabling this. It's also a good idea to disable this in the
-                limit of few data points and large spherical harmonic degree.
-            kwargs (optional): Keyword arguments to be passed directly to
-                :py:meth:`design_matrix`, if a design matrix is not provided.
-
-        Returns:
-            The log marginal likelihood, a scalar.
-        """
-        # Not implemented for spectral
-        self._no_spectral()
-
-        if self._flux is None or self._C is None:
-            raise ValueError("Please provide a dataset with `set_data()`.")
-        elif self._mu is None or self._L is None:
-            raise ValueError("Please provide a prior with `set_prior()`.")
-
-        # Get the design matrix
-        if design_matrix is None:
-            design_matrix = self.design_matrix(**kwargs)
-        X = math.cast(design_matrix)
-        X0 = X[:, 0]
-        X1 = X[:, 1:]
-
-        # Subtract out the constant term & divide out the amplitude
-        f = self._flux - X0
-
-        # Compute the likelihood
-        if woodbury:
-            return linalg.lnlike_woodbury(
-                X1,
-                f,
-                self._C.inverse,
-                self._mu,
-                self._L.inverse,
-                self._C.lndet,
-                self._L.lndet,
-            )
-        else:
-            return linalg.lnlike(X1, f, self._C.value, self._mu, self._L.value)
-
-    @property
-    def yhat(self):
-        """The maximum a posteriori (MAP) map solution.
-
-        Users should call :py:meth:`solve` to enable this attribute.
-        """
-        if self._yhat is None:
-            raise ValueError("Please call `solve()` first.")
-        return self._yhat
-
-    @property
-    def ycov(self):
-        """The posterior covariance of the map coefficients.
-
-        Users should call :py:meth:`solve` to enable this attribute.
-        """
-        if self._cho_ycov is None:
-            raise ValueError("Please call `solve()` first.")
-        return math.dot(self._cho_ycov, math.transpose(self._cho_ycov.T))
-
-    def draw(self):
-        """Draw a map from the posterior distribution and set the :py:attr:`y` map vector.
-
-        Users should call :py:meth:`solve` to enable this attribute.
-        """
-        if self._yhat is None or self._cho_ycov is None:
-            raise ValueError("Please call `solve()` first.")
-
-        # Fast multivariate sampling using the Cholesky factorization
-        u = math.cast(np.random.randn(self.Ny - 1))
-        y = self._yhat + math.dot(self._cho_ycov, u)
-        self[1:, :] = y
-
 
 class LimbDarkenedBase(object):
     """The ``starry`` map class for purely limb-darkened maps.
@@ -1692,8 +1708,12 @@ class ReflectedBase(object):
         return theta, xs, ys, zs, xo, yo, zo, ro
 
     def design_matrix(self, **kwargs):
-        """
-        Compute and return the light curve design matrix.
+        r"""
+        Compute and return the light curve design matrix, :math:`A`.
+
+        This matrix is used to compute the flux :math:`f` from a vector of spherical
+        harmonic coefficients :math:`y` and the map amplitude :math:`\alpha`:
+        :math:`f = \alpha A y`.
 
         Args:
             xs (scalar or vector, optional): x coordinate of the illumination
@@ -1724,7 +1744,7 @@ class ReflectedBase(object):
         self._check_kwargs("X", kwargs)
 
         # Compute & return
-        return self.amp * self.ops.X(
+        return self.ops.X(
             theta,
             xs,
             ys,

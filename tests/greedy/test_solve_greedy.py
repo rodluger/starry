@@ -18,9 +18,11 @@ lnlike_inputs = itertools.product(vals, vals, woodbury)
 
 # Instantiate a dipole map
 map = starry.Map(ydeg=1, reflected=True)
+amp_true = 0.75
 inc_true = 60
-y_true = [0.1, 0.2, 0.3]
-map[1, :] = y_true
+y_true = np.array([1, 0.1, 0.2, 0.3])
+map.amp = amp_true
+map[1, :] = y_true[1:]
 map.inc = inc_true
 
 # Generate a synthetic light curve with just a little noise
@@ -42,11 +44,11 @@ def test_solve(L, C):
     if L == "scalar":
         map.set_prior(L=1)
     elif L == "vector":
-        map.set_prior(L=np.ones(map.Ny - 1))
+        map.set_prior(L=np.ones(map.Ny))
     elif L == "matrix":
-        map.set_prior(L=np.eye(map.Ny - 1))
+        map.set_prior(L=np.eye(map.Ny))
     elif L == "cholesky":
-        map.set_prior(cho_L=np.eye(map.Ny - 1))
+        map.set_prior(cho_L=np.eye(map.Ny))
 
     # Provide the dataset
     if C == "scalar":
@@ -66,12 +68,10 @@ def test_solve(L, C):
     # the MAP solution
     cov = cho_cov.dot(cho_cov.T)
     LnL0 = multivariate_normal.logpdf(mu, mean=mu, cov=cov)
-    LnL = multivariate_normal.logpdf([0.1, 0.2, 0.3], mean=mu, cov=cov)
+    LnL = multivariate_normal.logpdf(amp_true * y_true, mean=mu, cov=cov)
     assert LnL0 - LnL < 5.00
 
     # Check that we can draw from the posterior
-    assert np.allclose(map.yhat, mu)
-    assert np.allclose(map.ycov, cov)
     map.draw()
 
 
@@ -82,11 +82,11 @@ def test_lnlike(L, C, woodbury):
     if L == "scalar":
         map.set_prior(L=1)
     elif L == "vector":
-        map.set_prior(L=np.ones(map.Ny - 1))
+        map.set_prior(L=np.ones(map.Ny))
     elif L == "matrix":
-        map.set_prior(L=np.eye(map.Ny - 1))
+        map.set_prior(L=np.eye(map.Ny))
     elif L == "cholesky":
-        map.set_prior(cho_L=np.eye(map.Ny - 1))
+        map.set_prior(cho_L=np.eye(map.Ny))
 
     # Provide the dataset
     if C == "scalar":
@@ -107,4 +107,4 @@ def test_lnlike(L, C, woodbury):
 
     # Verify that we get the correct inclination
     assert incs[np.argmax(ll)] == 60
-    assert np.allclose(ll[np.argmax(ll)], 983.429)  # benchmarked
+    assert np.allclose(ll[np.argmax(ll)], 972.5997)  # benchmarked
