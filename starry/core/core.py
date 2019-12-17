@@ -1201,50 +1201,46 @@ class OpsSystem(object):
             pri_alpha,
         )
         if self._reflected:
-            phase_sec = tt.as_tensor_variable(
-                [
-                    sec_L[i]
-                    * sec.map.ops.X(
-                        theta_sec[i],
-                        -x[:, i],
-                        -y[:, i],
-                        -z[:, i],
-                        -x[:, i],  # not used
-                        -y[:, i],  # not used
-                        -z[:, i],  # not used, since...
-                        math.to_tensor(0.0),  # occultor of zero radius
-                        sec_inc[i],
-                        sec_obl[i],
-                        sec_u[i],
-                        sec_f[i],
-                        sec_alpha[i],
-                    )
-                    for i, sec in enumerate(self.secondaries)
-                ]
-            )
+            phase_sec = [
+                sec_L[i]
+                * sec.map.ops.X(
+                    theta_sec[i],
+                    -x[:, i],
+                    -y[:, i],
+                    -z[:, i],
+                    -x[:, i],  # not used
+                    -y[:, i],  # not used
+                    -z[:, i],  # not used, since...
+                    math.to_tensor(0.0),  # occultor of zero radius
+                    sec_inc[i],
+                    sec_obl[i],
+                    sec_u[i],
+                    sec_f[i],
+                    sec_alpha[i],
+                )
+                for i, sec in enumerate(self.secondaries)
+            ]
         else:
-            phase_sec = tt.as_tensor_variable(
-                [
-                    sec_L[i]
-                    * sec.map.ops.X(
-                        theta_sec[i],
-                        -x[:, i],
-                        -y[:, i],
-                        -z[:, i],
-                        math.to_tensor(0.0),  # occultor of zero radius
-                        sec_inc[i],
-                        sec_obl[i],
-                        sec_u[i],
-                        sec_f[i],
-                        sec_alpha[i],
-                    )
-                    for i, sec in enumerate(self.secondaries)
-                ]
-            )
+            phase_sec = [
+                sec_L[i]
+                * sec.map.ops.X(
+                    theta_sec[i],
+                    -x[:, i],
+                    -y[:, i],
+                    -z[:, i],
+                    math.to_tensor(0.0),  # occultor of zero radius
+                    sec_inc[i],
+                    sec_obl[i],
+                    sec_u[i],
+                    sec_f[i],
+                    sec_alpha[i],
+                )
+                for i, sec in enumerate(self.secondaries)
+            ]
 
         # Compute any occultations
         occ_pri = tt.zeros_like(phase_pri)
-        occ_sec = tt.zeros_like(phase_sec)
+        occ_sec = [tt.zeros_like(ps) for ps in phase_sec]
 
         # Compute the period if we were given a semi-major axis
         sec_porb = tt.switch(
@@ -1296,9 +1292,9 @@ class OpsSystem(object):
             )
             idx = tt.arange(b.shape[0])[b_occ]
             if self._reflected:
-                occ_sec = tt.set_subtensor(
-                    occ_sec[i, idx],
-                    occ_sec[i, idx]
+                occ_sec[i] = tt.set_subtensor(
+                    occ_sec[i][idx],
+                    occ_sec[i][idx]
                     + sec_L[i]
                     * sec.map.ops.X(
                         theta_sec[i, idx],
@@ -1315,12 +1311,12 @@ class OpsSystem(object):
                         sec_f[i],
                         sec_alpha[i],
                     )
-                    - phase_sec[i, idx],
+                    - phase_sec[i][idx],
                 )
             else:
-                occ_sec = tt.set_subtensor(
-                    occ_sec[i, idx],
-                    occ_sec[i, idx]
+                occ_sec[i] = tt.set_subtensor(
+                    occ_sec[i][idx],
+                    occ_sec[i][idx]
                     + sec_L[i]
                     * sec.map.ops.X(
                         theta_sec[i, idx],
@@ -1334,7 +1330,7 @@ class OpsSystem(object):
                         sec_f[i],
                         sec_alpha[i],
                     )
-                    - phase_sec[i, idx],
+                    - phase_sec[i][idx],
                 )
 
         # Compute secondary-secondary occultations
@@ -1355,9 +1351,9 @@ class OpsSystem(object):
                     xs = -x[:, i] / sec_r[i]
                     ys = -y[:, i] / sec_r[i]
                     zs = -z[:, i] / sec_r[i]
-                    occ_sec = tt.set_subtensor(
-                        occ_sec[i, idx],
-                        occ_sec[i, idx]
+                    occ_sec[i] = tt.set_subtensor(
+                        occ_sec[i][idx],
+                        occ_sec[i][idx]
                         + sec_L[i]
                         * sec.map.ops.X(
                             theta_sec[i, idx],
@@ -1374,12 +1370,12 @@ class OpsSystem(object):
                             sec_f[i],
                             sec_alpha[i],
                         )
-                        - phase_sec[i, idx],
+                        - phase_sec[i][idx],
                     )
                 else:
-                    occ_sec = tt.set_subtensor(
-                        occ_sec[i, idx],
-                        occ_sec[i, idx]
+                    occ_sec[i] = tt.set_subtensor(
+                        occ_sec[i][idx],
+                        occ_sec[i][idx]
                         + sec_L[i]
                         * sec.map.ops.X(
                             theta_sec[i, idx],
@@ -1393,14 +1389,13 @@ class OpsSystem(object):
                             sec_f[i],
                             sec_alpha[i],
                         )
-                        - phase_sec[i, idx],
+                        - phase_sec[i][idx],
                     )
 
         # Concatenate the design matrices
         X_pri = phase_pri + occ_pri
-        X_sec = phase_sec + occ_sec
-        X_sec = tt.reshape(tt.swapaxes(X_sec, 0, 1), (X_sec.shape[1], -1))
-        X = tt.horizontal_stack(X_pri, X_sec)
+        X_sec = [ps + os for ps, os in zip(phase_sec, occ_sec)]
+        X = tt.horizontal_stack(X_pri, *X_sec)
 
         # Sum and return
         if self.texp == 0.0:
