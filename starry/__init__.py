@@ -22,6 +22,7 @@ config = Config()
 
 # Import the main interface
 from . import constants, core, indices, kepler, maps, sht, plotting
+from .core import linalg
 from .maps import Map
 from .kepler import Primary, Secondary, System
 

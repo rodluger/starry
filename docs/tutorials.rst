@@ -17,6 +17,7 @@ The basics
    notebooks/LazyGreedy.ipynb
    notebooks/Orientation.ipynb
    notebooks/Exoplanet.ipynb
+   notebooks/FAQs.ipynb
 
 Eclipsing binary example
 ------------------------
@@ -46,6 +47,7 @@ Advanced
    notebooks/RossiterMcLaughlin.ipynb
    notebooks/ReflectedLight.ipynb
    notebooks/DifferentialRotation.ipynb
+   notebooks/TimeEvolution.ipynb
    notebooks/LightTravelDelay.ipynb
    notebooks/HotJupiterPhaseCurve.ipynb
 

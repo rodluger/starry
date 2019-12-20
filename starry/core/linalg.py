@@ -113,7 +113,7 @@ class OpsLinAlg(object):
         )
 
     @autocompile
-    def MAP(self, X, flux, cho_C, mu, LInv):
+    def solve(self, X, flux, cho_C, mu, LInv):
         """
         Compute the maximum a posteriori (MAP) prediction for the
         spherical harmonic coefficients of a map given a flux timeseries.

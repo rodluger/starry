@@ -1029,7 +1029,9 @@ class System(object):
         This method solves the generalized least squares problem given a system
         light curve and its covariance (set via the :py:meth:`set_data` method)
         and a Gaussian prior on the spherical harmonic coefficients
-        (set via the :py:meth:`set_prior` method).
+        (set via the :py:meth:`set_prior` method). The map amplitudes and
+        coefficients of each of the bodies in the system are then set to the
+        maximum a posteriori (MAP) solution.
 
         Args:
             design_matrix (matrix, optional): The flux design matrix, the
@@ -1113,8 +1115,19 @@ class System(object):
                 ]
             )
 
-        # Compute and return the MAP solution
-        self._solution = linalg.MAP(X, f, self._C.cholesky, mu, LInv)
+        # Compute the MAP solution
+        self._solution = linalg.solve(X, f, self._C.cholesky, mu, LInv)
+
+        # Set all the map vectors
+        x, _ = self._solution
+        n = 0
+        for body in self._solved_bodies:
+            inds = slice(n, n + body.map.Ny)
+            body.map.amp = x[inds][0]
+            body.map[1:, :] = x[inds][1:] / body.map.amp
+            n += body.map.Ny
+
+        # Return the mean and covariance
         return self._solution
 
     @property

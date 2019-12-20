@@ -290,6 +290,8 @@ class MapBase(object):
         keywords accepted by this method.
 
         Args:
+            ax (optional): A matplotlib axis instance to use. Default is
+                to create a new figure.
             cmap (string or colormap instance, optional): The matplotlib colormap
                 to use. Defaults to ``plasma``.
             figsize (tuple, optional): Figure size in inches. Default is
@@ -323,6 +325,12 @@ class MapBase(object):
         norm = kwargs.pop("norm", None)
         dpi = kwargs.pop("dpi", None)
         figsize = kwargs.pop("figsize", None)
+        bitrate = kwargs.pop("bitrate", None)
+        ax = kwargs.pop("ax", None)
+        if ax is None:
+            custom_ax = False
+        else:
+            custom_ax = True
 
         # Ylm-base maps only
         if not self.__props__["limbdarkened"]:
@@ -418,7 +426,10 @@ class MapBase(object):
             # Set up the plot
             if figsize is None:
                 figsize = (7, 3.75)
-            fig, ax = plt.subplots(1, figsize=figsize)
+            if ax is None:
+                fig, ax = plt.subplots(1, figsize=figsize)
+            else:
+                fig = ax.figure
             extent = (-180, 180, -90, 90)
 
             # Grid lines
@@ -444,7 +455,10 @@ class MapBase(object):
             # Set up the plot
             if figsize is None:
                 figsize = (3, 3)
-            fig, ax = plt.subplots(1, figsize=figsize)
+            if ax is None:
+                fig, ax = plt.subplots(1, figsize=figsize)
+            else:
+                fig = ax.figure
             ax.axis("off")
             ax.set_xlim(-1.05, 1.05)
             ax.set_ylim(-1.05, 1.05)
@@ -530,14 +544,17 @@ class MapBase(object):
             # Business as usual
             if (file is not None) and (file != ""):
                 if file.endswith(".mp4"):
-                    ani.save(file, writer="ffmpeg", dpi=dpi)
+                    ani.save(file, writer="ffmpeg", dpi=dpi, bitrate=bitrate)
                 elif file.endswith(".gif"):
-                    ani.save(file, writer="imagemagick", dpi=dpi)
-                else:  # pragma: no cover
+                    ani.save(
+                        file, writer="imagemagick", dpi=dpi, bitrate=bitrate
+                    )
+                else:
                     # Try and see what happens!
-                    ani.save(file, dpi=dpi)
-                plt.close()
-            else:  # pragma: no cover
+                    ani.save(file, dpi=dpi, bitrate=bitrate)
+                if not custom_ax:
+                    plt.close()
+            else:  # if not custom_ax:
                 try:
                     if "zmqshell" in str(type(get_ipython())):
                         plt.close()
@@ -545,7 +562,10 @@ class MapBase(object):
                             {
                                 "savefig.dpi": dpi
                                 if dpi is not None
-                                else "figure"
+                                else "figure",
+                                "animation.bitrate": bitrate
+                                if bitrate is not None
+                                else -1,
                             }
                         ):
                             if html5_video:
@@ -575,8 +595,9 @@ class MapBase(object):
                         left=0.01, right=0.99, bottom=0.01, top=0.99
                     )
                 fig.savefig(file)
-                plt.close()
-            else:  # pragma: no cover
+                if not custom_ax:
+                    plt.close()
+            elif not custom_ax:
                 plt.show()
 
         # Check for invalid kwargs
@@ -682,7 +703,8 @@ class MapBase(object):
         This method solves the generalized least squares problem given a
         light curve and its covariance (set via the :py:meth:`set_data` method)
         and a Gaussian prior on the spherical harmonic coefficients
-        (set via the :py:meth:`set_prior` method).
+        (set via the :py:meth:`set_prior` method). The map amplitude and
+        coefficients are set to the maximum a posteriori (MAP) solution.
 
         Args:
             design_matrix (matrix, optional): The flux design matrix, the
@@ -713,11 +735,17 @@ class MapBase(object):
             design_matrix = self.design_matrix(**kwargs)
         X = math.cast(design_matrix)
 
-        # Compute & return the MAP solution
-        self._solution = linalg.MAP(
+        # Compute the MAP solution
+        self._solution = linalg.solve(
             X, self._flux, self._C.cholesky, self._mu, self._L.inverse
         )
 
+        # Set the amplitude and coefficients
+        x, _ = self._solution
+        self.amp = x[0]
+        self[1:, :] = x[1:] / self.amp
+
+        # Return the mean and covariance
         return self._solution
 
     def lnlike(self, *, design_matrix=None, woodbury=True, **kwargs):
