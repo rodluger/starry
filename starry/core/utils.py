@@ -5,6 +5,7 @@ import theano.tensor as tt
 import numpy as np
 from theano.configparser import change_flags
 from inspect import getmro
+from functools import wraps
 import logging
 
 logger = logging.getLogger("starry.ops")
@@ -95,11 +96,9 @@ def autocompile(func):
 
     """
 
+    @wraps(func)  # inherit docstring
     def wrapper(instance, *args):
-        """
-        The magic happens in here.
 
-        """
         if is_theano(*args):
 
             # Just return the function as is

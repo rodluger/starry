@@ -471,6 +471,9 @@ class System(object):
             self._reflected = False
         self._secondaries = secondaries
 
+        # All bodies
+        self._bodies = [self._primary] + list(self._secondaries)
+
         # Indices of each of the bodies in the design matrix
         Ny = [self._primary._map.Ny] + [
             sec._map.Ny for sec in self._secondaries
@@ -496,8 +499,8 @@ class System(object):
         # Solve stuff
         self._flux = None
         self._C = None
-        self._yhat = None
-        self._cho_ycov = None
+        self._solution = None
+        self._solved_bodies = []
 
     @property
     def light_delay(self):
@@ -543,6 +546,16 @@ class System(object):
     def secondaries(self):
         """A list of the secondary (orbiting) object(s) in the Keplerian system."""
         return self._secondaries
+
+    @property
+    def bodies(self):
+        """A list of all objects in the Keplerian system."""
+        return self._bodies
+
+    @property
+    def map_indices(self):
+        """A list of the indices corresponding to each body in the design matrix."""
+        return self._inds
 
     def show(
         self,
@@ -794,6 +807,18 @@ class System(object):
     def design_matrix(self, t):
         """Compute the system flux design matrix at times ``t``.
 
+        .. note::
+
+            This is the *unweighted* design matrix, i.e., it does not
+            include the scaling by the amplitude of each body's map.
+            To perform this weighting, do
+
+            .. code-block:: python
+
+                X = sys.design_matrix(**kwargs)
+                for i, body in zip(sys.map_indices, sys.bodies):
+                    X[:, i] *= body.map.amp
+
         Args:
             t (scalar or vector): An array of times at which to evaluate
                 the design matrix in units of :py:attr:`time_unit`.
@@ -805,7 +830,7 @@ class System(object):
             self._primary._prot,
             self._primary._t0,
             self._primary._theta0,
-            self._primary._map._amp,
+            math.ones_like(self._primary._map._amp),
             self._primary._map._inc,
             self._primary._map._obl,
             self._primary._map._u,
@@ -824,7 +849,7 @@ class System(object):
             math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
             math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
             math.to_array_or_tensor(
-                [sec._map._amp for sec in self._secondaries]
+                [math.ones_like(sec._map._amp) for sec in self._secondaries]
             ),
             math.to_array_or_tensor(
                 [sec._map._inc for sec in self._secondaries]
@@ -854,14 +879,15 @@ class System(object):
                 from each body.
         """
         X = self.design_matrix(t)
-        y = [self._primary._map._y] + [
-            sec._map._y for sec in self._secondaries
-        ]
+
+        # Weight the ylms by amplitude
+        ay = [body.map.amp * body._map._y for body in self._bodies]
+
         if total:
-            return math.dot(X, math.concatenate(y))
+            return math.dot(X, math.concatenate(ay))
         else:
             return [
-                math.dot(X[:, idx], y[i]) for i, idx in enumerate(self._inds)
+                math.dot(X[:, idx], ay[i]) for i, idx in enumerate(self._inds)
             ]
 
     def rv(self, t, keplerian=True, total=True):
@@ -1003,7 +1029,9 @@ class System(object):
         This method solves the generalized least squares problem given a system
         light curve and its covariance (set via the :py:meth:`set_data` method)
         and a Gaussian prior on the spherical harmonic coefficients
-        (set via the :py:meth:`set_prior` method).
+        (set via the :py:meth:`set_prior` method). The map amplitudes and
+        coefficients of each of the bodies in the system are then set to the
+        maximum a posteriori (MAP) solution.
 
         Args:
             design_matrix (matrix, optional): The flux design matrix, the
@@ -1030,57 +1058,51 @@ class System(object):
         if self._flux is None or self._C is None:
             raise ValueError("Please provide a dataset with `set_data()`.")
 
-        # Check that all the priors are set & keep track of the indices
-        # of the Y00 coefficient, which we don't actually solve for
-        Y00inds = [0, self._primary.map.Ny]
-        if self._primary.map.ydeg > 0:
-            if self._primary.map._mu is None or self._primary.map._L is None:
-                raise ValueError(
-                    "Please provide a prior for the primary's "
-                    + "map with `set_prior()`."
-                )
-        dense_L = False
-        for k, sec in enumerate(self._secondaries):
-            Y00inds.append(Y00inds[-1] + sec.map.Ny)
-            if sec.map.ydeg > 0:
-                if sec.map._mu is None or sec.map._L is None:
-                    raise ValueError(
-                        "Please provide a prior for the map "
-                        + "of secondary #%d with `set_prior()`." % (k + 1)
-                    )
-                elif sec.map._L.kind in ["matrix", "cholesky"]:
-                    dense_L = True
-        YXXinds = np.arange(Y00inds[-1])
-        Y00inds = np.array(Y00inds[:-1], dtype=int)
-        YXXinds = np.delete(YXXinds, Y00inds)
-
-        # Get the design matrix
+        # Get the full design matrix
         if design_matrix is None:
             assert t is not None, "Please provide a time vector `t`."
             design_matrix = self.design_matrix(t)
         X = math.cast(design_matrix)
-        X0 = X[:, Y00inds]
-        X1 = X[:, YXXinds]
 
-        # Subtract out the constant term & divide out the amplitude
-        f = self._flux - math.sum(X0, axis=-1)
+        # Get the data vector
+        f = math.cast(self._flux)
+
+        # Check for bodies whose priors are set
+        self._solved_bodies = []
+        inds = []
+        dense_L = False
+        for k, body in enumerate(self._bodies):
+
+            if body.map._mu is None or body.map._L is None:
+
+                # Subtract out this term from the data vector,
+                # since it is fixed
+                f -= body.map.amp * math.dot(X[:, self._inds[k]], body.map.y)
+
+            else:
+
+                # Add to our list of indices/bodies to solve for
+                inds.extend(self._inds[k])
+                self._solved_bodies.append(body)
+                if body.map._L.kind in ["matrix", "cholesky"]:
+                    dense_L = True
+
+        # Do we have at least one body?
+        if len(self._solved_bodies) == 0:
+            raise ValueError("Please provide a prior for at least one body.")
+
+        # Keep only the terms we'll solve for
+        X = X[:, inds]
 
         # Stack our priors
-        mu = math.concatenate(
-            [
-                body.map._mu
-                for body in [self._primary] + list(self._secondaries)
-                if body.map.ydeg > 0
-            ]
-        )
+        mu = math.concatenate([body.map._mu for body in self._solved_bodies])
 
         if not dense_L:
             # We can just concatenate vectors
             LInv = math.concatenate(
                 [
-                    body.map._L.inverse * math.ones(body.map.Ny - 1)
-                    for body in [self._primary] + list(self._secondaries)
-                    if body.map.ydeg > 0
+                    body.map._L.inverse * math.ones(body.map.Ny)
+                    for body in self._solved_bodies
                 ]
             )
         else:
@@ -1088,37 +1110,46 @@ class System(object):
             # is the block diagonal matrix of the inverses.
             LInv = math.block_diag(
                 *[
-                    body.map._L.inverse * math.eye(body.map.Ny - 1)
-                    for body in [self._primary] + list(self._secondaries)
-                    if body.map.ydeg > 0
+                    body.map._L.inverse * math.eye(body.map.Ny)
+                    for body in self._solved_bodies
                 ]
             )
 
-        # Compute and return the MAP solution
-        self._yhat, self._cho_ycov = linalg.MAP(
-            X1, f, self._C.cholesky, mu, LInv
-        )
-        return self._yhat, self._cho_ycov
+        # Compute the MAP solution
+        self._solution = linalg.solve(X, f, self._C.cholesky, mu, LInv)
+
+        # Set all the map vectors
+        x, _ = self._solution
+        n = 0
+        for body in self._solved_bodies:
+            inds = slice(n, n + body.map.Ny)
+            body.map.amp = x[inds][0]
+            body.map[1:, :] = x[inds][1:] / body.map.amp
+            n += body.map.Ny
+
+        # Return the mean and covariance
+        return self._solution
 
     @property
-    def yhat(self):
-        """The maximum a posteriori (MAP) solution for all of the maps of the system.
+    def solution(self):
+        r"""The posterior probability distribution for the maps in the system.
 
-        Users should call :py:meth:`solve` to enable this attribute.
+        This is a tuple containing the mean and lower Cholesky factorization of the
+        covariance of the amplitude-weighted spherical harmonic coefficient vectors,
+        obtained by solving the regularized least-squares problem
+        via the :py:meth:`solve` method.
+
+        Note that to obtain the actual covariance matrix from the lower Cholesky
+        factorization :math:`L`, simply compute :math:`L L^\top`.
+
+        Note also that this is the posterior for the **amplitude-weighted**
+        map vectors. Under this convention, the map amplitude is equal to the
+        first term of the vector of each body and the spherical harmonic coefficients are
+        equal to the vector normalized by the first term.
         """
-        if self._yhat is None:
+        if self._solution is None:
             raise ValueError("Please call `solve()` first.")
-        return self._yhat
-
-    @property
-    def ycov(self):
-        """The posterior covariance of the coefficients for all of the maps of the system.
-
-        Users should call :py:meth:`solve` to enable this attribute.
-        """
-        if self._cho_ycov is None:
-            raise ValueError("Please call `solve()` first.")
-        return math.dot(self._cho_ycov, math.transpose(self._cho_ycov.T))
+        return self._solution
 
     def draw(self):
         """
@@ -1127,27 +1158,24 @@ class System(object):
 
         Users should call :py:meth:`solve` to enable this attribute.
         """
-        if self._yhat is None or self._cho_ycov is None:
+        if self._solution is None:
             raise ValueError("Please call `solve()` first.")
 
         # Number of coefficients
-        bodies = [
-            body
-            for body in [self._primary] + list(self._secondaries)
-            if body.map.ydeg > 0
-        ]
-        N = np.sum([body.map.Ny - 1 for body in bodies])
+        N = np.sum([body.map.Ny for body in self._solved_bodies])
 
         # Fast multivariate sampling using the Cholesky factorization
+        yhat, cho_ycov = self._solution
         u = math.cast(np.random.randn(N))
-        y = self._yhat + math.dot(self._cho_ycov, u)
+        x = yhat + math.dot(cho_ycov, u)
 
         # Set all the map vectors
         n = 0
-        for body in bodies:
-            inds = slice(n, n + body.map.Ny - 1)
-            body.map[1:, :] = y[inds]
-            n += body.map.Ny - 1
+        for body in self._solved_bodies:
+            inds = slice(n, n + body.map.Ny)
+            body.map.amp = x[inds][0]
+            body.map[1:, :] = x[inds][1:] / body.map.amp
+            n += body.map.Ny
 
     def lnlike(self, *, design_matrix=None, t=None, woodbury=True):
         """Returns the log marginal likelihood of the data given a design matrix.
@@ -1186,49 +1214,44 @@ class System(object):
         if self._flux is None or self._C is None:
             raise ValueError("Please provide a dataset with `set_data()`.")
 
-        # Check that all the priors are set & keep track of the indices
-        # of the Y00 coefficient, which we don't actually solve for
-        Y00inds = [0, self._primary.map.Ny]
-        if self._primary.map.ydeg > 0:
-            if self._primary.map._mu is None or self._primary.map._L is None:
-                raise ValueError(
-                    "Please provide a prior for the primary's "
-                    + "map with `set_prior()`."
-                )
-        dense_L = False
-        for k, sec in enumerate(self._secondaries):
-            Y00inds.append(Y00inds[-1] + sec.map.Ny)
-            if sec.map.ydeg > 0:
-                if sec.map._mu is None or sec.map._L is None:
-                    raise ValueError(
-                        "Please provide a prior for the map "
-                        + "of secondary #%d with `set_prior()`." % (k + 1)
-                    )
-                elif sec.map._L.kind in ["matrix", "cholesky"]:
-                    dense_L = True
-        YXXinds = np.arange(Y00inds[-1])
-        Y00inds = np.array(Y00inds[:-1], dtype=int)
-        YXXinds = np.delete(YXXinds, Y00inds)
-
-        # Get the design matrix
+        # Get the full design matrix
         if design_matrix is None:
             assert t is not None, "Please provide a time vector `t`."
             design_matrix = self.design_matrix(t)
         X = math.cast(design_matrix)
-        X0 = X[:, Y00inds]
-        X1 = X[:, YXXinds]
 
-        # Subtract out the constant term & divide out the amplitude
-        f = self._flux - math.sum(X0, axis=-1)
+        # Get the data vector
+        f = math.cast(self._flux)
+
+        # Check for bodies whose priors are set
+        self._solved_bodies = []
+        inds = []
+        dense_L = False
+        for k, body in enumerate(self._bodies):
+
+            if body.map._mu is None or body.map._L is None:
+
+                # Subtract out this term from the data vector,
+                # since it is fixed
+                f -= body.map.amp * math.dot(X[:, self._inds[k]], body.map.y)
+
+            else:
+
+                # Add to our list of indices/bodies to solve for
+                inds.extend(self._inds[k])
+                self._solved_bodies.append(body)
+                if body.map._L.kind in ["matrix", "cholesky"]:
+                    dense_L = True
+
+        # Do we have at least one body?
+        if len(self._solved_bodies) == 0:
+            raise ValueError("Please provide a prior for at least one body.")
+
+        # Keep only the terms we'll solve for
+        X = X[:, inds]
 
         # Stack our priors
-        mu = math.concatenate(
-            [
-                body.map._mu
-                for body in [self._primary] + list(self._secondaries)
-                if body.map.ydeg > 0
-            ]
-        )
+        mu = math.concatenate([body.map._mu for body in self._solved_bodies])
 
         # Compute the likelihood
         if woodbury:
@@ -1236,45 +1259,37 @@ class System(object):
                 # We can just concatenate vectors
                 LInv = math.concatenate(
                     [
-                        body.map._L.inverse * math.ones(body.map.Ny - 1)
-                        for body in [self._primary] + list(self._secondaries)
-                        if body.map.ydeg > 0
+                        body.map._L.inverse * math.ones(body.map.Ny)
+                        for body in self._solved_bodies
                     ]
                 )
             else:
                 LInv = math.block_diag(
                     *[
-                        body.map._L.inverse * math.eye(body.map.Ny - 1)
-                        for body in [self._primary] + list(self._secondaries)
-                        if body.map.ydeg > 0
+                        body.map._L.inverse * math.eye(body.map.Ny)
+                        for body in self._solved_bodies
                     ]
                 )
             lndetL = math.cast(
-                [
-                    body.map._L.lndet
-                    for body in [self._primary] + list(self._secondaries)
-                    if body.map.ydeg > 0
-                ]
+                [body.map._L.lndet for body in self._solved_bodies]
             )
             return linalg.lnlike_woodbury(
-                X1, f, self._C.inverse, mu, LInv, self._C.lndet, lndetL
+                X, f, self._C.inverse, mu, LInv, self._C.lndet, lndetL
             )
         else:
             if not dense_L:
                 # We can just concatenate vectors
                 L = math.concatenate(
                     [
-                        body.map._L.value * math.ones(body.map.Ny - 1)
-                        for body in [self._primary] + list(self._secondaries)
-                        if body.map.ydeg > 0
+                        body.map._L.value * math.ones(body.map.Ny)
+                        for body in self._solved_bodies
                     ]
                 )
             else:
                 L = math.block_diag(
                     *[
-                        body.map._L.value * math.eye(body.map.Ny - 1)
-                        for body in [self._primary] + list(self._secondaries)
-                        if body.map.ydeg > 0
+                        body.map._L.value * math.eye(body.map.Ny)
+                        for body in self._solved_bodies
                     ]
                 )
-            return linalg.lnlike(X1, f, self._C.value, mu, L)
+            return linalg.lnlike(X, f, self._C.value, mu, L)

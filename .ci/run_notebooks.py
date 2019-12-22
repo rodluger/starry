@@ -8,7 +8,7 @@ from nbconvert.preprocessors import ExecutePreprocessor
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def run(infile, outfile, timeout=1200):
+def run(infile, outfile, timeout=2400):
     print("Executing %s..." % infile)
 
     # Open the notebook
@@ -22,6 +22,12 @@ def run(infile, outfile, timeout=1200):
             nb,
             {"metadata": {"path": os.path.dirname(os.path.abspath(infile))}},
         )
+
+    # Replace input in certain cells
+    for cell in nb.get("cells", []):
+        replace_input_with = cell["metadata"].get("replace_input_with", None)
+        if replace_input_with is not None:
+            cell["source"] = replace_input_with
 
     # Write it back
     with open(outfile, "w", encoding="utf-8") as f:

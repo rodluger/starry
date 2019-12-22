@@ -20,15 +20,17 @@ lnlike_inputs = itertools.product(vals, vals, woodbury)
 
 # Instantiate a star with a dipole map
 A = starry.Primary(starry.Map(ydeg=1), prot=0.0)
-y_true = [0.1, 0.2, 0.3]
+amp_true = 0.75
+y_true = np.array([1, 0.1, 0.2, 0.3])
 inc_true = 60
-A.map[1, :] = y_true
+A.map.amp = amp_true
+A.map[1, :] = y_true[1:]
 A.map.inc = inc_true
 
 # Instantiate two transiting planets with different longitudes of
 # ascending node. This ensures there's no null space!
-b = starry.Secondary(starry.Map(), porb=1.0, r=0.1, t0=-0.05, Omega=30.0)
-c = starry.Secondary(starry.Map(), porb=1.0, r=0.1, t0=0.05, Omega=-30.0)
+b = starry.Secondary(starry.Map(amp=0), porb=1.0, r=0.1, t0=-0.05, Omega=30.0)
+c = starry.Secondary(starry.Map(amp=0), porb=1.0, r=0.1, t0=0.05, Omega=-30.0)
 sys = starry.System(A, b, c)
 
 # Generate a synthetic light curve with just a little noise
@@ -45,11 +47,11 @@ def test_solve(L, C):
     if L == "scalar":
         A.map.set_prior(L=1)
     elif L == "vector":
-        A.map.set_prior(L=np.ones(A.map.Ny - 1))
+        A.map.set_prior(L=np.ones(A.map.Ny))
     elif L == "matrix":
-        A.map.set_prior(L=np.eye(A.map.Ny - 1))
+        A.map.set_prior(L=np.eye(A.map.Ny))
     elif L == "cholesky":
-        A.map.set_prior(cho_L=np.eye(A.map.Ny - 1))
+        A.map.set_prior(cho_L=np.eye(A.map.Ny))
 
     # Provide the dataset
     if C == "scalar":
@@ -71,8 +73,11 @@ def test_solve(L, C):
     cho_cov = cho_cov.eval()
     cov = cho_cov.dot(cho_cov.T)
     LnL0 = multivariate_normal.logpdf(mu, mean=mu, cov=cov)
-    LnL = multivariate_normal.logpdf([0.1, 0.2, 0.3], mean=mu, cov=cov)
+    LnL = multivariate_normal.logpdf(amp_true * y_true, mean=mu, cov=cov)
     assert LnL0 - LnL < 5.00
+
+    # Check that we can draw from the posterior
+    sys.draw()
 
 
 @pytest.mark.parametrize("L,C,woodbury", lnlike_inputs)
@@ -81,11 +86,11 @@ def test_lnlike(L, C, woodbury):
     if L == "scalar":
         A.map.set_prior(L=1)
     elif L == "vector":
-        A.map.set_prior(L=np.ones(A.map.Ny - 1))
+        A.map.set_prior(L=np.ones(A.map.Ny))
     elif L == "matrix":
-        A.map.set_prior(L=np.eye(A.map.Ny - 1))
+        A.map.set_prior(L=np.eye(A.map.Ny))
     elif L == "cholesky":
-        A.map.set_prior(cho_L=np.eye(A.map.Ny - 1))
+        A.map.set_prior(cho_L=np.eye(A.map.Ny))
 
     # Provide the dataset
     if C == "scalar":
@@ -106,4 +111,4 @@ def test_lnlike(L, C, woodbury):
 
     # Verify that we get the correct radius
     assert rs[np.argmax(ll)] == 0.1
-    assert np.allclose(ll[np.argmax(ll)], 989.3974)  # benchmarked
+    assert np.allclose(ll[np.argmax(ll)], 981.9091)  # benchmarked
