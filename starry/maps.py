@@ -14,6 +14,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.animation import FuncAnimation
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from IPython.display import HTML
 from astropy import units
 import os
@@ -302,6 +303,7 @@ class MapBase(object):
                 projection (as seen on the sky), and ``rect``, corresponding
                 to an equirectangular latitude-longitude projection.
                 Defaults to ``ortho``.
+            colorbar (bool, optional): Display a colorbar? Default is False.
             grid (bool, optional): Show latitude/longitude grid lines?
                 Defaults to True.
             interval (int, optional): Interval between frames in milliseconds
@@ -311,6 +313,12 @@ class MapBase(object):
             html5_video (bool, optional): If rendering in a Jupyter notebook,
                 display as an HTML5 video? Default is True. If False, displays
                 the animation using Javascript (file size will be larger.)
+            dpi (int, optional): Image resolution in dots per square inch.
+                Defaults to the value defined in ``matplotlib.rcParams``.
+            bitrate (int, optional): Bitrate in kbps (animations only).
+                Defaults to the value defined in ``matplotlib.rcParams``.
+            norm (optional): The color normalization passed to
+                ``matplotlib.pyplot.imshow``. Default is None.
 
         .. note::
             Pure limb-darkened maps do not accept a ``projection`` keyword.
@@ -326,6 +334,7 @@ class MapBase(object):
         dpi = kwargs.pop("dpi", None)
         figsize = kwargs.pop("figsize", None)
         bitrate = kwargs.pop("bitrate", None)
+        colorbar = kwargs.pop("colorbar", False)
         ax = kwargs.pop("ax", None)
         if ax is None:
             custom_ax = False
@@ -512,6 +521,14 @@ class MapBase(object):
             interpolation="none",
             animated=animated,
         )
+
+        # Add a colorbar
+        if colorbar:
+            if not custom_ax:
+                fig.subplots_adjust(right=0.85)
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.05)
+            fig.colorbar(img, cax=cax, orientation="vertical")
 
         # Display or save the image / animation
         if animated:
@@ -1051,10 +1068,13 @@ class YlmBase(object):
             alpha_theta = math.cast(0.0)
 
         # If limb-darkened, allow a `limbdarken` keyword
-        if self.udeg > 0:
+        if self.udeg > 0 and kwargs.pop("limbdarken", True):
             ld = np.array(True)
         else:
             ld = np.array(False)
+
+        # Check for invalid kwargs
+        self._check_kwargs("intensity", kwargs)
 
         # Compute & return
         return self.amp * self.ops.intensity(
@@ -1639,33 +1659,10 @@ class RVBase(object):
             self._unset_RV_filter()
         return res
 
-    def show(self, **kwargs):
-        """
-        Display an image of the map, with optional animation. See the
-        docstring of :py:meth:`render` for more details and additional
-        keywords accepted by this method.
-
-        Args:
-            cmap (string or colormap instance): The matplotlib colormap
-                to use. Defaults to ``RdBu_r``.
-            projection (string, optional): The map projection. Accepted
-                values are ``ortho``, corresponding to an orthographic
-                projection (as seen on the sky), and ``rect``, corresponding
-                to an equirectangular latitude-longitude projection.
-                Defaults to ``ortho``.
-            grid (bool, optional): Show latitude/longitude grid lines?
-                Defaults to True.
-            interval (int, optional): Interval between frames in milliseconds
-                (animated maps only). Defaults to 75.
-            mp4 (string, optional): The file name to save an ``mp4``
-                animation to (animated maps only). Defaults to None.
-            rv (bool, optional): If True, computes the velocity-weighted
-                intensity instead. Defaults to True.
-        """
+    def show(self, rv=True, **kwargs):
         # Show the velocity map if `rv==True`
         # Override some kwargs if we're
         # plotting the radial velocity.
-        rv = kwargs.pop("rv", True)
         if rv:
             kwargs.pop("projection", None)
             self._set_RV_filter()
