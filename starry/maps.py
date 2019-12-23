@@ -2072,8 +2072,8 @@ def Map(
         assert nw > 0, "Number of wavelength bins must be positive."
     drorder = int(drorder)
     assert (drorder >= 0) and (
-        drorder <= 2
-    ), "Differential rotation orders above 2 are not supported."
+        drorder <= 3
+    ), "Differential rotation orders above 3 are not supported."
     if drorder > 0:
         assert ydeg > 0, "Differential rotation requires `ydeg` >= 1."
 
