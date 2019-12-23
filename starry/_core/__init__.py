@@ -2,5 +2,4 @@
 from . import core, ops, utils
 
 from .core import *
-from .math import math
-from .linalg import linalg
+from .math import math, linalg

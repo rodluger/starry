@@ -1,22 +1,22 @@
 """
 Extension for querying NExSci for real planet systems.
 
+Created by `Christina Hedges <mailto:christina.l.hedges@nasa.gov>`_ on
+November 1, 2019
+
 Example
 -------
-Obtain the `starry.System` for Kepler-10 and evaluate at some times. Here `flux`
-contains the normalized flux from the Kepler-10 system.
+Obtain the :py:class:`starry.System` for Kepler-10 and evaluate at
+some times. Here ``flux`` contains the normalized flux from the
+Kepler-10 system.
 
->>> from starry.extensions import from_nexsci
->>> import numpy as np
->>> sys = from_nexsci('Kepler-10')
->>> time = np.arange(0, 10, 0.1)
->>> flux = sys.flux(time).eval()
+.. code-block:: python
 
-========== ==============================================
-**Author** Christina Hedges
-**Email**  christina.l.hedges@nasa.gov
-**Date**   November 1, 2019
-========== ==============================================
+    from starry.extensions import from_nexsci
+    import numpy as np
+    sys = from_nexsci('Kepler-10')
+    time = np.arange(0, 10, 0.1)
+    flux = sys.flux(time).eval()
 
 """
 import pandas as pd
@@ -27,7 +27,7 @@ import astropy.units as u
 from glob import glob
 import logging
 
-from ... import PACKAGEDIR
+from ... import _PACKAGEDIR
 from ... import Secondary, Primary, System, Map
 
 
@@ -35,24 +35,24 @@ logger = logging.getLogger("starry.ops")
 
 
 def from_nexsci(name, limb_darkening=[0.4, 0.2]):
-    """Extension for retrieving a `starry.System` initialized with parameters from NExSci.
+    """Extension for retrieving a :py:class:`starry.System` initialized with parameters from NExSci.
 
-    Specify the name of the system as a string to `name` to create that specific
-    system. Users can also pass `'random'` to obtain a random system. Returns
-    a `starry.System` object.
+    Specify the name of the system as a string to ``name`` to create that specific
+    system. Users can also pass ``'random'`` to obtain a random system. Returns
+    a :py:class:`starry.System` object.
 
     This extension queries NExSci and then stores the data as a csv file in
-    '/extensions/data'. Loading this module will trigger a query of NExSci if
+    ``/extensions/data``. Loading this module will trigger a query of NExSci if
     this csv file is more than 7 days out of date.
 
     Args:
         name (str): Name of system to retrieve.
             e.g. 'K2-43' or 'K2-43b'
         limb_darkening (list, optional): The quadratic limb-darkening
-            parameters to apply to the model. Default is [0.4, 0.2]
+            parameters to apply to the model. Default is ``[0.4, 0.2]``
     Returns:
-        sys :py:class:`starry.System`: Starry system using planet
-            parameters from nexsci
+        An instance of :py:class:`starry.System` using planet parameters \
+        from NExSci
     """
     df = _get_nexsci_data()
     if name is "random":
@@ -214,7 +214,8 @@ def _retrieve_online_data(guess_masses=False):
         [n.lower().replace("-", "").replace(" ", "") for n in df.pl_hostname]
     )
     df[df.pl_tranflag == 1].to_csv(
-        "{}/extensions/nexsci/data/planets.csv".format(PACKAGEDIR), index=False
+        "{}/extensions/nexsci/data/planets.csv".format(_PACKAGEDIR),
+        index=False,
     )
 
 
@@ -223,11 +224,11 @@ def _check_data_on_import():
 
     Data is considered out of date if a week has passed since downloading it.
     """
-    fname = glob("{}/extensions/nexsci/data/planets.csv".format(PACKAGEDIR))
+    fname = glob("{}/extensions/nexsci/data/planets.csv".format(_PACKAGEDIR))
     if len(fname) == 0:
         _retrieve_online_data()
         fname = glob(
-            "{}/extensions/nexsci/data/planets.csv".format(PACKAGEDIR)
+            "{}/extensions/nexsci/data/planets.csv".format(_PACKAGEDIR)
         )
     st = os.stat(fname[0])
     mtime = st.st_mtime
@@ -243,7 +244,7 @@ def _get_nexsci_data():
     """Returns pandas dataframe of all exoplanet data from nexsci
     """
     return pd.read_csv(
-        "{}/extensions/nexsci/data/planets.csv".format(PACKAGEDIR)
+        "{}/extensions/nexsci/data/planets.csv".format(_PACKAGEDIR)
     )
 
 

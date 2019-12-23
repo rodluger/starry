@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 from . import config
-from .constants import *
-from .core import OpsYlm, OpsLD, OpsReflected, OpsRV, linalg, math
-from .indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
-from .plotting import (
+from ._constants import *
+from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, linalg, math
+from ._indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
+from ._plotting import (
     get_ortho_latitude_lines,
     get_ortho_longitude_lines,
     get_projection,
 )
-from .sht import image2map, healpix2map, array2map
+from ._sht import image2map, healpix2map, array2map
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -690,7 +690,7 @@ class MapBase(object):
             mu (scalar or vector): The prior mean on the amplitude-weighted
                 spherical harmonic coefficients. Default is unity for the
                 first term and zero for the remaining terms. If this is a vector,
-                it must have length equal to one :py:attr:`Ny`.
+                it must have length equal to :py:attr:`Ny`.
             L (scalar, vector, or matrix): The prior covariance. This may be
                 a scalar, in which case the covariance is assumed to be
                 homoscedastic, a vector, in which case the covariance
@@ -868,8 +868,11 @@ class YlmBase(object):
     """The default ``starry`` map class.
 
     This class handles light curves and phase curves of objects in
-    emitted light. It can be instantiated by calling :py:func:`starry.Map` with
-    both ``rv`` and ``reflected`` set to False.
+    emitted light.
+
+    .. note::
+        Instantiate this class by calling :py:func:`starry.Map` with
+        ``ydeg > 0`` and both ``rv`` and ``reflected`` set to False.
     """
 
     _ops_class_ = OpsYlm
@@ -1401,8 +1404,11 @@ class LimbDarkenedBase(object):
     """The ``starry`` map class for purely limb-darkened maps.
 
     This class handles light curves of purely limb-darkened objects in
-    emitted light. It can be instantiated by calling :py:func:`starry.Map` with
-    ``ydeg`` set to zero and both ``rv`` and ``reflected`` set to False.
+    emitted light.
+
+    .. note::
+        Instantiate this class by calling :py:func:`starry.Map` with
+        ``ydeg`` set to zero and both ``rv`` and ``reflected`` set to False.
     """
 
     _ops_class_ = OpsLD
@@ -1501,7 +1507,7 @@ class RVBase(object):
 
     .. note::
         Instantiate this class by calling :py:func:`starry.Map` with
-        ``rv`` set to True.
+        ``ydeg > 0`` and ``rv`` set to True.
     """
 
     _ops_class_ = OpsRV
@@ -1709,7 +1715,7 @@ class ReflectedBase(object):
 
     .. note::
         Instantiate this class by calling
-        :py:func:`starry.Map` with ``reflected`` set to True.
+        :py:func:`starry.Map` with ``ydeg > 0`` and ``reflected`` set to True.
     """
 
     _ops_class_ = OpsReflected
@@ -2031,15 +2037,15 @@ def Map(
     """A generic ``starry`` surface map.
 
     This function is a class factory that returns either
-    a :doc:`spherical harmonic map <Map>`,
+    a :doc:`spherical harmonic map <SphericalHarmonicMap>`,
     a :doc:`limb darkened map <LimbDarkenedMap>`,
     a :doc:`radial velocity map <RadialVelocityMap>`, or
     a :doc:`reflected light map <ReflectedLightMap>`,
     depending on the arguments provided by the user. The default is
-    a :doc:`spherical harmonic map <Map>`. If ``rv`` is True, instantiates
-    a :doc:`radial velocity map <RadialVelocityMap>` map, and if ``reflected``
-    is True, instantiates a :doc:`reflected light map <ReflectedLightMap>`.
-    Otherwise, if ``ydeg`` is zero, instantiates a
+    a :doc:`spherical harmonic map <SphericalHarmonicMap>`. If ``rv`` is True,
+    instantiates a :doc:`radial velocity map <RadialVelocityMap>` map, and
+    if ``reflected`` is True, instantiates a :doc:`reflected light map
+    <ReflectedLightMap>`. Otherwise, if ``ydeg`` is zero, instantiates a
     :doc:`limb darkened map <LimbDarkenedMap>`.
 
     Args:

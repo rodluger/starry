@@ -1,11 +1,5 @@
 $(document).ready(function () {
 
-  // @rodluger: Hack the class names
-  document.body.innerHTML = document.body.innerHTML.replace(/_Map/g, 'Map');
-  document.body.innerHTML = document.body.innerHTML.replace(/_LimbDarkenedMap/g, 'Map');
-  document.body.innerHTML = document.body.innerHTML.replace(/_RadialVelocityMap/g, 'Map');
-  document.body.innerHTML = document.body.innerHTML.replace(/_ReflectedLightMap/g, 'Map');
-
   // @rodluger: Create code version dropdown
   if (typeof (String.prototype.trim) === 'undefined') {
     String.prototype.trim = function () {

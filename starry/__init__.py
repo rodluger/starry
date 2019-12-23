@@ -5,7 +5,7 @@ from .starry_version import __version__
 # Store the package directory
 import os
 
-PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
+_PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
 
 
 # Force double precision
@@ -14,33 +14,23 @@ import theano.tensor as tt
 tt.config.floatX = "float64"
 
 
-# Set up the default config
-from .configdefaults import Config
-
-config = Config()
-
-
 # Import the main interface
-from . import constants, core, indices, kepler, maps, sht, plotting
-from .core import linalg
+from ._config import config
+from . import kepler, linalg, maps
 from .maps import Map
 from .kepler import Primary, Secondary, System
 
 
 # Clean up the namespace
 del tt
-del Config
+del os
 
 
 __all__ = [
     "__version__",
-    "constants",
-    "core",
-    "indices",
     "kepler",
+    "linalg",
     "maps",
-    "sht",
-    "plotting",
     "Map",
     "Primary",
     "Secondary",

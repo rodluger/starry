@@ -1,26 +1,17 @@
 The starry Python API
 =====================
 
-The :doc:`Map <MapFactory>` class factory allows users to quickly instantiate
-surface maps described by spherical harmonics.
+There are two primary ways to interface with the code:
+**(1)** via the :doc:`Map <MapFactory>` class factory, which allows users to
+quickly instantiate surface maps described by spherical harmonics, and
+**(2)** via the :doc:`Keplerian <Kepler>` module, which allows users to model
+systems of objects, each with their own surface map.
 
-    .. toctree::
-        :maxdepth: 2
 
-        MapFactory
+.. toctree::
+    :maxdepth: 1
 
-The :doc:`Keplerian <Kepler>` module allows users to model systems of
-objects, each with their own surface map.
-
-    .. toctree::
-        :maxdepth: 2
-
-        Kepler
-
-The :doc:`config <config>` class contains global configuration options for
-``starry``.
-
-    .. toctree::
-        :maxdepth: 2
-
-        config
+    MapFactory
+    Kepler
+    linalg
+    config

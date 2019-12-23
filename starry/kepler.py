@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from . import config
-from .constants import *
+from ._constants import *
 from .maps import MapBase, RVBase, ReflectedBase
-from .core import OpsSystem, math, linalg
+from ._core import OpsSystem, math, linalg
 import numpy as np
 from astropy import units
 from inspect import getmro

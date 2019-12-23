@@ -3,31 +3,22 @@ import logging
 
 rootLogger = logging.getLogger("starry")
 rootLogger.addHandler(logging.StreamHandler())
+rootLogger.setLevel(logging.INFO)
 
 
-class Config(object):
-    """Global config container.
-
-    Users should access this as :py:obj:`starry.config`.
-
-    """
-
-    def __init__(self):
-        self._allow_changes = True
-        self.lazy = True
-        self.quiet = False
-        self.profile = False
+class ConfigType(type):
+    """Global config container."""
 
     @property
-    def rootLogger(self):
+    def rootLogger(cls):
         return rootLogger
 
     @property
-    def rootHandler(self):
+    def rootHandler(cls):
         return rootLogger.handlers[0]
 
     @property
-    def lazy(self):
+    def lazy(cls):
         """Indicates whether or not the map evaluates things lazily.
 
         If True, all attributes and method return values are unevaluated
@@ -39,30 +30,30 @@ class Config(object):
         user, and all methods will return numerical values as in the previous
         version of the code.
         """
-        return self._lazy
+        return cls._lazy
 
     @property
-    def quiet(self):
+    def quiet(cls):
         """Indicates whether or not to suppress informational messages."""
-        return self._quiet
+        return cls._quiet
 
     @property
-    def profile(self):
+    def profile(cls):
         """Enable function profiling in lazy mode."""
-        return self._profile
+        return cls._profile
 
     @quiet.setter
-    def quiet(self, value):
-        self._quiet = value
-        if self._quiet:
-            self.rootLogger.setLevel(logging.ERROR)
+    def quiet(cls, value):
+        cls._quiet = value
+        if cls._quiet:
+            cls.rootLogger.setLevel(logging.ERROR)
         else:
-            self.rootLogger.setLevel(logging.INFO)
+            cls.rootLogger.setLevel(logging.INFO)
 
     @lazy.setter
-    def lazy(self, value):
-        if (self._allow_changes) or (self._lazy == value):
-            self._lazy = value
+    def lazy(cls, value):
+        if (cls._allow_changes) or (cls._lazy == value):
+            cls._lazy = value
         else:
             raise Exception(
                 "Cannot change the `starry` config at this time. "
@@ -70,14 +61,21 @@ class Config(object):
             )
 
     @profile.setter
-    def profile(self, value):
-        if (self._allow_changes) or (self._profile == value):
-            self._profile = value
+    def profile(cls, value):
+        if (cls._allow_changes) or (cls._profile == value):
+            cls._profile = value
         else:
             raise Exception(
                 "Cannot change the `starry` config at this time. "
                 "Config options should be set before instantiating any `starry` maps."
             )
 
-    def freeze(self):
-        self._allow_changes = False
+    def freeze(cls):
+        cls._allow_changes = False
+
+
+class config(metaclass=ConfigType):
+    _allow_changes = True
+    _lazy = True
+    _quiet = False
+    _profile = False
