@@ -18,6 +18,7 @@ sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
 # Custom hacks for this project
 import hacks
 
+
 # -- Project information -----------------------------------------------------
 
 project = "starry"

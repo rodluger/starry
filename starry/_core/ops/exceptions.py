@@ -72,6 +72,4 @@ class RaiseValueErrorIfOp(tt.Op):
 
 
 def RaiseValueErrorOp(msg, shape=()):
-    return tt.as_tensor_variable(np.ones(shape)) * RaiseValueErrorIfOp(msg)(
-        True
-    )
+    return tt.zeros(shape) * RaiseValueErrorIfOp(msg)(True)

@@ -1,6 +1,7 @@
 Radial velocity maps
 ====================
 
-.. autoclass:: starry._RadialVelocityMap(rv=True, **kwargs)
+.. autoclass:: starry._RadialVelocityMap
+    :noindex:
     :members:
     :inherited-members:

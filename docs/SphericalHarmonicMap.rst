@@ -1,6 +1,7 @@
 Spherical harmonic maps
 =======================
 
-.. autoclass:: starry._Map(ydeg>0, **kwargs)
+.. autoclass:: starry._SphericalHarmonicMap
+    :noindex:
     :members:
     :inherited-members:

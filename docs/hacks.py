@@ -6,6 +6,7 @@ import starry
 import re
 import packaging
 import urllib
+from sphinx.ext import autodoc
 
 
 # Hack `nbsphinx` to enable us to hide certain input cells in the
@@ -43,7 +44,9 @@ class CustomBase(object):
         pass
 
 
-class _Map(CustomBase, starry.maps.YlmBase, starry.maps.MapBase):
+class _SphericalHarmonicMap(
+    CustomBase, starry.maps.YlmBase, starry.maps.MapBase
+):
     __doc__ = starry.maps.YlmBase.__doc__
 
 
@@ -63,10 +66,29 @@ class _RadialVelocityMap(CustomBase, starry.maps.RVBase, starry.maps.MapBase):
     __doc__ = starry.maps.RVBase.__doc__
 
 
-starry._Map = _Map
+starry._SphericalHarmonicMap = _SphericalHarmonicMap
 starry._LimbDarkenedMap = _LimbDarkenedMap
 starry._ReflectedLightMap = _ReflectedLightMap
 starry._RadialVelocityMap = _RadialVelocityMap
+
+
+replace = {
+    "_SphericalHarmonicMap": "Map",
+    "_LimbDarkenedMap": "Map",
+    "_ReflectedLightMap": "Map",
+    "_RadialVelocityMap": "Map",
+}
+
+
+def format_name(self) -> str:
+    name = ".".join(self.objpath) or self.modname
+    for old_name, new_name in replace.items():
+        name = name.replace(old_name, new_name)
+    return name
+
+
+# This hack works with sphinx==2.2.0
+autodoc.Documenter.format_name = format_name
 
 
 # Hack to figure out if we are the latest version

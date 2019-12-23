@@ -3,7 +3,7 @@
 
 """
 import theano.tensor as tt
-from starry.core import math
+from starry._core import math
 from scipy.linalg import block_diag as scipy_block_diag
 import numpy as np
 

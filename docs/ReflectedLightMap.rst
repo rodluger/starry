@@ -1,6 +1,7 @@
 Maps in reflected light
 =======================
 
-.. autoclass:: starry._ReflectedLightMap(reflected=True, **kwargs)
+.. autoclass:: starry._ReflectedLightMap
+    :noindex:
     :members:
     :inherited-members:

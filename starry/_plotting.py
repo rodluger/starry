@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .constants import *
+from ._constants import *
 import numpy as np
 
 

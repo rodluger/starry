@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from .. import config
-from ..constants import *
+from .._constants import *
 from .. import _c_ops
 from .ops import (
     sTOp,
@@ -15,6 +15,7 @@ from .ops import (
     LDPhysicalOp,
     LimbDarkOp,
     GetClOp,
+    RaiseValueErrorOp,
     RaiseValueErrorIfOp,
 )
 from .utils import logger, autocompile
@@ -351,7 +352,7 @@ class OpsYlm(object):
         return tt.dot(R, tt.concatenate((x, y, z)))
 
     @autocompile
-    def right_project(self, M, inc, obl, theta, alpha, tensor_theta=True):
+    def right_project(self, M, inc, obl, theta, alpha):
         r"""Apply the projection operator on the right.
 
         Specifically, this method returns the dot product :math:`M \cdot R`,
@@ -386,7 +387,7 @@ class OpsYlm(object):
         )
 
         # Rotate to the correct phase
-        if tensor_theta:
+        if theta.ndim > 0:
             M = self.tensordotRz(M, theta)
         else:
             M = self.dotR(
@@ -408,15 +409,17 @@ class OpsYlm(object):
 
         # Apply the differential rotation
         if self.diffrot:
-            if tensor_theta:
+            if theta.ndim > 0:
                 M = self.tensordotD(M, -theta * alpha)
             else:
-                raise NotImplementedError("Code this branch up if needed.")
+                M = RaiseValueErrorOp(
+                    "Code this branch up if needed.", M.shape
+                )
 
         return M
 
     @autocompile
-    def left_project(self, M, inc, obl, theta, alpha, tensor_theta=True):
+    def left_project(self, M, inc, obl, theta, alpha):
         r"""Apply the projection operator on the left.
 
         Specifically, this method returns the dot product :math:`R \cdot M`,
@@ -434,10 +437,12 @@ class OpsYlm(object):
 
         # Apply the differential rotation
         if self.diffrot:
-            if tensor_theta:
+            if theta.ndim > 0:
                 MT = self.tensordotD(MT, theta * alpha)
             else:
-                raise NotImplementedError("Code this branch up if needed.")
+                MT = RaiseValueErrorOp(
+                    "Code this branch up if needed.", MT.shape
+                )
 
         # Rotate to the polar frame
         MT = self.dotR(
@@ -449,7 +454,7 @@ class OpsYlm(object):
         )
 
         # Rotate to the correct phase
-        if tensor_theta:
+        if theta.ndim > 0:
             MT = self.tensordotRz(MT, -theta)
         else:
             MT = self.dotR(
