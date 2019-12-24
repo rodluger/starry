@@ -925,6 +925,11 @@ class YlmBase(object):
 
         where :math:`\\omega_{eq}` is the equatorial angular velocity of
         the object.
+
+        .. note ::
+
+            This parameter is only used if :py:attr:`drorder` is greater
+            than zero and/or radial velocity mode is enabled.
         """
         return self._alpha
 
@@ -943,8 +948,8 @@ class YlmBase(object):
         r"""Compute and return the light curve design matrix :math:`A`.
 
         This matrix is used to compute the flux :math:`f` from a vector of spherical
-        harmonic coefficients :math:`y` and the map amplitude :math:`\alpha`:
-        :math:`f = \alpha A y`.
+        harmonic coefficients :math:`y` and the map amplitude :math:`a`:
+        :math:`f = a A y`.
 
         Args:
             xo (scalar or vector, optional): x coordinate of the occultor
@@ -982,8 +987,8 @@ class YlmBase(object):
         """Compute and return the pixelization matrix ``P``.
 
         This matrix is used to compute the intensity :math:`I` from a vector of spherical
-        harmonic coefficients :math:`y` and the map amplitude :math:`\alpha`:
-        :math:`I = \alpha P y`.
+        harmonic coefficients :math:`y` and the map amplitude :math:`a`:
+        :math:`I = a P y`.
 
         Args:
             lat (scalar or vector, optional): latitude at which to evaluate
@@ -1309,8 +1314,7 @@ class YlmBase(object):
                 adding two spots with the same values of `amp` or `intensity`
                 will generally result in *different* intensities at their
                 centers, since the first spot will have changed the map
-                intensity everywhere!
-            Defaults to True.
+                intensity everywhere! Defaults to True.
             sigma (scalar, optional): The standard deviation of the gaussian.
                 Defaults to 0.1.
             lat (scalar, optional): The latitude of the spot in units of
@@ -1743,8 +1747,8 @@ class ReflectedBase(object):
         Compute and return the light curve design matrix, :math:`A`.
 
         This matrix is used to compute the flux :math:`f` from a vector of spherical
-        harmonic coefficients :math:`y` and the map amplitude :math:`\alpha`:
-        :math:`f = \alpha A y`.
+        harmonic coefficients :math:`y` and the map amplitude :math:`a`:
+        :math:`f = a A y`.
 
         Args:
             xs (scalar or vector, optional): x coordinate of the illumination
