@@ -881,7 +881,16 @@ class System(object):
         X = self.design_matrix(t)
 
         # Weight the ylms by amplitude
-        ay = [body.map.amp * body._map._y for body in self._bodies]
+        if self._reflected:
+            # If we're doing reflected light, scale the amplitude of
+            # each of the secondaries by the amplitude of the primary
+            # (the illumination source).
+            ay = [self._primary.map.amp * self._primary._map._y] + [
+                self._primary.map.amp * body.map.amp * body._map._y
+                for body in self._secondaries
+            ]
+        else:
+            ay = [body.map.amp * body._map._y for body in self._bodies]
 
         if total:
             return math.dot(X, math.concatenate(ay))

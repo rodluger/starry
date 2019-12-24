@@ -48,8 +48,8 @@ Advanced
    notebooks/ReflectedLight.ipynb
    notebooks/DifferentialRotation.ipynb
    notebooks/TimeEvolution.ipynb
-   notebooks/LightTravelDelay.ipynb
    notebooks/HotJupiterPhaseCurve.ipynb
+   notebooks/ExposureTime.ipynb
 
 Miscellaneous
 -------------
@@ -71,5 +71,4 @@ Under the hood
    :maxdepth: 1
 
    notebooks/RVDerivation.ipynb
-   notebooks/MarginalLikelihoodTiming.ipynb
    notebooks/TimingTests.ipynb

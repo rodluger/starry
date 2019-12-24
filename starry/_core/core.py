@@ -1207,7 +1207,8 @@ class OpsSystem(object):
         )
         if self._reflected:
             phase_sec = [
-                sec_L[i]
+                pri_L
+                * sec_L[i]
                 * sec.map.ops.X(
                     theta_sec[i],
                     -x[:, i],
@@ -1300,7 +1301,8 @@ class OpsSystem(object):
                 occ_sec[i] = tt.set_subtensor(
                     occ_sec[i][idx],
                     occ_sec[i][idx]
-                    + sec_L[i]
+                    + pri_L
+                    * sec_L[i]
                     * sec.map.ops.X(
                         theta_sec[i, idx],
                         xo[idx],  # the primary is both the source...
@@ -1360,6 +1362,7 @@ class OpsSystem(object):
                         occ_sec[i][idx],
                         occ_sec[i][idx]
                         + sec_L[i]
+                        * pri_L
                         * sec.map.ops.X(
                             theta_sec[i, idx],
                             xs[idx],  # the primary is the source
