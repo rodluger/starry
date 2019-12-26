@@ -1,6 +1,6 @@
 .. :changelog:
 
-1.0.1 (2019-12-06)
+1.0.0 (2019-12-26)
 ++++++++++++++++++
 
 - First official release of the code.

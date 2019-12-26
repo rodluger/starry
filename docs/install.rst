@@ -1,13 +1,20 @@
 Installation
 ============
 
-This version has still not been officially released.
+From pip
+--------
+
+Install the latesst release of :py:obj:`starry` using :py:obj:`pip`:
+
+.. code-block:: bash
+
+    pip install starry
 
 
 Development version
 -------------------
 
-You can install the development version of :py:obj:`starry` directly
+You can install the latest development version of :py:obj:`starry` directly
 from `GitHub <https://github.com/rodluger/starry>`_:
 
 .. code-block:: bash
