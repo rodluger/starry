@@ -4,11 +4,16 @@ Installation
 From pip
 --------
 
-Install the latesst release of :py:obj:`starry` using :py:obj:`pip`:
+Install the latest release of :py:obj:`starry` using :py:obj:`pip`:
 
 .. code-block:: bash
 
-    pip install starry
+    pip install starry==1.0.0
+
+
+.. note ::
+
+    Installation via ``conda-forge`` is no longer supported.
 
 
 Development version

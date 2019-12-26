@@ -1,8 +1,8 @@
 """
 Extension for querying NExSci for real planet systems.
 
-Created by `Christina Hedges <mailto:christina.l.hedges@nasa.gov>`_ on
-November 1, 2019
+*Created by `Christina Hedges <mailto:christina.l.hedges@nasa.gov>`_ on
+November 1, 2019*
 
 Example
 -------
