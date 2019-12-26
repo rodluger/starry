@@ -65,10 +65,19 @@ class pTGradientOp(tt.Op):
 
     def perform(self, node, inputs, outputs):
         x, y, z, bpT = inputs
+
+        # TODO: When any of the coords are zero, there's a div
+        # by zero below. This hack fixes the issue. We should
+        # think of a better way of doing this!
+        tol = 1e-8
+        x[np.abs(x) < tol] = tol
+        y[np.abs(y) < tol] = tol
+        z[np.abs(z) < tol] = tol
+
         bpTpT = bpT * self.base_op.func(x, y, z)
-        bx = np.sum(self.xf[None, :] * bpTpT / x[:, None], axis=-1)
-        by = np.sum(self.yf[None, :] * bpTpT / y[:, None], axis=-1)
-        bz = np.sum(self.zf[None, :] * bpTpT / z[:, None], axis=-1)
+        bx = np.nansum(self.xf[None, :] * bpTpT / x[:, None], axis=-1)
+        by = np.nansum(self.yf[None, :] * bpTpT / y[:, None], axis=-1)
+        bz = np.nansum(self.zf[None, :] * bpTpT / z[:, None], axis=-1)
         outputs[0][0] = np.reshape(bx, np.shape(inputs[0]))
         outputs[1][0] = np.reshape(by, np.shape(inputs[1]))
         outputs[2][0] = np.reshape(bz, np.shape(inputs[2]))

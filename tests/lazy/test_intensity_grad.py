@@ -1,42 +1,41 @@
 import starry
 import theano
-import theano.tensor as tt
+from theano.tests.unittest_tools import verify_grad
+from theano.configparser import change_flags
 import pytest
 import numpy as np
 
 
-@pytest.mark.xfail
-def test_zero_lat_lon():
+def test_zero_lat_lon(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     """
-    TODO: The gradient of the intensity is NaN when either the
+    The gradient of the intensity is NaN when either the
     latitude or the longitude is zero. There's a div by zero in
     the Op that we need to work around.
 
     """
-    map = starry.Map(ydeg=1)
-    map[1, 0] = 0.5
 
-    lat = tt.dscalar()
-    lon = tt.dscalar()
+    lats = [0.0001, 0.0, 30.0, 0.0]
+    lons = [30.0, 30.0, 0.0, 0.0]
 
-    dIdlat = theano.function(
-        [lat, lon], [tt.grad(map.intensity(lat=lat, lon=lon)[0], lat)]
-    )
-    dIdlon = theano.function(
-        [lat, lon], [tt.grad(map.intensity(lat=lat, lon=lon)[0], lon)]
-    )
+    for lat, lon in zip(lats, lons):
+        with change_flags(compute_test_value="off"):
+            map = starry.Map(ydeg=2, udeg=2)
+            np.random.seed(11)
+            y = [1.0] + list(np.random.randn(8))
+            u = [-1.0] + list(np.random.randn(2))
+            f = [np.pi]
+            wta = 0.0
 
-    lat = 30
-    lon = 30
-    assert np.isfinite(dIdlat(lat, lon))
-    assert np.isfinite(dIdlon(lat, lon))
+            def intensity(lat, lon, y, u, f, wta):
+                return map.ops.intensity(
+                    lat, lon, y, u, f, wta, np.array(True)
+                )
 
-    lat = 0
-    lon = 30
-    assert np.isfinite(dIdlat(lat, lon))
-    assert np.isfinite(dIdlon(lat, lon))
-
-    lat = 30
-    lon = 0
-    assert np.isfinite(dIdlat(lat, lon))
-    assert np.isfinite(dIdlon(lat, lon))
+            verify_grad(
+                intensity,
+                (lat, lon, y, u, f, wta),
+                abs_tol=abs_tol,
+                rel_tol=rel_tol,
+                eps=eps,
+                n_tests=1,
+            )

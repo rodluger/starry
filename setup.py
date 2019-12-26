@@ -55,20 +55,20 @@ class get_pybind_include(object):
 
 
 if int(macros["STARRY_NDIGITS"]) > 16:
-    include_dirs = ["lib/boost_1_66_0"]
+    include_dirs = ["starry/_core/ops/lib/vendor/boost_1_66_0"]
 else:
     include_dirs = []
 ext_modules = [
     Extension(
         "starry._c_ops",
-        ["starry/lib/include/interface.cpp"],
+        ["starry/_core/ops/lib/include/interface.cpp"],
         include_dirs=include_dirs
         + [
             # Path to pybind11 headers
             get_pybind_include(),
             get_pybind_include(user=True),
-            "starry/lib/include",
-            "starry/lib/vendor/eigen_3.3.5",
+            "starry/_core/ops/lib/include",
+            "starry/_core/ops/lib/vendor/eigen_3.3.5",
         ],
         language="c++",
         define_macros=[(key, value) for key, value in macros.items()],

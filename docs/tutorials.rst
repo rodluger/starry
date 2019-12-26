@@ -2,8 +2,8 @@ Examples & Tutorials
 ====================
 
 Below you'll find a collection of Jupyter Notebooks that demonstrate how
-to use ``starry`` in various different ways. This page is still under
-construction.
+to use ``starry`` in various different ways. We're still adding tutorials
+to this page, so check back soon for more.
 
 
 The basics

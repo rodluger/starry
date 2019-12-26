@@ -1061,7 +1061,8 @@ class System(object):
             Users may call the :py:meth:`draw` method of this class to draw
             from the posterior after calling :py:meth:`solve`.
         """
-        self._no_spectral()  # TODO?
+        # TODO: Implement for spectral maps?
+        self._no_spectral()
 
         # Check that the data is set
         if self._flux is None or self._C is None:
@@ -1217,7 +1218,8 @@ class System(object):
         Returns:
             lnlike: The log marginal likelihood.
         """
-        self._no_spectral()  # TODO?
+        # TODO: Implement for spectral maps?
+        self._no_spectral()
 
         # Check that the data is set
         if self._flux is None or self._C is None:

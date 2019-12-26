@@ -31,9 +31,13 @@ class LimbDarkBaseOp(gof.COp):
         ]
 
     def c_header_dirs(self, compiler):
-        dirs = [pkg_resources.resource_filename("starry", "lib/include")]
+        dirs = [
+            pkg_resources.resource_filename("starry", "_core/ops/lib/include")
+        ]
         dirs += [
-            pkg_resources.resource_filename("starry", "lib/vendor/eigen_3.3.5")
+            pkg_resources.resource_filename(
+                "starry", "_core/ops/lib/vendor/eigen_3.3.5"
+            )
         ]
         return dirs
 

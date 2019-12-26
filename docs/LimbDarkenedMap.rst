@@ -1,7 +1,7 @@
 Limb darkened maps
 ==================
 
-.. autoclass:: starry._LimbDarkenedMap
+.. autoclass:: starry._LimbDarkenedMap()
     :noindex:
     :members:
     :inherited-members:
