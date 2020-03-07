@@ -1,5 +1,5 @@
 /**
-\file solver_emitted.h
+\file solver.h
 \brief Integration of the occulted portion of the map.
 
 Solutions to the surface integral over the visible region of a spherical
@@ -7,8 +7,8 @@ harmonic map during a single-body occultation using Green's theorem.
 
 */
 
-#ifndef _STARRY_SOLVER_EMITTED_H_
-#define _STARRY_SOLVER_EMITTED_H_
+#ifndef _STARRY_SOLVER_H_
+#define _STARRY_SOLVER_H_
 
 #include "ellip.h"
 #include "utils.h"
@@ -990,7 +990,7 @@ Emitted light specialization.
 
 */
 template <class Scalar>
-class GreensEmitted {
+class Greens {
  protected:
   using ADType = ADScalar<Scalar, 2>;
 
@@ -1013,7 +1013,7 @@ class GreensEmitted {
   RowVector<Scalar> dsTdr;
 
   // Constructor
-  explicit GreensEmitted(int lmax) :
+  explicit Greens(int lmax) :
       lmax(lmax), N((lmax + 1) * (lmax + 1)), ScalarSolver(lmax),
       ADTypeSolver(lmax), b_ad(ADType(0.0, Vector<Scalar>::Unit(2, 0))),
       r_ad(ADType(0.0, Vector<Scalar>::Unit(2, 1))), sT(ScalarSolver.sT),

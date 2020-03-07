@@ -136,8 +136,8 @@ PYBIND11_MODULE(_c_ops, m) {
             size_t npts = size_t(bterm.size());
             Matrix<double, RowMajor> rT(npts, ops.N);
             for (size_t n = 0; n < npts; ++n) {
-              ops.GRef.compute(static_cast<Scalar>(bterm(n)));
-              rT.row(n) = ops.GRef.rT.template cast<double>();
+              ops.RP.compute(static_cast<Scalar>(bterm(n)));
+              rT.row(n) = ops.RP.rT.template cast<double>();
             }
             return rT;
           });
@@ -149,10 +149,65 @@ PYBIND11_MODULE(_c_ops, m) {
     size_t npts = size_t(bterm.size());
     Vector<double> bb(npts);
     for (size_t n = 0; n < npts; ++n) {
-      bb(n) = static_cast<double>(ops.GRef.compute(
+      bb(n) = static_cast<double>(ops.RP.compute(
           static_cast<Scalar>(bterm(n)), brT.row(n).template cast<Scalar>()));
     }
     return bb;
+  });
+
+  // Occultation in reflected light (with gradient)
+  Ops.def("sTReflected", [](starry::Ops<Scalar> &ops, const Vector<double>& b_, 
+                            const Vector<double>& theta_, const Vector<double>& bo_, 
+                            const double& ro_, const Matrix<double>& bsT) {
+      
+      // Total number of terms in `s^T`
+      int K = b_.size();
+      int N = (ops.ydeg + 1) * (ops.ydeg + 1);
+      
+      // Seed the derivatives
+      ADScalar<double, 4> b, theta, bo, ro;
+      b.derivatives() = Vector<double>::Unit(4, 0);
+      theta.derivatives() = Vector<double>::Unit(4, 1);
+      bo.derivatives() = Vector<double>::Unit(4, 2);
+      ro.derivatives() = Vector<double>::Unit(4, 3);
+      ro.value() = ro_;
+      Vector<ADScalar<double, 4>> result;
+      
+      // The output
+      Vector<int> code(K);
+      Matrix<double> result_value(K, N);
+      Vector<double> bb(K), btheta(K), bbo(K);
+      bb.setZero();
+      btheta.setZero();
+      bbo.setZero();
+      double bro = 0.0;
+
+      // Loop through the timeseries
+      for (int k = 0; k < K; ++k) {
+        
+        // Compute sT for this timestep
+        b.value() = b_(k);
+        theta.value() = theta_(k);
+        bo.value() = bo_(k);
+        ops.RO.compute(b, theta, bo, ro);
+        code(k) = ops.RO.code;
+
+        // Process the ADScalar
+        // TODO: We can speed this up a ton if we backprop through the C code
+        for (int n = 0; n < N; ++n) {
+            result_value(k, n) = ops.RO.sT(n).value();
+            bb(k) += ops.RO.sT(n).derivatives()(0) * bsT(k, n);
+            btheta(k) += ops.RO.sT(n).derivatives()(1) * bsT(k, n);
+            bbo(k) += ops.RO.sT(n).derivatives()(2) * bsT(k, n);
+            bro += ops.RO.sT(n).derivatives()(3) * bsT(k, n);
+
+        }
+
+      }
+
+      // Return the vector, integration code, and all derivs
+      return py::make_tuple(result_value, code, bb, btheta, bbo, bro);
+
   });
 
   // Rotation solution in emitted light dotted into Ylm space

@@ -53,8 +53,8 @@ template <typename T> T CEL(T ksq, T kc, T p, T a, T b) {
   // roundoff error, but they could happen. If so, change the
   // line below to avoid an exception
   if (ksq > 1)
-    throw std::out_of_range("Elliptic integral `CEL` "
-                            "was called with `ksq` > 1.");
+    throw std::runtime_error("Elliptic integral `CEL` "
+                             "was called with `ksq` > 1.");
   T ca = sqrt(mach_eps<T>() * ksq);
 
   if (ca <= 0)

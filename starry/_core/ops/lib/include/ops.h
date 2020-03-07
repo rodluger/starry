@@ -8,8 +8,9 @@
 #include "diffrot.h"
 #include "filter.h"
 #include "misc.h"
-#include "solver_emitted.h"
-#include "solver_reflected.h"
+#include "solver.h"
+#include "reflected/phasecurve.h"
+#include "reflected/occultation.h"
 #include "utils.h"
 #include "wigner.h"
 
@@ -33,8 +34,9 @@ class Ops {
 
   basis::Basis<Scalar> B;
   wigner::Wigner<Scalar> W;
-  solver::GreensEmitted<Scalar> G; /**< The occultation integral solver class */
-  solver::GreensReflected<Scalar> GRef;
+  solver::Greens<Scalar> G; /**< The occultation integral solver class */
+  reflected::phasecurve::PhaseCurve<Scalar> RP;
+  reflected::occultation::Occultation<ADScalar<Scalar, 4>> RO;
   filter::Filter<Scalar> F;
   diffrot::DiffRot<Scalar> D;
 
@@ -49,7 +51,7 @@ class Ops {
       ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
       fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
       N((deg + 1) * (deg + 1)), drorder(drorder), B(ydeg, udeg, fdeg),
-      W(ydeg, udeg, fdeg), G(deg), GRef(deg), F(B), D(B, drorder) {
+      W(ydeg, udeg, fdeg), G(deg), RP(deg), RO(deg), F(B), D(B, drorder) {
     // Bounds checks
     if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))
       throw std::out_of_range("Spherical harmonic degree out of range.");

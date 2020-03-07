@@ -611,7 +611,7 @@ class MapBase(object):
                     fig.subplots_adjust(
                         left=0.01, right=0.99, bottom=0.01, top=0.99
                     )
-                fig.savefig(file)
+                fig.savefig(file, bbox_inches="tight")
                 if not custom_ax:
                     plt.close()
             elif not custom_ax:

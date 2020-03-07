@@ -1,17 +1,18 @@
 /**
-\file solver_reflected.h
+\file solver.h
 \brief Computes surface integrals over reflected-light maps.
 
 */
 
-#ifndef _STARRY_SOLVER_REFL_H_
-#define _STARRY_SOLVER_REFL_H_
+#ifndef _STARRY_REFLECTED_PHASECURVE_H_
+#define _STARRY_REFLECTED_PHASECURVE_H_
 
-#include "ellip.h"
-#include "utils.h"
+#include "../ellip.h"
+#include "../utils.h"
 
 namespace starry {
-namespace solver {
+namespace reflected {
+namespace phasecurve {
 
 using namespace starry::utils;
 
@@ -20,7 +21,7 @@ Greens integral solver wrapper class. Reflected
 light specialization.
 
 */
-template <class Scalar> class GreensReflected {
+template <class Scalar> class PhaseCurve {
 
 protected:
   const int lmax;
@@ -211,7 +212,7 @@ public:
     return bb;
   }
 
-  explicit GreensReflected(int lmax)
+  explicit PhaseCurve(int lmax)
       : lmax(lmax), N((lmax + 1) * (lmax + 1)), H(lmax + 3), I(lmax + 3),
         DHDb(lmax + 3), DIDb(lmax + 3), J(lmax + 3, lmax + 3),
         K(lmax + 3, lmax + 3), tol(sqrt(mach_eps<Scalar>())), rT(N) {
@@ -220,7 +221,8 @@ public:
   }
 };
 
-} // namespace solver
+} // namespace phasecurve
+} // namespace reflected
 } // namespace starry
 
 #endif

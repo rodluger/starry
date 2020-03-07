@@ -125,6 +125,7 @@ class BuildExt(build_ext):
         opts = self.c_opts.get(ct, [])
         link_opts = self.l_opts.get(ct, [])
         if ct == "unix":
+            opts.append("-fcolor-diagnostics")
             opts.append(
                 '-DVERSION_INFO="%s"' % self.distribution.get_version()
             )

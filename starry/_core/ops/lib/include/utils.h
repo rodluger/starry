@@ -209,6 +209,16 @@ inline bool is_even(int n, int ntimes = 1) {
   return true;
 }
 
+//! Modulo for angles.
+// Equivalent to the Python expression `result = angle % max_angle`
+template <typename T, typename Scalar=double>
+inline T angle(const T& x, const Scalar max_angle = 2 * M_PI) {
+  T result = x;
+  while (result < 0) result += max_angle;
+  while (result > max_angle) result -= max_angle;
+  return result;
+}
+
 // --------------------------
 // ------ Unit Vectors ------
 // --------------------------
