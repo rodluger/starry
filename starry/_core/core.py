@@ -875,6 +875,8 @@ class OpsReflected(OpsYlm):
         # Occultation operator
         # --------------------
 
+        # TODO: Account for 3/2 factor here.
+
         X = tt.set_subtensor(
             X[i_occ],
             RaiseValueErrorIfOp(

@@ -46,7 +46,7 @@ protected:
     T sintheta;
 
     // Helper solvers
-    phasecurve::PhaseCurve<Scalar> RO;
+    phasecurve::PhaseCurve<Scalar> RP;
     solver::Solver<T, true> G;
 
     /**
@@ -132,14 +132,12 @@ protected:
         
         // Reset
         I.setZero();
-
-        // NOTE: 3 / 2 is the starry normalization for reflected light maps
         T y0 = sqrt(1 - b * b);
         T x = -y0 * sin(theta);
         T y = y0 * cos(theta);
         T z = -b;
         Vector<T> p(4);
-        p << 0, 1.5 * x, 1.5 * z, 1.5 * y;
+        p << 0, x, z, y;
         
         // Populate the matrix
         int n1 = 0;
@@ -194,11 +192,52 @@ protected:
     }
 
     /**
-        TODO: Figure out the geometry. Propagate the derivs.
+        TODO: Propagate the derivs
     */
-    inline RowVector<T> rTr(const T& x, const T& y, const T& z) {
+    inline RowVector<T> rTr(const T& b, const T& theta) {
+        
+        // Compute the reflection solution in the terminator frame
+        RP.compute(b.value());
+        RowVector<T> rT0(N1);
+        for (int n = 0; n < N1; ++n) {
+            rT0(n).value() = RP.rT(n);
+            // TODO !rT0(n).deriatives() = b.derivatives() * ...
+        }
+        
+        // Rotate into the occultor frame
         RowVector<T> rT(N1);
-        rT.setZero();
+        Vector<T> cosnt, sinnt, cosmt, sinmt;
+        cosnt.resize(max(2, ydeg + 1));
+        cosnt(0) = 1.0;
+        sinnt.resize(max(2, ydeg + 1));
+        sinnt(0) = 0.0;
+        cosmt.resize(N1);
+        sinmt.resize(N1);
+        cosnt(1) = cos(theta);
+        sinnt(1) = sin(theta);
+        for (int n = 2; n < ydeg + 1; ++n) {
+            cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
+            sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
+        }
+        int n = 0;
+        for (int l = 0; l < ydeg + 1; ++l) {
+            for (int m = -l; m < 0; ++m) {
+                cosmt(n) = cosnt(-m);
+                sinmt(n) = -sinnt(-m);
+                ++n;
+            }
+            for (int m = 0; m < l + 1; ++m) {
+                cosmt(n) = cosnt(m);
+                sinmt(n) = sinnt(m);
+                ++n;
+            }
+        }
+        for (int l = 0; l < ydeg + 1; ++l) {
+            for (int j = 0; j < 2 * l + 1; ++j) {
+                rT(l * l + j) = rT0(l * l + j) * cosmt(l * l + j) + rT0(l * l + 2 * l - j) * sinmt(l * l + j);
+            }
+        }
+
         return rT;
     }
 
@@ -207,7 +246,7 @@ public:
     int code;
     RowVector<T> sT;
 
-    explicit Occultation(int ydeg, phasecurve::PhaseCurve<Scalar> RO) : 
+    explicit Occultation(int ydeg, phasecurve::PhaseCurve<Scalar> RP) : 
         ydeg(ydeg),
         N2((ydeg + 2) * (ydeg + 2)),
         N1((ydeg + 1) * (ydeg + 1)),
@@ -215,7 +254,7 @@ public:
         PIntegral(N2),
         QIntegral(N2),
         TIntegral(N2),
-        RO(RO),
+        RP(RP),
         G(ydeg + 1),
         sT(N2)
     {
@@ -252,19 +291,11 @@ public:
 
         } else if (code == FLUX_SIMPLE_REFL) {
 
-            T y0 = sqrt(1 - b * b);
-            T xs = -y0 * sintheta;
-            T ys = y0 * costheta;
-            T zs = -b;
-            sT = rTr(xs, ys, zs);
+            sT = rTr(b, theta);
 
         } else if (code == FLUX_SIMPLE_OCC_REFL) {
 
-            T y0 = sqrt(1 - b * b);
-            T xs = -y0 * sintheta;
-            T ys = y0 * costheta;
-            T zs = -b;
-            sT = illuminate(b, theta, sTe(bo, ro)) + rTr(-xs, -ys, -zs);
+            sT = illuminate(b, theta, sTe(bo, ro)) + rTr(-b, theta + pi<T>());
 
         } else {
 
@@ -279,19 +310,11 @@ public:
             // reflected light phase curve solution vector.
             if ((code == FLUX_DAY_OCC) || (code == FLUX_TRIP_DAY_OCC)) {
 
-                T y0 = sqrt(1 - b * b);
-                T xs = -y0 * sintheta;
-                T ys = y0 * costheta;
-                T zs = -b;
-                sT = rTr(xs, ys, zs) - illuminate(b, theta, sT);
+                sT = rTr(b, theta) - illuminate(b, theta, sT);
 
             } else if ((code == FLUX_NIGHT_OCC) || (code == FLUX_TRIP_NIGHT_OCC)) {
 
-                T y0 = sqrt(1 - b * b);
-                T xs = -y0 * sintheta;
-                T ys = y0 * costheta;
-                T zs = -b;
-                sT = illuminate(b, theta, sTe(bo, ro) + sT) + rTr(-xs, -ys, -zs);
+                sT = illuminate(b, theta, sTe(bo, ro) + sT) + rTr(-b, theta + pi<T>());
 
             } else if ((code == FLUX_DAY_VIS) || (code == FLUX_QUAD_DAY_VIS)) {
 
