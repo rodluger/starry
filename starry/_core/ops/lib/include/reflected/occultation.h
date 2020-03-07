@@ -29,9 +29,12 @@ template <class T> class Occultation {
 
 protected:
 
-    int ydeg;
+    // Misc
+    int deg;
     int N2;
     int N1;
+    Eigen::SparseMatrix<Scalar> A1;
+    Eigen::SparseMatrix<Scalar> AInv;
     Eigen::SparseMatrix<Scalar> A2;
     Eigen::SparseMatrix<Scalar> A2Inv;
     Matrix<T> I;
@@ -42,11 +45,16 @@ protected:
     Vector<T> QIntegral;
     Vector<T> TIntegral;
 
+    // Angles
     T costheta;
     T sintheta;
+    Vector<T> cosnt;
+    Vector<T> sinnt;
+    Vector<T> cosmt;
+    Vector<T> sinmt;
 
     // Helper solvers
-    phasecurve::PhaseCurve<Scalar> RP;
+    phasecurve::PhaseCurve<T> R;
     solver::Solver<T, true> G;
 
     /**
@@ -59,7 +67,7 @@ protected:
         int i, n, l, m, mu, nu;
         Matrix<Scalar> A2InvDense = Matrix<Scalar>::Zero(N2, N2);
         n = 0;
-        for (l = 0; l < ydeg + 2; ++l) {
+        for (l = 0; l < deg + 2; ++l) {
             for (m = -l; m < l + 1; ++m) {
             mu = l - m;
             nu = l + m;
@@ -144,7 +152,7 @@ protected:
         int n2 = 0;
         int l, n;
         bool odd1;
-        for (int l1 = 0; l1 < ydeg + 1; ++l1) {
+        for (int l1 = 0; l1 < deg + 1; ++l1) {
             for (int m1 = -l1; m1 < l1 + 1; ++m1) {
                 if (is_even(l1 + m1)) odd1 = false;
                 else odd1 = true;
@@ -192,35 +200,24 @@ protected:
     }
 
     /**
-        TODO: Propagate the derivs
+
     */
-    inline RowVector<T> rTr(const T& b, const T& theta) {
+    inline RowVector<T> sTr(const T& b, const T& theta) {
         
         // Compute the reflection solution in the terminator frame
-        RP.compute(b.value());
-        RowVector<T> rT0(N1);
-        for (int n = 0; n < N1; ++n) {
-            rT0(n).value() = RP.rT(n);
-            // TODO !rT0(n).deriatives() = b.derivatives() * ...
-        }
+        R.compute(b);
         
-        // Rotate into the occultor frame
-        RowVector<T> rT(N1);
-        Vector<T> cosnt, sinnt, cosmt, sinmt;
-        cosnt.resize(max(2, ydeg + 1));
-        cosnt(0) = 1.0;
-        sinnt.resize(max(2, ydeg + 1));
-        sinnt(0) = 0.0;
-        cosmt.resize(N1);
-        sinmt.resize(N1);
+        // Transform to ylms and rotate into the occultor frame
+        RowVector<T> rTA1 = R.rT * A1;
+        RowVector<T> rTA1R(N1);
         cosnt(1) = cos(theta);
-        sinnt(1) = sin(theta);
-        for (int n = 2; n < ydeg + 1; ++n) {
+        sinnt(1) = sin(-theta);
+        for (int n = 2; n < deg + 1; ++n) {
             cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
             sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
         }
         int n = 0;
-        for (int l = 0; l < ydeg + 1; ++l) {
+        for (int l = 0; l < deg + 1; ++l) {
             for (int m = -l; m < 0; ++m) {
                 cosmt(n) = cosnt(-m);
                 sinmt(n) = -sinnt(-m);
@@ -231,14 +228,13 @@ protected:
                 sinmt(n) = sinnt(m);
                 ++n;
             }
-        }
-        for (int l = 0; l < ydeg + 1; ++l) {
             for (int j = 0; j < 2 * l + 1; ++j) {
-                rT(l * l + j) = rT0(l * l + j) * cosmt(l * l + j) + rT0(l * l + 2 * l - j) * sinmt(l * l + j);
+                rTA1R(l * l + j) = rTA1(l * l + j) * cosmt(l * l + j) + rTA1(l * l + 2 * l - j) * sinmt(l * l + j);
             }
         }
 
-        return rT;
+        // Transform back to Green's polynomials
+        return rTA1R * AInv;
     }
 
 public:
@@ -246,21 +242,39 @@ public:
     int code;
     RowVector<T> sT;
 
-    explicit Occultation(int ydeg, phasecurve::PhaseCurve<Scalar> RP) : 
-        ydeg(ydeg),
-        N2((ydeg + 2) * (ydeg + 2)),
-        N1((ydeg + 1) * (ydeg + 1)),
+    explicit Occultation(int deg, const Eigen::SparseMatrix<Scalar>& A1) : 
+        deg(deg),
+        N2((deg + 2) * (deg + 2)),
+        N1((deg + 1) * (deg + 1)),
+        A1(A1),
         I(N2, N1),
         PIntegral(N2),
         QIntegral(N2),
         TIntegral(N2),
-        RP(RP),
-        G(ydeg + 1),
+        R(deg),
+        G(deg + 1),
         sT(N2)
     {
 
         // Compute the change of basis matrix (constant)
         computeA2();
+
+        // Compute AInv (constant)
+        Eigen::SparseLU<Eigen::SparseMatrix<Scalar>> solver;
+        solver.compute(A1);
+        if (solver.info() != Eigen::Success) {
+            throw std::runtime_error(
+                "Error computing the change of basis matrix `A^-1`.");
+        }
+        AInv = solver.solve(A2Inv);
+
+        // Rotation vectors
+        cosnt.resize(max(2, deg + 1));
+        cosnt(0) = 1.0;
+        sinnt.resize(max(2, deg + 1));
+        sinnt(0) = 0.0;
+        cosmt.resize(N1);
+        sinmt.resize(N1);
 
     }
 
@@ -287,34 +301,40 @@ public:
 
         } else if (code == FLUX_SIMPLE_OCC) {
 
+            // The occultor is blocking all of the nightside 
+            // and some dayside flux
             sT = illuminate(b, theta, sTe(bo, ro));
 
         } else if (code == FLUX_SIMPLE_REFL) {
 
-            sT = rTr(b, theta);
+            // The total flux is the full dayside flux
+            sT = sTr(b, theta);
 
         } else if (code == FLUX_SIMPLE_OCC_REFL) {
 
-            sT = illuminate(b, theta, sTe(bo, ro)) + rTr(-b, theta + pi<T>());
+            // The occultor is only blocking dayside flux
+            sT = illuminate(b, theta, sTe(bo, ro)) + sTr(-b, theta + pi<T>());
 
         } else {
 
+            // These cases require us to solve incomplete
+            // elliptic integrals.
+
             // Compute the primitive integrals
-            computeP(ydeg + 1, bo, ro, kappa, PIntegral);
-            computeQ(ydeg + 1, lam, QIntegral);
-            computeT(ydeg + 1, b, theta, xi, TIntegral);
+            computeP(deg + 1, bo, ro, kappa, PIntegral);
+            computeQ(deg + 1, lam, QIntegral);
+            computeT(deg + 1, b, theta, xi, TIntegral);
             sT = (PIntegral + QIntegral + TIntegral).transpose();
 
-            // The full solution vector is a combination of the
-            // current vector, the standard starry vector, and the
-            // reflected light phase curve solution vector.
             if ((code == FLUX_DAY_OCC) || (code == FLUX_TRIP_DAY_OCC)) {
 
-                sT = rTr(b, theta) - illuminate(b, theta, sT);
+                //
+                sT = sTr(b, theta) - illuminate(b, theta, sT);
 
             } else if ((code == FLUX_NIGHT_OCC) || (code == FLUX_TRIP_NIGHT_OCC)) {
 
-                sT = illuminate(b, theta, sTe(bo, ro) + sT) + rTr(-b, theta + pi<T>());
+                //
+                sT = illuminate(b, theta, sTe(bo, ro) + sT) + sTr(-b, theta + pi<T>());
 
             } else if ((code == FLUX_DAY_VIS) || (code == FLUX_QUAD_DAY_VIS)) {
 
@@ -323,6 +343,7 @@ public:
 
             } else if ((code == FLUX_NIGHT_VIS) || (code == FLUX_QUAD_NIGHT_VIS)) {
 
+                //
                 sT = illuminate(b, theta, sTe(bo, ro) - sT);
 
             } else {

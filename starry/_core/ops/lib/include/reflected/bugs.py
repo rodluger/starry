@@ -1,7 +1,9 @@
 import numpy as np
 import starry
 
-# Things are nan when bo = 0.0 (FIXED?)
+# TODO: Think about deg and ydeg: will limb darkening work?
+
+# TODO: Things are nan when bo = 0.0 (FIXED?)
 ydeg = 1
 ops = starry._c_ops.Ops(ydeg, 0, 0, 0)
 bo = np.array([0.0])
