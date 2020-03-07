@@ -9,9 +9,11 @@
 #define _STARRY_REFLECTED_OCCULTATION_H_
 
 #include "../utils.h"
+#include "../solver.h"
 #include "constants.h"
 #include "geometry.h"
 #include "primitive.h"
+#include "phasecurve.h"
 
 namespace starry {
 namespace reflected {
@@ -42,6 +44,10 @@ protected:
 
     T costheta;
     T sintheta;
+
+    // Helper solvers
+    phasecurve::PhaseCurve<Scalar> RO;
+    solver::Solver<T, true> G;
 
     /**
     
@@ -119,6 +125,7 @@ protected:
         Illumination matrix.
 
         TODO: We can backprop through this pretty easily.
+        TODO: Make me sparse!
 
     */
     inline void computeI(const T& b, const T& theta) {
@@ -164,13 +171,43 @@ protected:
 
     }
 
+    /**
+        Weight the solution vector by a cosine-like illumination profile.
+        Note that we need I to transform Greens --> Greens.
+
+    */
+    inline RowVector<T> illuminate(const T& b, const T& theta, const RowVector<T>& sT) {
+        computeI(b, theta);
+        RowVector<T> sTw = sT * A2;
+        sTw = sTw * I;
+        sTw = sTw * A2Inv;
+        return sTw;
+    }
+
+    /**
+        AutoDiff-enabled standard starry occultation solution.
+
+    */
+    inline RowVector<T> sTe(const T& bo, const T& ro) {
+        G.compute(bo, ro);
+        return G.sT;
+    }
+
+    /**
+        TODO: Figure out the geometry. Propagate the derivs.
+    */
+    inline RowVector<T> rTr(const T& x, const T& y, const T& z) {
+        RowVector<T> rT(N1);
+        rT.setZero();
+        return rT;
+    }
 
 public:
 
     int code;
     RowVector<T> sT;
 
-    explicit Occultation(int ydeg) : 
+    explicit Occultation(int ydeg, phasecurve::PhaseCurve<Scalar> RO) : 
         ydeg(ydeg),
         N2((ydeg + 2) * (ydeg + 2)),
         N1((ydeg + 1) * (ydeg + 1)),
@@ -178,6 +215,8 @@ public:
         PIntegral(N2),
         QIntegral(N2),
         TIntegral(N2),
+        RO(RO),
+        G(ydeg + 1),
         sT(N2)
     {
 
@@ -187,39 +226,88 @@ public:
     }
 
     /**
-        Compute the full solution vector s^T. This is computed as
+        Compute the full solution vector s^T.
 
-            s^T = s_0^T . A2 . I . A2^-1
-
-        where A2 is the change of basis matrix from Green's polynomials to 
-        monomials, and I is the illumination matrix.
     */
     inline void compute(const T& b, const T& theta, const T& bo, const T& ro) {
         
         // Get the angles of intersection
+        costheta = cos(theta);
+        sintheta = sin(theta);
         code = get_angles(b, theta, costheta, sintheta, bo, ro, kappa, lam, xi);
 
-        // Does the occultor touch the terminator?
-        if ((code != FLUX_ZERO) && (code != FLUX_SIMPLE_OCC) && (code != FLUX_SIMPLE_REFL) && (code != FLUX_SIMPLE_OCC_REFL)) {
+        // The full solution vector is a combination of the
+        // current vector, the standard starry vector, and the
+        // reflected light phase curve solution vector. The contributions
+        // of each depend on the integration code.
 
-            // Compute the primitive integrals
-            costheta = cos(theta);
-            sintheta = sin(theta);
-            computeP(ydeg + 1, bo, ro, kappa, PIntegral);
-            computeQ(ydeg + 1, lam, QIntegral);
-            computeT(ydeg + 1, b, theta, xi, TIntegral);
-            sT = PIntegral + QIntegral + TIntegral;
+        if (code == FLUX_ZERO) {
 
-            // Weight by the illumination. Note that we need I to transform Greens --> Greens
-            computeI(b, theta);
-            sT = sT * A2;
-            sT = sT * I;
-            sT = sT * A2Inv;
+            // Complete occultation!
+            sT.setZero(N2);
+
+        } else if (code == FLUX_SIMPLE_OCC) {
+
+            sT = illuminate(b, theta, sTe(bo, ro));
+
+        } else if (code == FLUX_SIMPLE_REFL) {
+
+            T y0 = sqrt(1 - b * b);
+            T xs = -y0 * sintheta;
+            T ys = y0 * costheta;
+            T zs = -b;
+            sT = rTr(xs, ys, zs);
+
+        } else if (code == FLUX_SIMPLE_OCC_REFL) {
+
+            T y0 = sqrt(1 - b * b);
+            T xs = -y0 * sintheta;
+            T ys = y0 * costheta;
+            T zs = -b;
+            sT = illuminate(b, theta, sTe(bo, ro)) + rTr(-xs, -ys, -zs);
 
         } else {
 
-            // We're done here: we'll use the standard starry algorithm instead!
-            sT.setZero(N2);
+            // Compute the primitive integrals
+            computeP(ydeg + 1, bo, ro, kappa, PIntegral);
+            computeQ(ydeg + 1, lam, QIntegral);
+            computeT(ydeg + 1, b, theta, xi, TIntegral);
+            sT = (PIntegral + QIntegral + TIntegral).transpose();
+
+            // The full solution vector is a combination of the
+            // current vector, the standard starry vector, and the
+            // reflected light phase curve solution vector.
+            if ((code == FLUX_DAY_OCC) || (code == FLUX_TRIP_DAY_OCC)) {
+
+                T y0 = sqrt(1 - b * b);
+                T xs = -y0 * sintheta;
+                T ys = y0 * costheta;
+                T zs = -b;
+                sT = rTr(xs, ys, zs) - illuminate(b, theta, sT);
+
+            } else if ((code == FLUX_NIGHT_OCC) || (code == FLUX_TRIP_NIGHT_OCC)) {
+
+                T y0 = sqrt(1 - b * b);
+                T xs = -y0 * sintheta;
+                T ys = y0 * costheta;
+                T zs = -b;
+                sT = illuminate(b, theta, sTe(bo, ro) + sT) + rTr(-xs, -ys, -zs);
+
+            } else if ((code == FLUX_DAY_VIS) || (code == FLUX_QUAD_DAY_VIS)) {
+
+                // The solution vector is *just* the reflected light solution vector.
+                sT = illuminate(b, theta, sT);
+
+            } else if ((code == FLUX_NIGHT_VIS) || (code == FLUX_QUAD_NIGHT_VIS)) {
+
+                sT = illuminate(b, theta, sTe(bo, ro) - sT);
+
+            } else {
+
+                // ?!
+                throw std::runtime_error("Unexpected branch in `sT`.");
+
+            }
 
         }
 

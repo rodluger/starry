@@ -156,6 +156,7 @@ PYBIND11_MODULE(_c_ops, m) {
   });
 
   // Occultation in reflected light (with gradient)
+  // TODO: Eventually cast from double to Scalar for multiprecision types?
   Ops.def("sTReflected", [](starry::Ops<Scalar> &ops, const Vector<double>& b_, 
                             const Vector<double>& theta_, const Vector<double>& bo_, 
                             const double& ro_, const Matrix<double>& bsT) {
@@ -171,10 +172,8 @@ PYBIND11_MODULE(_c_ops, m) {
       bo.derivatives() = Vector<double>::Unit(4, 2);
       ro.derivatives() = Vector<double>::Unit(4, 3);
       ro.value() = ro_;
-      Vector<ADScalar<double, 4>> result;
       
       // The output
-      Vector<int> code(K);
       Matrix<double> result_value(K, N);
       Vector<double> bb(K), btheta(K), bbo(K);
       bb.setZero();
@@ -190,7 +189,6 @@ PYBIND11_MODULE(_c_ops, m) {
         theta.value() = theta_(k);
         bo.value() = bo_(k);
         ops.RO.compute(b, theta, bo, ro);
-        code(k) = ops.RO.code;
 
         // Process the ADScalar
         // TODO: We can speed this up a ton if we backprop through the C code
@@ -200,13 +198,12 @@ PYBIND11_MODULE(_c_ops, m) {
             btheta(k) += ops.RO.sT(n).derivatives()(1) * bsT(k, n);
             bbo(k) += ops.RO.sT(n).derivatives()(2) * bsT(k, n);
             bro += ops.RO.sT(n).derivatives()(3) * bsT(k, n);
-
         }
 
       }
 
       // Return the vector, integration code, and all derivs
-      return py::make_tuple(result_value, code, bb, btheta, bbo, bro);
+      return py::make_tuple(result_value, bb, btheta, bbo, bro);
 
   });
 
