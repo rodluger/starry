@@ -51,7 +51,7 @@ class Ops {
       ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
       fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
       N((deg + 1) * (deg + 1)), drorder(drorder), B(ydeg, udeg, fdeg),
-      W(ydeg, udeg, fdeg), G(deg), RP(deg), RO(deg, B.A1_big.block(0, 0, N, N)), 
+      W(ydeg, udeg, fdeg), G(deg), RP(deg), RO(deg, B.A1_big), 
       F(B), D(B, drorder) {
     // Bounds checks
     if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))

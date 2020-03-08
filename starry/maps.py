@@ -2116,7 +2116,7 @@ def Map(
         fdeg = 3
     elif reflected:
         Bases = (ReflectedBase,) + Bases
-        fdeg = 1
+        fdeg = 0
     else:
         fdeg = 0
 

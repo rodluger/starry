@@ -5,6 +5,7 @@ from .. import _c_ops
 from .ops import (
     sTOp,
     rTReflectedOp,
+    sTReflectedOp,
     dotROp,
     tensordotRzOp,
     FOp,
@@ -745,6 +746,7 @@ class OpsReflected(OpsYlm):
     def __init__(self, *args, **kwargs):
         super(OpsReflected, self).__init__(*args, reflected=True, **kwargs)
         self._rT = rTReflectedOp(self._c_ops.rTReflected, self._c_ops.N)
+        self._sT = sTReflectedOp(self._c_ops.sTReflected, self._c_ops.N)
         self._A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
 
     @property
@@ -754,6 +756,10 @@ class OpsReflected(OpsYlm):
     @autocompile
     def rT(self, b):
         return self._rT(b)
+
+    @autocompile
+    def sT(self, b, theta, bo, ro):
+        return self._sT(b, theta, bo, ro)
 
     @autocompile
     def intensity(self, lat, lon, y, u, f, xs, ys, zs, wta, ld):
@@ -838,51 +844,49 @@ class OpsReflected(OpsYlm):
         X = tt.zeros((rows, cols))
 
         # Compute the occultation mask
-        b = tt.sqrt(xo ** 2 + yo ** 2)
-        b_rot = tt.ge(b, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
+        bo = tt.sqrt(xo ** 2 + yo ** 2)
+        b_rot = tt.ge(bo, 1.0 + ro) | tt.le(zo, 0.0) | tt.eq(ro, 0.0)
         b_occ = tt.invert(b_rot)
-        i_rot = tt.arange(b.size)[b_rot]
-        i_occ = tt.arange(b.size)[b_occ]
+        i_rot = tt.arange(bo.size)[b_rot]
+        i_occ = tt.arange(bo.size)[b_occ]
+
+        # Compute filter operator
+        if self.filter:
+            F = self.F(u, f)
+
+        # Terminator
+        r2 = xs ** 2 + ys ** 2 + zs ** 2
+        b_term = -zs / tt.sqrt(r2)
+        theta_term = tt.arctan2(xo, yo) - tt.arctan2(xs, ys)
 
         # Rotation operator
-        # -----------------
-
-        # Compute the semi-minor axis of the terminator
-        # and the reflectance integrals
-        r2 = xs[i_rot] ** 2 + ys[i_rot] ** 2 + zs[i_rot] ** 2
-        bterm = -zs[i_rot] / tt.sqrt(r2)
-        rT = self.rT(bterm)
-
-        # Transform to Ylms and rotate on the sky plane
-        rTA1 = ts.dot(rT, self.A1Big)
+        rT = self.rT(b_term[i_rot])
+        if self.filter:
+            rTA1 = ts.dot(tt.dot(rT, F), self.A1)
+        else:
+            rTA1 = ts.dot(rT, self.A1)
         theta_z = tt.arctan2(xs[i_rot], ys[i_rot])
         rTA1Rz = self.tensordotRz(rTA1, theta_z)
+        X = tt.set_subtensor(
+            X[i_rot], self.right_project(rTA1Rz, inc, obl, theta[i_rot], alpha)
+        )
 
-        # Apply limb darkening?
-        F = self.F(u, f)
-        A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
-        rTA1Rz = tt.dot(rTA1Rz, A1InvFA1)
+        # Occultation + rotation operator
+        sT = self.sT(b_term[i_occ], theta_term[i_occ], bo[i_occ], ro)
+        sTA = ts.dot(sT, self.A)
+        theta_z = tt.arctan2(xo[i_occ], yo[i_occ])
+        sTAR = self.tensordotRz(sTA, theta_z)
+        if self.filter:
+            A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
+            sTAR = tt.dot(sTAR, A1InvFA1)
+        X = tt.set_subtensor(
+            X[i_occ], self.right_project(sTAR, inc, obl, theta[i_occ], alpha)
+        )
 
-        # Rotate to the correct phase and weight by the distance to the source
+        # Weight by the distance to the source.
         # The factor of 2/3 ensures that the flux from a uniform map
         # with unit amplitude seen at noon is unity.
-        X = tt.set_subtensor(
-            X[i_rot],
-            self.right_project(rTA1Rz, inc, obl, theta[i_rot], alpha)
-            / (2.0 / 3.0 * tt.shape_padright(r2)),
-        )
-
-        # Occultation operator
-        # --------------------
-
-        # TODO: Account for 3/2 factor here.
-
-        X = tt.set_subtensor(
-            X[i_occ],
-            RaiseValueErrorIfOp(
-                "Occultations in reflected light not yet implemented."
-            )(b_occ.any()),
-        )
+        X /= 2.0 / 3.0 * tt.shape_padright(r2)
 
         # We're done
         return X
