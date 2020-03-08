@@ -116,11 +116,7 @@ class BuildExt(build_ext):
     l_opts = {"msvc": [], "unix": []}
 
     if sys.platform == "darwin":
-        darwin_opts = [
-            "-stdlib=libc++",
-            "-mmacosx-version-min=10.14",
-            "-fcolor-diagnostics",
-        ]
+        darwin_opts = ["-stdlib=libc++", "-mmacosx-version-min=10.14"]
         c_opts["unix"] += darwin_opts
         l_opts["unix"] += darwin_opts
 
@@ -135,6 +131,8 @@ class BuildExt(build_ext):
             opts.append(cpp_flag(self.compiler))
             if has_flag(self.compiler, "-fvisibility=hidden"):
                 opts.append("-fvisibility=hidden")
+            if has_flag(self.compiler, "-fcolor-diagnostics"):
+                opts.append("-fcolor-diagnostics")
         elif ct == "msvc":
             opts.append(
                 '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()
