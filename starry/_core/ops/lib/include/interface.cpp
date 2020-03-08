@@ -157,6 +157,7 @@ PYBIND11_MODULE(_c_ops, m) {
 
   // Occultation in reflected light (with gradient)
   // TODO: Eventually cast from double to Scalar for multiprecision types?
+  // TODO: Save forward diff gradients for backprop pass
   Ops.def("sTReflected", [](starry::Ops<Scalar> &ops, const Vector<double>& b_, 
                             const Vector<double>& theta_, const Vector<double>& bo_, 
                             const double& ro_, const Matrix<double>& bsT) {

@@ -144,9 +144,8 @@ class sTReflectedGradientOp(tt.Op):
     def perform(self, node, inputs, outputs):
         # TODO horribly inefficient! see note above
         b, theta, bo, ro, bsT = inputs
-        outputs[0][0], _, _, _, _ = self.func(b, theta, bo, ro, bsT)
-        _, bb, btheta, bbo, bro = self.base_op.func(*inputs)
+        _, bb, btheta, bbo, bro = self.base_op.func(b, theta, bo, ro, bsT)
         outputs[0][0] = np.reshape(bb, np.shape(inputs[0]))
         outputs[1][0] = np.reshape(btheta, np.shape(inputs[1]))
-        outputs[1][0] = np.reshape(bbo, np.shape(inputs[1]))
-        outputs[1][0] = np.reshape(bro, np.shape(inputs[1]))
+        outputs[2][0] = np.reshape(bbo, np.shape(inputs[2]))
+        outputs[3][0] = np.reshape(bro, np.shape(inputs[3]))
