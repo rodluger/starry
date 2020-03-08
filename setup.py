@@ -116,7 +116,11 @@ class BuildExt(build_ext):
     l_opts = {"msvc": [], "unix": []}
 
     if sys.platform == "darwin":
-        darwin_opts = ["-stdlib=libc++", "-mmacosx-version-min=10.14"]
+        darwin_opts = [
+            "-stdlib=libc++",
+            "-mmacosx-version-min=10.14",
+            "-fcolor-diagnostics",
+        ]
         c_opts["unix"] += darwin_opts
         l_opts["unix"] += darwin_opts
 
@@ -125,7 +129,6 @@ class BuildExt(build_ext):
         opts = self.c_opts.get(ct, [])
         link_opts = self.l_opts.get(ct, [])
         if ct == "unix":
-            opts.append("-fcolor-diagnostics")
             opts.append(
                 '-DVERSION_INFO="%s"' % self.distribution.get_version()
             )
