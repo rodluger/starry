@@ -3,6 +3,8 @@ import starry
 
 # TODO: Think about deg and ydeg: will limb darkening work?
 
+# TODO: I get that J does not converge for ydeg = 25
+
 # TODO: Things are nan when bo = 0.0 (FIXED?)
 ydeg = 1
 ops = starry._c_ops.Ops(ydeg, 0, 0, 0)
