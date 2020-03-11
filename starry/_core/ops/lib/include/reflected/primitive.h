@@ -136,6 +136,9 @@ inline Vector<T> U(const int vmax, const Vector<T>& s1) {
 /**
     Compute the helper integral I by upward recursion.
 
+    TODO: This upward recursion is numerically unstable! 
+          Use a tridiagonal solver here.
+
 */
 template <typename T> 
 inline Vector<T> I(const int nmax, const Vector<T>& kappa, const Vector<T>& s1, const Vector<T>& c1) {

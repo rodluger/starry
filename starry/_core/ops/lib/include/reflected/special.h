@@ -211,6 +211,11 @@ inline T P2(const T& bo, const T& ro, const T& k2, const Vector<T>& kappa, const
 
 /**
   Integrand of the J_N term, for numerical integration.
+
+  TODO: (IMPORANT!) Verify how often we're integrating across the 
+        region where the real part of the integrand is
+        zero. We should split this into two separate
+        integrals to get better performance in the quadrature!
 */
 template <typename T> 
 inline T J_integrand(const int N, const T& k2, const T& phi) {

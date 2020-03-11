@@ -22,8 +22,6 @@ using namespace utils;
 */
 template <typename T>
 inline bool on_dayside(const T& b, const T& theta, const T& costheta, const T& sintheta, const T& x, const T& y) {
-    if (x * x + y * y > 1)
-        throw std::runtime_error("Point not on the unit disk.");
     T xr = x * costheta + y * sintheta;
     T yr = -x * sintheta + y * costheta;
     T term = 1 - xr * xr;
@@ -420,8 +418,8 @@ inline int get_angles(const T& b, const T& theta, const T& costheta, const T& si
 
             // The occultor intersects the limb at this point
             T q = (1 - ro * ro + bo * bo) / (2 * bo);
-            T xp = (1 - STARRY_ANGLE_TOL) * sqrt(1 - q * q);
-            T yp = (1 - STARRY_ANGLE_TOL) * q;
+            T xp = sqrt(1 - q * q);
+            T yp = q;
 
             if (on_dayside(b, theta, costheta, sintheta, xp, yp)) {
 
@@ -497,8 +495,8 @@ inline int get_angles(const T& b, const T& theta, const T& costheta, const T& si
             theta,
             costheta,
             sintheta,
-            T((1 - STARRY_ANGLE_TOL) * ro * cos(phi_l)),
-            T((1 - STARRY_ANGLE_TOL) * (bo + ro * sin(phi_l)))
+            T(ro * cos(phi_l)),
+            T((bo + ro * sin(phi_l)))
         ))
             phi_l = pi<T>() - phi_l;
 
@@ -524,8 +522,8 @@ inline int get_angles(const T& b, const T& theta, const T& costheta, const T& si
             theta,
             costheta,
             sintheta,
-            T((1 - STARRY_ANGLE_TOL) * cos(lam_o)),
-            T((1 - STARRY_ANGLE_TOL) * sin(lam_o))
+            T(cos(lam_o)),
+            T(sin(lam_o))
         ))
             lam_o = pi<T>() - lam_o;
 
