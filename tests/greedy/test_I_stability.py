@@ -1,9 +1,11 @@
 import starry
 import numpy as np
 import matplotlib.pyplot as plt
+import pytest
 
 
-def test_I_stability(plot=False):
+@pytest.mark.parametrize("noon", [False, True])
+def test_I_stability(noon, plot=False):
     # FB found this unstable limit. The instability comes
     # from two places:
     # 1. The upward recursion in the I integral is unstable.
@@ -20,17 +22,21 @@ def test_I_stability(plot=False):
         1.0,
         39.10406741663172,
     )
-    xs = 0
-    ys = 0
-    zs = 1
-    xo = np.linspace(xo - 2, xo + 2, 1000)
+    # Exactly noon?
+    if noon:
+        xs = 0.0
+    else:
+        xs = 0.1
+    ys = 0.0
+    zs = 1.0
+    xo = np.linspace(xo - 2, xo + 2, 10000)
 
     # The instability shows up at ydeg ~ 5 and gets bad at ydeg ~ 6
     map = starry.Map(ydeg=6, reflected=True)
     map[6, :] = 1
     flux1 = map.flux(xo=xo, yo=yo, zo=zo, ro=ro, xs=xs, ys=ys, zs=zs)
 
-    # The flux above should be *exactly* equal to the flux of a
+    # If `noon=True`, the flux above should be *exactly* equal to the flux of a
     # linearly-limb darkened source with u_1 = 1.0, since linear
     # limb darkening weights the surface brightness by the same
     # cosine-like profile.
@@ -46,9 +52,13 @@ def test_I_stability(plot=False):
         plt.ylim(-0.05, 1.5)
         plt.show()
 
-    assert np.allclose(flux1, flux2)
+    # TODO: Test against numerical integration
+    if noon:
+        assert np.allclose(flux1, flux2)
+    else:
+        pass
 
 
 if __name__ == "__main__":
     starry.config.lazy = False
-    test_I_stability(plot=True)
+    test_I_stability(False, plot=True)

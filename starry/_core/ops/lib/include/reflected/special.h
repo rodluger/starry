@@ -312,6 +312,48 @@ inline ADScalar<T, N> hyp2f1(const T& a, const T& b, const T&c, const ADScalar<T
 }
 
 
+/**
+  Integrand of the I_N term, for numerical integration.
+
+*/
+template <typename T> 
+inline T I_integrand(const int N, const T& phi) {
+  T s2 = sin(phi);
+  s2 *= s2;
+  return pow(s2, N);
+}
+
+/**
+  The I helper integral evaluated numerically. The expression for the terms in
+  I is analytic from recursion relations, but gets unstable for high `n`. We
+  evaluate I for `n = 0` (analytically) `n = nmax` (numerically) and solve the
+  problem with a forward & backward pass to improve numerical stability.
+
+*/
+template <typename T> 
+inline T I_numerical(const int N, const Vector<T>& kappa) {
+
+  using Scalar = typename T::Scalar;
+  size_t K = kappa.size();
+
+  std::function<Scalar(Scalar)> f = [N](Scalar phi) { return I_integrand(N, phi); };
+  
+  // Compute the function value
+  T res = 0.0;
+  for (size_t i = 0; i < K; i += 2)
+    res.value() += QUAD.integrate(0.5 * kappa(i).value(), 0.5 * kappa(i + 1).value(), f);
+
+  // Compute the derivatives (easy)
+  for (size_t i = 0; i < K; i += 2) {
+    res.derivatives() += 0.5 * f(0.5 * kappa(i + 1).value()) * kappa(i + 1).derivatives(); 
+    res.derivatives() -= 0.5 * f(0.5 * kappa(i).value()) * kappa(i).derivatives();
+  }
+
+  return res;
+
+}
+
+
 } // namespace special
 } // namespace reflected
 } // namespace starry

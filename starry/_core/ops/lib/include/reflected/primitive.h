@@ -141,16 +141,61 @@ inline Vector<T> U(const int vmax, const Vector<T>& s1) {
 
 */
 template <typename T> 
-inline Vector<T> I(const int nmax, const Vector<T>& kappa, const Vector<T>& s1, const Vector<T>& c1) {
+inline Vector<T> I(const int nmax, const Vector<T>& kappa_, const Vector<T>& s1_, const Vector<T>& c1_) {
     Vector<T> result(nmax + 1);
-    result(0) = 0.5 * pairdiff(kappa);
-    Vector<T> s2(s1.size()), term(s1.size());
-    s2.array() = s1.array() * s1.array();
-    term.array() = s1.array() * c1.array();
-    for (int v = 1; v < nmax + 1; ++v){
-        result(v) = (1.0 / (2.0 * v)) * ((2 * v - 1) * result(v - 1) - pairdiff(term));
-        term.array() *= s2.array();
+    result.setZero();
+    Vector<T> result_cur(nmax + 1);
+    Vector<T> kappa(2);
+    Vector<T> s1(2);
+    Vector<T> c1(2);
+    Vector<T> s2(2);
+    Vector<T> term(2);
+    
+    // Loop through pairs of limits
+    size_t K = kappa_.size();
+    for (size_t i = 0; i < K; i += 2) {
+
+        // Current limits
+        kappa = kappa_.segment(2 * i, 2);
+        s1 = s1_.segment(2 * i, 2);
+        c1 = s1_.segment(2 * i, 2);
+        s2.array() = s1.array() * s1.array();
+
+        // Upward recursion
+        // TODO: Is this the best criterion for this?
+        if ((abs(s1(0)) > 0.5) || (abs(s1(1)) > 0.5)) {
+            
+            result_cur(0) = 0.5 * pairdiff(kappa);
+            term.array() = s1.array() * c1.array();
+            for (int v = 1; v < nmax + 1; ++v){
+                result_cur(v) = (1.0 / (2.0 * v)) * ((2 * v - 1) * result_cur(v - 1) - pairdiff(term));
+                term.array() *= s2.array();
+            }
+
+        // Downward recursion
+        } else {
+
+            // Compute the trig part upwards...
+            Vector<T> pairdiff_term(nmax + 1);
+            term.array() = s1.array() * c1.array();
+            for (int v = 0; v < nmax + 1; ++v){
+                pairdiff_term(v) = pairdiff(term);
+                term.array() *= s2.array();
+            }
+
+            // ...but actually recurse downwards
+            result_cur(nmax) = I_numerical(nmax, kappa);
+            for (int v = nmax - 1; v > - 1; --v){
+                result_cur(v) = (1.0 / (2.0 * v + 1)) * ((2 * v + 2) * result_cur(v + 1) + pairdiff_term(v));
+            }
+
+        }
+
+        // Cumulative integral
+        result += result_cur;
+
     }
+
     return result;
 }
 
