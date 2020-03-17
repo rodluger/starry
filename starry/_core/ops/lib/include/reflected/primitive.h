@@ -158,7 +158,7 @@ inline Vector<T> I(const int nmax, const Vector<T>& kappa_, const Vector<T>& s1_
         // Current limits
         kappa = kappa_.segment(2 * i, 2);
         s1 = s1_.segment(2 * i, 2);
-        c1 = s1_.segment(2 * i, 2);
+        c1 = c1_.segment(2 * i, 2);
         s2.array() = s1.array() * s1.array();
 
         // Upward recursion
