@@ -134,97 +134,77 @@ inline Vector<T> U(const int vmax, const Vector<T>& s1) {
 }
 
 /**
-    The complete helper primitive integral I(kappa = pi).
-
-*/
-template <typename T> 
-inline Vector<T> IComplete(const int nmax) {
-    Vector<T> result(nmax + 1);
-    T term;
-    for (int v = 0; v <= nmax; v++) {
-      term = pi<T>();
-      for (int i = 1; i < v; ++i) term *= (i - T(0.5)) / (i + T(1.0));
-      for (int i = max(1, v); i < v + 1; ++i) term *= i - T(0.5);
-      result(v) = term;
-    }
-    return result;
-}
-
-/**
     Compute the helper integral I by upward and/or downward recursion.
 
+    TODO: This code currently can't handle cases where the (lo, hi)
+          limit pairs in the kappa vector belong to different regimes.
+          These regimes are 
+            
+                sin(kappa / 2) > 0.5 --> upward recurion
+                sin(kappa / 2) <= 0.5 --> downward recurion
+          
+          Cases where the two angles are close to 0.5 are *fine*. Issues
+          will occur when sin(kappa_0 / 2) ~ 0 and sin(kappa_1 / 2) ~ 1,
+          in which case I don't know how to stably compute the result.
+          I don't *think* these cases are encountered in practice, but
+          we should look into it.
+          
 */
 template <typename T> 
-inline Vector<T> I(const int nmax, const Vector<T>& kappa_, const Vector<T>& s1_, const Vector<T>& c1_, const Vector<T>& IComplete) {
+inline Vector<T> I(const int nmax, const Vector<T>& kappa_, const Vector<T>& s1_, const Vector<T>& c1_) {
     Vector<T> result(nmax + 1);
     result.setZero();
     Vector<T> indef(nmax + 1);
-    T kappa, s1, c1, s2;
+    Vector<T> kappa(2), s1(2), c1(2), s2(2);
     
-    // Loop through the limits
+    // Loop through the pairs of limits
     size_t K = kappa_.size();
-    int sgn = -1;
-    for (size_t i = 0; i < K; ++i) {
+    for (size_t i = 0; i < K; i += 2) {
 
         // Current limits
-        kappa = kappa_(i);
-        s1 = s1_(i);
-        c1 = c1_(i);
-        s2 = s1 * s1;
+        kappa = kappa_.segment(i, 2);
+        s1 = s1_.segment(i, 2);
+        c1 = c1_.segment(i, 2);
+        s2.array() = s1.array() * s1.array();
 
         // Upward recursion; stability criterion from the
         // original starry paper, where s2 = k^2
-        if (abs(s2) > 0.5) {
+        if ((abs(s2(0)) > 0.5) || (abs(s2(1)) > 0.5)) {
             
-            indef(0) = 0.5 * kappa;
-            T term = s1 * c1;
+            indef(0) = 0.5 * pairdiff(kappa);
+            Vector<T> term(2);
+            term.array() = s1.array() * c1.array();
             for (int v = 1; v < nmax + 1; ++v){
-                indef(v) = (1.0 / (2.0 * v)) * ((2 * v - 1) * indef(v - 1) - term);
-                term *= s2;
+                indef(v) = (1.0 / (2.0 * v)) * ((2 * v - 1) * indef(v - 1) - pairdiff(term));
+                term.array() *= s2.array();
             }
 
         // Downward recursion
         } else {
 
             // Compute the trig part upwards...
-            Vector<T> s2v(nmax + 1);
-            s2v(0) = 1.0;
+            Vector<T> term(nmax + 1);
+            T termlo = s1(0) * c1(0);
+            T termhi = s1(1) * c1(1);
+            term(0) = termhi - termlo;
             for (int v = 1; v < nmax + 1; ++v){
-                s2v(v) = s2v(v - 1) * s2;
+                termlo *= s2(0);
+                termhi *= s2(1);
+                term(v) = termhi - termlo;
             }
 
-            // Compute the highest order term numerically
-            T tol = mach_eps<T>() * s2;
-            T error = T(INFINITY);
-            T coeff = T(2.0) / T(2.0 * nmax + 1.0);
-            T res = coeff;
-            int n = 1;
-            while ((n < STARRY_IJ_MAX_ITER) && (abs(error) > tol)) {
-                coeff *= (2.0 * n - 1.0) * 0.5 * T(2 * n + 2 * nmax - 1) /
-                        T(n * (2.0 * n + 2.0 * nmax + 1)) * s2;
-                error = coeff;
-                res += coeff;
-                ++n;
-            }
-            if (unlikely(n == STARRY_IJ_MAX_ITER))
-                throw std::runtime_error("Primitive integral `I` did not converge.");
-            indef(nmax) = 0.5 * s2v(nmax) * s1 * res;
-
-            // Analytic continuation
-            if (kappa > 3 * pi<T>())
-                indef(nmax) += 2 * IComplete(nmax);
-            else if (kappa > pi<T>())
-                indef(nmax) = IComplete(nmax) - indef(nmax);
+            // Evaluate numerically
+            indef(nmax) = I_numerical(nmax, kappa);
 
             // Recurse down
-            for (int v = nmax - 1; v > -1; --v)
-                indef(v) = ((2.0 * v + 2.0) * indef(v + 1) + s1 * c1 * s2v(v)) / (2.0 * v + 1);
+            for (int v = nmax - 1; v > -1; --v) {
+                indef(v) = ((2.0 * v + 2.0) * indef(v + 1) + term(v)) / (2.0 * v + 1);
+            }
 
         }
 
         // Definite integral
-        result += sgn * indef;
-        sgn *= -1;
+        result += indef;
 
     }
 
@@ -752,8 +732,7 @@ inline void computeP(const int ydeg, const T& bo, const T& ro, const Vector<T>& 
         tworo(i) = tworo(i - 1) * 2 * ro;
     }
 
-    // TODO: Instantiate these in the parent scope
-    Vector<T> IIntegralComplete = IComplete<T>(ydeg + 3);
+    // TODO: Instantiate this in the parent scope
     Vieta<T> A(ydeg);
 
     // Pre-compute the helper integrals
@@ -766,7 +745,7 @@ inline void computeP(const int ydeg, const T& bo, const T& ro, const Vector<T>& 
     q2.array() = (s2.array() * km2 < 1.0).select(1.0 - s2.array() * km2, 0.0);
     q3.array() = q2.array() * sqrt(q2.array());
     Vector<T> UIntegral = U(2 * ydeg + 5, s1);
-    Vector<T> IIntegral = I(ydeg + 3, kappa, s1, c1, IIntegralComplete);
+    Vector<T> IIntegral = I(ydeg + 3, kappa, s1, c1);
     Vector<T> WIntegral = W(ydeg, s2, q2, q3);
     A.reset(delta);
 

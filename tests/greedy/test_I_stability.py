@@ -29,36 +29,48 @@ def test_I_stability(noon, plot=False):
         xs = 0.1
     ys = 0.0
     zs = 1.0
-    xo = np.linspace(xo - 2, xo + 2, 10000)
+    xo = np.linspace(xo - 2, xo + 2, 1000)
 
-    # The instability shows up at ydeg ~ 5 and gets bad at ydeg ~ 6
-    map = starry.Map(ydeg=6, reflected=True)
-    map[6, :] = 1
+    # Compute analytic
+    map = starry.Map(ydeg=10, reflected=True)
+    map[10, :] = 1
     flux1 = map.flux(xo=xo, yo=yo, zo=zo, ro=ro, xs=xs, ys=ys, zs=zs)
 
-    # If `noon=True`, the flux above should be *exactly* equal to the flux of a
-    # linearly-limb darkened source with u_1 = 1.0, since linear
-    # limb darkening weights the surface brightness by the same
-    # cosine-like profile.
-    map = starry.Map(ydeg=6, udeg=1)
-    map[6, :] = 1
-    map[1] = 1.0
-    flux2 = map.flux(xo=xo, yo=yo, zo=zo, ro=ro)
+    if noon:
+        # The flux above should be *exactly* equal to the flux of a
+        # linearly-limb darkened source with u_1 = 1.0, since linear
+        # limb darkening weights the surface brightness by the same
+        # cosine-like profile.
+        map_e = starry.Map(ydeg=6, udeg=1)
+        map_e[6, :] = 1
+        map_e[1] = 1.0
+        flux2 = map_e.flux(xo=xo, yo=yo, zo=zo, ro=ro)
+        atol = 1e-12
+
+    else:
+
+        # Compute numerical
+        res = 500
+        x, y, z = map.ops.compute_ortho_grid(res)
+        image = map.render(xs=xs, ys=ys, zs=zs, res=res).flatten()
+        flux2 = np.zeros_like(flux1)
+        for k in range(len(xo)):
+            idx = (x - xo[k]) ** 2 + (y - yo) ** 2 > ro ** 2
+            flux2[k] = np.nansum(image[idx])
+        flux2 *= 4 / res ** 2
+        atol = 1e-3
 
     # Plot it
     if plot:
         plt.plot(xo, flux1)
         plt.plot(xo, flux2)
-        plt.ylim(-0.05, 1.5)
         plt.show()
 
-    # TODO: Test against numerical integration
-    if noon:
-        assert np.allclose(flux1, flux2)
-    else:
-        pass
+    # Compare
+    assert np.allclose(flux1, flux2, atol=atol)
 
 
 if __name__ == "__main__":
     starry.config.lazy = False
     test_I_stability(False, plot=True)
+    # test_I_stability(True, plot=True)
