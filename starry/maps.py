@@ -6,6 +6,8 @@ from ._indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from ._plotting import (
     get_ortho_latitude_lines,
     get_ortho_longitude_lines,
+    get_moll_latitude_lines,
+    get_moll_longitude_lines,
     get_projection,
 )
 from ._sht import image2map, healpix2map, array2map
@@ -430,7 +432,7 @@ class MapBase(object):
 
         if (
             not self.__props__["limbdarkened"]
-            and projection == STARRY_RECTANGULAR_PROJECTION
+            and projection != STARRY_ORTHOGRAPHIC_PROJECTION
         ):
             # Set up the plot
             if figsize is None:
@@ -439,29 +441,66 @@ class MapBase(object):
                 fig, ax = plt.subplots(1, figsize=figsize)
             else:
                 fig = ax.figure
-            extent = (-180, 180, -90, 90)
 
-            # Grid lines
-            if grid:
-                lats = np.linspace(-90, 90, 7)[1:-1]
-                lons = np.linspace(-180, 180, 13)
-                latlines = [None for n in lats]
-                for n, lat in enumerate(lats):
-                    latlines[n] = ax.axhline(
-                        lat, color="k", lw=0.5, alpha=0.5, zorder=100
-                    )
-                lonlines = [None for n in lons]
-                for n, lon in enumerate(lons):
-                    lonlines[n] = ax.axvline(
-                        lon, color="k", lw=0.5, alpha=0.5, zorder=100
-                    )
-            ax.set_xticks(lons)
-            ax.set_yticks(lats)
-            ax.set_xlabel("Longitude [deg]")
-            ax.set_ylabel("Latitude [deg]")
+            if projection == STARRY_RECTANGULAR_PROJECTION:
+
+                # Equirectangular
+                extent = (-180, 180, -90, 90)
+                if grid:
+                    lats = np.linspace(-90, 90, 7)[1:-1]
+                    lons = np.linspace(-180, 180, 13)
+                    latlines = [None for n in lats]
+                    for n, lat in enumerate(lats):
+                        latlines[n] = ax.axhline(
+                            lat, color="k", lw=0.5, alpha=0.5, zorder=100
+                        )
+                    lonlines = [None for n in lons]
+                    for n, lon in enumerate(lons):
+                        lonlines[n] = ax.axvline(
+                            lon, color="k", lw=0.5, alpha=0.5, zorder=100
+                        )
+                ax.set_xticks(lons)
+                ax.set_yticks(lats)
+                ax.set_xlabel("Longitude [deg]")
+                ax.set_ylabel("Latitude [deg]")
+
+            else:
+
+                # Mollweide
+                extent = (
+                    -2 * np.sqrt(2),
+                    2 * np.sqrt(2),
+                    -np.sqrt(2),
+                    np.sqrt(2),
+                )
+                ax.axis("off")
+                ax.set_xlim(-2 * np.sqrt(2) - 0.05, 2 * np.sqrt(2) + 0.05)
+                ax.set_ylim(-np.sqrt(2) - 0.05, np.sqrt(2) + 0.05)
+
+                if grid:
+                    x = np.linspace(-2 * np.sqrt(2), 2 * np.sqrt(2), 10000)
+                    a = np.sqrt(2)
+                    b = 2 * np.sqrt(2)
+                    y = a * np.sqrt(1 - (x / b) ** 2)
+                    borders = [None, None]
+                    (borders[0],) = ax.plot(x, y, "k-", alpha=1, lw=1.5)
+                    (borders[1],) = ax.plot(x, -y, "k-", alpha=1, lw=1.5)
+                    lats = get_moll_latitude_lines()
+                    latlines = [None for n in lats]
+                    for n, l in enumerate(lats):
+                        (latlines[n],) = ax.plot(
+                            l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=100
+                        )
+                    lons = get_moll_longitude_lines()
+                    lonlines = [None for n in lons]
+                    for n, l in enumerate(lons):
+                        (lonlines[n],) = ax.plot(
+                            l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=100
+                        )
 
         else:
-            # Set up the plot
+
+            # Orthographic
             if figsize is None:
                 figsize = (3, 3)
             if ax is None:

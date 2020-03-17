@@ -269,7 +269,11 @@ class OpsYlm(object):
         xyz = ifelse(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
             self.compute_rect_grid(res),
-            self.compute_ortho_grid(res),
+            ifelse(
+                tt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
+                self.compute_moll_grid(res),
+                self.compute_ortho_grid(res),
+            ),
         )
 
         # Compute the polynomial basis
@@ -346,6 +350,34 @@ class OpsYlm(object):
         lat, lon = tt.mgrid[
             -np.pi / 2 : np.pi / 2 : dx, -3 * np.pi / 2 : np.pi / 2 : 2 * dx
         ]
+        x = tt.reshape(tt.cos(lat) * tt.cos(lon), [1, -1])
+        y = tt.reshape(tt.cos(lat) * tt.sin(lon), [1, -1])
+        z = tt.reshape(tt.sin(lat), [1, -1])
+        R = self.RAxisAngle(tt.as_tensor_variable([1.0, 0.0, 0.0]), -np.pi / 2)
+        return tt.dot(R, tt.concatenate((x, y, z)))
+
+    @autocompile
+    def compute_moll_grid(self, res):
+        """Compute the polynomial basis on a Mollweide grid."""
+        # Rect grid
+        dx = 2 * np.sqrt(2) / res
+        y, x = tt.mgrid[
+            -np.sqrt(2) : np.sqrt(2) : dx,
+            -2 * np.sqrt(2) : 2 * np.sqrt(2) : 2 * dx,
+        ]
+
+        # Make points off-grid nan
+        a = np.sqrt(2)
+        b = 2 * np.sqrt(2)
+        y = tt.where((y / a) ** 2 + (x / b) ** 2 <= 1, y, np.nan)
+
+        # https://en.wikipedia.org/wiki/Mollweide_projection
+        theta = tt.arcsin(y / np.sqrt(2))
+        lat = tt.arcsin((2 * theta + tt.sin(2 * theta)) / np.pi)
+        lon0 = 3 * np.pi / 2
+        lon = lon0 + np.pi * x / (2 * np.sqrt(2) * np.cos(theta))
+
+        # Back to Cartesian, this time on the *sky*
         x = tt.reshape(tt.cos(lat) * tt.cos(lon), [1, -1])
         y = tt.reshape(tt.cos(lat) * tt.sin(lon), [1, -1])
         z = tt.reshape(tt.sin(lat), [1, -1])

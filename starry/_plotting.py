@@ -6,6 +6,8 @@ import numpy as np
 __all__ = [
     "get_ortho_latitude_lines",
     "get_ortho_longitude_lines",
+    "get_moll_latitude_lines",
+    "get_moll_longitude_lines",
     "get_projection",
 ]
 
@@ -31,6 +33,40 @@ def RAxisAngle(axis=[0, 1, 0], theta=0):
         ],
         [3, 3],
     )
+
+
+def get_moll_latitude_lines(dlat=np.pi / 6, npts=1000, niter=100):
+    res = []
+    latlines = np.arange(-np.pi / 2, np.pi / 2, dlat)[1:]
+    for lat in latlines:
+        theta = lat
+        for n in range(niter):
+            theta -= (2 * theta + np.sin(2 * theta) - np.pi * np.sin(lat)) / (
+                2 + 2 * np.cos(2 * theta)
+            )
+        x = np.linspace(-2 * np.sqrt(2), 2 * np.sqrt(2), npts)
+        y = np.ones(npts) * np.sqrt(2) * np.sin(theta)
+        a = np.sqrt(2)
+        b = 2 * np.sqrt(2)
+        y[(y / a) ** 2 + (x / b) ** 2 > 1] = np.nan
+        res.append((x, y))
+    return res
+
+
+def get_moll_longitude_lines(dlon=np.pi / 6, npts=1000, niter=100):
+    res = []
+    lonlines = np.arange(-np.pi, np.pi, dlon)[1:]
+    for lon in lonlines:
+        lat = np.linspace(-np.pi / 2, np.pi / 2, npts)
+        theta = np.array(lat)
+        for n in range(niter):
+            theta -= (2 * theta + np.sin(2 * theta) - np.pi * np.sin(lat)) / (
+                2 + 2 * np.cos(2 * theta)
+            )
+        x = 2 * np.sqrt(2) / np.pi * lon * np.cos(theta)
+        y = np.sqrt(2) * np.sin(theta)
+        res.append((x, y))
+    return res
 
 
 def get_ortho_latitude_lines(inc=np.pi / 2, obl=0, dlat=np.pi / 6, npts=1000):
@@ -164,6 +200,8 @@ def get_projection(projection):
         projection = STARRY_RECTANGULAR_PROJECTION
     elif projection.lower().startswith("ortho"):
         projection = STARRY_ORTHOGRAPHIC_PROJECTION
+    elif projection.lower().startswith("moll"):
+        projection = STARRY_MOLLWEIDE_PROJECTION
     else:
         raise ValueError("Unknown map projection.")
     return projection
