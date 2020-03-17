@@ -87,3 +87,51 @@ def test_X(xs, ys, zs, theta=0, ro=0.1, res=300, ydeg=2, tol=1e-3, plot=True):
     # Compare
     diff = (X - X_num).flatten()
     assert np.max(np.abs(diff)) < tol
+
+
+def test_inference():
+    """
+    Test inference on a problem with phase curve + occultations in reflected light.
+    The orbital parameters here are contrived to ensure there's no null space;
+    note the tiny observational uncertainty as well. Given this setup, a posterior
+    map draw should look *very* similar to the true map.
+
+    """
+    # Orbital/geometric parameters
+    npts = 50000
+    t = np.linspace(0, 1, npts)
+    porb = 0.19
+    prot = 0.12
+    rorb = 50
+    ro = 38.0
+    yo = np.sin(2 * np.pi / porb * t + 0.5)
+    xo = np.cos(2 * np.pi / porb * t)
+    zo = np.sin(2 * np.pi / porb * t)
+    amp = rorb / np.sqrt(xo ** 2 + yo ** 2 + zo ** 2)
+    xo *= amp
+    yo *= amp
+    zo *= amp
+    theta = 360.0 / prot * t
+    xs = np.sin(7 * np.pi * t)
+    ys = np.cos(5 * np.pi * t)
+    zs = 5
+    kwargs = dict(xs=xs, ys=ys, zs=zs, theta=theta, xo=xo, yo=yo, zo=zo, ro=ro)
+
+    # Generate a synthetic dataset
+    map = starry.Map(ydeg=10, reflected=True)
+    map.load("earth")
+    img0 = map.render(projection="rect", illuminate=False)
+    flux0 = map.flux(**kwargs)
+    err = 1e-8
+    np.random.seed(3)
+    flux = flux0 + np.random.randn(npts) * err
+
+    # Solve the linear problem & draw a sample
+    map.set_data(flux, C=err ** 2)
+    map.set_prior(L=1e-4)
+    map.solve(**kwargs)
+    map.draw()
+    img = map.render(projection="rect", illuminate=False)
+
+    # Verify we recovered the map
+    assert np.allclose(img, img0, atol=1e-4)

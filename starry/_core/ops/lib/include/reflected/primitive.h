@@ -140,8 +140,8 @@ inline Vector<T> U(const int vmax, const Vector<T>& s1) {
           limit pairs in the kappa vector belong to different regimes.
           These regimes are 
             
-                sin(kappa / 2) > 0.5 --> upward recurion
-                sin(kappa / 2) <= 0.5 --> downward recurion
+                sin(kappa / 2) > 0.5 --> upward recursion
+                sin(kappa / 2) <= 0.5 --> downward recursion
           
           Cases where the two angles are close to 0.5 are *fine*. Issues
           will occur when sin(kappa_0 / 2) ~ 0 and sin(kappa_1 / 2) ~ 1,

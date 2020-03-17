@@ -73,4 +73,4 @@ def test_I_stability(noon, plot=False):
 if __name__ == "__main__":
     starry.config.lazy = False
     test_I_stability(False, plot=True)
-    # test_I_stability(True, plot=True)
+    test_I_stability(True, plot=True)
