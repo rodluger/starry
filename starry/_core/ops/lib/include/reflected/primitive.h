@@ -231,7 +231,6 @@ inline Vector<T> I(const int nmax, const Vector<T>& kappa_, const Vector<T>& s1_
     return result;
 }
 
-
 /**
     Compute the expression
 

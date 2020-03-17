@@ -315,6 +315,12 @@ public:
             // The occultor is only blocking dayside flux
             sT = illuminate(b, theta, sTe(bo, ro)) + sTr(-b, theta + pi<T>());
 
+        } else if (code == FLUX_NOON) {
+
+            // The substellar point is the center of the disk, so this is 
+            // analytically equivalent to the linear limb darkening solution
+            sT = illuminate(b, theta, sTe(bo, ro));
+
         } else {
 
             // These cases require us to solve incomplete

@@ -20,6 +20,7 @@
 #define FLUX_TRIP_NIGHT_OCC  9
 #define FLUX_QUAD_DAY_VIS  10
 #define FLUX_QUAD_NIGHT_VIS  11
+#define FLUX_NOON 12
 
 // Maximum number of iterations when computing `el2` and `rj`
 #define STARRY_EL2_MAX_ITER  100
@@ -55,8 +56,11 @@
 // Maximum number of root polishing iterations
 #define STARRY_ROOT_MAX_ITER  50
 
-// If |b| is less than this value, set  0
+// If |b| is less than this value, set equal to 0
 #define STARRY_B_ZERO_TOL  1e-8
+
+// If |b| is within this value of 1, set equal to 1
+#define STARRY_B_ONE_TOL 1e-6
 
 // Tolerance for various functions that calculate phi, xi, and lam
 #define STARRY_ANGLE_TOL  1e-13

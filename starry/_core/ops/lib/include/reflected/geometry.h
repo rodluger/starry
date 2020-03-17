@@ -392,6 +392,26 @@ inline int get_angles(const T& b, const T& theta, const T& costheta, const T& si
         lam.setZero(0);
         xi.setZero(0);
         return FLUX_SIMPLE_REFL;
+    
+    } else if (b >= 1.0 - STARRY_B_ONE_TOL) {
+
+        // Only the night side is visible,
+        // so the total flux is zero
+        kappa.setZero(0);
+        lam.setZero(0);
+        xi.setZero(0);
+        return FLUX_ZERO;
+
+    } else if (b <= -1.0 + STARRY_B_ONE_TOL) {
+
+        // The substellar point is the center of 
+        // the disk, so this is analytically equivalent
+        // to the linear limb darkening solution
+        kappa.setZero(0);
+        lam.setZero(0);
+        xi.setZero(0);
+        return FLUX_NOON;
+
     }
 
     // Hack. This grazing configuration leads to instabilities

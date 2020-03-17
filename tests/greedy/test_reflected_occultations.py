@@ -13,7 +13,8 @@ import pytest
         [0.5, 1, -0.5],
         [-0.5, -0.5, -0.5],
         [0.5, -0.5, 0.5],
-        [0, 0, 1],
+        [1e-08, 0, 1],  # almost noon
+        [0, 0, 1],  # exactly noon
     ],
 )
 def test_X(xs, ys, zs, theta=0, ro=0.1, res=300, ydeg=2, tol=1e-3, plot=True):
