@@ -16,7 +16,7 @@ import pytest
         [0, 0, 1],
     ],
 )
-def test_X(xs, ys, zs, theta=0, ro=0.1, res=300, ydeg=2, tol=1e-3, plot=False):
+def test_X(xs, ys, zs, theta=0, ro=0.1, res=300, ydeg=2, tol=1e-3, plot=True):
     # Params
     npts = 250
     xo = np.linspace(-1.5, 1.5, npts)
@@ -55,10 +55,6 @@ def test_X(xs, ys, zs, theta=0, ro=0.1, res=300, ydeg=2, tol=1e-3, plot=False):
             X_num[k, n] = np.nansum(image[n][idx])
     X_num *= 4 / res ** 2
 
-    # Compare
-    diff = (X - X_num).flatten()
-    assert np.max(np.abs(diff)) < tol
-
     # Plot
     if plot:
 
@@ -86,3 +82,7 @@ def test_X(xs, ys, zs, theta=0, ro=0.1, res=300, ydeg=2, tol=1e-3, plot=False):
             bbox_inches="tight",
         )
         plt.close()
+
+    # Compare
+    diff = (X - X_num).flatten()
+    assert np.max(np.abs(diff)) < tol
