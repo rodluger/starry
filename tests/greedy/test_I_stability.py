@@ -41,8 +41,8 @@ def test_I_stability(noon, plot=False):
         # linearly-limb darkened source with u_1 = 1.0, since linear
         # limb darkening weights the surface brightness by the same
         # cosine-like profile.
-        map_e = starry.Map(ydeg=6, udeg=1)
-        map_e[6, :] = 1
+        map_e = starry.Map(ydeg=10, udeg=1)
+        map_e[10, :] = 1
         map_e[1] = 1.0
         flux2 = map_e.flux(xo=xo, yo=yo, zo=zo, ro=ro)
         atol = 1e-12
@@ -72,5 +72,5 @@ def test_I_stability(noon, plot=False):
 
 if __name__ == "__main__":
     starry.config.lazy = False
-    test_I_stability(False, plot=True)
+    # test_I_stability(False, plot=True)
     test_I_stability(True, plot=True)
