@@ -168,13 +168,17 @@ def test_lightcurve(b, theta, ro, ydeg=1, ns=1000, nb=50, res=999, plot=False):
     for pt in [ro, 1, 1 - ro, b + ro]:
         if pt >= 0:
             yo[np.argmin(np.abs(yo - pt))] = pt
-    zs = -b
     if theta == 0:
         xs = 0
         ys = 1
     else:
         xs = 0.5
         ys = -xs / np.tan(theta)
+    rxy2 = xs ** 2 + ys ** 2
+    if b == 0:
+        zs = 0
+    else:
+        zs = -np.sign(b) * np.sqrt(rxy2 / (b ** -2 - 1))
 
     # Compute analytic
     map = starry.Map(ydeg=ydeg, reflected=True)
@@ -219,98 +223,104 @@ def test_lightcurve(b, theta, ro, ydeg=1, ns=1000, nb=50, res=999, plot=False):
 
 @pytest.mark.parametrize(
     "b,theta,bo,ro",
-    #
-    # Occultor does not touch the terminator
-    #
-    [0.5, 0.1, 1.2, 0.1],
-    [0.5, 0.1, 0.1, 1.2],
-    [0.5, 0.1, 0.8, 0.1],
-    [0.5, 0.1, 0.9, 0.2],
-    [0.5, np.pi + 0.1, 0.8, 0.1],
-    [0.5, np.pi + 0.1, 0.9, 0.2],
-    [0.5, 0.1, 0.5, 1.25],
-    [0.5, np.pi + 0.1, 0.5, 1.25],
-    #
-    # Occultations involving all three primitive integrals
-    #
-    [0.4, np.pi / 3, 0.5, 0.7],
-    [0.4, 2 * np.pi - np.pi / 3, 0.5, 0.7],
-    [0.4, np.pi / 2, 0.5, 0.7],
-    [0.4, np.pi / 2, 1.0, 0.2],
-    [0.00001, np.pi / 2, 0.5, 0.7],
-    [0, np.pi / 2, 0.5, 0.7],
-    [0.4, -np.pi / 2, 0.5, 0.7],
-    [-0.4, np.pi / 3, 0.5, 0.7],
-    [-0.4, 2 * np.pi - np.pi / 3, 0.5, 0.7],
-    [-0.4, np.pi / 2, 0.5, 0.7],
-    #
-    # Occultations involving only P and T
-    #
-    [0.4, np.pi / 6, 0.3, 0.3],
-    [0.4, np.pi + np.pi / 6, 0.1, 0.6],
-    [0.4, np.pi + np.pi / 3, 0.1, 0.6],
-    [0.4, np.pi / 6, 0.6, 0.5],
-    [0.4, -np.pi / 6, 0.6, 0.5],
-    [0.4, 0.1, 2.2, 2.0],
-    [0.4, -0.1, 2.2, 2.0],
-    [0.4, np.pi + np.pi / 6, 0.3, 0.8],
-    [0.75, np.pi + 0.1, 4.5, 5.0],
-    [-0.95, 0.0, 2.0, 2.5],
-    [-0.1, np.pi / 6, 0.6, 0.75],
-    [-0.5, np.pi, 0.8, 0.5],
-    [-0.1, 0.0, 0.5, 1.0],
-    #
-    # Occultations involving three points of intersection with the terminator
-    #
     [
-        0.5488316824842527,
-        4.03591586925189,
-        0.34988513192814663,
-        0.7753986686719786,
+        #
+        # Occultor does not touch the terminator
+        #
+        [0.5, 0.1, 1.2, 0.1],
+        [0.5, 0.1, 0.1, 1.2],
+        [0.5, 0.1, 0.8, 0.1],
+        [0.5, 0.1, 0.9, 0.2],
+        [0.5, np.pi + 0.1, 0.8, 0.1],
+        [0.5, np.pi + 0.1, 0.9, 0.2],
+        [0.5, 0.1, 0.5, 1.25],
+        [0.5, np.pi + 0.1, 0.5, 1.25],
+        #
+        # Occultations involving all three primitive integrals
+        #
+        [0.4, np.pi / 3, 0.5, 0.7],
+        [0.4, 2 * np.pi - np.pi / 3, 0.5, 0.7],
+        [0.4, np.pi / 2, 0.5, 0.7],
+        [0.4, np.pi / 2, 1.0, 0.2],
+        [0.00001, np.pi / 2, 0.5, 0.7],
+        [0, np.pi / 2, 0.5, 0.7],
+        [0.4, -np.pi / 2, 0.5, 0.7],
+        [-0.4, np.pi / 3, 0.5, 0.7],
+        [-0.4, 2 * np.pi - np.pi / 3, 0.5, 0.7],
+        [-0.4, np.pi / 2, 0.5, 0.7],
+        #
+        # Occultations involving only P and T
+        #
+        [0.4, np.pi / 6, 0.3, 0.3],
+        [0.4, np.pi + np.pi / 6, 0.1, 0.6],
+        [0.4, np.pi + np.pi / 3, 0.1, 0.6],
+        [0.4, np.pi / 6, 0.6, 0.5],
+        [0.4, -np.pi / 6, 0.6, 0.5],
+        [0.4, 0.1, 2.2, 2.0],
+        [0.4, -0.1, 2.2, 2.0],
+        [0.4, np.pi + np.pi / 6, 0.3, 0.8],
+        [0.75, np.pi + 0.1, 4.5, 5.0],
+        [-0.95, 0.0, 2.0, 2.5],
+        [-0.1, np.pi / 6, 0.6, 0.75],
+        [-0.5, np.pi, 0.8, 0.5],
+        [-0.1, 0.0, 0.5, 1.0],
+        #
+        # Occultations involving three points of intersection with the terminator
+        #
+        [
+            0.5488316824842527,
+            4.03591586925189,
+            0.34988513192814663,
+            0.7753986686719786,
+        ],
+        [
+            0.5488316824842527,
+            2 * np.pi - 4.03591586925189,
+            0.34988513192814663,
+            0.7753986686719786,
+        ],
+        [
+            -0.5488316824842527,
+            4.03591586925189 - np.pi,
+            0.34988513192814663,
+            0.7753986686719786,
+        ],
+        [
+            -0.5488316824842527,
+            2 * np.pi - (4.03591586925189 - np.pi),
+            0.34988513192814663,
+            0.7753986686719786,
+        ],
+        #
+        # Occultations involving four points of intersection with the terminator
+        #
+        [0.5, np.pi, 0.99, 1.5],
+        [-0.5, 0.0, 0.99, 1.5],
+        #
+        # Miscellaneous edge cases
+        #
+        [0.5, np.pi, 1.0, 1.5],
+        [0.5, 2 * np.pi - np.pi / 4, 0.4, 0.4],
+        [0.5, 2 * np.pi - np.pi / 4, 0.3, 0.3],
+        [-0.25, 4 * np.pi / 3, 0.3, 0.3],
     ],
-    [
-        0.5488316824842527,
-        2 * np.pi - 4.03591586925189,
-        0.34988513192814663,
-        0.7753986686719786,
-    ],
-    [
-        -0.5488316824842527,
-        4.03591586925189 - np.pi,
-        0.34988513192814663,
-        0.7753986686719786,
-    ],
-    [
-        -0.5488316824842527,
-        2 * np.pi - (4.03591586925189 - np.pi),
-        0.34988513192814663,
-        0.7753986686719786,
-    ],
-    #
-    # Occultations involving four points of intersection with the terminator
-    #
-    [0.5, np.pi, 0.99, 1.5],
-    [-0.5, 0.0, 0.99, 1.5],
-    #
-    # Miscellaneous edge cases
-    #
-    [0.5, np.pi, 1.0, 1.5],
-    [0.5, 2 * np.pi - np.pi / 4, 0.4, 0.4],
-    [0.5, 2 * np.pi - np.pi / 4, 0.3, 0.3],
-    [-0.25, 4 * np.pi / 3, 0.3, 0.3],
 )
 def test_cases(b, theta, bo, ro, ydeg=1, res=999):
 
     # Array over full occultation, including all singularities
     xo = 0.0
     yo = bo
-    zs = -b
     if theta == 0:
         xs = 0
         ys = 1
     else:
         xs = 0.5
         ys = -xs / np.tan(theta)
+    rxy2 = xs ** 2 + ys ** 2
+    if b == 0:
+        zs = 0
+    else:
+        zs = -np.sign(b) * np.sqrt(rxy2 / (b ** -2 - 1))
 
     # Compute analytic
     map = starry.Map(ydeg=ydeg, reflected=True)
@@ -327,3 +337,38 @@ def test_cases(b, theta, bo, ro, ydeg=1, res=999):
     # for gross outliers
     diff = np.abs(flux - flux_num)
     assert diff < 0.001
+
+
+def test_theta_poles(res=500, tol=1e-3):
+    """Test cases near the poles for theta."""
+    # Settings
+    ydeg = 10
+    zs = -0.25
+    xo = 0.0
+    yo = 0.35
+    ro = 0.25
+    n = 5
+
+    # Compare
+    map = starry.Map(ydeg, reflected=True)
+    map[ydeg, :] = 1
+    x = np.array([0.0, 0.5, 1.0, 1.5, 2.0]).reshape(-1, 1) * np.pi
+    dx = np.concatenate(
+        (-np.logspace(-15, -5, n)[::-1], [0], np.logspace(-15, -5, n))
+    ).reshape(1, -1)
+    theta = (x + dx).reshape(-1)
+    x, y, z = map.ops.compute_ortho_grid(res)
+    err = np.zeros_like(theta)
+    for i in range(len(theta)):
+        if theta[i] == 0:
+            xs = 0
+            ys = 1
+        else:
+            xs = 0.5
+            ys = -xs / np.tan(theta[i])
+        flux = map.flux(xs=xs, ys=ys, zs=zs, xo=xo, yo=yo, ro=ro)
+        img = map.render(xs=xs, ys=ys, zs=zs, res=res).flatten()
+        idx = (x - xo) ** 2 + (y - yo) ** 2 > ro ** 2
+        flux_num = np.nansum(img[idx]) * 4 / res ** 2
+        err[i] = np.max(np.abs(flux - flux_num))
+    assert np.all(err < tol)
