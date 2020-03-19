@@ -540,12 +540,16 @@ class IncompleteEllipticIntegrals {
 
         // Nudge k2 away from 1 for stability
         if (abs(1 - k2.value()) < STARRY_K2_ONE_TOL) {
-          if (k2 == 1.0) 
+          if (k2 == 1.0) {
             k2 = 1 + STARRY_K2_ONE_TOL;
-          else if (k2 < 1.0)
+            k2inv = 1 - STARRY_K2_ONE_TOL;
+          } else if (k2 < 1.0) {
             k2 = 1 - STARRY_K2_ONE_TOL;
-          else
+            k2inv = 1 + STARRY_K2_ONE_TOL;
+          } else {
             k2 = 1 + STARRY_K2_ONE_TOL;
+            k2inv = 1 - STARRY_K2_ONE_TOL;
+          }
         }
 
         // Complete elliptic integrals

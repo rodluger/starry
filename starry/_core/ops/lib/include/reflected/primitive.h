@@ -373,11 +373,12 @@ inline T K(Vieta<T>& A, const Vector<T>& I, const int u, const int v) {
 
 /**
     Compute the helper integral L.
+    Note: factor of k^3 moved to parent scope.
 
 */
 template <typename T> 
-inline T L(Vieta<T>& A, const Vector<T>& J, const T& k, const int u, const int v, const int t) {
-    return k * k * k * A(u, v).dot(J.segment(u + t, u + v + 1));
+inline T L(Vieta<T>& A, const Vector<T>& J, const int u, const int v, const int t) {
+    return A(u, v).dot(J.segment(u + t, u + v + 1));
 }
 
 /**
@@ -722,10 +723,8 @@ inline void computeP(const int ydeg, const T& bo, const T& ro, const Vector<T>& 
     // Basic variables
     T delta = (bo - ro) / (2 * ro);
     T k2 = (1 - ro * ro - bo * bo + 2 * bo * ro) / (4 * bo * ro);
-    T k = sqrt(k2);
     T km2 = 1.0 / k2;
-    T fourbr15 = (4 * bo * ro) * sqrt(4 * bo * ro);
-    T k3fourbr15 = k * k * k * fourbr15;
+    T k3fourbr15 = pow(1 - ro * ro - bo * bo + 2 * bo * ro, 1.5);
     Vector<T> tworo(ydeg + 4);
     tworo(0) = 1.0;
     for (int i = 1; i < ydeg + 4; ++i) {
@@ -751,7 +750,16 @@ inline void computeP(const int ydeg, const T& bo, const T& ro, const Vector<T>& 
 
     // Compute the elliptic integrals
     auto integrals = IncompleteEllipticIntegrals<typename T::Scalar>(bo, ro, kappa);
-    Vector<T> JIntegral = J(ydeg + 1, k2, km2, kappa, s1, s2, c1, q2, integrals.F, integrals.E);
+    
+    // Compute J
+    Vector<T> JIntegral;
+    if (km2 > 0.0) {
+        // Compute by recursion
+        JIntegral = J(ydeg + 1, k2, km2, kappa, s1, s2, c1, q2, integrals.F, integrals.E);
+    } else {
+        // Special limit, k2 -> inf
+        JIntegral = IIntegral.head(ydeg + 2);
+    }
 
     // Now populate the P array
     int n = 0;
@@ -779,10 +787,10 @@ inline void computeP(const int ydeg, const T& bo, const T& ro, const Vector<T>& 
                     // CASE 3: Same as in starry
                     P(n) = (
                         tworo(l - 1)
-                        * fourbr15
+                        * k3fourbr15
                         * (
-                            L(A, JIntegral, k, (l - 2) / 2, 0, 0)
-                            - 2 * L(A, JIntegral, k, (l - 2) / 2, 0, 1)
+                            L(A, JIntegral, (l - 2) / 2, 0, 0)
+                            - 2 * L(A, JIntegral, (l - 2) / 2, 0, 1)
                         )
                     );
 
@@ -791,10 +799,10 @@ inline void computeP(const int ydeg, const T& bo, const T& ro, const Vector<T>& 
                     // CASE 4: Same as in starry
                     P(n) = (
                         tworo(l - 1)
-                        * fourbr15
+                        * k3fourbr15
                         * (
-                            L(A, JIntegral, k, (l - 3) / 2, 1, 0)
-                            - 2 * L(A, JIntegral, k, (l - 3) / 2, 1, 1)
+                            L(A, JIntegral, (l - 3) / 2, 1, 0)
+                            - 2 * L(A, JIntegral, (l - 3) / 2, 1, 1)
                         )
                     );
                 }
@@ -805,8 +813,8 @@ inline void computeP(const int ydeg, const T& bo, const T& ro, const Vector<T>& 
                 P(n) = (
                     2
                     * tworo(l - 1)
-                    * fourbr15
-                    * L(A, JIntegral, k, (mu - 1) / 4, (nu - 1) / 2, 0)
+                    * k3fourbr15
+                    * L(A, JIntegral, (mu - 1) / 4, (nu - 1) / 2, 0)
                 );
 
             } else {
@@ -841,10 +849,9 @@ inline void computeP(const int ydeg, const T& bo, const T& ro, const Vector<T>& 
                 } else {
                     
                     // CASE 7
-                    T res = 0;
                     int u = (mu - 1) / 4;
                     int v = (nu - 1) / 2;
-                    res += A(u, v).dot(WIntegral.segment(u, u + v + 1));
+                    T res = A(u, v).dot(WIntegral.segment(u, u + v + 1));
                     P(n) = tworo(l - 1) * k3fourbr15 * res;
 
                 }

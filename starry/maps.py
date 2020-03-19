@@ -302,9 +302,10 @@ class MapBase(object):
                 maps.
             projection (string, optional): The map projection. Accepted
                 values are ``ortho``, corresponding to an orthographic
-                projection (as seen on the sky), and ``rect``, corresponding
-                to an equirectangular latitude-longitude projection.
-                Defaults to ``ortho``.
+                projection (as seen on the sky), ``rect``, corresponding
+                to an equirectangular latitude-longitude projection,
+                and ``moll``, corresponding to a Mollweide equal-area
+                projection. Defaults to ``ortho``.
             colorbar (bool, optional): Display a colorbar? Default is False.
             grid (bool, optional): Show latitude/longitude grid lines?
                 Defaults to True.
@@ -1142,9 +1143,10 @@ class YlmBase(object):
                 side. Defaults to 300.
             projection (string, optional): The map projection. Accepted
                 values are ``ortho``, corresponding to an orthographic
-                projection (as seen on the sky), and ``rect``, corresponding
-                to an equirectangular latitude-longitude projection.
-                Defaults to ``ortho``.
+                projection (as seen on the sky), ``rect``, corresponding
+                to an equirectangular latitude-longitude projection,
+                and ``moll``, corresponding to a Mollweide equal-area
+                projection. Defaults to ``ortho``.
             theta (scalar or vector, optional): The map rotation phase in
                 units of :py:attr:`angle_unit`. If this is a vector, an
                 animation is generated. Defaults to ``0.0``.
@@ -1687,9 +1689,10 @@ class RVBase(object):
                 side. Defaults to 300.
             projection (string, optional): The map projection. Accepted
                 values are ``ortho``, corresponding to an orthographic
-                projection (as seen on the sky), and ``rect``, corresponding
-                to an equirectangular latitude-longitude projection.
-                Defaults to ``ortho``.
+                projection (as seen on the sky), ``rect``, corresponding
+                to an equirectangular latitude-longitude projection,
+                and ``moll``, corresponding to a Mollweide equal-area
+                projection. Defaults to ``ortho``.
             theta (scalar or vector, optional): The map rotation phase in
                 units of :py:attr:`angle_unit`. If this is a vector, an
                 animation is generated. Defaults to ``0.0``.
@@ -1964,9 +1967,10 @@ class ReflectedBase(object):
                 side. Defaults to 300.
             projection (string, optional): The map projection. Accepted
                 values are ``ortho``, corresponding to an orthographic
-                projection (as seen on the sky), and ``rect``, corresponding
-                to an equirectangular latitude-longitude projection.
-                Defaults to ``ortho``.
+                projection (as seen on the sky), ``rect``, corresponding
+                to an equirectangular latitude-longitude projection,
+                and ``moll``, corresponding to a Mollweide equal-area
+                projection. Defaults to ``ortho``.
             illuminate (bool, optional): Illuminate the map? Default is True.
             theta (scalar or vector, optional): The map rotation phase in
                 units of :py:attr:`angle_unit`. If this is a vector, an

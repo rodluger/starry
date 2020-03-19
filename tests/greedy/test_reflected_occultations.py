@@ -3,6 +3,8 @@ import starry
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pytest
+from scipy.interpolate import interp1d
+from tqdm import tqdm
 
 
 @pytest.mark.parametrize(
@@ -135,3 +137,81 @@ def test_inference():
 
     # Verify we recovered the map
     assert np.allclose(img, img0, atol=1e-4)
+
+
+@pytest.mark.parametrize(
+    "b,theta,ro",
+    [
+        [0.25, np.pi / 3, 0.3],
+        [-0.25, np.pi / 3, 0.3],
+        [0.25, -np.pi / 3, 0.3],
+        [-0.25, -np.pi / 3, 0.3],
+        [0.25, 2 * np.pi / 3, 0.3],
+        [-0.25, 2 * np.pi / 3, 0.3],
+        [0.25, 4 * np.pi / 3, 0.3],
+        [-0.25, 4 * np.pi / 3, 0.3],
+        [0.5, np.pi / 2, 1.0],
+        [0.0, 0.0, 0.5],
+        [0.5, 0.0, 0.1],
+        [1.0 - 1e-3, 0.0, 0.5],
+        [-1.0 + 1e-3, 0.0, 0.5],
+        [-1.0, 0.0, 0.5],
+        [1.0, 0.0, 0.5],
+        [0.25, np.pi / 2, 0.5],
+    ],
+)
+def test_lightcurve(b, theta, ro, ydeg=1, ns=1000, nb=50, res=999, plot=True):
+
+    # Array over full occultation, including all singularities
+    xo = 0.0
+    yo = np.linspace(0, 1 + ro, ns, endpoint=True)
+    for pt in [ro, 1, 1 - ro, b + ro]:
+        if pt >= 0:
+            yo[np.argmin(np.abs(yo - pt))] = pt
+    zs = -b
+    if theta == 0:
+        xs = 0
+        ys = 1
+    else:
+        xs = 0.5
+        ys = -xs / np.tan(theta)
+
+    # Compute analytic
+    map = starry.Map(ydeg=ydeg, reflected=True)
+    map[1:, :] = 1
+    flux = map.flux(xs=xs, ys=ys, zs=zs, xo=xo, yo=yo, ro=ro)
+
+    # Compute numerical
+    flux_num = np.zeros_like(yo) * np.nan
+    computed = np.zeros(ns, dtype=bool)
+    x, y, z = map.ops.compute_ortho_grid(res)
+    img = map.render(xs=xs, ys=ys, zs=zs, res=res).flatten()
+    for i, yoi in tqdm(enumerate(yo), total=len(yo)):
+        if (i == 0) or (i == ns - 1) or (i % (ns // nb) == 0):
+            idx = (x - xo) ** 2 + (y - yoi) ** 2 > ro ** 2
+            flux_num[i] = np.nansum(img[idx]) * 4 / res ** 2
+            computed[i] = True
+
+    # Interpolate over numerical result
+    f = interp1d(yo[computed], flux_num[computed], kind="cubic")
+    flux_num_interp = f(yo)
+
+    # Plot
+    if plot:
+        fig = plt.figure()
+        plt.plot(yo, flux, "C0-", label="starry", lw=2)
+        plt.plot(yo, flux_num, "C1o", label="brute")
+        plt.plot(yo, flux_num_interp, "C1-", lw=1)
+        plt.legend(loc="best")
+        plt.xlabel("impact parameter")
+        plt.ylabel("flux")
+        fig.savefig(
+            "test_lightcurve[{}-{}-{}].pdf".format(b, theta, ro),
+            bbox_inches="tight",
+        )
+        plt.close()
+
+    # Compare with very lax tolerance; we're mostly looking
+    # for gross outliers
+    diff = np.abs(flux - flux_num_interp)
+    assert np.max(diff) < 0.001
