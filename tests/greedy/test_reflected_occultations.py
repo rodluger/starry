@@ -160,7 +160,7 @@ def test_inference():
         [0.25, np.pi / 2, 0.5],
     ],
 )
-def test_lightcurve(b, theta, ro, ydeg=1, ns=1000, nb=50, res=999, plot=True):
+def test_lightcurve(b, theta, ro, ydeg=1, ns=1000, nb=50, res=999, plot=False):
 
     # Array over full occultation, including all singularities
     xo = 0.0
@@ -215,3 +215,115 @@ def test_lightcurve(b, theta, ro, ydeg=1, ns=1000, nb=50, res=999, plot=True):
     # for gross outliers
     diff = np.abs(flux - flux_num_interp)
     assert np.max(diff) < 0.001
+
+
+@pytest.mark.parametrize(
+    "b,theta,bo,ro",
+    #
+    # Occultor does not touch the terminator
+    #
+    [0.5, 0.1, 1.2, 0.1],
+    [0.5, 0.1, 0.1, 1.2],
+    [0.5, 0.1, 0.8, 0.1],
+    [0.5, 0.1, 0.9, 0.2],
+    [0.5, np.pi + 0.1, 0.8, 0.1],
+    [0.5, np.pi + 0.1, 0.9, 0.2],
+    [0.5, 0.1, 0.5, 1.25],
+    [0.5, np.pi + 0.1, 0.5, 1.25],
+    #
+    # Occultations involving all three primitive integrals
+    #
+    [0.4, np.pi / 3, 0.5, 0.7],
+    [0.4, 2 * np.pi - np.pi / 3, 0.5, 0.7],
+    [0.4, np.pi / 2, 0.5, 0.7],
+    [0.4, np.pi / 2, 1.0, 0.2],
+    [0.00001, np.pi / 2, 0.5, 0.7],
+    [0, np.pi / 2, 0.5, 0.7],
+    [0.4, -np.pi / 2, 0.5, 0.7],
+    [-0.4, np.pi / 3, 0.5, 0.7],
+    [-0.4, 2 * np.pi - np.pi / 3, 0.5, 0.7],
+    [-0.4, np.pi / 2, 0.5, 0.7],
+    #
+    # Occultations involving only P and T
+    #
+    [0.4, np.pi / 6, 0.3, 0.3],
+    [0.4, np.pi + np.pi / 6, 0.1, 0.6],
+    [0.4, np.pi + np.pi / 3, 0.1, 0.6],
+    [0.4, np.pi / 6, 0.6, 0.5],
+    [0.4, -np.pi / 6, 0.6, 0.5],
+    [0.4, 0.1, 2.2, 2.0],
+    [0.4, -0.1, 2.2, 2.0],
+    [0.4, np.pi + np.pi / 6, 0.3, 0.8],
+    [0.75, np.pi + 0.1, 4.5, 5.0],
+    [-0.95, 0.0, 2.0, 2.5],
+    [-0.1, np.pi / 6, 0.6, 0.75],
+    [-0.5, np.pi, 0.8, 0.5],
+    [-0.1, 0.0, 0.5, 1.0],
+    #
+    # Occultations involving three points of intersection with the terminator
+    #
+    [
+        0.5488316824842527,
+        4.03591586925189,
+        0.34988513192814663,
+        0.7753986686719786,
+    ],
+    [
+        0.5488316824842527,
+        2 * np.pi - 4.03591586925189,
+        0.34988513192814663,
+        0.7753986686719786,
+    ],
+    [
+        -0.5488316824842527,
+        4.03591586925189 - np.pi,
+        0.34988513192814663,
+        0.7753986686719786,
+    ],
+    [
+        -0.5488316824842527,
+        2 * np.pi - (4.03591586925189 - np.pi),
+        0.34988513192814663,
+        0.7753986686719786,
+    ],
+    #
+    # Occultations involving four points of intersection with the terminator
+    #
+    [0.5, np.pi, 0.99, 1.5],
+    [-0.5, 0.0, 0.99, 1.5],
+    #
+    # Miscellaneous edge cases
+    #
+    [0.5, np.pi, 1.0, 1.5],
+    [0.5, 2 * np.pi - np.pi / 4, 0.4, 0.4],
+    [0.5, 2 * np.pi - np.pi / 4, 0.3, 0.3],
+    [-0.25, 4 * np.pi / 3, 0.3, 0.3],
+)
+def test_cases(b, theta, bo, ro, ydeg=1, res=999):
+
+    # Array over full occultation, including all singularities
+    xo = 0.0
+    yo = bo
+    zs = -b
+    if theta == 0:
+        xs = 0
+        ys = 1
+    else:
+        xs = 0.5
+        ys = -xs / np.tan(theta)
+
+    # Compute analytic
+    map = starry.Map(ydeg=ydeg, reflected=True)
+    map[1:, :] = 1
+    flux = map.flux(xs=xs, ys=ys, zs=zs, xo=xo, yo=yo, ro=ro)
+
+    # Compute numerical
+    x, y, z = map.ops.compute_ortho_grid(res)
+    img = map.render(xs=xs, ys=ys, zs=zs, res=res).flatten()
+    idx = (x - xo) ** 2 + (y - yo) ** 2 > ro ** 2
+    flux_num = np.nansum(img[idx]) * 4 / res ** 2
+
+    # Compare with very lax tolerance; we're mostly looking
+    # for gross outliers
+    diff = np.abs(flux - flux_num)
+    assert diff < 0.001
