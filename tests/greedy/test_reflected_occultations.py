@@ -177,6 +177,14 @@ def test_lightcurve(b, theta, ro, ydeg=1, ns=1000, nb=50, res=999, plot=False):
     rxy2 = xs ** 2 + ys ** 2
     if b == 0:
         zs = 0
+    elif b == 1:
+        zs = -1
+        xs = 0
+        ys = 0
+    elif b == -1:
+        zs = 1
+        xs = 0
+        ys = 0
     else:
         zs = -np.sign(b) * np.sqrt(rxy2 / (b ** -2 - 1))
 
@@ -319,6 +327,14 @@ def test_cases(b, theta, bo, ro, ydeg=1, res=999):
     rxy2 = xs ** 2 + ys ** 2
     if b == 0:
         zs = 0
+    elif b == 1:
+        zs = -1
+        xs = 0
+        ys = 0
+    elif b == -1:
+        zs = 1
+        xs = 0
+        ys = 0
     else:
         zs = -np.sign(b) * np.sqrt(rxy2 / (b ** -2 - 1))
 
