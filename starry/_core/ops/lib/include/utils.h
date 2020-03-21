@@ -251,6 +251,20 @@ template <typename T> inline UnitVector<T> norm_unit(const UnitVector<T> &vec) {
   return result;
 }
 
+// --------------------------
+// -------- Debugging -------
+// --------------------------
+
+template <class T>
+inline void print_scalar(const T& x) {
+  std::cout << x << std::endl;
+}
+
+template <class T>
+inline void print_scalar(const Eigen::AutoDiffScalar<T>& x) {
+  std::cout << x << ", " << x.derivatives().transpose() << std::endl;
+}
+
 } // namespace utils
 } // namespace starry
 #endif

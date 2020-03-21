@@ -431,3 +431,21 @@ def test_spot_spectral(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             eps=eps,
             n_tests=1,
         )
+
+
+# TODO: BROKEN!
+def test_sT_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+    with change_flags(compute_test_value="off"):
+        map = starry.Map(ydeg=2, reflected=True)
+        b = np.array([0.5])
+        theta = np.array([0.5])
+        bo = np.array([0.75])
+        ro = 0.5
+        verify_grad(
+            map.ops.sT,
+            (b, theta, bo, ro),
+            abs_tol=abs_tol,
+            rel_tol=rel_tol,
+            eps=eps,
+            n_tests=1,
+        )

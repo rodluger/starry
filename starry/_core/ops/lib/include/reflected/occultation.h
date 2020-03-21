@@ -44,6 +44,7 @@ protected:
     Vector<T> PIntegral;
     Vector<T> QIntegral;
     Vector<T> TIntegral;
+    RowVector<T> PQT;
 
     // Angles
     T costheta;
@@ -251,9 +252,10 @@ public:
         PIntegral(N2),
         QIntegral(N2),
         TIntegral(N2),
+        PQT(N2),
         R(deg),
         G(deg + 1),
-        sT(N2)
+        sT(N1)
     {
 
         // Compute the change of basis matrix (constant)
@@ -294,10 +296,20 @@ public:
         // reflected light phase curve solution vector. The contributions
         // of each depend on the integration code.
 
+        // DEBUG!!!
+        /*
+        if ((ro == 0) || (bo > ro + 1)) {
+            sT.setZero(N2);
+        } else {
+            sT = sTe(bo, ro).segment(0, 4);
+        }
+        return;
+        */
+
         if (code == FLUX_ZERO) {
 
             // Complete occultation!
-            sT.setZero(N2);
+            sT.setZero(N1);
 
         } else if (code == FLUX_SIMPLE_OCC) {
 
@@ -330,27 +342,27 @@ public:
             computeP(deg + 1, bo, ro, kappa, PIntegral);
             computeQ(deg + 1, lam, QIntegral);
             computeT(deg + 1, b, theta, xi, TIntegral);
-            sT = (PIntegral + QIntegral + TIntegral).transpose();
+            PQT = (PIntegral + QIntegral + TIntegral).transpose();
 
             if ((code == FLUX_DAY_OCC) || (code == FLUX_TRIP_DAY_OCC)) {
 
                 //
-                sT = sTr(b, theta) - illuminate(b, theta, sT);
+                sT = sTr(b, theta) - illuminate(b, theta, PQT);
 
             } else if ((code == FLUX_NIGHT_OCC) || (code == FLUX_TRIP_NIGHT_OCC)) {
 
                 //
-                sT = illuminate(b, theta, sTe(bo, ro) + sT) + sTr(-b, theta + pi<T>());
+                sT = illuminate(b, theta, sTe(bo, ro) + PQT) + sTr(-b, theta + pi<T>());
 
             } else if ((code == FLUX_DAY_VIS) || (code == FLUX_QUAD_DAY_VIS)) {
 
                 // The solution vector is *just* the reflected light solution vector.
-                sT = illuminate(b, theta, sT);
+                sT = illuminate(b, theta, PQT);
 
             } else if ((code == FLUX_NIGHT_VIS) || (code == FLUX_QUAD_NIGHT_VIS)) {
 
                 //
-                sT = illuminate(b, theta, sTe(bo, ro) - sT);
+                sT = illuminate(b, theta, sTe(bo, ro) - PQT);
 
             } else {
 

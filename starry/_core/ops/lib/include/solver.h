@@ -791,10 +791,12 @@ class Solver {
   */
   template <bool A = AUTODIFF>
   inline typename std::enable_if<A, void>::type computeS0() {
+    typename T::Scalar ds0db, ds0dr;
     computeS0_<typename T::Scalar, true>(
         b.value(), r.value(), ksq.value(), kite_area2.value(), kap0.value(),
-        kap1.value(), invb.value(), sT(0).value(), sT(0).derivatives()(0),
-        sT(0).derivatives()(1));
+        kap1.value(), invb.value(), sT(0).value(), ds0db,
+        ds0dr);
+    sT(0).derivatives() = ds0db * b.derivatives() + ds0dr * r.derivatives();
   }
 
   /**
@@ -815,12 +817,13 @@ class Solver {
   */
   template <bool A = AUTODIFF>
   inline typename std::enable_if<A, void>::type computeS2() {
+    typename T::Scalar ds2db, ds2dr;
     typename T::Scalar dEdksq, dEKdksq;
     computeS2_<typename T::Scalar, true>(
         b.value(), r.value(), ksq.value(), kc.value(), kcsq.value(),
         invksq.value(), third.value(), sT(2).value(), EllipticE.value(),
-        EllipticEK.value(), sT(2).derivatives()(0), sT(2).derivatives()(1),
-        dEdksq, dEKdksq);
+        EllipticEK.value(), ds2db, ds2dr, dEdksq, dEKdksq);
+    sT(2).derivatives() =  ds2db * b.derivatives() + ds2dr * r.derivatives();
     if (ksq < 1) {
       EllipticE.derivatives() = dEdksq * ksq.derivatives();
       EllipticEK.derivatives() = dEKdksq * ksq.derivatives();
