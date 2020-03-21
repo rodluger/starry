@@ -296,16 +296,6 @@ public:
         // reflected light phase curve solution vector. The contributions
         // of each depend on the integration code.
 
-        // DEBUG!!!
-        /*
-        if ((ro == 0) || (bo > ro + 1)) {
-            sT.setZero(N2);
-        } else {
-            sT = sTe(bo, ro).segment(0, 4);
-        }
-        return;
-        */
-
         if (code == FLUX_ZERO) {
 
             // Complete occultation!
@@ -343,6 +333,14 @@ public:
             computeQ(deg + 1, lam, QIntegral);
             computeT(deg + 1, b, theta, xi, TIntegral);
             PQT = (PIntegral + QIntegral + TIntegral).transpose();
+
+
+            // DEBUG
+            // sT(0) = PIntegral.sum();
+            // return; 
+            // dP{l=2}dro is NaN when ro ~ 1
+            // T derivs all have localized issues, dTdro wrong almost everywhere
+            // (T2 is ok)
 
             if ((code == FLUX_DAY_OCC) || (code == FLUX_TRIP_DAY_OCC)) {
 

@@ -327,7 +327,7 @@ class IncompleteEllipticIntegrals {
     // Complete elliptic integrals
     A F0;
     A E0;
-    T PIp0;
+    A PIp0;
 
     // Vectorized output
     Vector<A> Fv;
@@ -558,36 +558,48 @@ class IncompleteEllipticIntegrals {
           // Values
           F0.value() = k.value() * CEL(k2.value(), 1.0, 1.0, 1.0);
           E0.value() = kinv.value() * (CEL(k2.value(), 1.0, 1.0, 1.0 - k2.value()) - (1.0 - k2.value()) * kinv.value() * F0.value());
-          if (bo != ro) {
-            // TODO: I don't think this offset term is needed when k2 < 1. PIp0 only comes
-            // into play if successive terms in kappa span either side of the discontinuities
-            // at kappa = pi and kappa = 3 pi (otherwise, the PIp0 terms cancel).
-            // In any event, our expression for P2 isn't even valid in these cases, as it
-            // disagrees with numerical integration. We should investigate this, but I suspect
-            // we can just set PIp0 to zero here and skip all the overhead with no adverse effects.
-            PIp0 = -4 * k2.value() * k.value() * rj(0.0, 1 - k2.value(), 1.0, 1.0 / ((ro - bo) * (ro - bo)).value());
-          } else {
-            PIp0 = 0.0;
-          }
           
           // Derivatives
           F0.derivatives() = 0.5 / k2.value() * (E0.value() / (1 - k2.value()) - F0.value()) * k2.derivatives();
           E0.derivatives() = 0.5 / k2.value() * (E0.value() - F0.value()) * k2.derivatives();
-
+          
+          // Third kind
+          // TODO: I don't think this offset term is needed when k2 < 1. PIp0 only comes
+          // into play if successive terms in kappa span either side of the discontinuities
+          // at kappa = pi and kappa = 3 pi (otherwise, the PIp0 terms cancel).
+          // In any event, our expression for P2 isn't even valid in these cases, as it
+          // disagrees with numerical integration. We should investigate this, but I suspect
+          // we can just set PIp0 to zero here and skip all the overhead with no adverse effects.
+          // if (bo != ro)
+          //    PIp0 = -4 * k2 * k * rj(0.0, 1 - k2, 1.0, 1.0 / ((ro - bo) * (ro - bo)));
+          // else
+          //    PIp0 = 0.0;
+          PIp0 = 0.0;
+          
         } else {
 
           // Values
           F0.value() = CEL(k2inv.value(), 1.0, 1.0, 1.0);
           E0.value() = CEL(k2inv.value(), 1.0, 1.0, 1.0 - k2inv.value());
-          if ((bo != 0) && (bo != ro)) {
-              PIp0 = -12.0 / (1 - p0.value()) * (CEL(k2inv.value(), p0.value(), 1.0, 1.0) - F0.value());
-          } else {
-              PIp0 = 0.0;
-          }
 
           // Derivatives
           F0.derivatives() = 0.5 / k2inv.value() * (E0.value() / (1 - k2inv.value()) - F0.value()) * k2inv.derivatives();
           E0.derivatives() = 0.5 / k2inv.value() * (E0.value() - F0.value()) * k2inv.derivatives();
+
+          // Third kind
+          if ((bo != 0) && (bo != ro)) {
+              A n0 = 1.0 - p0; // = -4 * bo * ro / ((bo - ro) * (bo - ro));
+              A PI0;
+              PI0.value() = CEL(k2inv.value(), p0.value(), 1.0, 1.0);
+              T dPI0dkinv = kinv.value() / (n0.value() - k2inv.value()) * (E0.value() / (k2inv.value() - 1.0) + PI0.value());
+              T dPI0dn0 = 1.0 / (2.0 * (k2inv.value() - n0.value()) * (n0.value() - 1.0)) * (
+                E0.value() + (k2inv.value() - n0.value()) / n0.value() * F0.value() + (n0.value() * n0.value() - k2inv.value()) / n0.value() * PI0.value()
+              );
+              PI0.derivatives() = dPI0dkinv * kinv.derivatives() + dPI0dn0 * n0.derivatives();
+              PIp0 = 2 * 6.0 / n0 * (F0 - PI0);
+          } else {
+              PIp0 = 0.0;
+          }
 
         }
 
