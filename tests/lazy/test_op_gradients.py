@@ -433,7 +433,6 @@ def test_spot_spectral(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         )
 
 
-# TODO: BROKEN!
 def test_sT_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     with change_flags(compute_test_value="off"):
         map = starry.Map(ydeg=2, reflected=True)

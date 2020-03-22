@@ -124,7 +124,7 @@ inline Vector<T> sort_lam(const T& b, const T& theta, const T& costheta, const T
     Adapted from http://www.sgh1.net/posts/cpp-root-finder.md
 */
 template <typename T>
-inline std::vector<std::complex<T>> eigen_roots(const std::vector<T> &coeffs)
+inline std::vector<std::complex<T>> eigen_roots(const std::vector<T> &coeffs, bool& success)
 {
     int N = coeffs.size();
     int matsz = N - 1;
@@ -145,8 +145,14 @@ inline std::vector<std::complex<T>> eigen_roots(const std::vector<T> &coeffs)
         }
     }
 
-    Matrix<std::complex<T>> eig = companion_mat.eigenvalues();
+    Eigen::EigenSolver<Matrix<T>> solver(companion_mat);
+    if (solver.info() == Eigen::Success) {
+        success = true;
+    } else {
+        success = false;
+    }
 
+    Matrix<std::complex<T>> eig = solver.eigenvalues();
     for(int i = 0; i < matsz; ++i)
         vret.push_back(eig(i));
 
@@ -166,10 +172,19 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
     using Scalar = typename T::Scalar;
     using Complex = std::complex<Scalar>;
     Scalar b = b_.value();
+    Scalar theta = theta_.value();
     Scalar costheta = costheta_.value();
     Scalar sintheta = sintheta_.value();
     Scalar bo = bo_.value();
     Scalar ro = ro_.value();
+
+    // Pathological sspecial case: theta = pi / 2 and ro = 1. Eigensolver doesn't converge!
+    if ((abs(costheta) < 1e-6) && (abs(ro - 1) < 1e-6)) {
+        theta += 1e-6;
+        ro -= 1e-6;
+        costheta = cos(theta);
+        sintheta = sin(theta);
+    }
 
     // Roots and derivs
     int nroots = 0;
@@ -221,7 +236,12 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
             - 2 * b * b * (ro * ro - xo * xo + yo * yo)
             + (ro * ro - xo * xo - yo * yo) * (ro * ro - xo * xo - yo * yo)
         );
-        std::vector<std::complex<Scalar>> roots = eigen_roots(coeffs);
+        bool success = false;
+        std::vector<std::complex<Scalar>> roots = eigen_roots(coeffs, success);
+        if (!success) {
+            // TODO: Find an alternative solution if this error shows up
+            throw std::runtime_error("Root eigensolver did not converge.");
+        }
 
         // Polish the roots using Newton's method on the *original*
         // function, which is more stable than the quartic expression.
@@ -351,8 +371,7 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
     // dayside or nightside.
     if (nroots == 1) {
         if ((!e1) && (!e2)) { 
-            // TODO: Check this more rigorously? For now
-            // we just delete the root.
+            // TODO: Check this more rigorously? For now we just delete the root.
             nroots = 0;
         }
     }
