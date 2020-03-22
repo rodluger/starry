@@ -316,7 +316,9 @@ inline Vector<T> J(const int nmax, const T& k2, const T& km2, const Vector<T>& k
     // Boundary conditions
     size_t K = kappa.size();
     Vector<T> z(K);
-    z.array() = s1.array() * c1.array() * sqrt(q2.array());
+    Vector<T> sqrtq2(K);
+    sqrtq2.array() = (q2.array() > 0).select(sqrt(q2.array()), 0.0);
+    z.array() = s1.array() * c1.array() * sqrtq2.array();
     T resid = km2 * pairdiff(z);
     T f0 = (1.0 / 3.0) * (2 * (2 - km2) * E + (km2 - 1) * F + resid);
     T fN = J_numerical(nmax, k2, kappa);
@@ -437,14 +439,15 @@ inline Matrix<ADScalar<T, N>> H(const int uvmax, const Vector<ADScalar<T, N>>& x
     // Populate the ADScalar
     // TODO: This copy is slow; populate it on the fly above.
     Matrix<ADScalar<T, N>> result(uvmax + 1, uvmax + 1);
+    result.setZero();
     for (int u = 0; u < uvmax + 1; ++u) {
         for (int v = 0; v < uvmax + 1 - u; ++v) {
             result(u, v).value() = f(u, v);
-            result(u, v).derivatives() = dxi * df(u, v);
-            // TODO: Check this. I think we need this sign
-            // since even-numbered `xi` are *lower* integral bounds.
-            for (size_t i = 0; i < K; i += 2)
-                result(u, v).derivatives()(i) *= -1;
+            int sgn = -1;
+            for (size_t i = 0; i < K; ++i) {
+                result(u, v).derivatives() += sgn * df(u, v)(i) * xi(i).derivatives();
+                sgn *= -1;
+            }
         }
     }
 
@@ -742,7 +745,7 @@ inline void computeP(const int ydeg, const T& bo, const T& ro, const Vector<T>& 
     s2.array() = s1.array() * s1.array();
     c1.array() = cos(x.array());
     q2.array() = (s2.array() * km2 < 1.0).select(1.0 - s2.array() * km2, 0.0);
-    q3.array() = q2.array() * sqrt(q2.array());
+    q3.array() = (q2.array() > 0).select(q2.array() * sqrt(q2.array()), 0.0);
     Vector<T> UIntegral = U(2 * ydeg + 5, s1);
     Vector<T> IIntegral = I(ydeg + 3, kappa, s1, c1);
     Vector<T> WIntegral = W(ydeg, s2, q2, q3);

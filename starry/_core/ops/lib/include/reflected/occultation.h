@@ -334,14 +334,6 @@ public:
             computeT(deg + 1, b, theta, xi, TIntegral);
             PQT = (PIntegral + QIntegral + TIntegral).transpose();
 
-
-            // DEBUG
-            // sT(0) = PIntegral.sum();
-            // return; 
-            // dP{l=2}dro is NaN when ro ~ 1
-            // T derivs all have localized issues, dTdro wrong almost everywhere
-            // (T2 is ok)
-
             if ((code == FLUX_DAY_OCC) || (code == FLUX_TRIP_DAY_OCC)) {
 
                 //
