@@ -51,7 +51,7 @@
 #define STARRY_ROOT_TOL_HIGH  1e-15
 
 // Tolerance for duplicate roots
-#define STARRY_ROOT_TOL_DUP  1e-8
+#define STARRY_ROOT_TOL_DUP  1e-7
 
 // Maximum number of root polishing iterations
 #define STARRY_ROOT_MAX_ITER  50
@@ -68,6 +68,9 @@
 // Nudge k^2 away from 1 when it gets this close
 #define STARRY_K2_ONE_TOL 1e-12
 
+// Nudge bo away from ro when it gets this close
+#define STARRY_BO_EQUALS_RO_TOL  1e-8
+
 /*
 Hacks. Determining the integration paths close to the singular
 points of the occultation is quite hard, and the solution can
@@ -77,7 +80,7 @@ these singular points.
 */
 #define STARRY_COMPLETE_OCC_TOL  1e-8
 #define STARRY_NO_OCC_TOL  1e-8
-#define STARRY_GRAZING_TOL  1e-8
+#define STARRY_GRAZING_TOL  1e-7
 
 // Tolerance for the Pal (2012) solver, which is very unstable
 #define STARRY_PAL_BO_EQUALS_RO_TOL  1e-3

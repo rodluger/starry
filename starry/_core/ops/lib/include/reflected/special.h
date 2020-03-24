@@ -294,7 +294,17 @@ inline T hyp2f1(const T& a_, const T& b_, const T& c_, const T& z) {
     value += term;
   }
   if ((n == STARRY_2F1_MAXITER) && (abs(term) > STARRY_2F1_MINTOL)) {
-    throw std::runtime_error("Series for 2F1 did not converge.");
+    std::stringstream args;
+    args << "a_ = " << a_ << ", "
+         << "b_ = " << b_ << ", "
+         << "c_ = " << c_ << ", "
+         << "z = " << z;
+    throw StarryException(
+        "Series for 2F1 did not converge.",
+        "reflected/special.h",
+        "hyp2f1",
+        args.str()
+    );
   }
   return value;
 }

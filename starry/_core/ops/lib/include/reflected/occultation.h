@@ -114,14 +114,26 @@ protected:
         Eigen::SparseLU<Eigen::SparseMatrix<Scalar>> solver;
         solver.compute(A2Inv);
         if (solver.info() != Eigen::Success) {
-            throw std::runtime_error(
-                "Error computing the change of basis matrix `A2`.");
+            std::stringstream args;
+            args << "N2 = " << N2;
+            throw StarryException(
+                "Error computing the change of basis matrix `A2Inv`.",
+                "reflected/occultation.h",
+                "Occultation.computeA2",
+                args.str()
+            );
         }
         Eigen::SparseMatrix<Scalar> Id = Matrix<Scalar>::Identity(N2, N2).sparseView();
         A2 = solver.solve(Id);
         if (solver.info() != Eigen::Success) {
-            throw std::runtime_error(
-                "Error computing the change of basis matrix `A2`.");
+            std::stringstream args;
+            args << "N2 = " << N2;
+            throw StarryException(
+                "Error computing the change of basis matrix `A2`.",
+                "reflected/occultation.h",
+                "Occultation.computeA2",
+                args.str()
+            );
         }
 
         // Reshape. A2 should be (N2 x N2) and A2^-1 should be (N1 x N1).
@@ -265,8 +277,14 @@ public:
         Eigen::SparseLU<Eigen::SparseMatrix<Scalar>> solver;
         solver.compute(A1);
         if (solver.info() != Eigen::Success) {
-            throw std::runtime_error(
-                "Error computing the change of basis matrix `A^-1`.");
+            std::stringstream args;
+            args << "N2 = " << N2 << ", " << "N1 = " << N1;
+            throw StarryException(
+                "Error computing the change of basis matrix `A1`.",
+                "reflected/occultation.h",
+                "Occultation",
+                args.str()
+            );
         }
         AInv = solver.solve(A2Inv);
 
@@ -357,7 +375,17 @@ public:
             } else {
 
                 // ?!
-                throw std::runtime_error("Unexpected branch in `sT`.");
+                std::stringstream args;
+                args << "b = " << b << ", " 
+                     << "theta = " << theta << ", "  
+                     << "bo = " << bo << ", "  
+                     << "ro = " << ro;
+                throw StarryException(
+                    "Unexpected branch.",
+                    "reflected/occultation.h",
+                    "Occultation.compute",
+                    args.str()
+                );
 
             }
 

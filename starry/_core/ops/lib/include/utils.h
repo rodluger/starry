@@ -16,9 +16,11 @@
 #include <iostream>
 #include <iomanip>
 #include <random>
+#include <exception>
 #include <stdlib.h>
 #include <unsupported/Eigen/AutoDiff>
 #include <vector>
+#include <stdarg.h>
 
 //! Number of digits (16 = double)
 #ifndef STARRY_NDIGITS
@@ -264,6 +266,49 @@ template <class T>
 inline void print_scalar(const Eigen::AutoDiffScalar<T>& x) {
   std::cout << x << ", " << x.derivatives().transpose() << std::endl;
 }
+
+class StarryException : public std::exception {
+
+  std::string m_msg;
+
+  std::string bold(const char* msg) {
+    std::stringstream boldmsg;
+    boldmsg << "\e[1m" << msg << "\e[0m";
+    return boldmsg.str();
+  }
+
+  std::string url(const char* msg) {
+    std::stringstream urlmsg;
+    urlmsg << "\e[1m\e[34m" << msg << "\e[0m\e[39m";
+    return urlmsg.str();
+  }
+
+public:
+
+  StarryException(
+    const std::string& msg, 
+    const std::string& file,
+    const std::string& function,
+    const std::string& args
+  ) :
+    m_msg(
+      std::string("Something went wrong in starry! \n\n") +
+      bold("Error: ") + msg + std::string("\n") +
+      bold("File: ") + file + std::string("\n") +
+      bold("Function: ") + function + std::string("\n") +
+      bold("Arguments: ") + args + std::string("\n") +
+      std::string("If you believe this is a bug, please open an issue at ") +
+      url("https://github.com/rodluger/starry/issues/new. ") +
+      std::string("Include the information above and a minimum working example. \n")
+    )
+  { }
+
+  virtual const char* what() const throw() {
+    return m_msg.c_str();
+  }
+
+};
+
 
 } // namespace utils
 } // namespace starry

@@ -714,7 +714,7 @@ inline void computeQ(const int ydeg, const Vector<T>& lam, Vector<T>& Q) {
 
 */
 template <typename T>
-inline void computeP(const int ydeg, const T& bo, const T& ro, const Vector<T>& kappa, Vector<T>& P) {
+inline void computeP(const int ydeg, const T& bo_, const T& ro_, const Vector<T>& kappa, Vector<T>& P) {
 
     // Check for trivial result
     P.resize((ydeg + 1) * (ydeg + 1));
@@ -722,6 +722,12 @@ inline void computeP(const int ydeg, const T& bo, const T& ro, const Vector<T>& 
         P.setZero();
         return;
     }
+
+    // Nudge away from instability at bo = ro
+    T bo = bo_;
+    T ro = ro_;
+    if (abs(bo - ro) < STARRY_BO_EQUALS_RO_TOL)
+        bo = ro + (bo > ro ? STARRY_BO_EQUALS_RO_TOL : -STARRY_BO_EQUALS_RO_TOL);
 
     // Basic variables
     T delta = (bo - ro) / (2 * ro);

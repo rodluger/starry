@@ -86,8 +86,19 @@ inline Vector<T> el2(const Vector<T>& x_, const T& kc_, const T& a_, const T& b_
     T a = a_;
     T b = b_;
 
-    if (kc == 0)
-        throw std::runtime_error("Elliptic integral el2 did not converge because k = 1.");
+    if (kc == 0) {
+      std::stringstream args;
+      args << "x_ = " << x_ << ", "
+           << "kc_ = " << kc_ << ", "
+           << "a_ = " << a_ << ", "
+           << "b_ = " << b_;
+      throw StarryException(
+          "Elliptic integral el2 did not converge because k = 1.",
+          "reflected/ellip.h",
+          "el2",
+          args.str()
+      );
+    }
 
     // We declare these params as vectors, 
     // but operate on them as arrays (because Eigen...)
@@ -152,8 +163,19 @@ inline Vector<T> el2(const Vector<T>& x_, const T& kc_, const T& a_, const T& b_
     }
 
     // Check for convergence
-    if (n == STARRY_EL2_MAX_ITER - 1)
-        throw std::runtime_error("Elliptic integral el2 did not converge.");
+    if (n == STARRY_EL2_MAX_ITER - 1) {
+      std::stringstream args;
+      args << "x_ = " << x_ << ", "
+           << "kc_ = " << kc_ << ", "
+           << "a_ = " << a_ << ", "
+           << "b_ = " << b_;
+      throw StarryException(
+          "Elliptic integral el2 did not converge.",
+          "reflected/ellip.h",
+          "el2",
+          args.str()
+      );
+    }
 
     l = (y  < 0).select(1.0 + l, l);
     q = (atan(m / y) + pi<T>() * l) * a / m;
@@ -287,7 +309,17 @@ inline T rj(const T& x_, const T& y_, const T& z_, const T& p_) {
     }
     
     // Bad...
-    throw std::runtime_error("Elliptic integral rj did not converge.");
+    std::stringstream args;
+    args << "x_ = " << x_ << ", "
+          << "y_ = " << y_ << ", "
+          << "z_ = " << z_ << ", "
+          << "p_ = " << p_;
+    throw StarryException(
+        "Elliptic integral rj did not converge.",
+        "reflected/ellip.h",
+        "rj",
+        args.str()
+    );
 
 }
 

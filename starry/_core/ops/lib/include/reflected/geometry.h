@@ -172,19 +172,10 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
     using Scalar = typename T::Scalar;
     using Complex = std::complex<Scalar>;
     Scalar b = b_.value();
-    Scalar theta = theta_.value();
     Scalar costheta = costheta_.value();
     Scalar sintheta = sintheta_.value();
     Scalar bo = bo_.value();
     Scalar ro = ro_.value();
-
-    // Pathological sspecial case: theta = pi / 2 and ro = 1. Eigensolver doesn't converge!
-    if ((abs(costheta) < 1e-6) && (abs(ro - 1) < 1e-6)) {
-        theta += 1e-6;
-        ro -= 1e-6;
-        costheta = cos(theta);
-        sintheta = sin(theta);
-    }
 
     // Roots and derivs
     int nroots = 0;
@@ -239,8 +230,19 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
         bool success = false;
         std::vector<std::complex<Scalar>> roots = eigen_roots(coeffs, success);
         if (!success) {
-            // TODO: Find an alternative solution if this error shows up
-            throw std::runtime_error("Root eigensolver did not converge.");
+            std::stringstream args;
+            args << "b_ = " << b_ << ", " 
+                 << "theta_ = " << theta_ << ", " 
+                 << "costheta_ = " << costheta_ << ", "  
+                 << "sintheta_ = " << sintheta_ << ", "  
+                 << "bo_ = " << bo_ << ", "  
+                 << "ro_ = " << ro_;
+            throw StarryException(
+                "Root eigensolver did not converge.",
+                "reflected/geometry.h",
+                "get_roots",
+                args.str()
+            );
         }
 
         // Polish the roots using Newton's method on the *original*
@@ -359,10 +361,21 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
     // Usually we should have a single root, but
     // pathological cases with 3 roots (and maybe 4?)
     // are also possible.
-    if ((e1 && (!e1)) || (e2 && (!e1))) {
+    if ((e1 && (!e2)) || (e2 && (!e1))) {
         if ((nroots == 0) || (nroots == 2)) {
-            // TODO: Fix this case if it ever shows up
-            throw std::runtime_error("ERROR: Solver did not find the correct number of roots.");
+            std::stringstream args;
+            args << "b_ = " << b_ << ", " 
+                 << "theta_ = " << theta_ << ", " 
+                 << "costheta_ = " << costheta_ << ", "  
+                 << "sintheta_ = " << sintheta_ << ", "  
+                 << "bo_ = " << bo_ << ", "  
+                 << "ro_ = " << ro_;
+            throw StarryException(
+                "Solver did not find the correct number of roots.",
+                "reflected/geometry.h",
+                "get_roots",
+                args.str()
+            );
         }
     }
 
@@ -371,7 +384,7 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
     // dayside or nightside.
     if (nroots == 1) {
         if ((!e1) && (!e2)) { 
-            // TODO: Check this more rigorously? For now we just delete the root.
+            // Delete the root!
             nroots = 0;
         }
     }
@@ -382,15 +395,19 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
         result(n).value() = x(n);
         result(n).derivatives() = dxdb(n) * b_.derivatives() + dxdtheta(n) * theta_.derivatives() + dxdbo(n) * bo_.derivatives() + dxdro(n) * ro_.derivatives();
     }
+
     return result;
 
 }   
 
 template <typename T>
-inline int get_angles(const T& b, const T& theta, const T& costheta, const T& sintheta, const T& bo_, const T& ro, Vector<T>& kappa, Vector<T>& lam, Vector<T>& xi) {
+inline int get_angles(const T& b, const T& theta_, const T& costheta_, const T& sintheta_, const T& bo_, const T& ro, Vector<T>& kappa, Vector<T>& lam, Vector<T>& xi) {
 
-    // We may need to adjust this, so make a copy
+    // We may need to adjust these, so make a copy
     T bo = bo_;
+    T theta = theta_;
+    T costheta = costheta_;
+    T sintheta = sintheta_;
 
     // Helper angle
     Vector<T> phi;
@@ -435,7 +452,7 @@ inline int get_angles(const T& b, const T& theta, const T& costheta, const T& si
 
     // Hack. This grazing configuration leads to instabilities
     // in the root solver. Let's avoid it.
-    if ((1 - ro < bo) && (bo < 1 - ro + STARRY_GRAZING_TOL))
+    if ((1 - ro - STARRY_GRAZING_TOL <= bo) && (bo <= 1 - ro + STARRY_GRAZING_TOL))
         bo = 1 - ro + STARRY_GRAZING_TOL;
 
     // Get the points of intersection between the occultor & terminator
@@ -715,6 +732,7 @@ inline int get_angles(const T& b, const T& theta, const T& costheta, const T& si
                     return FLUX_DAY_VIS;
                 }
             } else {
+            
                 if (xp * xp + (yp - bo) * (yp - bo) < ro * ro) {
                     // Nightside under occultor
                     kappa.resize(phi.size());
@@ -895,9 +913,22 @@ inline int get_angles(const T& b, const T& theta, const T& costheta, const T& si
         }
 
     } else {
-
-        throw std::runtime_error("Unexpected branch in `get_angles`.");
-
+        std::stringstream args;
+        args << "b = " << b << ", " 
+                << "theta_ = " << theta_ << ", " 
+                << "costheta_ = " << costheta_ << ", "  
+                << "sintheta_ = " << sintheta_ << ", "  
+                << "bo_ = " << bo_ << ", "  
+                << "ro = " << ro << ", "  
+                << "kappa = " << kappa << ", "  
+                << "lam = " << lam << ", "  
+                << "xi = " << xi;
+        throw StarryException(
+            "Unexpected branch.",
+            "reflected/geometry.h",
+            "get_angles",
+            args.str()
+        );
     }
 
 }
