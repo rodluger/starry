@@ -71,8 +71,11 @@
 // Nudge bo away from ro when it gets this close
 #define STARRY_BO_EQUALS_RO_TOL  1e-8
 
+// Nudge theta away from pi / 2 when ro = 1
+#define STARRY_THETA_UNIT_RADIUS_TOL 1e-5
+
 /*
-Hacks. Determining the integration paths close to the singular
+Determining the integration paths close to the singular
 points of the occultation is quite hard, and the solution can
 often oscillate between two regimes. These tolerances prevent us
 from entering those regimes, at the cost of precision loss near
@@ -88,6 +91,7 @@ these singular points.
 #define STARRY_PAL_BO_EQUALS_ONE_MINUS_RO_TOL  1e-3
 
 // Number of Gaussian-Legendre quadrature points for numerical integration
+// TODO: Implement dynamic quadrature!
 #define STARRY_QUAD_POINTS 100
 
 #endif

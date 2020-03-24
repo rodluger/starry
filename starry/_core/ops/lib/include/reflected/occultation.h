@@ -145,7 +145,6 @@ protected:
 
         Illumination matrix.
 
-        TODO: We can backprop through this pretty easily.
         TODO: Make me sparse!
 
     */
@@ -254,6 +253,12 @@ public:
 
     int code;
     RowVector<T> sT;
+
+    // Temporary storage for the Python interface
+    Matrix<double> ddb;
+    Matrix<double> ddtheta;
+    Matrix<double> ddbo;
+    Matrix<double> ddro;
 
     explicit Occultation(int deg, const Eigen::SparseMatrix<Scalar>& A1) : 
         deg(deg),

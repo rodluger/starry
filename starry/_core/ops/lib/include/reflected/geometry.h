@@ -187,11 +187,18 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
     Scalar xo = bo * sintheta;
     Scalar yo = bo * costheta;
 
+    // Useful quantities
+    Scalar b2 = b * b;
+    Scalar b4 = b2 * b2;
+    Scalar ro2 = ro * ro;
+    Scalar xo2 = xo * xo;
+    Scalar yo2 = yo * yo;
+
     // Special case: b = 0
     if (abs(b) < STARRY_B_ZERO_TOL) {
 
         // Roots
-        Scalar term = sqrt(ro * ro - yo * yo);
+        Scalar term = sqrt(ro2 - yo2);
         if (abs(xo + term) < 1)
             x(nroots++) = xo + term;
         if ((abs(xo - term) < 1) && term != 0)
@@ -200,9 +207,9 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
         // Derivatives
         int s = yo < 0 ? 1 : -1;
         for (int n = 0; n < nroots; ++n) {
-            dxdb(n) = s * sqrt((1 - x(n) * x(n)) * (ro * ro - (x(n) - xo) * (x(n) - xo))) / (x(n) - xo);
-            dxdtheta(n) = bo * (costheta - s * sqrt(ro * ro - (x(n) - xo) * (x(n) - xo)) / (x(n) - xo) * sintheta);
-            dxdbo(n) = sintheta + s * sqrt(ro * ro - (x(n) - xo) * (x(n) - xo)) / (x(n) - xo) * costheta;
+            dxdb(n) = s * sqrt((1 - x(n) * x(n)) * (ro2 - (x(n) - xo) * (x(n) - xo))) / (x(n) - xo);
+            dxdtheta(n) = bo * (costheta - s * sqrt(ro2 - (x(n) - xo) * (x(n) - xo)) / (x(n) - xo) * sintheta);
+            dxdbo(n) = sintheta + s * sqrt(ro2 - (x(n) - xo) * (x(n) - xo)) / (x(n) - xo) * costheta;
             dxdro(n) = ro / (x(n) - xo);
         }
 
@@ -210,22 +217,21 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
     } else {
 
         // Get the roots (eigenvalue problem)
-        // TODO: Pre-compute b^2, r^2, etc.
         std::vector<Scalar> coeffs;
-        coeffs.push_back((1 - b * b) * (1 - b * b));
-        coeffs.push_back(-4 * xo * (1 - b * b));
+        coeffs.push_back((1 - b2) * (1 - b2));
+        coeffs.push_back(-4 * xo * (1 - b2));
         coeffs.push_back(-2 * (
-            b * b * b * b
-            + ro * ro
-            - 3 * xo * xo
-            - yo * yo
-            - b * b * (1 + ro * ro - xo * xo + yo * yo)
+            b4
+            + ro2
+            - 3 * xo2
+            - yo2
+            - b2 * (1 + ro2 - xo2 + yo2)
         ));
-        coeffs.push_back(-4 * xo * (b * b - ro * ro + xo * xo + yo * yo));
+        coeffs.push_back(-4 * xo * (b2 - ro2 + xo2 + yo2));
         coeffs.push_back(
-            b * b * b * b
-            - 2 * b * b * (ro * ro - xo * xo + yo * yo)
-            + (ro * ro - xo * xo - yo * yo) * (ro * ro - xo * xo - yo * yo)
+            b4
+            - 2 * b2 * (ro2 - xo2 + yo2)
+            + (ro2 - xo2 - yo2) * (ro2 - xo2 - yo2)
         );
         bool success = false;
         std::vector<std::complex<Scalar>> roots = eigen_roots(coeffs, success);
@@ -270,7 +276,7 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
             */
 
             A = sqrt(1.0 - roots[n] * roots[n]);
-            B = sqrt(ro * ro - (roots[n] - xo) * (roots[n] - xo));
+            B = sqrt(ro2 - (roots[n] - xo) * (roots[n] - xo));
             absfp = abs(b * A - yo + B);
             absfm = abs(b * A - yo - B);
 
@@ -297,7 +303,7 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
                 minf = INFINITY;
                 for (int k = 0; k < STARRY_ROOT_MAX_ITER; ++k) {
                     A = sqrt(1.0 - roots[n] * roots[n]);
-                    B = sqrt(ro * ro - (roots[n] - xo) * (roots[n] - xo));
+                    B = sqrt(ro2 - (roots[n] - xo) * (roots[n] - xo));
                     f = b * A + s * B - yo;
                     absf = abs(f);
                     if (absf < minf) {
@@ -333,7 +339,7 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
                             x(nroots) = minx_re;
 
                             // Now compute its derivatives
-                            q = sqrt(ro * ro - (minx_re - xo) * (minx_re - xo));
+                            q = sqrt(ro2 - (minx_re - xo) * (minx_re - xo));
                             p = sqrt(1 - minx_re * minx_re);
                             v = (minx_re - xo) / q;
                             w = b / p;
@@ -354,8 +360,8 @@ inline Vector<T> get_roots(const T& b_, const T& theta_, const T& costheta_, con
     }
 
     // Check if the extrema of the terminator ellipse are occulted
-    bool e1 = costheta * costheta + (sintheta - bo) * (sintheta - bo) < ro * ro + STARRY_ROOT_TOL_HIGH;
-    bool e2 = costheta * costheta + (sintheta + bo) * (sintheta + bo) < ro * ro + STARRY_ROOT_TOL_HIGH;
+    bool e1 = costheta * costheta + (sintheta - bo) * (sintheta - bo) < ro2 + STARRY_ROOT_TOL_HIGH;
+    bool e2 = costheta * costheta + (sintheta + bo) * (sintheta + bo) < ro2 + STARRY_ROOT_TOL_HIGH;
 
     // One is occulted, the other is not.
     // Usually we should have a single root, but
@@ -450,10 +456,15 @@ inline int get_angles(const T& b, const T& theta_, const T& costheta_, const T& 
 
     }
 
-    // Hack. This grazing configuration leads to instabilities
+    // HACK. This grazing configuration leads to instabilities
     // in the root solver. Let's avoid it.
     if ((1 - ro - STARRY_GRAZING_TOL <= bo) && (bo <= 1 - ro + STARRY_GRAZING_TOL))
         bo = 1 - ro + STARRY_GRAZING_TOL;
+
+    // HACK. The eigensolver doesn't converge when ro = 1 and theta = pi / 2.
+    if ((abs(1 - ro) < STARRY_THETA_UNIT_RADIUS_TOL) && (abs(costheta) < STARRY_THETA_UNIT_RADIUS_TOL)) {
+        costheta += (costheta > 0 ? STARRY_THETA_UNIT_RADIUS_TOL : -STARRY_THETA_UNIT_RADIUS_TOL);
+    }
 
     // Get the points of intersection between the occultor & terminator
     // These are the roots to a quartic equation.

@@ -120,10 +120,8 @@ class sTReflectedOp(tt.Op):
         return self.grad(inputs, eval_points)
 
     def perform(self, node, inputs, outputs):
-        # TODO horribly inefficient! Compute gradient *here*!
         b, theta, bo, ro = inputs
-        dummy = np.zeros((len(b), self.N))
-        outputs[0][0], _, _, _, _ = self.func(b, theta, bo, ro, dummy)
+        outputs[0][0] = self.func(b, theta, bo, ro)
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
@@ -142,9 +140,8 @@ class sTReflectedGradientOp(tt.Op):
         return shapes[:-1]
 
     def perform(self, node, inputs, outputs):
-        # TODO horribly inefficient! see note above
         b, theta, bo, ro, bsT = inputs
-        _, bb, btheta, bbo, bro = self.base_op.func(b, theta, bo, ro, bsT)
+        bb, btheta, bbo, bro = self.base_op.func(b, theta, bo, ro, bsT)
         outputs[0][0] = np.reshape(bb, np.shape(inputs[0]))
         outputs[1][0] = np.reshape(btheta, np.shape(inputs[1]))
         outputs[2][0] = np.reshape(bbo, np.shape(inputs[2]))

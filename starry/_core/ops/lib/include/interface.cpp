@@ -155,56 +155,95 @@ PYBIND11_MODULE(_c_ops, m) {
     return bb;
   });
 
-  // Occultation in reflected light (with gradient)
-  // TODO: Eventually cast from double to Scalar for multiprecision types?
-  // TODO: Save forward diff gradients for backprop pass
+  // Occultation in reflected light
   Ops.def("sTReflected", [](starry::Ops<Scalar> &ops, const Vector<double>& b_, 
                             const Vector<double>& theta_, const Vector<double>& bo_, 
-                            const double& ro_, const Matrix<double>& bsT) {
+                            const double& ro_) {
       
       // Total number of terms in `s^T`
       int K = b_.size();
       int N = (ops.ydeg + 1) * (ops.ydeg + 1);
       
-      // Seed the derivatives
-      ADScalar<double, 4> b, theta, bo, ro;
-      b.derivatives() = Vector<double>::Unit(4, 0);
-      theta.derivatives() = Vector<double>::Unit(4, 1);
-      bo.derivatives() = Vector<double>::Unit(4, 2);
-      ro.derivatives() = Vector<double>::Unit(4, 3);
+      // Seed the derivatives. We'll compute them using forward
+      // diff and store them for the backprop call.
+      // TODO: Code up the backprop gradients for these occultations.
+      // This will likely be quite hard, but should speed this up
+      // quite a bit.
+      ADScalar<Scalar, 4> b, theta, bo, ro;
+      b.derivatives() = Vector<Scalar>::Unit(4, 0);
+      theta.derivatives() = Vector<Scalar>::Unit(4, 1);
+      bo.derivatives() = Vector<Scalar>::Unit(4, 2);
+      ro.derivatives() = Vector<Scalar>::Unit(4, 3);
       ro.value() = ro_;
       
       // The output
-      Matrix<double> result_value(K, N);
+      Matrix<double> result(K, N);
+      ops.RO.ddb.resize(K, N);
+      ops.RO.ddtheta.resize(K, N);
+      ops.RO.ddbo.resize(K, N);
+      ops.RO.ddro.resize(K, N);
+      
+      // Loop through the timeseries
+      for (int k = 0; k < K; ++k) {
+        
+        // Compute sT for this timestep
+        b.value() = static_cast<Scalar>(b_(k));
+        theta.value() = static_cast<Scalar>(theta_(k));
+        bo.value() = static_cast<Scalar>(bo_(k));
+        ops.RO.compute(b, theta, bo, ro);
+
+        // Process the ADScalar
+        for (int n = 0; n < N; ++n) {
+            result(k, n) = static_cast<double>(ops.RO.sT(n).value());
+            ops.RO.ddb(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(0));
+            ops.RO.ddtheta(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(1));
+            ops.RO.ddbo(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(2));
+            ops.RO.ddro(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(3));
+        }
+
+      }
+
+      // Return just the value
+      return result;
+
+  });
+
+  // Occultation in reflected light (gradient)
+  Ops.def("sTReflected", [](starry::Ops<Scalar> &ops, const Vector<double>& b_, 
+                            const Vector<double>& theta_, const Vector<double>& bo_, 
+                            const double& ro_, const Matrix<double>& bsT) {
+
+      // Total number of terms in `s^T`
+      int K = b_.size();
+      int N = (ops.ydeg + 1) * (ops.ydeg + 1);
+
+      // The output
       Vector<double> bb(K), btheta(K), bbo(K);
       bb.setZero();
       btheta.setZero();
       bbo.setZero();
       double bro = 0.0;
 
+      // Check that we've called the forward pass
+      if ((ops.RO.ddb.rows() != K) || (ops.RO.ddb.cols() != N)) {
+        throw std::runtime_error("Must call the forward pass of `sTReflected` first!");
+      }
+
       // Loop through the timeseries
       for (int k = 0; k < K; ++k) {
         
-        // Compute sT for this timestep
-        b.value() = b_(k);
-        theta.value() = theta_(k);
-        bo.value() = bo_(k);
-        ops.RO.compute(b, theta, bo, ro);
-
         // Process the ADScalar
-        // TODO: We can speed this up a ton if we backprop through the C code
         for (int n = 0; n < N; ++n) {
-            result_value(k, n) = ops.RO.sT(n).value();
-            bb(k) += ops.RO.sT(n).derivatives()(0) * bsT(k, n);
-            btheta(k) += ops.RO.sT(n).derivatives()(1) * bsT(k, n);
-            bbo(k) += ops.RO.sT(n).derivatives()(2) * bsT(k, n);
-            bro += ops.RO.sT(n).derivatives()(3) * bsT(k, n);
+            bb(k) += ops.RO.ddb(k, n) * bsT(k, n);
+            btheta(k) += ops.RO.ddtheta(k, n) * bsT(k, n);
+            bbo(k) += ops.RO.ddbo(k, n) * bsT(k, n);
+            bro += ops.RO.ddro(k, n) * bsT(k, n);
         }
 
       }
 
-      // Return the vector, integration code, and all derivs
-      return py::make_tuple(result_value, bb, btheta, bbo, bro);
+      // Return the derivs
+      return py::make_tuple(bb, btheta, bbo, bro);
 
   });
 

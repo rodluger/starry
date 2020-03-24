@@ -596,7 +596,7 @@ class IncompleteEllipticIntegrals {
           E0.derivatives() = 0.5 / k2.value() * (E0.value() - F0.value()) * k2.derivatives();
           
           // Third kind
-          // TODO: I don't think this offset term is needed when k2 < 1. PIp0 only comes
+          // NOTE: I don't think this offset term is needed when k2 < 1. PIp0 only comes
           // into play if successive terms in kappa span either side of the discontinuities
           // at kappa = pi and kappa = 3 pi (otherwise, the PIp0 terms cancel).
           // In any event, our expression for P2 isn't even valid in these cases, as it
