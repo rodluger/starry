@@ -6,7 +6,8 @@
   <p align="center">
     <!-- build code -->
     <a href="https://dev.azure.com/rodluger/starry/_build">
-      <img src="https://img.shields.io/azure-devops/build/rodluger/starry/4/master"/>
+      <!--<img src="https://img.shields.io/azure-devops/build/rodluger/starry/4/master"/>-->
+      <img src="https://badgen.net/azure-pipelines/rodluger/starry/4?label=build"/>
     </a>
     <!-- main tests -->
     <a href="https://dev.azure.com/rodluger/starry/_build">
@@ -27,11 +28,13 @@
     <br/>
     <!-- build docs -->
     <a href="https://rodluger.github.io/starry/latest">
-      <img src="https://img.shields.io/azure-devops/build/rodluger/starry/7/master?label=docs"/>
+      <!--<img src="https://img.shields.io/azure-devops/build/rodluger/starry/7/master?label=docs"/>-->
+      <img src="https://badgen.net/azure-pipelines/rodluger/starry/7?label=docs"/>
     </a>
     <!-- build notebooks -->
     <a href="https://rodluger.github.io/starry/latest/tutorials.html">
-      <img src="https://img.shields.io/azure-devops/build/rodluger/starry/6/master?label=notebooks"/>
+      <!--<img src="https://img.shields.io/azure-devops/build/rodluger/starry/6/master?label=notebooks"/>-->
+      <img src="https://badgen.net/azure-pipelines/rodluger/starry/6?label=notebooks"/>
     </a>
     <!-- read the paper -->
     <a href="http://adsabs.harvard.edu/abs/2019AJ....157...64L">
