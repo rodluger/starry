@@ -10,10 +10,10 @@ TODO: Test all special cases
 #ifndef _STARRY_LIMBDARK_H_
 #define _STARRY_LIMBDARK_H_
 
-#include <cmath>
-#include <iostream>
 #include "ellip.h"
 #include "utils.h"
+#include <cmath>
+#include <iostream>
 
 namespace starry {
 namespace limbdark {
@@ -31,8 +31,7 @@ Computes it recursively. Using double precision, the error is
 below 1e-14 well past n = 100.
 
 */
-template <typename T>
-inline T wallis(int n) {
+template <typename T> inline T wallis(int n) {
   int z, dz;
   if (is_even(n)) {
     z = 1 + n / 2;
@@ -47,7 +46,8 @@ inline T wallis(int n) {
     A *= i + 1;
     B *= i - 0.5;
   }
-  for (int i = max(1, z + dz); i < z + 1; ++i) B *= i - 0.5;
+  for (int i = max(1, z + dz); i < z + 1; ++i)
+    B *= i - 0.5;
   if (is_even(n))
     return A / B;
   else
@@ -58,9 +58,8 @@ inline T wallis(int n) {
 Greens integration housekeeping data.
 
 */
-template <class T>
-class GreensLimbDark {
- public:
+template <class T> class GreensLimbDark {
+public:
   // Indices
   int lmax;
 
@@ -113,11 +112,12 @@ class GreensLimbDark {
   RowVector<T> dsTdr;
 
   // Constructor
-  explicit GreensLimbDark(int lmax) :
-      lmax(lmax), M(lmax + 1), N(lmax + 1), M_coeff(4, STARRY_MN_MAX_ITER),
-      N_coeff(2, STARRY_MN_MAX_ITER), n_(lmax + 3), invn(lmax + 3),
-      ndnp2(lmax + 3), sT(RowVector<T>::Zero(lmax + 1)),
-      dsTdb(RowVector<T>::Zero(lmax + 1)), dsTdr(RowVector<T>::Zero(lmax + 1)) {
+  explicit GreensLimbDark(int lmax)
+      : lmax(lmax), M(lmax + 1), N(lmax + 1), M_coeff(4, STARRY_MN_MAX_ITER),
+        N_coeff(2, STARRY_MN_MAX_ITER), n_(lmax + 3), invn(lmax + 3),
+        ndnp2(lmax + 3), sT(RowVector<T>::Zero(lmax + 1)),
+        dsTdb(RowVector<T>::Zero(lmax + 1)),
+        dsTdr(RowVector<T>::Zero(lmax + 1)) {
     // Constants
     computeMCoeff();
     computeNCoeff();
@@ -129,8 +129,7 @@ class GreensLimbDark {
     }
   }
 
-  template <bool GRADIENT = false>
-  inline void computeS1();
+  template <bool GRADIENT = false> inline void computeS1();
 
   inline void computeMCoeff();
 
@@ -149,7 +148,7 @@ class GreensLimbDark {
   inline void downwardN();
 
   template <bool GRADIENT = false>
-  inline void compute(const T& b_, const T& r_);
+  inline void compute(const T &b_, const T &r_);
 };
 
 /**
@@ -167,8 +166,8 @@ inline void GreensLimbDark<T>::computeS1() {
       dsTdb(1) = 0;
       dsTdr(1) = 0;
     }
-    Eofk = 0;     // Check
-    Em1mKdm = 0;  // Check
+    Eofk = 0;    // Check
+    Em1mKdm = 0; // Check
   } else if (b <= r - 1.0) {
     // Full occultation (Case 11)
     Lambda1 = 0;
@@ -176,8 +175,8 @@ inline void GreensLimbDark<T>::computeS1() {
       dsTdb(1) = 0;
       dsTdr(1) = 0;
     }
-    Eofk = 0;     // Check
-    Em1mKdm = 0;  // Check
+    Eofk = 0;    // Check
+    Em1mKdm = 0; // Check
   } else {
     if (unlikely(b == 0)) {
       // Case 10
@@ -229,10 +228,9 @@ inline void GreensLimbDark<T>::computeS1() {
         ellip::CEL(ksq, kc, T((b - r) * (b - r) * kcsq), T(0.0), T(1.0), T(1.0),
                    T(3 * kcsq * (b - r) * (b + r)), kcsq, T(0.0), Piofk, Eofk,
                    Em1mKdm);
-        Lambda1 =
-            onembmr2 *
-            (Piofk + (-3 + 6 * r2 + 2 * b * r) * Em1mKdm - fourbr * Eofk) *
-            sqbrinv * third;
+        Lambda1 = onembmr2 * (Piofk + (-3 + 6 * r2 + 2 * b * r) * Em1mKdm -
+                              fourbr * Eofk) *
+                  sqbrinv * third;
         if (GRADIENT) {
           dsTdb(1) = 2 * r * onembmr2 * (-Em1mKdm + 2 * Eofk) * sqbrinv * third;
           dsTdr(1) = -2 * r * onembmr2 * Em1mKdm * sqbrinv;
@@ -274,8 +272,7 @@ Compute the coefficients of the series expansion
 for the highest four terms of the `M` integral.
 
 */
-template <class T>
-inline void GreensLimbDark<T>::computeMCoeff() {
+template <class T> inline void GreensLimbDark<T>::computeMCoeff() {
   T coeff;
   int n;
 
@@ -299,8 +296,7 @@ inline void GreensLimbDark<T>::computeMCoeff() {
 Compute the first four terms of the M integral.
 
 */
-template <class T>
-inline void GreensLimbDark<T>::computeM0123() {
+template <class T> inline void GreensLimbDark<T>::computeM0123() {
   if (ksq < 1.0) {
     M(0) = kap0;
     M(1) = 2 * sqbr * 2 * ksq * Em1mKdm;
@@ -320,8 +316,7 @@ inline void GreensLimbDark<T>::computeM0123() {
 Compute the terms in the M integral by upward recursion.
 
 */
-template <class T>
-inline void GreensLimbDark<T>::upwardM() {
+template <class T> inline void GreensLimbDark<T>::upwardM() {
   // Compute lowest four exactly
   computeM0123();
 
@@ -336,8 +331,7 @@ inline void GreensLimbDark<T>::upwardM() {
 Compute the terms in the M integral by downward recursion.
 
 */
-template <class T>
-inline void GreensLimbDark<T>::downwardM() {
+template <class T> inline void GreensLimbDark<T>::downwardM() {
   T val, k2n, tol, fac, term;
   T invsqarea = T(1.0) / sqarea;
 
@@ -347,7 +341,8 @@ inline void GreensLimbDark<T>::downwardM() {
     tol = mach_eps<T>() * ksq;
     term = 0.0;
     fac = 1.0;
-    for (int n = 0; n < lmax - 3; ++n) fac *= sqonembmr2;
+    for (int n = 0; n < lmax - 3; ++n)
+      fac *= sqonembmr2;
     fac *= k;
 
     // Now, compute higher order terms until
@@ -362,7 +357,8 @@ inline void GreensLimbDark<T>::downwardM() {
         k2n *= ksq;
         term = k2n * M_coeff(j, n);
         val += term;
-        if (abs(term) < tol) break;
+        if (abs(term) < tol)
+          break;
       }
       M(lmax - 3 + j) = val * fac;
       fac *= sqonembmr2;
@@ -387,8 +383,7 @@ Compute the coefficients of the series expansion
 for the highest two terms of the `N` integral.
 
 */
-template <class T>
-inline void GreensLimbDark<T>::computeNCoeff() {
+template <class T> inline void GreensLimbDark<T>::computeNCoeff() {
   T coeff = 0.0;
   int n;
 
@@ -413,8 +408,7 @@ inline void GreensLimbDark<T>::computeNCoeff() {
 Compute the first two terms of the N integral.
 
 */
-template <class T>
-inline void GreensLimbDark<T>::computeN01() {
+template <class T> inline void GreensLimbDark<T>::computeN01() {
   if (ksq <= 1.0) {
     N(0) = 0.5 * kap0 - k * kc;
     N(1) = 4.0 * third * sqbr * ksq * (-Eofk + 2.0 * Em1mKdm);
@@ -428,8 +422,7 @@ inline void GreensLimbDark<T>::computeN01() {
 Compute the terms in the N integral by upward recursion.
 
 */
-template <class T>
-inline void GreensLimbDark<T>::upwardN() {
+template <class T> inline void GreensLimbDark<T>::upwardN() {
   // Compute lowest two exactly
   computeN01();
 
@@ -442,8 +435,7 @@ inline void GreensLimbDark<T>::upwardN() {
 Compute the terms in the N integral by downward recursion.
 
 */
-template <class T>
-inline void GreensLimbDark<T>::downwardN() {
+template <class T> inline void GreensLimbDark<T>::downwardN() {
   // Compute highest two using a series solution
   if (ksq < 1) {
     // Compute leading coefficient (n=0)
@@ -451,7 +443,8 @@ inline void GreensLimbDark<T>::downwardN() {
     T tol = mach_eps<T>() * ksq;
     T term = 0.0;
     T fac = 1.0;
-    for (int n = 0; n < lmax - 1; ++n) fac *= sqonembmr2;
+    for (int n = 0; n < lmax - 1; ++n)
+      fac *= sqonembmr2;
     fac *= k * ksq;
 
     // Now, compute higher order terms until
@@ -463,7 +456,8 @@ inline void GreensLimbDark<T>::downwardN() {
         k2n *= ksq;
         term = k2n * N_coeff(j, n);
         val += term;
-        if (abs(term) < tol) break;
+        if (abs(term) < tol)
+          break;
       }
       N(lmax - 1 + j) = val * fac;
       fac *= sqonembmr2;
@@ -489,7 +483,7 @@ Compute the `s^T` occultation solution vector
 */
 template <class T>
 template <bool GRADIENT>
-inline void GreensLimbDark<T>::compute(const T& b_, const T& r_) {
+inline void GreensLimbDark<T>::compute(const T &b_, const T &r_) {
   // Initialize the basic variables
   b = b_;
   r = r_;
@@ -541,9 +535,12 @@ inline void GreensLimbDark<T>::compute(const T& b_, const T& r_) {
 
   // Compute the kite area and the k^2 variables
   T p0 = T(1.0), p1 = b, p2 = r;
-  if (p0 < p1) swap(p0, p1);
-  if (p1 < p2) swap(p1, p2);
-  if (p0 < p1) swap(p0, p1);
+  if (p0 < p1)
+    swap(p0, p1);
+  if (p1 < p2)
+    swap(p1, p2);
+  if (p0 < p1)
+    swap(p0, p1);
   sqarea =
       (p0 + (p1 + p2)) * (p2 - (p0 - p1)) * (p2 + (p0 - p1)) * (p0 + (p1 - p2));
   kite_area2 = sqrt(max(T(0.0), sqarea));
@@ -555,8 +552,8 @@ inline void GreensLimbDark<T>::compute(const T& b_, const T& r_) {
     kcsq = 1;
     kkc = T(INFINITY);
     invksq = 0;
-    kap0 = 0;  // Not used!
-    kap1 = 0;  // Not used!
+    kap0 = 0; // Not used!
+    kap1 = 0; // Not used!
     sT(0) = pi<T>() * (1 - r2);
     if (GRADIENT) {
       dsTdb(0) = 0;
@@ -570,8 +567,8 @@ inline void GreensLimbDark<T>::compute(const T& b_, const T& r_) {
       kcsq = onembpr2 * onembmr2inv;
       kc = sqrt(kcsq);
       kkc = k * kc;
-      kap0 = 0;  // Not used!
-      kap1 = 0;  // Not used!
+      kap0 = 0; // Not used!
+      kap1 = 0; // Not used!
       sT(0) = pi<T>() * (1 - r2);
       if (GRADIENT) {
         dsTdb(0) = 0;
@@ -593,14 +590,16 @@ inline void GreensLimbDark<T>::compute(const T& b_, const T& r_) {
   }
 
   // Special case
-  if (unlikely(lmax == 0)) return;
+  if (unlikely(lmax == 0))
+    return;
 
   // Compute the linear limb darkening term
   // and the elliptic integrals
   computeS1<GRADIENT>();
 
   // Special case
-  if (unlikely(lmax == 1)) return;
+  if (unlikely(lmax == 1))
+    return;
 
   // Special case
   if (unlikely(b == 0)) {
@@ -647,7 +646,8 @@ inline void GreensLimbDark<T>::compute(const T& b_, const T& r_) {
     dsTdr(2) = 2 * dsTdr(0) + detadr;
   }
 
-  if (lmax == 2) return;
+  if (lmax == 2)
+    return;
 
   // Now onto the higher order terms...
   if ((ksq < 0.5) && (lmax > 3))
@@ -666,9 +666,8 @@ inline void GreensLimbDark<T>::compute(const T& b_, const T& r_) {
   if (GRADIENT) {
     // Compute ds/dr
     dsTdr.segment(3, lmax - 2) =
-        -2 * r *
-        (n_.segment(5, lmax - 2).cwiseProduct(M.segment(3, lmax - 2)) -
-         n_.segment(3, lmax - 2).cwiseProduct(M.segment(1, lmax - 2)));
+        -2 * r * (n_.segment(5, lmax - 2).cwiseProduct(M.segment(3, lmax - 2)) -
+                  n_.segment(3, lmax - 2).cwiseProduct(M.segment(1, lmax - 2)));
 
     if (b > STARRY_BCUT) {
       // Compute ds/db
@@ -695,7 +694,7 @@ inline void GreensLimbDark<T>::compute(const T& b_, const T& r_) {
   }
 }
 
-}  // namespace limbdark
-}  // namespace starry
+} // namespace limbdark
+} // namespace starry
 
 #endif

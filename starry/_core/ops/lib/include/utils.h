@@ -13,14 +13,14 @@
 #include <Eigen/SparseLU>
 #include <chrono>
 #include <cmath>
-#include <iostream>
-#include <iomanip>
-#include <random>
 #include <exception>
+#include <iomanip>
+#include <iostream>
+#include <random>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <unsupported/Eigen/AutoDiff>
 #include <vector>
-#include <stdarg.h>
 
 //! Number of digits (16 = double)
 #ifndef STARRY_NDIGITS
@@ -214,11 +214,13 @@ inline bool is_even(int n, int ntimes = 1) {
 
 //! Modulo for angles.
 // Equivalent to the Python expression `result = angle % max_angle`
-template <typename T, typename Scalar=double>
-inline T angle(const T& x, const Scalar max_angle = 2 * M_PI) {
+template <typename T, typename Scalar = double>
+inline T angle(const T &x, const Scalar max_angle = 2 * M_PI) {
   T result = x;
-  while (result < 0) result += max_angle;
-  while (result > max_angle) result -= max_angle;
+  while (result < 0)
+    result += max_angle;
+  while (result > max_angle)
+    result -= max_angle;
   return result;
 }
 
@@ -257,13 +259,11 @@ template <typename T> inline UnitVector<T> norm_unit(const UnitVector<T> &vec) {
 // -------- Debugging -------
 // --------------------------
 
-template <class T>
-inline void print_scalar(const T& x) {
+template <class T> inline void print_scalar(const T &x) {
   std::cout << x << std::endl;
 }
 
-template <class T>
-inline void print_scalar(const Eigen::AutoDiffScalar<T>& x) {
+template <class T> inline void print_scalar(const Eigen::AutoDiffScalar<T> &x) {
   std::cout << x << ", " << x.derivatives().transpose() << std::endl;
 }
 
@@ -271,44 +271,34 @@ class StarryException : public std::exception {
 
   std::string m_msg;
 
-  std::string bold(const char* msg) {
+  std::string bold(const char *msg) {
     std::stringstream boldmsg;
     boldmsg << "\e[1m" << msg << "\e[0m";
     return boldmsg.str();
   }
 
-  std::string url(const char* msg) {
+  std::string url(const char *msg) {
     std::stringstream urlmsg;
     urlmsg << "\e[1m\e[34m" << msg << "\e[0m\e[39m";
     return urlmsg.str();
   }
 
 public:
+  StarryException(const std::string &msg, const std::string &file,
+                  const std::string &function, const std::string &args)
+      : m_msg(std::string("Something went wrong in starry! \n\n") +
+              bold("Error: ") + msg + std::string("\n") + bold("File: ") +
+              file + std::string("\n") + bold("Function: ") + function +
+              std::string("\n") + bold("Arguments: ") + args +
+              std::string("\n") +
+              std::string(
+                  "If you believe this is a bug, please open an issue at ") +
+              url("https://github.com/rodluger/starry/issues/new. ") +
+              std::string("Include the information above and a minimum working "
+                          "example. \n")) {}
 
-  StarryException(
-    const std::string& msg, 
-    const std::string& file,
-    const std::string& function,
-    const std::string& args
-  ) :
-    m_msg(
-      std::string("Something went wrong in starry! \n\n") +
-      bold("Error: ") + msg + std::string("\n") +
-      bold("File: ") + file + std::string("\n") +
-      bold("Function: ") + function + std::string("\n") +
-      bold("Arguments: ") + args + std::string("\n") +
-      std::string("If you believe this is a bug, please open an issue at ") +
-      url("https://github.com/rodluger/starry/issues/new. ") +
-      std::string("Include the information above and a minimum working example. \n")
-    )
-  { }
-
-  virtual const char* what() const throw() {
-    return m_msg.c_str();
-  }
-
+  virtual const char *what() const throw() { return m_msg.c_str(); }
 };
-
 
 } // namespace utils
 } // namespace starry
