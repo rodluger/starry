@@ -108,11 +108,23 @@ class sTReflectedOp(tt.Op):
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [tt.TensorType(inputs[-1].dtype, (False, False))()]
+        outputs = [
+            tt.TensorType(inputs[-1].dtype, (False, False))(),
+            tt.TensorType(inputs[-1].dtype, (False, False))(),
+            tt.TensorType(inputs[-1].dtype, (False, False))(),
+            tt.TensorType(inputs[-1].dtype, (False, False))(),
+            tt.TensorType(inputs[-1].dtype, (False, False))(),
+        ]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return [shapes[0] + (tt.as_tensor(self.N),)]
+        return [
+            shapes[0] + (tt.as_tensor(self.N),),
+            shapes[0] + (tt.as_tensor(self.N),),
+            shapes[0] + (tt.as_tensor(self.N),),
+            shapes[0] + (tt.as_tensor(self.N),),
+            shapes[0] + (tt.as_tensor(self.N),),
+        ]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -121,10 +133,17 @@ class sTReflectedOp(tt.Op):
 
     def perform(self, node, inputs, outputs):
         b, theta, bo, ro = inputs
-        outputs[0][0] = self.func(b, theta, bo, ro)
+        sT, ddb, ddtheta, ddbo, ddro = self.func(b, theta, bo, ro)
+        outputs[0][0] = sT
+        outputs[1][0] = ddb
+        outputs[2][0] = ddtheta
+        outputs[3][0] = ddbo
+        outputs[4][0] = ddro
 
     def grad(self, inputs, gradients):
-        return self._grad_op(*(inputs + gradients))
+        results = self(*inputs)
+        grad = self._grad_op(*(inputs + results + [gradients[0]]))
+        return grad
 
 
 class sTReflectedGradientOp(tt.Op):
@@ -133,16 +152,19 @@ class sTReflectedGradientOp(tt.Op):
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [i.type() for i in inputs[:-1]]
+        outputs = [i.type() for i in inputs[:4]]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return shapes[:-1]
+        return shapes[:4]
 
     def perform(self, node, inputs, outputs):
-        b, theta, bo, ro, bsT = inputs
-        bb, btheta, bbo, bro = self.base_op.func(b, theta, bo, ro, bsT)
-        outputs[0][0] = np.reshape(bb, np.shape(inputs[0]))
-        outputs[1][0] = np.reshape(btheta, np.shape(inputs[1]))
-        outputs[2][0] = np.reshape(bbo, np.shape(inputs[2]))
-        outputs[3][0] = np.reshape(bro, np.shape(inputs[3]))
+        b, theta, bo, ro, sT, ddb, ddtheta, ddbo, ddro, bsT = inputs
+        bb = (bsT * ddb).sum(-1)
+        btheta = (bsT * ddtheta).sum(-1)
+        bbo = (bsT * ddbo).sum(-1)
+        bro = (bsT * ddro).sum()
+        outputs[0][0] = np.reshape(bb, np.shape(b))
+        outputs[1][0] = np.reshape(btheta, np.shape(theta))
+        outputs[2][0] = np.reshape(bbo, np.shape(bo))
+        outputs[3][0] = np.reshape(bro, np.shape(ro))

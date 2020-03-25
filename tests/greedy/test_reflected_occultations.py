@@ -19,7 +19,7 @@ from tqdm import tqdm
         [0, 0, 1],  # exactly noon
     ],
 )
-def test_X(xs, ys, zs, theta=0, ro=0.1, res=300, ydeg=2, tol=1e-3, plot=True):
+def test_X(xs, ys, zs, theta=0, ro=0.1, res=300, ydeg=2, tol=1e-3, plot=False):
     # Params
     npts = 250
     xo = np.linspace(-1.5, 1.5, npts)

@@ -155,7 +155,7 @@ PYBIND11_MODULE(_c_ops, m) {
     return bb;
   });
 
-  // Occultation in reflected light
+  // Occultation in reflected light (w/ fwd gradient)
   Ops.def("sTReflected", [](starry::Ops<Scalar> &ops, const Vector<double>& b_, 
                             const Vector<double>& theta_, const Vector<double>& bo_, 
                             const double& ro_) {
@@ -165,7 +165,7 @@ PYBIND11_MODULE(_c_ops, m) {
       int N = (ops.ydeg + 1) * (ops.ydeg + 1);
       
       // Seed the derivatives. We'll compute them using forward
-      // diff and store them for the backprop call.
+      // diff and return them for the backprop call.
       // TODO: Code up the backprop gradients for these occultations.
       // This will likely be quite hard, but should speed this up
       // quite a bit.
@@ -178,10 +178,10 @@ PYBIND11_MODULE(_c_ops, m) {
       
       // The output
       Matrix<double> result(K, N);
-      ops.RO.ddb.resize(K, N);
-      ops.RO.ddtheta.resize(K, N);
-      ops.RO.ddbo.resize(K, N);
-      ops.RO.ddro.resize(K, N);
+      Matrix<double> ddb(K, N);
+      Matrix<double> ddtheta(K, N);
+      Matrix<double> ddbo(K, N);
+      Matrix<double> ddro(K, N);
       
       // Loop through the timeseries
       for (int k = 0; k < K; ++k) {
@@ -195,55 +195,16 @@ PYBIND11_MODULE(_c_ops, m) {
         // Process the ADScalar
         for (int n = 0; n < N; ++n) {
             result(k, n) = static_cast<double>(ops.RO.sT(n).value());
-            ops.RO.ddb(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(0));
-            ops.RO.ddtheta(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(1));
-            ops.RO.ddbo(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(2));
-            ops.RO.ddro(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(3));
+            ddb(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(0));
+            ddtheta(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(1));
+            ddbo(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(2));
+            ddro(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(3));
         }
 
       }
 
-      // Return just the value
-      return result;
-
-  });
-
-  // Occultation in reflected light (gradient)
-  Ops.def("sTReflected", [](starry::Ops<Scalar> &ops, const Vector<double>& b_, 
-                            const Vector<double>& theta_, const Vector<double>& bo_, 
-                            const double& ro_, const Matrix<double>& bsT) {
-
-      // Total number of terms in `s^T`
-      int K = b_.size();
-      int N = (ops.ydeg + 1) * (ops.ydeg + 1);
-
-      // The output
-      Vector<double> bb(K), btheta(K), bbo(K);
-      bb.setZero();
-      btheta.setZero();
-      bbo.setZero();
-      double bro = 0.0;
-
-      // Check that we've called the forward pass
-      if ((ops.RO.ddb.rows() != K) || (ops.RO.ddb.cols() != N)) {
-        throw std::runtime_error("Must call the forward pass of `sTReflected` first!");
-      }
-
-      // Loop through the timeseries
-      for (int k = 0; k < K; ++k) {
-        
-        // Process the ADScalar
-        for (int n = 0; n < N; ++n) {
-            bb(k) += ops.RO.ddb(k, n) * bsT(k, n);
-            btheta(k) += ops.RO.ddtheta(k, n) * bsT(k, n);
-            bbo(k) += ops.RO.ddbo(k, n) * bsT(k, n);
-            bro += ops.RO.ddro(k, n) * bsT(k, n);
-        }
-
-      }
-
-      // Return the derivs
-      return py::make_tuple(bb, btheta, bbo, bro);
+      // Return the value & the forward derivs
+      return py::make_tuple(result, ddb, ddtheta, ddbo, ddro);
 
   });
 

@@ -37,7 +37,7 @@ protected:
     Eigen::SparseMatrix<Scalar> AInv;
     Eigen::SparseMatrix<Scalar> A2;
     Eigen::SparseMatrix<Scalar> A2Inv;
-    Matrix<T> I;
+    Eigen::SparseMatrix<T> I;
     Vector<T> kappa;
     Vector<T> lam;
     Vector<T> xi;
@@ -45,6 +45,7 @@ protected:
     Vector<T> QIntegral;
     Vector<T> TIntegral;
     RowVector<T> PQT;
+    int nillum;
 
     // Angles
     T costheta;
@@ -141,25 +142,21 @@ protected:
 
     }
 
-    /**
-
-        Illumination matrix.
-
-        TODO: Make me sparse!
-
-    */
     inline void computeI(const T& b, const T& theta) {
         
         // Reset
-        I.setZero();
         T y0 = sqrt(1 - b * b);
         T x = -y0 * sin(theta);
         T y = y0 * cos(theta);
         T z = -b;
-        Vector<T> p(4);
-        p << 0, x, z, y;
+        Vector<T> p(3);
+        p << x, z, y;
         
-        // Populate the matrix
+        typedef Eigen::Triplet<T> T3;
+        std::vector<T3> tripletList;
+        tripletList.reserve(nillum);
+        
+        // Populate the triplets
         int n1 = 0;
         int n2 = 0;
         int l, n;
@@ -169,23 +166,24 @@ protected:
                 if (is_even(l1 + m1)) odd1 = false;
                 else odd1 = true;
                 n2 = 0;
-                for (int l2 = 0; l2 < 2; ++l2) {
-                    for (int m2 = -l2; m2 < l2 + 1; ++m2) {
-                        l = l1 + l2;
-                        n = l * l + l + m1 + m2;
-                        if (odd1 && (!is_even(l2 + m2))) {
-                            I(n - 4 * l + 2, n1) += p(n2);
-                            I(n - 2, n1) -= p(n2);
-                            I(n + 2, n1) -= p(n2);
-                        } else {
-                            I(n, n1) += p(n2);
-                        }
-                        n2 += 1;
+                for (int m2 = -1; m2 < 2; ++m2) {
+                    l = l1 + 1;
+                    n = l * l + l + m1 + m2;
+                    if (odd1 && (is_even(m2))) {
+                        tripletList.push_back(T3(n - 4 * l + 2, n1, p(n2)));
+                        tripletList.push_back(T3(n - 2, n1, -p(n2)));
+                        tripletList.push_back(T3(n + 2, n1, -p(n2)));
+                    } else {
+                        tripletList.push_back(T3(n, n1, p(n2)));
                     }
+                    n2 += 1;
                 }
                 n1 += 1;
             }
         }
+
+        // Create the sparse matrix
+        I.setFromTriplets(tripletList.begin(), tripletList.end());
 
     }
 
@@ -254,12 +252,6 @@ public:
     int code;
     RowVector<T> sT;
 
-    // Temporary storage for the Python interface
-    Matrix<double> ddb;
-    Matrix<double> ddtheta;
-    Matrix<double> ddbo;
-    Matrix<double> ddro;
-
     explicit Occultation(int deg, const Eigen::SparseMatrix<Scalar>& A1) : 
         deg(deg),
         N2((deg + 2) * (deg + 2)),
@@ -300,6 +292,10 @@ public:
         sinnt(0) = 0.0;
         cosmt.resize(N1);
         sinmt.resize(N1);
+
+        // Quadratic fit to the number of coefficients 
+        // in the illumination matrix
+        nillum = max(4, int(ceil(5.5 * deg * deg + 9.5 * deg + 3)));
 
     }
 
