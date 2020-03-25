@@ -394,7 +394,10 @@ template <typename T, int N>
 inline Matrix<ADScalar<T, N>> H(const int uvmax,
                                 const Vector<ADScalar<T, N>> &xi) {
 
+  Matrix<ADScalar<T, N>> f(uvmax + 1, uvmax + 1);
+  f.setZero();
   size_t K = xi.size();
+  int sgn;
 
   // Split xi into its value and derivs
   Vector<T> xi_value(K);
@@ -413,53 +416,56 @@ inline Matrix<ADScalar<T, N>> H(const int uvmax,
   ss.array() = s.array() * s.array();
 
   // Compute H and dH / dxi
-  Matrix<T> f(uvmax + 1, uvmax + 1);
   Matrix<Vector<T>> df(uvmax + 1, uvmax + 1);
 
   // Lower boundary
-  f(0, 0) = pairdiff(xi_value);
+  f(0, 0).value() = pairdiff(xi_value);
   df(0, 0).setOnes(K);
-  f(1, 0) = pairdiff(s);
+  f(1, 0).value() = pairdiff(s);
   df(1, 0) = c;
-  f(0, 1) = -pairdiff(c);
+  f(0, 1).value() = -pairdiff(c);
   df(0, 1) = s;
-  f(1, 1) = -0.5 * pairdiff(cc);
+  f(1, 1).value() = -0.5 * pairdiff(cc);
   df(1, 1) = cs;
-
-  // Recurse upward
   for (int u = 0; u < 2; ++u) {
-    for (int v = 2; v < uvmax + 1 - u; ++v) {
-      f(u, v) = (-pairdiff(Vector<T>(df(u, v - 2).cwiseProduct(cs))) +
-                 (v - 1) * f(u, v - 2)) /
-                (u + v);
-      df(u, v) = df(u, v - 2).cwiseProduct(ss);
-    }
-  }
-  for (int u = 2; u < uvmax + 1; ++u) {
-    for (int v = 0; v < uvmax + 1 - u; ++v) {
-      f(u, v) = (pairdiff(Vector<T>(df(u - 2, v).cwiseProduct(cs))) +
-                 (u - 1) * f(u - 2, v)) /
-                (u + v);
-      df(u, v) = df(u - 2, v).cwiseProduct(cc);
-    }
-  }
-
-  // Populate the ADScalar
-  // TODO: This copy is slow; populate it on the fly above.
-  Matrix<ADScalar<T, N>> result(uvmax + 1, uvmax + 1);
-  result.setZero();
-  for (int u = 0; u < uvmax + 1; ++u) {
-    for (int v = 0; v < uvmax + 1 - u; ++v) {
-      result(u, v).value() = f(u, v);
-      int sgn = -1;
+    for (int v = 0; v < 2; ++v) {
+      sgn = -1;
       for (size_t i = 0; i < K; ++i) {
-        result(u, v).derivatives() += sgn * df(u, v)(i) * xi(i).derivatives();
+        f(u, v).derivatives() += sgn * df(u, v)(i) * xi(i).derivatives();
         sgn *= -1;
       }
     }
   }
 
-  return result;
+  // Recurse upward
+  for (int u = 0; u < 2; ++u) {
+    for (int v = 2; v < uvmax + 1 - u; ++v) {
+      f(u, v).value() = (-pairdiff(Vector<T>(df(u, v - 2).cwiseProduct(cs))) +
+                         (v - 1) * f(u, v - 2).value()) /
+                        (u + v);
+      df(u, v) = df(u, v - 2).cwiseProduct(ss);
+      sgn = -1;
+      for (size_t i = 0; i < K; ++i) {
+        f(u, v).derivatives() += sgn * df(u, v)(i) * xi(i).derivatives();
+        sgn *= -1;
+      }
+    }
+  }
+  for (int u = 2; u < uvmax + 1; ++u) {
+    for (int v = 0; v < uvmax + 1 - u; ++v) {
+      f(u, v).value() = (pairdiff(Vector<T>(df(u - 2, v).cwiseProduct(cs))) +
+                         (u - 1) * f(u - 2, v).value()) /
+                        (u + v);
+      df(u, v) = df(u - 2, v).cwiseProduct(cc);
+      sgn = -1;
+      for (size_t i = 0; i < K; ++i) {
+        f(u, v).derivatives() += sgn * df(u, v)(i) * xi(i).derivatives();
+        sgn *= -1;
+      }
+    }
+  }
+
+  return f;
 }
 
 /**

@@ -178,8 +178,7 @@ public:
   inline Scalar compute(const Scalar &bterm, const RowVector<Scalar> &brT) {
     Scalar bb = 0.0;
     computeHI_with_grad(bterm);
-    // TODO: The gradient is infinite when bterm = +/- 1
-    // Not sure how best to handle this.
+    // NOTE: The gradient is infinite when bterm = +/- 1
     Scalar fac = sqrt(max(Scalar(1.0) - bterm * bterm, tol));
     Scalar DfacDb = -bterm / fac;
     int n = 0;
