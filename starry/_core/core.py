@@ -791,7 +791,7 @@ class OpsReflected(OpsYlm):
 
     @autocompile
     def sT(self, b, theta, bo, ro):
-        return self._sT(b, theta, bo, ro)
+        return self._sT(b, theta, bo, ro)[0]
 
     @autocompile
     def intensity(self, lat, lon, y, u, f, xs, ys, zs, wta, ld):

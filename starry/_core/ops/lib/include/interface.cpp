@@ -10,15 +10,15 @@
 #endif
 
 // Includes
+#include "ops.h"
+#include "sturm.h"
+#include "utils.h"
+#include <iostream>
 #include <pybind11/eigen.h>
 #include <pybind11/embed.h>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <iostream>
-#include "ops.h"
-#include "sturm.h"
-#include "utils.h"
 namespace py = pybind11;
 
 // Multiprecision?
@@ -155,56 +155,55 @@ PYBIND11_MODULE(_c_ops, m) {
     return bb;
   });
 
-  // Occultation in reflected light (with gradient)
-  // TODO: Eventually cast from double to Scalar for multiprecision types?
-  // TODO: Save forward diff gradients for backprop pass
-  Ops.def("sTReflected", [](starry::Ops<Scalar> &ops, const Vector<double>& b_, 
-                            const Vector<double>& theta_, const Vector<double>& bo_, 
-                            const double& ro_, const Matrix<double>& bsT) {
-      
-      // Total number of terms in `s^T`
-      int K = b_.size();
-      int N = (ops.ydeg + 1) * (ops.ydeg + 1);
-      
-      // Seed the derivatives
-      ADScalar<double, 4> b, theta, bo, ro;
-      b.derivatives() = Vector<double>::Unit(4, 0);
-      theta.derivatives() = Vector<double>::Unit(4, 1);
-      bo.derivatives() = Vector<double>::Unit(4, 2);
-      ro.derivatives() = Vector<double>::Unit(4, 3);
-      ro.value() = ro_;
-      
-      // The output
-      Matrix<double> result_value(K, N);
-      Vector<double> bb(K), btheta(K), bbo(K);
-      bb.setZero();
-      btheta.setZero();
-      bbo.setZero();
-      double bro = 0.0;
+  // Occultation in reflected light (w/ fwd gradient)
+  Ops.def("sTReflected", [](starry::Ops<Scalar> &ops, const Vector<double> &b_,
+                            const Vector<double> &theta_,
+                            const Vector<double> &bo_, const double &ro_) {
 
-      // Loop through the timeseries
-      for (int k = 0; k < K; ++k) {
-        
-        // Compute sT for this timestep
-        b.value() = b_(k);
-        theta.value() = theta_(k);
-        bo.value() = bo_(k);
-        ops.RO.compute(b, theta, bo, ro);
+    // Total number of terms in `s^T`
+    int K = b_.size();
+    int N = (ops.ydeg + 1) * (ops.ydeg + 1);
 
-        // Process the ADScalar
-        // TODO: We can speed this up a ton if we backprop through the C code
-        for (int n = 0; n < N; ++n) {
-            result_value(k, n) = ops.RO.sT(n).value();
-            bb(k) += ops.RO.sT(n).derivatives()(0) * bsT(k, n);
-            btheta(k) += ops.RO.sT(n).derivatives()(1) * bsT(k, n);
-            bbo(k) += ops.RO.sT(n).derivatives()(2) * bsT(k, n);
-            bro += ops.RO.sT(n).derivatives()(3) * bsT(k, n);
-        }
+    // Seed the derivatives. We'll compute them using forward
+    // diff and return them for the backprop call.
+    // TODO: Code up the backprop gradients for these occultations.
+    // This will likely be quite hard, but should speed this up
+    // quite a bit.
+    ADScalar<Scalar, 4> b, theta, bo, ro;
+    b.derivatives() = Vector<Scalar>::Unit(4, 0);
+    theta.derivatives() = Vector<Scalar>::Unit(4, 1);
+    bo.derivatives() = Vector<Scalar>::Unit(4, 2);
+    ro.derivatives() = Vector<Scalar>::Unit(4, 3);
+    ro.value() = ro_;
 
+    // The output
+    Matrix<double> result(K, N);
+    Matrix<double> ddb(K, N);
+    Matrix<double> ddtheta(K, N);
+    Matrix<double> ddbo(K, N);
+    Matrix<double> ddro(K, N);
+
+    // Loop through the timeseries
+    for (int k = 0; k < K; ++k) {
+
+      // Compute sT for this timestep
+      b.value() = static_cast<Scalar>(b_(k));
+      theta.value() = static_cast<Scalar>(theta_(k));
+      bo.value() = static_cast<Scalar>(bo_(k));
+      ops.RO.compute(b, theta, bo, ro);
+
+      // Process the ADScalar
+      for (int n = 0; n < N; ++n) {
+        result(k, n) = static_cast<double>(ops.RO.sT(n).value());
+        ddb(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(0));
+        ddtheta(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(1));
+        ddbo(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(2));
+        ddro(k, n) = static_cast<double>(ops.RO.sT(n).derivatives()(3));
       }
+    }
 
-      // Return the vector, integration code, and all derivs
-      return py::make_tuple(result_value, bb, btheta, bbo, bro);
+    // Return the value & the forward derivs
+    return py::make_tuple(result, ddb, ddtheta, ddbo, ddro);
 
   });
 
@@ -322,28 +321,26 @@ PYBIND11_MODULE(_c_ops, m) {
   });
 
   // Compute the Ylm expansion of a gaussian spot
-  Ops.def(
-      "spotYlm", [](starry::Ops<Scalar> &ops, const RowVector<Scalar> &amp,
-                    const Scalar &sigma, const Scalar &lat, const Scalar &lon) {
-        return ops
-            .spotYlm(amp.template cast<double>(), static_cast<Scalar>(sigma),
-                     static_cast<Scalar>(lat), static_cast<Scalar>(lon))
-            .template cast<double>();
-      });
+  Ops.def("spotYlm", [](starry::Ops<Scalar> &ops, const RowVector<Scalar> &amp,
+                        const Scalar &sigma, const Scalar &lat,
+                        const Scalar &lon) {
+    return ops
+        .spotYlm(amp.template cast<double>(), static_cast<Scalar>(sigma),
+                 static_cast<Scalar>(lat), static_cast<Scalar>(lon))
+        .template cast<double>();
+  });
 
   // Gradient of the Ylm expansion of a gaussian spot
-  Ops.def(
-      "spotYlm", [](starry::Ops<Scalar> &ops, const RowVector<Scalar> &amp,
-                    const Scalar &sigma, const Scalar &lat, const Scalar &lon, 
-                    const Matrix<double> &by) {
-        ops.spotYlm(amp.template cast<double>(), static_cast<Scalar>(sigma),
-                     static_cast<Scalar>(lat), static_cast<Scalar>(lon), 
-                     by.template cast<Scalar>());
-        return py::make_tuple(ops.bamp.template cast<double>(),
-                              static_cast<double>(ops.bsigma),
-                              static_cast<double>(ops.blat),
-                              static_cast<double>(ops.blon));
-      });
+  Ops.def("spotYlm", [](starry::Ops<Scalar> &ops, const RowVector<Scalar> &amp,
+                        const Scalar &sigma, const Scalar &lat,
+                        const Scalar &lon, const Matrix<double> &by) {
+    ops.spotYlm(amp.template cast<double>(), static_cast<Scalar>(sigma),
+                static_cast<Scalar>(lat), static_cast<Scalar>(lon),
+                by.template cast<Scalar>());
+    return py::make_tuple(
+        ops.bamp.template cast<double>(), static_cast<double>(ops.bsigma),
+        static_cast<double>(ops.blat), static_cast<double>(ops.blon));
+  });
 
   // Differential rotation operator (matrices)
   Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
@@ -360,24 +357,24 @@ PYBIND11_MODULE(_c_ops, m) {
   });
 
   // Gradient of differential rotation operator (vectors)
-  Ops.def(
-      "tensordotD", [](starry::Ops<Scalar> &ops, const RowVector<double> &M,
-                       const Vector<double> &wta, const Matrix<double> &bMD) {
-        ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>(),
-                         bMD.template cast<Scalar>());
-        return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
-                              ops.D.tensordotD_bwta.template cast<double>());
-      });
+  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const RowVector<double> &M,
+                           const Vector<double> &wta,
+                           const Matrix<double> &bMD) {
+    ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>(),
+                     bMD.template cast<Scalar>());
+    return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
+                          ops.D.tensordotD_bwta.template cast<double>());
+  });
 
   // Gradient of differential rotation operator (matrices)
-  Ops.def(
-      "tensordotD", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
-                       const Vector<double> &wta, const Matrix<double> &bMD) {
-        ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>(),
-                         bMD.template cast<Scalar>());
-        return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
-                              ops.D.tensordotD_bwta.template cast<double>());
-      });
+  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
+                           const Vector<double> &wta,
+                           const Matrix<double> &bMD) {
+    ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>(),
+                     bMD.template cast<Scalar>());
+    return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
+                          ops.D.tensordotD_bwta.template cast<double>());
+  });
 
   // Sturm's theorem to get number of poly roots between `a` and `b`
   m.def("nroots",

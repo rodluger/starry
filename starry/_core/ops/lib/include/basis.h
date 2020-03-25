@@ -134,8 +134,7 @@ inline void theta(int lmax,
 Compute the amplitudes of the Ylm vectors.
 
 */
-template <typename Derived>
-inline void amp(int lmax, MatrixBase<Derived> &M) {
+template <typename Derived> inline void amp(int lmax, MatrixBase<Derived> &M) {
   M.setZero();
   typename Derived::Scalar inv_root_two = sqrt(0.5);
   for (int l = 0; l < lmax + 1; ++l) {
@@ -155,10 +154,10 @@ Compute a sparse polynomial product using Eigen Triplets.
 
 */
 template <typename Scalar>
-inline void computeSparsePolynomialProduct(
-    const std::vector<Eigen::Triplet<Scalar>> &p1,
-    const std::vector<Eigen::Triplet<Scalar>> &p2,
-    std::vector<Eigen::Triplet<Scalar>> &p1p2) {
+inline void
+computeSparsePolynomialProduct(const std::vector<Eigen::Triplet<Scalar>> &p1,
+                               const std::vector<Eigen::Triplet<Scalar>> &p2,
+                               std::vector<Eigen::Triplet<Scalar>> &p1p2) {
   using Triplet = Eigen::Triplet<Scalar>;
   int l1, m1, l2, m2;
   bool odd1;
@@ -330,8 +329,7 @@ void computeA(int lmax, const Eigen::SparseMatrix<T> &A1,
 Compute the `r^T` phase curve solution vector.
 
 */
-template <typename T>
-void computerT(int lmax, RowVector<T> &rT) {
+template <typename T> void computerT(int lmax, RowVector<T> &rT) {
   T amp0, amp, lfac1, lfac2;
   int mu, nu;
   rT.resize((lmax + 1) * (lmax + 1));
@@ -454,7 +452,8 @@ void computeU(int lmax, const Eigen::SparseMatrix<T> &A1,
   // Compute U1
   Matrix<T> X(N, lmax + 1);
   X.setZero();
-  for (int l = 0; l < lmax + 1; ++l) X(l * (l + 1), l) = 1;
+  for (int l = 0; l < lmax + 1; ++l)
+    X(l * (l + 1), l) = 1;
   Eigen::SparseMatrix<T> XU0 = (X * U0).sparseView();
   U1 = A1 * XU0;
 }
@@ -465,9 +464,8 @@ void computeU(int lmax, const Eigen::SparseMatrix<T> &A1,
 Basis transform matrices and operations.
 
 */
-template <typename T>
-class Basis {
- public:
+template <typename T> class Basis {
+public:
   const int ydeg; /**< The highest degree of the spherical harmonic map */
   const int udeg; /**< The highest degree of the limb darkening map */
   const int fdeg; /**< The highest degree of the filter map */
@@ -492,9 +490,9 @@ class Basis {
   Matrix<T, RowMajor> pT;
 
   // Constructor: compute the matrices
-  explicit Basis(int ydeg, int udeg, int fdeg, T norm = 2.0 / root_pi<T>()) :
-      ydeg(ydeg), udeg(udeg), fdeg(fdeg), deg(ydeg + udeg + fdeg), norm(norm),
-      x_cache(0), y_cache(0), z_cache(0) {
+  explicit Basis(int ydeg, int udeg, int fdeg, T norm = 2.0 / root_pi<T>())
+      : ydeg(ydeg), udeg(udeg), fdeg(fdeg), deg(ydeg + udeg + fdeg), norm(norm),
+        x_cache(0), y_cache(0), z_cache(0) {
     // Compute the augmented matrices
     Eigen::SparseMatrix<T> A1Inv_, A2_, A_, U1_;
     RowVector<T> rT_, rTA1_;
@@ -547,8 +545,8 @@ class Basis {
     RowVector<T> xterm(npts), yterm(npts);
     xterm.setOnes();
     yterm.setOnes();
-    xterm += 0.0 * z;  // Ensures we get `nan`s off the disk
-    yterm += 0.0 * z;  // Ensures we get `nan`s off the disk
+    xterm += 0.0 * z; // Ensures we get `nan`s off the disk
+    yterm += 0.0 * z; // Ensures we get `nan`s off the disk
     int i0 = 0, di0 = 3, j0 = 0, dj0 = 2;
     int i, j, di, dj, n;
     for (n = 0; n < deg + 1; ++n) {
@@ -581,13 +579,14 @@ class Basis {
     for (int l = 0; l < deg + 1; ++l) {
       for (int m = -l; m < l + 1; ++m) {
         pT.col(n) = xarr.col(n).cwiseProduct(yarr.col(n));
-        if ((l + m) % 2 != 0) pT.col(n) = pT.col(n).cwiseProduct(z.transpose());
+        if ((l + m) % 2 != 0)
+          pT.col(n) = pT.col(n).cwiseProduct(z.transpose());
         ++n;
       }
     }
   }
 };
 
-}  // namespace basis
-}  // namespace starry
+} // namespace basis
+} // namespace starry
 #endif

@@ -19,9 +19,8 @@ using namespace utils;
 Differential rotation operator class.
 
 */
-template <typename Scalar>
-class DiffRot {
- protected:
+template <typename Scalar> class DiffRot {
+protected:
   using Triplet = Eigen::Triplet<Scalar>;
   using Triplets = std::vector<Triplet>;
 
@@ -44,15 +43,16 @@ class DiffRot {
   Eigen::SparseMatrix<Scalar> A1, A1Inv;
   Eigen::SparseMatrix<Scalar> D, dD;
 
- public:
+public:
   Matrix<Scalar> tensordotD_result;
   Vector<Scalar> tensordotD_bwta;
   Matrix<Scalar> tensordotD_bM;
 
   // Constructor: compute the matrices
-  explicit DiffRot(basis::Basis<Scalar> &B, const int &drorder) :
-      B(B), ydeg(B.ydeg), Ny((ydeg + 1) * (ydeg + 1)), drorder(drorder),
-      ddeg(4 * drorder), Ddeg((ddeg + 1) * ydeg), ND((Ddeg + 1) * (Ddeg + 1)) {
+  explicit DiffRot(basis::Basis<Scalar> &B, const int &drorder)
+      : B(B), ydeg(B.ydeg), Ny((ydeg + 1) * (ydeg + 1)), drorder(drorder),
+        ddeg(4 * drorder), Ddeg((ddeg + 1) * ydeg),
+        ND((Ddeg + 1) * (Ddeg + 1)) {
     // Trivial cases
     if ((ydeg == 0) || (drorder == 0)) {
       return;
@@ -158,10 +158,14 @@ class DiffRot {
       computeSparsePolynomialProduct(t_neg_z, t_s, t_neg_zs);
 
       // Differentially-rotated x and z terms
-      for (Triplet term : t_xc) t_xD.push_back(term);
-      for (Triplet term : t_neg_zs) t_xD.push_back(term);
-      for (Triplet term : t_xs) t_zD.push_back(term);
-      for (Triplet term : t_zc) t_zD.push_back(term);
+      for (Triplet term : t_xc)
+        t_xD.push_back(term);
+      for (Triplet term : t_neg_zs)
+        t_xD.push_back(term);
+      for (Triplet term : t_xs)
+        t_zD.push_back(term);
+      for (Triplet term : t_zc)
+        t_zD.push_back(term);
 
       // Construct the matrix
       t_D.clear();
@@ -285,14 +289,22 @@ class DiffRot {
       computeSparsePolynomialProduct(t_neg_z, t_ds, t_neg_dzs);
 
       // Differentially-rotated x and z terms
-      for (Triplet term : t_xc) t_xD.push_back(term);
-      for (Triplet term : t_dxc) t_dxD.push_back(term);
-      for (Triplet term : t_neg_zs) t_xD.push_back(term);
-      for (Triplet term : t_neg_dzs) t_dxD.push_back(term);
-      for (Triplet term : t_xs) t_zD.push_back(term);
-      for (Triplet term : t_dxs) t_dzD.push_back(term);
-      for (Triplet term : t_zc) t_zD.push_back(term);
-      for (Triplet term : t_dzc) t_dzD.push_back(term);
+      for (Triplet term : t_xc)
+        t_xD.push_back(term);
+      for (Triplet term : t_dxc)
+        t_dxD.push_back(term);
+      for (Triplet term : t_neg_zs)
+        t_xD.push_back(term);
+      for (Triplet term : t_neg_dzs)
+        t_dxD.push_back(term);
+      for (Triplet term : t_xs)
+        t_zD.push_back(term);
+      for (Triplet term : t_dxs)
+        t_dzD.push_back(term);
+      for (Triplet term : t_zc)
+        t_zD.push_back(term);
+      for (Triplet term : t_dzc)
+        t_dzD.push_back(term);
 
       // Construct the matrix
       t_D.clear();
@@ -339,7 +351,6 @@ class DiffRot {
         // Chain rule
         computeSparsePolynomialProduct(t_dD[nc - 1], t_y, t_dD[n + 1]);
         computeSparsePolynomialProduct(t_dD[nc - 2], t_y, t_dD[n]);
-
       }
 
       // Construct the sparse D operator from the triplets
@@ -371,10 +382,9 @@ class DiffRot {
 
     // Finish computing bM
     tensordotD_bM = (A1Inv * DA1bfT).transpose();
-
   }
 };
 
-}  // namespace diffrot
-}  // namespace starry
+} // namespace diffrot
+} // namespace starry
 #endif

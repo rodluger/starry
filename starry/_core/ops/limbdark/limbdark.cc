@@ -1,6 +1,6 @@
 #section support_code_struct
 
-starry::limbdark::GreensLimbDark<DTYPE_OUTPUT_0>* APPLY_SPECIFIC(L);
+starry::limbdark::GreensLimbDark<DTYPE_OUTPUT_0> *APPLY_SPECIFIC(L);
 
 #section init_code_struct
 
@@ -15,20 +15,20 @@ if (APPLY_SPECIFIC(L) != NULL) {
 #section support_code_struct
 
 int APPLY_SPECIFIC(limbdark)(
-    PyArrayObject* input0,    // Array of "cl"
-    PyArrayObject* input1,    // Array of impact parameters "b"
-    PyArrayObject* input2,    // Array of radius ratios "r"
-    PyArrayObject* input3,    // Array of line-of-sight position "los"
-    PyArrayObject** output0,  // Flux
-    PyArrayObject** output1,  // dfdcl
-    PyArrayObject** output2,  // dfdb
-    PyArrayObject** output3   // dfdr
-) {
+    PyArrayObject *input0,   // Array of "cl"
+    PyArrayObject *input1,   // Array of impact parameters "b"
+    PyArrayObject *input2,   // Array of radius ratios "r"
+    PyArrayObject *input3,   // Array of line-of-sight position "los"
+    PyArrayObject **output0, // Flux
+    PyArrayObject **output1, // dfdcl
+    PyArrayObject **output2, // dfdb
+    PyArrayObject **output3  // dfdr
+    ) {
   using namespace starry;
 
   int success = 0;
   int ndim_c = -1;
-  npy_intp* shape_c;
+  npy_intp *shape_c;
   auto c = get_input<DTYPE_INPUT_0>(&ndim_c, &shape_c, input0, &success);
   if (ndim_c != 1) {
     PyErr_Format(PyExc_ValueError, "c must be 1D");
@@ -36,11 +36,12 @@ int APPLY_SPECIFIC(limbdark)(
   }
 
   int ndim = -1;
-  npy_intp* shape;
+  npy_intp *shape;
   auto b = get_input<DTYPE_INPUT_1>(&ndim, &shape, input1, &success);
   auto r = get_input<DTYPE_INPUT_2>(&ndim, &shape, input2, &success);
   auto los = get_input<DTYPE_INPUT_3>(&ndim, &shape, input3, &success);
-  if (success) return 1;
+  if (success)
+    return 1;
 
   std::vector<npy_intp> new_shape(ndim + ndim_c);
   int Nc = 1, Nb = 1;
@@ -61,7 +62,8 @@ int APPLY_SPECIFIC(limbdark)(
                                               output2, &success);
   auto dfdr = allocate_output<DTYPE_OUTPUT_3>(ndim, shape, TYPENUM_OUTPUT_3,
                                               output3, &success);
-  if (success) return 1;
+  if (success)
+    return 1;
 
   Eigen::Map<Eigen::Matrix<DTYPE_OUTPUT_1, Eigen::Dynamic, Eigen::Dynamic,
                            Eigen::RowMajor>>
@@ -70,7 +72,8 @@ int APPLY_SPECIFIC(limbdark)(
 
   Eigen::Map<Eigen::Matrix<DTYPE_INPUT_0, Eigen::Dynamic, 1>> cvec(c, Nc);
   if (APPLY_SPECIFIC(L) == NULL || APPLY_SPECIFIC(L)->lmax != Nc - 1) {
-    if (APPLY_SPECIFIC(L) != NULL) delete APPLY_SPECIFIC(L);
+    if (APPLY_SPECIFIC(L) != NULL)
+      delete APPLY_SPECIFIC(L);
     APPLY_SPECIFIC(L) = new starry::limbdark::GreensLimbDark<double>(Nc - 1);
   }
 

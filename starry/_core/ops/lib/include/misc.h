@@ -81,7 +81,7 @@ inline Matrix<Scalar> spotYlm(const RowVector<Scalar> &amp, const Scalar &sigma,
 }
 
 /**
-Compute the gradient of the Ylm expansion of a spot at a 
+Compute the gradient of the Ylm expansion of a spot at a
 given latitude/longitude on the map.
 
 This routine uses forward diff pretty inefficiently and
@@ -90,18 +90,17 @@ can be sped up if we think about it more carefully.
 */
 template <class Scalar>
 inline void spotYlm(const RowVector<Scalar> &amp, const Scalar &sigma_,
-                    const Scalar &lat, const Scalar &lon, 
-                    const Matrix<double> &by,
-                    int l, wigner::Wigner<Scalar> &W,
-                    RowVector<Scalar> &bamp,
-                    Scalar &bsigma, Scalar &blat, Scalar &blon) {
-  
+                    const Scalar &lat, const Scalar &lon,
+                    const Matrix<double> &by, int l, wigner::Wigner<Scalar> &W,
+                    RowVector<Scalar> &bamp, Scalar &bsigma, Scalar &blat,
+                    Scalar &blon) {
+
   // Forward diff for sigma
   // TODO: Compute the backprop expression
   using ADType = ADScalar<Scalar, 1>;
   ADType sigma = sigma_;
   sigma.derivatives() = Vector<Scalar>::Unit(1, 0);
-  
+
   // Compute the integrals recursively
   Vector<ADType> IP(l + 1);
   Vector<ADType> ID(l + 1);
@@ -115,7 +114,8 @@ inline void spotYlm(const RowVector<Scalar> &amp, const Scalar &sigma_,
   ADType a = 1.0 / (2 * sigma * sigma);
   ADType sqrta = sqrt(a);
   ADType erfa = erf(2 * sqrta.value());
-  erfa.derivatives()(0) = -sqrt(32 / pi<Scalar>()) * exp(-4 * a.value()) * a.value();
+  erfa.derivatives()(0) =
+      -sqrt(32 / pi<Scalar>()) * exp(-4 * a.value()) * a.value();
   ADType term = exp(-4 * a);
 
   // Seeding values
@@ -167,22 +167,26 @@ inline void spotYlm(const RowVector<Scalar> &amp, const Scalar &sigma_,
   // Gradient w/ respect to lat, lon, and sigma
   Matrix<Scalar> y_amp = y * amp;
   W.dotR(y_amp.transpose(), u(0), u(1), u(2), -theta, by.transpose());
-  
+
   // lat
-  Scalar termz = (clat * (1 + clon) * (1 + clon) * slat - slat * slon * slon) / (normu * normu * normu);
+  Scalar termz = (clat * (1 + clon) * (1 + clon) * slat - slat * slon * slon) /
+                 (normu * normu * normu);
   Scalar dxdl = -clat * (1 + clon) / normu + (1 + clon) * slat * termz;
   Scalar dydl = -slat * slon / normu - (1 + clat) * slon * termz;
   Scalar dzdl = clat * slon / normu - slat * slon * termz;
   Scalar dthetadl = -u(0);
-  blat = (dxdl * W.dotR_bx + dydl * W.dotR_by + dzdl * W.dotR_bz - dthetadl * W.dotR_btheta);
+  blat = (dxdl * W.dotR_bx + dydl * W.dotR_by + dzdl * W.dotR_bz -
+          dthetadl * W.dotR_btheta);
 
   // lon
-  termz = (clon * (1 + clat) * (1 + clat) * slon - slon * slat * slat) / (normu * normu * normu);
+  termz = (clon * (1 + clat) * (1 + clat) * slon - slon * slat * slat) /
+          (normu * normu * normu);
   dxdl = slat * slon / normu + (1 + clon) * slat * termz;
   dydl = (1 + clat) * clon / normu - (1 + clat) * slon * termz;
   dzdl = clon * slat / normu - slat * slon * termz;
   dthetadl = u(1);
-  blon = (dxdl * W.dotR_bx + dydl * W.dotR_by + dzdl * W.dotR_bz - dthetadl * W.dotR_btheta);
+  blon = (dxdl * W.dotR_bx + dydl * W.dotR_by + dzdl * W.dotR_bz -
+          dthetadl * W.dotR_btheta);
 
   // sigma
   W.dotR(dydsigma.transpose(), u(0), u(1), u(2), -theta);
@@ -195,9 +199,8 @@ inline void spotYlm(const RowVector<Scalar> &amp, const Scalar &sigma_,
 
   // Gradient of amplitude
   bamp = y.transpose() * by;
-
 }
 
-}  // namespace misc
-}  // namespace starry
+} // namespace misc
+} // namespace starry
 #endif

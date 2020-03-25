@@ -1,20 +1,22 @@
 #section support_code_apply
 
 int APPLY_SPECIFIC(get_cl_rev)(
-    PyArrayObject* input0,  // Array of "u" limb darkening coeffs
-    PyArrayObject** output0) {
+    PyArrayObject *input0, // Array of "u" limb darkening coeffs
+    PyArrayObject **output0) {
   using namespace starry;
   typedef DTYPE_OUTPUT_0 T;
 
   int success = 0;
   npy_intp N = -1;
   auto bc_in = get_input<DTYPE_INPUT_0>(&N, input0, &success);
-  if (success) return 1;
+  if (success)
+    return 1;
 
   auto bu = allocate_output<DTYPE_OUTPUT_0>(
       PyArray_NDIM(input0), PyArray_DIMS(input0), TYPENUM_OUTPUT_0, output0,
       &success);
-  if (success) return 1;
+  if (success)
+    return 1;
 
   Eigen::Matrix<T, Eigen::Dynamic, 1> bc(N);
   Eigen::Matrix<T, Eigen::Dynamic, 1> ba(N);

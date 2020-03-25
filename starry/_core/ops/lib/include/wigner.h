@@ -146,11 +146,10 @@ Compute the Wigner D matrices.
 
 */
 template <class Scalar>
-inline void rotar(const int ydeg, const Scalar &c1, const Scalar &s1,
-                  const Scalar &c2, const Scalar &s2, const Scalar &c3,
-                  const Scalar &s3, const Scalar &tol,
-                  std::vector<Matrix<Scalar>> &D,
-                  std::vector<Matrix<Scalar>> &R) {
+inline void
+rotar(const int ydeg, const Scalar &c1, const Scalar &s1, const Scalar &c2,
+      const Scalar &s2, const Scalar &c3, const Scalar &s3, const Scalar &tol,
+      std::vector<Matrix<Scalar>> &D, std::vector<Matrix<Scalar>> &R) {
   Scalar cosag, cosamg, sinag, sinamg, tgbet2;
   Scalar root_two = sqrt(Scalar(2.0));
 
@@ -183,11 +182,12 @@ inline void rotar(const int ydeg, const Scalar &c1, const Scalar &s1,
   // The remaining matrices are calculated using
   // symmetry and and recurrence relations
   if (abs(s2) < tol)
-    tgbet2 = s2;  // = 0
+    tgbet2 = s2; // = 0
   else
     tgbet2 = (Scalar(1.0) - c2) / s2;
 
-  for (int l = 2; l < ydeg + 1; ++l) dlmn(l, s1, c1, c2, tgbet2, s3, c3, D, R);
+  for (int l = 2; l < ydeg + 1; ++l)
+    dlmn(l, s1, c1, c2, tgbet2, s3, c3, D, R);
 
   return;
 }
@@ -214,19 +214,19 @@ inline void axisAngleToEuler(const Scalar &axis_x, const Scalar &axis_y,
   // Determine the Euler angles
   Scalar norm1, norm2;
   if ((RA22 < Scalar(-1.0) + tol) && (RA22 > Scalar(-1.0) - tol)) {
-    cosbeta = RA22;                // = -1
-    sinbeta = Scalar(1.0) + RA22;  // = 0
+    cosbeta = RA22;               // = -1
+    sinbeta = Scalar(1.0) + RA22; // = 0
     cosgamma = RA11;
     singamma = RA01;
-    cosalpha = -RA22;               // = 1
-    sinalpha = Scalar(1.0) + RA22;  // = 0
+    cosalpha = -RA22;              // = 1
+    sinalpha = Scalar(1.0) + RA22; // = 0
   } else if ((RA22 < Scalar(1.0) + tol) && (RA22 > Scalar(1.0) - tol)) {
-    cosbeta = RA22;                // = 1
-    sinbeta = Scalar(1.0) - RA22;  // = 0
+    cosbeta = RA22;               // = 1
+    sinbeta = Scalar(1.0) - RA22; // = 0
     cosgamma = RA11;
     singamma = -RA01;
-    cosalpha = RA22;                // = 1
-    sinalpha = Scalar(1.0) - RA22;  // = 0
+    cosalpha = RA22;               // = 1
+    sinalpha = Scalar(1.0) - RA22; // = 0
   } else {
     cosbeta = RA22;
     sinbeta = sqrt(Scalar(1.0) - cosbeta * cosbeta);
@@ -243,9 +243,8 @@ inline void axisAngleToEuler(const Scalar &axis_x, const Scalar &axis_y,
 Rotation matrix class for the spherical harmonics.
 
 */
-template <class Scalar>
-class Wigner {
- protected:
+template <class Scalar> class Wigner {
+protected:
   // Sizes
   const int ydeg; /**< */
   const int Ny;   /**< Number of spherical harmonic `(l, m)` coefficients */
@@ -280,7 +279,7 @@ class Wigner {
   std::vector<Matrix<Scalar>> DRDz;     /**< */
   std::vector<Matrix<Scalar>> DRDtheta; /**< */
 
- public:
+public:
   // Tensor z rotation results
   Matrix<Scalar> tensordotRz_result; /**< */
   Vector<Scalar> tensordotRz_btheta; /**< */
@@ -291,11 +290,11 @@ class Wigner {
   Scalar dotR_bx, dotR_by, dotR_bz, dotR_btheta; /**< */
   Matrix<Scalar> dotR_bM;                        /**< */
 
-  Wigner(int ydeg, int udeg, int fdeg) :
-      ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
-      fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
-      N((deg + 1) * (deg + 1)), theta_Rz_cache(0), x_cache(NAN), y_cache(NAN),
-      z_cache(NAN), theta_cache(NAN) {
+  Wigner(int ydeg, int udeg, int fdeg)
+      : ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
+        fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
+        N((deg + 1) * (deg + 1)), theta_Rz_cache(0), x_cache(NAN), y_cache(NAN),
+        z_cache(NAN), theta_cache(NAN) {
     // Allocate the Wigner matrices
     D.resize(ydeg + 1);
     R.resize(ydeg + 1);
@@ -361,20 +360,20 @@ class Wigner {
 
     if ((RA22.value() < Scalar(-1.0) + tol) &&
         (RA22.value() > Scalar(-1.0) - tol)) {
-      cosbeta = RA22;                // = -1
-      sinbeta = Scalar(1.0) + RA22;  // = 0
+      cosbeta = RA22;               // = -1
+      sinbeta = Scalar(1.0) + RA22; // = 0
       cosgamma = RA11;
       singamma = RA01;
-      cosalpha = -RA22;               // = 1
-      sinalpha = Scalar(1.0) + RA22;  // = 0
+      cosalpha = -RA22;              // = 1
+      sinalpha = Scalar(1.0) + RA22; // = 0
     } else if ((RA22.value() < Scalar(1.0) + tol) &&
                (RA22.value() > Scalar(1.0) - tol)) {
-      cosbeta = RA22;                // = 1
-      sinbeta = Scalar(1.0) - RA22;  // = 0
+      cosbeta = RA22;               // = 1
+      sinbeta = Scalar(1.0) - RA22; // = 0
       cosgamma = RA11;
       singamma = -RA01;
-      cosalpha = RA22;                // = 1
-      sinalpha = Scalar(1.0) - RA22;  // = 0
+      cosalpha = RA22;               // = 1
+      sinalpha = Scalar(1.0) - RA22; // = 0
     } else {
       ADType norm1, norm2;
       cosbeta = RA22;
@@ -474,7 +473,8 @@ class Wigner {
 
     // Init result
     dotR_result.resize(npts, Ny);
-    if (unlikely(npts == 0)) return;
+    if (unlikely(npts == 0))
+      return;
 
     // Dot them in
     for (int l = 0; l < ydeg + 1; ++l) {
@@ -503,7 +503,8 @@ class Wigner {
     dotR_bz = 0.0;
     dotR_btheta = 0.0;
     dotR_bM.setZero(npts, Ny);
-    if (unlikely(npts == 0)) return;
+    if (unlikely(npts == 0))
+      return;
 
     // Dot them in
     // TODO: There must be a more efficient way of doing this.
@@ -545,7 +546,8 @@ class Wigner {
 
     // Init result
     tensordotRz_result.resize(npts, Nr);
-    if (unlikely(npts == 0)) return;
+    if (unlikely(npts == 0))
+      return;
 
     // Dot them in
     for (int l = 0; l < degr + 1; ++l) {
@@ -581,7 +583,8 @@ class Wigner {
     // Init grads
     tensordotRz_btheta.setZero(npts);
     tensordotRz_bM.setZero(M.rows(), Nr);
-    if (unlikely((npts == 0) || (M.rows() == 0))) return;
+    if (unlikely((npts == 0) || (M.rows() == 0)))
+      return;
 
     // Dot the sines and cosines in
     for (int l = 0; l < degr + 1; ++l) {
@@ -613,7 +616,7 @@ class Wigner {
   }
 };
 
-}  // namespace wigner
-}  // namespace starry
+} // namespace wigner
+} // namespace starry
 
 #endif
