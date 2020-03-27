@@ -316,14 +316,22 @@ inline Vector<T> J(const int nmax, const T &k2, const T &km2,
                    const Vector<T> &s2, const Vector<T> &c1,
                    const Vector<T> &q2, const T &F, const T &E) {
 
-  // Boundary conditions
+  // Useful variables
   size_t K = kappa.size();
   Vector<T> z(K);
   Vector<T> sqrtq2(K);
   sqrtq2.array() = (q2.array() > 0).select(sqrt(q2.array()), 0.0);
   z.array() = s1.array() * c1.array() * sqrtq2.array();
-  T resid = km2 * pairdiff(z);
-  T f0 = (1.0 / 3.0) * (2 * (2 - km2) * E + (km2 - 1) * F + resid);
+
+#if (STARRY_USE_INCOMPLETE_INTEGRALS)
+  // Lower boundary: analytic
+  T f0 = (1.0 / 3.0) * (2 * (2 - km2) * E + (km2 - 1) * F + km2 * pairdiff(z));
+#else
+  // Lower boundary: numerical
+  T f0 = J_numerical(0, k2, kappa);
+#endif
+
+  // Upper boundary
   T fN = J_numerical(nmax, k2, kappa);
 
   // Set up the tridiagonal problem
@@ -388,6 +396,8 @@ inline T L(Vieta<T> &A, const Vector<T> &J, const int u, const int v,
 
 /**
     Compute the helper integral H.
+    The forward derivatives are used in the recursion, so we compute them
+   manually.
 
 */
 template <typename T, int N>
@@ -752,8 +762,6 @@ inline void computeP(const int ydeg, const T &bo_, const T &ro_,
   for (int i = 1; i < ydeg + 4; ++i) {
     tworo(i) = tworo(i - 1) * 2 * ro;
   }
-
-  // TODO: Instantiate this in the parent scope
   Vieta<T> A(ydeg);
 
   // Pre-compute the helper integrals
@@ -770,16 +778,24 @@ inline void computeP(const int ydeg, const T &bo_, const T &ro_,
   Vector<T> WIntegral = W(ydeg, s2, q2, q3);
   A.reset(delta);
 
-  // Compute the elliptic integrals
+// Compute the elliptic integrals?
+#if (STARRY_USE_INCOMPLETE_INTEGRALS)
   auto integrals =
       IncompleteEllipticIntegrals<typename T::Scalar>(bo, ro, kappa);
+  T F = integrals.F;
+  T E = integrals.E;
+  T PIp = integrals.PIp;
+#else
+  T F = 0;
+  T E = 0;
+  T PIp = 0;
+#endif
 
   // Compute J
   Vector<T> JIntegral;
   if (km2 > 0.0) {
     // Compute by recursion
-    JIntegral =
-        J(ydeg + 1, k2, km2, kappa, s1, s2, c1, q2, integrals.F, integrals.E);
+    JIntegral = J(ydeg + 1, k2, km2, kappa, s1, s2, c1, q2, F, E);
   } else {
     // Special limit, k2 -> inf
     JIntegral = IIntegral.head(ydeg + 2);
@@ -804,8 +820,7 @@ inline void computeP(const int ydeg, const T &bo_, const T &ro_,
         if (l == 1) {
 
           // CASE 2: Same as in starry, but using expression from Pal (2012)
-          P(2) = P2(bo, ro, k2, kappa, s1, s2, c1, integrals.F, integrals.E,
-                    integrals.PIp);
+          P(2) = P2(bo, ro, k2, kappa, s1, s2, c1, F, E, PIp);
 
         } else if (is_even(l)) {
 
@@ -854,8 +869,7 @@ inline void computeP(const int ydeg, const T &bo_, const T &ro_,
           int u = int((mu + 4.0) / 4.0);
           int v = int(nu / 2.0);
           for (int i = 0; i < u + v + 1; ++i) {
-            res += A(u, v)(i) *
-                   UIntegral(2 * (u + i) + 1); // TODO: write as dot product
+            res += A(u, v)(i) * UIntegral(2 * (u + i) + 1);
           }
           P(n) = 2 * tworo(l + 2) * res;
 

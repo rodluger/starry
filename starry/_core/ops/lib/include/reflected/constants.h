@@ -7,6 +7,29 @@
 #ifndef _STARRY_REFLECTED_CONSTANTS_H_
 #define _STARRY_REFLECTED_CONSTANTS_H_
 
+// --------------------------
+// ------ User-tunable ------
+// --------------------------
+
+//! Use the incomplete elliptic integrals to compute P?
+#ifndef STARRY_USE_INCOMPLETE_INTEGRALS
+#define STARRY_USE_INCOMPLETE_INTEGRALS 0
+#endif
+
+//! Number of Gaussian-Legendre quadrature points for numerical integration
+#ifndef STARRY_QUAD_POINTS
+#define STARRY_QUAD_POINTS 100
+#endif
+
+//! Maximum number of iterations when computing `el2`
+#ifndef STARRY_EL2_MAX_ITER
+#define STARRY_EL2_MAX_ITER 100
+#endif
+
+// --------------------------
+// ---------- Fixed ---------
+// --------------------------
+
 // Integration codes
 #define FLUX_ZERO 0
 #define FLUX_DAY_OCC 1
@@ -21,15 +44,6 @@
 #define FLUX_QUAD_DAY_VIS 10
 #define FLUX_QUAD_NIGHT_VIS 11
 #define FLUX_NOON 12
-
-// Maximum number of iterations when computing `el2` and `rj`
-#define STARRY_EL2_MAX_ITER 100
-#define STARRY_CRJ_MAX_ITER 100
-
-// Tolerances in `rj`
-#define STARRY_CRJ_LO_LIM 2e-26
-#define STARRY_CRJ_HI_LIM 3e24
-#define STARRY_CRJ_TOL 2e-2
 
 // Maximum number of iterations & tolerance when computing 2F1
 #define STARRY_2F1_MAXITER 200
@@ -85,13 +99,13 @@ these singular points.
 #define STARRY_NO_OCC_TOL 1e-8
 #define STARRY_GRAZING_TOL 1e-7
 
-// Tolerance for the Pal (2012) solver, which is very unstable
+// Tolerances for the Pal (2012) solver, which is very unstable
+#define STARRY_CRJ_MAX_ITER 100
+#define STARRY_CRJ_LO_LIM 2e-26
+#define STARRY_CRJ_HI_LIM 3e24
+#define STARRY_CRJ_TOL 2e-2
 #define STARRY_PAL_BO_EQUALS_RO_TOL 1e-3
 #define STARRY_PAL_BO_EQUALS_RO_MINUS_ONE_TOL 1e-3
 #define STARRY_PAL_BO_EQUALS_ONE_MINUS_RO_TOL 1e-3
-
-// Number of Gaussian-Legendre quadrature points for numerical integration
-// TODO: Implement dynamic quadrature!
-#define STARRY_QUAD_POINTS 100
 
 #endif

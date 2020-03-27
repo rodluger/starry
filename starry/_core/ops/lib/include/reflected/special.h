@@ -154,6 +154,16 @@ inline T P2(const T &bo, const T &ro, const T &k2, const Vector<T> &kappa,
             const Vector<T> &s1, const Vector<T> &s2, const Vector<T> &c1,
             const T &F, const T &E, const T &PIp) {
 
+#if (!STARRY_USE_INCOMPLETE_INTEGRALS)
+
+  // Compute this integral numerically
+  return P2_numerical(bo, ro, kappa);
+
+#else
+
+  // Use the formula from Pal (2012). Not significantly
+  // faster and not numerically stable in general.
+
   // Useful variables
   size_t K = kappa.size();
   T r2 = ro * ro;
@@ -223,15 +233,13 @@ inline T P2(const T &bo, const T &ro, const T &k2, const Vector<T> &kappa,
   T D = -(2.0 / 3.0) * fac / d2 * term * br;
 
   return (A + B * F + C * E + D * PIp) / 3.0;
+
+#endif
 }
 
 /**
   Integrand of the J_N term, for numerical integration.
 
-  TODO: (IMPORANT!) Verify how often we're integrating across the
-        region where the real part of the integrand is
-        zero. We should split this into two separate
-        integrals to get better performance in the quadrature!
 */
 template <typename T>
 inline T J_integrand(const int N, const T &k2, const T &phi) {
@@ -257,7 +265,6 @@ inline T dJdk2_integrand(const int N, const T &k2, const T &phi) {
 }
 
 /**
-  The J helper integral evaluated numerically. The expression for the terms in
   J is analytic from recursion relations, but gets unstable for high `n`. We
   evaluate J for `n = 0` (analytically) `n = nmax` (numerically) and solve the
   problem with a forward & backward pass to improve numerical stability.

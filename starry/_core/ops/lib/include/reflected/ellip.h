@@ -473,10 +473,6 @@ protected:
           derivative of this integral. The RJ function is already numerically
           unstable, so autodiffing it is a **terrible** idea.
 
-    TODO: Code up the `el3` function from Bulirsch (1969), which is likely
-          *way* more stable, then code up its analytic derivatives. This won't
-          be fun, but I think it's necessary.
-
   */
   inline void compute_PIp() {
 
@@ -577,17 +573,14 @@ public:
           0.5 / k2.value() * (E0.value() - F0.value()) * k2.derivatives();
 
       // Third kind
-      // NOTE: I don't think this offset term is needed when k2 < 1. PIp0 only
-      // comes
-      // into play if successive terms in kappa span either side of the
-      // discontinuities
-      // at kappa = pi and kappa = 3 pi (otherwise, the PIp0 terms cancel).
+      // NOTE: I don't think this offset term is needed when k2 < 1.
+      // PIp0 only comes into play if successive terms in kappa span either
+      // side of the discontinuities at kappa = pi and kappa = 3 pi
+      // (otherwise, the PIp0 terms cancel).
       // In any event, our expression for P2 isn't even valid in these cases, as
-      // it
-      // disagrees with numerical integration. We should investigate this, but I
-      // suspect
-      // we can just set PIp0 to zero here and skip all the overhead with no
-      // adverse effects.
+      // it disagrees with numerical integration. We should investigate this,
+      // but I suspect we can just set PIp0 to zero here and skip all the
+      // overhead with no adverse effects.
       // if (bo != ro)
       //    PIp0 = -4 * k2 * k * rj(0.0, 1 - k2, 1.0, 1.0 / ((ro - bo) * (ro -
       //    bo)));
@@ -629,8 +622,10 @@ public:
       }
     }
 
-    // Compute
+    // First and second kinds
     compute_FE();
+
+    // Third kind
     compute_PIp();
   }
 };
