@@ -7,9 +7,9 @@
 #ifndef _STARRY_REFLECTED_SPECIAL_H_
 #define _STARRY_REFLECTED_SPECIAL_H_
 
+#include "../quad.h"
 #include "../utils.h"
 #include "constants.h"
-#include "quad.h"
 
 namespace starry {
 namespace reflected {
@@ -103,7 +103,8 @@ inline T dP2dro_integrand(const T &bo, const T &ro, const T &phi) {
 
 */
 template <typename T>
-inline T P2_numerical(const T &bo, const T &ro, const Vector<T> &kappa) {
+inline T P2_numerical(const T &bo, const T &ro, const Vector<T> &kappa,
+                      Quad<typename T::Scalar> &QUAD) {
 
   using Scalar = typename T::Scalar;
   size_t K = kappa.size();
@@ -152,12 +153,13 @@ inline T P2_numerical(const T &bo, const T &ro, const Vector<T> &kappa) {
 template <typename T>
 inline T P2(const T &bo, const T &ro, const T &k2, const Vector<T> &kappa,
             const Vector<T> &s1, const Vector<T> &s2, const Vector<T> &c1,
-            const T &F, const T &E, const T &PIp) {
+            const T &F, const T &E, const T &PIp,
+            Quad<typename T::Scalar> &QUAD) {
 
 #if (!STARRY_USE_INCOMPLETE_INTEGRALS)
 
   // Compute this integral numerically
-  return P2_numerical(bo, ro, kappa);
+  return P2_numerical(bo, ro, kappa, QUAD);
 
 #else
 
@@ -189,17 +191,17 @@ inline T P2(const T &bo, const T &ro, const T &k2, const Vector<T> &kappa,
   } else if (abs(bo - ro) < STARRY_PAL_BO_EQUALS_RO_TOL) {
 
     // Solve numerically
-    return P2_numerical(bo, ro, kappa);
+    return P2_numerical(bo, ro, kappa, QUAD);
 
   } else if (abs(bo - (ro - 1)) < STARRY_PAL_BO_EQUALS_RO_MINUS_ONE_TOL) {
 
     // Solve numerically
-    return P2_numerical(bo, ro, kappa);
+    return P2_numerical(bo, ro, kappa, QUAD);
 
   } else if (abs(bo - (1 - ro)) < STARRY_PAL_BO_EQUALS_ONE_MINUS_RO_TOL) {
 
     // Solve numerically
-    return P2_numerical(bo, ro, kappa);
+    return P2_numerical(bo, ro, kappa, QUAD);
   }
 
   // Constant term
@@ -271,7 +273,8 @@ inline T dJdk2_integrand(const int N, const T &k2, const T &phi) {
 
 */
 template <typename T>
-inline T J_numerical(const int N, const T &k2, const Vector<T> &kappa) {
+inline T J_numerical(const int N, const T &k2, const Vector<T> &kappa,
+                     Quad<typename T::Scalar> &QUAD) {
 
   using Scalar = typename T::Scalar;
   size_t K = kappa.size();
@@ -370,7 +373,8 @@ template <typename T> inline T I_integrand(const int N, const T &phi) {
 
 */
 template <typename T>
-inline T I_numerical(const int N, const Vector<T> &kappa) {
+inline T I_numerical(const int N, const Vector<T> &kappa,
+                     Quad<typename T::Scalar> &QUAD) {
 
   using Scalar = typename T::Scalar;
   size_t K = kappa.size();

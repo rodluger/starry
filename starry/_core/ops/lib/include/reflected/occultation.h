@@ -9,6 +9,7 @@ light).
 #ifndef _STARRY_REFLECTED_OCCULTATION_H_
 #define _STARRY_REFLECTED_OCCULTATION_H_
 
+#include "../quad.h"
 #include "../solver.h"
 #include "../utils.h"
 #include "constants.h"
@@ -58,6 +59,9 @@ protected:
   // Helper solvers
   phasecurve::PhaseCurve<T> R;
   solver::Solver<T, true> G;
+
+  // Numerical integration
+  quad::Quad<Scalar> QUAD;
 
   /**
 
@@ -206,7 +210,7 @@ protected:
   }
 
   /**
-
+   *
   */
   inline RowVector<T> sTr(const T &b, const T &theta) {
 
@@ -331,7 +335,7 @@ public:
       // elliptic integrals.
 
       // Compute the primitive integrals
-      computeP(deg + 1, bo, ro, kappa, PIntegral);
+      computeP(deg + 1, bo, ro, kappa, PIntegral, QUAD);
       computeQ(deg + 1, lam, QIntegral);
       computeT(deg + 1, b, theta, xi, TIntegral);
       PQT = (PIntegral + QIntegral + TIntegral).transpose();

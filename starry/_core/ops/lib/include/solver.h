@@ -11,15 +11,51 @@ harmonic map during a single-body occultation using Green's theorem.
 #define _STARRY_SOLVER_H_
 
 #include "ellip.h"
+#include "quad.h"
 #include "utils.h"
 
 namespace starry {
 namespace solver {
 
 using namespace starry::utils;
+using namespace starry::quad;
+
+template <class T>
+inline T K_integrand(const int u, const int v, const T &delta, const T &phi) {
+  T s2 = sin(phi);
+  s2 *= s2;
+  return pow(s2 * (1 - s2), u) * pow(delta + s2, v);
+}
+
+template <class T>
+inline T K_numerical(const int u, const int v, const T &delta, const T &kappa,
+                     Quad<T> &QUAD) {
+  std::function<T(T)> f = [u, v, delta](T phi) {
+    return K_integrand(u, v, delta, phi);
+  };
+  return QUAD.integrate(-0.5 * kappa, 0.5 * kappa, f);
+}
+
+template <class T>
+inline T L_integrand(const int u, const int v, const int t, const T &delta,
+                     const T &ksq, const T &phi) {
+  T s2 = sin(phi);
+  s2 *= s2;
+  T term = pow(1 - s2 / ksq, 1.5);
+  return pow(s2, t) * pow(s2 * (1 - s2), u) * pow(delta + s2, v) * term;
+}
+
+template <class T>
+inline T L_numerical(const int u, const int v, const int t, const T &delta,
+                     const T &kappa, const T &ksq, Quad<T> &QUAD) {
+  std::function<T(T)> f = [u, v, t, delta, ksq](T phi) {
+    return L_integrand(u, v, t, delta, ksq, phi);
+  };
+  return QUAD.integrate(-0.5 * kappa, 0.5 * kappa, f);
+}
 
 /**
-Vieta's theorem coefficient A_{i,u,v}
+  Vieta's theorem coefficient A_{i,u,v}
 
 */
 template <class T> class Vieta {
@@ -477,6 +513,7 @@ public:
   // Variables
   T b;
   T r;
+  T delta;
   T k;
   T ksq;
   T kc;
@@ -508,6 +545,9 @@ public:
   Vector<T> I;
   Vector<T> IGamma;
   Vector<T> J;
+
+  // Numerical integration
+  Quad<T> QUAD;
 
   // The solution vector
   RowVector<T> sT;
@@ -591,7 +631,7 @@ public:
     // or so. Therefore we force the series evaluation every
     // `STARRY_REFINE_J_AT` indices by including the indices in
     // this vector.
-    for (int v = jvmax > 1 ? jvmax : 1; v >= 0; v -= STARRY_REFINE_J_AT) {
+    for (int v = jvmax > 1 ? jvmax : 1; v >= 1; v -= STARRY_REFINE_J_AT) {
       jvseries.push_back(v);
     }
 
@@ -758,6 +798,17 @@ public:
 
   */
   inline T K(int u, int v) {
+
+#ifdef STARRY_DEBUG
+    // HACK: Fix numerical instabilities at high l
+    if (lmax > 15) {
+      if (ksq >= 1)
+        return K_numerical(u, v, delta, pi<T>(), QUAD);
+      else
+        return K_numerical(u, v, delta, kap0, QUAD);
+    }
+#endif
+
     if (ksq >= 1)
       return A(u, v).dot(IGamma.segment(u, u + v + 1));
     else
@@ -769,6 +820,17 @@ public:
 
   */
   inline T L(int u, int v, int t) {
+
+#ifdef STARRY_DEBUG
+    // HACK: Fix numerical instabilities at high l
+    if (lmax > 15) {
+      if (ksq >= 1)
+        return L_numerical(u, v, t, delta, pi<T>(), ksq, QUAD);
+      else
+        return L_numerical(u, v, t, delta, kap0, ksq, QUAD);
+    }
+#endif
+
     return A(u, v).dot(J.segment(u + t, u + v + 1));
   }
 
@@ -871,8 +933,8 @@ public:
     // Some useful quantities
     T twor = 2 * r;
     T bmr = b - r;
-    T delta = 0.5 * bmr * invr;
     T tworlp2 = twor * twor * twor;
+    delta = 0.5 * bmr * invr;
 
     // Compute the constant term
     computeS0();

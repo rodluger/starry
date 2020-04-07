@@ -90,7 +90,7 @@ def has_flag(compiler, flagname):
     with tempfile.NamedTemporaryFile("w", suffix=".cpp") as f:
         f.write("int main (int argc, char **argv) { return 0; }")
         try:
-            compiler.compile([f.name], extra_postargs=[flagname])
+            compiler.compile([f.name], extra_postargs=["-w", flagname])
         except setuptools.distutils.errors.CompileError:
             return False
     return True
@@ -108,7 +108,7 @@ def cpp_flag(compiler):
             return flag
 
     raise RuntimeError(
-        "Unsupported compiler -- at least C++11 support " "is needed!"
+        "Unsupported compiler -- at least C++11 support is needed!"
     )
 
 
@@ -132,17 +132,23 @@ class BuildExt(build_ext):
                 '-DVERSION_INFO="%s"' % self.distribution.get_version()
             )
             opts.append(cpp_flag(self.compiler))
-            if has_flag(self.compiler, "-fvisibility=hidden"):
-                opts.append("-fvisibility=hidden")
             if has_flag(self.compiler, "-fcolor-diagnostics"):
                 opts.append("-fcolor-diagnostics")
         elif ct == "msvc":
             opts.append(
                 '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()
             )
+        extra_args = ["-O%d" % optimize]
+        if debug:
+            extra_args += ["-g", "-Wall", "-fno-lto"]
+        else:
+            if has_flag(self.compiler, "-fvisibility=hidden"):
+                opts.append("-fvisibility=hidden")
+            extra_args += ["-g0"]
         for ext in self.extensions:
-            ext.extra_compile_args = opts
-            ext.extra_link_args = link_opts
+            ext.extra_compile_args = opts + extra_args
+            ext.extra_link_args = link_opts + extra_args
+
         build_ext.build_extensions(self)
 
 

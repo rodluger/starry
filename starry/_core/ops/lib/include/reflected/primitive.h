@@ -19,6 +19,7 @@ namespace primitive {
 using namespace utils;
 using namespace special;
 using namespace ellip;
+using namespace quad;
 
 /**
     Vieta's theorem coefficient A_{i,u,v}
@@ -151,7 +152,8 @@ template <typename T> inline Vector<T> U(const int vmax, const Vector<T> &s1) {
 */
 template <typename T>
 inline Vector<T> I(const int nmax, const Vector<T> &kappa_,
-                   const Vector<T> &s1_, const Vector<T> &c1_) {
+                   const Vector<T> &s1_, const Vector<T> &c1_,
+                   Quad<typename T::Scalar> &QUAD) {
   Vector<T> result(nmax + 1);
   result.setZero();
   Vector<T> indef(nmax + 1);
@@ -195,7 +197,7 @@ inline Vector<T> I(const int nmax, const Vector<T> &kappa_,
       }
 
       // Evaluate numerically
-      indef(nmax) = I_numerical(nmax, kappa);
+      indef(nmax) = I_numerical(nmax, kappa, QUAD);
 
       // Recurse down
       for (int v = nmax - 1; v > -1; --v) {
@@ -311,10 +313,10 @@ inline Vector<T> W(const int nmax, const Vector<T> &s2, const Vector<T> &q2,
 
 */
 template <typename T>
-inline Vector<T> J(const int nmax, const T &k2, const T &km2,
-                   const Vector<T> &kappa, const Vector<T> &s1,
-                   const Vector<T> &s2, const Vector<T> &c1,
-                   const Vector<T> &q2, const T &F, const T &E) {
+inline Vector<T>
+J(const int nmax, const T &k2, const T &km2, const Vector<T> &kappa,
+  const Vector<T> &s1, const Vector<T> &s2, const Vector<T> &c1,
+  const Vector<T> &q2, const T &F, const T &E, Quad<typename T::Scalar> &QUAD) {
 
   // Useful variables
   size_t K = kappa.size();
@@ -328,11 +330,11 @@ inline Vector<T> J(const int nmax, const T &k2, const T &km2,
   T f0 = (1.0 / 3.0) * (2 * (2 - km2) * E + (km2 - 1) * F + km2 * pairdiff(z));
 #else
   // Lower boundary: numerical
-  T f0 = J_numerical(0, k2, kappa);
+  T f0 = J_numerical(0, k2, kappa, QUAD);
 #endif
 
   // Upper boundary
-  T fN = J_numerical(nmax, k2, kappa);
+  T fN = J_numerical(nmax, k2, kappa, QUAD);
 
   // Set up the tridiagonal problem
   Vector<T> a(nmax - 1), b(nmax - 1), c(nmax - 1);
@@ -737,7 +739,8 @@ inline void computeQ(const int ydeg, const Vector<T> &lam, Vector<T> &Q) {
 */
 template <typename T>
 inline void computeP(const int ydeg, const T &bo_, const T &ro_,
-                     const Vector<T> &kappa, Vector<T> &P) {
+                     const Vector<T> &kappa, Vector<T> &P,
+                     Quad<typename T::Scalar> &QUAD) {
 
   // Check for trivial result
   P.resize((ydeg + 1) * (ydeg + 1));
@@ -774,7 +777,7 @@ inline void computeP(const int ydeg, const T &bo_, const T &ro_,
   q2.array() = (s2.array() * km2 < 1.0).select(1.0 - s2.array() * km2, 0.0);
   q3.array() = (q2.array() > 0).select(q2.array() * sqrt(q2.array()), 0.0);
   Vector<T> UIntegral = U(2 * ydeg + 5, s1);
-  Vector<T> IIntegral = I(ydeg + 3, kappa, s1, c1);
+  Vector<T> IIntegral = I(ydeg + 3, kappa, s1, c1, QUAD);
   Vector<T> WIntegral = W(ydeg, s2, q2, q3);
   A.reset(delta);
 
@@ -795,7 +798,7 @@ inline void computeP(const int ydeg, const T &bo_, const T &ro_,
   Vector<T> JIntegral;
   if (km2 > 0.0) {
     // Compute by recursion
-    JIntegral = J(ydeg + 1, k2, km2, kappa, s1, s2, c1, q2, F, E);
+    JIntegral = J(ydeg + 1, k2, km2, kappa, s1, s2, c1, q2, F, E, QUAD);
   } else {
     // Special limit, k2 -> inf
     JIntegral = IIntegral.head(ydeg + 2);
@@ -820,7 +823,7 @@ inline void computeP(const int ydeg, const T &bo_, const T &ro_,
         if (l == 1) {
 
           // CASE 2: Same as in starry, but using expression from Pal (2012)
-          P(2) = P2(bo, ro, k2, kappa, s1, s2, c1, F, E, PIp);
+          P(2) = P2(bo, ro, k2, kappa, s1, s2, c1, F, E, PIp, QUAD);
 
         } else if (is_even(l)) {
 

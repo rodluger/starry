@@ -16,11 +16,6 @@
 #define STARRY_USE_INCOMPLETE_INTEGRALS 0
 #endif
 
-//! Number of Gaussian-Legendre quadrature points for numerical integration
-#ifndef STARRY_QUAD_POINTS
-#define STARRY_QUAD_POINTS 100
-#endif
-
 //! Maximum number of iterations when computing `el2`
 #ifndef STARRY_EL2_MAX_ITER
 #define STARRY_EL2_MAX_ITER 100

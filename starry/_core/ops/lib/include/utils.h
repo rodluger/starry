@@ -46,6 +46,11 @@ typedef void Multi;
 //! Compiler branching optimization: unlikely branch
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
+//! Number of Gaussian-Legendre quadrature points for numerical integration
+#ifndef STARRY_QUAD_POINTS
+#define STARRY_QUAD_POINTS 100
+#endif
+
 //! Max iterations in elliptic integrals
 #ifndef STARRY_ELLIP_MAX_ITER
 #define STARRY_ELLIP_MAX_ITER 200
