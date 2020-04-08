@@ -158,6 +158,8 @@ setup(
     author_email="rodluger@gmail.com",
     url="https://github.com/rodluger/starry",
     description="Analytic occultation light curves for astronomy.",
+    long_description=open("README.md", "r").read(),
+    long_description_content_type="text/markdown",
     license="MIT",
     packages=find_packages(),
     ext_modules=ext_modules,
