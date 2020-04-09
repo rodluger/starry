@@ -115,20 +115,18 @@ public:
 
     Given s1 = sin(0.5 * kappa), compute the integral of
 
-        cos(x) sin^v(x)
+        cos(x) sin^{2v + 1}(x)
 
     from 0.5 * kappa1 to 0.5 * kappa2 recursively and return an array
     containing the values of this function from v = 0 to v = vmax.
 
 */
-template <typename T> inline Vector<T> U(const int vmax, const Vector<T> &s1) {
+template <typename T> inline Vector<T> U(const int vmax, const Vector<T> &s2) {
   Vector<T> result(vmax + 1);
-  result(0) = pairdiff(s1);
-  Vector<T> term(s1.size());
-  term.array() = s1.array() * s1.array();
-  for (int v = 1; v < vmax + 1; ++v) {
-    result(v) = pairdiff(term) / (v + 1);
-    term.array() *= s1.array();
+  Vector<T> term = s2;
+  for (int v = 0; v < vmax + 1; ++v) {
+    result(v) = pairdiff(term) / (2 * v + 2);
+    term.array() *= s2.array();
   }
   return result;
 }
@@ -776,7 +774,7 @@ inline void computeP(const int ydeg, const T &bo_, const T &ro_,
   c1.array() = cos(x.array());
   q2.array() = (s2.array() * km2 < 1.0).select(1.0 - s2.array() * km2, 0.0);
   q3.array() = (q2.array() > 0).select(q2.array() * sqrt(q2.array()), 0.0);
-  Vector<T> UIntegral = U(2 * ydeg + 5, s1);
+  Vector<T> UIntegral = U(ydeg + 2, s2);
   Vector<T> IIntegral = I(ydeg + 3, kappa, s1, c1, QUAD);
   Vector<T> WIntegral = W(ydeg, s2, q2, q3);
   A.reset(delta);
@@ -868,12 +866,9 @@ inline void computeP(const int ydeg, const T &bo_, const T &ro_,
         if (is_even(nu)) {
 
           // CASE 6
-          T res = 0;
           int u = int((mu + 4.0) / 4.0);
           int v = int(nu / 2.0);
-          for (int i = 0; i < u + v + 1; ++i) {
-            res += A(u, v)(i) * UIntegral(2 * (u + i) + 1);
-          }
+          T res = A(u, v).dot(UIntegral.segment(u, u + v + 1));
           P(n) = 2 * tworo(l + 2) * res;
 
         } else {
