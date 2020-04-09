@@ -830,7 +830,7 @@ class System(object):
             self._primary._prot,
             self._primary._t0,
             self._primary._theta0,
-            math.ones_like(self._primary._map._amp),
+            math.to_array_or_tensor(1.0),
             self._primary._map._inc,
             self._primary._map._obl,
             self._primary._map._u,
@@ -849,7 +849,7 @@ class System(object):
             math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
             math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
             math.to_array_or_tensor(
-                [math.ones_like(sec._map._amp) for sec in self._secondaries]
+                [math.to_array_or_tensor(1.0) for sec in self._secondaries]
             ),
             math.to_array_or_tensor(
                 [sec._map._inc for sec in self._secondaries]
