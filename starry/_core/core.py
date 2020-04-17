@@ -1326,6 +1326,7 @@ class OpsSystem(object):
 
         # Compute occultations by the primary
         for i, sec in enumerate(self.secondaries):
+
             xo = -x[:, i] / sec_r[i]
             yo = -y[:, i] / sec_r[i]
             zo = -z[:, i] / sec_r[i]
@@ -1343,9 +1344,9 @@ class OpsSystem(object):
                     * sec_L[i]
                     * sec.map.ops.X(
                         theta_sec[i, idx],
-                        xo[idx],  # the primary is both the source...
-                        yo[idx],
-                        zo[idx],
+                        -x[idx, i],  # the primary is both the source...
+                        -y[idx, i],
+                        -z[idx, i],
                         xo[idx],  # ... and the occultor
                         yo[idx],
                         zo[idx],
