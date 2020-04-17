@@ -1774,15 +1774,17 @@ class ReflectedBase(object):
         xs = kwargs.pop("xs", 0.0)
         ys = kwargs.pop("ys", 0.0)
         zs = kwargs.pop("zs", 1.0)
+        Rs = kwargs.pop("rs", 0.0)
+        RsN = int(kwargs.pop("npts", 1))
         theta = kwargs.pop("theta", 0.0)
         theta, xs, ys, zs, xo, yo, zo = math.vectorize(
             theta, xs, ys, zs, xo, yo, zo
         )
-        theta, xs, ys, zs, xo, yo, zo, ro = math.cast(
-            theta, xs, ys, zs, xo, yo, zo, ro
+        theta, xs, ys, zs, xo, yo, zo, ro, Rs = math.cast(
+            theta, xs, ys, zs, xo, yo, zo, ro, Rs
         )
         theta *= self._angle_factor
-        return theta, xs, ys, zs, xo, yo, zo, ro
+        return theta, xs, ys, zs, Rs, RsN, xo, yo, zo, ro
 
     def design_matrix(self, **kwargs):
         r"""
@@ -1799,6 +1801,8 @@ class ReflectedBase(object):
                 source relative to this body in units of this body's radius.
             zs (scalar or vector, optional): z coordinate of the illumination
                 source relative to this body in units of this body's radius.
+            rs (scalar, optional): radius of the illumination source in units
+                of this body's radius.
             xo (scalar or vector, optional): x coordinate of the occultor
                 relative to this body in units of this body's radius.
             yo (scalar or vector, optional): y coordinate of the occultor
@@ -1809,13 +1813,17 @@ class ReflectedBase(object):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
+            npts (int, optional): Number of points used to approximate the
+                finite source size when `rs > 0`.
 
         .. note::
             ``starry`` does not yet support occultations in reflected light.
 
         """
         # Orbital kwargs
-        theta, xs, ys, zs, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
+        theta, xs, ys, zs, Rs, RsN, xo, yo, zo, ro = self._get_flux_kwargs(
+            kwargs
+        )
 
         # Check for invalid kwargs
         self._check_kwargs("X", kwargs)
@@ -1826,6 +1834,8 @@ class ReflectedBase(object):
             xs,
             ys,
             zs,
+            Rs,
+            RsN,
             xo,
             yo,
             zo,
@@ -1848,6 +1858,8 @@ class ReflectedBase(object):
                 source relative to this body in units of this body's radius.
             zs (scalar or vector, optional): z coordinate of the illumination
                 source relative to this body in units of this body's radius.
+            rs (scalar, optional): radius of the illumination source in units
+                of this body's radius.
             xo (scalar or vector, optional): x coordinate of the occultor
                 relative to this body in units of this body's radius.
             yo (scalar or vector, optional): y coordinate of the occultor
@@ -1858,13 +1870,17 @@ class ReflectedBase(object):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
+            npts (int, optional): Number of points used to approximate the
+                finite source size when `rs > 0`.
 
         .. note::
             ``starry`` does not yet support occultations in reflected light.
 
         """
         # Orbital kwargs
-        theta, xs, ys, zs, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
+        theta, xs, ys, zs, Rs, RsN, xo, yo, zo, ro = self._get_flux_kwargs(
+            kwargs
+        )
 
         # Check for invalid kwargs
         self._check_kwargs("flux", kwargs)
@@ -1875,6 +1891,8 @@ class ReflectedBase(object):
             xs,
             ys,
             zs,
+            Rs,
+            RsN,
             xo,
             yo,
             zo,
@@ -1887,7 +1905,9 @@ class ReflectedBase(object):
             self._alpha,
         )
 
-    def intensity(self, lat=0, lon=0, xs=0, ys=0, zs=1, **kwargs):
+    def intensity(
+        self, lat=0, lon=0, xs=0, ys=0, zs=1, rs=0, npts=1, **kwargs
+    ):
         """
         Compute and return the intensity of the map.
 
@@ -1902,11 +1922,15 @@ class ReflectedBase(object):
                 source relative to this body in units of this body's radius.
             zs (scalar or vector, optional): z coordinate of the illumination
                 source relative to this body in units of this body's radius.
+            rs (scalar, optional): radius of the illumination source in units
+                of this body's radius.
             theta (scalar, optional): For differentially rotating maps only,
                 the angular phase at which to evaluate the intensity.
                 Default 0.
             limbdarken (bool, optional): Apply limb darkening
                 (only if :py:attr:`udeg` > 0)? Default True.
+            npts (int, optional): Number of points used to approximate the
+                finite source size when `rs > 0`.
         """
         # Get the Cartesian points
         lat, lon = math.vectorize(*math.cast(lat, lon))
@@ -1915,6 +1939,8 @@ class ReflectedBase(object):
 
         # Get the source position
         xs, ys, zs = math.vectorize(*math.cast(xs, ys, zs))
+        Rs = math.cast(rs)
+        RsN = int(npts)
 
         # Get the amplitude
         if self.nw is None or config.lazy:
@@ -1940,7 +1966,18 @@ class ReflectedBase(object):
 
         # Compute & return
         return amp * self.ops.intensity(
-            lat, lon, self._y, self._u, self._f, xs, ys, zs, alpha_theta, ld
+            lat,
+            lon,
+            self._y,
+            self._u,
+            self._f,
+            xs,
+            ys,
+            zs,
+            Rs,
+            RsN,
+            alpha_theta,
+            ld,
         )
 
     def render(
@@ -1952,6 +1989,8 @@ class ReflectedBase(object):
         xs=0,
         ys=0,
         zs=1,
+        rs=0,
+        npts=1,
     ):
         """
         Compute and return the intensity of the map on a grid.
@@ -1981,7 +2020,10 @@ class ReflectedBase(object):
                 source relative to this body in units of this body's radius.
             zs (scalar or vector, optional): z coordinate of the illumination
                 source relative to this body in units of this body's radius.
-
+            rs (scalar, optional): radius of the illumination source in units
+                of this body's radius.
+            npts (int, optional): Number of points used to approximate the
+                finite source size when `rs > 0`.
         """
         # Multiple frames?
         if self.nw is not None:
@@ -1998,6 +2040,8 @@ class ReflectedBase(object):
         xs = math.cast(xs)
         ys = math.cast(ys)
         zs = math.cast(zs)
+        Rs = math.cast(rs)
+        RsN = int(npts)
         theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
         illuminate = int(illuminate)
 
@@ -2023,6 +2067,8 @@ class ReflectedBase(object):
             xs,
             ys,
             zs,
+            Rs,
+            RsN,
         )
 
         # Squeeze?
@@ -2042,6 +2088,8 @@ class ReflectedBase(object):
             xs = math.cast(kwargs.pop("xs", 0))
             ys = math.cast(kwargs.pop("ys", 0))
             zs = math.cast(kwargs.pop("zs", 1))
+            Rs = math.cast(kwargs.pop("rs", 0))
+            RsN = int(kwargs.pop("npts", 1))
             theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
             illuminate = int(kwargs.pop("illuminate", True))
 
@@ -2050,6 +2098,7 @@ class ReflectedBase(object):
             xs = xs.eval()
             ys = ys.eval()
             zs = zs.eval()
+            Rs = Rs.eval()
             inc = self._inc.eval()
             obl = self._obl.eval()
             y = self._y.eval()
@@ -2072,6 +2121,8 @@ class ReflectedBase(object):
                 xs,
                 ys,
                 zs,
+                Rs,
+                RsN,
             )
             kwargs["theta"] = theta / self._angle_factor
 

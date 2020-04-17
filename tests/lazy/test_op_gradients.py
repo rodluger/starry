@@ -207,7 +207,7 @@ def test_rT_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         )
 
 
-def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7, RsN=1):
     with change_flags(compute_test_value="off"):
         map = starry.Map(ydeg=2, udeg=2, reflected=True)
         np.random.seed(11)
@@ -221,16 +221,17 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         xs = source[:, 0]
         ys = source[:, 1]
         zs = source[:, 2]
+        Rs = 1.0
         wta = 0.0
 
-        def intensity(lat, lon, y, u, f, xs, ys, zs, wta):
+        def intensity(lat, lon, y, u, f, xs, ys, zs, Rs, wta):
             return map.ops.intensity(
-                lat, lon, y, u, f, xs, ys, zs, wta, np.array(True)
+                lat, lon, y, u, f, xs, ys, zs, Rs, RsN, wta, np.array(True)
             )
 
         verify_grad(
             intensity,
-            (lat, lon, y, u, f, xs, ys, zs, wta),
+            (lat, lon, y, u, f, xs, ys, zs, Rs, wta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -238,7 +239,7 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         )
 
 
-def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
+def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7, RsN=1):
     with change_flags(compute_test_value="off"):
         map = starry.Map(ydeg=2, reflected=True)
         theta = np.linspace(0, 30, 10)
@@ -252,13 +253,34 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         u = [-1.0]
         f = [np.pi]
         alpha = 0.0
+        Rs = 1.0
 
-        func = lambda *args: tt.dot(map.ops.X(*args), y)
+        def func(theta, xs, ys, zs, Rs, ro, inc, obl, u, f, alpha):
+            return tt.dot(
+                map.ops.X(
+                    theta,
+                    xs,
+                    ys,
+                    zs,
+                    Rs,
+                    RsN,
+                    xs,
+                    ys,
+                    zs,
+                    ro,
+                    inc,
+                    obl,
+                    u,
+                    f,
+                    alpha,
+                ),
+                y,
+            )
 
         # Just rotation
         verify_grad(
             func,
-            (theta, xs, ys, zs, xs, ys, zs, ro, inc, obl, u, f, alpha),
+            (theta, xs, ys, zs, Rs, ro, inc, obl, u, f, alpha),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,

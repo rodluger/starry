@@ -567,6 +567,7 @@ class System(object):
         figsize=(3, 3),
         html5_video=True,
         window_pad=1.0,
+        pri_npts=1,
     ):
         """Visualize the Keplerian system.
 
@@ -590,6 +591,9 @@ class System(object):
             window_pad (float, optional): Padding around the primary in units
                 of the primary radius. Bodies outside of this window will be
                 cropped. Default is 1.0.
+            pri_npts (int, optional): Number of points used to approximate the
+                finite illumination source size. Only used when modeling
+                light curves in reflected light.
         """
         # Not yet implemented
         if self._primary._map.nw is not None:  # pragma: no cover
@@ -650,6 +654,7 @@ class System(object):
             math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
             ),
+            int(pri_npts),
         )
 
         # Convert to units of the primary radius
@@ -804,7 +809,7 @@ class System(object):
             for sec in self._secondaries:
                 sec.map._unset_RV_filter()
 
-    def design_matrix(self, t):
+    def design_matrix(self, t, pri_npts=1):
         """Compute the system flux design matrix at times ``t``.
 
         .. note::
@@ -822,6 +827,9 @@ class System(object):
         Args:
             t (scalar or vector): An array of times at which to evaluate
                 the design matrix in units of :py:attr:`time_unit`.
+            pri_npts (int, optional): Number of points used to approximate the
+                finite illumination source size. Only used when modeling
+                light curves in reflected light.
         """
         return self.ops.X(
             math.reshape(math.to_array_or_tensor(t), [-1]) * self._time_factor,
@@ -866,9 +874,10 @@ class System(object):
             math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
             ),
+            int(pri_npts),
         )
 
-    def flux(self, t, total=True):
+    def flux(self, t, total=True, pri_npts=1):
         """Compute the system flux at times ``t``.
 
         Args:
@@ -877,8 +886,11 @@ class System(object):
             total (bool, optional): Return the total system flux? Defaults to
                 True. If False, returns arrays corresponding to the flux
                 from each body.
+            pri_npts (int, optional): Number of points used to approximate the
+                finite illumination source size. Only used when modeling
+                light curves in reflected light.
         """
-        X = self.design_matrix(t)
+        X = self.design_matrix(t, pri_npts=pri_npts)
 
         # Weight the ylms by amplitude
         if self._reflected:
