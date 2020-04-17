@@ -1651,7 +1651,6 @@ class OpsSystem(object):
             sec_u,
             sec_f,
             sec_alpha,
-            1,
         )
 
         X0 = self.X(
@@ -1683,7 +1682,6 @@ class OpsSystem(object):
             sec_u,
             sec_f0,
             sec_alpha,
-            1,
         )
 
         # Get the indices of X corresponding to each body

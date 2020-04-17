@@ -207,7 +207,7 @@ def test_rT_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         )
 
 
-def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7, RsN=1):
+def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     with change_flags(compute_test_value="off"):
         map = starry.Map(ydeg=2, udeg=2, reflected=True)
         np.random.seed(11)
@@ -226,7 +226,7 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7, RsN=1):
 
         def intensity(lat, lon, y, u, f, xs, ys, zs, Rs, wta):
             return map.ops.intensity(
-                lat, lon, y, u, f, xs, ys, zs, Rs, RsN, wta, np.array(True)
+                lat, lon, y, u, f, xs, ys, zs, Rs, wta, np.array(True)
             )
 
         verify_grad(
@@ -239,7 +239,7 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7, RsN=1):
         )
 
 
-def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7, RsN=1):
+def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     with change_flags(compute_test_value="off"):
         map = starry.Map(ydeg=2, reflected=True)
         theta = np.linspace(0, 30, 10)
@@ -263,7 +263,6 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7, RsN=1):
                     ys,
                     zs,
                     Rs,
-                    RsN,
                     xs,
                     ys,
                     zs,
