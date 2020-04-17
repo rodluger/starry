@@ -953,7 +953,7 @@ class OpsReflected(OpsYlm):
         if self.source_npts == 1:
 
             return self.X_point_source(
-                theta, xs, ys, zs, Rs, xo, yo, zo, ro, inc, obl, u, f, alpha
+                theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha
             )
 
         else:
