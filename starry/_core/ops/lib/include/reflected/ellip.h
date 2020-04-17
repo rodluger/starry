@@ -462,7 +462,7 @@ protected:
 
     It can also be written in terms of the Legendre forms:
 
-        PI' = 6 / n * (F(phi, k^2) - PI(phi, n, k^2))
+        PI' = 6 / n * (F(phi, 1/k^2) - PI(phi, n, 1/k^2))
 
     This integral is only used in the expression for computing the linear limb
     darkening

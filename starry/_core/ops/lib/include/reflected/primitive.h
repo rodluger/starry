@@ -213,7 +213,8 @@ inline Vector<T> I(const int nmax, const Vector<T> &kappa_,
 /**
     Compute the expression
 
-        s^(2n + 2) (3 / (n + 1) * 2F1(-1/2, n + 1, n + 2, 1 - q^2) + 2q^3) / (2n
+        0.5 * s^(2n + 2) (3 / (n + 1) * 2F1(-1/2, n + 1, n + 2, 1 - q^2) + 2q^3)
+   / (2n
    + 5)
 
     evaluated at n = [0 .. nmax], where
@@ -281,7 +282,7 @@ inline Vector<T> W_indef(const int nmax, const T &s2_, const T &q2,
     }
   }
 
-  return result;
+  return 0.5 * result;
 }
 
 /**
@@ -866,8 +867,8 @@ inline void computeP(const int ydeg, const T &bo_, const T &ro_,
         if (is_even(nu)) {
 
           // CASE 6
-          int u = int((mu + 4.0) / 4.0);
-          int v = int(nu / 2.0);
+          int u = (mu + 2) / 4;
+          int v = nu / 2;
           T res = A(u, v).dot(UIntegral.segment(u, u + v + 1));
           P(n) = 2 * tworo(l + 2) * res;
 
@@ -877,7 +878,7 @@ inline void computeP(const int ydeg, const T &bo_, const T &ro_,
           int u = (mu - 1) / 4;
           int v = (nu - 1) / 2;
           T res = A(u, v).dot(WIntegral.segment(u, u + v + 1));
-          P(n) = tworo(l - 1) * k3fourbr15 * res;
+          P(n) = 2 * tworo(l - 1) * k3fourbr15 * res;
         }
       }
 

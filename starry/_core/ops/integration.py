@@ -167,4 +167,4 @@ class sTReflectedGradientOp(tt.Op):
         outputs[0][0] = np.reshape(bb, np.shape(b))
         outputs[1][0] = np.reshape(btheta, np.shape(theta))
         outputs[2][0] = np.reshape(bbo, np.shape(bo))
-        outputs[3][0] = np.reshape(bro, np.shape(ro))
+        outputs[3][0] = np.array(np.reshape(bro, np.shape(ro)))
