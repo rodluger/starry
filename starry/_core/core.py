@@ -1001,7 +1001,11 @@ class OpsReflected(OpsYlm):
         xyz = ifelse(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
             self.compute_rect_grid(res),
-            self.compute_ortho_grid(res),
+            ifelse(
+                tt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
+                self.compute_moll_grid(res),
+                self.compute_ortho_grid(res),
+            ),
         )
 
         # Compute the polynomial basis
