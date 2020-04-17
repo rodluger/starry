@@ -2190,10 +2190,11 @@ def Map(
     if source_npts < 1:
         source_npts = 1
 
-    # DEBUG: Not production ready!
+    # TODO: phase this next warning out
     if source_npts != 1:
-        raise NotImplementedError(
-            "Finite source size effects not yet implemented."
+        logger.warning(
+            "Finite source size is still an experimental feature. "
+            "Use it with care."
         )
 
     # Limb-darkened?

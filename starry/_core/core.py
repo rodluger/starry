@@ -986,10 +986,10 @@ class OpsReflected(OpsYlm):
                 f,
                 alpha,
             )
-            X = tt.reshape(X, (tt.shape(theta)[0], -1, self.source_npts))
+            X = tt.reshape(X, (tt.shape(theta)[0], self.source_npts, -1))
 
             # Average over each profile
-            return tt.sum(X, axis=2) / self.source_npts
+            return tt.sum(X, axis=1) / self.source_npts
 
     @autocompile
     def flux(
