@@ -143,10 +143,16 @@ protected:
   inline void computeI(const T &b, const T &theta) {
 
     // Reset
-    T y0 = sqrt(1 - b * b);
-    T x = -y0 * sin(theta);
-    T y = y0 * cos(theta);
-    T z = -b;
+    T y0, x, y, z;
+    if (abs(b) < 1 - STARRY_B_ONE_TOL) {
+      y0 = sqrt(1 - b * b);
+      x = -y0 * sin(theta);
+      y = y0 * cos(theta);
+    } else {
+      x = 0;
+      y = 0;
+    }
+    z = -b;
     Vector<T> p(3);
     p << x, z, y;
 
