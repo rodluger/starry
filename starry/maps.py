@@ -2190,6 +2190,12 @@ def Map(
     if source_npts < 1:
         source_npts = 1
 
+    # DEBUG: Not production ready!
+    if source_npts != 1:
+        raise NotImplementedError(
+            "Finite source size effects not yet implemented."
+        )
+
     # Limb-darkened?
     if (ydeg == 0) and (rv is False) and (reflected is False):
 

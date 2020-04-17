@@ -795,7 +795,7 @@ class OpsReflected(OpsYlm):
             dz = 1 - dx ** 2 - dy ** 2
             self.source_dx = dx[dz > 0].flatten()
             self.source_dy = dy[dz > 0].flatten()
-            self.source_dz = np.zeros_like(self.source_dx)
+            self.source_dz = dz[dz > 0].flatten()
             self.source_npts = len(self.source_dx)
 
         self.source_dx = tt.as_tensor_variable(self.source_dx)
