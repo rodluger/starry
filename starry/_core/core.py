@@ -19,7 +19,7 @@ from .ops import (
     RaiseValueErrorOp,
     RaiseValueErrorIfOp,
 )
-from .utils import logger, autocompile
+from .utils import logger, autocompile, is_theano
 from .math import math
 import theano
 import theano.tensor as tt
@@ -781,6 +781,27 @@ class OpsReflected(OpsYlm):
         self._sT = sTReflectedOp(self._c_ops.sTReflected, self._c_ops.N)
         self._A1Big = ts.as_sparse_variable(self._c_ops.A1Big)
 
+        # Compute grid on unit disk with ~source_npts points
+        source_npts = kwargs.get("source_npts", 1)
+        if source_npts <= 1:
+            self.source_dx = np.array([0.0])
+            self.source_dy = np.array([0.0])
+            self.source_dz = np.array([0.0])
+            self.source_npts = 1
+        else:
+            N = 2 + np.sqrt(source_npts * 4 / np.pi)
+            dx = np.linspace(-1, 1, N)
+            dx, dy = np.meshgrid(dx, dx)
+            dz = 1 - dx ** 2 - dy ** 2
+            self.source_dx = dx[dz > 0].flatten()
+            self.source_dy = dy[dz > 0].flatten()
+            self.source_dz = np.zeros_like(self.source_dx)
+            self.source_npts = len(self.source_dx)
+
+        self.source_dx = tt.as_tensor_variable(self.source_dx)
+        self.source_dy = tt.as_tensor_variable(self.source_dy)
+        self.source_dz = tt.as_tensor_variable(self.source_dz)
+
     @property
     def A1Big(self):
         return self._A1Big
@@ -794,7 +815,7 @@ class OpsReflected(OpsYlm):
         return self._sT(b, theta, bo, ro)[0]
 
     @autocompile
-    def intensity(self, lat, lon, y, u, f, xs, ys, zs, Rs, RsN, wta, ld):
+    def intensity(self, lat, lon, y, u, f, xs, ys, zs, Rs, wta, ld):
         """Compute the intensity at a series of lat-lon points on the surface."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
@@ -835,7 +856,7 @@ class OpsReflected(OpsYlm):
                 tt.reshape(zpt, [1, -1]),
             )
         )
-        I = self.compute_illumination(xyz, xs, ys, zs, Rs, RsN)
+        I = self.compute_illumination(xyz, xs, ys, zs, Rs)
 
         # Add an extra dimension for the wavelength
         if self.nw is not None:
@@ -926,53 +947,25 @@ class OpsReflected(OpsYlm):
         return X
 
     @autocompile
-    def X(
-        self, theta, xs, ys, zs, Rs, RsN, xo, yo, zo, ro, inc, obl, u, f, alpha
-    ):
+    def X(self, theta, xs, ys, zs, Rs, xo, yo, zo, ro, inc, obl, u, f, alpha):
         """Compute the light curve design matrix."""
         # TODO
+        if self.source_npts > 1:
+            raise NotImplementedError(
+                "Finite source size not yet implemented!"
+            )
         return self.X_point_source(
             theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha
         )
 
     @autocompile
     def flux(
-        self,
-        theta,
-        xs,
-        ys,
-        zs,
-        Rs,
-        RsN,
-        xo,
-        yo,
-        zo,
-        ro,
-        inc,
-        obl,
-        y,
-        u,
-        f,
-        alpha,
+        self, theta, xs, ys, zs, Rs, xo, yo, zo, ro, inc, obl, y, u, f, alpha
     ):
         """Compute the reflected light curve."""
         return tt.dot(
             self.X(
-                theta,
-                xs,
-                ys,
-                zs,
-                Rs,
-                RsN,
-                xo,
-                yo,
-                zo,
-                ro,
-                inc,
-                obl,
-                u,
-                f,
-                alpha,
+                theta, xs, ys, zs, Rs, xo, yo, zo, ro, inc, obl, u, f, alpha
             ),
             y,
         )
@@ -994,7 +987,6 @@ class OpsReflected(OpsYlm):
         ys,
         zs,
         Rs,
-        RsN,
     ):
         """Render the map on a Cartesian grid."""
         # Compute the Cartesian grid
@@ -1057,7 +1049,7 @@ class OpsReflected(OpsYlm):
         image = tt.dot(pT, A1Ry)
 
         # Compute the illumination profile
-        I = self.compute_illumination(xyz, xs, ys, zs, Rs, RsN)
+        I = self.compute_illumination(xyz, xs, ys, zs, Rs)
 
         # Add an extra dimension for the wavelength
         if self.nw is not None:
@@ -1105,10 +1097,19 @@ class OpsReflected(OpsYlm):
         return I
 
     @autocompile
-    def compute_illumination(self, xyz, xs, ys, zs, Rs, RsN):
+    def compute_illumination(self, xyz, xs, ys, zs, Rs):
         """Compute the illumination profile when rendering maps."""
-        # TODO!
-        return self.compute_illumination_point_source(xyz, xs, ys, zs)
+        # Compute the illumination for each point on the source disk
+        I = self.compute_illumination_point_source(
+            xyz,
+            tt.reshape(tt.shape_padright(xs) + self.source_dx, (-1,)),
+            tt.reshape(tt.shape_padright(ys) + self.source_dy, (-1,)),
+            tt.reshape(tt.shape_padright(zs) + self.source_dz, (-1,)),
+        )
+        I = tt.reshape(I, (-1, tt.shape(xs)[0], self.source_npts))
+
+        # Average over each profile
+        return tt.sum(I, axis=2) / self.source_npts
 
 
 class OpsSystem(object):
@@ -1221,7 +1222,6 @@ class OpsSystem(object):
         sec_u,
         sec_f,
         sec_alpha,
-        RsN,
     ):
         """Compute the system light curve design matrix."""
         # Exposure time integration?
@@ -1311,7 +1311,6 @@ class OpsSystem(object):
                     -y[:, i],
                     -z[:, i],
                     pri_r / sec_r[i],  # scaled source radius
-                    RsN,
                     -x[:, i],  # not used
                     -y[:, i],  # not used
                     -z[:, i],  # not used, since...
@@ -1412,7 +1411,6 @@ class OpsSystem(object):
                         -y[idx, i],
                         -z[idx, i],
                         pri_r / sec_r[i],
-                        RsN,
                         xo[idx],  # ... and the occultor
                         yo[idx],
                         zo[idx],
@@ -1474,7 +1472,6 @@ class OpsSystem(object):
                             ys[idx],
                             zs[idx],
                             pri_r / sec_r[i],
-                            RsN,
                             xo[idx],  # another secondary is the occultor
                             yo[idx],
                             zo[idx],
@@ -1739,7 +1736,6 @@ class OpsSystem(object):
         sec_u,
         sec_f,
         sec_alpha,
-        RsN,
     ):
         """Render all of the bodies in the system."""
         # Compute the relative positions of all bodies
@@ -1806,7 +1802,6 @@ class OpsSystem(object):
                         -y[:, i],
                         -z[:, i],
                         pri_r / sec_r[i],
-                        RsN,
                     )
                     for i, sec in enumerate(self.secondaries)
                 ]

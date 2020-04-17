@@ -2,6 +2,7 @@
 from . import config
 from ._constants import *
 from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, linalg, math
+from ._core.utils import is_theano
 from ._indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from ._plotting import (
     get_ortho_latitude_lines,
@@ -284,6 +285,7 @@ class MapBase(object):
         self._L = None
         self._solution = None
 
+        kwargs.pop("source_npts", None)
         self._check_kwargs("reset", kwargs)
 
     def show(self, **kwargs):
@@ -1155,7 +1157,7 @@ class YlmBase(object):
         if self.nw is not None:
             animated = True
         else:
-            if config.lazy:
+            if is_theano(theta):
                 animated = hasattr(theta, "ndim") and theta.ndim > 0
             else:
                 animated = hasattr(theta, "__len__")
@@ -1766,6 +1768,10 @@ class ReflectedBase(object):
 
     _ops_class_ = OpsReflected
 
+    @property
+    def source_npts(self):
+        return int(self.__props__["source_npts"])
+
     def _get_flux_kwargs(self, kwargs):
         xo = kwargs.pop("xo", 0.0)
         yo = kwargs.pop("yo", 0.0)
@@ -1775,7 +1781,6 @@ class ReflectedBase(object):
         ys = kwargs.pop("ys", 0.0)
         zs = kwargs.pop("zs", 1.0)
         Rs = kwargs.pop("rs", 0.0)
-        RsN = int(kwargs.pop("npts", 1))
         theta = kwargs.pop("theta", 0.0)
         theta, xs, ys, zs, xo, yo, zo = math.vectorize(
             theta, xs, ys, zs, xo, yo, zo
@@ -1784,7 +1789,7 @@ class ReflectedBase(object):
             theta, xs, ys, zs, xo, yo, zo, ro, Rs
         )
         theta *= self._angle_factor
-        return theta, xs, ys, zs, Rs, RsN, xo, yo, zo, ro
+        return theta, xs, ys, zs, Rs, xo, yo, zo, ro
 
     def design_matrix(self, **kwargs):
         r"""
@@ -1813,17 +1818,13 @@ class ReflectedBase(object):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
-            npts (int, optional): Number of points used to approximate the
-                finite source size when `rs > 0`.
 
         .. note::
             ``starry`` does not yet support occultations in reflected light.
 
         """
         # Orbital kwargs
-        theta, xs, ys, zs, Rs, RsN, xo, yo, zo, ro = self._get_flux_kwargs(
-            kwargs
-        )
+        theta, xs, ys, zs, Rs, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Check for invalid kwargs
         self._check_kwargs("X", kwargs)
@@ -1835,7 +1836,6 @@ class ReflectedBase(object):
             ys,
             zs,
             Rs,
-            RsN,
             xo,
             yo,
             zo,
@@ -1870,17 +1870,13 @@ class ReflectedBase(object):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
-            npts (int, optional): Number of points used to approximate the
-                finite source size when `rs > 0`.
 
         .. note::
             ``starry`` does not yet support occultations in reflected light.
 
         """
         # Orbital kwargs
-        theta, xs, ys, zs, Rs, RsN, xo, yo, zo, ro = self._get_flux_kwargs(
-            kwargs
-        )
+        theta, xs, ys, zs, Rs, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
 
         # Check for invalid kwargs
         self._check_kwargs("flux", kwargs)
@@ -1892,7 +1888,6 @@ class ReflectedBase(object):
             ys,
             zs,
             Rs,
-            RsN,
             xo,
             yo,
             zo,
@@ -1905,9 +1900,7 @@ class ReflectedBase(object):
             self._alpha,
         )
 
-    def intensity(
-        self, lat=0, lon=0, xs=0, ys=0, zs=1, rs=0, npts=1, **kwargs
-    ):
+    def intensity(self, lat=0, lon=0, xs=0, ys=0, zs=1, rs=0, **kwargs):
         """
         Compute and return the intensity of the map.
 
@@ -1929,8 +1922,6 @@ class ReflectedBase(object):
                 Default 0.
             limbdarken (bool, optional): Apply limb darkening
                 (only if :py:attr:`udeg` > 0)? Default True.
-            npts (int, optional): Number of points used to approximate the
-                finite source size when `rs > 0`.
         """
         # Get the Cartesian points
         lat, lon = math.vectorize(*math.cast(lat, lon))
@@ -1940,7 +1931,6 @@ class ReflectedBase(object):
         # Get the source position
         xs, ys, zs = math.vectorize(*math.cast(xs, ys, zs))
         Rs = math.cast(rs)
-        RsN = int(npts)
 
         # Get the amplitude
         if self.nw is None or config.lazy:
@@ -1975,7 +1965,6 @@ class ReflectedBase(object):
             ys,
             zs,
             Rs,
-            RsN,
             alpha_theta,
             ld,
         )
@@ -1990,7 +1979,6 @@ class ReflectedBase(object):
         ys=0,
         zs=1,
         rs=0,
-        npts=1,
     ):
         """
         Compute and return the intensity of the map on a grid.
@@ -2022,17 +2010,19 @@ class ReflectedBase(object):
                 source relative to this body in units of this body's radius.
             rs (scalar, optional): radius of the illumination source in units
                 of this body's radius.
-            npts (int, optional): Number of points used to approximate the
-                finite source size when `rs > 0`.
         """
         # Multiple frames?
         if self.nw is not None:
             animated = True
         else:
-            if config.lazy:
-                animated = hasattr(theta, "ndim") and theta.ndim > 0
-            else:
-                animated = hasattr(theta, "__len__")
+            animated = False
+            for arg in [theta, xs, ys, zs]:
+                if is_theano(arg):
+                    animated = animated or (
+                        hasattr(arg, "ndim") and arg.ndim > 0
+                    )
+                else:
+                    animated = animated or (hasattr(arg, "__len__"))
 
         # Convert stuff as needed
         projection = get_projection(projection)
@@ -2041,7 +2031,6 @@ class ReflectedBase(object):
         ys = math.cast(ys)
         zs = math.cast(zs)
         Rs = math.cast(rs)
-        RsN = int(npts)
         theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
         illuminate = int(illuminate)
 
@@ -2068,7 +2057,6 @@ class ReflectedBase(object):
             ys,
             zs,
             Rs,
-            RsN,
         )
 
         # Squeeze?
@@ -2089,7 +2077,6 @@ class ReflectedBase(object):
             ys = math.cast(kwargs.pop("ys", 0))
             zs = math.cast(kwargs.pop("zs", 1))
             Rs = math.cast(kwargs.pop("rs", 0))
-            RsN = int(kwargs.pop("npts", 1))
             theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
             illuminate = int(kwargs.pop("illuminate", True))
 
@@ -2122,7 +2109,6 @@ class ReflectedBase(object):
                 ys,
                 zs,
                 Rs,
-                RsN,
             )
             kwargs["theta"] = theta / self._angle_factor
 
@@ -2130,7 +2116,14 @@ class ReflectedBase(object):
 
 
 def Map(
-    ydeg=0, udeg=0, drorder=0, nw=None, rv=False, reflected=False, **kwargs
+    ydeg=0,
+    udeg=0,
+    drorder=0,
+    nw=None,
+    rv=False,
+    reflected=False,
+    source_npts=1,
+    **kwargs
 ):
     """A generic ``starry`` surface map.
 
@@ -2159,6 +2152,9 @@ def Map(
             for modeling the Rossiter-McLaughlin effect. Defaults to False.
         reflected (bool, optional): If True, models light curves in reflected
             light. Defaults to False.
+        source_npts (int, optional): Number of points used to approximate the
+            finite illumination source size. Default is 1. Valid only if
+            `reflected` is True.
     """
     # Check args
     ydeg = int(ydeg)
@@ -2190,6 +2186,9 @@ def Map(
                 "Consider decreasing the degree of the map or the order "
                 "of differential rotation."
             )
+    source_npts = int(source_npts)
+    if source_npts < 1:
+        source_npts = 1
 
     # Limb-darkened?
     if (ydeg == 0) and (rv is False) and (reflected is False):
@@ -2230,12 +2229,13 @@ def Map(
             rv=RVBase in Bases,
             spectral=nw is not None,
             differential_rotation=drorder > 0,
+            source_npts=source_npts,
         )
 
         def __init__(self, *args, **kwargs):
             # Once a map has been instantiated, no changes
             # to the config are allowed.
             config.freeze()
-            super(Map, self).__init__(*args, **kwargs)
+            super(Map, self).__init__(*args, source_npts=source_npts, **kwargs)
 
     return Map(ydeg, udeg, fdeg, drorder, nw, **kwargs)
