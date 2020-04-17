@@ -949,14 +949,47 @@ class OpsReflected(OpsYlm):
     @autocompile
     def X(self, theta, xs, ys, zs, Rs, xo, yo, zo, ro, inc, obl, u, f, alpha):
         """Compute the light curve design matrix."""
-        # TODO
-        if self.source_npts > 1:
-            raise NotImplementedError(
-                "Finite source size not yet implemented!"
+
+        if self.source_npts == 1:
+
+            return self.X_point_source(
+                theta, xs, ys, zs, Rs, xo, yo, zo, ro, inc, obl, u, f, alpha
             )
-        return self.X_point_source(
-            theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha
-        )
+
+        else:
+
+            # Compute the illumination for each point on the source disk
+            X = self.X_point_source(
+                tt.reshape(
+                    tt.shape_padright(theta) + tt.zeros_like(self.source_dx),
+                    (-1,),
+                ),
+                tt.reshape(tt.shape_padright(xs) + Rs * self.source_dx, (-1,)),
+                tt.reshape(tt.shape_padright(ys) + Rs * self.source_dy, (-1,)),
+                tt.reshape(tt.shape_padright(zs) + Rs * self.source_dz, (-1,)),
+                tt.reshape(
+                    tt.shape_padright(xo) + tt.zeros_like(self.source_dx),
+                    (-1,),
+                ),
+                tt.reshape(
+                    tt.shape_padright(yo) + tt.zeros_like(self.source_dx),
+                    (-1,),
+                ),
+                tt.reshape(
+                    tt.shape_padright(zo) + tt.zeros_like(self.source_dx),
+                    (-1,),
+                ),
+                ro,
+                inc,
+                obl,
+                u,
+                f,
+                alpha,
+            )
+            X = tt.reshape(X, (tt.shape(theta)[0], -1, self.source_npts))
+
+            # Average over each profile
+            return tt.sum(X, axis=2) / self.source_npts
 
     @autocompile
     def flux(
@@ -1099,17 +1132,24 @@ class OpsReflected(OpsYlm):
     @autocompile
     def compute_illumination(self, xyz, xs, ys, zs, Rs):
         """Compute the illumination profile when rendering maps."""
-        # Compute the illumination for each point on the source disk
-        I = self.compute_illumination_point_source(
-            xyz,
-            tt.reshape(tt.shape_padright(xs) + self.source_dx, (-1,)),
-            tt.reshape(tt.shape_padright(ys) + self.source_dy, (-1,)),
-            tt.reshape(tt.shape_padright(zs) + self.source_dz, (-1,)),
-        )
-        I = tt.reshape(I, (-1, tt.shape(xs)[0], self.source_npts))
 
-        # Average over each profile
-        return tt.sum(I, axis=2) / self.source_npts
+        if self.source_npts == 1:
+
+            return self.compute_illumination_point_source(xyz, xs, ys, zs)
+
+        else:
+
+            # Compute the illumination for each point on the source disk
+            I = self.compute_illumination_point_source(
+                xyz,
+                tt.reshape(tt.shape_padright(xs) + Rs * self.source_dx, (-1,)),
+                tt.reshape(tt.shape_padright(ys) + Rs * self.source_dy, (-1,)),
+                tt.reshape(tt.shape_padright(zs) + Rs * self.source_dz, (-1,)),
+            )
+            I = tt.reshape(I, (-1, tt.shape(xs)[0], self.source_npts))
+
+            # Average over each profile
+            return tt.sum(I, axis=2) / self.source_npts
 
 
 class OpsSystem(object):
