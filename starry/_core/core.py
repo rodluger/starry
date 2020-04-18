@@ -1829,6 +1829,7 @@ class OpsSystem(object):
                     sec.map.ops.render(
                         res,
                         STARRY_ORTHOGRAPHIC_PROJECTION,
+                        1,
                         theta_sec[i],
                         sec_inc[i],
                         sec_obl[i],
