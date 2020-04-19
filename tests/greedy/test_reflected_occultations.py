@@ -388,3 +388,14 @@ def test_theta_poles(res=500, tol=1e-3):
         flux_num = np.nansum(img[idx]) * 4 / res ** 2
         err[i] = np.max(np.abs(flux - flux_num))
     assert np.all(err < tol)
+
+
+def test_root_finder():
+    """
+    Test cases that cause the root finder to fail.
+
+    """
+    map = starry.Map(reflected=True)
+
+    # Currently BROKEN
+    map.ops._sT.func([-0.358413], [-1.57303], [55.7963], 54.8581)
