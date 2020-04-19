@@ -1345,15 +1345,16 @@ class OpsSystem(object):
             phase_sec = [
                 pri_L
                 * sec_L[i]
+                / sec_r[i] ** 2  # 1/r^2 distance factor in correct units
                 * sec.map.ops.X(
                     theta_sec[i],
-                    -x[:, i],
-                    -y[:, i],
-                    -z[:, i],
+                    -x[:, i] / sec_r[i],
+                    -y[:, i] / sec_r[i],
+                    -z[:, i] / sec_r[i],
                     pri_r / sec_r[i],  # scaled source radius
-                    -x[:, i],  # not used
-                    -y[:, i],  # not used
-                    -z[:, i],  # not used, since...
+                    tt.zeros_like(x[:, i]),
+                    tt.zeros_like(x[:, i]),
+                    tt.zeros_like(x[:, i]),
                     math.to_tensor(0.0),  # occultor of zero radius
                     sec_inc[i],
                     sec_obl[i],
@@ -1436,21 +1437,18 @@ class OpsSystem(object):
             )
             idx = tt.arange(b.shape[0])[b_occ]
             if self._reflected:
-                # NOTE: Unlike other length quantities, the distance to the
-                # source is *not* normalized to the occulted body radius. This
-                # means we are scaling the reflected flux by the *unit-ful*
-                # illumination of the star.
                 occ_sec[i] = tt.set_subtensor(
                     occ_sec[i][idx],
                     occ_sec[i][idx]
                     + pri_L
                     * sec_L[i]
+                    / sec_r[i] ** 2  # 1/r^2 distance factor in correct units
                     * sec.map.ops.X(
                         theta_sec[i, idx],
-                        -x[idx, i],  # the primary is both the source...
-                        -y[idx, i],
-                        -z[idx, i],
-                        pri_r / sec_r[i],
+                        xo[idx],  # the primary is both the source...
+                        yo[idx],
+                        zo[idx],
+                        ro,
                         xo[idx],  # ... and the occultor
                         yo[idx],
                         zo[idx],
@@ -1506,6 +1504,8 @@ class OpsSystem(object):
                         occ_sec[i][idx]
                         + sec_L[i]
                         * pri_L
+                        / sec_r[i]
+                        ** 2  # 1/r^2 distance factor in correct units
                         * sec.map.ops.X(
                             theta_sec[i, idx],
                             xs[idx],  # the primary is the source
