@@ -652,12 +652,12 @@ class System(object):
             ),
         )
 
-        # Convert to units of the primary radius
-        fac = np.reshape(
-            [sec._length_factor for sec in self._secondaries], [-1, 1]
+        # Convert to units of the primary radiu
+        x, y, z = (
+            x / self._primary._r,
+            y / self._primary._r,
+            z / self._primary._r,
         )
-        fac = fac * self._primary._r
-        x, y, z = x / fac, y / fac, z / fac
         r = math.to_array_or_tensor([sec._r for sec in self._secondaries])
         r = r / self._primary._r
 
