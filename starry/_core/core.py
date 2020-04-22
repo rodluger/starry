@@ -798,9 +798,11 @@ class OpsReflected(OpsYlm):
             self.source_dz = dz[dz > 0].flatten()
             self.source_npts = len(self.source_dx)
 
+        # NOTE: dz is *negative*, since the source is actually
+        # *closer* to the body than in the point approximation
         self.source_dx = tt.as_tensor_variable(self.source_dx)
         self.source_dy = tt.as_tensor_variable(self.source_dy)
-        self.source_dz = tt.as_tensor_variable(self.source_dz)
+        self.source_dz = tt.as_tensor_variable(-self.source_dz)
 
     @property
     def A1Big(self):
@@ -939,9 +941,7 @@ class OpsReflected(OpsYlm):
         )
 
         # Weight by the distance to the source.
-        # The factor of 2/3 ensures that the flux from a uniform map
-        # with unit amplitude seen at noon is unity.
-        X /= 2.0 / 3.0 * tt.shape_padright(r2)
+        X *= STARRY_REFLECTANCE_FLUX_NORMALIZATION / tt.shape_padright(r2)
 
         # We're done
         return X
@@ -1123,10 +1123,8 @@ class OpsReflected(OpsYlm):
         )
         I = tt.switch(tt.gt(I, 0.0), I, tt.zeros_like(I))  # set night to zero
 
-        # Weight by the distance to the source
-        # The factor of 2/3 ensures that the flux from a uniform map
-        # with unit amplitude seen at noon is unity.
-        I /= (2.0 / 3.0) * tt.shape_padleft(r2)
+        # Weight by the distance to the source.
+        I *= STARRY_REFLECTANCE_FLUX_NORMALIZATION / tt.shape_padleft(r2)
         return I
 
     @autocompile
@@ -1240,7 +1238,7 @@ class OpsSystem(object):
         pri_prot,
         pri_t0,
         pri_theta0,
-        pri_L,
+        pri_amp,
         pri_inc,
         pri_obl,
         pri_u,
@@ -1256,7 +1254,7 @@ class OpsSystem(object):
         sec_w,
         sec_Omega,
         sec_iorb,
-        sec_L,
+        sec_amp,
         sec_inc,
         sec_obl,
         sec_u,
@@ -1329,7 +1327,7 @@ class OpsSystem(object):
         ) + tt.shape_padright(sec_theta0)
 
         # Compute all the phase curves
-        phase_pri = pri_L * self.primary.map.ops.X(
+        phase_pri = pri_amp * self.primary.map.ops.X(
             theta_pri,
             tt.zeros_like(t),
             tt.zeros_like(t),
@@ -1343,9 +1341,8 @@ class OpsSystem(object):
         )
         if self._reflected:
             phase_sec = [
-                pri_L
-                * sec_L[i]
-                / sec_r[i] ** 2  # 1/r^2 distance factor in correct units
+                pri_amp
+                * sec_amp[i]
                 * sec.map.ops.X(
                     theta_sec[i],
                     -x[:, i] / sec_r[i],
@@ -1366,7 +1363,7 @@ class OpsSystem(object):
             ]
         else:
             phase_sec = [
-                sec_L[i]
+                sec_amp[i]
                 * sec.map.ops.X(
                     theta_sec[i],
                     -x[:, i],
@@ -1408,7 +1405,7 @@ class OpsSystem(object):
             occ_pri = tt.set_subtensor(
                 occ_pri[idx],
                 occ_pri[idx]
-                + pri_L
+                + pri_amp
                 * self.primary.map.ops.X(
                     theta_pri[idx],
                     xo[idx],
@@ -1440,9 +1437,8 @@ class OpsSystem(object):
                 occ_sec[i] = tt.set_subtensor(
                     occ_sec[i][idx],
                     occ_sec[i][idx]
-                    + pri_L
-                    * sec_L[i]
-                    / sec_r[i] ** 2  # 1/r^2 distance factor in correct units
+                    + pri_amp
+                    * sec_amp[i]
                     * sec.map.ops.X(
                         theta_sec[i, idx],
                         xo[idx],  # the primary is both the source...
@@ -1465,7 +1461,7 @@ class OpsSystem(object):
                 occ_sec[i] = tt.set_subtensor(
                     occ_sec[i][idx],
                     occ_sec[i][idx]
-                    + sec_L[i]
+                    + sec_amp[i]
                     * sec.map.ops.X(
                         theta_sec[i, idx],
                         xo[idx],
@@ -1502,10 +1498,8 @@ class OpsSystem(object):
                     occ_sec[i] = tt.set_subtensor(
                         occ_sec[i][idx],
                         occ_sec[i][idx]
-                        + sec_L[i]
-                        * pri_L
-                        / sec_r[i]
-                        ** 2  # 1/r^2 distance factor in correct units
+                        + sec_amp[i]
+                        * pri_amp
                         * sec.map.ops.X(
                             theta_sec[i, idx],
                             xs[idx],  # the primary is the source
@@ -1528,7 +1522,7 @@ class OpsSystem(object):
                     occ_sec[i] = tt.set_subtensor(
                         occ_sec[i][idx],
                         occ_sec[i][idx]
-                        + sec_L[i]
+                        + sec_amp[i]
                         * sec.map.ops.X(
                             theta_sec[i, idx],
                             xo[idx],
@@ -1571,7 +1565,7 @@ class OpsSystem(object):
         pri_prot,
         pri_t0,
         pri_theta0,
-        pri_L,
+        pri_amp,
         pri_inc,
         pri_obl,
         pri_y,
@@ -1588,7 +1582,7 @@ class OpsSystem(object):
         sec_w,
         sec_Omega,
         sec_iorb,
-        sec_L,
+        sec_amp,
         sec_inc,
         sec_obl,
         sec_y,
@@ -1629,7 +1623,7 @@ class OpsSystem(object):
             pri_prot,
             pri_t0,
             pri_theta0,
-            pri_L,
+            pri_amp,
             pri_inc,
             pri_obl,
             pri_u,
@@ -1645,7 +1639,7 @@ class OpsSystem(object):
             sec_w,
             sec_Omega,
             sec_iorb,
-            sec_L,
+            sec_amp,
             sec_inc,
             sec_obl,
             sec_u,
@@ -1660,7 +1654,7 @@ class OpsSystem(object):
             pri_prot,
             pri_t0,
             pri_theta0,
-            pri_L,
+            pri_amp,
             pri_inc,
             pri_obl,
             pri_u,
@@ -1676,7 +1670,7 @@ class OpsSystem(object):
             sec_w,
             sec_Omega,
             sec_iorb,
-            sec_L,
+            sec_amp,
             sec_inc,
             sec_obl,
             sec_u,
@@ -1750,7 +1744,7 @@ class OpsSystem(object):
         pri_prot,
         pri_t0,
         pri_theta0,
-        pri_L,
+        pri_amp,
         pri_inc,
         pri_obl,
         pri_y,
@@ -1767,7 +1761,7 @@ class OpsSystem(object):
         sec_w,
         sec_Omega,
         sec_iorb,
-        sec_L,
+        sec_amp,
         sec_inc,
         sec_obl,
         sec_y,

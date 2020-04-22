@@ -276,7 +276,11 @@ class MapBase(object):
         f[0] = np.pi
         self._f = math.cast(f)
 
-        self._amp = math.cast(kwargs.pop("amp", np.ones(self.nw)))
+        # Note: reflected light maps have a different normalization!
+        if self.__props__["reflected"]:
+            self._amp = math.cast(kwargs.pop("amp", np.pi * np.ones(self.nw)))
+        else:
+            self._amp = math.cast(kwargs.pop("amp", np.ones(self.nw)))
 
         # Reset data and priors
         self._flux = None
@@ -730,8 +734,10 @@ class MapBase(object):
 
         Args:
             mu (scalar or vector): The prior mean on the amplitude-weighted
-                spherical harmonic coefficients. Default is unity for the
-                first term and zero for the remaining terms. If this is a vector,
+                spherical harmonic coefficients. Default is `amp` for the
+                first term and zero for the remaining terms, where
+                `amp` is `1.0` for maps in emitted light and
+                `np.pi` for maps in reflected light. If this is a vector,
                 it must have length equal to :py:attr:`Ny`.
             L (scalar, vector, or matrix): The prior covariance. This may be
                 a scalar, in which case the covariance is assumed to be
@@ -746,7 +752,10 @@ class MapBase(object):
         """
         if mu is None:
             mu = np.zeros(self.Ny)
-            mu[0] = 1.0
+            if self.__props__["reflected"]:
+                mu[0] = np.pi
+            else:
+                mu[0] = 1.0
             mu = math.cast(mu)
         self._mu = math.cast(mu) * math.cast(np.ones(self.Ny))
         self._L = linalg.Covariance(L, cho_L, N=self.Ny)
@@ -1737,29 +1746,28 @@ class ReflectedBase(object):
     additions and modifications listed below.
 
     The spherical harmonic coefficients of a map in reflected light are
-    an expansion of the object's *albedo* (instead of its emissivity, in
-    the default case).
+    an expansion of the object's *spherical albedo* (instead of its emissivity,
+    in the default case). The body is assumed to be a spherical,
+    non-uniform Lambertian scatterer.
 
-    The illumination source is currently assumed to be a point source for
+    By default, the illumination source is assumed to be a point source for
     the purposes of computing the illumination profile on the surface of the
-    body. However, if the illumination source occults the body, the flux
-    *is* computed correctly (i.e., the occulting body has a finite radius).
-    This approximation holds if the distance between the occultor and the source
-    is large compared to the size of the source. It fails, for example, in the
-    case of an extremely short-period planet, in which case signficantly more
-    than half the planet surface is illuminated by the star at any given time.
-    We plan to account for this effect in the future, so stay tuned.
+    body and as a spherical source of finite extent for the purposes of
+    modeling occultations. The point source approximation can be relaxed by
+    changing the `source_npts` keyword when instantiating the map. This may
+    be important for modeling very short-period exoplanets.
 
-    The ``xo``, ``yo``, and ``zo`` parameters in several of the methods below
+    The ``xs``, ``ys``, and ``zs`` parameters in several of the methods below
     specify the position of the illumination source in units of this body's
-    radius. The flux returned by the :py:meth:`flux` method is normalized such
-    that when the distance between the occultor and the illumination source is
-    unity, a uniform unit-amplitude map will emit a flux of unity when viewed
-    at noon.
+    radius. The flux returned by the :py:meth:`flux` method is normalized to
+    that which would be measured from a perfect Lambertian sphere of unit radius
+    illuminated by a source whose flux at the observer is unity.
 
-    This class does not currently support occultations. If an occultation
-    does occur, a ``ValueError`` will be raised. Support for occultations in
-    reflected light will be added in an upcoming version, so stay tuned.
+    The ``amp`` parameter controls the overall scaling of the body's flux.
+    The default value is unity, which corresponds to a perfect Lambertian
+    sphere, for which ``q = 3 / 2``, where ``q`` is the ratio of the body's
+    spherical albedo to its geometric albedo. Different values of ``q`` can
+    be obtained by changing ``amp`` accordingly.
 
     .. note::
         Instantiate this class by calling
@@ -1770,6 +1778,11 @@ class ReflectedBase(object):
 
     @property
     def source_npts(self):
+        """
+        The number of points used when approximating finite illumination
+        source size. This quantity must be set when instantiating the map.
+
+        """
         return int(self.__props__["source_npts"])
 
     def _get_flux_kwargs(self, kwargs):
@@ -1819,9 +1832,6 @@ class ReflectedBase(object):
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
 
-        .. note::
-            ``starry`` does not yet support occultations in reflected light.
-
         """
         # Orbital kwargs
         theta, xs, ys, zs, Rs, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
@@ -1870,9 +1880,6 @@ class ReflectedBase(object):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
-
-        .. note::
-            ``starry`` does not yet support occultations in reflected light.
 
         """
         # Orbital kwargs

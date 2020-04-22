@@ -34,7 +34,7 @@ def test_X(xs, ys, zs, theta=0, ro=0.1, res=300, ydeg=2, tol=1e-3, plot=False):
     map = starry.Map(ydeg=ydeg, reflected=True)
 
     # Analytic
-    X = map.design_matrix(
+    X = map.amp * map.design_matrix(
         xs=xs, ys=ys, zs=zs, theta=theta, xo=xo, yo=yo, ro=ro
     )
 
@@ -124,7 +124,7 @@ def test_inference():
     map.load("earth")
     img0 = map.render(projection="rect", illuminate=False)
     flux0 = map.flux(**kwargs)
-    err = 1e-8
+    err = 1e-9
     np.random.seed(3)
     flux = flux0 + np.random.randn(npts) * err
 
