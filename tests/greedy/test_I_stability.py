@@ -37,14 +37,15 @@ def test_I_stability(noon, plot=False):
     flux1 = map.flux(xo=xo, yo=yo, zo=zo, ro=ro, xs=xs, ys=ys, zs=zs)
 
     if noon:
-        # The flux above should be *exactly* equal to the flux of a
+        # The flux above should be *exactly* equal to 2/3 the flux of a
         # linearly-limb darkened source with u_1 = 1.0, since linear
         # limb darkening weights the surface brightness by the same
-        # cosine-like profile.
+        # cosine-like profile (2/3 is the geometrical albedo of a
+        # perfect Lambert sphere)
         map_e = starry.Map(ydeg=10, udeg=1)
         map_e[10, :] = 1
-        map_e[1] = 1.0
-        flux2 = map_e.flux(xo=xo, yo=yo, zo=zo, ro=ro)
+        map_e[1] = 1
+        flux2 = (2.0 / 3.0) * map_e.flux(xo=xo, yo=yo, zo=zo, ro=ro)
         atol = 1e-12
 
     else:
