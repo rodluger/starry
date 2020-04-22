@@ -789,7 +789,7 @@ class OpsReflected(OpsYlm):
             self.source_dz = np.array([0.0])
             self.source_npts = 1
         else:
-            N = 2 + np.sqrt(source_npts * 4 / np.pi)
+            N = int(2 + np.sqrt(source_npts * 4 / np.pi))
             dx = np.linspace(-1, 1, N)
             dx, dy = np.meshgrid(dx, dx)
             dz = 1 - dx ** 2 - dy ** 2
@@ -999,6 +999,18 @@ class OpsReflected(OpsYlm):
         return tt.dot(
             self.X(
                 theta, xs, ys, zs, Rs, xo, yo, zo, ro, inc, obl, u, f, alpha
+            ),
+            y,
+        )
+
+    @autocompile
+    def flux_point_source(
+        self, theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, y, u, f, alpha
+    ):
+        """Compute the reflected light curve for a point source."""
+        return tt.dot(
+            self.X_point_source(
+                theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha
             ),
             y,
         )
