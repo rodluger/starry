@@ -1940,7 +1940,7 @@ class ReflectedBase(object):
         Rs = math.cast(rs)
 
         # Get the amplitude
-        if self.nw is None or config.lazy:
+        if self.nw is None:
             amp = self.amp
         else:
             # The intensity has shape `(nsurf_pts, nw, nsource_pts)`
@@ -2042,7 +2042,7 @@ class ReflectedBase(object):
         illuminate = int(illuminate)
 
         # Compute
-        if self.nw is None or config.lazy:
+        if self.nw is None:
             amp = self.amp
         else:
             # The intensity has shape `(nw, res, res)`
