@@ -606,6 +606,10 @@ class MapBase(object):
 
             def updatefig(i):
                 img.set_array(image[i])
+                images = [img]
+                if illum is not None:
+                    img_illum.set_array(illum[i])
+                    images += [img_illum]
                 if (
                     not self.__props__["limbdarkened"]
                     and projection == STARRY_ORTHOGRAPHIC_PROJECTION
@@ -619,7 +623,7 @@ class MapBase(object):
                     for n, l in enumerate(lons):
                         lonlines[n].set_xdata(l[0])
                         lonlines[n].set_ydata(l[1])
-                return (img,) + tuple(lonlines + latlines + borders)
+                return tuple(images + lonlines + latlines + borders)
 
             ani = FuncAnimation(
                 fig,
