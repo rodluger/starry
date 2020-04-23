@@ -328,6 +328,8 @@ class MapBase(object):
                 Defaults to the value defined in ``matplotlib.rcParams``.
             norm (optional): The color normalization passed to
                 ``matplotlib.pyplot.imshow``. Default is None.
+            image (optional): The image to show (an array). Overrides the
+                internal call to `render`. Default is None.
 
         .. note::
             Pure limb-darkened maps do not accept a ``projection`` keyword.
@@ -381,6 +383,7 @@ class MapBase(object):
 
         # Render the map if needed
         image = kwargs.pop("image", None)
+        illum = kwargs.pop("illum", None)  # undocumented, used internally
         if image is None:
 
             # We need to evaluate the variables so we can plot the map!
@@ -430,6 +433,8 @@ class MapBase(object):
         else:
             nframes = 1
             image = np.reshape(image, (1,) + image.shape)
+            if illum is not None:
+                illum = np.reshape(illum, (1,) + illum.shape)
 
         # Animation
         animated = nframes > 1
@@ -567,6 +572,26 @@ class MapBase(object):
             interpolation="none",
             animated=animated,
         )
+
+        if illum is not None:
+
+            # Apply the transparency filter for the illumination
+            cmapI = colors.LinearSegmentedColormap.from_list(
+                "illum", ["k", "k"], 256
+            )
+            cmapI._init()
+            alphas = np.linspace(1.0, 0.0, cmapI.N + 3)
+            cmapI._lut[:, -1] = alphas
+            img_illum = ax.imshow(
+                illum[0],
+                origin="lower",
+                extent=extent,
+                cmap=cmapI,
+                vmin=0,
+                vmax=1,
+                interpolation="none",
+                animated=animated,
+            )
 
         # Add a colorbar
         if colorbar:
@@ -2101,10 +2126,11 @@ class ReflectedBase(object):
             alpha = self._alpha.eval()
 
             # Explicitly call the compiled version of `render`
+            # on the *unilluminated* map
             kwargs["image"] = self.ops.render(
                 res,
                 projection,
-                illuminate,
+                0,
                 theta,
                 inc,
                 obl,
@@ -2117,6 +2143,28 @@ class ReflectedBase(object):
                 zs,
                 Rs,
             )
+
+            # Now call it on an illuminated uniform map
+            # We'll use this as an alpha filter.
+            illum = self.ops.render(
+                res,
+                projection,
+                1,
+                theta,
+                inc,
+                obl,
+                np.append([1.0], np.zeros(self.Ny - 1)),
+                u,
+                f,
+                alpha,
+                xs,
+                ys,
+                zs,
+                Rs,
+            )
+            illum /= np.nanmax(illum)
+            kwargs["illum"] = illum
+
             kwargs["theta"] = theta / self._angle_factor
 
         return super(ReflectedBase, self).show(**kwargs)
