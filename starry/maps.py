@@ -479,24 +479,46 @@ class MapBase(object):
             else:
 
                 # Mollweide
+                dx = 2.0 / image.shape[1]
                 extent = (
-                    -2 * np.sqrt(2),
+                    -(1 + dx) * 2 * np.sqrt(2),
                     2 * np.sqrt(2),
-                    -np.sqrt(2),
+                    -(1 + dx) * np.sqrt(2),
                     np.sqrt(2),
                 )
                 ax.axis("off")
                 ax.set_xlim(-2 * np.sqrt(2) - 0.05, 2 * np.sqrt(2) + 0.05)
                 ax.set_ylim(-np.sqrt(2) - 0.05, np.sqrt(2) + 0.05)
 
+                # Anti-aliasing at the edges
+                x = np.linspace(-2 * np.sqrt(2), 2 * np.sqrt(2), 10000)
+                y = np.sqrt(2) * np.sqrt(1 - (x / (2 * np.sqrt(2))) ** 2)
+                borders += [
+                    ax.fill_between(x, 1.1 * y, y, color="w", zorder=99)
+                ]
+                borders += [
+                    ax.fill_betweenx(
+                        0.5 * x, 2.2 * y, 2 * y, color="w", zorder=99
+                    )
+                ]
+                borders += [
+                    ax.fill_between(x, -1.1 * y, -y, color="w", zorder=99)
+                ]
+                borders += [
+                    ax.fill_betweenx(
+                        0.5 * x, -2.2 * y, -2 * y, color="w", zorder=99
+                    )
+                ]
+
                 if grid:
                     x = np.linspace(-2 * np.sqrt(2), 2 * np.sqrt(2), 10000)
                     a = np.sqrt(2)
                     b = 2 * np.sqrt(2)
                     y = a * np.sqrt(1 - (x / b) ** 2)
-                    borders = [None, None]
-                    (borders[0],) = ax.plot(x, y, "k-", alpha=1, lw=1.5)
-                    (borders[1],) = ax.plot(x, -y, "k-", alpha=1, lw=1.5)
+                    borders += ax.plot(x, y, "k-", alpha=1, lw=1.5, zorder=100)
+                    borders += ax.plot(
+                        x, -y, "k-", alpha=1, lw=1.5, zorder=100
+                    )
                     lats = get_moll_latitude_lines()
                     latlines = [None for n in lats]
                     for n, l in enumerate(lats):
@@ -522,15 +544,25 @@ class MapBase(object):
             ax.axis("off")
             ax.set_xlim(-1.05, 1.05)
             ax.set_ylim(-1.05, 1.05)
-            extent = (-1, 1, -1, 1)
+            dx = 2.0 / image.shape[1]
+            extent = (-1 - dx, 1, -1 - dx, 1)
+
+            # Anti-aliasing at the edges
+            x = np.linspace(-1, 1, 10000)
+            y = np.sqrt(1 - x ** 2)
+            borders += [ax.fill_between(x, 1.1 * y, y, color="w", zorder=99)]
+            borders += [ax.fill_betweenx(x, 1.1 * y, y, color="w", zorder=99)]
+            borders += [ax.fill_between(x, -1.1 * y, -y, color="w", zorder=99)]
+            borders += [
+                ax.fill_betweenx(x, -1.1 * y, -y, color="w", zorder=99)
+            ]
 
             # Grid lines
             if grid:
                 x = np.linspace(-1, 1, 10000)
                 y = np.sqrt(1 - x ** 2)
-                borders = [None, None]
-                (borders[0],) = ax.plot(x, y, "k-", alpha=1, lw=1)
-                (borders[1],) = ax.plot(x, -y, "k-", alpha=1, lw=1)
+                borders += ax.plot(x, y, "k-", alpha=1, lw=1, zorder=100)
+                borders += ax.plot(x, -y, "k-", alpha=1, lw=1, zorder=100)
                 lats = get_ortho_latitude_lines(inc=inc, obl=obl)
                 latlines = [None for n in lats]
                 for n, l in enumerate(lats):
@@ -563,6 +595,7 @@ class MapBase(object):
                 except AttributeError:  # pragma: no cover
                     # DivergingNorm was introduced in matplotlib 3.1
                     norm = colors.Normalize(vmin=vmin, vmax=vmax)
+
         img = ax.imshow(
             image[0],
             origin="lower",
