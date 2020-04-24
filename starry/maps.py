@@ -328,8 +328,6 @@ class MapBase(object):
                 Defaults to the value defined in ``matplotlib.rcParams``.
             norm (optional): The color normalization passed to
                 ``matplotlib.pyplot.imshow``. Default is None.
-            image (optional): The image to show (an array). Overrides the
-                internal call to `render`. Default is None.
 
         .. note::
             Pure limb-darkened maps do not accept a ``projection`` keyword.
@@ -382,7 +380,7 @@ class MapBase(object):
             theta = np.array([0])
 
         # Render the map if needed
-        image = kwargs.pop("image", None)
+        image = kwargs.pop("image", None)  # undocumented, used internally
         illum = kwargs.pop("illum", None)  # undocumented, used internally
         if image is None:
 
@@ -464,12 +462,12 @@ class MapBase(object):
                     latlines = [None for n in lats]
                     for n, lat in enumerate(lats):
                         latlines[n] = ax.axhline(
-                            lat, color="k", lw=0.5, alpha=0.5, zorder=100
+                            lat, color="k", lw=0.5, alpha=0.5, zorder=0
                         )
                     lonlines = [None for n in lons]
                     for n, lon in enumerate(lons):
                         lonlines[n] = ax.axvline(
-                            lon, color="k", lw=0.5, alpha=0.5, zorder=100
+                            lon, color="k", lw=0.5, alpha=0.5, zorder=0
                         )
                 ax.set_xticks(lons)
                 ax.set_yticks(lats)
@@ -494,19 +492,19 @@ class MapBase(object):
                 x = np.linspace(-2 * np.sqrt(2), 2 * np.sqrt(2), 10000)
                 y = np.sqrt(2) * np.sqrt(1 - (x / (2 * np.sqrt(2))) ** 2)
                 borders += [
-                    ax.fill_between(x, 1.1 * y, y, color="w", zorder=99)
+                    ax.fill_between(x, 1.1 * y, y, color="w", zorder=-1)
                 ]
                 borders += [
                     ax.fill_betweenx(
-                        0.5 * x, 2.2 * y, 2 * y, color="w", zorder=99
+                        0.5 * x, 2.2 * y, 2 * y, color="w", zorder=-1
                     )
                 ]
                 borders += [
-                    ax.fill_between(x, -1.1 * y, -y, color="w", zorder=99)
+                    ax.fill_between(x, -1.1 * y, -y, color="w", zorder=-1)
                 ]
                 borders += [
                     ax.fill_betweenx(
-                        0.5 * x, -2.2 * y, -2 * y, color="w", zorder=99
+                        0.5 * x, -2.2 * y, -2 * y, color="w", zorder=-1
                     )
                 ]
 
@@ -515,21 +513,19 @@ class MapBase(object):
                     a = np.sqrt(2)
                     b = 2 * np.sqrt(2)
                     y = a * np.sqrt(1 - (x / b) ** 2)
-                    borders += ax.plot(x, y, "k-", alpha=1, lw=1.5, zorder=100)
-                    borders += ax.plot(
-                        x, -y, "k-", alpha=1, lw=1.5, zorder=100
-                    )
+                    borders += ax.plot(x, y, "k-", alpha=1, lw=1.5, zorder=0)
+                    borders += ax.plot(x, -y, "k-", alpha=1, lw=1.5, zorder=0)
                     lats = get_moll_latitude_lines()
                     latlines = [None for n in lats]
                     for n, l in enumerate(lats):
                         (latlines[n],) = ax.plot(
-                            l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=100
+                            l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=0
                         )
                     lons = get_moll_longitude_lines()
                     lonlines = [None for n in lons]
                     for n, l in enumerate(lons):
                         (lonlines[n],) = ax.plot(
-                            l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=100
+                            l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=0
                         )
 
         else:
@@ -550,24 +546,24 @@ class MapBase(object):
             # Anti-aliasing at the edges
             x = np.linspace(-1, 1, 10000)
             y = np.sqrt(1 - x ** 2)
-            borders += [ax.fill_between(x, 1.1 * y, y, color="w", zorder=99)]
-            borders += [ax.fill_betweenx(x, 1.1 * y, y, color="w", zorder=99)]
-            borders += [ax.fill_between(x, -1.1 * y, -y, color="w", zorder=99)]
+            borders += [ax.fill_between(x, 1.1 * y, y, color="w", zorder=-1)]
+            borders += [ax.fill_betweenx(x, 1.1 * y, y, color="w", zorder=-1)]
+            borders += [ax.fill_between(x, -1.1 * y, -y, color="w", zorder=-1)]
             borders += [
-                ax.fill_betweenx(x, -1.1 * y, -y, color="w", zorder=99)
+                ax.fill_betweenx(x, -1.1 * y, -y, color="w", zorder=-1)
             ]
 
             # Grid lines
             if grid:
                 x = np.linspace(-1, 1, 10000)
                 y = np.sqrt(1 - x ** 2)
-                borders += ax.plot(x, y, "k-", alpha=1, lw=1, zorder=100)
-                borders += ax.plot(x, -y, "k-", alpha=1, lw=1, zorder=100)
+                borders += ax.plot(x, y, "k-", alpha=1, lw=1, zorder=0)
+                borders += ax.plot(x, -y, "k-", alpha=1, lw=1, zorder=0)
                 lats = get_ortho_latitude_lines(inc=inc, obl=obl)
                 latlines = [None for n in lats]
                 for n, l in enumerate(lats):
                     (latlines[n],) = ax.plot(
-                        l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=100
+                        l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=0
                     )
                 lons = get_ortho_longitude_lines(
                     inc=inc, obl=obl, theta=theta[0]
@@ -575,7 +571,7 @@ class MapBase(object):
                 lonlines = [None for n in lons]
                 for n, l in enumerate(lons):
                     (lonlines[n],) = ax.plot(
-                        l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=100
+                        l[0], l[1], "k-", lw=0.5, alpha=0.5, zorder=0
                     )
 
         # Plot the first frame of the image
@@ -604,6 +600,7 @@ class MapBase(object):
             norm=norm,
             interpolation="none",
             animated=animated,
+            zorder=-3,
         )
 
         if illum is not None:
@@ -624,6 +621,7 @@ class MapBase(object):
                 vmax=1,
                 interpolation="none",
                 animated=animated,
+                zorder=-2,
             )
 
         # Add a colorbar
@@ -2135,20 +2133,23 @@ class ReflectedBase(object):
             return math.reshape(image, [res, res])
 
     def show(self, **kwargs):
-        # We need to evaluate the variables so we can plot the map!
-        if config.lazy and kwargs.get("image", None) is None:
 
-            # Get kwargs
-            res = kwargs.pop("res", 300)
-            projection = get_projection(kwargs.get("projection", "ortho"))
-            theta = math.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
-            xs = math.cast(kwargs.pop("xs", 0))
-            ys = math.cast(kwargs.pop("ys", 0))
-            zs = math.cast(kwargs.pop("zs", 1))
-            Rs = math.cast(kwargs.pop("rs", 0))
-            theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
-            illuminate = int(kwargs.pop("illuminate", True))
+        # If the user supplied an image, let's just show it
+        if kwargs.get("image", None) is not None:
+            return super(ReflectedBase, self).show(**kwargs)
 
+        # Get kwargs
+        res = kwargs.pop("res", 300)
+        projection = get_projection(kwargs.get("projection", "ortho"))
+        theta = math.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
+        xs = math.cast(kwargs.pop("xs", 0))
+        ys = math.cast(kwargs.pop("ys", 0))
+        zs = math.cast(kwargs.pop("zs", 1))
+        Rs = math.cast(kwargs.pop("rs", 0))
+        theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
+        illuminate = int(kwargs.pop("illuminate", True))
+
+        if config.lazy:
             # Evaluate the variables
             theta = theta.eval()
             xs = xs.eval()
@@ -2161,48 +2162,42 @@ class ReflectedBase(object):
             u = self._u.eval()
             f = self._f.eval()
             alpha = self._alpha.eval()
+        else:
+            inc = self._inc
+            obl = self._obl
+            y = self._y
+            u = self._u
+            f = self._f
+            alpha = self._alpha
 
-            # Explicitly call the compiled version of `render`
-            # on the *unilluminated* map
-            kwargs["image"] = self.ops.render(
-                res,
-                projection,
-                0,
-                theta,
-                inc,
-                obl,
-                y,
-                u,
-                f,
-                alpha,
-                xs,
-                ys,
-                zs,
-                Rs,
-            )
+        # Explicitly call the compiled version of `render`
+        # on the *unilluminated* map
+        kwargs["image"] = self.ops.render(
+            res, projection, 0, theta, inc, obl, y, u, f, alpha, xs, ys, zs, Rs
+        )
 
-            # Now call it on an illuminated uniform map
-            # We'll use this as an alpha filter.
-            illum = self.ops.render(
-                res,
-                projection,
-                1,
-                theta,
-                inc,
-                obl,
-                np.append([1.0], np.zeros(self.Ny - 1)),
-                u,
-                f,
-                alpha,
-                xs,
-                ys,
-                zs,
-                Rs,
-            )
-            illum /= np.nanmax(illum)
-            kwargs["illum"] = illum
+        # Now call it on an illuminated uniform map
+        # We'll use this as an alpha filter.
+        illum = self.ops.render(
+            res,
+            projection,
+            1,
+            theta,
+            inc,
+            obl,
+            np.append([1.0], np.zeros(self.Ny - 1)),
+            u,
+            f,
+            alpha,
+            xs,
+            ys,
+            zs,
+            Rs,
+        )
+        illum /= np.nanmax(illum)
+        kwargs["illum"] = illum
 
-            kwargs["theta"] = theta / self._angle_factor
+        kwargs["theta"] = theta / self._angle_factor
 
         return super(ReflectedBase, self).show(**kwargs)
 
