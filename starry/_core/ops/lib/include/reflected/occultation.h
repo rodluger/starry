@@ -16,6 +16,7 @@ light).
 #include "geometry.h"
 #include "phasecurve.h"
 #include "primitive.h"
+#include "scatter.h"
 
 namespace starry {
 namespace reflected {
@@ -46,7 +47,6 @@ protected:
   Vector<T> QIntegral;
   Vector<T> TIntegral;
   RowVector<T> PQT;
-  int nillum;
 
   // Angles
   T costheta;
@@ -140,58 +140,6 @@ protected:
     A2Inv = A2InvDense.block(0, 0, N1, N1).sparseView();
   }
 
-  inline void computeI(const T &b, const T &theta) {
-
-    // Reset
-    T y0, x, y, z;
-    if (abs(b) < 1 - STARRY_B_ONE_TOL) {
-      y0 = sqrt(1 - b * b);
-      x = -y0 * sin(theta);
-      y = y0 * cos(theta);
-    } else {
-      x = 0;
-      y = 0;
-    }
-    z = -b;
-    Vector<T> p(3);
-    p << x, z, y;
-
-    typedef Eigen::Triplet<T> T3;
-    std::vector<T3> tripletList;
-    tripletList.reserve(nillum);
-
-    // Populate the triplets
-    int n1 = 0;
-    int n2 = 0;
-    int l, n;
-    bool odd1;
-    for (int l1 = 0; l1 < deg + 1; ++l1) {
-      for (int m1 = -l1; m1 < l1 + 1; ++m1) {
-        if (is_even(l1 + m1))
-          odd1 = false;
-        else
-          odd1 = true;
-        n2 = 0;
-        for (int m2 = -1; m2 < 2; ++m2) {
-          l = l1 + 1;
-          n = l * l + l + m1 + m2;
-          if (odd1 && (is_even(m2))) {
-            tripletList.push_back(T3(n - 4 * l + 2, n1, p(n2)));
-            tripletList.push_back(T3(n - 2, n1, -p(n2)));
-            tripletList.push_back(T3(n + 2, n1, -p(n2)));
-          } else {
-            tripletList.push_back(T3(n, n1, p(n2)));
-          }
-          n2 += 1;
-        }
-        n1 += 1;
-      }
-    }
-
-    // Create the sparse matrix
-    I.setFromTriplets(tripletList.begin(), tripletList.end());
-  }
-
   /**
       Weight the solution vector by a cosine-like illumination profile.
       Note that we need I to transform Greens --> Greens.
@@ -199,7 +147,7 @@ protected:
   */
   inline RowVector<T> illuminate(const T &b, const T &theta,
                                  const RowVector<T> &sT) {
-    computeI(b, theta);
+    scatter::computeI(I, b, theta);
     RowVector<T> sTw = sT * A2;
     sTw = sTw * I;
     sTw = sTw * A2Inv;
@@ -221,7 +169,7 @@ protected:
   inline RowVector<T> sTr(const T &b, const T &theta) {
 
     // Compute the reflection solution in the terminator frame
-    R.compute(b);
+    R.compute_rI(b);
 
     // Transform to ylms and rotate into the occultor frame
     RowVector<T> rTA1 = R.rT * A1;
@@ -286,10 +234,6 @@ public:
     sinnt(0) = 0.0;
     cosmt.resize(N1);
     sinmt.resize(N1);
-
-    // Quadratic fit to the number of coefficients
-    // in the illumination matrix
-    nillum = max(4, int(ceil(5.5 * deg * deg + 9.5 * deg + 3)));
   }
 
   /**

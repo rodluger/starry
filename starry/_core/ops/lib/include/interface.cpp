@@ -136,7 +136,7 @@ PYBIND11_MODULE(_c_ops, m) {
             size_t npts = size_t(bterm.size());
             Matrix<double, RowMajor> rT(npts, ops.N);
             for (size_t n = 0; n < npts; ++n) {
-              ops.RP.compute(static_cast<Scalar>(bterm(n)));
+              ops.RP.compute_rI(static_cast<Scalar>(bterm(n)));
               rT.row(n) = ops.RP.rT.template cast<double>();
             }
             return rT;
@@ -149,7 +149,7 @@ PYBIND11_MODULE(_c_ops, m) {
     size_t npts = size_t(bterm.size());
     Vector<double> bb(npts);
     for (size_t n = 0; n < npts; ++n) {
-      bb(n) = static_cast<double>(ops.RP.compute(
+      bb(n) = static_cast<double>(ops.RP.compute_rI(
           static_cast<Scalar>(bterm(n)), brT.row(n).template cast<Scalar>()));
     }
     return bb;

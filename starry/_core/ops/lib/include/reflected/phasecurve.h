@@ -9,6 +9,7 @@
 
 #include "../ellip.h"
 #include "../utils.h"
+#include "scatter.h"
 
 namespace starry {
 namespace reflected {
@@ -141,10 +142,70 @@ public:
   RowVector<Scalar> rT;
 
   /**
-  Computes the complete reflectance integrals.
+  Computes the complete unweighted reflectance integrals.
 
   */
-  inline void compute(const Scalar &bterm) {
+  inline void compute_r(const Scalar &bterm) {
+    computeHI(bterm);
+    rT.setZero();
+    int n = 0;
+    int i, j;
+    int mu, nu;
+    for (int l = 0; l < lmax + 1; ++l) {
+      for (int m = -l; m < l + 1; ++m) {
+        mu = l - m;
+        nu = l + m;
+        if (is_even(nu)) {
+          i = mu / 2;
+          j = nu / 2;
+          rT(n) = H(j + 1) * J(i, j + 1);
+        } else {
+          i = (mu - 1) / 2;
+          j = (nu - 1) / 2;
+          rT(n) = I(j + 1) * K(i, j + 1);
+        }
+        ++n;
+      }
+    }
+  }
+
+  /**
+    Computes the (backprop) gradient of the unweighted complete reflectance
+    integrals.
+
+  */
+  inline Scalar compute_r(const Scalar &bterm, const RowVector<Scalar> &brT) {
+    Scalar bb = 0.0;
+    computeHI_with_grad(bterm);
+    int n = 0;
+    int i, j;
+    int mu, nu;
+
+    for (int l = 0; l < lmax + 1; ++l) {
+      for (int m = -l; m < l + 1; ++m) {
+        mu = l - m;
+        nu = l + m;
+        if (is_even(nu)) {
+          i = mu / 2;
+          j = nu / 2;
+          bb += DHDb(j + 1) * J(i, j + 1) * brT(n);
+        } else {
+          i = (mu - 1) / 2;
+          j = (nu - 1) / 2;
+          bb += DIDb(j + 1) * K(i, j + 1) * brT(n);
+        }
+        ++n;
+      }
+    }
+    return bb;
+  }
+
+  /**
+  Computes the complete reflectance integrals weighted
+  by the Lambertian reflectance.
+
+  */
+  inline void compute_rI(const Scalar &bterm) {
     computeHI(bterm);
     rT.setZero();
     Scalar fac = sqrt(Scalar(1.0) - bterm * bterm);
@@ -172,10 +233,11 @@ public:
   }
 
   /**
-  Computes the (backprop) gradient of the complete reflectance integrals.
+  Computes the (backprop) gradient of the complete reflectance
+  integrals weighted by the Lambertian reflectance.
 
   */
-  inline Scalar compute(const Scalar &bterm, const RowVector<Scalar> &brT) {
+  inline Scalar compute_rI(const Scalar &bterm, const RowVector<Scalar> &brT) {
     Scalar bb = 0.0;
     computeHI_with_grad(bterm);
     // NOTE: The gradient is infinite when bterm = +/- 1
