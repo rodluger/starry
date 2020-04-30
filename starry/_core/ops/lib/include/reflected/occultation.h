@@ -47,6 +47,7 @@ protected:
   Vector<T> QIntegral;
   Vector<T> TIntegral;
   RowVector<T> PQT;
+  RowVector<T> total_em;
 
   // Angles
   T costheta;
@@ -136,6 +137,53 @@ protected:
     return rTA1R * B.AInv_Reflected.block(0, 0, rTA1R.cols(), rTA1R.cols());
   }
 
+  /**
+    The complement of sTr.
+  */
+  inline RowVector<T> sTr_hat(const T &b, const T &theta, const T &sigr) {
+
+    // Compute the complement of the reflection
+    // solution in the terminator frame.
+    int deg_eff;
+    if (sigr > 0)
+      deg_eff = deg_on94;
+    else
+      deg_eff = deg_lamb;
+    R.compute_unweighted(b, deg_eff);
+    scatter::computeI(deg, I, b, T(0.0), sigr, B);
+    RowVector<T> rT = -(total_em.segment(0, R.rT0.cols()) - R.rT0) * I;
+
+    // Transform to ylms and rotate into the occultor frame
+    RowVector<T> rTA1 = rT * B.A1_Reflected.block(0, 0, rT.cols(), rT.cols());
+    RowVector<T> rTA1R(N);
+    cosnt(1) = cos(theta);
+    sinnt(1) = sin(-theta);
+    for (int n = 2; n < deg + 1; ++n) {
+      cosnt(n) = 2.0 * cosnt(n - 1) * cosnt(1) - cosnt(n - 2);
+      sinnt(n) = 2.0 * sinnt(n - 1) * cosnt(1) - sinnt(n - 2);
+    }
+    int n = 0;
+    for (int l = 0; l < deg + 1; ++l) {
+      for (int m = -l; m < 0; ++m) {
+        cosmt(n) = cosnt(-m);
+        sinmt(n) = -sinnt(-m);
+        ++n;
+      }
+      for (int m = 0; m < l + 1; ++m) {
+        cosmt(n) = cosnt(m);
+        sinmt(n) = sinnt(m);
+        ++n;
+      }
+      for (int j = 0; j < 2 * l + 1; ++j) {
+        rTA1R(l * l + j) = rTA1(l * l + j) * cosmt(l * l + j) +
+                           rTA1(l * l + 2 * l - j) * sinmt(l * l + j);
+      }
+    }
+
+    // Transform back to Green's polynomials
+    return rTA1R * B.AInv_Reflected.block(0, 0, rTA1R.cols(), rTA1R.cols());
+  }
+
 public:
   int code;
   RowVector<T> sT;
@@ -153,6 +201,9 @@ public:
     sinnt(0) = 0.0;
     cosmt.resize(N);
     sinmt.resize(N);
+
+    // Total flux from the classical starry solution
+    basis::computerT(deg_on94, total_em);
   }
 
   /**
@@ -198,7 +249,7 @@ public:
 
       // The occultor is only blocking dayside flux
       sT = illuminate(b, theta, sTe(bo, ro, sigr), sigr) +
-           sTr(-b, theta + pi<T>(), sigr);
+           sTr_hat(b, theta, sigr);
 
     } else if (code == FLUX_NOON) {
 
@@ -226,7 +277,7 @@ public:
 
         //
         sT = illuminate(b, theta, sTe(bo, ro, sigr) + PQT, sigr) +
-             sTr(-b, theta + pi<T>(), sigr);
+             sTr_hat(b, theta, sigr);
 
       } else if ((code == FLUX_DAY_VIS) || (code == FLUX_QUAD_DAY_VIS)) {
 

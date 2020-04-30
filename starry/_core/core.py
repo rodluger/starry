@@ -1506,7 +1506,6 @@ class OpsSystem(object):
                     sec_u[i],
                     sec_f[i],
                     sec_alpha[i],
-                    sec_sigr[i],
                 )
                 for i, sec in enumerate(self.secondaries)
             ]
@@ -1606,7 +1605,6 @@ class OpsSystem(object):
                         sec_u[i],
                         sec_f[i],
                         sec_alpha[i],
-                        sec_sigr[i],
                     )
                     - phase_sec[i][idx],
                 )
@@ -1669,7 +1667,6 @@ class OpsSystem(object):
                             sec_u[i],
                             sec_f[i],
                             sec_alpha[i],
-                            sec_sigr[i],
                         )
                         - phase_sec[i][idx],
                     )

@@ -530,7 +530,7 @@ template <typename T> inline T T2_indef(const T &b, const T &xi) {
 
 */
 template <typename S>
-inline void computeT(const int ydeg, const S &b, const S &theta,
+inline void computeT(const int ydeg, const S &b_, const S &theta,
                      const Vector<S> &xi, Vector<S> &T) {
 
   // Check for trivial result
@@ -540,6 +540,14 @@ inline void computeT(const int ydeg, const S &b, const S &theta,
 
   // Pre-compute H
   Matrix<S> HIntegral = H(ydeg + 2, xi);
+
+  // HACK: We should derive exact expressions in this limit.
+  S b = b_;
+  if (abs(b_) < STARRY_B_ZERO_TOL) {
+    b = STARRY_B_ZERO_TOL;
+    if (b_ < 0)
+      b *= -1;
+  }
 
   // Vars
   int jmax, kmax, mu, nu, l, j, k, n1, n3, n4, n5, p, q;
@@ -553,7 +561,7 @@ inline void computeT(const int ydeg, const S &b, const S &theta,
   S bct = b * ct;
   S bst = b * st;
 
-  // Case 2 (special)
+  // Case 2 (special
   int sgn = b > 0 ? -1 : b < 0 ? 1 : 0;
   for (size_t i = 0; i < K; ++i) {
     T(2) += sgn * T2_indef(S(abs(b)), xi(i));
