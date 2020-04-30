@@ -60,11 +60,19 @@ class rTReflectedOp(tt.Op):
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [tt.TensorType(inputs[0].dtype, (False, False))()]
+        outputs = [
+            tt.TensorType(inputs[-1].dtype, (False, False))(),
+            tt.TensorType(inputs[-1].dtype, (False, False))(),
+            tt.TensorType(inputs[-1].dtype, (False, False))(),
+        ]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return [shapes[0] + (tt.as_tensor(self.N),)]
+        return [
+            shapes[0] + (tt.as_tensor(self.N),),
+            shapes[0] + (tt.as_tensor(self.N),),
+            shapes[0] + (tt.as_tensor(self.N),),
+        ]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -72,15 +80,16 @@ class rTReflectedOp(tt.Op):
         return self.grad(inputs, eval_points)
 
     def perform(self, node, inputs, outputs):
-        outputs[0][0] = self.func(inputs[0])
+        (b, sigr) = inputs
+        rT, ddb, ddsigr = self.func(b, sigr)
+        outputs[0][0] = rT
+        outputs[1][0] = ddb
+        outputs[2][0] = ddsigr
 
     def grad(self, inputs, gradients):
-        # NOTE: There may be a bug in Theano for custom Ops
-        # that are functions of a single variable, since a
-        # call to their gradient method does not return a
-        # list (which it *should*). We need to explicitly make it
-        # into a list below.
-        return [self._grad_op(*(inputs + gradients))]
+        results = self(*inputs)
+        grad = self._grad_op(*(inputs + results + [gradients[0]]))
+        return grad
 
 
 class rTReflectedGradientOp(tt.Op):
@@ -89,15 +98,18 @@ class rTReflectedGradientOp(tt.Op):
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [i.type() for i in inputs[:-1]]
+        outputs = [i.type() for i in inputs[:2]]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return shapes[:-1]
+        return shapes[:2]
 
     def perform(self, node, inputs, outputs):
-        bb = self.base_op.func(*inputs)
-        outputs[0][0] = np.reshape(bb, np.shape(inputs[0]))
+        b, sigr, rT, ddb, ddsigr, brT = inputs
+        bb = (brT * ddb).sum(-1)
+        bsigr = (brT * ddsigr).sum()
+        outputs[0][0] = np.reshape(bb, np.shape(b))
+        outputs[1][0] = np.reshape(bsigr, np.shape(sigr))
 
 
 class sTReflectedOp(tt.Op):
@@ -114,11 +126,13 @@ class sTReflectedOp(tt.Op):
             tt.TensorType(inputs[-1].dtype, (False, False))(),
             tt.TensorType(inputs[-1].dtype, (False, False))(),
             tt.TensorType(inputs[-1].dtype, (False, False))(),
+            tt.TensorType(inputs[-1].dtype, (False, False))(),
         ]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
         return [
+            shapes[0] + (tt.as_tensor(self.N),),
             shapes[0] + (tt.as_tensor(self.N),),
             shapes[0] + (tt.as_tensor(self.N),),
             shapes[0] + (tt.as_tensor(self.N),),
@@ -132,13 +146,16 @@ class sTReflectedOp(tt.Op):
         return self.grad(inputs, eval_points)
 
     def perform(self, node, inputs, outputs):
-        b, theta, bo, ro = inputs
-        sT, ddb, ddtheta, ddbo, ddro = self.func(b, theta, bo, ro)
+        b, theta, bo, ro, sigr = inputs
+        sT, ddb, ddtheta, ddbo, ddro, ddsigr = self.func(
+            b, theta, bo, ro, sigr
+        )
         outputs[0][0] = sT
         outputs[1][0] = ddb
         outputs[2][0] = ddtheta
         outputs[3][0] = ddbo
         outputs[4][0] = ddro
+        outputs[5][0] = ddsigr
 
     def grad(self, inputs, gradients):
         results = self(*inputs)
@@ -152,19 +169,34 @@ class sTReflectedGradientOp(tt.Op):
 
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
-        outputs = [i.type() for i in inputs[:4]]
+        outputs = [i.type() for i in inputs[:5]]
         return gof.Apply(self, inputs, outputs)
 
     def infer_shape(self, node, shapes):
-        return shapes[:4]
+        return shapes[:5]
 
     def perform(self, node, inputs, outputs):
-        b, theta, bo, ro, sT, ddb, ddtheta, ddbo, ddro, bsT = inputs
+        (
+            b,
+            theta,
+            bo,
+            ro,
+            sigr,
+            sT,
+            ddb,
+            ddtheta,
+            ddbo,
+            ddro,
+            ddsigr,
+            bsT,
+        ) = inputs
         bb = (bsT * ddb).sum(-1)
         btheta = (bsT * ddtheta).sum(-1)
         bbo = (bsT * ddbo).sum(-1)
         bro = (bsT * ddro).sum()
+        bsigr = (bsT * ddsigr).sum()
         outputs[0][0] = np.reshape(bb, np.shape(b))
         outputs[1][0] = np.reshape(btheta, np.shape(theta))
         outputs[2][0] = np.reshape(bbo, np.shape(bo))
         outputs[3][0] = np.array(np.reshape(bro, np.shape(ro)))
+        outputs[4][0] = np.array(np.reshape(bsigr, np.shape(sigr)))

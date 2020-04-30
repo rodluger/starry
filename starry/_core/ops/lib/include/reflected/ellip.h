@@ -38,8 +38,9 @@ template <typename T> inline T arctan(const T &x) { return atan(x); }
 /**
   Autodiff-safe arc tangent.
 */
-template <typename T> inline ADScalar<T, 4> arctan(const ADScalar<T, 4> &x) {
-  ADScalar<T, 4> result;
+template <typename T, int N>
+inline ADScalar<T, N> arctan(const ADScalar<T, N> &x) {
+  ADScalar<T, N> result;
   result.value() = atan(x.value());
   result.derivatives() = x.derivatives() / (x.value() * x.value() + 1);
   return result;
@@ -53,8 +54,9 @@ template <typename T> inline T arccosh(const T &x) { return acosh(x); }
 /**
   Autodiff-safe hyperbolic arc cosine.
 */
-template <typename T> inline ADScalar<T, 4> arccosh(const ADScalar<T, 4> &x) {
-  ADScalar<T, 4> result;
+template <typename T, int N>
+inline ADScalar<T, N> arccosh(const ADScalar<T, N> &x) {
+  ADScalar<T, N> result;
   result.value() = acosh(x.value());
   result.derivatives() = x.derivatives() / sqrt(x.value() * x.value() - 1);
   return result;

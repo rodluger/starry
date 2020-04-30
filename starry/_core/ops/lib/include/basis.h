@@ -7,6 +7,7 @@
 #ifndef _STARRY_BASIS_H_
 #define _STARRY_BASIS_H_
 
+#include "reflected/oren_nayar.h"
 #include "utils.h"
 
 namespace starry {
@@ -326,6 +327,82 @@ void computeA(int lmax, const Eigen::SparseMatrix<T> &A1,
 }
 
 /**
+
+  Compute the change of basis matrix `A2` and its inverse.
+
+*/
+template <typename Scalar>
+void computeA2(int lmax, Eigen::SparseMatrix<Scalar> &A2,
+               Eigen::SparseMatrix<Scalar> &A2Inv) {
+
+  int i, n, l, m, mu, nu;
+  int N = (lmax + 1) * (lmax + 1);
+  Matrix<Scalar> A2InvDense = Matrix<Scalar>::Zero(N, N);
+  n = 0;
+  for (l = 0; l < lmax + 1; ++l) {
+    for (m = -l; m < l + 1; ++m) {
+      mu = l - m;
+      nu = l + m;
+      if (nu % 2 == 0) {
+        // x^(mu/2) y^(nu/2)
+        A2InvDense(n, n) = (mu + 2) / 2;
+      } else if ((l == 1) && (m == 0)) {
+        // z
+        A2InvDense(n, n) = 1;
+      } else if ((mu == 1) && (l % 2 == 0)) {
+        // x^(l-2) y z
+        i = l * l + 3;
+        A2InvDense(i, n) = 3;
+      } else if ((mu == 1) && (l % 2 == 1)) {
+        // x^(l-3) z
+        i = 1 + (l - 2) * (l - 2);
+        A2InvDense(i, n) = -1;
+        // x^(l-1) z
+        i = l * l + 1;
+        A2InvDense(i, n) = 1;
+        // x^(l-3) y^2 z
+        i = l * l + 5;
+        A2InvDense(i, n) = 4;
+      } else {
+        if (mu != 3) {
+          // x^((mu - 5)/2) y^((nu - 1)/2)
+          i = nu + ((mu - 4 + nu) * (mu - 4 + nu)) / 4;
+          A2InvDense(i, n) = (mu - 3) / 2;
+          // x^((mu - 5)/2) y^((nu + 3)/2)
+          i = nu + 4 + ((mu + nu) * (mu + nu)) / 4;
+          A2InvDense(i, n) = -(mu - 3) / 2;
+        }
+        // x^((mu - 1)/2) y^((nu - 1)/2)
+        i = nu + (mu + nu) * (mu + nu) / 4;
+        A2InvDense(i, n) = -(mu + 3) / 2;
+      }
+      ++n;
+    }
+  }
+
+  // Get the inverse
+  A2Inv = A2InvDense.sparseView();
+  Eigen::SparseLU<Eigen::SparseMatrix<Scalar>> solver;
+  solver.compute(A2Inv);
+  if (solver.info() != Eigen::Success) {
+    std::stringstream args;
+    args << "N = " << N;
+    throw StarryException("Error computing the change of basis matrix `A2Inv`.",
+                          "basis.h", "computeA2", args.str());
+  }
+  Eigen::SparseMatrix<Scalar> Id = Matrix<Scalar>::Identity(N, N).sparseView();
+  A2 = solver.solve(Id);
+  if (solver.info() != Eigen::Success) {
+    std::stringstream args;
+    args << "N = " << N;
+    throw StarryException("Error computing the change of basis matrix `A2`.",
+                          "basis.h", "computeA2", args.str());
+  }
+
+  A2Inv = A2InvDense.sparseView();
+}
+
+/**
 Compute the `r^T` phase curve solution vector.
 
 */
@@ -485,14 +562,26 @@ public:
   Eigen::SparseMatrix<T>
       U1; /**< The limb darkening to polynomial change of basis matrix */
 
+  // Special sizes for reflected light stuff
+  Eigen::SparseMatrix<T> A1_Reflected;
+  Eigen::SparseMatrix<T> A1Inv_Reflected;
+  Eigen::SparseMatrix<T> A2_Reflected;
+  Eigen::SparseMatrix<T> A2Inv_Reflected;
+  Eigen::SparseMatrix<T> AInv_Reflected;
+
   // Poly basis
   RowVector<T> x_cache, y_cache, z_cache;
+  int deg_cache;
   Matrix<T, RowMajor> pT;
 
   // Constructor: compute the matrices
   explicit Basis(int ydeg, int udeg, int fdeg, T norm = 2.0 / root_pi<T>())
       : ydeg(ydeg), udeg(udeg), fdeg(fdeg), deg(ydeg + udeg + fdeg), norm(norm),
-        x_cache(0), y_cache(0), z_cache(0) {
+        x_cache(0), y_cache(0), z_cache(0), deg_cache(-1) {
+
+    // TODO: This class needs to be re-written. We're computing the same
+    // things over and over again just to get different shapes...
+
     // Compute the augmented matrices
     Eigen::SparseMatrix<T> A1Inv_, A2_, A_, U1_;
     RowVector<T> rT_, rTA1_;
@@ -503,8 +592,7 @@ public:
     rTA1_ = rT_ * A1_big;
     computeU(deg, A1_big, A_, U1_, norm);
 
-    // Resize to the shapes actually used
-    // in the code
+    // Resize to the shapes actually used in the code
     int Ny = (ydeg + 1) * (ydeg + 1);
     int Nf = (fdeg + 1) * (fdeg + 1);
     A1 = A1_big.block(0, 0, Ny, Ny);
@@ -515,14 +603,20 @@ public:
     rT = rT_;
     rTA1 = rTA1_.segment(0, Ny);
     U1 = U1_.block(0, 0, (udeg + 1) * (udeg + 1), udeg + 1);
-  }
+
+    // Special augmented matrices for reflected light maps
+    computeA2(deg + STARRY_OREN_NAYAR_DEG, A2_Reflected, A2Inv_Reflected);
+    computeA1(deg + STARRY_OREN_NAYAR_DEG, A1_Reflected, norm);
+    computeA1Inv(deg + STARRY_OREN_NAYAR_DEG, A1_Reflected, A1Inv_Reflected);
+    AInv_Reflected = A1Inv_Reflected * A2Inv_Reflected;
+  };
 
   /**
-  Compute the polynomial basis at a vector of points.
+    Compute the polynomial basis at a vector of points.
 
   */
-  inline void computePolyBasis(const RowVector<T> &x, const RowVector<T> &y,
-                               const RowVector<T> &z) {
+  inline void computePolyBasis(const int deg, const RowVector<T> &x,
+                               const RowVector<T> &y, const RowVector<T> &z) {
     // Dimensions
     size_t npts = x.cols();
     int N = (deg + 1) * (deg + 1);
@@ -530,7 +624,7 @@ public:
 
     // Check the cache
     if ((npts == size_t(x_cache.size())) && (x == x_cache) && (y == y_cache) &&
-        (z == z_cache)) {
+        (z == z_cache) && (deg == deg_cache)) {
       return;
     } else if (npts == 0) {
       return;
@@ -538,6 +632,7 @@ public:
     x_cache = x;
     y_cache = y;
     z_cache = z;
+    deg_cache = deg;
 
     // Optimized polynomial basis computation
     // A little opaque, sorry...

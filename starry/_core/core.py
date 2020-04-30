@@ -18,6 +18,7 @@ from .ops import (
     GetClOp,
     RaiseValueErrorOp,
     RaiseValueErrorIfOp,
+    OrenNayarOp,
 )
 from .utils import logger, autocompile, is_theano
 from .math import math
@@ -804,20 +805,42 @@ class OpsReflected(OpsYlm):
         self.source_dy = tt.as_tensor_variable(self.source_dy)
         self.source_dz = tt.as_tensor_variable(-self.source_dz)
 
+        # Oren-Nayar (1994) intensity profile (for rendering)
+        self._OrenNayar = OrenNayarOp(self._c_ops.OrenNayarPolynomial)
+        self._pTON94 = pTOp(self._c_ops.pT, _c_ops.STARRY_OREN_NAYAR_DEG)
+
     @property
     def A1Big(self):
         return self._A1Big
 
     @autocompile
-    def rT(self, b):
-        return self._rT(b)
+    def rT(self, b, sigr):
+        # TODO: sigr
+        return self._rT(b, sigr)[0]
 
     @autocompile
-    def sT(self, b, theta, bo, ro):
-        return self._sT(b, theta, bo, ro)[0]
+    def sT(self, b, theta, bo, ro, sigr):
+        # TODO: sigr
+        return self._sT(b, theta, bo, ro, sigr)[0]
 
     @autocompile
-    def intensity(self, lat, lon, y, u, f, xs, ys, zs, Rs, wta, ld):
+    def intensity(
+        self,
+        lat,
+        lon,
+        y,
+        u,
+        f,
+        xs,
+        ys,
+        zs,
+        Rs,
+        wta,
+        ld,
+        sigr,
+        on94_exact,
+        illuminate,
+    ):
         """Compute the intensity at a series of lat-lon points on the surface."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
@@ -858,18 +881,28 @@ class OpsReflected(OpsYlm):
                 tt.reshape(zpt, [1, -1]),
             )
         )
-        I = self.compute_illumination(xyz, xs, ys, zs, Rs)
+        I = self.compute_illumination(xyz, xs, ys, zs, Rs, sigr, on94_exact)
 
         # Add an extra dimension for the wavelength
         if self.nw is not None:
             I = tt.shape_padaxis(I, 1)
 
-        intensity = tt.switch(tt.isnan(intensity), intensity, intensity * I)
+        # Weight the image by the illumination
+        intensity = tt.switch(
+            tt.isnan(intensity),
+            intensity,
+            ifelse(illuminate, intensity * I, intensity * tt.ones_like(I)),
+        )
+
         return intensity
 
     @autocompile
     def unweighted_intensity(self, lat, lon, y, u, f, ld):
-        """Compute the intensity in the absence of an illumination source."""
+        """
+        Compute the intensity in the absence of an illumination source
+        (i.e., the albedo).
+
+        """
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
 
@@ -892,7 +925,7 @@ class OpsReflected(OpsYlm):
 
     @autocompile
     def X_point_source(
-        self, theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha
+        self, theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha, sigr
     ):
         """Compute the light curve design matrix for a point source."""
         # Determine shapes
@@ -917,7 +950,7 @@ class OpsReflected(OpsYlm):
         theta_term = tt.arctan2(xo, yo) - tt.arctan2(xs, ys)
 
         # Rotation operator
-        rT = self.rT(b_term[i_rot])
+        rT = self.rT(b_term[i_rot], sigr)
         if self.filter:
             rTA1 = ts.dot(tt.dot(rT, F), self.A1)
         else:
@@ -929,7 +962,7 @@ class OpsReflected(OpsYlm):
         )
 
         # Occultation + rotation operator
-        sT = self.sT(b_term[i_occ], theta_term[i_occ], bo[i_occ], ro)
+        sT = self.sT(b_term[i_occ], theta_term[i_occ], bo[i_occ], ro, sigr)
         sTA = ts.dot(sT, self.A)
         theta_z = tt.arctan2(xo[i_occ], yo[i_occ])
         sTAR = self.tensordotRz(sTA, theta_z)
@@ -947,13 +980,30 @@ class OpsReflected(OpsYlm):
         return X
 
     @autocompile
-    def X(self, theta, xs, ys, zs, Rs, xo, yo, zo, ro, inc, obl, u, f, alpha):
+    def X(
+        self,
+        theta,
+        xs,
+        ys,
+        zs,
+        Rs,
+        xo,
+        yo,
+        zo,
+        ro,
+        inc,
+        obl,
+        u,
+        f,
+        alpha,
+        sigr,
+    ):
         """Compute the light curve design matrix."""
 
         if self.source_npts == 1:
 
             return self.X_point_source(
-                theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha
+                theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha, sigr
             )
 
         else:
@@ -985,6 +1035,7 @@ class OpsReflected(OpsYlm):
                 u,
                 f,
                 alpha,
+                sigr,
             )
             X = tt.reshape(X, (tt.shape(theta)[0], self.source_npts, -1))
 
@@ -993,24 +1044,54 @@ class OpsReflected(OpsYlm):
 
     @autocompile
     def flux(
-        self, theta, xs, ys, zs, Rs, xo, yo, zo, ro, inc, obl, y, u, f, alpha
+        self,
+        theta,
+        xs,
+        ys,
+        zs,
+        Rs,
+        xo,
+        yo,
+        zo,
+        ro,
+        inc,
+        obl,
+        y,
+        u,
+        f,
+        alpha,
+        sigr,
     ):
         """Compute the reflected light curve."""
         return tt.dot(
             self.X(
-                theta, xs, ys, zs, Rs, xo, yo, zo, ro, inc, obl, u, f, alpha
+                theta,
+                xs,
+                ys,
+                zs,
+                Rs,
+                xo,
+                yo,
+                zo,
+                ro,
+                inc,
+                obl,
+                u,
+                f,
+                alpha,
+                sigr,
             ),
             y,
         )
 
     @autocompile
     def flux_point_source(
-        self, theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, y, u, f, alpha
+        self, theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, y, u, f, alpha, sigr
     ):
         """Compute the reflected light curve for a point source."""
         return tt.dot(
             self.X_point_source(
-                theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha
+                theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha, sigr
             ),
             y,
         )
@@ -1032,6 +1113,8 @@ class OpsReflected(OpsYlm):
         ys,
         zs,
         Rs,
+        sigr,
+        on94_exact,
     ):
         """Render the map on a Cartesian grid."""
         # Compute the Cartesian grid
@@ -1044,9 +1127,6 @@ class OpsReflected(OpsYlm):
                 self.compute_ortho_grid(res),
             ),
         )
-
-        # Compute the polynomial basis
-        pT = self.pT(xyz[0], xyz[1], xyz[2])
 
         # If orthographic, rotate the map to the correct frame
         if self.nw is None:
@@ -1091,10 +1171,11 @@ class OpsReflected(OpsYlm):
         )
 
         # Dot the polynomial into the basis
+        pT = self.pT(xyz[0], xyz[1], xyz[2])
         image = tt.dot(pT, A1Ry)
 
         # Compute the illumination profile
-        I = self.compute_illumination(xyz, xs, ys, zs, Rs)
+        I = self.compute_illumination(xyz, xs, ys, zs, Rs, sigr, on94_exact)
 
         # Add an extra dimension for the wavelength
         if self.nw is not None:
@@ -1109,43 +1190,77 @@ class OpsReflected(OpsYlm):
         return tt.reshape(image, [res, res, -1]).dimshuffle(2, 0, 1)
 
     @autocompile
-    def compute_illumination_point_source(self, xyz, xs, ys, zs):
+    def compute_illumination_point_source(
+        self, xyz, xs, ys, zs, sigr, on94_exact
+    ):
         """Compute the illumination profile for a point source."""
+        # Get cos(theta_i)
+        x = tt.shape_padright(xyz[0])
+        y = tt.shape_padright(xyz[1])
+        z = tt.shape_padright(xyz[2])
         r2 = xs ** 2 + ys ** 2 + zs ** 2
         b = -zs / tt.sqrt(r2)  # semi-minor axis of terminator
         invsr = 1.0 / tt.sqrt(xs ** 2 + ys ** 2)
         cosw = ys * invsr
         sinw = -xs * invsr
-        xrot = (
-            tt.shape_padright(xyz[0]) * cosw + tt.shape_padright(xyz[1]) * sinw
-        )
-        yrot = (
-            -tt.shape_padright(xyz[0]) * sinw
-            + tt.shape_padright(xyz[1]) * cosw
-        )
-        I = tt.sqrt(1.0 - b ** 2) * yrot - b * tt.shape_padright(xyz[2])
-        I = tt.switch(
+        xrot = x * cosw + y * sinw
+        yrot = -x * sinw + y * cosw
+        bc = tt.sqrt(1.0 - b ** 2)
+        cos_thetai = bc * yrot - b * z
+
+        # Check for special cases
+        cos_thetai = tt.switch(
             tt.eq(tt.abs_(b), 1.0),
             tt.switch(
-                tt.eq(b, 1.0),
-                tt.zeros_like(I),  # midnight
-                tt.shape_padright(xyz[2]),  # noon
+                tt.eq(b, 1.0), tt.zeros_like(cos_thetai), z  # midnight  # noon
             ),
-            I,
+            cos_thetai,
         )
-        I = tt.switch(tt.gt(I, 0.0), I, tt.zeros_like(I))  # set night to zero
+        # Set night to zero
+        cos_thetai = tt.switch(
+            tt.gt(cos_thetai, 0.0), cos_thetai, tt.zeros_like(cos_thetai)
+        )
 
-        # Weight by the distance to the source.
+        # Lambertian intensity
+        I_lamb = cos_thetai
+
+        # Polynomial approximation to the Oren-Nayar (1994)
+        # intensity with the nightside masked
+        pT = self._pTON94(xyz[0], xyz[1], xyz[2])
+        theta = -tt.arctan2(xs, ys)
+        p = self._OrenNayar(b, theta, sigr)
+        I_on94_approx = tt.dot(pT, p)
+        I_on94_approx = tt.switch(
+            tt.gt(cos_thetai, 0.0), I_on94_approx, tt.zeros_like(I_on94_approx)
+        )
+
+        # "Exact" Oren-Nayar (1994) intensity from their Equation (30)
+        f1 = -b / z - cos_thetai
+        f2 = -b / cos_thetai - z
+        f = cos_thetai * tt.maximum(0, tt.minimum(f1, f2))
+        sig2 = sigr ** 2
+        A = 1.0 - 0.5 * sig2 / (sig2 + 0.33)
+        B = 0.45 * sig2 / (sig2 + 0.09)
+        I_on94_exact = A * cos_thetai + B * f
+
+        # Select the function we want
+        I = ifelse(
+            sigr > 0, ifelse(on94_exact, I_on94_exact, I_on94_approx), I_lamb
+        )
+
+        # Weight by the distance to the source and we're done
         I *= STARRY_REFLECTANCE_FLUX_NORMALIZATION / tt.shape_padleft(r2)
         return I
 
     @autocompile
-    def compute_illumination(self, xyz, xs, ys, zs, Rs):
+    def compute_illumination(self, xyz, xs, ys, zs, Rs, sigr, on94_exact):
         """Compute the illumination profile when rendering maps."""
 
         if self.source_npts == 1:
 
-            return self.compute_illumination_point_source(xyz, xs, ys, zs)
+            return self.compute_illumination_point_source(
+                xyz, xs, ys, zs, sigr, on94_exact
+            )
 
         else:
 
@@ -1155,6 +1270,8 @@ class OpsReflected(OpsYlm):
                 tt.reshape(tt.shape_padright(xs) + Rs * self.source_dx, (-1,)),
                 tt.reshape(tt.shape_padright(ys) + Rs * self.source_dy, (-1,)),
                 tt.reshape(tt.shape_padright(zs) + Rs * self.source_dz, (-1,)),
+                sigr,
+                on94_exact,
             )
             I = tt.reshape(I, (-1, tt.shape(xs)[0], self.source_npts))
 
@@ -1272,6 +1389,7 @@ class OpsSystem(object):
         sec_u,
         sec_f,
         sec_alpha,
+        sec_sigr,
     ):
         """Compute the system light curve design matrix."""
         # Exposure time integration?
@@ -1370,6 +1488,7 @@ class OpsSystem(object):
                     sec_u[i],
                     sec_f[i],
                     sec_alpha[i],
+                    sec_sigr[i],
                 )
                 for i, sec in enumerate(self.secondaries)
             ]
@@ -1387,6 +1506,7 @@ class OpsSystem(object):
                     sec_u[i],
                     sec_f[i],
                     sec_alpha[i],
+                    sec_sigr[i],
                 )
                 for i, sec in enumerate(self.secondaries)
             ]
@@ -1466,6 +1586,7 @@ class OpsSystem(object):
                         sec_u[i],
                         sec_f[i],
                         sec_alpha[i],
+                        sec_sigr[i],
                     )
                     - phase_sec[i][idx],
                 )
@@ -1485,6 +1606,7 @@ class OpsSystem(object):
                         sec_u[i],
                         sec_f[i],
                         sec_alpha[i],
+                        sec_sigr[i],
                     )
                     - phase_sec[i][idx],
                 )
@@ -1527,6 +1649,7 @@ class OpsSystem(object):
                             sec_u[i],
                             sec_f[i],
                             sec_alpha[i],
+                            sec_sigr[i],
                         )
                         - phase_sec[i][idx],
                     )
@@ -1546,6 +1669,7 @@ class OpsSystem(object):
                             sec_u[i],
                             sec_f[i],
                             sec_alpha[i],
+                            sec_sigr[i],
                         )
                         - phase_sec[i][idx],
                     )
@@ -1600,6 +1724,7 @@ class OpsSystem(object):
         sec_y,
         sec_u,
         sec_alpha,
+        sec_sigr,
         sec_veq,
         keplerian,
     ):
@@ -1657,6 +1782,7 @@ class OpsSystem(object):
             sec_u,
             sec_f,
             sec_alpha,
+            sec_sigr,
         )
 
         X0 = self.X(
@@ -1688,6 +1814,7 @@ class OpsSystem(object):
             sec_u,
             sec_f0,
             sec_alpha,
+            sec_sigr,
         )
 
         # Get the indices of X corresponding to each body
@@ -1780,6 +1907,7 @@ class OpsSystem(object):
         sec_u,
         sec_f,
         sec_alpha,
+        sec_sigr,
     ):
         """Render all of the bodies in the system."""
         # Compute the relative positions of all bodies
@@ -1847,6 +1975,8 @@ class OpsSystem(object):
                         -y[:, i],
                         -z[:, i],
                         pri_r / sec_r[i],
+                        sec_sigr[i],
+                        0,  # use approx Oren-Nayar intensity
                     )
                     for i, sec in enumerate(self.secondaries)
                 ]

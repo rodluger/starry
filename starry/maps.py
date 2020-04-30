@@ -76,6 +76,7 @@ class MapBase(object):
         self._inc = math.cast(0.5 * np.pi)
         self._obl = math.cast(0.0)
         self._alpha = math.cast(0.0)
+        self._sigr = math.cast(0.0)
 
         # Units
         self.angle_unit = kwargs.pop("angle_unit", units.degree)
@@ -612,6 +613,8 @@ class MapBase(object):
             cmapI._init()
             alphas = np.linspace(1.0, 0.0, cmapI.N + 3)
             cmapI._lut[:, -1] = alphas
+            cmapI.set_under((0, 0, 0, 1))
+            cmapI.set_over((0, 0, 0, 0))
             img_illum = ax.imshow(
                 illum[0],
                 origin="lower",
@@ -1836,6 +1839,10 @@ class ReflectedBase(object):
 
     _ops_class_ = OpsReflected
 
+    def reset(self, **kwargs):
+        self.roughness = kwargs.pop("roughness", math.cast(0.0))
+        super(ReflectedBase, self).reset(**kwargs)
+
     @property
     def source_npts(self):
         """
@@ -1844,6 +1851,19 @@ class ReflectedBase(object):
 
         """
         return int(self.__props__["source_npts"])
+
+    @property
+    def roughness(self):
+        """
+        The Oren-Nayar (1994) surface roughness parameter, `sigma`,
+        in units of :py:attr:`angle_unit`.
+
+        """
+        return self._sigr / self._angle_factor
+
+    @roughness.setter
+    def roughness(self, value):
+        self._sigr = math.cast(value) * self._angle_factor
 
     def _get_flux_kwargs(self, kwargs):
         xo = kwargs.pop("xo", 0.0)
@@ -1915,6 +1935,7 @@ class ReflectedBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._sigr,
         )
 
     def flux(self, **kwargs):
@@ -1965,9 +1986,21 @@ class ReflectedBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._sigr,
         )
 
-    def intensity(self, lat=0, lon=0, xs=0, ys=0, zs=1, rs=0, **kwargs):
+    def intensity(
+        self,
+        lat=0,
+        lon=0,
+        xs=0,
+        ys=0,
+        zs=1,
+        rs=0,
+        on94_exact=False,
+        illuminate=True,
+        **kwargs
+    ):
         """
         Compute and return the intensity of the map.
 
@@ -2021,6 +2054,12 @@ class ReflectedBase(object):
         else:
             ld = np.array(False)
 
+        # Exact Oren & Nayar intensity?
+        on94_exact = int(on94_exact)
+
+        # Illuminate the map? If False, returns the *albedo*
+        illuminate = int(illuminate)
+
         # Compute & return
         return amp * self.ops.intensity(
             lat,
@@ -2034,6 +2073,9 @@ class ReflectedBase(object):
             Rs,
             alpha_theta,
             ld,
+            self._sigr,
+            on94_exact,
+            illuminate,
         )
 
     def render(
@@ -2046,6 +2088,7 @@ class ReflectedBase(object):
         ys=0,
         zs=1,
         rs=0,
+        on94_exact=False,
     ):
         """
         Compute and return the intensity of the map on a grid.
@@ -2100,6 +2143,7 @@ class ReflectedBase(object):
         Rs = math.cast(rs)
         theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
         illuminate = int(illuminate)
+        on94_exact = int(on94_exact)
 
         # Compute
         if self.nw is None:
@@ -2124,6 +2168,8 @@ class ReflectedBase(object):
             ys,
             zs,
             Rs,
+            self._sigr,
+            on94_exact,
         )
 
         # Squeeze?
@@ -2148,6 +2194,7 @@ class ReflectedBase(object):
         Rs = math.cast(kwargs.pop("rs", 0))
         theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
         illuminate = int(kwargs.pop("illuminate", True))
+        on94_exact = int(kwargs.pop("on94_exact", False))
 
         if config.lazy:
             # Evaluate the variables
@@ -2162,6 +2209,7 @@ class ReflectedBase(object):
             u = self._u.eval()
             f = self._f.eval()
             alpha = self._alpha.eval()
+            sigr = self._sigr.eval()
         else:
             inc = self._inc
             obl = self._obl
@@ -2169,11 +2217,27 @@ class ReflectedBase(object):
             u = self._u
             f = self._f
             alpha = self._alpha
+            sigr = self._sigr
 
         # Explicitly call the compiled version of `render`
         # on the *unilluminated* map
         kwargs["image"] = self.ops.render(
-            res, projection, 0, theta, inc, obl, y, u, f, alpha, xs, ys, zs, Rs
+            res,
+            projection,
+            0,
+            theta,
+            inc,
+            obl,
+            y,
+            u,
+            f,
+            alpha,
+            xs,
+            ys,
+            zs,
+            Rs,
+            sigr,
+            on94_exact,
         )
 
         # Now call it on an illuminated uniform map
@@ -2193,6 +2257,8 @@ class ReflectedBase(object):
             ys,
             zs,
             Rs,
+            sigr,
+            on94_exact,
         )
         illum /= np.nanmax(illum)
         kwargs["illum"] = illum

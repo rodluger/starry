@@ -650,6 +650,9 @@ class System(object):
             math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
             ),
+            math.to_array_or_tensor(
+                [sec._map._sigr for sec in self._secondaries]
+            ),
         )
 
         # Convert to units of the primary radiu
@@ -866,6 +869,9 @@ class System(object):
             math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
             ),
+            math.to_array_or_tensor(
+                [sec._map._sigr for sec in self._secondaries]
+            ),
         )
 
     def flux(self, t, total=True):
@@ -959,6 +965,9 @@ class System(object):
             ),
             math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
+            ),
+            math.to_array_or_tensor(
+                [sec._map._sigr for sec in self._secondaries]
             ),
             math.to_array_or_tensor(
                 [sec._map._veq for sec in self._secondaries]

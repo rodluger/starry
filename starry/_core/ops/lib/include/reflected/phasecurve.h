@@ -7,6 +7,7 @@
 #ifndef _STARRY_REFLECTED_PHASECURVE_H_
 #define _STARRY_REFLECTED_PHASECURVE_H_
 
+#include "../basis.h"
 #include "../ellip.h"
 #include "../utils.h"
 #include "scatter.h"
@@ -18,151 +19,119 @@ namespace phasecurve {
 using namespace starry::utils;
 
 /**
-Greens integral solver wrapper class. Reflected
-light specialization.
+  Greens integral solver wrapper class. Reflected
+  light phase curves specialization.
 
 */
-template <class Scalar> class PhaseCurve {
+template <class T> class PhaseCurve {
 
 protected:
-  const int lmax;
+  const int deg;
+  const int deg_lamb;
+  const int deg_on94;
   const int N;
-  Vector<Scalar> H;
-  Vector<Scalar> I;
-  Vector<Scalar> DHDb;
-  Vector<Scalar> DIDb;
-  Matrix<Scalar> J;
-  Matrix<Scalar> K;
-  Scalar tol;
+  const int N_lamb;
+  const int N_on94;
+  Vector<T> H;
+  Vector<T> I;
+  Matrix<T> J;
+  Matrix<T> K;
+  Eigen::SparseMatrix<T> ILLUM;
+  basis::Basis<typename T::Scalar> B;
+  T tol;
 
   /**
-  Computes the matrices
+    Computes the matrices
 
-      J = (G(0.5 * (i + 1)) * G(0.5 * (j + 1))) / G(0.5 * (i + j + 4))
+        J = (G(0.5 * (i + 1)) * G(0.5 * (j + 1))) / G(0.5 * (i + j + 4))
 
-  and
+    and
 
-      K = (G(0.5 * (i + 1)) * G(0.5 * (j + 4))) / G(0.5 * (i + j + 5))
+        K = (G(0.5 * (i + 1)) * G(0.5 * (j + 4))) / G(0.5 * (i + j + 5))
 
-  where `G` is the Gamma function.
+    where `G` is the Gamma function.
 
   */
-  inline void computeJK() {
-    J.setZero();
-    K.setZero();
-    J(0, 0) = pi<Scalar>();
-    J(0, 1) = Scalar(4.0) / Scalar(3.0);
+  inline void computeJK(const int deg_eff) {
+    J.setZero(deg_eff + 1, deg_eff + 1);
+    K.setZero(deg_eff + 1, deg_eff + 1);
+    J(0, 0) = pi<T>();
+    J(0, 1) = T(4.0) / T(3.0);
     K(0, 0) = J(0, 1);
     K(0, 1) = 0.375 * J(0, 0);
-    for (int j = 0; j < lmax + 1; ++j) {
-      J(0, j + 2) = J(0, j) * Scalar(j + 1.0) / Scalar(j + 4.0);
-      K(0, j + 2) = K(0, j) * Scalar(j + 4.0) / Scalar(j + 5.0);
-      for (int i = 0; i < lmax + 1; i += 2) {
-        J(i + 2, j) = J(i, j) * Scalar(i + 1.0) / Scalar(i + j + 4.0);
-        K(i + 2, j) = K(i, j) * Scalar(i + 1.0) / Scalar(i + j + 5.0);
+    for (int j = 0; j < deg_eff - 1; ++j) {
+      J(0, j + 2) = J(0, j) * T(j + 1.0) / T(j + 4.0);
+      K(0, j + 2) = K(0, j) * T(j + 4.0) / T(j + 5.0);
+      for (int i = 0; i < deg_eff - 1; i += 2) {
+        J(i + 2, j) = J(i, j) * T(i + 1.0) / T(i + j + 4.0);
+        K(i + 2, j) = K(i, j) * T(i + 1.0) / T(i + j + 5.0);
       }
     }
-    for (int j = lmax + 1; j < lmax + 3; ++j) {
-      for (int i = 0; i < lmax + 1; i += 2) {
-        J(i + 2, j) = J(i, j) * Scalar(i + 1.0) / Scalar(i + j + 4.0);
-        K(i + 2, j) = K(i, j) * Scalar(i + 1.0) / Scalar(i + j + 5.0);
+    for (int j = deg_eff - 1; j < deg_eff + 1; ++j) {
+      for (int i = 0; i < deg_eff - 1; i += 2) {
+        J(i + 2, j) = J(i, j) * T(i + 1.0) / T(i + j + 4.0);
+        K(i + 2, j) = K(i, j) * T(i + 1.0) / T(i + j + 5.0);
       }
     }
   }
 
   /*
-  Computes the arrays
+    Computes the arrays
 
-      H = 0.5 * (1 - b ** (j + 1))
+        H = 0.5 * (1 - b ** (j + 1))
 
-  and
+    and
 
-      I = int_b^1 a^j (1 - a^2)^(1/2) da
+        I = int_b^1 a^j (1 - a^2)^(1/2) da
 
   */
-  inline void computeHI(const Scalar &bterm) {
-    H.setZero();
-    I.setZero();
-    Scalar fac0 = sqrt(Scalar(1.0) - bterm * bterm);
-    Scalar fac1 = (Scalar(1.0) - bterm * bterm) * fac0;
+  inline void computeHI(const T &bterm, const int deg_eff) {
+    H.setZero(deg_eff + 1);
+    I.setZero(deg_eff + 1);
+    T fac0 = sqrt(T(1.0) - bterm * bterm);
+    T fac1 = (T(1.0) - bterm * bterm) * fac0;
     I(0) = 0.5 * (acos(bterm) - bterm * fac0);
-    I(1) = fac1 / Scalar(3.0);
-    Scalar fac2 = bterm;
-    H(0) = 0.5 * (Scalar(1.0) - fac2);
+    I(1) = fac1 / T(3.0);
+    T fac2 = bterm;
+    H(0) = 0.5 * (T(1.0) - fac2);
     fac2 *= bterm;
-    H(1) = 0.5 * (Scalar(1.0) - fac2);
+    H(1) = 0.5 * (T(1.0) - fac2);
     fac1 *= bterm;
     fac2 *= bterm;
-    for (int j = 0; j < lmax + 1; ++j) {
-      I(j + 2) = Scalar(1.0) / Scalar(j + 4.0) * (fac1 + (j + 1) * I(j));
-      H(j + 2) = 0.5 * (Scalar(1.0) - fac2);
+    for (int j = 0; j < deg_eff - 1; ++j) {
+      I(j + 2) = T(1.0) / T(j + 4.0) * (fac1 + (j + 1) * I(j));
+      H(j + 2) = 0.5 * (T(1.0) - fac2);
       fac1 *= bterm;
-      fac2 *= bterm;
-    }
-  }
-
-  inline void computeHI_with_grad(const Scalar &bterm) {
-    H.setZero();
-    I.setZero();
-    DHDb.setZero();
-    DIDb.setZero();
-    Scalar fac0 = sqrt(Scalar(1.0) - bterm * bterm);
-    Scalar fac1 = (Scalar(1.0) - bterm * bterm) * fac0;
-    Scalar Dfac1Db = -3.0 * bterm * fac0;
-    I(0) = 0.5 * (acos(bterm) - bterm * fac0);
-    DIDb(0) = -fac0;
-    I(1) = fac1 / Scalar(3.0);
-    DIDb(1) = Dfac1Db / Scalar(3.0);
-    Scalar fac2 = bterm;
-    Scalar Dfac2Db = Scalar(1.0);
-    H(0) = 0.5 * (Scalar(1.0) - fac2);
-    DHDb(0) = -0.5 * Dfac2Db;
-    Dfac2Db = fac2 + Dfac2Db * bterm;
-    fac2 *= bterm;
-    H(1) = 0.5 * (Scalar(1.0) - fac2);
-    DHDb(1) = -0.5 * Dfac2Db;
-    Dfac1Db = fac1 + Dfac1Db * bterm;
-    fac1 *= bterm;
-    Dfac2Db = fac2 + Dfac2Db * bterm;
-    fac2 *= bterm;
-    for (int j = 0; j < lmax + 1; ++j) {
-      I(j + 2) = Scalar(1.0) / Scalar(j + 4.0) * (fac1 + (j + 1) * I(j));
-      DIDb(j + 2) =
-          Scalar(1.0) / Scalar(j + 4.0) * (Dfac1Db + (j + 1) * DIDb(j));
-      H(j + 2) = 0.5 * (Scalar(1.0) - fac2);
-      DHDb(j + 2) = -0.5 * Dfac2Db;
-      Dfac1Db = fac1 + Dfac1Db * bterm;
-      fac1 *= bterm;
-      Dfac2Db = fac2 + Dfac2Db * bterm;
       fac2 *= bterm;
     }
   }
 
 public:
-  RowVector<Scalar> rT;
+  RowVector<T> rT0;
+  RowVector<T> rT;
 
   /**
-  Computes the complete unweighted reflectance integrals.
+    Computes the unweighted reflectance integrals.
 
   */
-  inline void compute_r(const Scalar &bterm) {
-    computeHI(bterm);
-    rT.setZero();
+  inline void compute_unweighted(const T &bterm, const int deg_eff) {
+    computeHI(bterm, deg_eff);
+    rT0.setZero((deg_eff + 1) * (deg_eff + 1));
     int n = 0;
     int i, j;
     int mu, nu;
-    for (int l = 0; l < lmax + 1; ++l) {
+    for (int l = 0; l < deg_eff + 1; ++l) {
       for (int m = -l; m < l + 1; ++m) {
         mu = l - m;
         nu = l + m;
         if (is_even(nu)) {
           i = mu / 2;
           j = nu / 2;
-          rT(n) = H(j + 1) * J(i, j + 1);
+          rT0(n) = H(j) * J(i, j);
         } else {
           i = (mu - 1) / 2;
           j = (nu - 1) / 2;
-          rT(n) = I(j + 1) * K(i, j + 1);
+          rT0(n) = I(j) * K(i, j);
         }
         ++n;
       }
@@ -170,115 +139,26 @@ public:
   }
 
   /**
-    Computes the (backprop) gradient of the unweighted complete reflectance
-    integrals.
+    Computes the reflectance integrals weighted
+    by the illumination function.
 
   */
-  inline Scalar compute_r(const Scalar &bterm, const RowVector<Scalar> &brT) {
-    Scalar bb = 0.0;
-    computeHI_with_grad(bterm);
-    int n = 0;
-    int i, j;
-    int mu, nu;
-
-    for (int l = 0; l < lmax + 1; ++l) {
-      for (int m = -l; m < l + 1; ++m) {
-        mu = l - m;
-        nu = l + m;
-        if (is_even(nu)) {
-          i = mu / 2;
-          j = nu / 2;
-          bb += DHDb(j + 1) * J(i, j + 1) * brT(n);
-        } else {
-          i = (mu - 1) / 2;
-          j = (nu - 1) / 2;
-          bb += DIDb(j + 1) * K(i, j + 1) * brT(n);
-        }
-        ++n;
-      }
-    }
-    return bb;
+  inline void compute(const T &bterm, const T &sigr) {
+    if (sigr > 0.0)
+      compute_unweighted(bterm, deg_on94);
+    else
+      compute_unweighted(bterm, deg_lamb);
+    scatter::computeI(deg, ILLUM, bterm, T(0.0), sigr, B);
+    rT = rT0 * ILLUM;
   }
 
-  /**
-  Computes the complete reflectance integrals weighted
-  by the Lambertian reflectance.
-
-  */
-  inline void compute_rI(const Scalar &bterm) {
-    computeHI(bterm);
-    rT.setZero();
-    Scalar fac = sqrt(Scalar(1.0) - bterm * bterm);
-    int n = 0;
-    int i, j;
-    int mu, nu;
-    for (int l = 0; l < lmax + 1; ++l) {
-      for (int m = -l; m < l + 1; ++m) {
-        mu = l - m;
-        nu = l + m;
-        if (is_even(nu)) {
-          i = mu / 2;
-          j = nu / 2;
-          rT(n) = fac * H(j + 1) * J(i, j + 1) - bterm * I(j) * K(i, j);
-        } else {
-          i = (mu - 1) / 2;
-          j = (nu - 1) / 2;
-          rT(n) = fac * I(j + 1) * K(i, j + 1) -
-                  bterm * (H(j) * J(i, j) - H(j) * J(i + 2, j) -
-                           H(j + 2) * J(i, j + 2));
-        }
-        ++n;
-      }
-    }
-  }
-
-  /**
-  Computes the (backprop) gradient of the complete reflectance
-  integrals weighted by the Lambertian reflectance.
-
-  */
-  inline Scalar compute_rI(const Scalar &bterm, const RowVector<Scalar> &brT) {
-    Scalar bb = 0.0;
-    computeHI_with_grad(bterm);
-    // NOTE: The gradient is infinite when bterm = +/- 1
-    Scalar fac = sqrt(max(Scalar(1.0) - bterm * bterm, tol));
-    Scalar DfacDb = -bterm / fac;
-    int n = 0;
-    int i, j;
-    int mu, nu;
-
-    for (int l = 0; l < lmax + 1; ++l) {
-      for (int m = -l; m < l + 1; ++m) {
-        mu = l - m;
-        nu = l + m;
-        if (is_even(nu)) {
-          i = mu / 2;
-          j = nu / 2;
-          bb += ((DfacDb * H(j + 1) + fac * DHDb(j + 1)) * J(i, j + 1) -
-                 (I(j) + bterm * DIDb(j)) * K(i, j)) *
-                brT(n);
-        } else {
-          i = (mu - 1) / 2;
-          j = (nu - 1) / 2;
-          bb +=
-              ((DfacDb * I(j + 1) + fac * DIDb(j + 1)) * K(i, j + 1) -
-               ((H(j) * J(i, j) - H(j) * J(i + 2, j) - H(j + 2) * J(i, j + 2)) +
-                bterm * (DHDb(j) * J(i, j) - DHDb(j) * J(i + 2, j) -
-                         DHDb(j + 2) * J(i, j + 2)))) *
-              brT(n);
-        }
-        ++n;
-      }
-    }
-    return bb;
-  }
-
-  explicit PhaseCurve(int lmax)
-      : lmax(lmax), N((lmax + 1) * (lmax + 1)), H(lmax + 3), I(lmax + 3),
-        DHDb(lmax + 3), DIDb(lmax + 3), J(lmax + 3, lmax + 3),
-        K(lmax + 3, lmax + 3), tol(sqrt(mach_eps<Scalar>())), rT(N) {
-    // Pre-compute the J and K matrices
-    computeJK();
+  explicit PhaseCurve(int deg, const basis::Basis<typename T::Scalar> &B)
+      : deg(deg), deg_lamb(deg + 1), deg_on94(deg + STARRY_OREN_NAYAR_DEG),
+        N((deg + 1) * (deg + 1)), N_lamb((deg_lamb + 1) * (deg_lamb + 1)),
+        N_on94((deg_on94 + 1) * (deg_on94 + 1)), B(B), tol(sqrt(mach_eps<T>())),
+        rT(N) {
+    // Pre-compute the J and K matrices for the largest case
+    computeJK(deg_on94);
   }
 };
 

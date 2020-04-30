@@ -34,8 +34,8 @@ public:
   basis::Basis<Scalar> B;
   wigner::Wigner<Scalar> W;
   solver::Greens<Scalar> G; /**< The occultation integral solver class */
-  reflected::phasecurve::PhaseCurve<Scalar> RP;
-  reflected::occultation::Occultation<ADScalar<Scalar, 4>> RO;
+  reflected::phasecurve::PhaseCurve<ADScalar<Scalar, 2>> RP;
+  reflected::occultation::Occultation<ADScalar<Scalar, 5>> RO;
   filter::Filter<Scalar> F;
   diffrot::DiffRot<Scalar> D;
 
@@ -50,7 +50,7 @@ public:
       : ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
         fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
         N((deg + 1) * (deg + 1)), drorder(drorder), B(ydeg, udeg, fdeg),
-        W(ydeg, udeg, fdeg), G(deg), RP(deg), RO(deg, B.A1_big), F(B),
+        W(ydeg, udeg, fdeg), G(deg), RP(deg, B), RO(deg, B), F(B),
         D(B, drorder) {
     // Bounds checks
     if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))

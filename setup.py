@@ -1,6 +1,7 @@
 """Install script for `starry`."""
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
+import warnings
 import setuptools
 import subprocess
 import sys
@@ -37,6 +38,32 @@ if debug:
     optimize = 0
     macros["STARRY_O"] = 0
     macros["STARRY_DEBUG"] = 1
+
+# Compute the Oren-Nayar (1994) expansion if the user requests it
+deg = os.getenv("STARRY_OREN_NAYAR_DEG", None)
+Nb = os.getenv("STARRY_OREN_NAYAR_NB", None)
+if (deg is not None) or (Nb is not None):
+
+    sys.path.insert(
+        1,
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "starry",
+            "_core",
+            "ops",
+            "lib",
+            "include",
+            "reflected",
+        ),
+    )
+    import oren_nayar
+
+    kwargs = dict()
+    if deg is not None:
+        kwargs["deg"] = int(deg)
+    if Nb is not None:
+        kwargs["Nb"] = int(Nb)
+    oren_nayar.generate_header(**kwargs)
 
 
 class get_pybind_include(object):

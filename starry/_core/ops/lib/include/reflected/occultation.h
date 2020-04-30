@@ -9,6 +9,7 @@ light).
 #ifndef _STARRY_REFLECTED_OCCULTATION_H_
 #define _STARRY_REFLECTED_OCCULTATION_H_
 
+#include "../basis.h"
 #include "../quad.h"
 #include "../solver.h"
 #include "../utils.h"
@@ -33,12 +34,11 @@ template <class T> class Occultation {
 protected:
   // Misc
   int deg;
-  int N2;
-  int N1;
-  Eigen::SparseMatrix<Scalar> A1;
-  Eigen::SparseMatrix<Scalar> AInv;
-  Eigen::SparseMatrix<Scalar> A2;
-  Eigen::SparseMatrix<Scalar> A2Inv;
+  int deg_lamb;
+  int deg_on94;
+  int N;
+  int N_lamb;
+  int N_on94;
   Eigen::SparseMatrix<T> I;
   Vector<T> kappa;
   Vector<T> lam;
@@ -57,100 +57,28 @@ protected:
   Vector<T> sinmt;
 
   // Helper solvers
+  basis::Basis<Scalar> B;
   phasecurve::PhaseCurve<T> R;
-  solver::Solver<T, true> G;
+  solver::Solver<T, true> G_Small; // Lambertian case
+  solver::Solver<T, true> G_Big;   // Oren-Nayar case
 
   // Numerical integration
   quad::Quad<Scalar> QUAD;
 
   /**
-
-      Compute the change of basis matrix `A2` and its inverse.
-
-  */
-  void computeA2() {
-
-    int i, n, l, m, mu, nu;
-    Matrix<Scalar> A2InvDense = Matrix<Scalar>::Zero(N2, N2);
-    n = 0;
-    for (l = 0; l < deg + 2; ++l) {
-      for (m = -l; m < l + 1; ++m) {
-        mu = l - m;
-        nu = l + m;
-        if (nu % 2 == 0) {
-          // x^(mu/2) y^(nu/2)
-          A2InvDense(n, n) = (mu + 2) / 2;
-        } else if ((l == 1) && (m == 0)) {
-          // z
-          A2InvDense(n, n) = 1;
-        } else if ((mu == 1) && (l % 2 == 0)) {
-          // x^(l-2) y z
-          i = l * l + 3;
-          A2InvDense(i, n) = 3;
-        } else if ((mu == 1) && (l % 2 == 1)) {
-          // x^(l-3) z
-          i = 1 + (l - 2) * (l - 2);
-          A2InvDense(i, n) = -1;
-          // x^(l-1) z
-          i = l * l + 1;
-          A2InvDense(i, n) = 1;
-          // x^(l-3) y^2 z
-          i = l * l + 5;
-          A2InvDense(i, n) = 4;
-        } else {
-          if (mu != 3) {
-            // x^((mu - 5)/2) y^((nu - 1)/2)
-            i = nu + ((mu - 4 + nu) * (mu - 4 + nu)) / 4;
-            A2InvDense(i, n) = (mu - 3) / 2;
-            // x^((mu - 5)/2) y^((nu + 3)/2)
-            i = nu + 4 + ((mu + nu) * (mu + nu)) / 4;
-            A2InvDense(i, n) = -(mu - 3) / 2;
-          }
-          // x^((mu - 1)/2) y^((nu - 1)/2)
-          i = nu + (mu + nu) * (mu + nu) / 4;
-          A2InvDense(i, n) = -(mu + 3) / 2;
-        }
-        ++n;
-      }
-    }
-
-    // Get the inverse
-    A2Inv = A2InvDense.sparseView();
-    Eigen::SparseLU<Eigen::SparseMatrix<Scalar>> solver;
-    solver.compute(A2Inv);
-    if (solver.info() != Eigen::Success) {
-      std::stringstream args;
-      args << "N2 = " << N2;
-      throw StarryException(
-          "Error computing the change of basis matrix `A2Inv`.",
-          "reflected/occultation.h", "Occultation.computeA2", args.str());
-    }
-    Eigen::SparseMatrix<Scalar> Id =
-        Matrix<Scalar>::Identity(N2, N2).sparseView();
-    A2 = solver.solve(Id);
-    if (solver.info() != Eigen::Success) {
-      std::stringstream args;
-      args << "N2 = " << N2;
-      throw StarryException("Error computing the change of basis matrix `A2`.",
-                            "reflected/occultation.h", "Occultation.computeA2",
-                            args.str());
-    }
-
-    // Reshape. A2 should be (N2 x N2) and A2^-1 should be (N1 x N1).
-    A2Inv = A2InvDense.block(0, 0, N1, N1).sparseView();
-  }
-
-  /**
-      Weight the solution vector by a cosine-like illumination profile.
+      Weight the solution vector by the illumination profile.
+      This profile contains both the cosine illumination *and*
+      the scattering law (constant, i.e. isotropic, if sigr == 0).
       Note that we need I to transform Greens --> Greens.
 
   */
   inline RowVector<T> illuminate(const T &b, const T &theta,
-                                 const RowVector<T> &sT) {
-    scatter::computeI(I, b, theta);
-    RowVector<T> sTw = sT * A2;
+                                 const RowVector<T> &sT, const T &sigr) {
+    scatter::computeI(deg, I, b, theta, sigr, B);
+    RowVector<T> sTw;
+    sTw = sT * B.A2_Reflected.block(0, 0, sT.cols(), sT.cols());
     sTw = sTw * I;
-    sTw = sTw * A2Inv;
+    sTw = sTw * B.A2Inv_Reflected.block(0, 0, sTw.cols(), sTw.cols());
     return sTw;
   }
 
@@ -158,22 +86,28 @@ protected:
       AutoDiff-enabled standard starry occultation solution.
 
   */
-  inline RowVector<T> sTe(const T &bo, const T &ro) {
-    G.compute(bo, ro);
-    return G.sT;
+  inline RowVector<T> sTe(const T &bo, const T &ro, const T &sigr) {
+    if (sigr > 0) {
+      G_Big.compute(bo, ro);
+      return G_Big.sT;
+    } else {
+      G_Small.compute(bo, ro);
+      return G_Small.sT;
+    }
   }
 
   /**
    *
   */
-  inline RowVector<T> sTr(const T &b, const T &theta) {
+  inline RowVector<T> sTr(const T &b, const T &theta, const T &sigr) {
 
     // Compute the reflection solution in the terminator frame
-    R.compute_rI(b);
+    R.compute(b, sigr);
 
     // Transform to ylms and rotate into the occultor frame
-    RowVector<T> rTA1 = R.rT * A1;
-    RowVector<T> rTA1R(N1);
+    RowVector<T> rTA1 =
+        R.rT * B.A1_Reflected.block(0, 0, R.rT.cols(), R.rT.cols());
+    RowVector<T> rTA1R(N);
     cosnt(1) = cos(theta);
     sinnt(1) = sin(-theta);
     for (int n = 2; n < deg + 1; ++n) {
@@ -199,48 +133,40 @@ protected:
     }
 
     // Transform back to Green's polynomials
-    return rTA1R * AInv;
+    return rTA1R * B.AInv_Reflected.block(0, 0, rTA1R.cols(), rTA1R.cols());
   }
 
 public:
   int code;
   RowVector<T> sT;
 
-  explicit Occultation(int deg, const Eigen::SparseMatrix<Scalar> &A1)
-      : deg(deg), N2((deg + 2) * (deg + 2)), N1((deg + 1) * (deg + 1)), A1(A1),
-        I(N2, N1), PIntegral(N2), QIntegral(N2), TIntegral(N2), PQT(N2), R(deg),
-        G(deg + 1), sT(N1) {
-
-    // Compute the change of basis matrix (constant)
-    computeA2();
-
-    // Compute AInv (constant)
-    Eigen::SparseLU<Eigen::SparseMatrix<Scalar>> solver;
-    solver.compute(A1);
-    if (solver.info() != Eigen::Success) {
-      std::stringstream args;
-      args << "N2 = " << N2 << ", "
-           << "N1 = " << N1;
-      throw StarryException("Error computing the change of basis matrix `A1`.",
-                            "reflected/occultation.h", "Occultation",
-                            args.str());
-    }
-    AInv = solver.solve(A2Inv);
+  explicit Occultation(int deg, const basis::Basis<Scalar> &B)
+      : deg(deg), deg_lamb(deg + 1), deg_on94(deg + STARRY_OREN_NAYAR_DEG),
+        N((deg + 1) * (deg + 1)), N_lamb((deg_lamb + 1) * (deg_lamb + 1)),
+        N_on94((deg_on94 + 1) * (deg_on94 + 1)), B(B), R(deg, B),
+        G_Small(deg_lamb), G_Big(deg_on94), sT(N) {
 
     // Rotation vectors
     cosnt.resize(max(2, deg + 1));
     cosnt(0) = 1.0;
     sinnt.resize(max(2, deg + 1));
     sinnt(0) = 0.0;
-    cosmt.resize(N1);
-    sinmt.resize(N1);
+    cosmt.resize(N);
+    sinmt.resize(N);
   }
 
   /**
       Compute the full solution vector s^T.
 
   */
-  inline void compute(const T &b, const T &theta, const T &bo, const T &ro) {
+  inline void compute(const T &b, const T &theta, const T &bo, const T &ro,
+                      const T &sigr) {
+
+    int deg_eff;
+    if (sigr > 0)
+      deg_eff = deg_on94;
+    else
+      deg_eff = deg_lamb;
 
     // Get the angles of intersection
     costheta = cos(theta);
@@ -255,29 +181,30 @@ public:
     if (code == FLUX_ZERO) {
 
       // Complete occultation!
-      sT.setZero(N1);
+      sT.setZero(N);
 
     } else if (code == FLUX_SIMPLE_OCC) {
 
       // The occultor is blocking all of the nightside
       // and some dayside flux
-      sT = illuminate(b, theta, sTe(bo, ro));
+      sT = illuminate(b, theta, sTe(bo, ro, sigr), sigr);
 
     } else if (code == FLUX_SIMPLE_REFL) {
 
       // The total flux is the full dayside flux
-      sT = sTr(b, theta);
+      sT = sTr(b, theta, sigr);
 
     } else if (code == FLUX_SIMPLE_OCC_REFL) {
 
       // The occultor is only blocking dayside flux
-      sT = illuminate(b, theta, sTe(bo, ro)) + sTr(-b, theta + pi<T>());
+      sT = illuminate(b, theta, sTe(bo, ro, sigr), sigr) +
+           sTr(-b, theta + pi<T>(), sigr);
 
     } else if (code == FLUX_NOON) {
 
       // The substellar point is the center of the disk, so this is
       // analytically equivalent to the linear limb darkening solution
-      sT = illuminate(b, theta, sTe(bo, ro));
+      sT = illuminate(b, theta, sTe(bo, ro, sigr), sigr);
 
     } else {
 
@@ -285,30 +212,31 @@ public:
       // elliptic integrals.
 
       // Compute the primitive integrals
-      computeP(deg + 1, bo, ro, kappa, PIntegral, QUAD);
-      computeQ(deg + 1, lam, QIntegral);
-      computeT(deg + 1, b, theta, xi, TIntegral);
+      computeP(deg_eff, bo, ro, kappa, PIntegral, QUAD);
+      computeQ(deg_eff, lam, QIntegral);
+      computeT(deg_eff, b, theta, xi, TIntegral);
       PQT = (PIntegral + QIntegral + TIntegral).transpose();
 
       if ((code == FLUX_DAY_OCC) || (code == FLUX_TRIP_DAY_OCC)) {
 
         //
-        sT = sTr(b, theta) - illuminate(b, theta, PQT);
+        sT = sTr(b, theta, sigr) - illuminate(b, theta, PQT, sigr);
 
       } else if ((code == FLUX_NIGHT_OCC) || (code == FLUX_TRIP_NIGHT_OCC)) {
 
         //
-        sT = illuminate(b, theta, sTe(bo, ro) + PQT) + sTr(-b, theta + pi<T>());
+        sT = illuminate(b, theta, sTe(bo, ro, sigr) + PQT, sigr) +
+             sTr(-b, theta + pi<T>(), sigr);
 
       } else if ((code == FLUX_DAY_VIS) || (code == FLUX_QUAD_DAY_VIS)) {
 
         // The solution vector is *just* the reflected light solution vector.
-        sT = illuminate(b, theta, PQT);
+        sT = illuminate(b, theta, PQT, sigr);
 
       } else if ((code == FLUX_NIGHT_VIS) || (code == FLUX_QUAD_NIGHT_VIS)) {
 
         //
-        sT = illuminate(b, theta, sTe(bo, ro) - PQT);
+        sT = illuminate(b, theta, sTe(bo, ro, sigr) - PQT, sigr);
 
       } else {
 
@@ -317,7 +245,8 @@ public:
         args << "b = " << b << ", "
              << "theta = " << theta << ", "
              << "bo = " << bo << ", "
-             << "ro = " << ro;
+             << "ro = " << ro << ", "
+             << "sigr = " << sigr;
         throw StarryException("Unexpected branch.", "reflected/occultation.h",
                               "Occultation.compute", args.str());
       }
