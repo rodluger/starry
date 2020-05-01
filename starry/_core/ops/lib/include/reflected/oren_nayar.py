@@ -13,7 +13,7 @@ def get_f_exact(x, y, z, b):
     .. math::
 
         f \equiv
-        \cos\theta_i 
+        \cos\theta_i
         \mathrm{max}\left(0, \cos(\phi_r - \phi_i)\right)
         \sin\alpha \tan\beta
 
@@ -52,7 +52,9 @@ def poly_basis(x, y, z, deg):
     return B
 
 
-def get_w6(deg=4, Nb=3, res=100, inv_var=1e-4):
+def get_w6(
+    deg=4, Nb=3, res=100, inv_var=1e-4, term_eps=1e-3, term_inv_var=1e6
+):
     """
     Return the coefficients of the 6D fit to `f`
     in `x`, `y`, `z`, `b`, and `bc`.
@@ -88,14 +90,29 @@ def get_w6(deg=4, Nb=3, res=100, inv_var=1e-4):
                 X[:, u] = B[:, n] * b ** p * bc ** q
                 u += 1
 
+    # Set the "data" covariance to be diagonal, with unit
+    # variance everywhere *except* very close to the terminator,
+    # where we make the variance tiny. This ensures that
+    # our intensity falls to (almost) zero at the terminator,
+    # ensuring it's continuous across the day/night boundary.
+    # There's definitely a more elegant way to do this: we could
+    # force the fit to be proportional to the Lambertian term
+    # `ci = bc * y - b * z`, which is zero along the terminator.
+    # But this hack is likely sufficient for now.
+    terminator = np.abs(y - b * np.sqrt(1 - x ** 2)) < term_eps
+    cinv = np.ones_like(f)
+    cinv[terminator] = term_inv_var
+
     # Solve the linear problem
+    XTCInv = X.T * cinv
     w6 = np.linalg.solve(
-        X.T.dot(X) + inv_var * np.eye(N * Nb ** 2), X.T.dot(f)
+        XTCInv.dot(X) + inv_var * np.eye(N * Nb ** 2), XTCInv.dot(f),
     )
     return w6
 
 
 def generate_header(deg=4, Nb=3, res=100, inv_var=1e-4, nperline=3):
+    print("Generating `oren_nayar.h`...")
     assert deg >= 1, "deg must be >= 1"
     assert Nb >= 1, "Nb must be >= 1"
     w6 = get_w6(deg=deg, Nb=Nb, res=res, inv_var=inv_var)
