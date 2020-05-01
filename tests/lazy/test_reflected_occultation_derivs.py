@@ -281,5 +281,20 @@ def test_derivs(n=1, npts=10000, atol=1e-5, plot=False, throw=True):
         plt.show()
 
 
+# BROKEN: Derivs when b=-1 are NaN.
+@pytest.mark.xfail
+def test_b_minus_one():
+
+    b = tt.dscalar()
+    b.tag.test_value = -1.0
+    map = starry.Map(reflected=True)
+
+    def flux(b):
+        return map.flux(zs=-b)
+
+    grad = theano.function([b], tt.grad(flux(b)[0], [b]))
+    assert not np.isnan(grad(-1.0)[0])
+
+
 if __name__ == "__main__":
-    test_derivs(plot=True, throw=False)
+    test_b_minus_one()

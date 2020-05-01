@@ -109,7 +109,7 @@ class rTReflectedGradientOp(tt.Op):
         bb = (brT * ddb).sum(-1)
         bsigr = (brT * ddsigr).sum()
         outputs[0][0] = np.reshape(bb, np.shape(b))
-        outputs[1][0] = np.reshape(bsigr, np.shape(sigr))
+        outputs[1][0] = np.array(np.reshape(bsigr, np.shape(sigr)))
 
 
 class sTReflectedOp(tt.Op):
