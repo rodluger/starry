@@ -109,8 +109,12 @@ inline Vector<T> OrenNayarPolynomial(const T &b, const T &theta, const T &sigr,
   if (b < 0) {
 
     // Construct the bbc basis
+    // NOTE: The lowest power of `b` is *ONE*, since
+    // we need `f = 0` eveywhere when `b = 0` for
+    // a smooth transition to Lambertian at crescent
+    // phase.
     Vector<T> bbc(STARRY_OREN_NAYAR_NB * STARRY_OREN_NAYAR_NB);
-    bbc(0) = 1;
+    bbc(0) = b;
     for (int l = 1; l < STARRY_OREN_NAYAR_NB; ++l) {
       bbc(l) = bc * bbc(l - 1);
     }

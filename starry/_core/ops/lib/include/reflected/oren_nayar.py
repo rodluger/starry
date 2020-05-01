@@ -73,13 +73,17 @@ def get_w6(deg=4, Nb=3, res=100, inv_var=1e-4):
     f = get_f_exact(x, y, z, b)
 
     # Construct the design matrix for fitting
+    # NOTE: The lowest power of `b` is *ONE*, since
+    # we need `f = 0` eveywhere when `b = 0` for
+    # a smooth transition to Lambertian at crescent
+    # phase.
     N = (deg + 1) ** 2
     u = 0
     X = np.zeros((len(y * z * b), N * Nb ** 2))
     bc = np.sqrt(1 - b ** 2)
     B = poly_basis(x, y, z, deg)
     for n in range(N):
-        for p in range(Nb):
+        for p in range(1, Nb + 1):
             for q in range(Nb):
                 X[:, u] = B[:, n] * b ** p * bc ** q
                 u += 1
