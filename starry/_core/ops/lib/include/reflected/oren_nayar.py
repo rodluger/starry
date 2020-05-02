@@ -13,7 +13,6 @@ def get_f_exact(x, y, z, b):
     .. math::
 
         f \equiv
-        \cos\theta_i
         \mathrm{max}\left(0, \cos(\phi_r - \phi_i)\right)
         \sin\alpha \tan\beta
 
@@ -27,8 +26,25 @@ def get_f_exact(x, y, z, b):
     ci = bc * y - b * z
     f1 = -b / z - ci
     f2 = -b / ci - z
-    f = ci * np.maximum(0, np.minimum(f1, f2))
+    f = np.maximum(0, np.minimum(f1, f2))
     return f
+
+
+def get_ijk(n):
+    """Get the exponents of x, y, z i the nth term of the polynomial basis."""
+    l = int(np.floor(np.sqrt(n)))
+    m = n - l * l - l
+    mu = l - m
+    nu = l + m
+    if mu % 2 == 0:
+        i = mu // 2
+        j = nu // 2
+        k = 0
+    else:
+        i = (mu - 1) // 2
+        j = (nu - 1) // 2
+        k = 1
+    return i, j, k
 
 
 def poly_basis(x, y, z, deg):
@@ -36,23 +52,12 @@ def poly_basis(x, y, z, deg):
     N = (deg + 1) ** 2
     B = np.zeros((len(x * y * z), N))
     for n in range(N):
-        l = int(np.floor(np.sqrt(n)))
-        m = n - l * l - l
-        mu = l - m
-        nu = l + m
-        if nu % 2 == 0:
-            i = mu // 2
-            j = nu // 2
-            k = 0
-        else:
-            i = (mu - 1) // 2
-            j = (nu - 1) // 2
-            k = 1
+        i, j, k = get_ijk(n)
         B[:, n] = x ** i * y ** j * z ** k
     return B
 
 
-def design_matrix(x, y, z, b, deg=4, Nb=3):
+def design_matrix(x, y, z, b, deg, Nb):
     """
     Return the x-y-z-b-bc Vandermonde design matrix.
     
@@ -74,14 +79,58 @@ def design_matrix(x, y, z, b, deg=4, Nb=3):
     return X
 
 
-def get_w6(
-    deg=4, Nb=3, res=100, inv_var=1e-4, term_eps=1e-3, term_inv_var=1e6
-):
+def index_of(i, j, k, p, q, deg, Nb):
+    """
+    Return the index in `w` corresponding to a certain term.
+    
+    Not at all optimized! In fact, very much the opposite.
+
+    """
+    idx = 0
+    for n in range((deg + 1) ** 2):
+        i0, j0, k0 = get_ijk(n)
+        for p0 in range(1, Nb + 1):
+            for q0 in range(Nb):
+                if (
+                    (i0 == i)
+                    and (j0 == j)
+                    and (k0 == k)
+                    and (p0 == p)
+                    and (q0 == q)
+                ):
+                    return idx
+                idx += 1
+    raise IndexError("Invalid polynomial index!")
+
+
+def get_w(deg=5, Nb=4, res=100):
     """
     Return the coefficients of the 5D fit to `f`
     in `x`, `y`, `z`, `b`, and `bc`.
 
+    We fit the function `f` (see above) with a 
+    polynomial of order `deg0 = deg - 1` in `x`, `y`, and `z`
+    and `Nb0 = Nb - 1` in `b` and `bc`. We then multiply the
+    result by `cos(theta_i)`, which is just a polynomial of
+    order 1 in `y`, `z`, `b`, and `bc`.
+
+    The final polynomial has order `deg` and `Nb` in the
+    Cartesian and terminator coordinates, respectively, and is a fit
+    to the function
+
+    .. math::
+
+        \cos\theta_i
+        \mathrm{max}\left(0, \cos(\phi_r - \phi_i)\right)
+        \sin\alpha \tan\beta
+
+    from Equation (30) in Oren & Nayar (1994).
+
     """
+    # Degrees before multiplying by cos(theta_i)
+    deg0 = deg - 1
+    Nb0 = Nb - 1
+
     # Construct a 3D grid in (x, y, b)
     bgrid = np.linspace(-1, 0, res)
     xygrid = np.linspace(-1, 1, res)
@@ -97,40 +146,70 @@ def get_w6(
     f = get_f_exact(x, y, z, b)
 
     # Construct the design matrix for fitting
-    X = design_matrix(x, y, z, b, deg=deg, Nb=Nb)
+    X = design_matrix(x, y, z, b, deg=deg0, Nb=Nb0)
 
-    # Set the "data" covariance to be diagonal, with unit
-    # variance everywhere *except* very close to the terminator,
-    # where we make the variance tiny. This ensures that
-    # our intensity falls to (almost) zero at the terminator,
-    # ensuring it's continuous across the day/night boundary.
-    # There's definitely a more elegant way to do this: we could
-    # force the fit to be proportional to the Lambertian term
-    # `ci = bc * y - b * z`, which is zero along the terminator.
-    # But this hack is likely sufficient for now.
-    terminator = np.abs(y - b * np.sqrt(1 - x ** 2)) < term_eps
+    # "Data" inverse covariance. Make the errorbars large
+    # when cos(theta_i) is small, since the intensity there
+    # is small anyways.
     cinv = np.ones_like(f)
-    cinv[terminator] = term_inv_var
+    bc = np.sqrt(1 - b ** 2)
+    ci = bc * y - b * z
+    cinv *= ci ** 2
 
-    # Solve the linear problem
-    N = (deg + 1) ** 2
+    # Prior inverse covariance. Make odd powers of x have
+    # *very* narrow priors centered on zero, since the
+    # function should be symmetric about the y axis.
+    # We'll explicitly zero out these coefficients below.
+    PInv = np.eye((deg0 + 1) ** 2 * Nb0 ** 2)
+    u = 0
+    for n in range((deg0 + 1) ** 2):
+        i, _, _ = get_ijk(n)
+        if (i % 2) != 0:
+            inv_var = 1e15
+        else:
+            inv_var = 0
+        for p in range(1, Nb0 + 1):
+            for q in range(Nb0):
+                PInv[u, u] = inv_var
+                u += 1
+
+    # Solve the L2 problem
     XTCInv = X.T * cinv
-    w6 = np.linalg.solve(
-        XTCInv.dot(X) + inv_var * np.eye(N * Nb ** 2), XTCInv.dot(f),
-    )
+    w0 = np.linalg.solve(XTCInv.dot(X) + PInv, XTCInv.dot(f),)
 
-    return w6
+    # Zero out really tiny values.
+    w0[np.abs(w0) < 1e-10] = 0.0
+
+    # Now multiply by cos_thetai = bc * y - b * z.
+    # The powers of x, y, z, b, bc are
+    # i, j, k, p, q, respectively
+    w = np.zeros((deg + 1) ** 2 * Nb ** 2)
+    for n in range((deg0 + 1) ** 2):
+        i, j, k = get_ijk(n)
+        for p in range(1, Nb0 + 1):
+            for q in range(Nb0):
+                idx = index_of(i, j, k, p, q, deg0, Nb0)
+                w[index_of(i, j + 1, k, p, q + 1, deg, Nb)] += w0[idx]
+
+                if k == 0:
+                    w[index_of(i, j, k + 1, p + 1, q, deg, Nb)] -= w0[idx]
+                else:
+                    # transform z^2 --> 1 - x^2 - y^2
+                    w[index_of(i, j, 0, p + 1, q, deg, Nb)] -= w0[idx]
+                    w[index_of(i + 2, j, 0, p + 1, q, deg, Nb)] += w0[idx]
+                    w[index_of(i, j + 2, 0, p + 1, q, deg, Nb)] += w0[idx]
+    return w
 
 
-def generate_header(deg=4, Nb=3, res=100, inv_var=1e-4, nperline=3):
+def generate_header(deg=5, Nb=4, res=100, nperline=3):
     print("Generating `oren_nayar.h`...")
     assert deg >= 1, "deg must be >= 1"
     assert Nb >= 1, "Nb must be >= 1"
-    w6 = get_w6(deg=deg, Nb=Nb, res=res, inv_var=inv_var)
-    N = len(w6) - (len(w6) % nperline)
+    w = get_w(deg=deg, Nb=Nb, res=res)
+    N = len(w) - (len(w) % nperline)
     string = "static const double STARRY_OREN_NAYAR_COEFFS[] = {\n"
-    lines = w6[:N].reshape(-1, nperline)
-    last_line = w6[N:]
+    lines = w[:N].reshape(-1, nperline)
+    last_line = w[N:]
     for i, line in enumerate(lines):
         string += ", ".join(["{:22.15e}".format(value) for value in line])
         if (i < len(lines) - 1) or (len(last_line)):
@@ -158,10 +237,12 @@ def generate_header(deg=4, Nb=3, res=100, inv_var=1e-4, nperline=3):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    # Get the coefficients
-    deg = 4
-    Nb = 3
-    w6 = get_w6(deg=deg, Nb=Nb)
+    # Check the quality of the fit for various values of `b`.
+
+    # Get the polynomial coefficients
+    deg = 5
+    Nb = 4
+    w = get_w(deg=deg, Nb=Nb)
 
     # Grid the surface
     res = 300
@@ -178,12 +259,16 @@ if __name__ == "__main__":
         axis.axis("off")
     for i, b in enumerate(np.linspace(-1, 0, nimg, endpoint=False)):
 
+        # Illumination profile
+        bc = np.sqrt(1 - b ** 2)
+        ci = bc * y - b * z
+
         # Compute the exact `f` function on this grid
-        f = get_f_exact(x, y, z, b)
+        f = ci * get_f_exact(x, y, z, b)
 
         # Get our approximation
         X = design_matrix(x, y, z, b, deg=deg, Nb=Nb)
-        fapprox = X.dot(w6)
+        fapprox = X.dot(w)
 
         # Mask the nightside & reshape
         idx = np.isfinite(z) & (y < b * np.sqrt(1 - x ** 2))

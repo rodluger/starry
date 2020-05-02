@@ -4,7 +4,7 @@ import pytest
 import starry
 
 
-def test_terminator_continuity(plot=True):
+def test_terminator_continuity(plot=False):
     """
     Ensure the Oren-Nayar intensity is continuous across
     the day/night boundary.
@@ -47,10 +47,10 @@ def test_terminator_continuity(plot=True):
     diff = np.diff(
         map.intensity(lat=lat, lon=0, xs=0, ys=ys, zs=zs).reshape(-1)
     )[0]
-    assert np.abs(diff) < 1e-4, np.abs(diff)
+    assert np.abs(diff) < 1e-10, np.abs(diff)
 
 
-def test_half_phase_discontinuity(plot=True):
+def test_half_phase_discontinuity(plot=False):
     """
     Ensure the Oren-Nayar intensity at a point is continuous
     as we move across half phase (b = 0).
@@ -82,10 +82,11 @@ def test_half_phase_discontinuity(plot=True):
     diff = np.diff(
         map.intensity(lat=60, lon=0, xs=0, ys=1, zs=zs).reshape(-1)
     )[0]
+    print(diff)
     assert np.abs(diff) < 1e-8, np.abs(diff)
 
 
-def test_approximation(plot=True):
+def test_approximation(plot=False):
     """
     Test our polynomial approximation to the Oren-Nayar intensity.
 
@@ -130,11 +131,13 @@ def test_approximation(plot=True):
         plt.xlabel("diff")
         plt.show()
 
-    assert np.abs(mu) < 1e-5, np.abs(mu)
+    assert np.abs(mu) < 1e-6, np.abs(mu)
     assert std < 1e-3, std
     assert maxabs < 1e-2, maxabs
 
 
 if __name__ == "__main__":
     starry.config.lazy = False
-    test_approximation(plot=True)
+    test_terminator_continuity()
+    test_half_phase_discontinuity()
+    test_approximation()
