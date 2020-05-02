@@ -52,11 +52,33 @@ def poly_basis(x, y, z, deg):
     return B
 
 
+def design_matrix(x, y, z, b, deg=4, Nb=3):
+    """
+    Return the x-y-z-b-bc Vandermonde design matrix.
+    
+    NOTE: The lowest power of `b` is *ONE*, since
+    we need `f = 0` eveywhere when `b = 0` for
+    a smooth transition to Lambertian at crescent
+    phase.
+    """
+    N = (deg + 1) ** 2
+    u = 0
+    X = np.zeros((len(y * z * b), N * Nb ** 2))
+    bc = np.sqrt(1 - b ** 2)
+    B = poly_basis(x, y, z, deg)
+    for n in range(N):
+        for p in range(1, Nb + 1):
+            for q in range(Nb):
+                X[:, u] = B[:, n] * b ** p * bc ** q
+                u += 1
+    return X
+
+
 def get_w6(
     deg=4, Nb=3, res=100, inv_var=1e-4, term_eps=1e-3, term_inv_var=1e6
 ):
     """
-    Return the coefficients of the 6D fit to `f`
+    Return the coefficients of the 5D fit to `f`
     in `x`, `y`, `z`, `b`, and `bc`.
 
     """
@@ -75,20 +97,7 @@ def get_w6(
     f = get_f_exact(x, y, z, b)
 
     # Construct the design matrix for fitting
-    # NOTE: The lowest power of `b` is *ONE*, since
-    # we need `f = 0` eveywhere when `b = 0` for
-    # a smooth transition to Lambertian at crescent
-    # phase.
-    N = (deg + 1) ** 2
-    u = 0
-    X = np.zeros((len(y * z * b), N * Nb ** 2))
-    bc = np.sqrt(1 - b ** 2)
-    B = poly_basis(x, y, z, deg)
-    for n in range(N):
-        for p in range(1, Nb + 1):
-            for q in range(Nb):
-                X[:, u] = B[:, n] * b ** p * bc ** q
-                u += 1
+    X = design_matrix(x, y, z, b, deg=deg, Nb=Nb)
 
     # Set the "data" covariance to be diagonal, with unit
     # variance everywhere *except* very close to the terminator,
@@ -104,10 +113,12 @@ def get_w6(
     cinv[terminator] = term_inv_var
 
     # Solve the linear problem
+    N = (deg + 1) ** 2
     XTCInv = X.T * cinv
     w6 = np.linalg.solve(
         XTCInv.dot(X) + inv_var * np.eye(N * Nb ** 2), XTCInv.dot(f),
     )
+
     return w6
 
 
@@ -142,3 +153,69 @@ def generate_header(deg=4, Nb=3, res=100, inv_var=1e-4, nperline=3):
         print("", file=f)
         print(string, file=f)
         print("#endif", file=f)
+
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
+    # Get the coefficients
+    deg = 4
+    Nb = 3
+    w6 = get_w6(deg=deg, Nb=Nb)
+
+    # Grid the surface
+    res = 300
+    xygrid = np.linspace(-1, 1, res)
+    x, y = np.meshgrid(xygrid, xygrid)
+    x = x.reshape(-1)
+    y = y.reshape(-1)
+    z = np.sqrt(1 - x ** 2 - y ** 2)
+
+    # Compare for several values of b
+    nimg = 6
+    fig, ax = plt.subplots(nimg, 4, figsize=(6, 8))
+    for axis in ax.flatten():
+        axis.axis("off")
+    for i, b in enumerate(np.linspace(-1, 0, nimg, endpoint=False)):
+
+        # Compute the exact `f` function on this grid
+        f = get_f_exact(x, y, z, b)
+
+        # Get our approximation
+        X = design_matrix(x, y, z, b, deg=deg, Nb=Nb)
+        fapprox = X.dot(w6)
+
+        # Mask the nightside & reshape
+        idx = np.isfinite(z) & (y < b * np.sqrt(1 - x ** 2))
+        f[idx] = 0
+        fapprox[idx] = 0
+        f = f.reshape(res, res)
+        fapprox = fapprox.reshape(res, res)
+
+        # Plot
+        vmin = 0
+        vmax = 1
+        ax[i, 0].imshow(
+            f, origin="lower", extent=(-1, 1, -1, 1), vmin=vmin, vmax=vmax
+        )
+        ax[i, 1].imshow(
+            fapprox,
+            origin="lower",
+            extent=(-1, 1, -1, 1),
+            vmin=vmin,
+            vmax=vmax,
+        )
+        ax[i, 2].imshow(
+            f - fapprox,
+            origin="lower",
+            extent=(-1, 1, -1, 1),
+            vmin=-0.1,
+            vmax=0.1,
+            cmap="RdBu",
+        )
+
+        bins = np.linspace(-0.1, 0.1, 50)
+        ax[i, 3].hist((f - fapprox).flatten(), bins=bins)
+        ax[i, 3].set_xlim(-0.1, 0.1)
+
+    plt.show()
