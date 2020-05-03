@@ -103,7 +103,7 @@ def index_of(i, j, k, p, q, deg, Nb):
     raise IndexError("Invalid polynomial index!")
 
 
-def get_w(deg=5, Nb=4, res=100):
+def get_w(deg=5, Nb=4, res=100, prior_var=1e2):
     """
     Return the coefficients of the 5D fit to `f`
     in `x`, `y`, `z`, `b`, and `bc`.
@@ -167,7 +167,7 @@ def get_w(deg=5, Nb=4, res=100):
         if (i % 2) != 0:
             inv_var = 1e15
         else:
-            inv_var = 0
+            inv_var = 1 / prior_var
         for p in range(1, Nb0 + 1):
             for q in range(Nb0):
                 PInv[u, u] = inv_var
