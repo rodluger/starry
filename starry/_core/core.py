@@ -1037,10 +1037,21 @@ class OpsReflected(OpsYlm):
                 alpha,
                 sigr,
             )
-            X = tt.reshape(X, (tt.shape(theta)[0], self.source_npts, -1))
 
             # Average over each profile
-            return tt.sum(X, axis=1) / self.source_npts
+            return ifelse(
+                tt.shape(theta)[0] > 0,
+                (
+                    tt.sum(
+                        tt.reshape(
+                            X, (tt.shape(theta)[0], self.source_npts, -1)
+                        ),
+                        axis=1,
+                    )
+                    / self.source_npts
+                ),
+                tt.zeros_like(X),
+            )
 
     @autocompile
     def flux(

@@ -82,7 +82,6 @@ def test_half_phase_discontinuity(plot=False):
     diff = np.diff(
         map.intensity(lat=60, lon=0, xs=0, ys=1, zs=zs).reshape(-1)
     )[0]
-    print(diff)
     assert np.abs(diff) < 1e-8, np.abs(diff)
 
 
@@ -131,7 +130,7 @@ def test_approximation(plot=False):
         plt.xlabel("diff")
         plt.show()
 
-    assert np.abs(mu) < 1e-6, np.abs(mu)
+    assert np.abs(mu) < 1e-5, np.abs(mu)
     assert std < 1e-3, std
     assert maxabs < 1e-2, maxabs
 
