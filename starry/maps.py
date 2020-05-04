@@ -2260,7 +2260,8 @@ class ReflectedBase(object):
             sigr,
             on94_exact,
         )
-        illum /= np.nanmax(illum)
+        if np.nanmax(illum) > 0:
+            illum /= np.nanmax(illum)
         kwargs["illum"] = illum
 
         kwargs["theta"] = theta / self._angle_factor
