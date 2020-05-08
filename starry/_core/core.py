@@ -605,8 +605,14 @@ class OpsLD(object):
     @autocompile
     def intensity(self, mu, u):
         """Compute the intensity at a set of points."""
-        basis = tt.reshape(1.0 - mu, (-1, 1)) ** np.arange(self.udeg + 1)
-        return -tt.dot(basis, u)
+        if self.udeg == 0:
+            mu_f = tt.reshape(mu, (-1,))
+            intensity = tt.ones_like(mu_f)
+            intensity = tt.set_subtensor(intensity[tt.isnan(mu_f)], np.nan)
+            return intensity
+        else:
+            basis = tt.reshape(1.0 - mu, (-1, 1)) ** np.arange(self.udeg + 1)
+            return -tt.dot(basis, u)
 
     @autocompile
     def flux(self, xo, yo, zo, ro, u):
@@ -1008,27 +1014,27 @@ class OpsReflected(OpsYlm):
 
         else:
 
+            # The effective size of the star as seen by the planet
+            # is smaller by an amount cos(tau). Only include points
+            # that fall on this smaller disk.
+            rs = tt.sqrt(xs ** 2 + ys ** 2 + zs ** 2)
+            Reff = Rs * tt.sqrt(1 - ((Rs - 1) / rs) ** 2)
+            dx = tt.shape_padright(Reff) * self.source_dx
+            dy = tt.shape_padright(Reff) * self.source_dy
+            # Note that the star is *closer* to the planet, hence the - sign
+            dz = -tt.sqrt(Rs ** 2 - dx ** 2 - dy ** 2)
+
             # Compute the illumination for each point on the source disk
             X = self.X_point_source(
                 tt.reshape(
-                    tt.shape_padright(theta) + tt.zeros_like(self.source_dx),
-                    (-1,),
+                    tt.shape_padright(theta) + tt.zeros_like(dx), (-1,)
                 ),
-                tt.reshape(tt.shape_padright(xs) + Rs * self.source_dx, (-1,)),
-                tt.reshape(tt.shape_padright(ys) + Rs * self.source_dy, (-1,)),
-                tt.reshape(tt.shape_padright(zs) + Rs * self.source_dz, (-1,)),
-                tt.reshape(
-                    tt.shape_padright(xo) + tt.zeros_like(self.source_dx),
-                    (-1,),
-                ),
-                tt.reshape(
-                    tt.shape_padright(yo) + tt.zeros_like(self.source_dx),
-                    (-1,),
-                ),
-                tt.reshape(
-                    tt.shape_padright(zo) + tt.zeros_like(self.source_dx),
-                    (-1,),
-                ),
+                tt.reshape(tt.shape_padright(xs) + dx, (-1,)),
+                tt.reshape(tt.shape_padright(ys) + dy, (-1,)),
+                tt.reshape(tt.shape_padright(zs) + dz, (-1,)),
+                tt.reshape(tt.shape_padright(xo) + tt.zeros_like(dx), (-1,)),
+                tt.reshape(tt.shape_padright(yo) + tt.zeros_like(dx), (-1,)),
+                tt.reshape(tt.shape_padright(zo) + tt.zeros_like(dx), (-1,)),
                 ro,
                 inc,
                 obl,
@@ -1040,17 +1046,36 @@ class OpsReflected(OpsYlm):
 
             # Average over each profile
             return ifelse(
-                tt.shape(theta)[0] > 0,
-                (
-                    tt.sum(
-                        tt.reshape(
-                            X, (tt.shape(theta)[0], self.source_npts, -1)
-                        ),
-                        axis=1,
-                    )
-                    / self.source_npts
+                Rs > 0,
+                ifelse(
+                    tt.shape(theta)[0] > 0,
+                    (
+                        tt.sum(
+                            tt.reshape(
+                                X, (tt.shape(theta)[0], self.source_npts, -1)
+                            ),
+                            axis=1,
+                        )
+                        / self.source_npts
+                    ),
+                    tt.zeros_like(X),
                 ),
-                tt.zeros_like(X),
+                self.X_point_source(
+                    theta,
+                    xs,
+                    ys,
+                    zs,
+                    xo,
+                    yo,
+                    zo,
+                    ro,
+                    inc,
+                    obl,
+                    u,
+                    f,
+                    alpha,
+                    sigr,
+                ),
             )
 
     @autocompile
@@ -1275,12 +1300,22 @@ class OpsReflected(OpsYlm):
 
         else:
 
+            # The effective size of the star as seen by the planet
+            # is smaller by an amount cos(tau). Only include points
+            # that fall on this smaller disk.
+            rs = tt.sqrt(xs ** 2 + ys ** 2 + zs ** 2)
+            Reff = Rs * tt.sqrt(1 - ((Rs - 1) / rs) ** 2)
+            dx = tt.shape_padright(Reff) * self.source_dx
+            dy = tt.shape_padright(Reff) * self.source_dy
+            # Note that the star is *closer* to the planet, hence the - sign
+            dz = -tt.sqrt(Rs ** 2 - dx ** 2 - dy ** 2)
+
             # Compute the illumination for each point on the source disk
             I = self.compute_illumination_point_source(
                 xyz,
-                tt.reshape(tt.shape_padright(xs) + Rs * self.source_dx, (-1,)),
-                tt.reshape(tt.shape_padright(ys) + Rs * self.source_dy, (-1,)),
-                tt.reshape(tt.shape_padright(zs) + Rs * self.source_dz, (-1,)),
+                tt.reshape(tt.shape_padright(xs) + dx, (-1,)),
+                tt.reshape(tt.shape_padright(ys) + dy, (-1,)),
+                tt.reshape(tt.shape_padright(zs) + dz, (-1,)),
                 sigr,
                 on94_exact,
             )

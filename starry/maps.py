@@ -558,8 +558,8 @@ class MapBase(object):
             if grid:
                 x = np.linspace(-1, 1, 10000)
                 y = np.sqrt(1 - x ** 2)
-                borders += ax.plot(x, y, "k-", alpha=1, lw=1, zorder=0)
-                borders += ax.plot(x, -y, "k-", alpha=1, lw=1, zorder=0)
+                borders += ax.plot(x, y, "k-", alpha=1, lw=1.5, zorder=0)
+                borders += ax.plot(x, -y, "k-", alpha=1, lw=1.5, zorder=0)
                 lats = get_ortho_latitude_lines(inc=inc, obl=obl)
                 latlines = [None for n in lats]
                 for n, l in enumerate(lats):

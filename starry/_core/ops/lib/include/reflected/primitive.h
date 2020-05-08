@@ -234,8 +234,8 @@ inline Vector<T> W_indef(const int nmax, const T &s2_, const T &q2,
   // TODO: Is this instability encountered in practice?
   // If so, find the limiting value of W when s2 = 0.
   T s2 = s2_;
-  if (abs(s2) < 1e-8)
-    s2 = (s2 > 0) ? T(1e-8) : T(-1e-8);
+  if (abs(s2) < STARRY_MIN_SIN_ALPHA)
+    s2 = (s2 > 0) ? T(STARRY_MIN_SIN_ALPHA) : T(-STARRY_MIN_SIN_ALPHA);
 
   if (abs(1 - q2) < 0.5) {
 

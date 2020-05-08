@@ -83,6 +83,9 @@
 // Nudge theta away from pi / 2 when ro = 1
 #define STARRY_THETA_UNIT_RADIUS_TOL 1e-5
 
+// Smallest value of sin(kappa / 2) in computing W
+#define STARRY_MIN_SIN_ALPHA 1e-8
+
 /*
 Determining the integration paths close to the singular
 points of the occultation is quite hard, and the solution can
