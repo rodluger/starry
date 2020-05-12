@@ -10,7 +10,7 @@
       <img src="https://badgen.net/azure-pipelines/rodluger/starry/4?label=build"/>
     </a>
     <!-- main tests -->
-    <a href="https://dev.azure.com/rodluger/starry/_build">
+    <a href="https://dev.azure.com/rodluger/starry/_test/analytics?definitionId=4&contextType=build">
       <img src="https://img.shields.io/azure-devops/tests/rodluger/starry/4/master"/>
     </a>
     <!-- main coveragee -->
@@ -19,7 +19,7 @@
     </a>
     <br/>
     <!-- extensions -->
-    <a href="https://dev.azure.com/rodluger/starry/_build">
+    <a href="https://dev.azure.com/rodluger/starry/_test/analytics?definitionId=5&contextType=build">
       <img src="https://img.shields.io/azure-devops/tests/rodluger/starry/5/master?label=extensions%20tests"/>
     </a>
     <!-- extensions coveragee -->
