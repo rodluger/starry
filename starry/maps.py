@@ -2242,27 +2242,28 @@ class ReflectedBase(object):
 
         # Now call it on an illuminated uniform map
         # We'll use this as an alpha filter.
-        illum = self.ops.render(
-            res,
-            projection,
-            1,
-            theta,
-            inc,
-            obl,
-            np.append([1.0], np.zeros(self.Ny - 1)),
-            u,
-            f,
-            alpha,
-            xs,
-            ys,
-            zs,
-            Rs,
-            sigr,
-            on94_exact,
-        )
-        if np.nanmax(illum) > 0:
-            illum /= np.nanmax(illum)
-        kwargs["illum"] = illum
+        if illuminate:
+            illum = self.ops.render(
+                res,
+                projection,
+                1,
+                theta,
+                inc,
+                obl,
+                np.append([1.0], np.zeros(self.Ny - 1)),
+                u,
+                f,
+                alpha,
+                xs,
+                ys,
+                zs,
+                Rs,
+                sigr,
+                on94_exact,
+            )
+            if np.nanmax(illum) > 0:
+                illum /= np.nanmax(illum)
+            kwargs["illum"] = illum
 
         kwargs["theta"] = theta / self._angle_factor
 
