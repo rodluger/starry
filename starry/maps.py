@@ -38,26 +38,10 @@ __all__ = [
 
 class Amplitude(object):
     def __get__(self, instance, owner):
-        if instance.__props__["reflected"]:
-            return instance._amp * STARRY_REFLECTANCE_FLUX_NORMALIZATION
-        else:
-            return instance._amp
+        return instance._amp
 
     def __set__(self, instance, value):
-        if instance.__props__["reflected"]:
-            # NOTE: For reflected light maps, the internal amplitude `map._amp`
-            # is a factor of `np.pi` larger than the user-facing amplitude
-            # `map.amp`. This helps make the default map albedo unity instead
-            # of `1/np.pi` (which is the default intensity in thermal light).
-            # This is a bit of a hack, and we should reconsider this if it
-            # leads to confusion / issues for users.
-            instance._amp = math.cast(
-                np.ones(instance.nw)
-                * value
-                / STARRY_REFLECTANCE_FLUX_NORMALIZATION
-            )
-        else:
-            instance._amp = math.cast(np.ones(instance.nw) * value)
+        instance._amp = math.cast(np.ones(instance.nw) * value)
 
 
 class MapBase(object):
@@ -293,8 +277,7 @@ class MapBase(object):
         f[0] = np.pi
         self._f = math.cast(f)
 
-        # Let the `Amplitude` class take care of the normalization
-        self.amp = kwargs.pop("amp", np.ones(self.nw))
+        self._amp = math.cast(kwargs.pop("amp", np.ones(self.nw)))
 
         # Reset data and priors
         self._flux = None
@@ -826,10 +809,7 @@ class MapBase(object):
         """
         if mu is None:
             mu = np.zeros(self.Ny)
-            if self.__props__["reflected"]:
-                mu[0] = 1 / STARRY_REFLECTANCE_FLUX_NORMALIZATION
-            else:
-                mu[0] = 1.0
+            mu[0] = 1.0
             mu = math.cast(mu)
         self._mu = math.cast(mu) * math.cast(np.ones(self.Ny))
         self._L = linalg.Covariance(L, cho_L, N=self.Ny)
@@ -882,18 +862,6 @@ class MapBase(object):
         self._solution = linalg.solve(
             X, self._flux, self._C.cholesky, self._mu, self._L.inverse
         )
-
-        # HACK: We need to remove our internal weighting by pi here
-        # for reflected light maps. (It gets added back in automatially
-        # when setting `map.amp` below; see the `Amplitude` class above).
-        # FACT: The *rows* of the lower cholesky factorization of the
-        # poterior covariance scale in the same way as the posterior
-        # mean. See `tests/greedy/test_chol_scaling.py`.
-        if self.__props__["reflected"]:
-            self._solution = (
-                self._solution[0] / np.pi,
-                self._solution[1] / np.pi,
-            )
 
         # Set the amplitude and coefficients
         x, _ = self._solution
@@ -1171,7 +1139,7 @@ class YlmBase(object):
         self._check_kwargs("flux", kwargs)
 
         # Compute & return
-        return self._amp * self.ops.flux(
+        return self.amp * self.ops.flux(
             theta,
             xo,
             yo,
@@ -1223,7 +1191,7 @@ class YlmBase(object):
         self._check_kwargs("intensity", kwargs)
 
         # Compute & return
-        return self._amp * self.ops.intensity(
+        return self.amp * self.ops.intensity(
             lat, lon, self._y, self._u, self._f, alpha_theta, ld
         )
 
@@ -1264,11 +1232,11 @@ class YlmBase(object):
 
         # Compute
         if self.nw is None or config.lazy:
-            amp = self._amp
+            amp = self.amp
         else:
             # The intensity has shape `(nw, res, res)`
             # so we must reshape `amp` to take the product correctly
-            amp = self._amp[:, np.newaxis, np.newaxis]
+            amp = self.amp[:, np.newaxis, np.newaxis]
         image = amp * self.ops.render(
             res,
             projection,
@@ -1366,7 +1334,7 @@ class YlmBase(object):
         # as that of the input image
         y /= 2 * np.sqrt(np.pi)
         self._y = math.cast(y / y[0])
-        self._amp = math.cast(y[0] * np.pi)
+        self.amp = math.cast(y[0] * np.pi)
 
         # Ensure positive semi-definite?
         if force_psd:
@@ -1581,7 +1549,7 @@ class LimbDarkenedBase(object):
         self._check_kwargs("flux", kwargs)
 
         # Compute & return
-        return self._amp * self.ops.flux(xo, yo, zo, ro, self._u)
+        return self.amp * self.ops.flux(xo, yo, zo, ro, self._u)
 
     def intensity(self, mu=None, x=None, y=None):
         r"""
@@ -1613,7 +1581,7 @@ class LimbDarkenedBase(object):
             mu = (1 - x ** 2 - y ** 2) ** 0.5
 
         # Compute & return
-        return self._amp * self.ops.intensity(mu, self._u)
+        return self.amp * self.ops.intensity(mu, self._u)
 
     def render(self, res=300):
         """Compute and return the intensity of the map on a grid.
@@ -1631,7 +1599,7 @@ class LimbDarkenedBase(object):
             animated = False
 
         # Compute
-        image = self._amp * self.ops.render_ld(res, self._u)
+        image = self.amp * self.ops.render_ld(res, self._u)
 
         # Squeeze?
         if animated:
@@ -1994,7 +1962,7 @@ class ReflectedBase(object):
         self._check_kwargs("flux", kwargs)
 
         # Compute & return
-        return self._amp * self.ops.flux(
+        return self.amp * self.ops.flux(
             theta,
             xs,
             ys,
@@ -2058,11 +2026,11 @@ class ReflectedBase(object):
 
         # Get the amplitude
         if self.nw is None:
-            amp = self._amp
+            amp = self.amp
         else:
             # The intensity has shape `(nsurf_pts, nw, nsource_pts)`
             # so we must reshape `amp` to take the product correctly
-            amp = self._amp[np.newaxis, :, np.newaxis]
+            amp = self.amp[np.newaxis, :, np.newaxis]
 
         # If differentially rotating, allow a `theta` keyword
         if self.drorder > 0:
@@ -2171,11 +2139,11 @@ class ReflectedBase(object):
 
         # Compute
         if self.nw is None:
-            amp = self._amp
+            amp = self.amp
         else:
             # The intensity has shape `(nw, res, res)`
             # so we must reshape `amp` to take the product correctly
-            amp = self._amp[:, np.newaxis, np.newaxis]
+            amp = self.amp[:, np.newaxis, np.newaxis]
 
         image = amp * self.ops.render(
             res,
@@ -2221,11 +2189,11 @@ class ReflectedBase(object):
         on94_exact = int(kwargs.pop("on94_exact", False))
 
         if self.nw is None:
-            amp = self._amp
+            amp = self.amp
         else:
             # The intensity has shape `(nw, res, res)`
             # so we must reshape `amp` to take the product correctly
-            amp = self._amp[:, np.newaxis, np.newaxis]
+            amp = self.amp[:, np.newaxis, np.newaxis]
 
         if config.lazy:
             # Evaluate the variables

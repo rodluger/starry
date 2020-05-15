@@ -1140,18 +1140,6 @@ class System(object):
         n = 0
         for body in self._solved_bodies:
             inds = slice(n, n + body.map.Ny)
-
-            # HACK: We need to remove our internal weighting by pi here
-            # for reflected light maps. (It gets added back in automatially
-            # when setting `map.amp` below; see the `Amplitude` class in
-            # `maps.py`).
-            # FACT: The *rows* of the lower cholesky factorization of the
-            # poterior covariance scale in the same way as the posterior
-            # mean. See `tests/greedy/test_chol_scaling.py`.
-            if body.map.__props__["reflected"]:
-                x[inds] /= np.pi
-                cho_cov[inds] /= np.pi
-
             body.map.amp = x[inds][0]
             body.map[1:, :] = x[inds][1:] / body.map.amp
             n += body.map.Ny

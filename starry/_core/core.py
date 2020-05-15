@@ -226,6 +226,17 @@ class OpsYlm(object):
         # Transform to the Ylm basis
         pTA1 = ts.dot(pT, self.A1)
 
+        # NOTE: The factor of `pi` ensures the correct normalization.
+        # This is *different* from the derivation in the paper, but it's
+        # due to the fact that the in starry we normalize the spherical
+        # harmonics in a slightly strange way (they're normalized so that
+        # the integral of Y_{0,0} over the unit sphere is 4, not 4pi).
+        # This is useful for thermal light maps, where the flux from a map
+        # with Y_{0,0} = 1 is *unity*. But it messes up things for reflected
+        # light maps, so we need to account for that here.
+        if self._reflected:
+            pTA1 *= np.pi
+
         # We're done
         return pTA1
 
@@ -892,10 +903,20 @@ class OpsReflected(OpsYlm):
             I = tt.shape_padaxis(I, 1)
 
         # Weight the image by the illumination
+        # NOTE: The factor of `pi` ensures the correct normalization.
+        # This is *different* from the derivation in the paper, but it's
+        # due to the fact that the in starry we normalize the spherical
+        # harmonics in a slightly strange way (they're normalized so that
+        # the integral of Y_{0,0} over the unit sphere is 4, not 4pi).
+        # This is useful for thermal light maps, where the flux from a map
+        # with Y_{0,0} = 1 is *unity*. But it messes up things for reflected
+        # light maps, so we need to account for that here.
         intensity = tt.switch(
             tt.isnan(intensity),
             intensity,
-            ifelse(illuminate, intensity * I, intensity * tt.ones_like(I)),
+            ifelse(
+                illuminate, intensity * I, np.pi * intensity * tt.ones_like(I)
+            ),
         )
 
         return intensity
@@ -935,8 +956,16 @@ class OpsReflected(OpsYlm):
                 ld, tt.dot(self.F(u, f), A1y), tt.dot(self.F(u0, f), A1y)
             )
 
-        # Dot the polynomial into the basis
-        return tt.dot(pT, A1y)
+        # Dot the polynomial into the basis.
+        # NOTE: The factor of `pi` ensures the correct normalization.
+        # This is *different* from the derivation in the paper, but it's
+        # due to the fact that the in starry we normalize the spherical
+        # harmonics in a slightly strange way (they're normalized so that
+        # the integral of Y_{0,0} over the unit sphere is 4, not 4pi).
+        # This is useful for thermal light maps, where the flux from a map
+        # with Y_{0,0} = 1 is *unity*. But it messes up things for reflected
+        # light maps, so we need to account for that here.
+        return np.pi * tt.dot(pT, A1y)
 
     @autocompile
     def X_point_source(
@@ -989,7 +1018,10 @@ class OpsReflected(OpsYlm):
         )
 
         # Weight by the distance to the source.
-        X *= STARRY_REFLECTANCE_FLUX_NORMALIZATION / tt.shape_padright(r2)
+        # NOTE: In the paper, we divide by `pi` at this step. But the way
+        # we coded things up, starry maps are already implicitly pi-normalized
+        # (via the change-of-basis matrix A1), so we don't need to do that here.
+        X /= tt.shape_padright(r2)
 
         # We're done
         return X
@@ -1227,8 +1259,18 @@ class OpsReflected(OpsYlm):
             I = tt.repeat(I, self.nw, 1)
 
         # Weight the image by the illumination
+        # NOTE: The factor of `pi` ensures the correct normalization.
+        # This is *different* from the derivation in the paper, but it's
+        # due to the fact that the in starry we normalize the spherical
+        # harmonics in a slightly strange way (they're normalized so that
+        # the integral of Y_{0,0} over the unit sphere is 4, not 4pi).
+        # This is useful for thermal light maps, where the flux from a map
+        # with Y_{0,0} = 1 is *unity*. But it messes up things for reflected
+        # light maps, so we need to account for that here.
         image = ifelse(
-            illuminate, tt.switch(tt.isnan(image), image, image * I), image
+            illuminate,
+            tt.switch(tt.isnan(image), image, image * I),
+            np.pi * image,
         )
 
         # We need the shape to be (nframes, npix, npix)
@@ -1293,8 +1335,11 @@ class OpsReflected(OpsYlm):
             sigr > 0, ifelse(on94_exact, I_on94_exact, I_on94_approx), I_lamb
         )
 
-        # Weight by the distance to the source and we're done
-        I *= STARRY_REFLECTANCE_FLUX_NORMALIZATION / tt.shape_padleft(r2)
+        # Weight by the distance to the source.
+        # NOTE: In the paper, we divide by `pi` at this step. But the way
+        # we coded things up, starry maps are already implicitly pi-normalized
+        # (via the change-of-basis matrix A1), so we don't need to do that here.
+        I /= tt.shape_padleft(r2)
         return I
 
     @autocompile

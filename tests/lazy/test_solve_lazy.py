@@ -109,4 +109,4 @@ def test_lnlike(L, C, woodbury):
 
     # Verify that we get the correct inclination
     assert incs[np.argmax(ll)] == 60
-    assert np.allclose(ll[np.argmax(ll)], 978.174079)  # benchmarked
+    assert np.allclose(ll[np.argmax(ll)], 974.221605)  # benchmarked
