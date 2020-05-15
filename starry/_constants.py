@@ -13,3 +13,6 @@ STARRY_COVARIANCE_CHOLESKY = 3
 
 # Gravitational constant in internal units
 G_grav = constants.G.to(units.R_sun ** 3 / units.M_sun / units.day ** 2).value
+
+# minimum exoplanet version
+STARRY_EXOPLANET_MIN_VERSION = "0.3.2"

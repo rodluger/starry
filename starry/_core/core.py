@@ -30,11 +30,12 @@ import numpy as np
 from astropy import units
 
 try:  # pragma: no cover
-    # starry requires exoplanet >= v0.2.0
     from packaging import version
     import exoplanet
 
-    if version.parse(exoplanet.__version__) < version.parse("0.2.0"):
+    if version.parse(exoplanet.__version__) < version.parse(
+        STARRY_EXOPLANET_MIN_VERSION
+    ):
         exoplanet = None
 except ModuleNotFoundError:  # pragma: no cover
     exoplanet = None
@@ -1405,7 +1406,11 @@ class OpsSystem(object):
         self.order = order
 
         # Require exoplanet
-        assert exoplanet is not None, "This class requires exoplanet >= 0.2.0."
+        assert (
+            exoplanet is not None
+        ), "This class requires exoplanet >= {}.".format(
+            STARRY_EXOPLANET_MIN_VERSION
+        )
 
     @autocompile
     def position(
