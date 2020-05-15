@@ -398,4 +398,37 @@ def test_root_finder():
 
     """
     map = starry.Map(reflected=True)
-    map.ops._sT.func([-0.358413], [-1.57303], [55.7963], 54.8581)
+    map.ops._sT.func([-0.358413], [-1.57303], [55.7963], 54.8581, 0.0)
+
+
+# BROKEN: Figure this out
+@pytest.mark.xfail
+def test_bad_case():
+    """
+    Test pathological wrong case identification.
+
+    """
+    map = starry.Map(reflected=True)
+
+    # These values lead to a (very) wrong flux
+    theta0 = -0.0409517311212404
+    b0 = -0.83208413089546
+    bo0 = 12.073565287605442
+    ro = 12.155639360414618
+
+    # Perturb theta in the vicinity of theta0
+    delta = np.linspace(0, 1e-6, 100)
+    theta = np.concatenate((theta0 - delta[::-1], theta0 + delta))
+
+    # Compute the flux
+    b = b0 * np.ones_like(theta)
+    bo = bo0 * np.ones_like(theta)
+    sT, *_ = map.ops._sT.func(b, theta, bo, ro, 0.0)
+    flux = sT[:, 0]
+
+    # DEBUG
+    # plt.plot(theta, flux)
+    # plt.show()
+
+    # Check that it's approximately constant over the range
+    assert np.allclose(flux, flux[0])
