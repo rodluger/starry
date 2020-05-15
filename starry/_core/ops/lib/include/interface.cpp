@@ -157,6 +157,13 @@ PYBIND11_MODULE(_c_ops, m) {
 
       // Compute rT for this timestep
       b.value() = static_cast<Scalar>(b_(k));
+
+      // Hack: deriv undefined for b = +/- 1 (not a numerical issue)
+      if (b.value() == 1)
+        b.value() -= 1e-15;
+      else if (b.value() == -1)
+        b.value() += 1e-15;
+
       ops.RP.compute(b, sigr);
 
       // Process the ADScalar
@@ -206,6 +213,13 @@ PYBIND11_MODULE(_c_ops, m) {
 
       // Compute sT for this timestep
       b.value() = static_cast<Scalar>(b_(k));
+
+      // Hack: deriv undefined for b = +/- 1 (not a numerical issue)
+      if (b.value() == 1)
+        b.value() -= 1e-15;
+      else if (b.value() == -1)
+        b.value() += 1e-15;
+
       theta.value() = static_cast<Scalar>(theta_(k));
       bo.value() = static_cast<Scalar>(bo_(k));
       ops.RO.compute(b, theta, bo, ro, sigr);

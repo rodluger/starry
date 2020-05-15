@@ -1336,6 +1336,10 @@ class YlmBase(object):
         self._y = math.cast(y / y[0])
         self.amp = math.cast(y[0] * np.pi)
 
+        # Note: reflected light maps are normalized a little differently
+        if self.__props__["reflected"]:
+            self.amp /= np.pi
+
         # Ensure positive semi-definite?
         if force_psd:
 

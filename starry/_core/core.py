@@ -348,7 +348,13 @@ class OpsYlm(object):
     @autocompile
     def compute_ortho_grid(self, res):
         """Compute the polynomial basis on the plane of the sky."""
-        dx = 2.0 / res
+        # NOTE: I think there's be a bug in Theano related to
+        # tt.mgrid; I get different results depending on whether the
+        # function is compiled using `theano.function()` or if it
+        # is evaluated using `.eval()`. The small perturbation to `res`
+        # is a hacky fix that ensures that `y` and `x` are of the
+        # correct length in all cases I've tested.
+        dx = 2.0 / (res - 0.01)
         y, x = tt.mgrid[-1:1:dx, -1:1:dx]
         x = tt.reshape(x, [1, -1])
         y = tt.reshape(y, [1, -1])
@@ -358,7 +364,8 @@ class OpsYlm(object):
     @autocompile
     def compute_rect_grid(self, res):
         """Compute the polynomial basis on a rectangular lat/lon grid."""
-        dx = np.pi / res
+        # See NOTE on tt.mgrid bug in `compute_ortho_grid`
+        dx = np.pi / (res - 0.01)
         lat, lon = tt.mgrid[
             -np.pi / 2 : np.pi / 2 : dx, -3 * np.pi / 2 : np.pi / 2 : 2 * dx
         ]
@@ -371,8 +378,8 @@ class OpsYlm(object):
     @autocompile
     def compute_moll_grid(self, res):
         """Compute the polynomial basis on a Mollweide grid."""
-        # Rect grid
-        dx = 2 * np.sqrt(2) / res
+        # See NOTE on tt.mgrid bug in `compute_ortho_grid`
+        dx = 2 * np.sqrt(2) / (res - 0.01)
         y, x = tt.mgrid[
             -np.sqrt(2) : np.sqrt(2) : dx,
             -2 * np.sqrt(2) : 2 * np.sqrt(2) : 2 * dx,
@@ -679,14 +686,7 @@ class OpsLD(object):
         compatibility with the `System` class. This method is a
         convenience method for use in the `Map` class.
         """
-        # TODO: There may be a bug in Theano related to
-        # tt.mgrid; I get different results depending on whether the
-        # function is compiled using `theano.function()` or if it
-        # is evaluated using `.eval()`. The small perturbation to `res`
-        # is a temporary fix that ensures that `y` and `x` are of the
-        # correct length in all cases I've tested.
-
-        # Compute the Cartesian grid
+        # See NOTE on tt.mgrid bug in `compute_ortho_grid`
         dx = 2.0 / (res - 0.01)
         y, x = tt.mgrid[-1:1:dx, -1:1:dx]
 
