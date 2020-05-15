@@ -60,4 +60,4 @@ def test_diffrot(visualize=False):
     # `map.intensity` agrees with that from `map.render`
     I1 = map.intensity(lat=lat[250], lon=lon, theta=360)
     I2 = images[-1][250, :]
-    assert np.allclose(I1, I2)
+    assert np.allclose(I1, I2, atol=1e-3)

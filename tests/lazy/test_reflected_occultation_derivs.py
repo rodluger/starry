@@ -282,16 +282,15 @@ def test_derivs(n=1, npts=10000, atol=1e-5, plot=False, throw=True):
 
 
 def test_abs_b_one():
-    """Derivs are technically undefined when b=+/-1."""
+    """Check derivs are finite when b=+/-1."""
     b = tt.dscalar()
     b.tag.test_value = -1.0
     map = starry.Map(reflected=True)
 
     def flux(b):
-        return map.flux(zs=-b, ys=np.sqrt(1 - b ** 2))
+        return map.flux(zs=-b, ys=0)
 
     grad = theano.function([b], tt.grad(flux(b)[0], [b]))
-
     assert not np.isnan(grad(-1.0)[0]) and not np.isnan(grad(1.0)[0])
 
 

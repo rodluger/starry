@@ -155,15 +155,16 @@ PYBIND11_MODULE(_c_ops, m) {
     // Loop through the timeseries
     for (int k = 0; k < K; ++k) {
 
-      // Compute rT for this timestep
-      b.value() = static_cast<Scalar>(b_(k));
-
       // Hack: deriv undefined for b = +/- 1 (not a numerical issue)
-      if (b.value() == 1)
-        b.value() -= 1e-15;
-      else if (b.value() == -1)
-        b.value() += 1e-15;
+      if (b_(k) >= 1.0 - 1e-15) {
+        b.value() = Scalar(1.0) - Scalar(1e-15);
+      } else if (b_(k) <= -1.0 + 1e-15) {
+        b.value() = Scalar(-1.0) + Scalar(1e-15);
+      } else {
+        b.value() = static_cast<Scalar>(b_(k));
+      }
 
+      // Compute rT for this timestep
       ops.RP.compute(b, sigr);
 
       // Process the ADScalar
@@ -211,17 +212,19 @@ PYBIND11_MODULE(_c_ops, m) {
     // Loop through the timeseries
     for (int k = 0; k < K; ++k) {
 
-      // Compute sT for this timestep
-      b.value() = static_cast<Scalar>(b_(k));
-
       // Hack: deriv undefined for b = +/- 1 (not a numerical issue)
-      if (b.value() == 1)
-        b.value() -= 1e-15;
-      else if (b.value() == -1)
-        b.value() += 1e-15;
+      if (b_(k) >= 1.0 - 1e-15) {
+        b.value() = Scalar(1.0) - Scalar(1e-15);
+      } else if (b_(k) <= -1.0 + 1e-15) {
+        b.value() = Scalar(-1.0) + Scalar(1e-15);
+      } else {
+        b.value() = static_cast<Scalar>(b_(k));
+      }
 
       theta.value() = static_cast<Scalar>(theta_(k));
       bo.value() = static_cast<Scalar>(bo_(k));
+
+      // Compute sT for this timestep
       ops.RO.compute(b, theta, bo, ro, sigr);
 
       // Process the ADScalar

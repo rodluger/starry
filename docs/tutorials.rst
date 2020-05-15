@@ -50,6 +50,7 @@ Advanced
    notebooks/TimeEvolution.ipynb
    notebooks/HotJupiterPhaseCurve.ipynb
    notebooks/ExposureTime.ipynb
+   notebooks/LightTravelDelay.ipynb
 
 Miscellaneous
 -------------
