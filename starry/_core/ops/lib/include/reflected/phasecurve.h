@@ -32,10 +32,10 @@ protected:
   const int N;
   const int N_lamb;
   const int N_on94;
-  Vector<T> H;
-  Vector<T> I;
-  Matrix<T> J;
-  Matrix<T> K;
+  Vector<T> hj;
+  Vector<T> kj;
+  Matrix<T> Lij;
+  Matrix<T> Mij;
   Eigen::SparseMatrix<T> ILLUM;
   basis::Basis<typename T::Scalar> B;
   T tol;
@@ -43,34 +43,34 @@ protected:
   /**
     Computes the matrices
 
-        J = (G(0.5 * (i + 1)) * G(0.5 * (j + 1))) / G(0.5 * (i + j + 4))
+        Lij = (G(0.5 * (i + 1)) * G(0.5 * (j + 1))) / G(0.5 * (i + j + 4))
 
     and
 
-        K = (G(0.5 * (i + 1)) * G(0.5 * (j + 4))) / G(0.5 * (i + j + 5))
+        Mij = (G(0.5 * (i + 1)) * G(0.5 * (j + 4))) / G(0.5 * (i + j + 5))
 
     where `G` is the Gamma function.
 
   */
   inline void computeJK(const int deg_eff) {
-    J.setZero(deg_eff + 1, deg_eff + 1);
-    K.setZero(deg_eff + 1, deg_eff + 1);
-    J(0, 0) = pi<T>();
-    J(0, 1) = T(4.0) / T(3.0);
-    K(0, 0) = J(0, 1);
-    K(0, 1) = 0.375 * J(0, 0);
+    Lij.setZero(deg_eff + 1, deg_eff + 1);
+    Mij.setZero(deg_eff + 1, deg_eff + 1);
+    Lij(0, 0) = pi<T>();
+    Lij(0, 1) = T(4.0) / T(3.0);
+    Mij(0, 0) = Lij(0, 1);
+    Mij(0, 1) = 0.375 * Lij(0, 0);
     for (int j = 0; j < deg_eff - 1; ++j) {
-      J(0, j + 2) = J(0, j) * T(j + 1.0) / T(j + 4.0);
-      K(0, j + 2) = K(0, j) * T(j + 4.0) / T(j + 5.0);
+      Lij(0, j + 2) = Lij(0, j) * T(j + 1.0) / T(j + 4.0);
+      Mij(0, j + 2) = Mij(0, j) * T(j + 4.0) / T(j + 5.0);
       for (int i = 0; i < deg_eff - 1; i += 2) {
-        J(i + 2, j) = J(i, j) * T(i + 1.0) / T(i + j + 4.0);
-        K(i + 2, j) = K(i, j) * T(i + 1.0) / T(i + j + 5.0);
+        Lij(i + 2, j) = Lij(i, j) * T(i + 1.0) / T(i + j + 4.0);
+        Mij(i + 2, j) = Mij(i, j) * T(i + 1.0) / T(i + j + 5.0);
       }
     }
     for (int j = deg_eff - 1; j < deg_eff + 1; ++j) {
       for (int i = 0; i < deg_eff - 1; i += 2) {
-        J(i + 2, j) = J(i, j) * T(i + 1.0) / T(i + j + 4.0);
-        K(i + 2, j) = K(i, j) * T(i + 1.0) / T(i + j + 5.0);
+        Lij(i + 2, j) = Lij(i, j) * T(i + 1.0) / T(i + j + 4.0);
+        Mij(i + 2, j) = Mij(i, j) * T(i + 1.0) / T(i + j + 5.0);
       }
     }
   }
@@ -78,29 +78,29 @@ protected:
   /*
     Computes the arrays
 
-        H = 0.5 * (1 - b ** (j + 1))
+        hj = 0.5 * (1 - b ** (j + 1))
 
     and
 
-        I = int_b^1 a^j (1 - a^2)^(1/2) da
+        kj = int_b^1 a^j (1 - a^2)^(1/2) da
 
   */
   inline void computeHI(const T &bterm, const int deg_eff) {
-    H.setZero(deg_eff + 1);
-    I.setZero(deg_eff + 1);
+    hj.setZero(deg_eff + 1);
+    kj.setZero(deg_eff + 1);
     T fac0 = sqrt(T(1.0) - bterm * bterm);
     T fac1 = (T(1.0) - bterm * bterm) * fac0;
-    I(0) = 0.5 * (acos(bterm) - bterm * fac0);
-    I(1) = fac1 / T(3.0);
+    kj(0) = 0.5 * (acos(bterm) - bterm * fac0);
+    kj(1) = fac1 / T(3.0);
     T fac2 = bterm;
-    H(0) = 0.5 * (T(1.0) - fac2);
+    hj(0) = 0.5 * (T(1.0) - fac2);
     fac2 *= bterm;
-    H(1) = 0.5 * (T(1.0) - fac2);
+    hj(1) = 0.5 * (T(1.0) - fac2);
     fac1 *= bterm;
     fac2 *= bterm;
     for (int j = 0; j < deg_eff - 1; ++j) {
-      I(j + 2) = T(1.0) / T(j + 4.0) * (fac1 + (j + 1) * I(j));
-      H(j + 2) = 0.5 * (T(1.0) - fac2);
+      kj(j + 2) = T(1.0) / T(j + 4.0) * (fac1 + (j + 1) * kj(j));
+      hj(j + 2) = 0.5 * (T(1.0) - fac2);
       fac1 *= bterm;
       fac2 *= bterm;
     }
@@ -127,11 +127,11 @@ public:
         if (is_even(nu)) {
           i = mu / 2;
           j = nu / 2;
-          rT0(n) = H(j) * J(i, j);
+          rT0(n) = hj(j) * Lij(i, j);
         } else {
           i = (mu - 1) / 2;
           j = (nu - 1) / 2;
-          rT0(n) = I(j) * K(i, j);
+          rT0(n) = kj(j) * Mij(i, j);
         }
         ++n;
       }
@@ -157,7 +157,7 @@ public:
         N((deg + 1) * (deg + 1)), N_lamb((deg_lamb + 1) * (deg_lamb + 1)),
         N_on94((deg_on94 + 1) * (deg_on94 + 1)), B(B), tol(sqrt(mach_eps<T>())),
         rT(N) {
-    // Pre-compute the J and K matrices for the largest case
+    // Pre-compute the Lij and Mij matrices for the largest case
     computeJK(deg_on94);
   }
 };

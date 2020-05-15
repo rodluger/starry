@@ -570,6 +570,8 @@ class System(object):
     ):
         """Visualize the Keplerian system.
 
+        Note that the body surface intensities are not normalized.
+
         Args:
             t (scalar or vector): The time(s) at which to evaluate the orbit and
                 the map in units of :py:attr:`time_unit`.
@@ -610,7 +612,6 @@ class System(object):
             self._primary._prot,
             self._primary._t0,
             self._primary._theta0,
-            self._primary._map._amp,
             self._primary._map._inc,
             self._primary._map._obl,
             self._primary._map._y,
@@ -629,9 +630,6 @@ class System(object):
             math.to_array_or_tensor([sec._w for sec in self._secondaries]),
             math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
             math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
-            math.to_array_or_tensor(
-                [sec._map._amp for sec in self._secondaries]
-            ),
             math.to_array_or_tensor(
                 [sec._map._inc for sec in self._secondaries]
             ),
@@ -1138,15 +1136,28 @@ class System(object):
         self._solution = linalg.solve(X, f, self._C.cholesky, mu, LInv)
 
         # Set all the map vectors
-        x, _ = self._solution
+        x, cho_cov = self._solution
         n = 0
         for body in self._solved_bodies:
             inds = slice(n, n + body.map.Ny)
+
+            # HACK: We need to remove our internal weighting by pi here
+            # for reflected light maps. (It gets added back in automatially
+            # when setting `map.amp` below; see the `Amplitude` class in
+            # `maps.py`).
+            # FACT: The *rows* of the lower cholesky factorization of the
+            # poterior covariance scale in the same way as the posterior
+            # mean. See `tests/greedy/test_chol_scaling.py`.
+            if body.map.__props__["reflected"]:
+                x[inds] /= np.pi
+                cho_cov[inds] /= np.pi
+
             body.map.amp = x[inds][0]
             body.map[1:, :] = x[inds][1:] / body.map.amp
             n += body.map.Ny
 
         # Return the mean and covariance
+        self._solution = (x, cho_cov)
         return self._solution
 
     @property

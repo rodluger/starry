@@ -821,12 +821,10 @@ class OpsReflected(OpsYlm):
 
     @autocompile
     def rT(self, b, sigr):
-        # TODO: sigr
         return self._rT(b, sigr)[0]
 
     @autocompile
     def sT(self, b, theta, bo, ro, sigr):
-        # TODO: sigr
         return self._sT(b, theta, bo, ro, sigr)[0]
 
     @autocompile
@@ -903,7 +901,7 @@ class OpsReflected(OpsYlm):
         return intensity
 
     @autocompile
-    def unweighted_intensity(self, lat, lon, y, u, f, ld):
+    def unweighted_intensity(self, lat, lon, y, u, f, wta, ld):
         """
         Compute the intensity in the absence of an illumination source
         (i.e., the albedo).
@@ -914,6 +912,17 @@ class OpsReflected(OpsYlm):
 
         # Compute the polynomial basis at the point
         pT = self.pT(xpt, ypt, zpt)
+
+        # Apply the differential rotation operator
+        if self.diffrot:
+            if self.nw is None:
+                y = tt.reshape(
+                    self.tensordotD(tt.reshape(y, (1, -1)), [wta]), (-1,)
+                )
+            else:
+                y = tt.transpose(
+                    self.tensordotD(tt.transpose(y), tt.ones(self.nw) * wta)
+                )
 
         # Transform the map to the polynomial basis
         A1y = ts.dot(self.A1, y)
@@ -1926,7 +1935,6 @@ class OpsSystem(object):
         pri_prot,
         pri_t0,
         pri_theta0,
-        pri_amp,
         pri_inc,
         pri_obl,
         pri_y,
@@ -1943,7 +1951,6 @@ class OpsSystem(object):
         sec_w,
         sec_Omega,
         sec_iorb,
-        sec_amp,
         sec_inc,
         sec_obl,
         sec_y,
