@@ -281,11 +281,11 @@ class OpsYlm(object):
         # Compute the Cartesian grid
         xyz = ifelse(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-            self.compute_rect_grid(res),
+            self.compute_rect_grid(res)[-1],
             ifelse(
                 tt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
-                self.compute_moll_grid(res),
-                self.compute_ortho_grid(res),
+                self.compute_moll_grid(res)[-1],
+                self.compute_ortho_grid(res)[-1],
             ),
         )
 
@@ -360,7 +360,9 @@ class OpsYlm(object):
         x = tt.reshape(x, [1, -1])
         y = tt.reshape(y, [1, -1])
         z = tt.sqrt(1 - x ** 2 - y ** 2)
-        return tt.concatenate((x, y, z))
+        lat = 0.5 * np.pi - tt.arccos(y)
+        lon = tt.arctan(x / z)
+        return lat, lon, tt.concatenate((x, y, z))
 
     @autocompile
     def compute_rect_grid(self, res):
@@ -374,7 +376,11 @@ class OpsYlm(object):
         y = tt.reshape(tt.cos(lat) * tt.sin(lon), [1, -1])
         z = tt.reshape(tt.sin(lat), [1, -1])
         R = self.RAxisAngle(tt.as_tensor_variable([1.0, 0.0, 0.0]), -np.pi / 2)
-        return tt.dot(R, tt.concatenate((x, y, z)))
+        return (
+            tt.reshape(lat, (-1,)),
+            tt.reshape(lon, (-1,)),
+            tt.dot(R, tt.concatenate((x, y, z))),
+        )
 
     @autocompile
     def compute_moll_grid(self, res):
@@ -402,7 +408,11 @@ class OpsYlm(object):
         y = tt.reshape(tt.cos(lat) * tt.sin(lon), [1, -1])
         z = tt.reshape(tt.sin(lat), [1, -1])
         R = self.RAxisAngle(tt.as_tensor_variable([1.0, 0.0, 0.0]), -np.pi / 2)
-        return tt.dot(R, tt.concatenate((x, y, z)))
+        return (
+            tt.reshape(lat, (-1,)),
+            tt.reshape(lon - 1.5 * np.pi, (-1,)),
+            tt.dot(R, tt.concatenate((x, y, z))),
+        )
 
     @autocompile
     def right_project(self, M, inc, obl, theta, alpha):
@@ -1198,11 +1208,11 @@ class OpsReflected(OpsYlm):
         # Compute the Cartesian grid
         xyz = ifelse(
             tt.eq(projection, STARRY_RECTANGULAR_PROJECTION),
-            self.compute_rect_grid(res),
+            self.compute_rect_grid(res)[-1],
             ifelse(
                 tt.eq(projection, STARRY_MOLLWEIDE_PROJECTION),
-                self.compute_moll_grid(res),
-                self.compute_ortho_grid(res),
+                self.compute_moll_grid(res)[-1],
+                self.compute_ortho_grid(res)[-1],
             ),
         )
 

@@ -1514,6 +1514,22 @@ class YlmBase(object):
                 self._amp * I,
             )
 
+    def get_pixel_transform(self, res=30, lam=1e-6):
+        """
+
+        """
+        lat, lon, xyz = self.ops.compute_moll_grid(res)
+        idx = ~np.isnan(xyz[2])
+        lat = lat[idx]
+        lon = lon[idx]
+        x = xyz[0, idx]
+        y = xyz[1, idx]
+        z = xyz[2, idx]
+        pT = self.ops.pT(x, y, z)[:, : (self.ydeg + 1) ** 2]
+        Y2P = pT * self.ops._c_ops.A1
+        P2Y = np.linalg.solve(Y2P.T.dot(Y2P) + lam * np.eye(self.Ny), Y2P.T)
+        return lat / self._angle_factor, lon / self._angle_factor, Y2P, P2Y
+
 
 class LimbDarkenedBase(object):
     """The ``starry`` map class for purely limb-darkened maps.
