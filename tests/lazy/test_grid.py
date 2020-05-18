@@ -24,7 +24,6 @@ def test_ortho_grid(res, compile):
     if compile:
         (lat, lon), (x, y, z) = map.ops.compute_ortho_grid(res)
     else:
-        (lat, lon), (x, y, z) = map.ops.compute_ortho_grid(
-            tt.as_tensor_variable(res)
-        ).eval()
+        latlon, xyz = map.ops.compute_ortho_grid(tt.as_tensor_variable(res))
+        x, y, z = xyz.eval()
     assert len(x) == res ** 2

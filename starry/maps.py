@@ -1549,7 +1549,7 @@ class YlmBase(object):
 
         # Add points at the poles
         lat = np.append(lat, [-np.pi / 2, np.pi / 2])
-        lon = np.append(lon, [0.0, 0.0])
+        lon = np.append(lon, [1.5 * np.pi, 1.5 * np.pi])
         npix = len(lat)
 
         # Back to Cartesian, this time on the *sky*
