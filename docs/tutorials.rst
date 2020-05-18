@@ -52,6 +52,7 @@ Advanced
    notebooks/ExposureTime.ipynb
    notebooks/LightTravelDelay.ipynb
    notebooks/PixelTransform.ipynb
+   notebooks/PixelSampling.ipynb
 
 Miscellaneous
 -------------
