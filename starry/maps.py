@@ -212,27 +212,47 @@ class MapBase(object):
             # User is accessing a Ylm index
             inds = get_ylm_inds(self.ydeg, idx[0], idx[1])
             if 0 in inds:
-                raise ValueError("The Y_{0,0} coefficient cannot be set.")
-            if config.lazy:
-                self._y = self.ops.set_map_vector(self._y, inds, val)
+                if np.array_equal(np.sort(inds), np.arange(self.Ny)):
+                    # The user is setting *all* coefficients, so we allow
+                    # them to "set" the Y_{0,0} coefficient...
+                    if config.lazy:
+                        self._y = self.ops.set_map_vector(self._y, inds, val)
+                    else:
+                        self._y[inds] = val
+                    # ... except we scale the amplitude of the map and
+                    # force Y_{0,0} to be unity.
+                    self.amp = self._y[0]
+                    self._y /= self._y[0]
+                else:
+                    raise ValueError(
+                        "The Y_{0,0} coefficient cannot be set. "
+                        "Please change the map amplitude instead."
+                    )
             else:
-                self._y[inds] = val
+                if config.lazy:
+                    self._y = self.ops.set_map_vector(self._y, inds, val)
+                else:
+                    self._y[inds] = val
         elif isinstance(idx, tuple) and len(idx) == 3 and self.nw:
             # User is accessing a Ylmw index
             inds = get_ylmw_inds(self.ydeg, self.nw, idx[0], idx[1], idx[2])
             if 0 in inds[0]:
-                raise ValueError("The Y_{0,0} coefficients cannot be set.")
-            if config.lazy:
-                self._y = self.ops.set_map_vector(self._y, inds, val)
+                raise ValueError(
+                    "The Y_{0,0} coefficient cannot be set. "
+                    "Please change the map amplitude instead."
+                )
             else:
-                old_shape = self._y[inds].shape
-                new_shape = np.atleast_2d(val).shape
-                if old_shape == new_shape:
-                    self._y[inds] = val
-                elif old_shape == new_shape[::-1]:
-                    self._y[inds] = np.atleast_2d(val).T
+                if config.lazy:
+                    self._y = self.ops.set_map_vector(self._y, inds, val)
                 else:
-                    self._y[inds] = val
+                    old_shape = self._y[inds].shape
+                    new_shape = np.atleast_2d(val).shape
+                    if old_shape == new_shape:
+                        self._y[inds] = val
+                    elif old_shape == new_shape[::-1]:
+                        self._y[inds] = np.atleast_2d(val).T
+                    else:
+                        self._y[inds] = val
         else:
             raise ValueError("Invalid map index.")
 
