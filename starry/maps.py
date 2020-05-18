@@ -1514,21 +1514,112 @@ class YlmBase(object):
                 self._amp * I,
             )
 
-    def get_pixel_transform(self, res=30, lam=1e-6):
+    def get_pixel_transforms(self, oversample=2, lam=1e-6, eps=1e-6):
         """
+        Return several linear operators for pixel transformations.
+
+        .. note::
+
+            This is an experimental feature. Detailed docs coming soon.
 
         """
-        lat, lon, xyz = self.ops.compute_moll_grid(res)
-        idx = ~np.isnan(xyz[2])
-        lat = lat[idx]
-        lon = lon[idx]
-        x = xyz[0, idx]
-        y = xyz[1, idx]
-        z = xyz[2, idx]
+        # Target number of pixels
+        npix = oversample * (self.ydeg + 1) ** 2
+        Ny = int(np.sqrt(npix * np.pi / 4.0))
+        Nx = 2 * Ny
+        y, x = np.meshgrid(
+            np.sqrt(2) * np.linspace(-1, 1, Ny),
+            2 * np.sqrt(2) * np.linspace(-1, 1, Nx),
+        )
+        x = x.flatten()
+        y = y.flatten()
+
+        # Remove off-grid points
+        a = np.sqrt(2)
+        b = 2 * np.sqrt(2)
+        idx = (y / a) ** 2 + (x / b) ** 2 <= 1
+        y = y[idx]
+        x = x[idx]
+        npix = len(y)
+
+        # https://en.wikipedia.org/wiki/Mollweide_projection
+        theta = np.arcsin(y / np.sqrt(2))
+        lat = np.arcsin((2 * theta + np.sin(2 * theta)) / np.pi)
+        lon0 = 3 * np.pi / 2
+        lon = lon0 + np.pi * x / (2 * np.sqrt(2) * np.cos(theta))
+
+        # Back to Cartesian, this time on the *sky*
+        x = np.reshape(np.cos(lat) * np.cos(lon), [1, -1])
+        y = np.reshape(np.cos(lat) * np.sin(lon), [1, -1])
+        z = np.reshape(np.sin(lat), [1, -1])
+        R = self.ops.RAxisAngle(
+            np.array([1.0, 0.0, 0.0]), np.array(-np.pi / 2)
+        )
+        x, y, z = np.dot(R, np.concatenate((x, y, z)))
+        x = x.reshape(-1)
+        y = y.reshape(-1)
+        z = z.reshape(-1)
+
+        # Flatten and fix the longitude offset
+        lat = lat.reshape(-1)
+        lon = (lon - 1.5 * np.pi).reshape(-1)
+
+        # Get the forward pixel transform
         pT = self.ops.pT(x, y, z)[:, : (self.ydeg + 1) ** 2]
         Y2P = pT * self.ops._c_ops.A1
+
+        # Get the inverse pixel transform
         P2Y = np.linalg.solve(Y2P.T.dot(Y2P) + lam * np.eye(self.Ny), Y2P.T)
-        return lat / self._angle_factor, lon / self._angle_factor, Y2P, P2Y
+
+        # Construct the differentiation operators
+        Dx = np.zeros((npix, npix))
+        Dy = np.zeros((npix, npix))
+        for i in range(npix):
+
+            # Get the relative x, y coords of the 10 closest points
+            y = (lat - lat[i]) * np.pi / 180
+            x = (
+                np.cos(0.5 * (lat + lat[i]) * np.pi / 180)
+                * (lon - lon[i])
+                * np.pi
+                / 180
+            )
+            idx = np.argsort(x ** 2 + y ** 2)[:10]
+            x = x[idx]
+            y = y[idx]
+
+            # Construct the design matrix that gives us
+            # the coefficients of the polynomial fit
+            # centered on the current point
+            X = np.vstack(
+                (
+                    np.ones(10),
+                    x,
+                    y,
+                    x ** 2,
+                    x * y,
+                    y ** 2,
+                    x ** 3,
+                    x ** 2 * y,
+                    x * y ** 2,
+                    x ** 3,
+                )
+            ).T
+            A = np.linalg.solve(X.T.dot(X) + eps * np.eye(10), X.T)
+
+            # Since we're centered at the origin, the derivatives
+            # are just the coefficients of the linear terms.
+            Dx[i, idx] = A[1]
+            Dy[i, idx] = A[2]
+
+        return (
+            lat / self._angle_factor,
+            lon / self._angle_factor,
+            Y2P,
+            P2Y,
+            Dx * self._angle_factor,
+            Dy * self._angle_factor,
+        )
 
 
 class LimbDarkenedBase(object):

@@ -401,7 +401,7 @@ class OpsYlm(object):
         theta = tt.arcsin(y / np.sqrt(2))
         lat = tt.arcsin((2 * theta + tt.sin(2 * theta)) / np.pi)
         lon0 = 3 * np.pi / 2
-        lon = lon0 + np.pi * x / (2 * np.sqrt(2) * np.cos(theta))
+        lon = lon0 + np.pi * x / (2 * np.sqrt(2) * tt.cos(theta))
 
         # Back to Cartesian, this time on the *sky*
         x = tt.reshape(tt.cos(lat) * tt.cos(lon), [1, -1])
