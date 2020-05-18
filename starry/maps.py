@@ -1540,13 +1540,17 @@ class YlmBase(object):
         idx = (y / a) ** 2 + (x / b) ** 2 <= 1
         y = y[idx]
         x = x[idx]
-        npix = len(y)
 
         # https://en.wikipedia.org/wiki/Mollweide_projection
         theta = np.arcsin(y / np.sqrt(2))
         lat = np.arcsin((2 * theta + np.sin(2 * theta)) / np.pi)
         lon0 = 3 * np.pi / 2
         lon = lon0 + np.pi * x / (2 * np.sqrt(2) * np.cos(theta))
+
+        # Add points at the poles
+        lat = np.append(lat, [-np.pi / 2, np.pi / 2])
+        lon = np.append(lon, [0.0, 0.0])
+        npix = len(lat)
 
         # Back to Cartesian, this time on the *sky*
         x = np.reshape(np.cos(lat) * np.cos(lon), [1, -1])
@@ -1589,11 +1593,9 @@ class YlmBase(object):
             y = y_[idx[:10]]
 
             # Require at least one point to be at a different latitude
-            j = np.argmin(np.abs(lat[idx] - lat[idx[0]]) > 1e-4)
-            if j not in idx[:10]:
-
-                # TODO breakpoint()
-
+            j = np.argmax(np.abs(lat[idx] - lat[idx[0]]) > 1e-4)
+            if j >= 10:
+                # TODO: untested!
                 x[-1] = x_[idx[j]]
                 y[-1] = y_[idx[j]]
 
@@ -1618,8 +1620,8 @@ class YlmBase(object):
 
             # Since we're centered at the origin, the derivatives
             # are just the coefficients of the linear terms.
-            Dx[i, idx] = A[1]
-            Dy[i, idx] = A[2]
+            Dx[i, idx[:10]] = A[1]
+            Dy[i, idx[:10]] = A[2]
 
         return (
             lat / self._angle_factor,
