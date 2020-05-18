@@ -22,7 +22,9 @@ map = starry.Map(1)
 @pytest.mark.parametrize("res,compile", params)
 def test_ortho_grid(res, compile):
     if compile:
-        x, y, z = map.ops.compute_ortho_grid(res)
+        (lat, lon), (x, y, z) = map.ops.compute_ortho_grid(res)
     else:
-        x, y, z = map.ops.compute_ortho_grid(tt.as_tensor_variable(res)).eval()
+        (lat, lon), (x, y, z) = map.ops.compute_ortho_grid(
+            tt.as_tensor_variable(res)
+        ).eval()
     assert len(x) == res ** 2

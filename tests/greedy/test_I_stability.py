@@ -52,7 +52,7 @@ def test_I_stability(noon, plot=False):
 
         # Compute numerical
         res = 500
-        x, y, z = map.ops.compute_ortho_grid(res)
+        (lat, lon), (x, y, z) = map.ops.compute_ortho_grid(res)
         image = map.render(xs=xs, ys=ys, zs=zs, res=res).flatten()
         flux2 = np.zeros_like(flux1)
         for k in range(len(xo)):

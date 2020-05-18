@@ -163,7 +163,7 @@ def test_edges(
     # Compute numerical
     flux_num = np.zeros_like(yo) * np.nan
     flux_num_interp = np.zeros_like(yo) * np.nan
-    x, y, z = map.ops.compute_ortho_grid(res)
+    (lat, lon), (x, y, z) = map.ops.compute_ortho_grid(res)
     img = map.render(xs=xs, ys=ys, zs=zs, res=res).flatten()
     for i in range(len(yo)):
         for k in tqdm(range(ns)):

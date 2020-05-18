@@ -1514,7 +1514,7 @@ class YlmBase(object):
                 self._amp * I,
             )
 
-    def get_pixel_transforms(self, oversample=2, lam=1e-6, eps=1e-6):
+    def get_pixel_transforms(self, oversample=4, lam=1e-6, eps=1e-6):
         """
         Return several linear operators for pixel transformations.
 
@@ -1577,16 +1577,25 @@ class YlmBase(object):
         for i in range(npix):
 
             # Get the relative x, y coords of the 10 closest points
-            y = (lat - lat[i]) * np.pi / 180
-            x = (
+            y_ = (lat - lat[i]) * np.pi / 180
+            x_ = (
                 np.cos(0.5 * (lat + lat[i]) * np.pi / 180)
                 * (lon - lon[i])
                 * np.pi
                 / 180
             )
-            idx = np.argsort(x ** 2 + y ** 2)[:10]
-            x = x[idx]
-            y = y[idx]
+            idx = np.argsort(x_ ** 2 + y_ ** 2)
+            x = x_[idx[:10]]
+            y = y_[idx[:10]]
+
+            # Require at least one point to be at a different latitude
+            j = np.argmin(np.abs(lat[idx] - lat[idx[0]]) > 1e-4)
+            if j not in idx[:10]:
+
+                # TODO breakpoint()
+
+                x[-1] = x_[idx[j]]
+                y[-1] = y_[idx[j]]
 
             # Construct the design matrix that gives us
             # the coefficients of the polynomial fit

@@ -360,9 +360,9 @@ class OpsYlm(object):
         x = tt.reshape(x, [1, -1])
         y = tt.reshape(y, [1, -1])
         z = tt.sqrt(1 - x ** 2 - y ** 2)
-        lat = 0.5 * np.pi - tt.arccos(y)
-        lon = tt.arctan(x / z)
-        return lat, lon, tt.concatenate((x, y, z))
+        lat = tt.reshape(0.5 * np.pi - tt.arccos(y), [1, -1])
+        lon = tt.reshape(tt.arctan(x / z), [1, -1])
+        return tt.concatenate((lat, lon)), tt.concatenate((x, y, z))
 
     @autocompile
     def compute_rect_grid(self, res):
@@ -377,8 +377,9 @@ class OpsYlm(object):
         z = tt.reshape(tt.sin(lat), [1, -1])
         R = self.RAxisAngle(tt.as_tensor_variable([1.0, 0.0, 0.0]), -np.pi / 2)
         return (
-            tt.reshape(lat, (-1,)),
-            tt.reshape(lon, (-1,)),
+            tt.concatenate(
+                (tt.reshape(lat, [1, -1]), tt.reshape(lon, [1, -1]))
+            ),
             tt.dot(R, tt.concatenate((x, y, z))),
         )
 
@@ -409,8 +410,12 @@ class OpsYlm(object):
         z = tt.reshape(tt.sin(lat), [1, -1])
         R = self.RAxisAngle(tt.as_tensor_variable([1.0, 0.0, 0.0]), -np.pi / 2)
         return (
-            tt.reshape(lat, (-1,)),
-            tt.reshape(lon - 1.5 * np.pi, (-1,)),
+            tt.concatenate(
+                (
+                    tt.reshape(lat, (1, -1)),
+                    tt.reshape(lon - 1.5 * np.pi, (1, -1)),
+                )
+            ),
             tt.dot(R, tt.concatenate((x, y, z))),
         )
 

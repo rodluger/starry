@@ -39,7 +39,7 @@ def test_X(xs, ys, zs, theta=0, ro=0.1, res=300, ydeg=2, tol=1e-3, plot=False):
     )
 
     # Numerical
-    x, y, z = map.ops.compute_ortho_grid(res)
+    (lat, lon), (x, y, z) = map.ops.compute_ortho_grid(res)
     image = np.zeros((map.Ny, res * res))
     image[0] = map.render(theta=theta, xs=xs, ys=ys, zs=zs, res=res).flatten()
     n = 1
@@ -196,7 +196,7 @@ def test_lightcurve(b, theta, ro, ydeg=1, ns=1000, nb=50, res=999, plot=False):
     # Compute numerical
     flux_num = np.zeros_like(yo) * np.nan
     computed = np.zeros(ns, dtype=bool)
-    x, y, z = map.ops.compute_ortho_grid(res)
+    (lat, lon), (x, y, z) = map.ops.compute_ortho_grid(res)
     img = map.render(xs=xs, ys=ys, zs=zs, res=res).flatten()
     for i, yoi in tqdm(enumerate(yo), total=len(yo)):
         if (i == 0) or (i == ns - 1) or (i % (ns // nb) == 0):
@@ -344,7 +344,7 @@ def test_cases(b, theta, bo, ro, ydeg=1, res=999):
     flux = map.flux(xs=xs, ys=ys, zs=zs, xo=xo, yo=yo, ro=ro)
 
     # Compute numerical
-    x, y, z = map.ops.compute_ortho_grid(res)
+    (lat, lon), (x, y, z) = map.ops.compute_ortho_grid(res)
     img = map.render(xs=xs, ys=ys, zs=zs, res=res).flatten()
     idx = (x - xo) ** 2 + (y - yo) ** 2 > ro ** 2
     flux_num = np.nansum(img[idx]) * 4 / res ** 2
@@ -373,7 +373,7 @@ def test_theta_poles(res=500, tol=1e-3):
         (-np.logspace(-15, -5, n)[::-1], [0], np.logspace(-15, -5, n))
     ).reshape(1, -1)
     theta = (x + dx).reshape(-1)
-    x, y, z = map.ops.compute_ortho_grid(res)
+    (lat, lon), (x, y, z) = map.ops.compute_ortho_grid(res)
     err = np.zeros_like(theta)
     for i in range(len(theta)):
         if theta[i] == 0:

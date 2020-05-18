@@ -12,7 +12,7 @@ map_tmp = starry.Map(1)
 
 
 def flux(map, xs=0, ys=0, zs=0, xo=0, yo=0, zo=1, ro=0, **kwargs):
-    x, y, z = map_tmp.ops.compute_ortho_grid(res)
+    (lat, lon), (x, y, z) = map_tmp.ops.compute_ortho_grid(res)
     occulted = (xo - x) ** 2 + (yo - y) ** 2 < ro ** 2
     occulted = occulted.reshape(res, res)
     if map._ops_class_ == starry._core.OpsReflected:
