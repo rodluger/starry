@@ -19,8 +19,44 @@ The basics
    notebooks/Exoplanet.ipynb
    notebooks/FAQs.ipynb
 
-Eclipsing binary example
-------------------------
+
+Light curves in reflected light
+-------------------------------
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   notebooks/ReflectedLight.ipynb
+
+
+Spectroscopy and radial velocity
+--------------------------------
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   notebooks/RossiterMcLaughlin.ipynb
+   notebooks/MultiWavelength.ipynb
+
+
+Custom Models
+-------------
+
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   notebooks/StarSpots.ipynb
+   notebooks/DifferentialRotation.ipynb
+   notebooks/TimeEvolution.ipynb
+   notebooks/ExposureTime.ipynb
+   notebooks/LightTravelDelay.ipynb
+
+
+Inference and optimization
+--------------------------
 
 .. toctree::
    :titlesonly:
@@ -31,28 +67,13 @@ Eclipsing binary example
    notebooks/EclipsingBinary_Linear.ipynb
    notebooks/EclipsingBinary_FullSolution_Painful.ipynb
    notebooks/EclipsingBinary_FullSolution.ipynb
-
-Advanced
---------
-
-.. toctree::
-   :titlesonly:
-   :maxdepth: 1
-
-   notebooks/StarSpots.ipynb
    notebooks/SpotSolve.ipynb
    notebooks/LinearSolve.ipynb
    notebooks/MarginalLikelihood.ipynb
-   notebooks/MultiWavelength.ipynb
-   notebooks/RossiterMcLaughlin.ipynb
-   notebooks/ReflectedLight.ipynb
-   notebooks/DifferentialRotation.ipynb
-   notebooks/TimeEvolution.ipynb
    notebooks/HotJupiterPhaseCurve.ipynb
-   notebooks/ExposureTime.ipynb
-   notebooks/LightTravelDelay.ipynb
    notebooks/PixelTransform.ipynb
    notebooks/PixelSampling.ipynb
+
 
 Miscellaneous
 -------------
@@ -65,13 +86,5 @@ Miscellaneous
    notebooks/StayingPositive.ipynb
    notebooks/LDNormalization.ipynb
    notebooks/OrbitViz.ipynb
-
-Under the hood
---------------
-
-.. toctree::
-   :titlesonly:
-   :maxdepth: 1
-
    notebooks/RVDerivation.ipynb
    notebooks/TimingTests.ipynb
