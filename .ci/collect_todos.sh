@@ -11,7 +11,7 @@ fi
 sudo npm install --global leasot
 
 # Grab the todos
-leasot -S -i starry/lib/vendor starry tests -r json > docs/todos.json
+leasot -S -i starry/_core/ops/lib/vendor starry tests -r json > docs/todos.json
 
 # Generate the .rst file
 python .ci/collect_todos.py
