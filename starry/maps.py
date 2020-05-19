@@ -1534,7 +1534,7 @@ class YlmBase(object):
                 self._amp * I,
             )
 
-    def get_pixel_transforms(self, oversample=4, lam=1e-6, eps=1e-6):
+    def get_pixel_transforms(self, oversample=2, lam=1e-6, eps=1e-6):
         """
         Return several linear operators for pixel transformations.
 
@@ -1568,8 +1568,10 @@ class YlmBase(object):
         lon = lon0 + np.pi * x / (2 * np.sqrt(2) * np.cos(theta))
 
         # Add points at the poles
-        lat = np.append(lat, [-np.pi / 2, np.pi / 2])
-        lon = np.append(lon, [1.5 * np.pi, 1.5 * np.pi])
+        lat = np.append(lat, [-np.pi / 2, 0, 0, np.pi / 2])
+        lon = np.append(
+            lon, [1.5 * np.pi, 1.5 * np.pi, 2.5 * np.pi, 1.5 * np.pi]
+        )
         npix = len(lat)
 
         # Back to Cartesian, this time on the *sky*
