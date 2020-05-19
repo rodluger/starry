@@ -89,6 +89,14 @@ nbsphinx_prolog = """
 {%s set docname = env.doc2path(env.docname, base=None) %s}
 .. note:: This tutorial was generated from a Jupyter notebook that can be
           downloaded `here <https://github.com/rodluger/starry/blob/%s/{{ docname }}>`_.
+.. raw:: html
+
+    <style>
+        .nbinput .prompt,
+        .nboutput .prompt {
+            display: none;
+        }
+    </style>
 """ % (
     "%",
     "%",
@@ -96,7 +104,6 @@ nbsphinx_prolog = """
 )
 
 # nbsphinx
-nbsphinx_prompt_width = 0
 nbsphinx_timeout = 600
 napoleon_use_ivar = True
 
