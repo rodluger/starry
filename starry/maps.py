@@ -344,7 +344,16 @@ class MapBase(object):
             bitrate (int, optional): Bitrate in kbps (animations only).
                 Defaults to the value defined in ``matplotlib.rcParams``.
             norm (optional): The color normalization passed to
-                ``matplotlib.pyplot.imshow``. Default is None.
+                ``matplotlib.pyplot.imshow``, an instance of
+                ``matplotlib.colors.Normalize``. Can be used to pass in
+                minimum and maximum values. Default is None.
+            illuminate (bool, optional): Illuminate the map (reflected light
+                maps only)? Default True. If False, shows the albedo
+                surface map.
+            screen (bool, optional): Apply the illumination as a
+                black-and-white alpha screen (reflected light maps only)?
+                Default True. If False, a single colormap is used to
+                plot the visible intensity.
 
         .. note::
             Pure limb-darkened maps do not accept a ``projection`` keyword.
@@ -2331,6 +2340,7 @@ class ReflectedBase(object):
         theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
         illuminate = int(kwargs.pop("illuminate", True))
         on94_exact = int(kwargs.pop("on94_exact", False))
+        screen = bool(kwargs.pop("screen", True))
 
         if self.nw is None:
             amp = self.amp
@@ -2363,30 +2373,31 @@ class ReflectedBase(object):
             alpha = self._alpha
             sigr = self._sigr
 
-        # Explicitly call the compiled version of `render`
-        # on the *unilluminated* map
-        kwargs["image"] = amp * self.ops.render(
-            res,
-            projection,
-            0,
-            theta,
-            inc,
-            obl,
-            y,
-            u,
-            f,
-            alpha,
-            xs,
-            ys,
-            zs,
-            Rs,
-            sigr,
-            on94_exact,
-        )
+        if screen and illuminate:
 
-        # Now call it on an illuminated uniform map
-        # We'll use this as an alpha filter.
-        if illuminate:
+            # Explicitly call the compiled version of `render`
+            # on the *unilluminated* map
+            kwargs["image"] = amp * self.ops.render(
+                res,
+                projection,
+                0,
+                theta,
+                inc,
+                obl,
+                y,
+                u,
+                f,
+                alpha,
+                xs,
+                ys,
+                zs,
+                Rs,
+                sigr,
+                on94_exact,
+            )
+
+            # Now call it on an illuminated uniform map
+            # We'll use this as an alpha filter.
             illum = self.ops.render(
                 res,
                 projection,
@@ -2408,6 +2419,28 @@ class ReflectedBase(object):
             if np.nanmax(illum) > 0:
                 illum /= np.nanmax(illum)
             kwargs["illum"] = illum
+
+        else:
+
+            # Explicitly call the compiled version of `render`
+            kwargs["image"] = amp * self.ops.render(
+                res,
+                projection,
+                illuminate,
+                theta,
+                inc,
+                obl,
+                y,
+                u,
+                f,
+                alpha,
+                xs,
+                ys,
+                zs,
+                Rs,
+                sigr,
+                on94_exact,
+            )
 
         kwargs["theta"] = theta / self._angle_factor
 

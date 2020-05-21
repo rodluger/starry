@@ -1100,8 +1100,15 @@ class OpsReflected(OpsYlm):
                 alpha,
                 sigr,
             )
+            X = tt.reshape(X, (X.shape[0], -1))
 
-            # Average over each profile
+            # Point source approximation
+            X0 = self.X_point_source(
+                theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha, sigr
+            )
+            X0 = tt.reshape(X0, (X0.shape[0], -1))
+
+            # Average over each profile if Rs != 0
             return ifelse(
                 Rs > 0,
                 ifelse(
@@ -1117,22 +1124,7 @@ class OpsReflected(OpsYlm):
                     ),
                     tt.zeros_like(X),
                 ),
-                self.X_point_source(
-                    theta,
-                    xs,
-                    ys,
-                    zs,
-                    xo,
-                    yo,
-                    zo,
-                    ro,
-                    inc,
-                    obl,
-                    u,
-                    f,
-                    alpha,
-                    sigr,
-                ),
+                X0,
             )
 
     @autocompile

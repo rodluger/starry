@@ -40,6 +40,8 @@ class CustomBase(object):
         multiplies the intensity and the flux and is thus proportional to the
         luminosity of the object. For multi-wavelength maps, this is a vector
         corresponding to the amplitude of each wavelength bin.
+        For reflected light maps, this is the average spherical albedo
+        of the body.
         """
         pass
 
