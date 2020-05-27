@@ -5,7 +5,6 @@
 */
 
 #include "basis.h"
-#include "diffrot.h"
 #include "filter.h"
 #include "misc.h"
 #include "reflected/occultation.h"
@@ -29,7 +28,6 @@ public:
   const int Nf; /**< Number of filter `(l, m)` coefficients */
   const int deg;
   const int N;
-  const int drorder; /**< Order of the differential rotation operator */
 
   basis::Basis<Scalar> B;
   wigner::Wigner<Scalar> W;
@@ -37,7 +35,6 @@ public:
   reflected::phasecurve::PhaseCurve<ADScalar<Scalar, 2>> RP;
   reflected::occultation::Occultation<ADScalar<Scalar, 5>> RO;
   filter::Filter<Scalar> F;
-  diffrot::DiffRot<Scalar> D;
 
   // Spot gradients
   RowVector<Scalar> bamp;
@@ -46,12 +43,11 @@ public:
   Scalar blon;
 
   // Constructor
-  explicit Ops(int ydeg, int udeg, int fdeg, int drorder)
+  explicit Ops(int ydeg, int udeg, int fdeg)
       : ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
         fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
-        N((deg + 1) * (deg + 1)), drorder(drorder), B(ydeg, udeg, fdeg),
-        W(ydeg, udeg, fdeg), G(deg), RP(deg, B), RO(deg, B), F(B),
-        D(B, drorder) {
+        N((deg + 1) * (deg + 1)), B(ydeg, udeg, fdeg), W(ydeg, udeg, fdeg),
+        G(deg), RP(deg, B), RO(deg, B), F(B) {
     // Bounds checks
     if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))
       throw std::out_of_range("Spherical harmonic degree out of range.");

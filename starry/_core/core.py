@@ -9,7 +9,6 @@ from .ops import (
     dotROp,
     tensordotRzOp,
     FOp,
-    tensordotDOp,
     spotYlmOp,
     pTOp,
     minimizeOp,
@@ -47,24 +46,20 @@ __all__ = ["OpsYlm", "OpsLD", "OpsReflected", "OpsRV", "OpsSystem"]
 class OpsYlm(object):
     """Class housing Theano operations for spherical harmonics maps."""
 
-    def __init__(
-        self, ydeg, udeg, fdeg, drorder, nw, reflected=False, **kwargs
-    ):
+    def __init__(self, ydeg, udeg, fdeg, nw, reflected=False, **kwargs):
         # Ingest kwargs
         self.ydeg = ydeg
         self.udeg = udeg
         self.fdeg = fdeg
         self.deg = ydeg + udeg + fdeg
         self.filter = (fdeg > 0) or (udeg > 0)
-        self.drorder = drorder
-        self.diffrot = drorder > 0
         self.nw = nw
         self._reflected = reflected
 
         # Instantiate the C++ Ops
         config.rootHandler.terminator = ""
         logger.info("Pre-computing some matrices... ")
-        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg, drorder)
+        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
         config.rootHandler.terminator = "\n"
         logger.info("Done.")
 
@@ -86,9 +81,6 @@ class OpsYlm(object):
         # TODO: Make the filter operator sparse
         self._F = FOp(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
 
-        # Differential rotation
-        self._tensordotD = tensordotDOp(self._c_ops.tensordotD)
-
         # Misc
         self._spotYlm = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
         self._pT = pTOp(self._c_ops.pT, self.deg)
@@ -109,6 +101,9 @@ class OpsYlm(object):
             # TODO: Implement minimization for spectral maps?
             self._minimize = None
         self._LimbDarkIsPhysical = LDPhysicalOp(_c_ops.nroots)
+
+        # Initialize the differential rotation operator
+        self._dr_init(**kwargs)
 
     @property
     def rT(self):
@@ -145,10 +140,6 @@ class OpsYlm(object):
     @autocompile
     def F(self, u, f):
         return self._F(u, f)
-
-    @autocompile
-    def tensordotD(self, matrix, wta):
-        return self._tensordotD(matrix, wta)
 
     @autocompile
     def spotYlm(self, amp, sigma, lat, lon):
@@ -251,15 +242,14 @@ class OpsYlm(object):
         pT = self.pT(xpt, ypt, zpt)
 
         # Apply the differential rotation operator
-        if self.diffrot:
-            if self.nw is None:
-                y = tt.reshape(
-                    self.tensordotD(tt.reshape(y, (1, -1)), [wta]), (-1,)
-                )
-            else:
-                y = tt.transpose(
-                    self.tensordotD(tt.transpose(y), tt.ones(self.nw) * wta)
-                )
+        if self.nw is None:
+            y = tt.reshape(
+                self.tensordotD(tt.reshape(y, (1, -1)), [wta]), (-1,)
+            )
+        else:
+            y = tt.transpose(
+                self.tensordotD(tt.transpose(y), tt.ones(self.nw) * wta)
+            )
 
         # Transform the map to the polynomial basis
         A1y = ts.dot(self.A1, y)
@@ -307,9 +297,7 @@ class OpsYlm(object):
                     self.tensordotD(
                         tt.tile(y, [theta.shape[0], 1]), theta * alpha
                     )
-                )
-                if self.diffrot
-                else tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                ),
             )
         else:
             Ry = ifelse(
@@ -378,7 +366,10 @@ class OpsYlm(object):
         R = self.RAxisAngle(tt.as_tensor_variable([1.0, 0.0, 0.0]), -np.pi / 2)
         return (
             tt.concatenate(
-                (tt.reshape(lat, [1, -1]), tt.reshape(lon, [1, -1]))
+                (
+                    tt.reshape(lat, [1, -1]),
+                    tt.reshape(lon + 0.5 * np.pi, [1, -1]),
+                )
             ),
             tt.dot(R, tt.concatenate((x, y, z))),
         )
@@ -476,13 +467,10 @@ class OpsYlm(object):
         )
 
         # Apply the differential rotation
-        if self.diffrot:
-            if theta.ndim > 0:
-                M = self.tensordotD(M, -theta * alpha)
-            else:
-                M = RaiseValueErrorOp(
-                    "Code this branch up if needed.", M.shape
-                )
+        if theta.ndim > 0:
+            M = self.tensordotD(M, -theta * alpha)
+        else:
+            M = RaiseValueErrorOp("Code this branch up if needed.", M.shape)
 
         return M
 
@@ -504,13 +492,10 @@ class OpsYlm(object):
         MT = tt.transpose(M)
 
         # Apply the differential rotation
-        if self.diffrot:
-            if theta.ndim > 0:
-                MT = self.tensordotD(MT, theta * alpha)
-            else:
-                MT = RaiseValueErrorOp(
-                    "Code this branch up if needed.", MT.shape
-                )
+        if theta.ndim > 0:
+            MT = self.tensordotD(MT, theta * alpha)
+        else:
+            MT = RaiseValueErrorOp("Code this branch up if needed.", MT.shape)
 
         # Rotate to the polar frame
         MT = self.dotR(
@@ -611,15 +596,244 @@ class OpsYlm(object):
         else:
             return compute(axis=axis, theta=theta)
 
+    def _dr_init(
+        self,
+        dr_oversample=2,
+        dr_fourier_fac=1.5,
+        dr_eps=1e-12,
+        dr_lam=1e-12,
+        dr_wigner=False,
+        **kwargs
+    ):
+        """Initialize the differential rotation operator."""
+        # HACK: For some reason l <= 2 maps need slightly higher
+        # sampling resolution for stability.
+        if self.ydeg <= 2:
+            dr_oversample = max(dr_oversample, 3)
+
+        # Get pixel transforms
+        npix = dr_oversample * (self.ydeg + 1) ** 2
+        Ny = int(np.sqrt(npix * np.pi / 4.0))
+        Nx = 2 * Ny
+        y, x = np.meshgrid(
+            np.sqrt(2) * np.linspace(-1, 1, Ny),
+            2 * np.sqrt(2) * np.linspace(-1, 1, Nx),
+        )
+        x = x.flatten()
+        y = y.flatten()
+
+        # Remove off-grid points
+        a = np.sqrt(2)
+        b = 2 * np.sqrt(2)
+        idx = (y / a) ** 2 + (x / b) ** 2 <= 1
+        y = y[idx]
+        x = x[idx]
+
+        # https://en.wikipedia.org/wiki/Mollweide_projection
+        theta = np.arcsin(y / np.sqrt(2))
+        lat = np.arcsin((2 * theta + np.sin(2 * theta)) / np.pi)
+        lon0 = 3 * np.pi / 2
+        lon = lon0 + np.pi * x / (2 * np.sqrt(2) * np.cos(theta))
+
+        # Add points at the poles
+        lat = np.append(lat, [-np.pi / 2, 0, 0, np.pi / 2])
+        lon = np.append(
+            lon, [1.5 * np.pi, 1.5 * np.pi, 2.5 * np.pi, 1.5 * np.pi]
+        )
+
+        # Back to Cartesian, this time on the *sky*
+        x = np.reshape(np.cos(lat) * np.cos(lon), [1, -1])
+        y = np.reshape(np.cos(lat) * np.sin(lon), [1, -1])
+        z = np.reshape(np.sin(lat), [1, -1])
+        R = self.RAxisAngle(np.array([1.0, 0.0, 0.0]), np.array(-np.pi / 2))
+        x, y, z = np.dot(R, np.concatenate((x, y, z)))
+        x = x.reshape(-1)
+        y = y.reshape(-1)
+        z = z.reshape(-1)
+
+        # Flatten and fix the longitude offset, then sort by latitude
+        lat = lat.reshape(-1)
+        lon = (lon - 1.5 * np.pi).reshape(-1)
+        idx = np.lexsort([lon, lat])
+        lat = lat[idx]
+        self._dr_lon = lon[idx]
+        x = x[idx]
+        y = y[idx]
+        z = z[idx]
+
+        # Get indices of unique latitudes
+        unique_lat = np.sort(list(set(lat)))
+        self._dr_idx = np.array([lat == l for l in unique_lat])
+
+        # Dimensions
+        npix = len(lat)
+        nlat = len(unique_lat)
+        ncoeff = (self.ydeg + 1) ** 2
+
+        # Get the forward (P) and reverse (Q) pixel transforms
+        pT = self.pT(x, y, z)[:, :ncoeff]
+        self._dr_P = pT * self._c_ops.A1
+        self._dr_Q = np.linalg.solve(
+            self._dr_P.T.dot(self._dr_P) + dr_lam * np.eye(ncoeff),
+            self._dr_P.T,
+        )
+
+        # Amplitude of the differential rotation
+        self._dr_mag = np.sin(unique_lat) ** 2
+
+        # Transform approximation method
+        self._dr_wigner = dr_wigner
+        if self._dr_wigner:
+
+            # Differential rotation by tensor Wigner operations
+            # -- STABLE, BUT TOO SLOW TO BE USEFUL IN PRACTICE! --
+            # TODO: write a custom C function to do this.
+            # TODO: exploit N/S symmetry to reduce cost by 2x
+
+            # Polar transform
+            RP = self.dotR(
+                np.eye(ncoeff),
+                np.array(1.0),
+                np.array(0.0),
+                np.array(0.0),
+                np.array(-0.5 * np.pi),
+            )
+            RP = np.tile(np.expand_dims(RP, 1), (1, nlat, 1))
+            self._dr_RP = np.reshape(RP, (-1, ncoeff))
+
+        else:
+
+            # Differential rotation by sliding + Fourier expansions
+            # Much faster, but subject to over/underfitting
+
+            # Misc
+            self._dr_fourier_fac = dr_fourier_fac
+
+            # Transform tensor
+            self._dr_T = [None for lat in unique_lat]
+            for i, row in enumerate(self._dr_idx):
+                X = self.get_DX(self._dr_lon[row])
+                A = np.linalg.solve(
+                    X.T.dot(X) + dr_eps * np.eye(X.shape[1]), X.T
+                )
+                # The poles don't rotate
+                if (i == 0) or (i == nlat - 1):
+                    A[:, :] = 0
+                    A[0, 0] = 1
+                self._dr_T[i] = A.dot(self._dr_P[row])
+
+    @autocompile
+    def tensordotD(self, matrix, wta):
+        D = self.get_D(wta)
+        new_matrix = tt.batched_tensordot(
+            matrix, tt.swapaxes(D, 0, 1), axes=(1, 2)
+        )
+        return ifelse(tt.any(wta), new_matrix, matrix)
+
+    @autocompile
+    def get_DX(self, lon):
+        """Fourier design matrix for the differential rotation operator."""
+        order = tt.maximum(
+            1, tt.round(self._dr_fourier_fac * (lon.shape[0] + 1) // 2)
+        )
+        X = tt.concatenate(
+            (
+                tt.cos(
+                    tt.shape_padleft(tt.arange(0, order))
+                    * tt.shape_padright(lon)
+                ),
+                tt.sin(
+                    tt.shape_padleft(tt.arange(1, order))
+                    * tt.shape_padright(lon)
+                ),
+            ),
+            axis=-1,
+        )
+        return X
+
+    @autocompile
+    def get_D(self, theta):
+        """Get the differential rotation operator.
+        This is (in general) a 3-tensor of shape (Ny, Ntheta, Ny).
+        """
+
+        if self._dr_wigner:
+
+            ncoeff = (self.ydeg + 1) ** 2
+            npix = len(self._dr_lon)
+            nlat = len(self._dr_idx)
+
+            # Apply each rotation to all latitudes and all times
+            # t = (ntheta * ncoeff,)
+            # Yzr = (ntheta * ncoeff * nlat, ncoeff)
+            t = tt.reshape(
+                tt.tile(
+                    -tt.shape_padright(theta) * tt.shape_padleft(self._dr_mag),
+                    ncoeff,
+                ),
+                (-1,),
+            )
+            Yzr = tt.reshape(
+                self.tensordotRz(tt.tile(self._dr_RP, (theta.shape[0], 1)), t),
+                (-1, ncoeff),
+            )
+
+            # Transform back out of the polar frame
+            # Yr = (ntheta, ncoeff, nlat, ncoeff)
+            Yr = tt.reshape(
+                self.dotR(
+                    Yzr,
+                    math.cast(1.0),
+                    math.cast(0.0),
+                    math.cast(0.0),
+                    math.cast(0.5 * np.pi),
+                ),
+                (theta.shape[0], ncoeff, nlat, ncoeff),
+            )
+
+            # Convert to pixels
+            # Pr = (npix, ntheta, nlat, ncoeff)
+            Pr = tt.tensordot(self._dr_P, Yr, (1, 1))
+
+            # Select the pixels at each latitude
+            # Lr = (npix, ntheta, ncoeff)
+            Lr = tt.zeros((npix, theta.shape[0], ncoeff))
+            for i, row in enumerate(self._dr_idx):
+                Lr = tt.set_subtensor(Lr[row], Pr[row, :, i])
+
+            # Convert back to Ylms
+            # D = (ncoeff, ntheta, ncoeff)
+            D = tt.tensordot(self._dr_Q, Lr, axes=(1, 0))
+
+        else:
+
+            Dp = tt.zeros(
+                (self._dr_Q.shape[1], theta.shape[0], (self.ydeg + 1) ** 2)
+            )
+            for i, row in enumerate(self._dr_idx):
+                new_lon = (
+                    tt.shape_padright(self._dr_lon[row])
+                    + tt.shape_padleft(theta) * self._dr_mag[i]
+                )
+                new_lon = ((new_lon + np.pi) % (2 * np.pi)) - np.pi
+                X = self.get_DX(new_lon)
+                Dp = tt.set_subtensor(Dp[row], tt.dot(X, self._dr_T[i]))
+            D = tt.tensordot(self._dr_Q, Dp, axes=1)
+
+        # Preserve luminosity
+        ones_zero = np.zeros((self.ydeg + 1) ** 2)
+        ones_zero[0] = 1.0
+        D = tt.set_subtensor(D[0], ones_zero)
+
+        return D
+
 
 class OpsLD(object):
     """Class housing Theano operations for limb-darkened maps."""
 
-    def __init__(
-        self, ydeg, udeg, fdeg, drorder, nw, reflected=False, **kwargs
-    ):
+    def __init__(self, ydeg, udeg, fdeg, nw, reflected=False, **kwargs):
         # Sanity checks
-        assert ydeg == fdeg == drorder == 0
+        assert ydeg == fdeg == 0
         assert reflected is False
 
         # Ingest kwargs
@@ -880,15 +1094,14 @@ class OpsReflected(OpsYlm):
         pT = self.pT(xpt, ypt, zpt)
 
         # Apply the differential rotation operator
-        if self.diffrot:
-            if self.nw is None:
-                y = tt.reshape(
-                    self.tensordotD(tt.reshape(y, (1, -1)), [wta]), (-1,)
-                )
-            else:
-                y = tt.transpose(
-                    self.tensordotD(tt.transpose(y), tt.ones(self.nw) * wta)
-                )
+        if self.nw is None:
+            y = tt.reshape(
+                self.tensordotD(tt.reshape(y, (1, -1)), [wta]), (-1,)
+            )
+        else:
+            y = tt.transpose(
+                self.tensordotD(tt.transpose(y), tt.ones(self.nw) * wta)
+            )
 
         # Transform the map to the polynomial basis
         A1y = ts.dot(self.A1, y)
@@ -951,15 +1164,14 @@ class OpsReflected(OpsYlm):
         pT = self.pT(xpt, ypt, zpt)
 
         # Apply the differential rotation operator
-        if self.diffrot:
-            if self.nw is None:
-                y = tt.reshape(
-                    self.tensordotD(tt.reshape(y, (1, -1)), [wta]), (-1,)
-                )
-            else:
-                y = tt.transpose(
-                    self.tensordotD(tt.transpose(y), tt.ones(self.nw) * wta)
-                )
+        if self.nw is None:
+            y = tt.reshape(
+                self.tensordotD(tt.reshape(y, (1, -1)), [wta]), (-1,)
+            )
+        else:
+            y = tt.transpose(
+                self.tensordotD(tt.transpose(y), tt.ones(self.nw) * wta)
+            )
 
         # Transform the map to the polynomial basis
         A1y = ts.dot(self.A1, y)
@@ -1228,9 +1440,7 @@ class OpsReflected(OpsYlm):
                     self.tensordotD(
                         tt.tile(y, [theta.shape[0], 1]), theta * alpha
                     )
-                )
-                if self.diffrot
-                else tt.transpose(tt.tile(y, [theta.shape[0], 1])),
+                ),
             )
         else:
             Ry = ifelse(

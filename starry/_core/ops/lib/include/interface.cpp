@@ -40,7 +40,7 @@ PYBIND11_MODULE(_c_ops, m) {
   py::class_<starry::Ops<Scalar>> Ops(m, "Ops");
 
   // Constructor
-  Ops.def(py::init<int, int, int, int>());
+  Ops.def(py::init<int, int, int>());
 
   // Map dimensions
   Ops.def_property_readonly("ydeg",
@@ -59,8 +59,6 @@ PYBIND11_MODULE(_c_ops, m) {
                             [](starry::Ops<Scalar> &ops) { return ops.deg; });
   Ops.def_property_readonly("N",
                             [](starry::Ops<Scalar> &ops) { return ops.N; });
-  Ops.def_property_readonly(
-      "drorder", [](starry::Ops<Scalar> &ops) { return ops.drorder; });
 
   // Occultation solution in emitted light
   Ops.def("sT", [](starry::Ops<Scalar> &ops, const Vector<double> &b,
@@ -378,40 +376,6 @@ PYBIND11_MODULE(_c_ops, m) {
     return py::make_tuple(
         ops.bamp.template cast<double>(), static_cast<double>(ops.bsigma),
         static_cast<double>(ops.blat), static_cast<double>(ops.blon));
-  });
-
-  // Differential rotation operator (matrices)
-  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
-                           const Vector<double> &wta) {
-    ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>());
-    return ops.D.tensordotD_result.template cast<double>();
-  });
-
-  // Differential rotation operator (vectors)
-  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const RowVector<double> &M,
-                           const Vector<double> &wta) {
-    ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>());
-    return ops.D.tensordotD_result.template cast<double>();
-  });
-
-  // Gradient of differential rotation operator (vectors)
-  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const RowVector<double> &M,
-                           const Vector<double> &wta,
-                           const Matrix<double> &bMD) {
-    ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>(),
-                     bMD.template cast<Scalar>());
-    return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
-                          ops.D.tensordotD_bwta.template cast<double>());
-  });
-
-  // Gradient of differential rotation operator (matrices)
-  Ops.def("tensordotD", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
-                           const Vector<double> &wta,
-                           const Matrix<double> &bMD) {
-    ops.D.tensordotD(M.template cast<Scalar>(), wta.template cast<Scalar>(),
-                     bMD.template cast<Scalar>());
-    return py::make_tuple(ops.D.tensordotD_bM.template cast<double>(),
-                          ops.D.tensordotD_bwta.template cast<double>());
   });
 
   // Oren-Nayar (1994) illumination polynomial (reflected light)

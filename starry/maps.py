@@ -56,9 +56,9 @@ class MapBase(object):
                 "Method not yet implemented for spectral maps."
             )
 
-    def __init__(self, ydeg, udeg, fdeg, drorder, nw, **kwargs):
+    def __init__(self, ydeg, udeg, fdeg, nw, **kwargs):
         # Instantiate the Theano ops class
-        self.ops = self._ops_class_(ydeg, udeg, fdeg, drorder, nw, **kwargs)
+        self.ops = self._ops_class_(ydeg, udeg, fdeg, nw, **kwargs)
 
         # Dimensions
         self._ydeg = ydeg
@@ -70,7 +70,6 @@ class MapBase(object):
         self._deg = ydeg + udeg + fdeg
         self._N = (ydeg + udeg + fdeg + 1) ** 2
         self._nw = nw
-        self._drorder = drorder
 
         # Basic properties
         self._inc = math.cast(0.5 * np.pi)
@@ -154,11 +153,6 @@ class MapBase(object):
     def nw(self):
         """Number of wavelength bins. *Read-only*"""
         return self._nw
-
-    @property
-    def drorder(self):
-        """Differential rotation order. *Read-only*"""
-        return self._drorder
 
     @property
     def y(self):
@@ -495,10 +489,14 @@ class MapBase(object):
                         lonlines[n] = ax.axvline(
                             lon, color="k", lw=0.5, alpha=0.5, zorder=0
                         )
-                ax.set_xticks(lons)
-                ax.set_yticks(lats)
-                ax.set_xlabel("Longitude [deg]")
-                ax.set_ylabel("Latitude [deg]")
+                    ax.set_xticks(lons)
+                    ax.set_yticks(lats)
+                    for tick in (
+                        ax.xaxis.get_major_ticks() + ax.yaxis.get_major_ticks()
+                    ):
+                        tick.label.set_fontsize(10)
+                    ax.set_xlabel("Longitude [deg]")
+                    ax.set_ylabel("Latitude [deg]")
 
             else:
 
@@ -1061,23 +1059,12 @@ class YlmBase(object):
         where :math:`\\omega_{eq}` is the equatorial angular velocity of
         the object.
 
-        .. note ::
-
-            This parameter is only used if :py:attr:`drorder` is greater
-            than zero and/or radial velocity mode is enabled.
         """
         return self._alpha
 
     @alpha.setter
     def alpha(self, value):
-        if (self._drorder == 0) and not hasattr(
-            self, "rv"
-        ):  # pragma: no cover
-            logger.warning(
-                "Parameter `drorder` is zero, so setting `alpha` has no effect."
-            )
-        else:
-            self._alpha = math.cast(value)
+        self._alpha = math.cast(value)
 
     def design_matrix(self, **kwargs):
         r"""Compute and return the light curve design matrix :math:`A`.
@@ -1204,11 +1191,8 @@ class YlmBase(object):
         lon *= self._angle_factor
 
         # If differentially rotating, allow a `theta` keyword
-        if self.drorder > 0:
-            alpha_theta = math.cast(kwargs.get("theta", 0.0)) * self.alpha
-            alpha_theta *= self._angle_factor
-        else:
-            alpha_theta = math.cast(0.0)
+        alpha_theta = math.cast(kwargs.get("theta", 0.0)) * self.alpha
+        alpha_theta *= self._angle_factor
 
         # If limb-darkened, allow a `limbdarken` keyword
         if self.udeg > 0 and kwargs.pop("limbdarken", True):
@@ -1232,6 +1216,12 @@ class YlmBase(object):
         ``nframes`` is the number of values of ``theta``. However, if this is
         a spectral map, ``nframes`` is the number of wavelength bins and
         ``theta`` must be a scalar.
+
+        .. note::
+
+            Users can obtain the latitudes and longitudes corresponding to
+            each point in the rendered image by calling
+            :py:meth:`get_latlon_grid()`.
 
         Args:
             res (int, optional): The resolution of the map in pixels on a
@@ -1283,6 +1273,29 @@ class YlmBase(object):
             return image
         else:
             return math.reshape(image, [res, res])
+
+    def get_latlon_grid(self, res=300, projection="ortho"):
+        """Return the latitude/longitude grid corresponding to the result
+        of a call to :py:meth:`render()`.
+
+        Args:
+            res (int, optional): The resolution of the map in pixels on a
+                side. Defaults to 300.
+            projection (string, optional): The map projection. Accepted
+                values are ``ortho``, corresponding to an orthographic
+                projection (as seen on the sky), ``rect``, corresponding
+                to an equirectangular latitude-longitude projection,
+                and ``moll``, corresponding to a Mollweide equal-area
+                projection. Defaults to ``ortho``.
+        """
+        projection = get_projection(projection)
+        if projection == STARRY_RECTANGULAR_PROJECTION:
+            lat, lon = self.ops.compute_rect_grid(res)[0]
+        elif projection == STARRY_MOLLWEIDE_PROJECTION:
+            lat, lon = self.ops.compute_moll_grid(res)[0]
+        else:
+            lat, lon = self.ops.compute_ortho_grid(res)[0]
+        return lat / self._angle_factor, lon / self._angle_factor
 
     def load(
         self,
@@ -1595,9 +1608,15 @@ class YlmBase(object):
         y = y.reshape(-1)
         z = z.reshape(-1)
 
-        # Flatten and fix the longitude offset
+        # Flatten and fix the longitude offset, then sort by latitude
         lat = lat.reshape(-1)
         lon = (lon - 1.5 * np.pi).reshape(-1)
+        idx = np.lexsort([lon, lat])
+        lat = lat[idx]
+        lon = lon[idx]
+        x = x[idx]
+        y = y[idx]
+        z = z[idx]
 
         # Get the forward pixel transform
         pT = self.ops.pT(x, y, z)[:, : (self.ydeg + 1) ** 2]
@@ -2186,12 +2205,8 @@ class ReflectedBase(object):
             amp = self.amp[np.newaxis, :, np.newaxis]
 
         # If differentially rotating, allow a `theta` keyword
-        if self.drorder > 0:
-            alpha_theta = math.cast(kwargs.get("theta", 0.0)) * self.alpha
-            alpha_theta *= self._angle_factor
-        else:
-            alpha_theta = math.cast(0.0)
-            self._check_kwargs("intensity", kwargs)
+        alpha_theta = math.cast(kwargs.get("theta", 0.0)) * self.alpha
+        alpha_theta *= self._angle_factor
 
         # If limb-darkened, allow a `limbdarken` keyword
         if self.udeg > 0:
@@ -2448,14 +2463,7 @@ class ReflectedBase(object):
 
 
 def Map(
-    ydeg=0,
-    udeg=0,
-    drorder=0,
-    nw=None,
-    rv=False,
-    reflected=False,
-    source_npts=1,
-    **kwargs
+    ydeg=0, udeg=0, nw=None, rv=False, reflected=False, source_npts=1, **kwargs
 ):
     """A generic ``starry`` surface map.
 
@@ -2476,8 +2484,6 @@ def Map(
             Defaults to 0.
         udeg (int, optional): Degree of the limb darkening filter.
             Defaults to 0.
-        drorder (int, optional): Order of the differential rotation
-            approximation. Defaults to 0.
         nw (int, optional): Number of wavelength bins. Defaults to None
             (for monochromatic light curves).
         rv (bool, optional): If True, enable computation of radial velocities
@@ -2496,28 +2502,6 @@ def Map(
     if nw is not None:
         nw = int(nw)
         assert nw > 0, "Number of wavelength bins must be positive."
-    drorder = int(drorder)
-    assert (drorder >= 0) and (
-        drorder <= 3
-    ), "Differential rotation orders above 3 are not supported."
-    if drorder > 0:
-        assert ydeg > 0, "Differential rotation requires `ydeg` >= 1."
-
-        # TODO: phase this next warning out
-        logger.warning(
-            "Differential rotation is still an experimental feature. "
-            "Use it with care."
-        )
-
-        Ddeg = (4 * drorder + 1) * ydeg
-        if Ddeg >= 50:
-            logger.warning(
-                "The degree of the differential rotation operator "
-                "is currently {0}, ".format(Ddeg)
-                + "which will likely cause the code to run very slowly. "
-                "Consider decreasing the degree of the map or the order "
-                "of differential rotation."
-            )
     source_npts = int(source_npts)
     if source_npts < 1:
         source_npts = 1
@@ -2567,7 +2551,6 @@ def Map(
             reflected=ReflectedBase in Bases,
             rv=RVBase in Bases,
             spectral=nw is not None,
-            differential_rotation=drorder > 0,
             source_npts=source_npts,
         )
 
@@ -2577,4 +2560,4 @@ def Map(
             config.freeze()
             super(Map, self).__init__(*args, source_npts=source_npts, **kwargs)
 
-    return Map(ydeg, udeg, fdeg, drorder, nw, **kwargs)
+    return Map(ydeg, udeg, fdeg, nw, **kwargs)
