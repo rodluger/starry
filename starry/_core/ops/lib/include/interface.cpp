@@ -312,11 +312,26 @@ PYBIND11_MODULE(_c_ops, m) {
     return ops.W.tensordotRz_result.template cast<double>();
   });
 
+  Ops.def("tensordotDz", [](starry::Ops<Scalar> &ops,
+                            const RowVector<double> &M,
+                            const Vector<double> &theta, const double &alpha) {
+    ops.W.tensordotDz(M.template cast<Scalar>(), theta.template cast<Scalar>(),
+                      static_cast<Scalar>(alpha));
+    return ops.W.tensordotDz_result.template cast<double>();
+  });
+
   // Z rotation operator (matrices)
   Ops.def("tensordotRz", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
                             const Vector<double> &theta) {
     ops.W.tensordotRz(M.template cast<Scalar>(), theta.template cast<Scalar>());
     return ops.W.tensordotRz_result.template cast<double>();
+  });
+
+  Ops.def("tensordotDz", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
+                            const Vector<double> &theta, const double &alpha) {
+    ops.W.tensordotDz(M.template cast<Scalar>(), theta.template cast<Scalar>(),
+                      static_cast<Scalar>(alpha));
+    return ops.W.tensordotDz_result.template cast<double>();
   });
 
   // Gradient of Z rotation matrix (vectors)
@@ -330,6 +345,18 @@ PYBIND11_MODULE(_c_ops, m) {
                           ops.W.tensordotRz_btheta.template cast<double>());
   });
 
+  // Gradient of Z rotation matrix (vectors)
+  Ops.def("tensordotDz", [](starry::Ops<Scalar> &ops,
+                            const RowVector<double> &M,
+                            const Vector<double> &theta, const double &alpha,
+                            const Matrix<double> &bMDz) {
+    ops.W.tensordotDz(M.template cast<Scalar>(), theta.template cast<Scalar>(),
+                      static_cast<Scalar>(alpha), bMDz.template cast<Scalar>());
+    return py::make_tuple(ops.W.tensordotDz_bM.template cast<double>(),
+                          ops.W.tensordotDz_btheta.template cast<double>(),
+                          static_cast<double>(ops.W.tensordotDz_balpha));
+  });
+
   // Gradient of Z rotation matrix (matrices)
   Ops.def("tensordotRz", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
                             const Vector<double> &theta,
@@ -338,6 +365,17 @@ PYBIND11_MODULE(_c_ops, m) {
                       bMRz.template cast<Scalar>());
     return py::make_tuple(ops.W.tensordotRz_bM.template cast<double>(),
                           ops.W.tensordotRz_btheta.template cast<double>());
+  });
+
+  // Gradient of Z rotation matrix (matrices)
+  Ops.def("tensordotDz", [](starry::Ops<Scalar> &ops, const Matrix<double> &M,
+                            const Vector<double> &theta, const double &alpha,
+                            const Matrix<double> &bMDz) {
+    ops.W.tensordotDz(M.template cast<Scalar>(), theta.template cast<Scalar>(),
+                      static_cast<Scalar>(alpha), bMDz.template cast<Scalar>());
+    return py::make_tuple(ops.W.tensordotDz_bM.template cast<double>(),
+                          ops.W.tensordotDz_btheta.template cast<double>(),
+                          static_cast<double>(ops.W.tensordotDz_balpha));
   });
 
   // Filter operator

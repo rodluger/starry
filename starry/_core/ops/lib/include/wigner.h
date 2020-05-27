@@ -285,6 +285,11 @@ public:
   Vector<Scalar> tensordotRz_btheta; /**< */
   Matrix<Scalar> tensordotRz_bM;     /**< */
 
+  Matrix<Scalar> tensordotDz_result; /**< */
+  Vector<Scalar> tensordotDz_btheta; /**< */
+  Matrix<Scalar> tensordotDz_bM;     /**< */
+  Scalar tensordotDz_balpha;
+
   // Full rotation results
   Matrix<Scalar> dotR_result;                    /**< */
   Scalar dotR_bx, dotR_by, dotR_bz, dotR_btheta; /**< */
@@ -610,6 +615,95 @@ public:
         } else {
           tensordotRz_bM.col(l * l + 2 * l - j) += tmp_s;
           tensordotRz_bM.col(l * l + j) += tmp_c;
+        }
+      }
+    }
+  }
+
+  // --- Differential Rotation ---
+
+  /*
+  Computes the tensor dot product M . Dz(theta).
+
+  */
+  template <typename T1, bool M_IS_ROW_VECTOR = (T1::RowsAtCompileTime == 1)>
+  inline void tensordotDz(const MatrixBase<T1> &M, const Vector<Scalar> &theta,
+                          const Scalar &alpha) {
+    // Shape checks
+    size_t npts = theta.size();
+    size_t Nr = M.cols();
+    int degr = sqrt(Nr) - 1;
+
+    // Compute the sin & cos matrices
+    computeRz(theta);
+
+    // Init result
+    tensordotDz_result.resize(npts, Nr);
+    if (unlikely(npts == 0))
+      return;
+
+    // Dot them in
+    for (int l = 0; l < degr + 1; ++l) {
+      for (int j = 0; j < 2 * l + 1; ++j) {
+        if (M_IS_ROW_VECTOR) {
+          tensordotDz_result.col(l * l + j) =
+              M(l * l + j) * cosmt.col(l * l + j) +
+              M(l * l + 2 * l - j) * sinmt.col(l * l + j);
+        } else {
+          tensordotDz_result.col(l * l + j) =
+              M.col(l * l + j).cwiseProduct(cosmt.col(l * l + j)) +
+              M.col(l * l + 2 * l - j).cwiseProduct(sinmt.col(l * l + j));
+        }
+      }
+    }
+  }
+
+  /*
+  Computes the gradient of the tensor dot product M . Dz(theta).
+
+  */
+  template <typename T1, bool M_IS_ROW_VECTOR = (T1::RowsAtCompileTime == 1)>
+  inline void tensordotDz(const MatrixBase<T1> &M, const Vector<Scalar> &theta,
+                          const Scalar &alpha, const Matrix<Scalar> &bMDz) {
+    // Shape checks
+    size_t npts = theta.size();
+    size_t Nr = M.cols();
+    int degr = sqrt(Nr) - 1;
+
+    // Compute the sin & cos matrices
+    computeRz(theta);
+
+    // Init grads
+    tensordotDz_btheta.setZero(npts);
+    tensordotDz_bM.setZero(M.rows(), Nr);
+    tensordotDz_balpha = 0.0;
+    if (unlikely((npts == 0) || (M.rows() == 0)))
+      return;
+
+    // Dot the sines and cosines in
+    for (int l = 0; l < degr + 1; ++l) {
+      for (int j = 0; j < 2 * l + 1; ++j) {
+        // Pre-compute these guys
+        tmp_c = bMDz.col(l * l + j).cwiseProduct(cosmt.col(l * l + j));
+        tmp_s = bMDz.col(l * l + j).cwiseProduct(sinmt.col(l * l + j));
+
+        // d / dtheta
+        if (M_IS_ROW_VECTOR) {
+          tensordotDz_btheta +=
+              (j - l) * (M(l * l + 2 * l - j) * tmp_c - M(l * l + j) * tmp_s);
+        } else {
+          tensordotDz_btheta +=
+              (j - l) * (M.col(l * l + 2 * l - j).cwiseProduct(tmp_c) -
+                         M.col(l * l + j).cwiseProduct(tmp_s));
+        }
+
+        // d / dM
+        if (M_IS_ROW_VECTOR) {
+          tensordotDz_bM(l * l + 2 * l - j) += tmp_s.sum();
+          tensordotDz_bM(l * l + j) += tmp_c.sum();
+        } else {
+          tensordotDz_bM.col(l * l + 2 * l - j) += tmp_s;
+          tensordotDz_bM.col(l * l + j) += tmp_c;
         }
       }
     }
