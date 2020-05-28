@@ -7,6 +7,7 @@
 #ifndef _STARRY_WIGNER_H_
 #define _STARRY_WIGNER_H_
 
+#include "basis.h"
 #include "utils.h"
 
 namespace starry {
@@ -279,6 +280,16 @@ protected:
   std::vector<Matrix<Scalar>> DRDz;     /**< */
   std::vector<Matrix<Scalar>> DRDtheta; /**< */
 
+  // Diff rot
+  Scalar oversample;
+  Scalar lam;
+  basis::Basis<Scalar> B;
+  size_t npix, nlat;
+  std::vector<Scalar> unique_lat;
+  std::vector<size_t> unique_idx;
+  Matrix<Scalar> P, Q;
+  RowVector<Scalar> mag;
+
 public:
   // Tensor z rotation results
   Matrix<Scalar> tensordotRz_result; /**< */
@@ -295,11 +306,12 @@ public:
   Scalar dotR_bx, dotR_by, dotR_bz, dotR_btheta; /**< */
   Matrix<Scalar> dotR_bM;                        /**< */
 
-  Wigner(int ydeg, int udeg, int fdeg)
+  Wigner(int ydeg, int udeg, int fdeg, Scalar oversample, Scalar lam,
+         const basis::Basis<Scalar> &B)
       : ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
         fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
         N((deg + 1) * (deg + 1)), theta_Rz_cache(0), x_cache(NAN), y_cache(NAN),
-        z_cache(NAN), theta_cache(NAN) {
+        z_cache(NAN), theta_cache(NAN), oversample(oversample), lam(lam), B(B) {
     // Allocate the Wigner matrices
     D.resize(ydeg + 1);
     R.resize(ydeg + 1);
@@ -323,6 +335,9 @@ public:
 
     // Misc
     tol = 10 * mach_eps<Scalar>();
+
+    // Initialize the differential rotation op
+    init_diffrot();
   }
 
   /**
@@ -622,40 +637,116 @@ public:
 
   // --- Differential Rotation ---
 
+  inline void init_diffrot() {
+
+    // Grid resolution
+    Scalar npix_ = oversample * (ydeg + 1) * (ydeg + 1);
+    int NY = (int)sqrt(npix_ * 0.25 * pi<Scalar>());
+    if ((NY % 2) != 0)
+      ++NY;
+    int NX = 2 * NY;
+
+    // Flattened arrays of lat/lon points on a Mollweide grid
+    // and their corresponding xyz coordinates on the sky
+    std::vector<Scalar> lat, lon, x, y, z;
+    lat.reserve(NX * NY);
+    lon.reserve(NX * NY);
+    x.reserve(NX * NY);
+    y.reserve(NX * NY);
+    z.reserve(NX * NY);
+
+    // https://en.wikipedia.org/wiki/Mollweide_projection
+    Scalar theta, theta_fac, lat_cur, coslat_cur, sinlat_cur, lon_cur;
+    Scalar lon0 = 1.5 * pi<Scalar>();
+    Scalar eps = 10 * mach_eps<Scalar>();
+    RowVector<Scalar> tmp1, tmp2;
+    tmp1 = sqrt(2.0) * RowVector<Scalar>::LinSpaced(NY / 2, -1 + eps, 0);
+    tmp2 = sqrt(2.0) * RowVector<Scalar>::LinSpaced(NY / 2, 0, 1 - eps);
+    RowVector<Scalar> y_(tmp1.size() + tmp2.size() - 1);
+    y_ << tmp1, tmp2.segment(1, tmp2.size() - 1);
+    NY = y_.size();
+    tmp1 = 2.0 * sqrt(2.0) * RowVector<Scalar>::LinSpaced(NX / 2, -1 + eps, 0);
+    tmp2 = 2.0 * sqrt(2.0) * RowVector<Scalar>::LinSpaced(NX / 2, 0, 1 - eps);
+    RowVector<Scalar> x_(tmp1.size() + tmp2.size() - 1);
+    x_ << tmp1, tmp2.segment(1, tmp2.size() - 1);
+    NX = x_.size();
+    size_t idx = 0;
+    for (int i = 0; i < NY; ++i) {
+      theta = asin(y_(i) / sqrt(2.0));
+      lat_cur = asin((2.0 * theta + sin(2.0 * theta)) / pi<Scalar>());
+      coslat_cur = cos(lat_cur);
+      sinlat_cur = sin(lat_cur);
+      theta_fac = pi<Scalar>() / (2.0 * sqrt(2.0) * cos(theta));
+      unique_lat.push_back(lat_cur);
+      unique_idx.push_back(idx);
+      for (int j = 0; j < NX; ++j) {
+        if (0.5 * y_(i) * y_(i) + 0.125 * x_(j) * x_(j) <= 1.0) {
+          lat.push_back(lat_cur);
+          lon_cur = lon0 + theta_fac * x_(j);
+          lon.push_back(lon_cur);
+          x.push_back(coslat_cur * cos(lon_cur));
+          z.push_back(sinlat_cur);
+          y.push_back(coslat_cur * sin(lon_cur));
+          ++idx;
+        }
+      }
+    }
+
+    // Dimensions
+    npix = (size_t)lat.size();
+    nlat = (size_t)unique_lat.size();
+
+    // Magnitude of the differential rotation at each unique latitude
+    mag.resize(nlat);
+    for (size_t i = 0; i < nlat; ++i) {
+      mag(i) = pow(sin(unique_lat[i]), 2.0);
+    }
+
+    // Pixel transforms
+    RowVector<Scalar> vx = Eigen::Map<RowVector<Scalar>>(&x[0], npix);
+    RowVector<Scalar> vy = Eigen::Map<RowVector<Scalar>>(&y[0], npix);
+    RowVector<Scalar> vz = Eigen::Map<RowVector<Scalar>>(&z[0], npix);
+    B.computePolyBasis(ydeg, vx, vy, vz);
+    P = B.pT * B.A1;
+    Matrix<Scalar> PTP = P.transpose() * P;
+    PTP += lam * Vector<Scalar>::Ones(Ny).asDiagonal();
+    Q = PTP.lu().solve(P.transpose());
+  }
+
   /*
   Computes the tensor dot product M . Dz(theta).
 
   */
   template <typename T1, bool M_IS_ROW_VECTOR = (T1::RowsAtCompileTime == 1)>
-  inline void tensordotDz(const MatrixBase<T1> &M, const Vector<Scalar> &theta,
+  inline void tensordotDz(const MatrixBase<T1> &M, const Vector<Scalar> &theta_,
                           const Scalar &alpha) {
-    // Shape checks
-    size_t npts = theta.size();
-    size_t Nr = M.cols();
-    int degr = sqrt(Nr) - 1;
 
-    // Compute the sin & cos matrices
-    computeRz(theta);
+    size_t npts = theta_.size();
 
-    // Init result
-    tensordotDz_result.resize(npts, Nr);
-    if (unlikely(npts == 0))
-      return;
+    // The actual angle of rotation at each time, at each latitude
+    Matrix<Scalar> theta =
+        theta_ * (RowVector<Scalar>::Ones(nlat) - alpha * mag);
 
-    // Dot them in
-    for (int l = 0; l < degr + 1; ++l) {
-      for (int j = 0; j < 2 * l + 1; ++j) {
-        if (M_IS_ROW_VECTOR) {
-          tensordotDz_result.col(l * l + j) =
-              M(l * l + j) * cosmt.col(l * l + j) +
-              M(l * l + 2 * l - j) * sinmt.col(l * l + j);
-        } else {
-          tensordotDz_result.col(l * l + j) =
-              M.col(l * l + j).cwiseProduct(cosmt.col(l * l + j)) +
-              M.col(l * l + 2 * l - j).cwiseProduct(sinmt.col(l * l + j));
-        }
-      }
+    // The pixel representation of the differentially-rotated map
+    Matrix<Scalar> Dp(npix, npts);
+
+    // Rotate the map at each latitude
+    for (size_t i = 0; i < nlat; ++i) {
+
+      // Apply the rotation at all times
+      tensordotRz(M, theta.col(i));
+
+      // Convert to pixels
+      Matrix<Scalar> p = P * tensordotRz_result.transpose();
+
+      // Select only the pixels at the current latitude
+      int start = unique_idx[i];
+      int size = (i < nlat - 1) ? unique_idx[i + 1] - start : npix - start;
+      Dp.block(start, 0, size, npts) = p.block(start, 0, size, npts);
     }
+
+    // Convert back to Ylms
+    tensordotDz_result = (Q * Dp).transpose();
   }
 
   /*

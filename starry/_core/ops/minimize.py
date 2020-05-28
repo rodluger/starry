@@ -86,11 +86,11 @@ class minimizeOp(tt.Op):
                     [latlon, y],
                     [
                         self.intensity(
-                            latlon[0], latlon[1], y, u0, f0, 0.0, 0.0
+                            latlon[0], latlon[1], y, u0, f0, 0.0, 0.0, 0.0
                         )[0],
                         *theano.grad(
                             self.intensity(
-                                latlon[0], latlon[1], y, u0, f0, 0.0, 0.0
+                                latlon[0], latlon[1], y, u0, f0, 0.0, 0.0, 0.0
                             )[0],
                             [latlon],
                         ),

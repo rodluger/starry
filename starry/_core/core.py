@@ -60,7 +60,13 @@ class OpsYlm(object):
         # Instantiate the C++ Ops
         config.rootHandler.terminator = ""
         logger.info("Pre-computing some matrices... ")
-        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
+        self._c_ops = _c_ops.Ops(
+            ydeg,
+            udeg,
+            fdeg,
+            kwargs.get("dr_oversample", 2.0),
+            kwargs.get("dr_lam", 1.0e-12),
+        )
         config.rootHandler.terminator = "\n"
         logger.info("Done.")
 
@@ -236,7 +242,46 @@ class OpsYlm(object):
         return pTA1
 
     @autocompile
-    def intensity(self, lat, lon, y, u, f, wta, ld):
+    def tensordotD(self, M, theta, alpha):
+        """
+        Differentially rotate a matrix M in the co-rotating frame.
+
+        """
+        # Trivial case
+        if self.ydeg == 0:
+            return M
+
+        # Rotate to the polar frame
+        MD = self.dotR(
+            M,
+            math.to_tensor(1.0),
+            math.to_tensor(0.0),
+            math.to_tensor(0.0),
+            0.5 * np.pi,
+        )
+
+        # Apply the solid body rotation + differential rotation (Dz)
+        # then undo the solid body rotation (Rz)
+        if theta.ndim > 0:
+            MD = self.tensordotDz(MD, theta, alpha)
+            MD = self.tensordotRz(MD, -theta)
+        else:
+            MD = self.tensordotDz(MD, tt.reshape(theta, (1,)), alpha)
+            MD = self.tensordotRz(MD, tt.reshape(-theta, (1,)), alpha)
+
+        # Rotate back out of the polar frame
+        MD = self.dotR(
+            MD,
+            math.to_tensor(1.0),
+            math.to_tensor(0.0),
+            math.to_tensor(0.0),
+            -0.5 * np.pi,
+        )
+
+        return ifelse(tt.eq(alpha, 0.0), M, MD)
+
+    @autocompile
+    def intensity(self, lat, lon, y, u, f, theta, alpha, ld):
         """Compute the intensity at a point or a set of points."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
@@ -247,11 +292,13 @@ class OpsYlm(object):
         # Apply the differential rotation operator
         if self.nw is None:
             y = tt.reshape(
-                self.tensordotD(tt.reshape(y, (1, -1)), [wta]), (-1,)
+                self.tensordotD(tt.reshape(y, (1, -1)), [theta], alpha), (-1,)
             )
         else:
             y = tt.transpose(
-                self.tensordotD(tt.transpose(y), tt.ones(self.nw) * wta)
+                self.tensordotD(
+                    tt.transpose(y), tt.ones(self.nw) * theta, alpha
+                )
             )
 
         # Transform the map to the polynomial basis
@@ -298,7 +345,7 @@ class OpsYlm(object):
                 ),
                 tt.transpose(
                     self.tensordotD(
-                        tt.tile(y, [theta.shape[0], 1]), theta * alpha
+                        tt.tile(y, [theta.shape[0], 1]), theta, alpha
                     )
                 ),
             )
@@ -997,7 +1044,8 @@ class OpsReflected(OpsYlm):
         ys,
         zs,
         Rs,
-        wta,
+        theta,
+        alpha,
         ld,
         sigr,
         on94_exact,
@@ -1013,11 +1061,13 @@ class OpsReflected(OpsYlm):
         # Apply the differential rotation operator
         if self.nw is None:
             y = tt.reshape(
-                self.tensordotD(tt.reshape(y, (1, -1)), [wta]), (-1,)
+                self.tensordotD(tt.reshape(y, (1, -1)), [theta], alpha), (-1,)
             )
         else:
             y = tt.transpose(
-                self.tensordotD(tt.transpose(y), tt.ones(self.nw) * wta)
+                self.tensordotD(
+                    tt.transpose(y), tt.ones(self.nw) * theta, alpha
+                )
             )
 
         # Transform the map to the polynomial basis
@@ -1068,7 +1118,7 @@ class OpsReflected(OpsYlm):
         return intensity
 
     @autocompile
-    def unweighted_intensity(self, lat, lon, y, u, f, wta, ld):
+    def unweighted_intensity(self, lat, lon, y, u, f, theta, alpha, ld):
         """
         Compute the intensity in the absence of an illumination source
         (i.e., the albedo).
@@ -1083,11 +1133,13 @@ class OpsReflected(OpsYlm):
         # Apply the differential rotation operator
         if self.nw is None:
             y = tt.reshape(
-                self.tensordotD(tt.reshape(y, (1, -1)), [wta]), (-1,)
+                self.tensordotD(tt.reshape(y, (1, -1)), [theta], alpha), (-1,)
             )
         else:
             y = tt.transpose(
-                self.tensordotD(tt.transpose(y), tt.ones(self.nw) * wta)
+                self.tensordotD(
+                    tt.transpose(y), tt.ones(self.nw) * theta, alpha
+                )
             )
 
         # Transform the map to the polynomial basis
@@ -1355,7 +1407,7 @@ class OpsReflected(OpsYlm):
                 ),
                 tt.transpose(
                     self.tensordotD(
-                        tt.tile(y, [theta.shape[0], 1]), theta * alpha
+                        tt.tile(y, [theta.shape[0], 1]), theta, alpha
                     )
                 ),
             )

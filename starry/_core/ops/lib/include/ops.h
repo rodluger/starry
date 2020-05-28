@@ -43,11 +43,13 @@ public:
   Scalar blon;
 
   // Constructor
-  explicit Ops(int ydeg, int udeg, int fdeg)
+  explicit Ops(int ydeg, int udeg, int fdeg, Scalar dr_oversample,
+               Scalar dr_lam)
       : ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
         fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
-        N((deg + 1) * (deg + 1)), B(ydeg, udeg, fdeg), W(ydeg, udeg, fdeg),
-        G(deg), RP(deg, B), RO(deg, B), F(B) {
+        N((deg + 1) * (deg + 1)), B(ydeg, udeg, fdeg),
+        W(ydeg, udeg, fdeg, dr_oversample, dr_lam, B), G(deg), RP(deg, B),
+        RO(deg, B), F(B) {
     // Bounds checks
     if ((ydeg < 0) || (ydeg > STARRY_MAX_LMAX))
       throw std::out_of_range("Spherical harmonic degree out of range.");

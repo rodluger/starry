@@ -40,7 +40,7 @@ PYBIND11_MODULE(_c_ops, m) {
   py::class_<starry::Ops<Scalar>> Ops(m, "Ops");
 
   // Constructor
-  Ops.def(py::init<int, int, int>());
+  Ops.def(py::init<int, int, int, Scalar, Scalar>());
 
   // Map dimensions
   Ops.def_property_readonly("ydeg",

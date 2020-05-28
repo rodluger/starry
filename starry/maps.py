@@ -1191,8 +1191,8 @@ class YlmBase(object):
         lon *= self._angle_factor
 
         # If differentially rotating, allow a `theta` keyword
-        alpha_theta = math.cast(kwargs.get("theta", 0.0)) * self.alpha
-        alpha_theta *= self._angle_factor
+        theta = math.cast(kwargs.get("theta", 0.0))
+        theta *= self._angle_factor
 
         # If limb-darkened, allow a `limbdarken` keyword
         if self.udeg > 0 and kwargs.pop("limbdarken", True):
@@ -1205,7 +1205,7 @@ class YlmBase(object):
 
         # Compute & return
         return self.amp * self.ops.intensity(
-            lat, lon, self._y, self._u, self._f, alpha_theta, ld
+            lat, lon, self._y, self._u, self._f, theta, self.alpha, ld
         )
 
     def render(self, res=300, projection="ortho", theta=0.0):
@@ -2205,8 +2205,8 @@ class ReflectedBase(object):
             amp = self.amp[np.newaxis, :, np.newaxis]
 
         # If differentially rotating, allow a `theta` keyword
-        alpha_theta = math.cast(kwargs.get("theta", 0.0)) * self.alpha
-        alpha_theta *= self._angle_factor
+        theta = math.cast(kwargs.get("theta", 0.0))
+        theta *= self._angle_factor
 
         # If limb-darkened, allow a `limbdarken` keyword
         if self.udeg > 0:
@@ -2231,7 +2231,8 @@ class ReflectedBase(object):
             ys,
             zs,
             Rs,
-            alpha_theta,
+            theta,
+            self.alpha,
             ld,
             self._sigr,
             on94_exact,
