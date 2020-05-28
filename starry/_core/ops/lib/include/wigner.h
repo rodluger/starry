@@ -646,30 +646,35 @@ public:
       ++NY;
     int NX = 2 * NY;
 
-    // Flattened arrays of lat/lon points on a Mollweide grid
-    // and their corresponding xyz coordinates on the sky
+    // Array of y values on Mollweide grid. Interleaved positive and
+    // negative values to help with the bookkeeping below.
+    RowVector<Scalar> tmp1, tmp2;
+    Scalar eps = 10 * mach_eps<Scalar>();
+    tmp1 = sqrt(2.0) * RowVector<Scalar>::LinSpaced(NY / 2, -1 + eps, 0);
+    tmp2 = -tmp1.segment(0, tmp1.size() - 1);
+    RowVector<Scalar> y_(tmp1.size() + tmp2.size());
+    using SkipTwo = Eigen::Map<RowVector<Scalar>, 0, Eigen::InnerStride<2>>;
+    SkipTwo(y_.data(), tmp1.size()) = tmp1;
+    SkipTwo(y_.data() + 1, tmp2.size()) = tmp2;
+    NY = y_.size();
+
+    // Array of x values on Mollweide grid.
+    tmp1 = 2.0 * sqrt(2.0) * RowVector<Scalar>::LinSpaced(NX / 2, -1 + eps, 0);
+    tmp2 = 2.0 * sqrt(2.0) * RowVector<Scalar>::LinSpaced(NX / 2, 0, 1 - eps);
+    RowVector<Scalar> x_(tmp1.size() + tmp2.size() - 1);
+    x_ << tmp1, tmp2.segment(1, tmp2.size() - 1);
+    NX = x_.size();
+
+    // Project to lat/lon according to
+    // https://en.wikipedia.org/wiki/Mollweide_projection
     std::vector<Scalar> lat, lon, x, y, z;
     lat.reserve(NX * NY);
     lon.reserve(NX * NY);
     x.reserve(NX * NY);
     y.reserve(NX * NY);
     z.reserve(NX * NY);
-
-    // https://en.wikipedia.org/wiki/Mollweide_projection
     Scalar theta, theta_fac, lat_cur, coslat_cur, sinlat_cur, lon_cur;
     Scalar lon0 = 1.5 * pi<Scalar>();
-    Scalar eps = 10 * mach_eps<Scalar>();
-    RowVector<Scalar> tmp1, tmp2;
-    tmp1 = sqrt(2.0) * RowVector<Scalar>::LinSpaced(NY / 2, -1 + eps, 0);
-    tmp2 = sqrt(2.0) * RowVector<Scalar>::LinSpaced(NY / 2, 0, 1 - eps);
-    RowVector<Scalar> y_(tmp1.size() + tmp2.size() - 1);
-    y_ << tmp1, tmp2.segment(1, tmp2.size() - 1);
-    NY = y_.size();
-    tmp1 = 2.0 * sqrt(2.0) * RowVector<Scalar>::LinSpaced(NX / 2, -1 + eps, 0);
-    tmp2 = 2.0 * sqrt(2.0) * RowVector<Scalar>::LinSpaced(NX / 2, 0, 1 - eps);
-    RowVector<Scalar> x_(tmp1.size() + tmp2.size() - 1);
-    x_ << tmp1, tmp2.segment(1, tmp2.size() - 1);
-    NX = x_.size();
     size_t idx = 0;
     for (int i = 0; i < NY; ++i) {
       theta = asin(y_(i) / sqrt(2.0));
@@ -677,8 +682,13 @@ public:
       coslat_cur = cos(lat_cur);
       sinlat_cur = sin(lat_cur);
       theta_fac = pi<Scalar>() / (2.0 * sqrt(2.0) * cos(theta));
-      unique_lat.push_back(lat_cur);
-      unique_idx.push_back(idx);
+      if (i % 2 == 0) {
+        // Keep track of the indices of each |latitude|
+        // We'll operate on all points with the same |latitude|
+        // simultaneously in `tensordotDz`.
+        unique_lat.push_back(-lat_cur);
+        unique_idx.push_back(idx);
+      }
       for (int j = 0; j < NX; ++j) {
         if (0.5 * y_(i) * y_(i) + 0.125 * x_(j) * x_(j) <= 1.0) {
           lat.push_back(lat_cur);
@@ -696,7 +706,7 @@ public:
     npix = (size_t)lat.size();
     nlat = (size_t)unique_lat.size();
 
-    // Magnitude of the differential rotation at each unique latitude
+    // Magnitude of the differential rotation at each unique |latitude|
     mag.resize(nlat);
     for (size_t i = 0; i < nlat; ++i) {
       mag(i) = pow(sin(unique_lat[i]), 2.0);
