@@ -746,13 +746,11 @@ public:
       // Apply the rotation at all times
       tensordotRz(M, theta.col(i));
 
-      // Convert to pixels
-      Matrix<Scalar> p = P * tensordotRz_result.transpose();
-
-      // Select only the pixels at the current latitude
+      // Convert to pixels at the current latitude
       int start = unique_idx[i];
       int size = (i < nlat - 1) ? unique_idx[i + 1] - start : npix - start;
-      Dp.block(start, 0, size, npts) = p.block(start, 0, size, npts);
+      Dp.block(start, 0, size, npts) =
+          P.block(start, 0, size, Ny) * tensordotRz_result.transpose();
     }
 
     // Convert back to Ylms
@@ -766,6 +764,10 @@ public:
   template <typename T1, bool M_IS_ROW_VECTOR = (T1::RowsAtCompileTime == 1)>
   inline void tensordotDz(const MatrixBase<T1> &M, const Vector<Scalar> &theta,
                           const Scalar &alpha, const Matrix<Scalar> &bMDz) {
+
+    // TODO TODO TODO
+    throw std::runtime_error("Not yet implemented!");
+
     // Shape checks
     size_t npts = theta.size();
     size_t Nr = M.cols();
