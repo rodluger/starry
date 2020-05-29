@@ -28,6 +28,7 @@ import theano.sparse as ts
 from theano.ifelse import ifelse
 import numpy as np
 from astropy import units
+from scipy.linalg import dft
 
 try:  # pragma: no cover
     from packaging import version
@@ -47,7 +48,9 @@ __all__ = ["OpsYlm", "OpsLD", "OpsReflected", "OpsRV", "OpsSystem"]
 class OpsYlm(object):
     """Class housing Theano operations for spherical harmonics maps."""
 
-    def __init__(self, ydeg, udeg, fdeg, nw, reflected=False, **kwargs):
+    def __init__(
+        self, ydeg, udeg, fdeg, nw, reflected=False, dr_fast=False, **kwargs
+    ):
         # Ingest kwargs
         self.ydeg = ydeg
         self.udeg = udeg
@@ -56,6 +59,7 @@ class OpsYlm(object):
         self.filter = (fdeg > 0) or (udeg > 0)
         self.nw = nw
         self._reflected = reflected
+        self.Ny = (self.ydeg + 1) ** 2
 
         # Instantiate the C++ Ops
         config.rootHandler.terminator = ""
@@ -82,7 +86,6 @@ class OpsYlm(object):
 
         # Rotation operations
         self._tensordotRz = tensordotRzOp(self._c_ops.tensordotRz)
-        self._tensordotDz = tensordotDzOp(self._c_ops.tensordotDz)
         self._dotR = dotROp(self._c_ops.dotR)
 
         # Filter
@@ -109,6 +112,17 @@ class OpsYlm(object):
             # TODO: Implement minimization for spectral maps?
             self._minimize = None
         self._LimbDarkIsPhysical = LDPhysicalOp(_c_ops.nroots)
+
+        # Differential rotation
+        self.dr_fast = dr_fast
+        self._tensordotDz = tensordotDzOp(self._c_ops.tensordotDz)
+        if dr_fast:
+            # Theano-based fourier version
+            self._dr_fast_init(**kwargs)
+            self.tensordotD = self._tensordotD_fourier
+        else:
+            # Wigner-based C++ version
+            self.tensordotD = self._tensordotD_wigner
 
     @property
     def rT(self):
@@ -242,7 +256,7 @@ class OpsYlm(object):
         return pTA1
 
     @autocompile
-    def tensordotD(self, M, theta, alpha):
+    def _tensordotD_wigner(self, M, theta, alpha):
         """
         Differentially rotate a matrix M in the co-rotating frame.
 
@@ -277,6 +291,21 @@ class OpsYlm(object):
             math.to_tensor(0.0),
             -0.5 * np.pi,
         )
+
+        return ifelse(tt.eq(alpha, 0.0), M, MD)
+
+    @autocompile
+    def _tensordotD_fourier(self, M, theta, alpha):
+        """
+        Differentially rotate a matrix M in the co-rotating frame.
+
+        """
+        # Trivial case
+        if self.ydeg == 0:
+            return M
+
+        # TODO !!!
+        MD = M
 
         return ifelse(tt.eq(alpha, 0.0), M, MD)
 
@@ -649,6 +678,117 @@ class OpsYlm(object):
             return R
         else:
             return compute(axis=axis, theta=theta)
+
+    def _dr_fast_init(self, dr_oversample=2, dr_lam=1e-12, **kwargs):
+
+        # Get pixel transforms
+        npix = dr_oversample * (self.ydeg + 1) ** 2
+        Ny = int(np.sqrt(npix * np.pi / 4.0))
+        Nx = 2 * Ny
+        y, x = np.meshgrid(
+            np.sqrt(2) * np.linspace(-1, 1, Ny),
+            2 * np.sqrt(2) * np.linspace(-1, 1, Nx),
+        )
+        x = x.flatten()
+        y = y.flatten()
+
+        # Remove off-grid points
+        a = np.sqrt(2)
+        b = 2 * np.sqrt(2)
+        idx = (y / a) ** 2 + (x / b) ** 2 <= 1
+        y = y[idx]
+        x = x[idx]
+
+        # https://en.wikipedia.org/wiki/Mollweide_projection
+        theta = np.arcsin(y / np.sqrt(2))
+        lat = np.arcsin((2 * theta + np.sin(2 * theta)) / np.pi)
+        lon0 = 3 * np.pi / 2
+        lon = lon0 + np.pi * x / (2 * np.sqrt(2) * np.cos(theta))
+
+        # Add points at the poles
+        lat = np.append(lat, [-np.pi / 2, 0, 0, np.pi / 2])
+        lon = np.append(
+            lon, [1.5 * np.pi, 1.5 * np.pi, 2.5 * np.pi, 1.5 * np.pi]
+        )
+
+        # Back to Cartesian, this time on the *sky*
+        x = np.reshape(np.cos(lat) * np.cos(lon), [1, -1])
+        y = np.reshape(np.cos(lat) * np.sin(lon), [1, -1])
+        z = np.reshape(np.sin(lat), [1, -1])
+        R = self.RAxisAngle(np.array([1.0, 0.0, 0.0]), np.array(-np.pi / 2))
+        x, y, z = np.dot(R, np.concatenate((x, y, z)))
+        x = x.reshape(-1)
+        y = y.reshape(-1)
+        z = z.reshape(-1)
+
+        # Flatten and fix the longitude offset, then sort by latitude
+        lat = lat.reshape(-1)
+        lon = (lon - 1.5 * np.pi).reshape(-1)
+        idx = np.lexsort([lon, lat])
+        lat = lat[idx]
+        lon = lon[idx]
+        x = x[idx]
+        y = y[idx]
+        z = z[idx]
+
+        # Get indices of unique latitudes
+        unique_lat = np.sort(list(set(lat)))
+        idx = np.array([lat == l for l in unique_lat])
+
+        # Dimensions
+        npix = len(lat)
+        self._dr_nlat = len(unique_lat)
+        ncoeff = (self.ydeg + 1) ** 2
+
+        # Get the forward (P) and reverse (Q) pixel transforms
+        pT = self.pT(x, y, z)[:, :ncoeff]
+        P = pT * self._c_ops.A1
+        Q = np.linalg.solve(P.T.dot(P) + dr_lam * np.eye(ncoeff), P.T)
+
+        # Pre-compute the transform matrices
+        self._dr_arg = [None for row in idx]
+        self._dr_QXInvR = [None for row in idx]
+        self._dr_QXInvI = [None for row in idx]
+        self._dr_XRP = [None for row in idx]
+        self._dr_XIP = [None for row in idx]
+        for i, row in enumerate(idx):
+            N = len(lon[row])
+            X = dft(N)
+            XInv = np.linalg.inv(X)
+            XInvR = XInv.real
+            XInvI = XInv.imag
+            XR = X.real
+            XI = X.imag
+            d = (lon[row][-1] - lon[row][0]) / N
+            if d == 0:
+                d = 2 * np.pi
+            self._dr_arg[i] = (
+                -2
+                * np.pi
+                * np.fft.fftfreq(N, d=d)
+                * np.sin(unique_lat[i]) ** 2
+            )
+            self._dr_QXInvR[i] = Q[:, row].dot(XInvR)
+            self._dr_QXInvI[i] = Q[:, row].dot(XInvI)
+            self._dr_XRP[i] = XR.dot(P[row])
+            self._dr_XIP[i] = XI.dot(P[row])
+
+    @autocompile
+    def _dr_fast_getD(self, theta):
+        D = tt.zeros((self.Ny, self.Ny))
+        for i in range(self._dr_nlat):
+            TR = tt.cos(self._dr_arg[i] * theta)
+            TI = -tt.sin(self._dr_arg[i] * theta)
+            D += tt.dot(self._dr_QXInvR[i] * TR, self._dr_XRP[i])
+            D -= tt.dot(self._dr_QXInvR[i] * TI, self._dr_XIP[i])
+            D -= tt.dot(self._dr_QXInvI[i] * TR, self._dr_XIP[i])
+            D -= tt.dot(self._dr_QXInvI[i] * TI, self._dr_XRP[i])
+
+        # Preserve luminosity (TODO)
+        # D[0, :] = 0
+        # D[0, 0] = 1
+
+        return D
 
 
 class OpsLD(object):
