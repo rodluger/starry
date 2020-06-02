@@ -602,9 +602,10 @@ class MapBase(object):
         if norm is None or norm == "rv":
             vmin = np.nanmin(image)
             vmax = np.nanmax(image)
-            if vmin == vmax:
-                vmin -= 1e-15
-                vmax += 1e-15
+            # Set a minimum contrast
+            if np.abs(vmin - vmax) < 1e-12:
+                vmin -= 1e-12
+                vmax += 1e-12
             if norm is None:
                 norm = colors.Normalize(vmin=vmin, vmax=vmax)
             elif norm == "rv":
@@ -1295,7 +1296,10 @@ class YlmBase(object):
             lat, lon = self.ops.compute_moll_grid(res)[0]
         else:
             lat, lon = self.ops.compute_ortho_grid(res)[0]
-        return lat / self._angle_factor, lon / self._angle_factor
+        return (
+            math.reshape(lat, (res, res)) / self._angle_factor,
+            math.reshape(lon, (res, res)) / self._angle_factor,
+        )
 
     def load(
         self,

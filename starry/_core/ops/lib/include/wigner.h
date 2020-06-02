@@ -755,6 +755,8 @@ public:
 
     // Convert back to Ylms
     tensordotDz_result = (Q * Dp).transpose();
+
+    // TODO: Preserve luminosity
   }
 
   /*

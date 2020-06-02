@@ -257,7 +257,10 @@ class OpsYlm(object):
         # Apply the differential rotation operator
         if self.nw is None:
             y = tt.reshape(
-                self.tensordotD(tt.reshape(y, (1, -1)), [theta], alpha), (-1,)
+                self.tensordotD(
+                    tt.reshape(y, (1, -1)), tt.reshape(theta, (-1,)), alpha
+                ),
+                (-1,),
             )
         else:
             y = tt.transpose(
@@ -652,7 +655,9 @@ class OpsYlm(object):
             -0.5 * np.pi,
         )
 
-        return ifelse(tt.eq(alpha, 0.0), M, MD)
+        return ifelse(
+            tt.eq(alpha, 0.0), tt.reshape(M, (M.shape[0], M.shape[1])), MD
+        )
 
 
 class OpsLD(object):
