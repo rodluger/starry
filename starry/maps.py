@@ -300,7 +300,10 @@ class MapBase(object):
         self._L = None
         self._solution = None
 
+        # Check for bad kwargs, with the follwoing exceptions
         kwargs.pop("source_npts", None)
+        kwargs.pop("dr_oversample", None)
+        kwargs.pop("dr_lam", None)
         self._check_kwargs("reset", kwargs)
 
     def show(self, **kwargs):
@@ -1065,7 +1068,12 @@ class YlmBase(object):
 
     @alpha.setter
     def alpha(self, value):
-        self._alpha = math.cast(value)
+        if self.ydeg <= 1:
+            raise NotImplementedError(
+                "Differential rotation requires `ydeg` > 1."
+            )
+        else:
+            self._alpha = math.cast(value)
 
     def design_matrix(self, **kwargs):
         r"""Compute and return the light curve design matrix :math:`A`.
@@ -1569,6 +1577,10 @@ class YlmBase(object):
             This is an experimental feature. Detailed docs coming soon.
 
         """
+        # Prevent undersampling for ydeg = 1
+        if self.ydeg <= 1:
+            self.oversample = max(oversample, 3)
+
         # Target number of pixels
         npix = oversample * (self.ydeg + 1) ** 2
         Ny = int(np.sqrt(npix * np.pi / 4.0))

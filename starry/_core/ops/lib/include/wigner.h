@@ -289,6 +289,7 @@ protected:
   std::vector<size_t> unique_idx;
   Matrix<Scalar> P, Q;
   RowVector<Scalar> mag;
+  std::vector<Matrix<Scalar>> T;
 
 public:
   // Tensor z rotation results
@@ -721,10 +722,33 @@ public:
     Matrix<Scalar> PTP = P.transpose() * P;
     PTP += lam * Vector<Scalar>::Ones(Ny).asDiagonal();
     Q = PTP.lu().solve(P.transpose());
+
+    // It's easier to operate on their transposes
+    Q.transposeInPlace();
+    P.transposeInPlace();
+
+    // The full transform matrix for each latitude
+    T.reserve(nlat);
+    for (size_t i = 0; i < nlat; ++i) {
+      size_t start = unique_idx[i];
+      size_t size = (i < nlat - 1) ? unique_idx[i + 1] - start : npix - start;
+      T.push_back(P.block(0, start, Ny, size) * Q.block(start, 0, size, Ny));
+    }
   }
 
   /*
-  Computes the tensor dot product M . Dz(theta).
+    Computes the tensor dot product M . Dz(theta).
+
+    NOTE: A much simpler (but slightly slower) implementation
+    of this function is as follows:
+
+        tensordotDz_result.setZero(theta.size(), Ny);
+        Scalar fac;
+        for (size_t i = 0; i < nlat; ++i) {
+          fac = (1 - alpha * mag(i));
+          tensordotRz(M, theta * fac);
+          tensordotDz_result += tensordotRz_result * T[i];
+        }
 
   */
   template <typename T1, bool M_IS_ROW_VECTOR = (T1::RowsAtCompileTime == 1)>
@@ -738,7 +762,7 @@ public:
         theta_ * (RowVector<Scalar>::Ones(nlat) - alpha * mag);
 
     // The pixel representation of the differentially-rotated map
-    Matrix<Scalar> Dp(npix, npts);
+    Matrix<Scalar> Dp(npts, npix);
 
     // Rotate the map at each latitude
     for (size_t i = 0; i < nlat; ++i) {
@@ -749,14 +773,12 @@ public:
       // Convert to pixels at the current latitude
       int start = unique_idx[i];
       int size = (i < nlat - 1) ? unique_idx[i + 1] - start : npix - start;
-      Dp.block(start, 0, size, npts) =
-          P.block(start, 0, size, Ny) * tensordotRz_result.transpose();
+      Dp.block(0, start, npts, size) =
+          tensordotRz_result * P.block(0, start, Ny, size);
     }
 
     // Convert back to Ylms
-    tensordotDz_result = (Q * Dp).transpose();
-
-    // TODO: Preserve luminosity
+    tensordotDz_result = Dp * Q;
   }
 
   /*
@@ -767,50 +789,23 @@ public:
   inline void tensordotDz(const MatrixBase<T1> &M, const Vector<Scalar> &theta,
                           const Scalar &alpha, const Matrix<Scalar> &bMDz) {
 
-    // TODO TODO TODO
-    throw std::runtime_error("Not yet implemented!");
-
-    // Shape checks
-    size_t npts = theta.size();
-    size_t Nr = M.cols();
-    int degr = sqrt(Nr) - 1;
-
-    // Compute the sin & cos matrices
-    computeRz(theta);
-
-    // Init grads
-    tensordotDz_btheta.setZero(npts);
-    tensordotDz_bM.setZero(M.rows(), Nr);
+    // Initialize
+    tensordotDz_bM.setZero(theta.size(), Ny);
+    tensordotDz_btheta.setZero(theta.size());
     tensordotDz_balpha = 0.0;
-    if (unlikely((npts == 0) || (M.rows() == 0)))
-      return;
+    Scalar fac;
 
-    // Dot the sines and cosines in
-    for (int l = 0; l < degr + 1; ++l) {
-      for (int j = 0; j < 2 * l + 1; ++j) {
-        // Pre-compute these guys
-        tmp_c = bMDz.col(l * l + j).cwiseProduct(cosmt.col(l * l + j));
-        tmp_s = bMDz.col(l * l + j).cwiseProduct(sinmt.col(l * l + j));
+    // Rotate the map at each latitude
+    for (size_t i = 0; i < nlat; ++i) {
 
-        // d / dtheta
-        if (M_IS_ROW_VECTOR) {
-          tensordotDz_btheta +=
-              (j - l) * (M(l * l + 2 * l - j) * tmp_c - M(l * l + j) * tmp_s);
-        } else {
-          tensordotDz_btheta +=
-              (j - l) * (M.col(l * l + 2 * l - j).cwiseProduct(tmp_c) -
-                         M.col(l * l + j).cwiseProduct(tmp_s));
-        }
+      // Backprop through the rotation operator to get `tensordotRz_bM`
+      fac = (1 - alpha * mag(i));
+      tensordotRz(M, theta * fac, bMDz * T[i].transpose());
 
-        // d / dM
-        if (M_IS_ROW_VECTOR) {
-          tensordotDz_bM(l * l + 2 * l - j) += tmp_s.sum();
-          tensordotDz_bM(l * l + j) += tmp_c.sum();
-        } else {
-          tensordotDz_bM.col(l * l + 2 * l - j) += tmp_s;
-          tensordotDz_bM.col(l * l + j) += tmp_c;
-        }
-      }
+      // Apply the differential transform
+      tensordotDz_bM += tensordotRz_bM;
+      tensordotDz_btheta += tensordotRz_btheta * fac;
+      tensordotDz_balpha -= theta.transpose().dot(tensordotRz_btheta) * mag(i);
     }
   }
 };

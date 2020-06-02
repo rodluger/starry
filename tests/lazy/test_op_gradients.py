@@ -431,7 +431,7 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 def test_diffrot(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
     np.random.seed(0)
     with change_flags(compute_test_value="off"):
-        map = starry.Map(ydeg=3, drorder=1)
+        map = starry.Map(ydeg=5)
         y = np.random.randn(4, map.Ny)
         alpha = 1.0
         theta = [0.1, 0.5, 1.0, 2.0]  # radians
