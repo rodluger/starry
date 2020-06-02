@@ -34,14 +34,17 @@ def test_intensity(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         y = [1.0] + list(np.random.randn(8))
         u = [-1.0] + list(np.random.randn(2))
         f = [np.pi]
-        wta = 0.0
+        theta = 0.0
+        alpha = 0.0
 
-        def intensity(lat, lon, y, u, f, wta):
-            return map.ops.intensity(lat, lon, y, u, f, wta, np.array(True))
+        def intensity(lat, lon, y, u, f, theta, alpha):
+            return map.ops.intensity(
+                lat, lon, y, u, f, theta, alpha, np.array(True)
+            )
 
         verify_grad(
             intensity,
-            (lat, lon, y, u, f, wta),
+            (lat, lon, y, u, f, theta, alpha),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -225,10 +228,11 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         ys = source[:, 1]
         zs = source[:, 2]
         Rs = 1.0
-        wta = 0.0
+        theta = 0.0
+        alpha = 0.0
         sigr = 30 * np.pi / 180
 
-        def intensity(lat, lon, y, u, f, xs, ys, zs, Rs, wta, sigr):
+        def intensity(lat, lon, y, u, f, xs, ys, zs, Rs, theta, alpha, sigr):
             return map.ops.intensity(
                 lat,
                 lon,
@@ -239,7 +243,8 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
                 ys,
                 zs,
                 Rs,
-                wta,
+                theta,
+                alpha,
                 np.array(False),
                 sigr,
                 np.array(False),
@@ -248,7 +253,7 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
         verify_grad(
             intensity,
-            (lat, lon, y, u, f, xs, ys, zs, Rs, wta, sigr),
+            (lat, lon, y, u, f, xs, ys, zs, Rs, theta, alpha, sigr),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -424,15 +429,15 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
 
 def test_diffrot(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
-
     np.random.seed(0)
     with change_flags(compute_test_value="off"):
         map = starry.Map(ydeg=3, drorder=1)
         y = np.random.randn(4, map.Ny)
-        wta = [0.1, 0.5, 1.0, 2.0]  # radians
+        alpha = 1.0
+        theta = [0.1, 0.5, 1.0, 2.0]  # radians
         verify_grad(
             map.ops.tensordotD,
-            (y, wta),
+            (y, theta, alpha),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,

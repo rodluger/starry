@@ -86,4 +86,3 @@ def test_coefficient_numbers():
     assert map.Ny == 9
     assert map.Nu == 4
     assert map.Nf == 1
-    assert map.drorder == 0
