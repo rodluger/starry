@@ -14,18 +14,20 @@ def test_zero_lat_lon(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
     """
 
-    lats = [0.0001, 0.0, 30.0, 0.0]
-    lons = [30.0, 30.0, 0.0, 0.0]
+    lats = [0.0001, 0.0, np.pi / 6, 0.0]
+    lons = [np.pi / 6, np.pi / 6, 0.0, 0.0]
 
     for lat, lon in zip(lats, lons):
         with change_flags(compute_test_value="off"):
             map = starry.Map(ydeg=2, udeg=2)
             np.random.seed(11)
-            y = [1.0] + list(np.random.randn(8))
-            u = [-1.0] + list(np.random.randn(2))
-            f = [np.pi]
-            theta = 0.0
-            alpha = 0.0
+            y = np.array([1.0] + list(np.random.randn(8)))
+            u = np.array([-1.0] + list(np.random.randn(2)))
+            f = np.array([np.pi])
+            theta = np.array(0.0)
+            alpha = np.array(0.1)
+            lat = np.array(lat)
+            lon = np.array(lon)
 
             def intensity(lat, lon, y, u, f, theta, alpha):
                 return map.ops.intensity(

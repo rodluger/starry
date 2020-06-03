@@ -642,6 +642,8 @@ public:
 
     // Grid resolution
     Scalar npix_ = oversample * (ydeg + 1) * (ydeg + 1);
+    if (npix_ < 20)
+      npix_ = 20;
     int NY = (int)sqrt(npix_ * 0.25 * pi<Scalar>());
     if ((NY % 2) != 0)
       ++NY;

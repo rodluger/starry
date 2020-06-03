@@ -35,7 +35,7 @@ def test_intensity(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         u = [-1.0] + list(np.random.randn(2))
         f = [np.pi]
         theta = 0.0
-        alpha = 0.0
+        alpha = 0.1
 
         def intensity(lat, lon, y, u, f, theta, alpha):
             return map.ops.intensity(
@@ -161,7 +161,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         y = np.ones(9)
         u = [-1.0]
         f = [np.pi]
-        alpha = 0.0
+        alpha = 0.1
 
         func = lambda *args: tt.dot(map.ops.X(*args), y)
 
@@ -229,7 +229,7 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         zs = source[:, 2]
         Rs = 1.0
         theta = 0.0
-        alpha = 0.0
+        alpha = 0.1
         sigr = 30 * np.pi / 180
 
         def intensity(lat, lon, y, u, f, xs, ys, zs, Rs, theta, alpha, sigr):
@@ -275,7 +275,7 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         y = np.ones(9)
         u = [-1.0]
         f = [np.pi]
-        alpha = 0.0
+        alpha = 0.1
         Rs = 1.0
         sigr = 30 * np.pi / 180
 
@@ -326,7 +326,7 @@ def test_flux_ylm_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         np.random.seed(14)
         u = [-1.0] + list(np.random.randn(2))
         f = [np.pi]
-        alpha = 0.0
+        alpha = 0.1
 
         func = lambda *args: tt.dot(map.ops.X(*args), y)
 

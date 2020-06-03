@@ -1068,12 +1068,7 @@ class YlmBase(object):
 
     @alpha.setter
     def alpha(self, value):
-        if self.ydeg <= 1:
-            raise NotImplementedError(
-                "Differential rotation requires `ydeg` > 1."
-            )
-        else:
-            self._alpha = math.cast(value)
+        self._alpha = math.cast(value)
 
     def design_matrix(self, **kwargs):
         r"""Compute and return the light curve design matrix :math:`A`.

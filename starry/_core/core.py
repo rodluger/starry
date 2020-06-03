@@ -196,6 +196,7 @@ class OpsYlm(object):
             rTA1 = ts.dot(tt.dot(self.rT, F), self.A1)
         else:
             rTA1 = self.rTA1
+        rTA1 = tt.tile(rTA1, (theta[i_rot].shape[0], 1))
         X = tt.set_subtensor(
             X[i_rot], self.right_project(rTA1, inc, obl, theta[i_rot], alpha)
         )
@@ -639,12 +640,8 @@ class OpsYlm(object):
 
         # Apply the solid body rotation + differential rotation (Dz)
         # then undo the solid body rotation (Rz)
-        if theta.ndim > 0:
-            MD = self.tensordotDz(MD, theta, alpha)
-            MD = self.tensordotRz(MD, -theta)
-        else:
-            MD = self.tensordotDz(MD, tt.reshape(theta, (1,)), alpha)
-            MD = self.tensordotRz(MD, tt.reshape(-theta, (1,)))
+        MD = self.tensordotDz(MD, tt.reshape(theta, (-1,)), alpha)
+        MD = self.tensordotRz(MD, tt.reshape(-theta, (-1,)))
 
         # Rotate back out of the polar frame
         MD = self.dotR(
