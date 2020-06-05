@@ -37,15 +37,16 @@ def test_intensity(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         theta = 0.0
         alpha = 0.1
         tau = 0.5
+        delta = 0.0
 
-        def intensity(lat, lon, y, u, f, theta, alpha, tau):
+        def intensity(lat, lon, y, u, f, theta, alpha, tau, delta):
             return map.ops.intensity(
-                lat, lon, y, u, f, theta, alpha, tau, np.array(True)
+                lat, lon, y, u, f, theta, alpha, tau, delta, np.array(True)
             )
 
         verify_grad(
             intensity,
-            (lat, lon, y, u, f, theta, alpha, tau),
+            (lat, lon, y, u, f, theta, alpha, tau, delta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -164,13 +165,14 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         f = [np.pi]
         alpha = 0.1
         tau = 0.5
+        delta = 0.0
 
         func = lambda *args: tt.dot(map.ops.X(*args), y)
 
         # Just rotation
         verify_grad(
             func,
-            (theta, xo, yo, zo, 0.0, inc, obl, u, f, alpha, tau),
+            (theta, xo, yo, zo, 0.0, inc, obl, u, f, alpha, tau, delta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -180,7 +182,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         # Just occultation
         verify_grad(
             func,
-            (theta, xo / 3, yo, zo, ro, inc, obl, u, f, alpha, tau),
+            (theta, xo / 3, yo, zo, ro, inc, obl, u, f, alpha, tau, delta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -190,7 +192,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         # Rotation + occultation
         verify_grad(
             func,
-            (theta, xo, yo, zo, ro, inc, obl, u, f, alpha, tau),
+            (theta, xo, yo, zo, ro, inc, obl, u, f, alpha, tau, delta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -233,9 +235,10 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         theta = 0.0
         alpha = 0.1
         tau = 0.5
+        delta = 0.0
         sigr = 30 * np.pi / 180
 
-        def intensity(lat, lon, y, u, f, xs, ys, zs, Rs, theta, alpha, tau, sigr):
+        def intensity(lat, lon, y, u, f, xs, ys, zs, Rs, theta, alpha, tau, delta, sigr):
             return map.ops.intensity(
                 lat,
                 lon,
@@ -249,6 +252,7 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
                 theta,
                 alpha,
                 tau,
+                delta,
                 np.array(False),
                 sigr,
                 np.array(False),
@@ -257,7 +261,7 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
         verify_grad(
             intensity,
-            (lat, lon, y, u, f, xs, ys, zs, Rs, theta, alpha, tau, sigr),
+            (lat, lon, y, u, f, xs, ys, zs, Rs, theta, alpha, tau, delta, sigr),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -281,10 +285,11 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         f = [np.pi]
         alpha = 0.1
         tau = 0.5
+        delta = 0.0
         Rs = 1.0
         sigr = 30 * np.pi / 180
 
-        def func(theta, xs, ys, zs, Rs, ro, inc, obl, u, f, alpha, tau):
+        def func(theta, xs, ys, zs, Rs, ro, inc, obl, u, f, alpha, tau, delta):
             return tt.dot(
                 map.ops.X(
                     theta,
@@ -302,6 +307,7 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
                     f,
                     alpha,
                     tau,
+                    delta,
                     sigr,
                 ),
                 y,
@@ -310,7 +316,7 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         # Just rotation
         verify_grad(
             func,
-            (theta, xs, ys, zs, Rs, ro, inc, obl, u, f, alpha, tau),
+            (theta, xs, ys, zs, Rs, ro, inc, obl, u, f, alpha, tau, delta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -334,13 +340,14 @@ def test_flux_ylm_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         f = [np.pi]
         alpha = 0.1
         tau = 0.5
+        delta = 0.0
 
         func = lambda *args: tt.dot(map.ops.X(*args), y)
 
         # Just rotation
         verify_grad(
             func,
-            (theta, xo, yo, zo, 0.0, inc, obl, u, f, alpha, tau),
+            (theta, xo, yo, zo, 0.0, inc, obl, u, f, alpha, tau, delta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -350,7 +357,7 @@ def test_flux_ylm_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         # Just occultation
         verify_grad(
             func,
-            (theta, xo / 3, yo, zo, ro, inc, obl, u, f, alpha, tau),
+            (theta, xo / 3, yo, zo, ro, inc, obl, u, f, alpha, tau, delta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -360,7 +367,7 @@ def test_flux_ylm_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         # Rotation + occultation
         verify_grad(
             func,
-            (theta, xo, yo, zo, ro, inc, obl, u, f, alpha, tau),
+            (theta, xo, yo, zo, ro, inc, obl, u, f, alpha, tau, delta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -402,13 +409,14 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         veq = 0.5
         alpha = 0.3
         tau = 0.5
+        delta = 0.0
         y = np.ones(9)
         u = [-1.0]
 
         # Just rotation
         verify_grad(
             map.ops.rv,
-            (theta, xo, yo, zo, 0.0, inc, obl, y, u, veq, alpha, tau),
+            (theta, xo, yo, zo, 0.0, inc, obl, y, u, veq, alpha, tau, delta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -418,7 +426,21 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         # Just occultation
         verify_grad(
             map.ops.rv,
-            (theta, xo / 3, yo, zo, ro, inc, obl, y, u, veq, alpha, tau),
+            (
+                theta,
+                xo / 3,
+                yo,
+                zo,
+                ro,
+                inc,
+                obl,
+                y,
+                u,
+                veq,
+                alpha,
+                tau,
+                delta,
+            ),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -428,7 +450,7 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         # Rotation + occultation
         verify_grad(
             map.ops.rv,
-            (theta, xo, yo, zo, ro, inc, obl, y, u, veq, alpha, tau),
+            (theta, xo, yo, zo, ro, inc, obl, y, u, veq, alpha, tau, delta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
@@ -443,10 +465,11 @@ def test_diffrot(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
         y = np.random.randn(4, map.Ny)
         alpha = 1.0
         tau = 0.5
+        delta = 0.0
         theta = [0.1, 0.5, 1.0, 2.0]  # radians
         verify_grad(
             map.ops.tensordotD,
-            (y, theta, alpha, tau),
+            (y, theta, alpha, tau, delta),
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
