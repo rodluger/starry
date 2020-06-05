@@ -26,17 +26,18 @@ def test_zero_lat_lon(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             f = np.array([np.pi])
             theta = np.array(0.0)
             alpha = np.array(0.1)
+            tau = np.array(0.5)
             lat = np.array(lat)
             lon = np.array(lon)
 
-            def intensity(lat, lon, y, u, f, theta, alpha):
+            def intensity(lat, lon, y, u, f, theta, alpha, tau):
                 return map.ops.intensity(
-                    lat, lon, y, u, f, theta, alpha, np.array(True)
+                    lat, lon, y, u, f, theta, alpha, tau, np.array(True)
                 )
 
             verify_grad(
                 intensity,
-                (lat, lon, y, u, f, theta, alpha),
+                (lat, lon, y, u, f, theta, alpha, tau),
                 abs_tol=abs_tol,
                 rel_tol=rel_tol,
                 eps=eps,

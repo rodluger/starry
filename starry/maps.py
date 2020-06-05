@@ -75,6 +75,7 @@ class MapBase(object):
         self._inc = math.cast(0.5 * np.pi)
         self._obl = math.cast(0.0)
         self._alpha = math.cast(0.0)
+        self._tau = math.cast(0.5)
         self._sigr = math.cast(0.0)
 
         # Units
@@ -423,12 +424,13 @@ class MapBase(object):
                     y = self._y.eval()
                     f = self._f.eval()
                     alpha = self._alpha.eval()
+                    tau = self._tau.eval()
 
                     # Explicitly call the compiled version of `render`
                     image = self._amp.eval().reshape(
                         -1, 1, 1
                     ) * self.ops.render(
-                        res, projection, theta, inc, obl, y, u, f, alpha
+                        res, projection, theta, inc, obl, y, u, f, alpha, tau
                     )
 
                 else:
@@ -1030,6 +1032,11 @@ class YlmBase(object):
         else:
             self._alpha = math.cast(0.0)
 
+        if kwargs.get("tau", None) is not None:
+            self.tau = kwargs.pop("tau")
+        else:
+            self._tau = math.cast(0.5)
+
         super(YlmBase, self).reset(**kwargs)
 
     @property
@@ -1070,6 +1077,24 @@ class YlmBase(object):
     def alpha(self, value):
         self._alpha = math.cast(value)
 
+    @property
+    def tau(self):
+        """The damping coefficient of the map when differential rotation is enabled.
+
+        This parameter is a unitless damping timescale for the `l > 0` features
+        when :py:attr:`alpha` is nonzero. `tau` is measured as a fraction of the
+        winding timescale, i.e., the time it takes for a feature at the equator
+        to lap a feature at the pole. The defualt value is `0.5`, meaning
+        that features will damp on a timescale corresponding to half a winding
+        timescale.
+
+        """
+        return self._tau
+
+    @tau.setter
+    def tau(self, value):
+        self._tau = math.cast(value)
+
     def design_matrix(self, **kwargs):
         r"""Compute and return the light curve design matrix :math:`A`.
 
@@ -1107,6 +1132,7 @@ class YlmBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._tau,
         )
 
     def intensity_design_matrix(self, lat=0, lon=0):
@@ -1171,6 +1197,7 @@ class YlmBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._tau,
         )
 
     def intensity(self, lat=0, lon=0, **kwargs):
@@ -1199,7 +1226,7 @@ class YlmBase(object):
         theta *= self._angle_factor
 
         # If limb-darkened, allow a `limbdarken` keyword
-        if self.udeg > 0 and kwargs.pop("limbdarken", True):
+        if kwargs.pop("limbdarken", True) and self.udeg > 0:
             ld = np.array(True)
         else:
             ld = np.array(False)
@@ -1209,7 +1236,15 @@ class YlmBase(object):
 
         # Compute & return
         return self.amp * self.ops.intensity(
-            lat, lon, self._y, self._u, self._f, theta, self.alpha, ld
+            lat,
+            lon,
+            self._y,
+            self._u,
+            self._f,
+            theta,
+            self.alpha,
+            self.tau,
+            ld,
         )
 
     def render(self, res=300, projection="ortho", theta=0.0):
@@ -1270,6 +1305,7 @@ class YlmBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._tau,
         )
 
         # Squeeze?
@@ -1894,6 +1930,7 @@ class RVBase(object):
             self._u,
             self._veq,
             self._alpha,
+            self._tau,
         )
 
     def intensity(self, **kwargs):
@@ -2110,6 +2147,7 @@ class ReflectedBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._tau,
             self._sigr,
         )
 
@@ -2161,6 +2199,7 @@ class ReflectedBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._tau,
             self._sigr,
         )
 
@@ -2243,7 +2282,8 @@ class ReflectedBase(object):
             zs,
             Rs,
             theta,
-            self.alpha,
+            self._alpha,
+            self._tau,
             ld,
             self._sigr,
             on94_exact,
@@ -2336,6 +2376,7 @@ class ReflectedBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._tau,
             xs,
             ys,
             zs,
@@ -2389,6 +2430,7 @@ class ReflectedBase(object):
             u = self._u.eval()
             f = self._f.eval()
             alpha = self._alpha.eval()
+            tau = self._tau.eval()
             sigr = self._sigr.eval()
             amp = amp.eval()
         else:
@@ -2398,6 +2440,7 @@ class ReflectedBase(object):
             u = self._u
             f = self._f
             alpha = self._alpha
+            tau = self._tau
             sigr = self._sigr
 
         if screen and illuminate:
@@ -2415,6 +2458,7 @@ class ReflectedBase(object):
                 u,
                 f,
                 alpha,
+                tau,
                 xs,
                 ys,
                 zs,
@@ -2436,6 +2480,7 @@ class ReflectedBase(object):
                 u,
                 f,
                 alpha,
+                tau,
                 xs,
                 ys,
                 zs,
@@ -2461,6 +2506,7 @@ class ReflectedBase(object):
                 u,
                 f,
                 alpha,
+                tau,
                 xs,
                 ys,
                 zs,

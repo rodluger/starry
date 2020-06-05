@@ -143,8 +143,18 @@ class OpsYlm(object):
         return self._tensordotRz(matrix, theta)
 
     @autocompile
-    def tensordotDz(self, matrix, theta, alpha):
-        return self._tensordotDz(matrix, theta, alpha)
+    def tensordotDz(self, matrix, theta, alpha, tau):
+        # Apply the differential rotation
+        res = self._tensordotDz(matrix, theta, alpha)
+
+        # Preserve the luminosity
+        res = tt.set_subtensor(res[:, 0], matrix[:, 0])
+
+        # Dampen the features on a timescale `tau`
+        amp = tt.exp(-0.5 * (theta * alpha / (2 * np.pi * tau)) ** 2)
+        res = tt.set_subtensor(res[:, 1:], (amp[:, None] * res[:, 1:]))
+
+        return res
 
     @autocompile
     def dotR(self, matrix, ux, uy, uz, theta):
@@ -173,7 +183,7 @@ class OpsYlm(object):
         return self._minimize(y)
 
     @autocompile
-    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
+    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha, tau):
         """Compute the light curve design matrix."""
         # Determine shapes
         rows = theta.shape[0]
@@ -198,7 +208,8 @@ class OpsYlm(object):
             rTA1 = self.rTA1
         rTA1 = tt.tile(rTA1, (theta[i_rot].shape[0], 1))
         X = tt.set_subtensor(
-            X[i_rot], self.right_project(rTA1, inc, obl, theta[i_rot], alpha)
+            X[i_rot],
+            self.right_project(rTA1, inc, obl, theta[i_rot], alpha, tau),
         )
 
         # Occultation + rotation operator
@@ -210,15 +221,18 @@ class OpsYlm(object):
             A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
             sTAR = tt.dot(sTAR, A1InvFA1)
         X = tt.set_subtensor(
-            X[i_occ], self.right_project(sTAR, inc, obl, theta[i_occ], alpha)
+            X[i_occ],
+            self.right_project(sTAR, inc, obl, theta[i_occ], alpha, tau),
         )
 
         return X
 
     @autocompile
-    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha):
+    def flux(self, theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha, tau):
         """Compute the light curve."""
-        return tt.dot(self.X(theta, xo, yo, zo, ro, inc, obl, u, f, alpha), y)
+        return tt.dot(
+            self.X(theta, xo, yo, zo, ro, inc, obl, u, f, alpha, tau), y
+        )
 
     @autocompile
     def P(self, lat, lon):
@@ -247,7 +261,7 @@ class OpsYlm(object):
         return pTA1
 
     @autocompile
-    def intensity(self, lat, lon, y, u, f, theta, alpha, ld):
+    def intensity(self, lat, lon, y, u, f, theta, alpha, tau, ld):
         """Compute the intensity at a point or a set of points."""
         # Get the Cartesian points
         xpt, ypt, zpt = self.latlon_to_xyz(lat, lon)
@@ -259,14 +273,17 @@ class OpsYlm(object):
         if self.nw is None:
             y = tt.reshape(
                 self.tensordotD(
-                    tt.reshape(y, (1, -1)), tt.reshape(theta, (-1,)), alpha
+                    tt.reshape(y, (1, -1)),
+                    tt.reshape(theta, (-1,)),
+                    alpha,
+                    tau,
                 ),
                 (-1,),
             )
         else:
             y = tt.transpose(
                 self.tensordotD(
-                    tt.transpose(y), tt.ones(self.nw) * theta, alpha
+                    tt.transpose(y), tt.ones(self.nw) * theta, alpha, tau
                 )
             )
 
@@ -285,7 +302,7 @@ class OpsYlm(object):
         return tt.dot(pT, A1y)
 
     @autocompile
-    def render(self, res, projection, theta, inc, obl, y, u, f, alpha):
+    def render(self, res, projection, theta, inc, obl, y, u, f, alpha, tau):
         """Render the map on a Cartesian grid."""
         # Compute the Cartesian grid
         xyz = ifelse(
@@ -311,10 +328,11 @@ class OpsYlm(object):
                     obl,
                     theta,
                     alpha,
+                    tau,
                 ),
                 tt.transpose(
                     self.tensordotD(
-                        tt.tile(y, [theta.shape[0], 1]), theta, alpha
+                        tt.tile(y, [theta.shape[0], 1]), theta, alpha, tau
                     )
                 ),
             )
@@ -322,7 +340,7 @@ class OpsYlm(object):
             Ry = ifelse(
                 tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
                 self.left_project(
-                    y, inc, obl, tt.tile(theta[0], self.nw), alpha
+                    y, inc, obl, tt.tile(theta[0], self.nw), alpha, tau
                 ),
                 y,
             )
@@ -430,7 +448,7 @@ class OpsYlm(object):
         )
 
     @autocompile
-    def right_project(self, M, inc, obl, theta, alpha):
+    def right_project(self, M, inc, obl, theta, alpha, tau):
         r"""Apply the projection operator on the right.
 
         Specifically, this method returns the dot product :math:`M \cdot R`,
@@ -469,7 +487,7 @@ class OpsYlm(object):
             M = ifelse(
                 tt.eq(alpha, 0.0),
                 self.tensordotRz(M, theta),
-                self.tensordotDz(M, theta, alpha),
+                self.tensordotDz(M, theta, alpha, tau),
             )
         else:
             M = ifelse(
@@ -481,7 +499,7 @@ class OpsYlm(object):
                     math.to_tensor(1.0),
                     theta,
                 ),
-                self.tensordotDz(M, tt.reshape(theta, (1,)), alpha),
+                self.tensordotDz(M, tt.reshape(theta, (1,)), alpha, tau),
             )
 
         # Rotate to the polar frame
@@ -496,7 +514,7 @@ class OpsYlm(object):
         return M
 
     @autocompile
-    def left_project(self, M, inc, obl, theta, alpha):
+    def left_project(self, M, inc, obl, theta, alpha, tau):
         r"""Apply the projection operator on the left.
 
         Specifically, this method returns the dot product :math:`R \cdot M`,
@@ -526,7 +544,7 @@ class OpsYlm(object):
             MT = ifelse(
                 tt.eq(alpha, 0.0),
                 self.tensordotRz(MT, -theta),
-                self.tensordotDz(MT, -theta, alpha),
+                self.tensordotDz(MT, -theta, alpha, tau),
             )
         else:
             MT = ifelse(
@@ -538,7 +556,7 @@ class OpsYlm(object):
                     math.to_tensor(1.0),
                     -theta,
                 ),
-                self.tensordotDz(MT, tt.reshape(-theta, (1,)), alpha),
+                self.tensordotDz(MT, tt.reshape(-theta, (1,)), alpha, tau),
             )
 
         # Rotate to the sky frame
@@ -620,7 +638,7 @@ class OpsYlm(object):
             return compute(axis=axis, theta=theta)
 
     @autocompile
-    def tensordotD(self, M, theta, alpha):
+    def tensordotD(self, M, theta, alpha, tau):
         """
         Differentially rotate a matrix M in the co-rotating frame.
 
@@ -640,7 +658,7 @@ class OpsYlm(object):
 
         # Apply the solid body rotation + differential rotation (Dz)
         # then undo the solid body rotation (Rz)
-        MD = self.tensordotDz(MD, tt.reshape(theta, (-1,)), alpha)
+        MD = self.tensordotDz(MD, tt.reshape(theta, (-1,)), alpha, tau)
         MD = self.tensordotRz(MD, tt.reshape(-theta, (-1,)))
 
         # Rotate back out of the polar frame
@@ -719,7 +737,7 @@ class OpsLD(object):
         return flux
 
     @autocompile
-    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha):
+    def X(self, theta, xo, yo, zo, ro, inc, obl, u, f, alpha, tau):
         """
         Convenience function for integration of limb-darkened maps
         with the ``System`` class. The design matrix for limb-darkened
@@ -732,7 +750,7 @@ class OpsLD(object):
         return X
 
     @autocompile
-    def render(self, res, projection, theta, inc, obl, y, u, f, alpha):
+    def render(self, res, projection, theta, inc, obl, y, u, f, alpha, tau):
         """Render the map on a Cartesian grid."""
         nframes = tt.shape(theta)[0]
         image = self.render_ld(res, u)
@@ -833,16 +851,16 @@ class OpsRV(OpsYlm):
         )
 
     @autocompile
-    def rv(self, theta, xo, yo, zo, ro, inc, obl, y, u, veq, alpha):
+    def rv(self, theta, xo, yo, zo, ro, inc, obl, y, u, veq, alpha, tau):
         """Compute the observed radial velocity anomaly."""
         # Compute the velocity-weighted intensity
         f = self.compute_rv_filter(inc, obl, veq, alpha)
-        Iv = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha)
+        Iv = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f, alpha, tau)
 
         # Compute the inverse of the intensity
         f0 = tt.zeros_like(f)
         f0 = tt.set_subtensor(f0[0], np.pi)
-        I = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f0, alpha)
+        I = self.flux(theta, xo, yo, zo, ro, inc, obl, y, u, f0, alpha, tau)
         invI = tt.ones((1,)) / I
         invI = tt.where(tt.isinf(invI), 0.0, invI)
 
@@ -912,6 +930,7 @@ class OpsReflected(OpsYlm):
         Rs,
         theta,
         alpha,
+        tau,
         ld,
         sigr,
         on94_exact,
@@ -928,14 +947,17 @@ class OpsReflected(OpsYlm):
         if self.nw is None:
             y = tt.reshape(
                 self.tensordotD(
-                    tt.reshape(y, (1, -1)), tt.reshape(theta, (-1,)), alpha
+                    tt.reshape(y, (1, -1)),
+                    tt.reshape(theta, (-1,)),
+                    alpha,
+                    tau,
                 ),
                 (-1,),
             )
         else:
             y = tt.transpose(
                 self.tensordotD(
-                    tt.transpose(y), tt.ones(self.nw) * theta, alpha
+                    tt.transpose(y), tt.ones(self.nw) * theta, alpha, tau
                 )
             )
 
@@ -987,7 +1009,7 @@ class OpsReflected(OpsYlm):
         return intensity
 
     @autocompile
-    def unweighted_intensity(self, lat, lon, y, u, f, theta, alpha, ld):
+    def unweighted_intensity(self, lat, lon, y, u, f, theta, alpha, tau, ld):
         """
         Compute the intensity in the absence of an illumination source
         (i.e., the albedo).
@@ -1003,14 +1025,17 @@ class OpsReflected(OpsYlm):
         if self.nw is None:
             y = tt.reshape(
                 self.tensordotD(
-                    tt.reshape(y, (1, -1)), tt.reshape(theta, (-1,)), alpha
+                    tt.reshape(y, (1, -1)),
+                    tt.reshape(theta, (-1,)),
+                    alpha,
+                    tau,
                 ),
                 (-1,),
             )
         else:
             y = tt.transpose(
                 self.tensordotD(
-                    tt.transpose(y), tt.ones(self.nw) * theta, alpha
+                    tt.transpose(y), tt.ones(self.nw) * theta, alpha, tau
                 )
             )
 
@@ -1038,7 +1063,22 @@ class OpsReflected(OpsYlm):
 
     @autocompile
     def X_point_source(
-        self, theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha, sigr
+        self,
+        theta,
+        xs,
+        ys,
+        zs,
+        xo,
+        yo,
+        zo,
+        ro,
+        inc,
+        obl,
+        u,
+        f,
+        alpha,
+        tau,
+        sigr,
     ):
         """Compute the light curve design matrix for a point source."""
         # Determine shapes
@@ -1071,7 +1111,8 @@ class OpsReflected(OpsYlm):
         theta_z = tt.arctan2(xs[i_rot], ys[i_rot])
         rTA1Rz = self.tensordotRz(rTA1, theta_z)
         X = tt.set_subtensor(
-            X[i_rot], self.right_project(rTA1Rz, inc, obl, theta[i_rot], alpha)
+            X[i_rot],
+            self.right_project(rTA1Rz, inc, obl, theta[i_rot], alpha, tau),
         )
 
         # Occultation + rotation operator
@@ -1083,7 +1124,8 @@ class OpsReflected(OpsYlm):
             A1InvFA1 = ts.dot(ts.dot(self.A1Inv, F), self.A1)
             sTAR = tt.dot(sTAR, A1InvFA1)
         X = tt.set_subtensor(
-            X[i_occ], self.right_project(sTAR, inc, obl, theta[i_occ], alpha)
+            X[i_occ],
+            self.right_project(sTAR, inc, obl, theta[i_occ], alpha, tau),
         )
 
         # Weight by the distance to the source.
@@ -1112,6 +1154,7 @@ class OpsReflected(OpsYlm):
         u,
         f,
         alpha,
+        tau,
         sigr,
     ):
         """Compute the light curve design matrix."""
@@ -1119,7 +1162,21 @@ class OpsReflected(OpsYlm):
         if self.source_npts == 1:
 
             return self.X_point_source(
-                theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha, sigr
+                theta,
+                xs,
+                ys,
+                zs,
+                xo,
+                yo,
+                zo,
+                ro,
+                inc,
+                obl,
+                u,
+                f,
+                alpha,
+                tau,
+                sigr,
             )
 
         else:
@@ -1151,13 +1208,28 @@ class OpsReflected(OpsYlm):
                 u,
                 f,
                 alpha,
+                tau,
                 sigr,
             )
             X = tt.reshape(X, (X.shape[0], -1))
 
             # Point source approximation
             X0 = self.X_point_source(
-                theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha, sigr
+                theta,
+                xs,
+                ys,
+                zs,
+                xo,
+                yo,
+                zo,
+                ro,
+                inc,
+                obl,
+                u,
+                f,
+                alpha,
+                tau,
+                sigr,
             )
             X0 = tt.reshape(X0, (X0.shape[0], -1))
 
@@ -1198,6 +1270,7 @@ class OpsReflected(OpsYlm):
         u,
         f,
         alpha,
+        tau,
         sigr,
     ):
         """Compute the reflected light curve."""
@@ -1224,12 +1297,42 @@ class OpsReflected(OpsYlm):
 
     @autocompile
     def flux_point_source(
-        self, theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, y, u, f, alpha, sigr
+        self,
+        theta,
+        xs,
+        ys,
+        zs,
+        xo,
+        yo,
+        zo,
+        ro,
+        inc,
+        obl,
+        y,
+        u,
+        f,
+        alpha,
+        tau,
+        sigr,
     ):
         """Compute the reflected light curve for a point source."""
         return tt.dot(
             self.X_point_source(
-                theta, xs, ys, zs, xo, yo, zo, ro, inc, obl, u, f, alpha, sigr
+                theta,
+                xs,
+                ys,
+                zs,
+                xo,
+                yo,
+                zo,
+                ro,
+                inc,
+                obl,
+                u,
+                f,
+                alpha,
+                tau,
+                sigr,
             ),
             y,
         )
@@ -1247,6 +1350,7 @@ class OpsReflected(OpsYlm):
         u,
         f,
         alpha,
+        tau,
         xs,
         ys,
         zs,
@@ -1276,10 +1380,11 @@ class OpsReflected(OpsYlm):
                     obl,
                     theta,
                     alpha,
+                    tau,
                 ),
                 tt.transpose(
                     self.tensordotD(
-                        tt.tile(y, [theta.shape[0], 1]), theta, alpha
+                        tt.tile(y, [theta.shape[0], 1]), theta, alpha, tau
                     )
                 ),
             )
@@ -1287,7 +1392,7 @@ class OpsReflected(OpsYlm):
             Ry = ifelse(
                 tt.eq(projection, STARRY_ORTHOGRAPHIC_PROJECTION),
                 self.left_project(
-                    y, inc, obl, tt.tile(theta[0], self.nw), alpha
+                    y, inc, obl, tt.tile(theta[0], self.nw), alpha, tau
                 ),
                 y,
             )
@@ -1536,6 +1641,7 @@ class OpsSystem(object):
         pri_u,
         pri_f,
         pri_alpha,
+        pri_tau,
         sec_r,
         sec_m,
         sec_prot,
@@ -1552,6 +1658,7 @@ class OpsSystem(object):
         sec_u,
         sec_f,
         sec_alpha,
+        sec_tau,
         sec_sigr,
     ):
         """Compute the system light curve design matrix."""
@@ -1631,6 +1738,7 @@ class OpsSystem(object):
             pri_u,
             pri_f,
             pri_alpha,
+            pri_tau,
         )
         if self._reflected:
             phase_sec = [
@@ -1651,6 +1759,7 @@ class OpsSystem(object):
                     sec_u[i],
                     sec_f[i],
                     sec_alpha[i],
+                    sec_tau[i],
                     sec_sigr[i],
                 )
                 for i, sec in enumerate(self.secondaries)
@@ -1669,6 +1778,7 @@ class OpsSystem(object):
                     sec_u[i],
                     sec_f[i],
                     sec_alpha[i],
+                    sec_tau[i],
                 )
                 for i, sec in enumerate(self.secondaries)
             ]
@@ -1711,6 +1821,7 @@ class OpsSystem(object):
                     pri_u,
                     pri_f,
                     pri_alpha,
+                    pri_tau,
                 )
                 - phase_pri[idx],
             )
@@ -1748,6 +1859,7 @@ class OpsSystem(object):
                         sec_u[i],
                         sec_f[i],
                         sec_alpha[i],
+                        sec_tau[i],
                         sec_sigr[i],
                     )
                     - phase_sec[i][idx],
@@ -1768,6 +1880,7 @@ class OpsSystem(object):
                         sec_u[i],
                         sec_f[i],
                         sec_alpha[i],
+                        sec_tau[i],
                     )
                     - phase_sec[i][idx],
                 )
@@ -1810,6 +1923,7 @@ class OpsSystem(object):
                             sec_u[i],
                             sec_f[i],
                             sec_alpha[i],
+                            sec_tau[i],
                             sec_sigr[i],
                         )
                         - phase_sec[i][idx],
@@ -1830,6 +1944,7 @@ class OpsSystem(object):
                             sec_u[i],
                             sec_f[i],
                             sec_alpha[i],
+                            sec_tau[i],
                         )
                         - phase_sec[i][idx],
                     )
@@ -1867,6 +1982,7 @@ class OpsSystem(object):
         pri_y,
         pri_u,
         pri_alpha,
+        pri_tau,
         pri_veq,
         sec_r,
         sec_m,
@@ -1884,6 +2000,7 @@ class OpsSystem(object):
         sec_y,
         sec_u,
         sec_alpha,
+        sec_tau,
         sec_sigr,
         sec_veq,
         keplerian,
@@ -1896,12 +2013,16 @@ class OpsSystem(object):
 
         # Compute the RV filter
         pri_f = self.primary.map.ops.compute_rv_filter(
-            pri_inc, pri_obl, pri_veq, pri_alpha
+            pri_inc, pri_obl, pri_veq, pri_alpha, pri_tau
         )
         sec_f = tt.as_tensor_variable(
             [
                 sec.map.ops.compute_rv_filter(
-                    sec_inc[k], sec_obl[k], sec_veq[k], sec_alpha[k]
+                    sec_inc[k],
+                    sec_obl[k],
+                    sec_veq[k],
+                    sec_alpha[k],
+                    sec_tau[k],
                 )
                 for k, sec in enumerate(self.secondaries)
             ]
@@ -1926,6 +2047,7 @@ class OpsSystem(object):
             pri_u,
             pri_f,
             pri_alpha,
+            pri_tau,
             sec_r,
             sec_m,
             sec_prot,
@@ -1942,6 +2064,7 @@ class OpsSystem(object):
             sec_u,
             sec_f,
             sec_alpha,
+            sec_tau,
             sec_sigr,
         )
 
@@ -1958,6 +2081,7 @@ class OpsSystem(object):
             pri_u,
             pri_f0,
             pri_alpha,
+            pri_tau,
             sec_r,
             sec_m,
             sec_prot,
@@ -1974,6 +2098,7 @@ class OpsSystem(object):
             sec_u,
             sec_f0,
             sec_alpha,
+            sec_tau,
             sec_sigr,
         )
 
@@ -2049,6 +2174,7 @@ class OpsSystem(object):
         pri_u,
         pri_f,
         pri_alpha,
+        pri_tau,
         sec_r,
         sec_m,
         sec_prot,
@@ -2065,6 +2191,7 @@ class OpsSystem(object):
         sec_u,
         sec_f,
         sec_alpha,
+        sec_tau,
         sec_sigr,
     ):
         """Render all of the bodies in the system."""
@@ -2114,6 +2241,7 @@ class OpsSystem(object):
             pri_u,
             pri_f,
             pri_alpha,
+            pri_tau,
         )
         if self._reflected:
             img_sec = tt.as_tensor_variable(
@@ -2129,6 +2257,7 @@ class OpsSystem(object):
                         sec_u[i],
                         sec_f[i],
                         sec_alpha[i],
+                        sec_tau[i],
                         -x[:, i],
                         -y[:, i],
                         -z[:, i],
@@ -2152,6 +2281,7 @@ class OpsSystem(object):
                         sec_u[i],
                         sec_f[i],
                         sec_alpha[i],
+                        sec_tau[i],
                     )
                     for i, sec in enumerate(self.secondaries)
                 ]
