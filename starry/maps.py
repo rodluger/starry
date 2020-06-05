@@ -75,8 +75,8 @@ class MapBase(object):
         self._inc = math.cast(0.5 * np.pi)
         self._obl = math.cast(0.0)
         self._alpha = math.cast(0.0)
-        self._tau = math.cast(0.5)
-        self._delta = math.cast(0.0)
+        self._tau = math.cast(0.25)
+        self._delta = math.cast(0.25)
         self._sigr = math.cast(0.0)
 
         # Units
@@ -1047,12 +1047,12 @@ class YlmBase(object):
         if kwargs.get("tau", None) is not None:
             self.tau = kwargs.pop("tau")
         else:
-            self._tau = math.cast(0.5)
+            self._tau = math.cast(0.25)
 
         if kwargs.get("delta", None) is not None:
             self.delta = kwargs.pop("delta")
         else:
-            self._delta = math.cast(0.0)
+            self._delta = math.cast(0.25)
 
         super(YlmBase, self).reset(**kwargs)
 
@@ -1101,8 +1101,8 @@ class YlmBase(object):
         This parameter is a unitless damping timescale for the `l > 0` features
         when :py:attr:`alpha` is nonzero. `tau` is measured as a fraction of the
         winding timescale, i.e., the time it takes for a feature at the equator
-        to lap a feature at the pole. The defualt value is `0.5`, meaning
-        that features will damp on a timescale corresponding to half a winding
+        to lap a feature at the pole. The defualt value is `0.25`, meaning
+        that features will damp on a timescale corresponding to a quarter of a winding
         timescale.
 
         """
@@ -1118,7 +1118,9 @@ class YlmBase(object):
 
         This parameter is a unitless lag for the damping applied to `l > 0`
         features measured as a fraction of the winding timescale
-        (see :py:attr:`tau`). The default value is `0.0`.
+        (see :py:attr:`tau`). The default value is `0.25`, meaning the features
+        will have the largest amplitude a quarter of a winding timescale
+        *after* `theta=0`.
 
         """
         return self._delta

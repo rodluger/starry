@@ -151,8 +151,8 @@ class OpsYlm(object):
         res = tt.set_subtensor(res[:, 0], matrix[:, 0])
 
         # Dampen the features on a timescale `tau`
-        sig = 2 * np.pi * tau / alpha
-        theta0 = 2 * np.pi * delta / alpha
+        sig = 2 * np.pi * tau / (alpha + 1e-8)
+        theta0 = 2 * np.pi * delta / (alpha + 1e-8)
         amp = tt.exp(-0.5 * ((theta - theta0) / sig) ** 2)
         res = tt.set_subtensor(res[:, 1:], (amp[:, None] * res[:, 1:]))
 
@@ -2227,7 +2227,7 @@ class OpsSystem(object):
                 rv[0],
                 tt.reshape(
                     orbit.get_radial_velocity(
-                        t, output_units=units.m / units.s  # pragma: no cover
+                        t, output_units=units.m / units.s
                     ),
                     (-1,),
                 ),
