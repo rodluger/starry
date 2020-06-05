@@ -1290,6 +1290,7 @@ class OpsReflected(OpsYlm):
                 u,
                 f,
                 alpha,
+                tau,
                 sigr,
             ),
             y,
