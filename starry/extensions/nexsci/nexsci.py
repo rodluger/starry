@@ -103,7 +103,6 @@ def from_nexsci(name, limb_darkening=[0.4, 0.2]):
         r = np.asarray(d.pl_radj * u.jupiterRad.to(u.solRad)) / np.asarray(
             d.st_rad
         )
-
         planet = Secondary(
             Map(amp=0),
             porb=d.pl_orbper,
@@ -131,6 +130,14 @@ def _fill_data(df):
     clean_df : pandas.DataFrame
         Dataframe of planet parameters from nexsci, with NaNs replaced.
     """
+
+    # Supplemental data for some planets
+    sup = pd.read_csv("{}/extensions/nexsci/data/supplement.csv".format(_PACKAGEDIR))
+    for label in ['pl_orbincl', 'pl_eccen', 'pl_trandep', 'pl_tranmid', 'pl_orbper']:
+        nan = ~np.isfinite(df[label])
+        vals = np.asarray(df[nan][['stripped_name', 'pl_letter']].merge(sup[['stripped_name', 'pl_letter', label]], how='left')[label])
+        df.loc[nan, label] = vals
+
     nan = ~np.isfinite(df.pl_orbincl)
     df.loc[nan, ["pl_orbincl"]] = np.zeros(nan.sum()) + 90
 
@@ -208,16 +215,18 @@ def _retrieve_online_data(guess_masses=False):
         left_on=["pl_hostname", "pl_letter"],
         right_on=["pl_hostname", "pl_letter"],
     )
-    df = _fill_data(df)
 
     df["stripped_name"] = np.asarray(
         [n.lower().replace("-", "").replace(" ", "") for n in df.pl_hostname]
     )
-    df[df.pl_tranflag == 1].to_csv(
+    df = df[df.pl_tranflag == 1].reset_index(drop=True)
+
+    df = _fill_data(df)
+
+    df = df.to_csv(
         "{}/extensions/nexsci/data/planets.csv".format(_PACKAGEDIR),
         index=False,
     )
-
 
 def _check_data_on_import():
     """Checks whether nexsci data is "fresh" on import.
