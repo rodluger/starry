@@ -7,13 +7,6 @@ import starry
 import pytest
 
 
-def test_lazy_change():
-    map = starry.Map()
-    with pytest.raises(Exception) as e:
-        starry.config.lazy = True
-    assert "Cannot change the `starry` config at this time." in str(e.value)
-
-
 def test_negative_radius():
     map = starry.Map(ydeg=2)
     map[1, 0] = 1.0

@@ -21,14 +21,13 @@ from .ops import (
     OrenNayarOp,
 )
 from .utils import logger, autocompile, is_theano
-from .math import math
+from .math import lazy_math as math
 import theano
 import theano.tensor as tt
 import theano.sparse as ts
 from theano.ifelse import ifelse
 import numpy as np
 from astropy import units
-from scipy.linalg import dft
 
 try:  # pragma: no cover
     from packaging import version
