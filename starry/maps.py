@@ -200,7 +200,7 @@ class MapBase(object):
             inds = get_ul_inds(self.udeg, idx)
             if 0 in inds:
                 raise ValueError("The u_0 coefficient cannot be set.")
-            if config.lazy:
+            if self.lazy:
                 self._u = self.ops.set_map_vector(self._u, inds, val)
             else:
                 self._u[inds] = val
@@ -211,7 +211,7 @@ class MapBase(object):
                 if np.array_equal(np.sort(inds), np.arange(self.Ny)):
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
-                    if config.lazy:
+                    if self.lazy:
                         self._y = self.ops.set_map_vector(self._y, inds, val)
                     else:
                         self._y[inds] = val
@@ -225,7 +225,7 @@ class MapBase(object):
                         "Please change the map amplitude instead."
                     )
             else:
-                if config.lazy:
+                if self.lazy:
                     self._y = self.ops.set_map_vector(self._y, inds, val)
                 else:
                     self._y[inds] = val
@@ -238,7 +238,7 @@ class MapBase(object):
                     "Please change the map amplitude instead."
                 )
             else:
-                if config.lazy:
+                if self.lazy:
                     self._y = self.ops.set_map_vector(self._y, inds, val)
                 else:
                     old_shape = self._y[inds].shape
@@ -381,7 +381,7 @@ class MapBase(object):
             projection = get_projection(kwargs.get("projection", "ortho"))
 
             # Get the map orientation
-            if config.lazy:
+            if self.lazy:
                 inc = self._inc.eval()
                 obl = self._obl.eval()
             else:
@@ -389,7 +389,7 @@ class MapBase(object):
                 obl = self._obl
 
             # Get the rotational phase
-            if config.lazy:
+            if self.lazy:
                 theta = self._math.vectorize(
                     self._math.cast(kwargs.pop("theta", 0.0))
                     * self._angle_factor
@@ -411,7 +411,7 @@ class MapBase(object):
         if image is None:
 
             # We need to evaluate the variables so we can plot the map!
-            if config.lazy:
+            if self.lazy:
 
                 # Get kwargs
                 res = kwargs.pop("res", 300)
@@ -790,7 +790,7 @@ class MapBase(object):
             bool: Whether or not the limb darkening profile is physical.
         """
         result = self.ops.limbdark_is_physical(self.u)
-        if config.lazy:
+        if self.lazy:
             return result
         else:
             return bool(result)
@@ -1329,7 +1329,7 @@ class YlmBase(object):
         )
 
         # Compute
-        if self.nw is None or config.lazy:
+        if self.nw is None or self.lazy:
             amp = self.amp
         else:
             # The intensity has shape `(nw, res, res)`
@@ -1368,6 +1368,7 @@ class YlmBase(object):
                 to an equirectangular latitude-longitude projection,
                 and ``moll``, corresponding to a Mollweide equal-area
                 projection. Defaults to ``ortho``.
+
         """
         projection = get_projection(projection)
         if projection == STARRY_RECTANGULAR_PROJECTION:
@@ -1375,7 +1376,9 @@ class YlmBase(object):
         elif projection == STARRY_MOLLWEIDE_PROJECTION:
             lat, lon = self.ops.compute_moll_grid(res)[0]
         else:
-            lat, lon = self.ops.compute_ortho_grid(res)[0]
+            lat, lon = self.ops.compute_ortho_grid_inc_obl(
+                res, self._inc, self._obl
+            )[0]
         return (
             self._math.reshape(lat, (res, res)) / self._angle_factor,
             self._math.reshape(lon, (res, res)) / self._angle_factor,
@@ -1471,13 +1474,13 @@ class YlmBase(object):
 
             # Find the minimum
             _, _, I = self.minimize(**kwargs)
-            if config.lazy:
+            if self.lazy:
                 I = I.eval()
 
             # Scale the coeffs?
             if I < 0:
                 fac = self._amp / (self._amp - np.pi * I)
-                if config.lazy:
+                if self.lazy:
                     self._y *= fac
                     self._y = self.ops.set_map_vector(self._y, 0, 1.0)
                 else:
@@ -2467,7 +2470,7 @@ class ReflectedBase(object):
             # so we must reshape `amp` to take the product correctly
             amp = self.amp[:, np.newaxis, np.newaxis]
 
-        if config.lazy:
+        if self.lazy:
             # Evaluate the variables
             theta = theta.eval()
             xs = xs.eval()

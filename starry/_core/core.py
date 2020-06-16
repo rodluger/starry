@@ -393,7 +393,7 @@ class OpsYlm(object):
     @autocompile
     def compute_ortho_grid(self, res):
         """Compute the polynomial basis on the plane of the sky."""
-        # NOTE: I think there's be a bug in Theano related to
+        # NOTE: I think there's a bug in Theano related to
         # tt.mgrid; I get different results depending on whether the
         # function is compiled using `theano.function()` or if it
         # is evaluated using `.eval()`. The small perturbation to `res`
@@ -401,11 +401,39 @@ class OpsYlm(object):
         # correct length in all cases I've tested.
         dx = 2.0 / (res - 0.01)
         y, x = tt.mgrid[-1:1:dx, -1:1:dx]
+        z = tt.sqrt(1 - x ** 2 - y ** 2)
+        y = tt.set_subtensor(y[tt.isnan(z)], np.nan)
         x = tt.reshape(x, [1, -1])
         y = tt.reshape(y, [1, -1])
-        z = tt.sqrt(1 - x ** 2 - y ** 2)
+        z = tt.reshape(z, [1, -1])
         lat = tt.reshape(0.5 * np.pi - tt.arccos(y), [1, -1])
         lon = tt.reshape(tt.arctan(x / z), [1, -1])
+        return tt.concatenate((lat, lon)), tt.concatenate((x, y, z))
+
+    @autocompile
+    def compute_ortho_grid_inc_obl(self, res, inc, obl):
+        """Compute the polynomial basis on the plane of the sky, accounting
+        for the map inclination and obliquity."""
+        # See NOTE on tt.mgrid bug in `compute_ortho_grid`
+        dx = 2.0 / (res - 0.01)
+        y, x = tt.mgrid[-1:1:dx, -1:1:dx]
+        z = tt.sqrt(1 - x ** 2 - y ** 2)
+        y = tt.set_subtensor(y[tt.isnan(z)], np.nan)
+        x = tt.reshape(x, [1, -1])
+        y = tt.reshape(y, [1, -1])
+        z = tt.reshape(z, [1, -1])
+        Robl = self.RAxisAngle(tt.as_tensor_variable([0.0, 0.0, 1.0]), -obl)
+        Rinc = self.RAxisAngle(
+            tt.as_tensor_variable([tt.cos(obl), tt.sin(obl), 0.0]),
+            -(0.5 * np.pi - inc),
+        )
+        R = tt.dot(Robl, Rinc)
+        xyz = tt.dot(R, tt.concatenate((x, y, z)))
+        x = tt.reshape(xyz[0], [1, -1])
+        y = tt.reshape(xyz[1], [1, -1])
+        z = tt.reshape(xyz[2], [1, -1])
+        lat = tt.reshape(0.5 * np.pi - tt.arccos(y), [1, -1])
+        lon = tt.reshape(tt.arctan2(x, z), [1, -1])
         return tt.concatenate((lat, lon)), tt.concatenate((x, y, z))
 
     @autocompile
