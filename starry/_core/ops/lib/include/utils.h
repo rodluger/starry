@@ -40,11 +40,14 @@ typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off>
 typedef void Multi;
 #endif
 
-//! Compiler branching optimization: likely branch
+//! Compiler branching optimizations
+#ifdef STARRY_BRANCHING_DISABLE_OPTIM
+#define likely(x) x
+#define unlikely(x) x
+#else
 #define likely(x) __builtin_expect(!!(x), 1)
-
-//! Compiler branching optimization: unlikely branch
 #define unlikely(x) __builtin_expect(!!(x), 0)
+#endif
 
 //! Number of Gaussian-Legendre quadrature points for numerical integration
 #ifndef STARRY_QUAD_POINTS
