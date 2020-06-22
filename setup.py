@@ -171,6 +171,7 @@ class BuildExt(build_ext):
             opts.append(
                 '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()
             )
+            opts.append("/Zm10")  # debug for C1060
         extra_args = ["-O%d" % optimize]
         if debug:
             extra_args += ["-g", "-Wall", "-fno-lto"]
