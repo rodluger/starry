@@ -32,6 +32,12 @@ optimize = int(os.getenv("STARRY_O", 2))
 assert optimize in [0, 1, 2, 3], "Invalid optimization flag."
 macros["STARRY_O"] = optimize
 
+# Branching optimizations (disable on Windows)
+disable_branch_optim = int(os.getenv("STARRY_BRANCHING_DISABLE_OPTIM", 0))
+if sys.platform not in ["darwin", "linux"]:
+    disable_branch_optim = 1
+macros["STARRY_BRANCHING_DISABLE_OPTIM"] = disable_branch_optim
+
 # Debug mode?
 debug = bool(int(os.getenv("STARRY_DEBUG", 0)))
 if debug:
@@ -165,6 +171,7 @@ class BuildExt(build_ext):
             opts.append(
                 '/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version()
             )
+            opts.append("/Zm10")  # debug for C1060
         extra_args = ["-O%d" % optimize]
         if debug:
             extra_args += ["-g", "-Wall", "-fno-lto"]

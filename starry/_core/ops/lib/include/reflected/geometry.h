@@ -573,8 +573,7 @@ inline int get_angles(const T &b, const T &theta_, const T &costheta_,
     T lam_o = asin((1 - ro * ro + bo * bo) / (2 * bo));
     // There are always two points; always pick the one
     // that's on the dayside for definiteness
-    if (not on_dayside(b, theta, costheta, sintheta, T(cos(lam_o)),
-                       T(sin(lam_o))))
+    if (!on_dayside(b, theta, costheta, sintheta, T(cos(lam_o)), T(sin(lam_o))))
       lam_o = pi<T>() - lam_o;
 
     // Angle of intersection with the terminator

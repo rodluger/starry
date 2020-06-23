@@ -19,6 +19,7 @@ sudo apt-get install ffmpeg
 pip install -U sympy
 pip install -U corner
 pip install -U batman-package
+pip install -U tqdm
 
 # Run the notebooks using nbconvert
 mkdir -p docs/notebooks

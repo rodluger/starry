@@ -9,6 +9,7 @@ fi
 # Install dependencies
 pip install -U parameterized nose pytest pytest-cov
 pip install -U starry_beta
+pip install -U tqdm
 pip install -U git+https://github.com/rodluger/coverage-badge
 
 # Run tests
