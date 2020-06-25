@@ -1106,6 +1106,10 @@ class YlmBase(object):
         that features will damp on a timescale corresponding to a quarter of a winding
         timescale.
 
+        .. warning::
+
+            This is an experimental feature.
+
         """
         return self._tau
 
@@ -1122,6 +1126,10 @@ class YlmBase(object):
         (see :py:attr:`tau`). The default value is `0.25`, meaning the features
         will have the largest amplitude a quarter of a winding timescale
         *after* `theta=0`.
+
+        .. warning::
+
+            This is an experimental feature.
 
         """
         return self._delta
