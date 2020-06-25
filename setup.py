@@ -45,6 +45,10 @@ if debug:
     macros["STARRY_O"] = 0
     macros["STARRY_DEBUG"] = 1
 
+# Numerical override at high l?
+if bool(int(os.getenv("STARRY_KL_NUMERICAL", 0))):
+    macros["STARRY_KL_NUMERICAL"] = 1
+    
 # Compute the Oren-Nayar (1994) expansion if the user requests it
 deg = os.getenv("STARRY_OREN_NAYAR_DEG", None)
 Nb = os.getenv("STARRY_OREN_NAYAR_NB", None)

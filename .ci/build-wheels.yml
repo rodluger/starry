@@ -9,7 +9,7 @@ jobs:
     - task: UsePythonVersion@0
     - bash: |
         python -m pip install --upgrade pip
-        pip install cibuildwheel==0.12.0
+        pip install cibuildwheel==1.4.2
         echo $CIBW_BEFORE_BUILD
         cibuildwheel --output-dir wheelhouse .
     - task: PublishBuildArtifacts@1
@@ -20,7 +20,7 @@ jobs:
     - task: UsePythonVersion@0
     - bash: |
         python -m pip install --upgrade pip
-        pip install cibuildwheel==0.12.0
+        pip install cibuildwheel==1.4.2
         cibuildwheel --output-dir wheelhouse .
     - task: PublishBuildArtifacts@1
       inputs: {pathtoPublish: 'wheelhouse'}
@@ -29,12 +29,12 @@ jobs:
   steps:
     - {task: UsePythonVersion@0, inputs: {versionSpec: '3.6', architecture: x64}}
     - {task: UsePythonVersion@0, inputs: {versionSpec: '3.7', architecture: x64}}
-    - {task: UsePythonVersion@0, inputs: {versionSpec: '3.8', architecture: x64}}
+    - {task: UsePythonVersion@0, inputs: {versionSpec: '3.8.3', architecture: x64}}
     - script: choco install vcpython27 -f -y
       displayName: Install Visual C++ for Python 2.7
     - bash: |
         python -m pip install --upgrade pip
-        pip install cibuildwheel==0.12.0
+        pip install cibuildwheel==1.4.2
         cibuildwheel --output-dir wheelhouse .
     - task: PublishBuildArtifacts@1
       inputs: {pathtoPublish: 'wheelhouse'}

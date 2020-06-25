@@ -799,7 +799,7 @@ public:
   */
   inline T K(int u, int v) {
 
-#ifdef STARRY_DEBUG
+#if defined(STARRY_DEBUG) || defined(STARRY_KL_NUMERICAL)
     // HACK: Fix numerical instabilities at high l
     if (lmax > 15) {
       if (ksq >= 1)
@@ -821,7 +821,7 @@ public:
   */
   inline T L(int u, int v, int t) {
 
-#ifdef STARRY_DEBUG
+#if defined(STARRY_DEBUG) || defined(STARRY_KL_NUMERICAL)
     // HACK: Fix numerical instabilities at high l
     if (lmax > 15) {
       if (ksq >= 1)
