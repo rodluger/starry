@@ -9,8 +9,9 @@ import numpy as np
 
 def test_diffrot(visualize=False):
     """Test differential rotation on a map with a cosine-like meridional band."""
-    map = starry.Map(ydeg=5, drorder=1)
+    map = starry.Map(ydeg=20)
     map.alpha = 0.1
+    map.tau = np.inf
 
     # This is a bit hacky: compute the Ylm expansion of cos(latitude)
     # then rotate it 90 degrees so it's cos(longitude) instead.
@@ -22,6 +23,7 @@ def test_diffrot(visualize=False):
         nside=128,
     )
     map.rotate([0, 0, 1], 90)
+    map[15:, :] = 0
 
     # Render the map at 5 phases
     theta = [0, 90, 180, 270, 360]

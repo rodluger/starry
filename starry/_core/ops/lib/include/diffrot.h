@@ -2,6 +2,10 @@
 \file diffrot.h
 \brief Differential rotation operator.
 
+============================
+-- -- -- DEPRECATED -- -- --
+============================
+
 */
 
 #ifndef _STARRY_DIFFROT_H_

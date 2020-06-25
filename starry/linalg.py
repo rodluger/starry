@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from ._core import math, linalg
+from ._core import math
+from . import config
 import numpy as np
 
 
@@ -13,6 +14,7 @@ def solve(
     L=None,
     cho_L=None,
     N=None,
+    lazy=None,
 ):
     """
     Solve the generalized least squares (GLS) problem.
@@ -50,19 +52,28 @@ def solve(
         of the posterior covariance (a lower triangular matrix).
 
     """
-    design_matrix = math.cast(design_matrix)
-    data = math.cast(data)
-    C = linalg.Covariance(C, cho_C, N=data.shape[0])
-    mu = math.cast(mu)
+    if lazy is None:
+        lazy = config.lazy
+    if lazy:
+        _math = math.lazy_math
+        _linalg = math.lazy_linalg
+    else:
+        _math = math.greedy_math
+        _linalg = math.greedy_linalg
+
+    design_matrix = _math.cast(design_matrix)
+    data = _math.cast(data)
+    C = _linalg.Covariance(C, cho_C, N=data.shape[0])
+    mu = _math.cast(mu)
     if L is None and cho_L is None:
         raise ValueError(
             "Either the prior covariance or its "
             "Cholesky factorization must be provided."
         )
     elif L is not None:
-        tmp = math.cast(L)
+        tmp = _math.cast(L)
     else:
-        tmp = math.cast(cho_L)
+        tmp = _math.cast(cho_L)
     if mu.ndim == 0 and tmp.ndim == 0:
         assert (
             N is not None
@@ -72,9 +83,9 @@ def solve(
     elif L.ndim > 0:
         N = tmp.shape[0]
     if mu.ndim == 0:
-        mu = mu * math.ones(N)
-    L = linalg.Covariance(L, cho_L, N=N)
-    return linalg.solve(design_matrix, data, C.cholesky, mu, L.inverse)
+        mu = mu * _math.ones(N)
+    L = _linalg.Covariance(L, cho_L, N=N)
+    return _linalg.solve(design_matrix, data, C.cholesky, mu, L.inverse)
 
 
 def lnlike(
@@ -88,6 +99,7 @@ def lnlike(
     cho_L=None,
     N=None,
     woodbury=True,
+    lazy=None,
 ):
     """
     Compute the log marginal likelihood of the data given a design matrix.
@@ -134,19 +146,28 @@ def lnlike(
         The log marginal likelihood, a scalar.
 
     """
-    design_matrix = math.cast(design_matrix)
-    data = math.cast(data)
-    C = linalg.Covariance(C, cho_C, N=data.shape[0])
-    mu = math.cast(mu)
+    if lazy is None:
+        lazy = config.lazy
+    if lazy:
+        _math = math.lazy_math
+        _linalg = math.lazy_linalg
+    else:
+        _math = math.greedy_math
+        _linalg = math.greedy_linalg
+
+    design_matrix = _math.cast(design_matrix)
+    data = _math.cast(data)
+    C = _linalg.Covariance(C, cho_C, N=data.shape[0])
+    mu = _math.cast(mu)
     if L is None and cho_L is None:
         raise ValueError(
             "Either the prior covariance or its "
             "Cholesky factorization must be provided."
         )
     elif L is not None:
-        tmp = math.cast(L)
+        tmp = _math.cast(L)
     else:
-        tmp = math.cast(cho_L)
+        tmp = _math.cast(cho_L)
     if mu.ndim == 0 and tmp.ndim == 0:
         assert (
             N is not None
@@ -156,11 +177,11 @@ def lnlike(
     elif L.ndim > 0:
         N = tmp.shape[0]
     if mu.ndim == 0:
-        mu = mu * math.ones(N)
-    L = linalg.Covariance(L, cho_L, N=N)
+        mu = mu * _math.ones(N)
+    L = _linalg.Covariance(L, cho_L, N=N)
     if woodbury:
-        return linalg.lnlike_woodbury(
+        return _linalg.lnlike_woodbury(
             design_matrix, data, C.inverse, mu, L.inverse, C.lndet, L.lndet
         )
     else:
-        return linalg.lnlike(design_matrix, data, C.value, mu, L.value)
+        return _linalg.lnlike(design_matrix, data, C.value, mu, L.value)
