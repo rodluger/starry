@@ -73,6 +73,7 @@ Inference and optimization
    notebooks/HotJupiterPhaseCurve.ipynb
    notebooks/PixelTransform.ipynb
    notebooks/PixelSampling.ipynb
+   notebooks/DimReduce.ipynb
 
 
 Miscellaneous
