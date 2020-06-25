@@ -1659,9 +1659,60 @@ class YlmBase(object):
         """
         Return several linear operators for pixel transformations.
 
-        .. note::
+        Args:
+            oversample (int): Factor by which to oversample the pixelization
+                grid. Default 2.
+            lam (float): Regularization parameter for the inverse pixel transform.
+                Default `1e-6`.
+            eps (float): Regularization parameter for the derivative transforms.
+                Default `1e-6`.
 
-            This is an experimental feature. Detailed docs coming soon.
+        Returns:
+            The tuple `(lat, lon, Y2P, P2Y, Dx, Dy)`.
+
+        The transforms returned by this method can be used to easily convert back
+        and forth between spherical harmonic coefficients and intensities on a
+        discrete pixelized grid. Projections onto pixels are performed on an
+        equal-area Mollweide grid, so these transforms are useful for applying
+        priors on the pixel intensities, for instance.
+
+        The `lat` and `lon` arrays correspond to the latitude and longitude of
+        each of the points used in the transform (in units of `angle_unit`).
+
+        The `Y2P` matrix is an operator that transforms from spherical harmonic
+        coefficients `y` to pixels `p` on a Mollweide grid:
+
+        .. code-block:: python
+
+            p = Y2P @ y
+
+        The `P2Y` matrix is the (pseudo-)inverse of that operator:
+
+        .. code-block:: python
+
+            y = P2Y @ p
+
+        Finally, the `Dx` and `Dy` operators transform a pixel representation
+        of the map `p` to the derivative of `p` with respect to longitude and
+        latitude, respectively:
+
+        .. code-block:: python
+
+            dpdlon = Dx @ p
+            dpdlat = Dy @ p
+
+        By combining these operators, one can differentiate the spherical
+        harmonic expansion with respect to latitude and longitude, if desired:
+
+            dydlon = P2Y @ Dx @ Y2P @ y
+            dydlat = P2Y @ Dy @ Y2P @ y
+
+        These derivatives could be useful for implementing total-variation-reducing
+        regularization, for instance.
+
+        .. warning::
+
+            This is an experimental feature.
 
         """
         # Prevent undersampling for ydeg = 1
