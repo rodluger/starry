@@ -17,11 +17,21 @@ def run(infile, outfile, timeout=2400):
 
     # Execute the notebook
     if nb["metadata"].get("nbsphinx_execute", True):
-        ep = ExecutePreprocessor(timeout=timeout, kernel_name="python3")
-        ep.preprocess(
-            nb,
-            {"metadata": {"path": os.path.dirname(os.path.abspath(infile))}},
-        )
+        try:
+            ep = ExecutePreprocessor(timeout=timeout, kernel_name="python3")
+            ep.preprocess(
+                nb,
+                {
+                    "metadata": {
+                        "path": os.path.dirname(os.path.abspath(infile))
+                    }
+                },
+            )
+        except Exception as error:
+            if "[allow-failures]" in os.getenv("COMMIT", ""):
+                pass
+            else:
+                raise error
 
     # Replace input in certain cells
     for cell in nb.get("cells", []):
