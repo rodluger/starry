@@ -9,20 +9,104 @@ from scipy.linalg import block_diag as scipy_block_diag
 import theano.tensor.slinalg as sla
 import scipy
 
-__all__ = ["math", "linalg"]
+__all__ = ["lazy_math", "greedy_math", "lazy_linalg", "greedy_linalg"]
+
+
+# Cholesky solve
+_solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
+_solve_upper = sla.Solve(A_structure="upper_triangular", lower=False)
+
+
+def _cho_solve(cho_A, b):
+    return _solve_upper(tt.transpose(cho_A), _solve_lower(cho_A, b))
+
+
+def _get_covariance(math, linalg, C=None, cho_C=None, N=None):
+    """A container for covariance matrices.
+
+    Args:
+        C (scalar, vector, or matrix, optional): The covariance.
+            Defaults to None.
+        cho_C (matrix, optional): The lower Cholesky factorization of
+            the covariance. Defaults to None.
+        N (int, optional): The number of rows/columns in the covariance
+            matrix, required if ``C`` is a scalar. Defaults to None.
+    """
+
+    # User provided the Cholesky factorization
+    if cho_C is not None:
+
+        cholesky = math.cast(cho_C)
+        value = math.dot(cholesky, math.transpose(cholesky))
+        inverse = linalg.cho_solve(cholesky, math.eye(cholesky.shape[0]))
+        lndet = 2 * math.sum(math.log(math.diag(cholesky)))
+        kind = "cholesky"
+        N = cho_C.shape[0]
+
+    # User provided the covariance as a scalar, vector, or matrix
+    elif C is not None:
+
+        C = math.cast(C)
+
+        if hasattr(C, "ndim"):
+
+            if C.ndim == 0:
+
+                assert N is not None, "Please provide a matrix size `N`."
+                cholesky = math.sqrt(C)
+                inverse = math.cast(1.0 / C)
+                lndet = math.cast(N * math.log(C))
+                value = C
+                kind = "scalar"
+
+            elif C.ndim == 1:
+
+                cholesky = math.sqrt(C)
+                inverse = 1.0 / C
+                lndet = math.sum(math.log(C))
+                value = C
+                kind = "vector"
+                N = C.shape[0]
+
+            else:
+
+                cholesky = math.cholesky(C)
+                inverse = linalg.cho_solve(cholesky, math.eye(C.shape[0]))
+                lndet = 2 * math.sum(math.log(math.diag(cholesky)))
+                value = C
+                kind = "matrix"
+                N = C.shape[0]
+
+        # Assume it's a scalar
+        else:
+
+            assert N is not None, "Please provide a matrix size `N`."
+            cholesky = math.sqrt(C)
+            inverse = math.cast(1.0 / C)
+            lndet = math.cast(N * math.log(C))
+            value = C
+            kind = "scalar"
+
+    # ?!
+    else:
+        raise ValueError(
+            "Either the covariance or its Cholesky factorization must be provided."
+        )
+
+    return value, cholesky, inverse, lndet, kind, N
 
 
 class MathType(type):
     """Wrapper for theano/numpy functions."""
 
     def cholesky(cls, *args, **kwargs):
-        if config.lazy:
+        if cls.lazy:
             return sla.cholesky(*args, **kwargs)
         else:
             return scipy.linalg.cholesky(*args, **kwargs, lower=True)
 
     def atleast_2d(cls, arg):
-        if config.lazy:
+        if cls.lazy:
             return arg * tt.ones((1, 1))
         else:
             return np.atleast_2d(arg)
@@ -34,7 +118,7 @@ class MathType(type):
 
         TODO: Add error catching if the dimensions don't agree.
         """
-        if config.lazy:
+        if cls.lazy:
             args = [arg * tt.ones(1) for arg in args]
             size = tt.max([arg.shape[0] for arg in args])
             args = [tt.repeat(arg, size // arg.shape[0], 0) for arg in args]
@@ -55,12 +139,12 @@ class MathType(type):
         else:
             return args
 
-    def cross(x, y):
+    def cross(cls, x, y):
         """Cross product of two 3-vectors.
 
         Based on ``https://github.com/Theano/Theano/pull/3008``
         """
-        if config.lazy:
+        if cls.lazy:
             eijk = np.zeros((3, 3, 3))
             eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
             eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
@@ -69,7 +153,7 @@ class MathType(type):
             return np.cross(x, y)
 
     def cast(cls, *args):
-        if config.lazy:
+        if cls.lazy:
             return cls.to_tensor(*args)
         else:
             if len(args) == 1:
@@ -78,16 +162,16 @@ class MathType(type):
                 return [np.array(arg, dtype=tt.config.floatX) for arg in args]
 
     def to_array_or_tensor(cls, x):
-        if config.lazy:
+        if cls.lazy:
             return tt.as_tensor_variable(x)
         else:
             return np.array(x)
 
-    def block_diag(self, *mats):
-        if config.lazy:
+    def block_diag(cls, *mats):
+        if cls.lazy:
             N = [mat.shape[0] for mat in mats]
             Nsum = tt.sum(N)
-            res = tt.zeros((Nsum, Nsum), dtype=theano.config.floatX)
+            res = tt.zeros((Nsum, Nsum), dtype=tt.config.floatX)
             n = 0
             for mat in mats:
                 inds = slice(n, n + mat.shape[0])
@@ -100,7 +184,7 @@ class MathType(type):
     def to_tensor(cls, *args):
         """Convert all ``args`` to Theano tensor variables.
 
-        Converts to tensor regardless of whether `config.lazy` is True or False.
+        Converts to tensor regardless of whether `cls.lazy` is True or False.
         """
         if len(args) == 1:
             return tt.as_tensor_variable(args[0]).astype(tt.config.floatX)
@@ -111,25 +195,10 @@ class MathType(type):
             ]
 
     def __getattr__(cls, attr):
-        if config.lazy:
+        if cls.lazy:
             return getattr(tt, attr)
         else:
             return getattr(np, attr)
-
-
-class math(metaclass=MathType):
-    """Alias for ``numpy`` or ``theano.tensor``, depending on `config.lazy`."""
-
-    pass
-
-
-# Cholesky solve
-_solve_lower = sla.Solve(A_structure="lower_triangular", lower=True)
-_solve_upper = sla.Solve(A_structure="upper_triangular", lower=False)
-
-
-def _cho_solve(cho_A, b):
-    return _solve_upper(tt.transpose(cho_A), _solve_lower(cho_A, b))
 
 
 class LinAlgType(type):
@@ -160,6 +229,8 @@ class LinAlgType(type):
             covariance matrix.
 
         """
+        # TODO: These if statements won't play well with @autocompile!!!
+
         # Compute C^-1 . X
         if cho_C.ndim == 0:
             CInvX = X / cho_C ** 2
@@ -213,6 +284,8 @@ class LinAlgType(type):
             computable for the linear `starry` model.
 
         """
+        # TODO: These if statements won't play well with @autocompile!!!
+
         # Compute the GP mean
         gp_mu = tt.dot(X, mu)
 
@@ -264,6 +337,8 @@ class LinAlgType(type):
             computable for the linear `starry` model.
 
         """
+        # TODO: These if statements won't play well with @autocompile!!!
+
         # Compute the GP mean
         gp_mu = tt.dot(X, mu)
 
@@ -309,99 +384,52 @@ class LinAlgType(type):
 
         return lnlike[0, 0]
 
+    @autocompile
+    def _cho_solve(cls, cho_A, b):
+        return _cho_solve(cho_A, b)
 
-class linalg(metaclass=LinAlgType):
+
+class lazy_math(metaclass=MathType):
+    """Alias for ``numpy`` or ``theano.tensor``."""
+
+    lazy = True
+
+
+class greedy_math(metaclass=MathType):
+    """Alias for ``numpy`` or ``theano.tensor``."""
+
+    lazy = False
+
+
+class lazy_linalg(metaclass=LinAlgType):
     """Miscellaneous linear algebra operations."""
 
+    lazy = True
+
     class Covariance(object):
-        """A container for covariance matrices.
+        def __init__(self, *args, **kwargs):
+            (
+                self.value,
+                self.cholesky,
+                self.inverse,
+                self.lndet,
+                self.kind,
+                self.N,
+            ) = _get_covariance(lazy_math, lazy_linalg, *args, **kwargs)
 
-            Args:
-                C (scalar, vector, or matrix, optional): The covariance.
-                    Defaults to None.
-                cho_C (matrix, optional): The lower Cholesky factorization of
-                    the covariance. Defaults to None.
-                N (int, optional): The number of rows/columns in the covariance
-                    matrix, required if ``C`` is a scalar. Defaults to None.
-        """
 
-        def __init__(self, C=None, cho_C=None, N=None):
+class greedy_linalg(metaclass=LinAlgType):
+    """Miscellaneous linear algebra operations."""
 
-            # User provided the Cholesky factorization
-            if cho_C is not None:
+    lazy = False
 
-                self.cholesky = math.cast(cho_C)
-                self.value = math.dot(
-                    self.cholesky, math.transpose(self.cholesky)
-                )
-                self.inverse = self._cho_solve(self.cholesky)
-                self.lndet = 2 * math.sum(math.log(math.diag(self.cholesky)))
-                self.kind = "cholesky"
-                self.N = cho_C.shape[0]
-
-            # User provided the covariance as a scalar, vector, or matrix
-            elif C is not None:
-
-                C = math.cast(C)
-
-                if hasattr(C, "ndim"):
-
-                    if C.ndim == 0:
-
-                        assert (
-                            N is not None
-                        ), "Please provide a matrix size `N`."
-                        self.cholesky = math.sqrt(C)
-                        self.inverse = math.cast(1.0 / C)
-                        self.lndet = math.cast(N * math.log(C))
-                        self.value = C
-                        self.kind = "scalar"
-                        self.N = N
-
-                    elif C.ndim == 1:
-
-                        self.cholesky = math.sqrt(C)
-                        self.inverse = 1.0 / C
-                        self.lndet = math.sum(math.log(C))
-                        self.value = C
-                        self.kind = "vector"
-                        self.N = C.shape[0]
-
-                    else:
-
-                        self.cholesky = math.cholesky(C)
-                        self.inverse = self._cho_solve(self.cholesky)
-                        self.lndet = 2 * math.sum(
-                            math.log(math.diag(self.cholesky))
-                        )
-                        self.value = C
-                        self.kind = "matrix"
-                        self.N = C.shape[0]
-
-                # Assume it's a scalar
-                else:
-
-                    assert N is not None, "Please provide a matrix size `N`."
-                    self.cholesky = math.sqrt(C)
-                    self.inverse = math.cast(1.0 / C)
-                    self.lndet = math.cast(N * math.log(C))
-                    self.value = C
-                    self.kind = "scalar"
-                    self.N = N
-
-            # ?!
-            else:
-                raise ValueError(
-                    "Either the covariance or its Cholesky factorization must be provided."
-                )
-
-        def _cho_solve(self, cho_A, b=None):
-            """Apply the cholesky factorization to a vector or matrix."""
-            if config.lazy:
-                if b is None:
-                    b = tt.eye(cho_A.shape[0])
-                return _cho_solve(cho_A, b)
-            else:
-                if b is None:
-                    b = np.eye(cho_A.shape[0])
-                return scipy.linalg.cho_solve((cho_A, True), b)
+    class Covariance(object):
+        def __init__(self, *args, **kwargs):
+            (
+                self.value,
+                self.cholesky,
+                self.inverse,
+                self.lndet,
+                self.kind,
+                self.N,
+            ) = _get_covariance(greedy_math, greedy_linalg, *args, **kwargs)

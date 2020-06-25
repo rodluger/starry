@@ -3,7 +3,7 @@
 
 """
 import theano.tensor as tt
-from starry._core import math
+from starry._core.math import lazy_math
 from scipy.linalg import block_diag as scipy_block_diag
 import numpy as np
 
@@ -18,4 +18,4 @@ def test_block_diag():
     C2 = tt.as_tensor_variable(np.ones((3, 3)) * 2)
     C3 = tt.as_tensor_variable(np.ones((3, 3)) * 3)
 
-    assert np.allclose(C, math.block_diag(C1, C2, C3).eval())
+    assert np.allclose(C, lazy_math.block_diag(C1, C2, C3).eval())

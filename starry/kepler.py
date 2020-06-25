@@ -2,7 +2,7 @@
 from . import config
 from ._constants import *
 from .maps import MapBase, RVBase, ReflectedBase
-from ._core import OpsSystem, math, linalg
+from ._core import OpsSystem, math
 import numpy as np
 from astropy import units
 from inspect import getmro
@@ -36,6 +36,8 @@ class Body(object):
         **kwargs,
     ):
         # Surface map
+        self._lazy = map._lazy
+        self._math = map._math
         self.map = map
 
         # Units
@@ -121,6 +123,9 @@ class Body(object):
         assert MapBase in getmro(
             type(value)
         ), "The `map` attribute must be a `starry` map instance."
+        assert (
+            value._lazy == self._lazy
+        ), "Map must have the same evaluation mode (lazy/greedy)."
         self._map = value
 
     @property
@@ -130,7 +135,7 @@ class Body(object):
 
     @r.setter
     def r(self, value):
-        self._r = math.cast(value * self._length_factor)
+        self._r = self._math.cast(value * self._length_factor)
 
     @property
     def m(self):
@@ -139,7 +144,7 @@ class Body(object):
 
     @m.setter
     def m(self, value):
-        self._m = math.cast(value * self._mass_factor)
+        self._m = self._math.cast(value * self._mass_factor)
 
     @property
     def prot(self):
@@ -148,7 +153,7 @@ class Body(object):
 
     @prot.setter
     def prot(self, value):
-        self._prot = math.cast(value * self._time_factor)
+        self._prot = self._math.cast(value * self._time_factor)
 
     @property
     def t0(self):
@@ -157,7 +162,7 @@ class Body(object):
 
     @t0.setter
     def t0(self, value):
-        self._t0 = math.cast(value * self._time_factor)
+        self._t0 = self._math.cast(value * self._time_factor)
 
     @property
     def theta0(self):
@@ -166,7 +171,7 @@ class Body(object):
 
     @theta0.setter
     def theta0(self, value):
-        self._theta0 = math.cast(value * self._angle_factor)
+        self._theta0 = self._math.cast(value * self._angle_factor)
 
     def _check_kwargs(self, method, kwargs):
         if not config.quiet:
@@ -315,7 +320,7 @@ class Secondary(Body):
 
     @porb.setter
     def porb(self, value):
-        self._porb = math.cast(value * self._time_factor)
+        self._porb = self._math.cast(value * self._time_factor)
         self._a = 0.0
 
     @property
@@ -332,7 +337,7 @@ class Secondary(Body):
 
     @a.setter
     def a(self, value):
-        self._a = math.cast(value * self._length_factor)
+        self._a = self._math.cast(value * self._length_factor)
         self._porb = 0.0
 
     @property
@@ -351,7 +356,7 @@ class Secondary(Body):
 
     @w.setter
     def w(self, value):
-        self._w = math.cast(value * self._angle_factor)
+        self._w = self._math.cast(value * self._angle_factor)
 
     @property
     def omega(self):
@@ -369,7 +374,7 @@ class Secondary(Body):
 
     @Omega.setter
     def Omega(self, value):
-        self._Omega = math.cast(value * self._angle_factor)
+        self._Omega = self._math.cast(value * self._angle_factor)
 
     @property
     def inc(self):
@@ -378,7 +383,7 @@ class Secondary(Body):
 
     @inc.setter
     def inc(self, value):
-        self._inc = math.cast(value * self._angle_factor)
+        self._inc = self._math.cast(value * self._angle_factor)
 
 
 class System(object):
@@ -443,6 +448,12 @@ class System(object):
         ), "Reflected light map not allowed for the primary body."
         self._primary = primary
         self._rv = primary._map.__props__["rv"]
+        self._lazy = primary._lazy
+        self._math = primary._math
+        if self._lazy:
+            self._linalg = math.lazy_linalg
+        else:
+            self._linalg = math.greedy_linalg
 
         # Secondary bodies
         assert len(secondaries) > 0, "There must be at least one secondary."
@@ -458,6 +469,9 @@ class System(object):
                 "Radial velocity must be enabled "
                 "for either all or none of the bodies."
             )
+            assert (
+                sec._lazy == self._lazy
+            ), "All bodies must have the same evaluation mode (lazy/greedy)."
 
         reflected = [sec._map.__props__["reflected"] for sec in secondaries]
         if np.all(reflected):
@@ -605,7 +619,8 @@ class System(object):
             for sec in self._secondaries:
                 sec.map._set_RV_filter()
         img_pri, img_sec, x, y, z = self.ops.render(
-            math.reshape(math.to_array_or_tensor(t), [-1]) * self._time_factor,
+            self._math.reshape(self._math.to_array_or_tensor(t), [-1])
+            * self._time_factor,
             res,
             self._primary._r,
             self._primary._m,
@@ -618,37 +633,61 @@ class System(object):
             self._primary._map._u,
             self._primary._map._f,
             self._primary._map._alpha,
-            math.to_array_or_tensor([sec._r for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._m for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._prot for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._t0 for sec in self._secondaries]),
-            math.to_array_or_tensor(
+            self._primary._map._tau,
+            self._primary._map._delta,
+            self._math.to_array_or_tensor(
+                [sec._r for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._m for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._prot for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._t0 for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
                 [sec._theta0 for sec in self._secondaries]
             ),
             self._get_periods(),
-            math.to_array_or_tensor([sec._ecc for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._w for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
+                [sec._ecc for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._w for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._Omega for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._inc for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
                 [sec._map._inc for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._obl for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._y for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._u for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._f for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
+                [sec._map._tau for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._map._delta for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
                 [sec._map._sigr for sec in self._secondaries]
             ),
         )
@@ -659,7 +698,9 @@ class System(object):
             y / self._primary._r,
             z / self._primary._r,
         )
-        r = math.to_array_or_tensor([sec._r for sec in self._secondaries])
+        r = self._math.to_array_or_tensor(
+            [sec._r for sec in self._secondaries]
+        )
         r = r / self._primary._r
 
         # Evaluate if needed
@@ -825,49 +866,77 @@ class System(object):
                 the design matrix in units of :py:attr:`time_unit`.
         """
         return self.ops.X(
-            math.reshape(math.to_array_or_tensor(t), [-1]) * self._time_factor,
+            self._math.reshape(self._math.to_array_or_tensor(t), [-1])
+            * self._time_factor,
             self._primary._r,
             self._primary._m,
             self._primary._prot,
             self._primary._t0,
             self._primary._theta0,
-            math.to_array_or_tensor(1.0),
+            self._math.to_array_or_tensor(1.0),
             self._primary._map._inc,
             self._primary._map._obl,
             self._primary._map._u,
             self._primary._map._f,
             self._primary._map._alpha,
-            math.to_array_or_tensor([sec._r for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._m for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._prot for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._t0 for sec in self._secondaries]),
-            math.to_array_or_tensor(
+            self._primary._map._tau,
+            self._primary._map._delta,
+            self._math.to_array_or_tensor(
+                [sec._r for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._m for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._prot for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._t0 for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
                 [sec._theta0 for sec in self._secondaries]
             ),
             self._get_periods(),
-            math.to_array_or_tensor([sec._ecc for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._w for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
-            math.to_array_or_tensor(
-                [math.to_array_or_tensor(1.0) for sec in self._secondaries]
+            self._math.to_array_or_tensor(
+                [sec._ecc for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
+                [sec._w for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._Omega for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._inc for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [
+                    self._math.to_array_or_tensor(1.0)
+                    for sec in self._secondaries
+                ]
+            ),
+            self._math.to_array_or_tensor(
                 [sec._map._inc for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._obl for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._u for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._f for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
+                [sec._map._tau for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._map._delta for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
                 [sec._map._sigr for sec in self._secondaries]
             ),
         )
@@ -897,10 +966,11 @@ class System(object):
             ay = [body.map.amp * body._map._y for body in self._bodies]
 
         if total:
-            return math.dot(X, math.concatenate(ay))
+            return self._math.dot(X, self._math.concatenate(ay))
         else:
             return [
-                math.dot(X[:, idx], ay[i]) for i, idx in enumerate(self._inds)
+                self._math.dot(X[:, idx], ay[i])
+                for i, idx in enumerate(self._inds)
             ]
 
     def rv(self, t, keplerian=True, total=True):
@@ -921,7 +991,8 @@ class System(object):
 
         """
         rv = self.ops.rv(
-            math.reshape(math.to_array_or_tensor(t), [-1]) * self._time_factor,
+            self._math.reshape(self._math.to_array_or_tensor(t), [-1])
+            * self._time_factor,
             self._primary._r,
             self._primary._m,
             self._primary._prot,
@@ -933,47 +1004,71 @@ class System(object):
             self._primary._map._y,
             self._primary._map._u,
             self._primary._map._alpha,
+            self._primary._map._tau,
+            self._primary._map._delta,
             self._primary._map._veq,
-            math.to_array_or_tensor([sec._r for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._m for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._prot for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._t0 for sec in self._secondaries]),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
+                [sec._r for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._m for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._prot for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._t0 for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
                 [sec._theta0 for sec in self._secondaries]
             ),
             self._get_periods(),
-            math.to_array_or_tensor([sec._ecc for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._w for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
+                [sec._ecc for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._w for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._Omega for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._inc for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
                 [sec._map._amp for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._inc for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._obl for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._y for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._u for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
+                [sec._map._tau for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._map._delta for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
                 [sec._map._sigr for sec in self._secondaries]
             ),
-            math.to_array_or_tensor(
+            self._math.to_array_or_tensor(
                 [sec._map._veq for sec in self._secondaries]
             ),
             np.array(keplerian),
         )
         if total:
-            return math.sum(rv, axis=0)
+            return self._math.sum(rv, axis=0)
         else:
             return rv
 
@@ -985,16 +1080,29 @@ class System(object):
                 the position in units of :py:attr:`time_unit`.
         """
         x, y, z = self.ops.position(
-            math.reshape(math.to_array_or_tensor(t), [-1]) * self._time_factor,
+            self._math.reshape(self._math.to_array_or_tensor(t), [-1])
+            * self._time_factor,
             self._primary._m,
             self._primary._t0,
-            math.to_array_or_tensor([sec._m for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._t0 for sec in self._secondaries]),
+            self._math.to_array_or_tensor(
+                [sec._m for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._t0 for sec in self._secondaries]
+            ),
             self._get_periods(),
-            math.to_array_or_tensor([sec._ecc for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._w for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._Omega for sec in self._secondaries]),
-            math.to_array_or_tensor([sec._inc for sec in self._secondaries]),
+            self._math.to_array_or_tensor(
+                [sec._ecc for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._w for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._Omega for sec in self._secondaries]
+            ),
+            self._math.to_array_or_tensor(
+                [sec._inc for sec in self._secondaries]
+            ),
         )
         fac = np.reshape(
             [self._primary._length_factor]
@@ -1012,9 +1120,9 @@ class System(object):
                 periods[i] = (
                     (2 * np.pi)
                     * sec._a ** (3 / 2)
-                    / (math.sqrt(G_grav * (self._primary._m + sec._m)))
+                    / (self._math.sqrt(G_grav * (self._primary._m + sec._m)))
                 )
-        return math.to_array_or_tensor(periods)
+        return self._math.to_array_or_tensor(periods)
 
     def set_data(self, flux, C=None, cho_C=None):
         """Set the data vector and covariance matrix.
@@ -1036,8 +1144,10 @@ class System(object):
                 covariance matrix. Defaults to None. Either `C` or
                 `cho_C` must be provided.
         """
-        self._flux = math.cast(flux)
-        self._C = linalg.Covariance(C=C, cho_C=cho_C, N=self._flux.shape[0])
+        self._flux = self._math.cast(flux)
+        self._C = self._linalg.Covariance(
+            C=C, cho_C=cho_C, N=self._flux.shape[0]
+        )
 
     def solve(self, *, design_matrix=None, t=None):
         """Solve the least-squares problem for the posterior over maps for all bodies.
@@ -1079,10 +1189,10 @@ class System(object):
         if design_matrix is None:
             assert t is not None, "Please provide a time vector `t`."
             design_matrix = self.design_matrix(t)
-        X = math.cast(design_matrix)
+        X = self._math.cast(design_matrix)
 
         # Get the data vector
-        f = math.cast(self._flux)
+        f = self._math.cast(self._flux)
 
         # Check for bodies whose priors are set
         self._solved_bodies = []
@@ -1094,7 +1204,9 @@ class System(object):
 
                 # Subtract out this term from the data vector,
                 # since it is fixed
-                f -= body.map.amp * math.dot(X[:, self._inds[k]], body.map.y)
+                f -= body.map.amp * self._math.dot(
+                    X[:, self._inds[k]], body.map.y
+                )
 
             else:
 
@@ -1112,28 +1224,30 @@ class System(object):
         X = X[:, inds]
 
         # Stack our priors
-        mu = math.concatenate([body.map._mu for body in self._solved_bodies])
+        mu = self._math.concatenate(
+            [body.map._mu for body in self._solved_bodies]
+        )
 
         if not dense_L:
             # We can just concatenate vectors
-            LInv = math.concatenate(
+            LInv = self._math.concatenate(
                 [
-                    body.map._L.inverse * math.ones(body.map.Ny)
+                    body.map._L.inverse * self._math.ones(body.map.Ny)
                     for body in self._solved_bodies
                 ]
             )
         else:
             # FACT: The inverse of a block diagonal matrix
             # is the block diagonal matrix of the inverses.
-            LInv = math.block_diag(
+            LInv = self._math.block_diag(
                 *[
-                    body.map._L.inverse * math.eye(body.map.Ny)
+                    body.map._L.inverse * self._math.eye(body.map.Ny)
                     for body in self._solved_bodies
                 ]
             )
 
         # Compute the MAP solution
-        self._solution = linalg.solve(X, f, self._C.cholesky, mu, LInv)
+        self._solution = self._linalg.solve(X, f, self._C.cholesky, mu, LInv)
 
         # Set all the map vectors
         x, cho_cov = self._solution
@@ -1184,8 +1298,8 @@ class System(object):
 
         # Fast multivariate sampling using the Cholesky factorization
         yhat, cho_ycov = self._solution
-        u = math.cast(np.random.randn(N))
-        x = yhat + math.dot(cho_ycov, u)
+        u = self._math.cast(np.random.randn(N))
+        x = yhat + self._math.dot(cho_ycov, u)
 
         # Set all the map vectors
         n = 0
@@ -1237,10 +1351,10 @@ class System(object):
         if design_matrix is None:
             assert t is not None, "Please provide a time vector `t`."
             design_matrix = self.design_matrix(t)
-        X = math.cast(design_matrix)
+        X = self._math.cast(design_matrix)
 
         # Get the data vector
-        f = math.cast(self._flux)
+        f = self._math.cast(self._flux)
 
         # Check for bodies whose priors are set
         self._solved_bodies = []
@@ -1252,7 +1366,9 @@ class System(object):
 
                 # Subtract out this term from the data vector,
                 # since it is fixed
-                f -= body.map.amp * math.dot(X[:, self._inds[k]], body.map.y)
+                f -= body.map.amp * self._math.dot(
+                    X[:, self._inds[k]], body.map.y
+                )
 
             else:
 
@@ -1270,45 +1386,47 @@ class System(object):
         X = X[:, inds]
 
         # Stack our priors
-        mu = math.concatenate([body.map._mu for body in self._solved_bodies])
+        mu = self._math.concatenate(
+            [body.map._mu for body in self._solved_bodies]
+        )
 
         # Compute the likelihood
         if woodbury:
             if not dense_L:
                 # We can just concatenate vectors
-                LInv = math.concatenate(
+                LInv = self._math.concatenate(
                     [
-                        body.map._L.inverse * math.ones(body.map.Ny)
+                        body.map._L.inverse * self._math.ones(body.map.Ny)
                         for body in self._solved_bodies
                     ]
                 )
             else:
-                LInv = math.block_diag(
+                LInv = self._math.block_diag(
                     *[
-                        body.map._L.inverse * math.eye(body.map.Ny)
+                        body.map._L.inverse * self._math.eye(body.map.Ny)
                         for body in self._solved_bodies
                     ]
                 )
-            lndetL = math.cast(
+            lndetL = self._math.cast(
                 [body.map._L.lndet for body in self._solved_bodies]
             )
-            return linalg.lnlike_woodbury(
+            return self._linalg.lnlike_woodbury(
                 X, f, self._C.inverse, mu, LInv, self._C.lndet, lndetL
             )
         else:
             if not dense_L:
                 # We can just concatenate vectors
-                L = math.concatenate(
+                L = self._math.concatenate(
                     [
-                        body.map._L.value * math.ones(body.map.Ny)
+                        body.map._L.value * self._math.ones(body.map.Ny)
                         for body in self._solved_bodies
                     ]
                 )
             else:
-                L = math.block_diag(
+                L = self._math.block_diag(
                     *[
-                        body.map._L.value * math.eye(body.map.Ny)
+                        body.map._L.value * self._math.eye(body.map.Ny)
                         for body in self._solved_bodies
                     ]
                 )
-            return linalg.lnlike(X, f, self._C.value, mu, L)
+            return self._linalg.lnlike(X, f, self._C.value, mu, L)

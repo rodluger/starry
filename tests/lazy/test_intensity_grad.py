@@ -14,26 +14,31 @@ def test_zero_lat_lon(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
 
     """
 
-    lats = [0.0001, 0.0, 30.0, 0.0]
-    lons = [30.0, 30.0, 0.0, 0.0]
+    lats = [0.0001, 0.0, np.pi / 6, 0.0]
+    lons = [np.pi / 6, np.pi / 6, 0.0, 0.0]
 
     for lat, lon in zip(lats, lons):
         with change_flags(compute_test_value="off"):
             map = starry.Map(ydeg=2, udeg=2)
             np.random.seed(11)
-            y = [1.0] + list(np.random.randn(8))
-            u = [-1.0] + list(np.random.randn(2))
-            f = [np.pi]
-            wta = 0.0
+            y = np.array([1.0] + list(np.random.randn(8)))
+            u = np.array([-1.0] + list(np.random.randn(2)))
+            f = np.array([np.pi])
+            theta = np.array(0.0)
+            alpha = np.array(0.1)
+            tau = np.array(0.5)
+            delta = np.array(0.0)
+            lat = np.array(lat)
+            lon = np.array(lon)
 
-            def intensity(lat, lon, y, u, f, wta):
+            def intensity(lat, lon, y, u, f, theta, alpha, tau, delta):
                 return map.ops.intensity(
-                    lat, lon, y, u, f, wta, np.array(True)
+                    lat, lon, y, u, f, theta, alpha, tau, delta, np.array(True)
                 )
 
             verify_grad(
                 intensity,
-                (lat, lon, y, u, f, wta),
+                (lat, lon, y, u, f, theta, alpha, tau, delta),
                 abs_tol=abs_tol,
                 rel_tol=rel_tol,
                 eps=eps,

@@ -10,7 +10,7 @@ import pytest
 
 @pytest.fixture(scope="class", params=[(None,), (3,)])
 def map(request):
-    nw, = request.param
+    (nw,) = request.param
     map = starry.Map(ydeg=5, udeg=2, nw=nw)
 
     # Hack the map class to auto-evaluate
@@ -27,7 +27,7 @@ def map(request):
         def u(self):
             return self._u.eval()
 
-    map = Map(5, 2, 0, 0, nw)
+    map = Map(5, 2, 0, nw)
 
     return map
 

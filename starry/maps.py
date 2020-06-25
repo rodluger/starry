@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from . import config
 from ._constants import *
-from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, linalg, math
+from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, math
 from ._core.utils import is_theano
 from ._indices import integers, get_ylm_inds, get_ul_inds, get_ylmw_inds
 from ._plotting import (
@@ -41,7 +41,7 @@ class Amplitude(object):
         return instance._amp
 
     def __set__(self, instance, value):
-        instance._amp = math.cast(np.ones(instance.nw) * value)
+        instance._amp = instance._math.cast(np.ones(instance.nw) * value)
 
 
 class MapBase(object):
@@ -56,9 +56,9 @@ class MapBase(object):
                 "Method not yet implemented for spectral maps."
             )
 
-    def __init__(self, ydeg, udeg, fdeg, drorder, nw, **kwargs):
+    def __init__(self, ydeg, udeg, fdeg, nw, **kwargs):
         # Instantiate the Theano ops class
-        self.ops = self._ops_class_(ydeg, udeg, fdeg, drorder, nw, **kwargs)
+        self.ops = self._ops_class_(ydeg, udeg, fdeg, nw, **kwargs)
 
         # Dimensions
         self._ydeg = ydeg
@@ -70,13 +70,14 @@ class MapBase(object):
         self._deg = ydeg + udeg + fdeg
         self._N = (ydeg + udeg + fdeg + 1) ** 2
         self._nw = nw
-        self._drorder = drorder
 
         # Basic properties
-        self._inc = math.cast(0.5 * np.pi)
-        self._obl = math.cast(0.0)
-        self._alpha = math.cast(0.0)
-        self._sigr = math.cast(0.0)
+        self._inc = self._math.cast(0.5 * np.pi)
+        self._obl = self._math.cast(0.0)
+        self._alpha = self._math.cast(0.0)
+        self._tau = self._math.cast(0.25)
+        self._delta = self._math.cast(0.25)
+        self._sigr = self._math.cast(0.0)
 
         # Units
         self.angle_unit = kwargs.pop("angle_unit", units.degree)
@@ -156,11 +157,6 @@ class MapBase(object):
         return self._nw
 
     @property
-    def drorder(self):
-        """Differential rotation order. *Read-only*"""
-        return self._drorder
-
-    @property
     def y(self):
         """The spherical harmonic coefficient vector. *Read-only*
 
@@ -204,7 +200,7 @@ class MapBase(object):
             inds = get_ul_inds(self.udeg, idx)
             if 0 in inds:
                 raise ValueError("The u_0 coefficient cannot be set.")
-            if config.lazy:
+            if self.lazy:
                 self._u = self.ops.set_map_vector(self._u, inds, val)
             else:
                 self._u[inds] = val
@@ -215,7 +211,7 @@ class MapBase(object):
                 if np.array_equal(np.sort(inds), np.arange(self.Ny)):
                     # The user is setting *all* coefficients, so we allow
                     # them to "set" the Y_{0,0} coefficient...
-                    if config.lazy:
+                    if self.lazy:
                         self._y = self.ops.set_map_vector(self._y, inds, val)
                     else:
                         self._y[inds] = val
@@ -229,7 +225,7 @@ class MapBase(object):
                         "Please change the map amplitude instead."
                     )
             else:
-                if config.lazy:
+                if self.lazy:
                     self._y = self.ops.set_map_vector(self._y, inds, val)
                 else:
                     self._y[inds] = val
@@ -242,7 +238,7 @@ class MapBase(object):
                     "Please change the map amplitude instead."
                 )
             else:
-                if config.lazy:
+                if self.lazy:
                     self._y = self.ops.set_map_vector(self._y, inds, val)
                 else:
                     old_shape = self._y[inds].shape
@@ -269,8 +265,8 @@ class MapBase(object):
         zo = kwargs.pop("zo", 1.0)
         ro = kwargs.pop("ro", 0.0)
         theta = kwargs.pop("theta", 0.0)
-        theta, xo, yo, zo = math.vectorize(theta, xo, yo, zo)
-        theta, xo, yo, zo, ro = math.cast(theta, xo, yo, zo, ro)
+        theta, xo, yo, zo = self._math.vectorize(theta, xo, yo, zo)
+        theta, xo, yo, zo, ro = self._math.cast(theta, xo, yo, zo, ro)
         theta *= self._angle_factor
         return theta, xo, yo, zo, ro
 
@@ -287,17 +283,17 @@ class MapBase(object):
         else:
             y = np.zeros((self.Ny, self.nw))
             y[0, :] = 1.0
-        self._y = math.cast(y)
+        self._y = self._math.cast(y)
 
         u = np.zeros(self.Nu)
         u[0] = -1.0
-        self._u = math.cast(u)
+        self._u = self._math.cast(u)
 
         f = np.zeros(self.Nf)
         f[0] = np.pi
-        self._f = math.cast(f)
+        self._f = self._math.cast(f)
 
-        self._amp = math.cast(kwargs.pop("amp", np.ones(self.nw)))
+        self._amp = self._math.cast(kwargs.pop("amp", np.ones(self.nw)))
 
         # Reset data and priors
         self._flux = None
@@ -306,7 +302,10 @@ class MapBase(object):
         self._L = None
         self._solution = None
 
+        # Check for bad kwargs, with the follwoing exceptions
         kwargs.pop("source_npts", None)
+        kwargs.pop("dr_oversample", None)
+        kwargs.pop("dr_lam", None)
         self._check_kwargs("reset", kwargs)
 
     def show(self, **kwargs):
@@ -382,7 +381,7 @@ class MapBase(object):
             projection = get_projection(kwargs.get("projection", "ortho"))
 
             # Get the map orientation
-            if config.lazy:
+            if self.lazy:
                 inc = self._inc.eval()
                 obl = self._obl.eval()
             else:
@@ -390,9 +389,10 @@ class MapBase(object):
                 obl = self._obl
 
             # Get the rotational phase
-            if config.lazy:
-                theta = math.vectorize(
-                    math.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
+            if self.lazy:
+                theta = self._math.vectorize(
+                    self._math.cast(kwargs.pop("theta", 0.0))
+                    * self._angle_factor
                 ).eval()
             else:
                 theta = np.atleast_1d(
@@ -411,7 +411,7 @@ class MapBase(object):
         if image is None:
 
             # We need to evaluate the variables so we can plot the map!
-            if config.lazy:
+            if self.lazy:
 
                 # Get kwargs
                 res = kwargs.pop("res", 300)
@@ -426,12 +426,24 @@ class MapBase(object):
                     y = self._y.eval()
                     f = self._f.eval()
                     alpha = self._alpha.eval()
+                    tau = self._tau.eval()
+                    delta = self._delta.eval()
 
                     # Explicitly call the compiled version of `render`
                     image = self._amp.eval().reshape(
                         -1, 1, 1
                     ) * self.ops.render(
-                        res, projection, theta, inc, obl, y, u, f, alpha
+                        res,
+                        projection,
+                        theta,
+                        inc,
+                        obl,
+                        y,
+                        u,
+                        f,
+                        alpha,
+                        tau,
+                        delta,
                     )
 
                 else:
@@ -495,10 +507,14 @@ class MapBase(object):
                         lonlines[n] = ax.axvline(
                             lon, color="k", lw=0.5, alpha=0.5, zorder=0
                         )
-                ax.set_xticks(lons)
-                ax.set_yticks(lats)
-                ax.set_xlabel("Longitude [deg]")
-                ax.set_ylabel("Latitude [deg]")
+                    ax.set_xticks(lons)
+                    ax.set_yticks(lats)
+                    for tick in (
+                        ax.xaxis.get_major_ticks() + ax.yaxis.get_major_ticks()
+                    ):
+                        tick.label.set_fontsize(10)
+                    ax.set_xlabel("Longitude [deg]")
+                    ax.set_ylabel("Latitude [deg]")
 
             else:
 
@@ -604,9 +620,10 @@ class MapBase(object):
         if norm is None or norm == "rv":
             vmin = np.nanmin(image)
             vmax = np.nanmax(image)
-            if vmin == vmax:
-                vmin -= 1e-15
-                vmax += 1e-15
+            # Set a minimum contrast
+            if np.abs(vmin - vmax) < 1e-12:
+                vmin -= 1e-12
+                vmax += 1e-12
             if norm is None:
                 norm = colors.Normalize(vmin=vmin, vmax=vmax)
             elif norm == "rv":
@@ -773,7 +790,7 @@ class MapBase(object):
             bool: Whether or not the limb darkening profile is physical.
         """
         result = self.ops.limbdark_is_physical(self.u)
-        if config.lazy:
+        if self.lazy:
             return result
         else:
             return bool(result)
@@ -798,8 +815,8 @@ class MapBase(object):
                 covariance matrix. Defaults to None. Either `C` or
                 `cho_C` must be provided.
         """
-        self._flux = math.cast(flux)
-        self._C = linalg.Covariance(C, cho_C, N=self._flux.shape[0])
+        self._flux = self._math.cast(flux)
+        self._C = self._linalg.Covariance(C, cho_C, N=self._flux.shape[0])
 
     def set_prior(self, *, mu=None, L=None, cho_L=None):
         """Set the prior mean and covariance of the spherical harmonic coefficients.
@@ -839,9 +856,9 @@ class MapBase(object):
         if mu is None:
             mu = np.zeros(self.Ny)
             mu[0] = 1.0
-            mu = math.cast(mu)
-        self._mu = math.cast(mu) * math.cast(np.ones(self.Ny))
-        self._L = linalg.Covariance(L, cho_L, N=self.Ny)
+            mu = self._math.cast(mu)
+        self._mu = self._math.cast(mu) * self._math.cast(np.ones(self.Ny))
+        self._L = self._linalg.Covariance(L, cho_L, N=self.Ny)
 
     def remove_prior(self):
         """Remove the prior on the map coefficients."""
@@ -885,10 +902,10 @@ class MapBase(object):
         # Get the design matrix & remove any amplitude weighting
         if design_matrix is None:
             design_matrix = self.design_matrix(**kwargs)
-        X = math.cast(design_matrix)
+        X = self._math.cast(design_matrix)
 
         # Compute the MAP solution
-        self._solution = linalg.solve(
+        self._solution = self._linalg.solve(
             X, self._flux, self._C.cholesky, self._mu, self._L.inverse
         )
 
@@ -941,11 +958,11 @@ class MapBase(object):
         # Get the design matrix & remove any amplitude weighting
         if design_matrix is None:
             design_matrix = self.design_matrix(**kwargs)
-        X = math.cast(design_matrix)
+        X = self._math.cast(design_matrix)
 
         # Compute the likelihood
         if woodbury:
-            return linalg.lnlike_woodbury(
+            return self._linalg.lnlike_woodbury(
                 X,
                 self._flux,
                 self._C.inverse,
@@ -955,7 +972,7 @@ class MapBase(object):
                 self._L.lndet,
             )
         else:
-            return linalg.lnlike(
+            return self._linalg.lnlike(
                 X, self._flux, self._C.value, self._mu, self._L.value
             )
 
@@ -993,8 +1010,8 @@ class MapBase(object):
 
         # Fast multivariate sampling using the Cholesky factorization
         yhat, cho_ycov = self._solution
-        u = math.cast(np.random.randn(self.Ny))
-        x = yhat + math.dot(cho_ycov, u)
+        u = self._math.cast(np.random.randn(self.Ny))
+        x = yhat + self._math.dot(cho_ycov, u)
         self.amp = x[0]
         self[1:, :] = x[1:] / self.amp
 
@@ -1016,17 +1033,27 @@ class YlmBase(object):
         if kwargs.get("inc", None) is not None:
             self.inc = kwargs.pop("inc")
         else:
-            self._inc = math.cast(0.5 * np.pi)
+            self._inc = self._math.cast(0.5 * np.pi)
 
         if kwargs.get("obl", None) is not None:
             self.obl = kwargs.pop("obl")
         else:
-            self._obl = math.cast(0.0)
+            self._obl = self._math.cast(0.0)
 
         if kwargs.get("alpha", None) is not None:
             self.alpha = kwargs.pop("alpha")
         else:
-            self._alpha = math.cast(0.0)
+            self._alpha = self._math.cast(0.0)
+
+        if kwargs.get("tau", None) is not None:
+            self.tau = kwargs.pop("tau")
+        else:
+            self._tau = self._math.cast(0.25)
+
+        if kwargs.get("delta", None) is not None:
+            self.delta = kwargs.pop("delta")
+        else:
+            self._delta = self._math.cast(0.25)
 
         super(YlmBase, self).reset(**kwargs)
 
@@ -1037,7 +1064,7 @@ class YlmBase(object):
 
     @inc.setter
     def inc(self, value):
-        self._inc = math.cast(value) * self._angle_factor
+        self._inc = self._math.cast(value) * self._angle_factor
 
     @property
     def obl(self):
@@ -1046,7 +1073,7 @@ class YlmBase(object):
 
     @obl.setter
     def obl(self, value):
-        self._obl = math.cast(value) * self._angle_factor
+        self._obl = self._math.cast(value) * self._angle_factor
 
     @property
     def alpha(self):
@@ -1061,23 +1088,47 @@ class YlmBase(object):
         where :math:`\\omega_{eq}` is the equatorial angular velocity of
         the object.
 
-        .. note ::
-
-            This parameter is only used if :py:attr:`drorder` is greater
-            than zero and/or radial velocity mode is enabled.
         """
         return self._alpha
 
     @alpha.setter
     def alpha(self, value):
-        if (self._drorder == 0) and not hasattr(
-            self, "rv"
-        ):  # pragma: no cover
-            logger.warning(
-                "Parameter `drorder` is zero, so setting `alpha` has no effect."
-            )
-        else:
-            self._alpha = math.cast(value)
+        self._alpha = self._math.cast(value)
+
+    @property
+    def tau(self):
+        """The damping coefficient of the map when differential rotation is enabled.
+
+        This parameter is a unitless damping timescale for the `l > 0` features
+        when :py:attr:`alpha` is nonzero. `tau` is measured as a fraction of the
+        winding timescale, i.e., the time it takes for a feature at the equator
+        to lap a feature at the pole. The defualt value is `0.25`, meaning
+        that features will damp on a timescale corresponding to a quarter of a winding
+        timescale.
+
+        """
+        return self._tau
+
+    @tau.setter
+    def tau(self, value):
+        self._tau = self._math.cast(value)
+
+    @property
+    def delta(self):
+        """The lag coefficient of the map when differential rotation is enabled.
+
+        This parameter is a unitless lag for the damping applied to `l > 0`
+        features measured as a fraction of the winding timescale
+        (see :py:attr:`tau`). The default value is `0.25`, meaning the features
+        will have the largest amplitude a quarter of a winding timescale
+        *after* `theta=0`.
+
+        """
+        return self._delta
+
+    @delta.setter
+    def delta(self, value):
+        self._delta = self._math.cast(value)
 
     def design_matrix(self, **kwargs):
         r"""Compute and return the light curve design matrix :math:`A`.
@@ -1116,6 +1167,8 @@ class YlmBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._tau,
+            self._delta,
         )
 
     def intensity_design_matrix(self, lat=0, lon=0):
@@ -1138,7 +1191,7 @@ class YlmBase(object):
 
         """
         # Get the Cartesian points
-        lat, lon = math.vectorize(*math.cast(lat, lon))
+        lat, lon = self._math.vectorize(*self._math.cast(lat, lon))
         lat *= self._angle_factor
         lon *= self._angle_factor
 
@@ -1180,6 +1233,8 @@ class YlmBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._tau,
+            self._delta,
         )
 
     def intensity(self, lat=0, lon=0, **kwargs):
@@ -1199,19 +1254,16 @@ class YlmBase(object):
 
         """
         # Get the Cartesian points
-        lat, lon = math.vectorize(*math.cast(lat, lon))
+        lat, lon = self._math.vectorize(*self._math.cast(lat, lon))
         lat *= self._angle_factor
         lon *= self._angle_factor
 
         # If differentially rotating, allow a `theta` keyword
-        if self.drorder > 0:
-            alpha_theta = math.cast(kwargs.get("theta", 0.0)) * self.alpha
-            alpha_theta *= self._angle_factor
-        else:
-            alpha_theta = math.cast(0.0)
+        theta = self._math.cast(kwargs.get("theta", 0.0))
+        theta *= self._angle_factor
 
         # If limb-darkened, allow a `limbdarken` keyword
-        if self.udeg > 0 and kwargs.pop("limbdarken", True):
+        if kwargs.pop("limbdarken", True) and self.udeg > 0:
             ld = np.array(True)
         else:
             ld = np.array(False)
@@ -1221,7 +1273,16 @@ class YlmBase(object):
 
         # Compute & return
         return self.amp * self.ops.intensity(
-            lat, lon, self._y, self._u, self._f, alpha_theta, ld
+            lat,
+            lon,
+            self._y,
+            self._u,
+            self._f,
+            theta,
+            self._alpha,
+            self._tau,
+            self._delta,
+            ld,
         )
 
     def render(self, res=300, projection="ortho", theta=0.0):
@@ -1232,6 +1293,12 @@ class YlmBase(object):
         ``nframes`` is the number of values of ``theta``. However, if this is
         a spectral map, ``nframes`` is the number of wavelength bins and
         ``theta`` must be a scalar.
+
+        .. note::
+
+            Users can obtain the latitudes and longitudes corresponding to
+            each point in the rendered image by calling
+            :py:meth:`get_latlon_grid()`.
 
         Args:
             res (int, optional): The resolution of the map in pixels on a
@@ -1257,10 +1324,12 @@ class YlmBase(object):
 
         # Convert
         projection = get_projection(projection)
-        theta = math.vectorize(math.cast(theta) * self._angle_factor)
+        theta = self._math.vectorize(
+            self._math.cast(theta) * self._angle_factor
+        )
 
         # Compute
-        if self.nw is None or config.lazy:
+        if self.nw is None or self.lazy:
             amp = self.amp
         else:
             # The intensity has shape `(nw, res, res)`
@@ -1276,13 +1345,44 @@ class YlmBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._tau,
+            self._delta,
         )
 
         # Squeeze?
         if animated:
             return image
         else:
-            return math.reshape(image, [res, res])
+            return self._math.reshape(image, [res, res])
+
+    def get_latlon_grid(self, res=300, projection="ortho"):
+        """Return the latitude/longitude grid corresponding to the result
+        of a call to :py:meth:`render()`.
+
+        Args:
+            res (int, optional): The resolution of the map in pixels on a
+                side. Defaults to 300.
+            projection (string, optional): The map projection. Accepted
+                values are ``ortho``, corresponding to an orthographic
+                projection (as seen on the sky), ``rect``, corresponding
+                to an equirectangular latitude-longitude projection,
+                and ``moll``, corresponding to a Mollweide equal-area
+                projection. Defaults to ``ortho``.
+
+        """
+        projection = get_projection(projection)
+        if projection == STARRY_RECTANGULAR_PROJECTION:
+            lat, lon = self.ops.compute_rect_grid(res)[0]
+        elif projection == STARRY_MOLLWEIDE_PROJECTION:
+            lat, lon = self.ops.compute_moll_grid(res)[0]
+        else:
+            lat, lon = self.ops.compute_ortho_grid_inc_obl(
+                res, self._inc, self._obl
+            )[0]
+        return (
+            self._math.reshape(lat, (res, res)) / self._angle_factor,
+            self._math.reshape(lon, (res, res)) / self._angle_factor,
+        )
 
     def load(
         self,
@@ -1362,8 +1462,8 @@ class YlmBase(object):
         # This ensures the map intensity will have the same normalization
         # as that of the input image
         y /= 2 * np.sqrt(np.pi)
-        self._y = math.cast(y / y[0])
-        self.amp = math.cast(y[0] * np.pi)
+        self._y = self._math.cast(y / y[0])
+        self.amp = self._math.cast(y[0] * np.pi)
 
         # Note: reflected light maps are normalized a little differently
         if self.__props__["reflected"]:
@@ -1374,13 +1474,13 @@ class YlmBase(object):
 
             # Find the minimum
             _, _, I = self.minimize(**kwargs)
-            if config.lazy:
+            if self.lazy:
                 I = I.eval()
 
             # Scale the coeffs?
             if I < 0:
                 fac = self._amp / (self._amp - np.pi * I)
-                if config.lazy:
+                if self.lazy:
                     self._y *= fac
                     self._y = self.ops.set_map_vector(self._y, 0, 1.0)
                 else:
@@ -1393,23 +1493,25 @@ class YlmBase(object):
             axis (vector): The axis about which to rotate the map.
             theta (scalar): The angle of (counter-clockwise) rotation.
         """
-        axis = math.cast(axis)
-        axis /= math.sqrt(math.sum(axis ** 2))
+        axis = self._math.cast(axis)
+        axis /= self._math.sqrt(self._math.sum(axis ** 2))
         # Note that we rotate by -theta since
         # this is the *RHS* rotation operator
         y = self.ops.dotR(
-            math.transpose(
-                math.reshape(self.y, (-1, 1 if self.nw is None else self.nw))
+            self._math.transpose(
+                self._math.reshape(
+                    self.y, (-1, 1 if self.nw is None else self.nw)
+                )
             ),
             axis[0],
             axis[1],
             axis[2],
-            -math.cast(theta * self._angle_factor),
+            -self._math.cast(theta * self._angle_factor),
         )
         if self.nw is None:
             self._y = y[0]
         else:
-            self._y = math.transpose(y)
+            self._y = self._math.transpose(y)
 
     def add_spot(
         self,
@@ -1469,14 +1571,16 @@ class YlmBase(object):
         ):
             raise ValueError("Please provide either `amp` or `intensity`.")
         elif amp is not None:
-            amp, _ = math.vectorize(math.cast(amp), np.ones(self.nw))
+            amp, _ = self._math.vectorize(
+                self._math.cast(amp), np.ones(self.nw)
+            )
             # Normalize?
             if not relative:
                 amp /= self.amp
         else:
             # Vectorize if needed
-            intensity, _ = math.vectorize(
-                math.cast(intensity), np.ones(self.nw)
+            intensity, _ = self._math.vectorize(
+                self._math.cast(intensity), np.ones(self.nw)
             )
             # Normalize?
             if not relative:
@@ -1493,7 +1597,7 @@ class YlmBase(object):
                 amp /= self.amp
 
         # Parse remaining kwargs
-        sigma, lat, lon = math.cast(sigma, lat, lon)
+        sigma, lat, lon = self._math.cast(sigma, lat, lon)
 
         # Get the Ylm expansion of the spot. Note that yspot[0] is not
         # unity, so we'll need to normalize it before setting self._y
@@ -1552,6 +1656,10 @@ class YlmBase(object):
             This is an experimental feature. Detailed docs coming soon.
 
         """
+        # Prevent undersampling for ydeg = 1
+        if self.ydeg <= 1:
+            self.oversample = max(oversample, 3)
+
         # Target number of pixels
         npix = oversample * (self.ydeg + 1) ** 2
         Ny = int(np.sqrt(npix * np.pi / 4.0))
@@ -1595,9 +1703,15 @@ class YlmBase(object):
         y = y.reshape(-1)
         z = z.reshape(-1)
 
-        # Flatten and fix the longitude offset
+        # Flatten and fix the longitude offset, then sort by latitude
         lat = lat.reshape(-1)
         lon = (lon - 1.5 * np.pi).reshape(-1)
+        idx = np.lexsort([lon, lat])
+        lat = lat[idx]
+        lon = lon[idx]
+        x = x[idx]
+        y = y[idx]
+        z = z[idx]
 
         # Get the forward pixel transform
         pT = self.ops.pT(x, y, z)[:, : (self.ydeg + 1) ** 2]
@@ -1722,7 +1836,7 @@ class LimbDarkenedBase(object):
         """
         # Get the Cartesian points
         if mu is not None:
-            mu = math.vectorize(math.cast(mu))
+            mu = self._math.vectorize(self._math.cast(mu))
             assert (
                 x is None and y is None
             ), "Please provide either `mu` or `x` and `y`, but not both."
@@ -1730,7 +1844,7 @@ class LimbDarkenedBase(object):
             assert (
                 x is not None and y is not None
             ), "Please provide either `mu` or `x` and `y`."
-            x, y = math.vectorize(*math.cast(x, y))
+            x, y = self._math.vectorize(*self._math.cast(x, y))
             mu = (1 - x ** 2 - y ** 2) ** 0.5
 
         # Compute & return
@@ -1758,7 +1872,7 @@ class LimbDarkenedBase(object):
         if animated:
             return image
         else:
-            return math.reshape(image, [res, res])
+            return self._math.reshape(image, [res, res])
 
 
 class RVBase(object):
@@ -1808,12 +1922,12 @@ class RVBase(object):
 
     @veq.setter
     def veq(self, value):
-        self._veq = math.cast(value) * self._velocity_factor
+        self._veq = self._math.cast(value) * self._velocity_factor
 
     def _unset_RV_filter(self):
         f = np.zeros(self.Nf)
         f[0] = np.pi
-        self._f = math.cast(f)
+        self._f = self._math.cast(f)
 
     def _set_RV_filter(self):
         self._f = self.ops.compute_rv_filter(
@@ -1864,6 +1978,8 @@ class RVBase(object):
             self._u,
             self._veq,
             self._alpha,
+            self._tau,
+            self._delta,
         )
 
     def intensity(self, **kwargs):
@@ -1985,7 +2101,7 @@ class ReflectedBase(object):
     _ops_class_ = OpsReflected
 
     def reset(self, **kwargs):
-        self.roughness = kwargs.pop("roughness", math.cast(0.0))
+        self.roughness = kwargs.pop("roughness", self._math.cast(0.0))
         super(ReflectedBase, self).reset(**kwargs)
 
     @property
@@ -2008,7 +2124,7 @@ class ReflectedBase(object):
 
     @roughness.setter
     def roughness(self, value):
-        self._sigr = math.cast(value) * self._angle_factor
+        self._sigr = self._math.cast(value) * self._angle_factor
 
     def _get_flux_kwargs(self, kwargs):
         xo = kwargs.pop("xo", 0.0)
@@ -2020,10 +2136,10 @@ class ReflectedBase(object):
         zs = kwargs.pop("zs", 1.0)
         Rs = kwargs.pop("rs", 0.0)
         theta = kwargs.pop("theta", 0.0)
-        theta, xs, ys, zs, xo, yo, zo = math.vectorize(
+        theta, xs, ys, zs, xo, yo, zo = self._math.vectorize(
             theta, xs, ys, zs, xo, yo, zo
         )
-        theta, xs, ys, zs, xo, yo, zo, ro, Rs = math.cast(
+        theta, xs, ys, zs, xo, yo, zo, ro, Rs = self._math.cast(
             theta, xs, ys, zs, xo, yo, zo, ro, Rs
         )
         theta *= self._angle_factor
@@ -2080,6 +2196,8 @@ class ReflectedBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._tau,
+            self._delta,
             self._sigr,
         )
 
@@ -2131,6 +2249,8 @@ class ReflectedBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._tau,
+            self._delta,
             self._sigr,
         )
 
@@ -2169,13 +2289,13 @@ class ReflectedBase(object):
                 (only if :py:attr:`udeg` > 0)? Default True.
         """
         # Get the Cartesian points
-        lat, lon = math.vectorize(*math.cast(lat, lon))
+        lat, lon = self._math.vectorize(*self._math.cast(lat, lon))
         lat *= self._angle_factor
         lon *= self._angle_factor
 
         # Get the source position
-        xs, ys, zs = math.vectorize(*math.cast(xs, ys, zs))
-        Rs = math.cast(rs)
+        xs, ys, zs = self._math.vectorize(*self._math.cast(xs, ys, zs))
+        Rs = self._math.cast(rs)
 
         # Get the amplitude
         if self.nw is None:
@@ -2186,12 +2306,8 @@ class ReflectedBase(object):
             amp = self.amp[np.newaxis, :, np.newaxis]
 
         # If differentially rotating, allow a `theta` keyword
-        if self.drorder > 0:
-            alpha_theta = math.cast(kwargs.get("theta", 0.0)) * self.alpha
-            alpha_theta *= self._angle_factor
-        else:
-            alpha_theta = math.cast(0.0)
-            self._check_kwargs("intensity", kwargs)
+        theta = self._math.cast(kwargs.get("theta", 0.0))
+        theta *= self._angle_factor
 
         # If limb-darkened, allow a `limbdarken` keyword
         if self.udeg > 0:
@@ -2216,7 +2332,10 @@ class ReflectedBase(object):
             ys,
             zs,
             Rs,
-            alpha_theta,
+            theta,
+            self._alpha,
+            self._tau,
+            self._delta,
             ld,
             self._sigr,
             on94_exact,
@@ -2281,12 +2400,12 @@ class ReflectedBase(object):
 
         # Convert stuff as needed
         projection = get_projection(projection)
-        theta = math.cast(theta) * self._angle_factor
-        xs = math.cast(xs)
-        ys = math.cast(ys)
-        zs = math.cast(zs)
-        Rs = math.cast(rs)
-        theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
+        theta = self._math.cast(theta) * self._angle_factor
+        xs = self._math.cast(xs)
+        ys = self._math.cast(ys)
+        zs = self._math.cast(zs)
+        Rs = self._math.cast(rs)
+        theta, xs, ys, zs = self._math.vectorize(theta, xs, ys, zs)
         illuminate = int(illuminate)
         on94_exact = int(on94_exact)
 
@@ -2309,6 +2428,8 @@ class ReflectedBase(object):
             self._u,
             self._f,
             self._alpha,
+            self._tau,
+            self._delta,
             xs,
             ys,
             zs,
@@ -2321,7 +2442,7 @@ class ReflectedBase(object):
         if animated:
             return image
         else:
-            return math.reshape(image, [res, res])
+            return self._math.reshape(image, [res, res])
 
     def show(self, **kwargs):
 
@@ -2332,12 +2453,12 @@ class ReflectedBase(object):
         # Get kwargs
         res = kwargs.pop("res", 300)
         projection = get_projection(kwargs.get("projection", "ortho"))
-        theta = math.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
-        xs = math.cast(kwargs.pop("xs", 0))
-        ys = math.cast(kwargs.pop("ys", 0))
-        zs = math.cast(kwargs.pop("zs", 1))
-        Rs = math.cast(kwargs.pop("rs", 0))
-        theta, xs, ys, zs = math.vectorize(theta, xs, ys, zs)
+        theta = self._math.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
+        xs = self._math.cast(kwargs.pop("xs", 0))
+        ys = self._math.cast(kwargs.pop("ys", 0))
+        zs = self._math.cast(kwargs.pop("zs", 1))
+        Rs = self._math.cast(kwargs.pop("rs", 0))
+        theta, xs, ys, zs = self._math.vectorize(theta, xs, ys, zs)
         illuminate = int(kwargs.pop("illuminate", True))
         on94_exact = int(kwargs.pop("on94_exact", False))
         screen = bool(kwargs.pop("screen", True))
@@ -2349,7 +2470,7 @@ class ReflectedBase(object):
             # so we must reshape `amp` to take the product correctly
             amp = self.amp[:, np.newaxis, np.newaxis]
 
-        if config.lazy:
+        if self.lazy:
             # Evaluate the variables
             theta = theta.eval()
             xs = xs.eval()
@@ -2362,6 +2483,8 @@ class ReflectedBase(object):
             u = self._u.eval()
             f = self._f.eval()
             alpha = self._alpha.eval()
+            tau = self._tau.eval()
+            delta = self._delta.eval()
             sigr = self._sigr.eval()
             amp = amp.eval()
         else:
@@ -2371,6 +2494,8 @@ class ReflectedBase(object):
             u = self._u
             f = self._f
             alpha = self._alpha
+            tau = self._tau
+            delta = self._delta
             sigr = self._sigr
 
         if screen and illuminate:
@@ -2388,6 +2513,8 @@ class ReflectedBase(object):
                 u,
                 f,
                 alpha,
+                tau,
+                delta,
                 xs,
                 ys,
                 zs,
@@ -2409,6 +2536,8 @@ class ReflectedBase(object):
                 u,
                 f,
                 alpha,
+                tau,
+                delta,
                 xs,
                 ys,
                 zs,
@@ -2434,6 +2563,8 @@ class ReflectedBase(object):
                 u,
                 f,
                 alpha,
+                tau,
+                delta,
                 xs,
                 ys,
                 zs,
@@ -2450,11 +2581,11 @@ class ReflectedBase(object):
 def Map(
     ydeg=0,
     udeg=0,
-    drorder=0,
     nw=None,
     rv=False,
     reflected=False,
     source_npts=1,
+    lazy=None,
     **kwargs
 ):
     """A generic ``starry`` surface map.
@@ -2476,8 +2607,6 @@ def Map(
             Defaults to 0.
         udeg (int, optional): Degree of the limb darkening filter.
             Defaults to 0.
-        drorder (int, optional): Order of the differential rotation
-            approximation. Defaults to 0.
         nw (int, optional): Number of wavelength bins. Defaults to None
             (for monochromatic light curves).
         rv (bool, optional): If True, enable computation of radial velocities
@@ -2496,31 +2625,11 @@ def Map(
     if nw is not None:
         nw = int(nw)
         assert nw > 0, "Number of wavelength bins must be positive."
-    drorder = int(drorder)
-    assert (drorder >= 0) and (
-        drorder <= 3
-    ), "Differential rotation orders above 3 are not supported."
-    if drorder > 0:
-        assert ydeg > 0, "Differential rotation requires `ydeg` >= 1."
-
-        # TODO: phase this next warning out
-        logger.warning(
-            "Differential rotation is still an experimental feature. "
-            "Use it with care."
-        )
-
-        Ddeg = (4 * drorder + 1) * ydeg
-        if Ddeg >= 50:
-            logger.warning(
-                "The degree of the differential rotation operator "
-                "is currently {0}, ".format(Ddeg)
-                + "which will likely cause the code to run very slowly. "
-                "Consider decreasing the degree of the map or the order "
-                "of differential rotation."
-            )
     source_npts = int(source_npts)
     if source_npts < 1:
         source_npts = 1
+    if lazy is None:
+        lazy = config.lazy
 
     # TODO: phase this next warning out
     if source_npts != 1:
@@ -2567,14 +2676,22 @@ def Map(
             reflected=ReflectedBase in Bases,
             rv=RVBase in Bases,
             spectral=nw is not None,
-            differential_rotation=drorder > 0,
             source_npts=source_npts,
         )
 
         def __init__(self, *args, **kwargs):
-            # Once a map has been instantiated, no changes
-            # to the config are allowed.
-            config.freeze()
+            self._lazy = lazy
+            if lazy:
+                self._math = math.lazy_math
+                self._linalg = math.lazy_linalg
+            else:
+                self._math = math.greedy_math
+                self._linalg = math.greedy_linalg
             super(Map, self).__init__(*args, source_npts=source_npts, **kwargs)
 
-    return Map(ydeg, udeg, fdeg, drorder, nw, **kwargs)
+        @property
+        def lazy(self):
+            """Map evaluation mode: lazy or greedy?"""
+            return self._lazy
+
+    return Map(ydeg, udeg, fdeg, nw, **kwargs)
