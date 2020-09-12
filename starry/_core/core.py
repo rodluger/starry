@@ -698,9 +698,6 @@ class OpsYlm(object):
         Differentially rotate a matrix M in the co-rotating frame.
 
         """
-        # DEBUG: Disabling this for now.
-        return M
-
         # Trivial case
         if self.ydeg == 0:
             return M
