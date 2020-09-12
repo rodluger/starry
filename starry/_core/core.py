@@ -346,12 +346,16 @@ class OpsYlm(object):
                     delta,
                 ),
                 tt.transpose(
-                    self.tensordotD(
+                    ifelse(
+                        tt.eq(alpha, 0.0),
                         tt.tile(y, [theta.shape[0], 1]),
-                        theta,
-                        alpha,
-                        tau,
-                        delta,
+                        self.tensordotD(
+                            tt.tile(y, [theta.shape[0], 1]),
+                            theta,
+                            alpha,
+                            tau,
+                            delta,
+                        ),
                     )
                 ),
             )
@@ -694,6 +698,9 @@ class OpsYlm(object):
         Differentially rotate a matrix M in the co-rotating frame.
 
         """
+        # DEBUG: Disabling this for now.
+        return M
+
         # Trivial case
         if self.ydeg == 0:
             return M
