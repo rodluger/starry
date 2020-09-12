@@ -125,6 +125,7 @@ def autocompile(func):
                             func(instance, *dummy_args),
                             on_unused_input="ignore",
                             profile=config.profile,
+                            mode=config.mode,
                         )
                     setattr(instance, cname, compiled_func)
 

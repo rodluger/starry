@@ -38,6 +38,11 @@ class ConfigType(type):
         return cls._quiet
 
     @property
+    def mode(cls):
+        """Enable function profiling in lazy mode."""
+        return cls._mode
+
+    @property
     def profile(cls):
         """Enable function profiling in lazy mode."""
         return cls._profile
@@ -70,6 +75,16 @@ class ConfigType(type):
                 "Config options should be set before instantiating any `starry` maps."
             )
 
+    @mode.setter
+    def mode(cls, value):
+        if (cls._allow_changes) or (cls._mode == value):
+            cls._mode = value
+        else:
+            raise Exception(
+                "Cannot change the `starry` config at this time. "
+                "Config options should be set before instantiating any `starry` maps."
+            )
+
     def freeze(cls):
         cls._allow_changes = False
 
@@ -79,3 +94,4 @@ class config(metaclass=ConfigType):
     _lazy = True
     _quiet = False
     _profile = False
+    _mode = None
