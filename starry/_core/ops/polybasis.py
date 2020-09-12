@@ -23,7 +23,7 @@ class pTOp(tt.Op):
         return [[shapes[0][0], self.N]]
 
     def perform(self, node, inputs, outputs):
-        outputs[0][0] = self.func(self.deg, *inputs)
+        outputs[0][0] = np.ascontiguousarray(self.func(self.deg, *inputs))
 
     def grad(self, inputs, gradients):
         return self._grad_op(*(inputs + gradients))
@@ -74,7 +74,9 @@ class pTGradientOp(tt.Op):
         y[np.abs(y) < tol] = tol
         z[np.abs(z) < tol] = tol
 
-        bpTpT = bpT * self.base_op.func(self.base_op.deg, x, y, z)
+        bpTpT = bpT * np.ascontiguousarray(
+            self.base_op.func(self.base_op.deg, x, y, z)
+        )
         bx = np.nansum(self.xf[None, :] * bpTpT / x[:, None], axis=-1)
         by = np.nansum(self.yf[None, :] * bpTpT / y[:, None], axis=-1)
         bz = np.nansum(self.zf[None, :] * bpTpT / z[:, None], axis=-1)
