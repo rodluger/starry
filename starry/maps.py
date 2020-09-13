@@ -1293,7 +1293,7 @@ class YlmBase(object):
             ld,
         )
 
-    def render(self, res=150, projection="ortho", theta=0.0):
+    def render(self, res=300, projection="ortho", theta=0.0):
         """Compute and return the intensity of the map on a grid.
 
         Returns an image of shape ``(res, res)``, unless ``theta`` is a vector,
@@ -1363,7 +1363,7 @@ class YlmBase(object):
         else:
             return self._math.reshape(image, [res, res])
 
-    def get_latlon_grid(self, res=150, projection="ortho"):
+    def get_latlon_grid(self, res=300, projection="ortho"):
         """Return the latitude/longitude grid corresponding to the result
         of a call to :py:meth:`render()`.
 
@@ -1909,7 +1909,7 @@ class LimbDarkenedBase(object):
         # Compute & return
         return self.amp * self.ops.intensity(mu, self._u)
 
-    def render(self, res=150):
+    def render(self, res=300):
         """Compute and return the intensity of the map on a grid.
 
         Returns an image of shape ``(res, res)``.
@@ -2403,7 +2403,7 @@ class ReflectedBase(object):
 
     def render(
         self,
-        res=150,
+        res=300,
         projection="ortho",
         illuminate=True,
         theta=0.0,
