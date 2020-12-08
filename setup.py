@@ -212,7 +212,7 @@ setup(
         "astropy>=3.1",
         "matplotlib>=3.0.2",
         "pybind11>=2.4",
-        "theano>=1.0.4",
+        "Theano-PyMC",
         "ipython",
         "pillow",
         "exoplanet>=0.2.0",
