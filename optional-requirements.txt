@@ -1,3 +1,5 @@
 pillow
 healpy>=1.12.8
 exoplanet>=0.3.2
+pymc3<=3.9.0
+theano==1.0.5
