@@ -36,8 +36,9 @@ class minimizeOp(tt.Op):
         self.oversample = 1
         self.ntries = 1
         self.result = None
+        self.bounds = None
 
-    def setup(self, oversample=1, ntries=1):
+    def setup(self, oversample=1, ntries=1, bounds=None):
         self.ntries = ntries
 
         # Don't setup unless the user actually calls this function,
@@ -67,6 +68,27 @@ class minimizeOp(tt.Op):
                 # Add a little noise for stability
                 self.lat_grid += 1e-4 * s.randn(len(self.lat_grid))
                 self.lon_grid += 1e-4 * s.randn(len(self.lon_grid))
+
+            # Restrict grid in latitude/longitude to a certain range
+            if bounds is not None:
+                self.bounds = (
+                    (bounds[0][0] * np.pi / 180, bounds[0][1] * np.pi / 180),
+                    (bounds[1][0] * np.pi / 180, bounds[1][1] * np.pi / 180),
+                )
+
+                mask_lat = np.logical_and(
+                    self.lat_grid > self.bounds[0][0],
+                    self.lat_grid < self.bounds[0][1],
+                )
+                mask_lon = np.logical_and(
+                    self.lon_grid > self.bounds[0][0],
+                    self.lon_grid < self.bounds[0][1],
+                )
+                mask_com = np.logical_and(mask_lat, mask_lon)
+
+                self.lat_grid = self.lat_grid[mask_com]
+                self.lon_grid = self.lon_grid[mask_com]
+
             self.P_grid = self.P(
                 tt.as_tensor_variable(self.lat_grid),
                 tt.as_tensor_variable(self.lon_grid),
@@ -139,12 +161,13 @@ class minimizeOp(tt.Op):
         outputs[2][0] = np.inf
 
         for n in range(self.ntries):
-
             ind = np.argmin(I_grid)
             x0 = np.array([self.lat_grid[ind], self.lon_grid[ind]])
 
             # Minimize
-            result = minimize(self.I, x0, args=(y,), jac=True)
+            result = minimize(
+                self.I, x0, args=(y,), jac=True, bounds=self.bounds
+            )
 
             if result.fun < outputs[2][0]:
                 outputs[0][0] = result.x[0]
