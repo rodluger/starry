@@ -81,8 +81,8 @@ class minimizeOp(tt.Op):
                     self.lat_grid < self.bounds[0][1],
                 )
                 mask_lon = np.logical_and(
-                    self.lon_grid > self.bounds[0][0],
-                    self.lon_grid < self.bounds[0][1],
+                    self.lon_grid > self.bounds[1][0],
+                    self.lon_grid < self.bounds[1][1],
                 )
                 mask_com = np.logical_and(mask_lat, mask_lon)
 
@@ -164,9 +164,9 @@ class minimizeOp(tt.Op):
             ind = np.argmin(I_grid)
             x0 = np.array([self.lat_grid[ind], self.lon_grid[ind]])
 
-            # Minimize
             result = minimize(
-                self.I, x0, args=(y,), jac=True, bounds=self.bounds
+                self.I, x0, args=(y,), jac=True, 
+                bounds=self.bounds
             )
 
             if result.fun < outputs[2][0]:
