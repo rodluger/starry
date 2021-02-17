@@ -632,9 +632,6 @@ class System(object):
             self._primary._map._y,
             self._primary._map._u,
             self._primary._map._f,
-            self._primary._map._alpha,
-            self._primary._map._tau,
-            self._primary._map._delta,
             self._math.to_array_or_tensor(
                 [sec._r for sec in self._secondaries]
             ),
@@ -677,15 +674,6 @@ class System(object):
             ),
             self._math.to_array_or_tensor(
                 [sec._map._f for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._alpha for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._tau for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._delta for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._sigr for sec in self._secondaries]
@@ -878,9 +866,6 @@ class System(object):
             self._primary._map._obl,
             self._primary._map._u,
             self._primary._map._f,
-            self._primary._map._alpha,
-            self._primary._map._tau,
-            self._primary._map._delta,
             self._math.to_array_or_tensor(
                 [sec._r for sec in self._secondaries]
             ),
@@ -926,15 +911,6 @@ class System(object):
             ),
             self._math.to_array_or_tensor(
                 [sec._map._f for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._alpha for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._tau for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._delta for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._sigr for sec in self._secondaries]
@@ -1004,8 +980,6 @@ class System(object):
             self._primary._map._y,
             self._primary._map._u,
             self._primary._map._alpha,
-            self._primary._map._tau,
-            self._primary._map._delta,
             self._primary._map._veq,
             self._math.to_array_or_tensor(
                 [sec._r for sec in self._secondaries]
@@ -1052,12 +1026,6 @@ class System(object):
             ),
             self._math.to_array_or_tensor(
                 [sec._map._alpha for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._tau for sec in self._secondaries]
-            ),
-            self._math.to_array_or_tensor(
-                [sec._map._delta for sec in self._secondaries]
             ),
             self._math.to_array_or_tensor(
                 [sec._map._sigr for sec in self._secondaries]

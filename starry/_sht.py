@@ -6,10 +6,8 @@ from matplotlib.image import pil_to_array
 import os
 from scipy import ndimage
 
-try:
-    import healpy as hp
-except ImportError:
-    hp = None
+# TODO: Remove all dependences on healpy
+hp = None
 
 __all__ = ["image2map", "healpix2map", "array2map", "array2healpix"]
 

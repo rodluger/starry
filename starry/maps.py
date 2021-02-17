@@ -74,9 +74,6 @@ class MapBase(object):
         # Basic properties
         self._inc = self._math.cast(0.5 * np.pi)
         self._obl = self._math.cast(0.0)
-        self._alpha = self._math.cast(0.0)
-        self._tau = self._math.cast(0.25)
-        self._delta = self._math.cast(0.25)
         self._sigr = self._math.cast(0.0)
 
         # Units
@@ -425,25 +422,12 @@ class MapBase(object):
                     obl = self._obl.eval()
                     y = self._y.eval()
                     f = self._f.eval()
-                    alpha = self._alpha.eval()
-                    tau = self._tau.eval()
-                    delta = self._delta.eval()
 
                     # Explicitly call the compiled version of `render`
                     image = self._amp.eval().reshape(
                         -1, 1, 1
                     ) * self.ops.render(
-                        res,
-                        projection,
-                        theta,
-                        inc,
-                        obl,
-                        y,
-                        u,
-                        f,
-                        alpha,
-                        tau,
-                        delta,
+                        res, projection, theta, inc, obl, y, u, f
                     )
 
                 else:
@@ -1040,21 +1024,6 @@ class YlmBase(object):
         else:
             self._obl = self._math.cast(0.0)
 
-        if kwargs.get("alpha", None) is not None:
-            self.alpha = kwargs.pop("alpha")
-        else:
-            self._alpha = self._math.cast(0.0)
-
-        if kwargs.get("tau", None) is not None:
-            self.tau = kwargs.pop("tau")
-        else:
-            self._tau = self._math.cast(0.25)
-
-        if kwargs.get("delta", None) is not None:
-            self.delta = kwargs.pop("delta")
-        else:
-            self._delta = self._math.cast(0.25)
-
         super(YlmBase, self).reset(**kwargs)
 
     @property
@@ -1074,69 +1043,6 @@ class YlmBase(object):
     @obl.setter
     def obl(self, value):
         self._obl = self._math.cast(value) * self._angle_factor
-
-    @property
-    def alpha(self):
-        """The rotational shear coefficient, a number in the range ``[0, 1]``.
-
-        The parameter :math:`\\alpha` is used to model linear differential
-        rotation. The angular velocity at a given latitude :math:`\\theta`
-        is
-
-        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
-
-        where :math:`\\omega_{eq}` is the equatorial angular velocity of
-        the object.
-
-        """
-        return self._alpha
-
-    @alpha.setter
-    def alpha(self, value):
-        self._alpha = self._math.cast(value)
-
-    @property
-    def tau(self):
-        """The damping coefficient of the map when differential rotation is enabled.
-
-        This parameter is a unitless damping timescale for the `l > 0` features
-        when :py:attr:`alpha` is nonzero. `tau` is measured as a fraction of the
-        winding timescale, i.e., the time it takes for a feature at the equator
-        to lap a feature at the pole. The defualt value is `0.25`, meaning
-        that features will damp on a timescale corresponding to a quarter of a winding
-        timescale.
-
-        .. warning::
-
-            This is an experimental feature.
-
-        """
-        return self._tau
-
-    @tau.setter
-    def tau(self, value):
-        self._tau = self._math.cast(value)
-
-    @property
-    def delta(self):
-        """The lag coefficient of the map when differential rotation is enabled.
-
-        This parameter is a unitless lag for the damping applied to `l > 0`
-        features measured as a fraction of the winding timescale
-        (see :py:attr:`tau`). The default value is `0.25`, meaning the features
-        will have the largest amplitude a quarter of a winding timescale
-        *after* `theta=0`.
-
-        .. warning::
-
-            This is an experimental feature.
-
-        """
-        return self._delta
-
-    @delta.setter
-    def delta(self, value):
-        self._delta = self._math.cast(value)
 
     def design_matrix(self, **kwargs):
         r"""Compute and return the light curve design matrix :math:`A`.
@@ -1165,18 +1071,7 @@ class YlmBase(object):
 
         # Compute & return
         return self.ops.X(
-            theta,
-            xo,
-            yo,
-            zo,
-            ro,
-            self._inc,
-            self._obl,
-            self._u,
-            self._f,
-            self._alpha,
-            self._tau,
-            self._delta,
+            theta, xo, yo, zo, ro, self._inc, self._obl, self._u, self._f
         )
 
     def intensity_design_matrix(self, lat=0, lon=0):
@@ -1240,9 +1135,6 @@ class YlmBase(object):
             self._y,
             self._u,
             self._f,
-            self._alpha,
-            self._tau,
-            self._delta,
         )
 
     def intensity(self, lat=0, lon=0, **kwargs):
@@ -1281,16 +1173,7 @@ class YlmBase(object):
 
         # Compute & return
         return self.amp * self.ops.intensity(
-            lat,
-            lon,
-            self._y,
-            self._u,
-            self._f,
-            theta,
-            self._alpha,
-            self._tau,
-            self._delta,
-            ld,
+            lat, lon, self._y, self._u, self._f, theta, ld
         )
 
     def render(self, res=300, projection="ortho", theta=0.0):
@@ -1352,9 +1235,6 @@ class YlmBase(object):
             self._y,
             self._u,
             self._f,
-            self._alpha,
-            self._tau,
-            self._delta,
         )
 
         # Squeeze?
@@ -1621,7 +1501,7 @@ class YlmBase(object):
         self._amp = amp_new
 
     def minimize(self, oversample=1, ntries=1, bounds=None, return_info=False):
-        """Find the global (optionally local) minimum of the map intensity. 
+        """Find the global (optionally local) minimum of the map intensity.
 
         Args:
             oversample (int): Factor by which to oversample the initial
@@ -1642,9 +1522,7 @@ class YlmBase(object):
         self._no_spectral()
 
         self.ops._minimize.setup(
-            oversample=oversample,
-            ntries=ntries, 
-            bounds=bounds
+            oversample=oversample, ntries=ntries, bounds=bounds
         )
         lat, lon, I = self.ops.get_minimum(self.y)
         if return_info:  # pragma: no cover
@@ -1958,6 +1836,7 @@ class RVBase(object):
     def reset(self, **kwargs):
         self.velocity_unit = kwargs.pop("velocity_unit", units.m / units.s)
         self.veq = kwargs.pop("veq", 0.0)
+        self.alpha = kwargs.pop("alpha", 0.0)
         super(RVBase, self).reset(**kwargs)
 
     @property
@@ -1970,6 +1849,26 @@ class RVBase(object):
         assert value.physical_type == "speed"
         self._velocity_unit = value
         self._velocity_factor = value.in_units(units.m / units.s)
+
+    @property
+    def alpha(self):
+        """The rotational shear coefficient, a number in the range ``[0, 1]``.
+
+        The parameter :math:`\\alpha` is used to model linear differential
+        rotation. The angular velocity at a given latitude :math:`\\theta`
+        is
+
+        :math:`\\omega = \\omega_{eq}(1 - \\alpha \\sin^2\\theta)`
+
+        where :math:`\\omega_{eq}` is the equatorial angular velocity of
+        the object.
+
+        """
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, value):
+        self._alpha = self._math.cast(value)
 
     @property
     def veq(self):
@@ -2043,8 +1942,6 @@ class RVBase(object):
             self._u,
             self._veq,
             self._alpha,
-            self._tau,
-            self._delta,
         )
 
     def intensity(self, **kwargs):
@@ -2260,9 +2157,6 @@ class ReflectedBase(object):
             self._obl,
             self._u,
             self._f,
-            self._alpha,
-            self._tau,
-            self._delta,
             self._sigr,
         )
 
@@ -2313,9 +2207,6 @@ class ReflectedBase(object):
             self._y,
             self._u,
             self._f,
-            self._alpha,
-            self._tau,
-            self._delta,
             self._sigr,
         )
 
@@ -2398,9 +2289,6 @@ class ReflectedBase(object):
             zs,
             Rs,
             theta,
-            self._alpha,
-            self._tau,
-            self._delta,
             ld,
             self._sigr,
             on94_exact,
@@ -2492,9 +2380,6 @@ class ReflectedBase(object):
             self._y,
             self._u,
             self._f,
-            self._alpha,
-            self._tau,
-            self._delta,
             xs,
             ys,
             zs,
@@ -2547,9 +2432,6 @@ class ReflectedBase(object):
             y = self._y.eval()
             u = self._u.eval()
             f = self._f.eval()
-            alpha = self._alpha.eval()
-            tau = self._tau.eval()
-            delta = self._delta.eval()
             sigr = self._sigr.eval()
             amp = amp.eval()
         else:
@@ -2558,9 +2440,6 @@ class ReflectedBase(object):
             y = self._y
             u = self._u
             f = self._f
-            alpha = self._alpha
-            tau = self._tau
-            delta = self._delta
             sigr = self._sigr
 
         if screen and illuminate:
@@ -2577,9 +2456,6 @@ class ReflectedBase(object):
                 y,
                 u,
                 f,
-                alpha,
-                tau,
-                delta,
                 xs,
                 ys,
                 zs,
@@ -2600,9 +2476,6 @@ class ReflectedBase(object):
                 np.append([1.0], np.zeros(self.Ny - 1)),
                 u,
                 f,
-                alpha,
-                tau,
-                delta,
                 xs,
                 ys,
                 zs,
@@ -2627,9 +2500,6 @@ class ReflectedBase(object):
                 y,
                 u,
                 f,
-                alpha,
-                tau,
-                delta,
                 xs,
                 ys,
                 zs,

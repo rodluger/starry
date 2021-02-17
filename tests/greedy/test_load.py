@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image
 from matplotlib.image import pil_to_array
 import os
+import pytest
 
 
 def test_load_normalization():
