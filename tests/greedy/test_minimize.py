@@ -45,7 +45,7 @@ def test_bounded_minimize():
         np.linspace(-180, 180, res), np.linspace(-90, 90, res)
     )
     mask_lat = np.logical_and(lat > bounds[0][0], lat < bounds[0][1])
-    mask_lon = np.logical_and(lon > bounds[0][0], lon < bounds[0][1])
+    mask_lon = np.logical_and(lon > bounds[1][0], lon < bounds[1][1])
     mask = np.logical_and(mask_lat, mask_lon)
     min_bounded = image[mask].min()
     i, j = np.unravel_index(np.argmin(np.abs(image - min_bounded)), image.shape)
