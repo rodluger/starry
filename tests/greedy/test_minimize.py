@@ -27,38 +27,6 @@ def test_minimize():
     assert val_m <= val
 
 
-def test_bounded_minimize():
-    # Create map with two dark spots
-    map = starry.Map(15)
-    map.add_spot(amp=-0.1, relative=False, lat=20, lon=50., sigma=0.01)
-    map.add_spot(amp=-0.05, relative=False, lat=-30, lon=-40, sigma=0.01)
-    
-    # Render it on a lat-lon grid
-    res = 300
-    image = map.render(projection="rect", res=res)
-    
-    # Specify bounds in latitude/longitude
-    bounds = ((-60, 0,), (-60, 0)) #lat and lon
-
-    # Find the minimum numerically
-    lon, lat = np.meshgrid(
-        np.linspace(-180, 180, res), np.linspace(-90, 90, res)
-    )
-    mask_lat = np.logical_and(lat > bounds[0][0], lat < bounds[0][1])
-    mask_lon = np.logical_and(lon > bounds[0][0], lon < bounds[0][1])
-    mask = np.logical_and(mask_lat, mask_lon)
-    min_bounded = image[mask].min()
-    i, j = np.unravel_index(np.argmin(np.abs(image - min_bounded)), image.shape)
-
-    lat = lat[i, j]
-    lon = lon[i, j]
-    val = image[i, j]
-
-    lat_m, lon_m, val_m = map.minimize(oversample=2, ntries=2, bounds=bounds)
-    
-    assert val_m <=val  
-
-
 def test_sturm():
     # Check that we can count the real
     # roots of a polynomial in the range [0, 1]

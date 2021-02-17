@@ -1620,8 +1620,8 @@ class YlmBase(object):
         self._y = y_new
         self._amp = amp_new
 
-    def minimize(self, oversample=1, ntries=1, bounds=None, return_info=False):
-        """Find the global (optionally local) minimum of the map intensity. 
+    def minimize(self, oversample=1, ntries=1, return_info=False):
+        """Find the global minimum of the map intensity.
 
         Args:
             oversample (int): Factor by which to oversample the initial
@@ -1630,8 +1630,6 @@ class YlmBase(object):
                 Default 1.
             return_info (bool): Return the info from the minimization call?
                 Default is False.
-            bounds (tuple): Return map minimum in a certain latitude/longitude
-                range, for example bounds=((0, 90), (0, 180)). Default None.
 
         Returns:
             A tuple of the latitude, longitude, and the value of the intensity \
@@ -1641,11 +1639,7 @@ class YlmBase(object):
         # Not implemented for spectral
         self._no_spectral()
 
-        self.ops._minimize.setup(
-            oversample=oversample,
-            ntries=ntries, 
-            bounds=bounds
-        )
+        self.ops._minimize.setup(oversample=oversample, ntries=ntries)
         lat, lon, I = self.ops.get_minimum(self.y)
         if return_info:  # pragma: no cover
             return (
