@@ -6,11 +6,6 @@ import theano
 import theano.tensor as tt
 from theano.configparser import change_flags
 
-try:
-    import healpy as hp
-except ImportError:
-    hp = None
-
 
 __all__ = ["minimizeOp", "LDPhysicalOp"]
 
@@ -47,27 +42,14 @@ class minimizeOp(tt.Op):
 
             self.oversample = oversample
 
-            # Create the grid using healpy if available
+            # Create the lat-lon grid
+            # TODO: Use a mollweide grid instead of
+            # random samples!
             # Require at least `oversample * l ** 2 points`
             s = np.random.RandomState(0)
-            if hp is None:
-                npts = oversample * self.ydeg ** 2
-                self.lat_grid = (
-                    np.arccos(2 * s.rand(npts) - 1) * 180.0 / np.pi - 90.0
-                )
-                self.lon_grid = (s.rand(npts) - 0.5) * 360
-            else:
-                nside = 1
-                while hp.nside2npix(nside) < oversample * self.ydeg ** 2:
-                    nside += 1
-                theta, phi = hp.pix2ang(
-                    nside=nside, ipix=range(hp.nside2npix(nside))
-                )
-                self.lat_grid = 0.5 * np.pi - theta
-                self.lon_grid = phi - np.pi
-                # Add a little noise for stability
-                self.lat_grid += 1e-4 * s.randn(len(self.lat_grid))
-                self.lon_grid += 1e-4 * s.randn(len(self.lon_grid))
+            npts = oversample * self.ydeg ** 2
+            self.lat_grid = np.arccos(2 * s.rand(npts) - 1) - np.pi / 2
+            self.lon_grid = (s.rand(npts) - 0.5) * 2 * np.pi
 
             # Restrict grid in latitude/longitude to a certain range
             if bounds is not None:
