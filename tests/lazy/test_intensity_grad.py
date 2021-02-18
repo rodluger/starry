@@ -40,4 +40,5 @@ def test_zero_lat_lon(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
                 rel_tol=rel_tol,
                 eps=eps,
                 n_tests=1,
+                rng=np.random,
             )

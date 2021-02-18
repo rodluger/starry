@@ -48,15 +48,48 @@ jobs:
           python -m pip install ${{ matrix.pymc-version }}
           python -m pip install -e ".[tests]"
           python -c 'import theano; print(theano.__version__)'
+          python -m pip install -U git+https://github.com/rodluger/coverage-badge
 
       - name: Run tests (greedy)
         shell: bash -l {0}
-        run: python -m pytest -v tests/greedy --junitxml=junit/test-results-greedy.xml
+        run: python -m pytest -v tests/greedy \
+                    --junitxml=junit/test-results-greedy.xml \
+                    --cov=starry --cov-append --cov-report html:coverage \
+                    --cov-config=.github/workflows/.coveragerc \
+                    tests/greedy
 
       - name: Run tests (lazy)
         shell: bash -l {0}
-        run: python -m pytest -v tests/lazy --junitxml=junit/test-results-lazy.xml
+        run: python -m pytest -v tests/lazy \
+                    --junitxml=junit/test-results-lazy.xml \
+                    --cov=starry --cov-append --cov-report html:coverage \
+                    --cov-config=.github/workflows/.coveragerc \
+                    tests/lazy
         if: ${{ always() }}
+
+      - name: Run extension tests (greedy)
+        shell: bash -l {0}
+        run: python -m pytest -v starry/extensions/tests/greedy \
+                    --junitxml=junit/test-results-extensions-greedy.xml \
+                    --cov=starry --cov-append --cov-report html:coverage-extensions \
+                    --cov-config=.github/workflows/.coveragerc_extensions \
+                    starry/extensions/tests/greedy
+        if: ${{ always() }}
+
+      - name: Run extension tests (lazy)
+        shell: bash -l {0}
+        run: python -m pytest -v starry/extensions/tests/lazy \
+                    --junitxml=junit/test-results-extensions-lazy.xml \
+                    --cov=starry --cov-append --cov-report html:coverage-extensions \
+                    --cov-config=.github/workflows/.coveragerc_extensions \
+                    starry/extensions/tests/lazy
+        if: ${{ always() }}
+
+      - name: Generate coverage badges
+      shell: bash -l {0}
+      run: |
+        coverage-badge -o coverage/coverage.svg
+        coverage-badge -n extensions.svg -o coverage-extensions/coverage.svg
 
       - name: Get unique id
         id: unique-id
@@ -71,4 +104,16 @@ jobs:
         with:
           name: test-results-${{ steps.unique-id.outputs.id }}
           path: junit/test-*.xml
+        if: ${{ always() }}
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: coverage-${{ steps.unique-id.outputs.id }}
+          path: coverage
+        if: ${{ always() }}
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: coverage-extensions-${{ steps.unique-id.outputs.id }}
+          path: coverage-extensions
         if: ${{ always() }}

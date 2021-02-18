@@ -21,6 +21,7 @@ def test_sT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -45,6 +46,7 @@ def test_intensity(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -64,6 +66,7 @@ def test_tensordotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
         # Vector M
@@ -75,6 +78,7 @@ def test_tensordotRz(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -96,6 +100,7 @@ def test_dotR(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
         # Vector M
@@ -107,6 +112,7 @@ def test_dotR(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -124,6 +130,7 @@ def test_F(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -141,6 +148,7 @@ def test_pT(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -168,6 +176,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
         # Just occultation
@@ -178,6 +187,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
         # Rotation + occultation
@@ -188,6 +198,7 @@ def test_flux(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -203,6 +214,7 @@ def test_rT_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -250,7 +262,7 @@ def test_intensity_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             abs_tol=abs_tol,
             rel_tol=rel_tol,
             eps=eps,
-            n_tests=1,
+            n_tests=1, rng=np.random,
         )
 """
 
@@ -287,6 +299,7 @@ def test_flux_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -315,6 +328,7 @@ def test_flux_ylm_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
         # Just occultation
@@ -325,6 +339,7 @@ def test_flux_ylm_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
         # Rotation + occultation
@@ -335,6 +350,7 @@ def test_flux_ylm_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -356,6 +372,7 @@ def test_flux_quad_ld(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -382,6 +399,7 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
         # Just occultation
@@ -392,6 +410,7 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
         # Rotation + occultation
@@ -402,6 +421,7 @@ def test_rv(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -419,6 +439,7 @@ def test_spot(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -436,6 +457,7 @@ def test_spot_spectral(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
 
 
@@ -454,4 +476,5 @@ def test_sT_reflected(abs_tol=1e-5, rel_tol=1e-5, eps=1e-7):
             rel_tol=rel_tol,
             eps=eps,
             n_tests=1,
+            rng=np.random,
         )
