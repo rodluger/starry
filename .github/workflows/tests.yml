@@ -46,7 +46,7 @@ jobs:
           python -m pip install -U pip
           python -m pip uninstall -y theano  # so that we know which version we're getting
           python -m pip install ${{ matrix.pymc-version }}
-          python -m pip install -e "."
+          python -m pip install -e ".[tests]"
           python -c 'import theano; print(theano.__version__)'
 
       - name: Run tests (greedy)

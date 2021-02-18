@@ -226,6 +226,7 @@ setup(
             "pytest-env",
             "skimage",
             "pillow",
+            "tqdm",
         ],
         "docs": [
             "sphinx>=1.7.5",

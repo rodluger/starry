@@ -4,21 +4,9 @@ channels:
   - defaults
 dependencies:
   - mkl-service>=2.3.0
-  - nb_conda
-  - nb_conda_kernels
   - numpy>=1.19.2
-  - openblas=0.3.6
-  - pandoc>=2.10
+  - openblas>=0.3.6
   - pip>=20.3.3
-  - python=3.7.3
-  - scipy>=1.5.2
+  - python>=3.7.3
+  - scipy>=1.5.0
   - setuptools>=51.3.3
-  - pip:
-    - nbconvert>=5.5
-    - nbformat==5.0.8
-    - nbsphinx>=0.8.0
-    - nose>=1.3.7
-    - parameterized>=0.8.1
-    - pytest>=6.2.1
-    - pytest-dependency>=0.5.1
-    - pytest-env>=0.6.2
