@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
+from ....compat import Apply
 import theano.tensor as tt
-from theano import gof
 from .base_op import LimbDarkBaseOp
 
 
@@ -14,7 +14,8 @@ class GetClRevOp(LimbDarkBaseOp):
     func_name = "APPLY_SPECIFIC(get_cl_rev)"
 
     def make_node(self, bc):
-        return gof.Apply(self, [tt.as_tensor_variable(bc)], [bc.type()])
+        return Apply(self, [tt.as_tensor_variable(bc)], [bc.type()])
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
+        shapes = args[-1]
         return (shapes[0],)

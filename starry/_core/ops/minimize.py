@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
+from ...compat import Apply
 import numpy as np
 from scipy.optimize import minimize
 import theano
-from theano import gof
 import theano.tensor as tt
 from theano.configparser import change_flags
 
@@ -127,9 +127,9 @@ class minimizeOp(tt.Op):
             tt.TensorType(inputs[0].dtype, ())(),
             tt.TensorType(inputs[0].dtype, ())(),
         ]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
         return [(), (), ()]
 
     def perform(self, node, inputs, outputs):
@@ -175,9 +175,9 @@ class LDPhysicalOp(tt.Op):
     def make_node(self, *inputs):
         inputs = [tt.as_tensor_variable(i) for i in inputs]
         outputs = [tt.bscalar()]
-        return gof.Apply(self, inputs, outputs)
+        return Apply(self, inputs, outputs)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
         return [()]
 
     def perform(self, node, inputs, outputs):

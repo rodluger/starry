@@ -5,7 +5,7 @@ import numpy as np
 __all__ = ["get_ylm_inds", "get_ul_inds", "get_ylmw_inds", "integers"]
 
 
-integers = (int, np.int, np.int16, np.int32, np.int64)
+integers = (int, np.int16, np.int32, np.int64)
 
 
 def get_ylm_inds(ydeg, ls, ms):

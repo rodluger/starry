@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from .. import config
+from ..compat import Node, change_flags
 import theano
 import theano.tensor as tt
 import numpy as np
-from theano.configparser import change_flags
 from inspect import getmro
 from functools import wraps
 import logging
@@ -13,14 +13,14 @@ logger = logging.getLogger("starry.ops")
 __all__ = ["logger", "autocompile"]
 
 
-integers = (int, np.int, np.int16, np.int32, np.int64)
+integers = (int, np.int16, np.int32, np.int64)
 
 
 def is_theano(*objs):
     """Return ``True`` if any of ``objs`` is a ``Theano`` object."""
     for obj in objs:
         for c in getmro(type(obj)):
-            if c is theano.gof.graph.Node:
+            if c is Node:
                 return True
     return False
 

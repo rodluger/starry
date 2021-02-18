@@ -2,10 +2,10 @@
 
 __all__ = ["LimbDarkOp"]
 
+from ....compat import Apply
+from .base_op import LimbDarkBaseOp
 import theano
 import theano.tensor as tt
-from theano import gof
-from .base_op import LimbDarkBaseOp
 
 
 class LimbDarkOp(LimbDarkBaseOp):
@@ -34,9 +34,10 @@ class LimbDarkOp(LimbDarkBaseOp):
             in_args[1].type(),
             in_args[2].type(),
         ]
-        return gof.Apply(self, in_args, out_args)
+        return Apply(self, in_args, out_args)
 
-    def infer_shape(self, node, shapes):
+    def infer_shape(self, *args):
+        shapes = args[-1]
         return (
             shapes[1],
             list(shapes[0]) + list(shapes[1]),

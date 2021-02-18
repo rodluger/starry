@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
-from theano import gof
+from ....compat import COp
+from ....starry_version import __version__
 import sys
 import pkg_resources
-from ....starry_version import __version__
+
 
 __all__ = ["LimbDarkBaseOp"]
 
 
-class LimbDarkBaseOp(gof.COp):
+class LimbDarkBaseOp(COp):
 
     __props__ = ()
     func_file = None
@@ -16,12 +17,12 @@ class LimbDarkBaseOp(gof.COp):
     def __init__(self):
         super(LimbDarkBaseOp, self).__init__(self.func_file, self.func_name)
 
-    def c_code_cache_version(self):
+    def c_code_cache_version(self, *args, **kwargs):
         if "dev" in __version__:
             return ()
         return tuple(map(int, __version__.split(".")))
 
-    def c_headers(self, compiler):
+    def c_headers(self, *args, **kwargs):
         return [
             "theano_helpers.h",
             "ellip.h",
@@ -30,7 +31,7 @@ class LimbDarkBaseOp(gof.COp):
             "vector",
         ]
 
-    def c_header_dirs(self, compiler):
+    def c_header_dirs(self, *args, **kwargs):
         dirs = [
             pkg_resources.resource_filename("starry", "_core/ops/lib/include")
         ]
@@ -41,8 +42,11 @@ class LimbDarkBaseOp(gof.COp):
         ]
         return dirs
 
-    def c_compile_args(self, compiler):
+    def c_compile_args(self, *args, **kwargs):
         opts = ["-std=c++11", "-O2", "-DNDEBUG"]
         if sys.platform == "darwin":
             opts += ["-stdlib=libc++", "-mmacosx-version-min=10.7"]
         return opts
+
+    def perform(self, *args):
+        raise NotImplementedError("Only C op is implemented")
