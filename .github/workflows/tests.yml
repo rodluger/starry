@@ -32,7 +32,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: starry
-          #environment-file: environment.yml
+          environment-file: environment.yml
 
       - name: Set up environment
         shell: bash -l {0}
