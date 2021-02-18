@@ -74,7 +74,7 @@ jobs:
         run: |
           coverage-badge -o coverage/coverage.svg
           coverage-badge -n extensions.svg -o coverage-extensions/coverage.svg
-        if: always() && matrix.pymc-version == "pymc3==3.9.3"
+        if: always() && matrix.pymc-version == 'pymc3==3.9.3'
 
       - name: Get unique id
         id: unique-id
@@ -101,10 +101,10 @@ jobs:
         with:
           name: coverage-${{ steps.unique-id.outputs.id }}
           path: coverage
-        if: always() && matrix.pymc-version == "pymc3==3.9.3"
+        if: always() && matrix.pymc-version == 'pymc3==3.9.3'
 
       - uses: actions/upload-artifact@v2
         with:
           name: coverage-extensions-${{ steps.unique-id.outputs.id }}
           path: coverage-extensions
-        if: always() && matrix.pymc-version == "pymc3==3.9.3"
+        if: always() && matrix.pymc-version == 'pymc3==3.9.3'
