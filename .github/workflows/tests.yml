@@ -1,0 +1,71 @@
+name: tests
+
+on:
+  push:
+    branches: [master,restructure]
+  pull_request:
+    branches: [master]
+
+jobs:
+  tests:
+    name: "${{ matrix.pymc-version }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pymc-version: ["pymc3==3.9.3", "pymc3==3.10", "pymc3==3.11", "https://github.com/pymc-devs/pymc3/archive/master.zip"]
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.theano
+          key: ${{ runner.os }}-${{ matrix.pymc-version }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.pymc-version }}-
+
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: starry
+          #environment-file: environment.yml
+
+      - name: Set up environment
+        shell: bash -l {0}
+        run: |
+          sudo apt-get update
+          sudo apt-get install ffmpeg
+
+      - name: Install dependencies
+        shell: bash -l {0}
+        run: |
+          python -m pip install -U pip
+          python -m pip uninstall -y theano  # so that we know which version we're getting
+          python -m pip install ${{ matrix.pymc-version }}
+          python -m pip install -e "."
+          python -c 'import theano; print(theano.__version__)'
+
+      - name: Run tests (greedy)
+        shell: bash -l {0}
+        run: python -m pytest -v tests/greedy --junitxml=junit/test-results-greedy.xml
+
+      - name: Run tests (lazy)
+        shell: bash -l {0}
+        run: python -m pytest -v tests/lazy --junitxml=junit/test-results-lazy.xml
+
+      - name: Get unique id
+        id: unique-id
+        env:
+          STRATEGY_CONTEXT: ${{ toJson(strategy) }}
+        run: |
+          export JOB_ID=`echo $STRATEGY_CONTEXT | md5sum`
+          echo "::set-output name=id::$JOB_ID"
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: test-results-${{ steps.unique-id.outputs.id }}
+          path: junit/test-*.xml
