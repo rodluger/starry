@@ -86,10 +86,10 @@ jobs:
         if: ${{ always() }}
 
       - name: Generate coverage badges
-      shell: bash -l {0}
-      run: |
-        coverage-badge -o coverage/coverage.svg
-        coverage-badge -n extensions.svg -o coverage-extensions/coverage.svg
+        shell: bash -l {0}
+        run: |
+          coverage-badge -o coverage/coverage.svg
+          coverage-badge -n extensions.svg -o coverage-extensions/coverage.svg
 
       - name: Get unique id
         id: unique-id
