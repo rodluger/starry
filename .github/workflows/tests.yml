@@ -74,6 +74,7 @@ jobs:
         run: |
           coverage-badge -o coverage/coverage.svg
           coverage-badge -n extensions.svg -o coverage-extensions/coverage.svg
+        if: always() && matrix.pymc-version == "pymc3==3.9.3"
 
       - name: Get unique id
         id: unique-id
@@ -82,22 +83,28 @@ jobs:
         run: |
           export JOB_ID=`echo $STRATEGY_CONTEXT | md5sum`
           echo "::set-output name=id::$JOB_ID"
-        if: ${{ always() }}
+        if: always()
 
       - uses: actions/upload-artifact@v2
         with:
           name: test-results-${{ steps.unique-id.outputs.id }}
           path: junit/test-*.xml
-        if: ${{ always() }}
+        if: always()
+
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: junit/test-*.xml
 
       - uses: actions/upload-artifact@v2
         with:
           name: coverage-${{ steps.unique-id.outputs.id }}
           path: coverage
-        if: ${{ always() }}
+        if: always() && matrix.pymc-version == "pymc3==3.9.3"
 
       - uses: actions/upload-artifact@v2
         with:
           name: coverage-extensions-${{ steps.unique-id.outputs.id }}
           path: coverage-extensions
-        if: ${{ always() }}
+        if: always() && matrix.pymc-version == "pymc3==3.9.3"
