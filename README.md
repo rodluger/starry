@@ -4,37 +4,22 @@
   <br>
   Tools for mapping stars and exoplanets.
   <p align="center">
-    <!-- build code -->
-    <a href="https://dev.azure.com/rodluger/starry/_build">
-      <!--<img src="https://img.shields.io/azure-devops/build/rodluger/starry/4/master"/>-->
-      <img src="https://badgen.net/azure-pipelines/rodluger/starry/4?label=build"/>
+    <!-- tests -->
+    <a href="https://github.com/rodluger/starry/actions/workflows/tests.yml">
+      <img src="https://github.com/rodluger/starry/actions/workflows/tests.yml/badge.svg"/>
     </a>
-    <!-- main tests -->
-    <a href="https://dev.azure.com/rodluger/starry/_test/analytics?definitionId=4&contextType=build">
-      <img src="https://img.shields.io/azure-devops/tests/rodluger/starry/4/master"/>
+    <!-- coverage -->
+    <a href="https://coveralls.io/github/rodluger/starry">
+      <img src="https://coveralls.io/repos/github/rodluger/starry/badge.svg?branch=restructure"/> <!-- TODO: master -->
     </a>
-    <!-- main coveragee -->
-    <a href="https://rodluger.github.io/starry/latest/coverage/">
-      <img src="https://rodluger.github.io/starry/latest/coverage/coverage.svg"/>
-    </a>
-    <br/>
-    <!-- extensions -->
-    <a href="https://dev.azure.com/rodluger/starry/_test/analytics?definitionId=5&contextType=build">
-      <img src="https://img.shields.io/azure-devops/tests/rodluger/starry/5/master?label=extensions%20tests"/>
-    </a>
-    <!-- extensions coveragee -->
-    <a href="https://rodluger.github.io/starry/latest/coverage-extensions/">
-      <img src="https://rodluger.github.io/starry/latest/coverage-extensions/coverage.svg"/>
     <br/>
     <!-- build docs -->
-    <a href="https://rodluger.github.io/starry/latest">
-      <!--<img src="https://img.shields.io/azure-devops/build/rodluger/starry/7/master?label=docs"/>-->
-      <img src="https://badgen.net/azure-pipelines/rodluger/starry/7?label=docs"/>
+    <a href="https://starry.readthedocs.io">
+      <img src="https://img.shields.io/badge/docs-unknown-lightgrey"/>
     </a>
     <!-- build notebooks -->
-    <a href="https://rodluger.github.io/starry/latest/tutorials.html">
-      <!--<img src="https://img.shields.io/azure-devops/build/rodluger/starry/6/master?label=notebooks"/>-->
-      <img src="https://badgen.net/azure-pipelines/rodluger/starry/6?label=notebooks"/>
+    <a href="https://starry.readthedocs.io/en/latest/tutorials/">
+      <img src="https://img.shields.io/badge/notebooks-unknown-lightgrey"/>
     </a>
     <!-- read the paper -->
     <a href="http://adsabs.harvard.edu/abs/2019AJ....157...64L">
