@@ -224,7 +224,7 @@ setup(
             "pytest",
             "pytest-dependency",
             "pytest-env",
-            "skimage",
+            "scikit-image",
             "pillow",
             "tqdm",
         ],
