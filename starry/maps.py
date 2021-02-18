@@ -11,7 +11,6 @@ from ._plotting import (
     get_moll_longitude_lines,
     get_projection,
 )
-from ._sht import image2map, healpix2map, array2map
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -20,6 +19,7 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from IPython.display import HTML
 from astropy import units
+from scipy.ndimage import zoom
 import os
 import logging
 
@@ -1275,41 +1275,37 @@ class YlmBase(object):
     def load(
         self,
         image,
-        healpix=False,
-        nside=32,
-        max_iter=3,
-        sigma=None,
+        extent=(-180, 180, -90, 90),
+        smoothing=None,
+        fac=1.0,
+        eps=1e-12,
         force_psd=False,
         **kwargs
     ):
-        """Load an image, array, or ``healpix`` map.
+        """Load an image or ndarray.
 
-        This routine uses various routines in ``healpix`` to compute the
-        spherical harmonic expansion of the input image and sets the map's
-        :py:attr:`y` coefficients accordingly.
+        This routine performs a simple spherical harmonic transform (SHT)
+        to compute the spherical harmonic expansion corresponding to
+        an input image file or ``numpy`` array on a lat-lon grid.
+        The resulting coefficients are ingested into the map.
 
         Args:
-            image: A path to an image file, a two-dimensional ``numpy``
-                array, or a ``healpix`` map array (if ``healpix`` is True).
-            healpix (bool, optional): Treat ``image`` as a ``healpix`` array?
-                Default is False.
-            sigma (float, optional): If not None, apply gaussian smoothing
-                with standard deviation ``sigma`` to smooth over
-                spurious ringing features. Smoothing is performed with
-                the ``healpix.sphtfunc.smoothalm`` method.
-                Default is None.
+            image: A path to an image PNG file or a two-dimensional ``numpy``
+                array on a latitude-longitude grid.
+            extent (tuple, optional): The lat-lon values corresponding to the
+                edges of the image in degrees, ``(lat0, lat1, lon0, lon1)``.
+                Default is ``(-180, 180, -90, 90)``.
+            smoothing (float, optional): Gaussian smoothing strength.
+                Increase this value to suppress ringing or explicitly set to zero to
+                disable smoothing. Default is ``1/self.ydeg``.
+            fac (float, optional): Factor by which to oversample the image
+                when applying the SHT. Default is ``1.0``. Increase this
+                number for higher fidelity (at the expense of increased
+                computational time).
+            eps (float, optional): Regularization strength for the spherical
+                harmonic transform. Default is ``1e-12``.
             force_psd (bool, optional): Force the map to be positive
                 semi-definite? Default is False.
-            nside (int, optional): The ``NSIDE`` argument to a Healpix
-                map. This controls the angular resolution of the image; increase
-                this for maps with higher fidelity, at the expense of extra
-                compute time. Default is 32.
-            max_iter (int, optional): Maximum number of iterations in trying
-                to convert the map to a Healpix array. Each iteration, the
-                input array is successively doubled in size in order to
-                increase the angular coverage of the input. Default is 3. If
-                the number of iterations exceeds this value, an error will
-                be raised.
             kwargs (optional): Any other kwargs passed directly to
                 :py:meth:`minimize` (only if ``psd`` is True).
         """
@@ -1318,38 +1314,60 @@ class YlmBase(object):
 
         # Is this a file name?
         if type(image) is str:
-            y = image2map(
-                image,
-                lmax=self.ydeg,
-                sigma=sigma,
-                nside=nside,
-                max_iter=max_iter,
+            # Get the full path
+            if not os.path.exists(image):
+                image = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), "img", image
+                )
+                if not image.endswith(".png"):
+                    image += ".png"
+                if not os.path.exists(image):
+                    raise ValueError("File not found: %s." % image)
+
+            # Load the image into an ndarray
+            image = plt.imread(image)
+
+            # Convert to grayscale
+            if len(image.shape) == 3:
+                image = np.mean(image[:, :, :3], axis=-1)
+
+            # Re-orient
+            image = np.flipud(image)
+
+        # Downsample the image to Nyquist-ish
+        factor = fac * 4 * self.ydeg / image.shape[1]
+        if factor < 1:
+            image = zoom(image, factor, mode="nearest")
+
+        # Get the lat-lon grid
+        nlat, nlon = image.shape
+        lon = np.linspace(extent[0], extent[1], nlon) * np.pi / 180
+        lat = np.linspace(extent[2], extent[3], nlat) * np.pi / 180
+        lon, lat = np.meshgrid(lon, lat)
+        lon = lon.flatten()
+        lat = lat.flatten()
+
+        # Compute the cos(lat)-weighted SHT
+        w = np.cos(lat)
+        P = self.ops.P(lat, lon)
+        PTSinv = P.T * (w ** 2)[None, :]
+        Q = np.linalg.solve(PTSinv @ P + eps * np.eye(P.shape[1]), PTSinv)
+        if smoothing is None:
+            smoothing = 1.0 / self.ydeg
+        if smoothing > 0:
+            l = np.concatenate(
+                [np.repeat(l, 2 * l + 1) for l in range(self.ydeg + 1)]
             )
-        # or is it an array?
-        elif type(image) is np.ndarray:
-            if healpix:
-                y = healpix2map(
-                    image,
-                    lmax=self.ydeg,
-                    sigma=sigma,
-                    nside=nside,
-                    max_iter=max_iter,
-                )
-            else:
-                y = array2map(
-                    image,
-                    lmax=self.ydeg,
-                    sigma=sigma,
-                    nside=nside,
-                    max_iter=max_iter,
-                )
-        else:
-            raise ValueError("Invalid `image` value.")
+            s = np.exp(-0.5 * l * (l + 1) * smoothing ** 2)
+            Q *= s[:, None]
+
+        # The Ylm coefficients are just a linear op on the image
+        y = Q @ image.flatten()
 
         # Ingest the coefficients w/ appropriate normalization
         # This ensures the map intensity will have the same normalization
         # as that of the input image
-        y /= 2 * np.sqrt(np.pi)
+        y /= np.pi
         self._y = self._math.cast(y / y[0])
         self.amp = self._math.cast(y[0] * np.pi)
 

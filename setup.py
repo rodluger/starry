@@ -48,7 +48,7 @@ if debug:
 # Numerical override at high l?
 if bool(int(os.getenv("STARRY_KL_NUMERICAL", 0))):
     macros["STARRY_KL_NUMERICAL"] = 1
-    
+
 # Compute the Oren-Nayar (1994) expansion if the user requests it
 deg = os.getenv("STARRY_OREN_NAYAR_DEG", None)
 Nb = os.getenv("STARRY_OREN_NAYAR_NB", None)
@@ -216,8 +216,7 @@ setup(
         "ipython",
         "pillow",
         "exoplanet>=0.2.0",
-        "packaging"
-        # TODO? "healpy>=1.12.8;platform_system!='Windows'",
+        "packaging",
     ],
     setup_requires=["setuptools_scm", "pybind11>2.4"],
     cmdclass={"build_ext": BuildExt},
