@@ -1,5 +1,5 @@
 [run]
 omit =
     **/test_*.py
-    starry/extensions/*
     **/conftest.py
+relative_files = true
