@@ -5,8 +5,8 @@ on:
     types:
       - published
   push:
-    paths:
-      - 'notebooks/*.ipynb'
+    #paths:
+    #  - 'notebooks/*.ipynb' # TODO
     branches: [restructure]
 
 jobs:
