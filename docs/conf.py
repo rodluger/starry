@@ -90,7 +90,7 @@ nbsphinx_prolog = """
 """
 
 # nbsphinx
-nbsphinx_timeout = 600
+nbsphinx_execute = "never"
 napoleon_use_ivar = True
 
 # todos
