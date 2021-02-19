@@ -88,4 +88,3 @@ Miscellaneous
    notebooks/LDNormalization.ipynb
    notebooks/OrbitViz.ipynb
    notebooks/RVDerivation.ipynb
-   notebooks/TimingTests.ipynb

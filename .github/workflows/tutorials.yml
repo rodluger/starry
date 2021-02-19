@@ -1,13 +1,10 @@
 name: tutorials
 
 on:
-  release:
-    types:
-      - published
   push:
-    #paths:
-    #  - 'notebooks/*.ipynb' # TODO
-    branches: [restructure]
+    branches: [master,restructure] # TODO
+  pull_request:
+    branches: [master]
 
 jobs:
   notebooks:
