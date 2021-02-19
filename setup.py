@@ -239,6 +239,7 @@ setup(
             "nbconvert",
             "rtds_action",
             "nbsphinx",
+            "tqdm",
         ],
     },
     setup_requires=["setuptools_scm", "pybind11>2.4"],

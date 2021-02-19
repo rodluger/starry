@@ -39,6 +39,7 @@ extensions = [
     "sphinx.ext.todo",
     "matplotlib.sphinxext.plot_directive",
     "nbsphinx",
+    "rtds_action",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -94,3 +95,11 @@ napoleon_use_ivar = True
 
 # todos
 todo_include_todos = True
+
+
+# -- rtds_action settings -----------------------------------------------------
+
+rtds_action_github_repo = "rodluger/starry"
+rtds_action_path = "notebooks"
+rtds_action_artifact_prefix = "notebooks-for-"
+rtds_action_github_token = os.environ.get("GITHUB_TOKEN", "")
