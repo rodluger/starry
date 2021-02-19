@@ -69,9 +69,9 @@ jobs:
           name: notebooks-for-${{ github.sha }}
           path: notebooks
 
-      #- name: Trigger RTDs build # TODO
-      #  uses: dfm/rtds-action@v1.0.0
-      #  with:
-      #    webhook_url: ${{ secrets.RTDS_WEBHOOK_URL }}
-      #    webhook_token: ${{ secrets.RTDS_WEBHOOK_TOKEN }}
-      #    commit_ref: ${{ github.ref }}
+      - name: Trigger RTDs build
+        uses: dfm/rtds-action@v1.0.0
+        with:
+          webhook_url: ${{ secrets.RTDS_WEBHOOK_URL }}
+          webhook_token: ${{ secrets.RTDS_WEBHOOK_TOKEN }}
+          commit_ref: ${{ github.ref }}
