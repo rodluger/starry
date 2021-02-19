@@ -119,13 +119,3 @@ Doppler maps
 ^^^^^^^^^^^^
 The ``Map`` class can now also model radial velocity observations. This is
 useful for modeling the Rossiter-McLaughlin effect, for example.
-
-Differential rotation (experimental)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Users can now specify the differential rotation parameter ``alpha``
-to model weak differential rotation over short timescales. Unfortunately,
-differential rotation is not a linear operation on the spherical harmonic
-coefficient vector, since the shearing induces higher order modes that
-grow strongly with time. The version implemented in ``starry`` is just a
-low-order approximation to differential rotation that works in cases where
-both ``alpha`` and the number of rotations are small.

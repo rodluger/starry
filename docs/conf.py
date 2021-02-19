@@ -8,9 +8,7 @@
 
 import os
 import starry
-from ipywidgets.embed import DEFAULT_EMBED_REQUIREJS_URL
 import sys
-import packaging
 
 # Add the CWD to the path
 sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
@@ -22,15 +20,10 @@ import hacks
 # -- Project information -----------------------------------------------------
 
 project = "starry"
-copyright = "2019, Rodrigo Luger"
+copyright = "2021, Rodrigo Luger"
 author = "Rodrigo Luger"
-version = packaging.version.parse(starry.__version__).base_version
-if hacks.is_latest:
-    version = "latest"
+version = starry.__version__
 release = version
-
-# Get current git branch
-branch = os.getenv("GHBRANCH", "master")
 
 # -- General configuration ---------------------------------------------------
 
@@ -72,7 +65,6 @@ html_show_sourcelink = False
 # so a file named "default.css" will overwrite the builtin "default.css".
 
 html_static_path = ["_static"]
-html_js_files = ["js/hacks.js"]
 
 # -- Extension settings ------------------------------------------------------
 
@@ -81,14 +73,11 @@ autoclass_content = "both"
 autosummary_generate = True
 autodoc_docstring_signature = True
 
-# for our js hacks
-html_js_files += [DEFAULT_EMBED_REQUIREJS_URL]
-
 # Add a heading to notebooks
 nbsphinx_prolog = """
-{%s set docname = env.doc2path(env.docname, base=None) %s}
+{% set docname = env.doc2path(env.docname, base=None) %}
 .. note:: This tutorial was generated from a Jupyter notebook that can be
-          downloaded `here <https://github.com/rodluger/starry/blob/%s/{{ docname }}>`_.
+          downloaded `here <https://github.com/rodluger/starry/blob/master/{{ docname }}>`_.
 .. raw:: html
 
     <style>
@@ -97,11 +86,7 @@ nbsphinx_prolog = """
             display: none;
         }
     </style>
-""" % (
-    "%",
-    "%",
-    branch,
-)
+"""
 
 # nbsphinx
 nbsphinx_timeout = 600

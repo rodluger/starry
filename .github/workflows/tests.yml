@@ -2,7 +2,7 @@ name: tests
 
 on:
   push:
-    branches: [master,restructure]
+    branches: [master,restructure] # TODO
   pull_request:
     branches: [master]
 
