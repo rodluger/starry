@@ -15,7 +15,7 @@
     <br/>
     <!-- build docs -->
     <a href="https://starry.readthedocs.io">
-      <img src="https://img.shields.io/badge/docs-unknown-lightgrey"/>
+      <img src="https://img.shields.io/badge/docs-unknown-lightgrey"/> <!-- TODO -->
     </a>
     <!-- build notebooks -->
     <a href="https://starry.readthedocs.io/en/latest/tutorials/">

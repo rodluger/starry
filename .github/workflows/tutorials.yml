@@ -41,7 +41,7 @@ jobs:
       - name: Set up environment
         shell: bash -l {0}
         run: |
-          conda install nb_conda nb_conda_kernels
+          conda install nb_conda nb_conda_kernels ipywidgets
           jupyter nbextension enable --py widgetsnbextension
           sudo apt-get update
           sudo apt-get install ffmpeg
@@ -69,7 +69,7 @@ jobs:
           name: notebooks-for-${{ github.sha }}
           path: notebooks
 
-      #- name: Trigger RTDs build
+      #- name: Trigger RTDs build # TODO
       #  uses: dfm/rtds-action@v1.0.0
       #  with:
       #    webhook_url: ${{ secrets.RTDS_WEBHOOK_URL }}
