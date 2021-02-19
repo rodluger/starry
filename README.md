@@ -19,7 +19,7 @@
     </a>
     <!-- build notebooks -->
     <a href="https://starry.readthedocs.io/en/latest/tutorials/">
-      <img src="https://img.shields.io/badge/notebooks-unknown-lightgrey"/>
+      <img src="https://github.com/rodluger/starry/actions/workflows/tutorials.yml/badge.svg"/>
     </a>
     <!-- read the paper -->
     <a href="http://adsabs.harvard.edu/abs/2019AJ....157...64L">

@@ -41,10 +41,10 @@ jobs:
       - name: Set up environment
         shell: bash -l {0}
         run: |
+          conda install nb_conda nb_conda_kernels
           jupyter nbextension enable --py widgetsnbextension
           sudo apt-get update
           sudo apt-get install ffmpeg
-          conda install nb_conda nb_conda_kernels
 
       - name: Install dependencies
         shell: bash -l {0}
