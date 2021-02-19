@@ -8,6 +8,8 @@ import sys
 import os
 import glob
 
+# Are we on ReadTheDocs?
+on_rtd = os.getenv("READTHEDOCS") == "True"
 
 # Custom compiler flags
 macros = dict(
@@ -94,28 +96,6 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-if int(macros["STARRY_NDIGITS"]) > 16:
-    include_dirs = ["starry/_core/ops/lib/vendor/boost_1_66_0"]
-else:
-    include_dirs = []
-ext_modules = [
-    Extension(
-        "starry._c_ops",
-        ["starry/_core/ops/lib/include/interface.cpp"],
-        include_dirs=include_dirs
-        + [
-            # Path to pybind11 headers
-            get_pybind_include(),
-            get_pybind_include(user=True),
-            "starry/_core/ops/lib/include",
-            "starry/_core/ops/lib/vendor/eigen_3.3.5",
-        ],
-        language="c++",
-        define_macros=[(key, value) for key, value in macros.items()],
-    )
-]
-
-
 # As of Python 3.6, CCompiler has a `has_flag` method.
 # cf http://bugs.python.org/issue26689
 def has_flag(compiler, flagname):
@@ -190,6 +170,33 @@ class BuildExt(build_ext):
         build_ext.build_extensions(self)
 
 
+if int(macros["STARRY_NDIGITS"]) > 16:
+    include_dirs = ["starry/_core/ops/lib/vendor/boost_1_66_0"]
+else:
+    include_dirs = []
+if on_rtd:
+    ext_modules = []
+    cmdclass = {}
+else:
+    ext_modules = [
+        Extension(
+            "starry._c_ops",
+            ["starry/_core/ops/lib/include/interface.cpp"],
+            include_dirs=include_dirs
+            + [
+                # Path to pybind11 headers
+                get_pybind_include(),
+                get_pybind_include(user=True),
+                "starry/_core/ops/lib/include",
+                "starry/_core/ops/lib/vendor/eigen_3.3.5",
+            ],
+            language="c++",
+            define_macros=[(key, value) for key, value in macros.items()],
+        )
+    ]
+    cmdclass = {"build_ext": BuildExt}
+
+
 setup(
     name="starry",
     author="Rodrigo Luger",
@@ -243,7 +250,7 @@ setup(
         ],
     },
     setup_requires=["setuptools_scm", "pybind11>2.4"],
-    cmdclass={"build_ext": BuildExt},
+    cmdclass=cmdclass,
     data_files=glob.glob("starry/img/*.png"),
     include_package_data=True,
     zip_safe=False,

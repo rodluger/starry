@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from .. import config
 from .._constants import *
-from .. import _c_ops
 from .ops import (
     sTOp,
     rTReflectedOp,
@@ -27,17 +26,15 @@ import theano.sparse as ts
 from theano.ifelse import ifelse
 import numpy as np
 from astropy import units
+import os
+import exoplanet
 
-try:  # pragma: no cover
-    from packaging import version
-    import exoplanet
 
-    if version.parse(exoplanet.__version__) < version.parse(
-        STARRY_EXOPLANET_MIN_VERSION
-    ):
-        exoplanet = None
-except ModuleNotFoundError:  # pragma: no cover
-    exoplanet = None
+# C extensions are not installed on RTD
+if os.getenv("READTHEDOCS") == "True":
+    _c_ops = None
+else:
+    from .. import _c_ops
 
 
 __all__ = ["OpsYlm", "OpsLD", "OpsReflected", "OpsRV", "OpsSystem"]
@@ -1321,13 +1318,6 @@ class OpsSystem(object):
         self.texp = texp
         self.oversample = oversample
         self.order = order
-
-        # Require exoplanet
-        assert (
-            exoplanet is not None
-        ), "This class requires exoplanet >= {}.".format(
-            STARRY_EXOPLANET_MIN_VERSION
-        )
 
     @autocompile
     def position(

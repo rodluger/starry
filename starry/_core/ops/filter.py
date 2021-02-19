@@ -3,7 +3,13 @@ from ...compat import Apply
 import numpy as np
 import theano.tensor as tt
 import theano.sparse as ts
-from ..._c_ops import STARRY_OREN_NAYAR_DEG
+import os
+
+# C extensions are not installed on RTD
+if os.getenv("READTHEDOCS") == "True":
+    STARRY_OREN_NAYAR_DEG = 5
+else:
+    from ..._c_ops import STARRY_OREN_NAYAR_DEG
 
 
 __all__ = ["FOp", "OrenNayarOp"]
