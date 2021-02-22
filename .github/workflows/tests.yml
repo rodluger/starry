@@ -90,6 +90,7 @@ jobs:
         if: always()
         with:
           files: junit/test-*.xml
+          comment_on_pr: false
 
       - name: Coveralls
         uses: AndreMiras/coveralls-python-action@develop

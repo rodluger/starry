@@ -280,17 +280,6 @@ protected:
   std::vector<Matrix<Scalar>> DRDz;     /**< */
   std::vector<Matrix<Scalar>> DRDtheta; /**< */
 
-  // Diff rot
-  Scalar oversample;
-  Scalar lam;
-  basis::Basis<Scalar> B;
-  size_t npix, nlat;
-  std::vector<Scalar> unique_lat;
-  std::vector<size_t> unique_idx;
-  Matrix<Scalar> P, Q;
-  RowVector<Scalar> mag;
-  std::vector<Matrix<Scalar>> T;
-
 public:
   // Tensor z rotation results
   Matrix<Scalar> tensordotRz_result; /**< */
@@ -302,12 +291,11 @@ public:
   Scalar dotR_bx, dotR_by, dotR_bz, dotR_btheta; /**< */
   Matrix<Scalar> dotR_bM;                        /**< */
 
-  Wigner(int ydeg, int udeg, int fdeg, Scalar oversample, Scalar lam,
-         const basis::Basis<Scalar> &B)
+  Wigner(int ydeg, int udeg, int fdeg)
       : ydeg(ydeg), Ny((ydeg + 1) * (ydeg + 1)), udeg(udeg), Nu(udeg + 1),
         fdeg(fdeg), Nf((fdeg + 1) * (fdeg + 1)), deg(ydeg + udeg + fdeg),
         N((deg + 1) * (deg + 1)), theta_Rz_cache(0), x_cache(NAN), y_cache(NAN),
-        z_cache(NAN), theta_cache(NAN), oversample(oversample), lam(lam), B(B) {
+        z_cache(NAN), theta_cache(NAN) {
     // Allocate the Wigner matrices
     D.resize(ydeg + 1);
     R.resize(ydeg + 1);

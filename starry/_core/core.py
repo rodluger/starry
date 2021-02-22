@@ -44,9 +44,7 @@ __all__ = ["OpsYlm", "OpsLD", "OpsReflected", "OpsRV", "OpsSystem"]
 class OpsYlm(object):
     """Class housing Theano operations for spherical harmonics maps."""
 
-    def __init__(
-        self, ydeg, udeg, fdeg, nw, reflected=False, dr_fast=False, **kwargs
-    ):
+    def __init__(self, ydeg, udeg, fdeg, nw, reflected=False, **kwargs):
         # Ingest kwargs
         self.ydeg = ydeg
         self.udeg = udeg
@@ -60,13 +58,7 @@ class OpsYlm(object):
         # Instantiate the C++ Ops
         config.rootHandler.terminator = ""
         logger.info("Pre-computing some matrices... ")
-        self._c_ops = _c_ops.Ops(
-            ydeg,
-            udeg,
-            fdeg,
-            kwargs.get("dr_oversample", 2.0),
-            kwargs.get("dr_lam", 1.0e-12),
-        )
+        self._c_ops = _c_ops.Ops(ydeg, udeg, fdeg)
         config.rootHandler.terminator = "\n"
         logger.info("Done.")
 
@@ -614,7 +606,10 @@ class OpsYlm(object):
         self, spot_pts=1000, spot_eps=1e-9, spot_smoothing=None, spot_fac=300
     ):
         if spot_smoothing is None:
-            spot_smoothing = 2.0 / self.ydeg
+            if self.ydeg < 4:
+                spot_smoothing = 0.5
+            else:
+                spot_smoothing = 2.0 / self.ydeg
         theta = np.linspace(0, np.pi, spot_pts)
         cost = np.cos(theta)
         B = np.hstack(

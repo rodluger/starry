@@ -40,7 +40,22 @@ PYBIND11_MODULE(_c_ops, m) {
   py::class_<starry::Ops<Scalar>> Ops(m, "Ops");
 
   // Constructor
-  Ops.def(py::init<int, int, int, Scalar, Scalar>());
+  Ops.def(py::init<int, int, int>());
+
+  // Enable pickling
+  Ops.def(py::pickle(
+      [](const starry::Ops<Scalar> &ops) {
+        // __getstate__
+        return py::make_tuple(ops.ydeg, ops.udeg, ops.fdeg);
+      },
+      [](py::tuple t) {
+        // __setstate__
+        if (t.size() != 3)
+          throw std::runtime_error("Invalid state!");
+        starry::Ops<Scalar> ops(t[0].cast<int>(), t[1].cast<int>(),
+                                t[2].cast<int>());
+        return ops;
+      }));
 
   // Map dimensions
   Ops.def_property_readonly("ydeg",
@@ -94,7 +109,7 @@ PYBIND11_MODULE(_c_ops, m) {
 #ifdef STARRY_MULTI
     return (ops.B.A1.template cast<double>()).eval();
 #else
-            return ops.B.A1;
+    return ops.B.A1;
 #endif
   });
 
@@ -103,7 +118,7 @@ PYBIND11_MODULE(_c_ops, m) {
 #ifdef STARRY_MULTI
     return (ops.B.A1_big.template cast<double>()).eval();
 #else
-            return ops.B.A1_big;
+    return ops.B.A1_big;
 #endif
   });
 
@@ -112,7 +127,7 @@ PYBIND11_MODULE(_c_ops, m) {
 #ifdef STARRY_MULTI
     return (ops.B.A1Inv.template cast<double>()).eval();
 #else
-            return ops.B.A1Inv;
+    return ops.B.A1Inv;
 #endif
   });
 
@@ -121,7 +136,7 @@ PYBIND11_MODULE(_c_ops, m) {
 #ifdef STARRY_MULTI
     return (ops.B.A.template cast<double>()).eval();
 #else
-            return ops.B.A;
+    return ops.B.A;
 #endif
   });
 
