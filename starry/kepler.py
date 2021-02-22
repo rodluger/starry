@@ -1223,7 +1223,8 @@ class System(object):
         for body in self._solved_bodies:
             inds = slice(n, n + body.map.Ny)
             body.map.amp = x[inds][0]
-            body.map[1:, :] = x[inds][1:] / body.map.amp
+            if body.map.ydeg > 0:
+                body.map[1:, :] = x[inds][1:] / body.map.amp
             n += body.map.Ny
 
         # Return the mean and covariance

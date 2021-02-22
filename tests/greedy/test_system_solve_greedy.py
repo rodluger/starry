@@ -122,6 +122,7 @@ def test_solve_with_zero_degree_primary():
 
     # Instantiate a primary with ydeg = 0
     star_0 = starry.Primary(starry.Map(ydeg=0))
+    star_0.map.set_prior(L=1)
 
     # Instantiate a secondary with ydeg > 0
     star_1 = starry.Secondary(starry.Map(ydeg=1), porb=1.0)

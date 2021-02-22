@@ -896,7 +896,8 @@ class MapBase(object):
         # Set the amplitude and coefficients
         x, _ = self._solution
         self.amp = x[0]
-        self[1:, :] = x[1:] / self.amp
+        if self.ydeg > 0:
+            self[1:, :] = x[1:] / self.amp
 
         # Return the mean and covariance
         return self._solution
