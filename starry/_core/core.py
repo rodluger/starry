@@ -24,6 +24,7 @@ import theano
 import theano.tensor as tt
 import theano.sparse as ts
 from theano.ifelse import ifelse
+from scipy.special import legendre as LegendreP
 import numpy as np
 from astropy import units
 import os
@@ -88,7 +89,15 @@ class OpsYlm(object):
         self._F = FOp(self._c_ops.F, self._c_ops.N, self._c_ops.Ny)
 
         # Misc
-        self._spotYlm = spotYlmOp(self._c_ops.spotYlm, self.ydeg, self.nw)
+        self._spotYlm = spotYlmOp(
+            self._c_ops.spotYlm, self.ydeg, self.nw
+        )  # Deprecated
+        self._spot_setup(
+            spot_pts=kwargs.get("spot_pts", 1000),
+            spot_eps=kwargs.get("spot_eps", 1e-9),
+            spot_smoothing=kwargs.get("spot_smoothing", None),
+            spot_fac=kwargs.get("spot_fac", 300),
+        )
         self._pT = pTOp(self._c_ops.pT, self.deg)
         if self.nw is None:
             if self._reflected:
@@ -146,6 +155,7 @@ class OpsYlm(object):
 
     @autocompile
     def spotYlm(self, amp, sigma, lat, lon):
+        # Deprecated
         return self._spotYlm(amp, sigma, lat, lon)
 
     @autocompile
@@ -318,7 +328,7 @@ class OpsYlm(object):
 
     @autocompile
     def expand_spot(self, amp, sigma, lat, lon):
-        """Return the spherical harmonic expansion of a Gaussian spot."""
+        """Return the spherical harmonic expansion of a Gaussian spot [DEPRECATED]."""
         return self.spotYlm(amp, sigma, lat, lon)
 
     @autocompile
@@ -599,6 +609,49 @@ class OpsYlm(object):
             return R
         else:
             return compute(axis=axis, theta=theta)
+
+    def _spot_setup(
+        self, spot_pts=1000, spot_eps=1e-9, spot_smoothing=None, spot_fac=300
+    ):
+        if spot_smoothing is None:
+            spot_smoothing = 2.0 / self.ydeg
+        theta = np.linspace(0, np.pi, spot_pts)
+        cost = np.cos(theta)
+        B = np.hstack(
+            [
+                np.sqrt(2 * l + 1) * LegendreP(l)(cost).reshape(-1, 1)
+                for l in range(self.ydeg + 1)
+            ]
+        )
+        A = np.linalg.solve(B.T @ B + spot_eps * np.eye(self.ydeg + 1), B.T)
+        l = np.arange(self.ydeg + 1)
+        i = l * (l + 1)
+        S = np.exp(-0.5 * i * spot_smoothing ** 2)
+        self._spot_Bp = S[:, None] * A
+        self._spot_idx = i
+        self._spot_theta = theta
+        self._spot_fac = spot_fac
+
+    @autocompile
+    def spot(self, contrast, radius, lat, lon):
+
+        # Compute unit-intensity spot at (0, 0)
+        z = self._spot_fac * (self._spot_theta - radius)
+        b = 1.0 / (1.0 + tt.exp(-z)) - 1.0
+        yT = tt.zeros((1, self.Ny))
+        yT = tt.set_subtensor(yT[:, self._spot_idx], tt.dot(self._spot_Bp, b))
+
+        # Rotate in latitude then in longitude
+        yT = self.dotR(yT, np.array(1.0), np.array(0.0), np.array(0.0), lat)
+        yT = self.dotR(yT, np.array(0.0), np.array(1.0), np.array(0.0), -lon)
+
+        # Reshape and we're done
+        if self.nw is None:
+            y = yT.reshape((-1,)) * contrast
+        else:
+            y = yT.reshape((-1, 1)) * tt.reshape(contrast, (1, -1))
+
+        return y
 
 
 class OpsLD(object):

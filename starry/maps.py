@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from . import config
+from . import config, legacy
 from ._constants import *
 from ._core import OpsYlm, OpsLD, OpsReflected, OpsRV, math
 from ._core.utils import is_theano
@@ -1000,7 +1000,7 @@ class MapBase(object):
         self[1:, :] = x[1:] / self.amp
 
 
-class YlmBase(object):
+class YlmBase(legacy.YlmBase):
     """The default ``starry`` map class.
 
     This class handles light curves and phase curves of objects in
@@ -1419,104 +1419,96 @@ class YlmBase(object):
         else:
             self._y = self._math.transpose(y)
 
-    def add_spot(
-        self,
-        amp=None,
-        intensity=None,
-        relative=True,
-        sigma=0.1,
-        lat=0.0,
-        lon=0.0,
-    ):
-        r"""Add the expansion of a gaussian spot to the map.
+    def spot(self, *, contrast=1.0, radius=None, lat=0.0, lon=0.0):
+        r"""Add the expansion of a circular spot to the map.
 
-        This function adds a spot whose functional form is the spherical
-        harmonic expansion of a gaussian in the quantity
-        :math:`\cos\Delta\theta`, where :math:`\Delta\theta`
-        is the angular separation between the center of the spot and another
-        point on the surface. The spot brightness is controlled by either the
-        parameter ``amp``, defined as the fractional change in the
-        total luminosity of the object due to the spot, or the parameter
-        ``intensity``, defined as the fractional change in the
+        This function adds a spot whose functional form is a top
+        hat in :math:`\Delta\theta`, the
+        angular separation between the center of the spot and another
+        point on the surface. The spot intensity is controlled by the
+        parameter ``contrast``, defined as the fractional change in the
         intensity at the center of the spot.
 
         Args:
-            amp (scalar or vector, optional): The amplitude of the spot. This
-                is equal to the fractional change in the luminosity of the map
-                due to the spot. If the map has more than one wavelength bin,
-                this must be a vector of length equal to the number of
-                wavelength bins. Default is None.
-                Either ``amp`` or ``intensity`` must be given.
-            intensity (scalar or vector, optional): The intensity of the spot.
+            contrast (scalar or vector, optional): The contrast of the spot.
                 This is equal to the fractional change in the intensity of the
-                map at the *center* of the spot. If the map has more than one
+                map at the *center* of the spot relative to the baseline intensity
+                of an unspotted map. If the map has more than one
                 wavelength bin, this must be a vector of length equal to the
-                number of wavelength bins. Default is None.
-                Either ``amp`` or ``intensity`` must be given.
-            relative (bool, optional): If True, computes the spot expansion
-                assuming the fractional `amp` or `intensity` change is relative
-                to the **current** map amplitude/intensity. If False, computes
-                the spot expansion assuming the fractional change is relative
-                to the **original** map amplitude/intensity (i.e., that of
-                a featureless map). Defaults to True. Note that if True,
-                adding two spots with the same values of `amp` or `intensity`
-                will generally result in *different* intensities at their
-                centers, since the first spot will have changed the map
-                intensity everywhere! Defaults to True.
-            sigma (scalar, optional): The standard deviation of the gaussian.
-                Defaults to 0.1.
+                number of wavelength bins. Positive values of the contrast
+                result in dark spots; negative values result in bright
+                spots. Default is ``1.0``, corresponding to a spot with
+                central intensity close to zero.
+            radius (scalar, optional): The angular radius of the spot in
+                units of :py:attr:`angle_unit`. Defaults to ``20.0`` degrees.
             lat (scalar, optional): The latitude of the spot in units of
-                :py:attr:`angle_unit`. Defaults to 0.0.
+                :py:attr:`angle_unit`. Defaults to ``0.0``.
             lon (scalar, optional): The longitude of the spot in units of
-                :py:attr:`angle_unit`. Defaults to 0.0.
+                :py:attr:`angle_unit`. Defaults to ``0.0``.
+
+        .. note::
+
+            Keep in mind that things are normalized in ``starry`` such that
+            the disk-integrated *flux* (not the *intensity*!)
+            of an unspotted body is unity. The default intensity of an
+            unspotted map is ``1.0 / np.pi`` everywhere (this ensures the
+            integral over the unit disk is unity).
+            So when you instantiate a map and add a spot of contrast ``c``,
+            you'll see that the intensity at the center is actually
+            ``(1 - c) / np.pi``. This is expected behavior, since that's
+            a factor of ``1 - c`` smaller than the baseline intensity.
+
+        .. note::
+
+            This function computes the spherical harmonic expansion of a
+            circular spot with uniform contrast. At finite spherical
+            harmonic degree, this will return an *approximation* that
+            may be subject to ringing. Users can control the amount of
+            ringing and the smoothness of the spot profile (see below).
+            In general, however, at a given spherical harmonic degree
+            ``ydeg``, there is always minimum spot radius that can be
+            modeled well. For ``ydeg = 15``, for instance, that radius
+            is about ``10`` degrees. Attempting to add a spot smaller
+            than this will in general result in a large amount of ringing and
+            a smaller contrast than desired.
+
+        There are a few additional under-the-hood keywords that may be passed
+        **when instantiating
+        the** ``Map`` **class** that control the behavior of the spot expansion.
+        These are
+
+        Args:
+            spot_pts (int, optional): The number of points in the expansion
+                of the (1-dimensional) spot profile. Default is ``1000``.
+            spot_eps (float, optional): Regularization parameter in the
+                expansion. Default is ``1e-9``.
+            spot_smoothing (float, optional): Standard deviation of the
+                Gaussian smoothing applied to the spot to suppress
+                ringing (unitless). Default is ``2.0 / self.ydeg``.
+            spot_fac (float, optional): Parameter controlling the smoothness
+                of the spot profile. Increasing this parameter increases
+                the steepness of the profile (which approaches a top hat
+                as ``spot_fac -> inf``). Decreasing it results in a smoother
+                sigmoidal function. Default is ``300``. Changing this
+                parameter is not recommended; change ``spot_smoothing``
+                instead.
 
         """
-        # Parse the amplitude
-        if (amp is None and intensity is None) or (
-            amp is not None and intensity is not None
-        ):
-            raise ValueError("Please provide either `amp` or `intensity`.")
-        elif amp is not None:
-            amp, _ = self._math.vectorize(
-                self._math.cast(amp), np.ones(self.nw)
-            )
-            # Normalize?
-            if not relative:
-                amp /= self.amp
+
+        # Check inputs
+        if radius is None:
+            radius = self._math.cast(20 * np.pi / 180)
         else:
-            # Vectorize if needed
-            intensity, _ = self._math.vectorize(
-                self._math.cast(intensity), np.ones(self.nw)
-            )
-            # Normalize?
-            if not relative:
-                baseline = 1.0 / np.pi
-            else:
-                baseline = self.intensity(lat=lat, lon=lon, limbdarken=False)
-            DeltaI = baseline * intensity
-            # The integral of the gaussian in cos(Delta theta) over the
-            # surface of the sphere is sigma * sqrt(2 * pi^3). Combining
-            # this with the normalization convention of starry (a factor of 4),
-            # the corresponding spot amplitude is...
-            amp = sigma * np.sqrt(2 * np.pi ** 3) * DeltaI / 4
-            if not relative:
-                amp /= self.amp
+            radius = self._math.cast(radius) * self._angle_factor
+        lat = self._math.cast(lat) * self._angle_factor
+        lon = self._math.cast(lon) * self._angle_factor
+        if self.nw is None:
+            contrast = self._math.cast(contrast)
+        else:
+            contrast = self._math.cast(contrast) * self._math.ones(self.nw)
 
-        # Parse remaining kwargs
-        sigma, lat, lon = self._math.cast(sigma, lat, lon)
-
-        # Get the Ylm expansion of the spot. Note that yspot[0] is not
-        # unity, so we'll need to normalize it before setting self._y
-        yspot = self.ops.expand_spot(
-            amp, sigma, lat * self._angle_factor, lon * self._angle_factor
-        )
-        y_new = self._y + yspot
-        amp_new = self._amp * y_new[0]
-        y_new /= y_new[0]
-
-        # Update the map and the normalizing amplitude
-        self._y = y_new
-        self._amp = amp_new
+        # Add the spot to the map
+        self._y += self.ops.spot(contrast, radius, lat, lon)
 
     def minimize(self, oversample=1, ntries=1, bounds=None, return_info=False):
         """Find the global (optionally local) minimum of the map intensity.

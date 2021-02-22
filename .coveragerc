@@ -2,4 +2,5 @@
 omit =
     **/test_*.py
     **/conftest.py
+    **/legacy
 relative_files = true
