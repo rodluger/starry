@@ -170,9 +170,9 @@ class minimizeOp(tt.Op):
             )
 
             if result.fun < outputs[2][0]:
-                outputs[0][0] = result.x[0]
-                outputs[1][0] = result.x[1]
-                outputs[2][0] = result.fun
+                outputs[0][0] = np.array(result.x[0])
+                outputs[1][0] = np.array(result.x[1])
+                outputs[2][0] = np.array(result.fun)
 
             # Prepare for next iteration
             I_grid[ind] = np.inf
