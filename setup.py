@@ -217,6 +217,7 @@ setup(
         "numpy>=1.19.2",
         "scipy>=1.5.0",
         "astropy>=3.1",
+        "arviz<=0.11.1",
         "pymc3<=3.11.1",
         "pymc3-ext",
         "matplotlib>=3.2.2",
