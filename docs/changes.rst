@@ -1,5 +1,19 @@
+Recent changes
+==============
+
+New in version 1.1
+------------------
+
+Version ``1.1.0`` fixes several bugs, particularly compatibility ones
+between ``theano`` and ``pymc3``, as well as segfaults and
+pickling errors. The dependence on ``healpy`` has been removed, and
+we now have a new ``spot`` method (``add_spot`` is now deprecated).
+This version also implements phase curves and occultations in
+reflected light. See `this tutorial <notebooks/ReflectedLight.ipynb>`_ for more information.
+
+
 New in version 1.0
-==================
+------------------
 
 The first official release version of ``starry`` differs quite a bit from the beta
 (``0.3.0``) version, particularly in how gradients are computed and propagated.

@@ -2,7 +2,7 @@ name: tutorials
 
 on:
   push:
-    branches: [master,restructure] # TODO
+    branches: [master]
   pull_request:
     branches: [master]
 

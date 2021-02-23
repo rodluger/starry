@@ -24,10 +24,15 @@ def test_profile():
     max_tol = 0.05
 
     # Get the starry profile
-    map = starry.Map(
-        30, lazy=False, spot_fac=spot_fac, spot_smoothing=spot_smoothing
+    map = starry.Map(30)
+    map.spot(
+        contrast=1,
+        radius=radius,
+        lat=0,
+        lon=0,
+        spot_fac=spot_fac,
+        spot_smoothing=spot_smoothing,
     )
-    map.spot(contrast=1, radius=radius, lat=0, lon=0)
     lon = np.linspace(-90, 90, 1000)
     I = np.pi * map.intensity(lon=lon)
 

@@ -299,7 +299,7 @@ class MapBase(object):
         self._L = None
         self._solution = None
 
-        # Check for bad kwargs, with the follwoing exceptions
+        # Check for bad kwargs, with the following exceptions
         kwargs.pop("source_npts", None)
         kwargs.pop("dr_oversample", None)
         kwargs.pop("dr_lam", None)
@@ -1420,7 +1420,7 @@ class YlmBase(legacy.YlmBase):
         else:
             self._y = self._math.transpose(y)
 
-    def spot(self, *, contrast=1.0, radius=None, lat=0.0, lon=0.0):
+    def spot(self, *, contrast=1.0, radius=None, lat=0.0, lon=0.0, **kwargs):
         r"""Add the expansion of a circular spot to the map.
 
         This function adds a spot whose functional form is a top
@@ -1473,10 +1473,8 @@ class YlmBase(legacy.YlmBase):
             than this will in general result in a large amount of ringing and
             a smaller contrast than desired.
 
-        There are a few additional under-the-hood keywords that may be passed
-        **when instantiating
-        the** ``Map`` **class** that control the behavior of the spot expansion.
-        These are
+        There are a few additional under-the-hood keywords
+        that control the behavior of the spot expansion. These are
 
         Args:
             spot_pts (int, optional): The number of points in the expansion
@@ -1494,7 +1492,16 @@ class YlmBase(legacy.YlmBase):
                 parameter is not recommended; change ``spot_smoothing``
                 instead.
 
+        .. note::
+
+            These last four parameters are cached. That means that
+            changing their value in a call to ``spot`` will result in
+            all future calls to ``spot`` "remembering" those settings,
+            unless you change them back!
+
         """
+        # Set up (if kwargs changed)
+        self.ops._spot_setup(**kwargs)
 
         # Check inputs
         if radius is None:

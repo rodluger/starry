@@ -48,6 +48,7 @@ Custom Models
    :titlesonly:
    :maxdepth: 1
 
+   notebooks/StarSpots.ipynb
    notebooks/ExposureTime.ipynb
    notebooks/LightTravelDelay.ipynb
 

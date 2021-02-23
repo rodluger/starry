@@ -18,7 +18,7 @@ from .ops import (
     RaiseValueErrorIfOp,
     OrenNayarOp,
 )
-from .utils import logger, autocompile, is_theano
+from .utils import logger, autocompile, is_theano, clear_cache
 from .math import lazy_math as math
 import theano
 import theano.tensor as tt
@@ -84,12 +84,6 @@ class OpsYlm(object):
         self._spotYlm = spotYlmOp(
             self._c_ops.spotYlm, self.ydeg, self.nw
         )  # Deprecated
-        self._spot_setup(
-            spot_pts=kwargs.get("spot_pts", 1000),
-            spot_eps=kwargs.get("spot_eps", 1e-9),
-            spot_smoothing=kwargs.get("spot_smoothing", None),
-            spot_fac=kwargs.get("spot_fac", 300),
-        )
         self._pT = pTOp(self._c_ops.pT, self.deg)
         if self.nw is None:
             if self._reflected:
@@ -605,11 +599,35 @@ class OpsYlm(object):
     def _spot_setup(
         self, spot_pts=1000, spot_eps=1e-9, spot_smoothing=None, spot_fac=300
     ):
+        # The default smoothing depends on `ydeg`
         if spot_smoothing is None:
             if self.ydeg < 4:
                 spot_smoothing = 0.5
             else:
                 spot_smoothing = 2.0 / self.ydeg
+
+        # Check the cache
+        try:
+            if (
+                (spot_pts == self._spot_pts)
+                and (spot_eps == self._spot_eps)
+                and (spot_smoothing == self._spot_smoothing)
+                and (spot_fac == self._spot_fac)
+            ):
+                return
+        except AttributeError:
+            pass
+
+        # Update the cached values
+        self._spot_pts = spot_pts
+        self._spot_eps = spot_eps
+        self._spot_smoothing = spot_smoothing
+        self._spot_fac = spot_fac
+
+        # Clear the compiled function cache
+        clear_cache(self, self.spot)
+
+        # Pre-compute the linalg stuff
         theta = np.linspace(0, np.pi, spot_pts)
         cost = np.cos(theta)
         B = np.hstack(
