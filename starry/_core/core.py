@@ -1923,12 +1923,11 @@ class OpsSystem(object):
         return ifelse(
             keplerian,
             tt.inc_subtensor(
-                rv[0],
-                tt.reshape(
+                rv[1:],
+                tt.transpose(
                     orbit.get_radial_velocity(
                         t, output_units=units.m / units.s
-                    ),
-                    (-1,),
+                    )
                 ),
             ),
             rv,
