@@ -971,6 +971,7 @@ class System(object):
                 contribution from each body.
 
         """
+        assert self._rv, "Only implemented if `rv=True` for all body maps."
         rv = self.ops.rv(
             self._math.reshape(self._math.to_array_or_tensor(t), [-1])
             * self._time_factor,
