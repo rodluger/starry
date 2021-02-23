@@ -1014,11 +1014,15 @@ class System(object):
 
             # Conservation of momentum implies the RV of `b`
             # is proportional to the RV of the star, weighted
-            # by the mass ratio
-            rv_b = -rv[1] * A.m / b.m
+            # by the mass ratio. We can compute the mass ratio
+            # if we're mindful of the (potentially different)
+            # units for the star and the planets:
+            mA_mb = ((A.m * A.mass_unit) / (b.m * b.mass_unit)).decompose()
+            rv_b = -rv[1] * mA_mb
 
             # Same for planet `c`
-            rv_c = -rv[2] * A.m / b.m
+            mA_mc = ((A.m * A.mass_unit) / (b.m * b.mass_unit)).decompose()
+            rv_c = -rv[2] * mAmc
 
         Note that this method implicitly assumes multi-Keplerian orbits;
         i.e., the ``Secondary`` bodies are treated as massive *only* when computing
