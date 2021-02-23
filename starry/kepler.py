@@ -970,6 +970,62 @@ class System(object):
                 True. If False, returns arrays corresponding to the RV
                 contribution from each body.
 
+        Returns:
+            A vector or matrix of radial velocities in units of meters per
+            second. If ``total`` is ``True``, this returns a vector of the
+            total stellar radial velocity at every point ``t``. This is
+            the sum of all effects: the Keplerian motion of the star due to
+            the planets, the radial velocity anomaly due to spots or
+            features on its surface rotating in and out of view, as well
+            as the Rossiter-McLaughlin effect due to transits by the
+            secondaries.
+            If ``total`` is ``False``, this returns a matrix whose
+            rows are the radial velocity contributions to the measured **stellar**
+            radial velocity from each of the bodies in the system.
+            As a specific example, if there are three bodies in the
+            system (one ``Primary`` and two ``Secondary`` bodies), the
+            first row is the radial velocity anomaly corresponding to the star's
+            own Doppler signals (due to spots rotating in and out of
+            view, or due to the Rossiter-McLaughlin effect of the other
+            two bodies transiting it). The other two rows are the Keplerian
+            contribution from each of the ``Secondary`` bodies, plus any
+            radial velocity anomaly due to spots or occultations of their
+            surfaces.
+            The sum across all rows is equal to the total radial velocity
+            and is the same as what this method would return if ``total=True``.
+
+        Note, importantly, that when ``total=False``, this method does
+        *not* return the radial velocities of each of the bodies; instead,
+        it returns the *contribution to the stellar radial velocity* due
+        to each of the bodies. If you require knowing the radial velocity
+        of the secondary objects, you can compute this from conservation
+        of momentum:
+
+        .. code-block::python
+
+            # Instantiate a system w/ a star and two planets
+            A = starry.Primary(...)
+            b = starry.Secondary(...)
+            c = starry.Secondary(...)
+            sys = starry.System(A, b, c)
+
+            # Get the contribution from each body to the star's RV
+            rv = sys.rv(t, total=False)
+
+            # Conservation of momentum implies the RV of `b`
+            # is proportional to the RV of the star, weighted
+            # by the mass ratio
+            rv_b = -rv[1] * A.m / b.m
+
+            # Same for planet `c`
+            rv_c = -rv[2] * A.m / b.m
+
+        Note that this method implicitly assumes multi-Keplerian orbits;
+        i.e., the ``Secondary`` bodies are treated as massive *only* when computing
+        their gravitational effect on the ``Primary`` (as opposed to each other).
+        This therefore ignores all ``Secondary``-``Secondary``
+        (i.e., planet-planet) interactions.
+
         """
         assert self._rv, "Only implemented if `rv=True` for all body maps."
         rv = self.ops.rv(

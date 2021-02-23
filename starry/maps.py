@@ -1852,6 +1852,9 @@ class RVBase(object):
     attributes and methods as :py:class:`starry.maps.YlmBase`, with the
     additions and modifications listed below.
 
+    All velocities are in meters per second, unless otherwise
+    specified via the attribute :py:attr:`_velocity_unit``.
+
     .. note::
         Instantiate this class by calling :py:func:`starry.Map` with
         ``ydeg > 0`` and ``rv`` set to True.
@@ -1948,6 +1951,10 @@ class RVBase(object):
                 this body's radius.
             theta (scalar or vector, optional): Angular phase of the body
                 in units of :py:attr:`angle_unit`.
+
+        Returns:
+            The radial velocity in units of :py:attr:`velocity_unit`.
+
         """
         # Orbital kwargs
         theta, xo, yo, zo, ro = self._get_flux_kwargs(kwargs)
