@@ -1088,8 +1088,8 @@ class System(object):
     def _get_periods(self):
         periods = [None for sec in self._secondaries]
         for i, sec in enumerate(self._secondaries):
-            if sec.porb:
-                periods[i] = sec.porb
+            if sec._porb:
+                periods[i] = sec._porb
             else:
                 periods[i] = (
                     (2 * np.pi)
