@@ -3,6 +3,7 @@ from . import config
 from ._constants import *
 from .maps import MapBase, RVBase, ReflectedBase
 from ._core import OpsSystem, math
+from .compat import evaluator
 import numpy as np
 from astropy import units
 from inspect import getmro
@@ -581,6 +582,7 @@ class System(object):
         figsize=(3, 3),
         html5_video=True,
         window_pad=1.0,
+        **kwargs,
     ):
         """Visualize the Keplerian system.
 
@@ -612,6 +614,9 @@ class System(object):
             raise NotImplementedError(
                 "Method not implemented for spectral maps."
             )
+
+        # So we can evaluate stuff in lazy mode
+        get_val = evaluator(**kwargs)
 
         # Render the maps & get the orbital positions
         if self._rv:
@@ -693,12 +698,12 @@ class System(object):
 
         # Evaluate if needed
         if config.lazy:
-            img_pri = img_pri.eval()
-            img_sec = img_sec.eval()
-            x = x.eval()
-            y = y.eval()
-            z = z.eval()
-            r = r.eval()
+            img_pri = get_val(img_pri)
+            img_sec = get_val(img_sec)
+            x = get_val(x)
+            y = get_val(y)
+            z = get_val(z)
+            r = get_val(r)
 
         # We need this to be of shape (nplanet, nframe)
         x = x.T

@@ -8,6 +8,7 @@ __all__ = [
     "ParamsType",
     "Node",
     "change_flags",
+    "evaluator",
 ]
 
 # Suppress third-party deprecation warnings
@@ -37,3 +38,27 @@ except:
 import theano.tensor as tt
 
 tt.config.floatX = "float64"
+
+
+def evaluator(**kwargs):
+    """
+    Return a function to evaluate theano tensors.
+
+    Works inside a `pymc3` model if a `point` is provided.
+    Lazily imports `pymc3` to minimize overhead.
+
+    """
+    if kwargs.get("point", None) is not None:
+
+        import pymc3 as pm
+        import pymc3_ext as pmx
+
+        point = kwargs.get("point")
+        model = kwargs.get("model", pm.Model.get_context())
+        get_val = lambda x: pmx.eval_in_model(x, model=model, point=point)
+
+    else:
+
+        get_val = lambda x: x.eval()
+
+    return get_val

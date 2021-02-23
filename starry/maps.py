@@ -11,6 +11,7 @@ from ._plotting import (
     get_moll_longitude_lines,
     get_projection,
 )
+from .compat import evaluator
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -21,6 +22,7 @@ from IPython.display import HTML
 from astropy import units
 from scipy.ndimage import zoom
 import os
+import sys
 import logging
 
 logger = logging.getLogger("starry.maps")
@@ -356,6 +358,7 @@ class MapBase(object):
 
         """
         # Get kwargs
+        get_val = evaluator(**kwargs)
         cmap = kwargs.pop("cmap", "plasma")
         grid = kwargs.pop("grid", True)
         interval = kwargs.pop("interval", 75)
@@ -379,18 +382,20 @@ class MapBase(object):
 
             # Get the map orientation
             if self.lazy:
-                inc = self._inc.eval()
-                obl = self._obl.eval()
+                inc = get_val(self._inc)
+                obl = get_val(self._obl)
             else:
                 inc = self._inc
                 obl = self._obl
 
             # Get the rotational phase
             if self.lazy:
-                theta = self._math.vectorize(
-                    self._math.cast(kwargs.pop("theta", 0.0))
-                    * self._angle_factor
-                ).eval()
+                theta = get_val(
+                    self._math.vectorize(
+                        self._math.cast(kwargs.pop("theta", 0.0))
+                        * self._angle_factor
+                    )
+                )
             else:
                 theta = np.atleast_1d(
                     np.array(kwargs.pop("theta", 0.0)) * self._angle_factor
@@ -414,17 +419,17 @@ class MapBase(object):
                 res = kwargs.pop("res", 300)
 
                 # Evaluate the variables
-                u = self._u.eval()
+                u = get_val(self._u)
 
                 if not self.__props__["limbdarkened"]:
 
-                    inc = self._inc.eval()
-                    obl = self._obl.eval()
-                    y = self._y.eval()
-                    f = self._f.eval()
+                    inc = get_val(self._inc)
+                    obl = get_val(self._obl)
+                    y = get_val(self._y)
+                    f = get_val(self._f)
 
                     # Explicitly call the compiled version of `render`
-                    image = self._amp.eval().reshape(
+                    image = get_val(self._amp).reshape(
                         -1, 1, 1
                     ) * self.ops.render(
                         res, projection, theta, inc, obl, y, u, f
@@ -433,7 +438,7 @@ class MapBase(object):
                 else:
 
                     # Explicitly call the compiled version of `render`
-                    image = self._amp.eval().reshape(
+                    image = get_val(self._amp).reshape(
                         -1, 1, 1
                     ) * self.ops.render_ld(res, u)
 
@@ -1313,6 +1318,9 @@ class YlmBase(legacy.YlmBase):
         # Not implemented for spectral
         self._no_spectral()
 
+        # Function to get tensor values
+        get_val = evaluator(**kwargs)
+
         # Is this a file name?
         if type(image) is str:
             # Get the full path
@@ -1382,7 +1390,7 @@ class YlmBase(legacy.YlmBase):
             # Find the minimum
             _, _, I = self.minimize(**kwargs)
             if self.lazy:
-                I = I.eval()
+                I = get_val(I)
 
             # Scale the coeffs?
             if I < 0:
@@ -2413,12 +2421,12 @@ class ReflectedBase(object):
             return self._math.reshape(image, [res, res])
 
     def show(self, **kwargs):
-
         # If the user supplied an image, let's just show it
         if kwargs.get("image", None) is not None:
             return super(ReflectedBase, self).show(**kwargs)
 
         # Get kwargs
+        get_val = evaluator(**kwargs)
         res = kwargs.pop("res", 300)
         projection = get_projection(kwargs.get("projection", "ortho"))
         theta = self._math.cast(kwargs.pop("theta", 0.0)) * self._angle_factor
@@ -2440,18 +2448,18 @@ class ReflectedBase(object):
 
         if self.lazy:
             # Evaluate the variables
-            theta = theta.eval()
-            xs = xs.eval()
-            ys = ys.eval()
-            zs = zs.eval()
-            Rs = Rs.eval()
-            inc = self._inc.eval()
-            obl = self._obl.eval()
-            y = self._y.eval()
-            u = self._u.eval()
-            f = self._f.eval()
-            sigr = self._sigr.eval()
-            amp = amp.eval()
+            theta = get_val(theta)
+            xs = get_val(xs)
+            ys = get_val(ys)
+            zs = get_val(zs)
+            Rs = get_val(Rs)
+            inc = get_val(self._inc)
+            obl = get_val(self._obl)
+            y = get_val(self._y)
+            u = get_val(self._u)
+            f = get_val(self._f)
+            sigr = get_val(self._sigr)
+            amp = get_val(amp)
         else:
             inc = self._inc
             obl = self._obl
