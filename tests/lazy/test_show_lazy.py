@@ -79,7 +79,7 @@ def test_system_rv_show(mp4=False):
 
 
 def test_show_pymc3():
-    with pm.Model() as model:
+    with pm.Model(theano_config=dict(compute_test_value="ignore")) as model:
         map = starry.Map()
         ncoeff = map.Ny
         mu = np.ones(ncoeff)
@@ -90,7 +90,7 @@ def test_show_pymc3():
 
 
 def test_show_reflected_pymc3():
-    with pm.Model() as model:
+    with pm.Model(theano_config=dict(compute_test_value="ignore")) as model:
         map = starry.Map(ydeg=1, udeg=1, reflected=True)
         ncoeff = map.Ny
         mu = np.ones(ncoeff)
@@ -101,7 +101,7 @@ def test_show_reflected_pymc3():
 
 
 def test_show_rv_pymc3():
-    with pm.Model() as model:
+    with pm.Model(theano_config=dict(compute_test_value="ignore")) as model:
         map = starry.Map(ydeg=1, udeg=1, rv=True)
         ncoeff = map.Ny
         mu = np.ones(ncoeff)
@@ -112,7 +112,7 @@ def test_show_rv_pymc3():
 
 
 def test_show_ld_pymc3():
-    with pm.Model() as model:
+    with pm.Model(theano_config=dict(compute_test_value="ignore")) as model:
         map = starry.Map(udeg=2)
         map[1:] = pm.MvNormal("u", [0.5, 0.25], np.eye(2), shape=(2,))
         map.show(file="tmp.pdf", point=model.test_point)
@@ -120,7 +120,7 @@ def test_show_ld_pymc3():
 
 
 def test_system_show_pymc3():
-    with pm.Model() as model:
+    with pm.Model(theano_config=dict(compute_test_value="ignore")) as model:
         pri = starry.Primary(starry.Map())
         sec = starry.Secondary(starry.Map(), porb=1.0)
         sec.inc = pm.Uniform("inc", 0, 90)
@@ -132,7 +132,7 @@ def test_system_show_pymc3():
 
 
 def test_system_rv_show_pymc3():
-    with pm.Model() as model:
+    with pm.Model(theano_config=dict(compute_test_value="ignore")) as model:
         pri = starry.Primary(starry.Map(rv=True))
         sec = starry.Secondary(starry.Map(rv=True), porb=1.0)
         sec.inc = pm.Uniform("inc", 0, 90)
