@@ -697,7 +697,7 @@ class System(object):
         r = r / self._primary._r
 
         # Evaluate if needed
-        if config.lazy:
+        if self._lazy:
             img_pri = get_val(img_pri)
             img_sec = get_val(img_sec)
             x = get_val(x)
